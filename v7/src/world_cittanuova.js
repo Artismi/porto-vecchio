@@ -87,7 +87,7 @@ var World = (function () {
   // La città (x ≥ 902, finale 1222) non si tocca: tutto si spegne fra 862 e 900.
   const C2X1 = 900;   // da qui a est la riva è quella di prima (la città, la Rocca)
   const C2STRADA = [[372, 488], [796, 886]];   // i tratti di costiera sul mare: [da x, a x] a tramontana e a mezzogiorno
-  const C2SCOGLI = [[906, 2, 5], [921, 4, 4], [940, 2, 6.5], [961, 5, 3.5], [983, 1.5, 6], [1004, 4, 4.5], [1027, 1, 7], [1051, 5, 3.8], [1072, 2, 5.5], [1096, 1.5, 6.5], [1119, 4, 4], [1140, 1, 6], [1163, 3, 5], [1186, 2, 5.5]];   // [x, quanto fuori, raggio]: gli scogli sotto le mura
+  const C2SCOGLI = [[906, 2, 5], [921, 4, 4], [940, 2, 6.5], [961, 5, 3.5], [983, 1.5, 6], [1004, 4, 4.5], [1027, 1, 7], [1051, 5, 3.8], [1072, 2, 5.5], [1096, 1.5, 6.5], [1119, 4, 4], [1140, 1, 6], [1163, 3, 5]];   // non oltre 1170: lì comincia il canale della Rocca   // [x, quanto fuori, raggio]: gli scogli sotto le mura
   const C2N = [   // [centro, larghezza, sporgenza, nome] riva nord (tramontana): alta, di roccia, con le calette strette
     [52, 17, 15, 'Punta del Maestrale'], [100, 12, -18, 'Cala dei Gabbiani'], [150, 26, 16, 'Capo del Bosco'], [211, 8, -11, 'Cala Lupara'], [256, 19, 18, 'Capo di Tramontana'],
     [332, 12, -5, ''], [400, 25, 22, 'Punta del Corvo'], [455, 7, -11, 'Caletta del Corvo'], [624, 24, 23, 'Capo Rosso'], [669, 8, -10, 'Caletta Rossa'],
@@ -2848,7 +2848,82 @@ var World = (function () {
     return { w, h, px };
   }
 
-  const W = expand(generate());
+  // [costa2] L'ARREDO DELLA RIVA, come dati (coordinate finali): la grafica lo costruisce in render.js (sezione [costa2]) con le istanze
+  // per settore, la prova lo controlla (test_costa2.js). Niente a caso: ogni cosa sta su una casella giusta per lei e lontano dalle strade.
+  //  piante: canna (il canneto), fico (fico d'india), agave, giglio (giglio di mare sulla duna)
+  //  rocce: lastra (la lastra di calcare sulla riva), masso, pozza (la pozza di scogliera)
+  //  tetrapodi: la scogliera artificiale del frangiflutti e il piede del Molo Vecchio verso il largo
+  //  passerelle: le passerelle di tavole sulle dune, dalla costiera alla spiaggia, con la staccionata di pali e corda
+  //  piazzole, muretti, scale: la strada sul mare (la piazzola di sosta, il muretto basso sul ciglio, la scaletta verso la riva)
+  function costa2Arredo(W) {
+    const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
+    const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
+    const isSea = i => i < 0 || (g[i] === T.WATER && W.zone[i] === Z.MARE);
+    const strada = i => g[i] === T.VIA || W.roadW[i] > 0;
+    const libero = (x, y, r) => { for (const [a, b] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) { const i = at(x + a, y + b); if (i < 0 || isSea(i) || strada(i) || g[i] === T.WATER || g[i] === T.BLD || g[i] === T.QUAY || g[i] === T.PIER || g[i] === T.FOUNT || g[i] === T.STAIRS || g[i] === T.TREE) return false; } return true; };
+    const isl = W.__isl, X1 = C2X1 + OX + 300;
+    for (let ty = 2; ty < GHx - 2; ty++) for (let tx = 2; tx < GWx - 2; tx++) {
+      const i = ty * GWx + tx, x0 = tx * TS, y0 = ty * TS, v = g[i]; if (x0 > X1 || (isl && isl[i]) || isSea(i) || v === T.WATER) continue;
+      const e = W.eco[i], h = (s) => hash2(tx, ty, 900 + s);
+      if (e === E.CANNETO && (v === T.GRASS || v === T.SHRUB || v === T.SAND || v === T.GRAVEL)) { const n = 2 + Math.floor(h(1) * 3); for (let k = 0; k < n; k++) { const x = x0 + .3 + h(10 + k) * 1.4, y = y0 + .3 + h(20 + k) * 1.4; if (libero(x, y, .3)) A.piante.push({ k: 'canna', x, y, s: .8 + h(30 + k) * .6, r: h(40 + k) * 6.28 }); } continue; }
+      if (e === E.COSTA && v !== T.TREE && v !== T.ROCK) { const x = x0 + .5 + h(2), y = y0 + .5 + h(3); if (h(4) < .16 && libero(x, y, .9)) A.piante.push({ k: 'fico', x, y, s: .8 + h(5) * .7, r: h(6) * 6.28 }); else if (h(4) < .27 && libero(x, y, .6)) A.piante.push({ k: 'agave', x, y, s: .7 + h(5) * .6, r: h(6) * 6.28 }); continue; }
+      if (e === E.DUNA && v === T.SAND && h(7) < .05) { const x = x0 + 1, y = y0 + 1, inl = W.inland(x, y); if (inl > 12 && libero(x, y, .5)) for (let k = 0; k < 3; k++) A.piante.push({ k: 'giglio', x: x + (h(50 + k) - .5) * 1.2, y: y + (h(60 + k) - .5) * 1.2, s: .8 + h(70 + k) * .5, r: h(80 + k) * 6.28 }); continue; }
+      if (v === T.ROCK) {
+        let mare = false; for (let b = -2; b <= 2 && !mare; b++) for (let a = -2; a <= 2; a++) if (isSea(i + b * GWx + a)) { mare = true; break; }
+        if (!mare) continue; const k2 = W.coastKind2(x0 + 1, y0 + 1), x = x0 + .4 + h(8) * 1.2, y = y0 + .4 + h(9) * 1.2;
+        if (k2 === 'frangiflutti') { if (h(11) < .55) A.tetrapodi.push({ x, y, r: h(12) * 6.28, t: h(13) * 6.28, s: .9 + h(14) * .25 }); continue; }
+        if (!libero(x, y, .2)) continue;
+        if (h(15) < .4) A.rocce.push({ k: 'lastra', x, y, s: 1 + h(16) * 1.4, r: h(17) * 6.28 });
+        else if (h(15) < .55) A.rocce.push({ k: 'masso', x, y, s: .5 + h(16) * .9, r: h(17) * 6.28 });
+        else if (h(15) < .62) A.rocce.push({ k: 'pozza', x, y, s: .5 + h(16) * .5, r: h(17) * 6.28 });
+      }
+    }
+    // il piede del Molo Vecchio verso il largo: due file di tetrapodi sulla scogliera (dalla curva alla lanterna)
+    const mv = W.SEA.structs.find(s => s.id === 'molo_vecchio'), bas = W.SEA.basins.find(B => B.id === 'porto_vecchio');
+    const inPolyA = (x, y, Q) => { let c = false; for (let a = 0, b = Q.length - 1; a < Q.length; b = a++) if ((Q[a][1] > y) !== (Q[b][1] > y) && x < (Q[b][0] - Q[a][0]) * (y - Q[a][1]) / (Q[b][1] - Q[a][1]) + Q[a][0]) c = !c; return c; };
+    if (mv) { const Pm = mv.pts; for (let k = 1; k < Pm.length; k++) { const a = Pm[k - 1], b = Pm[k], L = dist(a[0], a[1], b[0], b[1]), tx = (b[0] - a[0]) / L, ty = (b[1] - a[1]) / L;
+      for (let s = 0; s < L; s += 1.7) for (const sd of [-1, 1]) for (const o of [mv.w / 2 + 4.6, mv.w / 2 + 6.4]) {   // fuori dal muro paraonde
+        const j1 = hash2(Math.round((a[0] + tx * s) * 3), Math.round((a[1] + ty * s) * 3), 931 + Math.round(o * 7) + sd), x = a[0] + tx * s - ty * sd * o + (j1 - .5) * .8, y = a[1] + ty * s + tx * sd * o + (j1 - .5) * .6;
+        const i = at(x, y); if (i < 0 || !(isSea(i) || g[i] === T.ROCK) || (bas && inPolyA(x, y, bas.poly))) continue;   // solo verso il largo, mai dentro il bacino né sulla terra
+        A.tetrapodi.push({ x, y, r: j1 * 6.28, t: hash2(i, k, 934) * 6.28, s: 1.05, molo: true }); } } }
+    // le passerelle sul golfo delle dune: dalla costiera (dietro il cordone) giù fino alla spiaggia, seguendo la discesa della distanza dal mare
+    const lit = W.roads.find(r => r.id === 'litoranea');
+    [420, 505, 590].forEach(gx => { if (!lit) return; const X = gx + OX; let q0 = null, bd = 1e9; lit.pts.forEach(q => { const d = Math.abs(q[0] - X) + (q[1] < W.yc(q[0]) ? 1e4 : 0); if (d < bd) { bd = d; q0 = q; } }); if (!q0) return;
+      let x = q0[0], y = q0[1]; const pts = []; for (let k = 0; k < 120; k++) { const d0 = W.inland(x, y), gx2 = W.inland(x + .5, y) - W.inland(x - .5, y), gy2 = W.inland(x, y + .5) - W.inland(x, y - .5), L = Math.hypot(gx2, gy2) || 1;
+        x -= gx2 / L * .5; y -= gy2 / L * .5; if (d0 < 3) break; const i = at(x, y); if (g[i] === T.SAND && !strada(i) && (!pts.length || dist(x, y, pts[pts.length - 1][0], pts[pts.length - 1][1]) >= 2)) pts.push([+x.toFixed(2), +y.toFixed(2)]); }
+      if (pts.length >= 6) A.passerelle.push({ pts, w: 1.4 }); });
+    // la strada sul mare: per ogni punto della costiera dentro C2STRADA, quanto è lontano il mare dal ciglio e da che parte
+    W.roads.filter(r => r.kind === 'litoranea' && r.edge).forEach(rd => {
+      const P = rd.pts, run = [];
+      const flush = () => {
+        if (run.length >= 8) {
+          const nord = run[0].y < W.yc(run[0].x);
+          if (nord) run.forEach(q => { A.muretti.push({ x: q.ex, y: q.ey, nx: q.nx, ny: q.ny }); rd.edge[q.k * 2 + q.si] = 4; });   // a tramontana sul ciglio della falesia: il muretto di pietra (niente guardrail)
+          else run.forEach(q => { if (rd.edge[q.k * 2 + q.si] !== 3) rd.edge[q.k * 2 + q.si] = 3; });   // a mezzogiorno il guardrail zincato dove c'è il mare (lo costruisce la grafica dal bordo 3)
+          // la piazzola: dove fra il ciglio e il mare c'è terra per 4 m, lunga 14 m
+          for (let c = 6; c < run.length - 6; c += 3) { const q = run[c]; if (q.dm < 7.5) continue; const cx = q.ex + q.nx * 2.2, cy = q.ey + q.ny * 2.2; let okP = true;
+            for (let s = -7; s <= 7; s += 1) for (const o of [0, 1.6, 3.2]) { const i = at(q.ex + q.tx * s + q.nx * (o + .4), q.ey + q.ty * s + q.ny * (o + .4)); if (i < 0 || isSea(i) || g[i] === T.BLD) okP = false; }
+            if (okP && !A.piazzole.some(p => dist(p.x, p.y, cx, cy) < 90)) { A.piazzole.push({ x: cx, y: cy, ang: Math.atan2(q.ty, q.tx), L: 14, w: 3.4, nx: q.nx, ny: q.ny }); for (let s = -7; s <= 7; s += 1.75) A.muretti.push({ x: cx + q.tx * s + q.nx * 1.9, y: cy + q.ty * s + q.ny * 1.9, nx: q.nx, ny: q.ny, piazzola: true }); } }
+          // la scaletta: dove sotto il ciglio c'è sabbia (una cala, la spiaggetta), giù dritta fino alla sabbia
+          for (let c = 2; c < run.length - 2; c++) { const q = run[c]; let sx = null; for (let d = 1; d < 12; d += .5) { const i = at(q.ex + q.nx * d, q.ey + q.ny * d); if (i < 0 || isSea(i)) break; if (g[i] === T.SAND) { sx = d; break; } }
+            if (sx !== null && sx >= 1.5 && !A.scale.some(s => dist(s.x0, s.y0, q.ex, q.ey) < 60)) A.scale.push({ x0: q.ex + q.nx * .3, y0: q.ey + q.ny * .3, x1: q.ex + q.nx * (sx + .8), y1: q.ey + q.ny * (sx + .8), w: 1.5 }); }
+        }
+        run.length = 0;
+      };
+      for (let k = 2; k < P.length - 2; k++) {
+        const gx = P[k][0] - OX, inS = C2STRADA.some(([a, b]) => gx > a && gx < b); if (!inS) { flush(); continue; }
+        const a = P[k - 1], c = P[k + 1], L = dist(a[0], a[1], c[0], c[1]) || 1, tx = (c[0] - a[0]) / L, ty = (c[1] - a[1]) / L; let best = null;
+        [0, 1].forEach(si => { const nx = (si ? -1 : 1) * -ty, ny = (si ? -1 : 1) * tx, e0 = rd.w / 2 + 2.2; /* lo stesso lato di rd.edge (come in render.js) */ for (let d = e0; d < e0 + 12; d += .5) { if (isSea(at(P[k][0] + nx * d, P[k][1] + ny * d))) { if (!best || d < best.d) best = { d, si, nx, ny }; break; } } });
+        if (!best) { flush(); continue; }
+        const e0 = rd.w / 2 + 2.2; run.push({ k, si: best.si, x: P[k][0], y: P[k][1], nx: best.nx, ny: best.ny, tx, ty, ex: P[k][0] + best.nx * e0, ey: P[k][1] + best.ny * e0, dm: best.d - e0 + 2.2 });
+      }
+      flush();
+    });
+    W.SEA.costa2 = A;
+    W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => ({ nome, x: c + OX, lato: C2N.some(q => q[3] === nome) ? 'N' : 'S', capo: a > 0 })), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
+    return W;
+  }
+  const W = costa2Arredo(expand(generate()));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
