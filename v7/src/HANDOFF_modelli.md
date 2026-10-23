@@ -106,3 +106,11 @@ La veste da sola non bastava: le forme erano ancora scatole. `src/modella.js` (c
 - In `render.js` `crate`, `barrel`, `drum`, `tireStack`, `pallet`, `lifebuoy`, `beachUmbrella`, `sunbed`, `pedalo`, `container`, `crane`, `forklift`, `hullOnCradle` (il peschereccio di `veicoli3d.js` sull'invasatura) e i mucchi della discarica passano da `pm3()` quando c'è `Arredo3D`, come già sedie e tavolini. **I numeri a caso si consumano nello stesso ordine di prima**: la disposizione del mondo non cambia.
 - `strumenti/modelli_check.js`: 70/70 (tetti di triangoli alzati solo per container, gru, muletto, invasatura, pila di gomme).
 - **Da fare**: `rowboat`, `towel`, `lifeguardTower`, i carri del poligono vecchio e `tableItems` (tazzine e birre sui tavolini) sono ancora fatti a scatole; i lampioni, le panchine e il resto della libreria vecchia passano già da Arredo3D.
+
+## R3 — Un livello sopra: patina, luce da studio, forme (23 ottobre, sera)
+- Il riferimento è il diorama del committente (`_immagini/riferimenti/scorci`): niente tinta unita da plastica nuova.
+- `roba3d.js`, la patina: per ogni genere di materiale una tela di segni (venature, spazzolato e graffi, ghisa butterata, trama, fibre e pieghe, macchie) che fa anche da rilievo; le uv si proiettano a scatola in metri (una tela = 12 cm) quando il modello esce da `make()`; i colori per vertice danno l'ombra di contatto, la sfumatura dal basso e un tono diverso per pezzo; i colori sono appena stinti verso un grigio caldo. I liquidi chiari (acqua, grappa, vodka) sono quasi trasparenti.
+- **Attenzione**: i materiali hanno i colori per vertice. Chi fonde i modelli nella geometria statica del mondo (`mergeGeos` di render.js tiene solo posizione, normale e uv) deve passare da `Roba3D.statico(g)`, come fa `tableItems`, sennò vengono neri.
+- `menu_ui.js`, lo studio delle anteprime: ambiente riflesso (PMREM di una cupola calda con due softbox), ombre morbide vere sul modello e a terra, tono filmico ACES.
+- Capi piegati rifatti: maniche ripiegate dalla spalla col polsino, collo e costine, bottoni e mostrine per divisa e cappotto, rever e cerniera per le giacche, cintura coi passanti, tasche cucite ed etichetta per i jeans.
+- Confronto prima/primo giro/adesso: `_immagini/modelli/roba3d_confronto.png`.

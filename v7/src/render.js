@@ -9807,7 +9807,7 @@ var Render = (function () {
     const RBK = { caffe: () => Roba3D.make('caffe_tazza'), birra: () => Roba3D.make('birra'), boccale: () => Roba3D.fondi(Roba3D.M.bicchiere({ liq: '#e0a030' })), vino: () => Roba3D.fondi(Roba3D.M.bicchiere({ liq: '#6a1018' })), fiasco: () => Roba3D.make('vino'), giornale: () => Roba3D.make('giornale'), pane: () => Roba3D.make('pane') };
     items.forEach((it, k) => {
       const a = k / items.length * Math.PI * 2 + r() * .5, rr = .2 + r() * .08, px = Math.cos(a) * rr, pz = Math.sin(a) * rr;
-      if (RB && RBK[it]) { let ry = a; if (it === 'birra') { r(); r(); } else if (it === 'giornale') { ry = r(); r(); } if (rbAt(RBK[it](), px, pz, ry)) return; }
+      if (RB && RBK[it]) { let ry = a; if (it === 'birra') { r(); r(); } else if (it === 'giornale') { ry = r(); r(); } if (rbAt(Roba3D.statico(RBK[it]()), px, pz, ry)) return; }   // (statico: la fusione del mondo non tiene i colori per vertice)
       if (it === 'caffe') { add(g, cyl(.08, .08, .015, 10, cup), px, y + .01, pz); add(g, cyl(.045, .035, .07, 8, cup), px, y + .05, pz); add(g, cyl(.04, .04, .01, 8, sm('#3a1a0a')), px, y + .085, pz); add(g, box(.02, .03, .03, cup), px + .05, y + .05, pz); }
       else if (it === 'birra') { add(g, cyl(.045, .05, .2, 8, r() < .5 ? beerB : beerG), px, y + .1, pz); add(g, cyl(.02, .035, .08, 6, r() < .5 ? beerB : beerG), px, y + .24, pz); add(g, cyl(.052, .052, .07, 8, label), px, y + .09, pz); add(g, cyl(.022, .022, .015, 6, gold), px, y + .285, pz); }
       else if (it === 'boccale') { add(g, cyl(.06, .055, .16, 8, gold), px, y + .08, pz); add(g, cyl(.062, .062, .035, 8, foam), px, y + .175, pz); }

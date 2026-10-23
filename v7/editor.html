@@ -12279,15 +12279,49 @@ var Roba3D = (function () {
     pietra: { roughness: .92 }, vetro: { roughness: .08, metalness: .05, transparent: true, opacity: .62 }, vetroS: { roughness: .1, metalness: .05, transparent: true, opacity: .85 },
     liquido: { roughness: .15, transparent: true, opacity: .9 }, cera: { roughness: .5 },
   };
+  // ---------------- la patina: segni, usura e sporco per materiale (in grigio, moltiplicati per il colore) ----------------
+  // Il riferimento è il diorama (_immagini/riferimenti/scorci): niente tinta unita da plastica nuova. Ogni genere ha la sua tela di
+  // segni (venature, spazzolato e graffi, vernice scheggiata, trama, fibre, macchie) che fa anche da rilievo; le uv si proiettano
+  // "a scatola" in metri veri (una tela = 12 cm) quando il modello esce da make(); i colori per vertice danno l'ombra di contatto,
+  // la sfumatura dal basso e un tono un po' diverso per pezzo. I colori si stingono appena verso il grigio caldo del 1986.
+  const PT = {}, TILE = .12;
+  function patinaTela(k) {
+    if (PT[k] !== undefined) return PT[k]; if (!HAS_DOC) return (PT[k] = null);
+    const N = 128, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'); const r = rng(hashS(k));
+    const g = (v, X, Y, w, h, a) => { x.fillStyle = `rgba(${v | 0},${v | 0},${v | 0},${a === undefined ? 1 : a})`; x.fillRect(X, Y, w || 1, h || 1); };
+    const rumore = (a, b, n) => { for (let i = 0; i < n; i++) g(a + r() * (b - a), r() * N | 0, r() * N | 0, 1, 1); };
+    const macchie = (v, n, rr, a) => { for (let i = 0; i < n; i++) { const X = r() * N, Y = r() * N, R = rr * (.4 + r()); const gr = x.createRadialGradient(X, Y, 0, X, Y, R); gr.addColorStop(0, `rgba(${v},${v},${v},${a})`); gr.addColorStop(1, `rgba(${v},${v},${v},0)`); x.fillStyle = gr; x.fillRect(X - R, Y - R, 2 * R, 2 * R); } };
+    const graffi = (v, n, L, a) => { x.strokeStyle = `rgba(${v},${v},${v},${a})`; x.lineWidth = 1; for (let i = 0; i < n; i++) { const X = r() * N, Y = r() * N, an = r() * PI; x.beginPath(); x.moveTo(X, Y); x.lineTo(X + Math.cos(an) * L * (.3 + r()), Y + Math.sin(an) * L * (.3 + r())); x.stroke(); } };
+    g(240, 0, 0, N, N);
+    if (k === 'legno') { for (let y = 0; y < N; y++) { const v = 222 + Math.sin(y * .45 + Math.sin(y * .07) * 3) * 14; for (let X = 0; X < N; X += 2) g(v + (r() - .5) * 14, X, y, 2 + (r() * 6 | 0), 1); } for (let i = 0; i < 3; i++) { const X = r() * N, Y = r() * N; for (let q = 6; q > 0; q--) { x.strokeStyle = `rgba(120,120,120,${.12 + q * .03})`; x.beginPath(); x.ellipse(X, Y, q * 3, q * 1.2, 0, 0, PI * 2); x.stroke(); } } graffi(170, 10, 14, .35); macchie(150, 5, 18, .18); }
+    else if (k === 'metallo' || k === 'acciaio' || k === 'cromo' || k === 'ottone') { for (let y = 0; y < N; y++) for (let X = 0; X < N; X += 3) g(228 + r() * 24, X, y, 3 + (r() * 9 | 0), 1); graffi(175, 40, 18, .45); graffi(255, 20, 12, .5); macchie(140, 6, 10, .25); rumore(150, 200, 200); }
+    else if (k === 'ghisa' || k === 'ruggine') { rumore(170, 250, N * N * .6); for (let i = 0; i < 260; i++) g(120 + r() * 40, r() * N | 0, r() * N | 0, 1 + (r() * 2 | 0), 1 + (r() * 2 | 0)); macchie(110, 10, 16, .3); }
+    else if (k === 'plastica' || k === 'lucido') { rumore(228, 250, N * N * .3); graffi(200, 18, 10, .35); macchie(170, 6, 20, .18); for (let i = 0; i < 8; i++) g(205, r() * N | 0, r() * N | 0, 2 + (r() * 4 | 0), 1); }
+    else if (k === 'carta' || k === 'cartone') { rumore(215, 252, N * N * .7); graffi(200, 30, 20, .25); x.strokeStyle = 'rgba(150,150,150,.35)'; for (let i = 0; i < 3; i++) { x.beginPath(); const Y = r() * N; x.moveTo(0, Y); x.lineTo(N, Y + (r() - .5) * 30); x.stroke(); } macchie(160, 5, 22, .22); }
+    else if (k === 'tessuto') { for (let y = 0; y < N; y += 2) for (let X = 0; X < N; X += 2) g(((X + y) / 2) % 2 ? 230 : 205 + r() * 20, X, y, 2, 2); rumore(180, 250, N * N * .25); macchie(150, 8, 20, .2); }
+    else if (k === 'gomma') { rumore(190, 240, N * N * .8); macchie(255, 6, 14, .15); }
+    else if (k === 'ceramica') { rumore(238, 252, N * N * .2); x.strokeStyle = 'rgba(170,170,170,.35)'; for (let i = 0; i < 6; i++) { x.beginPath(); let X = r() * N, Y = r() * N; x.moveTo(X, Y); for (let q = 0; q < 5; q++) { X += (r() - .5) * 16; Y += (r() - .5) * 16; x.lineTo(X, Y); } x.stroke(); } macchie(180, 3, 20, .15); }
+    else if (k === 'cibo' || k === 'cera') { macchie(195, 22, 14, .35); macchie(255, 12, 10, .3); rumore(200, 250, N * N * .3); }
+    else if (k === 'pietra') { rumore(160, 250, N * N * .9); for (let i = 0; i < 120; i++) g(120 + r() * 40, r() * N | 0, r() * N | 0, 1 + (r() * 3 | 0), 1 + (r() * 2 | 0)); macchie(130, 8, 20, .3); }
+    else { rumore(200, 250, N * N * .5); graffi(180, 14, 14, .3); macchie(150, 7, 22, .22); }   // opaco e il resto: vernice usata
+    const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return (PT[k] = t);
+  }
+  const BUMPK = { legno: 1, metallo: .5, acciaio: .5, cromo: .3, ottone: .5, ghisa: 1.4, ruggine: 1.6, plastica: .4, lucido: .3, carta: .6, cartone: .9, tessuto: 1.2, gomma: 1, ceramica: .3, cibo: .9, cera: .5, pietra: 1.6, opaco: .7 };
+  const STINGI = '#a0968a';
   // il materiale per colore e genere (condiviso); map: una tela per le etichette
   function mat(col, kind, map) {
     const k = col + '|' + (kind || 'opaco') + '|' + (map ? map.uuid : '');
     if (MC[k]) return MC[k];
     if (kind === 'luce') return (MC[k] = new T.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .9, roughness: .4 }));
-    const o = Object.assign({ color: col, roughness: .6, metalness: 0 }, KIND[kind || 'opaco'] || {});
+    const kd = kind || 'opaco', trasp = kd === 'vetro' || kd === 'vetroS' || kd === 'liquido';
+    const o = Object.assign({ color: col, roughness: .6, metalness: 0 }, KIND[kd] || {});
+    if (!trasp && !map) { const c = new T.Color(col); c.lerp(new T.Color(STINGI), /metallo|acciaio|cromo|ottone/.test(kd) ? .06 : .14); o.color = c; }   // appena stinto
     if (map) o.map = map;
-    if (kind === 'vetro' || kind === 'vetroS' || kind === 'liquido') o.depthWrite = false;
-    return (MC[k] = new T.MeshStandardMaterial(o));
+    else if (!trasp) { const pt = patinaTela(kd); if (pt) { o.map = pt; o.bumpMap = pt; o.bumpScale = (BUMPK[kd] || .7) * .0025; } }
+    if (!trasp) o.vertexColors = true;
+    if (trasp) o.depthWrite = false;
+    if (kd === 'liquido') { const c = new T.Color(col), L = c.r * .3 + c.g * .59 + c.b * .11; if (L > .7) o.opacity = .22; }   // acqua, grappa, vodka: si vede attraverso
+    const m = new T.MeshStandardMaterial(o); m.userData.patina = !map && !trasp; m.userData.vc = !trasp; return (MC[k] = m);
   }
   // una mesh in un gruppo: posizione, rotazione, scala (numero o [x, y, z])
   function put(g, geo, m, x, y, z, rx, ry, rz, s) {
@@ -13948,26 +13982,40 @@ var Roba3D = (function () {
   // ---------------- vestiti ----------------
   // il capo piegato (maglione, giacca, divisa, tuta, jeans): o.c, o.k = maglia | giacca | jeans | divisa | cappotto, o.n (quanti)
   M.capo_piegato = o => {
-    const g = G(), c = o.c || '#4a5a8a', k = o.k || 'maglia', n = o.n || 1, kind = k === 'giacca' ? 'opaco' : 'tessuto', m = mat(c, kind);
-    for (let i = 0; i < n; i++) {
-      const y0 = i * .045, cc = i ? mat(shade(c, .85 + i * .05), kind) : m;
-      put(g, rbox(.32, .045, .26, .016), cc, (i % 2) * .01, y0 + .0225, 0, 0, i * .05, 0);
+    const g = G(), c = o.c || '#4a5a8a', k = o.k || 'maglia', n = o.n || 1, kind = k === 'giacca' && /2a22|2220/.test(c) ? 'opaco' : 'tessuto';
+    const m = mat(c, kind), mS = mat(shade(c, .82), kind), mL = mat(shade(c, 1.1), kind), W = .3, D = .24, h = .04;
+    for (let i = 0; i < n; i++) {   // la pila: ogni capo un cuscinetto morbido, i bordi gonfi, un po' sfalsati
+      const y0 = i * (h + .004), mm = i ? mat(shade(c, .8 + i * .07), kind) : m;
+      put(g, rbox(W, h, D, .018), mm, (i % 2) * .008 - .004, y0 + h / 2, (i % 2) * .006, 0, i * .04 - .03, 0);
     }
-    const top = n * .045;
+    const top = n * (h + .004) - .004;
+    // le maniche ripiegate sul davanti, a croce, e i polsini
+    if (k !== 'jeans') [-1, 1].forEach(sd => {   // dalla spalla (angolo dietro) verso il centro davanti, larghe e piatte, col polsino a coste in fondo
+      const x0 = sd * (W / 2 - .03), z0 = -D / 2 + .04, x1 = sd * .03, z1 = D / 2 - .06, L = Math.hypot(x1 - x0, z1 - z0), an = Math.atan2(x1 - x0, z1 - z0);
+      put(g, rbox(.085, .012, L, .006), mS, (x0 + x1) / 2, top + .004, (z0 + z1) / 2, 0, an, 0);
+      put(g, rbox(.088, .014, .03, .006), mat(shade(c, .72), kind), x1 - Math.sin(an) * .012, top + .005, z1 - Math.cos(an) * .012, 0, an, 0);
+    });
     if (k === 'maglia' || k === 'cappotto' || k === 'divisa') {
-      put(g, tor(.045, .011, 0, 6, 18), mat(shade(c, .8), kind), 0, top + .004, -.07, -PI / 2, 0, 0, [1, .7, .4]);   // il collo, ripiegato sul davanti
-      for (let i = -6; i <= 6; i++) put(g, box(.008, .006, .03), mat(shade(c, .8), kind), i * .024, top, .115);   // le costine
-      if (k !== 'maglia') for (let i = 0; i < 4; i++) put(g, cyl(.007, .007, .004, 12), mat(k === 'divisa' ? '#c8a040' : '#1a1a1a', k === 'divisa' ? 'ottone' : 'plastica'), 0, top + .002, -.07 + i * .05);
-      if (k === 'divisa') put(g, rbox(.06, .004, .03, .002), mat('#c83a2a', 'tessuto'), .08, top + .002, -.06);
+      // il collo a coste, piatto sul dietro, e la costa in fondo
+      put(g, tor(.05, .012, PI * 1.2, 6, 20), mat(shade(c, .75), kind), 0, top + .005, -.06, -PI / 2, 0, -PI * .1, [1, 1, .5]);
+      put(g, rbox(W - .01, .006, .03, .003), mat(shade(c, .74), kind), 0, top - .001, D / 2 - .016);
+      for (let i = -9; i <= 9; i++) put(g, box(.0025, .0062, .03), mat(shade(c, .6), kind), i * .015, top + .001, D / 2 - .016);
+      if (k !== 'maglia') { for (let i = 0; i < 4; i++) put(g, cyl(.008, .008, .004, 14), mat(k === 'divisa' ? '#b89038' : '#2a2420', k === 'divisa' ? 'ottone' : 'plastica'), 0, top + .006, -.08 + i * .045); [-1, 1].forEach(sd => put(g, rbox(.07, .005, .045, .003), mS, sd * .08, top + .004, -.04)); }
+      if (k === 'divisa') { put(g, rbox(.05, .004, .025, .002), mat('#a8302a', 'tessuto'), .1, top + .008, -.075); put(g, rbox(.04, .006, .015, .002), mat('#b89038', 'ottone'), -.1, top + .008, -.08); }
     } else if (k === 'giacca') {
-      put(g, ext([[0, 0], [.06, -.12], [.08, -.12], [.02, 0]], .006, .002), mat(shade(c, .75), kind), -.04, top, -.04, PI / 2); put(g, ext([[0, 0], [-.06, -.12], [-.08, -.12], [-.02, 0]], .006, .002), mat(shade(c, .75), kind), .04, top, -.04, PI / 2);
-      put(g, rbox(.03, .006, .2, .002), mat('#c8ccd4', 'cromo'), 0, top + .002, .01);   // la cerniera
+      // il bavero a rever, la cerniera o i bottoni, le tasche a filetto
+      [-1, 1].forEach(sd => put(g, ext([[0, 0], [sd * .07, -.02], [sd * .075, -.1], [sd * .02, -.13], [0, -.06]], .006, .002), mS, sd * .006, top + .004, -.06, PI / 2));
+      put(g, rbox(.012, .004, .15, .002), mat('#a8acb0', 'metallo'), 0, top + .004, .03);
+      put(g, cyl(.006, .006, .006, 12), mat('#a8acb0', 'metallo'), 0, top + .006, -.04);
+      [-1, 1].forEach(sd => put(g, rbox(.06, .003, .008, .002), mat(shade(c, .6), kind), sd * .08, top + .002, .06));
     } else if (k === 'jeans') {
-      put(g, rbox(.32, .004, .02, .002), mat(shade(c, .8), kind), 0, top + .001, -.11);
-      put(g, cyl(.007, .007, .004, 12), mat('#c8a040', 'ottone'), 0, top + .003, -.11);
-      const cu = disegno('cucitura', 64, 8, (x) => { x.fillStyle = 'rgba(0,0,0,0)'; x.clearRect(0, 0, 64, 8); x.fillStyle = '#e8a040'; for (let i = 0; i < 64; i += 6) x.fillRect(i, 3, 4, 2); });
-      put(g, pia(.3, .01), new T.MeshStandardMaterial({ map: cu, transparent: true }), 0, top + .0015, .02, -PI / 2);
-      put(g, ext([[0, 0], [.08, 0], [.06, -.06], [.02, -.06]], .004, .001), mat(shade(c, .9), kind), .04, top, -.06, PI / 2);
+      // il dietro dei jeans piegati: la cintura coi passanti, le due tasche cucite in arancio, l'etichetta di cuoio
+      put(g, rbox(W, .01, .035, .004), mS, 0, top + .002, -D / 2 + .02);
+      for (let i = -2; i <= 2; i++) put(g, rbox(.008, .012, .02, .002), mS, i * .06, top + .006, -D / 2 + .02);
+      put(g, rbox(.05, .006, .02, .002), mat('#8a5a32', 'opaco'), .09, top + .006, -D / 2 + .02);
+      const cu = mat('#d88a3a', 'tessuto');
+      [-1, 1].forEach(sd => { put(g, ext([[-.04, 0], [.04, 0], [.035, -.06], [0, -.075], [-.035, -.06]], .004, .001), mL, sd * .07, top + .002, -.04, PI / 2); put(g, tubo([[-.035, top + .0045, -.042], [.035, top + .0045, -.042]].map(p => [p[0] + sd * .07, p[1], p[2]]), .0012, 4, 3), cu); });
+      put(g, tubo([[-W / 2 + .01, top + .002, .03], [W / 2 - .01, top + .002, .03]], .0012, 4, 3), cu);
     }
     return g;
   };
@@ -14447,7 +14495,29 @@ var Roba3D = (function () {
     const g = f(Object.assign({}, o || {})); g.userData.modello = k; return g;
   }
   // le mesh con lo stesso materiale diventano una sola (un oggetto in mano costa 3-8 chiamate di disegno invece di 20-100)
+  // la patina sui vertici: uv "a scatola" in metri per i materiali con la tela dei segni, colori per vertice (contatto, sfumatura, tono per pezzo)
+  const _n = V3(0, 0, 0);
+  function patina(g) {
+    g.updateMatrixWorld(true); const inv = new T.Matrix4().copy(g.matrixWorld).invert(), bb = new T.Box3().setFromObject(g, true), H = Math.max(.02, bb.max.y - bb.min.y), y0 = bb.min.y;
+    let pezzo = 0;
+    g.traverse(o => {
+      if (!o.isMesh || !o.material || !o.material.userData || !o.material.userData.vc || o.geometry.userData.patinata) return;
+      const geo = o.geometry.clone(); geo.userData = Object.assign({}, geo.userData, { patinata: true }); o.geometry = geo;   // (clone condivide userData con la geometria in cache)
+      const M4 = new T.Matrix4().multiplyMatrices(inv, o.matrixWorld), NM = new T.Matrix3().getNormalMatrix(M4), P = geo.attributes.position, Nn = geo.attributes.normal, n = P.count;
+      const col = new Float32Array(n * 3), tono = 1 + ((hashS(String(pezzo++)) % 100) / 100 - .5) * .1, pat = o.material.userData.patina, uv = pat ? new Float32Array(n * 2) : null, v = V3(0, 0, 0);
+      for (let i = 0; i < n; i++) {
+        v.set(P.getX(i), P.getY(i), P.getZ(i)).applyMatrix4(M4);
+        const yy = v.y - y0, contatto = 1 - .5 * Math.max(0, 1 - yy / .03), sfuma = .8 + .2 * Math.min(1, yy / H), k = contatto * sfuma * tono;
+        col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k;
+        if (uv) { if (Nn) _n.set(Nn.getX(i), Nn.getY(i), Nn.getZ(i)).applyMatrix3(NM); else _n.set(0, 1, 0); const ax = Math.abs(_n.x), ay = Math.abs(_n.y), az = Math.abs(_n.z);
+          if (ax >= ay && ax >= az) { uv[i * 2] = v.z / TILE; uv[i * 2 + 1] = v.y / TILE; } else if (ay >= az) { uv[i * 2] = v.x / TILE; uv[i * 2 + 1] = v.z / TILE; } else { uv[i * 2] = v.x / TILE; uv[i * 2 + 1] = v.y / TILE; } }
+      }
+      geo.setAttribute('color', new T.BufferAttribute(col, 3)); if (uv) geo.setAttribute('uv', new T.BufferAttribute(uv, 2));
+    });
+    return g;
+  }
   function fondi(g) {
+    patina(g);
     const gruppi = new Map(); g.updateMatrixWorld(true);
     const inv = new T.Matrix4().copy(g.matrixWorld).invert();
     g.traverse(o => { if (o.isMesh && !o.isSkinnedMesh && !o.name) { if (!gruppi.has(o.material)) gruppi.set(o.material, []); gruppi.get(o.material).push(o); } });
@@ -14455,9 +14525,10 @@ var Roba3D = (function () {
       if (list.length < 2) continue;
       const parts = list.map(o => { const q = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); q.applyMatrix4(new T.Matrix4().multiplyMatrices(inv, o.matrixWorld)); if (!q.attributes.uv) q.setAttribute('uv', new T.BufferAttribute(new Float32Array(q.attributes.position.count * 2), 2)); return q; });
       let n = 0; parts.forEach(q => { n += q.attributes.position.count; });
-      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o3 = 0, o2 = 0;
-      for (const q of parts) { pos.set(q.attributes.position.array, o3); nor.set(q.attributes.normal.array, o3); uv.set(q.attributes.uv.array, o2); o3 += q.attributes.position.count * 3; o2 += q.attributes.position.count * 2; q.dispose(); }
-      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2)); geo.computeBoundingSphere(); geo.computeBoundingBox();
+      const vc = parts.every(q => q.attributes.color);
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), col = vc ? new Float32Array(n * 3) : null; let o3 = 0, o2 = 0;
+      for (const q of parts) { pos.set(q.attributes.position.array, o3); nor.set(q.attributes.normal.array, o3); uv.set(q.attributes.uv.array, o2); if (col) col.set(q.attributes.color.array, o3); o3 += q.attributes.position.count * 3; o2 += q.attributes.position.count * 2; q.dispose(); }
+      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T.BufferAttribute(uv, 2)); if (col) geo.setAttribute('color', new T.BufferAttribute(col, 3)); geo.computeBoundingSphere(); geo.computeBoundingBox();
       const mm = new T.Mesh(geo, m); mm.castShadow = list.some(o => o.castShadow); mm.receiveShadow = true; g.add(mm);
       list.forEach(o => o.parent && o.parent.remove(o));
     }
@@ -14511,7 +14582,14 @@ var Roba3D = (function () {
     if (ud.grip === undefined && Math.max(_s.x, _s.z) > _s.y * 1.3) { w.rotation.z = -PI / 2; w.position.z += Math.min(.05, _s.z * .4); }
     return { obj: root, D: Object.assign({ grip: D.how === 'lungo' ? [.95, .9] : [.8, .7] }, D) };
   }
-  return { has, make, presa, inHand, fondi, ID, M, get ids() { return Object.keys(ID); } };
+  // per chi fonde nella geometria statica del mondo (render.js mergeGeos tiene solo posizione, normale e uv): niente colori per vertice
+  const SVC = new Map();
+  function statico(g) {
+    if (!g) return g;
+    g.traverse(o => { if (!o.isMesh || !o.material || !o.material.vertexColors) return; let m = SVC.get(o.material); if (!m) { m = o.material.clone(); m.vertexColors = false; SVC.set(o.material, m); } o.material = m; if (o.geometry.attributes.color) { o.geometry = o.geometry.clone(); o.geometry.deleteAttribute('color'); } });
+    return g;
+  }
+  return { has, make, presa, inHand, fondi, statico, ID, M, get ids() { return Object.keys(ID); } };
 })();
 if (typeof module !== 'undefined') module.exports = Roba3D;
 </script>
@@ -65806,7 +65884,7 @@ var Render = (function () {
     const RBK = { caffe: () => Roba3D.make('caffe_tazza'), birra: () => Roba3D.make('birra'), boccale: () => Roba3D.fondi(Roba3D.M.bicchiere({ liq: '#e0a030' })), vino: () => Roba3D.fondi(Roba3D.M.bicchiere({ liq: '#6a1018' })), fiasco: () => Roba3D.make('vino'), giornale: () => Roba3D.make('giornale'), pane: () => Roba3D.make('pane') };
     items.forEach((it, k) => {
       const a = k / items.length * Math.PI * 2 + r() * .5, rr = .2 + r() * .08, px = Math.cos(a) * rr, pz = Math.sin(a) * rr;
-      if (RB && RBK[it]) { let ry = a; if (it === 'birra') { r(); r(); } else if (it === 'giornale') { ry = r(); r(); } if (rbAt(RBK[it](), px, pz, ry)) return; }
+      if (RB && RBK[it]) { let ry = a; if (it === 'birra') { r(); r(); } else if (it === 'giornale') { ry = r(); r(); } if (rbAt(Roba3D.statico(RBK[it]()), px, pz, ry)) return; }   // (statico: la fusione del mondo non tiene i colori per vertice)
       if (it === 'caffe') { add(g, cyl(.08, .08, .015, 10, cup), px, y + .01, pz); add(g, cyl(.045, .035, .07, 8, cup), px, y + .05, pz); add(g, cyl(.04, .04, .01, 8, sm('#3a1a0a')), px, y + .085, pz); add(g, box(.02, .03, .03, cup), px + .05, y + .05, pz); }
       else if (it === 'birra') { add(g, cyl(.045, .05, .2, 8, r() < .5 ? beerB : beerG), px, y + .1, pz); add(g, cyl(.02, .035, .08, 6, r() < .5 ? beerB : beerG), px, y + .24, pz); add(g, cyl(.052, .052, .07, 8, label), px, y + .09, pz); add(g, cyl(.022, .022, .015, 6, gold), px, y + .285, pz); }
       else if (it === 'boccale') { add(g, cyl(.06, .055, .16, 8, gold), px, y + .08, pz); add(g, cyl(.062, .062, .035, 8, foam), px, y + .175, pz); }
@@ -81280,11 +81358,26 @@ var MenuUI = (function () {
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
-  let THR = null;
+  let THR = null, ENV = null;
+  // l'ambiente dello studio: una cupola calda sopra, scura sotto, due pannelli luminosi (softbox) da riflettere
+  function envThumb() {
+    if (ENV || !THR) return ENV; const T = THREE;
+    try {
+      const es = new T.Scene(), geo = new T.SphereGeometry(10, 32, 16), col = [], P = geo.attributes.position;
+      for (let i = 0; i < P.count; i++) { const y = P.getY(i) / 10, c = new T.Color('#1a1714').lerp(new T.Color('#9a8e7c'), Math.max(0, Math.min(1, y * .7 + .45))); col.push(c.r, c.g, c.b); }
+      geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+      es.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
+      [[-5, 6, 4, 4, 3, 2], [6, 3, -3, 3, 2, 1], [0, -2, 7, 6, 1, .3]].forEach(([x, y, z, w, h, k]) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color('#fff4e0').multiplyScalar(k), side: T.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); });
+      const pm = new T.PMREMGenerator(THR); ENV = pm.fromScene(es, .04).texture; pm.dispose();
+    } catch (e) { ENV = null; }
+    return ENV;
+  }
   function makeThumb(id) {
     const T = THREE, st = ST();
-    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0); }
-    const sc = new T.Scene(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .9)); const k = new T.DirectionalLight('#fff0dc', 1.1); k.position.set(-2, 4, 3); sc.add(k); const rim = new T.DirectionalLight('#b08d57', .8); rim.position.set(3, 2, -3); sc.add(rim);
+    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0);
+      // [roba3d] la luce da studio fotografico: ombre morbide, tono filmico e un ambiente da riflettere (metallo e vetro non sono più piatti)
+      THR.shadowMap.enabled = true; THR.shadowMap.type = T.PCFSoftShadowMap; THR.toneMapping = T.ACESFilmicToneMapping; THR.toneMappingExposure = 1.05; }
+    const sc = new T.Scene(); sc.environment = envThumb(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .45)); const k = new T.DirectionalLight('#fff0dc', 1.5); k.position.set(-2, 4, 3); k.castShadow = true; k.shadow.mapSize.set(1024, 1024); k.shadow.radius = 4; k.shadow.bias = -.0004; sc.add(k); sc.add(k.target); const rim = new T.DirectionalLight('#c8a070', .9); rim.position.set(3, 2, -3); sc.add(rim);
     let obj = null, cam = new T.PerspectiveCamera(28, 1, .02, 50), C0 = typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[id];
     if (C0 && ready3()) {
       // il manichino: il modello di Nino, solo con quel capo addosso
@@ -81315,6 +81408,11 @@ var MenuUI = (function () {
         const bb = new T.Box3().setFromObject(holder), sz = bb.getSize(new T.Vector3()), shd = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: new T.CanvasTexture(sc2), transparent: true, depthWrite: false }));
         shd.rotation.x = -Math.PI / 2; shd.scale.set(sz.x * 1.2, sz.z * 1.2 + .05, 1); shd.position.set(bb.getCenter(new T.Vector3()).x, bb.min.y + .002, bb.getCenter(new T.Vector3()).z); sc.add(shd); }
     }
+    // l'ombra vera sotto e sul modello: la luce principale inquadra la sfera dell'oggetto
+    { const bb = new T.Box3().setFromObject(obj), c = bb.getCenter(new T.Vector3()), r = Math.max(.05, bb.getSize(new T.Vector3()).length() / 2);
+      k.target.position.copy(c); k.position.copy(c).add(new T.Vector3(-2, 4, 3).normalize().multiplyScalar(r * 4)); const sh = k.shadow.camera; sh.left = sh.bottom = -r * 1.4; sh.right = sh.top = r * 1.4; sh.near = r * .5; sh.far = r * 8; sh.updateProjectionMatrix();
+      const pv = new T.Mesh(new T.PlaneGeometry(r * 6, r * 6), new T.ShadowMaterial({ opacity: .32 })); pv.rotation.x = -Math.PI / 2; pv.position.set(c.x, bb.min.y + .0005, c.z); pv.receiveShadow = true; sc.add(pv);
+      obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); }
     sc.add(obj); THR.render(sc, cam);
     const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
