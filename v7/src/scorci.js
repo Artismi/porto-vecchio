@@ -406,7 +406,9 @@ var Scorci = (function () {
     const di = o.di ? sc.cose.find(c => c.k === o.di) : null, C = [];
     if (di) {   // accanto alla cosa di riferimento: prima di lato (lungo lo schermo), poi dietro, mai davanti (coprirebbe il punto focale)
       const lato = { accanto: 1, accanto2: -1, accanto3: 1, accanto4: -1 }[o.pref] || 1, dietro = o.pref === 'accanto3' || o.pref === 'accanto4' ? .9 : 0, c = Math.cos(di.yaw), s = Math.sin(di.yaw);
-      for (let r = 0; r < 10; r++) for (const dv of [-dietro, -dietro - .6, -dietro + .6, -dietro - 1.2]) { const du = lato * ((di.w || 1) / 2 + K.w / 2 + .3 + r * .35); C.push([di.x + c * du + s * dv, di.z - s * du + c * dv, di.yaw]); } }
+      for (let r = 0; r < 10; r++) for (const dv of [-dietro, -dietro - .6, -dietro + .6, -dietro - 1.2]) { const du = lato * ((di.w || 1) / 2 + K.w / 2 + .3 + r * .35); C.push([di.x + c * du + s * dv, di.z - s * du + c * dv, di.yaw]); }
+      // se di lato non c'è posto (la banchina stretta, le porte in fila): attorno, a raggi crescenti, allineato agli assi del suolo
+      for (let r = 1.2; r <= 6; r += .4) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + (lato > 0 ? 0 : PI); C.push([di.x + Math.cos(an) * r, di.z + Math.sin(an) * r, a % 2 ? 0 : PI / 2]); } }
     else if (ag.fr) { const fr = ag.fr, um = (sc.ua + sc.ub) / 2; for (let v = .9; v <= 5.5; v += .25) for (let du = 0; du <= (sc.ub - sc.ua) / 2 + 2; du += .25) for (const sd of [1, -1]) { const u = um + sd * du + (o.pref === 'camera' ? -1 : 0), [x, z] = fr.wp(u, v + K.d / 2); C.push([x, z, fr.rot]); } }
     else { const s = ag.set, R0 = ag.r; for (let r = 0; r <= R0 + 2; r += .75) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + PI / 4, x = ag.x + Math.cos(an) * r, z = ag.z + Math.sin(an) * r; if (!inSet(s, x, z, 2)) continue; C.push([x, z, rot]); } }
     for (const [x, z, yaw] of C) { if (cucitura(x, z)) continue; if (!prova(k, x, z, yaw, { strada: false, w: K.w + .3, d: K.d + .3 })) return { x, z, yaw }; }

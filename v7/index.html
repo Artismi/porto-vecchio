@@ -18489,6 +18489,12 @@ var Arredo3D = (function () {
     for (let k = 0; k < 2; k++) for (let q = 0; q < 6; q++) { const p = sulPiano(c0, rx, -.2 + k * .42, .016); put(g, slabG(.28, .34, .012, 0), mat(['#d84a4a', '#ece0c0', '#4a7ad0', '#e8b840', '#e0e0d8', '#50b098'][(q + k * 2) % 6], 'carta'), -.95 + q * .38, p[1], p[2], rx, 0, 0); }
     put(g, slabG(1.3, .32, .06, .01), LU, 0, H - .05, D / 2 + .04).name = 'luce'; targa(g, 'GIORNALI · TABACCHI', 1.26, .28, 0, H - .05, D / 2 + .074, 0, '#f4e8c8', '#2a4a3a', 0); luci(g, 0, H - .05, D / 2 + .1, '#ffe0a0');
     slab(g, .7, 1.8, .04, vdS, 0, 1.1, -D / 2 - .02, .006); if (F()) { cerniera(g, -.36, 1.5, -D / 2 - .04, .1, 'y'); cerniera(g, -.36, .7, -D / 2 - .04, .1, 'y'); maniglia(g, .25, 1.1, -D / 2 - .04, .12, ZS, true); }   // la porta di servizio dietro
+    // [scorci] stipata come quella del Quarticciolo: sui due fianchi le riviste appese ai fili con le mollette, due file per lato (le copertine
+    // coi colori dei settimanali del 1986 e la testata scura), il filo teso fra due occhielli; sul bancone le pile dei quotidiani legate
+    const COP = ['#d84a4a', '#ece0c0', '#4a7ad0', '#e8b840', '#e070a0', '#50b098', '#f4f0e0', '#c8302a'], TES = mat('#1e1e22', 'carta');
+    [-1, 1].forEach(s => { const x = s * (W / 2 + .006); [1.62, 1.12].forEach((y, r) => { asta(g, [x + s * .02, y + .2, -D / 2 + .12], [x + s * .02, y + .2, D / 2 - .12], .005, ZS, 4);
+        for (let q = 0; q < 4; q++) { const z = -D / 2 + .32 + q * .32; put(g, planeG(.28, .4), mat(COP[(q + r * 3 + (s > 0 ? 1 : 4)) % COP.length], 'carta'), x + s * .008, y, z, 0, s * PI / 2, 0); put(g, planeG(.26, .07), TES, x + s * .012, y + .14, z, 0, s * PI / 2, 0); } }); });
+    [-.7, .55].forEach((x, i) => { slab(g, .34, .1 + i * .04, .24, mat('#ece6d4', 'carta'), x, .99 + (.1 + i * .04) / 2, D / 2 + .2, .004); if (F()) asta(g, [x - .17, 1.02, D / 2 + .2], [x + .17, 1.02, D / 2 + .2], .004, mat('#c8a050', 'tela'), 4); });   // i quotidiani in pila, legati
     return g; };
   T.chiosco = () => {   // chiosco del lungomare: pianta ottagonale bianca e azzurra, bancone tutto intorno, tetto a cono con la punta, frigo delle bibite, insegna
     const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat('#e6e4da', 'vernice'), az = mat('#5a92b0', 'vernice');
@@ -53384,7 +53390,9 @@ var Scorci = (function () {
     const di = o.di ? sc.cose.find(c => c.k === o.di) : null, C = [];
     if (di) {   // accanto alla cosa di riferimento: prima di lato (lungo lo schermo), poi dietro, mai davanti (coprirebbe il punto focale)
       const lato = { accanto: 1, accanto2: -1, accanto3: 1, accanto4: -1 }[o.pref] || 1, dietro = o.pref === 'accanto3' || o.pref === 'accanto4' ? .9 : 0, c = Math.cos(di.yaw), s = Math.sin(di.yaw);
-      for (let r = 0; r < 10; r++) for (const dv of [-dietro, -dietro - .6, -dietro + .6, -dietro - 1.2]) { const du = lato * ((di.w || 1) / 2 + K.w / 2 + .3 + r * .35); C.push([di.x + c * du + s * dv, di.z - s * du + c * dv, di.yaw]); } }
+      for (let r = 0; r < 10; r++) for (const dv of [-dietro, -dietro - .6, -dietro + .6, -dietro - 1.2]) { const du = lato * ((di.w || 1) / 2 + K.w / 2 + .3 + r * .35); C.push([di.x + c * du + s * dv, di.z - s * du + c * dv, di.yaw]); }
+      // se di lato non c'è posto (la banchina stretta, le porte in fila): attorno, a raggi crescenti, allineato agli assi del suolo
+      for (let r = 1.2; r <= 6; r += .4) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + (lato > 0 ? 0 : PI); C.push([di.x + Math.cos(an) * r, di.z + Math.sin(an) * r, a % 2 ? 0 : PI / 2]); } }
     else if (ag.fr) { const fr = ag.fr, um = (sc.ua + sc.ub) / 2; for (let v = .9; v <= 5.5; v += .25) for (let du = 0; du <= (sc.ub - sc.ua) / 2 + 2; du += .25) for (const sd of [1, -1]) { const u = um + sd * du + (o.pref === 'camera' ? -1 : 0), [x, z] = fr.wp(u, v + K.d / 2); C.push([x, z, fr.rot]); } }
     else { const s = ag.set, R0 = ag.r; for (let r = 0; r <= R0 + 2; r += .75) for (let a = 0; a < 16; a++) { const an = a / 16 * PI * 2 + PI / 4, x = ag.x + Math.cos(an) * r, z = ag.z + Math.sin(an) * r; if (!inSet(s, x, z, 2)) continue; C.push([x, z, rot]); } }
     for (const [x, z, yaw] of C) { if (cucitura(x, z)) continue; if (!prova(k, x, z, yaw, { strada: false, w: K.w + .3, d: K.d + .3 })) return { x, z, yaw }; }
@@ -53539,7 +53547,7 @@ var ScorciKit = (function () {
   let ATL = null;
   function atlante() {
     if (ATL) return ATL; const S = 2048; ATL = { S, x: 0, y: 0, rowH: 0, tiles: new Map(), c: null, g: null, tex: null };
-    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; if (THREE.sRGBEncoding) ATL.tex.encoding = THREE.sRGBEncoding; }
+    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; }   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
     return ATL;
   }
   // la tessera key, pw × ph pixel, disegnata da draw(g, w, h, r) (r: un caso deterministico); torna [u0, v0, u1, v1]
@@ -53722,8 +53730,8 @@ var ScorciKit = (function () {
     if (o.testo) Pi(g, T('mant|' + o.testo + '|' + cA, 1024, 96, DIS.mantovana({ testo: o.testo, col: cA })), w, .24, 0, H0 - ty - .12, tz + .012, 'carta'); else Bx(g, w, .22, .012, cA, 0, H0 - ty - .11, tz, 'opaco');
     return g; };
   K.griglia = (o) => { const g = new THREE.Group(), w = (o.w || 1.6) * .95, h = 1.5; Pi(g, T('griglia', 256, 256, DIS.griglia()), w, h, 0, .65 + h / 2 - .02, .07, 'carta', 0, 0, 0, '#c8ccc8'); [-1, 1].forEach(s => Bx(g, .03, .06, .07, '#5a5e5a', s * w / 2, .7, .035, 'lucido')); Bx(g, .04, .07, .03, '#8a7a3a', w / 2 - .05, 1.3, .09, 'lucido'); return g; };
-  K.vetrofania = (o) => { const g = new THREE.Group(), w = Math.max(.6, (o.w || 1.6) - .2), h = 1.25, k = o.carta || 'riviste'; Pi(g, T('vetro|' + k, 512, 400, DIS.vetrofania({ carta: k })), w, h, 0, .68 + h / 2, .03, 'carta'); return g; };
-  K.pannello_forato = (o) => { const g = new THREE.Group(), w = (o.w || 1.6) - .05; Pi(g, T('forato', 512, 256, DIS.forato()), w, .9, 0, .5, .035, 'carta'); [-1, 1].forEach(s => [.12, .88].forEach(y => Cy(g, .012, .02, '#6a3a1a', s * (w / 2 - .05), y, .04, 'medio', PI / 2))); return g; };
+  K.vetrofania = (o) => { const g = new THREE.Group(), w = Math.max(.6, (o.w || 1.6) - .2), h = 1.25, k = o.carta || 'riviste'; Pi(g, T('vetro|' + k, 512, 400, DIS.vetrofania({ carta: k })), w, h, 0, .68 + h / 2, .018, 'carta'); return g; };
+  K.pannello_forato = (o) => { const g = new THREE.Group(), w = (o.w || 1.6) - .05; Pi(g, T('forato', 512, 256, DIS.forato()), w, .9, 0, .5, .018, 'carta'); [-1, 1].forEach(s => [.12, .88].forEach(y => Cy(g, .012, .02, '#6a3a1a', s * (w / 2 - .05), y, .022, 'medio', PI / 2))); return g; };
   // lo zoccolo sporco: un nastro per tratto di muro pieno (o.tratti: [[u0, u1], ...] relativi al centro)
   K.zoccolo = (o) => { const g = new THREE.Group(), t = T('zoccolo|' + (o.forte ? 1 : 0), 512, 96, DIS.zoccolo({ forte: o.forte })); (o.tratti || [[-(o.w || 3) / 2, (o.w || 3) / 2]]).forEach(([a, c]) => { if (c - a < .12) return; Pi(g, t, c - a, .55, (a + c) / 2, .275, .006, 'decal'); }); return g; };
   K.crepa = () => { const g = new THREE.Group(); Pi(g, T('crepa', 256, 256, DIS.crepa()), 1.1, 1.0, 0, .5, .008, 'decal'); return g; };
@@ -53739,7 +53747,8 @@ var ScorciKit = (function () {
   // i festoni: le bandierine sul filo, sopra la fascia
   K.festoni = (o) => { const g = new THREE.Group(), w = o.w || 4, n = Math.max(6, Math.round(w / .26)), cols = ['#d8302a', '#f0d020', '#2a6ad0', '#2aa060', '#f4f0e6'];
     const tri = new THREE.BufferGeometry(); tri.setAttribute('position', new THREE.Float32BufferAttribute([-.09, 0, 0, .09, 0, 0, 0, -.2, 0], 3)); tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3)); tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, .5, 1], 2));
-    As(g, [-w / 2, .28, .05], [w / 2, .28, .05], .005, '#2a2a2a', 'opaco'); for (let i = 0; i < n; i++) { const x = -w / 2 + (i + .5) * w / n, sag = -Math.sin((i + .5) / n * PI) * .08; M(g, tri, cols[i % cols.length], 'opaco', x, .28 + sag, .05); }
+    const yf = t => .28 - Math.sin(t * PI) * .08; for (let i = 0; i < 12; i++) As(g, [-w / 2 + i * w / 12, yf(i / 12), .05], [-w / 2 + (i + 1) * w / 12, yf((i + 1) / 12), .05], .006, '#2a2a2a', 'opaco', 4);
+    for (let i = 0; i < n; i++) { const t = (i + .5) / n, x = -w / 2 + t * w; M(g, tri, cols[i % cols.length], 'opaco', x, yf(t) + .004, .05); }
     [-1, 1].forEach(s => Bx(g, .03, .05, .06, '#2a2a2a', s * w / 2, .28, .03, 'lucido')); return g; };
   // la soglia di marmo consumata: il gradino, l'avvallamento chiaro in mezzo, lo spigolo scheggiato, la riga di sporco al muro
   K.soglia = (o) => { const g = new THREE.Group(), w = o.w || 1.5, d = o.d || .5, h = o.h || .2; Bx(g, w, h, d, '#cfc6b2', 0, h / 2, 0, 'medio'); M(g, GEO.circ, '#ece4d2', 'lucido', 0, h + .003, .02, w * .3, d * .32, 1, -PI / 2);
@@ -53755,12 +53764,12 @@ var ScorciKit = (function () {
     return g; };
   K.lumini = () => { const g = new THREE.Group(); Bx(g, .6, .03, .22, '#2a2c2e', 0, .03, .11, 'lucido'); [-1, 1].forEach(s => As(g, [s * .28, .03, .2], [s * .28, -.15, .02], .008, '#2a2c2e', 'lucido'));
     for (let i = 0; i < 6; i++) { const x = -.24 + i * .095; Cy(g, .03, .08, i % 3 ? '#c8202a' : '#e8e0c8', x, .085, .12, 'vetro'); stato(g, 'luci', () => Sp(g, .012, '#ffc060', x, .14, .12, 'luce', 1, 1.6, 1)); }
-    Cy(g, .05, .16, '#9a9ea0', .22, .11, .1, 'lucido'); [[.2, .26], [.24, .28], [.22, .3]].forEach(([x, y], i) => Sp(g, .04, ['#e0405a', '#f4f0e6', '#f0c040'][i], x, y, .1, 'opaco')); return g; };
+    Cy(g, .05, .16, '#9a9ea0', .22, .11, .1, 'lucido'); [[.19, .25], [.25, .27], [.22, .29]].forEach(([x, y], i) => { As(g, [.22, .17, .1], [x, y - .03, .1], .005, '#4a6a3a', 'opaco', 4); Sp(g, .04, ['#e0405a', '#f4f0e6', '#f0c040'][i], x, y, .1, 'opaco'); }); return g; };
   K.edicola_votiva = () => { const g = new THREE.Group(); const a = arredo(g, 'edicola_votiva', { liv: 1 }, 0, .6, 0); if (!a) Bx(g, .9, 1.2, .12, '#d8c8aa', 0, .6, .06, 'opaco'); return g; };
   K.lavagna_muro = (o) => { const g = new THREE.Group(); Bx(g, .58, .78, .03, '#6a4a2a', 0, .39, .015, 'opaco'); Pi(g, T('lav|' + o.testo, 256, 340, DIS.lavagna({ testo: o.testo || '' })), .52, .7, 0, .39, .032); return g; };
   // ---- fuori: la merce e le cose della bottega ----
-  K.locandina = (o) => { const g = new THREE.Group(), tl = o.testata || 'corriere'; [-1, 1].forEach(s => { const gg = new THREE.Group(); gg.position.z = s * .13; gg.rotation.x = s * .2; g.add(gg); Bx(gg, .52, .03, .03, '#2a2c2e', 0, 1.2, 0, 'lucido'); [-1, 1].forEach(q => Bx(gg, .025, 1.22, .025, '#2a2c2e', q * .25, .61, 0, 'lucido'));
-      Pi(gg, T('loc|' + (s > 0 ? tl : 'gazzetta'), 256, 360, DIS.locandina({ testata: s > 0 ? tl : 'gazzetta' })), .48, .66, 0, .78, s * .016, 'carta', 0, s > 0 ? 0 : PI); }); return g; };
+  K.locandina = (o) => { const g = new THREE.Group(), tl = o.testata || 'corriere', H = 1.22; [-1, 1].forEach(s => { const gg = new THREE.Group(); gg.position.set(0, H, 0); gg.rotation.x = s * .2; g.add(gg); Bx(gg, .52, .03, .03, '#2a2c2e', 0, -.02, s * .016, 'lucido'); [-1, 1].forEach(q => Bx(gg, .025, H / Math.cos(.2), .025, '#2a2c2e', q * .25, -H / Math.cos(.2) / 2, s * .016, 'lucido'));
+      Pi(gg, T('loc|' + (s > 0 ? tl : 'gazzetta'), 256, 360, DIS.locandina({ testata: s > 0 ? tl : 'gazzetta' })), .48, .66, 0, -.45, s * .032, 'carta', 0, s > 0 ? 0 : PI); }); return g; };
   K.cassone = () => { const g = new THREE.Group(), w = .9, h = .8, d = .5; for (let i = 0; i < 4; i++) Bx(g, w, h / 4 - .01, d, i % 2 ? '#8a6a46' : '#7a5a3a', 0, h / 8 + i * h / 4, 0, 'opaco'); Bx(g, w + .04, .05, d + .04, '#6a4a2e', 0, h + .025, 0, 'opaco');
     [-1, 1].forEach(s => Bx(g, .04, h, .04, '#3a3a3a', s * (w / 2 + .01), h / 2, d / 2, 'medio')); Bx(g, .12, .1, .02, '#5a5e60', 0, h - .1, d / 2 + .01, 'lucido'); Bx(g, .06, .07, .03, '#b8982a', 0, h - .18, d / 2 + .03, 'lucido'); M(g, GEO.tor, '#9a9ea0', 'lucido', 0, h - .13, d / 2 + .03, .022, .022, .022);
     Pi(g, T('tag|1', 256, 128, DIS.tag({ seme: 1, col: '#e84aa0' })), .6, .3, -.05, .4, d / 2 + .004, 'decal'); return g; };
@@ -53778,10 +53787,10 @@ var ScorciKit = (function () {
   K.frigo = () => { const g = new THREE.Group(); if (!arredo(g, 'frigo_gelati', {}, 0, 0, 0)) Bx(g, 1.2, .9, .7, '#e8e6e0', 0, .45, 0, 'medio'); Pi(g, T('band|sammontana', 256, 256, DIS.bandiera({ marchio: 'sammontana' })), .36, .36, 0, .5, .356, 'carta'); return g; };
   K.cassette_latte = () => { const g = new THREE.Group(); [0, .3].forEach(y => { Bx(g, .6, .28, .4, y ? '#2a6ab0' : '#c8302a', 0, y + .14, 0, 'medio'); for (let i = 0; i < 6; i++) { const x = -.2 + (i % 3) * .2, z = -.1 + Math.floor(i / 3) * .2; Cy(g, .045, .26, '#f4f2ea', x, y + .2, z, 'lucido'); Cy(g, .03, .03, '#c8302a', x, y + .34, z, 'medio'); } }); return g; };
   K.sacchi = () => { const g = new THREE.Group(), t = T('sacco', 256, 128, DIS.sacco()); [[-.22, .15, 0], [.22, .15, 0], [0, .42, 0]].forEach(([x, y, z], i) => { M(g, GEO.box, '#e8e0cc', 'opaco', x, y, z, .42, .27, .52); Pi(g, t, .34, .17, x, y, z + .265); }); return g; };
-  K.catasta = () => { const g = new THREE.Group(); [-1, 1].forEach(s => Bx(g, .08, .08, .5, '#5a4a3a', s * .6, .04, 0, 'opaco')); for (let r = 0; r < 4; r++) for (let i = 0; i < 6 - (r % 2); i++) Cy(g, .085, .5, ['#8a6a46', '#6a4a2e', '#9a7a52'][(r + i) % 3], -.55 + i * .2 + (r % 2) * .1, .13 + r * .165, 0, 'opaco', PI / 2, 0, 0, 6);
+  K.catasta = () => { const g = new THREE.Group(); [-1, 1].forEach(s => Bx(g, .08, .08, .5, '#5a4a3a', s * .5, .04, 0, 'opaco')); for (let r = 0; r < 4; r++) for (let i = 0; i < 6 - (r % 2); i++) Cy(g, .085, .5, ['#8a6a46', '#6a4a2e', '#9a7a52'][(r + i) % 3], -.55 + i * .2 + (r % 2) * .1, .13 + r * .165, 0, 'opaco', PI / 2, 0, 0, 6);
     for (let i = 0; i < 7; i++) As(g, [-.7 + i * .03, .05, .24], [-.5 + i * .02, .95, .1], .012, '#7a6a4a', 'opaco'); return g; };
   K.casse_birre = () => { const g = new THREE.Group(), t = T('birre', 256, 96, DIS.birre()); [[0, 0, 0], [0, .3, 0], [.05, .6, 0]].forEach(([x, y, z], k) => { if (k === 2) { Bx(g, .5, .28, .36, '#c8202a', x, y + .14, z, 'medio'); return; } Bx(g, .5, .28, .36, '#c8202a', x, y + .14, z, 'medio'); Pi(g, t, .4, .12, x, y + .16, z + .182); }); for (let i = 0; i < 6; i++) Cy(g, .028, .22, '#3a5a2a', -.17 + (i % 3) * .17, .99, -.09 + Math.floor(i / 3) * .18, 'lucido'); return g; };
-  K.panca = () => { const g = new THREE.Group(); Bx(g, 1.4, .05, .38, '#8a6a46', 0, .45, 0, 'opaco'); [-1, 1].forEach(s => { Bx(g, .05, .45, .34, '#6a4a2e', s * .6, .225, 0, 'opaco'); }); Bx(g, 1.4, .3, .04, '#8a6a46', 0, .75, -.17, 'opaco'); Cy(g, .08, .9, '#8a8e92', .82, .45, 0, 'lucido'); Cy(g, .14, .05, '#6a6e72', .82, .92, 0, 'lucido'); return g; };
+  K.panca = () => { const g = new THREE.Group(); Bx(g, 1.4, .05, .38, '#8a6a46', 0, .45, 0, 'opaco'); [-1, 1].forEach(s => { Bx(g, .05, .45, .34, '#6a4a2e', s * .6, .225, 0, 'opaco'); Bx(g, .05, .45, .04, '#6a4a2e', s * .6, .7, -.17, 'opaco'); }); Bx(g, 1.4, .3, .04, '#8a6a46', 0, .75, -.17, 'opaco'); Cy(g, .08, .9, '#8a8e92', .77, .45, 0, 'lucido'); Cy(g, .14, .05, '#6a6e72', .77, .92, 0, 'lucido'); return g; };
   K.sedia = () => { const g = new THREE.Group(); if (!arredo(g, 'sedia', { tipo: 'bistrot' }, 0, 0, 0, PI)) Bx(g, .4, .45, .4, '#8a6a46', 0, .22, 0, 'opaco'); return g; };
   K.rifiuti = () => { const g = new THREE.Group(), r = rngS('rif'); for (let i = 0; i < 6; i++) M(g, GEO.ico, '#e8e4dc', 'opaco', -.45 + r() * .9, .03, -.15 + r() * .3, .04 + r() * .03); Cy(g, .033, .12, '#c8202a', .2, .033, .1, 'lucido', 0, 0, PI / 2); Bx(g, .09, .02, .055, '#e8e0cc', -.1, .01, .12, 'medio', 0, .6, 0);
     Pi(g, T('giornale', 256, 320, DIS.giornale()), .38, .48, -.25, .006, -.02, 'carta', -PI / 2, 0, .3); return g; };
@@ -53798,14 +53807,14 @@ var ScorciKit = (function () {
     stato(g, 'banco', () => { [-.75, 0, .75].forEach((x, i) => { Bx(g, .7, .06, .62, '#f2f2ee', x, .9, -.02, 'lucido', .25, 0, 0); for (let k = 0; k < 7; k++) Sp(g, .045, MERCE.pesce[(k + i) % 4], x - .26 + (k % 4) * .17, .96 + Math.floor(k / 4) * .05, -.15 + Math.floor(k / 4) * .16, 'lucido', 3.2, .9, 1.2); });
       for (let k = 0; k < 4; k++) Sp(g, .035, '#e8d040', 1.05, .9, -.3 + k * .09, 'medio'); });
     Bx(g, .26, .1, .2, '#e8e4dc', -1.0, .91, .3, 'medio'); Cy(g, .12, .02, '#c8ccd0', -1.0, 1.02, .3, 'lucido');
-    [-1, 1].forEach(s => [-1, 1].forEach(t => Cy(g, .025, 2.3, '#7a7e82', s * 1.25, 1.15, t * .62, 'lucido'))); Bx(g, 2.7, .03, 1.5, '#3a6a8a', 0, 2.32, 0, 'opaco', -.08, 0, 0); Bx(g, 2.7, .22, .02, '#e8e4dc', 0, 2.2, .75, 'opaco');
-    Pi(g, T('pesce', 512, 160, DIS.pesce()), 1.6, .5, 0, 1.95, .64, 'carta'); Bx(g, 1.64, .54, .02, '#2a3a4a', 0, 1.95, .625, 'opaco'); As(g, [0, 2.3, 0], [0, 2.1, 0], .004, '#1a1a1a', 'opaco'); stato(g, 'luci', () => Sp(g, .05, '#ffe6b0', 0, 2.06, 0, 'luce'));
+    [-1, 1].forEach(s => [-1, 1].forEach(t => Cy(g, .025, 2.3, '#7a7e82', s * 1.215, 1.15, t * .565, 'lucido'))); Bx(g, 2.7, .03, 1.5, '#3a6a8a', 0, 2.315, 0, 'opaco'); Bx(g, 2.7, .22, .02, '#e8e4dc', 0, 2.2, .75, 'opaco');
+    Pi(g, T('pesce', 512, 160, DIS.pesce()), 1.6, .5, 0, 1.84, .752, 'carta'); Bx(g, 1.64, .54, .02, '#2a3a4a', 0, 1.84, .738, 'opaco'); As(g, [0, 2.3, 0], [0, 2.1, 0], .004, '#1a1a1a', 'opaco'); stato(g, 'luci', () => Sp(g, .05, '#ffe6b0', 0, 2.06, 0, 'luce'));
     return g; };
   K.polistirolo = () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) Bx(g, .8, .2, .52, '#f4f4f0', i % 2 ? .02 : 0, .1 + i * .21, 0, 'medio'); return g; };
   K.cartellone = (o) => { const g = new THREE.Group(); [-1, 1].forEach(s => Cy(g, .05, 2.6, '#3a3e42', s * 1.05, 1.3, 0, 'lucido')); Bx(g, 2.4, 1.0, .04, '#d8d2c0', 0, 1.95, 0, 'medio'); Pi(g, T('cart|' + o.testo, 768, 320, DIS.cartellone({ testo: o.testo || '', sotto: o.sotto || '' })), 2.34, .94, 0, 1.95, .022);
     Pi(g, T('cart|' + o.testo, 768, 320, DIS.cartellone({ testo: o.testo || '', sotto: o.sotto || '' })), 2.34, .94, 0, 1.95, -.022, 'carta', 0, PI); stato(g, 'luci', () => { Sp(g, .05, '#ffe6b0', 0, 2.55, .2, 'luce'); }); As(g, [0, 2.45, 0], [0, 2.55, .2], .012, '#2a2a2e', 'lucido'); return g; };
   K.gomme = () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) M(g, GEO.tor, '#1c1c1e', 'opaco', 0, .1 + i * .19, 0, .28, .28, .28, PI / 2); M(g, GEO.tor, '#1c1c1e', 'opaco', .36, .3, .1, .28, .28, .28, 0, .3, .1); return g; };
-  K.fusti = () => { const g = new THREE.Group(); [[-.35, 0, '#2a5ab8'], [.3, 0, '#c8302a']].forEach(([x, z, c]) => { Cy(g, .28, .88, c, x, .44, z, 'medio', 0, 0, 0, 20); [.25, .62].forEach(y => Cy(g, .29, .03, '#4a4e52', x, y, z, 'lucido', 0, 0, 0, 20)); }); Cy(g, .1, .2, '#c8a020', .1, .98, 0, 'medio'); return g; };
+  K.fusti = () => { const g = new THREE.Group(); [[-.29, 0, '#2a5ab8'], [.29, 0, '#c8302a']].forEach(([x, z, c]) => { Cy(g, .28, .88, c, x, .44, z, 'medio', 0, 0, 0, 20); [.25, .62].forEach(y => Cy(g, .29, .03, '#4a4e52', x, y, z, 'lucido', 0, 0, 0, 20)); }); Cy(g, .1, .2, '#c8a020', .1, .98, 0, 'medio'); return g; };
   K.banco_lavoro = () => { const g = new THREE.Group(); [-1, 1].forEach(s => [-1, 1].forEach(t => Bx(g, .06, .9, .06, '#4a4e52', s * .82, .45, t * .28, 'lucido'))); Bx(g, 1.8, .06, .7, '#7a5a3a', 0, .93, 0, 'opaco'); Bx(g, 1.7, .03, .6, '#5a4a3a', 0, .25, 0, 'opaco');
     Bx(g, .2, .14, .14, '#3a5a8a', .6, 1.03, .2, 'lucido'); Bx(g, .5, .22, .25, '#c8302a', -.4, 1.07, -.1, 'medio'); As(g, [.1, .97, .15], [.4, .97, .25], .015, '#8a8e92', 'lucido'); Cy(g, .07, .16, '#2a5a2a', -.1, 1.04, .2, 'lucido'); Bx(g, .4, .3, .3, '#4a4e52', -.5, .4, 0, 'medio'); return g; };
   K.motore = () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) Bx(g, .8, .03, .12, '#a88a5a', 0, .1, -.3 + i * .2, 'opaco'); [-1, 1].forEach(s => Bx(g, .1, .1, .8, '#8a6a46', s * .35, .05, 0, 'opaco')); Bx(g, .5, .4, .45, '#5a5e62', 0, .32, 0, 'lucido'); Bx(g, .4, .14, .38, '#3a3e42', 0, .59, 0, 'lucido'); for (let i = 0; i < 2; i++) As(g, [.25, .4, -.1 + i * .2], [.4, .45, -.15 + i * .3], .03, '#6a4a3a', 'medio'); return g; };
@@ -53817,7 +53826,7 @@ var ScorciKit = (function () {
       const P = []; for (let i = 0; i <= 16; i++) { const t = i / 16; P.push([ax + (bx - ax) * t, y - Math.sin(t * PI) * sag, az + (bz - az) * t]); }
       for (let i = 0; i < 16; i++) As(g, P[i], P[i + 1], .005, '#1a1a1a', 'opaco', 4);
       [f.a, f.b].forEach(q => Bx(g, .05, .05, .06, '#2a2a2a', q[0], y + .02, q[1], 'lucido'));
-      for (let i = 1; i < n; i++) { const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, yy = y - Math.sin(t * PI) * sag - .06; Sp(g, .035, '#f4ead0', x, yy, z, 'vetro'); stato(g, 'luminarie', () => Sp(g, .03, '#ffd890', x, yy, z, 'luce')); } });
+      for (let i = 1; i < n; i++) { const t = i / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, yy = y - Math.sin(t * PI) * sag - .04; Sp(g, .035, '#f4ead0', x, yy, z, 'vetro'); stato(g, 'luminarie', () => Sp(g, .03, '#ffd890', x, yy, z, 'luce')); } });
     return g; };
   K.bucato = (o) => { const g = new THREE.Group(), cols = ['#e8e2d4', '#c84a5a', '#5a8ad0', '#f0e0a0', '#e8e8e8']; (o.fili || []).forEach(f => { const ax = f.a[0], az = f.a[1], bx = f.b[0], bz = f.b[1], y = f.y; As(g, [ax, y, az], [bx, y - .1, bz], .004, '#d8d8d0', 'opaco', 4);
       for (let i = 1; i < 5; i++) { const t = i / 5, x = ax + (bx - ax) * t, z = az + (bz - az) * t; Bx(g, .45, .55 + (i % 2) * .2, .01, cols[i % cols.length], x, y - .3 - (i % 2) * .1, z, 'opaco', 0, Math.atan2(bx - ax, bz - az) + PI / 2, 0); } }); return g; };
@@ -53825,7 +53834,9 @@ var ScorciKit = (function () {
   K.alone = (o) => { const g = new THREE.Group(); M(g, GEO.circ, o.col || '#ffb860', 'alone', 0, .03, 0, o.r || 1.5, o.r || 1.5, 1, -PI / 2); return g; };
 
   const TIPI = Object.keys(K);
-  function make(tipo, o) { if (!K[tipo]) return null; const g = K[tipo](o || {}); g.userData.tipo = tipo; return g; }
+  const A_MURO = new Set(['fascia', 'insegna2', 'bandiera', 'palo_barbiere', 'lampada', 'serranda', 'griglia', 'vetrofania', 'pannello_forato', 'zoccolo', 'crepa', 'manifesti', 'necrologi', 'targa', 'telefono_muro', 'festoni', 'bocca_forno', 'lumini', 'edicola_votiva', 'lavagna_muro', 'tenda']);
+  const SPARSI = new Set(['rifiuti', 'tavolo_scopa', 'luminarie', 'bucato']);   // cose separate a terra o fili fra due muri: si tengono al suolo o ai muri, non fra loro
+  function make(tipo, o) { if (!K[tipo]) return null; const g = K[tipo](o || {}); g.userData.tipo = tipo; if (A_MURO.has(tipo)) g.userData.aMuro = true; if (SPARSI.has(tipo)) g.userData.sparso = true; return g; }
   return { make, TIPI, K, mat, atlante, tessera, DIS, GEO };
 })();
 
