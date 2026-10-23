@@ -20895,13 +20895,13 @@ var Vegetazione = (function () {
   const FORM = [
     { id: 'niente', nome: '—', col: '#00000000', tono: .5, strati: [] },
     { id: 'pineta', nome: 'Pineta di pini domestici', col: '#2f5240', tono: .35, suolo: 'aghi',
-      strati: [{ sp: [['pino', 1]], passo: 7.5, p: .92 }, { sp: [['lentisco', 4], ['mirto', 2], ['ginestra', 1]], passo: 5, p: .3 }, { sp: [['erbaSecca', 3], ['finocchietto', 1]], passo: 2.6, p: .25, basso: true }] },
+      strati: [{ sp: [['pino', 1]], passo: 7.5, p: .92 }, { sp: [['lentisco', 1]], passo: 5, p: .3 }, { sp: [['erbaSecca', 3], ['finocchietto', 1]], passo: 2.6, p: .25, basso: true }] },
     { id: 'pinetaM', nome: 'Pineta di pini marittimi', col: '#4a6a4a', tono: .45, suolo: 'aghi',
       strati: [{ sp: [['pinoM', 1]], passo: 5.2, p: .9 }, { sp: [['lentisco', 3], ['ginestra', 2], ['rosmarino', 1]], passo: 4, p: .38 }, { sp: [['erbaSecca', 2], ['finocchietto', 1]], passo: 2.5, p: .3, basso: true }] },
     { id: 'lecceta', nome: 'Lecceta (il bosco scuro)', col: '#1f3a2c', tono: .1, suolo: 'lettiera',
-      strati: [{ sp: [['leccio', 8], ['carrubo', 1], ['pinoM', 1]], passo: 5.2, p: .9 }, { sp: [['mirto', 3], ['lentisco', 2], ['edera', 1]], passo: 3.4, p: .45 }, { sp: [['erbaVerde', 1]], passo: 3.2, p: .12, basso: true }] },
+      strati: [{ sp: [['leccio', 1]], passo: 5.2, p: .9 }, { sp: [['mirto', 3], ['lentisco', 2]], passo: 3.4, p: .45 }, { sp: [['erbaVerde', 1]], passo: 3.2, p: .12, basso: true }] },
     { id: 'macchia', nome: 'Macchia alta', col: '#3c5a36', tono: .3, suolo: 'terra',
-      strati: [{ sp: [['leccio', 3], ['carrubo', 2], ['pinoM', 2], ['ulivo', 1]], passo: 9, p: .6 }, { sp: [['lentisco', 5], ['mirto', 3], ['ginestra', 2], ['oleandro', .3]], passo: 2.6, p: .78 }, { sp: [['erbaSecca', 2], ['erbaVerde', 1], ['finocchietto', 1]], passo: 2.4, p: .25, basso: true }] },
+      strati: [{ sp: [['leccio', 3], ['carrubo', 2], ['pinoM', 2]], passo: 9, p: .6 }, { sp: [['lentisco', 5], ['mirto', 3], ['ginestra', 2]], passo: 2.6, p: .78 }, { sp: [['erbaSecca', 2], ['erbaVerde', 1], ['finocchietto', 1]], passo: 2.4, p: .25, basso: true }] },
     { id: 'gariga', nome: 'Gariga sul calcare', col: '#8e9670', tono: .78, suolo: 'paglia',
       strati: [{ sp: [['pinoM', 2], ['carrubo', 1], ['ulivo', 1]], passo: 22, p: .4 }, { sp: [['rosmarino', 5], ['ginestra', 3], ['lentisco', 1.5], ['ficodindia', 1], ['agave', .6]], passo: 2.6, p: .55 }, { sp: [['erbaSecca', 5], ['finocchietto', 2], ['papavero', .4]], passo: 1.8, p: .55, basso: true }] },
     { id: 'prato', nome: 'Prato secco e radure', col: '#cdb87c', tono: .95, suolo: 'paglia',
@@ -20920,6 +20920,36 @@ var Vegetazione = (function () {
     { id: 'costa', nome: 'La riva (della chat della costa)', col: '#d8c08a', tono: .8, strati: [] },
   ];
   FORM.forEach((f, i) => { F[f.id] = i; f.i = i; });
+
+  // ================= I BOUQUET: le composizioni del level design diffuso =================
+  // Riferimento del bouquet: l'origine al centro, +y verso il sentiero o il centro della radura (da dove si guarda), +x lungo il cammino.
+  // Pochi elementi, in rapporti fissi: la massa dietro, il soggetto, la base davanti, il bordo fiorito verso chi passa.
+  const BOUQUET = {
+    lecciSosta:    { nome: 'il leccio della sosta', el: [['leccio', 0, -1, .95], ['lentisco', -3, -3.4, .7], ['lentisco', 2.6, -3.2, .5], ['mirto', -2, .6, .4], ['felce', .8, .8, .5], ['felce', -.6, 1.4, .3]] },
+    sogliaPini:    { nome: 'la soglia dei pini', el: [['pino', -5.5, -1.5, .9], ['pino', 5, -2.2, .7], ['ginestra', -3.4, .6, .6], ['ginestra', 3.2, .3, .5], ['rosmarino', -1.6, 1.4, .5], ['rosmarino', 1.8, 1.2, .4]] },
+    cipressiSegno: { nome: 'i cipressi del segno', el: [['cipresso', -1.6, -.6, .9], ['cipresso', 0, -1, 1], ['cipresso', 1.7, -.4, .7], ['rosmarino', -.8, 1.2, .5], ['rosmarino', 1, 1.1, .4]] },
+    macchiaFiorita:{ nome: 'la macchia fiorita', el: [['lentisco', 0, -1.6, .9], ['lentisco', -2, -.8, .6], ['mirto', 1.8, -.6, .6], ['ginestra', -.6, .9, .7], ['ginestra', 1.1, 1.1, .5], ['rosmarino', -2, 1.4, .5]] },
+    carruboSolo:   { nome: 'il carrubo solitario', el: [['carrubo', 0, -1.5, 1], ['lentisco', -3.6, -2.6, .5], ['ginestra', 2.8, .2, .5]] },
+    oleandriAcqua: { nome: 'gli oleandri del torrente', el: [['canna', -2.4, -2.4, .8], ['canna', 0, -2.8, .9], ['canna', 2.4, -2.2, .7], ['oleandro', -1.4, -.3, .8], ['oleandro', 1.2, 0, .6], ['tamerice', 3.8, -1.2, .7]] },
+    ficoRudere:    { nome: 'il fico del rudere', el: [['fico', 0, -1.2, .8], ['ficodindia', -2.6, .2, .7], ['agave', 2, .8, .6], ['ginestra', 2.8, -1.4, .5]] },
+    uliviCappello: { nome: 'gli ulivi a cappello', el: [['ulivo', -2.5, -1, .8], ['ulivo', 3, -1.4, .7], ['rosmarino', 0, .6, .6], ['rosmarino', -.8, 1.3, .4]] },
+    eucaliptiFila: { nome: 'la fila di eucalipti', el: [['eucalipto', -5, -1, .9], ['eucalipto', 0, -1.2, 1], ['eucalipto', 5, -.8, .8], ['lentisco', -2.4, .4, .5]] },
+    pinoMarittimo: { nome: 'il pino piegato', el: [['pinoM', 0, -1, .9], ['ginestra', -1.8, .6, .6], ['rosmarino', 1.4, .9, .5], ['lentisco', 2.6, -1.6, .5]] },
+  };
+  // quali bouquet per formazione e per ruolo (fondale: dove si gira; ritmo: lungo il cammino; cornice: attorno alle radure)
+  const BQF = {
+    pineta:      { fondale: ['sogliaPini', 'cipressiSegno'], ritmo: ['macchiaFiorita', 'sogliaPini'], cornice: ['sogliaPini', 'macchiaFiorita'] },
+    pinetaM:     { fondale: ['pinoMarittimo', 'cipressiSegno'], ritmo: ['macchiaFiorita', 'pinoMarittimo'], cornice: ['pinoMarittimo', 'macchiaFiorita'] },
+    lecceta:     { fondale: ['lecciSosta'], ritmo: ['lecciSosta', 'macchiaFiorita'], cornice: ['lecciSosta'] },
+    macchia:     { fondale: ['carruboSolo', 'pinoMarittimo'], ritmo: ['macchiaFiorita'], cornice: ['lecciSosta', 'carruboSolo'] },
+    gariga:      { fondale: ['pinoMarittimo', 'ficoRudere'], ritmo: ['macchiaFiorita'], cornice: ['carruboSolo', 'ficoRudere'] },
+    prato:       { fondale: ['carruboSolo', 'cipressiSegno'], ritmo: ['macchiaFiorita'], cornice: ['carruboSolo', 'lecciSosta', 'ficoRudere'] },
+    uliveto:     { fondale: ['cipressiSegno'], ritmo: ['uliviCappello'], cornice: ['uliviCappello', 'ficoRudere'] },
+    agrumeto:    { fondale: ['cipressiSegno'], ritmo: [], cornice: ['ficoRudere'] },
+    riparia:     { fondale: ['oleandriAcqua'], ritmo: ['oleandriAcqua'], cornice: ['oleandriAcqua'] },
+    eucalipteto: { fondale: ['eucaliptiFila'], ritmo: [], cornice: ['eucaliptiFila'] },
+    giardino:    { fondale: ['cipressiSegno'], ritmo: [], cornice: ['sogliaPini'] },
+  };
 
   // ================= LA MAPPA DELLE FORMAZIONI =================
   // dall'ambiente (eco) del generatore, che ha già la forma del paesaggio (versanti, valloni, terrazze, pianori), alla formazione
@@ -21056,7 +21086,8 @@ var Vegetazione = (function () {
           const ds = dSen[i], s = senOf[i] >= 0 ? sen[senOf[i]] : null;
           if (s) { if (strato === 'B' ? ds < s.libB - s.w / 2 : ds < s.libA - s.w / 2) continue; if (ds < s.margine - s.w / 2) p *= strato === 'B' ? .8 : .65; }
           if (u >= p) continue;
-          const sp = scegli(S.sp, hash2(ci, cj, seed + 3)), SS = SP[sp];
+          const MB = strato === 'B' ? 16 : 22, mbx = Math.floor((x + fbm(x / 20, y / 20, 7351, 2) * 14) / MB), mby = Math.floor((y + fbm(x / 20 + 5, y / 20, 7352, 2) * 14) / MB);   // [vegetazione] la macchia a una specie: si sceglie per micro-bioma (≈ 20 m, bordi mossi), non per pianta
+          const sp = scegli(S.sp, hash2(ci, cj, seed + 3) < .88 ? hash2(mbx, mby, seed + 4) : hash2(ci, cj, seed + 5)), SS = SP[sp];
           if (!suoloOk(x, y, SS.strato, SS.strato === 'B' ? 0 : 1)) continue;
           if (vicinoPorta(x, y, SS.strato === 'B' ? 2.5 : 4.5)) continue;
           if ((SS.strato === 'A' || SS.strato === 'M') && !libero(x, y, SS.chioma * (fi === F.lecceta ? .8 : 1))) continue;
@@ -21065,6 +21096,30 @@ var Vegetazione = (function () {
         }
       }));
     });
+    // 3) I BOUQUET: composizioni progettate posate lungo il cammino (soglie, fondali sulle curve, soste, ritmo), e attorno alle radure.
+    //    Ogni bouquet è un elenco [specie, dx, dy, scala] in metri nel suo riferimento: +y verso il sentiero (la luce, chi guarda), +x lungo.
+    const bq = (nome, x, y, ang, fi, ruolo) => { const B = BOUQUET[nome]; if (!B) return 0; const c = Math.cos(ang), sn = Math.sin(ang); let n = 0;
+      B.el.forEach(([sp, dx, dy, k]) => { const X = x + dx * c - dy * sn, Y = y + dx * sn + dy * c, SS = SP[sp], i = tI(X, Y); if (i < 0 || form[i] === F.costa || form[i] === F.urbano) return;
+        if (!suoloOk(X, Y, SS.strato, SS.strato === 'B' ? 0 : 1) || vicinoPorta(X, Y, SS.strato === 'B' ? 2.5 : 4.5)) return;
+        const s0 = senOf[i] >= 0 ? sen[senOf[i]] : null; if (s0 && dSen[i] < (SS.strato === 'B' ? s0.libB : s0.libA) - s0.w / 2) return;
+        if ((SS.strato === 'A' || SS.strato === 'M') && !libero(X, Y, SS.chioma * .7)) return;
+        posa(sp, X, Y, form[i] || fi, { bouquet: nome, ruolo, h: SS.h[0] + (SS.h[1] - SS.h[0]) * (k || .6) }); n++; }); conti.bouquet = (conti.bouquet || 0) + 1; return n; };
+    const scegliB = (fi, ruolo, u) => { const L = (BQF[FORM[fi] ? FORM[fi].id : ''] || BQF.prato)[ruolo] || []; return L.length ? L[Math.floor(u * L.length) % L.length] : null; };
+    sen.forEach((sd, si) => { const P0 = sd.pts; let acc = 0, prossimo = 8 + hash2(si, 1, 7361) * 10, lato = 1;
+      for (let k = 1; k < P0.length; k++) { const a = P0[k - 1], b = P0[k], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < .01) continue; const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        // il fondale: dove il sentiero gira, il bouquet alto di fronte a chi arriva
+        if (k < P0.length - 1) { const c2 = P0[k + 1], a2 = Math.atan2(c2[1] - b[1], c2[0] - b[0]), dA = Math.abs(((a2 - ang + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+          if (dA > .45) { const d = sd.w / 2 + 5, X = b[0] + Math.cos(ang) * d, Y = b[1] + Math.sin(ang) * d, i = tI(X, Y); if (i >= 0 && form[i] && form[i] !== F.costa && form[i] !== F.urbano) { const nm = scegliB(form[i], 'fondale', hash2(k, si, 7362)); if (nm) bq(nm, X, Y, ang + Math.PI / 2, form[i], 'fondale'); } } }
+        // il ritmo: a passi di 22-38 m, alternando i lati, una sosta o un segno a lato del sentiero
+        for (let t = prossimo - acc; t < L; t += 22 + hash2(Math.round(t), si, 7363) * 16) { lato = -lato; const d = sd.w / 2 + 3.2, ox = -Math.sin(ang) * lato, oy = Math.cos(ang) * lato, X = a[0] + Math.cos(ang) * t + ox * d, Y = a[1] + Math.sin(ang) * t + oy * d, i = tI(X, Y);
+          if (i >= 0 && form[i] && form[i] !== F.costa && form[i] !== F.urbano) { const nm = scegliB(form[i], 'ritmo', hash2(Math.round(X), Math.round(Y), 7364)); if (nm) bq(nm, X, Y, Math.atan2(-oy, -ox) - Math.PI / 2, form[i], 'ritmo'); }
+          prossimo = acc + t + 22; }
+        acc += L; } });
+    // le soste: attorno a ogni radura, 3-4 bouquet sul margine rivolti verso il centro (la cornice), lasciando libere le entrate dei sentieri
+    const fatte = []; rad.forEach(rd => { if (fatte.some(q => Math.hypot(q.x - rd.x, q.y - rd.y) < q.r + rd.r + 6)) return; fatte.push(rd);   // le radure vicine hanno una cornice sola
+      const n = 3 + (hash2(Math.round(rd.x), Math.round(rd.y), 7371) < .5 ? 1 : 0), a0 = hash2(Math.round(rd.x), Math.round(rd.y), 7372) * 6.28;
+      for (let k = 0; k < n; k++) { const a = a0 + k / n * 6.28, X = rd.x + Math.cos(a) * rd.r * 1.05, Y = rd.y + Math.sin(a) * rd.r * 1.05, i = tI(X, Y); if (i < 0 || dSen[i] < 4) continue;
+        const fi = form[i] && form[i] !== F.costa && form[i] !== F.urbano ? form[i] : F.prato, nm = scegliB(fi, 'cornice', hash2(k, Math.round(rd.x), 7373)); if (nm) bq(nm, X, Y, a - Math.PI / 2, fi, 'cornice'); } });
     PIANO = { W, form, piante, radure: rad, sentieri: sen, dSen, conti, fitto };
     return PIANO;
   }
@@ -21837,7 +21892,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
