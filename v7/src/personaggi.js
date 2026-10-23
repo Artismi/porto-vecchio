@@ -26,7 +26,7 @@ var Personaggi = (function () {
   const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
-    k: { nome: 'Kit', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 2.2, seg: 16, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 0, inchiostro: .38, luce: .2 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
+    k: { nome: 'Kit', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.35, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
@@ -162,8 +162,8 @@ var Personaggi = (function () {
   // =====================================================================================
   // tessere dell'atlante (disegni): 0 liscio
   const TL = { liscio: 0, camicia: 1, giacca: 2, divisa: 3, cerata: 4, grembiule: 5, maglione: 6, canotta: 7, abito: 8, tuta: 9, cappotto: 10, gilet: 11, bande: 12, maglietta: 13, stampa: 14, felpa: 15,
-    jeans: 24, calzoni: 25, manica: 27, polsino: 28, sneaker: 32, suola: 33, scarpa: 34, cappellino: 36, bomber: 38, faccia: 40 };
-  const PT = { liscio: 0, righe: 1, quadri: 2, fiori: 3, maglia: 4, pois: 5, righine: 6 };
+    jeans: 24, calzoni: 25, manica: 27, polsino: 28, sneaker: 32, suola: 33, scarpa: 34, cappellino: 36, bomber: 38, faccia: 40, toppe: 64, militare: 65, cardigan: 66, salopette: 67, lavoro: 68, chiodo: 69, colorblock: 70 };
+  const PT = { liscio: 0, righe: 1, quadri: 2, fiori: 3, maglia: 4, pois: 5, righine: 6, mimetico: 7, fairisle: 56, kefiah: 57, tartan: 58 };   // il motivo j sta nella tessera 16 + j
   // [catena, da, a, spessore, extra]
   const CAPI = {
     canottiera: { busto: [.05, .93, .004], tile: 'canotta' },
@@ -216,9 +216,23 @@ var Personaggi = (function () {
     bermuda: { gamba: [-.06, .42, .01], orlo: .03, bacino: .01, gtile: 'calzoni', cintura2: 1 },
     minigonna: { gonna: [.3, .14, 1.12], bacino: .008 },
     cargo: { gamba: [-.06, 1, .016], orlo: .02, dritti: .7, bacino: .012, gtile: 'calzoni', cintura2: 1, tasconi: 1 },
+    // [guardaroba] vintage, second hand, drip, underground, resistenza
+    giacca_militare: { busto: [-.06, 1, .022], braccio: [0, .95, .02], tile: 'militare', orlo: .03, colletto: 'alto', svasa: .012, manica: 'manica' },
+    parka: { busto: [-.04, 1, .03], braccio: [0, .97, .026], tile: 'militare', orlo: .04, colletto: 'cappuccio', falda: [0, .32, 1.06], manica: 'polsino' },
+    giacca_toppe: { busto: [.02, 1, .018], braccio: [0, .95, .016], tile: 'toppe', orlo: .05, orloSp: .006, colletto: 'camicia', manica: 'polsino' },
+    gilet_toppe: { busto: [.05, .92, .016], tile: 'toppe', orlo: .03 },
+    chiodo: { busto: [.0, 1, .022], braccio: [0, .95, .02], tile: 'chiodo', orlo: .04, orloSp: .006, colletto: 'revers', manica: 'manica' },
+    cardigan: { busto: [-.02, 1, .016], braccio: [0, .96, .014], tile: 'cardigan', ptile: 'maglia', orlo: .06, orloSp: .005, manica: 'polsino' },
+    maglione_fairisle: { busto: [0, 1, .016], braccio: [0, .96, .014], tile: 'maglione', ptile: 'fairisle', orlo: .06, orloSp: .005, colletto: 'giro', manica: 'polsino' },
+    giacca_lavoro: { busto: [-.04, 1, .02], braccio: [0, .95, .018], tile: 'lavoro', orlo: .03, colletto: 'camicia', manica: 'manica' },
+    salopette: { busto: [-.06, .85, .012], gamba: [-.06, .99, .012], tile: 'salopette', orlo: .02, gtile: 'jeans' },
+    tuta_nylon: { busto: [-.02, 1, .022], braccio: [0, .97, .02], tile: 'colorblock', orlo: .05, orloSp: .006, colletto: 'alto', manica: 'polsino', svasa: .01 },
+    puffer_corto: { busto: [.12, 1, .05], braccio: [0, .97, .045], tile: 'bomber', orlo: .07, orloSp: .012, colletto: 'alto', manica: 'polsino' },
+    camicia_70: { busto: [.02, .99, .007], braccio: [0, .95, .007], tile: 'camicia', orlo: .03, polsino: 1, colletto: 'punte', manica: 'manica' },
+    jeans_risvolto: { gamba: [-.06, .97, .016], orlo: .07, orloSp: .012, orloSolo: 'giu', dritti: 1, bacino: .012, gtile: 'jeans', cintura2: 1, colOrlo: '#8aa0c8' },
   };
   // scarpe: [altezza del gambale (0 scarpa bassa … 1 al ginocchio), punta, tacco]
-  const SCARPE = { tela: [0, 1.02, 0, 0, 1], mocassini: [0, 1, 0], sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
+  const SCARPE = { anfibi: [.17, 1.06, 0, 0, 0, .01], chunky: [0, 1.12, 0, 0, 1, .02], tela: [0, 1.02, 0, 0, 1], mocassini: [0, 1, 0], sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
 
   // =====================================================================================
   // LA FIGURA: costruisce la geometria nello spazio del personaggio
@@ -275,7 +289,7 @@ var Personaggi = (function () {
         return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
       };
       const camp = []; for (let k = 0; k <= 9; k++) camp.push(k / 9);
-      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { lung: L1 - L0, seg: 14, flipU: sd === 'R' });
+      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { lung: L1 - L0, seg: 12, flipU: sd === 'R' });
       mano(B, J, sd, sg, pelle, D);
     });
     // ---------------- GAMBE ----------------
@@ -298,7 +312,7 @@ var Personaggi = (function () {
       const camp = []; for (let k = 0; k <= 11; k++) camp.push(k / 11);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { lung: Lg, seg: 16, flipU: sd === 'R' });
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { lung: Lg, seg: 12, flipU: sd === 'R' });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
@@ -345,7 +359,7 @@ var Personaggi = (function () {
     const C = D.collo || [], Sc = D.schiena || [];
     C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
       if (it.tipo === 'sciarpa') {   // la sciarpa di lana: due giri grossi attorno al collo, i due capi che cadono davanti fino in vita, le frange
-        const ptile = it.righe ? PT.righe : PT.maglia, c3 = it.righe ? [.92, .9, .84] : mulc(col, .72), r = .034;
+        const ptile = it.kefiah ? PT.kefiah : it.righe ? PT.righe : PT.maglia, c3 = it.kefiah ? [.1, .1, .12] : it.righe ? [.92, .9, .84] : mulc(col, .72), r = .034;
         [[-.016, .05, 0], [.032, .042, .012]].forEach(([dy, rr, dz], k) => loft(B, [0, .25, .5, .75, 1].map(q => ({ c: [0, y0 + .004 + dy + q * .05, zc - .006 + dz * Math.sin(q * Math.PI)], t: [0, 1, 0], f: [0, 0, 1], a: .072 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .004, b: .066 + sp * .6 + rr * Math.sin(Math.PI * (.15 + .7 * q)) + k * .008, col, ptile, col3: c3, mv: q * .08 + k * .1, w: [['Neck', .5], ['Chest', .5]], mod: th => .05 * Math.sin(th * 7 + k) })), { seg: 16 }));
         [[.035, .48, .034], [.08, .58, .03]].forEach(([x, t1, w], k) => { const pts = [0, .2, .45, .7, 1].map(q => { const t = lerp(.97, t1, q); return [x + q * .012 + k * .004, yOf(t), fz(t, .016 + k * .01)]; });
           loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(4, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: w, b: .012, p: 3, col, ptile, col3: c3, mv: j * .06, w: wS(p[1]) })), { seg: 8 });
@@ -413,13 +427,13 @@ var Personaggi = (function () {
   function scarpa(B, J, sd, sg, sc, col, D, pelle) {
     const st = S(), k = st.piedi * (D.sesso === 'f' ? .88 : 1), f = J['Foot' + sd], y0 = Math.max(.0, f[1] - .02), z0 = f[2] - .06 * k, L = .27 * k * sc[1], tacco = sc[2] || 0, sand = sc[3];
     const w = [['Foot' + sd, 1]], wA = [['LowerLeg' + sd, .5], ['Foot' + sd, .5]];
-    const gin = sc[4], kw = gin ? 1.16 : 1, kh = gin ? 1.18 : 1, bianco = C3((D.scarpe && D.scarpe.col2) || '#f2eee6');
+    const gin = sc[4], ss = sc[5] || 0, kw = (gin ? 1.16 : 1) * (ss > .015 ? 1.1 : 1), kh = gin ? 1.18 : 1, bianco = C3((D.scarpe && D.scarpe.col2) || '#f2eee6');
     const dark = gin ? bianco : mulc(col, .45), cm = sand ? pelle : col;
     // la tomaia: sezioni lungo il piede, dalla caviglia (alta) alla punta (bassa e tonda)
     const R = [[0, .05, .06, .08], [.12, .052, .075, .1], [.35, .05, .07, .085], [.6, .052, .045, .06], [.82, .046, .036, .045], [.95, .034, .028, .03], [1, .01, .016, .016]];
-    loft(B, R.map(([q, a, h, hh], j) => ({ c: [f[0] - sg * .004 * q, y0 + .012 + tacco * .05 * (1 - q) + h * .5 + (j === 0 ? .02 : 0), z0 + q * L], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * (D.sesso === 'f' ? .9 : 1), b: h * .62 * kh * (j === 0 ? 1.3 : 1), p: gin ? 3 : 2.4, col: cm, v: q, tile: sand ? 0 : gin ? TL.sneaker : TL.scarpa, col2: gin ? C3((D.scarpe && D.scarpe.col3) || (D.scarpe && D.scarpe.col2) || '#c83a2a') : mulc(cm, .7), ao: j === 0 ? .85 : 1, w: j === 0 ? wA : w })), { seg: 10, flipU: sd === 'R' });
+    loft(B, R.map(([q, a, h, hh], j) => ({ c: [f[0] - sg * .004 * q, y0 + .012 + ss + tacco * .05 * (1 - q) + h * .5 + (j === 0 ? .02 : 0), z0 + q * L], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * (D.sesso === 'f' ? .9 : 1), b: h * .62 * kh * (j === 0 ? 1.3 : 1), p: gin ? 3 : 2.4, col: cm, v: q, tile: sand ? 0 : gin ? TL.sneaker : TL.scarpa, col2: gin ? C3((D.scarpe && D.scarpe.col3) || (D.scarpe && D.scarpe.col2) || '#c83a2a') : mulc(cm, .7), ao: j === 0 ? .85 : 1, w: j === 0 ? wA : w })), { seg: 10, flipU: sd === 'R' });
     // la suola: una lastra appena più larga, scura
-    loft(B, [[0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: gin ? .017 : .009, p: 4, col: dark, v: q, tile: TL.suola, w })), { seg: 8 });
+    loft(B, [[0, .048], [.25, .052], [.6, .056], [.85, .05], [1, .02]].map(([q, a]) => ({ c: [f[0] - sg * .004 * q, y0 + .008 + ss * .5 + (tacco ? (q < .3 ? .04 : .04 * (1 - (q - .3) / .7) * .4) : 0), z0 + q * L * 1.01], t: [0, 0, 1], f: [0, 1, 0], a: a * k * kw * 1.04 * (D.sesso === 'f' ? .9 : 1), b: (gin ? .017 : .009) + ss * .5, p: 4, col: dark, v: q, tile: TL.suola, w })), { seg: 8 });
     if (tacco) loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .005 + q * .045, z0 + .03], t: [0, 1, 0], f: [0, 0, 1], a: .016, b: .02, p: 3, col: dark, w })), { seg: 6 });
     else loft(B, [0, 1].map(q => ({ c: [f[0], y0 + .004 + q * .022, z0 + .045 * k], t: [0, 1, 0], f: [0, 0, 1], a: .044 * k, b: .04 * k, p: 3.5, col: dark, w })), { seg: 8 });
   }
@@ -862,6 +876,11 @@ var Personaggi = (function () {
     } else if (tipo === 'fascia') { cupola(.145, [[0, .095, .108], [.028, .094, .107]].map(([y, a, b]) => [y, a + .016, b + .016]), c, .0); }
     else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
     else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa.PK && pa.PK.tris) passamontagna(B, D, pa.PK); 
+    } else if (tipo === 'bucket') {   // il cappello da pescatora: la cupola morbida e la tesa che scende tutt'intorno, l'impuntura a giri
+      const R = y => [pa(Math.min(y, .17), 1) + .012, pa(Math.min(y, .17), 2) + .012];
+      loft(B, [[.08, 1.5, -.03], [.095, 1.44, -.018], [.112, 1.2, -.004], [.125, 1.02, 0], [.135, 1, 0], [.19, .98, 0], [.225, .84, 0], [.238, .3, 0], [.24, .02, 0]].map(([y, q, d], j) => ({ c: at(y, 0, pa(Math.min(y, .17), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(y)[0] * q * K, b: R(y)[1] * q * K, col: j < 3 ? mulc(c, .92) : c, ptile: j < 3 ? PT.righine : 0, col3: mulc(c, .8), mv: j * .03, w: wH })), { seg: 18 });
+      loft(B, [[.08, 1.5], [.096, 1.44]].map(([y, q]) => ({ c: at(y - .004, 0, pa(.17, 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(.17)[0] * q * K - .003, b: R(.17)[1] * q * K - .003, col: mulc(c, .6), w: wH })), { seg: 18 });   // il sotto della tesa
+      { const L = []; for (let i = 0; i < 24; i++) { const a = -Math.PI + i / 24 * Math.PI * 2; L.push(at(.138, Math.sin(a) * R(.138)[0] * 1.01, Math.cos(a) * R(.138)[1] * 1.01 + pa(.138, 3))); } tuboP(B, L, () => .0025, mulc(c, .75), wH, true); }
     } else if (tipo === 'elmetto') {   // l'elmetto: la calotta, la tesa che scende tutt'intorno, il sottogola
       const R = y => [pa(Math.min(y, .17), 1) + .014, pa(Math.min(y, .17), 2) + .014];
       loft(B, [[.105, 1.18, -.008], [.11, 1.17, 0], [.118, 1.0, 0], [.17, .98, 0], [.215, .78, 0], [.24, .42, 0], [.248, .04, 0]].map(([y, q, d], j) => ({ c: at(y + d, 0, pa(Math.min(y, .17), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(y)[0] * q * K, b: R(y)[1] * q * K, col: j < 2 ? mulc(c, .82) : c, w: wH })), { seg: 18 });
@@ -922,12 +941,12 @@ var Personaggi = (function () {
   // ---------------- COLLETTI: della camicia, i revers della giacca, il collo alto della divisa, il cappuccio della felpa ----------------
   function colletto(B, J, profAt, zAt, yOf, v, listaB) {
     const col = C3v(v.col), y = yOf(.965), P0 = profAt(y), sp = strati(listaB, .96).sp, wN = [['Chest', .4], ['Neck', .6]], z = zAt(y) + P0[2];
-    if (v.colletto === 'camicia' || v.colletto === 'revers' || v.colletto === 'alto') {
+    if (v.colletto === 'camicia' || v.colletto === 'revers' || v.colletto === 'alto' || v.colletto === 'punte') {
       const alto = v.colletto === 'alto', rev = v.colletto === 'revers', r0 = alto ? .068 : .066;
       loft(B, [0, 1].map(q => ({ c: [0, y + .005 + q * (alto ? .05 : .03), z - .005], t: [0, 1, 0], f: [0, 0, 1], a: r0 + .012 * (1 - q) + sp * .5, b: r0 - .005 + .012 * (1 - q) + sp * .5, col: q ? mulc(col, 1.05) : col, w: wN, mod: alto ? null : th => { const fr = Math.cos(th); return fr > .8 ? -.5 * sm((fr - .8) / .2) : 0; } })), { seg: 16 });
       // le punte del colletto (o i revers) sul petto
       [1, -1].forEach(s => {
-        const L = rev ? .14 : .05, wd = rev ? .045 : .022, a0 = [s * .035, y + .02, z + P0[1] + sp - .006], a1 = [s * (rev ? .075 : .045), y - L, z + P0[1] + sp + (rev ? -.004 : -.01)];
+        const pun = v.colletto === 'punte', L = rev ? .14 : pun ? .09 : .05, wd = rev ? .045 : pun ? .03 : .022, a0 = [s * .035, y + .02, z + P0[1] + sp - .006], a1 = [s * (rev ? .075 : pun ? .07 : .045), y - L, z + P0[1] + sp + (rev ? -.004 : -.01)];
         loft(B, [0, .6, 1].map(q => ({ c: lerp3(a0, a1, q), t: norm(sub(a1, a0)), f: [0, 0, 1], a: wd * (q < .6 ? 1 : 1 - (q - .6) / .4 * .9), b: .004, p: 8, col: rev ? mulc(col, .9) : col, w: q < .5 ? wN : [['Chest', 1]] })), { seg: 4 });
       });
     } else if (v.colletto === 'giro') {
@@ -955,11 +974,11 @@ var Personaggi = (function () {
   // =====================================================================================
   // L'ATLANTE DEI DISEGNI (una tela sola per tutti): R = apertura (secondo colore), G = linee e ombre (scurisce), B = luce (bottoni, fibbie)
   // =====================================================================================
-  const AT = { N: 8, px: 256, tex: null };
+  const AT = { N: 8, NY: 10, px: 256, tex: null };
   function atlante() {
     if (AT.tex || typeof document === 'undefined') return AT.tex;
-    const N = AT.N, px = AT.px, cv = document.createElement('canvas'); cv.width = cv.height = N * px; const x = cv.getContext('2d');
-    x.fillStyle = '#000'; x.fillRect(0, 0, N * px, N * px);
+    const N = AT.N, NY = AT.NY, px = AT.px, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    x.fillStyle = '#000'; x.fillRect(0, 0, N * px, NY * px);
     // tessera i (layout) nella riga 0..1, j: disegno ripetuto (motivi) nelle righe 2..3. Le u vanno da 0 (cucitura dietro) a 1, il davanti a 0.5; v da 0 (giù) a 1 (su)
     const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };   // la v della tessera cresce verso il basso della tela, come la legge lo shader (flipY spento)
     const R = 'rgb(255,0,0)', G = 'rgb(0,255,0)', Bl = 'rgb(0,0,255)';
@@ -1094,6 +1113,31 @@ var Personaggi = (function () {
       if (o.barbetta) { c.fillStyle = R; c.globalAlpha = .12; c.beginPath(); c.moveTo(.24, .36); c.quadraticCurveTo(.28, .0, .5, -.04); c.quadraticCurveTo(.72, .0, .76, .36); c.lineTo(.66, .34); c.quadraticCurveTo(.58, .16, .5, .15); c.quadraticCurveTo(.42, .16, .34, .34); c.closePath(); c.fill(); c.globalAlpha = 1; }
     });
     [{}, { brow: 1, browW: .024, umore: -.2 }, { umore: .7, aperto: 1 }, { rughe: 1, brow: -.3, umore: -.1 }, { ciglia: 1, labbra: 1, browW: .013, arco: .012 }, { ciglia: 1, labbra: 1, browW: .013, arco: .014, umore: .6, aperto: 1 }, { ciglia: 1, labbra: 1, rughe: 1, browW: .012 }, { barbetta: 1, alzato: 1, storto: 1 }].forEach((o, i) => pulita(i, o));
+    // [guardaroba] 64 toppe: giubbotto o gilet di jeans con le toppe cucite (secondo colore) e le borchie (luce)
+    T(64, c => { add(c); const toppa = (u, v, w, h, r) => { c.fillStyle = R; c.beginPath(); if (r) c.ellipse(u, v, w, h, 0, 0, 7); else c.rect(u - w, v - h, 2 * w, 2 * h); c.fill(); cuci(c, r ? Array.from({ length: 13 }, (_, k) => [u + Math.cos(k / 12 * 6.283) * w * .85, v + Math.sin(k / 12 * 6.283) * h * .85]) : [[u - w * .85, v - h * .85], [u + w * .85, v - h * .85], [u + w * .85, v + h * .85], [u - w * .85, v + h * .85], [u - w * .85, v - h * .85]]); };
+      toppa(.06, .55, .05, .16); toppa(.94, .55, .05, .16); toppa(.06, .82, .04, .07, 1); toppa(.33, .72, .05, .07, 1); toppa(.67, .74, .055, .045); toppa(.36, .3, .05, .06); toppa(.7, .36, .045, .07, 1); toppa(.56, .55, .03, .04, 1); line(c, .007, [[.5, 0], [.5, 1]]); bottoni(c, .52, .15, .85, 5, .012);
+      for (let k = 0; k < 14; k++) dot(c, Bl, .2 + k * .011, .97, .006); for (let k = 0; k < 14; k++) dot(c, Bl, .66 + k * .011, .97, .006); line(c, .006, [[.6, .66], [.7, .66], [.7, .56], [.6, .56], [.6, .66]]); line(c, .006, [[.3, .66], [.4, .66], [.4, .56], [.3, .56], [.3, .66]]); pieghe_busto(c); });
+    // 65 militare (M65, parka): la zip coperta, quattro tasche con la pattina, il carré dietro, le spalline
+    T(65, c => { add(c); line(c, .012, [[.5, 0], [.5, 1]]); bottoni(c, .53, .12, .9, 6, .01); [[.36, .68, .055], [.64, .68, .055], [.35, .22, .07], [.65, .22, .07]].forEach(([u, v, w]) => { line(c, .007, [[u - w, v + w * 1.1], [u + w, v + w * 1.1], [u + w, v - w * 1.1], [u - w, v - w * 1.1], [u - w, v + w * 1.1]]); line(c, .01, [[u - w * 1.05, v + w * 1.25], [u + w * 1.05, v + w * 1.25]]); dot(c, Bl, u, v + w * .95, .009); });
+      line(c, .006, [[0, .86], [.2, .86]]); line(c, .006, [[.8, .86], [1, .86]]); line(c, .008, [[.25, .98], [.25, .9]]); line(c, .008, [[.75, .98], [.75, .9]]); pieghe_busto(c); cuci(c, [[0, .04], [1, .04]]); });
+    // 66 cardigan: la V aperta (secondo colore = sotto), i bottoni, le tasche, le costine
+    T(66, c => { add(c); c.fillStyle = R; c.beginPath(); c.moveTo(.43, 1.01); c.lineTo(.5, .5); c.lineTo(.57, 1.01); c.fill(); line(c, .012, [[.43, 1.01], [.5, .5], [.5, 0]]); bottoni(c, .515, .1, .45, 4, .014); costine(c, 0, .09, 40); line(c, .008, [[.3, .3], [.42, .3], [.42, .15], [.3, .15], [.3, .3]]); line(c, .008, [[.58, .3], [.7, .3], [.7, .15], [.58, .15], [.58, .3]]); });
+    // 67 salopette: la pettorina davanti, il resto mostra sotto; le bretelle incrociate dietro con le fibbie
+    T(67, c => { c.fillStyle = R; c.fillRect(0, .3, 1, .72); c.globalCompositeOperation = 'destination-out'; c.fillRect(.36, .3, .28, .62); [[.38, .43], [.57, .62]].forEach(([a, b]) => c.fillRect(a, .3, b - a, .72)); c.beginPath(); c.moveTo(.38, 1); c.lineTo(.42, 1); c.lineTo(.12, .3); c.lineTo(.08, .3); c.fill(); c.beginPath(); c.moveTo(.58, 1); c.lineTo(.62, 1); c.lineTo(.92, .3); c.lineTo(.88, .3); c.fill(); c.beginPath(); c.moveTo(.08, 1); c.lineTo(.12, 1); c.lineTo(.42, .3); c.lineTo(.38, .3); c.fill();
+      c.globalCompositeOperation = 'lighter'; line(c, .006, [[.43, .78], [.57, .78], [.57, .62], [.43, .62], [.43, .78]]); cuci(c, [[.36, .92], [.36, .3]]); cuci(c, [[.64, .92], [.64, .3]]); dot(c, Bl, .405, .9, .016); dot(c, Bl, .595, .9, .016); cuci(c, [[0, .3], [1, .3]]); });
+    // 68 giacca da lavoro: i bottoni, tre tasche applicate, le impunture
+    T(68, c => { add(c); line(c, .008, [[.5, 0], [.5, 1]]); bottoni(c, .52, .12, .9, 5, .013); [[.62, .68, .05, .055], [.34, .22, .075, .08], [.66, .22, .075, .08]].forEach(([u, v, w, h]) => { line(c, .006, [[u - w, v + h], [u - w, v - h], [u + w, v - h], [u + w, v + h]]); cuci(c, [[u - w + .01, v + h - .012], [u - w + .01, v - h + .01], [u + w - .01, v - h + .01], [u + w - .01, v + h - .012]]); }); pieghe_busto(c); cuci(c, [[0, .03], [1, .03]]); });
+    // 69 chiodo: la zip in diagonale, la tasca con la zip, la cintura in fondo, le spille (luce)
+    T(69, c => { add(c); c.fillStyle = R; c.beginPath(); c.moveTo(.42, 1.01); c.lineTo(.5, .82); c.lineTo(.6, 1.01); c.fill(); line(c, .012, [[.6, 0], [.6, .55], [.42, 1]]); dot(c, Bl, .6, .52, .012); line(c, .009, [[.32, .62], [.44, .74]]); dot(c, Bl, .44, .74, .008); line(c, .009, [[.66, .3], [.74, .38]]); line(c, .014, [[0, .07], [1, .07]]); dot(c, Bl, .53, .07, .016);
+      [[.36, .82, .012], [.33, .76, .01], [.39, .5, .014], [.7, .78, .011], [.74, .7, .009]].forEach(([u, v, r]) => { dot(c, Bl, u, v, r); dot(c, G, u, v, r * .4); }); pieghe_busto(c); });
+    // 70 nylon a blocchi: il petto e le spalle di un altro colore, la riga di luce, la zip
+    T(70, c => { c.fillStyle = R; c.fillRect(0, .55, 1, .45); c.globalCompositeOperation = 'lighter'; c.fillStyle = Bl; c.fillRect(0, .5, 1, .035); line(c, .01, [[.5, .08], [.5, 1]]); dot(c, Bl, .5, .95, .013); costine(c, 0, .06, 40); pieghe_busto(c); });
+    // i motivi nuovi: mimetico (7), fair isle (56), kefiah (57), tartan (58)
+    T(23, c => { const blob = (u, v, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k <= 9; k++) { const a = k / 9 * 6.283, rr = r * (.7 + .3 * Math.sin(k * 2.7 + u * 9)); k ? c.lineTo(u + Math.cos(a) * rr * 1.5, v + Math.sin(a) * rr) : c.moveTo(u + Math.cos(a) * rr * 1.5, v + Math.sin(a) * rr); } c.fill(); };
+      [[.2, .2, .12], [.7, .35, .14], [.4, .7, .13], [.9, .85, .1], [.05, .65, .09]].forEach(([u, v, r]) => { blob(u, v, r, R); blob(u - 1, v, r, R); blob(u, v - 1, r, R); }); [[.5, .15, .07], [.15, .45, .06], [.8, .6, .07], [.6, .95, .06]].forEach(([u, v, r]) => { blob(u, v, r, G); blob(u, v - 1, r, G); }); });
+    T(72, c => { c.fillStyle = R; for (let k = 0; k < 8; k++) { const u = k / 8; c.beginPath(); c.moveTo(u, .5); c.lineTo(u + .0625, .38); c.lineTo(u + .125, .5); c.lineTo(u + .0625, .62); c.fill(); } c.fillRect(0, .14, 1, .04); c.fillRect(0, .82, 1, .04); c.fillStyle = Bl; for (let k = 0; k < 16; k++) { c.fillRect(k / 16, .25, .03, .03); c.fillRect(k / 16 + .03, .72, .03, .03); } });
+    T(73, c => { c.strokeStyle = R; c.lineWidth = .05; for (let k = -2; k < 6; k++) { c.beginPath(); c.moveTo(k * .25, 0); c.lineTo(k * .25 + 1, 1); c.stroke(); c.beginPath(); c.moveTo(k * .25 + 1, 0); c.lineTo(k * .25, 1); c.stroke(); } c.fillStyle = R; c.fillRect(0, 0, 1, .08); });
+    T(74, c => { c.fillStyle = R; c.globalAlpha = .6; c.fillRect(.1, 0, .25, 1); c.fillRect(0, .1, 1, .25); c.globalAlpha = 1; c.fillRect(.1, .1, .25, .25); c.globalCompositeOperation = 'lighter'; line(c, .015, [[.65, 0], [.65, 1]]); line(c, .015, [[0, .65], [1, .65]]); c.fillStyle = Bl; c.fillRect(.5, 0, .012, 1); c.fillRect(0, .5, 1, .012); });
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
     P(1, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) c.fillRect(0, k / 4, 1, .1); });   // righe da marinaio
@@ -1123,7 +1167,7 @@ var Personaggi = (function () {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 col2; attribute vec3 col3; attribute vec3 atl; attribute vec3 mot; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;')
         .replace('#include <color_vertex>', '#include <color_vertex>\nvC2 = col2; vC3 = col3; vAtl = atl; vMot = mot;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uAtl; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;
-        vec3 atlS(float t, vec2 uv) { float N = ${N}.0; vec2 o = vec2(mod(t, N), floor(t / N)) / N; return texture2D(uAtl, o + clamp(uv, .004, .996) / N).rgb; }`)
+        vec3 atlS(float t, vec2 uv) { vec2 N = vec2(${N}.0, ${AT.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uAtl, o + clamp(uv, .004, .996) / N).rgb; }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
         { vec3 L = vAtl.z > .5 ? atlS(floor(vAtl.z + .5), vec2(vAtl.x, vAtl.y)) : vec3(0.);
           vec3 M = vMot.z > .5 ? atlS(16. + floor(vMot.z + .5), fract(vMot.xy * 6.)) : vec3(0.);
@@ -1218,6 +1262,10 @@ var Personaggi = (function () {
     camicia_jeans: { v: 'camicia' }, camicia_fiori: { v: 'camicia', ptile: 'fiori', col3: '#c8584a' },
     cravatta_righe: { k: 'cravatta', dis: 'regimental' }, cravatta_pois: { k: 'cravatta', dis: 'pois' }, cravatta_cachemire: { k: 'cravatta', dis: 'paisley' }, cravatta_fiori: { k: 'cravatta', dis: 'liberty' }, cravatta_maglia: { k: 'cravatta', dis: 'costine' },
     maglietta_oversize: { v: 'maglietta_larga' }, felpa_skate: { v: 'felpa_larga' }, canotta_basket: { v: 'canottiera', ptile: 'righine' }, giacca_tuta: { v: 'tuta_giacca' }, smanicato: { v: 'smanicato' }, piumino_oca: { v: 'piumino' },
+    giacca_militare: { v: 'giacca_militare' }, parka: { v: 'parka' }, giacca_toppe: { v: 'giacca_toppe', col2: '#c83a2a' }, gilet_toppe: { v: 'gilet_toppe', col2: '#e8a020' }, chiodo_spille: { v: 'chiodo' },
+    cardigan: { v: 'cardigan' }, maglione_fairisle: { v: 'maglione_fairisle', col3: '#8a2a24' }, giacca_lavoro: { v: 'giacca_lavoro' }, salopette: { v: 'salopette' }, tuta_nylon: { v: 'tuta_nylon', col2: '#e8a020' },
+    puffer_corto: { v: 'puffer_corto' }, camicia_70: { v: 'camicia_70', ptile: 'fiori', col3: '#5a2a14' }, jeans_risvolto: { v: 'jeans_risvolto' }, pantaloni_mimetici: { v: 'cargo', ptile: 'mimetico', col3: '#2e3424' },
+    kefiah: { k: 'sciarpa', kefiah: 1 }, cappello_pescatora: { c: 'bucket' }, anfibi: { s: 'anfibi' }, scarpe_chunky: { s: 'chunky' }, guanti_monchi: { x: 'guanti' }, zaino_tattico: { z: 'zaino' },
     pantaloni_tuta: { v: 'tuta_pantaloni' }, jeans_larghi: { v: 'larghi' }, calze_sport: { v: 'calze_alte' }, scarpe_skate: { s: 'sneakers' }, scarpe_air: { s: 'basket' },
     cappellino_dritto: { c: 'snapback' }, berretto_corto: { c: 'docker' }, borsello: { z: 'borsello' }, marsupio_tracolla: { z: 'tracolla' }, bandana: { c: 'bandana' },
   };
@@ -1228,12 +1276,12 @@ var Personaggi = (function () {
     D = D || {}; D.vesti = []; D.collo = []; D.schiena = []; D.accessori = D.accessori || [];
     const stretto = outfit.some(c => /^(tuta_ginnastica)$/.test(c.id));
     (outfit || []).forEach(c => { const m = DA_CAPO[c.id]; if (!m) return; const col = c.col || (typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[c.id] && Guardaroba.CAPO[c.id].col) || '#888';
-      if (m.v) D.vesti.push(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.col3 ? { col3: m.col3 } : {}, c.col2 ? { col2: c.col2 } : {}));
+      if (m.v) D.vesti.push(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.col3 ? { col3: m.col3 } : {}, m.col2 ? { col2: m.col2 } : {}, c.col2 ? { col2: c.col2 } : {}));
       if (m.e) D.vesti.push({ tipo: m.e, col, col3: '#f0ece2' });
       if (m.c) D.cappello = { tipo: m.c, col };
       if (m.o) { D.occhiali = m.o; D.occhialiCol = c.col; if (c.lente) D.lente = c.lente; }
       if (m.s) D.scarpe = { tipo: m.s, col, col2: m.s === 'basket' || m.s === 'sneakers' ? '#f2eee6' : undefined, col3: c.col2 };
-      if (m.k) D.collo.push({ tipo: m.k, col, righe: m.righe, dis: m.dis });
+      if (m.k) D.collo.push({ tipo: m.k, col, righe: m.righe, dis: m.dis, kefiah: m.kefiah });
       if (m.z) D.schiena.push({ tipo: m.z, col });
       if (m.a) D.accessori.push(m.a);
       if (m.x === 'guanti') D.guanti = col; if (m.x === 'spalle') D.spalle = { col }; if (m.x === 'ginocchia') D.ginocchia = { col };

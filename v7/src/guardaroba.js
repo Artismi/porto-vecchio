@@ -168,6 +168,27 @@ var Guardaroba = (function () {
     ['passamontagna_pallini', 'passamontagna con le corna a pallini', 'Pallini', 'testa', [], 0, '#f0509a', 16, .15, .12, { acc: 'pm_pallini' }],
     ['bandana', 'bandana tirata su', 'Bandana', 'testa', [], 0, '#a82a2a', 3, .05, .02, { acc: 'bandana', ombra: 1 }],
     ['catenina', 'catenina d\'argento', 'Catenina', 'collo', [], 0, '#d8d8dc', 18, .05, 0, { acc: 'catenina' }],
+    // [personaggi] vintage, second hand, drip, underground, resistenza
+    ['giacca_militare', 'giacca militare da campo', 'M65', 'busto', [T, B, A, H], .028, '#4a5238', 14, 1.4, .35],
+    ['parka', 'parka col cappuccio', 'Parka', 'busto', [T, B, A, H, C], .035, '#3e4a3a', 22, 2, .55],
+    ['giacca_toppe', 'giubbotto di jeans con le toppe', 'Jeans toppe', 'busto', [T, B, A], .024, '#3a5a8a', 12, 1.2, .2],
+    ['gilet_toppe', 'gilet di jeans con le toppe e le borchie', 'Gilet toppe', 'busto', [T], .018, '#2a3a5a', 9, .6, .08],
+    ['chiodo_spille', 'chiodo con le spille', 'Chiodo spille', 'busto', [T, B, A], .026, '#141416', 24, 2, .35],
+    ['cardigan', 'cardigan grosso di lana', 'Cardigan', 'busto', [T, B, A], .02, '#8a6a3a', 7, .8, .3],
+    ['maglione_fairisle', 'maglione jacquard', 'Jacquard', 'busto', [T, B, A], .02, '#d8ccb0', 10, .9, .35],
+    ['giacca_lavoro', 'giacca da lavoro di tela', 'Giacca tela', 'busto', [T, B, A, H], .022, '#3a4a6a', 9, 1.1, .2],
+    ['salopette', 'salopette di jeans', 'Salopette', 'gambe', [H, C, P], .016, '#4a6a9a', 10, 1, .12],
+    ['tuta_nylon', 'giacca a vento di nylon a blocchi', 'Nylon', 'busto', [T, B, A], .02, '#1e4a8a', 16, .5, .15],
+    ['puffer_corto', 'piumino corto lucido', 'Puffer', 'busto', [T, B, A], .05, '#e8e4dc', 30, 1, .65],
+    ['camicia_70', 'camicia anni 70 col collo a punta', 'Camicia 70', 'busto', [T, B, A], .01, '#c8783a', 6, .25, .08],
+    ['jeans_risvolto', 'jeans larghi col risvolto', 'Risvolto', 'gambe', [H, C, P], .018, '#2a3e6a', 14, .9, .12],
+    ['pantaloni_mimetici', 'pantaloni mimetici', 'Mimetici', 'gambe', [H, C, P], .017, '#5a6040', 9, 1, .15],
+    ['kefiah', 'kefiah', 'Kefiah', 'collo', [], .02, '#e8e4dc', 4, .2, .1, { acc: 'sciarpa' }],
+    ['cappello_pescatora', 'cappello da pescatora', 'Pescatora', 'testa', [], 0, '#c8b88a', 6, .1, .05, { acc: 'bucket' }],
+    ['anfibi', 'anfibi', 'Anfibi', 'piedi', [F, P], .02, '#141210', 20, 1.6, .1],
+    ['scarpe_chunky', 'scarpe da ginnastica grosse', 'Chunky', 'piedi', [F], .02, '#e8e4dc', 28, .8, .03],
+    ['guanti_monchi', 'guanti senza dita', 'Senza dita', 'mani', [M], .006, '#1a1a1e', 3, .1, .05],
+    ['zaino_tattico', 'zaino tattico', 'Tattico', 'schiena', [], 0, '#2a2e26', 14, 1.2, 0, { acc: 'zaino' }],
   ];
   const CAPO = {};
   CAPI.forEach(([id, nome, corto, zona, parti, sp, col, prezzo, peso, calore, ex]) => {
@@ -192,6 +213,9 @@ var Guardaroba = (function () {
   sell('use:emporio', ['maglietta_oversize', 'felpa_skate', 'canotta_basket', 'giacca_tuta', 'pantaloni_tuta', 'calze_sport', 'scarpe_skate', 'cappellino_dritto', 'berretto_corto', 'marsupio_tracolla', 'occhiali_mascherina', 'occhiali_ovali', 'occhiali_shield', 'passamontagna_punte', 'passamontagna_orecchie', 'passamontagna_righe', 'bandana', 'passamontagna_diavolo', 'passamontagna_clown', 'passamontagna_riccio', 'passamontagna_corna', 'passamontagna_coniglio', 'passamontagna_giullare', 'cappuccio_stelle', 'passamontagna_pallini']);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['smanicato', 'piumino_oca', 'jeans_larghi', 'scarpe_air', 'borsello', 'catenina'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
+  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['giacca_militare', 'parka', 'giacca_toppe', 'gilet_toppe', 'chiodo_spille', 'cardigan', 'maglione_fairisle', 'giacca_lavoro', 'salopette', 'camicia_70', 'jeans_risvolto', 'pantaloni_mimetici', 'kefiah', 'anfibi', 'guanti_monchi', 'zaino_tattico'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));   // [personaggi] il second hand
+  sell('use:emporio', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'jeans_risvolto']);
+  sell('use:abbigliamento', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'cardigan', 'camicia_70', 'jeans_risvolto', 'maglione_fairisle']);
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
     add('bookcaseClosedWide', [['polo', .1, 1, 1], ['vestito_corto', .08, 1, 1], ['vestito_lungo', .05, 1, 1], ['cravatta', .15, 1, 2], ['bermuda', .1, 1, 1], ['camicia_hawaii', .04, 1, 1], ['pelliccia', .02, 1, 1], ['collana_perle', .02, 1, 1]]);
@@ -309,12 +333,25 @@ var Guardaroba = (function () {
       } else {   // maranza: tuta nera lucida, calze bianche sopra i pantaloni, smanicato o piumino d'oca, sneakers bianche, borsello, cappellino dritto, catenina
         const pa = legs('pantaloni_tuta', pk(['#141418', '#1e2a4a', '#2a2a2e'], 15)); pa.when = 1; const cs = o.find(x => x.id === 'calzini'); if (cs) Object.assign(cs, CAPO.calze_sport, { when: 2 });
         put(r(8, 2) ? 'maglietta' : 'canotta_basket', pk(['#f4f2ee', '#141418', '#e8a020'], 8));
-        put(r(9, 3) === 0 ? 'giacca_tuta' : r(9, 3) === 1 ? 'smanicato' : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc'], 9));
+        put(r(9, 4) === 0 ? 'giacca_tuta' : r(9, 4) === 1 ? 'smanicato' : r(9, 4) === 2 ? (r(34, 2) ? 'tuta_nylon' : 'puffer_corto') : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc', '#8a1e2a'], 9));
         put('scarpe_air'); put('cappellino_dritto', pk(['#141418', '#1e2a4a', '#e8e4dc'], 12)); if (r(16, 2)) put('occhiali_mascherina'); put(r(10, 2) ? 'borsello' : 'marsupio_tracolla', pk(['#141418', '#2a2a30', '#5a4a3a'], 11)); if (r(11, 2)) put(r(12, 3) ? 'catenina' : 'collana_oro');
       } }
+    else if (age < 30 && r(21, 3) === 0) {   // [personaggi] vintage e second hand: camicia anni 70 o jacquard, cardigan o giacca di tela o giubbotto con le toppe, risvolti, anfibi o tela
+      const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
+      legs(r(22, 3) === 0 ? 'salopette' : r(22, 3) === 1 ? 'jeans_risvolto' : 'velluto', pk(['#2a3e6a', '#6a4a2a', '#4a5a3a', '#3a3a40'], 23));
+      put(r(24, 2) ? 'camicia_70' : 'maglione_fairisle', pk(['#c8783a', '#d8ccb0', '#5a7a5a', '#8a3a2a', '#e8d8b0'], 25));
+      put(pk(['cardigan', 'giacca_lavoro', 'giacca_toppe', 'chiodo_spille'], 26), pk(['#8a6a3a', '#3a4a6a', '#3a5a8a', '#141416', '#5a3a2a'], 27));
+      put(r(28, 2) ? 'anfibi' : 'scarpe_tela', r(28, 2) ? '#141210' : pk(['#e8e2d6', '#c83a2a', '#2a3a5a'], 29)); if (r(30, 3) === 0) put(r(31, 2) ? 'cappello_pescatora' : 'berretto', pk(['#c8b88a', '#2a2a2e', '#8a2a24', '#3a5a3a'], 32)); if (r(33, 3) === 0) put('occhiali_ovali'); }
     else if (age < 26) { put(r(8, 2) ? 'felpa' : 'maglione', pk(PAL, 8)); put(r(9, 3) ? 'giubbotto_jeans' : r(9, 2) ? 'giacca_pelle' : 'piumino', top); put(r(10, 2) ? 'scarpe_tela' : 'scarpe'); if (r(11, 3) === 0) put('berretto', pk(PAL, 12)); }
     else if (fem) { put('camicia', pk(['#f0ece2', '#e8d8d0', '#d8e0e8'], 8)); put(r(8, 2) ? 'maglione' : 'scialle', pk(PAL, 9)); put('cappotto', top); put(age > 50 ? 'scarpe_eleganti' : 'scarpe_tela', '#2a2020'); if (age > 50 || r(10, 2)) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#6a4a2a', '#2a2a2e'], 11)); }
     else { put(r(8, 2) ? 'camicia' : 'camicia_quadri', pk(['#f0ece2', '#8a2a24', '#2a4a6a'], 7)); put('maglione', pk(PAL, 9)); put(r(10, 2) ? 'giacca' : 'cappotto', top); put('scarpe'); if (r(11, 3) === 0) put(pk(['coppola', 'berretto', 'cappello'], 12)); if (r(12, 3) === 0) put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#3a5a8a'], 13)); }
+    // [personaggi] la Risacca: chi ci crede si veste da resistenza (giacca militare o parka, anfibi, kefiah, mimetici o cargo, zaino tattico, guanti senza dita)
+    if (n.ris && (n.ris.member || n.ris.ideo > .72) && !(n.cop || n.military) && r(35, 3) !== 0) {
+      const sw = (zona, test, id, col) => { const i = o.findIndex(x => x.zona === zona && test.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
+      sw('busto', /cappotto|giacca|giubbotto|piumino|impermeabile|montone|giacca_pelle|felpa_skate/, r(36, 2) ? 'giacca_militare' : 'parka', pk(['#4a5238', '#3e4a3a', '#2a2e26', '#5a4a32'], 37));
+      sw('gambe', /^(pantaloni|jeans|velluto|pantaloni_lavoro|cargo|jeans_larghi|pantaloni_tuta)$/, r(38, 2) ? 'pantaloni_mimetici' : 'cargo', r(38, 2) ? null : pk(['#2a2a2e', '#4a5038'], 39));
+      sw('piedi', /scarpe|stivali|mocassini/, 'anfibi'); if (r(40, 2)) put('kefiah', pk(['#e8e4dc', '#c83a2a'], 41)); if (r(42, 3) === 0) put('guanti_monchi'); if (r(43, 3) === 0) put('zaino_tattico'); if (r(44, 3) === 0) put(r(45, 2) ? 'bandana' : 'berretto', pk(['#1a1a1e', '#8a1e2a', '#3a4232'], 46)); if (r(47, 4) === 0) put('gilet_toppe');
+    }
     if (n.faction && /famiglia|marsiglia|squalo/.test(n.faction)) { o.forEach(x => { if (x.id === 'cappotto' || x.id === 'giacca') x.col = '#1a1a1e'; }); put('guanti'); put(r(15, 2) ? 'collana_oro' : 'cravatta'); if (r(16, 3) === 0) put('occhiali_sole'); if (r(17, 4) === 0) { const c0 = o.find(x => x.id === 'cappotto'); if (c0) Object.assign(c0, CAPO.pelliccia_volpe); } }
     // un tocco a testa: l'accessorio che li fa ricordare
     if (rich && fem && r(18, 3) === 0) { const c0 = o.find(x => /cappotto|giacca/.test(x.id)); if (c0) Object.assign(c0, CAPO.pelliccia, { col: '#c8a060' }); put('collana_perle'); put('borsetta'); }
