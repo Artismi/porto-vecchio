@@ -55571,7 +55571,7 @@ var Riva = (function () {
       const bD = 5 - 1.8 * ca + 3 * n1, top = WL + .62 - .12 * ca + .25 * n1;
       let h = WL - .04 + (top - WL + .04) * (1 - Math.exp(-d / (bD * .42)));
       h += .13 * Math.sin(al * 6.2832 / 12 + 6 * n1) * Math.exp(-(((d - 1.6) / 1.8) ** 2));   // le cuspidi (ogni 12 m la battigia avanza e rientra di un metro)
-      h += .24 * Math.exp(-(((d - bD) / 1.2) ** 2)) + Math.max(0, d - bD) * .012;           // la berma, poi la retrospiaggia
+      h += .22 * sstep(bD - 1.6, bD + .4, d) + Math.max(0, d - bD) * .012;           // la berma: uno scalino largo (non una cresta, che a schermo fa una riga), poi la retrospiaggia
       h += .55 * Math.max(0, fbm(x / 6.5, y / 6.5, 307, 3) - .44) * sstep(bD + .5, bD + 5, d) + (fbm(x / 2.2, y / 2.2, 308, 2) - .5) * .08 * sstep(bD, bD + 3, d);   // le dune embrionali e le gobbe del vento dietro la berma
       if (du > 0) { const A = 1.1 + 1.5 * fbm(x / 40, y / 40, 303, 2), dz = d - (15 + 4 * n1); let dn = A * Math.exp(-dz * dz / (20 + 12 * n1)) * (.5 + .95 * fbm(x / 7, y / 7, 304, 3)); dn *= 1 - .7 * sstep(.58, .68, fbm(x / 26, y / 26, 306, 2)); h += dn * du; }   // il cordone, le gobbe, le conche del vento
       h += (fbm(x / 3.1, y / 3.1, 302, 2) - .5) * .05;
@@ -55655,7 +55655,7 @@ var Riva = (function () {
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { if (!mask[j * n + i]) continue; const tx = tx0 + i, ty = ty0 + j; if (famT(tx, ty) !== 1) continue;
       for (let c = 0; c < (LEGGERA ? 1 : 3); c++) { const x = (tx + h2(tx, ty, 520 + c)) * TS, y = (ty + h2(tx, ty, 530 + c)) * TS, u = x / TS - tx, v = y / TS - ty, d = bil(dV(tx, ty), dV(tx + 1, ty), dV(tx, ty + 1), dV(tx + 1, ty + 1), u, v), wn = bil(nV(tx, ty), nV(tx + 1, ty), nV(tx, ty + 1), nV(tx + 1, ty + 1), u, v);
         if (wn < .7) continue; const bD = 5 + 3 * fbm(x / 9, y / 9, 301, 3), cl = fbm(x / 11, y / 11, 541, 2), p = h2(tx, ty, 550 + c);
-        if (Math.abs(d - bD) < 1.6 && cl > .45 && p < .55) B.detriti.push({ k: 'alga', x, y, s: .5 + h2(tx, ty, 560 + c) * .8, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) });
+        if (false && Math.abs(d - bD) < 1.6 && cl > .45 && p < .55) B.detriti.push({ k: 'alga',   /* la posidonia ora è solo nel disegno della sabbia (i pezzi piatti sembravano cartone) */ x, y, s: .5 + h2(tx, ty, 560 + c) * .8, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) });
         else if (d > 1.5 && d < bD + 3 && p < .018) B.detriti.push({ k: 'legno', x, y, s: .6 + h2(tx, ty, 560 + c) * 1.6, ry: h2(tx, ty, 570 + c) * 6.283, t: h2(tx, ty, 580 + c) }); } }
     return B;
   }
@@ -55742,7 +55742,7 @@ var Riva = (function () {
       float gu = smoothstep(.86, .93, gr) * smoothstep(.55, .75, tone) * aaM;   // conchiglie e ghiaietta
       sab *= 1. + (gr - .5) * .08 * aaM + rip * .035 * aaL;
       sab = mix(sab, vec3(.92, .89, .82), gu * .85);
-      sab = mix(sab, mix(vec3(.24, .2, .15), vec3(.36, .3, .22), gr), wr * .8);
+      sab = mix(sab, mix(vec3(.27, .23, .17), vec3(.38, .32, .24), gr), wr * smoothstep(.2, .8, rn9(p * vec2(3.1, 1.2) + 7.)) * .85);   // la posidonia spiaggiata: fibre scure a ciocche lungo la berma
       vec3 roc = vec3(.6); float crk = 0., pit = 0.;
       if (vRS9.y > .01) {   // la roccia solo dove c'è
         vec3 c1 = rc9(p * .4);
@@ -58439,7 +58439,7 @@ var Render = (function () {
           float rockK = smoothstep(.62, .85, S.g), mudK = smoothstep(.22, .4, S.g) * (1. - rockK);
           vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b) * (1. - S.g));
           bed *= (.35 + .65*sunK) * dayK + .02;
-          bed += vec3(1.,.96,.86) * caust(bq*.8) * .5 * exp(-dep*.3) * sunK;
+          bed += vec3(1.,.96,.86) * caust(bq*.8) * .5 * exp(-dep*.3) * sunK * (RIVA9 > .5 ? smoothstep(.8, 2.6, dep) : 1.);   // [riva] nell'acqua sottile si vede la sabbia vera: niente caustiche finte sopra
           vec3 Tr = exp(-vec3(.42,.13,.09) * (dep + .9) * (1.3 + mudK * 1.6));   // nel porto l'acqua è torbida; [arcipelago] un velo minimo: anche a 30 cm resta turchese, mai sabbia asciutta
           vec3 scat = mix(mix(mix(vec3(.02,.13,.21), vec3(.05,.12,.11), mudK), vec3(.07,.11,.13), wx.x), vec3(.01,.02,.04), night);
           vec3 c = bed * Tr + scat * (vec3(1.) - Tr) * dayK;
