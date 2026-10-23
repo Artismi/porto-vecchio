@@ -350,8 +350,8 @@ var Tetti = (function () {
         if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '9m']), false);
         if (C.v5 && archi5.some(([x, y]) => hyp(x - cx, y - cy) < 30)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '30m']), false);   // sopra la Rua e la Marina un arco ogni 30 m (LEGGIBILITA.md)
         if (lad0.some(([x, y]) => hyp(x - wx, y - wy) < (sep < 4 ? 1.1 : 1.8) || hyp(x - wx - ox * gap, y - wy - oy * gap) < (sep < 4 ? 1.1 : 1.8))) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina2']), false);
-        const pin = (ox ? Math.min(B[C.a].w, B[C.b].w) : Math.min(B[C.a].h, B[C.b].h)) >= 2 ? PIN : .9;   // la testa delle assi entra un metro e mezzo; sulle case di una casella (2 m) novanta centimetri
-        const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .6 : PHW, gap, pin, x0: wx - ox * pin, y0: wy - oy * pin, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
+        const pin = (ox ? Math.min(B[C.a].w, B[C.b].w) : Math.min(B[C.a].h, B[C.b].h)) >= 2 ? PIN : 1.36;   // [tetti4] sulle case di una casella la rampa si ferma a 64 cm dal muro di là (il parapetto e la copertina): la scaletta resta dolce   // la testa delle assi entra un metro e mezzo; sulle case di una casella (2 m) novanta centimetri
+        const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .45 : PHW, gap, pin, x0: wx - ox * pin, y0: wy - oy * pin, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
         P.L = pin * 2 + gap; P.s1 = pin; P.s2 = pin + gap;
         PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
         for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
@@ -1082,7 +1082,7 @@ var Tetti = (function () {
       if (!PIANO[P.a] || !PIANO[P.b] || PIANO[P.a].tipo !== 'piano' || PIANO[P.b].tipo !== 'piano') return;
       const sp = (P.arco ? ARCO4 : FONDO4) + .015, larg = P.hw + .06, fa = roofRule(B[P.a]) + .08, fb = roofRule(B[P.b]) + .08;
       const solMax = (u0, u1) => { let m = -Infinity; for (let s2 = u0 - .1; s2 <= u1 + .1 + 1e-6; s2 += .05) for (let t = -larg - .05; t <= larg + .05 + 1e-6; t += (larg + .05) / 4) {   /* un poco più largo e più fitto della misura */ const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; caseSotto4(x, y).forEach(bi => { m = Math.max(m, solido4(bi, x, y)); }); } return m; };
-      const a0 = Math.max(.25, P.s1 - .36), b1 = Math.min(P.L - .25, P.s2 + .36);   // il pianerottolo copre il parapetto (28 cm) e la copertina (21), la scaletta il resto
+      const a0 = Math.max(.25, P.s1 - .45), b1 = Math.min(P.L - .25, P.s2 + .45);   // il pianerottolo copre il parapetto (28 cm) e la copertina (21), la scaletta il resto
       let Ha = solMax(a0, P.s1 + .3) + sp, Hb = solMax(P.s2 - .3, b1) + sp;
       // sopra il vicolo: se una gronda vicina sporge sotto la retta, si alzano i due pianerottoli
       let alza = 0; for (let s2 = P.s1 + .3; s2 <= P.s2 - .3 + 1e-6; s2 += .1) { const t0 = (s2 - P.s1 - .3) / Math.max(.1, P.s2 - P.s1 - .6), h = Ha + (Hb - Ha) * t0, m = solMax(s2, s2) + sp; if (m - h > alza) alza = m - h; }
@@ -1179,7 +1179,7 @@ var Tetti = (function () {
       if (dentro) su(top + .08);
       // il parapetto e la copertina (21 cm fuori e dentro il filo del muro), per lato
       [['W', dW, ly >= y0 - .21 && ly <= y1 + .21], ['E', dE, ly >= y0 - .21 && ly <= y1 + .21], ['N', dN, lx >= x0 - .21 && lx <= x1 + .21], ['S', dS, lx >= x0 - .21 && lx <= x1 + .21]].forEach(([f, d, ok]) => {
-        if (!ok) return; if (d >= 0 && d <= .28) su(top + ph(f)); if (d >= -.21 && d <= .21) su(top + ph(f) + .07); });
+        if (!ok) return; if (d >= 0 && d <= .28) su(top + ph(f)); if (d >= -.21 && d <= .4) su(top + ph(f) + .07); });   /* la copertina: 8 cm fuori, 36 dentro (render.js), con margine */
       if (!dentro) return h;
       P.gruppi.forEach(g => { if (inRect(g, .05)) su(top + .08 + (g.alto || 1)); });
       if (P.cupola && inRect(P.cupola, 0)) su(top + .08 + P.cupola.alto);
