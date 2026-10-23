@@ -252,3 +252,13 @@ Il problema non erano le lettere ma il contorno: pupazzi da clip-art, slogan, pa
 - Via il tratteggio a righe che si aggiungeva da solo a un riempimento su tre (sembrava un filtro).
 - Da valutare: la risoluzione dei lavori grandi (`PPM` 100 per metro, `TKS` solo per gli stili piccoli). Un pezzo di 4,8 m è largo
   480 px; da vicino nel gioco viene stirato. Alzarla a ×1,5 costa circa 2,25 volte la memoria di ogni velo e delle sue 4 tappe.
+
+### Graffiti 5, quinta passata: le luci al loro posto
+- **Le luci non attraversano più le lettere**: la riga di luce (`rim`) e i colpi di bianco dei pezzi si disegnano sopra tutto, quindi
+  quelli della lettera dietro passavano sopra quella davanti (gli archi bianchi da vetro sui throw-up). Ora `inkRender` passa
+  `vis(i)`, la parte visibile della lettera i (la maschera meno quelle davanti), e le luci stanno lì dentro.
+- Via la mini-tag dentro una lettera del throw-up, e le due aureole rimaste al 3% (il numero casuale si consuma lo stesso, così il
+  resto del lavoro non cambia).
+- Riempimenti: niente più macchie sfocate né tratteggio nei throw-up e nei pezzi (anche quando la tavolozza chiede le macchie:
+  diventano bande).
+- I pezzi dai font quasi nove volte su dieci (il motore a blocchi procedurali è il meno leggibile).
