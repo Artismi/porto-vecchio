@@ -21936,6 +21936,13 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     ctx.putImageData(img, 0, 0);
   }
 
+  // ================= IL TAPPETO DI PRIMA LEGGE LE FORMAZIONI NUOVE =================
+  // Il verde a carte di render.js (verde38) sceglie erbe e cespugli dall'ambiente (eco) del generatore, che sotto il verde nuovo è ancora
+  // quello del bosco d'inverno (faggeta, vallone, abetaia: foglioni, felci larghe, palmette di sottobosco umido). Qui la formazione
+  // mediterranea gli dice quale ambiente usare: prati da pascolo, macchia, pineta, gariga ventosa, uliveto.
+  const VD_DA_FORMA = { prato: 'PASCOLO', giardino: 'PASCOLO', gariga: 'FARO', macchia: 'MACCHIA', lecceta: 'MACCHIA', pineta: 'PINETA', pinetaM: 'PINETA', eucalipteto: 'PINETA', uliveto: 'ULIVETO', agrumeto: 'VIGNE', riparia: 'VALLONE' };
+  function ecoTappeto(W, i) { const P = W && W.vegetazione; if (!P || SPENTO) return 0; const f = P.form[i]; if (!f || f === F.costa || f === F.urbano) return 0; const k = VD_DA_FORMA[FORM[f].id]; return k && W.ECO ? W.ECO[k] || 0 : 0; }
+
   // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
   // monta(scene, { W, groundH, telefono }) prepara i gruppi; aggiorna(cx, cz, t) a ogni fotogramma: quando la camera si sposta di qualche
   // metro rifà gli elenchi: vicino (entro R0) il modello intero per specie e variante; a media distanza (R0 … R1) la sagoma per specie;
@@ -21992,7 +21999,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
@@ -64677,7 +64684,7 @@ var Render = (function () {
   function vdHi(X, Y, hb) { const v = vnz(X / 15 + 41, Y / 15 + 17) + vnz(X / 5 + 3, Y / 5 - 9) * .22 + hb; return vdS(-.12, .14, v); }
   function vdWin(L, X, Y, r) { let b = null, bv = -9, c = null, cv = -9; for (const [sp, adv] of L) { const v = vdDrift(sp, X, Y) + adv; if (v > bv) { c = b; cv = bv; b = sp; bv = v; } else if (v > cv) { c = sp; cv = v; } } if (r && c && bv - cv < .07 && r() < .45) return [c, cv]; return [b, bv]; }
   const VDEN = {}; (() => { const E = (M.world && M.world.ECO) || {}; for (const k in E) VDEN[E[k]] = k; })();
-  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return W0.eco[ty * G.GW + tx]; };
+  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; const i = ty * G.GW + tx; return (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && W0.vegetazione && Vegetazione.ecoTappeto(W0, i)) || W0.eco[i]; };   // [vegetazione] sotto il verde nuovo il tappeto segue la formazione mediterranea
   // l'ambiente in un punto, mescolato come in world.js: si legge da un punto spostato (rumore largo + grana), ai bordi si alternano
   const vdEcoMix = (X, Y, j) => { const dx = vnz(X / 30, Y / 30) * 26 + (j || 0) * 10 * (vnz(X * 1.7, Y * 1.3) * 2), dy = vnz(X / 30 + 9, Y / 30 + 4) * 26 + (j || 0) * 10 * (vnz(X * 1.3 + 5, Y * 1.9) * 2); return vdEco(Math.floor((X + dx) / TS), Math.floor((Y + dy) / TS)) || vdEco(Math.floor(X / TS), Math.floor(Y / TS)); };
   const vdPlan = e => VDPLAN[VDEN[e] || 'NONE'] || VDPLAN.NONE;

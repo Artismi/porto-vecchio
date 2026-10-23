@@ -1169,6 +1169,13 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     ctx.putImageData(img, 0, 0);
   }
 
+  // ================= IL TAPPETO DI PRIMA LEGGE LE FORMAZIONI NUOVE =================
+  // Il verde a carte di render.js (verde38) sceglie erbe e cespugli dall'ambiente (eco) del generatore, che sotto il verde nuovo è ancora
+  // quello del bosco d'inverno (faggeta, vallone, abetaia: foglioni, felci larghe, palmette di sottobosco umido). Qui la formazione
+  // mediterranea gli dice quale ambiente usare: prati da pascolo, macchia, pineta, gariga ventosa, uliveto.
+  const VD_DA_FORMA = { prato: 'PASCOLO', giardino: 'PASCOLO', gariga: 'FARO', macchia: 'MACCHIA', lecceta: 'MACCHIA', pineta: 'PINETA', pinetaM: 'PINETA', eucalipteto: 'PINETA', uliveto: 'ULIVETO', agrumeto: 'VIGNE', riparia: 'VALLONE' };
+  function ecoTappeto(W, i) { const P = W && W.vegetazione; if (!P || SPENTO) return 0; const f = P.form[i]; if (!f || f === F.costa || f === F.urbano) return 0; const k = VD_DA_FORMA[FORM[f].id]; return k && W.ECO ? W.ECO[k] || 0 : 0; }
+
   // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
   // monta(scene, { W, groundH, telefono }) prepara i gruppi; aggiorna(cx, cz, t) a ogni fotogramma: quando la camera si sposta di qualche
   // metro rifà gli elenchi: vicino (entro R0) il modello intero per specie e variante; a media distanza (R0 … R1) la sagoma per specie;
@@ -1225,7 +1232,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;

@@ -8226,7 +8226,7 @@ var Render = (function () {
   function vdHi(X, Y, hb) { const v = vnz(X / 15 + 41, Y / 15 + 17) + vnz(X / 5 + 3, Y / 5 - 9) * .22 + hb; return vdS(-.12, .14, v); }
   function vdWin(L, X, Y, r) { let b = null, bv = -9, c = null, cv = -9; for (const [sp, adv] of L) { const v = vdDrift(sp, X, Y) + adv; if (v > bv) { c = b; cv = bv; b = sp; bv = v; } else if (v > cv) { c = sp; cv = v; } } if (r && c && bv - cv < .07 && r() < .45) return [c, cv]; return [b, bv]; }
   const VDEN = {}; (() => { const E = (M.world && M.world.ECO) || {}; for (const k in E) VDEN[E[k]] = k; })();
-  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return W0.eco[ty * G.GW + tx]; };
+  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; const i = ty * G.GW + tx; return (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && W0.vegetazione && Vegetazione.ecoTappeto(W0, i)) || W0.eco[i]; };   // [vegetazione] sotto il verde nuovo il tappeto segue la formazione mediterranea
   // l'ambiente in un punto, mescolato come in world.js: si legge da un punto spostato (rumore largo + grana), ai bordi si alternano
   const vdEcoMix = (X, Y, j) => { const dx = vnz(X / 30, Y / 30) * 26 + (j || 0) * 10 * (vnz(X * 1.7, Y * 1.3) * 2), dy = vnz(X / 30 + 9, Y / 30 + 4) * 26 + (j || 0) * 10 * (vnz(X * 1.3 + 5, Y * 1.9) * 2); return vdEco(Math.floor((X + dx) / TS), Math.floor((Y + dy) / TS)) || vdEco(Math.floor(X / TS), Math.floor(Y / TS)); };
   const vdPlan = e => VDPLAN[VDEN[e] || 'NONE'] || VDPLAN.NONE;
