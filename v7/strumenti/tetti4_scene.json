@@ -1,0 +1,9 @@
+{
+  "nota": "[tetti4] Tre scorci dei tetti come secondo livello (strumenti/galleria.js): il borgo dall'alto, il giro del campanile col suo belvedere, i tetti della marina. node strumenti/galleria.js <cartella> strumenti/tetti4_scene.json",
+  "pulita": true,
+  "scorci": [
+    { "nome": "a_borgo_alto", "titolo": "Il borgo dall'alto", "x": 1400, "y": 318, "zoom": 2.0, "ora": 700, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "b_giro_belvedere", "titolo": "Il giro del campanile e il suo belvedere", "x": 1439, "y": 304, "zoom": 0.8, "ora": 730, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "c_marina", "titolo": "I tetti della marina", "x": 1420, "y": 385, "zoom": 1.0, "ora": 760, "meteo": "sereno", "luce": "borgo" }
+  ]
+}

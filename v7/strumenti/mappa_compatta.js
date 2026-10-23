@@ -14,7 +14,13 @@ const F = { x0: 1222, y0: 238, x1: 1622, y1: 452, s: 4 };   // la cornice (metri
 
 // ---------- il terreno: acqua, terra, banchine (per casella da 2 m) ----------
 const terra = [];
-for (let y = F.y0; y < F.y1; y += TS) { const row = []; for (let x = F.x0; x < F.x1; x += TS) { const v = W.grid[Math.floor(y / TS) * GW + Math.floor(x / TS)]; row.push(v === T.WATER ? 0 : v === T.QUAY || v === T.PIER ? 2 : 1); } terra.push(row); }
+// [costa2] la riva nuova: la casella di terra che tocca il mare porta il suo tipo (3 + indice in RIVA2), così la pianta disegna la costa colorata
+const RIVA2 = ['scogli', 'falesia', 'cala', 'spiaggia', 'duna', 'foce', 'frangiflutti', 'porto'];
+const mare = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return W.grid[ty * GW + tx] === T.WATER && W.zone[ty * GW + tx] === W.Z.MARE; };
+for (let y = F.y0; y < F.y1; y += TS) { const row = []; for (let x = F.x0; x < F.x1; x += TS) { const v = W.grid[Math.floor(y / TS) * GW + Math.floor(x / TS)];
+  let c = v === T.WATER ? 0 : v === T.QUAY || v === T.PIER ? 2 : 1;
+  if (c === 1 && (mare(x + TS, y) || mare(x - TS, y) || mare(x, y + TS) || mare(x, y - TS))) c = 3 + Math.max(0, RIVA2.indexOf(W.coastKind2 ? W.coastKind2(x + 1, y + 1) : W.coastKind(x + 1, y + 1)));
+  row.push(c); } terra.push(row); }
 const rail = (W.railCity || []).filter(p => p[0] > F.x0 - 10 && p[0] < 1490).map(p => [+p[0].toFixed(1), +p[1].toFixed(1)]);
 
 // ---------- il progetto ----------
@@ -201,7 +207,7 @@ function disegna(cv, D, F, terra, rail, EPOCA, modo, sfondo) {
   if (modo === 'progetto') { ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1; for (let y = 6; y < H0; y += 12) { ctx.beginPath(); for (let x = 0; x < W0; x += 24) { ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 6, y - 3, x + 12, y); } ctx.stroke(); } }
   // la terra (maschera)
   const mask = document.createElement('canvas'); mask.width = W0; mask.height = H0; const m = mask.getContext('2d');
-  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1504 && F.x0 + i * 2 < 1518) return;   /* il canale della Rocca */ if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : '#f3eee2'; m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
+  terra.forEach((row, j) => row.forEach((v, i) => { if (modo === 'progetto' && F.x0 + i * 2 >= 1504 && F.x0 + i * 2 < 1518) return;   /* il canale della Rocca */ if (v) { m.fillStyle = v === 2 ? '#c9c4b8' : v >= 3 ? ['#9a948a', '#5c4a42', '#f2b46a', '#f6e2a6', '#ecc46e', '#7a9e4a', '#cfd6de', '#c9c4b8'][v - 3] : '#f3eee2';   /* [costa2] la riva per tipo */ m.fillRect(i * 2 * S, j * 2 * S, 2 * S + .5, 2 * S + .5); } }));
   if (modo === 'progetto') ctx.drawImage(mask, 0, 0);
   else ctx.drawImage(sfondo, 0, 0, W0, H0);
   // i distretti per epoca, solo sulla terra
