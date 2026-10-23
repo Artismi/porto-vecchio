@@ -459,7 +459,7 @@ var Sottosuolo = (function () {
       if (!xs.length) return () => null; const q = (a, k) => a.slice().sort((m, n) => m - n)[Math.floor(a.length * k)], X0 = q(xs, .1), X1 = q(xs, .9), Y0 = q(ys, .1), Y1 = q(ys, .9);
       return (fx, fy) => { const gx = X0 + (X1 - X0) * fx, gy = Y0 + (Y1 - Y0) * fy; let b = null, bd = 1e9; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - gx) ** 2 + (ys[i] - gy) ** 2; if (d < bd) { bd = d; b = i; } } return [cen(xs[b]), cen(ys[b])]; }; })();
     // [mappa_compatta] nella città compatta la linea va dal Mercato (accanto alla tettoia, verso i Giardini) alle Mura (la Via delle Mura, sotto la vedetta)
-    const MKT = (W.sets || []).find(s => s.k === 'mercato'), VM = (W.roads || []).find(r => r.id === 'vic_mura');
+    const MKT = (W.sets || []).find(s => s.k === 'ottagono') || (W.sets || []).find(s => s.k === 'mercato'),   /* [pianta] la stazione sotto la vecchia piazza del mercato */ VM = (W.roads || []).find(r => r.id === 'vic_mura');
     const VMq = VM ? VM.pts.reduce((b, q) => (!b || Math.hypot(q[0] - 1455, q[1] - 288) < Math.hypot(b[0] - 1455, b[1] - 288) ? q : b), null) : null;
     const COMP = !!(W.luoghi && MKT && VMq);
     const aS = COMP ? [MKT.x - 12, MKT.y + 9] : cityAt(.2, .92), aN = COMP ? [VMq[0], VMq[1] + 6] : cityAt(.8, .08);
