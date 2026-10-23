@@ -1565,7 +1565,7 @@ var Game = (function () {
       const ta = inp.aim !== undefined ? inp.aim : Math.atan2(iy, ix); p.face += angDiff(ta, p.face) * (1 - Math.exp(-dt * 28)); p.speed = back ? -sp : sp;   // [fluido] girarsi non dipende dai fotogrammi (1 - e^-k·dt) ed è svelto: un dietrofront in ~0,1 s (prima ~0,2 s e più lento coi fotogrammi lunghi)
     } else { p.speed = 0; if (inp.aim !== undefined) p.face += angDiff(inp.aim, p.face) * (1 - Math.exp(-dt * 14)); }   // [fluido]
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
-    if (!p.lv || p.lv.k !== 'ug') pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa
+    if ((!p.lv || p.lv.k !== 'ug') && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa   // [regia] e dentro le case sono fuori: l'interno è più grande della sagoma e un'auto parcheggiata in strada ti spingeva attraverso i muri, fuori dall'edificio
   }
   function tryMove(o, dx, dy, r, swim) {
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]
@@ -1840,9 +1840,14 @@ var Game = (function () {
   // sbalzo: scivola finché l'attrito non lo ferma (poco in aria, molto a terra), rimbalza sui muri
   function knockback(st, o, dt) {
     if (!o.kbx && !o.kby) return;
+    // [regia] lo spintone rispetta i muri di dove sei: dentro una casa i muri e i mobili, sotto terra le gallerie (prima guardava solo
+    // la mappa di fuori: una spinta in casa o in galleria ti portava attraverso le pareti, e fuori dall'edificio)
+    if (o === st.player) o.__st = st;
+    const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, .3) : null, L = LVf ? null : indoorL(o);
+    const ok = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, .3) : walkM);
     const nx = o.x + o.kbx * dt, ny = o.y + o.kby * dt;
-    if (walkM(nx, o.y)) o.x = nx; else o.kbx *= -.4;
-    if (walkM(o.x, ny)) o.y = ny; else o.kby *= -.4;
+    if (ok(nx, o.y)) o.x = nx; else o.kbx *= -.4;
+    if (ok(o.x, ny)) o.y = ny; else o.kby *= -.4;
     const air = st.clock - (o.airT || -9) < (o.airDur || 0), l = Math.hypot(o.kbx, o.kby), f = Math.max(0, l - (air ? 1 : 14) * dt) / (l || 1);
     o.kbx *= f; o.kby *= f; if (l < .1) { o.kbx = 0; o.kby = 0; }
   }

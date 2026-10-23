@@ -110,9 +110,9 @@ var Interior = (function () {
         return home(moodOf(b, condo ? f : 0, mr));
       }
       case 'faro': return f === 0 ? { names: ['ingresso_faro'], mood: 'faro' } : f === nF - 1 ? { names: ['lanterna'], mood: 'faro' } : { names: [['alloggio_guardiano', 'deposito_olio', 'stanza_radio', 'alloggio_guardiano', 'deposito_olio', 'stanza_radio'][(f - 1) % 6]], mood: 'faro' };
-      case 'bar': return f === 0 ? { names: ['sala_bar', 'sala_biliardo', 'retro', 'bagno', 'magazzino'], mood: 'bar' } : up();
+      case 'bar': return f === 0 ? { names: ['sala_bar', 'retro', 'sala_biliardo', 'bagno', 'magazzino'], mood: 'bar' } : up();   // [regia] in ordine d'importanza
       // [attività] la birreria, l'armeria col poligono, gli abiti, l'autorimessa
-      case 'pub': return f === 0 ? { names: ['sala_pub', 'sala_biliardo', 'retro', 'bagno', 'cantina_birra'], mood: 'pub' } : up();
+      case 'pub': return f === 0 ? { names: ['sala_pub', 'cantina_birra', 'sala_biliardo', 'bagno', 'retro'], mood: 'pub' } : up();
       case 'armeria': return f === 0 ? { names: ['armeria_negozio', 'poligono', 'laboratorio_armi', 'bagno'], mood: 'armeria' } : up();
       case 'abbigliamento': return f === 0 ? { names: ['negozio_vestiti', 'camerini', 'magazzino', 'bagno'], mood: 'abbigliamento' } : up();
       case 'autorimessa': return f === 0 ? { names: ['salone_auto', 'officina_r', 'ufficio_vendite', 'bagno'], mood: 'autorimessa' } : { names: ['soppalco'], mood: 'autorimessa' };
@@ -238,7 +238,7 @@ var Interior = (function () {
     cucina_corta: [2.75, .95, [['kitchenStove', -.9, .45, 0], ['kitchenSink', 0, .45, 0], ['kitchenCabinet', .9, .45, 0]]],
     cucina_povera: [2.2, .7, [['ia_cucina_gas', -.55, .3, 0], ['ia_lavello', .5, .3, 0], ['?ia_moka', -.6, .3, 0, .82], ['?ia_pentola', -.45, .3, 0, .82]]],
     angolo_stufa: [2.3, 1.8, [['st_stufa', 0, .45, 0], ['ia_legna', 1.0, .3, 0], ['?ia_secchio_carbone', -.75, .25, 0], ['chair', .25, 1.45, PI + .5]]],
-    divano: [2.9, 2.3, [['loungeSofa', 0, .45, 0], ['rugRectangle', 0, 1.35, 0], ['tableCoffee', 0, 1.5, 0], ['?lampRoundFloor', 1.3, .25, 0], ['?ia_posacenere', .2, 1.5, 0, .38]]],
+    divano: [2.9, 2.3, [['loungeSofa', 0, .45, 0], ['rugRectangle', 0, 1.35, 0], ['tableCoffee', 0, 1.5, 0], ['?lampRoundFloor', 1.3, .25, 0], ['?ia_posacenere', .2, 1.5, 0, .38], ['ia_rivista', -.25, 1.48, .35, .38], ['?ia_tazze', .45, 1.55, 0, .38], ['?ia_gatto', -1.1, 2.0, 1]]],   // [regia] il tavolino non è mai vuoto
     divano_vecchio: [2.6, 1.9, [['ia_divano', 0, .45, 0], ['ia_tavolino', 0, 1.45, 0], ['?ia_giornali', -.25, 1.45, 0, .74]]],
     tv: [1.8, 2.5, [['ia_tv', 0, .3, 0], ['ia_poltrona', 0, 2.05, PI]]],
     radiogrammofono: [2, 1.8, [['ia_radio_grande', 0, .25, 0], ['ia_poltrona', .2, 1.35, PI + .3]]],
@@ -313,6 +313,34 @@ var Interior = (function () {
     cucina_design: [3.3, .7, [['ia_cucina_componibile', 0, .33, 0]]],
     // [disgelo] il letto dei ragazzi: trapunta patchwork, le casse fatte con le cassette della frutta, la lampada del casco da minatore
     letto_patch: [2.6, 2.3, [['ia_letto_patchwork', -.6, 1.07, 0], ['ia_casse_crate', .75, .2, 0], ['?ia_lampada_casco', 1.0, 1.2, -PI / 2]]],
+    // [regia] i salotti pensati come una scena, con la profondità: non più il divano piatto contro il muro col tavolino davanti.
+    // A L: il divano lungo sul fondo e il secondo di fianco, la poltrona di traverso che chiude il cerchio, il tavolino apparecchiato
+    // (riviste, tazze, il posacenere, i fiori), l'abat-jour sul comodino, la lampada ad arco che pende sul tavolino, il pouf, il gatto.
+    salotto_L: [4.6, 3.5, [['ia_tappeto_design', -.2, 2.0, 0], ['ia_divano_design', -.2, .5, 0], ['ia_divano_design', -1.85, 2.15, PI / 2], ['ia_tavolino_design', -.2, 1.85, 0],
+      ['ia_rivista', -.5, 1.8, .3, .42], ['ia_tazze', .05, 1.9, 0, .42], ['?ia_posacenere', .3, 1.75, 0, .42], ['?ia_vaso_fiori', -.25, 1.98, 0, .42],
+      ['ia_poltrona_design', 1.45, 2.55, -PI / 2 - .55], ['ia_comodino', 1.25, .3, 0], ['ia_abatjour', 1.25, .28, 0, .56], ['ia_lampada_arco', -1.95, .35, PI / 2],
+      ['ia_pianta_grande', 2.0, .35, 0], ['?ia_pouf', .55, 3.05, 0], ['?ia_gatto', -.9, 2.95, 1.2], ['?ia_pila_libri', 1.95, 1.4, 0]]],
+    // la conversazione: due divani affrontati, il tavolino in mezzo con le carte e i bicchieri, sul fondo la madia col giradischi
+    salotto_conversazione: [4.4, 3.9, [['ia_madia', 0, .27, 0], ['ia_giradischi', -.45, .27, 0, .81], ['?ia_vaso_fiori', .5, .25, 0, .81], ['?ia_dischi_vinile', .1, .3, 0, .81],
+      ['ia_tappeto_design', 0, 2.2, PI / 2], ['ia_divano_design', -1.45, 2.2, PI / 2], ['ia_divano_design', 1.45, 2.2, -PI / 2], ['ia_tavolino_design', 0, 2.2, PI / 2],
+      ['ia_carte_gioco', 0, 2.0, 0, .42], ['ia_bicchieri', .1, 2.4, 0, .42], ['?ia_bottiglia_vino', -.15, 2.35, 0, .42], ['?ia_posacenere', .12, 1.95, 0, .42],
+      ['ia_lampada_piede', -1.95, .3, 0], ['ia_pianta_alta', 1.95, .3, 0], ['?ia_pouf', 0, 3.6, 0]]],
+    // la sera davanti alla tv, vista di profilo: il divano da una parte, il televisore dall'altra, la luce che viene dallo schermo
+    salotto_tv: [4.8, 3.0, [['ia_tappeto_design', 0, 1.5, 0], ['ia_divano_design', -1.75, 1.5, PI / 2], ['ia_mobile_tv', 1.95, 1.5, -PI / 2], ['ia_tavolino_design', -.45, 1.5, PI / 2],
+      ['ia_rivista', -.45, 1.35, .5, .42], ['?ia_tazze', -.4, 1.75, 0, .42], ['?ia_posacenere', -.55, 1.55, 0, .42], ['ia_poltrona_design', .45, .55, .55],
+      ['ia_lampada_arco', -2.05, .2, PI / 2], ['?ia_gatto', .55, 2.3, 2], ['?ia_pianta_alta', 2.05, .22, 0], ['?ia_pouf', .35, 2.6, 0]]],
+    // il salotto di una volta: il divano a fiori, le due poltrone girate verso il tavolino basso coi giornali, l'abat-jour, il tappeto
+    salotto_anni70: [4.0, 3.2, [['rugRectangle', 0, 1.6, 0], ['ia_divano', 0, .48, 0], ['ia_poltrona', -1.5, 1.9, PI / 2 + .35], ['ia_poltrona', 1.5, 1.9, -PI / 2 - .35],
+      ['tableCoffee', 0, 1.65, 0], ['ia_giornali', -.3, 1.6, .2, .42], ['ia_posacenere', .3, 1.7, 0, .42], ['?ia_bicchieri', .05, 1.75, 0, .42],
+      ['ia_lampada_piede', 1.6, .3, 0], ['sideTable', -1.6, .25, 0], ['ia_abatjour', -1.6, .23, 0, .55], ['?ia_gatto', .4, 2.7, 2.5]]],
+    // per le stanze piccole: l'angolo (divano, poltrona di traverso, comodino con l'abat-jour, la lampada ad arco) e la tv di profilo stretta
+    salotto_angolo: [3.4, 3.0, [['ia_tappeto_design', .2, 1.65, 0], ['ia_divano_design', .25, .5, 0], ['ia_poltrona_design', -1.2, 1.85, PI / 2 + .4], ['ia_tavolino_design', .25, 1.7, 0],
+      ['ia_rivista', 0, 1.65, .4, .42], ['?ia_tazze', .45, 1.75, 0, .42], ['?ia_vaso_fiori', .25, 1.8, 0, .42], ['ia_comodino', -1.35, .25, 0], ['ia_abatjour', -1.35, .23, 0, .56],
+      ['ia_lampada_arco', 1.55, .3, -PI / 2], ['?ia_pouf', .9, 2.65, 0], ['?ia_gatto', -.4, 2.6, 2]]],
+    salotto_piccolo_tv: [3.2, 2.9, [['ia_tappeto_tondo', 0, 1.45, 0], ['ia_divano_design', -1.1, 1.45, PI / 2], ['ia_mobile_tv', 1.35, 1.45, -PI / 2], ['ia_tavolino_design', 0, 1.45, PI / 2],
+      ['ia_rivista', 0, 1.3, .5, .42], ['?ia_posacenere', .05, 1.65, 0, .42], ['?ia_pianta_alta', 1.4, .2, 0], ['?ia_lampada_piede', -1.35, .2, 0], ['?ia_gatto', .3, 2.55, 1]]],
+    // l'ultimo ripiego, dove c'è la scala e le porte: due poltrone che si parlano, il comodino con l'abat-jour in mezzo, la rivista sul pouf
+    salotto_minimo: [2.6, 1.7, [['ia_poltrona_design', -.85, .75, .45], ['ia_poltrona_design', .85, .75, -.45], ['ia_comodino', 0, .25, 0], ['ia_abatjour', 0, .23, 0, .56], ['ia_pouf', 0, 1.25, 0], ['?ia_rivista', 0, 1.25, .3, .36]]],
     salotto_isola: [3.4, 3.5, [['ia_tappeto_design', 0, 1.75, 0], ['ia_divano_design', 0, .45, 0], ['ia_divano_design', 0, 3.05, PI], ['ia_tavolino_design', 0, 1.75, 0], ['?ia_pouf', -1.35, 1.75, 0], ['?ia_pouf', 1.35, 1.75, 0]]],
   };
   // [design] mobili alti e composizioni larghe: i primi negli angoli, le seconde in mezzo al muro
@@ -353,7 +381,7 @@ var Interior = (function () {
   // ---------------------------------------------------------------------------------------------------------------
   const R = {
     // --- case ---
-    soggiorno: ['spina|parquet', 'fiori|righe|rombi|crema|verde', 'lampadario', ['!@salotto_design|@salotto_compatto|@divano|@divano_vecchio', 'ia_libreria_piena|ia_stenka', 'ia_madia|ia_credenza', '??@zona_tv', '?@angolo_stufa', 'ia_pianta_grande|pottedPlant', '?ia_pianta_alta', '?~ia_ventilatore', '^ia_quadro_grande|^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?^ia_mensola_libri', '?~ia_gatto', '?~ia_giornali', '%@carte_interrotta|@cucito|@angolo_bimbi|@stiro|@lettura_design', '??~ia_palla'], ['*@salotto_isola', '@lettura_design', 'ia_pianta_alta', '%@cucito|@angolo_bimbi|@stiro|@carte_interrotta', 'ia_libreria_piena', 'ia_pouf']],
+    soggiorno: ['spina|parquet', 'fiori|righe|rombi|crema|verde', 'lampadario', ['!%@salotto_L|@salotto_conversazione|@salotto_tv|@salotto_design', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', 'ia_libreria_piena|ia_stenka', 'ia_madia|ia_credenza', '??@zona_tv', '?@angolo_stufa', 'ia_pianta_grande|pottedPlant', '?ia_pianta_alta', '?~ia_ventilatore', '^ia_quadro_grande|^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?^ia_mensola_libri', '?~ia_gatto', '?~ia_giornali', '%@carte_interrotta|@cucito|@angolo_bimbi|@stiro|@lettura_design', '??~ia_palla'], ['*@salotto_isola', '@lettura_design', 'ia_pianta_alta', '%@cucito|@angolo_bimbi|@stiro|@carte_interrotta', 'ia_libreria_piena', 'ia_pouf']],
     cucina: ['linoleum|scacchi|piastrelle|graniglia', 'piastrelle|verde|crema', 'bulbo', ['!@cucina_design|@cucina_linea|@cucina_corta|@cucina_povera', '?ia_frigo_design', '%@pranzo_design|@cena|@colazione|@pranzo|@pranzo_piccolo', '?ia_credenza|ia_madia', '?ia_pianta_alta', '^ia_calendario', '?^ia_mensola', '?^ia_orologio', '?~ia_secchio', '??~ia_bottiglie', '?~ia_cesto', '?ia_scaffale_barattoli'], ['~ia_cesto', '~ia_sgabello', 'ia_credenza']],
     camera: ['parquet|spina', 'fiori|righe|rombi|ocra|crema', 'lampadario', ['!@letto_design|@letto2|@letto1_design|@letto1|@letto_ferro', 'ia_armadio_design|ia_armadio', 'ia_como|ia_cassapanca', '?ia_pianta_alta|ia_pianta_grande', '?@lettura_design|ia_pouf', '??~ia_ventilatore', '?^ia_specchio_tondo', '^ia_quadro_grande|^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound', '??@partenza', '?%@cucito|@stiro', '??^ia_altarino', '?~ia_scarpe'], ['%@cucito|@stiro', '~ia_scarpe', 'ia_cassapanca', 'chair']],
     cameretta: ['parquet|linoleum', 'righe|blu|rombi|rosa|azzurro', 'bulbo', ['@letto_patch|@castello|@letto1_design|@letto1', '%@compiti|@studio_design|@scrivania|@letto1_design', 'ia_armadio|ia_armadio_design', '?ia_mobile_dipinto', '?^ia_mensola_skate', '?ia_tappeto_tondo', '?ia_libreria_piena', '?~ia_boombox', '?~ia_skate', '?^ia_poster_design|^ia_poster_film|^ia_manifesto', '^ia_calendario', '?~ia_pila_libri', '?~ia_valigia', '?@angolo_bimbi', '?~ia_palla', '?~ia_giocattoli'], ['@angolo_bimbi', '~ia_giocattoli', '~ia_palla']],
@@ -363,7 +391,7 @@ var Interior = (function () {
     stanza_ospiti: ['parquet|spina', 'fiori|righe|crema', 'bulbo', ['!@letto1_design|@letto1|@letto2', 'ia_armadio|ia_armadio_design', '?ia_como', '?ia_pouf', '?ia_pianta_alta', '^ia_quadro|^ia_poster_design', '^ia_termosifone', '?~ia_valigia', '?@stiro'], ['ia_pianta_alta', '@cucito']],
     lavanderia_casa: ['piastrelle|cemento', 'piastrelle|calce', 'bulbo', ['washer', '?washer', '@lavatoio', '@stiro', 'ia_scaffale_metallo|bookcaseOpenLow', '~ia_cesto', '~ia_bucato', '^ia_appendiabiti', '?~ia_secchio', '^ia_mensola'], ['~ia_cesto', '@stiro']],
     ripostiglio: ['cemento|assi', 'calce|cemento', 'bulbo', ['??ia_serra', '?st_cassetta', 'pv_banco_lavoro|bookcaseOpenLow', 'cardboardBoxClosed', 'cardboardBoxClosed', '?washer', '?ia_bici', '~ia_legna', '?~ia_secchio_carbone', '?~ia_sacchi', '^ia_attrezzi_muro|^ia_appendiabiti']],
-    salotto_buono: ['spina|parquet', 'fiori|velluto|rombi', 'lampadario', ['??st_cassaforte', 'ia_stenka', '@salotto_compatto|@divano', '?*@salotto_isola|*@pranzo_design', '?ia_pianta_grande', '?ia_libreria_piena', '?^ia_quadro_grande', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto', '^ia_altarino', '?@cucito'], ['*@salotto_isola', '@cucito', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant']],
+    salotto_buono: ['spina|parquet', 'fiori|velluto|rombi', 'lampadario', ['!%@salotto_anni70|@salotto_conversazione|@salotto_L', '??st_cassaforte', 'ia_stenka', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@salotto_minimo', '?*@salotto_isola|*@pranzo_design', '?ia_pianta_grande', '?ia_libreria_piena', '?^ia_quadro_grande', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto', '^ia_altarino', '?@cucito'], ['*@salotto_isola', '@cucito', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant']],
     dispensa: ['cotto|cemento', 'calce', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'ia_sacchi', '?fd_barrel', '?ia_cesto', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami', '~ia_bottiglie', 'ia_scaffale_barattoli', '?ia_scaffale_barattoli']],
     stanza_chiusa: ['parquet', 'fiori', 'spenta', ['ia_telo', 'ia_armadio', '?ia_valigia', '~ia_valigia', '~ia_giornali', '^ia_foto', '^ia_quadro']],
     cucina_abitabile: ['linoleum|cotto', 'verde|blu|ocra', 'bulbo', ['!@cucina_povera|@cucina_corta', '!@angolo_stufa|st_stufa', '%@colazione|@pranzo_piccolo', '?ia_frigo_vecchio', '?ia_credenza', '^ia_calendario', '?^ia_ritratto', '?^ia_mensola', '~ia_bottiglie', '?~ia_stivali', '?~ia_secchio', '?~ia_sgabello', '?ia_scaffale_barattoli'], ['~ia_sgabello', '~ia_cesto', 'ia_credenza']],
@@ -389,7 +417,7 @@ var Interior = (function () {
     mono_anziana: ['spina|parquet', 'fiori', 'lampadario', ['@letto1', '@radiogrammofono', '@cucina_povera', '@pranzo_piccolo', 'ia_credenza', '^ia_icona', '^ia_foto', '^ia_tappeto_muro', '^ia_orologio', '~ia_gatto', '^ia_altarino', '@cucito']],
     mono_artista: ['assi', 'calce', 'bulbo', ['@pittore', '@letto_patch|@materassi|ia_materasso', 'ia_mobile_dipinto', '?ia_lampada_casco', '?~ia_boombox', '?^ia_poster_design', '@cucina_povera', 'bookcaseOpen', '~ia_bottiglie', '~ia_pila_libri', '~ia_tele', '^ia_quadro', '^ia_quadro', '?^ia_scritta_risacca']],
     casa_contadina: ['cotto', 'calce|mattoni', 'fuoco', ['@focolare', '@letto2|@letto1', '@pranzo|@pranzo_piccolo', 'ia_credenza', '^ia_salami', '^ia_icona', '~ia_legna', '~ia_cesto', '?~ia_gatto', '?^ia_lupara_muro']],
-    soggiorno_cucina: ['spina|linoleum', 'fiori|righe|verde', 'lampadario', ['!@cucina_design|@cucina_corta|@cucina_povera', '@salotto_compatto|@divano|@divano_vecchio', '?ia_pianta_grande', '?ia_libreria_piena', '%@cena|@colazione|@pranzo|@pranzo_piccolo', '?@angolo_stufa', 'ia_credenza|ia_stenka', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_gatto']],
+    soggiorno_cucina: ['spina|linoleum', 'fiori|righe|verde', 'lampadario', ['!@cucina_design|@cucina_corta|@cucina_povera', '%@salotto_tv|@salotto_anni70|@salotto_piccolo_tv|@salotto_angolo', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', '?ia_pianta_grande', '?ia_libreria_piena', '%@cena|@colazione|@pranzo|@pranzo_piccolo', '?@angolo_stufa', 'ia_credenza|ia_stenka', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_gatto']],
     // --- faro ---
     ingresso_faro: ['cemento', 'calce|mattoni', 'bulbo', ['ia_bidone', 'ia_bidone', 'ia_casse', '~ia_stivali', '^ia_appendiabiti', '^ia_reti']],
     alloggio_guardiano: ['assi', 'perline|calce', 'bulbo', ['@branda', '@angolo_stufa', '@pranzo_piccolo', '^ia_mappa', '^ia_orologio', '~ia_bottiglie', '^ia_lupara_muro']],
@@ -545,6 +573,12 @@ var Interior = (function () {
   const ROWS = { platea: ['ia_palco', 'rc_seat'], sala_cinema: ['rc_screen', 'rc_seat'], galleria: [null, 'rc_seat'], aula: ['desk', 'ia_banco_scuola'], navata: ['@altare', 'ia_panca_chiesa'], salone_cultura: ['ia_palco', 'rc_seat'] };
   // mobili alti: davanti a loro non si appende niente
   const TALL = /ia_lampada_casco|ia_serra|libreria_piena|armadio_design|frigo_design|cucina_componibile|lavabo_design|consolle_ingresso|attaccapanni|pianta_grande|porta_caveau|cassette_sicurezza|stender|manichino|camerino|bookcase|stenka|armadio|Fridge|frigo|scaffale|armadietti|jukebox|arcade|vending|claw|castello|schedario|credenza|radio_grande|pianoforte|quadro_comandi|prizes|dance|basketball|fx_|ia_casse|ia_bidone/;
+  // [regia] la camera guarda da sud-est (yaw π/4): i muri di FONDO sono nord e ovest (restano alti, ci si appende, si vedono i mobili
+  // di fronte); quelli di sud e di est sono tagliati bassi verso la camera. L'arredo si dispone come un set: il pezzo forte della stanza
+  // (il bancone, il letto, l'altare, la scaffalatura) contro il fondo e rivolto alla camera, i mobili alti mai sul davanti (coprirebbero
+  // la scena), i mobili che hanno un davanti preferiscono il fondo; sul davanti resta la roba bassa e il passaggio.
+  const FONDO = { N: 1, W: 1 };
+  const FRONTE = /letto|bed|divano|loungeSofa|bancone|banco|scaffale|bookcase|libreria|stenka|credenza|madia|vetrina|cucina|kitchen|tv|desk|scrivania|altare|camerino|stender|jukebox|arcade|pinball|vending|gambling|claw|forno|forgia|^st_|rastrelliera|quadro_comandi|ricetrasmittente|pianoforte|focolare|stufa|armadio|como|botti|sportello|consolle|biliardo|lavello|lavabo|vasca|bathtub|toilet|washer|poltrona_barbiere|altoparlante|tele$|cavalletto|manichino|scarpiera|schedario/;
   // apertura delle stanze grandi: niente muri dentro
   const OPEN = { chiesa: 1, deposito: 1, officina: 1, fabbrica: 1, hangar: 1, cantiere: 1, faro: 1 };
   const MAINBIG = { banca: 1, bar: 1, pub: 1, autorimessa: 1, abbigliamento: 1, armeria: 1, trattoria: 1, circolo: 1,
@@ -604,6 +638,48 @@ var Interior = (function () {
     // le stanze ai due lati; se la casa è profonda, in fondo c'è una stanza larga quanto la casa (il soggiorno, di solito).
     // I muri del corridoio nascono senza porta: le apre hallDoors, una per stanza.
     const X = b.x * TS, Y = b.y * TS, Wd = b.w * TS, Hd = b.h * TS;
+    // [regia] le attività: tante stanze quante ne chiede il programma, mai di più (niente secondo retro, terza cucina, magazzino in
+    // doppio). Si taglia sempre la stanza più grande; la stanza della porta una volta sola, parallela al muro della porta: davanti la
+    // sala (due terzi), dietro la fascia dei servizi, che poi si divide in retro, bagno, magazzino. Come un locale vero, e come un set:
+    // la sala grande in primo piano, le porte del retro sul fondo.
+    if (!home) {
+      const tot = Wd * Hd, open = OPEN[kind] || (OPEN0[kind] && f === 0) || (kind === 'bar' && f === 0 && tot <= 120) || (kind === 'trattoria' && f === 0 && tot <= 96);
+      const all = [{ x: X, y: Y, w: Wd, h: Hd }];
+      if (open || want <= 1) return { rooms: all, inner };
+      const inn = ent && [ent.x + (ent.side === 'W' ? .5 : ent.side === 'E' ? -.5 : 0), ent.y + (ent.side === 'N' ? .5 : ent.side === 'S' ? -.5 : 0)];
+      const hasEnt = q => inn && inn[0] >= q.x && inn[0] <= q.x + q.w && inn[1] >= q.y && inn[1] <= q.y + q.h;
+      // mode: 'front' (parallelo al muro della porta, la parte con la porta ~2/3), 'side' (di traverso, la parte con la porta ≥ 70%), null (a metà)
+      const cutQ = (q, mode) => {
+        const { x, y, w, h } = q, eNS = ent && (ent.side === 'N' || ent.side === 'S');
+        const vert = mode === 'front' ? !eNS : mode === 'side' ? eNS : w > h * 1.15 ? true : h > w * 1.15 ? false : r() < .5, len = vert ? w : h;
+        const ks = [];
+        for (let k = MIN; k <= len - MIN; k++) {
+          const nearK = mode === 'front' ? (ent.side === 'N' || ent.side === 'W' ? k : len - k) : mode === 'side' ? (vert ? (inn[0] < x + k ? k : len - k) : (inn[1] < y + k ? k : len - k)) : 0;
+          if (mode === 'front' && (nearK / len < .5 || nearK < 4)) continue;
+          if (mode === 'side' && nearK / len < .68) continue;
+          ks.push([k, mode === 'front' ? Math.abs(nearK / len - .66) + r() * .08 : mode === 'side' ? -nearK / len + r() * .05 : Math.abs(k - len / 2) / len * 1.2 + r() * .5]);
+        }
+        ks.sort((u, v) => u[1] - v[1]);
+        if (vert) {
+          const k = (ks.find(([k]) => !crossV(x + k, y, h) && !hitDoorV(x + k, y, h)) || [])[0]; if (k === undefined) return null;
+          const gx = x + k, gy = doorAt(y, h, p => !doorBad(gx, p)); if (gy === null) return null;
+          inner.push({ a: [gx, y], b: [gx, y + h], gap: [gy, DOORW], v: true }); return [{ x, y, w: k, h }, { x: x + k, y, w: w - k, h }];
+        }
+        const k = (ks.find(([k]) => !crossH(y + k, x, w) && !hitDoorH(y + k, x, w)) || [])[0]; if (k === undefined) return null;
+        const gy = y + k, gx = doorAt(x, w, p => !doorBad(p, gy)); if (gx === null) return null;
+        inner.push({ a: [x, gy], b: [x + w, gy], gap: [gx, DOORW], v: false }); return [{ x, y, w, h: k }, { x, y: gy, w, h: h - k }];
+      };
+      let frontDone = !inn;
+      for (let guard = 0; all.length < want && guard < 40; guard++) {
+        let got = null;
+        if (!frontDone) { const q = all.find(hasEnt); frontDone = true; if (q && q.w * q.h >= 30) { const ab = cutQ(q, 'front'); if (ab) got = [q, ab]; } }
+        if (!got) for (const q of all.filter(q => !hasEnt(q) || !inn).sort((a, c) => c.w * c.h - a.w * a.h)) { if (q.w * q.h < 18) continue; const ab = cutQ(q, null); if (ab) { got = [q, ab]; break; } }
+        if (!got && inn) { const q = all.find(hasEnt); if (q && q.w * q.h > tot * .5 && q.w * q.h >= 36) { const ab = cutQ(q, 'side'); if (ab) got = [q, ab]; } }
+        if (!got) break;
+        all.splice(all.indexOf(got[0]), 1, ...got[1]);
+      }
+      return { rooms: all, inner };
+    }
     if (home && ent && want >= 4 && r() < .85) {
       const NS = ent.side === 'N' || ent.side === 'S', U = NS ? Wd : Hd, Vv = NS ? Hd : Wd, eu = NS ? ent.x - X : ent.y - Y;
       let c0 = Math.round(eu - 1); if (c0 < 2.5) c0 = 0; if (U - c0 - 2 < 2.5) c0 = U - 2;
@@ -821,6 +897,8 @@ var Interior = (function () {
     CACHE[key] = Lb; return Lb;
   }
   function nameRooms(rooms, eRoom, ns, more) {
+    // [regia] meno stanze che nomi: si tengono i primi (il programma è in ordine d'importanza), ma il bagno c'è sempre
+    if (rooms.length >= 3 && rooms.length < ns.length && ns.indexOf('bagno') >= rooms.length) ns = ns.slice(0, rooms.length - 1).concat(['bagno']);
     const out = new Map(); out.set(eRoom, ns[0]);
     const rest = rooms.filter(q => q !== eRoom).sort((p, q) => q.w * q.h - p.w * p.h);
     let tail = ns.slice(1);
@@ -907,6 +985,8 @@ var Interior = (function () {
       const put = (id, x, y, ry, h, extra) => { const J = !h && !(extra && extra.decor) ? JIT(id) : null; if (J) { const a = (r() - .5) * J[0], pull = r() * J[1]; ry += a; x -= Math.sin(ry) * pull; y -= Math.cos(ry) * pull; }   // [vissuto]
         const [w, d, sol] = szOf(id), sw = Math.abs(Math.sin(ry)) > .5, hw = (sw ? d : w) / 2, hd = (sw ? w : d) / 2; const o = Object.assign({ id, x, y, ry, h: h || 0, solid: sol && !h ? [x - hw, y - hd, hw * 2, hd * 2] : null, room: qi }, extra || {}); out.push(o); return o; };
       const list = roomItems(name).concat(lifeTokens(name, F.mood, q.dirt || 0, r)).map(t => parseTok(t, r)).filter(Boolean);
+      // [regia] il pezzo forte: il primo con la priorità, se no la prima composizione contro il muro
+      const heroTok = list.find(t => t.pri && t.kind !== 'd' && t.kind !== 'k' && t.kind !== 'c' && !t.mids[0]) || list.find(t => (t.kind === 'v' || (t.kind === 'w' && t.vg[0])) && !t.mids[0]);
       // posti lungo i muri: nord, est, sud, ovest
       const slots = [];
       for (let x = x0 + .25; x < x1 - .2; x += .25) slots.push([x, y0, 'N']);
@@ -917,25 +997,27 @@ var Interior = (function () {
       // [design] l'ordine dei posti lungo i muri: i mobili alti si cercano l'angolo (filo del muro accanto), le composizioni grandi
       // e i letti il centro del muro; il resto a caso. Davanti alle finestre (muri esterni) niente mobili alti.
       const along = ([sx, sy, side]) => side === 'N' || side === 'S' ? [sx - x0, x1 - sx] : [sy - y0, y1 - sy];
-      const slotOrder = pref => { const ix = slots.map((s0, k) => k); if (!pref) return ix.map(k => (k + off) % slots.length);
-        const sc = k => { const [a, b] = along(slots[k]); return pref.c ? Math.abs(a - b) : Math.abs(Math.min(a, b) - pref.w / 2); };
-        const jit = ix.map(() => r() * .6); return ix.sort((a, b) => sc(a) + jit[a] - sc(b) - jit[b]); };
+      // [regia] più il costo è basso, prima si prova: il lato (fondo o davanti) pesa per il pezzo forte, i mobili alti e quelli con un davanti
+      const slotOrder = (pref, opt) => { const ix = slots.map((s0, k) => k), o = opt || {};
+        const sideC = s => FONDO[s] ? 0 : o.hero ? 8 : o.tall ? 5 : o.front ? 2.5 : 0;
+        const sc = k => { const [a, b] = along(slots[k]); return (pref ? (pref.c ? Math.abs(a - b) : Math.abs(Math.min(a, b) - pref.w / 2)) : 0) + sideC(slots[k][2]); };
+        const jit = ix.map(k => pref ? r() * .6 : (((k + off) % slots.length) / slots.length) * 1.2); return ix.sort((a, b) => sc(a) + jit[a] - sc(b) - jit[b]); };
       const winBlock = (side, cx, cy, hw, hd) => F.wins.some(w0 => w0.side === side && (side === 'N' || side === 'S' ? Math.abs(w0.y - (side === 'N' ? q.y : q.y + q.h)) < .3 && Math.abs(w0.x - cx) < hw + .7 : Math.abs(w0.x - (side === 'W' ? q.x : q.x + q.w)) < .3 && Math.abs(w0.y - cy) < hd + .7));
       // un gruppo (o un mobile) con ingombro w×d appoggiato a un muro: il primo posto libero
       const atWall = (w, d, rug, opt) => {
         const pref = opt && (opt.c || opt.tall) ? { c: !!opt.c, w } : null;
-        for (const k of slotOrder(pref)) {
+        for (const k of slotOrder(pref, opt)) {
           const [sx, sy, side] = slots[k], S = SIDE[side];
           const hw = Math.abs(S.t[0]) * w / 2 + Math.abs(S.n[0]) * d / 2, hd = Math.abs(S.t[1]) * w / 2 + Math.abs(S.n[1]) * d / 2;
           const cx = sx + S.n[0] * d / 2, cy = sy + S.n[1] * d / 2;
           if (!free(cx, cy, hw, hd, rug) || blocked(cx, cy, hw, hd)) continue;
-          if (opt && opt.tall && winBlock(side, cx, cy, hw, hd)) continue;
+          if (opt && opt.tall && !opt.anyWin && winBlock(side, cx, cy, hw, hd)) continue;
           return { cx, cy, hw, hd, side };
         }
-        return opt && opt.tall ? atWall(w, d, rug, null) : null;   // se non c'è altro posto, anche davanti alla finestra
+        return opt && opt.tall && !opt.anyWin ? atWall(w, d, rug, Object.assign({}, opt, { anyWin: true })) : null;   // se non c'è altro posto, anche davanti alla finestra
       };
       const inMiddle = (w, d, rug, grp) => {
-        const rot = q.w >= q.h ? 'N' : 'E', S = SIDE[rot], hw = Math.abs(S.t[0]) * w / 2 + Math.abs(S.n[0]) * d / 2, hd = Math.abs(S.t[1]) * w / 2 + Math.abs(S.n[1]) * d / 2;
+        const rot = q.w >= q.h ? 'N' : 'W', S = SIDE[rot], hw = Math.abs(S.t[0]) * w / 2 + Math.abs(S.n[0]) * d / 2, hd = Math.abs(S.t[1]) * w / 2 + Math.abs(S.n[1]) * d / 2;   // [regia] in mezzo si guarda verso la camera (sud o est)
         const mx = (x0 + x1) / 2, my = (y0 + y1) / 2, cand = [];
         const mg = rug ? .1 : grp ? .3 : .5, pad = rug ? 0 : .25;   // [design] i tappeti (la passatoia del corridoio) stanno anche vicini ai muri
         for (let x = x0 + hw + mg; x <= x1 - hw - mg + 1e-6; x += .25) for (let y = y0 + hd + mg; y <= y1 - hd - mg + 1e-6; y += .25) cand.push([x, y, Math.hypot(x - mx, y - my) + r() * .3]);
@@ -965,7 +1047,9 @@ var Interior = (function () {
       // file di posti
       const rows = ROWS[name];
       if (rows && q.w >= 6 && q.h >= 6) {
-        const [head, seat] = rows, farSide = f === 0 && ent ? ({ N: 'S', S: 'N', E: 'W', W: 'E' })[ent.side] : (q.w >= q.h ? 'N' : 'W');
+        // [regia] la scena (schermo, palco, altare, lavagna) sul fondo, le file di spalle alla camera: si guarda la scena oltre il pubblico
+        const eS = f === 0 && ent ? ent.side : null, lenOf = s => s === 'N' || s === 'S' ? q.w : q.h;
+        const [head, seat] = rows, farSide = ['N', 'W'].filter(s => s !== eS).sort((a, c) => lenOf(c) - lenOf(a))[0] || ({ N: 'S', S: 'N', E: 'W', W: 'E' })[eS];
         const S = SIDE[farSide];
         if (head) {
           const isV = head[0] === '@', vn = head.replace('@', ''), [w, d] = isV ? V[vn] : szOf(head), mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
@@ -1008,6 +1092,7 @@ var Interior = (function () {
         for (let ai = 0; ai < t.alts.length; ai++) {
           const id = t.alts[ai], isV = !!V[id] && (t.vg[ai] || t.kind === 'v'), n0 = out.length;
           if (CAP.test(id) && out.filter(o => o.room === qi && (o.id === id || (isV && o.grp === id))).length >= (isV ? 1 : 2)) continue;   // [design] due piante, un angolo lettura: non una fila
+          if (isV && /^(salotto|divano)/.test(id) && out.some(o => o.room === qi && o.grp && /^(salotto|divano)/.test(o.grp))) continue;   // [regia] un salotto per stanza: il secondo divano col suo tavolino faceva la sala d'attesa
           if (/^fd_/.test(id) && !/barrel/.test(id)) {   // il cibo sui banconi e sui tavoli
             const tb = out.find(o => o.room === qi && /kitchenBar|^table|kitchenCabinet|banco_vendita|bancone|tavolo/.test(o.id) && !o.h && (o.full || 0) < 3);
             if (tb) { tb.full = (tb.full || 0) + 1; put(id, tb.x + (r() - .5) * .5, tb.y + (r() - .5) * .2, r() * 6, /kitchenBar|kitchenCabinet|banco|bancone/.test(tb.id) ? .95 : .76); }
@@ -1015,7 +1100,7 @@ var Interior = (function () {
           }
           if (SMALL[id]) { const tb = out.find(o => o.room === qi && /desk|table|tavol|sideTable|kitchenCabinet|kitchenBar|banco/.test(o.id) && !o.h && !(id === 'ar_cash-register' && out.some(c => c.id === id && c.room === qi && Math.hypot(c.x - o.x, c.y - o.y) < 1.2))); if (tb) put(id, tb.x + (r() - .5) * .4, tb.y, tb.ry, /kitchenBar|pv_banco|bancone/.test(tb.id) ? .95 : /kitchenCabinet|banco/.test(tb.id) ? .92 : /sideTable/.test(tb.id) ? .55 : .76); return !!tb; }
           const [w, d] = isV ? V[id] : szOf(id), rug = RUG.test(id);
-          const opt = { tall: isV ? V[id][2].some(it => TALL.test(it[0].replace('?', ''))) && w < 2.6 : TALL.test(id), c: CENTERED.test(id) };
+          const opt = { tall: isV ? V[id][2].some(it => TALL.test(it[0].replace('?', ''))) && w < 2.6 : TALL.test(id), c: CENTERED.test(id) || t === heroTok, hero: t === heroTok, front: isV || FRONTE.test(id) };
           let spot = null;
           const midOnly = t.kind === 'c' && t.mids[ai];
           if (midOnly || (!isV && /^rug|ia_tappeto_|ia_passatoia|tableCoffee|tableRound$|^table$|ia_ring|ia_telo|ia_barca|ia_lanterna|ia_pista/.test(id) && t.kind !== 'k')) spot = inMiddle(w, d, rug, isV) || (midOnly ? null : atWall(w, d, rug, opt));
@@ -1044,9 +1129,11 @@ var Interior = (function () {
       const decor = list.filter(t => t.kind === 'd'), hung = [];
       decor.forEach(t => {
         const id = t.alts[Math.floor(r() * t.alts.length)], D = DECOR[id]; if (!D) return;
-        const [dw, dh, low] = D, sides = [];
+        const [dw, dh, low] = D; let sides = [];
         if (Math.abs(q.y - BY) < .01 || low) sides.push(['N', q.y]); if (Math.abs(q.y + q.h - BY - BH) < .01 || low) sides.push(['S', q.y + q.h]);
         if (Math.abs(q.x - BX) < .01 || low) sides.push(['W', q.x]); if (Math.abs(q.x + q.w - BX - BW) < .01 || low) sides.push(['E', q.x + q.w]);
+        // [regia] i quadri, i manifesti, le insegne vanno sui muri di fondo (gli altri sono tagliati bassi: lì non si vedrebbero)
+        if (!low) { sides = sides.filter(s => FONDO[s[0]]); if (!sides.length) return; } else if (sides.some(s => FONDO[s[0]]) && r() < .7) sides = sides.filter(s => FONDO[s[0]]);
         const cands = [];
         sides.forEach(([side, line]) => {
           const horiz = side === 'N' || side === 'S', a = horiz ? q.x : q.y, len = horiz ? q.w : q.h;

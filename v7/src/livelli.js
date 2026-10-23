@@ -63,7 +63,7 @@ var Livelli = (function () {
   }
   const portalAt = (L, tx, ty, which) => L.portals.find(P => P[which][0] === tx && P[which][1] === ty);
   const CLIMB = new Set(['botola', 'pozzo', 'tombino', 'scala', 'grata', 'interno']);   // [sottosuolo] da qui si sale e si scende
-  const hooks = { dug: [], init: [] };   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
+  const hooks = { dug: [], init: [], solid: null };   // [regia] solid: (x, y, r) → c'è un arredo pieno lì (lo mette sottosuolo.js nella grafica)   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
   const onDug = (st, tx, ty, L) => { let m = null; for (const f of hooks.dug) { try { m = f(st, tx, ty, L) || m; } catch (e) { } } return m; };
 
   // ---------------- PONTI ----------------
@@ -82,7 +82,11 @@ var Livelli = (function () {
     if (lv.k === 'ug' && st) {
       const L = S(st);
       const ok = (x, y) => { const [tx, ty] = ti(x, y); if (!inb(tx, ty)) return false; if (L.ug[idx(tx, ty)]) return true; return L.portals.some(P => P.kind === 'imbocco' && P.s[0] === tx && P.s[1] === ty); };
-      return (x, y) => ok(x - r, y - r) && ok(x + r, y - r) && ok(x - r, y + r) && ok(x + r, y + r);
+      // [regia] le cose piene: il pilastro col cappello in mezzo alle stanze scavate (lo disegna tunnelWood in render.js), gli arredi
+      // dei posti di sotto (hooks.solid, da sottosuolo.js). Chi ci sta già dentro (sbucando, spinto) può uscirne: si blocca solo l'entrare.
+      const pillar = (x, y) => { const [tx, ty] = ti(x, y), k = L.kind[idx(tx, ty)]; if ((k !== 2 && k !== 16) || (tx * 3 + ty) % 4 || !L.ug[idx(tx + 1, ty)] || !L.ug[idx(tx - 1, ty)] || !L.ug[idx(tx, ty + 1)] || !L.ug[idx(tx, ty - 1)]) return false; return Math.hypot(x - (tx + .5) * TS, y - (ty + .5) * TS) < .2 + r; };
+      const full = (x, y) => pillar(x, y) || (hooks.solid ? hooks.solid(x, y, r) : false);
+      return (x, y) => ok(x - r, y - r) && ok(x + r, y - r) && ok(x - r, y + r) && ok(x + r, y + r) && (!full(x, y) || full(o.x, o.y));
     }
     return null;
   }

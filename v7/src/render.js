@@ -1644,6 +1644,7 @@ var Render = (function () {
     // grotte di calcare bagnato, il cunicolo di pietra, la miniera nella roccia, il relitto e il fiume nella roccia umida, la cavità del ritrovamento nella terra
     10: 'volta', 11: 'cocciopesto', 12: 'loculi', 13: 'intonaco', 14: 'calcare', 15: 'pietra', 16: 'roccia', 17: 'umida', 18: 'terra', 19: 'umida' };
   const UGF = { 10: 'cotto', 11: 'cocciopesto', 12: 'terra_pav', 13: 'lastricato', 14: 'calcare', 15: 'pietra', 16: 'terra_pav', 17: 'umida', 18: 'terra_pav', 19: 'umida' };   // [sotto2] i pavimenti
+  const UGNAT = { 1: 1, 14: 1, 17: 1, 18: 1, 19: 1 };   // [regia] le cavità naturali: pareti irregolari (natWall)
   const UGH = { 7: 4.2, 10: 2.7, 11: 3.6, 12: 2.6, 13: 2.6, 14: 3.9, 15: 2.4, 16: 2.6, 17: 3.4, 18: 3.8, 19: 3.3 };   // [sotto2] l'altezza delle pareti (fino alla volta)
   // [sotto2] LA TERRA IN SEZIONE: sopra le pareti di fondo, fino al livello della strada, si vedono gli strati (16 px per metro, 32 m):
   // terra di coltivo e radici, il riporto coi cocci, lo strato bruciato del 1660, le macerie della città sepolta, l'argilla coi ciottoli, la roccia
@@ -1783,11 +1784,12 @@ var Render = (function () {
       [[0, -1, x0, z0, x1, z0], [0, 1, x1, z1, x0, z1], [-1, 0, x0, z1, x0, z0], [1, 0, x1, z0, x1, z1]].forEach(([dx, dy, a, b, c2, d]) => {
         if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
         const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : UGH[kd] || 2.7);
+        if (UGNAT[kd]) { natWall(arr, uv, fB[fm], a, b, c2, d, f - .2, top, dx, dy, f, has); if (!toCam && hash2i(tx * 5 + dx, ty * 5 + dy) < .6) rocks.push([(a + c2) / 2 + dx * .25, f + .2, (b + d) / 2 + dy * .25]); return; }   // [regia] la grotta non è a caselle
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
         // [sotto2] la terra in sezione: sopra la parete di fondo, una fascia di 1,6 m (fino alla strada se è più vicina), gli strati con la loro quota vera
         if (!toCam) { const surf = Math.min(M.elev[i], top + 1.6); if (surf - top > .4) { const L2 = Math.hypot(c2 - a, d - b) / 4, va = 1 - (M.elev[i] - top) / 32, vb = 1 - (M.elev[i] - surf) / 32, ua = (dx ? z0 : x0) / 4;
           SEC[0].push(a, top, b, c2, top, d, c2, surf, d, a, top, b, c2, surf, d, a, surf, b); SEC[1].push(ua, va, ua + L2, va, ua + L2, vb, ua, va, ua + L2, vb, ua, vb); } }
-        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
+        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 + dx * .14, f + .3, (b + d) / 2 + dy * .14]);   // [regia] il sasso affonda nella parete (prima sporgeva fino a mezzo metro nel cunicolo e i piedi ci entravano dentro)
       });
       // [sottosuolo] l'armatura di legno delle gallerie scavate a mano: telai a passo di 2 m nei tratti dritti, pali contro le pareti nelle stanze
       if (kd === 2 || kd === 16) props.push([tx, ty, f]);   // [sotto2] anche la miniera è armata di legno
@@ -1832,6 +1834,39 @@ var Render = (function () {
     return grp;
   }
   const hash2i = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+  // [regia] LE GROTTE NON SONO A CASELLE: nelle cavità naturali (grotte, fiume, relitto, la roccia delle caverne, la frana di un
+  // ritrovamento) la parete si spezza in 4×3 facce e ogni vertice si allontana dal vuoto, verso la roccia, di 10-70 cm (di meno al piede,
+  // a gobbe a mezza altezza): il contorno si apre in nicchie e pance, gli spigoli delle caselle si arrotondano. Il vertice d'angolo
+  // si sposta di come stanno le caselle aperte attorno, così le pareti vicine restano cucite. Solo verso la roccia: lo spazio dove si
+  // cammina non cambia (niente piedi dentro la parete). Il pavimento si allunga fino al piede della parete.
+  function natPush(x, z, band, dx, dy, end, has) {
+    let ox = dx, oz = dy;
+    if (end) {
+      const gx = Math.round(x / TS), gz = Math.round(z / TS); let sx = 0, sz = 0, n = 0;
+      for (const [i, j] of [[gx - 1, gz - 1], [gx, gz - 1], [gx - 1, gz], [gx, gz]]) if (has(i, j)) { sx += (i + .5) * TS; sz += (j + .5) * TS; n++; }
+      if (!n || n === 4) return [0, 0];
+      ox = x - sx / n; oz = z - sz / n; const l = Math.hypot(ox, oz); if (l < .01) return [0, 0]; ox /= l; oz /= l;
+    }
+    const kx = Math.round(x * 2), kz = Math.round(z * 2), h = hash2i(kx + band * 31, kz - band * 17), h2 = hash2i(kx * 3 + 1, kz * 7 + 2);
+    const m = (.12 + h2 * .5) * (band === 0 ? .5 : band === 3 ? .8 : .7 + h * .6);
+    return [ox * m, oz * m];
+  }
+  function natWall(arr, uv, fl, a, b, c2, d, y0, y1, dx, dy, f, has) {
+    const NS = 4, YB = [0, .35, .7, 1], V = [], len = Math.hypot(c2 - a, d - b);
+    for (let k = 0; k <= NS; k++) { const x = a + (c2 - a) * k / NS, z = b + (d - b) * k / NS, row = [];
+      for (let j = 0; j < 4; j++) { const [px, pz] = natPush(x, z, j, dx, dy, k === 0 || k === NS, has); row.push([x + px, y0 + (y1 - y0) * YB[j], z + pz]); }
+      V.push(row); }
+    for (let k = 0; k < NS; k++) for (let j = 0; j < 3; j++) {
+      const p0 = V[k][j], p1 = V[k + 1][j], p2 = V[k + 1][j + 1], p3 = V[k][j + 1], u0 = k / NS * len / 2, u1 = (k + 1) / NS * len / 2, v0 = (p0[1] - y0) / 2, v1 = (p3[1] - y0) / 2;
+      arr.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2], p0[0], p0[1], p0[2], p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+      uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+    }
+    if (fl) for (let k = 0; k < NS; k++) {
+      const ea = [a + (c2 - a) * k / NS, b + (d - b) * k / NS], eb = [a + (c2 - a) * (k + 1) / NS, b + (d - b) * (k + 1) / NS], pa = V[k][0], pb = V[k + 1][0], y = f + .005;
+      fl[0].push(ea[0], y, ea[1], eb[0], y, eb[1], pb[0], y, pb[2], ea[0], y, ea[1], pb[0], y, pb[2], pa[0], y, pa[2]);
+      fl[1].push(ea[0] / 2, ea[1] / 2, eb[0] / 2, eb[1] / 2, pb[0] / 2, pb[2] / 2, ea[0] / 2, ea[1] / 2, pb[0] / 2, pb[2] / 2, pa[0] / 2, pa[2] / 2);
+    }
+  }
   // [sottosuolo] i telai di legno: pali, traversa, saette, tavole contro la terra, una lanterna ogni tanto. Istanze: pochi draw call.
   function tunnelWood(grp, tiles, has, L, toCam) {
     if (!tiles.length) return;

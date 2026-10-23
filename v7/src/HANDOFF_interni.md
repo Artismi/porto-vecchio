@@ -56,3 +56,23 @@ Commit `2339dbb` e `184631b` (righe segnate `[planimetrie]` e `[design]` in `int
   gli interni nuovi cambia l'ordine dei numeri casuali. Ora il controllo conta solo chi è già sul posto (entro 40 m):
   chi è ancora in cammino non conta.
 - La simulazione è circa il 10% più lenta di `main` (un'ora di gioco: 4,3 s contro 3,9 s).
+
+## 23 ottobre: [regia] interni contestuali e cinematografici
+Righe segnate `[regia]` in `interiors.js`.
+- **Le attività hanno le stanze del loro programma, mai di più** (`splitFloor`, ramo `!home`): si taglia sempre la stanza più grande;
+  la stanza della porta una volta sola, parallela al muro della porta (davanti la sala, due terzi; dietro la fascia dei servizi che
+  poi si divide in retro, bagno, magazzino). Se ci sono meno stanze che nomi si tengono i primi (il programma è in ordine
+  d'importanza), il bagno resta sempre (`nameRooms`). Prima: 44 attività su 120 con stanze doppie (tre cucine in trattoria, due
+  sale biliardo al bar, retro ×3, alberghi che entravano in cucina); ora 6, tutte cantine in più nella parte condominio.
+- **La regia** (`FONDO`, `FRONTE`, `slotOrder`): la camera guarda da sud-est, i muri di fondo sono nord e ovest. Il pezzo forte
+  della stanza (primo token con `!`, se no la prima composizione) va al centro di un muro di fondo, rivolto alla camera; i mobili
+  alti evitano i muri verso la camera (tagliati bassi: coprirebbero la scena), i mobili con un davanti preferiscono il fondo. In
+  mezzo si guarda verso la camera (`inMiddle`: N o W). Le file (cinema, platea, aule, navata) hanno la scena sul fondo e il pubblico
+  di spalle. Quadri, manifesti e insegne solo sui muri di fondo (sugli altri non si vedevano). Mobili rivolti alla camera dal 47% al
+  65%, mobili alti sul davanti dal 52% al 32%.
+- **I salotti** (gruppi `salotto_L`, `salotto_conversazione`, `salotto_tv`, `salotto_anni70`, `salotto_angolo`, `salotto_piccolo_tv`,
+  `salotto_minimo`): composizioni in profondità con il tavolino apparecchiato (riviste, tazze, posacenere, fiori, carte), abat-jour,
+  lampade, piante, pouf, gatto. Un salotto per stanza (il secondo divano faceva la sala d'attesa). Restano senza salotto le stanze
+  strette con scala e due porte (circa un soggiorno su cinque).
+- Prove: `node test_oggetti.js 1 1` (piante raggiungibili), `node test_botteghe.js`. Analisi: piante doppie e orientamento dei mobili
+  si misurano caricando `world.js` + `interiors.js` e scorrendo `Interior.layout(b)` (vedi il commit).
