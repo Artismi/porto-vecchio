@@ -606,6 +606,7 @@
     if (p.vehicle) {
       let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
       if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      if (v && v.kind === 'chiatta') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = 0; s.aria = 0; s.impenna = 0; s.peg = 0; }   // [chiatta] pedala come sulla BMX
       if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; }   // [bmx]
       return;
     }

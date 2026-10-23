@@ -1262,7 +1262,7 @@ var World = (function () {
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
         SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
-    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
+    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6, chiatta: 5.2 };
     const rs = rng(4242);
     // -- il porto vecchio, sotto il centro: la banchina dritta (la Calata), il Molo Vecchio che fa da diga (gomito verso levante,
     //    lanterna rossa), il Molo di Levante più corto (lanterna verde), tre pontili per le barche, lo scalo del cantiere.
@@ -1294,7 +1294,8 @@ var World = (function () {
     SEA.moorings.push({ kind: 'peschereccio', x: 1252 - 4.5 - 2.6, y: southY(640) + 26, ang: Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_s2' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
-      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
+      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' })));
+      SEA.moorings.push({ kind: 'chiatta', x: lx + 3.4, y: ly + 11.5, ang: Math.PI / 2, len: BOATLEN.chiatta, at: 'pontile_lido', drive: true }); }   // [chiatta] di fianco alla testata, la prua al largo
     void mVecchio; void mLevante;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
