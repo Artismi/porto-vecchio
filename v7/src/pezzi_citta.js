@@ -857,6 +857,21 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   DOC.bitta = { h: .6, cima: true, nota: 'bitta di ghisa a fungo sul suo blocco di pietra, con la cima avvolta al collo che scende verso +Z' };
   T.bitta = o => { o = def(o, DOC.bitta); const g = new THREE.Group(); bittaG(g, 0, 0, 0, o.h, o.cima); g.userData.misure = [.7, o.h + .1, o.cima ? 1.7 : .7]; return g; };
 
+  // [pianta] il parapetto del lungomare: lungo X da 0 a L, la strada verso -Z. mare: il muretto di pietra con la cimasa e la ringhiera di
+  // ferro sopra, i pilastrini ogni 6 m (il parapetto del lungomare di città); guardrail: la lama zincata su paletti ogni 2 m (fra la strada e la ferrovia)
+  DOC.parapetto = { L: 12, tipo: 'mare', nota: '[pianta] parapetto del lungomare lungo X da 0 a L: tipo mare (muretto di pietra 0,6 m, cimasa, ringhiera di ferro, pilastrini ogni 6 m) o guardrail (lama zincata su paletti ogni 2 m)' };
+  T.parapetto = o => {
+    o = def(o, DOC.parapetto); const g = new THREE.Group(), L = o.L;
+    if (o.tipo === 'guardrail') { const n = Math.max(1, Math.round(L / 2));
+      for (let i = 0; i <= n; i++) blocco(g, .1, .78, .1, 'ferro', i * L / n, 0, .06);
+      blocco(g, L + .1, .3, .06, 'cemento', L / 2, .42, -.02, .02); if (!LOD) blocco(g, L + .1, .05, .07, 'ferro', L / 2, .5, -.06);
+      g.userData.misure = [L, .8, .3]; return g; }
+    blocco(g, L, .6, .42, 'pietra', L / 2, 0, 0, .03); blocco(g, L + .04, .09, .52, 'pietraChiara', L / 2, .6, 0, .02);   // muretto e cimasa
+    ringhiera(g, L, .55, 'ferroScuro', 0, .69, 0, 0, 1.5);
+    const np = Math.max(1, Math.round(L / 6)); for (let i = 0; i <= np; i++) blocco(g, .5, .95, .55, 'pietraChiara', i * L / np, 0, 0, .03);   // i pilastrini
+    g.userData.misure = [L, 1.24, .55]; return g;
+  };
+
   DOC.darsena = { L: 40, W: 30, hq: 1.4, banchina: 6, scalette: 2, rocca: false, gradini: 2, nota: '[rocca2] rocca: la darsena del castello (gradini di pietra all\'acqua invece di bitte, copertoni e lampioni). darsena (L lungo X × W lungo Z, la bocca verso +Z): tre banchine di pietra col piano a y = 0, ciglio, testate tonde, bitte ogni 8 m, scalette alla marinara, parabordi di copertoni, fascia di alghe al pelo dell\'acqua (a −hq), lampioni; quotaPosa = piede dei muri' };
   T.darsena = o => {
     o = def(o, DOC.darsena); const g = new THREE.Group(), L = o.L, W = o.W, hq = o.hq, B = o.banchina, yF = -hq - 1.2, Lt = L + 2 * B, xc = Lt / 2;

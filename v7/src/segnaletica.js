@@ -342,7 +342,8 @@ var Segnaletica = (function () {
     junctions().forEach(([jx, jy, jr]) => { if (!zonaC(jx, jy) || !inC(jx, jy)) return; const A = armsAt(jx, jy, jr, true).filter(a => a.w >= 3); if (A.length < 3 || !A.some(a => a.rd.kind === 'citta' || a.w >= 4.5)) return; if (cand.some(c => hyp(c.x - jx, c.y - jy) < 8)) return;
       cand.push({ x: jx, y: jy, r: jr, arms: A, peso: A.reduce((s, a) => s + a.w * (a.rd.kind === 'citta' ? 1 : .6), 0) }); });
     cand.sort((a, b) => b.peso - a.peso);
-    const scelti = []; cand.forEach(c => { if (scelti.length < 8 && !scelti.some(o => hyp(o.x - c.x, o.y - c.y) < 38)) scelti.push(c); });
+    // [pianta] dieci incroci (erano otto): con l'anello sul mare ci sono più bivi dove scegliere
+    const scelti = []; cand.forEach(c => { if (scelti.length < 10 && !scelti.some(o => hyp(o.x - c.x, o.y - c.y) < 38)) scelti.push(c); });
     scelti.forEach(J => {
       // le frecce: per ogni meta il braccio che la avvicina di più (sul cammino vero)
       const frecce = [];
