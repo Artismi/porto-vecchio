@@ -300,3 +300,8 @@ vero: `strumenti/tetti_vissuti_misura.js` (`--prima` per il confronto); foto: `s
   sono già finite (1005 chieste) e oltre la 255 tutto prende l'ultimo colore disegnato (un difetto di prima, da guardare a parte). Cartacce e pozze
   sono istanze vicine: 8 disegni fissi, entro 36 m (cartacce) e 64 m (pozze) dal personaggio, 24 e 44 m sul telefono, tolte dalle case
   tagliate o col tetto sbiadito. Le pozze non riflettono davvero: il disco scuro col bordo bagnato e la tinta del cielo col fresnel.
+- **Misurato** (`strumenti/tetti_vissuti_misura.js`, 960×600, SwiftShader; i disegni dei tetti vissuti spegnendo le loro mesh nello
+  stesso fotogramma, perché fra due caricamenti il totale balla di ±150): borgo (1400, 312) +46 disegni su 1874; Vittoria (1360, 334)
+  +22 su 1439; la città dall'alto (zoom 4,2) +0 (le istanze vicine spente, le fuse fuori campo). In tutta la scena: +43 secchi fusi
+  (2155 → 2198) e 8 istanze, cioè al più +51 mesh. Compenetrazioni sui tetti (`TETTI3_ESIGI=1 strumenti/compenetrazioni.js`): 0.
+  Foto: `_immagini/tetti_vissuti/` (prima/dopo per scorcio e i dettagli).
