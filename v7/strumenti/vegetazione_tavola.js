@@ -15,10 +15,10 @@ const srv = http.createServer((req, res) => { const p = path.join(root, decodeUR
   for (const s of SCENE) {
     const pg = await b.newPage({ viewport: { width: W, height: H } }); const t = Date.now();
     pg.on('pageerror', e => console.log('[errore]', s, e.message)); pg.on('console', m => { if (m.type() === 'error') console.log('[console]', s, m.text().slice(0, 200)); });
-    await pg.goto(`http://localhost:${port}/strumenti/vegetazione_tavola.html?scena=${s}&w=${W}&h=${H}`);
+    await pg.goto(`http://localhost:${port}/strumenti/vegetazione_tavola.html?scena=${s.split(":")[0]}&w=${W}&h=${H}${s.includes(":") ? "&contorni=" + s.split(":")[1] : ""}`);
     await pg.waitForFunction(() => window.__pronto, null, { timeout: 600000 });
     mis[s] = await pg.evaluate(() => Object.assign({}, window.__misure, window.__tri ? { triSpecie: window.__tri } : {}));
-    await pg.screenshot({ path: path.join(outDir, s + '.png') });
+    await pg.screenshot({ path: path.join(outDir, s.replace(':', '_') + '.png') });
     console.log(s, JSON.stringify(mis[s]), ((Date.now() - t) / 1000).toFixed(0) + ' s'); await pg.close();
   }
   fs.writeFileSync(path.join(outDir, 'misure.json'), JSON.stringify(mis, null, 1));
