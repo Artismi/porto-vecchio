@@ -37960,8 +37960,8 @@ var WriterArte = (function () {
     const lay = fontLayout(text, fam, o, r), signW = w.sign ? Hp * .7 : 0, area = { x: Wp * .05, y: Hp * .1, w: Wp * .9 - signW, h: Hp * .64 }, f = fontFit(lay, area), S = f.S;
     const T = cv(Wp, Hp), tx = T.getContext('2d'), spray = !mk && fam !== 'ReenieBeanie', outl = spray && rr() < .16 ? (lumC(col) > .5 ? '#141418' : pickR(rr, ['#f2f2ee', '#c8ccd2', '#e5322a'])) : null;
     if (outl) lay.L.forEach(l => fontDraw(tx, lay, l, outl, f.tx, f.ty, f.k, S * .16));   // la tag col contorno (lo spray riempie, il contorno la stacca)
-    if (spray) { tx.shadowColor = col; tx.shadowBlur = S * .05; }
-    lay.L.forEach(l => { fontDraw(tx, lay, l, col, f.tx, f.ty, f.k); fontDraw(tx, lay, l, col, f.tx, f.ty, f.k, S * (spray ? .035 : .012)); });   // ripassata appena: lo spray ingrossa il tratto
+    if (spray) { tx.shadowColor = col; tx.shadowBlur = S * .02; }   // [graffiti5] l'alone dello spray: un velo stretto, la tag resta netta
+    lay.L.forEach(l => { fontDraw(tx, lay, l, col, f.tx, f.ty, f.k); fontDraw(tx, lay, l, col, f.tx, f.ty, f.k, S * (spray ? .025 : .012)); });   // ripassata appena: lo spray ingrossa il tratto
     tx.shadowBlur = 0;
     const bb = bboxC(T); tx.fillStyle = col; tx.strokeStyle = col; tx.lineCap = 'round';
     if ((d.drip && rr() < .7) || (mk && rr() < .6)) { const n = 1 + Math.floor(r() * (mk ? 3 : 3)); bigDrips(tx, shiftC(T, 0, 0), col, Wp, Hp, r, n, S * (mk ? .7 : .55), S * (mk ? .02 : .04)); }   // le colature dalle lettere (prima della riga sotto): il pennarello carico, lo spray tenuto fermo
@@ -38202,7 +38202,7 @@ var WriterArte = (function () {
   };
   const MANIFESTI = ['IL DISGELO\nE QUI', 'RATE?\nNO', 'SABATO SERA\nLIVE AL\nBAR SIRENA', 'CONCERTO\nRADICI\nORE 22', 'ASSEMBLEA\nGIOVEDI\nAL CALDO', 'CERCASI\nVESPA', 'SOLE\nPER TUTTI', 'NO AL\nCARBONE', 'FESTA DEL\nPORTO', 'SCIOPERO\nGENERALE', 'LA STRADA\nE NOSTRA', 'DISCO\nAURORA\nVENERDI', 'SMARRITO\nGATTO MIMI', 'CINEMA\nASTOR\nULTIMA PRIMA'];
   const STENCIL_TXT = ['GRIGI GO HOME', 'NO', 'PEDALA', 'DISGELO', 'SOLE PER TUTTI', 'OINK', 'SVEGLIA', 'LIBERI', 'NO RATE', 'RESPIRA', 'CHI PAGA?', 'VOTA SOLE', 'OCCHIO', 'RESISTI'];
-  const STENCIL_MOTIFS = ['grigio', 'grigio', 'sole', 'bboy', 'banchiere', 'boombox', 'skater', 'bici', 'bici', 'pesce', 'pugno', 'tv', 'ratto', 'ratto', 'stella', 'ancora', 'bomboletta', 'asino', 'occhio'];
+  const STENCIL_MOTIFS = ['sole', 'boombox', 'bici', 'bici', 'pesce', 'pesce', 'pugno', 'tv', 'ratto', 'ratto', 'stella', 'ancora', 'ancora', 'bomboletta', 'asino', 'occhio', 'occhio'];   // [graffiti5] via le figure che uscivano a pezzi (bboy, banchiere, skater, grigio)
   const MURALI_TXT = { pesca: ['IL MARE E DI CHI LO PESCA', 'VIVIAMO DI MARE', 'LE RETI NON SI PAGANO A RATE'], volti: ['NOI SIAMO IL PORTO', 'LA MEMORIA NON SI CANCELLA', 'LE DONNE DEL PORTO'], pugni: ['IL MURO CADE', 'UNITI SI VINCE', 'NESSUN MURO E PER SEMPRE'], bici: ['PEDALA E RESPIRA', 'PIU BICI MENO RATE', 'LA SALITA E NOSTRA'], isola: ['ISOLA LIBERA', 'IL FARO NON SI SPEGNE'] };
   // ---- attrezzi comuni ----
   const tintTo = (src, col, Wp, Hp) => { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); kx.globalCompositeOperation = 'source-in'; if (typeof col === 'string') { kx.fillStyle = col; kx.fillRect(0, 0, Wp, Hp); } else kx.drawImage(col, 0, 0); return k; };
@@ -38223,7 +38223,7 @@ var WriterArte = (function () {
     const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); const d = kx.getImageData(0, 0, Wp, Hp), A = d.data;
     for (let i = 0; i < A.length; i += 4) { const lum = (A[i] * .3 + A[i + 1] * .59 + A[i + 2] * .11) / 255; A[i + 3] = A[i + 3] > 100 && lum < thr ? 255 : 0; }
     kx.putImageData(d, 0, 0); const T = tintTo(k, ink, Wp, Hp), tx = T.getContext('2d');
-    tx.globalCompositeOperation = 'destination-out'; tx.strokeStyle = '#000'; tx.lineWidth = Math.max(1.5, Hp * .012); for (let i = 0; i < bridges; i++) { const a = r() * PI, cx0 = Wp * (.2 + r() * .6), cy0 = Hp * (.2 + r() * .6), L = Hp * .45; tx.beginPath(); tx.moveTo(cx0 - Math.cos(a) * L, cy0 - Math.sin(a) * L); tx.lineTo(cx0 + Math.cos(a) * L, cy0 + Math.sin(a) * L); tx.stroke(); }
+    tx.globalCompositeOperation = 'destination-out'; tx.strokeStyle = '#000'; tx.lineWidth = Math.max(1.5, Hp * .012); for (let i = 0; i < bridges; i++) { const a = (r() < .5 ? 0 : PI / 2) + (r() - .5) * .3, cx0 = Wp * (.3 + r() * .4), cy0 = Hp * (.15 + r() * .45), L = Hp * (.05 + r() * .05) /* [graffiti5] il ponticello è corto: tiene insieme la maschera */; tx.beginPath(); tx.moveTo(cx0 - Math.cos(a) * L, cy0 - Math.sin(a) * L); tx.lineTo(cx0 + Math.cos(a) * L, cy0 + Math.sin(a) * L); tx.stroke(); }
     return T;
   }
   // ---- il rullo (una riga, o due) e il verticale a rullo (una lettera sotto l'altra) ----
@@ -38281,10 +38281,10 @@ var WriterArte = (function () {
   function pixoArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO', n = text.length, F = FONT();
     const vr = mulberry((w.seed || 1) ^ 0x9e37), col = w.col || pickR(vr, ['#101012', '#101012', '#101012', '#101012', '#f2efe6', '#d8201a']), stacked = Hp > Wp * 1.3;
-    const cellH = stacked ? Hp / n : Hp, lh = stacked ? cellH * .86 : Hp * .8, lw = stacked ? Wp * .7 : (Wp * .9) / n * .72, pts = [];
+    const cellH = stacked ? (Hp * .94) / n : Hp, lh = stacked ? cellH * .74 : Hp * .72, lw = stacked ? Wp * .56 : (Wp * .9) / n * .66, pts = [];   // [graffiti5] il margine: il tratto grosso e il piedino non escono dal muro
     x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'butt'; x.lineJoin = 'miter'; x.miterLimit = 4; const th = Math.max(3, Math.min(lw, lh) * (.11 + vr() * .04)); x.lineWidth = th;   // [graffiti4] il tratto grosso del rullino
     [...text].forEach((ch, i) => {
-      const g = F[ch] || F.I || [], cx = stacked ? Wp / 2 : Wp * .05 + (i + .5) * (Wp * .9) / n, cy = stacked ? i * cellH + cellH / 2 : Hp / 2, kx = 1 + (r() - .5) * .08, ky = 1 + (r() - .5) * .06;
+      const g = F[ch] || F.I || [], cx = stacked ? Wp / 2 : Wp * .05 + (i + .5) * (Wp * .9) / n, cy = stacked ? Hp * .02 + i * cellH + cellH / 2 : Hp / 2, kx = 1 + (r() - .5) * .08, ky = 1 + (r() - .5) * .06;
       const T = ([u, v]) => [cx + (u - .3) / .6 * lw * kx, cy + (.5 - v) * lh * ky];   // alte e strette, dritte
       g.forEach(tr => { let p = tr.map(T); if (p.length === 1) { x.fillRect(p[0][0] - th / 2, p[0][1] - th / 2, th, th); pts.push(p[0]); return; }
         if (r() < .6) { const a = p[p.length - 1], b = p[p.length - 2], d = hyp(a[0] - b[0], a[1] - b[1]) || 1, ux = (a[0] - b[0]) / d, uy = (a[1] - b[1]) / d, sg = r() < .5 ? 2 : -2; p = p.concat([[a[0] + ux * th * 1.2 - uy * th * sg, a[1] + uy * th * 1.2 + ux * th * sg]]); }   // il piedino: ogni asta finisce con un taglio obliquo
@@ -38322,14 +38322,14 @@ var WriterArte = (function () {
     ctx.restore();
   }
   function stencilArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
-    const vr = mulberry((w.motifSeed || w.seed || 1) ^ 0x57e4), kind = w.motif || pickR(vr, STENCIL_MOTIFS), ink = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#141418', '#d8201a', '#d8201a', '#1c3aa8', '#f4f1ea']), txt = w.words !== undefined ? w.words : (vr() < .7 ? pickR(vr, STENCIL_TXT) : null), two = vr() < .35;
+    const vr = mulberry((w.motifSeed || w.seed || 1) ^ 0x57e4), kind = w.motif || (STENCIL_MOTIFS.includes(w.fam) && w.fam) || pickR(vr, STENCIL_MOTIFS), ink = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#141418', '#d8201a', '#d8201a', '#1c3aa8', '#f4f1ea']), txt = w.words !== undefined ? w.words : (vr() < .7 ? pickR(vr, STENCIL_TXT) : null), two = vr() < .35;
     const mh = txt ? Hp * .68 : Hp * .9, s = Math.min(Wp * .4, mh * .42), cx0 = Wp / 2, cy0 = mh * .5;
-    x.fillStyle = ink; x.globalAlpha = .07; x.fillRect(Wp * .05, Hp * .04, Wp * .9, Hp * .92); x.globalAlpha = 1;   // l'alone della tavola: il rettangolo appena spruzzato attorno
-    if (two) { x.fillStyle = pickR(vr, ['#d8201a', '#f2d23a', '#2a86e0', '#ff8a3a']); x.beginPath(); x.arc(cx0, cy0, s * 1.05, 0, 7); x.fill(); snap(x.canvas); paths.push([[cx0, cy0]]); radii.push(s * 1.2); }   // il secondo strato: una campitura dietro
+    if (two) { x.fillStyle = pickR(vr, ['#d8201a', '#f2d23a', '#2a86e0', '#ff8a3a'].filter(c => c !== ink && lumC(c) > lumC(ink) + .15).concat(['#f2d23a'])); x.beginPath(); x.arc(cx0, cy0, s * 1.05, 0, 7); x.fill(); snap(x.canvas); paths.push([[cx0, cy0]]); radii.push(s * 1.2); }   // il secondo strato: una campitura dietro
     const t = cv(Wp, Hp), tx = t.getContext('2d'); motif(tx, kind, cx0, cy0, s, P, r);
     if (txt && FONTS.ok) fontText(tx, DEACC(txt).replace(/[^A-Z0-9?! ]/g, ''), pickR(vr, ['BlackOpsOne', 'BlackOpsOne', 'Bungee']), Wp / 2, Hp * .81, Hp * .1, '#141418', { maxW: Wp * .9 });   // [graffiti4] le lettere da stencil vere, coi ponticelli
     else if (txt) { const { L, tot } = blockWord(DEACC(txt).replace(/[^A-Z0-9?! ]/g, ''), .3, .74, .1), S = Math.min((Wp * .9) / tot, Hp * .2), toPx = (l, [u, v]) => [(Wp - tot * S) / 2 + (l.x0 + u) * S, Hp * .8 + (v - .5) * S]; L.forEach(l => tx.drawImage(tintTo(letterMask(l, toPx, Wp, Hp, 0, S), '#141418', Wp, Hp), 0, 0)); }
-    x.drawImage(stencilize(t, ink, Wp, Hp, r, .5, 3 + Math.floor(r() * 3)), 0, 0);
+    { const hz = cv(Wp, Hp), hx = hz.getContext('2d'); hx.filter = `blur(${(s * .12).toFixed(1)}px)`; hx.drawImage(tintTo(grow(t, s * .08), ink, Wp, Hp), 0, 0); x.globalAlpha = .13; x.drawImage(hz, 0, 0); x.globalAlpha = 1; }   // [graffiti5] lo spruzzo che passa sotto il bordo della maschera: un velo attorno alla figura, non un rettangolo
+    x.drawImage(stencilize(t, ink, Wp, Hp, r, .5, 1 + Math.floor(r() * 2)), 0, 0);
     x.fillStyle = ink; x.globalAlpha = .25; const ex = r() < .5 ? Wp * .08 : Wp * .92, ey = r() < .5 ? Hp * .1 : Hp * .9; for (let k = 0; k < 30; k++) { const a = r() * PI * 2, rr = r() * Wp * .1; x.beginPath(); x.arc(ex + Math.cos(a) * rr, ey + Math.sin(a) * rr, 1 + r() * 2, 0, 7); x.fill(); } x.globalAlpha = 1;   // lo spruzzo che passa oltre la tavola, in un angolo
     snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .22);
   }
@@ -38365,8 +38365,19 @@ var WriterArte = (function () {
       const c = cv(Math.round(pw), Math.round(ph)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height;
       cx.fillStyle = paper; cx.fillRect(0, 0, W2, H2); cx.textAlign = 'center';
       if (kind === 'slogan') { const lines = pickR(vr, MANIFESTI).split('\n'), fs = Math.min(W2 / 5.6, H2 / (lines.length * 1.6)); cx.fillStyle = ink; cx.font = `bold ${Math.round(fs)}px Arial`; if (FONTS.ok) { const fam = pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers', 'Knewave', 'Shrikhand', 'Ranchers']); lines.forEach((ln, i) => fontText(cx, ln, fam, W2 / 2, H2 * .5 + (i - (lines.length - 1) / 2) * fs * 1.25, fs * (i ? .78 : .9), ink, { maxW: W2 * .86 })); } else lines.forEach((ln, i) => cx.fillText(ln, W2 / 2, H2 * .5 + (i - (lines.length - 1) / 2) * fs * 1.25 + fs * .35)); if (vr() < .5) { cx.fillRect(W2 * .08, H2 * .07, W2 * .84, H2 * .035); cx.fillRect(W2 * .08, H2 * .9, W2 * .84, H2 * .035); } }
-      else if (kind === 'volto') { const t = cv(W2, H2), tx = t.getContext('2d'); character(tx, pickR(vr, CHARS), W2 / 2, H2 * .42, Math.min(W2, H2) * .36, P, r); cx.drawImage(stencilize(t, ink, W2, H2, r, .5, 0), 0, 0); cx.fillStyle = ink; cx.font = `bold ${Math.round(W2 / 7)}px Arial`; { const cap = pickR(vr, ['RICERCATO', 'DISGELO', 'OINK', 'CHI PAGA?', 'SVEGLIA', 'LIBERI']); if (FONTS.ok) fontText(cx, cap, pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers']), W2 / 2, H2 * .88, W2 / 10, ink, { maxW: W2 * .86 }); else cx.fillText(cap, W2 / 2, H2 * .9); } }
-      else { cx.fillStyle = ink; for (let yy = 0; yy < H2; yy += W2 * .05) for (let xx = 0; xx < W2; xx += W2 * .05) { const rr = W2 * .022 * (.3 + .7 * Math.abs(Math.sin(xx * .02 + yy * .013))); cx.beginPath(); cx.arc(xx, yy, rr, 0, 7); cx.fill(); } cx.fillStyle = paper; cx.beginPath(); cx.arc(W2 * .5, H2 * .4, W2 * .3, 0, 7); cx.fill(); cx.fillStyle = ink; cx.font = `bold ${Math.round(W2 * .42)}px Arial`; { const wd = pickR(vr, ['NO', 'SI', '!', '?', 'W']); if (FONTS.ok) fontText(cx, wd, 'BlackOpsOne', W2 / 2, H2 * .4, W2 * .3, ink, { maxW: W2 * .5 }); else cx.fillText(wd, W2 / 2, H2 * .55); } }   // la retinatura
+      else if (kind === 'volto') {   // [graffiti5] il ritratto a retino: testa e spalle fatti dai punti, più grossi dove è scuro; la luce da sinistra, la fascia degli occhiali
+        const hx = W2 * (.5 + (vr() - .5) * .08), hy = H2 * .34, rx = W2 * .2, ry = H2 * .2, glass = vr() < .6, st = W2 * .032, cap = pickR(vr, ['RICERCATO', 'CHI LO HA VISTO?', 'SCOMPARSO', 'SVEGLIA', 'LIBERI']);
+        const dark = (px, py) => { const e1 = ((px - hx) / rx) ** 2 + ((py - hy) / ry) ** 2, sh = ((px - W2 * .5) / (W2 * .48)) ** 2 + ((py - H2 * .82) / (H2 * .22)) ** 2, neck = Math.abs(px - hx) < rx * .45 && py > hy && py < H2 * .66;
+          if (e1 > 1 && sh > 1 && !neck) return .04; let d = .35 + .35 * clamp((px - hx) / rx, -1, 1) + (e1 <= 1 ? .1 * Math.sqrt(e1) : .15);
+          if (e1 <= 1 && py < hy - ry * .45) d = .85;   // i capelli
+          if (glass && e1 <= 1 && Math.abs(py - (hy - ry * .05)) < ry * .14) d = .95; else if (e1 <= 1 && Math.abs(py - (hy - ry * .05)) < ry * .07 && Math.abs(Math.abs(px - hx) - rx * .38) < rx * .14) d = .9;   // gli occhi
+          if (e1 <= 1 && Math.abs(py - (hy + ry * .5)) < ry * .04 && Math.abs(px - hx) < rx * .3) d = .8;   // la bocca
+          return clamp(d, 0, 1); };
+        cx.fillStyle = ink; for (let yy = st / 2; yy < H2 * .78; yy += st) for (let xx = st / 2 + ((yy / st | 0) % 2) * st / 2; xx < W2; xx += st) { const d = dark(xx, yy); if (d > .06) { cx.beginPath(); cx.arc(xx, yy, st * .62 * Math.sqrt(d), 0, 7); cx.fill(); } }
+        if (FONTS.ok) fontText(cx, cap, pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers']), W2 / 2, H2 * .89, W2 / 9, ink, { maxW: W2 * .86 }); else { cx.font = `bold ${Math.round(W2 / 8)}px Arial`; cx.fillText(cap, W2 / 2, H2 * .91); } }
+      else { const wd = pickR(vr, ['NO', 'BASTA', 'SVEGLIA', 'ADESSO', 'RESISTI']), st = W2 * .04;   // [graffiti5] il manifesto tipografico: una parola grande, il retino che sale dal basso
+        cx.fillStyle = ink; for (let yy = st / 2; yy < H2; yy += st) for (let xx = st / 2 + ((yy / st | 0) % 2) * st / 2; xx < W2; xx += st) { const d = clamp((yy / H2 - .45) / .55, 0, 1); if (d > .03) { cx.beginPath(); cx.arc(xx, yy, st * .62 * Math.sqrt(d), 0, 7); cx.fill(); } }
+        if (FONTS.ok) fontText(cx, wd, 'BlackOpsOne', W2 / 2, H2 * .32, W2 * .3, ink, { maxW: W2 * .86 }); else { cx.font = `bold ${Math.round(W2 * .25)}px Arial`; cx.fillText(wd, W2 / 2, H2 * .4); } }
       cx.fillStyle = 'rgba(120,90,40,.12)'; for (let k2 = 0; k2 < 6; k2++) { cx.beginPath(); cx.ellipse(vr() * W2, vr() * H2, W2 * (.1 + vr() * .25), H2 * (.05 + vr() * .15), vr() * 3, 0, 7); cx.fill(); }   // la carta ingiallita, la colla
       cx.strokeStyle = 'rgba(0,0,0,.1)'; cx.lineWidth = 1; for (let k2 = 0; k2 < 3; k2++) { const px = vr() * W2; cx.beginPath(); cx.moveTo(px, 0); cx.lineTo(px + (vr() - .5) * W2 * .1, H2); cx.stroke(); }   // le pieghe
       cx.globalCompositeOperation = 'destination-out';
@@ -38383,7 +38394,7 @@ var WriterArte = (function () {
   function stickersArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const vr = mulberry((w.seed || 1) ^ 0xad51), n = 5 + Math.floor(vr() * 9), pts = [], s0 = Math.min(Wp, Hp);
     for (let k = 0; k < n; k++) {
-      const kind = pickR(vr, ['nome', 'nome', 'tondo', 'quadro', 'ovale', 'faccia']), sw = s0 * (.22 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'ovale' ? sw * .65 : sw, cx0 = sw / 2 + vr() * (Wp - sw), cy0 = sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * .5;
+      const kind = pickR(vr, ['nome', 'nome', 'tondo', 'quadro', 'ovale', 'quadro']), sw = s0 * (.22 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'ovale' ? sw * .65 : sw, cx0 = sw / 2 + vr() * (Wp - sw), cy0 = sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * .5;
       const c = cv(Math.round(sw), Math.round(sh)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height, col = pickR(vr, ['#d8201a', '#1c3aa8', '#f2d23a', '#101012', '#5ac8a0', '#ff8a3a', '#e860a8']), ink = '#101012';
       cx.fillStyle = '#f4f1ea'; cx.textAlign = 'center';
       if (kind === 'tondo' || kind === 'faccia') { cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 / 2, 0, 7); cx.fill(); }
@@ -38511,7 +38522,8 @@ var WriterArte = (function () {
       snap(x.canvas); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .16); }
     const lay = fontLayout(txt, fam, { first: 1.25, jit: .08, bounce: .05, rot: .06, skew: .12, sx: 1.05, sy: 1.15, overlap: .04, wave: (vr() - .5) * .2 }, r), f = fontFit(lay, { x: Wp * .1, y: Hp * .16, w: Wp * .8, h: Hp * .62 }), S = f.S;
     const T = cv(Wp, Hp), tx = T.getContext('2d'), nibA = -.75 + vr() * .3; broadNib(tx, lay, f, ink, S * (.14 + vr() * .06), nibA);
-    tx.lineCap = 'round'; for (let k = 0; k < 2 + Math.floor(vr() * 2); k++) { const y0 = Hp * (.2 + vr() * .6), pts = [], ph = vr() * PI, am = Hp * .18 * (vr() - .5) * 2; for (let t = 0; t <= 1.001; t += .08) pts.push([Wp * (.06 + .88 * t), y0 + Math.sin(t * PI + ph) * am]); if (WM) WM.chisel(tx, WM.smooth(pts, 4), S * .12, nibA, true, true, .9); }   // le pennellate che accompagnano
+    if (vr() < .65 && WM) { const bb = bboxC(T), y0 = Math.min(Hp * .93, bb[3] + S * .12), pts = [];   // [graffiti5] lo svolazzo: esce dall'ultima lettera e torna sotto la parola, senza attraversarla
+      for (let t = 0; t <= 1.001; t += .06) pts.push([bb[2] - S * .1 - (bb[2] - bb[0]) * .85 * t, y0 - S * .25 * (1 - t) * (1 - t) + Math.sin(t * PI) * S * .1]); tx.fillStyle = tx.strokeStyle = ink; WM.chisel(tx, WM.smooth(pts, 4), S * .09, nibA, true, true, .9); }
     x.drawImage(T, 0, 0); x.fillStyle = ink; { const bb = bboxC(T); for (let k = 0; k < 45; k++) { const px = bb[0] + r() * (bb[2] - bb[0]), py = bb[1] + r() * (bb[3] - bb[1]); x.globalAlpha = .5 + r() * .5; x.beginPath(); x.arc(px + (r() - .5) * S * .3, py + (r() - .5) * S * .3, S * (.004 + r() * r() * .02), 0, 7); x.fill(); } } x.globalAlpha = 1;   // gli schizzi della pennellessa
     snap(x.canvas); paths.push(colPath(T, Math.max(2, S * .05))); radii.push(S * .25);
   }
@@ -38520,7 +38532,6 @@ var WriterArte = (function () {
     const vr = mulberry((w.hand || w.seed || 1) ^ 0x60c), fam = pickR(vr, ['MarckScript', 'SedgwickAveDisplay', 'PermanentMarker', 'Knewave', 'RockSalt']), col = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#d8201a', '#f2efe6']);
     const chs = [...(DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO')], n = chs.length, cellH = Hp * .9 / n, T = cv(Wp, Hp), tx = T.getContext('2d'), nibA = -.8; let S = 1;
     chs.forEach((ch, i) => { const lay = fontLayout(ch, fam, { sy: 1.3, skew: .05, rotFix: (i % 2 ? 1 : -1) * .05 }, r), f = fontFit(lay, { x: Wp * .14, y: Hp * .05 + i * cellH, w: Wp * .72, h: cellH * .92 }); S = f.S; broadNib(tx, lay, f, col, S * .1, nibA); });
-    tx.strokeStyle = col; tx.lineCap = 'round'; tx.lineWidth = Math.max(1, S * .03); for (let k = 0; k < 2 + n; k++) { const ex = Wp * (.15 + vr() * .7), ey = Hp * (.06 + vr() * .9), L2 = S * (.3 + vr() * .4), sg = vr() < .5 ? 1 : -1; tx.beginPath(); tx.moveTo(ex, ey); tx.bezierCurveTo(ex + L2 * .6 * sg, ey - L2 * .2, ex + L2 * sg, ey + L2 * .4, ex + L2 * .5 * sg, ey + L2 * .7); tx.stroke(); }   // i riccioli
     if (vr() < .6) bigDrips(tx, shiftC(T, 0, 0), col, Wp, Hp, r, 2 + Math.floor(r() * 3), Hp * .12, S * .04);
     x.drawImage(T, 0, 0); snap(x.canvas); paths.push(fillPath(T, Math.max(3, S * .1))); radii.push(S * .3);
   }
@@ -38658,7 +38669,7 @@ var WriterArte = (function () {
       if (NEW[w.style]) { const c = cv(Wp, Hp); NEW[w.style](w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; } }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
       const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign && w.style !== 'gotico' ? Hp * .7 : 0, d = Object.assign({}, WM.dna(w.hand || w.seed || 1), w.style === 'gotico' ? { goth: true, vert: Hp > Wp * 1.4 } : {}, (globalThis.__oldHand || mulberry((w.hand || w.seed || 1) ^ 0x0d)() < .65) && w.style !== 'gotico' ? { oldHand: true } : {});   // [graffiti4] la mano a scalpello per due writer su tre: aste alte, contrasto, colature (la mano «a movimento» sembrava stampatello)
-      const TAGC = ['#141418', '#141418', '#141418', '#141418', '#16161c', '#c8ccd2', '#c8ccd2', '#f2f2ee', '#d8201a', '#1c3aa8', '#e8409a', '#2a8a3a', '#ff8a1a', '#7a4ae0'], col = w.col || (w.style === 'mtag' ? '#121216' : TAGC[Math.floor(mulberry((w.seed || 1) ^ 0x7a6)() * TAGC.length)]);   // [graffiti4] le tag vere: quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso
+      const TAGC = ['#141418', '#141418', '#141418', '#141418', '#141418', '#16161c', '#c8ccd2', '#c8ccd2', '#c8ccd2', '#f2f2ee', '#f2f2ee', '#d8201a', '#1c3aa8', '#e8409a'], tr = mulberry(Math.imul(w.seed || 1, 2654435761) ^ 0x7a6); tr(); const col = w.col || (w.style === 'mtag' ? '#121216' : TAGC[Math.floor(tr() * TAGC.length)]);   // [graffiti5] il seme mescolato bene: due tag vicine non escono dello stesso colore   // [graffiti4] le tag vere: quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso
       if (FONTS.ok && w.style !== 'gotico' && !(WM.RECORDED && WM.RECORDED[DEACC(text)])) { fontTagArt(w, P, C, r, Wp, Hp, snap, paths, radii, x, col); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [graffiti4] la tag dal font della sua mano (le firme registrate nello studio restano le sue)
       const res = WM.handTag(x, text, d, Wp - signW, Hp, r, w.style === 'gotico' && !w.col ? '#101012' : col, w.style === 'gotico' ? 'tag' : w.style);
       if (w.sign) sign(x, w.sign, Wp - signW * .55, Hp * .5, signW * .55, w.style === 'mtag' ? '#f2efe6' : col);
@@ -41009,8 +41020,8 @@ var WriterArte = (function () {
     const lay = fontLayout(text, fam, o, r), signW = w.sign ? Hp * .7 : 0, area = { x: Wp * .05, y: Hp * .1, w: Wp * .9 - signW, h: Hp * .64 }, f = fontFit(lay, area), S = f.S;
     const T = cv(Wp, Hp), tx = T.getContext('2d'), spray = !mk && fam !== 'ReenieBeanie', outl = spray && rr() < .16 ? (lumC(col) > .5 ? '#141418' : pickR(rr, ['#f2f2ee', '#c8ccd2', '#e5322a'])) : null;
     if (outl) lay.L.forEach(l => fontDraw(tx, lay, l, outl, f.tx, f.ty, f.k, S * .16));   // la tag col contorno (lo spray riempie, il contorno la stacca)
-    if (spray) { tx.shadowColor = col; tx.shadowBlur = S * .05; }
-    lay.L.forEach(l => { fontDraw(tx, lay, l, col, f.tx, f.ty, f.k); fontDraw(tx, lay, l, col, f.tx, f.ty, f.k, S * (spray ? .035 : .012)); });   // ripassata appena: lo spray ingrossa il tratto
+    if (spray) { tx.shadowColor = col; tx.shadowBlur = S * .02; }   // [graffiti5] l'alone dello spray: un velo stretto, la tag resta netta
+    lay.L.forEach(l => { fontDraw(tx, lay, l, col, f.tx, f.ty, f.k); fontDraw(tx, lay, l, col, f.tx, f.ty, f.k, S * (spray ? .025 : .012)); });   // ripassata appena: lo spray ingrossa il tratto
     tx.shadowBlur = 0;
     const bb = bboxC(T); tx.fillStyle = col; tx.strokeStyle = col; tx.lineCap = 'round';
     if ((d.drip && rr() < .7) || (mk && rr() < .6)) { const n = 1 + Math.floor(r() * (mk ? 3 : 3)); bigDrips(tx, shiftC(T, 0, 0), col, Wp, Hp, r, n, S * (mk ? .7 : .55), S * (mk ? .02 : .04)); }   // le colature dalle lettere (prima della riga sotto): il pennarello carico, lo spray tenuto fermo
@@ -41251,7 +41262,7 @@ var WriterArte = (function () {
   };
   const MANIFESTI = ['IL DISGELO\nE QUI', 'RATE?\nNO', 'SABATO SERA\nLIVE AL\nBAR SIRENA', 'CONCERTO\nRADICI\nORE 22', 'ASSEMBLEA\nGIOVEDI\nAL CALDO', 'CERCASI\nVESPA', 'SOLE\nPER TUTTI', 'NO AL\nCARBONE', 'FESTA DEL\nPORTO', 'SCIOPERO\nGENERALE', 'LA STRADA\nE NOSTRA', 'DISCO\nAURORA\nVENERDI', 'SMARRITO\nGATTO MIMI', 'CINEMA\nASTOR\nULTIMA PRIMA'];
   const STENCIL_TXT = ['GRIGI GO HOME', 'NO', 'PEDALA', 'DISGELO', 'SOLE PER TUTTI', 'OINK', 'SVEGLIA', 'LIBERI', 'NO RATE', 'RESPIRA', 'CHI PAGA?', 'VOTA SOLE', 'OCCHIO', 'RESISTI'];
-  const STENCIL_MOTIFS = ['grigio', 'grigio', 'sole', 'bboy', 'banchiere', 'boombox', 'skater', 'bici', 'bici', 'pesce', 'pugno', 'tv', 'ratto', 'ratto', 'stella', 'ancora', 'bomboletta', 'asino', 'occhio'];
+  const STENCIL_MOTIFS = ['sole', 'boombox', 'bici', 'bici', 'pesce', 'pesce', 'pugno', 'tv', 'ratto', 'ratto', 'stella', 'ancora', 'ancora', 'bomboletta', 'asino', 'occhio', 'occhio'];   // [graffiti5] via le figure che uscivano a pezzi (bboy, banchiere, skater, grigio)
   const MURALI_TXT = { pesca: ['IL MARE E DI CHI LO PESCA', 'VIVIAMO DI MARE', 'LE RETI NON SI PAGANO A RATE'], volti: ['NOI SIAMO IL PORTO', 'LA MEMORIA NON SI CANCELLA', 'LE DONNE DEL PORTO'], pugni: ['IL MURO CADE', 'UNITI SI VINCE', 'NESSUN MURO E PER SEMPRE'], bici: ['PEDALA E RESPIRA', 'PIU BICI MENO RATE', 'LA SALITA E NOSTRA'], isola: ['ISOLA LIBERA', 'IL FARO NON SI SPEGNE'] };
   // ---- attrezzi comuni ----
   const tintTo = (src, col, Wp, Hp) => { const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); kx.globalCompositeOperation = 'source-in'; if (typeof col === 'string') { kx.fillStyle = col; kx.fillRect(0, 0, Wp, Hp); } else kx.drawImage(col, 0, 0); return k; };
@@ -41272,7 +41283,7 @@ var WriterArte = (function () {
     const k = cv(Wp, Hp), kx = k.getContext('2d'); kx.drawImage(src, 0, 0); const d = kx.getImageData(0, 0, Wp, Hp), A = d.data;
     for (let i = 0; i < A.length; i += 4) { const lum = (A[i] * .3 + A[i + 1] * .59 + A[i + 2] * .11) / 255; A[i + 3] = A[i + 3] > 100 && lum < thr ? 255 : 0; }
     kx.putImageData(d, 0, 0); const T = tintTo(k, ink, Wp, Hp), tx = T.getContext('2d');
-    tx.globalCompositeOperation = 'destination-out'; tx.strokeStyle = '#000'; tx.lineWidth = Math.max(1.5, Hp * .012); for (let i = 0; i < bridges; i++) { const a = r() * PI, cx0 = Wp * (.2 + r() * .6), cy0 = Hp * (.2 + r() * .6), L = Hp * .45; tx.beginPath(); tx.moveTo(cx0 - Math.cos(a) * L, cy0 - Math.sin(a) * L); tx.lineTo(cx0 + Math.cos(a) * L, cy0 + Math.sin(a) * L); tx.stroke(); }
+    tx.globalCompositeOperation = 'destination-out'; tx.strokeStyle = '#000'; tx.lineWidth = Math.max(1.5, Hp * .012); for (let i = 0; i < bridges; i++) { const a = (r() < .5 ? 0 : PI / 2) + (r() - .5) * .3, cx0 = Wp * (.3 + r() * .4), cy0 = Hp * (.15 + r() * .45), L = Hp * (.05 + r() * .05) /* [graffiti5] il ponticello è corto: tiene insieme la maschera */; tx.beginPath(); tx.moveTo(cx0 - Math.cos(a) * L, cy0 - Math.sin(a) * L); tx.lineTo(cx0 + Math.cos(a) * L, cy0 + Math.sin(a) * L); tx.stroke(); }
     return T;
   }
   // ---- il rullo (una riga, o due) e il verticale a rullo (una lettera sotto l'altra) ----
@@ -41330,10 +41341,10 @@ var WriterArte = (function () {
   function pixoArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const text = DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO', n = text.length, F = FONT();
     const vr = mulberry((w.seed || 1) ^ 0x9e37), col = w.col || pickR(vr, ['#101012', '#101012', '#101012', '#101012', '#f2efe6', '#d8201a']), stacked = Hp > Wp * 1.3;
-    const cellH = stacked ? Hp / n : Hp, lh = stacked ? cellH * .86 : Hp * .8, lw = stacked ? Wp * .7 : (Wp * .9) / n * .72, pts = [];
+    const cellH = stacked ? (Hp * .94) / n : Hp, lh = stacked ? cellH * .74 : Hp * .72, lw = stacked ? Wp * .56 : (Wp * .9) / n * .66, pts = [];   // [graffiti5] il margine: il tratto grosso e il piedino non escono dal muro
     x.save(); x.strokeStyle = col; x.fillStyle = col; x.lineCap = 'butt'; x.lineJoin = 'miter'; x.miterLimit = 4; const th = Math.max(3, Math.min(lw, lh) * (.11 + vr() * .04)); x.lineWidth = th;   // [graffiti4] il tratto grosso del rullino
     [...text].forEach((ch, i) => {
-      const g = F[ch] || F.I || [], cx = stacked ? Wp / 2 : Wp * .05 + (i + .5) * (Wp * .9) / n, cy = stacked ? i * cellH + cellH / 2 : Hp / 2, kx = 1 + (r() - .5) * .08, ky = 1 + (r() - .5) * .06;
+      const g = F[ch] || F.I || [], cx = stacked ? Wp / 2 : Wp * .05 + (i + .5) * (Wp * .9) / n, cy = stacked ? Hp * .02 + i * cellH + cellH / 2 : Hp / 2, kx = 1 + (r() - .5) * .08, ky = 1 + (r() - .5) * .06;
       const T = ([u, v]) => [cx + (u - .3) / .6 * lw * kx, cy + (.5 - v) * lh * ky];   // alte e strette, dritte
       g.forEach(tr => { let p = tr.map(T); if (p.length === 1) { x.fillRect(p[0][0] - th / 2, p[0][1] - th / 2, th, th); pts.push(p[0]); return; }
         if (r() < .6) { const a = p[p.length - 1], b = p[p.length - 2], d = hyp(a[0] - b[0], a[1] - b[1]) || 1, ux = (a[0] - b[0]) / d, uy = (a[1] - b[1]) / d, sg = r() < .5 ? 2 : -2; p = p.concat([[a[0] + ux * th * 1.2 - uy * th * sg, a[1] + uy * th * 1.2 + ux * th * sg]]); }   // il piedino: ogni asta finisce con un taglio obliquo
@@ -41371,14 +41382,14 @@ var WriterArte = (function () {
     ctx.restore();
   }
   function stencilArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
-    const vr = mulberry((w.motifSeed || w.seed || 1) ^ 0x57e4), kind = w.motif || pickR(vr, STENCIL_MOTIFS), ink = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#141418', '#d8201a', '#d8201a', '#1c3aa8', '#f4f1ea']), txt = w.words !== undefined ? w.words : (vr() < .7 ? pickR(vr, STENCIL_TXT) : null), two = vr() < .35;
+    const vr = mulberry((w.motifSeed || w.seed || 1) ^ 0x57e4), kind = w.motif || (STENCIL_MOTIFS.includes(w.fam) && w.fam) || pickR(vr, STENCIL_MOTIFS), ink = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#141418', '#d8201a', '#d8201a', '#1c3aa8', '#f4f1ea']), txt = w.words !== undefined ? w.words : (vr() < .7 ? pickR(vr, STENCIL_TXT) : null), two = vr() < .35;
     const mh = txt ? Hp * .68 : Hp * .9, s = Math.min(Wp * .4, mh * .42), cx0 = Wp / 2, cy0 = mh * .5;
-    x.fillStyle = ink; x.globalAlpha = .07; x.fillRect(Wp * .05, Hp * .04, Wp * .9, Hp * .92); x.globalAlpha = 1;   // l'alone della tavola: il rettangolo appena spruzzato attorno
-    if (two) { x.fillStyle = pickR(vr, ['#d8201a', '#f2d23a', '#2a86e0', '#ff8a3a']); x.beginPath(); x.arc(cx0, cy0, s * 1.05, 0, 7); x.fill(); snap(x.canvas); paths.push([[cx0, cy0]]); radii.push(s * 1.2); }   // il secondo strato: una campitura dietro
+    if (two) { x.fillStyle = pickR(vr, ['#d8201a', '#f2d23a', '#2a86e0', '#ff8a3a'].filter(c => c !== ink && lumC(c) > lumC(ink) + .15).concat(['#f2d23a'])); x.beginPath(); x.arc(cx0, cy0, s * 1.05, 0, 7); x.fill(); snap(x.canvas); paths.push([[cx0, cy0]]); radii.push(s * 1.2); }   // il secondo strato: una campitura dietro
     const t = cv(Wp, Hp), tx = t.getContext('2d'); motif(tx, kind, cx0, cy0, s, P, r);
     if (txt && FONTS.ok) fontText(tx, DEACC(txt).replace(/[^A-Z0-9?! ]/g, ''), pickR(vr, ['BlackOpsOne', 'BlackOpsOne', 'Bungee']), Wp / 2, Hp * .81, Hp * .1, '#141418', { maxW: Wp * .9 });   // [graffiti4] le lettere da stencil vere, coi ponticelli
     else if (txt) { const { L, tot } = blockWord(DEACC(txt).replace(/[^A-Z0-9?! ]/g, ''), .3, .74, .1), S = Math.min((Wp * .9) / tot, Hp * .2), toPx = (l, [u, v]) => [(Wp - tot * S) / 2 + (l.x0 + u) * S, Hp * .8 + (v - .5) * S]; L.forEach(l => tx.drawImage(tintTo(letterMask(l, toPx, Wp, Hp, 0, S), '#141418', Wp, Hp), 0, 0)); }
-    x.drawImage(stencilize(t, ink, Wp, Hp, r, .5, 3 + Math.floor(r() * 3)), 0, 0);
+    { const hz = cv(Wp, Hp), hx = hz.getContext('2d'); hx.filter = `blur(${(s * .12).toFixed(1)}px)`; hx.drawImage(tintTo(grow(t, s * .08), ink, Wp, Hp), 0, 0); x.globalAlpha = .13; x.drawImage(hz, 0, 0); x.globalAlpha = 1; }   // [graffiti5] lo spruzzo che passa sotto il bordo della maschera: un velo attorno alla figura, non un rettangolo
+    x.drawImage(stencilize(t, ink, Wp, Hp, r, .5, 1 + Math.floor(r() * 2)), 0, 0);
     x.fillStyle = ink; x.globalAlpha = .25; const ex = r() < .5 ? Wp * .08 : Wp * .92, ey = r() < .5 ? Hp * .1 : Hp * .9; for (let k = 0; k < 30; k++) { const a = r() * PI * 2, rr = r() * Wp * .1; x.beginPath(); x.arc(ex + Math.cos(a) * rr, ey + Math.sin(a) * rr, 1 + r() * 2, 0, 7); x.fill(); } x.globalAlpha = 1;   // lo spruzzo che passa oltre la tavola, in un angolo
     snap(x.canvas); paths.push(raster(Wp, Hp, 3)); radii.push(Hp * .22);
   }
@@ -41414,8 +41425,19 @@ var WriterArte = (function () {
       const c = cv(Math.round(pw), Math.round(ph)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height;
       cx.fillStyle = paper; cx.fillRect(0, 0, W2, H2); cx.textAlign = 'center';
       if (kind === 'slogan') { const lines = pickR(vr, MANIFESTI).split('\n'), fs = Math.min(W2 / 5.6, H2 / (lines.length * 1.6)); cx.fillStyle = ink; cx.font = `bold ${Math.round(fs)}px Arial`; if (FONTS.ok) { const fam = pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers', 'Knewave', 'Shrikhand', 'Ranchers']); lines.forEach((ln, i) => fontText(cx, ln, fam, W2 / 2, H2 * .5 + (i - (lines.length - 1) / 2) * fs * 1.25, fs * (i ? .78 : .9), ink, { maxW: W2 * .86 })); } else lines.forEach((ln, i) => cx.fillText(ln, W2 / 2, H2 * .5 + (i - (lines.length - 1) / 2) * fs * 1.25 + fs * .35)); if (vr() < .5) { cx.fillRect(W2 * .08, H2 * .07, W2 * .84, H2 * .035); cx.fillRect(W2 * .08, H2 * .9, W2 * .84, H2 * .035); } }
-      else if (kind === 'volto') { const t = cv(W2, H2), tx = t.getContext('2d'); character(tx, pickR(vr, CHARS), W2 / 2, H2 * .42, Math.min(W2, H2) * .36, P, r); cx.drawImage(stencilize(t, ink, W2, H2, r, .5, 0), 0, 0); cx.fillStyle = ink; cx.font = `bold ${Math.round(W2 / 7)}px Arial`; { const cap = pickR(vr, ['RICERCATO', 'DISGELO', 'OINK', 'CHI PAGA?', 'SVEGLIA', 'LIBERI']); if (FONTS.ok) fontText(cx, cap, pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers']), W2 / 2, H2 * .88, W2 / 10, ink, { maxW: W2 * .86 }); else cx.fillText(cap, W2 / 2, H2 * .9); } }
-      else { cx.fillStyle = ink; for (let yy = 0; yy < H2; yy += W2 * .05) for (let xx = 0; xx < W2; xx += W2 * .05) { const rr = W2 * .022 * (.3 + .7 * Math.abs(Math.sin(xx * .02 + yy * .013))); cx.beginPath(); cx.arc(xx, yy, rr, 0, 7); cx.fill(); } cx.fillStyle = paper; cx.beginPath(); cx.arc(W2 * .5, H2 * .4, W2 * .3, 0, 7); cx.fill(); cx.fillStyle = ink; cx.font = `bold ${Math.round(W2 * .42)}px Arial`; { const wd = pickR(vr, ['NO', 'SI', '!', '?', 'W']); if (FONTS.ok) fontText(cx, wd, 'BlackOpsOne', W2 / 2, H2 * .4, W2 * .3, ink, { maxW: W2 * .5 }); else cx.fillText(wd, W2 / 2, H2 * .55); } }   // la retinatura
+      else if (kind === 'volto') {   // [graffiti5] il ritratto a retino: testa e spalle fatti dai punti, più grossi dove è scuro; la luce da sinistra, la fascia degli occhiali
+        const hx = W2 * (.5 + (vr() - .5) * .08), hy = H2 * .34, rx = W2 * .2, ry = H2 * .2, glass = vr() < .6, st = W2 * .032, cap = pickR(vr, ['RICERCATO', 'CHI LO HA VISTO?', 'SCOMPARSO', 'SVEGLIA', 'LIBERI']);
+        const dark = (px, py) => { const e1 = ((px - hx) / rx) ** 2 + ((py - hy) / ry) ** 2, sh = ((px - W2 * .5) / (W2 * .48)) ** 2 + ((py - H2 * .82) / (H2 * .22)) ** 2, neck = Math.abs(px - hx) < rx * .45 && py > hy && py < H2 * .66;
+          if (e1 > 1 && sh > 1 && !neck) return .04; let d = .35 + .35 * clamp((px - hx) / rx, -1, 1) + (e1 <= 1 ? .1 * Math.sqrt(e1) : .15);
+          if (e1 <= 1 && py < hy - ry * .45) d = .85;   // i capelli
+          if (glass && e1 <= 1 && Math.abs(py - (hy - ry * .05)) < ry * .14) d = .95; else if (e1 <= 1 && Math.abs(py - (hy - ry * .05)) < ry * .07 && Math.abs(Math.abs(px - hx) - rx * .38) < rx * .14) d = .9;   // gli occhi
+          if (e1 <= 1 && Math.abs(py - (hy + ry * .5)) < ry * .04 && Math.abs(px - hx) < rx * .3) d = .8;   // la bocca
+          return clamp(d, 0, 1); };
+        cx.fillStyle = ink; for (let yy = st / 2; yy < H2 * .78; yy += st) for (let xx = st / 2 + ((yy / st | 0) % 2) * st / 2; xx < W2; xx += st) { const d = dark(xx, yy); if (d > .06) { cx.beginPath(); cx.arc(xx, yy, st * .62 * Math.sqrt(d), 0, 7); cx.fill(); } }
+        if (FONTS.ok) fontText(cx, cap, pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers']), W2 / 2, H2 * .89, W2 / 9, ink, { maxW: W2 * .86 }); else { cx.font = `bold ${Math.round(W2 / 8)}px Arial`; cx.fillText(cap, W2 / 2, H2 * .91); } }
+      else { const wd = pickR(vr, ['NO', 'BASTA', 'SVEGLIA', 'ADESSO', 'RESISTI']), st = W2 * .04;   // [graffiti5] il manifesto tipografico: una parola grande, il retino che sale dal basso
+        cx.fillStyle = ink; for (let yy = st / 2; yy < H2; yy += st) for (let xx = st / 2 + ((yy / st | 0) % 2) * st / 2; xx < W2; xx += st) { const d = clamp((yy / H2 - .45) / .55, 0, 1); if (d > .03) { cx.beginPath(); cx.arc(xx, yy, st * .62 * Math.sqrt(d), 0, 7); cx.fill(); } }
+        if (FONTS.ok) fontText(cx, wd, 'BlackOpsOne', W2 / 2, H2 * .32, W2 * .3, ink, { maxW: W2 * .86 }); else { cx.font = `bold ${Math.round(W2 * .25)}px Arial`; cx.fillText(wd, W2 / 2, H2 * .4); } }
       cx.fillStyle = 'rgba(120,90,40,.12)'; for (let k2 = 0; k2 < 6; k2++) { cx.beginPath(); cx.ellipse(vr() * W2, vr() * H2, W2 * (.1 + vr() * .25), H2 * (.05 + vr() * .15), vr() * 3, 0, 7); cx.fill(); }   // la carta ingiallita, la colla
       cx.strokeStyle = 'rgba(0,0,0,.1)'; cx.lineWidth = 1; for (let k2 = 0; k2 < 3; k2++) { const px = vr() * W2; cx.beginPath(); cx.moveTo(px, 0); cx.lineTo(px + (vr() - .5) * W2 * .1, H2); cx.stroke(); }   // le pieghe
       cx.globalCompositeOperation = 'destination-out';
@@ -41432,7 +41454,7 @@ var WriterArte = (function () {
   function stickersArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
     const vr = mulberry((w.seed || 1) ^ 0xad51), n = 5 + Math.floor(vr() * 9), pts = [], s0 = Math.min(Wp, Hp);
     for (let k = 0; k < n; k++) {
-      const kind = pickR(vr, ['nome', 'nome', 'tondo', 'quadro', 'ovale', 'faccia']), sw = s0 * (.22 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'ovale' ? sw * .65 : sw, cx0 = sw / 2 + vr() * (Wp - sw), cy0 = sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * .5;
+      const kind = pickR(vr, ['nome', 'nome', 'tondo', 'quadro', 'ovale', 'quadro']), sw = s0 * (.22 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'ovale' ? sw * .65 : sw, cx0 = sw / 2 + vr() * (Wp - sw), cy0 = sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * .5;
       const c = cv(Math.round(sw), Math.round(sh)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height, col = pickR(vr, ['#d8201a', '#1c3aa8', '#f2d23a', '#101012', '#5ac8a0', '#ff8a3a', '#e860a8']), ink = '#101012';
       cx.fillStyle = '#f4f1ea'; cx.textAlign = 'center';
       if (kind === 'tondo' || kind === 'faccia') { cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 / 2, 0, 7); cx.fill(); }
@@ -41560,7 +41582,8 @@ var WriterArte = (function () {
       snap(x.canvas); paths.push(raster(Wp, Hp, 4)); radii.push(Hp * .16); }
     const lay = fontLayout(txt, fam, { first: 1.25, jit: .08, bounce: .05, rot: .06, skew: .12, sx: 1.05, sy: 1.15, overlap: .04, wave: (vr() - .5) * .2 }, r), f = fontFit(lay, { x: Wp * .1, y: Hp * .16, w: Wp * .8, h: Hp * .62 }), S = f.S;
     const T = cv(Wp, Hp), tx = T.getContext('2d'), nibA = -.75 + vr() * .3; broadNib(tx, lay, f, ink, S * (.14 + vr() * .06), nibA);
-    tx.lineCap = 'round'; for (let k = 0; k < 2 + Math.floor(vr() * 2); k++) { const y0 = Hp * (.2 + vr() * .6), pts = [], ph = vr() * PI, am = Hp * .18 * (vr() - .5) * 2; for (let t = 0; t <= 1.001; t += .08) pts.push([Wp * (.06 + .88 * t), y0 + Math.sin(t * PI + ph) * am]); if (WM) WM.chisel(tx, WM.smooth(pts, 4), S * .12, nibA, true, true, .9); }   // le pennellate che accompagnano
+    if (vr() < .65 && WM) { const bb = bboxC(T), y0 = Math.min(Hp * .93, bb[3] + S * .12), pts = [];   // [graffiti5] lo svolazzo: esce dall'ultima lettera e torna sotto la parola, senza attraversarla
+      for (let t = 0; t <= 1.001; t += .06) pts.push([bb[2] - S * .1 - (bb[2] - bb[0]) * .85 * t, y0 - S * .25 * (1 - t) * (1 - t) + Math.sin(t * PI) * S * .1]); tx.fillStyle = tx.strokeStyle = ink; WM.chisel(tx, WM.smooth(pts, 4), S * .09, nibA, true, true, .9); }
     x.drawImage(T, 0, 0); x.fillStyle = ink; { const bb = bboxC(T); for (let k = 0; k < 45; k++) { const px = bb[0] + r() * (bb[2] - bb[0]), py = bb[1] + r() * (bb[3] - bb[1]); x.globalAlpha = .5 + r() * .5; x.beginPath(); x.arc(px + (r() - .5) * S * .3, py + (r() - .5) * S * .3, S * (.004 + r() * r() * .02), 0, 7); x.fill(); } } x.globalAlpha = 1;   // gli schizzi della pennellessa
     snap(x.canvas); paths.push(colPath(T, Math.max(2, S * .05))); radii.push(S * .25);
   }
@@ -41569,7 +41592,6 @@ var WriterArte = (function () {
     const vr = mulberry((w.hand || w.seed || 1) ^ 0x60c), fam = pickR(vr, ['MarckScript', 'SedgwickAveDisplay', 'PermanentMarker', 'Knewave', 'RockSalt']), col = w.col || pickR(vr, ['#141418', '#141418', '#141418', '#d8201a', '#f2efe6']);
     const chs = [...(DEACC(w.words || w.aka || 'NINO').replace(/[^A-Z0-9]/g, '') || 'NINO')], n = chs.length, cellH = Hp * .9 / n, T = cv(Wp, Hp), tx = T.getContext('2d'), nibA = -.8; let S = 1;
     chs.forEach((ch, i) => { const lay = fontLayout(ch, fam, { sy: 1.3, skew: .05, rotFix: (i % 2 ? 1 : -1) * .05 }, r), f = fontFit(lay, { x: Wp * .14, y: Hp * .05 + i * cellH, w: Wp * .72, h: cellH * .92 }); S = f.S; broadNib(tx, lay, f, col, S * .1, nibA); });
-    tx.strokeStyle = col; tx.lineCap = 'round'; tx.lineWidth = Math.max(1, S * .03); for (let k = 0; k < 2 + n; k++) { const ex = Wp * (.15 + vr() * .7), ey = Hp * (.06 + vr() * .9), L2 = S * (.3 + vr() * .4), sg = vr() < .5 ? 1 : -1; tx.beginPath(); tx.moveTo(ex, ey); tx.bezierCurveTo(ex + L2 * .6 * sg, ey - L2 * .2, ex + L2 * sg, ey + L2 * .4, ex + L2 * .5 * sg, ey + L2 * .7); tx.stroke(); }   // i riccioli
     if (vr() < .6) bigDrips(tx, shiftC(T, 0, 0), col, Wp, Hp, r, 2 + Math.floor(r() * 3), Hp * .12, S * .04);
     x.drawImage(T, 0, 0); snap(x.canvas); paths.push(fillPath(T, Math.max(3, S * .1))); radii.push(S * .3);
   }
@@ -41707,7 +41729,7 @@ var WriterArte = (function () {
       if (NEW[w.style]) { const c = cv(Wp, Hp); NEW[w.style](w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; } }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
       const c = cv(Wp, Hp), x = c.getContext('2d'), signW = w.sign && w.style !== 'gotico' ? Hp * .7 : 0, d = Object.assign({}, WM.dna(w.hand || w.seed || 1), w.style === 'gotico' ? { goth: true, vert: Hp > Wp * 1.4 } : {}, (globalThis.__oldHand || mulberry((w.hand || w.seed || 1) ^ 0x0d)() < .65) && w.style !== 'gotico' ? { oldHand: true } : {});   // [graffiti4] la mano a scalpello per due writer su tre: aste alte, contrasto, colature (la mano «a movimento» sembrava stampatello)
-      const TAGC = ['#141418', '#141418', '#141418', '#141418', '#16161c', '#c8ccd2', '#c8ccd2', '#f2f2ee', '#d8201a', '#1c3aa8', '#e8409a', '#2a8a3a', '#ff8a1a', '#7a4ae0'], col = w.col || (w.style === 'mtag' ? '#121216' : TAGC[Math.floor(mulberry((w.seed || 1) ^ 0x7a6)() * TAGC.length)]);   // [graffiti4] le tag vere: quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso
+      const TAGC = ['#141418', '#141418', '#141418', '#141418', '#141418', '#16161c', '#c8ccd2', '#c8ccd2', '#c8ccd2', '#f2f2ee', '#f2f2ee', '#d8201a', '#1c3aa8', '#e8409a'], tr = mulberry(Math.imul(w.seed || 1, 2654435761) ^ 0x7a6); tr(); const col = w.col || (w.style === 'mtag' ? '#121216' : TAGC[Math.floor(tr() * TAGC.length)]);   // [graffiti5] il seme mescolato bene: due tag vicine non escono dello stesso colore   // [graffiti4] le tag vere: quasi sempre nere, argento, bianche; a volte rosse, blu, un colore acceso
       if (FONTS.ok && w.style !== 'gotico' && !(WM.RECORDED && WM.RECORDED[DEACC(text)])) { fontTagArt(w, P, C, r, Wp, Hp, snap, paths, radii, x, col); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [graffiti4] la tag dal font della sua mano (le firme registrate nello studio restano le sue)
       const res = WM.handTag(x, text, d, Wp - signW, Hp, r, w.style === 'gotico' && !w.col ? '#101012' : col, w.style === 'gotico' ? 'tag' : w.style);
       if (w.sign) sign(x, w.sign, Wp - signW * .55, Hp * .5, signW * .55, w.style === 'mtag' ? '#f2efe6' : col);

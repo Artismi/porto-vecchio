@@ -224,3 +224,17 @@ Il problema non erano le lettere ma il contorno: pupazzi da clip-art, slogan, pa
   tag ingrassate poco (la E non si chiude in una B); Modak e Sedgwick più rari; i throw-up quasi sempre dai font.
 - Via anche le faccine, i cuoricini, le stelline e le aureole dentro e sopra i throw-up.
 - La galleria scrive nell'etichetta con cosa sono fatte le lettere (il font, «pennellate», «blocchi», «bolle»): `A.font`.
+
+### Graffiti 5, terza passata: la pulizia di tutti gli stili
+- **Tag**: il colore pescato da un seme mescolato bene (prima tag vicine uscivano dello stesso colore, spesso rosa), e i pesi verso
+  nero, argento e bianco; l'alone dello spray stretto (la tag resta netta).
+- **Gotico**: via i riccioli sparsi attorno. **Calligrafia**: via le pennellate che attraversavano la parola; al loro posto, a volte,
+  uno svolazzo dello stesso colore che esce dall'ultima lettera e torna sotto.
+- **Stencil**: niente rettangolo grigio dietro, ma un velo di spruzzo attorno alla figura; i ponticelli corti (1–2), non righe che
+  tagliano tutto; via le figure che uscivano a pezzi (bboy, banchiere, skater, grigio); il cerchio dietro mai dello stesso colore
+  della figura. In galleria la figura si sceglie col campo fam (`stencil:bici:6:701`).
+- **Manifesti**: il «volto» è un ritratto a retino (testa e spalle dai punti, la luce da sinistra, la fascia degli occhiali);
+  il retino col punto di domanda è diventato il manifesto tipografico (una parola grande, il retino che sale dal basso).
+- **Adesivi**: via quello con la faccina. **Pixo verticale**: il margine, le lettere non escono più dal muro.
+- Nota per la galleria: le cose piccole (tag, adesivi) vanno guardate a ppm alto (`... 4 200 2`), altrimenti il canvas è di
+  pochi pixel stirati e sembrano sgranate anche se nel gioco non lo sono.
