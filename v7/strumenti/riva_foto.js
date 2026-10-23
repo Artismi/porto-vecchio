@@ -28,7 +28,9 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       for (let quiet = 0, tb = Date.now(); Date.now() - tb < 240000 && quiet < 3;) { await pg.waitForTimeout(1500); quiet = (await pg.evaluate(s => { const I = window.__pv.R.ISO, W = I.CH * 2; if (I.job) return false; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (!I.chunks.has(Math.floor((s.x + a * 30) / W) + ',' + Math.floor((s.y + b * 20) / W))) return false; return true; }, s)) ? quiet + 1 : 0; }   // i blocchi attorno al punto inquadrato tutti costruiti
       await pg.waitForTimeout(+(process.env.RIVA_ATTESA || 6000));
       await pg.screenshot({ path: path.join(outDir, s.nome + suf + '.png'), timeout: 600000 });
-      const mis = await pg.evaluate(() => ({ riva: window.__riva9 || null, dc: window.__pv.R && window.__pv.R.renderer ? window.__pv.R.renderer.info.render.calls : null }));
+      const mis = await pg.evaluate(() => new Promise(res => { const ren = window.__pv.R.__models.renderer, t = []; let last = performance.now(), k = 0;
+        const step = () => { const n = performance.now(); t.push(n - last); last = n; if (++k < 6) requestAnimationFrame(step); else { const i = ren.info.render; t.shift(); t.sort((a, b) => a - b); res({ riva: window.__riva9 || null, dc: i.calls, tri: i.triangles, ms: Math.round(t[Math.floor(t.length / 2)]) }); } };
+        requestAnimationFrame(step); }));
       console.log(s.nome + suf, JSON.stringify(mis), ((Date.now() - ts) / 1000).toFixed(0) + ' s');
     }
     await pg.close();
