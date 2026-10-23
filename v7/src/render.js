@@ -1490,7 +1490,10 @@ var Render = (function () {
   }
   function iq5Pav(B) {
     let c = IQ5.pav.get(B); if (c) return c;
-    const cap = vis3Cap(B); c = new THREE.Mesh(cap.geometry, IQ5.pavM || (IQ5.pavM = (() => {
+    const cap = vis3Cap(B); c = new THREE.Mesh(cap.geometry, iq5PavM());
+    c.rotation.copy(cap.rotation); c.position.copy(cap.position); c.castShadow = c.receiveShadow = false; c.visible = false; scene.add(c); IQ5.pav.set(B, c); return c;
+  }
+  function iq5PavM() { return IQ5.pavM || (IQ5.pavM = (() => {   /* [peso] a parte: si prepara nel caricamento (peso_pronti.js) */
       const m = new THREE.MeshBasicMaterial({ color: '#7a5a3e' });   // il tavolato di legno: non si confonde col cotto dei terrazzi
       m.onBeforeCompile = sh => { sh.uniforms.uMuro5 = CAVO5.muro;
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 m3; varying vec4 vM3;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvM3 = m3;');
@@ -1501,9 +1504,7 @@ var Render = (function () {
             float ri = floor(u5.y / .22), q5 = fract(u5.y / .22), gi = step(.9, q5), tg = step(.97, fract(u5.x / 1.6 + fract(ri * .37)));
             diffuseColor.rgb *= (.88 + .12 * fract(ri * .618)) * (1. - .4 * max(gi, tg));
             diffuseColor.rgb *= mix(.55, 1., smoothstep(uMuro5.x, uMuro5.x + .9, ed)); }`); };
-      m.customProgramCacheKey = () => 'pav5'; return m; })()));
-    c.rotation.copy(cap.rotation); c.position.copy(cap.position); c.castShadow = c.receiveShadow = false; c.visible = false; scene.add(c); IQ5.pav.set(B, c); return c;
-  }
+      m.customProgramCacheKey = () => 'pav5'; return m; })()); }
   // A: la camera. La misura della stretta attorno al personaggio (Visuale.misura sulla città in pianta), l'isteresi e lo smorzamento
   // (Visuale.camPasso): VIS4.C.p la pendenza, .z lo zoom, .g il giro. Lavora sotto la camera [fluido] (sguardo della levetta, dito, momenti):
   // cambia solo pendenza e distanza, il punto guardato resta quello. Sul tetto, al chiuso, alla guida, sotto terra: la pendenza di sempre
@@ -15782,5 +15783,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

@@ -35,6 +35,7 @@ const SCATTI = [
   { nome: 'folla', x: 1278, y: 340, zoom: .85, ora: 600, folla: true },
   { nome: 'adunata', x: 1328, y: 343, zoom: .75, ora: 1050 },   // la piazza d'adunata col sole basso della sera: i dentini delle ombre lunghe
   { nome: 'suolo', x: 1424, y: 322, zoom: .5, ora: 660 },   // la piazza del borgo da vicino: quasi tutto lo schermo è pavimento (il costo per pixel del suolo)
+  { nome: 'vicolo', x: 1420, y: 310, zoom: .75, ora: 660 },   // il Vico delle Monache (3 m): la camera in strada, le case tagliate cave
 ].filter(s => !SOLO || SOLO.split(',').includes(s.nome));
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream' };
 fs.mkdirSync(OUT, { recursive: true });
