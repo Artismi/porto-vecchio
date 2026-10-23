@@ -55312,6 +55312,10 @@ var Pavimenti = (function () {
         jt = (1. - smoothstep(jwE - aa, jwE + aa, F.x)) * sqrt(.009 / jwE); bv = 1. - smoothstep(.009, .032, F.x); tq = F.zw * bv;
         float h = F.y; tone = .82 + h * .32; col *= h < .3 ? vec3(1.07, .94, .94) : h < .6 ? vec3(.95, .96, 1.05) : h < .8 ? vec3(1.03, 1., .96) : vec3(.92);
         tone += (pvN(p * 19.) - .5) * .08 * fin; mean = .9;
+        // da lontano i cubetti (2 pixel) farebbero grana: sfumano, e resta il ventaglio, gli archi e le file più scure ogni 55 cm
+        float pc = 1. - smoothstep(.02, .05, mpp); jt *= pc; tq *= pc; tone = mix(.92 + (pvN(qa * vec2(.8, 3.)) - .5) * .1, tone, pc);
+        float ar = min(abs(fract(qa.y / .55) - .5) * .55, abs(u) > .47 ? 0. : 9.), al = (1. - smoothstep(.012, .012 + mpp * 1.2, ar)) * (1. - pc * .6);
+        tone *= 1. - al * .22; jt = max(jt, al * .5);
       } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
         float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4, ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
         float mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
