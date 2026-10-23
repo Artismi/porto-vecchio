@@ -17,6 +17,11 @@ pareti e sui marciapiedi e sui muri, che compromettono la leggibilità della map
 - `strumenti/pulizia_scene.json` (8 inquadrature, camera predefinita, zoom 0,72) e `strumenti/pulizia_vicino.json` (3 da vicino)
   per `strumenti/galleria.js`; `strumenti/fogli_pulizia.py` fa i fogli in `_immagini/pulizia/`.
 
+## Con gli altri filoni
+La posa automatica dei piccoli oggetti di [pavimenti] (`claude/pv-pavimenti`: in `addStatic`, galleggianti 2,5–12 cm giù,
+sepolti 10–35 cm su, `?nopavimenti`) avviene prima: il censimento della quota corre dopo e corregge solo quello che resta (oltre
+quei margini o fra le sue esclusioni), senza rifarla.
+
 ## Le regole
 Censimento: verso (sulla sagoma vera: il rettangolo d'ingombro più stretto dei vertici, contro il muro o l'asse della via),
 quota (galleggia / affonda rispetto a `groundH`), parete (cose appese che si coprono nel piano del muro), finestra, marciapiede
