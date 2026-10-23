@@ -215,6 +215,19 @@ var PuliziaRumore = (function () {
     // 1) i doppioni se ne vanno (il primo posato resta); le lampade e i citofoni doppi anche se di solito si tengono
     E.forEach(e => { if (e.doppioneDi && !e.gone && !e.doppioneDi.gone && !(e.doppioneDi.membri || [e.doppioneDi]).every(m => m.gone)) togli(e, 'doppione', e.k === 'applique' || e.k === 'citofono'); });
     X.forEach(x => { if (x.doppioneDi && !x.gone && !x.doppioneDi.gone) togli(x, 'doppione', true); });
+    // 1a) i praticabili coperti da chi non dovrebbe: un pezzo d'uno scorcio (la serranda chiusa, lo zoccolo, la luminaria) proprio su una
+    // porta vera o contro il suo gradino se ne va; un pezzo grande piccolo (l'edicola votiva, il carro, il pozzo) davanti a una porta o al
+    // piede di una scala scivola lungo i suoi assi finché la lascia libera (mai dentro una casa)
+    const MOBILI = /^(edicola_votiva|carro_merci|pozzo|fontana|bitta|palo_riflettori|grata_vapore|locomotiva|lavatoio)$/;
+    const copre = (e, V) => V.filter(v => (v.t === 'coperto' && v.p && v.p.k === 'porta') || (v.t === 'urto' && v.o && v.o.k === 'gradino') || v.t === 'pezzo');   // il pezzo davanti al praticabile (coi raggi) o dentro la sua zona libera
+    E.forEach(e => { if (e.gone) return;
+      if (/^scorcio/.test(e.k)) { if (copre(e, A.viol(e, I)).length) { A.togli(e); conta(az.tolti, 'coperta:' + e.k); } return; }   // solo quel pezzo, non lo scorcio intero
+      if (e.k !== 'grande' || (e.tipo ? !MOBILI.test(e.tipo) : e.src !== 'soglie')) return;   // anche i grandi senza nome delle soglie (chioschi, banchi) const V0 = copre(e, A.viol(e, I)); if (!V0.length) return;
+      const B = e.B, assi = [[B.c, -B.s], [B.s, B.c]];
+      for (const s of [.5, 1, 1.5, 2, 2.5, 3, 4]) for (const [ux, uz] of assi) for (const sg of [1, -1]) { const dx = ux * s * sg, dz = uz * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); A.sposta(e, dx, dy, dz);
+        if (!copre(e, A.viol(e, I)).length && !A.inCasa(e) && nx(e) === 0) { A.rimetti(I, e); conta(az.spostati, 'pezzo:' + (e.tipo || e.src)); return; } A.sposta(e, -dx, -dy, -dz); }
+      if (e.tipo === 'edicola_votiva') { A.togli(e); conta(az.tolti, 'coperta:edicola_votiva'); return; }   // il decoro piccolo che non trova un altro posto se ne va
+      conta(az.tenuti, 'coperta:' + (e.tipo || e.src)); });
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
     const fuoriPorta = (G, P) => G.every(m => A.yov(m.B, P.Z) <= .03 || A.sat(m.B, P.Z) <= .03);
