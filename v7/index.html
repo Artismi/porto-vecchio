@@ -55127,6 +55127,368 @@ var Visuale = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;
 </script>   <!-- [visuale3] -->
+<script data-m="peso_vetro">/* Porto Vecchio — [peso] i vetri delle case in un secchio solo per settore (v7).
+   Nelle case fuse (render.js fusione1, [pulitore1]) i vetri delle finestre erano un secchio per materiale e per settore: il vetro scuro
+   (darkGlass) e i pannelli accesi dietro al vetro (litMat, dieci toni caldi più quello delle botteghe) differiscono solo per il colore,
+   l'emissivo, la ruvidità e il metallo, ma ognuno faceva una mesh fusa e un disegno per settore. Qui tutti i materiali col marchio
+   userData.vetro (opachi, MeshStandardMaterial, senza mappa) che a meno di quei quattro valori sono lo stesso materiale vanno in un secchio
+   solo; i quattro valori vanno in una tavolozza (una tessitura in virgola mobile, due texel per voce, letta al texel esatto) e ogni vertice
+   porta il suo numero (vt1). Nel materiale comune il colore e l'emissivo sono bianchi: diffuse × tavolozza = il colore di prima; emissive
+   (= bianco × intensità, la curva della notte di FD1.emis) × tavolozza = l'emissivo di prima; ruvidità e metallo dalla tavolozza.
+   Stesso shader, stessi numeri: l'immagine è la stessa. ?nopesovetro lo spegne (come [leggero], solo dove lo shader ha le righe attese). */
+var PesoVetro = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const ON = !/[?&](nopesovetro|noleggero)\b/.test(Q);
+  const V = { col: [], idx: new Map(), ok: new Map(), W: 256, u: { value: null }, s: { value: null }, tex: null };
+  const R = {
+    dif: 'vec4 diffuseColor = vec4( diffuse, opacity );',
+    emi: 'vec3 totalEmissiveRadiance = emissive;',
+    rou: 'float roughnessFactor = roughness;',
+    met: 'float metalnessFactor = metalness;',
+  };
+  function firma(sig) { return 'VT1|' + sig.replace(/\|color:[0-9a-f]{6}/, '').replace(/\|emissive:[0-9a-f]{6}/, '').replace(/\|roughness:[^|]*/, '').replace(/\|metalness:[^|]*/, ''); }
+  function inietta(sh) {
+    sh.uniforms.uVt1 = V.u; sh.uniforms.uVt1S = V.s;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float vt1; varying float vVt1;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvVt1 = vt1;');
+    const C = window.THREE.ShaderChunk;
+    let f = sh.fragmentShader.replace('#include <roughnessmap_fragment>', C.roughnessmap_fragment).replace('#include <metalnessmap_fragment>', C.metalnessmap_fragment);
+    f = f.replace('#include <common>', '#include <common>\nvarying float vVt1; uniform sampler2D uVt1; uniform vec2 uVt1S;\nvec4 vt1T(float k) { return texture2D(uVt1, vec2((mod(k, uVt1S.x) + .5) / uVt1S.x, (floor(k / uVt1S.x) + .5) / uVt1S.y)); }')
+      .replace(R.dif, 'float vtI1 = floor(vVt1 + .5); vec4 vtA1 = vt1T(vtI1 * 2.); vec4 vtB1 = vt1T(vtI1 * 2. + 1.); vec4 diffuseColor = vec4( diffuse * vtA1.rgb, opacity );')
+      .replace(R.emi, 'vec3 totalEmissiveRadiance = emissive * vtB1.rgb;').replace(R.rou, 'float roughnessFactor = vtA1.a;').replace(R.met, 'float metalnessFactor = vtB1.a;');
+    sh.fragmentShader = f;
+  }
+  // il materiale va in tavolozza? Solo vetri marcati, opachi, standard, senza mappa del colore, e solo se lo shader ha le quattro righe una volta
+  function ok(m, sig, renderer) {
+    if (!ON || !m || !m.userData || !m.userData.vetro || m.type !== 'MeshStandardMaterial' || m.transparent || m.map || !sig || !renderer.capabilities.isWebGL2) return null;
+    const k = firma(sig); if (V.ok.has(k)) return V.ok.get(k);
+    let res = null; const T = window.THREE, L = T.ShaderLib.standard;
+    try { const sh = { vertexShader: L.vertexShader, fragmentShader: L.fragmentShader, uniforms: T.UniformsUtils.clone(L.uniforms), defines: {} }; m.onBeforeCompile(sh, renderer);
+      const C = T.ShaderChunk, f = sh.fragmentShader.replace('#include <roughnessmap_fragment>', C.roughnessmap_fragment).replace('#include <metalnessmap_fragment>', C.metalnessmap_fragment);
+      const una = s => f.split(s).length === 2;
+      if (una(R.dif) && una(R.emi) && una(R.rou) && una(R.met) && (f.match(/\bdiffuse\b/g) || []).length === 2 && (f.match(/\bemissive\b/g) || []).length === 2 && (f.match(/\broughness\b/g) || []).length === 2 && (f.match(/\bmetalness\b/g) || []).length === 2) res = k;
+    } catch (e) { res = null; }
+    V.ok.set(k, res); return res;
+  }
+  function idx(m) {
+    const c = m.color, e = m.emissive, k = [c.r, c.g, c.b, e.r, e.g, e.b, m.roughness, m.metalness].join(',');
+    let i = V.idx.get(k); if (i === undefined) { i = V.col.length; V.idx.set(k, i); V.col.push([c.r, c.g, c.b, m.roughness, e.r, e.g, e.b, m.metalness]); } return i;
+  }
+  function tessitura() {
+    if (!V.col.length) return; const T = window.THREE, W = V.W, n = V.col.length * 2, H = Math.max(1, Math.ceil(n / W)), a = new Float32Array(W * H * 4);
+    V.col.forEach((c, i) => a.set(c, i * 8));
+    const t = new T.DataTexture(a, W, H, T.RGBAFormat, T.FloatType); t.minFilter = t.magFilter = T.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
+    if (V.u.value) V.u.value.dispose(); V.u.value = t; V.s.value = new T.Vector2(W, H);
+  }
+  function prepara(c) { c.color.setRGB(1, 1, 1); c.emissive.setRGB(1, 1, 1); }
+  return { ON, ok, idx, tessitura, prepara, inietta, get voci() { return V.col.length; } };
+})();
+if (typeof window !== 'undefined') window.PesoVetro = PesoVetro;
+</script>   <!-- [peso] i vetri in tavolozza -->
+<script data-m="peso_gente">/* Porto Vecchio — [peso] le persone fuse (v7).
+   Il banco del peso: una persona costa 20-35 disegni (e altrettanti nell'ombra): ogni pezzo del corpo, ogni capo, ogni accessorio è una
+   mesh col suo materiale, e la maggior parte dei materiali è lo stesso materiale con un altro colore (le tinte di maglia, pantaloni,
+   capelli, scarpe, cappello). Qui, quando una persona ha finito di vestirsi, i suoi pezzi diventano poche SkinnedMesh sullo stesso
+   scheletro, una per materiale «a meno del colore»: il colore, l'emissivo (la luce propria dei personaggi), la ruvidità e il metallo
+   passano nei vertici (attributi pc1, pe1, pr1) e lo shader li legge dove leggeva le uniformi. Gli accessori rigidi agganciati a un osso
+   (cappelli, occhiali, borse, cinture) entrano come pelle con un osso solo, peso 1: stessa posizione, stesso movimento.
+   Generico: lavora su quello che il costruttore della figura ha prodotto (models.js oggi, personaggi.js domani), senza sapere cosa sia.
+   Niente di quello che il gioco accende o spegne: ogni pezzo fuso e i suoi antenati fino alla persona tengono d'occhio la loro
+   visibilità; se il gioco la cambia (il casco della rivolta, un oggetto in mano), la persona torna come prima (e si rifonde dopo).
+   Gli originali restano, nascosti alla camera con i livelli (layers.mask = 0), pronti per tornare. Il giocatore non si fonde.
+   Stesso shader, stessi numeri: l'immagine è la stessa. ?nopesogente lo spegne. Window.__pesoAB.gente per il banco.             */
+var PesoGente = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const ON = !/[?&]nopesogente\b/.test(Q);
+  const P = { attesa: 20, perFotogramma: 2, ms: 3, riprova: 120 };
+  const ST = { fuse: 0, sciolte: 0, pezzi: 0, disegni: 0, ms: 0, scartate: 0 };
+  let T3 = null, attivo = true, frame = 0;
+  const CANON = new Map(), LIVE = new Set();
+  const R = {
+    dif: 'vec4 diffuseColor = vec4( diffuse, opacity );',
+    emi: 'vec3 totalEmissiveRadiance = emissive;',
+    rou: 'float roughnessFactor = roughness;',
+    met: 'float metalnessFactor = metalness;',
+  };
+  const OKT = { MeshStandardMaterial: 'standard', MeshLambertMaterial: 'lambert', MeshPhongMaterial: 'phong' };
+  const SKIP = new Set(['uuid', 'name', 'id', 'version', 'userData', 'color', 'emissive', 'roughness', 'metalness', '_listeners', 'type', 'onBuild', 'onBeforeRender', 'onBeforeCompile', 'customProgramCacheKey']);
+  // la firma di un materiale a meno di colore, emissivo, ruvidità e metallo (null: non si fonde)
+  const FIRME = new WeakMap();
+  function firma(m) {
+    if (FIRME.has(m)) return FIRME.get(m);
+    let out = null;
+    if (m && OKT[m.type] && !m.transparent && !m.vertexColors && m.visible !== false && m.onBeforeCompile === T3.Material.prototype.onBeforeCompile && m.customProgramCacheKey === T3.Material.prototype.customProgramCacheKey) {
+      const a = [m.type];
+      for (const k of Object.keys(m).sort()) { if (SKIP.has(k)) continue; const v = m[k];
+        if (v === null || v === undefined) a.push(k + ':-'); else if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') a.push(k + ':' + v);
+        else if (v.isColor) a.push(k + ':' + v.getHexString()); else if (v.isTexture) a.push(k + ':' + v.uuid); else if (v.isVector2 || v.isVector3) a.push(k + ':' + v.toArray().join(','));
+        else if (typeof v === 'function') { out = null; FIRME.set(m, null); return null; } else { try { a.push(k + ':' + JSON.stringify(v)); } catch (e) { FIRME.set(m, null); return null; } } }
+      out = a.join('|');
+      const L = T3.ShaderLib[OKT[m.type]], C = T3.ShaderChunk, f = L.fragmentShader.replace('#include <roughnessmap_fragment>', C.roughnessmap_fragment).replace('#include <metalnessmap_fragment>', C.metalnessmap_fragment);
+      const una = s => f.split(s).length === 2; if (!una(R.dif) || !una(R.emi) || (m.type === 'MeshStandardMaterial' && (!una(R.rou) || !una(R.met)))) out = null;
+    }
+    FIRME.set(m, out); return out;
+  }
+  function canon(m, k) {
+    let c = CANON.get(k); if (c) return c;
+    c = m.clone(); c.color.setRGB(1, 1, 1); if (c.emissive) c.emissive.setRGB(1, 1, 1); c.userData = Object.assign({}, m.userData, { pesoGente: true });
+    const std = m.type === 'MeshStandardMaterial';
+    c.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 pc1; attribute vec3 pe1; attribute vec2 pr1; varying vec3 vPc1; varying vec3 vPe1; varying vec2 vPr1;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvPc1 = pc1; vPe1 = pe1; vPr1 = pr1;');
+      const C = T3.ShaderChunk;
+      let f = sh.fragmentShader.replace('#include <roughnessmap_fragment>', C.roughnessmap_fragment).replace('#include <metalnessmap_fragment>', C.metalnessmap_fragment);
+      f = f.replace('#include <common>', '#include <common>\nvarying vec3 vPc1; varying vec3 vPe1; varying vec2 vPr1;').replace(R.dif, 'vec4 diffuseColor = vec4( diffuse * vPc1, opacity );').replace(R.emi, 'vec3 totalEmissiveRadiance = emissive * vPe1;');
+      if (std) f = f.replace(R.rou, 'float roughnessFactor = vPr1.x;').replace(R.met, 'float metalnessFactor = vPr1.y;');
+      sh.fragmentShader = f; };
+    c.customProgramCacheKey = () => 'pesoGente1|' + k;
+    CANON.set(k, c); return c;
+  }
+  // la persona: i pezzi accesi e fondibili, lo scheletro di riferimento
+  function fondi(g) {
+    const t0 = performance.now(); g.updateMatrixWorld(true);
+    let ref = null; g.traverseVisible(o => { if (!ref && o.isSkinnedMesh && o.skeleton && o.bindMode === 'attached' && !o.userData.pesoGente) ref = o; });
+    if (!ref) return false;
+    const bones = ref.skeleton.bones, bi = new Map(); bones.forEach((b, i) => bi.set(b, i));
+    const sameSk = o => { const s = o.skeleton; if (!s || s.bones.length !== bones.length || o.bindMode !== 'attached') return false; for (let i = 0; i < bones.length; i++) if (s.bones[i] !== bones[i]) return false;
+      for (let i = 0; i < 16; i++) if (Math.abs(o.bindMatrix.elements[i] - ref.bindMatrix.elements[i]) > 1e-9) return false;
+      for (let i = 0; i < s.boneInverses.length; i++) { const a = s.boneInverses[i].elements, b = ref.skeleton.boneInverses[i].elements; for (let k = 0; k < 16; k++) if (Math.abs(a[k] - b[k]) > 1e-9) return false; } return true; };
+    // solo valori semplici: oggetti 3D, liste, oggetti letterali (non il mixer, non le azioni: puntano alla radice del modello)
+    const live = new Set(); const walkU = (v, d) => { if (!v || typeof v !== 'object' || d > 3) return; if (v.isObject3D) { if (v !== g) live.add(v); return; } if (Array.isArray(v)) { v.forEach(x => walkU(x, d + 1)); return; }
+      const pr = Object.getPrototypeOf(v); if (pr !== Object.prototype && pr !== null) return; for (const k in v) walkU(v[k], d + 1); };
+    for (const k in g.userData) if (k !== 'body') walkU(g.userData[k], 0);   // quello che il gioco tiene in mano (oggetti, armi, cappelli da cambiare, l'ombra a macchia)
+    const isLive = o => { for (let q = o; q && q !== g; q = q.parent) if (live.has(q)) return true; return false; };
+    const groups = new Map(), sources = [];
+    const binv = new T3.Matrix4().copy(ref.bindMatrix).invert(), M = new T3.Matrix4(), N3 = new T3.Matrix3(), v = new T3.Vector3();
+    g.traverseVisible(o => {
+      if (!o.isMesh || o.isInstancedMesh || o.userData.pesoGente || o.userData.noCast1 || o.renderOrder || o.customDepthMaterial || isLive(o)) return;
+      const geo = o.geometry; if (!geo || !geo.attributes.position || (geo.morphAttributes && Object.keys(geo.morphAttributes).length)) return;
+      for (const k in geo.attributes) if (!['position', 'normal', 'uv', 'skinIndex', 'skinWeight'].includes(k)) return;
+      let bone = -1;
+      if (o.isSkinnedMesh) { if (!sameSk(o)) return; } else { for (let q = o.parent; q && q !== g; q = q.parent) if (bi.has(q)) { bone = bi.get(q); break; } if (bone < 0) return; }
+      const ms = Array.isArray(o.material) ? o.material : [o.material];
+      const parts = Array.isArray(o.material) ? (geo.groups.length ? geo.groups : null) : [{ start: 0, count: Infinity, materialIndex: 0 }]; if (!parts) return;
+      const ks = parts.map(p => { const m = ms[p.materialIndex]; const f = m ? firma(m) : null; return f ? f + '|' + o.castShadow + o.receiveShadow + o.frustumCulled : null; }); if (ks.some(k => !k)) return;
+      let mat = null; if (!o.isSkinnedMesh) { const bn = bones[bone]; M.copy(bn.matrixWorld).invert().multiply(o.matrixWorld); mat = new T3.Matrix4().copy(binv).multiply(new T3.Matrix4().copy(ref.skeleton.boneInverses[bone]).invert()).multiply(M); }
+      parts.forEach((p, j) => { const k = ks[j], m = ms[p.materialIndex]; let e = groups.get(k); if (!e) groups.set(k, e = { m, k, list: [], cast: o.castShadow, rec: o.receiveShadow, fc: o.frustumCulled, icR: o.__icR }); e.list.push({ o, p, mat, bone, m }); });
+      sources.push(o);
+    });
+    // conviene solo se si risparmia qualcosa
+    let before = 0; groups.forEach(e => before += e.list.length); if (before - groups.size < 2) return false;
+    const made = [];
+    groups.forEach(e => {
+      let n = 0; const its = e.list.map(it => { const geo = it.o.geometry, gi = geo.index; const cnt = gi ? gi.count : geo.attributes.position.count, st = Math.max(0, it.p.start), c = Math.min(cnt - st, it.p.count); n += Math.max(0, c); return [it, st, Math.max(0, c)]; });
+      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), si = new Uint16Array(n * 4), sw = new Float32Array(n * 4), pc = new Float32Array(n * 3), pe = new Float32Array(n * 3), pr = new Float32Array(n * 2);
+      let w = 0;
+      its.forEach(([it, st, c]) => { const geo = it.o.geometry, A = geo.attributes, ix = geo.index ? geo.index.array : null, m = it.m, mt = it.mat; if (mt) N3.getNormalMatrix(mt);
+        const col = m.color, em = m.emissive || col, ei = 1, ro = m.roughness !== undefined ? m.roughness : 1, me = m.metalness !== undefined ? m.metalness : 0;
+        for (let q = 0; q < c; q++, w++) { const s = ix ? ix[st + q] : st + q;
+          v.fromBufferAttribute(A.position, s); if (mt) v.applyMatrix4(mt); pos[w * 3] = v.x; pos[w * 3 + 1] = v.y; pos[w * 3 + 2] = v.z;
+          if (A.normal) { v.fromBufferAttribute(A.normal, s); if (mt) v.applyMatrix3(N3).normalize(); nor[w * 3] = v.x; nor[w * 3 + 1] = v.y; nor[w * 3 + 2] = v.z; }
+          if (A.uv) { uv[w * 2] = A.uv.getX(s); uv[w * 2 + 1] = A.uv.getY(s); }
+          if (mt) { si[w * 4] = it.bone; sw[w * 4] = 1; } else { for (let k = 0; k < 4; k++) { si[w * 4 + k] = A.skinIndex.getComponent(s, k); sw[w * 4 + k] = A.skinWeight.getComponent(s, k); } }
+          pc[w * 3] = col.r; pc[w * 3 + 1] = col.g; pc[w * 3 + 2] = col.b; pe[w * 3] = em === col ? 0 : em.r * ei; pe[w * 3 + 1] = em === col ? 0 : em.g * ei; pe[w * 3 + 2] = em === col ? 0 : em.b * ei; pr[w * 2] = ro; pr[w * 2 + 1] = me; } });
+      const geo = new T3.BufferGeometry();
+      geo.setAttribute('position', new T3.BufferAttribute(pos, 3)); geo.setAttribute('normal', new T3.BufferAttribute(nor, 3)); geo.setAttribute('uv', new T3.BufferAttribute(uv, 2));
+      geo.setAttribute('skinIndex', new T3.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new T3.BufferAttribute(sw, 4));
+      geo.setAttribute('pc1', new T3.BufferAttribute(pc, 3)); geo.setAttribute('pe1', new T3.BufferAttribute(pe, 3)); geo.setAttribute('pr1', new T3.BufferAttribute(pr, 2));
+      geo.computeBoundingSphere(); geo.computeBoundingBox();
+      const sm = new T3.SkinnedMesh(geo, canon(e.m, e.k)); sm.name = 'pesoGente'; sm.userData.pesoGente = true; sm.userData.thin2 = 1;
+      sm.castShadow = e.cast; sm.receiveShadow = e.rec; sm.frustumCulled = e.fc; if (e.icR) sm.__icR = e.icR;
+      sm.position.copy(ref.position); sm.quaternion.copy(ref.quaternion); sm.scale.copy(ref.scale); ref.parent.add(sm); sm.bind(ref.skeleton, ref.bindMatrix);
+      made.push(sm); });
+    // gli originali: nascosti alla camera (e alle ombre, che in three r149 guardano i livelli della camera di gioco), la visibilità sorvegliata
+    const watch = new Set(); sources.forEach(o => { for (let q = o; q && q !== g; q = q.parent) watch.add(q); });
+    const rec = { made, sources: sources.map(o => [o, o.layers.mask]), watch: [], g };
+    watch.forEach(o => { let val = o.visible; Object.defineProperty(o, 'visible', { configurable: true, enumerable: true, get() { return val; }, set(x) { if (x !== val) { val = x; rec.rotta = true; } } }); rec.watch.push(o); });
+    sources.forEach(o => { o.layers.mask = 0; });
+    g.__pg = rec; LIVE.add(g); ST.fuse++; ST.pezzi += sources.length; ST.disegni += made.length; ST.ms += performance.now() - t0;
+    return true;
+  }
+  function sciogli(g) {
+    const rec = g.__pg; if (!rec) return; g.__pg = null; LIVE.delete(g);
+    rec.watch.forEach(o => { const val = o.visible; delete o.visible; o.visible = val; });
+    rec.sources.forEach(([o, m]) => { o.layers.mask = m; });
+    rec.made.forEach(sm => { if (sm.parent) sm.parent.remove(sm); sm.geometry.dispose(); });
+    g.__pgT = frame; ST.sciolte++;
+  }
+  // a ogni fotogramma, prima del disegno: chi è tornato com'era (qualcosa cambiato), chi è pronto per fondersi (a budget)
+  function passo(people) {
+    if (!ON) return; if (!T3) T3 = window.THREE; frame++;
+    LIVE.forEach(g => { if (g.__pg && (g.__pg.rotta || !attivo)) sciogli(g); });
+    if (!attivo) return;
+    const t0 = performance.now(); let n = 0;
+    for (const id in people) {
+      if (id === '__player') continue; const g = people[id]; if (!g || g.__pg || !g.parent || !g.visible) continue;
+      const u = g.userData; if (!u || !u.model || u.dressing || u.voxelWait) { g.__pgS = frame; continue; }
+      if (g.__pgS === undefined) g.__pgS = frame; if (frame - g.__pgS < P.attesa) continue;   // vestito e fermo da un po'
+      if (g.__pgT !== undefined && frame - g.__pgT < P.riprova) continue;
+      if (g.__pgNo === frame) continue;
+      try { if (!fondi(g)) { g.__pgT = frame; ST.scartate++; } } catch (e) { console.warn('[peso] gente', e); g.__pgT = frame; }
+      if (++n >= P.perFotogramma || performance.now() - t0 > P.ms) break;
+    }
+  }
+  function conto() { return Object.assign({ on: ON, attive: LIVE.size, materiali: CANON.size }, ST); }
+  return { ON, P, passo, conto, sciogli, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) [...LIVE].forEach(sciogli); } };
+})();
+if (typeof window !== 'undefined') { window.PesoGente = PesoGente; (window.__pesoAB = window.__pesoAB || {}).gente = v => { PesoGente.attivo = v; }; }
+</script>   <!-- [peso] le persone fuse -->
+<script data-m="peso_ombre">/* Porto Vecchio — [peso] le ombre in cache (v7).
+   Il banco del peso (strumenti/banco_peso.js) dice che nel borgo un fotogramma è per più di metà ombre: l'ombra del sole ridisegna a ogni
+   fotogramma ~1.100 pezzi (tutta la città nel suo riquadro), e ogni faretto dei lampioni che si aggiorna (fino a tre per fotogramma) altri
+   ~1.000-1.300. Ma quasi tutto quello che fa ombra sta fermo: case, muri, tetti, arredo. Qui ogni luce con l'ombra tiene due mappe:
+     - la mappa delle cose ferme, disegnata una volta (la «cottura») e copiata da parte (blitFramebuffer: colore e profondità);
+     - a ogni fotogramma in cui serve, la mappa vera riparte da quella copia (un blit) e ci si disegnano sopra solo le cose che si muovono
+       (persone, mezzi, porte, panni, barche: chi ha cambiato matrice negli ultimi 90 fotogrammi, gli scheletri sempre).
+   Si ricuoce quando cambia la camera dell'ombra o l'insieme delle cose ferme nel suo riquadro (una cosa che appare, sparisce, cambia
+   geometria, si ferma dopo essersi mossa). Il risultato è la stessa mappa di prima, pixel per pixel: stesse cose, stessa profondità.
+   Il sole: il suo riquadro seguiva la camera a ogni fotogramma (quindi andava ricotto sempre). Ora il centro si aggancia alla griglia dei
+   texel dell'ombra (l'ombra non «nuota» più camminando) e resta fermo finché la camera non se ne allontana di P.M metri; il riquadro è più
+   largo di P.M per lato e la mappa più grande nella stessa proporzione (stessa grandezza del texel: la stessa ombra). La direzione del sole
+   si aggiorna a scatti di P.ang radianti (0,15°: un'ora di gioco ne fa ~7). I faretti: la mappa si ricuoce quando il faretto passa a un
+   altro lampione; le riprese che il gioco chiedeva (qualcuno si muove sotto la luce, ogni mezzo secondo) diventano copia + chi si muove.
+   ?nopesoombre spegne tutto (come prima).                                                                                              */
+var PesoOmbre = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const ON = !/[?&]nopesoombre\b/.test(Q);
+  const P = { M: 8, ang: .0026, ferma: 90, giro: 8 };
+  const MOT = { chiave: 0, firma: 0, misura: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
+  const ST = { cotture: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
+  const REC = new Map();
+  const EMPTY = [], A = { half: 0, halfSet: NaN, base: 0, d: null, T: null, D: 0 };
+  let K = null, frame = 0, root = null, T3 = null, sfera = null, vtmp = null, pm = null, noop = () => { };
+  const CAST = [], TOPS = [];
+
+  // chi fa ombra, come lo trova three (WebGLShadowMap: visibile, sul livello della camera di gioco, mesh linea o punti, castShadow)
+  // (la lista si rifà ogni P.giro fotogrammi; in mezzo si controlla solo che ognuno sia ancora acceso e attaccato)
+  function raccogli(o, cl, top) {
+    if (!o.visible) return;
+    if (o.isSkinnedMesh && top) top.__poPers = true;   // un ramo con uno scheletro (una persona): tutto il ramo si muove
+    if ((o.isMesh || o.isLine || o.isPoints) && o.castShadow && o.layers.test(cl)) { CAST.push(o); TOPS.push(top); }
+    const ch = o.children; for (let i = 0; i < ch.length; i++) raccogli(ch[i], cl, top || ch[i]);
+  }
+  function attaccato(o) { let q = o; while (q) { if (q === K.scene) return true; if (!q.visible) return false; q = q.parent; } return false; }
+  // si è mosso? (la matrice nel mondo, le istanze); la sfera nel mondo per la scelta veloce dei faretti
+  function guarda(o) {
+    const e = o.matrixWorld.elements; let u = o.__po;
+    if (!u) { u = o.__po = { e: new Float64Array(7), dyn: -1e9, v: -1, c: new T3.Vector3(), r: 0, f: -1, sk: -1, sin: false, top: null }; u.e[0] = e[0]; u.e[1] = e[1]; u.e[2] = e[2]; u.e[3] = e[6]; u.e[4] = e[12]; u.e[5] = e[13]; u.e[6] = e[14]; u.v = o.isInstancedMesh ? o.instanceMatrix.version : 0; }
+    else if (u.e[4] !== e[12] || u.e[5] !== e[13] || u.e[6] !== e[14] || u.e[0] !== e[0] || u.e[1] !== e[1] || u.e[2] !== e[2] || u.e[3] !== e[6]) {
+      u.e[0] = e[0]; u.e[1] = e[1]; u.e[2] = e[2]; u.e[3] = e[6]; u.e[4] = e[12]; u.e[5] = e[13]; u.e[6] = e[14]; u.dyn = frame; u.f = -1; }
+    if (o.isInstancedMesh && o.instanceMatrix.version !== u.v) { u.v = o.instanceMatrix.version; u.dyn = frame; u.f = -1; }
+    return u;
+  }
+  const mobile = (o, u) => o.isSkinnedMesh || frame - u.dyn < P.ferma || (u.top && u.top.__poPers);
+  function sferaDi(o, u) {
+    if (u.f === frame || (u.f >= 0 && !mobile(o, u) && u.g === o.geometry)) return;
+    const g = o.geometry; if (!g) { u.r = 1e9; return; } if (g.boundingSphere === null) g.computeBoundingSphere();
+    sfera.copy(g.boundingSphere).applyMatrix4(o.matrixWorld); u.c.copy(sfera.center); u.r = sfera.radius; u.f = frame; u.g = g;
+  }
+  // disegna nella mappa della luce solo la lista (i figli non contano: chi serve è già nella lista); senza pulire, se si aggiunge
+  function disegna(light, list, pulisci) {
+    const rd = K.renderer, sm = rd.shadowMap, st = [];
+    for (let i = 0; i < list.length; i++) { const o = list[i]; if (o.children.length) { st.push(o, o.children); o.children = EMPTY; } }
+    root.children = list;
+    const au = sm.autoUpdate, nu = sm.needsUpdate, clr = rd.clear;
+    if (!pulisci) rd.clear = noop;
+    try { sm.needsUpdate = true; light.shadow.needsUpdate = true; sh0.call(sm, [light], root, K.camera()); }
+    finally { rd.clear = clr; sm.autoUpdate = au; sm.needsUpdate = nu; light.shadow.needsUpdate = false; root.children = EMPTY; for (let i = 0; i < st.length; i += 2) st[i].children = st[i + 1]; }
+  }
+  function copia(src, dst) {   // colore e profondità, texel per texel
+    const rd = K.renderer, gl = rd.getContext(), pr = rd.properties, w = dst.width, h = dst.height;
+    rd.setRenderTarget(src); rd.setRenderTarget(dst);   // le due cornici pronte sulla scheda video
+    rd.state.setScissorTest(false); rd.state.buffers.color.setMask(true); rd.state.buffers.depth.setMask(true);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, pr.get(src).__webglFramebuffer); rd.state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, pr.get(dst).__webglFramebuffer);
+    gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+  }
+  // il sole: il centro agganciato alla griglia dei texel, fermo finché la camera resta entro P.M metri; la direzione a scatti
+  function sole() {
+    const m = K.moon, sc = m.shadow.camera, T = m.target.position, Pp = m.position;
+    if (!A.base) A.base = m.shadow.mapSize.x;
+    if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
+    const tex = 2 * A.half / A.base, ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
+    if (m.shadow.mapSize.x !== ms) { m.shadow.mapSize.set(ms, ms); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } }
+    if (sc.right !== halfE) { sc.left = -halfE; sc.right = halfE; sc.top = halfE; sc.bottom = -halfE; sc.updateProjectionMatrix(); } A.halfSet = halfE;
+    let dx = T.x - Pp.x, dy = T.y - Pp.y, dz = T.z - Pp.z; const D = Math.hypot(dx, dy, dz) || 1; dx /= D; dy /= D; dz /= D;
+    let nuova = !A.d || Math.abs(D - A.D) > 1;   // la distanza del sole cambia appena con l'ora: conta solo per il piano vicino e il lontano
+    if (!nuova) { const c = dx * A.d.x + dy * A.d.y + dz * A.d.z; if (Math.acos(Math.min(1, c)) > P.ang) nuova = true; }
+    if (nuova) { A.d = new T3.Vector3(dx, dy, dz); A.D = D;
+      const z = A.d.clone().negate(), x = new T3.Vector3(0, 1, 0).cross(z); if (x.lengthSq() < 1e-12) x.set(1, 0, 0); x.normalize(); A.x = x; A.y = z.clone().cross(x); A.T = null; }
+    const a = T.x * A.x.x + T.y * A.x.y + T.z * A.x.z, b = T.x * A.y.x + T.y * A.y.y + T.z * A.y.z;
+    vtmp.copy(T).addScaledVector(A.x, Math.round(a / tex) * tex - a).addScaledVector(A.y, Math.round(b / tex) * tex - b);
+    if (A.T) { const ex = (vtmp.x - A.T.x) * A.x.x + (vtmp.y - A.T.y) * A.x.y + (vtmp.z - A.T.z) * A.x.z, ey = (vtmp.x - A.T.x) * A.y.x + (vtmp.y - A.T.y) * A.y.y + (vtmp.z - A.T.z) * A.y.z;
+      if (Math.abs(ex) > P.M - tex || Math.abs(ey) > P.M - tex || A.tex !== tex) A.T = null; }
+    if (!A.T) { A.T = vtmp.clone(); A.tex = tex; }
+    T.copy(A.T); Pp.copy(A.T).addScaledVector(A.d, -A.D); m.updateMatrixWorld(); m.target.updateMatrixWorld();
+  }
+  function luce(light, tutti) {
+    const sh = light.shadow; sh.updateMatrices(light); const cam = sh.camera, fz = sh.getFrustum();
+    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+    let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null });
+    const e = pm.elements; let chiave = false; for (let k = 0; k < 16; k++) if (e[k] !== r.key[k]) { chiave = true; break; }
+    if (chiave && tutti) r.ver++;   // il sole: la risposta «dentro il riquadro» di ogni cosa ferma vale finché la camera dell'ombra non cambia
+    const fermi = [], mob = [], lp = light.position, R2 = tutti ? 0 : (light.distance || 30) + 1; let sig = 0;
+    for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = o.__po; if (!u.ok) continue; const mv = mobile(o, u);
+      if (o.frustumCulled) {
+        if (!tutti) { sferaDi(o, u); const rr = R2 + u.r, ddx = u.c.x - lp.x, ddy = u.c.y - lp.y, ddz = u.c.z - lp.z; if (ddx * ddx + ddy * ddy + ddz * ddz > rr * rr) continue; if (!fz.intersectsObject(o)) continue; }
+        else if (!mv && u.sk === r.ver && u.dynS === u.dyn) { if (!u.sin) continue; }
+        else { u.sin = fz.intersectsObject(o); u.sk = r.ver; u.dynS = u.dyn; if (!u.sin) continue; } }
+      if (mv) mob.push(o); else { fermi.push(o); sig += o.id * 7919 + (o.geometry ? o.geometry.id : 0) * 104729 + (o.material ? o.material.id : 0); } }
+    const map = sh.map, cotta = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height || chiave || sig !== r.sig || fermi.length !== r.n;
+    if (cotta) { if (!map || !r.cache || r.cache.width !== map.width) MOT.misura++; else if (chiave) MOT.chiave++; else { MOT.firma++;
+        if (DIAG.on && r.ids) { const now = new Set(fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
+          fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o) + (o.visible ? '' : ' (spento)') + (o.castShadow ? '' : ' (senza ombra)') + (mobile(o, o.__po) ? ' (mobile)' : ''); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); } }
+      if (DIAG.on) { r.ids = new Set(fermi.map(o => o.id)); r.idsObj = fermi.slice(); }
+      disegna(light, fermi, true); const m2 = sh.map;
+      if (!r.cache || r.cache.width !== m2.width || r.cache.height !== m2.height) { if (r.cache) r.cache.dispose(); r.cache = new T3.WebGLRenderTarget(m2.width, m2.height, { minFilter: T3.NearestFilter, magFilter: T3.NearestFilter }); }
+      copia(m2, r.cache); r.key.set(e); r.sig = sig; r.n = fermi.length; ST.cotture++;
+      if (mob.length) disegna(light, mob, false);
+    } else if (mob.length || r.dyn) { copia(r.cache, map); if (mob.length) disegna(light, mob, false); ST.riprese++; }
+    if (DIAG.on) mob.forEach(o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; const u = o.__po, k = (o.isSkinnedMesh ? 'scheletro' : o.isInstancedMesh ? 'istanze' : 'mosso') + ' ' + (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); DIAG.mob.set(k, (DIAG.mob.get(k) || 0) + 1); });
+    r.dyn = mob.length; ST.dinamici += mob.length; ST.fermi += fermi.length; ST.luci++;
+    sh.autoUpdate = false; sh.needsUpdate = false;
+  }
+  // prima del disegno della scena: il sole agganciato (prima che three calcoli le luci); poi, dentro il disegno della scena, al posto della
+  // passata d'ombra di three per le luci gestite qui: le mappe pronte (lì lo stato del disegno è valido e le matrici sono già aggiornate)
+  let sh0 = null, attivo = true, giro = -1e9;
+  function prima(kit) {
+    if (!ON) return; K = kit; if (!T3) { T3 = window.THREE; root = new T3.Object3D(); sfera = new T3.Sphere(); vtmp = new T3.Vector3(); pm = new T3.Matrix4(); }
+    const rd = K.renderer; if (!rd.shadowMap.enabled || !rd.capabilities.isWebGL2 || !attivo) return;
+    if (!sh0) { const sm = rd.shadowMap; sh0 = sm.render; sm.render = function (lights, scene, camera) { if (attivo && K && scene === K.scene) passata(); return sh0.apply(this, arguments); }; }
+    const moon = K.moon; if (moon && moon.castShadow && moon.visible) sole();
+  }
+  function passata() {
+    const rd = K.renderer, S = K.scene, t0 = performance.now(); frame++;
+    const moon = K.moon, sun = moon && moon.castShadow && moon.visible;
+    const lst = []; if (sun) lst.push(moon);
+    (K.spots || []).forEach(l => { if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate)) lst.push(l); });
+    if (lst.length) {
+      const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
+      const cl = K.camera().layers;
+      if (!CAST.length || frame - giro >= P.giro) { giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
+      else for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = guarda(o); u.ok = o.visible && o.castShadow && (!mobile(o, u) || attaccato(o)); }
+      ST.lanciatori = CAST.length;
+      try { lst.forEach(l => luce(l, l === moon)); } catch (e) { console.warn('[peso] ombre', e); attivo = false; REC.forEach((r, l) => { l.shadow.autoUpdate = l === moon; l.shadow.needsUpdate = true; }); }
+      rd.setRenderTarget(cur, cf, ml);
+    }
+    ST.fotogrammi++; ST.ms += performance.now() - t0;
+  }
+  function dopo() { }
+  // spento: le mappe tornano quelle di three (il sole col riquadro e la mappa del gioco, ridisegnato a ogni fotogramma)
+  function spegni() {
+    REC.forEach((r, l) => { if (K && l === K.moon) l.shadow.autoUpdate = true; l.shadow.needsUpdate = true; r.sig = -1; });
+    if (K && K.moon && A.base) { const m = K.moon, sc = m.shadow.camera; sc.left = -A.half; sc.right = A.half; sc.top = A.half; sc.bottom = -A.half; sc.updateProjectionMatrix(); A.halfSet = NaN; A.T = null; A.d = null;
+      if (m.shadow.mapSize.x !== A.base) { m.shadow.mapSize.set(A.base, A.base); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } } }
+  }
+  function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, riprese: ST.riprese, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
+  function azzera() { for (const k in ST) ST[k] = 0; for (const k in MOT) MOT[k] = 0; DIAG.mob.clear(); DIAG.firma.clear(); }
+  function diag(on) { DIAG.on = on !== false; return { motivi: Object.assign({}, MOT), mobili: [...DIAG.mob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25), firma: [...DIAG.firma.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25) }; }
+  return { ON, P, prima, dopo, conto, azzera, diag, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
+})();
+if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; }
+</script>   <!-- [peso] le ombre in cache -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -55448,13 +55810,14 @@ var Render = (function () {
       sh.fragmentShader = f.replace(ARRRE1, 'mapA1(').replace('void main() {', 'uniform highp sampler2DArray uArr1; varying float vLay1;\nvec4 mapA1(vec2 u) { return texture(uArr1, vec3(u, floor(vLay1 + .5))); }\nvec4 mapA1(vec2 u, float b) { return texture(uArr1, vec3(u, floor(vLay1 + .5)), b); }\nvoid main() {');
       if (!n0) console.warn('[leggero] pila: nessuna lettura della mappa', key); }
   }
-  function fadeMat1(m, pal, arr) {   // il materiale comune di un gruppo di case: lo stesso di prima, col retino per casa
-    const key = (pal ? palSig1(matSig1(m)) + '|pal1' : matSig1(m)).replace(arr ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (arr ? '|A' + arr.id : ''); let c = FD1.canon.get(key); if (c) return c;
+  function fadeMat1(m, pal, arr, vt) {   // il materiale comune di un gruppo di case: lo stesso di prima, col retino per casa
+    const key = vt || (pal ? palSig1(matSig1(m)) + '|pal1' : matSig1(m)).replace(arr ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (arr ? '|A' + arr.id : ''); let c = FD1.canon.get(key); if (c) return c;
     c = m.clone(); if (m.userData.plaster) plasterize(c); else if (m.userData.mondo) animMat(c, m.userData.mondo);
     if (pal) c.color.setRGB(1, 1, 1);   // [leggero] il colore lo dà la tavolozza
     if (arr) c.map = arr.dummy;   // [leggero] la mappa vera la dà la pila
+    if (vt) PesoVetro.prepara(c);   // [peso] colore, emissivo, ruvidità e metallo dalla tavolozza dei vetri (peso_vetro.js)
     const prev = c.onBeforeCompile, pk = c.customProgramCacheKey;
-    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '');
+    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '') + (vt ? '|vt1' : '');
     // [visuale3] la stessa tessitura porta la quota del taglio della casa (verde e blu, 16 bit): sopra si scarta; appena sotto, sulle facce
     // che guardano la camera, il filo chiaro della sezione (VIS3.filo: larghezza e colore)
     c.onBeforeCompile = function (sh, r) { prev.call(c, sh, r); sh.uniforms.uFd1 = FD1.u; sh.uniforms.uFilo3 = VIS3.filo;
@@ -55464,7 +55827,7 @@ var Render = (function () {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vFd1; varying float vFdY; varying float vFdW; uniform vec4 uFilo3;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\nif (vFd1 > .5 || vFdW > vFdY) discard;`)
         .replace('#include <dithering_fragment>', `#include <dithering_fragment>\nif (vFdW > vFdY - uFilo3.x && gl_FrontFacing) gl_FragColor.rgb = mix(gl_FragColor.rgb, uFilo3.yzw * .8, .8);`);
-      injPalArr1(sh, pal, arr, key); };   // [leggero]
+      injPalArr1(sh, pal, arr, key); if (vt) PesoVetro.inietta(sh); };   // [leggero] [peso]
     c.transparent = false; c.opacity = 1; c.depthWrite = true; c.needsUpdate = true;
     if (c.emissiveMap) FD1.emis.push(c);
     FD1.canon.set(key, c); return c;
@@ -55486,15 +55849,17 @@ var Render = (function () {
         const sig = matSig1(m); if (!sig) return;
         const g = flatXf(o.geometry, o.matrixWorld);   // [carico]
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
-        const pal = palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
+        const vt = window.PesoVetro && LEGGERO ? PesoVetro.ok(m, sig, renderer) : null;   // [peso] i vetri: un secchio, i quattro valori nella loro tavolozza
+        const pal = !vt && palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
         const al = pal && arrOk1(m, sig) ? arrLayer1(m.map) : null;   // [leggero] e a meno della mappa: la mappa nella pila
-        const key = (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '') + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow;
-        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null });
-        g.__bi1 = bi; g.__src1 = o; if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
+        const key = (vt || (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '')) + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow;
+        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null, vt });
+        g.__bi1 = bi; g.__src1 = o; if (vt) g.__vt1 = PesoVetro.idx(m); if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
     });
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     if (PAL1.col.length) palTex1();   // [leggero]
+    if (window.PesoVetro) PesoVetro.tessitura();   // [peso]
     ARR1.all.forEach(a => { if (!a.tex) arrTex1(a); });   // [leggero] le pile delle mappe
     B.forEach(b => {
       let n = 0; b.geos.forEach(g => { n += g.attributes.position.count; });
@@ -55506,8 +55871,9 @@ var Render = (function () {
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
       if (b.pal) { const pa = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; pa.fill(g.__pal1, q, q + c); q += c; }); geo.setAttribute('pal1', new THREE.BufferAttribute(pa, 1)); }   // [leggero] il numero del colore
       if (b.arr) { const la = new Uint8Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; la.fill(g.__lay1, q, q + c); q += c; }); geo.setAttribute('lay1', new THREE.BufferAttribute(la, 1)); }   // [leggero] lo strato della mappa
+      if (b.vt) { const va = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; va.fill(g.__vt1, q, q + c); q += c; }); geo.setAttribute('vt1', new THREE.BufferAttribute(va, 1)); }   // [peso] la voce del vetro
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
-      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
       if (b.cast) { const sk = b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, geos: [] }); q.geos.push(geo); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
@@ -66154,7 +66520,7 @@ var Render = (function () {
       moon.position.set(tg.x + Math.sin(az) * Math.cos(e) * D, tg.y + Math.sin(e) * D, tg.z + Math.cos(az) * Math.cos(e) * D); }
     let half = 46, far = 160, bias = -.0015, nb = .03;
     if (P.ombraVisuale > 0) {
-      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / moon.shadow.mapSize.x, D2 = half * 1.1 + 30;
+      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
       moon.position.sub(tg).multiplyScalar(D2 / D).add(tg); far = 2 * D2 + 30;
       bias = -(P.ombraBias[0] + P.ombraBias[1] * tex) / (far - sc.near); nb = .015 + tex * .9; }
     moon.shadow.bias = bias; moon.shadow.normalBias = nb;
@@ -67724,13 +68090,19 @@ var Render = (function () {
   //   3. SUPERFICIE — colore, materia (legno, lamiera verniciata, zinco, plastica, cotto, cemento, gomma, rame) e usura
   //                   (scheggiature con la ruggine sotto, colature, sporco che sale dal basso, calcare, muschio, graffi).
   // Tutte le parti usano un atlante solo (FA.mat, celle da 32 px): un materiale per edificio, si fonde con mergeGroup.
-  const FA = { n: 0, map: {} };
-  function faAtlas() { if (FA.c) return; FA.c = mk(512, 512); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
+  // [peso] le celle erano 256 (512 × 512) ma ne servono più di mille: dalla 256 in poi tutte finivano nella cella 255, ridipinta a ogni
+  // richiesta (gli oggetti prendevano il colore dell'ultima). Ora l'atlante è 1024 × 2048 (32 colonne × 64 righe, 2.048 celle; 2048 è il
+  // lato che ogni scheda WebGL2 regge): ogni cella ha gli stessi 32 × 32 texel di prima, quindi lo stesso campione (cambia solo dove sta),
+  // e quelle oltre la 255 hanno finalmente la loro. ?nopesoatlante: come prima
+  const FA = /[?&]nopesoatlante\b/.test(typeof location !== 'undefined' ? location.search : '') ? { n: 0, map: {}, W: 512, H: 512 } : { n: 0, map: {}, W: 1024, H: 2048 };
+  FA.C = FA.W / 32; FA.N = FA.C * FA.H / 32;
+  function faAtlas() { if (FA.c) return; FA.c = mk(FA.W, FA.H); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
   // una cella di materia: colore + grana + usura, decisa dal tipo
   function fCell(hex, kind) {
     faAtlas(); kind = kind || 'solid';
     const key = hex + kind; if (FA.map[key] !== undefined) return FA.map[key];
-    const i = Math.min(255, FA.n++), cx = (i % 16) * 32, cy = Math.floor(i / 16) * 32, x = FA.x, r = rng(i * 131 + 17);
+    if (FA.n === FA.N) console.warn('[peso] atlante delle parti pieno:', FA.n, 'celle');
+    const i = Math.min(FA.N - 1, FA.n++), cx = (i % FA.C) * 32, cy = Math.floor(i / FA.C) * 32, x = FA.x, r = rng(i * 131 + 17);
     const px = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(cx + a, cy + b, w, h); };
     const grad = (top, bot) => { for (let y = 0; y < 32; y++) px(0, y, 32, 1, shade(hex, top + (bot - top) * y / 31)); };
     const specks = (n, lo, hi, s) => { for (let k = 0; k < n; k++) px(Math.floor(r() * 32), Math.floor(r() * 32), s || 1, s || 1, shade(hex, lo + r() * (hi - lo))); };
@@ -67769,14 +68141,14 @@ var Render = (function () {
   }
   // coordinate di tessitura nella cella: proiezione a scatola (oppure quelle già buone di torni e cilindri)
   function fUV(geo, cell, mode) {
-    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % 16) * 32, v0 = Math.floor(cell / 16) * 32;
+    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % FA.C) * 32, v0 = Math.floor(cell / FA.C) * 32;
     let bb = null, s = null; if (mode === 'box') { geo.computeBoundingBox(); bb = geo.boundingBox; s = bb.max.clone().sub(bb.min).addScalar(1e-4); }
     for (let k = 0; k < uv.count; k++) {
       let u = uv.getX(k), v = uv.getY(k);
       if (bb) { const X = pos.getX(k), Y = pos.getY(k), Z = pos.getZ(k), nx = Math.abs(nor.getX(k)), ny = Math.abs(nor.getY(k)), nz = Math.abs(nor.getZ(k));
         if (nx >= ny && nx >= nz) { u = (Z - bb.min.z) / s.z; v = (Y - bb.min.y) / s.y; } else if (ny >= nz) { u = (X - bb.min.x) / s.x; v = (Z - bb.min.z) / s.z; } else { u = (X - bb.min.x) / s.x; v = (Y - bb.min.y) / s.y; } }
       u = Math.min(1, Math.max(0, u)); v = Math.min(1, Math.max(0, v));
-      uv.setXY(k, (u0 + 1 + u * 30) / 512, 1 - (v0 + 1 + (1 - v) * 30) / 512);
+      uv.setXY(k, (u0 + 1 + u * 30) / FA.W, 1 - (v0 + 1 + (1 - v) * 30) / FA.H);
     }
     return geo;
   }
@@ -68039,13 +68411,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     return m;
   }
   // ---- atlante: una texture sola per tutte le parti piccole (un materiale per edificio invece di venti) ----
-  const CA = { n: 0, map: {} };
+  if (typeof window !== "undefined") window.__atlanti = () => ({ parti: FA.n, piccole: CA.n });   // [peso] per il banco
+  const CA = { n: 0, map: {}, H: FA.H / 2 };   // [peso] come FA: 16 × 64 celle (prima 16 × 16, oltre la 255 tutte nella 255)
   function caAtlas() {
-    if (CA.c) return; CA.c = mk(256, 256); CA.x = CA.c.getContext('2d'); CA.tex = canvasTex(CA.c); CA.mat = std({ map: CA.tex, roughness: .92 });
+    if (CA.c) return; CA.c = mk(256, CA.H); CA.x = CA.c.getContext('2d'); CA.tex = canvasTex(CA.c); CA.mat = std({ map: CA.tex, roughness: .92 });
   }
   function caCell(hex, pat) {
     const key = hex + (pat || ''); if (CA.map[key] !== undefined) return CA.map[key];
-    const i = Math.min(255, CA.n++), cx = (i % 16) * 16, cy = Math.floor(i / 16) * 16, x = CA.x, r = rng(i * 31 + 7);
+    if (CA.n === CA.H) console.warn('[peso] atlante delle parti piccole pieno:', CA.n, 'celle');
+    const i = Math.min(CA.H - 1, CA.n++), cx = (i % 16) * 16, cy = Math.floor(i / 16) * 16, x = CA.x, r = rng(i * 31 + 7);
     x.fillStyle = hex; x.fillRect(cx, cy, 16, 16);
     if (pat === 'slat') { for (let k = 1; k < 15; k += 3) { x.fillStyle = shade(hex, .6); x.fillRect(cx + 1, cy + k, 14, 1); x.fillStyle = shade(hex, 1.18); x.fillRect(cx + 1, cy + k + 1, 14, 1); } x.fillStyle = shade(hex, .72); x.fillRect(cx, cy, 16, 1); x.fillRect(cx, cy + 15, 16, 1); x.fillRect(cx, cy, 1, 16); x.fillRect(cx + 15, cy, 1, 16); for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(40,30,24,.35)'; x.fillRect(cx + Math.floor(r() * 14), cy + Math.floor(r() * 14), 2, 1); } }
     else if (pat === 'leaf') { for (let k = 0; k < 46; k++) { x.fillStyle = shade(hex, .55 + r() * .85); x.fillRect(cx + Math.floor(r() * 15), cy + Math.floor(r() * 15), 2, 2); } }
@@ -68058,7 +68432,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
   function caUV(geo, i, full) {
     const u0 = (i % 16) * 16, v0 = Math.floor(i / 16) * 16, uv = geo.attributes.uv;
-    for (let k = 0; k < uv.count; k++) { const u = full ? uv.getX(k) : .5, v = full ? uv.getY(k) : .5; uv.setXY(k, (u0 + 1 + u * 14) / 256, 1 - (v0 + 1 + (1 - v) * 14) / 256); }
+    for (let k = 0; k < uv.count; k++) { const u = full ? uv.getX(k) : .5, v = full ? uv.getY(k) : .5; uv.setXY(k, (u0 + 1 + u * 14) / 256, 1 - (v0 + 1 + (1 - v) * 14) / CA.H); }
     return geo;
   }
   const cbox = (w, h, d, hex, pat) => new THREE.Mesh(caUV(new THREE.BoxGeometry(w, h, d), caCell(hex, pat), !!pat), CA.mat);
@@ -70218,6 +70592,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // OMBRE1.vere persone più vicine all'inquadratura; gli altri hanno una macchia allungata dalla parte opposta al sole
   // (stessa direzione e stessa lunghezza dell'ombra vera). Chi è fuori dall'inquadratura (con margine per l'ombra) non si
   // disegna né si anima: rientrando recupera il tempo perso.
+  let KPO = null;   // [peso] il kit di peso_ombre.js
   const OMBRE1 = { vere: 5, fr: new THREE.Frustum(), m: new THREE.Matrix4(), sp: new THREE.Sphere(), v: new THREE.Vector3(), Y: new THREE.Vector3(0, 1, 0), list: [] };
   function ombreCast1(g, on) {
     const u = g.userData; if (u.cast1 === on && (frameN + (u.ph1 || 0)) % 90) return;
@@ -70731,7 +71106,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    renderer.setRenderTarget(rt); renderer.render(scene, camera);
+    if (window.PesoGente) PesoGente.passo(dyn.people);   /* [peso] le persone fuse (peso_gente.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO || (KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera }));   /* [peso] le ombre in cache (peso_ombre.js) */
+    renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;

@@ -52,6 +52,8 @@ const srv = http.createServer((req, res) => {
     window.__nodraw = true;
     for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype;
       for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; if (!f) continue; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } } });
+  // chi mette le cose in scena: le funzioni che hanno chiamato scene.add (per il conto del «resto»)
+  await pg.addInitScript(() => { const tag = () => { if (!window.THREE) { setTimeout(tag, 5); return; } const a0 = THREE.Object3D.prototype.add; THREE.Object3D.prototype.add = function (...objs) { if (this.isScene) { const st = (new Error().stack || '').split('\n').slice(2, 6).map(l => (l.match(/at (?:new )?([\w$.]+) \(/) || [])[1]).filter(Boolean).join('<'); objs.forEach(o => { if (o && !o.__src) o.__src = st; }); } return a0.apply(this, objs); }; }; tag(); });
   await pg.addInitScript(seme => { let a = seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }, SEME);   // come src/seme.js
   const cdp = await pg.context().newCDPSession(pg);
   await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { timeout: 900000 });
@@ -59,10 +61,12 @@ const srv = http.createServer((req, res) => {
   const carico = Math.round((Date.now() - T0) / 1000); log('caricato', Q);
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(2000);
   await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
+  // la grafica non si adatta da sola durante il banco (qui i fotogrammi sono lenti: main.js scenderebbe di risoluzione e poi spegnerebbe le ombre)
+  await pg.evaluate(() => { const R = window.__pv.R; if (R.setRes) R.setRes(1); R.setRes = null; R.lowQuality = () => { }; if (window.PesoSchermo) PesoSchermo.blocca(); });
   await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; pv.R.gpuTiming(true);
     setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; u.book = false; u.menu = false; st.over = null; st.chase = false; st.player.hp = 100; }, 50); });
   const OUTJ = { query: Q, seme: SEME, vw: W, vh: H, nf: NF, carico_s: carico, scatti: {}, errori };
-  OUTJ.avvio = await pg.evaluate(() => ({ fusione: window.__fusione1 || null, luci: window.__luci || null, tempi: window.__rt || null, peso: window.__peso ? window.__peso.conto && window.__peso.conto() : null }));
+  OUTJ.avvio = await pg.evaluate(() => ({ fusione: window.__fusione1 || null, luci: window.__luci || null, tempi: window.__rt || null, atlanti: window.__atlanti ? window.__atlanti() : null, vetro: window.PesoVetro ? PesoVetro.voci : null }));
   for (const s of SCATTI) {
     const ts = Date.now();
     // 1) il posto, l'ora, il tempo, la camera (il giorno dopo quello di partenza: le pagine nuove partono dallo stesso orologio)
@@ -77,28 +81,31 @@ const srv = http.createServer((req, res) => {
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 90000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
     await pg.waitForTimeout(4000);
     // 2) i tempi: N fotogrammi veri
-    const campiona = n => pg.evaluate(n => new Promise(res => { const pv = window.__pv, R = pv.R, G = pv.G, f0 = R.frame, s0 = G.step, rd = R.__models.renderer, sm = rd.shadowMap, r0 = rd.render, sh0 = sm.render; let fr = 0, sp = 0, tot = 0, tt = 0, shc = 0, sht = 0, nmap = 0;
+    const campiona = n => pg.evaluate(n => new Promise(res => { const pv = window.__pv, R = pv.R, G = pv.G, f0 = R.frame, s0 = G.step, rd = R.__models.renderer, sm = rd.shadowMap, r0 = rd.render, sh0 = sm.render; let fr = 0, sp = 0, tot = 0, tt = 0, shc = 0, sht = 0, nmap = 0, cot = 0;
       R.frame = function () { const a = performance.now(); try { return f0.apply(this, arguments); } finally { fr += performance.now() - a; } };
       G.step = function () { const a = performance.now(); try { return s0.apply(this, arguments); } finally { sp += performance.now() - a; } };
       rd.render = function () { const r = r0.apply(this, arguments); tot += rd.info.render.calls; tt += rd.info.render.triangles; return r; };
       sm.render = function (lights) { if (sm.enabled && (sm.autoUpdate || sm.needsUpdate)) lights.forEach(l => { if (l.shadow && (l.shadow.autoUpdate || l.shadow.needsUpdate)) nmap++; });
-        const c = rd.info.render.calls, t = rd.info.render.triangles; const r = sh0.apply(this, arguments); shc += rd.info.render.calls - c; sht += rd.info.render.triangles - t; return r; };
-      const A = { dt: [], fr: [], sp: [], main: [], mtri: [], tot: [], ttri: [], sh: [], shtri: [], nmap: [] }; let last = performance.now(), k = 0;
-      const f = () => { const now = performance.now(); if (k > 0) { const i = R.gpuTimes.info || {}; A.dt.push(now - last); A.fr.push(fr); A.sp.push(sp); A.main.push(i.calls || 0); A.mtri.push(i.tris || 0); A.tot.push(tot + shc); A.ttri.push(tt + sht); A.sh.push(shc); A.shtri.push(sht); A.nmap.push(nmap); }
-        fr = 0; sp = 0; tot = 0; tt = 0; shc = 0; sht = 0; nmap = 0; last = now;
+        const c = rd.info.render.calls, t = rd.info.render.triangles, k0 = window.PesoOmbre ? PesoOmbre.conto().cotture : 0; const r = sh0.apply(this, arguments); shc += rd.info.render.calls - c; sht += rd.info.render.triangles - t; if (window.PesoOmbre) cot += PesoOmbre.conto().cotture - k0; return r; };
+      const A = { cot: [], post: [], dt: [], fr: [], sp: [], main: [], mtri: [], tot: [], ttri: [], sh: [], shtri: [], nmap: [] }; let last = performance.now(), k = 0;
+      const f = () => { const now = performance.now(); if (k > 0) { const i = R.gpuTimes.info || {}; A.cot.push(cot); A.post.push(tot - (i.calls || 0)); A.dt.push(now - last); A.fr.push(fr); A.sp.push(sp); A.main.push(i.calls || 0); A.mtri.push(i.tris || 0); A.tot.push(tot + shc); A.ttri.push(tt + sht); A.sh.push(shc); A.shtri.push(sht); A.nmap.push(nmap); }
+        fr = 0; sp = 0; tot = 0; tt = 0; shc = 0; sht = 0; nmap = 0; cot = 0; last = now;
         if (++k <= n) requestAnimationFrame(f); else { R.frame = f0; G.step = s0; rd.render = r0; sm.render = sh0; const md = a => a.slice().sort((x, y) => x - y)[a.length >> 1], mean = a => a.reduce((x, y) => x + y, 0) / a.length;
-          res({ intervallo_ms: +md(A.dt).toFixed(1), frame_ms: +md(A.fr).toFixed(1), logica_ms: +md(A.sp).toFixed(2), disegni: md(A.tot), principale: md(A.main), ombre: +mean(A.sh).toFixed(0), post: md(A.tot) - md(A.main) - Math.round(mean(A.sh)),
-            mappe_ombra: +mean(A.nmap).toFixed(2), triangoli_k: Math.round(md(A.ttri) / 1000), principale_tri_k: Math.round(md(A.mtri) / 1000), ombre_tri_k: Math.round(mean(A.shtri) / 1000) }); } };
+          res({ intervallo_ms: +md(A.dt).toFixed(1), frame_ms: +md(A.fr).toFixed(1), logica_ms: +md(A.sp).toFixed(2), disegni: md(A.tot), principale: md(A.main), ombre: +mean(A.sh).toFixed(0), post: md(A.post),
+            mappe_ombra: +mean(A.nmap).toFixed(2), cotture: A.cot.reduce((x, y) => x + y, 0), ombre_senza_cotture: (() => { const q = A.sh.filter((x, j) => !A.cot[j]); return q.length ? Math.round(mean(q)) : null; })(), triangoli_k: Math.round(md(A.ttri) / 1000), principale_tri_k: Math.round(md(A.mtri) / 1000), ombre_tri_k: Math.round(mean(A.shtri) / 1000) }); } };
       requestAnimationFrame(f); }), n);
     const R = { scatto: s };
+    await pg.evaluate(() => { if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } });
     R.tempi = await campiona(NF);
+    R.peso_ombre = await pg.evaluate(() => window.PesoOmbre ? Object.assign(PesoOmbre.conto(), PesoOmbre.diag(false)) : null);
+    R.peso_gente = await pg.evaluate(() => window.PesoGente ? PesoGente.conto() : null);
     if (!has('nothrottle')) { await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 }); R.tempi4x = await campiona(Math.max(4, NF >> 1)); await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }); }
     // 3) la scena ferma: niente logica, niente fotogrammi (il ciclo del gioco continua a vuoto); due fotogrammi a mano con dt = 0 per assestare
     await pg.evaluate(() => { const pv = window.__pv; window.__f0 = [pv.R.frame, pv.G.step]; pv.G.step = () => { }; });
     await pg.waitForTimeout(1500);
     await pg.evaluate(() => { const pv = window.__pv; pv.R.frame = () => { }; });
     // le categorie e i conti (nello stesso fotogramma: si spegne una cosa alla volta e si ridisegna la scena)
-    R.categorie = await pg.evaluate(() => {
+    R.categorie = await pg.evaluate(() => { if (window.PesoOmbre) PesoOmbre.attivo = false;   // le ombre intere: quanto costerebbero ridisegnate
       const pv = window.__pv, Rr = pv.R, S = Rr.__models.scene, rd = Rr.__models.renderer, cam = Rr.getCamera(), sm = rd.shadowMap;
       const veh = new Set(Object.values(Rr.__vehicles || {}));
       const top = o => { let q = o; while (q.parent && q.parent !== S) q = q.parent; return q; };
@@ -137,9 +144,14 @@ const srv = http.createServer((req, res) => {
       for (const c in byCat) { const L = byCat[c]; L.forEach(o => o.visible = false); const d = draw(true, false); L.forEach(o => o.visible = true);
         out.costo[c] = { principale: tutto.principale - d.principale, ombra_sole: tutto.ombre - d.ombre, tri_k: tutto.tri_k - d.tri_k + tutto.ombre_tri_k - d.ombre_tri_k }; out.oggetti[c] = L.length; }
       // il resto per ramo di primo livello (nome o tipo, il nome del primo figlio): dove cercare dopo
-      const resto = {}; (byCat.resto || []).forEach(o => { const q = top(o), c0 = q.children && q.children[0], k = (q.name || q.type) + (q.userData && Object.keys(q.userData).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + (!q.name && c0 ? ' > ' + (c0.name || c0.type) : ''); resto[k] = (resto[k] || 0) + 1; });
+      const resto = {}; (byCat.resto || []).forEach(o => { const q = top(o), c0 = q.children && q.children[0], k = (q.name || q.type) + (q.userData && Object.keys(q.userData).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + (!q.name && c0 ? ' > ' + (c0.name || c0.type) : '') + ' @' + (q.__src || '?'); resto[k] = (resto[k] || 0) + 1; });
+      // le persone: quanti pezzi a testa (mesh accese), di cui con la mappa, scheletri, materiali diversi; quante dentro l'inquadratura
+      { const fr = new THREE.Frustum(), M4 = new THREE.Matrix4(); M4.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); fr.setFromProjectionMatrix(M4); const pp = [], v3 = new THREE.Vector3();
+        S.children.forEach(q => { if (!q.visible || !isPerson(q)) return; q.getWorldPosition(v3); let n = 0, tx = 0, sk = 0; const ms = new Set(); q.traverseVisible(o => { if (!o.isMesh) return; n++; if (o.isSkinnedMesh) sk++; mats(o).forEach(m => { ms.add(m); if (m && m.map) tx++; }); }); pp.push({ n, tx, sk, mat: ms.size, vis: fr.containsPoint(v3) }); });
+        const md = a => a.length ? a.slice().sort((x, y) => x - y)[a.length >> 1] : 0, inq = pp.filter(p => p.vis);
+        out.persone = { in_scena: pp.length, inquadrate: inq.length, pezzi_mediana: md(inq.map(p => p.n)), pezzi_max: Math.max(0, ...inq.map(p => p.n)), con_mappa_mediana: md(inq.map(p => p.tx)), scheletri_mediana: md(inq.map(p => p.sk)), materiali_mediana: md(inq.map(p => p.mat)) }; }
       out.resto_rami = Object.entries(resto).sort((a, b) => b[1] - a[1]).slice(0, 15);
-      T.dispose(); return out; });
+      T.dispose(); if (window.PesoOmbre) PesoOmbre.attivo = true; return out; });
     // 4) le foto: il fotogramma vero a scena ferma (dt = 0), poi senza chi si muove
     const foto = (statica) => pg.evaluate(statica => { const pv = window.__pv, Rr = pv.R, S = Rr.__models.scene, f0 = window.__f0[0];
       const hid = []; if (statica) { const veh = new Set(Object.values(Rr.__vehicles || {}));
@@ -152,28 +164,34 @@ const srv = http.createServer((req, res) => {
     const png = { vivo: await foto(false), statica: await foto(true) };
     fs.writeFileSync(path.join(OUT, s.nome + '.png'), Buffer.from(png.vivo.split(',')[1], 'base64'));
     fs.writeFileSync(path.join(OUT, s.nome + '_statica.png'), Buffer.from(png.statica.split(',')[1], 'base64'));
+    const confronta = (a, bb) => pg.evaluate(async ([a, bb, SOGLIA]) => { const load = async u => { const im = new Image(); im.src = u; await im.decode(); const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0); return x.getImageData(0, 0, c.width, c.height); };
+      const A = await load(a), B = await load(bb); if (A.width !== B.width || A.height !== B.height) return { errore: 'misure diverse' };
+      const c = document.createElement('canvas'); c.width = A.width; c.height = A.height; const x = c.getContext('2d'), D = x.createImageData(A.width, A.height);
+      let sum = 0, over = 0, max = 0; const N = A.width * A.height;
+      for (let i = 0; i < A.data.length; i += 4) { let m = 0; for (let k = 0; k < 3; k++) { const d = Math.abs(A.data[i + k] - B.data[i + k]); sum += d; if (d > m) m = d; D.data[i + k] = Math.min(255, d * 8); } D.data[i + 3] = 255; if (m > SOGLIA) over++; if (m > max) max = m; }
+      x.putImageData(D, 0, 0); return { media: +(sum / (N * 3)).toFixed(3), oltre_pct: +(over / N * 100).toFixed(3), max, diff: c.toDataURL('image/png') }; }, [a, bb, SOGLIA]);
+    const salvaDiff = (d, nome) => { if (d.diff) { fs.writeFileSync(path.join(OUT, nome + '_diff.png'), Buffer.from(d.diff.split(',')[1], 'base64')); delete d.diff; } return d; };
     if (RIF) { R.scarto = {};
       for (const k of ['vivo', 'statica']) { const f = path.join(RIF, s.nome + (k === 'vivo' ? '' : '_statica') + '.png'); if (!fs.existsSync(f)) continue;
-        const d = await pg.evaluate(async ([a, bb, SOGLIA]) => { const load = async u => { const im = new Image(); im.src = u; await im.decode(); const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0); return x.getImageData(0, 0, c.width, c.height); };
-          const A = await load(a), B = await load(bb); if (A.width !== B.width || A.height !== B.height) return { errore: 'misure diverse' };
-          const c = document.createElement('canvas'); c.width = A.width; c.height = A.height; const x = c.getContext('2d'), D = x.createImageData(A.width, A.height);
-          let sum = 0, over = 0, max = 0; const N = A.width * A.height;
-          for (let i = 0; i < A.data.length; i += 4) { let m = 0; for (let k = 0; k < 3; k++) { const d = Math.abs(A.data[i + k] - B.data[i + k]); sum += d; if (d > m) m = d; D.data[i + k] = Math.min(255, d * 8); } D.data[i + 3] = 255; if (m > SOGLIA) over++; if (m > max) max = m; }
-          x.putImageData(D, 0, 0); return { media: +(sum / (N * 3)).toFixed(3), oltre_pct: +(over / N * 100).toFixed(3), max, diff: c.toDataURL('image/png') }; }, [png[k], 'data:image/png;base64,' + fs.readFileSync(f).toString('base64'), SOGLIA]);
-        if (d.diff) { fs.writeFileSync(path.join(OUT, s.nome + (k === 'vivo' ? '' : '_statica') + '_diff.png'), Buffer.from(d.diff.split(',')[1], 'base64')); delete d.diff; }
-        R.scarto[k] = d; } }
+        R.scarto[k] = salvaDiff(await confronta(png[k], 'data:image/png;base64,' + fs.readFileSync(f).toString('base64')), s.nome + (k === 'vivo' ? '' : '_statica')); } }
+    // A/B nella stessa pagina, sulla stessa scena ferma: ogni alleggerimento che si può spegnere dal vivo (window.__pesoAB[nome](false)) si spegne,
+    // si rifà la foto, si riaccende; lo scarto è tutto suo (fra due caricamenti la città non è identica: vedi la soglia di rumore in PESO.md)
+    const AB = await pg.evaluate(() => Object.keys(window.__pesoAB || {}));
+    if (AB.length) { R.ab = {};
+      for (const k of AB) { await pg.evaluate(k => window.__pesoAB[k](false), k); const off = await foto(false); await pg.evaluate(k => window.__pesoAB[k](true), k);
+        const on2 = await foto(false); R.ab[k] = salvaDiff(await confronta(on2, off), s.nome + '_ab_' + k); R.ab[k].stabile = salvaDiff(await confronta(on2, png.vivo), s.nome + '_ab_' + k + '_stabile'); } }
     await pg.evaluate(() => { const pv = window.__pv; [pv.R.frame, pv.G.step] = window.__f0; });
     R.sec = Math.round((Date.now() - ts) / 1000);
-    OUTJ.scatti[s.nome] = R; log(s.nome, JSON.stringify({ tempi: R.tempi, tempi4x: R.tempi4x, tutto: R.categorie.tutto, faretti: R.categorie.ombre_faretti_tutte, costo: R.categorie.costo, scarto: R.scarto }));
+    OUTJ.scatti[s.nome] = R; log(s.nome, JSON.stringify({ peso_gente: R.peso_gente, peso_ombre: R.peso_ombre, tempi: R.tempi, tempi4x: R.tempi4x, tutto: R.categorie.tutto, faretti: R.categorie.ombre_faretti_tutte, costo: R.categorie.costo, persone: R.categorie.persone, scarto: R.scarto, ab: R.ab }));
     log('   resto', JSON.stringify(R.categorie.resto_rami));
     fs.writeFileSync(path.join(OUT, 'banco.json'), JSON.stringify(OUTJ, null, 1));
   }
   // la tabella
   const C = ['persone', 'vetro', 'case', 'case_sciolte', 'statiche_fuse', 'posa', 'scorci', 'vissuti', 'terreno', 'treno', 'sottosuolo', 'luci_fx', 'mezzi', 'resto'];
   let md = `Disegni per fotogramma (mediana di ${NF} fotogrammi veri): tutto = principale + ombre + post. Costo delle categorie: disegni in meno spegnendole nello stesso fotogramma (principale + ombra del sole).\n\n`;
-  md += `| scatto | disegni | principale | ombre | post | mappe d'ombra | tri k | frame ms | 4× ms | logica ms | ${C.join(' | ')} | faretti (tutti) | scarto vivo | scarto statica |\n|${'---|'.repeat(13 + C.length + 1)}\n`;
+  md += `| scatto | disegni | principale | ombre | ombre senza cotture | post | mappe d'ombra | tri k | frame ms | 4× ms | logica ms | ${C.join(' | ')} | faretti (tutti) | scarto vivo | scarto statica |\n|${'---|'.repeat(14 + C.length + 1)}\n`;
   for (const [n, R] of Object.entries(OUTJ.scatti)) { const c = R.categorie, t = R.tempi, sc = k => R.scarto && R.scarto[k] ? `${R.scarto[k].media} / ${R.scarto[k].oltre_pct}%` : '';
-    md += `| ${n} | ${t.disegni} | ${t.principale} | ${t.ombre} | ${t.post} | ${t.mappe_ombra} | ${t.triangoli_k} | ${t.frame_ms} | ${R.tempi4x ? R.tempi4x.frame_ms : ''} | ${t.logica_ms} | ${C.map(k => c.costo[k] ? c.costo[k].principale + '+' + c.costo[k].ombra_sole : '').join(' | ')} | ${c.ombre_faretti_tutte} | ${sc('vivo')} | ${sc('statica')} |\n`; }
+    md += `| ${n} | ${t.disegni} | ${t.principale} | ${t.ombre} | ${t.ombre_senza_cotture === undefined ? '' : t.ombre_senza_cotture} | ${t.post} | ${t.mappe_ombra} | ${t.triangoli_k} | ${t.frame_ms} | ${R.tempi4x ? R.tempi4x.frame_ms : ''} | ${t.logica_ms} | ${C.map(k => c.costo[k] ? c.costo[k].principale + '+' + c.costo[k].ombra_sole : '').join(' | ')} | ${c.ombre_faretti_tutte} | ${sc('vivo')} | ${sc('statica')} |\n`; }
   fs.writeFileSync(path.join(OUT, 'banco.md'), md); console.log(md);
   await b.close(); srv.close(); process.exit(0);
 });

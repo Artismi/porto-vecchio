@@ -319,13 +319,14 @@ var Render = (function () {
       sh.fragmentShader = f.replace(ARRRE1, 'mapA1(').replace('void main() {', 'uniform highp sampler2DArray uArr1; varying float vLay1;\nvec4 mapA1(vec2 u) { return texture(uArr1, vec3(u, floor(vLay1 + .5))); }\nvec4 mapA1(vec2 u, float b) { return texture(uArr1, vec3(u, floor(vLay1 + .5)), b); }\nvoid main() {');
       if (!n0) console.warn('[leggero] pila: nessuna lettura della mappa', key); }
   }
-  function fadeMat1(m, pal, arr) {   // il materiale comune di un gruppo di case: lo stesso di prima, col retino per casa
-    const key = (pal ? palSig1(matSig1(m)) + '|pal1' : matSig1(m)).replace(arr ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (arr ? '|A' + arr.id : ''); let c = FD1.canon.get(key); if (c) return c;
+  function fadeMat1(m, pal, arr, vt) {   // il materiale comune di un gruppo di case: lo stesso di prima, col retino per casa
+    const key = vt || (pal ? palSig1(matSig1(m)) + '|pal1' : matSig1(m)).replace(arr ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (arr ? '|A' + arr.id : ''); let c = FD1.canon.get(key); if (c) return c;
     c = m.clone(); if (m.userData.plaster) plasterize(c); else if (m.userData.mondo) animMat(c, m.userData.mondo);
     if (pal) c.color.setRGB(1, 1, 1);   // [leggero] il colore lo dà la tavolozza
     if (arr) c.map = arr.dummy;   // [leggero] la mappa vera la dà la pila
+    if (vt) PesoVetro.prepara(c);   // [peso] colore, emissivo, ruvidità e metallo dalla tavolozza dei vetri (peso_vetro.js)
     const prev = c.onBeforeCompile, pk = c.customProgramCacheKey;
-    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '');
+    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '') + (vt ? '|vt1' : '');
     // [visuale3] la stessa tessitura porta la quota del taglio della casa (verde e blu, 16 bit): sopra si scarta; appena sotto, sulle facce
     // che guardano la camera, il filo chiaro della sezione (VIS3.filo: larghezza e colore)
     c.onBeforeCompile = function (sh, r) { prev.call(c, sh, r); sh.uniforms.uFd1 = FD1.u; sh.uniforms.uFilo3 = VIS3.filo;
@@ -335,7 +336,7 @@ var Render = (function () {
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vFd1; varying float vFdY; varying float vFdW; uniform vec4 uFilo3;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\nif (vFd1 > .5 || vFdW > vFdY) discard;`)
         .replace('#include <dithering_fragment>', `#include <dithering_fragment>\nif (vFdW > vFdY - uFilo3.x && gl_FrontFacing) gl_FragColor.rgb = mix(gl_FragColor.rgb, uFilo3.yzw * .8, .8);`);
-      injPalArr1(sh, pal, arr, key); };   // [leggero]
+      injPalArr1(sh, pal, arr, key); if (vt) PesoVetro.inietta(sh); };   // [leggero] [peso]
     c.transparent = false; c.opacity = 1; c.depthWrite = true; c.needsUpdate = true;
     if (c.emissiveMap) FD1.emis.push(c);
     FD1.canon.set(key, c); return c;
@@ -357,15 +358,17 @@ var Render = (function () {
         const sig = matSig1(m); if (!sig) return;
         const g = flatXf(o.geometry, o.matrixWorld);   // [carico]
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
-        const pal = palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
+        const vt = window.PesoVetro && LEGGERO ? PesoVetro.ok(m, sig, renderer) : null;   // [peso] i vetri: un secchio, i quattro valori nella loro tavolozza
+        const pal = !vt && palOk1(m, sig);   // [leggero] materiali uguali a meno del colore: un secchio, il colore nella tavolozza
         const al = pal && arrOk1(m, sig) ? arrLayer1(m.map) : null;   // [leggero] e a meno della mappa: la mappa nella pila
-        const key = (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '') + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow;
-        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null });
-        g.__bi1 = bi; g.__src1 = o; if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
+        const key = (vt || (pal ? palSig1(sig) + '|pal1' : sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (al ? '|A' + al[0].id : '')) + '|' + Math.floor(_wp.x / SETT1) + ',' + Math.floor(_wp.z / SETT1) + '|' + o.castShadow + o.receiveShadow;
+        let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null, vt });
+        g.__bi1 = bi; g.__src1 = o; if (vt) g.__vt1 = PesoVetro.idx(m); if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
       });
     });
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     if (PAL1.col.length) palTex1();   // [leggero]
+    if (window.PesoVetro) PesoVetro.tessitura();   // [peso]
     ARR1.all.forEach(a => { if (!a.tex) arrTex1(a); });   // [leggero] le pile delle mappe
     B.forEach(b => {
       let n = 0; b.geos.forEach(g => { n += g.attributes.position.count; });
@@ -377,8 +380,9 @@ var Render = (function () {
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setAttribute('bId1', new THREE.BufferAttribute(id, 1));
       if (b.pal) { const pa = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; pa.fill(g.__pal1, q, q + c); q += c; }); geo.setAttribute('pal1', new THREE.BufferAttribute(pa, 1)); }   // [leggero] il numero del colore
       if (b.arr) { const la = new Uint8Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; la.fill(g.__lay1, q, q + c); q += c; }); geo.setAttribute('lay1', new THREE.BufferAttribute(la, 1)); }   // [leggero] lo strato della mappa
+      if (b.vt) { const va = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; va.fill(g.__vt1, q, q + c); q += c; }); geo.setAttribute('vt1', new THREE.BufferAttribute(va, 1)); }   // [peso] la voce del vetro
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
-      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
       if (b.cast) { const sk = b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, geos: [] }); q.geos.push(geo); } });
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
@@ -11025,7 +11029,7 @@ var Render = (function () {
       moon.position.set(tg.x + Math.sin(az) * Math.cos(e) * D, tg.y + Math.sin(e) * D, tg.z + Math.cos(az) * Math.cos(e) * D); }
     let half = 46, far = 160, bias = -.0015, nb = .03;
     if (P.ombraVisuale > 0) {
-      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / moon.shadow.mapSize.x, D2 = half * 1.1 + 30;
+      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
       moon.position.sub(tg).multiplyScalar(D2 / D).add(tg); far = 2 * D2 + 30;
       bias = -(P.ombraBias[0] + P.ombraBias[1] * tex) / (far - sc.near); nb = .015 + tex * .9; }
     moon.shadow.bias = bias; moon.shadow.normalBias = nb;
@@ -12595,13 +12599,19 @@ var Render = (function () {
   //   3. SUPERFICIE — colore, materia (legno, lamiera verniciata, zinco, plastica, cotto, cemento, gomma, rame) e usura
   //                   (scheggiature con la ruggine sotto, colature, sporco che sale dal basso, calcare, muschio, graffi).
   // Tutte le parti usano un atlante solo (FA.mat, celle da 32 px): un materiale per edificio, si fonde con mergeGroup.
-  const FA = { n: 0, map: {} };
-  function faAtlas() { if (FA.c) return; FA.c = mk(512, 512); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
+  // [peso] le celle erano 256 (512 × 512) ma ne servono più di mille: dalla 256 in poi tutte finivano nella cella 255, ridipinta a ogni
+  // richiesta (gli oggetti prendevano il colore dell'ultima). Ora l'atlante è 1024 × 2048 (32 colonne × 64 righe, 2.048 celle; 2048 è il
+  // lato che ogni scheda WebGL2 regge): ogni cella ha gli stessi 32 × 32 texel di prima, quindi lo stesso campione (cambia solo dove sta),
+  // e quelle oltre la 255 hanno finalmente la loro. ?nopesoatlante: come prima
+  const FA = /[?&]nopesoatlante\b/.test(typeof location !== 'undefined' ? location.search : '') ? { n: 0, map: {}, W: 512, H: 512 } : { n: 0, map: {}, W: 1024, H: 2048 };
+  FA.C = FA.W / 32; FA.N = FA.C * FA.H / 32;
+  function faAtlas() { if (FA.c) return; FA.c = mk(FA.W, FA.H); FA.x = FA.c.getContext('2d'); FA.tex = canvasTex(FA.c); FA.mat = std({ map: FA.tex, roughness: .85 }); }
   // una cella di materia: colore + grana + usura, decisa dal tipo
   function fCell(hex, kind) {
     faAtlas(); kind = kind || 'solid';
     const key = hex + kind; if (FA.map[key] !== undefined) return FA.map[key];
-    const i = Math.min(255, FA.n++), cx = (i % 16) * 32, cy = Math.floor(i / 16) * 32, x = FA.x, r = rng(i * 131 + 17);
+    if (FA.n === FA.N) console.warn('[peso] atlante delle parti pieno:', FA.n, 'celle');
+    const i = Math.min(FA.N - 1, FA.n++), cx = (i % FA.C) * 32, cy = Math.floor(i / FA.C) * 32, x = FA.x, r = rng(i * 131 + 17);
     const px = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(cx + a, cy + b, w, h); };
     const grad = (top, bot) => { for (let y = 0; y < 32; y++) px(0, y, 32, 1, shade(hex, top + (bot - top) * y / 31)); };
     const specks = (n, lo, hi, s) => { for (let k = 0; k < n; k++) px(Math.floor(r() * 32), Math.floor(r() * 32), s || 1, s || 1, shade(hex, lo + r() * (hi - lo))); };
@@ -12640,14 +12650,14 @@ var Render = (function () {
   }
   // coordinate di tessitura nella cella: proiezione a scatola (oppure quelle già buone di torni e cilindri)
   function fUV(geo, cell, mode) {
-    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % 16) * 32, v0 = Math.floor(cell / 16) * 32;
+    const uv = geo.attributes.uv, pos = geo.attributes.position, nor = geo.attributes.normal, u0 = (cell % FA.C) * 32, v0 = Math.floor(cell / FA.C) * 32;
     let bb = null, s = null; if (mode === 'box') { geo.computeBoundingBox(); bb = geo.boundingBox; s = bb.max.clone().sub(bb.min).addScalar(1e-4); }
     for (let k = 0; k < uv.count; k++) {
       let u = uv.getX(k), v = uv.getY(k);
       if (bb) { const X = pos.getX(k), Y = pos.getY(k), Z = pos.getZ(k), nx = Math.abs(nor.getX(k)), ny = Math.abs(nor.getY(k)), nz = Math.abs(nor.getZ(k));
         if (nx >= ny && nx >= nz) { u = (Z - bb.min.z) / s.z; v = (Y - bb.min.y) / s.y; } else if (ny >= nz) { u = (X - bb.min.x) / s.x; v = (Z - bb.min.z) / s.z; } else { u = (X - bb.min.x) / s.x; v = (Y - bb.min.y) / s.y; } }
       u = Math.min(1, Math.max(0, u)); v = Math.min(1, Math.max(0, v));
-      uv.setXY(k, (u0 + 1 + u * 30) / 512, 1 - (v0 + 1 + (1 - v) * 30) / 512);
+      uv.setXY(k, (u0 + 1 + u * 30) / FA.W, 1 - (v0 + 1 + (1 - v) * 30) / FA.H);
     }
     return geo;
   }
@@ -12910,13 +12920,15 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
     return m;
   }
   // ---- atlante: una texture sola per tutte le parti piccole (un materiale per edificio invece di venti) ----
-  const CA = { n: 0, map: {} };
+  if (typeof window !== "undefined") window.__atlanti = () => ({ parti: FA.n, piccole: CA.n });   // [peso] per il banco
+  const CA = { n: 0, map: {}, H: FA.H / 2 };   // [peso] come FA: 16 × 64 celle (prima 16 × 16, oltre la 255 tutte nella 255)
   function caAtlas() {
-    if (CA.c) return; CA.c = mk(256, 256); CA.x = CA.c.getContext('2d'); CA.tex = canvasTex(CA.c); CA.mat = std({ map: CA.tex, roughness: .92 });
+    if (CA.c) return; CA.c = mk(256, CA.H); CA.x = CA.c.getContext('2d'); CA.tex = canvasTex(CA.c); CA.mat = std({ map: CA.tex, roughness: .92 });
   }
   function caCell(hex, pat) {
     const key = hex + (pat || ''); if (CA.map[key] !== undefined) return CA.map[key];
-    const i = Math.min(255, CA.n++), cx = (i % 16) * 16, cy = Math.floor(i / 16) * 16, x = CA.x, r = rng(i * 31 + 7);
+    if (CA.n === CA.H) console.warn('[peso] atlante delle parti piccole pieno:', CA.n, 'celle');
+    const i = Math.min(CA.H - 1, CA.n++), cx = (i % 16) * 16, cy = Math.floor(i / 16) * 16, x = CA.x, r = rng(i * 31 + 7);
     x.fillStyle = hex; x.fillRect(cx, cy, 16, 16);
     if (pat === 'slat') { for (let k = 1; k < 15; k += 3) { x.fillStyle = shade(hex, .6); x.fillRect(cx + 1, cy + k, 14, 1); x.fillStyle = shade(hex, 1.18); x.fillRect(cx + 1, cy + k + 1, 14, 1); } x.fillStyle = shade(hex, .72); x.fillRect(cx, cy, 16, 1); x.fillRect(cx, cy + 15, 16, 1); x.fillRect(cx, cy, 1, 16); x.fillRect(cx + 15, cy, 1, 16); for (let k = 0; k < 6; k++) { x.fillStyle = 'rgba(40,30,24,.35)'; x.fillRect(cx + Math.floor(r() * 14), cy + Math.floor(r() * 14), 2, 1); } }
     else if (pat === 'leaf') { for (let k = 0; k < 46; k++) { x.fillStyle = shade(hex, .55 + r() * .85); x.fillRect(cx + Math.floor(r() * 15), cy + Math.floor(r() * 15), 2, 2); } }
@@ -12929,7 +12941,7 @@ if (vUv.x > .3125 && vUv.x < .375 && vUv.y > .75) {
   }
   function caUV(geo, i, full) {
     const u0 = (i % 16) * 16, v0 = Math.floor(i / 16) * 16, uv = geo.attributes.uv;
-    for (let k = 0; k < uv.count; k++) { const u = full ? uv.getX(k) : .5, v = full ? uv.getY(k) : .5; uv.setXY(k, (u0 + 1 + u * 14) / 256, 1 - (v0 + 1 + (1 - v) * 14) / 256); }
+    for (let k = 0; k < uv.count; k++) { const u = full ? uv.getX(k) : .5, v = full ? uv.getY(k) : .5; uv.setXY(k, (u0 + 1 + u * 14) / 256, 1 - (v0 + 1 + (1 - v) * 14) / CA.H); }
     return geo;
   }
   const cbox = (w, h, d, hex, pat) => new THREE.Mesh(caUV(new THREE.BoxGeometry(w, h, d), caCell(hex, pat), !!pat), CA.mat);
@@ -15089,6 +15101,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // OMBRE1.vere persone più vicine all'inquadratura; gli altri hanno una macchia allungata dalla parte opposta al sole
   // (stessa direzione e stessa lunghezza dell'ombra vera). Chi è fuori dall'inquadratura (con margine per l'ombra) non si
   // disegna né si anima: rientrando recupera il tempo perso.
+  let KPO = null;   // [peso] il kit di peso_ombre.js
   const OMBRE1 = { vere: 5, fr: new THREE.Frustum(), m: new THREE.Matrix4(), sp: new THREE.Sphere(), v: new THREE.Vector3(), Y: new THREE.Vector3(0, 1, 0), list: [] };
   function ombreCast1(g, on) {
     const u = g.userData; if (u.cast1 === on && (frameN + (u.ph1 || 0)) % 90) return;
@@ -15602,7 +15615,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    renderer.setRenderTarget(rt); renderer.render(scene, camera);
+    if (window.PesoGente) PesoGente.passo(dyn.people);   /* [peso] le persone fuse (peso_gente.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO || (KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera }));   /* [peso] le ombre in cache (peso_ombre.js) */
+    renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
