@@ -39,7 +39,7 @@ console.log('abusivi per epoca', JSON.stringify(abEra));
 // [mappa_compatta] nella città compatta le baracche sono due file sole fra i binari e il mare: si confronta la frequenza per casa, non il totale
 const nEra = {}; B.forEach(b => { const e = b.shack ? 'E7' : b.era; if (e) nEra[e] = (nEra[e] || 0) + 1; }), rate = e => (abEra[e] || 0) / Math.max(1, nEra[e] || 0);
 ok(rate('E7') > rate('E0') * 2 && !abEra.E4, `gli abusivi stanno soprattutto fra le baracche e mai sulla Vittoria (${JSON.stringify(abEra)}; per casa E7 ${rate('E7').toFixed(2)}, E0 ${rate('E0').toFixed(2)})`);
-ok(S.filter(s => s.k === 'moncone').length > 0, 'sulla Vittoria restano i monconi tagliati dal regime');
+{ const vv = (World.roads || []).find(r => r.id === 'vittoria'); ok((vv && vv.viva) || S.filter(s => s.k === 'moncone').length > 0, 'sulla Vittoria restano i monconi tagliati dal regime (o è una via viva: [cucitura])'); }
 ok(!S.some(s => (s.rd === 'vittoria' || s.rd === 'corso') && (s.k === 'dorsale' || s.k === 'traversata')), 'niente fili in aria sulla Vittoria e sul Corso (interrata)');
 ok(R.pozzetti > 5, `pozzetti dove la rete è interrata: ${R.pozzetti}`);
 ok(S.every(s => s.k !== 'traversata' || Math.hypot(N[s.a].x - N[s.b].x, N[s.a].z - N[s.b].z) < 16), 'le traversate sono corte (una via, non un isolato)');

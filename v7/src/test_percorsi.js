@@ -73,7 +73,9 @@ function percorri(c) {
 // [mappa_compatta] passo 9: la regola dei tetti non cambia, il grafo si rigenera sulle case basse; si contano i passaggi nel borgo
 { const E = T.grafo(), k = {}; let nb = 0; E.forEach(L => L.forEach(e => { const b = B[e.a], x = (b.x + b.w / 2) * TS, y = (b.y + b.h / 2) * TS; if (!(x > D.borgo.x0 && x < D.borgo.x1 && y > D.borgo.y0 && y < D.borgo.y1)) return; nb++; k[e.k] = (k[e.k] || 0) + 1; }));
   console.log('grafo dei tetti nel borgo', nb, JSON.stringify(k));
-  ok((k.salto || 0) + (k.gradino || 0) >= 36 && (k.tetto || 0) >= 600, `il borgo basso si gira sui tetti: ${k.tetto || 0} passi a pari, ${k.gradino || 0} gradini, ${k.salto || 0} salti (prima: 854, 18, 12)`); }
+  // [cucitura] la Vittoria viva ha il fronte sud a 2 piani (lato camera) invece della cortina del regime a 3: i gradini fra la cortina e il
+  // borgo dietro si sono appiattiti (prima 25 gradini e 16 salti, ora ~18 e ~8); i giri sui tetti restano tutti
+  ok((k.salto || 0) + (k.gradino || 0) >= 24 && (k.tetto || 0) >= 600, `il borgo basso si gira sui tetti: ${k.tetto || 0} passi a pari, ${k.gradino || 0} gradini, ${k.salto || 0} salti (prima: 854, 18, 12)`); }
 const giri = D.circuiti.filter(c => c.k === 'tetti'), borgo = (x, y) => x > D.borgo.x0 && x < D.borgo.x1 && y > D.borgo.y0 && y < D.borgo.y1;
 ok(giri.filter(c => !c.fuoriBorgo).length >= 3 && giri.filter(c => !c.fuoriBorgo).every(c => borgo(c.pts[0][0], c.pts[0][1])), `almeno tre giri sui tetti nel borgo (${giri.length})`);
 ok(giri.some(c => c.id === 'giro_mercato'), 'il giro del Mercato sui tetti dell\'Ottocento ([mappa_compatta])');

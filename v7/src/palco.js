@@ -49,6 +49,7 @@ var Palco = (function () {
     // 2) l'ANTENNA: nell'angolo nord-ovest della corte (contro la cortina, lontano dalla camera che guarda da sud-est), ≥ 9 m dalla piazzola
     const antenna = cerca(F.x + 13, asse.z0 - ANT.r - 6, (x, z) => dentro(x, z) && libero(x, z, ANT.r, ANT.r) && z + ANT.r < asse.z0 && !sovr(x, z, ANT.r, ANT.r) && (!eliporto || Math.hypot(x - eliporto.x, z - eliporto.z) > PAD + ANT.r + 2), 1, asse.porta ? 30 : 14);   // [mappa_compatta] nella Rocca a mare si cerca in tutta la corte
     if (antenna) { antenna.h = ANT.h; antenna.r = ANT.r; posa(antenna.x, antenna.z, ANT.r, ANT.r, 'antenna'); }
+    if (W.recinto) return recinto(W, F, WL, ty, libero, cerca, posa, sovr, occ, asse, eliporto, antenna, dentro, x1);
     // 3) i CARRI: in fila nel parco mezzi a sud dell'asse, muso a nord verso la strada (rot π), a passo fisso; la fila si sposta in blocco
     let carri = [];
     for (let dz = 0; dz <= 6 && !carri.length; dz += 1) for (let dx = 0; dx <= 16 && !carri.length; dx += 2) {
@@ -85,6 +86,42 @@ var Palco = (function () {
     // 7) le CANALETTE di scolo: lungo il bordo sud dell'asse nella piazza d'armi e lungo il Muro dalla parte della città
     const canalette = [[F.x + 9, asse.z1 + .6, F.x + 9 + Math.max(20, CARRO.n * CARRO.passo + 16), asse.z1 + .6], [WL.x - 1.2, z0 + 10, WL.x - 1.2, WL.gate[0] - 3], [WL.x - 1.2, WL.gate[1] + 3, WL.x - 1.2, z1 - 10]];
     return { zona, dentro, asse, eliporto, antenna, carri, container, mucchi, tracce, canalette, x0, x1, CARRO, CONT };
+  }
+  // [cucitura] IL RECINTO DEL GARANTE (world_cittanuova.js, W.recinto): il palco del potere non è più la spianata aperta ma il recinto al porto.
+  // La spianata davanti resta vuota (è il glacis della città: niente carri né container); dentro il muro:
+  //   - i CARRI in colonna sul piazzale dei mezzi, fra il Ministero e la riva, muso a nord verso l'uscita (passo fisso lungo z);
+  //   - i CONTAINER in fila sulla banchina del canale, il lato lungo parallelo all'acqua;
+  //   - le COSE A TERRA: al varco (dalle due parti della sbarra), al piede del muro verso la città, ai capi delle file;
+  //   - le TRACCE: dal varco dentro la testa di ponte e giù per il corsoio fino al piazzale, la ronda lungo il muro, le manovre dei carri.
+  function recinto(W, F, WL, ty, libero, cerca, posa, sovr, occ, asse, eliporto, antenna, dentro, x1) {
+    const R = W.recinto, z1 = Math.max(R.yS + 30, R.yN + 60), xA = R.xw;   // (il filare della passeggiata resta fuori dal palco)
+    const dentroR = (x, z) => x > R.xw + .8 && x < R.xe && z > R.yP + .8 && z < z1;
+    const zona = (x, z) => (x >= xA && x <= x1 && z >= (WL.y0 - 80) && z <= z1) || dentro(x, z);
+    // 3) i carri: la colonna più lunga che sta sul piazzale (al più CARRO.n), il più vicino possibile al Ministero e al centro del piazzale
+    let carri = [];
+    for (let n = CARRO.n; n >= 1 && !carri.length; n--) for (let dz = 0; dz <= 30 && !carri.length; dz += 1) for (const dx of [0, -2, 2, -4, 4, -6, 6]) {
+      const x = R.xe - 14 + dx, zs = []; for (let i = 0; i < n; i++) zs.push(R.yN + 30 + dz + i * CARRO.passo);
+      if (zs.every(z => dentroR(x, z) && libero(x, z, CARRO.hx, CARRO.hz) && !sovr(x, z, CARRO.hx, CARRO.hz))) { carri = zs.map(z => ({ x, z, rot: Math.PI })); break; } }
+    carri.forEach(c => posa(c.x, c.z, CARRO.hx, CARRO.hz, 'carro'));
+    // 4) i container: in fila sulla banchina del canale, a nord della torre
+    let container = [];
+    for (let n = CONT.n; n >= 1 && !container.length; n--) for (let s = 0; s <= 12 && !container.length; s += 1) { const x = R.quay + 2.6, zs = []; for (let i = 0; i < n; i++) zs.push(R.yN + 1.5 + CONT.hz + s + i * CONT.passo);
+      if (zs.every(z => libero(x, z, CONT.hx, CONT.hz) && !sovr(x, z, CONT.hx, CONT.hz))) container = zs.map((z, i) => ({ x, z, rot: 0, col: ['#5a6a4a', '#4a5a6a', '#5a6a4a'][i % 3] })); }
+    container.forEach(c => posa(c.x, c.z, CONT.hx, CONT.hz, 'container'));
+    // 5) le cose a terra, a mucchietti nelle scene
+    const mucchi = [], mucchio = (x, z, scena, n, r) => { if (mucchi.length >= MUCCHI.max || !libero(x, z, .6, .6) || sovr(x, z, r, r) || mucchi.some(m => Math.hypot(m.x - x, m.z - z) < 6)) return; mucchi.push({ x, z, scena, n, r }); };
+    mucchio(R.gx - 5.5, asse.z0 - 2.6, 'posto_blocco', 6, 1.4); mucchio(R.gx - 5.5, asse.z1 + 2.6, 'posto_blocco', 5, 1.2); mucchio(R.gx + 4, asse.z1 + 3, 'posto_blocco', 4, 1.1);   // ai due lati della sbarra
+    for (let z = R.yN + 10; z < z1 - 8; z += MUCCHI.recinto) { const zz = z + (hash(Math.round(z), 3, 771) - .5) * 6; if (hash(Math.round(z), 5, 772) < .35) continue; mucchio(R.xw + 3.2, zz, 'recinto', 4, 1.1); }   // al piede del muro, dentro (fuori c'è la passeggiata)
+    if (container.length) { const c1 = container[container.length - 1]; mucchio(c1.x - 2.6, c1.z + CONT.hz + 1.6, 'container', 5, 1.2); }
+    if (carri.length) { const c = carri[carri.length - 1]; mucchio(c.x - CARRO.hx - 1.8, c.z, 'parco_mezzi', 4, 1); }
+    // 6) le tracce: il camion entra dal varco, gira nella testa di ponte e scende al piazzale lungo la banchina; la ronda lungo il muro; i carri
+    const tracce = [], arco = (cx, cz, r, a0, a1, n) => { const L = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; L.push([cx + Math.cos(a) * r, cz + Math.sin(a) * r]); } return L; };
+    tracce.push({ k: 'gomme', pts: [[R.gx + 1.5, asse.z1 - 1.5]].concat(arco(R.gx + 5.5, asse.z1 + 2.5, 4, Math.PI * 1.15, Math.PI * .55, 5)).concat([[R.quay - 1.5, R.yN + 6], [R.quay - 2, R.yN + 14]]) });
+    tracce.push({ k: 'gomme', pts: [[R.xw + 2.2, R.yN + 3], [R.xw + 2.2, z1 - 34]] });
+    carri.forEach((c, i) => tracce.push({ k: 'cingoli', pts: [[c.x + 4, c.z - CARRO.hz - 2 + i * .5], [c.x + 1.5, c.z - CARRO.hz - .5], [c.x, c.z - CARRO.hz + .4]] }));
+    // 7) le canalette di scolo: lungo il muro verso la città (dentro) e lungo il ciglio della banchina
+    const canalette = [[R.xw + 1.4, R.yN + 2, R.xw + 1.4, z1 - 30], [R.quay - .4, R.yN + 2, R.quay - .4, R.yN + 14]];
+    return { zona, dentro, asse, eliporto, antenna, carri, container, mucchi, tracce, canalette, x0: xA, x1, CARRO, CONT, recinto: R };
   }
   return { piano, CARRO, CONT, PAD, ANT, hash };
 })();
