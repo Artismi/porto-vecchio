@@ -37,32 +37,33 @@ var Vegetazione = (function () {
   // Voluta, non a caso: le masse chiuse stanno nei verdi freddi e scuri, gli alberi coltivati negli argenti, le radure nei gialli.
   const PAL = {
     // le masse scure (lecceta, pineta, macchia fitta)
-    leccio: ['#24382f', '#2f4a3c', '#3d5c48'],          // il più scuro, bluastro, opaco
-    pino: ['#2c4436', '#3a5642', '#4c6a4c'],            // ombrello verde scuro freddo
-    pinoM: ['#33493a', '#43604a', '#587457'],           // marittimo e d'Aleppo: più chiaro e rado
-    cipresso: ['#1f3328', '#2c4434', '#3a5640'],
-    carrubo: ['#2e4630', '#3f5c3a', '#56744a'],         // lucido, caldo
-    lentisco: ['#2d4632', '#3c5a3c', '#4f6e46'],
-    mirto: ['#34502f', '#466638', '#5b7c44'],
+    leccio: ['#183a33', '#2b5a3e', '#4a8048'],          // il più scuro, bluastro, opaco
+    pino: ['#1e4038', '#33664a', '#5a8e4e'],            // ombrello verde scuro freddo
+    pinoM: ['#28483e', '#3f7050', '#6a9a58'],           // marittimo e d'Aleppo: più chiaro e rado
+    cipresso: ['#16342c', '#244c38', '#3a6a44'],
+    carrubo: ['#1e4434', '#356a3c', '#5e9448'],         // lucido, caldo
+    lentisco: ['#204236', '#376a40', '#5e9050'],
+    mirto: ['#2a4c38', '#447a44', '#6a9e50'],
     // i verdi medi e brillanti (coltivi, acqua)
-    agrume: ['#2b4a26', '#3a6230', '#4f7c3a'],
-    fico: ['#40602c', '#557a34', '#6c9040'],
-    oleandro: ['#3e5c34', '#506e3e', '#62824a'],
-    canna: ['#7a8a4a', '#94a258', '#b4b878'],
-    edera: ['#22402a', '#2e5434', '#3e6a40'],
+    agrume: ['#1a4430', '#2e6a36', '#58964a'],
+    fico: ['#2e5a36', '#5a943a', '#9ac850'],
+    oleandro: ['#2a5040', '#4a7e48', '#76a85a'],
+    canna: ['#5a7a48', '#8aaa50', '#c0d070'],
+    edera: ['#123a30', '#245a3a', '#3e7a44'],
     // gli argenti (ulivo, eucalipto, rosmarino, agave, tamerice)
-    ulivo: ['#5f6a52', '#7d8a6c', '#9caa88'],
-    eucalipto: ['#5e6e5c', '#7c8c78', '#a2b09a'],
-    rosmarino: ['#56644e', '#6e7e64', '#8c9a7c'],
-    agave: ['#5e7a74', '#7a9890', '#9ab4aa'],
-    tamerice: ['#6e7a62', '#8c967a', '#aab092'],
-    ficodindia: ['#4e6a34', '#668440', '#80a050'],
+    ulivo: ['#4a6058', '#7a9478', '#b4c8a0'],
+    eucalipto: ['#4a6460', '#7a9890', '#b4ccb8'],
+    rosmarino: ['#3e5a52', '#6a8a70', '#9ab894'],
+    agave: ['#4a7478', '#7aa0a0', '#a8c8c0'],
+    tamerice: ['#5a6e64', '#8a9c80', '#c0c4a0'],
+    ficodindia: ['#3a6a3a', '#64943e', '#94c050'],
     // i chiari (erba giovane, mandorlo, ginestra) e i gialli paglia
-    mandorlo: ['#7c8e52', '#98aa64', '#b8c482'],
-    ginestra: ['#4c6430', '#5e7836', '#748c40'],
-    erbaVerde: ['#6c8a3a', '#86a448', '#a2bc5a'],
-    erbaSecca: ['#a8945a', '#c4ac6c', '#dcc690'],
-    finocchietto: ['#8c9640', '#a8ae4c', '#c8c45a'],
+    mandorlo: ['#5a7a48', '#8eb05a', '#c8dc84'],
+    ginestra: ['#365c30', '#5a8a38', '#88b048'],
+    erbaVerde: ['#3a6a2e', '#7ab03a', '#c4e060'],
+    erbaSecca: ['#8a7a48', '#c8b064', '#ecdc98'],
+    finocchietto: ['#6a8a38', '#a8b848', '#e0d860'],
+    felce: ['#1e4a2e', '#3e7a3a', '#7ab048'],
     // i suoli delle formazioni (la tinta a terra sotto le piante)
     aghi: '#8c7a5c', lettiera: '#5a4e3a', paglia: '#c8b27a', terra: '#9a7a58',
     // i tronchi
@@ -99,8 +100,10 @@ var Vegetazione = (function () {
     canna:       { nome: 'canne', strato: 'B', h: [2.5, 3.6], chioma: .8, forma: 'canne', sag: 'cespo', pal: 'canna' },
     bouganville: { nome: 'bouganville', strato: 'B', h: [2.5, 4], chioma: 1.4, forma: 'muro', sag: 'cespo', pal: 'oleandro' },
     edera:       { nome: 'edera', strato: 'C', h: [1.5, 3.5], chioma: 1.2, forma: 'muro', sag: 'cespo', pal: 'edera' },
-    erbaSecca:   { nome: 'erba secca', strato: 'C', h: [.35, .7], chioma: .3, forma: 'ciuffo', pal: 'erbaSecca', erbe: ['erbaSecca', 'erbaSecca2', 'prato', 'erbaSecca2'] },
-    erbaVerde:   { nome: 'erba verde', strato: 'C', h: [.25, .5], chioma: .3, forma: 'ciuffo', pal: 'erbaVerde', erbe: ['erbaVerde', 'erbaVerde2', 'trifoglio', 'prato'] },
+    erbaSecca:   { nome: 'erba secca', strato: 'C', h: [.35, .7], chioma: .3, forma: 'ciuffo', pal: 'erbaSecca', erbe: ['erbaSecca', 'erbaDab', 'prato', 'erbaDab2'] },
+    erbaVerde:   { nome: 'erba verde', strato: 'C', h: [.35, .7], chioma: .3, forma: 'ciuffo', pal: 'erbaVerde', erbe: ['erbaDab', 'erbaDab2', 'trifoglio', 'prato'] },
+    felce:       { nome: 'felce', strato: 'B', h: [.5, .9], chioma: .6, forma: 'felce', sag: 'cespo', pal: 'felce' },
+    fioriBianchi:{ nome: 'cuscini di fiori bianchi', strato: 'C', h: [.25, .45], chioma: .45, forma: 'fioriBianchi', pal: 'erbaVerde' },
     avena:       { nome: 'avena selvatica', strato: 'C', h: [.6, 1], chioma: .3, forma: 'ciuffoAlto', cella: 'avena', pal: 'erbaSecca' },
     cardo:       { nome: 'cardo', strato: 'C', h: [.7, 1.2], chioma: .4, forma: 'ciuffoAlto', cella: 'cardo', pal: 'rosmarino' },
     asfodelo:    { nome: 'asfodelo', strato: 'C', h: [.7, 1.1], chioma: .3, forma: 'ciuffoAlto', cella: 'asfodelo', pal: 'erbaVerde' },
@@ -334,14 +337,15 @@ var Vegetazione = (function () {
 
 
   // ================= IL KIT DELLE SPECIE (solo con THREE) =================
-  // Come si fanno piante vere e leggere: la chioma è un NUCLEO scuro (una massa che chiude i buchi, dipinta di foglie in scala di
-  // grigi e tinta dalla specie) e attorno tante CARTE di foglie (quadrati con un rametto dipinto nell'atlante, ritagliato dall'alfa):
-  // il contorno si sfrangia, la luce passa fra le carte, l'ombra a terra viene a chiazze. Le carte hanno la normale tonda (dal centro
-  // della chioma), così la chioma si illumina come un volume e non come cento foglietti; ogni carta ha le due facce (due avvolgimenti,
-  // niente lato rovescio scuro). Il colore delle foglie sta nell'atlante (dipinto per specie: aghi, foglioline del leccio, ulivo argento,
-  // fico, agrumi coi frutti, palma, pale del fico d'India, erbe); il colore nei vertici dà solo la luce dipinta (in alto caldo e chiaro,
-  // dentro e sotto freddo e scuro). Un albero vicino: 250-700 triangoli. Da media distanza la sagoma (nucleo + poche carte grandi), da
-  // lontano poche facce fuse in una geometria sola.
+  // Il modo di dipingerle (riferimenti dell'utente, 23 ottobre: boschi dipinti, la radura col rudere vista dall'alto):
+  // - MASSE, NON FOGLIE: la chioma è fatta di pochi LOBI grandi; ogni lobo è un nucleo (massa che chiude) e una corona di CIOCCHE
+  //   (carte con un grappolo di pennellate dipinte in grigio, ritagliate dall'alfa) che ne sfrangiano il bordo. La normale di ogni
+  //   ciocca viene dal centro del suo lobo (mescolata con quella della chioma): ogni lobo prende la sua luce, la chioma resta un volume.
+  // - TRE VALORI: il materiale (più sotto) porta la luce del gioco su una rampa a fasce morbide: ombra fredda (blu-teal), mezzo tono
+  //   (la tinta della specie), luce calda (giallo-lime); il controluce accende i bordi delle ciocche; l'occlusione dipinta (attributo
+  //   occ: 0 dentro e sotto, 1 fuori e in alto) scurisce il cuore della chioma e la base dei cespugli.
+  // - Le pennellate sono in grigio: la tinta la dà la specie (colore nei vertici). Fiori, frutti, fronde, pale e agavi hanno le loro
+  //   celle a colori. Un atlante solo per tutte le specie (8 × 5 celle da 256 px).
   const KIT = typeof THREE === 'undefined' ? null : (function () {
     const TAU = Math.PI * 2;
     const rngK = s => { let a = (s >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -350,303 +354,293 @@ var Vegetazione = (function () {
     const mul = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
     const nrm = v => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
     const crs = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-    // ---------------- L'ATLANTE DELLE FOGLIE (8 × 4 celle da 256 px) ----------------
-    const CELLE = ['pino', 'pinoM', 'leccio', 'carrubo', 'lentisco', 'ulivo', 'fico', 'agrume',
-      'eucalipto', 'cipresso', 'oleandro', 'ginestra', 'rosmarino', 'tamerice', 'mandorlo', 'mandorloFiore',
-      'bouganville', 'edera', 'vite', 'palma', 'washingtonia', 'agave', 'pala', 'canna',
-      'erbaSecca', 'erbaVerde', 'finocchietto', 'papavero', 'cappero', 'pieno', 'corteccia', 'bianco',
-      'erbaSecca2', 'erbaVerde2', 'avena', 'cardo', 'asfodelo', 'trifoglio', 'prato', 'riserva'];
+    // ---------------- L'ATLANTE ----------------
+    const CELLE = ['dabTonda', 'dabTonda2', 'dabAghi', 'dabAghi2', 'dabLunga', 'dabLunga2', 'dabLarga', 'dabPiccola',
+      'erbaDab', 'erbaDab2', 'erbaAlta', 'felce', 'edera', 'pieno', 'corteccia', 'bianco',
+      'palma', 'washingtonia', 'agave', 'pala', 'canna', 'vite', 'bouganville', 'oleandroFiori',
+      'ginestra', 'mandorloFiore', 'agrumeFrutti', 'erbaSecca', 'finocchietto', 'papavero', 'cardo', 'asfodelo',
+      'trifoglio', 'avena', 'cappero', 'fioriBianchi', 'prato', 'pinoCiuffo', 'riserva', 'riserva2'];
     const CI = {}; CELLE.forEach((n, i) => CI[n] = i);
-    const CS = 256, NX = 8, NY = 5, IN = 2 / CS;
-    // il rettangolo uv di una cella (la tela ha l'origine in alto, la texture in basso)
-    const cellUV = k => { const i = CI[k] !== undefined ? CI[k] : k, cx = i % NX, cy = Math.floor(i / NX); return [cx / NX + IN / NX, 1 - (cy + 1) / NY + IN / NY, (cx + 1) / NX - IN / NX, 1 - cy / NY - IN / NY]; };
+    const GRIGIE = new Set(['dabTonda', 'dabTonda2', 'dabAghi', 'dabAghi2', 'dabLunga', 'dabLunga2', 'dabLarga', 'dabPiccola', 'erbaDab', 'erbaDab2', 'erbaAlta', 'felce', 'edera', 'pieno', 'corteccia', 'prato', 'pinoCiuffo']);
+    const CS = 256, NX = 8, NY = 5, IN = 3 / CS;
+    const cellUV = k => { const i = CI[k], cx = i % NX, cy = Math.floor(i / NX); return [cx / NX + IN / NX, 1 - (cy + 1) / NY + IN / NY, (cx + 1) / NX - IN / NX, 1 - cy / NY - IN / NY]; };
     let ATL = null;
     function atlante() {
       if (ATL) return ATL;
       const cv = document.createElement('canvas'); cv.width = CS * NX; cv.height = CS * NY; const g = cv.getContext('2d'), r = rngK(20261023);
       const pick = a => a[Math.floor(r() * a.length)];
-      const cella = (nome, fn) => { const i = CI[nome], ox = (i % NX) * CS, oy = Math.floor(i / NX) * CS; g.save(); g.beginPath(); g.rect(ox + 3, oy + 3, CS - 6, CS - 6); g.clip(); g.translate(ox, oy); fn(); g.restore(); };
-      const ramo = (x0, y0, x1, y1, w, c) => { g.strokeStyle = c; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2 + (r() - .5) * 10, (y0 + y1) / 2, x1, y1); g.stroke(); };
-      // una foglia: base (x, y), lunghezza L, larghezza W, angolo a; c colore, v venatura
-      const foglia = (x, y, L, W, a, c, v, punta) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c; g.beginPath(); g.moveTo(0, 0);
-        g.quadraticCurveTo(L * .35, -W, L, 0); g.quadraticCurveTo(L * .35, W, 0, 0); g.fill(); if (v) { g.strokeStyle = v; g.lineWidth = Math.max(.6, W * .14); g.beginPath(); g.moveTo(L * .05, 0); g.lineTo(L * (punta || .9), 0); g.stroke(); } g.restore(); };
-      const luce = (x, y, rr, a) => { const gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, `rgba(255,255,230,${a})`); gr.addColorStop(1, 'rgba(255,255,230,0)'); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); };
-      const fiore5 = (x, y, rr, c, cc) => { g.fillStyle = c; for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * rr * .55, y + Math.sin(a) * rr * .55, rr * .55, rr * .38, a, 0, TAU); g.fill(); } g.fillStyle = cc; g.beginPath(); g.arc(x, y, rr * .25, 0, TAU); g.fill(); };
-      // i punti dove stanno le foglie di un grappolo tondo che nasce in basso al centro (la carta vista di fronte: un rametto pieno)
-      const grappolo = (n, R, fn, cRamo, wRamo) => { const P = []; for (let k = 0; k < n; k++) { const a = r() * TAU, d = Math.sqrt(r()) * R; P.push([128 + Math.cos(a) * d, 122 + Math.sin(a) * d * .9]); }
-        if (cRamo) { const J = [[128, 248]]; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * .42, L = 60 + r() * 50; const e = [128 + Math.cos(a) * L, 200 + Math.sin(a) * L]; ramo(128, 250, e[0], e[1], wRamo, cRamo); J.push(e); }
-          P.forEach((p, k) => { if (k % 3) return; const j = J[1 + k % 5]; ramo(j[0], j[1], p[0], p[1], wRamo * .45, cRamo); }); }
-        P.sort((a, b) => a[1] - b[1]).forEach((p, k) => fn(p[0], p[1], k)); };
-      const COL = (k, d) => { const p = PAL[k].map(hx); return '#' + new THREE.Color().setRGB(...mix(p[0], p[2], d)).getHexString(); };
-      // gli aghi: ciuffi a raggiera, punte più chiare
-      const aghi = (nome, nT, nA, L0, L1, pal) => cella(nome, () => grappolo(nT, 92, (x, y) => { for (let q = 0; q < nA; q++) { const a = -Math.PI / 2 + (r() - .5) * 3.6, L = L0 + r() * (L1 - L0), t = r();
-        g.strokeStyle = COL(pal, .1 + t * .55); g.lineWidth = 2.1; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L * .55, y + Math.sin(a) * L * .55); g.stroke();
-        g.strokeStyle = COL(pal, .55 + t * .45); g.lineWidth = 1.6; g.beginPath(); g.moveTo(x + Math.cos(a) * L * .55, y + Math.sin(a) * L * .55); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); } }, null, 0));
-      aghi('pino', 13, 46, 22, 36, 'pino'); aghi('pinoM', 10, 38, 30, 48, 'pinoM');
-      // foglioline fitte (leccio, lentisco): sopra scure e lucide, qualcuna girata (il rovescio grigio del leccio)
-      const fitte = (nome, n, L, W, pal, rov, extra) => cella(nome, () => { grappolo(n, 100, (x, y) => { const a = r() * TAU, t = r(); foglia(x, y, L * (.8 + r() * .4), W * (.8 + r() * .3), a, r() < rov ? '#8a9484' : COL(pal, .1 + t * .9), 'rgba(255,255,220,.25)'); }, PAL.tLeccio, 4); if (extra) extra(); });
-      fitte('leccio', 190, 17, 7.5, 'leccio', .1); fitte('lentisco', 170, 13, 6, 'lentisco', .05, () => { for (let k = 0; k < 6; k++) { const x = 60 + r() * 136, y = 60 + r() * 120; for (let q = 0; q < 7; q++) { g.fillStyle = q % 2 ? '#b02a2a' : '#7a1a22'; g.beginPath(); g.arc(x + (r() - .5) * 14, y + (r() - .5) * 14, 3, 0, TAU); g.fill(); } } });
-      cella('carrubo', () => grappolo(16, 92, (x, y) => { const a = r() * TAU; ramo(x, y, x + Math.cos(a) * 46, y + Math.sin(a) * 46, 2, '#4a3a2a');
-        for (let k = 0; k < 7; k++) { const t = (k + .5) / 7, px = x + Math.cos(a) * 46 * t, py = y + Math.sin(a) * 46 * t, s = k % 2 ? 1 : -1; g.fillStyle = COL('carrubo', .15 + r() * .85); g.beginPath(); g.ellipse(px + Math.cos(a + s * 1.4) * 9, py + Math.sin(a + s * 1.4) * 9, 10, 8, a, 0, TAU); g.fill(); luce(px + Math.cos(a + s * 1.4) * 7, py + Math.sin(a + s * 1.4) * 7 - 2, 6, .35); } }, PAL.tCarrubo, 5));
-      cella('ulivo', () => grappolo(150, 104, (x, y) => { const a = -Math.PI / 2 + (r() - .5) * 2.6, rov = r() < .45; foglia(x, y, 26 + r() * 10, 4.6 + r() * 1.4, a, rov ? pick(['#b8c0ac', '#c4c8b4', '#a8b29c']) : COL('ulivo', r() * .7), rov ? null : 'rgba(220,230,200,.3)'); }, PAL.tUlivo, 3));
-      cella('fico', () => { ramo(128, 250, 128, 150, 7, '#8a847a'); for (let k = 0; k < 9; k++) { const a = -Math.PI / 2 + (k - 4) * .38, d = 40 + r() * 50, x = 128 + Math.cos(a) * d, y = 140 + Math.sin(a) * d * .8, sc = 30 + r() * 12, c = COL('fico', .2 + r() * .8);
-        ramo(128, 160, x, y, 3, '#6a7a4a'); g.fillStyle = c; [[-1, .9], [0, 1.25], [1, .9], [-1.6, .5], [1.6, .5]].forEach(([o, l]) => { g.beginPath(); g.ellipse(x + o * sc * .35, y - l * sc * .45, sc * .32, sc * .55 * l, o * .5, 0, TAU); g.fill(); });
-        g.strokeStyle = 'rgba(230,240,180,.45)'; g.lineWidth = 1.4; [-1.6, -1, 0, 1, 1.6].forEach(o => { g.beginPath(); g.moveTo(x, y); g.lineTo(x + o * sc * .4, y - sc * .8 * (1 - Math.abs(o) * .25)); g.stroke(); }); luce(x - 8, y - sc * .5, sc * .5, .22); } });
-      cella('agrume', () => { grappolo(120, 100, (x, y) => { const a = r() * TAU; foglia(x, y, 22 + r() * 6, 9 + r() * 2, a, COL('agrume', .1 + r() * .9), 'rgba(220,255,180,.3)'); luce(x + Math.cos(a) * 10, y + Math.sin(a) * 10, 5, .3); }, PAL.tAgrume, 4);
-        for (let k = 0; k < 5; k++) { const x = 60 + r() * 136, y = 60 + r() * 130, gr = g.createRadialGradient(x - 4, y - 4, 2, x, y, 14); gr.addColorStop(0, '#ffd890'); gr.addColorStop(.6, '#f09a2a'); gr.addColorStop(1, '#c86a1a'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, 12, 0, TAU); g.fill(); } });
-      cella('eucalipto', () => { for (let k = 0; k < 8; k++) { const x0 = 30 + k * 28 + (r() - .5) * 10; ramo(x0, 4, x0 + (r() - .5) * 20, 150, 2, '#a89a80');
-          for (let q = 0; q < 8; q++) { const y = 14 + q * 22 + r() * 8; foglia(x0 + (r() - .5) * 8, y, 52 + r() * 18, 7 + r() * 2, Math.PI / 2 + (r() - .5) * .8, pick(['#6e8478', '#7e9488', '#8ea094', '#62786c', '#9aaa98']), 'rgba(230,230,210,.35)', .95); } } });
-      cella('cipresso', () => { for (let k = 0; k < 900; k++) { const y = 6 + r() * 244, w = 120 * Math.sin(Math.PI * Math.min(1, (y + 20) / 270)), x = 128 + (r() - .5) * w; foglia(x, y, 10 + r() * 6, 3.5, -Math.PI / 2 + (r() - .5) * 1.6, COL('cipresso', r() * (.4 + (1 - y / 256) * .6))); } });
-      cella('oleandro', () => { grappolo(26, 92, (x, y) => { for (let q = 0; q < 5; q++) { const a = q / 5 * TAU + r(); foglia(x, y, 38 + r() * 10, 6.5, a, COL('oleandro', .15 + r() * .85), 'rgba(230,240,200,.4)'); } }, '#6a5a44', 3);
-        for (let k = 0; k < 7; k++) { const x = 50 + r() * 156, y = 30 + r() * 120; for (let q = 0; q < 5; q++) fiore5(x + (r() - .5) * 22, y + (r() - .5) * 18, 8, q % 2 ? '#f08aaa' : '#e86a92', '#f8e0e8'); } });
-      cella('ginestra', () => { for (let k = 0; k < 46; k++) { const x0 = 128 + (r() - .5) * 60, x1 = 128 + (r() - .5) * 230, y1 = 6 + r() * 70; g.strokeStyle = pick(['#4c6430', '#5e7836', '#6e8a3c']); g.lineWidth = 2; g.beginPath(); g.moveTo(x0, 252); g.quadraticCurveTo((x0 + x1) / 2, 140, x1, y1); g.stroke();
-          for (let q = 0; q < 6; q++) { const t = .35 + q * .1, px = x0 + (x1 - x0) * t * t, py = 252 + (y1 - 252) * t; g.fillStyle = q % 2 ? '#f4c82a' : '#e8b020'; g.beginPath(); g.ellipse(px + 3, py, 5, 3.6, .5, 0, TAU); g.fill(); } } });
-      cella('rosmarino', () => { grappolo(40, 100, (x, y) => { const a = -Math.PI / 2 + (r() - .5) * 2.4; ramo(x, y + 20, x + Math.cos(a) * 30, y + Math.sin(a) * 30, 1.6, '#6a6050'); for (let q = 0; q < 9; q++) { const t = q / 9, px = x + Math.cos(a) * 30 * t, py = y + 20 + (Math.sin(a) * 30 - 20) * t; foglia(px, py, 11, 2.4, a + (q % 2 ? .9 : -.9), COL('rosmarino', r()), null); } if (r() < .5) { g.fillStyle = '#8a9ad8'; g.beginPath(); g.arc(x, y, 3, 0, TAU); g.fill(); } }, null, 0); });
-      cella('tamerice', () => { for (let k = 0; k < 22; k++) { const x0 = 20 + r() * 216, y0 = 10 + r() * 60; g.strokeStyle = '#7a6a5a'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(x0 + 18, y0 + 90, x0 + (r() - .5) * 40, y0 + 170); g.stroke();
-          for (let q = 0; q < 40; q++) { const t = q / 40, px = x0 + 18 * 2 * t * (1 - t) + (r() - .5) * 6, py = y0 + 170 * t; g.strokeStyle = r() < .18 ? '#d8a8b4' : COL('tamerice', r()); g.lineWidth = 1.1; g.beginPath(); g.moveTo(px, py); g.lineTo(px + (r() - .5) * 18, py + 6 + r() * 8); g.stroke(); } } });
-      cella('mandorlo', () => grappolo(100, 100, (x, y) => foglia(x, y, 20 + r() * 6, 5.5, -Math.PI / 2 + (r() - .5) * 2.8, COL('mandorlo', r()), 'rgba(240,240,210,.35)'), PAL.tMandorlo, 3));
-      cella('mandorloFiore', () => grappolo(110, 100, (x, y) => fiore5(x, y, 7 + r() * 3, pick(['#f6e6ea', '#f2d6dc', '#fff4f4']), '#c86a7a'), PAL.tMandorlo, 3));
-      cella('bouganville', () => { grappolo(40, 100, (x, y) => foglia(x, y, 18, 9, r() * TAU, COL('oleandro', r()), null), '#5a4a3a', 2); for (let k = 0; k < 110; k++) { const a = r() * TAU, d = Math.sqrt(r()) * 104, x = 128 + Math.cos(a) * d, y = 124 + Math.sin(a) * d * .9; g.fillStyle = pick(['#c8287a', '#d83a8a', '#b01e6a', '#e85aa0']); for (let q = 0; q < 3; q++) { const b = q / 3 * TAU + r(); g.beginPath(); g.ellipse(x + Math.cos(b) * 3.5, y + Math.sin(b) * 3.5, 5, 3.2, b, 0, TAU); g.fill(); } } });
-      cella('edera', () => grappolo(36, 104, (x, y) => { const s = 16 + r() * 8, c = COL('edera', r()); g.fillStyle = c; [[0, -1], [-.8, -.3], [.8, -.3], [-.5, .4], [.5, .4]].forEach(([u, v]) => { g.beginPath(); g.ellipse(x + u * s * .55, y + v * s * .55, s * .42, s * .36, 0, 0, TAU); g.fill(); }); g.strokeStyle = 'rgba(210,230,180,.5)'; g.lineWidth = 1; [[0, -1], [-.8, -.3], [.8, -.3]].forEach(([u, v]) => { g.beginPath(); g.moveTo(x, y); g.lineTo(x + u * s * .7, y + v * s * .7); g.stroke(); }); }, '#4a4030', 2));
-      cella('vite', () => { grappolo(14, 96, (x, y) => { const s = 30 + r() * 8; g.fillStyle = COL('fico', .25 + r() * .75); [[0, -1.1], [-.9, -.4], [.9, -.4], [-.6, .3], [.6, .3], [0, 0]].forEach(([u, v]) => { g.beginPath(); g.ellipse(x + u * s * .45, y + v * s * .45, s * .34, s * .3, 0, 0, TAU); g.fill(); }); luce(x - 5, y - 8, s * .4, .2); }, '#5a4430', 3);
-        for (let k = 0; k < 2; k++) { const x = 80 + k * 90, y = 150; for (let q = 0; q < 22; q++) { const row = Math.floor(Math.sqrt(q * 2)), px = x + (q - row * row / 2) * 5 - row * 3, py = y + row * 9; g.fillStyle = q % 3 ? '#5a2a5a' : '#7a3a6a'; g.beginPath(); g.arc(px, py, 5, 0, TAU); g.fill(); } } });
-      // la fronda di palma: la costola dal basso in alto, le foglioline a lisca di pesce (la carta si piega lungo la sua altezza)
-      cella('palma', () => { ramo(128, 256, 128, 2, 4, '#8a8a4a'); for (let y = 250; y > 8; y -= 5.2) { const t = (256 - y) / 250, L = 118 * Math.sin(Math.PI * Math.min(1, t * .9 + .1)); [-1, 1].forEach(s => { g.strokeStyle = pick(['#4e6e30', '#5e7e36', '#6e8e3e', '#7a9a44']); g.lineWidth = 3.4 * (1 - t * .5); g.beginPath(); g.moveTo(128, y); g.quadraticCurveTo(128 + s * L * .5, y - 10, 128 + s * L, y - 22 + r() * 8); g.stroke(); }); } });
-      cella('washingtonia', () => { for (let k = 0; k < 44; k++) { const a = Math.PI + .1 + k / 43 * (Math.PI - .2), L = 112 + r() * 10; g.strokeStyle = pick(['#4a6a3a', '#5a7a46', '#6a8a52']); g.lineWidth = 6; g.beginPath(); g.moveTo(128, 250); g.lineTo(128 + Math.cos(a) * L * .6, 250 + Math.sin(a) * L * 1.95 * .6); g.stroke(); g.lineWidth = 3; g.beginPath(); g.moveTo(128 + Math.cos(a) * L * .6, 250 + Math.sin(a) * L * 1.17); g.lineTo(128 + Math.cos(a + .03) * L, 250 + Math.sin(a + .03) * L * 2.1); g.stroke(); } });
-      cella('agave', () => { const gr = g.createLinearGradient(0, 256, 0, 0); gr.addColorStop(0, '#5e7a74'); gr.addColorStop(1, '#9ab4aa'); g.fillStyle = gr; g.beginPath(); g.moveTo(70, 256); g.quadraticCurveTo(90, 80, 128, 0); g.quadraticCurveTo(166, 80, 186, 256); g.fill();
-        g.strokeStyle = '#c8b860'; g.lineWidth = 3; g.beginPath(); g.moveTo(72, 256); g.quadraticCurveTo(91, 80, 128, 2); g.quadraticCurveTo(165, 80, 184, 256); g.stroke(); g.strokeStyle = 'rgba(230,240,230,.35)'; g.lineWidth = 6; g.beginPath(); g.moveTo(110, 256); g.quadraticCurveTo(116, 100, 126, 20); g.stroke(); });
-      cella('pala', () => { const gr = g.createRadialGradient(110, 100, 10, 128, 128, 120); gr.addColorStop(0, '#8aac58'); gr.addColorStop(1, '#4e6a34'); g.fillStyle = gr; g.beginPath(); g.ellipse(128, 132, 92, 118, 0, 0, TAU); g.fill();
-        g.strokeStyle = '#3e5628'; g.lineWidth = 3; g.stroke(); for (let k = 0; k < 40; k++) { const a = r() * TAU, d = Math.sqrt(r()), x = 128 + Math.cos(a) * d * 80, y = 132 + Math.sin(a) * d * 104; g.fillStyle = '#e8e0b0'; g.beginPath(); g.arc(x, y, 2.2, 0, TAU); g.fill(); g.fillStyle = 'rgba(40,60,20,.4)'; g.beginPath(); g.arc(x + 1, y + 2, 2.4, 0, TAU); g.fill(); } });
-      cella('canna', () => { ramo(128, 256, 130, 20, 4, '#9aa262'); for (let k = 0; k < 9; k++) { const y = 230 - k * 22, s = k % 2 ? 1 : -1; g.fillStyle = pick(['#7a8a4a', '#94a258', '#a8b068']); g.beginPath(); g.moveTo(128, y); g.quadraticCurveTo(128 + s * 70, y - 30, 128 + s * 118, y + 20); g.quadraticCurveTo(128 + s * 60, y - 14, 128, y + 8); g.fill(); }
-        for (let k = 0; k < 40; k++) { g.strokeStyle = pick(['#c8b890', '#b8a880', '#d8c8a0']); g.lineWidth = 2; g.beginPath(); g.moveTo(130, 30); g.lineTo(130 + (r() - .3) * 50, 4 + r() * 30); g.stroke(); } });
-      // le erbe: ciuffi di lame dal basso (la carta sta in piedi)
-      const ciuffo = (nome, n, cols, extra) => cella(nome, () => { for (let k = 0; k < n; k++) { const x0 = 128 + (r() - .5) * 150, h = 90 + Math.pow(r(), 1.4) * 160, lean = (r() - .5) * 110, w = 2.2 + r() * 2.6, gr = g.createLinearGradient(0, 256, 0, 256 - h);
-          gr.addColorStop(0, cols[0]); gr.addColorStop(.5, pick(cols.slice(1))); gr.addColorStop(1, pick(cols.slice(1))); g.fillStyle = gr; g.beginPath(); g.moveTo(x0 - w, 256); g.quadraticCurveTo(x0 + lean * .3, 256 - h * .6, x0 + lean, 256 - h); g.quadraticCurveTo(x0 + lean * .3 + w * .3, 256 - h * .55, x0 + w, 256); g.fill(); } if (extra) extra(); });
-      ciuffo('erbaSecca', 90, ['#6a5a34', '#c4ac6c', '#dcc690', '#b89a5a', '#e4d2a0'], () => { for (let k = 0; k < 14; k++) { const x = 40 + r() * 176, y = 20 + r() * 90; g.strokeStyle = '#a8905a'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y + 30); g.lineTo(x + 3, y); g.stroke(); g.fillStyle = pick(['#d8c088', '#c8a868']); g.beginPath(); g.ellipse(x + 3, y, 3, 9, .1, 0, TAU); g.fill(); } });
-      ciuffo('erbaVerde', 110, ['#2e4a1c', '#6c8a3a', '#86a448', '#a2bc5a', '#7a9a40'], () => { for (let k = 0; k < 10; k++) { const x = 30 + r() * 196, y = 60 + r() * 120; for (let q = 0; q < 5; q++) { g.fillStyle = '#f4f0e0'; g.beginPath(); g.arc(x + (r() - .5) * 10, y + (r() - .5) * 8, 2.4, 0, TAU); g.fill(); } } });
-      ciuffo('erbaSecca2', 70, ['#7a6a3c', '#d4bc7c', '#e8d6a4', '#c4a464', '#bca46c'], () => { for (let k = 0; k < 22; k++) { const x = 30 + r() * 196, y = 10 + r() * 70; g.strokeStyle = '#b8a070'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y + 60); g.quadraticCurveTo(x + 4, y + 20, x + 8, y); g.stroke(); } });
-      ciuffo('erbaVerde2', 80, ['#34501e', '#5a7a30', '#7a9a3c', '#94b04c', '#6a8a34'], () => { for (let k = 0; k < 8; k++) { const x = 30 + r() * 196, y = 40 + r() * 150; g.fillStyle = pick(['#e8d0f0', '#f4f0e0', '#f0e070']); for (let q = 0; q < 6; q++) { g.beginPath(); g.arc(x + (r() - .5) * 9, y + (r() - .5) * 7, 2.2, 0, TAU); g.fill(); } } });
-      cella('avena', () => { for (let k = 0; k < 16; k++) { const x0 = 128 + (r() - .5) * 120, x1 = x0 + (r() - .5) * 90, y1 = 8 + r() * 60; g.strokeStyle = pick(['#b8a468', '#a89458', '#c8b478']); g.lineWidth = 1.6; g.beginPath(); g.moveTo(x0, 256); g.quadraticCurveTo(x0, 120, x1, y1); g.stroke();
-          for (let q = 0; q < 7; q++) { const t = q / 7, px = x1 + (r() - .5) * 4, py = y1 + q * 9; g.fillStyle = pick(['#d8c890', '#c8b478', '#e4d6a8']); g.beginPath(); g.ellipse(px + (q % 2 ? 6 : -6), py + 4, 3, 7, q % 2 ? .6 : -.6, 0, TAU); g.fill(); } } });
-      cella('cardo', () => { g.strokeStyle = '#7a8a7a'; g.lineWidth = 3; for (let k = 0; k < 3; k++) { const x1 = 128 + (k - 1) * 50, y1 = 50 + r() * 30; g.beginPath(); g.moveTo(128, 256); g.quadraticCurveTo(128, 150, x1, y1); g.stroke();
-          g.fillStyle = '#8a9a8a'; for (let q = 0; q < 6; q++) { const y = 200 - q * 25, s2 = q % 2 ? 1 : -1; g.beginPath(); g.moveTo(128 + (x1 - 128) * (256 - y) / 206, y); for (let j = 0; j <= 4; j++) g.lineTo(128 + s2 * (12 + j * 9), y - j * 6 + (j % 2 ? -8 : 0)); g.closePath(); g.fill(); }
-          g.fillStyle = '#7a8a6a'; g.beginPath(); g.arc(x1, y1 + 10, 13, 0, TAU); g.fill(); g.fillStyle = '#a868c0'; for (let q = 0; q < 26; q++) { const a = -Math.PI / 2 + (r() - .5) * 2.2; g.fillRect(x1 + Math.cos(a) * 10, y1 + 2 + Math.sin(a) * 14, 2, 8); } } });
-      cella('asfodelo', () => { for (let k = 0; k < 22; k++) { const x0 = 128 + (r() - .5) * 90; g.fillStyle = pick(['#6a8a4a', '#7a9a54']); g.beginPath(); g.moveTo(x0 - 4, 256); g.quadraticCurveTo(x0 + (r() - .5) * 40, 200, x0 + (r() - .5) * 70, 150 + r() * 40); g.lineTo(x0 + 4, 256); g.fill(); }
-        g.strokeStyle = '#8a9a5a'; g.lineWidth = 3; g.beginPath(); g.moveTo(128, 256); g.lineTo(130, 20); g.stroke(); for (let q = 0; q < 30; q++) { const y = 24 + q * 4.5 + r() * 3, sd = q % 2 ? 1 : -1; fiore5(130 + sd * (6 + r() * 6), y, 5.5, '#f6f0ec', '#c8a070'); } });
-      cella('trifoglio', () => { for (let k = 0; k < 70; k++) { const x = 20 + r() * 216, y = 140 + r() * 112; g.fillStyle = pick(['#4a7a34', '#5a8a3a', '#3e6a2e']); for (let q = 0; q < 3; q++) { const a = q / 3 * TAU + r(); g.beginPath(); g.ellipse(x + Math.cos(a) * 5, y + Math.sin(a) * 5, 5.5, 4.5, a, 0, TAU); g.fill(); } }
-        for (let k = 0; k < 9; k++) { const x = 30 + r() * 196, y = 100 + r() * 70; g.strokeStyle = '#5a7a34'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, 256); g.lineTo(x, y); g.stroke(); g.fillStyle = pick(['#d890b0', '#f0f0f0', '#e0a0c0']); g.beginPath(); g.arc(x, y, 7, 0, TAU); g.fill(); } });
-      ciuffo('prato', 160, ['#4a5a2a', '#8a9a48', '#a8a85c', '#c4b474', '#7a8a40']);
-      cella('finocchietto', () => { for (let k = 0; k < 7; k++) { const x0 = 128 + (r() - .5) * 60, x1 = 128 + (r() - .5) * 200, y1 = 20 + r() * 60; g.strokeStyle = '#7a8a40'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x0, 256); g.quadraticCurveTo(x0, 150, x1, y1); g.stroke();
-          for (let q = 0; q < 14; q++) { const a = -Math.PI / 2 - .8 + q / 13 * 1.6; g.strokeStyle = '#a8b04a'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 + Math.cos(a) * 24, y1 + 10 + Math.sin(a) * 14); g.stroke(); g.fillStyle = '#e0cc34'; g.beginPath(); g.arc(x1 + Math.cos(a) * 24, y1 + 10 + Math.sin(a) * 14, 3.2, 0, TAU); g.fill(); }
-          for (let q = 0; q < 30; q++) { const t = .2 + r() * .55, px = x0 + (x1 - x0) * t * t, py = 256 + (y1 - 256) * t; g.strokeStyle = 'rgba(150,170,70,.8)'; g.lineWidth = .9; g.beginPath(); g.moveTo(px, py); g.lineTo(px + (r() - .5) * 26, py - 6 - r() * 10); g.stroke(); } } });
-      ciuffo('papavero', 60, ['#2e4a1c', '#6c8a3a', '#86a448', '#a2bc5a'], () => { for (let k = 0; k < 6; k++) { const x0 = 60 + r() * 136, y = 30 + r() * 90; g.strokeStyle = '#5a7a34'; g.lineWidth = 2; g.beginPath(); g.moveTo(x0 + (r() - .5) * 20, 256); g.quadraticCurveTo(x0, 160, x0, y); g.stroke();
-          g.fillStyle = '#d83a24'; for (let q = 0; q < 4; q++) { const a = q / 4 * TAU + .4; g.beginPath(); g.ellipse(x0 + Math.cos(a) * 7, y + Math.sin(a) * 5, 10, 7, a, 0, TAU); g.fill(); } g.fillStyle = '#2a1a1a'; g.beginPath(); g.arc(x0, y, 4, 0, TAU); g.fill(); luce(x0 - 4, y - 4, 8, .25); } });
-      cella('cappero', () => { grappolo(60, 100, (x, y) => { g.fillStyle = COL('agrume', .3 + r() * .7); g.beginPath(); g.arc(x, y, 9 + r() * 4, 0, TAU); g.fill(); }, '#7a5a4a', 2); for (let k = 0; k < 5; k++) { const x = 60 + r() * 136, y = 50 + r() * 140; g.fillStyle = '#f6eef4'; for (let q = 0; q < 4; q++) { const a = q / 4 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * 8, y + Math.sin(a) * 8, 9, 7, a, 0, TAU); g.fill(); } g.strokeStyle = '#9a4aa0'; g.lineWidth = 1; for (let q = 0; q < 12; q++) { const a = r() * TAU; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 16, y + Math.sin(a) * 16); g.stroke(); } } });
-      // il nucleo (grigi: lo tinge la specie) e la corteccia (grigi), pieni
-      cella('pieno', () => { g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, CS, CS); for (let k = 0; k < 700; k++) { const v = 110 + Math.floor(r() * 140); foglia(r() * 256, r() * 256, 12 + r() * 10, 5, r() * TAU, `rgb(${v},${v},${v})`); } });
-      cella('corteccia', () => { g.fillStyle = '#a8a8a8'; g.fillRect(0, 0, CS, CS); for (let k = 0; k < 260; k++) { const x = r() * 256, v = 90 + Math.floor(r() * 140); g.strokeStyle = `rgb(${v},${v},${v})`; g.lineWidth = 2 + r() * 5; g.beginPath(); g.moveTo(x, r() * 256); g.lineTo(x + (r() - .5) * 8, r() * 256); g.stroke(); }
-        for (let k = 0; k < 60; k++) { const v = 70 + Math.floor(r() * 60); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * 256, r() * 256, 10 + r() * 20, 3 + r() * 5); } });
+      const cella = (nome, fn) => { const i = CI[nome], ox = (i % NX) * CS, oy = Math.floor(i / NX) * CS; g.save(); g.beginPath(); g.rect(ox + 4, oy + 4, CS - 8, CS - 8); g.clip(); g.translate(ox, oy); fn(); g.restore(); };
+      const grigio = v => { v = Math.round(clamp(v, 0, 255)); return `rgb(${v},${v},${v})`; };
+      // una pennellata: forma f ('tonda', 'aghi', 'lunga', 'larga', 'piccola'), centro, misura, angolo, valore; sotto, spostata in basso, la sua
+      // ombra (più scura): ogni pennellata ha il labbro chiaro in alto e il fondo scuro, come nei boschi dipinti
+      const dab = (f, x, y, s, a, v) => { const forma = (dx, dy, k) => { g.save(); g.translate(x + dx, y + dy); g.rotate(a); g.beginPath();
+          if (f === 'aghi') { for (let q = 0; q < 9; q++) { const b = -Math.PI / 2 + (q - 4) * .32; g.moveTo(0, s * .3); g.lineTo(Math.cos(b) * s * k, Math.sin(b) * s * k); } g.restore(); g.lineCap = 'round'; return 'stroke'; }
+          if (f === 'lunga') g.ellipse(0, 0, s * .26 * k, s * .78 * k, 0, 0, TAU);
+          else if (f === 'larga') { [[-.35, .1], [.35, .1], [0, -.3], [-.2, -.1], [.2, -.1]].forEach(([u, w]) => { g.moveTo(u * s + s * .42 * k, w * s); g.ellipse(u * s, w * s, s * .42 * k, s * .36 * k, 0, 0, TAU); }); }
+          else if (f === 'piccola') g.ellipse(0, 0, s * .4 * k, s * .3 * k, 0, 0, TAU);
+          else { g.moveTo(0, -s * .62 * k); g.quadraticCurveTo(s * .62 * k, -s * .35 * k, s * .42 * k, s * .3 * k); g.quadraticCurveTo(0, s * .55 * k, -s * .42 * k, s * .3 * k); g.quadraticCurveTo(-s * .62 * k, -s * .35 * k, 0, -s * .62 * k); }
+          g.restore(); return 'fill'; };
+        const ombra = forma(s * .06, s * .14, 1.02); if (ombra === 'fill') { g.fillStyle = grigio(v * .55); g.fill(); } else { g.strokeStyle = grigio(v * .55); g.lineWidth = s * .09; g.stroke(); }
+        const pieno = forma(0, 0, .96); if (pieno === 'fill') { const gr = g.createLinearGradient(x, y - s * .6, x, y + s * .5); gr.addColorStop(0, grigio(v * 1.18 + 20)); gr.addColorStop(.55, grigio(v)); gr.addColorStop(1, grigio(v * .78)); g.fillStyle = gr; g.fill(); }
+        else { g.strokeStyle = grigio(v * 1.1); g.lineWidth = s * .07; g.stroke(); } };
+      // la ciocca: un grappolo tondo di pennellate, più chiaro in alto a sinistra (dove batte il sole), coi bordi sfrangiati; il fondo pieno
+      // e scuro (le pennellate in basso sono quelle in ombra)
+      const ciocca = (nome, f, n, s0, s1) => cella(nome, () => { const P = []; for (let k = 0; k < n; k++) { const a = r() * TAU, d = Math.sqrt(r()) * 96; P.push([128 + Math.cos(a) * d, 130 + Math.sin(a) * d * .86]); }
+        P.sort((a, b) => a[1] - b[1]).reverse().forEach(([x, y]) => { const t = clamp(1 - ((y - 40) / 180) * .7 - ((x - 128) / 100) * .15, 0, 1); dab(f, x, y, s0 + r() * (s1 - s0), (r() - .5) * (f === 'lunga' ? 1.6 : 1), 95 + t * 120 + (r() - .5) * 26); }); });
+      ciocca('dabTonda', 'tonda', 70, 20, 34); ciocca('dabTonda2', 'tonda', 46, 26, 44); ciocca('dabAghi', 'aghi', 42, 26, 40); ciocca('dabAghi2', 'aghi', 30, 34, 50);
+      ciocca('dabLunga', 'lunga', 80, 22, 34); ciocca('dabLunga2', 'lunga', 54, 30, 46); ciocca('dabLarga', 'larga', 26, 38, 56); ciocca('dabPiccola', 'piccola', 140, 12, 20);
+      cella('pinoCiuffo', () => { for (let k = 0; k < 9; k++) { const x = 40 + r() * 176, y = 50 + r() * 150, t = 1 - y / 256; for (let q = 0; q < 34; q++) { const b = -Math.PI / 2 + (r() - .5) * 3.4, L = 24 + r() * 26; g.strokeStyle = grigio(90 + t * 120 + r() * 30 - (Math.sin(b) > 0 ? 40 : 0)); g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(b) * L, y + Math.sin(b) * L); g.stroke(); } } });
+      // le erbe dipinte: ciuffi di lame larghe, chiare in punta (il prato acceso dei riferimenti), scure alla base
+      const erba = (nome, n, h0, h1, w0) => cella(nome, () => { for (let k = 0; k < n; k++) { const x0 = 128 + (r() - .5) * 170, h = h0 + Math.pow(r(), 1.3) * (h1 - h0), lean = (r() - .5) * 120, w = w0 * (.7 + r() * .6), gr = g.createLinearGradient(0, 256, 0, 256 - h);
+          gr.addColorStop(0, grigio(60)); gr.addColorStop(.45, grigio(150 + r() * 30)); gr.addColorStop(1, grigio(215 + r() * 35)); g.fillStyle = gr; g.beginPath(); g.moveTo(x0 - w, 256); g.quadraticCurveTo(x0 + lean * .3, 256 - h * .6, x0 + lean, 256 - h); g.quadraticCurveTo(x0 + lean * .3 + w * .4, 256 - h * .55, x0 + w, 256); g.fill(); } });
+      erba('erbaDab', 70, 90, 200, 6); erba('erbaDab2', 46, 120, 240, 8); erba('erbaAlta', 60, 170, 250, 4); erba('prato', 130, 60, 150, 5);
+      cella('felce', () => { for (let k = 0; k < 7; k++) { const a = -Math.PI / 2 + (k - 3) * .38, L = 150 + r() * 70, ex = 128 + Math.cos(a) * L * .8, ey = 250 + Math.sin(a) * L; g.strokeStyle = grigio(110); g.lineWidth = 3; g.beginPath(); g.moveTo(128, 252); g.quadraticCurveTo((128 + ex) / 2, (250 + ey) / 2 - 20, ex, ey); g.stroke();
+          for (let q = 1; q < 16; q++) { const t = q / 16, px = 128 + (ex - 128) * t, py = 252 + (ey - 252) * t - Math.sin(t * Math.PI) * 20, w = 22 * Math.sin(Math.PI * Math.min(1, t * 1.1)); [-1, 1].forEach(sd => { g.fillStyle = grigio(120 + t * 110 + (sd < 0 ? 15 : -10)); g.beginPath(); g.ellipse(px + sd * w * .5 * Math.cos(a + 1.57), py + sd * w * .5 * Math.sin(a + 1.57), w * .55, 4.5, a + sd * 1.1, 0, TAU); g.fill(); }); } } });
+      cella('edera', () => { for (let k = 0; k < 34; k++) { const x = 30 + r() * 196, y = 30 + r() * 196, s = 18 + r() * 12, v = 110 + (1 - y / 256) * 100; g.fillStyle = grigio(v * .6); [[0, -1], [-.85, -.25], [.85, -.25], [-.5, .5], [.5, .5]].forEach(([u, w]) => { g.beginPath(); g.ellipse(x + u * s * .5 + 2, y + w * s * .5 + 3, s * .4, s * .34, 0, 0, TAU); g.fill(); });
+          g.fillStyle = grigio(v); [[0, -1], [-.85, -.25], [.85, -.25], [-.5, .5], [.5, .5]].forEach(([u, w]) => { g.beginPath(); g.ellipse(x + u * s * .5, y + w * s * .5, s * .4, s * .34, 0, 0, TAU); g.fill(); }); g.strokeStyle = grigio(v * 1.3); g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, y + s * .3); g.lineTo(x, y - s * .5); g.stroke(); } });
+      cella('pieno', () => { g.fillStyle = grigio(120); g.fillRect(0, 0, CS, CS); for (let k = 0; k < 260; k++) dab('tonda', r() * 256, r() * 256, 18 + r() * 16, r() - .5, 90 + r() * 90); });
+      cella('corteccia', () => { g.fillStyle = grigio(150); g.fillRect(0, 0, CS, CS); for (let k = 0; k < 220; k++) { const x = r() * 256; g.strokeStyle = grigio(100 + r() * 130); g.lineWidth = 2 + r() * 6; g.beginPath(); g.moveTo(x, r() * 256); g.lineTo(x + (r() - .5) * 10, r() * 256); g.stroke(); }
+        for (let k = 0; k < 50; k++) { g.fillStyle = grigio(80 + r() * 50); g.fillRect(r() * 256, r() * 256, 10 + r() * 24, 3 + r() * 5); } });
       cella('bianco', () => { g.fillStyle = '#ffffff'; g.fillRect(0, 0, CS, CS); });
+      // le celle a colori
+      const foglia = (x, y, L, W, a, c) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(L * .35, -W, L, 0); g.quadraticCurveTo(L * .35, W, 0, 0); g.fill(); g.restore(); };
+      const fiore5 = (x, y, rr, c, cc) => { g.fillStyle = c; for (let k = 0; k < 5; k++) { const a = k / 5 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * rr * .55, y + Math.sin(a) * rr * .55, rr * .55, rr * .38, a, 0, TAU); g.fill(); } g.fillStyle = cc; g.beginPath(); g.arc(x, y, rr * .25, 0, TAU); g.fill(); };
+      cella('palma', () => { g.strokeStyle = '#8a9a4a'; g.lineWidth = 5; g.beginPath(); g.moveTo(128, 256); g.lineTo(128, 2); g.stroke(); for (let y = 250; y > 8; y -= 5.2) { const t = (256 - y) / 250, L = 118 * Math.sin(Math.PI * Math.min(1, t * .9 + .1)); [-1, 1].forEach(s => { g.strokeStyle = pick(['#3e6e3a', '#5a8a3a', '#78a844', '#9ac050']); g.lineWidth = 4 * (1 - t * .5); g.beginPath(); g.moveTo(128, y); g.quadraticCurveTo(128 + s * L * .5, y - 10, 128 + s * L, y - 22 + r() * 8); g.stroke(); }); } });
+      cella('washingtonia', () => { for (let k = 0; k < 44; k++) { const a = Math.PI + .1 + k / 43 * (Math.PI - .2), L = 112 + r() * 10; g.strokeStyle = pick(['#3e6a44', '#527e4e', '#6a9658']); g.lineWidth = 6; g.beginPath(); g.moveTo(128, 250); g.lineTo(128 + Math.cos(a) * L, 250 + Math.sin(a) * L * 2.1); g.stroke(); } });
+      cella('agave', () => { const gr = g.createLinearGradient(0, 256, 0, 0); gr.addColorStop(0, '#3e6a6e'); gr.addColorStop(1, '#a8ccc0'); g.fillStyle = gr; g.beginPath(); g.moveTo(70, 256); g.quadraticCurveTo(90, 80, 128, 0); g.quadraticCurveTo(166, 80, 186, 256); g.fill(); g.strokeStyle = '#d8c868'; g.lineWidth = 3; g.stroke(); });
+      cella('pala', () => { const gr = g.createRadialGradient(100, 90, 10, 128, 128, 124); gr.addColorStop(0, '#a8d060'); gr.addColorStop(.6, '#6a9a40'); gr.addColorStop(1, '#3a6a34'); g.fillStyle = gr; g.beginPath(); g.ellipse(128, 132, 92, 118, 0, 0, TAU); g.fill();
+        for (let k = 0; k < 40; k++) { const a = r() * TAU, d = Math.sqrt(r()), x = 128 + Math.cos(a) * d * 80, y = 132 + Math.sin(a) * d * 104; g.fillStyle = '#f0e8b8'; g.beginPath(); g.arc(x, y, 2.4, 0, TAU); g.fill(); } });
+      cella('canna', () => { g.strokeStyle = '#a8b468'; g.lineWidth = 4; g.beginPath(); g.moveTo(128, 256); g.lineTo(130, 20); g.stroke(); for (let k = 0; k < 9; k++) { const y = 230 - k * 22, s = k % 2 ? 1 : -1; g.fillStyle = pick(['#6a9a48', '#8ab450', '#a8c860']); g.beginPath(); g.moveTo(128, y); g.quadraticCurveTo(128 + s * 70, y - 30, 128 + s * 118, y + 20); g.quadraticCurveTo(128 + s * 60, y - 14, 128, y + 8); g.fill(); }
+        for (let k = 0; k < 40; k++) { g.strokeStyle = pick(['#e0d0a8', '#d0c098', '#f0e4c4']); g.lineWidth = 2; g.beginPath(); g.moveTo(130, 30); g.lineTo(130 + (r() - .3) * 50, 4 + r() * 30); g.stroke(); } });
+      const grappoloC = (nome, n, fn) => cella(nome, () => { const P = []; for (let k = 0; k < n; k++) { const a = r() * TAU, d = Math.sqrt(r()) * 98; P.push([128 + Math.cos(a) * d, 128 + Math.sin(a) * d * .9]); } P.sort((a, b) => a[1] - b[1]).forEach(([x, y], k) => fn(x, y, k, 1 - y / 256)); });
+      grappoloC('vite', 16, (x, y, k, t) => { const s = 34; g.fillStyle = `hsl(${88 + r() * 20},${45 + t * 15}%,${26 + t * 26}%)`; [[0, -1.1], [-.9, -.4], [.9, -.4], [-.6, .3], [.6, .3], [0, 0]].forEach(([u, w]) => { g.beginPath(); g.ellipse(x + u * s * .45, y + w * s * .45, s * .34, s * .3, 0, 0, TAU); g.fill(); }); });
+      grappoloC('bouganville', 120, (x, y, k, t) => { if (k % 4 === 0) foglia(x, y, 20, 10, r() * TAU, `hsl(110,40%,${22 + t * 20}%)`); else { g.fillStyle = `hsl(${325 + r() * 15},${70 + r() * 15}%,${34 + t * 26}%)`; for (let q = 0; q < 3; q++) { const b = q / 3 * TAU + r(); g.beginPath(); g.ellipse(x + Math.cos(b) * 4, y + Math.sin(b) * 4, 6, 4, b, 0, TAU); g.fill(); } } });
+      grappoloC('oleandroFiori', 60, (x, y, k, t) => { if (k % 3) foglia(x, y, 34, 6, r() * TAU, `hsl(105,30%,${20 + t * 24}%)`); else fiore5(x, y, 9, `hsl(${340 + r() * 10},${60 + t * 10}%,${62 + t * 14}%)`, '#fbe6ee'); });
+      cella('ginestra', () => { for (let k = 0; k < 46; k++) { const x0 = 128 + (r() - .5) * 60, x1 = 128 + (r() - .5) * 230, y1 = 6 + r() * 70; g.strokeStyle = pick(['#3e6a30', '#5a8a38', '#7aa440']); g.lineWidth = 2.4; g.beginPath(); g.moveTo(x0, 252); g.quadraticCurveTo((x0 + x1) / 2, 140, x1, y1); g.stroke();
+          for (let q = 0; q < 6; q++) { const t = .35 + q * .1, px = x0 + (x1 - x0) * t * t, py = 252 + (y1 - 252) * t; g.fillStyle = q % 2 ? '#ffd030' : '#f0b820'; g.beginPath(); g.ellipse(px + 3, py, 6, 4, .5, 0, TAU); g.fill(); } } });
+      grappoloC('mandorloFiore', 120, (x, y, k, t) => fiore5(x, y, 7 + r() * 3, `hsl(${345 + r() * 10},${50 + r() * 30}%,${84 + t * 10}%)`, '#c86a7a'));
+      grappoloC('agrumeFrutti', 70, (x, y, k, t) => { if (k % 9 === 0) { const gr = g.createRadialGradient(x - 4, y - 4, 2, x, y, 13); gr.addColorStop(0, '#ffe0a0'); gr.addColorStop(.6, '#f39a26'); gr.addColorStop(1, '#c86818'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, 12, 0, TAU); g.fill(); } else foglia(x, y, 24, 11, r() * TAU, `hsl(118,${40 + t * 10}%,${16 + t * 24}%)`); });
+      const ciuffoC = (nome, n, cols, extra) => cella(nome, () => { for (let k = 0; k < n; k++) { const x0 = 128 + (r() - .5) * 150, h = 90 + Math.pow(r(), 1.4) * 160, lean = (r() - .5) * 110, w = 2.4 + r() * 2.8, gr = g.createLinearGradient(0, 256, 0, 256 - h);
+          gr.addColorStop(0, cols[0]); gr.addColorStop(.5, pick(cols.slice(1))); gr.addColorStop(1, pick(cols.slice(1))); g.fillStyle = gr; g.beginPath(); g.moveTo(x0 - w, 256); g.quadraticCurveTo(x0 + lean * .3, 256 - h * .6, x0 + lean, 256 - h); g.quadraticCurveTo(x0 + lean * .3 + w * .3, 256 - h * .55, x0 + w, 256); g.fill(); } if (extra) extra(); });
+      ciuffoC('erbaSecca', 90, ['#5a4a2c', '#c8b064', '#e8d698', '#b8984e', '#f0e0a8']);
+      cella('finocchietto', () => { for (let k = 0; k < 7; k++) { const x0 = 128 + (r() - .5) * 60, x1 = 128 + (r() - .5) * 200, y1 = 20 + r() * 60; g.strokeStyle = '#6a8a38'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(x0, 256); g.quadraticCurveTo(x0, 150, x1, y1); g.stroke();
+          for (let q = 0; q < 14; q++) { const a = -Math.PI / 2 - .8 + q / 13 * 1.6; g.strokeStyle = '#a8b84a'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 + Math.cos(a) * 24, y1 + 10 + Math.sin(a) * 14); g.stroke(); g.fillStyle = '#f0dc3a'; g.beginPath(); g.arc(x1 + Math.cos(a) * 24, y1 + 10 + Math.sin(a) * 14, 3.4, 0, TAU); g.fill(); } } });
+      ciuffoC('papavero', 50, ['#2e5a1c', '#6a9a3a', '#8ab448'], () => { for (let k = 0; k < 6; k++) { const x0 = 60 + r() * 136, y = 30 + r() * 90; g.strokeStyle = '#4a7a2e'; g.lineWidth = 2; g.beginPath(); g.moveTo(x0, 256); g.quadraticCurveTo(x0, 160, x0, y); g.stroke(); g.fillStyle = '#e8401e'; for (let q = 0; q < 4; q++) { const a = q / 4 * TAU + .4; g.beginPath(); g.ellipse(x0 + Math.cos(a) * 7, y + Math.sin(a) * 5, 10, 7, a, 0, TAU); g.fill(); } g.fillStyle = '#2a1a1a'; g.beginPath(); g.arc(x0, y, 4, 0, TAU); g.fill(); } });
+      cella('cardo', () => { for (let k = 0; k < 3; k++) { const x1 = 128 + (k - 1) * 50, y1 = 50 + r() * 30; g.strokeStyle = '#6a8a7a'; g.lineWidth = 3; g.beginPath(); g.moveTo(128, 256); g.quadraticCurveTo(128, 150, x1, y1); g.stroke(); g.fillStyle = '#6a8a6a'; g.beginPath(); g.arc(x1, y1 + 10, 13, 0, TAU); g.fill(); g.fillStyle = '#b070d0'; for (let q = 0; q < 26; q++) { const a = -Math.PI / 2 + (r() - .5) * 2.2; g.fillRect(x1 + Math.cos(a) * 10, y1 + 2 + Math.sin(a) * 14, 2.4, 8); } } });
+      cella('asfodelo', () => { for (let k = 0; k < 22; k++) { const x0 = 128 + (r() - .5) * 90; g.fillStyle = pick(['#4a7a3a', '#6a9a48']); g.beginPath(); g.moveTo(x0 - 4, 256); g.quadraticCurveTo(x0 + (r() - .5) * 40, 200, x0 + (r() - .5) * 70, 150 + r() * 40); g.lineTo(x0 + 4, 256); g.fill(); } g.strokeStyle = '#7a9a4a'; g.lineWidth = 3; g.beginPath(); g.moveTo(128, 256); g.lineTo(130, 20); g.stroke(); for (let q = 0; q < 30; q++) fiore5(130 + (q % 2 ? 1 : -1) * (6 + r() * 6), 24 + q * 4.5, 5.5, '#fbf6f0', '#c8a070'); });
+      cella('trifoglio', () => { for (let k = 0; k < 80; k++) { const x = 20 + r() * 216, y = 130 + r() * 122, t = 1 - y / 256; g.fillStyle = `hsl(${100 + r() * 15},45%,${20 + t * 30}%)`; for (let q = 0; q < 3; q++) { const a = q / 3 * TAU + r(); g.beginPath(); g.ellipse(x + Math.cos(a) * 5, y + Math.sin(a) * 5, 6, 5, a, 0, TAU); g.fill(); } }
+        for (let k = 0; k < 9; k++) { const x = 30 + r() * 196, y = 90 + r() * 70; g.fillStyle = pick(['#e8a0c0', '#ffffff', '#f0c0d8']); g.beginPath(); g.arc(x, y, 7, 0, TAU); g.fill(); } });
+      cella('avena', () => { for (let k = 0; k < 16; k++) { const x0 = 128 + (r() - .5) * 120, x1 = x0 + (r() - .5) * 90, y1 = 8 + r() * 60; g.strokeStyle = pick(['#c8b470', '#b8a460', '#d8c480']); g.lineWidth = 1.8; g.beginPath(); g.moveTo(x0, 256); g.quadraticCurveTo(x0, 120, x1, y1); g.stroke(); for (let q = 0; q < 7; q++) { g.fillStyle = pick(['#e8d898', '#d8c480', '#f4e6b8']); g.beginPath(); g.ellipse(x1 + (q % 2 ? 6 : -6), y1 + q * 9 + 4, 3, 7, q % 2 ? .6 : -.6, 0, TAU); g.fill(); } } });
+      grappoloC('cappero', 50, (x, y, k, t) => { if (k % 6 === 0) { g.fillStyle = '#fbf2f8'; for (let q = 0; q < 4; q++) { const a = q / 4 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * 8, y + Math.sin(a) * 8, 9, 7, a, 0, TAU); g.fill(); } g.strokeStyle = '#a050b0'; g.lineWidth = 1; for (let q = 0; q < 12; q++) { const a = r() * TAU; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 15, y + Math.sin(a) * 15); g.stroke(); } } else { g.fillStyle = `hsl(110,35%,${24 + t * 26}%)`; g.beginPath(); g.arc(x, y, 9 + r() * 4, 0, TAU); g.fill(); } });
+      // i cuscini di fiori bianchi del bordo dell'acqua (il riferimento del ruscello)
+      grappoloC('fioriBianchi', 150, (x, y, k, t) => { if (k % 3 === 0) foglia(x, y, 22, 8, r() * TAU, `hsl(105,40%,${22 + t * 26}%)`); else fiore5(x, y, 6 + r() * 3, `hsl(50,30%,${90 + t * 8}%)`, '#e8d070'); });
       const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
       return (ATL = t);
     }
 
-    // ---------------- L'ACCUMULATORE DELLE FACCE ----------------
+    // ---------------- LE FACCE ----------------
     function Acc() {
-      const P = [], N = [], C = [], X = [], UV = [];
-      const v = (p, n, c, f, uv) => { P.push(p[0], p[1], p[2]); N.push(n[0], n[1], n[2]); C.push(c[0], c[1], c[2]); X.push(f); UV.push(uv[0], uv[1]); };
+      const P = [], N = [], C = [], X = [], UV = [], O = [];
+      const v = (p, n, c, f, uv, o) => { P.push(p[0], p[1], p[2]); N.push(n[0], n[1], n[2]); C.push(c[0], c[1], c[2]); X.push(f); UV.push(uv[0], uv[1]); O.push(o === undefined ? 1 : o); };
       return { v, n: () => P.length / 3,
         build() { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
-          g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('flex', new THREE.Float32BufferAttribute(X, 1)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.computeBoundingSphere(); g.computeBoundingBox(); return g; } };
+          g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.setAttribute('flex', new THREE.Float32BufferAttribute(X, 1)); g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); g.setAttribute('occ', new THREE.Float32BufferAttribute(O, 1));
+          g.computeBoundingSphere(); g.computeBoundingBox(); return g; } };
     }
-    // la luce dipinta: g 0 (ombra, dentro, sotto) ... 1 (sole, fuori, in alto); in alto caldo, in ombra freddo
-    const lumi = (g, k) => { k = k || 1; const w = Math.max(0, Math.min(1.15, g)); return [(.52 + .66 * w) * k, (.55 + .58 * w) * k, (.62 + .42 * w) * k]; };
+    const tinta = (sp, k) => hx(PAL[SP[sp] ? SP[sp].pal : sp][k === undefined ? 1 : k]);
     const ICO = [0, 1].map(d => new THREE.IcosahedronGeometry(1, d).toNonIndexed().attributes.position.array.slice());
-    // il nucleo: una massa deformata, dipinta di foglie in grigio (cella 'pieno') e tinta col colore scuro della specie
+    // il nucleo: massa deformata, dipinta di pennellate (cella 'pieno'), tinta della specie; occ basso (sta dentro)
     function nucleo(A, c, r, col, H, seed, opz) {
-      opz = opz || {}; const p = ICO[opz.det === undefined ? 1 : opz.det], cache = new Map(), U = cellUV('pieno'), base = hx(col), fl = opz.flex === undefined ? 1 : opz.flex, sq = opz.schiaccia || 0;
+      opz = opz || {}; const p = ICO[opz.det === undefined ? 1 : opz.det], cache = new Map(), U = cellUV(opz.cella || 'pieno'), fl = opz.flex === undefined ? 1 : opz.flex, sq = opz.schiaccia || 0, nC = opz.nCentro;
       for (let i = 0; i < p.length; i += 3) { const x = p[i], y = p[i + 1], z = p[i + 2], kk = Math.round(x * 97) * 7919 + Math.round(y * 97) * 131 + Math.round(z * 97);
-        let d = cache.get(kk); if (d === undefined) { d = 1 + (hash2(kk & 0xffff, kk >> 16, seed) - .5) * .36; cache.set(kk, d); }
-        const yy = sq && y < 0 ? y * (1 - sq) : y, P = [c[0] + x * r[0] * d, c[1] + yy * r[1] * d, c[2] + z * r[2] * d], gL = .25 + y * .3 + (x * .2 - z * .15);
-        const L = lumi(gL, opz.luce || .9); A.v(P, nrm([x, y, z]), [base[0] * L[0] * 1.5, base[1] * L[1] * 1.5, base[2] * L[2] * 1.5], Math.min(1, Math.max(0, P[1] / H)) ** 1.3 * fl,
-          [U[0] + (U[2] - U[0]) * (.5 + Math.atan2(z, x) / TAU), U[1] + (U[3] - U[1]) * (.5 + y * .5)]); }
+        let d = cache.get(kk); if (d === undefined) { d = 1 + (hash2(kk & 0xffff, kk >> 16, seed) - .5) * .32; cache.set(kk, d); }
+        const yy = sq && y < 0 ? y * (1 - sq) : y, P = [c[0] + x * r[0] * d, c[1] + yy * r[1] * d, c[2] + z * r[2] * d];
+        const n = nC ? nrm([P[0] - nC[0] + x * .6, P[1] - nC[1] + y * .6, P[2] - nC[2] + z * .6]) : nrm([x, y, z]);
+        A.v(P, n, col, Math.min(1, Math.max(0, P[1] / H)) ** 1.3 * fl, [U[0] + (U[2] - U[0]) * (.5 + Math.atan2(z, x) / TAU), U[1] + (U[3] - U[1]) * (.5 + y * .5)], (opz.occ || .35) + Math.max(0, y) * .3); }
     }
-    // una carta: centro p, lato s, normale di posa n (la faccia), normale di luce nl, cella, luce g, flex f, rot r, allungo
-    function carta(A, p, s, n, nl, cell, g, f, rot, opz) {
-      opz = opz || {}; const U = cellUV(cell), up = Math.abs(n[1]) > .95 ? [1, 0, 0] : [0, 1, 0]; let t = nrm(crs(up, n)), b = crs(n, t); const cs = Math.cos(rot), sn = Math.sin(rot);
+    // una carta: centro p, lato s, normale di posa n (la faccia), normale di luce nl, cella, colore, flex, rotazione, occ
+    function carta(A, p, s, n, nl, cell, col, f, rot, o, opz) {
+      opz = opz || {}; const U = cellUV(cell), up = Math.abs(n[1]) > .95 ? [1, 0, 0] : [0, 1, 0]; const t = nrm(crs(up, n)), b = crs(n, t), cs = Math.cos(rot), sn = Math.sin(rot);
       const tt = [t[0] * cs + b[0] * sn, t[1] * cs + b[1] * sn, t[2] * cs + b[2] * sn], bb = [b[0] * cs - t[0] * sn, b[1] * cs - t[1] * sn, b[2] * cs - t[2] * sn], sx = s * (opz.sx || 1), sy = s * (opz.sy || 1), oy = opz.base ? sy : 0;
       const Q = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [p[0] + tt[0] * u * sx + bb[0] * (v * sy + oy), p[1] + tt[1] * u * sx + bb[1] * (v * sy + oy), p[2] + tt[2] * u * sx + bb[2] * (v * sy + oy)]);
-      const UVq = [[U[0], U[1]], [U[2], U[1]], [U[2], U[3]], [U[0], U[3]]], fl = opz.fl || [f, f, f, f];
-      const C4 = Q.map(q => opz.col ? opz.col : opz.luceDi ? lumi(opz.luceDi(q)) : lumi(g));   // la luce per angolo: la carta non è una piastrella uniforme
-      const ord = [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2]; ord.forEach(k => A.v(Q[k], nl, C4[k], fl[k], UVq[k]));
+      const UVq = [[U[0], U[1]], [U[2], U[1]], [U[2], U[3]], [U[0], U[3]]], fl = opz.fl || [f, f, f, f], oo = opz.oo || [o, o, o, o], nn = opz.nn || [nl, nl, nl, nl];
+      [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2].forEach(k => A.v(Q[k], nn[k], col, fl[k], UVq[k], oo[k]));
     }
-    // la chioma: il nucleo e le carte sull'involucro (spirale di Fibonacci, un po' rimescolata), più fitte in alto
-    function chioma(A, c, r, cell, col, H, seed, n, s, opz) {
-      opz = opz || {}; const rr = rngK(seed * 7 + 3), fondo = opz.fondo || 0, fl = opz.flex === undefined ? 1 : opz.flex;
-      const kn = opz.nucleo || .72; if (!opz.senzaNucleo) nucleo(A, c, [r[0] * kn, r[1] * Math.min(.7, kn * 1.1), r[2] * kn], col, H, seed, { schiaccia: fondo, flex: fl, det: opz.detN });
-      for (let k = 0; k < n; k++) {
-        const u = (k + .5) / n, yy = 1 - 2 * Math.pow(u, opz.alto || .85), rad = Math.sqrt(Math.max(0, 1 - yy * yy)), th = k * 2.39996 + rr() * .5;
-        let dx = Math.cos(th) * rad, dy = yy, dz = Math.sin(th) * rad; if (fondo && dy < 0) dy *= (1 - fondo);
-        const d = .62 + rr() * .4, P = [c[0] + dx * r[0] * d, c[1] + dy * r[1] * d, c[2] + dz * r[2] * d], dir = nrm([dx, dy, dz]);
-        const nPosa = nrm([dir[0] + (rr() - .5) * .9, dir[1] * .6 + .55 + (rr() - .5) * .5, dir[2] + (rr() - .5) * .9]);
-        const g = .38 + dir[1] * .32 + (dir[0] * .22 - dir[2] * .16) + (d - .8) * .5 + (rr() - .5) * .12 + (opz.luce || 0);
-        const g0 = (rr() - .5) * .12 + (opz.luce || 0), luceDi = q => { const ux = (q[0] - c[0]) / r[0], uy = (q[1] - c[1]) / r[1], uz = (q[2] - c[2]) / r[2], dd = Math.hypot(ux, uy, uz); return .3 + uy * .3 + (ux * .2 - uz * .15) + (dd - .75) * .55 + g0; };
-        carta(A, P, s * (.8 + rr() * .45), nPosa, nrm([dir[0], dir[1] + .35, dir[2]]), cell, g, Math.min(1, Math.max(0, P[1] / H)) ** 1.3 * fl, rr() * TAU, { sx: opz.sx, sy: opz.sy, luceDi });
-      }
+    // LA CHIOMA A LOBI: c centro, r raggi dell'involucro; nL lobi sull'involucro (più uno in mezzo); ogni lobo nucleo + corona di ciocche
+    // opz: lobi, ciocche (per lobo), s (lato della ciocca), fondo (schiaccia sotto), fiori: [cella, quota] (una ciocca su quota è a colori)
+    function chioma(A, c, r, sp, H, seed, opz) {
+      opz = opz || {}; const rr = rngK(seed * 7 + 3), S = SP[sp] || {}, cell = opz.cella || CELLA[sp] || 'dabTonda', col = tinta(sp), nL = opz.lobi || 5, nC = opz.ciocche || 10, fl = opz.flex === undefined ? 1 : opz.flex, fondo = opz.fondo || 0;
+      const lobi = []; if (!opz.senzaCentro) lobi.push([c[0], c[1] + r[1] * .15, c[2], .62]);
+      for (let k = 0; k < nL; k++) { const a = k / nL * TAU + rr() * .8, yy = (rr() - .35) * .9 * (1 - fondo * .6); const rad = Math.sqrt(Math.max(0, 1 - yy * yy));
+        lobi.push([c[0] + Math.cos(a) * rad * r[0] * .62, c[1] + yy * r[1] * .55, c[2] + Math.sin(a) * rad * r[2] * .62, .46 + rr() * .14]); }
+      lobi.forEach(([lx, ly, lz, kl], li) => { const R = [r[0] * kl, r[1] * kl * (opz.lobiAlti || 1), r[2] * kl], lc = [lx, ly, lz];
+        nucleo(A, lc, [R[0] * .74, R[1] * .7, R[2] * .74], mul(col, .82), H, seed * 13 + li, { det: opz.detN === undefined ? 1 : opz.detN, schiaccia: fondo, flex: fl, nCentro: [c[0], c[1] - r[1] * .3, c[2]], occ: .25 });
+        for (let k = 0; k < nC; k++) { const u = (k + .5) / nC, yy = 1 - 2 * Math.pow(u, .8), rad = Math.sqrt(Math.max(0, 1 - yy * yy)), th = k * 2.39996 + rr() * .6;
+          let dx = Math.cos(th) * rad, dy = yy, dz = Math.sin(th) * rad; if (fondo && dy < 0) dy *= (1 - fondo);
+          const d = .72 + rr() * .3, P = [lc[0] + dx * R[0] * d, lc[1] + dy * R[1] * d, lc[2] + dz * R[2] * d];
+          const dL = nrm([dx, dy, dz]), dC = nrm([P[0] - c[0], (P[1] - c[1]) * (r[0] / r[1]) * .7, P[2] - c[2]]), nl = nrm([dL[0] * .6 + dC[0] * .4, dL[1] * .6 + dC[1] * .4 + .12, dL[2] * .6 + dC[2] * .4]);
+          const nPosa = nrm([dL[0] + (rr() - .5) * .8, dL[1] * .5 + .5 + (rr() - .5) * .5, dL[2] + (rr() - .5) * .8]);
+          const occ = clamp(.42 + dL[1] * .25 + (Math.hypot(P[0] - c[0], P[2] - c[2]) / Math.max(r[0], .1)) * .3 + (P[1] - c[1]) / r[1] * .15, .2, 1);
+          const fiore = opz.fiori && rr() < opz.fiori[1], cc = fiore ? cellUV && opz.fiori[0] : cell, cColor = fiore || !GRIGIE.has(cc) ? [1, 1, 1] : col;
+          carta(A, P, (opz.s || 1) * (.8 + rr() * .4) * Math.max(.55, kl * 1.6) * (R[0] > 1.2 ? 1 : .8), nPosa, nl, cc, cColor, Math.min(1, Math.max(0, P[1] / H)) ** 1.3 * fl, rr() * TAU, occ, { sx: opz.sx, sy: opz.sy }); } });
     }
-    // il tronco: tubo a 5 lati con la corteccia (cella in grigio, tinta dal colore), più scuro alla base
+    // il tronco: tubo con la corteccia (grigia, tinta dal colore), più scuro alla base
     function tubo(A, pts, rr, col, H, lati, opz) {
       lati = lati || 5; opz = opz || {}; const c0 = hx(col), U = cellUV('corteccia'), an = opz.anelli;
       const ring = k => { const p = pts[k], q = pts[Math.min(pts.length - 1, k + 1)], o = pts[Math.max(0, k - 1)]; const d = nrm([q[0] - o[0], q[1] - o[1], q[2] - o[2]]); const a = Math.abs(d[0]) > .9 ? [0, 0, 1] : [1, 0, 0];
         const u = nrm(crs(d, a)), w = crs(d, u), R = []; for (let s = 0; s <= lati; s++) { const an2 = s / lati * TAU, cs = Math.cos(an2), sn = Math.sin(an2), nn = [u[0] * cs + w[0] * sn, u[1] * cs + w[1] * sn, u[2] * cs + w[2] * sn]; R.push([p[0] + nn[0] * rr[k], p[1] + nn[1] * rr[k], p[2] + nn[2] * rr[k], nn]); } return R; };
       const RS = pts.map((_, k) => ring(k)); let vL = 0;
-      for (let k = 0; k < pts.length - 1; k++) { const seg = Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1], pts[k + 1][2] - pts[k][2]), v0 = vL, v1 = vL + seg / 2.2; vL = v1;
-        for (let s = 0; s < lati; s++) { const a = RS[k][s], b = RS[k][s + 1], c = RS[k + 1][s + 1], d = RS[k + 1][s], ka = an ? (k % 2 ? .8 : 1.05) : 1;
-          const tA = Math.min(1, pts[k][1] / 2.5), tB = Math.min(1, pts[k + 1][1] / 2.5), sd = .82 + .2 * Math.cos(s / lati * TAU - .8);
-          const cA = mul(c0, (.62 + .38 * tA) * sd * ka * 1.35), cB = mul(c0, (.62 + .38 * tB) * sd * ka * 1.35), fA = (pts[k][1] / H) ** 2 * .3, fB = (pts[k + 1][1] / H) ** 2 * .3;
-          const u0 = U[0] + (U[2] - U[0]) * s / lati, u1 = U[0] + (U[2] - U[0]) * (s + 1) / lati, va = U[1] + (U[3] - U[1]) * .04, vb = U[1] + (U[3] - U[1]) * Math.min(.96, .04 + (v1 - v0));
-          A.v(a.slice(0, 3), a[3], cA, fA, [u0, va]); A.v(b.slice(0, 3), b[3], cA, fA, [u1, va]); A.v(c.slice(0, 3), c[3], cB, fB, [u1, vb]);
-          A.v(a.slice(0, 3), a[3], cA, fA, [u0, va]); A.v(c.slice(0, 3), c[3], cB, fB, [u1, vb]); A.v(d.slice(0, 3), d[3], cB, fB, [u0, vb]); } }
+      for (let k = 0; k < pts.length - 1; k++) { const seg = Math.hypot(pts[k + 1][0] - pts[k][0], pts[k + 1][1] - pts[k][1], pts[k + 1][2] - pts[k][2]), v1 = Math.min(.92, seg / 2.6);
+        for (let s = 0; s < lati; s++) { const a = RS[k][s], b = RS[k][s + 1], c = RS[k + 1][s + 1], d = RS[k + 1][s], ka = an ? (k % 2 ? .82 : 1.04) : 1;
+          const oA = clamp(.65 + pts[k][1] / 4, .65, 1), oB = clamp(.65 + pts[k + 1][1] / 4, .65, 1), cA = mul(c0, ka * 1.25), cB = mul(c0, ka * 1.25), fA = (pts[k][1] / H) ** 2 * .3, fB = (pts[k + 1][1] / H) ** 2 * .3;
+          const u0 = U[0] + (U[2] - U[0]) * s / lati, u1 = U[0] + (U[2] - U[0]) * (s + 1) / lati, va = U[1] + (U[3] - U[1]) * .04, vb = U[1] + (U[3] - U[1]) * (.04 + v1);
+          A.v(a.slice(0, 3), a[3], cA, fA, [u0, va], oA); A.v(b.slice(0, 3), b[3], cA, fA, [u1, va], oA); A.v(c.slice(0, 3), c[3], cB, fB, [u1, vb], oB);
+          A.v(a.slice(0, 3), a[3], cA, fA, [u0, va], oA); A.v(c.slice(0, 3), c[3], cB, fB, [u1, vb], oB); A.v(d.slice(0, 3), d[3], cB, fB, [u0, vb], oB); } }
     }
-    // una lama dipinta (fronda di palma, foglia d'agave, canna): striscia che si piega lungo la lunghezza, la cella stesa per lungo
+    // una lama dipinta (fronda, foglia d'agave, canna): striscia che si piega, la cella stesa per lungo
     function lama(A, base, dir, L, w, cad, cell, H, seg, opz) {
       seg = seg || 4; opz = opz || {}; const U = cellUV(cell), side = nrm([-dir[2], 0, dir[0]]); if (!isFinite(side[0])) side[0] = 1;
-      const P = []; for (let k = 0; k <= seg; k++) { const t = k / seg; P.push([base[0] + dir[0] * L * t, base[1] + dir[1] * L * t - cad * L * t * t, base[2] + dir[2] * L * t]); }
+      const col = opz.col || [1, 1, 1], P = []; for (let k = 0; k <= seg; k++) { const t = k / seg; P.push([base[0] + dir[0] * L * t, base[1] + dir[1] * L * t - cad * L * t * t, base[2] + dir[2] * L * t]); }
       for (let k = 0; k < seg; k++) { const a = P[k], b = P[k + 1], ta = k / seg, tb = (k + 1) / seg, fa = Math.min(1, a[1] / H) * (opz.flex || 1), fb = Math.min(1, b[1] / H) * (opz.flex || 1);
-        const lift = opz.v ? w * .35 : 0, al = [a[0] - side[0] * w, a[1] + lift, a[2] - side[2] * w], ar = [a[0] + side[0] * w, a[1] + lift, a[2] + side[2] * w], bl = [b[0] - side[0] * w, b[1] + lift, b[2] - side[2] * w], br = [b[0] + side[0] * w, b[1] + lift, b[2] + side[2] * w];
-        const n = nrm([0, 1, 0]), ca = lumi(.45 + ta * .45 + (opz.luce || 0)), cb = lumi(.45 + tb * .45 + (opz.luce || 0)), va = U[1] + (U[3] - U[1]) * ta, vb = U[1] + (U[3] - U[1]) * tb;
-        [[al, U[0], va, ca, fa], [ar, U[2], va, ca, fa], [br, U[2], vb, cb, fb], [al, U[0], va, ca, fa], [br, U[2], vb, cb, fb], [bl, U[0], vb, cb, fb], [al, U[0], va, ca, fa], [br, U[2], vb, cb, fb], [ar, U[2], va, ca, fa], [al, U[0], va, ca, fa], [bl, U[0], vb, cb, fb], [br, U[2], vb, cb, fb]]
-          .forEach(([p, u, v, c, f]) => A.v(p, n, c, f, [u, v])); }
+        const al = [a[0] - side[0] * w, a[1], a[2] - side[2] * w], ar = [a[0] + side[0] * w, a[1], a[2] + side[2] * w], bl = [b[0] - side[0] * w, b[1], b[2] - side[2] * w], br = [b[0] + side[0] * w, b[1], b[2] + side[2] * w];
+        const n = nrm([dir[0] * .4, 1, dir[2] * .4]), oa = .45 + ta * .55, ob = .45 + tb * .55, va = U[1] + (U[3] - U[1]) * ta, vb = U[1] + (U[3] - U[1]) * tb;
+        [[al, U[0], va, oa, fa], [ar, U[2], va, oa, fa], [br, U[2], vb, ob, fb], [al, U[0], va, oa, fa], [br, U[2], vb, ob, fb], [bl, U[0], vb, ob, fb], [al, U[0], va, oa, fa], [br, U[2], vb, ob, fb], [ar, U[2], va, oa, fa], [al, U[0], va, oa, fa], [bl, U[0], vb, ob, fb], [br, U[2], vb, ob, fb]]
+          .forEach(([p, u, v, o, f]) => A.v(p, n, col, f, [u, v], o)); }
     }
-    // l'erba e le piante basse: carte in piedi incrociate, la normale verso l'alto (si illuminano come il prato, non come un muro)
-    function ciuffo(A, H, w, cell, n, rr, opz) {
-      opz = opz || {}; for (let k = 0; k < n; k++) { const a = k / n * Math.PI + rr() * .4, nd = [Math.cos(a), 0, Math.sin(a)], o = opz.sparso ? [(rr() - .5) * opz.sparso, 0, (rr() - .5) * opz.sparso] : [0, 0, 0], h = H * (.85 + rr() * .3);
-        carta(A, [o[0], 0, o[2]], 1, nd, [0, 1, 0], cell, .8, 0, 0, { sx: w * .5, sy: h * .5, base: true, fl: [0, 0, 1, 1], col: lumi(.55 + rr() * .3) }); }
+    // le erbe: carte in piedi incrociate, normale in alto (si illuminano come il prato), occ 0 alla base, 1 in punta
+    function ciuffo(A, H, w, cell, n, rr, col) {
+      for (let k = 0; k < n; k++) { const a = k / n * Math.PI + rr() * .4, nd = [Math.cos(a), 0, Math.sin(a)], h = H * (.85 + rr() * .3);
+        carta(A, [0, 0, 0], 1, nd, [0, 1, 0], cell, col, 0, 0, 1, { sx: w * .5, sy: h * .5, base: true, fl: [0, 0, 1, 1], oo: [.62, .62, 1, 1] }); }
     }
     const punto = (A, p, s, col, f) => { const U = cellUV('bianco'), c = hx(col), u = [(U[0] + U[2]) / 2, (U[1] + U[3]) / 2], O = [[s, 0, 0], [-s, 0, 0], [0, s, 0], [0, -s, 0], [0, 0, s], [0, 0, -s]], F8 = [[0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4], [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5]];
-      F8.forEach(tr => tr.forEach(k => A.v([p[0] + O[k][0], p[1] + O[k][1], p[2] + O[k][2]], nrm(O[k]), mul(c, O[k][1] >= 0 ? 1.05 : .78), f, u))); };
+      F8.forEach(tr => tr.forEach(k => A.v([p[0] + O[k][0], p[1] + O[k][1], p[2] + O[k][2]], nrm(O[k]), c, f, u, 1))); };
+    // la cella delle ciocche di ogni specie
+    const CELLA = { pino: 'pinoCiuffo', pinoM: 'dabAghi2', leccio: 'dabTonda', carrubo: 'dabTonda2', lentisco: 'dabTonda', mirto: 'dabPiccola', ulivo: 'dabLunga', eucalipto: 'dabLunga2', fico: 'dabLarga', agrume: 'agrumeFrutti', mandorlo: 'dabLunga', tamerice: 'dabLunga2', oleandro: 'dabLunga', cipresso: 'dabPiccola', rosmarino: 'dabPiccola', edera: 'edera', bouganville: 'bouganville', felce: 'felce', cappero: 'cappero', ginestra: 'dabPiccola' };
 
-    // ---------------- LE FORME: (A, H, r, S, v) — H l'altezza di riferimento, r il caso del seme, v la variante ----------------
-    const L0 = k => PAL[k][0];   // la tinta scura (nucleo)
+    // ---------------- LE FORME ----------------
     const FORME = {
       ombrello(A, H, r, S, v) { const lean = (.05 + r() * .08) * H, a = r() * TAU, lx = Math.cos(a) * lean, lz = Math.sin(a) * lean, tT = H * .74;
         const pts = [0, .2, .45, .7, .9, 1].map(t => [lx * t ** 1.7 + Math.sin(t * 6 + v) * .12, tT * t, lz * t ** 1.7 + Math.cos(t * 5 + v) * .08]);
         tubo(A, pts, [.036, .029, .025, .022, .02, .017].map(k => k * H), PAL[S.legno], H);
-        const top = pts[5], R = SP.pino.chioma * (H / 12) * (.92 + r() * .16), cy = H * .86, NB = 5 + (v % 2), tips = [];
-        for (let k = 0; k < NB; k++) { const b = k / NB * TAU + r() * .5, e = [top[0] + Math.cos(b) * R * .62, cy, top[2] + Math.sin(b) * R * .62]; tubo(A, [top, [(top[0] + e[0]) / 2, top[1] + (e[1] - top[1]) * .8, (top[2] + e[2]) / 2], e], [.014 * H, .01 * H, .006 * H], PAL[S.legno], H, 4); tips.push(e); }
-        // l'ombrello: tante nuvole piatte di aghi, una per branca e una in mezzo, ciascuna nucleo + carte quasi orizzontali
-        tips.concat([[top[0], cy + H * .03, top[2]]]).forEach((e, k) => chioma(A, [e[0], e[1] + H * .02, e[2]], [R * .5, H * .065, R * .5], 'pino', L0('pino'), H, v * 11 + k, 22, 1.15, { fondo: .7, sy: .8, luce: k === NB ? .08 : 0, nucleo: .5 })); },
+        const top = pts[5], R = SP.pino.chioma * (H / 12) * (.92 + r() * .16), cy = H * .86, NB = 5 + (v % 2);
+        for (let k = 0; k < NB; k++) { const b = k / NB * TAU + r() * .5, e = [top[0] + Math.cos(b) * R * .6, cy, top[2] + Math.sin(b) * R * .6]; tubo(A, [top, [(top[0] + e[0]) / 2, top[1] + (e[1] - top[1]) * .8, (top[2] + e[2]) / 2], e], [.014 * H, .01 * H, .006 * H], PAL[S.legno], H, 4); }
+        chioma(A, [top[0], cy + H * .02, top[2]], [R, H * .1, R], 'pino', H, v * 11 + 1, { lobi: 7, ciocche: 11, s: 1.25, fondo: .75, lobiAlti: .9 }); },
       aleppo(A, H, r, S, v) { const a = r() * TAU, lean = (.1 + r() * .12) * H, lx = Math.cos(a) * lean, lz = Math.sin(a) * lean;
         const pts = [0, .25, .5, .75, 1].map(t => [lx * t ** 1.4 + Math.sin(t * 7 + v) * .25, H * .82 * t, lz * t ** 1.4 + Math.cos(t * 6 + v) * .2]);
         tubo(A, pts, [.03, .025, .02, .016, .012].map(k => k * H), PAL[S.legno], H);
-        const NC = 4 + (v % 3);
-        for (let k = 0; k < NC; k++) { const t = .45 + k / NC * .5, q = pts[Math.min(4, Math.round(t * 4))], b = r() * TAU, d = (.8 + r() * 1.3) * (1.1 - t * .4), e = [q[0] + Math.cos(b) * d, H * (.5 + t * .4), q[2] + Math.sin(b) * d];
-          tubo(A, [q, e], [.01 * H, .006 * H], PAL[S.legno], H, 4); chioma(A, e, [1.1 + r() * .5, .55 + r() * .2, 1.1 + r() * .5], 'pinoM', L0('pinoM'), H, v * 13 + k, 9, .95, { fondo: .6 }); }
-        chioma(A, [pts[4][0], H * .9, pts[4][2]], [1.3, .7, 1.3], 'pinoM', L0('pinoM'), H, v * 13 + 9, 10, 1, { fondo: .5, luce: .06 }); },
+        const NC = 3 + (v % 2);
+        for (let k = 0; k < NC; k++) { const t = .5 + k / NC * .45, q = pts[Math.min(4, Math.round(t * 4))], b = r() * TAU, d = (.9 + r() * 1.3) * (1.1 - t * .4), e = [q[0] + Math.cos(b) * d, H * (.52 + t * .38), q[2] + Math.sin(b) * d];
+          tubo(A, [q, e], [.01 * H, .006 * H], PAL[S.legno], H, 4); chioma(A, e, [1.4 + r() * .5, .7, 1.4 + r() * .5], 'pinoM', H, v * 13 + k, { lobi: 3, ciocche: 8, s: 1, fondo: .6 }); }
+        chioma(A, [pts[4][0], H * .9, pts[4][2]], [1.5, .8, 1.5], 'pinoM', H, v * 13 + 9, { lobi: 3, ciocche: 8, s: 1, fondo: .5 }); },
       tondo(A, H, r, S, v) { const F = H * (.3 + r() * .06), bx = (r() - .5) * .3, bz = (r() - .5) * .3, R = S.chioma * .95;
         tubo(A, [[0, 0, 0], [bx * .3, F * .5, bz * .3], [bx, F, bz], [bx, F + 1.2, bz]], [.22, .18, .15, .1], PAL[S.legno], H);
         for (let k = 0; k < 3; k++) { const b = k / 3 * TAU + r(); tubo(A, [[bx, F - .2, bz], [bx + Math.cos(b) * R * .5, F + 1.4, bz + Math.sin(b) * R * .5]], [.1, .05], PAL[S.legno], H, 4); }
-        const cy = F + (H - F) * .52, ry = (H - F) * .52;
-        chioma(A, [bx, cy, bz], [R, ry, R], S.pal === 'leccio' ? 'leccio' : 'carrubo', L0(S.pal), H, v * 17 + 1, 54, 1.05, { fondo: .2 }); },
+        const cy = F + (H - F) * .52, ry = (H - F) * .55;
+        chioma(A, [bx, cy, bz], [R, ry, R], S === SP.carrubo ? 'carrubo' : 'leccio', H, v * 17 + 1, { lobi: 6, ciocche: 12, s: 1.05, fondo: .25 }); },
       cupola(A, H, r, S, v) { const R = S.chioma * (.9 + r() * .2), F = H * .3;
         tubo(A, [[0, 0, 0], [.1, F * .6, 0], [.05, F, .05]], [.32, .26, .22], PAL[S.legno], H);
         for (let k = 0; k < 3; k++) { const b = k / 3 * TAU + r(); tubo(A, [[.05, F, .05], [Math.cos(b) * R * .45, F + H * .22, Math.sin(b) * R * .45]], [.16, .08], PAL[S.legno], H, 4); }
-        chioma(A, [0, H * .62, 0], [R, H * .36, R], 'carrubo', L0('carrubo'), H, v * 19 + 1, 60, 1.1, { fondo: .5, alto: .75 }); },
+        chioma(A, [0, H * .62, 0], [R, H * .36, R], 'carrubo', H, v * 19 + 1, { lobi: 7, ciocche: 12, s: 1.15, fondo: .5 }); },
       eucalipto(A, H, r, S, v) { const pts = [0, .3, .6, .85, 1].map(t => [Math.sin(t * 4 + v) * .35, H * .9 * t, Math.cos(t * 3 + v) * .25]);
         tubo(A, pts, [.32, .22, .16, .1, .06], PAL[S.legno], H);
-        for (let k = 0; k < 6; k++) { const t = .45 + k / 6 * .5, b = r() * TAU, d = 1.2 + r() * 1.4, q = pts[Math.min(4, Math.round(t * 4))], e = [q[0] + Math.cos(b) * d, H * t, q[2] + Math.sin(b) * d];
-          tubo(A, [q, e], [.08, .04], PAL[S.legno], H, 4); chioma(A, [e[0], e[1] - .5, e[2]], [1 + r() * .4, 1.7 + r() * .5, 1 + r() * .4], 'eucalipto', L0('eucalipto'), H, v * 23 + k, 9, 1, { sy: 1.3, detN: 0 }); }
-        chioma(A, [pts[4][0], H * .95, pts[4][2]], [1.2, 1.4, 1.2], 'eucalipto', L0('eucalipto'), H, v * 23 + 9, 8, 1, { luce: .08, detN: 0 }); },
+        for (let k = 0; k < 4; k++) { const t = .5 + k / 4 * .45, b = r() * TAU, d = 1.2 + r() * 1.3, q = pts[Math.min(4, Math.round(t * 4))], e = [q[0] + Math.cos(b) * d, H * t, q[2] + Math.sin(b) * d];
+          tubo(A, [q, e], [.08, .04], PAL[S.legno], H, 4); chioma(A, [e[0], e[1] - .4, e[2]], [1.3, 1.9, 1.3], 'eucalipto', H, v * 23 + k, { lobi: 3, ciocche: 7, s: 1, sy: 1.3, detN: 0 }); }
+        chioma(A, [pts[4][0], H * .95, pts[4][2]], [1.3, 1.4, 1.3], 'eucalipto', H, v * 23 + 9, { lobi: 3, ciocche: 7, s: 1, detN: 0 }); },
       colonna(A, H, r, S, v) { tubo(A, [[0, 0, 0], [0, .9, 0]], [.2, .16], PAL[S.legno], H);
-        nucleo(A, [0, H * .48, 0], [.82, H * .48, .82], L0('cipresso'), H, v * 29 + 1, {});
-        const rr = rngK(v * 29 + 3); for (let k = 0; k < 26; k++) { const y = H * (.06 + k / 26 * .9), w = Math.sin(Math.PI * Math.min(1, y / H * 1.05 + .04)) * .95, a = k * 2.4 + rr();
-          carta(A, [Math.cos(a) * w * .8, y, Math.sin(a) * w * .8], .55 + w * .35, nrm([Math.cos(a), .25, Math.sin(a)]), nrm([Math.cos(a), .4, Math.sin(a)]), 'cipresso', .35 + y / H * .4 + Math.cos(a) * .12, (y / H) ** 1.3, rr() * .4 - .2, { sy: 1.6 }); } },
+        const rr = rngK(v * 29 + 3), col = tinta('cipresso'); nucleo(A, [0, H * .48, 0], [.85, H * .48, .85], mul(col, .8), H, v * 29 + 1, { occ: .3 });
+        for (let k = 0; k < 30; k++) { const y = H * (.05 + k / 30 * .92), w = Math.sin(Math.PI * Math.min(1, y / H * 1.05 + .04)) * 1.0, a = k * 2.4 + rr(), n = nrm([Math.cos(a), .2, Math.sin(a)]);
+          carta(A, [Math.cos(a) * w * .78, y, Math.sin(a) * w * .78], .5 + w * .32, n, nrm([Math.cos(a), .35, Math.sin(a)]), 'dabPiccola', col, (y / H) ** 1.3, rr() * .4 - .2, clamp(.4 + y / H * .5, .3, 1), { sy: 1.5 }); } },
       ulivo(A, H, r, S, v) { const N2 = 2 + (v % 2);
-        nucleo(A, [0, .25, 0], [.45, .35, .45], '#5e584a', H, v + 41, { flex: 0, luce: .7 });   // il ceppo gonfio
+        nucleo(A, [0, .25, 0], [.45, .35, .45], hx('#6a6456'), H, v + 41, { flex: 0, occ: .5, cella: 'corteccia' });
         const tips = []; for (let k = 0; k < N2; k++) { const b = k / N2 * TAU + r(), d = .9 + r() * .7, e = [Math.cos(b) * d, H * (.45 + r() * .12), Math.sin(b) * d];
           tubo(A, [[Math.cos(b) * .12, 0, Math.sin(b) * .12], [Math.cos(b + .8) * .35, H * .2, Math.sin(b + .8) * .3], [e[0] * .7, e[1] * .8, e[2] * .7], e], [.2, .16, .12, .08], PAL[S.legno], H); tips.push(e); }
-        for (let k = 0; k < 5; k++) { const t = tips[k % tips.length], b = r() * TAU, d = .5 + r() * 1.1;
-          chioma(A, [t[0] + Math.cos(b) * d, H * (.64 + r() * .24), t[2] + Math.sin(b) * d], [1.05 + r() * .4, .6 + r() * .25, 1.05 + r() * .4], 'ulivo', L0('ulivo'), H, v * 31 + k, 10, .85, { fondo: .45, detN: 0 }); } },
+        chioma(A, [0, H * .72, 0], [S.chioma, H * .26, S.chioma], 'ulivo', H, v * 31, { lobi: 5, ciocche: 9, s: .85, fondo: .45, senzaCentro: v % 2 === 0, detN: 0 }); },
       fico(A, H, r, S, v) { const R = S.chioma;
         for (let k = 0; k < 4; k++) { const b = k / 4 * TAU + r() * .6, e = [Math.cos(b) * R * .55, H * .55, Math.sin(b) * R * .55]; tubo(A, [[0, 0, 0], [Math.cos(b) * .3, H * .22, Math.sin(b) * .3], e], [.16, .12, .07], PAL[S.legno], H, 5); }
-        chioma(A, [0, H * .66, 0], [R, H * .33, R], 'fico', L0('fico'), H, v * 37 + 1, 64, .78, { fondo: .55, luce: .04, nucleo: .62 }); },
+        chioma(A, [0, H * .66, 0], [R, H * .33, R], 'fico', H, v * 37 + 1, { lobi: 6, ciocche: 10, s: 1.05, fondo: .55 }); },
       agrume(A, H, r, S, v) { const R = S.chioma; tubo(A, [[0, 0, 0], [0, H * .3, 0]], [.1, .08], PAL[S.legno], H);
-        chioma(A, [0, H * .6, 0], [R, H * .42, R], 'agrume', L0('agrume'), H, v * 43 + 1, 30, .8, {});
-        const fr = v % 2 ? PAL.limone : PAL.arancia, rr = rngK(v * 991 + 7); for (let k = 0; k < 16; k++) { const b = rr() * TAU, e = rr() * 1.2 - .5, c = Math.cos(e); punto(A, [Math.cos(b) * c * R * 1.0, H * .6 + Math.sin(e) * H * .42, Math.sin(b) * c * R * 1.0], .1, fr, .8); } },
-      mandorlo(A, H, r, S, v) { const cell = v === 3 ? 'mandorloFiore' : 'mandorlo', tips = [];
-        for (let k = 0; k < 4; k++) { const b = k / 4 * TAU + r() * .5, e = [Math.cos(b) * 1.4, H * .72, Math.sin(b) * 1.4]; tubo(A, [[0, 0, 0], [0, H * .3, 0], [e[0] * .5, H * .5, e[2] * .5], e], [.13, .1, .06, .03], PAL[S.legno], H, 4); tips.push(e); }
-        tips.forEach((t, k) => chioma(A, [t[0], t[1] + .2, t[2]], [1.05, .7, 1.05], cell, v === 3 ? '#b8a0a4' : L0('mandorlo'), H, v * 47 + k, 8, .8, { detN: 0, luce: .06 })); },
-      tamerice(A, H, r, S, v) { for (let k = 0; k < 3; k++) { const b = k / 3 * TAU + r(), e = [Math.cos(b) * 1.1, H * .62, Math.sin(b) * 1.1]; tubo(A, [[0, 0, 0], [Math.cos(b) * .4, H * .3, Math.sin(b) * .4], e], [.12, .08, .04], PAL[S.legno], H, 4);
-          chioma(A, [e[0], e[1] + .1, e[2]], [1, 1.3, 1], 'tamerice', L0('tamerice'), H, v * 53 + k, 10, .95, { sy: 1.3, detN: 0 }); } },
-      cespo(A, H, r, S, v) { const R = S.chioma * (.9 + r() * .2), cell = S.pal === 'lentisco' ? 'lentisco' : S.pal === 'mirto' ? 'leccio' : 'lentisco';
-        chioma(A, [0, H * .5, 0], [R, H * .5, R], cell, L0(S.pal), H, v * 59 + 1, 18 + (v % 2) * 4, .62, { fondo: .7, flex: .5, detN: 0 }); },
+        chioma(A, [0, H * .6, 0], [R, H * .42, R], 'agrume', H, v * 43 + 1, { lobi: 4, ciocche: 9, s: .8, cella: 'dabTonda', fiori: ['agrumeFrutti', .35] }); },
+      mandorlo(A, H, r, S, v) { for (let k = 0; k < 4; k++) { const b = k / 4 * TAU + r() * .5, e = [Math.cos(b) * 1.4, H * .72, Math.sin(b) * 1.4]; tubo(A, [[0, 0, 0], [0, H * .3, 0], [e[0] * .5, H * .5, e[2] * .5], e], [.13, .1, .06, .03], PAL[S.legno], H, 4); }
+        chioma(A, [0, H * .76, 0], [S.chioma, H * .22, S.chioma], 'mandorlo', H, v * 47, { lobi: 5, ciocche: 7, s: .8, detN: 0, fiori: v === 3 ? ['mandorloFiore', .9] : null, senzaCentro: true }); },
+      tamerice(A, H, r, S, v) { for (let k = 0; k < 3; k++) { const b = k / 3 * TAU + r(), e = [Math.cos(b) * 1.1, H * .62, Math.sin(b) * 1.1]; tubo(A, [[0, 0, 0], [Math.cos(b) * .4, H * .3, Math.sin(b) * .4], e], [.12, .08, .04], PAL[S.legno], H, 4); }
+        chioma(A, [0, H * .66, 0], [S.chioma, H * .3, S.chioma], 'tamerice', H, v * 53, { lobi: 5, ciocche: 8, s: .9, sy: 1.3, detN: 0 }); },
+      cespo(A, H, r, S, v) { const R = S.chioma * (.9 + r() * .2), sp = S === SP.mirto ? 'mirto' : S === SP.felce ? 'felce' : 'lentisco';
+        chioma(A, [0, H * .5, 0], [R, H * .5, R], sp, H, v * 59 + 1, { lobi: 3, ciocche: 7, s: .55 + R * .18, fondo: .7, flex: .5, detN: 0 }); },
       oleandro(A, H, r, S, v) { const R = S.chioma;
         for (let k = 0; k < 5; k++) { const b = k / 5 * TAU + r(); tubo(A, [[0, 0, 0], [Math.cos(b) * R * .4, H * .55, Math.sin(b) * R * .4]], [.04, .025], '#6a5a44', H, 3); }
-        chioma(A, [0, H * .55, 0], [R, H * .48, R], 'oleandro', L0('oleandro'), H, v * 71 + 1, 24, .7, { fondo: .3, flex: .7, detN: 0 }); },
-      ginestra(A, H, r, S, v) { nucleo(A, [0, H * .35, 0], [S.chioma * .5, H * .3, S.chioma * .5], L0('ginestra'), H, v + 61, { det: 0, flex: .3 }); ciuffo(A, H, S.chioma * 1.9, 'ginestra', 4, r); },
-      cuscino(A, H, r, S, v) { const R = S.chioma; chioma(A, [0, H * .45, 0], [R, H * .5, R], S === SP.cappero ? 'cappero' : 'rosmarino', L0(S.pal), H, v * 67 + 1, 12, .42, { fondo: .8, flex: .3, detN: 0 }); },
+        chioma(A, [0, H * .55, 0], [R, H * .48, R], 'oleandro', H, v * 71 + 1, { lobi: 4, ciocche: 8, s: .65, fondo: .3, flex: .7, detN: 0, fiori: ['oleandroFiori', .45] }); },
+      ginestra(A, H, r, S, v) { nucleo(A, [0, H * .35, 0], [S.chioma * .5, H * .3, S.chioma * .5], mul(tinta('ginestra'), .8), H, v + 61, { det: 0, flex: .3 }); ciuffo(A, H, S.chioma * 1.9, 'ginestra', 4, r, [1, 1, 1]); },
+      cuscino(A, H, r, S, v) { const R = S.chioma, cap = S === SP.cappero; chioma(A, [0, H * .45, 0], [R, H * .5, R], cap ? 'agrume' : 'rosmarino', H, v * 67 + 1, { lobi: 2, ciocche: 6, s: .4, fondo: .8, flex: .3, detN: 0, cella: 'dabPiccola', fiori: cap ? ['cappero', .5] : null }); },
       pale(A, H, r, S, v) { const rr = rngK(v * 17 + 5);
-        const pala = (c, a, s, liv) => { const n = nrm([Math.cos(a) * .3 + (rr() - .5) * .5, .1, Math.sin(a) * .3 + .8]); carta(A, c, .36 * s, n, n, 'pala', .62 + liv * .08, .1, rr() * .3 - .15, { sy: 1.25 });
+        const pala = (c, a, s, liv) => { const n = nrm([Math.cos(a) * .3 + (rr() - .5) * .5, .1, Math.sin(a) * .3 + .8]); carta(A, c, .36 * s, n, nrm([n[0], .5, n[2]]), 'pala', [1, 1, 1], .1, rr() * .3 - .15, .5 + liv * .2, { sy: 1.25 });
           if (liv < 2) for (let k = 0; k < 2; k++) { const b = (k ? .6 : -.6) + (rr() - .5) * .4, nc = [c[0] + Math.sin(b) * .5 * s, c[1] + .62 * s, c[2] + (rr() - .5) * .2]; if (rr() < .85) pala(nc, a + b, s * .92, liv + 1); }
-          else if (rr() < .7) for (let k = 0; k < 3; k++) punto(A, [c[0] + (k - 1) * .16 * s, c[1] + .46 * s, c[2]], .06, k % 2 ? '#d8603a' : '#e0b03a', .2); };
+          else if (rr() < .7) for (let k = 0; k < 3; k++) punto(A, [c[0] + (k - 1) * .16 * s, c[1] + .46 * s, c[2]], .06, k % 2 ? '#e0603a' : '#f0b03a', .2); };
         for (let k = 0; k < 3; k++) pala([(k - 1) * .45, .45, (rr() - .5) * .4], k * 2.1, 1 + rr() * .2, 0); },
-      rosetta(A, H, r, S, v) { const n = 16; for (let k = 0; k < n; k++) { const b = k / n * TAU * 2.3 + r() * .2, up = .5 + (k % 3) * .22, L = H * (1 + r() * .3) * (k < 5 ? .7 : 1);
+      rosetta(A, H, r, S, v) { for (let k = 0; k < 16; k++) { const b = k / 16 * TAU * 2.3 + r() * .2, up = .5 + (k % 3) * .22, L = H * (1 + r() * .3) * (k < 5 ? .7 : 1);
           lama(A, [0, .05, 0], [Math.cos(b) * (1 - up * .5), up, Math.sin(b) * (1 - up * .5)], L, .16, .3 * (1 - up), 'agave', H, 3, { flex: .1 }); }
-        if (v === 3) { tubo(A, [[0, .3, 0], [.1, 2.5, 0], [.2, 4.8, .05]], [.08, .06, .04], '#7a7a48', 5, 4); for (let k = 0; k < 6; k++) { const y = 3 + k * .32, b = k * 2.1; nucleo(A, [.15 + Math.cos(b) * .35, y, Math.sin(b) * .35], [.3, .12, .3], '#c8b040', 5, k + 3, { det: 0, luce: 1.1 }); } } },
+        if (v === 3) { tubo(A, [[0, .3, 0], [.1, 2.5, 0], [.2, 4.8, .05]], [.08, .06, .04], '#7a7a48', 5, 4); for (let k = 0; k < 6; k++) { const y = 3 + k * .32, b = k * 2.1; nucleo(A, [.15 + Math.cos(b) * .35, y, Math.sin(b) * .35], [.3, .12, .3], hx('#e0c040'), 5, k + 3, { det: 0, occ: .9, cella: 'bianco' }); } } },
       canne(A, H, r, S, v) { for (let k = 0; k < 11; k++) { const b = r() * TAU, s = r() * .7, Lh = H * (.75 + r() * .3); lama(A, [Math.cos(b) * s * .5, 0, Math.sin(b) * s * .5], [Math.cos(b) * s * .15, 1, Math.sin(b) * s * .15], Lh, .32, .04, 'canna', H, 3, { flex: 1 }); } },
       palma(A, H, r, S, v) { const a = r() * TAU, lean = (.04 + r() * .1) * H, lx = Math.cos(a) * lean, lz = Math.sin(a) * lean, NS = 8, pts = [];
         for (let k = 0; k <= NS; k++) { const t = k / NS; pts.push([lx * t * t, H * .86 * t, lz * t * t]); }
         tubo(A, pts, pts.map((_, k) => .34 - k * .012), PAL[S.legno], H, 6, { anelli: true });
-        const top = pts[NS]; nucleo(A, [top[0], top[1] + .1, top[2]], [.6, .55, .6], '#6a5a34', H, v + 3, { det: 0 });
+        const top = pts[NS]; nucleo(A, [top[0], top[1] + .1, top[2]], [.6, .55, .6], hx('#7a6a40'), H, v + 3, { det: 0, cella: 'corteccia', occ: .4 });
         for (let k = 0; k < 18; k++) { const b = k / 18 * TAU + r() * .3, up = k % 2 ? .6 : .18 + r() * .15, L = 3.4 + r() * .8;
-          lama(A, [top[0], top[1] + .35, top[2]], [Math.cos(b) * .85, up, Math.sin(b) * .85], L, .55, .5 + (1 - up) * .35, 'palma', H, 5, { flex: 1, luce: up * .2 }); }
+          lama(A, [top[0], top[1] + .35, top[2]], [Math.cos(b) * .85, up, Math.sin(b) * .85], L, .55, .5 + (1 - up) * .35, 'palma', H, 5, { flex: 1 }); }
         if (v % 2) for (let k = 0; k < 4; k++) { const b = k / 4 * TAU + .4; punto(A, [top[0] + Math.cos(b) * .6, top[1] - .2, top[2] + Math.sin(b) * .6], .22, '#e09a2a', .9); } },
       washingtonia(A, H, r, S, v) { const lean = (.02 + r() * .05) * H, a = r() * TAU, NS = 8, pts = []; for (let k = 0; k <= NS; k++) { const t = k / NS; pts.push([Math.cos(a) * lean * t, H * .9 * t, Math.sin(a) * lean * t]); }
         tubo(A, pts, pts.map((_, k) => .26 - k * .014), PAL[S.legno], H, 5, { anelli: true });
-        const top = pts[NS]; nucleo(A, [top[0], top[1] - .8, top[2]], [.72, 1.15, .72], '#5a4632', H, v + 5, { det: 1, luce: .8 });   // la gonna di foglie secche
-        for (let k = 0; k < 14; k++) { const b = k / 14 * TAU, up = .2 + (k % 3) * .22, n = nrm([Math.cos(b), up + .3, Math.sin(b)]); carta(A, [top[0] + Math.cos(b) * .9, top[1] + .3 + up, top[2] + Math.sin(b) * .9], .9, n, nrm([Math.cos(b), .7, Math.sin(b)]), 'washingtonia', .6 + up * .3, 1, -Math.PI / 2 + (b % .3)); } },
-      muro(A, H, r, S, v) { const cell = S === SP.bouganville ? 'bouganville' : 'edera', R = S.chioma, rr = rngK(v * 73 + 1);   // contro un muro: la faccia piatta a z=0, verso +z
-        nucleo(A, [0, H * .55, .25], [R * .7, H * .38, .3], L0(S.pal), H, v * 73, { flex: .4, det: 1 });
-        for (let k = 0; k < 40; k++) { const x = (rr() - .5) * R * 2 * Math.sin(Math.PI * (.2 + .8 * rr())), y = H * (.08 + rr() * .92), n = nrm([(rr() - .5) * .6, .3 + rr() * .4, 1]); carta(A, [x, y, .3 + rr() * .3], .48 + rr() * .2, n, nrm([n[0], .5, 1]), cell, .45 + y / H * .4, .5 * y / H, rr() * TAU); }
+        const top = pts[NS]; nucleo(A, [top[0], top[1] - .8, top[2]], [.72, 1.15, .72], hx('#6a5438'), H, v + 5, { det: 1, cella: 'corteccia', occ: .45 });
+        for (let k = 0; k < 14; k++) { const b = k / 14 * TAU, up = .2 + (k % 3) * .22, n = nrm([Math.cos(b), up + .3, Math.sin(b)]); carta(A, [top[0] + Math.cos(b) * .9, top[1] + .3 + up, top[2] + Math.sin(b) * .9], .9, n, nrm([Math.cos(b), .7, Math.sin(b)]), 'washingtonia', [1, 1, 1], 1, -Math.PI / 2, .8); } },
+      muro(A, H, r, S, v) { const boug = S === SP.bouganville, R = S.chioma, rr = rngK(v * 73 + 1), col = boug ? [1, 1, 1] : tinta('edera');   // contro un muro: la faccia piatta a z=0, verso +z
+        nucleo(A, [0, H * .55, .25], [R * .7, H * .38, .3], mul(tinta(boug ? 'oleandro' : 'edera'), .8), H, v * 73, { flex: .4, det: 1, occ: .3 });
+        for (let k = 0; k < 40; k++) { const x = (rr() - .5) * R * 2 * Math.sin(Math.PI * (.2 + .8 * rr())), y = H * (.08 + rr() * .92), n = nrm([(rr() - .5) * .6, .3 + rr() * .4, 1]); carta(A, [x, y, .3 + rr() * .3], .48 + rr() * .2, n, nrm([n[0], .5, 1]), boug ? 'bouganville' : 'edera', col, .5 * y / H, rr() * TAU, clamp(.4 + y / H * .6, .3, 1)); }
         tubo(A, [[0, 0, .15], [.1, H * .4, .2]], [.08, .06], '#5a4a3a', H, 4); },
       pergola(A, H, r, S, v) { const Lx = 3.2, D = 2.6, rr = rngK(v * 7 + 11);
         [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([i, j]) => tubo(A, [[i * Lx / 2, 0, j * D / 2], [i * Lx / 2, H, j * D / 2]], [.06, .05], '#7a6248', H, 4));
         for (let k = 0; k < 4; k++) { const z = -D / 2 + k * D / 3; tubo(A, [[-Lx / 2 - .2, H, z], [Lx / 2 + .2, H, z]], [.04, .04], '#8a7050', H, 4); }
         tubo(A, [[-Lx / 2, 0, -D / 2], [-Lx / 2 + .1, H * .5, -D / 2 + .1], [-Lx / 4, H + .1, 0]], [.07, .05, .03], '#5a4432', H, 4);
-        for (let k = 0; k < 34; k++) { const x = (rr() - .5) * Lx * 1.05, z = (rr() - .5) * D * 1.05, n = nrm([(rr() - .5) * .5, 1, (rr() - .5) * .5]); carta(A, [x, H + .12 + rr() * .15, z], .55 + rr() * .2, n, nrm([n[0], 1, n[2]]), 'vite', .55 + rr() * .3, .3, rr() * TAU); }
-        for (let k = 0; k < 6; k++) { const x = (rr() - .5) * Lx * .8, z = (rr() - .5) * D * .8, n = nrm([rr() - .5, 0, rr() - .5]); carta(A, [x, H - .55, z], .4, n, [0, .3, 1], 'vite', .45, .3, Math.PI, { sx: .9, sy: 1.3 }); } },
-      ciuffo(A, H, r, S, v) { const L = S.erbe || [S.pal === 'erbaSecca' ? 'erbaSecca' : 'erbaVerde']; ciuffo(A, H, H * .95, L[v % L.length], 3, r); },
-      ombrelle(A, H, r, S, v) { ciuffo(A, H, H * .8, 'finocchietto', 2, r); },
-      fiori(A, H, r, S, v) { ciuffo(A, H, H * .9, 'papavero', 3, r); },
-      ciuffoAlto(A, H, r, S, v) { ciuffo(A, H, H * .7, S.cella, 2, r); },
+        for (let k = 0; k < 34; k++) { const x = (rr() - .5) * Lx * 1.05, z = (rr() - .5) * D * 1.05, n = nrm([(rr() - .5) * .5, 1, (rr() - .5) * .5]); carta(A, [x, H + .12 + rr() * .15, z], .55 + rr() * .2, n, nrm([n[0], 1, n[2]]), 'vite', [1, 1, 1], .3, rr() * TAU, .8); }
+        for (let k = 0; k < 6; k++) { const x = (rr() - .5) * Lx * .8, z = (rr() - .5) * D * .8, n = nrm([rr() - .5, 0, rr() - .5]); carta(A, [x, H - .55, z], .4, n, [0, .3, 1], 'vite', [1, 1, 1], .3, Math.PI, .5, { sx: .9, sy: 1.3 }); } },
+      ciuffo(A, H, r, S, v) { const L = S.erbe || ['erbaDab']; ciuffo(A, H, H * 1.3, L[v % L.length], 3, r, GRIGIE.has(L[v % L.length]) ? tinta(S.pal) : [1, 1, 1]); },
+      ombrelle(A, H, r, S, v) { ciuffo(A, H, H * .8, 'finocchietto', 2, r, [1, 1, 1]); },
+      fiori(A, H, r, S, v) { ciuffo(A, H, H * .9, 'papavero', 3, r, [1, 1, 1]); },
+      ciuffoAlto(A, H, r, S, v) { ciuffo(A, H, H * .7, S.cella, 2, r, GRIGIE.has(S.cella) ? tinta(S.pal) : [1, 1, 1]); },
+      felce(A, H, r, S, v) { ciuffo(A, H, H * 1.5, 'felce', 3, r, tinta('felce')); },
+      fioriBianchi(A, H, r, S, v) { chioma(A, [0, H * .5, 0], [S.chioma, H * .5, S.chioma], 'erbaVerde', H, v * 3 + 1, { lobi: 2, ciocche: 6, s: .45, fondo: .8, flex: .6, detN: 0, cella: 'fioriBianchi' }); },
     };
-    // ---------------- LE SAGOME: media distanza (nucleo + carte grandi), lontano (nucleo a 20 facce + 3 carte) ----------------
+    // ---------------- LE SAGOME (media distanza e lontano) ----------------
     function sagomaDi(sp, H, liv) {
-      const S = SP[sp], A = Acc(), cellOf = { pino: 'pino', pinoM: 'pinoM', leccio: 'leccio', carrubo: 'carrubo', palma: 'palma', washingtonia: 'washingtonia', eucalipto: 'eucalipto', cipresso: 'cipresso', ulivo: 'ulivo', fico: 'fico', agrume: 'agrume', mandorlo: 'mandorlo', tamerice: 'tamerice', lentisco: 'lentisco', mirto: 'leccio', ginestra: 'ginestra', rosmarino: 'rosmarino', oleandro: 'oleandro', ficodindia: 'pala', agave: 'agave', canna: 'canna', bouganville: 'bouganville', edera: 'edera', vite: 'vite' }[sp] || 'lentisco';
-      const R = S.chioma, n = liv === 1 ? 14 : 3, s = liv === 1 ? 1.4 : 2;
-      const tr = (h, r) => { if (S.tronco) tubo(A, [[0, 0, 0], [0, h, 0]], [r, r * .7], PAL[S.legno] || '#6a5a4a', H, liv === 1 ? 4 : 3); };
+      const S = SP[sp], A = Acc(), R = S.chioma, l1 = liv === 1, o = { lobi: l1 ? 3 : 2, ciocche: l1 ? 5 : 2, s: 1.6, detN: 0 };
+      const tr = (h, rr) => { if (S.tronco) tubo(A, [[0, 0, 0], [0, h, 0]], [rr, rr * .7], PAL[S.legno] || '#6a5a4a', H, l1 ? 4 : 3); };
       const cl = S.sag;
-      if (cl === 'ombrello') { tr(H * .8, .03 * H); chioma(A, [0, H * .87, 0], [R, H * .08, R], cellOf, L0(S.pal), H, 5, n, s * 1.2, { fondo: .7, detN: 0 }); }
-      else if (cl === 'tondo') { tr(H * .42, .2); chioma(A, [0, H * .64, 0], [R, H * .34, R], cellOf, L0(S.pal), H, 5, n, s, { detN: 0 }); }
-      else if (cl === 'colonna') { nucleo(A, [0, H * .5, 0], [R * .85, H * .5, R * .85], L0(S.pal), H, 5, { det: 0 }); }
-      else if (cl === 'palma') { tr(H * .86, .25); for (let k = 0; k < (liv === 1 ? 8 : 5); k++) { const b = k / (liv === 1 ? 8 : 5) * TAU; lama(A, [0, H * .88, 0], [Math.cos(b) * .85, .25, Math.sin(b) * .85], 3.2, .55, .6, cellOf, H, 2, {}); } }
-      else if (cl === 'rado') { tr(H * .7, .03 * H); chioma(A, [0, H * .78, 0], [R, H * .2, R], cellOf, L0(S.pal), H, 5, n, s, { detN: 0 }); }
-      else chioma(A, [0, H * .48, 0], [R, H * .5, R], cellOf, L0(S.pal), H, 5, liv === 1 ? 6 : 0, s * .5, { fondo: .6, detN: 0 });
+      if (cl === 'ombrello') { tr(H * .8, .03 * H); chioma(A, [0, H * .87, 0], [R, H * .1, R], sp, H, 5, Object.assign({}, o, { fondo: .7, lobi: l1 ? 5 : 3 })); }
+      else if (cl === 'tondo') { tr(H * .42, .2); chioma(A, [0, H * .64, 0], [R, H * .34, R], sp, H, 5, o); }
+      else if (cl === 'colonna') nucleo(A, [0, H * .5, 0], [R * .85, H * .5, R * .85], mul(tinta(sp), .9), H, 5, { det: 0, occ: .6 });
+      else if (cl === 'palma') { tr(H * .86, .25); for (let k = 0; k < (l1 ? 8 : 5); k++) { const b = k / (l1 ? 8 : 5) * TAU; lama(A, [0, H * .88, 0], [Math.cos(b) * .85, .25, Math.sin(b) * .85], 3.2, .55, .6, sp === 'palma' ? 'palma' : 'washingtonia', H, 2, {}); } }
+      else if (cl === 'rado') { tr(H * .7, .03 * H); chioma(A, [0, H * .78, 0], [R, H * .2, R], sp, H, 5, o); }
+      else chioma(A, [0, H * .48, 0], [R, H * .5, R], SP[sp] && CELLA[sp] ? sp : 'lentisco', H, 5, Object.assign({}, o, { fondo: .6, lobi: l1 ? 2 : 1, ciocche: l1 ? 4 : 0 }));
       return A.build();
     }
     const CACHE = {};
     const H0 = sp => { const S = SP[sp]; return (S.h[0] + S.h[1]) / 2; };
     function modello(sp, v) { const k = sp + v; if (CACHE[k]) return CACHE[k]; const S = SP[sp], H = H0(sp), A = Acc(); FORME[S.forma](A, H, rngK(hash2(sp.length * 31 + sp.charCodeAt(0), v, 911) * 1e9), S, v); return (CACHE[k] = A.build()); }
     function sagoma(sp, liv) { const k = '§' + sp + liv; return CACHE[k] || (CACHE[k] = sagomaDi(sp, H0(sp), liv || 1)); }
-    return { Acc, nucleo, carta, chioma, tubo, lama, ciuffo, punto, FORME, modello, sagoma, H0, atlante, cellUV, CELLE, hx, mix };
+    return { Acc, nucleo, carta, chioma, tubo, lama, ciuffo, punto, FORME, modello, sagoma, H0, atlante, cellUV, CELLE, hx, mix, tinta };
   })();
 
   // ================= IL MATERIALE: vento, livelli, dissolvenza =================
   // Un MeshLambertMaterial coi colori nei vertici; il vertex shader legge il centro dell'istanza (o l'attributo centro, per la geometria
   // fusa da lontano), calcola la distanza dalla camera e il peso k della fascia del livello (uBand: entra fra x e y, esce fra z e w);
   // il fragment shader dissolve a retino (niente trasparenze da ordinare). Sotto k ≈ 0 la pianta si chiude in un punto: niente disegno.
-  const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 } };
+  // LA PITTURA (le manopole, condivise da tutti i materiali del verde): la luce del gioco divisa in tre fasce morbide (uRamp: soglia
+  // ombra/mezzo, soglia mezzo/luce, morbidezza, in unità di «quanta luce prende»), l'ombra fredda e la luce calda come moltiplicatori della
+  // tinta della specie, l'occlusione dipinta, il controluce sui bordi delle ciocche, quanto della tinta della luce del gioco passa (sera, notte).
+  const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
+    uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
+    uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.32, 1.3, .8) }, uLuceAdd: { value: new THREE.Vector3(.08, .08, .0) },
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .55 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -654,9 +648,9 @@ var Vegetazione = (function () {
     if (opz.senzaProfondita) m.depthWrite = false;   // [vegetazione] il prato di massa: niente profondità, quindi niente contorno del post
     const uBand = { value: new THREE.Vector4(band[0], band[1], band[2], band[3]) }; m.userData.uBand = uBand;
     m.onBeforeCompile = sh => {
-      sh.uniforms.uT = U.uT; sh.uniforms.uCam = U.uCam; sh.uniforms.uWind = U.uWind; sh.uniforms.uBand = uBand;
+      for (const k in U) sh.uniforms[k] = U[k]; sh.uniforms.uBand = uBand;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; varying float vK;
+uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc;
 #ifdef VEG_CENTRO
 attribute vec3 centro;
 #endif`).replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -668,7 +662,7 @@ vc = (modelMatrix * vec4(centro, 1.0)).xyz;
 #else
 vc = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 #endif
-float vgD = distance(vc.xz, uCam.xz);
+float vgD = distance(vc.xz, uCam.xz); vOcc = occ;
 vK = smoothstep(uBand.x, uBand.y, vgD) * (1.0 - smoothstep(uBand.z, uBand.w, vgD));
 float vgP = vc.x * .21 + vc.z * .17;
 transformed.x += (sin(uT * 1.7 + vgP) + .4 * sin(uT * 3.9 + vgP * 2.3)) * flex * uWind;
@@ -678,8 +672,24 @@ if (vK < .003) transformed = centro;
 #else
 if (vK < .003) transformed = vec3(0.0);
 #endif`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vK;').replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce;`)
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }`)
+        .replace('#include <envmap_fragment>', `#include <envmap_fragment>
+{ // [vegetazione] la pittura: tre fasce, ombra fredda e luce calda, occlusione dipinta, controluce
+  vec3 vgB = diffuseColor.rgb; float vgLb = max(dot(vgB, vec3(.299, .587, .114)), .002);
+  float vgLf = dot(outgoingLight, vec3(.299, .587, .114)) / vgLb;
+  vec3 vgHue = clamp(outgoingLight / max(vgB * vgLf, vec3(.002)), 0., 2.);
+  float vgB1 = smoothstep(uRamp.x - uRamp.z, uRamp.x + uRamp.z, vgLf), vgB2 = smoothstep(uRamp.y - uRamp.z, uRamp.y + uRamp.z, vgLf);
+  vec3 vgC = mix(mix(vgB * uOmbra + uOmbraAdd, vgB * uMezzo, vgB1), vgB * uLuce + uLuceAdd, vgB2);
+  vgC *= mix(uOcc, 1., vOcc) * mix(vec3(1.), vgHue, uTintaLuce);
+  #if NUM_DIR_LIGHTS > 0
+  float vgBack = pow(max(dot(-normalize(vViewPosition), directionalLights[0].direction), 0.), 3.);
+  float vgEdge = 1. - smoothstep(.5, .9, diffuseColor.a);
+  vgC += directionalLights[0].color * vgBack * (.3 + .7 * vgEdge) * vgB * uTrasl * vOcc;
+  #endif
+  outgoingLight = mix(outgoingLight, vgC, uPittura); }`);
     };
     if (opz.centro) m.defines = { VEG_CENTRO: '' };
     m.customProgramCacheKey = () => 'veg' + (opz.centro ? 'C' : '');
