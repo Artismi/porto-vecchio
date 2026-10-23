@@ -20786,6 +20786,8 @@ if (typeof module !== 'undefined') module.exports = World;
 var Vegetazione = (function () {
   'use strict';
   const QS = typeof location !== 'undefined' && location.search ? location.search : '';
+  // [vegetazione] il suolo dipinto e la copertura bassa nuova si accendono solo a richiesta (?verdesuolo): il prato lo fa il tappeto di prima
+  const SUOLO = /[?&]verdesuolo\b/.test(QS);
   const SPENTO = /[?&]vecchioverde\b/.test(QS) || (typeof process !== 'undefined' && process.env && process.env.PV_VECCHIOVERDE === '1');
 
   // ================= LE MISURE =================
@@ -21596,7 +21598,7 @@ var Vegetazione = (function () {
   // ombra/mezzo, soglia mezzo/luce, morbidezza, in unità di «quanta luce prende»), l'ombra fredda e la luce calda come moltiplicatori della
   // tinta della specie, l'occlusione dipinta, il controluce sui bordi delle ciocche, quanto della tinta della luce del gioco passa (sera, notte).
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
-    uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
+    uPittura: { value: .35 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
     uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.8 }, uOff: { value: .1 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
@@ -21823,7 +21825,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
           if (d < R0) metti(im('v|' + p.sp + '|' + p.v, KIT.modello(p.sp, p.v), MV, S.strato !== 'C'), p.x, y, p.y, s, p.rot, p.t);
           if (d > R0 - F0 && S.strato !== 'C') metti(im('s|' + p.sp, KIT.sagoma(p.sp, 1), MS, false), p.x, y, p.y, s, p.rot, p.t); });
         IM.forEach((g, k) => { if (k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
-      if (Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
+      if (SUOLO && Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
         const st = tel ? 1.1 : .8;
         for (let y = Math.floor((cz - RC) / st) * st; y < cz + RC; y += st) for (let x = Math.floor((cx - RC) / st) * st; x < cx + RC; x += st) {
           const jx = x + hash2(Math.round(x * 10), Math.round(y * 10), 7901) * st, jy = y + hash2(Math.round(x * 10), Math.round(y * 10), 7902) * st; if (Math.hypot(jx - cx, jy - cz) > RC) continue;
@@ -21835,7 +21837,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
@@ -58724,7 +58726,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP);   /* [vegetazione] */
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && Vegetazione.SUOLO && M.world && M.world.vegetazione) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP);   /* [vegetazione] */
     yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
@@ -64548,7 +64550,7 @@ var Render = (function () {
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
-      if (z === ZN.CITTA || !natural(v) || VEGN(ii)) continue;   // [vegetazione]
+      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione] il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
       if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;

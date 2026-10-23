@@ -20,6 +20,8 @@
 var Vegetazione = (function () {
   'use strict';
   const QS = typeof location !== 'undefined' && location.search ? location.search : '';
+  // [vegetazione] il suolo dipinto e la copertura bassa nuova si accendono solo a richiesta (?verdesuolo): il prato lo fa il tappeto di prima
+  const SUOLO = /[?&]verdesuolo\b/.test(QS);
   const SPENTO = /[?&]vecchioverde\b/.test(QS) || (typeof process !== 'undefined' && process.env && process.env.PV_VECCHIOVERDE === '1');
 
   // ================= LE MISURE =================
@@ -830,7 +832,7 @@ var Vegetazione = (function () {
   // ombra/mezzo, soglia mezzo/luce, morbidezza, in unità di «quanta luce prende»), l'ombra fredda e la luce calda come moltiplicatori della
   // tinta della specie, l'occlusione dipinta, il controluce sui bordi delle ciocche, quanto della tinta della luce del gioco passa (sera, notte).
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
-    uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
+    uPittura: { value: .35 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
     uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.8 }, uOff: { value: .1 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
@@ -1057,7 +1059,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
           if (d < R0) metti(im('v|' + p.sp + '|' + p.v, KIT.modello(p.sp, p.v), MV, S.strato !== 'C'), p.x, y, p.y, s, p.rot, p.t);
           if (d > R0 - F0 && S.strato !== 'C') metti(im('s|' + p.sp, KIT.sagoma(p.sp, 1), MS, false), p.x, y, p.y, s, p.rot, p.t); });
         IM.forEach((g, k) => { if (k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
-      if (Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
+      if (SUOLO && Math.hypot(cx - lc, cz - lcz) > 2.5) { lc = cx; lcz = cz; IM.forEach((g, k) => { if (k.startsWith('c|')) g.n = 0; });
         const st = tel ? 1.1 : .8;
         for (let y = Math.floor((cz - RC) / st) * st; y < cz + RC; y += st) for (let x = Math.floor((cx - RC) / st) * st; x < cx + RC; x += st) {
           const jx = x + hash2(Math.round(x * 10), Math.round(y * 10), 7901) * st, jy = y + hash2(Math.round(x * 10), Math.round(y * 10), 7902) * st; if (Math.hypot(jx - cx, jy - cz) > RC) continue;
@@ -1069,7 +1071,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
