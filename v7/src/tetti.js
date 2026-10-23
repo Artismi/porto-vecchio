@@ -276,6 +276,122 @@ var Tetti = (function () {
       const c = campo(p, 'sottopasso', .3, L - .3, -4.05, 4.05, (p.q || 0) + Hr, vicinoB(p.x + L / 2, p.y)); scalaCamm(c, 1.4, 4.5, 1); scalaCamm(c, 1.4, -4.5, -1); });
   }
   buildCamm();
+
+  // ---------------- [tetti4] LA RETE DEI TETTI: le isole si legano ----------------
+  // Andrea: «vedo ancora tetti e zone che non mi piacciono: semplici, non percorribili o non connessi, piatti e poco espressivi, non
+  // attraversati da percorsi esplorativi». Nel borgo un piano di dislivello (2,4 m) basta a spezzare il livello dei tetti: il grafo si
+  // fermava a ogni casa più alta, e le passerelle erano una per casa. Qui, sui tre quartieri vecchi (borgo, marina, Ottocento), si
+  // cercano i legami che mancano e si mettono, come dato, col vocabolario che c'è già:
+  //   - la SCALETTA di ferro minio fra due tetti attaccati che differiscono di un piano o due (2,4-4,8 m): sta sul muro del più alto,
+  //     il piede sul tetto più basso (è una LADDERS con footB, il motore la sale già);
+  //   - l'ARCO DI CONTRASTO sopra il vicolo di una o due caselle (2-4 m) nel borgo e nella marina: un arco di pietra col dorso
+  //     calpestabile, fra due tetti entro un piano (è una PLANKS con arco: true, il motore la cammina già);
+  //   - la PASSERELLA di tavole (o il ponticello di ferro sopra le tre caselle) dove il vicolo è più largo, o nell'Ottocento.
+  // Si legano prima le isole fra loro (un albero: ogni legame unisce due pezzi di rete diversi, dal più economico), poi pochi legami
+  // in più che chiudono un anello dove il giro sui tetti era lungo più di otto passi. Mai sopra le vie da 5 m in su (Rua, Marina,
+  // Vittoria, Corso) né sopra le piazze; un attraversamento ogni 9 m al più, due legami nuovi per casa al più. Tutto dalle caselle e
+  // dalle case: cambia la pianta, la rete si rifà.
+  const ZONE4 = { E0: 'borgo', E2: 'marina', E3: 'ottocento' };
+  const ok4 = b => b && ZONE4[b.era] && !b.__tierOf && !b.lighthouse && !b.kiosk && !b.church && !b.military && !b.gov && !b.shack && !b.rot && !b.pezzo;
+  const RETE4 = { scalette: [], archi: [], passerelle: [], anelli: 0 }, DBG4 = typeof process !== 'undefined' && process.env && process.env.RETE4_DBG ? [] : null;
+  function rete4() {
+    if (!CN3) return;
+    const E0 = grafo(), par = new Map(), find = a => { while (par.has(a) && par.get(a) !== a) a = par.get(a); return a; }, uni = (a, b) => { a = find(a); b = find(b); if (a !== b) par.set(a, b); };
+    B.forEach((b, i) => par.set(i, i));
+    E0.forEach((L, a) => L.forEach(e => { if ((E0.get(e.b) || []).some(f => f.b === a)) uni(a, e.b); }));   // un pezzo di rete: ci si va e si torna
+    const cand = new Map();   // per coppia: il legame migliore
+    const tileOk = (tx, ty) => { if (!inb(tx, ty) || !G.walkT(tx, ty)) return false; const k = ty * GW + tx; return BI[k] < 0 && (W.roadW[k] || 0) <= 5 && G.tileAt(tx, ty) !== G.T.PIAZZA; };
+    const via5 = (tx, ty, ox, oy, g) => { for (let q = 0; q < g; q++) if ((W.roadW[(ty + oy * q) * GW + tx + ox * q] || 0) >= 5) return true; return false; };   // la Rua e la Marina: solo l'arco, uno ogni 30 m
+    B.forEach((b, bi) => {
+      if (!ok4(b) || b.w < 1 || b.h < 1) return;
+      sidesOf(b).forEach(sd => {
+        const [ox, oy] = sd.out, runs = new Map();
+        for (let k = 0; k < sd.n; k++) {
+          const [tx0, ty0] = sd.tile(k);
+          for (let g = 0; g <= 3; g++) {
+            const tx = tx0 + ox * g, ty = ty0 + oy * g; if (!inb(tx, ty)) break;
+            const o = BI[ty * GW + tx];
+            if (o >= 0 && B[o]) { if (o !== bi) { const v5 = g > 0 && via5(tx0, ty0, ox, oy, g), key = o + ':' + g + ':' + (v5 ? 1 : 0), R = runs.get(key) || runs.set(key, []).get(key); R.push(k); } break; }
+            if (!tileOk(tx, ty)) break;
+          }
+        }
+        runs.forEach((R, key) => {
+          const [o, g, v5] = key.split(':').map(Number), c = B[o]; if (!ok4(c)) return;
+          if (v5 && (b.era === 'E3' || c.era === 'E3' || R.length < 2)) return;
+          const ha = roofRule(b), hc = roofRule(c), dh = hc - ha; let tipo = null, costo = 0;
+          if (g === 0) { if (dh <= 1.2 || dh > 4.9) return; tipo = 'scaletta'; costo = 1 + dh * .15; }   // b più basso, c più alto: la scala sul muro di c
+          else { if (Math.abs(dh) > 2.45 || (R.length < 2 && g > 1) || (ox ? Math.min(b.w, c.w) : Math.min(b.h, c.h)) < 2) return;   // le teste delle assi entrano un metro e mezzo: case profonde almeno due caselle nel verso del passaggio if (g === 1 && Math.abs(dh) <= 1.2 && JUMPS.some(J => (J.bi === bi && J.bj === o) || (J.bi === o && J.bj === bi))) return;
+            tipo = v5 ? 'arco' : (b.era === 'E3' || c.era === 'E3') ? (g >= 2 ? 'ponte' : 'passerella') : g <= 2 ? 'arco' : 'passerella'; costo = 1.4 + g * .5 + Math.abs(dh) * .2 + (v5 ? 1.5 : 0); }
+          const m = R[Math.floor(R.length / 2)], pk = Math.min(bi, o) + ':' + Math.max(bi, o), q = cand.get(pk);
+          const ks = R.slice().sort((u, v) => Math.abs(u - m) - Math.abs(v - m));   // [tetti4] la posizione di mezzo, poi le altre: se una è occupata si prova la vicina
+          const C = { tipo, costo: costo - Math.min(R.length, 4) * .1, a: bi, b: o, sd, k: m, ks, g, dh, v5: !!v5 };
+          if (!q || C.costo < q.costo) cand.set(pk, C);
+        });
+      });
+    });
+    const per = new Map(), passi = [], archi5 = [], lad0 = LADDERS.map(L => [L.tx, L.ty]);
+    PLANKS.forEach(P => passi.push([(P.wa[0] + P.wb[0]) / 2, (P.wa[1] + P.wb[1]) / 2]));
+    const mettiC = (C, sep) => { for (const k of C.ks) { const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
+    const mettiK = (C, kk, sep) => {
+      const [wx, wy] = C.sd.wall(kk), [ox, oy] = C.sd.out;
+      if ((per.get(C.a) || 0) >= 2 || (per.get(C.b) || 0) >= 2) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'per']), 'per');
+      if (C.tipo === 'scaletta') {   // sul muro della casa alta (c), il piede sul tetto della bassa (b): out va da c verso b
+        const hi = C.b, lo = C.a, ux = -ox, uy = -oy, ax = wx, ay = wy;   // il muro di b verso c è il muro condiviso
+        const L = { i: LADDERS.length, bi: hi, f: 'r4', x: ax, y: ay, ox: ux, oy: uy, fx: ax + ux * .55, fy: ay + uy * .55, tx: ax - ux * .8, ty: ay - uy * .8, footB: lo, ang: Math.atan2(uy, ux), vis: true, tipo4: 'scaletta' };
+        if (bAt(L.fx, L.fy) !== lo || bAt(L.tx, L.ty) !== hi) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'piede']), false);
+        if (lad0.some(([x, y]) => hyp(x - L.tx, y - L.ty) < 2.2 || hyp(x - L.fx, y - L.fy) < 1.6)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina']), false);
+        if (passi.some(([x, y]) => hyp(x - ax, y - ay) < 3)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'passo vicino']), false);
+        LADDERS.push(L); lad0.push([L.tx, L.ty]); RETE4.scalette.push(L.i);
+      } else {
+        const gap = C.g * TS, cx = wx + ox * gap / 2, cy = wy + oy * gap / 2;
+        if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '9m']), false);
+        if (C.v5 && archi5.some(([x, y]) => hyp(x - cx, y - cy) < 30)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '30m']), false);   // sopra la Rua e la Marina un arco ogni 30 m (LEGGIBILITA.md)
+        if (lad0.some(([x, y]) => hyp(x - wx, y - wy) < 1.8 || hyp(x - wx - ox * gap, y - wy - oy * gap) < 1.8)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina2']), false);
+        const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .6 : PHW, gap, x0: wx - ox * PIN, y0: wy - oy * PIN, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
+        P.L = PIN * 2 + gap; P.s1 = PIN; P.s2 = PIN + gap;
+        PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
+        for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
+          const A = PCELL.get(ck) || PCELL.set(ck, []).get(ck); if (A.indexOf(P) < 0) A.push(P); }
+      }
+      per.set(C.a, (per.get(C.a) || 0) + 1); per.set(C.b, (per.get(C.b) || 0) + 1); return true;
+    };
+    // 1) l'albero: si legano pezzi di rete diversi, dal legame più economico
+    const tutti = [...cand.values()].sort((p, q) => p.costo - q.costo || p.a - q.a || p.b - q.b), usati = new Set();
+    tutti.forEach(C => { if (find(C.a) === find(C.b)) return; if (mettiC(C, 6)) { uni(C.a, C.b); usati.add(C); } });
+    salite4(find, lad0, passi);
+    // 2) gli anelli: dove sui tetti per andare da una casa all'altra servono più di otto passaggi, un legame li accorcia
+    const E1 = grafo(), hop = (s, t, max) => { const d = new Map([[s, 0]]), Q = [s]; for (let k = 0; k < Q.length; k++) { const a = Q[k], da = d.get(a); if (a === t) return da; if (da >= max) continue; (E1.get(a) || []).forEach(e => { if (!d.has(e.b)) { d.set(e.b, da + 1); Q.push(e.b); } }); } return Infinity; };
+    tutti.forEach(C => { if (usati.has(C) || RETE4.anelli >= 24 || C.tipo === 'scaletta') return; if (hop(C.a, C.b, 9) <= 8) return; if (mettiC(C, 9)) { usati.add(C); RETE4.anelli++; } });
+  }
+  // [tetti4] LE SALITE DELLA RETE: ogni pezzo di rete dei tre quartieri vecchi ha almeno tre scale da terra (due per un giro, una per
+  // la terza via), viste dalla camera come vuole [tetti3]: sul lato sud o est, mai coperte da una casa o da un pezzo grande, mai nel
+  // budello, lontane dalla porta, staccate dieci metri dalle altre scale del pezzo.
+  function salite4(find, lad0, passi) {
+    const pezzi = new Map(); B.forEach((b, i) => { if (!ok4(b)) return; const r = find(i); (pezzi.get(r) || pezzi.set(r, []).get(r)).push(i); });
+    RETE4.salite = [];
+    pezzi.forEach(P => {
+      if (P.length < 5) return; const S = new Set(P), terra = () => LADDERS.filter(L => L.footB < 0 && !L.camm && S.has(L.bi));
+      const voglio = Math.min(5, 3 + Math.floor(P.length / 30));
+      for (let giro = 0; giro < 6 && terra().length < voglio; giro++) {
+        let best = null; const T0 = terra();
+        P.forEach(bi => { const b = B[bi], d = DOOR(b);
+          sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E') return; const [ox, oy] = sd.out;
+            const no = r => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
+            for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k); if (!inb(tx, ty) || BI[ty * GW + tx] >= 0 || !G.walkT(tx, ty) || !G.walkT(tx + ox, ty + oy) || BI[(ty + oy) * GW + tx + ox] >= 0) { no('budello'); continue; }
+              if (d && Math.abs(tx - d[0]) + Math.abs(ty - d[1]) < 1) { no("porta"); continue; }   // accanto alla porta va bene (la porta è larga un metro)
+              const [wx, wy] = sd.wall(k), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+              if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no('vicina'); continue; }
+              if (coperta(wx, wy, ox, oy)) { no('coperta'); continue; } if (!scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b))) { no('nonvista'); continue; }
+              const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no('10m'); continue; }
+              const s = Math.min(dmin, 40) + (k === 0 || k === sd.n - 1 ? 2 : 0);
+              if (!best || s > best.s) best = { s, bi, sd, k, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2 }; } }); });
+        if (!best) break;
+        const L = { i: LADDERS.length, bi: best.bi, f: best.sd.f, x: best.wx, y: best.wy, ox: best.ox, oy: best.oy, fx: best.fx, fy: best.fy, tx: best.tx, ty: best.ty, footB: -1, ang: Math.atan2(best.oy, best.ox), vis: true, tipo4: 'salita' };
+        LADDERS.push(L); lad0.push([L.tx, L.ty]); RETE4.salite.push(L.i);
+      }
+    });
+  }
+  rete4();
   // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
   // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
   // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
@@ -456,7 +572,7 @@ var Tetti = (function () {
     if (p.lv && p.lv.k === 'tetto') settle(st);
     fallStep(st);
     p.onRoof = !!(p.lv && p.lv.k === 'tetto');
-    if (p.onRoof) { belvStep(st); hideStep(st, dt); }
+    if (p.onRoof) { belvStep(st); hideStep(st, dt); if (typeof tesoroStep === 'function') tesoroStep(st); }   // [tetti4] il tesoro
   }
   { const prev = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Tetti]', e); } } }; }
   const onRoof = st => !!(st.player.lv && st.player.lv.k === 'tetto');
@@ -666,6 +782,31 @@ var Tetti = (function () {
   const API = { LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
   // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
   if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
+  // [tetti4] I PREMI dei giri (percorsi.js, i rami): il belvedere entra fra i belvederi (la panca, la bandierina, «Siediti a guardare»),
+  // la terrazza la arreda il piano (il pergolato), il tesoro è una cassetta di latta che si apre la prima volta, la corte è la scala che
+  // scende nel cortile. PREMI: { k, x, y, bi, nome, giro }.
+  const PREMI = [];
+  function premi4() {
+    PREMI.length = 0; const D = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null; if (!D) return;
+    D.circuiti.filter(c => c.k === 'tetti').forEach(c => (c.rami || []).forEach(r => {
+      const b = B[r.bi]; let x = r.x, y = r.y;
+      if (r.premio === 'tesoro' || r.premio === 'belvedere' || r.premio === 'terrazza') {   // il posto: nel quarto del tetto più lontano dalla camera (nord-ovest), dentro il parapetto
+        const x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS; x = x0 + Math.max(1.1, W1 * .3); y = y0 + Math.max(1.1, D1 * .3); }
+      const q = { i: PREMI.length, k: r.premio, x, y, bi: r.bi, nome: r.nome, giro: c.id, scala: r.scala };
+      PREMI.push(q); r.premioI = q.i;
+      if (r.premio === 'belvedere' && !BELV.some(v => v.bi === r.bi)) BELV.push({ i: BELV.length, bi: r.bi, x, y, name: 'Belvedere · ' + (c.tema || c.nome), dist: '', giro: c.id });
+    }));
+  }
+  premi4();
+  // il tesoro: la prima volta che ci passi accanto (sul suo tetto, entro un metro e mezzo) la cassetta si apre
+  const TESORI4 = ['Una scatola di latta dietro il comignolo: dentro, soldi arrotolati con l\'elastico.', 'Sotto una tegola smossa, un sacchetto di plastica: qualcuno ci teneva i risparmi.', 'Nella cassetta del contatore vecchio, una busta: chi l\'ha dimenticata non torna a prenderla.'];
+  function tesoroStep(st) {
+    const p = st.player; if (!p.lv || p.lv.k !== 'tetto') return;
+    for (const q of PREMI) { if (q.k !== 'tesoro' || q.bi !== p.lv.b || hyp(p.x - q.x, p.y - q.y) > 1.6) continue;
+      const T0 = st.tetti || (st.tetti = { belv: {}, sat: {} }), Tz = T0.tesori || (T0.tesori = {}); if (Tz[q.i]) return;
+      Tz[q.i] = st.t; const soldi = 25 + (q.i * 17) % 40; p.money = (p.money || 0) + soldi;
+      G.feed(st, `${TESORI4[q.i % TESORI4.length]} (+${soldi} mila lire · ${Object.keys(Tz).length} tesori su ${PREMI.filter(z => z.k === 'tesoro').length})`, 'money'); return; }
+  }
 
   // =====================================================================================================================
   // [tetti3] IL PIANO DEI TETTI: il tetto è la cosa che si vede di più in città, quindi è un quadro composto e non un deposito
@@ -832,7 +973,33 @@ var Tetti = (function () {
       if (ok) n++; }
     return n >= 2;
   }
-  Object.assign(API, { PIANO, CAT3, piano3, verifica3, vistaL3, loc3 });
+  // =====================================================================================================================
+  // [tetti4] LA COPERTURA DEI TETTI: quali tetti del borgo, della marina e dell'Ottocento stanno sulla rete (test_tetti4.js, la pianta)
+  // =====================================================================================================================
+  // Per ogni casa con l'epoca dei tre quartieri vecchi (E0 borgo, E2 marina, E3 Ottocento) una classe sola:
+  //   giro   sta su un circuito dei tetti (la linea, i suoi rami, le sue salite e discese);
+  //   rete   ci si arriva camminando sui tetti da un circuito (la rete dei tetti, archi orientati del grafo);
+  //   isola  ci si sale da terra, ma dai circuiti non ci si arriva (un'isola di tetti);
+  //   muro   non ci si sale proprio (nessuna scala, nessun passaggio da un tetto dove si sale).
+  // In più: «muto» il tetto senza niente sopra e della forma più comune del suo quartiere (il lastrico vuoto, la capanna di serie).
+  function copertura4() {
+    const E = grafo(), D = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null;
+    const giri = D ? D.circuiti.filter(c => c.k === 'tetti') : [], sulGiro = new Set();
+    giri.forEach(c => { (c.edifici || []).forEach(i => sulGiro.add(i)); (c.rami || []).forEach(r => (r.edifici || []).forEach(i => sulGiro.add(i))); (c.vie || []).forEach(v => (v.edifici || []).forEach(i => sulGiro.add(i))); });
+    const bfs = src => { const S = new Set(src), Q = [...S]; for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
+    const daRete = bfs(sulGiro), daTerra = bfs(LADDERS.filter(L => L.footB < 0 && !L.camm).map(L => L.bi));
+    const firma = i => { const P = PIANO[i]; return P ? P.tipo + ':' + (P.forma || P.manto) : '?'; }, comune = {};
+    B.forEach((b, i) => { const z = ZONE4[b.era]; if (!z) return; const f = firma(i), c = comune[z] || (comune[z] = {}); c[f] = (c[f] || 0) + 1; });
+    const piu = {}; for (const z in comune) piu[z] = Object.entries(comune[z]).sort((a, c) => c[1] - a[1])[0][0];
+    const classe = [], Z = {};
+    B.forEach((b, i) => { const z = ZONE4[b.era]; if (!z || b.__tierOf) return;
+      const k = sulGiro.has(i) ? 'giro' : daRete.has(i) ? 'rete' : daTerra.has(i) ? 'isola' : 'muro', P = PIANO[i], muto = !!P && !P.gruppi.length && firma(i) === piu[z] && !P.forma4;
+      classe[i] = { k, muto, z };
+      const s = Z[z] || (Z[z] = { tetti: 0, giro: 0, rete: 0, isola: 0, muro: 0, muti: 0, forme: {} }); s.tetti++; s[k]++; if (muto) s.muti++; const f = P ? (P.forma4 || P.forma || P.tipo) : '?'; s.forme[f] = (s.forme[f] || 0) + 1; });
+    for (const z in Z) { const s = Z[z]; s.raggiungibili = (s.giro + s.rete) / Math.max(1, s.tetti); s.attraversati = s.giro / Math.max(1, s.tetti); s.quotaMuti = s.muti / Math.max(1, s.tetti); }
+    return { classe, zone: Z, giri: giri.length };
+  }
+  Object.assign(API, { PIANO, CAT3, piano3, verifica3, vistaL3, loc3, copertura4, PREMI, RETE4, DBG4 });
   return API;
 })();
 if (typeof module !== 'undefined') module.exports = Tetti;
