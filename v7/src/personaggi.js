@@ -23,6 +23,7 @@ var Personaggi = (function () {
   // =====================================================================================
   // GLI STILI (la tavola di prova): proporzioni, forme delle sezioni, ombreggiatura
   // =====================================================================================
+  const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.7, spalle: 1, toon: 3, contorno: .008 },
@@ -248,7 +249,8 @@ var Personaggi = (function () {
         const x = lerp(L0, L1, t), u = cl((x - xs[1]) / (xs[3] - xs[1]), 0, 1), ue = (x - xs[1]) / (xs[2] - xs[1]);
         const r = K.braccio * (t < .18 ? lerp(1.12, 1.08, t / .18) : u < .25 ? lerp(1.08, 1, (u) / .25) : u < .45 ? lerp(1, .84, (u - .25) / .2) : u < .55 ? lerp(.84, .9, (u - .45) / .1) : lerp(.9, .62, (u - .55) / .45));
         const y = lerp(j0[1], j2[1], u) - (t < .2 ? .015 * (1 - t / .2) : 0), z = lerp(j0[2], j2[2], u) - .005;
-        return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * (u > .55 ? .82 : 1), b: r, ao: t < .15 ? .85 : 1, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
+        const kb = x > xs[1] - .01 ? 1 / BRACCIO : 1;   // dove pesa il braccio la scala dell'osso lo ingrossa: qui si assottiglia di quanto
+        return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
       };
       const camp = []; for (let k = 0; k <= 9; k++) camp.push(k / 9);
       catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { lung: L1 - L0, seg: 12, flipU: sd === 'R' });
@@ -315,7 +317,7 @@ var Personaggi = (function () {
   }
   // ---------------- LE MANI: palmo, pollice e dita in due gruppi (indice e le altre tre), leggibili da lontano ----------------
   function mano(B, J, sd, sg, pelle, D) {
-    const st = S(), k = st.mani / ((window.Anim && Anim.HAND) || .85) * (D.sesso === 'f' ? .9 : 1) * (D.mani || 1), w = J['Wrist' + sd], m1 = J['Middle1' + sd], m2 = J['Middle2' + sd], i1 = J['Index1' + sd], t1 = J['Thumb1' + sd], t2 = J['Thumb2' + sd];
+    const st = S(), k = st.mani / BRACCIO / ((window.Anim && Anim.HAND) || .85) * (D.sesso === 'f' ? .9 : 1) * (D.mani || 1), w = J['Wrist' + sd], m1 = J['Middle1' + sd], m2 = J['Middle2' + sd], i1 = J['Index1' + sd], t1 = J['Thumb1' + sd], t2 = J['Thumb2' + sd];
     const ax = norm(sub(m2, w)), x0 = w[0] + sg * .005;
     // il palmo: piatto (davanti e dietro la mano nella posa a T sono sopra e sotto)
     const pc = [x0 + sg * .045 * k, w[1] - .004, w[2] + .002];
@@ -344,7 +346,7 @@ var Personaggi = (function () {
   }
   // ---------------- LA TESTA: cranio, mascella, naso, orecchie, sopracciglia, occhi, bocca, capelli a ciocche, baffi, barbe, occhiali, cappelli ----------------
   const TESTE = {   // [quota, mezza larghezza, mezza profondità, avanti] dal mento alla sommità (in metri, prima della scala dello stile)
-    ovale: [[-.04, .03, .02, .062], [-.03, .045, .038, .05], [-.012, .058, .066, .03], [.03, .074, .09, .012], [.085, .083, .1, .0], [.135, .086, .104, -.006], [.18, .079, .094, -.012], [.215, .056, .068, -.016], [.235, .014, .02, -.016]],
+    ovale: [[-.034, .03, .02, .06], [-.026, .045, .038, .05], [-.012, .058, .066, .03], [.03, .074, .09, .012], [.085, .083, .1, .0], [.135, .086, .104, -.006], [.18, .079, .094, -.012], [.215, .056, .068, -.016], [.235, .014, .02, -.016]],
     quadra: [[-.045, .026, .02, .07], [-.035, .048, .04, .055], [-.012, .068, .07, .03], [.03, .08, .092, .012], [.085, .086, .1, .0], [.135, .087, .103, -.006], [.18, .081, .094, -.012], [.21, .06, .07, -.015], [.232, .018, .024, -.015]],
     tonda: [[-.04, .02, .02, .065], [-.03, .044, .044, .05], [-.01, .068, .074, .028], [.03, .084, .095, .01], [.085, .09, .102, .0], [.135, .089, .103, -.006], [.18, .08, .093, -.012], [.21, .057, .066, -.015], [.228, .015, .02, -.015]],
     lunga: [[-.048, .03, .02, .064], [-.038, .044, .036, .052], [-.018, .055, .064, .032], [.03, .071, .088, .012], [.09, .08, .099, .0], [.14, .082, .102, -.006], [.19, .075, .093, -.012], [.225, .053, .065, -.016], [.245, .012, .018, -.016]],
@@ -621,32 +623,38 @@ var Personaggi = (function () {
     T(37, c => { spicchi(c); logo(c, 0); logo(c, 1); line(c, .02, [[.44, .02], [.56, .02]]); });
     // 40-47 le facce (u allargata: il viso riempie la tessera; v 0 il mento, 1 la sommità). R = sopracciglia e barba (colore dei capelli), B = il bianco degli occhi, R+B = le labbra, G = l'inchiostro
     const faccia = (i, o) => T(40 + i, c => {
-      const ey = .484, ex = .122, sq = o.stretti ? .016 : .022, br = o.ciglia || 0;
-      [-1, 1].forEach(s => { const x = .5 + s * ex;
-        c.fillStyle = Bl; c.beginPath(); c.ellipse(x, ey, .05, sq, 0, 0, 7); c.fill();
-        c.fillStyle = G; c.beginPath(); c.ellipse(x - s * .006, ey - .002, .02, Math.min(.024, sq + .004), 0, 0, 7); c.fill();
-        c.strokeStyle = G; c.lineCap = 'round'; c.lineWidth = .013 + br * .006; c.beginPath(); c.moveTo(x - .055, ey + sq * .2); c.quadraticCurveTo(x, ey + sq * 1.9, x + .055, ey + sq * .2 + (br ? s * .004 : 0)); c.stroke();
-        if (br) { c.lineWidth = .008; c.beginPath(); c.moveTo(x + s * .05, ey + sq * .5); c.lineTo(x + s * .075, ey + sq * 1.4); c.stroke(); }
-        c.lineWidth = .004; c.globalAlpha = .6; c.beginPath(); c.moveTo(x - .04, ey - sq * 1.1); c.quadraticCurveTo(x, ey - sq * 1.7, x + .04, ey - sq * 1.1); c.stroke(); c.globalAlpha = 1;
-        // le sopracciglia
-        const bt = o.brow || 0, bw = o.browW || .026; c.strokeStyle = R; c.lineWidth = bw; c.beginPath(); c.moveTo(.5 + s * .045, .565 - bt * .02); c.quadraticCurveTo(.5 + s * .11, .6 + (o.arco || 0), .5 + s * .2, .575 + bt * .012); c.stroke();
-        if (o.rughe) { c.strokeStyle = G; c.lineWidth = .004; c.beginPath(); c.moveTo(x - .04, ey - .05); c.quadraticCurveTo(x, ey - .065, x + .04, ey - .05); c.stroke(); c.beginPath(); c.moveTo(x + s * .07, ey + .01); c.lineTo(x + s * .09, ey - .01); c.stroke(); } });
-      c.strokeStyle = G; c.lineCap = 'round';
-      // il naso: le narici e l'ombra di lato
-      c.lineWidth = .007; [-1, 1].forEach(s => { c.beginPath(); c.arc(.5 + s * .03, .315, .014, s > 0 ? Math.PI * .9 : -Math.PI * .1, s > 0 ? Math.PI * 1.6 : Math.PI * .6); c.stroke(); });
-      c.globalAlpha = .45; c.lineWidth = .005; c.beginPath(); c.moveTo(.47, .47); c.quadraticCurveTo(.455, .38, .465, .33); c.stroke(); c.globalAlpha = 1;
-      // la bocca
-      const um = o.umore || 0, my = .262;
-      if (o.labbra) { c.fillStyle = 'rgb(255,0,255)'; c.beginPath(); c.ellipse(.5, my - .006, .075, .022, 0, 0, 7); c.fill(); }
-      c.strokeStyle = G; c.lineWidth = .011; c.beginPath(); c.moveTo(.42, my + um * .02); c.quadraticCurveTo(.5, my - um * .03, .58, my + um * .02); c.stroke();
-      c.lineWidth = .005; c.globalAlpha = .5; c.beginPath(); c.moveTo(.47, my - .04); c.lineTo(.53, my - .04); c.stroke(); c.globalAlpha = 1;
-      if (um > .3) [-1, 1].forEach(s => { c.lineWidth = .005; c.beginPath(); c.moveTo(.5 + s * .1, my + .04); c.quadraticCurveTo(.5 + s * .11, my + .005, .5 + s * .09, my - .01); c.stroke(); });
-      if (o.rughe) [-1, 1].forEach(s => { c.lineWidth = .005; c.beginPath(); c.moveTo(.5 + s * .06, .34); c.quadraticCurveTo(.5 + s * .1, .29, .5 + s * .09, .23); c.stroke(); c.beginPath(); c.moveTo(.38, .7 + s * .02); c.lineTo(.62, .7 + s * .02); c.stroke(); });
-      if (o.duro) [-1, 1].forEach(s => { c.lineWidth = .006; c.beginPath(); c.moveTo(.5 + s * .015, .54); c.lineTo(.5 + s * .02, .6); c.stroke(); });
-      if (o.barbetta) { c.fillStyle = R; c.globalAlpha = .28; c.beginPath(); c.moveTo(.2, .38); c.quadraticCurveTo(.25, .02, .5, -.02); c.quadraticCurveTo(.75, .02, .8, .38); c.lineTo(.7, .36); c.quadraticCurveTo(.6, .2, .5, .19); c.quadraticCurveTo(.4, .2, .3, .36); c.closePath(); c.fill(); c.beginPath(); c.ellipse(.5, .29, .08, .018, 0, 0, 7); c.fill(); c.globalAlpha = 1; }
+      const ey = .472, ex = .118, h = o.stretti ? .016 : .021, w = .047, br = o.ciglia || 0;
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      [-1, 1].forEach(s => { const x = .5 + s * ex, xi = x - s * w, xo = x + s * w;   // xi verso il naso, xo verso la tempia
+        // la mandorla: il bianco appena, l'iride grande e scura, la palpebra di sopra pesante e un po' calata verso l'esterno
+        c.fillStyle = Bl; c.beginPath(); c.moveTo(xi, ey); c.quadraticCurveTo(x, ey + h * 2.1, xo, ey + h * .25); c.quadraticCurveTo(x, ey - h * 1.5, xi, ey); c.fill();
+        c.fillStyle = G; c.beginPath(); c.ellipse(x - s * .004, ey + h * .15, .021, h * 1.02, 0, 0, 7); c.fill();
+        c.fillStyle = Bl; c.beginPath(); c.arc(x - s * .01, ey + h * .55, .005, 0, 7); c.fill();   // il punto di luce
+        c.strokeStyle = G; c.lineWidth = .014 + br * .006; c.beginPath(); c.moveTo(xi - s * .004, ey - h * .1); c.quadraticCurveTo(x, ey + h * 2.3, xo + s * .008, ey + h * .1); c.stroke();
+        if (br) { c.lineWidth = .007; c.beginPath(); c.moveTo(xo, ey + h * .3); c.lineTo(xo + s * .018, ey + h * 1.1); c.stroke(); }
+        c.lineWidth = .004; c.globalAlpha = .55; c.beginPath(); c.moveTo(xi + s * .008, ey - h * .9); c.quadraticCurveTo(x, ey - h * 1.7, xo - s * .004, ey - h * .5); c.stroke(); c.globalAlpha = 1;
+        c.lineWidth = .004; c.globalAlpha = .45; c.beginPath(); c.moveTo(xi + s * .01, ey + h * 2.6); c.quadraticCurveTo(x, ey + h * 3.4, xo - s * .006, ey + h * 2.2); c.stroke(); c.globalAlpha = 1;   // la piega della palpebra
+        // le sopracciglia: basse, quasi dritte, vicine agli occhi; la testa verso il naso un filo più giù
+        const bt = o.brow || 0, bw = o.browW || .03; c.strokeStyle = R; c.lineWidth = bw; c.beginPath(); c.moveTo(.5 + s * .05, .525 - bt * .012); c.quadraticCurveTo(.5 + s * .11, .548 + (o.arco || 0), .5 + s * .175, .535 + bt * .008); c.stroke();
+        if (o.rughe) { c.strokeStyle = G; c.lineWidth = .004; c.beginPath(); c.moveTo(xo + s * .006, ey + .004); c.lineTo(xo + s * .022, ey + .016); c.moveTo(xo + s * .006, ey - .006); c.lineTo(xo + s * .022, ey - .014); c.stroke(); c.beginPath(); c.moveTo(x - .03, ey - .04); c.quadraticCurveTo(x, ey - .052, x + .03, ey - .04); c.stroke(); } });
+      c.strokeStyle = G;
+      // il naso: l'ombra del dorso da un lato, le ali, le narici
+      c.globalAlpha = .5; c.lineWidth = .006; c.beginPath(); c.moveTo(.47, .515); c.quadraticCurveTo(.455, .42, .46, .35); c.stroke(); c.globalAlpha = 1;
+      c.lineWidth = .007; [-1, 1].forEach(s => { c.beginPath(); c.moveTo(.5 + s * .045, .335); c.quadraticCurveTo(.5 + s * .05, .31, .5 + s * .02, .305); c.stroke(); });
+      // la bocca: larga e dritta, il labbro di sotto accennato; l'umore la piega appena
+      const um = o.umore || 0, my = .255, mw = .085;
+      if (o.labbra) { c.fillStyle = 'rgb(255,0,255)'; c.beginPath(); c.moveTo(.5 - mw, my); c.quadraticCurveTo(.5, my + .025, .5 + mw, my); c.quadraticCurveTo(.5, my - .03, .5 - mw, my); c.fill(); }
+      c.lineWidth = .01; c.beginPath(); c.moveTo(.5 - mw, my + um * .012); c.quadraticCurveTo(.5, my - um * .02 + .004, .5 + mw, my + um * .012 - (o.storto ? .008 : 0)); c.stroke();
+      c.lineWidth = .006; c.globalAlpha = .5; c.beginPath(); c.moveTo(.46, my - .035); c.quadraticCurveTo(.5, my - .045, .54, my - .035); c.stroke(); c.globalAlpha = 1;
+      c.lineWidth = .004; c.globalAlpha = .4; c.beginPath(); c.moveTo(.5, my + .06); c.lineTo(.5, my + .03); c.stroke(); c.globalAlpha = 1;   // il solco sopra il labbro
+      if (um > .3) [-1, 1].forEach(s => { c.lineWidth = .005; c.beginPath(); c.moveTo(.5 + s * (mw + .02), my + .03); c.quadraticCurveTo(.5 + s * (mw + .03), my + .005, .5 + s * (mw + .012), my - .012); c.stroke(); });
+      if (o.rughe) [-1, 1].forEach(s => { c.lineWidth = .005; c.beginPath(); c.moveTo(.5 + s * .06, .345); c.quadraticCurveTo(.5 + s * .105, .29, .5 + s * (mw + .02), .225); c.stroke(); c.beginPath(); c.moveTo(.4, .66 + s * .018); c.lineTo(.6, .66 + s * .018); c.stroke(); });
+      if (o.duro) [-1, 1].forEach(s => { c.lineWidth = .006; c.beginPath(); c.moveTo(.5 + s * .018, .5); c.lineTo(.5 + s * .022, .545); c.stroke(); });
+      if (o.zigomi) [-1, 1].forEach(s => { c.lineWidth = .004; c.globalAlpha = .35; c.beginPath(); c.moveTo(.5 + s * .2, .42); c.quadraticCurveTo(.5 + s * .18, .34, .5 + s * .14, .3); c.stroke(); c.globalAlpha = 1; });
+      if (o.barbetta) { c.fillStyle = R; c.globalAlpha = .28; c.beginPath(); c.moveTo(.2, .38); c.quadraticCurveTo(.25, .02, .5, -.02); c.quadraticCurveTo(.75, .02, .8, .38); c.lineTo(.7, .36); c.quadraticCurveTo(.6, .2, .5, .19); c.quadraticCurveTo(.4, .2, .3, .36); c.closePath(); c.fill(); c.beginPath(); c.ellipse(.5, .29, .09, .018, 0, 0, 7); c.fill(); c.globalAlpha = 1; }
     });
-    faccia(0, {}); faccia(1, { duro: 1, brow: 1, stretti: 1, umore: -.3, browW: .03 }); faccia(2, { umore: .7, arco: .01 }); faccia(3, { rughe: 1, brow: -.3, umore: -.1, stretti: 1 });
-    faccia(4, { ciglia: 1, labbra: 1, browW: .016, arco: .015 }); faccia(5, { ciglia: 1, labbra: 1, browW: .016, arco: .02, umore: .6 }); faccia(6, { ciglia: .5, labbra: 1, rughe: 1, browW: .014 }); faccia(7, { barbetta: 1, brow: .5, umore: -.1 });
+    faccia(0, { zigomi: 1 }); faccia(1, { duro: 1, brow: 1, stretti: 1, umore: -.2, browW: .028, zigomi: 1 }); faccia(2, { umore: .6, storto: 1 }); faccia(3, { rughe: 1, brow: -.2, stretti: 1, umore: -.1 });
+    faccia(4, { ciglia: 1, labbra: 1, browW: .015, arco: .01 }); faccia(5, { ciglia: 1, labbra: 1, browW: .015, arco: .012, umore: .5 }); faccia(6, { ciglia: .5, labbra: 1, rughe: 1, browW: .013 }); faccia(7, { barbetta: 1, brow: .5, stretti: 1, zigomi: 1, storto: 1 });
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
     P(1, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) c.fillRect(0, k / 4, 1, .1); });   // righe da marinaio
@@ -730,6 +738,8 @@ var Personaggi = (function () {
     sk.bind(ref.skeleton, ref.bindMatrix); ref.parent.add(sk); sk.position.copy(ref.position); sk.quaternion.copy(ref.quaternion); sk.scale.copy(ref.scale);
     if (S().contorno) { const ws = new THREE.Vector3(); ref.getWorldScale(ws); const gs = new THREE.Vector3(); g.getWorldScale(gs); OLU.value = S().contorno / (ws.x / gs.x || 1); const ol = new THREE.SkinnedMesh(geo, contorno()); ol.bind(ref.skeleton, ref.bindMatrix); ol.userData.personaggi = true; ol.frustumCulled = false; ref.parent.add(ol); ol.position.copy(ref.position); ol.quaternion.copy(ref.quaternion); ol.scale.copy(ref.scale); }
     kit.forEach(o => { if (o.parent) o.parent.remove(o); });
+    ['L', 'R'].forEach(sd => { const ua = ref.skeleton.bones.find(b => b.name === 'UpperArm' + sd), wr = ref.skeleton.bones.find(b => b.name === 'Wrist' + sd); if (!ua) return; ua.scale.multiplyScalar(BRACCIO);
+      if (wr) wr.children.forEach(ch => { if (!ch.isBone) ch.scale.multiplyScalar(1 / BRACCIO); }); });   // armi e attrezzi già agganciati al polso restano della loro misura
     const C = D.corpo || {}; u.body.scale.set(bs.x ? (C.largo || 1) : 1, C.alt || 1, C.largo || 1);
     u.personaggio = D; u.tri = geo.userData.tri; u.pelle = sk;
     return true;
