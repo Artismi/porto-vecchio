@@ -94,9 +94,12 @@ var Render = (function () {
   const VH = (i, j) => M.vh[Math.max(0, Math.min(G.GH, j)) * M.VW + Math.max(0, Math.min(G.GW, i))];
   function groundH(x, z) { // quota del terreno: interpolata fra i quattro vertici della casella
     const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
+    if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
     const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
     return VH(i, j) * (1 - u) * (1 - v) + VH(i + 1, j) * u * (1 - v) + VH(i, j + 1) * (1 - u) * v + VH(i + 1, j + 1) * u * v + swH(x, z);   // [isola35] sopra il marciapiede
   }
+  // [riva] la riva fine (src/riva.js): accesa se c'è il modulo e il mondo della città nuova; ?vecchiacosta la spegne
+  let RIVA9W = null; function RIVA9() { if (RIVA9W === M.world) return RIVA9W !== null && Riva.on; if (typeof Riva === 'undefined' || !M.world || !Riva.init(M.world)) return false; RIVA9W = M.world; return Riva.on; }
   function cornerH(tx, ty, cx, cz) { return VH(tx + cx, ty + cz); }
   const isWall = (tx, ty) => false;
   const zoneOf = tx => 'C';
@@ -2434,7 +2437,7 @@ var Render = (function () {
       rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
     freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
-    const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [];
+    const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [], RV9 = RIVA9();
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
       const k = j * (n + 1) + i, tx = tx0 + i, ty = ty0 + j;
       let h = hv(tx, ty);
@@ -2447,6 +2450,7 @@ var Render = (function () {
     }
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const v = gT(tx0 + i, ty0 + j); if (v === T.FOUNT || v === T.PIER) continue;   // [costa] il pontile è un modello (tavole e pali), sotto si vede l'acqua
+      if (RV9 && Riva.inBanda(tx0 + i, ty0 + j)) continue;   // [riva] la casella la ridisegna la riva fine
       if (v === T.WATER && coastIn((tx0 + i + .5) * TS, (ty0 + j + .5) * TS) < -3) continue;   // il fondale vicino alla riva c'è, il mare aperto no
       if (v === T.WATER) { let made = false; for (let b2 = -1; b2 <= 1 && !made; b2++) for (let a2 = -1; a2 <= 1; a2++) { const vv = gT(tx0 + i + a2, ty0 + j + b2); if (vv === T.QUAY || vv === T.PIER) { made = true; break; } } if (made) continue; }   // [costa] accanto a banchine e moli il muro scende dritto: niente scivolo di terreno
       const a = j * (n + 1) + i, b = (j + 1) * (n + 1) + i, cc = b + 1, d = a + 1;
@@ -2459,6 +2463,8 @@ var Render = (function () {
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
+    const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
+    yield;
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
     yield;
     const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
@@ -2466,10 +2472,10 @@ var Render = (function () {
     const vd = verde38(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
     if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
-    return { grp, geo, mat, tex, btex, veg, nat, lt, vd, rev: ISO.rev };
+    return { grp, geo, mat, tex, btex, veg, nat, lt, vd, riva, rev: ISO.rev };
   }
   function dropChunk(ch) {
-    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose();
+    scene.remove(ch.grp); ch.geo.dispose(); ch.mat.dispose(); ch.tex.dispose(); if (ch.btex) ch.btex.dispose(); if (ch.riva) ch.riva.dispose();   // [riva]
     ch.veg.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });
     if (ch.vd) ch.vd.traverse(im => { if (im.isMesh) { im.geometry.dispose(); if (im.dispose) im.dispose(); } });   // [verde]
     if (ch.nat) ch.nat.children.forEach(im => { im.geometry.dispose(); if (im.dispose) im.dispose(); });
@@ -3047,7 +3053,7 @@ var Render = (function () {
     const F = c2Forme(), mat = std({ vertexColors: true, roughness: .92 }), matP = std({ vertexColors: true, roughness: .15, metalness: .2 });
     const B = new Map(), put = (k, x, z, y, ry, s, tilt) => { const key = k + '|' + Math.floor(x / 120) + ',' + Math.floor(z / 120); let a = B.get(key); if (!a) B.set(key, a = []); a.push([x, y, z, ry, s, tilt || 0]); };
     A.piante.forEach(q => put(q.k, q.x, q.y, groundH(q.x, q.y) - .04, q.r, q.s));
-    A.rocce.forEach(q => put(q.k, q.x, q.y, groundH(q.x, q.y) - (q.k === 'pozza' ? 0 : .12), q.r, q.s));
+    if (!RIVA9()) A.rocce.forEach(q => put(q.k, q.x, q.y, groundH(q.x, q.y) - (q.k === 'pozza' ? 0 : .12), q.r, q.s));   // [riva] con la riva fine le lastre e i massi sono gli scogli veri
     A.tetrapodi.forEach(q => put('tetrapodo', q.x, q.y, Math.max(groundH(q.x, q.y), WL - .6) + .25, q.r, q.s, q.t));
     const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), Eu = new THREE.Euler(), V = new THREE.Vector3(), S = new THREE.Vector3(), C = new THREE.Color();
     B.forEach((arr, key) => { const k = key.split('|')[0], [geo0, sh] = F[k], geo = geo0.clone(), im = new THREE.InstancedMesh(geo, k === 'pozza' ? matP : mat, arr.length);
@@ -15254,7 +15260,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     {   // [regia2] le tre luci di scena: sole e cielo secondo la zona; sulla spianata di notte i fari la tengono a giorno
       const dk = 1 - night; moon.intensity *= 1 + dk * (scenaK('sole') - 1); hemi.intensity *= 1 + dk * (scenaK('cielo') - 1) + night * (scenaK('cieloNotte') - 1);
       const fari = SZ.s * SCENA.spianata.fari * night; if (fari > .001) { hemi.intensity += fari; hemi.color.lerp(SCZ.tc.set(SCENA.spianata.fariColore), Math.min(1, fari * 2)); hemi.groundColor.lerp(SCZ.tc, Math.min(1, fari)); } }
-    ISO.chunks.forEach(ch => { if (ch.mat) { ch.mat.emissiveIntensity = night * .95; ch.mat.envMapIntensity = .015 + WXwet * .16; } });   /* [scena1] il cielo riflesso solo col bagnato: asciutto faceva blu tutte le ombre per terra */   // [inverno30]
+    ISO.chunks.forEach(ch => { if (ch.mat) { ch.mat.emissiveIntensity = night * .95; ch.mat.envMapIntensity = .015 + WXwet * .16; } if (ch.riva) { ch.riva.mat.emissiveIntensity = night * .95; ch.riva.mat.envMapIntensity = .015 + WXwet * .16; } });   // [riva] la riva fine come il blocco   /* [scena1] il cielo riflesso solo col bagnato: asciutto faceva blu tutte le ombre per terra */   // [inverno30]
     if (frameN % 2 === 0 || !dyn.reflList) { dyn.reflList = (dyn.lsp || []).concat(dyn.lpp || []).concat(SPILLS.filter(S => { const a = S.x - cam.x, b = S.z - cam.y; return a * a + b * b < 38 * 38; })); }
     updateRefl(night, dyn.reflList);
     tickAir(time, night);   // [luci2]
