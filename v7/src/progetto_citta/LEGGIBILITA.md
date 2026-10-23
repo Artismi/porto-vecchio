@@ -148,6 +148,9 @@ due estremi veri (mensola, isolatore, cassetta, palo, contatore): mai nel vuoto.
 
 ## 7. La visuale sul personaggio e i vicoli in ombra ([visuale3], 21 ottobre)
 
+> **Superata dalla sezione 9 ([visuale5], 23 ottobre):** il taglio, l'ellisse e la sezione non ci sono più; resta la macchina del taglio che
+> usa il muretto e resta l'equilibrio della luce nei vicoli (la tabella sotto). `src/test_visuale3.js` è confluita in `src/test_visuale4.js`.
+
 Giudizio del committente sul giro della Porta: «la zona in mezzo al vicolo all'ombra è completamente illeggibile, e la visuale sul
 personaggio fa solo confusione in più». Due cambi; regole in `src/visuale.js`, prove in `src/test_visuale3.js` (Node: i raggi contro le case in pianta),
 fogli in `_immagini/visuale3/` (strumenti/galleria.js con `visuale3_varianti.json`, strumenti/fogli_visuale3.py).
@@ -182,7 +185,7 @@ La pendenza della visuale a piedi (0,78 rad) si prova più bassa con `?pendenza=
 
 Giudizio del committente sul taglio e sull'ellisse: «bucano l'immagine, lasciano monconi, anelli e sezioni che nessun fotografo terrebbe».
 Due alternative, tutte e due con la sagoma del personaggio, da scegliere sui fogli `_immagini/visuale4/` (stesse sei inquadrature, quattro
-visuali: taglio, ellisse, A, B; più la striscia del movimento di A). Il modo di difetto resta il taglio. Regole in `src/visuale.js`, prova in
+visuali: taglio, ellisse, A, B; più la striscia del movimento di A). Il modo di difetto restava il taglio (oggi è A: sezione 9). Regole in `src/visuale.js`, prova in
 `src/test_visuale4.js`, il controllo del level designer in `strumenti/copertura_visuale4.js` (esce `_immagini/visuale4/copertura.json`).
 
 **A, `?visuale=camera`: la camera che si adatta.** La stretta si misura dai dati in pianta (`Visuale.mappa`, `Visuale.misura`): la larghezza
