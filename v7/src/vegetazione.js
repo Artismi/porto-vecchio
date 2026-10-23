@@ -569,7 +569,7 @@ var Vegetazione = (function () {
         const nd = nrm([Math.cos(a), -Math.sin(tilt) * .0, Math.sin(a)]), off = [-Math.sin(a) * 0, 0, 0];
         const base = [Math.cos(a + 1.57) * ww * .08, 0, Math.sin(a + 1.57) * ww * .08], up = [Math.cos(a + 1.57) * Math.sin(tilt), Math.cos(tilt), Math.sin(a + 1.57) * Math.sin(tilt)];
         const side = nrm(crs(up, nd)), Q = [[-1, 0], [1, 0], [1, 2], [-1, 2]].map(([u, v]) => [base[0] + side[0] * u * ww * .5 + up[0] * v * h * .5, base[1] + side[1] * u * ww * .5 + up[1] * v * h * .5, base[2] + side[2] * u * ww * .5 + up[2] * v * h * .5]);
-        const U = cellUV(cell), UVq = [[U[0], U[1]], [U[2], U[1]], [U[2], U[3]], [U[0], U[3]]], fl = [0, 0, 1, 1], oo = [.55, .55, 1, 1], nU = [0, 1, 0];
+        const U = cellUV(cell), UVq = [[U[0], U[1]], [U[2], U[1]], [U[2], U[3]], [U[0], U[3]]], fl = [0, 0, 1, 1], oo = [.4, .4, .72, .72], nU = [0, 1, 0];
         const cc = [col[0] * (.92 + rr() * .16), col[1] * (.92 + rr() * .16), col[2] * (.92 + rr() * .16)];
         [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2].forEach(q => A.v(Q[q], nU, cc, fl[q], UVq[q], oo[q])); }
     }
@@ -832,7 +832,7 @@ var Vegetazione = (function () {
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
     uPittura: { value: 1 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: .62 }, uOff: { value: .02 }, uTintaSpecie: { value: .22 } };
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.8 }, uOff: { value: .1 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -918,6 +918,16 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
         const d = Math.hypot(tx * TS + 1 - cx, ty * TS + 1 - cy) / R; if (d < 1) { const i = ty * GW + tx; O[i] = Math.min(1, O[i] + k * (1 - d * d)); } } });
     return (P.ombra = O);
   }
+  function campiSuolo(P) {   // il tono e il caldo del suolo per casella, sfumati a scatola su ±6 caselle (le formazioni si passano la mano)
+    if (P.campi) return P.campi; const W = P.W, GW = W.GW, GH = W.GH, N = GW * GH, A = new Float32Array(N), B = new Float32Array(N), M = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const f = P.form[i]; if (f && f !== F.costa && f !== F.urbano) { A[i] = FORM[f].tono; B[i] = CALDA[FORM[f].id] || .4; M[i] = 1; } }
+    const blur = (S, R) => { const T1 = new Float32Array(N), O = new Float32Array(N);
+      for (let y = 0; y < GH; y++) { let acc = 0, w = 0; for (let x = -R; x < GW; x++) { if (x + R < GW) { acc += S[y * GW + x + R]; w += M[y * GW + x + R]; } if (x - R - 1 >= 0) { acc -= S[y * GW + x - R - 1]; w -= M[y * GW + x - R - 1]; } if (x >= 0) T1[y * GW + x] = w > 0 ? acc / w : .5; } }
+      const Mw = new Float32Array(N); for (let y = 0; y < GH; y++) { let w = 0; for (let x = -R; x < GW; x++) { if (x + R < GW) w += M[y * GW + x + R]; if (x - R - 1 >= 0) w -= M[y * GW + x - R - 1]; if (x >= 0) Mw[y * GW + x] = w; } }
+      for (let x = 0; x < GW; x++) { let acc = 0, w = 0; for (let y = -R; y < GH; y++) { if (y + R < GH) { const k = (y + R) * GW + x; acc += T1[k] * Mw[k]; w += Mw[k]; } if (y - R - 1 >= 0) { const k = (y - R - 1) * GW + x; acc -= T1[k] * Mw[k]; w -= Mw[k]; } if (y >= 0) O[y * GW + x] = w > 0 ? acc / w : .5; } }
+      return O; };
+    return (P.campi = { tono: blur(A, 6), calda: blur(B, 6) });
+  }
   function dipingiSuolo(ctx, tx0, ty0, n, m, PX) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, form = P.form, O = ombraSuolo(P), ppm = PX / TS;
     const mia = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const f = form[ty * GW + tx]; if (!f || f === F.costa || f === F.urbano) return 0; const v = W.grid[ty * GW + tx], T = W.T;
@@ -925,7 +935,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     let any = false; for (let j = -1; j <= m && !any; j++) for (let i = -1; i <= n; i++) if (mia(tx0 + i, ty0 + j)) { any = true; break; } if (!any) return;
     const w = n * PX, h = m * PX, img = ctx.getImageData(0, 0, w, h), d = img.data;
     const smp = (A, fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (x, y) => x < 0 || y < 0 || x >= GW || y >= GH ? 0 : A(x, y); return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
-    const omb = (x, y) => O[y * GW + x], ton = (x, y) => { const f = form[y * GW + x]; return f ? FORM[f].tono : .5; }, cal = (x, y) => { const f = form[y * GW + x]; return f ? CALDA[FORM[f].id] || .4 : .4; };
+    const CP = campiSuolo(P), omb = (x, y) => O[y * GW + x], ton = (x, y) => CP.tono[y * GW + x], cal = (x, y) => CP.calda[y * GW + x];
     const sen = (x, y) => { const v = P.dSen[y * GW + x]; return v < 2.5 ? 1 - v / 2.5 : 0; };
     for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, fx = wx / TS - .5, fy = wy / TS - .5, a = smp(mia, fx, fy); if (a < .02) continue;
