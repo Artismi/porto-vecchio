@@ -55684,7 +55684,7 @@ var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
-  const P = { M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250 };
+  const P = { M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();
@@ -55742,9 +55742,13 @@ var PesoOmbre = (function () {
   function metti(m, G) { m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
   function sole() {
     const m = K.moon, sc = m.shadow.camera, T = m.target.position, Pp = m.position;
-    if (!A.base) A.base = m.shadow.mapSize.x;
+    if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? P.fineTel : P.fine)), mt - 512); A.maxT = mt; }
     if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
-    const tex = 2 * A.half / A.base, ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
+    let tex = 2 * A.half / A.base; const lim = (A.maxT || 4096) - 64; if (Math.ceil(2 * (A.half + P.M) / tex) > lim) tex = 2 * (A.half + P.M) / lim;   // mai oltre la tessitura più grande
+    const ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
+    // [peso] il texel più fine (P.fine: le aste e i pali sottili facevano ombre a dentini, a tratti, nelle piazze col sole basso): lo scarto
+    // dell'ombra in proporzione al texel nuovo, con le manopole di render.js (PROF.ombraBias, come profSole)
+    const PR = window.__PROF; if (PR && PR.ombraVisuale > 0 && PR.ombraBias) { m.shadow.bias = -(PR.ombraBias[0] + PR.ombraBias[1] * tex) / (sc.far - sc.near); m.shadow.normalBias = .015 + tex * .9; }
     if (m.shadow.mapSize.x !== ms) { m.shadow.mapSize.set(ms, ms); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } A.G = null; A.next = null; }
     if (sc.right !== halfE) { sc.left = -halfE; sc.right = halfE; sc.top = halfE; sc.bottom = -halfE; sc.updateProjectionMatrix(); } A.halfSet = halfE;
     const D = Math.hypot(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z) || 1, d = new T3.Vector3(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z).divideScalar(D);
@@ -55756,7 +55760,7 @@ var PesoOmbre = (function () {
       if (deriva > P.M - tex) forza = true;
       if (nuova || deriva > P.M / 2) { const B = nuova ? base(d) : G; want = { d: nuova ? d : G.d, D: nuova ? D : G.D, x: B.x, y: B.y, tex, T: aggancia(T, B, tex) }; }
     }
-    if (forza) { A.G = want; A.next = null; }
+    if (forza) { A.G = want; A.next = null; A.rifai = true; }   // cottura subito: con la lista di chi fa ombra rifatta ora (dopo un salto la vecchia è di un altro posto)
     else if (want) { const N = A.next; if (!N || N.T.distanceTo(want.T) > P.M / 4 || N.d.dot(want.d) < Math.cos(P.ang)) A.next = want; }
     else A.next = null;
     metti(m, A.G);
@@ -55831,7 +55835,7 @@ var PesoOmbre = (function () {
   function prima(kit) {
     if (!ON) return; K = kit; if (!T3) { T3 = window.THREE; root = new T3.Object3D(); sfera = new T3.Sphere(); vtmp = new T3.Vector3(); pm = new T3.Matrix4(); }
     const rd = K.renderer; if (!rd.shadowMap.enabled || !rd.capabilities.isWebGL2 || !attivo) return;
-    if (!sh0) { const sm = rd.shadowMap; sh0 = sm.render; sm.render = function (lights, scene, camera) { if (attivo && K && scene === K.scene) passata(); return sh0.apply(this, arguments); }; }
+    if (!sh0) { const sm = rd.shadowMap; sh0 = sm.render; sm.render = function (lights, scene, camera) { if (attivo && K && scene === K.scene && sm.enabled) passata(); return sh0.apply(this, arguments); }; }
     const moon = K.moon; if (moon && moon.castShadow && moon.visible) sole();
   }
   function passata() {
@@ -55842,7 +55846,7 @@ var PesoOmbre = (function () {
     if (lst.length) {
       const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
       const cl = K.camera().layers;
-      if (!CAST.length || frame - giro >= P.giro) { giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
+      if (!CAST.length || frame - giro >= P.giro || A.rifai) { A.rifai = false; giro = frame; CAST.length = 0; TOPS.length = 0; raccogli(S, cl, null); for (let i = 0; i < CAST.length; i++) { const u = guarda(CAST[i]); u.top = TOPS[i]; u.ok = true; } }
       else for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = guarda(o); u.ok = o.visible && o.castShadow && (!mobile(o, u) || attaccato(o)); }
       ST.lanciatori = CAST.length;
       try { lst.forEach(l => luce(l, l === moon)); } catch (e) { console.warn('[peso] ombre', e); attivo = false; REC.forEach((r, l) => { l.shadow.autoUpdate = l === moon; l.shadow.needsUpdate = true; }); }
@@ -55854,8 +55858,8 @@ var PesoOmbre = (function () {
   // spento: le mappe tornano quelle di three (il sole col riquadro e la mappa del gioco, ridisegnato a ogni fotogramma)
   function spegni() {
     REC.forEach((r, l) => { if (K && l === K.moon) l.shadow.autoUpdate = true; l.shadow.needsUpdate = true; r.sig = -1; });
-    if (K && K.moon && A.base) { const m = K.moon, sc = m.shadow.camera; sc.left = -A.half; sc.right = A.half; sc.top = A.half; sc.bottom = -A.half; sc.updateProjectionMatrix(); A.halfSet = NaN; A.G = null; A.next = null;
-      if (m.shadow.mapSize.x !== A.base) { m.shadow.mapSize.set(A.base, A.base); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } } }
+    if (K && K.moon && A.base) { const m = K.moon, sc = m.shadow.camera; sc.left = -A.half; sc.right = A.half; sc.top = A.half; sc.bottom = -A.half; sc.updateProjectionMatrix(); A.halfSet = NaN; A.G = null; A.next = null; A.base = 0;
+      if (m.shadow.mapSize.x !== A.base0) { m.shadow.mapSize.set(A.base0, A.base0); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } } }
   }
   function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, sottofondo: ST.sottofondo, lotti: ST.lotti, riprese: ST.riprese, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
   function azzera() { for (const k in ST) ST[k] = 0; for (const k in MOT) MOT[k] = 0; DIAG.mob.clear(); DIAG.firma.clear(); }
@@ -71495,7 +71499,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; } };
+    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
