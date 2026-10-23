@@ -905,7 +905,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   function gammaTex() { if (GT) return GT; const d = new Uint8Array(256 * 4); for (let i = 0; i < 256; i++) { const c = gammaAt(GAMMA, i / 255); d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
     GT = new THREE.DataTexture(d, 256, 1, THREE.RGBAFormat); GT.magFilter = GT.minFilter = THREE.LinearFilter; GT.needsUpdate = true; return GT; }
   // quanto calda è la formazione a terra (0 la gamma fredda, 1 la calda)
-  const CALDA = { pineta: .8, pinetaM: .65, lecceta: .25, macchia: .4, gariga: .75, prato: .55, uliveto: .45, agrumeto: .3, riparia: .15, eucalipteto: .55, giardino: .3 };
+  const CALDA = { pineta: .6, pinetaM: .45, lecceta: .15, macchia: .25, gariga: .45, prato: .22, uliveto: .25, agrumeto: .15, riparia: .08, eucalipteto: .35, giardino: .12 };
 
   // ================= IL SUOLO DIPINTO SOTTO IL VERDE =================
   // Le piante devono nascere dal suolo, non starci sopra: sotto le chiome il suolo scende nell'ombra (una pozza morbida, spostata dalla
@@ -932,13 +932,80 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       // la pennellata: rumore allungato (i colpi vanno tutti in una direzione, che cambia piano), più la macchia larga
       const ang = fbm(wx / 30, wy / 30, 7801, 2) * 3.1, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, vv = -wx * sa + wy * ca;
       const pen = fbm(u / 1.6, vv / .35, 7802, 2) - .5, mac = fbm(wx / 9, wy / 9, 7803, 3) - .5;
-      let t = .3 + smp(ton, fx, fy) * .42 - smp(omb, fx, fy) * .42 + mac * .22 + pen * .13 + smp(sen, fx, fy) * .14;
+      let t = .26 + smp(ton, fx, fy) * .36 - smp(omb, fx, fy) * .4 + mac * .2 + pen * .12 + smp(sen, fx, fy) * .12;
       const k = smp(cal, fx, fy), c1 = gammaAt(GAMMA, t), c2 = gammaAt(GAMMA_CALDA, t * .92 + .04), q = (py * w + px) * 4;
       const r = c1[0] + (c2[0] - c1[0]) * k, g = c1[1] + (c2[1] - c1[1]) * k, b = c1[2] + (c2[2] - c1[2]) * k;
       d[q] = d[q] + (r - d[q]) * a; d[q + 1] = d[q + 1] + (g - d[q + 1]) * a; d[q + 2] = d[q + 2] + (b - d[q + 2]) * a;
     }
     ctx.putImageData(img, 0, 0);
   }
+
+
+  // ================= IL CASALE DIROCCATO =================
+  // Costruito con la sua logica e crollato con la sua logica (era: tre scatole e una lastra di neve). Pianta a due vani coi muri da
+  // 55 cm, la tramezza col passaggio, la porta, la finestra; il crollo: gli angoli tengono, i muri cedono a gradini sui corsi, il muro
+  // di levante è giù e il suo cumulo sta fuori; l'architrave caduto davanti alla soglia; il cotto solo lungo i muri. Il verde ci nasce
+  // dove nascerebbe: il fico nell'angolo dentro, i capperi e l'erba sulle creste, l'edera sul muro a tramontana, il fico d'India sul
+  // cumulo. La pietra è dipinta (corsi irregolari, il giunto scuro, il labbro chiaro in alto) nella gamma calda del suolo.
+  let PIETRA = null;
+  function trama_pietra() {
+    if (PIETRA) return PIETRA; const cv = document.createElement('canvas'); cv.width = cv.height = 512; const g = cv.getContext('2d'); let a = 991; const r = () => { a = (a * 16807) % 2147483647; return a / 2147483647; };
+    g.fillStyle = '#5e5446'; g.fillRect(0, 0, 512, 512);
+    for (let y = 0; y < 512; ) { const h = 34 + r() * 26; for (let x = -r() * 40; x < 512; ) { const w = 44 + r() * 70, c = gammaAt(GAMMA_CALDA, .5 + r() * .3), dx = 3 + r() * 3;
+        const rr = (cx, cy, ww, hh, rad) => { g.beginPath(); g.moveTo(cx + rad, cy); g.lineTo(cx + ww - rad, cy); g.quadraticCurveTo(cx + ww, cy, cx + ww, cy + rad); g.lineTo(cx + ww, cy + hh - rad); g.quadraticCurveTo(cx + ww, cy + hh, cx + ww - rad, cy + hh); g.lineTo(cx + rad, cy + hh); g.quadraticCurveTo(cx, cy + hh, cx, cy + hh - rad); g.lineTo(cx, cy + rad); g.quadraticCurveTo(cx, cy, cx + rad, cy); g.fill(); };
+        for (const ox of [0, -512, 512]) { g.fillStyle = `rgb(${c[0] * .62},${c[1] * .6},${c[2] * .6})`; rr(x + dx + ox, y + 5, w - 2 * dx, h - 6, 10); const gr = g.createLinearGradient(0, y, 0, y + h); gr.addColorStop(0, `rgb(${Math.min(255, c[0] * 1.12)},${Math.min(255, c[1] * 1.12)},${Math.min(255, c[2] * 1.1)})`); gr.addColorStop(1, `rgb(${c[0] * .86},${c[1] * .84},${c[2] * .84})`); g.fillStyle = gr; rr(x + dx + ox, y + 3, w - 2 * dx - 2, h - 8, 10); }
+        x += w; } y += h; }
+    const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return (PIETRA = t);
+  }
+  function casale(opz) {
+    const X = opz.x, Z = opz.y, ry = opz.rot || 0, gH = opz.groundH || (() => 0), Wd = opz.w || 8.5, D = opz.d || 6.2, T = .55, H0 = 3.1, CH = .3, y0 = gH(X, Z), cs = Math.cos(ry), sn = Math.sin(ry);
+    let sd = (opz.seme || 77) >>> 0; const r = () => { sd = (sd + 0x6D2B79F5) | 0; let t = Math.imul(sd ^ (sd >>> 15), 1 | sd); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const loc = (x, z) => [X + x * cs + z * sn, Z - x * sn + z * cs];
+    const PIE = [], add = (x, y, z, w, h, d, col, rot) => PIE.push([x, y, z, w, h, d, col, rot || 0]), MURO = { P: [], N: [], U: [] }, creste = [], piante = [];
+    const pietra = () => { const c = gammaAt(GAMMA_CALDA, .45 + r() * .3); return [c[0] / 255, c[1] / 255, c[2] / 255]; };
+    const F2 = (a, b, c, d, n, uvf) => { [[a, b, c], [a, c, d]].forEach(tri => tri.forEach(v => { MURO.P.push(v[0], v[1], v[2]); MURO.N.push(n[0], n[1], n[2]); const uv = uvf(v); MURO.U.push(uv[0], uv[1]); })); };
+    const muro = (ax, az, bx, bz, hFn, aperture) => { const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, nx = -uz, nz = ux, h = T / 2;
+      const P2 = (s2, t, y) => [ax + ux * s2 + nx * t, y, az + uz * s2 + nz * t], su = v => [((v[0] - ax) * ux + (v[2] - az) * uz) / 2.4, v[1] / 2.4], st = v => [((v[0] - ax) * nx + (v[2] - az) * nz) / 2.4 + .4, v[1] / 2.4];
+      const COL = []; for (let s0 = 0; s0 < L - .01; ) { const w = Math.min(L - s0, .5), sm = s0 + w / 2, top = Math.max(.3, hFn(sm)); let cuts = [[0, top]];
+        (aperture || []).forEach(([a0, a1, y0b, y1b]) => { if (sm > a0 && sm < a1) { const nc = []; cuts.forEach(([p, q]) => { if (y0b > p) nc.push([p, Math.min(q, y0b)]); if (y1b < q) nc.push([Math.max(p, y1b), q]); }); cuts = nc; } });
+        COL.push({ s0, s1: s0 + w, sm, cuts: cuts.filter(([p, q]) => q - p > .05) }); s0 += w; }
+      const pieno = (c, y) => c && c.cuts.some(([p, q]) => y > p + .01 && y < q - .01);
+      COL.forEach((c, i) => { c.cuts.forEach(([p, q]) => {
+        F2(P2(c.s0, -h, p), P2(c.s1, -h, p), P2(c.s1, -h, q), P2(c.s0, -h, q), [-nx, 0, -nz], su); F2(P2(c.s1, h, p), P2(c.s0, h, p), P2(c.s0, h, q), P2(c.s1, h, q), [nx, 0, nz], su);
+        F2(P2(c.s0, -h, q), P2(c.s1, -h, q), P2(c.s1, h, q), P2(c.s0, h, q), [0, 1, 0], v => [v[0] / 2.4, v[2] / 2.4]);
+        if (p > .01) F2(P2(c.s0, h, p), P2(c.s1, h, p), P2(c.s1, -h, p), P2(c.s0, -h, p), [0, -1, 0], v => [v[0] / 2.4, v[2] / 2.4]);
+        [[COL[i - 1], c.s0, -1], [COL[i + 1], c.s1, 1]].forEach(([nb, sx, sg]) => { const segs = [];
+          for (let yy = p; yy < q; yy += .1) { const fuori = !pieno(nb, yy + .05); if (fuori && segs.length && segs[segs.length - 1][1] >= yy - 1e-6) segs[segs.length - 1][1] = Math.min(q, yy + .1); else if (fuori) segs.push([yy, Math.min(q, yy + .1)]); }
+          segs.forEach(([a1, b1]) => sg < 0 ? F2(P2(sx, h, a1), P2(sx, -h, a1), P2(sx, -h, b1), P2(sx, h, b1), [-ux, 0, -uz], st) : F2(P2(sx, -h, a1), P2(sx, h, a1), P2(sx, h, b1), P2(sx, -h, b1), [ux, 0, uz], st)); }); });
+        const top = c.cuts.length ? c.cuts[c.cuts.length - 1][1] : 0; if (top > .3 && r() < .45) creste.push([ax + ux * c.sm, top, az + uz * c.sm]); if (top > .3 && r() < .25) add(ax + ux * c.sm, top - .05, az + uz * c.sm, .32 + r() * .2, .18, .35, pietra(), r()); }); };
+    const prof = (L, hA, hB, hM, k) => s => { const t = s / L, base = Math.min(hA + (hM - hA) * Math.min(1, t * 2.2), hB + (hM - hB) * Math.min(1, (1 - t) * 2.2)); return Math.round((base + (fbm(s * .6, k + (opz.seme || 0), 3, 2) - .5) * .9) / CH) * CH; };
+    const hw = Wd / 2, hd = D / 2, lp = Math.min(2, Wd * .22);
+    muro(-hw, hd, hw, hd, prof(Wd, 3.1, 2.4, 1.4, 1), [[lp, lp + 1.1, 0, 2.3], [Wd - 2.9, Wd - 2, 1, 1.9]]);
+    muro(-hw, -hd, hw, -hd, prof(Wd, 3.1, 1.8, 2.3, 2), [[Wd * .45, Wd * .45 + .7, 1.2, 1.9]]);
+    muro(-hw, -hd, -hw, hd, prof(D, 3.1, 3.1, 2.6, 3)); muro(hw, -hd, hw, hd, prof(D, 1.2, .9, .4, 4));
+    muro(1.2 - Wd * .05, -hd + .3, 1.2 - Wd * .05, hd - .3, prof(D - .6, 1.6, 1.4, .9, 5), [[D * .35, D * .35 + 1, 0, 2.2]]);
+    add(-hw + lp + .55, 0, hd + .35, 1.3, .1, .45, pietra()); add(-hw + lp + .3, .08, hd + 1.4, 1.5, .26, .3, pietra(), .55);
+    for (let k = 0; k < 110; k++) { const a = (r() - .5) * 2.6, d = Math.pow(r(), .6) * 2.6, x = hw + .4 + Math.cos(a) * d * .9, z = Math.sin(a) * d * 1.3, h = Math.max(0, 1 - d / 2.6) * .9 + r() * .15; add(x, Math.max(0, h - .25), z, .3 + r() * .3, .2 + r() * .1, .25 + r() * .3, pietra(), r() * 3); }
+    for (let k = 0; k < 16; k++) add((r() - .5) * (Wd - 2), 0, (r() - .5) * (D - 2), .3 + r() * .3, .2, .3, pietra(), r() * 3);
+    for (let k = 0; k < 10; k++) add(hw - 1 + r(), r() * .3, (r() - .5) * 3, .22, .08, .16, [.72, .4, .26], r() * 3);
+    for (let x = -hw + .5; x < hw - .4; x += .32) for (let z = -hd + .5; z < hd - .4; z += .32) { const dm = Math.min(x + hw - .5, hw - .4 - x, z + hd - .5, hd - .4 - z); if (dm > .7 + fbm(x, z, 7, 2) * 1.4 || r() < .12) continue; const c = r(); add(x, 0, z, .3, .04, .3, [.66 + c * .08, .42 + c * .08, .32 + c * .06], (r() - .5) * .04); }
+    const gruppo = new THREE.Group(); gruppo.name = 'casale';
+    { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(MURO.P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(MURO.N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(MURO.U, 2));
+      const P3 = g.attributes.position, N3 = g.attributes.normal; for (let i = 0; i < P3.count; i++) { const x = P3.getX(i), z = P3.getZ(i), [wx, wz] = loc(x, z); P3.setXYZ(i, wx, y0 + P3.getY(i), wz); const nx = N3.getX(i), nz = N3.getZ(i); N3.setXYZ(i, nx * cs + nz * sn, N3.getY(i), -nx * sn + nz * cs); }
+      g.computeBoundingSphere(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: trama_pietra() })); m.castShadow = m.receiveShadow = true; gruppo.add(m); }
+    { const im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(.62, 0), new THREE.MeshLambertMaterial({ color: '#ffffff', map: trama_pietra() }), PIE.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
+      PIE.forEach(([x, y, z, w, h, d, col, rot], i) => { const [wx, wz] = loc(x, z); e.set(0, rot + ry, 0); q.setFromEuler(e); m4.compose(new THREE.Vector3(wx, y0 + y + h / 2, wz), q, new THREE.Vector3(w, h, d)); im.setMatrixAt(i, m4); im.setColorAt(i, c.setRGB(col[0] * 1.6, col[1] * 1.6, col[2] * 1.6)); });
+      im.castShadow = im.receiveShadow = true; gruppo.add(im); }
+    const pianta2 = (sp, lx, lz, h, rot, v, quota) => { const [x, y] = loc(lx, lz); piante.push({ sp, x, y, h: h || KIT.H0(sp), rot: rot === undefined ? r() * 6.28 : rot, v: v === undefined ? Math.floor(r() * 4) : v, t: r(), f: F.prato, quota: quota === undefined ? undefined : y0 + quota }); };
+    pianta2('fico', hw - 1.1, -hd + 1, 4.4, 1, 2); pianta2('edera', -hw - .2, -hd - .45, 2.6, ry + Math.PI, 1); pianta2('edera', -1.5, -hd - .45, 2.1, ry + Math.PI, 2);
+    creste.forEach(([x, y, z]) => { const u = r(); if (u < .16) pianta2('cappero', x, z, .55, undefined, 0, y); else if (u < .55) pianta2(r() < .7 ? 'erbaSecca' : 'erbaVerde', x, z, .4, undefined, undefined, y); });
+    for (let k = 0; k < 36; k++) { const s2 = r(), side = Math.floor(r() * 4), x = side < 2 ? -hw + s2 * Wd : side === 2 ? -hw - .6 : hw + .6, z = side === 0 ? hd + .55 : side === 1 ? -hd - .55 : -hd + s2 * D; pianta2(r() < .3 ? 'cardo' : r() < .4 ? 'asfodelo' : 'erbaVerde', x, z); }
+    pianta2('ficodindia', hw + 1.6, 1.4, 2);
+    for (let k = 0; k < 60; k++) pianta2(r() < .8 ? 'erbaVerde' : 'erbaSecca', (r() - .5) * (Wd - 1.4), (r() - .5) * (D - 1.4));
+    return { gruppo, piante };
+  }
+  // le piante che nascono fuori dal piano (il verde dei ruderi): si aggiungono prima che la posa le indicizzi
+  function aggiungi(list) { if (!PIANO || !list) return; list.forEach(p => PIANO.piante.push(p)); PIANO.__nuove = true; }
 
   // ================= LA POSA NEL GIOCO: attorno alla camera, per specie =================
   // monta(scene, { W, groundH, telefono }) prepara i gruppi; aggiorna(cx, cz, t) a ogni fotogramma: quando la camera si sposta di qualche
@@ -976,7 +1043,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
         const i0 = Math.floor((cx - R1) / C), i1 = Math.floor((cx + R1) / C), j0 = Math.floor((cz - R1) / C), j1 = Math.floor((cz + R1) / C);
         for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) (idx.get(i * 65536 + j) || []).forEach(p => {
           const d = Math.hypot(p.x - cx, p.y - cz); if (d > R1) return; const S = SP[p.sp]; if (S.tronco && p.tile !== undefined && W.grid[p.tile] !== W.T.TREE) return;
-          const y = gH(p.x, p.y) - .04, s = p.h / KIT.H0(p.sp);
+          const y = p.quota !== undefined ? p.quota : gH(p.x, p.y) - .04, s = p.h / KIT.H0(p.sp);
           if (d < R0) metti(im('v|' + p.sp + '|' + p.v, KIT.modello(p.sp, p.v), MV, S.strato !== 'C'), p.x, y, p.y, s, p.rot, p.t);
           if (d > R0 - F0 && S.strato !== 'C') metti(im('s|' + p.sp, KIT.sagoma(p.sp, 1), MS, false), p.x, y, p.y, s, p.rot, p.t); });
         IM.forEach((g, k) => { if (k.startsWith('c|') || !g.mesh) return; g.mesh.count = g.n; g.mesh.instanceMatrix.needsUpdate = true; if (g.mesh.instanceColor) g.mesh.instanceColor.needsUpdate = true; }); }
@@ -992,7 +1059,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, dipingiSuolo, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
