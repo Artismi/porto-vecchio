@@ -17,11 +17,11 @@ var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopesoombre\b/.test(Q);
-  const P = { M: 8, ang: .0026, ferma: 90, giro: 8 };
-  const MOT = { chiave: 0, firma: 0, misura: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
-  const ST = { cotture: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
+  const P = { M: 8, ang: .0026, ferma: 90, giro: 8, lotto: 250 };
+  const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
+  const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();
-  const EMPTY = [], A = { half: 0, halfSet: NaN, base: 0, d: null, T: null, D: 0 };
+  const EMPTY = [], A = { half: 0, halfSet: NaN, base: 0, G: null, next: null };
   let K = null, frame = 0, root = null, T3 = null, sfera = null, vtmp = null, pm = null, noop = () => { };
   const CAST = [], TOPS = [];
 
@@ -67,31 +67,38 @@ var PesoOmbre = (function () {
     gl.blitFramebuffer(0, 0, w, h, 0, 0, w, h, gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT, gl.NEAREST);
     gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
   }
-  // il sole: il centro agganciato alla griglia dei texel, fermo finché la camera resta entro P.M metri; la direzione a scatti
+  // il sole: il centro agganciato alla griglia dei texel, fermo finché la camera resta entro P.M metri; la direzione a scatti.
+  // A è l'aggancio in uso (la camera dell'ombra vera), A.next quello verso cui si sta cuocendo in sottofondo (dalla metà del margine):
+  // camminando la mappa nuova è già pronta quando serve; solo un salto oltre il margine (un teletrasporto, un'auto velocissima) cuoce subito
+  function base(d) { const z = d.clone().negate(), x = new T3.Vector3(0, 1, 0).cross(z); if (x.lengthSq() < 1e-12) x.set(1, 0, 0); x.normalize(); return { x, y: z.clone().cross(x) }; }
+  function aggancia(T, B, tex) { const a = T.x * B.x.x + T.y * B.x.y + T.z * B.x.z, b = T.x * B.y.x + T.y * B.y.y + T.z * B.y.z; return T.clone().addScaledVector(B.x, Math.round(a / tex) * tex - a).addScaledVector(B.y, Math.round(b / tex) * tex - b); }
+  function metti(m, G) { m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
   function sole() {
     const m = K.moon, sc = m.shadow.camera, T = m.target.position, Pp = m.position;
     if (!A.base) A.base = m.shadow.mapSize.x;
     if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
     const tex = 2 * A.half / A.base, ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
-    if (m.shadow.mapSize.x !== ms) { m.shadow.mapSize.set(ms, ms); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } }
+    if (m.shadow.mapSize.x !== ms) { m.shadow.mapSize.set(ms, ms); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } A.G = null; A.next = null; }
     if (sc.right !== halfE) { sc.left = -halfE; sc.right = halfE; sc.top = halfE; sc.bottom = -halfE; sc.updateProjectionMatrix(); } A.halfSet = halfE;
-    let dx = T.x - Pp.x, dy = T.y - Pp.y, dz = T.z - Pp.z; const D = Math.hypot(dx, dy, dz) || 1; dx /= D; dy /= D; dz /= D;
-    let nuova = !A.d || Math.abs(D - A.D) > 1;   // la distanza del sole cambia appena con l'ora: conta solo per il piano vicino e il lontano
-    if (!nuova) { const c = dx * A.d.x + dy * A.d.y + dz * A.d.z; if (Math.acos(Math.min(1, c)) > P.ang) nuova = true; }
-    if (nuova) { A.d = new T3.Vector3(dx, dy, dz); A.D = D;
-      const z = A.d.clone().negate(), x = new T3.Vector3(0, 1, 0).cross(z); if (x.lengthSq() < 1e-12) x.set(1, 0, 0); x.normalize(); A.x = x; A.y = z.clone().cross(x); A.T = null; }
-    const a = T.x * A.x.x + T.y * A.x.y + T.z * A.x.z, b = T.x * A.y.x + T.y * A.y.y + T.z * A.y.z;
-    vtmp.copy(T).addScaledVector(A.x, Math.round(a / tex) * tex - a).addScaledVector(A.y, Math.round(b / tex) * tex - b);
-    if (A.T) { const ex = (vtmp.x - A.T.x) * A.x.x + (vtmp.y - A.T.y) * A.x.y + (vtmp.z - A.T.z) * A.x.z, ey = (vtmp.x - A.T.x) * A.y.x + (vtmp.y - A.T.y) * A.y.y + (vtmp.z - A.T.z) * A.y.z;
-      if (Math.abs(ex) > P.M - tex || Math.abs(ey) > P.M - tex || A.tex !== tex) A.T = null; }
-    if (!A.T) { A.T = vtmp.clone(); A.tex = tex; }
-    T.copy(A.T); Pp.copy(A.T).addScaledVector(A.d, -A.D); m.updateMatrixWorld(); m.target.updateMatrixWorld();
+    const D = Math.hypot(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z) || 1, d = new T3.Vector3(T.x - Pp.x, T.y - Pp.y, T.z - Pp.z).divideScalar(D);
+    const G = A.G; let want = null, forza = false;
+    if (!G || G.tex !== tex) { forza = true; const B = base(d); want = { d, D, x: B.x, y: B.y, tex, T: aggancia(T, B, tex) }; }
+    else {
+      const nuova = Math.abs(D - G.D) > 1 || Math.acos(Math.min(1, d.dot(G.d))) > P.ang;
+      const ts = aggancia(T, G, tex), ex = (ts.x - G.T.x) * G.x.x + (ts.y - G.T.y) * G.x.y + (ts.z - G.T.z) * G.x.z, ey = (ts.x - G.T.x) * G.y.x + (ts.y - G.T.y) * G.y.y + (ts.z - G.T.z) * G.y.z, deriva = Math.max(Math.abs(ex), Math.abs(ey));
+      if (deriva > P.M - tex) forza = true;
+      if (nuova || deriva > P.M / 2) { const B = nuova ? base(d) : G; want = { d: nuova ? d : G.d, D: nuova ? D : G.D, x: B.x, y: B.y, tex, T: aggancia(T, B, tex) }; }
+    }
+    if (forza) { A.G = want; A.next = null; }
+    else if (want) { const N = A.next; if (!N || N.T.distanceTo(want.T) > P.M / 4 || N.d.dot(want.d) < Math.cos(P.ang)) A.next = want; }
+    else A.next = null;
+    metti(m, A.G);
   }
-  function luce(light, tutti) {
+  // la camera dell'ombra di una luce (la matrice proiezione × vista) e chi c'è dentro, fermo o mobile
+  function contenuto(light, tutti, r) {
     const sh = light.shadow; sh.updateMatrices(light); const cam = sh.camera, fz = sh.getFrustum();
-    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
-    let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null });
-    const e = pm.elements; let chiave = false; for (let k = 0; k < 16; k++) if (e[k] !== r.key[k]) { chiave = true; break; }
+    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); const e = Float64Array.from(pm.elements);
+    let chiave = false; for (let k = 0; k < 16; k++) if (e[k] !== r.key[k]) { chiave = true; break; }
     if (chiave && tutti) r.ver++;   // il sole: la risposta «dentro il riquadro» di ogni cosa ferma vale finché la camera dell'ombra non cambia
     const fermi = [], mob = [], lp = light.position, R2 = tutti ? 0 : (light.distance || 30) + 1; let sig = 0;
     for (let i = 0; i < CAST.length; i++) { const o = CAST[i], u = o.__po; if (!u.ok) continue; const mv = mobile(o, u);
@@ -100,18 +107,55 @@ var PesoOmbre = (function () {
         else if (!mv && u.sk === r.ver && u.dynS === u.dyn) { if (!u.sin) continue; }
         else { u.sin = fz.intersectsObject(o); u.sk = r.ver; u.dynS = u.dyn; if (!u.sin) continue; } }
       if (mv) mob.push(o); else { fermi.push(o); sig += o.id * 7919 + (o.geometry ? o.geometry.id : 0) * 104729 + (o.material ? o.material.id : 0); } }
-    const map = sh.map, cotta = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height || chiave || sig !== r.sig || fermi.length !== r.n;
-    if (cotta) { if (!map || !r.cache || r.cache.width !== map.width) MOT.misura++; else if (chiave) MOT.chiave++; else { MOT.firma++;
-        if (DIAG.on && r.ids) { const now = new Set(fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
-          fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o) + (o.visible ? '' : ' (spento)') + (o.castShadow ? '' : ' (senza ombra)') + (mobile(o, o.__po) ? ' (mobile)' : ''); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); } }
-      if (DIAG.on) { r.ids = new Set(fermi.map(o => o.id)); r.idsObj = fermi.slice(); }
-      disegna(light, fermi, true); const m2 = sh.map;
-      if (!r.cache || r.cache.width !== m2.width || r.cache.height !== m2.height) { if (r.cache) r.cache.dispose(); r.cache = new T3.WebGLRenderTarget(m2.width, m2.height, { minFilter: T3.NearestFilter, magFilter: T3.NearestFilter }); }
-      copia(m2, r.cache); r.key.set(e); r.sig = sig; r.n = fermi.length; ST.cotture++;
-      if (mob.length) disegna(light, mob, false);
-    } else if (mob.length || r.dyn) { copia(r.cache, map); if (mob.length) disegna(light, mob, false); ST.riprese++; }
-    if (DIAG.on) mob.forEach(o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; const u = o.__po, k = (o.isSkinnedMesh ? 'scheletro' : o.isInstancedMesh ? 'istanze' : 'mosso') + ' ' + (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); DIAG.mob.set(k, (DIAG.mob.get(k) || 0) + 1); });
-    r.dyn = mob.length; ST.dinamici += mob.length; ST.fermi += fermi.length; ST.luci++;
+    return { e, chiave, fermi, mob, sig };
+  }
+  function nuovaRT(w, h) { return new T3.WebGLRenderTarget(w, h, { minFilter: T3.NearestFilter, magFilter: T3.NearestFilter }); }
+  // un pezzo della cottura in sottofondo: P.lotto cose ferme nella mappa di riserva, con la camera del lavoro
+  function lavora(light, r, tutti) {
+    const J = r.job, sh = light.shadow, m0 = sh.map; if (!m0) return false;
+    if (!J.rt || J.rt.width !== m0.width || J.rt.height !== m0.height) { if (J.rt) J.rt.dispose(); J.rt = nuovaRT(m0.width, m0.height); J.i = 0; }
+    const pos = J.G ? [light.position.clone(), light.target.position.clone()] : null;
+    if (J.G) { metti(light, J.G); }
+    const n = Math.min(J.list.length, J.i + P.lotto), part = J.list.slice(J.i, n);
+    sh.map = J.rt; try { disegna(light, part, J.i === 0); } finally { sh.map = m0; }
+    J.i = n; ST.lotti++;
+    if (pos) { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); }
+    sh.updateMatrices(light);
+    return J.i >= J.list.length;
+  }
+  function luce(light, tutti) {
+    const sh = light.shadow;
+    let r = REC.get(light); if (!r) REC.set(light, r = { cache: null, key: new Float64Array(16), sig: -1, n: -1, dyn: 0, ver: 0, ids: null, job: null });
+    let C = contenuto(light, tutti, r);
+    const map = sh.map, misura = !map || !r.cache || r.cache.width !== map.width || r.cache.height !== map.height;
+    const vecchia = C.sig !== r.sig || C.fermi.length !== r.n;
+    if (misura || (C.chiave && tutti)) {   // niente da riusare: si cuoce subito (all'inizio, al cambio di zoom, oltre il margine)
+      MOT[misura ? 'misura' : 'chiave']++; r.job = null;
+      disegna(light, C.fermi, true); const m2 = sh.map;
+      if (!r.cache || r.cache.width !== m2.width || r.cache.height !== m2.height) { if (r.cache) r.cache.dispose(); r.cache = nuovaRT(m2.width, m2.height); }
+      copia(m2, r.cache); r.key.set(C.e); r.sig = C.sig; r.n = C.fermi.length; ST.cotture++;
+      if (C.mob.length) disegna(light, C.mob, false);
+    } else {
+      if (C.chiave) {   // un faretto passato a un altro lampione: finché la mappa nuova non è pronta, la luce non fa ombra (mappa al fondo)
+        disegna(light, EMPTY, true); copia(sh.map, r.cache); r.key.set(C.e); r.sig = -2; r.n = -1; r.job = null; MOT.chiave++; }
+      // il lavoro in sottofondo: verso l'aggancio nuovo del sole, o per le cose ferme cambiate sotto la stessa camera
+      const vuole = tutti && A.next ? 'next' : (C.chiave || vecchia) ? 'qui' : null;
+      if (vuole && (!r.job || r.job.tipo !== vuole || (vuole === 'next' && r.job.G !== A.next))) {
+        let list = C.fermi, e = C.e, sig = C.sig, G = null;
+        if (vuole === 'next') { const pos = [light.position.clone(), light.target.position.clone()]; G = A.next; metti(light, G); const C2 = contenuto(light, tutti, { key: new Float64Array(16), ver: -1 }); list = C2.fermi; e = C2.e; sig = C2.sig;
+          light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); sh.updateMatrices(light); r.ver++; }
+        r.job = { tipo: vuole, list, i: 0, e, sig, n: list.length, G, rt: r.job ? r.job.rt : null }; if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
+        if (DIAG.on && vuole === 'qui' && r.ids) { const now = new Set(C.fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
+          C.fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); }
+        if (DIAG.on) { r.ids = new Set(C.fermi.map(o => o.id)); r.idsObj = C.fermi.slice(); } }
+      if (r.job && lavora(light, r, tutti)) {   // finita: la mappa di riserva diventa quella in uso
+        const J = r.job, old = r.cache; r.cache = J.rt; r.key.set(J.e); r.sig = J.sig; r.n = J.n; r.job = null; ST.cotture++; ST.sottofondo++;
+        if (old) { old.dispose(); }
+        if (J.G) { A.G = J.G; if (A.next === J.G) A.next = null; metti(light, J.G); sh.updateMatrices(light); r.ver++; C = contenuto(light, tutti, r); } }
+      if (C.mob.length || r.dyn) { copia(r.cache, sh.map); if (C.mob.length) disegna(light, C.mob, false); ST.riprese++; }
+    }
+    if (DIAG.on) C.mob.forEach(o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; const k = (o.isSkinnedMesh ? 'scheletro' : o.isInstancedMesh ? 'istanze' : 'mosso') + ' ' + (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); DIAG.mob.set(k, (DIAG.mob.get(k) || 0) + 1); });
+    r.dyn = C.mob.length; ST.dinamici += C.mob.length; ST.fermi += C.fermi.length; ST.luci++;
     sh.autoUpdate = false; sh.needsUpdate = false;
   }
   // prima del disegno della scena: il sole agganciato (prima che three calcoli le luci); poi, dentro il disegno della scena, al posto della
@@ -127,7 +171,7 @@ var PesoOmbre = (function () {
     const rd = K.renderer, S = K.scene, t0 = performance.now(); frame++;
     const moon = K.moon, sun = moon && moon.castShadow && moon.visible;
     const lst = []; if (sun) lst.push(moon);
-    (K.spots || []).forEach(l => { if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate)) lst.push(l); });
+    (K.spots || []).forEach(l => { const r = REC.get(l); if (l.castShadow && l.visible && (l.shadow.needsUpdate || l.shadow.autoUpdate || (r && r.job))) lst.push(l); });   // un faretto con la cottura a metà va avanti anche se il gioco non lo chiede
     if (lst.length) {
       const cur = rd.getRenderTarget(), cf = rd.getActiveCubeFace(), ml = rd.getActiveMipmapLevel();
       const cl = K.camera().layers;
@@ -143,10 +187,10 @@ var PesoOmbre = (function () {
   // spento: le mappe tornano quelle di three (il sole col riquadro e la mappa del gioco, ridisegnato a ogni fotogramma)
   function spegni() {
     REC.forEach((r, l) => { if (K && l === K.moon) l.shadow.autoUpdate = true; l.shadow.needsUpdate = true; r.sig = -1; });
-    if (K && K.moon && A.base) { const m = K.moon, sc = m.shadow.camera; sc.left = -A.half; sc.right = A.half; sc.top = A.half; sc.bottom = -A.half; sc.updateProjectionMatrix(); A.halfSet = NaN; A.T = null; A.d = null;
+    if (K && K.moon && A.base) { const m = K.moon, sc = m.shadow.camera; sc.left = -A.half; sc.right = A.half; sc.top = A.half; sc.bottom = -A.half; sc.updateProjectionMatrix(); A.halfSet = NaN; A.G = null; A.next = null;
       if (m.shadow.mapSize.x !== A.base) { m.shadow.mapSize.set(A.base, A.base); if (m.shadow.map) { m.shadow.map.dispose(); m.shadow.map = null; } } }
   }
-  function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, riprese: ST.riprese, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
+  function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, sottofondo: ST.sottofondo, lotti: ST.lotti, riprese: ST.riprese, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
   function azzera() { for (const k in ST) ST[k] = 0; for (const k in MOT) MOT[k] = 0; DIAG.mob.clear(); DIAG.firma.clear(); }
   function diag(on) { DIAG.on = on !== false; return { motivi: Object.assign({}, MOT), mobili: [...DIAG.mob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25), firma: [...DIAG.firma.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25) }; }
   return { ON, P, prima, dopo, conto, azzera, diag, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };

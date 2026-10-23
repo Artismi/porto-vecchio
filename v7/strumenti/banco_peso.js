@@ -95,10 +95,11 @@ const srv = http.createServer((req, res) => {
             mappe_ombra: +mean(A.nmap).toFixed(2), cotture: A.cot.reduce((x, y) => x + y, 0), ombre_senza_cotture: (() => { const q = A.sh.filter((x, j) => !A.cot[j]); return q.length ? Math.round(mean(q)) : null; })(), triangoli_k: Math.round(md(A.ttri) / 1000), principale_tri_k: Math.round(md(A.mtri) / 1000), ombre_tri_k: Math.round(mean(A.shtri) / 1000) }); } };
       requestAnimationFrame(f); }), n);
     const R = { scatto: s };
-    await pg.evaluate(() => { if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } });
+    await pg.evaluate(() => { if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } if (window.PesoLontano) PesoLontano.azzera(); });
     R.tempi = await campiona(NF);
     R.peso_ombre = await pg.evaluate(() => window.PesoOmbre ? Object.assign(PesoOmbre.conto(), PesoOmbre.diag(false)) : null);
     R.peso_gente = await pg.evaluate(() => window.PesoGente ? PesoGente.conto() : null);
+    R.peso_lontano = await pg.evaluate(() => window.PesoLontano ? PesoLontano.conto() : null);
     if (!has('nothrottle')) { await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 }); R.tempi4x = await campiona(Math.max(4, NF >> 1)); await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 }); }
     // 3) la scena ferma: niente logica, niente fotogrammi (il ciclo del gioco continua a vuoto); due fotogrammi a mano con dt = 0 per assestare
     await pg.evaluate(() => { const pv = window.__pv; window.__f0 = [pv.R.frame, pv.G.step]; pv.G.step = () => { }; });
@@ -126,7 +127,11 @@ const srv = http.createServer((req, res) => {
         if (q.userData.ugKeep || /sottosuolo/.test(n)) return 'sottosuolo';
         if (o.isSprite || o.isPoints || o.isLine || (o.material && o.material.blending === THREE.AdditiveBlending)) return 'luci_fx';
         if (q.userData.iso || q.userData.chunk || /terr|chunk|isola|island|strad|road|mare|water|sea/i.test(n)) return 'terreno';
+        const src = q.__src || '';   // chi l'ha messo in scena (le funzioni di render.js)
+        for (const [re, c] of SRC) if (re.test(src)) return c;
         return 'resto'; };
+      const SRC = [[/fronteBottega/, 'botteghe'], [/boatAt|boatVehicle/, 'barche'], [/buildWinter/, 'inverno'], [/buildChunkGen|updateChunks/, 'terreno'], [/laundry/, 'panni'], [/flushStatic/, 'statiche_sciolte'],
+        [/buildCosta|buildRocks|buildIsoleDettagli/, 'costa'], [/buildLighthouse/, 'faro'], [/surfacePortals/, 'portali'], [/buildCity/, 'citta_gruppi']];
       const byCat = {}; S.traverse(o => { if (!o.visible) return; const c = cat(o); if (!c) return; (byCat[c] = byCat[c] || []).push(o); });
       const T = new THREE.WebGLRenderTarget(64, 40);
       const spots = []; S.traverse(o => { if (o.isSpotLight && o.castShadow && o.intensity > 0 && o.visible) spots.push(o); });
@@ -182,12 +187,12 @@ const srv = http.createServer((req, res) => {
         const on2 = await foto(false); R.ab[k] = salvaDiff(await confronta(on2, off), s.nome + '_ab_' + k); R.ab[k].stabile = salvaDiff(await confronta(on2, png.vivo), s.nome + '_ab_' + k + '_stabile'); } }
     await pg.evaluate(() => { const pv = window.__pv; [pv.R.frame, pv.G.step] = window.__f0; });
     R.sec = Math.round((Date.now() - ts) / 1000);
-    OUTJ.scatti[s.nome] = R; log(s.nome, JSON.stringify({ peso_gente: R.peso_gente, peso_ombre: R.peso_ombre, tempi: R.tempi, tempi4x: R.tempi4x, tutto: R.categorie.tutto, faretti: R.categorie.ombre_faretti_tutte, costo: R.categorie.costo, persone: R.categorie.persone, scarto: R.scarto, ab: R.ab }));
+    OUTJ.scatti[s.nome] = R; log(s.nome, JSON.stringify({ peso_lontano: R.peso_lontano, peso_gente: R.peso_gente, peso_ombre: R.peso_ombre, tempi: R.tempi, tempi4x: R.tempi4x, tutto: R.categorie.tutto, faretti: R.categorie.ombre_faretti_tutte, costo: R.categorie.costo, persone: R.categorie.persone, scarto: R.scarto, ab: R.ab }));
     log('   resto', JSON.stringify(R.categorie.resto_rami));
     fs.writeFileSync(path.join(OUT, 'banco.json'), JSON.stringify(OUTJ, null, 1));
   }
   // la tabella
-  const C = ['persone', 'vetro', 'case', 'case_sciolte', 'statiche_fuse', 'posa', 'scorci', 'vissuti', 'terreno', 'treno', 'sottosuolo', 'luci_fx', 'mezzi', 'resto'];
+  const C = ['persone', 'vetro', 'case', 'case_sciolte', 'botteghe', 'statiche_fuse', 'statiche_sciolte', 'posa', 'scorci', 'vissuti', 'terreno', 'costa', 'barche', 'panni', 'inverno', 'treno', 'sottosuolo', 'luci_fx', 'mezzi', 'resto'];
   let md = `Disegni per fotogramma (mediana di ${NF} fotogrammi veri): tutto = principale + ombre + post. Costo delle categorie: disegni in meno spegnendole nello stesso fotogramma (principale + ombra del sole).\n\n`;
   md += `| scatto | disegni | principale | ombre | ombre senza cotture | post | mappe d'ombra | tri k | frame ms | 4× ms | logica ms | ${C.join(' | ')} | faretti (tutti) | scarto vivo | scarto statica |\n|${'---|'.repeat(14 + C.length + 1)}\n`;
   for (const [n, R] of Object.entries(OUTJ.scatti)) { const c = R.categorie, t = R.tempi, sc = k => R.scarto && R.scarto[k] ? `${R.scarto[k].media} / ${R.scarto[k].oltre_pct}%` : '';
