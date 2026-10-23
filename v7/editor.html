@@ -21719,7 +21719,7 @@ var Vegetazione = (function () {
   // ombra/mezzo, soglia mezzo/luce, morbidezza, in unità di «quanta luce prende»), l'ombra fredda e la luce calda come moltiplicatori della
   // tinta della specie, l'occlusione dipinta, il controluce sui bordi delle ciocche, quanto della tinta della luce del gioco passa (sera, notte).
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
-    uPittura: { value: .35 }, uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
+    uPittura: { value: .15 },   /* [vegetazione] la luce del gioco comanda: la gamma lega appena (col tappeto giallo-verde il teal stonava) */ uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
     uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.8 }, uOff: { value: .1 }, uTintaSpecie: { value: .22 } };
   function materiale(band, opz) {
@@ -21893,7 +21893,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       const P3 = g.attributes.position, N3 = g.attributes.normal; for (let i = 0; i < P3.count; i++) { const x = P3.getX(i), z = P3.getZ(i), [wx, wz] = loc(x, z); P3.setXYZ(i, wx, y0 + P3.getY(i), wz); const nx = N3.getX(i), nz = N3.getZ(i); N3.setXYZ(i, nx * cs + nz * sn, N3.getY(i), -nx * sn + nz * cs); }
       g.computeBoundingSphere(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: trama_pietra() })); m.castShadow = m.receiveShadow = true; gruppo.add(m); }
     { const im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(.62, 0), new THREE.MeshLambertMaterial({ color: '#ffffff', map: trama_pietra() }), PIE.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
-      PIE.forEach(([x, y, z, w, h, d, col, rot], i) => { const [wx, wz] = loc(x, z); e.set(0, rot + ry, 0); q.setFromEuler(e); m4.compose(new THREE.Vector3(wx, y0 + y + h / 2, wz), q, new THREE.Vector3(w, h, d)); im.setMatrixAt(i, m4); im.setColorAt(i, c.setRGB(col[0] * 1.6, col[1] * 1.6, col[2] * 1.6)); });
+      PIE.forEach(([x, y, z, w, h, d, col, rot], i) => { const [wx, wz] = loc(x, z); e.set(0, rot + ry, 0); q.setFromEuler(e); m4.compose(new THREE.Vector3(wx, y0 + y + h / 2, wz), q, new THREE.Vector3(w, h, d)); im.setMatrixAt(i, m4); im.setColorAt(i, c.setRGB(col[0] * 1.05, col[1] * 1.05, col[2] * 1.05)); });
       im.castShadow = im.receiveShadow = true; gruppo.add(im); }
     const pianta2 = (sp, lx, lz, h, rot, v, quota) => { const [x, y] = loc(lx, lz); piante.push({ sp, x, y, h: h || KIT.H0(sp), rot: rot === undefined ? r() * 6.28 : rot, v: v === undefined ? Math.floor(r() * 4) : v, t: r(), f: F.prato, quota: quota === undefined ? undefined : y0 + quota }); };
     pianta2('fico', hw - 1.1, -hd + 1, 4.4, 1, 2); pianta2('edera', -hw - .2, -hd - .45, 2.6, ry + Math.PI, 1); pianta2('edera', -1.5, -hd - .45, 2.1, ry + Math.PI, 2);
