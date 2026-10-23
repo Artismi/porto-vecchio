@@ -13,7 +13,7 @@
 var Personaggi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const CFG = { on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abc])/i) || [])[1] || 'b').toLowerCase() };
+  const CFG = { facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'pulite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abc])/i) || [])[1] || 'b').toLowerCase() };
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => (t = cl(t, 0, 1), t * t * (3 - 2 * t));
   const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
   function rng(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -358,6 +358,12 @@ var Personaggi = (function () {
     { rughe: 1, brow: -.2, stretti: 1, umore: -.1, browW: .032, accigliato: 1 }, { rughe: 1, umore: .4, oh: .9, coda: .01, browW: .036, mw: .086, aperto: 1 },
     { ciglia: 1, labbra: 1, browW: .017, arco: .012, alzato: 1 }, { ciglia: 1, labbra: 1, browW: .017, arco: .014, umore: .5, mw: .078, aperto: 1 }, { ciglia: 1, labbra: 1, browW: .02, oh: .9, ow: 1.06, coda: .006, mw: .085, ghigno: 1 }, { ciglia: 1.3, labbra: 1, browW: .015, arco: .02, oh: 1.12, mw: .068 },
     { ciglia: .5, labbra: 1, rughe: 1, browW: .015, accigliato: 1 }, { ciglia: .5, labbra: 1, rughe: 1, browW: .016, umore: .4, oh: .9, aperto: 1 }];
+  // le facce pulite (56-63): 0 uomo, 1 uomo serio, 2 uomo che ride, 3 vecchio, 4 donna, 5 donna che ride, 6 vecchia, 7 uomo con la barba di un giorno
+  function facciaPulita(D) {
+    const T = D.testa || {}; if (T.faccia !== undefined) return T.faccia % 8; const f = D.sesso === 'f', old = (D.eta || 30) > 58, um = T.umore || 0, sb = T.sopracciglia || 0;
+    const r = rng('fp' + (D.seme !== undefined ? D.seme : JSON.stringify(D)));
+    if (f) return old ? 6 : um > .3 ? 5 : 4; if (old) return 3; if (sb < -.35) return 1; if (um > .3) return 2; return r() < .35 && (D.eta || 30) > 22 ? 7 : 0;
+  }
   function facciaDi(D) {
     const T = D.testa || {}; if (T.faccia !== undefined) return T.faccia; const f = D.sesso === 'f', old = (D.eta || 30) > 58, um = T.umore || 0, sb = T.sopracciglia || 0;
     const r = rng('faccia' + (D.seme !== undefined ? D.seme : JSON.stringify(D))), pk = a => a[Math.floor(r() * a.length)];
@@ -372,12 +378,13 @@ var Personaggi = (function () {
     const at = (y, x, z) => [base[0] + x * K, base[1] + y * K, base[2] + z * K];
     const capH = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12'), labbra = mixc(pelle, [.55, .25, .22], .35), occ = C3('#1a1414');
     const ru = mixc(pelle, [.8, .35, .3], .12);   // un filo di rosso sulle guance
-    const fac = TL.faccia + facciaDi(D), y0f = P[0][0], y1f = P[P.length - 1][0];
+    const fac = (CFG.facce === 'pulite' ? 56 + facciaPulita(D) : TL.faccia + facciaDi(D)), y0f = P[0][0], y1f = P[P.length - 1][0];
     // [facce] il viso scolpito: arcata delle sopracciglia, orbite, zigomi, guance, labbra e mento in avanti, angolo della mascella, tempie
     const g2 = (y, c, w) => Math.exp(-((y - c) / w) * ((y - c) / w)), banda = (x, a, b) => sm((x - a) / .12) * sm((b - x) / .12), maschio = D.sesso !== 'f', old = (D.eta || 30) > 58;
     const scolpisci = (th, y) => {
       const fr = Math.cos(th), sn = Math.abs(Math.sin(th)); if (fr < -.2) return 0; const fp = Math.max(fr, 0);
       let d = 0;
+      if (CFG.facce === 'pulite') return g2(y, -.017, .011) * Math.pow(fp, 7) * (maschio ? .05 : .03) + g2(y, -.006, .016) * banda(sn, .72, 1.05) * (maschio ? .025 : .008) * masc + g2(y, .02, .013) * Math.pow(fp, 6) * .02;
       d += g2(y, .118, .013) * Math.pow(fp, 3) * (maschio ? .055 : .035);                 // l'arcata delle sopracciglia
       d -= g2(y, .092, .012) * banda(sn, .18, .55) * fp * (maschio ? .05 : .04);           // le orbite
       d += g2(y, .066, .018) * banda(sn, .42, .82) * (maschio ? .04 : .045);               // gli zigomi
@@ -689,6 +696,25 @@ var Personaggi = (function () {
       if (o.barbetta) { c.fillStyle = R; c.globalAlpha = .16; c.beginPath(); c.moveTo(.2, .38); c.quadraticCurveTo(.25, .0, .5, -.04); c.quadraticCurveTo(.75, .0, .8, .38); c.lineTo(.7, .36); c.quadraticCurveTo(.6, .14, .5, .13); c.quadraticCurveTo(.4, .14, .3, .36); c.closePath(); c.fill(); c.beginPath(); c.ellipse(.5, .245, .09, .02, 0, 0, 7); c.fill(); c.globalAlpha = 1; }
     });
     FACCE.forEach((o, i) => faccia(i, o));
+    // le facce pulite, da linea chiara: occhi a ovale pieno, sopracciglia a tratto, bocca a linea; niente ombre
+    const pulita = (i, o) => T(56 + i, c => {
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      [-1, 1].forEach(s => { const x = .5 + s * .105, ey = .47;
+        c.fillStyle = G; c.beginPath(); c.ellipse(x, ey, .017, .03, 0, 0, 7); c.fill();
+        c.fillStyle = Bl; c.beginPath(); c.arc(x - s * .005, ey + .012, .005, 0, 7); c.fill();
+        if (o.ciglia) { c.strokeStyle = G; c.lineWidth = .008; c.beginPath(); c.moveTo(x + s * .012, ey + .022); c.lineTo(x + s * .03, ey + .032); c.stroke(); }
+        const b = o.brow || 0, up = o.alzato && s > 0 ? .02 : 0; c.strokeStyle = R; c.lineWidth = o.browW || .02;
+        c.beginPath(); c.moveTo(x - s * .035, .54 - b * .018 + up * .5); c.quadraticCurveTo(x, .565 + (o.arco || .006) + up, x + s * .04, .548 + b * .01 + up * .3); c.stroke();
+        if (o.rughe) { c.strokeStyle = G; c.lineWidth = .004; c.beginPath(); c.moveTo(x + s * .03, ey - .01); c.lineTo(x + s * .045, ey - .02); c.stroke(); } });
+      c.strokeStyle = G;
+      const um = o.umore || 0, my = .19, mw = o.mw || .045;
+      if (o.aperto) { c.fillStyle = G; c.beginPath(); c.moveTo(.5 - mw, my + .006); c.quadraticCurveTo(.5, my - .05, .5 + mw, my + .006); c.closePath(); c.fill(); c.fillStyle = Bl; c.fillRect(.5 - mw * .7, my - .004, mw * 1.4, .008); }
+      else { c.lineWidth = .009; c.beginPath(); c.moveTo(.5 - mw, my + um * .014); c.quadraticCurveTo(.5, my - um * .03, .5 + mw, my + um * .014 + (o.storto ? .01 : 0)); c.stroke(); }
+      if (o.labbra) { c.fillStyle = 'rgb(255,0,255)'; c.beginPath(); c.ellipse(.5, my - .012, .035, .01, 0, 0, 7); c.fill(); }
+      if (o.rughe) { c.lineWidth = .004; [-1, 1].forEach(s => { c.beginPath(); c.moveTo(.5 + s * .06, .33); c.quadraticCurveTo(.5 + s * .08, .26, .5 + s * (mw + .02), .19); c.stroke(); }); c.beginPath(); c.moveTo(.42, .64); c.lineTo(.58, .64); c.moveTo(.44, .67); c.lineTo(.56, .67); c.stroke(); }
+      if (o.barbetta) { c.fillStyle = R; c.globalAlpha = .12; c.beginPath(); c.moveTo(.24, .36); c.quadraticCurveTo(.28, .0, .5, -.04); c.quadraticCurveTo(.72, .0, .76, .36); c.lineTo(.66, .34); c.quadraticCurveTo(.58, .16, .5, .15); c.quadraticCurveTo(.42, .16, .34, .34); c.closePath(); c.fill(); c.globalAlpha = 1; }
+    });
+    [{}, { brow: 1, browW: .024, umore: -.2 }, { umore: .7, aperto: 1 }, { rughe: 1, brow: -.3, umore: -.1 }, { ciglia: 1, labbra: 1, browW: .013, arco: .012 }, { ciglia: 1, labbra: 1, browW: .013, arco: .014, umore: .6, aperto: 1 }, { ciglia: 1, labbra: 1, rughe: 1, browW: .012 }, { barbetta: 1, alzato: 1, storto: 1 }].forEach((o, i) => pulita(i, o));
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
     P(1, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) c.fillRect(0, k / 4, 1, .1); });   // righe da marinaio
