@@ -13,7 +13,7 @@
 var Personaggi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abc])/i) || [])[1] || 'b').toLowerCase() };
+  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abck])/i) || [])[1] || 'k').toLowerCase() };
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => (t = cl(t, 0, 1), t * t * (3 - 2 * t));
   const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
   function rng(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -26,6 +26,7 @@ var Personaggi = (function () {
   const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
+    k: { nome: 'Kit', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.35, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
@@ -194,9 +195,30 @@ var Personaggi = (function () {
     jeans: { gamba: [-.06, .99, .01], orlo: .02, bacino: .01, gtile: 'jeans', cintura2: 1 },
     tuta_pantaloni: { gamba: [-.06, 1, .012], orlo: .05, orloSp: .006, dritti: .6, bacino: .01, bande: 1 },
     catena: { catena: 1 },
+    // [guardaroba] il resto dei capi del gioco
+    camicia_quadri: { busto: [.02, .99, .008], braccio: [0, .95, .008], tile: 'camicia', ptile: 'quadri', orlo: .03, polsino: 1, colletto: 'camicia', manica: 'manica' },
+    polo: { busto: [.05, .925, .006], braccio: [0, .32, .006], tile: 'maglietta', orlo: .025, colletto: 'camicia', manica: 'manica' },
+    dolcevita: { busto: [.02, 1, .01], braccio: [0, .96, .01], tile: 'maglione', orlo: .04, colletto: 'collo_alto' },
+    maglione_v: { busto: [.0, 1, .014], braccio: [0, .96, .012], tile: 'gilet', ptile: 'maglia', orlo: .06, orloSp: .005 },
+    giacca_pelle: { busto: [-.02, 1, .02], braccio: [0, .95, .018], tile: 'bomber', orlo: .03, colletto: 'revers', manica: 'manica' },
+    giubbotto_jeans: { busto: [.02, 1, .018], braccio: [0, .95, .016], tile: 'camicia', orlo: .05, orloSp: .006, colletto: 'camicia', manica: 'polsino' },
+    piumino: { busto: [-.02, 1, .045], braccio: [0, .97, .04], tile: 'bomber', orlo: .07, orloSp: .01, colletto: 'alto', manica: 'polsino' },
+    smanicato: { busto: [-.02, 1, .04], tile: 'bomber', orlo: .05, orloSp: .008, colletto: 'alto' },
+    montone: { busto: [-.06, 1, .035], braccio: [0, .95, .03], tile: 'cappotto', orlo: .06, orloSp: .012, colletto: 'revers', manica: 'polsino', svasa: .012, colOrlo: '#e8dcc4' },
+    giubbotto: { busto: [.1, .95, .035], tile: 'tuta', orlo: .03 },
+    poncho: { scialle: 1, lungo: 1 },
+    pelliccia: { busto: [-.03, 1, .04], braccio: [0, .95, .035], tile: 'cappotto', ptile: 'pois', orlo: .05, orloSp: .01, colletto: 'giro', falda: [0, .62, 1.12] },
+    vestito_corto: { busto: [-.02, .95, .006], tile: 'abito', orlo: .02, gonna: [.3, .4, 1.25], colletto: 'tondo' },
+    vestito_lungo: { busto: [-.02, .97, .006], braccio: [0, .9, .006], tile: 'abito', orlo: .02, gonna: [.3, .95, 1.25], colletto: 'tondo', manica: 'manica' },
+    leggings: { gamba: [-.06, 1, .003], bacino: .003 },
+    calze_intere: { gamba: [-.04, 1, .002], bacino: .002 },
+    calze_alte: { gamba: [.72, 1, .004] },
+    bermuda: { gamba: [-.06, .42, .01], orlo: .03, bacino: .01, gtile: 'calzoni', cintura2: 1 },
+    minigonna: { gonna: [.3, .14, 1.12], bacino: .008 },
+    cargo: { gamba: [-.06, 1, .016], orlo: .02, dritti: .7, bacino: .012, gtile: 'calzoni', cintura2: 1, tasconi: 1 },
   };
   // scarpe: [altezza del gambale (0 scarpa bassa … 1 al ginocchio), punta, tacco]
-  const SCARPE = { sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
+  const SCARPE = { tela: [0, 1.02, 0, 0, 1], mocassini: [0, 1, 0], sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
 
   // =====================================================================================
   // LA FIGURA: costruisce la geometria nello spazio del personaggio
@@ -289,7 +311,7 @@ var Personaggi = (function () {
       if (v.scialle) scialle(B, J, profAt, zAt, yOf, v);
       if (v.colletto) colletto(B, J, profAt, zAt, yOf, v, listaB);
       if (v.cintura) cintura(B, J, profAt, zAt, yOf, v, listaB);
-      if (v.catena) { const y = yOf(.9), P0 = profAt(y), sp = strati(listaB, .9).sp, N = 9, pts = []; for (let j = 0; j <= N; j++) { const a = (j / N - .5) * Math.PI * 1.1; pts.push([Math.sin(a) * (P0[0] * .62 + sp), y + .03 - Math.cos(a) * .05 - .02, zAt(y) + P0[2] + Math.cos(a) * (P0[1] + sp + .004)]); } loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(N, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: .006, b: .006, col: C3v(v.col || '#d8b040'), w: [['Chest', 1]] })), { seg: 5 }); }
+      if (v.catena) { const y = yOf(.9), P0 = profAt(y), sp = strati(listaB, .9).sp, N = 9, pts = []; for (let j = 0; j <= N; j++) { const a = (j / N - .5) * Math.PI * 1.1; pts.push([Math.sin(a) * (P0[0] * .62 + sp + .01), y + .03 - Math.cos(a) * .06 - .02, zAt(y) + P0[2] + Math.cos(a) * (P0[1] + sp + .012)]); } loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(N, j + 1)], pts[Math.max(0, j - 1)])), f: [0, 0, 1], a: .009, b: .009, col: C3v(v.col || '#d8b040'), w: [['Chest', 1]] })), { seg: 5 }); }
       if (v.spalline) ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1, p = J['UpperArm' + sd]; uovo(B, [sg * (Math.abs(p[0]) - .02), p[1] + .045, p[2]], [sg, 0, 0], .012, .04, .055, mulc(v.col, .8), [['Shoulder' + sd, .6], ['UpperArm' + sd, .4]], { anelli: 3, seg: 6, p: 3.5, f: [0, 1, 0] }); });
     });
     (D.extra || []).forEach(e => { if (e === 'bandoliera') bandoliera(B, J, profAt, zAt, yOf, listaB, D); });
@@ -299,7 +321,46 @@ var Personaggi = (function () {
       loft(B, [0, 1].map(q => ({ c: [0, y - .015 + q * .03, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: P0[0] + sp + .004, b: P0[1] + sp + .004, fz: P0[2], col: c, w: [['Hips', .7], ['Abdomen', .3]] })), { seg: 16 });
       uovo(B, [0, y, zAt(y) + P0[1] + P0[2] + sp + .006], [0, 0, 1], .02, .016, .005, C3('#b8b0a0'), [['Hips', 1]], { anelli: 2, seg: 6, p: 4, f: [0, 1, 0] }); }
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
+    addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
     return B;
+  }
+  // ---------------- QUELLO CHE SI PORTA SOPRA: sciarpe, cravatte, papillon, zaini, borse, marsupi, paraspalle, ginocchiere, tasconi ----------------
+  function addosso(B, J, D, K, profAt, zAt, yOf, LB, vesti) {
+    const fz = (t, ex) => { const y = yOf(t), P0 = profAt(y), sp = strati(LB, t).sp; return zAt(y) + P0[2] + P0[1] + sp + (ex || 0); };
+    const bz = (t, ex) => { const y = yOf(t), P0 = profAt(y), sp = strati(LB, t).sp; return zAt(y) + P0[2] - P0[1] - sp - (ex || 0); };
+    const wS = y => catena(y, [J.Hips[1], J.Abdomen[1], J.Torso[1], J.Chest[1], J.Neck[1]], ['Hips', 'Abdomen', 'Torso', 'Chest', 'Neck'], .05);
+    const striscia = (pts, w, th, col, o) => loft(B, pts.map((p, j) => ({ c: p, t: norm(sub(pts[Math.min(pts.length - 1, j + 1)], pts[Math.max(0, j - 1)])), f: o && o.f || [0, 0, 1], a: w * (o && o.wk ? o.wk(j / (pts.length - 1)) : 1), b: th, p: 6, col, ptile: o && o.ptile || 0, col3: o && o.col3, mv: j * .05, w: o && o.w || wS(p[1]) })), { seg: 4 });
+    const tasca = (c, a, b, h, col, w, o) => loft(B, [0, .08, .92, 1].map((q, j) => ({ c: add(c, [0, (q - .5) * h, 0]), t: [0, 1, 0], f: o && o.f || [0, 0, 1], a: a * (j === 0 || j === 3 ? .9 : 1), b: b * (j === 0 || j === 3 ? .85 : 1), p: 5, col: j === 3 ? mulc(col, .85) : col, w })), { seg: 8 });
+    const C = D.collo || [], Sc = D.schiena || [];
+    C.forEach(it => { const col = C3(it.col || '#a83a3a'), y0 = yOf(.965), P0 = profAt(y0), sp = strati(LB, .965).sp, zc = zAt(y0);
+      if (it.tipo === 'sciarpa' || it.tipo === 'foulard') {   // giro attorno al collo e i due capi che cadono davanti, un po' di lato
+        const f = it.tipo === 'foulard', r = f ? .012 : .022, ptile = it.righe ? PT.righe : f ? PT.fiori : PT.maglia, c3 = it.righe ? [.92, .9, .84] : mulc(col, .7);
+        loft(B, [0, .5, 1].map(q => ({ c: [0, y0 + .005 + q * (f ? .02 : .04), zc - .004], t: [0, 1, 0], f: [0, 0, 1], a: .065 + sp * .5 + r * (1 - Math.abs(q - .5)), b: .06 + sp * .5 + r * (1 - Math.abs(q - .5)), col, ptile, col3: c3, mv: q * .06, w: [['Neck', .5], ['Chest', .5]] })), { seg: 14 });
+        if (!f) [[.045, .62], [.075, .7]].forEach(([x, t1], k) => striscia([0, .3, .6, 1].map(q => { const t = lerp(.95, t1, q); return [x + q * .01, yOf(t), fz(t, .012 + k * .006)]; }), .028, .008, col, { ptile, col3: c3 }));
+        else uovo(B, [.02, y0 - .01, fz(.95, .012)], [0, 0, 1], .02, .015, .012, col, [['Chest', 1]], { anelli: 2, seg: 6 });
+      } else if (it.tipo === 'cravatta') {
+        const pt = { regimental: PT.righe, pois: PT.pois, paisley: PT.fiori, liberty: PT.fiori, costine: PT.maglia }[it.dis] || 0;
+        uovo(B, [0, yOf(.955), fz(.955, .006)], [0, -1, .3], .016, .01, .014, col, [['Chest', .6], ['Neck', .4]], { anelli: 3, seg: 6 });
+        striscia([0, .4, .8, 1].map(q => { const t = lerp(.94, .5, q); return [0, yOf(t), fz(t, .006)]; }), .018, .004, col, { wk: q => q < .9 ? lerp(.9, 1.6, q) : 1.6 * (1 - (q - .9) * 6), ptile: pt, col3: it.dis === 'regimental' ? [.85, .75, .3] : mixc(col, [1, 1, 1], .6) });
+      } else if (it.tipo === 'papillon') { [1, -1].forEach(sg => uovo(B, [sg * .018, yOf(.955), fz(.955, .008)], [sg, 0, 0], .012, .006, .018, col, [['Chest', .6], ['Neck', .4]], { anelli: 3, seg: 6, punta: -.4 })); uovo(B, [0, yOf(.955), fz(.955, .01)], [0, 1, 0], .006, .005, .007, mulc(col, .8), [['Chest', 1]], { anelli: 2, seg: 5 }); }
+      else if (it.tipo === 'perle' || it.tipo === 'catenina') { const N = 12, y = yOf(.9), P1 = profAt(y), sp1 = strati(LB, .9).sp; for (let j = 0; j <= N; j++) { const a = (j / N - .5) * Math.PI * 1.1; const p = [Math.sin(a) * (P1[0] * .55 + sp1), y + .03 - Math.cos(a) * .05 - .015, zAt(y) + P1[2] + Math.cos(a) * (P1[1] + sp1 + .005)]; if (it.tipo === 'perle') uovo(B, p, [0, 1, 0], .007, .007, .007, col, [['Chest', 1]], { anelli: 2, seg: 5 }); } if (it.tipo === 'catenina') { const pts = []; for (let j = 0; j <= 8; j++) { const a = (j / 8 - .5) * Math.PI * 1.1; pts.push([Math.sin(a) * (P1[0] * .5 + sp1), y + .04 - Math.cos(a) * .045, zAt(y) + P1[2] + Math.cos(a) * (P1[1] + sp1 + .004)]); } striscia(pts, .003, .003, col, { w: [['Chest', 1]] }); } }
+    });
+    Sc.forEach(it => { const col = C3(it.col || '#4a5a3a'), dk = mulc(col, .75);
+      if (it.tipo === 'zaino') {   // lo zaino: il corpo, la tasca, gli spallacci davanti
+        const t0 = .45, t1 = .9, yc = yOf((t0 + t1) / 2), zb = Math.min(bz(.6), bz(.8)) - .06;
+        tasca([0, yc, zb], .13, .06, yOf(t1) - yOf(t0), col, [['Chest', .5], ['Torso', .5]]); tasca([0, yOf(t0 + .1), zb - .055], .09, .025, .12, dk, [['Torso', 1]]);
+        [1, -1].forEach(sg => striscia([[sg * .075, yOf(.98), zAt(yOf(.98)) - .02], [sg * .085, yOf(1.0) + .01, zAt(yOf(.98)) + .03], [sg * .09, yOf(.9), fz(.9, .006)], [sg * .085, yOf(.62), fz(.62, .006)], [sg * .09, yOf(.5), bz(.5, .02) + .04]], .018, .005, dk, { f: [0, 1, 0] }));
+      } else if (it.tipo === 'marsupio') { tasca([0, yOf(.14), fz(.14, .028)], .085, .03, .07, col, [['Hips', 1]]); loft(B, [0, 1].map(q => { const y = yOf(.15), P0 = profAt(y), sp = strati(LB, .15).sp; return { c: [0, y - .01 + q * .02, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: P0[0] + sp + .008, b: P0[1] + sp + .008, fz: P0[2], col: dk, w: [['Hips', 1]] }; }), { seg: 14 }); }
+      else if (it.tipo === 'borsetta' || it.tipo === 'borsello' || it.tipo === 'tracolla') {   // la borsa al fianco sinistro, la cinghia sulla spalla destra
+        const big = it.tipo === 'borsetta', y = yOf(big ? .2 : .3), P0 = profAt(y), x = P0[0] + strati(LB, .3).sp + .03;
+        tasca([x, y, zAt(y) + .01], big ? .03 : .025, big ? .09 : .07, big ? .16 : .12, col, [['Hips', .6], ['Abdomen', .4]], { f: [1, 0, 0] });
+        const pts = []; for (let j = 0; j <= 8; j++) { const q = j / 8, t = lerp(.3, .97, q), yy = yOf(t), PP = profAt(yy), sp = strati(LB, t).sp, xx = lerp(x - .01, -.1, q); const ex = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(xx) / (PP[0] + sp + .01), 2.2))); pts.push([xx, yy + (j === 8 ? .02 : 0), zAt(yy) + PP[2] + (PP[1] + sp + .006) * Math.max(ex, .3)]); }
+        striscia(pts, .009, .003, dk);
+      }
+    });
+    if (D.spalle) { const col = C3(D.spalle.col || '#4a3a2a'); ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1, p = J['UpperArm' + sd]; uovo(B, [sg * (Math.abs(p[0]) - .01), p[1] + .05, p[2]], [sg * .3, 1, 0], .07, .08, .028, col, [['Shoulder' + sd, .5], ['UpperArm' + sd, .5]], { anelli: 3, seg: 8 }); }); }
+    if (D.ginocchia) { const col = C3(D.ginocchia.col || '#2a2a2e'); ['L', 'R'].forEach(sd => { const k = J['LowerLeg' + sd]; uovo(B, [k[0], k[1] + .01, k[2] + .075], [0, 1, 0], .07, .03, .075, col, [['LowerLeg' + sd, .6], ['UpperLeg' + sd, .4]], { anelli: 3, seg: 8 }); }); }
+    vesti.filter(v => v.tasconi).forEach(v => ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1, j0 = J['UpperLeg' + sd], j1 = J['LowerLeg' + sd], y = lerp(j0[1], j1[1], .55), x = lerp(j0[0], j1[0], .55) - sg * .022 * (1 - sm(.55 * .45)); tasca([x + sg * (K.gamba * .95 + .02), y, lerp(j0[2], j1[2], .55)], .02, .055, .13, mulc(C3v(v.col), .92), [['UpperLeg' + sd, 1]], { f: [1, 0, 0] }); }));
   }
   // ---------------- GLI ACCESSORI: orologio, braccialetti, orecchini, cuffie col walkman ----------------
   function accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA) {
@@ -318,7 +379,7 @@ var Personaggi = (function () {
   // ---------------- LE MANI: palmo, pollice e dita in due gruppi (indice e le altre tre), leggibili da lontano ----------------
   function mano(B, J, sd, sg, pelle, D) {
     const st = S(), k = st.mani / BRACCIO / ((window.Anim && Anim.HAND) || .85) * (D.sesso === 'f' ? .9 : 1) * (D.mani || 1), w = J['Wrist' + sd], m1 = J['Middle1' + sd], m2 = J['Middle2' + sd], i1 = J['Index1' + sd], t1 = J['Thumb1' + sd], t2 = J['Thumb2' + sd];
-    const ax = norm(sub(m2, w)), x0 = w[0] + sg * .005;
+    const ax = norm(sub(m2, w)), x0 = w[0] + sg * .005; if (D.guanti) pelle = C3(D.guanti);
     // il palmo: piatto (davanti e dietro la mano nella posa a T sono sopra e sotto)
     const pc = [x0 + sg * .045 * k, w[1] - .004, w[2] + .002];
     loft(B, [0, .2, .55, .85, 1].map((q, j) => ({ c: add([x0, w[1] - .004, w[2] + .002], mul(ax, q * .085 * k)), t: ax, f: [0, 1, 0], a: [.03, .04, .047, .048, .043][j] * k, b: [.017, .023, .024, .022, .018][j] * k, p: 2.6, col: pelle, w: [['Wrist' + sd, 1]], ao: q < .2 ? .9 : 1 })), { seg: 8 });
@@ -411,7 +472,7 @@ var Personaggi = (function () {
     if (sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
     if (D.cappello && D.cappello.tipo === 'casco_cantiere') usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'casco'));
     if (D.baffi && !usa.some(p => p.kind === 'baffi')) usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'baffi'));   // i baffi del Worker, su qualunque faccia
-    const prof = new Map(); let eyS = 0, eyN = 0;
+    const tris = []; let eyS = 0, eyN = 0;
     usa.forEach(pt => {
       const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
       const keep = new Uint8Array(n).fill(1);
@@ -420,20 +481,24 @@ var Personaggi = (function () {
         if (taglio && pt.kind === 'capelli' && p[1] > taglio) keep[i] = 0;
         B.v(p, c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wOf(p[1])); B.N[(v0 + i) * 3] = pt.N[i * 3]; B.N[(v0 + i) * 3 + 1] = pt.N[i * 3 + 1]; B.N[(v0 + i) * 3 + 2] = pt.N[i * 3 + 2];
         if (pt.kind === 'occhi') { eyS += (p[1] - base[1]) / K; eyN++; }
-        if (pt.kind === 'pelle') { const y = Math.round((p[1] - base[1]) / K / .01) * .01; const e = prof.get(y) || [0, -9, 9]; e[0] = Math.max(e[0], Math.abs(p[0] - base[0])); e[1] = Math.max(e[1], p[2] - base[2]); e[2] = Math.min(e[2], p[2] - base[2]); prof.set(y, e); }
       }
-      for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); }
+      for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); if (pt.kind === 'pelle' || pt.kind === 'capelli') tris.push(Object.assign([v0 + a, v0 + b, v0 + d].map(q => [B.P[q * 3], B.P[q * 3 + 1], B.P[q * 3 + 2]]), { pelle: pt.kind === 'pelle' })); }
     });
     B.ol = 1;
     // il profilo come TESTE: [quota, mezza larghezza, mezza profondità, centro in avanti], in unità di K
-    const out = [...prof.entries()].sort((a, b) => a[0] - b[0]).map(([y, e]) => [y, e[0] / K, (e[1] - e[2]) / 2 / K, (e[1] + e[2]) / 2 / K]); out.ey = eyN ? eyS / eyN : .093; return out;
+    // il profilo si misura coi raggi sulla pelle vera: davanti e dietro al centro, di lato a metà profondità
+    const ray = (o, d, solo) => { let best = null; for (const T3 of tris) { if (solo && !T3.pelle) continue; const [A, Bv, C] = T3; const e1 = sub(Bv, A), e2 = sub(C, A), pv = cross(d, e2), det = dot(e1, pv); if (Math.abs(det) < 1e-9) continue; const iv = 1 / det, tv = sub(o, A), u = dot(tv, pv) * iv; if (u < 0 || u > 1) continue; const qv = cross(tv, e1), w = dot(d, qv) * iv; if (w < 0 || u + w > 1) continue; const t = dot(e2, qv) * iv; if (t > 0 && (best === null || t < best)) best = t; } return best; };
+    const out = []; for (let yk = -.05; yk <= .24; yk += .01) { const y = base[1] + yk * K;
+      const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tb = ray([base[0], y, base[2] - .5], [0, 0, 1]); if (tf === null || tb === null) continue;
+      const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, ts = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]); if (ts === null) continue;
+      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; KT.ultimo = out; return out;
   }
   function testa(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, K = st.testa * (T.scala || 1) * (D.sesso === 'f' ? .95 : 1), h = J.Head, base = [h[0], h[1] - .01 * K, h[2] - .005], wH = [['Head', 1]];
     const r = rng(D.seme !== undefined ? D.seme : JSON.stringify(D)), vv = (a, b) => lerp(a, b, r());
     const masc = T.mascella || vv(.9, 1.06), zig = T.zigomi || vv(.96, 1.05), fro = T.fronte || vv(.97, 1.03), mento = T.mento !== undefined ? T.mento : vv(-.006, .006);
     const kitOn = KT.ok && CFG.teste !== 'mie', capH0 = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12');
-    const taglio = D.cappello && D.cappello.tipo === 'fazzoletto' ? -9 : D.cappello && D.cappello.tipo ? h[1] - .01 * K + (/paglia|cappello/.test(D.cappello.tipo) ? .16 : .135) * K : 0;
+    const taglio = D.cappello && /^(fazzoletto|passamontagna|maschera_gas|cappuccio_stelle)/.test(D.cappello.tipo) ? -9 : D.cappello && /^(fascia|bandana)$/.test(D.cappello.tipo) ? 0 : D.cappello && D.cappello.tipo ? h[1] - .01 * K + (/paglia|cappello/.test(D.cappello.tipo) ? .16 : .135) * K : 0;
     const PK = kitOn ? testaKit(B, J, D, pelle, capH0, K, base, taglio) : null;
     const P = PK && PK.length > 4 ? PK : (TESTE[T.forma] || TESTE.ovale).map(([y, a, b, fz]) => { const kj = y < .04 ? masc : y < .12 ? zig : fro; return [y < 0 ? y - mento : y, a * kj, b * (y < .04 ? lerp(1, masc, .5) : 1), fz + (y < 0 ? mento * .6 : 0)]; });
     const at = (y, x, z) => [base[0] + x * K, base[1] + y * K, base[2] + z * K];
@@ -471,6 +536,11 @@ var Personaggi = (function () {
     // le orecchie
     if (!kitOn) [1, -1].forEach(s => uovo(B, at(.075, s * (wid(.075) - .004), -.012), [0, 1, 0], .012 * K, .02 * K, .03 * K, mulc(pelle, .93), wH, { anelli: 4, seg: 7 }));
     const ey = PK && PK.ey ? PK.ey : .093;
+    if (kitOn) {   // [personaggi] le teste del kit non hanno la bocca: una linea scura sotto il naso, e il labbro di sotto appena più rosso
+      const um = T.umore || 0, my = ey - .062, mz = front(my) + .003, mw = (D.sesso === 'f' ? .019 : .022) * (T.bocca || 1); B.ol = 0;
+      loft(B, [-1, -.5, 0, .5, 1].map(q => ({ c: at(my + (Math.abs(q) * um * .006) - (q * (T.storto || 0) * .004), q * mw, mz - Math.abs(q) * .006), t: [1, 0, 0], f: [0, 0, 1], a: .0048 * K, b: .004 * K, p: 3, col: [.12, .05, .045], w: wH })), { seg: 5 });
+      loft(B, [-1, 0, 1].map(q => ({ c: at(my - .008, q * mw * .7, front(my - .008) + .001 - Math.abs(q) * .004), t: [1, 0, 0], f: [0, 0, 1], a: .004 * K, b: .0025 * K, p: 3, col: mixc(pelle, [.62, .26, .22], D.sesso === 'f' ? .5 : .25), w: wH })), { seg: 5 });
+      B.ol = 1; }
     // il mento e le guance degli anziani: un filo di doppio mento
     if (false) uovo(B, at(-.02, 0, front(-.02) - .03), [0, 0, 1], .06 * K, .025 * K, .03 * K, mulc(pelle, .96), wH, { anelli: 3, seg: 8 });
     B.ol = 1;
@@ -487,7 +557,7 @@ var Personaggi = (function () {
       loft(B, [-1, 1].map(q => ({ c: at(ey + .004, q * .016, oz + .002), t: [1, 0, 0], f: [0, 1, 0], a: .003 * K, b: .003 * K, col: fc, w: wH })), { seg: 4 });
       [1, -1].forEach(s => loft(B, [0, 1].map(q => ({ c: at(ey + .004, s * (.062 + q * .03), oz - q * .1), t: [0, 0, -1], f: [0, 1, 0], a: .003 * K, b: .003 * K, col: fc, w: wH })), { seg: 4 })); }
     B.ol = 1;
-    if (D.cappello && D.cappello.tipo) cappello(B, at, K, D, front, wid, wH);
+    if (D.cappello && D.cappello.tipo) cappello(B, at, K, D, front, wid, wH, pa);
   }
   // ---------------- I CAPELLI A CIOCCHE ----------------
   const P0top = pa => { let y = .2; while (y < .3 && pa(y + .002, 1) > .012 && pa(y + .002, 1) < pa(y, 1) + 1e-6) y += .002; return y; };
@@ -545,7 +615,7 @@ var Personaggi = (function () {
     if (tipo === 'coda') { cc(.14, 0, -.112, [0, .2, -1], .018, .018, .022, scuro); loft(B, [0, .4, .8, 1].map((q, j) => ({ c: at(.14 - q * .2, 0, -.12 - q * .03), t: [0, -1, -.2], f: [0, 0, 1], a: [.024, .028, .02, .004][j] * K, b: [.022, .026, .018, .004][j] * K, col: j > 1 ? scuro : col, w: q > .4 ? [['Head', .5], ['Neck', .5]] : wH })), { seg: 8 }); }
   }
   // ---------------- I CAPPELLI ----------------
-  function cappello(B, at, K, D, front, wid, wH) {
+  function cappello(B, at, K, D, front, wid, wH, pa) {
     const H = D.cappello, c = C3(H.col || '#2a2a2e'), sc = mulc(c, .7), tipo = H.tipo, top = .2;
     const tesa = (y, r0, r1, rf, col, dz) => loft(B, [[r0 * .9, 0], [r0, .003], [r1, .0], [r1, -.006], [r0 * .95, -.006]].map(([r, dy]) => ({ c: at(y + dy, 0, (dz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: r * K, b: r * K * (rf || 1.06), col, w: wH })), { seg: 18 });
     const cupola = (y0, rows, col, fz, tile, c2) => loft(B, rows.map(([y, a, b], j) => ({ c: at(y0 + y, 0, (fz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, col, v: j / (rows.length - 1), tile: tile || 0, col2: c2, w: wH })), { seg: 16 });
@@ -570,6 +640,17 @@ var Personaggi = (function () {
       cupola(.13, [[-.005, .1, .11], [.04, .104, .114], [.08, .094, .104], [.11, .066, .076], [.125, .02, .024]], c, -.004, dz > 0 ? TL.cappellino : TL.cappellino + 1, C3(H.col2 || '#f0ece2'));
       loft(B, [[0, .085], [.5, .09], [1, .07]].map(([q, a]) => ({ c: at(.14 - q * .012, 0, (dz > 0 ? front(.14) - .01 : -.11) + dz * q * .075), t: [0, 0, dz], f: [0, 1, .15], a: a * K, b: .005 * K, p: 3, col: sc, w: wH })), { seg: 8 });
       uovo(B, at(.257, 0, -.008), [0, 1, 0], .012 * K, .012 * K, .005 * K, sc, wH, { anelli: 2, seg: 6 });
+    } else if (tipo === 'basco') {   // il basco: un disco morbido, calato di lato, col picciolo
+      loft(B, [[0, .102, .11], [.012, .118, .124], [.03, .12, .126], [.045, .1, .106], [.052, .02, .02]].map(([y, a, b]) => ({ c: at(.155 + y - (a > .11 ? .006 : 0), .012, -.008), t: norm([.18, 1, 0]), f: [0, 0, 1], a: a * K, b: b * K, col: c, w: wH })), { seg: 16 });
+      uovo(B, at(.214, .022, -.008), [0, 1, 0], .004 * K, .004 * K, .008 * K, sc, wH, { anelli: 2, seg: 5 });
+    } else if (tipo === 'fascia') { cupola(.145, [[0, .095, .108], [.028, .094, .107]].map(([y, a, b]) => [y, a + .016, b + .016]), c, .0); }
+    else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
+    else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) {   // il passamontagna: tutta la testa, coi buchi per gli occhi; le varianti hanno le loro punte
+      const ey = .108, rows = []; for (let y = -.045; y <= .22; y += .02) rows.push(y);
+      loft(B, rows.map((y, j) => ({ c: at(Math.min(y, .215), 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K * (y > .2 ? .6 : 1), b: (pa(Math.max(y, -.01), 2) + .01) * K * (y > .2 ? .6 : 1), fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: /righe|giullare/.test(tipo) ? PT.righe : /pallini|stelle/.test(tipo) ? PT.pois : PT.maglia, col3: C3(H.col2 || '#f0ece4'), mv: j * .03, w: wH,
+        mod: th => { const fr = Math.cos(th), sn = Math.sin(th); return Math.abs(y - ey) < .022 && fr > .55 && Math.abs(Math.abs(sn) - .3) < .2 ? -.25 : 0; } })), { seg: 18 });
+      const punte = /corna|diavolo|pallini/.test(tipo) ? 'corna' : /orecchie|coniglio/.test(tipo) ? 'orecchie' : /punte|riccio|giullare|stelle|clown/.test(tipo) ? 'punte' : null;
+      if (punte) [1, -1].forEach(sg => uovo(B, at(.21, sg * .06, -.01), [sg * (punte === 'corna' ? .7 : .35), 1, 0], (punte === 'orecchie' ? .022 : .014) * K, (punte === 'orecchie' ? .01 : .014) * K, (punte === 'orecchie' ? .05 : .04) * K, C3(H.col2 || '#f0ece4'), wH, { anelli: 3, seg: 6, punta: .7 }));
     } else if (tipo === 'elmetto') {
       cupola(.12, [[-.01, .125, .135], [.0, .12, .13], [.07, .112, .124], [.12, .07, .08], [.135, .01, .01]], c);
     } else if (tipo === 'fazzoletto') {   // il fazzoletto delle anziane: annodato sotto il mento, la punta dietro
@@ -814,10 +895,10 @@ var Personaggi = (function () {
     if (MAT && MAT_STILE === CFG.stile) return MAT; const st = S(); MAT_STILE = CFG.stile;
     let m;
     if (st.toon) { const n = st.toon, d = new Uint8Array(n * 4); for (let i = 0; i < n; i++) { const v = Math.round(n === 2 ? [150, 215][i] : lerp(108, 200, Math.pow(i / (n - 1), .8))); d.set([v, v, v, 255], i * 4); } const gm = new THREE.DataTexture(d, n, 1); gm.needsUpdate = true; m = new THREE.MeshToonMaterial({ gradientMap: gm }); }
-    else m = new THREE.MeshStandardMaterial({ roughness: .78, metalness: 0 });
+    else m = new THREE.MeshStandardMaterial({ roughness: .78, metalness: 0, flatShading: !!st.piatto });
     m.vertexColors = true; m.name = 'personaggi'; m.userData.personaggi = true;
     const tex = atlante(), N = AT.N;
-    const EMI = (st.toon ? .05 : .22).toFixed(3);
+    const EMI = (st.toon ? .05 : st.luce || .22).toFixed(3);
     m.onBeforeCompile = sh => {
       sh.uniforms.uAtl = { value: tex };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 col2; attribute vec3 col3; attribute vec3 atl; attribute vec3 mot; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;')
@@ -829,7 +910,7 @@ var Personaggi = (function () {
           vec3 M = vMot.z > .5 ? atlS(16. + floor(vMot.z + .5), fract(vMot.xy * 6.)) : vec3(0.);
           vec3 c = diffuseColor.rgb;
           c = mix(c, vC3 * (1. - M.g * .4), M.r); c = mix(c, vec3(.95, .85, .3), M.b * .7); c *= 1. - M.g * .25;
-          float lip = min(L.r, L.b); c = mix(c, vC3, lip); c = mix(c, vC2, L.r - lip); c *= 1. - L.g * .78; c = mix(c, vec3(.95, .93, .88), (L.b - lip) * .9);
+          float lip = min(L.r, L.b); c = mix(c, vC3, lip); c = mix(c, vC2, L.r - lip); c *= 1. - L.g * ${(st.inchiostro || .78).toFixed(3)}; c = mix(c, vec3(.95, .93, .88), (L.b - lip) * .9);
           diffuseColor.rgb = c; }`)
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ' + EMI + ';');   // [inverno] i personaggi si staccano dallo sfondo
     };
@@ -890,7 +971,71 @@ var Personaggi = (function () {
   const PELLI = ['#f0c8a8', '#e8b898', '#d8a888', '#c89070', '#b07a58', '#e0b090', '#a86a48'];
   const CAPELLI = ['#1a1410', '#2a1a12', '#3a2414', '#5a3a1a', '#7a5028', '#1a1a1a', '#8a6a3a'];
   const GRIGI = ['#a8a49c', '#c8c4bc', '#e0dcd4', '#7a766e'];
-  function descrittore(look, who, n) { return Object.assign({ sesso: 'm', eta: 35, pelle: (look && look.skin) || '#d8a888', vesti: [], scarpe: { tipo: 'scarpe', col: '#2a2018' } }, look && look.personaggio || {}); }
+  // ogni capo del Guardaroba (id) → un pezzo del descrittore. v: un capo sulle catene; c: cappello; o: occhiali; s: scarpe; k: collo; z: schiena; x: altro
+  const DA_CAPO = {
+    canotta: { v: 'canottiera' }, maglietta: { v: 'maglietta' }, maglietta_righe: { v: 'maglietta_righe', col3: '#f0ece2' }, camicia: { v: 'camicia' }, camicia_quadri: { v: 'camicia_quadri', col3: '#1a1a1e' },
+    dolcevita: { v: 'dolcevita' }, maglione: { v: 'maglione' }, felpa: { v: 'felpa' }, gilet: { v: 'gilet' }, grembiule: { v: 'grembiule' }, vestiti: { v: 'vestito_lungo', ptile: 'quadri' }, tuta: { v: 'tuta' },
+    giacca: { v: 'giacca' }, giacca_pelle: { v: 'giacca_pelle' }, giubbotto_jeans: { v: 'giubbotto_jeans' }, piumino: { v: 'piumino' }, cappotto: { v: 'cappotto' }, impermeabile: { v: 'cerata' }, montone: { v: 'montone' },
+    divisa: { v: 'divisa' }, giubbotto: { v: 'giubbotto' }, scialle: { v: 'scialle' }, mutande: {}, calze_nylon: { v: 'calze_intere' }, calzamaglia: { v: 'calze_intere' },
+    pantaloni: { v: 'pantaloni' }, jeans: { v: 'jeans' }, velluto: { v: 'pantaloni', ptile: 'righine' }, pantaloni_lavoro: { v: 'cargo' }, pantaloni_grigi: { v: 'pantaloni' }, gonna: { v: 'gonna' }, pantaloncini: { v: 'pantaloncini' },
+    calzini: {}, scarpe: { s: 'scarponi' }, scarpe_eleganti: { s: 'scarpe' }, scarpe_tela: { s: 'tela' }, stivali: { s: 'stivali' }, ciabatte: { s: 'ciabatte' },
+    guanti_lana: { x: 'guanti' }, guanti: { x: 'guanti' }, sciarpa: { k: 'sciarpa' }, sciarpa_righe: { k: 'sciarpa', righe: 1 }, foulard: { k: 'foulard' },
+    berretto: { c: 'berretto' }, coppola: { c: 'coppola' }, cappello: { c: 'cappello' }, colbacco: { c: 'berretto' }, fazzoletto: { c: 'fazzoletto' }, casco: { c: 'elmetto' }, elmetto: { c: 'elmetto' },
+    passamontagna: { c: 'passamontagna' }, maschera_gas: { c: 'maschera_gas' }, paraspalle: { x: 'spalle' }, paraginocchia: { x: 'ginocchia' }, zaino: { z: 'zaino' },
+    polo: { v: 'polo' }, camicia_hawaii: { v: 'camicia_corta', ptile: 'fiori', col3: '#f0e0a0' }, maglia_calcio: { v: 'maglietta', ptile: 'righine', col3: '#f0ece2' }, felpa_zip: { v: 'tuta_giacca' },
+    giacca_completo: { v: 'giacca' }, pelliccia: { v: 'pelliccia', col3: '#3a2414' }, pelliccia_volpe: { v: 'pelliccia', ptile: 'maglia' }, poncho: { v: 'scialle', ptile: 'righe' },
+    vestito_corto: { v: 'vestito_corto' }, vestito_lungo: { v: 'vestito_lungo' }, vestito_fiori: { v: 'abito', ptile: 'fiori', col3: '#c8402a' }, tuta_ginnastica: { v: 'tuta_giacca', e: 'tuta_pantaloni' },
+    cargo: { v: 'cargo' }, pantaloni_completo: { v: 'pantaloni' }, bermuda: { v: 'bermuda', ptile: 'quadri', col3: '#5a6a3a' }, minigonna: { v: 'minigonna' }, leggings: { v: 'leggings' },
+    sandali: { s: 'sandali' }, tacchi: { s: 'tacchi' }, scarpe_corsa: { s: 'sneakers' }, stivali_pelle: { s: 'stivali' }, mocassini: { s: 'mocassini' },
+    cravatta: { k: 'cravatta' }, papillon: { k: 'papillon' }, collana_oro: { v: 'catena' }, collana_perle: { k: 'perle' }, catenina: { k: 'catenina' },
+    occhiali_sole: { o: 'sole' }, occhiali_mascherina: { o: 'sole' }, occhiali_ovali: { o: 'sole' }, occhiali_shield: { o: 'sole' },
+    cappellino: { c: 'cappellino' }, basco: { c: 'basco' }, fascia: { c: 'fascia' }, orologio_polso: { a: 'orologio' }, anelli: { a: 'braccialetto' }, marsupio: { z: 'marsupio' }, borsetta: { z: 'borsetta' },
+    maglione_v: { v: 'maglione_v' }, maglione_collo_alto: { v: 'dolcevita', ptile: 'maglia' }, camicia_righe: { v: 'camicia', ptile: 'righine', col3: '#6a8ac0' }, camicia_vichy: { v: 'camicia', ptile: 'quadri', col3: '#c84a4a' },
+    camicia_jeans: { v: 'camicia' }, camicia_fiori: { v: 'camicia', ptile: 'fiori', col3: '#c8584a' },
+    cravatta_righe: { k: 'cravatta', dis: 'regimental' }, cravatta_pois: { k: 'cravatta', dis: 'pois' }, cravatta_cachemire: { k: 'cravatta', dis: 'paisley' }, cravatta_fiori: { k: 'cravatta', dis: 'liberty' }, cravatta_maglia: { k: 'cravatta', dis: 'costine' },
+    maglietta_oversize: { v: 'maglietta_larga' }, felpa_skate: { v: 'felpa_larga' }, canotta_basket: { v: 'canottiera', ptile: 'righine' }, giacca_tuta: { v: 'tuta_giacca' }, smanicato: { v: 'smanicato' }, piumino_oca: { v: 'piumino' },
+    pantaloni_tuta: { v: 'tuta_pantaloni' }, jeans_larghi: { v: 'larghi' }, calze_sport: { v: 'calze_alte' }, scarpe_skate: { s: 'sneakers' }, scarpe_air: { s: 'basket' },
+    cappellino_dritto: { c: 'cappellino' }, berretto_corto: { c: 'berretto' }, borsello: { z: 'borsello' }, marsupio_tracolla: { z: 'tracolla' }, bandana: { c: 'bandana' },
+  };
+  // i passamontagna fantasia sono tutti passamontagna (il tipo resta per le punte)
+  Object.keys({ passamontagna_punte: 1, passamontagna_orecchie: 1, passamontagna_righe: 1, passamontagna_diavolo: 1, passamontagna_clown: 1, passamontagna_riccio: 1, passamontagna_corna: 1, passamontagna_coniglio: 1, passamontagna_giullare: 1, cappuccio_stelle: 1, passamontagna_pallini: 1 }).forEach(k => { DA_CAPO[k] = { c: k }; });
+  // un vestito del Guardaroba (capi dal più interno al più esterno) → la parte "vestiti" del descrittore
+  function daGuardaroba(outfit, D) {
+    D = D || {}; D.vesti = []; D.collo = []; D.schiena = []; D.accessori = D.accessori || [];
+    const stretto = outfit.some(c => /^(tuta_ginnastica)$/.test(c.id));
+    (outfit || []).forEach(c => { const m = DA_CAPO[c.id]; if (!m) return; const col = c.col || (typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[c.id] && Guardaroba.CAPO[c.id].col) || '#888';
+      if (m.v) D.vesti.push(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.col3 ? { col3: m.col3 } : {}, c.col2 ? { col2: c.col2 } : {}));
+      if (m.e) D.vesti.push({ tipo: m.e, col, col3: '#f0ece2' });
+      if (m.c) D.cappello = { tipo: m.c, col };
+      if (m.o) D.occhiali = m.o;
+      if (m.s) D.scarpe = { tipo: m.s, col, col2: m.s === 'basket' || m.s === 'sneakers' ? '#f2eee6' : undefined, col3: c.col2 };
+      if (m.k) D.collo.push({ tipo: m.k, col, righe: m.righe, dis: m.dis });
+      if (m.z) D.schiena.push({ tipo: m.z, col });
+      if (m.a) D.accessori.push(m.a);
+      if (m.x === 'guanti') D.guanti = col; if (m.x === 'spalle') D.spalle = { col }; if (m.x === 'ginocchia') D.ginocchia = { col };
+    });
+    if (!D.vesti.some(v => CAPI[v.tipo] && (CAPI[v.tipo].gamba || CAPI[v.tipo].gonna))) D.vesti.push({ tipo: 'pantaloni', col: '#3a3a40' });   // nessuno gira in mutande
+    return D;
+  }
+  // chi è → il descrittore intero. look: l'aspetto del motore; n: l'abitante (età, mestiere, id); outfit: i capi
+  function descrittore(look, who, n, outfit) {
+    look = look || {}; const id = (n && n.id !== undefined ? n.id : '') + '|' + (look.top || '') + (look.skin || '') + (look.hair || ''), r = rng(id), pk = a => a[Math.floor(r() * a.length)];
+    const fem = look.fem !== undefined ? !!look.fem : /long|bun|pony/.test(look.hat || '') || /fem|donna/.test(look.extra || '') || !!(n && n.pop && n.pop.sex === 'f');
+    const eta = (n && n.pop && n.pop.age) || look.age || 25 + Math.floor(r() * 40), old = eta > 58, ex = (look.extra || '').split(',');
+    const capCol = old && r() < .7 ? pk(GRIGI) : look.hair || pk(CAPELLI);
+    const tipoCap = fem ? (old ? pk(['raccolti', 'raccolti', 'caschetto']) : look.hat === 'bun' ? 'raccolti' : look.hat === 'pony' ? 'coda' : pk(['lunghi', 'lunghi', 'coda', 'raccolti', 'caschetto'])) : (old ? pk(['calvo', 'brizzolati', 'indietro']) : pk(['corti', 'corti', 'riga', 'indietro', 'ricci']));
+    const D = { seme: id, sesso: fem ? 'f' : 'm', eta, pelle: look.skin || pk(PELLI), capelli: { tipo: tipoCap, col: capCol },
+      corpo: { robusto: (look.build || 1) * lerp(.96, 1.05, r()), pancia: !fem && eta > 40 ? r() * .6 : r() * .2, alt: lerp(.95, 1.04, r()), fianchi: fem ? lerp(1, 1.1, r()) : 1 },
+      testa: { umore: lerp(-.3, .5, r()), sopracciglia: lerp(-.6, .4, r()) },
+      baffi: !fem && (ex.includes('moustache') || (eta > 35 && r() < .3)) ? 'sottili' : null, barba: !fem && r() < (old ? .3 : .12) ? pk(['corta', 'corta', 'pizzetto']) : null,
+      occhiali: ex.includes('shades') ? 'sole' : ex.includes('glasses') || (old && r() < .35) ? (r() < .5 ? 'oro' : 'vista') : null, accessori: [] };
+    if (!fem && D.barba) D.baffi = D.baffi || 'sottili';
+    if (who === 'cop' || (n && (n.cop || n.military))) D.extra = r() < .5 ? ['bandoliera'] : [];
+    let of = outfit; if (!of && typeof Guardaroba !== 'undefined') { try { of = Guardaroba.outfitOf(n || { id, look }, fem); } catch (e) { of = null; } }
+    daGuardaroba(of || [{ id: 'maglietta', col: look.top }, { id: 'pantaloni', col: look.bottom }, { id: 'scarpe' }], D);
+    if (who === 'cop' || (n && n.cop)) { D.cappello = D.cappello && D.cappello.tipo === 'elmetto' ? D.cappello : { tipo: 'regime', col: '#3e463a' }; const dv = D.vesti.find(v => v.tipo === 'divisa'); if (!dv) D.vesti.push({ tipo: 'divisa', col: look.uniform || '#4a5244' }); }
+    return Object.assign(D, look.personaggio || {});
+  }
 
   // =====================================================================================
   // LA FIGURA PRONTA: lo scheletro del kit (clip e pose di sempre) con la pelle nuova
@@ -905,6 +1050,6 @@ var Personaggi = (function () {
     return g;
   }
   const RAW = typeof Models !== 'undefined' && Models.person && !Models.person.__vesti ? Models.person : null;   // il costruttore del kit, prima che Vesti3D lo avvolga
-  return { CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
+  return { DA_CAPO, daGuardaroba, KT, CFG, STILI, CAPI, SCARPE, TESTE, figura, veste, geometria, giunture, descrittore, materiale, atlante, POSE, PELLI, CAPELLI, GRIGI, set: (k, v) => { CFG[k] = v; } };
 })();
 if (typeof module !== 'undefined') module.exports = Personaggi;
