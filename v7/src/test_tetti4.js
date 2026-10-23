@@ -12,12 +12,14 @@
 //   5. le corti a terra: ogni vuoto chiuso dentro gli isolati vecchi ha uno scopo (pozzo, orto, cortile delle reti, passaggio coperto).
 // cd v7/src && node test_tetti4.js
 const path = require('path'), src = __dirname;
+require(path.join(src, 'seme.js'))(12345);   // il seme delle prove (--seme=N)
 const log = console.log, warn = console.warn; console.log = () => {}; console.warn = () => {};
 global.World = require(path.join(src, 'world_cittanuova.js'));
 global.Percorsi = require(path.join(src, 'percorsi.js'));
 global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js'));
 global.Risacca = require(path.join(src, 'risacca.js')); global.Popolo = require(path.join(src, 'popolo.js')); global.Azioni = require(path.join(src, 'azioni.js'));
 global.Livelli = require(path.join(src, 'livelli.js')); global.Sottosuolo = require(path.join(src, 'sottosuolo.js')); global.Tetti = require(path.join(src, 'tetti.js'));
+global.TettiVissuti = require(path.join(src, 'tetti_vissuti.js'));   // le cose dei tetti vissuti contano nella misura delle passerelle
 console.log = log; console.warn = warn;
 const G = Game, T = Tetti, LV = Livelli, D = Percorsi.dati, B = G.BUILDINGS, TS = G.TS, hyp = Math.hypot;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
@@ -101,6 +103,12 @@ const alt = T.PIANO.filter(P => P && P.gruppi.some(g => g.k === 'altana')).lengt
 ok(alt >= 4 && tor >= 2, `altane (${alt}) e torrette (${tor}) sui tetti`);
 const cam = {}; T.PIANO.forEach(P => P && P.gruppi.forEach(g => { if (g.k === 'comignoli' && g.tipo4) cam[g.tipo4] = (cam[g.tipo4] || 0) + 1; })); ok(Object.keys(cam).length >= 3, `comignoli di più tipi: ${JSON.stringify(cam)}`);
 ok(T.PREMI.every(q => { const P = T.PIANO[q.bi]; return !P || P.riserve.some(r => hyp(r[0] - q.x, r[1] - q.y) < .05); }), 'ogni premio ha il suo posto riservato sul tetto');
+
+// ---------------- 4b. le passerelle contro i tetti (Tetti.passerelle4, strumenti/passerelle4.js): zero urti, regola dura ----------------
+{ const R = T.passerelle4(), CN = T.PLANKS.filter(P => T.PIANO[P.a] && T.PIANO[P.b]);
+  ok(R.urti.length === 0, `nessuna passerella, arco o ponte entra nei tetti (falde, colmo, gronde, parapetti, comignoli, gruppi, cose dei tetti vissuti; 2 cm): ${R.urti.length} su ${R.passerelle}` + (R.urti.length ? ' — ' + R.urti.slice(0, 6).map(u => `#${u.i} ${u.tipo} ${u.cm} cm in ${u.contro} a (${u.x}, ${u.y}, ${u.z})`).join(' · ') : ''));
+  ok(CN.length === T.PLANKS.length && CN.every(P => T.PIANO[P.a].tipo === 'piano' && T.PIANO[P.b].tipo === 'piano' && P.prof), `ogni capo posa sul lastrico di un terrazzo, col pianerottolo sopra il parapetto e la scaletta (${CN.length})`);
+  ok(T.PLANKS.every(P => !P.prof || P.prof.k.every(([s, h], i, K) => !i || (s >= K[i - 1][0] - 1e-6))), 'il profilo va da un capo all\'altro'); }
 
 // ---------------- 5. le corti ----------------
 const CO = T.CORTI, ck = {}; CO.forEach(c => ck[c.k] = (ck[c.k] || 0) + 1);
