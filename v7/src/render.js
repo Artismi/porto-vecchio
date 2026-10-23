@@ -8731,7 +8731,8 @@ var Render = (function () {
     for (let qi = 0; qi < Q.length; qi++) { const i = Q[qi], tx = i % GW, ty = (i - tx) / GW; if (D[i] >= 6) continue;
       for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x2 = tx + a, y2 = ty + b; if (x2 < 0 || y2 < 0 || x2 >= GW || y2 >= GH) continue; const j = y2 * GW + x2; if (E[j] || zoneT(x2, y2) !== ZN.CITTA) continue; E[j] = E[i]; D[j] = D[i] + 1; Q.push(j); } }
     const F = M.world.FORT, sx1 = F && F.ditch ? Math.min(F.ditch[0], F.ditch[2]) : 1488;   // la spianata: dal filo delle case demolite al fossato
-    for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor(SPIAN1 / TS); tx < Math.ceil(sx1 / TS); tx++) { const i = ty * GW + tx; if (zoneT(tx, ty) === ZN.CITTA && gT(tx, ty) !== T.BLD) E[i] = 9; }
+    const yG1 = M.world.glacis && M.world.recinto ? M.world.recinto.yP - 1 : -1;   // [pianta] a nord della testa di ponte la spianata è costruita: il suolo lo dà l'epoca
+    for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor(SPIAN1 / TS); tx < Math.ceil(sx1 / TS); tx++) { const i = ty * GW + tx; if (zoneT(tx, ty) === ZN.CITTA && gT(tx, ty) !== T.BLD && ty * TS >= yG1) E[i] = 9; }
     { const PL = palco2(); if (PL) for (let ty = 0; ty < GH; ty++) for (let tx = Math.floor(PL.x0 / TS); tx <= Math.min(GW - 1, Math.floor(PL.x1 / TS)); tx++) { const v = gT(tx, ty), wx = tx * TS + 1, wz = ty * TS + 1;   // [spianata2] anche la piazza d'armi è palco: terra battuta e ghiaia, l'asse lastricato resta strada
       if (zoneT(tx, ty) === ZN.CITTA && PL.dentro(wx, wz) && v !== T.BLD && v !== T.VIA) E[ty * GW + tx] = 9; } }
     for (let i = 0; i < E.length; i++) if (!E[i]) { const x = (i % GW) * TS; E[i] = x < 1215 ? 6 : x < 1330 ? 3 : 1; }
@@ -9775,12 +9776,12 @@ var Render = (function () {
       if (q.k === 'mercato') {
         // la tettoia: colonne di ghisa verdi su due file, il tetto a due falde di vetro, il colmo; sotto quattro file di banchi
         const tw = q.r * 1.15, td = q.r * .72, gt = G0(), iron = sm('#2f5a44', { metalness: .4, roughness: .6 }), vetro = sm('#a8c4b4', { roughness: .3, transparent: true, opacity: .5 });
-        if (!po1Has('tettoia_mercato', q.x, q.y, q.r)) {   // [posa] c'è la tettoia ottagonale in ghisa (pezzo): la vecchia a due falde non serve
+        if (!q.aperto && !po1Has('tettoia_mercato', q.x, q.y, q.r)) {   /* [pianta] il mercato della Rocca è all'aperto: solo i banchi con le tende */   // [posa] c'è la tettoia ottagonale in ghisa (pezzo): la vecchia a due falde non serve
         for (let i = -3; i <= 3; i++) for (const j of [-1, 1]) add(gt, cyl(.13, .17, 5, 8, iron), i * tw / 6, 2.5, j * td / 2);
         [-1, 1].forEach(j => { add(gt, box(tw + 1, .3, .35, iron), 0, 5.1, j * td / 2); add(gt, box(tw + 1.6, .1, td / 2 + 1.4, vetro), 0, 5.8, j * (td / 4 + .2), -j * .32, 0, 0); });
         add(gt, box(tw + 1.8, .35, .35, iron), 0, 6.35, 0); for (let i = -3; i <= 3; i++) add(gt, box(.12, .9, td + .4, iron), i * tw / 6, 5.6, 0);
         place(gt, q.x, q.y, 0); n++; }
-        { const T = LANDMARK.tettoia; for (let k = 0; k < T.n; k++) { const x = q.x + (k - (T.n - 1) / 2) * tw / T.n; luceLandmark(x, groundH(x, q.y) + 4.7, q.y, T); } }   // [regia2] la tettoia verde accesa di notte (sotto la tettoia nuova o la vecchia)
+        if (!q.aperto) { const T = LANDMARK.tettoia; for (let k = 0; k < T.n; k++) { const x = q.x + (k - (T.n - 1) / 2) * tw / T.n; luceLandmark(x, groundH(x, q.y) + 4.7, q.y, T); } }   // [regia2] la tettoia verde accesa di notte (sotto la tettoia nuova o la vecchia)
         for (const zz of [-td / 4, td / 4]) for (let x = -tw / 2 + 1.6; x <= tw / 2 - 1.6; x += 3.1) stallAt(q.x + x, q.y + zz + (zz < 0 ? -.9 : .9), zz < 0 ? Math.PI : 0);
         // l'anello dei banchi all'aperto, rivolti verso la tettoia; cassette e bidoni dietro
         for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2 + .1, rr = q.r - 3.2, x = q.x + Math.cos(a) * rr, z = q.y + Math.sin(a) * rr;

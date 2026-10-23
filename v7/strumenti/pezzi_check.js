@@ -22,6 +22,7 @@ const PROVE = {
   magazzini_volta: [{}, { n: 1 }, { n: 7, w: 7, p: 14, h: 5 }],
   scalinata: [{}, { w: 3, dislivello: 4, pianerottoli: 0, lampada: false }, { w: 5, dislivello: 14, pianerottoli: 3 }],
   bitta: [{}, { h: .7 }],
+  parapetto: [{}, { L: 4 }, { L: 18, tipo: 'guardrail' }],
   darsena: [{}, { L: 24, W: 20 }, { L: 60, W: 40, scalette: 4 }, { L: 30, W: 22, rocca: true, gradini: 3 }],
   molo_vecchio: [{}, { L1: 24, L2: 0, lanterna: false }, { L1: 60, L2: 40, w: 8 }],
   scalo_alaggio: [{}, { L: 8, w: 5 }, { L: 16, w: 10, argano: false }],

@@ -385,7 +385,7 @@ var Scorci = (function () {
         const dist = u => Math.abs(u - centro), ang = u => Math.min(u - ua, ub - u);
         if (o.pref === 'lontano') P.sort((p, q) => dist(q) - dist(p)); else if (o.pref === 'angolo') P.sort((p, q) => ang(p) - ang(q)); else if (o.pref === 'centro') P.sort((p, q) => Math.abs(p - (ua + ub) / 2) - Math.abs(q - (ua + ub) / 2)); else P.sort((p, q) => dist(p) - dist(q));
         for (const u of P) { const v = K.d / 2 + .1, yaw = fr.rot, [x, z] = fr.wp(u, v); if (!K.piatto && presi.some(p => p.muro && !p.filo && p.k !== 'zoccolo' && (p.y || 0) < K.h && Math.abs(p.u - u) < (p.w + K.w) / 2 + .1)) continue;   // non davanti alle cose basse a muro (la bocca del forno, il telefono, i manifesti)
-          if ((!K.piatto && usoTerra(u, K.w)) || (!K.piatto && apAt(u - K.w / 2, u + K.w / 2, 0, 1))) continue; if (prova(k, x, z, yaw, { propria: !!K.piatto })) continue; posa(k, x, z, yaw, { u, v, gruppo: o.gruppo, opz: o }); return; }
+          if ((!K.piatto && usoTerra(u, K.w)) || (!K.piatto && apAt(u - K.w / 2, u + K.w / 2, 0, 1))) continue; if (prova(k, x, z, yaw, { propria: !!K.piatto })) continue; posa(k, x, z, yaw, { u, v, gruppo: o.gruppo, opz: o, propria: !!K.piatto }); return; }   // [pianta] la stessa regola con cui l'ha provata (le cose piatte davanti alla propria vetrina)
         if (o.anche === 'spazio') { const q = spazio(sc, k, o, ag, prova); if (q) { posa(k, q.x, q.z, q.yaw, { gruppo: o.gruppo, opz: o }); return; } }
         scarta(k, slot, 'nessun pilastro libero a terra'); return; }
       if (slot === 'spazio') { const q = spazio(sc, k, o, ag, prova); if (!q) { scarta(k, slot, 'nessuno spazio libero'); return; } posa(k, q.x, q.z, q.yaw, { gruppo: o.gruppo, opz: o }); return; }
