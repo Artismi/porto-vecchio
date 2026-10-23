@@ -679,13 +679,16 @@ var Tetti = (function () {
     const traccia = new T3.MeshStandardMaterial({ color: '#a8694a', roughness: .9, transparent: true, opacity: .78, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     // [percorsi2] la base scura sotto il primo gradino: il piede della scala stacca anche sul selciato chiaro
     const fondo = new T3.MeshStandardMaterial({ color: '#2a2420', roughness: 1 });
-    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia, fondo };
+    // [tetti4] la pietra degli archi di contrasto e delle vere dei pozzi, la terra degli orti, il verde, il lastrico chiaro delle corti
+    const pietra = new T3.MeshStandardMaterial({ color: '#cbbfa6', roughness: .9 }), terra = new T3.MeshStandardMaterial({ color: '#5a4432', roughness: 1 }), verde = new T3.MeshStandardMaterial({ color: '#5f7d3c', roughness: .95 });
+    const lastrico = new T3.MeshStandardMaterial({ color: '#d9cdb2', roughness: .95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+    return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia, fondo, pietra, terra, verde, lastrico };
   }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
     if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
-    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [], fondo = [];
+    const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [], fondo = [], pietra = [], terra = [], verde = [], lastr = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
@@ -728,6 +731,15 @@ var Tetti = (function () {
     PLANKS.forEach(P => {
       const h = plankHs(P), yaw = -Math.atan2(P.oy, P.ox), pt = s2 => [P.x0 + P.ox * s2, P.y0 + P.oy * s2];
       const S = [0, P.s1, P.s2, P.L];
+      if (P.arco) {   // [tetti4] l'arco di contrasto: il dorso di pietra calpestabile fra i due muri, l'intradosso ad arco ribassato sotto, le teste crema
+        const [xa, za] = pt(S[1]), [xb, zb] = pt(S[2]), w2 = P.hw * 2;
+        for (let k = 0; k < 3; k++) { const [x1, z1] = pt(S[k]), [x2, z2] = pt(S[k + 1]); if (k !== 1) continue; seg(pietra, x1, h[k] - .14, z1, x2, h[k + 1] - .14, z2, w2, .28, yaw); }
+        const n = 7, rise = Math.min(.9, P.gap * .3), yb = Math.min(h[1], h[2]) - .28;
+        for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, a0 = Math.sin(Math.PI * t0) * rise, a1 = Math.sin(Math.PI * t1) * rise;
+          seg(pietra, xa + (xb - xa) * t0, yb - rise + a0, za + (zb - za) * t0, xa + (xb - xa) * t1, yb - rise + a1, za + (zb - za) * t1, w2 - .06, .22, yaw);
+          const xm = xa + (xb - xa) * (t0 + t1) / 2, zm = za + (zb - za) * (t0 + t1) / 2, am = Math.sin(Math.PI * (t0 + t1) / 2) * rise, top = yb - .1, bot = yb - rise + am; if (top - bot > .1) { e.set(0, yaw, 0); q.setFromEuler(e); pietra.push(m4.compose(p3.set(xm, (top + bot) / 2, zm), q, s3.set(P.gap / n + .02, top - bot, w2 - .1)).clone()); } }
+        for (const s2 of [P.s1, P.s2]) { const [x, z] = pt(s2); e.set(0, yaw, 0); q.setFromEuler(e); crema.push(m4.compose(p3.set(x, plankH(P, s2) + .01, z), q, s3.set(.3, .05, w2)).clone()); }
+        return; }
       for (let k = 0; k < 3; k++) { const [x1, z1] = pt(S[k]), [x2, z2] = pt(S[k + 1]);
         for (const t of [-.32, .32]) seg(boards, x1 + P.px * t, h[k] - .06, z1 + P.py * t, x2 + P.px * t, h[k + 1] - .06, z2 + P.py * t, .1, .1, yaw);   // le travi
         const L = S[k + 1] - S[k]; for (let u = .12; u < L; u += .28) { const s2 = S[k] + u, [x, z] = pt(s2); e.set(0, yaw, 0); q.setFromEuler(e); boards.push(m4.compose(p3.set(x, plankH(P, s2) - .02, z), q, s3.set(.22, .04, .96)).clone()); } }
@@ -755,6 +767,32 @@ var Tetti = (function () {
       flags.push(m4.compose(p3.set(fx + .32, y + 2.5, fz), q, s3.set(.6, .38, .02)).clone());
       lamps.push(m4.compose(p3.set(fx, y + 2.86, fz), q, s3.set(.1, .1, .1)).clone());
     });
+    // [tetti4] I PREMI: il tesoro è una cassetta di legno con la scatola di latta sopra, dietro il suo comignolo; la terrazza e il belvedere
+    // li arreda il piano (il pergolato, l'altana) e i belvederi (la panca e la bandierina)
+    PREMI.forEach(z => { if (z.k !== 'tesoro') return; const y = roofH(z.bi, z.x, z.y) ?? roofRule(B[z.bi]), yaw = z.i * .7; e.set(0, yaw, 0); q.setFromEuler(e);
+      boards.push(m4.compose(p3.set(z.x, y + .2, z.y), q, s3.set(.6, .4, .45)).clone()); boards.push(m4.compose(p3.set(z.x, y + .41, z.y), q, s3.set(.64, .03, .49)).clone());
+      rails.push(m4.compose(p3.set(z.x + .05, y + .5, z.y), q, s3.set(.3, .16, .22)).clone()); lamps.push(m4.compose(p3.set(z.x - .22, y + .48, z.y + .1), q, s3.set(.06, .1, .06)).clone()); });
+    // [tetti4] LE CORTI: il lastrico chiaro (si legge come un posto, non come un avanzo) e la cosa che dice lo scopo
+    CORTI.forEach(C => { const foot = (x, y) => LADDERS.some(L => hyp(L.fx - x, L.fy - y) < 1.6), hc = (x, y) => tileH(x, y);
+      C.celle.forEach(([tx, ty]) => { const x = (tx + .5) * TS, y = (ty + .5) * TS; put(lastr, x, hc(x, y) + .02, y, TS - .04, .03, TS - .04, 0); });
+      const cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).filter(([x, y]) => !foot(x, y)).sort((a, b) => hyp(a[0] - C.x, a[1] - C.y) - hyp(b[0] - C.x, b[1] - C.y));
+      if (!cel.length) return; const [cx, cy] = cel[0], g0 = hc(cx, cy);
+      if (C.k === 'pozzo') {   // la vera di pietra, la bocca scura, i due ritti col trave e la carrucola, il secchio
+        put(pietra, cx, g0 + .45, cy, 1.2, .9, 1.2, 0); put(fondo, cx, g0 + .91, cy, .8, .02, .8, 0);
+        for (const sx of [-.62, .62]) put(rails, cx + sx, g0 + 1.25, cy, .08, 1.7, .08, 0); put(rails, cx, g0 + 2.1, cy, 1.4, .08, .08, 0); put(ropes, cx, g0 + 1.6, cy, .02, 1.0, .02, 0); put(rails, cx, g0 + 1.05, cy, .22, .26, .22, 0);
+        for (const [dx, dy] of [[1.6, 0], [0, 1.6]]) if (C.celle.length > 4) put(pietra, cx + dx, g0 + .22, cy + dy, 1.4, .44, .4, dx ? 0 : Math.PI / 2);   // le panche di pietra
+      } else if (C.k === 'orto') {   // le aiuole rialzate con la terra e il verde, il limone in mezzo
+        cel.slice(1, 7).forEach(([x, y]) => { put(pietra, x, g0 + .15, y, 1.5, .3, 1.5, 0); put(terra, x, g0 + .31, y, 1.3, .04, 1.3, 0); for (let k = 0; k < 3; k++) put(verde, x - .4 + k * .4, g0 + .45, y + ((k % 2) - .5) * .4, .3, .26, .3, k); });
+        put(boards, cx, g0 + .8, cy, .16, 1.6, .16, 0); put(verde, cx, g0 + 2.0, cy, 1.5, 1.1, 1.5, .4); put(verde, cx, g0 + 2.5, cy, 1.0, .6, 1.0, .1);
+      } else if (C.k === 'bottega') {   // il banco del pescatore, le nasse, le reti stese su due paletti
+        put(boards, cx, g0 + .45, cy, 1.6, .08, .7, 0); for (const sx of [-.7, .7]) put(boards, cx + sx, g0 + .22, cy, .08, .44, .6, 0);
+        for (let k = 0; k < 3; k++) put(ropes, cx + 1.3 + k * .1, g0 + .25 + k * .3, cy + .6, .5, .3, .5, k);
+        put(rails, cx - 1, g0 + .9, cy - .9, .05, 1.8, .05, 0); put(rails, cx + 1, g0 + .9, cy - .9, .05, 1.8, .05, 0); put(ropes, cx, g0 + 1.3, cy - .9, 2.0, .9, .03, 0);
+      } else if (C.k === 'passaggio') {   // il passaggio coperto: il pergolato di travi e la vite sopra, a 2,8 m
+        C.celle.forEach(([tx, ty], k) => { const x = (tx + .5) * TS, y = (ty + .5) * TS, g1 = hc(x, y), along = C.wX >= C.wY;
+          for (const sg of [-1, 1]) put(boards, x + (along ? 0 : sg * .85), g1 + 1.4, y + (along ? sg * .85 : 0), .1, 2.8, .1, 0);
+          put(boards, x, g1 + 2.82, y, along ? .1 : 1.9, .1, along ? 1.9 : .1, 0); if (k % 2 === 0) put(verde, x, g1 + 2.95, y, 1.6, .22, 1.6, k); });
+      } });
     // [percorsi] I CIRCUITI SUI TETTI SI VEDONO (percorsi.js): la traccia più chiara sul lastrico fra una scala e l'altra (i passi
     // consumano lo sporco), una lanterna su un ferro color minio a ogni svolta, il bucato teso lungo il tratto più lungo, la corda annodata
     // dove si sale di un gradino col salto, la cassa e l'asse appoggiate ai piedi della scala da cui si parte. Stesso linguaggio:
@@ -791,7 +829,9 @@ var Tetti = (function () {
           for (let i = 0; i < n; i++) { const s = (i + .5) * l, x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, l, .02, .72, yaw); } } });
     }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
-    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia), mk(fondo, G3.fondo)];
+    GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia), mk(fondo, G3.fondo),
+      mk(pietra, G3.pietra), mk(terra, G3.terra), mk(verde, G3.verde), mk(lastr, G3.lastrico)];   // [tetti4]
+    GFX.meshes[14].castShadow = false;
     GFX.meshes[9].castShadow = false; GFX.meshes[9].renderOrder = 1;   // [percorsi] la traccia è un velo sul lastrico
     GFX.meshes[10].castShadow = false;   // [percorsi2] la base del piede della scala è piatta
     GFX.meshes[4].castShadow = false;
