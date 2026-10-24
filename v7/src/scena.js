@@ -131,6 +131,9 @@ var Scena = (function () {
       p.imp = scelte[Math.floor(h2 * scelte.length) % scelte.length]; if (p.imp.raro) S.rari[p.imp.nome] = (S.rari[p.imp.nome] || 0) + 1;
     });
     S.pagine.forEach(p => { p.nome = p.imp.nome; p.dom = p.imp.dom || null; p.sec = (p.imp.sec || []).slice(0, 3); p.acc = (p.imp.acc || []).slice(0, 2); S.muro.set(p.bi + '|' + p.f, p); });
+    // [scorci] la parete di uno scorcio è già composta (scorci.js): tace per gli altri sistemi di arredo
+    if (typeof Scorci !== 'undefined' && Scorci && Scorci.attivo) Scorci.tutti().forEach(sc => { if (!sc.fr) return; const p = S.muro.get(sc.bi + '|' + sc.fr.f); if (!p) return;
+      p.scorcio = sc.id; p.imp = { nome: 'scorcio', tipo: 'parete', quiete: true, acc: [] }; p.nome = 'scorcio'; p.dom = null; p.sec = []; p.acc = []; });
     return S;
   }
   const attivo = () => !!S;
@@ -194,33 +197,34 @@ var Scena = (function () {
     if (!S) return null; if (PIANO) return PIANO; const TS = G.TS, M = G.MAP, roads = (M.roads || []).filter(q => q.pts && q.era), T = G.T;
     const P = PIANO = { bidoni: [], cassonetti: [], bucato: [], dehors: [], targhe: [], civici: [], metriVicoli: 0, metriVie: 0 };
     const at = (x, z) => tl(Math.floor(x / TS), Math.floor(z / TS)), bld = (x, z) => at(x, z) === T.BLD;
+    const SCR = typeof Scorci !== 'undefined' && Scorci && Scorci.attivo ? (x, z, m) => Scorci.riservato(x, z, m) : () => false;   // [scorci] dove c'è uno scorcio gli altri non posano
     const lungo = (rd, f) => { const Pt = rd.pts; let s = 0; for (let k = 0; k < Pt.length - 1; k++) { const [ax, az] = Pt[k], [bx, bz] = Pt[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L; for (let t = 0; t < L; t += 1, s += 1) f(ax + ux * t, az + uz * t, -uz, ux, s, ux, uz); } return s; };
     roads.forEach((rd, ri) => { const vic = rd.kind === 'vicolo';
       if (vic) { let nb = 8 + hash(ri, 1, 61) * 10, nl = 6 + hash(ri, 2, 61) * 8;
         P.metriVicoli += lungo(rd, (x, z, nx, nz, s, ux, uz) => {
           // il bidone: contro il muro (lato lontano dalla camera), nella fascia, sulla pagina che lo prevede
-          if (s > nb) { const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 - .45, bx = x + nx * far * o, bz = z + nz * far * o; if (bld(x + nx * far * (rd.w / 2 + .6), z + nz * far * (rd.w / 2 + .6)) && open(at(bx, bz))) {
+          if (s > nb) { const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 - .45, bx = x + nx * far * o, bz = z + nz * far * o; if (bld(x + nx * far * (rd.w / 2 + .6), z + nz * far * (rd.w / 2 + .6)) && open(at(bx, bz)) && !SCR(bx, bz, .6)) {
               const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + 30; } else nb = s + 4; } else nb = s + 3; }
           // il bucato: solo dove due case si guardano a meno di 5 m
-          if (rd.w <= 5 && s > nl) { const d = rd.w / 2 + .9; if (bld(x + nx * d, z + nz * d) && bld(x - nx * d, z - nz * d)) { const far = (nx + nz) < 0 ? 1 : -1, sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bucato', { tipo: 'parete' });
+          if (rd.w <= 5 && s > nl) { const d = rd.w / 2 + .9; if (bld(x + nx * d, z + nz * d) && bld(x - nx * d, z - nz * d) && !SCR(x, z, 1.5)) { const far = (nx + nz) < 0 ? 1 : -1, sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bucato', { tipo: 'parete' });
               if (sl) { P.bucato.push({ x, z, y: 4.2 + hash(ri, Math.round(s), 62) * .8, len: rd.w + 1.6, ux: nx, uz: nz, capi: 3 + Math.floor(hash(ri, Math.round(s), 63) * 4), via: rd.id }); nl = s + 15 + hash(ri, Math.round(s), 64) * 5; } else nl = s + 5; } else nl = s + 2; } }); }
       else { let nc = 20 + hash(ri, 3, 61) * 30;
         P.metriVie += lungo(rd, (x, z, nx, nz, s, ux, uz) => { if (s < nc) return; const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 + .7, cx = x + nx * far * o, cz = z + nz * far * o;
           // la coppia di cassonetti sul marciapiede lontano, a filo del cordolo, lontano dalle porte
           const c2x = cx + ux * 1.8, c2z = cz + uz * 1.8, porta = G.BUILDINGS.some(b => b.door && Math.hypot((b.door[0] + .5) * TS - cx, (b.door[1] + .5) * TS - cz) < 3.5);
-          if (!porta && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + 60; } else nc = s + 4; }); } });
+          if (!porta && !SCR(cx, cz, 1) && !SCR(c2x, c2z, 1) && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + 60; } else nc = s + 4; }); } });
     // i dehors: dove la pagina è il bar col dehors, e sulla piazzetta col bar (davanti alla casa che la guarda)
     S.pagine.forEach(p => { if (p.tipo === 'parete' && p.nome === 'bar_col_dehors') { const sl = chiedi(p.x, p.z, 'dehors', { pagina: p }); if (sl) P.dehors.push(dehorsDi(p, p.porta, p.b.use || (p.b.shopFront && p.b.shopFront.use))); } });
-    S.pagine.filter(p => p.tipo === 'piazzetta' && p.bar).forEach(q => { let best = null, bd = 1e9; S.pagine.forEach(p => { if (p.tipo !== 'parete') return; const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < q.r + 6 && d < bd && p.len >= 4) { bd = d; best = p; } });
+    S.pagine.filter(p => p.tipo === 'piazzetta' && p.bar).forEach(q => { let best = null, bd = 1e9; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.scorcio) return; const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < q.r + 6 && d < bd && p.len >= 4) { bd = d; best = p; } });
       if (best) { best.nome = 'bar_col_dehors'; best.imp = CATALOGO.bar_col_dehors; best.dom = 'dehors'; best.sec = best.imp.sec.slice(); best.acc = best.imp.acc.slice(); best.presi = { dom: [], sec: [], acc: [] }; const sl = chiedi(best.x, best.z, 'dehors', { pagina: best }); if (sl) P.dehors.push(dehorsDi(best, best.porta !== null ? best.porta : best.len / 2, 'bar', q)); } });
     // le targhe delle vie: all'angolo di ogni isolato (le pagine d'angolo), a 2,5 m, sulla faccia S vicino allo spigolo, col nome della via davanti
     const nomeVia = (x, z) => { let rd = null, bd = 1e9; roads.forEach(q => q.pts.forEach(pp => { const d = Math.hypot(pp[0] - x, pp[1] - z); if (d < bd) { bd = d; rd = q; } })); return bd < 12 ? rd : null; };
     S.pagine.forEach(p => { if (p.tipo !== 'angolo') return; const b = p.b, w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS;
-      [['S', x0 + w - .45, z0 + d, 0], ['E', x0 + w, z0 + d - .45, Math.PI / 2]].some(([f, x, z, yaw]) => { const rd = nomeVia(x + (f === 'E' ? 4 : 0), z + (f === 'S' ? 4 : 0)); if (!rd) return false; const sl = chiedi(p.x, p.z, 'targa', { pagina: p }); if (!sl) return true;
+      [['S', x0 + w - .45, z0 + d, 0], ['E', x0 + w, z0 + d - .45, Math.PI / 2]].some(([f, x, z, yaw]) => { const rd = nomeVia(x + (f === 'E' ? 4 : 0), z + (f === 'S' ? 4 : 0)); if (!rd || SCR(x, z, .3)) return false; const sl = chiedi(p.x, p.z, 'targa', { pagina: p }); if (!sl) return true;
         P.targhe.push({ x, z, y: 2.5, yaw, f, bi: p.bi, testo: rd.name, era: p.era }); return true; }); });
     // i civici: accanto al portone, a 2,2 m; per via in ordine, pari da un lato e dispari dall'altro; nell'Ottocento rossi le botteghe e neri le case
     const perVia = {}; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.porta === null || !p.via) return; (perVia[p.via] = perVia[p.via] || []).push(p); });
-    for (const v in perVia) { const L = perVia[v].sort((a, c) => (a.x + a.z) - (c.x + c.z)); let n = 1; L.forEach(p => { const sl = chiedi(p.x, p.z, 'civico', { pagina: p }); n++; if (!sl) return; const u = Math.min(p.len - .3, Math.max(.3, p.porta + (p.porta + 1 < p.len - .3 ? .85 : -.85))), q = p.at(u);
+    for (const v in perVia) { const L = perVia[v].sort((a, c) => (a.x + a.z) - (c.x + c.z)); let n = 1; L.forEach(p => { const sl = chiedi(p.x, p.z, 'civico', { pagina: p }); n++; if (!sl) return; const u = Math.min(p.len - .3, Math.max(.3, p.porta + (p.porta + 1 < p.len - .3 ? .85 : -.85))), q = p.at(u); if (SCR(q[0], q[1], .2)) return;
       P.civici.push({ x: q[0], z: q[1], y: 2.25, yaw: p.yaw, bi: p.bi, n: n - 1, rosso: p.era === 'E3' && p.bottega, era: p.era }); }); }
     return P;
   }

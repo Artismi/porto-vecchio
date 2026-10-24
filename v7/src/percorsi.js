@@ -112,7 +112,7 @@ var Percorsi = (function () {
   // ================= I NODI: piazze, porte, sbocchi =================
   const NODI = [];
   const nodo = (id, nome, k, x, y, ex) => { const n = Object.assign({ id, nome, k, x, y }, ex || {}); NODI.push(n); return n; };
-  const pt = pz('porta_terra')[0], ptC = pt ? pzW(pt, 11.5, 6.4) : [1323, 308];
+  const pt = pz('porta_terra')[0], ptX = pt ? ((pt.opz.w || 6) + 4 + (pt.opz.torri === false ? 0 : 2 * (pt.opz.tw || 6.5))) / 2 : 11.5, ptC = pt ? pzW(pt, ptX, 0) : [1323, 308];   // [pianta] il centro del fornice dalla misura della porta
   nodo('porta_terra', 'Porta di Terra', 'porta', ptC[0], ptC[1]);
   { const q = setOf('mercato'); if (q) nodo('mercato', 'Piazza del Mercato', 'piazza', q.x, q.y); }
   { const q = setOf('adunata'); if (q) nodo('adunata', 'Piazza d\'adunata', 'piazza', (q.x0 + q.x1) / 2, (q.y0 + q.y1) / 2); }
@@ -137,7 +137,7 @@ var Percorsi = (function () {
   const lm = (tipo, nome, lx, lz, h, r) => pz(tipo).forEach(p => { const [x, y] = pzW(p, lx, lz); LANDMARK.push({ k: 'landmark', tipo, nome, x, y, z: (p.q || 0) + h, r }); });
   lm('campanile', 'il campanile della Chiesa Madre', 2.2, 0, 26, 3.5);
   lm('torre_littoria', 'la torre littoria', 4, 0, 30, 5);
-  lm('porta_terra', 'la Porta di Terra', 11.5, 0, 11, 7);
+  lm('porta_terra', 'la Porta di Terra', ptX, 0, 9, 4.5);
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
   lm('torrione', 'il torrione della Rocca', 7, 0, 15, 8);
@@ -249,7 +249,7 @@ var Percorsi = (function () {
   const PORTE = [];
   const porta = (id, nome, k, x, y, lati, ex) => PORTE.push(Object.assign({ id, nome, k, x, y, lati, alternativa: null }, ex || {}));
   // lati: due punti a terra, uno per parte; l'alternativa li deve collegare senza passare dalla porta
-  porta('porta_terra', 'Porta di Terra', 'porta', ptC[0] - 6, ptC[1], [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);
+  porta('porta_terra', 'Porta di Terra', 'porta', ptC[0], ptC[1], pt ? [pzW(pt, ptX, 8), pzW(pt, ptX, -9)] : [[ptC[0] - 14, ptC[1] + 2], [ptC[0] + 10, ptC[1] + 1]]);   // [pianta] i due lati davanti e dietro il fornice, come gira la porta
   // il sottoportico: il Vico dei Bottai passa sotto il portico e attraversa la Vittoria (il collo è la carreggiata sorvegliata)
   { const v = road('vic_bottai'), s = v ? v.pts[v.pts.length - 1] : [1398, 335]; porta('sottoportico', 'Il sottoportico della Vittoria (Vico dei Bottai)', 'sottoportico', s[0], 343, [[s[0], 324], [s[0], 362]], { vic: 'vic_bottai', imbocco: s }); }
   { const C = road('cavour_sotto'), p = pz('sottopasso')[0]; if (C && p) { const a = C.pts[0], z = C.pts[C.pts.length - 1], c = pzW(p, 7, 0); porta('sottopasso', 'Il sottopasso della ferrovia (Via Cavour)', 'sottopasso', c[0], c[1], [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
@@ -289,7 +289,7 @@ var Percorsi = (function () {
     { id: 'giro_forno', nome: 'Il giro del Forno', x0: 1312, x1: 1380, y0: 352, y1: 392 },
     { id: 'giro_campanile', nome: 'Il giro del campanile', x0: 1395, x1: 1465, y0: 262, y1: 326 },
     { id: 'giro_marina', nome: 'Il giro della marina', x0: 1420, x1: 1466, y0: 350, y1: 410 },
-    { id: 'giro_mercato', nome: 'Il giro del Mercato', x0: 1250, x1: 1318, y0: 286, y1: 362, fuoriBorgo: true },   // [mappa_compatta] i tetti dell'Ottocento
+    { id: 'giro_mercato', nome: 'Il giro del Mercato', x0: 1250, x1: 1318, y0: 312, y1: 372, fuoriBorgo: true },   // [pianta] attorno all'ottagono (la Porta di Terra ridotta non porta più il giro)   // [mappa_compatta] i tetti dell'Ottocento
   ];
   // [tetti4] I GIRI COME ESPLORAZIONE: ogni giro ha un tema (quello che si vede passando) e un premio in fondo a un ramo (perché ci si
   // va): un BELVEDERE (la panca e la bandierina sul tetto più alto lì attorno), una TERRAZZA nascosta (il pergolato in un cul-de-sac),

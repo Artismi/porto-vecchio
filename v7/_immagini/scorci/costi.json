@@ -1,0 +1,249 @@
+{
+ "pozzo_gino": {
+  "draws": 14,
+  "tri": 8538,
+  "edificio": "Calzolaio Bruno",
+  "focale": [
+   1425,
+   321.6
+  ],
+  "cose": [
+   "fascia",
+   "bandiera",
+   "lampada",
+   "crepa",
+   "necrologi",
+   "zoccolo",
+   "tavolo_scopa",
+   "casse_birre",
+   "luminarie"
+  ],
+  "mezzi": [
+   "ape"
+  ]
+ },
+ "forno_lella": {
+  "draws": 10,
+  "tri": 3414,
+  "edificio": "casa_394",
+  "focale": [
+   1356,
+   362.6
+  ],
+  "cose": [
+   "bocca_forno",
+   "fascia",
+   "lampada",
+   "catasta",
+   "banchetto",
+   "sacchi",
+   "zoccolo"
+  ],
+  "mezzi": []
+ },
+ "sagrato_votiva": {
+  "draws": 11,
+  "tri": 5976,
+  "edificio": "casa_259",
+  "focale": [
+   1370,
+   299.7
+  ],
+  "cose": [
+   "edicola_votiva",
+   "lumini",
+   "necrologi",
+   "targa",
+   "telefono_muro",
+   "panchina",
+   "secchi_fiori",
+   "crepa"
+  ],
+  "mezzi": []
+ },
+ "marina_ferramenta": {
+  "draws": 15,
+  "tri": 1806,
+  "edificio": "Attrezzi Efisio",
+  "focale": [
+   1384,
+   378
+  ],
+  "cose": [
+   "fascia",
+   "tenda",
+   "bandiera",
+   "lampada",
+   "insegna2",
+   "serranda",
+   "serranda",
+   "zoccolo",
+   "soglia",
+   "bombole",
+   "scope"
+  ],
+  "mezzi": []
+ },
+ "pescheria_marina": {
+  "draws": 8,
+  "tri": 5668,
+  "edificio": "marina",
+  "focale": [
+   1403,
+   386
+  ],
+  "cose": [
+   "banco_pesce",
+   "polistirolo",
+   "cassette"
+  ],
+  "mezzi": []
+ },
+ "officina_scalo": {
+  "draws": 5,
+  "tri": 1948,
+  "edificio": "scalo",
+  "focale": [
+   1296.9,
+   389.3
+  ],
+  "cose": [
+   "cartellone",
+   "gomme",
+   "fusti",
+   "banco_lavoro",
+   "motore"
+  ],
+  "mezzi": [
+   "f126",
+   "ape"
+  ]
+ },
+ "tabacchi_corso": {
+  "draws": 10,
+  "tri": 512,
+  "edificio": "Tabacchi Efisio",
+  "focale": [
+   1302,
+   382
+  ],
+  "cose": [
+   "fascia",
+   "bandiera",
+   "insegna2",
+   "griglia",
+   "vetrofania",
+   "serranda",
+   "serranda",
+   "zoccolo",
+   "soglia"
+  ],
+  "mezzi": []
+ },
+ "drogheria_telefono": {
+  "draws": 15,
+  "tri": 3813,
+  "edificio": "Drogheria Pina",
+  "focale": [
+   1414.1,
+   308
+  ],
+  "cose": [
+   "fascia",
+   "tenda",
+   "festoni",
+   "pannello_forato",
+   "vetrofania",
+   "serranda",
+   "serranda",
+   "zoccolo",
+   "soglia",
+   "lampada",
+   "telefono_palo",
+   "cassette"
+  ],
+  "mezzi": []
+ },
+ "latteria": {
+  "draws": 16,
+  "tri": 1062,
+  "edificio": "Latteria Lella",
+  "focale": [
+   1429.3,
+   310.5
+  ],
+  "cose": [
+   "fascia",
+   "tenda",
+   "bandiera",
+   "lampada",
+   "serranda",
+   "serranda",
+   "zoccolo",
+   "soglia",
+   "frigo"
+  ],
+  "mezzi": []
+ },
+ "barbiere": {
+  "draws": 12,
+  "tri": 960,
+  "edificio": "Barbiere Gavino",
+  "focale": [
+   1314,
+   351.8
+  ],
+  "cose": [
+   "fascia",
+   "tenda",
+   "palo_barbiere",
+   "serranda",
+   "serranda",
+   "vetrofania",
+   "zoccolo",
+   "soglia",
+   "panca"
+  ],
+  "mezzi": []
+ },
+ "serranda_chiusa": {
+  "draws": 11,
+  "tri": 586,
+  "edificio": "Palestra Pina",
+  "focale": [
+   1359,
+   306
+  ],
+  "cose": [
+   "fascia",
+   "serranda",
+   "serranda",
+   "manifesti",
+   "zoccolo",
+   "lampada",
+   "rifiuti"
+  ],
+  "mezzi": []
+ },
+ "radio_luna": {
+  "draws": 9,
+  "tri": 3868,
+  "edificio": "Discoteca Luna",
+  "focale": [
+   1301,
+   276
+  ],
+  "cose": [
+   "fascia",
+   "manifesti",
+   "manifesti",
+   "lampada",
+   "luminarie",
+   "boombox",
+   "casse_birre"
+  ],
+  "mezzi": [
+   "ciao"
+  ]
+ }
+}

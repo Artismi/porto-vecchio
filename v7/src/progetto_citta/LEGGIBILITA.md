@@ -264,3 +264,104 @@ pendenza che si adatta e il tetto che sbiadisce di A, che continuano a lavorare 
 Centro vuol dire la visuale automatica di sempre: sul computer l'orientamento fisso dell'isola, sul telefono quella che segue la marcia
 ([camera3]). Sul telefono la contromarcia sostenuta lascia fare alla visuale che segue anche il mezzo giro che prima rifiutava (oltre 100°):
 è il «si ricentra nella direzione nuova». Sul computer, in centro, la contromarcia non fa niente (l'orientamento fisso è il centro).
+
+## 10. I tetti vissuti ([vissuti], 23 ottobre)
+
+Richiesta del committente: «i tetti non mi convincono, serve che ci siano dei dettagli». Dalla camera di gioco i tetti sono la cosa che
+si vede di più: devono sembrare abitati, nel registro del diorama (caldo, leggibile, mai ingombro). Il codice sta in `src/tetti_vissuti.js`
+(il dato in Node e nella pagina, la grafica, lo shader del manto); render.js ha solo i ganci (`TettiVissuti.terrazzo`, `costruisci`,
+`vicino`, `manto`, le compenetrazioni in `__tetti3`). `?novissuti` spegne tutto. Prova: `src/test_tetti_vissuti.js`; misura nel gioco
+vero: `strumenti/tetti_vissuti_misura.js` (`--prima` per il confronto); foto: `strumenti/tetti_vissuti_scene.json` con `galleria.js`.
+
+- **Una scenetta per terrazzo abitato, non roba sparsa.** Ogni terrazzo abitato di `Tetti.PIANO` riceve UNA composizione di 2-6 pezzi
+  pensati insieme (chi ci vive); un terrazzo calmo al più una scenetta piccola (20-45%) e due o tre dettagli del tempo. Mai un doppione
+  dei gruppi del piano (niente stendino dove c'è il filo del bucato, niente canniccio dove c'è il pergolato).
+- **Per quartiere.** Borgo: la sedia impagliata coi vasi di geranio e le latte di basilico, l'orto in cassetta con l'annaffiatoio, lo
+  stendino con la cesta, il gatto sulla cassetta; il più fitto (7 cose sui terrazzi abitati, 2,5 sui calmi) e il più sporco. Marina: le
+  reti col sughero, le boe, le cassette del pesce, la cima, i remi, le chiazze di sale. Ottocento: le sdraio col tavolino, l'ombrellone, il
+  canniccio col tavolo, il limone nel vaso grande, la cisterna; il più pulito (meno di una cosa sui terrazzi calmi).
+- **I dettagli del tempo**, con misura: le pozze nelle conche verso il bocchettone (sud, est), l'erba e la valeriana al piede del
+  parapetto (di più a nord e a ovest), il cappero e la valeriana nelle crepe della copertina, il vaso di cactus sul davanzale basso, le
+  colature sotto la copertina dei parapetti verso la camera, il sale sulla marina; le cartacce (la busta di carta bagnata, il giornale
+  fradicio, le cartacce appallottolate, i tappi, la lattina, rara una palla o una scarpa persa) negli angoli e dietro i comignoli.
+- **Sulle falde**: la malta del colmo a pezzi (interrotta dai comignoli), l'erba fra i coppi della gronda (anche su quella di nord), il
+  ciuffo sul colmo, qualche busta o palla ferma nel canale. Mai davanti agli abbaini: l'erba resta sullo sbalzo, prima del filo del muro.
+- **Mai sulla rete dei tetti.** Corridoio libero di 1,2 m sulle linee dei giri, delle vie, dei rami e delle alternative delle porte, e
+  sulle linee fra tutte le porte del tetto prese a due a due (dove si arriva da una scala, una passerella, un salto, un tetto vicino);
+  1 m libero attorno a ogni porta; le riserve del piano. La pozza e il sale si attraversano: contano solo alle porte.
+- **Niente di alto verso la camera**: come il piano, niente sopra 1,2 m a meno di 1,5 m dai bordi sud ed est (l'ombrellone e il canniccio
+  stanno dietro, le sdraio davanti guardano la camera). Le cose basse possono stare nella fascia contro il parapetto (dai 30 cm).
+- **Il manto ha il tempo dal mondo, non dalla tela**: rappezzi di coppi nuovi e campi vecchi, muschio verso nord e sulla gronda, licheni,
+  qualche coppo rotto; sui lastrici le chiazze d'umido, le crepe, i rappezzi di cemento fra le pianelle. Lo shader legge la posizione
+  vera, quindi la tela da 16 m non si ripete più a vista; sopravvive alla fusione, alla tavolozza e alla pila di [leggero] e a `?noleggero`.
+- **Il costo.** Mobili, piante, malta e colature hanno un materiale per colore, tutti uguali a meno del colore, e stanno nel gruppo del
+  tetto della casa: finiscono nelle mesh fuse per settore (si tagliano e sbiadiscono con la casa), un secchio in più per settore col colore
+  nella tavolozza di [leggero]; ~110 mila triangoli in tutta la città. Non le celle dell'atlante FA: quando si arriva ai tetti le 256 celle
+  sono già finite (1005 chieste) e oltre la 255 tutto prende l'ultimo colore disegnato (un difetto di prima, da guardare a parte). Cartacce e pozze
+  sono istanze vicine: 8 disegni fissi, entro 36 m (cartacce) e 64 m (pozze) dal personaggio, 24 e 44 m sul telefono, tolte dalle case
+  tagliate o col tetto sbiadito. Le pozze non riflettono davvero: il disco scuro col bordo bagnato e la tinta del cielo col fresnel.
+- **Misurato** (`strumenti/tetti_vissuti_misura.js`, 960×600, SwiftShader; i disegni dei tetti vissuti spegnendo le loro mesh nello
+  stesso fotogramma, perché fra due caricamenti il totale balla di ±150): borgo (1400, 312) +46 disegni su 1874; Vittoria (1360, 334)
+  +22 su 1439; la città dall'alto (zoom 4,2) +0 (le istanze vicine spente, le fuse fuori campo). In tutta la scena: +43 secchi fusi
+  (2155 → 2198) e 8 istanze, cioè al più +51 mesh. Compenetrazioni sui tetti (`TETTI3_ESIGI=1 strumenti/compenetrazioni.js`): 0.
+  Foto: `_immagini/tetti_vissuti/` (prima/dopo per scorcio e i dettagli).
+
+## 11. Gli scorci composti ([scorci], 23 ottobre)
+
+Il committente, coi quattro riferimenti in `_immagini/riferimenti/scorci/` (l'edicola con la serranda, la drogheria col telefono, l'angolo in
+diorama, il diorama del bar): «mancano ancora degli scorci veri». Uno scorcio è una pagina della sez. 5 composta a mano come un diorama, dove
+l'occhio si deve fermare. Ricette in `src/scorci.js` (dati, gira in Node), kit e posa in `src/scorci_arte.js`, prova `src/test_scorci.js`,
+fogli in `_immagini/scorci/` (`strumenti/fogli_scorci.py`; la città senza scorci si vede con `?noscorci`).
+
+- **Agganci solo ai dati**: il luogo-missione (`W.luoghi`), la scenografia (`W.sets`), la bottega per mestiere (`b.shopFront.use`), la porta
+  di un edificio con nome; fra le facce S ed E si sceglie il fronte più visto dalla camera (raggi verso la camera contro le case, `vista`).
+- **La gabbia**: la fascia sopra le aperture, il pilastro pieno fra le aperture, il piede del muro, la fascia di 1,2 m davanti alla propria
+  vetrina, lo spazio davanti, il filo di traverso. Le cose a muro che cadrebbero su una finestra vera scivolano sul pieno più vicino.
+- **Le regole**: niente nel corridoio di una porta (2 m × 2,6), ai piedi di una scala, davanti alla vetrina d'altri; la propria merce entro
+  1,2 m. Le pareti degli scorci tacciono per scena.js (niente bidoni, cassonetti, targhe, civici, dehors) e per rete.js (niente mensole,
+  contatori, bracci); niente tettoie di passaggio davanti. Mai nella Passeggiata, sulla spianata, nel Recinto e nella Rocca.
+- **Il costo**: ogni scorcio fuso per stato e per classe di materiale (colori nei vertici, un atlante per le scritte): 5-16 chiamate di
+  disegno, al più 9k triangoli; i pezzi registrati nel regista di pulizia2 come fissi (`scorcio`, `scorcio_muro`, `scorcio_filo`).
+- **Gli stati per ora**: serrande su, a metà (la pausa), giù con la tag; luci, luminarie e pozza di luce la sera; tavoli fuori o sedie
+  impilate; merce fuori; la bocca del forno accesa all'alba. La gente: i posti `carte`, `comari`, `gioco`, `telefono` e le scene `scopa`,
+  `comari`, `rincorsa`; i mezzi in sosta sono mezzi veri (la 500, la 126, l'Ape, il Ciao).
+- **Il limite della camera**: la Piazzetta del Pozzo è un cortile chiuso; dalla camera fissa si vede solo la sagoma, lo scorcio si legge con la
+  camera che si adatta (si alza nella stretta).
+
+## 12. La strada che si legge: strisce, cartelli, indicazioni, insegne ([segnaletica], 23 ottobre)
+
+«Attenzione analoga per le strade: segnaletica orizzontale, cartelli, indicazioni, insegne chiare per tutte le attività, evidenti.»
+Il filone sta in `segnaletica.js` (il piano è un dato: `W.insegne`, `W.segnaletica`; la grafica sta nello stesso file, agganciata a
+`ordine_arte.js` come `vievive_arte.js`) e si prova con `node src/test_segnaletica.js`. Le regole:
+
+- **Si guida a destra** (le corsie di `G.LANES` e di `vievive.js`; il volante di `veicoli3d.js` è a sinistra): la linea d'arresto, lo STOP
+  e le frecce stanno sulla corsia di destra di chi arriva; lo STOP è scritto lungo la corsia, alto nel verso di marcia.
+- **Le strisce seguono il profilo della via** (`Vievive.segnaletica`): la mezzeria solo dove ci sono due corsie (Vittoria, Corso, Via della
+  Stazione, Via del Porto), tratteggiata 3/3 m e continua nei 15 m prima dell'incrocio; il margine sul lato senza sosta. La Rua e la Via
+  della Marina (una corsia a senso alternato, Ape e motorini) non hanno mezzeria: hanno i triangoli dove sboccano sulle vie. Le costiere,
+  dove arrivano in città, ripetono la regola della tela del suolo; dove se ne staccano la Via del Porto e la Via della Stazione, sulla
+  corsia di chi arriva la freccia e la scritta PORTO o STAZIONE. Niente strisce nei vicoli.
+- **Le zebre** stanno dove le dipinge già il suolo (`crossings35`, gli incroci veri), più una davanti alla scuola, una per piazza, una per
+  fermata, sempre fuori dall'incrocio e fuori dal riquadro giallo BUS (12 m al cordolo). Ogni zebra ha il suo cartello di attraversamento.
+- **Consumate, non sporche**: la vernice ha i buchi (la tela) e ogni pezzo la sua opacità (55-90%); decalcomanie fuse con polygonOffset,
+  3 cm sopra il suolo e divise in pezzi di 1,4 m che seguono la quota: niente sfarfallio, niente pezzi sospesi.
+- **Cartelli dove servono, non a ogni angolo** (≤ 40 in città): STOP e dare precedenza dove si cede, attraversamento alle zebre, AREA
+  PEDONALE agli ingressi del borgo (al più sei, a bandiera dal muro: nei vicoli il marciapiede non c'è; schiena contro schiena col dare
+  precedenza di chi esce), divieto di sosta ai capi della Vittoria, P dove ci sono gli stalli. Il palo zincato sta a 0,45 m dal cordolo e
+  dietro restano ≥ 1 m; mai a meno di 1 m da porte, vetrine, scale, da un altro palo, da lampioni, fermate, edicole, plance, bidoni,
+  cassonetti e tavolini. Bordo basso del cartello a 2,2 m.
+- **Indicazioni**: frecce bianche (la città) e marroni (i luoghi da vedere: Rocca, San Rocco, Lido) agli incroci dove si sceglie, uno ogni
+  ~40 m, al più quattro frecce e due per direzione; la meta si sceglie sul cammino vero (campo di distanza sulla griglia percorribile), non
+  a vista; il palo all'angolo lontano dalla camera (nord-ovest), che si vede attraverso l'incrocio (quello vicino lo nasconde la sua casa). Le targhe delle vie e i civici restano quelli del piano dell'arredo (`scena.js`).
+- **Insegne: una voce per attività e per luogo-missione** (`W.insegne`: id, posto, testo, tipo, posizione, verso, fonte). La bottega sotto
+  casa ha il nome sulla fascia (render.js) e qui prende la **bandiera** perpendicolare col segno del mestiere (la T dei tabacchi, la croce
+  verde della farmacia, la tazza del bar, il pesce, il fiasco dell'osteria…): si legge in prospettiva di strada, anche sulle facce nord e
+  ovest che la camera non vede. Sporgenza ≤ 1,05 m, fra 2,8 e 3,46 m (sopra le tende, sotto i balconi), mai sull'asse di una porta, a
+  ≥ 2,3 m da un'altra bandiera, lontana da mensole, contatori e lampioni a braccio della rete, da targhe e civici. Sotto i portici della
+  Vittoria l'insegna sta nella lunetta dell'arco (sotto la volta la camera non vede). I locali con l'insegna grande accesa di render.js
+  restano come sono (`fonte: 'facciata'`); quelli che firma uno scorcio (`W.scorci`) si saltano (`fonte: 'scorci'`). I luoghi senza
+  bottega hanno la loro: il pannello del Mercato, di San Rocco, della Rocca e del posto di blocco, la tavola delle baracche, la bandiera
+  del Forno, la foglia dipinta del covo (piccola: per chi lo sa). Di notte si accendono bar, tabacchi, farmacia, osterie, forno, cinema.
+  Contrasto fra fondo e segno ≥ 3:1, parola ≤ 12 lettere: il segno si riconosce prima della parola.
+- **Il bilancio**: un atlante (2048²), quattro materiali (cartelli, cartelli accesi, pali a colori nei vertici, strisce), fusi in riquadri
+  di 96 m: al più ~30 mesh per tutta la città, e si disegnano solo quelle in campo.

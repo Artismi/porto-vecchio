@@ -1,0 +1,4 @@
+{ "pulita": true, "nota": "[pavimenti] gli incroci da vicino: i raccordi curvi di asfalto, marciapiedi e cordoli (prima: ?spigoli)", "scorci": [
+ { "nome": "k1_adunata", "titolo": "L'incrocio della piazza d'adunata", "x": 1326, "y": 340, "zoom": 0.5, "ora": 840, "meteo": "sereno", "luce": "metropoli" },
+ { "nome": "k2_porto_corso", "titolo": "Via del Porto, Corso e Marina", "x": 1308, "y": 384, "zoom": 0.5, "ora": 840, "meteo": "sereno", "luce": "metropoli" },
+ { "nome": "k3_corso_vittoria", "titolo": "Il Corso sulla Vittoria", "x": 1300, "y": 336, "zoom": 0.5, "ora": 900, "meteo": "sereno", "luce": "metropoli" } ] }

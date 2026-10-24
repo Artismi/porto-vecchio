@@ -1,0 +1,207 @@
+{
+ "quando": "2026-10-23T16:19:41.321Z",
+ "variante": null,
+ "manopole": {},
+ "larghezza": 1024,
+ "altezza": 640,
+ "soglie": {
+  "nero": 12,
+  "bianco": 245
+ },
+ "sintesi": {
+  "foto": 5,
+  "giorno": 5,
+  "lumMediaGiorno": 0.446,
+  "contrastoMedio": 0.215,
+  "saturazioneMedia": 0.33,
+  "neriOltre4Giorno": [],
+  "sovraesposte": [],
+  "drawCallMedie": 3404.4,
+  "separazioneMedia": 5.943,
+  "percorsoMedio": 0.165
+ },
+ "foto": [
+  {
+   "nome": "v1_citta_alta",
+   "titolo": "v1_citta_alta",
+   "luce": null,
+   "meteo": "sereno",
+   "nelPosto": 56,
+   "luminosita": 0.513,
+   "contrasto": 0.222,
+   "quasiNeri": 1.25,
+   "quasiBianchi": 0,
+   "saturazione": 0.223,
+   "drawCall": 8177,
+   "triangoli": 6178489,
+   "ora": 700,
+   "notte": 0,
+   "gente": 53,
+   "separazione": {
+    "salto": 85.58,
+    "piano": 11.95,
+    "rapporto": 7.16,
+    "quotaSalti": 5.65
+   },
+   "percorso": {
+    "tutto": {
+     "weber": 0.137,
+     "campioni": 31
+    },
+    "suolo": {
+     "weber": 0.168,
+     "campioni": 26
+    },
+    "tetti": {
+     "weber": -0.026,
+     "campioni": 5
+    }
+   }
+  },
+  {
+   "nome": "v2_borgo",
+   "titolo": "v2_borgo",
+   "luce": null,
+   "meteo": "sereno",
+   "nelPosto": 56,
+   "luminosita": 0.48,
+   "contrasto": 0.204,
+   "quasiNeri": 0,
+   "quasiBianchi": 0,
+   "saturazione": 0.349,
+   "drawCall": 2834,
+   "triangoli": 4093029,
+   "ora": 702,
+   "notte": 0,
+   "gente": 40,
+   "separazione": {
+    "salto": 82.65,
+    "piano": 25.84,
+    "rapporto": 3.199,
+    "quotaSalti": 4.48
+   },
+   "percorso": {
+    "tutto": {
+     "weber": 0.057,
+     "campioni": 6
+    },
+    "suolo": {
+     "weber": -0.023,
+     "campioni": 5
+    },
+    "tetti": {
+     "weber": 0.454,
+     "campioni": 1
+    }
+   }
+  },
+  {
+   "nome": "v3_ovest",
+   "titolo": "v3_ovest",
+   "luce": null,
+   "meteo": "sereno",
+   "nelPosto": 35,
+   "luminosita": 0.369,
+   "contrasto": 0.229,
+   "quasiNeri": 0,
+   "quasiBianchi": 0,
+   "saturazione": 0.418,
+   "drawCall": 2495,
+   "triangoli": 4027161,
+   "ora": 702,
+   "notte": 0,
+   "gente": 29,
+   "separazione": {
+    "salto": 73.02,
+    "piano": 12.77,
+    "rapporto": 5.72,
+    "quotaSalti": 3.77
+   },
+   "percorso": {
+    "tutto": {
+     "weber": -0.203,
+     "campioni": 2
+    },
+    "suolo": {
+     "weber": -0.509,
+     "campioni": 1
+    },
+    "tetti": {
+     "weber": 0.104,
+     "campioni": 1
+    }
+   }
+  },
+  {
+   "nome": "v4_spianata",
+   "titolo": "v4_spianata",
+   "luce": null,
+   "meteo": "sereno",
+   "nelPosto": 0,
+   "luminosita": 0.381,
+   "contrasto": 0.227,
+   "quasiNeri": 0.02,
+   "quasiBianchi": 0,
+   "saturazione": 0.357,
+   "drawCall": 1277,
+   "triangoli": 2072918,
+   "ora": 702,
+   "notte": 0,
+   "gente": 8,
+   "separazione": {
+    "salto": 93.9,
+    "piano": 11.62,
+    "rapporto": 8.078,
+    "quotaSalti": 2.49
+   },
+   "percorso": {
+    "tutto": {
+     "weber": 0.299,
+     "campioni": 29
+    },
+    "suolo": {
+     "weber": 0.299,
+     "campioni": 29
+    },
+    "tetti": null
+   }
+  },
+  {
+   "nome": "v5_corso",
+   "titolo": "v5_corso",
+   "luce": null,
+   "meteo": "sereno",
+   "nelPosto": 48,
+   "luminosita": 0.488,
+   "contrasto": 0.195,
+   "quasiNeri": 0,
+   "quasiBianchi": 0,
+   "saturazione": 0.302,
+   "drawCall": 2239,
+   "triangoli": 3100102,
+   "ora": 702,
+   "notte": 0,
+   "gente": 44,
+   "separazione": {
+    "salto": 94.58,
+    "piano": 17.02,
+    "rapporto": 5.558,
+    "quotaSalti": 0.92
+   },
+   "percorso": {
+    "tutto": {
+     "weber": 0.535,
+     "campioni": 4
+    },
+    "suolo": {
+     "weber": 2.141,
+     "campioni": 1
+    },
+    "tetti": {
+     "weber": 0,
+     "campioni": 3
+    }
+   }
+  }
+ ]
+}

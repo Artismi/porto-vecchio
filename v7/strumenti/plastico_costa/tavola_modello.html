@@ -1,0 +1,223 @@
+<title>Tavola della costa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* La tavola come un foglio di progetto del Genio Civile: carta grigio-mare, inchiostro, il rosso pompeiano delle case cantoniere */
+:root {
+  --carta: #e9ece8; --foglio: #f5f6f3; --inchiostro: #1d2a30; --tenue: #5b6a6c; --filo: #c3cbc8;
+  --pompeiano: #9e3b32; --mare: #2f5b68; --sabbia: #b89a5e;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif; --testo: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --dati: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --carta: #141b1e; --foglio: #1b2428; --inchiostro: #e3e8e6; --tenue: #9aa8a8; --filo: #33424a; --pompeiano: #d0675c; --mare: #7fb0bd; --sabbia: #d4b878; color-scheme: dark } }
+:root[data-theme="dark"] { --carta: #141b1e; --foglio: #1b2428; --inchiostro: #e3e8e6; --tenue: #9aa8a8; --filo: #33424a; --pompeiano: #d0675c; --mare: #7fb0bd; --sabbia: #d4b878; color-scheme: dark }
+body { background: var(--carta); color: var(--inchiostro); font-family: var(--testo); font-size: 15px; line-height: 1.55; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+.pagina { max-width: 1180px; margin: 0 auto; display: grid; gap: 44px; }
+header { display: grid; gap: 10px; border-bottom: 2px solid var(--inchiostro); padding-bottom: 18px; }
+.cartiglio { display: flex; flex-wrap: wrap; gap: 6px 22px; font-family: var(--dati); font-size: 12px; color: var(--tenue); letter-spacing: .02em; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(38px, 6vw, 64px); line-height: .95; letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+h1 span { color: var(--pompeiano); }
+h2 { font-family: var(--display); font-weight: 600; font-size: 28px; text-transform: uppercase; letter-spacing: .03em; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spacing: .02em; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lead { font-size: 17px; max-width: 70ch; }
+section { display: grid; gap: 16px; }
+.etichetta { font-family: var(--dati); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--pompeiano); }
+.tavola { background: var(--foglio); border: 1px solid var(--filo); padding: 10px; }
+.tavola svg { display: block; width: 100%; height: auto; }
+.scorre { overflow-x: auto; }
+.scorre svg { min-width: 760px; }
+.legenda { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--tenue); }
+.legenda i { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px; border: 1px solid #0003; }
+.due { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 22px; }
+.due > * { min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--filo); vertical-align: top; }
+th { font-family: var(--dati); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--tenue); font-weight: 500; }
+td.km { font-family: var(--dati); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--tenue); }
+td.n { font-family: var(--display); font-weight: 700; font-size: 17px; color: var(--pompeiano); white-space: nowrap; }
+.scorci { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 26px; }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+figure img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border: 1px solid var(--filo); background: var(--foglio); }
+figcaption { display: grid; gap: 4px; }
+figcaption p { font-size: 14px; color: var(--tenue); }
+.oggi { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.oggi img { width: 100%; border: 1px solid var(--filo); }
+.note { display: grid; gap: 10px; }
+.note li { max-width: 72ch; }
+ul, ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.chiedo { border-left: 4px solid var(--pompeiano); padding: 14px 18px; background: var(--foglio); display: grid; gap: 10px; }
+</style>
+
+<div class="pagina">
+<header>
+  <div class="cartiglio"><span>PORTO VECCHIO · CITTÀ NUOVA</span><span>TAVOLA C-1 · LA COSTA</span><span>scala dei piani: 1 casella = 2 m</span><span>23 ottobre</span></div>
+  <h1>La costa, <span>fuori stagione</span></h1>
+  <p class="lead">La riva della città oggi è una riga dritta: il mare arriva al filo delle case e della strada. Questa tavola propone una costa che respira: punte di scoglio e calette sotto le mura, una mezzaluna di sabbia davanti alla marina, una villa comunale sul mare a ponente. Fuori città, le due costiere avranno un punto da cartolina ogni 90–180 m di strada. Il tono resta quello dell'isola: inverno, Impero, miniera. Un lungomare consumato e vissuto, non una spiaggia da villeggiatura.</p>
+</header>
+
+<section>
+  <span class="etichetta">Pianta 1 · l'isola</span>
+  <h2>Le costiere e i punti cartolina</h2>
+  <p>I numeri seguono il senso di marcia: si esce dalla città e si va verso il faro, la M sulla Costiera di Mezzogiorno, la T su quella di Tramontana. Fuori città la riva è già irregolare; la nuova costa serve soprattutto nel tratto della città, dentro il riquadro.</p>
+  <div class="tavola scorre"><svg id="isola" viewBox="330 215 1290 385" role="img" aria-label="Pianta dell'isola con le costiere e i punti cartolina"></svg></div>
+  <div class="legenda">
+    <span><i style="background:#9e3b32"></i>punto cartolina</span><span><i style="background:#9e3b32;border-radius:0;outline:2px solid #fff"></i>casa cantoniera ANAS</span><span><i style="background:#f2efe6;border-radius:50%"></i>faro, torre costiera</span><span><i style="background:#1d2a30"></i>galleria corta</span><span><i style="background:#d64545"></i>guardrail sul mare (c'è già)</span>
+  </div>
+</section>
+
+<section>
+  <span class="etichetta">Pianta 2 · la riva della città</span>
+  <h2>La costa nuova davanti alle case</h2>
+  <p>La linea bianca tratteggiata è la riva di oggi, quella piena è la riva proposta. La terra nuova si aggiunge solo verso il mare: nessuna casa e nessuna strada si sposta. Fra le case e l'acqua ci sono sempre almeno 6 m di riva (scoglio, sabbia o passeggiata), così il mare non mangia più la città.</p>
+  <div class="tavola scorre"><svg id="citta" viewBox="1140 226 486 244" role="img" aria-label="Pianta della riva della città con la costa proposta"></svg></div>
+  <div class="legenda">
+    <span><i style="background:#d9c79a"></i>sabbia nuova</span><span><i style="background:#9c968a"></i>scogliera bassa nuova</span><span><i style="background:#cfc6b4"></i>passeggiata lastricata</span><span><i style="background:#7f8a52"></i>villa comunale</span>
+  </div>
+</section>
+
+<section class="due">
+  <div class="note">
+    <h3>Costiera di Mezzogiorno · 1046 m</h3>
+    <table><thead><tr><th></th><th>dalla città</th><th>che cosa si vede</th></tr></thead><tbody id="tabM"></tbody></table>
+  </div>
+  <div class="note">
+    <h3>Costiera di Tramontana · 1004 m</h3>
+    <table><thead><tr><th></th><th>dalla città</th><th>che cosa si vede</th></tr></thead><tbody id="tabT"></tbody></table>
+  </div>
+</section>
+
+<section>
+  <span class="etichetta">Sei scorci · plastico con la camera di gioco (14°, beccheggio 0,78)</span>
+  <h2>Come si vedrà</h2>
+  <p>Sono studi di massa e di colore, non la grafica finale: servono a decidere cosa c'è e dove. Nel gioco i pezzi saranno nel registro del diorama di oggi (scorci, tetti vissuti).</p>
+  <div class="scorci">
+    <figure><img src="{{lungomare}}" alt="Plastico del lungomare di Levante d'inverno"><figcaption><h3>Lungomare di Levante · Spiaggia del Lido</h3><p>La passeggiata curva con la balaustra e la rotonda sul mare, il busto del podestà, il chiosco delle granite chiuso con la tag del Disgelo. Sulla sabbia le cabine scrostate, i pedalò capovolti, le barche in secco con le reti, la posidonia a mucchi, la casamatta della guerra. Il cartellone del Garante sulla strada, i ragazzi con lo skate, i vecchi sulle panchine, la pattuglia in due.</p></figcaption></figure>
+    <figure><img src="{{giardino}}" alt="Plastico della villa comunale a mare"><figcaption><h3>Villa Comunale a mare · Ponente</h3><p>La fontana del Ventennio a secco, con le foglie e gli skate che ci girano dentro. Intorno la cassa armonica delle feste del Garante, il monumento ai caduti della Battuta coi lumini, una vecchia altalena, l'edicola dei giornali. I viali di ghiaia, i pini e le palme, il belvedere sulla scogliera bassa.</p></figcaption></figure>
+    <figure><img src="{{cantoniera}}" alt="Plastico della casa cantoniera sulla costiera"><figcaption><h3>M2 · Casa cantoniera, km 1</h3><p>Rosso pompeiano, con la scritta, il pergolato e l'orto, nella sua piazzola sul lato monte. La curva sulla scogliera ha il guardrail, il ciglio ha i fichi d'India e le agavi. Passa il camion del carbone della miniera, c'è un cartellone, sotto si apre una caletta col pescatore e le reti.</p></figcaption></figure>
+    <figure><img src="{{faro}}" alt="Plastico del faro con la piazzola panoramica"><figcaption><h3>M9 · Piazzola del Faro di Ponente</h3><p>Una curva a gomito con la piazzola fuori dalla curva e il muretto a secco in tondo. Ci sono le panchine, l'edicoletta votiva, la casamatta. Un sentiero scende al faro e alla casa del guardiano. È il posto dei ragazzi con lo skate e di chi guarda il mare.</p></figcaption></figure>
+    <figure><img src="{{dune}}" alt="Plastico del golfo delle dune con il ponticello"><figcaption><h3>M3 · Foce della Fiumara</h3><p>Il ponticello di pietra a schiena d'asino sul torrente, il canneto lungo l'acqua e dietro le dune. La passerella di tavole scende alla spiaggia lunga d'inverno: un pescatore con la canna, uno col cane, il chiosco inchiodato, il cartello della balneazione vietata.</p></figcaption></figure>
+    <figure><img src="{{galleria}}" alt="Plastico della galleria con il bar sulla curva"><figcaption><h3>T2–T3 · Galleria di San Giacomo, bar sulla curva</h3><p>La strada esce da una galleria corta nella roccia, sotto la torre costiera. All'uscita c'è il posto di blocco della Tutela. Il bar sulla curva ha il pergolato sul mare e i vecchi alle carte; più in là il distributore anni 70 del Banco, con la pensilina sottile.</p></figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <span class="etichetta">Per confronto · il gioco oggi</span>
+  <h2>La riva com'è adesso</h2>
+  <div class="oggi">
+    <img src="{{oggi_nord_citta}}" alt="Oggi: la riva nord della città, case a filo d'acqua">
+    <img src="{{oggi_marina_sud}}" alt="Oggi: la marina e il lido">
+    <img src="{{oggi_costiera_sud}}" alt="Oggi: la costiera sud col guardrail">
+    <img src="{{oggi_costiera_nord}}" alt="Oggi: la costiera nord">
+  </div>
+</section>
+
+<section class="due">
+  <div class="note">
+    <h3>Come lo costruisco</h3>
+    <ul>
+      <li>La forma della riva va in <code>world_cittanuova.js</code>, dentro <code>COSTA2</code> e <code>W.quotaRiva</code>: la terra nuova si aggiunge solo verso il mare, e con <code>?vecchiacosta</code> si torna alla riva di oggi.</li>
+      <li>Il lungomare e la villa comunale vanno in <code>src/lungomare.js</code>; le costiere (cantoniere, gallerie, ponticelli, torri, piazzole, bar, distributore) in <code>src/costiere.js</code>. Nei file condivisi restano solo ganci piccoli.</li>
+      <li>Pini, palme, panchine, lampioni e balaustre vanno in istanze, fuse nei blocchi per settore di [leggero]. Misuro le chiamate di disegno prima e dopo.</li>
+      <li>Prima di toccare la riva vicino alle case concordo la litoranea con la chat della pianta. Il lastricato di [pavimenti] si adatta al disegno della passeggiata.</li>
+      <li>Restano verdi <code>test_costa2</code> (nessuna casa né strada sott'acqua, guardrail sul mare), le prove della mappa compatta, percorsi, tetti, scorci, segnaletica, eventi, e le compenetrazioni a zero.</li>
+    </ul>
+  </div>
+  <div class="chiedo">
+    <h3>Mi serve il tuo ok su</h3>
+    <ol>
+      <li>Il tono: fuori stagione, con il regime e la miniera presenti ma senza cupezza. Va bene così?</li>
+      <li>La terra nuova: la Villa Comunale fa crescere la riva di ponente fino a 60 m nel mare, la Spiaggia del Lido di circa 30 m. È troppo?</li>
+      <li>I punti cartolina sono 18 e le case cantoniere 3. Ne vuoi di più o di meno?</li>
+      <li>C'è qualcosa da togliere o da aggiungere negli scorci?</li>
+    </ol>
+  </div>
+</section>
+</div>
+
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  // da punti a una curva morbida (Catmull-Rom in Bézier)
+  const curva = (P, chiusa) => { const n = P.length, g = i => chiusa ? P[(i + n) % n] : P[Math.max(0, Math.min(n - 1, i))]; let d = 'M' + P[0].join(' ');
+    for (let i = 0; i < (chiusa ? n : n - 1); i++) { const p0 = g(i - 1), p1 = g(i), p2 = g(i + 1), p3 = g(i + 2); d += ' C' + [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6, p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6, p2[0], p2[1]].map(v => v.toFixed(1)).join(' '); }
+    return d + (chiusa ? 'Z' : ''); };
+  const testo = (s, x, y, o, p) => { const t = el('text', Object.assign({ x, y, 'font-family': 'Barlow Condensed, Arial Narrow, sans-serif', 'font-weight': 600, 'font-size': 9, fill: '#1d2a30', stroke: '#f5f6f3', 'stroke-width': 2.4, 'paint-order': 'stroke', 'text-anchor': 'middle' }, o || {}), p); t.textContent = s; return t; };
+
+  // ---------- PIANTA 1: l'isola ----------
+  const I = document.getElementById('isola');
+  el('image', { href: '{{base_isola}}', x: 330, y: 215, width: 1290, height: 386, preserveAspectRatio: 'none' }, I);
+  el('rect', { x: 1140, y: 226, width: 486, height: 244, fill: 'none', stroke: '#1d2a30', 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }, I);
+  testo('RIQUADRO DELLA PIANTA 2', 1383, 222, { 'font-size': 11 }, I);
+  const M = [
+    ['M1', 60, 1194, 407, 'Villa Comunale a mare e Lungomare di Ponente; il belvedere sulla scogliera bassa', 'v'],
+    ['M2', 150, 1117, 406, 'Spiaggetta del Gabbiano: la strada sul mare col guardrail, la casa cantoniera km 1, la scaletta alla cala', 'c'],
+    ['M3', 240, 1030, 420, 'Foce della Fiumara: il ponticello di pietra, il canneto, le passerelle sulle dune', 'p'],
+    ['M4', 330, 953, 412, 'Capo della Fiumara: la piazzola panoramica col muretto a secco, l\'edicoletta votiva', 'v'],
+    ['M5', 420, 873, 379, 'Testa del Golfo delle Dune: il distributore anni 70 del Banco, il cartellone del Garante', 'v'],
+    ['M6', 600, 703, 424, 'Punta del Pino: la torre costiera fra i pini, la casamatta sulla duna', 't'],
+    ['M7', 780, 561, 527, 'Spiaggia della Salina: la piazzola sulle saline, i fichi d\'India, le agavi in fiore', 'v'],
+    ['M8', 871, 473, 543, 'Punta della Salina: la casa cantoniera km 4, il cippo, l\'oleandro', 'c'],
+    ['M9', 1046, 361, 409, 'Faro di Ponente: la curva a gomito e la piazzola, il sentiero al faro', 'f']];
+  const Tt = [
+    ['T1', 60, 1190, 285, 'Punta dei Binari: gli scogli, il muretto, la torre dell\'acqua alle spalle', 'v'],
+    ['T2', 151, 1100, 271, 'Punta di San Giacomo: la galleria corta nella roccia, la torre, il posto di blocco', 'g'],
+    ['T3', 242, 1012, 269, 'Caletta Rossa: il bar sulla curva col pergolato sul mare', 'v'],
+    ['T4', 331, 926, 269, 'Capo Rosso: la casa cantoniera km 2 nella sua piazzola', 'c'],
+    ['T5', 510, 752, 307, 'Caletta del Corvo: la strada sul mare col muretto, il ponticello sul torrente', 'p'],
+    ['T6', 601, 667, 325, 'Punta del Corvo: le curve a gomito in salita, la piazzola, l\'edicola', 'v'],
+    ['T7', 691, 590, 284, 'Capo di Tramontana: la torre costiera sullo sperone', 't'],
+    ['T8', 780, 509, 260, 'Cala Lupara: il ponticello, i fichi d\'India sul ciglio', 'p'],
+    ['T9', 960, 382, 369, 'Punta del Maestrale: la discesa verso il faro, il muretto a secco', 'v']];
+  const segno = (q, P) => { const [id, s, x, y, txt, k] = q;
+    if (k === 'c') el('rect', { x: x - 7, y: y - 7, width: 14, height: 14, fill: '#9e3b32', stroke: '#fff', 'stroke-width': 2 }, P);
+    else if (k === 't' || k === 'f') el('circle', { cx: x, cy: y, r: 7.5, fill: '#f2efe6', stroke: '#9e3b32', 'stroke-width': 2.4 }, P);
+    else if (k === 'g') { el('rect', { x: x - 9, y: y - 4, width: 18, height: 8, fill: '#1d2a30', stroke: '#fff', 'stroke-width': 1.5 }, P); }
+    else el('circle', { cx: x, cy: y, r: 6.5, fill: '#9e3b32', stroke: '#fff', 'stroke-width': 2 }, P);
+    testo(id, x, y - 11, { 'font-size': 13, 'font-weight': 700, fill: '#9e3b32' }, P); };
+  M.forEach(q => segno(q, I)); Tt.forEach(q => segno(q, I));
+  testo('COSTIERA DI TRAMONTANA', 800, 252, { 'font-size': 14, 'letter-spacing': 2 }, I); testo('COSTIERA DI MEZZOGIORNO', 790, 470, { 'font-size': 14, 'letter-spacing': 2 }, I);
+  const riga = (q, tb) => { const tr = document.createElement('tr'); tr.innerHTML = '<td class="n">' + q[0] + '</td><td class="km">' + (q[1] / 1000).toFixed(2).replace('.', ',') + ' km</td><td>' + q[4] + '</td>'; document.getElementById(tb).appendChild(tr); };
+  M.forEach(q => riga(q, 'tabM')); Tt.forEach(q => riga(q, 'tabT'));
+
+  // ---------- PIANTA 2: la riva della città ----------
+  const C = document.getElementById('citta');
+  el('image', { href: '{{base_citta}}', x: 1140, y: 226, width: 486, height: 244, preserveAspectRatio: 'none' }, C);
+  // la riva di oggi (tratteggio) e quella nuova (piena), con le fasce di terra nuova
+  const oggiN = [[1140,256],[1170,256],[1200,270],[1230,266],[1260,264],[1290,264],[1320,262],[1350,262],[1380,258],[1410,250],[1440,250],[1470,250],[1490,262],[1498,282]];
+  const nuovaN = [[1140,252],[1160,250],[1185,242],[1205,254],[1222,258],[1240,252],[1262,242],[1282,252],[1300,259],[1318,253],[1345,240],[1368,250],[1390,244],[1410,243],[1428,247],[1446,241],[1470,238],[1488,247],[1500,264]];
+  const oggiP = [[1140,432],[1160,440],[1175,444],[1186,432],[1198,404],[1212,394],[1240,392],[1264,392],[1272,420]];
+  const nuovaP = [[1140,436],[1158,446],[1172,452],[1186,442],[1198,432],[1212,442],[1228,455],[1246,449],[1262,435],[1274,428]];
+  const oggiL = [[1402,414],[1420,408],[1440,410],[1460,415],[1480,416],[1492,406],[1500,388]];
+  const nuovaL = [[1402,418],[1414,428],[1432,436],[1452,441],[1470,439],[1486,435],[1498,441],[1507,433],[1509,412]];
+  const rocca = [[1518,300],[1540,293],[1566,296],[1592,302],[1608,318],[1614,342],[1608,364],[1600,380],[1586,392],[1564,394],[1544,392],[1528,390],[1518,382],[1514,340]];
+  // fasce: l'area fra riva di oggi e riva nuova, chiusa
+  const fascia = (A, B, col) => el('path', { d: curva(A) + ' L' + B.slice().reverse().map(p => p.join(' ')).join(' L') + 'Z', fill: col, opacity: .92 }, C);
+  fascia(nuovaN, oggiN, '#a39d90');
+  fascia(nuovaP, oggiP, '#7f8a52'); fascia(nuovaL, oggiL, '#d9c79a');
+  el('path', { d: curva(rocca, true), fill: 'none', stroke: '#a39d90', 'stroke-width': 7, opacity: .9 }, C); el('path', { d: curva(rocca, true), fill: 'none', stroke: '#fff', 'stroke-width': 1.6, transform: 'translate(0 0)' }, C);
+  // scogli e calette sotto le mura: puntini di roccia sulla fascia nord
+  [[1185,245],[1262,245],[1345,243],[1470,241],[1390,247]].forEach(([x, y]) => { for (let k = 0; k < 7; k++) el('circle', { cx: x + (k - 3) * 2.6, cy: y - 3 - (k % 2) * 2.5, r: 1.3 + (k % 3) * .4, fill: '#6f6a60' }, C); });
+  [[1222,256],[1300,257],[1428,247]].forEach(([x, y]) => el('ellipse', { cx: x, cy: y + 1, rx: 7, ry: 2.4, fill: '#cdbd92' }, C));
+  [oggiN, oggiP, oggiL].forEach(P => el('path', { d: curva(P), fill: 'none', stroke: '#fff', 'stroke-width': 1.3, 'stroke-dasharray': '3 2.5', opacity: .9 }, C));
+  [nuovaN, nuovaP, nuovaL].forEach(P => el('path', { d: curva(P), fill: 'none', stroke: '#fff', 'stroke-width': 2.4 }, C));
+  // il lungomare di Levante e quello di Ponente (passeggiata con la balaustra)
+  const lev = [[1404,410],[1420,415],[1440,420],[1456,422],[1474,420],[1490,418],[1500,425]];
+  const pon = [[1158,431],[1176,433],[1192,426],[1206,433],[1226,446],[1246,441],[1262,428],[1276,420]];
+  [lev, pon].forEach(P => { el('path', { d: curva(P), fill: 'none', stroke: '#cfc6b4', 'stroke-width': 6, 'stroke-linecap': 'round' }, C); el('path', { d: curva(P), fill: 'none', stroke: '#1d2a30', 'stroke-width': .7, transform: 'translate(0 2.6)', opacity: .7 }, C); });
+  el('circle', { cx: 1456, cy: 425, r: 4.6, fill: '#cfc6b4', stroke: '#1d2a30', 'stroke-width': .8 }, C);   // la rotonda
+  el('circle', { cx: 1501, cy: 428, r: 4, fill: '#cfc6b4', stroke: '#1d2a30', 'stroke-width': .8 }, C);   // il belvedere sulla Punta della Rocca
+  el('circle', { cx: 1228, cy: 450, r: 4.2, fill: '#cfc6b4', stroke: '#1d2a30', 'stroke-width': .8 }, C);   // il belvedere della villa
+  el('ellipse', { cx: 1232, cy: 421, rx: 13, ry: 8.5, fill: 'none', stroke: '#e8e0cc', 'stroke-width': 1.6 }, C); el('circle', { cx: 1232, cy: 421, r: 2.6, fill: '#8aa8b0', stroke: '#e8e0cc', 'stroke-width': 1 }, C);   // la fontana
+  el('circle', { cx: 1212, cy: 418, r: 3, fill: '#5a6a68' }, C);   // la cassa armonica
+  // cabine, barche in secco, pontile, casamatta sulla Spiaggia del Lido
+  for (let k = 0; k < 5; k++) el('rect', { x: 1470 + k * 2.6, y: 424, width: 2, height: 2, fill: ['#6a8a9a','#a86a5a','#b8a060','#6a8a70','#8a7a9a'][k] }, C);
+  [[1414,423],[1419,426],[1424,429]].forEach(([x, y]) => el('ellipse', { cx: x, cy: y, rx: 2.6, ry: 1, fill: '#e2dccc', stroke: '#3a5a7a', 'stroke-width': .5, transform: 'rotate(25 ' + x + ' ' + y + ')' }, C));
+  el('rect', { x: 1442, y: 430, width: 4, height: 3.4, fill: '#9a968c', stroke: '#555', 'stroke-width': .5 }, C);
+  // i nomi
+  const N = [['Punta dei Binari', 1185, 237], ['Scoglio della Torre dell\'Acqua', 1262, 237], ['Cala dei Cordai', 1300, 250], ['Punta delle Mura', 1345, 235], ['Caletta delle Monache', 1426, 240], ['Capo della Vedetta', 1470, 233],
+    ['Villa Comunale a mare', 1232, 408], ['Lungomare di Ponente', 1190, 445], ['Spiaggetta della Villa', 1176, 462],
+    ['Lungomare di Levante', 1446, 412], ['Spiaggia del Lido', 1452, 450], ['Punta della Rocca', 1506, 452], ['lo scoglio della Rocca', 1566, 404], ['la marina (resta com\'è)', 1330, 462]];
+  N.forEach(([s, x, y]) => testo(s, x, y, { 'font-size': 7.5 }, C));
+})();
+</script>

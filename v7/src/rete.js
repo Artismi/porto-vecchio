@@ -31,7 +31,8 @@ var Rete = (function () {
     const bAt = (x, z) => { const tx = Math.floor(x / TS), tz = Math.floor(z / TS); if (tl(tx, tz) !== G.T.BLD) return -1; return M.world.bIndex ? M.world.bIndex[tz * G.GW + tx] : -1; };
     const topOf = b => MG + (Math.max(1, b.fl || 1) - 1) * MF;
     // il punto sulla faccia visibile (S o E) più vicino a (x, z), con u lungo il muro snappato all'asse di un modulo (la gabbia)
-    const faccia = (b, x, z) => { const q = faccia0(b, x, z), o = bAt(q.x + q.nx * .6, q.z + q.nz * .6); q.cieca = o >= 0 && B[o] !== b; return q; };   // [pulizia2] cieca: dà contro la casa accanto (la mensola ci finirebbe dentro)
+    const SCM = (bi, f, u) => typeof Scorci !== 'undefined' && Scorci && Scorci.attivo && Scorci.muroRiservato(bi, f, u);   // [scorci] il muro di uno scorcio composto: niente mensole, contatori, bracci
+    const faccia = (b, x, z) => { const q = faccia0(b, x, z), o = bAt(q.x + q.nx * .6, q.z + q.nz * .6); q.cieca = (o >= 0 && B[o] !== b) || SCM(B.indexOf(b), q.f, q.u); return q; };   // [pulizia2] cieca: dà contro la casa accanto (la mensola ci finirebbe dentro)   [scorci] o è il muro di uno scorcio
     const faccia0 = (b, x, z) => { const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, dS = Math.abs(z - (z0 + d)), dE = Math.abs(x - (x0 + w));
       if (dS <= dE) { const u = Math.max(1, Math.min(w - 1, Math.round((x - x0 - 1) / TS) * TS + 1)); return { f: 'S', u, x: x0 + u, z: z0 + d, yaw: 0, nx: 0, nz: 1 }; }
       const u = Math.max(1, Math.min(d - 1, Math.round((z0 + d - z - 1) / TS) * TS + 1)); return { f: 'E', u, x: x0 + w, z: z0 + d - u, yaw: Math.PI / 2, nx: 1, nz: 0 }; };
@@ -78,6 +79,7 @@ var Rete = (function () {
       const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, len = m.f === 'S' ? w : d, du = dF === m.f ? (m.f === 'S' ? (b.door[0] - b.x) * TS + 1 : (b.y + b.h - b.door[1]) * TS - 1) : null;
       let u = du !== null ? (du + TS <= len - .6 ? du + TS * .62 : du - TS * .62) : m.u + (m.u + TS <= len - .6 ? .7 : -.7); u = Math.max(.5, Math.min(len - .5, u));
       { const cieco = uu => { const px = m.f === 'S' ? x0 + uu : x0 + w + .6, pz = m.f === 'S' ? z0 + d + .6 : z0 + d - uu, o = bAt(px, pz); return o >= 0 && B[o] !== b; }; if (cieco(u)) { const alt = [m.u + .7, m.u - .7, m.u].map(q => Math.max(.5, Math.min(len - .5, q))).find(q => !cieco(q)); if (alt === undefined) return; u = alt; } }   // [pulizia2] mai contro il muro della casa accanto
+      if (SCM(bi, m.f, u)) { const alt = [u + 1.2, u - 1.2, u + 2.4, u - 2.4].map(q => Math.max(.5, Math.min(len - .5, q))).find(q => !SCM(bi, m.f, q)); if (alt === undefined) return; u = alt; }   // [scorci] il contatore si sposta fuori dallo scorcio
       const ct = nodo('contatore', m.f === 'S' ? x0 + u : x0 + w, m.f === 'S' ? z0 + d : z0 + d - u, Y_CONT, { bi, f: m.f, u, yaw: m.yaw }); c.contatore = ct; seg(m, ct, 'allaccio'); if (Scena && Scena.attivo()) Scena.nota(ct.x, ct.z, 'contatore'); });
     // ---- 3) gli allacci abusivi: la logica del disordine. Dalla mensola (o dal lampione) vicina alla finestra, al balcone, al tetto ----
     const sorgenti = R.nodi.filter(n => (n.k === 'mensola' && !n.traversata) || n.k === 'lampione');

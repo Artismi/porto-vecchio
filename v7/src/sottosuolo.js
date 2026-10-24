@@ -459,7 +459,7 @@ var Sottosuolo = (function () {
       if (!xs.length) return () => null; const q = (a, k) => a.slice().sort((m, n) => m - n)[Math.floor(a.length * k)], X0 = q(xs, .1), X1 = q(xs, .9), Y0 = q(ys, .1), Y1 = q(ys, .9);
       return (fx, fy) => { const gx = X0 + (X1 - X0) * fx, gy = Y0 + (Y1 - Y0) * fy; let b = null, bd = 1e9; for (let i = 0; i < xs.length; i++) { const d = (xs[i] - gx) ** 2 + (ys[i] - gy) ** 2; if (d < bd) { bd = d; b = i; } } return [cen(xs[b]), cen(ys[b])]; }; })();
     // [mappa_compatta] nella città compatta la linea va dal Mercato (accanto alla tettoia, verso i Giardini) alle Mura (la Via delle Mura, sotto la vedetta)
-    const MKT = (W.sets || []).find(s => s.k === 'mercato'), VM = (W.roads || []).find(r => r.id === 'vic_mura');
+    const MKT = (W.sets || []).find(s => s.k === 'ottagono') || (W.sets || []).find(s => s.k === 'mercato'),   /* [pianta] la stazione sotto la vecchia piazza del mercato */ VM = (W.roads || []).find(r => r.id === 'vic_mura');
     const VMq = VM ? VM.pts.reduce((b, q) => (!b || Math.hypot(q[0] - 1455, q[1] - 288) < Math.hypot(b[0] - 1455, b[1] - 288) ? q : b), null) : null;
     const COMP = !!(W.luoghi && MKT && VMq);
     const aS = COMP ? [MKT.x - 12, MKT.y + 9] : cityAt(.2, .92), aN = COMP ? [VMq[0], VMq[1] + 6] : cityAt(.8, .08);
@@ -887,6 +887,40 @@ var Sottosuolo = (function () {
     return root;
   }
   function addChunk(root, g, x, y) { g.userData.cx = x; g.userData.cy = y; g.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } }); root.add(g); GFX.chunks.push(g); }
+  // [regia] GLI ARREDI SONO SOLIDI: la botte, il carrello, il sarcofago, la statua, il banco del mercato non si attraversano più.
+  // Quando un arredo nasce (vicino al giocatore) se ne prende l'impronta per terra di ogni pezzo all'altezza del corpo (fra 35 cm e
+  // 1,1 m dal pavimento: le ossa per terra, le tessere, i binari, le volte e le lampade appese restano attraversabili), come un
+  // rettangolo orientato. Livelli.freeFn li chiede a SOLID.hit; chi c'è già dentro (per esempio sbucando) può uscirne.
+  const SOLID = { map: new Map(), hit(x, y, r) {
+    const L = this.map.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return false;
+    for (const q of L) { const dx = x - q[0], dy = y - q[1], a = dx * q[2] + dy * q[3], b = -dx * q[3] + dy * q[2]; if (Math.hypot(Math.max(0, Math.abs(a) - q[4]), Math.max(0, Math.abs(b) - q[5])) < r) return true; }
+    return false; } };
+  function regSolids(g, Rm, L) {
+    if (!g || typeof THREE === 'undefined' || /^(metro|fiume)$/.test(Rm.deco)) return;
+    const near = (x, y) => (Rm.stair && Math.hypot(x - Rm.stair[0], y - Rm.stair[1]) < 2.2) || (L && L.portals.some(P => Math.hypot(x - cen(P.u[0]), y - cen(P.u[1])) < 1.6));   // la scala e le botole restano raggiungibili
+    g.updateMatrixWorld(true);
+    const f = Rm.f || 0, M4 = new THREE.Matrix4(), V = new THREE.Vector3(), C = [];
+    const add = (bb, M) => {
+      C.length = 0; let y0 = 1e9, y1 = -1e9;
+      for (let i = 0; i < 8; i++) { V.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(M); C.push([V.x, V.z]); y0 = Math.min(y0, V.y); y1 = Math.max(y1, V.y); }
+      if (y0 - f > 1.1 || y1 - f < .35) return;
+      // l'asse dell'impronta: lo spigolo proiettato più lungo
+      let ang = 0, best = -1; for (const [i, j] of [[0, 1], [0, 2], [0, 4]]) { const l = Math.hypot(C[j][0] - C[i][0], C[j][1] - C[i][1]); if (l > best) { best = l; ang = Math.atan2(C[j][1] - C[i][1], C[j][0] - C[i][0]); } }
+      const ca = Math.cos(ang), sa = Math.sin(ang); let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+      C.forEach(([x, z]) => { const a = x * ca + z * sa, b = -x * sa + z * ca; a0 = Math.min(a0, a); a1 = Math.max(a1, a); b0 = Math.min(b0, b); b1 = Math.max(b1, b); });
+      const hu = (a1 - a0) / 2 - .04, hv = (b1 - b0) / 2 - .04; if (hu < .07 || hv < .07 || hu * hv < .015 || hu > 3 || hv > 3) return;   // troppo sottile, o un piano grande
+      const am = (a0 + a1) / 2, bm = (b0 + b1) / 2, q = [am * ca - bm * sa, am * sa + bm * ca, ca, sa, hu, hv], rr = Math.hypot(hu, hv) + .5; if (near(q[0], q[1])) return;
+      for (let tx = Math.floor((q[0] - rr) / TS); tx <= Math.floor((q[0] + rr) / TS); tx++) for (let ty = Math.floor((q[1] - rr) / TS); ty <= Math.floor((q[1] + rr) / TS); ty++) { const k = ty * GW + tx; if (!SOLID.map.has(k)) SOLID.map.set(k, []); SOLID.map.get(k).push(q); }
+    };
+    g.traverse(o => {
+      if (!o.isMesh || !o.geometry || !/^(Box|Cylinder|Sphere|Dodecahedron|Cone)Geometry$/.test(o.geometry.type) || (o.geometry.parameters && o.geometry.parameters.openEnded)) return;
+      if (o.material && (o.material.transparent || o.material.isMeshBasicMaterial)) return;   // l'acqua, i fasci di luce, i cartelli
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      if (o.isInstancedMesh) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, M4); M4.premultiply(o.matrixWorld); add(o.geometry.boundingBox, M4); }
+      else add(o.geometry.boundingBox, o.matrixWorld);
+    });
+  }
+  if (LV.hooks) LV.hooks.solid = (x, y, r) => SOLID.hit(x, y, r);
   function decor(Rm) {
     const g = new THREE.Group(); g.position.set(Rm.x, Rm.f, Rm.y); const w = Rm.w || 8, h = Rm.h || 6, W2 = w / 2 - .5, H2 = h / 2 - .5;
     const stone = '#8a8478', wood = '#6a4a30', dark = '#2a2622', iron = '#3a3a40', conc = '#7a7a74';
@@ -1333,8 +1367,8 @@ var Sottosuolo = (function () {
     const ride = p.lv.ride; GFX.trains.forEach((m, j) => m.traverse(o => { if (o.name === 'tetto') o.visible = ride !== j; }));
     (GFX.tubes || []).forEach((tb, j) => { const o = ride !== undefined && ride !== j ? .12 : 1; tb.material.opacity = o; tb.material.depthWrite = o > .5; });
     // [sotto2] gli arredi si costruiscono quando ti avvicini (al massimo tre stanze per fotogramma); le cavità dei ritrovamenti appena aperte
-    if (GFX.pend && GFX.pend.length) { const near = GFX.pend.map(Rm => [Math.hypot(Rm.x - p.x, Rm.y - p.y), Rm]).filter(q => q[0] < 80).sort((a, b) => a[0] - b[0]).slice(0, 3); near.forEach(([, Rm]) => { GFX.pend.splice(GFX.pend.indexOf(Rm), 1); const g = decor(Rm); if (g) addChunk(GFX.root, g, Rm.x, Rm.y); }); }   // prima le più vicine
-    GFX.findsBuilt = GFX.findsBuilt || {}; L.rooms.forEach(Rm => { if (!Rm.find || GFX.findsBuilt[Rm.find]) return; GFX.findsBuilt[Rm.find] = 1; const g = decor(Rm); if (g) { g.userData.find = Rm; addChunk(GFX.root, g, Rm.x, Rm.y); } });
+    if (GFX.pend && GFX.pend.length) { const near = GFX.pend.map(Rm => [Math.hypot(Rm.x - p.x, Rm.y - p.y), Rm]).filter(q => q[0] < 80).sort((a, b) => a[0] - b[0]).slice(0, 3); near.forEach(([, Rm]) => { GFX.pend.splice(GFX.pend.indexOf(Rm), 1); const g = decor(Rm); if (g) { addChunk(GFX.root, g, Rm.x, Rm.y); regSolids(g, Rm, L); } }); }   // prima le più vicine   // [regia] e diventano solidi
+    GFX.findsBuilt = GFX.findsBuilt || {}; L.rooms.forEach(Rm => { if (!Rm.find || GFX.findsBuilt[Rm.find]) return; GFX.findsBuilt[Rm.find] = 1; const g = decor(Rm); if (g) { g.userData.find = Rm; addChunk(GFX.root, g, Rm.x, Rm.y); regSolids(g, Rm, L); } });
     const yaw = (R.cam && R.cam.yaw !== undefined ? R.cam.yaw : Math.PI / 4), sy = Math.sin(yaw), cyw = Math.cos(yaw);
     GFX.chunks.forEach(c => { c.visible = Math.hypot(c.userData.cx - p.x, c.userData.cy - p.y) < 72; if (!c.visible) return;
       // le cose contro le pareti: spente dal lato della camera (lì la parete è tagliata bassa)

@@ -60,6 +60,7 @@ var Eventi = (function () {
     writer: (st, n) => free(st, n) && !!(n.pop && n.pop.writer),
     // [vita2] adulti, e chi sta dietro un banco (il bottegaio, il barista, il fornaio): la scena della serranda e del pizzo li vuole
     adult: (st, n) => free(st, n) && age(n) >= 22 && age(n) <= 60,
+    matto: (st, n) => free(st, n) && !!(n.pop && n.pop.matto),   // [matti] i matti di quartiere (matti.js)
     shop: (st, n) => free(st, n) && !!(n.shop || (n.pop && n.pop.job && /commess|barist|camerier|oste\b|cuoc|forn|macell|tabacc|gelat|pescivend|fruttiv|bottega|barbier|ferrament|farmac|sart|lavand|tipograf|edicol|panett/i.test(n.pop.job.title || ''))),
   };
   const dP = (st, o) => hyp(o.x - st.player.x, o.y - st.player.y);
@@ -166,7 +167,7 @@ var Eventi = (function () {
       n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
     up: { start(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev) { n.__ev.down = 0; n.stun = 0; n.__ev.pose = 'rialza'; } }, wait: () => 1.2, after(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev && n.__ev.pose === 'rialza') n.__ev.pose = null; } },
     brawl: { start(st, sc, b) { const A = AZ(), x = actor(sc, b.brawl[0]), y = b.brawl[1] === 'player' ? 'player' : actor(sc, b.brawl[1]); sc.over = true; if (!A || !A.brawl || !x || !x.pop || (y !== 'player' && !(y && y.pop))) return; sc.after = () => { try { A.brawl(st, x, y, { why: sc.def.id }); } catch (e) { } }; }, wait: () => 0 },
-    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!']), 3); } }, wait: () => 0 },
+    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!', 'Avvisate mia madre! Anzi no.', 'Posso almeno finire il gelato?']), 3); } }, wait: () => 0 },
     pay: { start(st, sc, b) { const x = actor(sc, b.pay[0]), y = actor(sc, b.pay[1]), k = b.pay[2] || 1; if (x && y && x.pop && y.pop && x.pop.money >= k) { x.pop.money -= k; y.pop.money += k; } }, wait: () => 0 },
     p: { start(st, sc, b) { splice(sc, rnd() < b.p ? b.then : b.else); }, wait: () => 0 },
     fn: { start(st, sc, b) { b.fn(st, sc); }, wait: b => b.w || 0 },
@@ -383,25 +384,25 @@ var Eventi = (function () {
     { id: 'scippo', w: 3, posto: ['fermata', 'pensilina', 'mercato'], soft: true, roles: [{ id: 'a' }, { id: 'b', near: 'a', f: 'young', min: 6 }], beats: [
       { go: 'b', to: 'a', sp: 1.9, d: 1, t: 18 }, SAY('a', 'Ehi! La borsa!', 'Il portafoglio! Ladro!', 'Ma che fai?!'),
       { chase: 'a', who: 'b', sp: 3.45, fsp: 3.9, t: 13, catch: [SAY('a', 'Ti ho preso, disgraziato!', 'Ridammela subito!'), { brawl: ['a', 'b'] }],
-        lose: [SAY('a', 'Maledetto... la mia borsa.', 'Al ladro! Nessuno fa niente?', 'Non ce la faccio più...'), { wait: 2 }] },
+        lose: [SAY('a', 'Maledetto... la mia borsa.', 'Al ladro! Nessuno fa niente?', 'Non ce la faccio più...', 'Dentro c\'erano le ceneri di mio suocero! Spargile bene, almeno!'), { wait: 2 }] },
       SAY('a', 'Al ladro! Al ladro!', 'Fermatelo!', 'Prendetelo!')] },
     { id: 'non_ha_pagato', w: 2, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'young', min: 5 }], beats: [
       { go: 'b', to: 'a', sp: 1.5, d: 1.6, t: 18 }, { pose: 'b', p: 'raccoglie', w: 1.4 }, { pose: 'b' },
       SAY('a', 'Ehi! Le mie pesche!', 'Fermo! Non hai pagato!', 'Torna qui, ladruncolo!'),
       { chase: 'a', who: 'b', sp: 3.2, fsp: 3.95, t: 10, catch: [SAY('a', 'Adesso le paghi, e il doppio!'), { pay: ['b', 'a', 2] }, SAY('b', 'Va bene, va bene! Ecco i soldi!')],
-        lose: [SAY('a', 'Ti conosco! Lo dico a tua madre!', 'Ti ho visto in faccia, sai!'), { pose: 'a', p: 'rabbia' }, { wait: 2 }] }] },
+        lose: [SAY('a', 'Ti conosco! Lo dico a tua madre!', 'Ti ho visto in faccia, sai!', 'Erano di cera! Le pesche erano di cera! Buon appetito!'), { pose: 'a', p: 'rabbia' }, { wait: 2 }] }] },
     { id: 'polizia_insegue', w: 3, roles: [{ id: 'a', f: 'cop', ring: [8, 40] }, { id: 'b', near: 'a', r: 28, min: 7 }], beats: [
-      SAY('a', 'Alt! Polizia! Fermati!', 'Ehi tu! Fermo lì!', 'Fermo! Documenti!'), SAY('b', 'La pula! Via!', 'Non ho fatto niente!', 'Col cavolo!'),
+      SAY('a', 'Alt! Polizia! Fermati!', 'Ehi tu! Fermo lì!', 'Fermo! Documenti!'), SAY('b', 'La pula! Via!', 'Non ho fatto niente!', 'Col cavolo!', 'Ho la cena sul fuoco!'),
       { chase: 'a', who: 'b', sp: 4.15, fsp: 3.7, t: 16, catch: [{ pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, SAY('a', 'Sei in arresto.', 'Mani dietro la schiena!', 'Fine della corsa.'), { wait: 3.5 }, { jail: 'b' }],
-        lose: [SAY('a', 'L\'ho perso... Centrale, ricercato a piedi.', 'Maledizione, è sparito.'), { wait: 2 }] }] },
+        lose: [SAY('a', 'L\'ho perso... Centrale, ricercato a piedi.', 'Maledizione, è sparito.', 'Centrale, l\'ho perso. Sì, di nuovo. No, non è il solito. È un altro che corre uguale.'), { wait: 2 }] }] },
     { id: 'perquisizione', w: 2, roles: [{ id: 'a', f: 'cop', ring: [8, 40] }, { id: 'b', near: 'a', f: 'young', r: 22 }], beats: [
       { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 20 }, { look: 'b', at: 'a' }, SAY('a', 'Documenti, prego.', 'Fermo lì. Controllo.', 'Dove vai così di fretta?'),
       { pose: 'b', p: 'mani_alzate_su' }, { pose: 'a', p: 'perquisisce', w: 3.5 },
-      { p: .3, then: [SAY('a', 'E questo cos\'è?'), SAY('b', 'Non è mio! Giuro!'), { p: .5, then: [{ chase: 'a', who: 'b', sp: 4.1, fsp: 3.8, t: 12, catch: [{ pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], lose: [SAY('a', 'Tanto ti ritrovo.')] }], else: [{ pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, SAY('a', 'Vieni con me.'), { wait: 3 }, { jail: 'b' }] }],
-        else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Va bene. Circolare.', 'Tutto a posto. Vai pure.'), SAY('b', 'Ogni volta la stessa storia...', 'Grazie, eh.'), { flee: 'b', from: 'a', sp: 1.6 }, { wait: 3 }] }] },
+      { p: .3, then: [SAY('a', 'E questo cos\'è?', 'E questa cassetta? «Battiato»? Chi è, un sovversivo?'), SAY('b', 'Non è mio! Giuro!', 'È di mia nonna. Lei è sovversiva. Io no.', 'Me l\'ha messo lei in tasca. Lei, sì. Adesso.'), { p: .5, then: [{ chase: 'a', who: 'b', sp: 4.1, fsp: 3.8, t: 12, catch: [{ pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], lose: [SAY('a', 'Tanto ti ritrovo.')] }], else: [{ pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, SAY('a', 'Vieni con me.'), { wait: 3 }, { jail: 'b' }] }],
+        else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Va bene. Circolare.', 'Tutto a posto. Vai pure.'), SAY('b', 'Ogni volta la stessa storia...', 'Grazie, eh.', 'Domani mi perquisisce ancora? Così mi vesto meglio.'), { flee: 'b', from: 'a', sp: 1.6 }, { wait: 3 }] }] },
     { id: 'corsa_autobus', w: 1, posto: ['fermata', 'pensilina'], soft: true, ora: [6.5, 22], roles: [{ id: 'a' }], beats: [
       SAY('a', 'Aspetta! Aspettaaa!', 'Ferma! Devo salire!'), { go: 'a', to: 'away', sp: 3.8, d: 2, t: 9, soft: true }, { mood: 'a', m: 'stanco' }, { look: 'a', at: 'away' },
-      SAY('a', 'Perso... anche oggi.', 'Ma porca miseria!', 'Il prossimo tra un\'ora...'), { wait: 3 }] },
+      SAY('a', 'Perso... anche oggi.', 'Ma porca miseria!', 'Il prossimo tra un\'ora...', 'Era il mio autobus! Lo guidava mio marito! Mi ha visto!'), { wait: 3 }] },
     { id: 'scommessa', w: 1, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 16 }], beats: [
       { go: 'b', to: 'a', sp: 1.8, d: 1.3, t: 16 }, SAY('a', 'Chi arriva ultimo alla fontana paga da bere!', 'Scommetti che ti batto?'), SAY('b', 'Andata!', 'Preparati a pagare.'),
       { all: [{ go: 'a', to: 'away', sp: 3.9, d: 2.5, t: 10, soft: true }, { go: 'b', to: 'away', sp: 3.75, d: 2.5, t: 10, soft: true }] }, { mood: 'b', m: 'stanco' },
@@ -409,98 +410,98 @@ var Eventi = (function () {
     // --- botte, liti, nervi ---
     { id: 'rissa', w: 2, posto: 'dehors', soft: true, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'm', r: 18 }], beats: [
       { go: 'b', to: 'a', sp: 1.9, d: 1.2, t: 18 }, { pose: 'b', p: 'discute_su' }, SAY('b', 'Che hai detto di mia sorella?', 'Tu! Mi devi ancora cinquantamila lire!', 'Ti ho visto con la mia ragazza!'),
-      { pose: 'a', p: 'discute_su' }, SAY('a', 'Ma chi ti conosce?', 'Calmati, eh!', 'Non è come pensi!'), { mood: 'b', m: 'rabbia' }, SAY('b', 'Ripetilo, se hai coraggio!', 'Adesso ti sistemo io!'),
+      { pose: 'a', p: 'discute_su' }, SAY('a', 'Ma chi ti conosce?', 'Calmati, eh!', 'Non è come pensi!', 'Tua sorella? Abbiamo solo ballato. Il tango. Per tre anni.'), { mood: 'b', m: 'rabbia' }, SAY('b', 'Ripetilo, se hai coraggio!', 'Adesso ti sistemo io!'),
       { p: .55, then: [{ brawl: ['b', 'a'] }], else: [{ pose: 'a', p: 'spinta_su', w: 1 }, SAY('a', 'Lascia perdere, non ne vale la pena.'), { flee: 'a', from: 'b', sp: 1.7 }, SAY('b', 'Ecco, scappa!', 'Codardo!'), { wait: 3 }] }] },
     { id: 'lite_coppia', w: 2, roles: [{ id: 'a', f: 'f' }, { id: 'b', near: 'a', f: 'm', r: 16 }], beats: [
       { go: 'b', to: 'a', sp: 1.7, d: 1.1, t: 16 }, { pose: 'a', p: 'discute_su' }, { pose: 'b', p: 'discute_su' },
-      SAY('a', 'Ieri sera dov\'eri?!', 'Ti ho visto al Flipper con quella!', 'Mia madre aveva ragione su di te!'), SAY('b', 'Ma amore, ti giuro...', 'Ero col Pino, chiedi a lui!', 'Non urlare, ci sentono tutti!'),
+      SAY('a', 'Ieri sera dov\'eri?!', 'Ti ho visto al Flipper con quella!', 'Mia madre aveva ragione su di te!'), SAY('b', 'Ma amore, ti giuro...', 'Ero col Pino, chiedi a lui!', 'Non urlare, ci sentono tutti!', 'Ero dal prete! A confessarmi! Di quella!'),
       { mood: 'a', m: 'rabbia' }, SAY('a', 'Non chiamarmi amore!', 'Basta! È finita!'), { pose: 'a' },
       { all: [{ go: 'a', to: 'away', sp: 2.6, d: 2, t: 10, soft: true }, { follow: 'b', who: 'a', sp: 2.4, d: 1.6 }] }, SAY('b', 'Aspetta! Dai... {a}!', '{a}! Torna qui!'), { wait: 3 }] },
     { id: 'lite_parcheggio', w: 1, posto: 'sosta', soft: true, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'm', r: 18 }], beats: [
       { go: 'a', to: 'b', sp: 2, d: 1.3, t: 16 }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Mi hai rigato la portiera!', 'Quello è il mio posto da vent\'anni!'),
-      { pose: 'b', p: 'discute_su' }, SAY('b', 'La strada è di tutti!', 'Era già rigata, quella carretta!'), { pose: 'a', p: 'discute_su' }, SAY('a', 'Carretta a chi?!'), SAY('b', 'Chiamiamo i vigili, allora!'),
+      { pose: 'b', p: 'discute_su' }, SAY('b', 'La strada è di tutti!', 'Era già rigata, quella carretta!', 'L\'ho rigata con amore. Si vede dalla calligrafia.'), { pose: 'a', p: 'discute_su' }, SAY('a', 'Carretta a chi?!'), SAY('b', 'Chiamiamo i vigili, allora!'),
       { p: .3, then: [{ brawl: ['a', 'b'] }], else: [SAY('a', 'Ci vediamo dall\'avvocato!'), { flee: 'a', from: 'b', sp: 1.5 }, { wait: 3 }] }] },
     { id: 'vicini_bucato', w: 1, when: 'day', roles: [{ id: 'a', f: 'f' }, { id: 'b', near: 'a', f: 'f', r: 18 }], beats: [
       { go: 'b', to: 'a', sp: 1.6, d: 1.2, t: 16 }, { pose: 'b', p: 'indica_su' }, SAY('b', 'Signora! Il suo bucato gocciola sul mio!', 'Le sue lenzuola mi coprono il sole!'),
-      { pose: 'a', p: 'discute_su' }, SAY('a', 'E il suo gatto allora? Mi ruba le acciughe!', 'Stenda più in là, allora!'), SAY('b', 'Ma senti questa!', 'Maleducata!'), SAY('a', 'Maleducata a me?!'), { wait: 2 }] },
+      { pose: 'a', p: 'discute_su' }, SAY('a', 'E il suo gatto allora? Mi ruba le acciughe!', 'Stenda più in là, allora!', 'Lei mi guarda le mutande da vent\'anni! Almeno dica che le piacciono!'), SAY('b', 'Ma senti questa!', 'Maleducata!'), SAY('a', 'Maleducata a me?!'), { wait: 2 }] },
     { id: 'carte_baruffa', w: 1, posto: ['dehors', 'panchina'], soft: true, roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'old', r: 16 }], beats: [
       { go: 'b', to: 'a', sp: 1.4, d: 1.2, t: 18 }, { pose: 'a', p: 'siede_terra' }, { pose: 'b', p: 'siede_terra' }, SAY('a', 'Scopa!', 'E questo è il settebello.'), { wait: 4 },
-      SAY('b', 'Un momento... quella carta dov\'era?', 'Tu bari, {a}!'), { pose: 'a' }, { pose: 'b' }, SAY('a', 'Io? In quarant\'anni mai!', 'Ma come ti permetti?'),
+      SAY('b', 'Un momento... quella carta dov\'era?', 'Tu bari, {a}!'), { pose: 'a' }, { pose: 'b' }, SAY('a', 'Io? In quarant\'anni mai!', 'Ma come ti permetti?', 'Baro, sì. Ma con stile. Tu bari da cani.'),
       { p: .35, then: [{ brawl: ['b', 'a'] }], else: [SAY('b', 'Domani si rigioca. E le carte le porto io.'), { wait: 2 }] }] },
     // --- ubriachi e malori ---
     { id: 'ubriaco', w: 2, posto: ['dehors', 'angolo'], soft: true, roles: [{ id: 'a', f: 'm' }], beats: [
       { mood: 'a', m: 'ubriaco' }, { wander: 'a', r: 5, sp: .8 }, SAY('a', 'Volare... oh oh...', 'Un altro giro, oste!', 'Ti voglio bene... a tutti voglio bene...'), { wait: 5 },
-      SAY('a', 'Chi ha spostato la strada?', 'Dov\'è casa mia... era qui...'), { wait: 3 },
-      { p: .5, then: [{ fall: 'a', t: 3 }, SAY('a', 'Sto bene... sto benissimo.', 'Il marciapiede mi ha spinto.'), { wait: 2 }, { up: 'a' }], else: [{ pose: 'a', p: 'siede_terra' }, SAY('a', 'Mi siedo un attimo...'), { wait: 5 }] }] },
+      SAY('a', 'Chi ha spostato la strada?', 'Dov\'è casa mia... era qui...', 'Io questo lampione lo sposerei. È l\'unico che mi aspetta.', 'Vi conosco tutti. Tu sei il mare.'), { wait: 3 },
+      { p: .5, then: [{ fall: 'a', t: 3 }, SAY('a', 'Sto bene... sto benissimo.', 'Il marciapiede mi ha spinto.', 'Faccio così apposta. Per vedere chi mi vuole bene.'), { wait: 2 }, { up: 'a' }], else: [{ pose: 'a', p: 'siede_terra' }, SAY('a', 'Mi siedo un attimo...'), { wait: 5 }] }] },
     { id: 'due_ubriachi', w: 1, when: 'night', roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'm', r: 18 }], beats: [
       { mood: 'a', m: 'ubriaco' }, { mood: 'b', m: 'ubriaco' }, { go: 'b', to: 'a', sp: 1.2, d: 1, t: 18 }, { follow: 'b', who: 'a', sp: 1, d: 1 }, { wander: 'a', r: 6, sp: .8 },
       SAY('a', 'Nel blu, dipinto di bluuu!', 'Fratello mio!'), SAY('b', 'Felice di stare lassùùù!', 'Sei il mio migliore amico, lo sai?'), { wait: 4 },
-      SAY('a', 'Andiamo a fare il bagno!', 'Ancora uno, l\'ultimo.'), SAY('b', 'Ma è dicembre!', 'L\'ultimo... come ieri.'), { wait: 4 }] },
+      SAY('a', 'Andiamo a fare il bagno!', 'Ancora uno, l\'ultimo.'), SAY('b', 'Ma è dicembre!', 'L\'ultimo... come ieri.', 'Andiamo, ma vestiti. Io no.'), { wait: 4 }] },
     { id: 'malore', w: 1, roles: [{ id: 'a', f: 'old' }], beats: [
       { mood: 'a', m: 'stanco' }, SAY('a', 'Mi gira la testa...', 'Oh, madonna...'), { wait: 1.5 }, { fall: 'a', t: 11 }, { crowd: 3, around: 'a', r: 20 },
       SAY('folla', 'Chiamate un medico!', 'Dategli aria!', 'Signore! Mi sente?'), { wait: 3 }, SAY('folla', 'Qualcuno ha dell\'acqua?', 'Fate largo!'), { wait: 4 },
-      { up: 'a' }, SAY('a', 'Sto bene, sto bene... è il caldo.', 'Ho saltato il pranzo, niente di grave.'), SAY('folla', 'Si riguardi, eh!', 'Meno male...'), { wait: 2 }] },
+      { up: 'a' }, SAY('a', 'Sto bene, sto bene... è il freddo.', 'Ho saltato il pranzo, niente di grave.', 'Volevo solo vedere se qualcuno si fermava. Bravi. Undici secondi.'), SAY('folla', 'Si riguardi, eh!', 'Meno male...'), { wait: 2 }] },
     { id: 'anziano_cade', w: 1, roles: [{ id: 'a', f: 'old' }], beats: [
       { wander: 'a', r: 3, sp: .7 }, { wait: 2 }, { fall: 'a', t: 7 }, SAY('a', 'Ahi! La mia anca!', 'Accidenti ai gradini!'), { crowd: 2, around: 'a', r: 18 },
       SAY('folla', 'Si è fatto male, nonno?', 'Aspetti, l\'aiuto io.'), { pose: 'folla', p: 'porge' }, { wait: 3 }, { up: 'a' },
-      SAY('a', 'Le gambe non sono più quelle di una volta.', 'Grazie, siete gentili.'), { wait: 2 }] },
+      SAY('a', 'Le gambe non sono più quelle di una volta.', 'Grazie, siete gentili.', 'Le gambe sono le stesse. È la terra che si avvicina.'), { wait: 2 }] },
     // --- dare, chiedere, trovare ---
     { id: 'portafoglio', w: 2, roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 16 }], beats: [
       { wander: 'a', r: 6, sp: 1.1 }, { go: 'b', to: 'spot', sp: 1.5, d: 1, t: 16 }, { pose: 'b', p: 'raccoglie', w: 1.4 }, { pose: 'b' },
-      { p: .65, then: [SAY('b', 'Ehi! Ha perso il portafoglio!', 'Scusi! Le è caduto questo!'), { go: 'b', to: 'a', sp: 2.6, d: 1.2, t: 14 }, { look: 'a', at: 'b' }, { pose: 'b', p: 'porge' }, SAY('a', 'Grazie! Lei è un angelo.', 'Madonna, c\'erano dentro i soldi dell\'affitto!'), { pay: ['a', 'b', 2] }, { wait: 2 }],
+      { p: .65, then: [SAY('b', 'Ehi! Ha perso il portafoglio!', 'Scusi! Le è caduto questo!'), { go: 'b', to: 'a', sp: 2.6, d: 1.2, t: 14 }, { look: 'a', at: 'b' }, { pose: 'b', p: 'porge' }, SAY('a', 'Grazie! Lei è un angelo.', 'Madonna, c\'erano dentro i soldi dell\'affitto!', 'Non è mio. Ma lo tengo. Così impara, quello là.'), { pay: ['a', 'b', 2] }, { wait: 2 }],
         else: [SAY('b', 'Oggi è il mio giorno fortunato...', 'Chi trova un amico trova un tesoro.'), { flee: 'b', from: 'a', sp: 1.8 }, { wait: 3 }] }] },
     { id: 'indicazioni', w: 2, roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 18 }], beats: [
       { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 18 }, { look: 'b', at: 'a' }, SAY('a', 'Scusi, per il porto?', 'Mi sa dire dov\'è la stazione?', 'Il cinema Excelsior, è da queste parti?'),
-      { pose: 'b', p: 'indica_su' }, SAY('b', 'Sempre dritto, poi giù per i caruggi.', 'Ah, è lontano! Prenda la litoranea.', 'Alla rotonda a destra, non si può sbagliare.'),
+      { pose: 'b', p: 'indica_su' }, SAY('b', 'Sempre dritto, poi giù per i caruggi.', 'Ah, è lontano! Prenda la litoranea.', 'Alla rotonda a destra, non si può sbagliare.', 'Il porto? Lo hanno spostato. Non so dove, non me l\'hanno detto.', 'Non lo so. Ma lei ci arriva, ha una faccia che ci arriva.'),
       { pose: 'b' }, SAY('a', 'Grazie mille!', 'Gentilissimo.'), { flee: 'a', from: 'b', sp: 1.5 }, { wait: 2 }] },
     { id: 'mendicante', w: 2, posto: ['sagrato', 'portone', 'pensilina'], soft: true, roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 18 }], beats: [
-      { go: 'a', to: 'b', sp: 1.3, d: 1.2, t: 18 }, { look: 'b', at: 'a' }, { pose: 'a', p: 'porge' }, SAY('a', 'Mille lire per un caffè?', 'Una moneta, per carità...', 'Ho tre figli a casa, signore.'),
-      { p: .5, then: [{ pay: ['b', 'a', 1] }, SAY('b', 'Tenga. E se lo beva davvero, il caffè.'), SAY('a', 'Dio la benedica!')], else: [SAY('b', 'Non ho spiccioli.', 'Vada a lavorare!'), SAY('a', 'Tirchio!', 'Che il Signore la perdoni...')] }, { pose: 'a' }, { wait: 2 }] },
+      { go: 'a', to: 'b', sp: 1.3, d: 1.2, t: 18 }, { look: 'b', at: 'a' }, { pose: 'a', p: 'porge' }, SAY('a', 'Mille lire per un caffè?', 'Una moneta, per carità...', 'Ho tre figli a casa, signore.', 'Mille lire per il vino. Il caffè mi fa male.', 'Raccolgo per la mia pensione. Ho sessantotto anni di arretrati.'),
+      { p: .5, then: [{ pay: ['b', 'a', 1] }, SAY('b', 'Tenga. E se lo beva davvero, il caffè.'), SAY('a', 'Dio la benedica!')], else: [SAY('b', 'Non ho spiccioli.', 'Vada a lavorare!'), SAY('a', 'Tirchio!', 'Che il Signore la perdoni...', 'La ricorderò nel testamento. Male.')] }, { pose: 'a' }, { wait: 2 }] },
     { id: 'chiede_sigaretta', w: 2, player: true, roles: [{ id: 'a', ring: [6, 22] }], beats: [
-      { go: 'a', to: 'player', sp: 1.6, d: 1.6, t: 16 }, { look: 'a', at: 'player' }, SAY('a', 'Ce l\'hai una sigaretta?', 'Scusa, hai da accendere?', 'Mi presti cento lire per il telefono?'), { wait: 3.5 },
-      SAY('a', 'Vabbè, grazie lo stesso.', 'Niente? Pazienza.', 'Tutti tirchi su quest\'isola.'), { flee: 'a', from: 'player', sp: 1.4 }, { wait: 2 }] },
+      { go: 'a', to: 'player', sp: 1.6, d: 1.6, t: 16 }, { look: 'a', at: 'player' }, SAY('a', 'Ce l\'hai una sigaretta?', 'Scusa, hai da accendere?', 'Mi presti cento lire per il telefono?', 'Hai una sigaretta? Non fumo, ma stasera ho bisogno di tenere qualcosa in mano.'), { wait: 3.5 },
+      SAY('a', 'Vabbè, grazie lo stesso.', 'Niente? Pazienza.', 'Tutti tirchi su quest\'isola.', 'Fa niente. Ho smesso adesso. Grazie a te.'), { flee: 'a', from: 'player', sp: 1.4 }, { wait: 2 }] },
     { id: 'provoca', w: 1, player: true, roles: [{ id: 'a', f: 'm', ring: [6, 22] }], beats: [
-      { mood: 'a', m: 'ubriaco' }, { go: 'a', to: 'player', sp: 1.5, d: 1.5, t: 16 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Che hai da guardare, tu?', 'Ehi! Tu non sei di qui.', 'Questo è il mio marciapiede.'), { wait: 3 },
-      { p: .3, then: [SAY('a', 'Adesso t\'insegno l\'educazione!'), { brawl: ['a', 'player'] }], else: [{ pose: 'a' }, SAY('a', 'Bah... tutti uguali.', 'Non ne vale la pena.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] }] },
+      { mood: 'a', m: 'ubriaco' }, { go: 'a', to: 'player', sp: 1.5, d: 1.5, t: 16 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Che hai da guardare, tu?', 'Ehi! Tu non sei di qui.', 'Questo è il mio marciapiede.', 'Tu hai guardato mia moglie. Io non ho moglie. Ma se l\'avessi, l\'avresti guardata.'), { wait: 3 },
+      { p: .3, then: [SAY('a', 'Adesso t\'insegno l\'educazione!'), { brawl: ['a', 'player'] }], else: [{ pose: 'a' }, SAY('a', 'Bah... tutti uguali.', 'Non ne vale la pena.', 'Oggi no. Ho la camicia buona.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] }] },
     { id: 'complimento', w: 1, player: true, roles: [{ id: 'a', ring: [6, 20] }], beats: [
-      { go: 'a', to: 'player', sp: 1.6, d: 1.8, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Bella giacca, amico!', 'Ehi! Ti ho visto ieri al bar, eri forte!', 'Buongiorno! Bella giornata, eh?'), { wait: 2.5 }, { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.4 }, { wait: 2 }] },
+      { go: 'a', to: 'player', sp: 1.6, d: 1.8, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Bella giacca, amico!', 'Ehi! Ti ho visto ieri al bar, eri forte!', 'Buongiorno! Bella giornata, eh?', 'Hai le orecchie di mio padre. Lui non le usava. Usale tu.', 'Tu un giorno farai qualcosa di grande. O di molto stupido. Ti guardo.'), { wait: 2.5 }, { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.4 }, { wait: 2 }] },
     { id: 'gatto', w: 1, roles: [{ id: 'a' }], beats: [
       { wander: 'a', r: 8, sp: 1.1 }, SAY('a', 'Micio! Micio micio!', 'Fufi! Dove sei, Fufi?'), { wait: 4 }, SAY('a', 'Micio micio micio...', 'Pss pss pss!'), { wait: 4 },
-      { pose: 'a', p: 'indica_su' }, SAY('a', 'Eccoti, birbante!', 'Scendi da lì, disgraziato!'), { wait: 2 }] },
+      { pose: 'a', p: 'indica_su' }, SAY('a', 'Eccoti, birbante!', 'Scendi da lì, disgraziato!', 'Fufi! Lo so che lavori per gli Orecchi. Lo so.'), { wait: 2 }] },
     { id: 'sorella_persa', w: 1, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', r: 18 }, { id: 'c', near: 'a', r: 20 }], beats: [
       { go: 'a', to: 'b', sp: 2.6, d: 1.3, t: 14 }, SAY('a', 'Ha visto una ragazza col vestito giallo?', 'Ha visto mia sorella? Piccola, coi capelli neri?'), SAY('b', 'No, mi dispiace.', 'Forse verso la piazza...'),
       { go: 'a', to: 'c', sp: 2.6, d: 1.3, t: 14 }, { pose: 'a', p: 'saluta_su' }, SAY('a', '{c}! Eccoti! Mi hai fatto morire di paura!'), SAY('c', 'Ero solo dal giornalaio!', 'Ma che hai? Sono qui.'), { pose: 'a' }, { follow: 'c', who: 'a', sp: 1.5 }, { wait: 3 }] },
     // --- lavori di strada ---
     { id: 'ambulante', w: 2, when: 'day', posto: ['mercato', 'pensilina', 'sagrato'], soft: true, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', r: 16 }], beats: [
-      { pose: 'a', p: 'merce' }, SAY('a', 'Accendini! Fazzoletti! Cinquecento lire!', 'Sigarette americane, Marlboro, Muratti!', 'Occhiali da sole, come quelli di Vasco!'), { wait: 3 }, { pose: 'a' },
+      { pose: 'a', p: 'merce' }, SAY('a', 'Accendini! Fazzoletti! Cinquecento lire!', 'Sigarette americane, Marlboro, Muratti!', 'Occhiali da sole, come quelli di Vasco!', 'Accendini che non accendono! Per chi vuole smettere!'), { wait: 3 }, { pose: 'a' },
       { go: 'a', to: 'b', sp: 1.6, d: 1.3, t: 14 }, SAY('a', 'Per lei prezzo speciale!', 'Guardi che roba, signora!'),
-      { p: .4, then: [SAY('b', 'Va bene, ne prendo uno.'), { pay: ['b', 'a', 1] }, SAY('a', 'Affare fatto!')], else: [SAY('b', 'No grazie.', 'Non mi serve niente.'), SAY('a', 'Peggio per lei!')] }, { wait: 2 }] },
+      { p: .4, then: [SAY('b', 'Va bene, ne prendo uno.'), { pay: ['b', 'a', 1] }, SAY('a', 'Affare fatto!')], else: [SAY('b', 'No grazie.', 'Non mi serve niente.'), SAY('a', 'Peggio per lei!', 'Poi non piangere quando finisce il mondo e non hai un accendino.')] }, { wait: 2 }] },
     { id: 'spazzino', w: 1, when: 'day', posto: ['vetrina', 'portone'], soft: true, ora: [6, 11.5], roles: [{ id: 'a', f: 'm' }], beats: [
-      { pose: 'a', p: 'spazza' }, { wander: 'a', r: 4, sp: .6 }, SAY('a', 'Ogni giorno la stessa storia... cicche dappertutto.', 'Ma la gente lo sa cos\'è un cestino?'), { wait: 6 },
+      { pose: 'a', p: 'spazza' }, { wander: 'a', r: 4, sp: .6 }, SAY('a', 'Ogni giorno la stessa storia... cicche dappertutto.', 'Ma la gente lo sa cos\'è un cestino?', 'Questa cicca la conosco. È di quello del terzo piano. Gliela riporto.'), { wait: 6 },
       SAY('a', 'E poi dicono che il comune non fa niente.', 'Fischietta: «Azzurro, il pomeriggio è troppo azzurro...»'), { wait: 5 }] },
     { id: 'fattorino', w: 1, when: 'day', roles: [{ id: 'a', f: 'young' }], beats: [
       { pose: 'a', p: 'porta_su' }, SAY('a', 'Permesso! Permesso!', 'Largo, che la signora Pina aspetta!'), { go: 'a', to: 'away', sp: 2.8, d: 2, t: 9, soft: true },
-      { p: .45, then: [{ pose: 'a' }, { fall: 'a', t: 2.5 }, SAY('a', 'Le uova! Tutte rotte!', 'No, la torta del matrimonio!'), { wait: 2 }, { up: 'a' }, SAY('a', 'Chi glielo dice adesso...')], else: [{ wait: 1 }] }] },
+      { p: .45, then: [{ pose: 'a' }, { fall: 'a', t: 2.5 }, SAY('a', 'Le uova! Tutte rotte!', 'No, la torta del matrimonio!', 'Le ceneri dello zio Nando! ...Vabbè, adesso è dappertutto. Gli sarebbe piaciuto.'), { wait: 2 }, { up: 'a' }, SAY('a', 'Chi glielo dice adesso...')], else: [{ wait: 1 }] }] },
     { id: 'attacchino', w: 1, roles: [{ id: 'a', f: 'young' }], beats: [
       { pose: 'a', p: 'attacchina' }, SAY('a', 'Domenica tutti in piazza!', 'Concerto al porto, sabato sera!'), { wait: 5 },
       { pose: 'a' }, { wander: 'a', r: 4, sp: 1 }, { wait: 2 }, { pose: 'a', p: 'attacchina' }, { wait: 4 }] },
     { id: 'telefono', w: 1, posto: ['portone', 'edicola'], soft: true, roles: [{ id: 'a' }], beats: [
-      { pose: 'a', p: 'telefona_su' }, SAY('a', 'Pronto? Pronto?! Mamma, non ti sento!', 'Sì, sono io. No, non ho i soldi.', 'Dica al dottore che richiamo!'), { wait: 4 },
+      { pose: 'a', p: 'telefona_su' }, SAY('a', 'Pronto? Pronto?! Mamma, non ti sento!', 'Sì, sono io. No, non ho i soldi.', 'Dica al dottore che richiamo!', 'Sì, è morto. No, il canarino. Lo zio sta bene. Sì, anche lui canta.', 'Pronto, Radio Scirocco? Volevo dedicare una canzone a mia suocera. Una brutta.'), { wait: 4 },
       { mood: 'a', m: 'rabbia' }, SAY('a', 'Cosa?! Non è possibile!', 'Ma la linea è caduta di nuovo!', 'Pronto?! Ma va\' a quel paese!'), { wait: 3 }, { pose: 'a' }] },
     { id: 'foto', w: 1, when: 'day', roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 14 }, { id: 'c', near: 'a', r: 16 }], beats: [
       { all: [{ go: 'b', to: 'a', sp: 1.6, d: 3, t: 14, soft: true }, { go: 'c', to: 'a', sp: 1.6, d: 3, t: 14, soft: true }] }, { look: 'b', at: 'a' }, { look: 'c', at: 'a' },
       { pose: 'a', p: 'foto' }, SAY('a', 'Fermi tutti! Sorridete!', 'Più vicini, non entrate!', 'Dite «cheese»!'), { pose: 'b', p: 'saluta_su' }, { pose: 'c', p: 'saluta_su' }, { wait: 3 },
-      SAY('a', 'Un\'altra! {b} aveva gli occhi chiusi!'), { wait: 3 }] },
+      SAY('a', 'Un\'altra! {b} aveva gli occhi chiusi!', 'Fatta! Ah no, c\'era il tappo.'), { wait: 3 }] },
     { id: 'pittore', w: 1, when: 'day', roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 16 }], beats: [
-      { pose: 'a', p: 'disegna' }, { wait: 4 }, { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 }, SAY('b', 'Posso vedere?', 'Ma quello è il campanile?'), SAY('a', 'Non è finito!', 'È arte astratta, signore.'), { wait: 3 }, SAY('b', 'Mio nipote disegna meglio.', 'Bello! Quanto costa?'), { wait: 2 }] },
+      { pose: 'a', p: 'disegna' }, { wait: 4 }, { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 }, SAY('b', 'Posso vedere?', 'Ma quello è il campanile?'), SAY('a', 'Non è finito!', 'È arte astratta, signore.'), { wait: 3 }, SAY('b', 'Mio nipote disegna meglio.', 'Bello! Quanto costa?', 'Quello sono io? Perché ho tre braccia?'), { wait: 2 }] },
     { id: 'gessetti', w: 1, when: 'day', roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', r: 16 }], beats: [
       { pose: 'a', p: 'gesso' }, SAY('a', 'Una bella stella...', 'Qui ci va il mare.'), { wait: 4 }, { go: 'b', to: 'a', sp: 1.4, d: 1.5, t: 14 }, SAY('b', 'Bello! Lo fai anche a me un ritratto?', 'Che peccato, alla prima pioggia sparisce.'), SAY('a', 'Mille lire e sei immortale. Fino a stasera.'), { wait: 3 }] },
     { id: 'jogging', w: 1, when: 'day', roles: [{ id: 'a', f: 'young' }], beats: [
-      SAY('a', 'Uff... ancora due giri.', 'Un, due... un, due...'), { go: 'a', to: 'away', sp: 3, d: 2, t: 11, soft: true }, { mood: 'a', m: 'stanco' }, SAY('a', 'Domani... domani si ricomincia.', 'Chi me l\'ha fatto fare.'), { go: 'a', to: 'spot', sp: 2.8, d: 2, t: 11, soft: true }] },
+      SAY('a', 'Uff... ancora due giri.', 'Un, due... un, due...'), { go: 'a', to: 'away', sp: 3, d: 2, t: 11, soft: true }, { mood: 'a', m: 'stanco' }, SAY('a', 'Domani... domani si ricomincia.', 'Chi me l\'ha fatto fare.', 'Non corro per la salute. Corro perché mi segue un cane da martedì.'), { go: 'a', to: 'spot', sp: 2.8, d: 2, t: 11, soft: true }] },
     // --- svago, affetti, musica ---
     { id: 'musicista', w: 2, posto: ['sagrato', 'dehors', 'panchina'], soft: true, roles: [{ id: 'a' }], beats: [
       { pose: 'a', p: 'balla' }, SAY('a', '♪ Sarà perché ti amo... ♪', '♪ Una lacrima sul viso... ♪', '♪ Gloria, manchi tu nell\'aria... ♪'), { crowd: 4, around: 'a', r: 22, p: 'aspetta' }, { wait: 5 },
-      SAY('folla', 'Bravo!', 'Un\'altra!', 'Ma chi è, Celentano?'), { wait: 4 }, SAY('a', '♪ ...e vola, vola, si sa... ♪', '♪ Ti amo, un soldo... ♪'), { wait: 4 },
+      SAY('folla', 'Bravo!', 'Un\'altra!', 'Ma chi è, Celentano?', 'Questa la cantava mio marito. Peggio.'), { wait: 4 }, SAY('a', '♪ ...e vola, vola, si sa... ♪', '♪ Ti amo, un soldo... ♪'), { wait: 4 },
       { pose: 'folla', p: 'porge' }, { fn: (st, sc) => sc.crowd.forEach(n => { if (n.pop && sc.roles.a.pop && n.pop.money > 1 && rnd() < .5) { n.pop.money -= 1; sc.roles.a.pop.money += 1; } }) }, SAY('a', 'Grazie, grazie! Siete un pubblico meraviglioso!'), { wait: 2 }] },
     { id: 'ballano', w: 1, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'f', r: 16 }], beats: [
       { go: 'a', to: 'b', sp: 1.6, d: 1, t: 16 }, SAY('a', 'Mi concede questo ballo?', 'Senti? È la nostra canzone!'), SAY('b', 'Qui? In mezzo alla strada?', 'Sei matto... va bene!'),
@@ -508,32 +509,32 @@ var Eventi = (function () {
     { id: 'corteggia', w: 2, roles: [{ id: 'a', f: 'm' }, { id: 'b', near: 'a', f: 'f', r: 18 }], beats: [
       { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 16 }, { look: 'b', at: 'a' }, SAY('a', 'Signorina, ci siamo già visti?', 'Scusi, lei ha un fiammifero? Ho perso la testa per lei.', 'Lei è di qui? Non l\'ho mai vista.'),
       { p: .45, then: [SAY('b', 'Forse in sogno... il tuo.', 'Mi chiamo {b}. Offri un gelato?'), SAY('a', 'Due gelati! Anzi, tre!'), { follow: 'a', who: 'b', sp: 1.5 }, { flee: 'b', from: 'spot', sp: 1.3 }, { wait: 4 }],
-        else: [{ pose: 'b', p: 'spinta_su', w: .8 }, SAY('b', 'Ma come ti permetti!', 'Vai a pescare, va\'.', 'Mio marito fa il pugile, sai?'), { pose: 'b' }, SAY('a', 'Ahia... che caratterino.', 'Sarà per la prossima volta!'), { wait: 2 }] }] },
+        else: [{ pose: 'b', p: 'spinta_su', w: .8 }, SAY('b', 'Ma come ti permetti!', 'Vai a pescare, va\'.', 'Mio marito fa il pugile, sai?', 'Sono tua cugina, scemo.'), { pose: 'b' }, SAY('a', 'Ahia... che caratterino.', 'Sarà per la prossima volta!'), { wait: 2 }] }] },
     { id: 'amici', w: 2, roles: [{ id: 'a' }, { id: 'b', near: 'a', r: 18 }], beats: [
-      { all: [{ go: 'a', to: 'b', sp: 1.6, d: 1.2, t: 16 }, { pose: 'b', p: 'saluta_su' }] }, { pose: 'a', p: 'saluta_su' }, SAY('b', 'Ma guarda chi si vede! {a}!', 'Ehi, {a}! Quanto tempo!'), SAY('a', '{b}! Sei ingrassato!', 'Ti credevo in Germania!'),
+      { all: [{ go: 'a', to: 'b', sp: 1.6, d: 1.2, t: 16 }, { pose: 'b', p: 'saluta_su' }] }, { pose: 'a', p: 'saluta_su' }, SAY('b', 'Ma guarda chi si vede! {a}!', 'Ehi, {a}! Quanto tempo!'), SAY('a', '{b}! Sei ingrassato!', 'Ti credevo in Germania!', 'Ti credevo morto! Ho anche pianto!'),
       { pose: 'a', p: 'discute_su' }, { pose: 'b', p: 'discute_su' }, SAY('b', 'Lascia stare, la fabbrica ha chiuso.', 'Mi sono sposato, sai?'), { wait: 3 }, SAY('a', 'Stasera al bar, offro io!'), { wait: 2 }] },
     { id: 'innamorati', w: 1, when: 'night', posto: 'panchina', soft: true, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 18 }], beats: [
       { go: 'b', to: 'a', sp: 1.6, d: 1, t: 16 }, SAY('a', 'Guarda che luna.', 'Restiamo ancora un po\'.'), SAY('b', 'Se mio padre mi vede, mi ammazza.', 'Ti piace davvero il mare d\'inverno?'),
-      { pose: 'a', p: 'siede_terra' }, { pose: 'b', p: 'siede_terra' }, { wait: 6 }, SAY('a', 'Ti amo.', 'Un giorno ce ne andiamo da quest\'isola.'), { wait: 4 }] },
+      { pose: 'a', p: 'siede_terra' }, { pose: 'b', p: 'siede_terra' }, { wait: 6 }, SAY('a', 'Ti amo.', 'Un giorno ce ne andiamo da quest\'isola.', 'Sai che ti ho scelto perché sei l\'unico che non ha un\'Ape?'), { wait: 4 }] },
     { id: 'comizio', w: 1, posto: ['sagrato', 'mercato'], soft: true, roles: [{ id: 'a', f: 'm' }], beats: [
       { pose: 'a', p: 'discute_su' }, SAY('a', 'Cittadini! Ci tolgono l\'acqua e ci aumentano l\'affitto!', 'Svegliatevi, gente! Il porto ce lo stanno vendendo!'), { crowd: 3, around: 'a', r: 22, p: 'braccia_su' }, { wait: 4 },
-      SAY('folla', 'Ha ragione!', 'Ma stai zitto, che arriva la polizia!', 'E tu cosa proponi?'), { wait: 3 }, SAY('a', 'Domenica tutti in piazza!', 'Uniti non ci piegano!'), { wait: 3 },
+      SAY('folla', 'Ha ragione!', 'Ma stai zitto, che arriva la polizia!', 'E tu cosa proponi?', 'Ma tu non eri quello che vendeva i materassi?'), { wait: 3 }, SAY('a', 'Domenica tutti in piazza!', 'Uniti non ci piegano!'), { wait: 3 },
       { p: .4, then: [SAY('folla', 'La polizia! Scappate!'), { flee: 'a', from: 'player', sp: 3.6 }, { fn: (st, sc) => sc.crowd.forEach(n => setMv(n, { k: 'flee', from: 'a', sp: 2.6 })) }, { wait: 3 }], else: [SAY('folla', 'Bravo!', 'Viva!'), { wait: 2 }] }] },
     { id: 'spaccio', w: 1, when: 'night', posto: 'angolo', soft: true, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', r: 20 }], beats: [
       { pose: 'a', p: 'aspetta' }, { wait: 2 }, { go: 'b', to: 'a', sp: 1.5, d: 1, t: 16 }, SAY('a', 'Cerchi qualcosa?', 'Non qui. Girati.'), { pose: 'a', p: 'porge' }, { pay: ['b', 'a', 5] }, { wait: 2 },
       SAY('a', 'Non mi hai visto.', 'Tu non mi conosci.'), { pose: 'a' }, { all: [{ flee: 'b', from: 'a', sp: 1.6 }, { flee: 'a', from: 'b', sp: 1.4 }] }, { wait: 3 }] },
     { id: 'predica', w: 1, when: 'day', posto: ['panchina', 'sagrato'], soft: true, roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'young', r: 18 }], beats: [
       { go: 'a', to: 'b', sp: 1.4, d: 1.3, t: 16 }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Ai miei tempi i giovani lavoravano!', 'Tagliati quei capelli, sembri una femmina!', 'Quella musica vi brucia il cervello!'),
-      SAY('b', 'Sì, nonno, e c\'era la guerra.', 'Ai suoi tempi c\'erano i dinosauri.'), { pose: 'a', p: 'rabbia' }, SAY('a', 'Insolente!', 'Ah, se ci fosse ancora tuo nonno!'), { pose: 'a' }, { wait: 2 }] },
+      SAY('b', 'Sì, nonno, e c\'era la guerra.', 'Ai suoi tempi c\'erano i dinosauri.', 'Ai suoi tempi lei era un dinosauro.'), { pose: 'a', p: 'rabbia' }, SAY('a', 'Insolente!', 'Ah, se ci fosse ancora tuo nonno!'), { pose: 'a' }, { wait: 2 }] },
     // --- quelle con i loro attrezzi ---
     { id: 'scala', w: 3, place: 'ladder', roles: [{ id: 'a', r: 30, min: 3 }], beats: [
       { go: 'a', to: 'spot', sp: 1.6, d: .6, t: 30 }, { ladder: 'a', up: true },
-      { fn: (st, sc) => { const j = pick([['Questa antenna non prende mai Rai Due...', 'Ecco, adesso si vede!'], ['Le tegole, sempre le tegole...', 'Fatto. Fino alla prossima burrasca.'], ['Dov\'è finito quel gatto?', 'Vieni qui, bestiaccia!'], ['Mamma mia che vista da quassù...', 'Si vede fino al continente!']]); sc.j = j; sayEv(st, sc.roles.a, j[0], 3.5); } },
+      { fn: (st, sc) => { const j = pick([['Questa antenna non prende mai Rai Due...', 'Ecco, adesso si vede!'], ['Le tegole, sempre le tegole...', 'Fatto. Fino alla prossima burrasca.'], ['Dov\'è finito quel gatto?', 'Vieni qui, bestiaccia!'], ['Mamma mia che vista da quassù...', 'Si vede fino al continente!'], ['Ho perso la dentiera nella grondaia...', 'Trovata! E c\'era anche quella di mia madre!'], ['Da quassù vi vedo tutti.', 'Pina! Lo vedo cosa nascondi sul balcone!']]); sc.j = j; sayEv(st, sc.roles.a, j[0], 3.5); } },
       { wait: 6 }, { fn: (st, sc) => sayEv(st, sc.roles.a, sc.j[1], 3) }, { wait: 4 },
       { p: .15, then: [SAY('a', 'Aiuto! La scala si muove!'), { crowd: 2, around: 'spot', r: 20, p: 'indica_su' }, SAY('folla', 'Tenetela ferma!', 'Scendi piano!'), { wait: 2 }] }, { ladder: 'a', up: false }] },
     { id: 'bici', w: 3, roles: [{ id: 'a', ring: [18, 40] }], beats: [
       { ride: 'a', L: 26, fall: true, then: [SAY('a', 'Ahia!', 'Mannaggia la buca!', 'Ahi ahi ahi...'), { crowd: 1, around: 'a', r: 16 }, SAY('folla', 'Tutto a posto? Ti sei fatto male?', 'Madonna, che botta! Stai bene?'),
-        { wait: 2 }, SAY('a', 'Sì, sì... solo un graffio.', 'Quella bici è maledetta. Me la tengo più.'), { wait: 2 }] }] },
+        { wait: 2 }, SAY('a', 'Sì, sì... solo un graffio.', 'Quella bici è maledetta. Non me la tengo più.', 'Non è caduta. È atterrata.'), { wait: 2 }] }] },
     { id: 'bici_passa', w: 1, roles: [{ id: 'a', f: 'young', ring: [18, 40] }], beats: [
       { ride: 'a', L: 30, fall: false }, SAY('a', 'Ciao bella!', 'Pista! Pista!'), { wait: 1 }] },
     { id: 'graffito', w: 2, solo: st => {
@@ -705,6 +706,6 @@ var Eventi = (function () {
     if (p === 'in_bmx') { s.crank = e.crank || 0; s.carica = 0; s.aria = 0; s.impenna = 0; s.peg = 0; }
   });
 
-  return { CFG, SCENE, run, step, S, list: () => SCENE.map(s => s.id), _: { weight, postiFor, pickRoles, slotsOf } };   // [vita2] _: per le prove
+  return { CFG, SCENE, run, step, S, list: () => SCENE.map(s => s.id), _: { weight, postiFor, pickRoles, slotsOf, sayEv } };   // [vita2] _: per le prove; [matti] sayEv per le scene di matti.js
 })();
 if (typeof module !== 'undefined') module.exports = Eventi;

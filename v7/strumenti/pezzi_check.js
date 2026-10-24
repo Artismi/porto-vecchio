@@ -22,6 +22,7 @@ const PROVE = {
   magazzini_volta: [{}, { n: 1 }, { n: 7, w: 7, p: 14, h: 5 }],
   scalinata: [{}, { w: 3, dislivello: 4, pianerottoli: 0, lampada: false }, { w: 5, dislivello: 14, pianerottoli: 3 }],
   bitta: [{}, { h: .7 }],
+  parapetto: [{}, { L: 4 }, { L: 18, tipo: 'guardrail' }],
   darsena: [{}, { L: 24, W: 20 }, { L: 60, W: 40, scalette: 4 }, { L: 30, W: 22, rocca: true, gradini: 3 }],
   molo_vecchio: [{}, { L1: 24, L2: 0, lanterna: false }, { L1: 60, L2: 40, w: 8 }],
   scalo_alaggio: [{}, { L: 8, w: 5 }, { L: 16, w: 10, argano: false }],
@@ -33,7 +34,7 @@ const PROVE = {
   polveriera: [{}, { L: 8, p: 6, cinta: false }, { L: 16, p: 10 }],
   porta_monumentale: [{}, { w: 8, h: 10, merli: false }, { w: 12, h: 14, pensilina: true }],
   mura_tramontana: [{}, { L: 20, scala: false, merli: false }, { L: 60, h: 10 }],
-  porta_terra: [{}, { w: 5, h: 8, torri: false }, { w: 8, h: 11, addossate: true }],   // [pezzi2] le casupole addossate (in città no)
+  porta_terra: [{}, { w: 5, h: 8, torri: false }, { w: 8, h: 11, addossate: true }, { w: 4.6, h: 7, tw: 2.8 }],   // [pezzi2] le casupole addossate (in città no)
   sopraelevata: [{}, { L: 25, lampioni: false }, { L: 100, h: 9, w: 12 }],
   vele: [{}, { L: 60, piani: 10, passerelle: 2 }, { L: 120, piani: 14 }],
   ina_casa: [{}, { L: 40, piani: 3, scale: 1 }, { L: 60, piani: 5, scale: 3 }],
@@ -84,6 +85,23 @@ for (const tipo of P.TIPI) {
   if (solo && tipo !== solo) continue;
   const pv = PROVE[tipo] || [{}]; if (!PROVE[tipo]) console.log(`  (nessuna combinazione per ${tipo}: solo le opzioni di base)`);
   pv.forEach(o => prova(tipo, o)); prova(tipo, Object.assign({}, pv[0], { lod: 'basso' }));
+}
+// [scorci] il kit dei fronti e degli scorci (src/scorci_arte.js): gli stessi controlli. I pezzi a muro hanno l'origine sul filo del muro, in
+// basso al centro: la quota di posa è il loro punto più basso dichiarato (la tenda e la fascia pendono dal loro attacco, il resto parte da 0)
+global.Arredo3D = require(path.join(src, 'arredo3d.js'));
+const SK = require(path.join(src, 'scorci_arte.js')).ScorciKit;
+const FILI = [{ a: [0, 0], b: [4, 1.5], y: 4.4 }];   // un filo per prova: due fili sono due pezzi appesi ognuno ai suoi muri
+const PROVE_SC = { fascia: [{ w: 3.4, stile: 'cassonetto', testo: 'TABACCHI', marchio: 'cocacola' }, { w: 3, stile: 'dipinta', testo: 'DROGHERIA', sotto: 'SALUMI · VINI' }, { w: 2.6, stile: 'tavola', testo: 'FERRAMENTA' }, { w: 3.4, stile: 'mano', testo: 'RADIO LUNA' }],
+  tenda: [{ w: 1.8, testo: 'ALIMENTARI' }, { w: 3.2, d: .9, col: '#2f6a46' }], serranda: [{ w: 1.1 }, { w: 3.1, tag: true }], bandiera: [{ marchio: 'T' }, { marchio: 'peroni' }], luminarie: [{ fili: FILI }], bucato: [{ fili: FILI }],
+  insegna2: [{ testo: 'SALI E TABACCHI' }], targa: [{ testo: 'PIAZZA\nSAN ROCCO' }], manifesti: [{ carta: 'concerti' }], cartellone: [{ testo: 'OFFICINA DORINO', sotto: 'GOMMISTA' }], zoccolo: [{ w: 4, tratti: [[-2, -.5], [.6, 2]] }], cassette: [{ merce: 'verdura' }, { merce: 'pesce' }] };
+for (const tipo of SK.TIPI) {
+  if (solo && tipo !== solo) continue;
+  (PROVE_SC[tipo] || [{}]).forEach(o => { const g0 = SK.make(tipo, o);
+    // il muro a cui è appeso (un velo dietro z = 0) e il suolo per le cose separate: ci si attaccano davvero
+    if (g0.userData.aMuro || g0.userData.sparso) { const bb = new THREE.Box3().setFromObject(g0), sz = bb.getSize(new THREE.Vector3()), c = bb.getCenter(new THREE.Vector3()), m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ name: 'appoggio' }));
+      if (g0.userData.aMuro) { m.scale.set(sz.x + .1, sz.y + .1, .02); m.position.set(c.x, c.y, -.01); } else { m.scale.set(sz.x + 4, .02, sz.z + 4); m.position.set(c.x, bb.min.y - .01, c.z); } g0.add(m); }
+    { const bb1 = new THREE.Box3().setFromObject(g0); g0.userData.quotaPosa = Math.round(bb1.min.y * 1000) / 1000; }   // a muro la quota di posa è l'attacco più basso (la tenda pende dal rullo)
+    const mk = P.make; P.make = () => g0; try { prova('scorci:' + tipo, o); } finally { P.make = mk; } });
 }
 for (const k in PROVE) if (!P.TIPI.includes(k) && !solo) console.log(`  (manca il tipo ${k})`);
 console.log(`\n${totali - fail}/${totali} prove passate` + (fail ? `, ${fail} fallite` : ''));

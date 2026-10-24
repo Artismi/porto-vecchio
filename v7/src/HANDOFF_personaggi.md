@@ -28,3 +28,20 @@ Tutto il lavoro sui personaggi sta in un file nuovo, `src/popolo.js`. Gli altri 
 ## Prove
 
 Le prove girano in Node dalla cartella `src` caricando `world.js`, `interiors.js` (come `Interior`), `game.js`, `risacca.js`, `popolo.js` e chiamando `Game.step`. `Popolo.report(st)` riassume stato, giri, soldi e contatori (furti, arresti, ritardi, licenziati, appuntamenti, bidoni).
+
+# Le figure nuove: corpo, teste e vestiti (23 ottobre)
+
+Tutto in `src/personaggi.js` (caricato subito dopo `vestiario.js`). Fuori da lì: una riga in `index.src.html`, la sentinella di `models.js` (`guard`) che passa da `Models.person` quando le figure nuove sono accese, `studio_anim.html` (voce `pg`, opzioni `stile` e `facce`).
+
+- **Cosa fa**: `Models.person` costruisce le figure da un descrittore. Lo scheletro, le clip e le pose restano quelli del kit Quaternius, e cambia solo la pelle: una `SkinnedMesh` sola con un materiale solo. Il materiale usa colori per vertice e un atlante di disegni (facce, cuciture, tasche, lacci, loghi, bande, motivi).
+- **Le teste**: facce e capelli dei cinque modelli del kit, mescolati (la faccia di uno coi capelli di un altro) e ricolorati. Sopra ci vanno la bocca, la barba, gli occhiali e i cappelli, che si posano sugli occhi della testa misurata. Con `?teste=mie` si usano invece le teste costruite qui.
+- **API**:
+  - `Personaggi.descrittore(look, who, npc, outfit)` dà il descrittore, sempre uguale per la stessa persona.
+  - `Personaggi.daGuardaroba(capi, D)` porta i capi del Guardaroba nel descrittore. Tutti i 131 capi hanno il loro pezzo (`DA_CAPO`).
+  - `Personaggi.figura(D, who, raw, aRate)` dà il gruppo, compatibile con quello di `Models.person`.
+  - `Personaggi.geometria(D, mesh, rel, J)` dà la geometria skinned, per le versioni a distanza.
+  - `Personaggi.veste(g, D)` riveste una figura. Nino si riveste da solo quando cambia quello che ha addosso.
+- **Nel gioco**: in strada le figure si vestono a rate, con lo stesso `userData.dressing` che usava Vesti3D. La geometria della stessa persona si riusa (`GEO`, 260 voci), e il profilo della testa si misura una volta per combinazione (`PROF`).
+- **Interruttori**: `?vecchiagente` torna a Vesti3D come prima. `?stile=k|a|b|c` sceglie lo stile: `k` è quello del kit ed è il predefinito, `b` è la linea chiara. `?facce=scolpite|pulite` vale per le teste costruite qui.
+- **Peso**: `node strumenti/sonda_gente.js uscita.json` (con `MODI=nuova,vecchia`, `POSTI=`) misura fotogramma, disegni e triangoli, e quanto pesano le sole persone.
+- **Tavole**: `_immagini/personaggi/` (stili, catalogo dei capi, accessori).

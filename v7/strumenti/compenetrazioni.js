@@ -43,6 +43,19 @@ const srv = http.createServer((req, res) => {
     const ut = {}; (T3.urti || []).forEach(u => ut[u[2]] = (ut[u[2]] || 0) + 1);
     console.log('[tetti3] compenetrazioni sui tetti', (T3.urti || []).length, JSON.stringify(ut)); (T3.urti || []).slice(0, 30).forEach(u => console.log('  ' + u.join('  ')));
     if (process.env.TETTI3_ESIGI && (T3.urti || []).length) process.exitCode = 1; }
+  // [tetti4] LE PASSERELLE sul modello vero (window.__passerelle4): l'impalcato contro i modelli delle case sotto, 2 cm; con TETTI3_ESIGI=1 devono essere zero
+  const P4 = await pg.evaluate(() => window.__passerelle4 ? window.__passerelle4() : null);
+  if (P4) { console.log('[tetti4] passerelle', P4.passerelle, 'con urti', P4.urti.length); P4.urti.slice(0, 40).forEach(u => console.log(`  #${u.i} ${u.tipo} ${u.n} punti, ${u.cm} cm dentro ${u.casa} a (${u.x}, ${u.y}, ${u.z})`));
+    if (process.env.TETTI3_ESIGI && P4.urti.length) process.exitCode = 1; }
+  // [scorci] GLI SCORCI: il costo di ognuno (window.__scorci) e le compenetrazioni dei loro pezzi, che il regista misura come le altre voci
+  // (fissi: non li sposta; quello che resta, coi pezzi degli scorci da una parte o dall'altra, si stampa). SCORCI_ESIGI=1 esce con errore se non sono zero.
+  const SCO = await pg.evaluate(() => window.__scorci ? window.__scorci() : null);
+  if (SCO) { console.log('\n[scorci] scorci', SCO.scorci.length, '· posati in', SCO.ms, 'ms · tessere dell\'atlante', SCO.atlante);
+    SCO.scorci.forEach(q => console.log(`  ${q.id.padEnd(20)} ${String(q.draws).padStart(3)} chiamate ${String(q.tri).padStart(6)} tri  ${q.pezzi} pezzi${q.scarti.length ? '  lasciati: ' + q.scarti.join('; ') : ''}`));
+    const tocca = P => (P || []).filter(p => /scorcio/.test(String(p[3])) || /scorcio/.test(String(p[5])));
+    const sp = tocca(R.punti.prima), sd = tocca(R.punti.dopo), per = {}; sd.forEach(p => per[p[0]] = (per[p[0]] || 0) + 1);
+    console.log('[scorci] compenetrazioni coi pezzi degli scorci: prima del regista', sp.length, '· dopo', sd.length, JSON.stringify(per)); sd.slice(0, 40).forEach(p => console.log('  ' + p.join('  ')));
+    if (process.env.SCORCI_ESIGI && sd.length) process.exitCode = 1; }
   console.log('caricato in', Math.round((Date.now() - t0) / 1000), 's; voci', R.prima.voci, '→', R.dopo.voci, '; case', R.prima.case, '; il muro del kit sporge', (R.kit || 0).toFixed(3), 'm');
   console.log('praticabili', JSON.stringify(R.prima.praticabili));
   const tipi = Object.keys(R.prima.per), pad = (s, n) => String(s).padEnd(n), lp = (s, n) => String(s).padStart(n);
