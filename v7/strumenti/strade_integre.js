@@ -7,8 +7,9 @@
 //                senza raccordo;
 //   ostacolo     le cose a terra che la passata della pulizia (src/pulizia_rumore.js, tipo 'strada') trova sulla carreggiata delle vie
 //                carrabili, o che lasciano meno di 1,2 m nei vicoli e sui marciapiedi: prima e dopo la passata.
-// Stampa i conti, salva reports/strade_integre.json e una foto ritagliata dalla camera del gioco dei 12 peggiori in
-// reports/strade_integre/ (FOTO=0 per non farle).   node strumenti/strade_integre.js [uscita.json]
+// Stampa i conti e i 12 peggiori, salva reports/strade_integre.json. Le foto dei 12 peggiori dalla camera del gioco: FOTO=1 qui (sotto
+// SwiftShader può andare in timeout), o meglio la galleria sullo stesso elenco (strumenti/fogli_strade.py prepara le scene e i fogli).
+//   node strumenti/strade_integre.js [uscita.json]
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
 const root = path.resolve(__dirname, '..'), args = process.argv.slice(2);
@@ -62,7 +63,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
   tutti.sort((a, c) => peso(c) - peso(a)); const peggiori = []; for (const p of tutti) { if (peggiori.some(q => Math.hypot(q[1] - p[1], q[2] - p[2]) < 12)) continue; peggiori.push(p); if (peggiori.length >= 12) break; }
   console.log('\nI 12 PEGGIORI:'); peggiori.forEach((p, i) => console.log('  ' + (i + 1) + '. ' + p.join('  ')));
   fs.mkdirSync(path.dirname(outJ), { recursive: true }); fs.writeFileSync(outJ, JSON.stringify({ quando: new Date().toISOString(), conti: R.conti, punti: R.punti, azioniStrada: R.azioniStrada, peggiori }, null, 1));
-  if (process.env.FOTO !== '0') { fs.mkdirSync(outD, { recursive: true });
+  if (process.env.FOTO === '1') { fs.mkdirSync(outD, { recursive: true });
     await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
     await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
     await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; window.__meteo = 'sereno'; setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; u.book = false; u.menu = false; st.over = null; st.chase = false; }, 50); });
