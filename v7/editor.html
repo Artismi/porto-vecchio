@@ -389,13 +389,19 @@ const Misura = (() => {
    - verde: le piante lontane (vegetazione.js) a riquadri, solo quelle attorno alla camera, con attributi compatti;
    - atlanti: gli atlanti grandi che non si ridipingono più a metà lato (acqua, scorci, segnaletica), e la tela in memoria si svuota;
    - ombre: la mappa del sole più piccola.
-   ?nomemoria spegne tutto; ?nomemoria<nome> uno per uno (?nomemoriapile, ?nomemoriatele, ...). ?memoria li accende anche sul computer. */
+   - compila, firme, cache, roba: la compilazione del caricamento solo sul visibile, le firme dei materiali e le geometrie modello buttate dopo
+     il caricamento, le armi dei personaggi condivise (questi e «pigri» non cambiano l'immagine: valgono anche sul computer);
+   - figure, statiche, insegne, terreno, verde, verdelontano, compatta: vedi le funzioni qui sotto.
+   ?nomemoria spegne tutto; ?nomemoria<nome> uno per uno (?nomemoriapile, ?nomemoriatele, ...). ?memoria li accende tutti anche sul computer. */
 var LeggeraMem = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const TEL = (() => { try { if (/[?&]alta\b/.test(Q)) return false; return /[?&](leggera|bassa)\b/.test(Q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   const ALL = (TEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
-  const on = k => ALL && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
+  // i tagli che non cambiano un pixel valgono anche sul computer: la compilazione solo del visibile, le firme e le geometrie modello buttate
+  // dopo il caricamento, i pezzi rifatti che si ributtano, le armi condivise
+  const LIBERI = new Set(['compila', 'firme', 'cache', 'pigri', 'roba']), OFF = /[?&]nomemoria\b/.test(Q);
+  const on = k => (ALL || (LIBERI.has(k) && !OFF)) && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
