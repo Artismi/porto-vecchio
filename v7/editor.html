@@ -28581,7 +28581,40 @@ var World = (function () {
       if (ok) { q.x = x; q.y = y; q.spostato = 1; tieni.push(q); sp++; } else via++; });
     S.rocks = tieni; S.scogliSpostati = sp; S.scogliTolti = via; return W;
   }
-  const W = scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
+  // [costa] LO STABILIMENTO DEL LIDO, FUORI STAGIONE: sulla Spiaggia del Lido (fra la calata e il bastione, sotto la Via della Marina)
+  // la fila delle cabine di legno chiuse sulla striscia alta, alla quota della strada (il varco del pontile e i due capi restano liberi);
+  // sotto, sulla sabbia che scende all'acqua: la torretta del bagnino senza bandiera, la rastrelliera degli ombrelloni chiusi, le sdraio
+  // accatastate e incatenate, il pattino di salvataggio sui rulli, due barche a remi capovolte, la doccia. Mai sui posti di bagno (la riva
+  // davanti), mai a meno di 2 m dal pontile. W.SEA.costa2.lido: i dati; le forme le fa render.js (buildLido)
+  function lido(W) {
+    const A = W.SEA.costa2, g = W.grid, GWx = W.GW, X0 = 1404, X1 = 1472, Y0 = 388, Y1 = 424, out = { cabine: [], cose: [] };
+    if (!A) return W; A.lido = out;
+    const sab = (x, y) => { const i = Math.floor(y / TS) * GWx + Math.floor(x / TS); return g[i] === T.SAND; };
+    const qa = (x, y) => { const tx = x / TS, ty = y / TS, i = Math.floor(tx), j = Math.floor(ty), u = tx - i, v = ty - j; return W.quotaRiva(i, j) * (1 - u) * (1 - v) + W.quotaRiva(i + 1, j) * u * (1 - v) + W.quotaRiva(i, j + 1) * (1 - u) * v + W.quotaRiva(i + 1, j + 1) * u * v; };
+    const tuttaSabbia = (x, y, r) => { for (let b = -r; b <= r; b += .5) for (let a = -r; a <= r; a += .5) if (a * a + b * b <= r * r && !sab(x + a, y + b)) return false; return true; };
+    const mare = (x, y) => { const e = .7, gx = W.inland(x + e, y) - W.inland(x - e, y), gy = W.inland(x, y + e) - W.inland(x, y - e), L = Math.hypot(gx, gy) || 1; return [-gx / L, -gy / L]; };   // verso l'acqua
+    const pont = (W.SEA.structs || []).find(st => st.id === 'pontile_lido'), PX = pont ? pont.pts[0][0] : 1444;
+    const bagni = (W.SEA.swim || []).filter(q => q.shore && q.x > X0 - 10 && q.x < X1 + 10).map(q => q.shore);
+    const libero = (x, y, r) => Math.abs(x - PX) > 2 + r && !bagni.some(([bx, by]) => Math.hypot(bx - x, by - y) < 2.5 + r) && !out.cose.concat(out.cabine).some(q => Math.hypot(q.x - x, q.y - y) < r + (q.r || 1));
+    // la fila delle cabine: per ogni passo di 1,7 m lungo la spiaggia, la sabbia alta più vicina alla strada (quota da 1,3 m in su)
+    for (let x = X0 + 4; x <= X1 - 6; x += 1.7) { let yb = null; for (let y = Y0; y < Y1; y += .25) if (sab(x, y) && sab(x, y + 1.2) && qa(x, y + .7) > 1.25 && qa(x, y + .7) < 2.6) { yb = y; break; }
+      if (yb === null) continue; let y = yb + 1.3; while (y < Y1 && !tuttaSabbia(x, y, 1.3)) y += .25;   // tutta sulla sabbia: mai sul marciapiede o contro la ringhiera
+      if (y >= Y1 || qa(x, y) < .7) continue; const [mx, my] = mare(x, y); if (!libero(x, y, .9)) continue;
+      out.cabine.push({ x: +x.toFixed(2), y: +y.toFixed(2), ang: +Math.atan2(my, mx).toFixed(3), r: .85, col: out.cabine.length % 2 }); }
+    // sulla sabbia bassa (quota fra 0,15 e 1 m): un posto per ogni cosa, cercato da ovest a est
+    const posto = (r, qmin, qmax, xs) => { for (const x0 of xs) for (let y = Y0; y < Y1; y += .5) { const x = x0; if (!sab(x, y)) continue; const q = qa(x, y); if (q < qmin || q > qmax || !libero(x, y, r)) continue; const [mx, my] = mare(x, y); return { x: +x.toFixed(2), y: +y.toFixed(2), ang: +Math.atan2(my, mx).toFixed(3), r }; } return null; };
+    const metti = (k, r, qmin, qmax, xs, extra) => { const q = posto(r, qmin, qmax, xs); if (q) out.cose.push(Object.assign(q, { k }, extra || {})); };
+    metti('torretta', 1.4, .35, .9, [1438, 1434, 1450, 1430]);
+    metti('ombrelloni', 1.6, .5, 1.2, [1424, 1420, 1428, 1416]);
+    metti('sdraio', 1.1, .5, 1.2, [1416, 1412, 1420, 1452]);
+    metti('sdraio', 1.1, .5, 1.2, [1455, 1458, 1462, 1420]);
+    metti('pattino', 1.8, .15, .6, [1452, 1456, 1428, 1460]);
+    metti('barca', 1.6, .15, .7, [1412, 1416, 1420], { col: 0 });
+    metti('barca', 1.6, .15, .7, [1462, 1466, 1418, 1424], { col: 1 });
+    metti('doccia', .6, .8, 1.6, [1432, 1428, 1448, 1436]);
+    return W;
+  }
+  const W = lido(scogliFuori(costa2Arredo(terrapieni(expand(generate())))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -66797,6 +66830,35 @@ var Render = (function () {
         const c = box(.5, .08, q.L + .06, cop); c.position.set(cx + q.nx * .2, top + .04, cz + q.ny * .2); c.rotation.y = ang; g.add(c);
         if (!q.citta) for (let r = 0; r < 2; r++) { const st = box(.44, .03, q.L + .05, sm('#7e7666')); st.position.set(cx + q.nx * .2, ys + .05 + r * (hh - .3) / 2, cz + q.ny * .2); st.rotation.y = ang; g.add(st); }   // i corsi
         if (++n % 30 === 0) { addStatic(g.clone()); g.clear(); } }); if (g.children.length) addStatic(g); }
+    // [costa] lo stabilimento del Lido fuori stagione (W.SEA.costa2.lido): le cabine chiuse, la torretta, gli ombrelloni chiusi, le sdraio
+    // incatenate, il pattino, le barche capovolte, la doccia. Ogni cosa guarda il mare (+z locale); passa da addStatic come le altre opere
+    if (A.lido) { const D = A.lido, r = rng(4417), vern = ['#7f9cae', '#9fb4b8', '#b88a72', '#8fa48a'], bia = sm('#e4ded0'), bia2 = sm('#d6cfbf'), tetto = sm('#6e6458', { roughness: .95 }), porta = sm('#5e6e78'),
+        ferro = sm('#3a3a3c', { metalness: .5, roughness: .6 }), leg = sm('#9a8264'), legS = sm('#6e5a44'), tela = ['#c8a878', '#a8b4b0', '#c49a8a', '#b8b0a0'].map(c => sm(c)), rosso = sm('#a8483c'), cem2 = concrete('#a8a49c');
+      const metti = (q, fn) => { const g = new THREE.Group(), y = groundH(q.x, q.y); g.position.set(q.x, y, q.y); g.rotation.y = Math.atan2(Math.cos(q.ang), Math.sin(q.ang)); fn(g, y); addStatic(g); };
+      const pz = (g, m, w, h, d, x, y, z, rx, ry, rz) => { const o = box(w, h, d, m); o.position.set(x, y, z); o.rotation.set(rx || 0, ry || 0, rz || 0); g.add(o); return o; };
+      const cl = (g, m, r0, r1, h, x, y, z, rx, rz) => { const o = cyl(r0, r1, h, 6, m); o.position.set(x, y, z); o.rotation.set(rx || 0, 0, rz || 0); g.add(o); return o; };
+      // la cabina: tavole a righe sbiadite, il tetto a capanna di cartone catramato, la porta chiusa col lucchetto, sopra uno zoccolo di tavole
+      D.cabine.forEach((q, k) => metti(q, g => { const c = sm(vern[(k >> 1) % vern.length]), a = q.col ? c : bia, b2 = q.col ? bia : c;
+        pz(g, leg, 1.5, .14, 1.5, 0, .07, 0); pz(g, a, 1.4, 1.95, 1.4, 0, 1.11, 0);
+        for (let t = 0; t < 4; t++) { pz(g, b2, .17, 1.95, .02, -.52 + t * .35, 1.11, .71); pz(g, b2, .02, 1.95, .17, .71, 1.11, -.52 + t * .35); pz(g, b2, .02, 1.95, .17, -.71, 1.11, -.52 + t * .35); }
+        pz(g, porta, .72, 1.62, .04, 0, .99, .72); pz(g, ferro, .05, .07, .03, .26, 1.0, .75);
+        pz(g, tetto, .86, .05, 1.62, -.37, 2.27, 0, 0, 0, .52); pz(g, tetto, .86, .05, 1.62, .37, 2.27, 0, 0, 0, -.52); pz(g, a, 1.4, .42, .03, 0, 2.2, .7);
+        if (r() < .25) pz(g, leg, .6, .03, .9, (r() - .5) * .3, .17, 1.05, 0, r() - .5, .1); }));   // un'asse caduta davanti
+      (D.cose || []).forEach(q => metti(q, g => {
+        if (q.k === 'torretta') { [[-.5, -.5], [.5, -.5], [-.5, .5], [.5, .5]].forEach(([x, z]) => cl(g, bia2, .05, .06, 2.3, x * 1.08, 1.15, z * 1.08, z * -.06, x * .06));
+          pz(g, leg, 1.2, .07, 1.2, 0, 2.3, 0); pz(g, bia, 1.0, .5, .06, 0, 2.6, -.55); pz(g, bia, .06, .5, 1.0, .55, 2.6, 0); pz(g, bia, .06, .5, 1.0, -.55, 2.6, 0); pz(g, leg, .7, .06, .4, 0, 2.6, -.3);
+          [-.25, .25].forEach(x => pz(g, bia2, .05, 2.5, .05, x, 1.2, .85, -.38)); for (let t = 0; t < 7; t++) pz(g, leg, .5, .04, .06, 0, .25 + t * .32, .66 + t * .12 * .0 + (2.3 - (.25 + t * .32)) * .4 - .3);
+          cl(g, legS, .025, .025, 2.4, .5, 3.5, -.5); cl(g, tela[1], .02, .09, 1.1, .5, 4.0, -.5); }   // il palo dell'ombrellone chiuso, niente bandiera
+        else if (q.k === 'ombrelloni') { pz(g, legS, .08, 1.1, .08, -1.3, .55, -.2); pz(g, legS, .08, 1.1, .08, 1.3, .55, -.2); pz(g, leg, 2.7, .08, .1, 0, 1.0, -.2);
+          for (let t = 0; t < 8; t++) { const x = -1.1 + t * .31, tl = .18 + r() * .08; const o = new THREE.Group(); o.position.set(x, 0, .25); o.rotation.x = -tl; cl(o, legS, .02, .02, 2.2, 0, 1.1, 0); cl(o, tela[t % 4], .03, .1, 1.2, 0, 1.55, 0); g.add(o); } }
+        else if (q.k === 'sdraio') { for (let t = 0; t < 6; t++) { pz(g, leg, .62, .05, 1.45, (r() - .5) * .08, .1 + t * .085, (r() - .5) * .1, 0, (r() - .5) * .08); pz(g, tela[(t + 2) % 4], .5, .02, 1.2, 0, .13 + t * .085, 0); }
+          pz(g, ferro, .03, .62, .03, .33, .32, .4); pz(g, ferro, .03, .62, .03, .33, .32, -.4); pz(g, ferro, .03, .03, .82, .33, .64, 0); cl(g, legS, .05, .05, .9, .33, .2, .9); }   // la catena al paletto
+        else if (q.k === 'pattino') { [-.48, .48].forEach(x => { const h = cl(g, rosso, .2, .2, 4.2, x, .45, 0, Math.PI / 2); h.scale.set(1, 1, .75); });
+          pz(g, leg, 1.25, .05, .3, 0, .64, .5); pz(g, leg, 1.25, .05, .3, 0, .64, -.5); pz(g, bia, .5, .04, .35, 0, .7, 0); [-1.2, 1.2].forEach(z => cl(g, legS, .1, .1, 1.5, 0, .1, z, 0, Math.PI / 2)); }   // sui rulli
+        else if (q.k === 'barca') { const h = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), sm(q.col ? '#3e5e7a' : '#e0d8c6')); h.scale.set(.68, .4, 2.0); h.position.y = .05; g.add(h);
+          pz(g, legS, .07, .06, 3.9, 0, .45, 0); pz(g, sm(q.col ? '#d8d0bc' : '#4a6a5a'), 1.38, .06, .06, 0, .06, 0); cl(g, leg, .03, .03, 2.4, .9, .04, .3, 0, Math.PI / 2 - .1); }   // capovolta, un remo accanto
+        else if (q.k === 'doccia') { pz(g, cem2, .7, .12, .7, 0, .06, 0); cl(g, ferro, .03, .03, 2.2, 0, 1.2, -.25); pz(g, ferro, .03, .03, .45, 0, 2.28, -.05); cl(g, ferro, .09, .05, .06, 0, 2.24, .16); pz(g, sm('#8a8478'), .5, .02, .5, 0, .13, 0); }
+      })); }
     window.__costa2 = { istanze: C2.n, mesh: C2.draw, passerelle: (A.passerelle || []).length, piazzole: (A.piazzole || []).length, muretti: (A.muretti || []).length, scale: (A.scale || []).length };
     if (window.__dbg35) console.log('[dbg] costa2', JSON.stringify(window.__costa2));
     return C2.n;
@@ -67161,8 +67223,8 @@ var Render = (function () {
     ['bar', 'osteria', 'sirena', 'gelateria', 'osteria_sg', 'car_2'].forEach((id, k) => { const q = P[id]; if (!q) return; for (let t = 0; t < 4; t++) { const x = q.x + (t - 1.5) * 1.8, z = q.y + 1.6; if (free(x, z)) table(x, z, 'cafe', ['caffe', 'birra'], r, 2); } });
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
     for (let k = 0; k < 260; k++) { const tx = 175 + Math.floor(r() * 55) + (r() < .4 ? 135 : 0) + ((M.world && M.world.DXC) || 0) / TS, ty = (r() < .5 ? 55 : 80) + Math.floor(r() * 30) + ((M.world && M.world.OY) || 0) / TS, v = G.tileAt(tx, ty); if (v !== T.QUAY) continue; const x = tx * TS + 1, z = ty * TS + 1; const w = r(); if (w < .25) bitta(x, z); else if (w < .4) crateStack(x, z, 1 + Math.floor(r() * 4), r, pick(r, ['fish', 'fruit', 'none'])); else if (w < .5) nets(x, z, r); else if (w < .56) drumGroup(x, z, r); }
-    // spiaggia del Lido: ombrelloni e lettini
-    if (P.spiaggia) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
+    // spiaggia del Lido: ombrelloni e lettini ([costa] nella città nuova c'è lo stabilimento fuori stagione: W.SEA.costa2.lido, buildCosta2)
+    if (P.spiaggia && !(M.world && M.world.SEA && M.world.SEA.costa2 && M.world.SEA.costa2.lido)) { const q = P.spiaggia; let n = 0; for (let k = 0; k < 90 && n < 18; k++) { const x = q.x - 30 + r() * 60, z = q.y - 6 + r() * 24, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (v !== T.SAND || !free(x, z, 1.6) || !free(x + 1.1, z + .6, 1.1) || q.__u && q.__u.some(([ux, uz]) => Math.hypot(ux - x, uz - z) < 3.4)) continue; (q.__u = q.__u || []).push([x, z]);   /* [leggera] distanti fra loro e dalle case */ const ca = pick(r, ['#ff6aa0', '#40c0e0', '#f0c030', '#8a60e0']); beachUmbrella(x, z, r, ca, '#f4f0e8'); sunbed(x + 1.1, z + .6, 0, ca, r); n++; } if (n) lifeguardTower(q.x, q.y + 4); }
     // cantiere navale
     if (P.cantiere) { const q = P.cantiere; if (free(q.x + 6, q.y + 4)) hullOnCradle(q.x + 6, q.y + 6, Math.PI / 2); if (free(q.x - 6, q.y + 3)) crane(q.x - 6, q.y + 4, 0, '#d86a2a'); }
     // poligono: carri armati abbandonati, container, recinzioni

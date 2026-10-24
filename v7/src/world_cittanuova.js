@@ -3324,7 +3324,40 @@ var World = (function () {
       if (ok) { q.x = x; q.y = y; q.spostato = 1; tieni.push(q); sp++; } else via++; });
     S.rocks = tieni; S.scogliSpostati = sp; S.scogliTolti = via; return W;
   }
-  const W = scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
+  // [costa] LO STABILIMENTO DEL LIDO, FUORI STAGIONE: sulla Spiaggia del Lido (fra la calata e il bastione, sotto la Via della Marina)
+  // la fila delle cabine di legno chiuse sulla striscia alta, alla quota della strada (il varco del pontile e i due capi restano liberi);
+  // sotto, sulla sabbia che scende all'acqua: la torretta del bagnino senza bandiera, la rastrelliera degli ombrelloni chiusi, le sdraio
+  // accatastate e incatenate, il pattino di salvataggio sui rulli, due barche a remi capovolte, la doccia. Mai sui posti di bagno (la riva
+  // davanti), mai a meno di 2 m dal pontile. W.SEA.costa2.lido: i dati; le forme le fa render.js (buildLido)
+  function lido(W) {
+    const A = W.SEA.costa2, g = W.grid, GWx = W.GW, X0 = 1404, X1 = 1472, Y0 = 388, Y1 = 424, out = { cabine: [], cose: [] };
+    if (!A) return W; A.lido = out;
+    const sab = (x, y) => { const i = Math.floor(y / TS) * GWx + Math.floor(x / TS); return g[i] === T.SAND; };
+    const qa = (x, y) => { const tx = x / TS, ty = y / TS, i = Math.floor(tx), j = Math.floor(ty), u = tx - i, v = ty - j; return W.quotaRiva(i, j) * (1 - u) * (1 - v) + W.quotaRiva(i + 1, j) * u * (1 - v) + W.quotaRiva(i, j + 1) * (1 - u) * v + W.quotaRiva(i + 1, j + 1) * u * v; };
+    const tuttaSabbia = (x, y, r) => { for (let b = -r; b <= r; b += .5) for (let a = -r; a <= r; a += .5) if (a * a + b * b <= r * r && !sab(x + a, y + b)) return false; return true; };
+    const mare = (x, y) => { const e = .7, gx = W.inland(x + e, y) - W.inland(x - e, y), gy = W.inland(x, y + e) - W.inland(x, y - e), L = Math.hypot(gx, gy) || 1; return [-gx / L, -gy / L]; };   // verso l'acqua
+    const pont = (W.SEA.structs || []).find(st => st.id === 'pontile_lido'), PX = pont ? pont.pts[0][0] : 1444;
+    const bagni = (W.SEA.swim || []).filter(q => q.shore && q.x > X0 - 10 && q.x < X1 + 10).map(q => q.shore);
+    const libero = (x, y, r) => Math.abs(x - PX) > 2 + r && !bagni.some(([bx, by]) => Math.hypot(bx - x, by - y) < 2.5 + r) && !out.cose.concat(out.cabine).some(q => Math.hypot(q.x - x, q.y - y) < r + (q.r || 1));
+    // la fila delle cabine: per ogni passo di 1,7 m lungo la spiaggia, la sabbia alta più vicina alla strada (quota da 1,3 m in su)
+    for (let x = X0 + 4; x <= X1 - 6; x += 1.7) { let yb = null; for (let y = Y0; y < Y1; y += .25) if (sab(x, y) && sab(x, y + 1.2) && qa(x, y + .7) > 1.25 && qa(x, y + .7) < 2.6) { yb = y; break; }
+      if (yb === null) continue; let y = yb + 1.3; while (y < Y1 && !tuttaSabbia(x, y, 1.3)) y += .25;   // tutta sulla sabbia: mai sul marciapiede o contro la ringhiera
+      if (y >= Y1 || qa(x, y) < .7) continue; const [mx, my] = mare(x, y); if (!libero(x, y, .9)) continue;
+      out.cabine.push({ x: +x.toFixed(2), y: +y.toFixed(2), ang: +Math.atan2(my, mx).toFixed(3), r: .85, col: out.cabine.length % 2 }); }
+    // sulla sabbia bassa (quota fra 0,15 e 1 m): un posto per ogni cosa, cercato da ovest a est
+    const posto = (r, qmin, qmax, xs) => { for (const x0 of xs) for (let y = Y0; y < Y1; y += .5) { const x = x0; if (!sab(x, y)) continue; const q = qa(x, y); if (q < qmin || q > qmax || !libero(x, y, r)) continue; const [mx, my] = mare(x, y); return { x: +x.toFixed(2), y: +y.toFixed(2), ang: +Math.atan2(my, mx).toFixed(3), r }; } return null; };
+    const metti = (k, r, qmin, qmax, xs, extra) => { const q = posto(r, qmin, qmax, xs); if (q) out.cose.push(Object.assign(q, { k }, extra || {})); };
+    metti('torretta', 1.4, .35, .9, [1438, 1434, 1450, 1430]);
+    metti('ombrelloni', 1.6, .5, 1.2, [1424, 1420, 1428, 1416]);
+    metti('sdraio', 1.1, .5, 1.2, [1416, 1412, 1420, 1452]);
+    metti('sdraio', 1.1, .5, 1.2, [1455, 1458, 1462, 1420]);
+    metti('pattino', 1.8, .15, .6, [1452, 1456, 1428, 1460]);
+    metti('barca', 1.6, .15, .7, [1412, 1416, 1420], { col: 0 });
+    metti('barca', 1.6, .15, .7, [1462, 1466, 1418, 1424], { col: 1 });
+    metti('doccia', .6, .8, 1.6, [1432, 1428, 1448, 1436]);
+    return W;
+  }
+  const W = lido(scogliFuori(costa2Arredo(terrapieni(expand(generate())))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
