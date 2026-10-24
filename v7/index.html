@@ -26265,7 +26265,7 @@ var World = (function () {
       CITY.pzStaz = [930, 104, 976, 113];   // il piazzale della stazione, fra il fabbricato e gli isolati a corte
       nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); CITY.nodi.push({ nome: 'Piazza della Rocca', poly: [[1154, 116], [1184, 116], [1184, 130.5], [1171, 130.5], [1171, 139.5], [1154, 139.5]] });   /* [pianta] la spianata non è più un nodo vuoto: ci sono le case del glacis e la piazza del mercato */ nodoR('Giardini di Ponente', 902, 88, 930, 192); nodoC('Lotto del fuoco', 966, 71, 5);
       // la Costiera Nord passa i binari al passaggio a livello e si ferma sul piazzale (resta l'id via_alta: la leggono posti, popolo, percorsi)
-      const N0 = nordP[0], STAZ = chaikin([N0.slice(), [N0[0] - 4, N0[1] + 8], [922, 94], [928, 103], [936, 108]], 2); CITY.staz = STAZ;
+      const N0 = nordP[0], STAZ = chaikin([N0.slice(), [N0[0] - 4, N0[1] + 8], [922, 94], [927.5, 104], [936, 109.5]], 2); CITY.staz = STAZ;   /* [pianta] la curva sull'angolo della stazione mezzo metro più larga: la carreggiata non ne tocca lo spigolo */
       add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3', nudo: true });
       // la Costiera Sud corre sulla riva fino allo Scalo (l'id via_porto resta)
       const L0 = litP[litP.length - 1], LUNGO = chaikin([L0.slice(), [L0[0] + 10, 187], [944, 186], [956, 186], [966, 186.5], [978, 186.9], [990, 187]], 2);   // [pianta] fino all'incrocio col Corso e la Marina: la strada non si interrompe sullo Scalo
@@ -27742,6 +27742,50 @@ var World = (function () {
       });
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
     }
+    // [pianta] IL VICOLO LARGO QUANTO IL SUO CORRIDOIO: appena posate le case (prima di porte, botteghe e luoghi), la carreggiata disegnata di un vicolo (rd.w) non deve passare sotto i
+    // muri. Lungo l'asse si misura il passaggio libero fra le case (a passi di 25 cm, come strade_integre.js); la larghezza del vicolo
+    // diventa quella che ci sta (il decimo percentile più 60 cm di spalle, a mezzi metri; nei corridoi di una casella fino a 1,7 m,
+    // il minimo percorribile). La Rua resta di 5 m.
+    { const RIC = .5; const libero = (x, y, nx, ny, hw) => { let lib = 0; for (const sg of [1, -1]) { let o = 0; for (; o <= hw; o += .25) { const i = T2i(y + ny * o * sg) * GW + T2i(x + nx * o * sg); if (grid[i] === T.BLD && bIndex[i] >= 0 && !B[bIndex[i]].pezzo) break; } lib += Math.min(o, hw); } return lib; };
+      // prima l'asse in mezzo al corridoio: ogni punto si sposta (al più 50 cm) verso il centro fra i due muri che ha di fianco
+      const muroA = (x, y, nx, ny, mx) => { let o = 0; for (; o <= mx; o += .1) { const i = T2i(y + ny * o) * GW + T2i(x + nx * o); if (grid[i] === T.BLD && bIndex[i] >= 0 && !B[bIndex[i]].pezzo) break; } return o; };
+      // (gli spostamenti si lisciano lungo la via, tre passate a 1-2-1: un punto che salta da solo farebbe uno zigzag)
+      CITY.roads.filter(rd => rd.kind === 'vicolo' && rd.w <= 3).forEach(rd => { const Q = rd.pts, n = Q.length; if (n < 3) return; const SH = new Array(n).fill(0), NX = [], NY = [];
+        for (let k = 0; k < n; k++) { const [ax, ay] = Q[Math.max(0, k - 1)], [bx, by] = Q[Math.min(n - 1, k + 1)], l = Math.hypot(bx - ax, by - ay) || 1; NX[k] = -(by - ay) / l; NY[k] = (bx - ax) / l;
+          if (k === 0 || k === n - 1) continue; const [x, y] = Q[k], a = muroA(x, y, NX[k], NY[k], 3), c = muroA(x, y, -NX[k], -NY[k], 3); if (a > 2.9 || c > 2.9 || Math.min(a, c) >= Math.min(rd.w / 2, 1.2)) continue; SH[k] = clamp((a - c) / 2, -RIC, RIC); }   // si sposta solo dove un muro stringe
+        for (let r = 0; r < 3; r++) { const S0 = SH.slice(); for (let k = 1; k < n - 1; k++) SH[k] = (S0[k - 1] + 2 * S0[k] + S0[k + 1]) / 4; }
+        for (let k = 1; k < n - 1; k++) if (Math.abs(SH[k]) > .03) Q[k] = [Q[k][0] + NX[k] * SH[k], Q[k][1] + NY[k] * SH[k]]; });
+      let nStr = 0; CITY.roads.filter(rd => rd.kind === 'vicolo' && rd.w <= 3).forEach(rd => { const hw = rd.w / 2, L = [], Q = rd.pts;
+        for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], l = Math.hypot(bx - ax, by - ay); if (l < 1e-3) continue; const ux = (bx - ax) / l, uy = (by - ay) / l; for (let t = 0; t < l; t += 1) L.push(libero(ax + ux * t, ay + uy * t, -uy, ux, hw)); }
+        if (L.length < 4) return; L.sort((p, q) => p - q); const p10 = L[Math.floor(L.length * .03)], w = Math.max(1.7, Math.min(rd.w, p10 + .6 >= 2 ? Math.floor((p10 + .6) * 2) / 2 : Math.floor((p10 + .2) * 10) / 10));   // il punto più stretto (il 3° percentile) comanda   /* [pianta] fra due muri a 2 m il vicolo è largo 1,7-1,9 m: il minimo percorribile, nessun muro sul selciato */
+        if (w < rd.w) { rd.w0 = rd.w; rd.w = w; nStr++; } });
+      CITY.vicoliStretti = nStr; }
+    // [pianta] NESSUNA CASA SOPRA LE STRADE: le vie ondeggiano sulla griglia (l'utente le vuole così) e le case a caselle entravano nella
+    // carreggiata (e nel marciapiede delle vie di città) di 30-70 cm. Ogni casa si arretra: a passi di 5 cm, dal lato che libera di più
+    // (il fronte, o il fianco sull'incrocio), finché carreggiata e 1,25 m di marciapiede (le vie di città) restano liberi (5 cm di aria), al più 2,4 m e mai sotto
+    // 1,8 m di lato. La casa prende la sua scatola (cx, cy, lw, ld) e le caselle che restano fuori tornano selciato
+    { const MARC = 1.25; const VIE = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'litoranea').map(rd => ({ rd, hw: rd.w / 2 + (rd.kind === 'citta' || rd.kind === 'litoranea' ? MARC : 0) + .05, Q: rd.pts, bb: rd.pts.reduce((m, [x, y]) => [Math.min(m[0], x), Math.min(m[1], y), Math.max(m[2], x), Math.max(m[3], y)], [1e9, 1e9, -1e9, -1e9]) }));
+      const aria = (x, y, V) => { let m = 1e9; for (const v of V) { const Q = v.Q; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1); m = Math.min(m, dist(x, y, ax + dx * t, ay + dy * t) - v.hw); } } return m; };
+      const ariaBox = (x0, y0, x1, y1, V) => { let m = 1e9; const nx = Math.max(2, Math.ceil((x1 - x0) / .25)), ny = Math.max(2, Math.ceil((y1 - y0) / .25)); for (let k = 0; k <= nx; k++) { const x = x0 + (x1 - x0) * k / nx; m = Math.min(m, aria(x, y0, V), aria(x, y1, V)); } for (let k = 0; k <= ny; k++) { const y = y0 + (y1 - y0) * k / ny; m = Math.min(m, aria(x0, y, V), aria(x1, y, V)); }
+        for (const v of V) for (const [x, y] of v.Q) if (x > x0 && x < x1 && y > y0 && y < y1) m = Math.min(m, -v.hw); return m; };   // l'asse che passa dentro la scatola
+      let nA = 0, nNo = 0, nGr = 0; const NO = [], DEM = new Set();
+      B.forEach(b => { if (b.pezzo || b.military || b.__tierOf || b.lotto || b.lighthouse) return; let x0 = b.cx !== undefined ? b.cx - b.lw / 2 : b.x * TS, y0 = b.cy !== undefined ? b.cy - b.ld / 2 : b.y * TS, x1 = x0 + (b.lw !== undefined ? b.lw : b.w * TS), y1 = y0 + (b.ld !== undefined ? b.ld : b.h * TS);
+        const V = VIE.filter(v => v.bb[0] - v.hw - 4 < x1 && v.bb[2] + v.hw + 4 > x0 && v.bb[1] - v.hw - 4 < y0 + (y1 - y0) && v.bb[3] + v.hw + 4 > y0); if (!V.length || ariaBox(x0, y0, x1, y1, V) >= 0) return;
+        if (b.tiers) { delete b.tiers; nGr++; }   // il palazzo a gradoni sulla via torna un corpo solo: i gradoni stanno sulle caselle, la scatola arretrata no
+        const X0 = x0, Y0 = y0, X1 = x1, Y1 = y1; let tolto = 0, stretta = false;
+        // i muri in comune con un'altra casa (più di metà del lato) non si toccano: la casa si arretra dal lato della via, e la rete dei tetti resta cucita
+        const comune = [[-1, 0], [0, -1], [1, 0], [0, 1]].map(([dx, dy]) => { let n = 0, m = 0; const L = dx ? b.h : b.w; for (let k = 0; k < L; k++) { const tx = dx ? (dx < 0 ? b.x - 1 : b.x + b.w) : b.x + k, ty = dy ? (dy < 0 ? b.y - 1 : b.y + b.h) : b.y + k, o = bIndex[ty * GW + tx]; m++; if (o >= 0 && o !== b.i && B[o] && !B[o].pezzo) n++; } return n * 2 > m; });   // stretta: la casetta di due metri può scendere a 1,2 m prima di levarla
+        while (ariaBox(x0, y0, x1, y1, V) < 0 && tolto < 3) { const P0 = [[x0 + .05, y0, x1, y1], [x0, y0 + .05, x1, y1], [x0, y0, x1 - .05, y1], [x0, y0, x1, y1 - .05]], P1 = P0.filter((q, k) => !comune[k]), P = (P1.length ? P1 : P0).filter(q => q[2] - q[0] >= (stretta ? 1.2 : 1.8) && q[3] - q[1] >= (stretta ? 1.2 : 1.8)); if (!P.length) { if (stretta) break; stretta = true; continue; }
+          const best = P.reduce((m, q) => { const a = ariaBox(q[0], q[1], q[2], q[3], V); return !m || a > m.a ? { q, a } : m; }, null); [x0, y0, x1, y1] = best.q; tolto += .05; }
+        // la casetta di due metri che non si può arretrare senza diventare un muro: si leva, le sue caselle tornano selciato (l'utente: nessuna casa sopra le strade)
+        if (ariaBox(x0, y0, x1, y1, V) < 0) { nNo++; NO.push(b.id); if ((!b.name || b.shop) && !b.gov && b.house) DEM.add(b); return; }   // un edificio col nome resta (si segnala); la bottega no, il suo nome è di fantasia
+        Object.assign(b, { cx: +((x0 + x1) / 2).toFixed(3), cy: +((y0 + y1) / 2).toFixed(3), lw: +(x1 - x0).toFixed(3), ld: +(y1 - y0).toFixed(3), arretrata: +tolto.toFixed(2) }); nA++;
+        for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, px = (tx + .5) * TS, py = (ty + .5) * TS; if (bIndex[i] === b.i && (px < x0 || px > x1 || py < y0 || py > y1)) { grid[i] = T.COB; bIndex[i] = -1; } } });
+      // le case levate: fuori dall'elenco (gli indici delle caselle si rifanno), le loro caselle selciato
+      if (DEM.size) { const resta = B.filter(b => !DEM.has(b)), nuovo = new Map(); resta.forEach((b, k) => nuovo.set(b.i, k));
+        for (let i = 0; i < N; i++) { const k = bIndex[i]; if (k < 0) continue; if (nuovo.has(k)) bIndex[i] = nuovo.get(k); else { bIndex[i] = -1; if (grid[i] === T.BLD) { grid[i] = T.COB; reserved[i] = 1; } } }
+        B.length = 0; resta.forEach((b, k) => { b.i = k; B.push(b); }); }
+      CITY.caseArretrate = nA; CITY.caseSullaVia = NO; CITY.caseLevate = DEM.size; CITY.gradoniTolti = nGr; if (typeof process !== "undefined" && process.env && process.env.PV_ARR) console.error("[arretrate]", nA, "levate", DEM.size, "gradoni", nGr, "non riuscite", nNo, NO.join(" ")); }
     // [botteghe] le porte sono definitive: ogni bottega sotto casa prende il suo fronte accanto al portone (se non ci sta, il palazzo resta bottega intera)
     // [pianta] LE PORTE LIBERE DAI PEZZI GRANDI: i sottopassi a volta, le scalinate e la Porta di Terra si posano prima delle case, e la
     // casa che ci nasce accanto apriva la porta proprio lì (sotto la volta, contro il gradino, dietro l'arco: coperta dalla camera e senza
@@ -27844,15 +27888,6 @@ var World = (function () {
             if (!(via || (PRENDE.has(grid[i]) && roadW[i] === 0)) || bIndex[i] >= 0) continue; if (via) roadW[i] = 0;
             if ([i - 1, i + 1, i - GW, i + GW].some(j => grid[j] === T.WATER)) continue; grid[i] = T.WALK; nM++; } } });
       CITY.marciapiediChiusi = nM; }
-    // [pianta] IL VICOLO LARGO QUANTO IL SUO CORRIDOIO: dopo le case, la carreggiata disegnata di un vicolo (rd.w) non deve passare sotto i
-    // muri. Lungo l'asse si misura il passaggio libero fra le case (a passi di 25 cm, come strade_integre.js); la larghezza del vicolo
-    // diventa quella che ci sta (il decimo percentile più 60 cm di spalle, a mezzi metri, mai sotto 2 m). La Rua resta di 5 m.
-    { const libero = (x, y, nx, ny, hw) => { let lib = 0; for (const sg of [1, -1]) { let o = 0; for (; o <= hw; o += .25) { const i = T2i(y + ny * o * sg) * GW + T2i(x + nx * o * sg); if (grid[i] === T.BLD && bIndex[i] >= 0 && !B[bIndex[i]].pezzo) break; } lib += Math.min(o, hw); } return lib; };
-      let nStr = 0; CITY.roads.filter(rd => rd.kind === 'vicolo' && rd.w <= 3).forEach(rd => { const hw = rd.w / 2, L = [], Q = rd.pts;
-        for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], l = Math.hypot(bx - ax, by - ay); if (l < 1e-3) continue; const ux = (bx - ax) / l, uy = (by - ay) / l; for (let t = 0; t < l; t += 1) L.push(libero(ax + ux * t, ay + uy * t, -uy, ux, hw)); }
-        if (L.length < 4) return; L.sort((p, q) => p - q); const p10 = L[Math.floor(L.length * .1)], w = Math.max(2, Math.min(rd.w, Math.floor((p10 + .6) * 2) / 2));
-        if (w < rd.w) { rd.w0 = rd.w; rd.w = w; nStr++; } });
-      CITY.vicoliStretti = nStr; }
     // [pianta] dove la città tocca il mare col selciato alto (la Riva della Rocca, sotto le mura) il bordo è una banchina col suo muro:
     // prima l'ultima casella scendeva da tre metri al pelo dell'acqua come uno scivolo
     { const SEL = new Set([T.PIAZZA, T.COB, T.WALK, T.VIA]), nR = [];

@@ -5,9 +5,9 @@
 //   asse            la carreggiata sotto una casa sull'asse della via                 0
 //   capi_staccati   due capi di vie diverse a meno di 8 m che non si toccano          ≤ 2   ([pianta] prima 8: ora un incrocio vero)
 //   buco            l'asse della via su una casella che non è suolo da strada         0     ([pianta] la fontana del Forno spostata in un canto)
-//   sotto_casa      la carreggiata ristretta da una casa (lotto o caselle)            ≤ 97  (i vicoli di 3 m con le case che entrano 0,5-1 m; prima 104)
-//   sotto_pezzo     la carreggiata nella scatola piena di un pezzo grande             ≤ 4   (la stazione sulla Via della Stazione)
-//   marciapiede     il marciapiede di una via di città che smette o finisce contro un muro ≤ 17 (il Lungomare di Tramontana: le caselle; il
+//   sotto_casa      la carreggiata ristretta da una casa (lotto o caselle)            0     ([pianta] nessuna casa sopra le strade: le case arretrate, le casette levate; prima 104)
+//   sotto_pezzo     la carreggiata nella scatola piena di un pezzo grande             0     ([pianta] la stazione 2 m a levante, la banchina fuori dalla via; prima 4)
+//   marciapiede     il marciapiede di una via di città che smette o finisce contro un muro 0 ([pianta] prima 17; il
 //                   marciapiede disegnato da render.js c'è di continuo, lo dice Pavimenti.swH nel gioco)
 //   scoglio         uno scoglio grande della costa sulla carreggiata o sul marciapiede ≤ 15 (gli scogli delle mura sul Lungomare di Tramontana)
 const path = require('path');
@@ -17,7 +17,7 @@ console.log = log; console.warn = warn;
 const S = require(path.join(__dirname, 'strade_integre.js'));
 const R = S.analizza(World), C = R.conti;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
-const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 55, sotto_pezzo: 1, marciapiede: 1, scoglio: 14 };   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), i vicoli larghi quanto il corridoio (sotto_casa 104 → 55), la stazione 2 m a levante (sotto_pezzo 4 → 1), il marciapiede del Lungomare chiuso sulla massicciata (17 → 1); gli scogli sono della costa
+const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 0, sotto_pezzo: 0, marciapiede: 0, scoglio: 14 };   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), nessuna casa sopra le strade: vicoli larghi quanto il corridoio, case arretrate dal filo, casette levate (sotto_casa 104 → 0), la stazione 2 m a levante (sotto_pezzo 4 → 0), il marciapiede continuo (17 → 0); gli scogli sono della costa
 ok(R.vie > 30, `le vie controllate nella cornice della città: ${R.vie}`);
 Object.keys(SOGLIE).forEach(k => ok(C[k] <= SOGLIE[k], `${k}: ${C[k]} (al più ${SOGLIE[k]})` + (C[k] > SOGLIE[k] ? ' — ' + R.punti[k].slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : '')));
 const asse = R.punti.sotto_casa.filter(p => /asse/.test(p[6]));

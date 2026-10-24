@@ -35,6 +35,7 @@ var StradeIntegre = (function () {
     // i lotti orientati (la pianta): centro, misure, angolo; le botteghe con l'insegna render.js le disegna dritte
     const LT = B.map(b => ({ b, cx: b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy: b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw: b.lw !== undefined ? b.lw : b.w * TS, ld: b.ld !== undefined ? b.ld : b.h * TS, rot: b.sign || b.shop ? 0 : b.rot || 0 }));
     const LI = new Map(), lk = (i, j) => i * 4096 + j; LT.forEach(L => { const r = Math.hypot(L.lw, L.ld) / 2; for (let i = Math.floor((L.cx - r) / 8); i <= Math.floor((L.cx + r) / 8); i++) for (let j = Math.floor((L.cy - r) / 8); j <= Math.floor((L.cy + r) / 8); j++) { const k = lk(i, j); let a = LI.get(k); if (!a) LI.set(k, a = []); a.push(L); } });
+    const scatolaPropria = b => b.cx !== undefined && (Math.abs(b.cx - (b.x + b.w / 2) * TS) > .01 || Math.abs(b.cy - (b.y + b.h / 2) * TS) > .01 || Math.abs((b.lw || 0) - b.w * TS) > .01 || Math.abs((b.ld || 0) - b.h * TS) > .01);
     const inLotto = (x, y, m) => { for (const L of LI.get(lk(Math.floor(x / 8), Math.floor(y / 8))) || []) { if (L.b.pezzo) continue; const c = Math.cos(L.rot), s = Math.sin(L.rot), dx = x - L.cx, dy = y - L.cy, u = dx * c + dy * s, v = -dx * s + dy * c; if (Math.abs(u) < L.lw / 2 - m && Math.abs(v) < L.ld / 2 - m) return L.b; } return null; };
     // i pezzi grandi: le scatole piene che non si attraversano
     const PZ = []; (W.pezzi || []).forEach(p => { if (!p.imp || PASSA.has(p.tipo)) return; p.imp.forEach(r => { if (r[0] === 'B') PZ.push({ p, r }); }); });
@@ -70,7 +71,7 @@ var StradeIntegre = (function () {
         for (let s = 0; s < L; s += 1) { const x = ax + ux * s, y = ay + uy * s; if (!inC(x, y)) { Object.keys(run).forEach(t => chiudi(t)); continue; }
           const v = tile(x, y); if (!SUOLO.has(v) && v !== T.BLD) apri('buco', x, y, NOME[v] || '?'); else chiudi('buco');
           // la larghezza libera della carreggiata: da ogni lato fin dove non c'è una casa (a passi di 25 cm)
-          let casa = null, pz = null, lib = 0, asse = false; const dentro = (px, py) => { let c = inLotto(px, py, .05); if (!c && tile(px, py) === T.BLD) { const bi = bAt(px, py); if (bi >= 0 && B[bi] && !B[bi].pezzo) c = B[bi]; } return c; };
+          let casa = null, pz = null, lib = 0, asse = false; const dentro = (px, py) => { let c = inLotto(px, py, .05); if (!c && tile(px, py) === T.BLD) { const bi = bAt(px, py); if (bi >= 0 && B[bi] && !B[bi].pezzo && !scatolaPropria(B[bi])) c = B[bi]; } return c; };   // [pianta] la casa con la sua scatola conta solo la scatola (quella che si disegna): le caselle sono l'impronta per la griglia
           for (const sg of [1, -1]) { let o2 = 0; for (; o2 <= hw; o2 += .25) { const c = dentro(x + nx * o2 * sg, y + ny * o2 * sg); if (c) { casa = casa || c; if (o2 === 0) asse = true; break; } } lib += Math.min(o2, hw); }
           for (const o2 of [0, hw - .3, -(hw - .3)]) pz = pz || inPezzo(x + nx * o2, y + ny * o2);
           if (casa && (asse || lib < Math.min(2 * hw, 2 * hw - .6) || lib < 1.6)) apri('sotto_casa', x, y, (casa.id || '?') + (asse ? ' (sull\'asse)' : ' (libera ' + lib.toFixed(1) + ' di ' + (2 * hw).toFixed(1) + ' m)')); else chiudi('sotto_casa');
