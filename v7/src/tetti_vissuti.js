@@ -110,12 +110,14 @@ var TettiVissuti = (function () {
     return q ? [c.hy * f, c.hx * f] : [c.hx * f, c.hy * f]; };
   // la quota della falda sopra il filo del muro (il piano senza l'onda dei coppi), nel riferimento della casa non girata: come tetto1 in render.js
   function quotaFalda(P, b, x, y) {
-    const C = P.colmo, tp = Math.tan(P.pitch), x0 = b.x * TS, y0 = b.y * TS, x1 = x0 + b.w * TS, y1 = y0 + b.h * TS;
+    const C = P.colmo, tp = Math.tan(P.pitch), L4 = LT(b), x0 = L4.x0, y0 = L4.y0, x1 = L4.x1, y1 = L4.y1;
     const da = C.along ? Math.min(y - y0, y1 - y) : Math.min(x - x0, x1 - x);
     if (P.forma === 'padiglione') { const db = C.along ? Math.min(x - x0, x1 - x) : Math.min(y - y0, y1 - y); return Math.min(da, db) * tp; }
     if (P.forma === 'falda') return (C.along ? y1 - y : x1 - x) * tp;
     return da * tp;
   }
+  // [tetti4] il lotto della casa (Tetti.lotto4): il centro e le misure suoi se [pianta] li ha messi, se no la casella
+  const LT = b => TT.lotto4 ? TT.lotto4(b) : { cx: (b.x + b.w / 2) * TS, cy: (b.y + b.h / 2) * TS, lw: b.w * TS, ld: b.h * TS, x0: b.x * TS, y0: b.y * TS, x1: (b.x + b.w) * TS, y1: (b.y + b.h) * TS };
   const SBALZO = era => era === 'E3' ? .55 : .32;   // lo sbalzo della gronda per epoca (render.js EPT.ov)
 
   // ---------------- i corridoi: le linee dei percorsi e le porte di ogni tetto ----------------
@@ -132,7 +134,7 @@ var TettiVissuti = (function () {
   }
   // i segmenti che passano sopra questa casa (nel riferimento non girato) e le porte del tetto con le loro linee a due a due
   function corridoi(bi) {
-    const b = B[bi], x0 = b.x * TS - 1.5, y0 = b.y * TS - 1.5, x1 = (b.x + b.w) * TS + 1.5, y1 = (b.y + b.h) * TS + 1.5, segs = [], loc = (x, y) => TT.loc3(b, x, y);
+    const b = B[bi], L4 = LT(b), R4 = hyp(L4.lw, L4.ld) / 2 + 1.5, x0 = L4.cx - R4, y0 = L4.cy - R4, x1 = L4.cx + R4, y1 = L4.cy + R4, segs = [], loc = (x, y) => TT.loc3(b, x, y);
     const dentro = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
     LINEE.forEach(pts => { for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], Bq = pts[k + 1], L = hyp(Bq[0] - A[0], Bq[1] - A[1]), n = Math.max(1, Math.ceil(L / .5)); let ok = false;
       for (let j = 0; j <= n && !ok; j++) ok = dentro(A[0] + (Bq[0] - A[0]) * j / n, A[1] + (Bq[1] - A[1]) * j / n); if (ok) segs.push([loc(A[0], A[1]), loc(Bq[0], Bq[1])]); } });
@@ -144,7 +146,7 @@ var TettiVissuti = (function () {
   // ---------------- IL DATO ----------------
   const VISSUTI = [];   // per indice di casa: { bi, era, zona, tipo, storia, cose: [...] }
   function libero(C, it, o) {
-    o = o || {}; const P = C.P, R = P.rect, b = C.b, cat = CAT[it.k], W1 = b.w * TS, D1 = b.h * TS, x0 = b.x * TS, y0 = b.y * TS;
+    o = o || {}; const P = C.P, R = P.rect, b = C.b, cat = CAT[it.k], L4 = LT(b), W1 = L4.lw, D1 = L4.ld, x0 = L4.x0, y0 = L4.y0;
     if (o.ciglio) {   // sulla copertina del parapetto: sta sul filo, lontano dalle porte e dai corridoi
     } else if (C.tipo === 'piano') {
       const m = cat.basso ? FASCIA : 0, X0 = cat.basso ? x0 + FASCIA : R.x0, Y0 = cat.basso ? y0 + FASCIA : R.y0, X1 = cat.basso ? x0 + W1 - FASCIA : R.x1, Y1 = cat.basso ? y0 + D1 - FASCIA : R.y1;
@@ -193,7 +195,7 @@ var TettiVissuti = (function () {
     return false;
   }
   function terrazza(C) {
-    const P = C.P, b = C.b, S = STORIE[C.zona] || STORIE.borgo, q = s => h4(b.x, b.y, 300 + s), R = P.rect, x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS;
+    const P = C.P, b = C.b, S = STORIE[C.zona] || STORIE.borgo, q = s => h4(b.x, b.y, 300 + s), R = P.rect, L4 = LT(b), x0 = L4.x0, y0 = L4.y0, W1 = L4.lw, D1 = L4.ld;
     // 1. la scenetta: sempre sui terrazzi abitati, qualche volta sui calmi (un uomo solo con la sua cisterna)
     // (niente doppioni coi gruppi del piano: dove c'è il filo del bucato niente stendino, dove c'è il pergolato niente canniccio né pranzo)
     const ha = k => P.gruppi.some(g => g.k === k), via = n => (n === 'panni' && ha('bucato')) || ((n === 'canniccio' || n === 'pranzo' || n === 'salotto') && ha('pergola'));
@@ -236,7 +238,7 @@ var TettiVissuti = (function () {
       if (!C.cose.some(o => o.k === 'colatura' && hyp(o.x - x, o.y - y) < .6) && !C.porte.some(p => hyp(p[0] - x, p[1] - y) < PORTA)) C.cose.push(it); }
   }
   function falde(C) {
-    const P = C.P, b = C.b, S = (STORIE[C.zona] || STORIE.borgo).falde, q = s => h4(b.x, b.y, 700 + s), Co = P.colmo, x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS;
+    const P = C.P, b = C.b, S = (STORIE[C.zona] || STORIE.borgo).falde, q = s => h4(b.x, b.y, 700 + s), Co = P.colmo, L4 = LT(b), x0 = L4.x0, y0 = L4.y0, W1 = L4.lw, D1 = L4.ld;
     const tp = Math.tan(P.pitch), ov = SBALZO(P.era), th = P.manto === 'tegole' ? .12 : .16, A = P.manto === 'tegole' ? .022 : .055;
     // la malta del colmo: la striscia di calce sotto i coppi di colmo, a pezzi (fatta a mano), interrotta dai comignoli
     if (P.forma !== 'falda' && Co.rl > .3) { const L = P.forma === 'padiglione' ? Co.rl : Co.L1 + 2 * Math.max(.2, ov * .7), n = Math.max(1, Math.round(L / .9));
@@ -278,7 +280,7 @@ var TettiVissuti = (function () {
     VISSUTI.forEach(T0 => { if (!T0) return; V.tetti++; T0.tipo === 'piano' ? V.terrazzi++ : V.falde++;
       const Z = V.perZona[T0.zona] || (V.perZona[T0.zona] = { terrazzi: 0, vivi: 0, falde: 0, scene: 0, cose: 0, coseVivi: 0, coseCalmi: 0, carte: 0, pozze: 0, erbe: 0, k: {} });
       if (T0.tipo === 'piano') { Z.terrazzi++; if (T0.vivo) Z.vivi++; if (T0.storia) Z.scene++; } else Z.falde++;
-      const P = TT.PIANO[T0.bi], b = B[T0.bi], x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS;
+      const P = TT.PIANO[T0.bi], b = B[T0.bi], L4 = LT(b), x0 = L4.x0, y0 = L4.y0, W1 = L4.lw, D1 = L4.ld;
       T0.storia.split('+').filter(Boolean).forEach(s => V.scene[s] = (V.scene[s] || 0) + 1);
       T0.cose.forEach((o, i) => { V.cose++; Z.cose++; if (T0.tipo === 'piano') { if (T0.vivo) Z.coseVivi++; else Z.coseCalmi++; }
         V.perK[o.k] = (V.perK[o.k] || 0) + 1; Z.k[o.k] = (Z.k[o.k] || 0) + 1; const c = CAT[o.k];
@@ -459,7 +461,7 @@ var TettiVissuti = (function () {
     VIC.tipi = CARTE.concat(['pozza']).map(k => ({ k, voci: [], im: null, max: 0 }));
     const byK = new Map(VIC.tipi.map(t => [t.k, t]));
     VISSUTI.forEach(T0 => { if (!T0) return; const rec = K.bRec[T0.bi], b = B[T0.bi]; if (!rec || !rec.box3) return; const top = T0.top !== undefined ? T0.top : rec.box3.max.y - 2.5;
-      const a = K.rotOf(b), cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS, c = Math.cos(a), s = Math.sin(a), P = TT.PIANO[T0.bi];
+      const a = K.rotOf(b), cx = LT(b).cx, cz = LT(b).cy, c = Math.cos(a), s = Math.sin(a), P = TT.PIANO[T0.bi];
       T0.cose.forEach(o => { const cat = CAT[o.k]; if (!cat.vicino) return; const t = byK.get(o.k); if (!t) return;
         const qx = o.x - cx, qz = o.y - cz, wx = a ? cx + qx * c - qz * s : o.x, wz = a ? cz + qx * s + qz * c : o.y;   // come rotRec: girata di -a attorno al centro
         const u = typeof o.v === 'number' ? o.v : .5, sc = o.k === 'pozza' ? (o.s || 1) : .9 + u * .2;
@@ -504,7 +506,7 @@ var TettiVissuti = (function () {
   // la misura sul modello vero (strumenti/compenetrazioni.js, attraverso window.__tetti3): i pezzi fra loro, col parapetto, coi gruppi del piano
   function urti() {
     const U = [], perCasa = new Map(); SCATOLE.forEach(S => (perCasa.get(S.bi) || perCasa.set(S.bi, []).get(S.bi)).push(S));
-    perCasa.forEach((L, bi) => { const b = B[bi], P = TT.PIANO[bi], x0 = b.x * TS, z0 = b.y * TS, x1 = x0 + b.w * TS, z1 = z0 + b.h * TS, pt = .28;
+    perCasa.forEach((L, bi) => { const b = B[bi], P = TT.PIANO[bi], L4 = LT(b), x0 = L4.x0, z0 = L4.y0, x1 = L4.x1, z1 = L4.y1, pt = .28;
       L.forEach((S, i) => { const X = S.B, top = S.top;
         if (!S.ciglio && P.tipo === 'piano' && (X.min.x < x0 + pt - .02 || X.max.x > x1 - pt + .02 || X.min.z < z0 + pt - .02 || X.max.z > z1 - pt + .02)) U.push([bi, 'vissuti:' + S.k, 'parapetto']);
         if (!S.ciglio && P.tipo === 'piano' && X.min.y < top + .08 - .03) U.push([bi, 'vissuti:' + S.k, 'lastrico']);
