@@ -1,0 +1,5 @@
+{
+  "nota": "[personaggi] Il tono di strada (render.js, STRADA) spento e acceso sulla stessa scena. GALLERIA_VARIANTI=strumenti/manopole_strada.json node strumenti/galleria.js <cartella>",
+  "prima": { "STRADA": { "on": false } },
+  "dopo": {}
+}
