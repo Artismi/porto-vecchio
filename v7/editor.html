@@ -24545,6 +24545,9 @@ var Vegetazione = (function () {
           // i sentieri: il varco libero e leggibile; lungo il margine il bosco si dirada un poco (si vede dove si va)
           const ds = dSen[i], s = senOf[i] >= 0 ? sen[senOf[i]] : null;
           if (s) { if (strato === 'B' ? ds < s.libB - s.w / 2 : ds < s.libA - s.w / 2) continue; if (ds < s.margine - s.w / 2) p *= strato === 'B' ? .8 : .65; }
+          // [tavolo] a gruppi, non a passo: nelle formazioni aperte gli alberi fanno gruppi di 3-15 (campo ≈ 16 m) con vuoti fra l'uno e
+          // l'altro; nel cuore del gruppo i vecchi grandi, sul bordo i giovani. La lecceta e i filari restano come sono (masse chiuse, sesti)
+          const GRP = strato !== 'B' && !S.filare && fi !== F.lecceta && fi !== F.urbano, gr = GRP ? sstep(.36, .6, fbm(x / 16, y / 16, 7353, 2)) : 1; if (GRP) p *= .2 + 1.15 * gr;
           if (u >= p) continue;
           const MB = strato === 'B' ? 16 : 22, mbx = Math.floor((x + fbm(x / 20, y / 20, 7351, 2) * 14) / MB), mby = Math.floor((y + fbm(x / 20 + 5, y / 20, 7352, 2) * 14) / MB);   // [vegetazione] la macchia a una specie: si sceglie per micro-bioma (≈ 20 m, bordi mossi), non per pianta
           const sp = scegli(S.sp, hash2(ci, cj, seed + 3) < .88 ? hash2(mbx, mby, seed + 4) : hash2(ci, cj, seed + 5)), SS = SP[sp];
@@ -24552,7 +24555,7 @@ var Vegetazione = (function () {
           if (vicinoPorta(x, y, SS.strato === 'B' ? 2.5 : 4.5)) continue;
           if ((SS.strato === 'A' || SS.strato === 'M') && !libero(x, y, SS.chioma * (fi === F.lecceta ? .8 : 1))) continue;
           if (SS.strato === 'B' && !libero(x, y, .2)) continue;   // non dentro un tronco
-          posa(sp, x, y, fi);
+          posa(sp, x, y, fi, GRP ? { h: SS.h[0] + (SS.h[1] - SS.h[0]) * Math.min(1, .15 + .85 * gr * (.6 + .4 * hash2(ci, cj, seed + 6))) } : undefined);
         }
       }));
     });
@@ -24577,8 +24580,8 @@ var Vegetazione = (function () {
         // il fondale: dove il sentiero gira, il bouquet alto di fronte a chi arriva
         if (k < P0.length - 1) { const c2 = P0[k + 1], a2 = Math.atan2(c2[1] - b[1], c2[0] - b[0]), dA = Math.abs(((a2 - ang + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
           if (dA > .45) { const d = sd.w / 2 + 5, X = b[0] + Math.cos(ang) * d, Y = b[1] + Math.sin(ang) * d, i = tI(X, Y); if (i >= 0 && form[i] && form[i] !== F.costa && form[i] !== F.urbano) { const nm = scegliB(form[i], 'fondale', hash2(k, si, 7362)); if (nm) bq(nm, X, Y, ang + Math.PI / 2, form[i], 'fondale'); } } }
-        // il ritmo: a passi di 22-38 m, alternando i lati, una sosta o un segno a lato del sentiero
-        for (let t = prossimo - acc; t < L; t += 22 + hash2(Math.round(t), si, 7363) * 16) { lato = -lato; const d = sd.w / 2 + 3.2, ox = -Math.sin(ang) * lato, oy = Math.cos(ang) * lato, X = a[0] + Math.cos(ang) * t + ox * d, Y = a[1] + Math.sin(ang) * t + oy * d, i = tI(X, Y);
+        // il ritmo: a passi di 30-45 m ([tavolo]: erano 22-38, troppo fitto, diventava rumore), alternando i lati, una sosta o un segno a lato del sentiero
+        for (let t = prossimo - acc; t < L; t += 30 + hash2(Math.round(t), si, 7363) * 15) { lato = -lato; const d = sd.w / 2 + 3.2, ox = -Math.sin(ang) * lato, oy = Math.cos(ang) * lato, X = a[0] + Math.cos(ang) * t + ox * d, Y = a[1] + Math.sin(ang) * t + oy * d, i = tI(X, Y);
           if (i >= 0 && form[i] && form[i] !== F.costa && form[i] !== F.urbano) { const nm = scegliB(form[i], 'ritmo', hash2(Math.round(X), Math.round(Y), 7364)); if (nm) bq(nm, X, Y, Math.atan2(-oy, -ox) - Math.PI / 2, form[i], 'ritmo'); }
           prossimo = acc + t + 22; }
         acc += L; } });
@@ -24930,7 +24933,7 @@ var Vegetazione = (function () {
               const P2 = [c[0] + dx * rad, c[1] + dy * rad, c[2] + dz * rad];
               const dc = nrm([(P2[0] - C0[0]) / ext[0], (P2[1] - C0[1]) / ext[1], (P2[2] - C0[2]) / ext[2]]), rel = Math.min(1.3, Math.hypot((P2[0] - C0[0]) / ext[0], (P2[1] - C0[1]) / ext[1], (P2[2] - C0[2]) / ext[2]));
               const nPosa = nrm([dx * (1 - piatto) + (r() - .5) * .8, dy * (1 - piatto) + piatto + .3 + (r() - .5) * .6 - pend * .8, dz * (1 - piatto) + (r() - .5) * .8]);
-              const nl = nrm([dc[0] * .62 + nPosa[0] * .3, dc[1] * .62 + nPosa[1] * .3 + .12, dc[2] * .62 + nPosa[2] * .3]);
+              const nl = nrm([dc[0] * .76 + nPosa[0] * .18, dc[1] * .76 + nPosa[1] * .18 + .12, dc[2] * .76 + nPosa[2] * .18]);   // [tavolo] la massa comanda (era .62 / .3): calotta, mezzotono, nucleo, non sette macchie
               const occ = clamp(.18 + .62 * sstep(.15, 1, rel) + .18 * Math.max(0, dc[1]) + .1 * (rad / cf.s), .18, 1);
               const fiore = cf.fiori && r() < cf.fiori[1], cell = fiore ? cf.fiori[0] : cf.cella;
               carta(A, P2, cf.s * (.3 + r() * .2), nPosa, nl, cell, fiore ? [1, 1, 1] : colCella(cell, sp, col), Math.min(1, P2[1] / H) ** 1.2, r() * TAU, occ, { sy: pend ? 1.4 : 1 }); } } });
@@ -25121,9 +25124,9 @@ var Vegetazione = (function () {
   // ombra/mezzo, soglia mezzo/luce, morbidezza, in unità di «quanta luce prende»), l'ombra fredda e la luce calda come moltiplicatori della
   // tinta della specie, l'occlusione dipinta, il controluce sui bordi delle ciocche, quanto della tinta della luce del gioco passa (sera, notte).
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
-    uPittura: { value: .15 },   /* [vegetazione] la luce del gioco comanda: la gamma lega appena (col tappeto giallo-verde il teal stonava) */ uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
+    uPittura: { value: .55 },   /* [tavolo] la gamma comanda la chioma (era .15, quando col tappeto lime il teal stonava; ora il tappeto è spento): la luce del gioco passa per tinta (uTintaLuce) */ uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.8 }, uOff: { value: .1 }, uTintaSpecie: { value: .22 } };
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.45 }, uOff: { value: .13 }, uTintaSpecie: { value: .22 }, uPl: { value: new THREE.Vector3(0, -999, 0) }, uCm: { value: new THREE.Vector3(0, 100, 0) } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -25133,7 +25136,7 @@ var Vegetazione = (function () {
     m.onBeforeCompile = sh => {
       if (!U.uGamma.value) U.uGamma.value = gammaTex(); for (const k in U) sh.uniforms[k] = U[k]; sh.uniforms.uBand = uBand;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc;
+uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc; varying vec3 vgW;
 #ifdef VEG_CENTRO
 attribute vec3 centro;
 #endif`).replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -25154,11 +25157,19 @@ transformed.z += cos(uT * 1.3 + vgP * 1.3) * flex * uWind * .6;
 if (vK < .003) transformed = centro;
 #else
 if (vK < .003) transformed = vec3(0.0);
-#endif`);
+#endif
+{ vec4 vgP4 = vec4(transformed, 1.0);
+#ifdef USE_INSTANCING
+vgP4 = instanceMatrix * vgP4;
+#endif
+vgW = (modelMatrix * vgP4).xyz; }`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie;`)
+varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie; uniform vec3 uPl; uniform vec3 uCm; varying vec3 vgW;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }`)
+if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }
+if (uPl.y > -900.) { vec3 vgAB = uCm - uPl; float vgT = dot(vgW - uPl, vgAB) / max(dot(vgAB, vgAB), .001);   // [tavolo] il varco: le chiome fra la camera e il personaggio si diradano a retino (ne resta un velo)
+  if (vgT > 0.) { float vgDd = distance(vgW, uPl + vgAB * vgT), vgKv = (1. - smoothstep(2.4, 4.4, vgDd)) * smoothstep(1.3, 2.6, vgW.y - uPl.y);
+    if (vgKv > 0.) { float vgN2 = fract(52.9829189 * fract(dot(gl_FragCoord.xy + 17., vec2(.06711056, .00583715)))); if (vgN2 < vgKv * .8) discard; } } }`)
         .replace('#include <envmap_fragment>', `#include <envmap_fragment>
 { // [vegetazione] la pittura: la luce che la foglia prende (con l'occlusione dipinta) scelta sulla GAMMA del riferimento; la specie la
   // tinge appena; la tinta della luce del gioco passa per metà (sera, notte); il controluce accende i bordi
@@ -25188,7 +25199,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // blu notte al teal, al verde, al lime, alla luce crema. Il fogliame, l'erba e il suolo cadono tutti in questa scala secondo quanta luce
   // prendono; la specie sposta appena la tinta (uTintaSpecie). Il suolo caldo (aghi, paglia, terra) ha la sua gamma calda che si
   // mescola per formazione (CALDA).
-  const GAMMA = ['#122e5b', '#154c63', '#1f636e', '#3f7451', '#6ea470', '#9ac770', '#c5e276', '#e4ee9a', '#f5f3b0'];   // il teal solo nell'ombra fonda; la luce delle foglie nei verdi e nei lime
+  const GAMMA = ['#15263a', '#1a3438', '#22423b', '#2c523f', '#3d6544', '#577c4a', '#7a9858', '#9cb266', '#b9c87a'];   // [tavolo] tre fasce larghe (nucleo d'ombra freddo, mezzotono, calotta): il blu solo nel fondo, la luce in un verde-oliva caldo, mai lime né crema (era '#122e5b' … '#c5e276', '#e4ee9a', '#f5f3b0')
   const GAMMA_CALDA = ['#2a2440', '#4a3438', '#74503a', '#9a7448', '#b89458', '#cdb06a', '#dcc884', '#ece0a4', '#f8f0c8'];
   const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const gammaAt = (G, t) => { t = Math.max(0, Math.min(1, t)) * (G.length - 1); const i = Math.min(G.length - 2, Math.floor(t)), f = t - i, a = hexRGB(G[i]), b = hexRGB(G[i + 1]); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; };
@@ -25420,7 +25431,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // la copertura bassa (erba, fiori, felci, lettiere) solo entro RC; le ombre di contatto sotto gli alberi vicini. Il passaggio fra i
   // livelli si dissolve a retino nel materiale (uBand). Gli alberi abbattuti (casella non più TREE) non si disegnano.
   function monta(scene, opz) {
-    if (SPENTO || !KIT) return null; opz = opz || {}; const W = opz.W, P = piano(W), gH = opz.groundH || (() => 0), tel = !!opz.telefono;
+    if (SPENTO || !KIT) return null; opz = opz || {}; const W = opz.W, P = piano(W), gH = opz.groundH || (() => 0), tel = !!opz.telefono; if (opz.pl) U.uPl = opz.pl; if (opz.cm) U.uCm = opz.cm;   // [tavolo] il varco: la posizione del personaggio e della camera, le stesse del gioco (NATU)
     const R0 = tel ? 30 : 48, R1 = tel ? 90 : 150, RC = tel ? 16 : 28, F0 = 6; ombraSuolo(P);
     const MV = materiale([-1, 0, R0 - F0, R0]), MS = materiale([R0 - F0, R0, R1 - 12, R1]), MC = materiale([-1, 0, RC - 4, RC]), MCm = materiale([-1, 0, RC - 4, RC], { senzaProfondita: true });
     const gruppo = new THREE.Group(); gruppo.name = 'vegetazione'; scene.add(gruppo);
@@ -79395,7 +79406,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
-      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };
+      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on), pl: NATU.pl, cm: NATU.cm }) || { aggiorna() {} };
       VEGR.aggiorna(cam.x, cam.y, (st && st.t || 0) * 2.5); }
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);

@@ -15922,7 +15922,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
-      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };
+      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on), pl: NATU.pl, cm: NATU.cm }) || { aggiorna() {} };
       VEGR.aggiorna(cam.x, cam.y, (st && st.t || 0) * 2.5); }
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
