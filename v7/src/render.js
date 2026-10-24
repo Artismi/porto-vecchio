@@ -543,7 +543,7 @@ var Render = (function () {
   function* fus1Mostra(S) {
     Anelli.segna('ritorno');
     if (Anelli.TEL) { S.made.forEach(m => { if (m.userData.anL !== undefined) { m.layers.mask = m.userData.anL; delete m.userData.anL; } }); FU1.nasc--; }
-    S.tops.forEach(top => { scene.add(top); smooth2(top); }); S.made.forEach(m => smooth2(m)); S.made = null;   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
+    S.tops.forEach(top => { scene.add(top); smooth2(top); }); S.made.forEach(m => smooth2(m)); streamAdd1(S.made); S.made = null;   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
     const I = [...S.recs].map(r => FD1.idx.get(r));
     Anelli.sfuma(k => { const v = Math.round(255 * (1 - k)); I.forEach(i => { FD1.data[i * 4 + 3] = v; }); FD1.dirty = true; });
     if (!FU1.att.size && !FU1.nasc) {   // tutte le case vere: via la sagoma
@@ -16146,6 +16146,16 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     scene.traverse(o => { if (o.isMesh && o.userData.ombra1) { const e = om.get(o.geometry.attributes.position); if (e) e.sh = o; } });
     STR.list.forEach(e => texOf1(e.o.material).forEach(t => { let s = STR.tex.get(t); if (!s) STR.tex.set(t, s = new Set()); s.add(e); }));
     STR.n = STR.list.length; STR.mb = Math.round(STR.list.reduce((a, e) => a + e.b, 0) / 1e6);
+  }
+  // [anelli] le case fuse dopo il caricamento entrano anche loro nello streaming della scheda video (come quelle di streamInit)
+  function streamAdd1(made) {
+    if (!STR.on || !STR.list) return; const LM = window.LeggeraMem, om = new Map();
+    made.forEach(o => { if (!o.userData.fusione1 || !o.geometry || !o.geometry.boundingSphere || (LM && o.geometry.userData.lmDec)) return;
+      let b = 0; for (const k in o.geometry.attributes) b += o.geometry.attributes[k].array.byteLength;
+      const e = { o, s: o.geometry.boundingSphere, on: true, d: 0, b, sh: null, fc: o.frustumCulled }; STR.list.push(e); om.set(o.geometry.attributes.position, e);
+      texOf1(o.material).forEach(t => { let q = STR.tex.get(t); if (!q) STR.tex.set(t, q = new Set()); q.add(e); }); });
+    made.forEach(o => { if (o.userData.ombra1) { const e = om.get(o.geometry.attributes.position); if (e) e.sh = o; } });
+    STR.n = STR.list.length;
   }
   function streamOff(e) { e.on = false; e.o.visible = false; if (e.sh) e.sh.visible = false; e.o.geometry.dispose(); STR.off++;
     texOf1(e.o.material).forEach(t => { const s = STR.tex.get(t); if (!s) return; for (const q of s) if (q.on) return; t.dispose(); }); }
