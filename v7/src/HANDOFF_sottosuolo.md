@@ -54,3 +54,29 @@
 - **RITROVAMENTI** (31): dinosauro (12×6 m, si cammina sotto le costole), autobus anni '50 (ci si entra, il tetto si toglie), barca romana, statua, campana, auto della guerra, rifugio dei partigiani, stanza murata del regime, cimitero dei cani, deposito d'armi, nascondiglio del brigante, più anfore, tesoretti, bottiglie, ossa fossili. Accanto l'indizio, dentro alla quota giusta la cavità. La roba è in `oggetti.js` (fossile, anfora, monete romane, medaglia, moschetto).
 - **Vista** (`render.js` `[monte] SOTTO TERRA`): sopra le pareti di fondo la **terra in sezione** fino alla strada (coltivo, riporto coi cocci, lo strato bruciato del 1660, macerie, argilla, roccia); materiali per K (`UGK`, `UGF`, `UGH`, `UG2`: volta, cocciopesto, loculi, intonaco, calcare, roccia umida, cotto, lastricato); la luce di scena di ogni cavità (`R.light`) e la nebbia del suo colore. Arredi a istanze in `sottosuolo.js` (`decor2`, `IB`): si costruiscono quando ti avvicini (80 m), visibili entro 72 m; le cose contro le pareti si spengono dal lato della camera.
 - Prove: `node test_sottosuolo.js` e `node test_sottosuolo.js cittanuova` (strati, fondamenta, ogni cavità raggiungibile dalla superficie, 25-40 ritrovamenti in terra scavabile, indizio → cavità scavando davvero verso l'autobus).
+
+## [regia] (23 ottobre): grotte naturali, niente compenetrazioni
+- **Le grotte non sono a caselle** (`render.js` `natWall`, `natPush`, `UGNAT`): nelle cavità naturali (K 1, 14 grotta, 17 relitto,
+  18 ritrovamento, 19 fiume) la parete si spezza in 4×3 facce e i vertici si allontanano dal vuoto verso la roccia (10-70 cm, gobbe
+  a mezza altezza); gli spigoli delle caselle si spostano secondo le caselle aperte attorno, così le pareti restano cucite. Solo
+  verso la roccia: dove si cammina non cambia. Il pavimento si allunga fino al piede della parete; massi alla base.
+- **Gli arredi di sotto sono solidi** (`sottosuolo.js` `SOLID`, `regSolids`; `livelli.js` `hooks.solid`): quando un arredo nasce se ne
+  prende l'impronta orientata di ogni pezzo all'altezza del corpo (35 cm-1,1 m); scala della cantina e botole restano libere; chi è
+  già dentro un solido può uscirne. Anche il pilastro col cappello delle stanze scavate è pieno (`freeFn`). Solo nel browser (in Node
+  non ci sono arredi: le prove non cambiano).
+- I sassi nelle pareti di terra affondano nella parete (prima sporgevano fino a mezzo metro e i piedi ci entravano).
+- `game.js`: lo spintone (`knockback`) rispetta i muri dell'interno e delle gallerie (prima guardava solo la mappa di fuori e ti
+  portava attraverso le pareti, fino a farti uscire dall'edificio); dentro casa le auto parcheggiate in strada non ti spingono più
+  (l'interno è più grande della sagoma: `pushOutOfVehicles` ti spostava fuori).
+- Note: `node test_sottosuolo.js cittanuova` ha 6 prove che falliscono anche prima di questo lavoro; `test_eventi.js` è instabile
+  (fallisce a caso una volta su tre, anche senza queste modifiche).
+
+## [regia] seconda passata (24 ottobre): il set dressing
+- `render.js` `dressUG` (chiamato in fondo a `buildUG`, per la finestra attorno al giocatore): ogni casella si arreda per famiglia
+  (`UGFAM`): grotte (stalattiti con la goccia, stalagmiti, massi, colate, pozze, sassolini, funghi e cristalli luminosi con la loro
+  luce), acque (pozze, alghe, legni del fiume), terra e miniera (radici che pendono, ragnatele, secchio, tavola, mucchi di minerale),
+  fogne (cartacce, bottiglie, lattine, topi, lampade a gabbia, targhe smaltate, ruggine), pietra e carceri (candele accese, ossa,
+  paglia, catene), cemento (cavi, scatole di derivazione, lampade, frecce dipinte, fusti, pozze, volantini), cantine, catacombe,
+  città sepolta. Istanze per forma e materiale. Botole e scale restano libere.
+- I pezzi alti (stalagmiti, massi, fusti, cassette, secchi) sono solidi: `UGSOL`, chiesto da `Livelli.hooks.solid2`.
+- Rilievo su tutti i materiali di sotto (`withRelief`, `normalOfUG`); il pavimento delle grotte è irregolare di qualche centimetro.

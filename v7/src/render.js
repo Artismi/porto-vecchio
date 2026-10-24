@@ -1812,6 +1812,7 @@ var Render = (function () {
     // grotte di calcare bagnato, il cunicolo di pietra, la miniera nella roccia, il relitto e il fiume nella roccia umida, la cavità del ritrovamento nella terra
     10: 'volta', 11: 'cocciopesto', 12: 'loculi', 13: 'intonaco', 14: 'calcare', 15: 'pietra', 16: 'roccia', 17: 'umida', 18: 'terra', 19: 'umida' };
   const UGF = { 10: 'cotto', 11: 'cocciopesto', 12: 'terra_pav', 13: 'lastricato', 14: 'calcare', 15: 'pietra', 16: 'terra_pav', 17: 'umida', 18: 'terra_pav', 19: 'umida' };   // [sotto2] i pavimenti
+  const UGNAT = { 1: 1, 14: 1, 17: 1, 18: 1, 19: 1 };   // [regia] le cavità naturali: pareti irregolari (natWall)
   const UGH = { 7: 4.2, 10: 2.7, 11: 3.6, 12: 2.6, 13: 2.6, 14: 3.9, 15: 2.4, 16: 2.6, 17: 3.4, 18: 3.8, 19: 3.3 };   // [sotto2] l'altezza delle pareti (fino alla volta)
   // [sotto2] LA TERRA IN SEZIONE: sopra le pareti di fondo, fino al livello della strada, si vedono gli strati (16 px per metro, 32 m):
   // terra di coltivo e radici, il riporto coi cocci, lo strato bruciato del 1660, le macerie della città sepolta, l'argilla coi ciottoli, la roccia
@@ -1903,7 +1904,8 @@ var Render = (function () {
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return (ugMats['tex' + kind] = new THREE.MeshStandardMaterial({ map: t, roughness: .95, metalness: 0 }));
   }
-  function ugTex(kind) {
+  function ugTex(kind) { return withRelief(ugTex0(kind), kind === 'terra' || kind === 'terra_pav' ? 2.5 : 4); }   // [regia] col rilievo
+  function ugTex0(kind) {
     if (kind !== 'roccia' && kind !== 'terra') return ugTex2(kind);
     if (ugMats['tex' + kind]) return ugMats['tex' + kind];
     const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind === 'roccia' ? 77 : 78);
@@ -1942,7 +1944,9 @@ var Render = (function () {
     const props = [], rocks = [], SEC = [[], []];
     for (let ty = Math.max(0, wy0); ty <= Math.min(G.GH - 1, wy1); ty++) for (let tx = Math.max(0, wx0); tx <= Math.min(G.GW - 1, wx1); tx++) {
       const i = ty * GWd + tx; if (!L.ug[i]) continue;
-      const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, h00 = floorV(tx, ty, 0, 0), h10 = floorV(tx, ty, 1, 0), h01 = floorV(tx, ty, 0, 1), h11 = floorV(tx, ty, 1, 1);
+      // [regia] nelle grotte il pavimento non è un biliardo: gli spigoli si alzano e si abbassano di qualche centimetro (solo dove tutte le caselle attorno sono naturali)
+      const bump = (cx, cy) => { for (const [a, b] of [[tx + cx - 1, ty + cy - 1], [tx + cx, ty + cy - 1], [tx + cx - 1, ty + cy], [tx + cx, ty + cy]]) if (has(a, b) && !UGNAT[L.kind[b * GWd + a]]) return 0; return (hash2i((tx + cx) * 3.1, (ty + cy) * 2.7) - .5) * .16; };
+      const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, nat0 = UGNAT[L.kind[i]], h00 = floorV(tx, ty, 0, 0) + (nat0 ? bump(0, 0) : 0), h10 = floorV(tx, ty, 1, 0) + (nat0 ? bump(1, 0) : 0), h01 = floorV(tx, ty, 0, 1) + (nat0 ? bump(0, 1) : 0), h11 = floorV(tx, ty, 1, 1) + (nat0 ? bump(1, 1) : 0);
       const kd = L.kind[i], made = kd >= 3, fm = UGF[kd] || (made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : kd === 2 ? 'terra_pav' : 'terra');
       const fa = fB[fm] = fB[fm] || [[], []]; fa[0].push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fa[1].push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
       const rockK = !made && (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || kd === 1), wm = made ? UGK[kd] : rockK ? 'roccia' : 'terra', wb = WB[wm] = WB[wm] || [[], []], arr = wb[0], uv = wb[1], f = L.fl[i];
@@ -1951,11 +1955,12 @@ var Render = (function () {
       [[0, -1, x0, z0, x1, z0], [0, 1, x1, z1, x0, z1], [-1, 0, x0, z1, x0, z0], [1, 0, x1, z0, x1, z1]].forEach(([dx, dy, a, b, c2, d]) => {
         if (has(tx + dx, ty + dy) || kd === 9) return; const P = L.portals.find(P => P.kind === 'imbocco' && P.u[0] === tx && P.u[1] === ty && P.s[0] === tx + dx && P.s[1] === ty + dy); if (P) return;
         const toCam = dx * sy2 + dy * cy2 > .3, top = f + (toCam ? .55 : UGH[kd] || 2.7);
+        if (UGNAT[kd]) { natWall(arr, uv, fB[fm], a, b, c2, d, f - .2, top, dx, dy, f, has); if (!toCam && hash2i(tx * 5 + dx, ty * 5 + dy) < .6) rocks.push([(a + c2) / 2 + dx * .25, f + .2, (b + d) / 2 + dy * .25]); return; }   // [regia] la grotta non è a caselle
         wallQuad(arr, uv, a, b, c2, d, f - .2, top);
         // [sotto2] la terra in sezione: sopra la parete di fondo, una fascia di 1,6 m (fino alla strada se è più vicina), gli strati con la loro quota vera
         if (!toCam) { const surf = Math.min(M.elev[i], top + 1.6); if (surf - top > .4) { const L2 = Math.hypot(c2 - a, d - b) / 4, va = 1 - (M.elev[i] - top) / 32, vb = 1 - (M.elev[i] - surf) / 32, ua = (dx ? z0 : x0) / 4;
           SEC[0].push(a, top, b, c2, top, d, c2, surf, d, a, top, b, c2, surf, d, a, surf, b); SEC[1].push(ua, va, ua + L2, va, ua + L2, vb, ua, va, ua + L2, vb, ua, vb); } }
-        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 - dx * .2, f + .3, (b + d) / 2 - dy * .2]);
+        if (!made && !toCam && hash2i(tx * 3 + dx, ty * 3 + dy) < .35) rocks.push([(a + c2) / 2 + dx * .14, f + .3, (b + d) / 2 + dy * .14]);   // [regia] il sasso affonda nella parete (prima sporgeva fino a mezzo metro nel cunicolo e i piedi ci entravano dentro)
       });
       // [sottosuolo] l'armatura di legno delle gallerie scavate a mano: telai a passo di 2 m nei tratti dritti, pali contro le pareti nelle stanze
       if (kd === 2 || kd === 16) props.push([tx, ty, f]);   // [sotto2] anche la miniera è armata di legno
@@ -1997,9 +2002,161 @@ var Render = (function () {
       }
       grp.add(g);
     });
+    dressUG(grp, L, has, [wx0, wy0, wx1, wy1]);   // [regia] il set dressing
     return grp;
   }
   const hash2i = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+  // =====================================================================================================================
+  // [regia] IL SET DRESSING DI SOTTO: ogni casella scavata si arreda secondo cosa è, come farebbe un level designer.
+  //   grotte: stalattiti dalla volta, stalagmiti e massi contro le pareti, colate di calcare, pozze ferme, sassolini, funghi e
+  //           cristalli che brillano alla base; fiume, relitto e cisterne: pozze, alghe, legni portati dall'acqua;
+  //   terra: le radici che pendono, sassi, il secchio, la tavola appoggiata, le ragnatele negli angoli;
+  //   fogne: cartacce, bottiglie e lattine sul cordolo, i topi, le lampade a gabbia, le targhe smaltate dei tratti, le macchie di ruggine;
+  //   pietra (cripte, carceri, cunicolo): mozziconi di candela accesi, ossicini, paglia e catene nelle carceri, ragnatele;
+  //   cemento (bunker, metropolitana): i cavi lungo le pareti, le scatole di derivazione, le lampade a gabbia, le frecce dipinte,
+  //           i fusti, le pozze, i volantini; cantine: bottiglie, cassette, ragnatele; catacombe: ossa e teschi; città sepolta:
+  //           cocci e intonaco caduto; miniera: mucchi di minerale che luccica.
+  // Tutto a istanze (pochi draw call), deterministico per casella. I pezzi alti all'altezza del corpo (stalagmiti, massi, fusti,
+  // cassette) diventano solidi (UGSOL, chiesto da Livelli.freeFn tramite hooks.solid2): si girano attorno, non ci si entra dentro.
+  // =====================================================================================================================
+  const UGSOL = new Map();
+  const ugSolid = (x, z, r) => { for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) for (let tz = Math.floor((z - r) / TS); tz <= Math.floor((z + r) / TS); tz++) { const k = tz * G.GW + tx; if (!UGSOL.has(k)) UGSOL.set(k, []); UGSOL.get(k).push([x, z, r]); } };
+  if (typeof Livelli !== 'undefined' && Livelli.hooks) Livelli.hooks.solid2 = (x, y, r) => { const l = UGSOL.get(Math.floor(y / TS) * G.GW + Math.floor(x / TS)); return !!l && l.some(q => Math.hypot(x - q[0], y - q[1]) < q[2] + r); };
+  const UGFAM = { 1: 'grotta', 14: 'grotta', 17: 'umida', 19: 'umida', 11: 'umida', 2: 'terra', 18: 'terra', 3: 'fogna', 8: 'fogna', 4: 'pietra', 5: 'carcere', 15: 'pietra', 6: 'cemento', 7: 'cemento', 9: 'cemento', 10: 'cantina', 12: 'ossa', 13: 'sepolta', 16: 'miniera' };
+  const DGEO = {};
+  const dgeo = k => DGEO[k] || (DGEO[k] = k === 'cone' ? new THREE.ConeGeometry(1, 1, 6) : k === 'rock' ? new THREE.DodecahedronGeometry(1, 0) : k === 'box' ? new THREE.BoxGeometry(1, 1, 1)
+    : k === 'cyl' ? new THREE.CylinderGeometry(1, 1, 1, 8) : k === 'sph' ? new THREE.SphereGeometry(1, 8, 6) : k === 'disc' ? new THREE.CylinderGeometry(1, 1, 1, 14) : k === 'ring' ? new THREE.TorusGeometry(1, .28, 4, 8) : k === 'web' ? new THREE.PlaneGeometry(1, 1) : null);
+  const DMAT = {};
+  const dmat = k => DMAT[k] || (DMAT[k] = (() => { const [c, kind] = k.split('|');
+    if (kind === 'glow') return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.2, roughness: .6 });
+    if (kind === 'wet') return new THREE.MeshStandardMaterial({ color: c, roughness: .04, metalness: .55, transparent: true, opacity: .85 });
+    if (kind === 'web') return new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .22, side: THREE.DoubleSide, depthWrite: false });
+    if (kind === 'met') return new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .6 });
+    if (kind === 'shine') return new THREE.MeshStandardMaterial({ color: c, roughness: .3, metalness: .1 });
+    return new THREE.MeshStandardMaterial({ color: c, roughness: .95, metalness: 0, flatShading: true }); })());
+  function dressUG(grp, L, has, win) {
+    UGSOL.clear();
+    const B = {}, put = (g, m, x, y, z, sx, sy, sz, ry, rx, rz) => (B[g + '#' + m] = B[g + '#' + m] || []).push([x, y, z, sx, sy, sz, ry || 0, rx || 0, rz || 0]);
+    const GW = G.GW, toCamW = (dx, dy) => dx * Math.sin(cam.yaw) + dy * Math.cos(cam.yaw) > .3;
+    let lampN = 0;
+    for (let ty = Math.max(0, win[1]); ty <= Math.min(G.GH - 1, win[3]); ty++) for (let tx = Math.max(0, win[0]); tx <= Math.min(G.GW - 1, win[2]); tx++) {
+      const i = ty * GW + tx; if (!L.ug[i]) continue;
+      const kd = L.kind[i], fam = UGFAM[kd] || (kd === 0 ? 'terra' : null); if (!fam) continue;
+      const f = L.fl[i], cx = (tx + .5) * TS, cz = (ty + .5) * TS, top = f + (UGH[kd] || 2.7), h = s => hash2i(tx * 13.17 + s * 7.31, ty * 17.29 - s * 3.13);
+      const walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !has(tx + dx, ty + dy)), back = walls.filter(([dx, dy]) => !toCamW(dx, dy));
+      const portal = L.portals.some(P => (P.u[0] === tx && P.u[1] === ty) || (P.s[0] === tx && P.s[1] === ty)); if (portal) continue;   // le scale e le botole restano libere
+      const rnd = (s, a, b) => a + (b - a) * h(s);
+      const inT = s => [cx + (h(s) - .5) * 1.5, cz + (h(s + 50) - .5) * 1.5];
+      // contro una parete: [x, z, tangente x, tangente z, normale verso la parete]
+      const atWall = (w, s, inset) => { const [dx, dy] = w, t = (h(s) - .5) * 1.5; return [cx + dx * (1 - inset) + dy * t, cz + dy * (1 - inset) + dx * t]; };
+      const pebbles = (n, cols) => { for (let k = 0; k < n; k++) { const [x, z] = inT(100 + k), r = rnd(120 + k, .04, .11); put('rock', cols[k % cols.length], x, f + r * .35, z, r, r * .6, r, h(130 + k) * 6); } };
+      const corner = () => { // la ragnatela nell'angolo fra due pareti di fondo
+        if (back.length < 2 || h(9) > .45) return; const [a, b] = back[0][0] ? [back[0], back[1]] : [back[1], back[0]]; if (!a[0] || !b[1]) return;
+        put('web', '#e8e8e0|web', cx + a[0] * .82, top - .45, cz + b[1] * .82, .9, .7, 1, Math.atan2(a[0], b[1]) + Math.PI / 2 * (a[0] * b[1] > 0 ? 1 : -1) * .5); };
+      const cageLamp = (w, s, col) => { const [x, z] = atWall(w, s, .06); put('box', '#2a2a2a|met', x, f + 2.05, z, .2, .26, .2); put('sph', (col || '#ffd27a') + '|glow', x, f + 2.05, z, .08, .1, .08); if (UGR.lights.length < 24 && lampN++ < 10) UGR.lights.push([x - w[0] * .4, f + 1.9, z - w[1] * .4, col || '#ffc070']); };
+      if (fam === 'grotta') {
+        const nSt = 2 + Math.floor(h(1) * 6); for (let k = 0; k < nSt; k++) { const [x, z] = inT(10 + k), Lh = rnd(20 + k, .25, 1.3), r = rnd(30 + k, .05, .14); put('cone', h(40 + k) < .7 ? '#c8c4b8' : '#a8a498', x, top - Lh / 2, z, r, Lh, r, 0, Math.PI); if (h(45 + k) < .2) put('sph', '#bfe8ff|wet', x, top - Lh - .04, z, .025, .04, .025); }   // la goccia in punta
+        back.forEach((w, j) => { if (h(50 + j) < .55) { const [x, z] = atWall(w, 51 + j, .22), Hh = rnd(52 + j, .3, 1.1), r = rnd(53 + j, .12, .24); put('cone', '#b8b2a4', x, f + Hh / 2, z, r, Hh, r); if (h(54 + j) < .5) put('cone', '#aaa498', x + w[1] * .25, f + Hh * .3, z + w[0] * .25, r * .6, Hh * .6, r * .6); if (Hh > .4) ugSolid(x, z, r * .8); }
+          if (h(55 + j) < .2) { const [x, z] = atWall(w, 56 + j, -.08); put('sph', '#9a968c', x, f + 1.1, z, .28 + h(57 + j) * .2, .9, .3, h(58 + j) * 3); }   // la colata di calcare sulla parete
+          if (h(59 + j) < .14) { const [x, z] = atWall(w, 60 + j, .1), c = h(61 + j) < .5 ? '#7ae8d0' : '#b8ff80'; for (let k = 0; k < 4; k++) put('sph', c + '|glow', x + (h(62 + k) - .5) * .4, f + .06 + h(63 + k) * .1, z + (h(64 + k) - .5) * .4, .04 + h(65 + k) * .04, .05, .04 + h(66 + k) * .04); if (UGR.lights.length < 24) UGR.lights.push([x, f + .5, z, c]); } });
+        walls.forEach((w, j) => { if (h(70 + j) < .3) { const [x, z] = atWall(w, 71 + j, .28), r = rnd(72 + j, .28, .5); put('rock', '#6a7276', x, f + r * .45, z, r, r * .7, r * 1.1, h(73 + j) * 6); ugSolid(x, z, r * .85); } });
+        if (h(80) < .3) { const [x, z] = inT(81), r = rnd(82, .35, .7); put('disc', '#0a1a20|wet', x, f + .015, z, r, .01, r * .7, h(83) * 3); }
+        pebbles(3 + Math.floor(h(84) * 5), ['#7a8286', '#5a6266', '#8a9296']);
+      } else if (fam === 'umida') {
+        if (h(80) < .5) { const [x, z] = inT(81), r = rnd(82, .3, .8); put('disc', '#0a1a1c|wet', x, f + .015, z, r, .01, r * .6, h(83) * 3); }
+        walls.forEach((w, j) => { if (h(90 + j) < .5) { const [x, z] = atWall(w, 91 + j, .1); put('disc', '#2e4a2a', x, f + .012, z, .5, .01, .2, w[0] ? Math.PI / 2 : 0); }   // le alghe al piede della parete
+          if (kd === 19 && h(92 + j) < .2) { const [x, z] = atWall(w, 93 + j, .25); put('cyl', '#5a4a38', x, f + .12, z, .1, 1.4, .1, w[0] ? 0 : Math.PI / 2, 0, Math.PI / 2); } });   // un legno portato dall'acqua
+        if (kd !== 11) for (let k = 0; k < 2; k++) if (h(95 + k) < .5) { const [x, z] = inT(96 + k), Lh = rnd(97 + k, .15, .5); put('cone', '#9aa2a0', x, top - Lh / 2, z, .05, Lh, .05, 0, Math.PI); }
+        pebbles(2 + Math.floor(h(84) * 4), ['#4a5452', '#323a38', '#56605c']);
+      } else if (fam === 'terra' || fam === 'miniera') {
+        back.forEach((w, j) => { if (h(50 + j) < .6) for (let k = 0; k < 3; k++) { const [x, z] = atWall(w, 51 + j * 5 + k, .06), Lh = rnd(52 + k, .25, .8); put('cyl', '#3a2a1c', x, top - Lh / 2, z, .018, Lh, .018, 0, (h(53 + k) - .5) * .5, (h(54 + k) - .5) * .5); } });   // le radici che pendono
+        corner(); pebbles(2 + Math.floor(h(84) * 4), ['#6e5438', '#8a8478', '#584230']);
+        if (fam === 'terra' && walls.length && h(60) < .07) { const w = walls[0], [x, z] = atWall(w, 61, .25); put('cyl', '#6a6e72|met', x, f + .17, z, .14, .34, .14); ugSolid(x, z, .15); }   // il secchio
+        if (fam === 'terra' && back.length && h(62) < .08) { const w = back[0], [x, z] = atWall(w, 63, .1); put('box', '#7a5a3a', x, f + .9, z, w[0] ? .04 : .25, 1.8, w[0] ? .25 : .04, 0, w[1] * .25, -w[0] * .25); }   // la tavola appoggiata
+        if (fam === 'miniera' && walls.length && h(64) < .2) { const w = walls[0], [x, z] = atWall(w, 65, .3); for (let k = 0; k < 5; k++) put('rock', k % 2 ? '#3a3632' : '#5a4a3a', x + (h(66 + k) - .5) * .5, f + .15, z + (h(67 + k) - .5) * .5, .18, .14, .18, k); put('sph', '#e8d070|glow', x, f + .28, z, .03, .03, .03); ugSolid(x, z, .35); }
+      } else if (fam === 'fogna') {
+        walls.forEach((w, j) => { const [x0, z0] = atWall(w, 30 + j, .32);
+          if (h(31 + j) < .35) put('box', h(32 + j) < .5 ? '#d8d4c8' : '#c8b890', x0, f + .23, z0, .18, .01, .13, h(33 + j) * 6);   // la cartaccia sul cordolo
+          if (h(34 + j) < .18) put('cyl', h(35 + j) < .5 ? '#2a5a2a|shine' : '#5a3a1a|shine', x0 + .2, f + .26, z0 + .1, .04, .26, .04, h(36 + j) * 6, 0, Math.PI / 2);   // la bottiglia
+          if (h(37 + j) < .12) put('cyl', '#b8bcc0|met', x0 - .2, f + .26, z0 - .1, .035, .1, .035, 0, 0, Math.PI / 2);   // la lattina
+          if (h(38 + j) < .05) { put('sph', '#2a2420', x0, f + .3, z0, .09, .06, .13, h(39 + j) * 6); put('cyl', '#5a3a3a', x0, f + .27, z0 + .13, .008, .18, .008, 0, Math.PI / 2 - .3); }   // il topo
+          if (!toCamW(w[0], w[1]) && h(40 + j) < .1) cageLamp(w, 41 + j);
+          if (!toCamW(w[0], w[1]) && h(42 + j) < .05) { const [x, z] = atWall(w, 43 + j, .02); put('box', '#1e4a8a|shine', x, f + 1.7, z, w[0] ? .02 : .42, .26, w[0] ? .42 : .02); put('box', '#f0f0e8', x - w[0] * .006, f + 1.7, z - w[1] * .006, w[0] ? .02 : .3, .1, w[0] ? .3 : .02); }   // la targa smaltata
+          if (!toCamW(w[0], w[1]) && h(44 + j) < .14) { const [x, z] = atWall(w, 45 + j, .015); put('box', '#3a2414', x, f + 1.0, z, w[0] ? .01 : .14, 1.4, w[0] ? .14 : .01); } });   // la colatura di ruggine
+      } else if (fam === 'pietra' || fam === 'carcere') {
+        walls.forEach((w, j) => { if (h(30 + j) < .12) { const [x, z] = atWall(w, 31 + j, .2); put('cyl', '#efe6cc', x, f + .06, z, .03, .12, .03); put('sph', '#ffc060|glow', x, f + .15, z, .018, .03, .018); if (UGR.lights.length < 24 && lampN++ < 10) UGR.lights.push([x, f + .4, z, '#ffb050']); }
+          if (h(32 + j) < .1) { const [x, z] = atWall(w, 33 + j, .25); for (let k = 0; k < 3; k++) put('cyl', '#e4dcc4', x + (h(34 + k) - .5) * .3, f + .03, z + (h(35 + k) - .5) * .3, .02, .22, .02, h(36 + k) * 6, Math.PI / 2); }
+          if (fam === 'carcere' && h(37 + j) < .3) { const [x, z] = atWall(w, 38 + j, .3); put('disc', '#b8a050', x, f + .02, z, .55, .03, .35, h(39 + j) * 3); }   // la paglia
+          if (fam === 'carcere' && !toCamW(w[0], w[1]) && h(40 + j) < .25) { const [x, z] = atWall(w, 41 + j, .02); for (let k = 0; k < 6; k++) put('ring', '#3a3a40|met', x, f + 1.4 - k * .1, z, .05, .05, .05, w[0] ? Math.PI / 2 : 0, k % 2 ? Math.PI / 2 : 0); } });   // la catena
+        corner(); pebbles(1 + Math.floor(h(84) * 3), ['#6e6a62', '#7a766c']);
+      } else if (fam === 'cemento') {
+        back.forEach((w, j) => { const [x, z] = [cx + w[0] * .97, cz + w[1] * .97]; put('box', '#1e1e1e', x, top - .35, z, w[0] ? .05 : 2, .07, w[0] ? 2 : .05); put('box', '#3a3a2a', x, top - .45, z, w[0] ? .04 : 2, .04, w[0] ? 2 : .04);   // i cavi lungo la parete
+          if (h(30 + j) < .1) put('box', '#6a6a60|met', x - w[0] * .05, top - .7, z - w[1] * .05, w[0] ? .1 : .3, .3, w[0] ? .3 : .1);   // la scatola di derivazione
+          if (h(31 + j) < .14) cageLamp(w, 32 + j, '#e8f0ff');
+          if (h(33 + j) < .08) { const [ax, az] = atWall(w, 34 + j, .015); put('box', '#d8b020', ax, f + 1.3, az, w[0] ? .01 : .5, .1, w[0] ? .5 : .01); put('box', '#d8b020', ax + w[1] * .25, f + 1.3, az + w[0] * .25, w[0] ? .01 : .18, .18, w[0] ? .18 : .01, 0, w[0] ? Math.PI / 4 : 0, w[0] ? 0 : Math.PI / 4); } });   // la freccia dipinta
+        walls.forEach((w, j) => { if (h(40 + j) < .06) { const [x, z] = atWall(w, 41 + j, .32); put('cyl', h(42 + j) < .5 ? '#3a5a3a|met' : '#7a2a1a|met', x, f + .45, z, .28, .9, .28); ugSolid(x, z, .3); } });   // il fusto
+        if (h(80) < .15) { const [x, z] = inT(81), r = rnd(82, .3, .6); put('disc', '#101416|wet', x, f + .015, z, r, .01, r * .7, h(83) * 3); }
+        if (h(85) < .2) { const [x, z] = inT(86); put('box', '#e8e4d8', x, f + .01, z, .15, .005, .21, h(87) * 6); }   // il volantino
+      } else if (fam === 'cantina') {
+        walls.forEach((w, j) => { if (h(30 + j) < .2) { const [x, z] = atWall(w, 31 + j, .25); put('cyl', '#1e3a1e|shine', x, f + .05, z, .04, .3, .04, h(32 + j) * 6, Math.PI / 2); }
+          if (h(33 + j) < .1) { const [x, z] = atWall(w, 34 + j, .3); put('box', '#7a5a34', x, f + .17, z, .5, .34, .35, h(35 + j)); ugSolid(x, z, .3); } });
+        corner(); pebbles(1, ['#6a5040']);
+      } else if (fam === 'ossa') {
+        walls.forEach((w, j) => { if (h(30 + j) < .25) { const [x, z] = atWall(w, 31 + j, .2); for (let k = 0; k < 4; k++) put('cyl', '#e4dcc4', x + (h(32 + k) - .5) * .4, f + .03 + k * .02, z + (h(33 + k) - .5) * .4, .025, .35, .025, h(34 + k) * 6, Math.PI / 2); if (h(35 + j) < .5) put('sph', '#d8d0b8', x, f + .1, z, .1, .11, .12); } });
+        corner(); pebbles(2, ['#a89a80', '#8a7856']);
+      } else if (fam === 'sepolta') {
+        for (let k = 0; k < 3; k++) if (h(30 + k) < .4) { const [x, z] = inT(31 + k); put('cyl', '#a85a3a', x, f + .03, z, .1, .2, .1, h(32 + k) * 6, Math.PI / 2); }   // i cocci
+        walls.forEach((w, j) => { if (h(40 + j) < .3) { const [x, z] = atWall(w, 41 + j, .2); put('box', '#c8b898', x, f + .05, z, .3, .08, .2, h(42 + j) * 3); } });   // l'intonaco caduto
+        pebbles(2, ['#8a8478', '#7a6a58']);
+      }
+    }
+    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(0, 0, 0, 'YXZ'), V = new THREE.Vector3(), S = new THREE.Vector3();
+    Object.entries(B).forEach(([k, l]) => { const [g, m] = k.split('#'), im = new THREE.InstancedMesh(dgeo(g), dmat(m), l.length);
+      l.forEach(([x, y, z, sx, sy, sz, ry, rx, rz], j) => { E.set(rx, ry, rz); Q.setFromEuler(E); V.set(x, y, z); S.set(sx, sy, sz); M4.compose(V, Q, S); im.setMatrixAt(j, M4); });
+      im.instanceMatrix.needsUpdate = true; im.receiveShadow = true; grp.add(im); });
+  }
+  // [regia] il rilievo dei materiali di sotto (mattoni, pietre, loculi, terra): una normal map dalla luminosità
+  function normalOfUG(c, k) {
+    const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data, out = mk(w, h), ox = out.getContext('2d'), im = ox.createImageData(w, h), d = im.data, L0 = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L0[i] = (src[i * 4] * .3 + src[i * 4 + 1] * .59 + src[i * 4 + 2] * .11) / 255;
+    for (let y = 0; y < h; y++) for (let X = 0; X < w; X++) { const xl = (X + w - 1) % w, xr = (X + 1) % w, yu = (y + h - 1) % h, yd = (y + 1) % h, dx = (L0[y * w + xr] - L0[y * w + xl]) * k, dy = (L0[yd * w + X] - L0[yu * w + X]) * k, l = Math.hypot(dx, dy, 1), i = (y * w + X) * 4;
+      d[i] = (-dx / l * .5 + .5) * 255; d[i + 1] = (dy / l * .5 + .5) * 255; d[i + 2] = (1 / l * .5 + .5) * 255; d[i + 3] = 255; }
+    ox.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(out); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; return t;
+  }
+  const withRelief = (m, k) => { if (m && m.map && m.map.image && m.map.image.getContext && !m.normalMap) { m.normalMap = normalOfUG(m.map.image, k || 3); m.normalScale = new THREE.Vector2(1, 1); m.needsUpdate = true; } return m; };
+  // [regia] LE GROTTE NON SONO A CASELLE: nelle cavità naturali (grotte, fiume, relitto, la roccia delle caverne, la frana di un
+  // ritrovamento) la parete si spezza in 4×3 facce e ogni vertice si allontana dal vuoto, verso la roccia, di 10-70 cm (di meno al piede,
+  // a gobbe a mezza altezza): il contorno si apre in nicchie e pance, gli spigoli delle caselle si arrotondano. Il vertice d'angolo
+  // si sposta di come stanno le caselle aperte attorno, così le pareti vicine restano cucite. Solo verso la roccia: lo spazio dove si
+  // cammina non cambia (niente piedi dentro la parete). Il pavimento si allunga fino al piede della parete.
+  function natPush(x, z, band, dx, dy, end, has) {
+    let ox = dx, oz = dy;
+    if (end) {
+      const gx = Math.round(x / TS), gz = Math.round(z / TS); let sx = 0, sz = 0, n = 0;
+      for (const [i, j] of [[gx - 1, gz - 1], [gx, gz - 1], [gx - 1, gz], [gx, gz]]) if (has(i, j)) { sx += (i + .5) * TS; sz += (j + .5) * TS; n++; }
+      if (!n || n === 4) return [0, 0];
+      ox = x - sx / n; oz = z - sz / n; const l = Math.hypot(ox, oz); if (l < .01) return [0, 0]; ox /= l; oz /= l;
+    }
+    const kx = Math.round(x * 2), kz = Math.round(z * 2), h = hash2i(kx + band * 31, kz - band * 17), h2 = hash2i(kx * 3 + 1, kz * 7 + 2);
+    const m = (.12 + h2 * .5) * (band === 0 ? .5 : band === 3 ? .8 : .7 + h * .6);
+    return [ox * m, oz * m];
+  }
+  function natWall(arr, uv, fl, a, b, c2, d, y0, y1, dx, dy, f, has) {
+    const NS = 4, YB = [0, .35, .7, 1], V = [], len = Math.hypot(c2 - a, d - b);
+    for (let k = 0; k <= NS; k++) { const x = a + (c2 - a) * k / NS, z = b + (d - b) * k / NS, row = [];
+      for (let j = 0; j < 4; j++) { const [px, pz] = natPush(x, z, j, dx, dy, k === 0 || k === NS, has); row.push([x + px, y0 + (y1 - y0) * YB[j], z + pz]); }
+      V.push(row); }
+    for (let k = 0; k < NS; k++) for (let j = 0; j < 3; j++) {
+      const p0 = V[k][j], p1 = V[k + 1][j], p2 = V[k + 1][j + 1], p3 = V[k][j + 1], u0 = k / NS * len / 2, u1 = (k + 1) / NS * len / 2, v0 = (p0[1] - y0) / 2, v1 = (p3[1] - y0) / 2;
+      arr.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2], p2[0], p2[1], p2[2], p0[0], p0[1], p0[2], p2[0], p2[1], p2[2], p3[0], p3[1], p3[2]);
+      uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+    }
+    if (fl) for (let k = 0; k < NS; k++) {
+      const ea = [a + (c2 - a) * k / NS, b + (d - b) * k / NS], eb = [a + (c2 - a) * (k + 1) / NS, b + (d - b) * (k + 1) / NS], pa = V[k][0], pb = V[k + 1][0], y = f + .005;
+      fl[0].push(ea[0], y, ea[1], eb[0], y, eb[1], pb[0], y, pb[2], ea[0], y, ea[1], pb[0], y, pb[2], pa[0], y, pa[2]);
+      fl[1].push(ea[0] / 2, ea[1] / 2, eb[0] / 2, eb[1] / 2, pb[0] / 2, pb[2] / 2, ea[0] / 2, ea[1] / 2, pb[0] / 2, pb[2] / 2, pa[0] / 2, pa[2] / 2);
+    }
+  }
   // [sottosuolo] i telai di legno: pali, traversa, saette, tavole contro la terra, una lanterna ogni tanto. Istanze: pochi draw call.
   function tunnelWood(grp, tiles, has, L, toCam) {
     if (!tiles.length) return;
