@@ -26603,7 +26603,7 @@ var Game = (function () {
   // ---------------- DECISIONI ----------------
   function say(st, n, text, dur) { n.bark = { text, until: st.clock + (dur || 3.4) }; n.barkCd = st.clock + 8; }
   const COMBAT_BARKS = {
-    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!'],
+    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!', 'Calmati! CALMATI! È un Dovere!', 'Ai sensi del comma antani, fuoco!'],
     squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!', 'Nino! Lo Squalo dice che ti vuole bene! Ma deve spararti!', 'Esci, che mia madre mi aspetta per pranzo!'],
     marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!', 'Mais qui a pris ma baguette?! Pardon. Tirez!'],
     // [arcipelago]
@@ -29605,7 +29605,8 @@ var Risacca = (function () {
     if (hr === 20) {
       if (st.t < R.ripetitore.brokenUntil) G.feed(st, 'Ore 20: gli schermi restano neri. Il Garante tace.', 'good');
       else if (R.onAir && st.t - R.onAir < 30) { R.morale = clamp(R.morale + 10, 0, 100); G.feed(st, 'Ore 20: al posto del Garante, in molti bar si sente Radio Scirocco.', 'good'); }
-      else { G.feed(st, 'Ore 20: il Garante parla da tutti gli schermi. «L\'ordine è una carezza.»', 'radio'); R.morale = clamp(R.morale - 1, 0, 100); }
+      else { G.feed(st, `Ore 20: il Garante parla da tutti gli schermi. ${typeof Culto !== 'undefined' ? Culto.garante(st) : '«L\'ordine è una carezza.»'}`, 'radio');   // [culto] ogni sera un discorso diverso
+        R.morale = clamp(R.morale - 1, 0, 100); }
     }
     if (hr === 22 && rl >= 4) G.feed(st, 'Ora Quieta anticipata: coprifuoco su tutta l\'isola.', 'bad');
     // chi parla troppo
@@ -37536,7 +37537,7 @@ var Protagonista = (function () {
         return night ? 'Ti butti sul letto.' : 'Ti stendi un attimo.'; } : null, 'non hai sonno');
       add('mangia_casa', `Mangia qualcosa a casa (dispensa: ${M.pantry})`, M.pantry > 0 ? () => { M.pantry--; N.fame = clamp(N.fame - .6, 0, 1); M.stats.mangiato++; startWarp(st, 'pasto', st.t + 25, 'mangi'); return 'Pane, un po\' di formaggio, il caffè della moka.'; } : null, 'la dispensa è vuota: fai la spesa');
       add('lavati', 'Lavati', () => { N.igiene = 0; startWarp(st, 'bagno', st.t + 20, 'ti lavi'); return 'Acqua tiepida, più o meno.'; });
-      add('tv', 'Guarda la TV del Garante', () => { N.svago = clamp(N.svago - .2, 0, 1); startWarp(st, 'tv', st.t + 45, 'guardi la TV'); return pick(['«L\'ordine è una carezza.» Il Garante sorride.', 'Varietà del sabato, applausi registrati.', 'Il telegiornale: il raccolto è record, il carbone abbonda.']); });
+      add('tv', 'Guarda la TV del Garante', () => { N.svago = clamp(N.svago - .2, 0, 1); startWarp(st, 'tv', st.t + 45, 'guardi la TV'); return typeof Culto !== 'undefined' && Math.random() < .7 ? Culto.tv() : pick(['«L\'ordine è una carezza.» Il Garante sorride.', 'Varietà del sabato, applausi registrati.', 'Il telegiornale: il raccolto è record, il carbone abbonda.']); });   // [culto] la TV del Garante
       const hot = Object.entries(P.inv || {}).filter(([k, v]) => v > 0 && ['refurtiva', 'roba', 'pistola', 'mitra', 'lupara', 'coltello'].includes(k));
       if (hot.length) add('nascondi', 'Nascondi la roba che scotta sotto le assi', () => { hot.forEach(([k, v]) => { M.stash[k] = (M.stash[k] || 0) + v; delete P.inv[k]; if (P.arms && P.arms[k]) { M.stash['_arm_' + k] = P.arms[k]; delete P.arms[k]; if (P.cur === k) P.cur = 'pugni'; } }); return 'Sotto le assi del pavimento. Nessuno ci guarda.'; });
       if (Object.keys(M.stash).some(k => !k.startsWith('_') && M.stash[k] > 0)) add('riprendi', 'Riprendi la roba nascosta', () => { P.inv = P.inv || {}; Object.entries(M.stash).forEach(([k, v]) => { if (k.startsWith('_arm_')) { P.arms[k.slice(5)] = v; } else P.inv[k] = (P.inv[k] || 0) + v; }); M.stash = {}; return 'Ripresa.'; });
@@ -42498,14 +42499,14 @@ var Ordine = (function () {
     if (esito === 'ok' && k.ris && k.ris.ideo > .6 && Math.random() < .12) { esito = 'fermo'; why = 'sospetto della Risacca'; }
     if (esito === 'ok' && (O.sorvegliati[k.id] || 0) >= 2 && Math.random() < .3) { esito = 'fermo'; why = 'segnalato dall\'Ufficio Rettifiche'; }
     k.ord.stopped = null;
-    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
+    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.', 'Per stavolta la sua Calma è sufficiente.', 'Sereno. Abbastanza. Circolare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
     else if (esito === 'multa') {
       const m = 2 + Math.floor(Math.random() * 4); if (P.money !== undefined) P.money -= m; O.stats.multe++;
-      G.say(st, n, `Multa: ${why}. ${m}.000 lire.`, 2.6);
+      G.say(st, n, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why}. ${m}.000 lire. Lunga Calma.` : `Multa: ${why}. ${m}.000 lire.`, 3);   // [culto]
       if (PL) { PL.note(st, k, `multa dai Grigi (${why}): ${m}.000 lire`, 'bad', { w: .45, tag: 'multa' }); if (P.need) P.need.rabbia = clamp((P.need.rabbia || 0) + .12, 0, 1); }
     } else {
-      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.']), 2.6);
-      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?']), 2.6);
+      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.', 'Ai sensi del comma antani, con scappellamento, lei viene con noi.', 'Lei è stato selezionato per un colloquio di Calma.']), 2.6);
+      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?', 'Ma io sono calmissimo!', 'Lunga Calma! Ho detto Lunga Calma!']), 2.6);
       n.ord.chk = null; fermo(st, n, k, why); return true;
     }
     done(); return true;
@@ -42562,7 +42563,7 @@ var Ordine = (function () {
     if (d > 1.4) { seek(st, cop, p.x, p.y, dt, 1.9, 1.2); } else { stand(cop, undefined, dt); faceTo(cop, p.x, p.y, dt); }
     const moving = Math.abs(p.speed || 0) > 1.2 || p.vehicle && Math.hypot(...(() => { const v = st.vehicles.find(k => k.id === p.vehicle); return v ? [v.vx || 0, v.vy || 0] : [0, 0]; })()) > 2;
     if (C.phase === 'alt') {
-      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.']), 2.5); }
+      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.', 'Documenti, tessera e la faccia serena.']), 2.5); }
       else if (d > 16 || (st.clock - C.t0 > 9 && moving)) return flee(st, cop, C);
       else if (st.clock - C.t0 > 20) end();
       return;
@@ -42612,7 +42613,7 @@ var Ordine = (function () {
     }
     if (bad <= 2) {
       const m = 5 + bad * 5; p.money -= m; O.stats.multe++;
-      G.say(st, cop, `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3);
+      G.say(st, cop, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why.join(', ')}. ${m}.000 lire.` : `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3.4);   // [culto]
       G.feed(st, `Multa di ${m}.000 lire (${why.join(', ')})${seized.length ? '. Sequestrati: ' + seized.map(nomeOgg).join(', ') : ''}.`, 'bad');
       G.addLog(st, `${G.clockStr(st.t)} · Controllo dei Grigi: multa di ${m}.000 lire (${why.join(', ')}).`, 'bad');
       if (C.why === 'base' || C.why === 'varco') { const v = PLACES.varco; if (v) { p.x = v.x - 10; p.y = v.y; } G.feed(st, 'Ti riaccompagnano fuori dal Varco.', 'info'); }
@@ -42920,9 +42921,9 @@ var Ordine = (function () {
 
   // ================= PROTESTE =================
   const SLOGAN = {
-    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!'],
+    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!', 'Il miracolo non si mangia!'],
     arresto: ['Liberatelo!', 'Assassini!', 'Ridateci {nome}!', 'Vergogna!', 'Non ha fatto niente!'],
-    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!'],
+    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!', 'Meno Calma, più pane!', 'Il Garante è calvo!'],
     risacca: ['La Risacca non si ferma!', 'Libertà!', 'Abbasso il Garante!', 'Ridateci i nostri!', 'L\'onda torna sempre!'],
   };
   const BANNER = { pane: ['PANE', 'ABBIAMO FAME', 'LA NAVE È NOSTRA'], arresto: ['LIBERATELI', 'RIDATECI {NOME}', 'BASTA FERMI'], rabbia: ['BASTA', 'VIA I GRIGI', 'NON ABBIAMO PAURA'], risacca: ['LIBERTÀ', 'LA RISACCA', 'ABBASSO IL GARANTE', 'L\'ONDA TORNA'] };
@@ -51447,7 +51448,7 @@ var Eventi = (function () {
       n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
     up: { start(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev) { n.__ev.down = 0; n.stun = 0; n.__ev.pose = 'rialza'; } }, wait: () => 1.2, after(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev && n.__ev.pose === 'rialza') n.__ev.pose = null; } },
     brawl: { start(st, sc, b) { const A = AZ(), x = actor(sc, b.brawl[0]), y = b.brawl[1] === 'player' ? 'player' : actor(sc, b.brawl[1]); sc.over = true; if (!A || !A.brawl || !x || !x.pop || (y !== 'player' && !(y && y.pop))) return; sc.after = () => { try { A.brawl(st, x, y, { why: sc.def.id }); } catch (e) { } }; }, wait: () => 0 },
-    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!', 'Avvisate mia madre! Anzi no.', 'Posso almeno finire il gelato?']), 3); } }, wait: () => 0 },
+    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!', 'Avvisate mia madre! Anzi no.', 'Posso almeno finire il gelato?', 'Lunga Calma! Lunga Calma! Sono calmissimo!']), 3); } }, wait: () => 0 },
     pay: { start(st, sc, b) { const x = actor(sc, b.pay[0]), y = actor(sc, b.pay[1]), k = b.pay[2] || 1; if (x && y && x.pop && y.pop && x.pop.money >= k) { x.pop.money -= k; y.pop.money += k; } }, wait: () => 0 },
     p: { start(st, sc, b) { splice(sc, rnd() < b.p ? b.then : b.else); }, wait: () => 0 },
     fn: { start(st, sc, b) { b.fn(st, sc); }, wait: b => b.w || 0 },
@@ -51863,7 +51864,7 @@ var Eventi = (function () {
     { id: 'vecchi_panchina', w: 3, posto: 'panchina', ora: [14, 19.5], roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'old|any', r: 20 }, { id: 'c', near: 'a', f: 'old|any', r: 20 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.1 }, { slot: 'b', i: 1, n: 3, sp: 1.1 }] }, { pose: 'a', p: 'siede' }, { pose: 'b', p: 'siede' }, SAY('a', 'Una volta qui c\'era il mare fino alla chiesa.', 'Mio nipote vuole andare in Germania.', 'Il Garante? Ne ho visti passare tre.'),
       { hand: 'c', id: 'giornale' }, { slot: 'c', i: 2, n: 3, sp: 1.1 }, { pose: 'c', p: 'legge_su' }, SAY('b', 'E dove andava il mare, scusa?', 'Tutti vogliono andare via.', 'Parla piano, Peppino.'), { wait: 3 },
-      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { hand: 'c', id: null }, { wait: 1 }] },
+      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.', 'Qui dice che il Garante ha sconfitto l\'inverno. Fuori gela.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { hand: 'c', id: null }, { wait: 1 }] },
     { id: 'madri_pensilina', w: 3, posto: ['pensilina', 'fermata'], ora: [15, 18.5], roles: [{ id: 'a', f: 'f' }, { id: 'b', near: 'a', f: 'f|any', r: 22 }], beats: [
       { hand: 'b', id: 'borsa' }, { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { pose: 'a', p: 'orologio_su' }, { pose: 'b', p: 'aspetta' }, SAY('a', 'Il sette è in ritardo di venti minuti.', 'Con questo autobus non si arriva mai.', 'I bambini escono alle cinque.'),
       SAY('b', 'Ieri non è passato proprio.', 'Mia figlia ha preso otto in italiano.', 'Hai visto i Grigi stamattina al Mercato?'), { pose: 'a', p: 'discute_su' }, SAY('a', 'Otto! Brava. La mia solo in ginnastica.', 'Li ho visti. Hanno preso il figlio della Pina.'), { wait: 3 },
@@ -51915,9 +51916,9 @@ var Eventi = (function () {
       { p: .35, then: [{ pose: 'c', p: 'porge', w: 1.5 }, SAY('c', 'Ho della roba dal porto. Sigarette, vere.', 'Mi servono due radio. Pago.'), { pay: ['a', 'c', 2] }, { pose: 'c', p: 'scalda' }, SAY('a', 'Non qui, dopo.', 'Dammene due stecche.')],
         else: [SAY('c', 'Mio padre faceva il pescatore. Ora fa la fila alla Rocca.', 'Cantiamo? No, che arrivano.'), SAY('a', 'Tutti in fila alla Rocca, un giorno o l\'altro.')] }, { wait: 5 }, SAY('b', 'Un altro po\' di legna e vado a dormire.'), { wait: 2 }, { pose: 'a' }, { pose: 'b' }, { pose: 'c' }] },
     { id: 'posto_blocco', w: 3, posto: 'porta_della_citta', ora: [17, 24.5], roles: [{ id: 'a', f: 'cop', r: 30 }, { id: 'b', near: 'a', r: 26, min: 6 }], beats: [
-      { slot: 'a', i: 0, n: 1, sp: 1.6 }, { pose: 'a', p: 'aspetta' }, { go: 'b', to: 'spot', sp: 1.5, d: 1.8, t: 16 }, { look: 'a', at: 'b' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Alt. Documenti.', 'Fermo. Dove va a quest\'ora?', 'Posto di blocco. I documenti.'),
-      { look: 'b', at: 'a' }, { pose: 'b', p: 'porge', w: 1.5 }, SAY('b', 'Torno a casa, agente.', 'Ecco... sono in ordine.', 'Lavoro al porto, finisco adesso.'), { pose: 'a', p: 'perquisisce', w: 3 },
-      { p: .2, then: [SAY('a', 'Questo nome mi dice qualcosa. Vieni con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Circolare. E a casa prima dell\'Ora Quieta.', 'Vada. E si tagli i capelli.'), SAY('b', 'Grazie, agente.', 'Buonasera.'), { flee: 'b', from: 'a', sp: 1.5 }] }, { pose: 'a', p: 'aspetta' }, { wait: 3 }, { pose: 'a' }] },
+      { slot: 'a', i: 0, n: 1, sp: 1.6 }, { pose: 'a', p: 'aspetta' }, { go: 'b', to: 'spot', sp: 1.5, d: 1.8, t: 16 }, { look: 'a', at: 'b' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Alt. Documenti.', 'Fermo. Dove va a quest\'ora?', 'Posto di blocco. I documenti.', 'Alt. Controllo di Calma. Documenti, tessera e un\'espressione serena.'),
+      { look: 'b', at: 'a' }, { pose: 'b', p: 'porge', w: 1.5 }, SAY('b', 'Torno a casa, agente.', 'Ecco... sono in ordine.', 'Lavoro al porto, finisco adesso.', 'Lunga Calma, agente. Lunghissima.'), { pose: 'a', p: 'perquisisce', w: 3 },
+      { p: .2, then: [SAY('a', 'Questo nome mi dice qualcosa. Vieni con me.', 'Questo nome è poco sereno. Ai sensi del comma antani, viene con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Circolare. E a casa prima dell\'Ora Quieta.', 'Vada. E si tagli i capelli.', 'Circolare. E sorrida verso la Rocca: la vedono.'), SAY('b', 'Grazie, agente.', 'Buonasera.'), { flee: 'b', from: 'a', sp: 1.5 }] }, { pose: 'a', p: 'aspetta' }, { wait: 3 }, { pose: 'a' }] },
     // --- [mappa_compatta] le scene nuove della città compatta: il cypher alla grata, la fila del pane, la parata della domenica ---
     { id: 'cypher', w: 3, posto: 'cypher', ora: [20, 26], roles: [{ id: 'a', f: 'young|m' }, { id: 'b', near: 'a', f: 'young|any', r: 24 }, { id: 'c', near: 'a', f: 'young|any', r: 24 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'b', p: 'appoggiato' }, { pose: 'c', p: 'fuma_su' },
@@ -51935,13 +51936,13 @@ var Eventi = (function () {
       { hand: 'a', id: 'pane' }, SAY('a', 'Finalmente. Buona giornata!', 'A domani, Lella.'), { go: 'a', to: 'away', sp: 1.3, d: 2, t: 10 }, { hand: 'a', id: null }, { pose: 'b' }] },
     { id: 'parata', w: 2, posto: 'parata', ora: [10.5, 12.5], giorni: [6], roles: [{ id: 'a', f: 'cop', r: 60 }, { id: 'b', near: 'a', r: 30 }, { id: 'c', near: 'a', r: 30 }], beats: [
       { all: [{ slot: 'b', i: 0, n: 3, sp: 1.3 }, { slot: 'c', i: 1, n: 3, sp: 1.3 }, { go: 'a', to: 'spot', sp: 1.4, d: 3, t: 20 }] }, { crowd: 6, around: 'b', r: 26 }, { pose: 'a', p: 'aspetta' },
-      SAY('a', 'Indietro! Dietro la linea!', 'Fate largo alla banda!', 'Le bandiere in alto, su!'), { look: 'b', at: 'away' }, { look: 'c', at: 'away' },
-      SAY('folla', 'Eccoli che arrivano.', 'Viva... viva il Garante.', 'Mio figlio è in seconda fila!'), { pose: 'b', p: 'braccia_su' }, { wait: 4 },
-      SAY('c', 'Applaudi, che ti guardano.', 'Quanto dura quest\'anno?', 'L\'anno scorso pioveva, almeno.'), { pose: 'c', p: 'discute_su' }, SAY('b', 'Sorridi e stai zitto.', 'Fino a mezzogiorno, come sempre.'), { wait: 4 },
+      SAY('a', 'Indietro! Dietro la linea!', 'Fate largo alla banda!', 'Le bandiere in alto, su!', 'Applausi più lunghi! Il Garante li conta!'), { look: 'b', at: 'away' }, { look: 'c', at: 'away' },
+      SAY('folla', 'Eccoli che arrivano.', 'Viva... viva il Garante.', 'Mio figlio è in seconda fila!', 'Lunga Calma! Lunga Calma!', 'L\'ho visto! Era più alto della Rocca!'), { pose: 'b', p: 'braccia_su' }, { wait: 4 },
+      SAY('c', 'Applaudi, che ti guardano.', 'Quanto dura quest\'anno?', 'L\'anno scorso pioveva, almeno.', 'Dicono che quest\'anno cammina sull\'acqua. Della fontana.'), { pose: 'c', p: 'discute_su' }, SAY('b', 'Sorridi e stai zitto.', 'Fino a mezzogiorno, come sempre.', 'Applaudi e basta. Le mani contano.'), { wait: 4 },
       { pose: 'b' }, { pose: 'c' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Circolare! La parata è finita.', 'Tutti a casa, avanti.'), { pose: 'a' }, { all: [{ go: 'b', to: 'away', sp: 1.3, d: 2, t: 10 }, { go: 'c', to: 'away', sp: 1.3, d: 2, t: 10 }] }] },
     // --- la notte: la pattuglia, chi si guarda attorno ---
     { id: 'pattuglia_notte', w: 2, posto: ['porta_della_citta', 'angolo'], ora: [22.5, 29], roles: [{ id: 'a', f: 'cop', r: 34 }, { id: 'b', near: 'a', f: 'cop', r: 30 }], beats: [
-      { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { look: 'a', at: 'around' }, { look: 'b', at: 'around' }, SAY('a', 'Tutto tranquillo.', 'Hai sentito? Lì dietro.', 'Alle due si smonta.'), SAY('b', 'Troppo tranquillo.', 'Gatti. Sono sempre gatti.', 'Il capitano vuole due fermi stanotte.'), { wait: 4 },
+      { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { look: 'a', at: 'around' }, { look: 'b', at: 'around' }, SAY('a', 'Tutto tranquillo.', 'Hai sentito? Lì dietro.', 'Alle due si smonta.', 'Il capitano dice che stanotte il Garante ci sogna. Stiamo dritti.'), SAY('b', 'Troppo tranquillo.', 'Gatti. Sono sempre gatti.', 'Il capitano vuole due fermi stanotte.', 'Mi hanno dato la medaglia della Calma. Da allora non dormo.'), { wait: 4 },
       { all: [{ go: 'a', to: 'away', sp: 1.1, d: 2.5, t: 14 }, { follow: 'b', who: 'a', sp: 1.2, d: 1.6 }] }, SAY('a', 'Controlliamo i portoni.'), { wait: 2 }] },
     { id: 'circospetto', w: 1, posto: ['angolo', 'portone'], roles: [{ id: 'a', f: 'm', min: 6 }], beats: [
       { go: 'a', to: 'spot', sp: 1.7, d: .9, t: 16 }, { look: 'a', at: 'around' }, { pose: 'a', p: 'tasche_su' }, { wait: 4 }, { look: 'a', at: 'player' }, { wait: 1.5 }, { look: 'a', at: 'around' }, SAY('a', '...', 'Non adesso.', 'Qui no.'), { wait: 2.5 }, { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.8 }, { wait: 2 }] },
@@ -52316,6 +52317,170 @@ var Matti = (function () {
   return { CFG, MATTI, FRAM, SCENE, S, scheda, linea, choose, step };
 })();
 if (typeof module !== 'undefined') module.exports = Matti;
+</script>
+<script data-m="culto">/* Porto Vecchio — [culto] LA VOCE DEL REGIME: il culto della Calma (solo logica e testi, niente IA)
+   Il regime non perde la sua violenza, ma è grottesco: il Garante parla come un tribuno gonfio di sé (superlativi, folle
+   record, nemici coi soprannomi, «moltissimi lo dicono»), venerato da una religione tutta sua, la Calma (niente
+   cristianesimo: saluti, doveri, reliquie e miracoli suoi), e l'apparato parla per supercazzole burocratiche. La gente ci
+   vive dentro: ripete le formule, ci crede a metà, si arrangia, ha paura.
+   1. IL DISCORSO DELLE 20 (Culto.garante, lo usa risacca.js) e la TV di casa (Culto.tv, protagonista.js): ogni sera un pezzo diverso.
+   2. GLI ALTOPARLANTI: ogni 3-6 minuti, se sei all'aperto, un comunicato della Tutela; poco dopo uno lì vicino commenta.
+   3. LE SCENE del culto per eventi.js (in fondo).
+   4. Culto.supercazzola(): un comma a caso, per multe e ordinanze (ordine.js).
+   Prova: node test_culto.js */
+var Culto = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const EV = () => (typeof Eventi !== 'undefined' ? Eventi : null);
+  const CFG = { annuncio: [190, 360], reazione: 3.2, reazR: 13 };
+  const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
+
+  // ================= IL GARANTE, ALLE 20 =================
+  const GARANTE = [
+    'Stasera il mare è calmo. Ci ho parlato io. Il mare mi rispetta. Moltissimo.',
+    'La folla di domenica era la più grande della storia. Più grande del mare. Il mare stesso era lì, a guardare.',
+    'Il nostro pane è il pane più bello del mondo. Pane enorme. Così bello che mangiarlo è quasi uno spreco. Quindi ve ne diamo meno.',
+    'La Risacca? Gente piccola. Gente triste, con le biciclette. Io non ho mai visto una bicicletta vincere. Mai.',
+    'Mi chiamano il Padre della Calma. Non lo dico io. Lo dicono tutti. Chi non lo dice, lo dirà.',
+    'Ho inventato il freddo per insegnarvi a stare vicini. Prego. Non c\'è di che.',
+    'Oggi abbiamo rettificato meno gente di ieri. Un record. Domani faremo ancora meglio. O ancora di più. Vedremo.',
+    'Gli esperti mi dicono: Garante, l\'isola non può crescere. Io dico: guardate la mia faccia. È cresciuta.',
+    'Ricordate i Sette Doveri. Il primo è la Calma. Gli altri sei li conosco io. Fidatevi.',
+    'Lupo il Lento ha detto cose cattive su di me. Ha settant\'anni. Settanta! Io alla sua età avrò ancora la mia età.',
+    'Chi applaude vivrà a lungo. Chi non applaude verrà applaudito. In caserma. Forte.',
+    'Il prezzo del carbone è sceso. Me l\'ha detto il carbone. Personalmente.',
+    'Non esistono sparizioni. Esistono persone che hanno scelto di essere irraggiungibili. Rispettiamo le loro scelte.',
+    'Lunga Calma a tutti. Lunga Calma soprattutto a me.',
+    'La crescita, come dicevo, è circolare ma dritta, in senso antiorario per chi viene da destra. Chi ha capito è con noi. Chi non ha capito è con noi lo stesso.',
+    'Stasera vi dico una cosa che non ho mai detto a nessuno. Non ve la dico. È troppo forte. Ma è fortissima.',
+    'Il Mare Grande mi ha scelto. L\'ha scritto sulla sabbia. Poi è arrivata l\'onda, ma io l\'avevo già letto.',
+    'Rita la Radiolina dice che io non dormo. È vero. Io non dormo: io ricarico.',
+    'Malanotte Malaconcia vive in un ovile. Un ovile! Io vivo nella Rocca. Pensateci, quando scegliete.',
+    'Il Continente ci invidia. Ci invidia tantissimo. Mi telefonano piangendo: Garante, come fai? Io non rispondo. Calma.',
+  ];
+  const garante = st => `«${GARANTE[(Math.floor((st && st.t || 0) / 1440) * 7 + 3) % GARANTE.length]}»`;
+  const TV = [
+    '«Lunga Calma a tutti. Soprattutto a me.» Il Garante si applaude da solo per sei minuti.',
+    'Il quiz del sabato: «Quanto ami il Garante?». Vincono tutti. Chi perde non è più in studio.',
+    'Il telegiornale: il carbone è record, il pane è enorme, il mare è d\'accordo.',
+    'Una televendita di ritratti del Garante. Il presentatore piange. Anche il ritratto, sembra.',
+    'Documentario: «Il Garante e il freddo, una storia d\'amore». Due ore. Nessuno sbatte le palpebre.',
+    'Il meteo della Calma: domani sereno. Chi vede nuvole è pregato di non vederle.',
+  ];
+
+  // ================= GLI ALTOPARLANTI =================
+  const ANNUNCI = [
+    'Oggi il cielo è stato approvato. Eventuali nuvole sono da considerarsi sovversive.',
+    'Si ricorda che segnalare è un gesto d\'amore. Ama il tuo vicino: segnalalo.',
+    'Il pane non è finito: è in fase di miracolo. Ripassate.',
+    'Cittadino, ti senti osservato? È il Garante che ti vuole bene. Da vicino. Da molto vicino.',
+    'Questa settimana l\'Ora Quieta comincia prima, per farvi riposare di più. Chi non riposa verrà riposato.',
+    'Le sparizioni di oggi sono state un grande successo. Grazie a tutti i partecipanti.',
+    'Ricordiamo i Sette Doveri: Calma, Calma, Rata, Calma, Applauso, Silenzio. E quello segreto.',
+    'È vietato pensare ad alta voce. Pensare a bassa voce è tollerato fino alle ventidue.',
+    'Il Garante ha toccato la fontana di Piazza San Rocco. L\'acqua ora è più buona. Il prezzo aumenta.',
+    'Firma una cambiale, ricevi in omaggio un ritratto del Garante. Appenderlo è facoltativo e obbligatorio.',
+    'Gli interrogatori sono registrati per migliorare la qualità della Calma.',
+    'Il Garante ha battuto il record di Calma: sei ore senza sbattere le palpebre. Gli occhi stanno bene. Gli occhi stanno benissimo.',
+    'Ricordiamo che il Muro non è un muro: è un abbraccio molto lungo, in cemento.',
+    'La Commissaria Pardo comunica: non esistono domande sbagliate. Solo persone sbagliate. Le aspettiamo.',
+    'La felicità di questo quartiere è stata misurata: insufficiente. Seguirà controllo.',
+    'Chi ha capito questo comunicato è pregato di presentarsi in caserma.',
+    'Lunga Calma! Ripetete con noi: Lunga Calma! Più forte! Ecco. Vi abbiamo sentiti. Tutti.',
+    'Oggi è la Giornata del Sorriso. I volti non sorridenti verranno fotografati per un ricordo.',
+  ];
+  // la supercazzola: commi, decreti e scappellamenti per multe e ordinanze
+  const SC = [['Ai sensi del comma', 'Visto il decreto', 'In ottemperanza al disposto', 'Come da circolare'], ['antani', 'tarapìa bis', 'sette e mezzo', 'quater prematurato', 'della Calma ventitré'], ['con scappellamento a destra', 'salvo conguaglio', 'in modalità serena', 'come fosse antani', 'per la sbrindellata della pratica']];
+  const supercazzola = () => SC.map(pick).join(' ');
+  const ordinanza = () => `${supercazzola()}, ${pick(['la fila è da intendersi prematurata', 'la piazza è temporaneamente rotonda', 'il marciapiede di sinistra è riservato ai fedeli', 'i cappelli vanno portati con Calma', 'il vento è autorizzato solo da nord', 'il caffè è dichiarato bevanda serena'])}. Lunga Calma.`;
+  // la gente lì vicino: ripete, ci crede a metà, si arrangia
+  const REAZIONI = [
+    'Lunga Calma.', '...lunga Calma, sì.', 'Lunga Calma a te. E a chi ci ascolta. Ci ascoltano, eh.',
+    'Mio cugino dice che il Garante ha toccato il mare e il mare si è calmato. Era bassa marea. Ma vabbè.',
+    'Il ritratto l\'ho messo in bagno. Girato verso il muro. Per rispetto.',
+    'Sette Doveri. Io ne so cinque. Gli altri due li faccio a caso.',
+    'In fase di miracolo. Anche ieri. È un miracolo lunghissimo.',
+    'Hai capito il comma? Neanch\'io. Applaudiamo e basta.',
+    'Ho segnalato mia suocera. Per amore. Lei ha segnalato me. Per amore anche lei. Siamo una famiglia molto amorevole.',
+    'Shh. Ha detto che è registrato.',
+    'Ogni volta che parla il pane costa di più. Dovrebbe parlare meno. Non l\'ho detto.',
+    'Io penso a bassissima voce. Anche adesso. Non sento niente.',
+    'Mia nonna prega lo schermo. Lo schermo è rotto. Lei dice che così ascolta meglio.',
+    'Sei ore senza sbattere le palpebre. Mio zio ce ne ha messe otto. Era morto, ma conta.',
+    'Un abbraccio in cemento. Allora lasciami andare, abbraccio. ...Non l\'ho detto.',
+    'Io sorrido sempre. Mi fanno male le guance dal \'79.',
+    'Applausi?', 'Ma chi l\'ha scritto questo? Mio figlio fa la terza e scrive meglio. Non dirglielo.',
+  ];
+
+  // ================= STATO E PASSO =================
+  const S = st => st.__culto || (st.__culto = { next: (st.clock || 0) + 60, q: null, deckA: [], deckR: [] });
+  const ok = (st, n) => n && !n.dead && !n.inside && !n.room && !n.__ev && !n.cop && !n.faction && !n.aggro && !(n.stun > 0) && !n.inVeh && !(n.panic > 0) && n.pop && (!n.action || n.action.name === 'routine');
+  const draw = (deck, L) => { if (!deck.length) L.forEach((_, i) => deck.push(i)), deck.sort(() => rnd() - .5); return L[deck.pop()]; };
+  function annuncio(st) {
+    const C = S(st), text = rnd() < .2 ? ordinanza() : draw(C.deckA, ANNUNCI);
+    G.feed(st, `Altoparlante della Tutela: «${text}»`, 'radio');
+    const f = st.feed && st.feed[0]; if (f && f.text.endsWith(`«${text}»`)) f.until = st.clock + 11;   // il tempo di leggerlo
+    C.q = { at: st.clock + CFG.reazione };
+    return text;
+  }
+  function step(st, dt) {
+    const C = S(st), p = st.player;
+    if (C.q && st.clock >= C.q.at) {   // uno lì vicino commenta
+      C.q = null;
+      const n = st.npcs.filter(k => ok(st, k) && hyp(k.x - p.x, k.y - p.y) < CFG.reazR).sort((a, b) => hyp(a.x - p.x, a.y - p.y) - hyp(b.x - p.x, b.y - p.y))[0];
+      if (n) G.say(st, n, draw(C.deckR, REAZIONI), 3.6);
+    }
+    if (st.clock < C.next) return;
+    C.next = st.clock + CFG.annuncio[0] + rnd() * (CFG.annuncio[1] - CFG.annuncio[0]);
+    if (p.indoor || st.chase || st.over || (p.lv && p.lv.k !== 'tetto')) return;
+    annuncio(st);
+  }
+  { const s0 = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (s0) s0(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Culto]', e); } } }; }
+
+  // ================= LE SCENE DEL CULTO (per eventi.js) =================
+  const SAY = (r, ...l) => ({ say: r, l });
+  const SCENE = [
+    { id: 'preghiera_schermo', w: 1, posto: ['sagrato', 'mercato', 'panchina'], soft: true, roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'siede_terra' }, SAY('a', 'Garante, fa\' che domani la rata sia più leggera. Non tanto. Un po\'.', 'Padre della Calma, proteggi il mio nipote. E se proprio devi prendere qualcuno, prendi il genero.'), { wait: 3 },
+      { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 }, SAY('b', 'Nonna, lo schermo è spento.', 'Signora, si alzi, fa freddo.'),
+      SAY('a', 'Lui ascolta lo stesso. Ha le antenne.', 'Spento è più intimo.'), SAY('b', '...Lunga Calma, nonna.', 'Va bene. Chieda anche per me.'), SAY('a', 'Per te ho già chiesto. Ha detto di no.', 'Lunga Calma, caro.'), { wait: 2 }] },
+    { id: 'reliquia', w: 1, when: 'day', posto: ['mercato', 'sagrato', 'angolo'], soft: true, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'merce' }, SAY('a', 'Reliquie della Calma! Autentiche!', 'Un capello del Garante! Caduto durante il Discorso del \'79!'), { wait: 2 }, { go: 'a', to: 'b', sp: 1.5, d: 1.3, t: 14 }, { pose: 'a', p: 'porge' },
+      SAY('b', 'Ma è biondo. Il Garante è calvo.', 'E questo cos\'è? Un tappo?'), SAY('a', 'Appunto. È l\'ultimo.', 'Il tappo della bottiglia che ha guardato. Guardato! Funziona per il mal di schiena.'),
+      { p: .4, then: [{ pay: ['b', 'a', 2] }, SAY('b', 'Va bene, uno. Per mia madre.', 'Lo prendo. Non si sa mai.'), SAY('a', 'Lunga Calma a sua madre. E a lei, quando ha pagato tutto.')], else: [SAY('b', 'Ne ho già tre a casa.', 'No, grazie, sono a posto con la Calma.'), SAY('a', 'Poi non dica che non gliel\'ho offerto. Lo dica, anzi: in caserma.')] }, { pose: 'a' }, { wait: 2 }] },
+    { id: 'convertito', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'adult', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.6, d: 1.2, t: 16 }, SAY('b', 'Ti vedo bene!', 'Ma sei tu? Sembri un altro.'), SAY('a', 'Ho preso la tessera della Calma. Dormo benissimo.', 'Ho fatto il corso dei Sette Doveri. Ora sono sereno di terzo grado.'),
+      SAY('b', 'Ma non ti hanno preso la casa?', 'E il negozio?'), SAY('a', 'Appunto. Meno pensieri.', 'Il negozio pensava troppo.'), { wait: 1 },
+      SAY('b', 'E adesso dove dormi?', 'E tua moglie?'), SAY('a', 'Benissimo. Te l\'ho detto.', 'Anche lei è serena. Da sua madre.'), { pose: 'a', p: 'saluta_su' }, SAY('a', 'Lunga Calma!'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'sportello', w: 1, posto: ['portone', 'vetrina', 'edicola'], soft: true, roles: [{ id: 'a', f: 'shop|adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.5, d: 1.2, t: 16 }, SAY('b', 'Scusi, per la licenza del banco?', 'Sono venuto per la pratica della casa.'),
+      { pose: 'a', p: 'discute_su' }, { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `La sua domanda è stata accolta in via prematurata. ${supercazzola()}.`, 4.4); }, w: 4.4 },
+      SAY('b', 'Quindi me la danno?', 'Cioè sì?'), SAY('a', 'Quindi no. Ma con molta Calma.', 'Quindi ripassi. Con un\'altra faccia.', 'Quindi sì, salvo il no.'),
+      SAY('b', 'E quando?', 'E adesso?'), { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `Come fosse antani: entro i termini, ${pick(['salvo i termini', 'oltre i termini', 'quando lo dice il Bollettino'])}.`, 3.8); }, w: 3.8 }, { pose: 'a' }, { flee: 'b', from: 'a', sp: 1.4 }, { wait: 2 }] },
+    { id: 'nuvola_garante', w: 1, when: 'day', roles: [{ id: 'a' }], beats: [
+      { pose: 'a', p: 'indica_su' }, SAY('a', 'Guardate! La nuvola! Ha la faccia del Garante!', 'Un segno! Il Garante è nel cielo!'), { crowd: 3, around: 'a', r: 22, p: 'indica_su' }, { wait: 2 },
+      SAY('folla', 'È uguale!', 'È più magra.', 'Non dirlo forte che è più magra.', 'Quella è una nuvola a forma di pera.'), { wait: 2.5 },
+      SAY('folla', 'Lunga Calma!', 'Bisogna denunciarla, quella nuvola. Per somiglianza.', 'Se piove adesso, è lui che piange.'), SAY('a', 'Se n\'è andata. Ci ha guardati ed è andata.', 'Io lo sapevo. Lo sapevo da martedì.'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'lunga_calma', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.5, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Lunga Calma, fratello!', 'Lunga Calma! Sereno?'), { wait: 3.2 }, { pose: 'a' },
+      SAY('a', 'Non rispondi? Va bene. Va bene. Non ti ho visto.', 'Niente formula? Ognuno ha i suoi tempi.'), { wait: 1.6 },
+      SAY('a', 'Però non ti ho visto molto bene. Chiaro?', 'Ma io non lo dico a nessuno. Lo scrivo soltanto.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
+    { id: 'controllo_calma', w: 2, roles: [{ id: 'a', f: 'cop', ring: [8, 40] }, { id: 'b', near: 'a', r: 22 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 18 }, { look: 'b', at: 'a' }, SAY('a', 'Alt. Controllo di Calma. Lei mi sembra agitato.', 'Fermo. Lei cammina in modo poco sereno.'),
+      SAY('b', 'Sono calmissimo, agente.', 'Lunga Calma, agente. Calmissimo.'), SAY('a', 'Troppo calmo. È sospetto.', 'Calmissimo è un superlativo. I superlativi li usa solo il Garante.'),
+      SAY('a', 'Mi reciti i Sette Doveri.', 'Il secondo Dovere. Subito.'), SAY('b', '...Il primo è stare calmi?', 'Calma, Calma... Rata?'),
+      { p: .7, then: [SAY('a', 'Il primo è non chiedere qual è il primo. Quindicimila lire.', 'Insufficiente. Multa serena.'), { pay: ['b', 'a', 3] }, SAY('b', 'Lunga Calma...', 'Grazie, agente. Molto calmo.')],
+        else: [SAY('a', 'Ai sensi del comma antani, lei viene con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }] }, { wait: 2 }] },
+    { id: 'segnalazione_amore', w: 1, posto: ['portone', 'dehors', 'panchina'], soft: true, roles: [{ id: 'a', f: 'f|any' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.5, d: 1.2, t: 16 }, SAY('a', 'Ti ho segnalato. Non prenderla male.', 'Volevo dirtelo io: ti ho segnalato.'),
+      SAY('b', 'Mi hai segnalato?!', 'Per cosa?'), SAY('a', 'Per amore. Ama il tuo vicino: segnalalo.', 'Avevi stretto la mano con poca Calma.'),
+      SAY('b', 'Va bene. Allora ti segnalo anch\'io.', 'Ah sì? Io ti ho segnalata martedì.'), SAY('a', 'Che bello. Siamo vicini davvero.', 'Lo sapevo. Per questo ti ho segnalato.'), { pose: 'a', p: 'saluta_su' }, { wait: 2 }] },
+  ];
+  { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
+
+  return { CFG, GARANTE, TV, ANNUNCI, REAZIONI, SCENE, S, garante, tv: () => pick(TV), annuncio, supercazzola, ordinanza, step };
+})();
+if (typeof module !== 'undefined') module.exports = Culto;
 </script>
 <script data-m="chiarezza">/* Porto Vecchio — [chiarezza] LE REGOLE DELLA LETTURA DEL FOTOGRAMMA (solo nella città nuova).
    «Qui uno vede mille cose eppure non si capisce nulla»: ogni inquadratura si legge in tre piani, il suolo (dove cammino), il fronte
@@ -52750,8 +52915,8 @@ var Vievive = (function () {
   // ================= LE PLANCE DELLE AFFISSIONI, I GIORNALI =================
   // il titolo del giorno: il Corriere del Gelo (il regime) e il Disgelo (il clandestino, ciclostilato, attaccato di notte)
   const TITOLI = {
-    corriere: ['RATE A TASSO ZERO PER OGNI FAMIGLIA', 'IL GARANTE INAUGURA IL NUOVO VIALE', 'RECORD DI CARBONE ALLA MINIERA', 'ORDINE E LAVORO: LA PARATA DI DOMENICA', 'ARRIVA LA NUOVA UTILITARIA DEL POPOLO', 'SVENTATO UN COVO DI SOVVERSIVI', 'IL CARBONE SCALDA L\'ISOLA'],
-    disgelo: ['LA MINIERA CI MANGIA VIVI', 'CHI HA SPARITO I RAGAZZI DEL PORTO?', 'IL GHIACCIO SI ROMPE', 'NON FIRMATE LE CAMBIALI', 'SABATO CYPHER ALLA GRATA', 'RADIO LUNA 98.6 · ACCENDETE', 'IL 20% NON SI DIMENTICA'],
+    corriere: ['RATE A TASSO ZERO PER OGNI FAMIGLIA', 'IL GARANTE INAUGURA IL NUOVO VIALE', 'RECORD DI CARBONE ALLA MINIERA', 'ORDINE E LAVORO: LA PARATA DI DOMENICA', 'ARRIVA LA NUOVA UTILITARIA DEL POPOLO', 'SVENTATO UN COVO DI SOVVERSIVI', 'IL CARBONE SCALDA L\'ISOLA', 'IL GARANTE PARLA COL MARE: È D\'ACCORDO', 'PANE ENORME PER TUTTI, PIÙ O MENO', 'FOLLA RECORD: PIÙ GRANDE DEL MARE', 'SPARIZIONI GIÙ, FELICITÀ SU', 'IL GARANTE INVENTA IL FREDDO', 'LUNGA CALMA! IL RECORD DELLE PALPEBRE'],
+    disgelo: ['LA MINIERA CI MANGIA VIVI', 'CHI HA SPARITO I RAGAZZI DEL PORTO?', 'IL GHIACCIO SI ROMPE', 'NON FIRMATE LE CAMBIALI', 'SABATO CYPHER ALLA GRATA', 'RADIO LUNA 98.6 · ACCENDETE', 'IL 20% NON SI DIMENTICA', 'IL PANE NON È UN MIRACOLO: È UN DIRITTO', 'IL GARANTE È CALVO'],
   };
   const titolo = (t, chi) => { const L = TITOLI[chi], d = Math.floor((t || 0) / 1440); return L[(d * (chi === 'corriere' ? 3 : 5) + 1) % L.length]; };
   let PLA = null;

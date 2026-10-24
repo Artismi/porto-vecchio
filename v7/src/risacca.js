@@ -1313,7 +1313,8 @@ var Risacca = (function () {
     if (hr === 20) {
       if (st.t < R.ripetitore.brokenUntil) G.feed(st, 'Ore 20: gli schermi restano neri. Il Garante tace.', 'good');
       else if (R.onAir && st.t - R.onAir < 30) { R.morale = clamp(R.morale + 10, 0, 100); G.feed(st, 'Ore 20: al posto del Garante, in molti bar si sente Radio Scirocco.', 'good'); }
-      else { G.feed(st, 'Ore 20: il Garante parla da tutti gli schermi. «L\'ordine è una carezza.»', 'radio'); R.morale = clamp(R.morale - 1, 0, 100); }
+      else { G.feed(st, `Ore 20: il Garante parla da tutti gli schermi. ${typeof Culto !== 'undefined' ? Culto.garante(st) : '«L\'ordine è una carezza.»'}`, 'radio');   // [culto] ogni sera un discorso diverso
+        R.morale = clamp(R.morale - 1, 0, 100); }
     }
     if (hr === 22 && rl >= 4) G.feed(st, 'Ora Quieta anticipata: coprifuoco su tutta l\'isola.', 'bad');
     // chi parla troppo
