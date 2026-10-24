@@ -434,3 +434,123 @@ col tempo), i bersagli del post, i pezzi delle case fuori fusione.
 - **le case fuse** (~140 MB di copie + ~120 sulla scheda dopo il giro): le copie servono per rifare i pezzi originali; i settori lontani
   potrebbero lasciare la scheda video (si ricaricano dalla copia);
 - **il caricamento**: la compattazione delle case costa ~15 s di processore in SwiftShader (~5 s su un processore vero).
+
+## 7. Caricamento ad anelli ([anelli])
+
+Il gioco non si apriva (computer e telefono): prima del primo fotogramma la città nuova si costruiva **tutta**, e dopo, nel menu, i blocchi
+del terreno si facevano interi a ogni fotogramma (fermo di decine di secondi). Ora c'è una cosa sola che decide cosa si fa e quando:
+`src/anelli.js` (il motore, non sa niente della città) con i ganci in `render.js` (fusione1 a settori, la sagoma, le statiche lontane, i
+blocchi del terreno).
+
+### 7.1 Gli anelli
+
+| anello | dove | cosa | quando |
+|---|---|---|---|
+| vicino | entro `Anelli.CFG.vicino` dal punto di partenza (170 m sul computer, 120 sul telefono: oltre la nebbia del primo sguardo) | le case fuse vere, le statiche, i blocchi del terreno | nel caricamento |
+| medio | quello che si raggiunge in ~20 s alla velocità di adesso (a piedi 110-150 m, in macchina fino a 420), oltre la nebbia | le case vere dei settori di 48 m (SETT1), le statiche a celle di 80 m | appena si gioca, per primi (distanza dal punto guardato meno un premio di 45 m per quello che sta davanti alla camera) |
+| lontano | il resto | la **sagoma**: le case come volumi (la scatola della casa girata come la casa, col colore del muro un po' spento e il tetto più scuro), una mesh sola, un programma solo | subito; poi, col tempo, la casa vera prende il suo posto |
+
+Tutto quello che si vede vicino nasce nel caricamento: niente spunta sotto gli occhi. Le cose lontane arrivano oltre la nebbia; se si corre
+più veloce dei lavori (un salto, la macchina), il settore che entra nella parte chiara della nebbia (`fog.near`) passa avanti con un tetto
+di tempo più largo (14 ms), e fino ad allora si vede la sagoma, non un buco.
+
+### 7.2 I lavori e il tetto di tempo
+
+Ogni lavoro è un generatore che fa un pezzo a ogni passo e cede da solo (`Anelli.scaduto()`): la fusione di un settore va mesh per mesh,
+poi le pile delle mappe una alla volta, poi un secchio alla volta (dopo il caricamento i secchi grandi si fanno a pezzi di al più 60.000
+vertici, 24.000 sul telefono: ogni passo breve, indice a 16 bit; più disegni, gli stessi pixel). Il tetto per fotogramma è 3,5 ms (2,5 sul
+telefono); 1 ms se il fotogramma misurato è lento rispetto al ritmo di riferimento (60, o 30 regolari sul telefono); 8 nel menu (6 sul
+telefono). In più una quota di vertici nuovi per fotogramma per la scheda video (160.000, 60.000 sul telefono), perché l'invio lo paga il
+disegno e non il lavoro (`Anelli.carica`, `Anelli.ASPETTA`: il lavoro aspetta il fotogramma dopo).
+
+I blocchi del terreno (che già si facevano a pezzi) hanno un passo per ogni pittore (gli stessi, nello stesso ordine) e la riva, il suolo
+e il suo mare in tre passi; nel menu corrono ma per al più 40 ms a fotogramma (prima un blocco intero: il primo, con la riva fine e il suo
+mare, teneva fermo il menu per 25 s in SwiftShader).
+
+### 7.3 La sfumatura
+
+Il quarto canale della tessitura delle case fuse (FD1, uno per casa: 0 di norma) dice quanto si vede ancora la sagoma. Lo shader delle case
+vere scarta i pixel dove il canale supera il retino (un rumore a gradiente intrecciato su `gl_FragCoord`, `Anelli.RETINO`), quello della
+sagoma i complementari: per ~0,7 s le due si danno il cambio pixel per pixel, senza buchi e senza doppioni. A canale 0 (sempre con
+`?tutto`) lo shader delle case non scarta niente: l'immagine è quella di prima.
+
+**L'onda del primo avvio** (a ogni apertura della pagina, nel menu): anche le case vicine partono sagome e salgono a cerchi dal punto guardato
+(110 m/s), come una città che si accende. Costa una mesh di scatole per un secondo e mezzo; `?noanimus` la spegne.
+
+### 7.4 Il telefono e la memoria
+
+Sul telefono le case lontane si fondono lo stesso, a pezzi (fondere libera i pezzi originali: diventano segnaposti e la fusa compattata è
+molto più piccola), ma restano spente per la camera (livello 0) finché il loro settore non entra nell'anello medio; le statiche lontane
+uguale. Così la scheda video riceve solo quello che si avvicina.
+
+### 7.5 Il gioco non aspetta la grafica
+
+Camminare, la quota del suolo (`groundH`, i praticabili), le porte, i tetti e la loro rete (tetti4: la regola dei piani; la misura sul
+modello vero, `tetti.js` scanStart, usa i gruppi della casa anche quando la casa è fuori scena), la gente (`vievive.js`), le missioni
+leggono i dati del mondo, non le mesh: dove la casa vera non è arrivata funzionano lo stesso. I raggi sulle case ancora fuori scena
+colpiscono i loro pezzi originali (interi: non sono ancora segnaposti).
+
+### 7.6 Gli interruttori e le sonde
+
+- `?tutto`: come prima (tutto nel caricamento, niente sagome, niente lavori). Lo Studio (editor.html) costruisce sempre tutto.
+- `?noanimus`: niente onda al primo avvio. `?anellilog`: il diario nella console.
+- `window.__anelli`: lo stato (lavori, fatti, tetto, coda, urgenti, i passi più lunghi in `picchi`, `tuttoT`: quando è arrivato tutto).
+  `Anelli.finisci()`: tutto subito (gli strumenti). `banco_peso.js` lo chiama da sé prima delle foto (`--anelli=vivo` per non farlo).
+- `window.__tl`: la linea del tempo del caricamento (`init0`, `init1`: la costruzione; `compilato`: dopo la compilazione).
+
+### 7.7 Le misure (24 ottobre, Chromium senza testa con SwiftShader, disegni a vuoto per i tempi; la macchina era carica: carico medio 5-12 su 4 processori, i tempi a muro oscillano del 20-30% fra due giri uguali, contano i rapporti)
+
+Sonda: `__rt` (le fasi della costruzione), `window.__tl` (la linea del tempo), `window.__anelli`; 1280×720 sul computer, 390×844 DPR 3 tocco
+`?leggera` sul telefono.
+
+| | `?tutto` (come prima) | ad anelli |
+|---|---:|---:|
+| computer: la costruzione (somma di `__rt`) | 97,0 s | 85,8-97,6 s |
+| computer: fusione1 nel caricamento | 9,9 s | 4,8-8,7 s (solo l'anello vicino) |
+| computer: il menu fermo sul primo blocco del terreno (riva fine e il suo mare) | 24-27 s | nessuno: passi di 0,1-0,7 s |
+| computer: le case dei 92 settori lontani dopo il caricamento | — | ~4,6 s di lavoro in tutto, a ≤3,5 ms per fotogramma (14 se un settore entra nella nebbia chiara); il passo più lungo dei lavori 30-50 ms |
+| telefono: la costruzione | 130,7 s | 129,0 s |
+| telefono: fusione1 nel caricamento | 26,1 s | 16,0 s |
+
+Dopo l'unione di [telefono] (gallant dff541d), stessa macchina: la costruzione (`init1 - init0`) 95,3 s con `?tutto` contro 89,9 s ad
+anelli, fusione1 17,0 contro 12,2 s.
+
+Il grosso del caricamento che resta non è nell'anello: `pulizia2` (il regista e il rumore, ~45 s qui) e i dati del mondo (`world_cittanuova`,
+`c2Dist`, la riva: dentro `water`, `buildings`) li alleggerisce il ramo dell'avvio (vedi il suo resoconto); la compilazione dei programmi
+della scheda video (~180, nel processo della scheda: in SwiftShader 110-150 s di processore) resta.
+
+Fotogrammi dopo «Gioca» (disegni a vuoto, il lavoro del processore, con la macchina carica): mediana e 95° percentile uguali fra `?tutto`
+e anelli (500-700 ms qui: in SwiftShader col processore diviso; su un computer vero ~10 volte meno); i lavori degli anelli 1-3,5 ms per
+fotogramma. Correndo a 15 m/s per 200 s: 80 settori su 96 arrivati, l'anello medio sale a 314 m, nessun buco (la sagoma tiene il posto).
+I passi lunghi che restano sono dei blocchi del terreno fuori da render.js (il suolo di `pavimenti.js`, il prato di `vegetazione.js`,
+la riva fine col suo mare: `copyTextureToTexture` aspetta la scheda video): 0,2-1,3 s qui, con la macchina carica.
+
+**La memoria del telefono** (`strumenti/banco_memoria.js --profilo=telefono`, giro borgo → marina → città → mercato → borgo):
+
+| | `?tutto` | ad anelli |
+|---|---:|---:|
+| dopo il caricamento: heap JS + scheda video | 863 + 365 = 1228 MB | 1016 + 321 = 1337 MB |
+| il massimo del giro: heap + scheda | 1622 MB | 1587 MB |
+| il picco della scheda video | 724 MB | 639 MB |
+
+Dopo il caricamento l'heap è più alto (le case lontane tengono i pezzi originali finché il loro settore non si fonde, a pezzi, in
+sottofondo) e la scheda più bassa (le case e le statiche lontane non ci vanno); durante il giro il totale scende sotto `?tutto`.
+
+**La stessa città di `?tutto`.** Dopo `Anelli.finisci()` (stesso seme, stesso punto, disegni a vuoto) la scena è la stessa vertice per
+vertice: le case fuse 13.326.384 vertici, le statiche 2.206.941, i pezzi rimasti nelle case 23.388, con la stessa somma delle posizioni nel
+mondo, e per ognuna delle 588 case lo stesso numero di vertici fusi (le case fuse dopo entrano anche nello streaming della scheda video di
+[memoria], `streamAdd1`). Cambiano solo il raggruppamento (le pile delle mappe per settore, i secchi tagliati a 60.000 vertici: 2.732 mesh
+contro 2.159) e il numero della tavolozza, non i texel. Le foto del banco (`banco_peso.js --rif`) restano diverse di uno scarto medio di
+3,4 (borgo) e 28 (marina) perché la camera del banco arriva al suo posto con un pixel di differenza fra due pagine (l'inseguimento dipende
+dai fotogrammi passati): spostando la foto di un pixel lo scarto della marina scende da 26 a 15; il confronto che conta è quello della scena.
+
+### 7.8 Quello che resta
+
+- Le fasi della costruzione delle case (`buildings`, `case`, le facciate, i tetti) sono ancora per tutta l'isola: leggono e scrivono dati
+  che altri usano dopo (b.__top, b.__win, le voci del registro di pulizia2). Il passo dopo è farle per settore (con `pulizia2`, che è di
+  un altro ramo, rifatto sul settore e i suoi vicini).
+- I passi lunghi dei blocchi fuori da render.js (pavimenti, vegetazione, la riva fine e il suo mare) vanno spezzati nei loro moduli.
+- Sul telefono le case lontane si fondono in sottofondo: finché non è finito l'heap è ~100-150 MB sopra `?tutto`.
+- La compilazione dei programmi (~180) è tutta nel caricamento: la si potrebbe dividere fra vicino e lontano solo con una compilazione
+  asincrona che three r149 non ha.
+
