@@ -188,9 +188,10 @@ var Cotto = (function () {
       return null;
     }
     const P = DATI && DATI.punti[nome]; if (!P) { STATO.calcolato[nome] = DATI ? 'manca il punto' : PERCHE; return null; }
+    if (P.usato) { STATO.calcolato[nome] = 'punto già letto'; return null; }
     try {
       const ids = new Map(), conta = { o: 0, k: 0, n: 0, s: 0 }; Object.keys(radici).forEach(k => visita(radici[k], ids, conta));
-      const c0 = P.conta; if (c0.o !== conta.o || c0.k !== conta.k || c0.n !== conta.n || Math.abs(c0.s - conta.s) > 1e-6) { STATO.calcolato[nome] = 'stato diverso ' + JSON.stringify(conta) + ' / ' + JSON.stringify(c0); if (typeof console !== 'undefined') console.warn('[cotto]', nome, STATO.calcolato[nome]); return null; }
+      const c0 = P.conta; if (c0.o !== conta.o || c0.k !== conta.k || c0.n !== conta.n || Math.abs(c0.s - conta.s) > 1e-6) { consuma(nome); STATO.calcolato[nome] = 'stato diverso ' + JSON.stringify(conta) + ' / ' + JSON.stringify(c0); if (typeof console !== 'undefined') console.warn('[cotto]', nome, STATO.calcolato[nome]); return null; }
       const A = { nome, P, ids, t0 }; APERTI[nome] = A; return A;
     } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); return null; }
   }
@@ -213,6 +214,8 @@ var Cotto = (function () {
   // chiudi(nome, privati, aperto, risolvi): dopo il calcolo. Nella cottura salva; all'avvio (aperto non null) riempie i privati che
   // il modulo passa già fatti (vettori, mappe, oggetti: si riempiono sul posto) e torna { chiave: valore } per gli altri.
   const PUNTI = {};
+  // [dieta] un punto letto (o scartato) non serve più: quando sono finiti tutti, via i dati cotti (il blocco binario e i punti, ~40 MB)
+  function consuma(nome) { if (!DATI || !DATI.punti[nome]) return; DATI.punti[nome] = { usato: true }; if (Object.keys(DATI.punti).every(k => DATI.punti[k].usato)) { DATI = null; STATO.liberato = true; } }
   // il vettore (o la mappa, o l'oggetto) del modulo si riempie sul posto col contenuto cotto se sono dello stesso genere
   function compatibile(t, j) {
     if (t === null || typeof t !== 'object' || j === null || typeof j !== 'object' || j.$r !== undefined) return false;
@@ -243,11 +246,11 @@ var Cotto = (function () {
       Object.keys(P.privati).forEach(k => { const j = P.privati[k], t = privati[k];
         if (compatibile(t, j)) { D.lista.push(t); out[k] = D.riempi(t, j); }
         else out[k] = D.dec(j); });
-    } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); delete APERTI[nome]; return null; }
+    } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); delete APERTI[nome]; consuma(nome); return null; }
     P.cambiati.forEach(([n, j]) => D.riempi(D.lista[n], j));
     STATO.ms[nome] = Math.round(ora() - t1);
     for (let i = 0; i < (P.caso || 0); i++) Math.random();
-    STATO.usato[nome] = Math.round(ora() - aperto.t0); delete APERTI[nome];
+    STATO.usato[nome] = Math.round(ora() - aperto.t0); delete APERTI[nome]; consuma(nome);
     return out;
   }
   // la cottura: tutti i punti in un file solo (strumenti/cuoci.js)
@@ -266,6 +269,6 @@ var Cotto = (function () {
       const g = genere(v); if (g === 'a' || g === 'o') { for (const k of Object.keys(v)) pila.push([v[k], p + '.' + k]); } else if (g === 'm') v.forEach((x, k) => pila.push([x, p + '.' + String(k)])); else if (g === 's') v.forEach(x => pila.push([x, p + '.s'])); }
     return out;
   }
-  return { FONTI, VERSIONE, RIFARE, restanti, apri, chiudi, sforna, visita, Codifica, Decodifica, STATO, get attivo() { return !!DATI; }, get cuoci() { return CUOCI; }, contaCaso, aB64, daB64 };
+  return { FONTI, VERSIONE, RIFARE, restanti, apri, chiudi, sforna, visita, Codifica, Decodifica, STATO, get attivo() { return !!DATI || !!STATO.liberato; }, get cuoci() { return CUOCI; }, contaCaso, aB64, daB64 };
 })();
 if (typeof module !== 'undefined') module.exports = Cotto;

@@ -617,8 +617,8 @@ var Vegetazione = (function () {
       const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
       if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t);   // [leggera] sul telefono a metà lato
       // l'atlante fotografico: quando arriva copre le celle FOTO e la corteccia
-      if (!FOTO_ON) CARICATO = Promise.resolve(true); else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
-        img.onerror = () => ok(false); img.src = (typeof window !== 'undefined' && window.PV_V && !window.PV_VEG_BASE ? window.PV_V : (u => u))(BASE + 'atlante_foto.png');   /* [avvio] l'impronta */ });
+      if (!FOTO_ON) { CARICATO = Promise.resolve(true); if (typeof LeggeraMem !== 'undefined' && LeggeraMem.fissa) LeggeraMem.fissa(t); } else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; if (typeof LeggeraMem !== 'undefined' && LeggeraMem.fissa) LeggeraMem.fissa(t); ok(true); };   /* [dieta] sul telefono la tela grande si butta: resta la metà che va alla scheda video */
+        img.onerror = () => { if (typeof LeggeraMem !== "undefined" && LeggeraMem.fissa) LeggeraMem.fissa(t); ok(false); }; img.src = (typeof window !== 'undefined' && window.PV_V && !window.PV_VEG_BASE ? window.PV_V : (u => u))(BASE + 'atlante_foto.png');   /* [avvio] l'impronta */ });
       return (ATL = t);
     }
 

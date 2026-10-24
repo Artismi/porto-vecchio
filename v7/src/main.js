@@ -553,14 +553,15 @@
   // ---------- Minimappa ----------
   let miniBase = null;
   function buildMinimap() { // pixel per pixel: sull'isola sono 160.000 caselle
-    miniBase = document.createElement('canvas'); miniBase.width = G.GW * 2; miniBase.height = G.GH * 2;
-    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * 2, G.GH * 2), T = G.T;
+    const K = window.PV_TELEFONO && !/[?&]nodieta\b/.test(location.search) ? 1 : 2;   // [dieta] sul telefono un pixel a casella (ogni casella era 2×2 dello stesso colore: si allarga disegnando, senza sfumare)
+    miniBase = document.createElement('canvas'); miniBase.width = G.GW * K; miniBase.height = G.GH * K;
+    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * K, G.GH * K), T = G.T;
     const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const C = {}; [[T.CLIFF, '#3a3432'], [T.GRAVEL, '#a8a49c'], [T.BLD, '#3a3150'], [T.WATER, '#0f3448'], [T.PIAZZA, '#4a5a66'], [T.VIA, '#2c2934'], [T.QUAY, '#5a5048'], [T.PIER, '#5a5048'], [T.SAND, '#b89a6a'], [T.GRASS, '#2f5a30'], [T.ROCK, '#4a4248'], [T.STAIRS, '#8a7a6a'], [T.WALK, '#6a5a6a'], [T.COB, '#1f1a2c'], [T.TREE, '#1c3a1c'], [T.DIRT, '#5a4430'], [T.FIELD, '#5a5a2a'], [T.DESERT, '#9a7a4a'], [T.SALT, '#b8bcc0'], [T.SHRUB, '#344a24'], [T.FOUNT, '#2a6a8a']].forEach(([k, v]) => { if (k !== undefined) C[k] = hex(v); });
-    const W2 = G.GW * 2;
+    const W2 = G.GW * K;
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const c = C[G.tileAt(tx, ty)] || [31, 26, 44];
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const o = ((ty * 2 + dy) * W2 + tx * 2 + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
+      for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) { const o = ((ty * K + dy) * W2 + tx * K + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
     }
     x.putImageData(img, 0, 0);
   }
@@ -568,7 +569,7 @@
     const c = $('minic'), x = c.getContext('2d'); c.width = 88; c.height = 88;
     const p = st.player, sc = 2 / G.TS;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
-    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); x.drawImage(miniBase, 0, 0);
+    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); if (miniBase.width === G.GW * 2) x.drawImage(miniBase, 0, 0); else { x.imageSmoothingEnabled = false; x.drawImage(miniBase, 0, 0, G.GW * 2, G.GH * 2); x.imageSmoothingEnabled = true; }
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
     // [sottosuolo] le porte di sotto: la metro (quadrato rosso), tombini, pozzi e grate (puntini grigi)
     if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c = p.lv ? P.u : P.s, X = (c[0] + .5) * G.TS, Y = (c[1] + .5) * G.TS; if (Math.abs(X - p.x) > 46 || Math.abs(Y - p.y) > 46) return;
