@@ -12091,13 +12091,20 @@ var Render = (function () {
   // (sul telefono 2-3 volte più fine dei pixel della scena), più forte nei toni medi e quasi niente nei neri e nei bianchi:
   // fa anche da retino contro le bande nei gradienti del cielo.
   const DEV = { rt: null, scene: null, cam: null, mat: null };
+  // [personaggi] IL TONO DI STRADA, nello stesso passaggio finale (5 letture di profondità in più, niente bersagli nuovi):
+  // un filo d'inchiostro sulle sagome vicine, segni leggeri sui salti di colore con un retino appena nelle ombre fonde, colore più pieno.
+  // ?nostrada lo spegne; con la qualità bassa si spegne da solo.
+  const STRADA = { on: !/[?&]nostrada\b/.test((typeof location !== 'undefined' && location.search) || ''), contorno: .55, segni: .3, pieno: .35, granaTel: .35 };
+  if (typeof window !== 'undefined') window.__STRADA = STRADA;
   function devInit() {
     DEV.scene = new THREE.Scene(); DEV.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     DEV.mat = new THREE.ShaderMaterial({
-      uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, k: { value: .5 }, g: { value: 0 }, tm: { value: 0 } },
+      uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, k: { value: .5 }, g: { value: 0 }, tm: { value: 0 }, tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, sK: { value: new THREE.Vector4(0, 0, 0, 0) } },   /* [personaggi] tD, nf, sK: il tono di strada */
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: `precision highp float; precision highp sampler2D;
         uniform sampler2D t; uniform vec2 src; uniform float k; uniform float g; uniform float tm; varying vec2 vUv;
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 sK;   // [personaggi] sK: contorno, segni, colore pieno, (libero)
+        float linD(vec2 q){ float z = texture2D(tD, q).r * 2. - 1.; return 2. * nf.x * nf.y / (nf.y + nf.x - z * (nf.y - nf.x)); }
         float h21(vec2 p){ p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
         void main(){
           vec2 e = 1. / src;
@@ -12107,6 +12114,20 @@ var Render = (function () {
           vec3 amp = sqrt(clamp(min(mn, 1. - mx) / max(mx, 1e-4), 0., 1.));   // dove c'è già contrasto forte si spinge poco: niente aloni
           vec3 wt = amp * (-1. / mix(8., 5., k));
           vec3 o = clamp((c + (n + s + w + r) * wt) / (1. + 4. * wt), mn, mx);
+          if (sK.x + sK.y + sK.z > 0.) {   // [personaggi] il tono di strada: un filo d'inchiostro sulle sagome, segni leggeri dove il colore salta, colore più pieno
+            vec3 LW = vec3(.299, .587, .114); float l = dot(o, LW);
+            vec3 ink = o * vec3(.2, .16, .26);   // inchiostro: lo stesso colore, molto più scuro e un po' viola (niente nero piatto)
+            if (sK.x > 0.) { float d = linD(vUv), dn = max(max(linD(vUv - vec2(0., e.y)), linD(vUv + vec2(0., e.y))), max(linD(vUv - vec2(e.x, 0.)), linD(vUv + vec2(e.x, 0.))));
+              float sil = smoothstep(.03, .07, (dn - d) / d) * (1. - smoothstep(60., 180., d));   // solo il lato davanti del salto: la linea sta sull'oggetto, sottile, e svanisce lontano
+              o = mix(o, ink, sil * sK.x); }
+            if (sK.y > 0.) { float gl = max(max(abs(dot(n - s, LW)), abs(dot(w - r, LW))), 0.);
+              o = mix(o, ink, smoothstep(.1, .28, gl) * sK.y * (1. - smoothstep(.75, .95, l)));   // i salti di colore netti (orli, scritte, finestre) prendono un segno
+              vec2 hp = gl_FragCoord.xy * .7071; hp = vec2(hp.x + hp.y, hp.y - hp.x) * .45;   // retino a 45° nelle ombre fonde, appena
+              float dot0 = length(fract(hp) - .5), rr = (1. - smoothstep(.06, .3, l)) * .42;
+              o *= 1. - (1. - smoothstep(rr - .08, rr + .08, dot0)) * sK.y * .35; }
+            if (sK.z > 0.) { float l2 = dot(o, LW); vec3 sat = mix(vec3(l2), o, 1. + sK.z * .6);   // colore pieno e luci in tre gradini morbidi
+              float q = (floor(l2 * 4. + .5) / 4.), lq = mix(l2, q, .35); o = max(sat * (lq / max(l2, 1e-3)), 0.) * sK.z + o * (1. - sK.z); }
+          }
           if (g > 0.) { vec2 fp = floor(gl_FragCoord.xy); float fr = floor(tm * 24.);   // la grana cambia 24 volte al secondo, come la pellicola
             float gr = h21(fp + fr * 17.31) + h21(fp * 1.37 + fr * 7.13 + 3.1) - 1.;   // triangolare: morbida, senza puntini isolati
             float l = dot(o, vec3(.299, .587, .114));
@@ -12116,7 +12137,8 @@ var Render = (function () {
     DEV.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DEV.mat));
   }
   function devPass() {
-    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = PHONE ? 0 : AMB.film || 0;   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */ U.tm.value = performance.now() / 1000;
+    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = (AMB.film || 0) * (PHONE ? STRADA.granaTel : 1);   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */   /* [personaggi] ora un velo leggerissimo, come chiesto */
+    const sv = STRADA.on && !LOWQ.on; U.tD.value = sv && rt ? rt.depthTexture : null; U.nf.value.set(camera.near, camera.far); U.sK.value.set(sv && rt ? STRADA.contorno : 0, sv ? STRADA.segni * (PHONE ? .7 : 1) : 0, sv ? STRADA.pieno : 0, 0); U.tm.value = performance.now() / 1000;
     renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */

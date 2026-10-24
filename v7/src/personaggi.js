@@ -23,10 +23,12 @@ var Personaggi = (function () {
   // =====================================================================================
   // GLI STILI (la tavola di prova): proporzioni, forme delle sezioni, ombreggiatura
   // =====================================================================================
+  // [personaggi] LA MARCA sulle magliette (il logo nel riquadro, il retro della coach): un nome solo, qui. Si prova dal vivo con ?marca=NOME.
+  const MARCA = (((typeof location !== 'undefined' && /[?&]marca=([^&]+)/.exec(location.search)) || [])[1] && decodeURIComponent(/[?&]marca=([^&]+)/.exec(location.search)[1]).toUpperCase().slice(0, 10)) || 'DOPE';
   const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
-    k: { nome: 'Kit', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
+    k: { nome: 'Kit', testa: 1.08, testaKit: 1.2, occhi: 1.4, mani: 1.2, piedi: 1.12, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.35, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
@@ -574,7 +576,7 @@ var Personaggi = (function () {
   }
   // cuce le parti nella figura; restituisce il profilo della testa misurato (per cappelli, baffi, barbe, occhiali)
   function testaKit(B, J, D, pelle, capH, K, base, taglio) {
-    const sc = sceltaKit(D), F = KT.f[sc.faccia], H = KT.f[sc.capelli], hb = J.Head, sk = D.testa && D.testa.scala || 1;
+    const sc = sceltaKit(D), F = KT.f[sc.faccia], H = KT.f[sc.capelli], hb = J.Head, sk = (D.testa && D.testa.scala || 1) * (S().testaKit || 1), OE = S().occhi || 1;   // [personaggi] testaKit, occhi: la testa e gli occhi del kit più grandi (lo stile cartoon)
     const col = { pelle, ombra: mulc(pelle, .86), occhi: [.06, .045, .04], ciglia: mulc(capH, .72), capelli: capH, baffi: mulc(capH, .85), casco: C3('#e8b030') };
     const neckY = hb[1] + F.neck, wOf = y => y < neckY + .035 ? [['Neck', 1 - sm((y - neckY) / .035)], ['Head', sm((y - neckY) / .035)]].filter(e => e[1] > 1e-3) : [['Head', 1]];
     const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi)), ...H.parts.filter(p => p.kind === 'capelli')];
@@ -584,10 +586,12 @@ var Personaggi = (function () {
     const pk = [sc.faccia, sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
     const tris = []; let eyS = 0, eyN = 0, chinY = 9, skTop = -9; const eyA = { y: 0, x: 0, z: -9 };
     usa.forEach(pt => {
-      const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
+      const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3;
+      let oc = null; if (pt.kind === 'occhi' && OE !== 1) { oc = [0, 0, 0]; for (let i = 0; i < n; i++) { oc[0] += Math.abs(pt.P[i * 3]); oc[1] += pt.P[i * 3 + 1]; oc[2] += pt.P[i * 3 + 2]; } oc = oc.map(v => v / n); }   // il centro di ciascun occhio (sono simmetrici: |x|) B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
       const keep = new Uint8Array(n).fill(1);
       for (let i = 0; i < n; i++) {
-        const p = [hb[0] + pt.P[i * 3] * sk, hb[1] + pt.P[i * 3 + 1] * sk, hb[2] + pt.P[i * 3 + 2] * sk];
+        let q0 = pt.P[i * 3], q1 = pt.P[i * 3 + 1], q2 = pt.P[i * 3 + 2]; if (oc) { const cx = Math.sign(q0) * oc[0]; q0 = cx + (q0 - cx) * OE; q1 = oc[1] + (q1 - oc[1]) * OE; q2 += .002; }
+        const p = [hb[0] + q0 * sk, hb[1] + q1 * sk, hb[2] + q2 * sk];
         if (taglio && pt.kind === 'capelli' && p[1] > taglio) keep[i] = 0;
         B.v(p, c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wOf(p[1])); B.N[(v0 + i) * 3] = pt.N[i * 3]; B.N[(v0 + i) * 3 + 1] = pt.N[i * 3 + 1]; B.N[(v0 + i) * 3 + 2] = pt.N[i * 3 + 2];
         if (pt.kind === 'occhi') { eyS += (p[1] - base[1]) / K; eyN++; eyA.y += p[1]; eyA.x += Math.abs(p[0] - hb[0]); eyA.z = Math.max(eyA.z, p[2]); }
@@ -595,6 +599,10 @@ var Personaggi = (function () {
       }
       for (let k = 0; k < pt.I.length; k += 3) { const a = pt.I[k], b = pt.I[k + 1], d = pt.I[k + 2]; if (keep[a] && keep[b] && keep[d]) B.I.push(v0 + a, v0 + b, v0 + d); if (misura && (pt.kind === 'pelle' || pt.kind === 'capelli')) tris.push(Object.assign([v0 + a, v0 + b, v0 + d].map(q => [B.P[q * 3], B.P[q * 3 + 1], B.P[q * 3 + 2]]), { pelle: pt.kind === 'pelle' })); }
     });
+    if (OE !== 1 && eyN) { const ey = eyA.y / eyN, ex = eyA.x / eyN, ez = eyA.z + .0025, r = .0055 * sk * OE, v = [.9, .9, .88], w = [['Head', 1]];   // [personaggi] il punto di luce negli occhi
+      B.ol = 0; [1, -1].forEach(sg => { const x = hb[0] + sg * ex + .006 * sk, y = ey + .005 * sk, v0 = B.n;
+        [[-r, -r], [r, -r], [r, r], [-r, r]].forEach(([a, b]) => { B.v([x + a * .8, y + b, ez], v, ZERO, ZERO, [0, 0, 0], [0, 0, 0], w); B.N[B.n * 3 - 3] = 0; B.N[B.n * 3 - 2] = 0; B.N[B.n * 3 - 1] = 1; });
+        B.I.push(v0, v0 + 1, v0 + 2, v0, v0 + 2, v0 + 3); }); }
     B.ol = 1;
     // il profilo come TESTE: [quota, mezza larghezza, mezza profondità, centro in avanti], in unità di K
     // il profilo si misura coi raggi sulla pelle vera: davanti e dietro al centro, di lato a metà profondità
@@ -1151,7 +1159,7 @@ var Personaggi = (function () {
     // 13 maglietta: il collo a costine, l'orlo cucito, le pieghe sotto le ascelle e in vita
     T(13, c => { add(c); line(c, .01, [[0, .975], [1, .975]]); cuci(c, [[0, .04], [1, .04]]); pieghe_busto(c); });
     // 14 maglietta con la stampa sul petto (secondo colore)
-    T(14, c => { c.fillStyle = MG; c.beginPath(); c.ellipse(.5, .62, .085, .13, 0, 0, 7); c.fill(); c.fillStyle = R; c.beginPath(); c.ellipse(.5, .62, .072, .11, 0, 0, 7); c.fill(); stella(c, .5, .64, .06, MG); scritta(c, 'PV', .5, .555, .035, Bl); scritta(c, 'ISOLA', .5, .45, .04, R); tee(c); });   // 14 la stampa: lo stemma tondo con la stella
+    T(14, c => { c.fillStyle = MG; c.beginPath(); c.ellipse(.5, .62, .085, .13, 0, 0, 7); c.fill(); c.fillStyle = R; c.beginPath(); c.ellipse(.5, .62, .072, .11, 0, 0, 7); c.fill(); stella(c, .5, .64, .06, MG); scritta(c, 'OG', .5, .555, .035, Bl); scritta(c, 'CREW', .5, .45, .04, R); tee(c); });   // 14 la stampa: lo stemma tondo con la stella
     // 15 felpa: la tasca a marsupio, le costine in fondo, le pieghe
     T(15, c => { add(c); costine(c, 0, .08, 40); c.fillStyle = 'rgba(0,255,0,.18)'; c.beginPath(); c.moveTo(.37, .1); c.lineTo(.63, .1); c.lineTo(.6, .34); c.lineTo(.4, .34); c.closePath(); c.fill(); line(c, .006, [[.37, .1], [.4, .34], [.6, .34], [.63, .1]]); line(c, .007, [[.37, .1], [.33, .24], [.4, .34]]); line(c, .007, [[.63, .1], [.67, .24], [.6, .34]]); cuci(c, [[.4, .32], [.6, .32]]); pieghe_busto(c); });
     // 38 bomber: la zip, le costine di fondo e del collo, le trapuntature, la taschina sulla manica no: sul petto
@@ -1271,9 +1279,9 @@ var Personaggi = (function () {
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
     // 26 box logo sul petto
-    T(26, c => { c.fillStyle = R; c.fillRect(.4, .56, .2, .11); scritta(c, 'PORTO', .5, .615, .06, Bl); tee(c); });
+    T(26, c => { c.fillStyle = R; c.fillRect(.4, .56, .2, .11); scritta(c, MARCA, .5, .615, Math.min(.06, .3 / MARCA.length), Bl); tee(c); });
     // 29 college: la scritta ad arco e il numero sotto
-    T(29, c => { ombra(c, 'ISOLA', .5, .6, .1, R, MG, .05); ombra(c, '84', .5, .4, .14, R, MG); tee(c); });
+    T(29, c => { ombra(c, 'FRESH', .5, .6, .1, R, MG, .05); ombra(c, '84', .5, .4, .14, R, MG); tee(c); });
     // 30 fiamme dall'orlo
     T(30, c => { for (let k = 0; k < 9; k++) fiamma(c, k / 8, .07, .3 + .16 * Math.abs(Math.sin(k * 2.3)), R); for (let k = 0; k < 9; k++) fiamma(c, k / 8, .035, .16 + .08 * Math.abs(Math.sin(k * 1.7)), MG); tee(c); });
     // 31 la faccina acida, grande sul petto (e una piccola dietro)
@@ -1282,14 +1290,14 @@ var Personaggi = (function () {
     // 35 il tramonto a righe con le palme
     T(35, c => { c.fillStyle = R; c.beginPath(); c.ellipse(.5, .55, .12, .18, 0, 0, 7); c.fill(); c.fillStyle = W3; for (let k = 0; k < 5; k++) c.fillRect(.36, .4 + k * .035, .28, .012 + k * .002);
       const palma = (u, s) => { c.fillStyle = MG; c.beginPath(); c.moveTo(u, .38); c.quadraticCurveTo(u + s * .02, .55, u + s * .01, .72); c.lineTo(u + s * .02, .72); c.quadraticCurveTo(u + s * .035, .55, u + .012, .38); c.fill(); for (let k = 0; k < 5; k++) { const a = -.6 + k * .55; c.beginPath(); c.moveTo(u + s * .015, .72); c.quadraticCurveTo(u + s * .015 + Math.cos(a) * .05, .72 + .06, u + s * .015 + Math.cos(a) * .09, .72 + Math.sin(a) * .07 - .02); c.lineTo(u + s * .015 + Math.cos(a) * .06, .72 + .02); c.fill(); } };
-      palma(.4, 1); palma(.6, -1); c.fillStyle = MG; c.fillRect(.36, .36, .28, .025); scritta(c, 'RIVIERA', .5, .3, .045, R); tee(c); });
+      palma(.4, 1); palma(.6, -1); c.fillStyle = MG; c.fillRect(.36, .36, .28, .025); scritta(c, 'SUMMER', .5, .3, .045, R); tee(c); });
     // 39 la maglia da basket: gli scavi (secondo colore = sotto), i bordi e il numero davanti e dietro (terzo colore), il filo bianco
     T(39, c => { c.fillStyle = R; c.beginPath(); c.ellipse(.5, 1.0, .1, .2, 0, 0, 7); c.fill(); [0, 1, .25, .75].forEach(u => { c.beginPath(); c.ellipse(u, .99, .1, u === .25 || u === .75 ? .19 : .14, 0, 0, 7); c.fill(); });
       c.strokeStyle = MG; c.lineWidth = .025; c.beginPath(); c.ellipse(.5, 1.0, .112, .215, 0, 0, 7); c.stroke(); [.25, .75].forEach(u => { c.beginPath(); c.ellipse(u, .99, .112, .205, 0, 0, 7); c.stroke(); });
-      ombra(c, '23', .5, .52, .2, MG, Bl); dietro(c, u => ombra(c, '23', u, .5, .24, MG, Bl)); scritta(c, 'PORTO', .5, .76, .06, MG); c.fillStyle = MG; c.fillRect(0, 0, 1, .035); });
+      ombra(c, '23', .5, .52, .2, MG, Bl); dietro(c, u => ombra(c, '23', u, .5, .24, MG, Bl)); scritta(c, 'KINGS', .5, .76, .06, MG); c.fillStyle = MG; c.fillRect(0, 0, 1, .035); });
     // 71 la maglia da calcio d'epoca: il collo a polo, il fascione sul petto, lo stemma, lo sponsor, il numero dietro
     T(71, c => { c.fillStyle = R; c.fillRect(0, .6, 1, .14); c.fillStyle = MG; c.fillRect(0, .6, 1, .015); c.fillRect(0, .725, 1, .015); c.fillStyle = R; c.fillRect(0, .95, 1, .05);
-      c.fillStyle = MG; c.beginPath(); c.moveTo(.6, .86); c.lineTo(.66, .86); c.lineTo(.66, .8); c.lineTo(.63, .77); c.lineTo(.6, .8); c.fill(); scritta(c, 'PESCA', .5, .45, .06, Bl); dietro(c, u => ombra(c, '10', u, .48, .26, Bl, MG)); tee(c); });
+      c.fillStyle = MG; c.beginPath(); c.moveTo(.6, .86); c.lineTo(.66, .86); c.lineTo(.66, .8); c.lineTo(.63, .77); c.lineTo(.6, .8); c.fill(); scritta(c, 'GOAL', .5, .45, .06, Bl); dietro(c, u => ombra(c, '10', u, .48, .26, Bl, MG)); tee(c); });
     // 75 la scritta grande dietro, il logo piccolo sul cuore
     T(75, c => { dietro(c, u => { ombra(c, 'RESISTI', u, .62, .09, R, MG); stella(c, u, .4, .1, R); }); scritta(c, 'R*', .6, .76, .04, R); tee(c); });
     // 76 i graffiti: lettere a bolla sovrapposte, le colature, le luci
@@ -1304,14 +1312,14 @@ var Personaggi = (function () {
     // 79 felpa a blocchi: il petto d'un colore, la riga, la tasca a marsupio
     T(79, c => { c.fillStyle = R; c.fillRect(0, .56, 1, .44); c.fillStyle = MG; c.fillRect(0, .52, 1, .04); canguro(c); costine(c, 0, .08, 40); pieghe_busto(c); });
     // 80 felpa college: la scritta ad arco col contorno, la tasca
-    T(80, c => { ombra(c, 'PORTO', .5, .66, .1, R, MG, .04); scritta(c, 'VECCHIO', .5, .5, .045, R); canguro(c); costine(c, 0, .08, 40); pieghe_busto(c); });
+    T(80, c => { ombra(c, 'OLD', .5, .66, .1, R, MG, .04); scritta(c, 'SCHOOL', .5, .5, .045, R); canguro(c); costine(c, 0, .08, 40); pieghe_busto(c); });
     // 81 la giacca a vento da infilare: la mezza zip, il marsupione, il carré d'un altro colore, i cordini
     T(81, c => { c.fillStyle = R; c.fillRect(0, .74, 1, .26); c.fillStyle = MG; c.fillRect(0, .72, 1, .025); zip(c, .74, 1); c.save(); add(c); line(c, .008, [[.33, .14], [.67, .14], [.67, .44], [.33, .44], [.33, .14]]); line(c, .008, [[.36, .42], [.64, .42]]); c.restore(); dot(c, Bl, .4, .02, .012); dot(c, Bl, .6, .02, .012); costine(c, 0, .04, 40); pieghe_busto(c); });
     // 82 varsity: i bottoni a pressione, la lettera grande sul petto, le costine a righe, le tasche di pelle
     T(82, c => { c.fillStyle = MG; c.fillRect(.6, .55, .1, .2); c.fillStyle = R; c.fillRect(.61, .565, .08, .17); scritta(c, 'P', .65, .65, .13, MG); for (let k = 0; k < 2; k++) { c.fillStyle = k ? MG : R; c.fillRect(0, .025 + k * .03, 1, .015); c.fillRect(0, .95 + k * .02, 1, .01); }
-      c.fillStyle = MG; c.fillRect(.31, .2, .02, .14); c.fillRect(.67, .2, .02, .14); bottoni(c, .5, .14, .88, 6, .011); dietro(c, u => ombra(c, 'ISOLA', u, .62, .1, R, MG, .05)); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); pieghe_busto(c); c.restore(); });
+      c.fillStyle = MG; c.fillRect(.31, .2, .02, .14); c.fillRect(.67, .2, .02, .14); bottoni(c, .5, .14, .88, 6, .011); dietro(c, u => ombra(c, 'KINGS', u, .62, .1, R, MG, .05)); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); pieghe_busto(c); c.restore(); });
     // 83 coach jacket: i bottoni a pressione, il logo sul cuore, la scritta grande dietro
-    T(83, c => { bottoni(c, .51, .1, .92, 6, .011); scritta(c, 'CREW', .62, .76, .04, Bl); dietro(c, u => { scritta(c, 'PORTO', u, .66, .1, Bl); scritta(c, 'VECCHIO', u, .52, .07, Bl); }); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); cuci(c, [[0, .05], [1, .05]]); pieghe_busto(c); c.restore(); });
+    T(83, c => { bottoni(c, .51, .1, .92, 6, .011); scritta(c, 'CREW', .62, .76, .04, Bl); dietro(c, u => { scritta(c, MARCA, u, .66, Math.min(.1, .5 / MARCA.length), Bl); scritta(c, 'SOUND', u, .52, .07, Bl); }); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); cuci(c, [[0, .05], [1, .05]]); pieghe_busto(c); c.restore(); });
     // 84 la giacca della tuta d'epoca: il carré d'un altro colore col filo, la zip, lo scudetto
     T(84, c => { c.fillStyle = R; c.beginPath(); c.moveTo(0, .62); c.lineTo(.3, .62); c.lineTo(.5, .7); c.lineTo(.7, .62); c.lineTo(1, .62); c.lineTo(1, 1); c.lineTo(0, 1); c.fill(); c.strokeStyle = Bl; c.lineWidth = .012; c.beginPath(); c.moveTo(0, .61); c.lineTo(.3, .61); c.lineTo(.5, .69); c.lineTo(.7, .61); c.lineTo(1, .61); c.stroke();
       c.fillStyle = MG; c.beginPath(); c.ellipse(.62, .55, .025, .035, 0, 0, 7); c.fill(); zip(c, .06, 1); costine(c, 0, .06, 40); });
@@ -1320,7 +1328,7 @@ var Personaggi = (function () {
     // 86 il pile: le spalle d'un altro colore, la zip, il taschino con la zip, il bordo
     T(86, c => { c.fillStyle = R; c.fillRect(0, .76, 1, .24); c.fillStyle = MG; c.fillRect(0, .74, 1, .022); zip(c, .04, 1); c.save(); add(c); line(c, .008, [[.6, .64], [.6, .74]]); line(c, .008, [[.3, .1], [.36, .3]]); line(c, .008, [[.7, .1], [.64, .3]]); c.restore(); c.fillStyle = MG; c.fillRect(0, 0, 1, .03); });
     // 87 la giacca di raso: la zip, le costine a righe, la stella grande ricamata dietro, la tigre... no: la stella piccola davanti
-    T(87, c => { for (let k = 0; k < 3; k++) { c.fillStyle = k === 1 ? R : MG; c.fillRect(0, .015 + k * .02, 1, .012); } dietro(c, u => { stella(c, u, .55, .22, MG); stella(c, u, .55, .17, R); scritta(c, 'ISOLA', u, .25, .06, Bl); }); stella(c, .63, .72, .05, R); zip(c, .07, 1); c.fillStyle = Bl; for (let k = 0; k < 12; k++) c.fillRect(k / 12 + .02, .4, .03, .008); });
+    T(87, c => { for (let k = 0; k < 3; k++) { c.fillStyle = k === 1 ? R : MG; c.fillRect(0, .015 + k * .02, 1, .012); } dietro(c, u => { stella(c, u, .55, .22, MG); stella(c, u, .55, .17, R); scritta(c, 'TOUR', u, .25, .06, Bl); }); stella(c, .63, .72, .05, R); zip(c, .07, 1); c.fillStyle = Bl; for (let k = 0; k < 12; k++) c.fillRect(k / 12 + .02, .4, .03, .008); });
     // [personaggi] la montagna: il logo (tre cime nell'arco), la giacca a guscio, il piumino a sacchi, la manica a due colori, i pantaloni da arrampicata
     const monte = (c, u, v, r, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(u - r * .66, v - r * .5); c.lineTo(u - r * .3, v + r * .2); c.lineTo(u - r * .1, v - r * .05); c.lineTo(u + r * .15, v + r * .5); c.lineTo(u + r * .66, v - r * .5); c.fill(); c.strokeStyle = col; c.lineWidth = r * .14; c.beginPath(); c.ellipse(u, v - r * .5, r * .7, r * 1.05, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); };
     // 96 guscio: il carré e le spalle d'un altro colore, le cuciture nastrate (luce), la zip coperta, le tasche al petto con la zip in diagonale, il logo
@@ -1390,17 +1398,17 @@ var Personaggi = (function () {
     D(0, c => { const sole = (u, v, r) => { c.save(); ell(c, u, v, r, r); c.clip(); c.fillStyle = grad(c, 0, v + r, 0, v - r, ['#ffe14a', '#ff8a3d', '#ff3f8e', '#b23cd8']); c.fillRect(u - r, v - r, 2 * r, 2 * r); for (let k = 0; k < 6; k++) c.clearRect(u - r, v - r * .1 - k * r * .16, 2 * r, r * (.03 + k * .016)); c.restore(); };
       sole(.5, .66, .17); c.strokeStyle = '#ff3fd2'; c.lineWidth = .006; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(.34, .48 - k * k * .012); c.lineTo(.66, .48 - k * k * .012); c.stroke(); } for (let k = -4; k <= 4; k++) { c.beginPath(); c.moveTo(.5 + k * .02, .49); c.lineTo(.5 + k * .055, .3); c.stroke(); }
       const palma = (u, s) => { c.fillStyle = '#2a0e3a'; c.beginPath(); c.moveTo(u, .45); c.quadraticCurveTo(u + s * .02, .6, u + s * .01, .74); c.lineTo(u + s * .022, .74); c.quadraticCurveTo(u + s * .035, .6, u + .012, .45); c.fill(); for (let k = 0; k < 6; k++) { const a = -.9 + k * .55; c.beginPath(); c.moveTo(u + s * .016, .74); c.quadraticCurveTo(u + s * .016 + Math.cos(a) * .045, .79, u + s * .016 + Math.cos(a) * .085, .74 + Math.sin(a) * .06 - .02); c.lineTo(u + s * .016 + Math.cos(a) * .05, .755); c.fill(); } };
-      palma(.37, 1); palma(.63, -1); txt(c, 'PORTO VECCHIO', .5, .33, .045, cc => grad(cc, 0, .24, 0, .3, ['#9ad8ff', '#ffffff', '#ff7ad8']), { bordo: '#2a0e3a', bw: 12 }); dietro(u => sole(u, .62, .22)); cuciture(c); });
+      palma(.37, 1); palma(.63, -1); txt(c, 'PARADISE', .5, .33, .045, cc => grad(cc, 0, .24, 0, .3, ['#9ad8ff', '#ffffff', '#ff7ad8']), { bordo: '#2a0e3a', bw: 12 }); dietro(u => sole(u, .62, .22)); cuciture(c); });
     // 1 wild: le lettere a bolla piene di sfumatura, il contorno nero, le luci, le colature, le stelline; dietro la firma
-    D(1, c => { txt(c, 'PORTO', .5, .62, .15, cc => grad(cc, 0, .5, 0, .74, ['#2af5ff', '#3ad86a', '#ffe14a']), { skew: -.25, bordo: '#141418', bw: 26, ombra: '#ff3f8e', luce: '#ffffff', rot: .06 });
+    D(1, c => { txt(c, 'WILD', .5, .62, .15, cc => grad(cc, 0, .5, 0, .74, ['#2af5ff', '#3ad86a', '#ffe14a']), { skew: -.25, bordo: '#141418', bw: 26, ombra: '#ff3f8e', luce: '#ffffff', rot: .06 });
       [['#2af5ff', .38, .5, .1], ['#3ad86a', .47, .5, .16], ['#ffe14a', .6, .5, .08]].forEach(([col, u, v, l]) => goccia(c, u, v, l, col)); [[.3, .78, .025], [.72, .76, .02], [.66, .44, .015]].forEach(([u, v, r]) => stella(c, u, v, r, '#ffffff', 4));
-      dietro(u => txt(c, 'RISACCA', u, .65, .075, '#ff3f8e', { skew: -.3, bordo: '#141418', bw: 18, luce: '#ffffff' })); cuciture(c); });
+      dietro(u => txt(c, 'STYLE', u, .65, .075, '#ff3f8e', { skew: -.3, bordo: '#141418', bw: 18, luce: '#ffffff' })); cuciture(c); });
     // 2 hotrod: le fiamme a tre colori col contorno, dall'orlo fino al petto, tutt'intorno
     D(2, c => { for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .075, .46 + .2 * Math.abs(Math.sin(k * 2.3)), '#141418'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .065, .42 + .2 * Math.abs(Math.sin(k * 2.3)), '#e8281a'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .045, .3 + .14 * Math.abs(Math.sin(k * 1.7)), '#ff8a1a'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .025, .16 + .08 * Math.abs(Math.sin(k * 1.3)), '#ffe14a'); cuciture(c); });
     // 3 onda: la grande onda blu con gli artigli di schiuma, il sole rosso dietro, le scritte
     D(3, c => { zoom(c, 1.35, () => { ell(c, .58, .7, .09, .09); c.fillStyle = '#e8281a'; c.fill(); c.fillStyle = grad(c, 0, .3, 0, .8, ['#0e2a6a', '#1e5ab8', '#4aa8e8']); c.beginPath(); c.moveTo(.32, .36); c.bezierCurveTo(.34, .62, .44, .8, .56, .78); c.bezierCurveTo(.48, .74, .45, .66, .5, .6); c.bezierCurveTo(.54, .56, .6, .6, .6, .52); c.bezierCurveTo(.64, .46, .68, .4, .68, .36); c.closePath(); c.fill();
       c.fillStyle = '#f4f0e6'; for (let k = 0; k < 7; k++) { const a = k / 7; ell(c, .5 + .06 * Math.cos(a * 4), .75 - a * .05, .018, .012); c.fill(); } c.strokeStyle = '#f4f0e6'; c.lineWidth = .008; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(.42 + k * .05, .42 + k * .02, .04, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
-      txt(c, 'ISOLA', .5, .33, .045, '#141418'); }); dietro(u => { ell(c, u, .62, .18, .18); c.fillStyle = '#e8281a'; c.fill(); txt(c, 'MAREGGIATA', u, .3, .06, '#1e5ab8', { bordo: '#f4f0e6', bw: 10 }); }); cuciture(c); });
+      txt(c, 'SURF', .5, .33, .045, '#141418'); }); dietro(u => { ell(c, u, .62, .18, .18); c.fillStyle = '#e8281a'; c.fill(); txt(c, 'GOOD VIBES', u, .3, .06, '#1e5ab8', { bordo: '#f4f0e6', bw: 10 }); }); cuciture(c); });
     // 4 limoni: i limoni gialli con le foglie e i fiorellini bianchi, dappertutto
     D(4, c => { const lim = (u, v, r, a) => { c.save(); c.translate(u, v); c.scale(K, 1); c.rotate(a); c.fillStyle = '#2e7a3a'; c.beginPath(); c.ellipse(r * 1.1, r * .6, r * .9, r * .35, .6, 0, 7); c.fill(); c.beginPath(); c.ellipse(-r * .6, r * 1, r * .8, r * .3, -.5, 0, 7); c.fill(); c.fillStyle = '#ffd21a'; c.beginPath(); c.ellipse(0, 0, r, r * .78, 0, 0, 7); c.fill(); c.beginPath(); c.arc(r * 1.02, 0, r * .12, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(-r * .3, r * .3, r * .3, r * .15, -.4, 0, 7); c.fill(); c.restore(); };
       const fio = (u, v, r) => { c.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; ell(c, u + Math.cos(a) * r * K, v + Math.sin(a) * r, r * .6, r * .6); c.fill(); } c.fillStyle = '#ffb21a'; ell(c, u, v, r * .4, r * .4); c.fill(); };
@@ -1416,7 +1424,7 @@ var Personaggi = (function () {
       for (let k = 0; k < 40; k++) { c.fillStyle = (k + (k % 2)) % 2 ? '#141418' : '#f4f0e6'; c.fillRect(k / 40, .36, 1 / 40, .03); c.fillStyle = k % 2 ? '#f4f0e6' : '#141418'; c.fillRect(k / 40, .39, 1 / 40, .03); } cuciture(c); });
     // 7 cross: la maglia da motocross a blocchi diagonali, il numero grande col contorno, le toppe
     D(7, c => { c.fillStyle = '#e8281a'; c.beginPath(); c.moveTo(0, .55); c.lineTo(1, .25); c.lineTo(1, .45); c.lineTo(0, .75); c.fill(); c.fillStyle = '#141418'; c.beginPath(); c.moveTo(0, .75); c.lineTo(1, .45); c.lineTo(1, .52); c.lineTo(0, .82); c.fill(); c.fillStyle = '#ffe14a'; c.fillRect(0, .9, 1, .06);
-      txt(c, '77', .5, .57, .2, '#f4f0e6', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'ISOLA', .36, .8, .035, '#141418'); txt(c, 'MOTO', .64, .8, .035, '#e8281a'); dietro(u => { txt(c, '77', u, .58, .3, '#ffe14a', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'TESTAROSSA', u, .84, .05, '#f4f0e6', { bordo: '#141418', bw: 10 }); }); cuciture(c); });
+      txt(c, '77', .5, .57, .2, '#f4f0e6', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'RACING', .36, .8, .035, '#141418'); txt(c, 'TEAM', .64, .8, .035, '#e8281a'); dietro(u => { txt(c, '77', u, .58, .3, '#ffe14a', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'FULL GAS', u, .84, .05, '#f4f0e6', { bordo: '#141418', bw: 10 }); }); cuciture(c); });
     // 8 arcobaleno: il tie-dye a spirale di tutti i colori
     D(8, c => { const cols = ['#e8281a', '#ff8a1a', '#ffe14a', '#3ad86a', '#2af5ff', '#2a5ad8', '#b23cd8', '#ff3f8e']; for (let k = 0; k < 400; k++) { const t = k / 400, a = t * 6.283 * 4, r = .02 + t * .75; c.fillStyle = cols[Math.floor(t * 32) % 8]; c.globalAlpha = .55; ell(c, .5 + Math.cos(a) * r * K, .55 + Math.sin(a) * r * .8, .05 + t * .07, .04 + t * .05); c.fill(); } c.globalAlpha = 1; dietro(u => { for (let k = 0; k < 120; k++) { const t = k / 120, a = t * 6.283 * 3, r = .02 + t * .3; c.fillStyle = cols[Math.floor(t * 18) % 8]; c.globalAlpha = .6; ell(c, u + Math.cos(a) * r * K, .55 + Math.sin(a) * r, .05, .04); c.fill(); } c.globalAlpha = 1; }); });
     // 9 camo pop: il mimetico rosa, azzurro, viola e nero, dappertutto
@@ -1425,7 +1433,7 @@ var Personaggi = (function () {
     // 10 righe 70: cinque righe arcobaleno che girano sul petto, la stellina
     D(10, c => { ['#e8281a', '#ff8a1a', '#ffe14a', '#3ab86a', '#2a8ad0'].forEach((col, k) => { c.fillStyle = col; c.fillRect(0, .66 - k * .045, 1, .04); }); stella(c, .64, .8, .035, '#ffe14a'); txt(c, 'ESTATE 79', .5, .4, .05, '#f4f0e6', { bordo: '#141418', bw: 10 }); cuciture(c); });
     // 11 stencil: la scritta a spruzzo, la stella rossa, le colature
-    D(11, c => { c.globalAlpha = .9; stella(c, .5, .7, .13, '#d8202a'); c.globalAlpha = 1; txt(c, 'RISACCA', .5, .48, .07, '#141418', { font: 'Impact, "Arial Black", sans-serif', peso: 900 }); for (let k = 0; k < 6; k++) goccia(c, .4 + k * .04, .45, .03 + (k * 37 % 7) * .012, '#141418');
+    D(11, c => { c.globalAlpha = .9; stella(c, .5, .7, .13, '#d8202a'); c.globalAlpha = 1; txt(c, 'RESPECT', .5, .48, .07, '#141418', { font: 'Impact, "Arial Black", sans-serif', peso: 900 }); for (let k = 0; k < 6; k++) goccia(c, .4 + k * .04, .45, .03 + (k * 37 % 7) * .012, '#141418');
       c.fillStyle = 'rgba(20,20,24,.5)'; for (let k = 0; k < 80; k++) { const a = k * 2.4, r = .14 + (k % 7) * .012; c.fillRect(.5 + Math.cos(a) * r * K, .62 + Math.sin(a) * r, .004, .004); } dietro(u => { txt(c, 'NON SI', u, .7, .08, '#d8202a', { font: '"Courier New", monospace' }); txt(c, 'VENDE', u, .56, .08, '#d8202a', { font: '"Courier New", monospace' }); }); cuciture(c); });
     // 12 alieni: gli alieni a pixel in file colorate, GAME OVER
     D(12, c => { const A = ['00100000100', '00010001000', '00111111100', '01101110110', '11111111111', '10111111101', '10100000101', '00011011000'], pix = (u, v, s, col) => { c.fillStyle = col; A.forEach((row, r) => [...row].forEach((b, q) => { if (b === '1') c.fillRect(u + (q - 5.5) * s * K, v - r * s, s * K * 1.02, s * 1.02); })); };
@@ -1435,7 +1443,7 @@ var Personaggi = (function () {
       cuore(.5, .64, .1); c.fillStyle = '#f4e6c0'; c.fillRect(.4, .6, .2, .045); c.fillStyle = '#c8a060'; c.fillRect(.385, .59, .02, .045); c.fillRect(.595, .59, .02, .045); txt(c, 'MAMMA', .5, .622, .035, '#141418');
       const rondine = (u, v, s) => { c.fillStyle = '#1e3a8a'; c.beginPath(); c.moveTo(u, v); c.lineTo(u + s * .08 * K, v + .04); c.lineTo(u + s * .03 * K, v + .005); c.lineTo(u + s * .09 * K, v - .03); c.lineTo(u + s * .02 * K, v - .01); c.fill(); c.fillStyle = '#d8202a'; ell(c, u + s * .012, v - .005, .012, .01); c.fill(); };
       rondine(.36, .76, -1); rondine(.64, .76, 1); [[.38, .48], [.62, .48]].forEach(([u, v]) => { ell(c, u, v, .03, .03); c.fillStyle = '#d8202a'; c.fill(); c.strokeStyle = '#141418'; c.lineWidth = .004; c.beginPath(); c.arc(u, v, .015, 0, 5); c.stroke(); c.fillStyle = '#2e7a3a'; ell(c, u + (u < .5 ? .03 : -.03), v - .02, .02, .01); c.fill(); }); });
-      dietro(u => { cuore(u, .6, .17); txt(c, 'PORTO VECCHIO', u, .3, .045, '#141418'); }); cuciture(c); });
+      dietro(u => { cuore(u, .6, .17); txt(c, 'TRUE LOVE', u, .3, .045, '#141418'); }); cuciture(c); });
     // 14 pallone: il pallone da basket che brucia, STREET ad arco
     D(14, c => { zoom(c, 1.3, () => { for (let k = 0; k < 5; k++) fiammaP(c, .42 + k * .04, .03, .78 - Math.abs(k - 2) * .05, ['#ffe14a', '#ff8a1a', '#e8281a', '#ff8a1a', '#ffe14a'][k]); c.save(); c.translate(0, .0); ell(c, .5, .56, .1, .1); c.fillStyle = '#e8701a'; c.fill(); c.strokeStyle = '#141418'; c.lineWidth = .008; c.stroke(); c.beginPath(); c.moveTo(.5, .46); c.lineTo(.5, .66); c.moveTo(.5 - .1 * K, .56); c.lineTo(.5 + .1 * K, .56); c.stroke(); c.beginPath(); c.ellipse(.5 - .06 * K, .56, .05 * K, .09, 0, -1.2, 1.2); c.stroke(); c.beginPath(); c.ellipse(.5 + .06 * K, .56, .05 * K, .09, 0, Math.PI - 1.2, Math.PI + 1.2); c.stroke(); c.restore();
       txt(c, 'STREET', .5, .42, .06, '#f4f0e6', { bordo: '#141418', bw: 14 }); }, .5, .5); cuciture(c); });
@@ -1447,8 +1455,8 @@ var Personaggi = (function () {
       [.45, .55].forEach(u => { ell(c, u, .555, .025, .025); c.fillStyle = '#f4f0e6'; c.fill(); ell(c, u, .555, .012, .012); c.fillStyle = '#141418'; c.fill(); }); txt(c, 'LATO B', .5, .67, .03, '#141418', { font: '"Comic Sans MS", "Marker Felt", cursive', peso: 700 });
       txt(c, 'MIXTAPE', .5, .44, .055, '#ff3f8e', { bordo: '#141418', bw: 12, skew: -.2 }); }); cuciture(c); });
     // 17 chrome: la scritta cromata gotica grande sul petto, la croce di stelle dietro (Y2K)
-    D(17, c => { txt(c, 'Porto', .5, .62, .17, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
-      dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'VECCHIO', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
+    D(17, c => { txt(c, 'Hustle', .5, .62, .15, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
+      dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'GOLD', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
     const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
   }
   let MAT = null, MAT_STILE = null;
