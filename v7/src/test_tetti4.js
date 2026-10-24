@@ -27,7 +27,7 @@ const RUOTA = process.env.TETTI4_RUOTA || '';
 // in diagonale: ogni casa ha il centro libero (non sulla casella), le caselle si ristampano sull'impronta nuova, la porta segue il muro.
 // il mondo di [pianta] i campi li ha già (passo 1): allora qui si tolgono, e vale il ripiego sulla casella; se non li avesse, si mettono
 if (RUOTA === 'uguali') { const TS = Game.TS, ha = Game.BUILDINGS.some(b => b.cx !== undefined);
-  Game.BUILDINGS.forEach(b => { if (ha) { delete b.cx; delete b.cy; delete b.lw; delete b.ld; } else { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; } });
+  Game.BUILDINGS.forEach(b => { if (ha) { if (b.arretrata === undefined) { delete b.cx; delete b.cy; delete b.lw; delete b.ld; } } else {   /* [pianta] la casa arretrata dalla via tiene la sua scatola: le caselle non la dicono */ b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; } });
   log(`[lotti] ${ha ? 'tolti i campi del lotto: vale la casella' : 'messi i campi del lotto uguali alla casella'}`); }
 if (RUOTA === 'strada') { let a = 4242; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   // la città è fitta: nessuna fila che c'è si può girare senza entrare nelle case di dietro. Allora, come farà [pianta], la fila si

@@ -388,7 +388,9 @@ var Percorsi = (function () {
     const usati = new Set();
     // [tetti4] i passaggi buoni per un giro: niente annessi da 2 m né tetti stretti nel verso del passo (scendendo ci si cade oltre),
     // niente salti verso un tetto più alto ([mappa_compatta])
-    const passOk = e => !((BB[e.b].annesso && Math.min(BB[e.b].w, BB[e.b].h) < 2) || (e.k === 'tetto' && Math.abs(e.ux || 0) * BB[e.b].w * TS + Math.abs(e.uy || 0) * BB[e.b].h * TS < (Math.abs(TT.roofRule(BB[e.b]) - TT.roofRule(BB[e.a])) <= TT.STEP ? 1.9 : 3.9)) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5));   // [tetti4] a pari quota anche i tetti di una casella; gli annessi larghi due caselle sì
+    // [tetti4] la profondità della casa nel verso del passo, dal suo lotto (arretrato da [pianta]) se c'è
+    const prof4 = (i, e) => { const L = TT.lotto4 ? TT.lotto4(BB[i]) : { lw: BB[i].w * TS, ld: BB[i].h * TS }; return Math.abs(e.ux || 0) * L.lw + Math.abs(e.uy || 0) * L.ld; };
+    const passOk = e => !((BB[e.b].annesso && Math.min(BB[e.b].w, BB[e.b].h) < 2) || ((e.k === 'tetto' || e.k === 'gradino') && (prof4(e.a, e) < 1.95 || prof4(e.a, { ux: e.uy, uy: e.ux }) < 1.95)) || (e.k === 'tetto' && prof4(e.b, e) < (Math.abs(TT.roofRule(BB[e.b]) - TT.roofRule(BB[e.a])) <= TT.STEP ? 1.9 : 3.9)) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5));   // [tetti4] a pari quota anche i tetti di una casella; gli annessi larghi due caselle sì
     const crema4 = e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala';
     const passo4 = e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy });
     function cerca(Z, inZ, ex) {
