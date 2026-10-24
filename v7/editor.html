@@ -20597,7 +20597,7 @@ Anim.npcMap((st, n, s) => {
 </script>
 <script data-m="models">
 /* Modelli esterni (Kenney, Quaternius, Poly Pizza — vedi Crediti) caricati da assets/m e messi nel mondo:
-   porto con barche e container, Rocca con elicottero e forca, poligono, discarica, accampamenti, luna park,
+   porto con container, Rocca con elicottero e forca, poligono, accampamenti,
    auto anni '70-'80. Si carica in sottofondo: il gioco parte subito, i pezzi compaiono quando arrivano. */
 var Models = (function () {
   'use strict';
@@ -20606,13 +20606,13 @@ var Models = (function () {
     pesca: ['k_boat-fishing-small.json', 'l', 7], rimorchiatore: ['k_boat-tug-a.json', 'l', 8], vela: ['k_boat-sail-a.json', 'l', 8], vela2: ['k_boat-sail-b.json', 'l', 8.5],
     motoscafo: ['k_boat-speed-a.json', 'l', 6.5], motoscafo2: ['k_boat-speed-c.json', 'l', 6], barchino: ['k_boat-row-small.json', 'l', 3.6], cargo: ['k_ship-cargo-a.json', 'l', 34],
     containerA: ['k_cargo-container-a.json', 'l', 6], containerB: ['k_cargo-container-b.json', 'l', 6], containerC: ['k_cargo-container-c.json', 'l', 6], merce: ['k_cargo-pile-a.json', 'l', 4],
-    elicottero: ['r_Helicopter.json', 'l', 12], ruota: ['r_SM_FerrisWheel_02.json', 'h', 24], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
+    elicottero: ['r_Helicopter.json', 'l', 12], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
     rx7: ['r_RX_7_3_v2.json', 'l', 4.3], gtr: ['r_GTR.json', 'l', 4.5], bursley: ['r_1972-bursley-defiance.json', 'l', 4.9],
     tenda: ['s_Tent.json', 'l', 3.2], falo: ['s_Bonfire_Fire.json', 'l', 1.3], tronco: ['s_WoodLog.json', 'l', 2.2], gommone: ['s_Raft.json', 'l', 3.6], bombola: ['s_PropaneTank.json', 'h', 1.1],
     forca: ['x_Gallows.json', 'h', 4.6],
     contLungo: ['t_Container_Long.json', 'l', 6.2], contCorto: ['t_Container_Small.json', 'l', 3.2], cassa: ['t_Crate.json', 'h', .9], scatole: ['t_CardboardBoxes_1.json', 'l', 1.2], scatole3: ['t_CardboardBoxes_3.json', 'h', 1.9],
     pallet: ['t_Pallet.json', 'l', 1.2], sacchi: ['t_SackTrench.json', 'l', 3.4], sacchi2: ['t_SackTrench_Small.json', 'l', 2.4], barriera: ['t_Barrier_Fixed.json', 'l', 3.6], cavalletto: ['t_Barrier_Single.json', 'l', 1.9],
-    carro: ['t_Tank.json', 'l', 6.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
+    carro: ['t_Tank.json', 'l', 3.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
     barile: ['t_ExplodingBarrel.json', 'h', 1], gas: ['t_GasTank.json', 'h', 1.4], rottame: ['t_Debris_BrokenCar.json', 'l', 4.3], gomme: ['t_Debris_Tires.json', 'l', 1.6], macerie: ['t_Debris_Pile.json', 'l', 2.6],
     cassonetto: ['t_TrashContainer.json', 'l', 2], cassonetto2: ['t_TrashContainer_Open.json', 'l', 2.2], cono: ['t_TrafficCone.json', 'h', .7], rete: ['t_MetalFence.json', 'l', 3.5], divano: ['t_Sofa.json', 'l', 2.2], tubi: ['t_Pipes.json', 'l', 4],
   };
@@ -20952,15 +20952,32 @@ var Models = (function () {
     }
     return null;
   }
-  const dyn = { guards: [], heli: null, wheel: null, fires: [], boats: [] };
+  // [sporcherie] FUORI DAI PASSAGGI: una cosa posata non sta su una strada (carreggiata VIA o banda di un vicolo) né dentro un muro, e non
+  // chiude un passaggio (da una parte o dall'altra restano almeno 1,2 m liberi fino al primo muro). Un gruppo (le casse del Wu) si sposta tutto insieme del meno possibile; se non c'è posto entro 25 m resta dov'era.
+  function duro(x, z) { const v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || v === G.T.TREE || v === undefined; }
+  let VIC = null;
+  const dSeg = (x, z, a, b) => { const ex = b[0] - a[0], ez = b[1] - a[1], L2 = ex * ex + ez * ez || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (z - a[1]) * ez) / L2)); return Math.hypot(x - a[0] - ex * t, z - a[1] - ez * t); };
+  function vicolo(x, z) { if (!VIC) VIC = ((G.MAP && G.MAP.roads) || []).filter(rd => rd.kind === 'vicolo' && rd.pts && !rd.rect);   // la banda di vicolo più vicina: [distanza dall'asse, mezza larghezza]
+    let best = null; VIC.forEach(rd => { for (let k = 1; k < rd.pts.length; k++) { const d = dSeg(x, z, rd.pts[k - 1], rd.pts[k]); if (d < rd.w / 2 + 3 && (!best || d - rd.w / 2 < best[0] - best[1])) best = [d, rd.w / 2]; } }); return best; }
+  function suVia(x, z) { const W = G.MAP && G.MAP.world, tx = Math.floor(x / G.TS), tz = Math.floor(z / G.TS); if (G.tileAt(tx, tz) === G.T.VIA) return true; if (!(W && W.roadW && W.roadW[tz * W.GW + tx] > 0)) return false;
+    const v = vicolo(x, z); return !v || v[0] > v[1] + 1; }   // in carreggiata; nei vicoli conta il corridoio (chiude)
+  function chiude(x, z, r) { const v = vicolo(x, z); if (v && v[0] < v[1] + r && v[1] + v[0] - r < 1.2) return true;
+    for (const [ux, uz] of [[1, 0], [0, 1]]) { let a = 6, b = 6; for (let d = r; d <= 6; d += .25) if (duro(x - ux * d, z - uz * d)) { a = d - r; break; } for (let d = r; d <= 6; d += .25) if (duro(x + ux * d, z + uz * d)) { b = d - r; break; } if (a < 6 && b < 6 && Math.max(a, b) < 1.2) return true; } return false; }
+  const buono = (x, z, r) => !duro(x, z) && !suVia(x, z) && !chiude(x, z, r) && [[r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => !duro(x + u, z + w) && !suVia(x + u, z + w));
+  function fuoriPassaggi(L, r) { if (!G.MAP || !G.MAP.world || !G.MAP.world.WALL) return L;   // solo nella città nuova
+    for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, dx = Math.cos(t) * rr, dz = Math.sin(t) * rr;
+      if (L.every(q => buono(q[0] + dx, q[1] + dz, q[3] || r))) return L.map(q => [q[0] + dx, q[1] + dz, q[2]]); }
+    return L; }
+  // un posto a filo muro (il retro a meno di 40 cm da una parete) fuori dai passaggi, il più vicino a (x, z); [x, z, rotazione col retro al muro]
+  function aMuro(x, z, r) { for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, px = x + Math.cos(t) * rr, pz = z + Math.sin(t) * rr;
+      if (!buono(px, pz, r)) continue; for (const [ux, uz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (duro(px + ux * (r + .4), pz + uz * (r + .4)) && !duro(px - ux * (r + .4), pz - uz * (r + .4))) return [px, pz, Math.atan2(-ux, -uz)]; }
+    return null; }
+  const dyn = { guards: [], heli: null, fires: [], boats: [] };
   async function dress() {
     const P = G.PLACES, all = Object.keys(CAT).filter(k => !['rx7', 'gtr', 'bursley'].includes(k));
     await Promise.all(all.map(load));
     // ---- porto: barche ai pontili, una nave fuori dai moli, container e merce in banchina ----
-    const B = [['pesca', 201.6, 384, 0], ['pesca', 201.6, 393, .05], ['motoscafo', 216.6, 386, 0], ['vela', 223.6, 392, Math.PI], ['rimorchiatore', 238.2, 385, 0], ['motoscafo2', 245.8, 391, Math.PI],
-      ['barchino', 205, 380, 1.4], ['barchino', 236, 380, 1.7], ['vela2', 210, 404, .4], ['motoscafo', 232, 406, -.5]];
-    B.forEach(([id, x, z, ry]) => { const o = put(id, x, z, ry, -.35); if (o) dyn.boats.push({ o, ph: x * .37 + z }); });
-    const ship = put('cargo', 220, 440, Math.PI / 2, -.5); if (ship) dyn.boats.push({ o: ship, ph: 1, slow: true });
+    // [sporcherie] tolte le dieci barche e la nave cargo della mappa vecchia (stavano in mare aperto): le barche sono quelle ai pontili della Marina
     // container: sul molo est, verso il magazzino
     const quay = []; for (let x = 252; x < 290; x += 2) for (let z = 366; z < 384; z += 2) { const v = G.tileAt(x >> 1, z >> 1); if (v === G.T.QUAY) quay.push([x, z]); }
     // piazzale dei container: file ordinate decise dal motore (Game.layout), impilati a scacchiera
@@ -20968,15 +20985,12 @@ var Models = (function () {
       const id = ['containerA', 'containerB', 'containerC'][it.col]; put(id, it.x, it.y, it.rot);
       if (it.up) { const gh = R.groundH ? R.groundH(it.x, it.y) : .4, h = LIB[id] ? LIB[id].size.y : 2.6; const o = put(['containerB', 'containerC', 'containerA'][it.col], it.x, it.y, it.rot); if (o) o.position.y = gh + h; }
     });
-    // ---- luna park sulla spiaggia del Lido ----
-    if (P.spiaggia) { const q = openSpot(P.spiaggia.x, P.spiaggia.y + 14, 10, 4, 70); if (q) dyn.wheel = put('ruota', q[0], q[1], Math.PI / 2); }
-    // ---- la Rocca: elicottero sullo spiazzo, forca, sbarramenti sulla strada ----
+    // [sporcherie] tolta la ruota panoramica di 24 m sulla spiaggia del Lido
+    // ---- la Rocca: elicottero sullo spiazzo, la forca sugli scogli ([sporcherie] tolti new jersey, transenne e sacchi dentro il mastio: avanzo della mappa vecchia) ----
     const PL = palco();   // [spianata2] nella città nuova il palco del potere (palco.js) dice dove stanno i carri e chi li guarda
     if (P.rocca) {
       const rx = P.rocca.x, rz = P.rocca.y;
       if (!PL) put('elicottero', rx - 14, rz + 4, .6); put('forca', rx + 12, rz + 2, Math.PI / 2);   // [spianata2] sul palco l'elicottero di giorno è quello sulla piazzola (render.js)
-      for (let i = -2; i <= 2; i++) put('newjersey', rx + i * 2.8, rz + 16, 0);
-      put('transenna', rx - 9, rz + 12, 0); put('transenna', rx + 9, rz + 12, 0); put('sacchi', rx - 5, rz + 9, 0); put('sacchi', rx + 5, rz + 9, 0);
     }
     // l'elicottero di pattuglia: gira sull'isola di notte col faro
     dyn.heli = make('elicottero'); if (dyn.heli) { scene.add(dyn.heli); dyn.heli.visible = false; }
@@ -20991,8 +21005,8 @@ var Models = (function () {
       put('carro', x - 8, z - 6, .4); put('carro', x + 6, z - 9, -.3); put('baracca', x - 14, z + 8, 0); put('torretta', x + 14, z + 8, 0); put('cisterna', x + 2, z + 12, 0);
       put('sacchi', x - 2, z - 2, 0); put('sacchi2', x + 2, z - 2, .2); put('barriera', x - 18, z - 4, Math.PI / 2);
     }
-    // ---- discarica ----
-    if (P.discarica) { const x = P.discarica.x, z = P.discarica.y; put('rottame', x - 3, z + 2, .7); put('rottame', x + 4, z - 3, 2.2); put('gomme', x + 1, z + 4, 0); put('macerie', x - 5, z - 3, 0); put('divano', x - 1, z - 5, 1.1); put('cassonetto2', x + 7, z + 5, .3); }
+    // [sporcherie] la discarica sul Lungomare di Tramontana è tolta: resta un cassonetto a filo del muro più vicino, fuori dai passaggi
+    if (P.discarica) { const q = aMuro(P.discarica.x, P.discarica.y, 1.1); if (q) put('cassonetto', q[0], q[1], q[2]); }
     // ---- accampamenti: radura del pastore, ovile, caletta ----
     [['radura', 1], ['ovile', 0], ['caletta', 1]].forEach(([id, tent]) => {
       const q0 = P[id]; if (!q0) return; const sp = openSpot(q0.x + 4, q0.y + 4, 8, 8, 30); if (!sp) return; const x = sp[0], z = sp[1];
@@ -21000,7 +21014,7 @@ var Models = (function () {
       if (f) dyn.fires.push({ x, z, o: f });
     });
     if (P.caletta) put('gommone', P.caletta.x + 6, P.caletta.y + 4, 1.2);
-    // ---- città: cassonetti nei vicoli, coni al cantiere, scatole davanti agli alimentari ----
+    // ---- città: cassonetti nei vicoli, scatole davanti agli alimentari ([sporcherie] tolti i coni in fila senza cantiere) ----
     let n = 0;
     for (let tz = 150; tz < 205 && n < 18; tz += 3) for (let tx = 50; tx < 175 && n < 18; tx += 5) {
       const v = G.tileAt(tx, tz); if (v !== G.T.WALK) continue;
@@ -21008,13 +21022,14 @@ var Models = (function () {
       if (!wall || ((tx * 7 + tz * 13) % 5)) continue;
       put(n % 3 ? 'cassonetto' : 'scatole', tx * 2 + 1, tz * 2 + 1, ((tx + tz) % 4) * Math.PI / 2); n++;
     }
-    if (P.cantiere) for (let i = 0; i < 5; i++) put('cono', P.cantiere.x - 4 + i * 1.6, P.cantiere.y + 2.5, 0);
-    if (P.wu) { put('scatole', P.wu.x + 1.5, P.wu.y + .5, .3); put('cassa', P.wu.x - 1.5, P.wu.y + .6, 0); }
+    if (P.wu) fuoriPassaggi([[P.wu.x + 1.5, P.wu.y + .5, 'scatole', .7], [P.wu.x - 1.5, P.wu.y + .6, 'cassa', .6]], .6).forEach(([x, z, id]) => put(id, x, z, id === 'scatole' ? .3 : 0));   // [sporcherie] fuori dalla Rua
     if (P.cava) { put('contCorto', P.cava.x + 6, P.cava.y + 4, .5); }
     // guardie della Tutela ai posti di blocco: sentinelle armate, ferme
     await Promise.all(['Soldier', 'Casual_2', 'Worker'].map(loadChar)); prepGuns();
     const guard = (x, z, ry, gun, who) => { const g = (Models.person && Models.person.__personaggi ? Models.person : person)(null, who || 'cop'); /* [personaggi] le sentinelle sono figure nuove (con ?vecchiagente restano come prima) */ if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
-    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y; guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
+    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y, F = G.MAP && G.MAP.world && G.MAP.world.FORT, g0 = F && F.gates && F.gates.find(g => g.kind === 'terra');
+      // [sporcherie] nella città nuova le due sentinelle stavano dentro il muro del mastio (rx ± 3, rz + 13): fanno la guardia alla Porta della Rocca, dal lato della corte
+      if (g0) { guard(g0.x + 8.5, g0.y - 2.2, -Math.PI / 2, 'AK'); guard(g0.x + 8.5, g0.y + 2.2, -Math.PI / 2, 'AK'); } else { guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); } guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
     if (PL) { const a = PL.carri[0], c = PL.container[0]; if (a) { guard(a.x - 1, a.z - PL.CARRO.hz - 1.6, 0, 'AK'); guard(a.x + PL.CARRO.passo * 1.5, a.z - PL.CARRO.hz - 1.8, .3, 'AK'); } if (c) guard(c.x + PL.CONT.hx + 1.3, c.z + 1, -Math.PI / 2, 'AK'); }   // [spianata2] di guardia ai carri e ai container
     else if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
     if (P.commissariato) { const c = P.commissariato; guard(c.x - 3, c.y + 4.5, 0, 'SMG'); guard(c.x + 3, c.y + 4.5, 0, 'AK'); }
@@ -21063,8 +21078,6 @@ var Models = (function () {
       }
       if (dyn.beam) { dyn.beam.visible = on; dyn.pool.visible = on; }
     }
-    // ruota panoramica: gira piano
-    if (dyn.wheel) { /* il modello è un pezzo unico: la ruota resta ferma, si accende la notte */ }
   }
   function attach(api) {
     R = api; scene = api.scene; G = api.G;
@@ -24508,7 +24521,7 @@ var Vegetazione = (function () {
       else if (e === E.VIGNE) f = elev[i] < 9 && m2 > .45 ? F.agrumeto : m < .4 ? F.prato : F.uliveto;
       else if (e === E.PINIMONTE) f = m < .28 ? F.prato : F.pinetaM;
       else if (e === E.ISOLA || e === E.GIUNGLA) f = m > .62 ? F.lecceta : m < .3 ? F.gariga : F.macchia;
-      else if (e === E.NONE || !e) f = gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 4 && y <= gbox[3] + 4 ? F.giardino : F.pineta;
+      else if (e === E.NONE || !e) f = gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 4 && y <= gbox[3] + 4 ? F.giardino : gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 38 && y <= gbox[3] + 38 ? F.prato : F.pineta;   // [sporcherie] i Giardini sono solo davanti al Mercato: il resto della fascia (dov'era il parco lungo 104 m) è prato
       else f = F.macchia;
       if (feat[i] & ((W.MF && W.MF.TERR) || 0) && f !== F.costa && f !== F.riparia) f = F.uliveto;   // le terrazze del Monte: l'uliveto
       for (const [zx, zy, zr, zf] of DISEGNO) if (f !== F.costa && Math.hypot(x - zx, y - zy) < zr * (.85 + .3 * m2)) f = F[zf];   // le masse disegnate a mano
@@ -25619,7 +25632,6 @@ var World = (function () {
   // La città (x ≥ 902, finale 1222) non si tocca: tutto si spegne fra 862 e 900.
   const C2X1 = 900;   // da qui a est la riva è quella di prima (la città, la Rocca)
   const C2STRADA = [[372, 488], [796, 886]];   // i tratti di costiera sul mare: [da x, a x] a tramontana e a mezzogiorno
-  const C2SCOGLI = [[906, 2, 5], [921, 4, 4], [940, 2, 6.5], [961, 5, 3.5], [983, 1.5, 6], [1004, 4, 4.5], [1027, 1, 7], [1051, 5, 3.8], [1072, 2, 5.5], [1096, 1.5, 6.5], [1119, 4, 4], [1140, 1, 6], [1163, 3, 5]];   // non oltre 1170: lì comincia il canale della Rocca   // [x, quanto fuori, raggio]: gli scogli sotto le mura
   const C2N = [   // [centro, larghezza, sporgenza, nome] riva nord (tramontana): alta, di roccia, con le calette strette
     [52, 17, 15, 'Punta del Maestrale'], [100, 12, -18, 'Cala dei Gabbiani'], [150, 26, 16, 'Capo del Bosco'], [211, 8, -11, 'Cala Lupara'], [256, 19, 18, 'Capo di Tramontana'],
     [332, 12, -5, ''], [400, 25, 22, 'Punta del Corvo'], [455, 7, -11, 'Caletta del Corvo'], [624, 24, 23, 'Capo Rosso'], [669, 8, -10, 'Caletta Rossa'],
@@ -26541,7 +26553,7 @@ var World = (function () {
       CITY.nodi = [];   // i nodi dove le strade finiscono senza chiusura (oltre alle scenografie di CITY.sets): piazzale, Scalo, spianata, Giardini, lotto del fuoco
       const nodoR = (nome, x0, y0, x1, y1) => CITY.nodi.push({ nome, poly: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] }), nodoC = (nome, x, y, r) => CITY.nodi.push({ nome, x, y, r });
       CITY.pzStaz = [930, 104, 976, 113];   // il piazzale della stazione, fra il fabbricato e gli isolati a corte
-      nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); CITY.nodi.push({ nome: 'Piazza della Rocca', poly: [[1154, 116], [1184, 116], [1184, 130.5], [1171, 130.5], [1171, 139.5], [1154, 139.5]] });   /* [pianta] la spianata non è più un nodo vuoto: ci sono le case del glacis e la piazza del mercato */ nodoR('Giardini di Ponente', 902, 88, 930, 192); nodoC('Lotto del fuoco', 966, 71, 5);
+      nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); CITY.nodi.push({ nome: 'Piazza della Rocca', poly: [[1154, 116], [1184, 116], [1184, 130.5], [1171, 130.5], [1171, 139.5], [1154, 139.5]] });   /* [pianta] la spianata non è più un nodo vuoto: ci sono le case del glacis e la piazza del mercato */ nodoR('Giardini di Ponente', 902, 122, 930, 158);   /* [sporcherie] un giardino davanti al Mercato (28 × 36 m), non un parco di 104 m lungo tutta la città: il resto della fascia torna prato */ nodoC('Lotto del fuoco', 966, 71, 5);
       // la Costiera Nord passa i binari al passaggio a livello e si ferma sul piazzale (resta l'id via_alta: la leggono posti, popolo, percorsi)
       const N0 = nordP[0], STAZ = chaikin([N0.slice(), [N0[0] - 4, N0[1] + 8], [922, 94], [927.5, 104], [936, 109.5]], 2); CITY.staz = STAZ;   /* [pianta] la curva sull'angolo della stazione mezzo metro più larga: la carreggiata non ne tocca lo spigolo */
       add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3', nudo: true });
@@ -27051,8 +27063,8 @@ var World = (function () {
         // la testa di ponte: il muro a tramontana dal varco al canale; il recinto: il muro lungo la spianata e quello verso la città, fino al mare
         muro(XCAN - .6, yP, Math.PI, XCAN - .6 - gx, { settore: 'SETTORE 1-B' });
         muro(gx, yN, Math.PI, gx - xw, { settore: 'SETTORE 1-D' });
-        const yW = riva(xw) + 1.5, nW = Math.max(1, Math.ceil((yW - yN) / 28)), sW = (yW - yN) / nW;
-        for (let k = 0; k < nW; k++) muro(xw, yN + k * sW, -Math.PI / 2, sW, { settore: 'SETTORE 1-' + 'EFGH'[k % 4] });
+        const yW = riva(xw) - .5, nW = Math.max(1, Math.ceil((yW - yN) / 28)), sW = (yW - yN) / nW;
+        for (let k = 0; k < nW; k++) muro(xw, yN + k * sW, -Math.PI / 2, sW, { settore: 'SETTORE 1-' + 'EFGH'[k % 4] });   // [sporcherie] il muro verso la città finisce sulla battigia (prima entrava 1,5 m in mare)
         // le torri: ai due lati del varco, agli angoli, lungo il muro verso la città e sulla riva
         torre(gx, yP, 'Torre del varco'); torre(gx, yN, 'Torre del varco'); torre(XCAN - 1.6, yP, 'Torre del canale'); torre(xw, yN, 'Torre di spigolo');
         for (let k = 1; k < nW; k++) torre(xw, yN + k * sW); torre(xw, yW - 2.5, 'Torre della riva');
@@ -27292,7 +27304,7 @@ var World = (function () {
         PZ('campanile', x1 - 4.85, y1 - 2.9, 0, { lato: 4.4, h: 30, campane: 2, orologio: true, cuspide: true }, { nome: 'Campanile della Chiesa Madre', b: ch.i }); }
       // [rocca2] nella Rocca a mare: il comando è il mastio col faro, la caserma sta sulla cortina nord, il raccordo e il corpo di levante
       // sono masse di carparo; il corpo del ponte ha l'erba in cima e, sulla faccia verso la darsena, il portale con lo stemma e la pensilina
-      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'corpo_rocca', 0, { h: 17, merli: true, finestre: 1 }], ['deposito_n', 'corpo_rocca', 0, { h: 10, erba: true, finestre: 1 }],
+      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'corpo_rocca', 0, { h: 11, merli: true, finestre: 1 }]   /* [sporcherie] il deposito della Rocca a 11 m (prima 17: più alto dell'hangar) */, ['deposito_n', 'corpo_rocca', 0, { h: 10, erba: true, finestre: 1 }],
         ['hangar1', 'corpo_rocca', 0, { h: 13, finestre: 2 }], ['rocca', 'mastio', 0, { h: 24, merli: true, lanterna: true }], ['deposito_s', 'polveriera', Math.PI, { cinta: false }]].forEach(([id, tipo, rot, o]) => {
         const b = Bn(id); if (!b) return; const [x0, y0, x1, y1] = rect(b), yc = (y0 + y1) / 2; b.pezzo = tipo;
         if (tipo === 'caserma') PZ(tipo, rot ? x1 : x0, yc, rot, Object.assign({ L: x1 - x0, p: y1 - y0 - 1 }, o), { nome: b.name, b: b.i });
@@ -27303,7 +27315,7 @@ var World = (function () {
       // la torre littoria sta sulla punta della banchina, attaccata al Ministero, con l'arengario verso il piazzale e il ponte
       if (POSA.recinto) { const R = POSA.recinto, pc = Bn('pietra'), mi = Bn('ministero');
         if (pc) { const [x0, y0, x1, y1] = rect(pc); pc.pezzo = 'caserma'; PZ('caserma', (x0 + x1) / 2, y1, Math.PI / 2, { L: y1 - y0, p: x1 - x0 - 1, piani: 2 }, { nome: pc.name, b: pc.i, recinto: true }); }
-        { const yT = mi ? (mi.y + mi.h / 2) * TS : R.yS - 9.5, p = PZ('torre_littoria', R.xe - .5, yT, Math.PI, { h: 28, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria', recinto: true }); pzRis(p, 'B', -.3, 8.3, -5.2, 4.3); R.torreL = p; } }
+        { const yT = mi ? (mi.y + mi.h / 2) * TS : R.yS - 9.5, p = PZ('torre_littoria', R.xe - 1.4, yT, Math.PI, { h: 15, lato: 7, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria', recinto: true }); pzRis(p, 'B', -.3, 7.3, -5.2, 4.3);   /* [sporcherie] 15 m (non 28) e un metro dentro la banchina: la base non scende più nel mare */ R.torreL = p; } }
     }
     // case lungo le strade di città e dei paesi: isolati di forme diverse, affacciati sulla strada
     let nH = 0;
@@ -27846,7 +27858,7 @@ var World = (function () {
     const ISLETS = [[14, 204, 4.2, 'faraglione_grande'], [6, 226, 3, 'faraglione_piccolo'], [24, 244, 2.4, 'scoglio_basso'], [346, 32, 3.2, 'scoglio_sirena'], [784, 34, 2.6, 'scoglio_monaco']];
     // [costa2] gli scogli sotto le mura di tramontana: una frangia di roccia che affiora a pochi metri dalla riva della città (la città non si
     // tocca, la riva sì: niente più bordo dritto). Le dice MAPPA_COMPATTA: «Baracche → Covo: gli scogli sotto le mura, con la bassa marea».
-    C2SCOGLI.forEach(([x, dy, rr], k) => ISLETS.push([x, NorthY(x) - dy, rr, 'scoglio_mura_' + k]));
+    // [sporcherie] tolti: i 12 massi grandi (scoglio_mura_*) finivano addosso al parapetto e in strada sul Lungomare di Tramontana; basta la scogliera del lungomare
     ISLETS.forEach(([cx, cy, rr, id]) => { blob(cx, cy, rr, rr * .85, i => { if (grid[i] === T.WATER && zone[i] === Z.MARE) { grid[i] = T.ROCK; elev[i] = .9; zone[i] = Z.SPIAGGIA; } }); SEA.rocks.push({ x: cx, y: cy, r: rr, big: true, id }); });
     // fondale: distanza dalla riva (trasformata di distanza a smusso 3-4) e tipo della riva più vicina
     const isSea = i => grid[i] === T.WATER && zone[i] === Z.MARE;
@@ -27915,7 +27927,7 @@ var World = (function () {
     // sulle mura di tramontana e sul lido; la discarica sugli scogli di ponente accanto ai binari
     const RELP = { piazza: [1063, 103], fontana: [1108, 124], vico: [1052, 130], fiori: [950, 143], piazzetta: [1046, 167], caruggio: [1085, 95],
       calata: [1030, 190], lungomare: [1100, 198], salita: [1088, 128], monte: [1118, 128], vetta: [1134, 126], belvedere: [1070, 74], osservatorio: [1112, 72],
-      bivacco_e: [1136, 206], campeggio_e: [1150, 212], covo: [1124, 98], ruderi: [1118, 170], grotta: [1100, 168], cava: [1150, 168],
+      covo: [1124, 98], ruderi: [1118, 170], grotta: [1100, 168], cava: [1150, 168],
       spiaggia: [1128, 210], passeggiata: [1104, 198], discarica: [912, 66], piazza_gov: [1008, 143], giardini: [916, 140] };   // [mappa_compatta] la discarica è alle baracche, dietro il rilevato; i Giardini di Ponente davanti al Mercato
     const PN0 = PN; PN = (id, name, x, y, ex) => RELP[id] ? PN0(id, name, RELP[id][0], RELP[id][1], ex) : PN0(id, name, x, y, ex);
     const P = (id, name, x, y, ex) => PN(id, name, xn(x), y, ex);   // [isola] i luoghi di prima sono in coordinate vecchie
@@ -27932,12 +27944,12 @@ var World = (function () {
     P('lungomare', 'Via al Mare', 466, 184);
     // periferia ovest e la sua collina
     P('giardini', 'Giardini di Ponente', 344, 140); P('pineta', 'Pineta della Collina dei Pini', 322, 156); P('collina_o', 'Collina dei Pini', 304, 140);
-    P('bivacco_o', 'Bivacco dei Pini', 284, 132, { camp: 'bivacco' }); P('monolite', 'Il Monolite', 322, 142, { camp: 'monolite' }); P('campeggio_o', 'Spiazzo della collina', 262, 138, { camp: 'tende' }); P('sorgente', 'Sorgente gelata', 244, 157, { camp: 'sorgente', scoperta: true }); P('rudere_o', 'Casale diroccato dei Pini', 300, 110, { camp: 'rudere' }); P('carbonaia', 'Carbonaia', 336, 168, { camp: 'carbonaia' }); P('pozzo_o', 'Spiazzo dei taglialegna', 214, 132, { camp: 'legna' });
+    P('bivacco_o', 'Bivacco dei Pini', 284, 132, { camp: 'bivacco' }); P('monolite', 'Il Monolite', 322, 142, { camp: 'monolite' }); P('campeggio_o', 'Spiazzo della collina', 262, 138, { camp: 'tende' }); P('sorgente', 'Sorgente del monte', 244, 157, { camp: 'sorgente', scoperta: true }); P('rudere_o', 'Casale diroccato dei Pini', 300, 110, { camp: 'rudere' }); P('carbonaia', 'Carbonaia', 336, 168, { camp: 'carbonaia' }); P('pozzo_o', 'Spiazzo dei taglialegna', 214, 132, { camp: 'legna' });
     // periferia est e la Collina Nera
-    P('salita', 'Salita della Collina Nera', 470, 128); P('monte', 'Collina Nera', 504, 132); P('vetta', 'Cima della Collina Nera', 518, 134);
-    P('belvedere', 'Belvedere', 494, 120); P('bivacco_e', 'Bivacco della Collina Nera', 486, 138, { camp: 'bivacco' }); P('campeggio_e', 'Spiazzo della Collina Nera', 528, 128, { camp: 'tende' });
+    P('salita', 'Salita dei Bottai', 470, 128); P('monte', 'Sopra il Pozzo', 504, 132); P('vetta', 'Cima del Vico del Sale', 518, 134);   // [sporcherie] nella città nuova stanno nei vicoli del borgo: i nomi della Collina Nera (che non c'è più) prendono quelli dei vicoli
+    P('belvedere', 'Belvedere', 494, 120);   // [sporcherie] tolti il bivacco e le tende della Collina Nera (bivacco_e, campeggio_e): nella città nuova cadevano in mezzo alla Via della Marina e alla Via del Lido
     P('covo', 'Il covo nel bunker delle mura', 506, 80, { hidden: true });   // [mappa_compatta] L6: sotto la vecchia vedetta, sulle mura di tramontana P('ruderi', 'Ruderi della Collina Nera', 512, 160, { camp: 'rudere' }); P('osservatorio', 'Vecchia vedetta', 496, 108, { camp: 'vedetta' }); P('grotta', 'La grotta', 470, 150, { camp: 'grotta', hidden: true }); P('cava', 'Cava della Collina Nera', 530, 150);
-    P('spiaggia', 'Spiaggia gelata', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
+    P('spiaggia', 'Spiaggia del Lido', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
     // il Muro e la Base
     P('muro', 'Il Muro', 548, yc(548), { gate: true }); P('varco', 'Varco del Muro', 562, yc(562));
     P('poligono', 'Poligono della Base', 560, 178); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 640, 200);
@@ -27945,13 +27957,13 @@ var World = (function () {
     if (POSA.recinto) { const R = POSA.recinto; PN('muro', 'Il Muro', R.xw - 2, R.yN + 14, { gate: true }); PN('varco', 'Varco del Muro', R.gx - 3, 143); PN('poligono', 'Piazzale del Recinto', R.xe - 13, R.yN + 34); }   // [rocca2] il porto cargo sul molo a sud dello scoglio
     // la foresta
     P('macchia', 'Pineta dell\'altopiano', 200, 138); P('sentiero', 'Sentiero dei carbonai', 214, 156); P('radura', 'Radura del pastore', 176, 142);
-    P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago gelato', 182, 138);
+    P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago del monte', 182, 138);
     P('sangiacomo', 'San Giacomo', 205, 104); P('vigne', 'Vigne di San Giacomo', 208, 84); P('villaggio', 'Borgo dei Carbonai', 184, 190);
     P('oliveto', 'Uliveto delle terrazze', 262, 186); P('caletta', 'Caletta della fiumara', 215, 224);
     // il Monte Scuro: posti da scoprire girando attorno alla montagna (scoperta: compare la prima volta che ci arrivi)
     const SC = { scoperta: true };
     P('pizzo', 'Pizzo del Monte Scuro', 248, 143, { camp: 'croce', scoperta: true }); P('neviera', 'La neviera', 241, 135, { camp: 'neviera', scoperta: true });
-    P('cascata', 'Cascata gelata', 235, 115, { camp: 'cascata', scoperta: true }); P('gola', 'Gola del Lupo', 225, 82, SC); P('ponte_diavolo', 'Ponte del Diavolo', 221, 97, SC);
+    P('cascata', 'Cascata del Pizzo', 235, 115, { camp: 'cascata', scoperta: true }); P('gola', 'Gola del Lupo', 225, 82, SC); P('ponte_diavolo', 'Ponte del Diavolo', 221, 97, SC);
     P('fiumara', 'Fiumara dei Carbonai', 224, 196, { camp: 'fiumara', scoperta: true }); P('dita', 'Le Cinque Dita', 279, 182, SC);
     P('paese_vecchio', 'Paese Vecchio', 298, 173, { camp: 'rudere', scoperta: true }); P('vecchio_2', 'Case crollate del Paese Vecchio', 302, 168, { camp: 'rudere' }); P('vecchio_3', 'La chiesa senza tetto', 294, 178, { camp: 'rudere' });
     P('calanchi', 'I Calanchi', 168, 82, SC); P('eremo', 'Eremo del Romito', 162, 160, { camp: 'eremo', scoperta: true, hidden: true });
@@ -28425,16 +28437,17 @@ var World = (function () {
       eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
       for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
       // 2) la Via Cavour: a terra fino al sottopasso, poi la scalinata fino al piano della Via della Stazione
-      const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(1, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
-      C.ps.y = Math.max(ry(C.x) + 7.5, yTop - len); C.ps.opz.dislivello = +d.toFixed(2); C.ps.opz.pianerottoli = nPi; C.ps.q = Lr;
+      const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(.34, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
+      C.ps.y = Math.max(ry(C.x) + 7.5, yTop - len); C.ps.opz.dislivello = +d.toFixed(2);   // [sporcherie] i gradini salgono quanto sale davvero la via (prima almeno 1 m: in cima uno scalino di 25 cm sul Corso)
+      C.ps.opz.pianerottoli = nPi; C.ps.q = Lr;
       C.p.q = Lr; C.p.opz.hRilevato = +(Rf(C.x) - Lr - .25).toFixed(2);
       eachV(C.x - 2.1, C.y0, C.x + 2.1, C.y1 - 3.4, (i, j, x, y) => setV(i, j, y <= C.ps.y ? Lr : y >= C.ps.y + len ? Htop : Lr + (Htop - Lr) * (y - C.ps.y) / len));
       // 3) il piano della stazione: il marciapiede mezzo metro sopra il ferro; il piazzale scende o sale fino alla via
       if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; const suVia = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, b]) => a >= 0 && b >= 0 && a < GW && b < GH && roadW[b * GW + a] > 0);   /* [pianta] la Via Alta che passa accanto resta sul suo profilo: il marciapiede della stazione le sta sopra col suo muro */
         eachVL(S.p, -.5, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });   /* [pianta] il marciapiede della stazione finisce col suo rettangolo, mezzo metro oltre il fabbricato */
         const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { if (suVia(i, j)) return; const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
-        const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
-        [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
+        const t = S.tr; let gq = -1e9; for (let lx = 0; lx <= 22; lx += 2) gq = Math.max(gq, vAt(...pzW(t, lx, 0))); t.q = gq; t.opz.rilevato = false; t.opz.hRilevato = 0;   // [sporcherie] il tronchino sta a terra, sul prato fra la via e il rilevato (prima su un suo rilevato di 4 m: sembrava sospeso sopra la linea)
+        [S.loco, S.carro].forEach(p => { p.q = +(gq + .6).toFixed(2); }); }   // sulle rotaie del tronchino (massicciata .3 + traversa .15 + rotaia .15)
       // 4) il fossato della Rocca: 5 m sotto la spianata, il ponte resta in quota
       // [rocca2] il canale è mare: il ponte e la porta stanno alla quota della spianata; il pezzo del canale scende sotto il pelo dell'acqua
       const F = FORT.posa; if (F) { const Sp = vAt(F.XF - F.CW - 3, F.gy); F.Sp = Sp;
@@ -28471,11 +28484,12 @@ var World = (function () {
       // 7) le tre scalinate dalla marina al borgo: i gradini per il dislivello vero fra il piede e dieci metri più su
       (POSA.scal || []).forEach(c => { const p = c.p, d0 = vAt(p.x, p.y), dd = Math.max(.6, vAt(...p.B2) - d0); p.q = d0; p.opz.dislivello = +dd.toFixed(2); p.opz.pianerottoli = dd > 3.2 ? 1 : 0; delete p.B2; });
       // 8) la quota di posa degli altri: il punto più basso dell'impronta (niente pezzi sospesi; dove il terreno sale, il pezzo ci entra)
-      const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 8, -4, 4], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
+      const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 7, -3.5, 3.5], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
         arco_sottopasso: [3, 4.4, -4.5, 4.5], arco_contrasto: [1.7, 2.7, -.4, .4], porta_terra: [5.6, 8.6, -3, 6], muro_garante: [0, 24, -.5, .5], palo_riflettori: [-.4, .4, -.4, .4], caserma: [0, 0, -3.5, 3.5], polveriera: [0, 0, -2.5, 2.5], torrione: [3, 13, -5, 5], passaggio_livello: [9, 13, -1, 1] };
-      PEZZI.forEach(p => { if (p.q !== undefined) return; let r = p.tipo === 'portico' ? [0, p.opz.campate * p.opz.campata, 1.5, 2.1] : p.tipo === 'caserma' || p.tipo === 'polveriera' ? [0, p.opz.L, QR[p.tipo][2], QR[p.tipo][3]] : QR[p.tipo] || (p.imp && p.imp[0].slice(1)) || [-.5, .5, -.5, .5];
+      PEZZI.forEach(p => { if (p.q !== undefined) return; let r = p.tipo === 'portico' ? [0, p.opz.campate * p.opz.campata, 1.5, 2.1] : p.tipo === 'caserma' || p.tipo === 'polveriera' || p.tipo === 'muro_garante' ? [0, p.opz.L, QR[p.tipo][2], QR[p.tipo][3]] : QR[p.tipo] || (p.imp && p.imp[0].slice(1)) || [-.5, .5, -.5, .5];
         const pts = [[r[0], r[2]], [r[1], r[2]], [r[1], r[3]], [r[0], r[3]], [(r[0] + r[1]) / 2, (r[2] + r[3]) / 2]]; p.q = Math.min(...pts.map(([a, b]) => vAt(...pzW(p, a, b))));
-        if (p.tipo === 'passaggio_livello') p.q = Rf(pzW(p, 11, 0)[0]) - .45; });
+        if (p.tipo === 'passaggio_livello') p.q = Rf(pzW(p, 11, 0)[0]) - .45;
+        if (p.tipo === 'torre_littoria' || (p.tipo === 'torre_guardia' && p.recinto)) p.q = Math.max(p.q, .3); });   // [sporcherie] la torre littoria e le torri di guardia del Recinto (la Torre del canale) posano sulla banchina, non sotto il pelo dell'acqua
       PEZZI.forEach(p => { p.q = Math.round(p.q * 100) / 100; });
       if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; PEZZI.forEach(p => { c[p.tipo] = (c[p.tipo] || 0) + 1; }); console.log('[posa] pezzi', PEZZI.length, JSON.stringify(c), 'rilevato al sottopasso', Rtop.toFixed(2), 'strada', Lr.toFixed(2)); }
     }
@@ -28827,7 +28841,7 @@ var World = (function () {
       if (v === T.ROCK) {
         let mare = false; for (let b = -2; b <= 2 && !mare; b++) for (let a = -2; a <= 2; a++) if (isSea(i + b * GWx + a)) { mare = true; break; }
         if (!mare) continue; const k2 = W.coastKind2(x0 + 1, y0 + 1), x = x0 + .4 + h(8) * 1.2, y = y0 + .4 + h(9) * 1.2;
-        if (k2 === 'frangiflutti') { if (h(11) < .55) A.tetrapodi.push({ x, y, r: h(12) * 6.28, t: h(13) * 6.28, s: .9 + h(14) * .25 }); continue; }
+        if (k2 === 'frangiflutti') { if (h(11) < .55 && ![[0, 0], [2.2, 0], [-2.2, 0], [0, 2.2], [0, -2.2], [1.6, 1.6], [-1.6, 1.6], [1.6, -1.6], [-1.6, -1.6]].some(([a, b]) => { const j = at(x + a, y + b); return j >= 0 && strada(j); })) A.tetrapodi.push({ x, y, r: h(12) * 6.28, t: h(13) * 6.28, s: .9 + h(14) * .25 }); continue; }   // [sporcherie] i tetrapodi a 2 m dalla strada, mai a filo della Costiera
         if (!libero(x, y, .2)) continue;
         if (h(15) < .4) A.rocce.push({ k: 'lastra', x, y, s: 1 + h(16) * 1.4, r: h(17) * 6.28 });
         else if (h(15) < .55) A.rocce.push({ k: 'masso', x, y, s: .5 + h(16) * .9, r: h(17) * 6.28 });
@@ -29008,7 +29022,7 @@ var Percorsi = (function () {
   if (DBG) console.error('[percorsi] t', 42, Date.now() - T0);
   // ================= LA VISTA: cosa copre cosa (case, pezzi grandi, archi sopra i vicoli) =================
   // l'altezza di un pezzo grande che riserva caselle piene (BLD senza casa): torre, porta, stazione, arco
-  const PZH = { torre_littoria: 34, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
+  const PZH = { torre_littoria: 21, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
   const PZBOX = []; (W.pezzi || []).forEach(p => { if (!p.imp) return; p.imp.forEach(r => { if (r[0] !== 'B') return; PZBOX.push({ p, r, h: (p.q || 0) + (PZH[p.tipo] || 8) }); }); });
   // gli archi e le volte sopra i vicoli: si passa sotto (la vista anche), ma sopra i 3,4 m coprono
   const VOLTE = []; (W.pezzi || []).forEach(p => { if (p.tipo === 'arco_sottopasso') VOLTE.push({ p, x0: -1, x1: 8.4, z0: -6, z1: 6, y0: (p.q || 0) + 3.2, y1: (p.q || 0) + 9.6 });
@@ -29101,7 +29115,7 @@ var Percorsi = (function () {
   const LANDMARK = [];
   const lm = (tipo, nome, lx, lz, h, r) => pz(tipo).forEach(p => { const [x, y] = pzW(p, lx, lz); LANDMARK.push({ k: 'landmark', tipo, nome, x, y, z: (p.q || 0) + h, r }); });
   lm('campanile', 'il campanile della Chiesa Madre', 2.2, 0, 26, 3.5);
-  lm('torre_littoria', 'la torre littoria', 4, 0, 30, 5);
+  lm('torre_littoria', 'la torre littoria', 3.5, 0, 17, 5);   // [sporcherie] la torre è di 15 m
   lm('porta_terra', 'la Porta di Terra', ptX, 0, 9, 4.5);
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
@@ -32949,7 +32963,7 @@ var Game = (function () {
       // [inverno] la piazza ora ha i viali che la attraversano: niente margine, e due file di banchi
       [[-10, ['frutta', 'verdura', 'pesce', 'forno']], [4, ['verdura', 'frutta', 'forno', 'pesce']]].forEach(([ox, goodsRow]) => {
         const q = rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
-        if (q) goodsRow.forEach((goods, k) => { const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
+        if (q) goodsRow.forEach((goods, k) => { if (k && MAP.world && MAP.world.WALL) return;   /* [sporcherie] nella città nuova due banchi soli, uno per fila, contro la facciata ovest del sagrato */ const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
       });
     }
     // --- piazzale dei container al porto: due file da tre, impilati a scacchiera, corridoio di una casella ---
@@ -49718,7 +49732,9 @@ var Tetti = (function () {
     if (!vic.length) return false;
     for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; if (vic.some(b => dentro4(b, x, y, .02))) return true; }
     return false; };
-  const sgombra4 = P => { if (terza4(P)) return false; for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+  const sgombra4 = P => { if (terza4(P)) return false;
+    for (let s2 = P.s1 + .3; s2 <= P.s2 - .3; s2 += .5) for (const t of [-P.hw - .6, 0, P.hw + .6]) { const v = G.tileAt(Math.floor((P.x0 + P.ox * s2 + P.px * t) / TS), Math.floor((P.y0 + P.oy * s2 + P.py * t) / TS)); if (v === G.T.PIAZZA || v === G.T.FOUNT) return false; }   /* [sporcherie] niente assi sopra le piazzette (la passerella sul Pozzo) */
+    for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!inb(tx, ty)) return false;
     for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */
       if ((s2 < P.s1 - .05 || s2 > P.s2 + .05) && !dentro4(B[q], x, y, 0) && roofRule(B[q]) <= Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - .3) continue;   // [tetti4] sopra le teste, la gronda di un vicino girato più basso sta sotto le assi   // [tetti4] gli spigoli delle case girate vicine
@@ -59529,7 +59545,7 @@ if (typeof module !== 'undefined') module.exports = Vievive;
    Nessuna grafica: gira anche in Node (test_chiarezza.js). Coordinate in metri, x est, z sud. */
 var Palco = (function () {
   'use strict';
-  const CARRO = { hx: 3.1, hz: 3.3, passo: 7.2, n: 3 };   // m: la mezza sagoma di un carro (il modello è largo 6,2 m e lungo 6,5) e il passo della fila
+  const CARRO = { hx: 1.8, hz: 1.8, passo: 5, n: 3 };   // m: la mezza sagoma di un carro ([sporcherie] il modello in scala vera: lungo 3,5 m, largo 3,3, alto 3; prima 6,5 × 6,2 × 5,6, giocattoloni alti come una casa) e il passo della fila
   const CONT = { hx: 1.2, hz: 3, passo: 6.6, n: 3, dalMuro: 4.2 };   // container da 6 m, il fianco a 3 m dal Muro (le torri ci stanno davanti)
   const PAD = 6, ANT = { h: 16, r: 3.6 };   // la piazzola (mezzo lato libero) e l'antenna (altezza, raggio dei tiranti)
   const MUCCHI = { recinto: 24, max: 14 };   // un mucchietto ogni ~24 m al piede del Muro; al massimo tanti in tutto
@@ -59876,11 +59892,11 @@ var Scena = (function () {
   function dehorsDi(p, du, use, q) {
     const TS = G.TS, T = G.T, L = p.len, nx = p.f === 'S' ? 0 : 1, nz = p.f === 'S' ? 1 : 0, out = { bi: p.bi, f: p.f, yaw: p.yaw, use: use || 'bar', tavoli: [], fioriere: [], lavagna: null, frigo: null, ombrelloni: [], piazzetta: !!q };
     const pos = (u, o) => { const a = p.at(u); return [a[0] + nx * o, a[1] + nz * o]; }, ok = (x, z) => { const v = tl(Math.floor(x / TS), Math.floor(z / TS)); return v === T.WALK || v === T.PIAZZA || v === T.COB; };
-    const prof = (() => { let o = .5; while (o < 4.5 && ok(...pos(du, o + .5))) o += .5; return o; })();   // quanto è profonda la fascia libera davanti
-    const o = Math.min(1.1, Math.max(.75, prof - .6)); if (prof < 1.2) return out;
+    const profU = u => { let o = .5; while (o < 4.5 && ok(...pos(u, o + .5))) o += .5; return o; }, prof = profU(du);   // quanto è profonda la fascia libera davanti
+    const o = Math.min(1.1, Math.max(.75, prof - .6)); const PMIN = q ? 2 : 3; if (prof < PMIN) return out;   // [sporcherie] i tavolini solo dove davanti restano almeno 3 m liberi (sulla piazzetta 2: è la piazza, non un passaggio; prima 1,2: nei vicoli di 1,7 m il dehors chiudeva il passaggio)
     const us = []; for (let k = 1; k <= 3; k++) [-1, 1].forEach(s2 => { const u = du + s2 * (.6 + k * 1.25); if (u > .55 && u < L - .55 && us.length < 4) us.push(u); });
-    us.forEach(u => { const [x, z] = pos(u, o); if (ok(x, z)) out.tavoli.push({ x, z, u }); });
-    if (out.tavoli.length) { const umin = Math.min(...out.tavoli.map(t => t.u)), umax = Math.max(...out.tavoli.map(t => t.u)); [umin - .75, umax + .75].forEach(u => { if (u < .3 || u > L - .3) return; const [x, z] = pos(u, o); if (ok(x, z)) out.fioriere.push({ x, z }); });
+    us.forEach(u => { const [x, z] = pos(u, o); if (ok(x, z) && profU(u) >= PMIN) out.tavoli.push({ x, z, u }); });   // [sporcherie] anche davanti a ogni tavolino 3 m liberi (il vicolo si stringe)
+    if (out.tavoli.length) { const umin = Math.min(...out.tavoli.map(t => t.u)), umax = Math.max(...out.tavoli.map(t => t.u)); [umin - .75, umax + .75].forEach(u => { if (u < .3 || u > L - .3) return; const [x, z] = pos(u, o); if (ok(x, z) && profU(u) >= PMIN) out.fioriere.push({ x, z }); });
       if (prof >= 3) out.tavoli.filter((t, i) => i % 2 === 0).slice(0, 2).forEach(t => out.ombrelloni.push({ x: t.x, z: t.z })); }   // gli ombrelloni solo se c'è spazio (non sbattono sulla tenda)
     { const [x, z] = pos(du + (du + 1 < L ? .75 : -.75), .35); out.lavagna = { x, z }; }
     if (out.use === 'gelateria' || out.use === 'bar') { const u = du + (du > L / 2 ? -1.1 : 1.1); if (u > .4 && u < L - .4) { const [x, z] = pos(u, .45); if (ok(x, z) && !out.tavoli.some(t => Math.hypot(t.x - x, t.z - z) < 1)) out.frigo = { x, z }; } }
@@ -60964,9 +60980,11 @@ var Rete = (function () {
               const n2 = nodo('mensola', nx ? x0 + (far * nx > 0 ? w : 0) : px, nz ? z0 + (far * nz > 0 ? d : 0) : pz, Math.min(Y_TRAV, topOf(b) - .3), { bi, f: nx ? (far * nx > 0 ? 'E' : 'W') : (far * nz > 0 ? 'S' : 'N'), traversata: true });
               seg(prev, n2, 'traversata', { rd: rd.id }); } }
           // la cabina ENEL di quartiere: sulle vie, ogni 150-200 m, sul marciapiede lontano, allacciata alla mensola più vicina
-          if ((!vic || rd.w >= 5) && !interr && s > sCab && prev && s - prevS < 8) {   /* [mappa_compatta] nella città compatta anche la Rua e la Marina (5 m) sono vie */ sCab = s + 150 + hash(ri, k, 9) * 50; const oc = vic ? rd.w / 2 - 1.1 : rd.w / 2 + 1.6, cx = x + nx * far * oc, cz = z + nz * far * oc;   /* [mappa_compatta] sulla Rua e sulla Marina contro il muro (non c'è marciapiede) */
+          if ((!vic || rd.w >= 5) && !interr && s > sCab && prev && s - prevS < 8) {   /* [mappa_compatta] nella città compatta anche la Rua e la Marina (5 m) sono vie */ sCab = s + 150 + hash(ri, k, 9) * 50; let oc = vic ? rd.w / 2 - 1.1 : rd.w / 2 + 1.6;
+            if (vic) { let ow = -1; for (let o = .6; o < rd.w / 2 + 3.2 && ow < 0; o += .3) if (bAt(x + nx * far * o, z + nz * far * o) >= 0) ow = o; if (ow < 0) { sCab = s + 4; oc = NaN; } else oc = ow - .6; }   /* [sporcherie] nei vicoli la cabina sta col retro al muro vero (la Rua è più larga della sua banda), mai in mezzo */
+            const cx = x + nx * far * oc, cz = z + nz * far * oc;   /* [mappa_compatta] sulla Rua e sulla Marina contro il muro (non c'è marciapiede) */
             const vPorta = B.some(b => [b.door, b.shopFront && b.shopFront.door].some(dt => dt && Math.hypot((dt[0] + .5) * TS - cx, (dt[1] + .5) * TS - cz) < (vic ? 2 : 3.2))); if (vPorta) sCab = s + (vic ? 2 : 8);   /* [pulizia2] mai davanti a un portone: si riprova più avanti */
-            if (!vPorta && open(tl(Math.floor(cx / TS), Math.floor(cz / TS))) && bAt(cx, cz) < 0) { const c = nodo('cabina', cx, cz, 2.3, { yaw: Math.atan2(-nx * far, -nz * far) }); seg(c, prev, 'dorsale', { cabina: true }); } }
+            if (!vPorta && oc === oc && open(tl(Math.floor(cx / TS), Math.floor(cz / TS))) && bAt(cx, cz) < 0) { const c = nodo('cabina', cx, cz, 2.3, { yaw: Math.atan2(-nx * far, -nz * far) }); seg(c, prev, 'dorsale', { cabina: true }); } }
           // i lampioni per epoca a interasse fisso, sul lato lontano: nel borgo a braccio sul muro (dalla mensola), altrove a palo sul marciapiede
           if (lamp && s > prossLamp) { prossLamp = s + lamp; const braccio = rd.era === 'E0' || rd.era === 'E2';
             if (braccio) { let bi = -1, px = 0, pz = 0; for (let o = rd.w / 2 + .3; o < rd.w / 2 + 3.2 && bi < 0; o += .7) { px = x + nx * far * o; pz = z + nz * far * o; bi = bAt(px, pz); }
@@ -67263,7 +67281,7 @@ var Render = (function () {
     edges.forEach(e => {
       const L = Math.hypot(e.bx - e.ax, e.bz - e.az), cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, cap = box(e.obl ? .6 : e.nx ? .5 : L + .5, .22, e.obl ? L + .12 : e.nx ? L + .5 : .5, capM);
       cap.position.set(cx - e.nx * .2, e.h - .08, cz - e.nz * .2); if (e.obl) cap.rotation.y = Math.atan2(e.bx - e.ax, e.bz - e.az); addStatic(cap); k++;   // [riva] sul muro storto la copertina lo segue
-      if (k % 5 === 2) bitta(cx - e.nx * .7, cz - e.nz * .7);
+      if (k % 9 === 2 && !onCarr1(cx - e.nx * .7, cz - e.nz * .7, .4)) bitta(cx - e.nx * .7, cz - e.nz * .7);   // [sporcherie] più rade, e mai in carreggiata
       if (k % 13 === 6) { const g = G0(), dn = Math.min(e.h - WL + 1.2, 3.6); [-.22, .22].forEach(o => add(g, box(.05, dn, .05, iron), o, -dn / 2 + .1, 0)); for (let y = 0; y < dn; y += .32) add(g, box(.5, .04, .04, iron), 0, -y, 0); g.position.set(cx + e.nx * .06, e.h, cz + e.nz * .06); g.rotation.y = Math.atan2(e.nx, e.nz); addStatic(g); }
       if (k % 7 === 3 && e.h < 1) { const t = new THREE.Mesh(new THREE.TorusGeometry(.36, .13, 5, 10), rubber); t.position.set(cx + e.nx * .15, e.h - .7, cz + e.nz * .15); t.rotation.y = Math.atan2(e.nz, e.nx) + Math.PI / 2; addStatic(t); }
     });
@@ -67280,10 +67298,7 @@ var Render = (function () {
         for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#6e6a64', '#7a756d', '#625e59', '#837d74'])); } }
     });
     S.rocks.forEach(q => {
-      if (q.big && /^scoglio_mura/.test(q.id || '')) {   // [costa] gli scogli sotto le mura: bassi e spezzati (tre o quattro massi piatti, non un uovo di 12 m)
-        const nM = 3 + (r() < .5 ? 1 : 0); for (let k = 0; k < nM; k++) { const a = k / nM * 6.28 + r() * 1.2, d = k ? q.r * (.35 + r() * .3) : 0, s = q.r * (k ? .45 + r() * .2 : .62); push(q.x + Math.cos(a) * d, -.6 + r() * .4, q.y + Math.sin(a) * d, s, .6 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); }
-        for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = q.r * (.7 + r() * .5); push(q.x + Math.cos(a) * d, -.8 + r() * .6, q.y + Math.sin(a) * d, q.r * (.15 + r() * .15), .6 + r() * .4, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
-      else if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
+      if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
       else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e', '#655f58']));
     });
     if (!list.length) return;
@@ -67856,7 +67871,7 @@ var Render = (function () {
   }
   function buildPropsIsland() {
     const T = G.T, r = rng(2026), P = G.PLACES;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // lampioni e palme lungo le strade
     (M.roads || []).forEach(rd => {
       if (rd.kind === 'sterrato' || (rd.era && SEG1.ok)) return;   // [segni] nella città nuova i lampioni li mette la rete, per epoca
@@ -69678,7 +69693,7 @@ var Render = (function () {
   // ---------------- le strade: guardrail, cartelli, lavori in corso, transenne, arredo ----------------
   function buildStrade31() {
     const T = G.T, r = rng(2031), W0 = M.world; if (!W0) return 0;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     let n = 0;
     const rail = sm('#8a8c8a', { metalness: .55, roughness: .45 }), railR = sm('#7a6250', { metalness: .4, roughness: .7 }), post = sm('#5a5c5e', { metalness: .5, roughness: .6 }), conc = concrete('#8a8682'), concD = concrete('#6e6a66');
@@ -70159,9 +70174,23 @@ var Render = (function () {
     for (let i = i0 - 2; i <= i0 + 2; i++) for (let j = j0 - 2; j <= j0 + 2; j++) for (const s of CH1.get(i * 4096 + j) || []) { if (s[5] === not) continue; const dx = s[2] - s[0], dz = s[3] - s[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s[0]) * dx + (z - s[1]) * dz) / L2, 0, 1); if (Math.hypot(s[0] + dx * t - x, s[1] + dz * t - z) < s[4] + (pad || 0)) return true; }
     return false;
   }
+  // [sporcherie] I VICOLI RESTANO PASSABILI: sulle bande dei vicoli (kind 'vicolo', lastricato COB) un oggetto di raggio r a distanza d
+  // dall'asse lascia libero al più (mezza larghezza + d - r) metri: sotto 1,2 m il vicolo è chiuso e lì non si posa niente.
+  // Usata da ok()/free()/OCC35.free/solidR1 (prima escludevano solo le caselle VIA: i vicoli e la Rua sono COB/WALK).
+  let VB1 = null;
+  function vicoloChiuso(x, z, r) {
+    if (!VB1) { VB1 = new Map(); const add = (ax, az, bx, bz, h) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 6)); for (let k = 0; k < n; k++) { const s0 = [ax + (bx - ax) * k / n, az + (bz - az) * k / n, ax + (bx - ax) * (k + 1) / n, az + (bz - az) * (k + 1) / n, h], key = Math.floor((s0[0] + s0[2]) / 16) * 4096 + Math.floor((s0[1] + s0[3]) / 16); (VB1.get(key) || VB1.set(key, []).get(key)).push(s0); } };
+      (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo') return;
+        if (rd.rect) { const q = rd.rect, x0 = q[0] * TS, z0 = q[1] * TS, x1 = (q[2] + 1) * TS, z1 = (q[3] + 1) * TS; if (x1 - x0 >= z1 - z0) add(x0, (z0 + z1) / 2, x1, (z0 + z1) / 2, (z1 - z0) / 2); else add((x0 + x1) / 2, z0, (x0 + x1) / 2, z1, (x1 - x0) / 2); return; }
+        const P = rd.pts; if (P) for (let k = 0; k < P.length - 1; k++) add(P[k][0], P[k][1], P[k + 1][0], P[k + 1][1], rd.w / 2); }); }
+    r = r || .5; const i0 = Math.floor(x / 8), j0 = Math.floor(z / 8);
+    for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (const s of VB1.get(i * 4096 + j) || []) { const dx = s[2] - s[0], dz = s[3] - s[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s[0]) * dx + (z - s[1]) * dz) / L2, 0, 1), d = Math.hypot(s[0] + dx * t - x, s[1] + dz * t - z);
+      if (d < s[4] + r && s[4] + d - r < 1.2) return true; }
+    return false;
+  }
   const solid1 = (x, z) => { const T = G.T, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.FOUNT || v === T.TREE || v === undefined; };
   function busy1(x, z, r) { let hit = false; hashNear(x, z, r + 2, rec => { if (hit || rec.gone35 || rec.state !== 0) return; if (Math.abs(rec.c.x - x) < rec.he.x + r && Math.abs(rec.c.z - z) < rec.he.z + r) hit = true; }); return hit; }
-  const solidR1 = (x, z, d) => [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
+  const solidR1 = (x, z, d) => vicoloChiuso(x, z, d) || [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
   const okSpot1 = (x, z, r) => !solidR1(x, z, Math.max(.4, r || .3)) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
 
   // ================= PITTURA DEL SUOLO =================
@@ -70289,7 +70318,7 @@ var Render = (function () {
   // ---- cantieri: in città (scavo nella corsia, rete arancione, barriere) e i 9 fuori città di [isola31] restano ----
   let WORKS1 = null;
   function works1() {
-    if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30);
+    if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30 && rd.id !== 'passeggiata');   // [sporcherie] niente scavo sul Viale della Spianata: chiudeva la carreggiata del viale
     for (let tries = 0; tries < 200 && WORKS1.length < 5 && RD.length; tries++) {
       const rd = pick(r, RD), g = geo1(rd), k = 10 + Math.floor(r() * (g.n - 20)), [x0, y0] = rd.pts[k];
       if ((cn1() && (rd.pennoni || scenaVuotaV2(x0, y0))) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
@@ -72074,7 +72103,7 @@ var Render = (function () {
   const OCC35 = { g: new Map(), seed(list) { list.forEach(rec => this.mark(rec.c.x, rec.c.z, rec.he.x + .2, rec.he.z + .2)); },
     key: (i, j) => i * 8192 + j,
     mark(x, z, hx, hz) { for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) this.g.set(this.key(i, j), 1); },
-    free(x, z, hx, hz) { for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) { if (this.g.has(this.key(i, j))) return false; const tx = Math.floor(i * .5 / TS), ty = Math.floor(j * .5 / TS), v = gT(tx, ty); if (v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || (v === G.T.VIA && RW[ty * G.GW + tx] > 0)) return false; } return true; } };
+    free(x, z, hx, hz) { if (vicoloChiuso(x, z, Math.max(hx, hz))) return false; for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) { if (this.g.has(this.key(i, j))) return false; const tx = Math.floor(i * .5 / TS), ty = Math.floor(j * .5 / TS), v = gT(tx, ty); if (v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || (v === G.T.VIA && RW[ty * G.GW + tx] > 0)) return false; } return true; } };
 
   // ================= LE COSE TROVATE PER CASO, MA CON UNA LOGICA =================
   const O35 = {};
@@ -74351,7 +74380,7 @@ var Render = (function () {
   function buildSets() {
     const W0 = M.world, SETS = W0 && W0.sets; if (!SETS) return 0;
     const T = G.T, r = rng(1986), tl = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); let n = 0;
-    const ok = (x, z, rr = .7) => [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]].every(([u, w]) => { const v = tl(x + u, z + w); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });
+    const ok = (x, z, rr = .7) => !vicoloChiuso(x, z, rr) && [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]].every(([u, w]) => { const v = tl(x + u, z + w); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });
     const TENDE = [['#2f6a4e', '#e9e0cf'], ['#b0283c', '#e9e0cf'], ['#3a5aa8', '#e9e0cf'], ['#c87a20', '#f0e6c8'], ['#6a3a7a', '#e9e0cf']];
     const MERCI = [['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'], ['#e0d0a0', '#f0e060', '#c83030', '#3a7a3a'], ['#9ab0c0', '#c0d0d8'], ['#8a6a3a', '#9a7444', '#6a4a2a'], ['#4a6a34', '#6a7a3a', '#7a3a2a']];
     const faceTo = (x, z, cx, cz) => Math.atan2(cx - x, cz - z);   // il davanti (+z) verso il punto
@@ -74377,14 +74406,14 @@ var Render = (function () {
         const cx = (q.x0 + q.x1) / 2, cz = (q.y0 + q.y1) / 2;
         [[q.x0 + 2, q.y0 + 2], [q.x1 - 2, q.y0 + 2]].forEach(([x, z]) => { if (ok(x, z)) { leafyTree(x, z, r, true); n++; } });
         [cx - 4, cx + 4].forEach(x => { if (ok(x, cz + 1.5)) { bench(x, cz + 1.5, Math.PI, 'iron'); n++; } });
-        if (ok(q.x1 - 2, q.y1 - 2, 1)) newsstand(q.x1 - 2, q.y1 - 2, -Math.PI / 2, r); if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
+        { const ex = q.x1 - 2.5, ez = (q.y0 + q.y1) / 2; if (ok(ex, ez, 1.3) && !onCarr1(ex, ez, 1.5)) newsstand(ex, ez, -Math.PI / 2, r); }   /* [sporcherie] l'edicola contro la facciata est del sagrato, a metà: nell'angolo sud-est finiva nella Rua */ if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
       } else if (q.k === 'adunata' && q.civica) {
         // [cucitura] la Piazza Grande (l'ex adunata): la fontana in mezzo alla metà sud (pezzo), attorno le panchine rivolte alla fontana, il
         // dehors del caffè lungo il filo sud, l'edicola dei giornali e la cabina sull'angolo verso il Mercato; a nord il sagrato del cinema libero
         const fx = (q.x0 + q.x1) / 2, fz = (q.y1 + (q.y0 + q.y1) / 2 + 3.5) / 2 + 1;
         [[-5.5, 0], [5.5, 0]].forEach(([dx, dz]) => { const x = fx + dx, z = fz + dz; if (ok(x, z)) { bench(x, z, dx < 0 ? Math.PI / 2 : -Math.PI / 2, 'iron'); n++; } });
         if (!SEG1.ok) for (let k = 0; k < 3; k++) { const x = q.x0 + 5 + k * 4.5, z = q.y1 - 2.2; if (ok(x, z)) { cafe(x, z, r, 'marble', 2, ['#2f6a4e', '#e9e0cf']); n++; } }
-        if (ok(q.x0 + 2, q.y1 - 2.5, 1)) newsstand(q.x0 + 2, q.y1 - 2.5, Math.PI / 2, r); if (ok(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6)) phoneBooth(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6, Math.PI / 2);
+        if (ok(q.x0 + 2, q.y1 - 2.5, 1.3) && !onCarr1(q.x0 + 2, q.y1 - 2.5, 1.5)) newsstand(q.x0 + 2, q.y1 - 2.5, Math.PI / 2, r); if (ok(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6)) phoneBooth(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6, Math.PI / 2);
         for (let k = 0; k < 4; k++) { const x = q.x0 + 3 + k * (q.x1 - q.x0 - 6) / 3, z = q.y0 + 1.6; if (ok(x, z, .4)) pot(x, z, r, k % 2 ? 'lemon' : 'geranio'); }
         cat(fx + 3, fz + 3, r);
       } else if (q.k === 'adunata') {
@@ -74421,7 +74450,7 @@ var Render = (function () {
         let last = -1e9, k = 0;
         for (let x = q.x0; x <= q.x1; x += 1) { let z = null; for (let zz = 150 + (M.world.OY || 0); zz < 260 + (M.world.OY || 0); zz += 1) if (tl(x, zz) === T.QUAY && tl(x, zz + 1.5) === T.WATER) { z = zz; break; }
           if (z === null || x - last < 8) continue; last = x; if (!po1Has('bitta')) bitta(x, z - .2); n++; k++;   // [posa] le bitte sono pezzi
-          const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1)) continue; const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
+          const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1) || onCarr1(ix, iz, 2.4) || (k % 8) > 3) continue;   /* [sporcherie] casse, reti e fusti fuori dalla carreggiata e dal marciapiede, e più radi */ const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
       }
     });
     // la vita dei vicoli: il bucato teso fra le case di fronte, le edicole votive sugli spigoli, i bidoni e i gatti
@@ -76208,7 +76237,7 @@ var Render = (function () {
 
   // ================= [inverno] PAESAGGIO: il Muro, la Base, il porto cargo, le stazioni, i beduini, i bivacchi, i fuochi =================
   // Tutto statico tranne i fuochi (fiamme che tremano), il radar, i riflettori delle torri e l'elicottero di notte.
-  const WX = { fires: [], beams: [], radar: null, heli: null, blink: [] };
+  const WX = { fires: [], beams: [], radar: null, heli: null, blink: [], barili: [] };
   function fireMat() { return WX.fm || (WX.fm = [new THREE.MeshBasicMaterial({ color: '#ffb040', toneMapped: false }), new THREE.MeshBasicMaterial({ color: '#ff5a1a', toneMapped: false }), new THREE.MeshBasicMaterial({ color: '#ffe8a0', toneMapped: false })]); }
   // fiamma: tre coni che tremano, una luce calda vera e un alone
   function flame(x, y, z, s, lightK) {
@@ -76216,7 +76245,7 @@ var Render = (function () {
     [[0, .9, 1], [.12, .7, 0], [-.1, .6, 2]].forEach(([o, h, mi]) => { const c = new THREE.Mesh(new THREE.ConeGeometry(.22 * s, h * s, 5), fm[mi]); c.position.set(o * s, h * s / 2, o * .7 * s); g.add(c); });
     g.position.set(x, y, z); scene.add(g); WX.fires.push({ g, ph: Math.random() * 9 });
     const L = addLight(x, y + .8 * s, z, '#ff8a3a', 2.4 * (lightK || 1), 11, .35); L.always = true;
-    glow(x, y + .6 * s, z, '#ff9a40', 2.6 * s);
+    g.userData.luce = L; g.userData.alone = glow(x, y + .6 * s, z, '#ff9a40', 2.6 * s);
     return g;
   }
   // il barile col fuoco per scaldarsi: ruggine, qualche cassetta intorno
@@ -76226,7 +76255,7 @@ var Render = (function () {
     add(g, cyl(.29, .29, .04, 10, sb('#ff6a20')), 0, .86, 0);
     if (r() < .6) add(g, box(.5, .3, .35, PM.wood()), .65, .15, .2, 0, r() * 2, 0);
     place(g, x, z, r() * 6);
-    flame(x, groundH(x, z) + .85, z, .9);
+    const fg = flame(x, groundH(x, z) + .85, z, .9); fg.userData.b0 = fg.userData.luce.base; WX.barili.push(fg);   // [sporcherie] acceso solo la sera e la notte
   }
   function camp(x, z, r) { // fuoco a terra: pietre in cerchio, legna
     const g = G0(), st = sm('#6a6660');
@@ -76387,7 +76416,7 @@ var Render = (function () {
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     buildFortezza();   // [città2] i bastioni (solo con la città nuova)
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
@@ -76529,7 +76558,16 @@ var Render = (function () {
       for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z)) place(g, x, z, r()); }
     }
     // ---- dorsali: bivacchi, il monolite, gli spiazzi da campeggio ----
-    Object.values(P).forEach(q => {
+    // [sporcherie] I POSTI FUORI DAI SENTIERI: il bivacco, le tende, la carbonaia, la croce, la neviera stavano sull'asse del loro sentiero (o in mezzo
+    // alla via): il disegno si scosta del meno possibile finché il suo ingombro (R) non tocca più nessuna strada, sentiero o traccia; il posto resta lì
+    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6 }, viaSeg = [];
+    (M.roads || []).forEach(rd => { if (rd.pts) for (let k = 0; k < rd.pts.length - 1; k++) viaSeg.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2]); });
+    const sulSentiero = (x, z, R) => viaSeg.some(s0 => { if (Math.min(s0[0], s0[2]) - R - s0[4] > x || Math.max(s0[0], s0[2]) + R + s0[4] < x || Math.min(s0[1], s0[3]) - R - s0[4] > z || Math.max(s0[1], s0[3]) + R + s0[4] < z) return false;
+      const dx = s0[2] - s0[0], dz = s0[3] - s0[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s0[0]) * dx + (z - s0[1]) * dz) / L2, 0, 1); return Math.hypot(s0[0] + dx * t - x, s0[1] + dz * t - z) < s0[4] + R; });
+    const scosta = q => { const R = CAMPR[q.camp]; if (!R || !sulSentiero(q.x, q.y, R)) return q;
+      for (let d = 1; d <= 16; d += 1) for (let a = 0; a < 12; a++) { const x = q.x + Math.cos(a / 12 * 6.283) * d, z = q.y + Math.sin(a / 12 * 6.283) * d; if (!sulSentiero(x, z, R) && free(x, z, Math.min(R, 2.5))) return Object.assign({}, q, { x, y: z }); }
+      return q; };
+    Object.values(P).map(scosta).forEach(q => {
       if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
       else if (q.camp === 'tende') { for (let k = 0; k < 3; k++) { const x = q.x + (k - 1) * 3.4, z = q.y + (k % 2) * 2; if (free(x, z)) tent(x, z, r() * 6, pick(r, ['#6a2a2a', '#2a4a3a', '#5a5a2a']), .8); } camp(q.x, q.y - 3, r); }
       else if (q.camp === 'rudere' && typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { const C = Vegetazione.casale({ x: q.x + 2, y: q.y - 2, rot: r() * 6.28, groundH, seme: Math.round(q.x * 7 + q.y) }); scene.add(C.gruppo); Vegetazione.aggiungi(C.piante); }   // [vegetazione] il casale diroccato
@@ -76538,7 +76576,7 @@ var Render = (function () {
       else if (q.camp === 'legna') { for (let k = 0; k < 3; k++) { const g = G0(); for (let j = 0; j < 7; j++) add(g, cyl(.16, .16, 1.4, 6, PM.woodD()), (j % 4) * .34 - .5, .16 + Math.floor(j / 4) * .3, 0, 0, 0, Math.PI / 2); add(g, box(1.6, .1, 1.6, sm('#c8ccd2')), 0, .62, 0); place(g, q.x + k * 2.2 - 2, q.y + (k % 2) * 2, r()); } const sb2 = G0(); add(sb2, cyl(.35, .4, .5, 8, PM.woodD()), 0, .25, 0); add(sb2, box(.06, .7, .2, sl('#8a8a90')), .1, .75, 0, 0, 0, .4); place(sb2, q.x + 3, q.y - 2, 0); }
       else if (q.camp === 'vedetta') { const g = G0(), wd = PM.woodD(); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => add(g, box(.18, 6, .18, wd), a, 3, c)); add(g, box(2.6, .15, 2.6, wd), 0, 6, 0); add(g, box(2.8, .2, 2.8, sm('#c8ccd2')), 0, 7.6, 0); add(g, box(.1, 1.5, .1, wd), 1.2, 6.8, 1.2); place(g, q.x, q.y, .3); }
       else if (q.camp === 'grotta') { const g = G0(), rk = sm('#5a5856', { roughness: 1, flatShading: true }); [[0, 0, 3.2], [2.6, .5, 2.4], [-2.4, .3, 2.6], [.5, 2, 2]].forEach(([dx, dy, s2]) => { const m = add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(s2, 0), rk), dx, dy + 1, -1.5); m.scale.y = .8; }); add(g, new THREE.Mesh(new THREE.CircleGeometry(1.3, 10), sb('#08080a')), 0, 1.2, .6); place(g, q.x, q.y - 2, r()); }
-      else if (q.camp === 'sorgente') { const g = G0(); add(g, cyl(2.2, 2.4, .2, 12, sm('#a8c4d4', { roughness: .15 })), 0, .1, 0); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.4, 0), sm('#6a6866')), Math.cos(a) * 2.4, .2, Math.sin(a) * 2.4); } place(g, q.x, q.y, 0); }
+      else if (q.camp === 'sorgente') { const g = G0(); add(g, cyl(2.2, 2.4, .2, 12, sm('#3e6e80', { roughness: .05, metalness: .2 })), 0, .1, 0);   /* [sporcherie] acqua, non ghiaccio */ for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.4, 0), sm('#6a6866')), Math.cos(a) * 2.4, .2, Math.sin(a) * 2.4); } place(g, q.x, q.y, 0); }
       // [monte] i posti del Monte Scuro
       else if (q.camp === 'croce') {
         const g = G0(), iron = sm('#2a2a2e', { roughness: .6, metalness: .5 }), st2 = sm('#7a7670', { roughness: 1, flatShading: true });
@@ -76550,17 +76588,17 @@ var Render = (function () {
       else if (q.camp === 'neviera') {
         const g = G0(), st2 = sm('#6e6a64', { roughness: 1, flatShading: true });
         for (let k = 0; k < 16; k++) { const a = k / 16 * 6.28; add(g, box(1.1, .7 + (k % 3) * .25, .5, st2), Math.cos(a) * 2.6, .35, Math.sin(a) * 2.6, 0, -a, 0); }
-        add(g, new THREE.Mesh(new THREE.CircleGeometry(2.2, 16), sb('#0a0a0c')), 0, .05, 0, -Math.PI / 2, 0, 0); add(g, new THREE.Mesh(new THREE.CircleGeometry(1.6, 12), sm('#e8ecf2')), .3, .08, .2, -Math.PI / 2, 0, 0);
+        add(g, new THREE.Mesh(new THREE.CircleGeometry(2.2, 16), sb('#0a0a0c')), 0, .05, 0, -Math.PI / 2, 0, 0); 
         [[-1.6, .4], [1.6, -.2]].forEach(([x, z]) => add(g, box(.16, 2, .16, PM.woodD()), x, 1, z)); add(g, box(3.6, .14, .16, PM.woodD()), 0, 2, .1, 0, 0, .12);
         place(g, q.x, q.y, 0);
       }
       else if (q.camp === 'cascata') {
-        // la cascata gelata: canne di ghiaccio che pendono dal ciglio fino al fondo della gola
-        const g = G0(), ice = sm('#cfe4f0', { roughness: .15, metalness: .1, emissive: '#2a4a5a', emissiveIntensity: .25 }), ice2 = sm('#a8cce0', { roughness: .2 });
+        // [sporcherie] la cascata d'acqua (era gelata: un avanzo d'inverno): i fili d'acqua dal ciglio al fondo della gola, la pozza, i massi bagnati
+        const g = G0(), acqua = sm('#9cc8dc', { roughness: .08, metalness: .1, transparent: true, opacity: .62, emissive: '#1a3a4a', emissiveIntensity: .2 }), pozza = sm('#3e6e80', { roughness: .05, metalness: .2 }), sasso = sm('#5e5a56', { roughness: .5, flatShading: true });
         const top = 9.5;
-        for (let k = 0; k < 14; k++) { const x = (k - 7) * .42 + (k % 2) * .1, len = 3 + (k * 7 % 5) * 1.3, r2 = .18 + (k % 3) * .08; add(g, new THREE.Mesh(new THREE.ConeGeometry(r2, len, 6), k % 2 ? ice : ice2), x, top - len / 2, (k % 3) * .2, Math.PI, 0, 0); }
-        for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.7, 0), ice2), (k - 3) * .9, top + .1, -.3).scale.set(1, .5, .8); add(g, new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, .25, 14), ice2), 0, .12, 1.4);
-        for (let k = 0; k < 6; k++) add(g, new THREE.Mesh(new THREE.ConeGeometry(.3, 1 + k % 3, 5), ice), -1.6 + k * .65, .6, 1.2 + (k % 2) * .5);
+        for (let k = 0; k < 6; k++) add(g, box(.5 + (k % 3) * .25, top, .08, acqua), (k - 2.5) * .55, top / 2, (k % 2) * .12);
+        for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.7, 0), sasso), (k - 3) * .9, top + .1, -.3).scale.set(1, .5, .8); add(g, new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, .25, 14), pozza), 0, .12, 1.4);
+        for (let k = 0; k < 6; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.35 + (k % 3) * .12, 0), sasso), -1.6 + k * .65, .25, 2.6 + (k % 2) * .4);
         place(g, q.x, q.y + 1.2, Math.PI);
       }
       else if (q.camp === 'fiumara') {
@@ -76584,10 +76622,11 @@ var Render = (function () {
     });
     buildBridges();   // [monte]
     // ---- fuochi nei barili: dove la gente aspetta, lavora, si scalda ----
-    const spots = ['piazza', 'calata', 'molo', 'marina', 'caruggio', 'vico', 'piazzetta', 'lungomare', 'giardini', 'passeggiata', 'discarica', 'cava', 'macchia', 'sangiacomo', 'villaggio', 'muro', 'varco', 'poligono', 'molo_cargo', 'covo', 'spiaggia'];
+    const spots = ['molo_cargo', 'cava', 'muro', 'varco', 'poligono', 'covo'];   // [sporcherie] i bidoni col fuoco solo ai margini (il porto cargo, la cava, il Muro, il covo): via dal borgo, dai giardini, dai villaggi, dalla spiaggia
     spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8)) { fireBarrel(x, z, r); break; } } });
-    // e qualcuno nei cortili e lungo le costiere, nelle periferie
-    let nb = 0; for (let t = 0; t < 900 && nb < 34; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
+    // e qualcuno nei cortili e lungo le costiere, nelle periferie ([sporcherie] solo fra le baracche: nel borgo e nei giardini no)
+    const BAR = (G.BUILDINGS || []).filter(b => b.shack).map(b => [(b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS]);
+    let nb = 0; for (let t = 0; t < 900 && nb < 34 && BAR.length; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1) || !BAR.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < 10)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
     const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
     WX.neon = WX.neon || [];
@@ -78519,6 +78558,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (b.shopFront && door === b.shopFront.door && window.Scorci && Scorci.attivo && Scorci.copre(b, 'gradino', b.__bot && b.__bot.face)) return;   // [scorci] la soglia consumata è dello scorcio
         const [dx, dy] = door, cx = dx * TS + 1, cz = dy * TS + 1, side = dy >= b.y + b.h ? [0, 1] : dy < b.y ? [0, -1] : dx >= b.x + b.w ? [1, 0] : [-1, 0];
         const ex = side[0] ? (side[0] > 0 ? g.x0 + g.w : g.x0) : cx, ez = side[1] ? (side[1] > 0 ? g.z0 + g.d : g.z0) : cz;
+        if (onCarr1(ex + side[0] * .5, ez + side[1] * .5, 0)) return;   // [sporcherie] niente gradino che sporge in carreggiata (la soglia sul Corso)
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
@@ -78883,7 +78923,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     tickVento(time);
     if (!MONDO.puffs) { MONDO.puffs = mondoPts(220, false); MONDO.sparks = mondoPts(140, true); MONDO.papers = initPapers(); MONDO.birds = initBirds(); }
     // scintille e fumo dai fuochi vicini (barili, falò, bivacchi)
-    const fires = MONDO.fuochi.concat(WX.fires.map(f => f.g.position));
+    const fires = MONDO.fuochi.concat(WX.fires.filter(f => f.g.visible).map(f => f.g.position));   // [sporcherie] i bidoni spenti di giorno non fanno scintille
     for (const f of fires) {
       const x = f.x, z = f.z; if (Math.abs(x - cam.x) > 45 || Math.abs(z - cam.y) > 45) continue;
       if (Math.random() < dt * (2.2 + night * 2)) emit(MONDO.sparks, x + (Math.random() - .5) * .3, f.y + .25, z + (Math.random() - .5) * .3, (Math.random() - .5) * .8, 1.6 + Math.random() * 2.2, (Math.random() - .5) * .8, .7 + Math.random() * .9, .09, .04, .9, 1, .55 + Math.random() * .3, .15, -2.2);
@@ -78901,6 +78941,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
 
   function tickWinter(time, night) {
+    { const sera = night > .3; WX.barili.forEach(g => { if (g.visible === sera) return; g.visible = sera; g.userData.luce.base = sera ? g.userData.b0 : 0; if (g.userData.alone) g.userData.alone.visible = sera; }); }   // [sporcherie] i bidoni col fuoco: accesi la sera e la notte
     WX.fires.forEach(f => { const k = 1 + Math.sin(time * 11 + f.ph) * .12 + Math.sin(time * 23 + f.ph * 2) * .06; f.g.scale.set(1, k, 1); f.g.rotation.y = time * .7 + f.ph; });
     WX.beams.forEach(b => { b.piv.rotation.y = Math.sin(time * .35 + b.ph) * 1.1 - Math.PI / 2; b.piv.children[0].material.opacity = .03 + night * .13; });
     WX.blink.forEach(b => { b.m.visible = Math.sin(time * (b.slow ? 2 : 3.2) + b.ph) > 0; });

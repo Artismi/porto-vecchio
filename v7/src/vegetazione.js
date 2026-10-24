@@ -290,7 +290,7 @@ var Vegetazione = (function () {
       else if (e === E.VIGNE) f = elev[i] < 9 && m2 > .45 ? F.agrumeto : m < .4 ? F.prato : F.uliveto;
       else if (e === E.PINIMONTE) f = m < .28 ? F.prato : F.pinetaM;
       else if (e === E.ISOLA || e === E.GIUNGLA) f = m > .62 ? F.lecceta : m < .3 ? F.gariga : F.macchia;
-      else if (e === E.NONE || !e) f = gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 4 && y <= gbox[3] + 4 ? F.giardino : F.pineta;
+      else if (e === E.NONE || !e) f = gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 4 && y <= gbox[3] + 4 ? F.giardino : gbox && x >= gbox[0] - 4 && x <= gbox[2] + 4 && y >= gbox[1] - 38 && y <= gbox[3] + 38 ? F.prato : F.pineta;   // [sporcherie] i Giardini sono solo davanti al Mercato: il resto della fascia (dov'era il parco lungo 104 m) è prato
       else f = F.macchia;
       if (feat[i] & ((W.MF && W.MF.TERR) || 0) && f !== F.costa && f !== F.riparia) f = F.uliveto;   // le terrazze del Monte: l'uliveto
       for (const [zx, zy, zr, zf] of DISEGNO) if (f !== F.costa && Math.hypot(x - zx, y - zy) < zr * (.85 + .3 * m2)) f = F[zf];   // le masse disegnate a mano

@@ -220,7 +220,9 @@ var Tetti = (function () {
     if (!vic.length) return false;
     for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; if (vic.some(b => dentro4(b, x, y, .02))) return true; }
     return false; };
-  const sgombra4 = P => { if (terza4(P)) return false; for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+  const sgombra4 = P => { if (terza4(P)) return false;
+    for (let s2 = P.s1 + .3; s2 <= P.s2 - .3; s2 += .5) for (const t of [-P.hw - .6, 0, P.hw + .6]) { const v = G.tileAt(Math.floor((P.x0 + P.ox * s2 + P.px * t) / TS), Math.floor((P.y0 + P.oy * s2 + P.py * t) / TS)); if (v === G.T.PIAZZA || v === G.T.FOUNT) return false; }   /* [sporcherie] niente assi sopra le piazzette (la passerella sul Pozzo) */
+    for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!inb(tx, ty)) return false;
     for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */
       if ((s2 < P.s1 - .05 || s2 > P.s2 + .05) && !dentro4(B[q], x, y, 0) && roofRule(B[q]) <= Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - .3) continue;   // [tetti4] sopra le teste, la gronda di un vicino girato più basso sta sotto le assi   // [tetti4] gli spigoli delle case girate vicine

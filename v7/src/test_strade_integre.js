@@ -17,7 +17,7 @@ console.log = log; console.warn = warn;
 const S = require(path.join(__dirname, 'strade_integre.js'));
 const R = S.analizza(World), C = R.conti;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
-const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 0, sotto_pezzo: 0, marciapiede: 0, scoglio: 14 };   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), nessuna casa sopra le strade: vicoli larghi quanto il corridoio, case arretrate dal filo, casette levate (sotto_casa 104 → 0), la stazione 2 m a levante (sotto_pezzo 4 → 0), il marciapiede continuo (17 → 0); gli scogli sono della costa
+const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 0, sotto_pezzo: 0, marciapiede: 0, scoglio: 0 };   // [sporcherie] tolti i massi sotto le mura: nessuno scoglio grande in strada   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), nessuna casa sopra le strade: vicoli larghi quanto il corridoio, case arretrate dal filo, casette levate (sotto_casa 104 → 0), la stazione 2 m a levante (sotto_pezzo 4 → 0), il marciapiede continuo (17 → 0); gli scogli sono della costa
 ok(R.vie > 30, `le vie controllate nella cornice della città: ${R.vie}`);
 Object.keys(SOGLIE).forEach(k => ok(C[k] <= SOGLIE[k], `${k}: ${C[k]} (al più ${SOGLIE[k]})` + (C[k] > SOGLIE[k] ? ' — ' + R.punti[k].slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : '')));
 const asse = R.punti.sotto_casa.filter(p => /asse/.test(p[6]));
