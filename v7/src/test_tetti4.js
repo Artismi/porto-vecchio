@@ -17,6 +17,15 @@ const log = console.log, warn = console.warn; console.log = () => {}; console.wa
 global.World = require(path.join(src, 'world_cittanuova.js'));
 global.Percorsi = require(path.join(src, 'percorsi.js'));
 global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js'));
+// [tetti4] LA PROVA DELLE CASE GIRATE (TETTI4_RUOTA=1, la lancia questa stessa prova alla fine): in una copia del mondo un quarto delle case
+// dei quartieri vecchi gira di 10-40° attorno al centro (seme 12345), più le dieci case che [pianta] deve allineare di più; tutto il resto
+// (rete, giri, premi, passerelle, misura) si rifà sopra e deve reggere: copertura ≥ 70% per quartiere, zero urti, i giri camminati.
+const RUOTA = !!process.env.TETTI4_RUOTA;
+if (RUOTA) { let a = 12345; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const PEGGIO = ['casa_85', 'casa_88', 'casa_89', 'casa_93', 'casa_451', 'casa_424', 'casa_425', 'casa_427', 'casa_52', 'casa_54'];
+  let n = 0; Game.BUILDINGS.forEach(b => { if (!['E0', 'E2', 'E3'].includes(b.era) || b.church || b.gov || b.shack || b.pezzo || b.__tierOf) return; const u = rnd(), v = rnd(), z = rnd();
+    if (PEGGIO.includes(b.id)) { b.rot = (z < .5 ? -1 : 1) * 40 * Math.PI / 180; n++; } else if (u < .25) { b.rot = (z < .5 ? -1 : 1) * (10 + v * 30) * Math.PI / 180; n++; } });
+  log(`[case girate] ${n} case girate di 10-40°`); }
 global.Risacca = require(path.join(src, 'risacca.js')); global.Popolo = require(path.join(src, 'popolo.js')); global.Azioni = require(path.join(src, 'azioni.js'));
 global.Livelli = require(path.join(src, 'livelli.js')); global.Sottosuolo = require(path.join(src, 'sottosuolo.js')); global.Tetti = require(path.join(src, 'tetti.js'));
 global.TettiVissuti = require(path.join(src, 'tetti_vissuti.js'));   // le cose dei tetti vissuti contano nella misura delle passerelle
@@ -58,7 +67,7 @@ function scendi(L) { p.lv = { k: 'tetto', b: L.bi, h: roofAt(L.bi, L.tx, L.ty) }
 function passa(e) {   // come test_percorsi.js
   if (e.k === 'scala') { const L = T.LADDERS[e.i], up = e.a === L.footB; p.lv = { k: 'tetto', b: e.a, h: up ? roofAt(e.a, L.fx, L.fy) : roofAt(e.a, L.tx, L.ty) }; p.x = up ? L.fx : L.tx; p.y = up ? L.fy : L.ty; calm(); clear();
     T.climb(st, L, up); run(9, {}); return p.lv && p.lv.k === 'tetto' && p.lv.b === e.b && p.hp === 100; }
-  const PK = e.k === 'passerella' ? T.PLANKS[e.i] : null, ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + PK.pin + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
+  const PK = e.k === 'passerella' ? T.PLANKS[e.i] : null, ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + (e.a === PK.b ? (PK.pinB || PK.pin) : PK.pin) + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
   p.x = e.x - ux * back; p.y = e.y - uy * back; p.lv = { k: 'tetto', b: e.a, h: roofAt(e.a, p.x, p.y) }; calm(); clear(); T.settle(st);
   if (!(p.lv && p.lv.b === e.a)) return false;
   if (e.k === 'salto' || e.k === 'gradino') { G.jumpHold(st, true); run(.7, {}); G.jumpHold(st, false); }
@@ -102,7 +111,7 @@ ok(T.PIANO.filter(Boolean).every(P => !P.giro || P.tipo === 'piano'), 'i tetti d
 const alt = T.PIANO.filter(P => P && P.gruppi.some(g => g.k === 'altana')).length, tor = T.PIANO.filter(P => P && P.gruppi.some(g => g.k === 'torretta')).length;
 ok(alt >= 4 && tor >= 2, `altane (${alt}) e torrette (${tor}) sui tetti`);
 const cam = {}; T.PIANO.forEach(P => P && P.gruppi.forEach(g => { if (g.k === 'comignoli' && g.tipo4) cam[g.tipo4] = (cam[g.tipo4] || 0) + 1; })); ok(Object.keys(cam).length >= 3, `comignoli di più tipi: ${JSON.stringify(cam)}`);
-ok(T.PREMI.every(q => { const P = T.PIANO[q.bi]; return !P || P.riserve.some(r => hyp(r[0] - q.x, r[1] - q.y) < .05); }), 'ogni premio ha il suo posto riservato sul tetto');
+ok(T.PREMI.every(q => { const P = T.PIANO[q.bi], [lx, ly] = T.loc3(B[q.bi], q.x, q.y); return !P || P.riserve.some(r => hyp(r[0] - lx, r[1] - ly) < .05); }), 'ogni premio ha il suo posto riservato sul tetto');   // [tetti4] nel riferimento della casa (girata o no)
 
 // ---------------- 4b. le passerelle contro i tetti (Tetti.passerelle4, strumenti/passerelle4.js): zero urti, regola dura ----------------
 { const R = T.passerelle4(), CN = T.PLANKS.filter(P => T.PIANO[P.a] && T.PIANO[P.b]);
@@ -115,6 +124,12 @@ const CO = T.CORTI, ck = {}; CO.forEach(c => ck[c.k] = (ck[c.k] || 0) + 1);
 ok(CO.length >= 10 && CO.every(c => ['pozzo', 'orto', 'bottega', 'passaggio'].includes(c.k)), `le corti a terra con uno scopo: ${CO.length} ${JSON.stringify(ck)}`);
 ok(CO.filter(c => c.scala >= 0).length >= 3, `le scale che scendono nelle corti (${CO.filter(c => c.scala >= 0).length})`);
 ok(giri.some(c => c.rami.some(r => r.premio === 'corte')), 'almeno un giro scende in una corte');
+
+// ---------------- 6. la prova delle case girate (in un altro processo: la copia del mondo) ----------------
+if (!RUOTA) { const r = require('child_process').spawnSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { TETTI4_RUOTA: '1' }), encoding: 'utf8', maxBuffer: 64 << 20 });
+  const out = (r.stdout || '') + (r.stderr || ''), righe = out.split('\n');
+  righe.filter(l => /^\[case girate\]|^(borgo|marina|ottocento):|raggiungibili dalla rete|marina \d+%|entra nei tetti|^NO /.test(l)).forEach(l => console.log('     girate · ' + l));
+  ok(r.status === 0, `con le case girate (10-40°) la rete regge: copertura ≥ 70% per quartiere, zero urti, i giri camminati (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`); }
 
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passate');
 process.exit(fail ? 1 : 0);
