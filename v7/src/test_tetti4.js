@@ -70,7 +70,8 @@ if (RUOTA === 'strada') { let a = 4242; const rnd = () => { a |= 0; a = (a + 0x6
   global.STRADA4 = FILE;
   log(`[case girate] ${FILE.length} strade in diagonale (${FILE.map(f => Math.round(f.th * 180 / Math.PI) + '°').join(', ')}) con ${FILE.reduce((s, f) => s + f.fila.length, 0)} case attaccate col centro libero (${FILE.map(f => f.fila.map(k => B[k].id).join('+')).join(' · ')})`); }
 if (RUOTA === '1') { let a = 12345; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-  const PEGGIO = ['casa_85', 'casa_88', 'casa_89', 'casa_93', 'casa_451', 'casa_424', 'casa_425', 'casa_427', 'casa_52', 'casa_54'];
+  // le dieci case di [pianta] per posto (casella d'angolo), non per nome: gli id scorrono quando il mondo aggiunge un edificio prima di loro
+  const PEGGIO = [[637, 184], [641, 186], [656, 186], [650, 188], [678, 222], [707, 191], [709, 191], [717, 192], [644, 158], [646, 159]].map(([x, y]) => (Game.BUILDINGS.find(b => b.x === x && b.y === y) || {}).id).filter(Boolean);
   let n = 0; Game.BUILDINGS.forEach(b => { if (!['E0', 'E2', 'E3'].includes(b.era) || b.church || b.gov || b.shack || b.pezzo || b.__tierOf) return; const u = rnd(), v = rnd(), z = rnd();
     if (PEGGIO.includes(b.id)) { b.rot = (z < .5 ? -1 : 1) * 40 * Math.PI / 180; n++; } else if (u < .25) { b.rot = (z < .5 ? -1 : 1) * (10 + v * 30) * Math.PI / 180; n++; } });
   log(`[case girate] ${n} case girate di 10-40°`); }
@@ -115,6 +116,9 @@ if (RUOTA === 'strada') { const S = B.map((b, i) => b.cx !== undefined ? i : -1)
     [-1, 1].forEach(sl => { const Q = f.fila.filter((k, q) => f.lato[q] === sl); for (let q = 0; q + 1 < Q.length; q++) { const [u, v] = [Q[q], Q[q + 1]];
       if (Math.abs(T.roofRule(B[u]) - T.roofRule(B[v])) <= 1.2 && !((E.get(u) || []).some(e => e.b === v && e.k !== 'scala') && (E.get(v) || []).some(e => e.b === u && e.k !== 'scala'))) manca.push(B[u].id + '-' + B[v].id); } }); });
   ok(F4.length >= 3 && !manca.length, `le ${F4.length} strade in diagonale si salgono (una scala da terra sui muri girati) e lungo la fila si passa da tetto a tetto${manca.length ? ': manca ' + manca.join(', ') : ''}`); }
+if (process.env.DBG4L) console.log('DBGM', C4.classe.map((c, i) => c && c.z === 'marina' ? B[i].id + ':' + c.k + (B[i].rot ? '@' + Math.round(B[i].rot * 180 / Math.PI) : '') + '/' + T.roofRule(B[i]).toFixed(1) + '[' + B[i].x + ',' + B[i].y + ' ' + B[i].w + 'x' + B[i].h + ']' : '').filter(Boolean).join(' '));
+if (process.env.DBG4L) { const E9 = T.grafo(); B.forEach((b, i) => { if (/^casa_(415|425|412|404)$/.test(b.id)) console.log('DBGE', b.id, b.x, b.y, b.w, b.h, b.rot, T.roofRule(b), T.PIANO[i] && T.PIANO[i].tipo, (E9.get(i) || []).map(e => B[e.b].id.replace('casa_', '') + ':' + e.k).join(' ')); }); }
+if (process.env.DBG4L && T.DBG4) T.DBG4.filter(d => B[d[0]] && B[d[1]] && /casa_(415|425|393|410|440|441)$/.test(B[d[0]].id + ' ' + B[d[1]].id)).forEach(d => console.log('DBGR', B[d[0]].id, B[d[1]].id, d.slice(2).join(' ')));
 // ---------------- 3. col motore ----------------
 const st = G.create(1), p = st.player, DT = 1 / 30;
 const run = (s, inp) => { for (let i = 0; i < s * 30; i++) G.step(st, DT, Object.assign({ x: 0, y: 0 }, inp)); };

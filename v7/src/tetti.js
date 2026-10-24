@@ -192,9 +192,10 @@ var Tetti = (function () {
   // una chiesa o un pezzo grande la quota del tetto non si conosce e la passerella non si mette
   const sgombra4 = P => { for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!inb(tx, ty)) return false;
-    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */   // [tetti4] gli spigoli delle case girate vicine
-      if ((!conPiano4(B[q]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[q]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95)) return false; }   /* accanto, solo chi è più alto e vicino toglie la passerella */
-    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && ((!conPiano4(B[o]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95))) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && Math.abs(t) <= P.hw + .6 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */
+      if ((s2 < P.s1 - .05 || s2 > P.s2 + .05) && !dentro4(B[q], x, y, 0) && roofRule(B[q]) <= Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - .3) continue;   // [tetti4] sopra le teste, la gronda di un vicino girato più basso sta sotto le assi   // [tetti4] gli spigoli delle case girate vicine
+      if ((!conPiano4(B[q]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[q]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95)) { if (process.env.DBGP) console.error('DBGS rot', B[P.a].id, B[P.b].id, B[q].id, s2.toFixed(2), t.toFixed(2), P.s1, P.s2, roofRule(B[q]).toFixed(2)); return false; } }   /* accanto, solo chi è più alto e vicino toglie la passerella */
+    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && !libero4(B[o]) && ((!conPiano4(B[o]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95))) { if (process.env.DBGP) console.error('DBGS tile', B[P.a].id, B[P.b].id, B[o].id, s2.toFixed(2), t.toFixed(2)); return false; }   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && Math.abs(t) <= P.hw + .6 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
   const conPiano4 = b => !!(b && b.era && b.era !== 'E7' && !b.shack && !b.pezzo && !b.lighthouse && !b.kiosk && !b.__tierOf);   // [tetti4] come ok3 di piano3
   const PIN = 1.5, PHW = .5;   // quanto entra nel tetto la rampa, mezza larghezza delle assi
   function buildPlanks() {
@@ -423,12 +424,14 @@ var Tetti = (function () {
     // (la faccia d'entrata al più 35° di sbieco). Le teste entrano nelle due case quanto ci stanno (fino a 1,5 m, 62 cm dal muro di là); il
     // pianerottolo sul capo di b è più lungo quanto è sbieco l'ingresso. Sotto l'impalcato, sopra il vicolo, nessuna casa; nelle teste solo la sua.
     const obliqua4 = (C, kk, sep) => {
-      const A = B[C.a], Bb = B[C.b], [w0x, w0y] = muroL4(A, C.sd, kk), [wx, wy] = toW4(A, w0x, w0y), nA = giraV4(rotC4(A), C.sd.out[0], C.sd.out[1]);
+      const A = B[C.a], Bb = B[C.b], [w0x, w0y] = muroL4(A, C.sd, kk); let [wx, wy] = toW4(A, w0x, w0y); const nA = giraV4(rotC4(A), C.sd.out[0], C.sd.out[1]);
       // la faccia di b che guarda a: delle quattro normali girate, la più opposta a quella di a
       const nB = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([u, v]) => giraV4(rotC4(Bb), u, v)).sort((p, q) => (p[0] * nA[0] + p[1] * nA[1]) - (q[0] * nA[0] + q[1] * nA[1]))[0];
       const bis = (() => { const u = nA[0] - nB[0], v = nA[1] - nB[1], l = hyp(u, v) || 1; return [u / l, v / l]; })();
       let ultimo = 'sbieco';
-      for (const d of [nA, [-nB[0], -nB[1]], bis]) { const r = prova(d); if (r === true) return true; ultimo = r; }
+      // [tetti4] sul muro stretto (fino a tre caselle) si prova anche il mezzo del muro: la testa larga un metro non ci sta vicino allo spigolo
+      const mezzo = C.sd.n <= 3 ? toW4(A, ...muroL4(A, { f: C.sd.f, n: 1 }, 0)) : null;
+      for (const w of mezzo ? [[wx, wy], mezzo] : [[wx, wy]]) { [wx, wy] = w; for (const d of [nA, [-nB[0], -nB[1]], bis]) { const r = prova(d); if (r === true) return true; ultimo = r; } }
       return (DBG4 && DBG4.push([C.a, C.b, C.tipo, ultimo]), false);
       // una retta per il punto del muro di a nel verso d: dove esce da a, dove entra in b, quanto di sbieco
       function prova([ox, oy]) {
