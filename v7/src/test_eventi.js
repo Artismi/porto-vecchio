@@ -6,7 +6,7 @@ global.Game = require('./game.js'); global.Risacca = require('./risacca.js'); gl
 global.Economia = require('./economia.js'); global.Fazioni = require('./fazioni.js'); global.Soldi = require('./soldi.js'); global.Oggetti = require('./oggetti.js');
 global.Graffiti = require('./graffiti.js'); global.Livelli = require('./livelli.js'); global.Sottosuolo = require('./sottosuolo.js'); global.Tetti = require('./tetti.js'); global.Posti = require('./posti.js');   // [vita2]
 global.WriterArte = require('./writer_arte.js'); global.Writing = require('./writing.js'); global.WriterVita = require('./writer_vita.js');
-global.Eventi = require('./eventi.js');
+global.Eventi = require('./eventi.js'); global.Matti = require('./matti.js');   // [matti] le scene strane entrano nel catalogo
 const G = Game, EV = Eventi, st = G.create(1), p = st.player;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 const DT = 1 / 30, step = s => { for (let i = 0; i < s * 30; i++) G.step(st, DT, { x: 0, y: 0 }); };
