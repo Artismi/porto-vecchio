@@ -200,8 +200,13 @@ var Tetti = (function () {
   function rifaiLib4() { const M = new Map(); B.forEach((b, bi) => { if (!b || b.lighthouse || b.__tierOf || !libero4(b)) return; const L = lotto4(b), R = hyp(L.lw, L.ld) / 2;
       for (let ty = Math.floor((L.cy - R) / TS) - 1; ty <= Math.floor((L.cy + R) / TS) + 1; ty++) for (let tx = Math.floor((L.cx - R) / TS) - 1; tx <= Math.floor((L.cx + R) / TS) + 1; tx++) { if (!inb(tx, ty)) continue; const k = ty * GW + tx; (M.get(k) || M.set(k, []).get(k)).push(bi); } });
     LIB4 = M.size ? M : null; }
-  rifaiLib4();
-  buildLadders();
+  // [cotto] LA RETE DEI TETTI COTTA NELLA BUILD (cotto.js, strumenti/cuoci.js): le scale, le passerelle, i salti, i camminamenti, la rete4,
+  // le corti, i belvederi, i legami dei percorsi, i premi, il piano e i profili sono dati, sempre uguali per lo stesso mondo. Col file
+  // cotto (e lo stato del mondo uguale a quello della cottura) i calcoli qui sotto non girano: i vettori si riempiono alla fine (dopo
+  // profili4) con quello che la cottura ha salvato, e le modifiche ai dati degli altri (le case, i giri di Percorsi) si riapplicano.
+  const CT4 = typeof Cotto !== 'undefined' ? Cotto : null, PC4 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi : null;
+  const COT4 = CT4 ? CT4.apri('tetti', { W, MAP: G.MAP, B, PZ, LADDERS, P: PC4 && PC4.cotto ? PC4.cotto : null, SO: typeof Sottosuolo !== 'undefined' && Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL : null }) : null;
+  if (!COT4) { rifaiLib4(); buildLadders(); }
 
   // ---------------- [tetti2] LE PASSERELLE: assi di legno sui vicoli larghi ----------------
   // Un vicolo di una casella (2 m) si salta; da due a tre caselle (4–6 m) il salto non basta: lì c'è una passerella di
@@ -290,7 +295,7 @@ var Tetti = (function () {
       return { bi: s2 < P.L / 2 ? P.a : P.b, h: plankH(P, s2), plank: P.i }; }
     return null;
   }
-  buildPlanks();
+  if (!COT4) buildPlanks();
 
   // [pulizia2] I SALTI FATTIBILI: dove fra due tetti di quota simile (entro 1,2 m) c'è un vicolo di una casella (2 m, si salta), i due
   // bordi hanno la copertina color crema: lo stesso segno delle teste delle passerelle e del gradino ai piedi delle scale. Il percorso
@@ -319,7 +324,7 @@ var Tetti = (function () {
   // i due muri del salto (sul lotto): quello di a e quello di b
   const jA = (J, k) => { const [wx, wy] = J.sd.wall(k); return [wx - J.ox * (J.da || 0), wy - J.oy * (J.da || 0)]; };
   const jB = (J, k) => { const [wx, wy] = J.sd.wall(k), d = TS * (J.g === 0 ? 0 : 1) + (J.db || 0); return [wx + J.ox * d, wy + J.oy * d]; };
-  buildJumps();
+  if (!COT4) buildJumps();
 
   // ---------------- [percorsi] I CAMMINAMENTI: le mura di tramontana e il rilevato sopra il sottopasso ----------------
   // Sui pezzi grandi della città nuova (W.pezzi) due superfici si camminano come un tetto: il camminamento di ronda delle mura di
@@ -363,7 +368,7 @@ var Tetti = (function () {
     PZ0.filter(p => p.tipo === 'sottopasso').forEach(p => { const L = Math.max(p.opz.L || 14, (p.opz.w || 4) + 6), Hr = Math.max(p.opz.hRilevato || 4.8, (p.opz.h || 3.2) + 1.6);
       const c = campo(p, 'sottopasso', .3, L - .3, -4.05, 4.05, (p.q || 0) + Hr, vicinoB(p.x + L / 2, p.y)); scalaCamm(c, 1.4, 4.5, 1); scalaCamm(c, 1.4, -4.5, -1); });
   }
-  buildCamm();
+  if (!COT4) buildCamm();
 
   // ---------------- [tetti4] LA RETE DEI TETTI: le isole si legano ----------------
   // Andrea: «vedo ancora tetti e zone che non mi piacciono: semplici, non percorribili o non connessi, piatti e poco espressivi, non
@@ -567,7 +572,7 @@ var Tetti = (function () {
       }
     });
   }
-  rete4();
+  if (!COT4) rete4();
 
   // ---------------- [tetti4] LE CORTI: il vuoto dentro gli isolati ha uno scopo ----------------
   // Dentro gli isolati del borgo, della marina e dell'Ottocento il suolo che non è strada (le caselle senza larghezza di via, chiuse per
@@ -613,7 +618,7 @@ var Tetti = (function () {
       LADDERS.push(L); C.scala = L.i;
     });
   }
-  corti4();
+  if (!COT4) corti4();
   // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
   // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
   // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
@@ -682,7 +687,7 @@ var Tetti = (function () {
       BELV.push({ i: BELV.length, bi, x, y, name: 'Belvedere · ' + (b.name || b.label || 'tetto'), dist });
     }
   }
-  buildBelv();
+  if (!COT4) buildBelv();
   const belvNear = (st, r) => { const p = st.player; if (!p.lv || p.lv.k !== 'tetto') return null; for (const v of BELV) if (v.bi === p.lv.b && hyp(p.x - v.x, p.y - v.y) < (r || 3.5)) return v; return null; };
   function belvStep(st) {
     const v = belvNear(st, 3.2); if (!v) return;
@@ -1135,7 +1140,7 @@ var Tetti = (function () {
 
   const API = { lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
   // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
-  if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
+  if (!COT4 && typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
   // [tetti4] I PREMI dei giri (percorsi.js, i rami): il belvedere entra fra i belvederi (la panca, la bandierina, «Siediti a guardare»),
   // la terrazza la arreda il piano (il pergolato), il tesoro è una cassetta di latta che si apre la prima volta, la corte è la scala che
   // scende nel cortile. PREMI: { k, x, y, bi, nome, giro }.
@@ -1156,7 +1161,7 @@ var Tetti = (function () {
       if (r.premio === 'belvedere' && !V0) BELV.push({ i: BELV.length, bi: r.bi, x, y, name: 'Belvedere · ' + (c.tema || c.nome), dist: '', giro: c.id });
     }));
   }
-  premi4();
+  if (!COT4) premi4();
   // il tesoro: la prima volta che ci passi accanto (sul suo tetto, entro un metro e mezzo) la cassetta si apre
   const TESORI4 = ['Una scatola di latta dietro il comignolo: dentro, soldi arrotolati con l\'elastico.', 'Sotto una tegola smossa, un sacchetto di plastica: qualcuno ci teneva i risparmi.', 'Nella cassetta del contatore vecchio, una busta: chi l\'ha dimenticata non torna a prenderla.'];
   function tesoroStep(st) {
@@ -1338,10 +1343,10 @@ var Tetti = (function () {
     P.firma4 = P.tipo === 'falde' ? P.forma + (P.forma4 ? '/' + P.forma4 : '') + ':' + P.pitch.toFixed(2) : 'piano' + (P.forma4 ? '/' + P.forma4 : '') + (P.parapetti ? ':' + ['N', 'W', 'S', 'E'].map(f => P.parapetti[f]).join('/') : '');   // [tetti4] la firma della forma (copertura4, test_tetti4)
     return P;
   }
-  piano3();
+  if (!COT4) piano3();
   // [tetti4] il parapetto alto (80 cm, un metro) non deve coprire una salita: se una scala da terra che si vedeva prima del piano ora è
   // coperta dal parapetto di una casa davanti, quel parapetto torna a 50 cm (le case girate spostano le scale, e il piano lo deve sapere)
-  { const D6 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null; if (D6) D6.circuiti.filter(c => c.k === 'tetti').forEach(c => [c.sali, c.scendi].forEach(i => { if (LADDERS[i]) LADDERS[i].giro4 = true; }));
+  if (!COT4) { const D6 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null; if (D6) D6.circuiti.filter(c => c.k === 'tetti').forEach(c => [c.sali, c.scendi].forEach(i => { if (LADDERS[i]) LADDERS[i].giro4 = true; }));
     for (let giro = 0; giro < 3; giro++) { let cambi = 0;
       LADDERS.forEach(L => { if (L.camm || L.footB >= 0 || L.corte !== undefined || L.vis === false || vistaL3(L)) return;
         const h0 = tileH(L.fx, L.fy), h1 = roofRule(B[L.bi]);
@@ -1356,7 +1361,7 @@ var Tetti = (function () {
             if (c) { P.alto = Math.max(roofRule(B[o]) + .6, roofRule(B[o]) + Math.max(...Object.values(P.parapetti)) + .1); P.firma4 = 'piano' + (P.forma4 ? '/' + P.forma4 : '') + ':' + ['N', 'W', 'S', 'E'].map(f => P.parapetti[f]).join('/'); cambi++; } } } });
       if (!cambi) break; } }
   // [tetti4] le vie dei giri si ricontrollano col piano fatto (le falde alzano il colmo): una via la cui scala la camera non vede si toglie
-  { const D4 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null;
+  if (!COT4) { const D4 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null;
     if (D4) D4.circuiti.filter(c => c.k === 'tetti' && c.vie).forEach(c => { c.vie = c.vie.filter(v => { const L = LADDERS[v.i]; return vistaL3(L) && G.walkT(Math.floor(L.fx / TS), Math.floor(L.fy / TS)) && bAt(L.fx, L.fy) < 0; });   /* [tetti4] e il piede in strada (sulle case girate la scala può finire su una casella della casa) */ c.salite = [c.sali].concat(c.vie.map(v => v.i)); c.discese = [c.scendi].concat(c.vie.map(v => v.i)); }); }
   // [tetti4] IL PROFILO DELLE PASSERELLE: i due capi posano sul lastrico dei terrazzi (il piano li ha resi terrazzi), si sale con una
   // scaletta di gradini fino al pianerottolo che scavalca il parapetto e la copertina (2 cm d'aria sotto il telaio), poi l'impalcato va
@@ -1374,6 +1379,7 @@ var Tetti = (function () {
   // [tetti4] nella pagina la quota delle case si assesta dopo (render.js posa le case sul terreno): il profilo si rifà quando cambia la quota
   // di una delle due case (o di una vicina: si rifà comunque tutto il profilo), al primo uso dopo il cambio
   function profCur4(P) { const p = P.prof; if (p && (Math.abs(p.ra - roofRule(B[P.a])) > 1e-4 || Math.abs(p.rb - roofRule(B[P.b])) > 1e-4)) profilo4(P); return P.prof; }
+  const pavimento4 = (P, fa, fb) => s2 => s2 < P.L / 2 ? fa : fb;   // [cotto] la quota del lastrico sotto la scaletta (la rifà anche il mondo cotto)
   function profilo4(P) {
     {
       const sp = (P.arco ? ARCO4 : FONDO4) + .015, larg = P.hw + .06, fa = roofRule(B[P.a]) + .08, fb = roofRule(B[P.b]) + .08;
@@ -1383,10 +1389,22 @@ var Tetti = (function () {
       // sopra il vicolo: se una gronda vicina sporge sotto la retta, si alzano i due pianerottoli
       let alza = 0; for (let s2 = P.s1 + .14; s2 <= P.s2 - .14 + 1e-6; s2 += .1) { const t0 = (s2 - P.s1 - .14) / Math.max(.1, P.s2 - P.s1 - .28), h = Ha + (Hb - Ha) * t0, m = solMax(s2, s2) + sp; if (m - h > alza) alza = m - h; }
       Ha += alza + (P.alzaVero4 || 0); Hb += alza + (P.alzaVero4 || 0);   // [tetti4] nella pagina, quanto chiede il modello vero (affinaVero4)
-      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .14, Ha], [P.s2 - .14, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: s2 => s2 < P.L / 2 ? fa : fb, ra: roofRule(B[P.a]), rb: roofRule(B[P.b]) };
+      P.prof = { k: [[0, fa], [a0, Ha], [P.s1 + .14, Ha], [P.s2 - .14, Hb], [b1, Hb], [P.L, fb]], scala: [[0, a0], [b1, P.L]], fa, fb, pavimento: pavimento4(P, fa, fb), ra: roofRule(B[P.a]), rb: roofRule(B[P.b]) };
     }
   }
-  profili4();
+  if (!COT4) profili4();
+  // [cotto] la fine del punto: nella cottura si salva, col file cotto si riempie (le funzioni nei dati si rifanno: i lati dei salti, il
+  // pavimento dei profili)
+  if (CT4 && (COT4 || CT4.cuoci)) {
+    const R4 = CT4.chiudi('tetti', { LIB4, SEP4, PLANKS, PCELL, JUMPS, CAMM, CCELL, RETE4, CORTI, BELV, PREMI, PIANO }, COT4, () => CT4.RIFARE);
+    if (R4) { LIB4 = R4.LIB4; SEP4 = R4.SEP4; rifaiFunzioni4(); }
+    else if (COT4) throw new Error('[cotto] la rete dei tetti non si legge');
+  }
+  function rifaiFunzioni4() {
+    const lati = new Map();
+    JUMPS.forEach(J => { const sd = J.sd; if (!sd || lati.has(sd)) return; lati.set(sd, 1); const s0 = sidesOf(B[J.bi]).find(q => q.f === sd.f); sd.tile = s0.tile; sd.wall = s0.wall; });
+    PLANKS.forEach(P => { if (P.prof && P.prof.pavimento === CT4.RIFARE) P.prof.pavimento = pavimento4(P, P.prof.fa, P.prof.fb); });
+  }
   // [tetti3] la verifica (test_tetti3.js e render.js): il conto per tetto, gli scopi, le compenetrazioni del piano, le salite che si vedono
   function verifica3() {
     const V = { tetti: 0, vivi: 0, calmi: 0, perGruppi: [0, 0, 0], gruppi: {}, perEra: {}, senzaScopo: 0, doppi: 0, compenetrazioni: [], viviDove: { giro: 0, piazza: 0, lungo: 0, altrove: 0 } };

@@ -570,7 +570,11 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
     THREE.Material.prototype.__tv1 = true;
   }
 
-  try { calcola(); } catch (e) { if (typeof console !== 'undefined') console.warn('[vissuti]', e); VISSUTI.length = 0; }
+  // [cotto] i tetti vissuti cotti nella build (cotto.js): sono dati del piano dei tetti, sempre uguali; col file cotto non si ricalcolano
+  const CTV = typeof Cotto !== 'undefined' ? Cotto : null, PCV = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null;
+  const COTV = CTV && !SPENTO ? CTV.apri('vissuti', { B, PIANO: TT.PIANO, LADDERS: TT.LADDERS, PREMI: TT.PREMI || null, BELV: TT.BELV || null, P: PCV }) : null;
+  if (!COTV) try { calcola(); } catch (e) { if (typeof console !== 'undefined') console.warn('[vissuti]', e); VISSUTI.length = 0; }
+  if (CTV && !SPENTO && (COTV || CTV.cuoci)) { const RV = CTV.chiudi('vissuti', { VISSUTI, LINEE, PORTE }, COTV, () => CTV.RIFARE); if (RV) { LINEE = RV.LINEE; PORTE = RV.PORTE; } else if (COTV) { VISSUTI.length = 0; try { calcola(); } catch (e) { VISSUTI.length = 0; } } }
   return { VISSUTI, CAT, SCENE, STORIE, CORR, PORTA, VICINO, calcola, verifica, firma, bilancio, terrazzo, costruisci, vicino, manto, urti, conto, quotaFalda, get spento() { return SPENTO; }, _: { libero, corridoi, VIC, costruttori } };
 })();
 if (typeof module !== 'undefined') module.exports = TettiVissuti;
