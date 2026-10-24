@@ -315,11 +315,13 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="superfici">/*superfici.js*/</script>
 <script data-m="modella">/*modella.js*/</script>
 <script data-m="arredo3d">/*arredo3d.js*/</script>
-<script data-m="world">if (/[?&]vecchia/.test(location.search)) { /*world.js*/ }</script>   <!-- [sito] l'isola di prima solo con ?vecchia: sul telefono non si genera due volte -->
+<!-- [sito] quale isola: sul computer la città nuova, sul telefono l'isola di prima (la nuova chiede ~520 MB invece di ~330 e sul telefono la pagina si chiude).
+     ?cittanuova la forza anche sul telefono, ?vecchia riapre l'isola di prima anche sul computer -->
+<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; if (/[?&]cittanuova/.test(q)) return true; return !matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();</script>
+<script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
 <script data-m="vegetazione">/*vegetazione.js*/</script>
-<!-- [sito] la città nuova è quella di serie (anche nel Game Boy del sito); ?vecchia riapre l'isola di prima -->
-<script data-m="world_cittanuova">if (!/[?&]vecchia/.test(location.search)) { /*world_cittanuova.js*/ }</script>
-<script data-m="percorsi">if (!/[?&]vecchia/.test(location.search)) { /*percorsi.js*/ }</script>
+<script data-m="world_cittanuova">if (window.PV_NUOVA) { /*world_cittanuova.js*/ }</script>
+<script data-m="percorsi">if (window.PV_NUOVA) { /*percorsi.js*/ }</script>
 <script data-m="interiors">/*interiors.js*/</script>
 <script data-m="game">/*game.js*/</script>
 <script>Misura.hooks(Game.HOOKS);</script>
