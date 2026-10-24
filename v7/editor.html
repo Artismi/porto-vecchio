@@ -385,7 +385,7 @@ const Misura = (() => {
    Qui i tagli, solo sul telefono (lo stesso profilo di render.js: tocco, ?leggera, ?bassa; ?alta lo toglie), con piccoli ganci nei moduli:
    - pile:  le mappe delle case in pila (render.js arrTex1) a metà lato (un quarto dei byte), quando la mappa è almeno 256×256;
    - tele:  le tele 2D che sono finite in una pila scendono alla stessa misura (servono solo alla casa che si dissolve e a chi la ridipinge);
-   - pigri: i pezzi originali delle case fuse rifatti per un raggio o una dissolvenza si buttano di nuovo quando nessuno li usa da 20 s;
+   - pigri: i pezzi originali delle case fuse rifatti per un raggio o una dissolvenza si buttano di nuovo quando nessuno li usa da 5 s;
    - verde: le piante lontane (vegetazione.js) a riquadri, solo quelle attorno alla camera, con attributi compatti;
    - atlanti: gli atlanti grandi che non si ridipingono più a metà lato (acqua, scorci, segnaletica), e la tela in memoria si svuota;
    - ombre: la mappa del sole più piccola.
@@ -417,8 +417,8 @@ var LeggeraMem = (function () {
   const PIGRI = new Map(); let pT = 0;
   function pigro(o, drop) { if (!on('pigri')) return; o.userData.lmT = performance.now(); PIGRI.set(o, drop); }
   function tick(now) {
-    if (!PIGRI.size || now - pT < 2000) return; pT = now;
-    PIGRI.forEach((drop, o) => { if (o.visible || now - (o.userData.lmT || 0) < 20000) return; drop(); PIGRI.delete(o); ST.pigri++; });
+    if (!PIGRI.size || now - pT < 1000) return; pT = now;   // (5 s: la misura dei tetti al caricamento, tetti.js scanWork, ne rifà ~3.700 col raggio)
+    PIGRI.forEach((drop, o) => { if (o.visible || now - (o.userData.lmT || 0) < 5000) return; drop(); PIGRI.delete(o); ST.pigri++; });
   }
   // --- compatta: la mesh fusa di un secchio di case (render.js fusione1), più piccola senza cambiare forma:
   //   la posizione in 16 bit normalizzati dentro la scatola del secchio (la mesh porta centro e scala, uniforme: le normali non
@@ -22161,9 +22161,9 @@ var Arredo3D = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Arredo3D;
 </script>
-<!-- [sito] quale isola: sul computer la città nuova, sul telefono l'isola di prima (la nuova chiede ~520 MB invece di ~330 e sul telefono la pagina si chiude).
-     ?cittanuova la forza anche sul telefono, ?vecchia riapre l'isola di prima anche sul computer -->
-<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; if (/[?&]cittanuova/.test(q)) return true; return !matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();</script>
+<!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
+     prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
+<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <script data-m="world">if (!window.PV_NUOVA) { /* Porto Vecchio — il mondo: un'isola d'inverno, da ovest a est.
    [isola] La testa di bosco quasi tonda col Tavolato in mezzo (si sale solo a piedi) e la Spiaggia Lunga a sud
    → il collo di foresta che si stringe come una tromba → il Monte Scuro coi villaggi → periferia ovest con la sua collina
@@ -63374,7 +63374,7 @@ var Render = (function () {
         k2 = palSig1(sig).replace(al ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + '|pal1' + (al ? '|A' + al[0].id : '') + key.slice(key.indexOf('|'));
         b.geos.forEach(g => { g.__pal1 = pi; if (al) g.__lay1 = al[1]; }); b.pal = true; b.arr = al ? al[0] : null; }
       const t = into.get(k2); if (!t) { into.set(k2, b); return; }
-      moved.set(b, b.__mv3 = { t, base: t.geos.length }); /* [visuale3] dove è finito il secchio (il taglio ritrova le cose del registro) */ t.geos.push(...b.geos); STATIC.delete(key); });
+      moved.set(b, b.__mv3 = { t, base: t.geos.length }); /* [visuale3] dove è finito il secchio (il taglio ritrova le cose del registro) */ t.geos.push(...b.geos); b.geos = []; STATIC.delete(key); });   // [leggera] il secchio unito non tiene più i suoi pezzi (restava vivo nel registro con ~16 MB di geometrie)
     if (!moved.size) return;
     TAGS.forEach(t => t.parts.forEach(p => { const mv = moved.get(p.b); if (mv) { p.b = mv.t; p.gi += mv.base; } }));
     if (window.__dbg35) console.log('[dbg] coalesce1: secchi uniti', moved.size, 'restano', STATIC.size);
@@ -75104,13 +75104,15 @@ var Render = (function () {
           }
           if (vOn > .01) {   // [luci4] ombre nella nebbia
             float z0 = texture2D(tD, uv).r; vec4 wp = vInvVP * vec4(uv * 2. - 1., z0 * 2. - 1., 1.); wp.xyz /= wp.w;
+            if (wp.y < ${(WL - .05).toFixed(2)}) { wp = vInvVP * vec4(uv * 2. - 1., 1., 1.); wp.xyz /= wp.w; }   /* [leggera] il fondale sotto il pelo dell'acqua conta come il mare aperto (dove il fondale manca): niente gradini a caselle accanto alle banchine */
             vec3 rd = wp.xyz - vCam; float tm = length(rd); rd /= tm; float jit = bayer(floor(vUv * res));
             vec3 vol = vScat(vSM0, vSMat[0], vLP[0], vLC[0], vLD[0], vCam, rd, tm, jit) + vScat(vSM1, vSMat[1], vLP[1], vLC[1], vLD[1], vCam, rd, tm, jit)
                      + vScat(vSM2, vSMat[2], vLP[2], vLC[2], vLD[2], vCam, rd, tm, jit) + vScat(vSM3, vSMat[3], vLP[3], vLC[3], vLD[3], vCam, rd, tm, jit);
             c += vol * vOn * .24; }
           if (sOn > .01) {   // [amb2] raggi di sole: l'aria bassa prende l'ombra vera del sole
             float z1 = texture2D(tD, uv).r;
-            if (z1 < .9999) { vec4 wq = vInvVP * vec4(uv * 2. - 1., z1 * 2. - 1., 1.); wq.xyz /= wq.w;
+            vec4 wq = vInvVP * vec4(uv * 2. - 1., z1 * 2. - 1., 1.); wq.xyz /= wq.w;
+            if (z1 < .9999 && wq.y > ${(WL - .05).toFixed(2)}) {   /* [leggera] sotto il pelo dell'acqua come il mare aperto: niente raggi (prima a caselle, dove il fondale c'era) */
               vec3 rv = vCam - wq.xyz; float Lr = length(rv); rv /= Lr; float tmx = min(Lr, 16. / max(rv.y, .2)), stp = tmx / 18., jt = bayer(floor(vUv * res)), acc = 0., wsum = 0.;
               for (int k = 0; k < 18; k++) { vec3 qq = wq.xyz + rv * (float(k) + jt) * stp; float hh = qq.y - wq.y, dn = exp(-hh * .16); acc += vSh(sSM, sSMat, qq) * dn; wsum += dn; }
               float lit = acc / max(wsum, 1e-3);

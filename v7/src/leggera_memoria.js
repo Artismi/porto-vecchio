@@ -3,7 +3,7 @@
    Qui i tagli, solo sul telefono (lo stesso profilo di render.js: tocco, ?leggera, ?bassa; ?alta lo toglie), con piccoli ganci nei moduli:
    - pile:  le mappe delle case in pila (render.js arrTex1) a metà lato (un quarto dei byte), quando la mappa è almeno 256×256;
    - tele:  le tele 2D che sono finite in una pila scendono alla stessa misura (servono solo alla casa che si dissolve e a chi la ridipinge);
-   - pigri: i pezzi originali delle case fuse rifatti per un raggio o una dissolvenza si buttano di nuovo quando nessuno li usa da 20 s;
+   - pigri: i pezzi originali delle case fuse rifatti per un raggio o una dissolvenza si buttano di nuovo quando nessuno li usa da 5 s;
    - verde: le piante lontane (vegetazione.js) a riquadri, solo quelle attorno alla camera, con attributi compatti;
    - atlanti: gli atlanti grandi che non si ridipingono più a metà lato (acqua, scorci, segnaletica), e la tela in memoria si svuota;
    - ombre: la mappa del sole più piccola.
@@ -35,8 +35,8 @@ var LeggeraMem = (function () {
   const PIGRI = new Map(); let pT = 0;
   function pigro(o, drop) { if (!on('pigri')) return; o.userData.lmT = performance.now(); PIGRI.set(o, drop); }
   function tick(now) {
-    if (!PIGRI.size || now - pT < 2000) return; pT = now;
-    PIGRI.forEach((drop, o) => { if (o.visible || now - (o.userData.lmT || 0) < 20000) return; drop(); PIGRI.delete(o); ST.pigri++; });
+    if (!PIGRI.size || now - pT < 1000) return; pT = now;   // (5 s: la misura dei tetti al caricamento, tetti.js scanWork, ne rifà ~3.700 col raggio)
+    PIGRI.forEach((drop, o) => { if (o.visible || now - (o.userData.lmT || 0) < 5000) return; drop(); PIGRI.delete(o); ST.pigri++; });
   }
   // --- compatta: la mesh fusa di un secchio di case (render.js fusione1), più piccola senza cambiare forma:
   //   la posizione in 16 bit normalizzati dentro la scatola del secchio (la mesh porta centro e scala, uniforme: le normali non
