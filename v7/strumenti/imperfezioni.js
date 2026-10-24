@@ -26,7 +26,7 @@ B.forEach((b, i) => { if (b.pezzo || b.military) return; const cx = (b.x + b.w /
   if (Math.abs(dev) > 2 && Math.abs(dev) < 43) P.storta.push([Math.round(cx), Math.round(cy), b.id || i, best.rd.id, +dev.toFixed(1)]);
   // il fronte: la distanza del filo della casa dall'asse della via, per lato
   const nx = -Math.sin(best.s.a), ny = Math.cos(best.s.a), side = Math.sign((cx - best.s.px) * nx + (cy - best.s.py) * ny) || 1;
-  const hx = b.w * TS / 2, hy = b.h * TS / 2, reach = Math.abs(nx) * hx + Math.abs(ny) * hy, d = Math.abs((cx - best.s.px) * nx + (cy - best.s.py) * ny) - reach;
+  const hx = b.w * TS / 2, hy = b.h * TS / 2, ca = Math.cos(b.rot || 0), sa = Math.sin(b.rot || 0), reach = Math.abs(nx * ca + ny * sa) * hx + Math.abs(-nx * sa + ny * ca) * hy,   /* [pianta] il filo della casa girata (b.rot), non quello della sua pianta a caselle */ d = Math.abs((cx - best.s.px) * nx + (cy - best.s.py) * ny) - reach;
   const key = best.rd.id + (side > 0 ? '+' : '-'); let L = fronte.get(key); if (!L) fronte.set(key, L = []); L.push({ b, i, t: (cx - best.s.px) * Math.cos(best.s.a) + (cy - best.s.py) * Math.sin(best.s.a) + best.s.k * 1e4, d, cx, cy, ext: Math.abs(Math.cos(best.s.a)) * hx + Math.abs(Math.sin(best.s.a)) * hy, rd: best.rd.id }); });
 fronte.forEach(L => { L.sort((p, q) => p.t - q.t); for (let k = 1; k < L.length; k++) { const p = L[k - 1], q = L[k]; if (Math.hypot(p.cx - q.cx, p.cy - q.cy) > p.ext + q.ext + 1.5) continue; const dd = Math.abs(p.d - q.d); if (dd > .15 && dd < 1.6) P.scalino.push([Math.round((p.cx + q.cx) / 2), Math.round((p.cy + q.cy) / 2), (p.b.id || p.i) + '|' + (q.b.id || q.i), q.rd, +dd.toFixed(2)]); } });
 // ---- 2. gli spigoli delle vie e i sentieri a zigzag ----
