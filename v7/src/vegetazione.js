@@ -1237,17 +1237,25 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const cresci = g => { const cap = Math.max(16, g.cap * 2), m = new THREE.InstancedMesh(g.geo, g.mat, cap); m.frustumCulled = false; m.castShadow = !!g.ombre && !tel; m.receiveShadow = true; if (g.ombre) m.customDepthMaterial = ombra(); if (g.mat.depthWrite === false) m.renderOrder = 5;
       if (g.mesh) { for (let i = 0; i < g.n; i++) { g.mesh.getMatrixAt(i, m4); m.setMatrixAt(i, m4); g.mesh.getColorAt(i, col); m.setColorAt(i, col); } gruppo.remove(g.mesh); g.mesh.dispose(); }
       g.mesh = m; g.cap = cap; gruppo.add(m); };
-    // LONTANO: tutte le piante grandi dell'isola in una geometria sola (la sagoma più semplice, già posata), che lo shader chiude dentro R1
-    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)); let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
-      const Pp = new Float32Array(nv * 3), Nn = new Float32Array(nv * 3), Cc = new Float32Array(nv * 3), Uu = new Float32Array(nv * 2), Oo = new Float32Array(nv), Ff = new Float32Array(nv), Ce = new Float32Array(nv * 3); let o = 0;
-      L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
-        for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
-          Pp[o * 3] = p.x + x * cs + z * sn; Pp[o * 3 + 1] = y0 + y; Pp[o * 3 + 2] = p.y - x * sn + z * cs; Nn[o * 3] = nx * cs + nz * sn; Nn[o * 3 + 1] = A.normal.getY(i); Nn[o * 3 + 2] = -nx * sn + nz * cs;
-          Cc[o * 3] = A.color.getX(i); Cc[o * 3 + 1] = A.color.getY(i); Cc[o * 3 + 2] = A.color.getZ(i); Uu[o * 2] = A.uv.getX(i); Uu[o * 2 + 1] = A.uv.getY(i); Oo[o] = A.occ.getX(i); Ff[o] = 0;
-          Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
-      g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2)); g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
-      const far = new THREE.Mesh(g, materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true })); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); }
+    // LONTANO: tutte le piante grandi dell'isola (la sagoma più semplice, già posata), che lo shader chiude dentro R1.
+    // [memoria] a tasselli di 128 m con la loro sfera, così fuori dall'inquadratura e oltre il piano lontano non si disegnano (era una
+    // mesh sola di 1,5 M vertici sempre disegnata); normali, colori, occlusione e flessione a 8 bit, uv a 16 bit: la scheda video li legge
+    // uguali (stessa immagine), un terzo dei byte
+    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)), TL = 128, tiles = new Map();
+      L.forEach(p => { const k = Math.floor(p.x / TL) * 65536 + Math.floor(p.y / TL); (tiles.get(k) || tiles.set(k, []).get(k)).push(p); });
+      const MF = materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true }), q8 = v => Math.max(0, Math.min(255, Math.round(v * 255))), q16 = v => Math.max(0, Math.min(65535, Math.round(v * 65535))), n8 = v => Math.max(-127, Math.min(127, Math.round(v * 127)));
+      tiles.forEach(L => {
+        let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
+        const Pp = new Float32Array(nv * 3), Nn = new Int8Array(nv * 3), Cc = new Uint8Array(nv * 3), Uu = new Uint16Array(nv * 2), Oo = new Uint8Array(nv), Ff = new Uint8Array(nv), Ce = new Float32Array(nv * 3); let o = 0, uvOk = true;
+        L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
+          for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
+            Pp[o * 3] = p.x + x * cs + z * sn; Pp[o * 3 + 1] = y0 + y; Pp[o * 3 + 2] = p.y - x * sn + z * cs; Nn[o * 3] = n8(nx * cs + nz * sn); Nn[o * 3 + 1] = n8(A.normal.getY(i)); Nn[o * 3 + 2] = n8(-nx * sn + nz * cs);
+            Cc[o * 3] = q8(A.color.getX(i)); Cc[o * 3 + 1] = q8(A.color.getY(i)); Cc[o * 3 + 2] = q8(A.color.getZ(i)); const u = A.uv.getX(i), v = A.uv.getY(i); if (u < 0 || u > 1 || v < 0 || v > 1) uvOk = false; Uu[o * 2] = q16(u); Uu[o * 2 + 1] = q16(v); Oo[o] = q8(A.occ.getX(i)); Ff[o] = 0;
+            Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3, true)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3, true));
+        if (uvOk) g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2, true)); else { const U = new Float32Array(nv * 2); let q = 0; L.forEach((p, k) => { const A = geos[k].attributes; for (let i = 0; i < A.position.count; i++, q++) { U[q * 2] = A.uv.getX(i); U[q * 2 + 1] = A.uv.getY(i); } }); g.setAttribute('uv', new THREE.BufferAttribute(U, 2)); }
+        g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1, true)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1, true)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
+        const far = new THREE.Mesh(g, MF); far.name = 'vegLontano'; far.receiveShadow = true; far.matrixAutoUpdate = false; gruppo.add(far); }); }
     let lx = 1e9, lz = 1e9, lc = 1e9, lcz = 1e9;
     const BASSE = new Set(['erbaSecca', 'erbaVerde', 'papavero', 'finocchietto', 'avena', 'cardo', 'asfodelo', 'fioriBianchi', 'tappetoAghi', 'tappetoFoglie', 'pigna', 'rametto']);
     function aggiorna(cx, cz, t) {

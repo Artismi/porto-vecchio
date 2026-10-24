@@ -644,7 +644,7 @@ var Pittura = (function () {
       // [pulizia] la luce propria come il resto del personaggio (models.js: emissive = colore × 0,3), texel per texel: la pelle dipinta è identica a quella di viso e mani (prima un grigio fisso: il busto nudo pareva una maglietta color carne)
       const bh = mk(hh), cm = mk(col), m = new THREE.MeshStandardMaterial({ map: cm, bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0, emissiveMap: cm }); m.emissive = new THREE.Color(.3, .3, .3); m.userData.pittura = true; return m;
     });
-    MCACHE.set(sig, M); if (++mcount > 160) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }
+    MCACHE.set(sig, M); if (++mcount > (window.PV_TELEFONO ? 56 : 160)) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }   // [memoria] sul telefono meno vestiti in serbo (due tele da ~1 MB l'uno): chi torna si ridipinge uguale
     return M;
   }
   // veste g dipingendo il corpo. Ritorna i piani (per sapere cosa c'è, es. le falde da fare in geometria)
