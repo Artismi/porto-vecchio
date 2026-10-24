@@ -21269,7 +21269,7 @@ var Superfici = (function () {
   'use strict';
   const T = 0.5;                 // metri coperti da una texture
   const N = 64;                  // pixel della texture (128 px/m: fitto, ma sempre a pixel netti come il resto del gioco)
-  const TEX = {}, MATS = new Map(), GEOS = new Map();
+  const TEX = {}, MATS = new Map(), GEOS = new Map(), UVM = new WeakMap();   // [regge] UVM: le copie di uvMetri, per forma d'origine
   let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
   // ---------------- LE TEXTURE (grigio: 255 = il colore pieno, più scuro = segni) ----------------
@@ -21383,10 +21383,12 @@ var Superfici = (function () {
     else if (t === 'DodecahedronGeometry' || t === 'IcosahedronGeometry') { su = sv = 2 * p.radius * R; }
     else if (t === 'ExtrudeGeometry') { su = sv = R; }   // le uv degli estrusi sono già in metri: basta la scala
     else return geo;
-    const key = geo.uuid + '|' + su.toFixed(3) + '|' + sv.toFixed(3); if (GEOS.has(key)) return GEOS.get(key);
+    // [regge] la cache sta sulla forma d'origine (prima per uuid, in una mappa che non si svuotava: ogni modello rifatto, il bottino che
+    // entra e esce dai 45 m, ci lasciava le sue copie per sempre): finché la forma c'è, la sua copia in metri si riusa
+    const key = su.toFixed(3) + '|' + sv.toFixed(3); let per = UVM.get(geo); if (per && per.has(key)) return per.get(key);
     const g2 = geo.clone(), UV = g2.attributes.uv; if (!UV) return geo;
     for (let i = 0; i < UV.count; i++) UV.setXY(i, UV.getX(i) * Math.max(su, .02) / T, UV.getY(i) * Math.max(sv, .02) / T);
-    UV.needsUpdate = true; GEOS.set(key, g2); return g2;
+    UV.needsUpdate = true; if (!per) UVM.set(geo, per = new Map()); per.set(key, g2); return g2;
   }
 
   // uv per i modelli che non le hanno (Quaternius): ogni vertice prende la faccia della sua normale (sono modelli a facce piatte), in metri
@@ -79111,6 +79113,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     renderer.localClippingEnabled = true;   // [visuale3] il piano di taglio sui pezzi della casa fuori dalla fusione (solo mentre è tagliata)
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
     scene = new THREE.Scene(); scene.background = new THREE.Color('#0d0b1a');
+    { const rm0 = scene.remove; scene.remove = function () { for (let i = 0; i < arguments.length; i++) rilascia(arguments[i]); return rm0.apply(this, arguments); }; }   // [regge] chi esce dalla scena va nella coda del rilascio
     scene.fog = new THREE.Fog('#16122a', 85, 140);
     camera = new THREE.PerspectiveCamera(14, 1.6, 1, 400);
     hemi = new THREE.HemisphereLight('#5a64a8', '#1a1226', .55); scene.add(hemi);
@@ -80021,6 +80024,45 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       while (STR.warm.length && (bud > 0 || c === 0)) { const e = STR.warm.shift(); e.w = false; if (e.on) continue; e.on = true; e.o.visible = true; if (e.sh) e.sh.visible = true; e.o.frustumCulled = false; STR.rew.push(e); bud -= e.b; c++; STR.off--; STR.carichi++; } }
   }
   if (typeof window !== 'undefined') window.__stream = STR;
+  // [regge] IL RILASCIO: quello che esce dalla scena (persone che si allontanano, mezzi rifatti o spariti, interni, corpi, oggetti a
+  // terra, il bottino) usciva senza dispose(): three tiene per ogni geometria disegnata almeno una volta i suoi attributi (gli stati dei
+  // vertici, per geometry.id) e quindi i buffer sulla scheda video e gli array in memoria, per sempre. Giocando la memoria saliva senza
+  // fermarsi (decine di MB e migliaia di geometrie a ogni giro della città) finché il telefono chiudeva la pagina. Ora chi esce va in
+  // coda; ogni 3 s un giro della scena a fette (3000 oggetti per fotogramma, nessun picco) dice chi è ancora usato: una geometria della
+  // coda che la scheda video ha ricevuto e che per due giri di fila nessuna mesh della scena (né una persona tenuta da parte,
+  // PEOPLE_KEEP) usa più si libera. L'immagine non cambia: se torna in scena (dalle cache delle figure, dei
+  // modelli, dei kit) three la ricarica dagli array, che restano; quelle con gli array già svuotati dopo l'invio ([leggera]) non si
+  // toccano. ?norilascio: come prima; window.__rilascio: lo stato.
+  const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null };
+  const rilGeo = (g, out) => { if (g && g.isBufferGeometry) out.push(g); };
+  function rilascia(obj) {
+    if (!RIL.on || !obj || !obj.traverse) return; const L = [];
+    obj.traverse(o => { if (o.isMesh || o.isLine || o.isPoints) rilGeo(o.geometry, L); });
+    for (const g of L) if (rilCaricata(g)) RIL.coda.set(g, -1);   // -1: uscita ora (anche se c'era già): conta solo un giro della scena cominciato dopo. Mai disegnata (le case lontane che aspettano il loro settore): three non la tiene, niente da fare
+  }
+  function rilCaricata(g) { if (!Object.prototype.hasOwnProperty.call(g, '_listeners')) return false; const l = g._listeners.dispose; return !!(l && l.length); }   // three l'ha ricevuta (WebGLGeometries ascolta il suo dispose); i segnaposto che ereditano (lazyGeo1) no
+  function rilIntatta(g) {   // gli array ci sono ancora tutti: si potrà ricaricare
+    const ok = a => { if (!a) return true; if (a.isInterleavedBufferAttribute) return a.data.array.length >= a.data.count * a.data.stride; return a.array.length >= a.count * a.itemSize; };
+    if (!ok(g.index)) return false; for (const k in g.attributes) if (!ok(g.attributes[k])) return false;
+    for (const k in g.morphAttributes) for (const a of g.morphAttributes[k]) if (!ok(a)) return false; return true;
+  }
+  function rilascioTick(now) {
+    if (!RIL.on || !RIL.coda.size || (!RIL.W.stack && now - RIL.t < 3000)) return;
+    if (!RIL.W.stack) RIL.uso = new Set(); const uso = RIL.uso;
+    const fine = sliceWalk(RIL.W, scene, 3000, o => { const g = o.geometry; if (g) uso.add(g); });   // la scena a fette (3000 oggetti per fotogramma): nessun picco
+    const fin = () => { const d = performance.now() - now; RIL.ms += d; if (d > (RIL.picco || 0)) RIL.picco = d; };
+    if (!fine) { fin(); return; } RIL.t = now; RIL.gen++; RIL.uso = null;
+    const tenute = new Set(); PEOPLE_KEEP.forEach(p => p.traverse(o => { if (o.geometry) tenute.add(o.geometry); }));
+    for (const [g, m] of RIL.coda) {
+      if (m < 0) { RIL.coda.set(g, 0); continue; }
+      if (uso.has(g) || !rilCaricata(g)) { RIL.coda.delete(g); continue; }   // di nuovo in scena (o mai disegnata): niente da fare
+      if (tenute.has(g)) { RIL.coda.set(g, 0); continue; }   // una persona da parte: aspetta
+      if (!m) { RIL.coda.set(g, RIL.gen); continue; }   // la prima volta fuori: si riguarda al prossimo controllo
+      RIL.coda.delete(g); if (rilIntatta(g)) { g.dispose(); RIL.liberate++; }
+    }
+    fin();
+  }
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__rilascio', { configurable: true, get: () => ({ on: RIL.on, coda: RIL.coda.size, controlli: RIL.gen, liberate: RIL.liberate, ms: Math.round(RIL.ms), picco: +(RIL.picco || 0).toFixed(1) }) });
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
@@ -80411,6 +80453,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
+    rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
@@ -80490,7 +80533,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -85581,16 +85624,17 @@ var Bottino = (function () {
   function sync(st) {
     const R = PV().R, scene = R && R.__models && R.__models.scene; if (!scene || !T()) return;
     if (U.scene !== scene) { U.scene = scene; U.grp = new (T().Group)(); U.grp.name = 'bottino'; scene.add(U.grp); U.meshes = {}; }
-    if (U.stRef !== st) { for (const k in U.meshes) U.grp.remove(U.meshes[k]); U.meshes = {}; U.stRef = st; }
+    const via = m => { U.grp.remove(m); if (R.rilascia) R.rilascia(m); };   // [regge] il modello rifatto o lontano libera la sua geometria (render.js, il rilascio)
+    if (U.stRef !== st) { for (const k in U.meshes) via(U.meshes[k]); U.meshes = {}; U.stRef = st; }
     const ui = PV().ui, p = st.player, on = !(ui && (ui.intro || ui.over)) && !p.indoor;
     U.grp.visible = on;
     const want = {};
     if (on) refresh(st).forEach(L => { if (MODEL[L.kind]) want[L.ref] = L; });
-    for (const k in U.meshes) if (!want[k]) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; }
+    for (const k in U.meshes) if (!want[k]) { via(U.meshes[k]); delete U.meshes[k]; }
     const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000, dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
     for (const [k, L] of Object.entries(want)) {
       let m = U.meshes[k];
-      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
+      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) via(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
       const y = L.kind === 'tetto' && R.groundH ? (PV().st.player.lv && typeof Livelli !== 'undefined' && Livelli.heightOf ? Livelli.heightOf(st, p) : R.groundH(L.x, L.y)) : R.groundH(L.x, L.y);
       m.position.set(L.x, y, L.y);
       // sotto il puntatore si solleva appena e respira: si capisce che si prende
