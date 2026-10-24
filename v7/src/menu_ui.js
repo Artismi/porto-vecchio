@@ -223,11 +223,27 @@ var MenuUI = (function () {
   const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
-  let THR = null;
+  const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
+  let THR = null, ENV = null;
+  // l'ambiente dello studio: una cupola calda sopra, scura sotto, due pannelli luminosi (softbox) da riflettere
+  function envThumb() {
+    if (ENV || !THR) return ENV; const T = THREE;
+    try {
+      const es = new T.Scene(), geo = new T.SphereGeometry(10, 32, 16), col = [], P = geo.attributes.position;
+      for (let i = 0; i < P.count; i++) { const y = P.getY(i) / 10, c = new T.Color('#1a1714').lerp(new T.Color('#9a8e7c'), Math.max(0, Math.min(1, y * .7 + .45))); col.push(c.r, c.g, c.b); }
+      geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+      es.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
+      [[-5, 6, 4, 4, 3, 2], [6, 3, -3, 3, 2, 1], [0, -2, 7, 6, 1, .3]].forEach(([x, y, z, w, h, k]) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color('#fff4e0').multiplyScalar(k), side: T.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); });
+      const pm = new T.PMREMGenerator(THR); ENV = pm.fromScene(es, .04).texture; pm.dispose();
+    } catch (e) { ENV = null; }
+    return ENV;
+  }
   function makeThumb(id) {
     const T = THREE, st = ST();
-    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0); }
-    const sc = new T.Scene(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .9)); const k = new T.DirectionalLight('#fff0dc', 1.1); k.position.set(-2, 4, 3); sc.add(k); const rim = new T.DirectionalLight('#b08d57', .8); rim.position.set(3, 2, -3); sc.add(rim);
+    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0);
+      // [roba3d] la luce da studio fotografico: ombre morbide, tono filmico e un ambiente da riflettere (metallo e vetro non sono più piatti)
+      THR.shadowMap.enabled = true; THR.shadowMap.type = T.PCFSoftShadowMap; THR.toneMapping = T.ACESFilmicToneMapping; THR.toneMappingExposure = 1.05; }
+    const sc = new T.Scene(); sc.environment = envThumb(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .45)); const k = new T.DirectionalLight('#fff0dc', 1.5); k.position.set(-2, 4, 3); k.castShadow = true; k.shadow.mapSize.set(1024, 1024); k.shadow.radius = 4; k.shadow.bias = -.0004; sc.add(k); sc.add(k.target); const rim = new T.DirectionalLight('#c8a070', .9); rim.position.set(3, 2, -3); sc.add(rim);
     let obj = null, cam = new T.PerspectiveCamera(28, 1, .02, 50), C0 = typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[id];
     if (C0 && ready3()) {
       // il manichino: il modello di Nino, solo con quel capo addosso
@@ -241,9 +257,13 @@ var MenuUI = (function () {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
       // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
       const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
-      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
-      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
-      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      // [roba3d] prima il modello vero dell'oggetto (roba3d.js), poi quelli di oggetti3d.js, l'arma del gioco, il modellino di famiglia
+      const rb = !CUST[id] && typeof Roba3D !== 'undefined' && Roba3D && Roba3D.has(id) ? Roba3D.make(id) : null;
+      obj = CUST[id] ? CUST[id]() : rb || (o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id));
+      const ud = obj.userData || {};
+      if (ud.arma3 || (!rb && o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3))) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (ud.diag || (!rb && o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) || (rb && ud.modello === undefined && /coltello/.test(ID3(id)))) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      else if (ud.arma) obj.rotation.y = -.25;
       // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
       const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
       const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);
@@ -254,6 +274,11 @@ var MenuUI = (function () {
         const bb = new T.Box3().setFromObject(holder), sz = bb.getSize(new T.Vector3()), shd = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: new T.CanvasTexture(sc2), transparent: true, depthWrite: false }));
         shd.rotation.x = -Math.PI / 2; shd.scale.set(sz.x * 1.2, sz.z * 1.2 + .05, 1); shd.position.set(bb.getCenter(new T.Vector3()).x, bb.min.y + .002, bb.getCenter(new T.Vector3()).z); sc.add(shd); }
     }
+    // l'ombra vera sotto e sul modello: la luce principale inquadra la sfera dell'oggetto
+    { const bb = new T.Box3().setFromObject(obj), c = bb.getCenter(new T.Vector3()), r = Math.max(.05, bb.getSize(new T.Vector3()).length() / 2);
+      k.target.position.copy(c); k.position.copy(c).add(new T.Vector3(-2, 4, 3).normalize().multiplyScalar(r * 4)); const sh = k.shadow.camera; sh.left = sh.bottom = -r * 1.4; sh.right = sh.top = r * 1.4; sh.near = r * .5; sh.far = r * 8; sh.updateProjectionMatrix();
+      const pv = new T.Mesh(new T.PlaneGeometry(r * 6, r * 6), new T.ShadowMaterial({ opacity: .32 })); pv.rotation.x = -Math.PI / 2; pv.position.set(c.x, bb.min.y + .0005, c.z); pv.receiveShadow = true; sc.add(pv);
+      obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); }
     sc.add(obj); THR.render(sc, cam);
     const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });

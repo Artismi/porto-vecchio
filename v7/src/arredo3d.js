@@ -101,6 +101,7 @@ var Arredo3D = (function () {
   const piedeCem = (g, r, m, x, z) => lathe(g, [[r, 0], [r, .03], [r * .55, .06], [.001, .07]], 8, m || CM, x || 0, 0, z || 0);
   // un punto su una lastra inclinata (rx): centro c, su per la lastra v, fuori dalla lastra n
   const sulPiano = (c, rx, v, n) => [c[0], c[1] + Math.cos(rx) * v - Math.sin(rx) * n, c[2] + Math.sin(rx) * v + Math.cos(rx) * n];
+  const shade = (c, k) => { const o = new THREE.Color(c); o.multiplyScalar(k); return '#' + o.getHexString(); };
   const T = {};
   // ================= LAMPIONI =================
   // la lanterna in ghisa a quattro facce rastremate (lati allineati agli assi), tettuccio a piramide col pomolo, pigna sotto; i vetri si accendono.
@@ -463,6 +464,170 @@ var Arredo3D = (function () {
     put(g, cylG(.014, .016, .04, 8), GM, 0, .02, 0); asta(g, [0, .035, 0], [0, .82, 0], .012, m, 8); put(g, cylG(.0145, .0145, .025, 8), OT, 0, .8, 0);
     cavo(g, [[0, .81, 0], [0, .88, .005], [0, .92, .045], [0, .915, .1], [0, .87, .12]], .013, m, 12); put(g, sphG(.0135, 6), m, 0, .87, .12);
     g.userData.presa = [0, .91, .06]; return g; };
+
+  // ================= [roba3d] PORTO, MAGAZZINO, SPIAGGIA E DISCARICA: le scatole che restavano in render.js =================
+  // la cassa grande di legno a doghe (90 × 70 × 90): quattro montanti agli spigoli, doghe con le fughe, i chiodi, aperta sopra
+  // con la merce: o.merce = 'pesce' (ghiaccio e pesci), 'bottiglie' (in piedi negli scomparti), un colore (frutta a mucchio), niente (il coperchio inchiodato)
+  T.cassa = (o) => {
+    const g = new THREE.Group(), W = .9, H = .7, D = .9, me = o && o.merce, mL = mat((o && o.col) || '#a88a5c', 'legno'), mS = mat('#6e5434', 'legno');
+    const n = 4, h = H / n;
+    for (let k = 0; k < n; k++) { const y = h * (k + .5) + .01; slab(g, W - .1, h - .016, .024, mL, 0, y, D / 2 - .012, .004); slab(g, W - .1, h - .016, .024, mL, 0, y, -D / 2 + .012, .004); slab(g, .024, h - .016, D - .1, mL, W / 2 - .012, y, 0, .004); slab(g, .024, h - .016, D - .1, mL, -W / 2 + .012, y, 0, .004); }
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => slab(g, .07, H + .02, .07, mS, a * (W / 2 - .035), (H + .02) / 2, b * (D / 2 - .035), .008));
+    slab(g, W - .06, .022, D - .06, mS, 0, .03, 0, .004);   // il fondo
+    if (F()) for (let k = 0; k < n; k++) [-1, 1].forEach(s => { bullone(g, s * (W / 2 - .06), h * (k + .5), D / 2 + .001, 'z', .006, GH); bullone(g, s * (W / 2 - .06), h * (k + .5), -D / 2 - .001, 'z', .006, GH); });
+    if (F()) targa(g, (o && o.scritta) || 'FRAGILE', W * .5, .16, 0, H * .55, D / 2 + .002, 0, (o && o.col) || '#a88a5c', '#2a2622', 0);   // lo stampino della ditta
+    if (!me) { for (let k = 0; k < 5; k++) slab(g, .17, .024, D - .02, mL, -W / 2 + .1 + k * .175, H + .022, 0, .004); return g; }
+    if (me === 'pesce') {
+      put(g, slabG(W - .1, .04, D - .1, .01), mat('#dfe8ee', 'vetro'), 0, H - .06, 0);
+      for (let k = 0; k < 8; k++) { const f = put(g, latheG([[.001, 0], [.035, .07], [.045, .2], [.03, .3], [.012, .36], [.001, .37]], 6), mat(k % 2 ? '#9ab0c0' : '#b8c8d0', 'zinco'), -.3 + (k % 4) * .2, H - .035, -.18 + Math.floor(k / 4) * .36); f.rotation.order = 'YXZ'; f.rotation.set(PI / 2, (k % 3 - 1) * .15, 0); f.scale.z = .5; }
+      return g; }
+    if (me === 'bottiglie') {
+      slab(g, W - .1, .02, D - .1, mL, 0, H - .26, 0, 0);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { const x = -.3 + i * .2, z = -.3 + j * .2, mv = mat((i + j) % 2 ? '#2e5a2a' : '#5a3418', 'vetro'); lathe(g, [[.001, 0], [.04, 0], [.042, .2], [.03, .25], [.015, .27], [.015, .33], [.001, .33]], 8, mv, x, H - .25, z); if (F()) put(g, cylG(.017, .017, .02, 6), mat('#c8a040', 'ottone'), x, H + .085, z); }
+      return g; }
+    // frutta o verdura a mucchio, del colore dato
+    const mf = mat(me, 'plastica'), mf2 = mat(me, 'vernice'); let q = 0;
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { const x = -.33 + i * .132, z = -.33 + j * .132, y = H - .07 + Math.sin(i * 1.3 + j) * .02 + (Math.abs(i - 2.5) < 2 && Math.abs(j - 2.5) < 2 ? .04 : 0); put(g, sphG(.07, LV > 0 ? 8 : 6), (q++ % 3) ? mf : mf2, x, y, z); }
+    return g; };
+  // il fusto di lamiera da 200 l: corpo con le due nervature di rotolamento e gli orli, il coperchio coi due tappi, la targhetta, la ruggine
+  T.fusto = (o) => {
+    const g = new THREE.Group(), col = (o && o.col) || '#2a5ab8', m = mat(col, 'vernice'), mS = mat('#5a5e60', 'zinco'), R = .29, H = .88;
+    lathe(g, [[.001, .006], [R - .01, .006], [R, .02], [R, H - .02], [R - .01, H - .006], [.001, H - .006]], 14, m);
+    [.012, H - .012].forEach(y => tor(g, R + .002, .012, 14, mS, 0, y, 0)); [H * .33, H * .67].forEach(y => tor(g, R + .004, .014, 14, m, 0, y, 0));
+    put(g, cylG(.03, .03, .025, 8), mS, .14, H, 0); put(g, cylG(.018, .018, .02, 6), mS, -.15, H, .05);
+    if (F()) targa(g, (o && o.scritta) || 'OLIO\nMINERALE', .22, .14, 0, H * .5, R + .006, 0, '#e8e4d8', '#2a2a2e', 0);
+    if (o && o.ruggine) lathe(g, [[R + .001, .02], [R + .003, .02], [R + .003, .22]], 14, RG);
+    if (o && o.coricato) { const r = new THREE.Group(); while (g.children.length) r.add(g.children[0]); r.rotation.z = PI / 2; r.position.set(H / 2, R + .006, 0); g.add(r); }
+    return g; };
+  // il barile di legno a doghe bombate coi quattro cerchi di ferro
+  T.barile = (o) => {
+    const g = new THREE.Group(), R0 = .3, R1 = .37, H = .95, m = mat('#7a4e2c', 'legno');
+    lathe(g, [[.001, .01], [R0, .01], [R0 + .04, H * .2], [R1, H * .5], [R0 + .04, H * .8], [R0, H - .01], [.001, H - .01]], 12, m);
+    [[.07, R0 + .012], [.24, R0 + .052], [H - .24, R0 + .052], [H - .07, R0 + .012]].forEach(([y, r]) => tor(g, r + .006, .012, 12, GH, 0, y, 0));
+    put(g, cylG(R0 - .02, R0 - .02, .012, 12), mat('#5a3a20', 'legno'), 0, H - .02, 0); if (F()) put(g, cylG(.03, .03, .03, 6), mat('#5a3a20', 'legno'), 0, H * .5, R1 - .01, PI / 2);
+    if (o && o.coricato) { const r = new THREE.Group(); while (g.children.length) r.add(g.children[0]); r.rotation.z = PI / 2; r.position.set(H / 2, R1, 0); g.add(r); }
+    return g; };
+  // la pila di copertoni: ogni gomma tornita col battistrada e i fianchi, un po' sfalsate
+  T.pila_gomme = (o) => {
+    const g = new THREE.Group(), n = (o && o.n) || 4, R = .31, Ri = .2, Wd = .2;
+    for (let k = 0; k < n; k++) { const x = Math.sin(k * 2.1) * .03, z = Math.cos(k * 1.7) * .03;
+      lathe(g, [[Ri, .02], [R - .03, 0], [R, .03], [R + .005, Wd / 2], [R, Wd - .03], [R - .03, Wd], [Ri, Wd - .02], [Ri, .02]], 14, GM, x, k * (Wd + .004), z);
+      if (F()) for (let i = 0; i < 8; i++) { const a = i / 8 * PI * 2; slab(g, .012, Wd * .7, .05, mat('#141416', 'gomma'), x + Math.cos(a) * (R + .004), k * (Wd + .004) + Wd / 2, z + Math.sin(a) * (R + .004), 0, 0, -a, 0); } }
+    return g; };
+  // il bancale (europallet 120 × 80): tre traversi sotto, nove blocchi, cinque assi sopra; o.carico = sacchi o scatole avvolte e reggiate
+  T.bancale = (o) => {
+    const g = new THREE.Group(), mL = mat('#b8986a', 'legno'), mS = mat('#8a6e48', 'legno'), W = 1.2, D = .8;
+    [-.35, 0, .35].forEach(z => slab(g, W, .022, .1, mL, 0, .011, z, .003));
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) slab(g, .1, .078, j === 1 ? .145 : .1, mS, (i - 1) * .55, .061, (j - 1) * .35, .006);
+    [-.55, 0, .55].forEach(x => slab(g, .1, .022, D, mL, x, .111, 0, .003));   // i traversi, di traverso alle assi di sopra
+    for (let k = 0; k < 5; k++) slab(g, W, .022, k % 2 ? .1 : .145, mL, 0, .133, -.33 + k * .165, .003);
+    const c = o && o.carico; if (!c) return g;
+    if (c === 'sacchi') { const ms = mat('#c8b890', 'tela'); for (let l = 0; l < 3; l++) for (let i = 0; i < 2; i++) { const b = put(g, slabG(.55, .14, .36, .05), ms, l % 2 ? (i - .5) * .58 : (i - .5) * .58, .214 + l * .14, l % 2 ? .18 : -.18); b.rotation.y = l % 2 ? .03 : -.03; put(g, slabG(.55, .14, .36, .05), ms, (i - .5) * .58, .214 + l * .14, l % 2 ? -.2 : .2); } return g; }
+    const mc = mat((o && o.col) || '#b8905a', 'carta'), mF = mat('#dfe6e8', 'vetro');
+    for (let l = 0; l < 3; l++) for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) slab(g, .56, .28, .38, mc, (i - .5) * .58, .284 + l * .29, (j - .5) * .39, .01);
+    put(g, slabG(W + .01, .88, D + .01, .02), mF, 0, .58, 0);   // il film
+    [-.3, .3].forEach(x => { slab(g, .025, .9, D + .03, mat('#2a4a8a', 'plastica'), x, .59, 0, 0); slab(g, .025, .02, D + .03, mat('#2a4a8a', 'plastica'), x, 1.03, 0, 0); });   // le reggette
+    return g; };
+  // il lettino da spiaggia: telaio di tubo d'alluminio, seduta e schienale reclinato a listelli di plastica, le rotelle; o.col, o.telo
+  T.lettino = (o) => {
+    const g = new THREE.Group(), col = (o && o.col) || '#e8e4d8', mP = mat(col, 'plastica'), mA = mat('#c8ccd0', 'zinco'), W = .62, L = 1.25, y = .34;
+    [-1, 1].forEach(s => { const x = s * W / 2; asta(g, [x, y, -.25], [x, y, L / 2 + .1], .016, mA, 8); asta(g, [x, y, -.25], [x, .9, -.75], .016, mA, 8); asta(g, [x, y, L / 2], [x, 0, L / 2 + .02], .016, mA, 6); asta(g, [x, y, -.15], [x, .06, -.2], .016, mA, 6); asta(g, [x, .55, -.45], [x, y, -.05], .012, mA, 6); if (F()) put(g, cylG(.05, .05, .03, 10), GM, x, .05, -.22, 0, 0, PI / 2); });
+    for (let k = 0; k < 9; k++) slab(g, W - .02, .02, .11, mP, 0, y + .01, -.2 + k * .12, .006);
+    for (let k = 0; k < 5; k++) { const t = (k + .5) / 5, p = [0, y + .01 + (.9 - y) * t, -.25 - .5 * t]; slab(g, W - .02, .02, .11, mP, p[0], p[1], p[2], .006, -.83, 0, 0); }
+    [-.25, L / 2 + .1].forEach(z => asta(g, [-W / 2, y, z], [W / 2, y, z], .014, mA, 6)); asta(g, [-W / 2, .9, -.75], [W / 2, .9, -.75], .014, mA, 6);
+    if (o && o.telo) { const mT = mat(o.telo, 'tela'); slab(g, W - .1, .012, .95, mT, 0, y + .03, .2, 0); slab(g, W - .1, .012, .3, mT, 0, .55, -.43, 0, -.83, 0, 0); }
+    return g; };
+  // l'ombrellone da spiaggia: palo bianco a due pezzi col giunto inclinato, otto spicchi a strisce alterne con le stecche, la mantovana, il puntale
+  T.ombrellone_mare = (o) => {
+    const g = new THREE.Group(), ca = mat((o && o.col) || '#d84a4a', 'tela'), cb = mat((o && o.col2) || C.bianco, 'tela'), H = 2.3, R = 1.45, N = 8;
+    put(g, cylG(.03, .022, .06, 6), ZS, 0, .03, 0); asta(g, [0, .05, 0], [0, 1.3, 0], .022, BC, 8); put(g, cylG(.032, .032, .08, 8), mat('#6e7270', 'zinco'), 0, 1.32, 0);
+    const top = new THREE.Group(); top.position.set(0, 1.35, 0); top.rotation.z = (o && o.incl !== undefined) ? o.incl : .12; g.add(top);
+    asta(top, [0, 0, 0], [0, H - 1.35, 0], .02, BC, 8);
+    const Hc = H - 1.35 - .05;
+    for (let k = 0; k < N; k++) { const a0 = k / N * PI * 2, a1 = (k + 1) / N * PI * 2; const geo = new THREE.BufferGeometry(); const P = [0, Hc + .32, 0, Math.cos(a0) * R, Hc, Math.sin(a0) * R, Math.cos(a1) * R, Hc, Math.sin(a1) * R]; geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.computeVertexNormals(); const mm = (k % 2 ? cb : ca).clone(); mm.side = THREE.DoubleSide; put(top, geo, mm);
+      const fx = (Math.cos(a0) + Math.cos(a1)) / 2 * R, fz = (Math.sin(a0) + Math.sin(a1)) / 2 * R; const mt = put(top, planeG(2 * R * Math.sin(PI / N), .16), mm, fx * .99, Hc - .08, fz * .99, 0, -((a0 + a1) / 2) + PI / 2, 0);
+      asta(top, [0, Hc + .3, 0], [Math.cos(a0) * R * .98, Hc + .005, Math.sin(a0) * R * .98], .006, ZS, 4); asta(top, [0, Hc - .35, 0], [Math.cos(a0) * R * .55, Hc + .1, Math.sin(a0) * R * .55], .005, ZS, 4); }
+    put(top, sphG(.04, 6), BC, 0, Hc + .34, 0); put(top, cylG(.03, .03, .05, 6), ZS, 0, Hc - .35, 0);
+    return g; };
+  // il salvagente sul palo: anello a strisce rosse e bianche, la cima avvolta, il gancio
+  T.salvagente = () => {
+    const g = new THREE.Group(), mW = mat('#f0ece2', 'plastica'), mR = mat('#d83a2a', 'plastica');
+    piedeCem(g, .16); asta(g, [0, .05, 0], [0, 1.6, 0], .04, mat('#d8d0c0', 'legno'), 8); slab(g, .5, .1, .06, mat('#d8d0c0', 'legno'), 0, 1.55, .0, .01);
+    const R = .3, r = .075, N = 8; for (let k = 0; k < N; k++) { const geo = new THREE.TorusGeometry(R, r, LV > 0 ? 6 : 5, 3, PI * 2 / N); put(g, geo, k % 2 ? mW : mR, 0, 1.18, .1, 0, 0, k / N * PI * 2); }
+    cavo(g, [[-.24, 1.38, .12], [-.38, 1.2, .14], [-.3, .95, .14], [0, .86, .13], [.3, .95, .14], [.38, 1.2, .14], [.24, 1.38, .12]], .01, mat('#d8c8a0', 'tela'), 18);
+    asta(g, [0, 1.5, .03], [0, 1.5, .1], .01, ZS, 4);
+    return g; };
+  // il pedalò: due galleggianti affusolati, il ponte, i due sedili a guscio, la ruota a pale nel carter, il manubrio
+  T.pedalo = (o) => {
+    const g = new THREE.Group(), m = mat((o && o.col) || '#3aa8c8', 'plastica'), mW = mat(C.bianco, 'plastica');
+    [-.55, .55].forEach(x => { const p = lathe(g, [[.001, -1.25], [.12, -1.1], [.22, -.7], [.24, 0], [.22, .8], [.12, 1.15], [.001, 1.3]], 12, m, x, .19, 0); p.rotation.x = PI / 2; p.scale.set(1, 1, .8); });
+    slab(g, 1.4, .06, 1.6, mW, 0, .4, -.1, .02); [-.32, .32].forEach(x => { slab(g, .46, .06, .45, m, x, .46, -.35, .03); slab(g, .46, .45, .06, m, x, .68, -.58, .03, -.2, 0, 0); });
+    slab(g, .2, .45, .9, mW, 0, .62, .45, .05); lathe(g, [[.001, 0], [.36, 0], [.38, .05], [.001, .06]], 14, mW, -.1, .62, .45).rotation.z = PI / 2;
+    asta(g, [0, .43, .0], [0, .85, .05], .02, ZS, 6); asta(g, [-.18, .85, .05], [.18, .85, .05], .015, NR, 6);
+    if (F()) targa(g, String((o && o.num) || 7), .2, .14, .7, .4, .8, PI / 2, C.bianco, '#2a2a2e', 0);
+    return g; };
+  // il container da 20 piedi (6 × 2,44 × 2,6): fianchi di lamiera grecata, i quattro angolari di ghisa, le porte con le quattro aste di chiusura, la targa
+  T.container = (o) => {
+    const g = new THREE.Group(), col = (o && o.col) || '#9a4a2a', m = mat(col, 'vernice'), mS = mat(shade(col, .75), 'vernice'), L = 6, W = 2.44, H = 2.6, t = .05;
+    // i fianchi grecati: la lamiera di fondo e le greche in rilievo, una ogni 28 cm
+    const N = LV > 0 ? 16 : 8, dz = (L - .3) / N;
+    [-1, 1].forEach(sd => { slab(g, .02, H - .24, L - .3, m, sd * (W / 2 - .04), H / 2, 0, 0); for (let i = 0; i < N; i++) slab(g, .045, H - .26, dz * .45, m, sd * (W / 2 - .02), H / 2, -L / 2 + .15 + dz * (i + .5), .008); });
+    if (F()) for (let i = 0; i < 8; i++) slab(g, (W - .3) / 8 * .45, H - .26, .04, m, -W / 2 + .15 + (W - .3) / 8 * (i + .5), H / 2, -L / 2 + .03, .008);   // le greche della testata
+    slab(g, W - .1, H - .2, .04, m, 0, H / 2, -L / 2 + .06, .01);   // la testata
+    slab(g, W, .1, L, mS, 0, H - .05, 0, .01); slab(g, W, .14, L, mS, 0, .07, 0, .01);   // tetto e longheroni
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { slab(g, .16, H, .16, mS, a * (W / 2 - .08), H / 2, b * (L / 2 - .08), .01); [.09, H - .09].forEach(y => slab(g, .18, .12, .18, GH, a * (W / 2 - .08), y, b * (L / 2 - .08), .01)); });
+    [-1, 1].forEach(s => slab(g, W / 2 - .12, H - .3, .04, mS, s * (W / 4 - .02), H / 2, L / 2 - .05, .01));   // le due ante
+    [-.85, -.35, .35, .85].forEach(x => { asta(g, [x, .2, L / 2 + .01], [x, H - .2, L / 2 + .01], .022, ZS, 6); if (F()) slab(g, .07, .14, .04, ZS, x, 1.2, L / 2 + .03, .006); });
+    if (F()) targa(g, (o && o.sigla) || 'TRIU 204417', .9, .22, .55, H - .4, L / 2 - .02, 0, col, '#e8e4d8', 0);
+    return g; };
+  // il muletto: carrozzeria smussata, contrappeso, tettuccio di protezione sui quattro montanti, il montante con le forche, sedile e volante, ruote tornite
+  T.muletto = (o) => {
+    const g = new THREE.Group(), m = mat((o && o.col) || '#e0a020', 'vernice'), mK = mat('#2a2a2e', 'ghisa');
+    slab(g, 1.1, .55, 1.6, m, 0, .55, -.1, .08); slab(g, 1.12, .5, .45, mK, 0, .62, -.85, .1);   // il corpo e il contrappeso
+    [[-.55, .55, .28], [.55, .55, .28], [-.55, -.65, .24], [.55, -.65, .24]].forEach(([x, z, R]) => { lathe(g, [[R * .5, -.1], [R - .02, -.1], [R, 0], [R - .02, .1], [R * .5, .1]], 12, GM, x, R, z).rotation.z = PI / 2; put(g, cylG(R * .5, R * .5, .21, 10), mat('#c8c4b8', 'vernice'), x, R, z, 0, 0, PI / 2); });
+    slab(g, .5, .1, .45, NR, 0, .88, -.35, .04); slab(g, .5, .45, .08, NR, 0, 1.1, -.55, .04);   // il sedile
+    asta(g, [0, .8, .3], [0, 1.15, .12], .02, NR, 6); tor(g, .16, .016, 14, NR, 0, 1.155, .12, PI / 2 - .5, 0, 0); [0, PI * 2 / 3, PI * 4 / 3].forEach(a => asta(g, [0, 1.155, .12], [Math.cos(a) * .15, 1.155 + Math.sin(a) * .15 * Math.cos(PI / 2 - .5), .12 - Math.sin(a) * .15 * Math.sin(PI / 2 - .5)], .008, NR, 4));
+    [[-.5, .4], [.5, .4], [-.5, -.75], [.5, -.75]].forEach(([x, z]) => asta(g, [x, .8, z], [x, 2.15, z * .9], .03, mK, 6)); slab(g, 1.06, .05, 1.2, mK, 0, 2.17, -.15, .01);
+    for (let k = 0; k < 5; k++) slab(g, .03, .03, 1.1, mK, -.4 + k * .2, 2.2, -.15, 0);   // la griglia del tettuccio
+    [-.35, .35].forEach(x => slab(g, .08, 2.3, .1, mK, x, 1.2, .75, .01)); slab(g, .8, .12, .08, mK, 0, .3, .8, .01); slab(g, .8, .1, .08, mK, 0, 2.3, .78, .01);   // il montante
+    slab(g, .8, .5, .04, ZS, 0, .5, .82, .006); [-.25, .25].forEach(x => { slab(g, .1, .5, .05, ZS, x, .5, .86, .006); slab(g, .1, .04, 1.0, ZS, x, .27, 1.34, .006); });   // la piastra porta-forche e le forche, alzate   // le forche
+    if (F()) { cavo(g, [[0, 2.3, .74], [0, 1.8, .7], [0, .4, .78]], .008, GH, 6); put(g, sphG(.06, 6), mat('#e88a2a', 'luce'), 0, 2.24, -.1).name = 'luce'; }
+    return g; };
+  // la gru da banchina: torre a traliccio sui quattro piedi, la cabina, il braccio a traliccio col tirante, il contrappeso, il gancio col cavo
+  T.gru = (o) => {
+    const g = new THREE.Group(), m = mat((o && o.col) || '#d86a2a', 'vernice'), mG = mat('#5a5a60', 'cemento'), Hs = 8, B = 1.5, r = .07;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { slab(g, .5, .3, .5, mG, a * B, .15, b * B, .02); asta(g, [a * B, .3, b * B], [a * B * .8, Hs, b * B * .8], r, m, 6); });
+    for (let k = 0; k < 4; k++) { const y0 = .3 + k * (Hs - .3) / 4, y1 = y0 + (Hs - .3) / 4, k0 = 1 - .2 * (y0 / Hs), k1 = 1 - .2 * (y1 / Hs);
+      [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]].forEach(([a, b, c, d]) => { asta(g, [a * B * k0, y0, b * B * k0], [c * B * k1, y1, d * B * k1], r * .5, m, 4); asta(g, [a * B * k1, y1, b * B * k1], [c * B * k1, y1, d * B * k1], r * .55, m, 4); }); }
+    const Ht = Hs; slab(g, 2.6, .3, 2.6, m, 0, Ht + .15, 0, .03); slab(g, 1.6, 1.4, 1.6, mat('#e8a040', 'vernice'), .5, Ht + 1, 1.0, .06); put(g, slabG(1.2, .7, .02, 0), VT, .5, Ht + 1.2, 1.81);   // ralla e cabina
+    const yb = Ht + .5; for (let k = 0; k < 2; k++) [-.3, .3].forEach(x => asta(g, [x, yb + k * .6, -4], [x, yb + k * .6 * (1 - .9), 13], r * .7, m, 4));
+    for (let z = -4; z < 13; z += 1.4) { asta(g, [-.3, yb, z], [.3, yb, z + .7], r * .4, m, 4); asta(g, [.3, yb, z + .7], [-.3, yb, z + 1.4], r * .4, m, 4); asta(g, [-.3, yb + .6 * (1 - .9 * (z + 4) / 17), z], [-.3, yb, z + .7], r * .4, m, 4); }
+    asta(g, [0, Ht + .3, 0], [0, Ht + 3, 0], r, m, 6); asta(g, [0, Ht + 3, 0], [0, yb + .1, 12.5], .015, GH, 4); asta(g, [0, Ht + 3, 0], [0, yb + .5, -3.8], .015, GH, 4);
+    slab(g, 1.4, 1.4, 1.2, mG, 0, yb - .3, -3.7, .03);   // il contrappeso
+    slab(g, .7, .12, .5, mat('#5a5a60', 'zinco'), 0, yb - .05, 11.5, .02); asta(g, [0, yb, 11.5], [0, yb - 5.55, 11.5], .012, GH, 4); slab(g, .4, .3, .3, GL, 0, yb - 5.7, 11.5, .03); put(g, torG(.12, .025, 8), GH, 0, yb - 5.96, 11.5, 0, PI / 2, 0);
+    put(g, sphG(.15, 6), mat('#ff3030', 'luce'), 0, Ht + 3.15, 0).name = 'luce'; luci(g, 0, Ht + 3.15, 0, '#ff4040');
+    return g; };
+  // l'invasatura del cantiere per lo scafo all'asciutto: taccate di legno a croce, i puntelli inclinati e l'impalcatura di tubi coi tavolati
+  T.invasatura = (o) => {
+    const g = new THREE.Group(), L = (o && o.L) || 11, W = (o && o.W) || 3.4, mL = mat('#6e5434', 'legno'), mA = mat('#9a9aa0', 'zinco'), mT = mat('#b8986a', 'legno');
+    for (let z = -L / 2 + 1; z <= L / 2 - 1; z += 2) { for (let l = 0; l < 3; l++) slab(g, l % 2 ? .9 : .3, .2, l % 2 ? .3 : .9, mL, 0, .1 + l * .2, z, .02); [-1, 1].forEach(s => { asta(g, [s * (W / 2 + .6), .1, z], [s * W * .32, 1.6, z], .07, mL, 4); slab(g, .5, .1, .5, mL, s * (W / 2 + .6), .05, z, .01); }); }
+    const xs = W / 2 + .9; for (let z = -L / 2; z <= L / 2; z += 2.5) [-1, 1].forEach(s => asta(g, [s * xs, .06, z], [s * xs, 4.8, z], .03, mA, 6));
+    [-1, 1].forEach(s => slab(g, .16, .06, L + .2, mL, s * xs, .03, 0, .006)); for (let z = -L / 2 + 1; z <= L / 2 - 1; z += 2) slab(g, 2 * xs, .06, .14, mL, 0, .03, z, .006);   // le travi a terra
+    [1.5, 3, 4.5].forEach(h => [-1, 1].forEach(s => asta(g, [s * xs, h, -L / 2], [s * xs, h, L / 2], .03, mA, 6)));
+    [-1, 1].forEach(s => slab(g, .9, .05, L, mT, s * (xs - .45), 3.02, 0, .005));
+    return g; };
+  // il mucchio della discarica: lamiere storte, una portiera, copertoni, tubi, una rete di letto, macerie; o.seme
+  T.rottami = (o) => {
+    const g = new THREE.Group(), sd = (o && o.seme) || 1; let h = sd * 9301 + 49297; const rn = () => { h = (h * 16807) % 2147483647; return h / 2147483647; };
+    const mR = mat('#6e3a22', 'vernice'), mC = [mat('#5a6a7a', 'vernice'), mat('#8a3a2a', 'vernice'), mat('#c8b890', 'vernice')], mM = mat('#7a766c', 'cemento');
+    for (let k = 0; k < 7; k++) { const rr = .18 + rn() * .2; put(g, icoG(rr, 0), mM, (rn() - .5) * 1.6, rr * .4, (rn() - .5) * 1.2, rn() * 3, rn() * 3, 0).scale.set(1.2, .55, 1); }
+    for (let k = 0; k < 3; k++) slab(g, .9 + rn() * .5, .02, .6 + rn() * .4, k % 2 ? mR : mC[k % 3], (rn() - .5) * .9, .2 + k * .1, (rn() - .5) * .6, 0, (rn() - .5) * .6, rn() * 3, (rn() - .5) * .5);
+    slab(g, .95, .7, .08, mC[0], .3, .4, -.2, .03, .2, .7, -.5); if (F()) put(g, slabG(.5, .3, .01, 0), VT, .32, .5, -.15, .2, .7, -.5);   // la portiera col finestrino
+    for (let k = 0; k < 2; k++) lathe(g, [[.2, .02], [.23, 0], [.29, 0], [.31, .1], [.29, .2], [.23, .2], [.2, .18]], 12, GM, -.5 + k * .3, .3 * k, .4 - k * .1).rotation.set(k * .7, 0, k * .9);
+    for (let k = 0; k < 3; k++) asta(g, [(rn() - .5) * 1.4, .05, (rn() - .5) * 1], [(rn() - .5) * 1.4, .25 + rn() * .3, (rn() - .5) * 1], .03, mat('#7d8288', 'zinco'), 6);
+    if (F()) { const x0 = -.2, z0 = .1; for (let i = 0; i < 6; i++) asta(g, [x0 - .5 + i * .2, .5, z0 - .4], [x0 - .5 + i * .2, .2, z0 + .5], .006, GH, 4); asta(g, [x0 - .55, .5, z0 - .4], [x0 + .55, .5, z0 - .4], .012, GH, 4); asta(g, [x0 - .55, .2, z0 + .5], [x0 + .55, .2, z0 + .5], .012, GH, 4); }
+    g.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(g, true); g.children.forEach(c => { c.position.y -= bb.min.y; });   // il mucchio poggia a terra
+    return g; };
 
   const TIPI = Object.keys(T);
   function make(tipo, o) { if (!T[tipo]) return null; const lv0 = LV; LV = o && o.liv !== undefined ? o.liv : 1; try { const g = T[tipo](o || {}); g.userData.tipo = tipo; g.userData.liv = LV; return g; } finally { LV = lv0; } }
