@@ -70,3 +70,13 @@
   (l'interno è più grande della sagoma: `pushOutOfVehicles` ti spostava fuori).
 - Note: `node test_sottosuolo.js cittanuova` ha 6 prove che falliscono anche prima di questo lavoro; `test_eventi.js` è instabile
   (fallisce a caso una volta su tre, anche senza queste modifiche).
+
+## [regia] seconda passata (24 ottobre): il set dressing
+- `render.js` `dressUG` (chiamato in fondo a `buildUG`, per la finestra attorno al giocatore): ogni casella si arreda per famiglia
+  (`UGFAM`): grotte (stalattiti con la goccia, stalagmiti, massi, colate, pozze, sassolini, funghi e cristalli luminosi con la loro
+  luce), acque (pozze, alghe, legni del fiume), terra e miniera (radici che pendono, ragnatele, secchio, tavola, mucchi di minerale),
+  fogne (cartacce, bottiglie, lattine, topi, lampade a gabbia, targhe smaltate, ruggine), pietra e carceri (candele accese, ossa,
+  paglia, catene), cemento (cavi, scatole di derivazione, lampade, frecce dipinte, fusti, pozze, volantini), cantine, catacombe,
+  città sepolta. Istanze per forma e materiale. Botole e scale restano libere.
+- I pezzi alti (stalagmiti, massi, fusti, cassette, secchi) sono solidi: `UGSOL`, chiesto da `Livelli.hooks.solid2`.
+- Rilievo su tutti i materiali di sotto (`withRelief`, `normalOfUG`); il pavimento delle grotte è irregolare di qualche centimetro.

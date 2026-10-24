@@ -76,3 +76,14 @@ Righe segnate `[regia]` in `interiors.js`.
   strette con scala e due porte (circa un soggiorno su cinque).
 - Prove: `node test_oggetti.js 1 1` (piante raggiungibili), `node test_botteghe.js`. Analisi: piante doppie e orientamento dei mobili
   si misurano caricando `world.js` + `interiors.js` e scorrendo `Interior.layout(b)` (vedi il commit).
+
+## 24 ottobre: [regia] seconda passata — case che respirano, pavimenti veri, rilievo
+- **Case più grandi** (`growOf`): dentro una casa cresce di 2-4 m per lato; le stanze si tagliano solo sopra i 34 m². Soggiorni,
+  camere e cucine: mediana da 24 a 32 m².
+- **Pavimenti d'epoca** (`interni_arte.js` `floorCanvas`, 40 px per metro): cementine da 20 cm col campo a motivo (rosone, stella,
+  croce, foglie, quadri, rombo), la fascia e il bordo liscio; seminato veneziano col filo d'ottone e la fascia scura; graniglia a
+  scacchi; palladiana; esagonette di cotto; cotto a correre; parquet a listoni con la venatura; spina ungherese; quadrotte; assi
+  chiodate; marmo in diagonale; mosaico del bagno; ceramica anni '70; linoleum marmorizzato o a quadri; moquette coi medaglioni.
+  Le stanze li scelgono per tipo (tabella `R` di `interiors.js`).
+- **Rilievo** (`normalOf`): normal map dalla tela su pavimenti e pareti (fughe, venature, mattoni). **Battiscopa** su ogni muro e
+  **cornice** sotto il soffitto sui muri alti (`BATTI`).

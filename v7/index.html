@@ -24606,49 +24606,49 @@ var Interior = (function () {
   // LE STANZE: [pavimento, pareti, luce, cose]
   // cose: 'id' contro un muro · '@gruppo' contro un muro (a|b: il primo che ci sta) · '*id' o '*@gruppo' in mezzo
   //       '~id' per terra, dove capita · '^id' appeso a un muro esterno · '?' una volta su due, '??' una su tre
-  // pavimenti: parquet spina linoleum scacchi piastrelle piastrelle_b graniglia cotto cemento assi moquette_r moquette_b marmo terra gomma
+  // pavimenti: parquet spina quadrotte assi linoleum scacchi piastrelle piastrelle_b mosaico ceramica70 cementine graniglia seminato palladiana cotto esagonette cemento moquette_r moquette_b marmo terra gomma
   // pareti: fiori righe rombi verde blu ocra rosso crema piastrelle calce mattoni cemento legno velluto nero ospedale rosa perline
   // luci: bulbo lampadario neon neon_rosa candela spenta verde rossa fuoco disco
   // ---------------------------------------------------------------------------------------------------------------
   const R = {
     // --- case ---
-    soggiorno: ['spina|parquet', 'fiori|righe|rombi|crema|verde', 'lampadario', ['!%@salotto_L|@salotto_conversazione|@salotto_tv|@salotto_design', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', 'ia_libreria_piena|ia_stenka', 'ia_madia|ia_credenza', '??@zona_tv', '?@angolo_stufa', 'ia_pianta_grande|pottedPlant', '?ia_pianta_alta', '?~ia_ventilatore', '^ia_quadro_grande|^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?^ia_mensola_libri', '?~ia_gatto', '?~ia_giornali', '%@carte_interrotta|@cucito|@angolo_bimbi|@stiro|@lettura_design', '??~ia_palla'], ['*@salotto_isola', '@lettura_design', 'ia_pianta_alta', '%@cucito|@angolo_bimbi|@stiro|@carte_interrotta', 'ia_libreria_piena', 'ia_pouf']],
-    cucina: ['linoleum|scacchi|piastrelle|graniglia', 'piastrelle|verde|crema', 'bulbo', ['!@cucina_design|@cucina_linea|@cucina_corta|@cucina_povera', '?ia_frigo_design', '%@pranzo_design|@cena|@colazione|@pranzo|@pranzo_piccolo', '?ia_credenza|ia_madia', '?ia_pianta_alta', '^ia_calendario', '?^ia_mensola', '?^ia_orologio', '?~ia_secchio', '??~ia_bottiglie', '?~ia_cesto', '?ia_scaffale_barattoli'], ['~ia_cesto', '~ia_sgabello', 'ia_credenza']],
-    camera: ['parquet|spina', 'fiori|righe|rombi|ocra|crema', 'lampadario', ['!@letto_design|@letto2|@letto1_design|@letto1|@letto_ferro', 'ia_armadio_design|ia_armadio', 'ia_como|ia_cassapanca', '?ia_pianta_alta|ia_pianta_grande', '?@lettura_design|ia_pouf', '??~ia_ventilatore', '?^ia_specchio_tondo', '^ia_quadro_grande|^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound', '??@partenza', '?%@cucito|@stiro', '??^ia_altarino', '?~ia_scarpe'], ['%@cucito|@stiro', '~ia_scarpe', 'ia_cassapanca', 'chair']],
-    cameretta: ['parquet|linoleum', 'righe|blu|rombi|rosa|azzurro', 'bulbo', ['@letto_patch|@castello|@letto1_design|@letto1', '%@compiti|@studio_design|@scrivania|@letto1_design', 'ia_armadio|ia_armadio_design', '?ia_mobile_dipinto', '?^ia_mensola_skate', '?ia_tappeto_tondo', '?ia_libreria_piena', '?~ia_boombox', '?~ia_skate', '?^ia_poster_design|^ia_poster_film|^ia_manifesto', '^ia_calendario', '?~ia_pila_libri', '?~ia_valigia', '?@angolo_bimbi', '?~ia_palla', '?~ia_giocattoli'], ['@angolo_bimbi', '~ia_giocattoli', '~ia_palla']],
-    bagno: ['piastrelle|piastrelle_b', 'piastrelle', 'bulbo', ['ia_lavabo_design|bathroomSink', 'toilet', 'ia_vasca_design|bathtub|shower|ia_tinozza', '?washer', '?ia_portasciugamani', '??ia_pianta_alta', '?^ia_specchio', '?~ia_secchio', '?~ia_bacinella']],
+    soggiorno: ['spina|parquet|seminato|cementine|quadrotte|palladiana', 'fiori|righe|rombi|crema|verde', 'lampadario', ['!%@salotto_L|@salotto_conversazione|@salotto_tv|@salotto_design', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', 'ia_libreria_piena|ia_stenka', 'ia_madia|ia_credenza', '??@zona_tv', '?@angolo_stufa', 'ia_pianta_grande|pottedPlant', '?ia_pianta_alta', '?~ia_ventilatore', '^ia_quadro_grande|^ia_tappeto_muro', '^ia_orologio', '?^ia_foto', '??^ia_ritratto', '^ia_termosifone', '?^ia_mensola_libri', '?~ia_gatto', '?~ia_giornali', '%@carte_interrotta|@cucito|@angolo_bimbi|@stiro|@lettura_design', '??~ia_palla'], ['*@salotto_isola', '@lettura_design', 'ia_pianta_alta', '%@cucito|@angolo_bimbi|@stiro|@carte_interrotta', 'ia_libreria_piena', 'ia_pouf']],
+    cucina: ['cementine|ceramica70|graniglia|linoleum|scacchi|esagonette', 'piastrelle|verde|crema', 'bulbo', ['!@cucina_design|@cucina_linea|@cucina_corta|@cucina_povera', '?ia_frigo_design', '%@pranzo_design|@cena|@colazione|@pranzo|@pranzo_piccolo', '?ia_credenza|ia_madia', '?ia_pianta_alta', '^ia_calendario', '?^ia_mensola', '?^ia_orologio', '?~ia_secchio', '??~ia_bottiglie', '?~ia_cesto', '?ia_scaffale_barattoli'], ['~ia_cesto', '~ia_sgabello', 'ia_credenza']],
+    camera: ['parquet|spina|quadrotte|seminato|cementine', 'fiori|righe|rombi|ocra|crema', 'lampadario', ['!@letto_design|@letto2|@letto1_design|@letto1|@letto_ferro', 'ia_armadio_design|ia_armadio', 'ia_como|ia_cassapanca', '?ia_pianta_alta|ia_pianta_grande', '?@lettura_design|ia_pouf', '??~ia_ventilatore', '?^ia_specchio_tondo', '^ia_quadro_grande|^ia_tappeto_muro|^ia_quadro', '?^ia_icona|^ia_foto', '^ia_termosifone', '?~ia_valigia', '?rugRound', '??@partenza', '?%@cucito|@stiro', '??^ia_altarino', '?~ia_scarpe'], ['%@cucito|@stiro', '~ia_scarpe', 'ia_cassapanca', 'chair']],
+    cameretta: ['parquet|linoleum|quadrotte|cementine', 'righe|blu|rombi|rosa|azzurro', 'bulbo', ['@letto_patch|@castello|@letto1_design|@letto1', '%@compiti|@studio_design|@scrivania|@letto1_design', 'ia_armadio|ia_armadio_design', '?ia_mobile_dipinto', '?^ia_mensola_skate', '?ia_tappeto_tondo', '?ia_libreria_piena', '?~ia_boombox', '?~ia_skate', '?^ia_poster_design|^ia_poster_film|^ia_manifesto', '^ia_calendario', '?~ia_pila_libri', '?~ia_valigia', '?@angolo_bimbi', '?~ia_palla', '?~ia_giocattoli'], ['@angolo_bimbi', '~ia_giocattoli', '~ia_palla']],
+    bagno: ['mosaico|piastrelle|piastrelle_b|ceramica70|cementine', 'piastrelle', 'bulbo', ['ia_lavabo_design|bathroomSink', 'toilet', 'ia_vasca_design|bathtub|shower|ia_tinozza', '?washer', '?ia_portasciugamani', '??ia_pianta_alta', '?^ia_specchio', '?~ia_secchio', '?~ia_bacinella']],
     // [design] l'ingresso di casa, la stanza degli ospiti, la lavanderia
-    ingresso_casa: ['spina|graniglia|parquet|scacchi', 'righe|fiori|crema|verde', 'lampadario', ['ia_consolle_ingresso|coatRackStanding', 'ia_scarpiera', 'ia_attaccapanni_design|coatRackStanding', 'ia_passatoia', '?ia_pianta_alta', '^ia_specchio_tondo|^ia_specchio', '?^ia_quadro|^ia_poster_design', '^ia_appendiabiti', '?~ia_stivali', '?~ia_scarpe', '??ia_bici']],
-    stanza_ospiti: ['parquet|spina', 'fiori|righe|crema', 'bulbo', ['!@letto1_design|@letto1|@letto2', 'ia_armadio|ia_armadio_design', '?ia_como', '?ia_pouf', '?ia_pianta_alta', '^ia_quadro|^ia_poster_design', '^ia_termosifone', '?~ia_valigia', '?@stiro'], ['ia_pianta_alta', '@cucito']],
-    lavanderia_casa: ['piastrelle|cemento', 'piastrelle|calce', 'bulbo', ['washer', '?washer', '@lavatoio', '@stiro', 'ia_scaffale_metallo|bookcaseOpenLow', '~ia_cesto', '~ia_bucato', '^ia_appendiabiti', '?~ia_secchio', '^ia_mensola'], ['~ia_cesto', '@stiro']],
+    ingresso_casa: ['seminato|cementine|graniglia|palladiana|scacchi', 'righe|fiori|crema|verde', 'lampadario', ['ia_consolle_ingresso|coatRackStanding', 'ia_scarpiera', 'ia_attaccapanni_design|coatRackStanding', 'ia_passatoia', '?ia_pianta_alta', '^ia_specchio_tondo|^ia_specchio', '?^ia_quadro|^ia_poster_design', '^ia_appendiabiti', '?~ia_stivali', '?~ia_scarpe', '??ia_bici']],
+    stanza_ospiti: ['parquet|spina|cementine|quadrotte', 'fiori|righe|crema', 'bulbo', ['!@letto1_design|@letto1|@letto2', 'ia_armadio|ia_armadio_design', '?ia_como', '?ia_pouf', '?ia_pianta_alta', '^ia_quadro|^ia_poster_design', '^ia_termosifone', '?~ia_valigia', '?@stiro'], ['ia_pianta_alta', '@cucito']],
+    lavanderia_casa: ['piastrelle|cementine|cemento', 'piastrelle|calce', 'bulbo', ['washer', '?washer', '@lavatoio', '@stiro', 'ia_scaffale_metallo|bookcaseOpenLow', '~ia_cesto', '~ia_bucato', '^ia_appendiabiti', '?~ia_secchio', '^ia_mensola'], ['~ia_cesto', '@stiro']],
     ripostiglio: ['cemento|assi', 'calce|cemento', 'bulbo', ['??ia_serra', '?st_cassetta', 'pv_banco_lavoro|bookcaseOpenLow', 'cardboardBoxClosed', 'cardboardBoxClosed', '?washer', '?ia_bici', '~ia_legna', '?~ia_secchio_carbone', '?~ia_sacchi', '^ia_attrezzi_muro|^ia_appendiabiti']],
-    salotto_buono: ['spina|parquet', 'fiori|velluto|rombi', 'lampadario', ['!%@salotto_anni70|@salotto_conversazione|@salotto_L', '??st_cassaforte', 'ia_stenka', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@salotto_minimo', '?*@salotto_isola|*@pranzo_design', '?ia_pianta_grande', '?ia_libreria_piena', '?^ia_quadro_grande', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto', '^ia_altarino', '?@cucito'], ['*@salotto_isola', '@cucito', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant']],
-    dispensa: ['cotto|cemento', 'calce', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'ia_sacchi', '?fd_barrel', '?ia_cesto', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami', '~ia_bottiglie', 'ia_scaffale_barattoli', '?ia_scaffale_barattoli']],
+    salotto_buono: ['seminato|marmo|spina|palladiana|quadrotte', 'fiori|velluto|rombi', 'lampadario', ['!%@salotto_anni70|@salotto_conversazione|@salotto_L', '??st_cassaforte', 'ia_stenka', '%@salotto_angolo|@salotto_piccolo_tv', '@salotto_compatto|@divano|@salotto_minimo', '?*@salotto_isola|*@pranzo_design', '?ia_pianta_grande', '?ia_libreria_piena', '?^ia_quadro_grande', '@radiogrammofono|@tv', 'ia_credenza', '?@pianoforte', '?pottedPlant', '^ia_tappeto_muro', '^ia_foto', '^ia_orologio', '?^ia_icona', '^ia_termosifone', '?~ia_gatto', '^ia_altarino', '?@cucito'], ['*@salotto_isola', '@cucito', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant']],
+    dispensa: ['cotto|esagonette|cemento', 'calce', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'ia_sacchi', '?fd_barrel', '?ia_cesto', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami', '~ia_bottiglie', 'ia_scaffale_barattoli', '?ia_scaffale_barattoli']],
     stanza_chiusa: ['parquet', 'fiori', 'spenta', ['ia_telo', 'ia_armadio', '?ia_valigia', '~ia_valigia', '~ia_giornali', '^ia_foto', '^ia_quadro']],
-    cucina_abitabile: ['linoleum|cotto', 'verde|blu|ocra', 'bulbo', ['!@cucina_povera|@cucina_corta', '!@angolo_stufa|st_stufa', '%@colazione|@pranzo_piccolo', '?ia_frigo_vecchio', '?ia_credenza', '^ia_calendario', '?^ia_ritratto', '?^ia_mensola', '~ia_bottiglie', '?~ia_stivali', '?~ia_secchio', '?~ia_sgabello', '?ia_scaffale_barattoli'], ['~ia_sgabello', '~ia_cesto', 'ia_credenza']],
+    cucina_abitabile: ['cementine|esagonette|linoleum|cotto|ceramica70', 'verde|blu|ocra', 'bulbo', ['!@cucina_povera|@cucina_corta', '!@angolo_stufa|st_stufa', '%@colazione|@pranzo_piccolo', '?ia_frigo_vecchio', '?ia_credenza', '^ia_calendario', '?^ia_ritratto', '?^ia_mensola', '~ia_bottiglie', '?~ia_stivali', '?~ia_secchio', '?~ia_sgabello', '?ia_scaffale_barattoli'], ['~ia_sgabello', '~ia_cesto', 'ia_credenza']],
     camera_spoglia: ['assi|linoleum', 'calce|verde', 'bulbo', ['!@letto_ferro|@branda', 'ia_armadio', '?chair', '^ia_calendario', '?^ia_appendiabiti', '~ia_bottiglie', '?~ia_stivali', '?~ia_giornali', '?%@partenza', '?~ia_scarpe', '??~ia_coltello'], ['??@radio_nascosta', '~ia_scarpe', '~ia_bottiglie']],
     stanza_vuota: ['assi', 'calce', 'spenta', ['??ia_serra', '~cardboardBoxClosed', '~ia_sedia_rotta', '?~ia_bottiglie', '?~ia_giornali']],
     rimessa_reti: ['cemento|assi', 'calce|blu', 'bulbo', ['ia_casse', 'fd_barrel', '?pv_banco_lavoro', '~ia_stivali', '~ia_secchio', '?~ia_bottiglie', '^ia_reti', '^ia_appendiabiti', '?^ia_mappa', '~ia_sgabello', '?^ia_lupara_muro']],
-    studio_libri: ['spina|parquet', 'crema|ocra|rombi', 'lampadario', ['ia_libreria_piena|bookcaseOpen', 'ia_libreria_piena|bookcaseOpen', 'bookcaseOpen', '@scrittoio|@studio_design', '@lettura_design|@lettura', '?ia_pianta_grande', '?ia_tappeto_design', '?@radiogrammofono', '~ia_pila_libri', '~ia_pila_libri', '?~ia_bottiglie', '^ia_quadro', '?^ia_mappa', '^ia_termosifone', '??^ia_volantini', '??@radio_nascosta'], ['?@radio_nascosta', '~ia_pila_libri', 'bookcaseOpen']],
+    studio_libri: ['spina|parquet|quadrotte|assi', 'crema|ocra|rombi', 'lampadario', ['ia_libreria_piena|bookcaseOpen', 'ia_libreria_piena|bookcaseOpen', 'bookcaseOpen', '@scrittoio|@studio_design', '@lettura_design|@lettura', '?ia_pianta_grande', '?ia_tappeto_design', '?@radiogrammofono', '~ia_pila_libri', '~ia_pila_libri', '?~ia_bottiglie', '^ia_quadro', '?^ia_mappa', '^ia_termosifone', '??^ia_volantini', '??@radio_nascosta'], ['?@radio_nascosta', '~ia_pila_libri', 'bookcaseOpen']],
     atelier: ['assi|cemento', 'calce', 'bulbo', ['?~ia_boombox', '??~ia_skate', '?^ia_poster_design', 'ia_mobile_dipinto', '?ia_lampada_casco', '?ia_casse_crate', '?^ia_mensola_skate', '@pittore', 'ia_tele', 'ia_tele', '?ia_materasso', '?bookcaseOpenLow', '~ia_bottiglie', '~ia_secchio', '~ia_giornali', '^ia_quadro', '^ia_quadro', '?^ia_scritta_risacca', '??@radio_nascosta']],
-    sala_pranzo: ['spina|parquet', 'velluto|fiori|crema', 'lampadario', ['*@pranzo_design|*@pranzo', 'ia_madia|ia_credenza', 'ia_credenza|ia_libreria_piena', '?ia_pianta_grande|pottedPlant', '^ia_quadro_grande|^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_termosifone'], ['ia_pianta_alta']],
-    studio: ['parquet|spina', 'legno|crema', 'lampadario', ['?st_cassaforte', '@studio_design|@scrivania|@scrittoio', 'ia_libreria_piena|bookcaseClosedWide', 'bookcaseOpen|ia_libreria_piena', 'ia_schedario', '?@lettura_design|@lettura', '?ia_pianta_alta', '?^ia_quadro_grande', '?ia_bandiera', '^ia_ritratto', '^ia_mappa', '?^ia_calendario']],
+    sala_pranzo: ['seminato|spina|parquet|cementine|palladiana', 'velluto|fiori|crema', 'lampadario', ['*@pranzo_design|*@pranzo', 'ia_madia|ia_credenza', 'ia_credenza|ia_libreria_piena', '?ia_pianta_grande|pottedPlant', '^ia_quadro_grande|^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_termosifone'], ['ia_pianta_alta']],
+    studio: ['parquet|spina|quadrotte|seminato', 'legno|crema', 'lampadario', ['?st_cassaforte', '@studio_design|@scrivania|@scrittoio', 'ia_libreria_piena|bookcaseClosedWide', 'bookcaseOpen|ia_libreria_piena', 'ia_schedario', '?@lettura_design|@lettura', '?ia_pianta_alta', '?^ia_quadro_grande', '?ia_bandiera', '^ia_ritratto', '^ia_mappa', '?^ia_calendario']],
     corridoio_k: ['linoleum|assi', 'verde|ocra', 'bulbo', ['coatRackStanding', '?ia_bici', '?ia_carrozzina', '~ia_stivali', '~ia_secchio', '^ia_appendiabiti', '^ia_tabella_turni', '^ia_quadro_elettrico', '?^ia_calendario']],
-    stanza_fam: ['parquet|linoleum', 'fiori|righe|rombi', 'bulbo', ['!@letto2|@letto1|@castello|@letto_ferro', 'ia_armadio', '@pranzo_piccolo|ia_tavolino', '?ia_tv', '?ia_cassapanca', '^ia_tappeto_muro', '?^ia_foto', '^ia_termosifone', '?~ia_valigia', '?~ia_bucato', '%@stiro|@angolo_bimbi|@partenza', '?~ia_scarpe', '??^ia_altarino'], ['*@carte_interrotta|*@pranzo_piccolo|*@tavolino', '%@stiro|@angolo_bimbi|@cucito', '~ia_giocattoli', '~ia_scarpe']],   // [vissuto] in mezzo alla stanza grande, il tavolo della vita di tutti i giorni
-    cucina_comune: ['linoleum|scacchi', 'verde|piastrelle', 'neon', ['@cucina_povera', '@cucina_povera|ia_cucina_gas', 'ia_cucina_gas', 'ia_frigo_vecchio', '*ia_tavolo_lungo|*@pranzo', '^ia_mensola', '^ia_mensola', '^ia_tabella_turni', '?~ia_bucato', '~ia_secchio', '~ia_bottiglie', '?@stiro', '?~ia_giocattoli', 'ia_scaffale_barattoli']],
-    cucina_focolare: ['cotto|terra', 'calce|mattoni', 'fuoco', ['!@focolare|ia_focolare', '%@cena|@pranzo|ia_tavolo_lungo', 'ia_credenza', '?fd_barrel', '?ia_cesto', '^ia_salami', '^ia_mensola', '?^ia_icona', '~ia_legna', '~ia_cesto', '?~ia_gatto', '?^ia_lupara_muro']],
+    stanza_fam: ['parquet|linoleum|cementine|assi', 'fiori|righe|rombi', 'bulbo', ['!@letto2|@letto1|@castello|@letto_ferro', 'ia_armadio', '@pranzo_piccolo|ia_tavolino', '?ia_tv', '?ia_cassapanca', '^ia_tappeto_muro', '?^ia_foto', '^ia_termosifone', '?~ia_valigia', '?~ia_bucato', '%@stiro|@angolo_bimbi|@partenza', '?~ia_scarpe', '??^ia_altarino'], ['*@carte_interrotta|*@pranzo_piccolo|*@tavolino', '%@stiro|@angolo_bimbi|@cucito', '~ia_giocattoli', '~ia_scarpe']],   // [vissuto] in mezzo alla stanza grande, il tavolo della vita di tutti i giorni
+    cucina_comune: ['linoleum|cementine|scacchi|graniglia', 'verde|piastrelle', 'neon', ['@cucina_povera', '@cucina_povera|ia_cucina_gas', 'ia_cucina_gas', 'ia_frigo_vecchio', '*ia_tavolo_lungo|*@pranzo', '^ia_mensola', '^ia_mensola', '^ia_tabella_turni', '?~ia_bucato', '~ia_secchio', '~ia_bottiglie', '?@stiro', '?~ia_giocattoli', 'ia_scaffale_barattoli']],
+    cucina_focolare: ['cotto|esagonette|terra', 'calce|mattoni', 'fuoco', ['!@focolare|ia_focolare', '%@cena|@pranzo|ia_tavolo_lungo', 'ia_credenza', '?fd_barrel', '?ia_cesto', '^ia_salami', '^ia_mensola', '?^ia_icona', '~ia_legna', '~ia_cesto', '?~ia_gatto', '?^ia_lupara_muro']],
     granaio: ['assi', 'mattoni|calce', 'spenta', ['ia_sacchi', 'ia_sacchi', 'ia_sacchi', 'fd_barrel', 'ia_casse', '~ia_cesto', '~ia_sacchi', '?ia_scaffale_barattoli']],
     magazzino_sale: ['cemento', 'calce', 'bulbo', ['ia_sacchi', 'ia_sacchi', 'ia_sacchi', 'ia_casse', '~ia_secchio', '^ia_attrezzi_muro']],
     rudere: ['terra|assi', 'mattoni|calce', 'spenta', ['~ia_macerie', '~ia_macerie', '?~ia_sedia_rotta', '?~ia_bottiglie', '??@materassi', '??~ia_candela', '?^ia_scritta_risacca', '??~ia_pistola', '?~ia_coltello']],
-    androne: ['graniglia|scacchi', 'verde|blu|ocra', 'neon', ['?ia_bici', '?ia_carrozzina', '^ia_cassette_posta', '^ia_bacheca', '^ia_manifesto', '^ia_quadro_elettrico', '?^ia_volantini', '~ia_secchio', '?~ia_giornali']],
-    portineria: ['linoleum', 'verde|crema', 'bulbo', ['@scrivania', '@tv', '?st_stufa', '?~ia_ventilatore', 'bookcaseOpenLow', '^ia_calendario', '^ia_ritratto', '^ia_bacheca', '~ia_gatto']],
+    androne: ['graniglia|scacchi|seminato|marmo|palladiana', 'verde|blu|ocra', 'neon', ['?ia_bici', '?ia_carrozzina', '^ia_cassette_posta', '^ia_bacheca', '^ia_manifesto', '^ia_quadro_elettrico', '?^ia_volantini', '~ia_secchio', '?~ia_giornali']],
+    portineria: ['linoleum|graniglia|cementine', 'verde|crema', 'bulbo', ['@scrivania', '@tv', '?st_stufa', '?~ia_ventilatore', 'bookcaseOpenLow', '^ia_calendario', '^ia_ritratto', '^ia_bacheca', '~ia_gatto']],
     cantine: ['cemento', 'mattoni|cemento', 'bulbo', ['??ia_serra', 'ia_casse', 'cardboardBoxClosed', 'ia_bici', 'fd_barrel', '~ia_legna', '~ia_secchio_carbone', '~ia_sacchi', '~ia_bottiglie', '??~ia_lupara', 'ia_scaffale_barattoli'], ['ia_casse', 'cardboardBoxClosed', 'ia_bici']],
-    mansarda: ['parquet|assi', 'fiori|righe|calce', 'bulbo', ['!@letto_design|@letto2|@letto1', '?ia_tappeto_tondo', '?ia_pianta_alta', '?@castello', '@scrivania|@lettura', 'ia_armadio', '?ia_cassapanca', '?@angolo_stufa', '?ia_bucato', '?rugRound', '^ia_tappeto_muro', '^ia_foto', '^ia_termosifone', '~ia_valigia', '?~ia_giornali', '?~ia_gatto', '?~cardboardBoxClosed', '%@partenza|@compiti|@cucito'], ['%@compiti|@cucito', '~ia_scarpe']],
-    monolocale: ['parquet|linoleum', 'fiori|verde|righe', 'bulbo', ['!@letto2|@letto1_design|@letto1|@letto_ferro', '!@cucina_design|@cucina_corta|@cucina_povera', '?ia_pianta_alta', '?ia_tappeto_tondo', '@pranzo_piccolo', '?@angolo_stufa', 'ia_armadio', '?ia_tv', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_bucato', '~ia_secchio', '?~ia_bottiglie', '?%@cucito|@stiro'], ['%@cucito|@stiro', '~ia_scarpe']],
-    mono_anziana: ['spina|parquet', 'fiori', 'lampadario', ['@letto1', '@radiogrammofono', '@cucina_povera', '@pranzo_piccolo', 'ia_credenza', '^ia_icona', '^ia_foto', '^ia_tappeto_muro', '^ia_orologio', '~ia_gatto', '^ia_altarino', '@cucito']],
+    mansarda: ['assi|parquet|quadrotte', 'fiori|righe|calce', 'bulbo', ['!@letto_design|@letto2|@letto1', '?ia_tappeto_tondo', '?ia_pianta_alta', '?@castello', '@scrivania|@lettura', 'ia_armadio', '?ia_cassapanca', '?@angolo_stufa', '?ia_bucato', '?rugRound', '^ia_tappeto_muro', '^ia_foto', '^ia_termosifone', '~ia_valigia', '?~ia_giornali', '?~ia_gatto', '?~cardboardBoxClosed', '%@partenza|@compiti|@cucito'], ['%@compiti|@cucito', '~ia_scarpe']],
+    monolocale: ['parquet|linoleum|cementine|ceramica70', 'fiori|verde|righe', 'bulbo', ['!@letto2|@letto1_design|@letto1|@letto_ferro', '!@cucina_design|@cucina_corta|@cucina_povera', '?ia_pianta_alta', '?ia_tappeto_tondo', '@pranzo_piccolo', '?@angolo_stufa', 'ia_armadio', '?ia_tv', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_bucato', '~ia_secchio', '?~ia_bottiglie', '?%@cucito|@stiro'], ['%@cucito|@stiro', '~ia_scarpe']],
+    mono_anziana: ['spina|cementine|seminato', 'fiori', 'lampadario', ['@letto1', '@radiogrammofono', '@cucina_povera', '@pranzo_piccolo', 'ia_credenza', '^ia_icona', '^ia_foto', '^ia_tappeto_muro', '^ia_orologio', '~ia_gatto', '^ia_altarino', '@cucito']],
     mono_artista: ['assi', 'calce', 'bulbo', ['@pittore', '@letto_patch|@materassi|ia_materasso', 'ia_mobile_dipinto', '?ia_lampada_casco', '?~ia_boombox', '?^ia_poster_design', '@cucina_povera', 'bookcaseOpen', '~ia_bottiglie', '~ia_pila_libri', '~ia_tele', '^ia_quadro', '^ia_quadro', '?^ia_scritta_risacca']],
     casa_contadina: ['cotto', 'calce|mattoni', 'fuoco', ['@focolare', '@letto2|@letto1', '@pranzo|@pranzo_piccolo', 'ia_credenza', '^ia_salami', '^ia_icona', '~ia_legna', '~ia_cesto', '?~ia_gatto', '?^ia_lupara_muro']],
-    soggiorno_cucina: ['spina|linoleum', 'fiori|righe|verde', 'lampadario', ['!@cucina_design|@cucina_corta|@cucina_povera', '%@salotto_tv|@salotto_anni70|@salotto_piccolo_tv|@salotto_angolo', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', '?ia_pianta_grande', '?ia_libreria_piena', '%@cena|@colazione|@pranzo|@pranzo_piccolo', '?@angolo_stufa', 'ia_credenza|ia_stenka', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_gatto']],
+    soggiorno_cucina: ['spina|linoleum|cementine|ceramica70|parquet', 'fiori|righe|verde', 'lampadario', ['!@cucina_design|@cucina_corta|@cucina_povera', '%@salotto_tv|@salotto_anni70|@salotto_piccolo_tv|@salotto_angolo', '@salotto_compatto|@divano|@divano_vecchio|@salotto_minimo', '?ia_pianta_grande', '?ia_libreria_piena', '%@cena|@colazione|@pranzo|@pranzo_piccolo', '?@angolo_stufa', 'ia_credenza|ia_stenka', '^ia_tappeto_muro', '^ia_calendario', '^ia_termosifone', '?~ia_gatto']],
     // --- faro ---
     ingresso_faro: ['cemento', 'calce|mattoni', 'bulbo', ['ia_bidone', 'ia_bidone', 'ia_casse', '~ia_stivali', '^ia_appendiabiti', '^ia_reti']],
     alloggio_guardiano: ['assi', 'perline|calce', 'bulbo', ['@branda', '@angolo_stufa', '@pranzo_piccolo', '^ia_mappa', '^ia_orologio', '~ia_bottiglie', '^ia_lupara_muro']],
@@ -24656,29 +24656,29 @@ var Interior = (function () {
     stanza_radio: ['assi', 'perline', 'bulbo', ['@radio_regime', 'ia_schedario', '^ia_mappa', '^ia_calendario']],
     lanterna: ['cemento', 'calce', 'neon', ['*ia_lanterna_faro']],
     // --- bar, trattorie, svago ---
-    sala_bar: ['scacchi|graniglia', 'crema|verde|rosso', 'bulbo', ['!@bancone|@bancone_corto|@bancone_mini', '*@tavolino', '*@tavolino', '?*@carte', '@jukebox|ar_gambling-machine', '?st_stufa', 'ia_casse_birra', '?ar_gambling-machine', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '^ia_freccette', '?^ia_insegna_birra', '?^ia_calendario', '~ia_giornali', '?~ia_casse_birra'], ['*@tavolino', '*@carte', '*@tavolino']],
+    sala_bar: ['scacchi|graniglia|cementine|seminato|palladiana', 'crema|verde|rosso', 'bulbo', ['!@bancone|@bancone_corto|@bancone_mini', '*@tavolino', '*@tavolino', '?*@carte', '@jukebox|ar_gambling-machine', '?st_stufa', 'ia_casse_birra', '?ar_gambling-machine', '^ia_ritratto', '^ia_tv_muro', '^ia_specchio_bar', '?^ia_insegna_neon', '^ia_menu', '^ia_freccette', '?^ia_insegna_birra', '?^ia_calendario', '~ia_giornali', '?~ia_casse_birra'], ['*@tavolino', '*@carte', '*@tavolino']],
     retro: ['piastrelle|cemento', 'piastrelle|calce', 'neon', ['!st_cassaforte', 'st_cassetta', '@cucina_corta|kitchenStove', 'kitchenFridge', 'cardboardBoxClosed', 'trashcan', '?pv_banco_lavoro', '~ia_casse', '~ia_bottiglie', '^ia_calendario', '^ia_mensola', '??~ia_pistola', '?ia_scaffale_barattoli']],
     magazzino: ['cemento', 'cemento|calce', 'neon', ['ia_scaffale_metallo|bookcaseOpen', 'bookcaseOpen', 'ia_casse', 'cardboardBoxClosed', 'cardboardBoxClosed', '?pv_banco_lavoro', '~ia_sacchi', '~ia_casse', '^ia_quadro_elettrico'], ['ia_casse', 'cardboardBoxClosed', 'ia_sacchi', '*ia_casse']],
-    sala_trattoria: ['cotto|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio'], ['*@tavolino', '*@tavolata']],
+    sala_trattoria: ['cotto|esagonette|cementine|scacchi', 'crema|ocra|mattoni', 'lampadario', ['!@cucina_corta', '*@tavolata', '*@tavolino', '?*@tavolino', '@bancone_corto|ia_credenza', 'st_stufa', '?fd_barrel', '^ia_ritratto', '^ia_menu', '^ia_salami', '?^ia_quadro', '?^ia_orologio'], ['*@tavolino', '*@tavolata']],
     cucina_trattoria: ['piastrelle', 'piastrelle', 'neon', ['?st_cassaforte', '@cucina_linea', 'kitchenStove', 'pv_banco_lavoro', '*table', '~ia_secchio', '~ia_casse', '^ia_mensola', '^ia_mensola_alta', '?^ia_salami']],
-    gelateria: ['scacchi', 'rosa|azzurro', 'neon', ['@gelati', 'ar_cash-register', '*@tavolino', '?*@tavolino', 'st_stufa', '^ia_ritratto', '^ia_menu', '?^ia_insegna_neon', '~ia_secchio']],
+    gelateria: ['scacchi|cementine|ceramica70', 'rosa|azzurro', 'neon', ['@gelati', 'ar_cash-register', '*@tavolino', '?*@tavolino', 'st_stufa', '^ia_ritratto', '^ia_menu', '?^ia_insegna_neon', '~ia_secchio']],
     laboratorio_gelati: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'pv_banco_lavoro', 'kitchenSink', '~ia_secchio']],
     banja: ['assi', 'perline', 'fuoco', ['st_stufa', '@sauna', '?ia_panca_lunga', '~ia_secchio', '~ia_secchio', '~ia_bacinella', '^ia_appendiabiti']],
     spogliatoio_banja: ['assi', 'perline', 'bulbo', ['bench', 'bench', 'ia_armadietti', '^ia_appendiabiti', '^ia_specchio', '~ia_stivali', '^ia_menu']],
     pista: ['moquette_b', 'nero', 'disco', ['!@dj', '*ia_pista', '@bancone_corto', 'ia_divano', 'ia_divano', '*@tavolino', '?*@tavolino', 'speaker', 'speaker', '?ia_jukebox', '^ia_poster_disco', '^ia_poster_disco', '^ia_insegna_neon', '^ia_specchio_bar', '~ia_bottiglie'], ['*@tavolino', 'ia_divano']],
     bar_disco: ['moquette_b', 'nero', 'neon_rosa', ['@bancone_corto', '*@tavolino', '?*@tavolino', '^ia_insegna_neon', '^ia_poster_disco']],
     guardaroba: ['moquette_r', 'nero|velluto', 'bulbo', ['coatRackStanding', 'coatRackStanding', 'kitchenBar', '^ia_appendiabiti', '^ia_appendiabiti']],
-    hall: ['marmo|graniglia', 'crema|velluto', 'lampadario', ['?st_cassaforte', '@cassa', '*@salotto_isola|@salotto_compatto|@divano', 'ia_poltrona_design|ia_poltrona', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant', 'ia_pianta_grande|pottedPlant', '^ia_quadro_grande', '?ia_valigia', '^ia_ritratto', '^ia_orologio', '^ia_quadro', '^ia_bacheca', '?rugRectangle'], ['ia_poltrona', 'pottedPlant', '@divano']],
-    sala_colazioni: ['graniglia|parquet', 'crema|fiori', 'lampadario', ['*@tavolino', '*@tavolino', '?*@tavolino', 'ia_credenza', '^ia_ritratto', '^ia_quadro'], ['*@tavolino']],
+    hall: ['marmo|seminato|graniglia|palladiana', 'crema|velluto', 'lampadario', ['?st_cassaforte', '@cassa', '*@salotto_isola|@salotto_compatto|@divano', 'ia_poltrona_design|ia_poltrona', 'ia_poltrona_design|ia_poltrona', 'ia_pianta_grande|pottedPlant', 'ia_pianta_grande|pottedPlant', '^ia_quadro_grande', '?ia_valigia', '^ia_ritratto', '^ia_orologio', '^ia_quadro', '^ia_bacheca', '?rugRectangle'], ['ia_poltrona', 'pottedPlant', '@divano']],
+    sala_colazioni: ['graniglia|parquet|seminato|cementine', 'crema|fiori', 'lampadario', ['*@tavolino', '*@tavolino', '?*@tavolino', 'ia_credenza', '^ia_ritratto', '^ia_quadro'], ['*@tavolino']],
     corridoio_h: ['moquette_r', 'righe|crema', 'bulbo', ['?pottedPlant', '?ia_carrozzina', '^ia_quadro', '^ia_estintore', '^ia_tabella_turni', '~ia_valigia']],
-    stanza_h: ['moquette_r|parquet', 'fiori|righe', 'bulbo', ['@letto_design|@letto2|@letto1_design|@letto1', 'ia_armadio|ia_armadio_design', '?ia_como', '?^ia_quadro_grande', '?ia_poltrona', '?sideTable', '^ia_quadro', '^ia_termosifone', '?~ia_valigia', '?^ia_spioncino']],
+    stanza_h: ['moquette_r|parquet|seminato', 'fiori|righe', 'bulbo', ['@letto_design|@letto2|@letto1_design|@letto1', 'ia_armadio|ia_armadio_design', '?ia_como', '?^ia_quadro_grande', '?ia_poltrona', '?sideTable', '^ia_quadro', '^ia_termosifone', '?~ia_valigia', '?^ia_spioncino']],
     // --- [attività] birreria, armeria e poligono, abiti, autorimessa ---
-    sala_pub: ['assi|cotto', 'legno|mattoni|rosso', 'lampadario', ['!@bancone|@bancone_corto|@bancone_mini', '*@tavolata', '?*@biliardo|@biliardo_stretto', '*@tavolino', '?*@carte', 'ia_botti', 'fd_barrel', '@jukebox', 'ia_casse_birra', '?st_stufa', '^ia_insegna_birra', '^ia_freccette', '^ia_specchio_bar', '^ia_menu', '^ia_trofei', '?^ia_poster_disco', '^ia_lampada_muro', '^ia_lampada_muro', '~ia_bottiglie', '?~ia_casse_birra'], ['*@tavolino', '*@tavolata', 'fd_barrel', '*@carte']],
+    sala_pub: ['assi|cotto|esagonette', 'legno|mattoni|rosso', 'lampadario', ['!@bancone|@bancone_corto|@bancone_mini', '*@tavolata', '?*@biliardo|@biliardo_stretto', '*@tavolino', '?*@carte', 'ia_botti', 'fd_barrel', '@jukebox', 'ia_casse_birra', '?st_stufa', '^ia_insegna_birra', '^ia_freccette', '^ia_specchio_bar', '^ia_menu', '^ia_trofei', '?^ia_poster_disco', '^ia_lampada_muro', '^ia_lampada_muro', '~ia_bottiglie', '?~ia_casse_birra'], ['*@tavolino', '*@tavolata', 'fd_barrel', '*@carte']],
     cantina_birra: ['cemento|cotto', 'mattoni', 'bulbo', ['ia_botti', 'ia_botti', 'fd_barrel', 'fd_barrel', 'ia_casse_birra', 'ia_casse_birra', 'ia_scaffale_bottiglie', '~ia_casse_birra', '~ia_bottiglie', '^ia_quadro_elettrico', '?ia_scaffale_barattoli'], ['ia_casse_birra', 'fd_barrel']],
     armeria_negozio: ['spina|graniglia', 'legno|verde', 'lampadario', ['!st_cassaforte', '!@banco_armi', 'st_rastrelliera', 'st_rastrelliera', 'ia_casse_munizioni', 'ia_vetrina', 'bookcaseClosedWide', '?ia_poltrona', '?pottedPlant', '^ia_fucili_muro', '^ia_fucili_muro', '^ia_trofeo_caccia', '^ia_trofeo_caccia', '^ia_cartello_prezzi', '^ia_ritratto', '^ia_calendario', '~ia_casse_munizioni', '~ia_stivali'], ['*ia_vetrina', 'ia_casse_munizioni', 'st_rastrelliera']],
     poligono: ['cemento', 'cemento|mattoni', 'neon', ['!@tiro|@tiro_corto', 'bench', 'ia_casse_munizioni', '?ia_armadietti', '^ia_tabella_turni', '^ia_cartello_prezzi', '^ia_estintore', '~ia_casse_munizioni', '~ia_pistola', 'ia_cassa_armi']],
     laboratorio_armi: ['cemento|assi', 'calce|mattoni', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'ia_casse_munizioni', 'bookcaseOpenLow', '?st_rastrelliera', '^ia_attrezzi_muro', '^ia_fucili_muro', '~ia_casse', '~ia_lupara', '~ia_pistola']],
-    negozio_vestiti: ['parquet|graniglia', 'crema|rosa|fiori', 'lampadario', ['!@cassa', '@stender', '@stender', 'ia_scaffale_scarpe', '*@stender_iso', '*ia_tavolo_maglie', 'ia_manichino', '?ia_manichino', 'coatRackStanding', 'pottedPlant', '^ia_specchio', '^ia_specchio', '^ia_manifesto', '^ia_ritratto', '?^ia_quadro', '~ia_cesto'], ['*@stender_iso', '@stender', '*ia_manichino', 'ia_scaffale_scarpe', '*ia_tavolo_maglie']],
+    negozio_vestiti: ['parquet|graniglia|seminato|marmo', 'crema|rosa|fiori', 'lampadario', ['!@cassa', '@stender', '@stender', 'ia_scaffale_scarpe', '*@stender_iso', '*ia_tavolo_maglie', 'ia_manichino', '?ia_manichino', 'coatRackStanding', 'pottedPlant', '^ia_specchio', '^ia_specchio', '^ia_manifesto', '^ia_ritratto', '?^ia_quadro', '~ia_cesto'], ['*@stender_iso', '@stender', '*ia_manichino', 'ia_scaffale_scarpe', '*ia_tavolo_maglie']],
     camerini: ['moquette_r|parquet', 'velluto|fiori', 'lampadario', ['!@camerino', '@camerino', '?@camerino', 'ia_poltrona', 'coatRackStanding', '^ia_specchio', '^ia_appendiabiti', '?rugRound'], ['@camerino', 'ia_stender']],
     salone_auto: ['graniglia|marmo', 'crema|blu', 'neon', ['!*@auto_vendita|@auto_vendita', '*@auto_vendita|@auto_vendita', '@ufficio_t', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'pv_pneumatici', '^ia_poster_auto', '^ia_poster_auto', '^ia_cartello_prezzi', '^ia_ritratto', '^ia_insegna_neon', '^ia_calendario'], ['*@auto_vendita|@auto_vendita', 'pottedPlant']],
     officina_r: ['cemento', 'cemento', 'neon', ['!@ponte_auto', '!st_saldatrice', 'pv_banco_lavoro', 'pv_attrezzi', 'pv_attrezzi', 'pv_pneumatici', 'pv_pneumatici', 'ia_bidone', 'ia_scaffale_metallo', 'st_cassetta', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_quadro_elettrico', '^ia_calendario', '~ia_bidone', '~pv_pneumatici'], ['@ponte_auto', 'pv_pneumatici', 'ia_bidone']],
@@ -24724,7 +24724,7 @@ var Interior = (function () {
     presidenza: ['parquet', 'legno', 'lampadario', ['?st_cassaforte', '@scrivania', 'bookcaseClosedWide', 'ia_bandiera', '^ia_ritratto', '^ia_calendario']],
     lettura: ['spina|parquet', 'legno|crema', 'lampadario', ['*@pranzo', '?*@pranzo', 'bookcaseOpen', 'bookcaseOpen', 'lampRoundFloor', '^ia_ritratto', '^ia_orologio', '^ia_mappa']],
     scaffali: ['parquet', 'legno|crema', 'bulbo', ['bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'bookcaseClosedWide', 'bookcaseOpen', '~ia_pila_libri', '~ia_pila_libri', '?^ia_volantini']],
-    circolo: ['cotto|graniglia', 'crema|legno', 'bulbo', ['*@carte', '?*@carte', '@tv', 'st_stufa', 'speaker', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bacheca', '^ia_ventaglio_carte'], ['*@carte', '*@tavolino']],
+    circolo: ['cotto|graniglia|esagonette|cementine', 'crema|legno', 'bulbo', ['*@carte', '?*@carte', '@tv', 'st_stufa', 'speaker', '^ia_ritratto', '^ia_bandiera_muro', '^ia_bacheca', '^ia_ventaglio_carte'], ['*@carte', '*@tavolino']],
     bar_circolo: ['graniglia', 'crema', 'bulbo', ['?st_cassaforte', '@bancone_corto', 'kitchenFridge', '^ia_menu', '^ia_ritratto', '~ia_casse']],
     biliardo: ['parquet|graniglia', 'verde|legno', 'verde', ['!*@biliardo|@biliardo|@biliardo_stretto', '?*@carte', '@jukebox|ia_casse_birra', 'bench', 'chair', 'chair', 'coatRackStanding', '^ia_stecche', '^ia_freccette', '^ia_lavagna', '^ia_trofei', '?^ia_insegna_birra', '~ia_bottiglie'], ['*@carte', '*@tavolino']],
     sala_biliardo: ['parquet|graniglia|assi', 'verde|legno|rosso', 'verde', ['!*@biliardo|@biliardo|@biliardo_stretto', '?*@carte', '@jukebox|ia_casse_birra', 'bench', 'chair', '?coatRackStanding', '^ia_stecche', '^ia_freccette', '^ia_lavagna', '?^ia_trofei', '?^ia_insegna_birra', '?^ia_ventaglio_carte', '~ia_bottiglie', '?~ia_casse_birra'], ['*@biliardo', '*@carte', '*@tavolino']],
@@ -24737,25 +24737,25 @@ var Interior = (function () {
     palestra: ['gomma|assi', 'blu|verde', 'neon', ['*ia_ring', 'ia_sacco_boxe', 'ia_pesi', 'bench', 'bench', 'rc_glove', '^ia_trofei', '^ia_ritratto', '^ia_manifesto', '^ia_orologio'], ['ia_sacco_boxe', 'ia_pesi', 'bench']],
     spogliatoio: ['piastrelle', 'piastrelle|verde', 'neon', ['bench', 'bench', 'shower', 'ia_armadietti', 'coatRackStanding', '~ia_stivali', '^ia_appendiabiti']],
     // --- botteghe ---
-    sportelli: ['marmo', 'crema|legno', 'lampadario', ['!@sportelli_fila', 'bench', 'bench', 'desk', 'pottedPlant', 'pottedPlant', 'coatRackStanding', '?ia_poltrona', '^ia_ritratto', '^ia_orologio', '^ia_bacheca', '^ia_stella_regime', '^ia_lampada_muro', '^ia_lampada_muro', '?^ia_manifesto', 'rugRectangle'], ['bench', 'pottedPlant']],
+    sportelli: ['marmo|seminato', 'crema|legno', 'lampadario', ['!@sportelli_fila', 'bench', 'bench', 'desk', 'pottedPlant', 'pottedPlant', 'coatRackStanding', '?ia_poltrona', '^ia_ritratto', '^ia_orologio', '^ia_bacheca', '^ia_stella_regime', '^ia_lampada_muro', '^ia_lampada_muro', '?^ia_manifesto', 'rugRectangle'], ['bench', 'pottedPlant']],
     caveau: ['cemento', 'cemento', 'neon', ['!ia_porta_caveau', '!st_cassaforte', '!st_cassaforte', 'ia_cassette_sicurezza', 'ia_cassette_sicurezza', '*@banco_conta', 'ia_carrello_soldi', 'bookcaseClosedWide', '~cardboardBoxClosed', '^ia_quadro_elettrico', '^ia_tabella_turni'], ['ia_cassette_sicurezza', 'st_cassaforte']],
-    direzione: ['spina', 'legno|velluto', 'lampadario', ['!st_cassaforte', '@comando', 'bookcaseClosedWide', 'ia_schedario', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', '^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_mappa', 'rugRectangle']],
+    direzione: ['spina|quadrotte|seminato', 'legno|velluto', 'lampadario', ['!st_cassaforte', '@comando', 'bookcaseClosedWide', 'ia_schedario', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', '^ia_ritratto', '^ia_quadro', '^ia_orologio', '^ia_mappa', 'rugRectangle']],
     ingresso_uff: ['linoleum', 'crema|verde', 'neon', ['?st_cassaforte', 'desk', 'chairDesk', 'ia_telefono', 'ia_poltrona', 'ia_poltrona', 'pottedPlant', 'coatRackStanding', '^ia_ritratto', '^ia_calendario']],
     tipografia: ['cemento', 'calce|cemento', 'neon', ['!st_ciclostile', 'pv_banco_lavoro', 'fx_machine', 'ia_ciclostile_vecchio', 'table', 'cardboardBoxClosed', 'cardboardBoxClosed', 'bookcaseOpen', '~ia_giornali', '~ia_giornali', '^ia_manifesto', '^ia_calendario', '^ia_quadro_elettrico']],
-    barbiere: ['scacchi|piastrelle', 'piastrelle|azzurro', 'neon', ['!@barbiere_post', '@barbiere_post', 'bench', 'coatRackStanding', 'ar_cash-register', '^ia_specchio', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_giornali']],
-    tabacchi: ['graniglia', 'crema|legno', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
-    farmacia: ['graniglia|marmo', 'ospedale|crema', 'neon', ['!st_tavolo_medico', '!@cassa|pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
+    barbiere: ['scacchi|piastrelle|cementine', 'piastrelle|azzurro', 'neon', ['!@barbiere_post', '@barbiere_post', 'bench', 'coatRackStanding', 'ar_cash-register', '^ia_specchio', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_giornali']],
+    tabacchi: ['graniglia|cementine|seminato', 'crema|legno', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ar_vending-machine', 'ar_gambling-machine', '^ia_ritratto', '^ia_manifesto', '^ia_calendario', '~ia_giornali']],
+    farmacia: ['graniglia|marmo|seminato|cementine', 'ospedale|crema', 'neon', ['!st_tavolo_medico', '!@cassa|pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'kitchenBar', 'ia_scaffale_merci', '^ia_ritratto', '^ia_bacheca', '^ia_calendario']],
     lavanderia: ['piastrelle', 'piastrelle|azzurro', 'neon', ['washer', 'washer', 'washer', 'washer', 'bench', 'kitchenBar', 'ar_cash-register', '?@lavatoio', '~ia_bacinella', '~ia_bucato', '^ia_tabella_turni', '^ia_ritratto']],
     sartoria: ['parquet|linoleum', 'fiori|crema', 'bulbo', ['!st_macchina_cucire', '!st_macchina_cucire', 'table', 'table', 'chair', 'chair', 'coatRackStanding', 'coatRackStanding', 'bookcaseOpen', 'rugRectangle', 'pv_banco_lavoro', '^ia_specchio', '^ia_ritratto', '^ia_calendario', '~ia_cesto']],
     prova: ['parquet', 'fiori', 'lampadario', ['coatRackStanding', 'ia_poltrona', 'rugRound', '^ia_specchio', '^ia_specchio']],
     ferramenta: ['cemento|graniglia', 'calce|verde', 'neon', ['!@cassa|pv_banco_vendita', 'pv_banco_lavoro', 'kitchenBar', 'ia_scaffale_merci', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpenLow', 'fx_box-small', 'fx_box-small', 'cardboardBoxClosed', '^ia_attrezzi_muro', '^ia_attrezzi_muro', '^ia_ritratto', '^ia_calendario'], ['*ia_scaffale_metallo', 'ia_scaffale_merci|bookcaseOpen', 'fx_box-small']],
-    panetteria: ['graniglia', 'piastrelle|crema', 'neon', ['!st_forno', '!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
+    panetteria: ['graniglia|cementine|esagonette', 'piastrelle|crema', 'neon', ['!st_forno', '!@cassa|pv_banco_vendita', 'kitchenBar', 'ia_scaffale_merci', 'kitchenBar', 'fd_loaf-baguette', 'fd_bread', 'fd_croissant', 'fd_cake', 'ar_cash-register', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci', '^ia_ritratto', '^ia_menu', '~ia_cesto', '~ia_sacchi']],
     forno: ['cotto', 'calce|mattoni', 'fuoco', ['!st_forno', 'pv_banco_lavoro', 'kitchenStove', 'table', 'fd_bread', 'kitchenCabinet', 'cardboardBoxClosed', 'ia_sacchi', '~ia_sacchi', '~ia_legna', '^ia_mensola']],
     pescheria: ['piastrelle', 'piastrelle', 'neon', ['!@cassa|pv_banco_vendita', 'kitchenBar', 'kitchenBar', 'fd_fish', 'fd_fish', 'fd_barrel', 'fd_barrel', 'ar_cash-register', 'kitchenSink', 'ia_vetrina_frigo', '^ia_reti', '^ia_ritratto', '^ia_menu', '~ia_cassette_frutta', '~ia_secchio']],
     cella_frigo: ['piastrelle', 'piastrelle', 'neon', ['kitchenFridge', 'kitchenFridge', 'fd_barrel', 'fd_barrel', '^ia_gancio_carne']],
     supermercato: ['linoleum|graniglia', 'piastrelle|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ar_cash-register', 'ar_cash-register', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'kitchenFridge', 'kitchenFridge', 'ia_vetrina_frigo', 'cardboardBoxClosed', 'cardboardBoxClosed', '?ia_cassette_frutta', '~ia_cassette_frutta', '~ia_sacchi', '^ia_ritratto', '^ia_manifesto', '^ia_calendario']],   // [ordine]
-    bottega: ['graniglia|linoleum', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta', '?ia_scaffale_barattoli'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
-    alimentari: ['linoleum|graniglia', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto', 'ia_scaffale_barattoli'], ['*ia_scaffale_merci', 'ia_cassette_frutta', 'ia_sacchi']],
+    bottega: ['graniglia|linoleum|cementine|cotto', 'crema|verde|ocra', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpenLow', 'cardboardBoxClosed', 'pottedPlant', '?ia_cassette_frutta', '^ia_ritratto', '^ia_calendario', '^ia_manifesto', '~ia_cassette_frutta', '?ia_scaffale_barattoli'], ['ia_scaffale_merci', '*ia_scaffale_merci', 'ia_cassette_frutta']],
+    alimentari: ['linoleum|graniglia|cementine', 'crema|verde', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_scaffale_merci', 'ia_vetrina_frigo', 'ia_cassette_frutta', 'ia_sacchi', '^ia_ritratto', '^ia_menu', '^ia_calendario', '~ia_cassette_frutta', '~ia_cesto', 'ia_scaffale_barattoli'], ['*ia_scaffale_merci', 'ia_cassette_frutta', 'ia_sacchi']],
     cassa_benzina: ['linoleum', 'blu|crema', 'neon', ['?st_cassaforte', '@cassa', 'ia_scaffale_merci', 'ar_vending-machine', 'ia_bidone', '^ia_calendario', '^ia_ritratto', '^ia_mappa', '~pv_pneumatici']],
     attesa: ['linoleum', 'ospedale', 'neon', ['bench', 'bench', 'bench', 'pottedPlant', 'desk', '^ia_ritratto', '^ia_bacheca', '^ia_orologio', '^ia_manifesto'], ['bench', 'pottedPlant']],
     visite: ['linoleum', 'ospedale', 'neon', ['!st_tavolo_medico', '@ospedale', 'desk', 'chairDesk', 'bathroomSink', 'ia_schedario', '^ia_specchio', '^ia_calendario', '^ia_ritratto']],
@@ -24773,13 +24773,13 @@ var Interior = (function () {
     radio_r: ['linoleum', 'verde', 'bulbo', ['!st_banco_radio', 'st_cassetta', 'cardboardBoxClosed', '@scrivania', '~ia_casse', '^ia_mappa', '^ia_poster_film']],
     cantina_r: ['cotto', 'mattoni', 'bulbo', ['!fd_barrel', '!fd_barrel', 'ia_botti', 'ia_botti', 'kitchenBar', 'ar_cash-register', '~ia_bottiglie', '^ia_salami']],
     // [botteghe] le botteghe di tutti i giorni: una composizione per mestiere (banco con registratore o bilancia, la merce giusta, il calendario al muro)
-    drogheria: ['graniglia|linoleum', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_scaffale_barattoli', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_sacchi', '?ia_cassette_frutta', '^ia_calendario', '^ia_cartello_prezzi', '^ia_mensola_alta', '~ia_cesto', '?~ia_sacchi'], ['ia_scaffale_barattoli', '*ia_scaffale_merci']],
-    latteria: ['piastrelle|scacchi', 'piastrelle|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina_frigo', 'kitchenBar', 'ia_scaffale_barattoli', '?ia_frigo_vecchio', '^ia_calendario', '^ia_cartello_prezzi', '^ia_orologio', '~ia_casse', '~ia_bottiglie']],
-    merceria: ['parquet|linoleum', 'fiori|crema|rosa', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'bookcaseClosedWide|ia_credenza', 'bookcaseOpen', 'ia_manichino', '?ia_stender', '^ia_specchio', '^ia_calendario', '^ia_mensola', '~ia_cesto_cucito'], ['bookcaseOpen', 'ia_manichino']],
+    drogheria: ['graniglia|cementine|cotto', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_scaffale_barattoli', 'ia_scaffale_merci', 'ia_scaffale_merci|bookcaseOpen', 'ia_sacchi', '?ia_cassette_frutta', '^ia_calendario', '^ia_cartello_prezzi', '^ia_mensola_alta', '~ia_cesto', '?~ia_sacchi'], ['ia_scaffale_barattoli', '*ia_scaffale_merci']],
+    latteria: ['piastrelle|scacchi|cementine', 'piastrelle|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina_frigo', 'kitchenBar', 'ia_scaffale_barattoli', '?ia_frigo_vecchio', '^ia_calendario', '^ia_cartello_prezzi', '^ia_orologio', '~ia_casse', '~ia_bottiglie']],
+    merceria: ['parquet|linoleum|cementine', 'fiori|crema|rosa', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'bookcaseClosedWide|ia_credenza', 'bookcaseOpen', 'ia_manichino', '?ia_stender', '^ia_specchio', '^ia_calendario', '^ia_mensola', '~ia_cesto_cucito'], ['bookcaseOpen', 'ia_manichino']],
     calzolaio: ['assi|cemento', 'calce|ocra', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'ia_scaffale_scarpe', 'ia_scaffale_scarpe|bookcaseOpen', 'chair', 'bench', 'ar_cash-register', '^ia_attrezzi_muro', '^ia_calendario', '^ia_ritratto', '~ia_scarpe', '~ia_stivali', '~ia_scarpe']],
-    orologiaio: ['parquet|graniglia', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'desk', 'chairDesk', 'bookcaseClosedWide', '^ia_orologio', '^ia_orologio', '^ia_orologio', '^ia_calendario', '^ia_specchio']],
+    orologiaio: ['parquet|graniglia|seminato', 'crema|verde', 'bulbo', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'desk', 'chairDesk', 'bookcaseClosedWide', '^ia_orologio', '^ia_orologio', '^ia_orologio', '^ia_calendario', '^ia_specchio']],
     cartoleria: ['linoleum|graniglia', 'crema|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_scaffale_merci|bookcaseOpen', 'bookcaseOpen', 'bookcaseOpen', 'ia_vetrina', '^ia_manifesto', '^ia_calendario', '^ia_mappa', '~ia_giornali'], ['bookcaseOpen', '*ia_scaffale_merci']],
-    profumeria: ['marmo|graniglia', 'rosa|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'bookcaseClosedWide', 'ia_pianta_alta', '^ia_specchio', '^ia_specchio', '^ia_pubblicita', '^ia_calendario']],
+    profumeria: ['marmo|graniglia|seminato', 'rosa|crema', 'neon', ['!@cassa|pv_banco_vendita', 'ia_vetrina', 'ia_vetrina', 'bookcaseClosedWide', 'ia_pianta_alta', '^ia_specchio', '^ia_specchio', '^ia_pubblicita', '^ia_calendario']],
     elettrodomestici: ['linoleum', 'crema|azzurro', 'neon', ['!@cassa|pv_banco_vendita', 'ia_frigo_design', 'ia_frigo_design|kitchenFridge', 'washer', 'washer', 'ia_tv', 'ia_mobile_tv', 'ia_radio_grande|ia_mobile_radio', 'ia_cucina_gas', '^ia_pubblicita', '^ia_calendario', '^ia_cartello_prezzi', '?~ia_ventilatore'], ['washer', 'ia_tv', '*ia_frigo_design']],
     mobili: ['parquet', 'crema', 'bulbo', ['@salotto_design|@divano', 'ia_armadio_design|ia_armadio', 'ia_credenza|ia_madia', '@pranzo_design|@pranzo', 'ia_libreria_piena', 'ia_poltrona_design', 'ia_lampada_piede', 'ar_cash-register', '^ia_calendario', '^ia_cartello_prezzi'], ['ia_poltrona_design', 'ia_armadio', '@pranzo']],
     laboratorio_b: ['assi|cemento', 'calce', 'bulbo', ['!pv_banco_lavoro', 'st_cassetta', 'chair', 'ia_scaffale_metallo|bookcaseOpen', '^ia_attrezzi_muro', '^ia_calendario', '^ia_lampada_muro', '~ia_casse']],
@@ -24843,7 +24843,7 @@ var Interior = (function () {
     const split = (x, y, w, h, depth) => {
       const a = w * h, open = OPEN[kind] || (OPEN0[kind] && f === 0 && depth === 0) || (kind === 'bar' && f === 0 && depth === 0 && a <= 120) || (kind === 'trattoria' && f === 0 && depth === 0 && a <= 96);
       const deep = want >= 5 && a > 60 ? 4 : 3;
-      const can = !open && depth < deep && (w >= 6 || h >= 6) && a >= (home ? 28 : 40) && (rooms.length < want + 1 || a > 80) && !(want <= 1 && depth > 0 && a <= 80);
+      const can = !open && depth < deep && (w >= 6 || h >= 6) && a >= (home ? 34 : 40) && (rooms.length < want + 1 || a > 80) && !(want <= 1 && depth > 0 && a <= 80);
       if (!can) { rooms.push({ x, y, w, h }); return; }
       const vert = w > h * 1.15 ? true : h > w * 1.15 ? false : r() < .5, len = vert ? w : h, oth = vert ? h : w;
       // i tagli possibili, i migliori prima: stanze proporzionate; uno stretto (2-2,5 m) solo se il resto resta largo
@@ -24981,7 +24981,7 @@ var Interior = (function () {
     const a = b.w * b.h, home = kind === 'casa' || kind === 'cascina';
     if (kind === 'palazzo') return a < 20 ? [3, 3] : a < 42 ? [2, 3] : [1, 2];   // [botteghe] bottega e androne fianco a fianco: più fondo per il retrobottega
     // [planimetrie] più grandi: una casa piccola guadagna un paio di stanze, le botteghe una sala vera
-    if (home) return a < 20 ? [3, 2] : a < 42 ? [2, 2] : [1, 1];
+    if (home) return a < 20 ? [4, 3] : a < 42 ? [3, 3] : a < 70 ? [2, 2] : [1, 2];   // [regia] le case respirano: un paio di metri in più per lato
     if (a >= 90) return [1, 1];
     return a < 20 ? [4, 3] : a < 42 ? [3, 2] : [2, 2];
   }
@@ -40389,7 +40389,7 @@ var Livelli = (function () {
   }
   const portalAt = (L, tx, ty, which) => L.portals.find(P => P[which][0] === tx && P[which][1] === ty);
   const CLIMB = new Set(['botola', 'pozzo', 'tombino', 'scala', 'grata', 'interno']);   // [sottosuolo] da qui si sale e si scende
-  const hooks = { dug: [], init: [], solid: null };   // [regia] solid: (x, y, r) → c'è un arredo pieno lì (lo mette sottosuolo.js nella grafica)   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
+  const hooks = { dug: [], init: [], solid: null, solid2: null };   // [regia] solid: (x, y, r) → c'è un arredo pieno lì (lo mette sottosuolo.js nella grafica)   // [sottosuolo] chi vuole sapere quando si scava una casella nuova: (st, tx, ty, L) → messaggio o null
   const onDug = (st, tx, ty, L) => { let m = null; for (const f of hooks.dug) { try { m = f(st, tx, ty, L) || m; } catch (e) { } } return m; };
 
   // ---------------- PONTI ----------------
@@ -40411,7 +40411,7 @@ var Livelli = (function () {
       // [regia] le cose piene: il pilastro col cappello in mezzo alle stanze scavate (lo disegna tunnelWood in render.js), gli arredi
       // dei posti di sotto (hooks.solid, da sottosuolo.js). Chi ci sta già dentro (sbucando, spinto) può uscirne: si blocca solo l'entrare.
       const pillar = (x, y) => { const [tx, ty] = ti(x, y), k = L.kind[idx(tx, ty)]; if ((k !== 2 && k !== 16) || (tx * 3 + ty) % 4 || !L.ug[idx(tx + 1, ty)] || !L.ug[idx(tx - 1, ty)] || !L.ug[idx(tx, ty + 1)] || !L.ug[idx(tx, ty - 1)]) return false; return Math.hypot(x - (tx + .5) * TS, y - (ty + .5) * TS) < .2 + r; };
-      const full = (x, y) => pillar(x, y) || (hooks.solid ? hooks.solid(x, y, r) : false);
+      const full = (x, y) => pillar(x, y) || (hooks.solid ? hooks.solid(x, y, r) : false) || (hooks.solid2 ? hooks.solid2(x, y, r) : false);   // solid2: le stalagmiti, i massi, i fusti del set dressing (render.js)
       return (x, y) => ok(x - r, y - r) && ok(x + r, y - r) && ok(x - r, y + r) && ok(x + r, y + r) && (!full(x, y) || full(o.x, o.y));
     }
     return null;
@@ -55418,7 +55418,8 @@ var Render = (function () {
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return (ugMats['tex' + kind] = new THREE.MeshStandardMaterial({ map: t, roughness: .95, metalness: 0 }));
   }
-  function ugTex(kind) {
+  function ugTex(kind) { return withRelief(ugTex0(kind), kind === 'terra' || kind === 'terra_pav' ? 2.5 : 4); }   // [regia] col rilievo
+  function ugTex0(kind) {
     if (kind !== 'roccia' && kind !== 'terra') return ugTex2(kind);
     if (ugMats['tex' + kind]) return ugMats['tex' + kind];
     const c = mk(32, 32), x = c.getContext('2d'), r = rng(kind === 'roccia' ? 77 : 78);
@@ -55457,7 +55458,9 @@ var Render = (function () {
     const props = [], rocks = [], SEC = [[], []];
     for (let ty = Math.max(0, wy0); ty <= Math.min(G.GH - 1, wy1); ty++) for (let tx = Math.max(0, wx0); tx <= Math.min(G.GW - 1, wx1); tx++) {
       const i = ty * GWd + tx; if (!L.ug[i]) continue;
-      const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, h00 = floorV(tx, ty, 0, 0), h10 = floorV(tx, ty, 1, 0), h01 = floorV(tx, ty, 0, 1), h11 = floorV(tx, ty, 1, 1);
+      // [regia] nelle grotte il pavimento non è un biliardo: gli spigoli si alzano e si abbassano di qualche centimetro (solo dove tutte le caselle attorno sono naturali)
+      const bump = (cx, cy) => { for (const [a, b] of [[tx + cx - 1, ty + cy - 1], [tx + cx, ty + cy - 1], [tx + cx - 1, ty + cy], [tx + cx, ty + cy]]) if (has(a, b) && !UGNAT[L.kind[b * GWd + a]]) return 0; return (hash2i((tx + cx) * 3.1, (ty + cy) * 2.7) - .5) * .16; };
+      const x0 = tx * TS, z0 = ty * TS, x1 = x0 + TS, z1 = z0 + TS, nat0 = UGNAT[L.kind[i]], h00 = floorV(tx, ty, 0, 0) + (nat0 ? bump(0, 0) : 0), h10 = floorV(tx, ty, 1, 0) + (nat0 ? bump(1, 0) : 0), h01 = floorV(tx, ty, 0, 1) + (nat0 ? bump(0, 1) : 0), h11 = floorV(tx, ty, 1, 1) + (nat0 ? bump(1, 1) : 0);
       const kd = L.kind[i], made = kd >= 3, fm = UGF[kd] || (made ? (kd === 7 || kd === 9 ? 'piastrelle' : kd === 3 || kd === 8 ? 'mattoni' : kd === 6 ? 'cemento' : 'pietra') : kd === 2 ? 'terra_pav' : 'terra');
       const fa = fB[fm] = fB[fm] || [[], []]; fa[0].push(x0, h00, z0, x0, h01, z1, x1, h11, z1, x0, h00, z0, x1, h11, z1, x1, h10, z0); fa[1].push(0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0);
       const rockK = !made && (gT(tx, ty) === T.ROCK || gT(tx, ty) === T.CLIFF || kd === 1), wm = made ? UGK[kd] : rockK ? 'roccia' : 'terra', wb = WB[wm] = WB[wm] || [[], []], arr = wb[0], uv = wb[1], f = L.fl[i];
@@ -55513,9 +55516,128 @@ var Render = (function () {
       }
       grp.add(g);
     });
+    dressUG(grp, L, has, [wx0, wy0, wx1, wy1]);   // [regia] il set dressing
     return grp;
   }
   const hash2i = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+  // =====================================================================================================================
+  // [regia] IL SET DRESSING DI SOTTO: ogni casella scavata si arreda secondo cosa è, come farebbe un level designer.
+  //   grotte: stalattiti dalla volta, stalagmiti e massi contro le pareti, colate di calcare, pozze ferme, sassolini, funghi e
+  //           cristalli che brillano alla base; fiume, relitto e cisterne: pozze, alghe, legni portati dall'acqua;
+  //   terra: le radici che pendono, sassi, il secchio, la tavola appoggiata, le ragnatele negli angoli;
+  //   fogne: cartacce, bottiglie e lattine sul cordolo, i topi, le lampade a gabbia, le targhe smaltate dei tratti, le macchie di ruggine;
+  //   pietra (cripte, carceri, cunicolo): mozziconi di candela accesi, ossicini, paglia e catene nelle carceri, ragnatele;
+  //   cemento (bunker, metropolitana): i cavi lungo le pareti, le scatole di derivazione, le lampade a gabbia, le frecce dipinte,
+  //           i fusti, le pozze, i volantini; cantine: bottiglie, cassette, ragnatele; catacombe: ossa e teschi; città sepolta:
+  //           cocci e intonaco caduto; miniera: mucchi di minerale che luccica.
+  // Tutto a istanze (pochi draw call), deterministico per casella. I pezzi alti all'altezza del corpo (stalagmiti, massi, fusti,
+  // cassette) diventano solidi (UGSOL, chiesto da Livelli.freeFn tramite hooks.solid2): si girano attorno, non ci si entra dentro.
+  // =====================================================================================================================
+  const UGSOL = new Map();
+  const ugSolid = (x, z, r) => { for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) for (let tz = Math.floor((z - r) / TS); tz <= Math.floor((z + r) / TS); tz++) { const k = tz * G.GW + tx; if (!UGSOL.has(k)) UGSOL.set(k, []); UGSOL.get(k).push([x, z, r]); } };
+  if (typeof Livelli !== 'undefined' && Livelli.hooks) Livelli.hooks.solid2 = (x, y, r) => { const l = UGSOL.get(Math.floor(y / TS) * G.GW + Math.floor(x / TS)); return !!l && l.some(q => Math.hypot(x - q[0], y - q[1]) < q[2] + r); };
+  const UGFAM = { 1: 'grotta', 14: 'grotta', 17: 'umida', 19: 'umida', 11: 'umida', 2: 'terra', 18: 'terra', 3: 'fogna', 8: 'fogna', 4: 'pietra', 5: 'carcere', 15: 'pietra', 6: 'cemento', 7: 'cemento', 9: 'cemento', 10: 'cantina', 12: 'ossa', 13: 'sepolta', 16: 'miniera' };
+  const DGEO = {};
+  const dgeo = k => DGEO[k] || (DGEO[k] = k === 'cone' ? new THREE.ConeGeometry(1, 1, 6) : k === 'rock' ? new THREE.DodecahedronGeometry(1, 0) : k === 'box' ? new THREE.BoxGeometry(1, 1, 1)
+    : k === 'cyl' ? new THREE.CylinderGeometry(1, 1, 1, 8) : k === 'sph' ? new THREE.SphereGeometry(1, 8, 6) : k === 'disc' ? new THREE.CylinderGeometry(1, 1, 1, 14) : k === 'ring' ? new THREE.TorusGeometry(1, .28, 4, 8) : k === 'web' ? new THREE.PlaneGeometry(1, 1) : null);
+  const DMAT = {};
+  const dmat = k => DMAT[k] || (DMAT[k] = (() => { const [c, kind] = k.split('|');
+    if (kind === 'glow') return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.2, roughness: .6 });
+    if (kind === 'wet') return new THREE.MeshStandardMaterial({ color: c, roughness: .04, metalness: .55, transparent: true, opacity: .85 });
+    if (kind === 'web') return new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .22, side: THREE.DoubleSide, depthWrite: false });
+    if (kind === 'met') return new THREE.MeshStandardMaterial({ color: c, roughness: .45, metalness: .6 });
+    if (kind === 'shine') return new THREE.MeshStandardMaterial({ color: c, roughness: .3, metalness: .1 });
+    return new THREE.MeshStandardMaterial({ color: c, roughness: .95, metalness: 0, flatShading: true }); })());
+  function dressUG(grp, L, has, win) {
+    UGSOL.clear();
+    const B = {}, put = (g, m, x, y, z, sx, sy, sz, ry, rx, rz) => (B[g + '#' + m] = B[g + '#' + m] || []).push([x, y, z, sx, sy, sz, ry || 0, rx || 0, rz || 0]);
+    const GW = G.GW, toCamW = (dx, dy) => dx * Math.sin(cam.yaw) + dy * Math.cos(cam.yaw) > .3;
+    let lampN = 0;
+    for (let ty = Math.max(0, win[1]); ty <= Math.min(G.GH - 1, win[3]); ty++) for (let tx = Math.max(0, win[0]); tx <= Math.min(G.GW - 1, win[2]); tx++) {
+      const i = ty * GW + tx; if (!L.ug[i]) continue;
+      const kd = L.kind[i], fam = UGFAM[kd] || (kd === 0 ? 'terra' : null); if (!fam) continue;
+      const f = L.fl[i], cx = (tx + .5) * TS, cz = (ty + .5) * TS, top = f + (UGH[kd] || 2.7), h = s => hash2i(tx * 13.17 + s * 7.31, ty * 17.29 - s * 3.13);
+      const walls = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => !has(tx + dx, ty + dy)), back = walls.filter(([dx, dy]) => !toCamW(dx, dy));
+      const portal = L.portals.some(P => (P.u[0] === tx && P.u[1] === ty) || (P.s[0] === tx && P.s[1] === ty)); if (portal) continue;   // le scale e le botole restano libere
+      const rnd = (s, a, b) => a + (b - a) * h(s);
+      const inT = s => [cx + (h(s) - .5) * 1.5, cz + (h(s + 50) - .5) * 1.5];
+      // contro una parete: [x, z, tangente x, tangente z, normale verso la parete]
+      const atWall = (w, s, inset) => { const [dx, dy] = w, t = (h(s) - .5) * 1.5; return [cx + dx * (1 - inset) + dy * t, cz + dy * (1 - inset) + dx * t]; };
+      const pebbles = (n, cols) => { for (let k = 0; k < n; k++) { const [x, z] = inT(100 + k), r = rnd(120 + k, .04, .11); put('rock', cols[k % cols.length], x, f + r * .35, z, r, r * .6, r, h(130 + k) * 6); } };
+      const corner = () => { // la ragnatela nell'angolo fra due pareti di fondo
+        if (back.length < 2 || h(9) > .45) return; const [a, b] = back[0][0] ? [back[0], back[1]] : [back[1], back[0]]; if (!a[0] || !b[1]) return;
+        put('web', '#e8e8e0|web', cx + a[0] * .82, top - .45, cz + b[1] * .82, .9, .7, 1, Math.atan2(a[0], b[1]) + Math.PI / 2 * (a[0] * b[1] > 0 ? 1 : -1) * .5); };
+      const cageLamp = (w, s, col) => { const [x, z] = atWall(w, s, .06); put('box', '#2a2a2a|met', x, f + 2.05, z, .2, .26, .2); put('sph', (col || '#ffd27a') + '|glow', x, f + 2.05, z, .08, .1, .08); if (UGR.lights.length < 24 && lampN++ < 10) UGR.lights.push([x - w[0] * .4, f + 1.9, z - w[1] * .4, col || '#ffc070']); };
+      if (fam === 'grotta') {
+        const nSt = 2 + Math.floor(h(1) * 6); for (let k = 0; k < nSt; k++) { const [x, z] = inT(10 + k), Lh = rnd(20 + k, .25, 1.3), r = rnd(30 + k, .05, .14); put('cone', h(40 + k) < .7 ? '#c8c4b8' : '#a8a498', x, top - Lh / 2, z, r, Lh, r, 0, Math.PI); if (h(45 + k) < .2) put('sph', '#bfe8ff|wet', x, top - Lh - .04, z, .025, .04, .025); }   // la goccia in punta
+        back.forEach((w, j) => { if (h(50 + j) < .55) { const [x, z] = atWall(w, 51 + j, .22), Hh = rnd(52 + j, .3, 1.1), r = rnd(53 + j, .12, .24); put('cone', '#b8b2a4', x, f + Hh / 2, z, r, Hh, r); if (h(54 + j) < .5) put('cone', '#aaa498', x + w[1] * .25, f + Hh * .3, z + w[0] * .25, r * .6, Hh * .6, r * .6); if (Hh > .4) ugSolid(x, z, r * .8); }
+          if (h(55 + j) < .2) { const [x, z] = atWall(w, 56 + j, -.08); put('sph', '#9a968c', x, f + 1.1, z, .28 + h(57 + j) * .2, .9, .3, h(58 + j) * 3); }   // la colata di calcare sulla parete
+          if (h(59 + j) < .14) { const [x, z] = atWall(w, 60 + j, .1), c = h(61 + j) < .5 ? '#7ae8d0' : '#b8ff80'; for (let k = 0; k < 4; k++) put('sph', c + '|glow', x + (h(62 + k) - .5) * .4, f + .06 + h(63 + k) * .1, z + (h(64 + k) - .5) * .4, .04 + h(65 + k) * .04, .05, .04 + h(66 + k) * .04); if (UGR.lights.length < 24) UGR.lights.push([x, f + .5, z, c]); } });
+        walls.forEach((w, j) => { if (h(70 + j) < .3) { const [x, z] = atWall(w, 71 + j, .28), r = rnd(72 + j, .28, .5); put('rock', '#6a7276', x, f + r * .45, z, r, r * .7, r * 1.1, h(73 + j) * 6); ugSolid(x, z, r * .85); } });
+        if (h(80) < .3) { const [x, z] = inT(81), r = rnd(82, .35, .7); put('disc', '#0a1a20|wet', x, f + .015, z, r, .01, r * .7, h(83) * 3); }
+        pebbles(3 + Math.floor(h(84) * 5), ['#7a8286', '#5a6266', '#8a9296']);
+      } else if (fam === 'umida') {
+        if (h(80) < .5) { const [x, z] = inT(81), r = rnd(82, .3, .8); put('disc', '#0a1a1c|wet', x, f + .015, z, r, .01, r * .6, h(83) * 3); }
+        walls.forEach((w, j) => { if (h(90 + j) < .5) { const [x, z] = atWall(w, 91 + j, .1); put('disc', '#2e4a2a', x, f + .012, z, .5, .01, .2, w[0] ? Math.PI / 2 : 0); }   // le alghe al piede della parete
+          if (kd === 19 && h(92 + j) < .2) { const [x, z] = atWall(w, 93 + j, .25); put('cyl', '#5a4a38', x, f + .12, z, .1, 1.4, .1, w[0] ? 0 : Math.PI / 2, 0, Math.PI / 2); } });   // un legno portato dall'acqua
+        if (kd !== 11) for (let k = 0; k < 2; k++) if (h(95 + k) < .5) { const [x, z] = inT(96 + k), Lh = rnd(97 + k, .15, .5); put('cone', '#9aa2a0', x, top - Lh / 2, z, .05, Lh, .05, 0, Math.PI); }
+        pebbles(2 + Math.floor(h(84) * 4), ['#4a5452', '#323a38', '#56605c']);
+      } else if (fam === 'terra' || fam === 'miniera') {
+        back.forEach((w, j) => { if (h(50 + j) < .6) for (let k = 0; k < 3; k++) { const [x, z] = atWall(w, 51 + j * 5 + k, .06), Lh = rnd(52 + k, .25, .8); put('cyl', '#3a2a1c', x, top - Lh / 2, z, .018, Lh, .018, 0, (h(53 + k) - .5) * .5, (h(54 + k) - .5) * .5); } });   // le radici che pendono
+        corner(); pebbles(2 + Math.floor(h(84) * 4), ['#6e5438', '#8a8478', '#584230']);
+        if (fam === 'terra' && walls.length && h(60) < .07) { const w = walls[0], [x, z] = atWall(w, 61, .25); put('cyl', '#6a6e72|met', x, f + .17, z, .14, .34, .14); ugSolid(x, z, .15); }   // il secchio
+        if (fam === 'terra' && back.length && h(62) < .08) { const w = back[0], [x, z] = atWall(w, 63, .1); put('box', '#7a5a3a', x, f + .9, z, w[0] ? .04 : .25, 1.8, w[0] ? .25 : .04, 0, w[1] * .25, -w[0] * .25); }   // la tavola appoggiata
+        if (fam === 'miniera' && walls.length && h(64) < .2) { const w = walls[0], [x, z] = atWall(w, 65, .3); for (let k = 0; k < 5; k++) put('rock', k % 2 ? '#3a3632' : '#5a4a3a', x + (h(66 + k) - .5) * .5, f + .15, z + (h(67 + k) - .5) * .5, .18, .14, .18, k); put('sph', '#e8d070|glow', x, f + .28, z, .03, .03, .03); ugSolid(x, z, .35); }
+      } else if (fam === 'fogna') {
+        walls.forEach((w, j) => { const [x0, z0] = atWall(w, 30 + j, .32);
+          if (h(31 + j) < .35) put('box', h(32 + j) < .5 ? '#d8d4c8' : '#c8b890', x0, f + .23, z0, .18, .01, .13, h(33 + j) * 6);   // la cartaccia sul cordolo
+          if (h(34 + j) < .18) put('cyl', h(35 + j) < .5 ? '#2a5a2a|shine' : '#5a3a1a|shine', x0 + .2, f + .26, z0 + .1, .04, .26, .04, h(36 + j) * 6, 0, Math.PI / 2);   // la bottiglia
+          if (h(37 + j) < .12) put('cyl', '#b8bcc0|met', x0 - .2, f + .26, z0 - .1, .035, .1, .035, 0, 0, Math.PI / 2);   // la lattina
+          if (h(38 + j) < .05) { put('sph', '#2a2420', x0, f + .3, z0, .09, .06, .13, h(39 + j) * 6); put('cyl', '#5a3a3a', x0, f + .27, z0 + .13, .008, .18, .008, 0, Math.PI / 2 - .3); }   // il topo
+          if (!toCamW(w[0], w[1]) && h(40 + j) < .1) cageLamp(w, 41 + j);
+          if (!toCamW(w[0], w[1]) && h(42 + j) < .05) { const [x, z] = atWall(w, 43 + j, .02); put('box', '#1e4a8a|shine', x, f + 1.7, z, w[0] ? .02 : .42, .26, w[0] ? .42 : .02); put('box', '#f0f0e8', x - w[0] * .006, f + 1.7, z - w[1] * .006, w[0] ? .02 : .3, .1, w[0] ? .3 : .02); }   // la targa smaltata
+          if (!toCamW(w[0], w[1]) && h(44 + j) < .14) { const [x, z] = atWall(w, 45 + j, .015); put('box', '#3a2414', x, f + 1.0, z, w[0] ? .01 : .14, 1.4, w[0] ? .14 : .01); } });   // la colatura di ruggine
+      } else if (fam === 'pietra' || fam === 'carcere') {
+        walls.forEach((w, j) => { if (h(30 + j) < .12) { const [x, z] = atWall(w, 31 + j, .2); put('cyl', '#efe6cc', x, f + .06, z, .03, .12, .03); put('sph', '#ffc060|glow', x, f + .15, z, .018, .03, .018); if (UGR.lights.length < 24 && lampN++ < 10) UGR.lights.push([x, f + .4, z, '#ffb050']); }
+          if (h(32 + j) < .1) { const [x, z] = atWall(w, 33 + j, .25); for (let k = 0; k < 3; k++) put('cyl', '#e4dcc4', x + (h(34 + k) - .5) * .3, f + .03, z + (h(35 + k) - .5) * .3, .02, .22, .02, h(36 + k) * 6, Math.PI / 2); }
+          if (fam === 'carcere' && h(37 + j) < .3) { const [x, z] = atWall(w, 38 + j, .3); put('disc', '#b8a050', x, f + .02, z, .55, .03, .35, h(39 + j) * 3); }   // la paglia
+          if (fam === 'carcere' && !toCamW(w[0], w[1]) && h(40 + j) < .25) { const [x, z] = atWall(w, 41 + j, .02); for (let k = 0; k < 6; k++) put('ring', '#3a3a40|met', x, f + 1.4 - k * .1, z, .05, .05, .05, w[0] ? Math.PI / 2 : 0, k % 2 ? Math.PI / 2 : 0); } });   // la catena
+        corner(); pebbles(1 + Math.floor(h(84) * 3), ['#6e6a62', '#7a766c']);
+      } else if (fam === 'cemento') {
+        back.forEach((w, j) => { const [x, z] = [cx + w[0] * .97, cz + w[1] * .97]; put('box', '#1e1e1e', x, top - .35, z, w[0] ? .05 : 2, .07, w[0] ? 2 : .05); put('box', '#3a3a2a', x, top - .45, z, w[0] ? .04 : 2, .04, w[0] ? 2 : .04);   // i cavi lungo la parete
+          if (h(30 + j) < .1) put('box', '#6a6a60|met', x - w[0] * .05, top - .7, z - w[1] * .05, w[0] ? .1 : .3, .3, w[0] ? .3 : .1);   // la scatola di derivazione
+          if (h(31 + j) < .14) cageLamp(w, 32 + j, '#e8f0ff');
+          if (h(33 + j) < .08) { const [ax, az] = atWall(w, 34 + j, .015); put('box', '#d8b020', ax, f + 1.3, az, w[0] ? .01 : .5, .1, w[0] ? .5 : .01); put('box', '#d8b020', ax + w[1] * .25, f + 1.3, az + w[0] * .25, w[0] ? .01 : .18, .18, w[0] ? .18 : .01, 0, w[0] ? Math.PI / 4 : 0, w[0] ? 0 : Math.PI / 4); } });   // la freccia dipinta
+        walls.forEach((w, j) => { if (h(40 + j) < .06) { const [x, z] = atWall(w, 41 + j, .32); put('cyl', h(42 + j) < .5 ? '#3a5a3a|met' : '#7a2a1a|met', x, f + .45, z, .28, .9, .28); ugSolid(x, z, .3); } });   // il fusto
+        if (h(80) < .15) { const [x, z] = inT(81), r = rnd(82, .3, .6); put('disc', '#101416|wet', x, f + .015, z, r, .01, r * .7, h(83) * 3); }
+        if (h(85) < .2) { const [x, z] = inT(86); put('box', '#e8e4d8', x, f + .01, z, .15, .005, .21, h(87) * 6); }   // il volantino
+      } else if (fam === 'cantina') {
+        walls.forEach((w, j) => { if (h(30 + j) < .2) { const [x, z] = atWall(w, 31 + j, .25); put('cyl', '#1e3a1e|shine', x, f + .05, z, .04, .3, .04, h(32 + j) * 6, Math.PI / 2); }
+          if (h(33 + j) < .1) { const [x, z] = atWall(w, 34 + j, .3); put('box', '#7a5a34', x, f + .17, z, .5, .34, .35, h(35 + j)); ugSolid(x, z, .3); } });
+        corner(); pebbles(1, ['#6a5040']);
+      } else if (fam === 'ossa') {
+        walls.forEach((w, j) => { if (h(30 + j) < .25) { const [x, z] = atWall(w, 31 + j, .2); for (let k = 0; k < 4; k++) put('cyl', '#e4dcc4', x + (h(32 + k) - .5) * .4, f + .03 + k * .02, z + (h(33 + k) - .5) * .4, .025, .35, .025, h(34 + k) * 6, Math.PI / 2); if (h(35 + j) < .5) put('sph', '#d8d0b8', x, f + .1, z, .1, .11, .12); } });
+        corner(); pebbles(2, ['#a89a80', '#8a7856']);
+      } else if (fam === 'sepolta') {
+        for (let k = 0; k < 3; k++) if (h(30 + k) < .4) { const [x, z] = inT(31 + k); put('cyl', '#a85a3a', x, f + .03, z, .1, .2, .1, h(32 + k) * 6, Math.PI / 2); }   // i cocci
+        walls.forEach((w, j) => { if (h(40 + j) < .3) { const [x, z] = atWall(w, 41 + j, .2); put('box', '#c8b898', x, f + .05, z, .3, .08, .2, h(42 + j) * 3); } });   // l'intonaco caduto
+        pebbles(2, ['#8a8478', '#7a6a58']);
+      }
+    }
+    const M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(0, 0, 0, 'YXZ'), V = new THREE.Vector3(), S = new THREE.Vector3();
+    Object.entries(B).forEach(([k, l]) => { const [g, m] = k.split('#'), im = new THREE.InstancedMesh(dgeo(g), dmat(m), l.length);
+      l.forEach(([x, y, z, sx, sy, sz, ry, rx, rz], j) => { E.set(rx, ry, rz); Q.setFromEuler(E); V.set(x, y, z); S.set(sx, sy, sz); M4.compose(V, Q, S); im.setMatrixAt(j, M4); });
+      im.instanceMatrix.needsUpdate = true; im.receiveShadow = true; grp.add(im); });
+  }
+  // [regia] il rilievo dei materiali di sotto (mattoni, pietre, loculi, terra): una normal map dalla luminosità
+  function normalOfUG(c, k) {
+    const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data, out = mk(w, h), ox = out.getContext('2d'), im = ox.createImageData(w, h), d = im.data, L0 = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L0[i] = (src[i * 4] * .3 + src[i * 4 + 1] * .59 + src[i * 4 + 2] * .11) / 255;
+    for (let y = 0; y < h; y++) for (let X = 0; X < w; X++) { const xl = (X + w - 1) % w, xr = (X + 1) % w, yu = (y + h - 1) % h, yd = (y + 1) % h, dx = (L0[y * w + xr] - L0[y * w + xl]) * k, dy = (L0[yd * w + X] - L0[yu * w + X]) * k, l = Math.hypot(dx, dy, 1), i = (y * w + X) * 4;
+      d[i] = (-dx / l * .5 + .5) * 255; d[i + 1] = (dy / l * .5 + .5) * 255; d[i + 2] = (1 / l * .5 + .5) * 255; d[i + 3] = 255; }
+    ox.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(out); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; return t;
+  }
+  const withRelief = (m, k) => { if (m && m.map && m.map.image && m.map.image.getContext && !m.normalMap) { m.normalMap = normalOfUG(m.map.image, k || 3); m.normalScale = new THREE.Vector2(1, 1); m.needsUpdate = true; } return m; };
   // [regia] LE GROTTE NON SONO A CASELLE: nelle cavità naturali (grotte, fiume, relitto, la roccia delle caverne, la frana di un
   // ritrovamento) la parete si spezza in 4×3 facce e ogni vertice si allontana dal vuoto, verso la roccia, di 10-70 cm (di meno al piede,
   // a gobbe a mezza altezza): il contorno si apre in nicchie e pance, gli spigoli delle caselle si arrotondano. Il vertice d'angolo
@@ -79998,69 +80120,149 @@ var InterniArte = (function () {
   // PAVIMENTI (una tela per stanza, in metri × PPM)
   // =====================================================================================================================
   const LINO = ['#7a4a38', '#6a6e5a', '#8a6a42', '#5a6470', '#7a5a5a'];
+  // [regia] I PAVIMENTI VERI: 40 px per metro (prima 16: il motivo non ci stava), i pavimenti italiani d'epoca, ognuno con la sua
+  // misura (cementine da 20 cm con la fascia e il bordo, seminato veneziano col filo d'ottone, graniglia a scacchi, palladiana,
+  // esagonette di cotto, parquet a listoni, spina, quadrotte, assi chiodate, marmo in diagonale, mosaico del bagno, ceramica anni '70,
+  // linoleum marmorizzato o a disegni, moquette coi medaglioni). Le fughe sono più scure: la normal map (normalOf) le fa scendere.
+  const FPM = 40;
+  const MARMI = ['#efe8dc', '#d8ccb8', '#b8a890', '#8a3a2a', '#3a3632', '#6a5a48', '#b05a3a', '#c8b898', '#5a6a5a', '#e0d4c0'];
+  const CEM = [['#d8d0bc', '#8a2a22', '#2a3a3a'], ['#e0d8c4', '#3a5a6a', '#c8a040'], ['#cfc6b0', '#5a6a3a', '#8a3a2a'], ['#bcb4a4', '#2a2622', '#a88a5a'], ['#e4dccb', '#b0583a', '#4a5a7a'], ['#c8bfa8', '#6a2a3a', '#d8c070']];
+  const C70 = [['#c8783a', '#6a3a1e', '#e8c070'], ['#8a6a2a', '#3a2a18', '#d8b060'], ['#6a7a3a', '#2e3a1a', '#c8c070'], ['#d8a048', '#8a3a1a', '#f0e0b0']];
   function floorCanvas(q, r, wet) {
-    const cw = Math.max(4, Math.round(q.w * PPM)), ch = Math.max(4, Math.round(q.h * PPM)), c = mk(cw, ch), x = c.getContext('2d'), st = q.floor;
+    const F = FPM, cw = Math.max(8, Math.round(q.w * F)), ch = Math.max(8, Math.round(q.h * F)), c = mk(cw, ch), x = c.getContext('2d'), st = q.floor, m = v => Math.max(1, Math.round(v * F));
     const fill = col => { x.fillStyle = col; x.fillRect(0, 0, cw, ch); };
     const px = (col, X, Y, w, h) => { x.fillStyle = col; x.fillRect(X, Y, w || 1, h || 1); };
-    if (st === 'parquet' || st === 'assi') {
-      const pw = st === 'assi' ? 6 : 3, base = st === 'assi' ? pick(r, ['#6e5a46', '#7a6248', '#5e5040']) : pick(r, ['#7a4e30', '#6a4228', '#845a38']);
-      fill(base);
-      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 30); while (i < cw) { const L = 12 + Math.floor(r() * 26); px(shade(base, .86 + r() * .28), i, j, L - 1, pw - 1); px(shade(base, .6), i + L - 1, j, 1, pw); i += L; } px(shade(base, .55), 0, j + pw - 1, cw, 1); }
-    } else if (st === 'spina') {
-      const base = pick(r, ['#8a5a34', '#7a4a2a', '#94643c']); fill(shade(base, .7));
-      for (let j = -8; j < ch + 8; j += 4) for (let i = -8; i < cw + 8; i += 8) { const o = ((j / 4) & 1) * 4; px(shade(base, .85 + r() * .3), i + o, j, 6, 2); px(shade(base, .8 + r() * .3), i + o + 4, j + 2, 2, 6 > ch ? 2 : 6); }
+    const poly = (col, P) => { x.fillStyle = col; x.beginPath(); x.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) x.lineTo(P[i][0], P[i][1]); x.closePath(); x.fill(); };
+    const chips = (X, Y, w, h, base, dens, cols) => { for (let k = 0; k < w * h * dens; k++) px(pick(r, cols || [shade(base, .7), shade(base, 1.18), MARMI[Math.floor(r() * MARMI.length)]]), X + Math.floor(r() * w), Y + Math.floor(r() * h), r() < .2 ? 2 : 1, r() < .15 ? 2 : 1); };
+    const bevel = (X, Y, w, h, col) => { px(col, X, Y, w, h); px(shade(col, 1.12), X, Y, w, 1); px(shade(col, 1.08), X, Y, 1, h); px(shade(col, .82), X, Y + h - 1, w, 1); px(shade(col, .86), X + w - 1, Y, 1, h); };
+    const grain = (X, Y, w, h, base, along) => { for (let k = 0; k < (along ? h : w) / 3; k++) { const o = Math.floor(r() * (along ? h : w)); let p = Math.floor(r() * 6); while (p < (along ? w : h)) { const L0 = 3 + Math.floor(r() * 14); if (along) px(`rgba(30,18,8,${.12 + r() * .12})`, X + p, Y + o, L0, 1); else px(`rgba(30,18,8,${.12 + r() * .12})`, X + o, Y + p, 1, L0); p += L0 + 2 + Math.floor(r() * 8); } } if (r() < .25) { const kx = X + Math.floor(r() * w), ky = Y + Math.floor(r() * h); x.fillStyle = 'rgba(40,22,10,.45)'; x.beginPath(); x.ellipse(kx, ky, 2, 1.2, 0, 0, 7); x.fill(); } };
+    if (st === 'parquet') {   // listoni da 9 cm, a correre, le teste sfalsate, la venatura
+      const base = pick(r, ['#8a5a34', '#7a4a2c', '#94683e', '#a8783e', '#6a4428']), pw = m(.09); fill(shade(base, .5));
+      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 40); while (i < cw) { const L0 = m(.45 + r() * .7), col = shade(base, .82 + r() * .34); px(col, i, j, L0 - 1, pw - 1); grain(i, j, L0 - 1, pw - 1, col, true); i += L0; } }
+    } else if (st === 'assi') {   // tavolato largo, i chiodi sui travetti, i nodi, le fessure
+      const base = pick(r, ['#6e5a46', '#7a6248', '#5e5040', '#806a50']), pw = m(.2); fill('#1e1610');
+      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 80); while (i < cw) { const L0 = m(1.4 + r() * 1.6), col = shade(base, .8 + r() * .35); px(col, i, j, L0 - 2, pw - 2); grain(i, j, L0 - 2, pw - 2, col, true); i += L0; } }
+      for (let i = m(.3); i < cw; i += m(.6)) for (let j = 0; j < ch; j += pw) { px('#2a2420', i, j + 2, 1, 1); px('#2a2420', i, j + pw - 5, 1, 1); }
+    } else if (st === 'spina') {   // spina ungherese: colonne di listelli a 45°, alterne
+      const base = pick(r, ['#8a5a34', '#7a4a2a', '#94643c', '#a07040']), cwd = m(.3), hS = m(.075); fill(shade(base, .45));
+      for (let cx0 = 0, col = 0; cx0 < cw; cx0 += cwd, col++) { const sg = col % 2 ? 1 : -1; for (let y = -cwd - hS * 2; y < ch + cwd; y += hS) { const cc = shade(base, .8 + r() * .38); poly(cc, [[cx0 + .5, y + .5], [cx0 + cwd - .5, y + sg * cwd + .5], [cx0 + cwd - .5, y + sg * cwd + hS - .5], [cx0 + .5, y + hS - .5]]); } }
+    } else if (st === 'quadrotte') {   // parquet a quadrotte: quadri da 40 cm di quattro listelli, alterni
+      const base = pick(r, ['#9a6a3a', '#8a5a30', '#7a4e2c']), qs = m(.4), n = 4, sw = qs / n; fill(shade(base, .5));
+      for (let j = 0; j * qs < ch; j++) for (let i = 0; i * qs < cw; i++) for (let k = 0; k < n; k++) { const col = shade(base, .82 + r() * .34); if ((i + j) % 2) { px(col, i * qs + Math.round(k * sw), j * qs, Math.round(sw) - 1, qs - 1); } else { px(col, i * qs, j * qs + Math.round(k * sw), qs - 1, Math.round(sw) - 1); } }
+    } else if (st === 'cementine') {   // le cementine da 20 cm: il campo col motivo, la fascia e il bordo liscio
+      const [bg, a, b] = pick(r, CEM), t = m(.2), motif = pick(r, ['rosa', 'stella', 'croce', 'foglie', 'quadri', 'rombo']), fascia = pick(r, ['righe', 'denti', 'quadri']);
+      const nx = Math.ceil(cw / t), ny = Math.ceil(ch / t);
+      const draw = (X, Y, mo, A, B, BG) => { px(BG, X, Y, t, t); const h = t / 2;
+        x.fillStyle = A;
+        if (mo === 'rosa') { [[0, 0], [t, 0], [0, t], [t, t]].forEach(([u, v]) => { x.beginPath(); x.arc(X + u, Y + v, h * .9, 0, 7); x.fill(); }); x.fillStyle = B; x.beginPath(); x.moveTo(X + h, Y + h - 2); x.lineTo(X + h + 2, Y + h); x.lineTo(X + h, Y + h + 2); x.lineTo(X + h - 2, Y + h); x.fill(); }
+        else if (mo === 'stella') { x.beginPath(); x.moveTo(X + h, Y + 1); x.lineTo(X + t - 1, Y + h); x.lineTo(X + h, Y + t - 1); x.lineTo(X + 1, Y + h); x.fill(); px(B, X, Y, 2, 2); px(B, X + t - 2, Y, 2, 2); px(B, X, Y + t - 2, 2, 2); px(B, X + t - 2, Y + t - 2, 2, 2); px(BG, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'croce') { px(A, X + h - 1, Y, 2, t); px(A, X, Y + h - 1, t, 2); px(B, X + h - 2, Y + h - 2, 4, 4); }
+        else if (mo === 'foglie') { x.beginPath(); x.ellipse(X + h, Y + h, h * .9, h * .35, PI / 4, 0, 7); x.fill(); x.beginPath(); x.ellipse(X + h, Y + h, h * .9, h * .35, -PI / 4, 0, 7); x.fill(); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'quadri') { x.strokeStyle = A; x.lineWidth = 1; x.strokeRect(X + 1.5, Y + 1.5, t - 3, t - 3); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'rombo') { x.beginPath(); x.moveTo(X, Y + h); x.lineTo(X + h, Y); x.lineTo(X + t, Y + h); x.lineTo(X + h, Y + t); x.fill(); x.fillStyle = BG; x.beginPath(); x.moveTo(X + 2, Y + h); x.lineTo(X + h, Y + 2); x.lineTo(X + t - 2, Y + h); x.lineTo(X + h, Y + t - 2); x.fill(); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'righe') { px(A, X, Y + 1, t, 1); px(B, X, Y + h - 1, t, 2); px(A, X, Y + t - 2, t, 1); }
+        else if (mo === 'denti') { for (let k = 0; k < t; k += 4) { x.beginPath(); x.moveTo(X + k, Y + t); x.lineTo(X + k + 2, Y + h); x.lineTo(X + k + 4, Y + t); x.fill(); } px(B, X, Y + 1, t, 1); }
+        else if (mo === 'liscio') { }
+        px('rgba(0,0,0,.28)', X, Y, t, 1); px('rgba(0,0,0,.28)', X, Y, 1, t);
+        if (r() < .08) px('rgba(255,255,240,.12)', X, Y, t, t); if (r() < .03) px('rgba(0,0,0,.25)', X + Math.floor(r() * t), Y + Math.floor(r() * t), 2, 1); };
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const ring = Math.min(i, j, nx - 1 - i, ny - 1 - j);
+        if (ring === 0 && nx > 6 && ny > 6) draw(i * t, j * t, 'liscio', a, b, shade(a, .9)); else if (ring === 1 && nx > 6 && ny > 6) draw(i * t, j * t, fascia, b, a, bg); else draw(i * t, j * t, motif, a, b, bg); }
+    } else if (st === 'seminato') {   // seminato veneziano: graniglia di marmi nel coccio, il filo d'ottone e la fascia scura lungo i muri
+      const base = pick(r, ['#c8a888', '#b89878', '#d4b898', '#a88c74', '#c0b0a0', '#b8786a']), dk = shade(base, .72); fill(base); chips(0, 0, cw, ch, base, .38);
+      const bw = m(.2), ins = m(.12); if (cw > bw * 4 && ch > bw * 4) { x.fillStyle = dk; x.fillRect(ins, ins, cw - ins * 2, bw); x.fillRect(ins, ch - ins - bw, cw - ins * 2, bw); x.fillRect(ins, ins, bw, ch - ins * 2); x.fillRect(cw - ins - bw, ins, bw, ch - ins * 2); chips(ins, ins, cw - ins * 2, bw, dk, .3); chips(ins, ch - ins - bw, cw - ins * 2, bw, dk, .3); chips(ins, ins, bw, ch - ins * 2, dk, .3); chips(cw - ins - bw, ins, bw, ch - ins * 2, dk, .3);
+        x.strokeStyle = '#c8a050'; x.lineWidth = 1; x.strokeRect(ins + bw + .5, ins + bw + .5, cw - (ins + bw) * 2 - 1, ch - (ins + bw) * 2 - 1); x.strokeRect(ins + .5, ins + .5, cw - ins * 2 - 1, ch - ins * 2 - 1); }
+      const g = x.createLinearGradient(0, 0, cw, ch); g.addColorStop(0, 'rgba(255,250,240,.10)'); g.addColorStop(.5, 'rgba(255,250,240,0)'); g.addColorStop(1, 'rgba(255,250,240,.07)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);   // la lucidatura
+    } else if (st === 'graniglia') {   // marmette di graniglia da 25 cm, a scacchi di due colori
+      const [A, B] = pick(r, [['#d8d0c0', '#5a5650'], ['#c8b8a0', '#9a6a5a'], ['#ccc4b4', '#7a8a7a'], ['#d0c8b8', '#b8a080']]), t = m(.25); fill('#6a645c');
+      for (let j = 0; j * t < ch; j++) for (let i = 0; i * t < cw; i++) { const col = (i + j) % 2 ? A : B; px(col, i * t, j * t, t - 1, t - 1); chips(i * t, j * t, t - 1, t - 1, col, .3); }
+    } else if (st === 'palladiana') {   // palladiana: schegge di marmo nel cemento
+      const cs = m(.28), gx = Math.ceil(cw / cs) + 2, gy = Math.ceil(ch / cs) + 2, P = []; fill(pick(r, ['#8a8478', '#7a5a4a', '#9a948a']));
+      for (let j = 0; j < gy; j++) { P.push([]); for (let i = 0; i < gx; i++) P[j].push([(i - .5 + (r() - .5) * .55) * cs, (j - .5 + (r() - .5) * .55) * cs]); }
+      const ins = (p, cpt) => [p[0] + (cpt[0] - p[0]) * .12, p[1] + (cpt[1] - p[1]) * .12];
+      for (let j = 0; j < gy - 1; j++) for (let i = 0; i < gx - 1; i++) { const a = P[j][i], b = P[j][i + 1], cc = P[j + 1][i + 1], d = P[j + 1][i], ce = [(a[0] + b[0] + cc[0] + d[0]) / 4, (a[1] + b[1] + cc[1] + d[1]) / 4];
+        if (r() < .35) { poly(pick(r, MARMI), [a, b, cc].map(p => ins(p, ce))); poly(pick(r, MARMI), [a, cc, d].map(p => ins(p, ce))); } else poly(pick(r, MARMI), [a, b, cc, d].map(p => ins(p, ce))); }
+      for (let k = 0; k < cw * ch * .05; k++) px('rgba(0,0,0,.08)', Math.floor(r() * cw), Math.floor(r() * ch));
+    } else if (st === 'esagonette') {   // esagonette di cotto
+      const R0 = m(.085), hw = R0 * Math.sqrt(3) / 2; fill('#5e3624');
+      for (let j = -1, row = 0; j * R0 * 1.5 < ch + R0; j++, row++) for (let i = -1; i * hw * 2 < cw + hw; i++) { const cx = i * hw * 2 + (row % 2 ? hw : 0), cy = j * R0 * 1.5, rr = R0 - .8; const col = pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c', '#bc7048']);
+        const P = []; for (let k = 0; k < 6; k++) { const an = PI / 6 + k * PI / 3; P.push([cx + Math.cos(an) * rr, cy + Math.sin(an) * rr]); } poly(col, P); if (r() < .3) { x.fillStyle = 'rgba(255,220,180,.1)'; x.beginPath(); x.arc(cx - 1, cy - 1, rr * .5, 0, 7); x.fill(); } }
+    } else if (st === 'cotto') {   // cotto da 30×15 a correre, la cera
+      const tw = m(.3), th = m(.15); fill('#5e3624');
+      for (let j = 0; j * th < ch; j++) for (let i = -1; i * tw < cw; i++) { const X = i * tw + (j % 2 ? tw / 2 : 0); bevel(Math.round(X), j * th, tw - 1, th - 1, pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c'])); }
+      const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .5); g.addColorStop(0, 'rgba(255,230,200,.12)'); g.addColorStop(1, 'rgba(255,230,200,0)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+    } else if (st === 'marmo') {   // lastre da 50 cm in diagonale, due marmi, la fascia nera
+      const [A, B] = pick(r, [['#e8e0d2', '#2a2622'], ['#e0d8cc', '#6a3a30'], ['#ece6dc', '#3a5a4a'], ['#d8cfc0', '#9a8a70']]), s = m(.5); fill(B);
+      x.save(); x.translate(cw / 2, ch / 2); x.rotate(PI / 4); const L0 = Math.hypot(cw, ch);
+      for (let j = -L0 / s; j < L0 / s; j++) for (let i = -L0 / s; i < L0 / s; i++) { x.fillStyle = (Math.abs(i + j) % 2) ? A : shade(A, .92); x.fillRect(i * s, j * s, s - 1, s - 1); }
+      x.restore();
+      for (let k = 0; k < cw * ch / 900; k++) { let X = r() * cw, Y = r() * ch; const dxv = r() * 2 - 1, dyv = r() * 2 - 1; for (let s2 = 0; s2 < 40; s2++) { px('rgba(90,80,70,.28)', Math.floor(X), Math.floor(Y)); X += dxv + r() - .5; Y += dyv + r() - .5; } }
+      const bw = m(.15); if (cw > bw * 5) { x.fillStyle = B; x.fillRect(0, 0, cw, bw); x.fillRect(0, ch - bw, cw, bw); x.fillRect(0, 0, bw, ch); x.fillRect(cw - bw, 0, bw, ch); }
+    } else if (st === 'scacchi') {
+      const [a, b] = pick(r, [['#d8d0c0', '#2a2a2e'], ['#c8b090', '#6a3a2a'], ['#e0d8c8', '#3a5a6a'], ['#d0c4a8', '#5a6a4a']]), s = m(.25); fill('#3a3632');
+      for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) { bevel(i * s, j * s, s - 1, s - 1, (i + j) % 2 ? a : b); if (r() < .05) px('rgba(0,0,0,.3)', i * s + Math.floor(r() * s), j * s + Math.floor(r() * s), 3, 1); }
+    } else if (st === 'piastrelle' || st === 'piastrelle_b') {
+      const s = m(.2), a = st === 'piastrelle' ? pick(r, ['#e4e0d6', '#d8dcd8', '#e8dcc8', '#dce4dc']) : pick(r, ['#5a7a9a', '#4a6a7a', '#6a8a8a', '#3a6a7a']); fill(shade(a, .62));
+      for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) bevel(i * s, j * s, s - 1, s - 1, r() < .04 ? shade(a, .8) : shade(a, .95 + r() * .08));
+    } else if (st === 'mosaico') {   // il mosaico del bagno anni '60: tessere da 2,5 cm
+      const pal = pick(r, [['#7ab0c8', '#5a90b0', '#a8d0e0', '#e8f0f0'], ['#e0a8b0', '#c88890', '#f0d8d8', '#ffffff'], ['#8ab08a', '#6a906a', '#c8e0c0', '#f0f0e8'], ['#e8d8b0', '#c8b080', '#a89060', '#f8f0e0']]), s = Math.max(2, m(.025)); fill('#d8d4cc');
+      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) px(pal[Math.floor(Math.pow(r(), 1.6) * pal.length)], i, j, s - 1, s - 1);
+    } else if (st === 'ceramica70') {   // ceramica anni '70 da 20 cm: i quarti di cerchio fanno i tondi
+      const [bg, a, b] = pick(r, C70), t = m(.2); fill(shade(bg, .7));
+      for (let j = 0; j * t < ch; j++) for (let i = 0; i * t < cw; i++) { const X = i * t, Y = j * t; px(bg, X, Y, t - 1, t - 1); const cx = X + ((i + j) % 2 ? 0 : t), cy = Y + (j % 2 ? 0 : t); x.save(); x.beginPath(); x.rect(X, Y, t - 1, t - 1); x.clip(); x.fillStyle = a; x.beginPath(); x.arc(cx, cy, t * .8, 0, 7); x.fill(); x.fillStyle = b; x.beginPath(); x.arc(cx, cy, t * .45, 0, 7); x.fill(); x.restore(); }
     } else if (st === 'linoleum') {
       const base = pick(r, LINO); fill(base);
-      for (let k = 0; k < cw * ch / 6; k++) px(shade(base, .9 + r() * .2), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      x.strokeStyle = shade(base, .8); for (let i = 16; i < cw; i += 32) { x.fillStyle = shade(base, .82); x.fillRect(i, 0, 1, ch); }
-    } else if (st === 'scacchi') {
-      const [a, b] = pick(r, [['#d8d0c0', '#2a2a2e'], ['#c8b090', '#6a3a2a'], ['#e0d8c8', '#3a5a6a'], ['#d0c4a8', '#5a6a4a']]), s = 8;
-      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) { px(((i + j) / s) % 2 ? a : b, i, j, s, s); if (r() < .06) px('rgba(0,0,0,.25)', i + Math.floor(r() * s), j + Math.floor(r() * s), 3, 1); }
-    } else if (st === 'piastrelle' || st === 'piastrelle_b') {
-      const s = st === 'piastrelle' ? 4 : 3, a = st === 'piastrelle' ? pick(r, ['#e4e0d6', '#d8dcd8', '#e8dcc8']) : pick(r, ['#5a7a9a', '#4a6a7a', '#6a8a8a']);
-      fill(shade(a, .72));
-      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) { px(r() < .04 ? shade(a, .6) : shade(a, .95 + r() * .08), i, j, s - 1, s - 1); }
-    } else if (st === 'graniglia') {
-      const base = pick(r, ['#c8b8a0', '#b8b0a4', '#c0a890']); fill(base);
-      for (let k = 0; k < cw * ch / 7; k++) px(pick(r, [shade(base, .85), shade(base, 1.1), shade(base, .92), '#9a8070', '#e8dcc8']), Math.floor(r() * cw), Math.floor(r() * ch));   // [design] graniglia fine e tenue, non coriandoli
-      x.fillStyle = shade(base, .6); x.fillRect(0, 0, cw, 3); x.fillRect(0, ch - 3, cw, 3); x.fillRect(0, 0, 3, ch); x.fillRect(cw - 3, 0, 3, ch);
-      for (let i = 0; i < cw; i += 16) px(shade(base, .75), i, 0, 1, ch); for (let j = 0; j < ch; j += 16) px(shade(base, .75), 0, j, cw, 1);
-    } else if (st === 'cotto') {
-      for (let j = 0; j < ch; j += 6) for (let i = 0; i < cw; i += 6) px(pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c']), i, j, 5, 5);
-      x.fillStyle = '#5e3624'; for (let i = 5; i < cw; i += 6) x.fillRect(i, 0, 1, ch); for (let j = 5; j < ch; j += 6) x.fillRect(0, j, cw, 1);
-    } else if (st === 'marmo') {
-      const base = pick(r, ['#ddd6ca', '#d0ccc4', '#e0d4c4']); fill(base);
-      for (let k = 0; k < cw * ch / 9; k++) px(shade(base, .88 + r() * .2), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      for (let k = 0; k < cw * ch / 300; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 22; s++) { px('rgba(90,80,70,.35)', Math.floor(X), Math.floor(Y)); X += r() * 2 - .6; Y += r() * 2 - 1; } }
-      x.fillStyle = shade(base, .7); for (let i = 0; i < cw; i += 16) x.fillRect(i, 0, 1, ch); for (let j = 0; j < ch; j += 16) x.fillRect(0, j, cw, 1);
-    } else if (st === 'moquette_r' || st === 'moquette_b') {
-      const base = st === 'moquette_r' ? pick(r, ['#6a1a24', '#7a2a2a', '#5a1420']) : pick(r, ['#1c2048', '#20183a', '#162438']); fill(base);
-      for (let j = 0; j < ch; j += 8) for (let i = 0; i < cw; i += 8) { px(shade(base, 1.35), i + 3, j + 1, 2, 1); px(shade(base, 1.35), i + 2, j + 2, 4, 1); px(shade(base, 1.35), i + 3, j + 3, 2, 1); if (st === 'moquette_b' && r() < .3) px(pick(r, ['#ff4fa3', '#35e6ff', '#ffd23b']), i + 6, j + 6); }
+      if (r() < .5) { const s = m(.3), b2 = shade(base, 1.18); for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) if ((i + j) % 2) px(b2, i * s, j * s, s, s); for (let j = 0; j < ch; j += s) px(shade(base, .7), 0, j, cw, 1); for (let i = 0; i < cw; i += s) px(shade(base, .7), i, 0, 1, ch); }
+      else for (let k = 0; k < cw * ch / 60; k++) { x.strokeStyle = `rgba(${r() < .5 ? '255,250,240' : '0,0,0'},${.05 + r() * .07})`; x.lineWidth = 1 + r() * 2; x.beginPath(); let X = r() * cw, Y = r() * ch; x.moveTo(X, Y); for (let s2 = 0; s2 < 4; s2++) { X += 4 + r() * 8; Y += (r() - .5) * 6; x.lineTo(X, Y); } x.stroke(); }
+    } else if (st === 'moquette_r' || st === 'moquette_b') {   // la moquette: il pelo e i medaglioni (d'albergo), i triangoli (della discoteca)
+      const base = st === 'moquette_r' ? pick(r, ['#6a1a24', '#7a2a2a', '#5a1420', '#2a3a5a']) : pick(r, ['#1c2048', '#20183a', '#162438']); fill(base);
+      for (let k = 0; k < cw * ch / 3; k++) px(shade(base, .8 + r() * .4), Math.floor(r() * cw), Math.floor(r() * ch));
+      const s = m(.6), acc = st === 'moquette_r' ? '#c8a050' : pick(r, ['#ff4fa3', '#35e6ff', '#f0e040']);
+      for (let j = 0; j * s < ch + s; j++) for (let i = 0; i * s < cw + s; i++) { const X = i * s + (j % 2 ? s / 2 : 0), Y = j * s;
+        if (st === 'moquette_r') { x.strokeStyle = acc; x.lineWidth = 1; x.beginPath(); x.moveTo(X, Y - s * .3); x.lineTo(X + s * .3, Y); x.lineTo(X, Y + s * .3); x.lineTo(X - s * .3, Y); x.closePath(); x.stroke(); px(shade(base, 1.5), X - 1, Y - 1, 3, 3); }
+        else { poly(acc + '55', [[X, Y], [X + s * .4, Y + s * .2], [X, Y + s * .4]]); } }
     } else if (st === 'terra') {
-      fill('#5a4a38'); for (let k = 0; k < cw * ch / 3; k++) px(pick(r, ['#4a3c2e', '#6a5844', '#7a6a50', '#3e3226', '#8a7a58']), Math.floor(r() * cw), Math.floor(r() * ch), 1 + Math.floor(r() * 2), 1);
+      fill('#5a4a38'); for (let k = 0; k < cw * ch / 2; k++) px(pick(r, ['#4a3c2e', '#6a5844', '#7a6a50', '#3e3226', '#8a7a58']), Math.floor(r() * cw), Math.floor(r() * ch), 1 + Math.floor(r() * 2), 1);
+      for (let k = 0; k < cw * ch / 300; k++) { const sx = Math.floor(r() * cw), sy = Math.floor(r() * ch), w = 2 + Math.floor(r() * 3); px(pick(r, ['#8a8478', '#6e6a62']), sx, sy, w, w - 1); px('rgba(0,0,0,.35)', sx, sy + w - 1, w, 1); }
     } else if (st === 'gomma') {
-      fill('#2a2c30'); for (let j = 0; j < ch; j += 3) px('#24262a', 0, j, cw, 1); x.fillStyle = '#c8a040'; x.fillRect(4, 4, cw - 8, 1); x.fillRect(4, ch - 5, cw - 8, 1);
-    } else {   // cemento
+      fill('#2a2c30'); for (let j = 0; j < ch; j += 3) px('#24262a', 0, j, cw, 1); for (let k = 0; k < cw * ch / 40; k++) px('#34363a', Math.floor(r() * cw), Math.floor(r() * ch), 2, 2); x.fillStyle = '#c8a040'; x.fillRect(m(.3), m(.3), cw - m(.6), 2); x.fillRect(m(.3), ch - m(.3), cw - m(.6), 2);
+    } else {   // cemento: lisciato a mano, i giunti ogni due metri, le macchie d'olio
       const base = pick(r, ['#6a6660', '#5e5c58', '#727068']); fill(base);
-      for (let k = 0; k < cw * ch / 5; k++) px(shade(base, .85 + r() * .3), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      for (let k = 0; k < cw * ch / 900 + 1; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 30; s++) { px('rgba(30,26,22,.5)', Math.floor(X), Math.floor(Y)); X += r() * 2 - 1; Y += r() * 2 - 1; } }
-      for (let k = 0; k < cw * ch / 1500 + 1; k++) { x.fillStyle = 'rgba(20,18,16,.3)'; x.beginPath(); x.ellipse(r() * cw, r() * ch, 3 + r() * 7, 2 + r() * 5, r() * 3, 0, 7); x.fill(); }
+      for (let k = 0; k < cw * ch / 4; k++) px(shade(base, .88 + r() * .24), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
+      for (let k = 0; k < cw * ch / 2000; k++) { x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = 3; x.beginPath(); const X = r() * cw, Y = r() * ch; x.arc(X, Y, 10 + r() * 20, r() * 6, r() * 6 + 1.5); x.stroke(); }   // la cazzuola
+      for (let i = m(2); i < cw; i += m(2)) px('rgba(20,18,16,.5)', i, 0, 1, ch); for (let j = m(2); j < ch; j += m(2)) px('rgba(20,18,16,.5)', 0, j, cw, 1);
+      for (let k = 0; k < cw * ch / 3000 + 1; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 60; s++) { px('rgba(30,26,22,.5)', Math.floor(X), Math.floor(Y)); X += r() * 2 - 1; Y += r() * 2 - 1; } }
+      for (let k = 0; k < cw * ch / 4000 + 1; k++) { x.fillStyle = 'rgba(20,18,16,.3)'; x.beginPath(); x.ellipse(r() * cw, r() * ch, 6 + r() * 14, 4 + r() * 10, r() * 3, 0, 7); x.fill(); }
     }
     // usura: polvere lungo i muri, macchie, il passaggio consumato in mezzo
     const d = q.dirt || .3;
-    x.fillStyle = `rgba(20,16,12,${.18 + d * .25})`; x.fillRect(0, 0, cw, 2); x.fillRect(0, ch - 2, cw, 2); x.fillRect(0, 0, 2, ch); x.fillRect(cw - 2, 0, 2, ch);
-    { const E = Math.round(.45 * PPM); [[0, 0, 0, E], [0, ch, 0, ch - E], [0, 0, E, 0], [cw, 0, cw - E, 0]].forEach(([a0, b0, a1, b1]) => { const g0 = x.createLinearGradient(a0, b0, a1, b1); g0.addColorStop(0, 'rgba(8,6,4,.4)'); g0.addColorStop(1, 'rgba(8,6,4,0)'); x.fillStyle = g0; x.fillRect(0, 0, cw, ch); }); }   // [vissuto] l'ombra lungo i muri
-    for (let k = 0; k < cw * ch / 400 * (.3 + d); k++) { x.fillStyle = `rgba(${r() < .5 ? '40,30,20' : '60,50,40'},${.08 + r() * .14 * (.5 + d)})`; x.beginPath(); x.ellipse(r() * cw, r() * ch, 2 + r() * 6, 1 + r() * 4, r() * 3, 0, 7); x.fill(); }
-    const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .6); g.addColorStop(0, 'rgba(255,240,220,.06)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+    x.fillStyle = `rgba(20,16,12,${.18 + d * .25})`; x.fillRect(0, 0, cw, 3); x.fillRect(0, ch - 3, cw, 3); x.fillRect(0, 0, 3, ch); x.fillRect(cw - 3, 0, 3, ch);
+    { const E = Math.round(.45 * F); [[0, 0, 0, E], [0, ch, 0, ch - E], [0, 0, E, 0], [cw, 0, cw - E, 0]].forEach(([a0, b0, a1, b1]) => { const g0 = x.createLinearGradient(a0, b0, a1, b1); g0.addColorStop(0, 'rgba(8,6,4,.35)'); g0.addColorStop(1, 'rgba(8,6,4,0)'); x.fillStyle = g0; x.fillRect(0, 0, cw, ch); }); }   // [vissuto] l'ombra lungo i muri
+    for (let k = 0; k < cw * ch / 2400 * (.3 + d); k++) { x.fillStyle = `rgba(${r() < .5 ? '40,30,20' : '60,50,40'},${.06 + r() * .12 * (.5 + d)})`; x.beginPath(); x.ellipse(r() * cw, r() * ch, 4 + r() * 14, 3 + r() * 9, r() * 3, 0, 7); x.fill(); }
+    // il passaggio consumato: dove si cammina il pavimento è più opaco e chiaro (fra porta e centro)
+    { const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.min(cw, ch) * .45); g.addColorStop(0, `rgba(255,245,230,${.03 + d * .05})`); g.addColorStop(1, 'rgba(255,245,230,0)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch); }
+    const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .6); g.addColorStop(0, 'rgba(255,240,220,.05)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
     // neve sciolta e impronte vicino all'ingresso
-    if (wet) { const [ex, ey] = wet; for (let k = 0; k < 40; k++) { const a = r() * 6.3, rr = r() * 26; x.fillStyle = r() < .7 ? 'rgba(30,34,40,.35)' : 'rgba(230,236,244,.5)'; x.fillRect(Math.floor(ex + Math.cos(a) * rr), Math.floor(ey + Math.sin(a) * rr), 2, 1 + Math.floor(r() * 2)); } }
+    if (wet) { const [ex, ey] = wet; for (let k = 0; k < 90; k++) { const a = r() * 6.3, rr = r() * 60; x.fillStyle = r() < .7 ? 'rgba(30,34,40,.35)' : 'rgba(230,236,244,.5)'; x.fillRect(Math.floor(ex + Math.cos(a) * rr), Math.floor(ey + Math.sin(a) * rr), 3, 1 + Math.floor(r() * 3)); } }
     return c;
+  }
+  // [regia] il rilievo: dalla luminosità della tela una normal map (le fughe, le venature, le schegge scendono; la luce delle lampade
+  // le fa vedere). k: quanto è forte.
+  const NCACHE = new WeakMap();
+  function normalOf(c, k) {
+    if (NCACHE.has(c)) return NCACHE.get(c);
+    const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data, out = mk(w, h), ox = out.getContext('2d'), im = ox.createImageData(w, h), d = im.data, L = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L[i] = (src[i * 4] * .3 + src[i * 4 + 1] * .59 + src[i * 4 + 2] * .11) / 255;
+    for (let y = 0; y < h; y++) for (let X = 0; X < w; X++) {
+      const xl = X ? X - 1 : X, xr = X < w - 1 ? X + 1 : X, yu = y ? y - 1 : y, yd = y < h - 1 ? y + 1 : y, dx = (L[y * w + xr] - L[y * w + xl]) * k, dy = (L[yd * w + X] - L[yu * w + X]) * k, l = Math.hypot(dx, dy, 1), i = (y * w + X) * 4;
+      d[i] = (-dx / l * .5 + .5) * 255; d[i + 1] = (dy / l * .5 + .5) * 255; d[i + 2] = (1 / l * .5 + .5) * 255; d[i + 3] = 255; }
+    ox.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(out); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; NCACHE.set(c, t); return t;
   }
 
   // =====================================================================================================================
   // PARETI (una tela per lato di muro: lunghezza × 2,9 m)
   // =====================================================================================================================
   const WALLH = 2.9;
+  const BATTI = { piastrelle: '#c8c4b8', mattoni: '#5a3a2a', cemento: '#5a5854', velluto: '#2a1014', nero: '#101014', ospedale: '#6a8a80', rosa: '#a86a7a', azzurro: '#4a7a90', perline: '#6a4a2a' };   // [regia] il colore del battiscopa
   const BICOL = { verde: ['#3e6a58', '#5a7a5e', '#4a6e6a'], blu: ['#3a5a7a', '#4a6488', '#36506a'], ocra: ['#b0884a', '#a87a40', '#c09450'], rosso: ['#7a2a2a', '#8a3430', '#6a2626'], crema: ['#8a6a48', '#7a5a3e', '#9a7a52'], ospedale: ['#8ab0a0', '#9cc0b0', '#86a8a0'], rosa: ['#d08aa0', '#c87a94', '#e0a0b0'], azzurro: ['#6aa0c0', '#7ab0c8', '#5a90b0'] };
   const PAPER = { fiori: ['#c8b08a', '#b4a080', '#a8b090', '#c0a0a0', '#a0a8b8', '#d0bc94'], righe: ['#b8a890', '#a8b0a0', '#c0a088', '#9aa8b0'], rombi: ['#a89a7a', '#b0a088', '#9a9a88', '#b89890'] };
   function wallStyleCanvas(style, lenM, seed, dirt) {
@@ -80962,9 +81164,9 @@ var InterniArte = (function () {
     const under = new THREE.Mesh(new THREE.PlaneGeometry(W + 400, H + 400), new THREE.MeshBasicMaterial({ color: '#06050a' })); under.rotation.x = -PI / 2; under.position.set(X0 + W / 2, BASE - .06, Y0 + H / 2); grp.add(under);
     // pavimenti
     F.rooms.forEach(q => {
-      const wet = f === 0 && L.ent && q.x <= L.ent.in[0] && L.ent.in[0] <= q.x + q.w && q.y <= L.ent.in[1] && L.ent.in[1] <= q.y + q.h ? [(L.ent.in[0] - q.x) * PPM, (L.ent.in[1] - q.y) * PPM] : null;
-      const t = tex(floorCanvas(q, rng((b.x * 17 + q.x * 3 + q.y * 7 + f * 101) >>> 0), wet));
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, roughness: Math.min(.95, (/marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85) - (q.dirt < .15 ? .2 : 0) + (q.dirt > .6 ? .1 : 0)), metalness: 0 }));   // [vissuto] lucido dove si pulisce
+      const wet = f === 0 && L.ent && q.x <= L.ent.in[0] && L.ent.in[0] <= q.x + q.w && q.y <= L.ent.in[1] && L.ent.in[1] <= q.y + q.h ? [(L.ent.in[0] - q.x) * FPM, (L.ent.in[1] - q.y) * FPM] : null;
+      const fc = floorCanvas(q, rng((b.x * 17 + q.x * 3 + q.y * 7 + f * 101) >>> 0), wet), t = tex(fc);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, normalMap: normalOf(fc, /parquet|assi|spina|quadrotte|moquette|linoleum/.test(q.floor) ? 2.2 : 4), normalScale: new THREE.Vector2(.9, .9), roughness: Math.min(.95, (/marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85) - (q.dirt < .15 ? .2 : 0) + (q.dirt > .6 ? .1 : 0)), metalness: 0 }));   // [vissuto] lucido dove si pulisce
       m.rotation.x = -PI / 2; m.position.set(q.x + q.w / 2, BASE + .01, q.y + q.h / 2); m.receiveShadow = true; grp.add(m);
     });
     // muri: quelli di fondo (perimetro dal lato lontano dalla camera) alti, gli altri bassi a sezione; ogni faccia ha la parete della sua stanza
@@ -80986,11 +81188,16 @@ var InterniArte = (function () {
         const th = perim ? WT : WT / 2, c = wallStyleCanvas(q.wall, len, ((q.x * 13 + q.y * 7) ^ (b.x * 3)) >>> 0, q.dirt || .3);
         const t = tex(c); t.repeat.set(1, ht / WALLH); t.offset.set(0, 0);
         const m = new THREE.Mesh(new THREE.BoxGeometry(vert ? th : len, ht, vert ? len : th), [M('#2a2226'), M('#2a2226'), capM, capM, M('#2a2226'), M('#2a2226')]);
-        const mat = new THREE.MeshStandardMaterial({ map: t, roughness: q.wall === 'piastrelle' ? .4 : .92 });
+        const mat = new THREE.MeshStandardMaterial({ map: t, normalMap: normalOf(c, q.wall === 'mattoni' || q.wall === 'perline' || q.wall === 'legno' ? 4 : 2.2), normalScale: new THREE.Vector2(.8, .8), roughness: q.wall === 'piastrelle' ? .4 : .92 });   // [regia] il rilievo
         // la faccia giusta: per i muri verticali ±x (indici 0/1), per gli orizzontali ±z (4/5)
         const mats = m.material.slice(); if (vert) { mats[0] = mat; mats[1] = mat; } else { mats[4] = mat; mats[5] = mat; } m.material = mats;
         const off = perim ? 0 : sgn * WT / 4;
         m.position.set(x + ww / 2 + (vert ? off : 0), BASE + ht / 2, y + hh / 2 + (vert ? 0 : off)); m.castShadow = true; m.receiveShadow = true; grp.add(m);
+        // [regia] il battiscopa e (sui muri alti) la cornice sotto il soffitto: la parete non è più un cartone dipinto
+        { const fx = x + ww / 2 + (vert ? off + sgn * (th / 2 + .012) : 0), fz = y + hh / 2 + (vert ? 0 : off + sgn * (th / 2 + .012)), bc = BATTI[q.wall] || '#4a3426';
+          const bs = new THREE.Mesh(bgeo(vert ? .025 : len, .1, vert ? len : .025), M(bc, { roughness: .6 })); bs.position.set(fx, BASE + .05, fz); bs.receiveShadow = true; grp.add(bs);
+          if (tall && !/piastrelle|mattoni|cemento|nero/.test(q.wall)) { const cr = new THREE.Mesh(bgeo(vert ? .06 : len, .09, vert ? len : .06), M(shade('#e8e0d0', .9 + (q.dirt || 0) * -.2), { roughness: .8 })); cr.position.set(fx + (vert ? sgn * .02 : 0), BASE + WALLH - .06, fz + (vert ? 0 : sgn * .02)); grp.add(cr);
+            const cr2 = new THREE.Mesh(bgeo(vert ? .03 : len, .04, vert ? len : .03), M('#d8d0c0', { roughness: .8 })); cr2.position.set(fx, BASE + WALLH - .14, fz); grp.add(cr2); } }
       });
       if (!tall) { const cap = new THREE.Mesh(bgeo(ww + .02, .04, hh + .02), capM); cap.position.set(x + ww / 2, BASE + ht + .02, y + hh / 2); grp.add(cap); }
     });
