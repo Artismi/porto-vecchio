@@ -28591,7 +28591,9 @@ var World = (function () {
     if (!A) return W; A.lido = out;
     const sab = (x, y) => { const i = Math.floor(y / TS) * GWx + Math.floor(x / TS); return g[i] === T.SAND; };
     const qa = (x, y) => { const tx = x / TS, ty = y / TS, i = Math.floor(tx), j = Math.floor(ty), u = tx - i, v = ty - j; return W.quotaRiva(i, j) * (1 - u) * (1 - v) + W.quotaRiva(i + 1, j) * u * (1 - v) + W.quotaRiva(i, j + 1) * (1 - u) * v + W.quotaRiva(i + 1, j + 1) * u * v; };
-    const tuttaSabbia = (x, y, r) => { for (let b = -r; b <= r; b += .5) for (let a = -r; a <= r; a += .5) if (a * a + b * b <= r * r && !sab(x + a, y + b)) return false; return true; };
+    const RDL = (W.roads || []).filter(rd => rd.pts && rd.pts.length > 1 && !rd.rect && rd.pts.some(([px, py]) => px > X0 - 20 && px < X1 + 20 && py > Y0 - 20 && py < Y1 + 20));
+    const dStr = (x, y) => { let b = 1e9; RDL.forEach(rd => { const P = rd.pts; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)); b = Math.min(b, Math.hypot(x - ax - ex * t, y - ay - ey * t) - rd.w / 2 - 2.4); } }); return b; };   // fuori dal marciapiede
+    const tuttaSabbia = (x, y, r) => { if (dStr(x, y) < r) return false; for (let b = -r; b <= r; b += .5) for (let a = -r; a <= r; a += .5) if (a * a + b * b <= r * r && !sab(x + a, y + b)) return false; return true; };
     const mare = (x, y) => { const e = .7, gx = W.inland(x + e, y) - W.inland(x - e, y), gy = W.inland(x, y + e) - W.inland(x, y - e), L = Math.hypot(gx, gy) || 1; return [-gx / L, -gy / L]; };   // verso l'acqua
     const pont = (W.SEA.structs || []).find(st => st.id === 'pontile_lido'), PX = pont ? pont.pts[0][0] : 1444;
     const bagni = (W.SEA.swim || []).filter(q => q.shore && q.x > X0 - 10 && q.x < X1 + 10).map(q => q.shore);
@@ -28608,7 +28610,7 @@ var World = (function () {
     metti('ombrelloni', 1.6, .5, 1.2, [1424, 1420, 1428, 1416]);
     metti('sdraio', 1.1, .5, 1.2, [1416, 1412, 1420, 1452]);
     metti('sdraio', 1.1, .5, 1.2, [1455, 1458, 1462, 1420]);
-    metti('pattino', 1.8, .15, .6, [1452, 1456, 1428, 1460]);
+    metti('pattino', 1.8, .05, .8, [1452, 1456, 1428, 1460, 1432, 1448, 1424, 1436]);
     metti('barca', 1.6, .15, .7, [1412, 1416, 1420], { col: 0 });
     metti('barca', 1.6, .15, .7, [1462, 1466, 1418, 1424], { col: 1 });
     metti('doccia', .6, .8, 1.6, [1432, 1428, 1448, 1436]);
