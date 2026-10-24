@@ -57881,7 +57881,7 @@ var PuliziaRumore = (function () {
       const B = e.B, assi = [[B.c, -B.s], [B.s, B.c]];
       for (const s of [.5, 1, 1.5, 2, 2.5, 3, 4]) for (const [ux, uz] of assi) for (const sg of [1, -1]) { const dx = ux * s * sg, dz = uz * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); A.sposta(e, dx, dy, dz);
         if (!copre(e, A.viol(e, I)).length && !A.inCasa(e) && nx(e) === 0) { A.rimetti(I, e); conta(az.spostati, 'pezzo:' + (e.tipo || e.src)); return; } A.sposta(e, -dx, -dy, -dz); }
-      if (e.tipo === 'edicola_votiva') { A.togli(e); conta(az.tolti, 'coperta:edicola_votiva'); return; }   // il decoro piccolo che non trova un altro posto se ne va
+      if (e.tipo === 'edicola_votiva' || (!e.tipo && e.src === 'soglie')) { A.togli(e); conta(az.tolti, 'coperta:' + (e.tipo || 'pensilina')); return; }   // il decoro piccolo, o la pensilina da stazione posata a caso su uno slargo, che non trova un altro posto se ne va
       conta(az.tenuti, 'coperta:' + (e.tipo || e.src)); });
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
