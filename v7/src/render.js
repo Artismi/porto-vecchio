@@ -54,7 +54,7 @@ var Render = (function () {
   function smooth2o(o) { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
       for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
         for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
-          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
+          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { if (!t.userData.f2) t.userData.f2 = [t.magFilter, t.minFilter, t.generateMipmaps, t.anisotropy];   /* [anelli] i filtri di prima: le pile delle case fuse dopo li leggono (come quelle fuse nel caricamento) */ t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
         } }   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
   function smooth2(root) { root.traverse(smooth2o); root.traverse(thin2); }
   // [fluido] GIRI DELLA SCENA A RATE: chi deve riguardare ogni oggetto della città (~30.000) lo fa a pezzi, n oggetti per fotogramma,
@@ -276,7 +276,7 @@ var Render = (function () {
   function incl1(s) { return s.replace(/^[ \t]*#include +<([\w\d./]+)>/gm, (m, i) => incl1(THREE.ShaderChunk[i] || '')); }
   const ARRRE1 = /texture2D\(\s*map\s*,/g;
   function arrKey1(t) {
-    const im = t.userData.lm0 || t.image; return [im.width, im.height, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.encoding, t.flipY, t.generateMipmaps, t.format, t.type, t.unpackAlignment,
+    const im = t.userData.lm0 || t.image, f2 = t.userData.f2 || [t.magFilter, t.minFilter, t.generateMipmaps, t.anisotropy]; return [im.width, im.height, t.wrapS, t.wrapT, f2[0], f2[1], f2[3], t.encoding, t.flipY, f2[2], t.format, t.type, t.unpackAlignment,
       t.offset.x, t.offset.y, t.repeat.x, t.repeat.y, t.rotation, t.center.x, t.center.y, t.matrixAutoUpdate, t.matrixAutoUpdate ? '' : t.matrix.elements.join(',')].join('|');
   }
   function arrOk1(m, sig) {
@@ -307,8 +307,9 @@ var Render = (function () {
   }
   function arrTex1(a) {
     const t0 = a.src, tx = new THREE.DataArrayTexture(arrFill1(a), a.W, a.H, a.maps.length);
-    tx.format = THREE.RGBAFormat; tx.type = THREE.UnsignedByteType; tx.wrapS = t0.wrapS; tx.wrapT = t0.wrapT; tx.magFilter = t0.magFilter; tx.minFilter = t0.minFilter; tx.anisotropy = t0.anisotropy;
-    tx.encoding = t0.encoding; tx.generateMipmaps = t0.generateMipmaps; tx.flipY = false; tx.premultiplyAlpha = false; tx.unpackAlignment = t0.unpackAlignment;
+    const f2 = t0.userData.f2 || [t0.magFilter, t0.minFilter, t0.generateMipmaps, t0.anisotropy];   // [anelli] i filtri di prima di [plastica2]
+    tx.format = THREE.RGBAFormat; tx.type = THREE.UnsignedByteType; tx.wrapS = t0.wrapS; tx.wrapT = t0.wrapT; tx.magFilter = f2[0]; tx.minFilter = f2[1]; tx.anisotropy = f2[3];
+    tx.encoding = t0.encoding; tx.generateMipmaps = f2[2]; tx.flipY = false; tx.premultiplyAlpha = false; tx.unpackAlignment = t0.unpackAlignment;
     tx.onUpdate = () => { tx.image.data = null; };   // caricata sulla scheda video: la copia in memoria non serve più (le tele restano)
     tx.needsUpdate = true; a.tex = tx; a.u = { value: tx };
     // la mappa finta del materiale comune: 1 px, la stessa trasformazione delle uv e la stessa codifica
@@ -333,6 +334,8 @@ var Render = (function () {
       sh.fragmentShader = f.replace(ARRRE1, 'mapA1(').replace('void main() {', 'uniform highp sampler2DArray uArr1; varying float vLay1;\nvec4 mapA1(vec2 u) { return texture(uArr1, vec3(u, floor(vLay1 + .5))); }\nvec4 mapA1(vec2 u, float b) { return texture(uArr1, vec3(u, floor(vLay1 + .5)), b); }\nvoid main() {');
       if (!n0) console.warn('[leggero] pila: nessuna lettura della mappa', key); }
   }
+  // [anelli] il retino della sfumatura dalla sagoma (vFdA: il quarto canale di FD1, 0 di norma: non scarta niente)
+  const ANRET1 = typeof Anelli !== 'undefined' ? Anelli.RETINO : 'float an1D() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); }';
   function fadeMat1(m, pal, arr, vt, tr) {   // il materiale comune di un gruppo di case: lo stesso di prima, col retino per casa
     const key = (tr ? 'TR|' : '') + (vt || (pal ? palSig1(matSig1(m)) + '|pal1' : matSig1(m))).replace(arr ? /\|map:[0-9A-Fa-f-]+/ : /$^/, '') + (arr ? '|A' + arr.id : ''); let c = FD1.canon.get(key); if (c) return c;
     c = m.clone(); if (m.userData.plaster) plasterize(c); else if (m.userData.mondo) animMat(c, m.userData.mondo);
@@ -340,15 +343,15 @@ var Render = (function () {
     if (arr) c.map = arr.dummy;   // [leggero] la mappa vera la dà la pila
     if (vt) PesoVetro.prepara(c);   // [peso] colore, emissivo, ruvidità e metallo dalla tavolozza dei vetri (peso_vetro.js)
     const prev = c.onBeforeCompile, pk = c.customProgramCacheKey;
-    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '') + (vt ? '|vt1' : '');
+    c.customProgramCacheKey = () => pk.call(c) + '|fd1|vs3|an1' + (pal ? '|pal1' : '') + (arr ? '|arr1' : '') + (vt ? '|vt1' : '');
     // [visuale3] la stessa tessitura porta la quota del taglio della casa (verde e blu, 16 bit): sopra si scarta; appena sotto, sulle facce
     // che guardano la camera, il filo chiaro della sezione (VIS3.filo: larghezza e colore)
     c.onBeforeCompile = function (sh, r) { prev.call(c, sh, r); sh.uniforms.uFd1 = FD1.u; sh.uniforms.uFilo3 = VIS3.filo;
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nattribute float bId1; uniform sampler2D uFd1; varying float vFd1; varying float vFdY; varying float vFdW;`)
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\nattribute float bId1; uniform sampler2D uFd1; varying float vFd1; varying float vFdY; varying float vFdW; varying float vFdA;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>\n{ vec4 fd = texture2D(uFd1, vec2((bId1 + .5) / ${FD1.W}., .5)); vFd1 = fd.r; float cq = floor(fd.g * 255. + .5) * 256. + floor(fd.b * 255. + .5);
-          vFdY = cq > .5 ? cq / 100. - 50. : 1e5; vFdW = (modelMatrix * vec4(transformed, 1.)).y; }`);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vFd1; varying float vFdY; varying float vFdW; uniform vec4 uFilo3;`)
-        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\nif (vFd1 > .5 || vFdW > vFdY) discard;`)
+          vFdY = cq > .5 ? cq / 100. - 50. : 1e5; vFdW = (modelMatrix * vec4(transformed, 1.)).y; vFdA = fd.a; }`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying float vFd1; varying float vFdY; varying float vFdW; uniform vec4 uFilo3; varying float vFdA;\n${ANRET1}`)
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>\nif (vFd1 > .5 || vFdW > vFdY || vFdA > an1D()) discard;`)
         .replace('#include <dithering_fragment>', `#include <dithering_fragment>\nif (vFdW > vFdY - uFilo3.x && gl_FrontFacing) gl_FragColor.rgb = mix(gl_FragColor.rgb, uFilo3.yzw * .8, .8);`);
       injPalArr1(sh, pal, arr, key); if (vt) PesoVetro.inietta(sh); };   // [leggero] [peso]
     if (!tr) { c.transparent = false; c.opacity = 1; c.depthWrite = true; } c.needsUpdate = true;   // [peso] i trasparenti (decalcomanie, vetrine) restano trasparenti
@@ -359,24 +362,53 @@ var Render = (function () {
   // trasparenti come prima (la casa che si dissolve le ritrova come le altre). ?nopesotrasp: come prima; window.__pesoAB.trasp per il banco
   const PESOTR = { on: LEGGERO && !/[?&]nopeso(trasp)?\b/.test(typeof location !== 'undefined' ? location.search : ''), list: [] };
   if (typeof window !== 'undefined') (window.__pesoAB = window.__pesoAB || {}).trasp = v => PESOTR.list.forEach(([m, srcs]) => { m.visible = v; srcs.forEach(o => { o.visible = !v; }); });
+  // [anelli] LA FUSIONE A SETTORI. Le case fuori dall'anello vicino (Anelli.CFG.vicino dal punto di partenza) non si fondono nel
+  // caricamento: escono dalla scena (nessuno le disegna, la scheda video non le riceve) e al loro posto c'è la sagoma (massa1); i
+  // lavori di Anelli le fondono un settore alla volta (lo stesso settore di SETT1, dal centro della casa), a pezzi dentro il tetto di
+  // tempo, e la casa vera prende il posto della sagoma col retino (FD1, il quarto canale: 255 la sagoma, 0 la casa). Con ?tutto (e nello
+  // Studio) come prima: tutto qui, nessuna sagoma, il quarto canale resta 0 e lo shader non scarta niente. I secchi sono gli stessi
+  // (la chiave ha il settore), cambiano solo le pile delle mappe (un settore fa le sue) e il numero della tavolozza: gli stessi texel.
+  const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false };
+  const ANL1 = () => typeof Anelli !== 'undefined' && Anelli.ON;
+  const okGeo1 = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
+  function fus1Rec(top) { const rec = top.userData.fgRec1 || (top.userData.pesoBot && FU1.recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || FU1.isLive(top)) return null; return rec; }
+  function recCtr1(rec) { const g = rec.geo; if (g) return [g.x0 + g.w / 2, g.z0 + g.d / 2]; if (rec.box3) return [(rec.box3.min.x + rec.box3.max.x) / 2, (rec.box3.min.z + rec.box3.max.z) / 2]; const b = rec.b || {}; return [((b.x || 0) + (b.w || 0) / 2) * TS, ((b.y || 0) + (b.h || 0) / 2) * TS]; }
   function fusione1() {
     const before = (() => { let n = 0; scene.traverse(o => { if (o.isMesh) n++; }); return n; })();
     const live = liveSet1(), isLive = o => { for (let q = o; q && q !== scene; q = q.parent) if (live.objs.has(q)) return true; return false; };
     dyn.buildings.forEach((rec, i) => FD1.idx.set(rec, i));
     FD1.W = 1; while (FD1.W < dyn.buildings.length + 1) FD1.W *= 2;
     FD1.data = new Uint8Array(FD1.W * 4); FD1.tex = new THREE.DataTexture(FD1.data, FD1.W, 1, THREE.RGBAFormat); FD1.tex.needsUpdate = true; FD1.u.value = FD1.tex;
-    const B = new Map(), SH = new Map(), moved = [];
-    const okGeo = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
-    const recOf1 = new Map(dyn.buildings.map(r => [r.b, r]));   // [peso] i fronti delle botteghe ritrovano la loro casa
-    scene.children.slice().forEach(top => {
-      const rec = top.userData.fgRec1 || (top.userData.pesoBot && recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || isLive(top)) return;
+    FU1.live = live; FU1.isLive = isLive; FU1.recOf1 = new Map(dyn.buildings.map(r => [r.b, r]));   // [peso] i fronti delle botteghe ritrovano la loro casa
+    FU1.tot = { prima: before, secchi: 0, spostate: 0, ombre: 0 };
+    let ora = scene.children.slice();
+    if (ANL1()) {   // [anelli] le case lontane aspettano il loro settore
+      const P = FU1.st && FU1.st.player ? [FU1.st.player.x, FU1.st.player.y] : [cam.x, cam.y], R = Anelli.CFG.vicino; ora = [];
+      scene.children.slice().forEach(top => { const rec = fus1Rec(top); if (!rec) { ora.push(top); return; } const c = recCtr1(rec); if (Math.hypot(c[0] - P[0], c[1] - P[1]) < R) { ora.push(top); return; }
+        const i = Math.floor(c[0] / SETT1), j = Math.floor(c[1] / SETT1), k = i + ',' + j; let S = FU1.att.get(k);
+        if (!S) FU1.att.set(k, S = { k, tops: [], recs: new Set(), x: (i + .5) * SETT1, z: (j + .5) * SETT1 });
+        S.tops.push(top); S.recs.add(rec); scene.remove(top); FD1.data[FD1.idx.get(rec) * 4 + 3] = 255; });
+    }
+    const it = fus1Gen(ora, false); let r; do r = it.next(); while (!r.done);
+    let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
+    window.__fusione1 = { prima: before, dopo: after, secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, materiali: FD1.canon.size, ombre: FU1.tot.ombre, tavolozza: PAL1.col.length, pile: ARR1.all.length, strati: ARR1.all.reduce((n, a) => n + a.maps.length, 0), settoriDopo: FU1.att.size };
+    if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
+    if (FU1.att.size) massa1();
+  }
+  // la fusione di un gruppo di case (tutte nel caricamento, o un settore per volta): a pezzi se aPezzi (cede il passo con Anelli.scaduto())
+  function* fus1Gen(tops, aPezzi) {
+    const B = new Map(), SH = new Map(), moved = [], live = FU1.live, made = [];
+    const p0 = PAL1.col.length, v0 = window.PesoVetro ? PesoVetro.voci : 0;
+    for (const top of tops) {
+      const rec = fus1Rec(top); if (!rec) continue;
       const bi = FD1.idx.get(rec); top.updateMatrixWorld(true);
-      top.traverse(o => {
-        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.customDepthMaterial || o.userData.keep) return;   // [peso] l'ordine di disegno lo guarda la riga sotto
+      const L = []; top.traverse(o => L.push(o));
+      for (const o of L) {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.visible || o.customDepthMaterial || o.userData.keep) continue;   // [peso] l'ordine di disegno lo guarda la riga sotto
         const m = o.material, tr = PESOTR.on && m.transparent && (m.userData.keepTr || !(rec.__ms1 || (rec.__ms1 = new Set(rec.mats || []))).has(m));   // (o trasparenti per sempre: fuori dai materiali che la casa che sbiadisce tocca)   // [peso] le decalcomanie e i vetri delle vetrine (sempre trasparenti): un secchio per settore
-        if ((m.transparent || m.userData.keepTr) && !tr) return; if (live.mats.has(m) || !okGeo(o.geometry) || isLive(o)) return;
-        if (o.renderOrder && !tr) return;
-        const sig = matSig1(m); if (!sig) return;
+        if ((m.transparent || m.userData.keepTr) && !tr) continue; if (live.mats.has(m) || !okGeo1(o.geometry) || FU1.isLive(o)) continue;
+        if (o.renderOrder && !tr) continue;
+        const sig = matSig1(m); if (!sig) continue;
         const g = flatXf(o.geometry, o.matrixWorld);   // [carico]
         g.computeBoundingBox(); g.boundingBox.getCenter(_wp);   // il settore dal centro vero (i gruppi delle case stanno tutti in 0,0)
         const vt = !tr && window.PesoVetro && LEGGERO ? PesoVetro.ok(m, sig, renderer) : null;   // [peso] i vetri: un secchio, i quattro valori nella loro tavolozza
@@ -386,14 +418,16 @@ var Render = (function () {
         let b = B.get(key); if (!b) B.set(key, b = { m, geos: [], cast: o.castShadow, rec: o.receiveShadow, pal, arr: al ? al[0] : null, vt, tr, ro: o.renderOrder, srcs: tr ? [] : null });
         if (tr) b.srcs.push(o);
         g.__bi1 = bi; g.__src1 = o; if (vt) g.__vt1 = PesoVetro.idx(m); if (pal) g.__pal1 = palIdx1(m.color); if (al) g.__lay1 = al[1]; b.geos.push(g); moved.push(o); (rec.mv1 || (rec.mv1 = [])).push(o);
-      });
-    });
+        if (aPezzi && Anelli.scaduto()) yield;
+      }
+    }
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
-    if (PAL1.col.length) palTex1();   // [leggero]
-    if (window.PesoVetro) PesoVetro.tessitura();   // [peso]
-    ARR1.all.forEach(a => { if (!a.tex) arrTex1(a); });   // [leggero] le pile delle mappe
-    B.forEach(b => {
+    if (PAL1.col.length && (!aPezzi || PAL1.col.length !== p0 || !PAL1.u.value)) palTex1();   // [leggero]
+    if (window.PesoVetro && (!aPezzi || PesoVetro.voci !== v0)) PesoVetro.tessitura();   // [peso]
+    for (const a of ARR1.all) if (!a.tex) { arrTex1(a); if (aPezzi && Anelli.scaduto()) yield; }   // [leggero] le pile delle mappe
+    for (const b of B.values()) {
       let n = 0; b.geos.forEach(g => { n += g.attributes.position.count; });
+      if (aPezzi) while (!Anelli.carica(n)) yield Anelli.ASPETTA;   // [anelli] la scheda video riceve pochi vertici nuovi per fotogramma
       // [memoria] il numero della casa in 16 bit invece di 32 (la scheda video lo legge comunque come numero)
       const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2), id = new Uint16Array(n); let k = 0;
       const srcs = [];
@@ -404,23 +438,75 @@ var Render = (function () {
       if (b.arr) { const la = new Uint8Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; la.fill(g.__lay1, q, q + c); q += c; }); geo.setAttribute('lay1', new THREE.BufferAttribute(la, 1)); }   // [leggero] lo strato della mappa
       if (b.vt) { const va = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; va.fill(g.__vt1, q, q + c); q += c; }); geo.setAttribute('vt1', new THREE.BufferAttribute(va, 1)); }   // [peso] la voce del vetro
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
-      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt, b.tr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
+      const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt, b.tr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh); made.push(mesh);
       if (window.LeggeraMem) LeggeraMem.compatta(geo, mesh, mesh.material);   // [leggera] sul telefono: 16 bit, mezza precisione, indice
       if (b.tr) { mesh.renderOrder = b.ro; PESOTR.list.push([mesh, b.srcs]); }   // [peso]
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
-      if (b.cast) { const sk = b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, geos: [] }); q.geos.push(geo); } });
+      if (b.cast) { const sk = b.m.side + '|' + b.m.shadowSide; let q = SH.get(sk); if (!q) SH.set(sk, q = { side: b.m.side, ss: b.m.shadowSide, geos: [] }); q.geos.push(geo); }
+      FU1.tot.secchi++;
+      if (aPezzi && Anelli.scaduto()) yield;
+    }
     // l'ombra delle case: la texture non conta, quindi tutte le parti di un settore di 48 m fanno ombra con una mesh sola,
     // su un livello (layer 1) che vedono solo le camere delle ombre
     // [memoria] la sagoma d'ombra usa la stessa posizione della mesh fusa (stesso buffer anche sulla scheda video): prima era una
     // copia di tutti i vertici delle case, quasi 100 MB. Una sagoma per mesh fusa (le fuori dalla camera dell'ombra si scartano)
-    SH.forEach(q => { const mat = new THREE.MeshBasicMaterial({ side: q.side, shadowSide: q.ss, colorWrite: false });
+    SH.forEach((q, sk) => { let mat = FU1.shMat.get(sk); if (!mat) FU1.shMat.set(sk, mat = new THREE.MeshBasicMaterial({ side: q.side, shadowSide: q.ss, colorWrite: false }));   // [anelli] un materiale per lato, per tutti i settori
       q.geos.forEach(fg => { const geo = new THREE.BufferGeometry(); geo.setAttribute('position', fg.attributes.position); geo.boundingSphere = fg.boundingSphere; geo.boundingBox = fg.boundingBox;
         if (fg.index) geo.setIndex(fg.index);   // [leggera] la fusa compattata: lo stesso indice e la stessa scatola
-        const sm1 = new THREE.Mesh(geo, mat); if (fg.userData.lmXf) { sm1.position.copy(fg.userData.lmXf.c); sm1.scale.setScalar(fg.userData.lmXf.h); } sm1.castShadow = true; sm1.receiveShadow = false; sm1.layers.set(1); sm1.userData.ombra1 = true; scene.add(sm1); }); });
+        const sm1 = new THREE.Mesh(geo, mat); if (fg.userData.lmXf) { sm1.position.copy(fg.userData.lmXf.c); sm1.scale.setScalar(fg.userData.lmXf.h); } sm1.castShadow = true; sm1.receiveShadow = false; sm1.layers.set(1); sm1.userData.ombra1 = true; scene.add(sm1); made.push(sm1); FU1.tot.ombre++; }); });
     moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1));
-    let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
-    window.__fusione1 = { prima: before, dopo: after, secchi: B.size, spostate: moved.length, materiali: FD1.canon.size, ombre: SH.size, tavolozza: PAL1.col.length, pile: ARR1.all.length, strati: ARR1.all.reduce((n, a) => n + a.maps.length, 0) };
-    if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
+    FU1.tot.spostate += moved.length;
+    return made;
+  }
+  // [anelli] LA SAGOMA: le case che aspettano il loro settore, come volumi (la scatola della casa, girata come la casa) col colore del muro,
+  // il lastrico o il tetto un po' più scuri; una mesh sola. Il quarto canale di FD1 dice quanto si vede ancora (255 tutta, 0 niente): la
+  // casa vera scarta i pixel dove la sagoma li tiene, e viceversa (lo stesso retino, Anelli.RETINO)
+  function massa1() {
+    const pos = [], col = [], nor = [], ids = [], C = new THREE.Color(), G2 = new THREE.Color('#9a948c'), Rf = new THREE.Color();
+    FU1.att.forEach(S => S.recs.forEach(rec => { const g = rec.geo, b = rec.b; if (!g || !b || !(g.w > 0) || !(g.d > 0) || !(g.H > 0)) return;
+      const bi = FD1.idx.get(rec), a = rec.tier ? 0 : rotOf(b), cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS, ca = Math.cos(-a), sa = Math.sin(-a);
+      C.set(b.__wallHex || (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || '#b8a890').lerp(G2, .35); Rf.copy(C).multiplyScalar(b.deco ? .78 : .62);
+      const X = [g.x0, g.x0 + g.w], Z = [g.z0, g.z0 + g.d], Y = [g.y0, g.y0 + g.H];
+      const P = (xi, yi, zi) => { const x = X[xi] - cx, z = Z[zi] - cz; return [cx + x * ca + z * sa, Y[yi], cz - x * sa + z * ca]; };   // come rotRec: Ry(-a) attorno al centro della casa
+      const quad = (p0, p1, p2, p3, n, c) => { [p0, p1, p2, p0, p2, p3].forEach(p => { pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]); col.push(c.r, c.g, c.b); ids.push(bi); }); };
+      const rn = (x, z) => [x * ca + z * sa, 0, -x * sa + z * ca];
+      quad(P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(0, 1, 1), rn(0, 1), C); quad(P(1, 0, 0), P(0, 0, 0), P(0, 1, 0), P(1, 1, 0), rn(0, -1), C);
+      quad(P(1, 0, 1), P(1, 0, 0), P(1, 1, 0), P(1, 1, 1), rn(1, 0), C); quad(P(0, 0, 0), P(0, 0, 1), P(0, 1, 1), P(0, 1, 0), rn(-1, 0), C);
+      quad(P(0, 1, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0), [0, 1, 0], Rf); }));
+    if (pos.length) {
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('bId1', new THREE.BufferAttribute(new Uint16Array(ids), 1)); geo.computeBoundingSphere();
+      const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+      mat.onBeforeCompile = sh => { sh.uniforms.uFd1 = FD1.u;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float bId1; uniform sampler2D uFd1; varying float vFdA;').replace('#include <begin_vertex>', `#include <begin_vertex>\nvFdA = texture2D(uFd1, vec2((bId1 + .5) / ${FD1.W}., .5)).a;`);
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vFdA;\n' + Anelli.RETINO).replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (vFdA <= an1D()) discard;'); };
+      mat.customProgramCacheKey = () => 'massa1|' + FD1.W;
+      const m = new THREE.Mesh(geo, mat); m.name = 'massa1'; m.userData.keep = true; m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false; scene.add(m); FU1.massa = m;
+    }
+    // i lavori: un settore per lavoro, dal centro del settore
+    FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, telefono: false, gen: fus1Settore(S) }));
+    FU1.sig = !!(window.LeggeraMem && LeggeraMem.on('firme'));
+  }
+  // [anelli] a ogni fotogramma: dove guarda la camera (il punto a terra e la direzione), fin dove arriva la nebbia, quanto si corre
+  const ANT1 = { x: null, z: null, v: 0, dir: new THREE.Vector3() };
+  function anelliTick1(ui, dt) {
+    if (typeof Anelli === 'undefined' || !Anelli.ON) return;
+    dt = Math.max(.001, dt || .016); const x = cam.x, z = cam.y;
+    if (ANT1.x !== null) { const v = Math.hypot(x - ANT1.x, z - ANT1.z) / dt; if (v < 80) ANT1.v += (v - ANT1.v) * .08; }   // la velocità della camera, smussata (un salto del teletrasporto non conta)
+    ANT1.x = x; ANT1.z = z; camera.getWorldDirection(ANT1.dir); const L = Math.hypot(ANT1.dir.x, ANT1.dir.z) || 1;
+    Anelli.tick({ x, z, fx: ANT1.dir.x / L, fz: ANT1.dir.z / L, vel: ANT1.v, nebbia: scene.fog ? scene.fog.far : 150, menu: !!(ui && (ui.intro || ui.menu)) });
+  }
+  function* fus1Settore(S) {
+    const made = yield* fus1Gen(S.tops, true);
+    S.tops.forEach(top => { scene.add(top); smooth2(top); }); made.forEach(m => smooth2(m));   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
+    const I = [...S.recs].map(r => FD1.idx.get(r));
+    Anelli.sfuma(k => { const v = Math.round(255 * (1 - k)); I.forEach(i => { FD1.data[i * 4 + 3] = v; }); FD1.dirty = true; });
+    FU1.att.delete(S.k); FU1.n++;
+    if (!FU1.att.size) {   // tutte le case vere: via la sagoma, le firme dei materiali non servono più
+      setTimeout(() => { if (FU1.massa && !FU1.att.size) { scene.remove(FU1.massa); FU1.massa.geometry.dispose(); FU1.massa.material.dispose(); FU1.massa = null; } }, (Anelli.CFG.sfuma + .5) * 1000);
+      if (FU1.sig) FD1.sigs.clear();
+      if (window.__fusione1) Object.assign(window.__fusione1, { secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, ombre: FU1.tot.ombre, pile: ARR1.all.length, tavolozza: PAL1.col.length, settoriDopo: 0 });
+      Anelli.log('case: tutte fuse,', FU1.n, 'settori dopo il caricamento');
+    }
   }
   // [leggera] i pezzi originali delle case fuse (spenti, servono solo quando la casa si dissolve, ai raggi dei graffiti e dei tetti)
   // non tengono più la loro geometria (erano ~260 MB): la rifanno dalla mesh fusa la prima volta che qualcuno la chiede, con
@@ -482,8 +568,21 @@ var Render = (function () {
     scartaSchiacciate1();   // [pulizia] quello che è stato tolto prima della fusione non entra nei buffer
     STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const pv = b.pal ? b.geos.map(g => [g.__pal1, g.__lay1 || 0, g.attributes.position.count]) : null;
       const geo = packNormals(mergeGeos(b.geos)); if (pv) palArrAttr1(geo, pv, !!b.arr);   // [leggero] il colore e lo strato di ogni pezzo
-      const m = new THREE.Mesh(geo, b.pal ? canonStatic1(b.mat, b.arr) : b.mat); if (b.pal) m.userData.leggero = true; b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); if (window.LeggeraMem) LeggeraMem.statica(geo); });   // [leggera] sul telefono, dopo l'invio, resta in memoria solo la posizione (la tocca chi nasconde un pezzo)
+      const m = new THREE.Mesh(geo, b.pal ? canonStatic1(b.mat, b.arr) : b.mat); if (b.pal) m.userData.leggero = true; b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); if (window.LeggeraMem) LeggeraMem.statica(geo); STL1.push(m); });   // [leggera] sul telefono, dopo l'invio, resta in memoria solo la posizione (la tocca chi nasconde un pezzo)
     STATIC.clear();
+    if (ANL1()) statLontane1(STL1.splice(0));   // [anelli]
+  }
+  // [anelli] LE STATICHE LONTANE (le cose di strada fuse, a celle di 80 m): fuori dall'anello vicino aspettano spente per la camera (il livello
+  // 0, così la compilazione del caricamento le conta ancora: nessun programma nuovo dopo) e si accendono a poche per fotogramma, le più
+  // vicine e quelle davanti prima: la scheda video le riceve quando servono. Sul telefono quelle oltre l'anello medio aspettano finché
+  // non ci si avvicina (la memoria cresce solo dove si va). Alla fine, sul computer, ci sono tutte: la stessa scena di ?tutto
+  const STL1 = [];
+  function statLontane1(L) {
+    const P = FU1.st && FU1.st.player ? [FU1.st.player.x, FU1.st.player.y] : [cam.x, cam.y], R = Anelli.CFG.vicino, cel = new Map();
+    L.forEach(m => { const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const c = g.boundingSphere.center, d = Math.max(0, Math.hypot(c.x - P[0], c.z - P[1]) - g.boundingSphere.radius); if (d < R) return;
+      m.userData.anL = m.layers.mask; m.layers.mask = 0; const k = Math.floor(c.x / 80) + ',' + Math.floor(c.z / 80); let C = cel.get(k); if (!C) cel.set(k, C = { x: (Math.floor(c.x / 80) + .5) * 80, z: (Math.floor(c.z / 80) + .5) * 80, m: [] }); C.m.push(m); });
+    cel.forEach(C => Anelli.lavoro({ tipo: 'statiche', x: C.x, z: C.z, r: 56, telefono: false, gen: (function* () {
+      for (const m of C.m) { while (!Anelli.carica(m.geometry.attributes.position.count)) yield Anelli.ASPETTA; m.layers.mask = m.userData.anL; delete m.userData.anL; } })() }));
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
   // Restano separati: mesh con più materiali, mesh con userData.keep, sottoalberi con userData.keepTree, sprite e luci.
@@ -8020,14 +8119,17 @@ var Render = (function () {
     if (!cn1() || !P2.on) return 0;
     try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kp); P2.kit = Math.max(0, bb.max.x); } catch (e) { P2.kit = 0; }   // quanto sporge il modulo di muro dal filo
     P2.dirty = new Set();
-    const R = p2Raccogli(), prima = p2Misura(R), off = /[?&]nopulizia2\b/.test(location.search);
+    // [anelli] la misura prima e dopo (p2Misura: un giro intero di viol2 su tutte le voci, ciascuno ~1/3 del passo) serve solo agli strumenti
+    // (compenetrazioni.js, rumore.js, strade_integre.js accendono window.__dbg35): il regista non la legge, il risultato è lo stesso. ?misura2 la rifà
+    const MIS2 = !!window.__dbg35 || /[?&]misura2\b/.test(location.search);
+    const R = p2Raccogli(), prima = MIS2 ? p2Misura(R) : null, off = /[?&]nopulizia2\b/.test(location.search);
     const az = off ? { spento: true } : p2Regista(R);
     let RU = null; if (typeof PuliziaRumore !== 'undefined') try { RU = PuliziaRumore.passa(rumore2(R)); } catch (e) { console.error('[rumore]', e); }   // [pulizia] il rumore (pulizia_rumore.js): dopo il regista, sulle stesse voci
-    const dopo = off ? prima : p2Misura(R);
-    window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null };
+    const dopo = off ? prima : MIS2 ? p2Misura(R) : null;
+    window.__pulizia2 = { prima: prima && prima.rep, dopo: dopo && dopo.rep, azioni: az, punti: { prima: prima && prima.pts, dopo: dopo && dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null, misurato: MIS2 };
     if (window.__dbg35) console.log('[dbg] pulizia2 prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'azioni', JSON.stringify(az));
     VIS3.reg = R.E.filter(e => !e.gone && e.B);   // [visuale3] il registro resta al taglio: le cose sui tetti e sulle facciate che non stanno nei gruppi della casa (antenne e mensole della rete, insegne, pluviali)
-    P2.list = []; P2.on = false; return dopo.rep.tot;
+    P2.list = []; P2.on = false; return dopo ? dopo.rep.tot : 0;
   }
   // occupazione a mezzo metro per gli oggetti nuovi: niente sopra gli arredi tenuti, le case, la carreggiata
   const OCC35 = { g: new Map(), seed(list) { list.forEach(rec => this.mark(rec.c.x, rec.c.z, rec.he.x + .2, rec.he.z + .2)); },
@@ -15067,11 +15169,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (let i = 0; i < (PHONE ? 3 : 8); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
+    FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('margini9', () => { const g = RIVA9() ? Riva.costruisciMargini(groundH) : null; if (g) scene.add(g); });   /* [riva] i margini delle costiere */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
-    if (window.LeggeraMem && LeggeraMem.on('firme')) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */
+    if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
@@ -16278,6 +16381,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       B.__op = op; B.mats.forEach(m => { const kt = m.userData.keepTr, tr = op < .99 || !!kt; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = op; m.depthWrite = !tr; if (m.emissiveMap) m.emissiveIntensity = dyn.__ne * op; });   // [case] keepTr
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = !pveh && !ui.intro);   // [visuale3] la sagoma è sempre pronta: la scheda video la disegna solo dove qualcosa copre
+    anelliTick1(ui, dt);   /* [anelli] i lavori del caricamento ad anelli, nel loro tetto di tempo (prima di mandare FD1: le sfumature lo toccano) */
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
     if (window.LeggeraMem) LeggeraMem.tick(performance.now());   /* [leggera] i pezzi rifatti che nessuno usa più */
     if (ARR1.all.length && frameN % 90 === 0) arrTick1();   /* [leggero] una tela delle case ridisegnata: la sua pila si rilegge */
