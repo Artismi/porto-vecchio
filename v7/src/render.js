@@ -90,7 +90,7 @@ var Render = (function () {
 
   // ---------------- QUOTE DEL TERRENO (solo visive) ----------------
   function rampH(R, x, z) { const k = R.axis === 'x' ? (x / TS - R.x) / R.w : (z / TS - R.y) / R.h; return R.h0 + (R.h1 - R.h0) * clamp(k, 0, 1); }
-  function tileElev(tx, ty) { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return M.elev[ty * G.GW + tx]; }
+  function tileElev(tx, ty) { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return M.elev[(ty | 0) * G.GW + (tx | 0)]; }   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const VH = (i, j) => M.vh[Math.max(0, Math.min(G.GH, j)) * M.VW + Math.max(0, Math.min(G.GW, i))];
   function groundH(x, z) { // quota del terreno: interpolata fra i quattro vertici della casella
     const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
@@ -1435,7 +1435,7 @@ var Render = (function () {
         out.push(e); if ((e.__h3 = (e.__h3 || 0) + 1) > 1) return;
         e.__bak3 = vis3Parti(e).map(([a, s, n]) => { const bak = a.array.slice(s * 3, (s + n) * 3); for (let k = s * 3; k < (s + n) * 3; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; return [a, s, bak]; });
         e.objs.forEach(o => { o.visible = false; }); });
-    if (B.__bi3 === undefined) B.__bi3 = B.b ? G.BUILDINGS.indexOf(B.b) : -1;
+    if (B.__bi3 === undefined) B.__bi3 = B.b ? BLD().indexOf(B.b) : -1;
     const own = VIS3.parti.get(B.__bi3);   // le parti segnate della casa (le antenne della rete), nella mesh fusa della città
     if (own && own.length) { const e = B.__own3 || (B.__own3 = { parts: own, objs: [] }); out.push(e);
       if ((e.__h3 = (e.__h3 || 0) + 1) === 1) e.__bak3 = own.filter(p => p.M && p.M.geometry && p.M.geometry.attributes.position).map(p => { const a = p.M.geometry.attributes.position, bak = a.array.slice(p.s * 3, (p.s + p.n) * 3);
@@ -4473,7 +4473,7 @@ var Render = (function () {
   function deckMat1(kind, w, d, tint) { const t = roofTex1(kind, 0).clone(); t.needsUpdate = true; t.repeat.set(w / RSPAN, d / RSPAN); return tv1(std({ map: t, roughness: .95, color: tint || '#ffffff' }), kind); }   // [vissuti]
   // [profondita] il lastrico prende una tinta per livello (tre sole, per non spezzare la fusione): i bassi più spenti e freddi, gli alti più caldi
   const DECKQ1 = ['#e4e1dc', '#f4efe6', '#fff8ec'], deckQ1 = fl => DECKQ1[fl <= 2 ? 0 : fl === 3 ? 1 : 2];
-  function flatKind1(b, i) { const PL3 = cn1() && window.Tetti && Tetti.PIANO ? Tetti.PIANO[i] : null; if (PL3 && G.BUILDINGS[i] === b) return PL3.manto === 'quadrotti' ? 'cemento' : 'pianelle';   // [tetti3] due lastrici soli: il cotto del borgo, i quadrotti del regime e del boom
+  function flatKind1(b, i) { const PL3 = cn1() && window.Tetti && Tetti.PIANO ? Tetti.PIANO[i] : null; if (PL3 && BLD()[i] === b) return PL3.manto === 'quadrotti' ? 'cemento' : 'pianelle';   // [tetti3] due lastrici soli: il cotto del borgo, i quadrotti del regime e del boom
     const h = th(b.x || i, b.y || 0, 1203), kd = modKind(b); return kd === 'farm' ? 'pianelle' : kd === 'port' || kd === 'mil' ? 'cemento' : h < .5 ? 'guaina' : h < .72 ? 'pianelle' : 'cemento'; }
   // la copertina di pietra sul parapetto (sporge appena dai due lati: è lei che disegna il bordo del tetto da lontano)
   function copertina1(grp, x0, z0, w, d, y, t, col) {
@@ -4527,13 +4527,13 @@ var Render = (function () {
     // condizionatori, serbatoi, parabole, canne fumarie sparse, volumi, regime, insegne) trova posto; i gruppi del piano li posa tetti3Gruppi.
     // Le case senza epoca della città nuova (botteghe, palazzi) restano calme anche loro; solo i palazzi del governo tengono il loro regime.
     P.b = b; P.cnt = 0;
-    if (cn1() && window.Tetti && Tetti.PIANO) { const bi3 = G.BUILDINGS.indexOf(b), PL = bi3 >= 0 ? Tetti.PIANO[bi3] : null; P.plan = PL || null;
+    if (cn1() && window.Tetti && Tetti.PIANO) { const bi3 = BLD().indexOf(b), PL = bi3 >= 0 ? Tetti.PIANO[bi3] : null; P.plan = PL || null;
       if (!(b.gov && prog === 'regime')) { P.chiuso = true; P.prog = prog = PL ? (PL.vivo ? 'abitato' : 'calmo') : 'vuoto'; } else P.lim = { regime: 1 }; }
     // le scale di Tetti arrivano sul bordo: lì resta libero
-    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { if (L.camm) return; const bb = G.BUILDINGS[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
+    if (window.Tetti && Tetti.LADDERS) { if (!RP1lad) { RP1lad = new Map(); Tetti.LADDERS.forEach(L => { if (L.camm) return; const bb = BLD()[L.bi]; (RP1lad.get(bb) || RP1lad.set(bb, []).get(bb)).push(L); }); }
       (RP1lad.get(b.__tierOf || b) || []).forEach(L => P.occ.push([L.tx, L.ty, 1.1]));
       // [tetti2] gli arrivi delle passerelle (la rampa e il bordo) e la panca del belvedere: lì niente roba
-      const bb0 = b.__tierOf || b, bi0 = G.BUILDINGS.indexOf(bb0);
+      const bb0 = b.__tierOf || b, bi0 = BLD().indexOf(bb0);
       (Tetti.PLANKS || []).forEach(Q => { if (Q.a === bi0) { P.occ.push([Q.wa[0] - Q.ox * .5, Q.wa[1] - Q.oy * .5, 1.0]); P.occ.push([Q.x0, Q.y0, .9]); }
         if (Q.b === bi0) { P.occ.push([Q.wb[0] + Q.ox * .5, Q.wb[1] + Q.oy * .5, 1.0]); P.occ.push([Q.wb[0] + Q.ox * 1.5, Q.wb[1] + Q.oy * 1.5, .9]); } });
       (Tetti.BELV || []).forEach(V => { if (V.bi === bi0) P.occ.push([V.x, V.y, 1.8]); }); }
@@ -4560,7 +4560,7 @@ var Render = (function () {
   window.__tetti3 = () => {
     const ant = new Map(); try { const R = window.Rete && Rete.grafo && Rete.grafo(); (R ? R.nodi : []).forEach(n => { if (n.k === 'antenna' && n.bi !== null) ant.set(n.bi, (ant.get(n.bi) || 0) + 1); }); } catch (e) { }
     const O = { tetti: 0, oggetti: 0, max: 0, vuoti: 0, istogramma: {}, perEra: {}, piano: !!(window.Tetti && Tetti.PIANO && Tetti.PIANO.length) };
-    G.BUILDINGS.forEach((b, i) => { if (!b.era || b.shack || b.pezzo) return; const P = RP1.get(b), n = (P ? P.cnt || 0 : 0) + (ant.get(i) || 0) + (b.__chims || []).length + (b.__p3 || 0);
+    BLD().forEach((b, i) => { if (!b.era || b.shack || b.pezzo) return; const P = RP1.get(b), n = (P ? P.cnt || 0 : 0) + (ant.get(i) || 0) + (b.__chims || []).length + (b.__p3 || 0);
       O.tetti++; O.oggetti += n; O.max = Math.max(O.max, n); if (!n) O.vuoti++; const k = n >= 8 ? '8+' : String(n); O.istogramma[k] = (O.istogramma[k] || 0) + 1;
       const E = O.perEra[b.era] || (O.perEra[b.era] = { tetti: 0, oggetti: 0 }); E.tetti++; E.oggetti += n; });
     O.urti = []; RP1.forEach(P => { if (P.urti3) O.urti.push(...P.urti3); });
@@ -4695,7 +4695,7 @@ var Render = (function () {
     // tetto: coppi a falda bassa o lastrico nel borgo, terrazzi sulla marina, tegole con abbaini nell'Ottocento, lastrico per regime e boom
     const hq = th(b.x, b.y, 1511);
     X.roof = torre || X.annesso ? 'flat' : era === 'E0' ? (hq < .58 ? 'cotto' : 'flat') : era === 'E3' ? (hq < .8 ? 'cotto' : 'flat') : 'flat';
-    { const PL = window.Tetti && Tetti.PIANO ? Tetti.PIANO[i] : null; if (PL && G.BUILDINGS[i] === b) { X.roof = PL.tipo === 'falde' ? 'cotto' : 'flat'; X.piano3 = PL; } }   // [tetti3] il tetto lo decide il piano (manto per epoca, gli abitati a terrazzo)
+    { const PL = window.Tetti && Tetti.PIANO ? Tetti.PIANO[i] : null; if (PL && BLD()[i] === b) { X.roof = PL.tipo === 'falde' ? 'cotto' : 'flat'; X.piano3 = PL; } }   // [tetti3] il tetto lo decide il piano (manto per epoca, gli abitati a terrazzo)
     X.lowParapet = era === 'E0' || era === 'E2';
     if (era === 'E4' && b.portico && fl >= 2) X.portico = faceOf(b);
     if (era === 'E2' && fl >= 2 && r() < .85) X.scala = {};   // il lato lo sceglie buildModular: il primo lato libero sulla strada dove la scala ci sta
@@ -7506,7 +7506,7 @@ var Render = (function () {
       if (h < .06 && !FISSI2.has(e.k)) return;   // il piatto (tombini dipinti, caditoie, strisce): non si urta
       if (Math.max(hu, hv) > 30) return;
       if (e.k === 'arredo' && (Math.max(hu, hv) * 2 > 3.4 || h > 8)) e.k = 'ingombro';   // banchi, chioschi, fermate: arredo grande, si toglie ma non si sposta di molto
-      if (e.b && e.f) { const r0 = DZ.bRec[e.b.i !== undefined ? e.b.i : G.BUILDINGS.indexOf(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); }
+      if (e.b && e.f) { const r0 = DZ.bRec[e.b.i !== undefined ? e.b.i : BLD().indexOf(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); }
       e.vol = hu * hv * h * 4; E.push(e);
     });
     // le case: rettangoli girati come la casa, dal piede al tetto; il muro sporge dal filo quanto il modulo del kit
@@ -7518,7 +7518,7 @@ var Render = (function () {
     // i praticabili e le loro zone libere
     const P = [], Z = [];
     const pr = (k, B, info) => { const e = { k, B, fixed: true, prat: true, vx: null, info, id: 'p' + P.length }; P.push(e); return e; };
-    G.BUILDINGS.forEach((b, bi) => { const rec = DZ.bRec[bi]; if (!rec || !rec.geo || b.pezzo) return; const base = rec.geo.y0;
+    BLD().forEach((b, bi) => { const rec = DZ.bRec[bi]; if (!rec || !rec.geo || b.pezzo) return; const base = rec.geo.y0;
       const doors = []; if (b.door) doors.push([b.door, 'portone']); if (b.shopFront && b.shopFront.door && b.__bot && b.__bot.ents.length) doors.push([b.shopFront.door, 'bottega']);
       doors.forEach(([dt, quale]) => { const f = quale === 'bottega' && b.__bot ? b.__bot.face : faceOf(b), g = rec.geo, u0 = f === 'S' ? dt[0] * TS + 1 - g.x0 : f === 'N' ? g.x0 + g.w - (dt[0] * TS + 1) : f === 'E' ? g.z0 + g.d - (dt[1] * TS + 1) : dt[1] * TS + 1 - g.z0;
         let u = u0, W = 1.1; const W0 = (b.__win || []).filter(q => q.g && q.f === f && q.name.includes('doorway') && Math.abs(q.y - base) < .05).sort((p, q) => Math.abs(p.u - u0) - Math.abs(q.u - u0))[0]; if (W0 && Math.abs(W0.u - u0) < 1.2) { u = W0.u; W = (WIN[W0.name] || [1.1])[0]; }
@@ -7529,10 +7529,10 @@ var Render = (function () {
         Z.push({ t: 'vetrina', B: box2(fx, fz, F.yaw, e.w / 2 + .1, .5, Math.min(gy, base) - .2, Math.max(gy, base) + 2.3) }); });
     });
     const TT2 = window.Tetti;
-    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = G.BUILDINGS[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(G.BUILDINGS[L.footB]) : groundH(L.fx, L.fy), top = (L.camm ? L.hTop : TT2.roofRule(b)) + .95;
+    if (TT2 && TT2.LADDERS) TT2.LADDERS.forEach(L => { const b = BLD()[L.bi]; if (!b || b.pezzo) return; const yaw = Math.atan2(L.ox, L.oy), foot = L.footB >= 0 ? TT2.roofRule(BLD()[L.footB]) : groundH(L.fx, L.fy), top = (L.camm ? L.hTop : TT2.roofRule(b)) + .95;
       const pe = L.camm ? null : pr('scala', box2(L.x + L.ox * .22, L.y + L.oy * .22, yaw, .3, .2, foot, top), { L });   // [percorsi] la scala dei camminamenti sta sul pezzo grande che la porta: si tiene libero solo il piede
       if (L.footB < 0) Z.push({ t: 'scala', B: box2(L.x + L.ox * .7, L.y + L.oy * .7, yaw, .6, .55, foot - .2, foot + 2.3), p: pe }); });
-    if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(G.BUILDINGS[Q.a]), TT2.roofRule(G.BUILDINGS[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
+    if (TT2 && TT2.PLANKS) TT2.PLANKS.forEach(Q => { const h = Math.max(TT2.roofRule(BLD()[Q.a]), TT2.roofRule(BLD()[Q.b])); pr('passerella', box2(Q.x0 + Q.ox * Q.L / 2, Q.y0 + Q.oy * Q.L / 2, Math.atan2(-Q.oy, Q.ox), Q.L / 2, Q.hw + .1, h - .3, h + 1.0), { Q }); });
     const SS = window.Sottosuolo; if (SS && SS.TPL && SS.TPL.portals) SS.TPL.portals.forEach(Q => { if (Q.kind !== 'tombino') return; const x = (Q.s[0] + .5) * TS, z = (Q.s[1] + .5) * TS, gy = groundH(x, z);
       const pe = pr('tombino', box2(x, z, 0, .42, .42, gy - .05, gy + .08), { Q }); Z.push({ t: 'tombino', B: box2(x, z, 0, 1.22, 1.22, gy - .2, gy + 2.0), p: pe }); });
     P.forEach(p => proj2(p));
@@ -7691,7 +7691,7 @@ var Render = (function () {
     e.yaw += da; const V = verts2(e, e.yaw); if (V) { e.B = V.B; e.vx = V.vx; } e.hull = null;
   }
   function rumore2(R) {
-    const I0 = p2Indici(R), BI = new Map(); G.BUILDINGS.forEach((b, i) => BI.set(b, i));
+    const I0 = p2Indici(R), BI = new Map(); BLD().forEach((b, i) => BI.set(b, i));
     const PORTE = new Map(); R.P.forEach(p => { if (p.k === 'porta' && p.info) { const k = BI.get(p.info.b) + p.info.f; PORTE.set(k, (PORTE.get(k) || 0) + 1); } });
     const geoOf = b => { const r = DZ.bRec[BI.get(b)]; return r && r.geo; };
     const FIN = new Map();
@@ -7725,7 +7725,7 @@ var Render = (function () {
       // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
       // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza
       porteTutte: () => { const L = []; R.P.forEach(p => { if (p.k === 'porta' && p.info && p.info.F) L.push({ F: p.info.F, w: p.B.u1 - p.B.u0, b: p.info.b, f: p.info.f, y: p.B.y0 }); });
-        G.BUILDINGS.forEach((b, bi) => { const rec = DZ.bRec[bi]; if (!rec || !rec.geo || b.pezzo) return; const base = rec.geo.y0;
+        BLD().forEach((b, bi) => { const rec = DZ.bRec[bi]; if (!rec || !rec.geo || b.pezzo) return; const base = rec.geo.y0;
           (b.__win || []).forEach(q => { if (!q.name.includes('doorway') || Math.abs(q.y - base) > .05) return; const F = faccia2(b, rec, q.f, q.u);
             if (L.some(o => o.b === b && o.f === q.f && Math.hypot(o.F.p[0] - F.p[0], o.F.p[1] - F.p[1]) < .8)) return; L.push({ F, w: (WIN[q.name] || [1.1])[0], b, f: q.f, y: base }); }); });
         return L; },
@@ -9190,11 +9190,11 @@ var Render = (function () {
   // una voce su una parete chiesta da un sistema vecchio: nella città nuova passa dal regista, altrove sempre sì
   const vuoleS1 = (b, f, voce) => { if (!SEG1.ok) return true; const p = pagS1(b, f); return !!(p && Scena.chiedi(p.x, p.z, voce, { pagina: p })); };
   const NRM1 = { S: [0, 1], E: [1, 0], N: [0, -1], W: [-1, 0] };
-  function quoteS1(bi) { const rec = DZ.bRec[bi], b = G.BUILDINGS[bi]; if (rec && rec.geo) return [rec.geo.y0, rec.geo.y0 + rec.geo.H]; const y0 = groundH((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS); return [y0, y0 + Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF]; }
+  function quoteS1(bi) { const rec = DZ.bRec[bi], b = BLD()[bi]; if (rec && rec.geo) return [rec.geo.y0, rec.geo.y0 + rec.geo.H]; const y0 = groundH((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS); return [y0, y0 + Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF]; }
   const TETTO1 = { antenna: 1, gronda: 1, tetto: 1 }, SPORGE1 = { mensola: .32, spigolo: .32, moncone: .32, contatore: .08, finestra: .14, balcone: .75, gronda: .12, lampione: .7, tetto: .1 };
   function nodoXYZ1(n) {
     if (n.bi === null || n.bi === undefined || n.bi < 0) return [n.x, groundH(n.x, n.z) + n.y, n.z];
-    const b = G.BUILDINGS[n.bi], [y0, y1] = quoteS1(n.bi), rel = Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF;
+    const b = BLD()[n.bi], [y0, y1] = quoteS1(n.bi), rel = Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF;
     const y = TETTO1[n.k] ? (n.k === 'antenna' ? y1 + .6 : y1 + (n.y - rel)) : y0 + Math.min(n.y, y1 - y0 - .25), o = n.f && NRM1[n.f] ? SPORGE1[n.k] || 0 : 0, N = n.f ? NRM1[n.f] || [0, 0] : [0, 0];
     if (n.k === 'spigolo') return [n.x + .32, y, n.z + .32];
     return [n.x + N[0] * o, y, n.z + N[1] * o];
@@ -9403,7 +9403,7 @@ var Render = (function () {
 
   function buildBuildings() {
     roofTextures();
-    G.BUILDINGS.forEach((b, i) => {
+    BLD().forEach((b, i) => {
       const w = b.w * TS, d = b.h * TS, x0 = b.x * TS, z0 = b.y * TS, cx = x0 + w / 2, cz = z0 + d / 2;
       // quota: il pavimento è la quota più alta sotto l'edificio, il basamento scende fino al terreno più basso intorno
       let base = 0, low = 99;
@@ -9520,6 +9520,22 @@ var Render = (function () {
   // e tutto quello che gli appartiene (facciata, dettagli, tetto, rifiniture, roba di strada) si costruiscono dritti sul rettangolo
   // della casa e poi girano attorno al suo centro. Le botteghe con l'insegna restano dritte (l'insegna e la tenda stanno sul filo).
   const rotOf = b => b && b.rot && !b.sign && !b.shop ? b.rot : 0;
+  // [pianta] I LOTTI ORIENTATI (world_cittanuova.js, in testa): la casa ha la sua scatola vera, centro (cx, cy) e misure (lw, ld) in metri.
+  // Il modello si costruisce dritto su quella scatola e poi gira attorno al suo centro, come prima. Per farlo senza toccare tutti i
+  // costruttori, render vede la casa attraverso una vista (BLD()): x, y, w, h sono quelli del rettangolo dritto della scatola (in caselle,
+  // frazionarie) e le porte (b.door, la porta della bottega) cadono sulla faccia giusta, nel punto dove il muro girato le ha. Le scritture
+  // passano alla casa vera. Chi non è un lotto orientato (oggi tutte le case: i campi valgono la pianta a caselle) è la casa stessa.
+  const lotto = b => !!b && b.cx !== undefined && !b.__tierOf && !(b.tiers && b.tiers.length) && (Math.abs(b.cx - (b.x + b.w / 2) * TS) > .01 || Math.abs(b.cy - (b.y + b.h / 2) * TS) > .01 || Math.abs(b.lw - b.w * TS) > .01 || Math.abs(b.ld - b.h * TS) > .01);
+  function vistaLotto(b) {
+    const a = rotOf(b), c = Math.cos(a), s = Math.sin(a), vx = b.cx / TS - b.lw / (2 * TS), vy = b.cy / TS - b.ld / (2 * TS), vw = b.lw / TS, vh = b.ld / TS, V = { x: vx, y: vy, w: vw, h: vh };
+    const porta = d => { if (!d) return d; const X = (d[0] + .5) * TS - b.cx, Y = (d[1] + .5) * TS - b.cy, lx = X * c + Y * s, ly = -X * s + Y * c, cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));   // dal mondo al riferimento della casa (l'inverso di rotRec)
+      const ux = cl((b.cx + lx) / TS - .5, vx, vx + vw - 1), uy = cl((b.cy + ly) / TS - .5, vy, vy + vh - 1);
+      return Math.abs(ly) / vh >= Math.abs(lx) / vw ? [ux, ly > 0 ? vy + vh : vy - 1] : [lx > 0 ? vx + vw : vx - 1, uy]; };
+    V.door = porta(b.door); if (b.shopFront) V.shopFront = Object.assign({}, b.shopFront, { door: porta(b.shopFront.door) });
+    return new Proxy(b, { get: (t, k) => k in V ? V[k] : t[k], set: (t, k, v) => { if (k in V) V[k] = v; else t[k] = v; return true; } });
+  }
+  const LOTB = { arr: null, src: null };
+  function BLD() { if (LOTB.src !== G.BUILDINGS || !LOTB.arr) { LOTB.src = G.BUILDINGS; LOTB.arr = G.BUILDINGS.some(lotto) ? G.BUILDINGS.map(b => lotto(b) ? vistaLotto(b) : b) : G.BUILDINGS; } return LOTB.arr; }
   function rotRec(rec, o) {
     const b = rec && rec.b, a = rotOf(b); if (!o || !a) return o;
     const cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS;

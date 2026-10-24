@@ -8,6 +8,13 @@
 // [città2] LA CITTÀ NUOVA (in prova): stesso modulo di world.js con la nuova urbanistica (scheletro a ventaglio dalla Porta della Rocca,
 // borgo sulla collina, metropoli, case che seguono la strada). Il gioco la carica solo con ?cittanuova nell'indirizzo (index.src.html);
 // node strumenti/pianta.js la usa con PV_CITTANUOVA=1. Quando è pronta prende il posto di world.js.
+// [pianta] I LOTTI ORIENTATI: ogni casa (W.BUILDINGS) porta, oltre all'impronta a caselle (x, y, w, h: griglia, camminabilità, porte,
+// PLACES), la sua scatola vera nel riferimento della casa:
+//   b.cx, b.cy  il centro in metri, nel mondo finale (dopo expand)        — senza: ((x + w/2)·TS, (y + h/2)·TS)
+//   b.lw, b.ld  larghezza (asse x locale, quello di w a rot 0) e profondità (asse locale di h), in metri  — senza: w·TS, h·TS
+//   b.rot       la rotazione attorno a (cx, cy), radianti, come rotRec di render.js (makeRotationY(-rot) su x, z)
+// b.door resta la casella davanti alla porta. Lungo una via storta i lotti si dividono nel riferimento della via: le facciate stanno sul filo
+// senza entrare l'una nell'altra (girate attorno al centro della pianta a caselle si compenetravano, 366 coppie).
 var World = (function () {
   'use strict';
   const TS = 2, SX = 1300, SY = 400, SIZE = SX, GW = SX / TS, GH = SY / TS, CX = 650, CY = 200;
@@ -1958,6 +1965,45 @@ var World = (function () {
       B.forEach(b => { if (!b.era || !b.rot) return; let touch = false;
         for (let ty = b.y - 1; ty <= b.y + b.h && !touch; ty++) for (let tx = b.x - 1; tx <= b.x + b.w && !touch; tx++) { if (tx >= b.x && tx < b.x + b.w && ty >= b.y && ty < b.y + b.h) continue; const j = ty * GW + tx, c = bIndex[j] >= 0 ? B[bIndex[j]] : null; if (c && c !== b && Math.abs((c.rot || 0) - b.rot) > .03) touch = true; }
         if (touch) b.rot = 0; });
+      // [pianta] I LOTTI ORIENTATI lungo le vie storte (vedi in testa): le case che hanno davanti una di queste vie si ridisegnano nel
+      // riferimento della via. Per lato, in fila lungo la via: i confini fra una casa e l'altra a metà fra le loro estensioni, il fronte
+      // comune sul filo della casa più avanti (mai dentro la carreggiata), il retro dov'era; l'angolo della via. L'impronta a caselle resta
+      // (griglia, camminabilità, porte). Una casa il cui lotto entrerebbe in un'altra (più di 5 cm) resta com'era.
+      CITY.lottiVie = typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : [];   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua)
+      { const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
+        const RDV = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), VIE = RDV.filter(rd => CITY.lottiVie.includes(rd.id));
+        const vicino = (rd, x, y) => { let best = null, acc = 0; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-6, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))), px = ax + dx * t, py = ay + dy * t, d = Math.hypot(x - px, y - py);
+          if (!best || d < best.d) best = { d, a: Math.atan2(dy, dx), u: acc + t * L, ux: dx / L, uy: dy / L, v: (x - px) * (-dy / L) + (y - py) * (dx / L), px, py }; acc += L; } return best; };
+        const poly = (cx, cy, lw, ld, a) => { const c = Math.cos(a), s = Math.sin(a); return [[-lw / 2, -ld / 2], [lw / 2, -ld / 2], [lw / 2, ld / 2], [-lw / 2, ld / 2]].map(([u, v]) => [cx + u * c - v * s, cy + u * s + v * c]); };
+        const pen = (P, Q) => { let m = 1e9; for (const R of [P, Q]) for (let i = 0; i < 4; i++) { const [x1, y1] = R[i], [x2, y2] = R[(i + 1) % 4], nx = y2 - y1, ny = x1 - x2, l = Math.hypot(nx, ny) || 1, pr = S => S.map(([x, y]) => (x * nx + y * ny) / l), A = pr(P), C = pr(Q), o = Math.min(Math.max(...A), Math.max(...C)) - Math.max(Math.min(...A), Math.min(...C)); if (o < m) m = o; } return m; };
+        const scatola = b => b.cx !== undefined ? poly(b.cx, b.cy, b.lw, b.ld, b.rot || 0) : poly((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS, b.w * TS, b.h * TS, b.sign || b.shop ? 0 : b.rot || 0);
+        let nL = 0; const DBGL = typeof process !== 'undefined' && process.env && process.env.PV_LOTTI ? [] : null;
+        VIE.forEach(rd => { const fila = [[], []];
+          B.forEach(b => { if (!b.house || b.pezzo || b.military || b.sign || b.shop || b.vittoria || b.sottoPortico || b.tiers || b.__tierOf) return; const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, half = Math.max(b.w, b.h) * TS / 2;
+            let best = null, bq = null; for (const o of RDV) { const q = vicino(o, cx, cy); if (!q || q.d - o.w / 2 - half > 4) continue; if (!bq || q.d < bq.d) { bq = q; best = o; } } if (best !== rd) return;
+            const hx = b.w * TS / 2, hy = b.h * TS / 2, along = Math.abs(bq.ux) * hx + Math.abs(bq.uy) * hy, across = Math.abs(bq.uy) * hx + Math.abs(bq.ux) * hy;
+            fila[bq.v > 0 ? 0 : 1].push({ b, u: bq.u, a0: bq.u - along, a1: bq.u + along, f: Math.abs(bq.v) - across, r: Math.abs(bq.v) + across }); });
+          fila.forEach((F, lato) => { F.sort((p, q) => p.u - q.u); if (!F.length) return; const fr = Math.max(rd.w / 2 + .15, Math.min(...F.map(q => q.f)));
+            for (let k = 0; k < F.length; k++) { const q = F[k], pr = F[k - 1], nx = F[k + 1];   // i confini: a metà dove le estensioni si toccano o si sovrappongono, il vuoto resta vuoto
+              if (pr && pr.a1 > q.a0 - .6) q.a0 = (pr.a1 + q.a0) / 2; if (nx && q.a1 > nx.a0 - .6) q.a1 = (q.a1 + nx.a0) / 2; }
+            const inFila = new Set(F.map(q => q.b));
+            // il lotto di q, col retro accorciato di dd e i fianchi stretti di d0 (inizio) e d1 (fine): il fronte resta sul filo comune
+            const fai = (q, d0, d1, dd) => { const b = q.b, a0 = q.a0 + d0, a1 = q.a1 - d1, lw0 = a1 - a0, dep = q.r - fr - dd; if (lw0 < 2.4 || dep < 2.8) return null; const um = (a0 + a1) / 2, vm = (fr + dep / 2) * (lato === 0 ? 1 : -1);
+              const P = vicino(rd, (b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS), ox = P.px + P.ux * (um - P.u), oy = P.py + P.uy * (um - P.u), cx = ox - P.uy * vm, cy = oy + P.ux * vm, rot = w90(P.a);
+              const lx = Math.abs(Math.cos(rot) * P.ux + Math.sin(rot) * P.uy) > .7, lw = lx ? lw0 : dep, ld = lx ? dep : lw0;   // la larghezza sta sull'asse locale che corre lungo la via
+              return { b, S: poly(cx, cy, lw, ld, rot), L: { cx: +cx.toFixed(3), cy: +cy.toFixed(3), lw: +lw.toFixed(3), ld: +ld.toFixed(3), rot: Math.abs(rot) < .01 ? 0 : +rot.toFixed(4), lotto: rd.id } }; };
+            const fuori = (n) => { const b = n.b; for (let ty = b.y - 3; ty <= b.y + b.h + 2; ty++) for (let tx = b.x - 3; tx <= b.x + b.w + 2; tx++) { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const k = bIndex[ty * GW + tx]; if (k < 0 || B[k] === b || inFila.has(B[k])) continue; if (pen(n.S, scatola(B[k])) > .05) return true; } return false; };
+            const PROVE = []; for (const dd of [0, .3, .6, 1, 1.5, 2.2]) for (const dw of [0, .3, .6, 1]) PROVE.push([dw, dw, dd]);
+            const nuovi = F.map(q => { for (const [d0, d1, dd] of PROVE) { const n = fai(q, d0, d1, dd); if (n && !fuori(n)) return Object.assign(n, { q }); } if (DBGL) DBGL.push(['urta fuori', q.b.id]); return null; });
+            // fra vicini della fila: chi entra nel lotto accanto si stringe da quel lato (fino a 1 m); se non basta resta com'era
+            for (let k = 0; k < nuovi.length; k++) { const n = nuovi[k]; if (!n) continue;
+              for (let it = 0; it < 6; it++) { const altri = []; F.forEach((c, j) => { if (j === k) return; altri.push(nuovi[j] ? nuovi[j].S : scatola(c.b)); }); if (!altri.some(Q => pen(n.S, Q) > .05)) break;
+                const m = fai(n.q, .2 * (it + 1), .2 * (it + 1), 0); if (!m || fuori(m)) { nuovi[k] = null; break; } nuovi[k] = Object.assign(m, { q: n.q }); if (it === 5) nuovi[k] = null; } }
+            const tieni = new Set(nuovi.filter(Boolean)); let cambia = true;
+            while (cambia) { cambia = false; for (const n of [...tieni]) { const altri = [...inFila].filter(c => c !== n.b).map(c => { const m = [...tieni].find(o => o.b === c); return m ? m.S : scatola(c); });
+              if (altri.some(Q => pen(n.S, Q) > .05)) { tieni.delete(n); cambia = true; if (DBGL) DBGL.push(['urta fila', n.b.id]); } } }
+            tieni.forEach(n => { Object.assign(n.b, n.L); nL++; }); }); });
+        CITY.nLotti = nL; if (DBGL) console.error('[lotti]', nL, JSON.stringify(DBGL)); }
       // il marciapiede arriva fino al muro: i ritagli fra il marciapiede e le facciate arretrate diventano marciapiede (niente terra di nessuno)
       for (let pass = 0; pass < 3; pass++) { const add = [];
         for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(CITY_W0); tx < T2i(CITY.spian0 || 1143); tx++) { const i = ty * GW + tx; if (grid[i] !== T.COB || roadW[i] > 0 || reserved[i] || zone[i] !== Z.CITTA) continue;
@@ -2803,7 +2849,7 @@ var World = (function () {
     W.roads.forEach(rd => { sp(rd.pts); if (rd.rect) rd.rect = [rd.rect[0] + OTX, rd.rect[1] + OTY, rd.rect[2] + OTX, rd.rect[3] + OTY]; });
     W.lanes.forEach(l => sp(l.pts));
     (W.TUNNELS || []).forEach(t => sp(t.pts)); sp(W.RING);
-    W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; });
+    W.BUILDINGS.forEach(b => { b.x += OTX; b.y += OTY; if (b.cx !== undefined) { b.cx += OX; b.cy += OY; }   /* [pianta] il lotto orientato */ if (b.door && !seen.has(b.door)) { seen.add(b.door); b.door[0] += OTX; b.door[1] += OTY; } (b.tiers || []).forEach(t => { t.x += OTX; t.y += OTY; });
       const S = b.shopFront; if (S) [S.door].concat(S.span || []).forEach(q => { if (q && !seen.has(q)) { seen.add(q); q[0] += OTX; q[1] += OTY; } }); });   // [botteghe]
     Object.values(W.PLACES).forEach(p => { p.tx += OTX; p.ty += OTY; p.x += OX; p.y += OY; if (p.want) p.want = [p.want[0] + OX, p.want[1] + OY]; });
     if (W.FORT) { const F0 = W.FORT, sh = P => P.map(([x, y]) => [x + OX, y + OY]);   // [città2]
@@ -3046,6 +3092,8 @@ var World = (function () {
       if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
       return h;
     };
+    // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
+    W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     if (W.sets) W.luoghi = luoghi(W);
     return W;
   }
