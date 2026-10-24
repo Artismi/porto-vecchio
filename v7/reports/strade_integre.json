@@ -1,5 +1,5 @@
 {
- "quando": "2026-10-24T02:52:25.154Z",
+ "quando": "2026-10-24T03:50:09.103Z",
  "conti": {
   "capo_cieco": 0,
   "capi_staccati": 8,
@@ -7,9 +7,11 @@
   "sotto_casa": 104,
   "sotto_pezzo": 4,
   "marciapiede": 17,
+  "scoglio": 15,
   "materiale": 0,
-  "ostacolo_prima": 101,
-  "ostacolo": 15
+  "albero": 0,
+  "ostacolo_prima": 99,
+  "ostacolo": 18
  },
  "punti": {
   "capo_cieco": [],
@@ -125,7 +127,7 @@
     "carceri",
     "vicolo",
     "1 m",
-    "casa_95 (libera 2.3 di 3.0 m)"
+    "casa_94 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -143,7 +145,7 @@
     "rua",
     "vicolo",
     "3 m",
-    "casa_249 (libera 4.3 di 5.0 m)"
+    "casa_248 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -152,7 +154,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_254 (libera 4.3 di 5.0 m)"
+    "casa_253 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -161,7 +163,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_255 (libera 4.3 di 5.0 m)"
+    "casa_254 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -170,7 +172,7 @@
     "rua",
     "vicolo",
     "3 m",
-    "casa_255 (libera 4.3 di 5.0 m)"
+    "casa_254 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -179,7 +181,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_260 (libera 4.3 di 5.0 m)"
+    "casa_259 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -188,7 +190,7 @@
     "rua",
     "vicolo",
     "3 m",
-    "casa_246 (libera 4.0 di 5.0 m)"
+    "casa_245 (libera 4.0 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -206,7 +208,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_266 (libera 4.3 di 5.0 m)"
+    "casa_265 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -215,7 +217,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_261 (libera 4.3 di 5.0 m)"
+    "casa_260 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -224,7 +226,7 @@
     "rua",
     "vicolo",
     "5 m",
-    "casa_263 (libera 4.3 di 5.0 m)"
+    "casa_262 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -233,7 +235,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_247 (libera 4.3 di 5.0 m)"
+    "casa_246 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -242,7 +244,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_271 (libera 4.3 di 5.0 m)"
+    "casa_270 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -251,7 +253,7 @@
     "rua",
     "vicolo",
     "1 m",
-    "casa_276 (libera 4.3 di 5.0 m)"
+    "casa_275 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -260,7 +262,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_276 (libera 4.3 di 5.0 m)"
+    "casa_275 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -269,7 +271,7 @@
     "rua",
     "vicolo",
     "4 m",
-    "casa_277 (libera 4.3 di 5.0 m)"
+    "casa_276 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -278,7 +280,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_278 (libera 4.3 di 5.0 m)"
+    "casa_277 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -287,7 +289,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_278 (libera 4.3 di 5.0 m)"
+    "casa_277 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -296,7 +298,7 @@
     "rua",
     "vicolo",
     "3 m",
-    "casa_282 (libera 4.3 di 5.0 m)"
+    "casa_281 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -305,7 +307,7 @@
     "rua",
     "vicolo",
     "2 m",
-    "casa_283 (libera 4.3 di 5.0 m)"
+    "casa_282 (libera 4.3 di 5.0 m)"
    ],
    [
     "sotto_casa",
@@ -314,7 +316,7 @@
     "mezzo",
     "vicolo",
     "12 m",
-    "casa_390 (libera 2.3 di 3.0 m)"
+    "casa_389 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -323,7 +325,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_408 (libera 2.3 di 3.0 m)"
+    "casa_407 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -332,7 +334,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_415 (libera 2.0 di 3.0 m)"
+    "casa_414 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -341,7 +343,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_412 (libera 2.0 di 3.0 m)"
+    "casa_411 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -350,7 +352,7 @@
     "mezzo",
     "vicolo",
     "2 m",
-    "casa_426 (libera 2.3 di 3.0 m)"
+    "casa_425 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -359,7 +361,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_430 (libera 2.0 di 3.0 m)"
+    "casa_429 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -368,7 +370,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_431 (libera 2.3 di 3.0 m)"
+    "casa_430 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -377,7 +379,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_429 (libera 2.3 di 3.0 m)"
+    "casa_428 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -386,7 +388,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_432 (libera 2.3 di 3.0 m)"
+    "casa_431 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -395,7 +397,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_437 (libera 2.3 di 3.0 m)"
+    "casa_436 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -404,7 +406,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_442 (libera 2.3 di 3.0 m)"
+    "casa_441 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -413,7 +415,7 @@
     "mezzo",
     "vicolo",
     "1 m",
-    "casa_441 (libera 2.3 di 3.0 m)"
+    "casa_440 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -422,7 +424,7 @@
     "vic_mura",
     "vicolo",
     "2 m",
-    "casa_150 (libera 1.5 di 2.5 m)"
+    "casa_149 (libera 1.5 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -431,7 +433,7 @@
     "vic_mura",
     "vicolo",
     "3 m",
-    "casa_143 (libera 1.8 di 2.5 m)"
+    "casa_142 (libera 1.8 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -440,7 +442,7 @@
     "vic_mura",
     "vicolo",
     "2 m",
-    "casa_138 (libera 1.5 di 2.5 m)"
+    "casa_137 (libera 1.5 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -449,7 +451,7 @@
     "vic_mura",
     "vicolo",
     "2 m",
-    "casa_133 (libera 1.5 di 2.5 m)"
+    "casa_132 (libera 1.5 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -458,7 +460,7 @@
     "vic_mura",
     "vicolo",
     "3 m",
-    "casa_126 (libera 1.5 di 2.5 m)"
+    "casa_125 (libera 1.5 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -467,7 +469,7 @@
     "vic_mura",
     "vicolo",
     "3 m",
-    "casa_132 (libera 1.8 di 2.5 m)"
+    "casa_131 (libera 1.8 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -476,7 +478,7 @@
     "vic_lanternini",
     "vicolo",
     "3 m",
-    "casa_235 (libera 2.3 di 3.0 m)"
+    "casa_234 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -485,7 +487,7 @@
     "vic_arco",
     "vicolo",
     "3 m",
-    "casa_134 (libera 2.3 di 3.0 m)"
+    "casa_133 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -494,7 +496,7 @@
     "vic_arco",
     "vicolo",
     "8 m",
-    "casa_134 (libera 2.3 di 3.0 m)"
+    "casa_133 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -503,7 +505,7 @@
     "vic_monache",
     "vicolo",
     "5 m",
-    "casa_239 (libera 2.0 di 3.0 m)"
+    "casa_238 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -512,7 +514,7 @@
     "vic_monache",
     "vicolo",
     "2 m",
-    "casa_240 (libera 2.3 di 3.0 m)"
+    "casa_239 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -521,7 +523,7 @@
     "vic_monache",
     "vicolo",
     "4 m",
-    "casa_192 (libera 2.3 di 3.0 m)"
+    "casa_191 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -530,7 +532,7 @@
     "vic_monache",
     "vicolo",
     "3 m",
-    "casa_192 (libera 2.3 di 3.0 m)"
+    "casa_191 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -539,7 +541,7 @@
     "vic_monache",
     "vicolo",
     "3 m",
-    "casa_152 (libera 2.0 di 3.0 m)"
+    "casa_151 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -548,7 +550,7 @@
     "vic_monache",
     "vicolo",
     "4 m",
-    "casa_141 (libera 2.3 di 3.0 m)"
+    "casa_140 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -557,7 +559,7 @@
     "vic_scuro",
     "vicolo",
     "1 m",
-    "casa_243 (libera 2.3 di 3.0 m)"
+    "casa_242 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -566,7 +568,7 @@
     "vic_scuro",
     "vicolo",
     "3 m",
-    "casa_243 (libera 2.3 di 3.0 m)"
+    "casa_242 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -575,7 +577,7 @@
     "vic_scuro",
     "vicolo",
     "3 m",
-    "casa_202 (libera 2.3 di 3.0 m)"
+    "casa_201 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -584,7 +586,7 @@
     "vic_scuro",
     "vicolo",
     "4 m",
-    "casa_202 (libera 2.3 di 3.0 m)"
+    "casa_201 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -593,7 +595,7 @@
     "vic_scuro",
     "vicolo",
     "10 m",
-    "casa_164 (libera 2.3 di 3.0 m)"
+    "casa_163 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -602,7 +604,7 @@
     "vic_cordai",
     "vicolo",
     "1 m",
-    "casa_245 (libera 2.3 di 3.0 m)"
+    "casa_244 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -611,7 +613,7 @@
     "vic_cordai",
     "vicolo",
     "3 m",
-    "casa_245 (libera 2.3 di 3.0 m)"
+    "casa_244 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -620,7 +622,7 @@
     "vic_cordai",
     "vicolo",
     "1 m",
-    "casa_218 (libera 2.3 di 3.0 m)"
+    "casa_217 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -629,7 +631,7 @@
     "vic_cordai",
     "vicolo",
     "6 m",
-    "casa_218 (libera 2.3 di 3.0 m)"
+    "casa_217 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -638,7 +640,7 @@
     "vic_cordai",
     "vicolo",
     "3 m",
-    "casa_169 (libera 2.3 di 3.0 m)"
+    "casa_168 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -647,7 +649,7 @@
     "vic_pescatori",
     "vicolo",
     "8 m",
-    "casa_255 (libera 2.0 di 3.0 m)"
+    "casa_254 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -656,7 +658,7 @@
     "vic_pescatori",
     "vicolo",
     "1 m",
-    "casa_254 (libera 2.3 di 3.0 m)"
+    "casa_253 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -665,7 +667,7 @@
     "vic_pescatori",
     "vicolo",
     "4 m",
-    "casa_300 (libera 2.0 di 3.0 m)"
+    "casa_299 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -674,7 +676,7 @@
     "vic_pescatori",
     "vicolo",
     "3 m",
-    "casa_316 (libera 2.3 di 3.0 m)"
+    "casa_315 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -683,7 +685,7 @@
     "vic_gatti",
     "vicolo",
     "7 m",
-    "casa_274 (libera 2.3 di 3.0 m)"
+    "casa_273 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -701,7 +703,7 @@
     "vic_bottai",
     "vicolo",
     "1 m",
-    "casa_262 (libera 2.3 di 3.0 m)"
+    "casa_261 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -710,7 +712,7 @@
     "vic_bottai",
     "vicolo",
     "3 m",
-    "casa_262 (libera 2.3 di 3.0 m)"
+    "casa_261 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -719,7 +721,7 @@
     "vic_bottai",
     "vicolo",
     "1 m",
-    "casa_289 (libera 2.3 di 3.0 m)"
+    "casa_288 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -728,7 +730,7 @@
     "vic_bottai",
     "vicolo",
     "2 m",
-    "casa_321 (libera 2.3 di 3.0 m)"
+    "casa_320 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -737,7 +739,7 @@
     "vic_bottai",
     "vicolo",
     "3 m",
-    "casa_321 (libera 2.3 di 3.0 m)"
+    "casa_320 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -746,7 +748,7 @@
     "vic_pozzo",
     "vicolo",
     "2 m",
-    "casa_326 (libera 2.3 di 3.0 m)"
+    "casa_325 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -755,7 +757,7 @@
     "vic_sale",
     "vicolo",
     "2 m",
-    "casa_280 (libera 2.3 di 3.0 m)"
+    "casa_279 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -764,7 +766,7 @@
     "vic_sale",
     "vicolo",
     "3 m",
-    "casa_280 (libera 2.3 di 3.0 m)"
+    "casa_279 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -773,7 +775,7 @@
     "vic_sale",
     "vicolo",
     "3 m",
-    "casa_317 (libera 2.3 di 3.0 m)"
+    "casa_316 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -782,7 +784,7 @@
     "vic_sale",
     "vicolo",
     "1 m",
-    "casa_317 (libera 2.3 di 3.0 m)"
+    "casa_316 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -791,7 +793,7 @@
     "vic_storto",
     "vicolo",
     "9 m",
-    "casa_335 (libera 2.0 di 3.0 m)"
+    "casa_334 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -800,7 +802,7 @@
     "vic_storto",
     "vicolo",
     "1 m",
-    "casa_341 (libera 2.3 di 3.0 m)"
+    "casa_340 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -809,7 +811,7 @@
     "vic_storto",
     "vicolo",
     "1 m",
-    "casa_353 (libera 2.3 di 3.0 m)"
+    "casa_352 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -818,7 +820,7 @@
     "vic_storto",
     "vicolo",
     "1 m",
-    "casa_373 (libera 2.3 di 3.0 m)"
+    "casa_372 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -827,7 +829,7 @@
     "vic_storto",
     "vicolo",
     "2 m",
-    "casa_373 (libera 2.3 di 3.0 m)"
+    "casa_372 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -845,7 +847,7 @@
     "vic_reti",
     "vicolo",
     "12 m",
-    "casa_337 (libera 2.0 di 3.0 m)"
+    "casa_336 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -854,7 +856,7 @@
     "vic_reti",
     "vicolo",
     "6 m",
-    "casa_376 (libera 2.0 di 3.0 m)"
+    "casa_375 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -872,7 +874,7 @@
     "vic_tonnaroti",
     "vicolo",
     "1 m",
-    "casa_329 (libera 2.3 di 3.0 m)"
+    "casa_328 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -881,7 +883,7 @@
     "vic_tonnaroti",
     "vicolo",
     "1 m",
-    "casa_329 (libera 2.3 di 3.0 m)"
+    "casa_328 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -890,7 +892,7 @@
     "vic_tonnaroti",
     "vicolo",
     "2 m",
-    "casa_339 (libera 2.3 di 3.0 m)"
+    "casa_338 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -899,7 +901,7 @@
     "vic_tonnaroti",
     "vicolo",
     "5 m",
-    "casa_369 (libera 2.3 di 3.0 m)"
+    "casa_368 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -926,7 +928,7 @@
     "vic_sorelle",
     "vicolo",
     "2 m",
-    "casa_351 (libera 2.3 di 3.0 m)"
+    "casa_350 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -944,7 +946,7 @@
     "vic_lungo",
     "vicolo",
     "2 m",
-    "casa_330 (libera 2.3 di 3.0 m)"
+    "casa_329 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -953,7 +955,7 @@
     "vic_lungo",
     "vicolo",
     "1 m",
-    "casa_330 (libera 2.3 di 3.0 m)"
+    "casa_329 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -962,7 +964,7 @@
     "vic_lungo",
     "vicolo",
     "1 m",
-    "casa_349 (libera 2.3 di 3.0 m)"
+    "casa_348 (libera 2.3 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -971,7 +973,7 @@
     "vic_lungo",
     "vicolo",
     "3 m",
-    "casa_395 (libera 2.0 di 3.0 m)"
+    "casa_394 (libera 2.0 di 3.0 m)"
    ],
    [
     "sotto_casa",
@@ -980,7 +982,7 @@
     "vic_androne",
     "vicolo",
     "2 m",
-    "casa_175 (libera 1.8 di 2.5 m)"
+    "casa_174 (libera 1.8 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -989,7 +991,7 @@
     "vic_androne",
     "vicolo",
     "3 m",
-    "casa_181 (libera 1.8 di 2.5 m)"
+    "casa_180 (libera 1.8 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -1007,7 +1009,7 @@
     "vic_corte",
     "vicolo",
     "3 m",
-    "casa_337 (libera 1.5 di 2.5 m)"
+    "casa_336 (libera 1.5 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -1016,7 +1018,7 @@
     "vic_corte",
     "vicolo",
     "3 m",
-    "casa_348 (libera 1.8 di 2.5 m)"
+    "casa_347 (libera 1.8 di 2.5 m)"
    ],
    [
     "sotto_casa",
@@ -1034,7 +1036,7 @@
     "vic_corte2",
     "vicolo",
     "4 m",
-    "casa_358 (libera 1.8 di 2.5 m)"
+    "casa_357 (libera 1.8 di 2.5 m)"
    ]
   ],
   "sotto_pezzo": [
@@ -1230,7 +1232,145 @@
     "contro un muro"
    ]
   ],
+  "scoglio": [
+   [
+    "scoglio",
+    1260,
+    267.4,
+    "lung_nord",
+    "citta",
+    "8.1 m dentro",
+    "scoglio_mura_2"
+   ],
+   [
+    "scoglio",
+    1281,
+    263.5,
+    "lung_nord",
+    "citta",
+    "3.8 m dentro",
+    "scoglio_mura_3"
+   ],
+   [
+    "scoglio",
+    1303,
+    263.7,
+    "lung_nord",
+    "citta",
+    "3.2 m dentro",
+    "scoglio_mura_4"
+   ],
+   [
+    "scoglio",
+    1324,
+    263.7,
+    "lung_nord",
+    "citta",
+    "2.2 m dentro",
+    "scoglio_mura_5"
+   ],
+   [
+    "scoglio",
+    1347,
+    266.4,
+    "lung_nord",
+    "citta",
+    "4.3 m dentro",
+    "scoglio_mura_6"
+   ],
+   [
+    "scoglio",
+    1371,
+    257.3,
+    "lung_nord",
+    "citta",
+    "3.8 m dentro",
+    "scoglio_mura_7"
+   ],
+   [
+    "scoglio",
+    1392,
+    257.2,
+    "lung_nord",
+    "citta",
+    "8.9 m dentro",
+    "scoglio_mura_8"
+   ],
+   [
+    "scoglio",
+    1416,
+    250.8,
+    "lung_nord",
+    "citta",
+    "7.4 m dentro",
+    "scoglio_mura_9"
+   ],
+   [
+    "scoglio",
+    1439,
+    251.6,
+    "lung_nord",
+    "citta",
+    "8.5 m dentro",
+    "scoglio_mura_10"
+   ],
+   [
+    "scoglio",
+    1460,
+    252.9,
+    "lung_nord",
+    "citta",
+    "9.8 m dentro",
+    "scoglio_mura_11"
+   ],
+   [
+    "scoglio",
+    1467,
+    242.8,
+    "passeggiata",
+    "citta",
+    "1.7 m dentro",
+    "r 0.8327440528664738"
+   ],
+   [
+    "scoglio",
+    1473.5,
+    249.2,
+    "passeggiata",
+    "citta",
+    "0.3 m dentro",
+    "r 1.0021869484335184"
+   ],
+   [
+    "scoglio",
+    1517.2,
+    339.4,
+    "vittoria",
+    "citta",
+    "2.9 m dentro",
+    "r 1.2441606589127332"
+   ],
+   [
+    "scoglio",
+    1234.5,
+    394.6,
+    "litoranea",
+    "litoranea",
+    "0.6 m dentro",
+    "r 0.9545850756112486"
+   ],
+   [
+    "scoglio",
+    1205.2,
+    401,
+    "litoranea",
+    "litoranea",
+    "3.7 m dentro",
+    "r 1.3981246708426625"
+   ]
+  ],
   "materiale": [],
+  "albero": [],
   "ostacolo_prima": [
    [
     "strada",
@@ -1274,19 +1414,43 @@
    ],
    [
     "strada",
-    1471,
-    415,
+    1018.2,
+    352,
     "arredo",
-    "inverno",
-    "carreggiata passeggiata_sud"
+    "strade31",
+    "carreggiata macchia"
    ],
    [
     "strada",
-    1053.2,
-    309,
+    1159.1,
+    418.5,
+    "arredo",
+    "strade31",
+    "marciapiede litoranea"
+   ],
+   [
+    "strada",
+    1306.5,
+    327.4,
+    "arredo",
+    "strade31",
+    "marciapiede corso"
+   ],
+   [
+    "strada",
+    1037.9,
+    393.4,
     "arredo",
     "inverno",
-    "carreggiata macchia"
+    "carreggiata villaggio"
+   ],
+   [
+    "strada",
+    1485.1,
+    347,
+    "arredo",
+    "inverno",
+    "carreggiata vittoria"
    ],
    [
     "strada",
@@ -1300,14 +1464,6 @@
     "strada",
     1296.5,
     382.4,
-    "arredo",
-    "case",
-    "marciapiede via_porto"
-   ],
-   [
-    "strada",
-    1297.6,
-    382.5,
     "arredo",
     "case",
     "marciapiede via_porto"
@@ -1338,75 +1494,83 @@
    ],
    [
     "strada",
-    1363.8,
-    283.6,
+    1367.1,
+    283.3,
     "arredo",
     "case",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1363.2,
-    283.7,
+    1367.1,
+    283.2,
     "arredo",
     "case",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1363.3,
-    283.7,
+    1366.5,
+    283.5,
     "arredo",
     "case",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1419.4,
-    292.5,
+    1366.8,
+    283.3,
     "arredo",
     "case",
-    "vicolo vic_androne"
+    "vicolo vic_mura"
    ],
    [
     "strada",
-    1419.4,
-    292.5,
+    1367.1,
+    283.3,
     "arredo",
     "case",
-    "vicolo vic_androne"
+    "vicolo vic_mura"
    ],
    [
     "strada",
-    1333,
-    382.4,
+    1366.8,
+    283.4,
+    "arredo",
+    "case",
+    "vicolo vic_mura"
+   ],
+   [
+    "strada",
+    1367.1,
+    283.3,
+    "arredo",
+    "case",
+    "vicolo vic_mura"
+   ],
+   [
+    "strada",
+    1381.6,
+    382.5,
     "arredo",
     "case",
     "marciapiede marina"
    ],
    [
     "strada",
-    1425,
-    390.4,
-    "arredo",
-    "case",
-    "marciapiede marina"
-   ],
-   [
-    "strada",
-    1424.9,
-    390.5,
-    "arredo",
-    "case",
-    "marciapiede marina"
-   ],
-   [
-    "strada",
-    1441,
+    1441.2,
     396.4,
     "arredo",
     "case",
     "marciapiede marina"
+   ],
+   [
+    "strada",
+    1053.2,
+    413.6,
+    "arredo",
+    "case",
+    "marciapiede litoranea"
    ],
    [
     "strada",
@@ -1418,31 +1582,31 @@
    ],
    [
     "strada",
-    546.6,
-    262.4,
+    996.4,
+    344.9,
     "arredo",
     "case",
-    "marciapiede nord"
+    "marciapiede raccordo_o"
    ],
    [
     "strada",
-    547,
-    262.4,
+    996.4,
+    344.9,
     "arredo",
     "case",
-    "marciapiede nord"
+    "marciapiede raccordo_o"
    ],
    [
     "strada",
-    546.8,
-    262.4,
+    996.4,
+    344.9,
     "arredo",
     "case",
-    "marciapiede nord"
+    "marciapiede raccordo_o"
    ],
    [
     "strada",
-    513.1,
+    513.2,
     256.4,
     "arredo",
     "case",
@@ -1450,15 +1614,15 @@
    ],
    [
     "strada",
-    880.7,
-    278.5,
+    513.2,
+    256.4,
     "arredo",
     "case",
     "marciapiede nord"
    ],
    [
     "strada",
-    884.9,
+    884.8,
     278.4,
     "arredo",
     "case",
@@ -1466,35 +1630,19 @@
    ],
    [
     "strada",
-    884.9,
-    278.4,
-    "arredo",
-    "case",
-    "carreggiata nord"
+    1287,
+    270.9,
+    "ingombro",
+    "soglie",
+    "vicolo cavour_sotto"
    ],
    [
     "strada",
-    885,
-    278.4,
-    "arredo",
-    "case",
-    "carreggiata nord"
-   ],
-   [
-    "strada",
-    885,
-    278.4,
-    "arredo",
-    "case",
-    "carreggiata nord"
-   ],
-   [
-    "strada",
-    1289,
-    382.6,
+    1289.1,
+    382.8,
     "arredo",
     "oggetti35",
-    "marciapiede via_porto"
+    "carreggiata via_porto"
    ],
    [
     "strada",
@@ -1522,8 +1670,16 @@
    ],
    [
     "strada",
-    1252,
-    383,
+    1253.2,
+    383.4,
+    "arredo",
+    "oggetti35",
+    "marciapiede via_porto"
+   ],
+   [
+    "strada",
+    1297.7,
+    382.5,
     "arredo",
     "oggetti35",
     "marciapiede via_porto"
@@ -1538,63 +1694,47 @@
    ],
    [
     "strada",
-    1432,
-    272.6,
+    1456.6,
+    273.4,
     "arredo",
     "oggetti35",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1452.6,
-    272.9,
+    1394.7,
+    277.4,
     "arredo",
     "oggetti35",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1460.5,
-    273.3,
+    1425.2,
+    282.3,
+    "arredo",
+    "oggetti35",
+    "vicolo vic_monache"
+   ],
+   [
+    "strada",
+    1364,
+    283.7,
     "arredo",
     "oggetti35",
     "vicolo vic_mura"
    ],
    [
     "strada",
-    1411.5,
-    292.3,
+    1415.7,
+    292.9,
     "arredo",
     "oggetti35",
     "vicolo vic_androne"
    ],
    [
     "strada",
-    1462.8,
-    303.6,
-    "arredo",
-    "oggetti35",
-    "marciapiede passeggiata"
-   ],
-   [
-    "strada",
-    1462.6,
-    320,
-    "arredo",
-    "oggetti35",
-    "marciapiede passeggiata"
-   ],
-   [
-    "strada",
-    1462.7,
-    318.9,
-    "arredo",
-    "oggetti35",
-    "marciapiede passeggiata"
-   ],
-   [
-    "strada",
-    1381.9,
+    1381.6,
     325.7,
     "arredo",
     "oggetti35",
@@ -1610,23 +1750,15 @@
    ],
    [
     "strada",
-    1387.7,
-    325.2,
+    1387.5,
+    325.7,
     "arredo",
     "oggetti35",
     "vicolo vic_lavatoio"
    ],
    [
     "strada",
-    1462.7,
-    334.8,
-    "arredo",
-    "oggetti35",
-    "marciapiede passeggiata"
-   ],
-   [
-    "strada",
-    1394.9,
+    1449.5,
     347.7,
     "arredo",
     "oggetti35",
@@ -1634,15 +1766,7 @@
    ],
    [
     "strada",
-    1444.1,
-    346.4,
-    "arredo",
-    "oggetti35",
-    "carreggiata vittoria"
-   ],
-   [
-    "strada",
-    1457.5,
+    1453.7,
     347.7,
     "arredo",
     "oggetti35",
@@ -1650,15 +1774,23 @@
    ],
    [
     "strada",
-    1387.4,
-    360.5,
+    1456.1,
+    347.7,
+    "arredo",
+    "oggetti35",
+    "marciapiede vittoria"
+   ],
+   [
+    "strada",
+    1394.3,
+    360.3,
     "arredo",
     "oggetti35",
     "vicolo vic_corte"
    ],
    [
     "strada",
-    1432.1,
+    1433,
     362.3,
     "arredo",
     "oggetti35",
@@ -1666,19 +1798,19 @@
    ],
    [
     "strada",
-    1415.6,
-    375,
+    1387,
+    360.3,
     "arredo",
     "oggetti35",
-    "vicolo mezzo"
+    "vicolo vic_corte"
    ],
    [
     "strada",
-    1462.7,
-    371.5,
+    1353.1,
+    371.9,
     "arredo",
     "oggetti35",
-    "marciapiede passeggiata_sud"
+    "vicolo vic_forno"
    ],
    [
     "strada",
@@ -1690,15 +1822,15 @@
    ],
    [
     "strada",
-    1335.9,
-    382.7,
+    1336,
+    383,
     "arredo",
     "oggetti35",
     "marciapiede marina"
    ],
    [
     "strada",
-    1333.7,
+    1384.6,
     382.5,
     "arredo",
     "oggetti35",
@@ -1706,43 +1838,35 @@
    ],
    [
     "strada",
-    1415.3,
-    386.6,
+    1381.9,
+    383,
     "arredo",
     "oggetti35",
     "marciapiede marina"
    ],
    [
     "strada",
-    1421.7,
-    389.6,
+    1415.8,
+    386.5,
     "arredo",
     "oggetti35",
     "marciapiede marina"
    ],
    [
     "strada",
-    1425.8,
-    390.5,
+    1430.7,
+    393.6,
     "arredo",
     "oggetti35",
     "marciapiede marina"
    ],
    [
     "strada",
-    1462.5,
-    391.7,
+    1440.4,
+    396.3,
     "arredo",
     "oggetti35",
-    "marciapiede passeggiata_sud"
-   ],
-   [
-    "strada",
-    1446.6,
-    399.4,
-    "arredo",
-    "oggetti35",
-    "carreggiata marina"
+    "marciapiede marina"
    ],
    [
     "strada",
@@ -1858,7 +1982,7 @@
    ],
    [
     "strada",
-    1463.3,
+    1463.2,
     397.9,
     "arredo",
     "strade1",
@@ -1874,8 +1998,8 @@
    ],
    [
     "strada",
-    1303.9,
-    378.2,
+    1303.7,
+    379,
     "arredo",
     "strade1",
     "carreggiata corso"
@@ -1887,6 +2011,22 @@
     "arredo",
     "strade1",
     "marciapiede marina"
+   ],
+   [
+    "strada",
+    1061.6,
+    306.6,
+    "arredo",
+    "segnavia1",
+    "marciapiede macchia"
+   ],
+   [
+    "strada",
+    1183.7,
+    410.3,
+    "arredo",
+    "segnavia1",
+    "marciapiede litoranea"
    ],
    [
     "strada",
@@ -1994,14 +2134,6 @@
    ],
    [
     "strada",
-    1252.6,
-    383.6,
-    "dehors",
-    "segni",
-    "marciapiede via_porto"
-   ],
-   [
-    "strada",
     1258.5,
     382.4,
     "dehors",
@@ -2011,23 +2143,15 @@
    [
     "strada",
     1463.6,
-    306.8,
+    308.1,
     "dehors",
     "segni",
     "marciapiede passeggiata"
    ],
    [
     "strada",
-    1463.6,
-    309.4,
-    "dehors",
-    "segni",
-    "marciapiede passeggiata"
-   ],
-   [
-    "strada",
-    1463.5,
-    305.8,
+    1462.6,
+    306.1,
     "dehors",
     "segni",
     "marciapiede passeggiata"
@@ -2052,6 +2176,14 @@
    ],
    [
     "strada",
+    1284.8,
+    307,
+    "arredo",
+    "soglie",
+    "carreggiata corso"
+   ],
+   [
+    "strada",
     1395.3,
     324.4,
     "arredo",
@@ -2068,19 +2200,19 @@
    ],
    [
     "strada",
-    1459,
-    297.3,
+    1418.8,
+    362.4,
     "arredo",
     "oggetti35",
-    "vicolo vic_cordai"
+    "vicolo vic_corte2"
    ],
    [
     "strada",
-    1404.6,
-    384.4,
+    1415.5,
+    375,
     "arredo",
     "oggetti35",
-    "marciapiede marina"
+    "vicolo mezzo"
    ],
    [
     "strada",
@@ -2108,11 +2240,27 @@
    ],
    [
     "strada",
-    1303.9,
-    380,
+    1240.3,
+    276.8,
     "arredo",
     "strade1",
-    "carreggiata corso"
+    "carreggiata lung_nord"
+   ],
+   [
+    "strada",
+    1303.6,
+    380.9,
+    "arredo",
+    "strade1",
+    "marciapiede corso"
+   ],
+   [
+    "strada",
+    1299.5,
+    390.2,
+    "arredo",
+    "strade1",
+    "carreggiata via_porto"
    ],
    [
     "strada",
@@ -2168,21 +2316,25 @@
   "tolti": [
    [
     "strada:arredo",
-    32
+    27
+   ],
+   [
+    "strada:dehors",
+    1
    ]
   ],
   "spostati": [
    [
     "strada:arredo",
-    42
+    48
    ],
    [
     "strada:ingombro",
-    2
+    3
    ],
    [
     "strada:dehors",
-    3
+    1
    ]
   ],
   "tenuti": [
@@ -2222,7 +2374,7 @@
    "mezzo",
    "vicolo",
    "12 m",
-   "casa_390 (libera 2.3 di 3.0 m)"
+   "casa_389 (libera 2.3 di 3.0 m)"
   ],
   [
    "sotto_casa",
@@ -2231,7 +2383,7 @@
    "vic_reti",
    "vicolo",
    "12 m",
-   "casa_337 (libera 2.0 di 3.0 m)"
+   "casa_336 (libera 2.0 di 3.0 m)"
   ],
   [
    "sotto_pezzo",
@@ -2276,7 +2428,7 @@
    "vic_scuro",
    "vicolo",
    "10 m",
-   "casa_164 (libera 2.3 di 3.0 m)"
+   "casa_163 (libera 2.3 di 3.0 m)"
   ],
   [
    "sotto_casa",
@@ -2285,7 +2437,7 @@
    "vic_storto",
    "vicolo",
    "9 m",
-   "casa_335 (libera 2.0 di 3.0 m)"
+   "casa_334 (libera 2.0 di 3.0 m)"
   ],
   [
    "marciapiede",
@@ -2303,7 +2455,7 @@
    "vic_arco",
    "vicolo",
    "8 m",
-   "casa_134 (libera 2.3 di 3.0 m)"
+   "casa_133 (libera 2.3 di 3.0 m)"
   ]
  ]
 }

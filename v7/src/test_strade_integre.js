@@ -7,7 +7,9 @@
 //   buco            l'asse della via su una casella che non è suolo da strada         ≤ 2   (la fontana del Forno sul vicolo di Mezzo)
 //   sotto_casa      la carreggiata ristretta da una casa (lotto o caselle)            ≤ 104 (i vicoli di 3 m con le case che entrano 0,5-1 m)
 //   sotto_pezzo     la carreggiata nella scatola piena di un pezzo grande             ≤ 4   (la stazione sulla Via della Stazione)
-//   marciapiede     il marciapiede di una via di città che smette o finisce contro un muro ≤ 17 (il Lungomare di Tramontana)
+//   marciapiede     il marciapiede di una via di città che smette o finisce contro un muro ≤ 17 (il Lungomare di Tramontana: le caselle; il
+//                   marciapiede disegnato da render.js c'è di continuo, lo dice Pavimenti.swH nel gioco)
+//   scoglio         uno scoglio grande della costa sulla carreggiata o sul marciapiede ≤ 15 (gli scogli delle mura sul Lungomare di Tramontana)
 const path = require('path');
 const log = console.log, warn = console.warn; console.log = () => {}; console.warn = () => {};
 global.World = require(path.join(__dirname, 'world_cittanuova.js'));
@@ -15,7 +17,7 @@ console.log = log; console.warn = warn;
 const S = require(path.join(__dirname, 'strade_integre.js'));
 const R = S.analizza(World), C = R.conti;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
-const SOGLIE = { capo_cieco: 0, capi_staccati: 8, buco: 2, sotto_casa: 104, sotto_pezzo: 4, marciapiede: 17 };
+const SOGLIE = { capo_cieco: 0, capi_staccati: 8, buco: 2, sotto_casa: 104, sotto_pezzo: 4, marciapiede: 17, scoglio: 15 };
 ok(R.vie > 30, `le vie controllate nella cornice della città: ${R.vie}`);
 Object.keys(SOGLIE).forEach(k => ok(C[k] <= SOGLIE[k], `${k}: ${C[k]} (al più ${SOGLIE[k]})` + (C[k] > SOGLIE[k] ? ' — ' + R.punti[k].slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : '')));
 const asse = R.punti.sotto_casa.filter(p => /asse/.test(p[6]));

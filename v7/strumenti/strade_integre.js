@@ -47,6 +47,11 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
       RR.forEach(o => { if (o === rd || o.id < rd.id) return; const P = o.pts; [[P[0], P[1]], [P[P.length - 1], P[P.length - 2]]].forEach(([G2, H]) => { if (Math.hypot(G2[0] - E[0], G2[1] - E[1]) > 4) return; const ub = Math.atan2(H[1] - G2[1], H[0] - G2[0]); let t = ub - ua; t = Math.atan2(Math.sin(t), Math.cos(t));
         if (Math.abs(t) > Math.PI / 6) return; const fa = famVia[rd.id], fb = famVia[o.id]; if (fa && fb && fa !== fb) MAT.push(['materiale', Math.round(E[0] * 10) / 10, Math.round(E[1] * 10) / 10, rd.id + '|' + o.id, rd.kind + '|' + o.kind, FAMN[fa] + ' → ' + FAMN[fb], 'capo contro capo']); }); }); }); });
     D.punti.materiale = MAT; D.conti.materiale = MAT.length;
+    // gli alberi di città (render.js, la lista dei lecci e dei pini: window.__alb4): il fusto sulla carreggiata, o in un vicolo che resta
+    // più stretto di 1,2 m (sui marciapiedi i filari coi tornelli sono voluti)
+    const ALB = []; (window.__alb4 || []).forEach(t => { if (!inC(t.x, t.z)) return; for (const rd of RR) { const d = dVia(rd, t.x, t.z), hw = (rd.w || 4) / 2;
+      if (rd.kind === 'vicolo' ? (d < hw && hw - d < 1.2 && 2 * hw > 1.4) || d < .6 : d < hw - .2) { ALB.push(['albero', Math.round(t.x * 10) / 10, Math.round(t.z * 10) / 10, rd.id, rd.kind, (hw - d).toFixed(1) + ' m dentro', t.kind + (t.sp ? ':' + t.sp : '')]); break; } } });
+    D.punti.albero = ALB; D.conti.albero = ALB.length;
     // gli ostacoli: dal censimento della pulizia
     const RU = window.__rumore || {}, pp = RU.punti || {}, ost = q => (q || []).filter(p => p[0] === 'strada');
     D.punti.ostacolo_prima = ost(pp.prima); D.punti.ostacolo = ost(pp.dopo); D.conti.ostacolo_prima = D.punti.ostacolo_prima.length; D.conti.ostacolo = D.punti.ostacolo.length;
