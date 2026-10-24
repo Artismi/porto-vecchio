@@ -62846,6 +62846,7 @@ var PuliziaRumore = (function () {
     facciata: { base: 1, ogni: 3.2, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // cose appese: base + una ogni 3,2 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
     marciapiede: { tratto: 6, max: 3, slargo: 4, fascia: 2.4 },
     vicolo: .9,
+    passo: 1.2,   // il passaggio minimo sulle vie: vicoli e marciapiedi
     porta: { fondo: 1.8, fianco: .3, alto: 1.8 },   // davanti a ogni porta: 1,8 m di corridoio libero, largo la porta più 30 cm per parte, fino a 1,8 m d'altezza
   };
   // la gerarchia: 0 si tiene sempre (ingresso, insegna, architettura, impianti), 1 la vita, 2 il resto
@@ -62891,14 +62892,28 @@ var PuliziaRumore = (function () {
     else if (terra(e)) { const w = A.casaVicina(e.c[0], e.c[1], CFG.verso.muroD); if (w) ref = w.yaw; else { const rd = A.roadDir(e.c[0], e.c[1]); if (rd.a !== null && rd.d < CFG.verso.viaD) ref = rd.a; } }
     return (e.rif = ref);
   }
+  // la cosa sulla strada: { k: 'carreggiata' | 'vicolo' | 'marciapiede', via, v } o null
+  function suStrada(A, e) {
+    if (!A.viaVicina) return null; const [cx, cz] = A.ctr(e.B), v = A.viaVicina(cx, cz); if (!v) return null; const B = e.B, hu = (B.u1 - B.u0) / 2, hv = (B.v1 - B.v0) / 2;
+    const ext = Math.abs(hu * (v.n[0] * B.c - v.n[1] * B.s)) + Math.abs(hv * (v.n[0] * B.s + v.n[1] * B.c)), a = v.s - ext, b = v.s + ext, hw = v.hw, P = CFG.passo;
+    if (v.kind === 'vicolo') { if (b > -hw && a < hw) { const lib = Math.max(hw - b, a + hw); if (lib < P && 2 * hw > P + .2) return { k: 'vicolo', via: v.rd.id, v, lib }; } return null; }
+    if (b > -hw + .1 && a < hw - .1) return { k: 'carreggiata', via: v.rd.id, v };
+    const dentro = Math.min(Math.abs(a), Math.abs(b)) - hw; if (dentro > 2.8) return null;   // oltre il marciapiede
+    // il marciapiede vero (pavimenti.js, Pavimenti.swH: l'altezza del marciapiede disegnato) quando c'è: la sua larghezza dal cordolo
+    const sg = Math.sign(v.s) || 1, sw = q => A.swH ? A.swH(cx - v.n[0] * (v.s - sg * q), cz - v.n[1] * (v.s - sg * q)) : null;
+    if (A.swH && sw(hw + .3) !== null) { if (!(sw(hw + .3) > .1) && !(sw(dentro + hw + ext) > .1)) return null; let L = .3; while (L < 5 && sw(hw + L + .25) > .1) L += .25;
+      const fuori = L - (dentro + 2 * ext), lib = Math.max(dentro, fuori); if (lib < P && L > P + .2) return { k: 'marciapiede', via: v.rd.id, v, lib }; return null; }
+    const w = A.casaVicina(cx, cz, 3), muro = w ? w.d - ext : 9; if (dentro < P && muro < P && muro > -.5) return { k: 'marciapiede', via: v.rd.id, v, lib: Math.max(dentro, muro) };
+    return null;
+  }
   // ================= IL CENSIMENTO =================
   function censisci(A) {
     const { R, ctr, groundH } = A, E = R.E.filter(e => !e.gone && e.B), out = { voci: E.length, per: {}, punti: [], perTipo: {} };
-    const TIPI = ['porta', 'verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'sovrapposto', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
+    const TIPI = ['porta', 'strada', 'verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'sovrapposto', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
     const X = (A.esterni || []).filter(x => !x.gone); X.forEach(x => { x.c = ctr(x.B); });   // le voci esterne (segnaletica, vie vive): fisse
     TIPI.forEach(t => out.per[t] = 0);
     const segna = (t, e, extra) => { out.per[t]++; const k = t + ':' + e.k + (e.tipo ? ':' + e.tipo : ''); out.perTipo[k] = (out.perTipo[k] || 0) + 1; if (out.punti.length < 6000) out.punti.push([t, Math.round(e.c[0] * 10) / 10, Math.round(e.c[1] * 10) / 10, e.k, e.src, extra || '']); (e.ru = e.ru || []).push(t); };
-    E.concat(X).forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = e.sopraX = e.davantiPorta = undefined; });
+    E.concat(X).forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = e.sopraX = e.davantiPorta = e.suStrada = undefined; });
     const GR = new Map(); E.forEach(e => { if (!e.g) return; const kk = (e.b ? A.bid(e.b) : '-') + ':' + e.g; let a = GR.get(kk); if (!a) GR.set(kk, a = []); a.push(e); e.membri = a; });   // le composizioni (una lampada: piastra, braccio, lanterna) si muovono e se ne vanno insieme
     E.forEach(e => { if (!e.g) e.membri = null; });
     // una composizione è fatta di pezzi che si toccano: se lo stesso g copre cose lontane (in buildCase tutta la vita alla base dei muri
@@ -62969,6 +62984,9 @@ var PuliziaRumore = (function () {
     E.forEach(e => { if (!terra(e) || e.k === 'lampione' || e.k === 'cartello') return; const v = A.vicolo(e.c[0], e.c[1]); if (!v) return;
       const hu = (e.B.u1 - e.B.u0) / 2, hv = (e.B.v1 - e.B.v0) / 2, r = Math.min(hu, hv), resta = Math.max(v.w / 2 - (v.d + r), v.w / 2 - (r - v.d));   // il lato più largo che resta
       if (resta < CFG.vicolo && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
+    // 6b) le strade libere: una cosa a terra che entra nella carreggiata di una via carrabile (città, strada, litoranea), o che in un vicolo
+    // o su un marciapiede lascia meno di 1,2 m per passare (fra lei e il ciglio, o fra lei e il muro)
+    E.forEach(e => { if (!terra(e) || LIV[e.k] === 0) return; const t = suStrada(A, e); if (t) { e.suStrada = t; segna('strada', e, t.k + ' ' + t.via); } });
     // 7) la densità: facciate e tratti di marciapiede pieni (cosa si toglierebbe)
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
@@ -63031,7 +63049,7 @@ var PuliziaRumore = (function () {
     // 1a) i praticabili coperti da chi non dovrebbe: un pezzo d'uno scorcio (la serranda chiusa, lo zoccolo, la luminaria) proprio su una
     // porta vera o contro il suo gradino se ne va; un pezzo grande piccolo (l'edicola votiva, il carro, il pozzo) davanti a una porta o al
     // piede di una scala scivola lungo i suoi assi finché la lascia libera (mai dentro una casa)
-    const MOBILI = /^(edicola_votiva|carro_merci|pozzo|fontana|bitta|palo_riflettori|grata_vapore|locomotiva|lavatoio)$/;
+    const MOBILI = /^(edicola_votiva|carro_merci)$/;   // solo i decori e i carri: fontane, pozzi, lavatoi, bitte sono mete (percorsi, posti) e restano dove li vuole la pianta
     const copre = (e, V) => V.filter(v => (v.t === 'coperto' && v.p && v.p.k === 'porta') || (v.t === 'urto' && v.o && v.o.k === 'gradino') || v.t === 'pezzo');   // il pezzo davanti al praticabile (coi raggi) o dentro la sua zona libera
     E.forEach(e => { if (e.gone) return;
       if (/^scorcio/.test(e.k)) { if (copre(e, A.viol(e, I)).length) { A.togli(e); conta(az.tolti, 'coperta:' + e.k); } return; }   // solo quel pezzo, non lo scorcio intero
@@ -63039,7 +63057,7 @@ var PuliziaRumore = (function () {
       const B = e.B, assi = [[B.c, -B.s], [B.s, B.c]];
       for (const s of [.5, 1, 1.5, 2, 2.5, 3, 4]) for (const [ux, uz] of assi) for (const sg of [1, -1]) { const dx = ux * s * sg, dz = uz * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); A.sposta(e, dx, dy, dz);
         if (!copre(e, A.viol(e, I)).length && !A.inCasa(e) && nx(e) === 0) { A.rimetti(I, e); conta(az.spostati, 'pezzo:' + (e.tipo || e.src)); return; } A.sposta(e, -dx, -dy, -dz); }
-      if (e.tipo === 'edicola_votiva') { A.togli(e); conta(az.tolti, 'coperta:edicola_votiva'); return; }   // il decoro piccolo che non trova un altro posto se ne va
+      if (e.tipo === 'edicola_votiva' || (!e.tipo && e.src === 'soglie')) { A.togli(e); conta(az.tolti, 'coperta:' + (e.tipo || 'pensilina')); return; }   // il decoro piccolo, o la pensilina da stazione posata a caso su uno slargo, che non trova un altro posto se ne va
       conta(az.tenuti, 'coperta:' + (e.tipo || e.src)); });
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
@@ -63083,6 +63101,11 @@ var PuliziaRumore = (function () {
       for (const s of [.3, .6, .9, 1.3, 1.8]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
         if (nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'sovrapposto'); });
+    // 5c) le strade libere: verso il muro (fuori dalla carreggiata, contro la casa), poi lungo la via; o via
+    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv(G) === 0;
+      const prove = []; for (const k of [.3, .6, 1, 1.5, 2, 2.6, 3.2]) prove.push([v.n[0] * k * sg, v.n[1] * k * sg]); for (const k of [.8, 1.6, 2.4, 3.2, 4]) for (const q of [1, -1]) prove.push([v.u[0] * k * q, v.u[1] * k * q]);
+      for (const [dx, dz] of prove) { const dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz); if (ok()) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'strada:' + e.k); return; } muovi(G, -dx, -dy, -dz); }
+      togli(e, 'strada'); });
     // 6) i vicoli strozzati: verso il muro più vicino, o via
     E.forEach(e => { if (e.gone || !e.strozza) return; const v = e.strozza, sg = v.d >= 0 ? 1 : -1, G = grp(e), r = Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
       for (const s of [.3, .5, .8]) { const dx = v.n[0] * s * sg, dz = v.n[1] * s * sg;
@@ -71079,6 +71102,11 @@ var Render = (function () {
     const FIN = new Map();
     const PO = new Map(), KP = new Set(['panchina', 'pensilina', 'fermata', 'dehors', 'edicola', 'banco_pesce', 'mercato', 'fila', 'cypher', 'carico']);
     try { if (typeof Posti !== 'undefined') Posti.all().forEach(p => { if (!KP.has(p.k)) return; const kk = Math.floor(p.x / 4) * 8192 + Math.floor(p.y / 4); let a = PO.get(kk); if (!a) PO.set(kk, a = []); a.push(p); }); } catch (e) { }
+    // [pulizia] tutte le vie (non gli sterrati): per gli ostacoli sulla carreggiata e sui marciapiedi
+    const VTT = new Map(); (M.roads || []).forEach(rd => { if (!rd.pts || rd.kind === 'sterrato' || rd.rect) return; for (let k = 0; k < rd.pts.length - 1; k++) { const q = [rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd];
+      for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VTT.get(kk); if (!a) VTT.set(kk, a = []); a.push(q); } } });
+    const viaVicina = (x, z) => { let best = null; for (const q of VTT.get(Math.floor(x / 8) * 4096 + Math.floor(z / 8)) || []) { const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - q[0]) * dx + (z - q[1]) * dz) / L2, 0, 1), px = q[0] + dx * t, pz = q[1] + dz * t, d = Math.hypot(px - x, pz - z), hw = (q[4].w || 4) / 2;
+      if (d - hw > 3.5 || (best && d - hw >= best.d - best.hw)) continue; const L = Math.sqrt(L2), n = [-dz / L, dx / L]; best = { rd: q[4], kind: q[4].kind, hw, d, s: (x - px) * n[0] + (z - pz) * n[1], n, u: [dx / L, dz / L] }; } return best; };
     const VIC = []; (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) VIC.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w || 2]); });
     const VH = new Map(); VIC.forEach(q => { for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VH.get(kk); if (!a) VH.set(kk, a = []); a.push(q); } });
     // le voci ESTERNE: quello che altri filoni posano dopo, dai loro piani (la segnaletica: pali, bandiere, targhe, pannelli; le vie
@@ -71102,7 +71130,7 @@ var Render = (function () {
       Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
     X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      viaVicina, swH: window.Pavimenti && typeof Pavimenti.swH === 'function' ? (x, z) => { try { return Pavimenti.swH(x, z); } catch (e) { return null; } } : null, R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
       // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
       // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza

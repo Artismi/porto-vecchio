@@ -13,7 +13,8 @@
    - sotto_pezzo  la carreggiata passa dentro la scatola piena di un pezzo grande ('B' di W.pezzi.imp) che non si attraversa
                   (portici, archi, sottopassi, porte e scalinate si attraversano: esclusi).
    - marciapiede  lungo una via di città il marciapiede (caselle WALK a un metro dal ciglio) c'è e poi smette per 2 m o più senza un
-                  incrocio, una piazza o una scala, o finisce contro un muro (la casella dopo è una casa).
+                  incrocio, una piazza o una scala, o finisce contro un muro (la casella dopo è una casa);
+   - scoglio      uno scoglio grande della costa (W.SEA.rocks, l'80% del raggio) sulla carreggiata o sul marciapiede (2 m oltre il ciglio).
    Ogni difetto: [tipo, x, y, via, lunghezza o distanza, contro]. analizza(W) → { conti, punti }. */
 var StradeIntegre = (function () {
   'use strict';
@@ -28,7 +29,7 @@ var StradeIntegre = (function () {
     const NOME = {}; Object.keys(T).forEach(k => NOME[T[k]] = k);
     const SUOLO = new Set(['VIA', 'COB', 'PIAZZA', 'WALK', 'STAIRS', 'QUAY', 'PIER', 'DIRT', 'GRAVEL'].map(k => T[k]).filter(v => v !== undefined));
     const R = (W.roads || []).filter(r => r && r.pts && r.pts.length > 1);
-    const P = { capo_cieco: [], capi_staccati: [], buco: [], sotto_casa: [], sotto_pezzo: [], marciapiede: [] };
+    const P = { capo_cieco: [], capi_staccati: [], buco: [], sotto_casa: [], sotto_pezzo: [], marciapiede: [], scoglio: [] };
     // le distanze da una via
     const dVia = (rd, x, y) => { let best = 1e9; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); best = Math.min(best, Math.hypot(ax + dx * t - x, ay + dy * t - y)); } return best; };
     // i lotti orientati (la pianta): centro, misure, angolo; le botteghe con l'insegna render.js le disegna dritte
@@ -86,6 +87,9 @@ var StradeIntegre = (function () {
             if (c) { if (buco && buco.n >= 2 && !buco.inc) P.marciapiede.push(['marciapiede', buco.x, buco.y, rd.id, rd.kind, buco.n + ' m', buco.muro ? 'contro un muro' : 'interrotto (' + (NOME[buco.v] || '?') + ')']); buco = null; prima = true; continue; }
             if (prima) { if (!buco) buco = { x: Math.round(px * 10) / 10, y: Math.round(py * 10) / 10, n: 0, inc: false, muro: v === T.BLD, v }; buco.n++; if (incrocio(x, y) || v === T.PIAZZA || v === T.STAIRS) buco.inc = true; } } }
         }); });
+    // 4. gli scogli grandi della costa (W.SEA.rocks) sulla carreggiata o sul marciapiede (2 m oltre il ciglio) di una via
+    ((W.SEA && W.SEA.rocks) || []).forEach(q => { if (!inC(q.x, q.y) || !(q.r > .8)) return; for (const rd of VR) { const d = dVia(rd, q.x, q.y), hw = (rd.w || 4) / 2, dentro = hw + 2 - (d - q.r * .8);
+        if (dentro > .3) { P.scoglio.push(['scoglio', Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10, rd.id, rd.kind, dentro.toFixed(1) + ' m dentro', q.id || 'r ' + q.r]); break; } } });
     const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length);
     return { conti, punti: P, vie: VR.length };
   }
