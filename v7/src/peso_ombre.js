@@ -18,7 +18,7 @@ var PesoOmbre = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
   const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
-  const P = { alto: 70, M: 8, ang: .0026, ferma: 90, fermaLunga: 1800, nuovoMs: 4000, giro: 8, lotto: 250, fine: 1.4, fineTel: 1.25 };   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
+  const P = { alto: 70, M: 8, ang: .0026, ferma: 90, fermaLunga: 1800, nuovoMs: 4000, giro: 8, lotto: 250, fine: 1.4, fineTel: typeof LeggeraMem !== 'undefined' && LeggeraMem.on('ombre') ? .8 : 1.25 };   // [leggera] sul telefono la mappa del sole più piccola (leggera_memoria.js)   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, aggiunte: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();

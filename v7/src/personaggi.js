@@ -1354,7 +1354,7 @@ var Personaggi = (function () {
     P(4, c => { c.fillStyle = 'rgb(0,255,0)'; for (let k = 0; k < 8; k++) for (let l = 0; l < 8; l++) { c.globalAlpha = .35; c.beginPath(); c.ellipse((k + (l % 2) * .5) / 8, l / 8, .03, .05, 0, 0, 7); c.fill(); } c.globalAlpha = 1; });   // maglia
     P(5, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) for (let l = 0; l < 4; l++) { c.beginPath(); c.arc((k + (l % 2) * .5) / 4 + .06, l / 4 + .06, .045, 0, 7); c.fill(); } });   // pois
     P(6, c => { c.fillStyle = R; for (let k = 0; k < 8; k++) c.fillRect(k / 8, 0, .025, 1); });   // righine verticali
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; AT.tex = tex; AT.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] sul telefono a metà lato */ AT.tex = tex; AT.cv = cv; return tex;
   }
 
   // =====================================================================================
@@ -1414,10 +1414,11 @@ var Personaggi = (function () {
     g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
     g.setIndex(n > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1));
     g.computeBoundingSphere(); g.userData.personaggi = true; g.userData.tri = B.I.length / 3;
+    if (typeof LeggeraMem !== 'undefined') LeggeraMem.figura(g, bones.length);   // [leggera] sul telefono la pelle in attributi compatti (112 → ~45 byte a vertice)
     return g;
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
-  const GEO = new Map(), GEO_MAX = 260, STAT = { n: 0, ms: 0 };
+  const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 40 : 260,   /* [leggera] sul telefono 40 figure in cache */ STAT = { n: 0, ms: 0 };
   function veste(g, D) { const it = vesteGen(g, D); let r; do r = it.next(); while (!r.done); return r.value; }
   function* vesteGen(g, D) {
     const u = g.userData, m = u.mixer && u.mixer.getRoot ? u.mixer.getRoot() : null; let ref = null; const kit = [], vecchie = [];
