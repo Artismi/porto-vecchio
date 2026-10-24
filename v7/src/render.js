@@ -504,7 +504,7 @@ var Render = (function () {
       FU1.onda.clear(); setTimeout(() => { if (FU1.massa && !FU1.att.size) massaVia1(); }, (fine + Anelli.CFG.sfuma + .5) * 1000); }
     if (ANT1.x !== null) { const v = Math.hypot(x - ANT1.x, z - ANT1.z) / dt; if (v < 80) ANT1.v += (v - ANT1.v) * .08; }   // la velocità della camera, smussata (un salto del teletrasporto non conta)
     ANT1.x = x; ANT1.z = z; camera.getWorldDirection(ANT1.dir); const L = Math.hypot(ANT1.dir.x, ANT1.dir.z) || 1;
-    Anelli.tick({ x, z, fx: ANT1.dir.x / L, fz: ANT1.dir.z / L, vel: ANT1.v, nebbia: scene.fog ? scene.fog.far : 150, menu: !!(ui && (ui.intro || ui.menu)) });
+    Anelli.tick({ x, z, fx: ANT1.dir.x / L, fz: ANT1.dir.z / L, vel: ANT1.v, nebbia: scene.fog ? scene.fog.far : 150, nebbiaVicina: scene.fog ? scene.fog.near : 80, menu: !!(ui && (ui.intro || ui.menu)) });
   }
   function massaVia1() { if (!FU1.massa) return; scene.remove(FU1.massa); FU1.massa.geometry.dispose(); FU1.massa.material.dispose(); FU1.massa = null; }
   // il settore si fonde; sul telefono resta spento per la camera (livello 0: la scheda video non lo riceve) finché non entra nell'anello

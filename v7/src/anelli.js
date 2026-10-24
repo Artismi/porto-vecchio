@@ -65,9 +65,11 @@ var Anelli = (function () {
     const vicino = (o.nebbia || 150) + CFG.margine;
     if (now - ordT > 400 || !cur) { ordT = now; ordina(o.x, o.z, o.fx || 0, o.fz || 0); }
     // il tetto di tempo: si stringe se il fotogramma è lento, si allarga nel menu; un settore dentro la nebbia che manca passa avanti
-    let tetto = o.menu ? CFG.tettoMax : avgF > 24 ? CFG.tettoMin : avgF > 19 ? (CFG.tetto + CFG.tettoMin) / 2 : CFG.tetto;
+    // (il ritmo di riferimento: 60, o 30 se il gioco va a 30 regolari come sul telefono; si stringe solo quando si scende sotto quello)
+    const rif = TEL && avgF > 21 ? 33.3 : 16.7, lento = avgF / rif;
+    let tetto = o.menu ? CFG.tettoMax : lento > 1.45 ? CFG.tettoMin : lento > 1.15 ? (CFG.tetto + CFG.tettoMin) / 2 : CFG.tetto;
     const prossimo = cur || CODA[0];
-    if (prossimo && prossimo.d < vicino - CFG.margine * .5 && !o.menu) { tetto = CFG.tettoUrgente; ST.urgenti++; }
+    if (prossimo && prossimo.d < (o.nebbiaVicina || vicino * .55) && !o.menu) { tetto = CFG.tettoUrgente; ST.urgenti++; }   // dove la nebbia non copre ancora (un salto, la macchina veloce): passa avanti
     ST.tetto = tetto; DL = now + tetto; VF = 0;
     let n = 0;
     while (performance.now() < DL) {
