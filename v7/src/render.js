@@ -368,7 +368,7 @@ var Render = (function () {
   // tempo, e la casa vera prende il posto della sagoma col retino (FD1, il quarto canale: 255 la sagoma, 0 la casa). Con ?tutto (e nello
   // Studio) come prima: tutto qui, nessuna sagoma, il quarto canale resta 0 e lo shader non scarta niente. I secchi sono gli stessi
   // (la chiave ha il settore), cambiano solo le pile delle mappe (un settore fa le sue) e il numero della tavolozza: gli stessi texel.
-  const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false, LIM: 60000 };
+  const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false, LIM: typeof Anelli !== 'undefined' && Anelli.TEL ? 24000 : 60000, onda: new Set(), ondaT: 0, nasc: 0 };
   const ANL1 = () => typeof Anelli !== 'undefined' && Anelli.ON;
   const okGeo1 = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
   function fus1Rec(top) { const rec = top.userData.fgRec1 || (top.userData.pesoBot && FU1.recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || FU1.isLive(top)) return null; return rec; }
@@ -384,7 +384,7 @@ var Render = (function () {
     let ora = scene.children.slice();
     if (ANL1()) {   // [anelli] le case lontane aspettano il loro settore
       const P = FU1.st && FU1.st.player ? [FU1.st.player.x, FU1.st.player.y] : [cam.x, cam.y], R = Anelli.CFG.vicino; ora = [];
-      scene.children.slice().forEach(top => { const rec = fus1Rec(top); if (!rec) { ora.push(top); return; } const c = recCtr1(rec); if (Math.hypot(c[0] - P[0], c[1] - P[1]) < R) { ora.push(top); return; }
+      scene.children.slice().forEach(top => { const rec = fus1Rec(top); if (!rec) { ora.push(top); return; } const c = recCtr1(rec); if (Math.hypot(c[0] - P[0], c[1] - P[1]) < R) { ora.push(top); if (Anelli.CFG.onda) { FU1.onda.add(rec); FD1.data[FD1.idx.get(rec) * 4 + 3] = 255; } return; }   // [anelli] l'onda del primo avvio: anche le vicine partono sagome
         const i = Math.floor(c[0] / SETT1), j = Math.floor(c[1] / SETT1), k = i + ',' + j; let S = FU1.att.get(k);
         if (!S) FU1.att.set(k, S = { k, tops: [], recs: new Set(), x: (i + .5) * SETT1, z: (j + .5) * SETT1 });
         S.tops.push(top); S.recs.add(rec); scene.remove(top); FD1.data[FD1.idx.get(rec) * 4 + 3] = 255; });
@@ -393,7 +393,8 @@ var Render = (function () {
     let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
     window.__fusione1 = { prima: before, dopo: after, secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, materiali: FD1.canon.size, ombre: FU1.tot.ombre, tavolozza: PAL1.col.length, pile: ARR1.all.length, strati: ARR1.all.reduce((n, a) => n + a.maps.length, 0), settoriDopo: FU1.att.size };
     if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
-    if (FU1.att.size) massa1();
+    if (FU1.att.size || FU1.onda.size) massa1();
+    if (FU1.onda.size) Anelli.suFinisci(() => { FU1.onda.forEach(rec => { FD1.data[FD1.idx.get(rec) * 4 + 3] = 0; }); FU1.onda.clear(); FU1.ondaT = FU1.ondaT || 1; FD1.dirty = true; });   // gli strumenti: subito
   }
   // la fusione di un gruppo di case (tutte nel caricamento, o un settore per volta): a pezzi se aPezzi (cede il passo con Anelli.scaduto())
   function* fus1Gen(tops, aPezzi) {
@@ -467,8 +468,9 @@ var Render = (function () {
   // il lastrico o il tetto un po' più scuri; una mesh sola. Il quarto canale di FD1 dice quanto si vede ancora (255 tutta, 0 niente): la
   // casa vera scarta i pixel dove la sagoma li tiene, e viceversa (lo stesso retino, Anelli.RETINO)
   function massa1() {
-    const pos = [], col = [], nor = [], ids = [], C = new THREE.Color(), G2 = new THREE.Color('#9a948c'), Rf = new THREE.Color();
-    FU1.att.forEach(S => S.recs.forEach(rec => { const g = rec.geo, b = rec.b; if (!g || !b || !(g.w > 0) || !(g.d > 0) || !(g.H > 0)) return;
+    const pos = [], col = [], nor = [], ids = [], C = new THREE.Color(), G2 = new THREE.Color('#9a948c'), Rf = new THREE.Color(), tutte = [...FU1.onda];
+    FU1.att.forEach(S => S.recs.forEach(rec => tutte.push(rec)));
+    tutte.forEach(rec => { const g = rec.geo, b = rec.b; if (!g || !b || !(g.w > 0) || !(g.d > 0) || !(g.H > 0)) return;
       const bi = FD1.idx.get(rec), a = rec.tier ? 0 : rotOf(b), cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS, ca = Math.cos(-a), sa = Math.sin(-a);
       C.set(b.__wallHex || (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || '#b8a890').lerp(G2, .35); Rf.copy(C).multiplyScalar(b.deco ? .78 : .62);
       const X = [g.x0, g.x0 + g.w], Z = [g.z0, g.z0 + g.d], Y = [g.y0, g.y0 + g.H];
@@ -477,7 +479,7 @@ var Render = (function () {
       const rn = (x, z) => [x * ca + z * sa, 0, -x * sa + z * ca];
       quad(P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(0, 1, 1), rn(0, 1), C); quad(P(1, 0, 0), P(0, 0, 0), P(0, 1, 0), P(1, 1, 0), rn(0, -1), C);
       quad(P(1, 0, 1), P(1, 0, 0), P(1, 1, 0), P(1, 1, 1), rn(1, 0), C); quad(P(0, 0, 0), P(0, 0, 1), P(0, 1, 1), P(0, 1, 0), rn(-1, 0), C);
-      quad(P(0, 1, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0), [0, 1, 0], Rf); }));
+      quad(P(0, 1, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0), [0, 1, 0], Rf); });
     if (pos.length) {
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('bId1', new THREE.BufferAttribute(new Uint16Array(ids), 1)); geo.computeBoundingSphere();
       const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -488,7 +490,7 @@ var Render = (function () {
       const m = new THREE.Mesh(geo, mat); m.name = 'massa1'; m.userData.keep = true; m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false; scene.add(m); FU1.massa = m;
     }
     // i lavori: un settore per lavoro, dal centro del settore
-    FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, telefono: false, gen: fus1Settore(S) }));
+    FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, gen: fus1Settore(S) }));
     FU1.sig = !!(window.LeggeraMem && LeggeraMem.on('firme'));
   }
   // [anelli] a ogni fotogramma: dove guarda la camera (il punto a terra e la direzione), fin dove arriva la nebbia, quanto si corre
@@ -496,19 +498,36 @@ var Render = (function () {
   function anelliTick1(ui, dt) {
     if (typeof Anelli === 'undefined' || !Anelli.ON) return;
     dt = Math.max(.001, dt || .016); const x = cam.x, z = cam.y;
+    if (FU1.onda.size && !FU1.ondaT) { FU1.ondaT = performance.now();   // [anelli] l'onda del primo avvio (ANIMUS): le case vicine dalle sagome, a cerchi dal punto guardato
+      const W = Anelli.CFG.ondaV; let fine = 0; FU1.onda.forEach(rec => { const c = recCtr1(rec), i = FD1.idx.get(rec), d = Math.hypot(c[0] - x, c[1] - z), rit = .35 + d / W; fine = Math.max(fine, rit);
+        Anelli.sfuma(k => { FD1.data[i * 4 + 3] = Math.round(255 * (1 - k)); FD1.dirty = true; }, Anelli.CFG.sfuma, rit); });
+      FU1.onda.clear(); setTimeout(() => { if (FU1.massa && !FU1.att.size) massaVia1(); }, (fine + Anelli.CFG.sfuma + .5) * 1000); }
     if (ANT1.x !== null) { const v = Math.hypot(x - ANT1.x, z - ANT1.z) / dt; if (v < 80) ANT1.v += (v - ANT1.v) * .08; }   // la velocità della camera, smussata (un salto del teletrasporto non conta)
     ANT1.x = x; ANT1.z = z; camera.getWorldDirection(ANT1.dir); const L = Math.hypot(ANT1.dir.x, ANT1.dir.z) || 1;
     Anelli.tick({ x, z, fx: ANT1.dir.x / L, fz: ANT1.dir.z / L, vel: ANT1.v, nebbia: scene.fog ? scene.fog.far : 150, menu: !!(ui && (ui.intro || ui.menu)) });
   }
+  function massaVia1() { if (!FU1.massa) return; scene.remove(FU1.massa); FU1.massa.geometry.dispose(); FU1.massa.material.dispose(); FU1.massa = null; }
+  // il settore si fonde; sul telefono resta spento per la camera (livello 0: la scheda video non lo riceve) finché non entra nell'anello
+  // medio: fondere libera la memoria dei pezzi originali (diventano segnaposti, la fusa compattata è molto più piccola), mostrarlo la spende
   function* fus1Settore(S) {
-    const made = yield* fus1Gen(S.tops, true);
+    const made = yield* fus1Gen(S.tops, true); S.made = made;
+    FU1.att.delete(S.k); FU1.n++;
+    if (Anelli.TEL) { made.forEach(m => { m.userData.anL = m.layers.mask; m.layers.mask = 0; }); FU1.nasc++; Anelli.lavoro({ tipo: 'mostra', x: S.x, z: S.z, r: SETT1 * .75, telefono: false, gen: fus1Mostra(S) }); }
+    else yield* fus1Mostra(S);
+    if (!FU1.att.size) {   // tutte le case fuse: le firme dei materiali non servono più
+      if (FU1.sig) FD1.sigs.clear();
+      if (window.__fusione1) Object.assign(window.__fusione1, { secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, ombre: FU1.tot.ombre, pile: ARR1.all.length, tavolozza: PAL1.col.length, settoriDopo: 0 });
+      Anelli.log('case: tutte fuse,', FU1.n, 'settori dopo il caricamento');
+    }
+  }
+  function* fus1Mostra(S) {
     Anelli.segna('ritorno');
-    S.tops.forEach(top => { scene.add(top); smooth2(top); }); made.forEach(m => smooth2(m));   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
+    if (Anelli.TEL) { S.made.forEach(m => { if (m.userData.anL !== undefined) { m.layers.mask = m.userData.anL; delete m.userData.anL; } }); FU1.nasc--; }
+    S.tops.forEach(top => { scene.add(top); smooth2(top); }); S.made.forEach(m => smooth2(m)); S.made = null;   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
     const I = [...S.recs].map(r => FD1.idx.get(r));
     Anelli.sfuma(k => { const v = Math.round(255 * (1 - k)); I.forEach(i => { FD1.data[i * 4 + 3] = v; }); FD1.dirty = true; });
-    FU1.att.delete(S.k); FU1.n++;
-    if (!FU1.att.size) {   // tutte le case vere: via la sagoma, le firme dei materiali non servono più
-      setTimeout(() => { if (FU1.massa && !FU1.att.size) { scene.remove(FU1.massa); FU1.massa.geometry.dispose(); FU1.massa.material.dispose(); FU1.massa = null; } }, (Anelli.CFG.sfuma + .5) * 1000);
+    if (!FU1.att.size && !FU1.nasc) {   // tutte le case vere: via la sagoma
+      setTimeout(() => { if (FU1.massa && !FU1.att.size && !FU1.nasc && !FU1.onda.size) massaVia1(); }, (Anelli.CFG.sfuma + .5) * 1000);
       if (FU1.sig) FD1.sigs.clear();
       if (window.__fusione1) Object.assign(window.__fusione1, { secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, ombre: FU1.tot.ombre, pile: ARR1.all.length, tavolozza: PAL1.col.length, settoriDopo: 0 });
       Anelli.log('case: tutte fuse,', FU1.n, 'settori dopo il caricamento');
@@ -2864,7 +2883,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     let c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
+    paintTiles(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; svolte1(x, tx0, ty0, n, m); yield; usura1(x, tx0, ty0, n, m); yield; surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); yield; strisce35(x, tx0, ty0, n, m); yield; raccordi1(x, tx0, ty0, n, m); yield; holes1(x, tx0, ty0, n, m); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
     yield;
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
@@ -2899,9 +2918,11 @@ var Render = (function () {
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     if (window.Pavimenti) try { Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero
+    yield;   // [anelli] un passo per pezzo: il suolo, la riva, il suo mare
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
+    if (riva) yield;
     if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
     yield;
     const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);

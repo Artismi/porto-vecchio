@@ -22,6 +22,8 @@ var Anelli = (function () {
   const CFG = {
     vicino: TEL ? 120 : 170,        // nel caricamento: le case entro questo raggio dal punto di partenza (la nebbia chiude a ~110-190 m)
     margine: 30,                    // l'anello vicino mentre si gioca: la nebbia + questo
+    onda: !/[?&]noanimus\b/.test(Q), // al primo avvio, nel menu: le sagome e poi la città vera che sale a onda dal personaggio (?noanimus: subito)
+    ondaV: 110,                     // la velocità dell'onda (m/s)
     medio: [110, 420],              // l'anello medio: 20 s alla velocità di adesso, fra questi due
     secondi: 20,
     tetto: TEL ? 2.5 : 3.5,         // il tempo dei lavori per fotogramma, di norma
@@ -69,7 +71,9 @@ var Anelli = (function () {
     ST.tetto = tetto; DL = now + tetto; VF = 0;
     let n = 0;
     while (performance.now() < DL) {
-      if (!cur) { cur = CODA.shift(); ST.coda = CODA.length; if (!cur) break; if (TEL && cur.telefono === false && cur.d > medio + vicino) { CODA.unshift(cur); cur = null; break; } }   // sul telefono quello che non serve (oltre l'anello medio) aspetta: la memoria cresce solo dove si va
+      if (!cur) {   // sul telefono quello che chiede la scheda video (telefono: false) oltre l'anello medio aspetta: la memoria cresce solo dove si va
+        let k = 0; if (TEL) while (k < CODA.length && CODA[k].telefono === false && CODA[k].d > medio + vicino) k++;
+        if (k >= CODA.length) break; cur = CODA.splice(k, 1)[0]; ST.coda = CODA.length; }
       const t1 = performance.now(); ETI = '';
       let r; try { r = cur.gen.next(); } catch (e) { console.warn('[anelli] lavoro', cur.tipo, e); r = { done: true }; }
       const dt = performance.now() - t1; if (dt > 20) picchi(cur.tipo + (ETI ? ':' + ETI : ''), dt);
@@ -79,20 +83,25 @@ var Anelli = (function () {
     const ms = performance.now() - now; ST.ms += ms; ST.fotogrammi++; if (ms > ST.picco) ST.picco = +ms.toFixed(1);
   }
   // tutto subito (gli strumenti, un salto lontano): finisce i lavori in coda senza tetto
+  const SUF = [];   // chi vuole sapere che si finisce tutto subito (render.js: l'onda del primo avvio)
+  const suFinisci = f => SUF.push(f);
   function finisci(filtro) {
+    if (!filtro) SUF.forEach(f => { try { f(); } catch (e) { console.warn('[anelli]', e); } });
     DL = Infinity; VF = -1e12; const resta = [];
     const run = j => { let r; do { try { r = j.gen.next(); } catch (e) { console.warn('[anelli]', e); r = { done: true }; } } while (!r.done); ST.fatti++; if (j.fatto) j.fatto(); };
     if (cur && (!filtro || filtro(cur))) { run(cur); cur = null; }
     while (CODA.length) { const j = CODA.shift(); if (filtro && !filtro(j)) { resta.push(j); continue; } run(j); }
     CODA.push(...resta); ST.coda = CODA.length; DL = 0; VF = 0;
+    if (!filtro) sfumaTutte();   // e le sfumature arrivano in fondo (gli strumenti fotografano la città intera)
   }
   // le sfumature: k da 0 a 1 in dur secondi (set(k) a ogni fotogramma, set(1) alla fine)
-  function sfuma(set, dur) { SF.push({ t0: performance.now(), dur: (dur || CFG.sfuma) * 1000, set }); ST.sfumature++; }
-  function sfumature(now) { for (let i = SF.length - 1; i >= 0; i--) { const f = SF[i], k = Math.min(1, (now - f.t0) / f.dur); try { f.set(k * k * (3 - 2 * k)); } catch (e) { } if (k >= 1) SF.splice(i, 1); } }
+  function sfuma(set, dur, ritardo) { SF.push({ t0: performance.now() + (ritardo || 0) * 1000, dur: (dur || CFG.sfuma) * 1000, set }); ST.sfumature++; }
+  function sfumature(now) { for (let i = SF.length - 1; i >= 0; i--) { const f = SF[i]; if (now < f.t0) continue; const k = Math.min(1, (now - f.t0) / f.dur); try { f.set(k * k * (3 - 2 * k)); } catch (e) { } if (k >= 1) SF.splice(i, 1); } }
+  const sfumaTutte = () => { while (SF.length) { const f = SF.pop(); try { f.set(1); } catch (e) { } } };
   // il retino della sfumatura (lo stesso in tutti gli shader che sfumano, così sagoma e casa vera si danno il cambio pixel per pixel)
   const RETINO = 'float an1D() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); }';
   const stato = () => Object.assign({ on: ON, telefono: TEL, coda: CODA.length + (cur ? 1 : 0), avgF: +avgF.toFixed(1) }, ST, { ms: Math.round(ST.ms), picchi: PIC.slice() });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__anelli', { configurable: true, get: stato });
-  return { ON, TEL, CFG, ASPETTA, carica, segna, picchi, lavoro, tick, finisci, scaduto, sfuma, RETINO, stato, log, get vuota() { return !CODA.length && !cur; } };
+  return { ON, TEL, CFG, ASPETTA, carica, segna, picchi, suFinisci, lavoro, tick, finisci, scaduto, sfuma, RETINO, stato, log, get vuota() { return !CODA.length && !cur; } };
 })();
 if (typeof window !== 'undefined') window.Anelli = Anelli;
