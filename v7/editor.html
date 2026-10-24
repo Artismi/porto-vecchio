@@ -25201,7 +25201,7 @@ if (uPl.y > -900.) { vec3 vgAB = uCm - uPl; float vgT = dot(vgW - uPl, vgAB) / m
   // mescola per formazione (CALDA).
   const GAMMA = ['#15263a', '#1a3438', '#22423b', '#2c523f', '#3d6544', '#577c4a', '#7a9858', '#9cb266', '#b9c87a'];   // [tavolo] tre fasce larghe (nucleo d'ombra freddo, mezzotono, calotta): il blu solo nel fondo, la luce in un verde-oliva caldo, mai lime né crema (era '#122e5b' … '#c5e276', '#e4ee9a', '#f5f3b0')
   const GAMMA_CALDA = ['#2a2440', '#4a3438', '#74503a', '#9a7448', '#b89458', '#cdb06a', '#dcc884', '#ece0a4', '#f8f0c8'];
-  const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const HEXC = new Map(), hexRGB = h => { let c = HEXC.get(h); if (!c) HEXC.set(h, c = [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]); return c; };   // [suolo] in memoria: il suolo la chiama per ogni pixel
   const gammaAt = (G, t) => { t = Math.max(0, Math.min(1, t)) * (G.length - 1); const i = Math.min(G.length - 2, Math.floor(t)), f = t - i, a = hexRGB(G[i]), b = hexRGB(G[i + 1]); return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; };
   let GT = null;
   function gammaTex() { if (GT) return GT; const d = new Uint8Array(256 * 4); for (let i = 0; i < 256; i++) { const c = gammaAt(GAMMA, i / 255); d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
@@ -25325,6 +25325,34 @@ if (uPl.y > -900.) { vec3 vgAB = uCm - uPl; float vgT = dot(vgW - uPl, vgAB) / m
   // quadretto (media su ≈ 60 cm) e ci si passa sopra la grana dei fili: rumore allungato 1:5 in una direzione che cambia piano (il prato
   // pettinato dal vento), la punta chiara e calda, il fondo scuro e freddo; più la chiazza larga (≈ 2 m) che fa l'erba più alta e più
   // bassa. Sentieri e strade (roadW, il varco dei sentieri) restano come sono.
+  // ================= [suolo] LA TERRA SCOPERTA: il substrato della formazione, il tono che deriva, i sassolini =================
+  // Dove il suolo esce (sentieri, radure, chiazze, ciglio delle strade) la terra non è una tinta sola: è il substrato del posto, sabbia
+  // sotto i pini, humus bruno nella lecceta e nella macchia, calcare chiaro e ghiaioso nella gariga, argilla ocra nei prati, terra rossa
+  // negli uliveti e negli agrumeti, limo scuro lungo l'acqua. Il passaggio fra un substrato e l'altro si sfrangia (il punto si sposta
+  // col rumore, niente bordi a casella); il tono deriva su ≈ 40 m, le chiazze umide su ≈ 7 m; i sassolini sono puntini chiari con
+  // l'ombra sotto; nelle argille le crepe sottili. Tutto dipinto una volta nel foglio del suolo: sulla scheda video non costa niente.
+  const SUBSTRATO = { sabbia: [[178, 152, 110], [222, 202, 158]], humus: [[104, 80, 58], [148, 118, 84]], calcare: [[164, 154, 132], [214, 206, 184]],
+    ocra: [[160, 122, 82], [206, 170, 120]], rossa: [[142, 84, 56], [188, 124, 84]], limo: [[100, 92, 76], [146, 136, 110]] };
+  const SUB_DA_FORMA = { pineta: 'sabbia', pinetaM: 'sabbia', eucalipteto: 'sabbia', lecceta: 'humus', macchia: 'humus', gariga: 'calcare', prato: 'ocra', giardino: 'ocra', uliveto: 'rossa', agrumeto: 'rossa', riparia: 'limo' };
+  function terraAt(wx, wy, grain) {
+    const P = PIANO, W = P.W, TS = W.TS, jx = wx + vnoise(wx / 4, wy / 4, 8001) * 7 - 3.5, jy = wy + vnoise(wx / 4 + 9, wy / 4, 8002) * 7 - 3.5;
+    const tx = Math.floor(jx / TS), ty = Math.floor(jy / TS), f = tx >= 0 && ty >= 0 && tx < W.GW && ty < W.GH ? P.form[ty * W.GW + tx] : 0, nome = SUB_DA_FORMA[f && FORM[f] ? FORM[f].id : ''] || 'ocra', S = SUBSTRATO[nome];
+    const big = vnoise(wx / 40, wy / 40, 7998), um = sstep(.55, .8, vnoise(wx / 7, wy / 7, 7999)), t = Math.max(0, Math.min(1, .4 + (big - .5) * .6 + (grain - .5) * .3));
+    let r = S[0][0] + (S[1][0] - S[0][0]) * t, g = S[0][1] + (S[1][1] - S[0][1]) * t, b = S[0][2] + (S[1][2] - S[0][2]) * t; const ku = 1 - um * .13; r *= ku; g *= ku; b *= ku * 1.02;
+    const pb = vnoise(wx * 4.2, wy * 4.2, 8000), ps = vnoise(wx * 4.2 + .12, wy * 4.2 + .16, 8000), sas = nome === 'calcare' ? .66 : nome === 'humus' ? .84 : .76;
+    if (pb > sas) { const k = Math.min(1, (pb - sas) * 6); r += (226 - r) * k * .7; g += (218 - g) * k * .7; b += (200 - b) * k * .7; }   // il sassolino
+    else if (ps > sas) { const k = Math.min(1, (ps - sas) * 6) * .18; r *= 1 - k; g *= 1 - k; b *= 1 - k; }   // la sua ombra, spostata verso il basso
+    if (nome === 'ocra' || nome === 'rossa' || nome === 'limo') { const cr = Math.abs(vnoise(wx * 1.1, wy * 1.1, 8003) - .5); if (cr < .025) { const k = (1 - cr / .025) * .16; r *= 1 - k; g *= 1 - k; b *= 1 - k; } }   // le crepe
+    return [r, g, b];
+  }
+  // la distanza (m) dal centro della casella di strada più vicina, fino a 12 m (due passate a smusso sulle caselle), calcolata una volta
+  function distStrade(P) {
+    if (P.dStr) return P.dStr; const W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, D = new Float32Array(GW * GH).fill(12), d1 = TS, d2 = TS * Math.SQRT2;
+    for (let i = 0; i < GW * GH; i++) if (W.roadW[i] > 0) D[i] = 0;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) { const i = y * GW + x; let v = D[i]; if (x > 0) v = Math.min(v, D[i - 1] + d1); if (y > 0) { v = Math.min(v, D[i - GW] + d1); if (x > 0) v = Math.min(v, D[i - GW - 1] + d2); if (x < GW - 1) v = Math.min(v, D[i - GW + 1] + d2); } D[i] = v; }
+    for (let y = GH - 1; y >= 0; y--) for (let x = GW - 1; x >= 0; x--) { const i = y * GW + x; let v = D[i]; if (x < GW - 1) v = Math.min(v, D[i + 1] + d1); if (y < GH - 1) { v = Math.min(v, D[i + GW] + d1); if (x < GW - 1) v = Math.min(v, D[i + GW + 1] + d2); if (x > 0) v = Math.min(v, D[i + GW - 1] + d2); } D[i] = Math.min(12, v); }
+    return (P.dStr = D);
+  }
   function suoloErboso(ctx, tx0, ty0, n, m, PX) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, ppm = PX / TS, T = W.T;
     const ok = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano || W.roadW[i] > 0) return 0; const v = W.grid[i];
@@ -25336,22 +25364,30 @@ if (uPl.y > -900.) { vec3 vgAB = uCm - uPl; float vgT = dot(vgW - uPl, vgAB) / m
     const tmp = new Float32Array(w * h * 3), blr = new Float32Array(w * h * 3);
     for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
     for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    const DR = distStrade(P), bil = (A, d0) => (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? d0 : A[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; }, sR = bil(DR, 99), sS = bil(P.dSen, 99);
     const O = ombraSuolo(P), oS = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? 0 : O[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
     const smp = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0; return ok(x0, y0) * (1 - ax) * (1 - ay) + ok(x0 + 1, y0) * ax * (1 - ay) + ok(x0, y0 + 1) * (1 - ax) * ay + ok(x0 + 1, y0 + 1) * ax * ay; };
+    let ca = 1, sa = 0, alto = .5, vz0 = 0;   // [suolo] i campi lenti (verso dei fili ≈ 14 m, chiazze verdi ≈ 13 m, rilievo ≈ 2 m) ogni 4 e ogni 2 pixel: un terzo del costo
     for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, a = smp(wx / TS - .5, wy / TS - .5); if (a < .02) continue;
-      const ang = fbm(wx / 14, wy / 14, 7981, 2) * 2.4 + .6, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, v = -wx * sa + wy * ca;
+      if (!(px & 3) || px < 4) { const ang = fbm(wx / 14, wy / 14, 7981, 2) * 2.4 + .6; ca = Math.cos(ang); sa = Math.sin(ang); vz0 = sstep(.46, .66, fbm(wx / 13, wy / 13, 7997, 3)) * .5; }
+      if (!(px & 1) || px < 2) alto = fbm(wx / 2.2, wy / 2.2, 7984, 2);
+      const u = wx * ca + wy * sa, v = -wx * sa + wy * ca;
       const g1 = vnoise(u / .5, v / .1, 7982), g2 = vnoise(u / .9, v / .16, 7983), grain = g1 * .65 + g2 * .35;   // i fili: lunghi 0,5-0,9 m, larghi 10-16 cm
-      const alto = fbm(wx / 2.2, wy / 2.2, 7984, 2), lum = .8 + .42 * grain + (alto - .5) * .22, tip = sstep(.62, .9, grain);
+      const lum = .8 + .42 * grain + (alto - .5) * .22, tip = sstep(.62, .9, grain);
       const k = (py * w + px), q = k * 4, b0 = blr[k * 3], b1 = blr[k * 3 + 1], b2 = blr[k * 3 + 2];
       let r = b0 * lum + tip * 18, g = b1 * lum + tip * 16, bb = b2 * (lum - .04) - tip * 2;
       { const sc = gammaAt(GAMMA_CALDA, .6 + (alto - .5) * .2 + (grain - .5) * .14), kq = .5; r += (sc[0] * (.9 + grain * .2) - r) * kq; g += (sc[1] * (.92 + grain * .2) - g) * kq; bb += (sc[2] * .85 - bb) * kq; }   // il fondo chiaro e asciutto: la paglia calda fra i ciuffi
-      { const vz = sstep(.46, .66, fbm(wx / 13, wy / 13, 7997, 3)) * .5; if (vz > 0) { r += (140 * (.88 + grain * .2) - r) * vz; g += (156 * (.9 + grain * .2) - g) * vz; bb += (90 * .9 - bb) * vz; } }   // [tavolo] l'erba come pittura: chiazze larghe (8-15 m) di verde spento fra la paglia
+      { const vz = vz0; if (vz > 0) { r += (140 * (.88 + grain * .2) - r) * vz; g += (156 * (.9 + grain * .2) - g) * vz; bb += (90 * .9 - bb) * vz; } }   // [tavolo] l'erba come pittura: chiazze larghe (8-15 m) di verde spento fra la paglia
       { const rs = respiro(W, wx, wy), te = 1 - sstep(.15, .45, rs + (grain - .5) * .25); if (te > 0) {   // la terra che viene fuori: calda, con la grana dei sassolini
-          const tc = gammaAt(GAMMA_CALDA, .44 + (vnoise(wx * 3, wy * 3, 7993) - .5) * .18 + (alto - .5) * .12); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
-      { const oc = sstep(.32, .68, oS(wx / TS - .5, wy / TS - .5)); if (oc > 0) {   // [tavolo] sotto le chiome la lettiera: aghi tabacco-ruggine sotto i pini, foglie brune sotto i lecci, con macule chiare
+          const tc = terraAt(wx, wy, grain); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
+      { const dR = sR(wx / TS - .5, wy / TS - .5) - TS * .5, e = 1 - sstep(.4, 4.2, dR); if (e > 0) {   // [suolo] il ciglio della strada: la polvere e la ghiaia che escono dalla carreggiata, l'erba pestata, la cunetta un filo più scura e umida
+          const tc = terraAt(wx, wy, grain), pv = [tc[0] * .45 + 160 * .55, tc[1] * .45 + 150 * .55, tc[2] * .45 + 132 * .55], k = e * .82, cu = Math.exp(-((dR - 1.4) * (dR - 1.4)) / .18) * .1;
+          r += (pv[0] - r) * k; g += (pv[1] - g) * k; bb += (pv[2] - bb) * k; r *= 1 - cu; g *= 1 - cu * .9; bb *= 1 - cu * .7; } }
+      { const dS = sS(wx / TS - .5, wy / TS - .5); if (dS < .6) { const k = (1 - sstep(-.6, .6, dS)) * .5; r += (r * 1.1 + 8 - r) * k; g += (g * 1.08 + 6 - g) * k; bb += (bb * 1.04 - bb) * k; } }   // [suolo] il sentiero pestato: il mezzo più chiaro e compatto
+      { const oc = sstep(.4, .8, oS(wx / TS - .5, wy / TS - .5)); if (oc > 0) {   // [tavolo] sotto le chiome la lettiera: aghi tabacco-ruggine sotto i pini, foglie brune sotto i lecci, con macule chiare
           const ti = Math.floor(wy / TS) * GW + Math.floor(wx / TS), fo = FORM[P.form[ti]], pin = fo && /^pin/.test(fo.id), mac = vnoise(wx * 1.6, wy * 1.6, 7995), fg = vnoise(u / .22, v / .05, 7996);
-          const L = pin ? [150, 100, 58] : [112, 88, 62], l2 = .82 + mac * .3 + (pin ? (fg - .5) * .22 : (fg - .5) * .1), kk = oc * .85;
+          const bosco = fo && /^(pin|lecceta|macchia|riparia|eucal)/.test(fo.id), L = pin ? [156, 108, 66] : [124, 100, 72], l2 = .84 + mac * .3 + (pin ? (fg - .5) * .22 : (fg - .5) * .1), kk = oc * (bosco ? .75 : .3);   // fuori dal bosco (l'albero solo nel prato) appena un'ombra di lettiera: piena sembrava una macchia di sporco
           r += (L[0] * l2 - r) * kk; g += (L[1] * l2 - g) * kk; bb += (L[2] * l2 - bb) * kk; } }
       d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
     }
