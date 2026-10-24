@@ -45,69 +45,149 @@ var InterniArte = (function () {
   // PAVIMENTI (una tela per stanza, in metri × PPM)
   // =====================================================================================================================
   const LINO = ['#7a4a38', '#6a6e5a', '#8a6a42', '#5a6470', '#7a5a5a'];
+  // [regia] I PAVIMENTI VERI: 40 px per metro (prima 16: il motivo non ci stava), i pavimenti italiani d'epoca, ognuno con la sua
+  // misura (cementine da 20 cm con la fascia e il bordo, seminato veneziano col filo d'ottone, graniglia a scacchi, palladiana,
+  // esagonette di cotto, parquet a listoni, spina, quadrotte, assi chiodate, marmo in diagonale, mosaico del bagno, ceramica anni '70,
+  // linoleum marmorizzato o a disegni, moquette coi medaglioni). Le fughe sono più scure: la normal map (normalOf) le fa scendere.
+  const FPM = 40;
+  const MARMI = ['#efe8dc', '#d8ccb8', '#b8a890', '#8a3a2a', '#3a3632', '#6a5a48', '#b05a3a', '#c8b898', '#5a6a5a', '#e0d4c0'];
+  const CEM = [['#d8d0bc', '#8a2a22', '#2a3a3a'], ['#e0d8c4', '#3a5a6a', '#c8a040'], ['#cfc6b0', '#5a6a3a', '#8a3a2a'], ['#bcb4a4', '#2a2622', '#a88a5a'], ['#e4dccb', '#b0583a', '#4a5a7a'], ['#c8bfa8', '#6a2a3a', '#d8c070']];
+  const C70 = [['#c8783a', '#6a3a1e', '#e8c070'], ['#8a6a2a', '#3a2a18', '#d8b060'], ['#6a7a3a', '#2e3a1a', '#c8c070'], ['#d8a048', '#8a3a1a', '#f0e0b0']];
   function floorCanvas(q, r, wet) {
-    const cw = Math.max(4, Math.round(q.w * PPM)), ch = Math.max(4, Math.round(q.h * PPM)), c = mk(cw, ch), x = c.getContext('2d'), st = q.floor;
+    const F = FPM, cw = Math.max(8, Math.round(q.w * F)), ch = Math.max(8, Math.round(q.h * F)), c = mk(cw, ch), x = c.getContext('2d'), st = q.floor, m = v => Math.max(1, Math.round(v * F));
     const fill = col => { x.fillStyle = col; x.fillRect(0, 0, cw, ch); };
     const px = (col, X, Y, w, h) => { x.fillStyle = col; x.fillRect(X, Y, w || 1, h || 1); };
-    if (st === 'parquet' || st === 'assi') {
-      const pw = st === 'assi' ? 6 : 3, base = st === 'assi' ? pick(r, ['#6e5a46', '#7a6248', '#5e5040']) : pick(r, ['#7a4e30', '#6a4228', '#845a38']);
-      fill(base);
-      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 30); while (i < cw) { const L = 12 + Math.floor(r() * 26); px(shade(base, .86 + r() * .28), i, j, L - 1, pw - 1); px(shade(base, .6), i + L - 1, j, 1, pw); i += L; } px(shade(base, .55), 0, j + pw - 1, cw, 1); }
-    } else if (st === 'spina') {
-      const base = pick(r, ['#8a5a34', '#7a4a2a', '#94643c']); fill(shade(base, .7));
-      for (let j = -8; j < ch + 8; j += 4) for (let i = -8; i < cw + 8; i += 8) { const o = ((j / 4) & 1) * 4; px(shade(base, .85 + r() * .3), i + o, j, 6, 2); px(shade(base, .8 + r() * .3), i + o + 4, j + 2, 2, 6 > ch ? 2 : 6); }
+    const poly = (col, P) => { x.fillStyle = col; x.beginPath(); x.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) x.lineTo(P[i][0], P[i][1]); x.closePath(); x.fill(); };
+    const chips = (X, Y, w, h, base, dens, cols) => { for (let k = 0; k < w * h * dens; k++) px(pick(r, cols || [shade(base, .7), shade(base, 1.18), MARMI[Math.floor(r() * MARMI.length)]]), X + Math.floor(r() * w), Y + Math.floor(r() * h), r() < .2 ? 2 : 1, r() < .15 ? 2 : 1); };
+    const bevel = (X, Y, w, h, col) => { px(col, X, Y, w, h); px(shade(col, 1.12), X, Y, w, 1); px(shade(col, 1.08), X, Y, 1, h); px(shade(col, .82), X, Y + h - 1, w, 1); px(shade(col, .86), X + w - 1, Y, 1, h); };
+    const grain = (X, Y, w, h, base, along) => { for (let k = 0; k < (along ? h : w) / 3; k++) { const o = Math.floor(r() * (along ? h : w)); let p = Math.floor(r() * 6); while (p < (along ? w : h)) { const L0 = 3 + Math.floor(r() * 14); if (along) px(`rgba(30,18,8,${.12 + r() * .12})`, X + p, Y + o, L0, 1); else px(`rgba(30,18,8,${.12 + r() * .12})`, X + o, Y + p, 1, L0); p += L0 + 2 + Math.floor(r() * 8); } } if (r() < .25) { const kx = X + Math.floor(r() * w), ky = Y + Math.floor(r() * h); x.fillStyle = 'rgba(40,22,10,.45)'; x.beginPath(); x.ellipse(kx, ky, 2, 1.2, 0, 0, 7); x.fill(); } };
+    if (st === 'parquet') {   // listoni da 9 cm, a correre, le teste sfalsate, la venatura
+      const base = pick(r, ['#8a5a34', '#7a4a2c', '#94683e', '#a8783e', '#6a4428']), pw = m(.09); fill(shade(base, .5));
+      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 40); while (i < cw) { const L0 = m(.45 + r() * .7), col = shade(base, .82 + r() * .34); px(col, i, j, L0 - 1, pw - 1); grain(i, j, L0 - 1, pw - 1, col, true); i += L0; } }
+    } else if (st === 'assi') {   // tavolato largo, i chiodi sui travetti, i nodi, le fessure
+      const base = pick(r, ['#6e5a46', '#7a6248', '#5e5040', '#806a50']), pw = m(.2); fill('#1e1610');
+      for (let j = 0; j < ch; j += pw) { let i = -Math.floor(r() * 80); while (i < cw) { const L0 = m(1.4 + r() * 1.6), col = shade(base, .8 + r() * .35); px(col, i, j, L0 - 2, pw - 2); grain(i, j, L0 - 2, pw - 2, col, true); i += L0; } }
+      for (let i = m(.3); i < cw; i += m(.6)) for (let j = 0; j < ch; j += pw) { px('#2a2420', i, j + 2, 1, 1); px('#2a2420', i, j + pw - 5, 1, 1); }
+    } else if (st === 'spina') {   // spina ungherese: colonne di listelli a 45°, alterne
+      const base = pick(r, ['#8a5a34', '#7a4a2a', '#94643c', '#a07040']), cwd = m(.3), hS = m(.075); fill(shade(base, .45));
+      for (let cx0 = 0, col = 0; cx0 < cw; cx0 += cwd, col++) { const sg = col % 2 ? 1 : -1; for (let y = -cwd - hS * 2; y < ch + cwd; y += hS) { const cc = shade(base, .8 + r() * .38); poly(cc, [[cx0 + .5, y + .5], [cx0 + cwd - .5, y + sg * cwd + .5], [cx0 + cwd - .5, y + sg * cwd + hS - .5], [cx0 + .5, y + hS - .5]]); } }
+    } else if (st === 'quadrotte') {   // parquet a quadrotte: quadri da 40 cm di quattro listelli, alterni
+      const base = pick(r, ['#9a6a3a', '#8a5a30', '#7a4e2c']), qs = m(.4), n = 4, sw = qs / n; fill(shade(base, .5));
+      for (let j = 0; j * qs < ch; j++) for (let i = 0; i * qs < cw; i++) for (let k = 0; k < n; k++) { const col = shade(base, .82 + r() * .34); if ((i + j) % 2) { px(col, i * qs + Math.round(k * sw), j * qs, Math.round(sw) - 1, qs - 1); } else { px(col, i * qs, j * qs + Math.round(k * sw), qs - 1, Math.round(sw) - 1); } }
+    } else if (st === 'cementine') {   // le cementine da 20 cm: il campo col motivo, la fascia e il bordo liscio
+      const [bg, a, b] = pick(r, CEM), t = m(.2), motif = pick(r, ['rosa', 'stella', 'croce', 'foglie', 'quadri', 'rombo']), fascia = pick(r, ['righe', 'denti', 'quadri']);
+      const nx = Math.ceil(cw / t), ny = Math.ceil(ch / t);
+      const draw = (X, Y, mo, A, B, BG) => { px(BG, X, Y, t, t); const h = t / 2;
+        x.fillStyle = A;
+        if (mo === 'rosa') { [[0, 0], [t, 0], [0, t], [t, t]].forEach(([u, v]) => { x.beginPath(); x.arc(X + u, Y + v, h * .9, 0, 7); x.fill(); }); x.fillStyle = B; x.beginPath(); x.moveTo(X + h, Y + h - 2); x.lineTo(X + h + 2, Y + h); x.lineTo(X + h, Y + h + 2); x.lineTo(X + h - 2, Y + h); x.fill(); }
+        else if (mo === 'stella') { x.beginPath(); x.moveTo(X + h, Y + 1); x.lineTo(X + t - 1, Y + h); x.lineTo(X + h, Y + t - 1); x.lineTo(X + 1, Y + h); x.fill(); px(B, X, Y, 2, 2); px(B, X + t - 2, Y, 2, 2); px(B, X, Y + t - 2, 2, 2); px(B, X + t - 2, Y + t - 2, 2, 2); px(BG, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'croce') { px(A, X + h - 1, Y, 2, t); px(A, X, Y + h - 1, t, 2); px(B, X + h - 2, Y + h - 2, 4, 4); }
+        else if (mo === 'foglie') { x.beginPath(); x.ellipse(X + h, Y + h, h * .9, h * .35, PI / 4, 0, 7); x.fill(); x.beginPath(); x.ellipse(X + h, Y + h, h * .9, h * .35, -PI / 4, 0, 7); x.fill(); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'quadri') { x.strokeStyle = A; x.lineWidth = 1; x.strokeRect(X + 1.5, Y + 1.5, t - 3, t - 3); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'rombo') { x.beginPath(); x.moveTo(X, Y + h); x.lineTo(X + h, Y); x.lineTo(X + t, Y + h); x.lineTo(X + h, Y + t); x.fill(); x.fillStyle = BG; x.beginPath(); x.moveTo(X + 2, Y + h); x.lineTo(X + h, Y + 2); x.lineTo(X + t - 2, Y + h); x.lineTo(X + h, Y + t - 2); x.fill(); px(B, X + h - 1, Y + h - 1, 2, 2); }
+        else if (mo === 'righe') { px(A, X, Y + 1, t, 1); px(B, X, Y + h - 1, t, 2); px(A, X, Y + t - 2, t, 1); }
+        else if (mo === 'denti') { for (let k = 0; k < t; k += 4) { x.beginPath(); x.moveTo(X + k, Y + t); x.lineTo(X + k + 2, Y + h); x.lineTo(X + k + 4, Y + t); x.fill(); } px(B, X, Y + 1, t, 1); }
+        else if (mo === 'liscio') { }
+        px('rgba(0,0,0,.28)', X, Y, t, 1); px('rgba(0,0,0,.28)', X, Y, 1, t);
+        if (r() < .08) px('rgba(255,255,240,.12)', X, Y, t, t); if (r() < .03) px('rgba(0,0,0,.25)', X + Math.floor(r() * t), Y + Math.floor(r() * t), 2, 1); };
+      for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const ring = Math.min(i, j, nx - 1 - i, ny - 1 - j);
+        if (ring === 0 && nx > 6 && ny > 6) draw(i * t, j * t, 'liscio', a, b, shade(a, .9)); else if (ring === 1 && nx > 6 && ny > 6) draw(i * t, j * t, fascia, b, a, bg); else draw(i * t, j * t, motif, a, b, bg); }
+    } else if (st === 'seminato') {   // seminato veneziano: graniglia di marmi nel coccio, il filo d'ottone e la fascia scura lungo i muri
+      const base = pick(r, ['#c8a888', '#b89878', '#d4b898', '#a88c74', '#c0b0a0', '#b8786a']), dk = shade(base, .72); fill(base); chips(0, 0, cw, ch, base, .38);
+      const bw = m(.2), ins = m(.12); if (cw > bw * 4 && ch > bw * 4) { x.fillStyle = dk; x.fillRect(ins, ins, cw - ins * 2, bw); x.fillRect(ins, ch - ins - bw, cw - ins * 2, bw); x.fillRect(ins, ins, bw, ch - ins * 2); x.fillRect(cw - ins - bw, ins, bw, ch - ins * 2); chips(ins, ins, cw - ins * 2, bw, dk, .3); chips(ins, ch - ins - bw, cw - ins * 2, bw, dk, .3); chips(ins, ins, bw, ch - ins * 2, dk, .3); chips(cw - ins - bw, ins, bw, ch - ins * 2, dk, .3);
+        x.strokeStyle = '#c8a050'; x.lineWidth = 1; x.strokeRect(ins + bw + .5, ins + bw + .5, cw - (ins + bw) * 2 - 1, ch - (ins + bw) * 2 - 1); x.strokeRect(ins + .5, ins + .5, cw - ins * 2 - 1, ch - ins * 2 - 1); }
+      const g = x.createLinearGradient(0, 0, cw, ch); g.addColorStop(0, 'rgba(255,250,240,.10)'); g.addColorStop(.5, 'rgba(255,250,240,0)'); g.addColorStop(1, 'rgba(255,250,240,.07)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);   // la lucidatura
+    } else if (st === 'graniglia') {   // marmette di graniglia da 25 cm, a scacchi di due colori
+      const [A, B] = pick(r, [['#d8d0c0', '#5a5650'], ['#c8b8a0', '#9a6a5a'], ['#ccc4b4', '#7a8a7a'], ['#d0c8b8', '#b8a080']]), t = m(.25); fill('#6a645c');
+      for (let j = 0; j * t < ch; j++) for (let i = 0; i * t < cw; i++) { const col = (i + j) % 2 ? A : B; px(col, i * t, j * t, t - 1, t - 1); chips(i * t, j * t, t - 1, t - 1, col, .3); }
+    } else if (st === 'palladiana') {   // palladiana: schegge di marmo nel cemento
+      const cs = m(.28), gx = Math.ceil(cw / cs) + 2, gy = Math.ceil(ch / cs) + 2, P = []; fill(pick(r, ['#8a8478', '#7a5a4a', '#9a948a']));
+      for (let j = 0; j < gy; j++) { P.push([]); for (let i = 0; i < gx; i++) P[j].push([(i - .5 + (r() - .5) * .55) * cs, (j - .5 + (r() - .5) * .55) * cs]); }
+      const ins = (p, cpt) => [p[0] + (cpt[0] - p[0]) * .12, p[1] + (cpt[1] - p[1]) * .12];
+      for (let j = 0; j < gy - 1; j++) for (let i = 0; i < gx - 1; i++) { const a = P[j][i], b = P[j][i + 1], cc = P[j + 1][i + 1], d = P[j + 1][i], ce = [(a[0] + b[0] + cc[0] + d[0]) / 4, (a[1] + b[1] + cc[1] + d[1]) / 4];
+        if (r() < .35) { poly(pick(r, MARMI), [a, b, cc].map(p => ins(p, ce))); poly(pick(r, MARMI), [a, cc, d].map(p => ins(p, ce))); } else poly(pick(r, MARMI), [a, b, cc, d].map(p => ins(p, ce))); }
+      for (let k = 0; k < cw * ch * .05; k++) px('rgba(0,0,0,.08)', Math.floor(r() * cw), Math.floor(r() * ch));
+    } else if (st === 'esagonette') {   // esagonette di cotto
+      const R0 = m(.085), hw = R0 * Math.sqrt(3) / 2; fill('#5e3624');
+      for (let j = -1, row = 0; j * R0 * 1.5 < ch + R0; j++, row++) for (let i = -1; i * hw * 2 < cw + hw; i++) { const cx = i * hw * 2 + (row % 2 ? hw : 0), cy = j * R0 * 1.5, rr = R0 - .8; const col = pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c', '#bc7048']);
+        const P = []; for (let k = 0; k < 6; k++) { const an = PI / 6 + k * PI / 3; P.push([cx + Math.cos(an) * rr, cy + Math.sin(an) * rr]); } poly(col, P); if (r() < .3) { x.fillStyle = 'rgba(255,220,180,.1)'; x.beginPath(); x.arc(cx - 1, cy - 1, rr * .5, 0, 7); x.fill(); } }
+    } else if (st === 'cotto') {   // cotto da 30×15 a correre, la cera
+      const tw = m(.3), th = m(.15); fill('#5e3624');
+      for (let j = 0; j * th < ch; j++) for (let i = -1; i * tw < cw; i++) { const X = i * tw + (j % 2 ? tw / 2 : 0); bevel(Math.round(X), j * th, tw - 1, th - 1, pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c'])); }
+      const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .5); g.addColorStop(0, 'rgba(255,230,200,.12)'); g.addColorStop(1, 'rgba(255,230,200,0)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+    } else if (st === 'marmo') {   // lastre da 50 cm in diagonale, due marmi, la fascia nera
+      const [A, B] = pick(r, [['#e8e0d2', '#2a2622'], ['#e0d8cc', '#6a3a30'], ['#ece6dc', '#3a5a4a'], ['#d8cfc0', '#9a8a70']]), s = m(.5); fill(B);
+      x.save(); x.translate(cw / 2, ch / 2); x.rotate(PI / 4); const L0 = Math.hypot(cw, ch);
+      for (let j = -L0 / s; j < L0 / s; j++) for (let i = -L0 / s; i < L0 / s; i++) { x.fillStyle = (Math.abs(i + j) % 2) ? A : shade(A, .92); x.fillRect(i * s, j * s, s - 1, s - 1); }
+      x.restore();
+      for (let k = 0; k < cw * ch / 900; k++) { let X = r() * cw, Y = r() * ch; const dxv = r() * 2 - 1, dyv = r() * 2 - 1; for (let s2 = 0; s2 < 40; s2++) { px('rgba(90,80,70,.28)', Math.floor(X), Math.floor(Y)); X += dxv + r() - .5; Y += dyv + r() - .5; } }
+      const bw = m(.15); if (cw > bw * 5) { x.fillStyle = B; x.fillRect(0, 0, cw, bw); x.fillRect(0, ch - bw, cw, bw); x.fillRect(0, 0, bw, ch); x.fillRect(cw - bw, 0, bw, ch); }
+    } else if (st === 'scacchi') {
+      const [a, b] = pick(r, [['#d8d0c0', '#2a2a2e'], ['#c8b090', '#6a3a2a'], ['#e0d8c8', '#3a5a6a'], ['#d0c4a8', '#5a6a4a']]), s = m(.25); fill('#3a3632');
+      for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) { bevel(i * s, j * s, s - 1, s - 1, (i + j) % 2 ? a : b); if (r() < .05) px('rgba(0,0,0,.3)', i * s + Math.floor(r() * s), j * s + Math.floor(r() * s), 3, 1); }
+    } else if (st === 'piastrelle' || st === 'piastrelle_b') {
+      const s = m(.2), a = st === 'piastrelle' ? pick(r, ['#e4e0d6', '#d8dcd8', '#e8dcc8', '#dce4dc']) : pick(r, ['#5a7a9a', '#4a6a7a', '#6a8a8a', '#3a6a7a']); fill(shade(a, .62));
+      for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) bevel(i * s, j * s, s - 1, s - 1, r() < .04 ? shade(a, .8) : shade(a, .95 + r() * .08));
+    } else if (st === 'mosaico') {   // il mosaico del bagno anni '60: tessere da 2,5 cm
+      const pal = pick(r, [['#7ab0c8', '#5a90b0', '#a8d0e0', '#e8f0f0'], ['#e0a8b0', '#c88890', '#f0d8d8', '#ffffff'], ['#8ab08a', '#6a906a', '#c8e0c0', '#f0f0e8'], ['#e8d8b0', '#c8b080', '#a89060', '#f8f0e0']]), s = Math.max(2, m(.025)); fill('#d8d4cc');
+      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) px(pal[Math.floor(Math.pow(r(), 1.6) * pal.length)], i, j, s - 1, s - 1);
+    } else if (st === 'ceramica70') {   // ceramica anni '70 da 20 cm: i quarti di cerchio fanno i tondi
+      const [bg, a, b] = pick(r, C70), t = m(.2); fill(shade(bg, .7));
+      for (let j = 0; j * t < ch; j++) for (let i = 0; i * t < cw; i++) { const X = i * t, Y = j * t; px(bg, X, Y, t - 1, t - 1); const cx = X + ((i + j) % 2 ? 0 : t), cy = Y + (j % 2 ? 0 : t); x.save(); x.beginPath(); x.rect(X, Y, t - 1, t - 1); x.clip(); x.fillStyle = a; x.beginPath(); x.arc(cx, cy, t * .8, 0, 7); x.fill(); x.fillStyle = b; x.beginPath(); x.arc(cx, cy, t * .45, 0, 7); x.fill(); x.restore(); }
     } else if (st === 'linoleum') {
       const base = pick(r, LINO); fill(base);
-      for (let k = 0; k < cw * ch / 6; k++) px(shade(base, .9 + r() * .2), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      x.strokeStyle = shade(base, .8); for (let i = 16; i < cw; i += 32) { x.fillStyle = shade(base, .82); x.fillRect(i, 0, 1, ch); }
-    } else if (st === 'scacchi') {
-      const [a, b] = pick(r, [['#d8d0c0', '#2a2a2e'], ['#c8b090', '#6a3a2a'], ['#e0d8c8', '#3a5a6a'], ['#d0c4a8', '#5a6a4a']]), s = 8;
-      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) { px(((i + j) / s) % 2 ? a : b, i, j, s, s); if (r() < .06) px('rgba(0,0,0,.25)', i + Math.floor(r() * s), j + Math.floor(r() * s), 3, 1); }
-    } else if (st === 'piastrelle' || st === 'piastrelle_b') {
-      const s = st === 'piastrelle' ? 4 : 3, a = st === 'piastrelle' ? pick(r, ['#e4e0d6', '#d8dcd8', '#e8dcc8']) : pick(r, ['#5a7a9a', '#4a6a7a', '#6a8a8a']);
-      fill(shade(a, .72));
-      for (let j = 0; j < ch; j += s) for (let i = 0; i < cw; i += s) { px(r() < .04 ? shade(a, .6) : shade(a, .95 + r() * .08), i, j, s - 1, s - 1); }
-    } else if (st === 'graniglia') {
-      const base = pick(r, ['#c8b8a0', '#b8b0a4', '#c0a890']); fill(base);
-      for (let k = 0; k < cw * ch / 7; k++) px(pick(r, [shade(base, .85), shade(base, 1.1), shade(base, .92), '#9a8070', '#e8dcc8']), Math.floor(r() * cw), Math.floor(r() * ch));   // [design] graniglia fine e tenue, non coriandoli
-      x.fillStyle = shade(base, .6); x.fillRect(0, 0, cw, 3); x.fillRect(0, ch - 3, cw, 3); x.fillRect(0, 0, 3, ch); x.fillRect(cw - 3, 0, 3, ch);
-      for (let i = 0; i < cw; i += 16) px(shade(base, .75), i, 0, 1, ch); for (let j = 0; j < ch; j += 16) px(shade(base, .75), 0, j, cw, 1);
-    } else if (st === 'cotto') {
-      for (let j = 0; j < ch; j += 6) for (let i = 0; i < cw; i += 6) px(pick(r, ['#a8583a', '#9a5034', '#b4643e', '#8e4a30', '#a05a3c']), i, j, 5, 5);
-      x.fillStyle = '#5e3624'; for (let i = 5; i < cw; i += 6) x.fillRect(i, 0, 1, ch); for (let j = 5; j < ch; j += 6) x.fillRect(0, j, cw, 1);
-    } else if (st === 'marmo') {
-      const base = pick(r, ['#ddd6ca', '#d0ccc4', '#e0d4c4']); fill(base);
-      for (let k = 0; k < cw * ch / 9; k++) px(shade(base, .88 + r() * .2), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      for (let k = 0; k < cw * ch / 300; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 22; s++) { px('rgba(90,80,70,.35)', Math.floor(X), Math.floor(Y)); X += r() * 2 - .6; Y += r() * 2 - 1; } }
-      x.fillStyle = shade(base, .7); for (let i = 0; i < cw; i += 16) x.fillRect(i, 0, 1, ch); for (let j = 0; j < ch; j += 16) x.fillRect(0, j, cw, 1);
-    } else if (st === 'moquette_r' || st === 'moquette_b') {
-      const base = st === 'moquette_r' ? pick(r, ['#6a1a24', '#7a2a2a', '#5a1420']) : pick(r, ['#1c2048', '#20183a', '#162438']); fill(base);
-      for (let j = 0; j < ch; j += 8) for (let i = 0; i < cw; i += 8) { px(shade(base, 1.35), i + 3, j + 1, 2, 1); px(shade(base, 1.35), i + 2, j + 2, 4, 1); px(shade(base, 1.35), i + 3, j + 3, 2, 1); if (st === 'moquette_b' && r() < .3) px(pick(r, ['#ff4fa3', '#35e6ff', '#ffd23b']), i + 6, j + 6); }
+      if (r() < .5) { const s = m(.3), b2 = shade(base, 1.18); for (let j = 0; j * s < ch; j++) for (let i = 0; i * s < cw; i++) if ((i + j) % 2) px(b2, i * s, j * s, s, s); for (let j = 0; j < ch; j += s) px(shade(base, .7), 0, j, cw, 1); for (let i = 0; i < cw; i += s) px(shade(base, .7), i, 0, 1, ch); }
+      else for (let k = 0; k < cw * ch / 60; k++) { x.strokeStyle = `rgba(${r() < .5 ? '255,250,240' : '0,0,0'},${.05 + r() * .07})`; x.lineWidth = 1 + r() * 2; x.beginPath(); let X = r() * cw, Y = r() * ch; x.moveTo(X, Y); for (let s2 = 0; s2 < 4; s2++) { X += 4 + r() * 8; Y += (r() - .5) * 6; x.lineTo(X, Y); } x.stroke(); }
+    } else if (st === 'moquette_r' || st === 'moquette_b') {   // la moquette: il pelo e i medaglioni (d'albergo), i triangoli (della discoteca)
+      const base = st === 'moquette_r' ? pick(r, ['#6a1a24', '#7a2a2a', '#5a1420', '#2a3a5a']) : pick(r, ['#1c2048', '#20183a', '#162438']); fill(base);
+      for (let k = 0; k < cw * ch / 3; k++) px(shade(base, .8 + r() * .4), Math.floor(r() * cw), Math.floor(r() * ch));
+      const s = m(.6), acc = st === 'moquette_r' ? '#c8a050' : pick(r, ['#ff4fa3', '#35e6ff', '#f0e040']);
+      for (let j = 0; j * s < ch + s; j++) for (let i = 0; i * s < cw + s; i++) { const X = i * s + (j % 2 ? s / 2 : 0), Y = j * s;
+        if (st === 'moquette_r') { x.strokeStyle = acc; x.lineWidth = 1; x.beginPath(); x.moveTo(X, Y - s * .3); x.lineTo(X + s * .3, Y); x.lineTo(X, Y + s * .3); x.lineTo(X - s * .3, Y); x.closePath(); x.stroke(); px(shade(base, 1.5), X - 1, Y - 1, 3, 3); }
+        else { poly(acc + '55', [[X, Y], [X + s * .4, Y + s * .2], [X, Y + s * .4]]); } }
     } else if (st === 'terra') {
-      fill('#5a4a38'); for (let k = 0; k < cw * ch / 3; k++) px(pick(r, ['#4a3c2e', '#6a5844', '#7a6a50', '#3e3226', '#8a7a58']), Math.floor(r() * cw), Math.floor(r() * ch), 1 + Math.floor(r() * 2), 1);
+      fill('#5a4a38'); for (let k = 0; k < cw * ch / 2; k++) px(pick(r, ['#4a3c2e', '#6a5844', '#7a6a50', '#3e3226', '#8a7a58']), Math.floor(r() * cw), Math.floor(r() * ch), 1 + Math.floor(r() * 2), 1);
+      for (let k = 0; k < cw * ch / 300; k++) { const sx = Math.floor(r() * cw), sy = Math.floor(r() * ch), w = 2 + Math.floor(r() * 3); px(pick(r, ['#8a8478', '#6e6a62']), sx, sy, w, w - 1); px('rgba(0,0,0,.35)', sx, sy + w - 1, w, 1); }
     } else if (st === 'gomma') {
-      fill('#2a2c30'); for (let j = 0; j < ch; j += 3) px('#24262a', 0, j, cw, 1); x.fillStyle = '#c8a040'; x.fillRect(4, 4, cw - 8, 1); x.fillRect(4, ch - 5, cw - 8, 1);
-    } else {   // cemento
+      fill('#2a2c30'); for (let j = 0; j < ch; j += 3) px('#24262a', 0, j, cw, 1); for (let k = 0; k < cw * ch / 40; k++) px('#34363a', Math.floor(r() * cw), Math.floor(r() * ch), 2, 2); x.fillStyle = '#c8a040'; x.fillRect(m(.3), m(.3), cw - m(.6), 2); x.fillRect(m(.3), ch - m(.3), cw - m(.6), 2);
+    } else {   // cemento: lisciato a mano, i giunti ogni due metri, le macchie d'olio
       const base = pick(r, ['#6a6660', '#5e5c58', '#727068']); fill(base);
-      for (let k = 0; k < cw * ch / 5; k++) px(shade(base, .85 + r() * .3), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
-      for (let k = 0; k < cw * ch / 900 + 1; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 30; s++) { px('rgba(30,26,22,.5)', Math.floor(X), Math.floor(Y)); X += r() * 2 - 1; Y += r() * 2 - 1; } }
-      for (let k = 0; k < cw * ch / 1500 + 1; k++) { x.fillStyle = 'rgba(20,18,16,.3)'; x.beginPath(); x.ellipse(r() * cw, r() * ch, 3 + r() * 7, 2 + r() * 5, r() * 3, 0, 7); x.fill(); }
+      for (let k = 0; k < cw * ch / 4; k++) px(shade(base, .88 + r() * .24), Math.floor(r() * cw), Math.floor(r() * ch), 2, 1);
+      for (let k = 0; k < cw * ch / 2000; k++) { x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = 3; x.beginPath(); const X = r() * cw, Y = r() * ch; x.arc(X, Y, 10 + r() * 20, r() * 6, r() * 6 + 1.5); x.stroke(); }   // la cazzuola
+      for (let i = m(2); i < cw; i += m(2)) px('rgba(20,18,16,.5)', i, 0, 1, ch); for (let j = m(2); j < ch; j += m(2)) px('rgba(20,18,16,.5)', 0, j, cw, 1);
+      for (let k = 0; k < cw * ch / 3000 + 1; k++) { let X = r() * cw, Y = r() * ch; for (let s = 0; s < 60; s++) { px('rgba(30,26,22,.5)', Math.floor(X), Math.floor(Y)); X += r() * 2 - 1; Y += r() * 2 - 1; } }
+      for (let k = 0; k < cw * ch / 4000 + 1; k++) { x.fillStyle = 'rgba(20,18,16,.3)'; x.beginPath(); x.ellipse(r() * cw, r() * ch, 6 + r() * 14, 4 + r() * 10, r() * 3, 0, 7); x.fill(); }
     }
     // usura: polvere lungo i muri, macchie, il passaggio consumato in mezzo
     const d = q.dirt || .3;
-    x.fillStyle = `rgba(20,16,12,${.18 + d * .25})`; x.fillRect(0, 0, cw, 2); x.fillRect(0, ch - 2, cw, 2); x.fillRect(0, 0, 2, ch); x.fillRect(cw - 2, 0, 2, ch);
-    { const E = Math.round(.45 * PPM); [[0, 0, 0, E], [0, ch, 0, ch - E], [0, 0, E, 0], [cw, 0, cw - E, 0]].forEach(([a0, b0, a1, b1]) => { const g0 = x.createLinearGradient(a0, b0, a1, b1); g0.addColorStop(0, 'rgba(8,6,4,.4)'); g0.addColorStop(1, 'rgba(8,6,4,0)'); x.fillStyle = g0; x.fillRect(0, 0, cw, ch); }); }   // [vissuto] l'ombra lungo i muri
-    for (let k = 0; k < cw * ch / 400 * (.3 + d); k++) { x.fillStyle = `rgba(${r() < .5 ? '40,30,20' : '60,50,40'},${.08 + r() * .14 * (.5 + d)})`; x.beginPath(); x.ellipse(r() * cw, r() * ch, 2 + r() * 6, 1 + r() * 4, r() * 3, 0, 7); x.fill(); }
-    const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .6); g.addColorStop(0, 'rgba(255,240,220,.06)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+    x.fillStyle = `rgba(20,16,12,${.18 + d * .25})`; x.fillRect(0, 0, cw, 3); x.fillRect(0, ch - 3, cw, 3); x.fillRect(0, 0, 3, ch); x.fillRect(cw - 3, 0, 3, ch);
+    { const E = Math.round(.45 * F); [[0, 0, 0, E], [0, ch, 0, ch - E], [0, 0, E, 0], [cw, 0, cw - E, 0]].forEach(([a0, b0, a1, b1]) => { const g0 = x.createLinearGradient(a0, b0, a1, b1); g0.addColorStop(0, 'rgba(8,6,4,.35)'); g0.addColorStop(1, 'rgba(8,6,4,0)'); x.fillStyle = g0; x.fillRect(0, 0, cw, ch); }); }   // [vissuto] l'ombra lungo i muri
+    for (let k = 0; k < cw * ch / 2400 * (.3 + d); k++) { x.fillStyle = `rgba(${r() < .5 ? '40,30,20' : '60,50,40'},${.06 + r() * .12 * (.5 + d)})`; x.beginPath(); x.ellipse(r() * cw, r() * ch, 4 + r() * 14, 3 + r() * 9, r() * 3, 0, 7); x.fill(); }
+    // il passaggio consumato: dove si cammina il pavimento è più opaco e chiaro (fra porta e centro)
+    { const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.min(cw, ch) * .45); g.addColorStop(0, `rgba(255,245,230,${.03 + d * .05})`); g.addColorStop(1, 'rgba(255,245,230,0)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch); }
+    const g = x.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, Math.max(cw, ch) * .6); g.addColorStop(0, 'rgba(255,240,220,.05)'); g.addColorStop(1, 'rgba(0,0,0,.12)'); x.fillStyle = g; x.fillRect(0, 0, cw, ch);
     // neve sciolta e impronte vicino all'ingresso
-    if (wet) { const [ex, ey] = wet; for (let k = 0; k < 40; k++) { const a = r() * 6.3, rr = r() * 26; x.fillStyle = r() < .7 ? 'rgba(30,34,40,.35)' : 'rgba(230,236,244,.5)'; x.fillRect(Math.floor(ex + Math.cos(a) * rr), Math.floor(ey + Math.sin(a) * rr), 2, 1 + Math.floor(r() * 2)); } }
+    if (wet) { const [ex, ey] = wet; for (let k = 0; k < 90; k++) { const a = r() * 6.3, rr = r() * 60; x.fillStyle = r() < .7 ? 'rgba(30,34,40,.35)' : 'rgba(230,236,244,.5)'; x.fillRect(Math.floor(ex + Math.cos(a) * rr), Math.floor(ey + Math.sin(a) * rr), 3, 1 + Math.floor(r() * 3)); } }
     return c;
+  }
+  // [regia] il rilievo: dalla luminosità della tela una normal map (le fughe, le venature, le schegge scendono; la luce delle lampade
+  // le fa vedere). k: quanto è forte.
+  const NCACHE = new WeakMap();
+  function normalOf(c, k) {
+    if (NCACHE.has(c)) return NCACHE.get(c);
+    const w = c.width, h = c.height, src = c.getContext('2d').getImageData(0, 0, w, h).data, out = mk(w, h), ox = out.getContext('2d'), im = ox.createImageData(w, h), d = im.data, L = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) L[i] = (src[i * 4] * .3 + src[i * 4 + 1] * .59 + src[i * 4 + 2] * .11) / 255;
+    for (let y = 0; y < h; y++) for (let X = 0; X < w; X++) {
+      const xl = X ? X - 1 : X, xr = X < w - 1 ? X + 1 : X, yu = y ? y - 1 : y, yd = y < h - 1 ? y + 1 : y, dx = (L[y * w + xr] - L[y * w + xl]) * k, dy = (L[yd * w + X] - L[yu * w + X]) * k, l = Math.hypot(dx, dy, 1), i = (y * w + X) * 4;
+      d[i] = (-dx / l * .5 + .5) * 255; d[i + 1] = (dy / l * .5 + .5) * 255; d[i + 2] = (1 / l * .5 + .5) * 255; d[i + 3] = 255; }
+    ox.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(out); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; NCACHE.set(c, t); return t;
   }
 
   // =====================================================================================================================
   // PARETI (una tela per lato di muro: lunghezza × 2,9 m)
   // =====================================================================================================================
   const WALLH = 2.9;
+  const BATTI = { piastrelle: '#c8c4b8', mattoni: '#5a3a2a', cemento: '#5a5854', velluto: '#2a1014', nero: '#101014', ospedale: '#6a8a80', rosa: '#a86a7a', azzurro: '#4a7a90', perline: '#6a4a2a' };   // [regia] il colore del battiscopa
   const BICOL = { verde: ['#3e6a58', '#5a7a5e', '#4a6e6a'], blu: ['#3a5a7a', '#4a6488', '#36506a'], ocra: ['#b0884a', '#a87a40', '#c09450'], rosso: ['#7a2a2a', '#8a3430', '#6a2626'], crema: ['#8a6a48', '#7a5a3e', '#9a7a52'], ospedale: ['#8ab0a0', '#9cc0b0', '#86a8a0'], rosa: ['#d08aa0', '#c87a94', '#e0a0b0'], azzurro: ['#6aa0c0', '#7ab0c8', '#5a90b0'] };
   const PAPER = { fiori: ['#c8b08a', '#b4a080', '#a8b090', '#c0a0a0', '#a0a8b8', '#d0bc94'], righe: ['#b8a890', '#a8b0a0', '#c0a088', '#9aa8b0'], rombi: ['#a89a7a', '#b0a088', '#9a9a88', '#b89890'] };
   function wallStyleCanvas(style, lenM, seed, dirt) {
@@ -1009,9 +1089,9 @@ var InterniArte = (function () {
     const under = new THREE.Mesh(new THREE.PlaneGeometry(W + 400, H + 400), new THREE.MeshBasicMaterial({ color: '#06050a' })); under.rotation.x = -PI / 2; under.position.set(X0 + W / 2, BASE - .06, Y0 + H / 2); grp.add(under);
     // pavimenti
     F.rooms.forEach(q => {
-      const wet = f === 0 && L.ent && q.x <= L.ent.in[0] && L.ent.in[0] <= q.x + q.w && q.y <= L.ent.in[1] && L.ent.in[1] <= q.y + q.h ? [(L.ent.in[0] - q.x) * PPM, (L.ent.in[1] - q.y) * PPM] : null;
-      const t = tex(floorCanvas(q, rng((b.x * 17 + q.x * 3 + q.y * 7 + f * 101) >>> 0), wet));
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, roughness: Math.min(.95, (/marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85) - (q.dirt < .15 ? .2 : 0) + (q.dirt > .6 ? .1 : 0)), metalness: 0 }));   // [vissuto] lucido dove si pulisce
+      const wet = f === 0 && L.ent && q.x <= L.ent.in[0] && L.ent.in[0] <= q.x + q.w && q.y <= L.ent.in[1] && L.ent.in[1] <= q.y + q.h ? [(L.ent.in[0] - q.x) * FPM, (L.ent.in[1] - q.y) * FPM] : null;
+      const fc = floorCanvas(q, rng((b.x * 17 + q.x * 3 + q.y * 7 + f * 101) >>> 0), wet), t = tex(fc);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(q.w, q.h), new THREE.MeshStandardMaterial({ map: t, normalMap: normalOf(fc, /parquet|assi|spina|quadrotte|moquette|linoleum/.test(q.floor) ? 2.2 : 4), normalScale: new THREE.Vector2(.9, .9), roughness: Math.min(.95, (/marmo|piastrelle|graniglia|linoleum|scacchi/.test(q.floor) ? .45 : .85) - (q.dirt < .15 ? .2 : 0) + (q.dirt > .6 ? .1 : 0)), metalness: 0 }));   // [vissuto] lucido dove si pulisce
       m.rotation.x = -PI / 2; m.position.set(q.x + q.w / 2, BASE + .01, q.y + q.h / 2); m.receiveShadow = true; grp.add(m);
     });
     // muri: quelli di fondo (perimetro dal lato lontano dalla camera) alti, gli altri bassi a sezione; ogni faccia ha la parete della sua stanza
@@ -1033,11 +1113,16 @@ var InterniArte = (function () {
         const th = perim ? WT : WT / 2, c = wallStyleCanvas(q.wall, len, ((q.x * 13 + q.y * 7) ^ (b.x * 3)) >>> 0, q.dirt || .3);
         const t = tex(c); t.repeat.set(1, ht / WALLH); t.offset.set(0, 0);
         const m = new THREE.Mesh(new THREE.BoxGeometry(vert ? th : len, ht, vert ? len : th), [M('#2a2226'), M('#2a2226'), capM, capM, M('#2a2226'), M('#2a2226')]);
-        const mat = new THREE.MeshStandardMaterial({ map: t, roughness: q.wall === 'piastrelle' ? .4 : .92 });
+        const mat = new THREE.MeshStandardMaterial({ map: t, normalMap: normalOf(c, q.wall === 'mattoni' || q.wall === 'perline' || q.wall === 'legno' ? 4 : 2.2), normalScale: new THREE.Vector2(.8, .8), roughness: q.wall === 'piastrelle' ? .4 : .92 });   // [regia] il rilievo
         // la faccia giusta: per i muri verticali ±x (indici 0/1), per gli orizzontali ±z (4/5)
         const mats = m.material.slice(); if (vert) { mats[0] = mat; mats[1] = mat; } else { mats[4] = mat; mats[5] = mat; } m.material = mats;
         const off = perim ? 0 : sgn * WT / 4;
         m.position.set(x + ww / 2 + (vert ? off : 0), BASE + ht / 2, y + hh / 2 + (vert ? 0 : off)); m.castShadow = true; m.receiveShadow = true; grp.add(m);
+        // [regia] il battiscopa e (sui muri alti) la cornice sotto il soffitto: la parete non è più un cartone dipinto
+        { const fx = x + ww / 2 + (vert ? off + sgn * (th / 2 + .012) : 0), fz = y + hh / 2 + (vert ? 0 : off + sgn * (th / 2 + .012)), bc = BATTI[q.wall] || '#4a3426';
+          const bs = new THREE.Mesh(bgeo(vert ? .025 : len, .1, vert ? len : .025), M(bc, { roughness: .6 })); bs.position.set(fx, BASE + .05, fz); bs.receiveShadow = true; grp.add(bs);
+          if (tall && !/piastrelle|mattoni|cemento|nero/.test(q.wall)) { const cr = new THREE.Mesh(bgeo(vert ? .06 : len, .09, vert ? len : .06), M(shade('#e8e0d0', .9 + (q.dirt || 0) * -.2), { roughness: .8 })); cr.position.set(fx + (vert ? sgn * .02 : 0), BASE + WALLH - .06, fz + (vert ? 0 : sgn * .02)); grp.add(cr);
+            const cr2 = new THREE.Mesh(bgeo(vert ? .03 : len, .04, vert ? len : .03), M('#d8d0c0', { roughness: .8 })); cr2.position.set(fx, BASE + WALLH - .14, fz); grp.add(cr2); } }
       });
       if (!tall) { const cap = new THREE.Mesh(bgeo(ww + .02, .04, hh + .02), capM); cap.position.set(x + ww / 2, BASE + ht + .02, y + hh / 2); grp.add(cap); }
     });

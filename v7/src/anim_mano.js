@@ -79,6 +79,16 @@
   // famiglia e colore: quelle delle icone del Menu (se c'è), altrimenti un ripiego sul nome
   const FALLBACK = [[/bottigl|vino|birra|acqua|olio|grappa/, 'bottiglia'], [/latta|scatol/, 'latta'], [/pane|panino/, 'pane'], [/radio/, 'radio'], [/tanica|benzina/, 'tanica'], [/carta|giornal|libr|document/, 'carta'], [/martell/, 'martello'], [/chiave|pinze/, 'chiave'], [/sedia/, 'sedia'], [/ruota/, 'ruota'], [/sacc|farina|cemento/, 'sacco']];
   const FC = {};
+  // [roba3d] la presa di un oggetto: quella del suo modello vero (roba3d.js: come si tiene, quanto è largo a due mani), se c'è,
+  // altrimenti quella della famiglia. Si misura una volta per oggetto.
+  const DC = {};
+  const RB = id => typeof Roba3D !== 'undefined' && Roba3D && Roba3D.has(id) && !/^(cassa|casse)$/.test(id);
+  function desc(id) {
+    if (DC[id]) return DC[id];
+    const F = famOf(id); let D = FAM[F.f] || null;
+    if (RB(id)) { try { const r = Roba3D.inHand(id, GY, GZ); if (r) D = Object.assign({}, D && { grip: D.grip, d: D.d, w: D.w }, r.D, { rb: true }); } catch (e) { } }
+    return (DC[id] = D);
+  }
   function famOf(id) {
     if (FC[id]) return FC[id];
     let f = null, c = null;
@@ -91,10 +101,12 @@
   const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
   function holderFor(P, id) {
     const R = P.R, map = R.mano || (R.mano = {}); if (map[id] !== undefined) return map[id];
-    const F = famOf(id), D = FAM[F.f]; let h = null;
+    const F = famOf(id), D = desc(id); let h = null;
     try {
-      const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && O3[F.f] && O3[F.f](id);   // [modelli] la versione definita, se c'è
-      const obj = o3 ? Oggetti3D.inHand(o3, F.c, id, GY, GZ) : D.make(F.c, id); h = new THREE.Group(); h.add(obj);
+      const rb = D && D.rb ? Roba3D.inHand(id, GY, GZ) : null;   // [roba3d] il modello vero dell'oggetto, già nel sistema della mano
+      const o3 = !rb && typeof Oggetti3D !== 'undefined' && Oggetti3D && O3[F.f] && O3[F.f](id);   // [modelli] la versione definita, se c'è
+      const obj = rb ? rb.obj : o3 ? Oggetti3D.inHand(o3, F.c, id, GY, GZ) : FAM[F.f].make(F.c, id); h = new THREE.Group(); h.add(obj);
+      if (rb) Roba3D.fondi(obj);
       if (D.how === 'appeso' && !D.atGrip) obj.position.y += GY - .05;   // il manico (a ~5 cm nei modelli più semplici) nel centro del pugno, il resto sotto
       if (D.how === 'regge') { const u = P.g.userData; if (u.body) { const s = u.body.scale; h.scale.set(1 / s.x, 1 / s.y, 1 / s.z); u.body.add(h); } else P.g.add(h); }
       else { const bone = R.b.WristR; bone.getWorldScale(_v); P.g.getWorldScale(_v2); h.scale.setScalar(_v2.x / (_v.x || 1)); h.quaternion.copy(QHAND); bone.add(h); }
@@ -113,7 +125,7 @@
   Anim.def('tiene', { fade: .25, fn(P, A) {
     const R = P.R; hideAll(R);
     const id = A.tiene; if (!id || P.w <= 0) return;
-    const F = famOf(id), D = FAM[F.f]; if (!D) return;
+    const D = desc(id); if (!D) return;
     const sw = SW(P), grip = D.grip || [.8, .7], bk = P.bulk || 0;
     if (D.how === 'regge') {
       // a due mani, contro la pancia: i palmi sui fianchi della cosa, le dita in giù e avanti; la schiena compensa il peso
@@ -159,7 +171,7 @@
   function pick(id, s) {
     if (!id || SKIP.test(id) || s.act && s.act !== 'aspetta' && s.act !== 'appoggiato') return;
     if (s.upper && !FREE[s.upper]) return;
-    const F = famOf(id); if (!FAM[F.f]) return;
+    if (!desc(id)) return;
     s.upper = 'tiene'; s.tiene = id;
   }
   Anim.npcMap((st, n, s) => { if (n.dead || n.stun > 0 || n.inside || n.inVeh) return; if (n.weapon && n.hand === n.weapon) return; pick(n.hand, s); });
@@ -173,5 +185,5 @@
     if (h && P.w > .5) h.visible = true; return h;
   }
   // per lo studio delle pose e le prove
-  Anim.mano = { FAM, famOf, inHand, GY, GZ };
+  Anim.mano = { FAM, famOf, desc, inHand, GY, GZ };
 })();

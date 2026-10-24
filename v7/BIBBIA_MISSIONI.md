@@ -39,6 +39,8 @@ Regole che non si discutono:
 
 **Il tono**: malinconia e ironia, paura quotidiana e piccoli coraggi. Non è un mondo di eroi: è gente comune che sceglie da che parte stare. La violenza esiste e pesa: chi vede ricorda, chi ricorda parla.
 
+**La comicità** (fondamentale, vedi `src/HANDOFF_matti.md`): chi gioca deve spesso stupirsi e ridere. Il meccanismo è quello di quando, per strada, finisci per caso dentro la vita di uno sconosciuto: pezzi di storie altrui sentiti a metà, dettagli precisi e assurdi detti con serietà totale, sconosciuti che ti tirano dentro le loro faccende, i matti di quartiere. Cattiveria e sfottò al regime sì, crudeltà no. Mai spiegare la battuta, niente barzellette. Ogni missione dovrebbe avere almeno un personaggio o un momento così.
+
 ---
 
 ## 2. Estetica: le regole visive del gioco

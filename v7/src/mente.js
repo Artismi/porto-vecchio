@@ -139,6 +139,7 @@ var Mente = (function () {
       personalita: (n.pop && n.pop.tr) || {},
       interessi: P && P.ints ? P.ints.map(i => Popolo.INTERESSI[i.k]) : [],
       lavoro: P && P.job ? P.job.title : 'nessuno',
+      stranezza: typeof Matti !== 'undefined' ? Matti.scheda(n) : undefined,   // [matti] il matto di quartiere resta nella sua fissazione
       scheda: typeof Coro !== 'undefined' && P && P.ints ? (Coro.aggiorna(st, n), Coro.riga(st, n)) : undefined,
       clima_del_gruppo: P && P.box && P.box.clima ? P.box.clima : undefined,
       bisogni: P && !P.box ? P.need : undefined,

@@ -143,3 +143,13 @@ Aggiornato: 8 ottobre 2026. Guardia nel codice: `[arcipelago]`.
 - Coralli e pesci visibili sotto l'acqua bassa del reef.
 - Esplorare a nuoto o in barca le grotte.
 - Commerci col villaggio, missioni alla base e dalla tribù.
+
+# La chiatta a pedali
+
+Aggiornato: 23 ottobre 2026. Guardia nel codice: `[chiatta]`.
+
+- **Cos'è**: una chiatta fatta in casa. Telaio da catamarano in tubolare zincato su due tubi da fogna in PVC arancio (tappo dietro, punta a cono davanti, fascette a U), tavolato a prua, a poppa e sopra i tubi. Al centro una bici senza ruote: la forcella sta su un piantone, i forcellini su un cavalletto, la catena scende dalla corona all'albero delle **due ruote a pale**, che girano nel canale fra i tubi sotto due parapale di tela. Timone a poppa, tirato da due cavi.
+- **Dove**: al Pontile del Lido, di fianco alla testata, con la prua verso il largo (`SEA.moorings`, `kind: 'chiatta'`, `drive: true`, in `world.js` e `world_cittanuova.js`).
+- **Motore** (`game.js`): `VK.chiatta` con `boat: true` e `pedali: true`. 5,2 × 2,6 m, 260 kg, massimo 2,8 m/s (circa 10 km/h; con shift un po' di più). Il resto è la fisica delle barche. Salendo: «Sciogli la cima, monti in sella e dai la prima pedalata».
+- **Grafica** (`render.js`): `BOATS.chiatta`, misure in `CHIATTA`. La bici usa le misure della BMX (`BMX_GEO`), così il giocatore ci sta sopra con la posa `in_bmx` (`anim_lotta.js`). In `boatVehicle` le ruote a pale girano con la velocità (un quarto di slittamento), le pedivelle con le pale (`CHIATTA.gear`, niente ruota libera: `v.crank` va alla posa), il timone con lo sterzo; il giocatore sta in sella e dondola con la chiatta. Niente alzata di prua e scia leggera.
+- **Prova**: `node src/test_costa.js` (si sale dal pontile, va piano). Istantanee in `_immagini/chiatta/`.

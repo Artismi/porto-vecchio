@@ -17,6 +17,63 @@ const log = console.log, warn = console.warn; console.log = () => {}; console.wa
 global.World = require(path.join(src, 'world_cittanuova.js'));
 global.Percorsi = require(path.join(src, 'percorsi.js'));
 global.Interior = require(path.join(src, 'interiors.js')); global.Game = require(path.join(src, 'game.js'));
+// [tetti4] LA PROVA DELLE CASE GIRATE (TETTI4_RUOTA=1, la lancia questa stessa prova alla fine): in una copia del mondo un quarto delle case
+// dei quartieri vecchi gira di 10-40° attorno al centro (seme 12345), più le dieci case che [pianta] deve allineare di più; tutto il resto
+// (rete, giri, premi, passerelle, misura) si rifà sopra e deve reggere: copertura ≥ 70% per quartiere, zero urti, i giri camminati.
+const RUOTA = process.env.TETTI4_RUOTA || '';
+// [tetti4] IL LOTTO ORIENTATO ([pianta]: b.cx, b.cy, b.lw, b.ld, b.rot). TETTI4_RUOTA=uguali: i campi su ogni casa, uguali alla casella
+// (il primo passo di [pianta]); la firma del piano, della rete e della misura dev'essere identica a quella senza campi.
+// TETTI4_RUOTA=strada: file di tre (o due) case attaccate girano insieme di 20-40° attorno al centro della fila, come lungo una strada
+// in diagonale: ogni casa ha il centro libero (non sulla casella), le caselle si ristampano sull'impronta nuova, la porta segue il muro.
+if (RUOTA === 'uguali') Game.BUILDINGS.forEach(b => { const TS = Game.TS; b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; });
+if (RUOTA === 'strada') { let a = 4242; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  // la città è fitta: nessuna fila che c'è si può girare senza entrare nelle case di dietro. Allora, come farà [pianta], la fila si
+  // rifà: nei vuoti grandi dei quartieri vecchi (slarghi, piazzette, prati dentro le mura) una strada in diagonale di 20-40° e lungo la
+  // strada da due a quattro case attaccate, prese dalle case vicine (le loro caselle vecchie diventano selciato): ogni casa col suo
+  // centro libero, la sua larghezza e profondità, girata come la strada, la facciata e la porta sulla strada.
+  const TS = Game.TS, GW = Game.GW, GH = Game.GH, W = Game.MAP.world, BI = W.bIndex, GR = Game.MAP.grid, GW0 = W.grid, EL = Game.MAP.elev, B = Game.BUILDINGS, BLD = 2, COB = 0;
+  const buono = b => b && ['E0', 'E2', 'E3'].includes(b.era) && !b.church && !b.gov && !b.shack && !b.pezzo && !b.__tierOf && !b.rot && !b.sign && !b.shop && !b.military && !b.annesso && b.w >= 2 && b.w <= 3 && b.h >= 2 && b.h <= 3;
+  const terra = i => [0, 3, 9, 11, 14, 20].includes(GR[i]) && BI[i] < 0, gira = (t, x, y) => [x * Math.cos(t) - y * Math.sin(t), x * Math.sin(t) + y * Math.cos(t)];
+  const libero = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx >= 0 && ty >= 0 && tx < GW && ty < GH && terra(ty * GW + tx); };
+  // il rettangolo girato (centro, misure, angolo) sta tutto nel vuoto, col margine m
+  const nelVuoto = (cx, cy, lw, ld, th, m) => { for (let u = -.5; u <= .5001; u += 1 / 12) for (let v = -.5; v <= .5001; v += 1 / 8) { const [ex, ey] = gira(th, u * (lw + 2 * m), v * (ld + 2 * m)); if (!libero(cx + ex, cy + ey)) return false; } return true; };
+  const FILE = [], presi = new Set(), usati = [];
+  for (let ty = 2; ty < GH - 2 && FILE.length < 6; ty += 3) for (let tx = 2; tx < GW - 2 && FILE.length < 6; tx += 3) {
+    const i0 = ty * GW + tx; if (!terra(i0) || usati.some(([x, y]) => Math.hypot(x - tx, y - ty) < 25)) continue;
+    // le case vicine che si possono spostare (dei quartieri vecchi), le più vicine prima
+    const vic = []; for (let j = -14; j <= 14; j++) for (let i = -14; i <= 14; i++) { const k = (ty + j) >= 0 && (ty + j) < GH && (tx + i) >= 0 && (tx + i) < GW ? BI[(ty + j) * GW + tx + i] : -1; if (k >= 0 && !presi.has(k) && buono(B[k]) && !vic.includes(k)) vic.push(k); }
+    if (vic.length < 3) continue; vic.sort((p, q) => Math.hypot(B[p].x - tx, B[p].y - ty) - Math.hypot(B[q].x - tx, B[q].y - ty));
+    const era = B[vic[0]].era, cand = vic.filter(k => B[k].era === era), cx0 = (tx + .5) * TS, cy0 = (ty + .5) * TS, sg = rnd() < .5 ? -1 : 1, a0 = 20 + Math.floor(rnd() * 5) * 5;
+    let fatto = null;
+    // prima le due file che si guardano attraverso la strada (larga 4 m), da due a tre case per parte; se non ci stanno, una fila sola
+    for (const [n, lati] of [[3, 2], [2, 2], [4, 1], [3, 1], [2, 1]]) { if (fatto || cand.length < n * lati) continue; for (const aa of [a0, 40, 35, 30, 25, 20]) { if (fatto) break; for (const s of [sg, -sg]) { if (fatto) break;
+      const th = s * aa * Math.PI / 180, fila = cand.slice(0, n * lati), lw = fila.map(k => B[k].w * TS), ld = fila.map(k => B[k].h * TS), lato = fila.map((k, q) => q < n ? -1 : 1);
+      const [ux, uy] = gira(th, 1, 0), [nx, ny] = gira(th, 0, 1), cen = [], WST = 4;
+      [-1, 1].slice(0, lati).forEach(sl => { const Q = fila.map((k, q) => q).filter(q => lato[q] === sl), Lr = Q.reduce((p, q) => p + lw[q], 0); let s0 = -Lr / 2;
+        Q.forEach(q => { const cu = s0 + lw[q] / 2, cv = sl * (WST / 2 + ld[q] / 2); cen[q] = [cx0 + ux * cu + nx * cv, cy0 + uy * cu + ny * cv]; s0 += lw[q]; }); });   // la facciata sul filo della strada
+      if (!fila.every((k, q) => nelVuoto(cen[q][0], cen[q][1], lw[q], ld[q], th, .6))) continue;
+      const Lm = Math.max(...[-1, 1].map(sl => fila.reduce((p, k, q) => p + (lato[q] === sl ? lw[q] : 0), 0))); if (!nelVuoto(cx0, cy0, Lm, WST - .4, th, 0)) continue;   // la strada libera
+      fatto = { fila, th, cen, lw, ld, nx, ny, lato, tx, ty }; } } }
+    if (!fatto) continue;
+    fatto.fila.forEach(k => presi.add(k)); usati.push([tx, ty]); FILE.push(fatto);
+    // le caselle vecchie si vuotano, le nuove si stampano sull'impronta girata
+    fatto.fila.forEach(k => { const b = B[k]; for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = y * GW + x; if (BI[i] === k) { BI[i] = -1; GR[i] = GW0[i] = COB; } } });
+    fatto.fila.forEach((k, q) => { const b = B[k], [cx, cy] = fatto.cen[q], th = fatto.th, c = Math.cos(-th), sn = Math.sin(-th), R = Math.hypot(fatto.lw[q], fatto.ld[q]) / 2; let mx = 1e9, my = 1e9, Mx = -1, My = -1;
+      b.cx = cx; b.cy = cy; b.lw = fatto.lw[q]; b.ld = fatto.ld[q]; b.rot = th; b.base = EL[Math.floor(cy / TS) * GW + Math.floor(cx / TS)];
+      for (let y = Math.floor((cy - R) / TS); y <= Math.floor((cy + R) / TS); y++) for (let x = Math.floor((cx - R) / TS); x <= Math.floor((cx + R) / TS); x++) {
+        const i = y * GW + x, px = (x + .5) * TS - cx, py = (y + .5) * TS - cy, lx = px * c - py * sn, ly = px * sn + py * c;
+        if (Math.abs(lx) > b.lw / 2 || Math.abs(ly) > b.ld / 2 || BI[i] >= 0) continue;
+        BI[i] = k; GR[i] = GW0[i] = BLD; EL[i] = b.base; mx = Math.min(mx, x); my = Math.min(my, y); Mx = Math.max(Mx, x); My = Math.max(My, y); }
+      b.x = mx; b.y = my; b.w = Mx - mx + 1; b.h = My - my + 1;
+      // la porta: sulla strada, davanti al mezzo della facciata
+      for (let d = b.ld / 2 + .3; d < b.ld / 2 + 3; d += .3) { const x = Math.floor((cx - fatto.lato[q] * fatto.nx * d) / TS), y = Math.floor((cy - fatto.lato[q] * fatto.ny * d) / TS); if (BI[y * GW + x] < 0 && Game.walkT(x, y)) { b.door = [x, y]; break; } } }); }
+  global.STRADA4 = FILE;
+  log(`[case girate] ${FILE.length} strade in diagonale (${FILE.map(f => Math.round(f.th * 180 / Math.PI) + '°').join(', ')}) con ${FILE.reduce((s, f) => s + f.fila.length, 0)} case attaccate col centro libero (${FILE.map(f => f.fila.map(k => B[k].id).join('+')).join(' · ')})`); }
+if (RUOTA === '1') { let a = 12345; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const PEGGIO = ['casa_85', 'casa_88', 'casa_89', 'casa_93', 'casa_451', 'casa_424', 'casa_425', 'casa_427', 'casa_52', 'casa_54'];
+  let n = 0; Game.BUILDINGS.forEach(b => { if (!['E0', 'E2', 'E3'].includes(b.era) || b.church || b.gov || b.shack || b.pezzo || b.__tierOf) return; const u = rnd(), v = rnd(), z = rnd();
+    if (PEGGIO.includes(b.id)) { b.rot = (z < .5 ? -1 : 1) * 40 * Math.PI / 180; n++; } else if (u < .25) { b.rot = (z < .5 ? -1 : 1) * (10 + v * 30) * Math.PI / 180; n++; } });
+  log(`[case girate] ${n} case girate di 10-40°`); }
 global.Risacca = require(path.join(src, 'risacca.js')); global.Popolo = require(path.join(src, 'popolo.js')); global.Azioni = require(path.join(src, 'azioni.js'));
 global.Livelli = require(path.join(src, 'livelli.js')); global.Sottosuolo = require(path.join(src, 'sottosuolo.js')); global.Tetti = require(path.join(src, 'tetti.js'));
 global.TettiVissuti = require(path.join(src, 'tetti_vissuti.js'));   // le cose dei tetti vissuti contano nella misura delle passerelle
@@ -47,6 +104,17 @@ const strada = L => G.walkT(Math.floor(L.fx / TS), Math.floor(L.fy / TS)) && T.b
 giri.forEach(c => { const su = [...new Set(c.salite)], giu = [...new Set(c.discese)], tutte = [...new Set(su.concat(giu))].map(i => T.LADDERS[i]);
   ok(su.length >= 2 && giu.length >= 2 && tutte.every(L => L.footB < 0 && strada(L) && T.vistaL3(L)), `${c.nome}: ${su.length} vie su e ${giu.length} giù, tutte da terra e viste dalla camera`); });
 
+if (RUOTA === 'strada') { const S = B.map((b, i) => b.cx !== undefined ? i : -1).filter(i => i >= 0), E = T.grafo ? T.grafo() : null;
+  const cl = {}; S.forEach(i => { const k = C4.classe[i] ? C4.classe[i].k : '-'; cl[k] = (cl[k] || 0) + 1; });
+  const pl = T.PLANKS.filter(P => S.includes(P.a) || S.includes(P.b)).length, sc = T.LADDERS.filter(L => S.includes(L.bi)).length;
+  const fra = E ? S.reduce((n, i) => n + (E.get(i) || []).filter(e => S.includes(e.b) && e.k !== 'scala').length, 0) / 2 : -1;
+  console.log(`le case della strada in diagonale: ${JSON.stringify(cl)}, ${pl} passerelle/archi verso di loro, ${sc} scale sui loro muri, ${fra} passaggi da tetto a tetto fra loro`);
+  // ogni strada ha la sua scala da terra sui muri girati; lungo ogni fila, due case attaccate entro un gradino (1,2 m) si passano nei due versi
+  const F4 = global.STRADA4 || [], manca = [];
+  F4.forEach(f => { if (!T.LADDERS.some(L => f.fila.includes(L.bi) && L.footB < 0)) manca.push('scala ' + B[f.fila[0]].id);
+    [-1, 1].forEach(sl => { const Q = f.fila.filter((k, q) => f.lato[q] === sl); for (let q = 0; q + 1 < Q.length; q++) { const [u, v] = [Q[q], Q[q + 1]];
+      if (Math.abs(T.roofRule(B[u]) - T.roofRule(B[v])) <= 1.2 && !((E.get(u) || []).some(e => e.b === v && e.k !== 'scala') && (E.get(v) || []).some(e => e.b === u && e.k !== 'scala'))) manca.push(B[u].id + '-' + B[v].id); } }); });
+  ok(F4.length >= 3 && !manca.length, `le ${F4.length} strade in diagonale si salgono (una scala da terra sui muri girati) e lungo la fila si passa da tetto a tetto${manca.length ? ': manca ' + manca.join(', ') : ''}`); }
 // ---------------- 3. col motore ----------------
 const st = G.create(1), p = st.player, DT = 1 / 30;
 const run = (s, inp) => { for (let i = 0; i < s * 30; i++) G.step(st, DT, Object.assign({ x: 0, y: 0 }, inp)); };
@@ -58,7 +126,7 @@ function scendi(L) { p.lv = { k: 'tetto', b: L.bi, h: roofAt(L.bi, L.tx, L.ty) }
 function passa(e) {   // come test_percorsi.js
   if (e.k === 'scala') { const L = T.LADDERS[e.i], up = e.a === L.footB; p.lv = { k: 'tetto', b: e.a, h: up ? roofAt(e.a, L.fx, L.fy) : roofAt(e.a, L.tx, L.ty) }; p.x = up ? L.fx : L.tx; p.y = up ? L.fy : L.ty; calm(); clear();
     T.climb(st, L, up); run(9, {}); return p.lv && p.lv.k === 'tetto' && p.lv.b === e.b && p.hp === 100; }
-  const PK = e.k === 'passerella' ? T.PLANKS[e.i] : null, ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + PK.pin + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
+  const PK = e.k === 'passerella' ? T.PLANKS[e.i] : null, ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + (e.a === PK.b ? (PK.pinB || PK.pin) : PK.pin) + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
   p.x = e.x - ux * back; p.y = e.y - uy * back; p.lv = { k: 'tetto', b: e.a, h: roofAt(e.a, p.x, p.y) }; calm(); clear(); T.settle(st);
   if (!(p.lv && p.lv.b === e.a)) return false;
   if (e.k === 'salto' || e.k === 'gradino') { G.jumpHold(st, true); run(.7, {}); G.jumpHold(st, false); }
@@ -102,7 +170,7 @@ ok(T.PIANO.filter(Boolean).every(P => !P.giro || P.tipo === 'piano'), 'i tetti d
 const alt = T.PIANO.filter(P => P && P.gruppi.some(g => g.k === 'altana')).length, tor = T.PIANO.filter(P => P && P.gruppi.some(g => g.k === 'torretta')).length;
 ok(alt >= 4 && tor >= 2, `altane (${alt}) e torrette (${tor}) sui tetti`);
 const cam = {}; T.PIANO.forEach(P => P && P.gruppi.forEach(g => { if (g.k === 'comignoli' && g.tipo4) cam[g.tipo4] = (cam[g.tipo4] || 0) + 1; })); ok(Object.keys(cam).length >= 3, `comignoli di più tipi: ${JSON.stringify(cam)}`);
-ok(T.PREMI.every(q => { const P = T.PIANO[q.bi]; return !P || P.riserve.some(r => hyp(r[0] - q.x, r[1] - q.y) < .05); }), 'ogni premio ha il suo posto riservato sul tetto');
+ok(T.PREMI.every(q => { const P = T.PIANO[q.bi], [lx, ly] = T.loc3(B[q.bi], q.x, q.y); return !P || P.riserve.some(r => hyp(r[0] - lx, r[1] - ly) < .05); }), 'ogni premio ha il suo posto riservato sul tetto');   // [tetti4] nel riferimento della casa (girata o no)
 
 // ---------------- 4b. le passerelle contro i tetti (Tetti.passerelle4, strumenti/passerelle4.js): zero urti, regola dura ----------------
 { const R = T.passerelle4(), CN = T.PLANKS.filter(P => T.PIANO[P.a] && T.PIANO[P.b]);
@@ -115,6 +183,24 @@ const CO = T.CORTI, ck = {}; CO.forEach(c => ck[c.k] = (ck[c.k] || 0) + 1);
 ok(CO.length >= 10 && CO.every(c => ['pozzo', 'orto', 'bottega', 'passaggio'].includes(c.k)), `le corti a terra con uno scopo: ${CO.length} ${JSON.stringify(ck)}`);
 ok(CO.filter(c => c.scala >= 0).length >= 3, `le scale che scendono nelle corti (${CO.filter(c => c.scala >= 0).length})`);
 ok(giri.some(c => c.rami.some(r => r.premio === 'corte')), 'almeno un giro scende in una corte');
+
+// ---------------- 6. la prova delle case girate e dei lotti (in altri processi: la copia del mondo) ----------------
+// la firma: il piano dei tetti, la rete (passerelle, scale, salti), la copertura, i tetti vissuti, i giri (numeri arrotondati al mm)
+const firma4 = () => { const vis = new WeakSet(), BS = new Set(B), J = JSON.stringify({ piano: T.PIANO, plank: T.PLANKS, scale: T.LADDERS, salti: T.JUMPS, zone: C4.zone, giri: D.circuiti, vissuti: TettiVissuti.VISSUTI },
+    (k, v) => typeof v === 'number' ? Math.round(v * 1000) / 1000 : v && typeof v === 'object' ? (BS.has(v) ? '#casa' : vis.has(v) ? '~' : (vis.add(v), v)) : v);
+  return require('crypto').createHash('md5').update(J).digest('hex').slice(0, 12) + ' (' + J.length + ')'; };
+console.log('[firma lotti] ' + firma4());
+if (!RUOTA) { const figlio = (m, nome) => { const r = require('child_process').spawnSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { TETTI4_RUOTA: m }), encoding: 'utf8', maxBuffer: 64 << 20 });
+    const out = (r.stdout || '') + (r.stderr || ''), righe = out.split('\n');
+    righe.filter(l => /^\[case girate\]|^(borgo|marina|ottocento):|raggiungibili dalla rete|marina \d+%|entra nei tetti|^NO /.test(l)).forEach(l => console.log('     ' + nome + ' · ' + l));
+    return { r, righe }; };
+  let { r, righe } = figlio('1', 'girate');
+  ok(r.status === 0, `con le case girate (10-40°) la rete regge: copertura ≥ 70% per quartiere, zero urti, i giri camminati (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`);
+  ({ r, righe } = figlio('strada', 'strada'));
+  ok(r.status === 0, `con le file di case col centro libero lungo strade in diagonale (20-40°) la rete regge: copertura ≥ 70% per quartiere, zero urti, i giri camminati (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`);
+  ({ r, righe } = figlio('uguali', 'lotti uguali'));
+  const f0 = firma4(), f1 = (righe.find(l => l.startsWith('[firma lotti] ')) || '').slice(14);
+  ok(r.status === 0 && f1 === f0, `i campi del lotto (b.cx, b.cy, b.lw, b.ld) uguali alla casella danno lo stesso identico risultato della casella: firma ${f0} = ${f1 || '?'}`); }
 
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passate');
 process.exit(fail ? 1 : 0);

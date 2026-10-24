@@ -31,7 +31,7 @@ var Game = (function () {
   const MAP0 = { grid: grid.slice(), wallAt: wallAt.slice(), elev: elev.slice(), rampOf: rampOf.slice(), ramps: 0 };
   function restoreMap() { grid.set(MAP0.grid); wallAt.set(MAP0.wallAt); elev.set(MAP0.elev); rampOf.set(MAP0.rampOf); RAMPS.length = MAP0.ramps; }
 
-  const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[ty * GW + tx];
+  const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[(ty | 0) * GW + (tx | 0)];   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const walkT = (tx, ty) => { const v = tileAt(tx, ty); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // [monte] CLIFF: pareti e muri a secco
   const walkM = (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
   // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
@@ -205,6 +205,9 @@ var Game = (function () {
     gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
+    // [chiatta] la chiatta a pedali: telaio da catamarano su due tubi di PVC, una bici al centro che con la catena fa girare due ruote a pale.
+    // Va piano (si pedala, ~10 km/h), è larga e leggera. Il timone sta a poppa, tra i due tubi; si guida col manubrio.
+    chiatta: { r: 1.3, len: 5.2, wid: 2.6, max: 2.8, accel: 1.1, turn: .95, hp: 70, label: 'Chiatta a pedali', boat: true, art: 'la', pedali: true },
     // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
     bmx: { r: .5, len: 1.5, wid: .74, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
     // [vievive] l'autobus urbano della linea 1 (Fiat 421) e il Ciao, il motorino di tutti
@@ -215,7 +218,7 @@ var Game = (function () {
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
-  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
+  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 }); Object.assign(VK.chiatta, { m: 260, grip: 2.2 });   // [chiatta]
   Object.assign(VK.autobus, { m: 9000, grip: 18 }); Object.assign(VK.ciao, { m: 70, grip: 22 });   // [vievive]
   Object.assign(VK.bmx, { m: 95, grip: 23 }); Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
@@ -616,7 +619,7 @@ var Game = (function () {
         if (v.owner) st.timers.push({ at: st.t + 30, kind: 'discoverVehicle', npc: v.owner, ev: ev.id, kindV: v.kind });
         if (v.owner === 'sandro') aggroFaction(st, 'squalo');
         addLog(st, `${clockStr(st.t)} · Hai rubato ${vehicleName(st, v)}.`, 'bad', ev.id);
-        if (VK[v.kind].boat) { const nm = vehicleName(st, v); return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
+        if (VK[v.kind].boat) { const nm = vehicleName(st, v); if (VK[v.kind].pedali) return { ok: true, msg: `Sciogli la cima, monti in sella e dai la prima pedalata. ${nm[0].toUpperCase() + nm.slice(1)} è tua, per ora.` };   /* [chiatta] */ return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
         return { ok: true, msg: v.kind === 'vespa' ? `Colleghi i fili. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua, per ora.` : `Un cacciavite nel blocchetto e parte. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua.` };
       }
       return { ok: true, msg: '' };
@@ -1139,9 +1142,9 @@ var Game = (function () {
   // ---------------- DECISIONI ----------------
   function say(st, n, text, dur) { n.bark = { text, until: st.clock + (dur || 3.4) }; n.barkCd = st.clock + 8; }
   const COMBAT_BARKS = {
-    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!'],
-    squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!'],
-    marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!'],
+    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!'],
+    squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!', 'Nino! Lo Squalo dice che ti vuole bene! Ma deve spararti!', 'Esci, che mia madre mi aspetta per pranzo!'],
+    marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!', 'Mais qui a pris ma baguette?! Pardon. Tirez!'],
     // [arcipelago]
     'isola:tribu': ['Uuh-ah! Uuh-ah!', 'Carne fresca!', 'Circondatelo!', 'Il fuoco è acceso!'],
     tutela_isola: ['Fuoco! Fuoco!', 'Intruso nella zona militare!', 'Copritemi!', 'Non farlo scappare!'],
@@ -1565,7 +1568,7 @@ var Game = (function () {
       const ta = inp.aim !== undefined ? inp.aim : Math.atan2(iy, ix); p.face += angDiff(ta, p.face) * (1 - Math.exp(-dt * 28)); p.speed = back ? -sp : sp;   // [fluido] girarsi non dipende dai fotogrammi (1 - e^-k·dt) ed è svelto: un dietrofront in ~0,1 s (prima ~0,2 s e più lento coi fotogrammi lunghi)
     } else { p.speed = 0; if (inp.aim !== undefined) p.face += angDiff(inp.aim, p.face) * (1 - Math.exp(-dt * 14)); }   // [fluido]
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
-    if (!p.lv || p.lv.k !== 'ug') pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa
+    if ((!p.lv || (p.lv.k !== 'ug' && p.lv.k !== 'tetto' && p.lv.k !== 'scala')) && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa; [tetti4] sui tetti e sulle scale sono sotto i piedi; [regia] dentro le case sono fuori
   }
   function tryMove(o, dx, dy, r, swim) {
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]
@@ -1840,9 +1843,14 @@ var Game = (function () {
   // sbalzo: scivola finché l'attrito non lo ferma (poco in aria, molto a terra), rimbalza sui muri
   function knockback(st, o, dt) {
     if (!o.kbx && !o.kby) return;
+    // [regia] lo spintone rispetta i muri di dove sei: dentro una casa i muri e i mobili, sotto terra le gallerie (prima guardava solo
+    // la mappa di fuori: una spinta in casa o in galleria ti portava attraverso le pareti, e fuori dall'edificio)
+    if (o === st.player) o.__st = st;
+    const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, .3) : null, L = LVf ? null : indoorL(o);
+    const ok = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, .3) : walkM);
     const nx = o.x + o.kbx * dt, ny = o.y + o.kby * dt;
-    if (walkM(nx, o.y)) o.x = nx; else o.kbx *= -.4;
-    if (walkM(o.x, ny)) o.y = ny; else o.kby *= -.4;
+    if (ok(nx, o.y)) o.x = nx; else o.kbx *= -.4;
+    if (ok(o.x, ny)) o.y = ny; else o.kby *= -.4;
     const air = st.clock - (o.airT || -9) < (o.airDur || 0), l = Math.hypot(o.kbx, o.kby), f = Math.max(0, l - (air ? 1 : 14) * dt) / (l || 1);
     o.kbx *= f; o.kby *= f; if (l < .1) { o.kbx = 0; o.kby = 0; }
   }
