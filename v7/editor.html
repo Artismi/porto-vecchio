@@ -21990,9 +21990,21 @@ var Arredo3D = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Arredo3D;
 </script>
-<!-- [sito] quale isola: sul computer la città nuova, sul telefono l'isola di prima (la nuova chiede ~520 MB invece di ~330 e sul telefono la pagina si chiude).
-     ?cittanuova la forza anche sul telefono, ?vecchia riapre l'isola di prima anche sul computer -->
-<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; if (/[?&]cittanuova/.test(q)) return true; return !matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();</script>
+<!-- [sito] quale isola: la città nuova dappertutto. Sul telefono c'è una rete di sicurezza in localStorage: all'avvio si segna «in corso»,
+     «ok» quando la pagina va in secondo piano o si chiude per bene. Se all'avvio è ancora «in corso», l'ultima volta la pagina è morta mentre
+     giocava (la memoria del telefono): alla seconda volta di fila si passa all'isola di prima e ci si resta. ?cittanuova riprova la città
+     nuova (e azzera il conto), ?vecchia apre l'isola di prima anche sul computer -->
+<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false;
+  if (!matchMedia('(pointer: coarse)').matches) return true;
+  const K = 'pv-avvio', C = 'pv-cadute', LS = window.localStorage, forza = /[?&]cittanuova/.test(q);
+  const get = k => { try { return LS.getItem(k); } catch (e) { return null; } }, set = (k, v) => { try { LS.setItem(k, v); } catch (e) { } };
+  const prev = get(K); let cadute = +get(C) || 0;
+  if (forza) { cadute = 0; set(C, '0'); }
+  else { if (prev === 'in corso') { cadute++; set(C, String(cadute)); } if (prev === 'vecchia' || cadute >= 2) { set(K, 'vecchia'); return false; } }
+  set(K, 'in corso');
+  const via = () => { set(K, 'ok'); set(C, '0'); }; addEventListener('pagehide', via); addEventListener('beforeunload', via);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) via(); else set(K, 'in corso'); });
+  return true; } catch (e) { return !/[?&]vecchia/.test(location.search); } })();</script>
 <script data-m="world">if (!window.PV_NUOVA) { /* Porto Vecchio — il mondo: un'isola d'inverno, da ovest a est.
    [isola] La testa di bosco quasi tonda col Tavolato in mezzo (si sale solo a piedi) e la Spiaggia Lunga a sud
    → il collo di foresta che si stringe come una tromba → il Monte Scuro coi villaggi → periferia ovest con la sua collina
@@ -25211,17 +25223,25 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const cresci = g => { const cap = Math.max(16, g.cap * 2), m = new THREE.InstancedMesh(g.geo, g.mat, cap); m.frustumCulled = false; m.castShadow = !!g.ombre && !tel; m.receiveShadow = true; if (g.ombre) m.customDepthMaterial = ombra(); if (g.mat.depthWrite === false) m.renderOrder = 5;
       if (g.mesh) { for (let i = 0; i < g.n; i++) { g.mesh.getMatrixAt(i, m4); m.setMatrixAt(i, m4); g.mesh.getColorAt(i, col); m.setColorAt(i, col); } gruppo.remove(g.mesh); g.mesh.dispose(); }
       g.mesh = m; g.cap = cap; gruppo.add(m); };
-    // LONTANO: tutte le piante grandi dell'isola in una geometria sola (la sagoma più semplice, già posata), che lo shader chiude dentro R1
-    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)); let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
-      const Pp = new Float32Array(nv * 3), Nn = new Float32Array(nv * 3), Cc = new Float32Array(nv * 3), Uu = new Float32Array(nv * 2), Oo = new Float32Array(nv), Ff = new Float32Array(nv), Ce = new Float32Array(nv * 3); let o = 0;
-      L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
-        for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
-          Pp[o * 3] = p.x + x * cs + z * sn; Pp[o * 3 + 1] = y0 + y; Pp[o * 3 + 2] = p.y - x * sn + z * cs; Nn[o * 3] = nx * cs + nz * sn; Nn[o * 3 + 1] = A.normal.getY(i); Nn[o * 3 + 2] = -nx * sn + nz * cs;
-          Cc[o * 3] = A.color.getX(i); Cc[o * 3 + 1] = A.color.getY(i); Cc[o * 3 + 2] = A.color.getZ(i); Uu[o * 2] = A.uv.getX(i); Uu[o * 2 + 1] = A.uv.getY(i); Oo[o] = A.occ.getX(i); Ff[o] = 0;
-          Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
-      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
-      g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2)); g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
-      const far = new THREE.Mesh(g, materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true })); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); }
+    // LONTANO: tutte le piante grandi dell'isola (la sagoma più semplice, già posata), che lo shader chiude dentro R1.
+    // [memoria] a tasselli di 128 m con la loro sfera, così fuori dall'inquadratura e oltre il piano lontano non si disegnano (era una
+    // mesh sola di 1,5 M vertici sempre disegnata); normali, colori, occlusione e flessione a 8 bit, uv a 16 bit: la scheda video li legge
+    // uguali (stessa immagine), un terzo dei byte
+    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)), TL = 128, tiles = new Map();
+      L.forEach(p => { const k = Math.floor(p.x / TL) * 65536 + Math.floor(p.y / TL); (tiles.get(k) || tiles.set(k, []).get(k)).push(p); });
+      const MF = materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true }), q8 = v => Math.max(0, Math.min(255, Math.round(v * 255))), q16 = v => Math.max(0, Math.min(65535, Math.round(v * 65535))), n8 = v => Math.max(-127, Math.min(127, Math.round(v * 127)));
+      tiles.forEach(L => {
+        let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
+        const Pp = new Float32Array(nv * 3), Nn = new Int8Array(nv * 3), Cc = new Uint8Array(nv * 3), Uu = new Uint16Array(nv * 2), Oo = new Uint8Array(nv), Ff = new Uint8Array(nv), Ce = new Float32Array(nv * 3); let o = 0, uvOk = true;
+        L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
+          for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
+            Pp[o * 3] = p.x + x * cs + z * sn; Pp[o * 3 + 1] = y0 + y; Pp[o * 3 + 2] = p.y - x * sn + z * cs; Nn[o * 3] = n8(nx * cs + nz * sn); Nn[o * 3 + 1] = n8(A.normal.getY(i)); Nn[o * 3 + 2] = n8(-nx * sn + nz * cs);
+            Cc[o * 3] = q8(A.color.getX(i)); Cc[o * 3 + 1] = q8(A.color.getY(i)); Cc[o * 3 + 2] = q8(A.color.getZ(i)); const u = A.uv.getX(i), v = A.uv.getY(i); if (u < 0 || u > 1 || v < 0 || v > 1) uvOk = false; Uu[o * 2] = q16(u); Uu[o * 2 + 1] = q16(v); Oo[o] = q8(A.occ.getX(i)); Ff[o] = 0;
+            Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3, true)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3, true));
+        if (uvOk) g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2, true)); else { const U = new Float32Array(nv * 2); let q = 0; L.forEach((p, k) => { const A = geos[k].attributes; for (let i = 0; i < A.position.count; i++, q++) { U[q * 2] = A.uv.getX(i); U[q * 2 + 1] = A.uv.getY(i); } }); g.setAttribute('uv', new THREE.BufferAttribute(U, 2)); }
+        g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1, true)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1, true)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
+        const far = new THREE.Mesh(g, MF); far.name = 'vegLontano'; far.receiveShadow = true; far.matrixAutoUpdate = false; gruppo.add(far); }); }
     let lx = 1e9, lz = 1e9, lc = 1e9, lcz = 1e9;
     const BASSE = new Set(['erbaSecca', 'erbaVerde', 'papavero', 'finocchietto', 'avena', 'cardo', 'asfodelo', 'fioriBianchi', 'tappetoAghi', 'tappetoFoglie', 'pigna', 'rametto']);
     function aggiorna(cx, cz, t) {
@@ -63011,6 +63031,19 @@ var Render = (function () {
   // [leggera] normali in un byte per numero (Int8 normalizzato) invece di quattro: stessa luce a vista, un quarto della memoria,
   // in RAM e sulla scheda video. Solo sulle geometrie finali (statiche fuse e case fuse), non su quelle che altri rileggono come float.
   function packNormals(g) { const a = g.attributes.normal; if (!a || !(a.array instanceof Float32Array)) return g; const src = a.array, out = new Int8Array(src.length); for (let i = 0; i < src.length; i++) out[i] = Math.max(-127, Math.min(127, Math.round(src[i] * 127))); g.setAttribute('normal', new THREE.BufferAttribute(out, 3, true)); return g; }
+  // [memoria] gli attributi delle geometrie statiche compatti, letti dalla scheda video come prima: uv a 16 bit (solo se stanno in 0..1,
+  // un passo di 1/65535 della tessitura), colori a 8 bit, normali a 8 bit (packNormals). I vertici restano a 32 bit: li leggono i raggi,
+  // la distruzione e i tetti. Chi rifà un pezzo dalla fusa (lazyGeo1) porta con sé il flag «normalized»
+  function packStatic(g) {
+    packNormals(g);
+    const u = g.attributes.uv;
+    if (u && u.array instanceof Float32Array && u.array.length) { const a = u.array; let ok = true; for (let i = 0; i < a.length; i++) { const v = a[i]; if (!(v >= 0 && v <= 1)) { ok = false; break; } }
+      if (ok) { const o = new Uint16Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.round(a[i] * 65535); g.setAttribute('uv', new THREE.BufferAttribute(o, 2, true)); } }
+    const c = g.attributes.color;
+    if (c && c.array instanceof Float32Array && c.array.length) { const a = c.array; let ok = true; for (let i = 0; i < a.length; i++) { const v = a[i]; if (!(v >= 0 && v <= 1)) { ok = false; break; } }
+      if (ok) { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.round(a[i] * 255); g.setAttribute('color', new THREE.BufferAttribute(o, c.itemSize, true)); } }
+    return g;
+  }
   function mergeGeos(geos) {
     let n = 0; geos.forEach(g => n += g.attributes.position.count);
     const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
@@ -63267,7 +63300,7 @@ var Render = (function () {
       if (b.pal) { const pa = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; pa.fill(g.__pal1, q, q + c); q += c; }); geo.setAttribute('pal1', new THREE.BufferAttribute(pa, 1)); }   // [leggero] il numero del colore
       if (b.arr) { const la = new Uint8Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; la.fill(g.__lay1, q, q + c); q += c; }); geo.setAttribute('lay1', new THREE.BufferAttribute(la, 1)); }   // [leggero] lo strato della mappa
       if (b.vt) { const va = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; va.fill(g.__vt1, q, q + c); q += c; }); geo.setAttribute('vt1', new THREE.BufferAttribute(va, 1)); }   // [peso] la voce del vetro
-      geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
+      geo.computeBoundingSphere(); geo.computeBoundingBox(); packStatic(geo);   // [leggera] [memoria]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt, b.tr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh);
       if (b.tr) { mesh.renderOrder = b.ro; PESOTR.list.push([mesh, b.srcs]); }   // [peso]
       srcs.forEach(([o, start, count, hasN, hasUv]) => lazyGeo1(o, geo, start, count, hasN, hasUv));   // [leggera] l'originale si rifà dalla fusa quando serve
@@ -63297,7 +63330,7 @@ var Render = (function () {
       const P = fused.attributes, a = start, z = start + count, g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(P.position.array.slice(a * 3, z * 3), 3));
       if (hasN) g.setAttribute('normal', new THREE.BufferAttribute(P.normal.array.slice(a * 3, z * 3), 3, P.normal.normalized));
-      if (hasUv) g.setAttribute('uv', new THREE.BufferAttribute(P.uv.array.slice(a * 2, z * 2), 2));
+      if (hasUv) g.setAttribute('uv', new THREE.BufferAttribute(P.uv.array.slice(a * 2, z * 2), 2, P.uv.normalized));   // [memoria]
       g.applyMatrix4(inv); g.boundingBox = ph.boundingBox.clone(); g.boundingSphere = ph.boundingSphere.clone(); g.name = ph.name; LAZY1.made++; return g;
     };
     // finché nessuno la chiede davvero (la casa che si dissolve, un raggio) resta il segnaposto: chi compila i programmi o conta
@@ -63341,8 +63374,8 @@ var Render = (function () {
     if (PAL1.col.length) palTex1(); ARR1.all.forEach(a => { if (!a.tex) arrTex1(a); });   // [leggero]
     scartaSchiacciate1();   // [pulizia] quello che è stato tolto prima della fusione non entra nei buffer
     STATIC.forEach(b => { let o = 0; b.offs = b.geos.map(g => { const k = o; o += g.attributes.position.count; return k; }); const pv = b.pal ? b.geos.map(g => [g.__pal1, g.__lay1 || 0, g.attributes.position.count]) : null;
-      const geo = packNormals(mergeGeos(b.geos)); if (pv) palArrAttr1(geo, pv, !!b.arr);   // [leggero] il colore e lo strato di ogni pezzo
-      const m = new THREE.Mesh(geo, b.pal ? canonStatic1(b.mat, b.arr) : b.mat); if (b.pal) m.userData.leggero = true; b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
+      const geo = packStatic(mergeGeos(b.geos)); if (pv) palArrAttr1(geo, pv, !!b.arr);   /* [memoria] */   // [leggero] il colore e lo strato di ogni pezzo
+      const m = new THREE.Mesh(geo, b.pal ? canonStatic1(b.mat, b.arr) : b.mat); if (b.pal) m.userData.leggero = true; m.userData.statico1 = true; /* [memoria] per lo streaming */ b.mesh = m; b.geos = []; m.castShadow = !b.noShadow || b.noShadow === 'lamp'; if (b.noShadow === 'lamp') m.customDepthMaterial = lampDepth1();   /* [unione1] */ m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); });
     STATIC.clear();
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
@@ -63632,7 +63665,9 @@ var Render = (function () {
     // il sole e la luna, le luci della riva, la schiuma che va e viene sulla battigia.
     const T = G.T, W0c = M.world, SEA0 = W0c && W0c.SEA, S = 2;
     const mc = mk(G.GW * S, G.GH * S), mx = mc.getContext('2d'), sc = mk(G.GW, G.GH), sx = sc.getContext('2d'), sd = sx.createImageData(G.GW, G.GH);
-    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#fff';
+    // [carico] la maschera della terra scritta pixel per pixel in un ImageData (era un fillRect per sottocasella: mezzo milione di chiamate, 6 s)
+    const md = mx.createImageData(mc.width, mc.height), MD = md.data, MW = mc.width; for (let i = 3; i < MD.length; i += 4) MD[i] = 255;
+    const bianco = (px, py) => { const o = (py * MW + px) * 4; MD[o] = MD[o + 1] = MD[o + 2] = 255; };
     const R9 = RIVA9(), MIN9 = .8;
     // [riva] il fondale senza fondo: dove sotto l'acqua non c'è terreno (accanto a banchine e pontili, lontano dalla riva) e la riva fine
     // non c'è, l'acqua resta opaca: almeno 80 cm. Si segna qui, a caselle, prima della sfumatura (dopo faceva quadrati netti di 2 m)
@@ -63641,13 +63676,13 @@ var Render = (function () {
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const i = ty * G.GW + tx, v = gT(tx, ty), lake = v === T.WATER && M.zone && M.zone[i] !== (M.Z || {}).MARE, sea = v === T.PIER || v === T.WATER, o = i * 4;
       if (R9 && W0c.quotaRiva && Riva.inBanda(tx, ty)) { const q00 = W0c.quotaRiva(tx, ty), q10 = W0c.quotaRiva(tx + 1, ty), q01 = W0c.quotaRiva(tx, ty + 1), q11 = W0c.quotaRiva(tx + 1, ty + 1);   // [riva] nella fascia la terra a mezze caselle, dalla quota (curva, non a scalini) finché il blocco fine non arriva
-        for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const u = (a + .5) / S, w = (b + .5) / S; if (q00 * (1 - u) * (1 - w) + q10 * u * (1 - w) + q01 * (1 - u) * w + q11 * u * w > WL) mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
-      else if (!sea) mx.fillRect(tx * S, ty * S, S, S);
+        for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const u = (a + .5) / S, w = (b + .5) / S; if (q00 * (1 - u) * (1 - w) + q10 * u * (1 - w) + q01 * (1 - u) * w + q11 * u * w > WL) bianco(tx * S + a, ty * S + b); } }
+      else if (!sea) for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) bianco(tx * S + a, ty * S + b);
       let dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0; if (R9 && v === T.WATER && dp < MIN9 && buco9(tx, ty)) dp = MIN9;
       const bt = SEA0 && SEA0.bottom ? SEA0.bottom[i] : 0;
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
-    sx.putImageData(sd, 0, 0);
+    sx.putImageData(sd, 0, 0); mx.putImageData(md, 0, 0);   /* [carico] */
     const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(2px)' : 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
@@ -65142,6 +65177,7 @@ var Render = (function () {
   const PEOPLE_KEEP = new Map();
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  if (typeof window !== 'undefined') window.PV_TELEFONO = PHONE;   // [memoria] lo leggono i moduli (pittura.js: la cache delle tele)
   LOWQ.phone = PHONE;
   function buildVeg(tx0, ty0, n, m) {
     const K = vegKit(), T = G.T, L0 = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] }, LT = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] };
@@ -78735,6 +78771,36 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       l.position.set(L.x, L.y, L.z); l.color.copy(L.color); l.distance = L.dist; l.decay = 2; l.intensity = L.base * kOf(L) * .8;
     });
   }
+  // ---------------- [memoria] STREAMING: la scheda video tiene solo quello che può vedere ----------------
+  // Le mesh statiche fuse (fusione1, flushStatic) restano in memoria normale (i raggi, la distruzione e i tetti leggono i loro vertici),
+  // ma oltre la nebbia (camera.far + 90 m) lasciano la scheda video: la mesh si spegne, geometria e tessiture proprie si scaricano
+  // (dispose; una tessitura solo se nessuna mesh accesa la usa). Rientrando sotto camera.far + 20 m si ricaricano, le più vicine prima,
+  // con un tetto di byte per fotogramma, disegnate una volta fuori dal controllo d'inquadratura (così il caricamento avviene subito, non
+  // al primo fotogramma in cui entrano nell'inquadratura). Oltre il piano lontano la nebbia è piena: l'immagine non cambia. ?nostream
+  // spegne tutto. Le sagome d'ombra (ombra1) condividono il buffer dei vertici con la fusa: seguono lei.
+  const STR = { on: !/[?&]nostream\b/.test(location.search), list: null, i: 0, tex: new Map(), warm: [], rew: [], off: 0, n: 0, mb: 0, carichi: 0 };
+  const texOf1 = m => { const out = []; if (!m) return out; for (const k of ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'bumpMap', 'lightMap']) if (m[k] && m[k].isTexture) out.push(m[k]); return out; };
+  function streamInit() {
+    STR.list = []; const om = new Map();
+    scene.traverse(o => { if (!o.isMesh || !o.geometry || !o.geometry.boundingSphere || !(o.userData.fusione1 || o.userData.statico1)) return;
+      let b = 0; for (const k in o.geometry.attributes) b += o.geometry.attributes[k].array.byteLength;
+      const e = { o, s: o.geometry.boundingSphere, on: true, d: 0, b, sh: null, fc: o.frustumCulled }; STR.list.push(e); om.set(o.geometry.attributes.position, e); });
+    scene.traverse(o => { if (o.isMesh && o.userData.ombra1) { const e = om.get(o.geometry.attributes.position); if (e) e.sh = o; } });
+    STR.list.forEach(e => texOf1(e.o.material).forEach(t => { let s = STR.tex.get(t); if (!s) STR.tex.set(t, s = new Set()); s.add(e); }));
+    STR.n = STR.list.length; STR.mb = Math.round(STR.list.reduce((a, e) => a + e.b, 0) / 1e6);
+  }
+  function streamOff(e) { e.on = false; e.o.visible = false; if (e.sh) e.sh.visible = false; e.o.geometry.dispose(); STR.off++;
+    texOf1(e.o.material).forEach(t => { const s = STR.tex.get(t); if (!s) return; for (const q of s) if (q.on) return; t.dispose(); }); }
+  function streamTick() {
+    if (!STR.on || !camera) return; if (!STR.list) streamInit(); const L = STR.list, n = L.length; if (!n) return;
+    for (const e of STR.rew) e.o.frustumCulled = e.fc; STR.rew.length = 0;   // le ricaricate ieri tornano al controllo d'inquadratura
+    const cx = camera.position.x, cz = camera.position.z, near = camera.far + 20, lontano = camera.far + 90; let k = Math.min(n, 4000);
+    while (k-- > 0) { STR.i = (STR.i + 1) % n; const e = L[STR.i], s = e.s, d = Math.hypot(s.center.x - cx, s.center.z - cz) - s.radius; e.d = d;
+      if (e.on) { if (d > lontano) streamOff(e); } else if (d < near && !e.w) { e.w = true; STR.warm.push(e); } }
+    if (STR.warm.length) { STR.warm.sort((a, b) => a.d - b.d); let bud = PHONE ? 8e6 : 24e6, c = 0;
+      while (STR.warm.length && (bud > 0 || c === 0)) { const e = STR.warm.shift(); e.w = false; if (e.on) continue; e.on = true; e.o.visible = true; if (e.sh) e.sh.visible = true; e.o.frustumCulled = false; STR.rew.push(e); bud -= e.b; c++; STR.off--; STR.carichi++; } }
+  }
+  if (typeof window !== 'undefined') window.__stream = STR;
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
@@ -79127,6 +79193,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    streamTick();   /* [memoria] */
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
@@ -86252,7 +86319,7 @@ var Pittura = (function () {
       // [pulizia] la luce propria come il resto del personaggio (models.js: emissive = colore × 0,3), texel per texel: la pelle dipinta è identica a quella di viso e mani (prima un grigio fisso: il busto nudo pareva una maglietta color carne)
       const bh = mk(hh), cm = mk(col), m = new THREE.MeshStandardMaterial({ map: cm, bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0, emissiveMap: cm }); m.emissive = new THREE.Color(.3, .3, .3); m.userData.pittura = true; return m;
     });
-    MCACHE.set(sig, M); if (++mcount > 160) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }
+    MCACHE.set(sig, M); if (++mcount > (window.PV_TELEFONO ? 56 : 160)) { const k = MCACHE.keys().next().value; MCACHE.delete(k); }   // [memoria] sul telefono meno vestiti in serbo (due tele da ~1 MB l'uno): chi torna si ridipinge uguale
     return M;
   }
   // veste g dipingendo il corpo. Ritorna i piani (per sapere cosa c'è, es. le falde da fare in geometria)

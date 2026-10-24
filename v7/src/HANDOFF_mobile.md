@@ -53,3 +53,32 @@ Sul sito di Artismi (repository `Aertismione`, `src/components/ui/GameBoy.tsx` e
 - **I tasti**: levetta cammina e guida; **croce** a piedi e in auto la visuale (◄ ► la gira, ▲ ▼ zoom), in BMX i trick come le frecce della tastiera (▼ impenna, ◄ ► un piede sulla pedalina); **A** il pulsante principale di adesso (Salta, Freno, Ollie, Colore), nei dialoghi conferma, all'inizio Gioca; **B** il secondo (Scendi, Impenna, Modo), a piedi con l'arma Spara **dove guarda il personaggio** (camminando dove vai, da fermo dove l'hai girato; la croce che gira la visuale gira anche lui; solo chi è proprio lì davanti, 11° per parte, prende il colpo preciso; con l'arma in mano si vede il raggio della mira; `conAim` in `main.js`. La scritta porta i colpi; nel Game Boy il tocco sullo schermo non spara, resta per andare e parlare), con un oggetto la sua azione (Scava, Mangia, Bevi, Scatta… da `Comandi.mano()`; sotto B il nome dell'oggetto), a mani libere Corri finché lo tieni; nei menu, nel taccuino e nei dialoghi B è Indietro; **bomboletta** la tavoletta dei graffiti; **bici** a piedi → BMX → skate (al chiuso niente); **zaino** il menu (col menu aperto lo chiude); la rotella l'audio.
 - Uscendo con il mouse dai lati dello schermo la visuale non gira più (ai lati ci sono i tasti).
 - Prove: una pagina ospite che comanda il gioco con `postMessage`, e il sito vero col gioco dentro: levetta, croce, zaino, taccuino, Ricomincia con conferma, arma e colpo, audio, «lascia», schermo pulito, schede che entrano. In vista telefono e computer, nessun errore.
+
+## Memoria e città nuova sul telefono (24 ottobre, [memoria])
+Misure in Chromium senza scheda video, profilo telefono (`?leggera`, 480×300), dopo il garbage collector, città nuova:
+heap JS **1.549 → 1.380 MB**; l'isola di prima **851 → 781 MB**. Il peso resta la geometria statica (fusione1 + statiche: ~630 MB di
+vertici, 11,6 M triangoli, non indicizzati: la leggono raggi, distruzione, tetti e lazyGeo1, quindi restano a 32 bit) e le tele dipinte
+(823 canvas, ~320 MB, soprattutto le stoffe dei personaggi in `pittura.js mats`, cache per vestito).
+- **Attributi compatti** (`render.js packStatic`, su fusione1 e flushStatic): uv a 16 bit normalizzati quando stanno in 0..1, colori a 8 bit,
+  normali a 8 bit (già c'era). `lazyGeo1` porta con sé `normalized`. Stessa immagine (un passo di 1/65535 della tessitura).
+- **Vegetazione lontana a tasselli** (`vegetazione.js monta`, LONTANO): era una mesh sola da 1,5 M vertici (104 MB) con
+  `frustumCulled = false`, disegnata intera a ogni fotogramma; ora tasselli di 128 m con la loro sfera (fuori inquadratura e oltre il piano
+  lontano non si disegnano), attributi a 8/16 bit: 55 MB.
+- **Streaming della scheda video** (`render.js STR`, `streamTick` prima del disegno): le mesh statiche (fusione1, `statico1`) oltre
+  `camera.far + 90 m` si spengono e scaricano geometria e tessiture proprie (`dispose`; una tessitura solo se nessuna mesh accesa la usa);
+  sotto `camera.far + 20 m` si ricaricano, le più vicine prima, 8 MB per fotogramma sul telefono (24 sul computer), disegnate una volta senza
+  controllo d'inquadratura così il caricamento avviene subito. Oltre il piano lontano c'è nebbia piena: niente cambia. `?nostream` spegne,
+  `window.__stream` i conti. Le sagome d'ombra (`ombra1`) seguono la loro fusa (condividono il buffer dei vertici).
+- **Tele dei vestiti**: `pittura.js` tiene in cache 160 vestiti (due tele da ~1 MB l'uno); sul telefono 56 (`window.PV_TELEFONO`): chi torna si
+  ridipinge uguale.
+- **Il mare al caricamento** (`buildWater`): la maschera della terra scritta in un ImageData invece di mezzo milione di `fillRect`.
+- **Quale isola** (`index.src.html`, `PV_NUOVA`): la città nuova dappertutto. Sul telefono una rete di sicurezza in `localStorage`
+  (`pv-avvio`, `pv-cadute`): «in corso» all'avvio, «ok» in secondo piano o alla chiusura; se all'avvio è ancora «in corso» l'ultima volta la
+  pagina è morta giocando (si conta); alla seconda morte di fila apre l'isola di prima e ci resta. `?cittanuova` riprova (e azzera il conto),
+  `?vecchia` apre l'isola di prima anche sul computer. Provata con crash veri del renderer (CDP `Page.crash`): 1 crash → ancora nuova,
+  2 di fila → vecchia, chiusura pulita → conto a zero.
+- Provato: iPhone 13 emulato dentro un iframe che fa da Game Boy (`{pvc:'ciao'}`): città nuova, modalità console, partita avviata, nessun
+  errore; la rete di sicurezza (morte simulata → isola di prima; `?cittanuova` → città nuova). Confronto fra fotogrammi fermi prima e dopo
+  (borgo e Vittoria, 15 e 22): stessa scena a vista; le differenze pixel vengono dalla camera che si assesta in modo diverso fra due partite.
+  **Non provato su un telefono vero**: 1,4 GB di heap sono tanti; la strada vera per il telefono è costruire la città a settori attorno al
+  giocatore (oggi `buildBuildings` → `fusione1` nasce tutta all'avvio), un lavoro grosso.
