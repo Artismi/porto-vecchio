@@ -401,7 +401,7 @@ var Percorsi = (function () {
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < ((ex && ex.minDD) || 14)) return;   /* [cucitura] da un'altra parte: 14 m (un isolato dell'Ottocento) */
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
           if (ex && ex.maxPassi && pass.length > ex.maxPassi) return;
-          const crema = pass.filter(crema4).length; if (!crema) return;
+          const crema = pass.filter(crema4).length; if (!crema && !(ex && ex.crema0)) return;   /* [tetti4] in ultimo anche un giro di soli tetti attaccati */
           let Lr = hyp(L.tx - cen(L.bi)[0], L.ty - cen(L.bi)[1]); let px = L.tx, py = L.ty; pass.forEach(e => { Lr += hyp(e.x - px, e.y - py); px = e.x; py = e.y; }); Lr += hyp(M.tx - px, M.ty - py);
           const s = Lr + crema * 12 + dd * .5; if (!best || s > best.s) best = { s, L, M, pass, Lr, crema }; });
       });
@@ -411,7 +411,10 @@ var Percorsi = (function () {
       const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo || !(pts[0][0] > BORGO.x0 && pts[0][0] < BORGO.x1 && pts[0][1] > BORGO.y0 && pts[0][1] < BORGO.y1), sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
       CIRCUITI.push(c); return c;
     }
-    ZONE.forEach(Z => cerca(Z, i => inZ(Z, i)));
+    // [tetti4] se il giro della zona non si chiude (un legame che manca, una scala che non c'è più), si riprova: le scale più vicine
+    // (10 m), poi la zona allargata di 15 m per parte. La rete cambia con la pianta; il giro la segue
+    ZONE.forEach(Z => { const Zl = Object.assign({}, Z, { x0: Z.x0 - 15, x1: Z.x1 + 15, y0: Z.y0 - 15, y1: Z.y1 + 15 });
+      cerca(Z, i => inZ(Z, i)) || cerca(Z, i => inZ(Z, i), { minDD: 10 }) || cerca(Z, i => inZ(Zl, i), { maxPassi: 18 }); });
     // [tetti4] I GIRI NUOVI: ognuno attorno a un nodo della rete (una piazzetta, un sagrato, uno scalo), fra le case delle sue epoche;
     // nessuna coordinata scritta: cambia la pianta, il giro si rifà attorno al suo nodo
     { const ERE4 = ['E0', 'E2', 'E3'], par = new Map(), find = a => { while (par.get(a) !== a) a = par.get(a); return a; };
@@ -420,14 +423,14 @@ var Percorsi = (function () {
       // [tetti4] prima il pezzo con più tetti che dai giri fatti non si raggiungono (case girate comprese): ogni giro nuovo copre il più possibile
       const raggiunti = () => { const S = new Set(), Q = []; CIRCUITI.filter(c => c.k === 'tetti').forEach(c => c.edifici.forEach(i => { if (!S.has(i)) { S.add(i); Q.push(i); } }));
         for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
-      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set(), prove4 = new Map(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
       for (;;) {
         if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
         const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= 8).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
-        if (!cand4.length) break; const P = cand4[0].P; provati.add(P);
-        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }); if (!c) continue;
+        if (!cand4.length) break; const P = cand4[0].P; prove4.set(P, (prove4.get(P) || 0) + 1); if (prove4.get(P) >= 3) provati.add(P);   // [tetti4] un pezzo grande può avere più giri, finché ha otto tetti scoperti (tre prove)
+        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 55, { maxPassi: 20, saliIn: S, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true });   /* [tetti4] se non si chiude: scale a 9 m, il giro più lungo, le case attorno fino a 55 m */ if (!c) { provati.add(P); continue; }
         { const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], ES = new Set(c.edifici), terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && (S.has(L.bi) || ES.has(L.bi)) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
-          if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
+          if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); provati.add(P); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
         const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
         const A = GIRI4.filter(q => !presi4.has(q.id) && ancora4(q.ancora)).map(q => ({ q, d: hyp(ancora4(q.ancora)[0] - g[0], ancora4(q.ancora)[1] - g[1]) })).sort((u, v) => u.d - v.d)[0];
         if (A && A.d < 80) { presi4.add(A.q.id); c.id = A.q.id; c.nome = A.q.nome; }
