@@ -1568,7 +1568,7 @@ var Game = (function () {
       const ta = inp.aim !== undefined ? inp.aim : Math.atan2(iy, ix); p.face += angDiff(ta, p.face) * (1 - Math.exp(-dt * 28)); p.speed = back ? -sp : sp;   // [fluido] girarsi non dipende dai fotogrammi (1 - e^-k·dt) ed è svelto: un dietrofront in ~0,1 s (prima ~0,2 s e più lento coi fotogrammi lunghi)
     } else { p.speed = 0; if (inp.aim !== undefined) p.face += angDiff(inp.aim, p.face) * (1 - Math.exp(-dt * 14)); }   // [fluido]
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
-    if ((!p.lv || p.lv.k !== 'ug') && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa   // [regia] e dentro le case sono fuori: l'interno è più grande della sagoma e un'auto parcheggiata in strada ti spingeva attraverso i muri, fuori dall'edificio
+    if ((!p.lv || (p.lv.k !== 'ug' && p.lv.k !== 'tetto' && p.lv.k !== 'scala')) && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa; [tetti4] e sui tetti (o sulla scala) sono sotto i piedi   // [regia] e dentro le case sono fuori: l'interno è più grande della sagoma e un'auto parcheggiata in strada ti spingeva attraverso i muri
   }
   function tryMove(o, dx, dy, r, swim) {
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]

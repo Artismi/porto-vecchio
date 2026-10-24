@@ -2873,7 +2873,7 @@ var Render = (function () {
     const h00 = Q(i, j), h10 = Q(i + 1, j), h01 = Q(i, j + 1), h11 = Q(i + 1, j + 1);
     return (v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v) + swH(x, z);
   }
-  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), phone: PHONE, quota: quotaTri1,
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), banchinaSm: (x, z) => banchinaSm1(x, z), mista: (tx, ty) => mista1(tx, ty), phone: PHONE, quota: quotaTri1,
       finiture: () => { const L = segniList1(), F = []; L.tombini.forEach(([x, z, a, k, sd]) => F.push([x, z, a, k === 'tondo' ? 1 : 2, sd])); L.caditoie.forEach(([x, z, a]) => F.push([x, z, a, 3, 0]));   /* [pavimenti] le finiture della strada */
         if (typeof Rete !== 'undefined' && Rete.attivo()) Rete.grafo().pozzetti.forEach(q => F.push([q.x, q.z, 0, 4, 0])); L.olio.forEach(([x, z, a, sd]) => F.push([x, z, a, 5, sd])); L.rattoppi.forEach(([x, z, len, wid, a, sd]) => F.push([x, z, a, 6, sd, len, wid]));
         try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo) Segnaletica.piano().strisce.forEach(q => { if (q.k === 'bus' || q.k === 'stop') F.push([q.x, q.y, q.ang, 7, 0]); }); } catch (e) { }   // la gomma e l'olio dove si frena
@@ -7028,6 +7028,9 @@ var Render = (function () {
   function texTile1(x, px, py, P, tx, ty, v, z, tx0, ty0) {
     const T = G.T, k = v === T.QUAY ? 'banchina' : v === T.ROCK || v === T.CLIFF ? 'roccia' : null; if (!k) return false;
     x.fillStyle = wpat1(x, k, tx0 * TS, ty0 * TS); x.fillRect(px, py, P, P);
+    if (k === 'banchina' && z === ZN.CITTA && cn1() && window.Pavimenti && Pavimenti.attivo() && mista1(tx, ty)) {   // [pavimenti] la banchina che finisce sul suolo di città: il confine smussato, non la casella
+      const q = P / 8; for (let c = 0; c < 64; c++) { const wx = tx * TS + (c % 8 + .5) * TS / 8, wz = ty * TS + (Math.floor(c / 8) + .5) * TS / 8; if (banchinaSm1(wx, wz)) continue; const kk = suoloW1(wx, wz) || 'asfalto';
+        x.fillStyle = segPat1(x, kk, tx0 * TS, ty0 * TS); x.fillRect(px + (c % 8) * q, py + Math.floor(c / 8) * q, q, q); } }
     if (v === T.CLIFF) { x.fillStyle = 'rgba(20,18,20,.38)'; x.fillRect(px, py, P, P); }
     return true;
   }
@@ -7819,7 +7822,7 @@ var Render = (function () {
       const pe = PRIO2[e.k] || 10, po = PRIO2[o.k] || 10, perde = pe < po || (pe === po && (e.vol < o.vol || (e.vol === o.vol && e.id > o.id)));
       if (perde || all) out.push({ t: pezzo2(e) || pezzo2(o) ? 'pezzo' : (e.k === 'tenda' || o.k === 'tenda') && /balcone|insegna|lampione/.test(e.k + o.k) ? 'tenda' : 'urto', o, perde }); });
     // 3) le zone libere: davanti alle porte e alle vetrine, ai piedi delle scale, attorno ai tombini (solo quello che sta in basso)
-    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
+    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (pezzo2(e) && e.tipo === 'portico' && z.p && z.p.info.b.sottoPortico && (z.p.info.f === 'S' || z.p.info.f === 'N')) return;   /* [pianta] il portico davanti alla porta della sua casa: il fondo lì è aperto */ if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
     // 4) in carreggiata: il centro sulla strada asfaltata (vicoli e sterrati no), per quello che sta a terra
     if (terra2(e) && !FISSI2.has(e.k) && B.y0 < gy + .6 && carr2(cx, cz)) out.push({ t: 'carreggiata' });
     // 5) sospeso o sepolto: quello che sta a terra deve toccare terra (o una cosa sotto, o il muro a cui è appeso)
@@ -9303,10 +9306,14 @@ var Render = (function () {
     const T = G.T; if (!(v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) return false;
     const k = SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)]; if (!k) return false;
     if (window.Pavimenti && Pavimenti.attivo()) {   // [pavimenti] il confine fra due suoli non segue più le caselle: a quarti di metro, col dominio spostato
-      const q = P / 8, kk = []; let uno = true; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { const w = suoloW1(tx * TS + (i + .5) * TS / 8, ty * TS + (j + .5) * TS / 8) || k; kk.push(w); if (w !== k) uno = false; }
-      if (!uno) { for (let c = 0; c < 64; c++) { x.fillStyle = segPat1(x, kk[c], tx * TS - px / PPM, ty * TS - py / PPM); x.fillRect(px + (c % 8) * q, py + Math.floor(c / 8) * q, q, q); } return true; } }
+      const q = P / 8, kk = [], mx = mista1(tx, ty); let uno = true; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) { const wx = tx * TS + (i + .5) * TS / 8, wz = ty * TS + (j + .5) * TS / 8, w = mx && banchinaSm1(wx, wz) ? 'banchina' : suoloW1(wx, wz) || k; kk.push(w); if (w !== k) uno = false; }
+      if (!uno) { const X0 = tx * TS - px / PPM, Y0 = ty * TS - py / PPM; for (let c = 0; c < 64; c++) { x.fillStyle = kk[c] === 'banchina' ? wpat1(x, 'banchina', X0, Y0) : segPat1(x, kk[c], X0, Y0); x.fillRect(px + (c % 8) * q, py + Math.floor(c / 8) * q, q, q); } return true; } }
     x.fillStyle = segPat1(x, k, tx * TS - px / PPM, ty * TS - py / PPM); x.fillRect(px, py, P, P); return true;
   }
+  // [pavimenti] la banchina col confine smussato: in un punto è banchina se lo sono almeno cinque dei nove punti attorno (passo 1,2 m);
+  // la scaletta delle caselle da 2 m diventa la linea dritta (o la curva) della riva vera. mista1: la casella tocca banchina e suolo insieme
+  function banchinaSm1(x, z) { let q = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) if (gT(Math.floor((x + a * 1.2) / TS), Math.floor((z + b * 1.2) / TS)) === G.T.QUAY) q++; return q >= 5; }
+  function mista1(tx, ty) { const T = G.T, q0 = gT(tx, ty) === T.QUAY; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const v = gT(tx + a, ty + b); if ((v === T.QUAY) !== q0 && v !== T.WATER && v !== T.BLD && v !== T.PIER) return true; } return false; }
   // [pavimenti] il suolo d'epoca in un punto, col dominio spostato di ±1,3 m da un rumore lento: confini organici, non a gradini di 2 m
   function suoloW1(x, z) { return SUOLO1[eraAt1(x + vnz(x / 4.3, z / 4.3) * 2.6, z + vnz(x / 4.3 + 19, z / 4.3 - 7) * 2.6)] || null; }
   // le vie: i vicoli di basoli col centro lucidato e la canaletta, le strade col materiale della loro epoca

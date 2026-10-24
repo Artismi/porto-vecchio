@@ -1,39 +1,38 @@
 {
- "quando": "2026-10-23T23:31:27.302Z",
+ "quando": "2026-10-24T00:46:40.279Z",
  "spento": false,
  "prima": {
-  "voci": 10788,
+  "voci": 10782,
   "per": {
-   "muro": 1243,
-   "urto": 1054,
-   "porta": 393,
+   "muro": 1259,
+   "urto": 1055,
+   "porta": 392,
    "vetrina": 76,
-   "scala": 59,
-   "tombino": 13,
+   "scala": 55,
+   "tombino": 11,
    "carreggiata": 6,
    "tenda": 0,
    "sospeso": 23,
    "sotto": 15,
-   "coperto": 184,
-   "pezzo": 51
+   "coperto": 189,
+   "pezzo": 19
   },
-  "tot": 3117,
+  "tot": 3100,
   "perVoce": {
-   "muro:tenda": 61,
-   "porta:tenda": 25,
+   "muro:tenda": 62,
+   "porta:tenda": 26,
    "muro:citofono": 77,
    "muro:serranda": 354,
    "vetrina:tenda": 30,
    "vetrina:arredo": 41,
-   "muro:balcone": 225,
+   "muro:balcone": 226,
    "coperto:insegna/porta": 12,
-   "coperto:tenda/porta": 23,
-   "coperto:balcone/scala": 13,
+   "coperto:tenda/porta": 24,
+   "coperto:balcone/scala": 12,
    "urto:balcone/lampione": 7,
    "muro:portale": 76,
    "urto:portale/citofono": 10,
    "urto:arredo/pluviale": 7,
-   "scala:tenda": 5,
    "urto:arredo/gradino": 29,
    "porta:arredo": 151,
    "muro:insegna": 5,
@@ -42,12 +41,13 @@
    "urto:balcone/pluviale": 45,
    "urto:arredo/dehors": 9,
    "urto:insegna/rete": 3,
-   "scala:arredo": 35,
+   "scala:arredo": 34,
+   "scala:tenda": 4,
    "urto:portale/arredo": 2,
-   "urto:arredo/arredo": 69,
+   "urto:arredo/arredo": 65,
    "urto:portale/pluviale": 1,
-   "urto:serranda/tettoia": 2,
-   "coperto:balcone/porta": 2,
+   "urto:serranda/tettoia": 1,
+   "coperto:balcone/porta": 3,
    "urto:tenda/dehors": 1,
    "urto:tenda/rete": 1,
    "urto:citofono/dehors": 3,
@@ -59,8 +59,7 @@
    "urto:ingombro/gradino": 2,
    "porta:ingombro": 2,
    "sotto:arredo": 15,
-   "urto:arredo/ingombro": 1,
-   "urto:arredo/tettoia": 6,
+   "urto:arredo/tettoia": 8,
    "coperto:arredo/porta": 2,
    "urto:arredo/scorcio": 9,
    "pezzo:lampione/grande": 1,
@@ -68,30 +67,29 @@
    "coperto:ingombro/scala": 1,
    "carreggiata:ingombro": 1,
    "coperto:ingombro/tombino": 1,
-   "pezzo:grande/scala": 15,
    "pezzo:grande/lampione": 1,
-   "pezzo:grande/porta": 16,
-   "pezzo:grande/arredo": 3,
-   "pezzo:grande/gradino": 6,
-   "pezzo:grande": 5,
-   "urto:gradino/arredo": 353,
-   "urto:gradino/tettoia": 109,
-   "urto:gradino/pluviale": 178,
+   "pezzo:grande/porta": 7,
+   "pezzo:grande/arredo": 4,
+   "pezzo:grande/gradino": 2,
+   "urto:gradino/arredo": 359,
+   "urto:gradino/grande": 2,
+   "urto:gradino/tettoia": 108,
+   "urto:gradino/pluviale": 176,
    "urto:gradino/dehors": 23,
    "urto:gradino/scorcio_muro": 2,
-   "urto:pluviale/arredo": 101,
+   "urto:pluviale/arredo": 103,
    "muro:applique": 35,
-   "porta:applique": 30,
-   "muro:pluviale": 194,
+   "porta:applique": 28,
+   "muro:pluviale": 201,
    "carreggiata:arredo": 5,
    "porta:pluviale": 44,
-   "coperto:pluviale/porta": 8,
+   "coperto:pluviale/porta": 6,
    "urto:pluviale/pluviale": 1,
    "urto:pluviale/dehors": 10,
-   "urto:applique/rete": 18,
+   "urto:applique/rete": 19,
    "urto:pluviale/scorcio_muro": 2,
    "muro:festone": 1,
-   "urto:pluviale/tettoia": 3,
+   "urto:pluviale/tettoia": 1,
    "urto:applique/pluviale": 1,
    "porta:balcone": 2,
    "urto:pluviale/scorcio": 5,
@@ -100,19 +98,19 @@
    "tombino:pluviale": 4,
    "urto:applique/dehors": 6,
    "scala:pluviale": 1,
-   "muro:tettoia": 138,
-   "porta:tettoia": 128,
-   "coperto:tettoia/porta": 98,
-   "urto:tettoia/arredo": 13,
-   "scala:tettoia": 12,
-   "coperto:tettoia/scala": 9,
+   "muro:tettoia": 145,
+   "porta:tettoia": 127,
+   "coperto:tettoia/porta": 101,
+   "urto:tettoia/arredo": 11,
+   "scala:tettoia": 10,
+   "coperto:tettoia/scala": 11,
    "vetrina:tettoia": 1,
-   "urto:tettoia/rete": 1,
-   "tombino:tettoia": 4,
+   "urto:tettoia/rete": 4,
+   "tombino:tettoia": 2,
    "coperto:tettoia/tombino": 3,
    "urto:tettoia/dehors": 1,
-   "urto:tettoia/lampione": 1,
-   "urto:ingombro/arredo": 1,
+   "porta:grande": 1,
+   "coperto:grande/porta": 1,
    "urto:arredo/scorcio_muro": 2,
    "tombino:arredo": 3,
    "muro:lampione": 5,
@@ -127,13 +125,13 @@
    "muro:scorcio": 3
   },
   "perPasso": {
-   "muro:buildings": 722,
-   "porta:buildings": 38,
+   "muro:buildings": 723,
+   "porta:buildings": 39,
    "vetrina:buildings": 63,
    "coperto:buildings": 50,
-   "urto:buildings": 128,
-   "scala:buildings": 9,
+   "urto:buildings": 127,
    "sospeso:buildings": 4,
+   "scala:buildings": 8,
    "coperto:props": 3,
    "urto:props": 21,
    "pezzo:props": 2,
@@ -157,28 +155,28 @@
    "carreggiata:inverno": 1,
    "urto:inverno": 1,
    "porta:inverno": 1,
-   "pezzo:posa1": 46,
-   "urto:volumi": 665,
-   "porta:case": 138,
-   "urto:case": 207,
-   "muro:case": 324,
+   "pezzo:posa1": 14,
+   "urto:volumi": 670,
+   "porta:case": 136,
+   "urto:case": 206,
+   "muro:case": 332,
    "sotto:case": 9,
    "carreggiata:case": 4,
    "sospeso:case": 18,
-   "coperto:case": 8,
+   "coperto:case": 7,
    "scala:case": 15,
    "tombino:case": 4,
-   "muro:soglie": 138,
+   "muro:soglie": 145,
    "porta:soglie": 128,
-   "coperto:soglie": 110,
-   "urto:soglie": 18,
-   "scala:soglie": 13,
+   "coperto:soglie": 116,
+   "urto:soglie": 16,
+   "scala:soglie": 10,
    "vetrina:soglie": 1,
-   "tombino:soglie": 4,
+   "tombino:soglie": 2,
    "muro:oggetti35": 25,
    "urto:oggetti35": 9,
    "porta:oggetti35": 65,
-   "scala:oggetti35": 9,
+   "scala:oggetti35": 8,
    "sotto:oggetti35": 2,
    "vetrina:oggetti35": 7,
    "tombino:oggetti35": 3,
@@ -188,6 +186,7 @@
    "urto:strade1": 1,
    "coperto:urbano1": 1,
    "urto:urbano1": 1,
+   "scala:urbano1": 1,
    "muro:segni": 11,
    "coperto:segni": 5,
    "porta:segni": 17,
@@ -201,20 +200,20 @@
   },
   "praticabili": {
    "porte": 580,
-   "scale": 323,
+   "scale": 307,
    "tombini": 41,
-   "passerelle": 33,
-   "coperti": 184,
-   "dietroPezzi": 31
+   "passerelle": 32,
+   "coperti": 189,
+   "dietroPezzi": 7
   },
   "case": 581
  },
  "dopo": {
-  "voci": 9955,
+  "voci": 9949,
   "per": {
    "muro": 0,
-   "urto": 2,
-   "porta": 0,
+   "urto": 4,
+   "porta": 1,
    "vetrina": 0,
    "scala": 0,
    "tombino": 0,
@@ -222,30 +221,33 @@
    "tenda": 0,
    "sospeso": 0,
    "sotto": 0,
-   "coperto": 5,
-   "pezzo": 36
+   "coperto": 8,
+   "pezzo": 7
   },
-  "tot": 43,
+  "tot": 20,
   "perVoce": {
-   "pezzo:grande/scala": 15,
-   "pezzo:grande/porta": 16,
-   "pezzo:grande": 5,
+   "pezzo:grande/porta": 7,
+   "urto:gradino/grande": 2,
    "urto:gradino/scorcio_muro": 2,
+   "porta:grande": 1,
+   "coperto:grande/porta": 3,
    "coperto:scorcio_filo/porta": 1,
    "coperto:scorcio_muro/porta": 4
   },
   "perPasso": {
-   "pezzo:posa1": 36,
-   "urto:volumi": 2,
+   "pezzo:posa1": 7,
+   "urto:volumi": 4,
+   "porta:soglie": 1,
+   "coperto:soglie": 3,
    "coperto:scorci": 5
   },
   "praticabili": {
    "porte": 580,
-   "scale": 323,
+   "scale": 307,
    "tombini": 41,
-   "passerelle": 33,
-   "coperti": 5,
-   "dietroPezzi": 31
+   "passerelle": 32,
+   "coperti": 8,
+   "dietroPezzi": 7
   },
   "case": 581
  },
@@ -255,13 +257,13 @@
    "ingombro": 4,
    "dehors": 9,
    "festone": 1,
-   "applique": 87,
-   "pluviale": 338,
-   "tenda": 23,
+   "applique": 86,
+   "pluviale": 340,
+   "tenda": 24,
    "tettoia": 17,
    "citofono": 66,
    "insegna": 22,
-   "balcone": 184,
+   "balcone": 187,
    "serranda": 332,
    "portale": 76,
    "lampione": 1,
@@ -269,18 +271,18 @@
    "scorcio_muro": 1
   },
   "tolti": {
-   "arredo": 62,
+   "arredo": 63,
    "ingombro": 4,
    "dehors": 4,
    "applique": 1,
    "pluviale": 37,
    "tenda": 38,
-   "tettoia": 123,
+   "tettoia": 130,
    "citofono": 11,
-   "balcone": 47,
+   "balcone": 45,
    "serranda": 22,
    "lampione": 10,
-   "gradino": 6,
+   "gradino": 2,
    "cartello": 1,
    "rete": 1,
    "scorcio_muro": 1
@@ -667,6 +669,46 @@
     5.2,
     1105,
     422.2
+   ],
+   [
+    "muro",
+    1349,
+    334.5,
+    "balcone",
+    "buildings",
+    "casa casa_23 [1343.95,1354.05,323.95,334.05,-2.01,9.39] F- 288v 1728 1.85x0.95x1.33",
+    4.8
+   ],
+   [
+    "muro",
+    1350.4,
+    334.5,
+    "tenda",
+    "buildings",
+    "casa casa_23 (sua) [1343.95,1354.05,323.95,334.05,-2.01,9.39] F1344.00,334.00/0,1 18v 72 3.00x1.07x0.66",
+    3.1
+   ],
+   [
+    "porta",
+    1350.4,
+    334.5,
+    "tenda",
+    "buildings",
+    "porta",
+    3.1,
+    1350,
+    334.6
+   ],
+   [
+    "coperto",
+    1350.4,
+    334.5,
+    "tenda",
+    "buildings",
+    "porta",
+    3.1,
+    1350,
+    334.2
    ],
    [
     "muro",
@@ -1095,17 +1137,6 @@
     4.6,
     1377,
     334.6
-   ],
-   [
-    "scala",
-    1377,
-    334.5,
-    "tenda",
-    "buildings",
-    "scala",
-    4.6,
-    1377,
-    334.7
    ],
    [
     "urto",
@@ -7096,15 +7127,6 @@
    ],
    [
     "muro",
-    1392.3,
-    329,
-    "balcone",
-    "buildings",
-    "casa casa_321 [1391.95,1394.05,325.95,330.05,0.28,9.28] F- 1386v 1440 1.65x0.60x1.23",
-    6.9
-   ],
-   [
-    "muro",
     1384.5,
     353,
     "tenda",
@@ -7662,17 +7684,6 @@
     4.9
    ],
    [
-    "coperto",
-    1353,
-    364.3,
-    "balcone",
-    "buildings",
-    "scala",
-    4.9,
-    1353,
-    364.2
-   ],
-   [
     "muro",
     1335,
     368.3,
@@ -8150,15 +8161,6 @@
     "serranda",
     "buildings",
     "casa casa_388 (sua) [1415.95,1422.05,367.95,374.05,1.79,8.39] F1416.00,374.00/0,1 30v 120 1.20x0.21x0.20",
-    7.2
-   ],
-   [
-    "urto",
-    1419,
-    374.1,
-    "serranda",
-    "buildings",
-    "tettoia",
     7.2
    ],
    [
@@ -9855,15 +9857,6 @@
     323.7,
     "arredo",
     "props",
-    "ingombro",
-    6.2
-   ],
-   [
-    "urto",
-    1477,
-    323.7,
-    "arredo",
-    "props",
     "arredo",
     6.2
    ],
@@ -10020,6 +10013,15 @@
     1.2,
     1361,
     366.6
+   ],
+   [
+    "urto",
+    1388,
+    376,
+    "arredo",
+    "props",
+    "arredo",
+    1.2
    ],
    [
     "urto",
@@ -10317,17 +10319,6 @@
    ],
    [
     "pezzo",
-    1261.5,
-    280.9,
-    "grande:carro_merci",
-    "posa1",
-    "scala",
-    4.9,
-    1258.2,
-    279
-   ],
-   [
-    "pezzo",
     1292,
     300.7,
     "grande:scalinata",
@@ -10348,14 +10339,14 @@
    ],
    [
     "pezzo",
-    1484.1,
-    290.6,
-    "grande:arco_sottopasso",
+    1262.6,
+    338,
+    "grande:porta_terra",
     "posa1",
     "porta",
-    3.6,
-    1475,
-    288.2
+    6.2,
+    1254.2,
+    329
    ],
    [
     "pezzo",
@@ -10381,14 +10372,14 @@
    ],
    [
     "pezzo",
-    1372.5,
-    291.9,
+    1408,
+    299.6,
     "grande:arco_sottopasso",
     "posa1",
-    "scala",
-    1.7,
-    1368.2,
-    285
+    "porta",
+    4.1,
+    1402.2,
+    299
    ],
    [
     "pezzo",
@@ -10416,103 +10407,17 @@
     336.1,
     "grande:portico",
     "posa1",
-    "scala",
-    1.2,
-    1345,
-    334.2
+    "arredo",
+    1.2
    ],
    [
     "pezzo",
-    1359.3,
+    1349.8,
     336.1,
     "grande:portico",
     "posa1",
     "arredo",
-    1.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "gradino",
-    1.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "gradino",
-    1.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1361,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.2
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1361,
-    334.2
-   ],
-   [
-    "pezzo",
-    1368.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    1.9,
-    1367,
-    334.2
-   ],
-   [
-    "pezzo",
-    1368.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    1.9,
-    1369,
-    334.2
+    1.2
    ],
    [
     "pezzo",
@@ -10531,46 +10436,6 @@
     "posa1",
     "gradino",
     2.5
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "gradino",
-    2.5
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "gradino",
-    2.5
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.6
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1381,
-    334.6
    ],
    [
     "pezzo",
@@ -10585,221 +10450,12 @@
    ],
    [
     "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.5,
-    1375,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.5,
-    1377,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1381,
-    334.2
-   ],
-   [
-    "pezzo",
     1386.2,
     336.1,
     "grande:portico",
     "posa1",
     "arredo",
     2.9
-   ],
-   [
-    "pezzo",
-    1386.2,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.9,
-    1383,
-    334.2
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    3.6,
-    1394.2,
-    329
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    3.6,
-    1392.2,
-    331
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    3.6,
-    1397,
-    334.2
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    3.6,
-    1403,
-    334.2
-   ],
-   [
-    "pezzo",
-    1425.8,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    4.9,
-    1423,
-    334.2
-   ],
-   [
-    "pezzo",
-    1433.4,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.3,
-    1431,
-    334.2
-   ],
-   [
-    "pezzo",
-    1433.4,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.3,
-    1433,
-    334.2
-   ],
-   [
-    "pezzo",
-    1442.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.6,
-    1441,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1455,
-    334.6
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1446.2,
-    329
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1447,
-    328.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.9,
-    1451,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1455,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1459,
-    334.2
    ],
    [
     "urto",
@@ -10843,25 +10499,7 @@
     302.3,
     "gradino",
     "volumi",
-    "tettoia",
-    0.6
-   ],
-   [
-    "urto",
-    1343,
-    302.3,
-    "gradino",
-    "volumi",
     "arredo",
-    0.6
-   ],
-   [
-    "urto",
-    1343,
-    302.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     0.6
    ],
    [
@@ -10908,6 +10546,24 @@
     "volumi",
     "arredo",
     2
+   ],
+   [
+    "urto",
+    1333,
+    302.3,
+    "gradino",
+    "volumi",
+    "grande",
+    0.4
+   ],
+   [
+    "urto",
+    1333,
+    302.5,
+    "gradino",
+    "volumi",
+    "grande",
+    0.4
    ],
    [
     "urto",
@@ -10965,11 +10621,29 @@
    ],
    [
     "urto",
+    1397.8,
+    361,
+    "gradino",
+    "volumi",
+    "tettoia",
+    3
+   ],
+   [
+    "urto",
     1397.5,
     361,
     "gradino",
     "volumi",
     "arredo",
+    3
+   ],
+   [
+    "urto",
+    1397.5,
+    361,
+    "gradino",
+    "volumi",
+    "tettoia",
     3
    ],
    [
@@ -11370,8 +11044,8 @@
    ],
    [
     "urto",
-    1343.8,
-    329,
+    1349,
+    334.3,
     "gradino",
     "volumi",
     "arredo",
@@ -11379,12 +11053,30 @@
    ],
    [
     "urto",
-    1343.5,
-    329,
+    1349,
+    334.5,
     "gradino",
     "volumi",
     "arredo",
     0.8
+   ],
+   [
+    "urto",
+    1357,
+    334.3,
+    "gradino",
+    "volumi",
+    "arredo",
+    1
+   ],
+   [
+    "urto",
+    1357,
+    334.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    1
    ],
    [
     "urto",
@@ -11533,28 +11225,10 @@
    [
     "urto",
     1347,
-    356.3,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.8
-   ],
-   [
-    "urto",
-    1347,
     356.5,
     "gradino",
     "volumi",
     "pluviale",
-    0.8
-   ],
-   [
-    "urto",
-    1347,
-    356.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     0.8
    ],
    [
@@ -11646,6 +11320,33 @@
     "volumi",
     "arredo",
     3.5
+   ],
+   [
+    "urto",
+    1432.3,
+    355,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5
+   ],
+   [
+    "urto",
+    1435,
+    354.3,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5.3
+   ],
+   [
+    "urto",
+    1435,
+    354.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5.3
    ],
    [
     "urto",
@@ -12730,28 +12431,10 @@
    [
     "urto",
     1365,
-    283.8,
-    "gradino",
-    "volumi",
-    "arredo",
-    1
-   ],
-   [
-    "urto",
-    1365,
     283.5,
     "gradino",
     "volumi",
     "tettoia",
-    1
-   ],
-   [
-    "urto",
-    1365,
-    283.5,
-    "gradino",
-    "volumi",
-    "arredo",
     1
    ],
    [
@@ -13291,15 +12974,6 @@
     302.5,
     "gradino",
     "volumi",
-    "tettoia",
-    0.6
-   ],
-   [
-    "urto",
-    1341,
-    302.5,
-    "gradino",
-    "volumi",
     "arredo",
     0.6
    ],
@@ -13345,16 +13019,16 @@
     303,
     "gradino",
     "volumi",
-    "tettoia",
+    "arredo",
     5.7
    ],
    [
     "urto",
-    1442.3,
+    1442.5,
     303,
     "gradino",
     "volumi",
-    "arredo",
+    "tettoia",
     5.7
    ],
    [
@@ -13374,15 +13048,6 @@
     "volumi",
     "pluviale",
     6.1
-   ],
-   [
-    "urto",
-    1319,
-    304.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.4
    ],
    [
     "urto",
@@ -13440,6 +13105,15 @@
    ],
    [
     "urto",
+    1347,
+    304.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.7
+   ],
+   [
+    "urto",
     1349,
     304.3,
     "gradino",
@@ -13458,6 +13132,24 @@
    ],
    [
     "urto",
+    1349,
+    304.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.8
+   ],
+   [
+    "urto",
+    1349,
+    304.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.8
+   ],
+   [
+    "urto",
     1363,
     306.3,
     "gradino",
@@ -13489,8 +13181,26 @@
     306.5,
     "gradino",
     "volumi",
+    "tettoia",
+    1.4
+   ],
+   [
+    "urto",
+    1363,
+    306.5,
+    "gradino",
+    "volumi",
     "arredo",
     1.4
+   ],
+   [
+    "urto",
+    1430.3,
+    303,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5.1
    ],
    [
     "urto",
@@ -13525,38 +13235,38 @@
     308.3,
     "gradino",
     "volumi",
-    "arredo",
-    6
-   ],
-   [
-    "urto",
-    1449,
-    308.3,
-    "gradino",
-    "volumi",
-    "arredo",
-    6
-   ],
-   [
-    "urto",
-    1449,
-    308.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    6
-   ],
-   [
-    "urto",
-    1449,
-    308.5,
-    "gradino",
-    "volumi",
     "tettoia",
     6
    ],
    [
     "urto",
+    1449,
+    308.3,
+    "gradino",
+    "volumi",
+    "arredo",
+    6
+   ],
+   [
+    "urto",
+    1449,
+    308.3,
+    "gradino",
+    "volumi",
+    "arredo",
+    6
+   ],
+   [
+    "urto",
+    1449,
+    308.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    6
+   ],
+   [
+    "urto",
     1451,
     308.3,
     "gradino",
@@ -13571,6 +13281,15 @@
     "gradino",
     "volumi",
     "arredo",
+    6
+   ],
+   [
+    "urto",
+    1451,
+    308.5,
+    "gradino",
+    "volumi",
+    "tettoia",
     6
    ],
    [
@@ -13674,39 +13393,30 @@
    ],
    [
     "urto",
-    1420.5,
-    307,
+    1433,
+    303.8,
     "gradino",
     "volumi",
     "tettoia",
-    4.5
+    5.2
    ],
    [
     "urto",
-    1421.8,
-    307,
+    1433,
+    303.5,
     "gradino",
     "volumi",
     "tettoia",
-    4.9
+    5.2
    ],
    [
     "urto",
-    1421.5,
-    307,
+    1443.8,
+    305,
     "gradino",
     "volumi",
     "tettoia",
-    4.9
-   ],
-   [
-    "urto",
-    1440.5,
-    309,
-    "gradino",
-    "volumi",
-    "tettoia",
-    5.5
+    5.9
    ],
    [
     "urto",
@@ -13724,6 +13434,15 @@
     "gradino",
     "volumi",
     "arredo",
+    5.9
+   ],
+   [
+    "urto",
+    1443.5,
+    305,
+    "gradino",
+    "volumi",
+    "tettoia",
     5.9
    ],
    [
@@ -13872,24 +13591,6 @@
    ],
    [
     "urto",
-    1441,
-    308.3,
-    "gradino",
-    "volumi",
-    "tettoia",
-    5.7
-   ],
-   [
-    "urto",
-    1441,
-    308.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    5.7
-   ],
-   [
-    "urto",
     1326.3,
     313,
     "gradino",
@@ -13980,6 +13681,15 @@
    ],
    [
     "urto",
+    1344.5,
+    311,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.7
+   ],
+   [
+    "urto",
     1431,
     310.3,
     "gradino",
@@ -14066,15 +13776,6 @@
     "gradino",
     "volumi",
     "arredo",
-    1.3
-   ],
-   [
-    "urto",
-    1359,
-    309.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     1.3
    ],
    [
@@ -14173,6 +13874,15 @@
     314.3,
     "gradino",
     "volumi",
+    "tettoia",
+    0.5
+   ],
+   [
+    "urto",
+    1333,
+    314.3,
+    "gradino",
+    "volumi",
     "arredo",
     0.5
    ],
@@ -14183,6 +13893,15 @@
     "gradino",
     "volumi",
     "pluviale",
+    0.5
+   ],
+   [
+    "urto",
+    1333,
+    314.5,
+    "gradino",
+    "volumi",
+    "tettoia",
     0.5
    ],
    [
@@ -14398,15 +14117,6 @@
     311.5,
     "gradino",
     "volumi",
-    "tettoia",
-    3.8
-   ],
-   [
-    "urto",
-    1407,
-    311.5,
-    "gradino",
-    "volumi",
     "arredo",
     3.8
    ],
@@ -14445,15 +14155,6 @@
     "volumi",
     "arredo",
     4.3
-   ],
-   [
-    "urto",
-    1421,
-    313.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    4.8
    ],
    [
     "urto",
@@ -14535,15 +14236,6 @@
     "volumi",
     "arredo",
     3.6
-   ],
-   [
-    "urto",
-    1397.5,
-    317,
-    "gradino",
-    "volumi",
-    "tettoia",
-    3.5
    ],
    [
     "urto",
@@ -14673,6 +14365,15 @@
    ],
    [
     "urto",
+    1385,
+    324.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    2.6
+   ],
+   [
+    "urto",
     1403,
     320.3,
     "gradino",
@@ -14692,15 +14393,6 @@
    [
     "urto",
     1403,
-    320.3,
-    "gradino",
-    "volumi",
-    "tettoia",
-    3.7
-   ],
-   [
-    "urto",
-    1403,
     320.5,
     "gradino",
     "volumi",
@@ -14714,15 +14406,6 @@
     "gradino",
     "volumi",
     "arredo",
-    3.7
-   ],
-   [
-    "urto",
-    1403,
-    320.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     3.7
    ],
    [
@@ -14772,48 +14455,48 @@
    ],
    [
     "urto",
-    1343.5,
+    1423,
+    322.3,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.8
+   ],
+   [
+    "urto",
+    1423,
+    322.3,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.8
+   ],
+   [
+    "urto",
+    1423,
+    322.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.8
+   ],
+   [
+    "urto",
+    1423,
+    322.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.8
+   ],
+   [
+    "urto",
+    1451.5,
     323,
     "gradino",
     "volumi",
     "tettoia",
-    0.8
-   ],
-   [
-    "urto",
-    1423,
-    322.3,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.8
-   ],
-   [
-    "urto",
-    1423,
-    322.3,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.8
-   ],
-   [
-    "urto",
-    1423,
-    322.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.8
-   ],
-   [
-    "urto",
-    1423,
-    322.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.8
+    6.1
    ],
    [
     "urto",
@@ -14862,15 +14545,6 @@
    ],
    [
     "urto",
-    1341,
-    326.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.6
-   ],
-   [
-    "urto",
     1462.3,
     327,
     "gradino",
@@ -14886,15 +14560,6 @@
     "volumi",
     "arredo",
     6.2
-   ],
-   [
-    "urto",
-    1383,
-    325.8,
-    "gradino",
-    "volumi",
-    "tettoia",
-    2.5
    ],
    [
     "urto",
@@ -14907,84 +14572,66 @@
    ],
    [
     "urto",
-    1383,
+    1423,
+    325.8,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1423,
+    325.8,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1423,
+    325.8,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1423,
     325.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1423,
+    325.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1423,
+    325.5,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.7
+   ],
+   [
+    "urto",
+    1391,
+    334.5,
     "gradino",
     "volumi",
     "tettoia",
-    2.5
-   ],
-   [
-    "urto",
-    1394.3,
-    329,
-    "gradino",
-    "volumi",
-    "pluviale",
-    3.2
-   ],
-   [
-    "urto",
-    1394.5,
-    329,
-    "gradino",
-    "volumi",
-    "pluviale",
-    3.2
-   ],
-   [
-    "urto",
-    1423,
-    325.8,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
-   ],
-   [
-    "urto",
-    1423,
-    325.8,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
-   ],
-   [
-    "urto",
-    1423,
-    325.8,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
-   ],
-   [
-    "urto",
-    1423,
-    325.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
-   ],
-   [
-    "urto",
-    1423,
-    325.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
-   ],
-   [
-    "urto",
-    1423,
-    325.5,
-    "gradino",
-    "volumi",
-    "arredo",
-    4.7
+    2.9
    ],
    [
     "urto",
@@ -15042,6 +14689,15 @@
    ],
    [
     "urto",
+    1416.5,
+    351,
+    "gradino",
+    "volumi",
+    "tettoia",
+    4.4
+   ],
+   [
+    "urto",
     1443,
     347.8,
     "gradino",
@@ -15069,30 +14725,12 @@
    ],
    [
     "urto",
-    1351.5,
-    353,
-    "gradino",
-    "volumi",
-    "tettoia",
-    1.1
-   ],
-   [
-    "urto",
     1419,
     349.8,
     "gradino",
     "volumi",
     "arredo",
     4.7
-   ],
-   [
-    "urto",
-    1347.5,
-    357,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.9
    ],
    [
     "urto",
@@ -15111,15 +14749,6 @@
     "volumi",
     "pluviale",
     2.3
-   ],
-   [
-    "urto",
-    1433,
-    355.8,
-    "gradino",
-    "volumi",
-    "tettoia",
-    5.3
    ],
    [
     "urto",
@@ -15258,15 +14887,6 @@
    ],
    [
     "urto",
-    1347,
-    359.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.7
-   ],
-   [
-    "urto",
     1382.3,
     363,
     "gradino",
@@ -15282,6 +14902,15 @@
     "volumi",
     "arredo",
     2
+   ],
+   [
+    "urto",
+    1428.5,
+    361,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5
    ],
    [
     "urto",
@@ -15321,24 +14950,6 @@
    ],
    [
     "urto",
-    1387,
-    361.8,
-    "gradino",
-    "volumi",
-    "tettoia",
-    2
-   ],
-   [
-    "urto",
-    1387,
-    361.5,
-    "gradino",
-    "volumi",
-    "tettoia",
-    2
-   ],
-   [
-    "urto",
     1396.3,
     363,
     "gradino",
@@ -15357,6 +14968,24 @@
    ],
    [
     "urto",
+    1396.5,
+    363,
+    "gradino",
+    "volumi",
+    "tettoia",
+    2.4
+   ],
+   [
+    "urto",
+    1323,
+    368.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.4
+   ],
+   [
+    "urto",
     1348.3,
     367,
     "gradino",
@@ -15372,6 +15001,24 @@
     "volumi",
     "pluviale",
     0.7
+   ],
+   [
+    "urto",
+    1348.5,
+    367,
+    "gradino",
+    "volumi",
+    "tettoia",
+    0.7
+   ],
+   [
+    "urto",
+    1377,
+    368.3,
+    "gradino",
+    "volumi",
+    "tettoia",
+    1.7
    ],
    [
     "urto",
@@ -15425,6 +15072,15 @@
     "gradino",
     "volumi",
     "pluviale",
+    0.4
+   ],
+   [
+    "urto",
+    1321,
+    368.5,
+    "gradino",
+    "volumi",
+    "tettoia",
     0.4
    ],
    [
@@ -15510,6 +15166,15 @@
    ],
    [
     "urto",
+    1379,
+    368.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    1.8
+   ],
+   [
+    "urto",
     1412.5,
     367,
     "gradino",
@@ -15519,6 +15184,15 @@
    ],
    [
     "urto",
+    1385,
+    370.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    2
+   ],
+   [
+    "urto",
     1417,
     374.3,
     "gradino",
@@ -15551,15 +15225,6 @@
     "gradino",
     "volumi",
     "pluviale",
-    4.5
-   ],
-   [
-    "urto",
-    1417,
-    374.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     4.5
    ],
    [
@@ -15604,25 +15269,7 @@
     374.3,
     "gradino",
     "volumi",
-    "tettoia",
-    4.5
-   ],
-   [
-    "urto",
-    1419,
-    374.3,
-    "gradino",
-    "volumi",
     "dehors",
-    4.5
-   ],
-   [
-    "urto",
-    1419,
-    374.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     4.5
    ],
    [
@@ -15668,6 +15315,15 @@
     "gradino",
     "volumi",
     "pluviale",
+    1.1
+   ],
+   [
+    "urto",
+    1372.3,
+    371,
+    "gradino",
+    "volumi",
+    "tettoia",
     1.1
    ],
    [
@@ -15834,6 +15490,15 @@
    ],
    [
     "urto",
+    1373,
+    371.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    1.2
+   ],
+   [
+    "urto",
     1384.3,
     379,
     "gradino",
@@ -15849,15 +15514,6 @@
     "volumi",
     "pluviale",
     0.8
-   ],
-   [
-    "urto",
-    1337,
-    382.3,
-    "gradino",
-    "volumi",
-    "tettoia",
-    0.4
    ],
    [
     "urto",
@@ -15888,6 +15544,24 @@
    ],
    [
     "urto",
+    1405.8,
+    381,
+    "gradino",
+    "volumi",
+    "arredo",
+    1.9
+   ],
+   [
+    "urto",
+    1405.5,
+    381,
+    "gradino",
+    "volumi",
+    "arredo",
+    1.9
+   ],
+   [
+    "urto",
     1427,
     378.3,
     "gradino",
@@ -15898,28 +15572,10 @@
    [
     "urto",
     1427,
-    378.3,
-    "gradino",
-    "volumi",
-    "tettoia",
-    5
-   ],
-   [
-    "urto",
-    1427,
     378.5,
     "gradino",
     "volumi",
     "pluviale",
-    5
-   ],
-   [
-    "urto",
-    1427,
-    378.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     5
    ],
    [
@@ -15938,15 +15594,6 @@
     "gradino",
     "volumi",
     "pluviale",
-    5.1
-   ],
-   [
-    "urto",
-    1431,
-    378.5,
-    "gradino",
-    "volumi",
-    "tettoia",
     5.1
    ],
    [
@@ -15965,6 +15612,15 @@
     "gradino",
     "volumi",
     "arredo",
+    5.3
+   ],
+   [
+    "urto",
+    1431.5,
+    379,
+    "gradino",
+    "volumi",
+    "tettoia",
     5.3
    ],
    [
@@ -16023,30 +15679,30 @@
    ],
    [
     "urto",
-    1437,
-    382.3,
+    1405.8,
+    383,
     "gradino",
     "volumi",
-    "tettoia",
-    5.4
+    "arredo",
+    1.5
    ],
    [
     "urto",
-    1437,
-    382.5,
+    1405.6,
+    383,
     "gradino",
     "volumi",
-    "tettoia",
-    5.4
+    "arredo",
+    2.3
    ],
    [
     "urto",
-    1437,
-    382.5,
+    1405.5,
+    383,
     "gradino",
     "volumi",
-    "tettoia",
-    5.4
+    "arredo",
+    1.5
    ],
    [
     "urto",
@@ -16122,6 +15778,15 @@
    ],
    [
     "urto",
+    1443,
+    383.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5
+   ],
+   [
+    "urto",
     1427,
     390.3,
     "gradino",
@@ -16173,15 +15838,6 @@
     "volumi",
     "pluviale",
     2.4
-   ],
-   [
-    "urto",
-    1443,
-    389.8,
-    "gradino",
-    "volumi",
-    "tettoia",
-    2.3
    ],
    [
     "urto",
@@ -16270,6 +15926,15 @@
     398.5,
     "gradino",
     "volumi",
+    "tettoia",
+    2.7
+   ],
+   [
+    "urto",
+    1453,
+    398.5,
+    "gradino",
+    "volumi",
     "arredo",
     2.7
    ],
@@ -16297,15 +15962,6 @@
     398.5,
     "gradino",
     "volumi",
-    "tettoia",
-    2.4
-   ],
-   [
-    "urto",
-    1449,
-    398.5,
-    "gradino",
-    "volumi",
     "arredo",
     2.4
    ],
@@ -16351,17 +16007,17 @@
     267,
     "gradino",
     "volumi",
-    "tettoia",
+    "arredo",
     1.5
    ],
    [
     "urto",
-    1473.5,
-    267,
+    1479,
+    267.5,
     "gradino",
     "volumi",
-    "arredo",
-    1.5
+    "tettoia",
+    1.4
    ],
    [
     "urto",
@@ -16419,6 +16075,15 @@
    ],
    [
     "urto",
+    1488.3,
+    277,
+    "gradino",
+    "volumi",
+    "tettoia",
+    2.1
+   ],
+   [
+    "urto",
     1488.5,
     277,
     "gradino",
@@ -16428,8 +16093,17 @@
    ],
    [
     "urto",
+    1488.5,
+    277,
+    "gradino",
+    "volumi",
+    "tettoia",
+    2.1
+   ],
+   [
+    "urto",
     1473.8,
-    281,
+    279,
     "gradino",
     "volumi",
     "arredo",
@@ -16438,7 +16112,7 @@
    [
     "urto",
     1473.8,
-    281,
+    279,
     "gradino",
     "volumi",
     "arredo",
@@ -16447,7 +16121,16 @@
    [
     "urto",
     1473.5,
-    281,
+    279,
+    "gradino",
+    "volumi",
+    "arredo",
+    4.3
+   ],
+   [
+    "urto",
+    1473.5,
+    279,
     "gradino",
     "volumi",
     "arredo",
@@ -16488,6 +16171,24 @@
     "volumi",
     "pluviale",
     6
+   ],
+   [
+    "urto",
+    1473.5,
+    297,
+    "gradino",
+    "volumi",
+    "tettoia",
+    6.4
+   ],
+   [
+    "urto",
+    1483,
+    298.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    5.6
    ],
    [
     "urto",
@@ -16572,8 +16273,17 @@
    ],
    [
     "urto",
-    1473.5,
-    311,
+    1479,
+    312.5,
+    "gradino",
+    "volumi",
+    "tettoia",
+    6.4
+   ],
+   [
+    "urto",
+    1489,
+    312.5,
     "gradino",
     "volumi",
     "tettoia",
@@ -16613,15 +16323,6 @@
     "gradino",
     "volumi",
     "pluviale",
-    0.4
-   ],
-   [
-    "urto",
-    1314.5,
-    275,
-    "gradino",
-    "volumi",
-    "tettoia",
     0.4
    ],
    [
@@ -17903,61 +17604,72 @@
     1.9
    ],
    [
-    "porta",
-    1343.6,
-    328.8,
-    "arredo",
-    "case",
-    "porta",
-    1,
-    1343.4,
-    330
-   ],
-   [
-    "porta",
-    1343.6,
-    331.3,
-    "arredo",
-    "case",
-    "porta",
-    1,
-    1343.4,
-    330
-   ],
-   [
     "urto",
-    1354.2,
+    1353.8,
     334.1,
     "pluviale",
     "case",
     "arredo",
-    1.6
+    1.3
    ],
    [
     "urto",
-    1354.2,
+    1353.8,
     334.3,
     "pluviale",
     "case",
     "arredo",
-    1.4
+    1
    ],
    [
     "urto",
-    1354.2,
+    1353.8,
     334.1,
     "pluviale",
     "case",
     "arredo",
-    1.6
+    1.3
    ],
    [
-    "muro",
-    1354.6,
+    "porta",
+    1351.2,
     334.3,
+    "applique",
+    "case",
+    "porta",
+    3.2,
+    1350,
+    334.6
+   ],
+   [
+    "porta",
+    1348.8,
+    334.4,
     "arredo",
     "case",
-    "casa casa_24 (sua) [1353.95,1360.05,321.95,334.05,-1.68,9.72] F1354.00,334.00/0,1 33v 2664 0.72x0.72x0.99",
+    "porta",
+    1,
+    1350,
+    334.6
+   ],
+   [
+    "porta",
+    1351.3,
+    334.4,
+    "arredo",
+    "case",
+    "porta",
+    1,
+    1350,
+    334.6
+   ],
+   [
+    "urto",
+    1354.9,
+    334.4,
+    "arredo",
+    "case",
+    "arredo",
     1.3
    ],
    [
@@ -17972,17 +17684,8 @@
     334.6
    ],
    [
-    "urto",
-    1359.2,
-    334.8,
-    "arredo",
-    "case",
-    "arredo",
-    1.3
-   ],
-   [
     "porta",
-    1359.2,
+    1355.9,
     334.8,
     "arredo",
     "case",
@@ -17993,7 +17696,7 @@
    ],
    [
     "porta",
-    1356.4,
+    1359.6,
     334.9,
     "arredo",
     "case",
@@ -18019,17 +17722,6 @@
     "case",
     "arredo",
     2.9
-   ],
-   [
-    "coperto",
-    1399,
-    334.1,
-    "pluviale",
-    "case",
-    "porta",
-    11.8,
-    1394.2,
-    329
    ],
    [
     "porta",
@@ -18072,6 +17764,15 @@
     "case",
     "casa casa_32 (sua) [1431.95,1440.05,325.95,334.05,2.61,14.01] F1432.00,334.00/0,1 115v 120 0.25x0.26x0.16",
     12.5
+   ],
+   [
+    "muro",
+    1445.1,
+    333.9,
+    "balcone",
+    "case",
+    "casa casa_33 (sua) [1439.95,1446.05,321.95,334.05,2.89,14.29] F1440.00,334.00/0,1 115v 120 0.25x0.26x0.16",
+    10.4
    ],
    [
     "muro",
@@ -18368,7 +18069,7 @@
    ],
    [
     "muro",
-    1313,
+    1311,
     337.9,
     "balcone",
     "case",
@@ -18395,7 +18096,7 @@
    ],
    [
     "muro",
-    1308.9,
+    1311.1,
     365.9,
     "balcone",
     "case",
@@ -18717,7 +18418,7 @@
    ],
    [
     "porta",
-    1314.8,
+    1317.2,
     368.3,
     "applique",
     "case",
@@ -18727,8 +18428,17 @@
     368.6
    ],
    [
+    "muro",
+    1314.7,
+    368.4,
+    "arredo",
+    "case",
+    "casa casa_77 (sua) [1313.95,1318.05,361.95,368.05,-2.60,8.80] F1314.00,368.00/0,1 6v 2664 0.72x0.76x0.85",
+    0.4
+   ],
+   [
     "porta",
-    1314.8,
+    1314.7,
     368.4,
     "arredo",
     "case",
@@ -19786,39 +19496,12 @@
     9.4
    ],
    [
-    "urto",
-    1363.8,
-    283.6,
-    "arredo",
-    "case",
-    "arredo",
-    1.4
-   ],
-   [
     "sospeso",
     1363.8,
     283.6,
     "arredo",
     "case",
     "",
-    1.4
-   ],
-   [
-    "urto",
-    1363.2,
-    283.7,
-    "arredo",
-    "case",
-    "arredo",
-    1.4
-   ],
-   [
-    "urto",
-    1363.3,
-    283.7,
-    "arredo",
-    "case",
-    "arredo",
     1.4
    ],
    [
@@ -20119,6 +19802,24 @@
    ],
    [
     "urto",
+    1430.1,
+    294.2,
+    "pluviale",
+    "case",
+    "arredo",
+    5.6
+   ],
+   [
+    "urto",
+    1430.3,
+    294.2,
+    "pluviale",
+    "case",
+    "arredo",
+    5.3
+   ],
+   [
+    "urto",
     1444.1,
     297.8,
     "pluviale",
@@ -20412,6 +20113,15 @@
     5.3,
     1430.6,
     300
+   ],
+   [
+    "urto",
+    1430.4,
+    298.8,
+    "arredo",
+    "case",
+    "tettoia",
+    5.3
    ],
    [
     "porta",
@@ -21527,7 +21237,7 @@
    ],
    [
     "muro",
-    1407.1,
+    1405,
     317.9,
     "balcone",
     "case",
@@ -21542,6 +21252,42 @@
     "case",
     "casa casa_275 [1411.95,1416.05,313.95,320.05,1.55,10.55] F1408.00,318.00/0,1 18v 36 4.10x0.16x0.13",
     10.1
+   ],
+   [
+    "muro",
+    1418,
+    318.1,
+    "pluviale",
+    "case",
+    "casa casa_297 [1417.95,1422.05,317.95,322.05,1.85,10.85] F1416.00,318.00/0,1 18v 36 4.10x0.16x0.13",
+    10.6
+   ],
+   [
+    "muro",
+    1419.8,
+    318.1,
+    "pluviale",
+    "case",
+    "casa casa_297 [1417.95,1422.05,317.95,322.05,1.85,10.85] F1416.00,318.00/0,1 96v 96 0.14x0.14x5.70",
+    5.1
+   ],
+   [
+    "muro",
+    1419.8,
+    318.3,
+    "pluviale",
+    "case",
+    "casa casa_297 [1417.95,1422.05,317.95,322.05,1.85,10.85] F1416.00,318.00/0,1 96v 96 0.14x0.33x0.34",
+    4.8
+   ],
+   [
+    "muro",
+    1422.1,
+    316,
+    "pluviale",
+    "case",
+    "casa casa_291 [1421.95,1428.05,315.95,320.05,2.12,11.12] F1422.00,318.00/1,6.123233995736766e-17 18v 36 4.10x0.16x0.13",
+    10.7
    ],
    [
     "muro",
@@ -21661,39 +21407,6 @@
     "case",
     "rete",
     8.6
-   ],
-   [
-    "porta",
-    1377.8,
-    315.9,
-    "applique",
-    "case",
-    "porta",
-    4.6,
-    1377.4,
-    316
-   ],
-   [
-    "porta",
-    1377.8,
-    315.7,
-    "applique",
-    "case",
-    "porta",
-    4.7,
-    1377.4,
-    316
-   ],
-   [
-    "porta",
-    1377.8,
-    315.7,
-    "applique",
-    "case",
-    "porta",
-    4.6,
-    1377.4,
-    316
    ],
    [
     "muro",
@@ -21915,15 +21628,6 @@
     320.6
    ],
    [
-    "urto",
-    1403.3,
-    320.4,
-    "arredo",
-    "case",
-    "tettoia",
-    3.8
-   ],
-   [
     "porta",
     1403.3,
     320.4,
@@ -22048,12 +21752,30 @@
    ],
    [
     "muro",
-    1446.9,
+    1447.1,
     327.9,
     "balcone",
     "case",
     "casa casa_317 (sua) [1445.95,1448.05,323.95,328.05,3.02,12.02] F1446.00,328.00/0,1 115v 120 0.25x0.26x0.16",
     10.5
+   ],
+   [
+    "urto",
+    1448.1,
+    327.8,
+    "pluviale",
+    "case",
+    "arredo",
+    6.3
+   ],
+   [
+    "urto",
+    1448.3,
+    327.8,
+    "pluviale",
+    "case",
+    "arredo",
+    6
    ],
    [
     "muro",
@@ -22063,6 +21785,15 @@
     "case",
     "casa casa_317 (sua) [1445.95,1448.05,323.95,328.05,3.02,12.02] F1448.00,328.00/1,6.123233995736766e-17 115v 120 0.25x0.26x0.16",
     10.5
+   ],
+   [
+    "urto",
+    1448.1,
+    326.2,
+    "applique",
+    "case",
+    "rete",
+    8.3
    ],
    [
     "muro",
@@ -22084,46 +21815,19 @@
    ],
    [
     "coperto",
-    1394.1,
-    328,
-    "pluviale",
+    1393.8,
+    327,
+    "balcone",
     "case",
     "porta",
-    9.1,
+    7.6,
     1391,
     324.2
    ],
    [
-    "urto",
-    1394.1,
-    326.2,
-    "pluviale",
-    "case",
-    "arredo",
-    3.6
-   ],
-   [
-    "urto",
-    1394.3,
-    326.2,
-    "pluviale",
-    "case",
-    "arredo",
-    3.3
-   ],
-   [
-    "urto",
-    1394.3,
-    327.5,
-    "arredo",
-    "case",
-    "arredo",
-    3.3
-   ],
-   [
     "muro",
     1393.9,
-    327.1,
+    327,
     "balcone",
     "case",
     "casa casa_321 (sua) [1391.95,1394.05,325.95,330.05,0.28,9.28] F1394.00,330.00/1,6.123233995736766e-17 115v 120 0.25x0.26x0.16",
@@ -22168,6 +21872,33 @@
     5,
     1423,
     325.4
+   ],
+   [
+    "muro",
+    1392.1,
+    331,
+    "pluviale",
+    "case",
+    "casa casa_321 [1391.95,1394.05,325.95,330.05,0.28,9.28] F1392.00,334.00/1,6.123233995736766e-17 18v 36 6.10x0.16x0.13",
+    9
+   ],
+   [
+    "muro",
+    1392.1,
+    328.2,
+    "pluviale",
+    "case",
+    "casa casa_321 [1391.95,1394.05,325.95,330.05,0.28,9.28] F1392.00,334.00/1,6.123233995736766e-17 96v 96 0.14x0.14x5.70",
+    3.5
+   ],
+   [
+    "muro",
+    1392.3,
+    328.2,
+    "pluviale",
+    "case",
+    "casa casa_321 [1391.95,1394.05,325.95,330.05,0.28,9.28] F1392.00,334.00/1,6.123233995736766e-17 96v 96 0.14x0.33x0.34",
+    3.2
    ],
    [
     "urto",
@@ -22286,6 +22017,15 @@
    ],
    [
     "urto",
+    1416.1,
+    348.9,
+    "arredo",
+    "case",
+    "tettoia",
+    4.6
+   ],
+   [
+    "urto",
     1416.6,
     348.9,
     "arredo",
@@ -22359,6 +22099,15 @@
     0.9,
     1347,
     356.6
+   ],
+   [
+    "urto",
+    1384.3,
+    356.8,
+    "arredo",
+    "case",
+    "tettoia",
+    2.7
    ],
    [
     "muro",
@@ -22577,24 +22326,6 @@
     8.8,
     1393,
     360.2
-   ],
-   [
-    "urto",
-    1396.1,
-    362.2,
-    "pluviale",
-    "case",
-    "tettoia",
-    3.3
-   ],
-   [
-    "urto",
-    1396.3,
-    362.2,
-    "pluviale",
-    "case",
-    "tettoia",
-    3
    ],
    [
     "muro",
@@ -24353,12 +24084,23 @@
    ],
    [
     "muro",
-    1253,
-    326.8,
+    1255.2,
+    329,
     "tettoia",
     "soglie",
-    "casa archivio [1237.95,1254.05,313.95,326.05,2.38,11.38] F1254.00,328.00/1.2246467991473532e-16,-1 285v 600 6.40x2.42x3.50",
-    6.1
+    "casa biblioteca [1255.95,1270.05,317.95,328.05,2.71,9.31] F1254.00,336.00/1,6.123233995736766e-17 81v 600 6.40x2.43x3.50",
+    6.2
+   ],
+   [
+    "coperto",
+    1255.2,
+    329,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.2,
+    1254.2,
+    329
    ],
    [
     "muro",
@@ -25563,6 +25305,15 @@
     0.4
    ],
    [
+    "urto",
+    1316.8,
+    297,
+    "tettoia",
+    "soglie",
+    "arredo",
+    0.4
+   ],
+   [
     "muro",
     1327,
     303,
@@ -25626,11 +25377,31 @@
    ],
    [
     "muro",
+    1403,
+    299,
+    "tettoia",
+    "soglie",
+    "casa casa_213 (sua) [1399.95,1402.05,297.95,304.05,0.76,9.76] F1402.00,304.00/1,6.123233995736766e-17 9v 492 4.90x2.59x3.30",
+    3.8
+   ],
+   [
+    "coperto",
+    1403,
+    299,
+    "tettoia",
+    "soglie",
+    "porta",
+    3.8,
+    1402.2,
+    299
+   ],
+   [
+    "muro",
     1431,
     301,
     "tettoia",
     "soglie",
-    "casa casa_215 (sua) [1425.95,1430.05,297.95,302.05,2.25,11.25] F1430.00,302.00/1,6.123233995736766e-17 9v 492 4.90x2.59x3.30",
+    "casa casa_215 (sua) [1425.95,1430.05,297.95,302.05,2.25,11.25] F1430.00,302.00/1,6.123233995736766e-17 9v 324 4.70x2.20x2.72",
     5.3
    ],
    [
@@ -25643,6 +25414,28 @@
     5.3,
     1430.6,
     300
+   ],
+   [
+    "scala",
+    1431,
+    301,
+    "tettoia",
+    "soglie",
+    "scala",
+    5.3,
+    1430.7,
+    299
+   ],
+   [
+    "porta",
+    1431,
+    301,
+    "tettoia",
+    "soglie",
+    "porta",
+    5.3,
+    1430.6,
+    303
    ],
    [
     "coperto",
@@ -25661,7 +25454,7 @@
     299,
     "tettoia",
     "soglie",
-    "casa casa_201 [1441.95,1444.05,293.95,298.05,2.89,11.89] F1444.00,300.00/1,6.123233995736766e-17 9v 324 4.70x2.20x2.72",
+    "casa casa_201 [1441.95,1444.05,293.95,298.05,2.89,11.89] F1444.00,300.00/1,6.123233995736766e-17 9v 396 4.69x2.20x2.83",
     5.9
    ],
    [
@@ -25730,50 +25523,39 @@
    ],
    [
     "muro",
-    1341,
+    1443,
     303,
     "tettoia",
     "soglie",
-    "casa stella [1327.95,1340.05,287.95,302.05,-2.45,8.95] F1340.00,302.00/0,1 9v 396 4.69x2.20x2.83",
-    0.7
+    "casa casa_224 (sua) [1439.95,1442.05,299.95,306.05,2.81,11.81] F1442.00,306.00/1,6.123233995736766e-17 18v 324 4.69x2.20x2.82",
+    5.9
    ],
    [
     "porta",
-    1341,
-    303,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.7,
-    1344,
-    302.6
-   ],
-   [
-    "porta",
-    1341,
+    1443,
     303,
     "tettoia",
     "soglie",
     "porta",
-    0.7,
-    1341,
-    302.6
+    5.9,
+    1442.6,
+    303
    ],
    [
     "porta",
-    1319,
-    305,
+    1443,
+    303,
     "tettoia",
     "soglie",
     "porta",
-    0.4,
-    1319,
-    304.6
+    5.9,
+    1443.4,
+    305
    ],
    [
     "coperto",
     1319,
-    305,
+    305.2,
     "tettoia",
     "soglie",
     "porta",
@@ -25784,46 +25566,139 @@
    [
     "muro",
     1347,
-    305.2,
+    305,
     "tettoia",
     "soglie",
-    "casa casa_228 [1347.95,1352.05,301.95,304.05,-2.01,6.99] F1344.00,304.00/0,1 9v 636 6.40x2.42x3.50",
+    "casa casa_227 (sua) [1343.95,1348.05,301.95,304.05,-2.16,6.84] F1344.00,304.00/0,1 9v 732 4.46x2.40x3.24",
     0.9
    ],
    [
+    "porta",
+    1347,
+    305,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.9,
+    1346,
+    304.6
+   ],
+   [
+    "porta",
+    1347,
+    305,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.9,
+    1349,
+    304.6
+   ],
+   [
     "muro",
-    1431,
+    1349,
+    305,
+    "tettoia",
+    "soglie",
+    "casa casa_227 [1343.95,1348.05,301.95,304.05,-2.16,6.84] F1348.00,304.00/0,1 9v 732 4.46x2.40x3.24",
+    1
+   ],
+   [
+    "porta",
+    1349,
+    305,
+    "tettoia",
+    "soglie",
+    "porta",
+    1,
+    1349,
+    304.6
+   ],
+   [
+    "muro",
+    1363,
+    307,
+    "tettoia",
+    "soglie",
+    "casa casa_229 (sua) [1361.95,1366.05,301.95,306.05,-1.34,7.66] F1362.00,306.00/0,1 9v 732 4.46x2.40x3.24",
+    1.6
+   ],
+   [
+    "porta",
+    1363,
+    307,
+    "tettoia",
+    "soglie",
+    "porta",
+    1.6,
+    1363,
+    306.6
+   ],
+   [
+    "porta",
+    1363,
+    307,
+    "tettoia",
+    "soglie",
+    "porta",
+    1.6,
+    1366,
+    308.6
+   ],
+   [
+    "coperto",
+    1363,
+    307,
+    "tettoia",
+    "soglie",
+    "porta",
+    1.6,
+    1359,
+    306.2
+   ],
+   [
+    "coperto",
+    1363,
+    307,
+    "tettoia",
+    "soglie",
+    "porta",
+    1.6,
+    1361,
+    306.2
+   ],
+   [
+    "muro",
+    1395,
     303,
     "tettoia",
     "soglie",
-    "casa casa_215 [1425.95,1430.05,297.95,302.05,2.25,11.25] F1430.00,308.00/1,6.123233995736766e-17 9v 732 4.46x2.40x3.24",
+    "casa casa_196 [1395.95,1398.05,293.95,302.05,0.52,9.52] F1396.00,302.00/-1,6.123233995736766e-17 9v 492 4.90x2.59x3.30",
+    3.5
+   ],
+   [
+    "muro",
+    1431.2,
+    303,
+    "tettoia",
+    "soglie",
+    "casa casa_215 [1425.95,1430.05,297.95,302.05,2.25,11.25] F1430.00,308.00/1,6.123233995736766e-17 9v 636 6.40x2.43x3.50",
     5.3
    ],
    [
     "porta",
-    1431,
+    1431.2,
     303,
     "tettoia",
     "soglie",
     "porta",
     5.3,
-    1430.6,
-    300
-   ],
-   [
-    "porta",
-    1431,
-    303,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1430.6,
-    303
+    1433,
+    303.4
    ],
    [
     "coperto",
-    1431,
+    1431.2,
     303,
     "tettoia",
     "soglie",
@@ -25838,30 +25713,19 @@
     309,
     "tettoia",
     "soglie",
-    "casa casa_232 (sua) [1445.95,1450.05,301.95,308.05,3.06,14.46] F1446.00,308.00/0,1 9v 732 4.46x2.40x3.24",
+    "casa casa_232 (sua) [1445.95,1450.05,301.95,308.05,3.06,14.46] F1446.00,308.00/0,1 9v 528 4.90x2.59x3.30",
     6.1
    ],
    [
-    "porta",
+    "coperto",
     1449,
     309,
     "tettoia",
     "soglie",
-    "porta",
+    "scala",
     6.1,
-    1449,
-    308.6
-   ],
-   [
-    "porta",
-    1449,
-    309,
-    "tettoia",
-    "soglie",
-    "porta",
-    6.1,
-    1451,
-    308.6
+    1445,
+    308.2
    ],
    [
     "coperto",
@@ -25880,8 +25744,30 @@
     309,
     "tettoia",
     "soglie",
-    "casa casa_232 [1445.95,1450.05,301.95,308.05,3.06,14.46] F1450.00,308.00/0,1 9v 492 4.90x2.59x3.30",
+    "casa casa_232 [1445.95,1450.05,301.95,308.05,3.06,14.46] F1450.00,308.00/0,1 9v 396 4.70x2.20x2.76",
     6.1
+   ],
+   [
+    "porta",
+    1451,
+    309,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.1,
+    1449,
+    308.6
+   ],
+   [
+    "porta",
+    1451,
+    309,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.1,
+    1451,
+    308.6
    ],
    [
     "porta",
@@ -25907,93 +25793,11 @@
    ],
    [
     "muro",
-    1403,
-    307,
-    "tettoia",
-    "soglie",
-    "casa casa_236 [1397.95,1402.05,303.95,306.05,0.73,9.73] F1402.00,306.00/0,1 9v 564 4.90x2.59x3.30",
-    3.9
-   ],
-   [
-    "coperto",
-    1403,
-    307,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.9,
-    1401,
-    306.2
-   ],
-   [
-    "coperto",
-    1403,
-    307,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.9,
-    1403,
-    306.2
-   ],
-   [
-    "muro",
-    1421,
-    307,
-    "tettoia",
-    "soglie",
-    "casa casa_239 (sua) [1417.95,1420.05,303.95,310.05,1.79,10.79] F1420.00,310.00/1,6.123233995736766e-17 18v 396 4.70x2.20x2.76",
-    4.8
-   ],
-   [
-    "urto",
-    1421,
-    307,
-    "tettoia",
-    "soglie",
-    "arredo",
-    4.8
-   ],
-   [
-    "porta",
-    1421,
-    307,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.8,
-    1420.6,
-    307
-   ],
-   [
-    "porta",
-    1421,
-    307,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.8,
-    1421.4,
-    307
-   ],
-   [
-    "coperto",
-    1421,
-    307,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.8,
-    1420.2,
-    307
-   ],
-   [
-    "muro",
     1441,
     309,
     "tettoia",
     "soglie",
-    "casa casa_242 (sua) [1435.95,1440.05,303.95,310.05,2.72,11.72] F1440.00,310.00/1,6.123233995736766e-17 9v 732 4.46x2.40x3.24",
+    "casa casa_242 (sua) [1435.95,1440.05,303.95,310.05,2.72,11.72] F1440.00,310.00/1,6.123233995736766e-17 9v 564 4.90x2.59x3.30",
     5.8
    ],
    [
@@ -26019,17 +25823,6 @@
     308
    ],
    [
-    "porta",
-    1441,
-    309,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.8,
-    1441,
-    308.6
-   ],
-   [
     "coperto",
     1441,
     309,
@@ -26042,178 +25835,189 @@
    ],
    [
     "muro",
-    1443,
-    305,
+    1411,
+    309.2,
     "tettoia",
     "soglie",
-    "casa casa_224 [1439.95,1442.05,299.95,306.05,2.81,11.81] F1444.00,304.00/-1,6.123233995736766e-17 27v 564 4.90x2.59x3.30",
-    5.9
+    "casa casa_238 [1411.95,1418.05,303.95,308.05,1.58,10.58] F1408.00,308.00/0,1 9v 636 6.40x2.42x3.50",
+    4.4
    ],
    [
-    "porta",
-    1443,
-    305,
+    "coperto",
+    1411,
+    309.2,
     "tettoia",
     "soglie",
     "porta",
-    5.9,
-    1442.6,
-    303
+    4.4,
+    1411,
+    308.2
    ],
    [
     "muro",
-    1441,
-    309.2,
+    1345,
+    311,
     "tettoia",
     "soglie",
-    "casa casa_242 [1435.95,1440.05,303.95,310.05,2.72,11.72] F1440.00,308.00/0,1 82v 636 6.40x2.42x3.50",
-    5.8
+    "casa casa_254 (sua) [1341.95,1344.05,307.95,314.05,-2.22,6.78] F1344.00,314.00/1,6.123233995736766e-17 18v 732 4.46x2.40x3.24",
+    0.8
    ],
    [
-    "tombino",
-    1441,
-    309.2,
+    "porta",
+    1345,
+    311,
     "tettoia",
     "soglie",
-    "tombino",
-    5.8,
-    1441,
+    "porta",
+    0.8,
+    1344.6,
     311
    ],
    [
     "porta",
-    1441,
-    309.2,
+    1345,
+    311,
     "tettoia",
     "soglie",
     "porta",
-    5.8,
-    1440.6,
-    308
+    0.8,
+    1345.4,
+    311
+   ],
+   [
+    "coperto",
+    1345,
+    311,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.8,
+    1344.2,
+    311
    ],
    [
     "muro",
-    1359,
-    309,
+    1397.2,
+    313,
     "tettoia",
     "soglie",
-    "casa casa_259 [1353.95,1358.05,309.95,314.05,-1.69,7.31] F1360.00,310.00/1.2246467991473532e-16,-1 9v 732 4.46x2.40x3.24",
-    1.5
+    "casa casa_269 [1397.95,1400.05,311.95,316.05,0.64,9.64] F1396.00,316.00/1,6.123233995736766e-17 246v 600 6.40x2.43x3.50",
+    3.5
    ],
    [
     "porta",
-    1359,
-    309,
+    1397.2,
+    313,
     "tettoia",
     "soglie",
     "porta",
-    1.5,
-    1357,
-    309.4
-   ],
-   [
-    "porta",
-    1359,
-    309,
-    "tettoia",
-    "soglie",
-    "porta",
-    1.5,
-    1359,
-    309.4
+    3.5,
+    1399,
+    311.4
    ],
    [
     "coperto",
-    1359,
-    309,
+    1397.2,
+    313,
     "tettoia",
     "soglie",
     "porta",
-    1.5,
-    1359,
-    306.2
-   ],
-   [
-    "muro",
-    1398.8,
-    311,
-    "tettoia",
-    "soglie",
-    "casa casa_263 (sua) [1399.95,1404.05,309.95,318.05,0.85,9.85] F1400.00,310.00/-1,6.123233995736766e-17 9v 600 6.40x2.43x3.50",
-    3.7
-   ],
-   [
-    "tombino",
-    1398.8,
-    311,
-    "tettoia",
-    "soglie",
-    "tombino",
-    3.7,
-    1397,
-    307
-   ],
-   [
-    "coperto",
-    1398.8,
-    311,
-    "tettoia",
-    "soglie",
-    "scala",
-    3.7,
-    1397,
-    306.2
-   ],
-   [
-    "coperto",
-    1398.8,
-    311,
-    "tettoia",
-    "soglie",
-    "tombino",
-    3.7,
-    1397,
-    307
-   ],
-   [
-    "coperto",
-    1398.8,
-    311,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.7,
+    3.5,
     1396.2,
     313
    ],
    [
     "muro",
-    1387,
-    310.8,
+    1334.8,
+    315,
     "tettoia",
     "soglie",
-    "casa casa_266 [1377.95,1384.05,311.95,320.05,-0.40,8.60] F1388.00,312.00/1.2246467991473532e-16,-1 9v 636 6.40x2.42x3.50",
-    2.9
+    "casa casa_252 [1331.95,1338.05,307.95,312.05,-2.42,6.58] F1336.00,312.00/-1,6.123233995736766e-17 102v 636 6.40x2.43x3.50",
+    0.6
+   ],
+   [
+    "porta",
+    1334.8,
+    315,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.6,
+    1333,
+    314.6
+   ],
+   [
+    "coperto",
+    1334.8,
+    315,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.6,
+    1333,
+    314.2
    ],
    [
     "muro",
-    1407,
+    1387,
     311,
     "tettoia",
     "soglie",
-    "casa casa_270 (sua) [1403.95,1408.05,311.95,318.05,1.09,10.09] F1408.00,312.00/1.2246467991473532e-16,-1 9v 396 4.70x2.20x2.78",
-    4.1
+    "casa casa_267 (sua) [1383.95,1388.05,311.95,318.05,-0.11,8.89] F1388.00,312.00/1.2246467991473532e-16,-1 9v 528 4.90x2.59x3.30",
+    2.9
    ],
    [
     "porta",
-    1407,
+    1387,
     311,
     "tettoia",
     "soglie",
     "porta",
-    4.1,
-    1407,
+    2.9,
+    1386,
     311.4
+   ],
+   [
+    "coperto",
+    1387,
+    311,
+    "tettoia",
+    "soglie",
+    "porta",
+    2.9,
+    1386,
+    311.9
+   ],
+   [
+    "muro",
+    1399,
+    310.8,
+    "tettoia",
+    "soglie",
+    "casa casa_262 [1393.95,1396.05,309.95,316.05,0.40,9.40] F1400.00,312.00/1.2246467991473532e-16,-1 23v 636 6.40x2.42x3.50",
+    3.6
+   ],
+   [
+    "porta",
+    1399,
+    310.8,
+    "tettoia",
+    "soglie",
+    "porta",
+    3.6,
+    1399.4,
+    311
+   ],
+   [
+    "coperto",
+    1399,
+    310.8,
+    "tettoia",
+    "soglie",
+    "tombino",
+    3.6,
+    1397,
+    307
    ],
    [
     "muro",
@@ -26221,7 +26025,7 @@
     313,
     "tettoia",
     "soglie",
-    "casa casa_274 (sua) [1369.95,1374.05,313.95,318.05,-0.92,8.08] F1374.00,314.00/1.2246467991473532e-16,-1 9v 732 4.46x2.40x3.24",
+    "casa casa_274 (sua) [1369.95,1374.05,313.95,318.05,-0.92,8.08] F1374.00,314.00/1.2246467991473532e-16,-1 9v 396 4.70x2.20x2.75",
     2.1
    ],
    [
@@ -26241,7 +26045,7 @@
     313,
     "tettoia",
     "soglie",
-    "casa casa_276 [1415.95,1420.05,313.95,318.05,1.76,10.76] F1422.00,314.00/1.2246467991473532e-16,-1 9v 732 4.46x2.40x3.24",
+    "casa casa_276 [1415.95,1420.05,313.95,318.05,1.76,10.76] F1422.00,314.00/1.2246467991473532e-16,-1 9v 528 4.90x2.59x3.30",
     4.9
    ],
    [
@@ -26256,15 +26060,15 @@
     313
    ],
    [
-    "porta",
+    "coperto",
     1421,
     313,
     "tettoia",
     "soglie",
-    "porta",
+    "scala",
     4.9,
-    1421,
-    313.4
+    1419,
+    310.2
    ],
    [
     "coperto",
@@ -26279,11 +26083,29 @@
    ],
    [
     "muro",
+    1451,
+    317,
+    "tettoia",
+    "soglie",
+    "casa casa_280 [1445.95,1450.05,313.95,318.05,3.06,12.06] F1452.00,314.00/-1,6.123233995736766e-17 27v 492 4.90x2.59x3.30",
+    6.2
+   ],
+   [
+    "urto",
+    1451,
+    317,
+    "tettoia",
+    "soglie",
+    "rete",
+    6.2
+   ],
+   [
+    "muro",
     1343,
     319,
     "tettoia",
     "soglie",
-    "casa casa_284 (sua) [1339.95,1342.05,315.95,322.05,-2.28,6.72] F1342.00,322.00/1,6.123233995736766e-17 18v 528 4.90x2.59x3.30",
+    "casa casa_284 (sua) [1339.95,1342.05,315.95,322.05,-2.28,6.72] F1342.00,322.00/1,6.123233995736766e-17 18v 492 4.90x2.59x3.30",
     0.8
    ],
    [
@@ -26310,54 +26132,23 @@
    ],
    [
     "muro",
-    1397,
-    317,
+    1377,
+    314.8,
     "tettoia",
     "soglie",
-    "casa casa_262 [1393.95,1396.05,309.95,316.05,0.40,9.40] F1398.00,316.00/-1,6.123233995736766e-17 45v 360 4.70x2.20x2.75",
-    3.6
-   ],
-   [
-    "urto",
-    1397,
-    317,
-    "tettoia",
-    "soglie",
-    "arredo",
-    3.6
+    "casa casa_274 [1369.95,1374.05,313.95,318.05,-0.92,8.08] F1378.00,316.00/1.2246467991473532e-16,-1 23v 636 6.40x2.42x3.50",
+    2.3
    ],
    [
     "porta",
-    1397,
-    317,
+    1377,
+    314.8,
     "tettoia",
     "soglie",
     "porta",
-    3.6,
-    1396.6,
-    317
-   ],
-   [
-    "porta",
-    1397,
-    317,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.6,
-    1397.4,
-    317
-   ],
-   [
-    "coperto",
-    1397,
-    317,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.6,
-    1396.2,
-    317
+    2.3,
+    1377.4,
+    316
    ],
    [
     "muro",
@@ -26365,7 +26156,7 @@
     325,
     "tettoia",
     "soglie",
-    "casa casa_295 (sua) [1383.95,1388.05,317.95,324.05,-0.12,8.88] F1384.00,324.00/0,1 9v 528 4.90x2.59x3.30",
+    "casa casa_295 (sua) [1383.95,1388.05,317.95,324.05,-0.12,8.88] F1384.00,324.00/0,1 9v 732 4.46x2.40x3.24",
     2.7
    ],
    [
@@ -26376,8 +26167,8 @@
     "soglie",
     "porta",
     2.7,
-    1383,
-    325.4
+    1385,
+    324.6
    ],
    [
     "coperto",
@@ -26465,37 +26256,17 @@
    ],
    [
     "muro",
-    1343,
-    323,
+    1449,
+    321,
     "tettoia",
     "soglie",
-    "casa casa_23 [1343.95,1354.05,323.95,334.05,-2.01,9.39] F1344.00,320.00/-1,6.123233995736766e-17 9v 732 4.46x2.40x3.24",
-    0.8
-   ],
-   [
-    "porta",
-    1343,
-    323,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.8,
-    1343.4,
-    323
-   ],
-   [
-    "muro",
-    1450.8,
-    323,
-    "tettoia",
-    "soglie",
-    "casa casa_281 [1451.95,1456.05,313.95,320.05,3.22,12.22] F1452.00,320.00/-1,6.123233995736766e-17 9v 636 6.40x2.43x3.50",
+    "casa casa_298 (sua) [1445.95,1448.05,317.95,324.05,3.02,12.02] F1448.00,324.00/1,6.123233995736766e-17 18v 492 4.90x2.59x3.30",
     6.1
    ],
    [
     "coperto",
-    1450.8,
-    323,
+    1449,
+    321,
     "tettoia",
     "soglie",
     "porta",
@@ -26505,120 +26276,76 @@
    ],
    [
     "muro",
-    1401,
-    321,
+    1343,
+    323,
     "tettoia",
     "soglie",
-    "casa casa_290 [1397.95,1400.05,315.95,320.05,0.64,9.64] F1402.00,322.00/1.2246467991473532e-16,-1 27v 492 4.90x2.59x3.30",
-    3.8
-   ],
-   [
-    "scala",
-    1401,
-    321,
-    "tettoia",
-    "soglie",
-    "scala",
-    3.8,
-    1399,
-    320.7
-   ],
-   [
-    "porta",
-    1401,
-    321,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.8,
-    1402,
-    320.6
+    "casa casa_23 [1343.95,1354.05,323.95,334.05,-2.01,9.39] F1344.00,320.00/-1,6.123233995736766e-17 9v 528 4.90x2.59x3.30",
+    0.8
    ],
    [
     "muro",
-    1327,
-    331,
+    1451,
+    323,
     "tettoia",
     "soglie",
-    "casa flamingo [1311.95,1326.05,315.95,330.05,-2.59,9.41] F1326.00,330.00/0,1 9v 528 4.90x2.59x3.30",
-    0.4
-   ],
-   [
-    "scala",
-    1327,
-    331,
-    "tettoia",
-    "soglie",
-    "scala",
-    0.4,
-    1325,
-    330.7
-   ],
-   [
-    "coperto",
-    1327,
-    331,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.4,
-    1327,
-    330.2
-   ],
-   [
-    "muro",
-    1341,
-    327,
-    "tettoia",
-    "soglie",
-    "casa cinema [1329.95,1340.05,315.95,330.05,-2.42,3.58] F1340.00,326.00/0,1 45v 732 4.46x2.40x3.24",
-    0.7
+    "casa casa_34 [1449.95,1460.05,323.95,334.05,3.22,14.62] F1452.00,320.00/-1,6.123233995736766e-17 249v 732 4.46x2.40x3.24",
+    6.1
    ],
    [
     "porta",
-    1341,
-    327,
+    1451,
+    323,
     "tettoia",
     "soglie",
     "porta",
-    0.7,
-    1341,
-    326.6
-   ],
-   [
-    "porta",
-    1341,
-    327,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.7,
-    1343.4,
-    330
-   ],
-   [
-    "coperto",
-    1341,
-    327,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.7,
-    1341,
-    326.2
+    6.1,
+    1451.4,
+    323
    ],
    [
     "muro",
     1463.2,
-    327,
+    321,
     "tettoia",
     "soglie",
-    "casa casa_307 [1459.95,1462.05,319.95,324.05,3.34,12.34] F1462.00,330.00/1,6.123233995736766e-17 9v 600 6.40x2.43x3.50",
+    "casa casa_283 [1459.95,1462.05,313.95,320.05,3.34,12.34] F1462.00,324.00/1,6.123233995736766e-17 9v 600 6.40x2.43x3.50",
     6.5
    ],
    [
     "coperto",
     1463.2,
+    321,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.5,
+    1462.2,
+    317
+   ],
+   [
+    "coperto",
+    1463.2,
+    321,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.5,
+    1462.2,
+    321
+   ],
+   [
+    "muro",
+    1463,
+    327,
+    "tettoia",
+    "soglie",
+    "casa casa_318 (sua) [1459.95,1462.05,323.95,330.05,3.34,12.34] F1462.00,330.00/1,6.123233995736766e-17 18v 528 4.90x2.59x3.30",
+    6.5
+   ],
+   [
+    "coperto",
+    1463,
     327,
     "tettoia",
     "soglie",
@@ -26629,99 +26356,88 @@
    ],
    [
     "muro",
-    1397,
-    347,
+    1391,
+    335,
     "tettoia",
     "soglie",
-    "casa casa_329 (sua) [1393.95,1398.05,347.95,352.05,0.49,9.49] F1398.00,348.00/1.2246467991473532e-16,-1 9v 528 4.90x2.59x3.30",
-    3.7
+    "casa casa_28 [1381.95,1390.05,327.95,334.05,-0.14,11.26] F1390.00,334.00/0,1 9v 732 4.46x2.40x3.24",
+    3.1
    ],
    [
-    "coperto",
-    1397,
-    347,
+    "porta",
+    1391,
+    335,
     "tettoia",
     "soglie",
     "porta",
-    3.7,
-    1397,
-    347.9
+    3.1,
+    1391,
+    334.6
+   ],
+   [
+    "coperto",
+    1391,
+    335,
+    "tettoia",
+    "soglie",
+    "porta",
+    3.1,
+    1391,
+    334.2
    ],
    [
     "muro",
-    1351,
+    1417,
+    351,
+    "tettoia",
+    "soglie",
+    "casa casa_330 (sua) [1413.95,1416.05,347.95,352.05,1.57,10.57] F1416.00,352.00/1,6.123233995736766e-17 9v 324 4.69x2.20x2.88",
+    4.6
+   ],
+   [
+    "porta",
+    1417,
+    351,
+    "tettoia",
+    "soglie",
+    "porta",
+    4.6,
+    1416.6,
+    351
+   ],
+   [
+    "coperto",
+    1417,
+    351,
+    "tettoia",
+    "soglie",
+    "porta",
+    4.6,
+    1416.2,
+    351
+   ],
+   [
+    "muro",
+    1350.8,
     353,
     "tettoia",
     "soglie",
-    "casa casa_35 [1343.95,1350.05,347.95,356.05,-2.05,6.95] F1352.00,350.00/-1,6.123233995736766e-17 54v 732 4.46x2.40x3.24",
+    "casa casa_35 [1343.95,1350.05,347.95,356.05,-2.05,6.95] F1352.00,350.00/-1,6.123233995736766e-17 390v 600 6.40x2.43x3.50",
     1.1
    ],
    [
-    "porta",
-    1351,
-    353,
-    "tettoia",
-    "soglie",
-    "porta",
-    1.1,
-    1351.4,
-    353
-   ],
-   [
     "muro",
-    1347,
-    357,
+    1384.8,
+    355,
     "tettoia",
     "soglie",
-    "casa casa_35 [1343.95,1350.05,347.95,356.05,-2.05,6.95] F1348.00,356.00/-1,6.123233995736766e-17 144v 324 4.69x2.20x2.88",
-    0.9
-   ],
-   [
-    "porta",
-    1347,
-    357,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.9,
-    1347,
-    356.6
-   ],
-   [
-    "porta",
-    1347,
-    357,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.9,
-    1347.4,
-    357
-   ],
-   [
-    "coperto",
-    1347,
-    357,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.9,
-    1347,
-    356.2
-   ],
-   [
-    "muro",
-    1385.2,
-    359,
-    "tettoia",
-    "soglie",
-    "casa casa_328 [1381.95,1384.05,347.95,356.05,-0.31,8.69] F1384.00,360.00/1,6.123233995736766e-17 9v 600 6.40x2.43x3.50",
+    "casa casa_328 [1381.95,1384.05,347.95,356.05,-0.31,8.69] F1386.00,352.00/-1,6.123233995736766e-17 294v 600 6.40x2.43x3.50",
     2.8
    ],
    [
     "urto",
-    1385.2,
-    359,
+    1384.8,
+    355,
     "tettoia",
     "soglie",
     "arredo",
@@ -26729,29 +26445,58 @@
    ],
    [
     "porta",
-    1385.2,
+    1384.8,
+    355,
+    "tettoia",
+    "soglie",
+    "porta",
+    2.8,
+    1384.6,
+    352
+   ],
+   [
+    "muro",
+    1397,
+    357,
+    "tettoia",
+    "soglie",
+    "casa casa_339 (sua) [1393.95,1396.05,353.95,360.05,0.39,9.39] F1396.00,360.00/1,6.123233995736766e-17 18v 456 4.90x2.59x3.30",
+    3.4
+   ],
+   [
+    "coperto",
+    1397,
+    357,
+    "tettoia",
+    "soglie",
+    "porta",
+    3.4,
+    1396.2,
+    357
+   ],
+   [
+    "muro",
+    1385,
+    359,
+    "tettoia",
+    "soglie",
+    "casa casa_343 (sua) [1381.95,1384.05,355.95,360.05,-0.33,8.67] F1384.00,360.00/1,6.123233995736766e-17 9v 324 4.70x2.20x2.72",
+    2.8
+   ],
+   [
+    "porta",
+    1385,
     359,
     "tettoia",
     "soglie",
     "porta",
     2.8,
-    1387,
-    361.4
+    1384.6,
+    359
    ],
    [
     "coperto",
-    1385.2,
-    359,
-    "tettoia",
-    "soglie",
-    "porta",
-    2.8,
-    1385.9,
-    355
-   ],
-   [
-    "coperto",
-    1385.2,
+    1385,
     359,
     "tettoia",
     "soglie",
@@ -26762,208 +26507,334 @@
    ],
    [
     "muro",
-    1393,
-    361.2,
+    1433,
+    355,
     "tettoia",
     "soglie",
-    "casa casa_347 [1387.95,1392.05,357.95,360.05,0.08,9.08] F1392.00,360.00/0,1 9v 600 6.40x2.42x3.50",
-    3.2
+    "casa casa_41 [1425.95,1432.05,347.95,360.05,2.31,11.31] F1434.00,356.00/1.2246467991473532e-16,-1 99v 492 4.90x2.59x3.30",
+    5.4
+   ],
+   [
+    "porta",
+    1433,
+    355,
+    "tettoia",
+    "soglie",
+    "porta",
+    5.4,
+    1435,
+    354.6
+   ],
+   [
+    "muro",
+    1347,
+    358.8,
+    "tettoia",
+    "soglie",
+    "casa casa_340 [1343.95,1346.05,355.95,360.05,-2.16,6.84] F1348.00,360.00/1.2246467991473532e-16,-1 168v 600 6.40x2.42x3.50",
+    0.9
    ],
    [
     "urto",
-    1393,
-    361.2,
+    1347,
+    358.8,
     "tettoia",
     "soglie",
-    "arredo",
-    3.2
+    "rete",
+    0.9
    ],
    [
     "porta",
-    1393,
-    361.2,
+    1347,
+    358.8,
     "tettoia",
     "soglie",
     "porta",
-    3.2,
-    1391,
-    361.4
+    0.9,
+    1347.4,
+    357
+   ],
+   [
+    "coperto",
+    1347,
+    358.8,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.9,
+    1347,
+    356.2
+   ],
+   [
+    "coperto",
+    1347,
+    358.8,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.9,
+    1347.9,
+    357
+   ],
+   [
+    "muro",
+    1429,
+    361,
+    "tettoia",
+    "soglie",
+    "casa casa_41 [1425.95,1432.05,347.95,360.05,2.31,11.31] F1428.00,362.00/1,6.123233995736766e-17 276v 732 4.46x2.40x3.24",
+    5.2
    ],
    [
     "porta",
-    1393,
-    361.2,
+    1429,
+    361,
     "tettoia",
     "soglie",
     "porta",
-    3.2,
+    5.2,
+    1428.6,
+    361
+   ],
+   [
+    "muro",
+    1321,
+    361,
+    "tettoia",
+    "soglie",
+    "casa casa_359 (sua) [1317.95,1324.05,361.95,364.05,-2.59,6.41] F1324.00,362.00/1.2246467991473532e-16,-1 18v 528 4.90x2.59x3.30",
+    0.4
+   ],
+   [
+    "muro",
+    1397,
+    363,
+    "tettoia",
+    "soglie",
+    "casa casa_369 (sua) [1391.95,1396.05,361.95,366.05,0.01,9.01] F1396.00,366.00/1,6.123233995736766e-17 9v 396 4.69x2.20x2.84",
+    3
+   ],
+   [
+    "porta",
+    1397,
+    363,
+    "tettoia",
+    "soglie",
+    "porta",
+    3,
+    1397.4,
+    362
+   ],
+   [
+    "porta",
+    1397,
+    363,
+    "tettoia",
+    "soglie",
+    "porta",
+    3,
     1396.6,
     363
    ],
    [
     "coperto",
-    1393,
-    361.2,
+    1397,
+    363,
     "tettoia",
     "soglie",
     "porta",
-    3.2,
-    1391,
-    361.9
+    3,
+    1396.2,
+    363
    ],
    [
     "muro",
-    1435,
-    357,
+    1349,
+    367,
     "tettoia",
     "soglie",
-    "casa casa_344 [1431.95,1434.05,355.95,362.05,2.48,11.48] F1436.00,358.00/1.2246467991473532e-16,-1 81v 456 4.90x2.59x3.30",
-    5.6
+    "casa casa_373 (sua) [1343.95,1348.05,363.95,368.05,-2.20,11.60] F1348.00,368.00/1,6.123233995736766e-17 9v 396 4.70x2.20x2.73",
+    0.8
+   ],
+   [
+    "porta",
+    1349,
+    367,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.8,
+    1348.6,
+    367
    ],
    [
     "coperto",
-    1435,
-    357,
+    1349,
+    367,
     "tettoia",
     "soglie",
     "porta",
-    5.6,
-    1435,
-    354.2
+    0.8,
+    1348.2,
+    367
    ],
    [
     "muro",
-    1327,
-    360.8,
+    1321,
+    369,
     "tettoia",
     "soglie",
-    "casa casa_359 [1317.95,1324.05,361.95,364.05,-2.59,6.41] F1330.00,362.00/1.2246467991473532e-16,-1 9v 636 6.40x2.42x3.50",
+    "casa casa_379 (sua) [1317.95,1322.05,365.95,368.05,-2.60,6.40] F1318.00,368.00/0,1 9v 732 4.46x2.40x3.24",
     0.4
    ],
    [
-    "muro",
-    1333,
-    361,
+    "porta",
+    1321,
+    369,
     "tettoia",
     "soglie",
-    "casa casa_361 (sua) [1329.95,1334.05,361.95,368.05,-2.50,8.90] F1334.00,362.00/1.2246467991473532e-16,-1 9v 492 4.90x2.59x3.30",
-    0.5
+    "porta",
+    0.4,
+    1323,
+    368.6
+   ],
+   [
+    "porta",
+    1321,
+    369,
+    "tettoia",
+    "soglie",
+    "porta",
+    0.4,
+    1321,
+    368.6
    ],
    [
     "muro",
-    1373,
-    360.8,
+    1379,
+    369,
     "tettoia",
     "soglie",
-    "casa flipper [1371.95,1382.05,347.95,360.05,-0.63,5.97] F1376.00,362.00/1.2246467991473532e-16,-1 294v 600 6.40x2.42x3.50",
+    "casa casa_375 [1375.95,1378.05,363.95,368.05,-1.02,7.98] F1378.00,368.00/0,1 9v 324 4.69x2.20x2.86",
     1.9
    ],
    [
-    "coperto",
-    1373,
-    360.8,
+    "porta",
+    1379,
+    369,
     "tettoia",
     "soglie",
-    "scala",
+    "porta",
     1.9,
-    1368.2,
-    359
-   ],
-   [
-    "muro",
-    1377,
-    369,
-    "tettoia",
-    "soglie",
-    "casa casa_367 [1371.95,1376.05,361.95,368.05,-1.07,7.93] F1376.00,368.00/0,1 9v 732 4.46x2.40x3.24",
-    1.8
-   ],
-   [
-    "porta",
-    1377,
-    369,
-    "tettoia",
-    "soglie",
-    "porta",
-    1.8,
     1377,
     368.6
    ],
    [
     "porta",
-    1377,
+    1379,
     369,
     "tettoia",
     "soglie",
     "porta",
-    1.8,
+    1.9,
     1379,
     368.6
    ],
    [
     "coperto",
-    1377,
+    1379,
     369,
     "tettoia",
     "soglie",
     "porta",
-    1.8,
+    1.9,
     1377,
     368.2
    ],
    [
-    "muro",
-    1385,
-    363,
+    "coperto",
+    1379,
+    369,
     "tettoia",
     "soglie",
-    "casa casa_368 [1385.95,1392.05,361.95,370.05,-0.45,8.55] F1386.00,364.00/1.2246467991473532e-16,-1 207v 528 4.90x2.59x3.30",
-    2.3
+    "porta",
+    1.9,
+    1379,
+    368.2
+   ],
+   [
+    "muro",
+    1436.8,
+    367,
+    "tettoia",
+    "soglie",
+    "casa casa_351 [1437.95,1444.05,357.95,366.05,2.80,11.80] F1438.00,366.00/-1,6.123233995736766e-17 9v 636 6.40x2.43x3.50",
+    5.7
+   ],
+   [
+    "muro",
+    1385,
+    371,
+    "tettoia",
+    "soglie",
+    "casa casa_404 [1379.95,1384.05,371.95,380.05,-1.68,7.32] F1384.00,370.00/0,1 45v 360 4.70x2.20x2.76",
+    2
+   ],
+   [
+    "porta",
+    1385,
+    371,
+    "tettoia",
+    "soglie",
+    "porta",
+    2,
+    1385,
+    370.6
+   ],
+   [
+    "scala",
+    1385,
+    371,
+    "tettoia",
+    "soglie",
+    "scala",
+    2,
+    1387,
+    370.7
    ],
    [
     "coperto",
     1385,
-    363,
+    371,
     "tettoia",
     "soglie",
     "porta",
-    2.3,
-    1382.2,
-    363
+    2,
+    1385,
+    370.2
    ],
    [
     "muro",
     1417,
-    375,
+    375.2,
     "tettoia",
     "soglie",
-    "casa casa_388 [1415.95,1422.05,367.95,374.05,1.79,8.39] F1416.00,374.00/0,1 9v 396 4.69x2.20x2.84",
+    "casa casa_388 [1415.95,1422.05,367.95,374.05,1.79,8.39] F1416.00,374.00/0,1 9v 636 6.40x2.42x3.50",
     4.6
    ],
    [
     "urto",
     1417,
-    375,
+    375.2,
     "tettoia",
     "soglie",
     "dehors",
     4.6
    ],
    [
-    "porta",
-    1417,
-    375,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.6,
-    1417,
-    374.6
-   ],
-   [
     "coperto",
     1417,
-    375,
+    375.2,
     "tettoia",
     "soglie",
     "porta",
@@ -26973,11 +26844,42 @@
    ],
    [
     "muro",
+    1463.2,
+    369,
+    "tettoia",
+    "soglie",
+    "casa paradiso [1449.95,1462.05,357.95,368.05,3.23,12.23] F1462.00,372.00/1,6.123233995736766e-17 9v 636 6.40x2.43x3.50",
+    6.5
+   ],
+   [
+    "coperto",
+    1463.2,
+    369,
+    "tettoia",
+    "soglie",
+    "scala",
+    6.5,
+    1462.2,
+    367
+   ],
+   [
+    "coperto",
+    1463.2,
+    369,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.5,
+    1462.2,
+    369
+   ],
+   [
+    "muro",
     1373,
     371,
     "tettoia",
     "soglie",
-    "casa casa_391 (sua) [1369.95,1372.05,369.95,374.05,-1.67,7.33] F1372.00,374.00/1,6.123233995736766e-17 9v 396 4.70x2.20x2.73",
+    "casa casa_391 (sua) [1369.95,1372.05,369.95,374.05,-1.67,7.33] F1372.00,374.00/1,6.123233995736766e-17 9v 360 4.69x2.20x2.89",
     1.4
    ],
    [
@@ -27015,23 +26917,83 @@
    ],
    [
     "muro",
-    1379,
+    1413,
+    373,
+    "tettoia",
+    "soglie",
+    "casa casa_394 [1407.95,1412.05,369.95,372.05,1.15,10.15] F1414.00,370.00/-1,6.123233995736766e-17 27v 492 4.90x2.59x3.30",
+    4.3
+   ],
+   [
+    "coperto",
+    1413,
+    373,
+    "tettoia",
+    "soglie",
+    "porta",
+    4.3,
+    1411,
+    372.2
+   ],
+   [
+    "muro",
+    1373,
     371,
     "tettoia",
     "soglie",
-    "casa casa_403 (sua) [1375.95,1380.05,371.95,374.05,-1.57,7.43] F1380.00,372.00/1.2246467991473532e-16,-1 9v 732 4.46x2.40x3.24",
-    1.5
+    "casa casa_391 [1369.95,1372.05,369.95,374.05,-1.67,7.33] F1376.00,372.00/1.2246467991473532e-16,-1 117v 360 4.68x2.20x2.90",
+    1.4
    ],
    [
     "porta",
-    1379,
+    1373,
     371,
     "tettoia",
     "soglie",
     "porta",
-    1.5,
-    1379,
+    1.4,
+    1372.6,
+    371
+   ],
+   [
+    "porta",
+    1373,
+    371,
+    "tettoia",
+    "soglie",
+    "porta",
+    1.4,
+    1373,
     371.4
+   ],
+   [
+    "muro",
+    1379,
+    371,
+    "tettoia",
+    "soglie",
+    "casa casa_403 (sua) [1375.95,1380.05,371.95,374.05,-1.57,7.43] F1380.00,372.00/1.2246467991473532e-16,-1 9v 492 4.90x2.59x3.30",
+    1.6
+   ],
+   [
+    "muro",
+    1419,
+    377,
+    "tettoia",
+    "soglie",
+    "casa casa_408 [1419.95,1422.05,373.95,376.05,1.90,13.30] F1420.00,378.00/1.2246467991473532e-16,-1 27v 732 4.46x2.40x3.24",
+    4.5
+   ],
+   [
+    "porta",
+    1419,
+    377,
+    "tettoia",
+    "soglie",
+    "porta",
+    4.5,
+    1419,
+    377.4
    ],
    [
     "muro",
@@ -27039,7 +27001,7 @@
     379,
     "tettoia",
     "soglie",
-    "casa casa_412 [1425.95,1430.05,375.95,378.05,2.20,11.20] F1430.00,378.00/0,1 9v 324 4.69x2.20x2.86",
+    "casa casa_412 [1425.95,1430.05,375.95,378.05,2.20,11.20] F1432.00,378.00/-1,6.123233995736766e-17 27v 732 4.46x2.40x3.24",
     5.3
    ],
    [
@@ -27065,28 +27027,6 @@
     379
    ],
    [
-    "scala",
-    1431,
-    379,
-    "tettoia",
-    "soglie",
-    "scala",
-    5.3,
-    1429,
-    378.7
-   ],
-   [
-    "coperto",
-    1431,
-    379,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1427,
-    378.2
-   ],
-   [
     "coperto",
     1431,
     379,
@@ -27107,137 +27047,62 @@
     5.3,
     1429,
     378.2
-   ],
-   [
-    "muro",
-    1430.8,
-    379,
-    "tettoia",
-    "soglie",
-    "casa gabbiano [1421.95,1434.05,363.95,376.05,2.24,8.84] F1432.00,378.00/-1,6.123233995736766e-17 93v 636 6.40x2.43x3.50",
-    5.3
-   ],
-   [
-    "porta",
-    1430.8,
-    379,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1431,
-    378.6
-   ],
-   [
-    "porta",
-    1430.8,
-    379,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1429,
-    381.4
-   ],
-   [
-    "coperto",
-    1430.8,
-    379,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1427,
-    379.9
-   ],
-   [
-    "coperto",
-    1430.8,
-    379,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.3,
-    1429,
-    381.9
    ],
    [
     "muro",
     1335,
-    383,
+    383.2,
     "tettoia",
     "soglie",
-    "casa casa_410 [1335.95,1338.05,375.95,382.05,-2.55,6.45] F1332.00,382.00/0,1 9v 360 4.70x2.20x2.76",
+    "casa magazzino [1313.95,1332.05,371.95,382.05,-2.56,4.04] F1332.00,382.00/0,1 9v 636 6.40x2.42x3.50",
     0.6
    ],
    [
-    "porta",
+    "coperto",
     1335,
-    383,
+    383.2,
     "tettoia",
     "soglie",
     "porta",
     0.6,
     1335,
-    382.6
+    382.2
    ],
    [
-    "scala",
+    "coperto",
     1335,
-    383,
+    383.2,
     "tettoia",
     "soglie",
     "scala",
     0.6,
     1333,
-    382.7
+    382.2
    ],
    [
-    "porta",
+    "coperto",
     1335,
-    383,
+    383.2,
     "tettoia",
     "soglie",
     "porta",
     0.6,
     1337,
-    382.6
-   ],
-   [
-    "coperto",
-    1335,
-    383,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.6,
-    1335,
     382.2
    ],
    [
     "muro",
     1339,
-    383.2,
+    383,
     "tettoia",
     "soglie",
-    "casa casa_418 [1331.95,1336.05,379.95,382.05,-2.58,6.42] F1338.00,382.00/0,1 9v 636 6.40x2.42x3.50",
+    "casa casa_410 [1335.95,1338.05,375.95,382.05,-2.55,6.45] F1338.00,382.00/0,1 9v 492 4.90x2.59x3.30",
     0.6
    ],
    [
     "coperto",
     1339,
-    383.2,
-    "tettoia",
-    "soglie",
-    "porta",
-    0.6,
-    1337,
-    382.2
-   ],
-   [
-    "coperto",
-    1339,
-    383.2,
+    383,
     "tettoia",
     "soglie",
     "porta",
@@ -27248,16 +27113,25 @@
    [
     "muro",
     1427,
-    378.8,
+    379,
     "tettoia",
     "soglie",
-    "casa casa_415 [1419.95,1424.05,377.95,382.05,1.67,10.67] F1428.00,380.00/1.2246467991473532e-16,-1 23v 600 6.40x2.42x3.50",
+    "casa casa_412 [1425.95,1430.05,375.95,378.05,2.20,11.20] F1428.00,380.00/1.2246467991473532e-16,-1 45v 396 4.68x2.20x2.90",
+    4.7
+   ],
+   [
+    "urto",
+    1427,
+    379,
+    "tettoia",
+    "soglie",
+    "rete",
     4.7
    ],
    [
     "porta",
     1427,
-    378.8,
+    379,
     "tettoia",
     "soglie",
     "porta",
@@ -27266,9 +27140,20 @@
     378.6
    ],
    [
+    "porta",
+    1427,
+    379,
+    "tettoia",
+    "soglie",
+    "porta",
+    4.7,
+    1427,
+    379.4
+   ],
+   [
     "scala",
     1427,
-    378.8,
+    379,
     "tettoia",
     "soglie",
     "scala",
@@ -27277,88 +27162,15 @@
     378.7
    ],
    [
-    "muro",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "casa casa_427 [1433.95,1436.05,383.95,388.05,1.59,10.59] F1436.00,382.00/0,1 45v 360 4.69x2.20x2.89",
-    5.4
-   ],
-   [
-    "porta",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.4,
-    1435,
-    383.4
-   ],
-   [
-    "porta",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.4,
-    1437,
-    382.6
-   ],
-   [
-    "scala",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "scala",
-    5.4,
-    1439,
-    382.7
-   ],
-   [
     "coperto",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.4,
-    1435,
-    383.9
-   ],
-   [
-    "coperto",
-    1437,
-    383,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.4,
-    1437,
-    382.2
-   ],
-   [
-    "muro",
-    1435,
-    383,
-    "tettoia",
-    "soglie",
-    "casa casa_422 [1435.95,1438.05,379.95,382.05,2.53,9.13] F1436.00,384.00/1.2246467991473532e-16,-1 27v 492 4.90x2.59x3.30",
-    4.7
-   ],
-   [
-    "porta",
-    1435,
-    383,
+    1427,
+    379,
     "tettoia",
     "soglie",
     "porta",
     4.7,
-    1437,
-    382.6
+    1427,
+    378.2
    ],
    [
     "muro",
@@ -27366,7 +27178,7 @@
     383,
     "tettoia",
     "soglie",
-    "casa cultura [1437.95,1456.05,367.95,382.05,2.89,14.29] F1446.00,384.00/1.2246467991473532e-16,-1 81v 360 4.68x2.20x2.90",
+    "casa cultura [1437.95,1456.05,367.95,382.05,2.89,14.29] F1446.00,384.00/1.2246467991473532e-16,-1 81v 360 4.69x2.20x2.87",
     5.5
    ],
    [
@@ -27386,7 +27198,7 @@
     389,
     "tettoia",
     "soglie",
-    "casa casa_431 [1443.95,1446.05,385.95,388.05,2.25,8.85] F1446.00,384.00/-1,6.123233995736766e-17 234v 492 4.90x2.59x3.30",
+    "casa casa_431 [1443.95,1446.05,385.95,388.05,2.25,8.85] F1446.00,384.00/-1,6.123233995736766e-17 234v 564 4.90x2.59x3.30",
     4.7
    ],
    [
@@ -27399,17 +27211,6 @@
     4.7,
     1445,
     388.6
-   ],
-   [
-    "porta",
-    1445,
-    389,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.7,
-    1445,
-    391.4
    ],
    [
     "coperto",
@@ -27446,53 +27247,11 @@
    ],
    [
     "muro",
-    1445,
-    391,
-    "tettoia",
-    "soglie",
-    "casa casa_435 [1441.95,1444.05,389.95,396.05,0.60,9.60] F1446.00,392.00/1.2246467991473532e-16,-1 249v 732 4.46x2.40x3.24",
-    3.7
-   ],
-   [
-    "porta",
-    1445,
-    391,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.7,
-    1443,
-    389.4
-   ],
-   [
-    "porta",
-    1445,
-    391,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.7,
-    1445,
-    391.4
-   ],
-   [
-    "coperto",
-    1445,
-    391,
-    "tettoia",
-    "soglie",
-    "porta",
-    3.7,
-    1445,
-    391.9
-   ],
-   [
-    "muro",
     1451,
     395,
     "tettoia",
     "soglie",
-    "casa casa_437 (sua) [1449.95,1456.05,391.95,394.05,1.20,10.20] F1450.00,394.00/0,1 9v 732 4.46x2.40x3.24",
+    "casa casa_437 (sua) [1449.95,1456.05,391.95,394.05,1.20,10.20] F1450.00,394.00/0,1 9v 360 4.69x2.20x2.89",
     3.7
    ],
    [
@@ -27507,6 +27266,17 @@
     394.6
    ],
    [
+    "scala",
+    1451,
+    395,
+    "tettoia",
+    "soglie",
+    "scala",
+    3.7,
+    1448.7,
+    395
+   ],
+   [
     "coperto",
     1451,
     395,
@@ -27519,31 +27289,11 @@
    ],
    [
     "muro",
-    1463.2,
-    393,
-    "tettoia",
-    "soglie",
-    "casa car_2 [1449.95,1462.05,383.95,392.05,2.20,11.20] F1462.00,394.00/1,6.123233995736766e-17 9v 636 6.40x2.43x3.50",
-    4.6
-   ],
-   [
-    "coperto",
-    1463.2,
-    393,
-    "tettoia",
-    "soglie",
-    "porta",
-    4.6,
-    1462.2,
-    393
-   ],
-   [
-    "muro",
     1447,
     399,
     "tettoia",
     "soglie",
-    "casa casa_442 [1447.95,1450.05,395.95,398.05,-0.01,6.59] F1446.00,398.00/0,1 9v 492 4.90x2.59x3.30",
+    "casa casa_442 [1447.95,1450.05,395.95,398.05,-0.01,6.59] F1446.00,398.00/0,1 9v 528 4.90x2.59x3.30",
     2.2
    ],
    [
@@ -27569,18 +27319,20 @@
     398.2
    ],
    [
-    "muro",
+    "porta",
     1453,
-    399.2,
+    399,
     "tettoia",
     "soglie",
-    "casa casa_442 [1447.95,1450.05,395.95,398.05,-0.01,6.59] F1452.00,398.00/0,1 9v 600 6.40x2.42x3.50",
-    2.8
+    "porta",
+    2.8,
+    1453,
+    398.6
    ],
    [
     "coperto",
     1453,
-    399.2,
+    399,
     "tettoia",
     "soglie",
     "porta",
@@ -27591,7 +27343,7 @@
    [
     "coperto",
     1453,
-    399.2,
+    399,
     "tettoia",
     "soglie",
     "porta",
@@ -27605,11 +27357,11 @@
     443,
     "tettoia",
     "soglie",
-    "casa casa_448 (sua) [1339.95,1346.05,443.95,448.05,-2.30,9.10] F1346.00,444.00/1.2246467991473532e-16,-1 18v 492 4.90x2.59x3.30",
+    "casa casa_448 (sua) [1339.95,1346.05,443.95,448.05,-2.30,9.10] F1346.00,444.00/1.2246467991473532e-16,-1 18v 360 4.70x2.20x2.75",
     0.9
    ],
    [
-    "coperto",
+    "porta",
     1343,
     443,
     "tettoia",
@@ -27617,27 +27369,27 @@
     "porta",
     0.9,
     1343,
-    443.9
+    443.4
    ],
    [
     "muro",
-    1473,
-    267,
+    1353,
+    443,
     "tettoia",
     "soglie",
-    "casa casa_452 (sua) [1473.95,1478.05,265.95,270.05,-0.34,6.26] F1474.00,266.00/-1,6.123233995736766e-17 9v 360 4.69x2.20x2.87",
-    2.4
+    "casa casa_450 (sua) [1349.95,1356.05,443.95,448.05,-2.30,9.10] F1356.00,444.00/1.2246467991473532e-16,-1 18v 528 4.90x2.59x3.30",
+    0.9
    ],
    [
-    "porta",
-    1473,
-    267,
+    "coperto",
+    1353,
+    443,
     "tettoia",
     "soglie",
     "porta",
-    2.4,
-    1473.4,
-    267
+    0.9,
+    1353,
+    443.9
    ],
    [
     "muro",
@@ -27645,73 +27397,53 @@
     267,
     "tettoia",
     "soglie",
-    "casa casa_452 [1473.95,1478.05,265.95,270.05,-0.34,6.26] F1482.00,268.00/1.2246467991473532e-16,-1 144v 564 4.90x2.59x3.30",
+    "casa casa_452 [1473.95,1478.05,265.95,270.05,-0.34,6.26] F1482.00,268.00/1.2246467991473532e-16,-1 144v 396 4.70x2.20x2.79",
     1.9
    ],
    [
-    "muro",
-    1473,
-    281,
-    "tettoia",
-    "soglie",
-    "casa casa_461 (sua) [1473.95,1478.05,277.95,282.05,2.72,11.72] F1474.00,278.00/-1,6.123233995736766e-17 9v 360 4.69x2.20x2.89",
-    5.8
-   ],
-   [
     "porta",
-    1473,
-    281,
+    1479,
+    267,
     "tettoia",
     "soglie",
     "porta",
-    5.8,
-    1473.4,
-    281
-   ],
-   [
-    "muro",
-    1481,
-    289,
-    "tettoia",
-    "soglie",
-    "casa casa_466 (sua) [1477.95,1484.05,283.95,288.05,2.99,9.59] F1478.00,288.00/0,1 18v 528 4.90x2.59x3.30",
-    6
-   ],
-   [
-    "coperto",
-    1481,
-    289,
-    "tettoia",
-    "soglie",
-    "porta",
-    6,
-    1481,
-    288.2
+    1.9,
+    1479,
+    267.4
    ],
    [
     "muro",
     1487,
-    289,
+    275,
     "tettoia",
     "soglie",
-    "casa casa_467 (sua) [1483.95,1490.05,283.95,288.05,2.40,11.40] F1484.00,288.00/0,1 18v 732 4.46x2.40x3.24",
+    "casa casa_457 (sua) [1483.95,1486.05,271.95,278.05,-0.15,6.45] F1486.00,278.00/1,6.123233995736766e-17 18v 492 4.90x2.59x3.30",
+    2.3
+   ],
+   [
+    "porta",
+    1487,
+    275,
+    "tettoia",
+    "soglie",
+    "porta",
+    2.3,
+    1488.6,
+    277
+   ],
+   [
+    "muro",
+    1487,
+    289.2,
+    "tettoia",
+    "soglie",
+    "casa casa_466 [1477.95,1484.05,283.95,288.05,2.99,9.59] F1484.00,288.00/0,1 9v 636 6.40x2.42x3.50",
     5.5
    ],
    [
-    "porta",
-    1487,
-    289,
-    "tettoia",
-    "soglie",
-    "porta",
-    5.5,
-    1487,
-    288.6
-   ],
-   [
     "coperto",
     1487,
-    289,
+    289.2,
     "tettoia",
     "soglie",
     "porta",
@@ -27722,22 +27454,64 @@
    [
     "muro",
     1473,
-    311,
+    297,
     "tettoia",
     "soglie",
-    "casa casa_482 (sua) [1473.95,1478.05,307.95,312.05,3.40,12.40] F1474.00,308.00/-1,6.123233995736766e-17 9v 360 4.70x2.20x2.75",
+    "casa casa_470 (sua) [1473.95,1480.05,291.95,300.05,3.40,12.40] F1474.00,292.00/-1,6.123233995736766e-17 18v 732 4.46x2.40x3.24",
     6.4
    ],
    [
     "porta",
     1473,
-    311,
+    297,
     "tettoia",
     "soglie",
     "porta",
     6.4,
     1473.4,
-    311
+    297
+   ],
+   [
+    "muro",
+    1483,
+    299,
+    "tettoia",
+    "soglie",
+    "casa casa_471 (sua) [1479.95,1486.05,291.95,298.05,3.39,12.39] F1480.00,298.00/0,1 18v 732 4.46x2.40x3.24",
+    6.4
+   ],
+   [
+    "porta",
+    1483,
+    299,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.4,
+    1483,
+    298.6
+   ],
+   [
+    "coperto",
+    1483,
+    299,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.4,
+    1483,
+    298.2
+   ],
+   [
+    "coperto",
+    1483,
+    299,
+    "tettoia",
+    "soglie",
+    "scala",
+    6.4,
+    1480.2,
+    299
    ],
    [
     "muro",
@@ -27745,8 +27519,19 @@
     313,
     "tettoia",
     "soglie",
-    "casa casa_479 [1479.95,1486.05,305.95,312.05,3.40,12.40] F1478.00,312.00/0,1 9v 528 4.90x2.59x3.30",
+    "casa casa_479 [1479.95,1486.05,305.95,312.05,3.40,12.40] F1478.00,312.00/0,1 9v 396 4.69x2.20x2.85",
     6.4
+   ],
+   [
+    "porta",
+    1479,
+    313,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.4,
+    1479,
+    312.6
    ],
    [
     "scala",
@@ -27771,39 +27556,57 @@
     312.2
    ],
    [
-    "coperto",
-    1479,
+    "muro",
+    1489,
     313,
     "tettoia",
     "soglie",
-    "scala",
+    "casa casa_485 (sua) [1485.95,1492.05,309.95,312.05,3.40,10.00] F1486.00,312.00/0,1 18v 396 4.70x2.20x2.73",
+    6.4
+   ],
+   [
+    "porta",
+    1489,
+    313,
+    "tettoia",
+    "soglie",
+    "porta",
     6.4,
-    1477,
+    1489,
+    312.6
+   ],
+   [
+    "coperto",
+    1489,
+    313,
+    "tettoia",
+    "soglie",
+    "porta",
+    6.4,
+    1489,
     312.2
    ],
    [
     "muro",
-    1315,
+    1315.2,
     275,
     "tettoia",
     "soglie",
-    "casa casa_489 [1309.95,1316.05,269.95,274.05,-2.30,3.87] F1314.00,278.00/1,6.123233995736766e-17 144v 396 4.70x2.20x2.79",
+    "casa casa_489 [1309.95,1316.05,269.95,274.05,-2.30,3.87] F1314.00,278.00/1,6.123233995736766e-17 59v 636 6.40x2.43x3.50",
     0.4
    ],
    [
-    "porta",
-    1315,
+    "urto",
+    1315.2,
     275,
     "tettoia",
     "soglie",
-    "porta",
-    0.4,
-    1314.6,
-    275
+    "arredo",
+    0.4
    ],
    [
     "scala",
-    1315,
+    1315.2,
     275,
     "tettoia",
     "soglie",
@@ -27814,7 +27617,7 @@
    ],
    [
     "coperto",
-    1315,
+    1315.2,
     275,
     "tettoia",
     "soglie",
@@ -27824,60 +27627,44 @@
     275
    ],
    [
-    "urto",
-    1425.1,
-    248.5,
+    "muro",
+    1149.1,
+    272.5,
     "tettoia",
     "soglie",
-    "lampione",
-    1.5
-   ],
-   [
-    "urto",
-    1293.1,
-    252.5,
-    "tettoia",
-    "soglie",
-    "arredo",
-    1.5
+    "casa casa_5 [1149.95,1158.05,263.95,272.05,0.29,9.29] F- 93v 570 5.05x1.70x3.18",
+    5.5
    ],
    [
     "muro",
-    1137.1,
-    404.5,
+    1313.5,
+    381.1,
     "tettoia",
     "soglie",
-    "casa casa_15 [1135.95,1144.05,395.95,404.05,-1.62,4.98] F- 111v 570 5.05x1.70x3.18",
-    0.9
+    "casa magazzino [1313.95,1332.05,371.95,382.05,-2.56,4.04] F- 81v 570 5.05x1.70x3.18",
+    0.6
    ],
    [
-    "urto",
-    1318.9,
-    267,
-    "ingombro",
+    "porta",
+    1329,
+    304.5,
+    "grande",
     "soglie",
-    "arredo",
-    1.1
+    "porta",
+    0.5,
+    1333,
+    302.6
    ],
    [
-    "scala",
-    1447.4,
-    270.3,
-    "arredo",
+    "coperto",
+    1329,
+    304.5,
+    "grande",
     "soglie",
-    "scala",
-    2.9,
-    1446.4,
-    269.3
-   ],
-   [
-    "urto",
-    1526.7,
-    343.7,
-    "arredo",
-    "soglie",
-    "arredo",
-    2.1
+    "porta",
+    0.5,
+    1321,
+    302.2
    ],
    [
     "muro",
@@ -27957,14 +27744,14 @@
    ],
    [
     "porta",
-    1343.5,
-    330.4,
+    1350.4,
+    334.5,
     "arredo",
     "oggetti35",
     "porta",
-    0.8,
-    1343.4,
-    330
+    1,
+    1350,
+    334.6
    ],
    [
     "porta",
@@ -27976,17 +27763,6 @@
     1.3,
     1358,
     334.6
-   ],
-   [
-    "scala",
-    1382.4,
-    334.5,
-    "arredo",
-    "oggetti35",
-    "scala",
-    2.6,
-    1383,
-    334.7
    ],
    [
     "porta",
@@ -28323,17 +28099,6 @@
     4.8,
     1425.4,
     287
-   ],
-   [
-    "porta",
-    1363.6,
-    283.7,
-    "arredo",
-    "oggetti35",
-    "porta",
-    1.1,
-    1365,
-    283.4
    ],
    [
     "muro",
@@ -28924,6 +28689,17 @@
     398.6
    ],
    [
+    "porta",
+    1473.7,
+    278.1,
+    "arredo",
+    "oggetti35",
+    "porta",
+    5,
+    1473.4,
+    279
+   ],
+   [
     "muro",
     1488.3,
     278.1,
@@ -29199,6 +28975,17 @@
     1.1
    ],
    [
+    "scala",
+    1385.1,
+    348.7,
+    "arredo",
+    "urbano1",
+    "scala",
+    3,
+    1384.7,
+    349
+   ],
+   [
     "muro",
     1316.1,
     272,
@@ -29445,7 +29232,7 @@
     309.1,
     "dehors",
     "segni",
-    "casa casa_244 [1451.95,1456.05,303.95,308.05,3.21,12.21] F- 214v 2052 2.83x2.83x2.50",
+    "casa casa_244 [1451.95,1456.05,303.95,308.05,3.21,12.21] F- 224v 2052 2.83x2.83x2.50",
     6.1
    ],
    [
@@ -29515,7 +29302,7 @@
    [
     "muro",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "casa casa_349 [1411.95,1414.05,357.95,364.05,1.46,10.46] F- 246v 2052 2.83x2.83x2.50",
@@ -29524,7 +29311,7 @@
    [
     "urto",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "rete",
@@ -29533,7 +29320,7 @@
    [
     "scala",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "scala",
@@ -29544,7 +29331,7 @@
    [
     "porta",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "porta",
@@ -29555,7 +29342,7 @@
    [
     "porta",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "porta",
@@ -29566,7 +29353,7 @@
    [
     "coperto",
     1415.1,
-    361.1,
+    361.2,
     "dehors",
     "segni",
     "porta",
@@ -29577,7 +29364,7 @@
    [
     "muro",
     1415.1,
-    358.6,
+    358.7,
     "dehors",
     "segni",
     "casa casa_349 [1411.95,1414.05,357.95,364.05,1.46,10.46] F- 246v 2052 2.83x2.83x2.50",
@@ -29586,7 +29373,7 @@
    [
     "vetrina",
     1415.1,
-    358.6,
+    358.7,
     "dehors",
     "segni",
     "vetrina",
@@ -29597,7 +29384,7 @@
    [
     "scala",
     1415.1,
-    358.6,
+    358.7,
     "dehors",
     "segni",
     "scala",
@@ -29608,7 +29395,7 @@
    [
     "scala",
     1415.1,
-    358.6,
+    358.7,
     "dehors",
     "segni",
     "scala",
@@ -29618,7 +29405,7 @@
    ],
    [
     "muro",
-    1418.9,
+    1418.8,
     375.1,
     "dehors",
     "segni",
@@ -29627,7 +29414,7 @@
    ],
    [
     "porta",
-    1418.9,
+    1418.8,
     375.1,
     "dehors",
     "segni",
@@ -29868,17 +29655,6 @@
   "dopo": [
    [
     "pezzo",
-    1261.5,
-    280.9,
-    "grande:carro_merci",
-    "posa1",
-    "scala",
-    4.9,
-    1258.2,
-    279
-   ],
-   [
-    "pezzo",
     1262.6,
     338,
     "grande:porta_terra",
@@ -29890,14 +29666,14 @@
    ],
    [
     "pezzo",
-    1484.1,
-    290.6,
-    "grande:arco_sottopasso",
+    1262.6,
+    338,
+    "grande:porta_terra",
     "posa1",
     "porta",
-    3.6,
-    1475,
-    288.2
+    6.2,
+    1254.2,
+    329
    ],
    [
     "pezzo",
@@ -29923,14 +29699,14 @@
    ],
    [
     "pezzo",
-    1372.5,
-    291.9,
+    1408,
+    299.6,
     "grande:arco_sottopasso",
     "posa1",
-    "scala",
-    1.7,
-    1368.2,
-    285
+    "porta",
+    4.1,
+    1402.2,
+    299
    ],
    [
     "pezzo",
@@ -29945,105 +29721,6 @@
    ],
    [
     "pezzo",
-    1349.8,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    1.2,
-    1345,
-    334.2
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1361,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.2
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1361,
-    334.2
-   ],
-   [
-    "pezzo",
-    1368.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    1.9,
-    1367,
-    334.2
-   ],
-   [
-    "pezzo",
-    1368.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    1.9,
-    1369,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.6
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1381,
-    334.6
-   ],
-   [
-    "pezzo",
     1378.5,
     336.1,
     "grande:portico",
@@ -30054,213 +29731,22 @@
     329
    ],
    [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.5,
-    1375,
-    334.2
+    "urto",
+    1333,
+    302.3,
+    "gradino",
+    "volumi",
+    "grande",
+    0.4
    ],
    [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.5,
-    1377,
-    334.2
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1381,
-    334.2
-   ],
-   [
-    "pezzo",
-    1386.2,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    2.9,
-    1383,
-    334.2
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    3.6,
-    1394.2,
-    329
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    3.6,
-    1392.2,
-    331
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    3.6,
-    1397,
-    334.2
-   ],
-   [
-    "pezzo",
-    1400,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    3.6,
-    1403,
-    334.2
-   ],
-   [
-    "pezzo",
-    1425.8,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    4.9,
-    1423,
-    334.2
-   ],
-   [
-    "pezzo",
-    1433.4,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.3,
-    1431,
-    334.2
-   ],
-   [
-    "pezzo",
-    1433.4,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.3,
-    1433,
-    334.2
-   ],
-   [
-    "pezzo",
-    1442.9,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.6,
-    1441,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1455,
-    334.6
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1446.2,
-    329
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1447,
-    328.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "scala",
-    5.9,
-    1451,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1455,
-    334.2
-   ],
-   [
-    "pezzo",
-    1454.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    5.9,
-    1459,
-    334.2
+    "urto",
+    1333,
+    302.5,
+    "gradino",
+    "volumi",
+    "grande",
+    0.4
    ],
    [
     "urto",
@@ -30279,6 +29765,50 @@
     "volumi",
     "scorcio_muro:serranda_chiusa:serranda:1",
     3.5
+   ],
+   [
+    "porta",
+    1329,
+    304.5,
+    "grande",
+    "soglie",
+    "porta",
+    0.5,
+    1333,
+    302.6
+   ],
+   [
+    "coperto",
+    1329,
+    304.5,
+    "grande",
+    "soglie",
+    "porta",
+    0.5,
+    1323,
+    302.2
+   ],
+   [
+    "coperto",
+    1329,
+    304.5,
+    "grande",
+    "soglie",
+    "porta",
+    0.5,
+    1321,
+    302.2
+   ],
+   [
+    "coperto",
+    1329,
+    304.5,
+    "grande",
+    "soglie",
+    "porta",
+    0.5,
+    1327,
+    302.2
    ],
    [
     "coperto",
@@ -30339,30 +29869,30 @@
  },
  "tetti3": {
   "tetti": 464,
-  "oggetti": 652,
+  "oggetti": 669,
   "max": 8,
-  "vuoti": 216,
+  "vuoti": 213,
   "istogramma": {
-   "0": 216,
-   "1": 85,
-   "2": 37,
-   "3": 56,
-   "4": 43,
-   "5": 14,
-   "6": 9,
-   "7": 3,
+   "0": 213,
+   "1": 84,
+   "2": 34,
+   "3": 61,
+   "4": 44,
+   "5": 16,
+   "6": 7,
+   "7": 4,
    "8+": 1
   },
   "perEra": {
    "E3": {
     "tetti": 89,
-    "oggetti": 127,
-    "media": 1.43
+    "oggetti": 130,
+    "media": 1.46
    },
    "E0": {
     "tetti": 344,
-    "oggetti": 502,
-    "media": 1.46
+    "oggetti": 516,
+    "media": 1.5
    },
    "E2": {
     "tetti": 31,
@@ -30374,32 +29904,32 @@
   "urti": [],
   "vissuti": {
    "tetti": 464,
-   "cose": 1989,
+   "cose": 1988,
    "scene": {
-    "ombrellone": 2,
-    "ombra": 2,
-    "pranzo": 4,
-    "salotto": 2,
-    "cisterna": 6,
-    "limone": 7,
-    "orto": 18,
+    "ombrellone": 1,
+    "salotto": 4,
+    "pranzo": 2,
+    "ombra": 4,
+    "canniccio": 1,
+    "orto": 16,
     "panni": 15,
     "nonna": 42,
-    "canniccio": 1,
-    "gatti": 26,
+    "limone": 5,
+    "cisterna": 5,
+    "gatti": 28,
     "nasse": 5,
     "pescatore": 2,
     "remi": 1
    },
    "perZona": {
     "ottocento": {
-     "perTerrazzo": 3.22,
-     "perVivo": 4.65,
-     "quotaScene": 0.39
+     "perTerrazzo": 3.53,
+     "perVivo": 4.73,
+     "quotaScene": 0.38
     },
     "borgo": {
-     "perTerrazzo": 4.67,
-     "perVivo": 7.04,
+     "perTerrazzo": 4.59,
+     "perVivo": 6.79,
      "quotaScene": 0.46
     },
     "marina": {
@@ -30408,32 +29938,32 @@
      "quotaScene": 0.35
     }
    },
-   "istanze": 10,
-   "scatole": 949
+   "istanze": 8,
+   "scatole": 931
   },
-  "media": 1.41,
+  "media": 1.44,
   "verifica": {
    "vivi": 158,
    "calmi": 306,
    "perGruppi": [
-    215,
-    182,
-    67
+    212,
+    183,
+    69
    ],
    "gruppi": {
-    "bucato": 27,
-    "vasi": 127,
-    "antenna": 54,
-    "comignoli": 71,
-    "altana": 20,
+    "bucato": 23,
+    "vasi": 134,
+    "comignoli": 76,
+    "antenna": 52,
+    "altana": 19,
     "pergola": 4,
     "torretta": 12,
     "stanza": 1
    },
    "compenetrazioni": 0,
    "salite": {
-    "scale": 103,
-    "viste": 102
+    "scale": 85,
+    "viste": 84
    }
   }
  }

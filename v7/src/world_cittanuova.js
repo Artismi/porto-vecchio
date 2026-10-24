@@ -1011,7 +1011,7 @@ var World = (function () {
       add('corso', 'Corso Garibaldi', 7, 'citta', chaikin([[970, 109], [982, 118], [982, 128], [979, 143], [981, 158], [986, 174], [990, 187]], 2), { alberi: 'tigli', era: 'E3', alberiLato: -1 });
       // E3 il sottopasso Cavour: dal piazzale scende a scalini, passa sotto il rilevato e sbuca sul lotto del fuoco fra le baracche
       CITY.cavS = { x: 972, y0: 71, y1: 105 };
-      add('cavour_sotto', 'Sottopasso Cavour', 3, 'vicolo', [[972, 105]].concat(vline(972, 78, 102).reverse(), [[969, 74.5], [967, 72]]), { era: 'E3', sottopasso: true });
+      add('cavour_sotto', 'Sottopasso Cavour', 3, 'vicolo', [[972, 105]].concat(vline(972, 81, 102).reverse(), [[972, 79], [971.5, 77], [970.5, 75.3], [969, 73.7], [967, 72]])   /* [pianta] la curva verso il lungomare, non l'angolo vivo */, { era: 'E3', sottopasso: true });
       // E3 la Galleria del Mercato (coperta) dal piazzale alla tettoia, il Vico delle Carceri dal Mercato allo Scalo, il Vico dei Giardini
       add('galleria', 'Galleria del Mercato', 3, 'vicolo', vline(952, 111, 129), { era: 'E3', galleria: true });
       add('carceri', 'Vico delle Carceri', 3, 'vicolo', chaikin([[952, 157], [952, 176], [962, 185]], 1), { era: 'E3' });
@@ -2458,6 +2458,12 @@ var World = (function () {
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
         if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
     }
+    // [pianta] dove la città tocca il mare col selciato alto (la Riva della Rocca, sotto le mura) il bordo è una banchina col suo muro:
+    // prima l'ultima casella scendeva da tre metri al pelo dell'acqua come uno scivolo
+    { const SEL = new Set([T.PIAZZA, T.COB, T.WALK, T.VIA]), nR = [];
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = 1; tx < GW - 1; tx++) { const i = ty * GW + tx; if (!SEL.has(grid[i]) || zone[i] !== Z.CITTA || elev[i] < 1.1) continue;
+        if ([i - 1, i + 1, i - GW, i + GW].some(k => grid[k] === T.WATER && zone[k] === Z.MARE)) nR.push(i); }
+      nR.forEach(i => { grid[i] = T.QUAY; }); }
     // quote ai vertici dalle caselle (strade e edifici spianati): il terreno che si vede
     const vh = new Float32Array(VW * (GH + 1));
     for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) {
@@ -2617,7 +2623,8 @@ var World = (function () {
       RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + .2, P = rd.pts, n = P.length;
         for (let k = 0; k < n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
           for (let j = Math.max(0, Math.floor((Math.min(ay, by) - flat) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + flat) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - flat) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + flat) / TS)); i++) {
-            const q = j * VW + i; if (fixed[q]) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+            const q = j * VW + i; if (fixed[q] && !(rd.kind === 'vicolo' && rd.w <= 3)) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+            if (fixed[q] && d > rd.w / 2 + .3) continue;   // [pianta] il vicolo di una casella fra due case: i suoi vertici toccano tutti un muro, ma il selciato segue il profilo della via (prima restava la quota del terreno, a gradini di un metro)
             if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
@@ -2655,7 +2662,7 @@ var World = (function () {
         let sum = 0; for (let b2 = -1; b2 <= 1; b2++) for (let q = -1; q <= 1; q++) if (b2 || q) sum += vh[(j + b2) * VW + i + q];
         vh[k] += (sum / 8 - vh[k]) * a * .6;
       }
-      const S = .5;   // pendenza massima (m di salita per m di percorso): circa 26°
+      const S = .33;   // pendenza massima (m di salita per m di percorso): circa 18° ([pianta] prima 26°: fra due vertici del selciato saliva fino a un metro)
       for (let it = 0; it < 30; it++) for (let j = 1; j < GH; j++) for (let i = 1; i < GW; i++) {
         const k = j * VW + i; if (al[k] < .25) continue;
         let lo = -1e9, hi = 1e9;
@@ -2679,7 +2686,9 @@ var World = (function () {
       for (let x = 740; x <= CITY.spian0; x += 2) g0[x] = vAt(x, ry(x));
       const Rf = x => { const k = Math.round(x / 2) * 2; return Math.max((g0[k] !== undefined ? g0[k] : vAt(x, ry(x))) + .35, Rtop - .024 * Math.abs(x - C.x)); };
       POSA.Rf = Rf;
-      eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
+      const SUOLO = new Set([T.VIA, T.COB, T.PIAZZA, T.WALK, T.DIRT, T.GRASS]), accanto = (i, j) => { for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) { const tx = i + a, ty = j + b; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; if (roadW[ty * GW + tx] > 0 || (SUOLO.has(grid[ty * GW + tx]) && Math.abs((ty + .5) * TS - ry((tx + .5) * TS)) > 2.2)) return true; } return false; };   // e la strada che passa sotto il viadotto resta alla sua quota
+      // [pianta] il rilevato sta dentro la massicciata: i vertici del selciato accanto (il vicolo, lo slargo, il prato) restano alla loro quota, il muro a scarpa del binario fa il salto (prima la casella accanto saliva di tre metri in due)
+      eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
       for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
       // 2) la Via Cavour: a terra fino al sottopasso, poi la scalinata fino al piano della Via della Stazione
       const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(1, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
@@ -2687,8 +2696,9 @@ var World = (function () {
       C.p.q = Lr; C.p.opz.hRilevato = +(Rf(C.x) - Lr - .25).toFixed(2);
       eachV(C.x - 2.1, C.y0, C.x + 2.1, C.y1 - 3.4, (i, j, x, y) => setV(i, j, y <= C.ps.y ? Lr : y >= C.ps.y + len ? Htop : Lr + (Htop - Lr) * (y - C.ps.y) / len));
       // 3) il piano della stazione: il marciapiede mezzo metro sopra il ferro; il piazzale scende o sale fino alla via
-      if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; eachVL(S.p, -3, S.L + 3, -11.6, 6.4, (i, j) => setV(i, j, Sq));
-        const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
+      if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; const suVia = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, b]) => a >= 0 && b >= 0 && a < GW && b < GH && roadW[b * GW + a] > 0);   /* [pianta] la Via Alta che passa accanto resta sul suo profilo: il marciapiede della stazione le sta sopra col suo muro */
+        eachVL(S.p, -3, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });
+        const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { if (suVia(i, j)) return; const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
         const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
         [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
       // 4) il fossato della Rocca: 5 m sotto la spianata, il ponte resta in quota
@@ -2698,11 +2708,11 @@ var World = (function () {
         PEZZI.forEach(p => { if (p.rocca === 'spianata') p.q = Sp; else if (p.rocca === 'canale') { p.q = Sp; p.opz.prof = Math.round((Sp + 1.8) * 100) / 100; p.opz.pelo = Math.round(Sp * 100) / 100; } }); }
       // 4b) la Piazza del Mercato: l'ottagono scende di 3 m da ponente a levante; il basolato della tettoia sta in piano (alla quota di mezzo)
       // e attorno, sui lati dove la piazza resta più alta, un muro di sostegno; dove resta più bassa, il gradone con la scala per salirci
-      { const tt = PEZZI.find(p => p.tipo === 'tettoia_mercato'); if (tt && CITY.octa) { const [ox, oy, orr] = CITY.octa, ap = orr - 1.7, oct = (x, y) => { const dx = Math.abs(x - ox), dy = Math.abs(y - oy); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
+      { const tt = PEZZI.find(p => p.tipo === 'tettoia_mercato'); if (CITY.octa) {   /* [pianta] anche senza la tettoia (il mercato è sceso sulla spianata): la piazza resta in piano col suo muro e i suoi gradoni */ const [ox, oy, orr] = CITY.octa, ap = orr - 1.7, oct = (x, y) => { const dx = Math.abs(x - ox), dy = Math.abs(y - oy); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
         const hs = []; eachV(ox - ap, oy - ap, ox + ap, oy + ap, (i, j, x, y) => { if (oct(x, y) <= ap) hs.push(vh[j * VW + i]); }); hs.sort((a, b) => a - b); const qm = hs[Math.floor(hs.length / 2)];
         const ring = []; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ring.push(vAt(ox + Math.cos(a) * (orr - .5), oy + Math.sin(a) * (orr - .5))); }
         const lato = (x, y) => ((Math.round(Math.atan2(y - oy, x - ox) / (Math.PI / 4)) % 8) + 8) % 8, giu = k => ring[k] < qm - .5, aw = k => giu(k) ? ap - .5 : ap + .1;   // dove la piazza scende il muro sta mezzo metro dentro (la scala ci sta davanti)
-        eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); tt.q = qm;
+        eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); if (tt) tt.q = qm;
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
           const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && k % 2 === 0, ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
           g.q = +Math.min(qm, ring[k]).toFixed(2); } } }
