@@ -733,12 +733,11 @@ var Render = (function () {
   // [riva] LA PROFONDITÀ FINE NEL MARE, BLOCCO PER BLOCCO: quando un blocco di riva si costruisce, il suo pezzo delle due mappe del mare
   // (la profondità, 2 px a metro; la terra, 1 px a metro) prende la quota fine; si sfuma appena e si carica sulla scheda solo quel pezzo
   const ACQ9 = { set: null, fatti: new Set() };
-  // [riva] la sfumatura 3×3 ripetuta (passi) sui pixel segnati in R0 e su quelli entro «lar» pixel, mai sul bordo della pezza;
-  // tutti i canali da 0 a ch (la terra: grigia)
-  function sfuma9(D, w, h, R0, lar, passi, ch) {
+  // [riva] la sfumatura 3×3 ripetuta (passi) del canale rosso sui pixel segnati in R0 e su quelli entro «lar» pixel, mai sul bordo della pezza
+  function sfuma9(D, w, h, R0, lar, passi) {
     const R1 = new Uint8Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!R0[y * w + x]) continue; for (let b = -lar; b <= lar; b++) for (let a = -lar; a <= lar; a++) { const X = x + a, Y = y + b; if (X > 0 && Y > 0 && X < w - 1 && Y < h - 1) R1[Y * w + X] = 1; } }
     for (let k = 0; k < passi; k++) { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R1[y * w + x]) continue; const o = (y * w + x) * 4;
-      for (let c = 0; c <= ch; c++) { let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4 + c]; D[o + c] = Math.round(t / 9); } if (ch) D[o + 1] = D[o + 2] = D[o]; } }
+      let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[o] = Math.round(t / 9); } }
   }
   function acquaFine9(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
@@ -746,17 +745,17 @@ var Render = (function () {
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
-        D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
     if (!tocco) return;
-    sfuma9(D, w, h, R0, 3, 2, 0);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
+    sfuma9(D, w, h, R0, 3, 2);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
     A.bgx.putImageData(id, x0, y0);
     const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
     try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
     // la terra (1 px a metro)
     const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data, M0 = new Uint8Array(mw * mh);
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = MD[o + 1] = MD[o + 2] = Math.round(MD[o] * .35 + v * .65); M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
-    sfuma9(MD, mw, mh, M0, 2, 1, 1);
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
+    sfuma9(MD, mw, mh, M0, 2, 1);
     A.bx.putImageData(md, mx0, my0);
     try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
   }
@@ -767,27 +766,25 @@ var Render = (function () {
     // il sole e la luna, le luci della riva, la schiuma che va e viene sulla battigia.
     const T = G.T, W0c = M.world, SEA0 = W0c && W0c.SEA, S = 2;
     const mc = mk(G.GW * S, G.GH * S), mx = mc.getContext('2d'), sc = mk(G.GW, G.GH), sx = sc.getContext('2d'), sd = sx.createImageData(G.GW, G.GH);
-    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#fff';
-    const R9 = RIVA9(), MIN9 = .8;
-    // [riva] il fondale senza fondo: dove sotto l'acqua non c'è terreno (accanto a banchine e pontili, lontano dalla riva) e la riva fine
-    // non c'è, l'acqua resta opaca: almeno 80 cm. Si segna qui, a caselle, prima della sfumatura (dopo faceva quadrati netti di 2 m)
-    const buco9 = (tx, ty) => { if (tx < 1 || ty < 1 || tx >= G.GW - 1 || ty >= G.GH - 1 || Riva.inBanda(tx, ty)) return false; if (coastIn((tx + .5) * TS, (ty + .5) * TS) < -3) return true;
-      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const vv = gT(tx + a, ty + b); if (vv === T.QUAY || vv === T.PIER) return true; } return false; };
+    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#f00';   // R la terra, G la fascia della riva fine (in un foglio a parte, sfumata di più: il bordo della trasparenza non fa le caselle)
+    const gc9 = mk(mc.width, mc.height), gx9 = gc9.getContext('2d'); gx9.fillStyle = '#000'; gx9.fillRect(0, 0, gc9.width, gc9.height); gx9.fillStyle = '#0f0';
+    const R9 = RIVA9();   // [riva] fuori dalla fascia fine l'acqua è piena (vedi «fascia» nello shader): niente più minimo di 80 cm a caselle, faceva gli scalini
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const i = ty * G.GW + tx, v = gT(tx, ty), lake = v === T.WATER && M.zone && M.zone[i] !== (M.Z || {}).MARE, sea = v === T.PIER || v === T.WATER, o = i * 4;
+      if (R9 && Riva.inBanda(tx, ty)) gx9.fillRect(tx * S, ty * S, S, S);   // [riva] G: la fascia fine (lì sola l'acqua sottile è trasparente)
       if (R9 && W0c.quotaRiva && Riva.inBanda(tx, ty)) { const q00 = W0c.quotaRiva(tx, ty), q10 = W0c.quotaRiva(tx + 1, ty), q01 = W0c.quotaRiva(tx, ty + 1), q11 = W0c.quotaRiva(tx + 1, ty + 1);   // [riva] nella fascia la terra a mezze caselle, dalla quota (curva, non a scalini) finché il blocco fine non arriva
         for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const u = (a + .5) / S, w = (b + .5) / S; if (q00 * (1 - u) * (1 - w) + q10 * u * (1 - w) + q01 * (1 - u) * w + q11 * u * w > WL) mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
       else if (!sea) mx.fillRect(tx * S, ty * S, S, S);
-      let dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0; if (R9 && v === T.WATER && dp < MIN9 && buco9(tx, ty)) dp = MIN9;
+      let dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0;
       const bt = SEA0 && SEA0.bottom ? SEA0.bottom[i] : 0;
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0);
-    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(2px)' : 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(6px)' : 'blur(3px)';   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
-    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
+    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); if (R9) { bx.globalCompositeOperation = 'lighter'; bx.filter = 'blur(5px)'; bx.drawImage(gc9, 0, 0); bx.globalCompositeOperation = 'source-over'; } bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
@@ -813,7 +810,7 @@ var Render = (function () {
           vec2 q = vP.xz, muv = q/wsize, tuv = vec2(muv.x, 1.-muv.y);
           bool out1 = muv.x<0.||muv.x>1.||muv.y>1.||muv.y<0.;
           vec4 S = out1 ? vec4(1.,0.,0.,1.) : texture2D(sea, tuv);
-          float land = out1 ? 0. : texture2D(mask, tuv).r;
+          vec4 MK = out1 ? vec4(0.) : texture2D(mask, tuv); float land = MK.r, fascia = MK.g;
           float dep = S.r*S.r*16. + (out1 ? 20. : 0.), wind = clamp(.25 + wx.w*.75 + wx.y*.15, 0., 1.);
           // onde: quattro treni d'onda che vanno sottovento, più una grana fine; sotto riva si smorzano
           vec3 w = vec3(0.);
@@ -831,8 +828,9 @@ var Render = (function () {
           vec3 rock = mix(vec3(.20,.19,.17), vec3(.40,.37,.32), n2(bq*.8)) * (.75 + .5*n2(bq*3.1));
           vec3 posi = mix(vec3(.05,.11,.07), vec3(.11,.19,.10), n2(bq*1.6) * n2(bq*5.3 + time*.2));
           vec3 mud = mix(vec3(.18,.17,.12), vec3(.27,.25,.18), n2(bq*.6));
-          float rockK = smoothstep(.62, .85, S.g), mudK = smoothstep(.22, .4, S.g) * (1. - rockK);
-          vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b) * (1. - S.g));
+          float bn9 = RIVA9 > .5 ? (n2(bq * .21) * .65 + n2(bq * .83) * .35 - .5) * .55 : 0.;   // [riva] i bordi del fondale (roccia, fango, posidonia) increspati: la mappa è a caselle, la soglia stretta le rifaceva a scalini
+          float rockK = smoothstep(.62, .85, S.g + bn9 * .6), mudK = smoothstep(.22, .4, S.g + bn9 * .4) * (1. - rockK);
+          vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b + bn9) * (1. - S.g));
           bed *= (.35 + .65*sunK) * dayK + .02;
           bed += vec3(1.,.96,.86) * caust(bq*.8) * .5 * exp(-dep*.3) * sunK * (RIVA9 > .5 ? smoothstep(.8, 2.6, dep) : 1.);   // [riva] nell'acqua sottile si vede la sabbia vera: niente caustiche finte sopra
           vec3 Tr = exp(-vec3(.42,.13,.09) * (dep + .9) * (1.3 + mudK * 1.6));   // nel porto l'acqua è torbida; [arcipelago] un velo minimo: anche a 30 cm resta turchese, mai sabbia asciutta
@@ -873,6 +871,7 @@ var Render = (function () {
             alA = mix(.1, 1., smoothstep(.0, .75, dep));   // l'acqua sottile è trasparente
             c = mix(c, vec3(.93, .96, .97) * (.3 + .7 * dayK), clamp(pizzo * .9 + resto, 0., 1.));
             alA = max(alA, clamp(pizzo * .9 + resto, 0., 1.) * .95);
+            alA = mix(1., alA, smoothstep(.5, .95, fascia));   // fuori dalla fascia fine sotto non c'è la sabbia vera: l'acqua resta piena (niente caselle del fondale a scalini)
             foam *= smoothstep(.05, .5, dep);   // la schiuma di prima (a caselle) si spegne dove c'è la riva vera
           }
           c = mix(c, vec3(.93,.96,1.) * (.25 + .75*dayK), clamp(foam, 0., 1.) * .85);
@@ -7949,6 +7948,11 @@ var Render = (function () {
     const FIN = new Map();
     const PO = new Map(), KP = new Set(['panchina', 'pensilina', 'fermata', 'dehors', 'edicola', 'banco_pesce', 'mercato', 'fila', 'cypher', 'carico']);
     try { if (typeof Posti !== 'undefined') Posti.all().forEach(p => { if (!KP.has(p.k)) return; const kk = Math.floor(p.x / 4) * 8192 + Math.floor(p.y / 4); let a = PO.get(kk); if (!a) PO.set(kk, a = []); a.push(p); }); } catch (e) { }
+    // [pulizia] tutte le vie (non gli sterrati): per gli ostacoli sulla carreggiata e sui marciapiedi
+    const VTT = new Map(); (M.roads || []).forEach(rd => { if (!rd.pts || rd.kind === 'sterrato' || rd.rect) return; for (let k = 0; k < rd.pts.length - 1; k++) { const q = [rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd];
+      for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VTT.get(kk); if (!a) VTT.set(kk, a = []); a.push(q); } } });
+    const viaVicina = (x, z) => { let best = null; for (const q of VTT.get(Math.floor(x / 8) * 4096 + Math.floor(z / 8)) || []) { const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - q[0]) * dx + (z - q[1]) * dz) / L2, 0, 1), px = q[0] + dx * t, pz = q[1] + dz * t, d = Math.hypot(px - x, pz - z), hw = (q[4].w || 4) / 2;
+      if (d - hw > 3.5 || (best && d - hw >= best.d - best.hw)) continue; const L = Math.sqrt(L2), n = [-dz / L, dx / L]; best = { rd: q[4], kind: q[4].kind, hw, d, s: (x - px) * n[0] + (z - pz) * n[1], n, u: [dx / L, dz / L] }; } return best; };
     const VIC = []; (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) VIC.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w || 2]); });
     const VH = new Map(); VIC.forEach(q => { for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VH.get(kk); if (!a) VH.set(kk, a = []); a.push(q); } });
     // le voci ESTERNE: quello che altri filoni posano dopo, dai loro piani (la segnaletica: pali, bandiere, targhe, pannelli; le vie
@@ -7972,7 +7976,7 @@ var Render = (function () {
       Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
     X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      viaVicina, swH: window.Pavimenti && typeof Pavimenti.swH === 'function' ? (x, z) => { try { return Pavimenti.swH(x, z); } catch (e) { return null; } } : null, R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
       // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
       // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza

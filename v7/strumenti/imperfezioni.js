@@ -20,13 +20,15 @@ const P = { storta: [], scalino: [], spigolo: [], zigzag: [], salto: [], gradino
 const seg = (rd, x, y) => { let best = null; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)), d = Math.hypot(ax + dx * t - x, ay + dy * t - y); if (!best || d < best.d) best = { d, a: Math.atan2(dy, dx), k, px: ax + dx * t, py: ay + dy * t }; } return best; };
 // ---- 1. le case storte e gli scalini sul fronte ----
 const fronte = new Map();
-B.forEach((b, i) => { if (b.pezzo || b.military) return; const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; if (!inC(cx, cy)) return;
-  let best = null; for (const rd of R) { if (!CITTA.has(rd.kind)) continue; const s = seg(rd, cx, cy); if (!s) continue; const half = Math.max(b.w, b.h) * TS / 2; if (s.d - rd.w / 2 - half > 4) continue; if (!best || s.d < best.s.d) best = { rd, s }; }
+// [pulizia] il lotto orientato della pianta (b.cx, b.cy, b.lw, b.ld in metri, b.rot): col ripiego a caselle se mancano
+const lotto = b => ({ cx: b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy: b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw: b.lw !== undefined ? b.lw : b.w * TS, ld: b.ld !== undefined ? b.ld : b.h * TS });
+B.forEach((b, i) => { if (b.pezzo || b.military) return; const Lt = lotto(b), cx = Lt.cx, cy = Lt.cy; if (!inC(cx, cy)) return;
+  let best = null; for (const rd of R) { if (!CITTA.has(rd.kind)) continue; const s = seg(rd, cx, cy); if (!s) continue; const half = Math.max(Lt.lw, Lt.ld) / 2; if (s.d - rd.w / 2 - half > 4) continue; if (!best || s.d < best.s.d) best = { rd, s }; }
   if (!best) return; const a = (b.rot || 0), dev = deg(w90(a - best.s.a));   // la casa gira di b.rot (in senso del mondo), la via ha la sua direzione
   if (Math.abs(dev) > 2 && Math.abs(dev) < 43) P.storta.push([Math.round(cx), Math.round(cy), b.id || i, best.rd.id, +dev.toFixed(1)]);
   // il fronte: la distanza del filo della casa dall'asse della via, per lato
   const nx = -Math.sin(best.s.a), ny = Math.cos(best.s.a), side = Math.sign((cx - best.s.px) * nx + (cy - best.s.py) * ny) || 1;
-  const hx = b.w * TS / 2, hy = b.h * TS / 2, ca = Math.cos(b.rot || 0), sa = Math.sin(b.rot || 0), reach = Math.abs(nx * ca + ny * sa) * hx + Math.abs(-nx * sa + ny * ca) * hy,   /* [pianta] il filo della casa girata (b.rot), non quello della sua pianta a caselle */ d = Math.abs((cx - best.s.px) * nx + (cy - best.s.py) * ny) - reach;
+  const hx = Lt.lw / 2, hy = Lt.ld / 2, ca = Math.cos(b.rot || 0), sa = Math.sin(b.rot || 0), reach = Math.abs(nx * ca + ny * sa) * hx + Math.abs(-nx * sa + ny * ca) * hy,   /* [pianta] il filo della casa girata (b.rot), non quello della sua pianta a caselle */ d = Math.abs((cx - best.s.px) * nx + (cy - best.s.py) * ny) - reach;
   const key = best.rd.id + (side > 0 ? '+' : '-'); let L = fronte.get(key); if (!L) fronte.set(key, L = []); L.push({ b, i, t: (cx - best.s.px) * Math.cos(best.s.a) + (cy - best.s.py) * Math.sin(best.s.a) + best.s.k * 1e4, d, cx, cy, ext: Math.abs(Math.cos(best.s.a)) * hx + Math.abs(Math.sin(best.s.a)) * hy, rd: best.rd.id }); });
 fronte.forEach(L => { L.sort((p, q) => p.t - q.t); for (let k = 1; k < L.length; k++) { const p = L[k - 1], q = L[k]; if (Math.hypot(p.cx - q.cx, p.cy - q.cy) > p.ext + q.ext + 1.5) continue; const dd = Math.abs(p.d - q.d); if (dd > .15 && dd < 1.6) P.scalino.push([Math.round((p.cx + q.cx) / 2), Math.round((p.cy + q.cy) / 2), (p.b.id || p.i) + '|' + (q.b.id || q.i), q.rd, +dd.toFixed(2)]); } });
 // ---- 2. gli spigoli delle vie e i sentieri a zigzag ----

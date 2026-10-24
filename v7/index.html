@@ -29002,7 +29002,7 @@ var Percorsi = (function () {
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < ((ex && ex.minDD) || 14)) return;   /* [cucitura] da un'altra parte: 14 m (un isolato dell'Ottocento) */
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
           if (ex && ex.maxPassi && pass.length > ex.maxPassi) return;
-          const crema = pass.filter(crema4).length; if (!crema) return;
+          const crema = pass.filter(crema4).length; if (!crema && !(ex && ex.crema0)) return;   /* [tetti4] in ultimo anche un giro di soli tetti attaccati */
           let Lr = hyp(L.tx - cen(L.bi)[0], L.ty - cen(L.bi)[1]); let px = L.tx, py = L.ty; pass.forEach(e => { Lr += hyp(e.x - px, e.y - py); px = e.x; py = e.y; }); Lr += hyp(M.tx - px, M.ty - py);
           const s = Lr + crema * 12 + dd * .5; if (!best || s > best.s) best = { s, L, M, pass, Lr, crema }; });
       });
@@ -29012,7 +29012,10 @@ var Percorsi = (function () {
       const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo || !(pts[0][0] > BORGO.x0 && pts[0][0] < BORGO.x1 && pts[0][1] > BORGO.y0 && pts[0][1] < BORGO.y1), sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
       CIRCUITI.push(c); return c;
     }
-    ZONE.forEach(Z => cerca(Z, i => inZ(Z, i)));
+    // [tetti4] se il giro della zona non si chiude (un legame che manca, una scala che non c'è più), si riprova: le scale più vicine
+    // (10 m), poi la zona allargata di 15 m per parte. La rete cambia con la pianta; il giro la segue
+    ZONE.forEach(Z => { const Zl = Object.assign({}, Z, { x0: Z.x0 - 15, x1: Z.x1 + 15, y0: Z.y0 - 15, y1: Z.y1 + 15 });
+      cerca(Z, i => inZ(Z, i)) || cerca(Z, i => inZ(Z, i), { minDD: 10 }) || cerca(Z, i => inZ(Zl, i), { maxPassi: 18 }); });
     // [tetti4] I GIRI NUOVI: ognuno attorno a un nodo della rete (una piazzetta, un sagrato, uno scalo), fra le case delle sue epoche;
     // nessuna coordinata scritta: cambia la pianta, il giro si rifà attorno al suo nodo
     { const ERE4 = ['E0', 'E2', 'E3'], par = new Map(), find = a => { while (par.get(a) !== a) a = par.get(a); return a; };
@@ -29021,20 +29024,30 @@ var Percorsi = (function () {
       // [tetti4] prima il pezzo con più tetti che dai giri fatti non si raggiungono (case girate comprese): ogni giro nuovo copre il più possibile
       const raggiunti = () => { const S = new Set(), Q = []; CIRCUITI.filter(c => c.k === 'tetti').forEach(c => c.edifici.forEach(i => { if (!S.has(i)) { S.add(i); Q.push(i); } }));
         for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
-      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      const restano = [...pezzi.values()].filter(P => P.length >= 6), presi4 = new Set(), provati = new Set(), prove4 = new Map(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      let MINP4 = 8;   // [tetti4] i pezzi da otto tetti scoperti; se i giri restano meno di otto, anche quelli da sei
       for (;;) {
         if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
-        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= 8).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
-        if (!cand4.length) break; const P = cand4[0].P; provati.add(P);
-        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }); if (!c) continue;
+        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= MINP4).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
+        if (!cand4.length) { if (MINP4 > 6 && CIRCUITI.filter(c => c.k === 'tetti').length < 8) { MINP4 = 6; continue; } break; } const P = cand4[0].P; prove4.set(P, (prove4.get(P) || 0) + 1); if (prove4.get(P) >= 3) provati.add(P);   // [tetti4] un pezzo grande può avere più giri, finché ha otto tetti scoperti (tre prove)
+        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 55, { maxPassi: 20, saliIn: S, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true });   /* [tetti4] se non si chiude: scale a 9 m, il giro più lungo, le case attorno fino a 55 m */ if (!c) { provati.add(P); continue; }
         { const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], ES = new Set(c.edifici), terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && (S.has(L.bi) || ES.has(L.bi)) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
-          if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
+          if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); provati.add(P); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
         const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
         const A = GIRI4.filter(q => !presi4.has(q.id) && ancora4(q.ancora)).map(q => ({ q, d: hyp(ancora4(q.ancora)[0] - g[0], ancora4(q.ancora)[1] - g[1]) })).sort((u, v) => u.d - v.d)[0];
         if (A && A.d < 80) { presi4.add(A.q.id); c.id = A.q.id; c.nome = A.q.nome; }
         else { const n = NODI.slice().sort((u, v) => hyp(u.x - g[0], u.y - g[1]) - hyp(v.x - g[0], v.y - g[1]))[0]; if (n) { c.id = 'giro_' + n.id + '_' + c.edifici[0]; c.nome = 'Il giro dei tetti · ' + n.nome; TEMI4[c.id] = { tema: 'i tetti attorno a ' + n.nome, premio: 'belvedere', altro: 'tesoro' }; } }   // [tetti4] finite le ancore, il nome del nodo più vicino
         { const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!(A && A.d < 80 && A.q.fuoriBorgo) || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }   // nel borgo se ci si sale nel borgo
-      } }
+      }
+      // [tetti4] se i giri restano meno di otto (la pianta ha staccato dei pezzi), un giro attorno a ogni nodo libero: le case vecchie
+      // entro 45 m dall'ancora, qualunque pezzo, le scale a 9 m, anche di soli tetti attaccati; sempre con la terza scala
+      for (const q of GIRI4) { if (CIRCUITI.filter(c => c.k === 'tetti').length >= 8) break; if (presi4.has(q.id) || !ancora4(q.ancora)) continue; const [ax, ay] = ancora4(q.ancora);
+        const S = new Set(); BB.forEach((b, i) => { if (ERE4.includes(b.era) && !usati.has(i) && hyp(cen(i)[0] - ax, cen(i)[1] - ay) < 45) S.add(i); }); if (S.size < 6) continue;
+        const Z = { id: q.id, nome: q.nome }, c = cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true }); if (!c) continue;
+        const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && S.has(L.bi) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
+        if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); continue; }
+        presi4.add(q.id); const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!q.fuoriBorgo || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }
+    }
     // [tetti4] il tema e il premio di ogni giro, le altre vie su e giù, i rami verso il premio
     vieRami4(TT, BB, E, cen, passOk, passo4);
     // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
@@ -31584,9 +31597,11 @@ var Game = (function () {
         if (!n.warned) { n.warned = true; n.warnT = st.clock; n.face = Math.atan2(p.y - n.y, p.x - n.x); say(st, n, 'Zona militare della Tutela! Torna indietro!', 3); }
         else if (dc < C.r * .7 || st.clock - n.warnT > 9) aggroFaction(st, n.faction); }
       if (n.aggro && dc > C.r + 150) { n.aggro = false; n.warned = false; } }
-    // i Marsigliesi avvisano chi si avvicina alla valigetta
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 11 && sees) {
+    // i Marsigliesi avvisano chi si avvicina alla valigetta. [eventi] Solo lì, al Pontile: mentre vanno e vengono dal Miramare passano
+    // per la calata, e chi stava fermo a farsi gli affari suoi si prendeva l'avviso e poi una raffica di mitra
+    const caseP = n.faction === 'marsiglia' && !n.aggro && isNight(st) && PLACES.pontile && dist(p.x, p.y, PLACES.pontile.x, PLACES.pontile.y) < 18;
+    if (caseP && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
+    if (caseP && d < 11 && sees) {
       if (!n.warned) { n.warned = true; say(st, n, 'Hé! Toi! Reste loin. Stai lontano!', 3); }
       else if (d < 6.5 || (p.cur !== 'pugni' && p.cur !== 'molotov' && d < 10)) { aggroFaction(st, 'marsiglia'); }
     }
@@ -32740,14 +32755,14 @@ var Game = (function () {
     st.fires = st.fires.filter(f => {
       if (st.clock > f.until) return false;
       if (f.calmo) return true;   // [vita2] il bidone acceso fra le baracche: ci si scalda, non brucia nessuno (le fiamme stanno nel bidone)
-      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; } });
+      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; n.burnBy = f.owner || 'env'; } });   // [eventi] chi brucia sa chi ha acceso il fuoco
       const p = st.player; if (!p.vehicle && dist(p.x, p.y, f.x, f.y) < f.r && st.clock - (p.fireT || -99) > .5) { p.fireT = st.clock; damagePlayer(st, 9, 0, 'fuoco'); }
       st.vehicles.forEach(v => { if (!v.wreck && !v.hidden && dist(v.x, v.y, f.x, f.y) < f.r + VK[v.kind].r) damageVehicle(st, v, 30 * dt, f.owner); });
       return true;
     });
     st.npcs.forEach(n => {
       if (n.burn > 0 && !n.dead) {
-        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, 'player', n.face + Math.PI, 'pugni'); }
+        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, n.burnBy || 'env', n.face + Math.PI, 'pugni'); }   // [eventi] la colpa è di chi ha acceso il fuoco (prima sempre del giocatore: una bombola urtata da un'auto del traffico vicino all'osteria metteva mezzo quartiere e i Marsigliesi contro di te)
         if (!n.faction && !n.cop) { n.panic = 3; n.fleeFrom = { x: n.x - Math.cos(n.face), y: n.y - Math.sin(n.face) }; }
       }
     });
@@ -32812,6 +32827,7 @@ var Game = (function () {
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
       if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.guida && v.rider === 'npc' && !v.traffic) continue;   // [vievive] lo guida vievive.js (l'autobus della linea, i motorini delle vie minori)
+      if (v.dpath && !v.traffic && typeof v.rider === 'string' && v.rider.startsWith('npc:')) continue;   // [eventi] lo guida azioni.js (driveStep: lo porta lui lungo la strada, a 35-40 km/h); prima rotolava anche da solo con quella velocità e falciava i pedoni ('env', senza colpa di nessuno). Chi gli è davanti lo scansa (pushOutOfVehicles)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
@@ -37355,6 +37371,7 @@ var Azioni = (function () {
       v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
       if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }
@@ -49128,7 +49145,14 @@ var Tetti = (function () {
   const STEP = .65, SAFE = 4.5, CLIMB_V = 1.7; // gradino che si sale camminando, caduta senza danni, velocità sulla scala (m/s)
   const inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
   const tileH = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return inb(tx, ty) ? EL[ty * GW + tx] : 0; };
-  const bAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!inb(tx, ty)) return -1; const i = BI[ty * GW + tx]; return i >= 0 && B[i] ? i : -1; };
+  // [tetti4] col lotto libero (girato, o col centro e le misure suoi) la casa sotto un punto si legge dal lotto, non dalla casella: le
+  // caselle sono l'impronta approssimata, e fra due lotti attaccati possono lasciare un buco o sporgere. Senza lotti liberi: la casella.
+  let LIB4 = null, SEP4 = 9;
+  const bAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (!inb(tx, ty)) return -1; const i = BI[ty * GW + tx];
+    const L = LIB4 && LIB4.get(ty * GW + tx); if (L && !(i >= 0 && B[i] && !libero4(B[i]))) { for (const q of L) if (dentro4(B[q], x, y, 0)) return q;   // la casella di una casa sulla pianta resta sua
+      for (const q of L) if (dentro4(B[q], x, y, -.25)) return q;   // la gronda: fra due lotti un varco fino a 50 cm si scavalca
+      if (i >= 0 && B[i]) return -1; }
+    return i >= 0 && B[i] ? i : -1; };
 
   // ---------------- LA QUOTA DEI TETTI ----------------
   // la regola dei piani (prima che la grafica misuri il modello)
@@ -49245,8 +49269,11 @@ var Tetti = (function () {
       const d = DOOR(b), front = frontOf(b), cand = [];
       sidesOf(b).forEach(sd => {
         for (let k = 0; k < sd.n; k++) {
-          const [tx, ty] = sd.tile(k); if (!inb(tx, ty)) continue;
-          if (d && Math.max(Math.abs(tx - d[0]), Math.abs(ty - d[1])) <= 1) continue;   // non davanti alla porta
+          let [tx, ty] = sd.tile(k);
+          if (libero4(b)) { const [wx1, wy1] = toW4(b, ...muroL4(b, sd, k)), [nx1, ny1] = giraV4(rotC4(b), ...sd.out); tx = Math.floor((wx1 + nx1 * .7) / TS); ty = Math.floor((wy1 + ny1 * .7) / TS);   // [tetti4] il piede davanti al muro del lotto
+            if (d && hyp(wx1 + nx1 * .55 - (d[0] + .5) * TS, wy1 + ny1 * .55 - (d[1] + .5) * TS) < 2.6) continue; }
+          else if (d && Math.max(Math.abs(tx - d[0]), Math.abs(ty - d[1])) <= 1) continue;   // non davanti alla porta
+          if (!inb(tx, ty)) continue;
           if (used.has(ty * GW + tx)) continue;
           const other = BI[ty * GW + tx];
           let foot = -1;
@@ -49285,10 +49312,16 @@ var Tetti = (function () {
         if (libero4(b)) { const [lx0, ly0] = muroL4(b, c.sd, c.k); [wx, wy] = toW4(b, lx0, ly0); [ox, oy] = giraV4(rot, ox, oy);   // [tetti4] il muro del lotto (girato, o col centro suo)
           const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
           if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
+        if (LIB4 && c.foot < 0 && bAt(wx + ox * .55, wy + oy * .55) >= 0) { got.pop(); used.delete(c.ty * GW + c.tx); continue; }   // [tetti4] il piede nel lotto girato di un vicino: no
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
       }
     });
   }
+  // le caselle toccate da ogni lotto libero (col margine di una casella): lì bAt guarda il lotto
+  function rifaiLib4() { const M = new Map(); B.forEach((b, bi) => { if (!b || b.lighthouse || b.__tierOf || !libero4(b)) return; const L = lotto4(b), R = hyp(L.lw, L.ld) / 2;
+      for (let ty = Math.floor((L.cy - R) / TS) - 1; ty <= Math.floor((L.cy + R) / TS) + 1; ty++) for (let tx = Math.floor((L.cx - R) / TS) - 1; tx <= Math.floor((L.cx + R) / TS) + 1; tx++) { if (!inb(tx, ty)) continue; const k = ty * GW + tx; (M.get(k) || M.set(k, []).get(k)).push(bi); } });
+    LIB4 = M.size ? M : null; }
+  rifaiLib4();
   buildLadders();
 
   // ---------------- [tetti2] LE PASSERELLE: assi di legno sui vicoli larghi ----------------
@@ -49299,11 +49332,19 @@ var Tetti = (function () {
   const PLANKS = [], PCELL = new Map();
   // [tetti4] l'impronta della passerella (col margine di 60 cm per parte, le gronde) tocca solo case col piano dei tetti: sopra un palazzo,
   // una chiesa o un pezzo grande la quota del tetto non si conosce e la passerella non si mette
-  const sgombra4 = P => { for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+  // [tetti4] LA TERZA CASA: sotto l'impalcato (teste comprese) nessun'altra casa, letta dal suo lotto (b.cx, b.cy, b.lw, b.ld, b.rot) e non
+  // dalle caselle: regge se [pianta] sposta una casa (salti di terreno, pendii, lotti orientati) senza ristampare la pianta a caselle
+  const terza4 = P => { const mx = P.x0 + P.ox * P.L / 2, my = P.y0 + P.oy * P.L / 2, R0 = P.L / 2 + P.hw + .2;
+    const vic = []; B.forEach((b, q) => { if (!b || q === P.a || q === P.b || b.__tierOf || b.lighthouse) return; const L = lotto4(b); if (hyp(L.cx - mx, L.cy - my) <= R0 + hyp(L.lw, L.ld) / 2) vic.push(b); });
+    if (!vic.length) return false;
+    for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; if (vic.some(b => dentro4(b, x, y, .02))) return true; }
+    return false; };
+  const sgombra4 = P => { if (terza4(P)) return false; for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!inb(tx, ty)) return false;
-    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */   // [tetti4] gli spigoli delle case girate vicine
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !libero4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */
+      if ((s2 < P.s1 - .05 || s2 > P.s2 + .05) && !dentro4(B[q], x, y, 0) && roofRule(B[q]) <= Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - .3) continue;   // [tetti4] sopra le teste, la gronda di un vicino girato più basso sta sotto le assi   // [tetti4] gli spigoli delle case girate vicine
       if ((!conPiano4(B[q]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[q]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95)) return false; }   /* accanto, solo chi è più alto e vicino toglie la passerella */
-    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && ((!conPiano4(B[o]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95))) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && Math.abs(t) <= P.hw + .6 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
+    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && !libero4(B[o]) && ((!conPiano4(B[o]) && Math.abs(t) <= P.hw + .6 && !(SEP4 < 4 && Math.abs(t) > P.hw + .1 && roofRule(B[o]) < Math.min(roofRule(B[P.a]), roofRule(B[P.b])) - 1.5)) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95))) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && Math.abs(t) <= P.hw + .6 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
   const conPiano4 = b => !!(b && b.era && b.era !== 'E7' && !b.shack && !b.pezzo && !b.lighthouse && !b.kiosk && !b.__tierOf);   // [tetti4] come ok3 di piano3
   const PIN = 1.5, PHW = .5;   // quanto entra nel tetto la rampa, mezza larghezza delle assi
   function buildPlanks() {
@@ -49495,6 +49536,7 @@ var Tetti = (function () {
     PLANKS.forEach(P => passi.push([(P.wa[0] + P.wb[0]) / 2, (P.wa[1] + P.wb[1]) / 2]));
     const mettiC = (C, sep) => { for (const k of C.ks) { const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
     const mettiK = (C, kk, sep) => {
+      SEP4 = sep;   // [tetti4] per ricucire un pezzo staccato (a meno di 4 m da un altro passaggio) le regole si allargano un poco
       const [wx, wy] = C.sd.wall(kk), [ox, oy] = C.sd.out;
       if ((per.get(C.a) || 0) >= 3 || (per.get(C.b) || 0) >= 3) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'per']), 'per');
       if (C.tipo === 'scaletta') {   // sul muro della casa alta (c), il piede sul tetto della bassa (b): out va da c verso b
@@ -49532,16 +49574,18 @@ var Tetti = (function () {
     // (la faccia d'entrata al più 35° di sbieco). Le teste entrano nelle due case quanto ci stanno (fino a 1,5 m, 62 cm dal muro di là); il
     // pianerottolo sul capo di b è più lungo quanto è sbieco l'ingresso. Sotto l'impalcato, sopra il vicolo, nessuna casa; nelle teste solo la sua.
     const obliqua4 = (C, kk, sep) => {
-      const A = B[C.a], Bb = B[C.b], [w0x, w0y] = muroL4(A, C.sd, kk), [wx, wy] = toW4(A, w0x, w0y), nA = giraV4(rotC4(A), C.sd.out[0], C.sd.out[1]);
+      const A = B[C.a], Bb = B[C.b], [w0x, w0y] = muroL4(A, C.sd, kk); let [wx, wy] = toW4(A, w0x, w0y); const nA = giraV4(rotC4(A), C.sd.out[0], C.sd.out[1]);
       // la faccia di b che guarda a: delle quattro normali girate, la più opposta a quella di a
       const nB = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([u, v]) => giraV4(rotC4(Bb), u, v)).sort((p, q) => (p[0] * nA[0] + p[1] * nA[1]) - (q[0] * nA[0] + q[1] * nA[1]))[0];
       const bis = (() => { const u = nA[0] - nB[0], v = nA[1] - nB[1], l = hyp(u, v) || 1; return [u / l, v / l]; })();
       let ultimo = 'sbieco';
-      for (const d of [nA, [-nB[0], -nB[1]], bis]) { const r = prova(d); if (r === true) return true; ultimo = r; }
+      // [tetti4] sul muro stretto (fino a tre caselle) si prova anche il mezzo del muro: la testa larga un metro non ci sta vicino allo spigolo
+      const mezzo = C.sd.n <= 3 ? toW4(A, ...muroL4(A, { f: C.sd.f, n: 1 }, 0)) : null;
+      for (const w of mezzo ? [[wx, wy], mezzo] : [[wx, wy]]) { [wx, wy] = w; for (const d of [nA, [-nB[0], -nB[1]], bis]) { const r = prova(d); if (r === true) return true; ultimo = r; } }
       return (DBG4 && DBG4.push([C.a, C.b, C.tipo, ultimo]), false);
       // una retta per il punto del muro di a nel verso d: dove esce da a, dove entra in b, quanto di sbieco
       function prova([ox, oy]) {
-        const px0 = wx - ox * 100, py0 = wy - oy * 100, rA = raggio4(A, px0, py0, ox, oy), rB = raggio4(Bb, px0, py0, ox, oy), c35 = Math.cos(35 * Math.PI / 180);
+        const px0 = wx - ox * 100, py0 = wy - oy * 100, rA = raggio4(A, px0, py0, ox, oy), rB = raggio4(Bb, px0, py0, ox, oy), c35 = Math.cos((SEP4 < 4 ? 45 : 35) * Math.PI / 180);
         if (!rA || !rB || rB.tin < rA.tout + .1 || rB.tin - rA.tout > 8.5) return 'sbieco';
         const rA2 = raggio4(A, px0 + ox * 300, py0 + oy * 300, -ox, -oy); if (!rA2) return 'sbieco';
         const cosA = rA2.cos, cosB = rB.cos; if (cosA < c35 || cosB < c35) return 'sbieco';
@@ -49554,11 +49598,13 @@ var Tetti = (function () {
         if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return '9m';
         if (lad0.some(([x, y]) => hyp(x - ax, y - ay) < (sep < 4 ? 1.1 : 1.8) || hyp(x - P.wb[0], y - P.wb[1]) < (sep < 4 ? 1.1 : 1.8))) return 'scala vicina2';
         // le teste dentro la loro casa (lontano dai parapetti di fianco), l'impalcato sopra il vuoto, accanto nessuno più alto (di una casa senza piano, 60 cm d'aria)
+        if (terza4(P)) return 'terza';   // [tetti4]
+        const mA4 = .42, mB4 = .42;   // le teste a 42 cm dai muri di fianco (il parapetto e la copertina)
         const hmin = Math.min(roofRule(A), roofRule(Bb));
         for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-lw - .95, -lw - .6, -lw - .3, -lw, -lw / 2, 0, lw / 2, lw, lw + .3, lw + .6, lw + .95]) {
           const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, sotto = Math.abs(t) <= lw + .01;
-          if (sotto && s2 <= P.s1 - P.margA && !dentro4(A, x, y, .42)) return 'testa a';
-          if (sotto && s2 >= P.s2 + P.margB && !dentro4(Bb, x, y, .42)) return 'testa b';
+          if (sotto && s2 <= P.s1 - P.margA && !dentro4(A, x, y, mA4)) return 'testa a';
+          if (sotto && s2 >= P.s2 + P.margB && !dentro4(Bb, x, y, mB4)) return 'testa b';
           if (sotto && s2 > P.s1 + .05 && s2 < P.s2 - .05 && (dentro4(A, x, y, .02) || dentro4(Bb, x, y, .02))) return 'vicolo';
           const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
           for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const o = BI[(ty + j) * GW + tx + i]; if (o < 0 || o === C.a || o === C.b || !B[o]) continue;
@@ -49584,19 +49630,29 @@ var Tetti = (function () {
   // budello, lontane dalla porta, staccate dieci metri dalle altre scale del pezzo.
   function salite4(find, lad0, passi) {
     const pezzi = new Map(); B.forEach((b, i) => { if (!ok4(b)) return; const r = find(i); (pezzi.get(r) || pezzi.set(r, []).get(r)).push(i); });
-    RETE4.salite = [];
+    RETE4.salite = []; const no4 = (bi, r) => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
     pezzi.forEach(P => {
       if (P.length < 5) return; const S = new Set(P), terra = () => LADDERS.filter(L => L.footB < 0 && !L.camm && S.has(L.bi));
       const voglio = Math.min(5, 3 + Math.floor(P.length / 30));
       const lontane = () => { const T1 = terra(); let m = 0; T1.forEach(a => T1.forEach(c => { m = Math.max(m, hyp(a.fx - c.fx, a.fy - c.fy)); })); return m; };   // [cucitura] un giro sale e scende a 18 m almeno: due salite lontane
       for (let giro = 0; giro < 8 && (terra().length < voglio || (P.length >= 20 && lontane() < 24)); giro++) {
         let best = null; const T0 = terra(), largo = giro >= 6 || (giro >= 1 && T0.length === 0);   // [cucitura] il pezzo che non ha altre salite: anche nel vicolo di una casella, purché la scala si veda
-        P.forEach(bi => { const b = B[bi], d = DOOR(b); if (libero4(b)) return;   // [tetti4] la casa girata ha le scale di buildLadders
+        P.forEach(bi => { const b = B[bi], d = DOOR(b);
+          if (libero4(b)) { sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E') return; const [ox, oy] = giraV4(rotC4(b), ...sd.out);   // [tetti4] la casa girata (o col lotto suo): la salita sul muro del lotto
+              for (let k = 0; k < sd.n; k++) { const [wx, wy] = toW4(b, ...muroL4(b, sd, k)), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+                if (bAt(fx, fy) >= 0 || !G.walkM(fx, fy) || !G.walkM(wx + ox * 2.2, wy + oy * 2.2) || (bAt(wx + ox * 2.2, wy + oy * 2.2) >= 0 && !largo) || bAt(tx2, ty2) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi) { no4(bi, 'budello'); continue; }
+                if (d && hyp(fx - (d[0] + .5) * TS, fy - (d[1] + .5) * TS) < 1.6) { no4(bi, 'porta'); continue; }
+                if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no4(bi, 'vicina'); continue; }
+                if (coperta(wx, wy, ox, oy)) { no4(bi, 'coperta'); continue; } if (!scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b))) { no4(bi, 'nonvista'); continue; }
+                const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no4(bi, '10m'); continue; }
+                const s = Math.min(dmin, 40) + (k === 0 || k === sd.n - 1 ? 2 : 0);
+                if (!best || s > best.s) best = { s, bi, sd, k, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2 }; } }); return; }
           sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E') return; const [ox, oy] = sd.out;
             const no = r => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
             for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k); if (!inb(tx, ty) || BI[ty * GW + tx] >= 0 || !G.walkT(tx, ty) || !G.walkT(tx + ox, ty + oy) || (BI[(ty + oy) * GW + tx + ox] >= 0 && !largo)) { no('budello'); continue; }
               if (d && Math.abs(tx - d[0]) + Math.abs(ty - d[1]) < 1) { no("porta"); continue; }   // accanto alla porta va bene (la porta è larga un metro)
               const [wx, wy] = sd.wall(k), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+              if (LIB4 && bAt(fx, fy) >= 0) { no('budello'); continue; }   // [tetti4] il piede nel lotto girato di un vicino
               if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no('vicina'); continue; }
               if (coperta(wx, wy, ox, oy)) { no('coperta'); continue; } if (!scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b))) { no('nonvista'); continue; }
               const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no('10m'); continue; }
@@ -49668,19 +49724,30 @@ var Tetti = (function () {
     // [tetti4] i lotti liberi: le case vicine anche dove l'impronta delle caselle lascia un buco (il contatto si cerca poi sui muri del lotto)
     B.forEach((b, bi) => { if (b.lighthouse || !libero4(b)) return; for (let ty = b.y - 2; ty < b.y + b.h + 2; ty++) for (let tx = b.x - 2; tx < b.x + b.w + 2; tx++) { if (!inb(tx, ty)) continue; const o = BI[ty * GW + tx];
       if (o < 0 || o === bi || !B[o] || B[o].lighthouse) continue; const key = Math.min(bi, o) + ':' + Math.max(bi, o); if (!seen.has(key)) seen.set(key, []); } });
+    // [tetti4] il gioco ci cammina? Da 1,3 m di qua a 1,3 m di là della cucitura (x, y) nel verso (ux, uy), largo quanto chi cammina
+    // (40 cm per parte): di qua i0, di là i1, di fianco l'una o l'altra (bAt legge i lotti liberi)
+    const cammina4 = (x, y, ux, uy, i0, i1, g) => { g = g || 0; for (let d = -1.3; d <= g + 1.3 + 1e-6; d += .1) for (const t of [-.4, 0, .4]) {
+      const o = bAt(x + ux * d - uy * t, y + uy * d + ux * t); if (o !== i0 && o !== i1) return false; if (!t && ((d < -.15 && o !== i0) || (d > g + .15 && o !== i1))) return false; } return true; };
     // il contatto fra due lotti sul muro di a: un punto del muro dove di qua c'è a, di là b, e in mezzo al più 45 cm di vuoto
     const contatto4 = (a, b) => { const A = B[a], Bb = B[b], L = lotto4(A);
       for (const [fx, fy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const [nx, ny] = giraV4(rotC4(A), fx, fy);
         for (const t of [.5, .4, .6, .3, .7, .2, .8, .1, .9]) { const lx = fx ? (fx > 0 ? L.x1 : L.x0) : L.x0 + L.lw * t, ly = fy ? (fy > 0 ? L.y1 : L.y0) : L.y0 + L.ld * t, [x, y] = toW4(A, lx, ly);
           if (!dentro4(A, x - nx * .6, y - ny * .6, 0)) continue; let gap = -1; for (let d = 0; d <= .5; d += .05) if (dentro4(Bb, x + nx * d, y + ny * d, -.05)) { gap = d; break; }
-          if (gap < 0 || !dentro4(Bb, x + nx * (gap + .6), y + ny * (gap + .6), 0)) continue; return [x + nx * gap / 2, y + ny * gap / 2, a, nx, ny]; } }
+          if (gap < 0 || !dentro4(Bb, x + nx * (gap + .6), y + ny * (gap + .6), 0)) continue;
+          if (!cammina4(x, y, nx, ny, a, b, gap)) continue;   // il gioco cammina sulle caselle (e sui lotti)
+          return [x + nx * gap / 2, y + ny * gap / 2, a, nx, ny]; } }
       return null; };
     seen.forEach((P, key) => { const [a, b] = key.split(':').map(Number); let m = P[Math.floor(P.length / 2)]; const ha = roofRule(B[a]), hb = roofRule(B[b]);
       if (girata4(B[a], B[b])) {   // [tetti4] da un tetto girato (o col lotto suo) all'altro: si tocca? Lungo tutta la cucitura delle caselle, dal mezzo in fuori, il primo punto buono
         const tocca = m => { const ux = m[3], uy = m[4], A0 = m[2] === a ? B[a] : B[b], A1 = A0 === B[a] ? B[b] : B[a];
           let vuoto = 0, peggio = 0; for (let k = -6; k <= 6; k++) { const x = m[0] + ux * k * .1, y = m[1] + uy * k * .1; if (dentro4(A0, x, y, -.05) || dentro4(A1, x, y, -.05)) vuoto = 0; else { vuoto += .1; peggio = Math.max(peggio, vuoto); } }
-          return peggio <= .45 && dentro4(A0, m[0] - ux * .6, m[1] - uy * .6, 0) && dentro4(A1, m[0] + ux * .6, m[1] + uy * .6, 0); };   // un varco di 45 cm si scavalca, di più no
+          if (!(peggio <= .45 && dentro4(A0, m[0] - ux * .6, m[1] - uy * .6, 0) && dentro4(A1, m[0] + ux * .6, m[1] + uy * .6, 0))) return false;   // un varco di 45 cm si scavalca, di più no
+          if (!cammina4(m[0], m[1], ux, uy, B.indexOf(A0), B.indexOf(A1))) return false;   // e il gioco ci cammina: di qua a, di là b
+          return true; };
         const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(tocca) || contatto4(a, b) || contatto4(b, a); if (!mm) return; m = mm; }
+      else if (LIB4 && P.some(q => LIB4.has(Math.floor(q[1] / TS) * GW + Math.floor(q[0] / TS)))) {   // [tetti4] due case sulla pianta, ma un lotto libero vicino può sporgere sulla cucitura: il primo punto dove il gioco passa
+        const passa = m => cammina4(m[0], m[1], m[3], m[4], m[2], m[2] === a ? b : a);
+        const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(passa); if (!mm) return; m = mm; }
       for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1;
         // [tetti3] scendendo più di un gradino si cade per un po': il tetto d'arrivo deve essere profondo almeno due caselle, se no si scavalca
         if (dh < -STEP && girata4(B[a], B[b])) { const ux = m[3] * sg, uy = m[4] * sg; if (!dentro4(B[q], m[0] + ux, m[1] + uy, 0) || !dentro4(B[q], m[0] + ux * 3.5, m[1] + uy * 3.5, 0)) continue; }   // [tetti4] fra lotti: tre metri e mezzo di tetto d'arrivo
@@ -50681,7 +50748,7 @@ var TettiVissuti = (function () {
   }
   // i segmenti che passano sopra questa casa (nel riferimento non girato) e le porte del tetto con le loro linee a due a due
   function corridoi(bi) {
-    const b = B[bi], L4 = LT(b), R4 = hyp(L4.lw, L4.ld) / 2 + 1.5, x0 = L4.cx - R4, y0 = L4.cy - R4, x1 = L4.cx + R4, y1 = L4.cy + R4, segs = [], loc = (x, y) => TT.loc3(b, x, y);
+    const b = B[bi], L4 = LT(b), gir4 = !!(TT.libero4 && TT.libero4(b)), R4 = hyp(L4.lw, L4.ld) / 2 + 1.5, x0 = gir4 ? L4.cx - R4 : L4.x0 - 1.5, y0 = gir4 ? L4.cy - R4 : L4.y0 - 1.5, x1 = gir4 ? L4.cx + R4 : L4.x1 + 1.5, y1 = gir4 ? L4.cy + R4 : L4.y1 + 1.5, segs = [],   /* [tetti4] la casa girata: il cerchio che la contiene */ loc = (x, y) => TT.loc3(b, x, y);
     const dentro = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
     LINEE.forEach(pts => { for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], Bq = pts[k + 1], L = hyp(Bq[0] - A[0], Bq[1] - A[1]), n = Math.max(1, Math.ceil(L / .5)); let ok = false;
       for (let j = 0; j <= n && !ok; j++) ok = dentro(A[0] + (Bq[0] - A[0]) * j / n, A[1] + (Bq[1] - A[1]) * j / n); if (ok) segs.push([loc(A[0], A[1]), loc(Bq[0], Bq[1])]); } });
@@ -57293,6 +57360,9 @@ var Eventi = (function () {
   const PO = () => (typeof Posti !== 'undefined' ? Posti : null);   // [vita2] i posti per le situazioni
   const inHours = (h, hr) => { if (!h) return true; const L = Array.isArray(h[0]) ? h : [h]; return L.some(([a, z]) => z > 24 ? (hr >= a || hr < z - 24) : (hr >= a && hr < z)); };
   const weekday = t => (Math.floor(t / 1440) + 1) % 7;
+  // [eventi] la giornata della regia comincia alle 5 (come le fasce orarie, che arrivano fino a ore 29): la notte resta della sera prima,
+  // così una scena delle 21 e una di mezzanotte nello stesso posto contano come lo stesso giorno (prima a mezzanotte si ripartiva da zero)
+  const giorno = t => Math.floor((t - 5 * 60) / 1440);
 
   // ---------------- CHI PUÒ RECITARE ----------------
   // chi è in casa vicino (sulla soglia del suo edificio, «dentro» per popolo.js) può uscire per la scena, se fuori non c'è nessuno
@@ -57515,9 +57585,9 @@ var Eventi = (function () {
   // per la stessa scena nello stesso giorno; più peso a chi non ha visto niente da un pezzo. In ordine di peso, un po' a caso.
   const cellK = (x, y) => Math.round(x / 40) + ',' + Math.round(y / 40);
   function spotsFor(st, D) {
-    const E = S(st), p = st.player, day = Math.floor(st.t / 1440), out = [], seen = new Set();
+    const E = S(st), p = st.player, day = giorno(st.t), out = [], seen = new Set();
     const add = (x, y) => { const d = hyp(x - p.x, y - p.y); if (d < 12 || d > CFG.spotFar || !G.walkM(x, y)) return; const k = cellK(x, y); if (seen.has(k)) return; seen.add(k);
-      const last = E.spots[k], same = E.spots[k + '|' + D.id]; if (same !== undefined && Math.floor(same / 1440) === day) return;
+      const last = E.spots[k], same = E.spots[k + '|' + D.id]; if (same !== undefined && giorno(same) === day) return;
       const w = (last === undefined ? 1 : Math.min(1, .15 + (st.t - last) / 240)) * (.6 + rnd() * .8); out.push({ x, y, k, w }); };
     for (const n of st.npcs) if (!n.inside && !n.dead && !n.cop && !n.__ev && Math.abs(n.x - p.x) < CFG.spotFar && Math.abs(n.y - p.y) < CFG.spotFar) add(n.x, n.y);
     const PL = G.PLACES || {}; for (const id in PL) { const q = PL[id]; if (q && Math.abs(q.x - p.x) < CFG.spotFar && Math.abs(q.y - p.y) < CFG.spotFar) add(q.x, q.y); }
@@ -57526,8 +57596,8 @@ var Eventi = (function () {
   // [vita2] i posti del tipo giusto attorno al giocatore (fra 9 e 46 m), vivi a quest'ora, non già usati oggi per la stessa scena,
   // pesati per la zona (il borgo pieno, la Vittoria vuota). 'sosta' è un posto virtuale: dove c'è un'auto parcheggiata.
   function postiFor(st, D) {
-    const E = S(st), p = st.player, day = Math.floor(st.t / 1440), out = [], ks = Array.isArray(D.posto) ? D.posto : [D.posto], P = PO();
-    const add = (x, y, posto, dens) => { const k = cellK(x, y), same = E.spots[k + '|' + D.id]; if (same !== undefined && Math.floor(same / 1440) === day) return;
+    const E = S(st), p = st.player, day = giorno(st.t), out = [], ks = Array.isArray(D.posto) ? D.posto : [D.posto], P = PO();
+    const add = (x, y, posto, dens) => { const k = cellK(x, y), same = E.spots[k + '|' + D.id]; if (same !== undefined && giorno(same) === day) return;
       const last = E.spots[k], w = (last === undefined ? 1 : Math.min(1, .15 + (st.t - last) / 240)) * (.6 + rnd() * .8) * (dens + .2); out.push({ x, y, k, w, posto }); };
     if (P) for (const q of P.near(p.x, p.y, CFG.spotFar, ks.filter(k => k !== 'sosta'))) { if (q.__d < 9 || !P.openAt(q, st.t) || (q.tetto ? q.h3 == null : !G.walkM(q.x, q.y))) continue; if (D.postoF && !D.postoF(q)) continue; add(q.x, q.y, q, P.density(q, st.t)); }
     if (ks.includes('sosta')) for (const v of st.vehicles) { if (v.hidden || v.wreck || v.traffic || v.rider || v.ev || G.VK[v.kind].boat) continue; const d = hyp(v.x - p.x, v.y - p.y); if (d < 9 || d > CFG.spotFar) continue;
@@ -57563,15 +57633,15 @@ var Eventi = (function () {
     if (D.solo) { try { return D.solo(st) ? { def: D } : null; } catch (e) { return null; } }
     if (E.live.length >= CFG.max) return null;
     const roles = pickRoles(st, D, auto); if (!roles) return null;
-    if (auto) { const sp0 = roles.__spot || roles[D.roles[0].id], day = Math.floor(st.t / 1440), k0 = cellK(sp0.x, sp0.y);   // [leggera] anche per chi sceglie il posto da sé (la scala)
-      if ((E.spots[k0 + '|' + id] !== undefined && Math.floor(E.spots[k0 + '|' + id] / 1440) === day) || E.day[id + '|' + districtOf(sp0.x, sp0.y)] === day) return null; }
+    if (auto) { const sp0 = roles.__spot || roles[D.roles[0].id], day = giorno(st.t), k0 = cellK(sp0.x, sp0.y);   // [leggera] anche per chi sceglie il posto da sé (la scala)
+      if ((E.spots[k0 + '|' + id] !== undefined && giorno(E.spots[k0 + '|' + id]) === day) || E.day[id + '|' + districtOf(sp0.x, sp0.y)] === day) return null; }
     // [vita2] lanciata a mano (le prove): il posto più vicino del tipo giusto, se c'è
     if (!auto && D.posto && !roles.__posto) { const P = PO(); if (P) { const ks = (Array.isArray(D.posto) ? D.posto : [D.posto]).filter(k => k !== 'sosta'), q = P.near(st.player.x, st.player.y, CFG.far, ks).find(q => q.__d >= 5 && (q.tetto ? q.h3 != null : G.walkM(q.x, q.y))); if (q) { roles.__spot = { x: q.x, y: q.y }; roles.__posto = q; } } }
     const sc = { def: D, roles, cast: [], crowd: [], beats: D.beats.map(x => Object.assign({}, x)), i: -1, spot: roles.__spot || { x: roles[D.roles[0].id].x, y: roles[D.roles[0].id].y }, L: roles.__L, posto: roles.__posto || null, t0: st.clock };
     D.roles.forEach(R => cast(sc, roles[R.id], R.id));
     E.live.push(sc); E.log.push({ id, t: st.t, k: cellK(sc.spot.x, sc.spot.y), posto: sc.posto ? sc.posto.k : null }); if (E.log.length > (CFG.logMax || 40)) E.log.shift(); E.seen[id] = st.clock;
     if (sc.posto) E.byK[sc.posto.k] = (E.byK[sc.posto.k] || 0) + 1;
-    { const k = cellK(sc.spot.x, sc.spot.y); E.spots[k] = st.t; E.spots[k + '|' + id] = st.t; E.day[id + '|' + districtOf(sc.spot.x, sc.spot.y)] = Math.floor(st.t / 1440); if (D.player) E.lastPlayer = st.clock; }
+    { const k = cellK(sc.spot.x, sc.spot.y); E.spots[k] = st.t; E.spots[k + '|' + id] = st.t; E.day[id + '|' + districtOf(sc.spot.x, sc.spot.y)] = giorno(st.t); if (D.player) E.lastPlayer = st.clock; }
     next(st, sc);
     return sc;
   }
@@ -57596,7 +57666,7 @@ var Eventi = (function () {
     if (D.player && (st.player.vehicle || st.player.lv)) return 0;
     const E = S(st), ago = st.clock - (E.seen[D.id] || -1e9);
     if (D.player && st.clock - E.lastPlayer < CFG.playerEvery) return 0;   // [leggera] chi viene verso di te: di rado
-    if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === Math.floor(st.t / 1440)) return 0;   // [leggera] già successa qui oggi
+    if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === giorno(st.t)) return 0;   // [leggera] già successa qui oggi
     return (D.w || 1) * (ago < 240 ? .15 : 1) * (D.posto && !D.soft ? 1.6 : 1);   // la stessa scena non torna subito; [vita2] dove c'è il suo posto, la scena del posto pesa di più
   }
   function step(st, dt) {
@@ -62874,6 +62944,7 @@ var PuliziaRumore = (function () {
     facciata: { base: 1, ogni: 3.2, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // cose appese: base + una ogni 3,2 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
     marciapiede: { tratto: 6, max: 3, slargo: 4, fascia: 2.4 },
     vicolo: .9,
+    passo: 1.2,   // il passaggio minimo sulle vie: vicoli e marciapiedi
     porta: { fondo: 1.8, fianco: .3, alto: 1.8 },   // davanti a ogni porta: 1,8 m di corridoio libero, largo la porta più 30 cm per parte, fino a 1,8 m d'altezza
   };
   // la gerarchia: 0 si tiene sempre (ingresso, insegna, architettura, impianti), 1 la vita, 2 il resto
@@ -62919,14 +62990,28 @@ var PuliziaRumore = (function () {
     else if (terra(e)) { const w = A.casaVicina(e.c[0], e.c[1], CFG.verso.muroD); if (w) ref = w.yaw; else { const rd = A.roadDir(e.c[0], e.c[1]); if (rd.a !== null && rd.d < CFG.verso.viaD) ref = rd.a; } }
     return (e.rif = ref);
   }
+  // la cosa sulla strada: { k: 'carreggiata' | 'vicolo' | 'marciapiede', via, v } o null
+  function suStrada(A, e) {
+    if (!A.viaVicina) return null; const [cx, cz] = A.ctr(e.B), v = A.viaVicina(cx, cz); if (!v) return null; const B = e.B, hu = (B.u1 - B.u0) / 2, hv = (B.v1 - B.v0) / 2;
+    const ext = Math.abs(hu * (v.n[0] * B.c - v.n[1] * B.s)) + Math.abs(hv * (v.n[0] * B.s + v.n[1] * B.c)), a = v.s - ext, b = v.s + ext, hw = v.hw, P = CFG.passo;
+    if (v.kind === 'vicolo') { if (b > -hw && a < hw) { const lib = Math.max(hw - b, a + hw); if (lib < P && 2 * hw > P + .2) return { k: 'vicolo', via: v.rd.id, v, lib }; } return null; }
+    if (b > -hw + .1 && a < hw - .1) return { k: 'carreggiata', via: v.rd.id, v };
+    const dentro = Math.min(Math.abs(a), Math.abs(b)) - hw; if (dentro > 2.8) return null;   // oltre il marciapiede
+    // il marciapiede vero (pavimenti.js, Pavimenti.swH: l'altezza del marciapiede disegnato) quando c'è: la sua larghezza dal cordolo
+    const sg = Math.sign(v.s) || 1, sw = q => A.swH ? A.swH(cx - v.n[0] * (v.s - sg * q), cz - v.n[1] * (v.s - sg * q)) : null;
+    if (A.swH && sw(hw + .3) !== null) { if (!(sw(hw + .3) > .1) && !(sw(dentro + hw + ext) > .1)) return null; let L = .3; while (L < 5 && sw(hw + L + .25) > .1) L += .25;
+      const fuori = L - (dentro + 2 * ext), lib = Math.max(dentro, fuori); if (lib < P && L > P + .2) return { k: 'marciapiede', via: v.rd.id, v, lib }; return null; }
+    const w = A.casaVicina(cx, cz, 3), muro = w ? w.d - ext : 9; if (dentro < P && muro < P && muro > -.5) return { k: 'marciapiede', via: v.rd.id, v, lib: Math.max(dentro, muro) };
+    return null;
+  }
   // ================= IL CENSIMENTO =================
   function censisci(A) {
     const { R, ctr, groundH } = A, E = R.E.filter(e => !e.gone && e.B), out = { voci: E.length, per: {}, punti: [], perTipo: {} };
-    const TIPI = ['porta', 'verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'sovrapposto', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
+    const TIPI = ['porta', 'strada', 'verso', 'galleggia', 'affonda', 'parete', 'finestra', 'marciapiede', 'sovrapposto', 'doppione', 'passaggio', 'facciata_piena', 'tratto_pieno'];
     const X = (A.esterni || []).filter(x => !x.gone); X.forEach(x => { x.c = ctr(x.B); });   // le voci esterne (segnaletica, vie vive): fisse
     TIPI.forEach(t => out.per[t] = 0);
     const segna = (t, e, extra) => { out.per[t]++; const k = t + ':' + e.k + (e.tipo ? ':' + e.tipo : ''); out.perTipo[k] = (out.perTipo[k] || 0) + 1; if (out.punti.length < 6000) out.punti.push([t, Math.round(e.c[0] * 10) / 10, Math.round(e.c[1] * 10) / 10, e.k, e.src, extra || '']); (e.ru = e.ru || []).push(t); };
-    E.concat(X).forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = e.sopraX = e.davantiPorta = undefined; });
+    E.concat(X).forEach(e => { e.c = ctr(e.B); e.ru = null; e.dVerso = e.dQuota = e.doppioneDi = e.davantiA = e.copreCon = e.strozza = e.suFinestra = e.sopraX = e.davantiPorta = e.suStrada = undefined; });
     const GR = new Map(); E.forEach(e => { if (!e.g) return; const kk = (e.b ? A.bid(e.b) : '-') + ':' + e.g; let a = GR.get(kk); if (!a) GR.set(kk, a = []); a.push(e); e.membri = a; });   // le composizioni (una lampada: piastra, braccio, lanterna) si muovono e se ne vanno insieme
     E.forEach(e => { if (!e.g) e.membri = null; });
     // una composizione è fatta di pezzi che si toccano: se lo stesso g copre cose lontane (in buildCase tutta la vita alla base dei muri
@@ -62997,6 +63082,9 @@ var PuliziaRumore = (function () {
     E.forEach(e => { if (!terra(e) || e.k === 'lampione' || e.k === 'cartello') return; const v = A.vicolo(e.c[0], e.c[1]); if (!v) return;
       const hu = (e.B.u1 - e.B.u0) / 2, hv = (e.B.v1 - e.B.v0) / 2, r = Math.min(hu, hv), resta = Math.max(v.w / 2 - (v.d + r), v.w / 2 - (r - v.d));   // il lato più largo che resta
       if (resta < CFG.vicolo && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
+    // 6b) le strade libere: una cosa a terra che entra nella carreggiata di una via carrabile (città, strada, litoranea), o che in un vicolo
+    // o su un marciapiede lascia meno di 1,2 m per passare (fra lei e il ciglio, o fra lei e il muro)
+    E.forEach(e => { if (!terra(e) || LIV[e.k] === 0) return; const t = suStrada(A, e); if (t) { e.suStrada = t; segna('strada', e, t.k + ' ' + t.via); } });
     // 7) la densità: facciate e tratti di marciapiede pieni (cosa si toglierebbe)
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
@@ -63059,7 +63147,7 @@ var PuliziaRumore = (function () {
     // 1a) i praticabili coperti da chi non dovrebbe: un pezzo d'uno scorcio (la serranda chiusa, lo zoccolo, la luminaria) proprio su una
     // porta vera o contro il suo gradino se ne va; un pezzo grande piccolo (l'edicola votiva, il carro, il pozzo) davanti a una porta o al
     // piede di una scala scivola lungo i suoi assi finché la lascia libera (mai dentro una casa)
-    const MOBILI = /^(edicola_votiva|carro_merci|pozzo|fontana|bitta|palo_riflettori|grata_vapore|locomotiva|lavatoio)$/;
+    const MOBILI = /^(edicola_votiva|carro_merci)$/;   // solo i decori e i carri: fontane, pozzi, lavatoi, bitte sono mete (percorsi, posti) e restano dove li vuole la pianta
     const copre = (e, V) => V.filter(v => (v.t === 'coperto' && v.p && v.p.k === 'porta') || (v.t === 'urto' && v.o && v.o.k === 'gradino') || v.t === 'pezzo');   // il pezzo davanti al praticabile (coi raggi) o dentro la sua zona libera
     E.forEach(e => { if (e.gone) return;
       if (/^scorcio/.test(e.k)) { if (copre(e, A.viol(e, I)).length) { A.togli(e); conta(az.tolti, 'coperta:' + e.k); } return; }   // solo quel pezzo, non lo scorcio intero
@@ -63067,7 +63155,7 @@ var PuliziaRumore = (function () {
       const B = e.B, assi = [[B.c, -B.s], [B.s, B.c]];
       for (const s of [.5, 1, 1.5, 2, 2.5, 3, 4]) for (const [ux, uz] of assi) for (const sg of [1, -1]) { const dx = ux * s * sg, dz = uz * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); A.sposta(e, dx, dy, dz);
         if (!copre(e, A.viol(e, I)).length && !A.inCasa(e) && nx(e) === 0) { A.rimetti(I, e); conta(az.spostati, 'pezzo:' + (e.tipo || e.src)); return; } A.sposta(e, -dx, -dy, -dz); }
-      if (e.tipo === 'edicola_votiva') { A.togli(e); conta(az.tolti, 'coperta:edicola_votiva'); return; }   // il decoro piccolo che non trova un altro posto se ne va
+      if (e.tipo === 'edicola_votiva' || (!e.tipo && e.src === 'soglie')) { A.togli(e); conta(az.tolti, 'coperta:' + (e.tipo || 'pensilina')); return; }   // il decoro piccolo, o la pensilina da stazione posata a caso su uno slargo, che non trova un altro posto se ne va
       conta(az.tenuti, 'coperta:' + (e.tipo || e.src)); });
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
@@ -63111,6 +63199,11 @@ var PuliziaRumore = (function () {
       for (const s of [.3, .6, .9, 1.3, 1.8]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
         if (nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'sovrapposto'); });
+    // 5c) le strade libere: verso il muro (fuori dalla carreggiata, contro la casa), poi lungo la via; o via
+    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv(G) === 0;
+      const prove = []; for (const k of [.3, .6, 1, 1.5, 2, 2.6, 3.2]) prove.push([v.n[0] * k * sg, v.n[1] * k * sg]); for (const k of [.8, 1.6, 2.4, 3.2, 4]) for (const q of [1, -1]) prove.push([v.u[0] * k * q, v.u[1] * k * q]);
+      for (const [dx, dz] of prove) { const dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz); if (ok()) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'strada:' + e.k); return; } muovi(G, -dx, -dy, -dz); }
+      togli(e, 'strada'); });
     // 6) i vicoli strozzati: verso il muro più vicino, o via
     E.forEach(e => { if (e.gone || !e.strozza) return; const v = e.strozza, sg = v.d >= 0 ? 1 : -1, G = grp(e), r = Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
       for (const s of [.3, .5, .8]) { const dx = v.n[0] * s * sg, dz = v.n[1] * s * sg;
@@ -63891,12 +63984,11 @@ var Render = (function () {
   // [riva] LA PROFONDITÀ FINE NEL MARE, BLOCCO PER BLOCCO: quando un blocco di riva si costruisce, il suo pezzo delle due mappe del mare
   // (la profondità, 2 px a metro; la terra, 1 px a metro) prende la quota fine; si sfuma appena e si carica sulla scheda solo quel pezzo
   const ACQ9 = { set: null, fatti: new Set() };
-  // [riva] la sfumatura 3×3 ripetuta (passi) sui pixel segnati in R0 e su quelli entro «lar» pixel, mai sul bordo della pezza;
-  // tutti i canali da 0 a ch (la terra: grigia)
-  function sfuma9(D, w, h, R0, lar, passi, ch) {
+  // [riva] la sfumatura 3×3 ripetuta (passi) del canale rosso sui pixel segnati in R0 e su quelli entro «lar» pixel, mai sul bordo della pezza
+  function sfuma9(D, w, h, R0, lar, passi) {
     const R1 = new Uint8Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (!R0[y * w + x]) continue; for (let b = -lar; b <= lar; b++) for (let a = -lar; a <= lar; a++) { const X = x + a, Y = y + b; if (X > 0 && Y > 0 && X < w - 1 && Y < h - 1) R1[Y * w + X] = 1; } }
     for (let k = 0; k < passi; k++) { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R1[y * w + x]) continue; const o = (y * w + x) * 4;
-      for (let c = 0; c <= ch; c++) { let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4 + c]; D[o + c] = Math.round(t / 9); } if (ch) D[o + 1] = D[o + 2] = D[o]; } }
+      let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[o] = Math.round(t / 9); } }
   }
   function acquaFine9(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
@@ -63904,17 +63996,17 @@ var Render = (function () {
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
-        D[o] = Math.round(Math.sqrt(Math.min(1, Math.max(0, WL - q) / 16)) * 255); if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
     if (!tocco) return;
-    sfuma9(D, w, h, R0, 3, 2, 0);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
+    sfuma9(D, w, h, R0, 3, 2);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
     A.bgx.putImageData(id, x0, y0);
     const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
     try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
     // la terra (1 px a metro)
     const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data, M0 = new Uint8Array(mw * mh);
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = MD[o + 1] = MD[o + 2] = Math.round(MD[o] * .35 + v * .65); M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
-    sfuma9(MD, mw, mh, M0, 2, 1, 1);
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
+    sfuma9(MD, mw, mh, M0, 2, 1);
     A.bx.putImageData(md, mx0, my0);
     try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
   }
@@ -63925,27 +64017,25 @@ var Render = (function () {
     // il sole e la luna, le luci della riva, la schiuma che va e viene sulla battigia.
     const T = G.T, W0c = M.world, SEA0 = W0c && W0c.SEA, S = 2;
     const mc = mk(G.GW * S, G.GH * S), mx = mc.getContext('2d'), sc = mk(G.GW, G.GH), sx = sc.getContext('2d'), sd = sx.createImageData(G.GW, G.GH);
-    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#fff';
-    const R9 = RIVA9(), MIN9 = .8;
-    // [riva] il fondale senza fondo: dove sotto l'acqua non c'è terreno (accanto a banchine e pontili, lontano dalla riva) e la riva fine
-    // non c'è, l'acqua resta opaca: almeno 80 cm. Si segna qui, a caselle, prima della sfumatura (dopo faceva quadrati netti di 2 m)
-    const buco9 = (tx, ty) => { if (tx < 1 || ty < 1 || tx >= G.GW - 1 || ty >= G.GH - 1 || Riva.inBanda(tx, ty)) return false; if (coastIn((tx + .5) * TS, (ty + .5) * TS) < -3) return true;
-      for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) { const vv = gT(tx + a, ty + b); if (vv === T.QUAY || vv === T.PIER) return true; } return false; };
+    mx.fillStyle = '#000'; mx.fillRect(0, 0, mc.width, mc.height); mx.fillStyle = '#f00';   // R la terra, G la fascia della riva fine (in un foglio a parte, sfumata di più: il bordo della trasparenza non fa le caselle)
+    const gc9 = mk(mc.width, mc.height), gx9 = gc9.getContext('2d'); gx9.fillStyle = '#000'; gx9.fillRect(0, 0, gc9.width, gc9.height); gx9.fillStyle = '#0f0';
+    const R9 = RIVA9();   // [riva] fuori dalla fascia fine l'acqua è piena (vedi «fascia» nello shader): niente più minimo di 80 cm a caselle, faceva gli scalini
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const i = ty * G.GW + tx, v = gT(tx, ty), lake = v === T.WATER && M.zone && M.zone[i] !== (M.Z || {}).MARE, sea = v === T.PIER || v === T.WATER, o = i * 4;
+      if (R9 && Riva.inBanda(tx, ty)) gx9.fillRect(tx * S, ty * S, S, S);   // [riva] G: la fascia fine (lì sola l'acqua sottile è trasparente)
       if (R9 && W0c.quotaRiva && Riva.inBanda(tx, ty)) { const q00 = W0c.quotaRiva(tx, ty), q10 = W0c.quotaRiva(tx + 1, ty), q01 = W0c.quotaRiva(tx, ty + 1), q11 = W0c.quotaRiva(tx + 1, ty + 1);   // [riva] nella fascia la terra a mezze caselle, dalla quota (curva, non a scalini) finché il blocco fine non arriva
         for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const u = (a + .5) / S, w = (b + .5) / S; if (q00 * (1 - u) * (1 - w) + q10 * u * (1 - w) + q01 * (1 - u) * w + q11 * u * w > WL) mx.fillRect(tx * S + a, ty * S + b, 1, 1); } }
       else if (!sea) mx.fillRect(tx * S, ty * S, S, S);
-      let dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0; if (R9 && v === T.WATER && dp < MIN9 && buco9(tx, ty)) dp = MIN9;
+      let dp = lake ? 2.5 : SEA0 ? SEA0.depth[i] : sea ? 4 : 0;
       const bt = SEA0 && SEA0.bottom ? SEA0.bottom[i] : 0;
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0);
-    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(2px)' : 'blur(3px)'; bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(6px)' : 'blur(3px)';   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
-    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
+    const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); if (R9) { bx.globalCompositeOperation = 'lighter'; bx.filter = 'blur(5px)'; bx.drawImage(gc9, 0, 0); bx.globalCompositeOperation = 'source-over'; } bx.filter = 'none';
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
@@ -63971,7 +64061,7 @@ var Render = (function () {
           vec2 q = vP.xz, muv = q/wsize, tuv = vec2(muv.x, 1.-muv.y);
           bool out1 = muv.x<0.||muv.x>1.||muv.y>1.||muv.y<0.;
           vec4 S = out1 ? vec4(1.,0.,0.,1.) : texture2D(sea, tuv);
-          float land = out1 ? 0. : texture2D(mask, tuv).r;
+          vec4 MK = out1 ? vec4(0.) : texture2D(mask, tuv); float land = MK.r, fascia = MK.g;
           float dep = S.r*S.r*16. + (out1 ? 20. : 0.), wind = clamp(.25 + wx.w*.75 + wx.y*.15, 0., 1.);
           // onde: quattro treni d'onda che vanno sottovento, più una grana fine; sotto riva si smorzano
           vec3 w = vec3(0.);
@@ -63989,8 +64079,9 @@ var Render = (function () {
           vec3 rock = mix(vec3(.20,.19,.17), vec3(.40,.37,.32), n2(bq*.8)) * (.75 + .5*n2(bq*3.1));
           vec3 posi = mix(vec3(.05,.11,.07), vec3(.11,.19,.10), n2(bq*1.6) * n2(bq*5.3 + time*.2));
           vec3 mud = mix(vec3(.18,.17,.12), vec3(.27,.25,.18), n2(bq*.6));
-          float rockK = smoothstep(.62, .85, S.g), mudK = smoothstep(.22, .4, S.g) * (1. - rockK);
-          vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b) * (1. - S.g));
+          float bn9 = RIVA9 > .5 ? (n2(bq * .21) * .65 + n2(bq * .83) * .35 - .5) * .55 : 0.;   // [riva] i bordi del fondale (roccia, fango, posidonia) increspati: la mappa è a caselle, la soglia stretta le rifaceva a scalini
+          float rockK = smoothstep(.62, .85, S.g + bn9 * .6), mudK = smoothstep(.22, .4, S.g + bn9 * .4) * (1. - rockK);
+          vec3 bed = mix(sand, rock, rockK); bed = mix(bed, mud, mudK); bed = mix(bed, posi, smoothstep(.3, .7, S.b + bn9) * (1. - S.g));
           bed *= (.35 + .65*sunK) * dayK + .02;
           bed += vec3(1.,.96,.86) * caust(bq*.8) * .5 * exp(-dep*.3) * sunK * (RIVA9 > .5 ? smoothstep(.8, 2.6, dep) : 1.);   // [riva] nell'acqua sottile si vede la sabbia vera: niente caustiche finte sopra
           vec3 Tr = exp(-vec3(.42,.13,.09) * (dep + .9) * (1.3 + mudK * 1.6));   // nel porto l'acqua è torbida; [arcipelago] un velo minimo: anche a 30 cm resta turchese, mai sabbia asciutta
@@ -64031,6 +64122,7 @@ var Render = (function () {
             alA = mix(.1, 1., smoothstep(.0, .75, dep));   // l'acqua sottile è trasparente
             c = mix(c, vec3(.93, .96, .97) * (.3 + .7 * dayK), clamp(pizzo * .9 + resto, 0., 1.));
             alA = max(alA, clamp(pizzo * .9 + resto, 0., 1.) * .95);
+            alA = mix(1., alA, smoothstep(.5, .95, fascia));   // fuori dalla fascia fine sotto non c'è la sabbia vera: l'acqua resta piena (niente caselle del fondale a scalini)
             foam *= smoothstep(.05, .5, dep);   // la schiuma di prima (a caselle) si spegne dove c'è la riva vera
           }
           c = mix(c, vec3(.93,.96,1.) * (.25 + .75*dayK), clamp(foam, 0., 1.) * .85);
@@ -71107,6 +71199,11 @@ var Render = (function () {
     const FIN = new Map();
     const PO = new Map(), KP = new Set(['panchina', 'pensilina', 'fermata', 'dehors', 'edicola', 'banco_pesce', 'mercato', 'fila', 'cypher', 'carico']);
     try { if (typeof Posti !== 'undefined') Posti.all().forEach(p => { if (!KP.has(p.k)) return; const kk = Math.floor(p.x / 4) * 8192 + Math.floor(p.y / 4); let a = PO.get(kk); if (!a) PO.set(kk, a = []); a.push(p); }); } catch (e) { }
+    // [pulizia] tutte le vie (non gli sterrati): per gli ostacoli sulla carreggiata e sui marciapiedi
+    const VTT = new Map(); (M.roads || []).forEach(rd => { if (!rd.pts || rd.kind === 'sterrato' || rd.rect) return; for (let k = 0; k < rd.pts.length - 1; k++) { const q = [rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd];
+      for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VTT.get(kk); if (!a) VTT.set(kk, a = []); a.push(q); } } });
+    const viaVicina = (x, z) => { let best = null; for (const q of VTT.get(Math.floor(x / 8) * 4096 + Math.floor(z / 8)) || []) { const dx = q[2] - q[0], dz = q[3] - q[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - q[0]) * dx + (z - q[1]) * dz) / L2, 0, 1), px = q[0] + dx * t, pz = q[1] + dz * t, d = Math.hypot(px - x, pz - z), hw = (q[4].w || 4) / 2;
+      if (d - hw > 3.5 || (best && d - hw >= best.d - best.hw)) continue; const L = Math.sqrt(L2), n = [-dz / L, dx / L]; best = { rd: q[4], kind: q[4].kind, hw, d, s: (x - px) * n[0] + (z - pz) * n[1], n, u: [dx / L, dz / L] }; } return best; };
     const VIC = []; (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts) return; for (let k = 0; k < rd.pts.length - 1; k++) VIC.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w || 2]); });
     const VH = new Map(); VIC.forEach(q => { for (let i = Math.floor(Math.min(q[0], q[2]) / 8) - 1; i <= Math.floor(Math.max(q[0], q[2]) / 8) + 1; i++) for (let j = Math.floor(Math.min(q[1], q[3]) / 8) - 1; j <= Math.floor(Math.max(q[1], q[3]) / 8) + 1; j++) { const kk = i * 4096 + j; let a = VH.get(kk); if (!a) VH.set(kk, a = []); a.push(q); } });
     // le voci ESTERNE: quello che altri filoni posano dopo, dai loro piani (la segnaletica: pali, bandiere, targhe, pannelli; le vie
@@ -71130,7 +71227,7 @@ var Render = (function () {
       Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
     X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      viaVicina, swH: window.Pavimenti && typeof Pavimenti.swH === 'function' ? (x, z) => { try { return Pavimenti.swH(x, z); } catch (e) { return null; } } : null, R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
       // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
       // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza
