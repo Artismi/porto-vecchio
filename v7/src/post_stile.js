@@ -7,7 +7,7 @@
    Le manopole: window.__STRADA (galleria.js, strumenti/manopole_strada.json per il prima e dopo). */
 var PostStile = (function () {
   const Q = (typeof location !== 'undefined' && location.search) || '';
-  const STRADA = { on: !/[?&](nostile|nostrada)\b/.test(Q), telefono: /[?&]stile_tel\b/.test(Q), contorno: .55, segni: .3, pieno: .35 };
+  const STRADA = { on: !/[?&](nostile|nostrada)\b/.test(Q), telefono: /[?&]stile_tel\b/.test(Q), contorno: .55, segni: .3, pieno: .45 };
   if (typeof window !== 'undefined') window.__STRADA = STRADA;
 
   const testa = `
@@ -22,12 +22,14 @@ var PostStile = (function () {
               float sil = smoothstep(.03, .07, (dn - d) / d) * (1. - smoothstep(60., 180., d));   // solo il lato davanti del salto: la linea sta sull'oggetto, sottile, e svanisce lontano
               o = mix(o, ink, sil * sK.x); }
             if (sK.y > 0.) { float gl = max(abs(dot(n - s, LW)), abs(dot(w - r, LW)));
-              o = mix(o, ink, smoothstep(.1, .28, gl) * sK.y * (1. - smoothstep(.75, .95, l)) * smoothstep(.04, .14, l));   // i salti di colore netti (orli, scritte, finestre) prendono un segno
+              o = mix(o, ink, smoothstep(.16, .34, gl) * sK.y * .8 * (1. - smoothstep(.75, .95, l)) * smoothstep(.04, .14, l));   // i salti di colore netti (orli, scritte, finestre) prendono un segno; sulle trame fini (tegole) niente velo scuro
               vec2 hp = gl_FragCoord.xy * .7071; hp = vec2(hp.x + hp.y, hp.y - hp.x) * .45;   // retino a 45° nelle ombre, appena
               float dot0 = length(fract(hp) - .5), rr = smoothstep(.03, .1, l) * (1. - smoothstep(.12, .32, l)) * .42;   // nei neri veri niente (di sera scuriva tutto)
-              o *= 1. - (1. - smoothstep(rr - .08, rr + .08, dot0)) * sK.y * .35; }
-            if (sK.z > 0.) { float l2 = dot(o, LW); vec3 sat = mix(vec3(l2), o, 1. + sK.z * .6);   // colore pieno e luci in gradini morbidi
-              float q = floor(l2 * 4. + .5) / 4., lq = mix(l2, q, .35); o = max(sat * (lq / max(l2, 1e-3)), 0.) * sK.z + o * (1. - sK.z); }
+              o *= 1. - (1. - smoothstep(rr - .08, rr + .08, dot0)) * sK.y * .22; }
+            if (sK.z > 0.) { vec3 av = (n + s + w + r) * .25, dt = c - av; float dl = dot(dt, LW);   // il dettaglio: tegole, mattoni, assi, scritte (i gradini di luce di prima appiattivano le trame di giorno)
+              o += vec3(clamp(dl, -.08, .08)) * sK.z * 1.6 * (1. - smoothstep(.85, 1., l));   // solo la luce: il colore delle trame non si sporca, e niente aloni sui salti grandi (clamp)
+              float l2 = dot(o, LW), mx2 = max(o.r, max(o.g, o.b)), sa = (mx2 - min(o.r, min(o.g, o.b))) / max(mx2, 1e-3);   // colore pop: spinge di più i colori spenti, poco quelli già accesi (niente fluo)
+              o = max(mix(vec3(l2), o, 1. + sK.z * (.75 - .5 * sa)), 0.); }
           }`;
 
   const uniformi = () => ({ tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, sK: { value: new THREE.Vector4(0, 0, 0, 0) } });
