@@ -96,7 +96,56 @@ var StradeIntegre = (function () {
     const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length);
     return { conti, punti: P, vie: VR.length };
   }
-  const API = { analizza, CORNICE, PASSA };
+  // ================= LE CASE ACCOSTATE =================
+  // L'utente: «le case vicine o sono davvero fuse assieme, e allora sembrano un'unica architettura, altrimenti restano separate; niente
+  // vie di mezzo con cose appaiate, palazzi posizionati in griglia che risultano spigolosi e in mezzo». Per ogni coppia di case vicine
+  // (il loro lotto orientato: cx, cy, lw, ld, rot; dritte le botteghe con l'insegna, come render.js), nella cornice:
+  //   unite          si toccano (luce ≤ 5 cm) o si compenetrano solo del muro in comune (≤ 35 cm) e hanno lo stesso verso: va bene, sono una cortina
+  //   compenetrate   entrano l'una nell'altra più del muro in comune, o con versi diversi: due scatole incastrate a caso
+  //   fessura        fra le due resta una luce fra 5 cm e 1,2 m: né attaccate né separate (un vicolo vero è almeno 1,2 m)
+  //   spiraglio      fra due case parallele una luce fino a 2,6 m (una casella) dove non passa nessuna via: un taglio senza uso
+  //   appaiate_storte si toccano ma con versi diversi (più di 2°): lo spigolo dell'una esce dal filo dell'altra
+  //   griglia_storta una casa dritta sulla griglia davanti a una via storta (8-40° dagli assi, entro 3 m dal ciglio): la scaletta
+  //   in_mezzo      una casa dentro una piazza (W.nodi) o sulla carreggiata di una via (oltre metà della sua larghezza)
+  // Le baracche (b.shack) sono disordinate per costruzione: si contano a parte e non entrano nelle soglie.
+  function accostamenti(W, o) {
+    o = o || {}; const TS = W.TS, C = o.cornice || CORNICE, B = (W.BUILDINGS || []).filter(b => !b.pezzo && !b.military);
+    const inC = (x, y) => x >= C[0] && x <= C[2] && y >= C[1] && y <= C[3];
+    const L = B.map(b => { const cx = b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy = b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw = b.lw !== undefined ? b.lw : b.w * TS, ld = b.ld !== undefined ? b.ld : b.h * TS, rot = b.sign || b.shop ? 0 : b.rot || 0;
+      const c = Math.cos(rot), s = Math.sin(rot), ux = [c, s], vy = [-s, c], P = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, d]) => [cx + ux[0] * a * lw / 2 + vy[0] * d * ld / 2, cy + ux[1] * a * lw / 2 + vy[1] * d * ld / 2]);
+      return { b, cx, cy, lw, ld, rot, P, r: Math.hypot(lw, ld) / 2 }; }).filter(q => inC(q.cx, q.cy));
+    const P = { unite: [], compenetrate: [], fessura: [], spiraglio: [], appaiate_storte: [], griglia_storta: [], in_mezzo: [], baracche: [] };
+    const RV = (W.roads || []).filter(r => r && r.pts && r.pts.length > 1), suVia = (x, y) => RV.some(rd => { const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) if (segD([x, y], Q[k], Q[k + 1]) < (rd.w || 3) / 2 + .6) return true; return false; });
+    const pen = (A, Bq) => { let m = Infinity; for (const Q of [A, Bq]) for (let i = 0; i < 4; i++) { const p0 = Q[i], p1 = Q[(i + 1) % 4], ex = p1[0] - p0[0], ey = p1[1] - p0[1], l = Math.hypot(ex, ey) || 1, nx = -ey / l, ny = ex / l;
+      let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; A.forEach(p => { const d = p[0] * nx + p[1] * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }); Bq.forEach(p => { const d = p[0] * nx + p[1] * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); });
+      m = Math.min(m, Math.min(a1, b1) - Math.max(a0, b0)); } return m; };   // > 0: quanto si compenetrano; ≤ 0: separate
+    const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)); return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]); };
+    const dist = (A, Bq) => { let m = Infinity; for (const [X, Y] of [[A, Bq], [Bq, A]]) X.forEach(p => { for (let i = 0; i < 4; i++) m = Math.min(m, segD(p, Y[i], Y[(i + 1) % 4])); }); return m; };
+    const dRot = (a, b) => { let d = Math.abs(a - b) % (Math.PI / 2); if (d > Math.PI / 4) d = Math.PI / 2 - d; return d * 180 / Math.PI; };
+    const IX = new Map(), k8 = (i, j) => i * 4096 + j; L.forEach((q, n) => { const i = Math.floor(q.cx / 16), j = Math.floor(q.cy / 16); for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) { const k = k8(i + a, j + c); let A = IX.get(k); if (!A) IX.set(k, A = []); A.push(n); } });
+    const visti = new Set();
+    L.forEach((A, i) => { (IX.get(k8(Math.floor(A.cx / 16), Math.floor(A.cy / 16))) || []).forEach(j => { if (j <= i) return; const Bq = L[j]; if (Math.hypot(A.cx - Bq.cx, A.cy - Bq.cy) > A.r + Bq.r + 1.3) return; const key = i + ':' + j; if (visti.has(key)) return; visti.add(key);
+      const pe = pen(A.P, Bq.P), gap = pe > 0 ? -pe : dist(A.P, Bq.P), dr = dRot(A.rot, Bq.rot), x = Math.round((A.cx + Bq.cx) * 5) / 10, y = Math.round((A.cy + Bq.cy) * 5) / 10, nome = (A.b.id || i) + '|' + (Bq.b.id || j);
+      let t = null, info = '';
+      if (pe > .05) { if (dr < 1 && pe <= .35) t = 'unite'; else { t = 'compenetrate'; info = pe.toFixed(2) + ' m dentro, ' + dr.toFixed(0) + '°'; } }
+      else if (gap <= .05) { if (dr > 2) { t = 'appaiate_storte'; info = dr.toFixed(0) + '°'; } else t = 'unite'; }
+      else if (gap < 1.2) { t = 'fessura'; info = 'luce ' + gap.toFixed(2) + ' m'; }
+      else if (gap < 2.6 && dr < 2 && !suVia(x, y)) {   // uno spiraglio di una casella fra due case parallele, che non è una via: né cortina né vicolo
+        const lungo = Math.min(Math.max(A.lw, A.ld), Math.max(Bq.lw, Bq.ld)); if (lungo > 3) { t = 'spiraglio'; info = 'luce ' + gap.toFixed(1) + ' m, nessuna via'; } }
+      if (!t) return; if (t !== 'unite' && (A.b.shack || Bq.b.shack)) { P.baracche.push([t, x, y, nome, info]); return; } P[t].push([t, x, y, nome, info]); }); });
+    // le case dritte davanti alle vie storte, e le case in mezzo alle piazze o sulla carreggiata
+    const R = (W.roads || []).filter(r => r && r.pts && r.pts.length > 1 && VIE.has(r.kind));
+    const inPoly = (P0, x, y) => { let c = false; for (let i = 0, j = P0.length - 1; i < P0.length; j = i++) { const [xi, yi] = P0[i], [xj, yj] = P0[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+    L.forEach(q => { if (q.b.shack) return; let best = null;
+      for (const rd of R) { const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1; if (L2 < .01) continue; const t = Math.max(0, Math.min(1, ((q.cx - ax) * dx + (q.cy - ay) * dy) / L2)), px = ax + dx * t, py = ay + dy * t;
+        const dmin = Math.min(...q.P.map(p => segD(p, [ax, ay], [bx, by]))) - (rd.w || 4) / 2; if (!best || dmin < best.d) best = { d: dmin, a: Math.atan2(dy, dx), rd, cen: Math.hypot(px - q.cx, py - q.cy) }; } }
+      if (!best) return; const dv = dRot(best.a, 0);
+      if (best.d < 3 && !q.rot && dv > 8 && dv < 40 && !q.b.sign && !q.b.shop) P.griglia_storta.push(['griglia_storta', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', best.rd.id + ' ' + dv.toFixed(0) + '°']);
+      if (best.cen < (best.rd.w || 4) / 2) P.in_mezzo.push(['in_mezzo', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', 'sulla carreggiata di ' + best.rd.id]);
+      else if ((W.nodi || []).some(n => n.poly && inPoly(n.poly, q.cx, q.cy))) P.in_mezzo.push(['in_mezzo', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', 'in una piazza']); });
+    const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length); return { conti, punti: P, case: L.length };
+  }
+  const API = { analizza, accostamenti, CORNICE, PASSA };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();
