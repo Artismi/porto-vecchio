@@ -1061,7 +1061,7 @@ var World = (function () {
       // [pianta] la Riva della Rocca segue la costa: dal viale gira sulla punta di scogli e scende lungo il canale (il quartiere non è un
       // rettangolo: le case riempiono lo spicchio fra il viale e la riva, il fronte sul mare segue la curva)
       CITY.glacis.rivaPts = chaikin([[1147.5, 62], [1154, 62], [1161, 64], [1167, 69], [1171, 75.5], [1174.5, 83], [1177.5, 91], [1179, 100], [1179, 116]], 2);
-      add('passeggiata', 'Viale della Spianata', 7, 'citta', vline(1147.5, ry(1141) - 16, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, alberiOff: 5, capi: [{ tipo: 'affaccio', perche: 'il belvedere sulla punta di scogli di tramontana, oltre il respingente dei binari' }, null] });
+      add('passeggiata', 'Viale della Spianata', 7, 'citta', vline(1147.5, ry(1141) - 12.5, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, alberiOff: 5, capi: [{ tipo: 'affaccio', perche: 'il belvedere sulla punta di scogli di tramontana, oltre il respingente dei binari' }, null] });
       add('riva_rocca', 'Riva della Rocca', 5, 'vicolo', CITY.glacis.rivaPts, { era: 'E1' });
       { const R = CITY.glacis.rivaPts; let xv = 1178; for (let k = 0; k < R.length - 1; k++) if ((R[k][1] - 90) * (R[k + 1][1] - 90) <= 0 && R[k][1] !== R[k + 1][1]) xv = R[k][0] + (R[k + 1][0] - R[k][0]) * (90 - R[k][1]) / (R[k + 1][1] - R[k][1]);
         add('vic_glacis', 'Vico del Glacis', 3, 'vicolo', [[1151.25, 90], [(1151.25 + xv) / 2, 90.6], [xv, 90]], { era: 'E1' }); }
@@ -1093,7 +1093,7 @@ var World = (function () {
       pett('vic_sorelle', 'Vico delle Sorelle', 1120, 146.5, MEZ);
       // il Vico Lungo: dalla Vittoria scende a scalini sul mare, passando la Via di Mezzo; la scalinata del Forno dalla fontana alla marina
       pett('vic_lungo', 'Vico Lungo', 1098, 146.5, MAR);
-      add('vic_forno', 'Scalinata del Forno', 2.5, 'vicolo', [[1033, 166], [1033.5, 176], [1034, yOn(MAR, 1034)]], { era: 'E0' });
+      add('vic_forno', 'Scalinata del Forno', 2.5, 'vicolo', [[1036.3, 169.9], [1034.4, 173], [1033.5, 176],   /* [pianta] parte dal Vicolo di Mezzo dove sbocca il Vico della Fame (un incrocio, non due capi a tre metri), accanto alla fontana */ [1034, yOn(MAR, 1034)]], { era: 'E0' });
       // le traverse: fra due vicoli vicini, alla stessa quota, da asse ad asse (androni e corti)
       const xOnY = (P, y) => { for (let k = 0; k < P.length - 1; k++) if ((y - P[k][1]) * (y - P[k + 1][1]) <= 0 && P[k][1] !== P[k + 1][1]) return P[k][0] + (P[k + 1][0] - P[k][0]) * (y - P[k][1]) / (P[k + 1][1] - P[k][1]); return null; };
       const trav = (id, nome, a, b, y) => { const A = CITY.roads.find(q => q.id === a), Bq = CITY.roads.find(q => q.id === b), xa = xOnY(A.pts, y), xb = xOnY(Bq.pts, y); if (xa === null || xb === null) return;
@@ -1122,6 +1122,19 @@ var World = (function () {
       CITY.yOn = yOn; CITY.marina = MAR; CITY.rua = RUA;
       if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[città2] ossatura: vicoli', nv, 'Rua', RUA.length, 'stazione', STAZ[0], STAZ[STAZ.length - 1], 'lungomare', LUNGO[0], LUNGO[LUNGO.length - 1]);
     }
+    // [pianta] I CAPI ALLINEATI: due vie che finiscono sulla stessa via, una di fronte all'altra a meno di 8 m, si incontrano in un incrocio
+    // vero (prima: due capi sfalsati di 4-8 m, come due T che quasi si toccano). Il punto è la proiezione sull'asse della via del mezzo
+    // dei due capi; ognuna ci arriva spostando i suoi ultimi metri (lo spostamento si spegne in 24 m), la via di mezzo non si tocca.
+    { const R = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), sul = (rd, x, y) => { let best = null; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1), px = ax + dx * t, py = ay + dy * t, d = dist(x, y, px, py); if (!best || d < best.d) best = { d, px, py, t, k, n: [-dy, dx] }; } return best; };
+      const capi = []; R.forEach(rd => [0, rd.pts.length - 1].forEach(e => { const [x, y] = rd.pts[e]; let M = null, q = null; R.forEach(o => { if (o === rd) return; const s0 = sul(o, x, y); if (s0 && s0.d < o.w / 2 + 1.6 && s0.t > .001 && s0.t < .999 || (s0 && s0.d < o.w / 2 + 1.6 && s0.k > 0 && s0.k < o.pts.length - 2)) { if (!q || s0.d < q.d) { q = s0; M = o; } } }); if (M) capi.push({ rd, e, M, x, y, q }); }));
+      const fatti = new Set(); let nAl = 0;
+      capi.forEach(A => capi.forEach(Bc => { if (A === Bc || A.rd === Bc.rd || A.M !== Bc.M || fatti.has(A) || fatti.has(Bc)) return; const d = dist(A.x, A.y, Bc.x, Bc.y); if (d < .5 || d >= 8) return;
+        const sa = Math.sign((A.x - A.q.px) * A.q.n[0] + (A.y - A.q.py) * A.q.n[1]), sb = Math.sign((Bc.x - Bc.q.px) * Bc.q.n[0] + (Bc.y - Bc.q.py) * Bc.q.n[1]); if (sa && sb && sa === sb) return;   // dalla stessa parte: è una forca, non un incrocio sfalsato
+        const T0 = sul(A.M, (A.x + Bc.x) / 2, (A.y + Bc.y) / 2), tx = T0.px, ty = T0.py;
+        [A, Bc].forEach(C => { const P = C.rd.pts, dx = tx - C.x, dy = ty - C.y, idx = C.e === 0 ? P.map((_, k) => k) : P.map((_, k) => P.length - 1 - k); let acc = 0;
+          for (let j = 0; j < idx.length; j++) { const k = idx[j]; if (j) acc += dist(P[k][0], P[k][1], P[idx[j - 1]][0], P[idx[j - 1]][1]); const w = Math.max(0, 1 - acc / 24); if (w <= 0) break; P[k] = [P[k][0] + dx * w, P[k][1] + dy * w]; } });
+        fatti.add(A); fatti.add(Bc); nAl++; }));
+      CITY.capiAllineati = nAl; }
     CITY.roads.forEach(rd => roads.push(rd));
     ROADS0.filter(q => !['porto', 'monte', 'deserto', 'miniera', 'stazione2', 'saline', 'faro', 'crinale_e', 'sent_o1', 'sent_o2', 'sent_e1', 'sent_e2', 'anello_on', 'anello_os', 'mulattiera_o', 'anello_en', 'anello_es', 'mulattiera_e'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
     // [isola] le strade della testa di bosco e del collo, in coordinate nuove. La strada centrale sale col terreno e diventa mulattiera.
@@ -1532,7 +1545,7 @@ var World = (function () {
       // le pietre minute delle piazzette: il pozzo (al posto della vasca), la fontana del Forno, il lavatoio sulla Piazza della Marina
       { const [px, py] = CITY.piazzette[0]; blob(px, py, 3, 3, i => { if (grid[i] === T.FOUNT) grid[i] = T.PIAZZA; }); PZ('pozzo', px, py, 0, { r: .8, arco: true }, { nome: 'Pozzo' });
         for (let ty = T2i(py) - 1; ty <= T2i(py); ty++) for (let tx = T2i(px) - 1; tx <= T2i(px); tx++) grid[ty * GW + tx] = T.FOUNT; }
-      { const [fx, fy] = CITY.piazzette[1]; PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
+      { const fx = CITY.piazzette[1][0] - 3, fy = CITY.piazzette[1][1] - 2.2; /* [pianta] la fontana in un canto della piazzetta, fuori dagli assi del Vicolo di Mezzo e del Vico della Fame (prima ci stava sopra) */ PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
       { const q = CITY.rects[0]; const p = PZ('lavatoio', q[2] - 9.6, q[1] + 4.6, 0, { L: 5, tettoia: true }, { nome: 'Lavatoio' }); pzRis(p, 'B', -1, 7.2, -2.5, 2.5); }
       // [mappa_compatta] passo 4, i tre segni nuovi: la torre dell'acqua della ferrovia con l'antenna di Radio Luna (fra i binari e gli scogli),
       // la gru del porto sulla banchina di levante della darsena (il braccio sull'acqua), la grata del vapore sul lotto del fuoco
@@ -1971,7 +1984,8 @@ var World = (function () {
       // riferimento della via. Per lato, in fila lungo la via: i confini fra una casa e l'altra a metà fra le loro estensioni, il fronte
       // comune sul filo della casa più avanti (mai dentro la carreggiata), il retro dov'era; l'angolo della via. L'impronta a caselle resta
       // (griglia, camminabilità, porte). Una casa il cui lotto entrerebbe in un'altra (più di 5 cm) resta com'era.
-      CITY.lottiVie = typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : [];   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua)
+      { const qL = typeof location !== 'undefined' && location.search ? /[?&]lotti=([^&]+)/.exec(location.search) : null;   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua in node, ?lotti=rua nel gioco)
+        CITY.lottiVie = qL ? decodeURIComponent(qL[1]).split(',') : typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : []; }
       { const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
         const RDV = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), VIE = RDV.filter(rd => CITY.lottiVie.includes(rd.id));
         const vicino = (rd, x, y) => { let best = null, acc = 0; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-6, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))), px = ax + dx * t, py = ay + dy * t, d = Math.hypot(x - px, y - py);
@@ -2006,6 +2020,56 @@ var World = (function () {
               if (altri.some(Q => pen(n.S, Q) > .05)) { tieni.delete(n); cambia = true; if (DBGL) DBGL.push(['urta fila', n.b.id]); } } }
             tieni.forEach(n => { Object.assign(n.b, n.L); nL++; }); }); });
         CITY.nLotti = nL; if (DBGL) console.error('[lotti]', nL, JSON.stringify(DBGL)); }
+      // [pianta] L'ISOLATO ORIENTATO (il PIENO lungo una via storta): un isolato intero si ridisegna nel riferimento della via che ha davanti.
+      // La fila sul fronte diventa una cortina di lotti in aderenza, col filo comune sulla facciata più arretrata (nessuna casa avanza sul
+      // selciato) e i confini a metà fra una casa e l'altra; le case dietro restano dritte e si accorciano dove la cortina ha bisogno di posto
+      // (nessuna casa sparisce: botteghe, posti e percorsi restano agganciati). Le caselle che la cortina lascia scoperte sul fronte tornano
+      // selciato; quelle che copre diventano sue. CITY.isolatiOrientati: [{ via, x, y }], un punto dentro l'isolato (coordinate del mondo di generazione).
+      { const qI = typeof location !== 'undefined' && location.search ? /[?&]isolati=([^&]+)/.exec(location.search) : null, eI = typeof process !== 'undefined' && process.env && process.env.PV_ISOLATI;
+        const PRESETS = { rua1: { via: 'rua', x: 1036, y: 113 } };   // la Rua fra il Vico dei Pescatori e il Vico dei Lanternini, a sud
+        CITY.isolatiOrientati = (qI ? decodeURIComponent(qI[1]) : eI || '').split(',').filter(k => PRESETS[k]).map(k => Object.assign({ k }, PRESETS[k]));
+        const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
+        const poly = (cx, cy, lw, ld, a) => { const c = Math.cos(a), s = Math.sin(a); return [[-lw / 2, -ld / 2], [lw / 2, -ld / 2], [lw / 2, ld / 2], [-lw / 2, ld / 2]].map(([u, v]) => [cx + u * c - v * s, cy + u * s + v * c]); };
+        const pen = (P, Q) => { let m = 1e9; for (const R of [P, Q]) for (let i = 0; i < 4; i++) { const [x1, y1] = R[i], [x2, y2] = R[(i + 1) % 4], nx = y2 - y1, ny = x1 - x2, l = Math.hypot(nx, ny) || 1, pr = S => S.map(([x, y]) => (x * nx + y * ny) / l), A = pr(P), C = pr(Q), o = Math.min(Math.max(...A), Math.max(...C)) - Math.max(Math.min(...A), Math.min(...C)); if (o < m) m = o; } return m; };
+        const dentroP = (P, x, y) => { let s0 = 0; for (let i = 0; i < 4; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % 4], c = (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1); if (c !== 0) { if (s0 && Math.sign(c) !== s0) return false; s0 = Math.sign(c); } } return true; };
+        const LOG = typeof process !== 'undefined' && process.env && process.env.PV_ISOLATI_DBG ? [] : null;
+        CITY.isolatiOrientati.forEach(IS => { const rd = CITY.roads.find(r => r.id === IS.via); if (!rd) return;
+          // l'isolato: le caselle (case e cortili) raggiungibili dal punto senza passare per una strada
+          const t0 = T2i(IS.y) * GW + T2i(IS.x); if (roadW[t0] > 0) return; const isol = new Set([t0]), st = [t0];
+          while (st.length) { const i = st.pop(), x = i % GW, y = (i / GW) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (y + dy) * GW + x + dx; if (isol.has(j) || roadW[j] > 0 || zone[j] !== Z.CITTA) continue; const v = grid[j]; if (v !== T.BLD && v !== T.COB) continue; if (v === T.BLD && (bIndex[j] < 0 || B[bIndex[j]].pezzo || B[bIndex[j]].sign || B[bIndex[j]].shop)) continue; isol.add(j); st.push(j); if (isol.size > 900) break; } }
+          const CASE = [...new Set([...isol].map(i => bIndex[i]).filter(k => k >= 0))].map(k => B[k]);
+          // la via davanti: la retta che meglio segue i punti della via lungo l'isolato
+          let xs = [...isol].map(i => (i % GW + .5) * TS), uMin = Math.min(...xs) - 4, uMax = Math.max(...xs) + 4, ys = [...isol].map(i => (((i / GW) | 0) + .5) * TS), yC = (Math.min(...ys) + Math.max(...ys)) / 2;
+          const Q = rd.pts.filter(([x]) => x >= uMin && x <= uMax); if (Q.length < 2) return; const mx = Q.reduce((s, q) => s + q[0], 0) / Q.length, my = Q.reduce((s, q) => s + q[1], 0) / Q.length;
+          let sxx = 0, sxy = 0, syy = 0; Q.forEach(([x, y]) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (y - my); syy += (y - my) ** 2; }); const ang = .5 * Math.atan2(2 * sxy, sxx - syy), ux = Math.cos(ang), uy = Math.sin(ang);
+          const sg = Math.sign((yC - my) * ux - 0 * uy - ((Math.min(...xs) + Math.max(...xs)) / 2 - mx) * uy) || 1, nx = -uy * sg, ny = ux * sg;   // la normale verso l'isolato
+          const U = (x, y) => (x - mx) * ux + (y - my) * uy, V = (x, y) => (x - mx) * nx + (y - my) * ny, rot = w90(ang);
+          const ext = b => { const P = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]].map(([x, y]) => [x * TS, y * TS]); const us = P.map(p => U(...p)), vs = P.map(p => V(...p)); return { u0: Math.min(...us), u1: Math.max(...us), v0: Math.min(...vs), v1: Math.max(...vs) }; };
+          // la fila sul fronte: le case con una casella a meno di una casella dalla via
+          const fronte = CASE.filter(b => { for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const j = ty * GW + tx; if (roadW[j] > 0 && rd.pts.some(([x, y]) => Math.abs(x - (tx + .5) * TS) < rd.w / 2 + 2 && Math.abs(y - (ty + .5) * TS) < rd.w / 2 + 2)) return true; } return false; }).map(b => Object.assign({ b }, ext(b))).sort((p, q) => (p.u0 + p.u1) - (q.u0 + q.u1));
+          if (fronte.length < 2) return; const vf = Math.max(...fronte.map(q => q.v0)), uA = Math.min(...[...isol].map(i => U((i % GW + .5) * TS, (((i / GW) | 0) + .5) * TS))) - 1, uB = Math.max(...[...isol].map(i => U((i % GW + .5) * TS, (((i / GW) | 0) + .5) * TS))) + 1;
+          for (let k = 0; k < fronte.length; k++) { const q = fronte[k], p = fronte[k - 1]; q.a0 = p ? (p.u1 + q.u0) / 2 : q.u0; if (p) p.a1 = q.a0; } fronte[fronte.length - 1].a1 = fronte[fronte.length - 1].u1;
+          const dentroIs = (x, y) => isol.has(T2i(y) * GW + T2i(x));
+          const lotti = fronte.map(q => { let a0 = q.a0, a1 = q.a1, dep = q.v1 - vf;   // il lotto deve stare tutto dentro l'isolato: si stringe alle testate e si accorcia dietro
+            const fai = () => { const um = (a0 + a1) / 2, vm = vf + dep / 2, cx = mx + ux * um + nx * vm, cy = my + uy * um + ny * vm, lx = Math.abs(Math.cos(rot) * ux + Math.sin(rot) * uy) > .7; return { cx, cy, lw: lx ? a1 - a0 : dep, ld: lx ? dep : a1 - a0, P: poly(cx, cy, lx ? a1 - a0 : dep, lx ? dep : a1 - a0, rot) }; };
+            for (let it = 0; it < 30; it++) { const L = fai(); const fuori = L.P.map(([x, y]) => !dentroIs(x - nx * .01, y - ny * .01)); if (!fuori.some(Boolean) || a1 - a0 < 2.6 || dep < 3) return Object.assign(L, { q, ok: !fuori.some(Boolean) && a1 - a0 >= 2.6 && dep >= 3 });
+              if (fuori[0] || fuori[3]) a0 += .2; if (fuori[1] || fuori[2]) a1 -= .2; if (fuori[2] || fuori[3]) dep -= .2; }
+            return { q, ok: false }; }).filter(L => L.ok);
+          // le case dietro: dritte, si accorciano dal lato della cortina finché non la toccano più
+          const dietro = CASE.filter(b => !lotti.some(L => L.q.b === b)); let nCorte = 0;
+          dietro.forEach(b => { let x0 = b.x * TS, x1 = (b.x + b.w) * TS, y0 = b.y * TS, y1 = (b.y + b.h) * TS;
+            for (let it = 0; it < 40; it++) { const P = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]; const L = lotti.find(L => pen(P, L.P) > .05); if (!L) break; const dx = L.cx - (x0 + x1) / 2, dy = L.cy - (y0 + y1) / 2;
+              if (Math.abs(dy) * (x1 - x0) >= Math.abs(dx) * (y1 - y0)) { if (dy > 0) y1 -= .2; else y0 += .2; } else { if (dx > 0) x1 -= .2; else x0 += .2; } }
+            if (x1 - x0 < 1.6 || y1 - y0 < 1.6) { nCorte++; if (LOG) LOG.push(['piccola', b.id]); }
+            Object.assign(b, { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, lw: x1 - x0, ld: y1 - y0, rot: 0, isolato: IS.k }); });
+          lotti.forEach(L => Object.assign(L.q.b, { cx: +L.cx.toFixed(3), cy: +L.cy.toFixed(3), lw: +L.lw.toFixed(3), ld: +L.ld.toFixed(3), rot: Math.abs(rot) < .01 ? 0 : +rot.toFixed(4), lotto: rd.id, isolato: IS.k }));
+          // le caselle: quelle della fila che il lotto non copre più tornano selciato; quelle che copre diventano sue
+          const occ = (x, y) => { for (const L of lotti) if (dentroP(L.P, x, y)) return L.q.b; for (const b of dietro) if (Math.abs(x - b.cx) < b.lw / 2 && Math.abs(y - b.cy) < b.ld / 2) return b; return null; };
+          let nLib = 0, nOcc = 0; isol.forEach(i => { const x = (i % GW + .5) * TS, y = (((i / GW) | 0) + .5) * TS, o = occ(x, y);
+            if (o) { if (grid[i] !== T.BLD || bIndex[i] !== o.i) { grid[i] = T.BLD; bIndex[i] = o.i; nOcc++; } }
+            else if (grid[i] === T.BLD) { grid[i] = T.COB; bIndex[i] = -1; reserved[i] = 1; nLib++; } });
+          if (LOG) LOG.push([IS.k, 'case', CASE.length, 'cortina', lotti.length, 'su', fronte.length, 'angolo', +(rot * 180 / Math.PI).toFixed(1), 'caselle libere', nLib, 'coperte', nOcc, 'piccole', nCorte]); });
+        if (LOG) console.error('[isolati]', JSON.stringify(LOG)); }
       // il marciapiede arriva fino al muro: i ritagli fra il marciapiede e le facciate arretrate diventano marciapiede (niente terra di nessuno)
       for (let pass = 0; pass < 3; pass++) { const add = [];
         for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(CITY_W0); tx < T2i(CITY.spian0 || 1143); tx++) { const i = ty * GW + tx; if (grid[i] !== T.COB || roadW[i] > 0 || reserved[i] || zone[i] !== Z.CITTA) continue;
