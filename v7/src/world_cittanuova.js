@@ -273,11 +273,15 @@ var World = (function () {
   const Yc = x => (NorthY(x) + SouthY(x)) / 2;
   const Inland00 = (x, y) => Math.min(y - NorthY(x), SouthY(x) - y, x < HEAD.x - 70 ? HEAD.r - Math.hypot(x - HEAD.x, y - HEAD.y) + 2 : 1e9, x > XE + 90 ? 1284 - x : 1e9);
   // [costa2] fuori dalla città la distanza vera dalla riva (entro 64 m); oltre, e nella città, quella di prima
-  const Inland0 = (x, y) => {
+  const Inland0 = (x, y, cap) => {
     if (x >= C2X1 - 4 || x < C2T.x0 + 2) return Inland00(x, y);
     const ny = NorthY(x), sy = SouthY(x), v = Math.min(y - ny, sy - y); if (v > 64 || v < -64) return v;   // [telefono] le rive una volta sola
-    const d = c2Dist(x, y, 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
+    const d = c2Dist(x, y, cap || 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
   };
+  // [fluido] chi chiede solo «è entro cap metri dalla riva?» (render.js vdWet, 14 m): stessa risposta dove |distanza| < cap, e oltre
+  // resta oltre; la ricerca sulla riva copre ±(cap + 2) metri invece di ±64 (quattro volte meno conti). I due metri in più: un tratto
+  // di riva lungo 1 m che comincia a cap metri può passare più vicino (c2Dist salta i tratti dal loro inizio)
+  const InlandK = (x, y, cap) => Math.max(Inland0(x, y, Math.min(64, cap + 2)), isleIn(x, y));
   const Inland = (x, y) => Math.max(Inland0(x, y), isleIn(x, y));   // [arcipelago] la riva più vicina, isole comprese
   const DistrictAt = (x, y) => y !== undefined && isleIn(x, y) > Inland0(x, y) - 18 ? 'isole' : DistrictAt0(x);   // [arcipelago] con y: le isole e il mare attorno
   const DistrictAt0 = x => x < 380 ? 'prateria' : x < XF ? 'foresta' : x < XG ? districtO(x - DXF) : x < XC ? 'perif_o' : districtO(x - DXC);
@@ -3043,7 +3047,7 @@ var World = (function () {
     Object.assign(W, {
       districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
       yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
-      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY),
+      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY), inlandK: (x, y, cap) => InlandK(x - OX, y - OY, cap),
       zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
       xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
       isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY),

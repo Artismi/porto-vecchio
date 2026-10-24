@@ -25800,11 +25800,15 @@ var World = (function () {
   const Yc = x => (NorthY(x) + SouthY(x)) / 2;
   const Inland00 = (x, y) => Math.min(y - NorthY(x), SouthY(x) - y, x < HEAD.x - 70 ? HEAD.r - Math.hypot(x - HEAD.x, y - HEAD.y) + 2 : 1e9, x > XE + 90 ? 1284 - x : 1e9);
   // [costa2] fuori dalla città la distanza vera dalla riva (entro 64 m); oltre, e nella città, quella di prima
-  const Inland0 = (x, y) => {
+  const Inland0 = (x, y, cap) => {
     if (x >= C2X1 - 4 || x < C2T.x0 + 2) return Inland00(x, y);
     const ny = NorthY(x), sy = SouthY(x), v = Math.min(y - ny, sy - y); if (v > 64 || v < -64) return v;   // [telefono] le rive una volta sola
-    const d = c2Dist(x, y, 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
+    const d = c2Dist(x, y, cap || 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
   };
+  // [fluido] chi chiede solo «è entro cap metri dalla riva?» (render.js vdWet, 14 m): stessa risposta dove |distanza| < cap, e oltre
+  // resta oltre; la ricerca sulla riva copre ±(cap + 2) metri invece di ±64 (quattro volte meno conti). I due metri in più: un tratto
+  // di riva lungo 1 m che comincia a cap metri può passare più vicino (c2Dist salta i tratti dal loro inizio)
+  const InlandK = (x, y, cap) => Math.max(Inland0(x, y, Math.min(64, cap + 2)), isleIn(x, y));
   const Inland = (x, y) => Math.max(Inland0(x, y), isleIn(x, y));   // [arcipelago] la riva più vicina, isole comprese
   const DistrictAt = (x, y) => y !== undefined && isleIn(x, y) > Inland0(x, y) - 18 ? 'isole' : DistrictAt0(x);   // [arcipelago] con y: le isole e il mare attorno
   const DistrictAt0 = x => x < 380 ? 'prateria' : x < XF ? 'foresta' : x < XG ? districtO(x - DXF) : x < XC ? 'perif_o' : districtO(x - DXC);
@@ -28570,7 +28574,7 @@ var World = (function () {
     Object.assign(W, {
       districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
       yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
-      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY),
+      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY), inlandK: (x, y, cap) => InlandK(x - OX, y - OY, cap),
       zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
       xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
       isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY),
@@ -64904,7 +64908,7 @@ var Render = (function () {
     if (th(tx, ty, 77) < .055) { const cx = px + 3 + r() * (P - 6), cy = py + 3 + r() * (P - 6), rr = 2 + r() * 2.5; x.fillStyle = '#4a4648'; x.beginPath(); x.ellipse(cx, cy, rr, rr * .7, r() * 3, 0, 6.3); x.fill(); x.fillStyle = '#3a3638'; x.beginPath(); x.ellipse(cx + .5, cy + .5, rr * .6, rr * .4, 0, 0, 6.3); x.fill(); }   // buca
   }
   // [inverno] distanza dalla linea di costa vera (metri, positiva verso terra)
-  function coastIn(x, y) { const W0 = M.world; if (!W0 || !W0.northY) return 9; const L = W0.LAKE; if (L) { const q = Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry); if (q < 1.6) return (q - .9) * Math.min(L.rx, L.ry); } return W0.inland ? W0.inland(x, y) : Math.min(y - W0.northY(x), W0.southY(x) - y, x - 6, 672 - x); }
+  function coastIn(x, y, cap) { const W0 = M.world; if (!W0 || !W0.northY) return 9; const L = W0.LAKE; if (L) { const q = Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry); if (q < 1.6) return (q - .9) * Math.min(L.rx, L.ry); } return W0.inland ? (cap && W0.inlandK ? W0.inlandK(x, y, cap) : W0.inland(x, y)) : Math.min(y - W0.northY(x), W0.southY(x) - y, x - 6, 672 - x); }   // [fluido] cap: basta sapere se si è entro cap metri (vedi world inlandK)
   // ---- pittura del terreno, casella per casella ----
   // [costa2] la sabbia bagnata: lungo la battigia una fascia più scura (la distanza vera dalla riva, a quarti di casella), sopra la sabbia dipinta
   function sabbiaBagnata2(x, tx0, ty0, n, m) {
@@ -72346,7 +72350,7 @@ var Render = (function () {
   function vdWet(X, Y) {
     let w = vnz(X / 46 + 3.1, Y / 46 + 7.7) * 1.2 + vnz(X / 13 + 1.7, Y / 13 + 4.2) * .45;
     const LK = M.world && M.world.LAKE; if (LK) { const q = Math.hypot((X - LK.x) / LK.rx, (Y - LK.y) / LK.ry); if (q < 2.4) w += (2.4 - q) * .35; }
-    const ci = coastIn(X, Y); if (ci > 0 && ci < 14) w -= (14 - ci) / 14 * .25;
+    const ci = coastIn(X, Y, 14); if (ci > 0 && ci < 14) w -= (14 - ci) / 14 * .25;   // [fluido] conta solo entro 14 m: la ricerca della riva si ferma lì (stesso risultato)
     return w;
   }
   // quanti alberi e quanta strada attorno a una casella (5 × 5): il margine del bosco e il bordo strada

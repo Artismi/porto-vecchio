@@ -1103,7 +1103,7 @@ var Render = (function () {
     if (th(tx, ty, 77) < .055) { const cx = px + 3 + r() * (P - 6), cy = py + 3 + r() * (P - 6), rr = 2 + r() * 2.5; x.fillStyle = '#4a4648'; x.beginPath(); x.ellipse(cx, cy, rr, rr * .7, r() * 3, 0, 6.3); x.fill(); x.fillStyle = '#3a3638'; x.beginPath(); x.ellipse(cx + .5, cy + .5, rr * .6, rr * .4, 0, 0, 6.3); x.fill(); }   // buca
   }
   // [inverno] distanza dalla linea di costa vera (metri, positiva verso terra)
-  function coastIn(x, y) { const W0 = M.world; if (!W0 || !W0.northY) return 9; const L = W0.LAKE; if (L) { const q = Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry); if (q < 1.6) return (q - .9) * Math.min(L.rx, L.ry); } return W0.inland ? W0.inland(x, y) : Math.min(y - W0.northY(x), W0.southY(x) - y, x - 6, 672 - x); }
+  function coastIn(x, y, cap) { const W0 = M.world; if (!W0 || !W0.northY) return 9; const L = W0.LAKE; if (L) { const q = Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry); if (q < 1.6) return (q - .9) * Math.min(L.rx, L.ry); } return W0.inland ? (cap && W0.inlandK ? W0.inlandK(x, y, cap) : W0.inland(x, y)) : Math.min(y - W0.northY(x), W0.southY(x) - y, x - 6, 672 - x); }   // [fluido] cap: basta sapere se si è entro cap metri (vedi world inlandK)
   // ---- pittura del terreno, casella per casella ----
   // [costa2] la sabbia bagnata: lungo la battigia una fascia più scura (la distanza vera dalla riva, a quarti di casella), sopra la sabbia dipinta
   function sabbiaBagnata2(x, tx0, ty0, n, m) {
@@ -8545,7 +8545,7 @@ var Render = (function () {
   function vdWet(X, Y) {
     let w = vnz(X / 46 + 3.1, Y / 46 + 7.7) * 1.2 + vnz(X / 13 + 1.7, Y / 13 + 4.2) * .45;
     const LK = M.world && M.world.LAKE; if (LK) { const q = Math.hypot((X - LK.x) / LK.rx, (Y - LK.y) / LK.ry); if (q < 2.4) w += (2.4 - q) * .35; }
-    const ci = coastIn(X, Y); if (ci > 0 && ci < 14) w -= (14 - ci) / 14 * .25;
+    const ci = coastIn(X, Y, 14); if (ci > 0 && ci < 14) w -= (14 - ci) / 14 * .25;   // [fluido] conta solo entro 14 m: la ricerca della riva si ferma lì (stesso risultato)
     return w;
   }
   // quanti alberi e quanta strada attorno a una casella (5 × 5): il margine del bosco e il bordo strada
