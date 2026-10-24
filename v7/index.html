@@ -12626,7 +12626,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   };
 
   // ================= 2. IL REGIME: portico razionalista e torre littoria (E4) =================
-  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
+  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[pianta] varchi: le x locali delle porte delle case dietro, dove il fondo del portico è aperto. [cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
   // [facciate2] il portico vero: pilastri con la base e il capitello, l'intradosso con le travi fra i pilastri (e la sua ombra), il
   // marcapiano al piano delle arcate, la cortina di travertino a lastre (i giunti li disegna il materiale) con le finestre incassate
   // (lo sguincio è lo spessore del muro), la cornice piatta razionalista e il davanzale, le tapparelle a più altezze, il cornicione con
@@ -12647,8 +12647,12 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (!LOD) blocco(g, pl + .1, .16, .58, 'pietraChiara', x, H - (cw - pl) / 2 - .08, zF, .02); }   // l'imposta dell'arco
     if (!LOD) archi.forEach(a => blocco(g, .34, .5, .58, 'pietraChiara', a.x, H - .28, zF, .02));   // la chiave
     const porte = []; for (let i = 0; i < n; i++) { const v = hs(i, 1) < .62; porte.push({ x: i * cw + cw / 2, w: v ? Math.min(2.6, cw - 1) : 1.5, h: v ? 3.1 : 3.3, tipo: 'rett', h0: v ? .55 : 0, v }); }
+    // [pianta] varchi: le porte vere delle case dietro (x locali); lì il fondo è aperto e si vede il portone della casa, senza la vetrina finta
+    if (o.varchi && o.varchi.length) { const aperte = new Set(); o.varchi.forEach(x => { for (let i = 0; i < n; i++) if (x + 1.3 > i * cw && x - 1.3 < (i + 1) * cw) aperte.add(i); });   // la campata intera: il portone disegnato cade fino a un metro dal centro della casella
+      for (let i = n - 1; i >= 0; i--) if (aperte.has(i)) porte.splice(i, 1);
+      aperte.forEach(i => porte.push({ x: i * cw + cw / 2, w: cw - .3, h: 3.1, tipo: 'rett', h0: 0, aperto: true })); }
     pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
-    if (!LOD) porte.forEach(a => { if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
+    if (!LOD) porte.forEach(a => { if (a.aperto) return; if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
       else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
     blocco(g, L, .5, P, 'intradosso', L / 2, hA - .5, -.25);                                    // il soffitto in ombra
     blocco(g, L + .2, .2, .7, 'pietraChiara', L / 2, hA, zF - .1, .02);                          // il marcapiano sopra le arcate
@@ -22244,7 +22248,7 @@ var World = (function () {
           // la Porta di Terra sta sul Mercato vecchio (l'ottagono era la piazza fuori dalla porta): sulla bocca del Vico dei Giardini, che ci passa sotto
           // a piedi; la faccia con le torri guarda la piazza e la camera. Misura di mezzo: 14 m con due torri basse (era 23 m, poi 8 m senza torri)
           const G = RDp('giardini'), OC = CITY.octa; if (G && OC) { const gy = G.pts[G.pts.length - 1][1], O = { w: 4.6, h: 7, torri: true, tw: 2.8 }, Wp = O.w + 4 + 2 * O.tw, xE = OC[0] - OC[2] + 3.2;
-            const p = pzAt('porta_terra', xE, gy, Math.PI / 2, Wp / 2, 0, O, { nome: 'Porta di Terra' }); pzRis(p, 'B', -.4, O.tw + 2, -3.2, 3.2); pzRis(p, 'B', Wp - O.tw - 2, Wp + .4, -3.2, 3.2); pzRis(p, 'B', -.4, O.tw + .4, 3.2, 6.2); pzRis(p, 'B', Wp - O.tw - .4, Wp + .4, 3.2, 6.2); } } }
+            const p = pzAt('porta_terra', xE, gy, Math.PI / 2, Wp / 2, 0, O, { nome: 'Porta di Terra' }); pzRis(p, 'B', -.4, O.tw + 2, -7, 3.2); pzRis(p, 'B', Wp - O.tw - 2, Wp + .4, -7, 3.2);   /* dietro le torri il pieno fino alle case: nessuna porta nascosta dietro l'arco */ pzRis(p, 'B', -.4, O.tw + .4, 3.2, 6.2); pzRis(p, 'B', Wp - O.tw - .4, Wp + .4, 3.2, 6.2); } } }
       // [cucitura] IL RECINTO DEL GARANTE AL PORTO (MAPPA_COMPATTA.md sez. 13). La presenza del regime lascia la Vittoria e si chiude in un
       // recinto solo, sul bordo del porto fortificato, fra la spianata, il canale della Rocca e il mare: il Muro del Garante continuo (lastre a L
       // e camminamento di ronda sul retro), le torri di guardia agli angoli e ai lati del varco, a non più di 28 m l'una dall'altra; il varco col
@@ -23133,6 +23137,30 @@ var World = (function () {
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
     }
     // [botteghe] le porte sono definitive: ogni bottega sotto casa prende il suo fronte accanto al portone (se non ci sta, il palazzo resta bottega intera)
+    // [pianta] LE PORTE LIBERE DAI PEZZI GRANDI: i sottopassi a volta, le scalinate e la Porta di Terra si posano prima delle case, e la
+    // casa che ci nasce accanto apriva la porta proprio lì (sotto la volta, contro il gradino, dietro l'arco: coperta dalla camera e senza
+    // spazio davanti). La porta si sposta sulla casella libera migliore dello stesso fronte o di un altro, fuori dall'ingombro più 1,6 m.
+    const INGOMBRI = PEZZI.filter(p => p.imp && /^(arco_sottopasso|scalinata|porta_terra)$/.test(p.tipo));
+    const dentroIngombro = (x, y, m) => INGOMBRI.some(p => { const [lx, lz] = pzL(p, x, y); return p.imp.some(([k, x0, x1, z0, z1]) => lx > x0 - m && lx < x1 + m && lz > z0 - m && lz < z1 + m); });
+    const rePorta = (b, cattiva) => { let best = null, bd = 1e9;
+      for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) {
+        const edge = tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h, corner = (tx === b.x - 1 || tx === b.x + b.w) && (ty === b.y - 1 || ty === b.y + b.h);
+        if (!edge || corner || tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.WATER || v === T.TREE || v === T.FOUNT || v === T.CLIFF) continue;
+        if (cattiva((tx + .5) * TS, (ty + .5) * TS)) continue;
+        const roadish = v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY || v === T.DIRT ? 0 : 3, mid = Math.abs((tx + .5) - (b.x + b.w / 2)) + Math.abs((ty + .5) - (b.y + b.h / 2)) * .9;
+        const sc = roadish + mid * .3 + (v === T.VIA ? 1.2 : 0) + hash2(tx, ty, 5) * .2; if (sc < bd) { bd = sc; best = [tx, ty]; } }
+      if (best) b.door = best; return !!best; };
+    // e quella che la camera (da sud-est, alta 45°) vede solo attraverso il pezzo: il raggio dalla soglia verso la camera sale di un metro
+    // per metro e non deve passare dentro il volume di un sottopasso, di un portico, della Porta, del carro sul tronchino
+    const ALTO = { arco_sottopasso: p => p.opz.h + 1 + (p.opz.piani || 0) * 3.1 + 1, porta_terra: p => p.opz.h + .22 * p.opz.w + 4.4 + (p.opz.torri ? 3.8 : .6), portico: p => p.opz.h + (p.opz.piani || 0) * 3.4 + 1.2, carro_merci: () => 3.9, scalinata: p => (p.opz.dislivello || 2) + 1 };
+    const RECT = p => p.tipo === 'portico' ? [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2 - .4, p.opz.profondita / 2 + .4]] : p.tipo === 'carro_merci' ? [[0, 0, 10, -1.5, 1.5]] : p.tipo === 'porta_terra' ? [[0, 0, p.opz.w + 4 + 2 * (p.opz.torri ? p.opz.tw || 6.5 : 0), -3, 3]] : p.imp;
+    const velata = (x, y) => { for (const h0 of [.5, 1.6]) for (let d = .4; d < 14; d += .35) { const u = x + d * Math.SQRT1_2, v = y + d * Math.SQRT1_2, h = h0 + d * .99;
+      const q = PEZZI.find(p => { if (!ALTO[p.tipo] || h > ALTO[p.tipo](p)) return false; const R = RECT(p); if (!R) return false; const [lx, lz] = pzL(p, u, v); return R.some(([k, x0, x1, z0, z1]) => lx > x0 && lx < x1 && lz > z0 && lz < z1); }); if (q) return q; } return null; };
+    POSA.velata = velata;
+    { let nMosse = 0; B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const cattiva = (x, y) => dentroIngombro(x, y, 1.6) || velata(x, y); if (cattiva((b.door[0] + .5) * TS, (b.door[1] + .5) * TS) && rePorta(b, cattiva)) nMosse++;
+        // la casetta che non ha un lato libero: il sottopasso che la copre perde un piano (la volta resta, la casa sopra è più bassa)
+        for (let k = 0; k < 2; k++) { const q = velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS); if (!q || q.tipo !== 'arco_sottopasso' || q.opz.piani < 2) break; q.opz.piani--; } });
+      if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[pianta] porte spostate dai pezzi', nMosse); }
     { const doors = new Set(); doors.shop = new Set(); B.forEach(b => { if (b.door) doors.add(b.door[1] * GW + b.door[0]); });
       B.forEach(b => { if (b.shopFront && !shopGeom(b, grid, reach, GW, GH, false, doors)) { delete b.shopFront; delete b.abitato; } }); }
     Object.values(PLACES).forEach(p => { if (p.isola) return; /* [arcipelago] sulle isole si arriva per mare */ if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
@@ -23162,24 +23190,41 @@ var World = (function () {
           const iL = -1, alt0 = hash2(kr, sd, 1991) < .5 ? 0 : 1; let xs = R.xa;
           corpi.forEach((n, k) => { const Ls = n * cw, lt = '', piani = sd ? ((k + alt0) % 3 === 2 ? 2 : 1) : ((k + alt0) % 2 ? 2 : 1);
             // [cucitura] il portico di bottega dell'Ottocento (archi su pilastri, intonaco, persiane), non più il travertino con le lettere del regime
-            PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.25 : VY - P.d1 + 2.25, sd ? Math.PI : 0, { campate: n, campata: cw, h: 4.4, piani, profondita: 3.6, pilastro: .7, lettere: '', stile: 'ottocento', tinta: ['ocra', 'intonaco', 'intonacoRosso', 'calce'][Math.floor(hash2(kr * 7 + k, sd, 1992) * 4)] }, { nome: 'Portici della Vittoria', lato: sd });
+            (R.pz = R.pz || []).push({ xs, Ls, p: PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.25 : VY - P.d1 + 2.25, sd ? Math.PI : 0, { campate: n, campata: cw, h: 4.4, piani, profondita: 3.6, pilastro: .7, lettere: '', stile: 'ottocento', tinta: ['ocra', 'intonaco', 'intonacoRosso', 'calce'][Math.floor(hash2(kr * 7 + k, sd, 1992) * 4)] }, { nome: 'Portici della Vittoria', lato: sd }) });
             xs += Ls; });
-          R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; }); }); });
+          // [pianta] il portone della casa dietro il portico sta in mezzo a una campata, non dietro un pilastro (la camera lo vede fra gli archi)
+          const pil = []; for (let j = 0; j <= nC; j++) pil.push(R.xa + j * cw);
+          R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; if (!b.door) return; const ty = sd ? b.y - 1 : b.y + b.h; if (b.door[1] !== ty) return;
+            const lib = x => Math.min(...pil.map(q => Math.abs(q - x))); let bx = b.door[0], bl = lib((bx + .5) * TS);
+            for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, l = lib((tx + .5) * TS); if (grid[i] === T.BLD || grid[i] === T.WATER) continue; if (b.shopFront && b.shopFront.door && (Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) < 1 || Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) > 5)) continue; if (l > bl + .3) { bl = l; bx = tx; } }
+            if (bx !== b.door[0]) { b.door = [bx, ty]; const P = PLACES[b.id]; if (P && !(b.shopFront && b.shopFront.door)) { P.tx = bx; P.ty = ty; P.x = bx * TS + TS / 2; P.y = ty * TS + TS / 2; } } });
+          (POSA.runs = POSA.runs || []).push([R, sd]); }); });
+      // [pianta] le porte delle case dietro il portico (nei vicoli fra una casa e l'altra, sui fianchi): dalla camera i piani sopra le arcate
+      // le coprono; si spostano dove si vedono (la porta sotto il proprio portico no: il portico è il suo atrio)
+      B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const sd0 = b.sottoPortico && (b.door[1] === b.y + b.h || b.door[1] === b.y - 1); if (sd0 || (b.shopFront && b.shopFront.door)) return;   // col fronte di bottega il portone resta accanto alla bottega
+        const sf = b.shopFront && b.shopFront.door, atrio = (x, y) => b.sottoPortico && (Math.floor(y / TS) === b.y + b.h || Math.floor(y / TS) === b.y - 1) && Math.floor(x / TS) >= b.x && Math.floor(x / TS) < b.x + b.w;
+        const cattiva = (x, y) => (!atrio(x, y) && POSA.velata(x, y)) || (sf && Math.floor(x / TS) === sf[0] && Math.floor(y / TS) === sf[1]);
+        if (!POSA.velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS)) return; if (rePorta(b, cattiva) && !sf) { const P = PLACES[b.id]; if (P) { P.tx = b.door[0]; P.ty = b.door[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; } } });
+      // [pianta] il fondo del portico si apre davanti a ogni porta della casa (il portone e la bottega): prima il muro con le vetrine finte la chiudeva
+      (POSA.runs || []).forEach(([R, sd]) => R.pz.forEach(({ xs, Ls, p }) => { const V = []; R.bs.forEach(b => { const ty = sd ? b.y - 1 : b.y + b.h;
+            [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (!d || d[1] !== ty) return; const x = (d[0] + .5) * TS, u = sd ? xs + Ls - x : x - xs; if (u > .2 && u < Ls - .2) V.push(Math.min(Ls - 1.45, Math.max(1.45, u))); }); });
+            if (V.length) p.opz.varchi = V.map(v => +v.toFixed(2)); }));
       // gli archi di contrasto: nei vicoli che non hanno già la casa col sottopasso, a metà, dove le due case si guardano
       // il varco del vicolo in un punto: quanto c'è di libero a destra e a sinistra prima del muro di una casa (o di un pezzo chiuso)
       POSA.varco = (x, y, nx, ny) => { const muro = (u, v) => { const i = Math.floor(v / TS) * GW + Math.floor(u / TS); return grid[i] === T.BLD || grid[i] === T.WATER; }; let a = 0, b = 0; while (a < 4 && !muro(x + nx * a, y + ny * a)) a += .1; while (b < 4 && !muro(x - nx * b, y - ny * b)) b += .1; return [a, b]; };
       const varco = POSA.varco;
+      const portaVicina = (x, y, r) => B.some(b => (b.door && dist((b.door[0] + .5) * TS, (b.door[1] + .5) * TS, x, y) < r) || (b.shopFront && b.shopFront.door && dist((b.shopFront.door[0] + .5) * TS, (b.shopFront.door[1] + .5) * TS, x, y) < r));   // [pianta] archi ed edicole lontani dalle porte
       const fatti = new Set(PEZZI.filter(p => p.vicolo).map(p => p.vicolo)), casa = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return false; const i = ty * GW + tx; return bIndex[i] >= 0 && !B[bIndex[i]].pezzo; };
       CITY.roads.filter(rd => /^vic_/.test(rd.id) && rd.id !== 'vic_forno' && rd.pts.length > 2 && !fatti.has(rd.id) &&   /* [mappa_compatta] la scalinata del Forno resta aperta: in fondo si vede il mare */ hash2(rd.pts.length, Math.round(rd.pts[0][0]), 1708) < .55).forEach(rd => {
         for (const f of [.45, .6, .3, .7]) { const A = lungo(rd.pts, f); if (A.L < 12) return; const nx = -A.uy, ny = A.ux, [ga, gb] = varco(A.x, A.y, nx, ny), w = ga + gb;
-          if (ga > 3.5 || gb > 3.5 || w < 1.8 || w > 4 || !casa(A.x + nx * (ga + .3), A.y + ny * (ga + .3)) || !casa(A.x - nx * (gb + .3), A.y - ny * (gb + .3))) continue;   // due case che si guardano, a 1,8-4 m
+          if (ga > 3.5 || gb > 3.5 || w < 1.8 || w > 4 || !casa(A.x + nx * (ga + .3), A.y + ny * (ga + .3)) || !casa(A.x - nx * (gb + .3), A.y - ny * (gb + .3)) || portaVicina(A.x, A.y, 3.2)) continue;   // due case che si guardano, a 1,8-4 m
           const B2 = lungo(rd.pts, Math.min(.98, f + 1.2 / A.L)), B0 = lungo(rd.pts, Math.max(.02, f - 1.2 / A.L)); if (Math.abs(varco(B2.x, B2.y, nx, ny).reduce((a, c) => a + c) - w) > .5 || Math.abs(varco(B0.x, B0.y, nx, ny).reduce((a, c) => a + c) - w) > .5) continue;   // le due facciate dritte per lo spessore dell'arco
           pzAt('arco_contrasto', A.x + nx * (ga - gb) / 2, A.y + ny * (ga - gb) / 2, Math.atan2(A.ux, A.uy), w / 2 + .7, 0, { w: +w.toFixed(2), h: 4.2, doppio: hash2(Math.round(A.x), Math.round(A.y), 1709) < .25 }, { nome: 'Arco di ' + rd.name, vicolo: rd.id }); return; } });
       // le edicole votive: sullo spigolo di una casa che dà sulla piazzetta, rivolte al centro
       const PIAZ = [[CITY.piazzette[0][0], CITY.piazzette[0][1], CITY.piazzette[0][2]], [CITY.piazzette[1][0], CITY.piazzette[1][1], CITY.piazzette[1][2]], [(CITY.piazza[0] + CITY.piazza[2]) / 2, (CITY.piazza[1] + CITY.piazza[3]) / 2, 7], [(CITY.rects[0][0] + CITY.rects[0][2]) / 2, (CITY.rects[0][1] + CITY.rects[0][3]) / 2, 6]];
       PIAZ.forEach(([cx, cy, rr], k) => { for (const a of [0, 1.5708, 3.1416, 4.7124].map(v => v + (k % 2) * 1.5708)) { const dx = Math.cos(a), dy = Math.sin(a); let hit = null;
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
-        if (!hit) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
+        if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
     }
     // quote ai vertici dalle caselle (strade e edifici spianati): il terreno che si vede
     const vh = new Float32Array(VW * (GH + 1));
@@ -44283,9 +44328,10 @@ var Tetti = (function () {
   const LADDERS = [];
   // [pulizia2] i pezzi urbani grandi della città nuova (W.pezzi, le caselle che riservano): una scala che ci sta dietro, vista dalla camera
   // (che guarda da sud-est), non si vede; meglio un altro lato
-  const PZ = (W.pezzi || []).filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
-  const inPz = (x, y, pad0) => PZ.some(p => { const pad = /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
-  const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 8; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
+  const PZ = (W.pezzi || []).map(p => p.imp || !p.opz ? p : p.tipo === 'portico' ? Object.assign({}, p, { misura: true, imp: [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2, p.opz.profondita / 2]] }) : p.tipo === 'carro_merci' ? Object.assign({}, p, { misura: true, imp: [[0, 0, 10, -1.5, 1.5]] }) : p)   // [pianta] il portico e il carro sul tronchino non riservano caselle: l'ingombro dalle misure
+    .filter(p => p.imp && p.tipo !== 'binari' && p.tipo !== 'bitta'), CAM = Math.SQRT1_2;
+  const inPz = (x, y, pad0) => PZ.some(p => { const pad = p.misura ? pad0 + .4 : /portico|porta_terra|tettoia/.test(p.tipo) ? pad0 + 2 : pad0, c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return p.imp.some(r => l >= r[1] - pad && l <= r[2] + pad && z >= r[3] - pad && z <= r[4] + pad); });   // le volte dei portici sporgono oltre le caselle riservate
+  const coperta = (wx, wy, ox, oy) => { if (!PZ.length) return false; for (let a = .3; a <= 2.3; a += .5) for (let b = 0; b <= 11; b += 1) if (inPz(wx + ox * a + CAM * b, wy + oy * a + CAM * b, .3)) return true; return false; };
   // [tetti3] LA CITTÀ NUOVA (le case con l'epoca): le salite si vedono. La camera guarda da sud-est, alta 41°: una scala sui lati
   // nord e ovest sta dietro la sua casa; una sul lato sud o est si vede, se davanti non c'è un'altra casa più alta o un pezzo grande.
   const CN3 = B.some(b => b.era), PIT3 = .72, TAN3 = Math.tan(PIT3);
@@ -44329,7 +44375,7 @@ var Tetti = (function () {
           else if (!G.walkT(tx, ty)) continue;
           let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0);
           // [pulizia2] davanti alla scala, verso la camera, non deve esserci un pezzo grande (arco, portico, mura, tettoia): la coprirebbe
-          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) s -= 8;
+          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) continue;   // [pianta] coperta da un pezzo grande (il portico, un arco, il carro sul tronchino): lì la scala non si mette
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
           if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(tx + ox, ty + oy)) s -= 1.5; }
           // [tetti3] nella città nuova la scala sta dalla parte della camera (sud, est) e nessuno davanti la copre: il lato della porta va
@@ -45249,7 +45295,7 @@ var Tetti = (function () {
     B.forEach((b, bi) => { if (!ok3(b)) return;
       const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, W1 = b.w * TS, D1 = b.h * TS;
       const giro = sulGiro.has(bi), piazza = piazze.some(n => hyp(n.x - cx, n.y - cy) < 30), lungo = dom.some(p => p.pts.some(q => hyp(q[0] - cx, q[1] - cy) < (p.k === 'dominante' ? 12 : 9)));
-      const pr = premio.get(bi), s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0) + (pr === 'terrazza' ? 20 : 0);   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole; [tetti4] la terrazza nascosta prima di tutte
+      const pr = premio.get(bi), s = (giro ? 3 : 0) + (piazza ? 2 : 0) + (lungo ? 1.5 : 0) + h3(b.x, b.y, 31) * .9 - (W1 * D1 < 20 ? .8 : 0) - (b.era === 'E3' ? 1.2 : 0) + (pr === 'terrazza' ? 20 : 0) + (b.sottoPortico ? 2.5 : 0);   // [pianta] sopra i portici della Vittoria il terrazzo si vede dalla strada: resta abitato anche senza la scala sotto le arcate   // i terrazzini di 4 × 4 m vengono dopo; l'Ottocento è soprattutto tegole; [tetti4] la terrazza nascosta prima di tutte
       const puo = b.era !== 'E4' && W1 >= 4 && D1 >= 4;
       cand.push({ b, bi, s, giro, piazza, lungo, puo, perc: sulPerc.has(bi), premio: pr });
     });
@@ -65380,7 +65426,7 @@ var Render = (function () {
       const pe = PRIO2[e.k] || 10, po = PRIO2[o.k] || 10, perde = pe < po || (pe === po && (e.vol < o.vol || (e.vol === o.vol && e.id > o.id)));
       if (perde || all) out.push({ t: pezzo2(e) || pezzo2(o) ? 'pezzo' : (e.k === 'tenda' || o.k === 'tenda') && /balcone|insegna|lampione/.test(e.k + o.k) ? 'tenda' : 'urto', o, perde }); });
     // 3) le zone libere: davanti alle porte e alle vetrine, ai piedi delle scale, attorno ai tombini (solo quello che sta in basso)
-    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
+    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (pezzo2(e) && e.tipo === 'portico' && z.p && z.p.info.b.sottoPortico && (z.p.info.f === 'S' || z.p.info.f === 'N')) return;   /* [pianta] il portico davanti alla porta della sua casa: il fondo lì è aperto */ if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
     // 4) in carreggiata: il centro sulla strada asfaltata (vicoli e sterrati no), per quello che sta a terra
     if (terra2(e) && !FISSI2.has(e.k) && B.y0 < gy + .6 && carr2(cx, cz)) out.push({ t: 'carreggiata' });
     // 5) sospeso o sepolto: quello che sta a terra deve toccare terra (o una cosa sotto, o il muro a cui è appeso)
@@ -65397,6 +65443,7 @@ var Render = (function () {
       if (p.k === 'porta' || p.k === 'scala') { const n = p.k === 'porta' ? p.info.F.n : [p.info.L.ox, p.info.L.oy], q = p.k === 'porta' ? p.info.F.p : [p.info.L.x, p.info.L.y]; if ((cx - q[0]) * n[0] + (cz - q[1]) * n[1] < -.05) return; }
       if ((e.k === 'portale' || e.k === 'serranda' || e.k === 'citofono') && p.k === 'porta') return;   // le parti della porta stessa
       const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
+      if (pezzo2(e) && e.tipo === 'portico' && p.k === 'porta' && p.info.b.sottoPortico && (p.info.f === 'S' || p.info.f === 'N')) return;   // [pianta] la porta sotto il suo portico: le arcate sono il suo atrio, non la coprono
       if (pezzo2(e)) { const [px, pz] = ctr2(p.B); if (inB2(e.B, px, (e.B.y0 + e.B.y1) / 2, pz, -.6) && e.B.y1 > p.B.y1) { (P2.sotto = P2.sotto || new Set()).add(p.id); return; }   // [pulizia] la porta sta SOTTO il portico, l'arco, la scalinata: coperta per costruzione (la visuale la apre quando ci si passa), si conta a parte
         const f = raggi2(e, p); if (f > .2) { const B = e.B, u = px * B.c - pz * B.s, v = px * B.s + pz * B.c, du = Math.max(B.u0 - u, 0, u - B.u1), dv = Math.max(B.v0 - v, 0, v - B.v1); out.push({ t: 'pezzo', p, a: f, fuori: Math.hypot(du, dv) }); } return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
       out.push({ t: 'coperto', p, a: a / p.harea }); }, 14);
@@ -65422,7 +65469,7 @@ var Render = (function () {
       V.forEach(v => { if (v.o) { const key = Math.min(e.id, v.o.id) + ':' + Math.max(e.id, v.o.id); if (coppie.has(key)) return; coppie.add(key); }
         if (v.t === 'coperto' || (v.t === 'pezzo' && v.p)) { const ck = v.t + v.p.id; if (coperti.has(ck)) return; coperti.add(ck); }
         rep.per[v.t]++; rep.tot++; const kk = v.t + ':' + e.k + (v.o ? '/' + v.o.k : v.p ? '/' + v.p.k : ''); rep.perVoce[kk] = (rep.perVoce[kk] || 0) + 1; const ps = v.t + ':' + e.src; rep.perPasso[ps] = (rep.perPasso[ps] || 0) + 1;
-        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k + (v.fuori !== undefined ? ' a ' + v.fuori.toFixed(1) + ' m, ' + Math.round(v.a * 100) + '%' : '') : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' [' + ['u0', 'u1', 'v0', 'v1', 'y0', 'y1'].map(k => v.h.B[k].toFixed(2)).join(',') + '] F' + (e.F ? e.F.p.map(q => q.toFixed(2)) + '/' + e.F.n : '-') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10]); }); });
+        const [x, z] = ctr2(e.B); pts.push([v.t, Math.round(x * 10) / 10, Math.round(z * 10) / 10, e.k + (e.tipo ? ':' + e.tipo : ''), e.src, v.o ? v.o.k + (v.o.tipo ? ':' + v.o.tipo : '') : v.p ? v.p.k + (v.fuori !== undefined ? ' a ' + v.fuori.toFixed(1) + ' m, ' + Math.round(v.a * 100) + '%' : '') : v.z ? v.z.t : v.h ? 'casa ' + (v.h.b.id || v.h.b.i) + (v.h.b === e.b ? ' (sua)' : '') + ' [' + ['u0', 'u1', 'v0', 'v1', 'y0', 'y1'].map(k => v.h.B[k].toFixed(2)).join(',') + '] F' + (e.F ? e.F.p.map(q => q.toFixed(2)) + '/' + e.F.n : '-') + ' ' + v.n + 'v ' + (e.vx.length / 3) + ' ' + (e.B.u1 - e.B.u0).toFixed(2) + 'x' + (e.B.v1 - e.B.v0).toFixed(2) + 'x' + (e.B.y1 - e.B.y0).toFixed(2) : '', Math.round(e.B.y0 * 10) / 10].concat(v.p || v.z ? ctr2((v.p || v.z).B).map(q => Math.round(q * 10) / 10) : [])); }); });   // [pianta] in fondo dove sta la porta o la scala che si copre
     rep.praticabili = { porte: R.P.filter(p => p.k === 'porta').length, scale: R.P.filter(p => p.k === 'scala').length, tombini: R.P.filter(p => p.k === 'tombino').length, passerelle: R.P.filter(p => p.k === 'passerella').length, coperti: [...coperti].filter(k => k[0] === 'c').length, dietroPezzi: [...coperti].filter(k => k[0] === 'p').length, sottoPezzi: P2.sotto ? P2.sotto.size : 0 };
     rep.case = R.H.length; return { rep, pts };
   }
