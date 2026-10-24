@@ -189,6 +189,43 @@ var Guardaroba = (function () {
     ['scarpe_chunky', 'scarpe da ginnastica grosse', 'Chunky', 'piedi', [F], .02, '#e8e4dc', 28, .8, .03],
     ['guanti_monchi', 'guanti senza dita', 'Senza dita', 'mani', [M], .006, '#1a1a1e', 3, .1, .05],
     ['zaino_tattico', 'zaino tattico', 'Tattico', 'schiena', [], 0, '#2a2e26', 14, 1.2, 0, { acc: 'zaino' }],
+    // [personaggi] hip hop e street: le stampe, le maglie da gioco, le giacche da crew, i pantaloni larghi, durag e visiera
+    ['maglietta_box', 'maglietta col box logo', 'Box logo', 'busto', [T, B], .01, '#f0ece2', 9, .25, .05],
+    ['maglietta_college', 'maglietta college col numero', 'College', 'busto', [T, B], .01, '#1e2a4a', 9, .25, .05],
+    ['maglietta_fiamme', 'maglietta con le fiamme', 'Fiamme', 'busto', [T, B], .01, '#141418', 9, .25, .05],
+    ['maglietta_tiedye', 'maglietta tie-dye', 'Tie-dye', 'busto', [T, B], .01, '#8a4ab8', 8, .25, .05],
+    ['maglietta_graffiti', 'maglietta coi graffiti', 'Graffiti', 'busto', [T, B], .01, '#f0ece2', 9, .25, .05],
+    ['maglietta_ringer', 'maglietta ringer col collo colorato', 'Ringer', 'busto', [T, B], .008, '#f0ece2', 7, .2, .05],
+    ['maglietta_resisti', 'maglietta con la scritta dietro', 'Resisti', 'busto', [T, B], .01, '#141418', 6, .25, .05],
+    ['maglietta_tramonto', 'maglietta col tramonto e le palme', 'Riviera', 'busto', [T, B], .01, '#e8601a', 8, .25, .05],
+    ['maglia_lunga', 'maglia a maniche lunghe da sotto', 'Manica lunga', 'busto', [T, B, A], .004, '#f0ece2', 5, .1, .1],
+    ['maglia_basket', 'maglia da basket larga col numero', 'Maglia basket', 'busto', [T], .02, '#c83a2a', 12, .2, 0],
+    ['felpa_college', 'felpa col cappuccio e la scritta ad arco', 'Felpa college', 'busto', [T, B, A], .024, '#5a5e66', 18, .7, .25],
+    ['felpa_blocchi', 'felpa a blocchi di colore', 'Felpa blocchi', 'busto', [T, B, A], .024, '#2a5aa8', 18, .7, .25],
+    ['felpa_cappuccio_zip', 'felpa col cappuccio e la zip', 'Felpa zip', 'busto', [T, B, A], .022, '#141418', 16, .7, .25],
+    ['felpa_tiedye', 'felpa tie-dye', 'Felpa tie-dye', 'busto', [T, B, A], .024, '#30a8b8', 18, .7, .25],
+    ['varsity', 'giubbotto varsity con la lettera', 'Varsity', 'busto', [T, B, A], .026, '#7a1e2a', 38, 1.1, .4],
+    ['coach_jacket', 'coach jacket di nylon', 'Coach', 'busto', [T, B, A], .016, '#141418', 22, .5, .2],
+    ['giacca_raso', 'giacca di raso ricamata', 'Raso', 'busto', [T, B, A], .026, '#1e2a4a', 34, .8, .35],
+    ['anorak', 'giacca a vento da infilare', 'Anorak', 'busto', [T, B, A], .026, '#e8a020', 24, .7, .35],
+    ['pile', 'pile a due colori', 'Pile', 'busto', [T, B, A], .03, '#3a8a4a', 20, .6, .45],
+    ['track_retro', 'giacca della tuta anni 80', 'Tuta retrò', 'busto', [T, B, A], .016, '#2a5aa8', 18, .5, .15],
+    ['camicia_bowling', 'camicia da bowling a due colori', 'Bowling', 'busto', [T, B], .01, '#141418', 14, .25, .05],
+    ['pantaloni_paracadute', 'pantaloni paracadute di nylon', 'Paracadute', 'gambe', [H, C, P], .03, '#2a2a2e', 20, .6, .15],
+    ['joggers', 'pantaloni della tuta stretti in fondo', 'Joggers', 'gambe', [H, C, P], .013, '#5a5e66', 12, .5, .12],
+    ['pantaloncini_basket', 'pantaloncini da basket lunghi', 'Short basket', 'gambe', [H, C], .03, '#c83a2a', 10, .3, 0],
+    ['jeans_carpenter', 'jeans carpenter larghi', 'Carpenter', 'gambe', [H, C, P], .02, '#c8b898', 18, .9, .12],
+    ['durag', 'durag di raso', 'Durag', 'testa', [], 0, '#141418', 5, .05, .05, { acc: 'durag' }],
+    // [personaggi] la montagna in città: guscio, piumino a sacchi, gilet di piuma, pile, pantaloni da arrampicata, imbrago, corda, scarpe da trail
+    ['giacca_guscio', 'giacca a guscio impermeabile', 'Guscio', 'busto', [T, B, A], .02, '#e8601a', 42, .7, .4, { arm: .02 }],
+    ['piumino_sacchi', 'piumino a sacchi con le spalle scure', 'Piumino sacchi', 'busto', [T, B, A], .05, '#e8a020', 48, 1, .85],
+    ['gilet_piuma', 'gilet di piuma', 'Gilet piuma', 'busto', [T], .035, '#2a5aa8', 26, .5, .4],
+    ['pile_montagna', 'pile da montagna coi rinforzi', 'Pile monte', 'busto', [T, B, A], .03, '#3a8a4a', 24, .6, .5],
+    ['pantaloni_arrampicata', 'pantaloni da arrampicata', 'Arrampicata', 'gambe', [H, C, P], .012, '#8a7a5a', 22, .5, .15],
+    ['imbrago', 'imbrago da arrampicata coi moschettoni', 'Imbrago', 'gambe', [H, C], .008, '#e8601a', 30, .6, 0],
+    ['corda', 'corda da arrampicata arrotolata', 'Corda', 'schiena', [], 0, '#2a8ad0', 26, 2.4, 0],
+    ['scarpe_trail', 'scarpe da trail', 'Trail', 'piedi', [F], .02, '#5a5e66', 30, .7, .05],
+    ['visiera', 'visiera da tennis', 'Visiera', 'testa', [], 0, '#f0ece2', 5, .05, 0, { acc: 'visiera' }],
   ];
   const CAPO = {};
   CAPI.forEach(([id, nome, corto, zona, parti, sp, col, prezzo, peso, calore, ex]) => {
@@ -215,6 +252,11 @@ var Guardaroba = (function () {
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['giacca_militare', 'parka', 'giacca_toppe', 'gilet_toppe', 'chiodo_spille', 'cardigan', 'maglione_fairisle', 'giacca_lavoro', 'salopette', 'camicia_70', 'jeans_risvolto', 'pantaloni_mimetici', 'kefiah', 'anfibi', 'guanti_monchi', 'zaino_tattico'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));   // [personaggi] il second hand
   sell('use:emporio', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'jeans_risvolto']);
+  const MONTE = ['giacca_guscio', 'piumino_sacchi', 'gilet_piuma', 'pile_montagna', 'pantaloni_arrampicata', 'imbrago', 'corda', 'scarpe_trail'];
+  sell('use:emporio', MONTE); sell('use:abbigliamento', MONTE);
+  const STREET = ['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
+  sell('use:emporio', STREET); sell('use:abbigliamento', STREET);
+  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['maglietta_resisti', 'varsity', 'coach_jacket', 'giacca_raso', 'track_retro', 'camicia_bowling', 'maglia_basket', 'jeans_carpenter', 'pile', 'maglietta_tramonto'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   sell('use:abbigliamento', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'cardigan', 'camicia_70', 'jeans_risvolto', 'maglione_fairisle']);
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
@@ -324,9 +366,17 @@ var Guardaroba = (function () {
     else if (/bosc|taglialegna|pastor|bracc|contad|vign|ortol/.test(job)) { put('camicia_quadri', pk(['#8a2a24', '#5a3a2a', '#3a5a3a'], 8)); put('gilet', pk(PAL, 11)); put('montone', top || '#7a5a3a'); put('stivali'); put(r(9, 2) ? 'colbacco' : 'coppola'); }
     else if (/forn|panett|macell|cuoc|bar|camerier|oste|bottega|commess|aliment|droghier/.test(job)) { put('camicia'); put('maglione', top || pk(PAL, 8)); put('grembiule'); put(fem ? 'scarpe_tela' : 'scarpe'); if (fem) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#c8b88a'], 9)); }
     else if (/impieg|banc|notai|avvoc|medic|maestr|profess|prete|sacrest|biblio|ragion/.test(job) || rich) { put('camicia'); put(r(8, 2) ? 'gilet' : 'dolcevita', pk(PAL, 8)); put('giacca', pk(PAL, 11)); put('cappotto', top || '#3a3e4a'); put('scarpe_eleganti'); if (r(9, 2)) put('cappello'); put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#c8b88a', '#3a5a8a'], 12)); if (fem) put('guanti'); }
-    else if (age < 26 && r(13, 3) < 2) {   // i ragazzi: skater o maranza
+    else if (age < 28 && r(13, 4) < 3) {   // i ragazzi: skater, maranza o hip hop
       const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); return v; };
-      if (r(13, 3) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
+      if (r(13, 4) === 2) {   // [personaggi] hip hop: maglietta stampata larga (o la maglia da basket sopra la manica lunga), giacca da crew o felpa, jeans larghi o paracadute o joggers, sneakers grosse, durag, visiera o pescatora, la catena
+        legs(pk(['jeans_larghi', 'pantaloni_paracadute', 'joggers', 'jeans_carpenter', 'cargo', 'pantaloncini_basket'], 49), pk(['#3e5a86', '#1a1a1e', '#2a2a2e', '#c8b898', '#5a5e66', '#4a5038', '#6a8ab8'], 50));
+        if (r(51, 4) === 0) { put('maglia_lunga', pk(['#f0ece2', '#141418'], 52)); put('maglia_basket', pk(['#c83a2a', '#2a5aa8', '#e8a020', '#141418', '#3a8a4a', '#7a1e2a'], 53)); }
+        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
+        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
+        put(pk(['scarpe_chunky', 'scarpe_air', 'scarpe_skate'], 57), pk(['#f4f2ee', '#141418', '#e8a020', '#c83a2a'], 58));
+        if (r(59, 3)) put(pk(['durag', 'visiera', 'cappello_pescatora', 'cappellino_dritto', 'berretto_corto', 'bandana'], 60), pk(['#141418', '#f0ece2', '#c83a2a', '#1e2a4a', '#e8a020', '#3a8a4a'], 61));
+        if (r(62, 2)) put(pk(['collana_oro', 'collana_oro', 'catenina'], 63)); if (r(64, 3) === 0) put(pk(['occhiali_mascherina', 'occhiali_ovali', 'occhiali_sole'], 65)); if (r(66, 3) === 0) put(pk(['borsello', 'marsupio_tracolla', 'zaino'], 67));
+      } else if (r(13, 4) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
         legs(r(14, 3) ? 'jeans_larghi' : 'cargo', r(14, 3) ? pk(['#6a8ab8', '#2a3a5a', '#1a1a1e'], 15) : pk(['#4a5038', '#8a7a5a', '#2a2a2e'], 15));
         put('maglietta_oversize', pk(['#ece8e0', '#1a1a1e', '#c8b88a', '#5a7a9a', '#8a2a2a'], 8)); if (r(9, 2)) put('felpa_skate', pk(['#3a5a3a', '#5a5e66', '#8a3a2a', '#2a3a5a', '#c8a03a'], 9));
         put('scarpe_skate', pk(['#1a1a1e', '#8a2a2a', '#2a3a5a', '#ece6da'], 10)); if (r(11, 2)) put(r(12, 2) ? 'berretto_corto' : 'cappellino_dritto', pk(['#c83a2a', '#e8a020', '#1a1a1e', '#2a5a3a'], 12));
@@ -336,6 +386,15 @@ var Guardaroba = (function () {
         put(r(9, 4) === 0 ? 'giacca_tuta' : r(9, 4) === 1 ? 'smanicato' : r(9, 4) === 2 ? (r(34, 2) ? 'tuta_nylon' : 'puffer_corto') : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc', '#8a1e2a'], 9));
         put('scarpe_air'); put('cappellino_dritto', pk(['#141418', '#1e2a4a', '#e8e4dc'], 12)); if (r(16, 2)) put('occhiali_mascherina'); put(r(10, 2) ? 'borsello' : 'marsupio_tracolla', pk(['#141418', '#2a2a30', '#5a4a3a'], 11)); if (r(11, 2)) put(r(12, 3) ? 'catenina' : 'collana_oro');
       } }
+    else if (age < 40 && r(70, 5) === 0) {   // [personaggi] la montagna in città: guscio o piumino a sacchi o pile, pantaloni da arrampicata o cargo, scarpe da trail, berretto o pescatora; qualcuno con l'imbrago e la corda
+      const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
+      legs(r(71, 3) ? 'pantaloni_arrampicata' : 'cargo', pk(['#8a7a5a', '#2a2a2e', '#4a5038', '#5a5e66', '#3a4a6a'], 72));
+      put(r(73, 2) ? 'maglietta' : 'maglia_lunga', pk(['#f0ece2', '#141418', '#5a5e66', '#e8a020'], 74));
+      put(pk(['pile_montagna', 'gilet_piuma', 'felpa'], 75), pk(['#3a8a4a', '#2a5aa8', '#e8d040', '#5a5e66', '#8a2a2a'], 76));
+      put(pk(['giacca_guscio', 'piumino_sacchi', 'giacca_guscio', 'anorak'], 77), pk(['#e8601a', '#e8a020', '#2a5aa8', '#3a8a4a', '#c83a2a', '#141418', '#e8d040', '#8a4ab8'], 78));
+      put('scarpe_trail', pk(['#5a5e66', '#e8601a', '#141418', '#2a5aa8'], 79)); if (r(80, 2)) put(pk(['berretto', 'berretto_corto', 'cappello_pescatora', 'cappellino'], 81), pk(['#e8601a', '#141418', '#e8d040', '#3a8a4a', '#c83a2a'], 82));
+      if (r(83, 4) === 0) { put('imbrago', pk(['#e8601a', '#2a8ad0', '#c83a2a'], 84)); put('corda', pk(['#2a8ad0', '#e8601a', '#8a4ab8', '#3ab86a'], 85)); } else if (r(86, 3) === 0) put(r(87, 2) ? 'marsupio_tracolla' : 'zaino', pk(['#141418', '#e8601a', '#3a4a6a'], 88));
+      if (r(89, 3) === 0) put('occhiali_mascherina'); }
     else if (age < 30 && r(21, 3) === 0) {   // [personaggi] vintage e second hand: camicia anni 70 o jacquard, cardigan o giacca di tela o giubbotto con le toppe, risvolti, anfibi o tela
       const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
       legs(r(22, 3) === 0 ? 'salopette' : r(22, 3) === 1 ? 'jeans_risvolto' : 'velluto', pk(['#2a3e6a', '#6a4a2a', '#4a5a3a', '#3a3a40'], 23));

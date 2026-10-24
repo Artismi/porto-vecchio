@@ -31,6 +31,12 @@ p.x = X(1112); p.y = W.southY(X(1112)) - 4; p.swim = false; for (let i = 0; i < 
 for (let i = 0; i < 200; i++) G.step(st, 1 / 30, { x: 0, y: -1 }); check(!p.swim, 'e si torna a riva');
 // i png non entrano in acqua
 check(!G.walkM(X(1010), Y(228)), 'per chi cammina il mare resta chiuso');
+// [chiatta] la chiatta a pedali al Pontile del Lido: si sale dal pontile, si pedala piano
+{ const ch = st.vehicles.find(v => v.kind === 'chiatta'), sl = S.structs.find(q => q.id === 'pontile_lido');
+  check(ch && ch.moored === 'pontile_lido' && G.boatM(ch.x, ch.y), 'la chiatta a pedali è al Pontile del Lido, in acqua fonda');
+  p.vehicle = null; p.swim = false; p.x = sl.pts[1][0] + .5; p.y = ch.y; r = G.act(st, 'veicolo'); check(p.vehicle === ch.id, `dal pontile si sale sulla chiatta: ${r.msg || ''}`);
+  const c0 = [ch.x, ch.y]; run(150, { thr: 1 }); check(ch.speed > 2 && ch.speed <= 3.3 && Math.hypot(ch.x - c0[0], ch.y - c0[1]) > 6, `pedalando va piano (${ch.speed.toFixed(1)} m/s)`);
+  G.act(st, 'veicolo'); G.step(st, 1 / 30, { x: 0, y: 0 }); }
 // posti barca: nessuna barca dentro un'altra o sulla terra
 const ms = S.moorings.filter(m => m.kind !== 'secca' && m.kind !== 'nave'); let bad = 0;
 ms.forEach(m => { if (!G.boatM(m.x, m.y)) bad++; }); check(!bad, `posti barca in acqua: ${ms.length - bad}/${ms.length}`);

@@ -483,7 +483,7 @@ var World = (function () {
   const lerp = (a, b, t) => a + (b - a) * t;
   const interp = (tab, x) => { if (x <= tab[0][0]) return tab[0][1]; for (let k = 0; k < tab.length - 1; k++) { const [a, ha] = tab[k], [b, hb] = tab[k + 1]; if (x < b) { const t = (x - a) / (b - a), s2 = t * t * (3 - 2 * t); return ha + (hb - ha) * s2; } } return tab[tab.length - 1][1]; };
   // la cresta: quota e posizione lungo x (da ovest: scarpata della Sila, altopiano, il Pizzo, la sella, il Monte dei Pini, giù verso il centro)
-  const CREST = [[146, 0], [172, 4], [202, 12], [230, 19], [250, 23], [272, 19.5], [290, 17], [312, 18], [338, 10], [358, 3], [370, .4]];   // [isola] una cima e una sella larga
+  const CREST = [[146, 0], [170, 3], [194, 8.5], [216, 11.5], [240, 12.5], [262, 13], [286, 12.5], [310, 12], [334, 7.5], [356, 2.5], [370, .4]];   // [altopiano] un tavolato largo a 12-13 m, come i pianori del Gran Paradiso
   const crestY = x => yc(x) + 5 * Math.sin(x / 41) - 2;
   const ALTO = { x: 190, y: 150, rx: 27, ry: 30 };                     // l'altopiano del lago
   const PIZZO = [248, crestY(248)];
@@ -510,12 +510,13 @@ var World = (function () {
     const cy = crestY(x), dy = y - cy, side = dy < 0 ? -1 : 1;
     const shore = side < 0 ? northY(x) : southY(x), room = Math.abs(shore - cy) - 9;
     const t = clamp(Math.abs(dy) / Math.max(10, room), 0, 1);
-    const Hc = crestH(x), prof = Math.pow(.5 + .5 * Math.cos(Math.PI * t), .8);
-    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof;
+    // [altopiano] il pianoro resta in quota per un buon tratto, poi scende al mare con un fianco dolce; sopra, dossi morbidi di 1-2 m
+    const Hc = crestH(x), prof = 1 - sstep(.22, 1, t), plat = 1 - sstep(.15, .55, t);
+    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof + (fbm(x / 34, y / 34, 303, 3) - .5) * 4.5 * plat * sstep(2, 8, Hc);
     const inl = inland(x, y); h = .4 + (h - .4) * sstep(7, 26, inl);
     // i borghi stanno su un ripiano
     for (const id in BORGHI) { const [bx, by, br0, bh] = BORGHI[id], d = dist(x, y, bx, by); if (d < br0 + 6) { const k = 1 - sstep(br0, br0 + 6, d); h = lerp(h, Math.min(bh, h + 1.5), k); if (k > .5) f |= MF.BORGO; } }
-    if (Hc * prof > 13) f |= MF.ALTO;
+    if (Hc * prof > 9) f |= MF.ALTO;
     return { h: Math.max(.4, h), f };
   }
   // la quota del crinale: interpolazione morbida (coseno) dei punti di CREST, poi una media larga: niente spigoli
@@ -1304,7 +1305,7 @@ var World = (function () {
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
         SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
-    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
+    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6, chiatta: 5.2 };
     const rs = rng(4242);
     // -- il porto vecchio, sotto il centro: la banchina dritta (la Calata), il Molo Vecchio che fa da diga (gomito verso levante,
     //    lanterna rossa), il Molo di Levante più corto (lanterna verde), tre pontili per le barche, lo scalo del cantiere.
@@ -1336,7 +1337,8 @@ var World = (function () {
     SEA.moorings.push({ kind: 'peschereccio', x: 1252 - 4.5 - 2.6, y: southY(640) + 26, ang: Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_s2' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
-      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
+      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' })));
+      SEA.moorings.push({ kind: 'chiatta', x: lx + 3.4, y: ly + 11.5, ang: Math.PI / 2, len: BOATLEN.chiatta, at: 'pontile_lido', drive: true }); }   // [chiatta] di fianco alla testata, la prua al largo
     void mVecchio; void mLevante;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
@@ -1969,7 +1971,8 @@ var World = (function () {
       // riferimento della via. Per lato, in fila lungo la via: i confini fra una casa e l'altra a metà fra le loro estensioni, il fronte
       // comune sul filo della casa più avanti (mai dentro la carreggiata), il retro dov'era; l'angolo della via. L'impronta a caselle resta
       // (griglia, camminabilità, porte). Una casa il cui lotto entrerebbe in un'altra (più di 5 cm) resta com'era.
-      CITY.lottiVie = typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : [];   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua)
+      { const qL = typeof location !== 'undefined' && location.search ? /[?&]lotti=([^&]+)/.exec(location.search) : null;   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua in node, ?lotti=rua nel gioco)
+        CITY.lottiVie = qL ? decodeURIComponent(qL[1]).split(',') : typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : []; }
       { const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
         const RDV = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), VIE = RDV.filter(rd => CITY.lottiVie.includes(rd.id));
         const vicino = (rd, x, y) => { let best = null, acc = 0; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-6, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))), px = ax + dx * t, py = ay + dy * t, d = Math.hypot(x - px, y - py);
@@ -2004,6 +2007,56 @@ var World = (function () {
               if (altri.some(Q => pen(n.S, Q) > .05)) { tieni.delete(n); cambia = true; if (DBGL) DBGL.push(['urta fila', n.b.id]); } } }
             tieni.forEach(n => { Object.assign(n.b, n.L); nL++; }); }); });
         CITY.nLotti = nL; if (DBGL) console.error('[lotti]', nL, JSON.stringify(DBGL)); }
+      // [pianta] L'ISOLATO ORIENTATO (il PIENO lungo una via storta): un isolato intero si ridisegna nel riferimento della via che ha davanti.
+      // La fila sul fronte diventa una cortina di lotti in aderenza, col filo comune sulla facciata più arretrata (nessuna casa avanza sul
+      // selciato) e i confini a metà fra una casa e l'altra; le case dietro restano dritte e si accorciano dove la cortina ha bisogno di posto
+      // (nessuna casa sparisce: botteghe, posti e percorsi restano agganciati). Le caselle che la cortina lascia scoperte sul fronte tornano
+      // selciato; quelle che copre diventano sue. CITY.isolatiOrientati: [{ via, x, y }], un punto dentro l'isolato (coordinate del mondo di generazione).
+      { const qI = typeof location !== 'undefined' && location.search ? /[?&]isolati=([^&]+)/.exec(location.search) : null, eI = typeof process !== 'undefined' && process.env && process.env.PV_ISOLATI;
+        const PRESETS = { rua1: { via: 'rua', x: 1036, y: 113 } };   // la Rua fra il Vico dei Pescatori e il Vico dei Lanternini, a sud
+        CITY.isolatiOrientati = (qI ? decodeURIComponent(qI[1]) : eI || '').split(',').filter(k => PRESETS[k]).map(k => Object.assign({ k }, PRESETS[k]));
+        const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
+        const poly = (cx, cy, lw, ld, a) => { const c = Math.cos(a), s = Math.sin(a); return [[-lw / 2, -ld / 2], [lw / 2, -ld / 2], [lw / 2, ld / 2], [-lw / 2, ld / 2]].map(([u, v]) => [cx + u * c - v * s, cy + u * s + v * c]); };
+        const pen = (P, Q) => { let m = 1e9; for (const R of [P, Q]) for (let i = 0; i < 4; i++) { const [x1, y1] = R[i], [x2, y2] = R[(i + 1) % 4], nx = y2 - y1, ny = x1 - x2, l = Math.hypot(nx, ny) || 1, pr = S => S.map(([x, y]) => (x * nx + y * ny) / l), A = pr(P), C = pr(Q), o = Math.min(Math.max(...A), Math.max(...C)) - Math.max(Math.min(...A), Math.min(...C)); if (o < m) m = o; } return m; };
+        const dentroP = (P, x, y) => { let s0 = 0; for (let i = 0; i < 4; i++) { const [x1, y1] = P[i], [x2, y2] = P[(i + 1) % 4], c = (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1); if (c !== 0) { if (s0 && Math.sign(c) !== s0) return false; s0 = Math.sign(c); } } return true; };
+        const LOG = typeof process !== 'undefined' && process.env && process.env.PV_ISOLATI_DBG ? [] : null;
+        CITY.isolatiOrientati.forEach(IS => { const rd = CITY.roads.find(r => r.id === IS.via); if (!rd) return;
+          // l'isolato: le caselle (case e cortili) raggiungibili dal punto senza passare per una strada
+          const t0 = T2i(IS.y) * GW + T2i(IS.x); if (roadW[t0] > 0) return; const isol = new Set([t0]), st = [t0];
+          while (st.length) { const i = st.pop(), x = i % GW, y = (i / GW) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const j = (y + dy) * GW + x + dx; if (isol.has(j) || roadW[j] > 0 || zone[j] !== Z.CITTA) continue; const v = grid[j]; if (v !== T.BLD && v !== T.COB) continue; if (v === T.BLD && (bIndex[j] < 0 || B[bIndex[j]].pezzo || B[bIndex[j]].sign || B[bIndex[j]].shop)) continue; isol.add(j); st.push(j); if (isol.size > 900) break; } }
+          const CASE = [...new Set([...isol].map(i => bIndex[i]).filter(k => k >= 0))].map(k => B[k]);
+          // la via davanti: la retta che meglio segue i punti della via lungo l'isolato
+          let xs = [...isol].map(i => (i % GW + .5) * TS), uMin = Math.min(...xs) - 4, uMax = Math.max(...xs) + 4, ys = [...isol].map(i => (((i / GW) | 0) + .5) * TS), yC = (Math.min(...ys) + Math.max(...ys)) / 2;
+          const Q = rd.pts.filter(([x]) => x >= uMin && x <= uMax); if (Q.length < 2) return; const mx = Q.reduce((s, q) => s + q[0], 0) / Q.length, my = Q.reduce((s, q) => s + q[1], 0) / Q.length;
+          let sxx = 0, sxy = 0, syy = 0; Q.forEach(([x, y]) => { sxx += (x - mx) ** 2; sxy += (x - mx) * (y - my); syy += (y - my) ** 2; }); const ang = .5 * Math.atan2(2 * sxy, sxx - syy), ux = Math.cos(ang), uy = Math.sin(ang);
+          const sg = Math.sign((yC - my) * ux - 0 * uy - ((Math.min(...xs) + Math.max(...xs)) / 2 - mx) * uy) || 1, nx = -uy * sg, ny = ux * sg;   // la normale verso l'isolato
+          const U = (x, y) => (x - mx) * ux + (y - my) * uy, V = (x, y) => (x - mx) * nx + (y - my) * ny, rot = w90(ang);
+          const ext = b => { const P = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]].map(([x, y]) => [x * TS, y * TS]); const us = P.map(p => U(...p)), vs = P.map(p => V(...p)); return { u0: Math.min(...us), u1: Math.max(...us), v0: Math.min(...vs), v1: Math.max(...vs) }; };
+          // la fila sul fronte: le case con una casella a meno di una casella dalla via
+          const fronte = CASE.filter(b => { for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const j = ty * GW + tx; if (roadW[j] > 0 && rd.pts.some(([x, y]) => Math.abs(x - (tx + .5) * TS) < rd.w / 2 + 2 && Math.abs(y - (ty + .5) * TS) < rd.w / 2 + 2)) return true; } return false; }).map(b => Object.assign({ b }, ext(b))).sort((p, q) => (p.u0 + p.u1) - (q.u0 + q.u1));
+          if (fronte.length < 2) return; const vf = Math.max(...fronte.map(q => q.v0)), uA = Math.min(...[...isol].map(i => U((i % GW + .5) * TS, (((i / GW) | 0) + .5) * TS))) - 1, uB = Math.max(...[...isol].map(i => U((i % GW + .5) * TS, (((i / GW) | 0) + .5) * TS))) + 1;
+          for (let k = 0; k < fronte.length; k++) { const q = fronte[k], p = fronte[k - 1]; q.a0 = p ? (p.u1 + q.u0) / 2 : q.u0; if (p) p.a1 = q.a0; } fronte[fronte.length - 1].a1 = fronte[fronte.length - 1].u1;
+          const dentroIs = (x, y) => isol.has(T2i(y) * GW + T2i(x));
+          const lotti = fronte.map(q => { let a0 = q.a0, a1 = q.a1, dep = q.v1 - vf;   // il lotto deve stare tutto dentro l'isolato: si stringe alle testate e si accorcia dietro
+            const fai = () => { const um = (a0 + a1) / 2, vm = vf + dep / 2, cx = mx + ux * um + nx * vm, cy = my + uy * um + ny * vm, lx = Math.abs(Math.cos(rot) * ux + Math.sin(rot) * uy) > .7; return { cx, cy, lw: lx ? a1 - a0 : dep, ld: lx ? dep : a1 - a0, P: poly(cx, cy, lx ? a1 - a0 : dep, lx ? dep : a1 - a0, rot) }; };
+            for (let it = 0; it < 30; it++) { const L = fai(); const fuori = L.P.map(([x, y]) => !dentroIs(x - nx * .01, y - ny * .01)); if (!fuori.some(Boolean) || a1 - a0 < 2.6 || dep < 3) return Object.assign(L, { q, ok: !fuori.some(Boolean) && a1 - a0 >= 2.6 && dep >= 3 });
+              if (fuori[0] || fuori[3]) a0 += .2; if (fuori[1] || fuori[2]) a1 -= .2; if (fuori[2] || fuori[3]) dep -= .2; }
+            return { q, ok: false }; }).filter(L => L.ok);
+          // le case dietro: dritte, si accorciano dal lato della cortina finché non la toccano più
+          const dietro = CASE.filter(b => !lotti.some(L => L.q.b === b)); let nCorte = 0;
+          dietro.forEach(b => { let x0 = b.x * TS, x1 = (b.x + b.w) * TS, y0 = b.y * TS, y1 = (b.y + b.h) * TS;
+            for (let it = 0; it < 40; it++) { const P = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]; const L = lotti.find(L => pen(P, L.P) > .05); if (!L) break; const dx = L.cx - (x0 + x1) / 2, dy = L.cy - (y0 + y1) / 2;
+              if (Math.abs(dy) * (x1 - x0) >= Math.abs(dx) * (y1 - y0)) { if (dy > 0) y1 -= .2; else y0 += .2; } else { if (dx > 0) x1 -= .2; else x0 += .2; } }
+            if (x1 - x0 < 1.6 || y1 - y0 < 1.6) { nCorte++; if (LOG) LOG.push(['piccola', b.id]); }
+            Object.assign(b, { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, lw: x1 - x0, ld: y1 - y0, rot: 0, isolato: IS.k }); });
+          lotti.forEach(L => Object.assign(L.q.b, { cx: +L.cx.toFixed(3), cy: +L.cy.toFixed(3), lw: +L.lw.toFixed(3), ld: +L.ld.toFixed(3), rot: Math.abs(rot) < .01 ? 0 : +rot.toFixed(4), lotto: rd.id, isolato: IS.k }));
+          // le caselle: quelle della fila che il lotto non copre più tornano selciato; quelle che copre diventano sue
+          const occ = (x, y) => { for (const L of lotti) if (dentroP(L.P, x, y)) return L.q.b; for (const b of dietro) if (Math.abs(x - b.cx) < b.lw / 2 && Math.abs(y - b.cy) < b.ld / 2) return b; return null; };
+          let nLib = 0, nOcc = 0; isol.forEach(i => { const x = (i % GW + .5) * TS, y = (((i / GW) | 0) + .5) * TS, o = occ(x, y);
+            if (o) { if (grid[i] !== T.BLD || bIndex[i] !== o.i) { grid[i] = T.BLD; bIndex[i] = o.i; nOcc++; } }
+            else if (grid[i] === T.BLD) { grid[i] = T.COB; bIndex[i] = -1; reserved[i] = 1; nLib++; } });
+          if (LOG) LOG.push([IS.k, 'case', CASE.length, 'cortina', lotti.length, 'su', fronte.length, 'angolo', +(rot * 180 / Math.PI).toFixed(1), 'caselle libere', nLib, 'coperte', nOcc, 'piccole', nCorte]); });
+        if (LOG) console.error('[isolati]', JSON.stringify(LOG)); }
       // il marciapiede arriva fino al muro: i ritagli fra il marciapiede e le facciate arretrate diventano marciapiede (niente terra di nessuno)
       for (let pass = 0; pass < 3; pass++) { const add = [];
         for (let ty = 1; ty < GH - 1; ty++) for (let tx = T2i(CITY_W0); tx < T2i(CITY.spian0 || 1143); tx++) { const i = ty * GW + tx; if (grid[i] !== T.COB || roadW[i] > 0 || reserved[i] || zone[i] !== Z.CITTA) continue;
@@ -3242,6 +3295,8 @@ var World = (function () {
     if (!shopGeom(b, W.grid, W.reach, W.GW, W.GH, true, null)) { delete b.shopFront; delete b.abitato; return false; } return true; };
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
+  { const VG = typeof Vegetazione !== 'undefined' ? Vegetazione : typeof require !== 'undefined' ? (() => { try { return require('./vegetazione.js'); } catch (e) { return null; } })() : null;
+    if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
   return W;
 })();
 if (typeof module !== 'undefined') module.exports = World;
