@@ -12,7 +12,7 @@
                   sull'asse, o le case ai due lati lasciano libera meno della larghezza della via meno 60 cm (o meno di 1,6 m);
    - sotto_pezzo  la carreggiata passa dentro la scatola piena di un pezzo grande ('B' di W.pezzi.imp) che non si attraversa
                   (portici, archi, sottopassi, porte e scalinate si attraversano: esclusi).
-   - marciapiede  lungo una via di città il marciapiede (caselle WALK a un metro dal ciglio) c'è e poi smette per 2 m o più senza un
+   - marciapiede  lungo una via di città il marciapiede (caselle WALK o banchina QUAY a 1 m o a 1,9 m dal ciglio) c'è e poi smette per 2 m o più senza un
                   incrocio, una piazza o una scala, o finisce contro un muro (la casella dopo è una casa);
    - scoglio      uno scoglio grande della costa (W.SEA.rocks, l'80% del raggio) sulla carreggiata o sul marciapiede (2 m oltre il ciglio).
    Ogni difetto: [tipo, x, y, via, lunghezza o distanza, contro]. analizza(W) → { conti, punti }. */
@@ -35,6 +35,7 @@ var StradeIntegre = (function () {
     // i lotti orientati (la pianta): centro, misure, angolo; le botteghe con l'insegna render.js le disegna dritte
     const LT = B.map(b => ({ b, cx: b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy: b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw: b.lw !== undefined ? b.lw : b.w * TS, ld: b.ld !== undefined ? b.ld : b.h * TS, rot: b.sign || b.shop ? 0 : b.rot || 0 }));
     const LI = new Map(), lk = (i, j) => i * 4096 + j; LT.forEach(L => { const r = Math.hypot(L.lw, L.ld) / 2; for (let i = Math.floor((L.cx - r) / 8); i <= Math.floor((L.cx + r) / 8); i++) for (let j = Math.floor((L.cy - r) / 8); j <= Math.floor((L.cy + r) / 8); j++) { const k = lk(i, j); let a = LI.get(k); if (!a) LI.set(k, a = []); a.push(L); } });
+    const scatolaPropria = b => b.cx !== undefined && (Math.abs(b.cx - (b.x + b.w / 2) * TS) > .01 || Math.abs(b.cy - (b.y + b.h / 2) * TS) > .01 || Math.abs((b.lw || 0) - b.w * TS) > .01 || Math.abs((b.ld || 0) - b.h * TS) > .01);
     const inLotto = (x, y, m) => { for (const L of LI.get(lk(Math.floor(x / 8), Math.floor(y / 8))) || []) { if (L.b.pezzo) continue; const c = Math.cos(L.rot), s = Math.sin(L.rot), dx = x - L.cx, dy = y - L.cy, u = dx * c + dy * s, v = -dx * s + dy * c; if (Math.abs(u) < L.lw / 2 - m && Math.abs(v) < L.ld / 2 - m) return L.b; } return null; };
     // i pezzi grandi: le scatole piene che non si attraversano
     const PZ = []; (W.pezzi || []).forEach(p => { if (!p.imp || PASSA.has(p.tipo)) return; p.imp.forEach(r => { if (r[0] === 'B') PZ.push({ p, r }); }); });
@@ -70,7 +71,7 @@ var StradeIntegre = (function () {
         for (let s = 0; s < L; s += 1) { const x = ax + ux * s, y = ay + uy * s; if (!inC(x, y)) { Object.keys(run).forEach(t => chiudi(t)); continue; }
           const v = tile(x, y); if (!SUOLO.has(v) && v !== T.BLD) apri('buco', x, y, NOME[v] || '?'); else chiudi('buco');
           // la larghezza libera della carreggiata: da ogni lato fin dove non c'è una casa (a passi di 25 cm)
-          let casa = null, pz = null, lib = 0, asse = false; const dentro = (px, py) => { let c = inLotto(px, py, .05); if (!c && tile(px, py) === T.BLD) { const bi = bAt(px, py); if (bi >= 0 && B[bi] && !B[bi].pezzo) c = B[bi]; } return c; };
+          let casa = null, pz = null, lib = 0, asse = false; const dentro = (px, py) => { let c = inLotto(px, py, .05); if (!c && tile(px, py) === T.BLD) { const bi = bAt(px, py); if (bi >= 0 && B[bi] && !B[bi].pezzo && !scatolaPropria(B[bi])) c = B[bi]; } return c; };   // [pianta] la casa con la sua scatola conta solo la scatola (quella che si disegna): le caselle sono l'impronta per la griglia
           for (const sg of [1, -1]) { let o2 = 0; for (; o2 <= hw; o2 += .25) { const c = dentro(x + nx * o2 * sg, y + ny * o2 * sg); if (c) { casa = casa || c; if (o2 === 0) asse = true; break; } } lib += Math.min(o2, hw); }
           for (const o2 of [0, hw - .3, -(hw - .3)]) pz = pz || inPezzo(x + nx * o2, y + ny * o2);
           if (casa && (asse || lib < Math.min(2 * hw, 2 * hw - .6) || lib < 1.6)) apri('sotto_casa', x, y, (casa.id || '?') + (asse ? ' (sull\'asse)' : ' (libera ' + lib.toFixed(1) + ' di ' + (2 * hw).toFixed(1) + ' m)')); else chiudi('sotto_casa');
@@ -83,7 +84,9 @@ var StradeIntegre = (function () {
         const incrocio = (x, y) => R.some(o2 => o2 !== rd && dVia(o2, x, y) < (o2.w || 4) / 2 + hw + 2.5) || NODI.some(n => inPoly(n.poly, x, y));
         for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], L = Math.hypot(bx - ax, by - ay); if (L < 1e-3) continue; const ux = (bx - ax) / L, uy = (by - ay) / L, nx = -uy * sg, ny = ux * sg;
           for (let s2 = 0; s2 < L; s2 += 1) { const x = ax + ux * s2, y = ay + uy * s2; if (!inC(x, y)) { prima = null; buco = null; continue; }
-            const px = x + nx * (hw + 1), py = y + ny * (hw + 1), v = tile(px, py), c = v === T.WALK;
+            // [pianta] la via in diagonale: la casella a 1 m dal ciglio può avere il centro dentro la carreggiata; si guarda anche a 1,9 m e
+            // vale la migliore. La banchina (QUAY, col muro sul mare) conta come marciapiede
+            const MC = v0 => v0 === T.WALK || v0 === T.QUAY, v1 = tile(x + nx * (hw + 1), y + ny * (hw + 1)), v2 = tile(x + nx * (hw + 1.9), y + ny * (hw + 1.9)), c = MC(v1) || MC(v2), v = MC(v1) ? v1 : v2, px = x + nx * (hw + 1), py = y + ny * (hw + 1);
             if (c) { if (buco && buco.n >= 2 && !buco.inc) P.marciapiede.push(['marciapiede', buco.x, buco.y, rd.id, rd.kind, buco.n + ' m', buco.muro ? 'contro un muro' : 'interrotto (' + (NOME[buco.v] || '?') + ')']); buco = null; prima = true; continue; }
             if (prima) { if (!buco) buco = { x: Math.round(px * 10) / 10, y: Math.round(py * 10) / 10, n: 0, inc: false, muro: v === T.BLD, v }; buco.n++; if (incrocio(x, y) || v === T.PIAZZA || v === T.STAIRS) buco.inc = true; } } }
         }); });
@@ -93,7 +96,56 @@ var StradeIntegre = (function () {
     const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length);
     return { conti, punti: P, vie: VR.length };
   }
-  const API = { analizza, CORNICE, PASSA };
+  // ================= LE CASE ACCOSTATE =================
+  // L'utente: «le case vicine o sono davvero fuse assieme, e allora sembrano un'unica architettura, altrimenti restano separate; niente
+  // vie di mezzo con cose appaiate, palazzi posizionati in griglia che risultano spigolosi e in mezzo». Per ogni coppia di case vicine
+  // (il loro lotto orientato: cx, cy, lw, ld, rot; dritte le botteghe con l'insegna, come render.js), nella cornice:
+  //   unite          si toccano (luce ≤ 5 cm) o si compenetrano solo del muro in comune (≤ 35 cm) e hanno lo stesso verso: va bene, sono una cortina
+  //   compenetrate   entrano l'una nell'altra più del muro in comune, o con versi diversi: due scatole incastrate a caso
+  //   fessura        fra le due resta una luce fra 5 cm e 1,2 m: né attaccate né separate (un vicolo vero è almeno 1,2 m)
+  //   spiraglio      fra due case parallele una luce fino a 2,6 m (una casella) dove non passa nessuna via: un taglio senza uso
+  //   appaiate_storte si toccano ma con versi diversi (più di 2°): lo spigolo dell'una esce dal filo dell'altra
+  //   griglia_storta una casa dritta sulla griglia davanti a una via storta (8-40° dagli assi, entro 3 m dal ciglio): la scaletta
+  //   in_mezzo      una casa dentro una piazza (W.nodi) o sulla carreggiata di una via (oltre metà della sua larghezza)
+  // Le baracche (b.shack) sono disordinate per costruzione: si contano a parte e non entrano nelle soglie.
+  function accostamenti(W, o) {
+    o = o || {}; const TS = W.TS, C = o.cornice || CORNICE, B = (W.BUILDINGS || []).filter(b => !b.pezzo && !b.military);
+    const inC = (x, y) => x >= C[0] && x <= C[2] && y >= C[1] && y <= C[3];
+    const L = B.map(b => { const cx = b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy = b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw = b.lw !== undefined ? b.lw : b.w * TS, ld = b.ld !== undefined ? b.ld : b.h * TS, rot = b.sign || b.shop ? 0 : b.rot || 0;
+      const c = Math.cos(rot), s = Math.sin(rot), ux = [c, s], vy = [-s, c], P = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, d]) => [cx + ux[0] * a * lw / 2 + vy[0] * d * ld / 2, cy + ux[1] * a * lw / 2 + vy[1] * d * ld / 2]);
+      return { b, cx, cy, lw, ld, rot, P, r: Math.hypot(lw, ld) / 2 }; }).filter(q => inC(q.cx, q.cy));
+    const P = { unite: [], compenetrate: [], fessura: [], spiraglio: [], appaiate_storte: [], griglia_storta: [], in_mezzo: [], baracche: [] };
+    const RV = (W.roads || []).filter(r => r && r.pts && r.pts.length > 1), suVia = (x, y) => RV.some(rd => { const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) if (segD([x, y], Q[k], Q[k + 1]) < (rd.w || 3) / 2 + .6) return true; return false; });
+    const pen = (A, Bq) => { let m = Infinity; for (const Q of [A, Bq]) for (let i = 0; i < 4; i++) { const p0 = Q[i], p1 = Q[(i + 1) % 4], ex = p1[0] - p0[0], ey = p1[1] - p0[1], l = Math.hypot(ex, ey) || 1, nx = -ey / l, ny = ex / l;
+      let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9; A.forEach(p => { const d = p[0] * nx + p[1] * ny; a0 = Math.min(a0, d); a1 = Math.max(a1, d); }); Bq.forEach(p => { const d = p[0] * nx + p[1] * ny; b0 = Math.min(b0, d); b1 = Math.max(b1, d); });
+      m = Math.min(m, Math.min(a1, b1) - Math.max(a0, b0)); } return m; };   // > 0: quanto si compenetrano; ≤ 0: separate
+    const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)); return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]); };
+    const dist = (A, Bq) => { let m = Infinity; for (const [X, Y] of [[A, Bq], [Bq, A]]) X.forEach(p => { for (let i = 0; i < 4; i++) m = Math.min(m, segD(p, Y[i], Y[(i + 1) % 4])); }); return m; };
+    const dRot = (a, b) => { let d = Math.abs(a - b) % (Math.PI / 2); if (d > Math.PI / 4) d = Math.PI / 2 - d; return d * 180 / Math.PI; };
+    const IX = new Map(), k8 = (i, j) => i * 4096 + j; L.forEach((q, n) => { const i = Math.floor(q.cx / 16), j = Math.floor(q.cy / 16); for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) { const k = k8(i + a, j + c); let A = IX.get(k); if (!A) IX.set(k, A = []); A.push(n); } });
+    const visti = new Set();
+    L.forEach((A, i) => { (IX.get(k8(Math.floor(A.cx / 16), Math.floor(A.cy / 16))) || []).forEach(j => { if (j <= i) return; const Bq = L[j]; if (Math.hypot(A.cx - Bq.cx, A.cy - Bq.cy) > A.r + Bq.r + 1.3) return; const key = i + ':' + j; if (visti.has(key)) return; visti.add(key);
+      const pe = pen(A.P, Bq.P), gap = pe > 0 ? -pe : dist(A.P, Bq.P), dr = dRot(A.rot, Bq.rot), x = Math.round((A.cx + Bq.cx) * 5) / 10, y = Math.round((A.cy + Bq.cy) * 5) / 10, nome = (A.b.id || i) + '|' + (Bq.b.id || j);
+      let t = null, info = '';
+      if (pe > .05) { if (dr < 1 && pe <= .35) t = 'unite'; else { t = 'compenetrate'; info = pe.toFixed(2) + ' m dentro, ' + dr.toFixed(0) + '°'; } }
+      else if (gap <= .05) { if (dr > 2) { t = 'appaiate_storte'; info = dr.toFixed(0) + '°'; } else t = 'unite'; }
+      else if (gap < 1.2) { t = 'fessura'; info = 'luce ' + gap.toFixed(2) + ' m'; }
+      else if (gap < 2.6 && dr < 2 && !suVia(x, y)) {   // uno spiraglio di una casella fra due case parallele, che non è una via: né cortina né vicolo
+        const lungo = Math.min(Math.max(A.lw, A.ld), Math.max(Bq.lw, Bq.ld)); if (lungo > 3) { t = 'spiraglio'; info = 'luce ' + gap.toFixed(1) + ' m, nessuna via'; } }
+      if (!t) return; if (t !== 'unite' && (A.b.shack || Bq.b.shack)) { P.baracche.push([t, x, y, nome, info]); return; } P[t].push([t, x, y, nome, info]); }); });
+    // le case dritte davanti alle vie storte, e le case in mezzo alle piazze o sulla carreggiata
+    const R = (W.roads || []).filter(r => r && r.pts && r.pts.length > 1 && VIE.has(r.kind));
+    const inPoly = (P0, x, y) => { let c = false; for (let i = 0, j = P0.length - 1; i < P0.length; j = i++) { const [xi, yi] = P0[i], [xj, yj] = P0[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+    L.forEach(q => { if (q.b.shack) return; let best = null;
+      for (const rd of R) { const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1; if (L2 < .01) continue; const t = Math.max(0, Math.min(1, ((q.cx - ax) * dx + (q.cy - ay) * dy) / L2)), px = ax + dx * t, py = ay + dy * t;
+        const dmin = Math.min(...q.P.map(p => segD(p, [ax, ay], [bx, by]))) - (rd.w || 4) / 2; if (!best || dmin < best.d) best = { d: dmin, a: Math.atan2(dy, dx), rd, cen: Math.hypot(px - q.cx, py - q.cy) }; } }
+      if (!best) return; const dv = dRot(best.a, 0);
+      if (best.d < 3 && !q.rot && dv > 8 && dv < 40 && !q.b.sign && !q.b.shop) P.griglia_storta.push(['griglia_storta', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', best.rd.id + ' ' + dv.toFixed(0) + '°']);
+      if (best.cen < (best.rd.w || 4) / 2) P.in_mezzo.push(['in_mezzo', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', 'sulla carreggiata di ' + best.rd.id]);
+      else if ((W.nodi || []).some(n => n.poly && inPoly(n.poly, q.cx, q.cy))) P.in_mezzo.push(['in_mezzo', Math.round(q.cx), Math.round(q.cy), q.b.id || '?', 'in una piazza']); });
+    const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length); return { conti, punti: P, case: L.length };
+  }
+  const API = { analizza, accostamenti, CORNICE, PASSA };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();

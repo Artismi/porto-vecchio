@@ -17,10 +17,14 @@ console.log = log; console.warn = warn;
 const S = require(path.join(__dirname, 'strade_integre.js'));
 const R = S.analizza(World), C = R.conti;
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
-const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 97, sotto_pezzo: 4, marciapiede: 17, scoglio: 15 };   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), sotto_casa 104 → 97
+const SOGLIE = { capo_cieco: 0, capi_staccati: 2, buco: 0, sotto_casa: 55, sotto_pezzo: 1, marciapiede: 1, scoglio: 14 };   // [pianta] capi allineati (8 → 2), la fontana del Forno fuori dagli assi (2 → 0), i vicoli larghi quanto il corridoio (sotto_casa 104 → 55), la stazione 2 m a levante (sotto_pezzo 4 → 1), il marciapiede del Lungomare chiuso sulla massicciata (17 → 1); gli scogli sono della costa
 ok(R.vie > 30, `le vie controllate nella cornice della città: ${R.vie}`);
 Object.keys(SOGLIE).forEach(k => ok(C[k] <= SOGLIE[k], `${k}: ${C[k]} (al più ${SOGLIE[k]})` + (C[k] > SOGLIE[k] ? ' — ' + R.punti[k].slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : '')));
 const asse = R.punti.sotto_casa.filter(p => /asse/.test(p[6]));
 ok(!asse.length, `nessuna via con una casa sull'asse (${asse.length}${asse.length ? ': ' + asse.slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : ''})`);
+// [pulizia] le case accostate (l'utente: «o davvero fuse assieme, un'unica architettura, o separate; niente vie di mezzo, niente palazzi
+// in griglia spigolosi e in mezzo»). Soglie di oggi, 24 ottobre; le baracche sono disordinate per costruzione e non contano
+const AC = S.accostamenti(World), CA = AC.conti, SOGLIE_AC = { compenetrate: 2, fessura: 1, spiraglio: 159, appaiate_storte: 2, griglia_storta: 143, in_mezzo: 5 };   // spiraglio 159: uno in più dopo l'unione di [pianta] e [pulizia] (la stessa soglia scende con la revisione)
+Object.keys(SOGLIE_AC).forEach(k => ok(CA[k] <= SOGLIE_AC[k], `case ${k}: ${CA[k]} (al più ${SOGLIE_AC[k]})` + (CA[k] > SOGLIE_AC[k] ? ' — ' + AC.punti[k].slice(0, 4).map(p => p.slice(1).join(' ')).join('; ') : '')));
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passate');
 process.exitCode = fail ? 1 : 0;
