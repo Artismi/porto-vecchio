@@ -496,6 +496,6 @@ var Percorsi = (function () {
       scorciatoie: sc.length, nascondigli: na.length, guadagnoMedio: sc.length ? sc.reduce((s, q) => s + q.guadagno, 0) / sc.length : 0, circuiti: CIRCUITI.length, porte: PORTE.length,
       richiami: TRATTI.reduce((o, t) => (o[t.richiamo.k] = (o[t.richiamo.k] || 0) + 1, o), {}) };
   }
-  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop };
+  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop, cotto: { ZONE, TEMI4, GIRI4, NOMI4 } };   // [cotto] cotto: i dati di lega fuori da DATI (tetti.js li dà al punto della rete cotta)
 })();
 if (typeof module !== 'undefined') module.exports = Percorsi;

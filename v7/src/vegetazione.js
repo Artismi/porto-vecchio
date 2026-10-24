@@ -325,6 +325,10 @@ var Vegetazione = (function () {
   // Ritorna { form, piante: [{sp, x, y, h, rot, v (variante), t (tinta 0..1), f (formazione), fulcro?}], radure, sentieri, conti }.
   // Le piante della copertura bassa (strato C) non si elencano: nascono vicino alla camera dalla stessa regola (copertura()).
   let PIANO = null;
+  // la fittezza: il campo che fa le macchie fitte e scure e le chiarie (0 aperto ... 1 chiuso), più chiaro vicino ai sentieri
+  const FITTO = (x, y) => { const a = fbm(x / 38, y / 38, 7201, 3), b = fbm(x / 13, y / 13, 7202, 2); return sstep(.22, .78, a * .78 + b * .22); };
+  // [cotto] il mondo cotto porta già il piano (W.vegetazione, fatto da pianta): qui lo si riprende come proprio, con la sua funzione
+  function adotta(W) { if (SPENTO || !W || !W.vegetazione) return null; W.vegetazione.fitto = FITTO; PIANO = W.vegetazione; return PIANO; }
   function piano(W, opz) {
     opz = opz || {};
     if (PIANO && PIANO.W === W && !opz.rifai) return PIANO;
@@ -353,7 +357,7 @@ var Vegetazione = (function () {
       return v !== T.SALT;
     };
     // la fittezza: il campo che fa le macchie fitte e scure e le chiarie (0 aperto ... 1 chiuso), più chiaro vicino ai sentieri
-    const fitto = (x, y) => { const a = fbm(x / 38, y / 38, 7201, 3), b = fbm(x / 13, y / 13, 7202, 2); return sstep(.22, .78, a * .78 + b * .22); };
+    const fitto = FITTO;
     const piante = [], conti = { A: 0, M: 0, B: 0, perForma: {}, perSpecie: {} };
     const occ = new Map(), OC = 4;   // gli alberi già posti, per la distanza fra le chiome
     const libero = (x, y, r) => { const i0 = Math.floor(x / OC), j0 = Math.floor(y / OC), R = Math.ceil(r / OC) + 2; for (let i = i0 - R; i <= i0 + R; i++) for (let j = j0 - R; j <= j0 + R; j++) for (const q of occ.get(i * 8192 + j) || []) if (Math.hypot(x - q[0], y - q[1]) < (r + q[2]) * .62) return false; return true; };
@@ -1300,7 +1304,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, adotta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;

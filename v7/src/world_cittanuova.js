@@ -3002,6 +3002,35 @@ var World = (function () {
     ];
     return L.filter(q => q[3]).map(([n, id, nome, xy, ruoli, icona, firma, landmark, ingressi, segreto]) => ({ n, id, nome, x: +xy[0].toFixed(1), y: +xy[1].toFixed(1), ruoli, icona, firma, landmark, ingressi, segreto }));
   }
+  // [cotto] le funzioni della mappa grande che leggono i suoi vettori: le fa expand() e, col mondo cotto, le rifà la lettura (stesse funzioni)
+  function rivaFunzioni(W, grid, elev, vh, velev, isl) {
+    const T_ = T, VW2 = GW2 + 1;
+    const ix = (tx, ty) => ty * GW2 + tx, toD = (tx, ty) => [tx * TS + 1 - OX, ty * TS + 1 - OY];
+    const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {
+      let s2 = 0, c = 0, wet = false, made = false, any = false;
+      for (const [a, b2] of [[i2 - 1, j - 1], [i2, j - 1], [i2 - 1, j], [i2, j]]) { if (a < 0 || b2 < 0 || a >= GW2 || b2 >= GH2) { wet = true; continue; } const k = b2 * GW2 + a; if (isl[k]) any = true; if (grid[k] === T_.WATER) { wet = true; continue; } if (grid[k] === T_.QUAY || grid[k] === T_.PIER) made = true; s2 += elev[k]; c++; }
+      if (!any) continue; vh[j * VW2 + i2] = velev[j * VW2 + i2] = c ? (wet && !made ? Math.min(s2 / c, .5) : s2 / c) : -2.2; } };
+    const WL_SECCO = -.45 + .2, FATTO = new Set([T_.BLD, T_.VIA, T_.COB, T_.PIAZZA, T_.WALK, T_.STAIRS, T_.FOUNT, T_.QUAY, T_.PIER]);
+    const fatto = (i, j) => { for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || b < 0 || a >= GW2 || b >= GH2) continue; if (FATTO.has(grid[b * GW2 + a])) return true; } return false; };
+    const quotaRiva = (i, j) => {   // la quota del terreno che si vede al vertice (i, j): quella del mondo, con la riva ammorbidita dove è naturale
+      const ii = Math.max(0, Math.min(GW2, i)), jj = Math.max(0, Math.min(GH2, j)); let h = vh[jj * VW2 + ii];
+      if (fatto(i, j)) return Math.max(h, WL_SECCO);
+      const x = i * TS, y = j * TS, L = W.LAKE, lq = L ? Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry) : 9, lk = lq < 1.6;
+      const ci = lq < 1.6 ? (lq - .9) * Math.min(L.rx, L.ry) : W.inland(x, y), b0 = lk ? L.h - 1.9 : -1.6;
+      if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
+      return h;
+    };
+    return { __vfix: vfix, __ix: ix, __toD: toD, quotaRiva, WL_SECCO, FATTO, fatto };
+  }
+  function rivaGrande() {
+    return {
+      districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
+      yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
+      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY),
+      zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
+      xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
+      isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY) };
+  }
   function expand(W) {
     const N2 = GW2 * GH2, VW2 = GW2 + 1, T_ = T;
     const big = (src, Ctor, fill) => { const a = new Ctor(N2); if (fill !== undefined) a.fill(fill); for (let ty = 0; ty < GH; ty++) a.set(src.subarray(ty * GW, ty * GW + GW), (ty + OTY) * GW2 + OTX); return a; };
@@ -3041,21 +3070,15 @@ var World = (function () {
     // ---- le funzioni della riva, nelle coordinate grandi (le isole ora ci sono) ----
     ISLES_ON = true;
     const d2x = x => x - OX, d2y = y => y - OY;
-    Object.assign(W, {
-      districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
-      yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
-      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY),
-      zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
-      xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
-      isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY),
+    Object.assign(W, rivaGrande(), {
       DXF: DXF + OX, DXC: DXC + OX, XF: XF + OX, XG: XG + OX, XC: XC + OX, XE: XE + OX, CX: CX + OX, CY: CY + OY, OX, OY,
       GW: GW2, GH: GH2, VW: VW2, SX: SX2, SY: SY2, SIZE: SX2, grid, zone, elev, bIndex, roadW, feat, eco, reach, vh, velev,
     });
     void d2x; void d2y;
     // ---- le isole sulla mappa grande ----
-    const ix = (tx, ty) => ty * GW2 + tx, toD = (tx, ty) => [tx * TS + 1 - OX, ty * TS + 1 - OY];
-    const cellT = (tx, ty, C, p, sd) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + sd)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + sd)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + sd) < p; };
     const isl = new Uint8Array(N2);   // 1: casella di un'isola
+    const RF = rivaFunzioni(W, grid, elev, vh, velev, isl), ix = RF.__ix, toD = RF.__toD;   // [cotto] le funzioni della mappa grande (le rifà anche il mondo cotto)
+    const cellT = (tx, ty, C, p, sd) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + sd)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + sd)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + sd) < p; };
     ISOLE.forEach(I => {
       const RR = (I.arc ? I.R0 : I.R) + 4, tx0 = Math.max(1, Math.floor((I.x - RR + OX) / TS)), tx1 = Math.min(GW2 - 2, Math.ceil((I.x + RR + OX) / TS)), ty0 = Math.max(1, Math.floor((I.y - RR + OY) / TS)), ty1 = Math.min(GH2 - 2, Math.ceil((I.y + RR + OY) / TS));
       for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
@@ -3193,10 +3216,7 @@ var World = (function () {
     relaxS();   // dopo le radure spianate e gli edifici: ancora niente gradini
     for (let ty = 1; ty < GH2 - 1; ty++) for (let tx = 1; tx < GW2 - 1; tx++) { const i = ix(tx, ty); if (!isl[i] || grid[i] === T_.SAND || grid[i] === T_.BLD) continue; let drop = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = i + dy * GW2 + dx; if (!isl[n]) continue; drop = Math.max(drop, elev[i] - elev[n]); } if (drop > (eco[i] === ECO.GIUNGLA ? 4.2 : 2.6)) grid[i] = T_.CLIFF; }   // sulle cupole la giungla tiene anche il ripido
     // le quote ai vertici attorno alle isole (come nella generazione: sulla riva il terreno scende sotto l'acqua)
-    const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {
-      let s2 = 0, c = 0, wet = false, made = false, any = false;
-      for (const [a, b2] of [[i2 - 1, j - 1], [i2, j - 1], [i2 - 1, j], [i2, j]]) { if (a < 0 || b2 < 0 || a >= GW2 || b2 >= GH2) { wet = true; continue; } const k = b2 * GW2 + a; if (isl[k]) any = true; if (grid[k] === T_.WATER) { wet = true; continue; } if (grid[k] === T_.QUAY || grid[k] === T_.PIER) made = true; s2 += elev[k]; c++; }
-      if (!any) continue; vh[j * VW2 + i2] = velev[j * VW2 + i2] = c ? (wet && !made ? Math.min(s2 / c, .5) : s2 / c) : -2.2; } };
+    const vfix = RF.__vfix;
     ISOLE.forEach(I => { const RR = (I.arc ? I.R0 : I.R) + 6; vfix(Math.floor((I.x - RR + OX) / TS), Math.floor((I.y - RR + OY) / TS), Math.ceil((I.x + RR + OX) / TS), Math.ceil((I.y + RR + OY) / TS)); });
     // ---- il fondale di tutto il mare (stesse regole di generate, più il «reef»: un anello di sabbia bassa e turchese largo
     //      qualche metro attorno alle cupole, poi il fianco scende a picco nel blu dei canali) ----
@@ -3245,19 +3265,11 @@ var World = (function () {
     // ai vertici della città sul canale scendevano sotto il pelo dell'acqua già qui.
     // Ora (1) nessun vertice che tocca una casella costruita o calpestabile della città sta sotto WL_SECCO, (2) la riva si ammorbidisce
     // solo dove attorno c'è terra naturale, (3) la quota che si vede la calcola questa funzione sola (render.js e test_costa2.js).
-    const WL_SECCO = -.45 + .2, FATTO = new Set([T_.BLD, T_.VIA, T_.COB, T_.PIAZZA, T_.WALK, T_.STAIRS, T_.FOUNT, T_.QUAY, T_.PIER]);
-    const fatto = (i, j) => { for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || b < 0 || a >= GW2 || b >= GH2) continue; if (FATTO.has(grid[b * GW2 + a])) return true; } return false; };
+    const WL_SECCO = RF.WL_SECCO, FATTO = RF.FATTO, fatto = RF.fatto;
     for (let j = 0; j <= GH2; j++) for (let i = 0; i <= GW2; i++) { const k = j * VW2 + i; if (vh[k] < WL_SECCO && fatto(i, j)) vh[k] = WL_SECCO; }
     for (let ty = 0; ty < GH2; ty++) for (let tx = 0; tx < GW2; tx++) { const i = ty * GW2 + tx; if (FATTO.has(grid[i])) { const k = ty * VW2 + tx; elev[i] = Math.max(elev[i], (vh[k] + vh[k + 1] + vh[k + VW2] + vh[k + VW2 + 1]) / 4); } }
     W.WL = -.45; W.WL_SECCO = WL_SECCO;
-    W.quotaRiva = (i, j) => {   // la quota del terreno che si vede al vertice (i, j): quella del mondo, con la riva ammorbidita dove è naturale
-      const ii = Math.max(0, Math.min(GW2, i)), jj = Math.max(0, Math.min(GH2, j)); let h = vh[jj * VW2 + ii];
-      if (fatto(i, j)) return Math.max(h, WL_SECCO);
-      const x = i * TS, y = j * TS, L = W.LAKE, lq = L ? Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry) : 9, lk = lq < 1.6;
-      const ci = lq < 1.6 ? (lq - .9) * Math.min(L.rx, L.ry) : W.inland(x, y), b0 = lk ? L.h - 1.9 : -1.6;
-      if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
-      return h;
-    };
+    W.quotaRiva = RF.quotaRiva;
     // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
     W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     if (W.sets) W.luoghi = luoghi(W);
@@ -3424,7 +3436,17 @@ var World = (function () {
       if (ok) { q.x = x; q.y = y; q.spostato = 1; tieni.push(q); sp++; } else via++; });
     S.rocks = tieni; S.scogliSpostati = sp; S.scogliTolti = via; return W;
   }
-  const W = scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
+  // [cotto] il mondo cotto nella build (cotto.js): le radici sono le costanti del modulo che il mondo richiama (le isole, i canali...):
+  // così il mondo letto punta agli stessi oggetti di quello calcolato
+  const CT = typeof Cotto !== 'undefined' ? Cotto : null;
+  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2SCOGLI, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
+  const COT = CT ? CT.apri('mondo', RADICI) : null;
+  const rifare = CT ? CT.RIFARE : null;
+  const FUNZ = Object.assign({ monte, tavR, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
+  const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
+    ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
+  const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
+  const W = W0c || scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -3434,7 +3456,8 @@ var World = (function () {
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
   { const VG = typeof Vegetazione !== 'undefined' ? Vegetazione : typeof require !== 'undefined' ? (() => { try { return require('./vegetazione.js'); } catch (e) { return null; } })() : null;
-    if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
+    if (COTTO) { if (VG && VG.adotta) VG.adotta(W); } else if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
+  if (CT && CT.cuoci) CT.chiudi('mondo', { W }, null);
   return W;
 })();
 if (typeof module !== 'undefined') module.exports = World;
