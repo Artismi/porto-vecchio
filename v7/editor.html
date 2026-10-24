@@ -21162,6 +21162,13 @@ var Vegetazione = (function () {
         }
       }));
     });
+    // 2b) LA VILLA COMUNALE A MARE (i posti li prepara la costa: W.VILLA, claude/pv-costa): palme al cancello, lecci sul viale, pini
+    //     domestici dentro la balaustra; nelle quattro aiuole ellittiche oleandri e agavi, un giardino pubblico d'Impero consumato.
+    if (W.VILLA) { const VS = { palma: 'palma', leccio: 'leccio', pino: 'pino' }, fu = F.giardino;
+      (W.VILLA.alberi || []).forEach((a, k) => { const sp = VS[a.k] || 'leccio'; posa(sp, a.x, a.y, fu, { villa: true, h: SP[sp].h[0] + (SP[sp].h[1] - SP[sp].h[0]) * (.5 + hash2(k, 3, 7381) * .5) }); });
+      (W.VILLA.aiuole || []).forEach((q, k) => { const n = Math.max(3, Math.round(q.rx * q.ry / 2.2));
+        for (let j = 0; j < n; j++) { const a = j / n * 6.2832 + hash2(k, j, 7382), d = .35 + .45 * hash2(j, k, 7383), sp = j % 4 === 0 ? 'agave' : hash2(j, k, 7384) < .2 ? 'erbaSecca' : 'oleandro';
+          posa(sp, q.x + Math.cos(a) * q.rx * d, q.y + Math.sin(a) * q.ry * d, fu, { villa: true }); } }); }
     // 3) I BOUQUET: composizioni progettate posate lungo il cammino (soglie, fondali sulle curve, soste, ritmo), e attorno alle radure.
     //    Ogni bouquet è un elenco [specie, dx, dy, scala] in metri nel suo riferimento: +y verso il sentiero (la luce, chi guarda), +x lungo.
     const bq = (nome, x, y, ang, fi, ruolo) => { const B = BOUQUET[nome]; if (!B) return 0; const c = Math.cos(ang), sn = Math.sin(ang); let n = 0;
