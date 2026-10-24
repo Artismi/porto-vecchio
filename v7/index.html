@@ -27824,6 +27824,15 @@ var World = (function () {
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
         if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
     }
+    // [pianta] IL VICOLO LARGO QUANTO IL SUO CORRIDOIO: dopo le case, la carreggiata disegnata di un vicolo (rd.w) non deve passare sotto i
+    // muri. Lungo l'asse si misura il passaggio libero fra le case (a passi di 25 cm, come strade_integre.js); la larghezza del vicolo
+    // diventa quella che ci sta (il decimo percentile più 60 cm di spalle, a mezzi metri, mai sotto 2 m). La Rua resta di 5 m.
+    { const libero = (x, y, nx, ny, hw) => { let lib = 0; for (const sg of [1, -1]) { let o = 0; for (; o <= hw; o += .25) { const i = T2i(y + ny * o * sg) * GW + T2i(x + nx * o * sg); if (grid[i] === T.BLD && bIndex[i] >= 0 && !B[bIndex[i]].pezzo) break; } lib += Math.min(o, hw); } return lib; };
+      let nStr = 0; CITY.roads.filter(rd => rd.kind === 'vicolo' && rd.w <= 3).forEach(rd => { const hw = rd.w / 2, L = [], Q = rd.pts;
+        for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], l = Math.hypot(bx - ax, by - ay); if (l < 1e-3) continue; const ux = (bx - ax) / l, uy = (by - ay) / l; for (let t = 0; t < l; t += 1) L.push(libero(ax + ux * t, ay + uy * t, -uy, ux, hw)); }
+        if (L.length < 4) return; L.sort((p, q) => p - q); const p10 = L[Math.floor(L.length * .1)], w = Math.max(2, Math.min(rd.w, Math.floor((p10 + .6) * 2) / 2));
+        if (w < rd.w) { rd.w0 = rd.w; rd.w = w; nStr++; } });
+      CITY.vicoliStretti = nStr; }
     // [pianta] dove la città tocca il mare col selciato alto (la Riva della Rocca, sotto le mura) il bordo è una banchina col suo muro:
     // prima l'ultima casella scendeva da tre metri al pelo dell'acqua come uno scivolo
     { const SEL = new Set([T.PIAZZA, T.COB, T.WALK, T.VIA]), nR = [];
