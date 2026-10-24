@@ -1176,9 +1176,11 @@ var Game = (function () {
         if (!n.warned) { n.warned = true; n.warnT = st.clock; n.face = Math.atan2(p.y - n.y, p.x - n.x); say(st, n, 'Zona militare della Tutela! Torna indietro!', 3); }
         else if (dc < C.r * .7 || st.clock - n.warnT > 9) aggroFaction(st, n.faction); }
       if (n.aggro && dc > C.r + 150) { n.aggro = false; n.warned = false; } }
-    // i Marsigliesi avvisano chi si avvicina alla valigetta
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 11 && sees) {
+    // i Marsigliesi avvisano chi si avvicina alla valigetta. [eventi] Solo lì, al Pontile: mentre vanno e vengono dal Miramare passano
+    // per la calata, e chi stava fermo a farsi gli affari suoi si prendeva l'avviso e poi una raffica di mitra
+    const caseP = n.faction === 'marsiglia' && !n.aggro && isNight(st) && PLACES.pontile && dist(p.x, p.y, PLACES.pontile.x, PLACES.pontile.y) < 18;
+    if (caseP && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
+    if (caseP && d < 11 && sees) {
       if (!n.warned) { n.warned = true; say(st, n, 'Hé! Toi! Reste loin. Stai lontano!', 3); }
       else if (d < 6.5 || (p.cur !== 'pugni' && p.cur !== 'molotov' && d < 10)) { aggroFaction(st, 'marsiglia'); }
     }
@@ -2332,14 +2334,14 @@ var Game = (function () {
     st.fires = st.fires.filter(f => {
       if (st.clock > f.until) return false;
       if (f.calmo) return true;   // [vita2] il bidone acceso fra le baracche: ci si scalda, non brucia nessuno (le fiamme stanno nel bidone)
-      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; } });
+      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; n.burnBy = f.owner || 'env'; } });   // [eventi] chi brucia sa chi ha acceso il fuoco
       const p = st.player; if (!p.vehicle && dist(p.x, p.y, f.x, f.y) < f.r && st.clock - (p.fireT || -99) > .5) { p.fireT = st.clock; damagePlayer(st, 9, 0, 'fuoco'); }
       st.vehicles.forEach(v => { if (!v.wreck && !v.hidden && dist(v.x, v.y, f.x, f.y) < f.r + VK[v.kind].r) damageVehicle(st, v, 30 * dt, f.owner); });
       return true;
     });
     st.npcs.forEach(n => {
       if (n.burn > 0 && !n.dead) {
-        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, 'player', n.face + Math.PI, 'pugni'); }
+        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, n.burnBy || 'env', n.face + Math.PI, 'pugni'); }   // [eventi] la colpa è di chi ha acceso il fuoco (prima sempre del giocatore: una bombola urtata da un'auto del traffico vicino all'osteria metteva mezzo quartiere e i Marsigliesi contro di te)
         if (!n.faction && !n.cop) { n.panic = 3; n.fleeFrom = { x: n.x - Math.cos(n.face), y: n.y - Math.sin(n.face) }; }
       }
     });
@@ -2404,6 +2406,7 @@ var Game = (function () {
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
       if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.guida && v.rider === 'npc' && !v.traffic) continue;   // [vievive] lo guida vievive.js (l'autobus della linea, i motorini delle vie minori)
+      if (v.dpath && !v.traffic && typeof v.rider === 'string' && v.rider.startsWith('npc:')) continue;   // [eventi] lo guida azioni.js (driveStep: lo porta lui lungo la strada, a 35-40 km/h); prima rotolava anche da solo con quella velocità e falciava i pedoni ('env', senza colpa di nessuno). Chi gli è davanti lo scansa (pushOutOfVehicles)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }

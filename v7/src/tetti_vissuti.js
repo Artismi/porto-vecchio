@@ -134,7 +134,7 @@ var TettiVissuti = (function () {
   }
   // i segmenti che passano sopra questa casa (nel riferimento non girato) e le porte del tetto con le loro linee a due a due
   function corridoi(bi) {
-    const b = B[bi], L4 = LT(b), R4 = hyp(L4.lw, L4.ld) / 2 + 1.5, x0 = L4.cx - R4, y0 = L4.cy - R4, x1 = L4.cx + R4, y1 = L4.cy + R4, segs = [], loc = (x, y) => TT.loc3(b, x, y);
+    const b = B[bi], L4 = LT(b), gir4 = !!(TT.libero4 && TT.libero4(b)), R4 = hyp(L4.lw, L4.ld) / 2 + 1.5, x0 = gir4 ? L4.cx - R4 : L4.x0 - 1.5, y0 = gir4 ? L4.cy - R4 : L4.y0 - 1.5, x1 = gir4 ? L4.cx + R4 : L4.x1 + 1.5, y1 = gir4 ? L4.cy + R4 : L4.y1 + 1.5, segs = [],   /* [tetti4] la casa girata: il cerchio che la contiene */ loc = (x, y) => TT.loc3(b, x, y);
     const dentro = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
     LINEE.forEach(pts => { for (let k = 0; k < pts.length - 1; k++) { const A = pts[k], Bq = pts[k + 1], L = hyp(Bq[0] - A[0], Bq[1] - A[1]), n = Math.max(1, Math.ceil(L / .5)); let ok = false;
       for (let j = 0; j <= n && !ok; j++) ok = dentro(A[0] + (Bq[0] - A[0]) * j / n, A[1] + (Bq[1] - A[1]) * j / n); if (ok) segs.push([loc(A[0], A[1]), loc(Bq[0], Bq[1])]); } });
