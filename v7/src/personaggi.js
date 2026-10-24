@@ -13,7 +13,7 @@
 var Personaggi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abck])/i) || [])[1] || 'k').toLowerCase() };
+  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), capelli: ((Q.match(/[?&]capelli=(\w+)/) || [])[1] || 'mie'), stile: ((Q.match(/[?&]stile=([abck])/i) || [])[1] || 'k').toLowerCase() };
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => (t = cl(t, 0, 1), t * t * (3 - 2 * t));
   const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
   function rng(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -581,16 +581,31 @@ var Personaggi = (function () {
     const tipo = (D.capelli && D.capelli.tipo) || (f ? 'lunghi' : 'corti'), capelli = (D.capelli && D.capelli.kit) || HAIR_KIT[tipo] || (f ? 'Casual' : 'Casual_Hoodie');
     return { faccia, capelli };
   }
+  // [personaggi] il cranio sotto i capelli: le teste del kit da donna sopra la fronte non hanno pelle (c'erano i capelli), e qualche
+  // quota bassa di quelle da uomo esce bucata. Le righe che mancano o non tornano si rifanno da un cranio intero (Casual_Hoodie misurato),
+  // scalato alla larghezza e alla profondità della testa alla quota della fronte; sopra si chiude la cupola.
+  const CRANIO = [[.04, .065, .095, .03], [.06, .077, .103, .024], [.08, .086, .117, .027], [.1, .093, .119, .02], [.12, .098, .119, .015], [.14, .1, .122, .015], [.16, .1, .123, .015],
+    [.18, .097, .119, .014], [.2, .094, .114, .013], [.22, .085, .099, .01], [.235, .074, .084, .008], [.25, .056, .062, .006], [.26, .034, .038, .004], [.265, .012, .014, .003]];
+  function cranio(out) {
+    const T = y => { let i = 0; while (i < CRANIO.length - 2 && y > CRANIO[i + 1][0]) i++; const A = CRANIO[i], Bq = CRANIO[i + 1], t = cl((y - A[0]) / (Bq[0] - A[0]), 0, 1); return [lerp(A[1], Bq[1], t), lerp(A[2], Bq[2], t), lerp(A[3], Bq[3], t)]; };
+    const ok = r => r[1] > .03 && r[2] > .03, rif = out.find(r => Math.abs(r[0] - .09) < .006 && ok(r)) || out.find(r => r[0] > .06 && r[0] < .11 && ok(r));
+    const t9 = T(rif ? rif[0] : .09), sa = rif ? rif[1] / t9[0] : 1, sb = rif ? rif[2] / t9[1] : 1, dz = rif ? rif[3] - t9[2] : 0;
+    let su = false; for (let i = 0; i < out.length; i++) { const r = out[i];   // dalla prima riga che manca in su, il cranio intero (le righe più alte del kit a volte sono il bordo di un buco)
+      if (r[0] > .1 && (!ok(r) || su)) { su = true; const t = T(r[0]); out[i] = [r[0], t[0] * sa, t[1] * sb, t[2] + dz]; }
+      else if (!ok(r)) { const q = out.slice(0, i).reverse().find(ok) || rif; if (q) out[i] = [r[0], q[1], q[2], q[3]]; } }
+    const top = out.length ? out[out.length - 1][0] : .1; for (let y = top + .01; y <= .27; y += .01) { const t = T(y); out.push([y, t[0] * sa, t[1] * sb, t[2] + dz]); }   // la cupola fino in cima
+  }
   // cuce le parti nella figura; restituisce il profilo della testa misurato (per cappelli, baffi, barbe, occhiali)
   function testaKit(B, J, D, pelle, capH, K, base, taglio) {
     const sc = sceltaKit(D), F = KT.f[sc.faccia], H = KT.f[sc.capelli], hb = J.Head, sk = (D.testa && D.testa.scala || 1) * (S().testaKit || 1), OE = S().occhi || 1;   // [personaggi] testaKit, occhi: la testa e gli occhi del kit più grandi (lo stile cartoon)
     const col = { pelle, ombra: mulc(pelle, .86), occhi: [.06, .045, .04], ciglia: mulc(capH, .72), capelli: capH, baffi: mulc(capH, .85), casco: C3('#e8b030') };
     const neckY = hb[1] + F.neck, wOf = y => y < neckY + .035 ? [['Neck', 1 - sm((y - neckY) / .035)], ['Head', sm((y - neckY) / .035)]].filter(e => e[1] > 1e-3) : [['Head', 1]];
-    const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi)), ...H.parts.filter(p => p.kind === 'capelli')];
-    if (sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
+    const mie = CFG.capelli !== 'kit';   // [personaggi] i capelli sono i miei (capelli(), a calotta col volume dello stile) anche sulle teste del kit: ?capelli=kit per quelli del kit
+    const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi) && !(mie && p.kind === 'ciglia' && sc.faccia === 'Worker' && false)), ...(mie ? [] : H.parts.filter(p => p.kind === 'capelli'))];
+    if (!mie && sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
     if (D.cappello && D.cappello.tipo === 'casco_cantiere') usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'casco'));
     if (D.baffi && !usa.some(p => p.kind === 'baffi')) usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'baffi'));   // i baffi del Worker, su qualunque faccia
-    const pk = [sc.faccia, sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
+    const pk = [sc.faccia, mie ? 'mie' : sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
     const tris = []; let eyS = 0, eyN = 0, chinY = 9, skTop = -9; const eyA = { y: 0, x: 0, z: -9 };
     const capV = [];   // [personaggi] i vertici dei capelli: col cappello si stringono sotto la tesa
     usa.forEach(pt => {
@@ -622,10 +637,10 @@ var Personaggi = (function () {
       return pr; };
     if (cached) { KT.ultimo = cached; return stringi(cached); }
     const ray = (o, d, solo) => { let best = null; for (const T3 of tris) { if (solo && !T3.pelle) continue; const [A, Bv, C] = T3; const e1 = sub(Bv, A), e2 = sub(C, A), pv = cross(d, e2), det = dot(e1, pv); if (Math.abs(det) < 1e-9) continue; const iv = 1 / det, tv = sub(o, A), u = dot(tv, pv) * iv; if (u < 0 || u > 1) continue; const qv = cross(tv, e1), w = dot(d, qv) * iv; if (w < 0 || u + w > 1) continue; const t = dot(e2, qv) * iv; if (t > 0 && (best === null || t < best)) best = t; } return best; };
-    const out = []; for (let yk = -.05; yk <= .24; yk += .01) { const y = base[1] + yk * K;
+    const out = []; for (let yk = -.05; yk <= (mie ? .3 : .24); yk += .01) { const y = base[1] + yk * K;
       const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tbA = ray([base[0], y, base[2] - .5], [0, 0, 1]), tbS = ray([base[0], y, base[2] - .5], [0, 0, 1], true), tb = capp && tbS !== null && (tbA === null || tbS - tbA < .1) ? tbS - .004 : tbS !== null && tbA !== null && tbS - tbA < .1 ? Math.max(tbA, tbS - .012) : tbA; if (tf === null || tb === null) continue; /* la nuca sulla pelle, se c.è lì */
       const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, tsA = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]), tsS = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0], true), ts = capp && tsS !== null && (tsA === null || tsS - tsA < .1) ? tsS - .004 : tsS !== null && tsA !== null && tsS - tsA < .1 ? Math.max(tsA, tsS - .01) : tsA; if (ts === null) continue; /* le tempie sulla pelle */
-      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return stringi(out);
+      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } if (mie) cranio(out); out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return stringi(out);
   }
   function testa(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, K = st.testa * (T.scala || 1) * (D.sesso === 'f' ? .95 : 1), h = J.Head, base = [h[0], h[1] - .01 * K, h[2] - .005], wH = [['Head', 1]];
@@ -682,6 +697,10 @@ var Personaggi = (function () {
     if (false) uovo(B, at(-.02, 0, front(-.02) - .03), [0, 0, 1], .06 * K, .025 * K, .03 * K, mulc(pelle, .96), wH, { anelli: 3, seg: 8 });
     B.ol = 1;
     if (!kitOn) capelli(B, at, K, D, capH, front, wid, wH, pa);
+    else if (CFG.capelli !== 'kit') { const dy = PK && PK.ey ? PK.ey - .093 : 0;   // [personaggi] i miei capelli sul cranio del kit (misurato senza i suoi capelli), alla quota dei suoi occhi
+      const pa2 = (y, k) => k === 0 ? pa(y + dy, 0) - dy : pa(y + dy, k) + (k === 1 || k === 2 ? .006 : 0); pa2.PK = PK;   // un filo più larga: il cranio del kit è squadrato, gli spigoli bucavano la calotta tonda
+      pa2.lim = PK && PK.skTop > -9 ? (PK.skTop - base[1]) / K - dy - .006 : 9;   // l'attaccatura non sopra dove finisce la pelle del viso (le teste da donna del kit finiscono basse)
+      capelli(B, (y, x, z) => at(y + dy, x, z), K, D, capH, y => front(y + dy), y => wid(y + dy), wH, pa2); }
     B.ol = 0;
     if (D.baffi && !kitOn) { const by = .036, bz = front(by) + .002, tipo = D.baffi; [1, -1].forEach(s => uovo(B, at(by - (tipo === 'spioventi' ? .006 : 0), s * .019, bz), [s, tipo === 'spioventi' ? -.6 : -.18, 0], .008 * K * (tipo === 'folti' || tipo === 'spioventi' ? 1.5 : 1), .009 * K, .026 * K * (tipo === 'spioventi' ? 1.2 : 1), capH, wH, { anelli: 4, seg: 6, punta: -.3, f: [0, 0, 1] })); }
     if (D.barba) { const corta = D.barba === 'corta' || D.barba === 'pizzetto';
@@ -698,7 +717,7 @@ var Personaggi = (function () {
   function capelli(B, at, K, D, col, front, wid, wH, pa) {
     const tipo = (D.capelli && D.capelli.tipo) || 'corti', hat = D.cappello && D.cappello.tipo, scuro = mulc(col, .8), chiaro = mixc(col, [1, 1, 1], .1);
     const cc = (y, x, z, ax, a, b, l, c, o) => uovo(B, at(y, x, z), ax, a * K, b * K, l * K, c || col, wH, Object.assign({ anelli: 4, seg: 8 }, o || {}));
-    const top = pa(1, 0), sotto = hat && hat !== 'fazzoletto' ? (hat === 'paglia' || hat === 'cappello' ? .16 : .135) : 0;
+    const top = pa(1, 0), sotto = hat && !/^(fazzoletto|fascia|bandana|visiera)$/.test(hat) ? (hat === 'paglia' || hat === 'cappello' ? .16 : .135) : 0;   // [personaggi] fascia, bandana e visiera non coprono la testa: i capelli restano interi
     if (hat === 'fazzoletto') return;
     const r = rng('capelli' + JSON.stringify(D.capelli || {}) + (D.seme || '')), lato = r() < .5 ? 1 : -1;
     // [capelli] una calotta sola che segue il cranio, con lo spessore e il volume dello stile, l'attaccatura vera
@@ -718,8 +737,9 @@ var Personaggi = (function () {
     }[tipo] || {};
     const g2 = (y, c, w) => Math.exp(-((y - c) / w) * ((y - c) / w));
     // dove ci sono capelli: sopra l'attaccatura, che scende dalla fronte alle tempie, alle basette e alla nuca
-    const attacco = (th) => { const fr = Math.cos(th), sn = Math.sin(th), as = Math.abs(sn);
+    const attacco = (th) => attacco1(th, true), attacco0 = th => attacco1(th, false), attacco1 = (th, lim) => { const fr = Math.cos(th), sn = Math.sin(th), as = Math.abs(sn);
       if (S.calvo) return fr > -.35 ? 1 : lerp(.06, .2, sm((fr + .9) / .55));   // la corona: solo dietro e ai lati
+      if (lim && pa.lim !== undefined && fr > -.2) { const yy = attacco0(th); return Math.min(yy, pa.lim + (1 - sm((fr + .2) / .5)) * .05); }
       let y = fr > .25 ? S.fronte - (S.riga && sn * lato > 0 ? .008 : 0) - (S.punta ? .01 * Math.exp(-sn * sn * 60) : 0) : lerp(S.tempia, S.fronte, sm((fr - .0) / .25));
       if (as > .8 && fr > -.3) y = Math.min(y, lerp(S.tempia, .07, sm((as - .8) / .15)));   // le basette
       if (fr < -.2) y = Math.min(y, lerp(y, S.nuca, sm((-.2 - fr) / .4)));             // la nuca
@@ -738,7 +758,8 @@ var Personaggi = (function () {
       const a0 = pa(yy, 1), b0 = pa(yy, 2), kk = sop ? (last ? .25 : .65) : 1;
       return { c: at(Math.min(y, top + .006), 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: a0 * K * kk, b: b0 * K * kk, fz: pa(yy, 3) * K, p: S.ricci ? 2.2 : 2.35, col: y < .1 ? scuro : col,
         colFn: S.riga && !sotto ? (th => { const sn = Math.sin(th) * lato, fr = Math.cos(th); return Math.abs(sn - .32) < .05 && fr > 0 && y > .19 ? mulc(col, .6) : y < .1 ? scuro : col; }) : null,
-        w: wH, mod: th => { if (sotto && y > sotto - .002) return -.04; const o = volume(th, y) * (sop ? .6 : 1) + (sotto ? .004 : 0), k = -hl(th, y); return lerp(o / ((a0 + b0) * .5), -.12, k); } }; }), { seg: 22 });
+        w: wH, mod: th => { if (sotto && y > sotto - .002) return -.04; let o = volume(th, y) * (sop ? .6 : 1) + (sotto ? .004 : 0); const k = -hl(th, y);
+          if (sotto && pa.lim !== undefined) o = lerp(o, -.004, sm((y - (sotto - .045)) / .035));   /* [personaggi] sotto la tesa i capelli rientrano dentro il cappello: niente cercine che esce */ return lerp(o / ((a0 + b0) * .5), -.32, k); } }; }), { seg: 22 });   // [personaggi] sotto l'attaccatura rientra molto: sulle teste del kit (naso, labbra in avanti) a -.12 usciva sul viso
     // gli stili che hanno pezzi in più
     if (tipo === 'lunghi' || tipo === 'caschetto') {   // il tendone dietro e ai lati: fino alle spalle (lunghi) o al mento (caschetto), aperto davanti
       const lo = tipo === 'lunghi' ? -.13 : -.025;
