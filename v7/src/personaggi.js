@@ -1448,7 +1448,7 @@ var Personaggi = (function () {
     // 17 chrome: la scritta cromata gotica grande sul petto, la croce di stelle dietro (Y2K)
     D(17, c => { txt(c, 'Porto', .5, .62, .17, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
       dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'VECCHIO', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; PR.tex = tex; PR.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
   }
   let MAT = null, MAT_STILE = null;
   function materiale() {
