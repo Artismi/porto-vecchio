@@ -25393,9 +25393,9 @@ if (uPl.y > -900.) { vec3 vgAB = uCm - uPl; float vgT = dot(vgW - uPl, vgAB) / m
     for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano) continue;
       const x = tx * TS + 1, y = ty * TS + 1, ds = P.dSen[i]; let orlo = 0;
       for (const rd of P.radure) { const q = Math.hypot(x - rd.x, y - rd.y) / rd.r; if (q < 1.4) orlo = Math.max(orlo, 1 - sstep(.1, .3, Math.abs(q - 1))); }
-      const luce = Math.pow(1 - sstep(.3, .62, O[i]), 2), fid = FORM[f].id, base = fid === 'prato' || fid === 'gariga' ? .2 : fid === 'uliveto' ? .16 : .1;
+      const luce = Math.pow(1 - sstep(.3, .62, O[i]), 2), fid = FORM[f].id, base = fid === 'prato' || fid === 'uliveto' ? .46 : fid === 'gariga' || /^pin/.test(fid) ? .36 : .3;   // [tavolo] la base: mai suolo spoglio in luce, un velo d'erbetta bassa (era .1-.2: troppo nudo)
       A[i] = Math.max(base, sstep(.6, 1.2, ds) * (1 - sstep(3.5, 5.5, ds)), orlo) * luce;
-      B[i] = Math.max(base * .4, sstep(1.5, 2.5, ds) * (1 - sstep(4, 6, ds)), orlo * .8) * luce; }
+      B[i] = Math.max(base * .25, sstep(1.5, 2.5, ds) * (1 - sstep(4, 6, ds)), orlo * .8) * luce; }
     return (P.fili = [A, B]);
   }
   function fili(W, x, y, alta) { const P = W && W.vegetazione; if (!P || SPENTO) return 1; const TS = W.TS, fx = x / TS - .5, fy = y / TS - .5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, R = filiCampo(P)[alta ? 1 : 0], GW = W.GW, GH = W.GH;
