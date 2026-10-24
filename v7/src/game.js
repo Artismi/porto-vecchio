@@ -31,7 +31,7 @@ var Game = (function () {
   const MAP0 = { grid: grid.slice(), wallAt: wallAt.slice(), elev: elev.slice(), rampOf: rampOf.slice(), ramps: 0 };
   function restoreMap() { grid.set(MAP0.grid); wallAt.set(MAP0.wallAt); elev.set(MAP0.elev); rampOf.set(MAP0.rampOf); RAMPS.length = MAP0.ramps; }
 
-  const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[ty * GW + tx];
+  const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[(ty | 0) * GW + (tx | 0)];   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const walkT = (tx, ty) => { const v = tileAt(tx, ty); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // [monte] CLIFF: pareti e muri a secco
   const walkM = (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
   // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
