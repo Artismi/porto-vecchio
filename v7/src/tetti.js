@@ -77,18 +77,23 @@ var Tetti = (function () {
   // Senza i campi vale la casella: (b.x + b.w/2)·TS, (b.y + b.h/2)·TS, b.w·TS, b.h·TS (identico a prima). Il riferimento della casa è il
   // mondo girato di −rot attorno al centro: lì la casa occupa [cx − lw/2, cx + lw/2] × [cy − ld/2, cy + ld/2], e lì stanno il piano dei
   // tetti (rect, gruppi, colmo, riserve), i tetti vissuti e le misure.
+  const L4C = new WeakMap();   // [tetti4] il lotto di ogni casa, rifatto solo se cambiano i suoi campi
   function lotto4(b) {
+    const c = L4C.get(b); if (c && c.s0 === b.cx && c.s1 === b.cy && c.s2 === b.lw && c.s3 === b.ld && c.s4 === b.x && c.s5 === b.y && c.s6 === b.w && c.s7 === b.h) return c;
     const cx = b.cx !== undefined ? b.cx : (b.x + b.w / 2) * TS, cy = b.cy !== undefined ? b.cy : (b.y + b.h / 2) * TS, lw = b.lw !== undefined ? b.lw : b.w * TS, ld = b.ld !== undefined ? b.ld : b.h * TS;
-    return { cx, cy, lw, ld, x0: cx - lw / 2, x1: cx + lw / 2, y0: cy - ld / 2, y1: cy + ld / 2 };
+    const L = { cx, cy, lw, ld, x0: cx - lw / 2, x1: cx + lw / 2, y0: cy - ld / 2, y1: cy + ld / 2, s0: b.cx, s1: b.cy, s2: b.lw, s3: b.ld, s4: b.x, s5: b.y, s6: b.w, s7: b.h }; L4C.set(b, L); return L;
   }
   // la casa sta fuori dalle sue caselle? (girata, o col centro e le misure suoi)
   const libero4 = b => { if (!b) return false; if (rotC4(b)) return true; if (b.cx === undefined && b.lw === undefined) return false; const L = lotto4(b);
     return Math.abs(L.x0 - b.x * TS) > .01 || Math.abs(L.y0 - b.y * TS) > .01 || Math.abs(L.x1 - (b.x + b.w) * TS) > .01 || Math.abs(L.y1 - (b.y + b.h) * TS) > .01; };
   const cen4 = b => { const L = lotto4(b); return [L.cx, L.cy]; };
   // il punto del muro del lotto che corrisponde alla casella k del lato sd (riferimento della casa): stessa frazione lungo il lato
+  // [tetti4] il piede della scala davanti al muro del lotto: a 55 cm, o più in là (fino a 95 cm) se il lotto arretrato lascia la fascia della casella che non si cammina
+  const piede4 = (wx, wy, ox, oy) => { for (let d = .55; d <= .951; d += .1) { const x = wx + ox * d, y = wy + oy * d; if (G.walkM(x, y) && bAt(x, y) < 0) return d; } return .55; };
   const muroL4 = (b, sd, k) => { const L = lotto4(b), u = (k + .5) / sd.n; return sd.f === 'S' ? [L.x0 + L.lw * u, L.y1] : sd.f === 'N' ? [L.x0 + L.lw * u, L.y0] : sd.f === 'E' ? [L.x1, L.y0 + L.ld * u] : [L.x0, L.y0 + L.ld * u]; };
   const giraV4 = (a, ux, uy) => { if (!a) return [ux, uy]; const c = Math.cos(a), s = Math.sin(a); return [ux * c - uy * s, ux * s + uy * c]; };
   const toW4 = (b, lx, ly) => { const a = rotC4(b); if (!a) return [lx, ly]; const [cx, cy] = cen4(b), [qx, qy] = giraV4(a, lx - cx, ly - cy); return [cx + qx, cy + qy]; };
+  const fuori4 = (b, x, y) => { const [lx, ly] = toL4(b, x, y), L = lotto4(b), dx = Math.max(0, L.x0 - lx, lx - L.x1), dy = Math.max(0, L.y0 - ly, ly - L.y1); return hyp(dx, dy); };   // [tetti4] quanto fuori dal lotto (agli spigoli in tondo)
   const toL4 = (b, x, y) => { const a = rotC4(b); if (!a) return [x, y]; const [cx, cy] = cen4(b), [qx, qy] = giraV4(-a, x - cx, y - cy); return [cx + qx, cy + qy]; };
   const dentro4 = (b, x, y, m) => { const [lx, ly] = toL4(b, x, y), L = lotto4(b); return lx >= L.x0 + m && lx <= L.x1 - m && ly >= L.y0 + m && ly <= L.y1 - m; };
   // il raggio da (x, y) nel verso (ux, uy) contro il rettangolo girato della casa: { tin, tout, cos } (cos: fra il raggio e la normale della faccia d'entrata)
@@ -180,14 +185,14 @@ var Tetti = (function () {
         if (got.length >= take) break;
         if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
         got.push(c); used.add(c.ty * GW + c.tx);
-        let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out;
+        let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out, dp = .55;
         // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
         const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
         if (libero4(b)) { const [lx0, ly0] = muroL4(b, c.sd, c.k); [wx, wy] = toW4(b, lx0, ly0); [ox, oy] = giraV4(rot, ox, oy);   // [tetti4] il muro del lotto (girato, o col centro suo)
-          const fx2 = wx + ox * .55, fy2 = wy + oy * .55, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
+          dp = c.foot < 0 ? piede4(wx, wy, ox, oy) : .55; const fx2 = wx + ox * dp, fy2 = wy + oy * dp, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
           if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
-        if (LIB4 && c.foot < 0 && bAt(wx + ox * .55, wy + oy * .55) >= 0) { got.pop(); used.delete(c.ty * GW + c.tx); continue; }   // [tetti4] il piede nel lotto girato di un vicino: no
-        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * .55, fy: wy + oy * .55, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
+        if (LIB4 && c.foot < 0 && bAt(wx + ox * dp, wy + oy * dp) >= 0) { got.pop(); used.delete(c.ty * GW + c.tx); continue; }   // [tetti4] il piede nel lotto girato di un vicino: no
+        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * dp, fy: wy + oy * dp, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
       }
     });
   }
@@ -209,7 +214,9 @@ var Tetti = (function () {
   // [tetti4] LA TERZA CASA: sotto l'impalcato (teste comprese) nessun'altra casa, letta dal suo lotto (b.cx, b.cy, b.lw, b.ld, b.rot) e non
   // dalle caselle: regge se [pianta] sposta una casa (salti di terreno, pendii, lotti orientati) senza ristampare la pianta a caselle
   const terza4 = P => { const mx = P.x0 + P.ox * P.L / 2, my = P.y0 + P.oy * P.L / 2, R0 = P.L / 2 + P.hw + .2;
-    const vic = []; B.forEach((b, q) => { if (!b || q === P.a || q === P.b || b.__tierOf || b.lighthouse) return; const L = lotto4(b); if (hyp(L.cx - mx, L.cy - my) <= R0 + hyp(L.lw, L.ld) / 2) vic.push(b); });
+    const vic = [], vs = new Set(), R1 = R0 + 1, tx0 = Math.floor((mx - R1) / TS), tx1 = Math.floor((mx + R1) / TS), ty0 = Math.floor((my - R1) / TS), ty1 = Math.floor((my + R1) / TS);   // le case delle caselle attorno (e i lotti liberi che ci cadono)
+    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) { if (!inb(tx, ty)) continue; const k = ty * GW + tx, o = BI[k]; if (o >= 0) vs.add(o); const L4 = LIB4 && LIB4.get(k); if (L4) L4.forEach(q => vs.add(q)); }
+    vs.forEach(q => { const b = B[q]; if (!b || q === P.a || q === P.b || b.__tierOf || b.lighthouse) return; vic.push(b); });
     if (!vic.length) return false;
     for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t; if (vic.some(b => dentro4(b, x, y, .02))) return true; }
     return false; };
@@ -288,19 +295,30 @@ var Tetti = (function () {
   // [pulizia2] I SALTI FATTIBILI: dove fra due tetti di quota simile (entro 1,2 m) c'è un vicolo di una casella (2 m, si salta), i due
   // bordi hanno la copertina color crema: lo stesso segno delle teste delle passerelle e del gradino ai piedi delle scale. Il percorso
   // sui tetti si legge così, con un linguaggio solo: ferro color minio per salire, crema per dove si passa. Solo grafica (le regole restano).
-  const JUMPS = [];
+  const JUMPS = [], JMAX4 = 2.9;   // [tetti4] fino a 2,9 m fra i due lotti il salto riesce (provato col gioco nei due versi)
   function buildJumps() {
-    JUMPS.length = 0; const seen = new Set(), okJ = b => b && !b.lighthouse && !b.kiosk && !b.church && !b.rot && !libero4(b) && !b.pezzo && b.w >= 2 && b.h >= 2;
+    JUMPS.length = 0; const seen = new Set(), okJ = b => b && !b.lighthouse && !b.kiosk && !b.church && !b.rot && !rotC4(b) && !b.pezzo && b.w >= 2 && b.h >= 2;   // [tetti4] anche i lotti arretrati di [pianta] (non girati)
+    // [tetti4] il vicolo vero fra i due lotti: da = quanto il muro di a sta dietro il filo della casella, db lo stesso per b; si salta fino a 2,6 m
+    const fil4 = (b, ox, oy, lato) => { const L = lotto4(b); return lato > 0 ? (ox > 0 ? L.x1 : ox < 0 ? -L.x0 : oy > 0 ? L.y1 : -L.y0) : (ox > 0 ? L.x0 : ox < 0 ? -L.x1 : oy > 0 ? L.y0 : -L.y1); };   // il muro lungo il verso del salto
+    const dentroX4 = (b, x, y, ox) => { const L = lotto4(b); return ox ? (y > L.y0 + .3 && y < L.y1 - .3) : (x > L.x0 + .3 && x < L.x1 - .3); };
     B.forEach((b, bi) => { if (!okJ(b)) return;
       sidesOf(b).forEach(sd => { const [ox, oy] = sd.out; let run = null;
         const flush = () => { if (run && run.k1 > run.k0) { JUMPS.push(run); seen.add(run.bi + ':' + run.bj); } run = null; };
-        for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k), tx2 = tx + ox, ty2 = ty + oy, o = inb(tx2, ty2) ? BI[ty2 * GW + tx2] : -1;
-          const gap = inb(tx, ty) && BI[ty * GW + tx] < 0 && G.walkT(tx, ty), c = o >= 0 ? B[o] : null;
-          const ok = gap && c && o !== bi && okJ(c) && Math.abs(roofRule(b) - roofRule(c)) <= 1.2 && !seen.has(o + ':' + bi);
-          if (ok && run && run.bj === o && run.k1 === k - 1) run.k1 = k; else { flush(); if (ok) run = { bi, bj: o, sd, k0: k, k1: k, ox, oy }; } }
+        for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k), tx2 = tx + ox, ty2 = ty + oy, o0 = inb(tx, ty) ? BI[ty * GW + tx] : -1;
+          // il vicolo di una casella (g = 1); [tetti4] o la casa subito accanto (g = 0) quando i due lotti arretrati lasciano un vuoto da 50 cm in su
+          const g = o0 >= 0 ? 0 : 1, o = g ? (inb(tx2, ty2) ? BI[ty2 * GW + tx2] : -1) : o0;
+          const gap = g ? inb(tx, ty) && G.walkT(tx, ty) : o0 !== bi && (libero4(b) || libero4(B[o0])), c = o >= 0 ? B[o] : null;
+          let ok = gap && c && o !== bi && okJ(c) && Math.abs(roofRule(b) - roofRule(c)) <= 1.2 && !seen.has(o + ':' + bi), da = 0, db = 0;
+          if (ok) { const [wx, wy] = sd.wall(k), w = wx * ox + wy * oy, mx = wx + ox * TS * g / 2, my = wy + oy * TS * g / 2;
+            da = Math.max(0, w - fil4(b, ox, oy, 1)); db = Math.max(0, fil4(c, ox, oy, -1) - (w + TS * g));
+            const L4 = TS * g + da + db; if (L4 > JMAX4 || (!g && L4 < .5) || !dentroX4(b, mx, my, ox) || !dentroX4(c, mx, my, ox)) ok = false; }
+          if (ok && run && run.bj === o && run.g === g && run.k1 === k - 1 && Math.abs(run.da - da) < .05 && Math.abs(run.db - db) < .05) run.k1 = k; else { flush(); if (ok) run = { bi, bj: o, sd, k0: k, k1: k, ox, oy, da, db, g }; } }
         flush(); });
     });
   }
+  // i due muri del salto (sul lotto): quello di a e quello di b
+  const jA = (J, k) => { const [wx, wy] = J.sd.wall(k); return [wx - J.ox * (J.da || 0), wy - J.oy * (J.da || 0)]; };
+  const jB = (J, k) => { const [wx, wy] = J.sd.wall(k), d = TS * (J.g === 0 ? 0 : 1) + (J.db || 0); return [wx + J.ox * d, wy + J.oy * d]; };
   buildJumps();
 
   // ---------------- [percorsi] I CAMMINAMENTI: le mura di tramontana e il rilevato sopra il sottopasso ----------------
@@ -400,7 +418,12 @@ var Tetti = (function () {
           else { if (Math.abs(dh) > 2.7) return;   /* [cucitura] anche davanti a un muro di una casella sola (le case strette della marina): le assi sono larghe un metro */   /* un piano, più il terreno che sale (2,7 m) */ if (g === 1 && Math.abs(dh) <= 1.2 && JUMPS.some(J => (J.bi === bi && J.bj === o) || (J.bi === o && J.bj === bi))) return;
             tipo = v5 ? ((b.era === 'E3' || c.era === 'E3' || g >= 3) ? 'ponte' : 'arco') : (b.era === 'E3' || c.era === 'E3') ? (g >= 2 ? 'ponte' : 'passerella') : g <= 2 ? 'arco' : 'passerella'; costo = 1.4 + g * .5 + Math.abs(dh) * .2 + (v5 ? 1.5 : 0); }
           const m = R[Math.floor(R.length / 2)], pk = Math.min(bi, o) + ':' + Math.max(bi, o), q = cand.get(pk);
-          const ks = R.slice().sort((u, v) => Math.abs(u - m) - Math.abs(v - m));   // [tetti4] la posizione di mezzo, poi le altre: se una è occupata si prova la vicina
+          const R2 = girata4(b, c) && tipo !== 'scaletta' ? (() => { const Q = []; for (let k = Math.min(...R) - .375; k <= Math.max(...R) + .376; k += .25) Q.push(k);
+              // e il mezzo della parte dove i due lotti si guardano (fra due spigoli vicini la finestra buona è stretta)
+              if (!rotC4(b) && !rotC4(c)) { const La = lotto4(b), Lc = lotto4(c), ns = sd.f === 'N' || sd.f === 'S', lo = ns ? Math.max(La.x0, Lc.x0) : Math.max(La.y0, Lc.y0), hi = ns ? Math.min(La.x1, Lc.x1) : Math.min(La.y1, Lc.y1);
+                if (hi > lo) { const u = ((lo + hi) / 2 - (ns ? La.x0 : La.y0)) / (ns ? La.lw : La.ld), k = u * sd.n - .5; if (k >= Math.min(...R) - .5 && k <= Math.max(...R) + .5) Q.unshift(k); } }
+              return Q; })() : R;   // [tetti4] sul muro del lotto ogni mezzo metro, non solo ogni casella: fra due scale e un arretramento il posto giusto può stare a metà
+          const ks = R2.slice().sort((u, v) => Math.abs(u - m) - Math.abs(v - m));   // [tetti4] la posizione di mezzo, poi le altre: se una è occupata si prova la vicina
           const C = { tipo, costo: costo - Math.min(R.length, 4) * .1, a: bi, b: o, sd, k: m, ks, g, dh, v5: !!v5 };
           if (!q || C.costo < q.costo) cand.set(pk, C);
         });
@@ -408,7 +431,7 @@ var Tetti = (function () {
     });
     const per = new Map(), passi = [], archi5 = [], lad0 = LADDERS.map(L => [L.tx, L.ty]);
     PLANKS.forEach(P => passi.push([(P.wa[0] + P.wb[0]) / 2, (P.wa[1] + P.wb[1]) / 2]));
-    const mettiC = (C, sep) => { for (const k of C.ks) { const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
+    const mettiC = (C, sep) => { for (const k of C.ks) { if ((sep || 9) > 3 && k !== Math.round(k)) continue;   /* [tetti4] le posizioni a metà casella solo per ricucire (passi da 3 m in giù) */ const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
     const mettiK = (C, kk, sep) => {
       SEP4 = sep;   // [tetti4] per ricucire un pezzo staccato (a meno di 4 m da un altro passaggio) le regole si allargano un poco
       const [wx, wy] = C.sd.wall(kk), [ox, oy] = C.sd.out;
@@ -433,7 +456,7 @@ var Tetti = (function () {
         const gap = C.g * TS, cx = wx + ox * gap / 2, cy = wy + oy * gap / 2;
         if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '9m']), false);
         if (C.v5 && archi5.some(([x, y]) => hyp(x - cx, y - cy) < 30)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, '30m']), false);   // sopra la Rua e la Marina un arco ogni 30 m (LEGGIBILITA.md)
-        if (lad0.some(([x, y]) => hyp(x - wx, y - wy) < (sep < 4 ? 1.1 : 1.8) || hyp(x - wx - ox * gap, y - wy - oy * gap) < (sep < 4 ? 1.1 : 1.8))) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina2']), false);
+        if (lad0.some(([x, y]) => hyp(x - wx, y - wy) < (sep < 2.5 ? .9 : sep < 4 ? 1.1 : 1.8) || hyp(x - wx - ox * gap, y - wy - oy * gap) < (sep < 2.5 ? .9 : sep < 4 ? 1.1 : 1.8))) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina2']), false);
         const pin = (ox ? Math.min(B[C.a].w, B[C.b].w) : Math.min(B[C.a].h, B[C.b].h)) >= 2 ? PIN : 1.36;   // [tetti4] sulle case di una casella la rampa si ferma a 64 cm dal muro di là (il parapetto e la copertina): la scaletta resta dolce   // la testa delle assi entra un metro e mezzo; sulle case di una casella (2 m) novanta centimetri
         const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw: C.tipo === 'arco' ? .45 : PHW, gap, pin, x0: wx - ox * pin, y0: wy - oy * pin, wa: [wx, wy], wb: [wx + ox * gap, wy + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo };
         P.L = pin * 2 + gap; P.s1 = pin; P.s2 = pin + gap;
@@ -458,19 +481,21 @@ var Tetti = (function () {
       for (const w of mezzo ? [[wx, wy], mezzo] : [[wx, wy]]) { [wx, wy] = w; for (const d of [nA, [-nB[0], -nB[1]], bis]) { const r = prova(d); if (r === true) return true; ultimo = r; } }
       return (DBG4 && DBG4.push([C.a, C.b, C.tipo, ultimo]), false);
       // una retta per il punto del muro di a nel verso d: dove esce da a, dove entra in b, quanto di sbieco
-      function prova([ox, oy]) {
+      // [tetti4] la testa entra 1,5 m nel tetto; se non ci sta (la casa stretta, girata) si prova più corta, fino a 95 cm
+      function prova(d) { let r; for (const fp of sep <= 3 ? [1, .8, .63] : [1]) { r = prova1(d, fp); if (r === true || (r !== 'testa a' && r !== 'testa b')) return r; } return r; }
+      function prova1([ox, oy], fp) {
         const px0 = wx - ox * 100, py0 = wy - oy * 100, rA = raggio4(A, px0, py0, ox, oy), rB = raggio4(Bb, px0, py0, ox, oy), c35 = Math.cos((SEP4 < 4 ? 45 : 35) * Math.PI / 180);
         if (!rA || !rB || rB.tin < rA.tout + .1 || rB.tin - rA.tout > 8.5) return 'sbieco';
         const rA2 = raggio4(A, px0 + ox * 300, py0 + oy * 300, -ox, -oy); if (!rA2) return 'sbieco';
         const cosA = rA2.cos, cosB = rB.cos; if (cosA < c35 || cosB < c35) return 'sbieco';
         const ax = px0 + ox * rA.tout, ay = py0 + oy * rA.tout, gap = rB.tin - rA.tout, hw = C.tipo === 'arco' ? .45 : PHW, lw = hw + .06, tan = c => Math.sqrt(Math.max(0, 1 - c * c)) / c;
-        const pin = Math.min(1.5, rA.tout - rA.tin - .62 / cosA), pinB = Math.min(1.5, rB.tout - rB.tin - .62 / cosB); if (pin < .9 || pinB < .9) return 'stretta';
+        const pin = Math.min(1.5 * fp, rA.tout - rA.tin - .62 / cosA), pinB = Math.min(1.5 * fp, rB.tout - rB.tin - .62 / cosB); if (pin < .9 || pinB < .9) return 'stretta';
         const P = { i: PLANKS.length, a: C.a, b: C.b, ox, oy, px: -oy, py: ox, hw, gap, pin, pinB, x0: ax - ox * pin, y0: ay - oy * pin, wa: [ax, ay], wb: [ax + ox * gap, ay + oy * gap], arco: C.tipo === 'arco', tipo4: C.tipo, obliqua: true,
           margA: .45 / cosA + lw * tan(cosA), margB: .45 / cosB + lw * tan(cosB) };
         P.s1 = pin; P.s2 = pin + gap; P.L = P.s2 + pinB; if (P.s1 - P.margA < .3 || P.L - P.s2 - P.margB < .3) return 'stretta';
         const cx = ax + ox * gap / 2, cy = ay + oy * gap / 2;
         if (passi.some(([x, y]) => hyp(x - cx, y - cy) < sep)) return '9m';
-        if (lad0.some(([x, y]) => hyp(x - ax, y - ay) < (sep < 4 ? 1.1 : 1.8) || hyp(x - P.wb[0], y - P.wb[1]) < (sep < 4 ? 1.1 : 1.8))) return 'scala vicina2';
+        if (lad0.some(([x, y]) => hyp(x - ax, y - ay) < (sep < 2.5 ? .9 : sep < 4 ? 1.1 : 1.8) || hyp(x - P.wb[0], y - P.wb[1]) < (sep < 2.5 ? .9 : sep < 4 ? 1.1 : 1.8))) return 'scala vicina2';
         // le teste dentro la loro casa (lontano dai parapetti di fianco), l'impalcato sopra il vuoto, accanto nessuno più alto (di una casa senza piano, 60 cm d'aria)
         if (terza4(P)) return 'terza';   // [tetti4]
         const mA4 = .42, mB4 = .42;   // le teste a 42 cm dai muri di fianco (il parapetto e la copertina)
@@ -481,9 +506,13 @@ var Tetti = (function () {
           if (sotto && s2 >= P.s2 + P.margB && !dentro4(Bb, x, y, mB4)) return 'testa b';
           if (sotto && s2 > P.s1 + .05 && s2 < P.s2 - .05 && (dentro4(A, x, y, .02) || dentro4(Bb, x, y, .02))) return 'vicolo';
           const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
-          for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const o = BI[(ty + j) * GW + tx + i]; if (o < 0 || o === C.a || o === C.b || !B[o]) continue;
-            const era = conPiano4(B[o]); if (!dentro4(B[o], x, y, -.6)) continue;   /* col margine della gronda */
-            if (sotto || (!era && Math.abs(t) - lw < .6) || (roofRule(B[o]) > hmin + .1 && Math.abs(t) - lw < .95)) return 'ingombro'; }
+          const visti4 = []; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const o = BI[(ty + j) * GW + tx + i]; if (o < 0 || o === C.a || o === C.b || !B[o] || visti4.includes(o)) continue; visti4.push(o);
+            if (!dentro4(B[o], x, y, -.6)) continue; const era = conPiano4(B[o]); if (fuori4(B[o], x, y) > .6) continue;   /* col margine della gronda (agli spigoli in tondo) */
+            // [tetti4] la quota delle assi lì (sulle teste quella del loro tetto, sul vuoto in pendenza fra i due): accanto conta chi è più alto di quella
+            const u4 = Math.max(0, Math.min(1, (s2 - P.s1) / Math.max(.1, P.s2 - P.s1))), hq = Math.min(roofRule(A) + (roofRule(Bb) - roofRule(A)) * u4, Math.max(roofRule(A), roofRule(Bb)));
+            if (roofRule(B[o]) <= hq - .1 && ((s2 <= P.s1 && dentro4(A, x, y, 0)) || (s2 >= P.s2 && dentro4(Bb, x, y, 0)))) continue;   // sulla testa, sopra il suo tetto, la gronda di un vicino più basso sta sotto
+            if ((!sotto && roofRule(B[o]) + 2.2 < hq) || (!sotto && era && roofRule(B[o]) <= hq + .3 && Math.abs(t) - lw > .4) || (!dentro4(B[o], x, y, 0) && roofRule(B[o]) + 1.2 < hq) || (!dentro4(B[o], x, y, -.1) && roofRule(B[o]) + .1 < hq)) continue;   // sopra la sola gronda di un vicino più basso si passa (il cornicione sporge 10 cm)
+            if (sotto || (!era && Math.abs(t) - lw < .6) || (roofRule(B[o]) > hq + .1 && Math.abs(t) - lw < .95)) return 'ingombro'; }
           if (sotto && BI[ty * GW + tx] < 0 && G.tileAt(tx, ty) === G.T.BLD) return 'pezzo'; }
         PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
         for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
@@ -507,13 +536,13 @@ var Tetti = (function () {
     RETE4.salite = []; const no4 = (bi, r) => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
     pezzi.forEach(P => {
       if (P.length < 5) return; const S = new Set(P), terra = () => LADDERS.filter(L => L.footB < 0 && !L.camm && S.has(L.bi));
-      const voglio = Math.min(5, 3 + Math.floor(P.length / 30));
+      const voglio = Math.min(5, 3 + Math.floor(P.length / 30)); let forza4 = false;
       const lontane = () => { const T1 = terra(); let m = 0; T1.forEach(a => T1.forEach(c => { m = Math.max(m, hyp(a.fx - c.fx, a.fy - c.fy)); })); return m; };   // [cucitura] un giro sale e scende a 18 m almeno: due salite lontane
       for (let giro = 0; giro < 8 && (terra().length < voglio || (P.length >= 20 && lontane() < 24)); giro++) {
-        let best = null; const T0 = terra(), largo = giro >= 6 || (giro >= 1 && T0.length === 0);   // [cucitura] il pezzo che non ha altre salite: anche nel vicolo di una casella, purché la scala si veda
+        let best = null; const T0 = terra(), largo = giro >= 6 || forza4 || (giro >= 1 && T0.length === 0);   // [cucitura] il pezzo che non ha altre salite: anche nel vicolo di una casella, purché la scala si veda
         P.forEach(bi => { const b = B[bi], d = DOOR(b);
-          if (libero4(b)) { sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E') return; const [ox, oy] = giraV4(rotC4(b), ...sd.out);   // [tetti4] la casa girata (o col lotto suo): la salita sul muro del lotto
-              for (let k = 0; k < sd.n; k++) { const [wx, wy] = toW4(b, ...muroL4(b, sd, k)), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+          if (libero4(b)) { sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E' && !(largo && T0.length < 2)) return;   /* [tetti4] il pezzo senza due salite: anche sugli altri muri, se la camera vede la scala */ const [ox, oy] = giraV4(rotC4(b), ...sd.out);   // [tetti4] la casa girata (o col lotto suo): la salita sul muro del lotto
+              for (let k = 0; k < sd.n; k++) { const [wx, wy] = toW4(b, ...muroL4(b, sd, k)), dp = piede4(wx, wy, ox, oy), fx = wx + ox * dp, fy = wy + oy * dp, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
                 if (bAt(fx, fy) >= 0 || !G.walkM(fx, fy) || !G.walkM(wx + ox * 2.2, wy + oy * 2.2) || (bAt(wx + ox * 2.2, wy + oy * 2.2) >= 0 && !largo) || bAt(tx2, ty2) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi) { no4(bi, 'budello'); continue; }
                 if (d && hyp(fx - (d[0] + .5) * TS, fy - (d[1] + .5) * TS) < 1.6) { no4(bi, 'porta'); continue; }
                 if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no4(bi, 'vicina'); continue; }
@@ -521,7 +550,7 @@ var Tetti = (function () {
                 const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no4(bi, '10m'); continue; }
                 const s = Math.min(dmin, 40) + (k === 0 || k === sd.n - 1 ? 2 : 0);
                 if (!best || s > best.s) best = { s, bi, sd, k, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2 }; } }); return; }
-          sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E') return; const [ox, oy] = sd.out;
+          sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E' && !(largo && T0.length < 2)) return;   /* [tetti4] il pezzo senza due salite: anche sugli altri muri, se la camera vede la scala */ const [ox, oy] = sd.out;
             const no = r => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
             for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k); if (!inb(tx, ty) || BI[ty * GW + tx] >= 0 || !G.walkT(tx, ty) || !G.walkT(tx + ox, ty + oy) || (BI[(ty + oy) * GW + tx + ox] >= 0 && !largo)) { no('budello'); continue; }
               if (d && Math.abs(tx - d[0]) + Math.abs(ty - d[1]) < 1) { no("porta"); continue; }   // accanto alla porta va bene (la porta è larga un metro)
@@ -532,7 +561,7 @@ var Tetti = (function () {
               const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no('10m'); continue; }
               const s = Math.min(dmin, 40) + (k === 0 || k === sd.n - 1 ? 2 : 0);
               if (!best || s > best.s) best = { s, bi, sd, k, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2 }; } }); });
-        if (!best) break;
+        if (!best) { if (!forza4 && T0.length < 2) { forza4 = true; continue; } break; }   // [tetti4] il pezzo con meno di due salite: si riprova largo (anche nel vicolo, anche sugli altri muri)
         const L = { i: LADDERS.length, bi: best.bi, f: best.sd.f, x: best.wx, y: best.wy, ox: best.ox, oy: best.oy, fx: best.fx, fy: best.fy, tx: best.tx, ty: best.ty, footB: -1, ang: Math.atan2(best.oy, best.ox), vis: true, tipo4: 'salita' };
         LADDERS.push(L); lad0.push([L.tx, L.ty]); RETE4.salite.push(L.i);
       }
@@ -600,8 +629,11 @@ var Tetti = (function () {
       if (o < 0 || o === bi || !B[o] || B[o].lighthouse) continue; const key = Math.min(bi, o) + ':' + Math.max(bi, o); if (!seen.has(key)) seen.set(key, []); } });
     // [tetti4] il gioco ci cammina? Da 1,3 m di qua a 1,3 m di là della cucitura (x, y) nel verso (ux, uy), largo quanto chi cammina
     // (40 cm per parte): di qua i0, di là i1, di fianco l'una o l'altra (bAt legge i lotti liberi)
+    // [tetti4] quanto è largo il passaggio: un metro dentro ciascuna delle due case, la distanza dal bordo più vicino del lotto (il parapetto)
+    const largo4 = (x, y, ux, uy, i0, i1) => { const m = (b, px, py) => { const [lx, ly] = toL4(b, px, py), L = lotto4(b); return Math.min(lx - L.x0, L.x1 - lx, ly - L.y0, L.y1 - ly); };
+      return Math.min(m(B[i0], x - ux, y - uy), m(B[i1], x + ux, y + uy)); };
     const cammina4 = (x, y, ux, uy, i0, i1, g) => { g = g || 0; for (let d = -1.3; d <= g + 1.3 + 1e-6; d += .1) for (const t of [-.4, 0, .4]) {
-      const o = bAt(x + ux * d - uy * t, y + uy * d + ux * t); if (o !== i0 && o !== i1) return false; if (!t && ((d < -.15 && o !== i0) || (d > g + .15 && o !== i1))) return false; } return true; };
+      const q = roofAt(x + ux * d - uy * t, y + uy * d + ux * t), o = q ? q.bi : -1; if (o !== i0 && o !== i1) return false; if (q.h > roofRule(B[o]) + .3) return false;   /* il tetto vero sotto i piedi (le gronde girate non si camminano, e non i parapetti) */ if (!t && ((d < -.15 && o !== i0) || (d > g + .15 && o !== i1))) return false; } return true; };
     // il contatto fra due lotti sul muro di a: un punto del muro dove di qua c'è a, di là b, e in mezzo al più 45 cm di vuoto
     const contatto4 = (a, b) => { const A = B[a], Bb = B[b], L = lotto4(A);
       for (const [fx, fy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const [nx, ny] = giraV4(rotC4(A), fx, fy);
@@ -618,17 +650,17 @@ var Tetti = (function () {
           if (!(peggio <= .45 && dentro4(A0, m[0] - ux * .6, m[1] - uy * .6, 0) && dentro4(A1, m[0] + ux * .6, m[1] + uy * .6, 0))) return false;   // un varco di 45 cm si scavalca, di più no
           if (!cammina4(m[0], m[1], ux, uy, B.indexOf(A0), B.indexOf(A1))) return false;   // e il gioco ci cammina: di qua a, di là b
           return true; };
-        const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(tocca) || contatto4(a, b) || contatto4(b, a); if (!mm) return; m = mm; }
+        const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2) - 3 * Math.min(1.2, largo4(q[0], q[1], q[2] === a ? q[3] : -q[3], q[2] === a ? q[4] : -q[4], a, b)), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(tocca) || contatto4(a, b) || contatto4(b, a); if (!mm) return; m = mm; }   // dal mezzo, ma prima dove il passaggio è largo
       else if (LIB4 && P.some(q => LIB4.has(Math.floor(q[1] / TS) * GW + Math.floor(q[0] / TS)))) {   // [tetti4] due case sulla pianta, ma un lotto libero vicino può sporgere sulla cucitura: il primo punto dove il gioco passa
         const passa = m => cammina4(m[0], m[1], m[3], m[4], m[2], m[2] === a ? b : a);
-        const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(passa); if (!mm) return; m = mm; }
+        const ord = P.map((q, i) => [Math.abs(i - (P.length - 1) / 2) - 3 * Math.min(1.2, largo4(q[0], q[1], q[3], q[4], q[2], q[2] === a ? b : a)), q]).sort((u, v) => u[0] - v[0]).map(u => u[1]), mm = ord.find(passa); if (!mm) return; m = mm; }
       for (const [p, q, dh] of [[a, b, hb - ha], [b, a, ha - hb]]) { if (dh > 1.2 || dh < -SAFE) continue; const sg = m[2] === p ? 1 : -1;
         // [tetti3] scendendo più di un gradino si cade per un po': il tetto d'arrivo deve essere profondo almeno due caselle, se no si scavalca
-        if (dh < -STEP && girata4(B[a], B[b])) { const ux = m[3] * sg, uy = m[4] * sg; if (!dentro4(B[q], m[0] + ux, m[1] + uy, 0) || !dentro4(B[q], m[0] + ux * 3.5, m[1] + uy * 3.5, 0)) continue; }   // [tetti4] fra lotti: tre metri e mezzo di tetto d'arrivo
+        if (dh < -STEP && girata4(B[a], B[b])) { const ux = m[3] * sg, uy = m[4] * sg; if (!dentro4(B[q], m[0] + ux, m[1] + uy, 0) || !dentro4(B[q], m[0] + ux * 2.6, m[1] + uy * 2.6, 0)) continue; }   // [tetti4] fra lotti: 2,6 m di tetto d'arrivo (due caselle, meno l'arretramento del lotto)
         else if (dh < -STEP) { const ux = m[3] * sg, uy = m[4] * sg; let tx = Math.floor(m[0] / TS - ux * .4), ty = Math.floor(m[1] / TS - uy * .4), n = 0;
           if (BI[ty * GW + tx] !== p) { tx += ux; ty += uy; } for (let s2 = 1; s2 <= 3; s2++) { const x2 = tx + ux * s2, y2 = ty + uy * s2; if (inb(x2, y2) && BI[y2 * GW + x2] === q) n++; else break; } if (n < 2) continue; }
         add(p, q, dh > STEP ? 'gradino' : 'tetto', m[0], m[1], undefined, m[3] * sg, m[4] * sg); } });
-    JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [wx, wy] = J.sd.wall(k), x = wx + J.ox * TS / 2, y = wy + J.oy * TS / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
+    JUMPS.forEach((J, i) => { const k = Math.floor((J.k0 + J.k1) / 2), [ax, ay] = jA(J, k), [bx2, by2] = jB(J, k), x = (ax + bx2) / 2, y = (ay + by2) / 2; add(J.bi, J.bj, 'salto', x, y, i, J.ox, J.oy); add(J.bj, J.bi, 'salto', x, y, i, -J.ox, -J.oy); });
     PLANKS.forEach(P => { const x = (P.wa[0] + P.wb[0]) / 2, y = (P.wa[1] + P.wb[1]) / 2; add(P.a, P.b, 'passerella', x, y, P.i, P.ox, P.oy); add(P.b, P.a, 'passerella', x, y, P.i, -P.ox, -P.oy); });
     LADDERS.forEach(L => { if (L.footB < 0 || L.camm) return; add(L.footB, L.bi, 'scala', L.fx, L.fy, L.i); add(L.bi, L.footB, 'scala', L.tx, L.ty, L.i); });
     return E;
@@ -723,7 +755,7 @@ var Tetti = (function () {
       const air = (o.jz || 0) > .15 || ((o.jz || 0) > 0 && (o.jvz || 0) < 0 && !!roofAt(x, y)), top = lv.h + STEP + Math.max(0, o.jz || 0);   // [tetti3] in discesa, col piede già sopra il tetto d'arrivo, il bordo si prende (prima il salto di 2 m moriva sul filo)
       for (const [a, c] of [[x, y], [x - k, y - k], [x + k, y - k], [x - k, y + k], [x + k, y + k]]) {
         const q = roofAt(a, c);
-        if (!q) { if (!air) return false; if (bAt(a, c) < 0 && !G.walkM(a, c) && !(G.seaM && G.seaM(a, c))) return false; continue; }
+        if (!q) { if (!air) return false; if (bAt(a, c) < 0 && !G.walkM(a, c) && !(G.seaM && G.seaM(a, c)) && !(LIB4 && LIB4.has(Math.floor(c / TS) * GW + Math.floor(a / TS)))) return false; continue; }   // [tetti4] in aria si passa sopra la striscia fra il lotto arretrato e la sua casella
         if (q.h > top) return false;
         if (!air && q.h < lv.h - SAFE) return false;   // camminando non si casca da un tetto alto: per buttarsi giù si salta
       }
@@ -987,7 +1019,7 @@ var Tetti = (function () {
     }
     // [pulizia2] i salti fattibili: la copertina crema sui due bordi del vicolo
     JUMPS.forEach(J => { const yaw = -Math.atan2(J.oy, J.ox);
-      for (let k = J.k0; k <= J.k1; k++) { const [wx, wy] = J.sd.wall(k), bx = wx + J.ox * TS, by = wy + J.oy * TS;
+      for (let k = J.k0; k <= J.k1; k++) { const [wx, wy] = jA(J, k), [bx, by] = jB(J, k);
         const ha = edgeH(J.bi, wx, wy, J.ox, J.oy), hb = edgeH(J.bj, bx, by, -J.ox, -J.oy);
         put(crema, wx - J.ox * .16, ha + .03, wy - J.oy * .16, .32, .06, TS - .06, yaw); put(crema, bx + J.ox * .16, hb + .03, by + J.oy * .16, .32, .06, TS - .06, yaw); } });
     // [tetti2] i belvederi: la panca verso il panorama, il palo con la bandierina rossa
@@ -1101,7 +1133,7 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  const API = { LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  const API = { lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
   // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
   if (typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
   // [tetti4] I PREMI dei giri (percorsi.js, i rami): il belvedere entra fra i belvederi (la panca, la bandierina, «Siediti a guardare»),
@@ -1117,9 +1149,11 @@ var Tetti = (function () {
         // [tetti4] lontano dalle passerelle e dalle scale che arrivano su questo tetto: fra i posti dentro il parapetto, quello più staccato
         const via = []; PLANKS.forEach(Q => { if (Q.a !== r.bi && Q.b !== r.bi) return; for (let s2 = 0; s2 <= Q.L; s2 += .25) via.push([Q.x0 + Q.ox * s2, Q.y0 + Q.oy * s2]); }); LADDERS.forEach(L => { if (L.bi === r.bi) via.push([L.tx, L.ty]); if (L.footB === r.bi) via.push([L.fx, L.fy]); });
         if (via.length) { let best = -1; for (let u = .25; u <= .76; u += .25) for (let w = .25; w <= .76; w += .25) { const [px, py] = toW4(b, x0 + .7 + (W1 - 1.4) * u, y0 + .7 + (D1 - 1.4) * w), d = Math.min(...via.map(([a, c]) => hyp(a - px, c - py))); if (d > best) { best = d; x = px; y = py; } } } }
+      const V0 = r.premio === 'belvedere' ? BELV.find(v => v.bi === r.bi) : null; if (V0) { x = V0.x; y = V0.y; }   // [tetti4] su un tetto che ha già il suo belvedere, il premio è quello
       const q = { i: PREMI.length, k: r.premio, x, y, bi: r.bi, nome: r.nome, giro: c.id, scala: r.scala };
       PREMI.push(q); r.premioI = q.i;
-      if (r.premio === 'belvedere' && !BELV.some(v => v.bi === r.bi)) BELV.push({ i: BELV.length, bi: r.bi, x, y, name: 'Belvedere · ' + (c.tema || c.nome), dist: '', giro: c.id });
+      if (V0 && !V0.giro) V0.giro = c.id;
+      if (r.premio === 'belvedere' && !V0) BELV.push({ i: BELV.length, bi: r.bi, x, y, name: 'Belvedere · ' + (c.tema || c.nome), dist: '', giro: c.id });
     }));
   }
   premi4();
@@ -1237,13 +1271,17 @@ var Tetti = (function () {
     const ris = (x, y, r) => { const [a, d] = loc3(b, x, y); P.riserve.push([a, d, r]); };
     LADDERS.forEach(L => { if (L.camm) return; if (L.bi === bi) { ris(L.tx, L.ty, 1.3); ris(L.x - L.ox * .3, L.y - L.oy * .3, 1.1); } if (L.footB === bi) ris(L.fx, L.fy, 1.3); });
     PLANKS.forEach(Q => { if (Q.a === bi) { ris(Q.wa[0] - Q.ox * .5, Q.wa[1] - Q.oy * .5, 1.1); ris(Q.x0, Q.y0, 1.0); } if (Q.b === bi) { ris(Q.wb[0] + Q.ox * .5, Q.wb[1] + Q.oy * .5, 1.1); ris(Q.wb[0] + Q.ox * 1.5, Q.wb[1] + Q.oy * 1.5, 1.0); } });
-    JUMPS.forEach(J => { for (let k = J.k0; k <= J.k1; k++) { const [wx, wy] = J.sd.wall(k); if (J.bi === bi) ris(wx - J.ox * .6, wy - J.oy * .6, 1.0); if (J.bj === bi) ris(wx + J.ox * (TS + .6), wy + J.oy * (TS + .6), 1.0); } });
+    JUMPS.forEach(J => { for (let k = J.k0; k <= J.k1; k++) { const [wx, wy] = jA(J, k), [vx, vy] = jB(J, k); if (J.bi === bi) ris(wx - J.ox * .6, wy - J.oy * .6, 1.0); if (J.bj === bi) ris(vx + J.ox * .6, vy + J.oy * .6, 1.0); } });
     BELV.forEach(V => { if (V.bi === bi) ris(V.x, V.y, 1.8); });
     PREMI.forEach(Q => { if (Q.bi === bi && Q.k !== 'belvedere') ris(Q.x, Q.y, 1.0); });   // [tetti4] il premio ha il suo posto
     // il corridoio del giro: i tratti della linea del giro che passano sopra questa casa
     giri.forEach(g => { for (let k = 0; k < g.pts.length - 1; k++) { const [ax, ay] = g.pts[k], [bx, by] = g.pts[k + 1], L = hyp(bx - ax, by - ay), n = Math.max(1, Math.ceil(L / .5)); let dentro = false;
       for (let j = 0; j <= n; j++) if (bAt(ax + (bx - ax) * j / n, ay + (by - ay) * j / n) === bi) { dentro = true; break; }
       if (dentro) P.corr.push([loc3(b, ax, ay), loc3(b, bx, by)]); } });
+    // [tetti4] e i passaggi da tetto a tetto delle vie su e giù e dei rami (non solo la linea del giro): un metro e mezzo per parte della cucitura
+    giri.forEach(g => { const E4 = [].concat(g.passi || [], ...(g.vie || []).map(v => (v.su || []).concat(v.giu || [])), ...(g.rami || []).map(r => r.passi || []));
+      E4.forEach(e => { if (!e || (e.k !== 'tetto' && e.k !== 'gradino') || (e.a !== bi && e.b !== bi)) return; const ux = e.ux || 0, uy = e.uy || 0;
+        P.corr.push([loc3(b, e.x - ux * 1.5, e.y - uy * 1.5), loc3(b, e.x + ux * 1.5, e.y + uy * 1.5)]); }); });
     const libero = g => {
       const R = P.rect; if (P.tipo === 'piano' && (g.x - g.hx < R.x0 - 1e-6 || g.x + g.hx > R.x1 + 1e-6 || g.y - g.hy < R.y0 - 1e-6 || g.y + g.hy > R.y1 + 1e-6)) return false;
       if (P.tipo === 'piano' && CAT3[g.k].alto > ALTO3 && (g.y + g.hy > y0 + D1 - CAMB3 || g.x + g.hx > x0 + W1 - CAMB3)) return false;
