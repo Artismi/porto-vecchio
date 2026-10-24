@@ -37230,6 +37230,12 @@ var Guardaroba = (function () {
     ['maglietta_ringer', 'maglietta ringer col collo colorato', 'Ringer', 'busto', [T, B], .008, '#f0ece2', 7, .2, .05],
     ['maglietta_resisti', 'maglietta con la scritta dietro', 'Resisti', 'busto', [T, B], .01, '#141418', 6, .25, .05],
     ['maglietta_tramonto', 'maglietta col tramonto e le palme', 'Riviera', 'busto', [T, B], .01, '#e8601a', 8, .25, .05],
+    ['maglietta_onda', 'maglietta con la grande onda', 'Onda', 'busto', [T, B], .01, '#f4f0e6', 9, .25, .05],
+    ['maglietta_limoni', 'maglietta coi limoni', 'Limoni', 'busto', [T, B], .01, '#2a5aa8', 9, .25, .05],
+    ['maglietta_tattoo', 'maglietta col cuore tatuato', 'Tattoo', 'busto', [T, B], .01, '#f4e6c0', 9, .25, .05],
+    ['maglietta_boombox', 'maglietta con lo stereo', 'Boombox', 'busto', [T, B], .01, '#2a5aa8', 9, .25, .05],
+    ['maglia_cross', 'maglia da motocross', 'Cross', 'busto', [T, B, A], .012, '#f4f0e6', 14, .3, .05],
+    ['felpa_chrome', 'felpa con la scritta cromata', 'Felpa chrome', 'busto', [T, B, A], .024, '#141418', 20, .7, .25],
     ['maglia_lunga', 'maglia a maniche lunghe da sotto', 'Manica lunga', 'busto', [T, B, A], .004, '#f0ece2', 5, .1, .1],
     ['maglia_basket', 'maglia da basket larga col numero', 'Maglia basket', 'busto', [T], .02, '#c83a2a', 12, .2, 0],
     ['felpa_college', 'felpa col cappuccio e la scritta ad arco', 'Felpa college', 'busto', [T, B, A], .024, '#5a5e66', 18, .7, .25],
@@ -37286,7 +37292,7 @@ var Guardaroba = (function () {
   sell('use:emporio', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'jeans_risvolto']);
   const MONTE = ['giacca_guscio', 'piumino_sacchi', 'gilet_piuma', 'pile_montagna', 'pantaloni_arrampicata', 'imbrago', 'corda', 'scarpe_trail'];
   sell('use:emporio', MONTE); sell('use:abbigliamento', MONTE);
-  const STREET = ['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
+  const STREET = ['maglietta_onda', 'maglietta_limoni', 'maglietta_tattoo', 'maglietta_boombox', 'maglia_cross', 'felpa_chrome', 'maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
   sell('use:emporio', STREET); sell('use:abbigliamento', STREET);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['maglietta_resisti', 'varsity', 'coach_jacket', 'giacca_raso', 'track_retro', 'camicia_bowling', 'maglia_basket', 'jeans_carpenter', 'pile', 'maglietta_tramonto'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   sell('use:abbigliamento', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'cardigan', 'camicia_70', 'jeans_risvolto', 'maglione_fairisle']);
@@ -37403,8 +37409,8 @@ var Guardaroba = (function () {
       if (r(13, 4) === 2) {   // [personaggi] hip hop: maglietta stampata larga (o la maglia da basket sopra la manica lunga), giacca da crew o felpa, jeans larghi o paracadute o joggers, sneakers grosse, durag, visiera o pescatora, la catena
         legs(pk(['jeans_larghi', 'pantaloni_paracadute', 'joggers', 'jeans_carpenter', 'cargo', 'pantaloncini_basket'], 49), pk(['#3e5a86', '#1a1a1e', '#2a2a2e', '#c8b898', '#5a5e66', '#4a5038', '#6a8ab8'], 50));
         if (r(51, 4) === 0) { put('maglia_lunga', pk(['#f0ece2', '#141418'], 52)); put('maglia_basket', pk(['#c83a2a', '#2a5aa8', '#e8a020', '#141418', '#3a8a4a', '#7a1e2a'], 53)); }
-        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
-        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
+        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize', 'maglietta_onda', 'maglietta_limoni', 'maglietta_tattoo', 'maglietta_boombox', 'maglia_cross'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
+        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'felpa_chrome', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
         put(pk(['scarpe_chunky', 'scarpe_air', 'scarpe_skate'], 57), pk(['#f4f2ee', '#141418', '#e8a020', '#c83a2a'], 58));
         if (r(59, 3)) put(pk(['durag', 'visiera', 'cappello_pescatora', 'cappellino_dritto', 'berretto_corto', 'bandana'], 60), pk(['#141418', '#f0ece2', '#c83a2a', '#1e2a4a', '#e8a020', '#3a8a4a'], 61));
         if (r(62, 2)) put(pk(['collana_oro', 'collana_oro', 'catenina'], 63)); if (r(64, 3) === 0) put(pk(['occhiali_mascherina', 'occhiali_ovali', 'occhiali_sole'], 65)); if (r(66, 3) === 0) put(pk(['borsello', 'marsupio_tracolla', 'zaino'], 67));
@@ -82464,6 +82470,96 @@ var Personaggi = (function () {
   // =====================================================================================
   // IL MATERIALE (uno per tutta la gente): colori per vertice, l'atlante, un filo di luce propria
   // =====================================================================================
+  // =====================================================================================
+  // [personaggi] LE STAMPE A COLORI: una tela a parte, coi colori veri e la trasparenza (tessere 200+). Sopra il capo, al posto del disegno a canali.
+  // Nella tessera la y è la v del capo (0 all'orlo, 1 al collo); la u è 1,5 volte più larga della v sul busto, quindi le forme si stringono di lato (.66).
+  // =====================================================================================
+  const PR = { N: 8, NY: 3, px: 256, tex: null, nomi: ['vapore', 'wild', 'hotrod', 'onda', 'limoni', 'boombox', 'acido', 'cross', 'arcobaleno', 'camo_pop', 'righe70', 'stencil', 'alieni', 'tattoo', 'pallone', 'bandana_tutta', 'mixtape', 'chrome'] };
+  PR.nomi.forEach((n, i) => { TL['s_' + n] = 200 + i; });
+  function stampe() {
+    if (PR.tex || typeof document === 'undefined') return PR.tex;
+    const { N, NY, px } = PR, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };
+    const K = .66, ell = (c, u, v, rx, ry, a0, a1) => { c.beginPath(); c.ellipse(u, v, rx * K, ry, 0, a0 || 0, a1 === undefined ? 7 : a1); };
+    const grad = (c, x0, y0, x1, y1, stops) => { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach((s, k) => g.addColorStop(k / (stops.length - 1), s)); return g; };
+    // la scritta, girata per stare dritta sul capo; peso, contorno, ombra
+    const txt = (c, s, u, v, h, fill, o) => { o = o || {}; c.save(); c.translate(u, v); c.scale(K * h / 100, -h / 100); c.rotate(o.rot || 0); c.font = `${o.peso || 900} 100px ${o.font || '"Arial Black", Impact, "Helvetica Neue", Arial, sans-serif'}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      if (o.skew) c.transform(1, 0, o.skew, 1, 0, 0);
+      if (o.ombra) { c.fillStyle = o.ombra; c.fillText(s, 6, 8); }
+      if (o.bordo) { c.lineJoin = 'round'; c.strokeStyle = o.bordo; c.lineWidth = o.bw || 16; c.strokeText(s, 0, 0); }
+      c.fillStyle = typeof fill === 'function' ? fill(c) : fill; c.fillText(s, 0, 0); if (o.luce) { c.fillStyle = o.luce; c.globalAlpha = .55; c.fillText(s, -3, -6); } c.restore(); };
+    const cuciture = c => { c.save(); c.translate(0, -SU); c.fillStyle = 'rgba(0,0,0,.22)'; c.fillRect(0, .955, 1, .045); c.fillRect(0, 0, 1, .03); c.fillStyle = 'rgba(0,0,0,.08)'; c.fillRect(.245, 0, .01, 1); c.fillRect(.745, 0, .01, 1); c.restore(); };
+    const dietro = fn => { fn(0); fn(1); };
+    const stella = (c, u, v, r, col, n) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < (n || 5) * 2; k++) { const a = k / ((n || 5) * 2) * 6.283 - Math.PI / 2, rr = k % 2 ? r * .42 : r; c.lineTo(u + Math.cos(a) * rr * K, v - Math.sin(a) * rr); } c.fill(); };
+    const fiammaP = (c, u, w, h, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(u - w, 0); c.bezierCurveTo(u - w, h * .45, u - w * .1, h * .55, u - w * .45, h); c.bezierCurveTo(u + w * .15, h * .75, u + w * .35, h * .62, u + w * .2, h * .88); c.bezierCurveTo(u + w * .95, h * .52, u + w, h * .3, u + w, 0); c.fill(); };
+    const goccia = (c, u, v, l, col) => { c.fillStyle = col; c.fillRect(u - .004, v - l, .008, l); ell(c, u, v - l, .007, .011); c.fill(); };
+        const SU = .07, D = (i, fn) => T(i, c => { c.translate(0, SU); fn(c); });   // nella tessera la y è già la v del capo (in su); solo le scritte si girano. Il disegno sale di SU verso il petto
+    const zoom = (c, z, fn, u0, v0) => { c.save(); c.translate(u0 || .5, v0 || .6); c.scale(z, z); c.translate(-(u0 || .5), -(v0 || .6)); fn(); c.restore(); };
+    // 0 vapore: il sole a righe, la griglia viola, le palme, la scritta cromata; dietro il sole grande
+    D(0, c => { const sole = (u, v, r) => { c.save(); ell(c, u, v, r, r); c.clip(); c.fillStyle = grad(c, 0, v + r, 0, v - r, ['#ffe14a', '#ff8a3d', '#ff3f8e', '#b23cd8']); c.fillRect(u - r, v - r, 2 * r, 2 * r); for (let k = 0; k < 6; k++) c.clearRect(u - r, v - r * .1 - k * r * .16, 2 * r, r * (.03 + k * .016)); c.restore(); };
+      sole(.5, .66, .17); c.strokeStyle = '#ff3fd2'; c.lineWidth = .006; for (let k = 0; k < 5; k++) { c.beginPath(); c.moveTo(.34, .48 - k * k * .012); c.lineTo(.66, .48 - k * k * .012); c.stroke(); } for (let k = -4; k <= 4; k++) { c.beginPath(); c.moveTo(.5 + k * .02, .49); c.lineTo(.5 + k * .055, .3); c.stroke(); }
+      const palma = (u, s) => { c.fillStyle = '#2a0e3a'; c.beginPath(); c.moveTo(u, .45); c.quadraticCurveTo(u + s * .02, .6, u + s * .01, .74); c.lineTo(u + s * .022, .74); c.quadraticCurveTo(u + s * .035, .6, u + .012, .45); c.fill(); for (let k = 0; k < 6; k++) { const a = -.9 + k * .55; c.beginPath(); c.moveTo(u + s * .016, .74); c.quadraticCurveTo(u + s * .016 + Math.cos(a) * .045, .79, u + s * .016 + Math.cos(a) * .085, .74 + Math.sin(a) * .06 - .02); c.lineTo(u + s * .016 + Math.cos(a) * .05, .755); c.fill(); } };
+      palma(.37, 1); palma(.63, -1); txt(c, 'PORTO VECCHIO', .5, .33, .045, cc => grad(cc, 0, .24, 0, .3, ['#9ad8ff', '#ffffff', '#ff7ad8']), { bordo: '#2a0e3a', bw: 12 }); dietro(u => sole(u, .62, .22)); cuciture(c); });
+    // 1 wild: le lettere a bolla piene di sfumatura, il contorno nero, le luci, le colature, le stelline; dietro la firma
+    D(1, c => { txt(c, 'PORTO', .5, .62, .15, cc => grad(cc, 0, .5, 0, .74, ['#2af5ff', '#3ad86a', '#ffe14a']), { skew: -.25, bordo: '#141418', bw: 26, ombra: '#ff3f8e', luce: '#ffffff', rot: .06 });
+      [['#2af5ff', .38, .5, .1], ['#3ad86a', .47, .5, .16], ['#ffe14a', .6, .5, .08]].forEach(([col, u, v, l]) => goccia(c, u, v, l, col)); [[.3, .78, .025], [.72, .76, .02], [.66, .44, .015]].forEach(([u, v, r]) => stella(c, u, v, r, '#ffffff', 4));
+      dietro(u => txt(c, 'RISACCA', u, .65, .075, '#ff3f8e', { skew: -.3, bordo: '#141418', bw: 18, luce: '#ffffff' })); cuciture(c); });
+    // 2 hotrod: le fiamme a tre colori col contorno, dall'orlo fino al petto, tutt'intorno
+    D(2, c => { for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .075, .46 + .2 * Math.abs(Math.sin(k * 2.3)), '#141418'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .065, .42 + .2 * Math.abs(Math.sin(k * 2.3)), '#e8281a'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .045, .3 + .14 * Math.abs(Math.sin(k * 1.7)), '#ff8a1a'); for (let k = 0; k < 9; k++) fiammaP(c, k / 8, .025, .16 + .08 * Math.abs(Math.sin(k * 1.3)), '#ffe14a'); cuciture(c); });
+    // 3 onda: la grande onda blu con gli artigli di schiuma, il sole rosso dietro, le scritte
+    D(3, c => { zoom(c, 1.35, () => { ell(c, .58, .7, .09, .09); c.fillStyle = '#e8281a'; c.fill(); c.fillStyle = grad(c, 0, .3, 0, .8, ['#0e2a6a', '#1e5ab8', '#4aa8e8']); c.beginPath(); c.moveTo(.32, .36); c.bezierCurveTo(.34, .62, .44, .8, .56, .78); c.bezierCurveTo(.48, .74, .45, .66, .5, .6); c.bezierCurveTo(.54, .56, .6, .6, .6, .52); c.bezierCurveTo(.64, .46, .68, .4, .68, .36); c.closePath(); c.fill();
+      c.fillStyle = '#f4f0e6'; for (let k = 0; k < 7; k++) { const a = k / 7; ell(c, .5 + .06 * Math.cos(a * 4), .75 - a * .05, .018, .012); c.fill(); } c.strokeStyle = '#f4f0e6'; c.lineWidth = .008; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(.42 + k * .05, .42 + k * .02, .04, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+      txt(c, 'ISOLA', .5, .33, .045, '#141418'); }); dietro(u => { ell(c, u, .62, .18, .18); c.fillStyle = '#e8281a'; c.fill(); txt(c, 'MAREGGIATA', u, .3, .06, '#1e5ab8', { bordo: '#f4f0e6', bw: 10 }); }); cuciture(c); });
+    // 4 limoni: i limoni gialli con le foglie e i fiorellini bianchi, dappertutto
+    D(4, c => { const lim = (u, v, r, a) => { c.save(); c.translate(u, v); c.scale(K, 1); c.rotate(a); c.fillStyle = '#2e7a3a'; c.beginPath(); c.ellipse(r * 1.1, r * .6, r * .9, r * .35, .6, 0, 7); c.fill(); c.beginPath(); c.ellipse(-r * .6, r * 1, r * .8, r * .3, -.5, 0, 7); c.fill(); c.fillStyle = '#ffd21a'; c.beginPath(); c.ellipse(0, 0, r, r * .78, 0, 0, 7); c.fill(); c.beginPath(); c.arc(r * 1.02, 0, r * .12, 0, 7); c.fill(); c.fillStyle = 'rgba(255,255,255,.5)'; c.beginPath(); c.ellipse(-r * .3, r * .3, r * .3, r * .15, -.4, 0, 7); c.fill(); c.restore(); };
+      const fio = (u, v, r) => { c.fillStyle = '#ffffff'; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; ell(c, u + Math.cos(a) * r * K, v + Math.sin(a) * r, r * .6, r * .6); c.fill(); } c.fillStyle = '#ffb21a'; ell(c, u, v, r * .4, r * .4); c.fill(); };
+      for (let k = 0; k < 22; k++) { const u = (k * .37 + .05) % 1, v = (k * .53 + .1) % 1; lim(u, v, .05 + (k % 3) * .01, k * 1.3); if (k % 2) fio((u + .13) % 1, (v + .17) % 1, .014); } cuciture(c); });
+    // 5 boombox: lo stereo con le casse, la cassetta, l'equalizzatore a colori, BASS
+    D(5, c => { zoom(c, 1.45, () => { c.fillStyle = '#c8ccd0'; c.fillRect(.36, .5, .28, .22); c.fillStyle = '#5a5e66'; c.fillRect(.4, .72, .2, .015); c.fillRect(.4, .72, .01, .04); c.fillRect(.59, .72, .01, .04); c.fillRect(.4, .755, .2, .012);
+      [.405, .595].forEach(u => { ell(c, u, .6, .065, .065); c.fillStyle = '#141418'; c.fill(); ell(c, u, .6, .045, .045); c.fillStyle = '#3a3e44'; c.fill(); ell(c, u, .6, .015, .015); c.fillStyle = '#c8ccd0'; c.fill(); });
+      c.fillStyle = '#141418'; c.fillRect(.465, .62, .07, .07); c.fillStyle = '#e8601a'; c.fillRect(.47, .65, .06, .03); ['#3ad86a', '#ffe14a', '#ff8a1a', '#e8281a', '#ff3f8e', '#2af5ff'].forEach((col, k) => { c.fillStyle = col; c.fillRect(.468 + k * .011, .52, .008, .02 + (k * 7 % 5) * .01); });
+      txt(c, 'BASS', .5, .44, .06, '#ffe14a', { bordo: '#141418', bw: 14, skew: -.2 }); }); dietro(u => txt(c, 'SOUND SYSTEM', u, .66, .06, '#ff3f8e', { bordo: '#141418', bw: 12 })); cuciture(c); });
+    // 6 acido: la faccina gialla, i raggi arcobaleno, la banda a scacchi
+    D(6, c => { zoom(c, 1.2, () => { ['#e8281a', '#ff8a1a', '#ffe14a', '#3ad86a', '#2a8ad0', '#8a4ab8'].forEach((col, k) => { c.fillStyle = col; c.beginPath(); for (let j = 0; j < 12; j++) { const a0 = (j + k / 6) / 12 * 6.283, a1 = a0 + .12; c.moveTo(.5, .62); c.lineTo(.5 + Math.cos(a0) * .22 * K, .62 + Math.sin(a0) * .22); c.lineTo(.5 + Math.cos(a1) * .22 * K, .62 + Math.sin(a1) * .22); } c.fill(); });
+      ell(c, .5, .62, .12, .12); c.fillStyle = '#141418'; c.fill(); ell(c, .5, .62, .11, .11); c.fillStyle = '#ffe14a'; c.fill(); c.fillStyle = '#141418'; ell(c, .465, .66, .012, .03); c.fill(); ell(c, .535, .66, .012, .03); c.fill(); c.strokeStyle = '#141418'; c.lineWidth = .012; c.beginPath(); c.ellipse(.5, .63, .07 * K, .06, 0, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); }, .5, .62);
+      for (let k = 0; k < 40; k++) { c.fillStyle = (k + (k % 2)) % 2 ? '#141418' : '#f4f0e6'; c.fillRect(k / 40, .36, 1 / 40, .03); c.fillStyle = k % 2 ? '#f4f0e6' : '#141418'; c.fillRect(k / 40, .39, 1 / 40, .03); } cuciture(c); });
+    // 7 cross: la maglia da motocross a blocchi diagonali, il numero grande col contorno, le toppe
+    D(7, c => { c.fillStyle = '#e8281a'; c.beginPath(); c.moveTo(0, .55); c.lineTo(1, .25); c.lineTo(1, .45); c.lineTo(0, .75); c.fill(); c.fillStyle = '#141418'; c.beginPath(); c.moveTo(0, .75); c.lineTo(1, .45); c.lineTo(1, .52); c.lineTo(0, .82); c.fill(); c.fillStyle = '#ffe14a'; c.fillRect(0, .9, 1, .06);
+      txt(c, '77', .5, .57, .2, '#f4f0e6', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'ISOLA', .36, .8, .035, '#141418'); txt(c, 'MOTO', .64, .8, .035, '#e8281a'); dietro(u => { txt(c, '77', u, .58, .3, '#ffe14a', { bordo: '#141418', bw: 20, skew: -.15 }); txt(c, 'TESTAROSSA', u, .84, .05, '#f4f0e6', { bordo: '#141418', bw: 10 }); }); cuciture(c); });
+    // 8 arcobaleno: il tie-dye a spirale di tutti i colori
+    D(8, c => { const cols = ['#e8281a', '#ff8a1a', '#ffe14a', '#3ad86a', '#2af5ff', '#2a5ad8', '#b23cd8', '#ff3f8e']; for (let k = 0; k < 400; k++) { const t = k / 400, a = t * 6.283 * 4, r = .02 + t * .75; c.fillStyle = cols[Math.floor(t * 32) % 8]; c.globalAlpha = .55; ell(c, .5 + Math.cos(a) * r * K, .55 + Math.sin(a) * r * .8, .05 + t * .07, .04 + t * .05); c.fill(); } c.globalAlpha = 1; dietro(u => { for (let k = 0; k < 120; k++) { const t = k / 120, a = t * 6.283 * 3, r = .02 + t * .3; c.fillStyle = cols[Math.floor(t * 18) % 8]; c.globalAlpha = .6; ell(c, u + Math.cos(a) * r * K, .55 + Math.sin(a) * r, .05, .04); c.fill(); } c.globalAlpha = 1; }); });
+    // 9 camo pop: il mimetico rosa, azzurro, viola e nero, dappertutto
+    D(9, c => { c.fillStyle = '#ff9ad8'; c.fillRect(0, 0, 1, 1); const blob = (u, v, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k <= 10; k++) { const a = k / 10 * 6.283, rr = r * (.65 + .35 * Math.sin(k * 2.7 + u * 13)); c.lineTo(u + Math.cos(a) * rr * K * 1.4, v + Math.sin(a) * rr); } c.fill(); };
+      for (let k = 0; k < 30; k++) { const u = (k * .43) % 1, v = (k * .61) % 1; blob(u, v, .09 + (k % 3) * .03, ['#6ac8ff', '#8a4ab8', '#141418', '#f4f0e6'][k % 4]); } c.globalAlpha = .25; c.fillStyle = '#000'; c.fillRect(0, .955, 1, .045); c.globalAlpha = 1; });
+    // 10 righe 70: cinque righe arcobaleno che girano sul petto, la stellina
+    D(10, c => { ['#e8281a', '#ff8a1a', '#ffe14a', '#3ab86a', '#2a8ad0'].forEach((col, k) => { c.fillStyle = col; c.fillRect(0, .66 - k * .045, 1, .04); }); stella(c, .64, .8, .035, '#ffe14a'); txt(c, 'ESTATE 79', .5, .4, .05, '#f4f0e6', { bordo: '#141418', bw: 10 }); cuciture(c); });
+    // 11 stencil: la scritta a spruzzo, la stella rossa, le colature
+    D(11, c => { c.globalAlpha = .9; stella(c, .5, .7, .13, '#d8202a'); c.globalAlpha = 1; txt(c, 'RISACCA', .5, .48, .07, '#141418', { font: 'Impact, "Arial Black", sans-serif', peso: 900 }); for (let k = 0; k < 6; k++) goccia(c, .4 + k * .04, .45, .03 + (k * 37 % 7) * .012, '#141418');
+      c.fillStyle = 'rgba(20,20,24,.5)'; for (let k = 0; k < 80; k++) { const a = k * 2.4, r = .14 + (k % 7) * .012; c.fillRect(.5 + Math.cos(a) * r * K, .62 + Math.sin(a) * r, .004, .004); } dietro(u => { txt(c, 'NON SI', u, .7, .08, '#d8202a', { font: '"Courier New", monospace' }); txt(c, 'VENDE', u, .56, .08, '#d8202a', { font: '"Courier New", monospace' }); }); cuciture(c); });
+    // 12 alieni: gli alieni a pixel in file colorate, GAME OVER
+    D(12, c => { const A = ['00100000100', '00010001000', '00111111100', '01101110110', '11111111111', '10111111101', '10100000101', '00011011000'], pix = (u, v, s, col) => { c.fillStyle = col; A.forEach((row, r) => [...row].forEach((b, q) => { if (b === '1') c.fillRect(u + (q - 5.5) * s * K, v - r * s, s * K * 1.02, s * 1.02); })); };
+      ['#3ad86a', '#ff3f8e', '#2af5ff', '#ffe14a'].forEach((col, k) => pix(.41 + (k % 2) * .18, .82 - Math.floor(k / 2) * .16, .016, col)); txt(c, 'GAME OVER', .5, .45, .05, '#ff3f8e', { font: '"Courier New", monospace' }); dietro(u => pix(u, .75, .025, '#3ad86a')); cuciture(c); });
+    // 13 tattoo: il cuore col cartiglio MAMMA, le rondini, le rose (old school)
+    D(13, c => { let cuore; zoom(c, 1.4, () => { cuore = (u, v, r) => { c.fillStyle = '#141418'; c.beginPath(); c.moveTo(u, v - r * 1.1); c.bezierCurveTo(u - r * 1.6 * K, v - r * .2, u - r * 1.2 * K, v + r * 1.1, u, v + r * .45); c.bezierCurveTo(u + r * 1.2 * K, v + r * 1.1, u + r * 1.6 * K, v - r * .2, u, v - r * 1.1); c.fill(); c.fillStyle = '#d8202a'; c.save(); c.translate(u, v); c.scale(.85, .85); c.translate(-u, -v); c.fill(); c.restore(); };
+      cuore(.5, .64, .1); c.fillStyle = '#f4e6c0'; c.fillRect(.4, .6, .2, .045); c.fillStyle = '#c8a060'; c.fillRect(.385, .59, .02, .045); c.fillRect(.595, .59, .02, .045); txt(c, 'MAMMA', .5, .622, .035, '#141418');
+      const rondine = (u, v, s) => { c.fillStyle = '#1e3a8a'; c.beginPath(); c.moveTo(u, v); c.lineTo(u + s * .08 * K, v + .04); c.lineTo(u + s * .03 * K, v + .005); c.lineTo(u + s * .09 * K, v - .03); c.lineTo(u + s * .02 * K, v - .01); c.fill(); c.fillStyle = '#d8202a'; ell(c, u + s * .012, v - .005, .012, .01); c.fill(); };
+      rondine(.36, .76, -1); rondine(.64, .76, 1); [[.38, .48], [.62, .48]].forEach(([u, v]) => { ell(c, u, v, .03, .03); c.fillStyle = '#d8202a'; c.fill(); c.strokeStyle = '#141418'; c.lineWidth = .004; c.beginPath(); c.arc(u, v, .015, 0, 5); c.stroke(); c.fillStyle = '#2e7a3a'; ell(c, u + (u < .5 ? .03 : -.03), v - .02, .02, .01); c.fill(); }); });
+      dietro(u => { cuore(u, .6, .17); txt(c, 'PORTO VECCHIO', u, .3, .045, '#141418'); }); cuciture(c); });
+    // 14 pallone: il pallone da basket che brucia, STREET ad arco
+    D(14, c => { zoom(c, 1.3, () => { for (let k = 0; k < 5; k++) fiammaP(c, .42 + k * .04, .03, .78 - Math.abs(k - 2) * .05, ['#ffe14a', '#ff8a1a', '#e8281a', '#ff8a1a', '#ffe14a'][k]); c.save(); c.translate(0, .0); ell(c, .5, .56, .1, .1); c.fillStyle = '#e8701a'; c.fill(); c.strokeStyle = '#141418'; c.lineWidth = .008; c.stroke(); c.beginPath(); c.moveTo(.5, .46); c.lineTo(.5, .66); c.moveTo(.5 - .1 * K, .56); c.lineTo(.5 + .1 * K, .56); c.stroke(); c.beginPath(); c.ellipse(.5 - .06 * K, .56, .05 * K, .09, 0, -1.2, 1.2); c.stroke(); c.beginPath(); c.ellipse(.5 + .06 * K, .56, .05 * K, .09, 0, Math.PI - 1.2, Math.PI + 1.2); c.stroke(); c.restore();
+      txt(c, 'STREET', .5, .42, .06, '#f4f0e6', { bordo: '#141418', bw: 14 }); }, .5, .5); cuciture(c); });
+    // 15 bandana: il paisley rosso, nero e bianco, dappertutto
+    D(15, c => { c.fillStyle = '#b8141e'; c.fillRect(0, 0, 1, 1); const pa = (u, v, r, a) => { c.save(); c.translate(u, v); c.scale(K, 1); c.rotate(a); c.fillStyle = '#141418'; c.beginPath(); c.arc(0, 0, r, 0, 7); c.quadraticCurveTo(r * 1.6, -r * .2, r * 2.3, r * 1.5); c.quadraticCurveTo(r * .9, r * 1.1, 0, r); c.fill(); c.fillStyle = '#f4f0e6'; c.beginPath(); c.arc(0, 0, r * .6, 0, 7); c.fill(); c.fillStyle = '#b8141e'; c.beginPath(); c.arc(0, 0, r * .35, 0, 7); c.fill(); c.restore(); };
+      for (let k = 0; k < 20; k++) pa((k * .41) % 1, (k * .57) % 1, .035, k * 1.7); c.fillStyle = '#f4f0e6'; for (let k = 0; k < 80; k++) { ell(c, (k * .29) % 1, (k * .71) % 1, .005, .005); c.fill(); } c.globalAlpha = .25; c.fillStyle = '#000'; c.fillRect(0, .955, 1, .045); c.globalAlpha = 1; });
+    // 16 mixtape: la cassetta grande a colori, la scritta a mano
+    D(16, c => { zoom(c, 1.45, () => { c.fillStyle = '#141418'; c.fillRect(.37, .5, .26, .24); c.fillStyle = '#ff3f8e'; c.fillRect(.385, .62, .23, .1); c.fillStyle = '#ffe14a'; c.fillRect(.385, .6, .23, .02); c.fillStyle = '#2af5ff'; c.fillRect(.385, .58, .23, .02);
+      [.45, .55].forEach(u => { ell(c, u, .555, .025, .025); c.fillStyle = '#f4f0e6'; c.fill(); ell(c, u, .555, .012, .012); c.fillStyle = '#141418'; c.fill(); }); txt(c, 'LATO B', .5, .67, .03, '#141418', { font: '"Comic Sans MS", "Marker Felt", cursive', peso: 700 });
+      txt(c, 'MIXTAPE', .5, .44, .055, '#ff3f8e', { bordo: '#141418', bw: 12, skew: -.2 }); }); cuciture(c); });
+    // 17 chrome: la scritta cromata gotica grande sul petto, la croce di stelle dietro (Y2K)
+    D(17, c => { txt(c, 'Porto', .5, .62, .17, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
+      dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'VECCHIO', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; PR.tex = tex; PR.cv = cv; return tex;
+  }
   let MAT = null, MAT_STILE = null;
   function materiale() {
     if (MAT && MAT_STILE === CFG.stile) return MAT; const st = S(); MAT_STILE = CFG.stile;
@@ -82474,17 +82570,19 @@ var Personaggi = (function () {
     const tex = atlante(), N = AT.N;
     const EMI = (st.toon ? .05 : st.luce || .22).toFixed(3);
     m.onBeforeCompile = sh => {
-      sh.uniforms.uAtl = { value: tex };
+      sh.uniforms.uAtl = { value: tex }; sh.uniforms.uPrn = { value: stampe() };
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 col2; attribute vec3 col3; attribute vec3 atl; attribute vec3 mot; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;')
         .replace('#include <color_vertex>', '#include <color_vertex>\nvC2 = col2; vC3 = col3; vAtl = atl; vMot = mot;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uAtl; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;
-        vec3 atlS(float t, vec2 uv) { vec2 N = vec2(${N}.0, ${AT.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uAtl, o + clamp(uv, .004, .996) / N).rgb; }`)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nuniform sampler2D uAtl; uniform sampler2D uPrn; varying vec3 vC2; varying vec3 vC3; varying vec3 vAtl; varying vec3 vMot;
+        vec3 atlS(float t, vec2 uv) { vec2 N = vec2(${N}.0, ${AT.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uAtl, o + clamp(uv, .004, .996) / N).rgb; }
+        vec4 prnS(float t, vec2 uv) { vec2 N = vec2(${PR.N}.0, ${PR.NY}.0); vec2 o = vec2(mod(t, N.x), floor(t / N.x)) / N; return texture2D(uPrn, o + clamp(uv, .003, .997) / N); }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
-        { vec3 L = vAtl.z > .5 ? atlS(floor(vAtl.z + .5), vec2(vAtl.x, vAtl.y)) : vec3(0.);
+        { bool pr = vAtl.z > 199.5; vec3 L = vAtl.z > .5 && !pr ? atlS(floor(vAtl.z + .5), vec2(vAtl.x, vAtl.y)) : vec3(0.); vec4 SP = pr ? prnS(floor(vAtl.z + .5) - 200., vec2(vAtl.x, vAtl.y)) : vec4(0.);
           vec3 M = vMot.z > .5 ? atlS(16. + floor(vMot.z + .5), fract(vMot.xy * 6.)) : vec3(0.);
           vec3 c = diffuseColor.rgb;
           c = mix(c, vC3 * (1. - M.g * .4), M.r); c = mix(c, vec3(.95, .85, .3), M.b * .7); c *= 1. - M.g * .25;
           float lip = min(L.r, L.b); c = mix(c, vC3, lip); c = mix(c, vC2, L.r - lip); c *= 1. - L.g * ${(st.inchiostro || .78).toFixed(3)}; c = mix(c, vec3(.95, .93, .88), (L.b - lip) * .9);
+          c = mix(c, SP.rgb, SP.a);
           diffuseColor.rgb = c; }`)
         .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * ' + EMI + ';');   // [inverno] i personaggi si staccano dallo sfondo
     };
@@ -82578,11 +82676,11 @@ var Personaggi = (function () {
     puffer_corto: { v: 'puffer_corto' }, camicia_70: { v: 'camicia_70', ptile: 'fiori', col3: '#5a2a14' }, jeans_risvolto: { v: 'jeans_risvolto' }, pantaloni_mimetici: { v: 'cargo', ptile: 'mimetico', col3: '#2e3424' },
     kefiah: { k: 'sciarpa', kefiah: 1 }, cappello_pescatora: { c: 'bucket' }, anfibi: { s: 'anfibi' }, scarpe_chunky: { s: 'chunky' }, guanti_monchi: { x: 'guanti' }, zaino_tattico: { z: 'zaino' },
     pantaloni_tuta: { v: 'tuta_pantaloni' }, jeans_larghi: { v: 'larghi' }, calze_sport: { v: 'calze_alte' }, scarpe_skate: { s: 'sneakers' }, scarpe_air: { s: 'basket' },
-    maglietta_box: { v: 'maglietta_larga', tile: 'box' }, maglietta_college: { v: 'maglietta_larga', tile: 'college' }, maglietta_fiamme: { v: 'maglietta_larga', tile: 'fiamme', col2: '#e8601a', col3: '#e8d040' },
-    maglietta_tiedye: { v: 'maglietta_larga', ptile: 'tiedye', col3: '#e8d040' }, maglietta_graffiti: { v: 'maglietta_larga', tile: 'graffiti' }, maglietta_ringer: { v: 'maglietta', tile: 'ringer', col2: '#c83a2a', colOrloBr: '#c83a2a' },
-    maglietta_resisti: { v: 'maglietta_larga', tile: 'retro', col2: '#c83a2a', col3: '#f0ece2' }, maglietta_tramonto: { v: 'maglietta_larga', tile: 'tramonto', col2: '#e8d040', col3: '#2a1a3a' }, maglia_lunga: { v: 'sotto_lunga' },
+    maglietta_box: { v: 'maglietta_larga', tile: 'box' }, maglietta_college: { v: 'maglietta_larga', tile: 'college' }, maglietta_fiamme: { v: 'maglietta_larga', tile: 's_hotrod' },
+    maglietta_tiedye: { v: 'maglietta_larga', tile: 's_arcobaleno' }, maglietta_graffiti: { v: 'maglietta_larga', tile: 's_wild' }, maglietta_ringer: { v: 'maglietta', tile: 'ringer', col2: '#c83a2a', colOrloBr: '#c83a2a' },
+    maglietta_resisti: { v: 'maglietta_larga', tile: 'retro', col2: '#c83a2a', col3: '#f0ece2' }, maglietta_tramonto: { v: 'maglietta_larga', tile: 's_vapore' }, maglietta_onda: { v: 'maglietta_larga', tile: 's_onda' }, maglietta_limoni: { v: 'maglietta_larga', tile: 's_limoni' }, maglietta_tattoo: { v: 'maglietta_larga', tile: 's_tattoo' }, maglietta_boombox: { v: 'maglietta_larga', tile: 's_boombox' }, maglia_cross: { v: 'maglietta_larga', tile: 's_cross', braccio: [0, .96, .026] }, felpa_chrome: { v: 'felpa_larga', tile: 's_chrome' }, maglia_lunga: { v: 'sotto_lunga' },
     maglia_basket: { v: 'jersey', col3: '#f0ece2' }, felpa_college: { v: 'felpa_larga', tile: 'felpa_college' }, felpa_blocchi: { v: 'felpa_larga', tile: 'felpa_blocchi' }, felpa_cappuccio_zip: { v: 'felpa', tile: 'zip' },
-    felpa_tiedye: { v: 'felpa_larga', ptile: 'tiedye', col3: '#e86a9a' }, varsity: { v: 'varsity', col2: '#e8d040', col3: '#f0ece2' }, coach_jacket: { v: 'coach' }, giacca_raso: { v: 'raso', col2: '#e8a020', col3: '#c83a2a' },
+    felpa_tiedye: { v: 'felpa_larga', tile: 's_arcobaleno' }, varsity: { v: 'varsity', col2: '#e8d040', col3: '#f0ece2' }, coach_jacket: { v: 'coach' }, giacca_raso: { v: 'raso', col2: '#e8a020', col3: '#c83a2a' },
     anorak: { v: 'anorak', col2: '#2a5aa8', col3: '#141418' }, pile: { v: 'pile', col2: '#e8d040', col3: '#141418' }, track_retro: { v: 'track_retro', col2: '#f0ece2', col3: '#c83a2a' }, camicia_bowling: { v: 'bowling', col2: '#e8d040', col3: '#c83a2a' },
     giacca_guscio: { v: 'guscio', col2: '#141418' }, piumino_sacchi: { v: 'guscio_gonfio', col2: '#141418' }, gilet_piuma: { v: 'gilet_piuma', col2: '#141418' }, pantaloni_arrampicata: { v: 'pantaloni_arrampicata', col2: '#e8601a' },
     imbrago: { x: 'imbrago' }, corda: { x: 'corda' }, scarpe_trail: { s: 'trail' }, pile_montagna: { v: 'pile', col2: '#141418', col3: '#141418' },
@@ -82597,8 +82695,8 @@ var Personaggi = (function () {
   const ACC = ['#e8a020', '#c83a2a', '#2a5aa8', '#f0ece2', '#141418', '#3a8a4a', '#e86a9a', '#8a4ab8', '#e8d040', '#30a8b8', '#e8601a', '#7a1e2a'];
   const lum = c => { if (Array.isArray(c)) return .3 * c[0] + .59 * c[1] + .11 * c[2]; const h = String(c).replace('#', ''), v = i => parseInt(h.length === 3 ? h[i] + h[i] : h.slice(i * 2, i * 2 + 2), 16) / 255 || 0; return .3 * v(0) + .59 * v(1) + .11 * v(2); };
   const VAR = {
-    maglietta: [['', 5], ['stampa', 2], ['box', 2], ['college', 2], ['fiamme', 1], ['smiley', 1], ['tramonto', 1], ['retro', 2], ['graffiti', 1], ['ringer', 2], ['calcio', 1], ['p:righe', 1], ['p:rugby', 1], ['p:tiedye', 2], ['p:scacchi', 1], ['p:memphis', 1], ['p:stelle', 1], ['p:leopardo', .6], ['p:paisley', .6]],
-    felpa: [['', 4], ['felpa_blocchi', 2], ['felpa_college', 2], ['zip', 2], ['retro', 1.5], ['graffiti', 1], ['p:tiedye', 1], ['p:mimetico', 1], ['p:scacchi', .5], ['p:rugby', .5]],
+    maglietta: [['', 4], ['s_vapore', 2], ['s_wild', 2], ['s_hotrod', 2], ['s_onda', 2], ['s_limoni', 2], ['s_boombox', 2], ['s_acido', 2], ['s_cross', 1.5], ['s_arcobaleno', 1.5], ['s_camo_pop', 1], ['s_righe70', 1.5], ['s_stencil', 1.5], ['s_alieni', 1.5], ['s_tattoo', 2], ['s_pallone', 1.5], ['s_bandana_tutta', 1], ['s_mixtape', 1.5], ['s_chrome', 1.5], ['stampa', 1], ['box', 2], ['college', 2], ['fiamme', 1], ['smiley', 1], ['tramonto', 1], ['retro', 2], ['graffiti', 1], ['ringer', 2], ['calcio', 1], ['p:righe', 1], ['p:rugby', 1], ['p:tiedye', 2], ['p:scacchi', 1], ['p:memphis', 1], ['p:stelle', 1], ['p:leopardo', .6], ['p:paisley', .6]],
+    felpa: [['', 3], ['s_wild', 1.5], ['s_vapore', 1], ['s_onda', 1], ['s_acido', 1], ['s_arcobaleno', 1.5], ['s_camo_pop', 1], ['s_stencil', 1], ['s_chrome', 1.5], ['s_tattoo', 1], ['s_hotrod', 1], ['felpa_blocchi', 2], ['felpa_college', 2], ['zip', 2], ['retro', 1.5], ['graffiti', 1], ['p:tiedye', 1], ['p:mimetico', 1], ['p:scacchi', .5], ['p:rugby', .5]],
     bomber: [['', 3], ['raso', 2], ['p:mimetico', 1], ['varsity', 1]],
     tuta_giacca: [['', 2], ['track', 3]],
     canottiera: [['', 6], ['jersey', 2]],
@@ -82626,7 +82724,7 @@ var Personaggi = (function () {
     D = D || {}; D.vesti = []; D.collo = []; D.schiena = []; D.accessori = D.accessori || [];
     const stretto = outfit.some(c => /^(tuta_ginnastica)$/.test(c.id));
     (outfit || []).forEach(c => { const m = DA_CAPO[c.id]; if (!m) return; const col = c.col || (typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[c.id] && Guardaroba.CAPO[c.id].col) || '#888';
-      if (m.v) D.vesti.push(variante(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.tile ? { tile: m.tile } : {}, m.col3 ? { col3: m.col3 } : {}, m.col2 ? { col2: m.col2 } : {}, m.colBr ? { colBr: m.colBr } : {}, m.colOrloBr ? { colOrloBr: m.colOrloBr } : {}, c.col2 ? { col2: c.col2 } : {}, c.col3 ? { col3: c.col3 } : {}, c.tile ? { tile: c.tile } : {}, c.ptile ? { ptile: c.ptile } : {}), D, D.vesti.length));
+      if (m.v) D.vesti.push(variante(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.tile ? { tile: m.tile } : {}, m.braccio ? { braccio: m.braccio } : {}, m.col3 ? { col3: m.col3 } : {}, m.col2 ? { col2: m.col2 } : {}, m.colBr ? { colBr: m.colBr } : {}, m.colOrloBr ? { colOrloBr: m.colOrloBr } : {}, c.col2 ? { col2: c.col2 } : {}, c.col3 ? { col3: c.col3 } : {}, c.tile ? { tile: c.tile } : {}, c.ptile ? { ptile: c.ptile } : {}), D, D.vesti.length));
       if (m.e) D.vesti.push({ tipo: m.e, col, col3: '#f0ece2' });
       if (m.c) D.cappello = { tipo: m.c, col };
       if (m.o) { D.occhiali = m.o; D.occhialiCol = c.col; if (c.lente) D.lente = c.lente; }
