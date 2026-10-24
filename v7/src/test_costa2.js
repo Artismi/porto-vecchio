@@ -72,4 +72,31 @@ if (A) {
   ok((A.piazzole || []).length >= 1 && (A.scale || []).length >= 1, `la strada sul mare ha piazzole (${(A.piazzole || []).length}), scalette verso la riva (${(A.scale || []).length}) e muretti (${(A.muretti || []).length})`);
 } else ok(false, 'manca W.SEA.costa2 (l\'arredo della riva)');
 
+// ---------------- 5. nessuna casa in acqua, nessuna casa senza accesso ----------------
+// (la segnalazione dell'inquadratura: case sulla riva mezze in acqua e senza porta raggiungibile)
+{ const WALK = new Set([T.COB, T.VIA, T.PIAZZA, T.QUAY, T.WALK, T.STAIRS, T.SAND, T.GRASS, T.DIRT, T.ROCK, T.GRAVEL, T.PIER, T.FIELD, T.SHRUB]), seen = new Uint8Array(GW * GH), Q = [];
+  for (let i = 0; i < GW * GH; i++) if (W.roadW[i] > 0 && W.grid[i] === T.VIA) { seen[i] = 1; Q.push(i); }
+  while (Q.length) { const i = Q.pop(); for (const o of [1, -1, GW, -GW]) { const j = i + o; if (j < 0 || j >= GW * GH || seen[j] || !WALK.has(W.grid[j])) continue; seen[j] = 1; Q.push(j); } }
+  const inAcqua = [], troppaAcqua = [], senzaPorta = [];
+  W.BUILDINGS.forEach(b => { if (b.military || b.use === 'capanno') return; let acqua = 0, terra = 0, dentro = 0;
+    for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) if (W.grid[ty * GW + tx] === T.WATER) dentro++;
+    for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { if (ty >= b.y && ty < b.y + b.h && tx >= b.x && tx < b.x + b.w) continue; const i = ty * GW + tx; if (isSea(i)) acqua++; else terra++; }
+    if (dentro) inAcqua.push(b.id); if (acqua > terra * .6) troppaAcqua.push(b.id + ' (' + acqua + '/' + (acqua + terra) + ')');
+    if (b.door && b.house) { const [dx, dy] = b.door, di = dy * GW + dx; if (!seen[di]) senzaPorta.push(b.id); } });
+  ok(!inAcqua.length, `nessuna casa coi muri in acqua (${inAcqua.slice(0, 6).join(' ')})`);
+  ok(!troppaAcqua.length, `nessuna casa circondata dal mare (al più 3 lati su 8 d'acqua; ${troppaAcqua.slice(0, 6).join(' ')})`);
+  ok(!senzaPorta.length, `ogni casa ha la porta raggiungibile a piedi dalle strade (${senzaPorta.length}: ${senzaPorta.slice(0, 6).join(' ')})`); }
+
+// ---------------- 6. gli scogli mai sulle strade ----------------
+// (la segnalazione della pulizia: 15 scogli grandi sotto le mura in mezzo al Lungomare di Tramontana, fino a 9,8 m dentro la carreggiata)
+{ const CIT = new Set([T.VIA, T.WALK, T.COB, T.PIAZZA, T.STAIRS, T.QUAY, T.PIER, T.BLD]), RD = (W.roads || []).filter(rd => rd.pts && rd.pts.length > 1 && !rd.rect), dentro = [];
+  const dSeg = (x, y, P) => { let b = 1e9; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)); b = Math.min(b, Math.hypot(x - ax - ex * t, y - ay - ey * t)); } return b; };
+  (W.SEA.rocks || []).forEach(q => { let peggio = 0, dove = '';
+    RD.forEach(rd => { const e = q.r + rd.w / 2 + 2.4 - dSeg(q.x, q.y, rd.pts); if (e > peggio) { peggio = e; dove = rd.name || rd.id; } });   // la carreggiata e il marciapiede
+    const R = Math.ceil(q.r / TS) + 1, cx = Math.floor(q.x / TS), cy = Math.floor(q.y / TS);
+    for (let b = -R; b <= R; b++) for (let a = -R; a <= R; a++) { const tx = cx + a, ty = cy + b, i = ty * GW + tx; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH || !(CIT.has(W.grid[i]) || W.roadW[i] > 0)) continue;
+      const qx = Math.max(tx * TS, Math.min(q.x, (tx + 1) * TS)), qy = Math.max(ty * TS, Math.min(q.y, (ty + 1) * TS)), e = q.r - Math.hypot(qx - q.x, qy - q.y); if (e > peggio) { peggio = e; dove = 'casella ' + tx + ',' + ty; } }
+    if (peggio > 0) dentro.push((q.id || 'scoglio') + '@' + q.x.toFixed(0) + ',' + q.y.toFixed(0) + ' ' + peggio.toFixed(1) + ' m in ' + dove); });
+  ok((W.SEA.rocks || []).length > 300 && !dentro.length, `gli scogli (${(W.SEA.rocks || []).length}, ${W.SEA.scogliSpostati || 0} portati al largo) mai in carreggiata, sul marciapiede o sulle caselle della città (${dentro.length}: ${dentro.slice(0, 4).join('; ')})`); }
+
 console.log(fail ? `QUALCOSA NON VA (${fail})` : 'TUTTO BENE'); process.exit(fail ? 1 : 0);

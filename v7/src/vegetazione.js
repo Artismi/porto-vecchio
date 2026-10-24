@@ -615,6 +615,7 @@ var Vegetazione = (function () {
       // i cuscini di fiori bianchi del bordo dell'acqua (il riferimento del ruscello)
       grappoloC('fioriBianchi', 150, (x, y, k, t) => { if (k % 3 === 0) foglia(x, y, 22, 8, r() * TAU, `hsl(105,40%,${22 + t * 26}%)`); else fiore5(x, y, 6 + r() * 3, `hsl(50,30%,${90 + t * 8}%)`, '#e8d070'); });
       const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
+      if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t);   // [leggera] sul telefono a metà lato
       // l'atlante fotografico: quando arriva copre le celle FOTO e la corteccia
       if (!FOTO_ON) CARICATO = Promise.resolve(true); else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
         img.onerror = () => ok(false); img.src = BASE + 'atlante_foto.png'; });
@@ -1246,7 +1247,8 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       if (g.mesh) { for (let i = 0; i < g.n; i++) { g.mesh.getMatrixAt(i, m4); m.setMatrixAt(i, m4); g.mesh.getColorAt(i, col); m.setColorAt(i, col); } gruppo.remove(g.mesh); g.mesh.dispose(); }
       g.mesh = m; g.cap = cap; gruppo.add(m); };
     // LONTANO: tutte le piante grandi dell'isola in una geometria sola (la sagoma più semplice, già posata), che lo shader chiude dentro R1
-    { const L = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)); let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
+    let VL = null;   // [leggera] sul telefono le piante lontane a riquadri attorno alla camera (leggera_memoria.js)
+    { const L0 = P.piante.filter(p => SP[p.sp].strato !== 'C' && (SP[p.sp].strato !== 'B' || SP[p.sp].chioma >= 1.2)); const lontanoGeo = L => { let nv = 0; const geos = L.map(p => { const g = KIT.sagoma(p.sp, 2); nv += g.attributes.position.count; return g; });
       const Pp = new Float32Array(nv * 3), Nn = new Float32Array(nv * 3), Cc = new Float32Array(nv * 3), Uu = new Float32Array(nv * 2), Oo = new Float32Array(nv), Ff = new Float32Array(nv), Ce = new Float32Array(nv * 3); let o = 0;
       L.forEach((p, k) => { const g = geos[k], A = g.attributes, s = p.h / KIT.H0(p.sp), cs = Math.cos(p.rot), sn = Math.sin(p.rot), y0 = gH(p.x, p.y) - .04;
         for (let i = 0; i < A.position.count; i++, o++) { const x = A.position.getX(i) * s, y = A.position.getY(i) * s, z = A.position.getZ(i) * s, nx = A.normal.getX(i), nz = A.normal.getZ(i);
@@ -1255,11 +1257,15 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
           Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
       g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2)); g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
-      const far = new THREE.Mesh(g, materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true })); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); }
+      if (tel && typeof LeggeraMem !== 'undefined') LeggeraMem.verde(g);   // [leggera] sul telefono attributi compatti, e la copia in memoria si svuota dopo l'invio
+      return g; };
+      const MF = materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true });
+      if (tel && typeof LeggeraMem !== 'undefined' && LeggeraMem.on('verdelontano')) VL = LeggeraMem.lontano(gruppo, L0, lontanoGeo, MF);
+      else { const far = new THREE.Mesh(lontanoGeo(L0), MF); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); } }
     let lx = 1e9, lz = 1e9, lc = 1e9, lcz = 1e9;
     const BASSE = new Set(['erbaSecca', 'erbaVerde', 'papavero', 'finocchietto', 'avena', 'cardo', 'asfodelo', 'fioriBianchi', 'tappetoAghi', 'tappetoFoglie', 'pigna', 'rametto']);
     function aggiorna(cx, cz, t) {
-      U.uT.value = t || 0; U.uCam.value.set(cx, 0, cz);
+      U.uT.value = t || 0; U.uCam.value.set(cx, 0, cz); if (VL) VL(cx, cz);   // [leggera]
       if (Math.hypot(cx - lx, cz - lz) > 4) { lx = cx; lz = cz; IM.forEach((g, k) => { if (!k.startsWith('c|')) g.n = 0; });
         const i0 = Math.floor((cx - R1) / C), i1 = Math.floor((cx + R1) / C), j0 = Math.floor((cz - R1) / C), j1 = Math.floor((cz + R1) / C);
         for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) (idx.get(i * 65536 + j) || []).forEach(p => {

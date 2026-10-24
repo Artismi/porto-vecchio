@@ -1,0 +1,12 @@
+{
+  "nota": "[tetti4] Le passerelle contro i tetti: sei punti dove prima l'impalcato entrava di più nei tetti (strumenti/passerelle4.js sulla build di prima), da vicino. Prima: PV_PAGINA=prima_tetti4.html (git show 13f4cc5:v7/index.html); dopo: la build. node strumenti/galleria.js <cartella> strumenti/passerelle4_scene.json",
+  "pulita": true,
+  "scorci": [
+    { "nome": "p1_ottocento_mercato", "titolo": "Ottocento, sotto il Mercato", "x": 1271, "y": 375, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "p2_torre_acqua", "titolo": "Sotto la torre dell'acqua", "x": 1327, "y": 273, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "p3_arco_sagrato", "titolo": "L'arco verso il campanile", "x": 1402, "y": 306, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "p4_campanile_est", "titolo": "Il campanile, verso levante", "x": 1455, "y": 308, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "p5_arco_reti", "titolo": "L'arco del giro delle reti", "x": 1386, "y": 356, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "p6_pozzo", "titolo": "Sopra il Pozzo", "x": 1451, "y": 330, "zoom": 0.45, "ora": 720, "meteo": "sereno", "luce": "borgo" }
+  ]
+}

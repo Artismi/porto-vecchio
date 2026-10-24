@@ -177,7 +177,12 @@ var Oggetti3D = (function () {
   // un'arma nella mano: la canna lungo le dita (Y della mano), il sopra verso il pollice (X), l'impugnatura nel pugno.
   // Restituisce la radice (origine = impugnatura: anim_lotta.js ne ricava l'asse della canna) da mettere nel sistema della mano.
   const _m = new THREE.Matrix4();
+  const PROTO = new Map(), CONDIVISE = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('roba');   // [leggera] sul telefono ogni arma si costruisce una volta: le altre sono copie con le stesse geometrie
   function armaInMano(tipo, gy, gz) {
+    if (CONDIVISE) { let p = PROTO.get(tipo); if (!p) PROTO.set(tipo, p = armaInMano0(tipo, gy, gz)); const r = p.clone(); r.position.set(0, gy, gz); return r; }
+    return armaInMano0(tipo, gy, gz);
+  }
+  function armaInMano0(tipo, gy, gz) {
     const o = tipo === 'coltello' ? (() => { const k = T.coltello(null, 'coltello'), w = new THREE.Group(); k.rotation.z = -PI / 2; k.position.x = -k.userData.grip; w.add(k); return w; })() : T[tipo]();
     const root = new THREE.Group(); root.position.set(0, gy, gz);
     if (tipo !== 'coltello') root.quaternion.setFromRotationMatrix(_m.makeBasis(new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0)));   // arma X,Y,Z → mano Z,X,Y

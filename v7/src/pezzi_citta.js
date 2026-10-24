@@ -379,7 +379,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   };
 
   // ================= 2. IL REGIME: portico razionalista e torre littoria (E4) =================
-  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
+  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[pianta] varchi: le x locali delle porte delle case dietro, dove il fondo del portico è aperto. [cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
   // [facciate2] il portico vero: pilastri con la base e il capitello, l'intradosso con le travi fra i pilastri (e la sua ombra), il
   // marcapiano al piano delle arcate, la cortina di travertino a lastre (i giunti li disegna il materiale) con le finestre incassate
   // (lo sguincio è lo spessore del muro), la cornice piatta razionalista e il davanzale, le tapparelle a più altezze, il cornicione con
@@ -400,8 +400,12 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (!LOD) blocco(g, pl + .1, .16, .58, 'pietraChiara', x, H - (cw - pl) / 2 - .08, zF, .02); }   // l'imposta dell'arco
     if (!LOD) archi.forEach(a => blocco(g, .34, .5, .58, 'pietraChiara', a.x, H - .28, zF, .02));   // la chiave
     const porte = []; for (let i = 0; i < n; i++) { const v = hs(i, 1) < .62; porte.push({ x: i * cw + cw / 2, w: v ? Math.min(2.6, cw - 1) : 1.5, h: v ? 3.1 : 3.3, tipo: 'rett', h0: v ? .55 : 0, v }); }
+    // [pianta] varchi: le porte vere delle case dietro (x locali); lì il fondo è aperto e si vede il portone della casa, senza la vetrina finta
+    if (o.varchi && o.varchi.length) { const aperte = new Set(); o.varchi.forEach(x => { for (let i = 0; i < n; i++) if (x + 1.3 > i * cw && x - 1.3 < (i + 1) * cw) aperte.add(i); });   // la campata intera: il portone disegnato cade fino a un metro dal centro della casella
+      for (let i = n - 1; i >= 0; i--) if (aperte.has(i)) porte.splice(i, 1);
+      aperte.forEach(i => porte.push({ x: i * cw + cw / 2, w: cw - .3, h: 3.1, tipo: 'rett', h0: 0, aperto: true })); }
     pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
-    if (!LOD) porte.forEach(a => { if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
+    if (!LOD) porte.forEach(a => { if (a.aperto) return; if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
       else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
     blocco(g, L, .5, P, 'intradosso', L / 2, hA - .5, -.25);                                    // il soffitto in ombra
     blocco(g, L + .2, .2, .7, 'pietraChiara', L / 2, hA, zF - .1, .02);                          // il marcapiano sopra le arcate
@@ -1321,9 +1325,9 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [L, h + (o.merli ? 1.2 : .12), T2 + hs * .2 + (o.scala ? 1.4 : 0)]; return g;
   };
 
-  DOC.porta_terra = { w: 6, h: 9, torri: true, addossate: false, nota: 'addossate: sul retro delle torri le casupole a una falda (in città no: lì ci sono già le case vere del tassellatore). Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
+  DOC.porta_terra = { w: 6, h: 9, torri: true, tw: 6.5, addossate: false, nota: '[pianta] tw: la larghezza delle torri. addossate: sul retro delle torri le casupole a una falda (in città no: lì ci sono già le case vere del tassellatore). Porta di Terra della cinta medievale: corpo con il fornice a sesto acuto, la ghiera di conci, la saracinesca alzata che si vede in alto, l\'edicola col santo e la lapide sopra, beccatelli e merli ghibellini; le due torri quadrate avanzate con le feritoie, i beccatelli e i merli' };
   T.porta_terra = o => {
-    o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? 6.5 : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
+    o = def(o, DOC.porta_terra); const g = new THREE.Group(), w = o.w, h = o.h, D = 6, Wc = w + 4, Hc = h + .22 * w + 4.4, tw = o.torri ? (o.tw || 6.5) : 0, W = Wc + 2 * tw, xc = W / 2, zF = D / 2;
     pareteArchi(g, Wc, Hc, D, [{ x: Wc / 2, w, h, tipo: 'sesto' }], 'tufo', tw, 0, 0);
     const hs = h - w * .65;                                                                          // la ghiera dell'arco acuto: due archi di conci
     if (!LOD) for (const s of [-1, 1]) { const cxA = xc - s * w / 2, gk = grp(g, cxA, hs, zF - .1); for (let i = 0; i < 6; i++) { const t = (s > 0 ? 0 : PI) + s * (i + .5) * (PI / 3) / 6, b = blocco(gk, .45, .5, .4, 'pietraChiara', 0, 0, 0); b.position.set(Math.cos(t) * (w + .25), Math.sin(t) * (w + .25), 0); b.rotation.z = t - HP; } }

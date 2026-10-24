@@ -1,0 +1,14 @@
+{
+  "nota": "[pulizia] Le otto inquadrature del prima e dopo della passata del rumore (src/pulizia_rumore.js): la camera predefinita del gioco (zoom 0,72, la visuale non girata), sulle zone dove il censimento (strumenti/rumore.js) trova più rumore. Prima: PV_QUERY='?cittanuova&norumore'; dopo: PV_QUERY='?cittanuova'.",
+  "pulita": true,
+  "scorci": [
+    { "nome": "p1_marina", "titolo": "La marina sotto la Vittoria", "x": 1404, "y": 372, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p2_borgo_alto", "titolo": "Il borgo alto", "x": 1356, "y": 300, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p3_vittoria_ovest", "titolo": "La Vittoria verso ovest", "x": 1332, "y": 372, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p4_borgo_est", "titolo": "Il borgo a levante", "x": 1452, "y": 300, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p5_corso", "titolo": "Il Corso", "x": 1284, "y": 330, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p6_porto", "titolo": "Verso il porto", "x": 1428, "y": 396, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p7_rua", "titolo": "La Rua", "x": 1404, "y": 280, "zoom": 0.72, "ora": 630, "meteo": "sereno" },
+    { "nome": "p8_ottocento", "titolo": "L'Ottocento", "x": 1308, "y": 348, "zoom": 0.72, "ora": 630, "meteo": "sereno" }
+  ]
+}
