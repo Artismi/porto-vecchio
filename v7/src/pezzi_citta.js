@@ -379,7 +379,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   };
 
   // ================= 2. IL REGIME: portico razionalista e torre littoria (E4) =================
-  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
+  DOC.portico = { campate: 6, campata: 4, h: 5, piani: 4, profondita: 4, pilastro: .8, lettere: 'MINISTERO DELL\'ORDINE', stile: 'regime', tinta: 'ocra', nota: '[pianta] varchi: le x locali delle porte delle case dietro, dove il fondo del portico è aperto. [cucitura] stile: regime (travertino) o ottocento (arcate d\'intonaco nella tinta, persiane, cornicione e coppi); pilastri quadrati di travertino a passo di campata, trabeazione con le lettere lapidarie, cortina di travertino sopra con le finestre a nastro; il retro è cieco; L = campate × campata' };
   // [facciate2] il portico vero: pilastri con la base e il capitello, l'intradosso con le travi fra i pilastri (e la sua ombra), il
   // marcapiano al piano delle arcate, la cortina di travertino a lastre (i giunti li disegna il materiale) con le finestre incassate
   // (lo sguincio è lo spessore del muro), la cornice piatta razionalista e il davanzale, le tapparelle a più altezze, il cornicione con
@@ -400,8 +400,12 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (!LOD) blocco(g, pl + .1, .16, .58, 'pietraChiara', x, H - (cw - pl) / 2 - .08, zF, .02); }   // l'imposta dell'arco
     if (!LOD) archi.forEach(a => blocco(g, .34, .5, .58, 'pietraChiara', a.x, H - .28, zF, .02));   // la chiave
     const porte = []; for (let i = 0; i < n; i++) { const v = hs(i, 1) < .62; porte.push({ x: i * cw + cw / 2, w: v ? Math.min(2.6, cw - 1) : 1.5, h: v ? 3.1 : 3.3, tipo: 'rett', h0: v ? .55 : 0, v }); }
+    // [pianta] varchi: le porte vere delle case dietro (x locali); lì il fondo è aperto e si vede il portone della casa, senza la vetrina finta
+    if (o.varchi && o.varchi.length) { const V = []; o.varchi.slice().sort((p, q) => p - q).forEach(x => { const u = V[V.length - 1]; if (u && x - u.b < 1.9) u.b = x; else V.push({ a: x, b: x }); });
+      for (let i = n - 1; i >= 0; i--) if (V.some(v => v.b + .95 > i * cw && v.a - .95 < (i + 1) * cw)) porte.splice(i, 1);
+      V.forEach(v => porte.push({ x: (v.a + v.b) / 2, w: v.b - v.a + 1.8, h: 3.1, tipo: 'rett', h0: 0, aperto: true })); }
     pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
-    if (!LOD) porte.forEach(a => { if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
+    if (!LOD) porte.forEach(a => { if (a.aperto) return; if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
       else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
     blocco(g, L, .5, P, 'intradosso', L / 2, hA - .5, -.25);                                    // il soffitto in ombra
     blocco(g, L + .2, .2, .7, 'pietraChiara', L / 2, hA, zF - .1, .02);                          // il marcapiano sopra le arcate
