@@ -46,7 +46,7 @@ const CAT = [
   [/^roba3d:|^arredo3d:|^oggetti3d:|^pezzi_citta:|^modella:|^officina:|^veicoli3d:/, 'modelli (roba3d, arredo3d, pezzi)'], [/^kit:|^scaricati:|^superfici:/, 'modelli glTF/GLB (kit)'],
   [/^regia:|^interiors:|^interni_arte:/, 'interni (regia)'], [/^scorci|^tetti_vissuti:|^tetti:/, 'scorci, tetti'], [/^segnaletica:|^ordine_arte:|^vievive_arte:|^scontri_arte:/, 'segnaletica, arredo vie'],
   [/^peso_vetro:|^peso_bagliori:|^peso_lontano:|^peso_pronti:|^peso_schermo:/, 'peso_* (tavolozze, aloni)'], [/^leggera_/, 'leggera_*'],
-  [/^render:(atlas|FA|CA|fAt|atl|pal|stack|lay|pila|arrTex|palTex|vdAtlas|canvasTex<faAtlas)/i, 'atlanti, tavolozze e pile (render)'],
+  [/^render:(atlas|FA|CA|fAt|atl|pal|stack|lay|pila|arrTex|palTex|vdAtlas|canvasTex<faAtlas)/, 'atlanti, tavolozze e pile (render)'],
   [/^render:(anonima<fusione1|make|lazyGeo1)/, 'case fuse (render)'], [/^render:(mergeGeos<flushStatic|anonima<addStatic|mergeGeos<posaPezzi1|fGeo|fB|anonima<fGeo|cyl|box|rod)/, 'statiche fuse e cose di strada (render)'],
   [/^render:mergeGeos<mergeGroup/, 'case: pezzi fuori fusione (render)'], [/^render:(buildChunkGen|canvasTex<buildChunkGen|anonima<tileSplit4|buildBase|anonima<buildNat|buildGround)/, 'terreno a blocchi (render)'],
   [/^render:buildWater/, 'acqua (render)'], [/^render:(frame|ambPass|occPass|wetEnv|buildPost)/, 'bersagli del post'], [/^render:canvasTex<(signTexture|insegnaTex)/, 'insegne (render)'],
@@ -188,7 +188,7 @@ const srv = http.createServer((req, res) => {
     console.log('  geometrie vive per chi le ha fatte: ' + Object.entries(m.geoN || {}).sort((a, c) => c[1] - a[1]).slice(0, 14).map(([k, v]) => v + ' ' + k).join(' · '));
     console.log('  i più grossi (modulo:funzione [tipo]):'); Object.entries(m.perK).sort((a, c) => c[1].b - a[1].b).slice(0, +arg('top', 40)).forEach(([k, v]) => console.log('   ' + MB(v.b).padStart(7) + ' MB ' + String(v.n).padStart(5) + ' × ' + k + '  ' + Object.entries(v.dims).sort((a, c) => c[1] - a[1]).slice(0, 4).map(([d, n]) => n + '×' + d).join(', ')));
   };
-  const out = { query: Q, profilo: PROF, misure: [], errori };
+  const out = { query: Q, profilo: PROF, misure: [], errori, cat: CAT.map(([re, c]) => [re.source, c]) };   // le regole: fogli_memoria.py le riapplica
   await pg.waitForTimeout(ATT * 1000);
   const campiona = async () => { if (!CAMP) return; await cdp.send('HeapProfiler.collectGarbage'); const { profile } = await cdp.send('HeapProfiler.stopSampling'); const byM = {}, byF = {};
     const walk = (n, up) => { const cf = n.callFrame, self = n.selfSize || 0; const isP = /index\.html/.test(cf.url); const mod = isP ? modOf(cf.lineNumber + 1) : (cf.url ? cf.url.split('/').pop() : '(interno)'); const fn = (cf.functionName || '(anonima)' + (isP ? '@' + (cf.lineNumber + 2 - ((spans.find(q => q[2] === mod) || [1])[0])) : '')) + ' ' + mod.replace(/\.js$/, '');
