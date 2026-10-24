@@ -1732,6 +1732,9 @@ var Render = (function () {
     return q < .55 ? [pick(r, NM.pine), .85 + r() * .35] : q < .6 ? [pick(r, NM.bare), .42 + r() * .12] : [pick(r, NM.oak), .7 + r() * .2];   /* [amb1] */
   }
   const nM4 = new THREE.Matrix4(), nQ = new THREE.Quaternion(), nE = new THREE.Euler(), nV = new THREE.Vector3(), nS = new THREE.Vector3(), nC = new THREE.Color();
+  // [vegetazione] il verde nuovo (vegetazione.js): sulle sue caselle il verde di prima non si disegna (?vecchioverde: com'era)
+  let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
+  const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
   function buildNat(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
@@ -1749,6 +1752,7 @@ var Render = (function () {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), f = F ? F[ii] : 0, r = rng((tx * 50411 + ty * 81239) >>> 0);
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
+      if (v === T.TREE && VEGN(ii)) continue;   // [vegetazione]
       if (v === T.TREE) {
         const [name, s, lean] = eco38(tx, ty, r), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
         add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
@@ -2297,6 +2301,7 @@ var Render = (function () {
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, v = gT(tx, ty), z = zoneT(tx, ty), r = rng((tx * 92821 + ty * 68917) >>> 0);
       const cx = tx * TS + .4 + r() * 1.2, cz = ty * TS + .4 + r() * 1.2;
+      if (VEGN(ty * G.GW + tx)) continue;   // [vegetazione]
       if (v === T.TREE && r() < .45) tuft(tx * TS + r() * 2, ty * TS + r() * 2, DEAD, .9, r);
       if (v === T.TREE) { L = LT; tree(cx, cz, z === ZN.MACCHIA ? (q => q < .44 ? 'abete' : q < .58 ? 'betulla' : q < .7 ? 'pino' : q < .93 ? 'faggio' : 'secco')(r()) : z === ZN.MONTE ? (q => q < .3 ? 'pino' : q < .88 ? 'abete' : 'betulla')(r()) : z === ZN.CITTA ? (r() < .6 ? 'tiglio' : 'betulla') : (r() < .5 ? 'betulla' : 'secco'), r); L = L0; }
       else if (v === T.SHRUB) { for (let q = 0; q < 3; q++) tuft(tx * TS + r() * 2, ty * TS + r() * 2, r() < .5 ? DEAD : STRAW, 1, r); const k = r() < .6 ? 1 : 0; for (let q = 0; q < k; q++) { const x = tx * TS + r() * 2, zz = ty * TS + r() * 2, ss = .5 + r() * .6; put(LT.leaf, x, groundH(x, zz) + ss * .3, zz, ss * 1.1, ss * .7, ss * 1.1, r() * 6, pick(r, ['#3a4434', '#2e3a2c', '#4a4a3e'])); } }
@@ -2750,7 +2755,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     const c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m);
+    paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
     yield;
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
@@ -8802,7 +8807,7 @@ var Render = (function () {
   function vdHi(X, Y, hb) { const v = vnz(X / 15 + 41, Y / 15 + 17) + vnz(X / 5 + 3, Y / 5 - 9) * .22 + hb; return vdS(-.12, .14, v); }
   function vdWin(L, X, Y, r) { let b = null, bv = -9, c = null, cv = -9; for (const [sp, adv] of L) { const v = vdDrift(sp, X, Y) + adv; if (v > bv) { c = b; cv = bv; b = sp; bv = v; } else if (v > cv) { c = sp; cv = v; } } if (r && c && bv - cv < .07 && r() < .45) return [c, cv]; return [b, bv]; }
   const VDEN = {}; (() => { const E = (M.world && M.world.ECO) || {}; for (const k in E) VDEN[E[k]] = k; })();
-  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return W0.eco[ty * G.GW + tx]; };
+  const vdEco = (tx, ty) => { const W0 = M.world; if (!W0 || !W0.eco || tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; const i = ty * G.GW + tx; return (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && W0.vegetazione && Vegetazione.ecoTappeto(W0, i)) || W0.eco[i]; };   // [vegetazione] sotto il verde nuovo il tappeto segue la formazione mediterranea
   // l'ambiente in un punto, mescolato come in world.js: si legge da un punto spostato (rumore largo + grana), ai bordi si alternano
   const vdEcoMix = (X, Y, j) => { const dx = vnz(X / 30, Y / 30) * 26 + (j || 0) * 10 * (vnz(X * 1.7, Y * 1.3) * 2), dy = vnz(X / 30 + 9, Y / 30 + 4) * 26 + (j || 0) * 10 * (vnz(X * 1.3 + 5, Y * 1.9) * 2); return vdEco(Math.floor((X + dx) / TS), Math.floor((Y + dy) / TS)) || vdEco(Math.floor(X / TS), Math.floor(Y / TS)); };
   const vdPlan = e => VDPLAN[VDEN[e] || 'NONE'] || VDPLAN.NONE;
@@ -8822,7 +8827,9 @@ var Render = (function () {
     const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
     const Gm = vdGeoms(), T = G.T, W0 = M.world, F = W0 && W0.feat, B = new Map(), low = LOWQ.on, E = (W0 && W0.ECO) || {};
-    const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
+    const VR = typeof Vegetazione !== 'undefined' && Vegetazione.attivo && W0 && W0.vegetazione ? Vegetazione.respiro : null;   // [vegetazione] il respiro: il tappeto si dirada dove il piano lo vuole leggero
+    const put = (sp, r, x, z, o) => { const vs = Gm[sp]; if (!vs) return; if (VR) { const k0 = VR(W0, x, z), k = sp[0] === 't' ? k0 * k0 : k0; if (k < 1 && r() > k * (VDSHADOW[sp] ? .85 : 1)) return; }
+      if (VR) { const st = Vegetazione.strato(W0, sp, x, z); if (st === false) return; if (st && o && o.col) { const c = new THREE.Color(o.col); c.setRGB(Math.min(1, c.r * st[0]), Math.min(1, c.g * st[1]), Math.min(1, c.b * st[2])); o = Object.assign({}, o, { col: '#' + c.getHexString() }); } }   /* [vegetazione] gli strati si staccano; il tappeto si dirada di più: nelle aree leggere viene fuori il suolo */ const key = sp + '|' + Math.floor(r() * vs.length); let a = B.get(key); if (!a) B.set(key, a = []); const sr = VDSC[sp] || [1, 1];
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
     const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.84 + (vnz(X / 22 + 3, Y / 22 + 8) + .5) * .3 + vnz(X / 7, Y / 7) * .06); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
     const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND || v === T.DIRT || v === T.VIA;
@@ -8830,7 +8837,7 @@ var Render = (function () {
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
-      if (z === ZN.CITTA || !natural(v)) continue;
+      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione] il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
       if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;
@@ -12406,6 +12413,7 @@ var Render = (function () {
     Object.values(P).forEach(q => {
       if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
       else if (q.camp === 'tende') { for (let k = 0; k < 3; k++) { const x = q.x + (k - 1) * 3.4, z = q.y + (k % 2) * 2; if (free(x, z)) tent(x, z, r() * 6, pick(r, ['#6a2a2a', '#2a4a3a', '#5a5a2a']), .8); } camp(q.x, q.y - 3, r); }
+      else if (q.camp === 'rudere' && typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { const C = Vegetazione.casale({ x: q.x + 2, y: q.y - 2, rot: r() * 6.28, groundH, seme: Math.round(q.x * 7 + q.y) }); scene.add(C.gruppo); Vegetazione.aggiungi(C.piante); }   // [vegetazione] il casale diroccato
       else if (q.camp === 'rudere') { const g = G0(), st2 = sm('#7a746c', { roughness: 1 }); [[0, 0, 6, .5], [3, 2.5, .5, 5], [-3, 1.5, .5, 3]].forEach(([dx, dz, w, d], k) => add(g, box(w, 1.2 + r() * 1.6, d, st2), dx, .8, dz)); add(g, box(2, .4, 2, sm('#c8ccd2')), 1, .2, 1.5); place(g, q.x + 2, q.y - 2, r() * 6); }
       else if (q.camp === 'carbonaia') { const g = G0(); add(g, new THREE.Mesh(new THREE.ConeGeometry(2.4, 2, 9), sm('#2a2622', { roughness: 1 })), 0, 1, 0); add(g, new THREE.Mesh(new THREE.ConeGeometry(1.4, .6, 9), sm('#bcc0c6')), 0, 1.75, 0); for (let k = 0; k < 6; k++) add(g, box(1.6, .3, .3, PM.woodD()), 3 + (k % 2) * .4, .15 + Math.floor(k / 2) * .3, -1 + (k % 3) * .4); place(g, q.x, q.y, 0); flame(q.x - 1.6, groundH(q.x, q.y) + .2, q.y + .4, .5, .6); }
       else if (q.camp === 'legna') { for (let k = 0; k < 3; k++) { const g = G0(); for (let j = 0; j < 7; j++) add(g, cyl(.16, .16, 1.4, 6, PM.woodD()), (j % 4) * .34 - .5, .16 + Math.floor(j / 4) * .3, 0, 0, 0, Math.PI / 2); add(g, box(1.6, .1, 1.6, sm('#c8ccd2')), 0, .62, 0); place(g, q.x + k * 2.2 - 2, q.y + (k % 2) * 2, r()); } const sb2 = G0(); add(sb2, cyl(.35, .4, .5, 8, PM.woodD()), 0, .25, 0); add(sb2, box(.06, .7, .2, sl('#8a8a90')), .1, .75, 0, 0, 0, .4); place(sb2, q.x + 3, q.y - 2, 0); }
@@ -15858,6 +15866,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const SZ = scenaStep(cam.x, cam.y, dt);   // [regia2] in quale luce di scena sta la camera (borgo, metropoli, spianata)
     ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
+    if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
+      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };
+      VEGR.aggiorna(cam.x, cam.y, (st && st.t || 0) * 2.5); }
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
     // [inverno] luce di neve: tanto cielo, poco sole
