@@ -551,7 +551,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { swH: (x, z) => A && A.swH ? A.swH(x, z) : null, SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();

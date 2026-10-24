@@ -1,0 +1,3 @@
+{ "pulita": true, "nota": "[pavimenti] i marciapiedi che si interrompevano (la misura di strade_integre.js)", "scorci": [
+ { "nome": "m1_lungomare_tramontana", "titolo": "Il Lungomare di Tramontana", "x": 1392, "y": 262, "zoom": 0.6, "ora": 840, "meteo": "sereno", "luce": "borgo" },
+ { "nome": "m2_lungomare_banchina", "titolo": "Il lungomare verso la banchina", "x": 1350, "y": 256, "zoom": 0.6, "ora": 840, "meteo": "sereno", "luce": "borgo" } ] }

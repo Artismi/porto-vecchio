@@ -2873,7 +2873,7 @@ var Render = (function () {
     const h00 = Q(i, j), h10 = Q(i + 1, j), h01 = Q(i, j + 1), h11 = Q(i + 1, j + 1);
     return (v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v) + swH(x, z);
   }
-  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), banchinaSm: (x, z) => banchinaSm1(x, z), mista: (tx, ty) => mista1(tx, ty), phone: PHONE, quota: quotaTri1,
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), banchinaSm: (x, z) => banchinaSm1(x, z), swH: (x, z) => swH(x, z), mista: (tx, ty) => mista1(tx, ty), phone: PHONE, quota: quotaTri1,
       finiture: () => { const L = segniList1(), F = []; L.tombini.forEach(([x, z, a, k, sd]) => F.push([x, z, a, k === 'tondo' ? 1 : 2, sd])); L.caditoie.forEach(([x, z, a]) => F.push([x, z, a, 3, 0]));   /* [pavimenti] le finiture della strada */
         if (typeof Rete !== 'undefined' && Rete.attivo()) Rete.grafo().pozzetti.forEach(q => F.push([q.x, q.z, 0, 4, 0])); L.olio.forEach(([x, z, a, sd]) => F.push([x, z, a, 5, sd])); L.rattoppi.forEach(([x, z, len, wid, a, sd]) => F.push([x, z, a, 6, sd, len, wid]));
         try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo) Segnaletica.piano().strisce.forEach(q => { if (q.k === 'bus' || q.k === 'stop') F.push([q.x, q.y, q.ang, 7, 0]); }); } catch (e) { }   // la gomma e l'olio dove si frena

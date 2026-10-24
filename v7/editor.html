@@ -62705,7 +62705,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { swH: (x, z) => A && A.swH ? A.swH(x, z) : null, SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
@@ -65903,7 +65903,7 @@ var Render = (function () {
     const h00 = Q(i, j), h10 = Q(i + 1, j), h01 = Q(i, j + 1), h11 = Q(i + 1, j + 1);
     return (v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v) + swH(x, z);
   }
-  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), banchinaSm: (x, z) => banchinaSm1(x, z), mista: (tx, ty) => mista1(tx, ty), phone: PHONE, quota: quotaTri1,
+  function buildIsland() { buildBase(); if (window.Pavimenti) Pavimenti.init({ G, M, TS, PPM, gT, zoneT, ZN, cn1, groundH, coastIn, geo1, suoloK: (tx, ty) => SUOLO1[eraAt1(tx * TS + 1, ty * TS + 1)] || null, suoloW: (x, z) => suoloW1(x, z), banchinaSm: (x, z) => banchinaSm1(x, z), swH: (x, z) => swH(x, z), mista: (tx, ty) => mista1(tx, ty), phone: PHONE, quota: quotaTri1,
       finiture: () => { const L = segniList1(), F = []; L.tombini.forEach(([x, z, a, k, sd]) => F.push([x, z, a, k === 'tondo' ? 1 : 2, sd])); L.caditoie.forEach(([x, z, a]) => F.push([x, z, a, 3, 0]));   /* [pavimenti] le finiture della strada */
         if (typeof Rete !== 'undefined' && Rete.attivo()) Rete.grafo().pozzetti.forEach(q => F.push([q.x, q.z, 0, 4, 0])); L.olio.forEach(([x, z, a, sd]) => F.push([x, z, a, 5, sd])); L.rattoppi.forEach(([x, z, len, wid, a, sd]) => F.push([x, z, a, 6, sd, len, wid]));
         try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo) Segnaletica.piano().strisce.forEach(q => { if (q.k === 'bus' || q.k === 'stop') F.push([q.x, q.y, q.ang, 7, 0]); }); } catch (e) { }   // la gomma e l'olio dove si frena
