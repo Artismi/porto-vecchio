@@ -710,9 +710,9 @@ var Azioni = (function () {
 
   // ================= TRA PERSONE =================
   const LINES = {
-    chiacchiera: ['Hai sentito cosa è successo?', 'Che freddo, eh?', 'Come va la famiglia?'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!'],
-    apprezza: ['Bella giacca, sai?', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno.'], offri: ['Ti offro qualcosa, dai.', 'Questo lo pago io.'], gioca: ['Una partita?', 'Scopa!', 'Tocca a te!'], regala: ['Tieni, è per te.'],
-    litiga: ['Ma che dici?!', 'Vattene!', 'Non ti permettere!'],
+    chiacchiera: ['Hai sentito cosa è successo?', 'Che freddo, eh?', 'Come va la famiglia?', 'Tuo cognato è ancora convinto di essere un cantante?', 'Ho sognato tua madre. Non ti dico cosa faceva.'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!', 'Hai la faccia di uno che parla con le piante. E le piante non rispondono.', 'Tua madre era bellissima. Cos\'è successo?'],
+    apprezza: ['Bella giacca, sai?', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno.', 'Tu sei l\'unico che non mi ha mai chiesto soldi. Mi offende un po\'.'], offri: ['Ti offro qualcosa, dai.', 'Questo lo pago io.', 'Offro io. Coi soldi che mi devi.'], gioca: ['Una partita?', 'Scopa!', 'Tocca a te!', 'Se perdi, mi sposi la sorella.'], regala: ['Tieni, è per te.', 'Tieni. Non chiedere da dove viene.'],
+    litiga: ['Ma che dici?!', 'Vattene!', 'Non ti permettere!', 'Questa me la segno! Ho un quaderno!', 'Lo dico a tua nonna! Quella viva!'],
   };
   function social(st, a, b, kind, args) {
     if (!alive(a) || !alive(b) || !a.pop || !b.pop) return;
@@ -724,7 +724,7 @@ var Azioni = (function () {
       case 'chiacchiera': I.share(st, a, b); I.share(st, b, a); moveRel(st, a, b, .03); moveRel(st, b, a, .03); feel(a, 'compagnia', -.15); feel(b, 'compagnia', -.15); break;
       case 'sfotti': {
         const banter = Rb.a > .4 && b.tr.loq > .5;
-        if (banter) { moveRel(st, b, a, .04); feel(b, 'svago', -.1); say(st, b, ['Ah ah, senti chi parla!', 'Sei sempre il solito.']); }
+        if (banter) { moveRel(st, b, a, .04); feel(b, 'svago', -.1); say(st, b, ['Ah ah, senti chi parla!', 'Sei sempre il solito.', 'Detto da uno che si è sposato due volte la stessa donna.']); }
         else { moveRel(st, b, a, -.15); feel(b, 'rabbia', .15); note(st, b, `${a.first} l'ha pres${o(b)} in giro a ${place}`, 'bad', { w: .45, who: a.id, tag: 'offesa' }); if (b.pop.need.rabbia > .55 && b.tr.cor > .5 && rnd() < .5) quarrel(st, b, a, 'presa in giro'); }
         break;
       }
