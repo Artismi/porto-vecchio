@@ -27227,7 +27227,8 @@ var World = (function () {
       // riferimento della via. Per lato, in fila lungo la via: i confini fra una casa e l'altra a metà fra le loro estensioni, il fronte
       // comune sul filo della casa più avanti (mai dentro la carreggiata), il retro dov'era; l'angolo della via. L'impronta a caselle resta
       // (griglia, camminabilità, porte). Una casa il cui lotto entrerebbe in un'altra (più di 5 cm) resta com'era.
-      CITY.lottiVie = typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : [];   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua)
+      { const qL = typeof location !== 'undefined' && location.search ? /[?&]lotti=([^&]+)/.exec(location.search) : null;   // in prova: ancora nessuna via (la Rua: PV_LOTTI_VIE=rua in node, ?lotti=rua nel gioco)
+        CITY.lottiVie = qL ? decodeURIComponent(qL[1]).split(',') : typeof process !== 'undefined' && process.env && process.env.PV_LOTTI_VIE ? process.env.PV_LOTTI_VIE.split(',') : []; }
       { const w90 = a => { a = ((a % (Math.PI / 2)) + Math.PI / 2) % (Math.PI / 2); return a > Math.PI / 4 ? a - Math.PI / 2 : a; };
         const RDV = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), VIE = RDV.filter(rd => CITY.lottiVie.includes(rd.id));
         const vicino = (rd, x, y) => { let best = null, acc = 0; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-6, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (L * L))), px = ax + dx * t, py = ay + dy * t, d = Math.hypot(x - px, y - py);
