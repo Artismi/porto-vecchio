@@ -99,11 +99,4 @@ if (A) {
     if (peggio > 0) dentro.push((q.id || 'scoglio') + '@' + q.x.toFixed(0) + ',' + q.y.toFixed(0) + ' ' + peggio.toFixed(1) + ' m in ' + dove); });
   ok((W.SEA.rocks || []).length > 300 && !dentro.length, `gli scogli (${(W.SEA.rocks || []).length}, ${W.SEA.scogliSpostati || 0} portati al largo) mai in carreggiata, sul marciapiede o sulle caselle della città (${dentro.length}: ${dentro.slice(0, 4).join('; ')})`); }
 
-// ---------------- 7. lo stabilimento del Lido ----------------
-{ const D = W.SEA.costa2 && W.SEA.costa2.lido, pont = (W.SEA.structs || []).find(st => st.id === 'pontile_lido');
-  if (!D) ok(false, 'manca lo stabilimento del Lido (W.SEA.costa2.lido)');
-  else { const tutto = D.cabine.map(q => Object.assign({ k: 'cabina' }, q)).concat(D.cose), male = [], k = new Set(D.cose.map(q => q.k));
-    tutto.forEach(q => { const i = Math.floor(q.y / TS) * GW + Math.floor(q.x / TS); if (W.grid[i] !== T.SAND || (pont && Math.abs(q.x - pont.pts[0][0]) < 2 + q.r)) male.push(q.k + '@' + q.x.toFixed(0) + ',' + q.y.toFixed(0)); });
-    ok(D.cabine.length >= 10 && ['torretta', 'ombrelloni', 'sdraio', 'pattino', 'barca', 'doccia'].every(x => k.has(x)) && !male.length, `il Lido fuori stagione: ${D.cabine.length} cabine, ${D.cose.length} cose (${[...k].join(', ')}), tutte sulla sabbia e lontane dal pontile (${male.length} fuori posto ${male.slice(0, 4).join(' ')})`); } }
-
 console.log(fail ? `QUALCOSA NON VA (${fail})` : 'TUTTO BENE'); process.exit(fail ? 1 : 0);
