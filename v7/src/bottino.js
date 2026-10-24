@@ -223,16 +223,17 @@ var Bottino = (function () {
   function sync(st) {
     const R = PV().R, scene = R && R.__models && R.__models.scene; if (!scene || !T()) return;
     if (U.scene !== scene) { U.scene = scene; U.grp = new (T().Group)(); U.grp.name = 'bottino'; scene.add(U.grp); U.meshes = {}; }
-    if (U.stRef !== st) { for (const k in U.meshes) U.grp.remove(U.meshes[k]); U.meshes = {}; U.stRef = st; }
+    const via = m => { U.grp.remove(m); if (R.rilascia) R.rilascia(m); };   // [regge] il modello rifatto o lontano libera la sua geometria (render.js, il rilascio)
+    if (U.stRef !== st) { for (const k in U.meshes) via(U.meshes[k]); U.meshes = {}; U.stRef = st; }
     const ui = PV().ui, p = st.player, on = !(ui && (ui.intro || ui.over)) && !p.indoor;
     U.grp.visible = on;
     const want = {};
     if (on) refresh(st).forEach(L => { if (MODEL[L.kind]) want[L.ref] = L; });
-    for (const k in U.meshes) if (!want[k]) { U.grp.remove(U.meshes[k]); delete U.meshes[k]; }
+    for (const k in U.meshes) if (!want[k]) { via(U.meshes[k]); delete U.meshes[k]; }
     const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000, dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
     for (const [k, L] of Object.entries(want)) {
       let m = U.meshes[k];
-      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) U.grp.remove(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
+      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) via(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
       const y = L.kind === 'tetto' && R.groundH ? (PV().st.player.lv && typeof Livelli !== 'undefined' && Livelli.heightOf ? Livelli.heightOf(st, p) : R.groundH(L.x, L.y)) : R.groundH(L.x, L.y);
       m.position.set(L.x, y, L.y);
       // sotto il puntatore si solleva appena e respira: si capisce che si prende
