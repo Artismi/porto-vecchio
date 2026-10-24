@@ -41,7 +41,11 @@ var Anelli = (function () {
   const log = (...a) => { if (LOG) console.log('[anelli]', ...a); };
   // un lavoro: un generatore che fa un pezzo a ogni next() e controlla lui l'orologio (Anelli.scaduto()) per cedere il passo
   function lavoro(job) { job.d = 1e9; CODA.push(job); ST.lavori++; ST.coda = CODA.length; return job; }
-  let DL = 0;
+  let DL = 0, ETI = '';
+  // i passi più lunghi (oltre 20 ms), per trovare chi non cede il passo: window.__anelli.picchi
+  const PIC = [];
+  function picchi(k, ms) { PIC.push([k, +ms.toFixed(1)]); PIC.sort((a, b) => b[1] - a[1]); if (PIC.length > 12) PIC.length = 12; }
+  const segna = e => { ETI = e; };
   const scaduto = () => performance.now() > DL;
   // la priorità: la distanza dalla camera (dal bordo del settore), meno un premio per quello che sta davanti
   function ordina(cx, cz, fx, fz) {
@@ -66,7 +70,9 @@ var Anelli = (function () {
     let n = 0;
     while (performance.now() < DL) {
       if (!cur) { cur = CODA.shift(); ST.coda = CODA.length; if (!cur) break; if (TEL && cur.telefono === false && cur.d > medio + vicino) { CODA.unshift(cur); cur = null; break; } }   // sul telefono quello che non serve (oltre l'anello medio) aspetta: la memoria cresce solo dove si va
+      const t1 = performance.now(); ETI = '';
       let r; try { r = cur.gen.next(); } catch (e) { console.warn('[anelli] lavoro', cur.tipo, e); r = { done: true }; }
+      const dt = performance.now() - t1; if (dt > 20) picchi(cur.tipo + (ETI ? ':' + ETI : ''), dt);
       n++; if (!r.done && r.value === ASPETTA) break;
       if (r.done) { ST.fatti++; if (cur.fatto) try { cur.fatto(); } catch (e) { console.warn('[anelli]', e); } cur = null; }
     }
@@ -85,8 +91,8 @@ var Anelli = (function () {
   function sfumature(now) { for (let i = SF.length - 1; i >= 0; i--) { const f = SF[i], k = Math.min(1, (now - f.t0) / f.dur); try { f.set(k * k * (3 - 2 * k)); } catch (e) { } if (k >= 1) SF.splice(i, 1); } }
   // il retino della sfumatura (lo stesso in tutti gli shader che sfumano, così sagoma e casa vera si danno il cambio pixel per pixel)
   const RETINO = 'float an1D() { return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); }';
-  const stato = () => Object.assign({ on: ON, telefono: TEL, coda: CODA.length + (cur ? 1 : 0), avgF: +avgF.toFixed(1) }, ST, { ms: Math.round(ST.ms) });
+  const stato = () => Object.assign({ on: ON, telefono: TEL, coda: CODA.length + (cur ? 1 : 0), avgF: +avgF.toFixed(1) }, ST, { ms: Math.round(ST.ms), picchi: PIC.slice() });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__anelli', { configurable: true, get: stato });
-  return { ON, TEL, CFG, ASPETTA, carica, lavoro, tick, finisci, scaduto, sfuma, RETINO, stato, log, get vuota() { return !CODA.length && !cur; } };
+  return { ON, TEL, CFG, ASPETTA, carica, segna, picchi, lavoro, tick, finisci, scaduto, sfuma, RETINO, stato, log, get vuota() { return !CODA.length && !cur; } };
 })();
 if (typeof window !== 'undefined') window.Anelli = Anelli;

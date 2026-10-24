@@ -368,7 +368,7 @@ var Render = (function () {
   // tempo, e la casa vera prende il posto della sagoma col retino (FD1, il quarto canale: 255 la sagoma, 0 la casa). Con ?tutto (e nello
   // Studio) come prima: tutto qui, nessuna sagoma, il quarto canale resta 0 e lo shader non scarta niente. I secchi sono gli stessi
   // (la chiave ha il settore), cambiano solo le pile delle mappe (un settore fa le sue) e il numero della tavolozza: gli stessi texel.
-  const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false };
+  const FU1 = { live: null, isLive: null, recOf1: null, att: new Map(), shMat: new Map(), massa: null, n: 0, st: null, tot: null, sig: false, LIM: 60000 };
   const ANL1 = () => typeof Anelli !== 'undefined' && Anelli.ON;
   const okGeo1 = g => { if (!g || !g.attributes.position) return false; for (const k in g.attributes) if (k !== 'position' && k !== 'normal' && k !== 'uv') return false; return !g.morphAttributes || !Object.keys(g.morphAttributes).length; };
   function fus1Rec(top) { const rec = top.userData.fgRec1 || (top.userData.pesoBot && FU1.recOf1.get(top.userData.pesoBot)); if (!rec || !FD1.idx.has(rec) || FU1.isLive(top)) return null; return rec; }
@@ -424,8 +424,12 @@ var Render = (function () {
     moved.forEach(o => { o.visible = false; });   // restano pronti per la trasparenza
     if (PAL1.col.length && (!aPezzi || PAL1.col.length !== p0 || !PAL1.u.value)) palTex1();   // [leggero]
     if (window.PesoVetro && (!aPezzi || PesoVetro.voci !== v0)) PesoVetro.tessitura();   // [peso]
+    if (aPezzi) Anelli.segna('pile');
     for (const a of ARR1.all) if (!a.tex) { arrTex1(a); if (aPezzi && Anelli.scaduto()) yield; }   // [leggero] le pile delle mappe
-    for (const b of B.values()) {
+    // [anelli] dopo il caricamento i secchi grandi si fanno a pezzi di al più FU1.LIM vertici: ognuno un passo breve (fondere, impacchettare,
+    // compattare sul telefono: un secchio da 300.000 vertici era mezzo secondo fermo) e un indice a 16 bit; più disegni, gli stessi pixel
+    const pezzi = []; for (const b of B.values()) { if (!aPezzi) { pezzi.push(b); continue; } let run = [], c = 0; b.geos.forEach(g => { const q = g.attributes.position.count; if (run.length && c + q > FU1.LIM) { pezzi.push(Object.assign({}, b, { geos: run })); run = []; c = 0; } run.push(g); c += q; }); if (run.length) pezzi.push(Object.assign({}, b, { geos: run })); }
+    for (const b of pezzi) {
       let n = 0; b.geos.forEach(g => { n += g.attributes.position.count; });
       if (aPezzi) while (!Anelli.carica(n)) yield Anelli.ASPETTA;   // [anelli] la scheda video riceve pochi vertici nuovi per fotogramma
       // [memoria] il numero della casa in 16 bit invece di 32 (la scheda video lo legge comunque come numero)
@@ -437,6 +441,7 @@ var Render = (function () {
       if (b.pal) { const pa = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; pa.fill(g.__pal1, q, q + c); q += c; }); geo.setAttribute('pal1', new THREE.BufferAttribute(pa, 1)); }   // [leggero] il numero del colore
       if (b.arr) { const la = new Uint8Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; la.fill(g.__lay1, q, q + c); q += c; }); geo.setAttribute('lay1', new THREE.BufferAttribute(la, 1)); }   // [leggero] lo strato della mappa
       if (b.vt) { const va = new Uint16Array(n); let q = 0; b.geos.forEach(g => { const c = g.attributes.position.count; va.fill(g.__vt1, q, q + c); q += c; }); geo.setAttribute('vt1', new THREE.BufferAttribute(va, 1)); }   // [peso] la voce del vetro
+      if (aPezzi) Anelli.segna('secchio ' + n);
       geo.computeBoundingSphere(); geo.computeBoundingBox(); packNormals(geo);   // [leggera]
       const mesh = new THREE.Mesh(geo, fadeMat1(b.m, b.pal, b.arr, b.vt, b.tr)); mesh.castShadow = false; mesh.receiveShadow = b.rec; mesh.userData.fusione1 = true; scene.add(mesh); made.push(mesh);
       if (window.LeggeraMem) LeggeraMem.compatta(geo, mesh, mesh.material);   // [leggera] sul telefono: 16 bit, mezza precisione, indice
@@ -497,6 +502,7 @@ var Render = (function () {
   }
   function* fus1Settore(S) {
     const made = yield* fus1Gen(S.tops, true);
+    Anelli.segna('ritorno');
     S.tops.forEach(top => { scene.add(top); smooth2(top); }); made.forEach(m => smooth2(m));   // la casa torna in scena (i pezzi fusi spenti), coi filtri morbidi come le altre ([plastica2])
     const I = [...S.recs].map(r => FD1.idx.get(r));
     Anelli.sfuma(k => { const v = Math.round(255 * (1 - k)); I.forEach(i => { FD1.data[i * 4 + 3] = v; }); FD1.dirty = true; });
@@ -2957,8 +2963,8 @@ var Render = (function () {
     if (!ISO.job && best) ISO.job = { key: best[2], it: buildChunkGen(best[0], best[1]), near: bd < 70 };
     const J = ISO.job;
     if (J) { const t0 = performance.now(); let steps = 0;
-      while (ISO.rush || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
-        const r = J.it.next(); steps++;
+      while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
+        const tA = performance.now(), r = J.it.next(); steps++; J.n1 = (J.n1 || 0) + 1; if (typeof Anelli !== 'undefined') { const dA = performance.now() - tA; if (dA > 20) Anelli.picchi('blocco:' + J.n1 + (J.near ? ':vicino' : ''), dA); }   // [anelli] i passi lunghi dei blocchi
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
@@ -15133,6 +15139,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     s = P + Sp + s.slice(iD); C.lights_fragment_begin = s; C.__luciSpente = s0 !== s;
   }
   function init(canvas, st) {
+    if (typeof window !== 'undefined') (window.__tl = window.__tl || {}).init0 = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
     luciSpente();
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
@@ -15191,6 +15198,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const laser = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#ff3a3a', transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); laser.visible = false; scene.add(laser); dyn.laser = laser;
     dyn.headlight = new THREE.SpotLight('#fff2c8', 0, 26, .55, .5, 1.5); scene.add(dyn.headlight); scene.add(dyn.headlight.target);
     cam.x = st.player.x; cam.y = st.player.y; cam.yaw = YAW; cam.dyaw = YAW; cam.drive = 0; cam.h = groundH(st.player.x, st.player.y);
+    if (typeof window !== 'undefined') window.__tl.init1 = Math.round(performance.now());   // [anelli]
     return { resize };
   }
 
@@ -16022,7 +16030,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     meteoAt(st.t, METEO); { const rg = regimeAt(cam.x, cam.y); METEO.reg += (rg - METEO.reg) * Math.min(1, (dt || .016) * 1.5); } dyn.meteo = METEO;   /* [amb1] */
     const WXc = METEO.w[0], WXwet = METEO.w[1], WXfog = METEO.w[2], WXst = METEO.w[3], SUNK = (1 - night) * (1 - WXc * .82);   /* [amb1] quanto sole arriva */
     const SZ = scenaStep(cam.x, cam.y, dt);   // [regia2] in quale luce di scena sta la camera (borgo, metropoli, spianata)
-    ISO.rush = !!(ui && ui.intro) || PAVR1;   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
+    ISO.rush = !!(ui && ui.intro) || PAVR1; ISO.menu = ISO.rush && !PAVR1 && ANL1();   // [anelli] nel menu i blocchi corrono, ma il menu resta vivo: 40 ms di blocchi per fotogramma, non un blocco intero   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
       if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };

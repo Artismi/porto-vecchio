@@ -1,7 +1,7 @@
 // [peso] IL BANCO DEL PESO: otto inquadrature fisse della città nuova (?cittanuova), sempre le stesse (seme 12345, stessa ora, stesso tempo),
 // per misurare quanto costa disegnarle e per controllare che ogni alleggerimento non cambi l'immagine.
 //   node strumenti/banco_peso.js <cartella> [--query=&nopesovetro] [--rif=<cartella di un giro precedente>] [--solo=borgo,notte]
-//        [--nf=8] [--vw=480] [--vh=300] [--nothrottle] [--seme=12345]
+//        [--nf=8] [--vw=480] [--vh=300] [--nothrottle] [--seme=12345] [--anelli=finisci|vivo]
 // Per ogni inquadratura:
 //   1. tempi: N fotogrammi veri (mediana dell'intervallo fra i fotogrammi, del tempo di R.frame e di G.step, i disegni e i triangoli della
 //      scena con le sue ombre: render.js GPUT.info), poi gli stessi con il processore rallentato 4× (CDP Emulation.setCPUThrottlingRate);
@@ -63,6 +63,8 @@ const srv = http.createServer((req, res) => {
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models.renderer, null, { timeout: 1200000, polling: 1000 });
   const carico = Math.round((Date.now() - T0) / 1000); log('caricato', Q);
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(2000);
+  // [anelli] le foto si confrontano con la città intera: i lavori del caricamento ad anelli si finiscono subito (--anelli=vivo: come capita)
+  if (arg('anelli', 'finisci') === 'finisci') { const A = await pg.evaluate(() => { if (window.Anelli && Anelli.ON) { const t = performance.now(); Anelli.finisci(); return { ms: Math.round(performance.now() - t), stato: Anelli.stato() }; } return null; }); if (A) { log('anelli finiti', JSON.stringify(A)); await pg.waitForTimeout(1500); } }
   await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
   // la grafica non si adatta da sola durante il banco (qui i fotogrammi sono lenti: main.js scenderebbe di risoluzione e poi spegnerebbe le ombre)
   await pg.evaluate(() => { const R = window.__pv.R; if (R.setRes) R.setRes(1); R.setRes = null; R.lowQuality = () => { }; if (window.PesoSchermo) PesoSchermo.blocca(); });

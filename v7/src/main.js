@@ -1003,6 +1003,7 @@
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   if (window.PesoPronti && PesoPronti.ON) PesoPronti.compila(R); else   /* [peso] più la casa tagliata e le due varianti del pavimento */
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
+  (window.__tl = window.__tl || {}).compilato = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
