@@ -26,8 +26,9 @@ var LeggeraMem = (function () {
   // --- tele: dopo la pila, la tela grande scende alla misura dello strato
   const SMALL = new WeakMap();
   function dopoPila(a) {
-    if (!on('tele')) return; a.maps.forEach((t, l) => { const im = t.image; if (!im || !im.getContext || (im.width === a.W && im.height === a.H)) return;
-      let c = SMALL.get(im); if (!c) { c = scratch(a.W, a.H); const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, a.W, a.H); SMALL.set(im, c); ST.tele++; ST.teleMB += (im.width * im.height - a.W * a.H) * 4 / 1048576; }
+    if (!on('tele')) return; a.maps.forEach((t, l) => { const im = t.image; if (!im || !im.getContext || (im.width <= a.W >> 1 && im.height <= a.H >> 1)) return;
+      const w = a.W >= 128 && !(a.W & 1) ? a.W >> 1 : a.W, hh = a.H >= 128 && !(a.H & 1) ? a.H >> 1 : a.H;   // un altro mezzo: la tela serve solo alla casa che si dissolve
+      let c = SMALL.get(im); if (!c) { c = scratch(w, hh); const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(im, 0, 0, w, hh); SMALL.set(im, c); ST.tele++; ST.teleMB += (im.width * im.height - w * hh) * 4 / 1048576; }
       t.userData.lm0 = t.userData.lm0 || { width: im.width, height: im.height }; t.image = c; t.needsUpdate = true; a.ver[l] = t.version; });
   }
   // --- pigri: i pezzi rifatti si ributtano
@@ -92,6 +93,7 @@ var LeggeraMem = (function () {
     mesh.position.copy(c); mesh.scale.setScalar(h); mesh.updateMatrix(); mesh.updateMatrixWorld(true); geo.userData.lmXf = { c: c.clone(), h };
     geo.computeBoundingBox(); geo.computeBoundingSphere();
     geo.userData.lmDec = decodifica(geo, c.clone(), h, !!uvH);
+    for (const nm in geo.attributes) if (nm !== 'position' && nm !== 'normal' && nm !== 'uv') { const at = geo.attributes[nm], E = new at.array.constructor(0); at.onUpload(function () { this.array = E; }); }   // casa, colore, strato, vetro: servono solo alla scheda video
     const after = Object.values(geo.attributes).reduce((x, a) => x + a.array.byteLength, 0) + idx.byteLength;
     ST2.secchi++; ST2.prima += before; ST2.dopo += after; ST2.ms += performance.now() - t0; return true;
   }
@@ -106,11 +108,44 @@ var LeggeraMem = (function () {
     const toU8 = a => { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.max(0, Math.min(255, Math.round(a[i] * 255))); return o; };
     const toH = a => { const o = new Uint16Array(a.length), f = THREE.DataUtils.toHalfFloat; for (let i = 0; i < a.length; i++) o[i] = f(a[i]); return o; };
     if (A.normal && A.normal.array instanceof Float32Array) g.setAttribute('normal', new THREE.BufferAttribute(toI8(A.normal.array), 3, true));
-    for (const nm of ['color', 'occ', 'flex']) { const a = A[nm]; if (!a || !(a.array instanceof Float32Array)) continue; const [lo, hi] = rng(a.array); if (lo >= 0 && hi <= 1) g.setAttribute(nm, new THREE.BufferAttribute(toU8(a.array), a.itemSize, true)); }
-    if (A.uv && A.uv.array instanceof Float32Array) { const [lo, hi] = rng(A.uv.array); if (lo >= -2 && hi <= 2) g.setAttribute('uv', new THREE.Float16BufferAttribute(toH(A.uv.array), 2)); }
+    for (const nm of ['color', 'occ', 'flex']) { const a = A[nm]; if (!a || !(a.array instanceof Float32Array)) continue; const [lo, hi] = rng(a.array); if (lo >= 0 && hi <= 1) g.setAttribute(nm, new THREE.BufferAttribute(toU8(a.array), a.itemSize, true)); else if (lo > -60000 && hi < 60000) g.setAttribute(nm, new THREE.Float16BufferAttribute(toH(a.array), a.itemSize)); }
+    if (A.uv && A.uv.array instanceof Float32Array) { const [lo, hi] = rng(A.uv.array); if (lo >= -4 && hi <= 4) g.setAttribute('uv', new THREE.Float16BufferAttribute(toH(A.uv.array), 2)); }
     if (!g.boundingSphere) g.computeBoundingSphere(); if (!g.boundingBox) g.computeBoundingBox(); libera(g);
     ST.verde += prima - Object.values(g.attributes).reduce((x, a) => x + a.array.byteLength, 0); return true;
   }
-  return { tel: TEL, on, pila, verde, libera, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  // --- atlanti: un atlante grande (≥ 1024) va alla scheda video a metà lato. Chi lo disegna continua sulla sua tela grande; a ogni
+  //   needsUpdate la copia piccola si rifà da quella (una drawImage). La tela grande resta in t.userData.lmGrande.
+  function mezza(t) {
+    if (!on('atlanti') || !t || !t.isTexture || t.userData.lmGrande) return t; const big = t.image; if (!big || !big.getContext || Math.max(big.width, big.height) < 1024) return t;
+    const small = scratch(big.width >> 1, big.height >> 1), x = small.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    const sync = () => { x.clearRect(0, 0, small.width, small.height); x.drawImage(big, 0, 0, small.width, small.height); };
+    sync(); t.userData.lmGrande = big; t.image = small; ST.atlanti = (ST.atlanti || 0) + 1;
+    Object.defineProperty(t, 'needsUpdate', { configurable: true, set(v) { if (v === true) sync(); const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate'); d.set.call(this, v); } });
+    t.needsUpdate = true; return t;
+  }
+  // --- dati: una DataTexture che non si ritocca: dopo l'invio la copia in memoria si svuota
+  function datiLiberi(t) { if (!on('dati') || !t) return t; const o = t.onUpdate; t.onUpdate = function () { if (o) o.call(this); if (t.image) t.image = { data: null, width: t.image.width, height: t.image.height, depth: t.image.depth }; t.onUpdate = o || null; }; return t; }
+  // --- compila: la compilazione del caricamento (main.js, peso_pronti.js) solo su quello che si vede: three r149 compila anche le
+  //   cose spente (i 17.000 pezzi originali delle case fuse, i loro materiali), e i programmi che servono sono gli stessi
+  function compila(rd, S, cam) { if (!on('compila')) return rd.compile(S, cam); S.traverse = S.traverseVisible; try { return rd.compile(S, cam); } finally { delete S.traverse; } }
+  // --- statiche: le statiche fuse (render.js flushStatic) tengono la posizione (chi nasconde un pezzo la chiude in un punto); normali,
+  //   uv, colore e strato dopo l'invio si svuotano
+  function statica(g) { if (!on('statiche')) return; for (const nm in g.attributes) { if (nm === 'position') continue; const a = g.attributes[nm], E = new a.array.constructor(0); a.onUpload(function () { this.array = E; }); } }
+  // --- verdelontano: le piante lontane a riquadri di 128 m; si costruiscono (uno per volta) quelli entro 210 m dalla camera, si buttano
+  //   oltre 290 m. Sul telefono la nebbia chiude a ~165 m: oltre non si vedevano comunque
+  function lontano(gruppo, L, build, mat) {
+    const C = 128, R_IN = 210, R_OUT = 290, cells = new Map(), live = new Map();
+    L.forEach(p => { const k = Math.floor(p.x / C) * 4096 + Math.floor(p.y / C); (cells.get(k) || cells.set(k, []).get(k)).push(p); });
+    const dist = (k, cx, cz) => { const i = Math.floor(k / 4096), j = k - i * 4096, x0 = i * C, z0 = j * C; return Math.hypot(Math.max(x0 - cx, 0, cx - x0 - C), Math.max(z0 - cz, 0, cz - z0 - C)); };
+    let lx = 1e9, lz = 1e9, todo = [];
+    return (cx, cz) => {
+      if (Math.hypot(cx - lx, cz - lz) > 12) { lx = cx; lz = cz; todo = [];
+        live.forEach((m, k) => { if (dist(k, cx, cz) > R_OUT) { gruppo.remove(m); m.geometry.dispose(); live.delete(k); } });
+        cells.forEach((list, k) => { if (!live.has(k) && dist(k, cx, cz) < R_IN) todo.push([dist(k, cx, cz), k]); }); todo.sort((a, b) => a[0] - b[0]); }
+      const e = todo.shift(); if (!e) return; const k = e[1]; if (live.has(k)) return;
+      const m = new THREE.Mesh(build(cells.get(k)), mat); m.name = 'vegLontano'; m.receiveShadow = true; m.matrixAutoUpdate = false; gruppo.add(m); live.set(k, m); ST.verdeRiquadri = live.size;
+    };
+  }
+  return { tel: TEL, on, pila, verde, compila, statica, lontano, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;

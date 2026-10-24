@@ -21,6 +21,7 @@ const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k +
 const has = k => process.argv.includes('--' + k);
 const NUDO = has('nudo'), PROF = arg('profilo', 'telefono'), TEL = PROF === 'telefono', VEC = has('vecchia');
 const Q = (VEC ? '?vecchia' : '?cittanuova' + (TEL ? '&leggera' : '')) + arg('query', '');
+const FOTO = arg('foto', null);
 const GIRO = arg('giro', 'borgo,marina,citta,mercato,borgo').split(',').filter(Boolean), ATT = +arg('attesa', 6), OUTF = arg('out', null);
 const POSTI = { borgo: { x: 1424, y: 322, zoom: .75 }, marina: { x: 1372, y: 388, zoom: .95 }, citta: { x: 1420, y: 340, zoom: 2.5 }, mercato: { x: 1278, y: 340, zoom: .85 }, vittoria: { x: 1410, y: 343, zoom: .95 }, rocca: { x: 1560, y: 344, zoom: 1.2 } };
 // le righe di index.html → modulo (come build.py: index.src.html con i /*nome.js*/ sostituiti, studio.js e i moduli in pausa fuori)
@@ -30,10 +31,12 @@ const src = fs.readFileSync(path.join(root, 'src/index.src.html'), 'utf8'), span
 const modOf = ln => { for (const s of spans) if (ln >= s[0] && ln < s[1]) return s[2]; return 'pagina'; };
 const NOGAME = new Set(['three.min.js', 'mesh_bvh.js', 'gltf_loader.js', 'pagina', 'misura.js', 'file_shim.js']);
 // la pila → «modulo:funzione» del primo chiamante del gioco (fuori da three e dal banco)
+const HELP = /^(canvasTex|mergeGeos|packNormals|flatXf|G0|fB|fGeo|fUV|box|cyl|rod|mk|mergeGroup|std)$/;
 const chi = st => { if (!st) return '?'; const fr = st.split('\n').slice(1); let first = null;
   for (const l of fr) { const m = l.match(/at (?:new |async )?(?:([^\s(]+) \()?.*index\.html[^:]*:(\d+):\d+\)?$/); if (!m) continue; const mod = modOf(+m[2]); if (NOGAME.has(mod)) continue;
     let fn = (m[1] || '').replace(/^Object\./, ''); if (mod === 'editor.js' && /^THREE\./.test(fn)) continue;   // editor.js avvolge i costruttori di three: conta chi li chiama
     if (!fn || /^(Array\.)?(forEach|map)$|^<anonymous>$/.test(fn)) { if (!first) first = mod.replace(/\.js$/, '') + ':' + (fn || 'anonima'); continue; }
+    if (HELP.test(fn) && !first) { first = mod.replace(/\.js$/, '') + ':' + fn; continue; }   // gli aiutanti (canvasTex, mergeGeos…): conta anche chi li chiama
     return first ? first + '<' + fn : mod.replace(/\.js$/, '') + ':' + fn; }
   return first || '(three)'; };
 // le categorie: la prima regola che combacia (su «modulo:funzione», o sull'etichetta che il banco ha dato a un oggetto)
@@ -60,7 +63,11 @@ const srv = http.createServer((req, res) => {
   pg.on('console', m => { if (m.type() === 'error' && !/404|Failed to load/.test(m.text())) log('[console]', m.text().slice(0, 300)); if (/\[leggera\]/.test(m.text())) log('[pagina]', m.text().slice(0, 300)); });
   await pg.addInitScript(NUDO => { window.__pulita = true; window.__nodraw = true;
     if (NUDO) { for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { const P = C.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; if (f) P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } } return; }   // --nudo: solo il cuore JS, senza i ganci (per controllare che il banco non pesi)
-    const MM = window.__mem = { tex: new Map(), buf: new Map(), rb: new Map(), stk: new Map(), stkL: [], texRefs: [], geoRefs: [], geoArr: new WeakMap(), now: 0, max: 0, fb: 0 };
+    // gli oggetti GL tenuti per riferimento debole: quello che three lascia senza deleteXxx il navigatore lo libera quando lo raccoglie
+    const WM = () => { const wm = new WeakMap(), refs = new Set(); return { get: k => { const e = wm.get(k); return e && e.v; }, has: k => wm.has(k), set(k, v) { let e = wm.get(k); if (!e) { e = { v, r: new WeakRef(k) }; wm.set(k, e); refs.add(e.r); } else e.v = v; },
+      delete(k) { const e = wm.get(k); if (e) { refs.delete(e.r); wm.delete(k); } }, forEach(fn) { refs.forEach(r => { const k = r.deref(); if (!k) { refs.delete(r); return; } fn(wm.get(k).v, k); }); },
+      morti() { let b = 0; refs.forEach(r => { if (!r.deref()) { refs.delete(r); } }); return b; } }; };
+    const MM = window.__mem = { tex: WM(), buf: WM(), rb: WM(), stk: new Map(), stkL: [], texRefs: [], geoRefs: [], geoArr: new WeakMap(), now: 0, max: 0, fb: 0 };
     const pila = () => { const L = Error.stackTraceLimit; Error.stackTraceLimit = 14; const s = new Error().stack; Error.stackTraceLimit = L; let id = MM.stk.get(s); if (id === undefined) { id = MM.stkL.length; MM.stkL.push(s); MM.stk.set(s, id); } return id; };
     MM.pila = pila;
     const tot = d => { MM.now += d; if (MM.now > MM.max) MM.max = MM.now; };
@@ -102,6 +109,7 @@ const srv = http.createServer((req, res) => {
     const patch = T => {
       const tp = T.Texture && T.Texture.prototype, d = tp && Object.getOwnPropertyDescriptor(tp, 'needsUpdate');
       if (d && !tp.__mp) { tp.__mp = 1; Object.defineProperty(tp, 'needsUpdate', { configurable: true, set(v) { if (v && this.__mst === undefined) { this.__mst = pila(); MM.texRefs.push(new WeakRef(this)); } d.set.call(this, v); } }); }
+      const ip = T.InstancedMesh && T.InstancedMesh.prototype; if (ip && !ip.__mp) { ip.__mp = 1; const sm = ip.setMatrixAt; ip.setMatrixAt = function () { try { const a = this.instanceMatrix && this.instanceMatrix.array; if (a && !MM.geoArr.has(a)) MM.geoArr.set(a, { __mst: pila() }); } catch (e) { } return sm.apply(this, arguments); }; }   // le istanze: chi le crea (il primo setMatrixAt)
       const gp = T.BufferGeometry && T.BufferGeometry.prototype;
       if (gp && !gp.__mp) { gp.__mp = 1; const sa = gp.setAttribute, si = gp.setIndex;
         const reg = (g, at) => { if (!at) return; if (g.__mst === undefined) { g.__mst = pila(); MM.geoRefs.push(new WeakRef(g)); } const arr = at.isInterleavedBufferAttribute ? at.data.array : at.array; if (arr && typeof arr === 'object') MM.geoArr.set(arr, g); };
@@ -113,6 +121,7 @@ const srv = http.createServer((req, res) => {
   }, NUDO);
   const cdp = await ctx.newCDPSession(pg);
   const CAMP = has('campiona'); if (CAMP) { await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 32768 }); }   // --campiona: chi tiene il cuore JS (allocazioni ancora vive, per modulo:funzione)
+  const PICCO = { pagina: 0, scheda: 0, somma: 0 }; const pT = setInterval(() => { try { const p = procs(); const a = (p.pagina || {}).rss || 0, s2 = (p.scheda || {}).rss || 0; PICCO.pagina = Math.max(PICCO.pagina, a); PICCO.scheda = Math.max(PICCO.scheda, s2); PICCO.somma = Math.max(PICCO.somma, a + s2); } catch (e) { } }, 1000);   // il picco dei processi, anche durante il caricamento
   await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { timeout: 900000 });
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models && window.__pv.R.__models.renderer, null, { timeout: 1200000, polling: 1000 });
   log('caricato', Q, PROF);
@@ -149,7 +158,7 @@ const srv = http.createServer((req, res) => {
       MM.geoRefs.forEach(w => { const g = w.deref(); if (!g) return; nG++; let by = 0, su = false; const add = a => { const arr = a && (a.isInterleavedBufferAttribute ? a.data.array : a.array); if (arr && up.has(arr)) su = true; if (arr && !seenA.has(arr)) { seenA.add(arr); by += arr.byteLength || 0; } }; for (const k in g.attributes) add(g.attributes[k]); add(g.index); for (const k in g.morphAttributes) (g.morphAttributes[k] || []).forEach(add); cpuGeo += by; if (su) cpuSu += by; const s = (su ? 'S' : 'N') + pk(g.__mst); cpuBy[s] = (cpuBy[s] || 0) + by; });
       MM.texRefs.forEach(w => { const t = w.deref(); if (!t) return; nT++; const im = t.image; if (!im || seenI.has(im)) return; seenI.add(im); if (im.data && im.data.byteLength) { cpuTex += im.data.byteLength; const s = pk(t.__mst); cpuBy['T' + s] = (cpuBy['T' + s] || 0) + im.data.byteLength; } else if (im.getContext || (typeof OffscreenCanvas !== 'undefined' && im instanceof OffscreenCanvas)) { const by = im.width * im.height * 4; cpuCv += by; const s = pk(t.__mst); cpuBy['C' + s] = (cpuBy['C' + s] || 0) + by; } });
       const inf = rd.info.memory;
-      return { rows, senza, cpu: { geo: cpuGeo, geo_su_scheda: cpuSu, dati: cpuTex, tele: cpuCv, by: cpuBy, geometrie_vive: nG, texture_vive: nT }, gpu: MM.now, picco: MM.max, info: { geometrie: inf.geometries, texture: inf.textures, programmi: rd.info.programs ? rd.info.programs.length : 0 },
+      return { rows, senza, cpu: { geo: cpuGeo, geo_su_scheda: cpuSu, dati: cpuTex, tele: cpuCv, by: cpuBy, geometrie_vive: nG, texture_vive: nT }, gpu: rows.reduce((x, r) => x + r.b, 0), picco: Math.max(MM.max, rows.reduce((x, r) => x + r.b, 0)), picco_grezzo: MM.max, info: { geometrie: inf.geometries, texture: inf.textures, programmi: rd.info.programs ? rd.info.programs.length : 0 },
         heap: Math.round(performance.memory.usedJSHeapSize / 1048576), heapTot: Math.round(performance.memory.totalJSHeapSize / 1048576), tela: cv.width + '×' + cv.height, dpr: rd.getPixelRatio(), phone: !!(R.__lowq ? R.__lowq.phone : (window.__pv.R.LOWQ || {}).phone), stack: MM.stkL.length };
     });
     m.nome = nome; m.ab = Math.round((hu.backingStorageSize || 0) / 1048576); m.proc = procs();
@@ -164,7 +173,7 @@ const srv = http.createServer((req, res) => {
   const stampa = m => { if (NUDO) return;
     console.log(`\n== ${m.nome}  (${Q}, ${PROF}${m.phone ? ', telefono' : ''}; tela ${m.tela} dpr ${m.dpr})`);
     const gpu = m.gpu, cpu = m.cpu.geo + m.cpu.dati + m.cpu.tele;
-    console.log(`heap JS ${m.heap} MB (riservato ${m.heapTot}) · array buffer fuori heap ${m.ab} MB · scheda video ${MB(gpu)} MB (picco ${MB(m.picco)}) · TOTALE heap+scheda ${(m.heap + gpu / 1048576).toFixed(0)} MB`);
+    console.log(`heap JS ${m.heap} MB (riservato ${m.heapTot}) · array buffer fuori heap ${m.ab} MB · scheda video ${MB(gpu)} MB (picco ${MB(m.picco)}) · TOTALE heap+scheda ${(m.heap + gpu / 1048576).toFixed(0)} MB · con le tele 2D ${(m.heap + (gpu + m.cpu.tele) / 1048576).toFixed(0)} MB`);
     console.log(`  copie nel processore: geometrie ${MB(m.cpu.geo)} MB (${m.cpu.geometrie_vive} vive, ${MB(m.cpu.geo_su_scheda)} MB anche sulla scheda) · dati delle texture ${MB(m.cpu.dati)} · tele 2D ${MB(m.cpu.tele)} (${m.cpu.texture_vive} texture vive) = ${MB(cpu)} MB`);
     console.log(`  three: ${m.info.geometrie} geometrie, ${m.info.texture} texture, ${m.info.programmi} programmi · processi: ${JSON.stringify(m.proc)}`);
     console.log('  scheda per tipo: ' + Object.entries(m.perTipo).map(([k, v]) => k + ' ' + MB(v)).join(' · '));
@@ -176,7 +185,7 @@ const srv = http.createServer((req, res) => {
   const out = { query: Q, profilo: PROF, misure: [], errori };
   await pg.waitForTimeout(ATT * 1000);
   const campiona = async () => { if (!CAMP) return; await cdp.send('HeapProfiler.collectGarbage'); const { profile } = await cdp.send('HeapProfiler.stopSampling'); const byM = {}, byF = {};
-    const walk = (n, up) => { const cf = n.callFrame, self = n.selfSize || 0; const isP = /index\.html/.test(cf.url); const mod = isP ? modOf(cf.lineNumber + 1) : (cf.url ? cf.url.split('/').pop() : '(interno)'); const fn = (cf.functionName || '(anonima)') + ' ' + mod.replace(/\.js$/, '');
+    const walk = (n, up) => { const cf = n.callFrame, self = n.selfSize || 0; const isP = /index\.html/.test(cf.url); const mod = isP ? modOf(cf.lineNumber + 1) : (cf.url ? cf.url.split('/').pop() : '(interno)'); const fn = (cf.functionName || '(anonima)' + (isP ? '@' + (cf.lineNumber + 2 - ((spans.find(q => q[2] === mod) || [1])[0])) : '')) + ' ' + mod.replace(/\.js$/, '');
       const me = NOGAME.has(mod) && up ? up : fn; if (self) { const mm = me.split(' ').pop(); byM[mm] = (byM[mm] || 0) + self; byF[me] = (byF[me] || 0) + self; } (n.children || []).forEach(c => walk(c, NOGAME.has(mod) ? up : fn)); };
     walk(profile.head, null); const tot = Object.values(byM).reduce((a, c) => a + c, 0);
     console.log('\ncuore JS campionato (vivo): ' + MB(tot) + ' MB; per modulo:'); Object.entries(byM).sort((a, c) => c[1] - a[1]).slice(0, 20).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
@@ -190,8 +199,9 @@ const srv = http.createServer((req, res) => {
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 60000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
     await pg.waitForTimeout(ATT * 1000);
     await pg.evaluate(() => { window.__pv.ui.focus = null; });
+    if (FOTO) { fs.mkdirSync(FOTO, { recursive: true }); const url = await pg.evaluate(() => new Promise(r => { window.__nodraw = false; requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => { const d = window.__pv.R.__models.renderer.domElement.toDataURL("image/png"); window.__nodraw = true; r(d); }))); })); fs.writeFileSync(path.join(FOTO, nome + ".png"), Buffer.from(url.split(",")[1], "base64")); }   // --foto=cartella: la foto di ogni tappa (fuori dal repo)
     const m = await misura(nome); out.misure.push(m);
-    console.log(`-- ${nome}: heap ${m.heap} MB · scheda ${MB(m.gpu)} MB (picco ${MB(m.picco)}) · totale ${(m.heap + m.gpu / 1048576).toFixed(0)} MB · processi ${JSON.stringify(m.proc)}`); }
+    console.log(`-- ${nome}: heap ${m.heap} MB · scheda ${MB(m.gpu)} MB (picco ${MB(m.picco)}) · totale ${(m.heap + m.gpu / 1048576).toFixed(0)} MB · con le tele ${(m.heap + (m.gpu + (m.cpu ? m.cpu.tele : 0)) / 1048576).toFixed(0)} MB · processi ${JSON.stringify(m.proc)}`); }
   if (GIRO.length) stampa(out.misure[out.misure.length - 1]);
   await campiona();
   // i tempi del fotogramma (con i disegni a vuoto: il lavoro del processore) e i disegni
@@ -199,8 +209,8 @@ const srv = http.createServer((req, res) => {
     rd.render = function () { const r = r0.apply(this, arguments); tot += rd.info.render.calls; return r; }; const A = [], F = []; let k = 0;
     const f = () => { if (k > 0) { A.push(tot); F.push(fr); } tot = 0; fr = 0; if (++k <= n) requestAnimationFrame(f); else { rd.render = r0; R.frame = f0; const md = a => a.slice().sort((x, y) => x - y)[a.length >> 1]; res({ disegni: md(A), frame_ms: +md(F).toFixed(1) }); } }; requestAnimationFrame(f); }), 10);
   console.log('\nfotogramma (disegni a vuoto):', JSON.stringify(out.fotogramma), '· errori della pagina:', errori.length);
-  const ms = out.misure; out.massimo = { heap: Math.max(...ms.map(m => m.heap)), gpu_mb: +(Math.max(...ms.map(m => m.picco)) / 1048576).toFixed(1), totale_mb: Math.max(...ms.map(m => Math.round(m.heap + m.gpu / 1048576))) };
-  console.log('massimo:', JSON.stringify(out.massimo));
+  const ms = out.misure; out.massimo = { heap: Math.max(...ms.map(m => m.heap)), gpu_mb: +(Math.max(...ms.map(m => m.picco)) / 1048576).toFixed(1), totale_mb: Math.max(...ms.map(m => Math.round(m.heap + m.gpu / 1048576))), con_tele_mb: Math.max(...ms.map(m => Math.round(m.heap + (m.gpu + (m.cpu ? m.cpu.tele : 0)) / 1048576))), heap_oggetti_mb: Math.max(...ms.map(m => m.heap - m.ab)) };
+  clearInterval(pT); out.massimo.picco_processi = PICCO; console.log('massimo:', JSON.stringify(out.massimo));
   if (OUTF) fs.writeFileSync(OUTF, JSON.stringify(out, null, 1));
   await b.close(); srv.close(); process.exit(errori.length ? 1 : 0);
 });
