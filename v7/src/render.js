@@ -897,22 +897,27 @@ var Render = (function () {
     for (let k = 0; k < passi; k++) { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R1[y * w + x]) continue; const o = (y * w + x) * 4;
       let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[o] = Math.round(t / 9); } }
   }
-  function acquaFine9(tx0, ty0, n, m) {
+  // [fluido] a righe: cede il passo come i pittori dei blocchi (ISO.t1, oltre 4 ms); gli stessi conti nello stesso ordine
+  function* acquaFine9G(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
     const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
+    for (let j = 0; j < m; j++) { if (j && CEDE1()) yield; for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
-        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } } }
     if (!tocco) return;
+    yield;
     sfuma9(D, w, h, R0, 3, 2);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
     A.bgx.putImageData(id, x0, y0);
+    yield;
     const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
     try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
+    yield;
     // la terra (1 px a metro)
     const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data, M0 = new Uint8Array(mw * mh);
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
+    for (let j = 0; j < m; j++) { if (j && CEDE1()) yield; for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } } }
+    yield;
     sfuma9(MD, mw, mh, M0, 2, 1);
     A.bx.putImageData(md, mx0, my0);
     try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
@@ -1899,6 +1904,7 @@ var Render = (function () {
   let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
   const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
   function buildNat(tx0, ty0, n, m) { const it = buildNatG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  const NAT_CITTA = ['Leccio_0', 'Leccio_1', 'Leccio_2', 'Leccio_3', 'Pinodom_0', 'Pinodom_1', 'Pinodom_2', 'Palma_0', 'Palma_1', 'Palma_2', 'Palma_3', 'Palma_4', 'Palma_5', 'Ombra4'];
   function* buildNatG(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
@@ -1952,8 +1958,12 @@ var Render = (function () {
       if (!best) continue; const r = rng((tx * 9301 + ty * 4933) >>> 0);
       for (let q = 0; q < 3; q++) { const u = (q + .5) / 3 - .5, x = (tx + .5 + best[0] * .35) * TS + (best[0] ? 0 : u * TS), z = (ty + .5 + best[1] * .35) * TS + (best[1] ? 0 : u * TS); add('Pebble_Square_' + (r() < .5 ? 2 : 4), x, groundH(x, z) - .05, z, 2.6 + r() * .8, (best[0] ? Math.PI / 2 : 0) + (r() - .5) * .3, { sy: 1.6, col: pick(r, ['#c8c2b6', '#b8b2a6', '#d4cec2']) }); }
     }
-    if (ZN.CITTA !== undefined) { verdeCitta35(add, tx0, ty0, n, m); erbaCrepe38(add, tx0, ty0, n, m); }   // [isola35] [isola38]
+    if (ZN.CITTA !== undefined) {
+      // [fluido] i modelli degli alberi di città (lecci, pini, palme: generati, 100-300 ms l'uno la prima volta) uno per passo, prima di usarli
+      for (const nm of NAT_CITTA) if (NAT.models[nm] === undefined) { yield; natModel(nm); }
+      yield; verdeCitta35(add, tx0, ty0, n, m); erbaCrepe38(add, tx0, ty0, n, m); }   // [isola35] [isola38]
     for (const [name, arr] of B) {
+      if (performance.now() - ISO.t1 > 4) yield;   // [fluido] un modello per volta quando il passo è già lungo
       const mdl = natModel(name); if (!mdl) continue;
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
       arr.forEach(o => { if (o.ground) o.y = groundH(o.x, o.z) - .05; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + mdl.top * o.s * o.sy); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); });
@@ -2919,11 +2929,13 @@ var Render = (function () {
   // [fluido] un blocco si costruisce in fasi (dipinto del terreno in tre passate, scabrosità, geometria, luce, vegetazione,
   // bosco, verde): buildChunkGen ne fa una per volta e lo mette in scena solo finito; buildChunk le fa tutte subito.
   function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [fluido] i passi dei pittori lunghi (pavimenti, il suolo della vegetazione, il mare fine) cedono oltre 4 ms dall'inizio del passo, come paintTilesG
+  const CEDE1 = () => performance.now() - ISO.t1 > 4;
   function* buildChunkGen(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     let c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; svolte1(x, tx0, ty0, n, m); yield; usura1(x, tx0, ty0, n, m); yield; surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); yield; strisce35(x, tx0, ty0, n, m); yield; raccordi1(x, tx0, ty0, n, m); yield; holes1(x, tx0, ty0, n, m); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
+    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; svolte1(x, tx0, ty0, n, m); yield; usura1(x, tx0, ty0, n, m); yield; surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); yield; strisce35(x, tx0, ty0, n, m); yield; raccordi1(x, tx0, ty0, n, m); yield; holes1(x, tx0, ty0, n, m); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) { if (Vegetazione.dipingiSuoloG) yield* Vegetazione.dipingiSuoloG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); } else if (Vegetazione.suoloErbosoG) yield* Vegetazione.suoloErbosoG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [fluido] a righe */   /* [vegetazione] */
     yield;
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
@@ -2957,13 +2969,13 @@ var Render = (function () {
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
-    if (window.Pavimenti) try { Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero
+    if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
     yield;   // [anelli] un passo per pezzo: il suolo, la riva, il suo mare
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
     if (riva) yield;
-    if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
+    if (riva) yield* acquaFine9G(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare   [fluido] a righe
     yield;
     const veg = yield* buildVegG(tx0, ty0, n, m); grp.add(veg);
     yield;

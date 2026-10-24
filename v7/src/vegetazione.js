@@ -1051,7 +1051,10 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       return O; };
     return (P.campi = { tono: blur(A, 6), calda: blur(B, 6) });
   }
-  function dipingiSuolo(ctx, tx0, ty0, n, m, PX) {
+  // [fluido] dipingiSuoloG e suoloErbosoG: gli stessi pittori a righe, cedono il passo quando cede() lo dice (render.js buildChunkGen)
+  const corri = it => { let r; do r = it.next(); while (!r.done); return r.value; };
+  function dipingiSuolo(ctx, tx0, ty0, n, m, PX) { return corri(dipingiSuoloG(ctx, tx0, ty0, n, m, PX, null)); }
+  function* dipingiSuoloG(ctx, tx0, ty0, n, m, PX, cede) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, form = P.form, O = ombraSuolo(P), ppm = PX / TS;
     const mia = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const f = form[ty * GW + tx]; if (!f || f === F.costa || f === F.urbano) return 0; const v = W.grid[ty * GW + tx], T = W.T;
       return v === T.TREE || v === T.SHRUB || v === T.GRASS || v === T.DIRT || v === T.FIELD || v === T.GRAVEL ? 1 : 0; };
@@ -1060,7 +1063,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const smp = (A, fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (x, y) => x < 0 || y < 0 || x >= GW || y >= GH ? 0 : A(x, y); return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
     const CP = campiSuolo(P), omb = (x, y) => O[y * GW + x], ton = (x, y) => CP.tono[y * GW + x], cal = (x, y) => CP.calda[y * GW + x];
     const sen = (x, y) => { const v = P.dSen[y * GW + x]; return v < 2.5 ? 1 - v / 2.5 : 0; };
-    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) { if (cede && py && cede()) yield; for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, fx = wx / TS - .5, fy = wy / TS - .5, a = smp(mia, fx, fy); if (a < .02) continue;
       // la pennellata: rumore allungato (i colpi vanno tutti in una direzione, che cambia piano), più la macchia larga
       const ang = fbm(wx / 30, wy / 30, 7801, 2) * 3.1, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, vv = -wx * sa + wy * ca;
@@ -1069,7 +1072,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       const k = smp(cal, fx, fy), c1 = gammaAt(GAMMA, t), c2 = gammaAt(GAMMA_CALDA, t * .92 + .04), q = (py * w + px) * 4;
       const r = c1[0] + (c2[0] - c1[0]) * k, g = c1[1] + (c2[1] - c1[1]) * k, b = c1[2] + (c2[2] - c1[2]) * k;
       d[q] = d[q] + (r - d[q]) * a; d[q + 1] = d[q + 1] + (g - d[q + 1]) * a; d[q + 2] = d[q + 2] + (b - d[q + 2]) * a;
-    }
+    } }
     ctx.putImageData(img, 0, 0);
   }
 
@@ -1146,7 +1149,8 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // quadretto (media su ≈ 60 cm) e ci si passa sopra la grana dei fili: rumore allungato 1:5 in una direzione che cambia piano (il prato
   // pettinato dal vento), la punta chiara e calda, il fondo scuro e freddo; più la chiazza larga (≈ 2 m) che fa l'erba più alta e più
   // bassa. Sentieri e strade (roadW, il varco dei sentieri) restano come sono.
-  function suoloErboso(ctx, tx0, ty0, n, m, PX) {
+  function suoloErboso(ctx, tx0, ty0, n, m, PX) { return corri(suoloErbosoG(ctx, tx0, ty0, n, m, PX, null)); }
+  function* suoloErbosoG(ctx, tx0, ty0, n, m, PX, cede) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, ppm = PX / TS, T = W.T;
     const ok = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano || W.roadW[i] > 0) return 0; const v = W.grid[i];
       if (!(v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.FIELD)) return 0; return P.dSen[i] < .6 ? 0 : P.dSen[i] < 1.4 ? (P.dSen[i] - .6) / .8 : 1; };
@@ -1155,10 +1159,10 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     // la media (sfuma i quadretti): due passate a scatola, orizzontale e verticale, sui tre canali
     const src = new Float32Array(w * h * 3); for (let k = 0; k < w * h; k++) { src[k * 3] = d[k * 4]; src[k * 3 + 1] = d[k * 4 + 1]; src[k * 3 + 2] = d[k * 4 + 2]; }
     const tmp = new Float32Array(w * h * 3), blr = new Float32Array(w * h * 3);
-    for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
-    for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    for (let y = 0; y < h; y++) { if (cede && (y & 15) === 15 && cede()) yield; for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } } }
+    for (let x = 0; x < w; x++) { if (cede && (x & 15) === 15 && cede()) yield; for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } } }
     const smp = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0; return ok(x0, y0) * (1 - ax) * (1 - ay) + ok(x0 + 1, y0) * ax * (1 - ay) + ok(x0, y0 + 1) * (1 - ax) * ay + ok(x0 + 1, y0 + 1) * ax * ay; };
-    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) { if (cede && py && cede()) yield; for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, a = smp(wx / TS - .5, wy / TS - .5); if (a < .02) continue;
       const ang = fbm(wx / 14, wy / 14, 7981, 2) * 2.4 + .6, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, v = -wx * sa + wy * ca;
       const g1 = vnoise(u / .5, v / .1, 7982), g2 = vnoise(u / .9, v / .16, 7983), grain = g1 * .65 + g2 * .35;   // i fili: lunghi 0,5-0,9 m, larghi 10-16 cm
@@ -1168,7 +1172,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       { const rs = respiro(W, wx, wy), te = 1 - sstep(.15, .45, rs + (grain - .5) * .25); if (te > 0) {   // la terra che viene fuori: calda, con la grana dei sassolini
           const tc = gammaAt(GAMMA_CALDA, .44 + (vnoise(wx * 3, wy * 3, 7993) - .5) * .18 + (alto - .5) * .12); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
       d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
-    }
+    } }
     ctx.putImageData(img, 0, 0);
   }
 
@@ -1300,7 +1304,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, suoloErbosoG, prato, FIORI, DERIVE, dipingiSuolo, dipingiSuoloG, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;

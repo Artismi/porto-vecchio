@@ -25267,7 +25267,10 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       return O; };
     return (P.campi = { tono: blur(A, 6), calda: blur(B, 6) });
   }
-  function dipingiSuolo(ctx, tx0, ty0, n, m, PX) {
+  // [fluido] dipingiSuoloG e suoloErbosoG: gli stessi pittori a righe, cedono il passo quando cede() lo dice (render.js buildChunkGen)
+  const corri = it => { let r; do r = it.next(); while (!r.done); return r.value; };
+  function dipingiSuolo(ctx, tx0, ty0, n, m, PX) { return corri(dipingiSuoloG(ctx, tx0, ty0, n, m, PX, null)); }
+  function* dipingiSuoloG(ctx, tx0, ty0, n, m, PX, cede) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, form = P.form, O = ombraSuolo(P), ppm = PX / TS;
     const mia = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const f = form[ty * GW + tx]; if (!f || f === F.costa || f === F.urbano) return 0; const v = W.grid[ty * GW + tx], T = W.T;
       return v === T.TREE || v === T.SHRUB || v === T.GRASS || v === T.DIRT || v === T.FIELD || v === T.GRAVEL ? 1 : 0; };
@@ -25276,7 +25279,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const smp = (A, fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (x, y) => x < 0 || y < 0 || x >= GW || y >= GH ? 0 : A(x, y); return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
     const CP = campiSuolo(P), omb = (x, y) => O[y * GW + x], ton = (x, y) => CP.tono[y * GW + x], cal = (x, y) => CP.calda[y * GW + x];
     const sen = (x, y) => { const v = P.dSen[y * GW + x]; return v < 2.5 ? 1 - v / 2.5 : 0; };
-    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) { if (cede && py && cede()) yield; for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, fx = wx / TS - .5, fy = wy / TS - .5, a = smp(mia, fx, fy); if (a < .02) continue;
       // la pennellata: rumore allungato (i colpi vanno tutti in una direzione, che cambia piano), più la macchia larga
       const ang = fbm(wx / 30, wy / 30, 7801, 2) * 3.1, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, vv = -wx * sa + wy * ca;
@@ -25285,7 +25288,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       const k = smp(cal, fx, fy), c1 = gammaAt(GAMMA, t), c2 = gammaAt(GAMMA_CALDA, t * .92 + .04), q = (py * w + px) * 4;
       const r = c1[0] + (c2[0] - c1[0]) * k, g = c1[1] + (c2[1] - c1[1]) * k, b = c1[2] + (c2[2] - c1[2]) * k;
       d[q] = d[q] + (r - d[q]) * a; d[q + 1] = d[q + 1] + (g - d[q + 1]) * a; d[q + 2] = d[q + 2] + (b - d[q + 2]) * a;
-    }
+    } }
     ctx.putImageData(img, 0, 0);
   }
 
@@ -25362,7 +25365,8 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
   // quadretto (media su ≈ 60 cm) e ci si passa sopra la grana dei fili: rumore allungato 1:5 in una direzione che cambia piano (il prato
   // pettinato dal vento), la punta chiara e calda, il fondo scuro e freddo; più la chiazza larga (≈ 2 m) che fa l'erba più alta e più
   // bassa. Sentieri e strade (roadW, il varco dei sentieri) restano come sono.
-  function suoloErboso(ctx, tx0, ty0, n, m, PX) {
+  function suoloErboso(ctx, tx0, ty0, n, m, PX) { return corri(suoloErbosoG(ctx, tx0, ty0, n, m, PX, null)); }
+  function* suoloErbosoG(ctx, tx0, ty0, n, m, PX, cede) {
     if (SPENTO || !PIANO) return; const P = PIANO, W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, ppm = PX / TS, T = W.T;
     const ok = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return 0; const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano || W.roadW[i] > 0) return 0; const v = W.grid[i];
       if (!(v === T.GRASS || v === T.SHRUB || v === T.TREE || v === T.FIELD)) return 0; return P.dSen[i] < .6 ? 0 : P.dSen[i] < 1.4 ? (P.dSen[i] - .6) / .8 : 1; };
@@ -25371,10 +25375,10 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     // la media (sfuma i quadretti): due passate a scatola, orizzontale e verticale, sui tre canali
     const src = new Float32Array(w * h * 3); for (let k = 0; k < w * h; k++) { src[k * 3] = d[k * 4]; src[k * 3 + 1] = d[k * 4 + 1]; src[k * 3 + 2] = d[k * 4 + 2]; }
     const tmp = new Float32Array(w * h * 3), blr = new Float32Array(w * h * 3);
-    for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
-    for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    for (let y = 0; y < h; y++) { if (cede && (y & 15) === 15 && cede()) yield; for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } } }
+    for (let x = 0; x < w; x++) { if (cede && (x & 15) === 15 && cede()) yield; for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } } }
     const smp = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0; return ok(x0, y0) * (1 - ax) * (1 - ay) + ok(x0 + 1, y0) * ax * (1 - ay) + ok(x0, y0 + 1) * (1 - ax) * ay + ok(x0 + 1, y0 + 1) * ax * ay; };
-    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+    for (let py = 0; py < h; py++) { if (cede && py && cede()) yield; for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, a = smp(wx / TS - .5, wy / TS - .5); if (a < .02) continue;
       const ang = fbm(wx / 14, wy / 14, 7981, 2) * 2.4 + .6, ca = Math.cos(ang), sa = Math.sin(ang), u = wx * ca + wy * sa, v = -wx * sa + wy * ca;
       const g1 = vnoise(u / .5, v / .1, 7982), g2 = vnoise(u / .9, v / .16, 7983), grain = g1 * .65 + g2 * .35;   // i fili: lunghi 0,5-0,9 m, larghi 10-16 cm
@@ -25384,7 +25388,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       { const rs = respiro(W, wx, wy), te = 1 - sstep(.15, .45, rs + (grain - .5) * .25); if (te > 0) {   // la terra che viene fuori: calda, con la grana dei sassolini
           const tc = gammaAt(GAMMA_CALDA, .44 + (vnoise(wx * 3, wy * 3, 7993) - .5) * .18 + (alto - .5) * .12); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
       d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
-    }
+    } }
     ctx.putImageData(img, 0, 0);
   }
 
@@ -25516,7 +25520,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, suoloErbosoG, prato, FIORI, DERIVE, dipingiSuolo, dipingiSuoloG, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
@@ -62861,7 +62865,9 @@ var Pavimenti = (function () {
   }
   let FIN = null; const finit = () => FIN || (FIN = A.finiture());   // la lista delle finiture (render.js segniList1), una volta sola
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
-  function mappe(tx0, ty0, n, m) {
+  // [fluido] a pezzi: mappeG cede il passo quando cede() lo dice (render.js buildChunkGen, oltre 4 ms); mappe fa tutto subito. Stessi conti, stesso ordine
+  function mappe(tx0, ty0, n, m) { const it = mappeG(tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
+  function* mappeG(tx0, ty0, n, m, cede) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
     const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
     // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede. Ogni texel ricorda due vie (agli incroci): la prima è
@@ -62870,7 +62876,7 @@ var Pavimenti = (function () {
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
     const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    vieTutte().forEach((rd, ri) => { const P = rd.pts; if (!P || P.length < 2) return; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
+    const VT = vieTutte(); for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri]; if (cede && ri && cede()) yield; const P = rd.pts; if (!P || P.length < 2) continue; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -62884,30 +62890,30 @@ var Pavimenti = (function () {
           else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); const o = I2[kk * 4 + 3] % 256; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
             K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
           else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
-          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } });
-    for (let j = 0; j < MJ; j++) for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
+          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
+    for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
-      I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); }
+      I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); } }
     const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; };
     const id = tex(I), id2 = tex(I2);
     // [strade] le finiture: per ogni texel la cosa più importante che lo tocca (tombino, chiusino, caditoia, pozzetto, rattoppo, olio,
     // gomma), col centro, l'angolo e le misure: lo shader le disegna nitide al pixel, senza geometria
     const FI = new Float32Array(NI * MJ * 4), FP = new Uint8Array(NI * MJ);
     if (strade() && A.finiture) { const RAG = { 1: .5, 2: .5, 3: .56, 4: .42, 5: 1.3, 7: 6.5 }, PRI = { 1: 9, 2: 9, 3: 8, 4: 7, 6: 5, 5: 3, 7: 2 };
-      finit().forEach(([x, z, a, t, sd, len, wid]) => { const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) return;
+      const FL = finit(); for (let fq = 0; fq < FL.length; fq++) { if (cede && (fq & 255) === 255 && cede()) yield; const [x, z, a, t, sd, len, wid] = FL[fq]; const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) continue;
         const i0 = Math.max(0, Math.floor((x - r - X0) / q)), i1 = Math.min(NI - 1, Math.floor((x + r - X0) / q)), j0 = Math.max(0, Math.floor((z - r - Z0) / q)), j1 = Math.min(MJ - 1, Math.floor((z + r - Z0) / q));
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const kk = j * NI + i, px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q; if (Math.hypot(px - x, pz - z) > r + .36) continue; if (FP[kk] > PRI[t]) continue;
-          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = a; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } }); }
+          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = a; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } } }
     const fi = tex(FI);
     // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
     const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
     const NB = n + 4, near = new Uint8Array(NB * (m + 4)); for (let ty = -2; ty <= m + 1; ty++) for (let tx = -2; tx <= n + 1; tx++) near[(ty + 2) * NB + tx + 2] = BLD(tx0 + tx, ty0 + ty) ? 1 : 0;
     const wetT = new Float32Array(n * 2 * m * 2);   // l'umido a 1 m: la distanza dalla riva costa
     for (let j = 0; j < m * 2; j++) for (let i = 0; i < n * 2; i++) { const tx = tx0 + (i >> 1), ty = ty0 + (j >> 1), v = A.gT(tx, ty); wetT[j * n * 2 + i] = v === T.SAND || v === T.QUAY || v === T.PIER || v === T.ROCK ? A.coastIn(X0 + i + .5, Z0 + j + .5) : 99; }
-    for (let j = 0; j < MJ2; j++) for (let i = 0; i < NI2; i++) { const px = X0 + (i + .5) * q2, pz = Z0 + (j + .5) * q2, lx = Math.floor(i / RMK), ly = Math.floor(j / RMK), o = (j * NI2 + i) * 4;
+    for (let j = 0; j < MJ2; j++) { if (cede && (j & 7) === 7 && cede()) yield; for (let i = 0; i < NI2; i++) { const px = X0 + (i + .5) * q2, pz = Z0 + (j + .5) * q2, lx = Math.floor(i / RMK), ly = Math.floor(j / RMK), o = (j * NI2 + i) * 4;
       let dw = 9; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (!near[(ly + b + 2) * NB + lx + a + 2]) continue; const x0 = (tx0 + lx + a) * TS, z0 = (ty0 + ly + b) * TS, ddx = Math.max(x0 - px, 0, px - x0 - TS), ddz = Math.max(z0 - pz, 0, pz - z0 - TS); dw = Math.min(dw, Math.hypot(ddx, ddz)); }
       const w2 = Math.max(0, 1 - dw / .32); K[o] = Math.round(255 * Math.max(0, 1 - dw / 3.5));   // R: la distanza dal muro (0-3,5 m) K[o + 3] = Math.round(255 * w2 * w2);   // A: il raccordo, la riga scura proprio al piede
-      const ci = wetT[(j >> 2) * n * 2 + (i >> 2)], wr = A.gT(tx0 + lx, ty0 + ly) === T.SAND ? 4 : 1.3; K[o + 1] = ci < wr ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / wr))) : 0; }   // la sabbia bagnata larga, la banchina solo sul ciglio
+      const ci = wetT[(j >> 2) * n * 2 + (i >> 2)], wr = A.gT(tx0 + lx, ty0 + ly) === T.SAND ? 4 : 1.3; K[o + 1] = ci < wr ? Math.round(255 * Math.max(0, Math.min(1, 1 - ci / wr))) : 0; } }   // la sabbia bagnata larga, la banchina solo sul ciglio
     (OMB.get(tx0 / 32 + ',' + ty0 / 32) || []).forEach(([cx, cz, rx, rz, f]) => {   // le ombre di contatto: un ovale sfumato più largo dell'impronta
       const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = (X0 + (i + .5) * q2 - cx) / ex, dz = (Z0 + (j + .5) * q2 - cz) / ez, r = Math.hypot(dx, dz); if (r >= 1) continue;
@@ -63244,8 +63250,10 @@ var Pavimenti = (function () {
   function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvSmo: SMO, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
-  function suolo(mat, tx0, ty0, n, m) {
-    if (!attivo()) return mat; const key = tx0 / 32 + ',' + ty0 / 32, b = mappe(tx0, ty0, n, m); BLK.set(key, b); mat.userData.pav = key; mat.userData.pavB = b;
+  function suolo(mat, tx0, ty0, n, m) { const it = suoloG(mat, tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [fluido] lo stesso a pezzi: cede() vero → cede il passo (render.js buildChunkGen)
+  function* suoloG(mat, tx0, ty0, n, m, cede) {
+    if (!attivo()) return mat; const key = tx0 / 32 + ',' + ty0 / 32, b = yield* mappeG(tx0, ty0, n, m, cede); BLK.set(key, b); mat.userData.pav = key; mat.userData.pavB = b;
     return patch(mat, uniforms(b, 0), 'pav1');
   }
   function via(mat) { const key = mat && mat.userData.pav, b = mat && mat.userData.pavB; if (!b) return; MATS.delete(mat); b.id.dispose(); b.id2.dispose(); b.fi.dispose(); b.mk.dispose(); if (BLK.get(key) === b) BLK.delete(key); }   // il blocco rifatto ha già messo la sua
@@ -63324,7 +63332,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, suoloG, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
@@ -64690,22 +64698,27 @@ var Render = (function () {
     for (let k = 0; k < passi; k++) { const src = new Uint8Array(D); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { if (!R1[y * w + x]) continue; const o = (y * w + x) * 4;
       let t = 0; for (let b = -1; b <= 1; b++) for (let a = -1; a <= 1; a++) t += src[((y + b) * w + x + a) * 4]; D[o] = Math.round(t / 9); } }
   }
-  function acquaFine9(tx0, ty0, n, m) {
+  // [fluido] a righe: cede il passo come i pittori dei blocchi (ISO.t1, oltre 4 ms); gli stessi conti nello stesso ordine
+  function* acquaFine9G(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
     const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
+    for (let j = 0; j < m; j++) { if (j && CEDE1()) yield; for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
-        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } }
+        const fi = Math.max(0, WL - q), co = (D[o] / 255) ** 2 * 16, k = Math.max(0, Math.min(1, (fi - .4) / .7)), dd = fi + (Math.max(fi, co) - fi) * k * k * (3 - 2 * k); D[o] = Math.round(Math.sqrt(Math.min(1, dd / 16)) * 255);   /* [riva] oltre il metro il fondo fine si ferma (a 1,15 m): da lì il colore lo dà la profondità vera del mare, senza salto sul bordo della fascia */ if (q > WL + .05) D[o + 1] = 255; R0[py * w + px] = 1; } } }
     if (!tocco) return;
+    yield;
     sfuma9(D, w, h, R0, 3, 2);   // la sfumatura: la fascia fine e 3 px attorno (niente gradino col mare a caselle)
     A.bgx.putImageData(id, x0, y0);
+    yield;
     const up = (tex, data, X, Y, W2, H2, Htot) => { const dt = new THREE.DataTexture(data, W2, H2, THREE.RGBAFormat); dt.flipY = true; dt.needsUpdate = true; renderer.copyTextureToTexture(new THREE.Vector2(X, Htot - Y - H2), dt, tex); dt.dispose(); };
     try { up(A.stx, new Uint8Array(D.buffer.slice(0)), x0, y0, w, h, A.big.height); } catch (e) { A.stx.needsUpdate = true; }
+    yield;
     // la terra (1 px a metro)
     const S = A.S, mx0 = Math.max(0, tx0 * S - 2), my0 = Math.max(0, ty0 * S - 2), mw = Math.min(A.bc.width, (tx0 + n) * S + 2) - mx0, mh = Math.min(A.bc.height, (ty0 + m) * S + 2) - my0, md = A.bx.getImageData(mx0, my0, mw, mh), MD = md.data, M0 = new Uint8Array(mw * mh);
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
-      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } }
+    for (let j = 0; j < m; j++) { if (j && CEDE1()) yield; for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue;
+      for (let b = 0; b < S; b++) for (let a = 0; a < S; a++) { const q = Riva.quota((tx + (a + .5) / S) * TS, (ty + (b + .5) / S) * TS); if (q === null) continue; const o = ((ty * S + b - my0) * mw + tx * S + a - mx0) * 4, v = q > WL ? 255 : 0; MD[o] = Math.round(MD[o] * .35 + v * .65);   /* G resta: la fascia */ M0[(ty * S + b - my0) * mw + tx * S + a - mx0] = 1; } } }
+    yield;
     sfuma9(MD, mw, mh, M0, 2, 1);
     A.bx.putImageData(md, mx0, my0);
     try { up(A.btx, new Uint8Array(MD.buffer.slice(0)), mx0, my0, mw, mh, A.bc.height); } catch (e) { A.btx.needsUpdate = true; }
@@ -65692,6 +65705,7 @@ var Render = (function () {
   let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
   const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
   function buildNat(tx0, ty0, n, m) { const it = buildNatG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  const NAT_CITTA = ['Leccio_0', 'Leccio_1', 'Leccio_2', 'Leccio_3', 'Pinodom_0', 'Pinodom_1', 'Pinodom_2', 'Palma_0', 'Palma_1', 'Palma_2', 'Palma_3', 'Palma_4', 'Palma_5', 'Ombra4'];
   function* buildNatG(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
@@ -65745,8 +65759,12 @@ var Render = (function () {
       if (!best) continue; const r = rng((tx * 9301 + ty * 4933) >>> 0);
       for (let q = 0; q < 3; q++) { const u = (q + .5) / 3 - .5, x = (tx + .5 + best[0] * .35) * TS + (best[0] ? 0 : u * TS), z = (ty + .5 + best[1] * .35) * TS + (best[1] ? 0 : u * TS); add('Pebble_Square_' + (r() < .5 ? 2 : 4), x, groundH(x, z) - .05, z, 2.6 + r() * .8, (best[0] ? Math.PI / 2 : 0) + (r() - .5) * .3, { sy: 1.6, col: pick(r, ['#c8c2b6', '#b8b2a6', '#d4cec2']) }); }
     }
-    if (ZN.CITTA !== undefined) { verdeCitta35(add, tx0, ty0, n, m); erbaCrepe38(add, tx0, ty0, n, m); }   // [isola35] [isola38]
+    if (ZN.CITTA !== undefined) {
+      // [fluido] i modelli degli alberi di città (lecci, pini, palme: generati, 100-300 ms l'uno la prima volta) uno per passo, prima di usarli
+      for (const nm of NAT_CITTA) if (NAT.models[nm] === undefined) { yield; natModel(nm); }
+      yield; verdeCitta35(add, tx0, ty0, n, m); erbaCrepe38(add, tx0, ty0, n, m); }   // [isola35] [isola38]
     for (const [name, arr] of B) {
+      if (performance.now() - ISO.t1 > 4) yield;   // [fluido] un modello per volta quando il passo è già lungo
       const mdl = natModel(name); if (!mdl) continue;
       let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
       arr.forEach(o => { if (o.ground) o.y = groundH(o.x, o.z) - .05; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + mdl.top * o.s * o.sy); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); });
@@ -66712,11 +66730,13 @@ var Render = (function () {
   // [fluido] un blocco si costruisce in fasi (dipinto del terreno in tre passate, scabrosità, geometria, luce, vegetazione,
   // bosco, verde): buildChunkGen ne fa una per volta e lo mette in scena solo finito; buildChunk le fa tutte subito.
   function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [fluido] i passi dei pittori lunghi (pavimenti, il suolo della vegetazione, il mare fine) cedono oltre 4 ms dall'inizio del passo, come paintTilesG
+  const CEDE1 = () => performance.now() - ISO.t1 > 4;
   function* buildChunkGen(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     let c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; svolte1(x, tx0, ty0, n, m); yield; usura1(x, tx0, ty0, n, m); yield; surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); yield; strisce35(x, tx0, ty0, n, m); yield; raccordi1(x, tx0, ty0, n, m); yield; holes1(x, tx0, ty0, n, m); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
+    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; svolte1(x, tx0, ty0, n, m); yield; usura1(x, tx0, ty0, n, m); yield; surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); yield; strisce35(x, tx0, ty0, n, m); yield; raccordi1(x, tx0, ty0, n, m); yield; holes1(x, tx0, ty0, n, m); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) { if (Vegetazione.dipingiSuoloG) yield* Vegetazione.dipingiSuoloG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); } else if (Vegetazione.suoloErbosoG) yield* Vegetazione.suoloErbosoG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [fluido] a righe */   /* [vegetazione] */
     yield;
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
@@ -66750,13 +66770,13 @@ var Render = (function () {
     const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
-    if (window.Pavimenti) try { Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero
+    if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
     yield;   // [anelli] un passo per pezzo: il suolo, la riva, il suo mare
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
     const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
     if (riva) yield;
-    if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
+    if (riva) yield* acquaFine9G(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare   [fluido] a righe
     yield;
     const veg = yield* buildVegG(tx0, ty0, n, m); grp.add(veg);
     yield;
