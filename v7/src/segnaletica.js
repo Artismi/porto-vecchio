@@ -29,6 +29,7 @@ var Segnaletica = (function () {
   const ATTIVO = !!(W && W.sets && W.roads);
   const PI = Math.PI, hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const hash = (x, y, s) => { let h = (Math.round(x * 7) * 374761393 + Math.round(y * 7) * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+  const PV = () => (typeof Pavimenti !== 'undefined' && Pavimenti.strade && Pavimenti.strade() ? Pavimenti : null);   // [strade] l'asfalto nuovo (pavimenti.js)
   const VV = () => (typeof Vievive !== 'undefined' && Vievive && Vievive.attivo ? Vievive : null);
   const CH = () => (typeof Chiarezza !== 'undefined' && Chiarezza ? Chiarezza : null);
   const RT = () => (typeof Rete !== 'undefined' && Rete && Rete.attivo && Rete.attivo() ? Rete : null);
@@ -632,7 +633,7 @@ var Segnaletica = (function () {
     const D = { riga: [256, 16], zebra: [256, 48], stop: [192, 128], triangolo: [48, 48], P: [96, 96], bus: [768, 160], freccia_dritta: [224, 80], freccia_destra: [224, 80], freccia_sinistra: [224, 80], freccia_dritta_destra: [224, 80], freccia_dritta_sinistra: [224, 80] }[k] || [64, 64];
     return tessera('str|' + k, D[0], D[1], (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#ffffff'; x.strokeStyle = '#ffffff';
       if (k === 'riga' || k === 'zebra') x.fillRect(0, 1, w, h - 2);
-      else if (k === 'stop') { x.save(); x.translate(w / 2, h / 2); x.rotate(PI / 2); x.scale(1, w / h * .9); x.font = 'bold 60px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('STOP', 0, 4); x.restore(); }   // le lettere alte lungo la corsia: l'alto verso dove si va
+      else if (k === 'stop') { x.save(); x.translate(w / 2, h / 2); x.rotate(PI / 2); x.scale(1, w / h * .9); x.font = PV() && typeof document !== 'undefined' && document.fonts && document.fonts.check('700 60px "Saira Condensed"') ? '700 66px "Saira Condensed", "Arial Narrow", Arial, sans-serif' : 'bold 60px Arial, sans-serif';   /* [strade] le lettere strette e alte della segnaletica italiana */ x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('STOP', 0, 4); x.restore(); }   // le lettere alte lungo la corsia: l'alto verso dove si va
       else if (k === 'triangolo') { x.beginPath(); x.moveTo(w - 2, h / 2); x.lineTo(2, 2); x.lineTo(2, h - 2); x.closePath(); x.fill(); }
       else if (k === 'P') { x.font = 'bold 88px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('P', w / 2, h / 2 + 4); }
       else if (k === 'bus') { x.lineWidth = 8; x.strokeRect(6, 6, w - 12, h - 12); x.lineWidth = 6; x.beginPath(); for (let i = 0; i <= 12; i++) { const px = 10 + i * (w - 20) / 12; x.lineTo(px, i % 2 ? h - 12 : 12); } x.stroke();
@@ -646,17 +647,19 @@ var Segnaletica = (function () {
   let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
-    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; ATL.tex = t;   // come le altre tele del gioco (render.js canvasTex): senza codifica
+    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
     const segni = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .62, metalness: .05 });
     const luce = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .5, metalness: 0, emissive: new THREE.Color('#ffffff'), emissiveMap: t, emissiveIntensity: 0 });
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
     const strisce = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, transparent: true, depthWrite: false, roughness: .85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -6 });
     [segni, luce, pali, strisce].forEach(m => { m.userData.segnaletica = true; });
+    if (PV()) PV().vernice(strisce);   // [strade] la vernice legge la grana e le crepe dell'asfalto (pavimenti.js)
     return (MAT = { segni, luce, pali, strisce });
   }
   // i mucchi: materiale × riquadro, geometria non indicizzata (posizione, normale, uv, colore a 4)
   const MU = new Map();
   function mucchio(m, x, z) { const k = m + '|' + Math.floor(x / SETT) + ',' + Math.floor(z / SETT); let b = MU.get(k); if (!b) MU.set(k, b = { m, p: [], n: [], u: [], c: [] }); return b; }
+  function tri3(b, A, Bv, C, N, uA, uB, uC, cc) { b.p.push(A[0], A[1], A[2], Bv[0], Bv[1], Bv[2], C[0], C[1], C[2]); for (let i = 0; i < 3; i++) b.n.push(N[0], N[1], N[2]); b.u.push(uA[0], uA[1], uB[0], uB[1], uC[0], uC[1]); cc.forEach(c => b.c.push(c[0], c[1], c[2], c[3])); }   // [strade] un colore per vertice
   function tri(b, A, Bv, C, N, uA, uB, uC, col) { b.p.push(A[0], A[1], A[2], Bv[0], Bv[1], Bv[2], C[0], C[1], C[2]); for (let i = 0; i < 3; i++) b.n.push(N[0], N[1], N[2]); b.u.push(uA[0], uA[1], uB[0], uB[1], uC[0], uC[1]); for (let i = 0; i < 3; i++) b.c.push(col[0], col[1], col[2], col[3]); }
   // una piastra verticale che guarda la normale (fx, fz) del piano: R = alto × normale; uv = [u0, v0, u1, v1]
   function piastra(m, cx, cy, cz, fx, fz, w, h, uv, specchio, col) {
@@ -680,12 +683,17 @@ var Segnaletica = (function () {
     scatola(x, y0 + .04, z, 1, 0, r * 3.4, .08, r * 3.4, '#6a6c6a'); }
   // una decalcomania a terra, divisa in pezzi che seguono il suolo
   function decal(s) {
-    const uv = tessStriscia(s.k), ca = Math.cos(s.ang), sa = Math.sin(s.ang), vx = -sa, vy = ca, nu = Math.max(1, Math.ceil(s.L / 1.4)), nv = Math.max(1, Math.ceil(s.w / 1.4)), b = mucchio('strisce', s.x, s.y);
-    const col = s.giallo ? [.95, .74, .2, s.a] : [.97, .96, .92, Math.min(1, s.a * 1.12)], H = (u, v) => { const x = s.x + ca * u + vx * v, z = s.y + sa * u + vy * v; return [x, groundH(x, z) + .028, z]; };
+    // [strade] con l'asfalto nuovo: la decalcomania poggia sui triangoli veri del suolo (Pavimenti.quota), divisa più fitta (30 cm) dove le
+    // ruote la consumano (zebre, STOP, frecce, linee d'arresto: la vernice cala sulle traiettorie), 1 cm sopra con il polygon offset
+    const pv = PV(), fit = pv && /zebra|stop|freccia|bus|triangolo/.test(s.k), passo = fit ? .3 : 1.4;
+    const uv = tessStriscia(s.k), ca = Math.cos(s.ang), sa = Math.sin(s.ang), vx = -sa, vy = ca, nu = Math.max(1, Math.ceil(s.L / passo)), nv = Math.max(1, Math.ceil(s.w / passo)), b = mucchio('strisce', s.x, s.y);
+    const col = s.giallo ? [.95, .74, .2, s.a] : [.97, .96, .92, Math.min(1, s.a * 1.12)], H = (u, v) => { const x = s.x + ca * u + vx * v, z = s.y + sa * u + vy * v, q = pv ? pv.quota(x, z) : null; return [x, (q !== null ? q + .012 : groundH(x, z) + .028), z]; };
+    const C = (A) => fit ? [col[0], col[1], col[2], col[3] * (1 - .62 * pv.ruote(A[0], A[2]))] : col;
     for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) { const ua = -s.L / 2 + s.L * i / nu, ub = -s.L / 2 + s.L * (i + 1) / nu, va = -s.w / 2 + s.w * j / nv, vb = -s.w / 2 + s.w * (j + 1) / nv;
       const U = q => uv[0] + (uv[2] - uv[0]) * ((q + s.L / 2) / s.L), V = q => uv[3] - (uv[3] - uv[1]) * ((q + s.w / 2) / s.w);   // l'alto della tessera (v1) sta a v = -w/2: come la tela ruotata di ang
-      const A = H(ua, va), Bv = H(ub, va), C = H(ub, vb), D = H(ua, vb), N = [0, 1, 0];
-      tri(b, A, C, Bv, N, [U(ua), V(va)], [U(ub), V(vb)], [U(ub), V(va)], col); tri(b, A, D, C, N, [U(ua), V(va)], [U(ua), V(vb)], [U(ub), V(vb)], col); }
+      const A = H(ua, va), Bv = H(ub, va), C2 = H(ub, vb), D = H(ua, vb), N = [0, 1, 0];
+      if (fit) { tri3(b, A, C2, Bv, N, [U(ua), V(va)], [U(ub), V(vb)], [U(ub), V(va)], [C(A), C(C2), C(Bv)]); tri3(b, A, D, C2, N, [U(ua), V(va)], [U(ua), V(vb)], [U(ub), V(vb)], [C(A), C(D), C(C2)]); }
+      else { tri(b, A, C2, Bv, N, [U(ua), V(va)], [U(ub), V(vb)], [U(ub), V(va)], col); tri(b, A, D, C2, N, [U(ua), V(va)], [U(ua), V(vb)], [U(ub), V(vb)], col); } }
     CNT.strisce++;
   }
   // un cartello stradale su un supporto (palo o staffa al muro); dir: la normale della faccia (gioco x, y)
@@ -697,9 +705,14 @@ var Segnaletica = (function () {
   }
   function costruisci() {
     built = true; const P = piano(true); MAT = null;
+    if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.size) {   // [pulizia] quello che la passata del rumore ha tolto (doppioni, pali addosso a un altro): solo la grafica, il piano resta
+      const S = PuliziaRumore.SALTA, k = (c, q) => c + Math.round(q.x * 10) + ',' + Math.round(q.y * 10);
+      P.pali = P.pali.filter(p => !S.has(k('p', p))); P.insegne = P.insegne.filter(q => q.fonte !== 'segnaletica' || !S.has(k('i', q))); }
     ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S; ATL.x = ATL.c.getContext('2d'); ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
     // ---- le strisce ----
     P.strisce.forEach(decal);
+    if (PV()) P.strisce.forEach(q => { if (q.k !== 'zebra' && q.k !== 'riga') return; if (hash(q.x, q.y, 77) > .16) return;   // [strade] ripassata: la vernice vecchia sotto la nuova, spostata di qualche centimetro
+      const d = (hash(q.x, q.y, 78) - .5) * .14, nx = -Math.sin(q.ang), ny = Math.cos(q.ang); decal(Object.assign({}, q, { x: q.x + nx * d + Math.cos(q.ang) * d * .5, y: q.y + ny * d, a: q.a * .38 })); CNT.strisce--; });
     // ---- i pali coi cartelli, i pali delle indicazioni, i pannelli dei luoghi ----
     P.pali.forEach(p => {
       if (p.tipo === 'cartelli') {

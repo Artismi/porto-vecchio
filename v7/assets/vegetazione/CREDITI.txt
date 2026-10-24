@@ -1,0 +1,4 @@
+Le fonti di queste immagini sono di Poly Haven (https://polyhaven.com), licenza CC0 1.0 (pubblico dominio):
+pine_tree_01, wild_rooibos_bush, searsia_lucida, island_tree_02, shrub_02, shrub_03, grass_medium_01, grass_medium_02, fern_02 (modelli);
+grass_path_2, forrest_ground_01, forest_floor, dry_ground_rocks, old_stone_wall, bark_brown_02, knotted_pine_bark (trame).
+Composte e ridotte da strumenti/vegetazione_atlante.py.

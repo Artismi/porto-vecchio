@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><title>Studio della roba</title>
+<style>
+  body { margin: 0; background: #16161b; color: #d8d4cc; font: 12px system-ui, sans-serif; }
+  h2 { margin: 14px 12px 6px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: #e8d040; }
+  .g { display: grid; grid-template-columns: repeat(auto-fill, 112px); gap: 6px; padding: 0 12px; }
+  .c { background: #1f1f26; border: 1px solid #2c2c34; padding: 4px; text-align: center; }
+  .c canvas { width: 96px; height: 96px; display: block; margin: 0 auto; }
+  .c span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .c.fam span { color: #8a8690; }
+</style></head><body>
+<script src="src/three.min.js"></script>
+<script src="src/oggetti3d.js"></script>
+<script src="src/superfici.js"></script>
+<script src="src/modella.js"></script>
+<script src="src/oggetti_ui.js"></script>
+<script src="src/veicoli3d.js"></script>
+<script src="src/roba3d.js"></script>
+<script src="src/menu_ui.js"></script>
+<script>
+/* Studio della roba: l'anteprima 3D di ogni oggetto del catalogo, in griglia per gruppo (quella dello Zaino: MenuUI.anteprima).
+   Il catalogo si legge dal testo di src/oggetti.js (senza far partire il gioco). Le celle col nome grigio usano ancora il
+   modellino di famiglia (mini), quelle col nome chiaro il modello vero di roba3d.js.
+   ?prima=1  senza roba3d.js (com'era prima)
+   ?cat=cibo,bevande  solo quei gruppi · ?solo=fam  solo quelli col modellino di famiglia · ?ids=pane,latte&px=192  solo quelli, più grandi
+   Foto: node strumenti/studio_roba.js cartella [larghezza] [cat] */
+(async function () {
+  const src = await (await fetch('src/oggetti.js')).text(), CAT = {}, ORD = [];
+  let cur = '';
+  for (const l of src.split('\n')) {
+    const g = l.match(/grp\('([a-z]+)'/); if (g) { cur = g[1]; if (!ORD.includes(cur)) ORD.push(cur); }
+    const m = l.match(/^\s*\['([a-z0-9_]+)', '((?:[^'\\]|\\.)*)', ([\d.]+), ([\d.]+)/); if (m && cur) CAT[m[1]] = { id: m[1], nome: m[2].replace(/\\'/g, "'"), cat: cur, peso: +m[4] };
+  }
+  window.Oggetti = { CAT };
+  if (new URLSearchParams(location.search).get('prima')) window.Roba3D = undefined;
+  const q = new URLSearchParams(location.search), only = q.get('cat') ? q.get('cat').split(',') : null, solo = q.get('solo'), ids0 = q.get('ids') ? q.get('ids').split(',') : null, px = +(q.get('px') || 96);
+  if (px !== 96) { const st = document.createElement('style'); st.textContent = `.g{grid-template-columns:repeat(auto-fill,${px + 16}px)} .c canvas{width:${px}px;height:${px}px}`; document.head.appendChild(st); }
+  const def = id => typeof Roba3D !== 'undefined' && Roba3D && Roba3D.has(id);
+  let n = 0, nd = 0;
+  for (const c of ORD) {
+    if (only && !only.includes(c)) continue;
+    const ids = Object.keys(CAT).filter(k => CAT[k].cat === c && (solo !== 'fam' || !def(k)) && (!ids0 || ids0.includes(k))); if (!ids.length) continue;
+    const h = document.createElement('h2'); h.textContent = c + ' (' + ids.length + ')'; document.body.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'g'; document.body.appendChild(grid);
+    for (const id of ids) {
+      const cell = document.createElement('div'), d = def(id); cell.className = 'c' + (d ? '' : ' fam'); n++; if (d) nd++;
+      let cv = null; try { cv = MenuUI.anteprima(id); } catch (e) { console.error(id, e.message); }
+      if (cv) cell.appendChild(cv); else { const e = document.createElement('canvas'); cell.appendChild(e); }
+      const s = document.createElement('span'); s.textContent = id; s.title = CAT[id].nome; cell.appendChild(s); grid.appendChild(cell);
+      if (n % 12 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+  }
+  document.title = `Studio della roba: ${nd}/${n} definiti`;
+  window.studioReady = true;
+})();
+</script>
+</body></html>

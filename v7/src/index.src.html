@@ -170,6 +170,18 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #tbtns button.big { width: 84px; height: 84px; font-size: 14px; border-color: rgba(255,210,58,.6); }
 #tbtns button small { display: block; font-size: 8px; opacity: .7; margin-top: 2px; }
 #tbtns button.on { background: rgba(255,210,58,.3); border-color: var(--amber); }
+/* [console] dentro il Game Boy di Porto Vecchio lo schermo resta pulito (main.js, sezione [console]): i comandi stanno nella
+   pulsantiera della console; soldi, ora, minimappa, taccuino, cantiere e suggerimenti nel menu (lo zaino). Sopra il mondo restano
+   le scritte dei posti, le stelle solo quando ti cercano, un avviso alla volta in basso e, in casa, una riga sola col piano */
+#app.console #touch, #app.console #dock, #app.console #bookBtn, #app.console #sound, #app.console #debt, #app.console #mini,
+#app.console #ctx, #app.console #cnBtn, #app.console #rs-hud, #app.console #rs-here, #app.console #me-box, #app.console #weapon,
+#app.console #rs-open, #app.console #rs-sneak, body.pv-console #pvDevBtn { display: none !important; }
+#app.console #wanted:not(:has(.star.on)) { display: none !important; }
+#app.console #feed { top: auto !important; bottom: 10px; left: 50% !important; transform: translateX(-50%); width: min(92%, 440px) !important; text-align: center; }
+#app.console #feed .fi { font-size: 13px; padding: 5px 12px; border-left: 0; border-radius: 14px; background: rgba(13, 11, 26, .72); text-shadow: none; animation: fin2 .25s ease-out; }
+#app.console #feed .fi:nth-child(n+2) { display: none; }   /* un avviso alla volta: il più recente */
+@keyframes fin2 { from { transform: translateY(6px); opacity: 0; } }
+#app.console #rs-indoor { top: 8px !important; max-width: 92%; overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; padding: 3px 10px; border-radius: 12px; border: 0; opacity: .9; }
 @media (pointer: coarse) { #mini { top: 96px; bottom: auto; right: 4px; transform: scale(.72); transform-origin: top right; } #ctx { bottom: auto; top: 150px; max-width: calc(100vw - 24px); } #ctx .chip kbd { display: none; } #feed { top: 200px; } }
 @media (prefers-reduced-motion: reduce) { .fi, #wanted.chase .star.on { animation: none; } }
 
@@ -284,11 +296,13 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="misura">/*misura.js*/</script>
 <script data-m="file_shim">/*file_shim.js*/</script>
 <script data-m="three.min">/*three.min.js*/</script>
+<script data-m="leggera_memoria">/*leggera_memoria.js*/</script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
 <script data-m="mesh_bvh">/*mesh_bvh.js*/</script>
 <script data-m="gltf_loader">/*gltf_loader.js*/</script>
 <script data-m="editor">/*editor.js*/</script>
 <script data-m="officina">/*officina.js*/</script>
 <script data-m="oggetti3d">/*oggetti3d.js*/</script>
+<script data-m="roba3d">/*roba3d.js*/</script>
 <script data-m="pezzi_citta">/*pezzi_citta.js*/</script>
 <script data-m="veicoli3d">/*veicoli3d.js*/</script>
 <script data-m="animazioni">/*animazioni.js*/</script>
@@ -302,9 +316,13 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="superfici">/*superfici.js*/</script>
 <script data-m="modella">/*modella.js*/</script>
 <script data-m="arredo3d">/*arredo3d.js*/</script>
-<script data-m="world">/*world.js*/</script>
-<script data-m="world_cittanuova">if (/[?&]cittanuova/.test(location.search)) { /*world_cittanuova.js*/ }</script>
-<script data-m="percorsi">if (/[?&]cittanuova/.test(location.search)) { /*percorsi.js*/ }</script>
+<!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
+     prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
+<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
+<script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
+<script data-m="vegetazione">/*vegetazione.js*/</script>
+<script data-m="world_cittanuova">if (window.PV_NUOVA) { /*world_cittanuova.js*/ }</script>
+<script data-m="percorsi">if (window.PV_NUOVA) { /*percorsi.js*/ }</script>
 <script data-m="interiors">/*interiors.js*/</script>
 <script data-m="game">/*game.js*/</script>
 <script>Misura.hooks(Game.HOOKS);</script>
@@ -344,6 +362,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="writing">/*writing.js*/</script>
 <script>/*writer_vita.js*/
 /*eventi.js*/</script>
+<script data-m="matti">/*matti.js*/</script>
 <script data-m="chiarezza">/*chiarezza.js*/</script>
 <script data-m="vievive">/*vievive.js*/</script>
 <script data-m="palco">/*palco.js*/</script>
@@ -352,6 +371,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="scorci_arte">/*scorci_arte.js*/</script>   <!-- [scorci] il kit dei fronti e la posa -->
 <script data-m="rete">/*rete.js*/</script>
 <script data-m="visuale">/*visuale.js*/</script>   <!-- [visuale3] -->
+<script data-m="riva">/*riva.js*/</script>   <!-- [riva] la riva fine: forma, suolo, scogli -->
 <script data-m="peso_vetro">/*peso_vetro.js*/</script>   <!-- [peso] i vetri in tavolozza -->
 <script data-m="peso_gente">/*peso_gente.js*/</script>   <!-- [peso] le persone fuse -->
 <script data-m="peso_lontano">/*peso_lontano.js*/</script>   <!-- [peso] le cose piccole lontane -->
@@ -361,6 +381,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="peso_pronti">/*peso_pronti.js*/</script>   <!-- [peso] i programmi che nascono tardi, preparati nel caricamento -->
 <script data-m="inquadratura">/*inquadratura.js*/</script>   <!-- [inquadratura] la via in strada -->
 <script data-m="pavimenti">/*pavimenti.js*/</script>   <!-- [pavimenti] le superfici a terra -->
+<script data-m="pulizia_rumore">/*pulizia_rumore.js*/</script>   <!-- [pulizia] il rumore: le regole sul registro di pulizia2 -->
 <script data-m="render">/*render.js*/</script>
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>

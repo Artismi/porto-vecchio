@@ -25,11 +25,11 @@ var PesoPronti = (function () {
       mats.forEach(m => { const ms = new T.Mesh(g, m); ms.frustumCulled = false; ms.castShadow = ms.receiveShadow = false; S.add(ms); extra.push(ms); });
     } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
     const n0 = rd.info.programs ? rd.info.programs.length : 0;
-    try { rd.compile(S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    try { (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
     // le due varianti del pavimento: l'altra, poi di nuovo quella di adesso (dalla cache)
     const P = window.Pavimenti;
     if (P && typeof P.qualita === 'function') { const q = P.qualita(), altra = q === 'alta' ? 'leggera' : 'alta';
-      try { P.qualita(altra); rd.compile(S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
+      try { P.qualita(altra); (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
     extra.forEach(ms => S.remove(ms));
     ST.programmi = (rd.info.programs ? rd.info.programs.length : 0) - n0; ST.ms = +(performance.now() - t0).toFixed(1);
   }
