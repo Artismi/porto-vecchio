@@ -409,6 +409,8 @@ var MenuUI = (function () {
 #mu footer kbd { font: 600 10.5px var(--fl); border: 1px solid rgba(233,220,188,.3); color: var(--crema); padding: 1px 7px; border-radius: 10px; margin-right: 6px; }
 #mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
 #mu footer .tm { color: var(--ott); }
+#mu .again { grid-column: 1 / -1; } #mu .again .row { margin-top: 8px; }   /* [console] */
+#mu footer .stato { color: rgba(233,220,188,.75); } #mu footer .stato b { color: var(--crema); font-weight: 700; }   /* [console] */
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
 #mu .dim { color: rgba(233,220,188,.6); font-size: 13.5px; line-height: 1.5; }
@@ -560,17 +562,21 @@ var MenuUI = (function () {
 @media (max-width: 640px) {
   #mu .case { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-radius: 0; padding: 6px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
   #mu .case::before, #mu .case::after { display: none; }
-  #mu .rail { order: 2; flex-direction: row; overflow-x: auto; padding: 2px 4px; gap: 6px; justify-content: flex-start; scrollbar-width: none; }
+  /* [console] le schede in una fila sola che entra sempre (da 320 px in su), senza scorrere: tasti a mattonella, non tondi */
+  #mu .rail { order: 2; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 0; gap: 4px; }
   #mu .rail .sp { display: none; }
-  #mu .rail button { flex: 0 0 auto; width: 60px; height: 60px; font-size: 9px; }
-  #mu .rail button canvas { width: 24px; height: 24px; }
+  #mu .rail button { width: auto; height: 50px; border-radius: 12px; font-size: min(9.5px, 2.6vw); letter-spacing: .04em; gap: 3px; }
+  #mu .rail button canvas { width: 20px; height: 20px; }
+  #mu .rail button .lb { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mu .rail button .dot { right: 1px; top: 1px; min-width: 16px; height: 16px; font-size: 10px; line-height: 16px; }
   #mu header { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px 8px; }
   #mu header b { font-size: 28px; white-space: normal; }
   #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
   #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
   #mu header .x { width: 44px; height: 44px; font-size: 20px; }
   #mu main { padding: 6px 14px 14px; }
-  #mu footer { padding: 8px 14px; gap: 10px; font-size: 10.5px; } #mu footer > :not(.r) { display: none; }
+  #mu footer { padding: 8px 14px; gap: 4px 10px; font-size: 10.5px; flex-wrap: wrap; } #mu footer > :not(.r):not(.stato) { display: none; }
+  #mu footer .r { gap: 12px; }
   #mu .bag { --c: calc((100vw - 92px) / 8); padding: 8px; } #mu .zaino > *, #mu .lav > *, #mu .jobs > * { min-width: 0; } #mu main * { white-space: normal; }
   #mu .acts { grid-template-columns: 1fr; } #mu .act { font-size: 18px; }
   #mu .recs { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); padding: 8px; }
@@ -586,15 +592,23 @@ var MenuUI = (function () {
   #mu .addosso .nmw { font-size: 20px; }
   #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
   #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
-  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { margin-top: 4px; }   /* [console] le mani stanno nell'inventario: Equip. sul telefono non c'è */
   #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
   #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
+}
+/* [console] schermi bassi (il telefono di traverso, dentro il Game Boy): titolo piccolo, niente sottotitolo, schede e piè più bassi */
+@media (max-height: 460px) {
+  #mu header { padding: 8px 12px 4px; } #mu header b { font-size: 22px; } #mu header > span:not(.tabs) { display: none; }
+  #mu header .x { width: 36px; height: 36px; font-size: 17px; }
+  #mu .rail button { height: 42px; } #mu .rail button canvas { width: 18px; height: 18px; }
+  #mu footer { padding: 4px 12px 6px; flex-wrap: nowrap; }
 }
 `;
 
   // =====================================================================================================================
   // SCHEDE
   // =====================================================================================================================
+  const SHORT = { zaino: 'Zaino', lavora: 'Crea' };   // [console] i nomi delle schede sul telefono
   const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
@@ -658,18 +672,28 @@ var MenuUI = (function () {
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
     const hasB = typeof Cantiere !== 'undefined' && Cantiere.bauleHere && !!Cantiere.bauleHere(st);
-    const rail = TABS.concat(hasB ? [['baule', 'Baule', 'casse']] : []).map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    // [console] sul telefono le schede stanno tutte in una fila, senza scorrere: Equip. sta dentro l'Inventario (che mostra già
+    // addosso e mani), i nomi si accorciano; nel Game Boy c'è anche il taccuino (i soldi sullo schermo non ci sono più)
+    const narrow = matchMedia('(max-width: 640px)').matches, con = !!(PV() && PV().console);
+    const tabsNow = TABS.filter(([k]) => !(narrow && k === 'equip')).concat(hasB ? [['baule', 'Baule', 'casse']] : []).concat(con ? [['taccuino', 'Taccuino', 'quaderno']] : []);
+    const rail = tabsNow.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="${k === 'taccuino' ? 'book' : 'tab'}" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}<span class="lb">${narrow && SHORT[k] || l}</span>${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
     m.innerHTML = html; paintAll(m); const mm = m.querySelector('main'); if (mm) mm.scrollTop = sc;
+  }
+
+  // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
+  function stato(st) {
+    const g = G(), hl = g.hoursLeft(st), urg = st.deadline < 1e8 && hl <= 6;
+    return `<span class="stato">${esc(g.dayName(st.t))} <b>${esc(g.clockStr(st.t))}</b>${st.deadline > 1e8 ? '' : ` · <span class="${urg ? 'over' : ''}">${hl <= 1 ? 'meno di un\'ora' : hl + 'h all\'alba'}</span>`} · debito <b>${L(st.debt)}</b></span>`;
   }
 
   // ---------------- ZAINO ----------------
@@ -752,8 +776,10 @@ var MenuUI = (function () {
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Come stai</h4>${bar('Salute', p.hp, p.maxHp || 100, 'g')}${Object.keys(NEED).map(k => bar(NEED[k], (N[k] || 0) * 100, 100, '', true)).join('')}<div class="dim">Sigarette ${M.cig || 0} · dispensa ${M.pantry || 0}</div></div>
         <div class="mcard"><h4>Il tuo conto</h4><div class="stat" style="grid-template-columns:1fr auto;row-gap:6px">${[['Ore lavorate', Math.round((S.lavorato || 0) / 60)], ['Guadagnato', L(S.guadagnato || 0)], ['Speso', L(S.speso || 0)], ['Bevuto', S.bevuto || 0], ['Fumato', S.fumato || 0], ['Dormito (ore)', Math.round((S.dormito || 0) / 60)]].map(([a, b]) => `<span>${a}</span><em>${b}</em>`).join('')}</div></div></div>
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Mestieri${job ? ` — da ${esc(job.title)}` : ''}</h4>${ab.length ? ab.map(([id, a]) => `<div class="ab">${ic(abIcon(id))}<div><b>${esc(a.label)}</b><small>${a.night ? 'di notte · ' : ''}${a.mins ? (a.mins >= 60 ? Math.round(a.mins / 6) / 10 + ' ore' : a.mins + ' min') : ''} · rischio ${a.risk > .15 ? 'alto' : a.risk > .08 ? 'medio' : 'basso'}</small></div></div>`).join('') : '<div class="dim">Ogni mestiere apre cose che gli altri non possono fare: le chiavi del posto, la gente che conosci. Trova un lavoro (scheda Lavori).</div>'}</div>
-        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>`;
+        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>${again()}`;
   }
+  // [console] ricominciare da capo: sta qui, non su un tasto. Il primo tocco chiede conferma, il secondo ricomincia
+  const again = () => `<div class="mcard again"><h4>Partita</h4>${U.again && Date.now() - U.again < 5000 ? `<div class="dim">Ricominci da capo: soldi, roba e conoscenze si perdono.</div><div class="row">${btn('ricomincia', 'Sì, ricomincia', true, 'bad')}${btn('ricomincia', 'No', false)}</div>` : btn('ricomincia', 'Ricomincia da capo', 'chiedi')}</div>`;
   const abIcon = id => /stampa|tessere|timbri|fascicoli|volantin/.test(id) ? 'carta' : /cassa|soldi/.test(id) ? 'valuta' : /ascolta|radio/.test(id) ? 'radiolina' : /chiav|porta/.test(id) ? 'grimaldello' : /vino|beve/.test(id) ? 'vino' : /medic|cura/.test(id) ? 'medicine' : 'cacciavite';
 
   // ---------------- BANCO DI LAVORO ----------------
@@ -881,6 +907,10 @@ var MenuUI = (function () {
   function quiList(st) {
     const out = [], seen = new Set();
     try { (Risacca.here(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, bad: a.bad, run: () => { if (typeof RisaccaUI !== 'undefined' && RisaccaUI.doHere) { close(); RisaccaUI.doHere(a); return ''; } const r = Risacca.playerAct(st, a.id, a.arg); return r && r.msg; } }); }); } catch (e) { }
+    try {
+      const p = st.player, lv = p.indoor ? `in:${p.indoor.b}:${p.indoor.f}` : p.lv && p.lv.k === 'ug' ? 'ug' : null;
+      if (PV() && PV().console && typeof Cantiere !== 'undefined' && Cantiere.covoOf && Cantiere.toggle && !p.vehicle && Cantiere.covoOf(st, p.x, p.y, lv)) out.push({ label: 'Cantiere del covo', run: () => { close(); Cantiere.toggle(); return ''; } });
+    } catch (e) { }   // [console]
     try { (Azioni.playerActions(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, off: a.run ? '' : a.off, run: a.run, bad: /ruba|rapina|scasso|forza|borsegg|alleggerisci|sabota/i.test(a.label) }); }); } catch (e) { }
     return out;
   }
@@ -918,6 +948,8 @@ var MenuUI = (function () {
     switch (a) {
       case 'close': close(); return;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
+      case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
+      case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
       case 'shoptab': U.shopTab = x; U.sel = null; break;
