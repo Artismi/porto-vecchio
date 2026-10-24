@@ -37276,6 +37276,43 @@ var Guardaroba = (function () {
     ['scarpe_chunky', 'scarpe da ginnastica grosse', 'Chunky', 'piedi', [F], .02, '#e8e4dc', 28, .8, .03],
     ['guanti_monchi', 'guanti senza dita', 'Senza dita', 'mani', [M], .006, '#1a1a1e', 3, .1, .05],
     ['zaino_tattico', 'zaino tattico', 'Tattico', 'schiena', [], 0, '#2a2e26', 14, 1.2, 0, { acc: 'zaino' }],
+    // [personaggi] hip hop e street: le stampe, le maglie da gioco, le giacche da crew, i pantaloni larghi, durag e visiera
+    ['maglietta_box', 'maglietta col box logo', 'Box logo', 'busto', [T, B], .01, '#f0ece2', 9, .25, .05],
+    ['maglietta_college', 'maglietta college col numero', 'College', 'busto', [T, B], .01, '#1e2a4a', 9, .25, .05],
+    ['maglietta_fiamme', 'maglietta con le fiamme', 'Fiamme', 'busto', [T, B], .01, '#141418', 9, .25, .05],
+    ['maglietta_tiedye', 'maglietta tie-dye', 'Tie-dye', 'busto', [T, B], .01, '#8a4ab8', 8, .25, .05],
+    ['maglietta_graffiti', 'maglietta coi graffiti', 'Graffiti', 'busto', [T, B], .01, '#f0ece2', 9, .25, .05],
+    ['maglietta_ringer', 'maglietta ringer col collo colorato', 'Ringer', 'busto', [T, B], .008, '#f0ece2', 7, .2, .05],
+    ['maglietta_resisti', 'maglietta con la scritta dietro', 'Resisti', 'busto', [T, B], .01, '#141418', 6, .25, .05],
+    ['maglietta_tramonto', 'maglietta col tramonto e le palme', 'Riviera', 'busto', [T, B], .01, '#e8601a', 8, .25, .05],
+    ['maglia_lunga', 'maglia a maniche lunghe da sotto', 'Manica lunga', 'busto', [T, B, A], .004, '#f0ece2', 5, .1, .1],
+    ['maglia_basket', 'maglia da basket larga col numero', 'Maglia basket', 'busto', [T], .02, '#c83a2a', 12, .2, 0],
+    ['felpa_college', 'felpa col cappuccio e la scritta ad arco', 'Felpa college', 'busto', [T, B, A], .024, '#5a5e66', 18, .7, .25],
+    ['felpa_blocchi', 'felpa a blocchi di colore', 'Felpa blocchi', 'busto', [T, B, A], .024, '#2a5aa8', 18, .7, .25],
+    ['felpa_cappuccio_zip', 'felpa col cappuccio e la zip', 'Felpa zip', 'busto', [T, B, A], .022, '#141418', 16, .7, .25],
+    ['felpa_tiedye', 'felpa tie-dye', 'Felpa tie-dye', 'busto', [T, B, A], .024, '#30a8b8', 18, .7, .25],
+    ['varsity', 'giubbotto varsity con la lettera', 'Varsity', 'busto', [T, B, A], .026, '#7a1e2a', 38, 1.1, .4],
+    ['coach_jacket', 'coach jacket di nylon', 'Coach', 'busto', [T, B, A], .016, '#141418', 22, .5, .2],
+    ['giacca_raso', 'giacca di raso ricamata', 'Raso', 'busto', [T, B, A], .026, '#1e2a4a', 34, .8, .35],
+    ['anorak', 'giacca a vento da infilare', 'Anorak', 'busto', [T, B, A], .026, '#e8a020', 24, .7, .35],
+    ['pile', 'pile a due colori', 'Pile', 'busto', [T, B, A], .03, '#3a8a4a', 20, .6, .45],
+    ['track_retro', 'giacca della tuta anni 80', 'Tuta retrò', 'busto', [T, B, A], .016, '#2a5aa8', 18, .5, .15],
+    ['camicia_bowling', 'camicia da bowling a due colori', 'Bowling', 'busto', [T, B], .01, '#141418', 14, .25, .05],
+    ['pantaloni_paracadute', 'pantaloni paracadute di nylon', 'Paracadute', 'gambe', [H, C, P], .03, '#2a2a2e', 20, .6, .15],
+    ['joggers', 'pantaloni della tuta stretti in fondo', 'Joggers', 'gambe', [H, C, P], .013, '#5a5e66', 12, .5, .12],
+    ['pantaloncini_basket', 'pantaloncini da basket lunghi', 'Short basket', 'gambe', [H, C], .03, '#c83a2a', 10, .3, 0],
+    ['jeans_carpenter', 'jeans carpenter larghi', 'Carpenter', 'gambe', [H, C, P], .02, '#c8b898', 18, .9, .12],
+    ['durag', 'durag di raso', 'Durag', 'testa', [], 0, '#141418', 5, .05, .05, { acc: 'durag' }],
+    // [personaggi] la montagna in città: guscio, piumino a sacchi, gilet di piuma, pile, pantaloni da arrampicata, imbrago, corda, scarpe da trail
+    ['giacca_guscio', 'giacca a guscio impermeabile', 'Guscio', 'busto', [T, B, A], .02, '#e8601a', 42, .7, .4, { arm: .02 }],
+    ['piumino_sacchi', 'piumino a sacchi con le spalle scure', 'Piumino sacchi', 'busto', [T, B, A], .05, '#e8a020', 48, 1, .85],
+    ['gilet_piuma', 'gilet di piuma', 'Gilet piuma', 'busto', [T], .035, '#2a5aa8', 26, .5, .4],
+    ['pile_montagna', 'pile da montagna coi rinforzi', 'Pile monte', 'busto', [T, B, A], .03, '#3a8a4a', 24, .6, .5],
+    ['pantaloni_arrampicata', 'pantaloni da arrampicata', 'Arrampicata', 'gambe', [H, C, P], .012, '#8a7a5a', 22, .5, .15],
+    ['imbrago', 'imbrago da arrampicata coi moschettoni', 'Imbrago', 'gambe', [H, C], .008, '#e8601a', 30, .6, 0],
+    ['corda', 'corda da arrampicata arrotolata', 'Corda', 'schiena', [], 0, '#2a8ad0', 26, 2.4, 0],
+    ['scarpe_trail', 'scarpe da trail', 'Trail', 'piedi', [F], .02, '#5a5e66', 30, .7, .05],
+    ['visiera', 'visiera da tennis', 'Visiera', 'testa', [], 0, '#f0ece2', 5, .05, 0, { acc: 'visiera' }],
   ];
   const CAPO = {};
   CAPI.forEach(([id, nome, corto, zona, parti, sp, col, prezzo, peso, calore, ex]) => {
@@ -37302,6 +37339,11 @@ var Guardaroba = (function () {
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['jeans', 'giubbotto_jeans', 'giacca_pelle', 'piumino', 'scarpe_eleganti', 'maglietta_righe', 'casco', 'paraginocchia', 'paraspalle', 'pelliccia', 'pelliccia_volpe', 'collana_oro', 'occhiali_sole', 'camicia_hawaii', 'cargo', 'stivali_pelle', 'orologio_polso', 'anelli', 'collana_perle'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['giacca_militare', 'parka', 'giacca_toppe', 'gilet_toppe', 'chiodo_spille', 'cardigan', 'maglione_fairisle', 'giacca_lavoro', 'salopette', 'camicia_70', 'jeans_risvolto', 'pantaloni_mimetici', 'kefiah', 'anfibi', 'guanti_monchi', 'zaino_tattico'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));   // [personaggi] il second hand
   sell('use:emporio', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'jeans_risvolto']);
+  const MONTE = ['giacca_guscio', 'piumino_sacchi', 'gilet_piuma', 'pile_montagna', 'pantaloni_arrampicata', 'imbrago', 'corda', 'scarpe_trail'];
+  sell('use:emporio', MONTE); sell('use:abbigliamento', MONTE);
+  const STREET = ['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
+  sell('use:emporio', STREET); sell('use:abbigliamento', STREET);
+  O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['maglietta_resisti', 'varsity', 'coach_jacket', 'giacca_raso', 'track_retro', 'camicia_bowling', 'maglia_basket', 'jeans_carpenter', 'pile', 'maglietta_tramonto'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   sell('use:abbigliamento', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'cardigan', 'camicia_70', 'jeans_risvolto', 'maglione_fairisle']);
   if (O.LOOT) { const add = (k, l) => { O.LOOT[k] = (O.LOOT[k] || []).concat(l); };
     add('bookcaseClosedWide', [['canotta', .3, 1, 2], ['mutande', .3, 1, 2], ['calzini', .3, 1, 3], ['camicia', .2, 1, 1], ['pantaloni', .15, 1, 1], ['dolcevita', .08, 1, 1], ['gonna', .1, 1, 1], ['camicia_quadri', .1, 1, 1]]);
@@ -37411,9 +37453,17 @@ var Guardaroba = (function () {
     else if (/bosc|taglialegna|pastor|bracc|contad|vign|ortol/.test(job)) { put('camicia_quadri', pk(['#8a2a24', '#5a3a2a', '#3a5a3a'], 8)); put('gilet', pk(PAL, 11)); put('montone', top || '#7a5a3a'); put('stivali'); put(r(9, 2) ? 'colbacco' : 'coppola'); }
     else if (/forn|panett|macell|cuoc|bar|camerier|oste|bottega|commess|aliment|droghier/.test(job)) { put('camicia'); put('maglione', top || pk(PAL, 8)); put('grembiule'); put(fem ? 'scarpe_tela' : 'scarpe'); if (fem) put('fazzoletto', pk(['#8a3a5a', '#3a5a8a', '#c8b88a'], 9)); }
     else if (/impieg|banc|notai|avvoc|medic|maestr|profess|prete|sacrest|biblio|ragion/.test(job) || rich) { put('camicia'); put(r(8, 2) ? 'gilet' : 'dolcevita', pk(PAL, 8)); put('giacca', pk(PAL, 11)); put('cappotto', top || '#3a3e4a'); put('scarpe_eleganti'); if (r(9, 2)) put('cappello'); put('sciarpa', pk(['#a83a3a', '#2a2a2e', '#c8b88a', '#3a5a8a'], 12)); if (fem) put('guanti'); }
-    else if (age < 26 && r(13, 3) < 2) {   // i ragazzi: skater o maranza
+    else if (age < 28 && r(13, 4) < 3) {   // i ragazzi: skater, maranza o hip hop
       const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); return v; };
-      if (r(13, 3) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
+      if (r(13, 4) === 2) {   // [personaggi] hip hop: maglietta stampata larga (o la maglia da basket sopra la manica lunga), giacca da crew o felpa, jeans larghi o paracadute o joggers, sneakers grosse, durag, visiera o pescatora, la catena
+        legs(pk(['jeans_larghi', 'pantaloni_paracadute', 'joggers', 'jeans_carpenter', 'cargo', 'pantaloncini_basket'], 49), pk(['#3e5a86', '#1a1a1e', '#2a2a2e', '#c8b898', '#5a5e66', '#4a5038', '#6a8ab8'], 50));
+        if (r(51, 4) === 0) { put('maglia_lunga', pk(['#f0ece2', '#141418'], 52)); put('maglia_basket', pk(['#c83a2a', '#2a5aa8', '#e8a020', '#141418', '#3a8a4a', '#7a1e2a'], 53)); }
+        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
+        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
+        put(pk(['scarpe_chunky', 'scarpe_air', 'scarpe_skate'], 57), pk(['#f4f2ee', '#141418', '#e8a020', '#c83a2a'], 58));
+        if (r(59, 3)) put(pk(['durag', 'visiera', 'cappello_pescatora', 'cappellino_dritto', 'berretto_corto', 'bandana'], 60), pk(['#141418', '#f0ece2', '#c83a2a', '#1e2a4a', '#e8a020', '#3a8a4a'], 61));
+        if (r(62, 2)) put(pk(['collana_oro', 'collana_oro', 'catenina'], 63)); if (r(64, 3) === 0) put(pk(['occhiali_mascherina', 'occhiali_ovali', 'occhiali_sole'], 65)); if (r(66, 3) === 0) put(pk(['borsello', 'marsupio_tracolla', 'zaino'], 67));
+      } else if (r(13, 4) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
         legs(r(14, 3) ? 'jeans_larghi' : 'cargo', r(14, 3) ? pk(['#6a8ab8', '#2a3a5a', '#1a1a1e'], 15) : pk(['#4a5038', '#8a7a5a', '#2a2a2e'], 15));
         put('maglietta_oversize', pk(['#ece8e0', '#1a1a1e', '#c8b88a', '#5a7a9a', '#8a2a2a'], 8)); if (r(9, 2)) put('felpa_skate', pk(['#3a5a3a', '#5a5e66', '#8a3a2a', '#2a3a5a', '#c8a03a'], 9));
         put('scarpe_skate', pk(['#1a1a1e', '#8a2a2a', '#2a3a5a', '#ece6da'], 10)); if (r(11, 2)) put(r(12, 2) ? 'berretto_corto' : 'cappellino_dritto', pk(['#c83a2a', '#e8a020', '#1a1a1e', '#2a5a3a'], 12));
@@ -37423,6 +37473,15 @@ var Guardaroba = (function () {
         put(r(9, 4) === 0 ? 'giacca_tuta' : r(9, 4) === 1 ? 'smanicato' : r(9, 4) === 2 ? (r(34, 2) ? 'tuta_nylon' : 'puffer_corto') : 'piumino_oca', pk(['#141418', '#1e2a4a', '#3a3e44', '#e8e4dc', '#8a1e2a'], 9));
         put('scarpe_air'); put('cappellino_dritto', pk(['#141418', '#1e2a4a', '#e8e4dc'], 12)); if (r(16, 2)) put('occhiali_mascherina'); put(r(10, 2) ? 'borsello' : 'marsupio_tracolla', pk(['#141418', '#2a2a30', '#5a4a3a'], 11)); if (r(11, 2)) put(r(12, 3) ? 'catenina' : 'collana_oro');
       } }
+    else if (age < 40 && r(70, 5) === 0) {   // [personaggi] la montagna in città: guscio o piumino a sacchi o pile, pantaloni da arrampicata o cargo, scarpe da trail, berretto o pescatora; qualcuno con l'imbrago e la corda
+      const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
+      legs(r(71, 3) ? 'pantaloni_arrampicata' : 'cargo', pk(['#8a7a5a', '#2a2a2e', '#4a5038', '#5a5e66', '#3a4a6a'], 72));
+      put(r(73, 2) ? 'maglietta' : 'maglia_lunga', pk(['#f0ece2', '#141418', '#5a5e66', '#e8a020'], 74));
+      put(pk(['pile_montagna', 'gilet_piuma', 'felpa'], 75), pk(['#3a8a4a', '#2a5aa8', '#e8d040', '#5a5e66', '#8a2a2a'], 76));
+      put(pk(['giacca_guscio', 'piumino_sacchi', 'giacca_guscio', 'anorak'], 77), pk(['#e8601a', '#e8a020', '#2a5aa8', '#3a8a4a', '#c83a2a', '#141418', '#e8d040', '#8a4ab8'], 78));
+      put('scarpe_trail', pk(['#5a5e66', '#e8601a', '#141418', '#2a5aa8'], 79)); if (r(80, 2)) put(pk(['berretto', 'berretto_corto', 'cappello_pescatora', 'cappellino'], 81), pk(['#e8601a', '#141418', '#e8d040', '#3a8a4a', '#c83a2a'], 82));
+      if (r(83, 4) === 0) { put('imbrago', pk(['#e8601a', '#2a8ad0', '#c83a2a'], 84)); put('corda', pk(['#2a8ad0', '#e8601a', '#8a4ab8', '#3ab86a'], 85)); } else if (r(86, 3) === 0) put(r(87, 2) ? 'marsupio_tracolla' : 'zaino', pk(['#141418', '#e8601a', '#3a4a6a'], 88));
+      if (r(89, 3) === 0) put('occhiali_mascherina'); }
     else if (age < 30 && r(21, 3) === 0) {   // [personaggi] vintage e second hand: camicia anni 70 o jacquard, cardigan o giacca di tela o giubbotto con le toppe, risvolti, anfibi o tela
       const legs = (id, col) => { const i = o.findIndex(x => x.zona === 'gambe' && !/mutande|calze|calzamaglia/.test(x.id)); const v = Object.assign({}, CAPO[id], col ? { col } : {}); if (i >= 0) o[i] = v; else o.push(v); };
       legs(r(22, 3) === 0 ? 'salopette' : r(22, 3) === 1 ? 'jeans_risvolto' : 'velluto', pk(['#2a3e6a', '#6a4a2a', '#4a5a3a', '#3a3a40'], 23));
@@ -82467,8 +82526,29 @@ var Personaggi = (function () {
   // costruisce una catena a strati: geom(t) → { c, t, f, a, b, fz, w, ao } (la sezione del corpo nudo); pelle = colore della pelle
   function catenaStrati(B, lista, t0, t1, campioni, geom, pelle, o) {
     o = o || {}; const T = tratti(lista, t0, t1, campioni); let prev = null;
-    const ring = (t, tr, v) => { const G = geom(t), L = tr.top, sp = tr.sp, mod = L && L.mod ? (th => L.mod(th, t)) : null;
-      return Object.assign({}, G, { a: G.a + sp, b: G.b + sp, col: L ? (tr.orlo && L.colOrlo ? L.colOrlo : L.col) : pelle, col2: L && L.col2, col3: L && L.col3, tile: L ? (L.tile || 0) : 0, ptile: L ? (L.ptile || 0) : 0, v: L ? cl((t - L.da) / ((L.a - L.da) || 1), 0, 1) : 0, mv: t * (o.lung || 1), mod, colFn: L && L.colFn ? ((th) => L.colFn(th, t)) : null }); };
+    const ring = (t, tr, v) => { const G = geom(t), L = tr.top, sp = tr.sp, F = L && L.forma, zona = o.zona;
+      let da = 0, db = 0, pp = G.p, fold = null;
+      if (F) {   // [personaggi] la sagoma del capo: sacchi gonfi, spalle scese, sbuffo sopra la costina, maniche che si allargano, pieghe che cadono, il mucchio in fondo ai pantaloni
+        const u = cl((t - L.da) / ((L.a - L.da) || 1), 0, 1), uo = (L.orlo || 0) / ((L.a - L.da) || 1), inOrlo = tr.orlo;
+        const gz = F.gonfio && (zona === 'gamba' ? null : F.gonfio); if (gz && !inOrlo) { const g = gz[1] * Math.pow(Math.sin(Math.PI * gz[0] * u), 2) * (zona === 'braccio' ? .75 : 1); da += g; db += g; }
+        if (zona === 'busto') {
+          if (F.drop) { const k = sm((u - .7) / .16) * (1 - sm((u - .95) / .05)); da += F.drop * k; db += F.drop * .3 * k; }
+          if (F.blusa && !inOrlo) { const k = Math.exp(-(((u - uo - .05) / .06) ** 2)); da += F.blusa * k; db += F.blusa * k * 1.1; }
+          if (F.dritto && u < .7) { const k = F.dritto * (1 - u / .7); da += .012 * k; db += .016 * k; }   // il capo cade dritto dal petto, non segue la vita
+          if (F.box) pp = F.box;
+          if (F.pieghe) { const [n, A] = F.pieghe, w = (1 - sm((u - .05) / .45)) * A; if (w > 1e-4) fold = th => w * Math.max(0, Math.sin(n * th + 1.3)) ** 2; }
+        } else if (zona === 'braccio') {
+          if (F.manica && !inOrlo) { const uE = Math.max(.05, 1 - uo), k = sm(u / uE) * (u <= uE ? 1 : 0); da += F.manica * k; db += F.manica * k; }
+          if (F.grinze && !inOrlo) { const w = F.grinze * Math.exp(-(((u - .55) / .2) ** 2)); if (w > 1e-4) fold = th => w * Math.sin(3 * th + u * 40) ** 2; }
+          if (F.box) pp = F.box;
+        } else if (zona === 'gamba') {
+          if (F.pila && !inOrlo) { const k = sm((u - .72) / .2); da += F.pila * k * (.6 + .4 * Math.sin(u * 60) ** 2); db += F.pila * k * (.6 + .4 * Math.cos(u * 55) ** 2); }
+          if (F.ginocchio) { const k = Math.exp(-(((u - .5) / .12) ** 2)); da += F.ginocchio * k; db += F.ginocchio * k * 1.3; }
+          if (F.pieghe) { const [n, A] = F.pieghe, w = A * sm((u - .6) / .3); if (w > 1e-4) fold = th => w * Math.max(0, Math.sin(n * th + .7)) ** 2; }
+        }
+      }
+      const m0 = L && L.mod ? (th => L.mod(th, t)) : null, mod = fold && m0 ? (th => m0(th) + fold(th)) : fold || m0;
+      return Object.assign({}, G, { spT: sp, a: G.a + sp + da, b: G.b + sp + db, p: pp, col: L ? (tr.orlo && L.colOrlo ? L.colOrlo : L.col) : pelle, col2: L && L.col2, col3: L && L.col3, tile: L ? (L.tile || 0) : 0, ptile: L ? (L.ptile || 0) : 0, v: L ? cl((t - L.da) / ((L.a - L.da) || 1), 0, 1) : 0, mv: t * (o.lung || 1), mod, colFn: L && L.colFn ? ((th) => L.colFn(th, t)) : null }); };
     T.forEach(tr => {
       const rs = tr.ts.map(t => ring(t, tr));
       if (prev) {   // il gradino: dall'orlo del tratto prima al tratto nuovo, del colore del capo più esterno dei due
@@ -82484,8 +82564,9 @@ var Personaggi = (function () {
   // =====================================================================================
   // tessere dell'atlante (disegni): 0 liscio
   const TL = { liscio: 0, camicia: 1, giacca: 2, divisa: 3, cerata: 4, grembiule: 5, maglione: 6, canotta: 7, abito: 8, tuta: 9, cappotto: 10, gilet: 11, bande: 12, maglietta: 13, stampa: 14, felpa: 15,
-    jeans: 24, calzoni: 25, manica: 27, polsino: 28, sneaker: 32, suola: 33, scarpa: 34, cappellino: 36, bomber: 38, faccia: 40, toppe: 64, militare: 65, cardigan: 66, salopette: 67, lavoro: 68, chiodo: 69, colorblock: 70 };
-  const PT = { liscio: 0, righe: 1, quadri: 2, fiori: 3, maglia: 4, pois: 5, righine: 6, mimetico: 7, fairisle: 56, kefiah: 57, tartan: 58 };   // il motivo j sta nella tessera 16 + j
+    jeans: 24, calzoni: 25, manica: 27, polsino: 28, sneaker: 32, suola: 33, scarpa: 34, cappellino: 36, bomber: 38, faccia: 40, toppe: 64, militare: 65, cardigan: 66, salopette: 67, lavoro: 68, chiodo: 69, colorblock: 70,
+    box: 26, college: 29, fiamme: 30, smiley: 31, tramonto: 35, jersey: 39, calcio: 71, retro: 75, graffiti: 76, ringer: 77, zip: 78, felpa_blocchi: 79, felpa_college: 80, anorak: 81, varsity: 82, coach: 83, track: 84, bowling: 85, pile: 86, raso: 87, guscio: 96, nuptse: 97, manica_nuptse: 98, arrampicata: 99 };
+  const PT = { liscio: 0, righe: 1, quadri: 2, fiori: 3, maglia: 4, pois: 5, righine: 6, mimetico: 7, fairisle: 56, kefiah: 57, tartan: 58, tiedye: 72, scacchi: 73, leopardo: 74, paisley: 75, graffiti: 76, rugby: 77, memphis: 78, stelle: 79 };   // il motivo j sta nella tessera 16 + j
   // [catena, da, a, spessore, extra]
   const CAPI = {
     canottiera: { busto: [.05, .93, .004], tile: 'canotta' },
@@ -82551,14 +82632,68 @@ var Personaggi = (function () {
     tuta_nylon: { busto: [-.02, 1, .022], braccio: [0, .97, .02], tile: 'colorblock', orlo: .05, orloSp: .006, colletto: 'alto', manica: 'polsino', svasa: .01 },
     puffer_corto: { busto: [.12, 1, .05], braccio: [0, .97, .045], tile: 'bomber', orlo: .07, orloSp: .012, colletto: 'alto', manica: 'polsino' },
     camicia_70: { busto: [.02, .99, .007], braccio: [0, .95, .007], tile: 'camicia', orlo: .03, polsino: 1, colletto: 'punte', manica: 'manica' },
+    // [personaggi] hip hop e street: maglie da gioco, giacche da crew, felpe, pantaloni larghi
+    jersey: { busto: [-.05, .93, .02], tile: 'jersey', svasa: .016 },
+    sotto_lunga: { busto: [.05, .92, .003], braccio: [0, .96, .004], tile: 'maglietta', orlo: .02, ord: .5, manica: 'polsino' },
+    varsity: { busto: [-.02, 1, .026], braccio: [0, .97, .024], tile: 'varsity', orlo: .06, orloSp: .008, colletto: 'giro', manica: 'polsino', colBr: '#e8e0cc', ord: 4 },
+    coach: { busto: [-.05, 1, .016], braccio: [0, .97, .016], tile: 'coach', orlo: .03, colletto: 'camicia', manica: 'polsino', svasa: .014, ord: 4 },
+    track_retro: { busto: [-.02, 1, .016], braccio: [0, .97, .014], tile: 'track', orlo: .05, orloSp: .006, colletto: 'alto', bande: 1, ord: 4 },
+    bowling: { busto: [-.04, .99, .01], braccio: [0, .42, .014], tile: 'bowling', orlo: .03, colletto: 'camicia', svasa: .012, manica: 'manica', ord: 1.5 },
+    pile: { busto: [-.03, 1, .03], braccio: [0, .97, .028], tile: 'pile', ptile: 'maglia', orlo: .04, orloSp: .006, colletto: 'alto', manica: 'polsino', ord: 4 },
+    raso: { busto: [-.02, 1, .028], braccio: [0, .97, .026], tile: 'raso', orlo: .06, orloSp: .008, colletto: 'giro', manica: 'polsino', ord: 4 },
+    anorak: { busto: [-.07, 1, .028], braccio: [0, .97, .026], tile: 'anorak', orlo: .04, colletto: 'cappuccio', manica: 'polsino', svasa: .016, ord: 4 },
+    guscio: { busto: [-.08, 1, .02], braccio: [0, .98, .018], tile: 'guscio', orlo: .02, colletto: 'cappuccio', manica: 'manica', svasa: .018, ord: 5 },
+    guscio_gonfio: { busto: [-.03, 1, .046], braccio: [0, .97, .04], tile: 'nuptse', orlo: .05, orloSp: .008, colletto: 'alto', manica: 'manica_nuptse', ord: 5 },
+    gilet_piuma: { busto: [-.02, 1, .036], tile: 'nuptse', orlo: .04, orloSp: .006, colletto: 'alto', ord: 5 },
+    pantaloni_arrampicata: { gamba: [-.06, .95, .012], orlo: .1, orloSp: .003, orloSolo: 'giu', bacino: .012, gtile: 'arrampicata', cintura2: 1 },
+    paracadute: { gamba: [-.06, 1, .03], orlo: .07, orloSp: .01, orloSolo: 'giu', dritti: 1, bacino: .016, gtile: 'calzoni', cintura2: 1, tasconi: 1 },
+    joggers: { gamba: [-.06, .95, .013], orlo: .09, orloSp: .004, orloSolo: 'giu', bacino: .012, bande: 1 },
+    pantaloncini_basket: { gamba: [-.06, .56, .03], orlo: .05, orloSp: .006, dritti: 1, bacino: .018, bande: 1 },
     jeans_risvolto: { gamba: [-.06, .97, .016], orlo: .07, orloSp: .012, orloSolo: 'giu', dritti: 1, bacino: .012, gtile: 'jeans', cintura2: 1, colOrlo: '#8aa0c8' },
   };
   // scarpe: [altezza del gambale (0 scarpa bassa … 1 al ginocchio), punta, tacco]
-  const SCARPE = { anfibi: [.17, 1.06, 0, 0, 0, .01], chunky: [0, 1.12, 0, 0, 1, .02], tela: [0, 1.02, 0, 0, 1], mocassini: [0, 1, 0], sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0] };
+  const SCARPE = { anfibi: [.17, 1.06, 0, 0, 0, .01], chunky: [0, 1.12, 0, 0, 1, .02], tela: [0, 1.02, 0, 0, 1], mocassini: [0, 1, 0], sneakers: [0, 1.06, 0, 0, 1], basket: [.07, 1.08, 0, 0, 1], scarpe: [0, 1, 0], stivali: [.62, 1.05, 0], stivaletti: [.12, 1, 0], sandali: [0, .95, 0, 1], tacchi: [0, .85, 1], ciabatte: [0, .95, 0, 1], scarponi: [.15, 1.12, 0], trail: [0, 1.09, 0, 0, 1, .016] };
 
   // =====================================================================================
   // LA FIGURA: costruisce la geometria nello spazio del personaggio
   // =====================================================================================
+  // [personaggi] il busto scolpito: i pettorali (il seno per le donne) davanti, le scapole e il solco della schiena dietro, le clavicole, il fianco che rientra in vita
+  const g1 = (x, m, s) => Math.exp(-(((x - m) / s) ** 2));
+  function scolpisciBusto(th, t, f, sp) {
+    const fr = Math.cos(th), sd = Math.sin(th), k = 1 / (1 + Math.max(0, sp) * 18);   // sotto i capi pesanti le forme si ammorbidiscono
+    let d = 0;
+    if (fr > 0) { const lob = g1(Math.abs(sd), f ? .5 : .52, f ? .3 : .34) * fr;
+      d += (f ? .1 * g1(t, .7, .085) : .045 * g1(t, .74, .08)) * lob;                  // i pettorali, il seno
+      d -= (f ? .025 : .03) * g1(sd, 0, .14) * g1(t, .72, .1) * fr;                     // lo sterno, tra i due
+      d += .02 * g1(t, .9, .035) * g1(Math.abs(sd), .45, .25) * fr;                     // le clavicole
+      d -= .02 * g1(t, .52, .06) * fr * (1 - Math.abs(sd)); }                           // sotto il petto, lo stomaco rientra appena
+    else { const bk = -fr;
+      d += .045 * g1(t, .8, .09) * g1(Math.abs(sd), .5, .28) * bk;                        // le scapole
+      d -= .04 * g1(sd, 0, .12) * g1(t, .55, .3) * bk;                                    // il solco della schiena
+      d += (f ? .05 : .02) * g1(t, .08, .1) * g1(Math.abs(sd), .45, .35) * bk; }          // i glutei
+    d -= .03 * g1(t, .42, .1) * sd * sd;                                                // il fianco che rientra
+    d += .035 * g1(t, .86, .07) * g1(Math.abs(sd), 1, .3);                              // il gran dorsale sotto le ascelle, le spalle piene
+    return d * k;
+  }
+  // il deltoide: la spalla tonda sopra e fuori dove il braccio entra nel busto, e il bicipite davanti
+  function deltoide(th, t) { const up = Math.max(0, -Math.sin(th)), fr = Math.cos(th);
+    return .16 * g1(t, .2, .11) * up ** 1.2 + .05 * g1(t, .4, .1) * Math.max(0, fr) + .04 * g1(t, .2, .1) * Math.abs(fr); }
+  // [personaggi] le forme dei capi: gonfio [sacchi, altezza], drop (spalla scesa), blusa (sbuffo sopra la costina), dritto (cade dal petto), box (sezione squadrata),
+  // pieghe [quante, quanto] in fondo al busto o ai pantaloni, manica (si allarga verso il fondo), grinze (al gomito), pila (il mucchio sulla scarpa), ginocchio
+  const FORMA = {
+    maglietta: { manica: .012, pieghe: [6, .035], dritto: .4 }, maglietta_larga: { drop: .03, manica: .026, pieghe: [5, .06], dritto: 1, box: 2.9 }, maglietta_righe: { manica: .008, pieghe: [6, .03] },
+    camicia: { pieghe: [7, .03], grinze: .03, dritto: .3 }, camicia_corta: { manica: .02, pieghe: [6, .03], dritto: .6 }, camicia_quadri: { pieghe: [6, .04], grinze: .035, dritto: .5 }, bowling: { manica: .03, dritto: 1, box: 3.1, drop: .015 },
+    felpa: { blusa: .018, grinze: .04, pieghe: [5, .03], dritto: .5 }, felpa_larga: { blusa: .03, drop: .035, manica: .02, grinze: .05, pieghe: [4, .05], dritto: 1, box: 2.8 },
+    maglione: { blusa: .012, grinze: .03 }, maglione_fairisle: { blusa: .014, grinze: .03, dritto: .5 }, cardigan: { pieghe: [5, .04], grinze: .03 }, pile: { blusa: .014, grinze: .035, dritto: .7, box: 2.7 },
+    piumino: { gonfio: [5, .026], blusa: .01, box: 2.3 }, puffer_corto: { gonfio: [4, .03], box: 2.3, dritto: 1 }, smanicato: { gonfio: [5, .022], box: 2.4 }, guscio_gonfio: { gonfio: [5, .032], box: 2.2, dritto: 1 }, gilet_piuma: { gonfio: [6, .02], box: 2.4 },
+    bomber: { blusa: .02, grinze: .045, box: 2.9 }, giacca_pelle: { box: 3, grinze: .03 }, chiodo: { box: 3, grinze: .035 }, varsity: { blusa: .016, grinze: .04, box: 3, dritto: .6 }, raso: { blusa: .02, grinze: .05, box: 2.8 },
+    coach: { dritto: 1, box: 3.2, manica: .012, grinze: .04, pieghe: [4, .03] }, anorak: { dritto: 1, drop: .02, box: 2.8, manica: .016, grinze: .05, pieghe: [4, .05] }, tuta_nylon: { dritto: .8, box: 2.9, grinze: .05, pieghe: [4, .04] },
+    guscio: { dritto: 1, box: 2.9, manica: .014, grinze: .06, pieghe: [5, .05], drop: .012 }, track_retro: { grinze: .035, pieghe: [5, .025] }, tuta_giacca: { grinze: .035, pieghe: [5, .025] },
+    giacca: { box: 3.2, dritto: .4 }, giacca_militare: { box: 3.1, dritto: .8, grinze: .04, pieghe: [5, .03] }, parka: { box: 3, dritto: 1, grinze: .05, pieghe: [5, .05] }, giacca_lavoro: { box: 3.2, dritto: 1, grinze: .04 }, giubbotto_jeans: { box: 3.1, grinze: .035, blusa: .006 },
+    cappotto: { box: 3, dritto: .5 }, cerata: { box: 2.8, dritto: 1, grinze: .06, pieghe: [5, .05] }, montone: { box: 3, dritto: .7 }, jersey: { dritto: 1, pieghe: [4, .06] },
+    jeans: { pila: .006, pieghe: [5, .03] }, larghi: { pila: .016, pieghe: [4, .07] }, cargo: { pila: .012, ginocchio: .006, pieghe: [4, .06] }, paracadute: { pila: .022, ginocchio: .008, pieghe: [4, .09] }, pantaloni_arrampicata: { ginocchio: .01, pieghe: [5, .04] },
+    tuta_pantaloni: { pila: .01, pieghe: [5, .04] }, joggers: { pieghe: [5, .04], ginocchio: .004 }, pantaloncini_basket: { pieghe: [4, .06] }, pantaloni: { pieghe: [6, .03] }, jeans_risvolto: { pieghe: [5, .03] }, tuta: { pila: .008, grinze: .04, pieghe: [5, .035] },
+  };
   function costruisci(D, J) {
     const B = new Builder(), st = S(), f = D.sesso === 'f', K = corpoDi(D, J), pelle = C3(D.pelle || '#d8a888');
     // l'ordine degli strati: le magliette dentro i pantaloni, i pantaloni sotto le felpe e le giacche (stabile a pari rango)
@@ -82581,20 +82716,20 @@ var Personaggi = (function () {
       return w;
     };
     const tLen = yT - yC, tB = y => (y - yC) / tLen, yOf = t => yC + t * tLen;
-    const geomB = t => { const y = yOf(t), P0 = profAt(y); return { c: [0, y, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: P0[0], b: P0[1], fz: P0[2], ao: lerp(.82, 1, sm(t / .3)) }; };
+    const geomB = t => { const y = yOf(t), P0 = profAt(y); return { c: [0, y, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: P0[0], b: P0[1], fz: P0[2], ao: lerp(.82, 1, sm(t / .3)), tt: t }; };
     const listaB = [], listaA = [], listaG = [];
     vesti.forEach((v, i) => {
-      const base = { col: v.col, col2: v.col2 || sotto(i, 'busto'), col3: v.col3 || mulc(v.col, .55), tile: tileOf(v), ptile: ptOf(v), orlo: v.orlo || 0, orloSp: v.orloSp, colOrlo: v.colOrlo ? C3(v.colOrlo) : null };
+      const base = { forma: v.forma || FORMA[v.tipo], col: v.col, col2: v.col2 || sotto(i, 'busto'), col3: v.col3 || mulc(v.col, .55), tile: tileOf(v), ptile: ptOf(v), orlo: v.orlo || 0, orloSp: v.orloSp, colOrlo: v.colOrlo ? C3(v.colOrlo) : null };
       if (v.busto) listaB.push(Object.assign({}, base, { da: v.busto[0], a: v.busto[1], sp: v.busto[2], svasa: v.svasa || 0 }, v.stampa || v.tile === 'stampa' ? { col2: v.col2 ? C3v(v.col2) : [.95, .94, .9] } : {}));
       const bnd = v.bande ? { tileC: TL.bande, col2: v.col3 ? C3v(v.col3) : [.95, .94, .9] } : {};
-      if (v.braccio) listaA.push(Object.assign({}, base, bnd, { tile: bnd.tileC || (v.braccio[1] > .5 ? TL[v.manica] || TL.manica : 0), da: v.braccio[0], a: v.braccio[1], sp: v.braccio[2], orlo: v.polsino ? .1 : base.orlo ? .06 : 0, orloSp: v.polsino ? .004 : base.orloSp, orloSolo: 'giu', colOrlo: v.polsino ? base.col : null }));
+      if (v.braccio) listaA.push(Object.assign({}, base, bnd, v.colBr ? { col: C3(v.colBr) } : {}, { tile: bnd.tileC || (v.braccio[1] > .5 ? TL[v.manica] || TL.manica : 0), da: v.braccio[0], a: v.braccio[1], sp: v.braccio[2], orlo: v.polsino ? .1 : base.orlo ? .06 : 0, orloSp: v.polsino ? .004 : base.orloSp, orloSolo: 'giu', colOrlo: v.colOrloBr ? C3(v.colOrloBr) : v.polsino ? base.col : null }));
       if (v.gamba) listaG.push(Object.assign({}, base, bnd, { dritti: v.dritti || 0, tile: bnd.tileC || TL[v.gtile] || 0, col2: bnd.col2 || (v.col2 ? C3v(v.col2) : mulc(v.col, .6)), da: v.gamba[0], a: v.gamba[1], sp: v.gamba[2], orlo: base.orlo ? .04 : 0, orloSolo: 'giu', zampa: v.zampa || 0 }));
       if (v.bacino && !v.busto) listaB.push(Object.assign({}, base, { tile: 0, ptile: ptOf(v), da: -.05, a: .2, sp: v.bacino, orlo: .05, orloSp: .004, orloSolo: 'su', colOrlo: mulc(v.col, .8) }));
     });
-    const campB = []; for (let k = 0; k <= 13; k++) campB.push(-.15 + k / 13 * 1.15);
+    const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 26 : 16, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
     // il busto parte un po' sotto l'inguine (chiuso dalle cosce) e arriva al collo; il collo fino a dentro la testa
     const tlo = Math.min(-.02, ...listaB.map(L => L.da)) - .001;
-    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { lung: tLen, wfn: p => wBusto(p) });
+    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 18 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
     // il fondo del busto: si chiude tra le cosce
     { const G = geomB(0), y0 = yOf(tlo); const L = strati(listaB, tlo + .002).top; loft(B, [{ c: [0, y0, G.c[2]], t: [0, 1, 0], a: G.a * (1 + tlo * 2.2) + .01, b: G.b * (1 + tlo * 2.2) + .01, col: L ? L.col : pelle, ao: .7, w: [['Hips', 1]] }, { c: [0, y0 - .01, G.c[2]], t: [0, 1, 0], a: .01, b: .01, col: L ? L.col : pelle, ao: .6, w: [['Hips', 1]] }]); }
     // il collo e il pomo: dentro la testa
@@ -82608,10 +82743,10 @@ var Personaggi = (function () {
         const r = K.braccio * (t < .18 ? lerp(1.12, 1.08, t / .18) : u < .25 ? lerp(1.08, 1, (u) / .25) : u < .45 ? lerp(1, .84, (u - .25) / .2) : u < .55 ? lerp(.84, .9, (u - .45) / .1) : lerp(.9, .62, (u - .55) / .45));
         const y = lerp(j0[1], j2[1], u) - (t < .2 ? .015 * (1 - t / .2) : 0), z = lerp(j0[2], j2[2], u) - .005;
         const kb = x > xs[1] - .01 ? 1 / BRACCIO : 1;   // dove pesa il braccio la scala dell'osso lo ingrossa: qui si assottiglia di quanto
-        return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
+        return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, tt: t, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
       };
-      const camp = []; for (let k = 0; k <= 9; k++) camp.push(k / 9);
-      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { lung: L1 - L0, seg: 12, flipU: sd === 'R' });
+      const nA = listaA.some(L => L.forma && (L.forma.gonfio || L.forma.grinze)) ? 16 : 10, camp = []; for (let k = 0; k <= nA; k++) camp.push(k / nA);
+      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { zona: 'braccio', lung: L1 - L0, seg: 12, flipU: sd === 'R', mod: (th, r) => deltoide(th, r.tt === undefined ? .5 : r.tt) });
       mano(B, J, sd, sg, pelle, D);
     });
     // ---------------- GAMBE ----------------
@@ -82631,10 +82766,10 @@ var Personaggi = (function () {
       listaB.filter(L => L.da < -.09).forEach(L => { const yb = yOf(L.da); lst.push(Object.assign({}, L, { tile: 0, da: 0, a: cl((y0 - yb) / Lg + .04, .05, .4), sp: L.sp + .004, orlo: .03, orloSolo: 'giu', colOrlo: null })); });
       // il gambale degli stivali e le calze sono strati della gamba
       if (sc[0] > 0) lst.push({ da: 1 - sc[0] * .92, a: 1, sp: .012 + (lst.length ? lst.reduce((s, L) => s + (L.a > .9 ? L.sp : 0), 0) * 0 : 0), col: colS, tile: 0, ptile: 0, orlo: .04, orloSp: .006, orloSolo: 'su' });
-      const camp = []; for (let k = 0; k <= 11; k++) camp.push(k / 11);
+      const nG = lst.some(L => L.forma && (L.forma.pila || L.forma.pieghe)) ? 18 : 11, camp = []; for (let k = 0; k <= nG; k++) camp.push(k / nG);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { lung: Lg, seg: 12, flipU: sd === 'R' });
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
@@ -82656,6 +82791,8 @@ var Personaggi = (function () {
     if (pv && topV && topV.da <= -.04 && topV.a <= .25) { const y = yOf(.18), P0 = profAt(y), sp = strati(listaB, .18).sp, c = C3('#2a1c14');
       loft(B, [0, 1].map(q => ({ c: [0, y - .015 + q * .03, zAt(y)], t: [0, 1, 0], f: [0, 0, 1], a: P0[0] + sp + .004, b: P0[1] + sp + .004, fz: P0[2], col: c, w: [['Hips', .7], ['Abdomen', .3]] })), { seg: 16 });
       uovo(B, [0, y, zAt(y) + P0[1] + P0[2] + sp + .006], [0, 0, 1], .02, .016, .005, C3('#b8b0a0'), [['Hips', 1]], { anelli: 2, seg: 6, p: 4, f: [0, 1, 0] }); }
+    if (D.imbrago) imbrago(B, J, D, K, profAt, zAt, yOf, listaB, listaG);
+    if (D.corda) corda(B, J, profAt, zAt, yOf, listaB, D);
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
     return B;
@@ -82846,8 +82983,8 @@ var Personaggi = (function () {
     if (cached) { KT.ultimo = cached; return cached; }
     const ray = (o, d, solo) => { let best = null; for (const T3 of tris) { if (solo && !T3.pelle) continue; const [A, Bv, C] = T3; const e1 = sub(Bv, A), e2 = sub(C, A), pv = cross(d, e2), det = dot(e1, pv); if (Math.abs(det) < 1e-9) continue; const iv = 1 / det, tv = sub(o, A), u = dot(tv, pv) * iv; if (u < 0 || u > 1) continue; const qv = cross(tv, e1), w = dot(d, qv) * iv; if (w < 0 || u + w > 1) continue; const t = dot(e2, qv) * iv; if (t > 0 && (best === null || t < best)) best = t; } return best; };
     const out = []; for (let yk = -.05; yk <= .24; yk += .01) { const y = base[1] + yk * K;
-      const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tb = ray([base[0], y, base[2] - .5], [0, 0, 1]); if (tf === null || tb === null) continue;
-      const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, ts = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]); if (ts === null) continue;
+      const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tbA = ray([base[0], y, base[2] - .5], [0, 0, 1]), tbS = ray([base[0], y, base[2] - .5], [0, 0, 1], true), tb = tbS !== null && tbA !== null && tbS - tbA < .1 ? Math.max(tbA, tbS - .012) : tbA; if (tf === null || tb === null) continue; /* la nuca sulla pelle, se c.è lì */
+      const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, tsA = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]), tsS = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0], true), ts = tsS !== null && tsA !== null && tsS - tsA < .1 ? Math.max(tsA, tsS - .01) : tsA; if (ts === null) continue; /* le tempie sulla pelle */
       out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return out;
   }
   function testa(B, J, D, pelle) {
@@ -82855,7 +82992,7 @@ var Personaggi = (function () {
     const r = rng(D.seme !== undefined ? D.seme : JSON.stringify(D)), vv = (a, b) => lerp(a, b, r());
     const masc = T.mascella || vv(.9, 1.06), zig = T.zigomi || vv(.96, 1.05), fro = T.fronte || vv(.97, 1.03), mento = T.mento !== undefined ? T.mento : vv(-.006, .006);
     const kitOn = KT.ok && CFG.teste !== 'mie', capH0 = (D.capelli && D.capelli.col) ? C3(D.capelli.col) : C3('#2a1a12');
-    const taglio = D.cappello && /^(fazzoletto|passamontagna|maschera_gas|cappuccio_stelle|colbacco)/.test(D.cappello.tipo) ? -9 : D.cappello && /^(fascia|bandana)$/.test(D.cappello.tipo) ? 0 : D.cappello && D.cappello.tipo ? h[1] - .01 * K + (/paglia|cappello/.test(D.cappello.tipo) ? .16 : .135) * K : 0;
+    const taglio = D.cappello && /^(fazzoletto|passamontagna|maschera_gas|cappuccio_stelle|colbacco)/.test(D.cappello.tipo) ? -9 : D.cappello && /^(fascia|bandana|visiera)$/.test(D.cappello.tipo) ? 0 : D.cappello && D.cappello.tipo ? h[1] - .01 * K + (/paglia|cappello/.test(D.cappello.tipo) ? .16 : .135) * K : 0;
     const PK = kitOn ? testaKit(B, J, D, pelle, capH0, K, base, taglio) : null;
     const P = PK && PK.length > 4 ? PK : (TESTE[T.forma] || TESTE.ovale).map(([y, a, b, fz]) => { const kj = y < .04 ? masc : y < .12 ? zig : fro; return [y < 0 ? y - mento : y, a * kj, b * (y < .04 ? lerp(1, masc, .5) : 1), fz + (y < 0 ? mento * .6 : 0)]; });
     const at = (y, x, z) => [base[0] + x * K, base[1] + y * K, base[2] + z * K];
@@ -82893,10 +83030,13 @@ var Personaggi = (function () {
     // le orecchie
     if (!kitOn) [1, -1].forEach(s => uovo(B, at(.075, s * (wid(.075) - .004), -.012), [0, 1, 0], .012 * K, .02 * K, .03 * K, mulc(pelle, .93), wH, { anelli: 4, seg: 7 }));
     const ey = PK && PK.ey ? PK.ey : .093;
-    if (kitOn) {   // [personaggi] le teste del kit non hanno la bocca: una linea scura sotto il naso, e il labbro di sotto appena più rosso
-      const um = T.umore || 0, my = ey - .062, mz = front(my) + .003, mw = (D.sesso === 'f' ? .019 : .022) * (T.bocca || 1); B.ol = 0;
-      loft(B, [-1, -.5, 0, .5, 1].map(q => ({ c: at(my + (Math.abs(q) * um * .006) - (q * (T.storto || 0) * .004), q * mw, mz - Math.abs(q) * .006), t: [1, 0, 0], f: [0, 0, 1], a: .0048 * K, b: .004 * K, p: 3, col: [.12, .05, .045], w: wH })), { seg: 5 });
-      loft(B, [-1, 0, 1].map(q => ({ c: at(my - .008, q * mw * .7, front(my - .008) + .001 - Math.abs(q) * .004), t: [1, 0, 0], f: [0, 0, 1], a: .004 * K, b: .0025 * K, p: 3, col: mixc(pelle, [.62, .26, .22], D.sesso === 'f' ? .5 : .25), w: wH })), { seg: 5 });
+    if (kitOn) {   // [personaggi] le teste del kit non hanno la bocca: la fessura sottile, le labbra rosate sopra e sotto (piene per le donne), niente baffo scuro
+      const fem = D.sesso === 'f', um = T.umore || 0, my = ey - .066, mz = front(my) + .003, mw = (fem ? .018 : .021) * (T.bocca || 1); B.ol = 0;
+      const lab = fem ? mixc(pelle, [.72, .2, .24], .55) : mixc(pelle, [.6, .28, .24], .28), q5 = [-1, -.5, 0, .5, 1];
+      const lp = (dyq, ww, a, b, col, k0) => loft(B, q5.map(q => ({ c: at(my + dyq + (Math.abs(q) * um * .006) - (q * (T.storto || 0) * .004), q * mw * ww, front(my + dyq) + .002 - Math.abs(q) * k0), t: [1, 0, 0], f: [0, 0, 1], a: a * K * (1 - .55 * Math.abs(q) ** 2), b: b * K, p: 2.4, col, w: wH })), { seg: 6 });
+      if (fem) { lp(.0045, .92, .0034, .003, lab, .006); lp(-.0055, .78, .0052, .0035, mulc(lab, 1.06), .005); }
+      else lp(-.005, .7, .0032, .0024, lab, .004);
+      lp(0, 1, fem ? .0016 : .0019, .0032, [.2, .07, .07], .006);
       B.ol = 1; }
     // il mento e le guance degli anziani: un filo di doppio mento
     if (false) uovo(B, at(-.02, 0, front(-.02) - .03), [0, 0, 1], .06 * K, .025 * K, .03 * K, mulc(pelle, .96), wH, { anelli: 3, seg: 8 });
@@ -83146,7 +83286,10 @@ var Personaggi = (function () {
     const dy = pa0.PK && pa0.PK.ey ? pa0.PK.ey - .093 : 0, at = (y, x, z) => at0(y + dy, x, z), pa = (y, k) => pa0(y + dy, k), front = y => front0(y + dy), wid = y => wid0(y + dy);
     const H = D.cappello, c = C3(H.col || '#2a2a2e'), sc = mulc(c, .7), tipo = H.tipo, top = .2;
     const tesa = (y, r0, r1, rf, col, dz) => loft(B, [[r0 * .9, 0], [r0, .003], [r1, .0], [r1, -.006], [r0 * .95, -.006]].map(([r, dy]) => ({ c: at(y + dy, 0, (dz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: r * K, b: r * K * (rf || 1.06), col, w: wH })), { seg: 18 });
-    const cupola = (y0, rows, col, fz, tile, c2, pt, c3) => loft(B, rows.map(([y, a, b], j) => ({ c: at(y0 + y, 0, (fz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, col, v: j / (rows.length - 1), tile: tile || 0, col2: c2, ptile: pt || 0, col3: c3, mv: j * .05, w: wH })), { seg: 16 });
+    // [personaggi] la cupola si allarga dove la testa misurata (fronte, nuca, tempie) uscirebbe: niente fronte che buca il cappello
+    const PKt = pa0.PK && pa0.PK.length > 4 ? pa0.PK[pa0.PK.length - 1][0] - dy : -9;
+    const fit = (yy, a, b, cz) => { if (yy > PKt - .004) return [a, b]; const fr = front(yy), bk = pa(yy, 3) - pa(yy, 2); return [Math.max(a, Math.min(pa(yy, 1) + .006, a * 1.2)), Math.max(b, fr - cz + .007, cz - bk + .006)]; };
+    const cupola = (y0, rows, col, fz, tile, c2, pt, c3) => loft(B, rows.map(([y, a0, b0], j) => { const [a, b] = fit(y0 + y, a0, b0, (fz || 0) - .012); return { c: at(y0 + y, 0, (fz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, col, v: j / (rows.length - 1), tile: tile || 0, col2: c2, ptile: pt || 0, col3: c3, mv: j * .05, w: wH }; }), { seg: 16 });
     if (tipo === 'coppola') {   // la coppola: piatta, avanti, con la visierina
       cupola(.15, [[0, .1, .108], [.04, .108, .12], [.065, .1, .118], [.08, .07, .09], [.084, .01, .01]], c, .012);
       loft(B, [[.0, .07, .2], [.5, .08, .3], [1, .06, .25]].map(([q, a]) => ({ c: at(.16 - q * .01, 0, front(.15) + q * .05), t: [0, 0, 1], f: [0, 1, 0], a: a * K, b: .006 * K, p: 2.6, col: sc, w: wH })), { seg: 8 });
@@ -83164,8 +83307,8 @@ var Personaggi = (function () {
       loft(B, [[.0, .085], [.5, .09], [1, .07]].map(([q, a]) => ({ c: at(.145 - q * .02, 0, front(.15) - .005 + q * .055), t: [0, 0, 1], f: [0, 1, .4], a: a * K, b: .005 * K, p: 2.6, col: C3('#121214'), w: wH })), { seg: 8 });
       uovo(B, at(.205, 0, front(.15) + .02), [0, 0, 1], .014 * K, .016 * K, .006 * K, C3('#d8b040'), wH, { anelli: 2, seg: 6 });
     } else if (tipo === 'cappellino' || tipo === 'cappellino_indietro' || tipo === 'snapback') {   // il cappellino: sei spicchi cuciti, davanti strutturato e alto, dietro sulla nuca; visiera curva (o piatta e larga), il sotto scuro, l'impuntura
-      const dz = tipo === 'cappellino_indietro' ? -1 : 1, flat = tipo === 'snapback', y0 = .128, Hc = flat ? .118 : .108;
-      const crown = (a, t) => { const fr = Math.max(0, Math.cos(a) * dz), rb = (pa(y0, 1) * Math.abs(Math.sin(a)) + pa(y0, 2) * Math.abs(Math.cos(a))) * .96 + .012, rr = rb * Math.pow(Math.cos(t * Math.PI / 2), flat ? .6 : .75) * (1 + (flat ? .06 : .04) * fr * Math.sin(Math.PI * t)), yb = -.004 - .03 * Math.pow(Math.max(0, -Math.cos(a) * dz), 1.5);
+      const dz = tipo === 'cappellino_indietro' ? -1 : 1, flat = tipo === 'snapback', y0 = .128, Hc = flat ? .104 : .097;
+      const crown = (a, t) => { const fr = Math.max(0, Math.cos(a) * dz), rb = (pa(y0, 1) * Math.abs(Math.sin(a)) + pa(y0, 2) * Math.abs(Math.cos(a))) * .95 + .006, rr = rb * Math.pow(Math.cos(t * Math.PI / 2), flat ? .6 : .75) * (1 + (flat ? .06 : .04) * fr * Math.sin(Math.PI * t)), yb = -.004 - .03 * Math.pow(Math.max(0, -Math.cos(a) * dz), 1.5);
         return at(y0 + yb + (Hc - yb) * Math.pow(Math.sin(t * Math.PI / 2), flat ? .7 : .85), Math.sin(a) * rr, Math.cos(a) * rr * 1.04 + pa(y0, 3) + .004 * fr); };
       griglia(B, 36, 9, (i, j) => crown(-Math.PI + i / 36 * Math.PI * 2, j / 9), c, wH, true, 0);
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6, L = []; for (let j = 0; j <= 8; j++) L.push(crown(a, j / 8 * .98)); tuboP(B, L, () => .0016, sc, wH); }   // le cuciture degli spicchi
@@ -83193,15 +83336,25 @@ var Personaggi = (function () {
       griglia(B, 10, 3, (i, j) => { const a = -.8 + i / 10 * 1.6, y = .16 + j / 3 * .045, rk = rr(.16); return at(y, Math.sin(a) * (rk[0] + .03), Math.cos(a) * (rk[1] + .03 + j * .008) + pa(.15, 3)); }, pel, wH, true);   // la falda davanti alzata
       for (const sx of [-1, 1]) tuboP(B, [at(-.005, sx * (rr(.05)[0] + .02), pa(.05, 3)), at(-.05, sx * (rr(.05)[0] + .015), pa(.05, 3) + .01)], () => .003, mulc(c, .5), wH);   // i lacci
     } else if (tipo === 'basco') {   // il basco: un disco morbido, calato di lato, col picciolo
-      loft(B, [[0, .102, .11], [.012, .118, .124], [.03, .12, .126], [.045, .1, .106], [.052, .02, .02]].map(([y, a, b]) => ({ c: at(.155 + y - (a > .11 ? .006 : 0), .012, -.008), t: norm([.18, 1, 0]), f: [0, 0, 1], a: a * K, b: b * K, col: c, w: wH })), { seg: 16 });
+      loft(B, [[0, .102, .11], [.012, .118, .124], [.03, .12, .126], [.045, .1, .106], [.052, .02, .02]].map(([y, a0, b0]) => fit(.155 + y, a0, b0, -.02)).map((ab, j) => [[0, .012, .03, .045, .052][j], ...ab]).map(([y, a, b]) => ({ c: at(.155 + y - (a > .11 ? .006 : 0), .012, -.008), t: norm([.18, 1, 0]), f: [0, 0, 1], a: a * K, b: b * K, col: c, w: wH })), { seg: 16 });
       uovo(B, at(.214, .022, -.008), [0, 1, 0], .004 * K, .004 * K, .008 * K, sc, wH, { anelli: 2, seg: 5 });
     } else if (tipo === 'fascia') { cupola(.145, [[0, .095, .108], [.028, .094, .107]].map(([y, a, b]) => [y, a + .016, b + .016]), c, .0); }
     else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
     else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa.PK && pa.PK.tris) passamontagna(B, D, pa.PK); 
+    } else if (tipo === 'durag') {   // [personaggi] il durag: la calotta di raso che segue la testa, la cucitura in mezzo, il nodo davanti, le due code dietro
+      const R2 = y => [pa(Math.min(y, .2), 1) + .006, pa(Math.min(y, .2), 2) + .006];
+      loft(B, [[.105, 1], [.13, 1], [.17, 1], [.2, .96], [.225, .8], [.24, .5], [.247, .05]].map(([y, q]) => ({ c: at(y, 0, pa(Math.min(y, .2), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * q * K, b: R2(y)[1] * q * K, col: c, w: wH })), { seg: 16 });
+      { const L = []; for (let i = 0; i < 20; i++) { const a = -Math.PI + i / 20 * Math.PI * 2, r2 = R2(.11); L.push(at(.11, Math.sin(a) * r2[0] * 1.03, Math.cos(a) * r2[1] * 1.03 + pa(.11, 3))); } tuboP(B, L, () => .005, mulc(c, .85), wH, true); }
+      uovo(B, at(.122, 0, front(.122) + .012), [0, 0, 1], .016 * K, .011 * K, .008 * K, mulc(c, .85), wH, { anelli: 3, seg: 6 });
+      [-1, 1].forEach(s => { const bz = pa(.11, 3) - R2(.11)[1] - .004; loft(B, [[.11, 0], [.04, .01], [-.03, .016], [-.1, .02]].map(([y, dx], j) => ({ c: at(y, s * (.022 + dx), bz - .006 * j), t: [0, -1, 0], f: [0, 0, -1], a: .022 * K * (1 - j * .1), b: .003 * K, p: 3, col: j ? mulc(c, .92) : c, w: wH })), { seg: 6 }); });
+    } else if (tipo === 'visiera') {   // la visiera da tennis: la fascia e la tesa, niente cupola
+      const R2 = y => [pa(y, 1) + .008, pa(y, 2) + .008];
+      loft(B, [.125, .145, .16].map(y => ({ c: at(y, 0, pa(y, 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * K, b: R2(y)[1] * K, col: c, w: wH })), { seg: 16, dentro: 0 });
+      loft(B, [[.0, .07], [.5, .085], [1, .07]].map(([q, a]) => ({ c: at(.13 - q * .012, 0, front(.135) + .006 + q * .06), t: [0, 0, 1], f: [0, 1, .25], a: a * K, b: .005 * K, p: 2.6, col: C3(H.col2 || '#f0ece2'), w: wH })), { seg: 8 });
     } else if (tipo === 'bucket') {   // il cappello da pescatora: la cupola morbida e la tesa che scende tutt'intorno, l'impuntura a giri
-      const R = y => [pa(Math.min(y, .17), 1) + .012, pa(Math.min(y, .17), 2) + .012];
-      loft(B, [[.08, 1.5, -.03], [.095, 1.44, -.018], [.112, 1.2, -.004], [.125, 1.02, 0], [.135, 1, 0], [.19, .98, 0], [.225, .84, 0], [.238, .3, 0], [.24, .02, 0]].map(([y, q, d], j) => ({ c: at(y, 0, pa(Math.min(y, .17), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(y)[0] * q * K, b: R(y)[1] * q * K, col: j < 3 ? mulc(c, .92) : c, ptile: j < 3 ? PT.righine : 0, col3: mulc(c, .8), mv: j * .03, w: wH })), { seg: 18 });
-      loft(B, [[.08, 1.5], [.096, 1.44]].map(([y, q]) => ({ c: at(y - .004, 0, pa(.17, 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(.17)[0] * q * K - .003, b: R(.17)[1] * q * K - .003, col: mulc(c, .6), w: wH })), { seg: 18 });   // il sotto della tesa
+      const R = y => [pa(Math.min(y, .17), 1) + .008, pa(Math.min(y, .17), 2) + .008];
+      loft(B, [[.094, 1.36, -.03], [.106, 1.31, -.018], [.117, 1.13, -.004], [.127, 1.02, 0], [.135, 1, 0], [.172, .98, 0], [.2, .86, 0], [.214, .4, 0], [.218, .02, 0]].map(([y, q, d], j) => ({ c: at(y, 0, pa(Math.min(y, .17), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(y)[0] * q * K, b: R(y)[1] * q * K, col: j < 3 ? mulc(c, .92) : c, ptile: j < 3 ? PT.righine : 0, col3: mulc(c, .8), mv: j * .03, w: wH })), { seg: 18 });
+      loft(B, [[.094, 1.36], [.106, 1.31]].map(([y, q]) => ({ c: at(y - .004, 0, pa(.17, 3)), t: [0, 1, 0], f: [0, 0, 1], a: R(.17)[0] * q * K - .003, b: R(.17)[1] * q * K - .003, col: mulc(c, .6), w: wH })), { seg: 18 });   // il sotto della tesa
       { const L = []; for (let i = 0; i < 24; i++) { const a = -Math.PI + i / 24 * Math.PI * 2; L.push(at(.138, Math.sin(a) * R(.138)[0] * 1.01, Math.cos(a) * R(.138)[1] * 1.01 + pa(.138, 3))); } tuboP(B, L, () => .0025, mulc(c, .75), wH, true); }
     } else if (tipo === 'elmetto') {   // l'elmetto: la calotta, la tesa che scende tutt'intorno, il sottogola
       const R = y => [pa(Math.min(y, .17), 1) + .014, pa(Math.min(y, .17), 2) + .014];
@@ -83287,6 +83440,27 @@ var Personaggi = (function () {
     uovo(B, [0, y, zAt(y) + P0[1] + P0[2] + sp + .008], [0, 0, 1], .022, .018, .006, C3('#c8a848'), [['Abdomen', .5], ['Hips', .5]], { anelli: 2, seg: 6, p: 4, f: [0, 1, 0] });
   }
   // la bandoliera: dalla spalla destra al fianco sinistro
+  // [personaggi] l'imbrago da arrampicata: la fascia in vita con la fibbia, l'anello davanti, i cosciali, gli anelli porta-materiale coi moschettoni colorati, il sacchetto della magnesite dietro
+  function imbrago(B, J, D, K, profAt, zAt, yOf, listaB, listaG) {
+    const c = C3(D.imbrago.col || '#e8601a'), c2 = C3(D.imbrago.col2 || '#1a1a1e'), y = yOf(.16), P0 = profAt(y), sp = strati(listaB, .16).sp + .006, z0 = zAt(y), wH = [['Hips', .8], ['Abdomen', .2]];
+    loft(B, [0, .5, 1].map(q => ({ c: [0, y - .02 + q * .04, z0], t: [0, 1, 0], f: [0, 0, 1], a: P0[0] + sp + (q === .5 ? .004 : 0), b: P0[1] + sp + (q === .5 ? .004 : 0), fz: P0[2], col: q === .5 ? c : mulc(c, .8), w: wH })), { seg: 18 });
+    const zf = z0 + P0[2] + P0[1] + sp + .006;
+    uovo(B, [0, y, zf], [0, 0, 1], .026, .018, .006, C3('#c8ccd0'), [['Hips', 1]], { anelli: 2, seg: 6, p: 4, f: [0, 1, 0] });
+    tuboP(B, Array.from({ length: 10 }, (_, k) => { const a = k / 10 * 6.283; return [Math.sin(a) * .018, y - .045 + Math.cos(a) * .024, zf + .004]; }), () => .005, c2, [['Hips', 1]], true);   // l'anello di servizio
+    ['L', 'R'].forEach(sd => { const sg = sd === 'L' ? 1 : -1, j0 = J['UpperLeg' + sd], j1 = J['LowerLeg' + sd], q = lerp3(j0, j1, .2), sg2 = strati(listaG, .2).sp || .01, r = (D.sesso === 'f' ? .07 : .074) + sg2 + .012;
+      tuboP(B, Array.from({ length: 14 }, (_, k) => { const a = k / 14 * 6.283; return [q[0] + Math.sin(a) * r * .95, q[1] + .01 * Math.cos(a), q[2] + Math.cos(a) * r]; }), () => .008, mulc(c, .9), [['UpperLeg' + sd, 1]], true);
+      [.55, .85].forEach((ang, k) => { const a = sg * (Math.PI / 2 + (ang - .7) * 1.6), x = Math.sin(a) * (P0[0] + sp + .008), zz = z0 + P0[2] + Math.cos(a) * (P0[1] + sp + .008), cc = C3(['#e8a020', '#2a8ad0', '#c83a2a', '#3ab86a'][k + (sd === 'L' ? 0 : 2)]);
+        for (let m = 0; m < 2; m++) tuboP(B, Array.from({ length: 8 }, (_, i) => { const t = i / 8 * 6.283; return [x + sg * m * .012 + Math.sin(t) * .009, y - .04 + Math.cos(t) * .018, zz + .004]; }), () => .0028, m ? C3('#c8ccd0') : cc, [['Hips', 1]], true); }); });
+    const zb = z0 + P0[2] - P0[1] - sp - .03;   // la magnesite
+    loft(B, [[-.03, .03], [.02, .033], [.035, .028], [.04, .01]].map(([dy, r]) => ({ c: [0, y + dy, zb], t: [0, 1, 0], f: [0, 0, -1], a: r, b: r * .9, col: dy > .03 ? C3('#f0ece2') : c2, w: [['Hips', 1]] })), { seg: 10 });
+  }
+  // la corda arrotolata a tracolla: due giri grossi dalla spalla al fianco, colorata a spirale
+  function corda(B, J, profAt, zAt, yOf, listaB, D) {
+    const sp = strati(listaB, .6).sp + .018, col = C3(D.corda.col || '#2a8ad0'), mat = { ptile: PT.righe, col3: C3(D.corda.col2 || '#e8d040') };
+    [0, 1].forEach(g => { const pts = []; for (let j = 0; j <= 16; j++) { const q = j / 16, a = q * 6.283, y = lerp(yOf(.95), yOf(.3), .5 - .5 * Math.cos(a)), x = lerp(-.14, .15, .5 - .5 * Math.cos(a)) + g * .012, P0 = profAt(y), front = Math.sin(a) >= 0, ex = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(x) / (P0[0] + sp), 2.2)));
+      pts.push([x, y, zAt(y) + P0[2] + (front ? 1 : -1) * (P0[1] + sp + g * .008) * ex]); }
+      tuboP(B, pts.slice(0, 16), () => .015, col, catena(pts[0][1], [J.Hips[1], J.Abdomen[1], J.Torso[1], J.Chest[1]], ['Hips', 'Abdomen', 'Torso', 'Chest'], .05), true, mat); });
+  }
   function bandoliera(B, J, profAt, zAt, yOf, listaB, D) {
     const c = C3('#2a2018'), N = 7, sp = strati(listaB, .6).sp + .01;
     const pts = []; for (let j = 0; j <= N; j++) { const q = j / N, y = lerp(yOf(.92), yOf(.32), q), P0 = profAt(y), x = lerp(-.12, .13, q); const ex = Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(x) / (P0[0] + sp), 2.2))); pts.push([x, y, zAt(y) + P0[2] + (P0[1] + sp) * ex]); }
@@ -83296,7 +83470,7 @@ var Personaggi = (function () {
   // =====================================================================================
   // L'ATLANTE DEI DISEGNI (una tela sola per tutti): R = apertura (secondo colore), G = linee e ombre (scurisce), B = luce (bottoni, fibbie)
   // =====================================================================================
-  const AT = { N: 8, NY: 10, px: 256, tex: null };
+  const AT = { N: 8, NY: 13, px: 256, tex: null };
   function atlante() {
     if (AT.tex || typeof document === 'undefined') return AT.tex;
     const N = AT.N, NY = AT.NY, px = AT.px, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
@@ -83313,6 +83487,21 @@ var Personaggi = (function () {
     const cuci = (c, pts, w) => { c.save(); c.setLineDash([.012, .009]); c.strokeStyle = Bl; c.lineWidth = w || .004; c.beginPath(); pts.forEach((p, k) => k ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke(); c.restore(); };
     const costine = (c, v0, v1, n) => { for (let k = 0; k < n; k++) line(c, .003, [[k / n, v0], [k / n, v1]]); line(c, .006, [[0, v1], [1, v1]]); };
     const pieghe_busto = c => { piega(c, [.22, .8], [.3, .68], .008); piega(c, [.78, .8], [.7, .68], .008); piega(c, [.3, .22], [.38, .3], .007); piega(c, [.7, .22], [.62, .3], .007); piega(c, [.03, .2], [.08, .28], .005); piega(c, [.97, .2], [.92, .28], .005); line(c, .003, [[.25, 0], [.25, 1]]); line(c, .003, [[.75, 0], [.75, 1]]); };
+    // [personaggi] lo streetwear: stampe e scritte a blocchi, maglie da gioco, felpe e giacche (tessere 26-39, 71, 75-87), i motivi nuovi (88-95).
+    // Sulla stoffa: R = secondo colore, R+B = terzo colore, B = bianco, G = inchiostro. La tela è capovolta (v 0 all'orlo, 1 al collo) e la u è larga 1,5 volte la v.
+    const MG = 'rgb(255,0,255)', W3 = '#000';
+    const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100', R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', Z: '111001010100111',
+      0: '111101101101111', 1: '010110010010111', 2: '110001010100111', 3: '110001010001110', 4: '101101111001001', 5: '111100110001110', 6: '011100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001110', W: '101101111111101', Y: '101101010010010', X: '101101010101101', J: '001001001101010', Q: '010101101110011', '-': '000000111000000', ' ': '000000000000000', '*': '101010111010101' };
+    const scritta = (c, txt, u, v, h, col, arco, gr) => { const s = h / 5, su = s * .66, w = su * (gr ? 4.4 : 4), n = txt.length; c.fillStyle = col;
+      for (let i = 0; i < n; i++) { const g = FONT[txt[i]] || FONT[' '], x0 = u + (i - n / 2) * w + su * .5, dv = arco ? arco * (1 - ((i + .5) / n * 2 - 1) ** 2) : 0;
+        for (let r = 0; r < 5; r++) for (let q = 0; q < 3; q++) if (g[r * 3 + q] === '1') c.fillRect(x0 + q * su, v + dv + h / 2 - (r + 1) * s, su * 1.06, s * 1.06); } };
+    const ombra = (c, txt, u, v, h, a, b, arco) => { scritta(c, txt, u + .006, v - .01, h, b, arco); scritta(c, txt, u, v, h, a, arco); };   // la scritta col contorno sfalsato (terzo colore sotto)
+    const dietro = (c, fn) => { fn(0); fn(1); };   // il dietro sta a cavallo della cucitura: u 0 e 1
+    const tee = c => { c.save(); add(c); line(c, .01, [[0, .975], [1, .975]]); cuci(c, [[0, .04], [1, .04]]); pieghe_busto(c); c.restore(); };
+    const zip = (c, v0, v1) => { c.save(); add(c); line(c, .01, [[.5, v0], [.5, v1]]); for (let v = v0; v < v1; v += .025) line(c, .003, [[.49, v], [.51, v]]); dot(c, Bl, .5, v1 - .03, .012); c.restore(); };
+    const canguro = c => { c.save(); add(c); line(c, .006, [[.37, .1], [.4, .34], [.6, .34], [.63, .1]]); line(c, .007, [[.37, .1], [.33, .24], [.4, .34]]); line(c, .007, [[.63, .1], [.67, .24], [.6, .34]]); c.restore(); };
+    const fiamma = (c, u, w, h, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(u - w, 0); c.bezierCurveTo(u - w, h * .4, u - w * .2, h * .5, u - w * .5, h); c.bezierCurveTo(u + w * .1, h * .7, u + w * .3, h * .6, u + w * .15, h * .85); c.bezierCurveTo(u + w * .9, h * .5, u + w, h * .3, u + w, 0); c.fill(); };
+    const stella = (c, u, v, r, col, rot) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = (rot || 0) + k / 10 * 6.283 - Math.PI / 2, rr = k % 2 ? r * .45 : r; c.lineTo(u + Math.cos(a) * rr * .66, v - Math.sin(a) * rr); } c.fill(); };
     // 1 camicia: abbottonatura, taschino, cucitura delle spalle
     T(1, c => { add(c); line(c, .008, [[.5, 0], [.5, .97]]); bottoni(c, .515, .15, .88, 6, .012); line(c, .006, [[.6, .66], [.68, .66], [.68, .56], [.6, .56], [.6, .66]]); line(c, .006, [[.0, .985], [1, .985]]); });
     // 2 giacca: lo scollo a V (secondo colore), due bottoni, le tasche con la pattina, il taschino
@@ -83342,8 +83531,7 @@ var Personaggi = (function () {
     // 13 maglietta: il collo a costine, l'orlo cucito, le pieghe sotto le ascelle e in vita
     T(13, c => { add(c); line(c, .01, [[0, .975], [1, .975]]); cuci(c, [[0, .04], [1, .04]]); pieghe_busto(c); });
     // 14 maglietta con la stampa sul petto (secondo colore)
-    T(14, c => { add(c); line(c, .01, [[0, .975], [1, .975]]); cuci(c, [[0, .04], [1, .04]]); pieghe_busto(c);
-      c.fillStyle = R; c.beginPath(); c.arc(.5, .66, .075, 0, 7); c.fill(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(.5, .66, .05, 0, 7); c.fill(); c.globalCompositeOperation = 'lighter'; c.fillStyle = R; c.fillRect(.44, .645, .12, .03); c.fillRect(.41, .53, .18, .035); c.fillRect(.44, .49, .12, .02); });
+    T(14, c => { c.fillStyle = MG; c.beginPath(); c.ellipse(.5, .62, .085, .13, 0, 0, 7); c.fill(); c.fillStyle = R; c.beginPath(); c.ellipse(.5, .62, .072, .11, 0, 0, 7); c.fill(); stella(c, .5, .64, .06, MG); scritta(c, 'PV', .5, .555, .035, Bl); scritta(c, 'ISOLA', .5, .45, .04, R); tee(c); });   // 14 la stampa: lo stemma tondo con la stella
     // 15 felpa: la tasca a marsupio, le costine in fondo, le pieghe
     T(15, c => { add(c); costine(c, 0, .08, 40); c.fillStyle = 'rgba(0,255,0,.18)'; c.beginPath(); c.moveTo(.37, .1); c.lineTo(.63, .1); c.lineTo(.6, .34); c.lineTo(.4, .34); c.closePath(); c.fill(); line(c, .006, [[.37, .1], [.4, .34], [.6, .34], [.63, .1]]); line(c, .007, [[.37, .1], [.33, .24], [.4, .34]]); line(c, .007, [[.63, .1], [.67, .24], [.6, .34]]); cuci(c, [[.4, .32], [.6, .32]]); pieghe_busto(c); });
     // 38 bomber: la zip, le costine di fondo e del collo, le trapuntature, la taschina sulla manica no: sul petto
@@ -83462,6 +83650,84 @@ var Personaggi = (function () {
     T(74, c => { c.fillStyle = R; c.globalAlpha = .6; c.fillRect(.1, 0, .25, 1); c.fillRect(0, .1, 1, .25); c.globalAlpha = 1; c.fillRect(.1, .1, .25, .25); c.globalCompositeOperation = 'lighter'; line(c, .015, [[.65, 0], [.65, 1]]); line(c, .015, [[0, .65], [1, .65]]); c.fillStyle = Bl; c.fillRect(.5, 0, .012, 1); c.fillRect(0, .5, 1, .012); });
     // i motivi (ripetuti ogni 'prep' metri): R = secondo colore (col3)
     const P = (j, fn) => T(16 + j, fn);
+    // 26 box logo sul petto
+    T(26, c => { c.fillStyle = R; c.fillRect(.4, .56, .2, .11); scritta(c, 'PORTO', .5, .615, .06, Bl); tee(c); });
+    // 29 college: la scritta ad arco e il numero sotto
+    T(29, c => { ombra(c, 'ISOLA', .5, .6, .1, R, MG, .05); ombra(c, '84', .5, .4, .14, R, MG); tee(c); });
+    // 30 fiamme dall'orlo
+    T(30, c => { for (let k = 0; k < 9; k++) fiamma(c, k / 8, .07, .3 + .16 * Math.abs(Math.sin(k * 2.3)), R); for (let k = 0; k < 9; k++) fiamma(c, k / 8, .035, .16 + .08 * Math.abs(Math.sin(k * 1.7)), MG); tee(c); });
+    // 31 la faccina acida, grande sul petto (e una piccola dietro)
+    T(31, c => { const fc = (u, v, r) => { c.fillStyle = R; c.beginPath(); c.ellipse(u, v, r * .66, r, 0, 0, 7); c.fill(); c.fillStyle = MG; c.beginPath(); c.ellipse(u - r * .22, v + r * .25, r * .07, r * .17, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(u + r * .22, v + r * .25, r * .07, r * .17, 0, 0, 7); c.fill();
+      c.strokeStyle = MG; c.lineWidth = r * .1; c.beginPath(); c.ellipse(u, v + r * .05, r * .42, r * .55, 0, Math.PI * 1.2, Math.PI * 1.8); c.stroke(); }; fc(.5, .6, .16); dietro(c, u => fc(u, .75, .07)); tee(c); });
+    // 35 il tramonto a righe con le palme
+    T(35, c => { c.fillStyle = R; c.beginPath(); c.ellipse(.5, .55, .12, .18, 0, 0, 7); c.fill(); c.fillStyle = W3; for (let k = 0; k < 5; k++) c.fillRect(.36, .4 + k * .035, .28, .012 + k * .002);
+      const palma = (u, s) => { c.fillStyle = MG; c.beginPath(); c.moveTo(u, .38); c.quadraticCurveTo(u + s * .02, .55, u + s * .01, .72); c.lineTo(u + s * .02, .72); c.quadraticCurveTo(u + s * .035, .55, u + .012, .38); c.fill(); for (let k = 0; k < 5; k++) { const a = -.6 + k * .55; c.beginPath(); c.moveTo(u + s * .015, .72); c.quadraticCurveTo(u + s * .015 + Math.cos(a) * .05, .72 + .06, u + s * .015 + Math.cos(a) * .09, .72 + Math.sin(a) * .07 - .02); c.lineTo(u + s * .015 + Math.cos(a) * .06, .72 + .02); c.fill(); } };
+      palma(.4, 1); palma(.6, -1); c.fillStyle = MG; c.fillRect(.36, .36, .28, .025); scritta(c, 'RIVIERA', .5, .3, .045, R); tee(c); });
+    // 39 la maglia da basket: gli scavi (secondo colore = sotto), i bordi e il numero davanti e dietro (terzo colore), il filo bianco
+    T(39, c => { c.fillStyle = R; c.beginPath(); c.ellipse(.5, 1.0, .1, .2, 0, 0, 7); c.fill(); [0, 1, .25, .75].forEach(u => { c.beginPath(); c.ellipse(u, .99, .1, u === .25 || u === .75 ? .19 : .14, 0, 0, 7); c.fill(); });
+      c.strokeStyle = MG; c.lineWidth = .025; c.beginPath(); c.ellipse(.5, 1.0, .112, .215, 0, 0, 7); c.stroke(); [.25, .75].forEach(u => { c.beginPath(); c.ellipse(u, .99, .112, .205, 0, 0, 7); c.stroke(); });
+      ombra(c, '23', .5, .52, .2, MG, Bl); dietro(c, u => ombra(c, '23', u, .5, .24, MG, Bl)); scritta(c, 'PORTO', .5, .76, .06, MG); c.fillStyle = MG; c.fillRect(0, 0, 1, .035); });
+    // 71 la maglia da calcio d'epoca: il collo a polo, il fascione sul petto, lo stemma, lo sponsor, il numero dietro
+    T(71, c => { c.fillStyle = R; c.fillRect(0, .6, 1, .14); c.fillStyle = MG; c.fillRect(0, .6, 1, .015); c.fillRect(0, .725, 1, .015); c.fillStyle = R; c.fillRect(0, .95, 1, .05);
+      c.fillStyle = MG; c.beginPath(); c.moveTo(.6, .86); c.lineTo(.66, .86); c.lineTo(.66, .8); c.lineTo(.63, .77); c.lineTo(.6, .8); c.fill(); scritta(c, 'PESCA', .5, .45, .06, Bl); dietro(c, u => ombra(c, '10', u, .48, .26, Bl, MG)); tee(c); });
+    // 75 la scritta grande dietro, il logo piccolo sul cuore
+    T(75, c => { dietro(c, u => { ombra(c, 'RESISTI', u, .62, .09, R, MG); stella(c, u, .4, .1, R); }); scritta(c, 'R*', .6, .76, .04, R); tee(c); });
+    // 76 i graffiti: lettere a bolla sovrapposte, le colature, le luci
+    T(76, c => { const bolla = (u, v, r, col) => { c.fillStyle = col; c.beginPath(); c.ellipse(u, v, r * .66, r, 0, 0, 7); c.fill(); };
+      [[.36, .58, .08], [.44, .63, .09], [.52, .57, .085], [.6, .62, .08], [.67, .56, .07]].forEach(([u, v, r]) => bolla(u, v, r + .02, MG)); [[.36, .58, .08], [.44, .63, .09], [.52, .57, .085], [.6, .62, .08], [.67, .56, .07]].forEach(([u, v, r]) => bolla(u, v, r, R));
+      c.fillStyle = R; [[.4, .5, .12], [.5, .49, .2], [.62, .52, .1]].forEach(([u, v, h]) => { c.fillRect(u - .006, v - h, .012, h); c.beginPath(); c.ellipse(u, v - h, .01, .015, 0, 0, 7); c.fill(); });
+      c.fillStyle = Bl; [[.34, .64], [.43, .7], [.51, .63], [.59, .68]].forEach(([u, v]) => { c.beginPath(); c.ellipse(u, v, .012, .02, -.5, 0, 7); c.fill(); }); c.save(); add(c); c.globalAlpha = .7; line(c, .012, [[.3, .5], [.4, .7], [.47, .52], [.55, .72], [.62, .5], [.7, .66]]); c.restore(); tee(c); });
+    // 77 ringer: il collo e l'orlo d'un altro colore, la scritta piccola
+    T(77, c => { c.fillStyle = R; c.fillRect(0, .945, 1, .055); scritta(c, 'SOUND', .5, .65, .05, R); scritta(c, 'SYSTEM', .5, .58, .05, MG); tee(c); });
+    // 78 felpa con la zip: la zip intera, le tasche oblique, i cordini
+    T(78, c => { costine(c, 0, .08, 40); zip(c, .08, 1); c.save(); add(c); line(c, .007, [[.36, .14], [.42, .32]]); line(c, .007, [[.64, .14], [.58, .32]]); c.restore(); c.fillStyle = Bl; c.fillRect(.455, .78, .008, .2); c.fillRect(.537, .76, .008, .22); pieghe_busto(c); });
+    // 79 felpa a blocchi: il petto d'un colore, la riga, la tasca a marsupio
+    T(79, c => { c.fillStyle = R; c.fillRect(0, .56, 1, .44); c.fillStyle = MG; c.fillRect(0, .52, 1, .04); canguro(c); costine(c, 0, .08, 40); pieghe_busto(c); });
+    // 80 felpa college: la scritta ad arco col contorno, la tasca
+    T(80, c => { ombra(c, 'PORTO', .5, .66, .1, R, MG, .04); scritta(c, 'VECCHIO', .5, .5, .045, R); canguro(c); costine(c, 0, .08, 40); pieghe_busto(c); });
+    // 81 la giacca a vento da infilare: la mezza zip, il marsupione, il carré d'un altro colore, i cordini
+    T(81, c => { c.fillStyle = R; c.fillRect(0, .74, 1, .26); c.fillStyle = MG; c.fillRect(0, .72, 1, .025); zip(c, .74, 1); c.save(); add(c); line(c, .008, [[.33, .14], [.67, .14], [.67, .44], [.33, .44], [.33, .14]]); line(c, .008, [[.36, .42], [.64, .42]]); c.restore(); dot(c, Bl, .4, .02, .012); dot(c, Bl, .6, .02, .012); costine(c, 0, .04, 40); pieghe_busto(c); });
+    // 82 varsity: i bottoni a pressione, la lettera grande sul petto, le costine a righe, le tasche di pelle
+    T(82, c => { c.fillStyle = MG; c.fillRect(.6, .55, .1, .2); c.fillStyle = R; c.fillRect(.61, .565, .08, .17); scritta(c, 'P', .65, .65, .13, MG); for (let k = 0; k < 2; k++) { c.fillStyle = k ? MG : R; c.fillRect(0, .025 + k * .03, 1, .015); c.fillRect(0, .95 + k * .02, 1, .01); }
+      c.fillStyle = MG; c.fillRect(.31, .2, .02, .14); c.fillRect(.67, .2, .02, .14); bottoni(c, .5, .14, .88, 6, .011); dietro(c, u => ombra(c, 'ISOLA', u, .62, .1, R, MG, .05)); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); pieghe_busto(c); c.restore(); });
+    // 83 coach jacket: i bottoni a pressione, il logo sul cuore, la scritta grande dietro
+    T(83, c => { bottoni(c, .51, .1, .92, 6, .011); scritta(c, 'CREW', .62, .76, .04, Bl); dietro(c, u => { scritta(c, 'PORTO', u, .66, .1, Bl); scritta(c, 'VECCHIO', u, .52, .07, Bl); }); c.save(); add(c); line(c, .008, [[.5, 0], [.5, 1]]); cuci(c, [[0, .05], [1, .05]]); pieghe_busto(c); c.restore(); });
+    // 84 la giacca della tuta d'epoca: il carré d'un altro colore col filo, la zip, lo scudetto
+    T(84, c => { c.fillStyle = R; c.beginPath(); c.moveTo(0, .62); c.lineTo(.3, .62); c.lineTo(.5, .7); c.lineTo(.7, .62); c.lineTo(1, .62); c.lineTo(1, 1); c.lineTo(0, 1); c.fill(); c.strokeStyle = Bl; c.lineWidth = .012; c.beginPath(); c.moveTo(0, .61); c.lineTo(.3, .61); c.lineTo(.5, .69); c.lineTo(.7, .61); c.lineTo(1, .61); c.stroke();
+      c.fillStyle = MG; c.beginPath(); c.ellipse(.62, .55, .025, .035, 0, 0, 7); c.fill(); zip(c, .06, 1); costine(c, 0, .06, 40); });
+    // 85 la camicia da bowling: le due bande dritte davanti (secondo colore) col filo, i bottoni, il nome ricamato
+    T(85, c => { c.fillStyle = R; c.fillRect(.33, 0, .1, 1); c.fillRect(.57, 0, .1, 1); dietro(c, u => c.fillRect(u - .12, .62, .24, .38)); c.fillStyle = MG; [.33, .43, .57, .67].forEach(u => c.fillRect(u - .004, 0, .008, 1)); scritta(c, 'NINO', .38, .76, .035, Bl); bottoni(c, .51, .1, .85, 5, .012); c.save(); add(c); line(c, .008, [[.5, 0], [.5, .97]]); c.restore(); });
+    // 86 il pile: le spalle d'un altro colore, la zip, il taschino con la zip, il bordo
+    T(86, c => { c.fillStyle = R; c.fillRect(0, .76, 1, .24); c.fillStyle = MG; c.fillRect(0, .74, 1, .022); zip(c, .04, 1); c.save(); add(c); line(c, .008, [[.6, .64], [.6, .74]]); line(c, .008, [[.3, .1], [.36, .3]]); line(c, .008, [[.7, .1], [.64, .3]]); c.restore(); c.fillStyle = MG; c.fillRect(0, 0, 1, .03); });
+    // 87 la giacca di raso: la zip, le costine a righe, la stella grande ricamata dietro, la tigre... no: la stella piccola davanti
+    T(87, c => { for (let k = 0; k < 3; k++) { c.fillStyle = k === 1 ? R : MG; c.fillRect(0, .015 + k * .02, 1, .012); } dietro(c, u => { stella(c, u, .55, .22, MG); stella(c, u, .55, .17, R); scritta(c, 'ISOLA', u, .25, .06, Bl); }); stella(c, .63, .72, .05, R); zip(c, .07, 1); c.fillStyle = Bl; for (let k = 0; k < 12; k++) c.fillRect(k / 12 + .02, .4, .03, .008); });
+    // [personaggi] la montagna: il logo (tre cime nell'arco), la giacca a guscio, il piumino a sacchi, la manica a due colori, i pantaloni da arrampicata
+    const monte = (c, u, v, r, col) => { c.fillStyle = col; c.beginPath(); c.moveTo(u - r * .66, v - r * .5); c.lineTo(u - r * .3, v + r * .2); c.lineTo(u - r * .1, v - r * .05); c.lineTo(u + r * .15, v + r * .5); c.lineTo(u + r * .66, v - r * .5); c.fill(); c.strokeStyle = col; c.lineWidth = r * .14; c.beginPath(); c.ellipse(u, v - r * .5, r * .7, r * 1.05, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); };
+    // 96 guscio: il carré e le spalle d'un altro colore, le cuciture nastrate (luce), la zip coperta, le tasche al petto con la zip in diagonale, il logo
+    T(96, c => { c.fillStyle = R; c.beginPath(); c.moveTo(0, .7); c.lineTo(.28, .72); c.lineTo(.42, .86); c.lineTo(.58, .86); c.lineTo(.72, .72); c.lineTo(1, .7); c.lineTo(1, 1); c.lineTo(0, 1); c.fill();
+      c.strokeStyle = Bl; c.globalAlpha = .45; c.lineWidth = .006; c.beginPath(); c.moveTo(0, .69); c.lineTo(.28, .71); c.lineTo(.42, .85); c.lineTo(.58, .85); c.lineTo(.72, .71); c.lineTo(1, .69); c.stroke(); [.25, .75].forEach(u => { c.beginPath(); c.moveTo(u, 0); c.lineTo(u, 1); c.stroke(); }); c.globalAlpha = 1;
+      c.save(); add(c); line(c, .014, [[.5, 0], [.5, 1]]); line(c, .008, [[.36, .78], [.42, .56]]); line(c, .008, [[.64, .78], [.58, .56]]); line(c, .007, [[.3, .22], [.4, .3]]); line(c, .007, [[.7, .22], [.6, .3]]); cuci(c, [[0, .03], [1, .03]]); pieghe_busto(c); c.restore();
+      dot(c, Bl, .42, .57, .008); dot(c, Bl, .58, .57, .008); monte(c, .64, .66, .035, Bl); dietro(c, u => monte(c, u + .06, .8, .03, Bl)); });
+    // 97 piumino a sacchi: le spalle scure (secondo colore), le cuciture dei sacchi (allineate al gonfio), la zip, il logo davanti e dietro
+    T(97, c => { c.fillStyle = R; c.fillRect(0, .8, 1, .2); c.save(); add(c); for (let k = 1; k < 5; k++) line(c, .009, [[0, k / 5], [1, k / 5]]); line(c, .012, [[.5, 0], [.5, 1]]); c.restore(); c.fillStyle = Bl; c.fillRect(.495, .0, .01, 1); monte(c, .63, .7, .032, Bl); dietro(c, u => monte(c, u + .07, .9, .028, Bl)); c.fillStyle = R; c.fillRect(0, 0, 1, .04); });
+    // 98 la manica a due colori del piumino: la spalla d'un altro colore, le cuciture dei sacchi (v 0 la spalla, 1 il polso)
+    T(98, c => { c.fillStyle = R; c.fillRect(0, 0, 1, .32); c.save(); add(c); for (let k = 1; k < 4; k++) line(c, .01, [[0, k / 4], [1, k / 4]]); c.restore(); });
+    // 99 pantaloni da arrampicata: il ginocchio sagomato (pinces), la tasca laterale con la zip, il cordino in fondo, il tassello tra le gambe (secondo colore)
+    T(99, c => { c.save(); add(c); line(c, .007, [[.42, .42], [.5, .5], [.58, .42]]); line(c, .007, [[.42, .56], [.5, .5], [.58, .56]]); line(c, .008, [[.2, .18], [.2, .34]]); line(c, .006, [[.16, .16], [.25, .16], [.25, .36], [.16, .36]]); cuci(c, [[.25, 0], [.25, 1]]); cuci(c, [[.75, 0], [.75, 1]]); c.restore();
+      c.fillStyle = R; c.beginPath(); c.moveTo(.66, 0); c.lineTo(.84, 0); c.lineTo(.75, .1); c.fill(); c.fillStyle = Bl; c.fillRect(.73, .93, .012, .07); dot(c, Bl, .74, .92, .01); monte(c, .3, .12, .03, Bl); });
+    // i motivi nuovi (16 + 72..79): tie-dye, scacchi, leopardo, paisley, graffiti, rugby, memphis, stelle
+    P(72, c => { for (let k = 0; k < 220; k++) { const t = k / 220, a = t * 6.283 * 3, rr = .04 + t * .62; for (let q = 0; q < 3; q++) { const aa = a + q * 2.094; c.fillStyle = `rgba(255,0,0,${.5 + .5 * Math.sin(t * 25)})`; c.beginPath(); c.ellipse(.5 + Math.cos(aa) * rr * .7, .5 + Math.sin(aa) * rr * .7, .03 + t * .05, .02 + t * .03, aa, 0, 7); c.fill(); } }
+      c.fillStyle = 'rgba(0,0,255,.35)'; for (let k = 0; k < 60; k++) { const t = k / 60, a = t * 6.283 * 3 + 1, rr = .05 + t * .6; c.beginPath(); c.ellipse(.5 + Math.cos(a) * rr * .7, .5 + Math.sin(a) * rr * .7, .02, .012, a, 0, 7); c.fill(); } });
+    P(73, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) for (let l = 0; l < 4; l++) if ((k + l) % 2) c.fillRect(k / 4, l / 4, .25, .25); });
+    P(74, c => { const ro = (u, v, r) => { c.fillStyle = R; c.beginPath(); c.ellipse(u, v, r, r * .8, 0, 0, 7); c.fill(); c.strokeStyle = G; c.lineWidth = r * .45; c.beginPath(); c.ellipse(u, v, r * 1.15, r * .95, .3, .3, 5.2); c.stroke(); };
+      [[.15, .2], [.55, .12], [.85, .45], [.35, .55], [.7, .8], [.1, .85], [.95, .05], [.45, .95]].forEach(([u, v], k) => { const r = .06 + (k % 3) * .015; ro(u, v, r); ro(u - 1, v, r); ro(u, v - 1, r); ro(u + 1, v, r); ro(u, v + 1, r); }); });
+    P(75, c => { const go = (u, v, r, a) => { c.save(); c.translate(u, v); c.rotate(a); c.fillStyle = R; c.beginPath(); c.arc(0, 0, r, 0, 7); c.quadraticCurveTo(r * 1.6, -r * .2, r * 2.2, r * 1.4); c.quadraticCurveTo(r * .9, r * 1.1, 0, r); c.fill(); c.fillStyle = 'rgb(0,0,255)'; c.beginPath(); c.arc(0, 0, r * .4, 0, 7); c.fill(); c.restore(); };
+      [[.25, .25, .09, .3], [.72, .4, .08, 2.2], [.3, .75, .07, 4], [.8, .85, .06, 1]].forEach(([u, v, r, a]) => { go(u, v, r, a); go(u - 1, v, r, a); go(u, v - 1, r, a); }); });
+    P(76, c => { c.lineCap = 'round'; for (let k = 0; k < 14; k++) { const u = (k * .37) % 1, v = (k * .61) % 1; c.strokeStyle = k % 3 ? R : G; c.lineWidth = .03; c.beginPath(); c.moveTo(u, v); c.bezierCurveTo(u + .1, v + .15, u + .15, v - .1, u + .25, v + .05); c.stroke(); } });
+    P(77, c => { c.fillStyle = R; c.fillRect(0, 0, 1, .32); c.fillRect(0, .5, 1, .32); c.fillStyle = 'rgb(0,0,255)'; c.fillRect(0, .4, 1, .04); c.fillRect(0, .9, 1, .04); });
+    P(78, c => { c.fillStyle = R; [[.15, .2, 0], [.6, .1, 1], [.4, .6, 2], [.85, .7, .5]].forEach(([u, v, a]) => { c.save(); c.translate(u, v); c.rotate(a); c.beginPath(); c.moveTo(0, -.08); c.lineTo(.07, .05); c.lineTo(-.07, .05); c.fill(); c.restore(); });
+      c.strokeStyle = G; c.lineWidth = .025; c.beginPath(); c.moveTo(.05, .45); for (let k = 0; k < 6; k++) c.lineTo(.05 + (k + 1) * .05, .45 + (k % 2 ? .05 : -.05)); c.stroke(); c.fillStyle = 'rgb(0,0,255)'; [[.75, .3], [.2, .85], [.55, .9], [.9, .95]].forEach(([u, v]) => { c.beginPath(); c.arc(u, v, .025, 0, 7); c.fill(); }); });
+    P(79, c => { [[.25, .25, .1], [.75, .7, .1], [.75, .2, .05], [.2, .75, .05]].forEach(([u, v, r]) => stella(c, u, v, r, R, .3)); });
     P(1, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) c.fillRect(0, k / 4, 1, .1); });   // righe da marinaio
     P(2, c => { c.globalAlpha = .55; c.fillStyle = R; for (let k = 0; k < 4; k++) { c.fillRect(k / 4, 0, .1, 1); c.fillRect(0, k / 4, 1, .1); } c.globalAlpha = 1; for (let k = 0; k < 4; k++) for (let l = 0; l < 4; l++) c.fillRect(k / 4, l / 4, .1, .1); });   // quadri
     P(3, c => { const fl = (u, v, r) => { c.fillStyle = R; for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283; c.beginPath(); c.ellipse(u + Math.cos(a) * r, v + Math.sin(a) * r, r * .7, r * .7, 0, 0, 7); c.fill(); } c.fillStyle = 'rgb(0,0,255)'; c.beginPath(); c.ellipse(u, v, r * .55, r * .55, 0, 0, 7); c.fill(); c.fillStyle = 'rgb(0,255,0)'; c.beginPath(); c.ellipse(u + r * 1.9, v - r * .6, r * .9, r * .4, .5, 0, 7); c.fill(); };
@@ -83572,7 +83838,7 @@ var Personaggi = (function () {
     guanti_lana: { x: 'guanti' }, guanti: { x: 'guanti' }, sciarpa: { k: 'sciarpa' }, sciarpa_righe: { k: 'sciarpa', righe: 1 }, foulard: { k: 'foulard' },
     berretto: { c: 'berretto' }, coppola: { c: 'coppola' }, cappello: { c: 'cappello' }, colbacco: { c: 'colbacco' }, fazzoletto: { c: 'fazzoletto' }, casco: { c: 'casco' }, elmetto: { c: 'elmetto' },
     passamontagna: { c: 'passamontagna' }, maschera_gas: { c: 'maschera_gas' }, paraspalle: { x: 'spalle' }, paraginocchia: { x: 'ginocchia' }, zaino: { z: 'zaino' },
-    polo: { v: 'polo' }, camicia_hawaii: { v: 'camicia_corta', ptile: 'fiori', col3: '#f0e0a0' }, maglia_calcio: { v: 'maglietta', ptile: 'righine', col3: '#f0ece2' }, felpa_zip: { v: 'tuta_giacca' },
+    polo: { v: 'polo' }, camicia_hawaii: { v: 'camicia_corta', ptile: 'fiori', col3: '#f0e0a0' }, maglia_calcio: { v: 'maglietta', tile: 'calcio', col2: '#f0ece2', col3: '#e8d040' }, felpa_zip: { v: 'tuta_giacca' },
     giacca_completo: { v: 'giacca' }, pelliccia: { v: 'pelliccia', col3: '#3a2414' }, pelliccia_volpe: { v: 'pelliccia', ptile: 'maglia' }, poncho: { v: 'scialle', ptile: 'righe' },
     vestito_corto: { v: 'vestito_corto' }, vestito_lungo: { v: 'vestito_lungo' }, vestito_fiori: { v: 'abito', ptile: 'fiori', col3: '#c8402a' }, tuta_ginnastica: { v: 'tuta_giacca', e: 'tuta_pantaloni' },
     cargo: { v: 'cargo' }, pantaloni_completo: { v: 'pantaloni' }, bermuda: { v: 'bermuda', ptile: 'quadri', col3: '#5a6a3a' }, minigonna: { v: 'minigonna' }, leggings: { v: 'leggings' },
@@ -83589,16 +83855,55 @@ var Personaggi = (function () {
     puffer_corto: { v: 'puffer_corto' }, camicia_70: { v: 'camicia_70', ptile: 'fiori', col3: '#5a2a14' }, jeans_risvolto: { v: 'jeans_risvolto' }, pantaloni_mimetici: { v: 'cargo', ptile: 'mimetico', col3: '#2e3424' },
     kefiah: { k: 'sciarpa', kefiah: 1 }, cappello_pescatora: { c: 'bucket' }, anfibi: { s: 'anfibi' }, scarpe_chunky: { s: 'chunky' }, guanti_monchi: { x: 'guanti' }, zaino_tattico: { z: 'zaino' },
     pantaloni_tuta: { v: 'tuta_pantaloni' }, jeans_larghi: { v: 'larghi' }, calze_sport: { v: 'calze_alte' }, scarpe_skate: { s: 'sneakers' }, scarpe_air: { s: 'basket' },
+    maglietta_box: { v: 'maglietta_larga', tile: 'box' }, maglietta_college: { v: 'maglietta_larga', tile: 'college' }, maglietta_fiamme: { v: 'maglietta_larga', tile: 'fiamme', col2: '#e8601a', col3: '#e8d040' },
+    maglietta_tiedye: { v: 'maglietta_larga', ptile: 'tiedye', col3: '#e8d040' }, maglietta_graffiti: { v: 'maglietta_larga', tile: 'graffiti' }, maglietta_ringer: { v: 'maglietta', tile: 'ringer', col2: '#c83a2a', colOrloBr: '#c83a2a' },
+    maglietta_resisti: { v: 'maglietta_larga', tile: 'retro', col2: '#c83a2a', col3: '#f0ece2' }, maglietta_tramonto: { v: 'maglietta_larga', tile: 'tramonto', col2: '#e8d040', col3: '#2a1a3a' }, maglia_lunga: { v: 'sotto_lunga' },
+    maglia_basket: { v: 'jersey', col3: '#f0ece2' }, felpa_college: { v: 'felpa_larga', tile: 'felpa_college' }, felpa_blocchi: { v: 'felpa_larga', tile: 'felpa_blocchi' }, felpa_cappuccio_zip: { v: 'felpa', tile: 'zip' },
+    felpa_tiedye: { v: 'felpa_larga', ptile: 'tiedye', col3: '#e86a9a' }, varsity: { v: 'varsity', col2: '#e8d040', col3: '#f0ece2' }, coach_jacket: { v: 'coach' }, giacca_raso: { v: 'raso', col2: '#e8a020', col3: '#c83a2a' },
+    anorak: { v: 'anorak', col2: '#2a5aa8', col3: '#141418' }, pile: { v: 'pile', col2: '#e8d040', col3: '#141418' }, track_retro: { v: 'track_retro', col2: '#f0ece2', col3: '#c83a2a' }, camicia_bowling: { v: 'bowling', col2: '#e8d040', col3: '#c83a2a' },
+    giacca_guscio: { v: 'guscio', col2: '#141418' }, piumino_sacchi: { v: 'guscio_gonfio', col2: '#141418' }, gilet_piuma: { v: 'gilet_piuma', col2: '#141418' }, pantaloni_arrampicata: { v: 'pantaloni_arrampicata', col2: '#e8601a' },
+    imbrago: { x: 'imbrago' }, corda: { x: 'corda' }, scarpe_trail: { s: 'trail' }, pile_montagna: { v: 'pile', col2: '#141418', col3: '#141418' },
+    pantaloni_paracadute: { v: 'paracadute' }, joggers: { v: 'joggers' }, pantaloncini_basket: { v: 'pantaloncini_basket' }, jeans_carpenter: { v: 'larghi' }, durag: { c: 'durag' }, visiera: { c: 'visiera' },
     cappellino_dritto: { c: 'snapback' }, berretto_corto: { c: 'docker' }, borsello: { z: 'borsello' }, marsupio_tracolla: { z: 'tracolla' }, bandana: { c: 'bandana' },
   };
   // i passamontagna fantasia sono tutti passamontagna (il tipo resta per le punte)
   Object.keys({ passamontagna_punte: 1, passamontagna_orecchie: 1, passamontagna_righe: 1, passamontagna_diavolo: 1, passamontagna_clown: 1, passamontagna_riccio: 1, passamontagna_corna: 1, passamontagna_coniglio: 1, passamontagna_giullare: 1, cappuccio_stelle: 1, passamontagna_pallini: 1 }).forEach(k => { DA_CAPO[k] = { c: k }; });
   // un vestito del Guardaroba (capi dal più interno al più esterno) → la parte "vestiti" del descrittore
+  // [personaggi] le varianti: la stessa maglietta o felpa del Guardaroba, a testa sua, con la stampa, la scritta o il motivo e i colori d'accento.
+  // Deterministiche (dal seme di chi la porta e dal capo); i giovani le hanno più spesso, gli anziani quasi mai.
+  const ACC = ['#e8a020', '#c83a2a', '#2a5aa8', '#f0ece2', '#141418', '#3a8a4a', '#e86a9a', '#8a4ab8', '#e8d040', '#30a8b8', '#e8601a', '#7a1e2a'];
+  const lum = c => { if (Array.isArray(c)) return .3 * c[0] + .59 * c[1] + .11 * c[2]; const h = String(c).replace('#', ''), v = i => parseInt(h.length === 3 ? h[i] + h[i] : h.slice(i * 2, i * 2 + 2), 16) / 255 || 0; return .3 * v(0) + .59 * v(1) + .11 * v(2); };
+  const VAR = {
+    maglietta: [['', 5], ['stampa', 2], ['box', 2], ['college', 2], ['fiamme', 1], ['smiley', 1], ['tramonto', 1], ['retro', 2], ['graffiti', 1], ['ringer', 2], ['calcio', 1], ['p:righe', 1], ['p:rugby', 1], ['p:tiedye', 2], ['p:scacchi', 1], ['p:memphis', 1], ['p:stelle', 1], ['p:leopardo', .6], ['p:paisley', .6]],
+    felpa: [['', 4], ['felpa_blocchi', 2], ['felpa_college', 2], ['zip', 2], ['retro', 1.5], ['graffiti', 1], ['p:tiedye', 1], ['p:mimetico', 1], ['p:scacchi', .5], ['p:rugby', .5]],
+    bomber: [['', 3], ['raso', 2], ['p:mimetico', 1], ['varsity', 1]],
+    tuta_giacca: [['', 2], ['track', 3]],
+    canottiera: [['', 6], ['jersey', 2]],
+  };
+  VAR.maglietta_larga = VAR.maglietta; VAR.felpa_larga = VAR.felpa;
+  function variante(v, D, k) {
+    const L = VAR[v.tipo]; if (!L || v.tile || v.ptile) return v;
+    const r = rng('var' + (D.seme !== undefined ? D.seme : '') + v.tipo + k), eta = D.eta || 30;
+    if (r() > (eta < 30 ? .92 : eta < 45 ? .55 : eta < 60 ? .2 : .06)) return v;   // il più delle volte gli anziani restano in tinta unita
+    const tot = L.reduce((a, e) => a + e[1], 0); let x = r() * tot, pick = L[0][0]; for (const [id, w] of L) { x -= w; if (x <= 0) { pick = id; break; } }
+    // la lunghezza e la manica: lunga fin sotto il sedere, corta sopra l'ombelico (le ragazze), la manica al gomito
+    const CL = CAPI[v.tipo] || {}, fem = D.sesso === 'f', q = r();
+    if (CL.busto && /maglietta|felpa/.test(v.tipo)) {
+      if (q < .22) v.busto = [CL.busto[0] - .1, CL.busto[1], CL.busto[2]];
+      else if (fem && q < .5) v.busto = [Math.max(CL.busto[0], 0) + .24, CL.busto[1], CL.busto[2]];
+      if (CL.braccio && CL.braccio[1] < .6 && r() < .4) v.braccio = [0, .55, CL.braccio[2] + .004];
+    }
+    if (!pick) return v;
+    const lb = lum(v.col || '#888'), far = ACC.filter(c => Math.abs(lum(c) - lb) > .28), pc = a => a[Math.floor(r() * a.length)];
+    const c2 = pc(far.length ? far : ACC), c3 = pc(ACC.filter(c => c !== c2 && Math.abs(lum(c) - lb) > .18)) || '#f0ece2';
+    if (pick.startsWith('p:')) return Object.assign(v, { ptile: pick.slice(2), col3: v.col3 || c2 }, /^maglietta/.test(v.tipo) ? { tile: 'maglietta' } : {});
+    return Object.assign(v, { tile: pick, col2: pick === 'jersey' ? undefined : v.col2 || c2, col3: v.col3 || c3 }, pick === 'ringer' ? { colOrloBr: c2 } : {});
+  }
   function daGuardaroba(outfit, D) {
     D = D || {}; D.vesti = []; D.collo = []; D.schiena = []; D.accessori = D.accessori || [];
     const stretto = outfit.some(c => /^(tuta_ginnastica)$/.test(c.id));
     (outfit || []).forEach(c => { const m = DA_CAPO[c.id]; if (!m) return; const col = c.col || (typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[c.id] && Guardaroba.CAPO[c.id].col) || '#888';
-      if (m.v) D.vesti.push(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.col3 ? { col3: m.col3 } : {}, m.col2 ? { col2: m.col2 } : {}, c.col2 ? { col2: c.col2 } : {}));
+      if (m.v) D.vesti.push(variante(Object.assign({ tipo: m.v, col }, m.ptile ? { ptile: m.ptile } : {}, m.tile ? { tile: m.tile } : {}, m.col3 ? { col3: m.col3 } : {}, m.col2 ? { col2: m.col2 } : {}, m.colBr ? { colBr: m.colBr } : {}, m.colOrloBr ? { colOrloBr: m.colOrloBr } : {}, c.col2 ? { col2: c.col2 } : {}, c.col3 ? { col3: c.col3 } : {}, c.tile ? { tile: c.tile } : {}, c.ptile ? { ptile: c.ptile } : {}), D, D.vesti.length));
       if (m.e) D.vesti.push({ tipo: m.e, col, col3: '#f0ece2' });
       if (m.c) D.cappello = { tipo: m.c, col };
       if (m.o) { D.occhiali = m.o; D.occhialiCol = c.col; if (c.lente) D.lente = c.lente; }
@@ -83606,7 +83911,7 @@ var Personaggi = (function () {
       if (m.k) D.collo.push({ tipo: m.k, col, righe: m.righe, dis: m.dis, kefiah: m.kefiah });
       if (m.z) D.schiena.push({ tipo: m.z, col });
       if (m.a) D.accessori.push(m.a);
-      if (m.x === 'guanti') D.guanti = col; if (m.x === 'spalle') D.spalle = { col }; if (m.x === 'ginocchia') D.ginocchia = { col };
+      if (m.x === 'imbrago') D.imbrago = { col, col2: c.col2 }; if (m.x === 'corda') D.corda = { col, col2: c.col2 }; if (m.x === 'guanti') D.guanti = col; if (m.x === 'spalle') D.spalle = { col }; if (m.x === 'ginocchia') D.ginocchia = { col };
     });
     if (!D.vesti.some(v => CAPI[v.tipo] && (CAPI[v.tipo].gamba || CAPI[v.tipo].gonna))) D.vesti.push({ tipo: 'pantaloni', col: '#3a3a40' });   // nessuno gira in mutande
     return D;
