@@ -14,4 +14,7 @@ ok(C.gradino_via <= 8, `i cambi di pendenza bruschi lungo le vie, fuori dalle sc
 ok(C.spigolo === 0, `gli angoli vivi delle vie di città: ${C.spigolo} (prima 1, il Sottopasso Cavour)`);
 ok(C.zigzag === 0, `i sentieri a zigzag: ${C.zigzag}`);
 ok(C.storta <= 330 && C.scalino <= 140, `case storte ${C.storta} e scalini fra facciate ${C.scalino}: non crescono (aspettano le case girate lungo la via)`);
+// il generatore gira anche nel browser: una riga di prova con process.env senza la guardia ferma l'avvio (è successo due volte)
+const nude = ['world_cittanuova.js', 'tetti.js', 'render.js', 'pezzi_citta.js'].flatMap(f => fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n').map((l, i) => [f, i + 1, l])).filter(([, , l]) => /\bprocess\.(env|argv)/.test(l) && !/typeof process/.test(l));
+ok(!nude.length, 'nessun process.env senza guardia nei file del browser' + (nude.length ? ': ' + nude.map(([f, i]) => f + ':' + i).join(', ') : ''));
 console.log(fail ? `\n${fail} prove non passate` : '\nTutto bene.'); process.exitCode = fail ? 1 : 0;
