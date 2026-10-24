@@ -177,11 +177,11 @@ var Tetti = (function () {
   const PLANKS = [], PCELL = new Map();
   // [tetti4] l'impronta della passerella (col margine di 60 cm per parte, le gronde) tocca solo case col piano dei tetti: sopra un palazzo,
   // una chiesa o un pezzo grande la quota del tetto non si conosce e la passerella non si mette
-  const sgombra4 = P => { for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - .6; t <= P.hw + .6 + 1e-6; t += .3) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
+  const sgombra4 = P => { for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .25) for (let t = -P.hw - 1.0; t <= P.hw + 1.0 + 1e-6; t += .25) { const x = P.x0 + P.ox * s2 + P.px * t, y = P.y0 + P.oy * s2 + P.py * t, tx = Math.floor(x / TS), ty = Math.floor(y / TS);
     if (!inb(tx, ty)) return false;
     for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const q = BI[(ty + j) * GW + tx + i]; if (q < 0 || q === P.a || q === P.b || !B[q] || !rotC4(B[q]) || !dentro4(B[q], x, y, -.6)) continue;   /* la gronda sporge fino a 55 cm */   // [tetti4] gli spigoli delle case girate vicine
-      if (!conPiano4(B[q]) || Math.abs(t) <= P.hw + .1 || (roofRule(B[q]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .4)) return false; }   /* accanto, solo chi è più alto e vicino toglie la passerella */
-    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && (!conPiano4(B[o]) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .4))) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
+      if ((!conPiano4(B[q]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[q]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95)) return false; }   /* accanto, solo chi è più alto e vicino toglie la passerella */
+    const o = BI[ty * GW + tx]; if (o >= 0 && o !== P.a && o !== P.b && ((!conPiano4(B[o]) && Math.abs(t) <= P.hw + .6) || Math.abs(t) <= P.hw + .1 || (roofRule(B[o]) > Math.min(roofRule(B[P.a]), roofRule(B[P.b])) + .1 && Math.abs(t) - P.hw < .95))) return false;   /* sotto l'impalcato solo le sue due case; accanto solo case più basse (i muri, i cornicioni e i balconi di una casa più alta sporgono) */ if (o < 0 && Math.abs(t) <= P.hw + .6 && G.tileAt(tx, ty) === G.T.BLD) return false; } return true; };
   const conPiano4 = b => !!(b && b.era && b.era !== 'E7' && !b.shack && !b.pezzo && !b.lighthouse && !b.kiosk && !b.__tierOf);   // [tetti4] come ok3 di piano3
   const PIN = 1.5, PHW = .5;   // quanto entra nel tetto la rampa, mezza larghezza delle assi
   function buildPlanks() {
@@ -427,7 +427,7 @@ var Tetti = (function () {
         if (lad0.some(([x, y]) => hyp(x - ax, y - ay) < (sep < 4 ? 1.1 : 1.8) || hyp(x - P.wb[0], y - P.wb[1]) < (sep < 4 ? 1.1 : 1.8))) return 'scala vicina2';
         // le teste dentro la loro casa (lontano dai parapetti di fianco), l'impalcato sopra il vuoto, accanto nessuno più alto (di una casa senza piano, 60 cm d'aria)
         const hmin = Math.min(roofRule(A), roofRule(Bb));
-        for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-lw - .6, -lw - .3, -lw, -lw / 2, 0, lw / 2, lw, lw + .3, lw + .6]) {
+        for (let s2 = 0; s2 <= P.L + 1e-6; s2 += .2) for (const t of [-lw - .95, -lw - .6, -lw - .3, -lw, -lw / 2, 0, lw / 2, lw, lw + .3, lw + .6, lw + .95]) {
           const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, sotto = Math.abs(t) <= lw + .01;
           if (sotto && s2 <= P.s1 - P.margA && !dentro4(A, x, y, .42)) return 'testa a';
           if (sotto && s2 >= P.s2 + P.margB && !dentro4(Bb, x, y, .42)) return 'testa b';
@@ -435,7 +435,7 @@ var Tetti = (function () {
           const tx = Math.floor(x / TS), ty = Math.floor(y / TS);
           for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) { if (!inb(tx + i, ty + j)) continue; const o = BI[(ty + j) * GW + tx + i]; if (o < 0 || o === C.a || o === C.b || !B[o]) continue;
             const era = conPiano4(B[o]); if (!dentro4(B[o], x, y, -.6)) continue;   /* col margine della gronda */
-            if (sotto || !era || (roofRule(B[o]) > hmin + .1 && Math.abs(t) - lw < .35)) return 'ingombro'; }
+            if (sotto || (!era && Math.abs(t) - lw < .6) || (roofRule(B[o]) > hmin + .1 && Math.abs(t) - lw < .95)) return 'ingombro'; }
           if (sotto && BI[ty * GW + tx] < 0 && G.tileAt(tx, ty) === G.T.BLD) return 'pezzo'; }
         PLANKS.push(P); passi.push([cx, cy]); if (C.v5) { archi5.push([cx, cy]); P.via5 = true; } (C.tipo === 'arco' ? RETE4.archi : RETE4.passerelle).push(P.i);
         for (let s2 = 0; s2 <= P.L; s2 += .5) for (const t of [-P.hw, 0, P.hw]) { const x = P.x0 + ox * s2 + P.px * t, y = P.y0 + oy * s2 + P.py * t, ck = Math.floor(y / TS) * GW + Math.floor(x / TS);
