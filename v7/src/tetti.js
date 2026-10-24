@@ -1125,7 +1125,7 @@ var Tetti = (function () {
   // il tetto di una casa: manto, forma, gruppi
   function pianoCasa3(c, giri) {
     const { b, bi } = c, era = b.era, x0 = b.x * TS, y0 = b.y * TS, W1 = b.w * TS, D1 = b.h * TS, fl = Math.max(1, b.fl || 1), q = s => h3(b.x, b.y, s);
-    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro || !!c.premio || PLANKS.some(Q => Q.a === bi || Q.b === bi);   // [tetti4] dove arriva una passerella, un arco o un ponte il tetto è un terrazzo: il capo posa sul lastrico   // i calmi del borgo e dell'Ottocento sono tutti falde: il campo di coppi e di tegole che ripete; [tetti4] il premio sta su un terrazzo
+    const piano = era === 'E2' || era === 'E4' || era === 'E6' || b.torre || b.annesso || c.vivo || c.giro || !!c.premio || !!c.forza || PLANKS.some(Q => Q.a === bi || Q.b === bi);   // [tetti4] dove arriva una passerella, un arco o un ponte il tetto è un terrazzo: il capo posa sul lastrico   // i calmi del borgo e dell'Ottocento sono tutti falde: il campo di coppi e di tegole che ripete; [tetti4] il premio sta su un terrazzo
     const P = { bi, era, vivo: !!c.vivo, giro: c.giro, piazza: c.piazza, lungo: c.lungo, tipo: piano ? 'piano' : 'falde', manto: piano ? (era === 'E4' || era === 'E6' ? 'quadrotti' : 'pianelle') : MANTO3[era] || 'coppi', gruppi: [], riserve: [], corr: [],
       rect: { x0: x0 + M3, y0: y0 + M3, x1: x0 + W1 - M3, y1: y0 + D1 - M3 } };
     if (!piano) {   // la falda: forma, colmo (lungo il lato lungo, al centro), pendenza come render.js
@@ -1219,6 +1219,22 @@ var Tetti = (function () {
     return P;
   }
   piano3();
+  // [tetti4] il parapetto alto (80 cm, un metro) non deve coprire una salita: se una scala da terra che si vedeva prima del piano ora è
+  // coperta dal parapetto di una casa davanti, quel parapetto torna a 50 cm (le case girate spostano le scale, e il piano lo deve sapere)
+  { const D6 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null; if (D6) D6.circuiti.filter(c => c.k === 'tetti').forEach(c => [c.sali, c.scendi].forEach(i => { if (LADDERS[i]) LADDERS[i].giro4 = true; }));
+    for (let giro = 0; giro < 3; giro++) { let cambi = 0;
+      LADDERS.forEach(L => { if (L.camm || L.footB >= 0 || L.corte !== undefined || L.vis === false || vistaL3(L)) return;
+        const h0 = tileH(L.fx, L.fy), h1 = roofRule(B[L.bi]);
+        for (const t of [.12, .5, .9]) { const x = L.x + L.ox * .35, y = L.y + L.oy * .35, z = h0 + (h1 - h0) * t;
+          for (let d = .5; d <= 45; d += .5) { const px = x + CAM * d, py = y + CAM * d, pz = z + d * TAN3; if (pz > 40) break; const o = bAt(px, py); const P = o >= 0 ? PIANO[o] : null;
+            if (!P || P.alto <= pz) continue; if (rotC4(B[o]) && !dentro4(B[o], px, py, -.3)) continue;
+            if (P.tipo === 'falde' && L.giro4) {   // la falda davanti all'ingresso di un giro: la casa diventa un terrazzo (più basso del colmo)
+              const D5 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null, giri5 = D5 ? D5.circuiti.filter(c => c.k === 'tetti') : [];
+              PIANO[o] = pianoCasa3({ b: B[o], bi: o, s: 0, giro: false, piazza: false, lungo: false, puo: false, perc: false, forza: true }, giri5); cambi++; continue; }
+            if (!P.parapetti) continue;
+            let c = false; ['N', 'W'].forEach(f => { if (P.parapetti[f] > .5) { P.parapetti[f] = .5; c = true; } });
+            if (c) { P.alto = Math.max(roofRule(B[o]) + .6, roofRule(B[o]) + Math.max(...Object.values(P.parapetti)) + .1); P.firma4 = 'piano' + (P.forma4 ? '/' + P.forma4 : '') + ':' + ['N', 'W', 'S', 'E'].map(f => P.parapetti[f]).join('/'); cambi++; } } } });
+      if (!cambi) break; } }
   // [tetti4] le vie dei giri si ricontrollano col piano fatto (le falde alzano il colmo): una via la cui scala la camera non vede si toglie
   { const D4 = typeof Percorsi !== 'undefined' && Percorsi.attivo ? Percorsi.dati : null;
     if (D4) D4.circuiti.filter(c => c.k === 'tetti' && c.vie).forEach(c => { c.vie = c.vie.filter(v => { const L = LADDERS[v.i]; return vistaL3(L) && G.walkT(Math.floor(L.fx / TS), Math.floor(L.fy / TS)) && bAt(L.fx, L.fy) < 0; });   /* [tetti4] e il piede in strada (sulle case girate la scala può finire su una casella della casa) */ c.salite = [c.sali].concat(c.vie.map(v => v.i)); c.discese = [c.scendi].concat(c.vie.map(v => v.i)); }); }

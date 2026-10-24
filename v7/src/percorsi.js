@@ -420,10 +420,10 @@ var Percorsi = (function () {
       // [tetti4] prima il pezzo con più tetti che dai giri fatti non si raggiungono (case girate comprese): ogni giro nuovo copre il più possibile
       const raggiunti = () => { const S = new Set(), Q = []; CIRCUITI.filter(c => c.k === 'tetti').forEach(c => c.edifici.forEach(i => { if (!S.has(i)) { S.add(i); Q.push(i); } }));
         for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
-      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set();
+      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
       for (;;) {
         if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
-        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => ({ P, n: P.filter(i => !R4.has(i)).length })).filter(q => q.n >= 8).sort((u, v) => v.n - u.n || u.P[0] - v.P[0]);
+        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= 8).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
         if (!cand4.length) break; const P = cand4[0].P; provati.add(P);
         const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }); if (!c) continue;   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
         const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
