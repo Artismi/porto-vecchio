@@ -64085,7 +64085,7 @@ var Render = (function () {
   const ANT1 = { x: null, z: null, v: 0, dir: new THREE.Vector3() };
   function anelliTick1(ui, dt) {
     if (typeof Anelli === 'undefined' || !Anelli.ON) return;
-    dt = Math.max(.001, dt || .016); const x = cam.x, z = cam.y;
+    const nowA = performance.now(); dt = ANT1.t ? Math.max(.001, (nowA - ANT1.t) / 1000) : .016; ANT1.t = nowA; const x = cam.x, z = cam.y;   // il tempo vero (il dt del gioco è tagliato a 50 ms)
     if (FU1.onda.size && !FU1.ondaT) { FU1.ondaT = performance.now();   // [anelli] l'onda del primo avvio (ANIMUS): le case vicine dalle sagome, a cerchi dal punto guardato
       const W = Anelli.CFG.ondaV; let fine = 0; FU1.onda.forEach(rec => { const c = recCtr1(rec), i = FD1.idx.get(rec), d = Math.hypot(c[0] - x, c[1] - z), rit = .35 + d / W; fine = Math.max(fine, rit);
         Anelli.sfuma(k => { FD1.data[i * 4 + 3] = Math.round(255 * (1 - k)); FD1.dirty = true; }, Anelli.CFG.sfuma, rit); });
@@ -65453,7 +65453,8 @@ var Render = (function () {
   // [vegetazione] il verde nuovo (vegetazione.js): sulle sue caselle il verde di prima non si disegna (?vecchioverde: com'era)
   let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
   const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
-  function buildNat(tx0, ty0, n, m) {
+  function buildNat(tx0, ty0, n, m) { const it = buildNatG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  function* buildNatG(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
     const T = G.T, W0 = M.world, F = W0 && W0.feat, MF = (W0 && W0.MF) || {}, orig = W0 && W0.grid;
@@ -65466,7 +65467,8 @@ var Render = (function () {
     const isTrail = (a, b) => { if (a < 0 || b < 0 || a >= G.GW || b >= G.GH) return false; const k = b * G.GW + a; return RW[k] > 0 && gT(a, b) === T.DIRT; };
     const thick = (x, z) => .5 + vnz(x / 26, z / 26) * .7 + vnz(x / 9, z / 9) * .3;   // 0..1: quanto è fitta la macchia qui
     const LEAF = ['#e8f0e0', '#f4f2e4', '#e0ead8', '#fff8e8'], ROCKC = ['#a8a8a2', '#9c9c96', '#b4b2aa'];
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
+    for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), f = F ? F[ii] : 0, r = rng((tx * 50411 + ty * 81239) >>> 0);
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
@@ -65497,7 +65499,7 @@ var Render = (function () {
       }
       if (v !== T.DIRT && v !== T.CLIFF && v !== T.TREE && r() < .35 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isTrail(tx + dx, ty + dy))) { const x = tx * TS + r() * 2, z = ty * TS + r() * 2; add(pick(r, ['Pebble_Round_1', 'Pebble_Square_2', 'Pebble_Round_3']), x, groundH(x, z) - .02, z, 1.4 + r(), r() * 6.28, { col: '#d8d4cc' }); }
       if (f & 256 && v !== T.CLIFF) for (let q = 0; q < 3; q++) { const x = tx * TS + .5 + q * .5, z = ty * TS + .5 + q * .5; add('RockPath_Square_Small_1', x, groundH(x, z) - .05, z, .9, r() * .4, { col: '#b4b0a8' }); }
-    }
+    } }
     // muri a secco delle terrazze: una fila di pietre piatte sul ciglio (la parete sotto è dipinta a pietra)
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx; if (!F || !(F[ii] & 512) || gT(tx, ty) !== T.CLIFF) continue;
@@ -65996,7 +65998,8 @@ var Render = (function () {
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   LOWQ.phone = PHONE;
-  function buildVeg(tx0, ty0, n, m) {
+  function buildVeg(tx0, ty0, n, m) { const it = buildVegG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  function* buildVegG(tx0, ty0, n, m) {
     const K = vegKit(), T = G.T, L0 = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] }, LT = { trunk: [], leaf: [], cone: [], rock: [], cactus: [], vine: [], bark: [], fir: [], tuft: [] };
     let L = L0;
     const put = (arr, x, y, z, sx, sy, sz, ry, col, rx) => arr.push({ x, y, z, sx, sy, sz, ry, col, rx: rx || 0 });
@@ -66016,7 +66019,8 @@ var Render = (function () {
     };
     const tuft = (x, z, cols, sc, r) => put(LT.tuft,   /* [verde] */ x, groundH(x, z) - .02, z, sc * (.7 + r() * .6), sc * (.7 + r() * .7), sc * (.7 + r() * .6), r() * 6, pick(r, cols));
     const STRAW = ['#7e8a52', '#8e8a58', '#6a7a48', '#a09868'], DEAD = ['#4e5a3c', '#5a6444', '#4a4a3c'], /* [amb1] erba d'inizio autunno */ GRN = ['#4a5a40', '#56664a', '#40503c'];
-    for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
+    for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
+    for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, v = gT(tx, ty), z = zoneT(tx, ty), r = rng((tx * 92821 + ty * 68917) >>> 0);
       const cx = tx * TS + .4 + r() * 1.2, cz = ty * TS + .4 + r() * 1.2;
       if (VEGN(ty * G.GW + tx)) continue;   // [vegetazione]
@@ -66029,7 +66033,7 @@ var Render = (function () {
       else if (v === T.ROCK) { if (r() < .14) put(L.rock, cx, groundH(cx, cz) - .2, cz, .6 + r() * 1.4, .4 + r() * 1, .6 + r() * 1.2, r() * 6, pick(r, ['#7e8088', '#8a8c94', '#70727a'])); }
       veg31(v, z, tx, ty, r, put, L0, LT);   // [isola31]
       
-    }
+    } }
     let grp = new THREE.Group(); const grpMain = grp;
     const mkI = (arr, geo, mat, colored, shadow) => {
       if (!arr.length) return;
@@ -66515,9 +66519,9 @@ var Render = (function () {
     if (riva) yield;
     if (riva) acquaFine9(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare
     yield;
-    const veg = buildVeg(tx0, ty0, n, m); grp.add(veg);
+    const veg = yield* buildVegG(tx0, ty0, n, m); grp.add(veg);
     yield;
-    const nat = buildNat(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
+    const nat = yield* buildNatG(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     yield;
     const vd = yield* verde38G(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
