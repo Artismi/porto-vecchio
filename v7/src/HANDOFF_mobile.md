@@ -82,3 +82,56 @@ vertici, 11,6 M triangoli, non indicizzati: la leggono raggi, distruzione, tetti
   (borgo e Vittoria, 15 e 22): stessa scena a vista; le differenze pixel vengono dalla camera che si assesta in modo diverso fra due partite.
   **Non provato su un telefono vero**: 1,4 GB di heap sono tanti; la strada vera per il telefono è costruire la città a settori attorno al
   giocatore (oggi `buildBuildings` → `fusione1` nasce tutta all'avvio), un lavoro grosso.
+
+## Il telefono, misurato e alleggerito a parità d'immagine (24 ottobre, [telefono])
+Strumenti nuovi in `strumenti/`: `sonda_telefono.js` (iPhone 13 emulato, città nuova: fasi dell'avvio, heap dopo il garbage collector, byte della
+geometria per categoria, tele vive con le misure, disegni, ms), `sonda_chi.js` (chi crea le tele, chi mette in scena le mesh sciolte, profilo del
+processore all'avvio), `sonda_heap.js` (chi tiene l'heap: allocazioni vive per funzione), `mappa_righe.py` (riga di index.html → file:riga),
+`prova_riva_uguale.js` (la riva al bit contro git HEAD). Misure nel container (Chromium senza scheda video: i ms valgono per i rapporti),
+borgo alle 11, 844×390, dpr 2.
+
+**Dove andava il peso** (prima): heap 1.614 MB, più 483 MB di tele fuori dall'heap (1.243 tele vive); 29.900 mesh sciolte; avvio 114 s di cui 71 s
+nelle fasi della costruzione (`pulizia2` 21 s, `buildings` 14, `fusione1` 11, `water` 8); 1.475 disegni e 4,3 M triangoli a fotogramma; logica 5,8 ms.
+- 154 tavolozze delle case del kit (`palTex`, 512×512, 161 MB) servivano solo alla pila delle mappe nella fusione e poi ai pezzi originali quando
+  una casa si dissolve; 102 targhe e 45 insegne dipinte (`signTexture`, `insegnaTex`, 48 MB).
+- 2.645 pezzi originali delle case fuse rifatti (`lazyGeo1`, 56 MB) e mai liberati: li rifaceva ogni raggio dei tetti anche quando mancava la sfera.
+- `renderer.compile` all'avvio passa su tutta la scena, pezzi spenti compresi: ~170 MB di uniform clonate per ~19.000 materiali invisibili.
+- `c2Dist` (la distanza vera dalla riva): 9,4 s di processore, con un vettore allocato a ogni segmento; `pulizia_rumore` `grp`: 7,7 s in
+  `Array.includes`; la pila delle mappe riletta al primo fotogramma (4 s) perché `morbide2` cambiava i filtri (non i pixel) delle tele.
+
+**Fatto** (ogni passo dà gli stessi numeri o gli stessi pixel; interruttori accanto):
+- **Tele pigre** (`render.js telaPigra`, `?nopigre`): una tela che una funzione ridipinge uguale (tavolozze, targhe, insegne: font di sistema, stesso
+  seme) resta in memoria solo finché serve: dopo la fusione si svuota (`pigreSvuota`, fase `pigre`), la scheda video la trova ridipinta al primo
+  invio e la svuota di nuovo (`onUpdate`); la pila che si rilegge la ridipinge e la svuota. `arrStessiPixel1`: un cambio di soli filtri non fa
+  rileggere la pila.
+- **Pezzi lazy1 liberati** (`lazy1Sweep`, `?nolibera1`): un pezzo rifatto, spento, che nessuno chiede da 20 s torna segnaposto (la scheda video
+  libera i buffer); il raggio prova prima la sfera del segnaposto (come three) e rifà il pezzo solo se la tocca.
+- **Rilascio dopo la compilazione** (`peso_pronti.js rilascia`, `?nopesorilascio`): le proprietà dei materiali che nessun oggetto visibile usa si
+  lasciano andare dopo `renderer.compile`; i programmi restano in cache, al primo uso vero three rifà le uniform in pochi ms.
+- **Avvio**: `c2Dist` senza allocazioni e nello stesso ordine (al bit: `prova_riva_uguale.js`, 500.000 punti, 0 diversi, 2,4× in Node), le due rive
+  valgono per x (`NorthY`/`SouthY` in memoria); `grp` di `pulizia_rumore` con un Set; `flatXf` senza la divisione per w sulle matrici affini (× 1
+  non cambia un bit); le tele di lavoro della neve e la maschera nitida del mare si svuotano dopo l'uso; le firme dei materiali (`FD1.sigs`, ~20 MB
+  di stringhe) si buttano dopo la fusione.
+
+**Dopo** (stessa sonda, stessa inquadratura): heap **1.614 → 1.401 MB**, tele **483 → 256 MB** (in tutto circa −440 MB); pezzi lazy1 vivi 2.645 → 188;
+fasi dell'avvio **71 → 47 s** (`pulizia2` 12,5, `buildings` 9,6, `fusione1` 4,3, `water` 6,2); disegni e triangoli uguali (1.456, 4,3 M); console pulita.
+Prove: `test_costa2`, `test_riva`, `test_scorci`, `test_tetti3`, `test_segni` passano (`test_posa` ha due NO identici a prima della modifica).
+Banco del peso (`strumenti/banco_peso.js`, profilo computer, `--rif` sul giro di prima): borgo scarto medio 2,7 e 5,3% di pixel oltre 8, notte
+1,6 / 3,5% (statica 0,15 / 0,3%): dentro il rumore fra due caricamenti dello stesso codice (1,6-2,2 e ~4%, PESO.md §1). La marina dà 27 / 54%:
+è la camera che si assesta in un'altra posa fra due partite (stessa scena, inquadratura spostata), non un cambio di contenuto: lo stesso codice caricato due volte dà alla marina 32,5 / 61,5%.
+Un giro di sei posti sul profilo telefono (borgo, marina, Recinto, Mercato di notte, Rocca, borgo), con qualche passo in ognuno: nessun errore, i
+pezzi lazy1 si rifanno e si liberano (3.069 rifatti, 2.721 liberati, 348 vivi alla fine), le tele restano fra 240 e 300 MB. L'heap però cresce
+camminando (1.419 → 1.638 MB in sei posti): è la crescita di prima (blocchi del terreno, persone e vestiti in serbo), non toccata qui.
+
+**Provato e scartato**: congelare (comprimere) la geometria statica oltre la nebbia: si comprime 10× (`CompressionStream`), ma dal borgo oltre
+`camera.far + 90` ci sono solo 20 MB su 394: la città è compatta, non c'è niente di lontano da congelare.
+
+**Il fotogramma sul telefono** (banco `--query=&leggera`, borgo): 1.505 disegni = 1.266 principale + 234 ombra del sole (a fotogrammi alterni) + 5
+post. Chi pesa: `resto` 272+171, **mezzi 151+197** (le auto in sosta finiscono fra i «mobili» dell'ombra e si ridisegnano a ogni fotogramma), case
+153, statiche fuse 126+113, statiche sciolte 87+31, posa 60+81, case sciolte 57+20, vissuti 54+12.
+
+**Resta** (un telefono vero non è stato provato): 1,4 GB di heap più 256 MB di tele sono ancora troppi per molti telefoni; il grosso è la città
+intera costruita all'avvio (fusione1 364 MB di vertici, 146 MB di mesh sciolte, 55 MB di vegetazione lontana, 21.600 materiali e 47.000 oggetti
+three). La strada resta costruire a settori attorno al giocatore. Passi più piccoli, nell'ordine: le auto in sosta come cose ferme nell'ombra
+cotta (−200 disegni a fotogramma); le barche (938 mesh) e le guardie (1.072) fuse come le persone; le tele dei vestiti in cache (`pittura.js`, 56 ×
+~2 MB) rese pigre; le mesh sciolte grandi (`marciapiedi38`, `buildSegni1`, `posaPezzi1`) nello streaming della scheda video.

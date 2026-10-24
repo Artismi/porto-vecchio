@@ -32,6 +32,18 @@ var PesoPronti = (function () {
       try { P.qualita(altra); rd.compile(S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
     extra.forEach(ms => S.remove(ms));
     ST.programmi = (rd.info.programs ? rd.info.programs.length : 0) - n0; ST.ms = +(performance.now() - t0).toFixed(1);
+    ST.rilasciati = rilascia(rd, S);
+  }
+  // [telefono] renderer.compile passa su TUTTA la scena, anche sui pezzi spenti (le case fuse tengono i loro 17.000 pezzi originali
+  // invisibili, con ~19.000 materiali propri): per ognuno three clona le uniform del programma (~170 MB di heap, misurati). Il programma
+  // compilato resta in cache: qui si lasciano andare solo le proprietà dei materiali che nessun oggetto visibile usa; al primo uso vero
+  // (la casa che si dissolve) three le rifà in pochi millisecondi dal programma già pronto. ?nopesorilascio lo spegne
+  function rilascia(rd, S) {
+    if (/[?&]nopesorilascio\b/.test(Q) || !rd.properties || typeof rd.properties.remove !== 'function') return 0;
+    const vis = new Set(), inv = new Set(), each = (o, f) => { const m = o.material; if (!m) return; if (Array.isArray(m)) m.forEach(f); else f(m); };
+    S.traverseVisible(o => each(o, m => vis.add(m)));
+    S.traverse(o => each(o, m => { if (!vis.has(m)) inv.add(m); }));
+    inv.forEach(m => rd.properties.remove(m)); return inv.size;
   }
   return { ON, compila, conto: () => Object.assign({ on: ON }, ST) };
 })();

@@ -54,7 +54,7 @@ var Render = (function () {
   function smooth2o(o) { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null; if (!ms) return;
       for (const m of ms) { if (!m || SMOOTH2.has(m)) continue; SMOOTH2.add(m);
         for (const k of ['map', 'emissiveMap', 'roughnessMap']) { const t = m[k]; if (!t || !t.isTexture || t.isDataTexture || t.isRenderTargetTexture || t.isDepthTexture) continue; const im = t.image; if (!im || !(im.width > 4)) continue;
-          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; } }
+          if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.minFilter === THREE.NearestMipmapNearestFilter) { t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; arrStessiPixel1(t); } }
         } }   /* [plastica2] via il rilievo dalla texture (bumpMap = map): sul terreno e sulle facciate era rumore che luccicava */
   function smooth2(root) { root.traverse(smooth2o); root.traverse(thin2); }
   // [fluido] GIRI DELLA SCENA A RATE: chi deve riguardare ogni oggetto della città (~30.000) lo fa a pezzi, n oggetti per fotogramma,
@@ -183,7 +183,10 @@ var Render = (function () {
     if (plain) for (const k in A) if (k !== 'position' && k !== 'normal' && k !== 'uv') { plain = false; break; }
     if (!plain) { const g = ix ? g0.toNonIndexed() : g0.clone(); g.applyMatrix4(M); return g; }
     const I = ix ? ix.array : null, n = I ? I.length : P.array.length / 3, e = M.elements, pa = P.array, pos = new Float32Array(n * 3), g = new THREE.BufferGeometry();
-    for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x = pa[s], y = pa[s + 1], z = pa[s + 2], w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
+    const aff = e[3] === 0 && e[7] === 0 && e[11] === 0 && e[15] === 1;   // [telefono] matrice affine (qui sempre): w = 1/1 = 1 e «× 1» non cambia un bit: si salta
+    if (aff) for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x = pa[s], y = pa[s + 1], z = pa[s + 2];
+      pos[k * 3] = e[0] * x + e[4] * y + e[8] * z + e[12]; pos[k * 3 + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; pos[k * 3 + 2] = e[2] * x + e[6] * y + e[10] * z + e[14]; }
+    else for (let k = 0; k < n; k++) { const s = (I ? I[k] : k) * 3, x = pa[s], y = pa[s + 1], z = pa[s + 2], w = 1 / (e[3] * x + e[7] * y + e[11] * z + e[15]);
       pos[k * 3] = (e[0] * x + e[4] * y + e[8] * z + e[12]) * w; pos[k * 3 + 1] = (e[1] * x + e[5] * y + e[9] * z + e[13]) * w; pos[k * 3 + 2] = (e[2] * x + e[6] * y + e[10] * z + e[14]) * w; }
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     if (N) { const r = _nm1.getNormalMatrix(M).elements, na = N.array, nor = new Float32Array(n * 3);
@@ -314,10 +317,14 @@ var Render = (function () {
   }
   function arrFill1(a) {   // gli strati dalle tele (con il capovolgimento che la scheda video faceva in caricamento)
     const W = a.W, H = a.H, n = a.maps.length, d = new Uint8Array(W * H * 4 * n);
-    a.maps.forEach((t, l) => { const px = t.image.getContext('2d').getImageData(0, 0, W, H).data, o = l * W * H * 4;
-      if (t.flipY) for (let y = 0; y < H; y++) d.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), o + y * W * 4); else d.set(px, o); a.ver[l] = t.version; });
+    a.maps.forEach((t, l) => { const im = t.image, px = im.getContext('2d').getImageData(0, 0, W, H).data, o = l * W * H * 4;
+      if (t.flipY) for (let y = 0; y < H; y++) d.set(px.subarray((H - 1 - y) * W * 4, (H - y) * W * 4), o + y * W * 4); else d.set(px, o); a.ver[l] = t.version;
+      if (im.__vuota === false && PIGRE.svuotate) { im.__vuota = true; im.width = 1; im.height = 1; } });   // [telefono] la tela pigra riletta dopo lo svuotamento si svuota di nuovo
     return d;
   }
+  // [telefono] una tela che cambia solo i filtri (morbide2 dopo la fusione) ha gli stessi pixel: la pila non si rilegge (erano ~4 s al primo
+  // fotogramma, e le tele pigre tornavano in memoria)
+  function arrStessiPixel1(t) { for (const a of ARR1.all) { const l = a.idx.get(t); if (l !== undefined && a.tex) a.ver[l] = t.version; } }
   function arrTex1(a) {
     const t0 = a.src, tx = new THREE.DataArrayTexture(arrFill1(a), a.W, a.H, a.maps.length);
     tx.format = THREE.RGBAFormat; tx.type = THREE.UnsignedByteType; tx.wrapS = t0.wrapS; tx.wrapT = t0.wrapT; tx.magFilter = t0.magFilter; tx.minFilter = t0.minFilter; tx.anisotropy = t0.anisotropy;
@@ -435,12 +442,20 @@ var Render = (function () {
   // [leggera] i pezzi originali delle case fuse (spenti, servono solo quando la casa si dissolve, ai raggi dei graffiti e dei tetti)
   // non tengono più la loro geometria (erano ~260 MB): la rifanno dalla mesh fusa la prima volta che qualcuno la chiede, con
   // lo stesso ingombro di prima per chi misura le scatole senza leggere i vertici.
-  const LAZY1 = { n: 0, made: 0 };
+  // [telefono] e si libera di nuovo: un pezzo rifatto (la casa che si è dissolta passandoci davanti, un raggio dei tetti o dei graffiti)
+  // restava in memoria per sempre, e girando la città i pezzi vivi crescevano (2.600 pezzi, 56 MB, già alla prima inquadratura). Ora un
+  // pezzo spento che nessuno chiede da 20 s torna segnaposto (la scheda video libera i suoi buffer); chi lo richiede lo rifà uguale.
+  // ?nolibera1 lo spegne
+  const LAZY1 = { n: 0, made: 0, liberate: 0, vivi: new Set(), t: 0, attesa: 20, libera: !/[?&]nolibera1\b/.test(location.search), ultimo: 0 };
+  function lazy1Sweep(now) {
+    LAZY1.t = now; if (!LAZY1.libera || now - LAZY1.ultimo < 2) return; LAZY1.ultimo = now;
+    for (const o of LAZY1.vivi) o.userData.lazy1Libera();
+  }
   function lazyGeo1(o, fused, start, count, hasN, hasUv) {
     const g0 = o.geometry; if (!g0 || o.userData.lazy1) return;
     if (!g0.boundingBox) g0.computeBoundingBox(); if (!g0.boundingSphere) g0.computeBoundingSphere();
     const ph = new THREE.BufferGeometry(); ph.boundingBox = g0.boundingBox.clone(); ph.boundingSphere = g0.boundingSphere.clone(); ph.name = g0.name;
-    const inv = o.matrixWorld.clone().invert(); let real = null; LAZY1.n++;
+    const inv = o.matrixWorld.clone().invert(); let real = null, usoT = 0; LAZY1.n++;
     const make = () => {
       const P = fused.attributes, a = start, z = start + count, g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(P.position.array.slice(a * 3, z * 3), 3));
@@ -450,8 +465,9 @@ var Render = (function () {
     };
     // finché nessuno la chiede davvero (la casa che si dissolve, un raggio) resta il segnaposto: chi compila i programmi o conta
     // le mesh legge o.geometry senza volerne i vertici
-    o.userData.lazy1 = () => { if (!real) real = make(); return real; };
-    Object.defineProperty(o, 'geometry', { configurable: true, enumerable: true, get() { return real || ph; }, set(v) { real = v; } });
+    o.userData.lazy1 = () => { if (!real) { real = make(); LAZY1.vivi.add(o); } usoT = LAZY1.t; return real; };
+    o.userData.lazy1Libera = () => { if (!real || o.visible || LAZY1.t - usoT < LAZY1.attesa) return false; real.dispose(); real = null; LAZY1.vivi.delete(o); LAZY1.liberate++; return true; };   // [telefono]
+    Object.defineProperty(o, 'geometry', { configurable: true, enumerable: true, get() { return real || ph; }, set(v) { real = v; if (v) { usoT = LAZY1.t; LAZY1.vivi.add(o); } else LAZY1.vivi.delete(o); } });
   }
   function fadeTick1(rec) {   // la casa che si dissolve esce dalla mesh fusa e torna coi suoi pezzi trasparenti
     if (!rec.mv1 || !FD1.data) return; const i = FD1.idx.get(rec), on = rec.fade > .004;
@@ -803,6 +819,7 @@ var Render = (function () {
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); bx.filter = 'none';
+    mc.width = mc.height = 1;   // [telefono] la maschera nitida serviva solo alla sfocata (6,6 MB)
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
     if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
@@ -1110,6 +1127,7 @@ var Render = (function () {
       D[o + 3] = Math.round(k * 255 * .88);
     }
     const outc = mk(n * P, m * P); outc.getContext('2d').putImageData(id, 0, 0); x.drawImage(outc, 0, 0);
+    outc.width = outc.height = 1; big.width = big.height = 1;   // [telefono] le tele di lavoro (2 MB a blocco) restavano in memoria
     x.restore();
     // 4) dettagli: fanghiglia, impronte, pozzanghere, fuliggine, erba secca
     info.forEach(q => {
@@ -4861,13 +4879,30 @@ var Render = (function () {
   const palTexCache = {};
   function palTex(wall, trim, roof, metal) {
     const key = [wall, trim, roof, metal].join(); if (palTexCache[key]) return palTexCache[key];
-    const src = Kit.texOf('bkit/wall'); const img = src.image, c = mk(img.width, img.height), x = c.getContext('2d'); x.drawImage(img, 0, 0);
-    const cw = img.width / 16, y0 = img.height * .75, ch = img.height / 4;
-    const paint = (cell, col, top, bot) => { const g = x.createLinearGradient(0, y0, 0, y0 + ch); g.addColorStop(0, shade(col, top)); g.addColorStop(1, shade(col, bot)); x.fillStyle = g; x.fillRect(cell * cw, y0, cw, ch); };
-    paint(CELL.wall, wall, 1.04, .86); paint(CELL.wallTop, roof, 1, .9); paint(CELL.column, trim, 1, .92); paint(CELL.trim, trim, 1.02, .9); paint(CELL.metal, metal, 1.1, .8);
+    const src = Kit.texOf('bkit/wall'); const img = src.image, c = mk(img.width, img.height);
+    const dipingi = () => { const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+      const cw = img.width / 16, y0 = img.height * .75, ch = img.height / 4;
+      const paint = (cell, col, top, bot) => { const g = x.createLinearGradient(0, y0, 0, y0 + ch); g.addColorStop(0, shade(col, top)); g.addColorStop(1, shade(col, bot)); x.fillStyle = g; x.fillRect(cell * cw, y0, cw, ch); };
+      paint(CELL.wall, wall, 1.04, .86); paint(CELL.wallTop, roof, 1, .9); paint(CELL.column, trim, 1, .92); paint(CELL.trim, trim, 1.02, .9); paint(CELL.metal, metal, 1.1, .8); };
+    dipingi();
     const t = new THREE.CanvasTexture(c); t.flipY = src.flipY; t.encoding = src.encoding; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+    telaPigra(t, c, dipingi);   // [telefono] 154 tavolozze da 1 MB: in memoria solo quando servono
     return (palTexCache[key] = t);
   }
+  // [telefono] LE TELE PIGRE: una tela che una funzione ridipinge uguale (le tavolozze delle case del kit: 154 tele da 1 MB, 161 MB,
+  // che servivano solo alla pila delle mappe nella fusione e poi ai pezzi originali quando una casa si dissolve) sta in memoria solo
+  // finché serve. Dopo la fusione si svuota (pigreSvuota); chi la chiede dopo (la scheda video al primo invio, la pila se si rifà)
+  // la trova ridipinta uguale, e dopo ogni invio alla scheda video si svuota di nuovo. L'immagine è la stessa: stessa tela, stessi pixel.
+  const PIGRE = []; PIGRE.on = !/[?&]nopigre\b/.test(location.search);   // ?nopigre: le tele restano in memoria come prima
+  function telaPigra(t, c, dipingi) {
+    if (!PIGRE.on) return t;
+    const W = c.width, H = c.height; c.__vuota = false;
+    Object.defineProperty(t, 'image', { configurable: true, enumerable: true, get() { if (c.__vuota) { c.__vuota = false; c.width = W; c.height = H; dipingi(); } return c; },
+      set(v) { Object.defineProperty(t, 'image', { value: v, writable: true, configurable: true, enumerable: true }); t.source.data = v; } });
+    t.onUpdate = () => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; } };
+    PIGRE.push(c); return t;
+  }
+  function pigreSvuota() { let n = 0; PIGRE.svuotate = true; PIGRE.forEach(c => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; n++; } }); return n; }
   const palMatCache = {};
   function palMat(p) { const k = p.join(); return palMatCache[k] || (palMatCache[k] = plasterize(std({ map: palTex(p[0], p[1], p[2], p[3]), roughness: .9 }))); }   // [case] intonaco
   // un modulo del kit col materiale dell'edificio. Nel kit il muro sta sul piano yz e guarda verso +x:
@@ -5420,7 +5455,8 @@ var Render = (function () {
     return best;
   }
   function signTexture(text, color, bg, aspect) { color = nq(color); text = String(text).toUpperCase();
-    aspect = aspect || 4; const W = 512, H = Math.max(96, Math.round(W / aspect)), c = mk(W, H), x = c.getContext('2d');
+    aspect = aspect || 4; const W = 512, H = Math.max(96, Math.round(W / aspect)), c = mk(W, H);
+    const dipingi = () => { const x = c.getContext('2d');   // [telefono] tela pigra: font di sistema, ridipinta uguale quando serve
     bg = bg || '#14101c'; const light = lumOf(bg) > .5;
     x.fillStyle = bg; x.fillRect(0, 0, W, H);
     // cornice a due filetti, come una targa smaltata
@@ -5436,8 +5472,9 @@ var Render = (function () {
       x.fillStyle = 'rgba(0,0,0,.55)'; x.fillText(l, W / 2 + 3, y + 4);                 // ombra: lettere in rilievo
       x.shadowColor = color; x.shadowBlur = best.sz * .35; x.fillStyle = color; x.fillText(l, W / 2, y);
       x.shadowBlur = 0; x.fillStyle = 'rgba(255,255,255,.72)'; x.fillText(l, W / 2, y);   // anima chiara del tubo
-    });
-    return canvasTex(c);
+    }); };
+    dipingi();
+    return telaPigra(canvasTex(c), c, dipingi);
   }
   // insegna verticale a bandiera (lettere una sotto l'altra), tipica degli hotel déco
   // [insegne1] la parola corta delle insegne a bandiera: una per tipo di bottega, mai lettere a caso. null = niente bandiera.
@@ -9849,7 +9886,8 @@ var Render = (function () {
   }
   const ERA_INS = { E0: 'dipinta', E2: 'tavola', E3: 'marmo', E4: 'lapidaria', E6: 'plexi', E7: 'latta' };
   function insegnaTex(text, stile, col, aspect) {
-    text = String(text).toUpperCase(); const W = 512, H = Math.max(64, Math.round(W / aspect)), c = mk(W, H), x = c.getContext('2d'), r = rng(text.length * 131 + stile.length);
+    text = String(text).toUpperCase(); const W = 512, H = Math.max(64, Math.round(W / aspect)), c = mk(W, H);
+    const dipingi = () => { const x = c.getContext('2d'), r = rng(text.length * 131 + stile.length);   // [telefono] tela pigra: stesso seme, stessi font di sistema
     const SERIF = '"Times New Roman", "Liberation Serif", Georgia, serif';
     const P = { dipinta: ['#e2d4b4', '#7a2a1e', `bold ${'italic'} `, SERIF], tavola: ['#2e4a58', '#efe4c8', 'bold ', SERIF], marmo: ['#ece8e0', '#1e1c1a', 'bold ', SERIF], lapidaria: [null, '#6a4a22', 'bold ', SERIF],
       plexi: ['#f4f0e6', nq(col || '#c03a2a'), '900 ', SIGN_FONT], latta: ['#8a8e86', '#f0ece0', '900 ', SIGN_FONT] }[stile];
@@ -9865,8 +9903,8 @@ var Render = (function () {
     x.textAlign = 'center'; x.textBaseline = 'middle'; const y = H / 2 + sz * .05;
     if (stile === 'marmo') { x.fillStyle = 'rgba(255,255,255,.8)'; x.fillText(tx, W / 2 + 2, y + 2); }
     if (stile === 'lapidaria') { x.fillStyle = 'rgba(30,20,10,.55)'; x.fillText(tx, W / 2 + 3, y + 4); }
-    x.fillStyle = P[1]; x.fillText(tx, W / 2, y);
-    const t = canvasTex(c); return { t, alpha: !P[0] };
+    x.fillStyle = P[1]; x.fillText(tx, W / 2, y); return P; };
+    const P = dipingi(), t = telaPigra(canvasTex(c), c, dipingi); return { t, alpha: !P[0] };
   }
   function tendaMat(era) {
     if (BOT.tenda[era]) return BOT.tenda[era];
@@ -14931,7 +14969,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
   }
-  { const rc1 = THREE.Mesh.prototype.raycast; if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1; if (typeof L === 'function') L(); return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
+  { const rc1 = THREE.Mesh.prototype.raycast, _ls1 = new THREE.Sphere(); if (!rc1.__lazy1) { const f = function (r, out) { const L = this.userData && this.userData.lazy1;
+      if (typeof L === 'function') { const g = this.geometry; if (g && g.boundingSphere && !g.attributes.position) { _ls1.copy(g.boundingSphere).applyMatrix4(this.matrixWorld); if (!r.ray.intersectsSphere(_ls1)) return; }   // [telefono] il raggio manca la sfera del segnaposto (la stessa prova che three fa per prima): niente da rifare, niente colpi, come prima
+        L(); }
+      return rc1.call(this, r, out); }; f.__lazy1 = true; f.__bvh = rc1.__bvh; THREE.Mesh.prototype.raycast = f; } }   // [leggera] il pezzo fuso si rifà prima del raggio
   {
   }
   // [fluido] GLI OGGETTI FERMI NON SI RICALCOLANO (dal ramo keen-turing, generalizzato). La città nuova ha ~50.000 oggetti e three a ogni
@@ -15050,6 +15091,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
+    TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
@@ -16303,6 +16345,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
+    lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };

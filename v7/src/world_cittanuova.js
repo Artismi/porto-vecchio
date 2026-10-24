@@ -107,14 +107,19 @@ var World = (function () {
   const PUNTA = { x0: 26, x1: 80, y: 220 };   // la punta finisce a x 26: i faraglioni (x 6-24) restano in mare, subito fuori
   const puntaHW = x => x <= PUNTA.x0 ? 0 : 19 * Math.sqrt(clamp((x - PUNTA.x0) / (PUNTA.x1 - PUNTA.x0), 0, 1)) * (1 + .25 * (fbm(x / 7, 3, 704, 2) - .5));
   const c2Out = (x, N) => (N ? c2B(x, C2N) + c2Rumore(x, 2.1) : c2B(x, C2S) + c2Rumore(x, 5.3)) * c2Taper(x);   // quanto la riva esce verso il mare
-  function NorthY(x) {
+  // [telefono] le due rive valgono per x: chi le chiede più volte nello stesso punto (i vertici, le caselle, la distanza dalla riva)
+  // le ritrova senza rifare il rumore. Stessi numeri. La memoria si svuota da sola oltre le 200.000 voci
+  const NYM = new Map(), SYM = new Map();
+  function NorthY(x) { let v = NYM.get(x); if (v === undefined) { v = NorthY0(x); if (NYM.size > 200000) NYM.clear(); NYM.set(x, v); } return v; }
+  function SouthY(x) { let v = SYM.get(x); if (v === undefined) { v = SouthY0(x); if (SYM.size > 200000) SYM.clear(); SYM.set(x, v); } return v; }
+  function NorthY0(x) {
     if (x >= XF) { const y0 = northY(xo(x)) + gapK(x) * nH(x, 2.1); return x >= C2X1 ? y0 : y0 - c2Out(x, true); }
     const c = Math.abs(x - HEAD.x) < HEAD.r ? HEAD.y - headHalf(x) : 1e4;
     let y = smin(c, x < 250 ? 1e4 : neckN(x), 34) + nH(x, 2.1) * (1 - sstep(XF - 60, XF, x)) + cove(x, 300, 11, 7) + cove(x, 520, 9, 5) - c2Out(x, true);
     if (x > PUNTA.x0 && x < PUNTA.x1 + 30) y = smin(y, PUNTA.y - puntaHW(x), 8);
     return y;
   }
-  function SouthY(x) {
+  function SouthY0(x) {
     if (x >= XF) { const y0 = southY(xo(x)) - gapK(x) * nH(x, 5.3); return x >= C2X1 ? y0 : y0 + c2Out(x, false); }
     const c = Math.abs(x - HEAD.x) < HEAD.r ? HEAD.y + headHalf(x) : -1e4;
     let y = -smin(-c, x < 250 ? 1e4 : -neckS(x), 46) - nH(x, 5.3) * .45 * (1 - sstep(XF - 60, XF, x)) + c2Out(x, false);   // la Spiaggia Lunga: riva liscia
@@ -128,11 +133,15 @@ var World = (function () {
   function c2Tab() { if (C2T.N) return; const n = C2T.x1 - C2T.x0 + 1; C2T.N = new Float32Array(n); C2T.S = new Float32Array(n);
     for (let i = 0; i < n; i++) { const x = C2T.x0 + i; C2T.N[i] = NorthY(x); C2T.S[i] = SouthY(x); } }
   function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
-    c2Tab(); let best = cap * cap; const i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(C2T.N.length - 2, Math.ceil(x + cap - C2T.x0));
+    c2Tab(); let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
+    // [telefono] gli stessi conti, nello stesso ordine (stesso risultato al bit), ma senza il vettore allocato a ogni segmento e senza
+    // chiamate: era il primo peso del processore all'avvio (9 s su 110 nel container)
     for (let i = i0; i <= i1; i++) {
       const xa = C2T.x0 + i, dx = x - xa; if (dx * dx >= best && xa < x) continue;
-      for (const A of [C2T.N, C2T.S]) { const ya = A[i], yb = A[i + 1]; if (ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3) continue;
-        const ex = 1, ey = yb - ya, L2 = 1 + ey * ey, t = clamp((dx * ex + (y - ya) * ey) / L2, 0, 1), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
+      let ya = N[i], yb = N[i + 1];
+      if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
+      ya = S[i]; yb = S[i + 1];
+      if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
     }
     return Math.sqrt(best);
   }
@@ -259,8 +268,8 @@ var World = (function () {
   // [costa2] fuori dalla città la distanza vera dalla riva (entro 64 m); oltre, e nella città, quella di prima
   const Inland0 = (x, y) => {
     if (x >= C2X1 - 4 || x < C2T.x0 + 2) return Inland00(x, y);
-    const v = Math.min(y - NorthY(x), SouthY(x) - y); if (v > 64 || v < -64) return v;
-    const d = c2Dist(x, y, 64), on = y > NorthY(x) && y < SouthY(x); return on ? Math.min(d, v) : -d;
+    const ny = NorthY(x), sy = SouthY(x), v = Math.min(y - ny, sy - y); if (v > 64 || v < -64) return v;   // [telefono] le rive una volta sola
+    const d = c2Dist(x, y, 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
   };
   const Inland = (x, y) => Math.max(Inland0(x, y), isleIn(x, y));   // [arcipelago] la riva più vicina, isole comprese
   const DistrictAt = (x, y) => y !== undefined && isleIn(x, y) > Inland0(x, y) - 18 ? 'isole' : DistrictAt0(x);   // [arcipelago] con y: le isole e il mare attorno
