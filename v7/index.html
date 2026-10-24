@@ -26317,7 +26317,7 @@ var World = (function () {
       // [pianta] la Riva della Rocca segue la costa: dal viale gira sulla punta di scogli e scende lungo il canale (il quartiere non è un
       // rettangolo: le case riempiono lo spicchio fra il viale e la riva, il fronte sul mare segue la curva)
       CITY.glacis.rivaPts = chaikin([[1147.5, 62], [1154, 62], [1161, 64], [1167, 69], [1171, 75.5], [1174.5, 83], [1177.5, 91], [1179, 100], [1179, 116]], 2);
-      add('passeggiata', 'Viale della Spianata', 7, 'citta', vline(1147.5, ry(1141) - 16, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, alberiOff: 5, capi: [{ tipo: 'affaccio', perche: 'il belvedere sulla punta di scogli di tramontana, oltre il respingente dei binari' }, null] });
+      add('passeggiata', 'Viale della Spianata', 7, 'citta', vline(1147.5, ry(1141) - 12.5, 139.5), { era: 'E1', passeggio: true, alberi: 'lecci', alberiLato: -1, alberiOff: 5, capi: [{ tipo: 'affaccio', perche: 'il belvedere sulla punta di scogli di tramontana, oltre il respingente dei binari' }, null] });
       add('riva_rocca', 'Riva della Rocca', 5, 'vicolo', CITY.glacis.rivaPts, { era: 'E1' });
       { const R = CITY.glacis.rivaPts; let xv = 1178; for (let k = 0; k < R.length - 1; k++) if ((R[k][1] - 90) * (R[k + 1][1] - 90) <= 0 && R[k][1] !== R[k + 1][1]) xv = R[k][0] + (R[k + 1][0] - R[k][0]) * (90 - R[k][1]) / (R[k + 1][1] - R[k][1]);
         add('vic_glacis', 'Vico del Glacis', 3, 'vicolo', [[1151.25, 90], [(1151.25 + xv) / 2, 90.6], [xv, 90]], { era: 'E1' }); }
@@ -26349,7 +26349,7 @@ var World = (function () {
       pett('vic_sorelle', 'Vico delle Sorelle', 1120, 146.5, MEZ);
       // il Vico Lungo: dalla Vittoria scende a scalini sul mare, passando la Via di Mezzo; la scalinata del Forno dalla fontana alla marina
       pett('vic_lungo', 'Vico Lungo', 1098, 146.5, MAR);
-      add('vic_forno', 'Scalinata del Forno', 2.5, 'vicolo', [[1033, 166], [1033.5, 176], [1034, yOn(MAR, 1034)]], { era: 'E0' });
+      add('vic_forno', 'Scalinata del Forno', 2.5, 'vicolo', [[1036.3, 169.9], [1034.4, 173], [1033.5, 176],   /* [pianta] parte dal Vicolo di Mezzo dove sbocca il Vico della Fame (un incrocio, non due capi a tre metri), accanto alla fontana */ [1034, yOn(MAR, 1034)]], { era: 'E0' });
       // le traverse: fra due vicoli vicini, alla stessa quota, da asse ad asse (androni e corti)
       const xOnY = (P, y) => { for (let k = 0; k < P.length - 1; k++) if ((y - P[k][1]) * (y - P[k + 1][1]) <= 0 && P[k][1] !== P[k + 1][1]) return P[k][0] + (P[k + 1][0] - P[k][0]) * (y - P[k][1]) / (P[k + 1][1] - P[k][1]); return null; };
       const trav = (id, nome, a, b, y) => { const A = CITY.roads.find(q => q.id === a), Bq = CITY.roads.find(q => q.id === b), xa = xOnY(A.pts, y), xb = xOnY(Bq.pts, y); if (xa === null || xb === null) return;
@@ -26378,6 +26378,19 @@ var World = (function () {
       CITY.yOn = yOn; CITY.marina = MAR; CITY.rua = RUA;
       if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[città2] ossatura: vicoli', nv, 'Rua', RUA.length, 'stazione', STAZ[0], STAZ[STAZ.length - 1], 'lungomare', LUNGO[0], LUNGO[LUNGO.length - 1]);
     }
+    // [pianta] I CAPI ALLINEATI: due vie che finiscono sulla stessa via, una di fronte all'altra a meno di 8 m, si incontrano in un incrocio
+    // vero (prima: due capi sfalsati di 4-8 m, come due T che quasi si toccano). Il punto è la proiezione sull'asse della via del mezzo
+    // dei due capi; ognuna ci arriva spostando i suoi ultimi metri (lo spostamento si spegne in 24 m), la via di mezzo non si tocca.
+    { const R = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo'), sul = (rd, x, y) => { let best = null; const Q = rd.pts; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1), px = ax + dx * t, py = ay + dy * t, d = dist(x, y, px, py); if (!best || d < best.d) best = { d, px, py, t, k, n: [-dy, dx] }; } return best; };
+      const capi = []; R.forEach(rd => [0, rd.pts.length - 1].forEach(e => { const [x, y] = rd.pts[e]; let M = null, q = null; R.forEach(o => { if (o === rd) return; const s0 = sul(o, x, y); if (s0 && s0.d < o.w / 2 + 1.6 && s0.t > .001 && s0.t < .999 || (s0 && s0.d < o.w / 2 + 1.6 && s0.k > 0 && s0.k < o.pts.length - 2)) { if (!q || s0.d < q.d) { q = s0; M = o; } } }); if (M) capi.push({ rd, e, M, x, y, q }); }));
+      const fatti = new Set(); let nAl = 0;
+      capi.forEach(A => capi.forEach(Bc => { if (A === Bc || A.rd === Bc.rd || A.M !== Bc.M || fatti.has(A) || fatti.has(Bc)) return; const d = dist(A.x, A.y, Bc.x, Bc.y); if (d < .5 || d >= 8) return;
+        const sa = Math.sign((A.x - A.q.px) * A.q.n[0] + (A.y - A.q.py) * A.q.n[1]), sb = Math.sign((Bc.x - Bc.q.px) * Bc.q.n[0] + (Bc.y - Bc.q.py) * Bc.q.n[1]); if (sa && sb && sa === sb) return;   // dalla stessa parte: è una forca, non un incrocio sfalsato
+        const T0 = sul(A.M, (A.x + Bc.x) / 2, (A.y + Bc.y) / 2), tx = T0.px, ty = T0.py;
+        [A, Bc].forEach(C => { const P = C.rd.pts, dx = tx - C.x, dy = ty - C.y, idx = C.e === 0 ? P.map((_, k) => k) : P.map((_, k) => P.length - 1 - k); let acc = 0;
+          for (let j = 0; j < idx.length; j++) { const k = idx[j]; if (j) acc += dist(P[k][0], P[k][1], P[idx[j - 1]][0], P[idx[j - 1]][1]); const w = Math.max(0, 1 - acc / 24); if (w <= 0) break; P[k] = [P[k][0] + dx * w, P[k][1] + dy * w]; } });
+        fatti.add(A); fatti.add(Bc); nAl++; }));
+      CITY.capiAllineati = nAl; }
     CITY.roads.forEach(rd => roads.push(rd));
     ROADS0.filter(q => !['porto', 'monte', 'deserto', 'miniera', 'stazione2', 'saline', 'faro', 'crinale_e', 'sent_o1', 'sent_o2', 'sent_e1', 'sent_e2', 'anello_on', 'anello_os', 'mulattiera_o', 'anello_en', 'anello_es', 'mulattiera_e'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
     // [isola] le strade della testa di bosco e del collo, in coordinate nuove. La strada centrale sale col terreno e diventa mulattiera.
@@ -26788,7 +26801,7 @@ var World = (function () {
       // le pietre minute delle piazzette: il pozzo (al posto della vasca), la fontana del Forno, il lavatoio sulla Piazza della Marina
       { const [px, py] = CITY.piazzette[0]; blob(px, py, 3, 3, i => { if (grid[i] === T.FOUNT) grid[i] = T.PIAZZA; }); PZ('pozzo', px, py, 0, { r: .8, arco: true }, { nome: 'Pozzo' });
         for (let ty = T2i(py) - 1; ty <= T2i(py); ty++) for (let tx = T2i(px) - 1; tx <= T2i(px); tx++) grid[ty * GW + tx] = T.FOUNT; }
-      { const [fx, fy] = CITY.piazzette[1]; PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
+      { const fx = CITY.piazzette[1][0] - 3, fy = CITY.piazzette[1][1] - 2.2; /* [pianta] la fontana in un canto della piazzetta, fuori dagli assi del Vicolo di Mezzo e del Vico della Fame (prima ci stava sopra) */ PZ('fontana', fx, fy, 0, { r: 1.8, h: 2.4, lati: 8, cannelle: 2 }, { nome: 'Fontana del Forno' }); blob(fx, fy, 2.3, 2.3, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; }); }
       { const q = CITY.rects[0]; const p = PZ('lavatoio', q[2] - 9.6, q[1] + 4.6, 0, { L: 5, tettoia: true }, { nome: 'Lavatoio' }); pzRis(p, 'B', -1, 7.2, -2.5, 2.5); }
       // [mappa_compatta] passo 4, i tre segni nuovi: la torre dell'acqua della ferrovia con l'antenna di Radio Luna (fra i binari e gli scogli),
       // la gru del porto sulla banchina di levante della darsena (il braccio sull'acqua), la grata del vapore sul lotto del fuoco
