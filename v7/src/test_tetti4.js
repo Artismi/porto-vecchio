@@ -25,7 +25,10 @@ const RUOTA = process.env.TETTI4_RUOTA || '';
 // (il primo passo di [pianta]); la firma del piano, della rete e della misura dev'essere identica a quella senza campi.
 // TETTI4_RUOTA=strada: file di tre (o due) case attaccate girano insieme di 20-40° attorno al centro della fila, come lungo una strada
 // in diagonale: ogni casa ha il centro libero (non sulla casella), le caselle si ristampano sull'impronta nuova, la porta segue il muro.
-if (RUOTA === 'uguali') Game.BUILDINGS.forEach(b => { const TS = Game.TS; b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; });
+// il mondo di [pianta] i campi li ha già (passo 1): allora qui si tolgono, e vale il ripiego sulla casella; se non li avesse, si mettono
+if (RUOTA === 'uguali') { const TS = Game.TS, ha = Game.BUILDINGS.some(b => b.cx !== undefined);
+  Game.BUILDINGS.forEach(b => { if (ha) { delete b.cx; delete b.cy; delete b.lw; delete b.ld; } else { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; b.lw = b.w * TS; b.ld = b.h * TS; } });
+  log(`[lotti] ${ha ? 'tolti i campi del lotto: vale la casella' : 'messi i campi del lotto uguali alla casella'}`); }
 if (RUOTA === 'strada') { let a = 4242; const rnd = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
   // la città è fitta: nessuna fila che c'è si può girare senza entrare nelle case di dietro. Allora, come farà [pianta], la fila si
   // rifà: nei vuoti grandi dei quartieri vecchi (slarghi, piazzette, prati dentro le mura) una strada in diagonale di 20-40° e lungo la
@@ -38,8 +41,8 @@ if (RUOTA === 'strada') { let a = 4242; const rnd = () => { a |= 0; a = (a + 0x6
   // il rettangolo girato (centro, misure, angolo) sta tutto nel vuoto, col margine m
   const nelVuoto = (cx, cy, lw, ld, th, m) => { for (let u = -.5; u <= .5001; u += 1 / 12) for (let v = -.5; v <= .5001; v += 1 / 8) { const [ex, ey] = gira(th, u * (lw + 2 * m), v * (ld + 2 * m)); if (!libero(cx + ex, cy + ey)) return false; } return true; };
   const FILE = [], presi = new Set(), usati = [];
-  for (let ty = 2; ty < GH - 2 && FILE.length < 6; ty += 3) for (let tx = 2; tx < GW - 2 && FILE.length < 6; tx += 3) {
-    const i0 = ty * GW + tx; if (!terra(i0) || usati.some(([x, y]) => Math.hypot(x - tx, y - ty) < 25)) continue;
+  for (let ty = 2; ty < GH - 2 && FILE.length < 6; ty += 2) for (let tx = 2; tx < GW - 2 && FILE.length < 6; tx += 2) {
+    const i0 = ty * GW + tx; if (!terra(i0) || usati.some(([x, y]) => Math.hypot(x - tx, y - ty) < 20)) continue;
     // le case vicine che si possono spostare (dei quartieri vecchi), le più vicine prima
     const vic = []; for (let j = -14; j <= 14; j++) for (let i = -14; i <= 14; i++) { const k = (ty + j) >= 0 && (ty + j) < GH && (tx + i) >= 0 && (tx + i) < GW ? BI[(ty + j) * GW + tx + i] : -1; if (k >= 0 && !presi.has(k) && buono(B[k]) && !vic.includes(k)) vic.push(k); }
     if (vic.length < 3) continue; vic.sort((p, q) => Math.hypot(B[p].x - tx, B[p].y - ty) - Math.hypot(B[q].x - tx, B[q].y - ty));
@@ -192,17 +195,19 @@ const firma4 = () => { const vis = new WeakSet(), BS = new Set(B), J = JSON.stri
     (k, v) => typeof v === 'number' ? Math.round(v * 1000) / 1000 : v && typeof v === 'object' ? (BS.has(v) ? '#casa' : vis.has(v) ? '~' : (vis.add(v), v)) : v);
   return require('crypto').createHash('md5').update(J).digest('hex').slice(0, 12) + ' (' + J.length + ')'; };
 console.log('[firma lotti] ' + firma4());
-if (!RUOTA) { const figlio = (m, nome) => { const r = require('child_process').spawnSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { TETTI4_RUOTA: m }), encoding: 'utf8', maxBuffer: 64 << 20 });
+if (!RUOTA) { const figlio = (m, nome, extra) => { const r = require('child_process').spawnSync(process.execPath, [__filename], { env: Object.assign({}, process.env, { TETTI4_RUOTA: m }, extra || {}), encoding: 'utf8', maxBuffer: 64 << 20 });
     const out = (r.stdout || '') + (r.stderr || ''), righe = out.split('\n');
     righe.filter(l => /^\[case girate\]|^(borgo|marina|ottocento):|raggiungibili dalla rete|marina \d+%|entra nei tetti|^NO /.test(l)).forEach(l => console.log('     ' + nome + ' · ' + l));
     return { r, righe }; };
   let { r, righe } = figlio('1', 'girate');
   ok(r.status === 0, `con le case girate (10-40°) la rete regge: copertura ≥ 70% per quartiere, zero urti, i giri camminati (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`);
+  ({ r, righe } = figlio('1', 'girate per posto', { TETTI4_POSTO: '1' }));   // un'altra estrazione (per posto): la rete deve reggere senza ritocchi
+  ok(r.status === 0, `anche con un'altra estrazione delle case girate (per posto) la rete regge (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`);
   ({ r, righe } = figlio('strada', 'strada'));
   ok(r.status === 0, `con le file di case col centro libero lungo strade in diagonale (20-40°) la rete regge: copertura ≥ 70% per quartiere, zero urti, i giri camminati (${r.status === 0 ? 'tutte le prove passate' : righe.filter(l => /^NO /.test(l)).length + ' prove non passate'})`);
   ({ r, righe } = figlio('uguali', 'lotti uguali'));
   const f0 = firma4(), f1 = (righe.find(l => l.startsWith('[firma lotti] ')) || '').slice(14);
-  ok(r.status === 0 && f1 === f0, `i campi del lotto (b.cx, b.cy, b.lw, b.ld) uguali alla casella danno lo stesso identico risultato della casella: firma ${f0} = ${f1 || '?'}`); }
+  ok(r.status === 0 && f1 === f0, `con i campi del lotto (b.cx, b.cy, b.lw, b.ld) di [pianta] e col ripiego sulla casella il risultato è identico: firma ${f0} = ${f1 || '?'}`); }
 
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passate');
 process.exit(fail ? 1 : 0);

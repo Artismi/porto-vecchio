@@ -423,11 +423,12 @@ var Percorsi = (function () {
       // [tetti4] prima il pezzo con più tetti che dai giri fatti non si raggiungono (case girate comprese): ogni giro nuovo copre il più possibile
       const raggiunti = () => { const S = new Set(), Q = []; CIRCUITI.filter(c => c.k === 'tetti').forEach(c => c.edifici.forEach(i => { if (!S.has(i)) { S.add(i); Q.push(i); } }));
         for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
-      const restano = [...pezzi.values()].filter(P => P.length >= 8), presi4 = new Set(), provati = new Set(), prove4 = new Map(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      const restano = [...pezzi.values()].filter(P => P.length >= 6), presi4 = new Set(), provati = new Set(), prove4 = new Map(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      let MINP4 = 8;   // [tetti4] i pezzi da otto tetti scoperti; se i giri restano meno di otto, anche quelli da sei
       for (;;) {
         if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
-        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= 8).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
-        if (!cand4.length) break; const P = cand4[0].P; prove4.set(P, (prove4.get(P) || 0) + 1); if (prove4.get(P) >= 3) provati.add(P);   // [tetti4] un pezzo grande può avere più giri, finché ha otto tetti scoperti (tre prove)
+        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= MINP4).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
+        if (!cand4.length) { if (MINP4 > 6 && CIRCUITI.filter(c => c.k === 'tetti').length < 8) { MINP4 = 6; continue; } break; } const P = cand4[0].P; prove4.set(P, (prove4.get(P) || 0) + 1); if (prove4.get(P) >= 3) provati.add(P);   // [tetti4] un pezzo grande può avere più giri, finché ha otto tetti scoperti (tre prove)
         const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 55, { maxPassi: 20, saliIn: S, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true });   /* [tetti4] se non si chiude: scale a 9 m, il giro più lungo, le case attorno fino a 55 m */ if (!c) { provati.add(P); continue; }
         { const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], ES = new Set(c.edifici), terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && (S.has(L.bi) || ES.has(L.bi)) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
           if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); provati.add(P); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
@@ -436,7 +437,16 @@ var Percorsi = (function () {
         if (A && A.d < 80) { presi4.add(A.q.id); c.id = A.q.id; c.nome = A.q.nome; }
         else { const n = NODI.slice().sort((u, v) => hyp(u.x - g[0], u.y - g[1]) - hyp(v.x - g[0], v.y - g[1]))[0]; if (n) { c.id = 'giro_' + n.id + '_' + c.edifici[0]; c.nome = 'Il giro dei tetti · ' + n.nome; TEMI4[c.id] = { tema: 'i tetti attorno a ' + n.nome, premio: 'belvedere', altro: 'tesoro' }; } }   // [tetti4] finite le ancore, il nome del nodo più vicino
         { const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!(A && A.d < 80 && A.q.fuoriBorgo) || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }   // nel borgo se ci si sale nel borgo
-      } }
+      }
+      // [tetti4] se i giri restano meno di otto (la pianta ha staccato dei pezzi), un giro attorno a ogni nodo libero: le case vecchie
+      // entro 45 m dall'ancora, qualunque pezzo, le scale a 9 m, anche di soli tetti attaccati; sempre con la terza scala
+      for (const q of GIRI4) { if (CIRCUITI.filter(c => c.k === 'tetti').length >= 8) break; if (presi4.has(q.id) || !ancora4(q.ancora)) continue; const [ax, ay] = ancora4(q.ancora);
+        const S = new Set(); BB.forEach((b, i) => { if (ERE4.includes(b.era) && !usati.has(i) && hyp(cen(i)[0] - ax, cen(i)[1] - ay) < 45) S.add(i); }); if (S.size < 6) continue;
+        const Z = { id: q.id, nome: q.nome }, c = cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true }); if (!c) continue;
+        const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && S.has(L.bi) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
+        if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); continue; }
+        presi4.add(q.id); const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!q.fuoriBorgo || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }
+    }
     // [tetti4] il tema e il premio di ogni giro, le altre vie su e giù, i rami verso il premio
     vieRami4(TT, BB, E, cen, passOk, passo4);
     // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
