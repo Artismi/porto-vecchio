@@ -1,16 +1,24 @@
 /* Porto Vecchio — [leggera] LA MEMORIA DEL TELEFONO (v7).
-   Il telefono chiudeva la pagina della città nuova: troppa memoria (strumenti/banco_memoria.js, src/progetto_citta/PESO.md «Memoria»).
-   Qui i tagli, solo sul telefono (lo stesso profilo di render.js: tocco, ?leggera, ?bassa; ?alta lo toglie), con piccoli ganci nei moduli:
-   - pile:  le mappe delle case in pila (render.js arrTex1) a metà lato (un quarto dei byte), quando la mappa è almeno 256×256;
-   - tele:  le tele 2D che sono finite in una pila scendono alla stessa misura (servono solo alla casa che si dissolve e a chi la ridipinge);
-   - pigri: i pezzi originali delle case fuse rifatti per un raggio o una dissolvenza si buttano di nuovo quando nessuno li usa da 5 s;
-   - verde: le piante lontane (vegetazione.js) a riquadri, solo quelle attorno alla camera, con attributi compatti;
-   - atlanti: gli atlanti grandi che non si ridipingono più a metà lato (acqua, scorci, segnaletica), e la tela in memoria si svuota;
-   - ombre: la mappa del sole più piccola.
-   - compila, firme, cache, roba: la compilazione del caricamento solo sul visibile, le firme dei materiali e le geometrie modello buttate dopo
-     il caricamento, le armi dei personaggi condivise (questi e «pigri» non cambiano l'immagine: valgono anche sul computer);
-   - figure, statiche, insegne, terreno, verde, verdelontano, compatta: vedi le funzioni qui sotto.
-   ?nomemoria spegne tutto; ?nomemoria<nome> uno per uno (?nomemoriapile, ?nomemoriatele, ...). ?memoria li accende tutti anche sul computer. */
+   Il telefono chiudeva la pagina della città nuova: troppa memoria (strumenti/banco_memoria.js; le misure in src/progetto_citta/PESO.md,
+   «6. La memoria»). Qui i tagli, con piccoli ganci nei moduli; sul telefono (lo stesso profilo di render.js: tocco, ?leggera, ?bassa;
+   ?alta lo toglie) tutti, sul computer solo quelli che non cambiano un pixel. Uno per uno:
+   - pile:     le mappe delle case in pila (render.js arrTex1) a metà lato e non oltre 256 (le trame che si ripetono solo a metà; le
+               tavolozze del kit, lette al texel, a 128);
+   - tele:     le tele 2D finite in una pila scendono a un quarto (servono solo alla casa che si dissolve);
+   - compatta: le case fuse (render.js fusione1) in 16 bit dentro la scatola del secchio, uv in mezza precisione, vertici uguali una volta
+               sola con l'indice; casa, colore, strato e vetro svuotati in memoria dopo l'invio (li legge solo la scheda video);
+   - statiche: le statiche fuse tengono in memoria solo la posizione (chi nasconde un pezzo la chiude in un punto);
+   - pigri:    i pezzi originali delle case fuse rifatti per un raggio o per la dissolvenza si buttano quando nessuno li usa da 5 s, e il
+               loro segnaposto eredita da uno solo;
+   - verde, verdelontano: le piante lontane (vegetazione.js) a riquadri di 128 m attorno alla camera, in attributi compatti, svuotati dopo
+               l'invio;
+   - atlanti:  gli atlanti grandi (personaggi, scorci, segnaletica, vegetazione) vanno alla scheda video a metà lato;
+   - figure:   la pelle delle figure (personaggi.js) in attributi compatti; gente: 40 figure in cache invece di 260;
+   - insegne:  le tele delle insegne si svuotano dopo l'invio; terreno: il terreno dipinto a blocchi a metà lato;
+   - ombre:    la mappa del sole più piccola (peso_ombre.js);
+   - compila, firme, cache, roba (anche sul computer, con «pigri»): la compilazione del caricamento solo sul visibile, le firme dei
+               materiali e le geometrie modello delle cose di strada buttate dopo il caricamento, le armi dei personaggi condivise.
+   ?nomemoria spegne tutto; ?nomemoria<nome> uno per uno (?nomemoriapile, ?nomemoriacompatta, ...). ?memoria li accende tutti anche sul computer. */
 var LeggeraMem = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
