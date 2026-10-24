@@ -53,6 +53,10 @@ var PuliziaRumore = (function () {
   // ---------- la sagoma: il verso del rettangolo d'ingombro più stretto dei vertici ----------
   function sagoma(e) {
     const v = e.vx; if (!v || v.length < 12) return null;
+    if (e.__sg && e.__sg[0] === v && e.__sg[1] === e.vxv) return e.__sg[2];   // [veloce] i vertici non sono cambiati (render.js conta le mosse in e.vxv)
+    return (e.__sg = [v, e.vxv, sagoma0(v)])[2];
+  }
+  function sagoma0(v) {
     let best = Infinity, ba = 0, worst = 0;
     for (let k = 0; k < 30; k++) { const a = k * PI / 60, c = Math.cos(a), s = Math.sin(a); let u0 = Infinity, u1 = -Infinity, w0 = Infinity, w1 = -Infinity;
       for (let i = 0; i < v.length; i += 3) { const x = v[i], z = v[i + 2], u = x * c - z * s, w = x * s + z * c; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < w0) w0 = w; if (w > w1) w1 = w; }
@@ -219,16 +223,18 @@ var PuliziaRumore = (function () {
   function correggi(A, C) {
     const az = { ruotati: {}, posati: {}, spostati: {}, tolti: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     // [telefono] l'insieme accanto alla lista: «c'è già?» costava un giro intero della lista (7 s di avvio su una composizione grande)
-    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone), GS = new Set(G); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => (o.membri || [o]).forEach(q => { if (!q.gone && !GS.has(q)) { GS.add(q); G.push(q); } })); G.__s = GS; return G; };   // la composizione, e quello che ci poggia sopra
+    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone), GS = new Set(G), FATTI = new Set(); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => { if (o.membri) { if (FATTI.has(o.membri)) return; FATTI.add(o.membri); } (o.membri || [o]).forEach(q => { if (!q.gone && !GS.has(q)) { GS.add(q); G.push(q); } }); }); G.__s = GS; return G; };   // [veloce] una composizione già passata non aggiunge più niente   // la composizione, e quello che ci poggia sopra
     const X = C.X || [], nx = m => { let n = 0; C.viciniX(m.c[0], m.c[1], 4, x => { if (A.yov(m.B, x.B) > .03 && A.sat(m.B, x.B) > .03) n++; }); return n; };   // e le voci esterne: niente addosso
     const nv = G => G.reduce((s, m) => s + A.viol(m, I).length + nx(m), 0);
+    const nv0 = G => { if (G.some(m => m.k === 'grande' && m.tipo)) return nv(G) === 0; for (const m of G) if (A.viol(m, I).length || nx(m)) return false; return true; };   // [veloce] = nv(G) === 0, fermandosi al primo (i pezzi grandi segnano P2.sotto: per loro il conto intero)
     const muovi = (G, dx, dy, dz) => G.forEach(m => A.sposta(m, dx, dy, dz));
     const prova = (G, fai, disfa) => { const prima = nv(G); fai(); if (nv(G) <= prima) { G.forEach(m => A.rimetti(I, m)); return true; } disfa(); return false; };
     const togli = (e, perche, anche0) => { if (e.ext) { if (e.gone || (LIV[e.k] === 0 && !anche0)) { conta(az.tenuti, perche + ':' + e.k); return false; } A.togliEsterno(e); conta(az.tolti, perche + ':' + e.fonte + ':' + e.k); return true; }
       const G = grp(e); if (!G.length) return false;
       if (G.some(m => (LIV[m.k] === 0 && !anche0) || A.posto(m) || m.free)) { conta(az.tenuti, perche + ':' + e.k); return false; }
       const su = [], SU = new Set(), GS = G.__s; G.forEach(m => A.sopra(m, I).forEach(o => { if (!GS.has(o) && !SU.has(o)) { SU.add(o); su.push(o); } }));   // quello che ci poggia sopra se ne va con lei, se può
-      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && o.membri.some(m => !SU.has(m) && !GS.has(m))))) { conta(az.tenuti, perche + ':' + e.k); return false; }
+      const fuoriM = new Map(), fuori = L => { let v = fuoriM.get(L); if (v === undefined) fuoriM.set(L, v = L.some(m => !SU.has(m) && !GS.has(m))); return v; };   // [veloce] una volta per composizione
+      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && fuori(o.membri)))) { conta(az.tenuti, perche + ':' + e.k); return false; }
       G.concat(su).forEach(m => A.togli(m)); conta(az.tolti, perche + ':' + e.k); return true; };
     const E = C.E;
     // 1) i doppioni se ne vanno (il primo posato resta); le lampade e i citofoni doppi anche se di solito si tengono
@@ -250,11 +256,15 @@ var PuliziaRumore = (function () {
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
     const fuoriPorta = (G, P) => G.every(m => A.yov(m.B, P.Z) <= .03 || A.sat(m.B, P.Z) <= .03);
+    // [veloce] le porte in una griglia a 8 m (per il rettangolo del loro corridoio): una cosa può stare solo nei corridoi delle celle che tocca
+    const bb = B => { const cs = A.corners(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }); return [x0, x1, z0, z1]; };
+    const PG = new Map(); C.porte.forEach(Q => { if (!Q.Z) return; const b = bb(Q.Z); for (let i = Math.floor(b[0] / 8); i <= Math.floor(b[1] / 8); i++) for (let j = Math.floor(b[2] / 8); j <= Math.floor(b[3] / 8); j++) { const k = i * 8192 + j; let a = PG.get(k); if (!a) PG.set(k, a = []); a.push(Q); } });
+    const altraPorta = (G, P) => { for (const m of G) { const b = bb(m.B); for (let i = Math.floor(b[0] / 8); i <= Math.floor(b[1] / 8); i++) for (let j = Math.floor(b[2] / 8); j <= Math.floor(b[3] / 8); j++) for (const Q of PG.get(i * 8192 + j) || []) if (Q !== P && A.yov(m.B, Q.Z) > .03 && A.sat(m.B, Q.Z) > .03) return true; } return C.porte.some(Q => !Q.Z && Q !== P); };   // = C.porte.some(Q => Q !== P && !fuoriPorta(G, Q))
     E.concat(X).forEach(e => { const P = e.davantiPorta; if (!P || e.gone) return;
       if (e.ext) { if (e.k === 'fermata' || e.k === 'edicola') conta(az.tenuti, 'porta:' + e.k); else togli(e, 'porta', true); return; }
       const G = grp(e), F = P.F;
       for (const s of [.5, .9, 1.3, 1.8, 2.4, 3.0]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (fuoriPorta(G, P) && nv(G) === 0 && !C.porte.some(Q => Q !== P && !fuoriPorta(G, Q))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (fuoriPorta(G, P) && nv0(G) && !altraPorta(G, P)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       if (A.posto(e)) { conta(az.tenuti, 'porta:posto'); return; }   // il posto delle persone: si sposta ma non si toglie
       togli(e, 'porta', e.k === 'lampione' || e.k === 'cartello'); });
     // 2) il verso: si ruota attorno al centro
@@ -276,21 +286,21 @@ var PuliziaRumore = (function () {
       const F = e.F, G = grp(e), libero = () => { const q = inFacciata(e, F); if (e.copreCon && !e.copreCon.gone) { const o = inFacciata(e.copreCon, F); if (ov1(q.u0, q.u1, o.u0, o.u1) > .05 && ov1(q.y0, q.y1, o.y0, o.y1) > .05) return false; }
         return !A.finestre(e.b, e.f).some(w => COPRE_FIN.has(e.k) && ov1(q.u0, q.u1, w.u0, w.u1) > .08 && ov1(q.y0, q.y1, w.y0, w.y1) > .12); };
       for (const s of [.3, .6, .9, 1.2, 1.6, 2.0]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg; muovi(G, dx, 0, dz);
-        if (libero() && nv(G) === 0 && G.every(m => dentro(A, m, F))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, 0, -dz); }
+        if (libero() && nv0(G) && G.every(m => dentro(A, m, F))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, 0, -dz); }
       togli(e, 'parete', e.k === 'citofono'); });
     // 5) il marciapiede: la cosa a terra davanti a quella appesa scivola lungo il muro, o se ne va
     E.forEach(e => { if (e.gone || !e.davantiA || e.davantiA.gone) return; const F = e.LF.F, a = inFacciata(e.davantiA, F), G = grp(e);
       const libero = () => { const q = inFacciata(e, F); return !(ov1(q.u0, q.u1, a.u0, a.u1) > .1 && ov1(q.y0, q.y1, a.y0, a.y1) > .1); };
       for (const s of [.4, .8, 1.2, 1.7, 2.2]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (libero() && nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (libero() && nv0(G)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'marciapiede'); });
     // 5b) sopra una cosa esterna: qualche passo attorno (a terra), o via
     E.forEach(e => { if (e.gone || !e.sopraX) return; const G = grp(e);
       for (const s of [.3, .6, .9, 1.3, 1.8]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (nv0(G)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'sovrapposto'); });
     // 5c) le strade libere: verso il muro (fuori dalla carreggiata, contro la casa), poi lungo la via; o via
-    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv(G) === 0;
+    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv0(G);
       const prove = []; for (const k of [.3, .6, 1, 1.5, 2, 2.6, 3.2]) prove.push([v.n[0] * k * sg, v.n[1] * k * sg]); for (const k of [.8, 1.6, 2.4, 3.2, 4]) for (const q of [1, -1]) prove.push([v.u[0] * k * q, v.u[1] * k * q]);
       for (const [dx, dz] of prove) { const dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz); if (ok()) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'strada:' + e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'strada'); });

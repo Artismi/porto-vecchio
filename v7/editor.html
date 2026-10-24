@@ -63338,6 +63338,10 @@ var PuliziaRumore = (function () {
   // ---------- la sagoma: il verso del rettangolo d'ingombro più stretto dei vertici ----------
   function sagoma(e) {
     const v = e.vx; if (!v || v.length < 12) return null;
+    if (e.__sg && e.__sg[0] === v && e.__sg[1] === e.vxv) return e.__sg[2];   // [veloce] i vertici non sono cambiati (render.js conta le mosse in e.vxv)
+    return (e.__sg = [v, e.vxv, sagoma0(v)])[2];
+  }
+  function sagoma0(v) {
     let best = Infinity, ba = 0, worst = 0;
     for (let k = 0; k < 30; k++) { const a = k * PI / 60, c = Math.cos(a), s = Math.sin(a); let u0 = Infinity, u1 = -Infinity, w0 = Infinity, w1 = -Infinity;
       for (let i = 0; i < v.length; i += 3) { const x = v[i], z = v[i + 2], u = x * c - z * s, w = x * s + z * c; if (u < u0) u0 = u; if (u > u1) u1 = u; if (w < w0) w0 = w; if (w > w1) w1 = w; }
@@ -63504,16 +63508,18 @@ var PuliziaRumore = (function () {
   function correggi(A, C) {
     const az = { ruotati: {}, posati: {}, spostati: {}, tolti: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     // [telefono] l'insieme accanto alla lista: «c'è già?» costava un giro intero della lista (7 s di avvio su una composizione grande)
-    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone), GS = new Set(G); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => (o.membri || [o]).forEach(q => { if (!q.gone && !GS.has(q)) { GS.add(q); G.push(q); } })); G.__s = GS; return G; };   // la composizione, e quello che ci poggia sopra
+    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone), GS = new Set(G), FATTI = new Set(); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => { if (o.membri) { if (FATTI.has(o.membri)) return; FATTI.add(o.membri); } (o.membri || [o]).forEach(q => { if (!q.gone && !GS.has(q)) { GS.add(q); G.push(q); } }); }); G.__s = GS; return G; };   // [veloce] una composizione già passata non aggiunge più niente   // la composizione, e quello che ci poggia sopra
     const X = C.X || [], nx = m => { let n = 0; C.viciniX(m.c[0], m.c[1], 4, x => { if (A.yov(m.B, x.B) > .03 && A.sat(m.B, x.B) > .03) n++; }); return n; };   // e le voci esterne: niente addosso
     const nv = G => G.reduce((s, m) => s + A.viol(m, I).length + nx(m), 0);
+    const nv0 = G => { if (G.some(m => m.k === 'grande' && m.tipo)) return nv(G) === 0; for (const m of G) if (A.viol(m, I).length || nx(m)) return false; return true; };   // [veloce] = nv(G) === 0, fermandosi al primo (i pezzi grandi segnano P2.sotto: per loro il conto intero)
     const muovi = (G, dx, dy, dz) => G.forEach(m => A.sposta(m, dx, dy, dz));
     const prova = (G, fai, disfa) => { const prima = nv(G); fai(); if (nv(G) <= prima) { G.forEach(m => A.rimetti(I, m)); return true; } disfa(); return false; };
     const togli = (e, perche, anche0) => { if (e.ext) { if (e.gone || (LIV[e.k] === 0 && !anche0)) { conta(az.tenuti, perche + ':' + e.k); return false; } A.togliEsterno(e); conta(az.tolti, perche + ':' + e.fonte + ':' + e.k); return true; }
       const G = grp(e); if (!G.length) return false;
       if (G.some(m => (LIV[m.k] === 0 && !anche0) || A.posto(m) || m.free)) { conta(az.tenuti, perche + ':' + e.k); return false; }
       const su = [], SU = new Set(), GS = G.__s; G.forEach(m => A.sopra(m, I).forEach(o => { if (!GS.has(o) && !SU.has(o)) { SU.add(o); su.push(o); } }));   // quello che ci poggia sopra se ne va con lei, se può
-      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && o.membri.some(m => !SU.has(m) && !GS.has(m))))) { conta(az.tenuti, perche + ':' + e.k); return false; }
+      const fuoriM = new Map(), fuori = L => { let v = fuoriM.get(L); if (v === undefined) fuoriM.set(L, v = L.some(m => !SU.has(m) && !GS.has(m))); return v; };   // [veloce] una volta per composizione
+      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && fuori(o.membri)))) { conta(az.tenuti, perche + ':' + e.k); return false; }
       G.concat(su).forEach(m => A.togli(m)); conta(az.tolti, perche + ':' + e.k); return true; };
     const E = C.E;
     // 1) i doppioni se ne vanno (il primo posato resta); le lampade e i citofoni doppi anche se di solito si tengono
@@ -63535,11 +63541,15 @@ var PuliziaRumore = (function () {
     // 1b) le porte: chi sta nel corridoio scivola lungo il muro fino a uscirne, o se ne va (anche i pali e i lampioni: una porta conta di più);
     // le fermate, le edicole e i posti delle persone restano (si contano)
     const fuoriPorta = (G, P) => G.every(m => A.yov(m.B, P.Z) <= .03 || A.sat(m.B, P.Z) <= .03);
+    // [veloce] le porte in una griglia a 8 m (per il rettangolo del loro corridoio): una cosa può stare solo nei corridoi delle celle che tocca
+    const bb = B => { const cs = A.corners(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }); return [x0, x1, z0, z1]; };
+    const PG = new Map(); C.porte.forEach(Q => { if (!Q.Z) return; const b = bb(Q.Z); for (let i = Math.floor(b[0] / 8); i <= Math.floor(b[1] / 8); i++) for (let j = Math.floor(b[2] / 8); j <= Math.floor(b[3] / 8); j++) { const k = i * 8192 + j; let a = PG.get(k); if (!a) PG.set(k, a = []); a.push(Q); } });
+    const altraPorta = (G, P) => { for (const m of G) { const b = bb(m.B); for (let i = Math.floor(b[0] / 8); i <= Math.floor(b[1] / 8); i++) for (let j = Math.floor(b[2] / 8); j <= Math.floor(b[3] / 8); j++) for (const Q of PG.get(i * 8192 + j) || []) if (Q !== P && A.yov(m.B, Q.Z) > .03 && A.sat(m.B, Q.Z) > .03) return true; } return C.porte.some(Q => !Q.Z && Q !== P); };   // = C.porte.some(Q => Q !== P && !fuoriPorta(G, Q))
     E.concat(X).forEach(e => { const P = e.davantiPorta; if (!P || e.gone) return;
       if (e.ext) { if (e.k === 'fermata' || e.k === 'edicola') conta(az.tenuti, 'porta:' + e.k); else togli(e, 'porta', true); return; }
       const G = grp(e), F = P.F;
       for (const s of [.5, .9, 1.3, 1.8, 2.4, 3.0]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (fuoriPorta(G, P) && nv(G) === 0 && !C.porte.some(Q => Q !== P && !fuoriPorta(G, Q))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (fuoriPorta(G, P) && nv0(G) && !altraPorta(G, P)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       if (A.posto(e)) { conta(az.tenuti, 'porta:posto'); return; }   // il posto delle persone: si sposta ma non si toglie
       togli(e, 'porta', e.k === 'lampione' || e.k === 'cartello'); });
     // 2) il verso: si ruota attorno al centro
@@ -63561,21 +63571,21 @@ var PuliziaRumore = (function () {
       const F = e.F, G = grp(e), libero = () => { const q = inFacciata(e, F); if (e.copreCon && !e.copreCon.gone) { const o = inFacciata(e.copreCon, F); if (ov1(q.u0, q.u1, o.u0, o.u1) > .05 && ov1(q.y0, q.y1, o.y0, o.y1) > .05) return false; }
         return !A.finestre(e.b, e.f).some(w => COPRE_FIN.has(e.k) && ov1(q.u0, q.u1, w.u0, w.u1) > .08 && ov1(q.y0, q.y1, w.y0, w.y1) > .12); };
       for (const s of [.3, .6, .9, 1.2, 1.6, 2.0]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg; muovi(G, dx, 0, dz);
-        if (libero() && nv(G) === 0 && G.every(m => dentro(A, m, F))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, 0, -dz); }
+        if (libero() && nv0(G) && G.every(m => dentro(A, m, F))) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, 0, -dz); }
       togli(e, 'parete', e.k === 'citofono'); });
     // 5) il marciapiede: la cosa a terra davanti a quella appesa scivola lungo il muro, o se ne va
     E.forEach(e => { if (e.gone || !e.davantiA || e.davantiA.gone) return; const F = e.LF.F, a = inFacciata(e.davantiA, F), G = grp(e);
       const libero = () => { const q = inFacciata(e, F); return !(ov1(q.u0, q.u1, a.u0, a.u1) > .1 && ov1(q.y0, q.y1, a.y0, a.y1) > .1); };
       for (const s of [.4, .8, 1.2, 1.7, 2.2]) for (const sg of [1, -1]) { const dx = F.u[0] * s * sg, dz = F.u[1] * s * sg, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (libero() && nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (libero() && nv0(G)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'marciapiede'); });
     // 5b) sopra una cosa esterna: qualche passo attorno (a terra), o via
     E.forEach(e => { if (e.gone || !e.sopraX) return; const G = grp(e);
       for (const s of [.3, .6, .9, 1.3, 1.8]) for (let a = 0; a < 8; a++) { const dx = Math.cos(a * PI / 4) * s, dz = Math.sin(a * PI / 4) * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz);
-        if (nv(G) === 0) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
+        if (nv0(G)) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'sovrapposto'); });
     // 5c) le strade libere: verso il muro (fuori dalla carreggiata, contro la casa), poi lungo la via; o via
-    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv(G) === 0;
+    E.forEach(e => { if (e.gone || !e.suStrada) return; const G = grp(e), t0 = e.suStrada, v = t0.v, sg = Math.sign(v.s) || 1, ok = () => !G.some(m => suStrada(A, m)) && nv0(G);
       const prove = []; for (const k of [.3, .6, 1, 1.5, 2, 2.6, 3.2]) prove.push([v.n[0] * k * sg, v.n[1] * k * sg]); for (const k of [.8, 1.6, 2.4, 3.2, 4]) for (const q of [1, -1]) prove.push([v.u[0] * k * q, v.u[1] * k * q]);
       for (const [dx, dz] of prove) { const dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]); muovi(G, dx, dy, dz); if (ok()) { G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'strada:' + e.k); return; } muovi(G, -dx, -dy, -dz); }
       togli(e, 'strada'); });
@@ -71630,21 +71640,22 @@ var Render = (function () {
   const ctr2 = B => { const u = (B.u0 + B.u1) / 2, v = (B.v0 + B.v1) / 2; return [u * B.c + v * B.s, -u * B.s + v * B.c]; };
   const corners2 = B => [[B.u0, B.v0], [B.u1, B.v0], [B.u1, B.v1], [B.u0, B.v1]].map(([u, v]) => [u * B.c + v * B.s, -u * B.s + v * B.c]);
   const inB2 = (B, x, y, z, m) => { if (y < B.y0 + m || y > B.y1 - m) return false; const u = x * B.c - z * B.s, v = x * B.s + z * B.c; return u > B.u0 + m && u < B.u1 - m && v > B.v0 + m && v < B.v1 - m; };
-  function sat2(A, B) {   // quanto si compenetrano due scatole in pianta (0 se separate): il minimo sugli assi delle due
-    const ca = corners2(A), cb = corners2(B); let pen = Infinity;
-    for (const [c, s] of [[A.c, A.s], [B.c, B.s]]) for (const ax of [[c, -s], [s, c]]) {
+  const _ca2 = new Float64Array(8), _cb2 = new Float64Array(8), cc2 = (B, o) => { const c = B.c, s = B.s; o[0] = B.u0 * c + B.v0 * s; o[1] = -B.u0 * s + B.v0 * c; o[2] = B.u1 * c + B.v0 * s; o[3] = -B.u1 * s + B.v0 * c; o[4] = B.u1 * c + B.v1 * s; o[5] = -B.u1 * s + B.v1 * c; o[6] = B.u0 * c + B.v1 * s; o[7] = -B.u0 * s + B.v1 * c; };   // gli spigoli di corners2, senza allocare
+  function sat2(A, B) {   // quanto si compenetrano due scatole in pianta (0 se separate): il minimo sugli assi delle due   [veloce] gli stessi conti, senza allocare
+    cc2(A, _ca2); cc2(B, _cb2); let pen = Infinity;
+    for (let t = 0; t < 4; t++) { const c = t < 2 ? A.c : B.c, s = t < 2 ? A.s : B.s, ax0 = t & 1 ? s : c, ax1 = t & 1 ? c : -s;
       let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity;
-      ca.forEach(p => { const q = p[0] * ax[0] + p[1] * ax[1]; a0 = Math.min(a0, q); a1 = Math.max(a1, q); }); cb.forEach(p => { const q = p[0] * ax[0] + p[1] * ax[1]; b0 = Math.min(b0, q); b1 = Math.max(b1, q); });
+      for (let i = 0; i < 8; i += 2) { const q = _ca2[i] * ax0 + _ca2[i + 1] * ax1; a0 = Math.min(a0, q); a1 = Math.max(a1, q); } for (let i = 0; i < 8; i += 2) { const q = _cb2[i] * ax0 + _cb2[i + 1] * ax1; b0 = Math.min(b0, q); b1 = Math.max(b1, q); }
       const o = Math.min(a1, b1) - Math.max(a0, b0); if (o <= 0) return 0; pen = Math.min(pen, o); }
     return pen;
   }
   const yov2 = (A, B) => Math.min(A.y1, B.y1) - Math.max(A.y0, B.y0);
   // i vertici nel mondo di una voce (tutti per la scatola, al più ~240 tenuti per le prove fini)
-  const _v2 = new THREE.Vector3();
   function verts2(e, yaw) {
     const c = Math.cos(yaw), s = Math.sin(yaw), B = { c, s, u0: Infinity, u1: -Infinity, v0: Infinity, v1: -Infinity, y0: Infinity, y1: -Infinity }, keep = []; let tot = 0;
     const scan = (arr, s0, n, M) => { tot += n; const step = Math.max(1, Math.floor(n / 240));
-      for (let i = s0, k = 0; i < s0 + n; i++, k++) { let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2]; if (M) { _v2.set(x, y, z).applyMatrix4(M); x = _v2.x; y = _v2.y; z = _v2.z; }
+      const r = M ? M.elements : null;   // [veloce] Vector3.applyMatrix4 scritto qui (gli stessi conti)
+      for (let i = s0, k = 0; i < s0 + n; i++, k++) { let x = arr[i * 3], y = arr[i * 3 + 1], z = arr[i * 3 + 2]; if (r) { const w = 1 / (r[3] * x + r[7] * y + r[11] * z + r[15]), X = (r[0] * x + r[4] * y + r[8] * z + r[12]) * w, Y = (r[1] * x + r[5] * y + r[9] * z + r[13]) * w; z = (r[2] * x + r[6] * y + r[10] * z + r[14]) * w; x = X; y = Y; }
         const u = x * c - z * s, v = x * s + z * c; if (u < B.u0) B.u0 = u; if (u > B.u1) B.u1 = u; if (v < B.v0) B.v0 = v; if (v > B.v1) B.v1 = v; if (y < B.y0) B.y0 = y; if (y > B.y1) B.y1 = y;
         if (k % step === 0) keep.push(x, y, z); } };
     e.parts.forEach(p => { if (p.bk) { const g = p.bk.geos[p.gi]; if (g && g.attributes.position) scan(g.attributes.position.array, 0, p.n, null); } else if (p.M) scan(p.M.geometry.attributes.position.array, p.s, p.n, p.M.matrixWorld); });
@@ -71655,10 +71666,20 @@ var Render = (function () {
   const CAM2 = (() => { const sy = Math.sin(YAW), cy = Math.cos(YAW), sp = Math.sin(PITCH), cp = Math.cos(PITCH), d = [-sy * cp, -sp, -cy * cp], r = [cy, 0, -sy], u = [d[1] * r[2] - d[2] * r[1], d[2] * r[0] - d[0] * r[2], d[0] * r[1] - d[1] * r[0]]; return { d, r, u }; })();
   const scr2 = (x, y, z) => [x * CAM2.r[0] + z * CAM2.r[2], x * CAM2.u[0] + y * CAM2.u[1] + z * CAM2.u[2]];
   const dep2 = (x, y, z) => -(x * CAM2.d[0] + y * CAM2.d[1] + z * CAM2.d[2]);
-  function hull2(P) { if (P.length < 3) return P; P.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
-    for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
-    for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
-    up.pop(); lo.pop(); return lo.concat(up); }
+  function hull2(P) {   // [veloce] la stessa catena monotona, sugli indici in array tipizzati, dopo aver scartato i punti ben interni
+    const N0 = P.length; if (N0 < 3) return P;
+    if (N0 > 24) {   // [veloce] fuori i punti ben dentro l'ottagono dei punti estremi (Akl-Toussaint): non stanno sul contorno
+      const K = [0, 0, 0, 0, 0, 0, 0, 0], f = [p => -p[1], p => p[0] - p[1], p => p[0], p => p[0] + p[1], p => p[1], p => p[1] - p[0], p => -p[0], p => -p[0] - p[1]], fv = [-Infinity, -Infinity, -Infinity, -Infinity, -Infinity, -Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < N0; i++) for (let k = 0; k < 8; k++) { const v = f[k](P[i]); if (v > fv[k]) { fv[k] = v; K[k] = i; } }
+      const Q = []; K.forEach(i => { if (!Q.length || (Q[Q.length - 1] !== i && Q[0] !== i)) Q.push(i); });
+      if (Q.length >= 3) { const E = Q.map((i, k) => { const a = P[i], b = P[Q[(k + 1) % Q.length]], ex = b[0] - a[0], ey = b[1] - a[1], L = Math.hypot(ex, ey); return [a[0], a[1], ex, ey, L]; });
+        if (E.every(q => q[4] > 1e-9)) { const keep = []; for (let i = 0; i < N0; i++) { const p = P[i]; let dentro = true; for (const q of E) if (q[2] * (p[1] - q[1]) - q[3] * (p[0] - q[0]) <= 1e-6 * q[4]) { dentro = false; break; } if (!dentro) keep.push(p); }
+          if (keep.length >= 3) P = keep; } } }
+    const n = P.length; const X = new Float64Array(n), Y = new Float64Array(n), ix = new Uint32Array(n); for (let i = 0; i < n; i++) { X[i] = P[i][0]; Y[i] = P[i][1]; ix[i] = i; }
+    ix.sort((a, b) => X[a] - X[b] || Y[a] - Y[b]); const cr = (o, a, b) => (X[a] - X[o]) * (Y[b] - Y[o]) - (Y[a] - Y[o]) * (X[b] - X[o]), lo = new Uint32Array(n + 1), up = new Uint32Array(n + 1); let nl = 0, nu = 0;
+    for (let k = 0; k < n; k++) { const p = ix[k]; while (nl >= 2 && cr(lo[nl - 2], lo[nl - 1], p) <= 0) nl--; lo[nl++] = p; }
+    for (let k = n - 1; k >= 0; k--) { const p = ix[k]; while (nu >= 2 && cr(up[nu - 2], up[nu - 1], p) <= 0) nu--; up[nu++] = p; }
+    const out = []; for (let k = 0; k < nl - 1; k++) out.push(P[lo[k]]); for (let k = 0; k < nu - 1; k++) out.push(P[up[k]]); return out; }
   const area2 = P => { let a = 0; for (let i = 0; i < P.length; i++) { const p = P[i], q = P[(i + 1) % P.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2; };
   function clip2(S, C) {   // Sutherland-Hodgman: S ritagliato dal convesso C (antiorario)
     let out = S; for (let i = 0; i < C.length && out.length; i++) { const a = C[i], b = C[(i + 1) % C.length], inp = out; out = [];
@@ -71672,6 +71693,22 @@ var Render = (function () {
     e.hull = hull2(P); e.harea = area2(e.hull); const [x, z] = ctr2(e.B); e.dep = dep2(x, (e.B.y0 + e.B.y1) / 2, z); e.sc = e.hull.reduce((a, p) => [a[0] + p[0] / e.hull.length, a[1] + p[1] / e.hull.length], [0, 0]);
   }
 
+  function sbb2(e) {   // [veloce] il rettangolo sullo schermo degli stessi punti di proj2 (gli stessi conti di scr2), senza il contorno
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; const r0 = CAM2.r[0], r2 = CAM2.r[2], u0 = CAM2.u[0], u1 = CAM2.u[1], u2 = CAM2.u[2], v = e.vx;
+    if (v && v.length >= 9) for (let i = 0; i < v.length; i += 3) { const x = v[i], y = v[i + 1], z = v[i + 2], a = x * r0 + z * r2, b = x * u0 + y * u1 + z * u2; if (a < x0) x0 = a; if (a > x1) x1 = a; if (b < y0) y0 = b; if (b > y1) y1 = b; }
+    else { const B = e.B; corners2(B).forEach(([x, z]) => [B.y0, B.y1].forEach(y => { const a = x * r0 + z * r2, b = x * u0 + y * u1 + z * u2; if (a < x0) x0 = a; if (a > x1) x1 = a; if (b < y0) y0 = b; if (b > y1) y1 = b; })); }
+    return [x0, y0, x1, y1];
+  }
+  function cbb2(B, m) {   // [veloce] lo stesso rettangolo, largo: dagli spigoli della scatola (che contiene i vertici), più m
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity; corners2(B).forEach(([x, z]) => [B.y0, B.y1].forEach(y => { const [a, b] = scr2(x, y, z); if (a < x0) x0 = a; if (a > x1) x1 = a; if (b < y0) y0 = b; if (b > y1) y1 = b; }));
+    return [x0 - m, y0 - m, x1 + m, y1 + m];
+  }
+  function fuori2(e, p) {   // [veloce] tutti i punti di e (sullo schermo) fuori da un lato del contorno convesso di p: clip2 non lascia niente
+    const pt = e.sbb[4] || (e.sbb[4] = (() => { const P = []; if (e.vx && e.vx.length >= 9) for (let i = 0; i < e.vx.length; i += 3) P.push(...scr2(e.vx[i], e.vx[i + 1], e.vx[i + 2])); else { const B = e.B; corners2(B).forEach(([x, z]) => { P.push(...scr2(x, B.y0, z), ...scr2(x, B.y1, z)); }); } return P; })()), C = p.hull; for (let i = 0; i < C.length; i++) { const a = C[i], b = C[(i + 1) % C.length], ex = b[0] - a[0], ey = b[1] - a[1]; let tutti = true;
+      for (let k = 0; k < pt.length; k += 2) if (ex * (pt[k + 1] - a[1]) - ey * (pt[k] - a[0]) > -1e-6) { tutti = false; break; }
+      if (tutti) return true; }
+    return false;
+  }
   // ---- raccolta: le voci registrate con la loro scatola, le case, i praticabili e le zone da tenere libere ----
   function p2Raccogli() {
     scene.updateMatrixWorld(true);
@@ -71722,13 +71759,18 @@ var Render = (function () {
   }
 
   // ---- la misura: per ogni voce viva, cosa non va (e chi ha ragione) ----
+  let NS2 = 0;   // [veloce] il timbro di I.near
   function p2Indici(R) {   // griglie a 4 m: voci vive, case, zone, praticabili
     const k4 = (i, j) => i * 8192 + j, put = (M, B, o) => { const cs = corners2(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); });
       for (let i = Math.floor(x0 / 4); i <= Math.floor(x1 / 4); i++) for (let j = Math.floor(z0 / 4); j <= Math.floor(z1 / 4); j++) { const k = k4(i, j); let a = M.get(k); if (!a) M.set(k, a = []); a.push(o); } };
     const I = { E: new Map(), H: new Map(), Z: new Map(), P: new Map(), put, k4 };
     R.E.forEach(e => { if (!e.gone) put(I.E, e.B, e); }); R.H.forEach(h => put(I.H, h.B, h)); R.Z.forEach(z => put(I.Z, z.B, z)); R.P.forEach(p => put(I.P, p.B, p));
-    I.near = (M, B, fn, pad) => { const cs = corners2(B), seen = new Set(); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }); pad = pad || 0;
-      for (let i = Math.floor((x0 - pad) / 4); i <= Math.floor((x1 + pad) / 4); i++) for (let j = Math.floor((z0 - pad) / 4); j <= Math.floor((z1 + pad) / 4); j++) for (const o of M.get(k4(i, j)) || []) if (!seen.has(o)) { seen.add(o); if (fn(o) === false) return; } };
+    const FIX = new Map([[I.H, new Map()], [I.Z, new Map()], [I.P, new Map()]]);   // [veloce] case, zone e praticabili non cambiano: la lista dei vicini (nello stesso ordine) per rettangolo di celle si fa una volta
+    I.near = (M, B, fn, pad) => { const cs = corners2(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }); pad = pad || 0;
+      const i0 = Math.floor((x0 - pad) / 4), i1 = Math.floor((x1 + pad) / 4), j0 = Math.floor((z0 - pad) / 4), j1 = Math.floor((z1 + pad) / 4), C = FIX.get(M);
+      if (C) { const key = i0 + ',' + i1 + ',' + j0 + ',' + j1; let L = C.get(key); if (!L) { L = []; const seen = new Set(); for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) for (const o of M.get(k4(i, j)) || []) if (!seen.has(o)) { seen.add(o); L.push(o); } C.set(key, L); }
+        for (const o of L) if (fn(o) === false) return; return; }
+      const st = ++NS2; for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { const L = M.get(k4(i, j)); if (L) for (const o of L) if (o.__ns2 !== st) { o.__ns2 = st; if (fn(o) === false) return; } } };   // [veloce] un timbro al posto dell'insieme (le chiamate non si annidano)
     return I;
   }
   const terra2 = e => !MURO2.has(e.k) && e.k !== 'grande' && e.k !== 'tettoia';
@@ -71748,7 +71790,7 @@ var Render = (function () {
     // (le mensole della rete e i bracci dei lampioni hanno la piastra murata: per loro conta solo se stanno dentro per più di un terzo)
     if (e.k !== 'grande' && e.k !== 'gradino') I.near(I.H, B, h => { if (yov2(B, h.B) <= .05 || sat2(B, h.B) <= .03) return; const n = vertIn2(e, h.B, .03); if (n > (MURATI2.has(e.k) ? e.vx.length / 9 : 0)) { out.push({ t: 'muro', h, n }); return false; } });
     // 2) le altre voci
-    I.near(I.E, B, o => { if (o === e || o.gone || ESENTI2.has(e.k + '|' + o.k) || (e.g && e.g === o.g) || (e.b && e.b === o.b && e.k === o.k && e.k !== 'arredo')) return; if (!urto2(e, o)) return;   // la stessa composizione non si urta da sé
+    I.near(I.E, B, o => { if (o === e || o.gone || yov2(B, o.B) <= .03 || (e.g && e.g === o.g) || (e.b && e.b === o.b && e.k === o.k && e.k !== 'arredo') || ESENTI2.has(e.k + '|' + o.k)) return; if (!urto2(e, o)) return;   // la stessa composizione non si urta da sé
       const pe = PRIO2[e.k] || 10, po = PRIO2[o.k] || 10, perde = pe < po || (pe === po && (e.vol < o.vol || (e.vol === o.vol && e.id > o.id)));
       if (perde || all) out.push({ t: pezzo2(e) || pezzo2(o) ? 'pezzo' : (e.k === 'tenda' || o.k === 'tenda') && /balcone|insegna|lampione/.test(e.k + o.k) ? 'tenda' : 'urto', o, perde }); });
     // 3) le zone libere: davanti alle porte e alle vetrine, ai piedi delle scale, attorno ai tombini (solo quello che sta in basso)
@@ -71765,10 +71807,13 @@ var Render = (function () {
         if (!su) out.push({ t: 'sospeso', dy: gmax - B.y0 }); }
     }
     // 6) davanti a un praticabile, vista dalla camera: copre più del 12% del suo contorno
-    if (!PRAT2.has(e.k) && e.k !== 'gradino') { if (!e.hull) proj2(e); I.near(I.P, B, p => { if (e.dep <= p.dep + .05) return;
+    if (!PRAT2.has(e.k) && e.k !== 'gradino') { e.dep = dep2(cx, (B.y0 + B.y1) / 2, cz); let cbE = null; I.near(I.P, B, p => { if (e.dep <= p.dep + .05) return;   // [veloce] la profondità subito, il contorno (hull2) solo se le scatole sullo schermo si toccano
       if (p.k === 'porta' || p.k === 'scala') { const n = p.k === 'porta' ? p.info.F.n : [p.info.L.ox, p.info.L.oy], q = p.k === 'porta' ? p.info.F.p : [p.info.L.x, p.info.L.y]; if ((cx - q[0]) * n[0] + (cz - q[1]) * n[1] < -.05) return; }
       if ((e.k === 'portale' || e.k === 'serranda' || e.k === 'citofono') && p.k === 'porta') return;   // le parti della porta stessa
-      const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
+      const pb = p.sbb || (p.sbb = sbb2(p)), ec = cbE || (cbE = cbb2(B, .05)); if (ec[0] > pb[2] || pb[0] > ec[2] || ec[1] > pb[3] || pb[1] > ec[3]) return;
+      const eb = e.sbb || (e.sbb = sbb2(e)); if (eb[0] > pb[2] + 1e-6 || pb[0] > eb[2] + 1e-6 || eb[1] > pb[3] + 1e-6 || pb[1] > eb[3] + 1e-6) return;   // separati sullo schermo: niente da ritagliare
+      { const R4 = clip2([[eb[0], eb[1]], [eb[2], eb[1]], [eb[2], eb[3]], [eb[0], eb[3]]], p.hull); if ((R4.length >= 3 ? area2(R4) : 0) < p.harea * .12 - 1e-6) return; }   // anche tutto il rettangolo di e copre poco: il contorno, che ci sta dentro, ancora meno
+      if (fuori2(e, p)) return; if (!e.hull) proj2(e); const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
       if (pezzo2(e) && e.tipo === 'portico' && p.k === 'porta' && p.info.b.sottoPortico && (p.info.f === 'S' || p.info.f === 'N')) return;   // [pianta] la porta sotto il suo portico: le arcate sono il suo atrio, non la coprono
       if (pezzo2(e)) { const [px, pz] = ctr2(p.B); if (inB2(e.B, px, (e.B.y0 + e.B.y1) / 2, pz, -.6) && e.B.y1 > p.B.y1) { (P2.sotto = P2.sotto || new Set()).add(p.id); return; }   // [pulizia] la porta sta SOTTO il portico, l'arco, la scalinata: coperta per costruzione (la visuale la apre quando ci si passa), si conta a parte
         const f = raggi2(e, p); if (f > .2) { const B = e.B, u = px * B.c - pz * B.s, v = px * B.s + pz * B.c, du = Math.max(B.u0 - u, 0, u - B.u1), dv = Math.max(B.v0 - v, 0, v - B.v1); out.push({ t: 'pezzo', p, a: f, fuori: Math.hypot(du, dv) }); } return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
@@ -71801,17 +71846,38 @@ var Render = (function () {
   }
 
   // ---- il regista: sposta (sul filo del muro, lungo la facciata, a terra di poco, posato a terra) o, per ultimo, toglie ----
+  const _q2s = new THREE.Quaternion(), _M2s = new THREE.Matrix4();   // [veloce] di appoggio (sposta2 non si annida)
+  // [veloce] le celle a 4 m toccate dal regista (spostati, tolti): chi era a posto e non ha niente di toccato attorno resta a posto al giro dopo
+  const celle2 = (B, fn) => { cc2(B, _cn2); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; for (let i = 0; i < 8; i += 2) { x0 = Math.min(x0, _cn2[i]); x1 = Math.max(x1, _cn2[i]); z0 = Math.min(z0, _cn2[i + 1]); z1 = Math.max(z1, _cn2[i + 1]); }
+    for (let i = Math.floor(x0 / 4); i <= Math.floor(x1 / 4); i++) for (let j = Math.floor(z0 / 4); j <= Math.floor(z1 / 4); j++) if (fn(i * 8192 + j) === false) return false; return true; };
+  const _cn2 = new Float64Array(8), segna2 = B => { if (P2.mk) { const t = ++P2.tk; celle2(B, k => { P2.mk.set(k, t); }); } }, quieto2 = (B, t) => celle2(B, k => !((P2.mk.get(k) || 0) > t));
+  // [veloce] gli spostamenti dei vertici delle parti (nei secchi e nelle mesh fuse) si mettono da parte e si applicano quando qualcuno li
+  // legge (ruota2, togli2, i contorni alla fine), nello stesso ordine e con lo stesso arrotondamento a float32 di a[i] += d: lo stesso
+  // risultato bit per bit, senza ripassare migliaia di vertici a ogni prova di spostamento (le prove disfatte e le cose poi tolte)
+  function pendOk2(R) {   // nessuna parte ne tocca un'altra (altrimenti l'ordine fra le due conterebbe): si rinvia solo così
+    const M = new Map(); for (const e of R.E) for (const p of e.parts) { const a = p.bk ? (p.bk.geos[p.gi] && p.bk.geos[p.gi].attributes.position.array) : p.M ? p.M.geometry.attributes.position.array : null; if (!a) continue; const s0 = p.bk ? 0 : p.s, L = M.get(a) || M.set(a, []).get(a); L.push([s0, s0 + p.n]); }
+    for (const L of M.values()) { L.sort((x, y) => x[0] - y[0]); for (let i = 1; i < L.length; i++) if (L[i][0] < L[i - 1][1]) return false; } return true;
+  }
+  function pend2(p, a, b, c) { let L = P2.pend.get(p); if (!L) P2.pend.set(p, L = []); L.push(a, b, c); }
+  function vai2(e, solo0) {   // applica quello che è in sospeso (di e, o di tutti); solo0: e se ne va, conta solo il primo vertice
+    if (!P2.pend || !P2.pend.size) return; const fr = Math.fround;
+    const uno = (p, L) => { const a = p.bk ? (p.bk.geos[p.gi] && p.bk.geos[p.gi].attributes.position.array) : p.M.geometry.attributes.position.array; if (!a) return; const s0 = p.bk ? 0 : p.s * 3, s1 = solo0 ? s0 + 3 : s0 + p.n * 3, K = L.length;
+      for (let i = s0; i < s1; i += 3) { let x = a[i], y = a[i + 1], z = a[i + 2]; for (let k = 0; k < K; k += 3) { x = fr(x + L[k]); y = fr(y + L[k + 1]); z = fr(z + L[k + 2]); } a[i] = x; a[i + 1] = y; a[i + 2] = z; } };
+    if (e) { for (const p of e.parts) { const L = P2.pend.get(p); if (L) { uno(p, L); P2.pend.delete(p); } } return; }
+    P2.pend.forEach((L, p) => uno(p, L)); P2.pend.clear();
+  }
   function sposta2(e, dx, dy, dz) {
-    const d = new THREE.Vector3(dx, dy, dz), q = new THREE.Quaternion(), M3 = new THREE.Matrix4();
-    e.parts.forEach(p => { if (p.bk) { const g = p.bk.geos[p.gi]; if (!g) return; const a = g.attributes.position.array; for (let i = 0; i < p.n * 3; i += 3) { a[i] += dx; a[i + 1] += dy; a[i + 2] += dz; } }
-      else if (p.M) { M3.extractRotation(p.M.matrixWorld).invert(); const l = d.clone().applyMatrix4(M3), a = p.M.geometry.attributes.position.array; for (let i = p.s * 3; i < (p.s + p.n) * 3; i += 3) { a[i] += l.x; a[i + 1] += l.y; a[i + 2] += l.z; } p.M.geometry.attributes.position.needsUpdate = true; P2.dirty.add(p.M.geometry); } });
+    segna2(e.B); const d = new THREE.Vector3(dx, dy, dz), q = _q2s, M3 = _M2s;
+    e.parts.forEach(p => { if (p.bk) { const g = p.bk.geos[p.gi]; if (!g) return; if (P2.pend) { pend2(p, dx, dy, dz); return; } const a = g.attributes.position.array, n3 = p.n * 3; for (let i = 0; i < n3; i += 3) { a[i] += dx; a[i + 1] += dy; a[i + 2] += dz; } }
+      else if (p.M) { M3.extractRotation(p.M.matrixWorld).invert(); const l = d.clone().applyMatrix4(M3), a = p.M.geometry.attributes.position.array, lx = l.x, ly = l.y, lz = l.z, i1 = (p.s + p.n) * 3; if (P2.pend) pend2(p, lx, ly, lz); else for (let i = p.s * 3; i < i1; i += 3) { a[i] += lx; a[i + 1] += ly; a[i + 2] += lz; } p.M.geometry.attributes.position.needsUpdate = true; P2.dirty.add(p.M.geometry); } });
     e.objs.forEach(o => { if (o.parent) { o.parent.getWorldQuaternion(q); o.position.add(d.clone().applyQuaternion(q.invert())); o.updateMatrixWorld(true); } });
     const B = e.B, du = dx * B.c - dz * B.s, dv = dx * B.s + dz * B.c; B.u0 += du; B.u1 += du; B.v0 += dv; B.v1 += dv; B.y0 += dy; B.y1 += dy;
-    if (e.vx) for (let i = 0; i < e.vx.length; i += 3) { e.vx[i] += dx; e.vx[i + 1] += dy; e.vx[i + 2] += dz; }
-    e.hull = null;   // [carico] il contorno sullo schermo lo rifà viol2 quando serve (prima a ogni prova di spostamento: 10 s di avvio)
+    const vx = e.vx; if (vx) for (let i = 0; i < vx.length; i += 3) { vx[i] += dx; vx[i + 1] += dy; vx[i + 2] += dz; }
+    e.hull = e.sbb = null; e.vxv = (e.vxv || 0) + 1; segna2(B);   // [carico] il contorno sullo schermo lo rifà viol2 quando serve (prima a ogni prova di spostamento: 10 s di avvio)
     if (e.rec) { e.rec.c.add(d); e.rec.c0.add(d); e.rec.base += dy; if (e.rec.obj) { e.rec.obj.position.add(d); e.rec.obj.updateMatrixWorld(true); } hashPut(e.rec, e.rec.c.x, e.rec.c.z); }
   }
   function togli2(e) {
+    if (e.B) segna2(e.B); vai2(e, true);
     e.parts.forEach(p => { const a = p.bk ? (p.bk.geos[p.gi] && p.bk.geos[p.gi].attributes.position.array) : p.M ? p.M.geometry.attributes.position.array : null; if (!a) return; const s = p.bk ? 0 : p.s * 3, n = p.n * 3, x = a[s], y = a[s + 1], z = a[s + 2];
       for (let i = s; i < s + n; i += 3) { a[i] = x; a[i + 1] = y; a[i + 2] = z; } if (p.M) { p.M.geometry.attributes.position.needsUpdate = true; P2.dirty.add(p.M.geometry); } });
     e.objs.forEach(o => { if (o.parent) o.parent.remove(o); });
@@ -71821,10 +71887,11 @@ var Render = (function () {
   function p2Regista(R) {
     const az = { spostati: {}, tolti: {}, intatti: 0 }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
     const SCIVOLA2 = new Set(['arredo', 'dehors', 'tabellone', 'applique', 'insegna', 'pluviale', 'citofono', 'ingombro']);
+    P2.mk = new Map(); P2.tk = 0;
     for (let giro = 0; giro < 5; giro++) {
       const I = p2Indici(R), bad = [];
       const vv = e => { const V = viol2(e, R, I, false); return FISSI2.has(e.k) ? V.filter(v => (v.t === 'muro' && e.k !== 'gradino') || (v.t === 'pezzo' && v.o) || (e.k === 'rete' && terra2(e) && e.B.y1 - e.B.y0 > 1.5 && v.t !== 'pezzo') || ((palo2(e) || e.k === 'lampione' || e.k === 'rete') && (/coperto|porta|scala|tombino/.test(v.t) || (v.t === 'urto' && /rete|lampione/.test(v.o.k))))) : V; };   // i fissi si mettono solo a filo del muro, e cedono soltanto ai pezzi grandi
-      R.E.forEach(e => { if (e.gone || e.k === 'grande') return; const V = vv(e); if (V.length) bad.push([e, V]); });
+      R.E.forEach(e => { if (e.gone || e.k === 'grande') return; if (e.ok2 !== undefined && quieto2(e.B, e.ok2)) return; const V = vv(e); if (V.length) { bad.push([e, V]); e.ok2 = undefined; } else e.ok2 = P2.tk; });
       if (!bad.length) break;
       bad.sort((a, b) => (PRIO2[a[0].k] || 10) - (PRIO2[b[0].k] || 10) || a[0].vol - b[0].vol);
       bad.forEach(([e]) => {
@@ -71855,7 +71922,7 @@ var Render = (function () {
         togli2(e); conta(az.tolti, e.k);
       });
     }
-    P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear();
+    P2.mk = null; vai2(); P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear();
     return az;
   }
   // ---- [pulizia] gli attrezzi per pulizia_rumore.js: ruotare una voce attorno al suo centro, le finestre e le porte di una facciata,
@@ -71865,12 +71932,13 @@ var Render = (function () {
     for (let i = s; i < s + n; i++) { _x2.fromArray(a, i * 3).applyMatrix4(M).toArray(a, i * 3); if (nr) _x2.fromArray(nr, i * 3).applyMatrix3(_n3).normalize().toArray(nr, i * 3); }
     g.attributes.position.needsUpdate = true; if (A) A.needsUpdate = true; }
   function ruota2(e, da) {
+    vai2(e);
     const [cx, cz] = ctr2(e.B), Rw = new THREE.Matrix4().makeTranslation(cx, 0, cz).multiply(new THREE.Matrix4().makeRotationY(da)).multiply(new THREE.Matrix4().makeTranslation(-cx, 0, -cz));
     e.parts.forEach(p => { if (p.bk) { const g = p.bk.geos[p.gi]; if (g) xf2(g, 0, p.n, Rw); }
       else if (p.M) { const L = new THREE.Matrix4().copy(p.M.matrixWorld).invert().multiply(Rw).multiply(p.M.matrixWorld); xf2(p.M.geometry, p.s, p.n, L); P2.dirty.add(p.M.geometry); } });
     e.objs.forEach(o => { if (!o.parent) return; o.updateMatrixWorld(true); const W = new THREE.Matrix4().multiplyMatrices(Rw, o.matrixWorld).premultiply(new THREE.Matrix4().copy(o.parent.matrixWorld).invert()); W.decompose(o.position, o.quaternion, o.scale); o.updateMatrixWorld(true); });
     if (e.rec && e.rec.obj && !e.rec.obj.parent) { e.rec.obj.applyMatrix4(Rw); e.rec.obj.updateMatrixWorld(true); }
-    e.yaw += da; const V = verts2(e, e.yaw); if (V) { e.B = V.B; e.vx = V.vx; } e.hull = null;
+    e.yaw += da; const V = verts2(e, e.yaw); if (V) { e.B = V.B; e.vx = V.vx; } e.hull = e.sbb = null; e.vxv = (e.vxv || 0) + 1;
   }
   function rumore2(R) {
     const I0 = p2Indici(R), BI = new Map(); BLD().forEach((b, i) => BI.set(b, i));
@@ -71935,7 +72003,7 @@ var Render = (function () {
       indici: () => p2Indici(R), viol: (e, I) => viol2(e, R, I, true),   // con le colpe dell'altro: una correzione non deve far perdere nessuno
       sopra: (e, I) => { const L = []; I.near(I.E, e.B, o => { if (o !== e && !o.gone && Math.abs(o.B.y0 - e.B.y1) < .12 && sat2(e.B, o.B) > .02) L.push(o); }); return L; }, rimetti: (I, e) => I.put(I.E, e.B, e),
       togli: e => togli2(e), sposta: (e, dx, dy, dz) => { sposta2(e, dx, dy, dz); e.c = ctr2(e.B); }, ruota: (e, da) => { ruota2(e, da); e.c = ctr2(e.B); }, ruotabile: e => !e.free && (e.parts.length || e.objs.length),
-      fine: () => { P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear(); },
+      fine: () => { vai2(); P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear(); },
     };
   }
   function pulizia2() {
@@ -71943,8 +72011,10 @@ var Render = (function () {
     try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kp); P2.kit = Math.max(0, bb.max.x); } catch (e) { P2.kit = 0; }   // quanto sporge il modulo di muro dal filo
     P2.dirty = new Set();
     const R = p2Raccogli(), prima = p2Misura(R), off = /[?&]nopulizia2\b/.test(location.search);
+    P2.pend = pendOk2(R) ? new Map() : null;   // [veloce] i vertici delle parti si spostano quando servono (vai2)
     const az = off ? { spento: true } : p2Regista(R);
     let RU = null; if (typeof PuliziaRumore !== 'undefined') try { RU = PuliziaRumore.passa(rumore2(R)); } catch (e) { console.error('[rumore]', e); }   // [pulizia] il rumore (pulizia_rumore.js): dopo il regista, sulle stesse voci
+    vai2(); P2.pend = null;
     const dopo = off ? prima : p2Misura(R);
     window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null };
     if (window.__dbg35) console.log('[dbg] pulizia2 prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'azioni', JSON.stringify(az));
