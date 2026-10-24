@@ -1431,9 +1431,9 @@ var World = (function () {
       // E3 la stazione in testa alla griglia: il fabbricato fra il binario e la Via della Stazione, il marciapiede col binario di corsa
       // (quello del treno: il pezzo non ne disegna un altro), il piazzale fino alla via; sul lato del mare il tronchino merci col
       // suo rilevato, la locomotiva da manovra e un carro fermi
-      { const S = POSA.staz = { x0: 932, L: 30 };   /* [mappa_compatta] la stazione è la porta ovest della città */ S.xc = S.x0 + S.L / 2; S.ry = ryP(S.xc);
+      { const S = POSA.staz = { x0: 934, L: 30 };   /* [mappa_compatta] la stazione è la porta ovest della città ([pianta] 2 m più a levante: la Via Alta le gira attorno senza toccarne l'angolo) */ S.xc = S.x0 + S.L / 2; S.ry = ryP(S.xc);
         const p = PZ('stazione', S.x0, S.ry + 13.25, 0, { L: S.L, piani: 2, binari: 0, piazzale: false, pensilina: true, orologio: true, nome: 'PORTO VECCHIO' }, { nome: 'Stazione' }); S.p = p;
-        pzRis(p, 'B', -3, S.L + 3, -11.6, 6.4);
+        pzRis(p, 'B', -.5, S.L + 3, -11.6, 6.4);   // [pianta] dal lato della Via Alta il margine è mezzo metro: la via gira sull'angolo del fabbricato, non dentro la sua scatola
         S.yRoad = CITY.pzStaz[3]; pzRis(p, 'P', -2, S.L + 4, 6.4, S.yRoad - p.y);
         const t = PZ('binari', S.x0 + S.L - 2, S.ry - 4.2, Math.PI, { L: 22, binari: 1, rilevato: true, hRilevato: 3, palo: true }, { nome: 'Tronchino merci', tronchino: true }); S.tr = t;
         pzRis(t, 'G', 0, 22, -1.5, 5.4);
@@ -2576,6 +2576,18 @@ var World = (function () {
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
         if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
     }
+    // [pianta] IL MARCIAPIEDE CONTINUO: lungo le vie di città la fascia del marciapiede (da 0,3 a 1,9 m oltre il ciglio) è marciapiede anche
+    // dove la massicciata della ferrovia, la banchina o un ritaglio di selciato l'avevano preso (il Lungomare di Tramontana). Non sull'acqua:
+    // la casella che tocca il mare resta banchina col suo muro
+    { const PRENDE = new Set([T.GRAVEL, T.QUAY, T.COB, T.DIRT, T.GRASS]); let nM = 0;
+      const inCarr = (x, y) => CITY.roads.concat(roads).some(rd => { const Q = rd.pts; if (!Q || Q.length < 2) return false; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1]; if (Math.max(ax, bx) + rd.w < x || Math.min(ax, bx) - rd.w > x || Math.max(ay, by) + rd.w < y || Math.min(ay, by) - rd.w > y) continue; const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1); if (dist(x, y, ax + dx * t, ay + dy * t) <= rd.w / 2 + .1) return true; } return false; });
+      CITY.roads.filter(rd => rd.kind === 'citta').forEach(rd => { const hw = rd.w / 2, Q = rd.pts;
+        for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], l = Math.hypot(bx - ax, by - ay); if (l < 1e-3) continue; const ux = (bx - ax) / l, uy = (by - ay) / l;
+          for (let t = 0; t < l; t += .25) for (const sg of [1, -1]) for (let o = hw + .35; o < hw + 1.9; o += .25) { const x = ax + ux * t - uy * o * sg, y = ay + uy * t + ux * o * sg, i = T2i(y) * GW + T2i(x);
+            const via = grid[i] === T.VIA && roadW[i] > 0 && !inCarr((i % GW + .5) * TS, (((i / GW) | 0) + .5) * TS);   // la casella di via che la pittura a caselle ha messo nel marciapiede
+            if (!(via || (PRENDE.has(grid[i]) && roadW[i] === 0)) || bIndex[i] >= 0) continue; if (via) roadW[i] = 0;
+            if ([i - 1, i + 1, i - GW, i + GW].some(j => grid[j] === T.WATER)) continue; grid[i] = T.WALK; nM++; } } });
+      CITY.marciapiediChiusi = nM; }
     // [pianta] IL VICOLO LARGO QUANTO IL SUO CORRIDOIO: dopo le case, la carreggiata disegnata di un vicolo (rd.w) non deve passare sotto i
     // muri. Lungo l'asse si misura il passaggio libero fra le case (a passi di 25 cm, come strade_integre.js); la larghezza del vicolo
     // diventa quella che ci sta (il decimo percentile più 60 cm di spalle, a mezzi metri, mai sotto 2 m). La Rua resta di 5 m.
@@ -2824,7 +2836,7 @@ var World = (function () {
       eachV(C.x - 2.1, C.y0, C.x + 2.1, C.y1 - 3.4, (i, j, x, y) => setV(i, j, y <= C.ps.y ? Lr : y >= C.ps.y + len ? Htop : Lr + (Htop - Lr) * (y - C.ps.y) / len));
       // 3) il piano della stazione: il marciapiede mezzo metro sopra il ferro; il piazzale scende o sale fino alla via
       if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; const suVia = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, b]) => a >= 0 && b >= 0 && a < GW && b < GH && roadW[b * GW + a] > 0);   /* [pianta] la Via Alta che passa accanto resta sul suo profilo: il marciapiede della stazione le sta sopra col suo muro */
-        eachVL(S.p, -3, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });
+        eachVL(S.p, -.5, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });   /* [pianta] il marciapiede della stazione finisce col suo rettangolo, mezzo metro oltre il fabbricato */
         const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { if (suVia(i, j)) return; const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
         const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
         [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
