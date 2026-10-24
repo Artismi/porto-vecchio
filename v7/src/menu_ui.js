@@ -224,7 +224,7 @@ var MenuUI = (function () {
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
-  let THR = null, ENV = null;
+  let THR = null, ENV = null; const DIETA_TEL = (() => { try { return !/[?&](alta|nodieta)\b/.test(location.search) && (/[?&](leggera|bassa)\b/.test(location.search) || matchMedia('(pointer: coarse)').matches); } catch (e) { return false; } })();
   // l'ambiente dello studio: una cupola calda sopra, scura sotto, due pannelli luminosi (softbox) da riflettere
   function envThumb() {
     if (ENV || !THR) return ENV; const T = THREE;
@@ -291,10 +291,13 @@ var MenuUI = (function () {
     if (!ui || ui.intro) return false; const t = performance.now(); if (!thIn) thIn = t; return t - thIn > 5000; };   // in strada da 5 s: i primi passi senza lo scatto del contesto nuovo
   function thumbPump() {
     requestAnimationFrame(thumbPump);
+    // [dieta] sul telefono il contesto WebGL delle anteprime (programmi, ombre, ambiente: memoria della scheda video) si chiude quando la coda
+    // è vuota da 3 s; le anteprime fatte restano (sono tele 2D), una nuova lo riapre
+    if (DIETA_TEL && THR && !THQ.length && performance.now() - (THR.__usato || 0) > 3000) { try { if (ENV) ENV.dispose(); THR.dispose(); THR.forceContextLoss(); } catch (e) { } THR = null; ENV = null; }
     if (!THQ.length || !window.THREE || !thumbOk()) return;
-    const t0 = performance.now();
+    const t0 = performance.now(); if (THR) THR.__usato = t0;
     while (THQ.length && performance.now() - t0 < 14) {
-      const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); } catch (e) { console.error('[Anteprime]', id, e); }
+      const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); if (THR) THR.__usato = performance.now(); } catch (e) { console.error('[Anteprime]', id, e); }
       if (!cv) continue; TH.set(id, cv);
       const m = $('mu'); if (m) m.querySelectorAll(`canvas[data-ic="${id}"]:not([data-nt])`).forEach(c => drawThumb(c, cv));
     }
@@ -365,7 +368,9 @@ var MenuUI = (function () {
   function draw3(now) {
     requestAnimationFrame(draw3);
     const dt = Math.min(.05, (now - (R3.t || now)) / 1000); R3.t = now;
-    const m = $('mu'), st = ST(); if (!U.open || !m || !st || !ready3()) return;
+    const m = $('mu'), st = ST();
+    if (DIETA_TEL && R3.r && !U.open) { try { R3.r.dispose(); R3.r.forceContextLoss(); } catch (e) { } R3.r = null; }   // [dieta] sul telefono il contesto delle figure del menu si chiude col menu
+    if (!U.open || !m || !st || !ready3()) return;
     const cvs = m.querySelectorAll('canvas.r3'); if (!cvs.length) return;
     if (!R3.r) { R3.r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); R3.r.setClearColor(0x000000, 0); }
     const p = st.player;

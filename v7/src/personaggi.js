@@ -1108,7 +1108,7 @@ var Personaggi = (function () {
   const AT = { N: 8, NY: 13, px: 256, tex: null };
   function atlante() {
     if (AT.tex || typeof document === 'undefined') return AT.tex;
-    const N = AT.N, NY = AT.NY, px = AT.px, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    const M2 = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1, N = AT.N, NY = AT.NY, px = AT.px * M2, cv = document.createElement('canvas');   /* [dieta] sul telefono disegnato già a metà lato (le tessere sono in unità della tessera) */ cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
     x.fillStyle = '#000'; x.fillRect(0, 0, N * px, NY * px);
     // tessera i (layout) nella riga 0..1, j: disegno ripetuto (motivi) nelle righe 2..3. Le u vanno da 0 (cucitura dietro) a 1, il davanti a 0.5; v da 0 (giù) a 1 (su)
     const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };   // la v della tessera cresce verso il basso della tela, come la legge lo shader (flipY spento)
@@ -1370,7 +1370,7 @@ var Personaggi = (function () {
     P(4, c => { c.fillStyle = 'rgb(0,255,0)'; for (let k = 0; k < 8; k++) for (let l = 0; l < 8; l++) { c.globalAlpha = .35; c.beginPath(); c.ellipse((k + (l % 2) * .5) / 8, l / 8, .03, .05, 0, 0, 7); c.fill(); } c.globalAlpha = 1; });   // maglia
     P(5, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) for (let l = 0; l < 4; l++) { c.beginPath(); c.arc((k + (l % 2) * .5) / 4 + .06, l / 4 + .06, .045, 0, 7); c.fill(); } });   // pois
     P(6, c => { c.fillStyle = R; for (let k = 0; k < 8; k++) c.fillRect(k / 8, 0, .025, 1); });   // righine verticali
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] sul telefono a metà lato */ AT.tex = tex; AT.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined' && M2 === 1) LeggeraMem.mezza(tex); /* [leggera] sul telefono a metà lato */ AT.tex = tex; AT.cv = cv; return tex;
   }
 
   // =====================================================================================
@@ -1384,7 +1384,7 @@ var Personaggi = (function () {
   PR.nomi.forEach((n, i) => { TL['s_' + n] = 200 + i; });
   function stampe() {
     if (PR.tex || typeof document === 'undefined') return PR.tex;
-    const { N, NY, px } = PR, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    const { N, NY } = PR, M2 = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1, px = PR.px * M2, cv = document.createElement('canvas');   /* [dieta] a metà lato sul telefono */ cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
     const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };
     const K = .66, ell = (c, u, v, rx, ry, a0, a1) => { c.beginPath(); c.ellipse(u, v, rx * K, ry, 0, a0 || 0, a1 === undefined ? 7 : a1); };
     const grad = (c, x0, y0, x1, y1, stops) => { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach((s, k) => g.addColorStop(k / (stops.length - 1), s)); return g; };
@@ -1464,7 +1464,7 @@ var Personaggi = (function () {
     // 17 chrome: la scritta cromata gotica grande sul petto, la croce di stelle dietro (Y2K)
     D(17, c => { txt(c, 'Hustle', .5, .62, .15, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
       dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'GOLD', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined' && M2 === 1) LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
   }
   let MAT = null, MAT_STILE = null;
   function materiale() {

@@ -409,7 +409,11 @@ var Render = (function () {
         if (!S) FU1.att.set(k, S = { k, tops: [], recs: new Set(), x: (i + .5) * SETT1, z: (j + .5) * SETT1 });
         S.tops.push(top); S.recs.add(rec); scene.remove(top); FD1.data[FD1.idx.get(rec) * 4 + 3] = 255; });
     }
-    const it = fus1Gen(ora, false); let r; do r = it.next(); while (!r.done);
+    // [dieta] sul telefono anche l'anello vicino si fonde un settore alla volta: le copie appiattite dei pezzi (32 byte a vertice) e i
+    // secchi non compattati di un settore solo, non di tutto l'anello insieme (il picco del caricamento, ~250 MB in più)
+    if (DIETA.on('settori')) { const per = new Map(); ora.forEach(top => { const rec = fus1Rec(top); if (!rec) return; const c = recCtr1(rec), k = Math.floor(c[0] / SETT1) + ',' + Math.floor(c[1] / SETT1); (per.get(k) || per.set(k, []).get(k)).push(top); });
+      per.forEach(L => { const it = fus1Gen(L, false); let r; do r = it.next(); while (!r.done); }); }
+    else { const it = fus1Gen(ora, false); let r; do r = it.next(); while (!r.done); }
     let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
     window.__fusione1 = { prima: before, dopo: after, secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, materiali: FD1.canon.size, ombre: FU1.tot.ombre, tavolozza: PAL1.col.length, pile: ARR1.all.length, strati: ARR1.all.reduce((n, a) => n + a.maps.length, 0), settoriDopo: FU1.att.size };
     if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
@@ -510,7 +514,11 @@ var Render = (function () {
       const m = new THREE.Mesh(geo, mat); m.name = 'massa1'; m.userData.keep = true; m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false; scene.add(m); FU1.massa = m;
     }
     // i lavori: un settore per lavoro, dal centro del settore
-    FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, gen: fus1Settore(S) }));
+    // [dieta] sul telefono i settori lontani si fondono qui, uno dopo l'altro (ognuno libera i suoi pezzi originali, ~4 volte più grossi
+    // della fusa compattata: 240 MB in memoria finché aspettavano il lavoro in sottofondo), e restano spenti per la camera finché non ci si
+    // avvicina (fus1Mostra). Niente fusione in sottofondo mentre si gioca. ?nodietafondi: come prima
+    if (DIETA.fondi) [...FU1.att.values()].forEach(fus1Ora);
+    else FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, gen: fus1Settore(S) }));
     FU1.sig = !!(window.LeggeraMem && LeggeraMem.on('firme'));
   }
   // [anelli] a ogni fotogramma: dove guarda la camera (il punto a terra e la direzione), fin dove arriva la nebbia, quanto si corre
@@ -539,6 +547,12 @@ var Render = (function () {
       if (window.__fusione1) Object.assign(window.__fusione1, { secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, ombre: FU1.tot.ombre, pile: ARR1.all.length, tavolozza: PAL1.col.length, settoriDopo: 0 });
       Anelli.log('case: tutte fuse,', FU1.n, 'settori dopo il caricamento');
     }
+  }
+  function fus1Ora(S) {   // [dieta] il settore si fonde adesso (nel caricamento, sul telefono) e aspetta spento il suo turno per la scheda video
+    const it = fus1Gen(S.tops, false); let r; do r = it.next(); while (!r.done);
+    const made = r.value; S.made = made; FU1.att.delete(S.k); FU1.n++;
+    made.forEach(m => { m.userData.anL = m.layers.mask; m.layers.mask = 0; }); FU1.nasc++;
+    Anelli.lavoro({ tipo: 'mostra', x: S.x, z: S.z, r: SETT1 * .75, telefono: false, gen: fus1Mostra(S) });
   }
   function* fus1Mostra(S) {
     Anelli.segna('ritorno');
@@ -899,7 +913,7 @@ var Render = (function () {
   }
   function acquaFine9(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
-    const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
+    const T = G.T, P = A.P || 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
@@ -940,14 +954,14 @@ var Render = (function () {
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0); mx.putImageData(md, 0, 0);   /* [carico] */
-    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(6px)' : 'blur(3px)';   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const PB = DIETA.on('acqua') ? 2 : 4, big = mk(G.GW * PB, G.GH * PB), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(' + 1.5 * PB + 'px)' : 'blur(' + .75 * PB + 'px)';   /* [dieta] sul telefono la profondità a 1 px per metro (era 2: 27 MB di tela e altrettanti sulla scheda video; è sfocata di una casella e mezza) */   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); if (R9) { bx.globalCompositeOperation = 'lighter'; bx.filter = 'blur(5px)'; bx.drawImage(gc9, 0, 0); bx.globalCompositeOperation = 'source-over'; } bx.filter = 'none';
     mc.width = mc.height = 1; gc9.width = gc9.height = 1;   // [telefono] la maschera nitida (e la fascia) servivano solo alla sfocata (6,6 MB)
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
-    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
+    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S, P: PB }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
       transparent: !!R9, uniforms: { RIVA9: { value: R9 ? 1 : 0 }, time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
@@ -2443,6 +2457,10 @@ var Render = (function () {
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   if (typeof window !== 'undefined') window.PV_TELEFONO = PHONE;   // [memoria] lo leggono i moduli (pittura.js: la cache delle tele)
+  // [dieta] i tagli della memoria del telefono (il telefono chiudeva la scheda appena si entrava in gioco): ?nodieta li spegne tutti,
+  // ?nodieta<nome> uno solo. fondi: i settori lontani delle case fusi nel caricamento (fus1Ora)
+  const DIETA = (() => { const q = typeof location !== 'undefined' ? location.search : '', off = /[?&]nodieta\b/.test(q), on = k => PHONE && !off && !new RegExp('[?&]nodieta' + k + '\\b').test(q);
+    return { fondi: on('fondi') && typeof Anelli !== 'undefined' && Anelli.ON, on }; })();
   LOWQ.phone = PHONE;
   function buildVeg(tx0, ty0, n, m) { const it = buildVegG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
   function* buildVegG(tx0, ty0, n, m) {
@@ -5037,6 +5055,7 @@ var Render = (function () {
     Object.defineProperty(t, 'image', { configurable: true, enumerable: true, get() { if (c.__vuota) { c.__vuota = false; c.width = W; c.height = H; dipingi(); } return c; },
       set(v) { Object.defineProperty(t, 'image', { value: v, writable: true, configurable: true, enumerable: true }); t.source.data = v; } });
     t.onUpdate = () => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; } };
+    if (PIGRE.svuotate && DIETA.on('pigre')) { c.__vuota = true; c.width = 1; c.height = 1; }   // [dieta] dopo il caricamento (le insegne dei settori che arrivano) la tela nasce vuota: si dipinge quando la scheda video la chiede
     PIGRE.push(c); return t;
   }
   function pigreSvuota() { let n = 0; PIGRE.svuotate = true; PIGRE.forEach(c => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; n++; } }); return n; }
@@ -12412,7 +12431,7 @@ var Render = (function () {
     GPUT.px = W + '×' + H;   /* [prestazioni] */
     if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose();
     DEV.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }); DEV.mat.uniforms.src.value.set(W, H);
-    const FW = LOWQ.on ? W : Math.max(W, Math.floor(cw * dpr)), FH = LOWQ.on ? H : Math.max(H, Math.floor(ch * dpr));   // [sviluppo] la tela è grande quanto lo schermo vero
+    const PIC = LOWQ.on || DIETA.on('tela'), FW = PIC ? W : Math.max(W, Math.floor(cw * dpr)), FH = PIC ? H : Math.max(H, Math.floor(ch * dpr));   // [dieta] sul telefono la tela alla risoluzione interna (il CSS la stende): meno buffer della pagina e del compositore   // [sviluppo] la tela è grande quanto lo schermo vero
     renderer.setSize(FW, FH, false);   /* [sviluppo] */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */

@@ -42,7 +42,8 @@ var ScorciKit = (function () {
   let ATL = null;
   function atlante() {
     if (ATL) return ATL; const S = 2048; ATL = { S, x: 0, y: 0, rowH: 0, tiles: new Map(), c: null, g: null, tex: null };
-    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1;   // [dieta] sul telefono la tela a metà lato, le tessere disegnate in scala (la scheda video la riceveva già a metà)
+    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S * ATL.f; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined' && ATL.f === 1) LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
     return ATL;
   }
   // la tessera key, pw × ph pixel, disegnata da draw(g, w, h, r) (r: un caso deterministico); torna [u0, v0, u1, v1]
@@ -50,7 +51,7 @@ var ScorciKit = (function () {
     const A = atlante(); if (A.tiles.has(key)) return A.tiles.get(key);
     if (A.x + pw > A.S) { A.x = 0; A.y += A.rowH + 2; A.rowH = 0; } if (A.y + ph > A.S) { A.x = 0; A.y = 0; A.rowH = 0; }   // l'atlante pieno ricomincia (non succede con questi scorci)
     const x = A.x, y = A.y; A.x += pw + 2; A.rowH = Math.max(A.rowH, ph);
-    if (A.g) { const g = A.g; g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
+    if (A.g) { const g = A.g; g.save(); if (A.f !== 1) g.scale(A.f, A.f); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
     const t = [x / A.S, 1 - (y + ph) / A.S, (x + pw) / A.S, 1 - y / A.S]; A.tiles.set(key, t); return t;
   }
   const SERIF = 'Georgia, "Times New Roman", serif', SANS = '"Arial Narrow", Arial, Helvetica, sans-serif';

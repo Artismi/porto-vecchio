@@ -324,7 +324,17 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '__IMPRONTA_MONDO__';</script>
-<script src="mondo_cotto.js"></script>
+<!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
+     (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
+     e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
+<script>(function () {
+  if (window.PV_CUOCI) return;
+  let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
+  if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
+    const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
+    if (a > 0 && b > a && c > b && im && ve) { window.PV_COTTO = { versione: +ve[1], impronta: im[1], punti: JSON.parse(JSON.parse(s.slice(a + 18, b))), bin: JSON.parse(s.slice(b + 8, c + 1)) }; s = null; return; } } catch (e) { console.warn('[cotto] lettura', e); }
+  document.write('<script src="mondo_cotto.js"><\/script>');
+})();</script>
 <script data-m="cotto">/*cotto.js*/</script>
 <script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
 <script data-m="vegetazione">/*vegetazione.js*/</script>

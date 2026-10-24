@@ -572,6 +572,15 @@ var LeggeraMem = (function () {
     Object.defineProperty(t, 'needsUpdate', { configurable: true, set(v) { if (v === true) sync(); const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate'); d.set.call(this, v); } });
     t.needsUpdate = true; return t;
   }
+  // --- [dieta] metà: sul telefono un atlante che si disegna una volta si disegna già a metà lato (la scheda video lo riceveva comunque a
+  //   metà: la tela grande restava in memoria solo per rifare la piccola). Chi disegna moltiplica per questo (o scala il contesto)
+  const dieta = () => on('dieta') && !/[?&]nodieta\b/.test(Q), meta2 = () => on('atlanti') && dieta() ? .5 : 1;
+  // --- [dieta] fissa: l'atlante a metà lato (mezza) non si ritocca più: la tela grande si butta, resta la piccola che va alla scheda video
+  function fissa(t) {
+    if (!t || !t.userData || !t.userData.lmGrande || !dieta()) return t; const big = t.userData.lmGrande, small = t.image;
+    const x = small.getContext('2d'); x.clearRect(0, 0, small.width, small.height); x.drawImage(big, 0, 0, small.width, small.height);
+    big.width = big.height = 1; t.userData.lmGrande = null; delete t.needsUpdate; t.needsUpdate = true; ST.fisse = (ST.fisse || 0) + 1; return t;
+  }
   // --- dati: una DataTexture che non si ritocca: dopo l'invio la copia in memoria si svuota
   function datiLiberi(t) { if (!on('dati') || !t) return t; const o = t.onUpdate; t.onUpdate = function () { if (o) o.call(this); if (t.image) t.image = { data: null, width: t.image.width, height: t.image.height, depth: t.image.depth }; t.onUpdate = o || null; }; return t; }
   // --- compila: la compilazione del caricamento (main.js, peso_pronti.js) solo su quello che si vede: three r149 compila anche le
@@ -609,7 +618,7 @@ var LeggeraMem = (function () {
     const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
   }
   function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
-  return { tel: TEL, on, pila, meta, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;
 </script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
@@ -22259,8 +22268,18 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '1bc449a4e5be407a';</script>
-<script src="mondo_cotto.js"></script>
+<script>window.PV_IMPRONTA_MONDO = '0502cd46d163236e';</script>
+<!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
+     (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
+     e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
+<script>(function () {
+  if (window.PV_CUOCI) return;
+  let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
+  if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
+    const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
+    if (a > 0 && b > a && c > b && im && ve) { window.PV_COTTO = { versione: +ve[1], impronta: im[1], punti: JSON.parse(JSON.parse(s.slice(a + 18, b))), bin: JSON.parse(s.slice(b + 8, c + 1)) }; s = null; return; } } catch (e) { console.warn('[cotto] lettura', e); }
+  document.write('<script src="mondo_cotto.js"><\/script>');
+})();</script>
 <script data-m="cotto">/* Porto Vecchio — [cotto] IL MONDO COTTO NELLA BUILD.
    La mappa (world_cittanuova.js: strade, lotti, case, caselle) e la rete dei tetti (tetti.js, tetti_vissuti.js) nascono sempre uguali
    da un seme fisso, ma costavano 20-30 s a ogni avvio. build.py le calcola una volta (strumenti/cuoci.js, in Node, nello stesso ordine
@@ -22451,9 +22470,10 @@ var Cotto = (function () {
       return null;
     }
     const P = DATI && DATI.punti[nome]; if (!P) { STATO.calcolato[nome] = DATI ? 'manca il punto' : PERCHE; return null; }
+    if (P.usato) { STATO.calcolato[nome] = 'punto già letto'; return null; }
     try {
       const ids = new Map(), conta = { o: 0, k: 0, n: 0, s: 0 }; Object.keys(radici).forEach(k => visita(radici[k], ids, conta));
-      const c0 = P.conta; if (c0.o !== conta.o || c0.k !== conta.k || c0.n !== conta.n || Math.abs(c0.s - conta.s) > 1e-6) { STATO.calcolato[nome] = 'stato diverso ' + JSON.stringify(conta) + ' / ' + JSON.stringify(c0); if (typeof console !== 'undefined') console.warn('[cotto]', nome, STATO.calcolato[nome]); return null; }
+      const c0 = P.conta; if (c0.o !== conta.o || c0.k !== conta.k || c0.n !== conta.n || Math.abs(c0.s - conta.s) > 1e-6) { consuma(nome); STATO.calcolato[nome] = 'stato diverso ' + JSON.stringify(conta) + ' / ' + JSON.stringify(c0); if (typeof console !== 'undefined') console.warn('[cotto]', nome, STATO.calcolato[nome]); return null; }
       const A = { nome, P, ids, t0 }; APERTI[nome] = A; return A;
     } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); return null; }
   }
@@ -22476,6 +22496,8 @@ var Cotto = (function () {
   // chiudi(nome, privati, aperto, risolvi): dopo il calcolo. Nella cottura salva; all'avvio (aperto non null) riempie i privati che
   // il modulo passa già fatti (vettori, mappe, oggetti: si riempiono sul posto) e torna { chiave: valore } per gli altri.
   const PUNTI = {};
+  // [dieta] un punto letto (o scartato) non serve più: quando sono finiti tutti, via i dati cotti (il blocco binario e i punti, ~40 MB)
+  function consuma(nome) { if (!DATI || !DATI.punti[nome]) return; DATI.punti[nome] = { usato: true }; if (Object.keys(DATI.punti).every(k => DATI.punti[k].usato)) { DATI = null; STATO.liberato = true; } }
   // il vettore (o la mappa, o l'oggetto) del modulo si riempie sul posto col contenuto cotto se sono dello stesso genere
   function compatibile(t, j) {
     if (t === null || typeof t !== 'object' || j === null || typeof j !== 'object' || j.$r !== undefined) return false;
@@ -22506,11 +22528,11 @@ var Cotto = (function () {
       Object.keys(P.privati).forEach(k => { const j = P.privati[k], t = privati[k];
         if (compatibile(t, j)) { D.lista.push(t); out[k] = D.riempi(t, j); }
         else out[k] = D.dec(j); });
-    } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); delete APERTI[nome]; return null; }
+    } catch (e) { STATO.calcolato[nome] = 'errore ' + e.message; if (typeof console !== 'undefined') console.warn('[cotto]', nome, e); delete APERTI[nome]; consuma(nome); return null; }
     P.cambiati.forEach(([n, j]) => D.riempi(D.lista[n], j));
     STATO.ms[nome] = Math.round(ora() - t1);
     for (let i = 0; i < (P.caso || 0); i++) Math.random();
-    STATO.usato[nome] = Math.round(ora() - aperto.t0); delete APERTI[nome];
+    STATO.usato[nome] = Math.round(ora() - aperto.t0); delete APERTI[nome]; consuma(nome);
     return out;
   }
   // la cottura: tutti i punti in un file solo (strumenti/cuoci.js)
@@ -22529,7 +22551,7 @@ var Cotto = (function () {
       const g = genere(v); if (g === 'a' || g === 'o') { for (const k of Object.keys(v)) pila.push([v[k], p + '.' + k]); } else if (g === 'm') v.forEach((x, k) => pila.push([x, p + '.' + String(k)])); else if (g === 's') v.forEach(x => pila.push([x, p + '.s'])); }
     return out;
   }
-  return { FONTI, VERSIONE, RIFARE, restanti, apri, chiudi, sforna, visita, Codifica, Decodifica, STATO, get attivo() { return !!DATI; }, get cuoci() { return CUOCI; }, contaCaso, aB64, daB64 };
+  return { FONTI, VERSIONE, RIFARE, restanti, apri, chiudi, sforna, visita, Codifica, Decodifica, STATO, get attivo() { return !!DATI || !!STATO.liberato; }, get cuoci() { return CUOCI; }, contaCaso, aB64, daB64 };
 })();
 if (typeof module !== 'undefined') module.exports = Cotto;
 </script>
@@ -25131,8 +25153,8 @@ var Vegetazione = (function () {
       const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;
       if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t);   // [leggera] sul telefono a metà lato
       // l'atlante fotografico: quando arriva copre le celle FOTO e la corteccia
-      if (!FOTO_ON) CARICATO = Promise.resolve(true); else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
-        img.onerror = () => ok(false); img.src = (typeof window !== 'undefined' && window.PV_V && !window.PV_VEG_BASE ? window.PV_V : (u => u))(BASE + 'atlante_foto.png');   /* [avvio] l'impronta */ });
+      if (!FOTO_ON) { CARICATO = Promise.resolve(true); if (typeof LeggeraMem !== 'undefined' && LeggeraMem.fissa) LeggeraMem.fissa(t); } else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; if (typeof LeggeraMem !== 'undefined' && LeggeraMem.fissa) LeggeraMem.fissa(t); ok(true); };   /* [dieta] sul telefono la tela grande si butta: resta la metà che va alla scheda video */
+        img.onerror = () => { if (typeof LeggeraMem !== "undefined" && LeggeraMem.fissa) LeggeraMem.fissa(t); ok(false); }; img.src = (typeof window !== 'undefined' && window.PV_V && !window.PV_VEG_BASE ? window.PV_V : (u => u))(BASE + 'atlante_foto.png');   /* [avvio] l'impronta */ });
       return (ATL = t);
     }
 
@@ -60916,7 +60938,8 @@ var ScorciKit = (function () {
   let ATL = null;
   function atlante() {
     if (ATL) return ATL; const S = 2048; ATL = { S, x: 0, y: 0, rowH: 0, tiles: new Map(), c: null, g: null, tex: null };
-    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1;   // [dieta] sul telefono la tela a metà lato, le tessere disegnate in scala (la scheda video la riceveva già a metà)
+    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S * ATL.f; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined' && ATL.f === 1) LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
     return ATL;
   }
   // la tessera key, pw × ph pixel, disegnata da draw(g, w, h, r) (r: un caso deterministico); torna [u0, v0, u1, v1]
@@ -60924,7 +60947,7 @@ var ScorciKit = (function () {
     const A = atlante(); if (A.tiles.has(key)) return A.tiles.get(key);
     if (A.x + pw > A.S) { A.x = 0; A.y += A.rowH + 2; A.rowH = 0; } if (A.y + ph > A.S) { A.x = 0; A.y = 0; A.rowH = 0; }   // l'atlante pieno ricomincia (non succede con questi scorci)
     const x = A.x, y = A.y; A.x += pw + 2; A.rowH = Math.max(A.rowH, ph);
-    if (A.g) { const g = A.g; g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
+    if (A.g) { const g = A.g; g.save(); if (A.f !== 1) g.scale(A.f, A.f); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
     const t = [x / A.S, 1 - (y + ph) / A.S, (x + pw) / A.S, 1 - y / A.S]; A.tiles.set(key, t); return t;
   }
   const SERIF = 'Georgia, "Times New Roman", serif', SANS = '"Arial Narrow", Arial, Helvetica, sans-serif';
@@ -64135,6 +64158,7 @@ var Anelli = (function () {
     sfuma: .7,                      // la sfumatura dalla sagoma alla casa vera (s)
     sguardo: 45,                    // quanti metri vale avere il settore davanti alla camera
     vertici: TEL ? 60000 : 160000,  // quanti vertici nuovi per fotogramma alla scheda video (l'invio lo paga il disegno, non il lavoro)
+    mostraTel: /[?&]nodieta(anello)?\b/.test(Q) ? null : 25,   // [dieta] sul telefono la scheda video riceve un settore quando il suo bordo è entro la nebbia + questo (null: l'anello medio come prima)
   };
   // un lavoro che deve aspettare il fotogramma dopo (la quota dei vertici è finita) dà ASPETTA: il motore passa al fotogramma dopo
   const ASPETTA = { aspetta: true };
@@ -64178,7 +64202,10 @@ var Anelli = (function () {
     let n = 0;
     while (performance.now() < DL) {
       if (!cur) {   // sul telefono quello che chiede la scheda video (telefono: false) oltre l'anello medio aspetta: la memoria cresce solo dove si va
-        let k = 0; if (TEL) while (k < CODA.length && CODA[k].telefono === false && CODA[k].d > medio + vicino) k++;
+        // [dieta] sul telefono fin dove si vede (la nebbia) più un margine piccolo, non l'anello medio: oltre la nebbia c'è la sagoma
+        // (la nebbia al chiuso si apre a 400 m: non conta oltre i 190)
+        const oltre = TEL && CFG.mostraTel !== null ? Math.min(o.nebbia || 150, 190) + CFG.mostraTel : medio + vicino;
+        let k = 0; if (TEL) while (k < CODA.length && CODA[k].telefono === false && CODA[k].d > oltre) k++;
         if (k >= CODA.length) break; cur = CODA.splice(k, 1)[0]; ST.coda = CODA.length; }
       const t1 = performance.now(); ETI = '';
       let r; try { r = cur.gen.next(); } catch (e) { console.warn('[anelli] lavoro', cur.tipo, e); r = { done: true }; }
@@ -64623,7 +64650,11 @@ var Render = (function () {
         if (!S) FU1.att.set(k, S = { k, tops: [], recs: new Set(), x: (i + .5) * SETT1, z: (j + .5) * SETT1 });
         S.tops.push(top); S.recs.add(rec); scene.remove(top); FD1.data[FD1.idx.get(rec) * 4 + 3] = 255; });
     }
-    const it = fus1Gen(ora, false); let r; do r = it.next(); while (!r.done);
+    // [dieta] sul telefono anche l'anello vicino si fonde un settore alla volta: le copie appiattite dei pezzi (32 byte a vertice) e i
+    // secchi non compattati di un settore solo, non di tutto l'anello insieme (il picco del caricamento, ~250 MB in più)
+    if (DIETA.on('settori')) { const per = new Map(); ora.forEach(top => { const rec = fus1Rec(top); if (!rec) return; const c = recCtr1(rec), k = Math.floor(c[0] / SETT1) + ',' + Math.floor(c[1] / SETT1); (per.get(k) || per.set(k, []).get(k)).push(top); });
+      per.forEach(L => { const it = fus1Gen(L, false); let r; do r = it.next(); while (!r.done); }); }
+    else { const it = fus1Gen(ora, false); let r; do r = it.next(); while (!r.done); }
     let after = 0; scene.traverse(o => { if (o.isMesh && o.visible) after++; });
     window.__fusione1 = { prima: before, dopo: after, secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, materiali: FD1.canon.size, ombre: FU1.tot.ombre, tavolozza: PAL1.col.length, pile: ARR1.all.length, strati: ARR1.all.reduce((n, a) => n + a.maps.length, 0), settoriDopo: FU1.att.size };
     if (window.__dbg35) console.log('[dbg] fusione1', JSON.stringify(window.__fusione1));
@@ -64724,7 +64755,11 @@ var Render = (function () {
       const m = new THREE.Mesh(geo, mat); m.name = 'massa1'; m.userData.keep = true; m.castShadow = false; m.receiveShadow = false; m.matrixAutoUpdate = false; scene.add(m); FU1.massa = m;
     }
     // i lavori: un settore per lavoro, dal centro del settore
-    FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, gen: fus1Settore(S) }));
+    // [dieta] sul telefono i settori lontani si fondono qui, uno dopo l'altro (ognuno libera i suoi pezzi originali, ~4 volte più grossi
+    // della fusa compattata: 240 MB in memoria finché aspettavano il lavoro in sottofondo), e restano spenti per la camera finché non ci si
+    // avvicina (fus1Mostra). Niente fusione in sottofondo mentre si gioca. ?nodietafondi: come prima
+    if (DIETA.fondi) [...FU1.att.values()].forEach(fus1Ora);
+    else FU1.att.forEach(S => Anelli.lavoro({ tipo: 'case', x: S.x, z: S.z, r: SETT1 * .75, gen: fus1Settore(S) }));
     FU1.sig = !!(window.LeggeraMem && LeggeraMem.on('firme'));
   }
   // [anelli] a ogni fotogramma: dove guarda la camera (il punto a terra e la direzione), fin dove arriva la nebbia, quanto si corre
@@ -64753,6 +64788,12 @@ var Render = (function () {
       if (window.__fusione1) Object.assign(window.__fusione1, { secchi: FU1.tot.secchi, spostate: FU1.tot.spostate, ombre: FU1.tot.ombre, pile: ARR1.all.length, tavolozza: PAL1.col.length, settoriDopo: 0 });
       Anelli.log('case: tutte fuse,', FU1.n, 'settori dopo il caricamento');
     }
+  }
+  function fus1Ora(S) {   // [dieta] il settore si fonde adesso (nel caricamento, sul telefono) e aspetta spento il suo turno per la scheda video
+    const it = fus1Gen(S.tops, false); let r; do r = it.next(); while (!r.done);
+    const made = r.value; S.made = made; FU1.att.delete(S.k); FU1.n++;
+    made.forEach(m => { m.userData.anL = m.layers.mask; m.layers.mask = 0; }); FU1.nasc++;
+    Anelli.lavoro({ tipo: 'mostra', x: S.x, z: S.z, r: SETT1 * .75, telefono: false, gen: fus1Mostra(S) });
   }
   function* fus1Mostra(S) {
     Anelli.segna('ritorno');
@@ -65113,7 +65154,7 @@ var Render = (function () {
   }
   function acquaFine9(tx0, ty0, n, m) {
     const A = ACQ9.set, key = tx0 + ',' + ty0; if (!A || ACQ9.fatti.has(key) || !renderer || !renderer.copyTextureToTexture) return; ACQ9.fatti.add(key);
-    const T = G.T, P = 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
+    const T = G.T, P = A.P || 4, x0 = Math.max(0, tx0 * P - 3), y0 = Math.max(0, ty0 * P - 3), w = Math.min(A.big.width, (tx0 + n) * P + 3) - x0, h = Math.min(A.big.height, (ty0 + m) * P + 3) - y0;
     const id = A.bgx.getImageData(x0, y0, w, h), D = id.data, R0 = new Uint8Array(w * h); let tocco = false;
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) { const tx = tx0 + i, ty = ty0 + j; if (!Riva.inBanda(tx, ty)) continue; tocco = true;
       for (let b = 0; b < P; b++) for (let a = 0; a < P; a++) { const q = Riva.quota((tx + (a + .5) / P) * TS, (ty + (b + .5) / P) * TS); if (q === null) continue; const px = tx * P + a - x0, py = ty * P + b - y0, o = (py * w + px) * 4;
@@ -65154,14 +65195,14 @@ var Render = (function () {
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0); mx.putImageData(md, 0, 0);   /* [carico] */
-    const big = mk(G.GW * 4, G.GH * 4), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(6px)' : 'blur(3px)';   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const PB = DIETA.on('acqua') ? 2 : 4, big = mk(G.GW * PB, G.GH * PB), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(' + 1.5 * PB + 'px)' : 'blur(' + .75 * PB + 'px)';   /* [dieta] sul telefono la profondità a 1 px per metro (era 2: 27 MB di tela e altrettanti sulla scheda video; è sfocata di una casella e mezza) */   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
     const bc = mk(mc.width, mc.height), bx = bc.getContext('2d'); bx.filter = 'blur(2px)'; bx.drawImage(mc, 0, 0); if (R9) { bx.globalCompositeOperation = 'lighter'; bx.filter = 'blur(5px)'; bx.drawImage(gc9, 0, 0); bx.globalCompositeOperation = 'source-over'; } bx.filter = 'none';
     mc.width = mc.height = 1; gc9.width = gc9.height = 1;   // [telefono] la maschera nitida (e la fascia) servivano solo alla sfocata (6,6 MB)
     const btx = new THREE.CanvasTexture(bc); btx.minFilter = btx.magFilter = THREE.LinearFilter;
-    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S }; }   // [riva] per la profondità fine, blocco per blocco
+    if (R9) { stx.generateMipmaps = btx.generateMipmaps = false; ACQ9.set = { big, bgx, bc, bx, stx, btx, S, P: PB }; }   // [riva] per la profondità fine, blocco per blocco
     const geo = new THREE.PlaneGeometry(2400, 2400, 1, 1); geo.rotateX(-Math.PI / 2);
     const mat = new THREE.ShaderMaterial({
       transparent: !!R9, uniforms: { RIVA9: { value: R9 ? 1 : 0 }, time: { value: 0 }, night: { value: 1 }, dusk: { value: 0 }, mask: { value: btx }, sea: { value: stx }, wsize: { value: new THREE.Vector2(G.WW, G.WH) }, fogC: { value: new THREE.Color() }, camP: { value: new THREE.Vector3() }, fogN: { value: 60 }, fogF: { value: 160 }, wx: { value: new THREE.Vector4() }, sun: { value: new THREE.Vector3(-1, .3, -.3).normalize() }, moonD: { value: new THREE.Vector3(0, 1, 0) }, lp: { value: Array.from({ length: 16 }, () => new THREE.Vector4()) }, lc: { value: Array.from({ length: 16 }, () => new THREE.Color()) } },
@@ -66657,6 +66698,10 @@ var Render = (function () {
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   if (typeof window !== 'undefined') window.PV_TELEFONO = PHONE;   // [memoria] lo leggono i moduli (pittura.js: la cache delle tele)
+  // [dieta] i tagli della memoria del telefono (il telefono chiudeva la scheda appena si entrava in gioco): ?nodieta li spegne tutti,
+  // ?nodieta<nome> uno solo. fondi: i settori lontani delle case fusi nel caricamento (fus1Ora)
+  const DIETA = (() => { const q = typeof location !== 'undefined' ? location.search : '', off = /[?&]nodieta\b/.test(q), on = k => PHONE && !off && !new RegExp('[?&]nodieta' + k + '\\b').test(q);
+    return { fondi: on('fondi') && typeof Anelli !== 'undefined' && Anelli.ON, on }; })();
   LOWQ.phone = PHONE;
   function buildVeg(tx0, ty0, n, m) { const it = buildVegG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
   function* buildVegG(tx0, ty0, n, m) {
@@ -69251,6 +69296,7 @@ var Render = (function () {
     Object.defineProperty(t, 'image', { configurable: true, enumerable: true, get() { if (c.__vuota) { c.__vuota = false; c.width = W; c.height = H; dipingi(); } return c; },
       set(v) { Object.defineProperty(t, 'image', { value: v, writable: true, configurable: true, enumerable: true }); t.source.data = v; } });
     t.onUpdate = () => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; } };
+    if (PIGRE.svuotate && DIETA.on('pigre')) { c.__vuota = true; c.width = 1; c.height = 1; }   // [dieta] dopo il caricamento (le insegne dei settori che arrivano) la tela nasce vuota: si dipinge quando la scheda video la chiede
     PIGRE.push(c); return t;
   }
   function pigreSvuota() { let n = 0; PIGRE.svuotate = true; PIGRE.forEach(c => { if (!c.__vuota) { c.__vuota = true; c.width = 1; c.height = 1; n++; } }); return n; }
@@ -76626,7 +76672,7 @@ var Render = (function () {
     GPUT.px = W + '×' + H;   /* [prestazioni] */
     if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose();
     DEV.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }); DEV.mat.uniforms.src.value.set(W, H);
-    const FW = LOWQ.on ? W : Math.max(W, Math.floor(cw * dpr)), FH = LOWQ.on ? H : Math.max(H, Math.floor(ch * dpr));   // [sviluppo] la tela è grande quanto lo schermo vero
+    const PIC = LOWQ.on || DIETA.on('tela'), FW = PIC ? W : Math.max(W, Math.floor(cw * dpr)), FH = PIC ? H : Math.max(H, Math.floor(ch * dpr));   // [dieta] sul telefono la tela alla risoluzione interna (il CSS la stende): meno buffer della pagina e del compositore   // [sviluppo] la tela è grande quanto lo schermo vero
     renderer.setSize(FW, FH, false);   /* [sviluppo] */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) rt.dispose();
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
@@ -82297,7 +82343,7 @@ var Segnaletica = (function () {
     if (A.riga.x + w + pad > A.S) { A.riga = { x: 0, y: A.riga.y + A.riga.h + pad, h: 0 }; }
     const x0 = A.riga.x, y0 = A.riga.y; A.riga.x += w + pad; A.riga.h = Math.max(A.riga.h, h);
     if (y0 + h > A.S) { console.warn('[segnaletica] atlante pieno', key); return [0, 0, 0, 0]; }
-    const x = A.x; x.save(); x.translate(x0, y0); x.beginPath(); x.rect(0, 0, w, h); x.clip(); draw(x, w, h); x.restore();
+    const x = A.x; x.save(); if (A.f && A.f !== 1) x.scale(A.f, A.f); x.translate(x0, y0); x.beginPath(); x.rect(0, 0, w, h); x.clip(); draw(x, w, h); x.restore();
     const uv = [(x0 + .5) / A.S, 1 - (y0 + h - .5) / A.S, (x0 + w - .5) / A.S, 1 - (y0 + .5) / A.S]; A.uv.set(key, uv); return uv;
   }
   const r2 = (s) => { let a = (s * 2654435761) >>> 0 || 1; return () => { a ^= a << 13; a >>>= 0; a ^= a >>> 17; a ^= a << 5; a >>>= 0; return a / 4294967296; }; };
@@ -82423,7 +82469,7 @@ var Segnaletica = (function () {
   let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
-    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
+    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined' && !(ATL.f < 1)) LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
     const segni = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .62, metalness: .05 });
     const luce = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .5, metalness: 0, emissive: new THREE.Color('#ffffff'), emissiveMap: t, emissiveIntensity: 0 });
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
@@ -82484,7 +82530,7 @@ var Segnaletica = (function () {
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.size) {   // [pulizia] quello che la passata del rumore ha tolto (doppioni, pali addosso a un altro): solo la grafica, il piano resta
       const S = PuliziaRumore.SALTA, k = (c, q) => c + Math.round(q.x * 10) + ',' + Math.round(q.y * 10);
       P.pali = P.pali.filter(p => !S.has(k('p', p))); P.insegne = P.insegne.filter(q => q.fonte !== 'segnaletica' || !S.has(k('i', q))); }
-    ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S; ATL.x = ATL.c.getContext('2d'); ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1; ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S * ATL.f; ATL.x = ATL.c.getContext('2d');   // [dieta] sul telefono a metà lato, le tessere in scala ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
     // ---- le strisce ----
     P.strisce.forEach(decal);
     if (PV()) P.strisce.forEach(q => { if (q.k !== 'zebra' && q.k !== 'riga') return; if (hash(q.x, q.y, 77) > .16) return;   // [strade] ripassata: la vernice vecchia sotto la nuova, spostata di qualche centimetro
@@ -83830,14 +83876,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // ---------- Minimappa ----------
   let miniBase = null;
   function buildMinimap() { // pixel per pixel: sull'isola sono 160.000 caselle
-    miniBase = document.createElement('canvas'); miniBase.width = G.GW * 2; miniBase.height = G.GH * 2;
-    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * 2, G.GH * 2), T = G.T;
+    const K = window.PV_TELEFONO && !/[?&]nodieta\b/.test(location.search) ? 1 : 2;   // [dieta] sul telefono un pixel a casella (ogni casella era 2×2 dello stesso colore: si allarga disegnando, senza sfumare)
+    miniBase = document.createElement('canvas'); miniBase.width = G.GW * K; miniBase.height = G.GH * K;
+    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * K, G.GH * K), T = G.T;
     const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const C = {}; [[T.CLIFF, '#3a3432'], [T.GRAVEL, '#a8a49c'], [T.BLD, '#3a3150'], [T.WATER, '#0f3448'], [T.PIAZZA, '#4a5a66'], [T.VIA, '#2c2934'], [T.QUAY, '#5a5048'], [T.PIER, '#5a5048'], [T.SAND, '#b89a6a'], [T.GRASS, '#2f5a30'], [T.ROCK, '#4a4248'], [T.STAIRS, '#8a7a6a'], [T.WALK, '#6a5a6a'], [T.COB, '#1f1a2c'], [T.TREE, '#1c3a1c'], [T.DIRT, '#5a4430'], [T.FIELD, '#5a5a2a'], [T.DESERT, '#9a7a4a'], [T.SALT, '#b8bcc0'], [T.SHRUB, '#344a24'], [T.FOUNT, '#2a6a8a']].forEach(([k, v]) => { if (k !== undefined) C[k] = hex(v); });
-    const W2 = G.GW * 2;
+    const W2 = G.GW * K;
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const c = C[G.tileAt(tx, ty)] || [31, 26, 44];
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const o = ((ty * 2 + dy) * W2 + tx * 2 + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
+      for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) { const o = ((ty * K + dy) * W2 + tx * K + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
     }
     x.putImageData(img, 0, 0);
   }
@@ -83845,7 +83892,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const c = $('minic'), x = c.getContext('2d'); c.width = 88; c.height = 88;
     const p = st.player, sc = 2 / G.TS;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
-    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); x.drawImage(miniBase, 0, 0);
+    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); if (miniBase.width === G.GW * 2) x.drawImage(miniBase, 0, 0); else { x.imageSmoothingEnabled = false; x.drawImage(miniBase, 0, 0, G.GW * 2, G.GH * 2); x.imageSmoothingEnabled = true; }
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
     // [sottosuolo] le porte di sotto: la metro (quadrato rosso), tombini, pozzi e grate (puntini grigi)
     if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c = p.lv ? P.u : P.s, X = (c[0] + .5) * G.TS, Y = (c[1] + .5) * G.TS; if (Math.abs(X - p.x) > 46 || Math.abs(Y - p.y) > 46) return;
@@ -90671,7 +90718,7 @@ var Personaggi = (function () {
   const AT = { N: 8, NY: 13, px: 256, tex: null };
   function atlante() {
     if (AT.tex || typeof document === 'undefined') return AT.tex;
-    const N = AT.N, NY = AT.NY, px = AT.px, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    const M2 = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1, N = AT.N, NY = AT.NY, px = AT.px * M2, cv = document.createElement('canvas');   /* [dieta] sul telefono disegnato già a metà lato (le tessere sono in unità della tessera) */ cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
     x.fillStyle = '#000'; x.fillRect(0, 0, N * px, NY * px);
     // tessera i (layout) nella riga 0..1, j: disegno ripetuto (motivi) nelle righe 2..3. Le u vanno da 0 (cucitura dietro) a 1, il davanti a 0.5; v da 0 (giù) a 1 (su)
     const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };   // la v della tessera cresce verso il basso della tela, come la legge lo shader (flipY spento)
@@ -90933,7 +90980,7 @@ var Personaggi = (function () {
     P(4, c => { c.fillStyle = 'rgb(0,255,0)'; for (let k = 0; k < 8; k++) for (let l = 0; l < 8; l++) { c.globalAlpha = .35; c.beginPath(); c.ellipse((k + (l % 2) * .5) / 8, l / 8, .03, .05, 0, 0, 7); c.fill(); } c.globalAlpha = 1; });   // maglia
     P(5, c => { c.fillStyle = R; for (let k = 0; k < 4; k++) for (let l = 0; l < 4; l++) { c.beginPath(); c.arc((k + (l % 2) * .5) / 4 + .06, l / 4 + .06, .045, 0, 7); c.fill(); } });   // pois
     P(6, c => { c.fillStyle = R; for (let k = 0; k < 8; k++) c.fillRect(k / 8, 0, .025, 1); });   // righine verticali
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] sul telefono a metà lato */ AT.tex = tex; AT.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined' && M2 === 1) LeggeraMem.mezza(tex); /* [leggera] sul telefono a metà lato */ AT.tex = tex; AT.cv = cv; return tex;
   }
 
   // =====================================================================================
@@ -90947,7 +90994,7 @@ var Personaggi = (function () {
   PR.nomi.forEach((n, i) => { TL['s_' + n] = 200 + i; });
   function stampe() {
     if (PR.tex || typeof document === 'undefined') return PR.tex;
-    const { N, NY, px } = PR, cv = document.createElement('canvas'); cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
+    const { N, NY } = PR, M2 = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1, px = PR.px * M2, cv = document.createElement('canvas');   /* [dieta] a metà lato sul telefono */ cv.width = N * px; cv.height = NY * px; const x = cv.getContext('2d');
     const T = (i, fn) => { const ox = (i % N) * px, oy = Math.floor(i / N) * px; x.save(); x.beginPath(); x.rect(ox, oy, px, px); x.clip(); x.translate(ox, oy); x.scale(px, px); fn(x); x.restore(); };
     const K = .66, ell = (c, u, v, rx, ry, a0, a1) => { c.beginPath(); c.ellipse(u, v, rx * K, ry, 0, a0 || 0, a1 === undefined ? 7 : a1); };
     const grad = (c, x0, y0, x1, y1, stops) => { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach((s, k) => g.addColorStop(k / (stops.length - 1), s)); return g; };
@@ -91027,7 +91074,7 @@ var Personaggi = (function () {
     // 17 chrome: la scritta cromata gotica grande sul petto, la croce di stelle dietro (Y2K)
     D(17, c => { txt(c, 'Hustle', .5, .62, .15, cc => grad(cc, 0, .52, 0, .68, ['#f4f4f8', '#8a8e96', '#ffffff', '#5a5e66']), { font: '"Old English Text MT", "UnifrakturMaguntia", "Times New Roman", serif', peso: 700, bordo: '#141418', bw: 8 });
       dietro(u => { stella(c, u, .62, .12, '#c8ccd8', 4); stella(c, u, .62, .07, '#ffffff', 4); txt(c, 'GOLD', u, .34, .07, cc => grad(cc, 0, .3, 0, .38, ['#f4f4f8', '#8a8e96', '#ffffff']), { font: '"Old English Text MT", "Times New Roman", serif', bordo: '#141418', bw: 6 }); }); cuciture(c); });
-    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
+    const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.anisotropy = 4; tex.flipY = false; if (typeof LeggeraMem !== 'undefined' && M2 === 1) LeggeraMem.mezza(tex); /* [leggera] anche la tela delle stampe a metà lato sul telefono */ PR.tex = tex; PR.cv = cv; return tex;
   }
   let MAT = null, MAT_STILE = null;
   function materiale() {
@@ -93237,7 +93284,7 @@ var MenuUI = (function () {
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
   const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
-  let THR = null, ENV = null;
+  let THR = null, ENV = null; const DIETA_TEL = (() => { try { return !/[?&](alta|nodieta)\b/.test(location.search) && (/[?&](leggera|bassa)\b/.test(location.search) || matchMedia('(pointer: coarse)').matches); } catch (e) { return false; } })();
   // l'ambiente dello studio: una cupola calda sopra, scura sotto, due pannelli luminosi (softbox) da riflettere
   function envThumb() {
     if (ENV || !THR) return ENV; const T = THREE;
@@ -93304,10 +93351,13 @@ var MenuUI = (function () {
     if (!ui || ui.intro) return false; const t = performance.now(); if (!thIn) thIn = t; return t - thIn > 5000; };   // in strada da 5 s: i primi passi senza lo scatto del contesto nuovo
   function thumbPump() {
     requestAnimationFrame(thumbPump);
+    // [dieta] sul telefono il contesto WebGL delle anteprime (programmi, ombre, ambiente: memoria della scheda video) si chiude quando la coda
+    // è vuota da 3 s; le anteprime fatte restano (sono tele 2D), una nuova lo riapre
+    if (DIETA_TEL && THR && !THQ.length && performance.now() - (THR.__usato || 0) > 3000) { try { if (ENV) ENV.dispose(); THR.dispose(); THR.forceContextLoss(); } catch (e) { } THR = null; ENV = null; }
     if (!THQ.length || !window.THREE || !thumbOk()) return;
-    const t0 = performance.now();
+    const t0 = performance.now(); if (THR) THR.__usato = t0;
     while (THQ.length && performance.now() - t0 < 14) {
-      const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); } catch (e) { console.error('[Anteprime]', id, e); }
+      const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); if (THR) THR.__usato = performance.now(); } catch (e) { console.error('[Anteprime]', id, e); }
       if (!cv) continue; TH.set(id, cv);
       const m = $('mu'); if (m) m.querySelectorAll(`canvas[data-ic="${id}"]:not([data-nt])`).forEach(c => drawThumb(c, cv));
     }
@@ -93378,7 +93428,9 @@ var MenuUI = (function () {
   function draw3(now) {
     requestAnimationFrame(draw3);
     const dt = Math.min(.05, (now - (R3.t || now)) / 1000); R3.t = now;
-    const m = $('mu'), st = ST(); if (!U.open || !m || !st || !ready3()) return;
+    const m = $('mu'), st = ST();
+    if (DIETA_TEL && R3.r && !U.open) { try { R3.r.dispose(); R3.r.forceContextLoss(); } catch (e) { } R3.r = null; }   // [dieta] sul telefono il contesto delle figure del menu si chiude col menu
+    if (!U.open || !m || !st || !ready3()) return;
     const cvs = m.querySelectorAll('canvas.r3'); if (!cvs.length) return;
     if (!R3.r) { R3.r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); R3.r.setClearColor(0x000000, 0); }
     const p = st.player;

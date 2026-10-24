@@ -139,6 +139,15 @@ var LeggeraMem = (function () {
     Object.defineProperty(t, 'needsUpdate', { configurable: true, set(v) { if (v === true) sync(); const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate'); d.set.call(this, v); } });
     t.needsUpdate = true; return t;
   }
+  // --- [dieta] metà: sul telefono un atlante che si disegna una volta si disegna già a metà lato (la scheda video lo riceveva comunque a
+  //   metà: la tela grande restava in memoria solo per rifare la piccola). Chi disegna moltiplica per questo (o scala il contesto)
+  const dieta = () => on('dieta') && !/[?&]nodieta\b/.test(Q), meta2 = () => on('atlanti') && dieta() ? .5 : 1;
+  // --- [dieta] fissa: l'atlante a metà lato (mezza) non si ritocca più: la tela grande si butta, resta la piccola che va alla scheda video
+  function fissa(t) {
+    if (!t || !t.userData || !t.userData.lmGrande || !dieta()) return t; const big = t.userData.lmGrande, small = t.image;
+    const x = small.getContext('2d'); x.clearRect(0, 0, small.width, small.height); x.drawImage(big, 0, 0, small.width, small.height);
+    big.width = big.height = 1; t.userData.lmGrande = null; delete t.needsUpdate; t.needsUpdate = true; ST.fisse = (ST.fisse || 0) + 1; return t;
+  }
   // --- dati: una DataTexture che non si ritocca: dopo l'invio la copia in memoria si svuota
   function datiLiberi(t) { if (!on('dati') || !t) return t; const o = t.onUpdate; t.onUpdate = function () { if (o) o.call(this); if (t.image) t.image = { data: null, width: t.image.width, height: t.image.height, depth: t.image.depth }; t.onUpdate = o || null; }; return t; }
   // --- compila: la compilazione del caricamento (main.js, peso_pronti.js) solo su quello che si vede: three r149 compila anche le
@@ -176,6 +185,6 @@ var LeggeraMem = (function () {
     const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
   }
   function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
-  return { tel: TEL, on, pila, meta, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;

@@ -31,6 +31,7 @@ var Anelli = (function () {
     sfuma: .7,                      // la sfumatura dalla sagoma alla casa vera (s)
     sguardo: 45,                    // quanti metri vale avere il settore davanti alla camera
     vertici: TEL ? 60000 : 160000,  // quanti vertici nuovi per fotogramma alla scheda video (l'invio lo paga il disegno, non il lavoro)
+    mostraTel: /[?&]nodieta(anello)?\b/.test(Q) ? null : 25,   // [dieta] sul telefono la scheda video riceve un settore quando il suo bordo è entro la nebbia + questo (null: l'anello medio come prima)
   };
   // un lavoro che deve aspettare il fotogramma dopo (la quota dei vertici è finita) dà ASPETTA: il motore passa al fotogramma dopo
   const ASPETTA = { aspetta: true };
@@ -74,7 +75,10 @@ var Anelli = (function () {
     let n = 0;
     while (performance.now() < DL) {
       if (!cur) {   // sul telefono quello che chiede la scheda video (telefono: false) oltre l'anello medio aspetta: la memoria cresce solo dove si va
-        let k = 0; if (TEL) while (k < CODA.length && CODA[k].telefono === false && CODA[k].d > medio + vicino) k++;
+        // [dieta] sul telefono fin dove si vede (la nebbia) più un margine piccolo, non l'anello medio: oltre la nebbia c'è la sagoma
+        // (la nebbia al chiuso si apre a 400 m: non conta oltre i 190)
+        const oltre = TEL && CFG.mostraTel !== null ? Math.min(o.nebbia || 150, 190) + CFG.mostraTel : medio + vicino;
+        let k = 0; if (TEL) while (k < CODA.length && CODA[k].telefono === false && CODA[k].d > oltre) k++;
         if (k >= CODA.length) break; cur = CODA.splice(k, 1)[0]; ST.coda = CODA.length; }
       const t1 = performance.now(); ETI = '';
       let r; try { r = cur.gen.next(); } catch (e) { console.warn('[anelli] lavoro', cur.tipo, e); r = { done: true }; }

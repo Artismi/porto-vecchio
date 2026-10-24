@@ -521,7 +521,7 @@ var Segnaletica = (function () {
     if (A.riga.x + w + pad > A.S) { A.riga = { x: 0, y: A.riga.y + A.riga.h + pad, h: 0 }; }
     const x0 = A.riga.x, y0 = A.riga.y; A.riga.x += w + pad; A.riga.h = Math.max(A.riga.h, h);
     if (y0 + h > A.S) { console.warn('[segnaletica] atlante pieno', key); return [0, 0, 0, 0]; }
-    const x = A.x; x.save(); x.translate(x0, y0); x.beginPath(); x.rect(0, 0, w, h); x.clip(); draw(x, w, h); x.restore();
+    const x = A.x; x.save(); if (A.f && A.f !== 1) x.scale(A.f, A.f); x.translate(x0, y0); x.beginPath(); x.rect(0, 0, w, h); x.clip(); draw(x, w, h); x.restore();
     const uv = [(x0 + .5) / A.S, 1 - (y0 + h - .5) / A.S, (x0 + w - .5) / A.S, 1 - (y0 + .5) / A.S]; A.uv.set(key, uv); return uv;
   }
   const r2 = (s) => { let a = (s * 2654435761) >>> 0 || 1; return () => { a ^= a << 13; a >>>= 0; a ^= a >>> 17; a ^= a << 5; a >>>= 0; return a / 4294967296; }; };
@@ -647,7 +647,7 @@ var Segnaletica = (function () {
   let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
-    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
+    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined' && !(ATL.f < 1)) LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
     const segni = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .62, metalness: .05 });
     const luce = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .5, metalness: 0, emissive: new THREE.Color('#ffffff'), emissiveMap: t, emissiveIntensity: 0 });
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
@@ -708,7 +708,7 @@ var Segnaletica = (function () {
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.size) {   // [pulizia] quello che la passata del rumore ha tolto (doppioni, pali addosso a un altro): solo la grafica, il piano resta
       const S = PuliziaRumore.SALTA, k = (c, q) => c + Math.round(q.x * 10) + ',' + Math.round(q.y * 10);
       P.pali = P.pali.filter(p => !S.has(k('p', p))); P.insegne = P.insegne.filter(q => q.fonte !== 'segnaletica' || !S.has(k('i', q))); }
-    ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S; ATL.x = ATL.c.getContext('2d'); ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1; ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S * ATL.f; ATL.x = ATL.c.getContext('2d');   // [dieta] sul telefono a metà lato, le tessere in scala ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
     // ---- le strisce ----
     P.strisce.forEach(decal);
     if (PV()) P.strisce.forEach(q => { if (q.k !== 'zebra' && q.k !== 'riga') return; if (hash(q.x, q.y, 77) > .16) return;   // [strade] ripassata: la vernice vecchia sotto la nuova, spostata di qualche centimetro
