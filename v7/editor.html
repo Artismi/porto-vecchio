@@ -16921,6 +16921,7 @@ Anim.npcMap((st, n, s) => {
     if (p.vehicle) {
       let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
       if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      if (v && v.kind === 'chiatta') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = 0; s.aria = 0; s.impenna = 0; s.peg = 0; }   // [chiatta] pedala come sulla BMX
       if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; }   // [bmx]
       return;
     }
@@ -19786,7 +19787,7 @@ var World = (function () {
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
         SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
-    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
+    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6, chiatta: 5.2 };
     const rs = rng(4242);
     // -- il porto vecchio, sotto il centro: la banchina dritta (la Calata), il Molo Vecchio che fa da diga (gomito verso levante,
     //    lanterna rossa), il Molo di Levante più corto (lanterna verde), tre pontili per le barche, lo scalo del cantiere.
@@ -19815,7 +19816,8 @@ var World = (function () {
     SEA.moorings.push({ kind: 'peschereccio', x: 1218 - 4.5 - 2.6, y: northY(606) - 16, ang: -Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_n1' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
-      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
+      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' })));
+      SEA.moorings.push({ kind: 'chiatta', x: lx + 3.4, y: ly + 11.5, ang: Math.PI / 2, len: BOATLEN.chiatta, at: 'pontile_lido', drive: true }); }   // [chiatta] di fianco alla testata, la prua al largo
     void mVecchio; void mLevante; void mc1; void mc2;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
@@ -22064,7 +22066,7 @@ var World = (function () {
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
         SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
-    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
+    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6, chiatta: 5.2 };
     const rs = rng(4242);
     // -- il porto vecchio, sotto il centro: la banchina dritta (la Calata), il Molo Vecchio che fa da diga (gomito verso levante,
     //    lanterna rossa), il Molo di Levante più corto (lanterna verde), tre pontili per le barche, lo scalo del cantiere.
@@ -22096,7 +22098,8 @@ var World = (function () {
     SEA.moorings.push({ kind: 'peschereccio', x: 1252 - 4.5 - 2.6, y: southY(640) + 26, ang: Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_s2' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
-      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
+      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' })));
+      SEA.moorings.push({ kind: 'chiatta', x: lx + 3.4, y: ly + 11.5, ang: Math.PI / 2, len: BOATLEN.chiatta, at: 'pontile_lido', drive: true }); }   // [chiatta] di fianco alla testata, la prua al largo
     void mVecchio; void mLevante;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
@@ -25917,6 +25920,9 @@ var Game = (function () {
     gozzo: { r: 1.1, len: 5, wid: 1.75, max: 6.5, accel: 2, turn: 1.15, hp: 90, label: 'Gozzo', boat: true, art: 'il', m0: true },
     lancia: { r: 1.25, len: 6, wid: 2.1, max: 9, accel: 2.8, turn: 1.05, hp: 110, label: 'Lancia a motore', boat: true, art: 'la' },
     motoscafo: { r: 1.4, len: 7, wid: 2.4, max: 17, accel: 5, turn: 1.1, hp: 120, label: 'Motoscafo', boat: true, art: 'il', m0: true },
+    // [chiatta] la chiatta a pedali: telaio da catamarano su due tubi di PVC, una bici al centro che con la catena fa girare due ruote a pale.
+    // Va piano (si pedala, ~10 km/h), è larga e leggera. Il timone sta a poppa, tra i due tubi; si guida col manubrio.
+    chiatta: { r: 1.3, len: 5.2, wid: 2.6, max: 2.8, accel: 1.1, turn: .95, hp: 70, label: 'Chiatta a pedali', boat: true, art: 'la', pedali: true },
     // [bmx] la bici tascabile: si tira fuori con P quando vuoi e quando scendi torna in tasca. Niente motore, niente fari, non brucia.
     bmx: { r: .5, len: 1.5, wid: .74, max: 9, accel: 6, turn: 3.8, hp: 45, label: 'BMX', two: true, pocket: true },
     // [vievive] l'autobus urbano della linea 1 (Fiat 421) e il Ciao, il motorino di tutti
@@ -25927,7 +25933,7 @@ var Game = (function () {
   Object.assign(VK.vespa, { m: 150, grip: 24 }); Object.assign(VK.cinquecento, { m: 560, grip: 19 }); Object.assign(VK.ritmo, { m: 860, grip: 20 });
   Object.assign(VK.giulia, { m: 1050, grip: 21 }); Object.assign(VK.ape, { m: 420, grip: 15 }); Object.assign(VK.polizia, { m: 1150, grip: 22 });
   Object.assign(VK.furgone, { m: 1900, grip: 18 }); Object.assign(VK.fuoristrada, { m: 1600, grip: 24 }); Object.assign(VK.camion, { m: 3600, grip: 17 }); Object.assign(VK.campagnola, { m: 1500, grip: 23 }); Object.assign(VK.blindato, { m: 6200, grip: 21 });
-  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 });
+  Object.assign(VK.gozzo, { m: 700, grip: 2.6 }); Object.assign(VK.lancia, { m: 950, grip: 2.8 }); Object.assign(VK.motoscafo, { m: 1200, grip: 3.4 }); Object.assign(VK.chiatta, { m: 260, grip: 2.2 });   // [chiatta]
   Object.assign(VK.autobus, { m: 9000, grip: 18 }); Object.assign(VK.ciao, { m: 70, grip: 22 });   // [vievive]
   Object.assign(VK.bmx, { m: 95, grip: 23 }); Object.assign(VK.rx7, { m: 1250, grip: 22 }); Object.assign(VK.gtr, { m: 1400, grip: 23 }); Object.assign(VK.bursley, { m: 1600, grip: 19 });
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
@@ -26328,7 +26334,7 @@ var Game = (function () {
         if (v.owner) st.timers.push({ at: st.t + 30, kind: 'discoverVehicle', npc: v.owner, ev: ev.id, kindV: v.kind });
         if (v.owner === 'sandro') aggroFaction(st, 'squalo');
         addLog(st, `${clockStr(st.t)} · Hai rubato ${vehicleName(st, v)}.`, 'bad', ev.id);
-        if (VK[v.kind].boat) { const nm = vehicleName(st, v); return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
+        if (VK[v.kind].boat) { const nm = vehicleName(st, v); if (VK[v.kind].pedali) return { ok: true, msg: `Sciogli la cima, monti in sella e dai la prima pedalata. ${nm[0].toUpperCase() + nm.slice(1)} è tua, per ora.` };   /* [chiatta] */ return { ok: true, msg: `Sciogli la cima e tiri l'avviamento. ${nm[0].toUpperCase() + nm.slice(1)} è ${VK[v.kind].m0 ? 'tuo' : 'tua'}, per ora.` }; }   // [costa]
         return { ok: true, msg: v.kind === 'vespa' ? `Colleghi i fili. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua, per ora.` : `Un cacciavite nel blocchetto e parte. ${vehicleName(st, v)[0].toUpperCase() + vehicleName(st, v).slice(1)} è tua.` };
       }
       return { ok: true, msg: '' };
@@ -61324,7 +61330,7 @@ var Render = (function () {
   function faceUp(g) { const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } const n = g.attributes.normal.array; for (let k = 0; k < n.length; k++) n[k] = -n[k]; g.index.needsUpdate = true; g.attributes.normal.needsUpdate = true; return g; }
   const DS = { side: THREE.DoubleSide };
   // quanto pesca ogni barca (m sotto il pelo dell'acqua, dal capodibanda medio): il gruppo sta a WL + DRAFT
-  const DRAFT = { gozzo: .27, lancia: .3, barca_vela: .42, motoscafo: .28, peschereccio: .62, motovedetta: .6, rimorchiatore: .85, nave: 2.1, pedalo: .14, secca: .27 };   // circa un terzo dell'altezza dello scafo: la barca sta sopra l'acqua, non mezza sotto
+  const DRAFT = { gozzo: .27, lancia: .3, barca_vela: .42, motoscafo: .28, peschereccio: .62, motovedetta: .6, rimorchiatore: .85, nave: 2.1, pedalo: .14, secca: .27, chiatta: .1 };   // circa un terzo dell'altezza dello scafo: la barca sta sopra l'acqua, non mezza sotto
   // tre fasce: l'antivegetativa fino a un palmo sopra il galleggiamento, il colore dello scafo, la fascia sotto il capodibanda
   function hullMesh(g, H, colLow, colBand, band, cap, draft, anti) {
     COSTA.lastH = H;   // per la sagoma che tiene fuori l'acqua (waterMask)
@@ -61428,6 +61434,80 @@ var Render = (function () {
     pedalo(r) { const g = G0(), col = pick(r, ['#f4a6c0', '#7fd6e0', '#f0d060']); [-.55, .55].forEach(o => add(g, box(.5, .45, 2.5, sm(col)), o, .05, 0)); add(g, box(1.5, .14, 1.4, PM.white()), 0, .35, -.1); add(g, box(1.1, .55, .1, PM.white()), 0, .65, -.62); add(g, new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .08, 10, 1, false, 0, Math.PI), sm('#f4f0e6')), 0, .5, .6, 0, 0, Math.PI / 2); return g; },
   };
   BOATS.secca = r => BOATS.gozzo(r);
+  // [chiatta] la chiatta a pedali, fatta in casa: due tubi da fogna in PVC arancio come galleggianti (tappo dietro, punta a cono davanti),
+  // fascette a U, telaio da catamarano in tubolare zincato, tavolato a prua, a poppa e sopra i tubi. Al centro una bici senza ruote:
+  // la forcella sta su un piantone, i forcellini su un cavalletto, la catena scende dalla corona all'albero delle due ruote a pale,
+  // che girano nel canale fra i tubi sotto due parapale. Il timone a poppa, tirato da due cavi che vengono dal piantone.
+  // Le parti che si muovono (ruote, pedivelle, timone) restano fuori dalla fusione (keepTree) e le anima boatVehicle.
+  // Misure: CHIATTA (y = 0 è l'origine del gruppo, che boatVehicle mette a WL + DRAFT.chiatta).
+  const CHIATTA = { pipeX: 1.05, pipeR: .2, pipeY: -.02, deckY: .33, shaftY: .3, shaftZ: -.75, wheelX: .45, wheelR: .55, bikeZ: -.15, gear: 1.25 };
+  BOATS.chiatta = (r, o) => {
+    const g = G0(), C = CHIATTA, up = new THREE.Vector3(0, 1, 0);
+    const pvc = sm('#c8662e', { roughness: .45 }), tappo = sm('#e8e2d6', { roughness: .5 }), zinco = sm('#a4aab0', { roughness: .4, metalness: .55 }), legno = PM.woodL(), legnoS = PM.wood();
+    const telo = sm(o.col || pick(r, ['#2a6ab0', '#e8e2d0', '#d84a3a', '#3a8a6a']), { side: THREE.DoubleSide }), bici = sm(pick(r, ['#c83a2a', '#2a5ab0', '#f0c030', '#2a8a6a']), { roughness: .35, metalness: .3 });
+    const nero = sm('#16151a', { roughness: .5, metalness: .4 }), acciaio = sm('#3a3a42', { roughness: .4, metalness: .7 }), cromo = PM.chrome();
+    const tube = (a, b, rr, mat, par) => { const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A), m = cyl(rr, rr, d.length(), 8, mat); m.position.copy(A).add(B).multiplyScalar(.5); m.quaternion.setFromUnitVectors(up, d.normalize()); (par || g).add(m); return m; };
+    // i galleggianti: tubo, punta a cono, tappo, fascette a U ogni metro
+    [-1, 1].forEach(sd => { const x = sd * C.pipeX;
+      add(g, cyl(C.pipeR, C.pipeR, 4.7, 14, pvc), x, C.pipeY, -.2, Math.PI / 2, 0, 0);
+      add(g, cyl(.05, C.pipeR, .45, 14, pvc), x, C.pipeY, 2.375, Math.PI / 2, 0, 0);
+      add(g, cyl(C.pipeR + .015, C.pipeR + .015, .06, 14, tappo), x, C.pipeY, -2.56, Math.PI / 2, 0, 0);
+      for (let k = 0; k < 5; k++) add(g, new THREE.Mesh(new THREE.TorusGeometry(C.pipeR + .012, .014, 4, 12, Math.PI), zinco), x, C.pipeY, -2.2 + k * 1.05);
+      add(g, box(.06, .06, 5, zinco), x, .21, -.15);                                    // il longherone sopra il tubo
+      add(g, box(.06, .06, 2.5, zinco), sd * .75, .27, -.3);                            // il longherone interno, coi supporti dell'albero
+      add(g, box(.12, .12, .14, acciaio), sd * .75, C.shaftY, C.shaftZ);                // il supporto
+      for (let k = 0; k < 9; k++) add(g, box(.5, .03, .5, k % 2 ? legno : legnoS), x, .315, -2.35 + k * .52);   // la passerella sopra il tubo
+    });
+    [2.3, 1.0, .32, -1.55, -2.4].forEach(z => add(g, box(2.56, .06, .06, zinco), 0, .27, z));   // le traverse
+    for (let k = 0; k < 6; k++) add(g, box(1.6, .03, .2, k % 2 ? legno : legnoS), 0, .315, 1.0 + k * .22);   // il tavolato di prua
+    for (let k = 0; k < 4; k++) add(g, box(1.6, .03, .2, k % 2 ? legno : legnoS), 0, .315, -2.4 + k * .22);   // e quello di poppa
+    add(g, box(.06, .06, .8, zinco), 0, .27, -.07);                                     // la trave al centro, sotto la bici
+    add(g, box(.36, .03, .7, legno), 0, .315, -.05);                                    // la pedana
+    // l'albero con le due ruote a pale, i parapale e la corona della catena
+    add(g, cyl(.03, .03, 1.6, 8, acciaio), 0, C.shaftY, C.shaftZ, 0, 0, Math.PI / 2);
+    [-1, 1].forEach(sd => {
+      const w = G0();
+      [-.14, .14].forEach(dx => add(w, new THREE.Mesh(new THREE.TorusGeometry(C.wheelR - .14, .018, 4, 16), zinco), dx, 0, 0, 0, Math.PI / 2, 0));
+      add(w, cyl(.07, .07, .32, 10, acciaio), 0, 0, 0, 0, 0, Math.PI / 2);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, pa = G0(); pa.rotation.x = a; w.add(pa);
+        add(pa, box(.3, .26, .03, sm('#e8e2d0')), 0, C.wheelR - .13, 0); [-.14, .14].forEach(dx => add(pa, box(.025, C.wheelR - .05, .025, zinco), dx, (C.wheelR - .05) / 2, 0)); }
+      const piv = G0(); piv.position.set(sd * C.wheelX, C.shaftY, C.shaftZ); piv.add(mergeGroup(w)); piv.userData.keepTree = true; piv.userData.pala = true; g.add(piv);
+      const pp = new THREE.Mesh(new THREE.CylinderGeometry(C.wheelR + .07, C.wheelR + .07, .38, 14, 1, true, 0, Math.PI), telo); add(g, pp, sd * C.wheelX, C.shaftY, C.shaftZ, 0, 0, Math.PI / 2);   // il parapale
+      [-.19, .19].forEach(dx => tube([sd * C.wheelX + dx, .3, C.shaftZ - .62], [sd * C.wheelX + dx, .3, C.shaftZ + .62], .012, zinco));
+    });
+    // la bici: telaio, sella e manubrio con le misure della BMX (la posa in_bmx ci mette mani e piedi), senza ruote
+    const B = BMX_GEO, bk = G0(); bk.position.set(0, C.deckY, C.bikeZ); g.add(bk);
+    const bb = [0, B.bbY, B.bbZ], st = [0, .66, -.21], ht = [0, .73, .29], hb = [0, .56, .34];
+    tube(bb, st, .024, bici, bk); tube(st, ht, .026, bici, bk); tube(bb, hb, .03, bici, bk); tube(hb, ht, .034, bici, bk);
+    [-1, 1].forEach(sd => { tube([sd * .03, B.bbY, B.bbZ], [sd * .065, B.R, B.zR], .016, bici, bk); tube([sd * .025, .65, -.22], [sd * .065, B.R, B.zR], .014, bici, bk); });
+    [-1, 1].forEach(sd => tube([sd * .045, .57, .35], [sd * .065, B.R, B.zF], .018, nero, bk));   // la forcella
+    tube([0, .73, .29], [0, .82, .27], .02, nero, bk); add(bk, box(.1, .05, .1, nero), 0, .82, .28);
+    [-1, 1].forEach(sd => { tube([sd * .06, .82, .28], [sd * .2, B.gripY, B.gripZ], .014, nero, bk); tube([sd * .2, B.gripY, B.gripZ], [sd * .4, B.gripY, B.gripZ], .014, nero, bk);
+      add(bk, cyl(.02, .02, .12, 8, nero), sd * (B.gripX + .02), B.gripY, B.gripZ, 0, 0, Math.PI / 2); });
+    tube([0, .66, -.21], [0, .78, -.25], .016, cromo, bk); add(bk, box(.14, .06, .28, nero), 0, B.seatY - .02, B.seatZ, .1, 0, 0);
+    add(bk, cyl(.035, .035, .1, 10, bici), 0, B.bbY, B.bbZ, 0, 0, Math.PI / 2);
+    add(bk, cyl(.1, .1, .012, 16, acciaio), -.06, B.bbY, B.bbZ, 0, 0, Math.PI / 2);   // la corona
+    tube([0, .3 - C.deckY, B.zF], [0, B.R, B.zF], .03, zinco, bk); add(bk, box(.16, .04, .06, zinco), 0, B.R, B.zF);   // il piantone che tiene la forcella
+    [-1, 1].forEach(sd => tube([sd * .065, B.R, B.zR], [sd * .14, .3 - C.deckY, B.zR + .3], .02, zinco, bk));   // il cavalletto sotto i forcellini
+    const cr = G0(); cr.position.set(0, B.bbY, B.bbZ); cr.userData.keepTree = true; cr.userData.pedivella = true; cr.userData.pedals = [];
+    [[-1, 1], [1, -1]].forEach(([sd, v]) => { add(cr, box(.022, B.crank + .03, .03, nero), sd * .085, v * B.crank / 2, 0);
+      const ped = G0(); ped.position.set(sd * B.pedX, v * B.crank, 0); ped.add(box(.1, .022, .095, nero)); cr.add(ped); cr.userData.pedals.push(ped); });
+    bk.add(cr);
+    // la catena: dalla corona giù al pignone sull'albero
+    const cz = C.bikeZ + B.bbZ, cy = C.deckY + B.bbY;
+    add(g, cyl(.07, .07, .012, 14, acciaio), -.06, C.shaftY, C.shaftZ, 0, 0, Math.PI / 2);
+    tube([-.06, cy + .1, cz], [-.06, C.shaftY + .07, C.shaftZ], .007, acciaio); tube([-.06, cy - .1, cz], [-.06, C.shaftY - .07, C.shaftZ], .007, acciaio);
+    // il timone a poppa, coi cavi che vengono dal piantone
+    const tm = G0(); tm.position.set(0, .3, -2.58); tm.userData.keepTree = true; tm.userData.timone = true;
+    add(tm, cyl(.02, .02, .75, 6, acciaio), 0, -.2, 0); add(tm, box(.03, .45, .4, sm('#e8e2d0')), 0, -.42, -.2); add(tm, box(.5, .03, .04, zinco), 0, .1, .02);
+    g.add(tm);
+    [-1, 1].forEach(sd => g.add(rope([sd * .08, .36, C.bikeZ + B.zF], [sd * .25, .4, -2.56], sl('#d8cfae'))));
+    // a prua: la borsa frigo, la cima addugliata e il salvagente
+    add(g, box(.5, .34, .34, sm('#f0f0e8')), .4, .5, 1.75); add(g, box(.52, .06, .36, sm('#2a7ab0')), .4, .69, 1.75);
+    add(g, new THREE.Mesh(new THREE.TorusGeometry(.16, .04, 5, 12), sl('#d8cfae')), -.45, .36, 1.9, Math.PI / 2, 0, 0);
+    add(g, new THREE.Mesh(new THREE.TorusGeometry(.26, .07, 6, 14), sm('#e8402a')), -.95, .42, -2.1, Math.PI / 2, 0, 0);
+    return g;
+  };
   // [modelli2] gozzo, lancia, motoscafo, peschereccio e traghetto vengono da veicoli3d.js (fasciame, falchetta, bitte, timone, cabine, reti e nasse);
   // quelli qui sopra restano di riserva. Il traghetto non ha ancora un ormeggio in world.js.
   DRAFT.traghetto = 1.3;
@@ -62046,20 +62126,28 @@ var Render = (function () {
       let h = 0; for (const ch of v.id) h = (h * 31 + ch.charCodeAt(0)) | 0;
       const K = G.VK[v.kind], r = rng(h >>> 0); g = boatModel(v.kind, r, { col: v.color }); shadowed(g); const u = g.userData;
       u.drv = driverMesh(v.driverLook || { top: '#3a4a5a', skin: '#dcae88', hair: '#17110e' }, false); u.drv.position.set(0, -.55, -K.len / 2 + 1.1); g.add(u.drv);
+      if (K.pedali) { u.pale = []; g.traverse(o => { if (o.userData.pala) u.pale.push(o); if (o.userData.pedivella) u.crank = o; if (o.userData.timone) u.timone = o; }); }   // [chiatta] le parti che si muovono
       u.wake = new THREE.Mesh(new THREE.PlaneGeometry(K.wid * 2.2, 12), new THREE.MeshBasicMaterial({ map: wakeTex(), transparent: true, depthWrite: false, opacity: 0 })); u.wake.rotation.x = -Math.PI / 2; u.wake.position.set(0, .04, -K.len / 2 - 6); u.wake.renderOrder = 2;
       u.wakeG = new THREE.Group(); u.wakeG.add(u.wake); scene.add(u.wakeG);
       scene.add(g); dyn.vehicles[v.id] = g;
     }
-    const u = g.userData, K = G.VK[v.kind], k = clamp(Math.abs(v.speed || 0) / K.max, 0, 1);
+    const u = g.userData, K = G.VK[v.kind], k = clamp(Math.abs(v.speed || 0) / K.max, 0, 1), kp = K.pedali ? .25 : 1;   // [chiatta] a pedali non si alza di prua e la scia è poca
     g.visible = !v.hidden; u.wakeG.visible = g.visible;
     u.ph = u.ph === undefined ? (v.x * 7 + v.y) % 6 : u.ph;
     u.roll = (u.roll || 0) + (clamp(-(v.latA || 0) * .02, -.18, .18) - (u.roll || 0)) * Math.min(1, dt * 3);
     const sink = v.wreck ? Math.min(2.5, (u.sinkT = (u.sinkT || 0) + dt) * .15) : 0;
-    g.position.set(v.x, WL + (DRAFT[v.kind] || .4) + Math.sin(time * 1.3 + u.ph) * .07 * (1 - k * .6) - sink + k * .12, v.y);
-    g.rotation.set(-k * .09 + Math.sin(time * .9 + u.ph) * .02 + sink * .1, Math.PI / 2 - v.ang, u.roll + Math.sin(time * 1.1 + u.ph) * .035);
-    u.drv.visible = v.rider === 'player' && !v.wreck;
+    g.position.set(v.x, WL + (DRAFT[v.kind] || .4) + Math.sin(time * 1.3 + u.ph) * .07 * (1 - k * .6) - sink + k * .12 * kp, v.y);
+    g.rotation.set(-k * .09 * kp + Math.sin(time * .9 + u.ph) * .02 + sink * .1, Math.PI / 2 - v.ang, u.roll + Math.sin(time * 1.1 + u.ph) * .035);
+    u.drv.visible = v.rider === 'player' && !v.wreck && !K.pedali;
+    if (K.pedali) {   // [chiatta] le pale girano con l'acqua che passa (un quarto di slittamento), le pedivelle con le pale (niente ruota libera), il timone col manubrio
+      const C = CHIATTA; u.palaA = (u.palaA || 0) + (v.speed || 0) * dt / (C.wheelR * .75); u.pale.forEach(q => q.rotation.x = u.palaA);
+      const th = u.palaA * C.gear; if (u.crank) { u.crank.rotation.x = th; u.crank.userData.pedals.forEach(q => q.rotation.x = -th); } v.crank = th;
+      if (u.timone) u.timone.rotation.y = clamp(v.steer || 0, -1, 1) * .6;
+      const pg = dyn.people.__player;   // il giocatore in sella: stesso verso e stesso dondolio della chiatta, il corpo alzato di 35 cm come sulla BMX
+      if (pg && v.rider === 'player' && !v.wreck) { g.updateMatrixWorld(); pg.position.set(0, C.deckY + .35, C.bikeZ).applyMatrix4(g.matrixWorld); pg.quaternion.copy(g.quaternion); }
+    }
     u.wakeG.position.set(v.x, WL, v.y); u.wakeG.rotation.y = Math.PI / 2 - v.ang;
-    u.wake.material.opacity = k * .75; u.wake.scale.set(1, .5 + k * 1.2, 1); u.wake.position.z = -K.len / 2 - 6 * (.5 + k * 1.2);
+    u.wake.material.opacity = k * .75 * (K.pedali ? .45 : 1); u.wake.scale.set(1, .5 + k * 1.2, 1); u.wake.position.z = -K.len / 2 - 6 * (.5 + k * 1.2);
   }
   function swimPose(pg, p, inVeh, time) {
     const on = !!p.swim && !inVeh && !p.indoor;
@@ -74193,7 +74281,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
-    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx');   // [bmx] in sella come sulla Vespa
+    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta');   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
