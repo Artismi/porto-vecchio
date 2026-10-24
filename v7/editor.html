@@ -28010,6 +28010,37 @@ var World = (function () {
       if (DEM.size) { const resta = B.filter(b => !DEM.has(b)), nuovo = new Map(); resta.forEach((b, k) => nuovo.set(b.i, k));
         for (let i = 0; i < N; i++) { const k = bIndex[i]; if (k < 0) continue; if (nuovo.has(k)) bIndex[i] = nuovo.get(k); else { bIndex[i] = -1; if (grid[i] === T.BLD) { grid[i] = T.COB; reserved[i] = 1; } } }
         B.length = 0; resta.forEach((b, k) => { b.i = k; B.push(b); }); }
+      // [case-fuori-strada] NIENTE FESSURE FRA LE CASE ARRETRATE: arretrando una casa dal filo della via, fra lei e la vicina restava a volte una luce di
+      // 10-70 cm (né cortina né vicolo: strade_integre.js la conta «fessura»). Per ogni coppia così (case dritte) si prova, sull'una o sull'altra:
+      // riaccostare il muro alla vicina (filo a filo, dentro le sue caselle di prima), o allargare la luce a un passaggio vero (1,25 m). Vale
+      // la mossa che toglie la fessura senza crearne altre, senza tornare sulla via (lo stesso ariaBox) e senza scendere sotto 1,2 m di lato
+      { const box = b => b.cx !== undefined ? [b.cx - b.lw / 2, b.cy - b.ld / 2, b.cx + b.lw / 2, b.cy + b.ld / 2] : [b.x * TS, b.y * TS, (b.x + b.w) * TS, (b.y + b.h) * TS];
+        const rotT = b => b.sign || b.shop ? 0 : b.rot || 0, CASE = B.filter(b => !b.pezzo && !b.military), mobile = b => !b.__tierOf && !b.lotto && !b.lighthouse && !b.shack && !b.tiers && b.house && rotT(b) === 0;
+        const BX = new Map(CASE.map(b => [b, box(b)])), IX = new Map(), kk = (i, j) => i * 4096 + j;
+        CASE.forEach(b => { const q = BX.get(b), i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32); const k = kk(i, j); let A = IX.get(k); if (!A) IX.set(k, A = []); A.push(b); });
+        const vicine = (b, q) => { const i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32), R = []; for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const o of IX.get(kk(i + a, j + c)) || []) if (o !== b) R.push(o); return R; };
+        const rel = (a, c) => { const ox = Math.min(a[2], c[2]) - Math.max(a[0], c[0]), oy = Math.min(a[3], c[3]) - Math.max(a[1], c[1]); return ox > 0 && oy > 0 ? { pe: Math.min(ox, oy), ox, oy } : { gap: Math.hypot(Math.max(0, -ox), Math.max(0, -oy)), ox, oy }; };
+        const pesa = (a, c) => { const r = rel(a, c); if (r.pe !== undefined) return r.pe > .35 ? 30 : 0; if (r.gap <= .05) return 0; if (r.gap < 1.2) return 10; if (r.gap < 2.6 && Math.min(Math.max(a[2] - a[0], a[3] - a[1]), Math.max(c[2] - c[0], c[3] - c[1])) > 3) return 1; return 0; };
+        const voto = (b, q) => vicine(b, q).reduce((s, o) => rotT(o) === 0 ? s + pesa(q, BX.get(o)) : s, 0);
+        // (fuori dalle sue caselle il muro può uscire di meno di mezza casella: non copre il centro di nessuna casella d'altri)
+        const lecita = (b, q) => { if (q[2] - q[0] < 1.2 || q[3] - q[1] < 1.2) return false; const T0 = [b.x * TS - TS / 2 + .01, b.y * TS - TS / 2 + .01, (b.x + b.w) * TS + TS / 2 - .01, (b.y + b.h) * TS + TS / 2 - .01]; if (q[0] < T0[0] || q[1] < T0[1] || q[2] > T0[2] || q[3] > T0[3]) return false;
+          const V = VIE.filter(v => v.bb[0] - v.hw - 4 < q[2] && v.bb[2] + v.hw + 4 > q[0] && v.bb[1] - v.hw - 4 < q[3] && v.bb[3] + v.hw + 4 > q[1]); return !V.length || ariaBox(q[0], q[1], q[2], q[3], V) >= 0; };
+        const mosse = (b, o) => { const q = BX.get(b), p = BX.get(o), r = rel(q, p), M = [];   // i muri di b verso o: avanti fino al filo, o indietro fino a 1,25 m
+          const lato = (ax, d, Q0) => { const Q = (Q0 || q).slice(); if (ax === 0) { if (p[0] >= q[2] - 1e-6) Q[2] += d; else Q[0] -= d; } else { if (p[1] >= q[3] - 1e-6) Q[3] += d; else Q[1] -= d; } return Q; };
+          if (r.ox < 0) { M.push(lato(0, -r.ox)); M.push(lato(0, -(1.25 + r.ox))); } if (r.oy < 0) { M.push(lato(1, -r.oy)); M.push(lato(1, -(1.25 + r.oy))); }
+          if (r.ox < 0 && r.oy < 0) M.push(lato(1, -r.oy, lato(0, -r.ox)));   // di spigolo: avanti su tutti e due i lati
+          return M.map(Q => Q.map(v => +v.toFixed(3))); };
+        const MOSSI = new Set();
+        for (let giro = 0; giro < 4; giro++) { let n = 0;
+          CASE.forEach(a => { if (rotT(a) !== 0) return; vicine(a, BX.get(a)).forEach(o => { if (rotT(o) !== 0 || pesa(BX.get(a), BX.get(o)) !== 10) return;
+            let best = null; for (const [b, c] of [[a, o], [o, a]]) { if (!mobile(b)) continue; const q0 = BX.get(b), v0 = voto(b, q0);
+              for (const Q of mosse(b, c)) { if (!lecita(b, Q)) continue; const d = voto(b, Q) - v0, m = Math.abs(Q[2] - Q[0] - q0[2] + q0[0]) + Math.abs(Q[3] - Q[1] - q0[3] + q0[1]); if (d < 0 && (!best || d < best.d || (d === best.d && m < best.m))) best = { b, Q, d, m }; } }
+            if (!best) return; const { b, Q } = best; BX.set(b, Q); MOSSI.add(b); n++; }); });
+          if (!n) break; }
+        MOSSI.forEach(b => { const q = BX.get(b); Object.assign(b, { cx: +((q[0] + q[2]) / 2).toFixed(3), cy: +((q[1] + q[3]) / 2).toFixed(3), lw: +(q[2] - q[0]).toFixed(3), ld: +(q[3] - q[1]).toFixed(3), arretrata: b.arretrata !== undefined ? b.arretrata : 0, accostata: 1 });   // (arretrata c'è sempre: la scatola non è più quella delle caselle)
+          for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, px = (tx + .5) * TS, py = (ty + .5) * TS, dentro = px > q[0] && px < q[2] && py > q[1] && py < q[3];
+            if (dentro && bIndex[i] < 0 && grid[i] === T.COB) { grid[i] = T.BLD; bIndex[i] = b.i; } else if (!dentro && bIndex[i] === b.i) { grid[i] = T.COB; bIndex[i] = -1; } } });
+        CITY.caseAccostate = MOSSI.size; if (typeof process !== 'undefined' && process.env && process.env.PV_ARR) console.error('[accostate]', MOSSI.size, [...MOSSI].map(b => b.id).join(' ')); }
       CITY.caseArretrate = nA; CITY.caseSullaVia = NO; CITY.caseLevate = DEM.size; CITY.gradoniTolti = nGr; if (typeof process !== "undefined" && process.env && process.env.PV_ARR) console.error("[arretrate]", nA, "levate", DEM.size, "gradoni", nGr, "non riuscite", nNo, NO.join(" ")); }
     // [botteghe] le porte sono definitive: ogni bottega sotto casa prende il suo fronte accanto al portone (se non ci sta, il palazzo resta bottega intera)
     // [pianta] LE PORTE LIBERE DAI PEZZI GRANDI: i sottopassi a volta, le scalinate e la Porta di Terra si posano prima delle case, e la
