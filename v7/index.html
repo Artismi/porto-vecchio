@@ -63477,11 +63477,12 @@ var PostStile = (function () {
             if (sK.z > 0.) { vec3 av = (n + s + w + r) * .25, dt = c - av; float dl = dot(dt, LW);   // il dettaglio: tegole, mattoni, assi, scritte (i gradini di luce di prima appiattivano le trame di giorno)
               o += vec3(clamp(dl, -.08, .08)) * sK.z * 1.1 * (1. - smoothstep(.85, 1., l));   // solo la luce: il colore delle trame non si sporca, e niente aloni sui salti grandi (clamp)
               float l2 = dot(o, LW), mx2 = max(o.r, max(o.g, o.b)), sa = (mx2 - min(o.r, min(o.g, o.b))) / max(mx2, 1e-3);   // colore pop: spinge di più i colori spenti, poco quelli già accesi (niente fluo)
-              o = max(mix(vec3(l2), o, 1. + sK.z * (.75 - .5 * sa)), 0.); }
+              o = max(mix(vec3(l2), o, 1. + sK.z * (.75 - .5 * sa) * smoothstep(.12, .3, sa)), 0.); }   // i quasi neutri (muri, intonaci) restano puliti: niente pesca dappertutto
             if (sK.w > 0.) {   // la tavolozza pulita: via l'ocra e l'oliva impastati, ombre fredde e chiare invece che marroni
               vec4 K4 = vec4(0., -1. / 3., 2. / 3., -1.); vec4 pp = mix(vec4(o.bg, K4.wz), vec4(o.gb, K4.xy), step(o.b, o.g)); vec4 qq = mix(vec4(pp.xyw, o.r), vec4(o.r, pp.yzx), step(pp.x, o.r));
               float dd = qq.x - min(qq.w, qq.y); vec3 hsv = vec3(abs(qq.z + (qq.w - qq.y) / (6. * dd + 1e-5)), dd / (qq.x + 1e-5), qq.x); float hd = hsv.x * 360.;
-              float ocra = smoothstep(26., 38., hd) * (1. - smoothstep(72., 90., hd)) * smoothstep(.08, .22, hsv.y);   // gialli sporchi, ocra, oliva
+              float caldo = smoothstep(14., 26., hd) * (1. - smoothstep(66., 80., hd)), ocra = smoothstep(26., 38., hd) * (1. - smoothstep(72., 90., hd)) * smoothstep(.3, .45, hsv.y);   // gialli sporchi, ocra, oliva (solo i saturi)
+              hsv.y *= 1. - caldo * (1. - smoothstep(.18, .34, hsv.y)) * .4 * sK.w;   // i beige e i sabbia verso il crema: più chiari e puliti, l'occhio riposa e i colori veri spiccano
               hsv.x += (hd < 52. ? -1. : 1.) * ocra * sK.w * 14. / 360.;   // l'ocra verso il pesca e il cotto, l'oliva verso il verde fresco
               hsv.y = min(1., hsv.y * (1. + ocra * sK.w * .3)); hsv.z = min(1., hsv.z * (1. + ocra * sK.w * .06));
               vec3 rr3 = clamp(abs(fract(hsv.xxx + vec3(1., 2. / 3., 1. / 3.)) * 6. - 3.) - 1., 0., 1.); o = hsv.z * mix(vec3(1.), rr3, hsv.y);
