@@ -650,12 +650,12 @@ var Writing = (function () {
     try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); fired = true; sync(); return; }   // qualcosa nel lavoro non si copia: qui
     // [graffiti2] il disegnatore a parte non risponde (macchina strapiena, worker bloccato): dopo 4 s si fa qui; se non ha
     // mai risposto a niente, si spegne e da lì in poi si disegna qui (un po' di scatto, ma i muri si vedono)
-    // [fluido] ma solo se è fermo davvero: se ha risposto (a questo o a un altro) negli ultimi 4 s è solo in coda (all'avvio ne arrivano
-    // 24 insieme, sulla macchina carica ognuno costa centinaia di ms) e si aspetta ancora; se non ha mai risposto, gli si danno 30 s.
+    // [fluido] ma solo se è fermo davvero: se ha risposto (a questo o a un altro) negli ultimi 30 s è solo in coda (all'avvio ne arrivano
+    // 24 insieme, sulla macchina carica ognuno costa centinaia di ms, a volte secondi) e si aspetta ancora; idem nei primi 30 s.
     // Prima i lavori in coda scadevano a 4 s, si disegnavano anche qui (50-200 ms l'uno, fermo il gioco) e il worker si spegneva
     if (!ARTW.t0) ARTW.t0 = performance.now();
     const tmo = () => setTimeout(() => { if (fired || !ARTW.wait.has(msg.id)) return; const nw = performance.now();
-      if (ARTW.ok && (ARTW.vivo ? nw - ARTW.vivo < 4000 : nw - ARTW.t0 < 30000)) { tmo(); return; }
+      if (ARTW.ok && nw - (ARTW.vivo || ARTW.t0) < 30000) { tmo(); return; }
       ARTW.wait.delete(msg.id); fired = true; ARTW.late = (ARTW.late || 0) + 1;
       if (!ARTW.lastOk && ARTW.late >= 3 && ARTW.ok) { ARTW.ok = false; try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non risponde: i graffiti si disegnano nel gioco'); }
       ARTW.q.push(() => { try { sync(); } catch (e) { cb(null); } }); }, 4000);   // in coda: uno alla volta dentro il tempo dei graffiti
