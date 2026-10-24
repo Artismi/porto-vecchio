@@ -21931,6 +21931,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       const alto = fbm(wx / 2.2, wy / 2.2, 7984, 2), lum = .8 + .42 * grain + (alto - .5) * .22, tip = sstep(.62, .9, grain);
       const k = (py * w + px), q = k * 4, b0 = blr[k * 3], b1 = blr[k * 3 + 1], b2 = blr[k * 3 + 2];
       let r = b0 * lum + tip * 18, g = b1 * lum + tip * 16, bb = b2 * (lum - .04) - tip * 2;
+      { const sc = gammaAt(GAMMA_CALDA, .6 + (alto - .5) * .2 + (grain - .5) * .14), kq = .5; r += (sc[0] * (.9 + grain * .2) - r) * kq; g += (sc[1] * (.92 + grain * .2) - g) * kq; bb += (sc[2] * .85 - bb) * kq; }   // il fondo chiaro e asciutto: la paglia calda fra i ciuffi
       { const rs = respiro(W, wx, wy), te = 1 - sstep(.15, .45, rs + (grain - .5) * .25); if (te > 0) {   // la terra che viene fuori: calda, con la grana dei sassolini
           const tc = gammaAt(GAMMA_CALDA, .44 + (vnoise(wx * 3, wy * 3, 7993) - .5) * .18 + (alto - .5) * .12); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
       d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
