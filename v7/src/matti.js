@@ -79,6 +79,39 @@ var Matti = (function () {
       offre2: ['Per lei, signora, la scatola grande. Dentro c\'è più silenzio.', 'Le ombre col cappello costano di più. Si capisce.', 'Questa sedia invisibile è antica. Antichissima. Non l\'ha mai vista nessuno.'],
       venduto: ['Lo apra a casa. E se sente qualcosa, me lo riporti: è difettoso.', 'Ottimo acquisto. È l\'ultimo. Fino a domani.', 'Firmi qui. No, la penna non c\'è. Ma la firma vale.'],
     },
+    motivatore: {
+      nick: 'il Motivatore', chi: n => n.pop.age >= 28 && n.pop.age <= 58,
+      fissa: 'Ex scaricatore di porto, ha letto mezzo libro americano sul successo e da allora fa il motivatore per strada. Crede che la povertà sia una questione di atteggiamento. È povero. Molto motivato.',
+      voce: 'entusiasta da imbonitore del successo, frasi da poster motivazionale applicate alla miseria; mai cattivo, solo inarrestabile',
+      passa: ['Tu! Sì, tu! Il tuo limite è solo nella tua testa. E nella tessera annonaria.', 'Sveglia alle quattro. Doccia fredda. Tanto l\'acqua calda non c\'è.', 'Non sei povero. Sei un ricco che non ha ancora cominciato.', 'Ogni no è un sì che non ha ancora capito.', 'Fallire è bellissimo. Io ho fallito sei volte. Guarda dove sono: qui. Al freddo. Ma motivato.', 'Il successo è una scelta. La fame anche, ma quella l\'hanno scelta per me.'],
+      ritorno: ['Ancora tu! Vedo progressi. Non so dove, ma li vedo.', 'Allora? Hai visualizzato il successo? Io ho visualizzato una stufa. Funziona quasi.', 'Campione! Quanto hai guadagnato da martedì? Niente? Il niente è un inizio!'],
+      solo: ['Sono il capitano della mia anima. L\'anima però è in affitto.', 'Respira. Visualizza il successo. Visualizza una stufa.', 'Cinque obiettivi per oggi. Uno: mangiare. Gli altri quattro dopo.', 'Pensa positivo. Pensa positivo. Quel Grigio mi guarda. Pensa positivo.'],
+      sfida: ['Tu! Cosa vuoi dalla vita?', 'Fermo! Dimmi il tuo sogno. Subito!', 'Campione! Quanto vali?'],
+      sfida2: ['Sbagliato! Devi volere di più! Di più! Anche se non c\'è!', 'Bene! Adesso dillo come se ci credessi. Ancora. Più forte. Ecco, adesso ti guardano tutti.', 'Bellissimo. Io ti vedo. Ti vedo tra cinque anni: ricco. O qui. Più probabile qui.'],
+      congedo: ['Vai, campione! Il mondo è tuo! Tranne le cose che hanno già dato agli altri.', 'Prima lezione gratis. La seconda costa mille lire. La terza è la tua vita.', 'Vai! E se fallisci, è perché non ci hai creduto. Non è colpa mia.'],
+    },
+    complottista: {
+      nick: 'il Complottista', chi: n => n.pop.sex !== 'f' && n.pop.age >= 30,
+      fissa: 'Vede trame dappertutto, tranne quella vera. Il regime gli sembra una copertura per qualcosa di più grosso: i gabbiani, le gru, il martedì. Sulla Tutela ha quasi sempre torto per i motivi sbagliati, e ogni tanto ragione per caso.',
+      voce: 'sottovoce e concitato, «pensaci», «non è un caso», collega cose che non c\'entrano niente; diffidente ma bisognoso di essere ascoltato',
+      passa: ['Le gru del porto non sono gru. Pensaci.', 'I gabbiani lavorano per il Ministero. Hai mai visto un gabbiano morto? Ecco.', 'L\'acqua della fontana la cambiano di notte. Con acqua più obbediente.', 'Il Garante non esiste. Sono tre uomini uno sopra l\'altro. Per questo è così alto.', 'Io la tessera non ce l\'ho. Mi tracciano col formaggio.', 'Il pane è finito? Non è un caso. Niente è un caso. Tranne mio cugino, quello è proprio un caso.'],
+      ritorno: ['Ti stanno seguendo. No, non girarti. Ecco, ti sei girato. Adesso lo sanno.', 'Ancora tu. Strano. Troppo strano. Chi ti manda?', 'Hai controllato i gabbiani, come ti ho detto? No? Allora sei uno di loro.'],
+      solo: ['Il martedì non esiste. L\'hanno messo per far quadrare la settimana.', 'Sette Doveri. Sette giorni. Sette nani. Pensaci.', 'Quel lampione si è acceso quando sono passato. Lo sa.', 'La luna è troppo puntuale. Nessuno è così puntuale se non lavora per qualcuno.'],
+      rivela: ['Psst. Tu. Vieni qui. Te lo dico solo una volta.', 'Ascoltami bene, che non ho molto tempo. Mi cercano.', 'Lo sai perché il pane costa così tanto?'],
+      rivela2: ['Il mare. Il mare non è vero. È dipinto. Di notte lo arrotolano.', 'Perché il grano lo mangiano i gabbiani. E i gabbiani chi li paga? Esatto.', 'La nave del lunedì non porta niente. È vuota. Fa il giro dell\'isola e torna. Serve per farci aspettare.'],
+      congedo: ['Non hai sentito niente. E se lo racconti, nessuno ti crede. È così che funziona.', 'Mangia il formaggio solo il giovedì. Fidati.', 'Ci vediamo. Ma non qui. Qui ci guardano.'],
+    },
+    polaroid: {
+      nick: 'la Polaroid', nickM: 'il Polaroid', chi: n => n.pop.age >= 16 && n.pop.age <= 34,
+      fissa: 'Gira con una Polaroid di contrabbando e fotografa sé stessa con tutto: il pane, i Grigi, i funerali, il tramonto. Le foto finiscono in «l\'album», che le sue amiche guardano ogni domenica: ha trentadue seguaci, dal vivo. Vive per far vedere la sua vita, e la sua vita è fare le foto.',
+      voce: 'svelta, entusiasta, parla di «pubblico», «album» e «vita vera», chiede a tutti di mettersi in posa; superficiale e affettuosa',
+      passa: ['Fermo! Non muoverti, sei perfetto per lo sfondo. Ecco. Grazie, puoi andare.', 'Questa è per l\'album. Le mie amiche lo guardano ogni domenica. Trentadue persone. Dal vivo.', 'Faccio vedere la vita vera. Aspetta, rifacciamola: la vita vera era venuta storta.', 'Sorridi per l\'album. No, più vero. Più vero di così.', 'Mi fai una foto col Grigio? Di spalle, così non lo sa.', 'Oggi sono triste. Guarda che bella foto triste.'],
+      ritorno: ['Ancora tu! Sei venuto benissimo l\'altra volta. Piccolissimo, in fondo, ma benissimo.', 'Ti ho messo nell\'album! Pagina quattro. Le mie amiche chiedono chi sei. Ho detto: nessuno.', 'Facciamone un\'altra. Quella di prima ha avuto troppo successo: ventinove su trentadue.'],
+      solo: ['Il tramonto non è venuto bene. Domani lo rifaccio.', 'Polaroid col pane. Polaroid col pane finito. Si chiama «prima e dopo».', 'Ultima pellicola. La tengo per una cosa importante. Tipo me.', 'Al funerale di zio Tore ho fatto la foto più bella della mia vita. Lui un po\' meno.'],
+      foto: ['Fermi tutti! Foto per l\'album!', 'Tu! Mettiti lì. No, lì. Un po\' più a destra. Ancora. Fuori.', 'Vieni, facciamo una foto insieme! Io in primo piano, tu dietro.'],
+      foto2: ['Sorridi! No. Sorridi meglio. Pensa a una cosa bella. Non quella.', 'Fai finta di conoscermi da sempre. Così. Ecco: siamo migliori amici. Per l\'album.', 'Guarda lontano, come uno che pensa. Più pensieroso. Più. Basta, sembri malato.'],
+      congedo: ['Perfetta! Cioè: io sono perfetta. Tu ci sei.', 'Grazie! Se domenica piace, sei famoso. Se non piace, non eri tu.', 'Bellissima. Me la tengo. Tu no, tu puoi andare.'],
+    },
   };
   const KEYS = Object.keys(MATTI);
 
@@ -127,6 +160,47 @@ var Matti = (function () {
     ['Ma tu cosa fai di lavoro, alla fine?', 'Te l\'ho detto cento volte.', 'Lo so. Ma non ho mai capito.', 'Neanche io. Ma pagano il venerdì.'],
     ['Lei è vedova?', 'Quasi.', 'Come quasi?', 'Lui sta benissimo. Io mi porto avanti.'],
     ['L\'oroscopo dice che oggi incontro l\'amore.', 'Sono le sette di sera.', 'Ancora cinque ore. Non mi muovo da qui.'],
+    // [attualita] i temi di oggi, nel 1986 dell'isola
+    ['Mio figlio ha lasciato la miniera per fare il motivatore.', 'E chi motiva?', 'Quelli della miniera. A tornare in miniera.'],
+    ['Ho fatto il corso di respirazione della Tutela.', 'E?', 'Adesso respiro meno. Dicono che è più efficiente.'],
+    ['Mi sono iscritto all\'agenzia matrimoniale.', 'E?', 'Mi hanno dato una scheda: compatibile al novantadue per cento. Con mia moglie. Non lo sapevano.'],
+    ['Il geometra dice che la casa adesso vale il doppio.', 'Bene!', 'Male. Non posso più permettermi di abitarci.'],
+    ['L\'hai letto il contratto della tessera?', 'Chi lo legge?', 'Io. Pagina quaranta: cedo l\'anima in comodato d\'uso. Rinnovo automatico.'],
+    ['Ho dato cinque stelle al dentista.', 'Era bravo?', 'No. Ma aveva ancora la pinza in mano.'],
+    ['Mio nipote lavora da casa.', 'E che fa?', 'Non lo sa nessuno. Neanche lui. Però è sempre stanchissimo.'],
+    ['Hai sentito? Il Ministero ha inventato la fila verticale.', 'Come verticale?', 'Uno sopra l\'altro. Si risparmia piazza.'],
+    ['La miniera adesso è ecologica.', 'Davvero?', 'Hanno dipinto il carbone di verde.'],
+    ['Ho trovato lavoro al porto. A chiamata.', 'Ti chiamano spesso?', 'No. Ma devo stare vicino al telefono. Che non ho. Quindi sto vicino a quello del bar.'],
+    ['Mia figlia dice che non è triste, è in una fase.', 'Da quando?', 'Dal \'79.'],
+    ['Ho messo tutto nella Lira Serena.', 'Cos\'è?', 'Una moneta. Vale quanto ci credi.', 'E quanto ci credi?', 'Ieri tantissimo. Oggi devo parlare con mia moglie.'],
+    ['Il medico mi ha detto: meno stress.', 'E tu?', 'Ho smesso di andare dal medico.'],
+    ['Mio cognato ha aperto una bottega che vende niente.', 'Niente?', 'L\'esperienza di entrare. C\'è la fila.'],
+    ['Il gabinetto della stazione adesso è in abbonamento.', 'E se non sei abbonato?', 'C\'è la prova gratuita. Dura poco. Bisogna essere veloci.'],
+    ['Ho fatto il ritiro spirituale al Monte Scuro.', 'Com\'era?', 'Tre giorni in silenzio. Mia moglie dice che è il periodo più bello del matrimonio.'],
+    ['L\'isola è rotonda. Lo dice il Garante.', 'E allora?', 'E allora è piatta. Lui mente sempre. Fai due conti.'],
+    ['Un turista mi ha fotografato la casa.', 'E?', 'Adesso è sulla cartolina. Non riesco più a entrare: c\'è la fila per vederla.'],
+    ['Ho chiesto al Calcolatore del Ministero se sono felice.', 'E?', 'Ha detto di sì. Mi sono tolto un pensiero.'],
+    ['Mi hanno messo in cassa integrazione emotiva.', 'Cioè?', 'Posso essere triste solo il mercoledì.'],
+    ['Ce l\'hai un hobby?', 'La fila.', 'Per lavoro?', 'No, per piacere. Il lavoro è un\'altra fila.'],
+    ['Il nuovo capo dice che siamo una famiglia.', 'Bello.', 'Quindi non ci paga. In famiglia non ci si paga.'],
+    ['Hai visto il palazzo di vetro nuovo?', 'Cosa c\'è dentro?', 'Niente. Per far vedere che non c\'è niente. Si chiama trasparenza.'],
+    ['Ho preso un cane contro la solitudine.', 'E?', 'Adesso è solo il cane. Io lavoro sedici ore.'],
+    ['Mia madre a ottantasei anni ha scoperto lo yoga.', 'Brava!', 'Si è incastrata martedì. La sblocchiamo a turno.'],
+    ['Mi hanno fatto le analisi del sangue.', 'E?', 'Ho il sangue di un consumatore medio. Mi hanno dato un buono sconto.'],
+    ['Tuo nipote cosa fa all\'Ufficio Preferenze?', 'Indovina cosa vuoi prima che lo vuoi.', 'E ci prende?', 'Con me sì. Ha detto che voglio andarmene. Ma era lunedì, lo vogliono tutti.'],
+    ['Hanno chiuso il forno di Lella.', 'Perché?', 'Non era abbastanza «esperienza». Adesso c\'è un forno che fa vedere come si faceva il pane. Senza pane.'],
+    ['Il predicatore della Calma dice che la povertà è una scelta.', 'E tu?', 'Gli ho chiesto chi l\'ha scelta per me. Mi ha dato un opuscolo. A pagamento.'],
+    ['Ho fatto un colloquio di lavoro.', 'Com\'è andato?', 'Mi hanno chiesto dove mi vedo tra cinque anni. Ho detto: vivo. Dicono che non ho ambizione.'],
+    ['Mi è arrivata una lettera dal Banco.', 'Brutte notizie?', 'Mi hanno assegnato dei debiti nuovi. Come premio fedeltà.'],
+    ['Mia moglie fa la dieta del Garante.', 'Cioè?', 'Mangia solo mentre parla lui. Venti minuti al giorno. È dimagrita tantissimo.'],
+    ['Lo vedi quello? Si allena per sembrare felice.', 'E come va?', 'La bocca ce l\'ha già. Gli occhi ancora no.'],
+    ['Devo fare la denuncia dei redditi.', 'Quanto hai guadagnato?', 'Niente.', 'E quanto paghi?', 'Il doppio.'],
+    ['Mio figlio l\'ha licenziato una macchina.', 'Una macchina?', 'La gru nuova del porto. Poi gli ha stretto la mano. Con la pinza.'],
+    ['Ho smesso di fumare.', 'Bravo!', 'Adesso le mastico. Dicono che fa meno male. Non è vero, ma passa il tempo.'],
+    ['Mio nipote vuole diventare famoso.', 'Per fare cosa?', 'Niente. Solo famoso. Dice che la cosa da fare viene dopo.'],
+    ['Il Calcolatore ha deciso i turni della miniera.', 'Com\'è venuto?', 'Io lavoro il giorno trentuno di ogni mese. Anche febbraio.'],
+    ['Al Lido hanno messo il mare a pagamento.', 'Tutto il mare?', 'Fino alla boa. Dopo la boa è gratis, ma lì sparano.'],
+    ['Mi hanno rubato la bici.', 'Hai fatto denuncia?', 'Sì. Adesso mi fanno pagare la custodia della denuncia.'],
   ];
 
   // ================= STATO =================
@@ -147,7 +221,7 @@ var Matti = (function () {
       const h = n => n.pop.homeT;
       const score = i === 0 ? (n => -hyp(h(n).x - p.x, h(n).y - p.y)) : (n => Math.min(...homes.map(q => hyp(h(n).x - q.x, h(n).y - q.y)), 400) + rnd() * 30);
       c.sort((a, b) => score(b) - score(a)); const n = c[0];
-      used.add(n); homes.push(h(n)); n.pop.matto = k; M.ids[k] = n.id; n.nick = (n.pop.sex === 'f' && D.nickF) || D.nick;
+      used.add(n); homes.push(h(n)); n.pop.matto = k; M.ids[k] = n.id; n.nick = (n.pop.sex === 'f' && D.nickF) || (n.pop.sex !== 'f' && D.nickM) || D.nick;
       card(st, n, D);
     });
     M.ready = true;
@@ -317,6 +391,41 @@ var Matti = (function () {
     { id: 'tienimi_posto', w: 1, player: true, posto: ['fila', 'edicola', 'fermata', 'pensilina'], soft: true, roles: [{ id: 'a', ring: [6, 22] }], beats: [
       { go: 'a', to: 'player', sp: 1.8, d: 1.4, t: 14 }, { look: 'a', at: 'player' }, SAY('a', 'Mi tieni il posto? Torno subito.', 'Mi guardi la borsa un attimo? Dentro c\'è un gallo, non gli dar retta.'), { wait: 2 },
       { go: 'a', to: 'away', sp: 2.2, d: 2, t: 8, soft: true }, SAY('a', 'Se chiede di me, sono morto.', 'Se arriva mia moglie, io sono te!'), { wait: 2 }] },
+    // --- [attualita] i matti nuovi ---
+    { id: 'matto_motivatore', w: 1, when: 'day', roles: [{ id: 'a', f: 'matto|adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.9, d: 1.2, t: 14 }, { look: 'b', at: 'a' }, { pose: 'a', p: 'braccia_su' }, ML('a', 'sfida', ['Tu! Cosa vuoi dalla vita?', 'Campione! Quanto vali?']),
+      SAY('b', 'Un panino.', 'Che mi lasci passare.', 'Dormire. Una volta.'), { pose: 'a', p: 'indica_su' }, ML('a', 'sfida2', ['Sbagliato! Devi volere di più! Di più! Anche se non c\'è!']),
+      SAY('b', '...un panino grande?', 'Va bene. Voglio di più.', 'Lei mi fa paura.'), { pose: 'a' }, ML('a', 'congedo', ['Vai, campione! Il mondo è tuo!', 'Prima lezione gratis. La seconda costa mille lire.']), { flee: 'b', from: 'a', sp: 1.7 }, { wait: 2 }] },
+    { id: 'matto_complotto', w: 1, roles: [{ id: 'a', f: 'matto|m' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.6, d: 1, t: 16 }, { look: 'a', at: 'around' }, ML('a', 'rivela', ['Psst. Tu. Vieni qui.', 'Lo sai perché il pane costa così tanto?']),
+      SAY('b', 'Cosa?', 'Non ho tempo.', 'Mi dica, ma veloce.'), { look: 'a', at: 'b' }, ML('a', 'rivela2', ['Il mare non è vero. È dipinto. Di notte lo arrotolano.'], 3.8),
+      SAY('b', 'Ma il mare l\'ho toccato stamattina.', 'E i pesci?', 'E la Tutela allora?'), SAY('a', 'Appunto. Toccare è il primo passo. Poi ti abitui.', 'I pesci sono comparse. Pagati pochissimo.', 'La Tutela? Quella è vera, purtroppo. È l\'unica cosa vera.'),
+      ML('a', 'congedo', ['Non hai sentito niente.', 'Ci vediamo. Ma non qui.']), { flee: 'a', from: 'b', sp: 2.1 }, { wait: 2 }] },
+    { id: 'matto_polaroid', w: 1, when: 'day', roles: [{ id: 'a', f: 'matto|young' }, { id: 'b', near: 'a', r: 16 }, { id: 'c', near: 'a', r: 18 }], beats: [
+      ML('a', 'foto', ['Fermi tutti! Foto per l\'album!']), { all: [{ go: 'b', to: 'a', sp: 1.5, d: 2.2, t: 12, soft: true }, { go: 'c', to: 'a', sp: 1.5, d: 2.6, t: 12, soft: true }] }, { look: 'b', at: 'a' }, { look: 'c', at: 'a' },
+      { pose: 'a', p: 'foto' }, ML('a', 'foto2', ['Sorridi! No. Sorridi meglio.', 'Fai finta di conoscermi da sempre.']), SAY('b', 'Così?', 'Ma io non la conosco.', 'Posso andare a lavorare?'), SAY('c', 'Io non vengo mai bene.', 'Mi si vede la canottiera?'), { wait: 2 },
+      ML('a', 'congedo', ['Perfetta! Cioè: io sono perfetta. Voi ci siete.', 'Bellissima. Me la tengo.']), { pose: 'a' }, { flee: 'b', from: 'a', sp: 1.4 }, { flee: 'c', from: 'a', sp: 1.4 }, { wait: 2 }] },
+    // --- [attualita] la vita di oggi, nel 1986 dell'isola ---
+    { id: 'colloquio_lavoro', w: 1, posto: ['dehors', 'portone'], soft: true, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'young|any', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.4, d: 1.2, t: 16 }, { pose: 'a', p: 'legge_su' }, SAY('a', 'Allora. Dove si vede tra cinque anni?', 'Mi dica un suo difetto.', 'Perché dovremmo scegliere proprio lei?'),
+      SAY('b', 'Vivo?', 'Lavoro troppo.', 'Perché sono l\'unico che è venuto.'), { pose: 'a' }, SAY('a', 'Le manca ambizione.', 'Troppo poco. Qui lavorano tutti troppissimo.', 'Esatto. Ma non lo dica in giro.'),
+      SAY('a', 'Il posto è suo. Prova gratuita di sei mesi.', 'Bene. Ci faremo sentire. Forse. Non aspetti vicino al telefono.'), SAY('b', 'Gratuita per chi?', 'Grazie. Lunga Calma.', 'Io il telefono non ce l\'ho.'), SAY('a', 'Per noi.', 'Ottimo. Siamo una famiglia.'), { wait: 2 }] },
+    { id: 'turista_autentico', w: 1, when: 'day', roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { pose: 'a', p: 'foto' }, SAY('a', 'Che autentico! Che povero! Che bello!', 'Oh, la vera vita del popolo!'), { go: 'a', to: 'b', sp: 1.5, d: 1.4, t: 14 }, { look: 'b', at: 'a' },
+      SAY('b', 'È la mia biancheria.', 'Quella è casa mia.', 'Mi sta fotografando le scarpe?'), SAY('a', 'Ancora più autentico! Rimanga così, triste!', 'Non si muova! Faccia la faccia di prima!'), { pay: ['a', 'b', 1] },
+      SAY('b', 'Torni domani. Stendo anche il nonno.', 'Per duemila mi metto a piangere.', 'Se vuole le faccio vedere anche la fame. Da vicino.'), { pose: 'a' }, { flee: 'a', from: 'b', sp: 1.3 }, { wait: 2 }] },
+    { id: 'aria_abbonamento', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 14 }, SAY('a', 'Buongiorno! Lei respira?', 'Scusi, posso farle una domanda sul suo respiro?'), SAY('b', 'Sì.', 'Come tutti.'),
+      SAY('a', 'Senza abbonamento? Mi spiace, è un problema.', 'Con Aria Più respira meglio. E respira di più. Ma paga.'), SAY('b', 'E quanto costa?', 'E se non mi abbono?'),
+      SAY('a', 'Prova gratuita di tre respiri. Uno. Due. Ecco: il terzo lo paga.', 'Niente. Respira lo stesso. Ma lo sa che non dovrebbe.'), { p: .3, then: [{ pay: ['b', 'a', 1] }, SAY('b', 'Va bene. Ma solo il sabato.')], else: [SAY('b', 'Trattengo il fiato. Arrivederci.', 'Respiro quella del vicino.')] }, { wait: 2 }] },
+    { id: 'calcolatore_felice', w: 1, posto: ['panchina', 'dehors', 'edicola'], soft: true, roles: [{ id: 'a', f: 'old|any' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'legge_su' }, SAY('a', 'Il Calcolatore del Ministero dice che sono felice.', 'Mi è arrivato il foglio: felicità al settantaquattro per cento.'), { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 },
+      SAY('b', 'E lo sei?', 'E il resto?'), SAY('a', 'Lui è più intelligente di me. Lo sono.', 'Il resto lo devo dichiarare entro venerdì.'),
+      SAY('b', 'Il mio dice che sono ricco.', 'A me non è arrivato niente.'), SAY('a', 'Allora sei ricco. Offri tu.', 'Allora sei morto. Mi dispiace tanto.'), { wait: 2 }] },
+    { id: 'sondaggio_preferenze', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.5, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'legge_su' }, SAY('a', 'Sondaggio dell\'Ufficio Preferenze. Da uno a cinque, quanto ama il Garante?', 'Breve sondaggio di gradimento: com\'è stata la sua ultima perquisizione?'), { wait: 3.4 },
+      SAY('a', 'Cinque. Ho segnato cinque. Il cinque lo segno sempre io, così nessuno sbaglia.', 'Benissimo. «Eccellente». Lo sapevo: ce l\'ha scritto in faccia.'), { wait: 1.6 },
+      SAY('a', 'Ultima domanda: consiglierebbe la Tutela a un amico? Non risponda. Me lo dica il suo amico.', 'Grazie. La sua opinione è importante. Adesso ce l\'abbiamo noi.'), { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
   ];
   // si aggiungono al catalogo di eventi.js (che le prova come le altre, test_eventi.js)
   { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }

@@ -9,8 +9,8 @@ let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); i
 const DT = 1 / 30, step = s => { for (let i = 0; i < s * 30; i++) G.step(st, DT, { x: 0, y: 0 }); };
 Eventi.S(st).next = 1e12; st.deadline = 1e12;
 step(5);
-const sere = new Set(); for (let d = 0; d < 20; d++) sere.add(C.garante({ t: d * 1440 }));
-ok(sere.size === C.GARANTE.length, `il discorso delle 20 cambia ogni sera: ${sere.size} diversi in 20 sere`);
+const sere = new Set(); for (let d = 0; d < C.GARANTE.length; d++) sere.add(C.garante({ t: d * 1440 }));
+ok(sere.size === C.GARANTE.length, `il discorso delle 20 cambia ogni sera: ${sere.size} diversi in ${C.GARANTE.length} sere`);
 ok(/«.+»/.test(C.garante(st)), 'il discorso tra virgolette: ' + C.garante(st));
 ok(C.TV.includes(C.tv()), 'la TV');
 const sc = C.supercazzola(); ok(sc.split(' ').length >= 5, 'supercazzola: ' + sc);

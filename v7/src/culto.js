@@ -37,6 +37,19 @@ var Culto = (function () {
     'Rita la Radiolina dice che io non dormo. È vero. Io non dormo: io ricarico.',
     'Malanotte Malaconcia vive in un ovile. Un ovile! Io vivo nella Rocca. Pensateci, quando scegliete.',
     'Il Continente ci invidia. Ci invidia tantissimo. Mi telefonano piangendo: Garante, come fai? Io non rispondo. Calma.',
+    // [attualita]
+    'Abbiamo creato due milioni di posti di lavoro. L\'isola ha diecimila abitanti. Pensate quanto lavoro. Tantissimo.',
+    'Il Continente dice che il nostro carbone inquina. Falso. Il nostro carbone è il più pulito del mondo. Lo laviamo. Personalmente.',
+    'Ho fatto fare un sondaggio. Il novantanove per cento mi ama. L\'uno per cento è stato ricontattato.',
+    'Le notizie false sono un problema enorme. Per questo da domani le notizie le do solo io.',
+    'La povertà sull\'isola non esiste. Esiste gente che non ci ha creduto abbastanza.',
+    'Abbiamo il nuovo Calcolatore. Pensa al posto vostro. Molto più veloce. E non si lamenta mai.',
+    'Mi dicono: Garante, il mare si alza. Io dico: allora alziamo l\'isola. Ci stiamo lavorando. Progetto bellissimo.',
+    'Il Banco dice che i vostri debiti sono un\'opportunità. Lo dico anch\'io. Un\'opportunità enorme. Per il Banco.',
+    'I giovani vogliono la libertà. Gliela daremo. A rate.',
+    'Non ho perso io le elezioni. Sono le elezioni che hanno perso me. Infatti non le facciamo più.',
+    'Il turismo è record. Turisti bellissimi vengono a vedere la nostra Calma. Poi non vogliono più andarsene. Non possono, ma non vogliono.',
+    'Qualcuno dice che sono vecchio. Ho l\'energia di tre giovani. Infatti ne abbiamo presi tre.',
   ];
   const garante = st => `«${GARANTE[(Math.floor((st && st.t || 0) / 1440) * 7 + 3) % GARANTE.length]}»`;
   const TV = [
@@ -46,6 +59,11 @@ var Culto = (function () {
     'Una televendita di ritratti del Garante. Il presentatore piange. Anche il ritratto, sembra.',
     'Documentario: «Il Garante e il freddo, una storia d\'amore». Due ore. Nessuno sbatte le palpebre.',
     'Il meteo della Calma: domani sereno. Chi vede nuvole è pregato di non vederle.',
+    'Un reality: dieci famiglie in una casa senza riscaldamento. Vince chi ringrazia di più. Lo guardano tutti, per sentirsi al caldo.',
+    'La pubblicità della Lira Serena: un uomo sorride su una montagna di monete. Le monete sono disegnate. Anche l\'uomo, sembra.',
+    'Il dibattito della sera: cinque esperti litigano su quanto è bravo il Garante. Vince «tantissimo».',
+    'Cucina con la Tessera: oggi il brodo di niente. Lo chef piange, poi lo assaggia, poi piange di più.',
+    'Il programma dei motivatori: «Sei povero perché non ci credi». Il pubblico applaude a credito.',
   ];
 
   // ================= GLI ALTOPARLANTI =================
@@ -68,6 +86,23 @@ var Culto = (function () {
     'Chi ha capito questo comunicato è pregato di presentarsi in caserma.',
     'Lunga Calma! Ripetete con noi: Lunga Calma! Più forte! Ecco. Vi abbiamo sentiti. Tutti.',
     'Oggi è la Giornata del Sorriso. I volti non sorridenti verranno fotografati per un ricordo.',
+    // [attualita]
+    'È attivo il servizio Aria Più: aria filtrata e serena per gli abbonati. Gli altri respirino con discrezione.',
+    'Il Calcolatore del Ministero ha stabilito che il quartiere è felice al settantaquattro per cento. Il restante ventisei per cento è pregato di adeguarsi.',
+    'Da oggi la miniera è ecosostenibile: il carbone è stato riverniciato di verde.',
+    'La Lira Serena guadagna il trenta per cento! Non chiedete rispetto a cosa.',
+    'Lavorare è un privilegio. Per questo da lunedì sarà anche a pagamento.',
+    'Si ricorda che la tristezza va dichiarata all\'Ufficio Umori entro le diciotto.',
+    'Avviso ai lavoratori del porto: siete una famiglia. Le famiglie non scioperano.',
+    'L\'Ufficio Preferenze vi informa: sappiamo cosa volete. Non insistete.',
+    'È la settimana della Gratitudine: ringraziare un Grigio dà diritto a un punto Calma.',
+    'Le notizie non approvate verranno considerate rumore e sanzionate come schiamazzo.',
+    'Nuova promozione del Banco: compra adesso, paga dopo, soffri sempre.',
+    'Il Muro è stato ridipinto nei nuovi colori pastello. Sparare dalle torri è ora più rilassante.',
+    'Si informa che da oggi i sorrisi sono tassati: uno su tre è dovuto allo Stato.',
+    'Concorso «Il Delatore dell\'Anno»: in palio un fine settimana in caserma. Dalla parte giusta delle sbarre.',
+    'Chi ha visto il Garante inciampare sabato non l\'ha visto. Grazie.',
+    'Il mare del Lido è ora a pagamento fino alla boa. Oltre la boa il mare è gratuito e sorvegliato dai tiratori.',
   ];
   // la supercazzola: commi, decreti e scappellamenti per multe e ordinanze
   const SC = [['Ai sensi del comma', 'Visto il decreto', 'In ottemperanza al disposto', 'Come da circolare'], ['antani', 'tarapìa bis', 'sette e mezzo', 'quater prematurato', 'della Calma ventitré'], ['con scappellamento a destra', 'salvo conguaglio', 'in modalità serena', 'come fosse antani', 'per la sbrindellata della pratica']];
@@ -90,6 +125,19 @@ var Culto = (function () {
     'Un abbraccio in cemento. Allora lasciami andare, abbraccio. ...Non l\'ho detto.',
     'Io sorrido sempre. Mi fanno male le guance dal \'79.',
     'Applausi?', 'Ma chi l\'ha scritto questo? Mio figlio fa la terza e scrive meglio. Non dirglielo.',
+    // [attualita]
+    'Aria Più. Io respiro quella dei vicini. Non se ne accorgono.',
+    'Ventisei per cento. Sicuro sono io. Mi adeguo, mi adeguo.',
+    'Verde. Il carbone verde. Mio figlio l\'ha leccato, pensava fosse menta.',
+    'Io ho tutto in Lira Serena. Ci credo tantissimo. Devo crederci, ho tutto lì.',
+    'Io la tristezza la dichiaro tutta il lunedì. Mi fanno lo sconto.',
+    'Sanno cosa voglio? Allora datemelo.',
+    'Paga dopo, soffri sempre. Almeno sono sinceri.',
+    'Il Muro rosa. Adesso quando sparano è quasi carino.',
+    'Uno su tre. Io sorrido due volte e la terza la tengo per me.',
+    'Inciampato? Io non ho visto niente. Era bellissimo, non ho visto niente.',
+    'Il fine settimana in caserma l\'ha vinto mio zio. Non è ancora tornato.',
+    'Famiglia. Mio padre almeno ogni tanto mi dava la paghetta.',
   ];
 
   // ================= STATO E PASSO =================
@@ -155,6 +203,21 @@ var Culto = (function () {
       { go: 'b', to: 'a', sp: 1.5, d: 1.2, t: 16 }, SAY('a', 'Ti ho segnalato. Non prenderla male.', 'Volevo dirtelo io: ti ho segnalato.'),
       SAY('b', 'Mi hai segnalato?!', 'Per cosa?'), SAY('a', 'Per amore. Ama il tuo vicino: segnalalo.', 'Avevi stretto la mano con poca Calma.'),
       SAY('b', 'Va bene. Allora ti segnalo anch\'io.', 'Ah sì? Io ti ho segnalata martedì.'), SAY('a', 'Che bello. Siamo vicini davvero.', 'Lo sapevo. Per questo ti ho segnalato.'), { pose: 'a', p: 'saluta_su' }, { wait: 2 }] },
+    // [attualita]
+    { id: 'lira_serena', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'adult', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.8, d: 1.2, t: 14 }, SAY('a', 'Hai messo i soldi nella Lira Serena?', 'Ascolta: Lira Serena. Adesso. Prima che salga.'), SAY('b', 'Cos\'è?', 'Ancora con questa storia?'),
+      SAY('a', 'Una moneta nuova. Non esiste, per questo vale tantissimo.', 'Ieri valeva dieci. Oggi trenta. Domani, il Garante.'), SAY('b', 'E dove si spende?', 'E se scende?'),
+      SAY('a', 'Non si spende! Si tiene! Si guarda!', 'Non scende. Se scende è perché qualcuno non ci crede. Tu ci credi?'), SAY('b', '...un po\'.', 'Ci credo meno di te.', 'Io ci credo, ma i soldi li tengo sotto il materasso.'),
+      SAY('a', 'Ecco, per colpa tua è scesa.', 'Un po\' basta. Firma qui.'), { wait: 2 }] },
+    { id: 'ufficio_umori', w: 1, posto: ['portone', 'edicola', 'vetrina'], soft: true, roles: [{ id: 'a', f: 'shop|adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.4, d: 1.2, t: 16 }, SAY('b', 'Sono venuto a dichiarare la tristezza.', 'Devo denunciare un umore.'), { pose: 'a', p: 'legge_su' },
+      SAY('a', 'Tristezza lieve, media o sovversiva?', 'Modulo azzurro. Quello rosa è per la malinconia.'), SAY('b', 'Media. Forse lieve.', 'Non lo so. È una tristezza normale.'),
+      { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `${supercazzola()}, la sua tristezza è accolta. Ne ha diritto fino a mercoledì.`, 4.2); }, w: 4.2 },
+      SAY('b', 'E dopo mercoledì?', 'E se mi dura di più?'), SAY('a', 'Dopo mercoledì è un\'opinione. E le opinioni le dichiara al piano di sotto.', 'Allora è depressione. Quella è a pagamento.'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'delatore_anno', w: 1, posto: ['dehors', 'panchina', 'sagrato'], soft: true, roles: [{ id: 'a', f: 'old|any' }, { id: 'b', near: 'a', f: 'old|any', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.3, d: 1.2, t: 16 }, SAY('a', 'Sono in finale per il Delatore dell\'Anno.', 'Mi hanno nominato. Delatore dell\'Anno. Categoria anziani.'),
+      SAY('b', 'Complimenti! Chi hai segnalato?', 'E come hai fatto?'), SAY('a', 'Tutti. Anche te. Tre volte.', 'Ho segnalato chi segnala. Vale doppio.'), { wait: 1.4 },
+      SAY('b', 'Anche me?!', 'Ah. Grazie.'), SAY('a', 'Per affetto. Se vinco andiamo insieme al fine settimana in caserma. Io dalla parte bella.', 'Non te la prendere. Tu sei arrivato quarto.'), { wait: 2 }] },
   ];
   { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
 
