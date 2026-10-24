@@ -404,7 +404,8 @@ var LeggeraMem = (function () {
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
-  function pila(W, H, t) { if (!on('pile') || W * H < 65536) return [W, H]; let f = 2; const rip = t && (t.wrapS === THREE.RepeatWrapping || t.wrapT === THREE.RepeatWrapping); while (!rip && Math.max(W, H) / f > 256) f *= 2; return [Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))]; }   // metà lato, e non oltre 256 se non si ripete (le trame ripetute, pavimenti e tegole, solo a metà)
+  function pila(W, H, t) { if (!on('pile') || W * H < 65536) return [W, H]; let f = 2; const rip = t && (t.wrapS === THREE.RepeatWrapping || t.wrapT === THREE.RepeatWrapping); while (!rip && Math.max(W, H) / f > 256) f *= 2;
+    if (t && t.magFilter === THREE.NearestFilter && t.minFilter === THREE.NearestFilter) while (Math.max(W, H) / f > 128 && !(W % (f * 2)) && !(H % (f * 2))) f *= 2;   // le tavolozze del kit (celle di colore piatto, lette al texel): 128 bastano return [Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))]; }   // metà lato, e non oltre 256 se non si ripete (le trame ripetute, pavimenti e tegole, solo a metà)
   // i pixel di una tela alla misura dello strato (la stessa lettura di prima se la misura coincide)
   function pixel(im, W, H) {
     if (im.width === W && im.height === H) return im.getContext('2d').getImageData(0, 0, W, H).data;
