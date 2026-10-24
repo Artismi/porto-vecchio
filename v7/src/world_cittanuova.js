@@ -3299,7 +3299,32 @@ var World = (function () {
         lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
     W.SEA.terrapieni = lati; W.SEA.terrapieniM = fatti; return W;
   }
-  const W = costa2Arredo(terrapieni(expand(generate())));
+  // [costa] GLI SCOGLI FUORI DALLE STRADE: gli scogli grandi sotto le mura (scoglio_mura_*) erano messi sulla riva vecchia (NorthY):
+  // nella città nuova lì passano il Lungomare di Tramontana, la passeggiata e le banchine (la segnalazione della pulizia: fino a 9,8 m
+  // dentro la carreggiata). Ogni scoglio che tocca una strada (la carreggiata più 2,6 m di marciapiede) o una casella della città
+  // scivola verso il largo (contro la pendenza della distanza dalla costa) finché il suo cerchio sta tutto nel mare libero, con mezzo
+  // metro di respiro e lontano 2,5 m da ormeggi, posti di pesca e di bagno; se in 60 m non trova posto, sparisce. W.SEA.scogliSpostati: quanti, W.SEA.scogliTolti: quanti tolti
+  function scogliFuori(W) {
+    const S = W.SEA, g = W.grid, GWx = W.GW, GHx = W.GH, CIT = new Set([T.VIA, T.WALK, T.COB, T.PIAZZA, T.STAIRS, T.QUAY, T.PIER, T.BLD, T.FOUNT]);
+    const RD = (W.roads || []).filter(rd => rd.pts && rd.pts.length > 1 && !rd.rect).map(rd => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; rd.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }); return { P: rd.pts, m: rd.w / 2 + 2.6, x0, y0, x1, y1 }; });
+    const dSeg = (x, y, P) => { let b = 1e9; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)); b = Math.min(b, Math.hypot(x - ax - ex * t, y - ay - ey * t)); } return b; };
+    const PUNTI = (S.moorings || []).concat(S.fishing || [], S.swim || []).map(m => [m.x, m.y]);   // gli ormeggi, i posti di pesca e di bagno: lo scoglio non ci cade sopra
+    const libero = (x, y, r) => { const tx0 = Math.floor((x - r - 1) / TS), tx1 = Math.floor((x + r + 1) / TS), ty0 = Math.floor((y - r - 1) / TS), ty1 = Math.floor((y + r + 1) / TS);
+      if (tx0 < 1 || ty0 < 1 || tx1 >= GWx - 1 || ty1 >= GHx - 1) return false;
+      const ci = Math.floor(y / TS) * GWx + Math.floor(x / TS); if (g[ci] !== T.WATER) return false;
+      for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) { const i = ty * GWx + tx; if (!CIT.has(g[i]) && !(W.roadW[i] > 0)) continue;
+        const qx = Math.max(tx * TS, Math.min(x, (tx + 1) * TS)), qy = Math.max(ty * TS, Math.min(y, (ty + 1) * TS)); if (Math.hypot(qx - x, qy - y) < r + .5) return false; }
+      if (PUNTI.some(([px, py]) => Math.hypot(px - x, py - y) < r + 2.5)) return false;
+      for (const R of RD) { const m = R.m + r; if (x < R.x0 - m || x > R.x1 + m || y < R.y0 - m || y > R.y1 + m) continue; if (dSeg(x, y, R.P) < m) return false; }
+      return true; };
+    let sp = 0, via = 0; const tieni = [];
+    (S.rocks || []).forEach(q => { if (libero(q.x, q.y, q.r)) { tieni.push(q); return; }
+      let x = q.x, y = q.y, ok = false;
+      for (let t = 0; t < 120 && !ok; t++) { const e = .5, gx = W.inland(x + e, y) - W.inland(x - e, y), gy = W.inland(x, y + e) - W.inland(x, y - e), L = Math.hypot(gx, gy) || 1; x -= gx / L * .5; y -= gy / L * .5; ok = libero(x, y, q.r); }
+      if (ok) { q.x = x; q.y = y; q.spostato = 1; tieni.push(q); sp++; } else via++; });
+    S.rocks = tieni; S.scogliSpostati = sp; S.scogliTolti = via; return W;
+  }
+  const W = scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
