@@ -223,11 +223,27 @@ var MenuUI = (function () {
   const famOf = id => { try { return fam(id); } catch (e) { for (const [re, s, c] of FAM) if (re.test(id)) return [s, c]; return ['cassa', null]; } };
   const tipo3 = id => /^(pistola|lupara|mitra|fucile)$/.test(id) ? id : /coltell|taglierino/.test(id) ? 'coltello' : /thermos/.test(id) ? 'thermos' : /torcia/.test(id) ? 'torcia' : /martell/.test(id) ? 'martello' : /^chiave/.test(id) ? 'chiave'
     : famOf(id)[0] === 'bottiglia' && !/molotov/.test(id) ? 'bottiglia' : famOf(id)[0] === 'latta' && /scatol|conserva|passata|latta|lattine|carne_scatola/.test(id) ? 'latta' : null;
-  let THR = null;
+  const ID3 = id => (typeof Roba3D !== 'undefined' && Roba3D && Roba3D.ID[id] || [''])[0];
+  let THR = null, ENV = null;
+  // l'ambiente dello studio: una cupola calda sopra, scura sotto, due pannelli luminosi (softbox) da riflettere
+  function envThumb() {
+    if (ENV || !THR) return ENV; const T = THREE;
+    try {
+      const es = new T.Scene(), geo = new T.SphereGeometry(10, 32, 16), col = [], P = geo.attributes.position;
+      for (let i = 0; i < P.count; i++) { const y = P.getY(i) / 10, c = new T.Color('#1a1714').lerp(new T.Color('#9a8e7c'), Math.max(0, Math.min(1, y * .7 + .45))); col.push(c.r, c.g, c.b); }
+      geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+      es.add(new T.Mesh(geo, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
+      [[-5, 6, 4, 4, 3, 2], [6, 3, -3, 3, 2, 1], [0, -2, 7, 6, 1, .3]].forEach(([x, y, z, w, h, k]) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color('#fff4e0').multiplyScalar(k), side: T.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); });
+      const pm = new T.PMREMGenerator(THR); ENV = pm.fromScene(es, .04).texture; pm.dispose();
+    } catch (e) { ENV = null; }
+    return ENV;
+  }
   function makeThumb(id) {
     const T = THREE, st = ST();
-    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0); }
-    const sc = new T.Scene(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .9)); const k = new T.DirectionalLight('#fff0dc', 1.1); k.position.set(-2, 4, 3); sc.add(k); const rim = new T.DirectionalLight('#b08d57', .8); rim.position.set(3, 2, -3); sc.add(rim);
+    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0);
+      // [roba3d] la luce da studio fotografico: ombre morbide, tono filmico e un ambiente da riflettere (metallo e vetro non sono più piatti)
+      THR.shadowMap.enabled = true; THR.shadowMap.type = T.PCFSoftShadowMap; THR.toneMapping = T.ACESFilmicToneMapping; THR.toneMappingExposure = 1.05; }
+    const sc = new T.Scene(); sc.environment = envThumb(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .45)); const k = new T.DirectionalLight('#fff0dc', 1.5); k.position.set(-2, 4, 3); k.castShadow = true; k.shadow.mapSize.set(1024, 1024); k.shadow.radius = 4; k.shadow.bias = -.0004; sc.add(k); sc.add(k.target); const rim = new T.DirectionalLight('#c8a070', .9); rim.position.set(3, 2, -3); sc.add(rim);
     let obj = null, cam = new T.PerspectiveCamera(28, 1, .02, 50), C0 = typeof Guardaroba !== 'undefined' && Guardaroba.CAPO[id];
     if (C0 && ready3()) {
       // il manichino: il modello di Nino, solo con quel capo addosso
@@ -241,9 +257,13 @@ var MenuUI = (function () {
       const R = PV() && PV().R, W = st && G().WEAPONS && G().WEAPONS[id] && R && R.__models && R.__models.weaponModel;
       // [modelli] armi e attrezzi coi modelli definiti di oggetti3d.js (pistola, lupara, mitra, bottiglie, latte, martello, chiave...)
       const o3 = typeof Oggetti3D !== 'undefined' && Oggetti3D && tipo3(id);
-      obj = CUST[id] ? CUST[id]() : o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id);
-      if (o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3)) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
-      else if (o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      // [roba3d] prima il modello vero dell'oggetto (roba3d.js), poi quelli di oggetti3d.js, l'arma del gioco, il modellino di famiglia
+      const rb = !CUST[id] && typeof Roba3D !== 'undefined' && Roba3D && Roba3D.has(id) ? Roba3D.make(id) : null;
+      obj = CUST[id] ? CUST[id]() : rb || (o3 ? Oggetti3D.make(o3, TINTS[id] || famOf(id)[1], id) : W ? R.__models.weaponModel(id) : mini(id));
+      const ud = obj.userData || {};
+      if (ud.arma3 || (!rb && o3 && /^(pistola|lupara|mitra|fucile)$/.test(o3))) obj.rotation.y = -Math.PI / 2;   // di profilo, la canna a destra
+      else if (ud.diag || (!rb && o3 && /^(martello|chiave|coltello|torcia)$/.test(o3)) || (rb && ud.modello === undefined && /coltello/.test(ID3(id)))) obj.rotation.z = -.8;   // gli attrezzi lunghi in diagonale: riempiono il riquadro
+      else if (ud.arma) obj.rotation.y = -.25;
       // [anteprime] si inquadra la sfera che contiene l'oggetto già girato: niente più latte e casse tagliate in alto
       const box = new T.Box3().setFromObject(obj), ctr = box.getCenter(new T.Vector3());
       const holder = new T.Group(); obj.position.sub(ctr); holder.add(obj); holder.rotation.set(.42, -.6, 0); obj = holder; holder.updateMatrixWorld(true);
@@ -254,6 +274,11 @@ var MenuUI = (function () {
         const bb = new T.Box3().setFromObject(holder), sz = bb.getSize(new T.Vector3()), shd = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: new T.CanvasTexture(sc2), transparent: true, depthWrite: false }));
         shd.rotation.x = -Math.PI / 2; shd.scale.set(sz.x * 1.2, sz.z * 1.2 + .05, 1); shd.position.set(bb.getCenter(new T.Vector3()).x, bb.min.y + .002, bb.getCenter(new T.Vector3()).z); sc.add(shd); }
     }
+    // l'ombra vera sotto e sul modello: la luce principale inquadra la sfera dell'oggetto
+    { const bb = new T.Box3().setFromObject(obj), c = bb.getCenter(new T.Vector3()), r = Math.max(.05, bb.getSize(new T.Vector3()).length() / 2);
+      k.target.position.copy(c); k.position.copy(c).add(new T.Vector3(-2, 4, 3).normalize().multiplyScalar(r * 4)); const sh = k.shadow.camera; sh.left = sh.bottom = -r * 1.4; sh.right = sh.top = r * 1.4; sh.near = r * .5; sh.far = r * 8; sh.updateProjectionMatrix();
+      const pv = new T.Mesh(new T.PlaneGeometry(r * 6, r * 6), new T.ShadowMaterial({ opacity: .32 })); pv.rotation.x = -Math.PI / 2; pv.position.set(c.x, bb.min.y + .0005, c.z); pv.receiveShadow = true; sc.add(pv);
+      obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); }
     sc.add(obj); THR.render(sc, cam);
     const cv = document.createElement('canvas'); cv.width = cv.height = THS; cv.getContext('2d').drawImage(THR.domElement, 0, 0);
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
@@ -384,6 +409,8 @@ var MenuUI = (function () {
 #mu footer kbd { font: 600 10.5px var(--fl); border: 1px solid rgba(233,220,188,.3); color: var(--crema); padding: 1px 7px; border-radius: 10px; margin-right: 6px; }
 #mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
 #mu footer .tm { color: var(--ott); }
+#mu .again { grid-column: 1 / -1; } #mu .again .row { margin-top: 8px; }   /* [console] */
+#mu footer .stato { color: rgba(233,220,188,.75); } #mu footer .stato b { color: var(--crema); font-weight: 700; }   /* [console] */
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
 #mu .dim { color: rgba(233,220,188,.6); font-size: 13.5px; line-height: 1.5; }
@@ -535,17 +562,21 @@ var MenuUI = (function () {
 @media (max-width: 640px) {
   #mu .case { inset: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0) 0; border-radius: 0; padding: 6px; grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; gap: 6px; }
   #mu .case::before, #mu .case::after { display: none; }
-  #mu .rail { order: 2; flex-direction: row; overflow-x: auto; padding: 2px 4px; gap: 6px; justify-content: flex-start; scrollbar-width: none; }
+  /* [console] le schede in una fila sola che entra sempre (da 320 px in su), senza scorrere: tasti a mattonella, non tondi */
+  #mu .rail { order: 2; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: 0; gap: 4px; }
   #mu .rail .sp { display: none; }
-  #mu .rail button { flex: 0 0 auto; width: 60px; height: 60px; font-size: 9px; }
-  #mu .rail button canvas { width: 24px; height: 24px; }
+  #mu .rail button { width: auto; height: 50px; border-radius: 12px; font-size: min(9.5px, 2.6vw); letter-spacing: .04em; gap: 3px; }
+  #mu .rail button canvas { width: 20px; height: 20px; }
+  #mu .rail button .lb { max-width: 100%; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mu .rail button .dot { right: 1px; top: 1px; min-width: 16px; height: 16px; font-size: 10px; line-height: 16px; }
   #mu header { flex-wrap: wrap; gap: 4px 10px; padding: 12px 14px 8px; }
   #mu header b { font-size: 28px; white-space: normal; }
   #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
   #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
   #mu header .x { width: 44px; height: 44px; font-size: 20px; }
   #mu main { padding: 6px 14px 14px; }
-  #mu footer { padding: 8px 14px; gap: 10px; font-size: 10.5px; } #mu footer > :not(.r) { display: none; }
+  #mu footer { padding: 8px 14px; gap: 4px 10px; font-size: 10.5px; flex-wrap: wrap; } #mu footer > :not(.r):not(.stato) { display: none; }
+  #mu footer .r { gap: 12px; }
   #mu .bag { --c: calc((100vw - 92px) / 8); padding: 8px; } #mu .zaino > *, #mu .lav > *, #mu .jobs > * { min-width: 0; } #mu main * { white-space: normal; }
   #mu .acts { grid-template-columns: 1fr; } #mu .act { font-size: 18px; }
   #mu .recs { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); padding: 8px; }
@@ -561,15 +592,23 @@ var MenuUI = (function () {
   #mu .addosso .nmw { font-size: 20px; }
   #mu .dress2 { grid-template-columns: 1fr 96px 1fr; gap: 6px; }
   #mu .dress2 .nino canvas { width: 96px !important; height: 160px !important; }
-  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { display: none; }
+  #mu .zc { gap: 4px; } #mu .zr { min-height: 34px; padding: 3px 6px; } #mu .zr label { font-size: 9px; margin-bottom: 1px; } #mu .inv .hands { margin-top: 4px; }   /* [console] le mani stanno nell'inventario: Equip. sul telefono non c'è */
   #mu .hands { transform: scale(.85); transform-origin: top center; margin-bottom: -10px; }
   #mu .inv .bag, #mu .roba .bag { --c: calc((100vw - 92px) / 6); } #mu .roba .bag { --c: calc((100vw - 92px) / 5); }
+}
+/* [console] schermi bassi (il telefono di traverso, dentro il Game Boy): titolo piccolo, niente sottotitolo, schede e piè più bassi */
+@media (max-height: 460px) {
+  #mu header { padding: 8px 12px 4px; } #mu header b { font-size: 22px; } #mu header > span:not(.tabs) { display: none; }
+  #mu header .x { width: 36px; height: 36px; font-size: 17px; }
+  #mu .rail button { height: 42px; } #mu .rail button canvas { width: 18px; height: 18px; }
+  #mu footer { padding: 4px 12px 6px; flex-wrap: nowrap; }
 }
 `;
 
   // =====================================================================================================================
   // SCHEDE
   // =====================================================================================================================
+  const SHORT = { zaino: 'Zaino', lavora: 'Crea' };   // [console] i nomi delle schede sul telefono
   const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
@@ -633,18 +672,28 @@ var MenuUI = (function () {
     } catch (e) { body = `<div class="dim">Qualcosa non va: ${esc(e.message)}</div>`; console.error('[Menu]', e); }
     const pv = O().pocketsView(st), over = pv.peso > pv.cap;
     const hasB = typeof Cantiere !== 'undefined' && Cantiere.bauleHere && !!Cantiere.bauleHere(st);
-    const rail = TABS.concat(hasB ? [['baule', 'Baule', 'casse']] : []).map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="tab" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}${l}${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
+    // [console] sul telefono le schede stanno tutte in una fila, senza scorrere: Equip. sta dentro l'Inventario (che mostra già
+    // addosso e mani), i nomi si accorciano; nel Game Boy c'è anche il taccuino (i soldi sullo schermo non ci sono più)
+    const narrow = matchMedia('(max-width: 640px)').matches, con = !!(PV() && PV().console);
+    const tabsNow = TABS.filter(([k]) => !(narrow && k === 'equip')).concat(hasB ? [['baule', 'Baule', 'casse']] : []).concat(con ? [['taccuino', 'Taccuino', 'quaderno']] : []);
+    const rail = tabsNow.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="${k === 'taccuino' ? 'book' : 'tab'}" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}<span class="lb">${narrow && SHORT[k] || l}</span>${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span><span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
     m.innerHTML = html; paintAll(m); const mm = m.querySelector('main'); if (mm) mm.scrollTop = sc;
+  }
+
+  // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
+  function stato(st) {
+    const g = G(), hl = g.hoursLeft(st), urg = st.deadline < 1e8 && hl <= 6;
+    return `<span class="stato">${esc(g.dayName(st.t))} <b>${esc(g.clockStr(st.t))}</b>${st.deadline > 1e8 ? '' : ` · <span class="${urg ? 'over' : ''}">${hl <= 1 ? 'meno di un\'ora' : hl + 'h all\'alba'}</span>`} · debito <b>${L(st.debt)}</b></span>`;
   }
 
   // ---------------- ZAINO ----------------
@@ -727,8 +776,10 @@ var MenuUI = (function () {
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Come stai</h4>${bar('Salute', p.hp, p.maxHp || 100, 'g')}${Object.keys(NEED).map(k => bar(NEED[k], (N[k] || 0) * 100, 100, '', true)).join('')}<div class="dim">Sigarette ${M.cig || 0} · dispensa ${M.pantry || 0}</div></div>
         <div class="mcard"><h4>Il tuo conto</h4><div class="stat" style="grid-template-columns:1fr auto;row-gap:6px">${[['Ore lavorate', Math.round((S.lavorato || 0) / 60)], ['Guadagnato', L(S.guadagnato || 0)], ['Speso', L(S.speso || 0)], ['Bevuto', S.bevuto || 0], ['Fumato', S.fumato || 0], ['Dormito (ore)', Math.round((S.dormito || 0) / 60)]].map(([a, b]) => `<span>${a}</span><em>${b}</em>`).join('')}</div></div></div>
       <div style="display:grid;gap:16px"><div class="mcard"><h4>Mestieri${job ? ` — da ${esc(job.title)}` : ''}</h4>${ab.length ? ab.map(([id, a]) => `<div class="ab">${ic(abIcon(id))}<div><b>${esc(a.label)}</b><small>${a.night ? 'di notte · ' : ''}${a.mins ? (a.mins >= 60 ? Math.round(a.mins / 6) / 10 + ' ore' : a.mins + ' min') : ''} · rischio ${a.risk > .15 ? 'alto' : a.risk > .08 ? 'medio' : 'basso'}</small></div></div>`).join('') : '<div class="dim">Ogni mestiere apre cose che gli altri non possono fare: le chiavi del posto, la gente che conosci. Trova un lavoro (scheda Lavori).</div>'}</div>
-        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>`;
+        <div class="mcard"><h4>Amici del quartiere</h4>${fr.length ? fr.map(n => `<div class="fr3">${r3('npc:' + n.id, 'bust', 128, 128) || ic('maglione')}<div><b>${n.dead || n.inside ? esc(n.name || n.first) : `<span class="link" data-a="vai" data-x="${esc(JSON.stringify({ x: n.x, y: n.y }))}" title="vai da lui">${esc(n.name || n.first)}</span>`}</b><small>${esc((n.pop && n.pop.job && n.pop.job.title) || '')}${n.meFriend && n.meFriend.lent ? ` · ti ha prestato ${L(n.meFriend.lent)}` : ''}${n.dead ? ' · morto' : n.inside ? ' · in casa' : ` · ${Math.round(Math.hypot(n.x - p.x, n.y - p.y))} m`}</small></div></div>`).join('') : '<div class="dim">Nessuno.</div>'}</div></div></div>${again()}`;
   }
+  // [console] ricominciare da capo: sta qui, non su un tasto. Il primo tocco chiede conferma, il secondo ricomincia
+  const again = () => `<div class="mcard again"><h4>Partita</h4>${U.again && Date.now() - U.again < 5000 ? `<div class="dim">Ricominci da capo: soldi, roba e conoscenze si perdono.</div><div class="row">${btn('ricomincia', 'Sì, ricomincia', true, 'bad')}${btn('ricomincia', 'No', false)}</div>` : btn('ricomincia', 'Ricomincia da capo', 'chiedi')}</div>`;
   const abIcon = id => /stampa|tessere|timbri|fascicoli|volantin/.test(id) ? 'carta' : /cassa|soldi/.test(id) ? 'valuta' : /ascolta|radio/.test(id) ? 'radiolina' : /chiav|porta/.test(id) ? 'grimaldello' : /vino|beve/.test(id) ? 'vino' : /medic|cura/.test(id) ? 'medicine' : 'cacciavite';
 
   // ---------------- BANCO DI LAVORO ----------------
@@ -856,6 +907,10 @@ var MenuUI = (function () {
   function quiList(st) {
     const out = [], seen = new Set();
     try { (Risacca.here(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, bad: a.bad, run: () => { if (typeof RisaccaUI !== 'undefined' && RisaccaUI.doHere) { close(); RisaccaUI.doHere(a); return ''; } const r = Risacca.playerAct(st, a.id, a.arg); return r && r.msg; } }); }); } catch (e) { }
+    try {
+      const p = st.player, lv = p.indoor ? `in:${p.indoor.b}:${p.indoor.f}` : p.lv && p.lv.k === 'ug' ? 'ug' : null;
+      if (PV() && PV().console && typeof Cantiere !== 'undefined' && Cantiere.covoOf && Cantiere.toggle && !p.vehicle && Cantiere.covoOf(st, p.x, p.y, lv)) out.push({ label: 'Cantiere del covo', run: () => { close(); Cantiere.toggle(); return ''; } });
+    } catch (e) { }   // [console]
     try { (Azioni.playerActions(st) || []).forEach(a => { if (seen.has(a.label)) return; seen.add(a.label); out.push({ label: a.label, off: a.run ? '' : a.off, run: a.run, bad: /ruba|rapina|scasso|forza|borsegg|alleggerisci|sabota/i.test(a.label) }); }); } catch (e) { }
     return out;
   }
@@ -893,6 +948,8 @@ var MenuUI = (function () {
     switch (a) {
       case 'close': close(); return;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
+      case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
+      case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
       case 'shoptab': U.shopTab = x; U.sel = null; break;

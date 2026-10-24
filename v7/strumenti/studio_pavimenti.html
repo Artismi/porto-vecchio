@@ -28,7 +28,7 @@ const stroke = (P, w, c) => { x.beginPath(); P.forEach(([a, b], i) => i ? x.line
 stroke(roads[3].pts, 3.5, COL.terra); stroke(arc, 4.6, 'rgba(62,56,48,.9)'); stroke(arc, 4, COL.basoli); stroke(roads[2].pts, 8.2, '#3a2e2c'); stroke(roads[2].pts, 7, COL.porfido); stroke(roads[1].pts, 9.2, '#2e2c2a'); stroke(roads[1].pts, 8, COL.asfalto);   // l'asfalto sopra, come nel gioco
 x.fillStyle = '#403b37'; x.beginPath(); x.arc(30 * PPM, 26 * PPM, .36 * PPM, 0, 7); x.fill();   // un tombino dipinto
 x.fillStyle = 'rgba(236,232,220,.55)'; for (let k = 0; k < 6; k++) x.fillRect((8 + k * 1.2) * PPM, 22.5 * PPM, .6 * PPM, 7 * PPM);   // le strisce
-const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding; tex.magFilter = THREE.LinearFilter; tex.anisotropy = 4;
+const tex = new THREE.CanvasTexture(cv);   // come le tele del gioco: senza codifica sRGB tex.magFilter = THREE.LinearFilter; tex.anisotropy = 4;
 const R = new THREE.WebGLRenderer({ antialias: true }); R.setSize(innerWidth, innerHeight); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.shadowMap.enabled = true; document.body.appendChild(R.domElement);
 const S = new THREE.Scene(); S.background = new THREE.Color('#1a1612');
 const g = new THREE.PlaneGeometry(GW * TS, GH * TS, GW, GH); g.rotateX(-Math.PI / 2); g.translate(GW, 0, GH);

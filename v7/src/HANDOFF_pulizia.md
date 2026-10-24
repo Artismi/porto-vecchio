@@ -42,7 +42,10 @@ non trova niente di nuovo (anche a carico dell'altro) e se non finisce addosso a
 - Rumore 671 → 45: davanti alle porte 171 → 9, verso 153 → 25, parete 70 → 0, finestra 11 → 0, sovrapposti 11 → 0, doppioni 117 → 2,
   facciate oltre la densità 112 → 5, tratti di marciapiede pieni 18 → 0.
 - Tolti 159, ruotati 119, spostati 172, posati a terra 5, lasciati 39 (fissi o posti delle persone).
-- Compenetrazioni del regista: 61 con e senza la passata; sui tetti 0.
+- Compenetrazioni del regista: 60 → 21 (i pezzi degli scorci su una porta vera se ne vanno, le edicole e i carri davanti a porte
+  e scale scivolano lungo i loro assi, le porte SOTTO un portico, un arco o una scalinata si contano a parte: `praticabili.sottoPezzi`).
+  Le 21 rimaste sono architettura di [posa]: porte e scale dietro i portici e gli archi a più piani (coperte dalla camera all'80-100%)
+  o con un pilastro, la scalinata dentro lo spazio libero davanti. Sui tetti 0.
 - Peso: triangoli statici 1.072.731 (anteprima) → 1.037.691 (`?norumore`) → 1.023.821; alla fusione si scartano 348 mila vertici di
   cose tolte (prima restavano nei buffer, schiacciati in un punto). Chiamate di disegno delle 8 inquadrature: 13.662 → 13.140.
 - Fogli: `_immagini/pulizia/` (00_numeri.jpg, p1–p8 dalla camera predefinita, vicino/ da zoom 0,3).

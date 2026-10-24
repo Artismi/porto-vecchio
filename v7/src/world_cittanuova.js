@@ -483,7 +483,7 @@ var World = (function () {
   const lerp = (a, b, t) => a + (b - a) * t;
   const interp = (tab, x) => { if (x <= tab[0][0]) return tab[0][1]; for (let k = 0; k < tab.length - 1; k++) { const [a, ha] = tab[k], [b, hb] = tab[k + 1]; if (x < b) { const t = (x - a) / (b - a), s2 = t * t * (3 - 2 * t); return ha + (hb - ha) * s2; } } return tab[tab.length - 1][1]; };
   // la cresta: quota e posizione lungo x (da ovest: scarpata della Sila, altopiano, il Pizzo, la sella, il Monte dei Pini, giù verso il centro)
-  const CREST = [[146, 0], [172, 4], [202, 12], [230, 19], [250, 23], [272, 19.5], [290, 17], [312, 18], [338, 10], [358, 3], [370, .4]];   // [isola] una cima e una sella larga
+  const CREST = [[146, 0], [170, 3], [194, 8.5], [216, 11.5], [240, 12.5], [262, 13], [286, 12.5], [310, 12], [334, 7.5], [356, 2.5], [370, .4]];   // [altopiano] un tavolato largo a 12-13 m, come i pianori del Gran Paradiso
   const crestY = x => yc(x) + 5 * Math.sin(x / 41) - 2;
   const ALTO = { x: 190, y: 150, rx: 27, ry: 30 };                     // l'altopiano del lago
   const PIZZO = [248, crestY(248)];
@@ -510,12 +510,13 @@ var World = (function () {
     const cy = crestY(x), dy = y - cy, side = dy < 0 ? -1 : 1;
     const shore = side < 0 ? northY(x) : southY(x), room = Math.abs(shore - cy) - 9;
     const t = clamp(Math.abs(dy) / Math.max(10, room), 0, 1);
-    const Hc = crestH(x), prof = Math.pow(.5 + .5 * Math.cos(Math.PI * t), .8);
-    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof;
+    // [altopiano] il pianoro resta in quota per un buon tratto, poi scende al mare con un fianco dolce; sopra, dossi morbidi di 1-2 m
+    const Hc = crestH(x), prof = 1 - sstep(.22, 1, t), plat = 1 - sstep(.15, .55, t);
+    let h = Hc * prof + (fbm(x / 110, y / 110, 301, 2) - .5) * 1.4 * prof + (fbm(x / 34, y / 34, 303, 3) - .5) * 4.5 * plat * sstep(2, 8, Hc);
     const inl = inland(x, y); h = .4 + (h - .4) * sstep(7, 26, inl);
     // i borghi stanno su un ripiano
     for (const id in BORGHI) { const [bx, by, br0, bh] = BORGHI[id], d = dist(x, y, bx, by); if (d < br0 + 6) { const k = 1 - sstep(br0, br0 + 6, d); h = lerp(h, Math.min(bh, h + 1.5), k); if (k > .5) f |= MF.BORGO; } }
-    if (Hc * prof > 13) f |= MF.ALTO;
+    if (Hc * prof > 9) f |= MF.ALTO;
     return { h: Math.max(.4, h), f };
   }
   // la quota del crinale: interpolazione morbida (coseno) dei punti di CREST, poi una media larga: niente spigoli
@@ -1304,7 +1305,7 @@ var World = (function () {
       (sides || [1, -1]).forEach(sg => { for (let s = from; s < L - 1.5; s += step) { if (r0() < .18) continue; const kind = kinds[Math.floor(r0() * kinds.length)], len = BOATLEN[kind], off = S.w / 2 + .5 + len / 2, nx = -uy * sg, ny = ux * sg;
         SEA.moorings.push({ kind, x: a[0] + ux * s + nx * off, y: a[1] + uy * s + ny * off, ang: Math.atan2(ny, nx), len, at: S.id, drive: kind === 'gozzo' || kind === 'lancia' || kind === 'motoscafo' }); } });   // drive: si può prendere (è un mezzo del motore)
     };
-    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6 };
+    const BOATLEN = { gozzo: 5, lancia: 6, barca_vela: 8, motoscafo: 7, peschereccio: 11, motovedetta: 13, nave: 44, rimorchiatore: 14, pedalo: 2.6, secca: 4.6, chiatta: 5.2 };
     const rs = rng(4242);
     // -- il porto vecchio, sotto il centro: la banchina dritta (la Calata), il Molo Vecchio che fa da diga (gomito verso levante,
     //    lanterna rossa), il Molo di Levante più corto (lanterna verde), tre pontili per le barche, lo scalo del cantiere.
@@ -1336,7 +1337,8 @@ var World = (function () {
     SEA.moorings.push({ kind: 'peschereccio', x: 1252 - 4.5 - 2.6, y: southY(640) + 26, ang: Math.PI / 2, len: BOATLEN.peschereccio, at: 'molo_cargo_s2' });
     // -- il Lido: un pontiletto per i pedalò e le barche a remi del bagnino
     { const lx = 1124, ly = SouthY(1124); pontile('pontile_lido', 'Pontile del Lido', [[lx, ly - 3], [lx, ly + 12]], 1.8, .6);
-      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' }))); }
+      [-1, 1].forEach(sg => [4, 7.5].forEach(s => SEA.moorings.push({ kind: 'pedalo', x: lx + sg * 2.6, y: ly + s, ang: sg > 0 ? Math.PI : 0, len: BOATLEN.pedalo, at: 'pontile_lido' })));
+      SEA.moorings.push({ kind: 'chiatta', x: lx + 3.4, y: ly + 11.5, ang: Math.PI / 2, len: BOATLEN.chiatta, at: 'pontile_lido', drive: true }); }   // [chiatta] di fianco alla testata, la prua al largo
     void mVecchio; void mLevante;
     SEA.ruins = [];   // [arcipelago] le rovine delle isole le mette expand()
     // piazza San Rocco e fontana
@@ -3242,6 +3244,8 @@ var World = (function () {
     if (!shopGeom(b, W.grid, W.reach, W.GW, W.GH, true, null)) { delete b.shopFront; delete b.abitato; return false; } return true; };
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
+  { const VG = typeof Vegetazione !== 'undefined' ? Vegetazione : typeof require !== 'undefined' ? (() => { try { return require('./vegetazione.js'); } catch (e) { return null; } })() : null;
+    if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
   return W;
 })();
 if (typeof module !== 'undefined') module.exports = World;

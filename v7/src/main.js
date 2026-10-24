@@ -49,7 +49,7 @@
   // ---------- Input ----------
   const mouse = { nx: .5, ny: .5, active: false, down: false, pressed: false, cx: 0, cy: 0 };
   cv.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const r = cv.getBoundingClientRect(); mouse.nx = (e.clientX - r.left) / r.width; mouse.ny = (e.clientY - r.top) / r.height; mouse.cx = e.clientX - app.getBoundingClientRect().left; mouse.cy = e.clientY - app.getBoundingClientRect().top; mouse.active = true; });
-  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.down = false; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width; if (nx < .08) mouse.nx = 0; else if (nx > .92) mouse.nx = 1; else mouse.active = false; } });
+  cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { mouse.down = false; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width; if (CON.on) mouse.active = false; else if (nx < .08) mouse.nx = 0; else if (nx > .92) mouse.nx = 1; else mouse.active = false; } });   // [console] nel Game Boy ai lati ci sono i tasti: uscendo dallo schermo la visuale non gira
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   // [visuale5] e la sposta: di lato gira, in su e in giù sposta la visuale (il mondo segue il mouse); con Maiusc sposta anche di lato.
   // ui.pan si somma fino al fotogramma (frazioni dello schermo); render.js (Visuale.mano) decide quando la camera torna da sola
@@ -97,8 +97,8 @@
   cv.addEventListener('pointermove', e => { if (e.pointerId !== tp.id) return; const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height; tp.nx = nx; tp.ny = ny;
     if (e.pointerType !== 'mouse' && (tp.mode === 'spray' || tp.mode === 'skate')) { mouse.nx = nx; mouse.ny = ny; }
     if (tp.mode === 'fire') touchAimAt(nx, ny); });
-  // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara
-  function tapShoots() { const p = st.player; return touchMode && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
+  // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara   // [console] nel Game Boy no: si spara con B, il tocco resta per andare e parlare
+  function tapShoots() { const p = st.player; return touchMode && !CON.on && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
   function touchAimAt(nx, ny) { const h = pickAt(nx, ny); tp.aim = h && h.kind === 'npc' ? { x: h.n.x, y: h.n.y, id: h.n.id } : h && h.kind === 'car' ? { x: h.v.x, y: h.v.y } : R.screenToGround(nx, ny) || tp.aim; }
   addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
   addEventListener('pointercancel', e => { if (e.pointerId === tp.id) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } });
@@ -181,6 +181,7 @@
       const a = tp.aim, n = a.id && G.byId(st, a.id); if (n && !n.dead) { a.x = n.x; a.y = n.y; }
       ui.aimPoint = { x: a.x, y: a.y }; return Math.atan2(a.y - p.y, a.x - p.x);
     }
+    if (CON.on && (touchMode || !mouse.active)) return conAim();   // [console] col Game Boy in mano si mira dove guarda il personaggio
     if (touchMode) {
       // mira automatica: il nemico più vicino davanti, altrimenti la direzione dello sguardo
       let best = null, bd = 16;
@@ -204,11 +205,11 @@
       return Object.assign({}, r, { x: 0, y: 0, aim: aim !== undefined ? aim : aimAngle() });
     }
     if (!p.vehicle || !jumpMode()) return r;
-    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg };
+    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie || CON.trick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg || CON.trick.peg };   // [console] e la croce del Game Boy
     return r;
   }
   function input0() {
-    const sprint = !!keys.shift || touchRun || touchBoost, brakeKey = !!keys[' '] || touchBrake;
+    const sprint = !!keys.shift || touchRun || touchBoost || CON.run, brakeKey = !!keys[' '] || touchBrake;   // [console] B tenuto: corri
     // [fluido] il controller: la levetta è una direzione dello schermo con la visuale di adesso (gira con la levetta destra),
     // l'inclinazione è la velocità (mag: dal passo alla corsa). Si guarda dove si va: girarsi è immediato anche all'indietro
     if (PAD.on && !st.player.vehicle && PAD.m > 0) {
@@ -217,7 +218,7 @@
       return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: Math.atan2(y, x), mag: PAD.m };
     }
     if (PAD.on && st.player.vehicle && (PAD.m > 0 || PAD.gas > .05 || PAD.brk > .05)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: PAD.gas - PAD.brk, steer: PAD.m > 0 ? PAD.x * Math.min(1, Math.abs(PAD.x) * 1.4) : 0, hb: brakeKey, boost: sprint, assist: !(PAD.m > 0 && Math.abs(PAD.x) > .1) } };
-    if (st.player.vehicle && touchMode && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo
+    if (st.player.vehicle && (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo   // [console] anche quella del Game Boy
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
       if (v) { const want = Math.atan2(wy, wx), ad = a => Math.atan2(Math.sin(a), Math.cos(a)), d = ad(want - v.ang), spd = Math.abs(v.speed || Math.hypot(v.vx || 0, v.vy || 0));
         const two = G.VK[v.kind] && (G.VK[v.kind].two || G.VK[v.kind].pocket);
@@ -227,7 +228,7 @@
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode ? Math.atan2(y, x) : aimAngle(), mag: touchMode ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
+      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode || (CON.on && !mouse.active) ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
     const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
@@ -817,6 +818,113 @@
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
+  // ---------- [console] Il Game Boy di Porto Vecchio ----------
+  // Sul sito di Artismi il gioco sta dentro un Game Boy fatto apposta, e lo schermo resta pulito: niente levetta, pulsanti, icone,
+  // soldi, minimappa né suggerimenti sopra il mondo. I comandi sono tasti veri nella pulsantiera della console; soldi, ora, mappa,
+  // taccuino e il resto stanno nel menu (lo zaino), in ordine; sullo schermo un avviso alla volta (CSS: #app.console).
+  // La pagina che ospita il gioco si presenta con {pvc:'ciao'}: il gioco risponde {pv:'console', v:2}.
+  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
+  // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, croce, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, mano, n,
+  // audio} (la scritta di ogni tasto, null = ora non fa niente; acceso o spento; quello che hai in mano; le cose da fare qui) e
+  // {pv:'stato', giorno, ora, soldi, debito, scade, ricercato}, per il display della console.
+  //   levetta     cammina e guida, come quella a schermo (inclinata poco è il passo, a fondo la corsa)
+  //   croce       a piedi e in auto la visuale: ◄ ► la gira, ▲ ▼ avvicina e allontana; in BMX i trick, come le frecce
+  //               della tastiera: ▼ impenna, ◄ ► un piede sulla pedalina (k: sx dx su giu, si tengono premuti)
+  //   A           il pulsante principale di adesso (Salta, Freno, Ollie, Colore); nei dialoghi conferma; all'inizio si gioca
+  //               (ricominciare la partita sta nel menu, Chi è; a partita finita c'è il pulsante sullo schermo)
+  //   B           il secondo (Scendi, Impenna, Modo); a piedi: con l'arma spara dove guarda il personaggio (conAim; nel Game Boy
+  //               il tocco sullo schermo non spara), con un oggetto lo usa (la scritta dice come: Scava, Mangia, Scatta…), a mani libere
+  //               corre finché lo tieni; nei menu, nei dialoghi e nel taccuino torna indietro
+  //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
+  //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
+  //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
+  //   rotella     l'audio
+  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
+  const conBmx = () => !!(st.player.vehicle && jumpMode());   // in BMX la croce fa i trick
+  const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
+  const conFake = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  const conCmd = (f, ...a) => () => { if (typeof Comandi !== 'undefined' && Comandi[f]) Comandi[f](...a); };
+  const conSpray = p => p.hand === 'bomboletta' || p.hand === 'pennarello';
+  // i tasti di adesso: {k: {l: scritta, dn, up}}; quelli che mancano ora non fanno niente
+  function conMap() {
+    const p = st.player, M = {};
+    if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
+    if (ui.intro) { M.a = { l: 'Gioca', dn: () => { const b = $('go'); if (b && !b.disabled) b.click(); } }; return M; }
+    if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
+      M.b = { l: 'Indietro', dn: () => conFake('Escape') };
+      if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
+      if (ui.menu) M.zaino = { l: 'Chiudi', dn: conCmd('zaino') };
+      return M;
+    }
+    const set = touchSet(), tb = k => ({ l: lab(TB[k]), dn: TB[k].dn, up: TB[k].up });
+    const sk = window.Skate && Skate.on(st), veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), bmx = veh && veh.kind === 'bmx';
+    if (set[0]) M.a = tb(set[0]);
+    if (set[1]) M.b = tb(set[1]);
+    else if (!veh && !sk) {
+      const Wp = !p.hand && p.cur !== 'pugni' && G.WEAPONS[p.cur], a = Wp && p.arms[p.cur];
+      if (Wp) M.b = { l: (Wp.throw ? 'Lancia ×' + ((a.mag || 0) + (a.reserve || 0)) : 'Spara ' + (a.mag || 0) + '/' + (a.reserve || 0)), dn: () => { CON.fire = true; mouse.pressed = true; }, up: () => { CON.fire = false; } };
+      else if (conSpray(p)) M.b = { l: 'Posa', dn: conCmd('via') };   // con la tavoletta i pulsanti non ci sono
+      else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
+      else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
+    }
+    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
+    if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
+    if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
+    M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
+    return M;
+  }
+  function conKey(k, down) {
+    if (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu') {   // la croce, finché la tieni: la visuale, o in BMX i trick
+      CON.dir[k] = down; const D = CON.dir, bx = conBmx();
+      CON.trick.wheelie = bx && !!D.giu; CON.trick.peg = bx ? (D.sx && !D.dx ? 1 : D.dx && !D.sx ? -1 : 0) : 0;
+      CON.rot = bx ? 0 : (D.dx ? 1 : 0) - (D.sx ? 1 : 0); CON.zoom = bx ? 0 : (D.giu ? 1 : 0) - (D.su ? 1 : 0); return;
+    }
+    if (k === 'audio') { if (down) { A.init(); A.toggle(); } CON.sent = ''; return; }
+    if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
+    else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
+    CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
+  }
+  function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; }
+  function conTick(dt) {
+    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);   // la croce tenuta: lo zoom
+    if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
+    if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
+      const p = st.player; if (!p.vehicle && !p.hand && p.cur !== 'pugni') conAim(); else ui.aimPoint = null;
+    }
+  }
+  // la mira del Game Boy: dove guardano il personaggio e la visuale (da fermo, dove l'hai girato; camminando, dove vai). Niente
+  // nemico più vicino scelto da solo: solo chi è proprio lì davanti (11 gradi per parte) prende il colpo preciso
+  function conAim() {
+    const p = st.player, f = ui.faceIdle !== undefined && !(stick.x || stick.y) ? ui.faceIdle : p.face, W = G.WEAPONS[p.cur] || {}, R0 = Math.min(W.range || 16, 22);
+    let best = null, bd = 1e9;
+    st.npcs.forEach(n => { if (n.dead || n.inside) return; const dx = n.x - p.x, dy = n.y - p.y, d = Math.hypot(dx, dy); if (d < .4 || d > R0) return;
+      const da = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - f), Math.cos(Math.atan2(dy, dx) - f))); if (da < .19 && d < bd) { bd = d; best = n; } });
+    if (best) { ui.aimPoint = { x: best.x, y: best.y }; return Math.atan2(best.y - p.y, best.x - p.x); }
+    const L = Math.min(R0, 10); ui.aimPoint = { x: p.x + Math.cos(f) * L, y: p.y + Math.sin(f) * L }; return f;
+  }
+  // ogni decimo di secondo, con l'HUD: le scritte dei tasti e il display della console, solo se sono cambiati
+  function conLabels() {
+    if (!CON.on) return;
+    const p = st.player, M = conMap(), t = {}; ['a', 'b', 'croce', 'bomboletta', 'bici', 'zaino'].forEach(k => { t[k] = M[k] ? M[k].l : null; });
+    const m = !ui.intro && typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null, mano = m ? m.nome : null;
+    const veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), on = { bomboletta: conSpray(p), bici: !!(veh && veh.kind === 'bmx') || !!(window.Skate && Skate.on(st)), zaino: !!ui.menu };
+    const n = !ui.intro && typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0, key = JSON.stringify(t) + JSON.stringify(on) + mano + n + A.on;
+    if (key !== CON.sent) { CON.sent = key; conSend({ pv: 'tasti', t, on, mano, n, audio: A.on }); }
+    const hl = G.hoursLeft(st), s = { giorno: G.dayName(st.t), ora: G.clockStr(st.t), soldi: fmt(p.money), debito: fmt(st.debt), scade: st.deadline > 1e8 ? null : hl, ricercato: G.wanted(st) }, sk = JSON.stringify(s);
+    if (sk !== CON.stato) { CON.stato = sk; conSend(Object.assign({ pv: 'stato' }, s)); }
+  }
+  addEventListener('message', e => {
+    const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
+    if (d.pvc === 'ciao') {
+      if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 2 }); conLabels(); return;
+    }
+    if (!CON.on) return;
+    if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
+    else if (d.pvc === 'tasto' && typeof d.k === 'string') conKey(d.k, !!d.giu);
+    else if (d.pvc === 'lascia') conLetGo();
+  });
+
   // ---------- [fluido] Quanto si vede ----------
   // ogni 0,2 s: la distanza dal giocatore dell'angolo di schermo più lontano (sul terreno), più un margine. game.js allarga la
   // bolla del dettaglio fino a lì: a zoom largo chi è sul bordo dello schermo non cammina a scatti. Orizzonte in vista: tutto.
@@ -928,6 +1036,7 @@
       if (resT > 3 && resAvg > .024 && ri < 2) { R.setRes(RL[ri + 1]); resT = 0; resAvg = .018; }
       else if (resT > 12 && resAvg < .013 && ri > 0) { R.setRes(RL[ri - 1]); resT = 0; } }
     padPoll(dt);   // [fluido] il controller si legge prima di tutto: il comando di questo fotogramma muove già questo fotogramma
+    conTick(dt);   // [console]
     let inpF = null;
     const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
@@ -935,7 +1044,7 @@
     if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input(); inpF = inp;   // [fluido] lo stesso comando va al motore e alla camera, nello stesso fotogramma
-      if (!ui.intro && (mouse.down || touchFire || mouse.pressed || PAD.fire)) G.fire(st, inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);
+      if (!ui.intro && (mouse.down || touchFire || mouse.pressed || PAD.fire || CON.fire)) G.fire(st, CON.fire && !mouse.down ? aimAngle() : inp.aim !== undefined ? inp.aim : aimAngle(), ui.aimPoint, mouse.pressed);   // [console] B: si spara dove mira da solo
       mouse.pressed = false;
       tickClick(); sprayTick(dt);
       viewRadius(dt);   // [fluido]
@@ -947,12 +1056,12 @@
     ui.desat = st.slowmo > 0;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
-    if (touchMode && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: touchMode && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot, drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
-    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); }
+    hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); conLabels(); }
     requestAnimationFrame(loop);
   }
   // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
@@ -966,6 +1075,6 @@
     last = performance.now(); requestAnimationFrame(loop);
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
