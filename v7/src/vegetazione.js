@@ -224,7 +224,7 @@ var Vegetazione = (function () {
     for (let gy = Math.floor(y0 / E0); gy <= y1 / E0; gy++) for (let gx = Math.floor(x0 / E0); gx <= x1 / E0; gx++) {
       const x = (gx + hash2(gx, gy, 7971)) * E0, y = (gy + hash2(gx, gy, 7972)) * E0, i = tI(x, y); if (!terra(i) || P.dSen[i] < .9) continue;
       const fitto = sstep(.3, .7, fbm(x / 25, y / 25, 7973, 3)) * .75 + sstep(.4, .65, fbm(x / 7, y / 7, 7974, 2)) * .25, om = P.ombra ? P.ombra[i] : 0;
-      const rs = respiro(W, x, y); if (rs < .12) continue; const dens = Math.max(.12, (.18 + .72 * fitto) * rs) * (1 - om * .4); if (hash2(gx, gy, 7975) > dens) continue;
+      const rs = respiro(W, x, y); if (rs < .12) continue; const dens = Math.max(.06, (.1 + .4 * fitto) * rs) * (1 - om * .4); if (hash2(gx, gy, 7975) > dens) continue;
       const fid = FORM[P.form[i]].id, secca = fid === 'gariga' || fid === 'pineta' || fid === 'pinetaM' ? .55 : fid === 'prato' ? .3 : .15, u = hash2(gx, gy, 7976), sp = u < secca ? 'erbaSecca' : 'erbaVerde', S = SP[sp];
       out.push({ sp, x, y, h: S.h[0] + (S.h[1] - S.h[0]) * (.15 + fitto * .55) * (.8 + u * .4), rot: u * 6.28, v: Math.floor(hash2(gx, gy, 7977) * 4), t: u, eroe: false, P: fitto }); }
     // 1) le derive: una griglia di 2,6 m; la chiazza (≈ 8 m, bordi mossi) decide la composizione o il vuoto
