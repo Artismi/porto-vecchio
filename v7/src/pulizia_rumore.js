@@ -218,7 +218,8 @@ var PuliziaRumore = (function () {
   // compenetrazioni di [pulizia2] non trova niente di nuovo sulle sue voci
   function correggi(A, C) {
     const az = { ruotati: {}, posati: {}, spostati: {}, tolti: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
-    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => (o.membri || [o]).forEach(q => { if (!q.gone && !G.includes(q)) G.push(q); })); return G; };   // la composizione, e quello che ci poggia sopra
+    // [telefono] l'insieme accanto alla lista: «c'è già?» costava un giro intero della lista (7 s di avvio su una composizione grande)
+    const I = A.indici(), grp = e => { const G = (e.membri || [e]).filter(m => !m.gone), GS = new Set(G); for (let i = 0; i < G.length; i++) A.sopra(G[i], I).forEach(o => (o.membri || [o]).forEach(q => { if (!q.gone && !GS.has(q)) { GS.add(q); G.push(q); } })); G.__s = GS; return G; };   // la composizione, e quello che ci poggia sopra
     const X = C.X || [], nx = m => { let n = 0; C.viciniX(m.c[0], m.c[1], 4, x => { if (A.yov(m.B, x.B) > .03 && A.sat(m.B, x.B) > .03) n++; }); return n; };   // e le voci esterne: niente addosso
     const nv = G => G.reduce((s, m) => s + A.viol(m, I).length + nx(m), 0);
     const muovi = (G, dx, dy, dz) => G.forEach(m => A.sposta(m, dx, dy, dz));
@@ -226,8 +227,8 @@ var PuliziaRumore = (function () {
     const togli = (e, perche, anche0) => { if (e.ext) { if (e.gone || (LIV[e.k] === 0 && !anche0)) { conta(az.tenuti, perche + ':' + e.k); return false; } A.togliEsterno(e); conta(az.tolti, perche + ':' + e.fonte + ':' + e.k); return true; }
       const G = grp(e); if (!G.length) return false;
       if (G.some(m => (LIV[m.k] === 0 && !anche0) || A.posto(m) || m.free)) { conta(az.tenuti, perche + ':' + e.k); return false; }
-      const su = []; G.forEach(m => A.sopra(m, I).forEach(o => { if (!G.includes(o) && !su.includes(o)) su.push(o); }));   // quello che ci poggia sopra se ne va con lei, se può
-      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && o.membri.some(m => !su.includes(m) && !G.includes(m))))) { conta(az.tenuti, perche + ':' + e.k); return false; }
+      const su = [], SU = new Set(), GS = G.__s; G.forEach(m => A.sopra(m, I).forEach(o => { if (!GS.has(o) && !SU.has(o)) { SU.add(o); su.push(o); } }));   // quello che ci poggia sopra se ne va con lei, se può
+      if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free || (o.membri && o.membri.some(m => !SU.has(m) && !GS.has(m))))) { conta(az.tenuti, perche + ':' + e.k); return false; }
       G.concat(su).forEach(m => A.togli(m)); conta(az.tolti, perche + ':' + e.k); return true; };
     const E = C.E;
     // 1) i doppioni se ne vanno (il primo posato resta); le lampade e i citofoni doppi anche se di solito si tengono
