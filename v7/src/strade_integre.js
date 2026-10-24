@@ -12,7 +12,7 @@
                   sull'asse, o le case ai due lati lasciano libera meno della larghezza della via meno 60 cm (o meno di 1,6 m);
    - sotto_pezzo  la carreggiata passa dentro la scatola piena di un pezzo grande ('B' di W.pezzi.imp) che non si attraversa
                   (portici, archi, sottopassi, porte e scalinate si attraversano: esclusi).
-   - marciapiede  lungo una via di città il marciapiede (caselle WALK a un metro dal ciglio) c'è e poi smette per 2 m o più senza un
+   - marciapiede  lungo una via di città il marciapiede (caselle WALK o banchina QUAY a 1 m o a 1,9 m dal ciglio) c'è e poi smette per 2 m o più senza un
                   incrocio, una piazza o una scala, o finisce contro un muro (la casella dopo è una casa);
    - scoglio      uno scoglio grande della costa (W.SEA.rocks, l'80% del raggio) sulla carreggiata o sul marciapiede (2 m oltre il ciglio).
    Ogni difetto: [tipo, x, y, via, lunghezza o distanza, contro]. analizza(W) → { conti, punti }. */
@@ -83,7 +83,9 @@ var StradeIntegre = (function () {
         const incrocio = (x, y) => R.some(o2 => o2 !== rd && dVia(o2, x, y) < (o2.w || 4) / 2 + hw + 2.5) || NODI.some(n => inPoly(n.poly, x, y));
         for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], L = Math.hypot(bx - ax, by - ay); if (L < 1e-3) continue; const ux = (bx - ax) / L, uy = (by - ay) / L, nx = -uy * sg, ny = ux * sg;
           for (let s2 = 0; s2 < L; s2 += 1) { const x = ax + ux * s2, y = ay + uy * s2; if (!inC(x, y)) { prima = null; buco = null; continue; }
-            const px = x + nx * (hw + 1), py = y + ny * (hw + 1), v = tile(px, py), c = v === T.WALK;
+            // [pianta] la via in diagonale: la casella a 1 m dal ciglio può avere il centro dentro la carreggiata; si guarda anche a 1,9 m e
+            // vale la migliore. La banchina (QUAY, col muro sul mare) conta come marciapiede
+            const MC = v0 => v0 === T.WALK || v0 === T.QUAY, v1 = tile(x + nx * (hw + 1), y + ny * (hw + 1)), v2 = tile(x + nx * (hw + 1.9), y + ny * (hw + 1.9)), c = MC(v1) || MC(v2), v = MC(v1) ? v1 : v2, px = x + nx * (hw + 1), py = y + ny * (hw + 1);
             if (c) { if (buco && buco.n >= 2 && !buco.inc) P.marciapiede.push(['marciapiede', buco.x, buco.y, rd.id, rd.kind, buco.n + ' m', buco.muro ? 'contro un muro' : 'interrotto (' + (NOME[buco.v] || '?') + ')']); buco = null; prima = true; continue; }
             if (prima) { if (!buco) buco = { x: Math.round(px * 10) / 10, y: Math.round(py * 10) / 10, n: 0, inc: false, muro: v === T.BLD, v }; buco.n++; if (incrocio(x, y) || v === T.PIAZZA || v === T.STAIRS) buco.inc = true; } } }
         }); });
