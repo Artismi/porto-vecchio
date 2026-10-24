@@ -1010,7 +1010,7 @@ var World = (function () {
       add('corso', 'Corso Garibaldi', 7, 'citta', chaikin([[970, 109], [982, 118], [982, 128], [979, 143], [981, 158], [986, 174], [990, 187]], 2), { alberi: 'tigli', era: 'E3', alberiLato: -1 });
       // E3 il sottopasso Cavour: dal piazzale scende a scalini, passa sotto il rilevato e sbuca sul lotto del fuoco fra le baracche
       CITY.cavS = { x: 972, y0: 71, y1: 105 };
-      add('cavour_sotto', 'Sottopasso Cavour', 3, 'vicolo', [[972, 105]].concat(vline(972, 78, 102).reverse(), [[969, 74.5], [967, 72]]), { era: 'E3', sottopasso: true });
+      add('cavour_sotto', 'Sottopasso Cavour', 3, 'vicolo', [[972, 105]].concat(vline(972, 81, 102).reverse(), [[972, 79], [971.5, 77], [970.5, 75.3], [969, 73.7], [967, 72]])   /* [pianta] la curva verso il lungomare, non l'angolo vivo */, { era: 'E3', sottopasso: true });
       // E3 la Galleria del Mercato (coperta) dal piazzale alla tettoia, il Vico delle Carceri dal Mercato allo Scalo, il Vico dei Giardini
       add('galleria', 'Galleria del Mercato', 3, 'vicolo', vline(952, 111, 129), { era: 'E3', galleria: true });
       add('carceri', 'Vico delle Carceri', 3, 'vicolo', chaikin([[952, 157], [952, 176], [962, 185]], 1), { era: 'E3' });
@@ -1478,7 +1478,7 @@ var World = (function () {
           // la Porta di Terra sta sul Mercato vecchio (l'ottagono era la piazza fuori dalla porta): sulla bocca del Vico dei Giardini, che ci passa sotto
           // a piedi; la faccia con le torri guarda la piazza e la camera. Misura di mezzo: 14 m con due torri basse (era 23 m, poi 8 m senza torri)
           const G = RDp('giardini'), OC = CITY.octa; if (G && OC) { const gy = G.pts[G.pts.length - 1][1], O = { w: 4.6, h: 7, torri: true, tw: 2.8 }, Wp = O.w + 4 + 2 * O.tw, xE = OC[0] - OC[2] + 3.2;
-            const p = pzAt('porta_terra', xE, gy, Math.PI / 2, Wp / 2, 0, O, { nome: 'Porta di Terra' }); pzRis(p, 'B', -.4, O.tw + 2, -3.2, 3.2); pzRis(p, 'B', Wp - O.tw - 2, Wp + .4, -3.2, 3.2); pzRis(p, 'B', -.4, O.tw + .4, 3.2, 6.2); pzRis(p, 'B', Wp - O.tw - .4, Wp + .4, 3.2, 6.2); } } }
+            const p = pzAt('porta_terra', xE, gy, Math.PI / 2, Wp / 2, 0, O, { nome: 'Porta di Terra' }); pzRis(p, 'B', -.4, O.tw + 2, -7, 3.2); pzRis(p, 'B', Wp - O.tw - 2, Wp + .4, -7, 3.2);   /* dietro le torri il pieno fino alle case: nessuna porta nascosta dietro l'arco */ pzRis(p, 'B', -.4, O.tw + .4, 3.2, 6.2); pzRis(p, 'B', Wp - O.tw - .4, Wp + .4, 3.2, 6.2); } } }
       // [cucitura] IL RECINTO DEL GARANTE AL PORTO (MAPPA_COMPATTA.md sez. 13). La presenza del regime lascia la Vittoria e si chiude in un
       // recinto solo, sul bordo del porto fortificato, fra la spianata, il canale della Rocca e il mare: il Muro del Garante continuo (lastre a L
       // e camminamento di ronda sul retro), le torri di guardia agli angoli e ai lati del varco, a non più di 28 m l'una dall'altra; il varco col
@@ -2367,6 +2367,30 @@ var World = (function () {
       if (typeof process !== 'undefined' && process.env && process.env.STRADE_DBG) console.log('[ordine1] vialetti', nv);
     }
     // [botteghe] le porte sono definitive: ogni bottega sotto casa prende il suo fronte accanto al portone (se non ci sta, il palazzo resta bottega intera)
+    // [pianta] LE PORTE LIBERE DAI PEZZI GRANDI: i sottopassi a volta, le scalinate e la Porta di Terra si posano prima delle case, e la
+    // casa che ci nasce accanto apriva la porta proprio lì (sotto la volta, contro il gradino, dietro l'arco: coperta dalla camera e senza
+    // spazio davanti). La porta si sposta sulla casella libera migliore dello stesso fronte o di un altro, fuori dall'ingombro più 1,6 m.
+    const INGOMBRI = PEZZI.filter(p => p.imp && /^(arco_sottopasso|scalinata|porta_terra)$/.test(p.tipo));
+    const dentroIngombro = (x, y, m) => INGOMBRI.some(p => { const [lx, lz] = pzL(p, x, y); return p.imp.some(([k, x0, x1, z0, z1]) => lx > x0 - m && lx < x1 + m && lz > z0 - m && lz < z1 + m); });
+    const rePorta = (b, cattiva) => { let best = null, bd = 1e9;
+      for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) {
+        const edge = tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h, corner = (tx === b.x - 1 || tx === b.x + b.w) && (ty === b.y - 1 || ty === b.y + b.h);
+        if (!edge || corner || tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const v = grid[ty * GW + tx]; if (v === T.BLD || v === T.WATER || v === T.TREE || v === T.FOUNT || v === T.CLIFF) continue;
+        if (cattiva((tx + .5) * TS, (ty + .5) * TS)) continue;
+        const roadish = v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.COB || v === T.QUAY || v === T.DIRT ? 0 : 3, mid = Math.abs((tx + .5) - (b.x + b.w / 2)) + Math.abs((ty + .5) - (b.y + b.h / 2)) * .9;
+        const sc = roadish + mid * .3 + (v === T.VIA ? 1.2 : 0) + hash2(tx, ty, 5) * .2; if (sc < bd) { bd = sc; best = [tx, ty]; } }
+      if (best) b.door = best; return !!best; };
+    // e quella che la camera (da sud-est, alta 45°) vede solo attraverso il pezzo: il raggio dalla soglia verso la camera sale di un metro
+    // per metro e non deve passare dentro il volume di un sottopasso, di un portico, della Porta, del carro sul tronchino
+    const ALTO = { arco_sottopasso: p => p.opz.h + 1 + (p.opz.piani || 0) * 3.1 + 1, porta_terra: p => p.opz.h + .22 * p.opz.w + 4.4 + (p.opz.torri ? 3.8 : .6), portico: p => p.opz.h + (p.opz.piani || 0) * 3.4 + 1.2, carro_merci: () => 3.9, scalinata: p => (p.opz.dislivello || 2) + 1 };
+    const RECT = p => p.tipo === 'portico' ? [[0, 0, p.opz.campate * p.opz.campata, -p.opz.profondita / 2 - .4, p.opz.profondita / 2 + .4]] : p.tipo === 'carro_merci' ? [[0, 0, 10, -1.5, 1.5]] : p.tipo === 'porta_terra' ? [[0, 0, p.opz.w + 4 + 2 * (p.opz.torri ? p.opz.tw || 6.5 : 0), -3, 3]] : p.imp;
+    const velata = (x, y) => { for (const h0 of [.5, 1.6]) for (let d = .4; d < 14; d += .35) { const u = x + d * Math.SQRT1_2, v = y + d * Math.SQRT1_2, h = h0 + d * .99;
+      const q = PEZZI.find(p => { if (!ALTO[p.tipo] || h > ALTO[p.tipo](p)) return false; const R = RECT(p); if (!R) return false; const [lx, lz] = pzL(p, u, v); return R.some(([k, x0, x1, z0, z1]) => lx > x0 && lx < x1 && lz > z0 && lz < z1); }); if (q) return q; } return null; };
+    POSA.velata = velata;
+    { let nMosse = 0; B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const cattiva = (x, y) => dentroIngombro(x, y, 1.6) || velata(x, y); if (cattiva((b.door[0] + .5) * TS, (b.door[1] + .5) * TS) && rePorta(b, cattiva)) nMosse++;
+        // la casetta che non ha un lato libero: il sottopasso che la copre perde un piano (la volta resta, la casa sopra è più bassa)
+        for (let k = 0; k < 2; k++) { const q = velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS); if (!q || q.tipo !== 'arco_sottopasso' || q.opz.piani < 2) break; q.opz.piani--; } });
+      if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) console.log('[pianta] porte spostate dai pezzi', nMosse); }
     { const doors = new Set(); doors.shop = new Set(); B.forEach(b => { if (b.door) doors.add(b.door[1] * GW + b.door[0]); });
       B.forEach(b => { if (b.shopFront && !shopGeom(b, grid, reach, GW, GH, false, doors)) { delete b.shopFront; delete b.abitato; } }); }
     Object.values(PLACES).forEach(p => { if (p.isola) return; /* [arcipelago] sulle isole si arriva per mare */ if (!reach[p.ty * GW + p.tx]) { const q = nearReach(p.tx, p.ty); if (q) { p.tx = q[0]; p.ty = q[1]; } } });
@@ -2396,25 +2420,48 @@ var World = (function () {
           const iL = -1, alt0 = hash2(kr, sd, 1991) < .5 ? 0 : 1; let xs = R.xa;
           corpi.forEach((n, k) => { const Ls = n * cw, lt = '', piani = sd ? ((k + alt0) % 3 === 2 ? 2 : 1) : ((k + alt0) % 2 ? 2 : 1);
             // [cucitura] il portico di bottega dell'Ottocento (archi su pilastri, intonaco, persiane), non più il travertino con le lettere del regime
-            PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.25 : VY - P.d1 + 2.25, sd ? Math.PI : 0, { campate: n, campata: cw, h: 4.4, piani, profondita: 3.6, pilastro: .7, lettere: '', stile: 'ottocento', tinta: ['ocra', 'intonaco', 'intonacoRosso', 'calce'][Math.floor(hash2(kr * 7 + k, sd, 1992) * 4)] }, { nome: 'Portici della Vittoria', lato: sd });
+            (R.pz = R.pz || []).push({ xs, Ls, p: PZ('portico', sd ? xs + Ls : xs, sd ? VY + P.d1 - 2.25 : VY - P.d1 + 2.25, sd ? Math.PI : 0, { campate: n, campata: cw, h: 4.4, piani, profondita: 3.6, pilastro: .7, lettere: '', stile: 'ottocento', tinta: ['ocra', 'intonaco', 'intonacoRosso', 'calce'][Math.floor(hash2(kr * 7 + k, sd, 1992) * 4)] }, { nome: 'Portici della Vittoria', lato: sd }) });
             xs += Ls; });
-          R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; }); }); });
+          // [pianta] il portone della casa dietro il portico sta in mezzo a una campata, non dietro un pilastro (la camera lo vede fra gli archi)
+          const pil = []; for (let j = 0; j <= nC; j++) pil.push(R.xa + j * cw);
+          R.bs.forEach(b => { delete b.portico; b.sottoPortico = true; if (!b.door) return; const ty = sd ? b.y - 1 : b.y + b.h; if (b.door[1] !== ty) return;
+            const lib = x => Math.min(...pil.map(q => Math.abs(q - x))); let bx = b.door[0], bl = lib((bx + .5) * TS);
+            for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, l = lib((tx + .5) * TS); if (grid[i] === T.BLD || grid[i] === T.WATER) continue; if (b.shopFront && b.shopFront.door && (Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) < 1 || Math.abs(b.shopFront.door[0] - tx) + Math.abs(b.shopFront.door[1] - ty) > 5)) continue; if (l > bl + .3) { bl = l; bx = tx; } }
+            if (bx !== b.door[0]) { b.door = [bx, ty]; const P = PLACES[b.id]; if (P && !(b.shopFront && b.shopFront.door)) { P.tx = bx; P.ty = ty; P.x = bx * TS + TS / 2; P.y = ty * TS + TS / 2; } } });
+          (POSA.runs = POSA.runs || []).push([R, sd]); }); });
+      // [pianta] le porte delle case dietro il portico (nei vicoli fra una casa e l'altra, sui fianchi): dalla camera i piani sopra le arcate
+      // le coprono; si spostano dove si vedono (la porta sotto il proprio portico no: il portico è il suo atrio)
+      B.forEach(b => { if (!b.door || b.pezzo || b.lighthouse) return; const sd0 = b.sottoPortico && (b.door[1] === b.y + b.h || b.door[1] === b.y - 1); if (sd0 || (b.shopFront && b.shopFront.door)) return;   // col fronte di bottega il portone resta accanto alla bottega
+        const sf = b.shopFront && b.shopFront.door, atrio = (x, y) => b.sottoPortico && (Math.floor(y / TS) === b.y + b.h || Math.floor(y / TS) === b.y - 1) && Math.floor(x / TS) >= b.x && Math.floor(x / TS) < b.x + b.w;
+        const cattiva = (x, y) => (!atrio(x, y) && POSA.velata(x, y)) || (sf && Math.floor(x / TS) === sf[0] && Math.floor(y / TS) === sf[1]);
+        if (!POSA.velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS)) return; if (rePorta(b, cattiva) && !sf) { const P = PLACES[b.id]; if (P) { P.tx = b.door[0]; P.ty = b.door[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; } } });
+      // [pianta] il fondo del portico si apre davanti a ogni porta della casa (il portone e la bottega): prima il muro con le vetrine finte la chiudeva
+      (POSA.runs || []).forEach(([R, sd]) => R.pz.forEach(({ xs, Ls, p }) => { const V = []; R.bs.forEach(b => { const ty = sd ? b.y - 1 : b.y + b.h;
+            [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (!d || d[1] !== ty) return; const x = (d[0] + .5) * TS, u = sd ? xs + Ls - x : x - xs; if (u > .2 && u < Ls - .2) V.push(Math.min(Ls - 1.45, Math.max(1.45, u))); }); });
+            if (V.length) p.opz.varchi = V.map(v => +v.toFixed(2)); }));
       // gli archi di contrasto: nei vicoli che non hanno già la casa col sottopasso, a metà, dove le due case si guardano
       // il varco del vicolo in un punto: quanto c'è di libero a destra e a sinistra prima del muro di una casa (o di un pezzo chiuso)
       POSA.varco = (x, y, nx, ny) => { const muro = (u, v) => { const i = Math.floor(v / TS) * GW + Math.floor(u / TS); return grid[i] === T.BLD || grid[i] === T.WATER; }; let a = 0, b = 0; while (a < 4 && !muro(x + nx * a, y + ny * a)) a += .1; while (b < 4 && !muro(x - nx * b, y - ny * b)) b += .1; return [a, b]; };
       const varco = POSA.varco;
+      const portaVicina = (x, y, r) => B.some(b => (b.door && dist((b.door[0] + .5) * TS, (b.door[1] + .5) * TS, x, y) < r) || (b.shopFront && b.shopFront.door && dist((b.shopFront.door[0] + .5) * TS, (b.shopFront.door[1] + .5) * TS, x, y) < r));   // [pianta] archi ed edicole lontani dalle porte
       const fatti = new Set(PEZZI.filter(p => p.vicolo).map(p => p.vicolo)), casa = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return false; const i = ty * GW + tx; return bIndex[i] >= 0 && !B[bIndex[i]].pezzo; };
       CITY.roads.filter(rd => /^vic_/.test(rd.id) && rd.id !== 'vic_forno' && rd.pts.length > 2 && !fatti.has(rd.id) &&   /* [mappa_compatta] la scalinata del Forno resta aperta: in fondo si vede il mare */ hash2(rd.pts.length, Math.round(rd.pts[0][0]), 1708) < .55).forEach(rd => {
         for (const f of [.45, .6, .3, .7]) { const A = lungo(rd.pts, f); if (A.L < 12) return; const nx = -A.uy, ny = A.ux, [ga, gb] = varco(A.x, A.y, nx, ny), w = ga + gb;
-          if (ga > 3.5 || gb > 3.5 || w < 1.8 || w > 4 || !casa(A.x + nx * (ga + .3), A.y + ny * (ga + .3)) || !casa(A.x - nx * (gb + .3), A.y - ny * (gb + .3))) continue;   // due case che si guardano, a 1,8-4 m
+          if (ga > 3.5 || gb > 3.5 || w < 1.8 || w > 4 || !casa(A.x + nx * (ga + .3), A.y + ny * (ga + .3)) || !casa(A.x - nx * (gb + .3), A.y - ny * (gb + .3)) || portaVicina(A.x, A.y, 3.2)) continue;   // due case che si guardano, a 1,8-4 m
           const B2 = lungo(rd.pts, Math.min(.98, f + 1.2 / A.L)), B0 = lungo(rd.pts, Math.max(.02, f - 1.2 / A.L)); if (Math.abs(varco(B2.x, B2.y, nx, ny).reduce((a, c) => a + c) - w) > .5 || Math.abs(varco(B0.x, B0.y, nx, ny).reduce((a, c) => a + c) - w) > .5) continue;   // le due facciate dritte per lo spessore dell'arco
           pzAt('arco_contrasto', A.x + nx * (ga - gb) / 2, A.y + ny * (ga - gb) / 2, Math.atan2(A.ux, A.uy), w / 2 + .7, 0, { w: +w.toFixed(2), h: 4.2, doppio: hash2(Math.round(A.x), Math.round(A.y), 1709) < .25 }, { nome: 'Arco di ' + rd.name, vicolo: rd.id }); return; } });
       // le edicole votive: sullo spigolo di una casa che dà sulla piazzetta, rivolte al centro
       const PIAZ = [[CITY.piazzette[0][0], CITY.piazzette[0][1], CITY.piazzette[0][2]], [CITY.piazzette[1][0], CITY.piazzette[1][1], CITY.piazzette[1][2]], [(CITY.piazza[0] + CITY.piazza[2]) / 2, (CITY.piazza[1] + CITY.piazza[3]) / 2, 7], [(CITY.rects[0][0] + CITY.rects[0][2]) / 2, (CITY.rects[0][1] + CITY.rects[0][3]) / 2, 6]];
       PIAZ.forEach(([cx, cy, rr], k) => { for (const a of [0, 1.5708, 3.1416, 4.7124].map(v => v + (k % 2) * 1.5708)) { const dx = Math.cos(a), dy = Math.sin(a); let hit = null;
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
-        if (!hit) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
+        if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
     }
+    // [pianta] dove la città tocca il mare col selciato alto (la Riva della Rocca, sotto le mura) il bordo è una banchina col suo muro:
+    // prima l'ultima casella scendeva da tre metri al pelo dell'acqua come uno scivolo
+    { const SEL = new Set([T.PIAZZA, T.COB, T.WALK, T.VIA]), nR = [];
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = 1; tx < GW - 1; tx++) { const i = ty * GW + tx; if (!SEL.has(grid[i]) || zone[i] !== Z.CITTA || elev[i] < 1.1) continue;
+        if ([i - 1, i + 1, i - GW, i + GW].some(k => grid[k] === T.WATER && zone[k] === Z.MARE)) nR.push(i); }
+      nR.forEach(i => { grid[i] = T.QUAY; }); }
     // quote ai vertici dalle caselle (strade e edifici spianati): il terreno che si vede
     const vh = new Float32Array(VW * (GH + 1));
     for (let j = 0; j <= GH; j++) for (let i = 0; i <= GW; i++) {
@@ -2574,7 +2621,8 @@ var World = (function () {
       RDS.forEach(rd => { const p = PRI(rd), side = rd.kind === 'citta' || rd.kind === 'litoranea' ? 2 : 0, flat = rd.w / 2 + side + .2, P = rd.pts, n = P.length;
         for (let k = 0; k < n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L2 = (bx - ax) ** 2 + (by - ay) ** 2 || 1;
           for (let j = Math.max(0, Math.floor((Math.min(ay, by) - flat) / TS)); j <= Math.min(GH, Math.ceil((Math.max(ay, by) + flat) / TS)); j++) for (let i = Math.max(0, Math.floor((Math.min(ax, bx) - flat) / TS)); i <= Math.min(GW, Math.ceil((Math.max(ax, bx) + flat) / TS)); i++) {
-            const q = j * VW + i; if (fixed[q]) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+            const q = j * VW + i; if (fixed[q] && !(rd.kind === 'vicolo' && rd.w <= 3)) continue; const x = i * TS, y = j * TS, t = clamp(((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / L2, 0, 1), d = Math.hypot(x - ax - (bx - ax) * t, y - ay - (by - ay) * t);
+            if (fixed[q] && d > rd.w / 2 + .3) continue;   // [pianta] il vicolo di una casella fra due case: i suoi vertici toccano tutti un muro, ma il selciato segue il profilo della via (prima restava la quota del terreno, a gradini di un metro)
             if (d > flat || (own[q] >= 0 && own[q] < p) || (own[q] === p && d >= dmin[q])) continue;
             own[q] = p; dmin[q] = d; setH[q] = rd.h[k] + (rd.h[k + 1] - rd.h[k]) * t; } } });
       let moved = 0; for (let q = 0; q < NV; q++) if (own[q] >= 0) { if (Math.abs(vh[q] - setH[q]) > .05) moved++; vh[q] = setH[q]; if (CARR) CARR[q] = 1; }
@@ -2612,7 +2660,7 @@ var World = (function () {
         let sum = 0; for (let b2 = -1; b2 <= 1; b2++) for (let q = -1; q <= 1; q++) if (b2 || q) sum += vh[(j + b2) * VW + i + q];
         vh[k] += (sum / 8 - vh[k]) * a * .6;
       }
-      const S = .5;   // pendenza massima (m di salita per m di percorso): circa 26°
+      const S = .33;   // pendenza massima (m di salita per m di percorso): circa 18° ([pianta] prima 26°: fra due vertici del selciato saliva fino a un metro)
       for (let it = 0; it < 30; it++) for (let j = 1; j < GH; j++) for (let i = 1; i < GW; i++) {
         const k = j * VW + i; if (al[k] < .25) continue;
         let lo = -1e9, hi = 1e9;
@@ -2636,7 +2684,9 @@ var World = (function () {
       for (let x = 740; x <= CITY.spian0; x += 2) g0[x] = vAt(x, ry(x));
       const Rf = x => { const k = Math.round(x / 2) * 2; return Math.max((g0[k] !== undefined ? g0[k] : vAt(x, ry(x))) + .35, Rtop - .024 * Math.abs(x - C.x)); };
       POSA.Rf = Rf;
-      eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
+      const SUOLO = new Set([T.VIA, T.COB, T.PIAZZA, T.WALK, T.DIRT, T.GRASS]), accanto = (i, j) => { for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) { const tx = i + a, ty = j + b; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; if (roadW[ty * GW + tx] > 0 || (SUOLO.has(grid[ty * GW + tx]) && Math.abs((ty + .5) * TS - ry((tx + .5) * TS)) > 2.2)) return true; } return false; };   // e la strada che passa sotto il viadotto resta alla sua quota
+      // [pianta] il rilevato sta dentro la massicciata: i vertici del selciato accanto (il vicolo, lo slargo, il prato) restano alla loro quota, il muro a scarpa del binario fa il salto (prima la casella accanto saliva di tre metri in due)
+      eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
       for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
       // 2) la Via Cavour: a terra fino al sottopasso, poi la scalinata fino al piano della Via della Stazione
       const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(1, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
@@ -2644,8 +2694,9 @@ var World = (function () {
       C.p.q = Lr; C.p.opz.hRilevato = +(Rf(C.x) - Lr - .25).toFixed(2);
       eachV(C.x - 2.1, C.y0, C.x + 2.1, C.y1 - 3.4, (i, j, x, y) => setV(i, j, y <= C.ps.y ? Lr : y >= C.ps.y + len ? Htop : Lr + (Htop - Lr) * (y - C.ps.y) / len));
       // 3) il piano della stazione: il marciapiede mezzo metro sopra il ferro; il piazzale scende o sale fino alla via
-      if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; eachVL(S.p, -3, S.L + 3, -11.6, 6.4, (i, j) => setV(i, j, Sq));
-        const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
+      if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; const suVia = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, b]) => a >= 0 && b >= 0 && a < GW && b < GH && roadW[b * GW + a] > 0);   /* [pianta] la Via Alta che passa accanto resta sul suo profilo: il marciapiede della stazione le sta sopra col suo muro */
+        eachVL(S.p, -3, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });
+        const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { if (suVia(i, j)) return; const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
         const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
         [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
       // 4) il fossato della Rocca: 5 m sotto la spianata, il ponte resta in quota
@@ -2655,11 +2706,11 @@ var World = (function () {
         PEZZI.forEach(p => { if (p.rocca === 'spianata') p.q = Sp; else if (p.rocca === 'canale') { p.q = Sp; p.opz.prof = Math.round((Sp + 1.8) * 100) / 100; p.opz.pelo = Math.round(Sp * 100) / 100; } }); }
       // 4b) la Piazza del Mercato: l'ottagono scende di 3 m da ponente a levante; il basolato della tettoia sta in piano (alla quota di mezzo)
       // e attorno, sui lati dove la piazza resta più alta, un muro di sostegno; dove resta più bassa, il gradone con la scala per salirci
-      { const tt = PEZZI.find(p => p.tipo === 'tettoia_mercato'); if (tt && CITY.octa) { const [ox, oy, orr] = CITY.octa, ap = orr - 1.7, oct = (x, y) => { const dx = Math.abs(x - ox), dy = Math.abs(y - oy); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
+      { const tt = PEZZI.find(p => p.tipo === 'tettoia_mercato'); if (CITY.octa) {   /* [pianta] anche senza la tettoia (il mercato è sceso sulla spianata): la piazza resta in piano col suo muro e i suoi gradoni */ const [ox, oy, orr] = CITY.octa, ap = orr - 1.7, oct = (x, y) => { const dx = Math.abs(x - ox), dy = Math.abs(y - oy); return Math.max(dx, dy, (dx + dy) / Math.SQRT2); };
         const hs = []; eachV(ox - ap, oy - ap, ox + ap, oy + ap, (i, j, x, y) => { if (oct(x, y) <= ap) hs.push(vh[j * VW + i]); }); hs.sort((a, b) => a - b); const qm = hs[Math.floor(hs.length / 2)];
         const ring = []; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ring.push(vAt(ox + Math.cos(a) * (orr - .5), oy + Math.sin(a) * (orr - .5))); }
         const lato = (x, y) => ((Math.round(Math.atan2(y - oy, x - ox) / (Math.PI / 4)) % 8) + 8) % 8, giu = k => ring[k] < qm - .5, aw = k => giu(k) ? ap - .5 : ap + .1;   // dove la piazza scende il muro sta mezzo metro dentro (la scala ci sta davanti)
-        eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); tt.q = qm;
+        eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); if (tt) tt.q = qm;
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
           const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && k % 2 === 0, ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
           g.q = +Math.min(qm, ring[k]).toFixed(2); } } }

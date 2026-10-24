@@ -7564,7 +7564,7 @@ var Render = (function () {
       const pe = PRIO2[e.k] || 10, po = PRIO2[o.k] || 10, perde = pe < po || (pe === po && (e.vol < o.vol || (e.vol === o.vol && e.id > o.id)));
       if (perde || all) out.push({ t: pezzo2(e) || pezzo2(o) ? 'pezzo' : (e.k === 'tenda' || o.k === 'tenda') && /balcone|insegna|lampione/.test(e.k + o.k) ? 'tenda' : 'urto', o, perde }); });
     // 3) le zone libere: davanti alle porte e alle vetrine, ai piedi delle scale, attorno ai tombini (solo quello che sta in basso)
-    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
+    if (!FISSI2.has(e.k) || e.k === 'grande') I.near(I.Z, B, z => { if (e.k === 'grande' && z.t !== 'porta') return; if (pezzo2(e) && e.tipo === 'portico' && z.p && z.p.info.b.sottoPortico && (z.p.info.f === 'S' || z.p.info.f === 'N')) return;   /* [pianta] il portico davanti alla porta della sua casa: il fondo lì è aperto */ if (B.y0 > z.B.y1 - .05 || B.y1 < z.B.y0 + .05) return; if (VUOTI2.has(e.k) ? vertIn2(e, z.B, 0) > 0 : sat2(B, z.B) > .05) out.push({ t: pezzo2(e) ? 'pezzo' : z.t, z }); });
     // 4) in carreggiata: il centro sulla strada asfaltata (vicoli e sterrati no), per quello che sta a terra
     if (terra2(e) && !FISSI2.has(e.k) && B.y0 < gy + .6 && carr2(cx, cz)) out.push({ t: 'carreggiata' });
     // 5) sospeso o sepolto: quello che sta a terra deve toccare terra (o una cosa sotto, o il muro a cui è appeso)
@@ -7581,6 +7581,7 @@ var Render = (function () {
       if (p.k === 'porta' || p.k === 'scala') { const n = p.k === 'porta' ? p.info.F.n : [p.info.L.ox, p.info.L.oy], q = p.k === 'porta' ? p.info.F.p : [p.info.L.x, p.info.L.y]; if ((cx - q[0]) * n[0] + (cz - q[1]) * n[1] < -.05) return; }
       if ((e.k === 'portale' || e.k === 'serranda' || e.k === 'citofono') && p.k === 'porta') return;   // le parti della porta stessa
       const cut = clip2(e.hull, p.hull), a = cut.length >= 3 ? area2(cut) : 0; if (a <= p.harea * .12) return;
+      if (pezzo2(e) && e.tipo === 'portico' && p.k === 'porta' && p.info.b.sottoPortico && (p.info.f === 'S' || p.info.f === 'N')) return;   // [pianta] la porta sotto il suo portico: le arcate sono il suo atrio, non la coprono
       if (pezzo2(e)) { const [px, pz] = ctr2(p.B); if (inB2(e.B, px, (e.B.y0 + e.B.y1) / 2, pz, -.6) && e.B.y1 > p.B.y1) { (P2.sotto = P2.sotto || new Set()).add(p.id); return; }   // [pulizia] la porta sta SOTTO il portico, l'arco, la scalinata: coperta per costruzione (la visuale la apre quando ci si passa), si conta a parte
         const f = raggi2(e, p); if (f > .2) { const B = e.B, u = px * B.c - pz * B.s, v = px * B.s + pz * B.c, du = Math.max(B.u0 - u, 0, u - B.u1), dv = Math.max(B.v0 - v, 0, v - B.v1); out.push({ t: 'pezzo', p, a: f, fuori: Math.hypot(du, dv) }); } return; }   // un portico, un arco, una tettoia sono vuoti: si guarda coi raggi attraverso i fornici
       out.push({ t: 'coperto', p, a: a / p.harea }); }, 14);
