@@ -1414,6 +1414,7 @@ var Personaggi = (function () {
     g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
     g.setIndex(n > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1));
     g.computeBoundingSphere(); g.userData.personaggi = true; g.userData.tri = B.I.length / 3;
+    if (typeof LeggeraMem !== 'undefined') LeggeraMem.figura(g, bones.length);   // [leggera] sul telefono la pelle in attributi compatti (112 → ~45 byte a vertice)
     return g;
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)

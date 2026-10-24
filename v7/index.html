@@ -398,7 +398,7 @@ var LeggeraMem = (function () {
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
-  function pila(W, H) { if (!on('pile') || W * H < 65536 || (W & 1) || (H & 1)) return [W, H]; return [W >> 1, H >> 1]; }
+  function pila(W, H, t) { if (!on('pile') || W * H < 65536) return [W, H]; let f = 2; const rip = t && (t.wrapS === THREE.RepeatWrapping || t.wrapT === THREE.RepeatWrapping); while (!rip && Math.max(W, H) / f > 256) f *= 2; return [Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))]; }   // metà lato, e non oltre 256 se non si ripete (le trame ripetute, pavimenti e tegole, solo a metà)
   // i pixel di una tela alla misura dello strato (la stessa lettura di prima se la misura coincide)
   function pixel(im, W, H) {
     if (im.width === W && im.height === H) return im.getContext('2d').getImageData(0, 0, W, H).data;
@@ -527,7 +527,21 @@ var LeggeraMem = (function () {
       const m = new THREE.Mesh(build(cells.get(k)), mat); m.name = 'vegLontano'; m.receiveShadow = true; m.matrixAutoUpdate = false; gruppo.add(m); live.set(k, m); ST.verdeRiquadri = live.size;
     };
   }
-  return { tel: TEL, on, pila, verde, compila, statica, lontano, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  // --- figure: la pelle di personaggi.js (geometria) in attributi compatti: normale 8 bit, colori 8 bit se stanno in 0-1 (se no mezza
+  //   precisione), atlante e motivo in mezza precisione, ossa e pesi in 8 bit
+  function figura(g, nOssa) {
+    if (!on('figure')) return; const A = g.attributes, H = THREE.DataUtils.toHalfFloat;
+    const half = a => { const o = new Uint16Array(a.length); for (let i = 0; i < a.length; i++) o[i] = H(a[i]); return o; };
+    const u8 = a => { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.max(0, Math.min(255, Math.round(a[i] * 255))); return o; };
+    for (const nm in A) { const a = A[nm], arr = a.array; if (!(arr instanceof Float32Array) || nm === 'position') continue;
+      if (nm === 'normal') { const o = new Int8Array(arr.length); for (let i = 0; i < arr.length; i++) o[i] = Math.max(-127, Math.min(127, Math.round(arr[i] * 127))); g.setAttribute(nm, new THREE.BufferAttribute(o, a.itemSize, true)); continue; }
+      const [lo, hi] = rng(arr);
+      if (nm === 'skinWeight' || ((nm === 'color' || nm === 'col2' || nm === 'col3' || nm === 'ol') && lo >= 0 && hi <= 1)) g.setAttribute(nm, new THREE.BufferAttribute(u8(arr), a.itemSize, true));
+      else if (lo > -2048 && hi < 2048) g.setAttribute(nm, new THREE.Float16BufferAttribute(half(arr), a.itemSize)); }
+    const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
+  }
+  function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
+  return { tel: TEL, on, pila, meta, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;
 </script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
@@ -62383,7 +62397,7 @@ var Pavimenti = (function () {
     for (let j = 0; j < MJ; j++) for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
       I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); }
-    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return typeof LeggeraMem !== 'undefined' ? LeggeraMem.datiLiberi(t) : t; };   // [leggera] sul telefono la copia in memoria si svuota dopo l'invio
+    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; };
     const id = tex(I), id2 = tex(I2);
     // [strade] le finiture: per ogni texel la cosa più importante che lo tocca (tombino, chiusino, caditoia, pozzetto, rattoppo, olio,
     // gomma), col centro, l'angolo e le misure: lo shader le disegna nitide al pixel, senza geometria
@@ -62407,7 +62421,7 @@ var Pavimenti = (function () {
       const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = (X0 + (i + .5) * q2 - cx) / ex, dz = (Z0 + (j + .5) * q2 - cz) / ez, r = Math.hypot(dx, dz); if (r >= 1) continue;
         const o = (j * NI2 + i) * 4 + 2, t = 1 - r, v = Math.round(255 * f * t * t * (3 - 2 * t)); if (v > K[o]) K[o] = v; } });
-    const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true; if (typeof LeggeraMem !== 'undefined') LeggeraMem.datiLiberi(mk);   // [leggera]
+    const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true;
     return { id, id2, fi, mk, box: new THREE.Vector4(X0, Z0, n * TS, m * TS), res: new THREE.Vector2(NI, MJ) };
   }
 
@@ -63439,7 +63453,7 @@ var Render = (function () {
   function arrLayer1(t) {   // la pila e lo strato di una mappa
     const key = arrKey1(t); let g = ARR1.gr.get(key); if (!g) ARR1.gr.set(key, g = { list: [] });
     for (const a of g.list) { const l = a.idx.get(t); if (l !== undefined) return [a, l]; }
-    let a = g.list[g.list.length - 1]; const [W, H] = window.LeggeraMem ? LeggeraMem.pila(t.image.width, t.image.height) : [t.image.width, t.image.height], cap =   /* [leggera] sul telefono lo strato a metà lato */ Math.max(1, Math.min(256, Math.floor(ARR1.MB * 1048576 / (W * H * 4))));
+    let a = g.list[g.list.length - 1]; const [W, H] = window.LeggeraMem ? LeggeraMem.pila(t.image.width, t.image.height, t) : [t.image.width, t.image.height], cap =   /* [leggera] sul telefono lo strato a metà lato */ Math.max(1, Math.min(256, Math.floor(ARR1.MB * 1048576 / (W * H * 4))));
     if (!a || a.tex || a.maps.length >= cap) { a = { id: ARR1.n++, W, H, src: t, maps: [], ver: [], idx: new Map(), tex: null }; g.list.push(a); ARR1.all.push(a); }
     a.idx.set(t, a.maps.length); a.maps.push(t); a.ver.push(t.version); return [a, a.maps.length - 1];
   }
@@ -63569,19 +63583,19 @@ var Render = (function () {
   // [leggera] i pezzi originali delle case fuse (spenti, servono solo quando la casa si dissolve, ai raggi dei graffiti e dei tetti)
   // non tengono più la loro geometria (erano ~260 MB): la rifanno dalla mesh fusa la prima volta che qualcuno la chiede, con
   // lo stesso ingombro di prima per chi misura le scatole senza leggere i vertici.
-  const LAZY1 = { n: 0, made: 0 };
+  const LAZY1 = { n: 0, made: 0 }; let PH1 = null;
   function lazyGeo1(o, fused, start, count, hasN, hasUv) {
     const g0 = o.geometry; if (!g0 || o.userData.lazy1) return;
     if (!g0.boundingBox) g0.computeBoundingBox(); if (!g0.boundingSphere) g0.computeBoundingSphere();
-    const ph = new THREE.BufferGeometry(); ph.boundingBox = g0.boundingBox.clone(); ph.boundingSphere = g0.boundingSphere.clone(); ph.name = g0.name;
-    const inv = o.matrixWorld.clone().invert(); let real = null; LAZY1.n++; o.userData.lmN = count;   // [leggera] quanti vertici (per le misure)
+    const LEG = window.LeggeraMem && LeggeraMem.on('pigri'), ph = LEG ? Object.create(PH1 || (PH1 = new THREE.BufferGeometry())) : new THREE.BufferGeometry(); ph.boundingBox = g0.boundingBox.clone(); ph.boundingSphere = g0.boundingSphere.clone(); ph.name = g0.name;   // [leggera] sul telefono il segnaposto eredita da uno solo
+    const inv = LEG ? null : o.matrixWorld.clone().invert(); let real = null; LAZY1.n++; o.userData.lmN = count;   // [leggera] quanti vertici (per le misure)
     const make = () => {
       const P = fused.attributes, a = start, z = start + count, g = new THREE.BufferGeometry();
       if (fused.userData.lmDec) { const d = fused.userData.lmDec(a, z); g.setAttribute('position', new THREE.BufferAttribute(d.pos, 3)); if (hasN && d.nor) g.setAttribute('normal', new THREE.BufferAttribute(d.nor, 3)); if (hasUv && d.uv) g.setAttribute('uv', new THREE.BufferAttribute(d.uv, 2)); } else {   // [leggera] la fusa compattata (leggera_memoria.js) li rifà lei
       g.setAttribute('position', new THREE.BufferAttribute(P.position.array.slice(a * 3, z * 3), 3));
       if (hasN) g.setAttribute('normal', new THREE.BufferAttribute(P.normal.array.slice(a * 3, z * 3), 3, P.normal.normalized));
       if (hasUv) g.setAttribute('uv', new THREE.BufferAttribute(P.uv.array.slice(a * 2, z * 2), 2)); }
-      g.applyMatrix4(inv); g.boundingBox = ph.boundingBox.clone(); g.boundingSphere = ph.boundingSphere.clone(); g.name = ph.name; LAZY1.made++; return g;
+      g.applyMatrix4(inv || o.matrixWorld.clone().invert()); g.boundingBox = ph.boundingBox.clone(); g.boundingSphere = ph.boundingSphere.clone(); g.name = ph.name; LAZY1.made++; return g;
     };
     // finché nessuno la chiede davvero (la casa che si dissolve, un raggio) resta il segnaposto: chi compila i programmi o conta
     // le mesh legge o.geometry senza volerne i vertici
@@ -65902,10 +65916,11 @@ var Render = (function () {
   function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
   function* buildChunkGen(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
-    const c = mk(n * TP, m * TP), x = c.getContext('2d');
+    let c = mk(n * TP, m * TP), x = c.getContext('2d');
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
     paintTiles(x, tx0, ty0, n, m); blobs1(x, tx0, ty0, n, m); blobTex1(x, tx0, ty0, n, m); sabbiaBagnata2(x, tx0, ty0, n, m); /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield; paintOpere(x, tx0, ty0, n, m); smoothRoads(x, tx0, ty0, n, m); railGround(x, tx0, ty0, n, m); svolte1(x, tx0, ty0, n, m); usura1(x, tx0, ty0, n, m); surf1(x, tx0, ty0, n, m); yield; roadMarks(x, tx0, ty0, n, m); strisce35(x, tx0, ty0, n, m); raccordi1(x, tx0, ty0, n, m); holes1(x, tx0, ty0, n, m); segniSuolo1(x, tx0, ty0, n, m); percorsiSuolo1(x, tx0, ty0, n, m); /* [percorsi] */ sporco35(x, tx0, ty0, n, m); macro1(x, tx0, ty0, n, m); snowPass(x, tx0, ty0, n, m); if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [vegetazione] */
     yield;
+    if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
     try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
@@ -78190,6 +78205,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
     if (window.LeggeraMem && LeggeraMem.on('firme')) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */
+    if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
@@ -89470,6 +89486,7 @@ var Personaggi = (function () {
     g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
     g.setIndex(n > 65535 ? new THREE.Uint32BufferAttribute(B.I, 1) : new THREE.Uint16BufferAttribute(B.I, 1));
     g.computeBoundingSphere(); g.userData.personaggi = true; g.userData.tri = B.I.length / 3;
+    if (typeof LeggeraMem !== 'undefined') LeggeraMem.figura(g, bones.length);   // [leggera] sul telefono la pelle in attributi compatti (112 → ~45 byte a vertice)
     return g;
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)

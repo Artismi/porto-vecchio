@@ -155,10 +155,11 @@ const srv = http.createServer((req, res) => {
       // le copie nel processore: array delle geometrie vive, dati delle DataTexture, tele 2D delle texture
       let cpuGeo = 0, cpuTex = 0, cpuCv = 0, nG = 0, nT = 0; const seenA = new Set(), seenI = new Set(), cpuBy = {};
       const up = new Set(); MM.buf.forEach(r => { const a = r.arr && r.arr.deref(); if (a) up.add(a); }); let cpuSu = 0;
-      MM.geoRefs.forEach(w => { const g = w.deref(); if (!g) return; nG++; let by = 0, su = false; const add = a => { const arr = a && (a.isInterleavedBufferAttribute ? a.data.array : a.array); if (arr && up.has(arr)) su = true; if (arr && !seenA.has(arr)) { seenA.add(arr); by += arr.byteLength || 0; } }; for (const k in g.attributes) add(g.attributes[k]); add(g.index); for (const k in g.morphAttributes) (g.morphAttributes[k] || []).forEach(add); cpuGeo += by; if (su) cpuSu += by; const s = (su ? 'S' : 'N') + pk(g.__mst); cpuBy[s] = (cpuBy[s] || 0) + by; });
+      const cpuN = {};
+      MM.geoRefs.forEach(w => { const g = w.deref(); if (!g) return; nG++; let by = 0, su = false; const add = a => { const arr = a && (a.isInterleavedBufferAttribute ? a.data.array : a.array); if (arr && up.has(arr)) su = true; if (arr && !seenA.has(arr)) { seenA.add(arr); by += arr.byteLength || 0; } }; for (const k in g.attributes) add(g.attributes[k]); add(g.index); for (const k in g.morphAttributes) (g.morphAttributes[k] || []).forEach(add); cpuGeo += by; if (su) cpuSu += by; const s = (su ? 'S' : 'N') + pk(g.__mst); cpuBy[s] = (cpuBy[s] || 0) + by; const sn = pk(g.__mst); cpuN[sn] = (cpuN[sn] || 0) + 1; });
       MM.texRefs.forEach(w => { const t = w.deref(); if (!t) return; nT++; const im = t.image; if (!im || seenI.has(im)) return; seenI.add(im); if (im.data && im.data.byteLength) { cpuTex += im.data.byteLength; const s = pk(t.__mst); cpuBy['T' + s] = (cpuBy['T' + s] || 0) + im.data.byteLength; } else if (im.getContext || (typeof OffscreenCanvas !== 'undefined' && im instanceof OffscreenCanvas)) { const by = im.width * im.height * 4; cpuCv += by; const s = pk(t.__mst); cpuBy['C' + s] = (cpuBy['C' + s] || 0) + by; } });
       const inf = rd.info.memory;
-      return { rows, senza, cpu: { geo: cpuGeo, geo_su_scheda: cpuSu, dati: cpuTex, tele: cpuCv, by: cpuBy, geometrie_vive: nG, texture_vive: nT }, gpu: rows.reduce((x, r) => x + r.b, 0), picco: Math.max(MM.max, rows.reduce((x, r) => x + r.b, 0)), picco_grezzo: MM.max, info: { geometrie: inf.geometries, texture: inf.textures, programmi: rd.info.programs ? rd.info.programs.length : 0 },
+      return { cpuN, rows, senza, cpu: { geo: cpuGeo, geo_su_scheda: cpuSu, dati: cpuTex, tele: cpuCv, by: cpuBy, geometrie_vive: nG, texture_vive: nT }, gpu: rows.reduce((x, r) => x + r.b, 0), picco: Math.max(MM.max, rows.reduce((x, r) => x + r.b, 0)), picco_grezzo: MM.max, info: { geometrie: inf.geometries, texture: inf.textures, programmi: rd.info.programs ? rd.info.programs.length : 0 },
         heap: Math.round(performance.memory.usedJSHeapSize / 1048576), heapTot: Math.round(performance.memory.totalJSHeapSize / 1048576), tela: cv.width + '×' + cv.height, dpr: rd.getPixelRatio(), phone: !!(R.__lowq ? R.__lowq.phone : (window.__pv.R.LOWQ || {}).phone), stack: MM.stkL.length };
     });
     m.nome = nome; m.ab = Math.round((hu.backingStorageSize || 0) / 1048576); m.proc = procs();
@@ -166,7 +167,7 @@ const srv = http.createServer((req, res) => {
     const by = {}, byK = {}, byT = {};
     m.rows.forEach(r => { const k = r.lab || chi(r.st); const c = cat(k); const kk = k + ' [' + r.tipo + ']'; by[c] = (by[c] || 0) + r.b; byK[kk] = byK[kk] || { b: 0, n: 0, c, dims: {} }; byK[kk].b += r.b; byK[kk].n++; if (r.dim) { const dk = r.dim + (r.f ? ' f' + r.f : '') + (r.mip ? ' mip' : ''); byK[kk].dims[dk] = (byK[kk].dims[dk] || 0) + 1; } const t = { t: 'texture', r: 'renderbuffer', b: 'buffer', f: 'tela' }[r.k]; byT[t] = (byT[t] || 0) + r.b; });
     const cpuK = {}, cpuF = {}; Object.entries(m.cpu.by).forEach(([s, v]) => { const pre = s[0], w = chi(s.slice(1)); const k = (pre === 'T' ? 'dati ' : pre === 'C' ? 'tele ' : pre === 'S' ? 'geometrie caricate ' : 'geometrie mai caricate ') + cat(w); cpuK[k] = (cpuK[k] || 0) + v; const kf = { T: 'dati', C: 'tele', S: 'geo su', N: 'geo mai' }[pre] + ' ' + w; cpuF[kf] = (cpuF[kf] || 0) + v; });
-    m.cpuF = cpuF;
+    m.cpuF = cpuF; const cn = {}; Object.entries(m.cpuN).forEach(([s, n]) => { const k = chi(s); cn[k] = (cn[k] || 0) + n; }); m.geoN = cn; delete m.cpuN;
     m.per = by; m.perK = byK; m.perTipo = byT; m.cpuPer = cpuK; delete m.rows; delete m.cpu.by; return m;
   };
   const MB = v => (v / 1048576).toFixed(1);
@@ -180,6 +181,7 @@ const srv = http.createServer((req, res) => {
     console.log('  scheda per proprietario:'); Object.entries(m.per).sort((a, c) => c[1] - a[1]).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
     console.log('  copie nel processore per proprietario:'); Object.entries(m.cpuPer).sort((a, c) => c[1] - a[1]).slice(0, 14).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
     console.log('  copie nel processore, le più grosse:'); Object.entries(m.cpuF).sort((a, c) => c[1] - a[1]).slice(0, +arg('top', 40)).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
+    console.log('  geometrie vive per chi le ha fatte: ' + Object.entries(m.geoN || {}).sort((a, c) => c[1] - a[1]).slice(0, 14).map(([k, v]) => v + ' ' + k).join(' · '));
     console.log('  i più grossi (modulo:funzione [tipo]):'); Object.entries(m.perK).sort((a, c) => c[1].b - a[1].b).slice(0, +arg('top', 40)).forEach(([k, v]) => console.log('   ' + MB(v.b).padStart(7) + ' MB ' + String(v.n).padStart(5) + ' × ' + k + '  ' + Object.entries(v.dims).sort((a, c) => c[1] - a[1]).slice(0, 4).map(([d, n]) => n + '×' + d).join(', ')));
   };
   const out = { query: Q, profilo: PROF, misure: [], errori };

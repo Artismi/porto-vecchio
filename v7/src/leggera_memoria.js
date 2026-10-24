@@ -17,7 +17,7 @@ var LeggeraMem = (function () {
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
-  function pila(W, H) { if (!on('pile') || W * H < 65536 || (W & 1) || (H & 1)) return [W, H]; return [W >> 1, H >> 1]; }
+  function pila(W, H, t) { if (!on('pile') || W * H < 65536) return [W, H]; let f = 2; const rip = t && (t.wrapS === THREE.RepeatWrapping || t.wrapT === THREE.RepeatWrapping); while (!rip && Math.max(W, H) / f > 256) f *= 2; return [Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))]; }   // metà lato, e non oltre 256 se non si ripete (le trame ripetute, pavimenti e tegole, solo a metà)
   // i pixel di una tela alla misura dello strato (la stessa lettura di prima se la misura coincide)
   function pixel(im, W, H) {
     if (im.width === W && im.height === H) return im.getContext('2d').getImageData(0, 0, W, H).data;
@@ -146,6 +146,20 @@ var LeggeraMem = (function () {
       const m = new THREE.Mesh(build(cells.get(k)), mat); m.name = 'vegLontano'; m.receiveShadow = true; m.matrixAutoUpdate = false; gruppo.add(m); live.set(k, m); ST.verdeRiquadri = live.size;
     };
   }
-  return { tel: TEL, on, pila, verde, compila, statica, lontano, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  // --- figure: la pelle di personaggi.js (geometria) in attributi compatti: normale 8 bit, colori 8 bit se stanno in 0-1 (se no mezza
+  //   precisione), atlante e motivo in mezza precisione, ossa e pesi in 8 bit
+  function figura(g, nOssa) {
+    if (!on('figure')) return; const A = g.attributes, H = THREE.DataUtils.toHalfFloat;
+    const half = a => { const o = new Uint16Array(a.length); for (let i = 0; i < a.length; i++) o[i] = H(a[i]); return o; };
+    const u8 = a => { const o = new Uint8Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.max(0, Math.min(255, Math.round(a[i] * 255))); return o; };
+    for (const nm in A) { const a = A[nm], arr = a.array; if (!(arr instanceof Float32Array) || nm === 'position') continue;
+      if (nm === 'normal') { const o = new Int8Array(arr.length); for (let i = 0; i < arr.length; i++) o[i] = Math.max(-127, Math.min(127, Math.round(arr[i] * 127))); g.setAttribute(nm, new THREE.BufferAttribute(o, a.itemSize, true)); continue; }
+      const [lo, hi] = rng(arr);
+      if (nm === 'skinWeight' || ((nm === 'color' || nm === 'col2' || nm === 'col3' || nm === 'ol') && lo >= 0 && hi <= 1)) g.setAttribute(nm, new THREE.BufferAttribute(u8(arr), a.itemSize, true));
+      else if (lo > -2048 && hi < 2048) g.setAttribute(nm, new THREE.Float16BufferAttribute(half(arr), a.itemSize)); }
+    const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
+  }
+  function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
+  return { tel: TEL, on, pila, meta, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;
