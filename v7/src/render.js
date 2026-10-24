@@ -3313,7 +3313,10 @@ var Render = (function () {
         for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#6e6a64', '#7a756d', '#625e59', '#837d74'])); } }
     });
     S.rocks.forEach(q => {
-      if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
+      if (q.big && /^scoglio_mura/.test(q.id || '')) {   // [costa] gli scogli sotto le mura: bassi e spezzati (tre o quattro massi piatti, non un uovo di 12 m)
+        const nM = 3 + (r() < .5 ? 1 : 0); for (let k = 0; k < nM; k++) { const a = k / nM * 6.28 + r() * 1.2, d = k ? q.r * (.35 + r() * .3) : 0, s = q.r * (k ? .45 + r() * .2 : .62); push(q.x + Math.cos(a) * d, -.6 + r() * .4, q.y + Math.sin(a) * d, s, .6 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); }
+        for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = q.r * (.7 + r() * .5); push(q.x + Math.cos(a) * d, -.8 + r() * .6, q.y + Math.sin(a) * d, q.r * (.15 + r() * .15), .6 + r() * .4, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
+      else if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
       else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e', '#655f58']));
     });
     if (!list.length) return;
