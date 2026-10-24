@@ -2437,7 +2437,7 @@ var World = (function () {
         if (!POSA.velata((b.door[0] + .5) * TS, (b.door[1] + .5) * TS)) return; if (rePorta(b, cattiva) && !sf) { const P = PLACES[b.id]; if (P) { P.tx = b.door[0]; P.ty = b.door[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; } } });
       // [pianta] il fondo del portico si apre davanti a ogni porta della casa (il portone e la bottega): prima il muro con le vetrine finte la chiudeva
       (POSA.runs || []).forEach(([R, sd]) => R.pz.forEach(({ xs, Ls, p }) => { const V = []; R.bs.forEach(b => { const ty = sd ? b.y - 1 : b.y + b.h;
-            [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (!d || d[1] !== ty) return; const x = (d[0] + .5) * TS, u = sd ? xs + Ls - x : x - xs; if (u > .2 && u < Ls - .2) V.push(Math.min(Ls - .95, Math.max(.95, u))); }); });
+            [b.door, b.shopFront && b.shopFront.door].forEach(d => { if (!d || d[1] !== ty) return; const x = (d[0] + .5) * TS, u = sd ? xs + Ls - x : x - xs; if (u > .2 && u < Ls - .2) V.push(Math.min(Ls - 1.45, Math.max(1.45, u))); }); });
             if (V.length) p.opz.varchi = V.map(v => +v.toFixed(2)); }));
       // gli archi di contrasto: nei vicoli che non hanno già la casa col sottopasso, a metà, dove le due case si guardano
       // il varco del vicolo in un punto: quanto c'è di libero a destra e a sinistra prima del muro di una casa (o di un pezzo chiuso)
