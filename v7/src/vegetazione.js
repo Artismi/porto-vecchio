@@ -611,7 +611,7 @@ var Vegetazione = (function () {
       if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t);   // [leggera] sul telefono a metà lato
       // l'atlante fotografico: quando arriva copre le celle FOTO e la corteccia
       if (!FOTO_ON) CARICATO = Promise.resolve(true); else CARICATO = new Promise(ok => { const img = new Image(); img.onload = () => { [...FOTO, 'corteccia'].forEach(k => { const i = CI[k], x = (i % NX) * CS, y = Math.floor(i / NX) * CS; g.clearRect(x, y, CS, CS); g.drawImage(img, x, y, CS, CS, x, y, CS, CS); }); t.needsUpdate = true; ok(true); };
-        img.onerror = () => ok(false); img.src = BASE + 'atlante_foto.png'; });
+        img.onerror = () => ok(false); img.src = (typeof window !== 'undefined' && window.PV_V && !window.PV_VEG_BASE ? window.PV_V : (u => u))(BASE + 'atlante_foto.png');   /* [avvio] l'impronta */ });
       return (ATL = t);
     }
 
