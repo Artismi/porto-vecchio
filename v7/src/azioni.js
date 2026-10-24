@@ -257,6 +257,7 @@ var Azioni = (function () {
       v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
       if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }

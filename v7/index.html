@@ -31491,9 +31491,11 @@ var Game = (function () {
         if (!n.warned) { n.warned = true; n.warnT = st.clock; n.face = Math.atan2(p.y - n.y, p.x - n.x); say(st, n, 'Zona militare della Tutela! Torna indietro!', 3); }
         else if (dc < C.r * .7 || st.clock - n.warnT > 9) aggroFaction(st, n.faction); }
       if (n.aggro && dc > C.r + 150) { n.aggro = false; n.warned = false; } }
-    // i Marsigliesi avvisano chi si avvicina alla valigetta
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
-    if (n.faction === 'marsiglia' && !n.aggro && isNight(st) && d < 11 && sees) {
+    // i Marsigliesi avvisano chi si avvicina alla valigetta. [eventi] Solo lì, al Pontile: mentre vanno e vengono dal Miramare passano
+    // per la calata, e chi stava fermo a farsi gli affari suoi si prendeva l'avviso e poi una raffica di mitra
+    const caseP = n.faction === 'marsiglia' && !n.aggro && isNight(st) && PLACES.pontile && dist(p.x, p.y, PLACES.pontile.x, PLACES.pontile.y) < 18;
+    if (caseP && d < 4.5 && !p.vehicle) aggroFaction(st, 'marsiglia');
+    if (caseP && d < 11 && sees) {
       if (!n.warned) { n.warned = true; say(st, n, 'Hé! Toi! Reste loin. Stai lontano!', 3); }
       else if (d < 6.5 || (p.cur !== 'pugni' && p.cur !== 'molotov' && d < 10)) { aggroFaction(st, 'marsiglia'); }
     }
@@ -32647,14 +32649,14 @@ var Game = (function () {
     st.fires = st.fires.filter(f => {
       if (st.clock > f.until) return false;
       if (f.calmo) return true;   // [vita2] il bidone acceso fra le baracche: ci si scalda, non brucia nessuno (le fiamme stanno nel bidone)
-      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; } });
+      st.npcs.forEach(n => { if (!n.dead && !n.inside && dist(n.x, n.y, f.x, f.y) < f.r) { n.burn = 2; n.burnBy = f.owner || 'env'; } });   // [eventi] chi brucia sa chi ha acceso il fuoco
       const p = st.player; if (!p.vehicle && dist(p.x, p.y, f.x, f.y) < f.r && st.clock - (p.fireT || -99) > .5) { p.fireT = st.clock; damagePlayer(st, 9, 0, 'fuoco'); }
       st.vehicles.forEach(v => { if (!v.wreck && !v.hidden && dist(v.x, v.y, f.x, f.y) < f.r + VK[v.kind].r) damageVehicle(st, v, 30 * dt, f.owner); });
       return true;
     });
     st.npcs.forEach(n => {
       if (n.burn > 0 && !n.dead) {
-        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, 'player', n.face + Math.PI, 'pugni'); }
+        n.burn -= dt; if (st.clock - (n.burnT || -99) > .5) { n.burnT = st.clock; damage(st, n, 10, n.burnBy || 'env', n.face + Math.PI, 'pugni'); }   // [eventi] la colpa è di chi ha acceso il fuoco (prima sempre del giocatore: una bombola urtata da un'auto del traffico vicino all'osteria metteva mezzo quartiere e i Marsigliesi contro di te)
         if (!n.faction && !n.cop) { n.panic = 3; n.fleeFrom = { x: n.x - Math.cos(n.face), y: n.y - Math.sin(n.face) }; }
       }
     });
@@ -32719,6 +32721,7 @@ var Game = (function () {
       if (v.wreck) { freeRoll(st, v, dt, true); continue; }
       if (v.driveTo && v.rider === 'npc' && !v.traffic) continue;   // [ordine] lo guida ordine.js (volanti, Campagnola, camion della nave)
       if (v.guida && v.rider === 'npc' && !v.traffic) continue;   // [vievive] lo guida vievive.js (l'autobus della linea, i motorini delle vie minori)
+      if (v.dpath && !v.traffic && typeof v.rider === 'string' && v.rider.startsWith('npc:')) continue;   // [eventi] lo guida azioni.js (driveStep: lo porta lui lungo la strada, a 35-40 km/h); prima rotolava anche da solo con quella velocità e falciava i pedoni ('env', senza colpa di nessuno). Chi gli è davanti lo scansa (pushOutOfVehicles)
       if (v.traffic) updateTraffic(st, v, dt);
       else if (v.police && v.rider === 'npc') updatePoliceCar(st, v, dt);
       else if (v.rider !== 'player') { freeRoll(st, v, dt, !v.rider); if (Math.hypot(v.vx, v.vy) > 5.5) runOver(st, v, v.lastHitBy === 'player' ? 'player' : 'loose'); }
@@ -37262,6 +37265,7 @@ var Azioni = (function () {
       v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
       if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }
@@ -57200,6 +57204,9 @@ var Eventi = (function () {
   const PO = () => (typeof Posti !== 'undefined' ? Posti : null);   // [vita2] i posti per le situazioni
   const inHours = (h, hr) => { if (!h) return true; const L = Array.isArray(h[0]) ? h : [h]; return L.some(([a, z]) => z > 24 ? (hr >= a || hr < z - 24) : (hr >= a && hr < z)); };
   const weekday = t => (Math.floor(t / 1440) + 1) % 7;
+  // [eventi] la giornata della regia comincia alle 5 (come le fasce orarie, che arrivano fino a ore 29): la notte resta della sera prima,
+  // così una scena delle 21 e una di mezzanotte nello stesso posto contano come lo stesso giorno (prima a mezzanotte si ripartiva da zero)
+  const giorno = t => Math.floor((t - 5 * 60) / 1440);
 
   // ---------------- CHI PUÒ RECITARE ----------------
   // chi è in casa vicino (sulla soglia del suo edificio, «dentro» per popolo.js) può uscire per la scena, se fuori non c'è nessuno
@@ -57422,9 +57429,9 @@ var Eventi = (function () {
   // per la stessa scena nello stesso giorno; più peso a chi non ha visto niente da un pezzo. In ordine di peso, un po' a caso.
   const cellK = (x, y) => Math.round(x / 40) + ',' + Math.round(y / 40);
   function spotsFor(st, D) {
-    const E = S(st), p = st.player, day = Math.floor(st.t / 1440), out = [], seen = new Set();
+    const E = S(st), p = st.player, day = giorno(st.t), out = [], seen = new Set();
     const add = (x, y) => { const d = hyp(x - p.x, y - p.y); if (d < 12 || d > CFG.spotFar || !G.walkM(x, y)) return; const k = cellK(x, y); if (seen.has(k)) return; seen.add(k);
-      const last = E.spots[k], same = E.spots[k + '|' + D.id]; if (same !== undefined && Math.floor(same / 1440) === day) return;
+      const last = E.spots[k], same = E.spots[k + '|' + D.id]; if (same !== undefined && giorno(same) === day) return;
       const w = (last === undefined ? 1 : Math.min(1, .15 + (st.t - last) / 240)) * (.6 + rnd() * .8); out.push({ x, y, k, w }); };
     for (const n of st.npcs) if (!n.inside && !n.dead && !n.cop && !n.__ev && Math.abs(n.x - p.x) < CFG.spotFar && Math.abs(n.y - p.y) < CFG.spotFar) add(n.x, n.y);
     const PL = G.PLACES || {}; for (const id in PL) { const q = PL[id]; if (q && Math.abs(q.x - p.x) < CFG.spotFar && Math.abs(q.y - p.y) < CFG.spotFar) add(q.x, q.y); }
@@ -57433,8 +57440,8 @@ var Eventi = (function () {
   // [vita2] i posti del tipo giusto attorno al giocatore (fra 9 e 46 m), vivi a quest'ora, non già usati oggi per la stessa scena,
   // pesati per la zona (il borgo pieno, la Vittoria vuota). 'sosta' è un posto virtuale: dove c'è un'auto parcheggiata.
   function postiFor(st, D) {
-    const E = S(st), p = st.player, day = Math.floor(st.t / 1440), out = [], ks = Array.isArray(D.posto) ? D.posto : [D.posto], P = PO();
-    const add = (x, y, posto, dens) => { const k = cellK(x, y), same = E.spots[k + '|' + D.id]; if (same !== undefined && Math.floor(same / 1440) === day) return;
+    const E = S(st), p = st.player, day = giorno(st.t), out = [], ks = Array.isArray(D.posto) ? D.posto : [D.posto], P = PO();
+    const add = (x, y, posto, dens) => { const k = cellK(x, y), same = E.spots[k + '|' + D.id]; if (same !== undefined && giorno(same) === day) return;
       const last = E.spots[k], w = (last === undefined ? 1 : Math.min(1, .15 + (st.t - last) / 240)) * (.6 + rnd() * .8) * (dens + .2); out.push({ x, y, k, w, posto }); };
     if (P) for (const q of P.near(p.x, p.y, CFG.spotFar, ks.filter(k => k !== 'sosta'))) { if (q.__d < 9 || !P.openAt(q, st.t) || (q.tetto ? q.h3 == null : !G.walkM(q.x, q.y))) continue; if (D.postoF && !D.postoF(q)) continue; add(q.x, q.y, q, P.density(q, st.t)); }
     if (ks.includes('sosta')) for (const v of st.vehicles) { if (v.hidden || v.wreck || v.traffic || v.rider || v.ev || G.VK[v.kind].boat) continue; const d = hyp(v.x - p.x, v.y - p.y); if (d < 9 || d > CFG.spotFar) continue;
@@ -57470,15 +57477,15 @@ var Eventi = (function () {
     if (D.solo) { try { return D.solo(st) ? { def: D } : null; } catch (e) { return null; } }
     if (E.live.length >= CFG.max) return null;
     const roles = pickRoles(st, D, auto); if (!roles) return null;
-    if (auto) { const sp0 = roles.__spot || roles[D.roles[0].id], day = Math.floor(st.t / 1440), k0 = cellK(sp0.x, sp0.y);   // [leggera] anche per chi sceglie il posto da sé (la scala)
-      if ((E.spots[k0 + '|' + id] !== undefined && Math.floor(E.spots[k0 + '|' + id] / 1440) === day) || E.day[id + '|' + districtOf(sp0.x, sp0.y)] === day) return null; }
+    if (auto) { const sp0 = roles.__spot || roles[D.roles[0].id], day = giorno(st.t), k0 = cellK(sp0.x, sp0.y);   // [leggera] anche per chi sceglie il posto da sé (la scala)
+      if ((E.spots[k0 + '|' + id] !== undefined && giorno(E.spots[k0 + '|' + id]) === day) || E.day[id + '|' + districtOf(sp0.x, sp0.y)] === day) return null; }
     // [vita2] lanciata a mano (le prove): il posto più vicino del tipo giusto, se c'è
     if (!auto && D.posto && !roles.__posto) { const P = PO(); if (P) { const ks = (Array.isArray(D.posto) ? D.posto : [D.posto]).filter(k => k !== 'sosta'), q = P.near(st.player.x, st.player.y, CFG.far, ks).find(q => q.__d >= 5 && (q.tetto ? q.h3 != null : G.walkM(q.x, q.y))); if (q) { roles.__spot = { x: q.x, y: q.y }; roles.__posto = q; } } }
     const sc = { def: D, roles, cast: [], crowd: [], beats: D.beats.map(x => Object.assign({}, x)), i: -1, spot: roles.__spot || { x: roles[D.roles[0].id].x, y: roles[D.roles[0].id].y }, L: roles.__L, posto: roles.__posto || null, t0: st.clock };
     D.roles.forEach(R => cast(sc, roles[R.id], R.id));
     E.live.push(sc); E.log.push({ id, t: st.t, k: cellK(sc.spot.x, sc.spot.y), posto: sc.posto ? sc.posto.k : null }); if (E.log.length > (CFG.logMax || 40)) E.log.shift(); E.seen[id] = st.clock;
     if (sc.posto) E.byK[sc.posto.k] = (E.byK[sc.posto.k] || 0) + 1;
-    { const k = cellK(sc.spot.x, sc.spot.y); E.spots[k] = st.t; E.spots[k + '|' + id] = st.t; E.day[id + '|' + districtOf(sc.spot.x, sc.spot.y)] = Math.floor(st.t / 1440); if (D.player) E.lastPlayer = st.clock; }
+    { const k = cellK(sc.spot.x, sc.spot.y); E.spots[k] = st.t; E.spots[k + '|' + id] = st.t; E.day[id + '|' + districtOf(sc.spot.x, sc.spot.y)] = giorno(st.t); if (D.player) E.lastPlayer = st.clock; }
     next(st, sc);
     return sc;
   }
@@ -57503,7 +57510,7 @@ var Eventi = (function () {
     if (D.player && (st.player.vehicle || st.player.lv)) return 0;
     const E = S(st), ago = st.clock - (E.seen[D.id] || -1e9);
     if (D.player && st.clock - E.lastPlayer < CFG.playerEvery) return 0;   // [leggera] chi viene verso di te: di rado
-    if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === Math.floor(st.t / 1440)) return 0;   // [leggera] già successa qui oggi
+    if (E.day[D.id + '|' + districtOf(st.player.x, st.player.y)] === giorno(st.t)) return 0;   // [leggera] già successa qui oggi
     return (D.w || 1) * (ago < 240 ? .15 : 1) * (D.posto && !D.soft ? 1.6 : 1);   // la stessa scena non torna subito; [vita2] dove c'è il suo posto, la scena del posto pesa di più
   }
   function step(st, dt) {
