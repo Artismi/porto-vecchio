@@ -3439,7 +3439,7 @@ var World = (function () {
   // [cotto] il mondo cotto nella build (cotto.js): le radici sono le costanti del modulo che il mondo richiama (le isole, i canali...):
   // così il mondo letto punta agli stessi oggetti di quello calcolato
   const CT = typeof Cotto !== 'undefined' ? Cotto : null;
-  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2SCOGLI, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
+  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
   const COT = CT ? CT.apri('mondo', RADICI) : null;
   const rifare = CT ? CT.RIFARE : null;
   const FUNZ = Object.assign({ monte, tavR, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
