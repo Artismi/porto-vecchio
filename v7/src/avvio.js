@@ -6,7 +6,7 @@
       calcolo. Con <link rel=preload>: solo i byte, nella cache del browser; Kit.load li chiede come prima e li trova lì. I personaggi
       (assets/mc) restano dove erano (protagonista_ui.js, Models.attach: chiesti a fine pagina, letti dopo R.init).
    3. PV_V(url): l'indirizzo con l'impronta del file (?v=…, da build.py: window.PV_VER), così assets/ può stare in cache per sempre.
-   Da file:// non si scarica niente in anticipo (file_shim.js serve i .json.js). ?noprecarico spegne il punto 2.                    */
+   Da file:// non si scarica niente in anticipo (file_shim.js serve i .json.js). Il punto 2 per ora è spento: ?precarico lo accende.                    */
 (function () {
   'use strict';
   if (typeof window === 'undefined') return;
@@ -28,7 +28,9 @@
   window.PV_GPU = gl => { if (nome === undefined && gl) leggi(gl); return nome || ''; };
   // 2. i modelli in anticipo
   const Q = location.search || '';
-  if (location.protocol === 'file:' || /[?&]noprecarico\b/.test(Q) || !window.fetch) return;
+  // [avvio] PER ORA SPENTO (?precarico lo accende, ?precarico=fetch nella variante col fetch): in 6 giri su 6 con i kit in anticipo
+  // R.init è durato 1,5-2 volte tanto e il processo della scheda video lavorava per tutto R.init (senza: fermo). Causa da capire
+  if (location.protocol === 'file:' || !/[?&]precarico\b/.test(Q) || !window.fetch) return;
   const KITS = window.PV_KITS = ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
   if (!/[?&]precarico=fetch\b/.test(Q)) {
     // <link rel=preload>: il browser scarica e tiene i byte nella sua cache, e il fetch di Kit.load (stesso indirizzo, stesso modo cors)

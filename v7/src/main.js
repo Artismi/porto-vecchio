@@ -149,10 +149,11 @@
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
-    if (ui.intro || ui.over) { if (k === 'enter') { e.preventDefault(); ui.over ? restart() : start(); } return; }
+    if (ui.intro) return;   // [diretto] si entra da soli, quando il gioco risponde
+    if (ui.over) { if (k === 'enter') { e.preventDefault(); restart(); } return; }
     if (k === 'tab') { e.preventDefault(); toggleBook(); return; }
     if (k === 'm') { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }
-    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); return; }
+    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
@@ -511,13 +512,16 @@
   }
 
   // ---------- Schermate ----------
-  function introScreen() {   // [menu2] una scritta, un pulsante: niente nome né storia, leggibile anche in verticale
-    $('screen').innerHTML = `<div class="in intro2"><div class="logo">Get out and state your business</div>
-      <button class="cta" id="go">Scendi in strada</button>
+  // [diretto] niente schermata d'avvio né pulsanti: aprendo la pagina si carica e si entra in partita appena il gioco risponde
+  // (vivoTick). Finché carica, una riga e una barra in basso; la camera sta già sul personaggio (così gli anelli preparano la zona
+  // dove si gioca, non la piazza del vecchio menu). I crediti restano qui, durante il caricamento.
+  function introScreen() {
+    $('screen').style.pointerEvents = 'none';
+    $('screen').innerHTML = `<div class="in carico0"><div class="lbl" id="caricoTxt">Carico il porto…</div><div class="bar"><i id="caricoBar" style="width:5%"></i></div>
       <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
-    $('go').onclick = start;
   }
-  function start() { A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
+  function carico(txt, p) { const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
+  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
   function endScreen() {
     const o = st.over; ui.over = true; ui.letterbox = true; showHud(false); $('bubbles').style.visibility = 'hidden'; $('xhair').hidden = true;
     const named = st.npcs.filter(n => !n.passante && !n.cop).concat(st.npcs.filter(n => n.cop && !n.reinforcement));
@@ -849,7 +853,7 @@
   function conMap() {
     const p = st.player, M = {};
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
-    if (ui.intro) { M.a = { l: 'Gioca', dn: () => { const b = $('go'); if (b && !b.disabled) b.click(); } }; return M; }
+    if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
@@ -981,10 +985,10 @@
   // ---------- Avvio ----------
   buildMinimap(); introScreen(); showHud(false);
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
-  const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
+  carico('Carico il porto…', .05);
   // [ospite] dentro un altro sito (artismidesignstudio.com) il caricamento lo mostra la pagina che ospita il gioco:
   // le si dice a che punto siamo e quando il menu è pronto, così i caricamenti diventano uno solo
-  const host = (p, ready) => { try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
+  const host = (p, ready) => { if (!ready) carico(null, p); try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
   const KITS = window.PV_KITS || ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
   if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
   host(.15);
@@ -1022,17 +1026,17 @@
     if (!inp || inp.mag === undefined || !(inp.x || inp.y) || st.player.vehicle || ui.intro) return null;
     const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
   }
-  // [avvio] «Gioca» si accende quando il gioco risponde davvero: disegnati i primi fotogrammi (che caricano tutto sulla scheda video
-  // e la aspettano: in SwiftShader 10-45 s ciascuno) e visto almeno un fotogramma sotto i 100 ms. Prima il pulsante si accendeva
-  // appena i programmi erano pronti, e per un minuto restava acceso su una pagina ferma. Se i 100 ms non arrivano mai (scheda
+  // [avvio] [diretto] si entra in partita quando il gioco risponde davvero: disegnati i primi fotogrammi (che caricano tutto sulla
+  // scheda video e la aspettano: in SwiftShader 10-45 s ciascuno) e visto almeno un fotogramma sotto i 100 ms. Prima «Gioca» si
+  // accendeva appena i programmi erano pronti, e per un minuto restava acceso su una pagina ferma. Se i 100 ms non arrivano mai (scheda
   // lentissima) dopo 12 fotogrammi sotto il secondo si parte lo stesso, e comunque dopo 90 s di fotogrammi.
   const VIVO = { on: true, n: 0, t0: 0 };
   function vivoTick(raw) {
     if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
     if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
     VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
-    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
-    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato e risponde: si può mostrare
+    start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
   function loop0(now) {
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
@@ -1076,7 +1080,7 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
@@ -1089,8 +1093,8 @@
   const shT0 = performance.now();
   (function shWait() {
     let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
-    if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
-    if (goBtn) goBtn.textContent = 'Preparo la grafica… 100%';   // [avvio] il pulsante si accende in vivoTick, quando i fotogrammi corrono
+    if (f < 1 && performance.now() - shT0 < 60000) { carico('Preparo la grafica… ' + Math.round(f * 100) + '%'); host(.85 + .1 * f); setTimeout(shWait, 100); return; }
+    carico('Quasi pronto…', .95);   // [avvio] si entra in vivoTick, quando i fotogrammi corrono
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
