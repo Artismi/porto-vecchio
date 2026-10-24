@@ -62850,6 +62850,10 @@ var PuliziaRumore = (function () {
     if (v.kind === 'vicolo') { if (b > -hw && a < hw) { const lib = Math.max(hw - b, a + hw); if (lib < P && 2 * hw > P + .2) return { k: 'vicolo', via: v.rd.id, v, lib }; } return null; }
     if (b > -hw + .1 && a < hw - .1) return { k: 'carreggiata', via: v.rd.id, v };
     const dentro = Math.min(Math.abs(a), Math.abs(b)) - hw; if (dentro > 2.8) return null;   // oltre il marciapiede
+    // il marciapiede vero (pavimenti.js, Pavimenti.swH: l'altezza del marciapiede disegnato) quando c'è: la sua larghezza dal cordolo
+    const sg = Math.sign(v.s) || 1, sw = q => A.swH ? A.swH(cx - v.n[0] * (v.s - sg * q), cz - v.n[1] * (v.s - sg * q)) : null;
+    if (A.swH && sw(hw + .3) !== null) { if (!(sw(hw + .3) > .1) && !(sw(dentro + hw + ext) > .1)) return null; let L = .3; while (L < 5 && sw(hw + L + .25) > .1) L += .25;
+      const fuori = L - (dentro + 2 * ext), lib = Math.max(dentro, fuori); if (lib < P && L > P + .2) return { k: 'marciapiede', via: v.rd.id, v, lib }; return null; }
     const w = A.casaVicina(cx, cz, 3), muro = w ? w.d - ext : 9; if (dentro < P && muro < P && muro > -.5) return { k: 'marciapiede', via: v.rd.id, v, lib: Math.max(dentro, muro) };
     return null;
   }
@@ -71077,7 +71081,7 @@ var Render = (function () {
       Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', 'vievive', q.x, q.y, rot(q.ang + Math.PI / 2), 0, 0, 1.15, .08, y0, y0 + 2.45, { terra: true, plancia: q }); }); } } catch (e) { console.error('[rumore] vievive', e); }
     X.forEach(e => { if (e.b && e.f && !e.F) { const r0 = DZ.bRec[BI.get(e.b)]; if (r0 && r0.geo) e.F = faccia2(e.b, r0, e.f, 0); } });
     return {
-      viaVicina, R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
+      viaVicina, swH: window.Pavimenti && typeof Pavimenti.swH === 'function' ? (x, z) => { try { return Pavimenti.swH(x, z); } catch (e) { return null; } } : null, R, G, TS, groundH, ctr: ctr2, corners: corners2, box: box2, palo: palo2, roadDir: roadDir2, sat: sat2, yov: yov2, esterni: X,
       togliEsterno: e => { if (e.plancia) { const L = Vievive.plance(), i = L.indexOf(e.plancia); if (i >= 0) L.splice(i, 1); } else if (e.key) PuliziaRumore.SALTA.add(e.key); e.gone = true; },
       // [pulizia] TUTTE le porte a piano terra: il portone e la porta di bottega del regista, e i vani porta del kit sulle facciate
       // (b.__win: 'doorway' alla quota del piede), ognuna col suo frame sul muro e la sua larghezza

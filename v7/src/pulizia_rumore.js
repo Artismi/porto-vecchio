@@ -86,6 +86,10 @@ var PuliziaRumore = (function () {
     if (v.kind === 'vicolo') { if (b > -hw && a < hw) { const lib = Math.max(hw - b, a + hw); if (lib < P && 2 * hw > P + .2) return { k: 'vicolo', via: v.rd.id, v, lib }; } return null; }
     if (b > -hw + .1 && a < hw - .1) return { k: 'carreggiata', via: v.rd.id, v };
     const dentro = Math.min(Math.abs(a), Math.abs(b)) - hw; if (dentro > 2.8) return null;   // oltre il marciapiede
+    // il marciapiede vero (pavimenti.js, Pavimenti.swH: l'altezza del marciapiede disegnato) quando c'è: la sua larghezza dal cordolo
+    const sg = Math.sign(v.s) || 1, sw = q => A.swH ? A.swH(cx - v.n[0] * (v.s - sg * q), cz - v.n[1] * (v.s - sg * q)) : null;
+    if (A.swH && sw(hw + .3) !== null) { if (!(sw(hw + .3) > .1) && !(sw(dentro + hw + ext) > .1)) return null; let L = .3; while (L < 5 && sw(hw + L + .25) > .1) L += .25;
+      const fuori = L - (dentro + 2 * ext), lib = Math.max(dentro, fuori); if (lib < P && L > P + .2) return { k: 'marciapiede', via: v.rd.id, v, lib }; return null; }
     const w = A.casaVicina(cx, cz, 3), muro = w ? w.d - ext : 9; if (dentro < P && muro < P && muro > -.5) return { k: 'marciapiede', via: v.rd.id, v, lib: Math.max(dentro, muro) };
     return null;
   }
