@@ -1,5 +1,5 @@
 {
- "quando": "2026-10-24T00:22:15.319Z",
+ "quando": "2026-10-24T00:46:40.279Z",
  "spento": false,
  "prima": {
   "voci": 10782,
@@ -15,9 +15,9 @@
    "sospeso": 23,
    "sotto": 15,
    "coperto": 189,
-   "pezzo": 22
+   "pezzo": 19
   },
-  "tot": 3103,
+  "tot": 3100,
   "perVoce": {
    "muro:tenda": 62,
    "porta:tenda": 26,
@@ -70,7 +70,6 @@
    "pezzo:grande/lampione": 1,
    "pezzo:grande/porta": 7,
    "pezzo:grande/arredo": 4,
-   "pezzo:grande": 3,
    "pezzo:grande/gradino": 2,
    "urto:gradino/arredo": 359,
    "urto:gradino/grande": 2,
@@ -156,7 +155,7 @@
    "carreggiata:inverno": 1,
    "urto:inverno": 1,
    "porta:inverno": 1,
-   "pezzo:posa1": 17,
+   "pezzo:posa1": 14,
    "urto:volumi": 670,
    "porta:case": 136,
    "urto:case": 206,
@@ -223,12 +222,11 @@
    "sospeso": 0,
    "sotto": 0,
    "coperto": 8,
-   "pezzo": 10
+   "pezzo": 7
   },
-  "tot": 23,
+  "tot": 20,
   "perVoce": {
    "pezzo:grande/porta": 7,
-   "pezzo:grande": 3,
    "urto:gradino/grande": 2,
    "urto:gradino/scorcio_muro": 2,
    "porta:grande": 1,
@@ -237,7 +235,7 @@
    "coperto:scorcio_muro/porta": 4
   },
   "perPasso": {
-   "pezzo:posa1": 10,
+   "pezzo:posa1": 7,
    "urto:volumi": 4,
    "porta:soglie": 1,
    "coperto:soglie": 3,
@@ -10423,28 +10421,6 @@
    ],
    [
     "pezzo",
-    1349.8,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.2,
-    1350,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.6
-   ],
-   [
-    "pezzo",
     1378.5,
     336.1,
     "grande:portico",
@@ -10460,17 +10436,6 @@
     "posa1",
     "gradino",
     2.5
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.6
    ],
    [
     "pezzo",
@@ -29263,16 +29228,16 @@
    ],
    [
     "muro",
-    1454.9,
+    1454.8,
     309.1,
     "dehors",
     "segni",
-    "casa casa_244 [1451.95,1456.05,303.95,308.05,3.21,12.21] F- 214v 2052 2.83x2.83x2.50",
+    "casa casa_244 [1451.95,1456.05,303.95,308.05,3.21,12.21] F- 224v 2052 2.83x2.83x2.50",
     6.1
    ],
    [
     "urto",
-    1454.9,
+    1454.8,
     309.1,
     "dehors",
     "segni",
@@ -29281,7 +29246,7 @@
    ],
    [
     "porta",
-    1454.9,
+    1454.8,
     309.1,
     "dehors",
     "segni",
@@ -29440,7 +29405,7 @@
    ],
    [
     "muro",
-    1418.9,
+    1418.8,
     375.1,
     "dehors",
     "segni",
@@ -29449,7 +29414,7 @@
    ],
    [
     "porta",
-    1418.9,
+    1418.8,
     375.1,
     "dehors",
     "segni",
@@ -29464,7 +29429,7 @@
     317.2,
     "dehors",
     "segni",
-    "casa casa_292 [1427.95,1430.05,315.95,320.05,2.30,11.30] F- 139v 2052 2.83x2.83x2.50",
+    "casa casa_292 [1427.95,1430.05,315.95,320.05,2.30,11.30] F- 135v 2052 2.83x2.83x2.50",
     5.3
    ],
    [
@@ -29753,39 +29718,6 @@
     4.1,
     1408.2,
     293
-   ],
-   [
-    "pezzo",
-    1349.8,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.2,
-    1350,
-    334.6
-   ],
-   [
-    "pezzo",
-    1359.3,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    1.6,
-    1358,
-    334.6
-   ],
-   [
-    "pezzo",
-    1378.5,
-    336.1,
-    "grande:portico",
-    "posa1",
-    "porta",
-    2.5,
-    1379,
-    334.6
    ],
    [
     "pezzo",
