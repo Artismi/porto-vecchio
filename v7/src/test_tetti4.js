@@ -99,7 +99,7 @@ ok(T.PLANKS.filter(P => P.via5).length <= 4, `sopra la Rua e la Marina pochi arc
 
 // ---------------- 2. i giri, i temi, i premi, le vie ----------------
 const giri = D.circuiti.filter(c => c.k === 'tetti'), tutti = D.circuiti;
-ok(giri.length >= 8 && giri.length <= 10 && tutti.length === giri.length + 1, `da otto a dieci giri sui tetti, più le mura (${tutti.length}: ${tutti.map(c => c.nome.replace(/^Il (giro )?/, '')).join(', ')})`);
+ok(giri.length >= 8 && giri.length <= 10 && tutti.length === giri.length, `da otto a dieci giri sui tetti (le mura di tramontana non ci sono più) (${tutti.length}: ${tutti.map(c => c.nome.replace(/^Il (giro )?/, '')).join(', ')})`);
 ok(tutti.every(c => c.tema), 'ogni giro ha il suo tema: ' + tutti.map(c => c.tema).join(' · '));
 ok(giri.every(c => (c.rami || []).length >= 1), 'ogni giro sui tetti ha almeno un ramo che paga: ' + giri.map(c => c.id.replace('giro_', '') + ' ' + c.rami.map(r => r.premio).join('+')).join(' · '));
 const kinds = new Set(); giri.forEach(c => c.rami.forEach(r => kinds.add(r.premio)));

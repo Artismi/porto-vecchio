@@ -114,14 +114,19 @@ var World = (function () {
   const PUNTA = { x0: 26, x1: 80, y: 220 };   // la punta finisce a x 26: i faraglioni (x 6-24) restano in mare, subito fuori
   const puntaHW = x => x <= PUNTA.x0 ? 0 : 19 * Math.sqrt(clamp((x - PUNTA.x0) / (PUNTA.x1 - PUNTA.x0), 0, 1)) * (1 + .25 * (fbm(x / 7, 3, 704, 2) - .5));
   const c2Out = (x, N) => (N ? c2B(x, C2N) + c2Rumore(x, 2.1) : c2B(x, C2S) + c2Rumore(x, 5.3)) * c2Taper(x);   // quanto la riva esce verso il mare
-  function NorthY(x) {
+  // [telefono] le due rive valgono per x: chi le chiede più volte nello stesso punto (i vertici, le caselle, la distanza dalla riva)
+  // le ritrova senza rifare il rumore. Stessi numeri. La memoria si svuota da sola oltre le 200.000 voci
+  const NYM = new Map(), SYM = new Map();
+  function NorthY(x) { let v = NYM.get(x); if (v === undefined) { v = NorthY0(x); if (NYM.size > 200000) NYM.clear(); NYM.set(x, v); } return v; }
+  function SouthY(x) { let v = SYM.get(x); if (v === undefined) { v = SouthY0(x); if (SYM.size > 200000) SYM.clear(); SYM.set(x, v); } return v; }
+  function NorthY0(x) {
     if (x >= XF) { const y0 = northY(xo(x)) + gapK(x) * nH(x, 2.1); return x >= C2X1 ? y0 : y0 - c2Out(x, true); }
     const c = Math.abs(x - HEAD.x) < HEAD.r ? HEAD.y - headHalf(x) : 1e4;
     let y = smin(c, x < 250 ? 1e4 : neckN(x), 34) + nH(x, 2.1) * (1 - sstep(XF - 60, XF, x)) + cove(x, 300, 11, 7) + cove(x, 520, 9, 5) - c2Out(x, true);
     if (x > PUNTA.x0 && x < PUNTA.x1 + 30) y = smin(y, PUNTA.y - puntaHW(x), 8);
     return y;
   }
-  function SouthY(x) {
+  function SouthY0(x) {
     if (x >= XF) { const y0 = southY(xo(x)) - gapK(x) * nH(x, 5.3); return x >= C2X1 ? y0 : y0 + c2Out(x, false); }
     const c = Math.abs(x - HEAD.x) < HEAD.r ? HEAD.y + headHalf(x) : -1e4;
     let y = -smin(-c, x < 250 ? 1e4 : -neckS(x), 46) - nH(x, 5.3) * .45 * (1 - sstep(XF - 60, XF, x)) + c2Out(x, false);   // la Spiaggia Lunga: riva liscia
@@ -135,11 +140,15 @@ var World = (function () {
   function c2Tab() { if (C2T.N) return; const n = C2T.x1 - C2T.x0 + 1; C2T.N = new Float32Array(n); C2T.S = new Float32Array(n);
     for (let i = 0; i < n; i++) { const x = C2T.x0 + i; C2T.N[i] = NorthY(x); C2T.S[i] = SouthY(x); } }
   function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
-    c2Tab(); let best = cap * cap; const i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(C2T.N.length - 2, Math.ceil(x + cap - C2T.x0));
+    c2Tab(); let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
+    // [telefono] gli stessi conti, nello stesso ordine (stesso risultato al bit), ma senza il vettore allocato a ogni segmento e senza
+    // chiamate: era il primo peso del processore all'avvio (9 s su 110 nel container)
     for (let i = i0; i <= i1; i++) {
       const xa = C2T.x0 + i, dx = x - xa; if (dx * dx >= best && xa < x) continue;
-      for (const A of [C2T.N, C2T.S]) { const ya = A[i], yb = A[i + 1]; if (ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3) continue;
-        const ex = 1, ey = yb - ya, L2 = 1 + ey * ey, t = clamp((dx * ex + (y - ya) * ey) / L2, 0, 1), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
+      let ya = N[i], yb = N[i + 1];
+      if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
+      ya = S[i]; yb = S[i + 1];
+      if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
     }
     return Math.sqrt(best);
   }
@@ -266,8 +275,8 @@ var World = (function () {
   // [costa2] fuori dalla città la distanza vera dalla riva (entro 64 m); oltre, e nella città, quella di prima
   const Inland0 = (x, y) => {
     if (x >= C2X1 - 4 || x < C2T.x0 + 2) return Inland00(x, y);
-    const v = Math.min(y - NorthY(x), SouthY(x) - y); if (v > 64 || v < -64) return v;
-    const d = c2Dist(x, y, 64), on = y > NorthY(x) && y < SouthY(x); return on ? Math.min(d, v) : -d;
+    const ny = NorthY(x), sy = SouthY(x), v = Math.min(y - ny, sy - y); if (v > 64 || v < -64) return v;   // [telefono] le rive una volta sola
+    const d = c2Dist(x, y, 64), on = y > ny && y < sy; return on ? Math.min(d, v) : -d;
   };
   const Inland = (x, y) => Math.max(Inland0(x, y), isleIn(x, y));   // [arcipelago] la riva più vicina, isole comprese
   const DistrictAt = (x, y) => y !== undefined && isleIn(x, y) > Inland0(x, y) - 18 ? 'isole' : DistrictAt0(x);   // [arcipelago] con y: le isole e il mare attorno
@@ -1066,7 +1075,7 @@ var World = (function () {
       { const R = CITY.glacis.rivaPts; let xv = 1178; for (let k = 0; k < R.length - 1; k++) if ((R[k][1] - 90) * (R[k + 1][1] - 90) <= 0 && R[k][1] !== R[k + 1][1]) xv = R[k][0] + (R[k + 1][0] - R[k][0]) * (90 - R[k][1]) / (R[k + 1][1] - R[k][1]);
         add('vic_glacis', 'Vico del Glacis', 3, 'vicolo', [[1151.25, 90], [(1151.25 + xv) / 2, 90.6], [xv, 90]], { era: 'E1' }); }
       add('passeggiata_sud', 'Via del Lido', 7, 'citta', vline(1147.5, 146.5, 213), { era: 'E1', capi: [null, { tipo: 'affaccio', perche: 'scende alla spiaggia del Lido, accanto al muro del Recinto' }] });   // [pianta] la Via del Lido: l'anello sul mare passa la Vittoria a croce col Viale della Spianata
-      add('vic_mura', 'Via delle Mura', 2.5, 'vicolo', MV, { era: 'E0', capi: [{ tipo: 'scala', perche: 'la scala di ferro delle mura: sale sul camminamento di tramontana' }, null] });
+      add('vic_mura', 'Via delle Mura', 2.5, 'vicolo', MV, { era: 'E0', capi: [{ tipo: 'affaccio', perche: 'si affaccia sui binari, sotto la massicciata' }, null] });
       // i vicoli a pettine (Molfetta): paralleli e storti dalla stessa parte, ognuno da asse ad asse (Rua → mura, Rua → Vittoria,
       // Vittoria → Via di Mezzo); il Vico Lungo dalla Vittoria scende alla marina. Niente monconi: ogni capo sta su un'altra strada.
       const LEAN = .16;
@@ -1486,12 +1495,7 @@ var World = (function () {
           const mareR = (x, y) => { const i = T2i(y) * GW + T2i(x); return grid[i] === T.WATER; };
           for (let s0 = 8; s0 + 6 <= SR[SR.length - 1]; s0 += 6) { const A = atR(s0), B = atR(s0 + 6), L = dist(A[0], A[1], B[0], B[1]), ux = (B[0] - A[0]) / L, uy = (B[1] - A[1]) / L, nx = uy, ny = -ux, M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
             if (mareR(M[0] + nx * 5.5, M[1] + ny * 5.5) || mareR(M[0] + nx * 7, M[1] + ny * 7)) PZ('parapetto', A[0] + nx * 3.4, A[1] + ny * 3.4, Math.atan2(-uy, ux), { L: +L.toFixed(2), tipo: 'mare' }, { nome: 'Parapetto della Riva della Rocca' }); } } }
-      // E1/E0 le mura di tramontana sugli scogli del borgo, a tratti di 20 m che seguono la costa; la scala di ronda dal lato della città
-      { const xs = []; for (let x = 1128; x > 1040; x -= 12) xs.push(x);
-        let scala = 3; xs.forEach((xe, k) => { const xw = Math.max(1040, xe - 12); if (xe - xw < 6) return; const P0 = [xe, ryP(xe) + 5.5], P1 = [xw, ryP(xw) + 5.5], L = dist(P0[0], P0[1], P1[0], P1[1]);
-          const p = PZ('mura_tramontana', P0[0], P0[1], Math.atan2(-(P1[1] - P0[1]), P1[0] - P0[0]), { L, h: 7, merli: true, scala: false }, { nome: 'Mura di tramontana' });
-          let free = k >= scala; if (free) pzCells(p, 0, L, -2.8, -1.2, i => { if (roadW[i] > 0) free = false; }); if (free && scala < 99) { p.opz.scala = true; scala = 99; }
-          pzRis(p, 'B', 0, L, p.opz.scala ? -2.7 : -1.2, 2); }); }
+      // [ordine] niente mura di tramontana lungo i binari: col muro a scarpa della massicciata facevano una doppia divisione fra la città e la ferrovia
       // E0 la Porta di Terra della cinta medievale ([pianta] ora sul Mercato vecchio, sulla bocca del Vico dei Giardini; sulla Rua resta lo slargo)
       { const rua = RDp('rua'), co = RDp('corso'); if (rua && co) { const y0 = rua.pts[0][1]; let cx = 990, bd = 1e9; co.pts.forEach(q => { const d = Math.abs(q[1] - y0); if (d < bd) { bd = d; cx = q[0]; } });
         const xF = cx + co.w / 2 + 2.6, yR = yOnP(rua.pts, xF + 4);
