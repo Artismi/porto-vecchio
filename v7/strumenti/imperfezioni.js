@@ -4,7 +4,8 @@
 //   spigolo     un vertice di una via di città dove la direzione gira di più di 25° in meno di una larghezza di via (l'angolo vivo)
 //   zigzag      un sentiero o un vicolo che gira a destra e a sinistra di più di 20° in pochi metri (la scaletta delle caselle)
 //   salto       due vertici vicini del suolo calpestabile (vie, piazze, marciapiedi, terra) con più di 0,7 m di differenza, senza scala né banchina
-//   gradino_via lungo l'asse di una via la quota cambia pendenza di colpo (più di 12% fra due tratti di 2 m)
+//               ([pianta] né un muro vero: il gradone, la scalinata, il sottopasso, il rilevato del tronchino, le mura)
+//   gradino_via lungo l'asse di una via la quota cambia pendenza di colpo (più di 12% fra due tratti di 2 m; [pianta] non su una scalinata o un gradone veri)
 // Stampa i conti, i peggiori casi con le coordinate e salva reports/imperfezioni.json.   node strumenti/imperfezioni.js [uscita.json]
 const path = require('path'), fs = require('fs');
 const log = console.log, warn = console.warn; console.log = () => {}; console.warn = () => {};
@@ -35,17 +36,26 @@ R.forEach(rd => { const Q = rd.pts; for (let k = 1; k < Q.length - 1; k++) { con
 // ---- 3. i salti del suolo calpestabile ----
 const VW = GW + 1, vh = (i, j) => W.quotaRiva ? W.quotaRiva(i, j) : W.vh[j * VW + i];
 const SUOLO = new Set([T.VIA, T.COB, T.PIAZZA, T.WALK, T.DIRT, T.GRASS].filter(v => v !== undefined)), SALVA = new Set([T.STAIRS, T.QUAY, T.PIER, T.CLIFF, T.BLD, T.WATER, T.FOUNT].filter(v => v !== undefined));
+// [pianta] il salto che un muro vero regge (il gradone col muro di sostegno, la scalinata, il sottopasso, il rilevato del tronchino, le
+// mura, le banchine): lì il dislivello è architettura, non un difetto del suolo. Il rettangolo del pezzo (le caselle che riserva, o le sue
+// misure per il gradone), allargato di 1,2 m
+const MURI = new Set(['gradone', 'scalinata', 'sottopasso', 'binari', 'muro_garante', 'mura_tramontana', 'bastione', 'darsena', 'magazzini_volta', 'stazione', 'arco_sottopasso']);
+const lungaScala = o => Math.round((o.dislivello || 2) / .17) * (o.pedata || .36) + (o.pianerottoli || 0) * 1.6 + .3;
+const RETT = (W.pezzi || []).filter(p => MURI.has(p.tipo)).map(p => ({ p, R: p.tipo === 'gradone' ? [[0, 0, p.opz.L, -p.opz.P, 1.6]] : p.imp || (p.tipo === 'scalinata' ? [[0, 0, lungaScala(p.opz), -(p.opz.w || 4) / 2, (p.opz.w || 4) / 2]] : null) })).filter(q => q.R);
+const SCALE = RETT.filter(q => q.p.tipo === 'scalinata' || q.p.tipo === 'gradone');   // [pianta] dove la via è una scala il cambio di pendenza è il gradino: non si conta
+const suScala = (x, y) => SCALE.some(({ p, R }) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return R.some(r => l > r[1] - 2.2 && l < r[2] + 2.2 && z > r[3] - 1 && z < r[4] + 1); });
+const muro = (x, y) => RETT.some(({ p, R }) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y, l = dx * c - dy * s, z = dx * s + dy * c; return R.some(r => l > r[1] - 1.2 && l < r[2] + 1.2 && z > r[3] - 1.2 && z < r[4] + 1.2); });
 const tile = (tx, ty) => tx < 0 || ty < 0 || tx >= GW || ty >= GH ? -1 : W.grid[ty * GW + tx];
 for (let j = Math.floor(CORNICE[1] / TS); j < CORNICE[3] / TS; j++) for (let i = Math.floor(CORNICE[0] / TS); i < CORNICE[2] / TS; i++) {
   for (const [di, dj] of [[1, 0], [0, 1]]) { const tA = [tile(i - 1 + (dj ? 0 : 1) - 1 + 1, j - 1), tile(i, j)];
     // le due caselle che il lato fra i due vertici divide: tutte e due di suolo, nessuna scala né banchina attorno
     const c1 = dj ? tile(i - 1, j) : tile(i, j - 1), c2 = tile(i, j); if (!SUOLO.has(c1) || !SUOLO.has(c2)) continue;
     let salva = false; for (let a = -1; a <= 1 && !salva; a++) for (let c = -1; c <= 1 && !salva; c++) if (SALVA.has(tile(i + a, j + c))) salva = true; if (salva) continue;
-    const dh = Math.abs(vh(i, j) - vh(i + di, j + dj)); if (dh > .7) P.salto.push([i * TS, j * TS, (dj ? 'verso sud' : 'verso est'), +dh.toFixed(2)]); } }
+    const dh = Math.abs(vh(i, j) - vh(i + di, j + dj)); if (dh > .7 && !muro(i * TS + di, j * TS + dj)) P.salto.push([i * TS, j * TS, (dj ? 'verso sud' : 'verso est'), +dh.toFixed(2)]); } }
 // ---- 4. i gradini lungo le vie ----
 const hAt = (x, y) => { const i = x / TS, j = y / TS, i0 = Math.floor(i), j0 = Math.floor(j), fx = i - i0, fy = j - j0; return vh(i0, j0) * (1 - fx) * (1 - fy) + vh(i0 + 1, j0) * fx * (1 - fy) + vh(i0, j0 + 1) * (1 - fx) * fy + vh(i0 + 1, j0 + 1) * fx * fy; };
 R.forEach(rd => { if (!CITTA.has(rd.kind) && rd.kind !== 'strada') return; const Q = rd.pts, S = []; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], L = Math.hypot(bx - ax, by - ay); for (let s = 0; s < L; s += 2) S.push([ax + (bx - ax) * s / L, ay + (by - ay) * s / L]); }
-  for (let k = 2; k < S.length; k++) { if (!inC(S[k][0], S[k][1])) continue; const g1 = (hAt(...S[k - 1]) - hAt(...S[k - 2])) / 2, g2 = (hAt(...S[k]) - hAt(...S[k - 1])) / 2; if (Math.abs(g2 - g1) > .12) P.gradino_via.push([Math.round(S[k][0]), Math.round(S[k][1]), rd.id, rd.kind, Math.round((g2 - g1) * 100) + '%']); } });
+  for (let k = 2; k < S.length; k++) { if (!inC(S[k][0], S[k][1])) continue; const g1 = (hAt(...S[k - 1]) - hAt(...S[k - 2])) / 2, g2 = (hAt(...S[k]) - hAt(...S[k - 1])) / 2; if (Math.abs(g2 - g1) > .12 && !suScala(S[k - 1][0], S[k - 1][1])) P.gradino_via.push([Math.round(S[k][0]), Math.round(S[k][1]), rd.id, rd.kind, Math.round((g2 - g1) * 100) + '%']); } });
 const conti = {}; Object.keys(P).forEach(k => conti[k] = P[k].length);
 console.log('IMPERFEZIONI DELLA PIANTA (cornice della città)', JSON.stringify(conti));
 Object.keys(P).forEach(k => { const L = P[k].slice().sort((a, b) => Math.abs(parseFloat(String(b[b.length - 1]))) - Math.abs(parseFloat(String(a[a.length - 1])))); console.log('\n' + k + ' (' + L.length + '), i peggiori:'); L.slice(0, 15).forEach(p => console.log('  ' + p.join('  '))); });
