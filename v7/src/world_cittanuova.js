@@ -8,6 +8,13 @@
 // [città2] LA CITTÀ NUOVA (in prova): stesso modulo di world.js con la nuova urbanistica (scheletro a ventaglio dalla Porta della Rocca,
 // borgo sulla collina, metropoli, case che seguono la strada). Il gioco la carica solo con ?cittanuova nell'indirizzo (index.src.html);
 // node strumenti/pianta.js la usa con PV_CITTANUOVA=1. Quando è pronta prende il posto di world.js.
+// [pianta] I LOTTI ORIENTATI: ogni casa (W.BUILDINGS) porta, oltre all'impronta a caselle (x, y, w, h: griglia, camminabilità, porte,
+// PLACES), la sua scatola vera nel riferimento della casa:
+//   b.cx, b.cy  il centro in metri, nel mondo finale (dopo expand)        — senza: ((x + w/2)·TS, (y + h/2)·TS)
+//   b.lw, b.ld  larghezza (asse x locale, quello di w a rot 0) e profondità (asse locale di h), in metri  — senza: w·TS, h·TS
+//   b.rot       la rotazione attorno a (cx, cy), radianti, come rotRec di render.js (makeRotationY(-rot) su x, z)
+// b.door resta la casella davanti alla porta. Lungo una via storta i lotti si dividono nel riferimento della via: le facciate stanno sul filo
+// senza entrare l'una nell'altra (girate attorno al centro della pianta a caselle si compenetravano, 366 coppie).
 var World = (function () {
   'use strict';
   const TS = 2, SX = 1300, SY = 400, SIZE = SX, GW = SX / TS, GH = SY / TS, CX = 650, CY = 200;
@@ -3046,6 +3053,8 @@ var World = (function () {
       if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
       return h;
     };
+    // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
+    W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     if (W.sets) W.luoghi = luoghi(W);
     return W;
   }
