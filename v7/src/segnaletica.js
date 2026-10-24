@@ -647,7 +647,7 @@ var Segnaletica = (function () {
   let scene = null, groundH = null, ready = false, built = false, MAT = null; const MESH = [], CNT = { mesh: 0, vert: 0, segni: 0, strisce: 0, insegne: 0, pali: 0 };
   function materiali() {
     if (MAT) return MAT;
-    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; ATL.tex = t;   // come le altre tele del gioco (render.js canvasTex): senza codifica
+    const t = new THREE.CanvasTexture(ATL.c); t.anisotropy = 4; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(t); ATL.tex = t;   /* [leggera] sul telefono a metà lato */   // come le altre tele del gioco (render.js canvasTex): senza codifica
     const segni = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .62, metalness: .05 });
     const luce = new THREE.MeshStandardMaterial({ map: t, alphaTest: .5, roughness: .5, metalness: 0, emissive: new THREE.Color('#ffffff'), emissiveMap: t, emissiveIntensity: 0 });
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });

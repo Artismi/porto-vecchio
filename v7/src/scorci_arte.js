@@ -42,7 +42,7 @@ var ScorciKit = (function () {
   let ATL = null;
   function atlante() {
     if (ATL) return ATL; const S = 2048; ATL = { S, x: 0, y: 0, rowH: 0, tiles: new Map(), c: null, g: null, tex: null };
-    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; }   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
+    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined') LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
     return ATL;
   }
   // la tessera key, pw × ph pixel, disegnata da draw(g, w, h, r) (r: un caso deterministico); torna [u0, v0, u1, v1]
@@ -347,7 +347,7 @@ var ScorciArte = (function () {
         let cls = o.material.userData && o.material.userData.scorci; const st = o.userData.stato || stato0 || 'base';
         let col = o.userData.col;
         if (!cls) {   // un pezzo di Arredo3D: il suo materiale diventa un colore nei vertici e una classe
-          const m = Array.isArray(o.material) ? o.material[0] : o.material; if (m.map && !(m.map.image && m.map.image === (ScorciKit.atlante().c))) { cls = 'proprio'; } else if (m.isMeshBasicMaterial) { cls = 'luce'; col = '#' + m.color.getHexString(); } else if (m.transparent) { cls = 'vetro'; col = '#' + m.color.getHexString(); } else { cls = m.roughness < .4 ? 'lucido' : m.roughness < .75 ? 'medio' : 'opaco'; col = '#' + m.color.getHexString(); } }
+          const m = Array.isArray(o.material) ? o.material[0] : o.material; if (m.map && !(m.map.image && (m.map.image === ScorciKit.atlante().c || m.map.userData.lmGrande === ScorciKit.atlante().c))) { cls = 'proprio'; } else if (m.isMeshBasicMaterial) { cls = 'luce'; col = '#' + m.color.getHexString(); } else if (m.transparent) { cls = 'vetro'; col = '#' + m.color.getHexString(); } else { cls = m.roughness < .4 ? 'lucido' : m.roughness < .75 ? 'medio' : 'opaco'; col = '#' + m.color.getHexString(); } }
         const k = st + '|' + (cls === 'proprio' ? 'proprio:' + o.material.uuid : cls); let e = L.get(k); if (!e) L.set(k, e = { st, cls, mat: cls === 'proprio' ? o.material : null, parts: [] });
         e.parts.push({ g: o.geometry, mw: o.matrixWorld.clone(), col: col || '#ffffff', pezzo, doppia: !!o.userData.doppia }); }); },
     build(mats) { const out = [];

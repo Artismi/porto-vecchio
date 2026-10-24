@@ -152,3 +152,285 @@ oggetti oltre la cella 255 hanno finalmente il loro colore.
 trasp}(true|false)`.
 
 {{LIMITI}}
+
+## 6. La memoria ([leggera])
+
+Il telefono chiudeva la pagina della città nuova (il ripiego in `index.src.html` gli dava l'isola di prima). Ora la città nuova va anche
+sul telefono: i tagli sono in `src/leggera_memoria.js` (piccoli ganci in `render.js`, `vegetazione.js`, `personaggi.js`, `oggetti3d.js`,
+`scorci_arte.js`, `segnaletica.js`, `peso_ombre.js`, `peso_pronti.js`), `window.PV_NUOVA` è vero dappertutto e `?vecchia` riapre l'isola
+di prima.
+
+### 6.1 Il banco della memoria (`strumenti/banco_memoria.js`)
+
+```
+node strumenti/banco_memoria.js [--profilo=telefono|computer] [--vecchia] [--query=&nomemoria] [--giro=borgo,marina,citta]
+     [--out=file.json] [--foto=cartella] [--campiona] [--nudo] [--js=file.js [--solojs]] [--top=40]
+python3 strumenti/fogli_memoria.py prima.json dopo.json [tappa]      (le tabelle qui sotto; tappa 0 = dopo il caricamento, -1 = l'ultima)
+```
+
+Telefono: 390×844, DPR 3, tocco, `?cittanuova&leggera`; computer: 1280×720, `?cittanuova`. Chromium senza testa con SwiftShader, i disegni
+a vuoto (come nel banco del peso). Si misura dopo il caricamento e a ogni tappa del giro (borgo, marina, la città dall'alto a zoom 2,5),
+dopo una raccolta della memoria:
+
+- **il cuore JS**: `performance.memory.usedJSHeapSize`, che in Chrome comprende gli **array buffer** (le copie delle geometrie e dei dati
+  nel processore: `Runtime.getHeapUsage().backingStorageSize`); la differenza sono gli **oggetti JS**;
+- **la scheda video, contata alla fonte**: ogni chiamata WebGL che riserva memoria (texImage2D/3D, texStorage, compressedTexImage,
+  generateMipmap, bufferData, renderbufferStorage[Multisample]) per oggetto GL, tolta a deleteXxx o quando il navigatore raccoglie
+  l'oggetto; più la tela (colore + profondità). Il proprietario: per le texture di three chi le ha create (la pila al `needsUpdate`), per i
+  buffer la geometria (la pila al `setAttribute`), per bersagli e mappe d'ombra chi li ha allocati; righe di `index.html` → modulo e
+  funzione (gli aiutanti come `canvasTex` e `mergeGeos` portano anche chi li chiama), poi le categorie (`CAT` nel banco);
+- **le tele 2D** delle texture (la memoria di Skia: né heap né scheda video, ma il telefono la paga);
+- le geometrie vive per chi le ha fatte, le copie nel processore «caricate» (anche sulla scheda) e «mai caricate» (mai disegnate);
+- RSS e PSS dei processi (pagina e scheda video) e il loro picco, anche durante il caricamento (qui SwiftShader tiene la scheda video nel
+  processore: è un controllo, non la misura).
+
+`--campiona`: chi tiene gli oggetti JS (il campionatore di Chrome, per modulo:funzione@riga). `--foto`: la foto di ogni tappa (fuori dal
+repo). `--js=file`: un'analisi in più nella pagina (le sonde usate: le pile, i pezzi rifatti e chi li chiede, le misure dei pezzi).
+
+**Le unità.** Il «~520 MB contro ~330» del ripiego si accorda con gli *oggetti JS* (qui 451 contro 269 dopo il caricamento: lo stesso
+rapporto 1,6). Contando tutto (heap con gli array buffer + scheda video + tele 2D) la città nuova sul telefono pesava **2,8 GB** dopo il
+caricamento e **3,4 GB** dopo il giro; l'isola di prima, che sul telefono si apre, **1,6 GB** e **2,1 GB**.
+
+**Il risultato.** Sul telefono la città nuova ora pesa **1,37 GB** dopo il caricamento e **1,69 GB** dopo il giro (−51% e −51%): meno
+dell'isola di prima com'era (1,58 e 2,09 GB), con lo stesso picco dei processi (~3,2 GB qui, con la scheda video simulata nel processore).
+Gli oggetti JS scendono da 451-515 a 320-366 MB: restano sopra l'isola di prima (269-319) e sopra i 300 MB del traguardo; il traguardo dei
+300 MB «heap + scheda video» contando tutto non è raggiungibile senza togliere la città (l'isola di prima ne pesa 1.300): vedi §6.4.
+
+### 6.2 Le misure (24 ottobre; «prima» = la base 9a6f453, l'anteprima unita a main, col banco di adesso; giro borgo → marina → città)
+
+Il picco dei processi (RSS di pagina + scheda video, anche durante il caricamento; con SwiftShader la scheda video sta nel processore):
+
+| | prima | dopo |
+|---|---:|---:|
+| telefono, città nuova: totale con le tele, il massimo del giro | 3412 MB | 1687 MB |
+| telefono, città nuova: oggetti JS, il massimo | 515 MB | 366 MB |
+| telefono, città nuova: picco dei processi | 4644 MB | 3162 MB |
+| computer, città nuova: totale con le tele, il massimo del giro | 3846 MB | 3443 MB |
+| computer, città nuova: oggetti JS, il massimo | 533 MB | 382 MB |
+| computer, città nuova: picco dei processi | 5326 MB | 4745 MB |
+| telefono, isola di prima (?vecchia): totale con le tele, il massimo del giro | 2086 MB | 1117 MB |
+| telefono, isola di prima (?vecchia): oggetti JS, il massimo | 319 MB | 246 MB |
+| telefono, isola di prima (?vecchia): picco dei processi | 3189 MB | 2186 MB |
+
+**Telefono, città nuova, dopo il caricamento**
+
+| dopo il caricamento | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 1578 | 865 | -45% |
+| di cui oggetti JS | 451 | 320 | -29% |
+| array buffer | 1127 | 545 | -52% |
+| scheda video | 860 | 387 | -55% |
+| tele 2D | 369 | 115 | -69% |
+| totale heap + scheda | 2438 | 1252 | -49% |
+| totale con le tele | 2807 | 1367 | -51% |
+
+| scheda video per proprietario (MB) | prima | dopo |
+|---|---:|---:|
+| atlanti, tavolozze e pile (render) | 271.6 | 54.0 |
+| case fuse (render) | 151.5 | 84.2 |
+| vegetazione | 115.2 | 11.9 |
+| statiche fuse e cose di strada (render) | 39.5 | 43.4 |
+| persone | 39.1 | 10.1 |
+| acqua (render) | 31.7 | 31.7 |
+| segnaletica, arredo vie | 31.0 | 15.5 |
+| mappe d'ombra | 27.4 | 11.2 |
+| scorci, tetti | 26.6 | 9.9 |
+| terreno a blocchi (render) | 21.5 | 16.0 |
+| case: pezzi fuori fusione (render) | 21.3 | 21.7 |
+| bersagli del post | 15.1 | 15.1 |
+| città, il resto (render.js) | 12.3 | 7.8 |
+| graffiti | 11.1 | 9.6 |
+| tela (schermo) | 10.0 | 10.0 |
+| menu, audio | 10.0 | 10.0 |
+| modelli glTF/GLB (kit) | 8.4 | 8.4 |
+| altro | 5.5 | 3.8 |
+| pavimenti | 5.3 | 6.3 |
+| insegne (render) | 3.4 | 4.4 |
+| modelli (roba3d, arredo3d, pezzi) | 1.2 | 0.7 |
+| peso_* (tavolozze, aloni) | 0.5 | 0.5 |
+
+| copie nel processore per proprietario (MB) | prima | dopo |
+|---|---:|---:|
+| geometrie case fuse (render) | 477.5 | 145.9 |
+| tele atlanti, tavolozze e pile (render) | 162.0 | 2.4 |
+| geometrie statiche fuse e cose di strada (render) | 128.0 | 63.0 |
+| geometrie vegetazione | 100.7 | 4.4 |
+| dati atlanti, tavolozze e pile (render) | 80.2 | 17.5 |
+| tele insegne (render) | 51.3 | 19.1 |
+| geometrie case: pezzi fuori fusione (render) | 35.8 | 35.9 |
+| tele acqua (render) | 31.7 | 31.7 |
+| tele persone | 26.6 | 7.1 |
+| tele segnaletica, arredo vie | 20.8 | 8.8 |
+| geometrie terreno a blocchi (render) | 19.5 | 19.0 |
+| geometrie altro | 18.6 | 17.0 |
+| tele graffiti | 18.2 | 18.3 |
+| tele città, il resto (render.js) | 17.9 | 10.3 |
+| tele scorci, tetti | 16.0 | 4.0 |
+| geometrie modelli (roba3d, arredo3d, pezzi) | 15.2 | 9.2 |
+| geometrie città, il resto (render.js) | 12.4 | 12.6 |
+| tele vegetazione | 11.0 | 3.5 |
+| geometrie persone | 10.8 | 4.6 |
+| geometrie riva | 7.2 | 7.2 |
+| geometrie graffiti | 6.9 | 6.9 |
+| tele modelli (roba3d, arredo3d, pezzi) | 6.7 | 5.5 |
+| geometrie segnaletica, arredo vie | 6.5 | 6.5 |
+| dati pavimenti | 6.3 | 8.3 |
+| tele terreno a blocchi (render) | 5.6 | 3.1 |
+| geometrie scorci, tetti | 5.4 | 5.4 |
+| geometrie modelli glTF/GLB (kit) | 2.0 | 2.0 |
+
+**Telefono, città nuova, dopo il giro (la città dall'alto)**
+
+| citta | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 1813 | 1011 | -44% |
+| di cui oggetti JS | 515 | 362 | -30% |
+| array buffer | 1298 | 649 | -50% |
+| scheda video | 1180 | 528 | -55% |
+| tele 2D | 420 | 149 | -65% |
+| totale heap + scheda | 2993 | 1539 | -49% |
+| totale con le tele | 3412 | 1687 | -51% |
+
+| scheda video per proprietario (MB) | prima | dopo |
+|---|---:|---:|
+| atlanti, tavolozze e pile (render) | 320.6 | 59.7 |
+| case fuse (render) | 298.6 | 122.1 |
+| vegetazione | 115.2 | 11.9 |
+| persone | 62.4 | 21.8 |
+| statiche fuse e cose di strada (render) | 56.2 | 56.6 |
+| terreno a blocchi (render) | 53.4 | 30.7 |
+| segnaletica, arredo vie | 32.0 | 16.0 |
+| acqua (render) | 31.7 | 31.7 |
+| scorci, tetti | 30.1 | 12.0 |
+| case: pezzi fuori fusione (render) | 28.3 | 28.5 |
+| mappe d'ombra | 25.0 | 10.3 |
+| graffiti | 20.7 | 24.9 |
+| modelli glTF/GLB (kit) | 19.2 | 22.7 |
+| città, il resto (render.js) | 16.4 | 10.9 |
+| bersagli del post | 15.1 | 15.1 |
+| pavimenti | 13.3 | 13.3 |
+| tela (schermo) | 10.0 | 10.0 |
+| menu, audio | 10.0 | 10.0 |
+| insegne (render) | 8.4 | 8.4 |
+| altro | 6.2 | 4.5 |
+| riva | 3.5 | 3.5 |
+| modelli (roba3d, arredo3d, pezzi) | 2.1 | 1.7 |
+| peso_* (tavolozze, aloni) | 0.9 | 0.9 |
+
+| copie nel processore per proprietario (MB) | prima | dopo |
+|---|---:|---:|
+| geometrie case fuse (render) | 507.8 | 138.7 |
+| tele atlanti, tavolozze e pile (render) | 162.0 | 2.4 |
+| geometrie statiche fuse e cose di strada (render) | 130.7 | 62.2 |
+| geometrie vegetazione | 100.7 | 4.4 |
+| geometrie persone | 65.4 | 25.2 |
+| tele insegne (render) | 51.3 | 16.1 |
+| geometrie modelli (roba3d, arredo3d, pezzi) | 50.5 | 11.8 |
+| geometrie case: pezzi fuori fusione (render) | 45.2 | 45.0 |
+| dati atlanti, tavolozze e pile (render) | 36.9 | 13.2 |
+| tele terreno a blocchi (render) | 35.6 | 10.1 |
+| tele graffiti | 34.9 | 44.5 |
+| tele acqua (render) | 31.7 | 31.7 |
+| dati pavimenti | 30.3 | 30.3 |
+| tele persone | 28.5 | 8.7 |
+| geometrie terreno a blocchi (render) | 24.7 | 24.8 |
+| tele segnaletica, arredo vie | 20.8 | 8.8 |
+| tele città, il resto (render.js) | 19.4 | 11.6 |
+| geometrie modelli glTF/GLB (kit) | 18.7 | 24.1 |
+| geometrie altro | 18.6 | 17.0 |
+| tele scorci, tetti | 16.0 | 4.0 |
+| geometrie riva | 14.4 | 14.4 |
+| geometrie città, il resto (render.js) | 13.7 | 13.7 |
+| tele vegetazione | 11.0 | 3.5 |
+| geometrie graffiti | 6.9 | 6.9 |
+| tele modelli (roba3d, arredo3d, pezzi) | 6.8 | 5.6 |
+| geometrie segnaletica, arredo vie | 6.6 | 6.6 |
+| geometrie scorci, tetti | 5.4 | 5.4 |
+
+**Computer, città nuova** (solo i tagli che non cambiano un pixel), dopo il caricamento e dopo il giro
+
+| dopo il caricamento | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 1619 | 1296 | -20% |
+| di cui oggetti JS | 485 | 322 | -34% |
+| array buffer | 1134 | 974 | -14% |
+| scheda video | 1169 | 1012 | -13% |
+| tele 2D | 369 | 363 | -2% |
+| totale heap + scheda | 2788 | 2308 | -17% |
+| totale con le tele | 3156 | 2671 | -15% |
+
+| citta | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 1839 | 1484 | -19% |
+| di cui oggetti JS | 533 | 382 | -28% |
+| array buffer | 1306 | 1102 | -16% |
+| scheda video | 1588 | 1552 | -2% |
+| tele 2D | 419 | 407 | -3% |
+| totale heap + scheda | 3427 | 3036 | -11% |
+| totale con le tele | 3846 | 3443 | -10% |
+
+**Telefono, isola di prima (`?vecchia`)**: i tagli valgono anche lì (render.js è lo stesso), dopo il caricamento e dopo il giro
+
+| dopo il caricamento | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 854 | 545 | -36% |
+| di cui oggetti JS | 269 | 207 | -23% |
+| array buffer | 585 | 338 | -42% |
+| scheda video | 457 | 243 | -47% |
+| tele 2D | 267 | 101 | -62% |
+| totale heap + scheda | 1311 | 788 | -40% |
+| totale con le tele | 1578 | 889 | -44% |
+
+| citta | prima | dopo | |
+|---|---:|---:|---:|
+| heap JS (con gli array buffer) | 1036 | 634 | -39% |
+| di cui oggetti JS | 319 | 246 | -23% |
+| array buffer | 717 | 388 | -46% |
+| scheda video | 717 | 339 | -53% |
+| tele 2D | 333 | 144 | -57% |
+| totale heap + scheda | 1753 | 973 | -45% |
+| totale con le tele | 2086 | 1117 | -46% |
+
+**I disegni e i tempi** (banco del peso col profilo del telefono, `?leggera`, 480×300, nella stessa versione con e senza i tagli:
+`--query=&leggera` contro `&leggera&nomemoria`; mediana di 6 fotogrammi, tempi di SwiftShader: valgono i rapporti):
+
+| scatto | disegni prima | disegni dopo | frame ms prima | frame ms dopo | 4× prima | 4× dopo |
+|---|---:|---:|---:|---:|---:|---:|
+| borgo | 1401 | 1404 | 172,7 | 206,2 | 909 | 979 |
+| città dall'alto | 5157 | 5097 | 234,0 | 224,7 | 1469 | 1465 |
+
+I disegni non cambiano; i tempi stanno nel rumore del banco (±15% fra due caricamenti; nel borgo, appena arrivati, la vegetazione lontana
+costruisce i suoi riquadri, uno per fotogramma). Il caricamento: la compattazione delle case fuse costa ~15 s di processore in SwiftShader.
+
+### 6.3 I tagli e cosa hanno comprato (telefono, dopo il giro)
+
+| taglio (`?nomemoria<nome>` lo spegne) | dove | cosa |
+|---|---|---|
+| `pile` | `render.js` arrTex1 | le mappe delle case in pila a metà lato, non oltre 256 (le trame che si ripetono solo a metà); le tavolozze del kit (celle di colore lette al texel) a 128: atlanti, tavolozze e pile **321 → 60 MB** sulla scheda |
+| `tele` | `render.js` arrTex1 | le tele 2D delle pile scendono a un quarto (servono solo alla casa che si dissolve): tele **162 → 2 MB** |
+| `compatta` | `render.js` fusione1 | le case fuse: posizione in 16 bit nella scatola del secchio (la mesh porta centro e scala uniforme: <1 mm), uv in mezza precisione se stanno in ±2, i vertici uguali una volta sola con l'indice (il kit era indicizzato, la fusione triplicava), casa/colore/strato/vetro svuotati dopo l'invio: case fuse **508 → 139 MB** di copie, **299 → 122 MB** sulla scheda (con «pigri») |
+| `pigri` (anche computer) | `render.js` lazyGeo1 | i pezzi originali rifatti per un raggio (la misura dei tetti di `tetti.js` al caricamento ne rifà ~3.700, ~125 MB) o per la dissolvenza si buttano dopo 5 s senza uso; il segnaposto eredita da uno solo |
+| `statiche` | `render.js` flushStatic | normali, uv, colore e strato delle statiche fuse svuotati dopo l'invio (la posizione resta: chi nasconde un pezzo la chiude in un punto) |
+| `verde`, `verdelontano` | `vegetazione.js` monta | le piante lontane a riquadri di 128 m entro 210 m dalla camera (oltre la nebbia del telefono non si vedevano), attributi compatti e svuotati dopo l'invio: **115 → 12 MB** sulla scheda, **100 → 4 MB** di copie |
+| `atlanti` | personaggi, scorci, segnaletica, vegetazione | gli atlanti ≥ 1024 vanno alla scheda video a metà lato (la tela grande resta a chi disegna; a ogni `needsUpdate` la copia piccola si rifà) |
+| `figure`, `gente` | `personaggi.js` | la pelle in attributi compatti (112 → ~45 byte a vertice); 40 figure in cache invece di 260 |
+| `insegne` | `render.js` signTexture, insegnaTex | la tela dell'insegna si svuota dopo l'invio |
+| `terreno` | `render.js` buildChunkGen | il terreno dipinto a blocchi a metà lato |
+| `ombre` | `peso_ombre.js` | la mappa del sole ~945 invece di ~1550 (tre copie: cache, riserva, viva) |
+| `compila` (anche computer) | `peso_pronti.js` | la compilazione del caricamento solo sul visibile: three r149 compilava anche i 17.000 pezzi originali spenti (−80 MB di oggetti JS) |
+| `firme`, `cache` (anche computer) | `render.js` | le firme dei materiali (servivano solo alla fusione) e le geometrie modello delle cose di strada (`GC`, `BEVC`) buttate dopo il caricamento |
+| `roba` (anche computer) | `oggetti3d.js` armaInMano | ogni arma si costruisce una volta: le armi (spente) di ogni personaggio sono copie con le stesse geometrie |
+| (sempre) | `render.js` coalesce1 | il secchio delle statiche unito a un altro non tiene più i suoi pezzi (restava vivo nel registro: ~16 MB di geometrie) |
+
+Rimasti com'erano, misurati: l'acqua (`buildWater`, 32 MB di tela + 32 sulla scheda: la riva fine la riscrive a blocchi), i pavimenti (le
+loro DataTexture in virgola mobile si riscrivono dopo l'invio: svuotarle rompeva il selciato), i graffiti (`writing.js`, tele che crescono
+col tempo), i bersagli del post, i pezzi delle case fuori fusione.
+
+### 6.4 Quello che resta grande
+
+- **gli oggetti JS (~320-360 MB)**: i 17.000 pezzi originali delle case fuse (Mesh, materiali per casa, segnaposti: ~60 MB), gli oggetti
+  di scena di `arredo3d.js` (~13 MB), le persone (~30 MB tra figure, scheletri e armi), il resto della scena (~50.000 oggetti). Per
+  scendere ancora servirebbe che i pezzi originali non esistessero come oggetti (rifatti dalla mesh fusa solo per la dissolvenza e i raggi);
+- **le case fuse** (~140 MB di copie + ~120 sulla scheda dopo il giro): le copie servono per rifare i pezzi originali; i settori lontani
+  potrebbero lasciare la scheda video (si ricaricano dalla copia);
+- **il caricamento**: la compattazione delle case costa ~15 s di processore in SwiftShader (~5 s su un processore vero).
