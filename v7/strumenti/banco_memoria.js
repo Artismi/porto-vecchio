@@ -90,7 +90,7 @@ const srv = http.createServer((req, res) => {
       wrap('bindVertexArray', function (a) { S(this).vao = a[0]; });
       wrap('bindBuffer', function (a) { if (a[0] === G.ELEMENT_ARRAY_BUFFER) S(this).elem.set(S(this).vao, a[1]); else S(this).buf[a[0]] = a[1]; });
       wrap('bufferData', function (a) { const bf = a[0] === G.ELEMENT_ARRAY_BUFFER ? S(this).elem.get(S(this).vao) : S(this).buf[a[0]]; if (!bf) return; const d = a[1]; let by = typeof d === 'number' ? d : d ? (a[4] ? a[4] * (d.BYTES_PER_ELEMENT || 1) : d.byteLength) : 0;
-        const o = MM.buf.get(bf); if (o) tot(-o.b); const r = { b: by, arr: d && typeof d === 'object' && d.buffer ? new WeakRef(d) : null, st: null }; if (!r.arr) r.st = pila(); MM.buf.set(bf, r); tot(by); });
+        const o = MM.buf.get(bf); if (o) tot(-o.b); const r = { b: by, arr: d && typeof d === 'object' && d.buffer ? new WeakRef(d) : null, st: null }; if (!r.arr) r.st = pila(); else { const g = MM.geoArr.get(d); if (g) r.gst = g.__mst; else r.st = pila(); } MM.buf.set(bf, r); tot(by); });
       wrap('deleteBuffer', function (a) { const r = MM.buf.get(a[0]); if (r) { tot(-r.b); MM.buf.delete(a[0]); } });
       wrap('bindRenderbuffer', function (a) { S(this).rb = a[1]; });
       const rbs = (gl, w, h, f, n) => { const rb = S(gl).rb; if (!rb) return; const o = MM.rb.get(rb); if (o) tot(-o.b); const by = w * h * bpp(f) * Math.max(1, n); MM.rb.set(rb, { b: by, w, h, f, n, st: pila() }); tot(by); };
@@ -139,7 +139,7 @@ const srv = http.createServer((req, res) => {
       // gli array delle istanze e altri senza setAttribute: dalla scena
       const inst = new WeakMap(); S.traverse(o => { if (o.isInstancedMesh) { inst.set(o.instanceMatrix.array, o); if (o.instanceColor) inst.set(o.instanceColor.array, o); } });
       let senza = 0;
-      MM.buf.forEach(r => { const a = r.arr && r.arr.deref(); const g = a && MM.geoArr.get(a); if (g) rows.push({ k: 'b', b: r.b, st: pk(g.__mst), tipo: 'geometria' }); else if (a && inst.get(a)) rows.push({ k: 'b', b: r.b, st: null, lab: 'istanze:' + (inst.get(a).name || inst.get(a).parent && inst.get(a).parent.name || '?'), tipo: 'istanze' }); else { senza += r.b; rows.push({ k: 'b', b: r.b, st: r.st !== null ? pk(r.st) : null, lab: a ? null : 'buffer:array già liberato', tipo: 'buffer' }); } });
+      MM.buf.forEach(r => { const a = r.arr && r.arr.deref(); const g = a && MM.geoArr.get(a); if (g) rows.push({ k: 'b', b: r.b, st: pk(g.__mst), tipo: 'geometria' }); else if (a && inst.get(a)) rows.push({ k: 'b', b: r.b, st: null, lab: 'istanze:' + (inst.get(a).name || inst.get(a).parent && inst.get(a).parent.name || '?'), tipo: 'istanze' }); else { senza += r.b; rows.push({ k: 'b', b: r.b, st: r.st !== null ? pk(r.st) : null, lab: a ? null : r.gst === undefined && r.st === null ? 'buffer:array già liberato' : null, tipo: a ? 'buffer' : 'buffer, array liberato' }); if (!a && r.gst !== undefined) rows[rows.length - 1].st = pk(r.gst); } });
       // la tela: colore + profondità/stencil, con l'antialias i campioni (più il risolto)
       const cv = rd.domElement, ca = gl.getContextAttributes(), px = cv.width * cv.height, smp = ca.antialias ? 4 : 0; const fb = px * (4 + (ca.depth || ca.stencil ? 4 : 0)) * (smp ? smp + 1 : 1) + (ca.preserveDrawingBuffer ? px * 4 : 0);
       rows.push({ k: 'f', b: fb, lab: 'tela', tipo: 'tela', dim: cv.width + '×' + cv.height + (smp ? ' msaa' : '') });
@@ -175,13 +175,14 @@ const srv = http.createServer((req, res) => {
   };
   const out = { query: Q, profilo: PROF, misure: [], errori };
   await pg.waitForTimeout(ATT * 1000);
-  if (CAMP) { await cdp.send('HeapProfiler.collectGarbage'); const { profile } = await cdp.send('HeapProfiler.stopSampling'); const byM = {}, byF = {};
+  const campiona = async () => { if (!CAMP) return; await cdp.send('HeapProfiler.collectGarbage'); const { profile } = await cdp.send('HeapProfiler.stopSampling'); const byM = {}, byF = {};
     const walk = (n, up) => { const cf = n.callFrame, self = n.selfSize || 0; const isP = /index\.html/.test(cf.url); const mod = isP ? modOf(cf.lineNumber + 1) : (cf.url ? cf.url.split('/').pop() : '(interno)'); const fn = (cf.functionName || '(anonima)') + ' ' + mod.replace(/\.js$/, '');
       const me = NOGAME.has(mod) && up ? up : fn; if (self) { const mm = me.split(' ').pop(); byM[mm] = (byM[mm] || 0) + self; byF[me] = (byF[me] || 0) + self; } (n.children || []).forEach(c => walk(c, NOGAME.has(mod) ? up : fn)); };
     walk(profile.head, null); const tot = Object.values(byM).reduce((a, c) => a + c, 0);
     console.log('\ncuore JS campionato (vivo): ' + MB(tot) + ' MB; per modulo:'); Object.entries(byM).sort((a, c) => c[1] - a[1]).slice(0, 20).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
     console.log('per funzione (three e simili attribuiti a chi li chiama):'); Object.entries(byF).sort((a, c) => c[1] - a[1]).slice(0, +arg('topf', 45)).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
-    out.campione = { per_modulo: byM, per_funzione: Object.fromEntries(Object.entries(byF).sort((a, c) => c[1] - a[1]).slice(0, 200)) }; }
+    out.campione = { per_modulo: byM, per_funzione: Object.fromEntries(Object.entries(byF).sort((a, c) => c[1] - a[1]).slice(0, 200)) }; };
+  if (arg('js', null)) { const r = await pg.evaluate(src => { try { return (new Function(src))(); } catch (e) { return 'errore ' + e.message + ' ' + e.stack; } }, fs.readFileSync(arg('js'), 'utf8')); console.log('JS:', typeof r === 'string' ? r : JSON.stringify(r, null, 1)); if (has('solojs')) { await b.close(); srv.close(); process.exit(0); } }   // --js=file: un'analisi in più nella pagina (--solojs: solo quella)
   const m0 = await misura('dopo il caricamento'); stampa(m0); out.misure.push(m0);
   for (const nome of GIRO) { const s = POSTI[nome]; if (!s) continue;
     await pg.evaluate(s => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R, ui = pv.ui; p.vehicle = null; p.indoor = null; p.lv = null; p.x = s.x; p.y = s.y; p.path = []; ui.focus = { x: s.x, y: s.y }; ui.zoom = s.zoom; R.cam.x = R.cam.tx = s.x; R.cam.y = R.cam.ty = s.y; R.cam.zoom = R.cam.tz = s.zoom; R.cam.uy = 0; }, s);
@@ -192,6 +193,7 @@ const srv = http.createServer((req, res) => {
     const m = await misura(nome); out.misure.push(m);
     console.log(`-- ${nome}: heap ${m.heap} MB · scheda ${MB(m.gpu)} MB (picco ${MB(m.picco)}) · totale ${(m.heap + m.gpu / 1048576).toFixed(0)} MB · processi ${JSON.stringify(m.proc)}`); }
   if (GIRO.length) stampa(out.misure[out.misure.length - 1]);
+  await campiona();
   // i tempi del fotogramma (con i disegni a vuoto: il lavoro del processore) e i disegni
   out.fotogramma = await pg.evaluate(n => new Promise(res => { const pv = window.__pv, R = pv.R, rd = R.__models.renderer, r0 = rd.render; let tot = 0, fr = 0; const f0 = R.frame; R.frame = function () { const a = performance.now(); try { return f0.apply(this, arguments); } finally { fr += performance.now() - a; } };
     rd.render = function () { const r = r0.apply(this, arguments); tot += rd.info.render.calls; return r; }; const A = [], F = []; let k = 0;

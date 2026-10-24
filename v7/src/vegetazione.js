@@ -1247,6 +1247,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
           Ce[o * 3] = p.x; Ce[o * 3 + 1] = y0; Ce[o * 3 + 2] = p.y; } });
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Pp, 3)); g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3)); g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
       g.setAttribute('uv', new THREE.BufferAttribute(Uu, 2)); g.setAttribute('occ', new THREE.BufferAttribute(Oo, 1)); g.setAttribute('flex', new THREE.BufferAttribute(Ff, 1)); g.setAttribute('centro', new THREE.BufferAttribute(Ce, 3)); g.computeBoundingSphere();
+      if (tel && typeof LeggeraMem !== 'undefined') LeggeraMem.verde(g);   // [leggera] sul telefono attributi compatti, e la copia in memoria si svuota dopo l'invio
       const far = new THREE.Mesh(g, materiale([R1 - 12, R1, 1e5, 1e5 + 1], { centro: true })); far.name = 'vegLontano'; far.frustumCulled = false; far.receiveShadow = true; gruppo.add(far); }
     let lx = 1e9, lz = 1e9, lc = 1e9, lcz = 1e9;
     const BASSE = new Set(['erbaSecca', 'erbaVerde', 'papavero', 'finocchietto', 'avena', 'cardo', 'asfodelo', 'fioriBianchi', 'tappetoAghi', 'tappetoFoglie', 'pigna', 'rametto']);
