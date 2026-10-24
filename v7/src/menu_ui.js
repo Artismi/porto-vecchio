@@ -284,9 +284,14 @@ var MenuUI = (function () {
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
     return cv;
   }
+  // [avvio] le anteprime hanno un secondo contesto WebGL: crearlo durante il caricamento fermava la pagina (40 s in getContext,
+  // in coda dietro alle compilazioni del gioco). Si fanno quando il gioco risponde (main.js: __tl.vivo) e si è in strada da 5 s,
+  // o subito se il menu dello zaino è aperto. Nello studio (editor.html) subito; anteprima() (studio, prove) non passa da qui.
+  let thIn = 0; const thumbOk = () => { if (THR || window.PV_STUDIO) return true; if (!PV()) return false; const tl = window.__tl, ui = PV().ui; if (!tl || !tl.vivo) return false; if (U.open) return true;
+    if (!ui || ui.intro) return false; const t = performance.now(); if (!thIn) thIn = t; return t - thIn > 5000; };   // in strada da 5 s: i primi passi senza lo scatto del contesto nuovo
   function thumbPump() {
     requestAnimationFrame(thumbPump);
-    if (!THQ.length || !window.THREE) return;
+    if (!THQ.length || !window.THREE || !thumbOk()) return;
     const t0 = performance.now();
     while (THQ.length && performance.now() - t0 < 14) {
       const id = THQ.shift(); let cv = null; try { cv = makeThumb(id); } catch (e) { console.error('[Anteprime]', id, e); }

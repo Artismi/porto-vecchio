@@ -49,8 +49,10 @@
   // [leggera] prima il gemello binario .glb (strumenti/pack_glb.js: un terzo più piccolo, niente atob); se manca, il .json di sempre.
   // Da file:// fetch non può leggere i .glb: lì si va dritti al .json (file_shim.js lo serve dal .json.js).
   const GLB_OK = typeof location === 'undefined' || location.protocol !== 'file:';
-  const fetchModel = window.__pvFetchModel = url => (GLB_OK && /\.json$/.test(url) ? fetch(url.replace(/\.json$/, '.glb')).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null) : Promise.resolve(null))
-    .then(ab => ab || fetch(url).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); }));
+  // [avvio] il .glb che avvio.js ha già cominciato a scaricare; gli indirizzi con l'impronta del file (PV_V: la cache lunga)
+  const V = u => window.PV_V ? PV_V(u) : u, preso = u => (window.__pvPreso && __pvPreso(u)) || null;
+  const fetchModel = window.__pvFetchModel = url => (GLB_OK && /\.json$/.test(url) ? (preso(url.replace(/\.json$/, '.glb')) || fetch(V(url.replace(/\.json$/, '.glb'))).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null)) : Promise.resolve(null))
+    .then(ab => ab || fetch(V(url)).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); }));
   const P = THREE.GLTFLoader.prototype, load0 = P.load, parse0 = P.parse;
   P.parse = function (data, path, onLoad, onError) {
     if (!this.__pvReg) { this.register(imagePlugin); this.__pvReg = true; }

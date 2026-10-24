@@ -940,7 +940,9 @@
   // qualunque cosa si alleggerisca: lo si dice subito, con cosa fare.
   function gpuName() {
     if (gpuName.v !== undefined) return gpuName.v;
-    try { const gl = R.__models && R.__models.renderer && R.__models.renderer.getContext(), e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
+    const gl0 = R.__models && R.__models.renderer && R.__models.renderer.getContext();
+    if (window.PV_GPU) return (gpuName.v = PV_GPU(gl0));   // [avvio] letto una volta, quando il contesto è nato (avvio.js)
+    try { const gl = gl0, e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
     return gpuName.v;
   }
   const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
@@ -983,11 +985,14 @@
   // [ospite] dentro un altro sito (artismidesignstudio.com) il caricamento lo mostra la pagina che ospita il gioco:
   // le si dice a che punto siamo e quando il menu è pronto, così i caricamenti diventano uno solo
   const host = (p, ready) => { try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
-  const KITS = ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
+  const KITS = window.PV_KITS || ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
   if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
   host(.15);
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
+  // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
+  const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
@@ -1017,9 +1022,22 @@
     if (!inp || inp.mag === undefined || !(inp.x || inp.y) || st.player.vehicle || ui.intro) return null;
     const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
   }
+  // [avvio] «Gioca» si accende quando il gioco risponde davvero: disegnati i primi fotogrammi (che caricano tutto sulla scheda video
+  // e la aspettano: in SwiftShader 10-45 s ciascuno) e visto almeno un fotogramma sotto i 100 ms. Prima il pulsante si accendeva
+  // appena i programmi erano pronti, e per un minuto restava acceso su una pagina ferma. Se i 100 ms non arrivano mai (scheda
+  // lentissima) dopo 12 fotogrammi sotto il secondo si parte lo stesso, e comunque dopo 90 s di fotogrammi.
+  const VIVO = { on: true, n: 0, t0: 0 };
+  function vivoTick(raw) {
+    if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
+    if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
+    VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
+    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato e risponde: si può mostrare
+  }
   function loop0(now) {
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000); last = now;
+    if (VIVO.on) vivoTick(raw);
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
     // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
     // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
@@ -1072,9 +1090,9 @@
   (function shWait() {
     let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
     if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
-    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    if (goBtn) goBtn.textContent = 'Preparo la grafica… 100%';   // [avvio] il pulsante si accende in vivoTick, quando i fotogrammi corrono
+    (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
-    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }

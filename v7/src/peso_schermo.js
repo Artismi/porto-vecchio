@@ -28,7 +28,8 @@ var PesoSchermo = (function () {
   function avvia() {
     const pv = window.__pv; if (!pv || !pv.R || !pv.R.__models || !pv.R.__models.renderer) { setTimeout(avvia, 500); return; }
     const rd = pv.R.__models.renderer, gl = rd.getContext();
-    try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); S.nome = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { S.nome = ''; }
+    // [avvio] il nome letto da avvio.js quando il contesto è nato: chiederlo adesso fermerebbe la pagina dietro alle compilazioni
+    if (window.PV_GPU) S.nome = PV_GPU(gl); else try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); S.nome = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { S.nome = ''; }
     S.livello = livelloDa(S.nome); window.__pesoLivello = { livello: S.livello, scheda: S.nome };
     S.telefono = !!(pv.R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches));
     suolo(0);
