@@ -3480,7 +3480,7 @@ var Render = (function () {
     edges.forEach(e => {
       const L = Math.hypot(e.bx - e.ax, e.bz - e.az), cx = (e.ax + e.bx) / 2, cz = (e.az + e.bz) / 2, cap = box(e.obl ? .6 : e.nx ? .5 : L + .5, .22, e.obl ? L + .12 : e.nx ? L + .5 : .5, capM);
       cap.position.set(cx - e.nx * .2, e.h - .08, cz - e.nz * .2); if (e.obl) cap.rotation.y = Math.atan2(e.bx - e.ax, e.bz - e.az); addStatic(cap); k++;   // [riva] sul muro storto la copertina lo segue
-      if (k % 5 === 2) bitta(cx - e.nx * .7, cz - e.nz * .7);
+      if (k % 9 === 2 && !onCarr1(cx - e.nx * .7, cz - e.nz * .7, .4)) bitta(cx - e.nx * .7, cz - e.nz * .7);   // [sporcherie] più rade, e mai in carreggiata
       if (k % 13 === 6) { const g = G0(), dn = Math.min(e.h - WL + 1.2, 3.6); [-.22, .22].forEach(o => add(g, box(.05, dn, .05, iron), o, -dn / 2 + .1, 0)); for (let y = 0; y < dn; y += .32) add(g, box(.5, .04, .04, iron), 0, -y, 0); g.position.set(cx + e.nx * .06, e.h, cz + e.nz * .06); g.rotation.y = Math.atan2(e.nx, e.nz); addStatic(g); }
       if (k % 7 === 3 && e.h < 1) { const t = new THREE.Mesh(new THREE.TorusGeometry(.36, .13, 5, 10), rubber); t.position.set(cx + e.nx * .15, e.h - .7, cz + e.nz * .15); t.rotation.y = Math.atan2(e.nz, e.nx) + Math.PI / 2; addStatic(t); }
     });
@@ -3497,10 +3497,7 @@ var Render = (function () {
         for (let s = 0; s < L; s += 1.25) for (const o of [-1.5, 0, 1.5]) { const x = ax + (bx - ax) * s / L + nx * (o + (r() - .5) * .8), z = az + (bz - az) * s / L + nz * (o + (r() - .5) * .8), sz = .8 + r() * .8; push(x, (o === 0 ? .1 : o * -.2 * st.sea > 0 ? .3 : -.5) + (r() - .5) * .5, z, sz, .7 + r() * .4, pick(r, ['#6e6a64', '#7a756d', '#625e59', '#837d74'])); } }
     });
     S.rocks.forEach(q => {
-      if (q.big && /^scoglio_mura/.test(q.id || '')) {   // [costa] gli scogli sotto le mura: bassi e spezzati (tre o quattro massi piatti, non un uovo di 12 m)
-        const nM = 3 + (r() < .5 ? 1 : 0); for (let k = 0; k < nM; k++) { const a = k / nM * 6.28 + r() * 1.2, d = k ? q.r * (.35 + r() * .3) : 0, s = q.r * (k ? .45 + r() * .2 : .62); push(q.x + Math.cos(a) * d, -.6 + r() * .4, q.y + Math.sin(a) * d, s, .6 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); }
-        for (let k = 0; k < 7; k++) { const a = r() * 6.28, d = q.r * (.7 + r() * .5); push(q.x + Math.cos(a) * d, -.8 + r() * .6, q.y + Math.sin(a) * d, q.r * (.15 + r() * .15), .6 + r() * .4, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
-      else if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
+      if (q.big) { push(q.x, -.2, q.y, q.r * .95, 1.5 + r() * .6, '#4e4a46'); for (let k = 0; k < 9; k++) { const a = r() * 6.28, d = q.r * (.4 + r() * .7); push(q.x + Math.cos(a) * d, -.7 + r() * .9, q.y + Math.sin(a) * d, q.r * (.25 + r() * .3), .8 + r() * .5, pick(r, ['#4e4a46', '#5a5550', '#45423e'])); } }
       else push(q.x, WL - q.r * .45 + .1, q.y, q.r, .55 + r() * .3, pick(r, ['#4e4a46', '#5a5550', '#45423e', '#655f58']));
     });
     if (!list.length) return;
@@ -4073,7 +4070,7 @@ var Render = (function () {
   }
   function buildPropsIsland() {
     const T = G.T, r = rng(2026), P = G.PLACES;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     // lampioni e palme lungo le strade
     (M.roads || []).forEach(rd => {
       if (rd.kind === 'sterrato' || (rd.era && SEG1.ok)) return;   // [segni] nella città nuova i lampioni li mette la rete, per epoca
@@ -5895,7 +5892,7 @@ var Render = (function () {
   // ---------------- le strade: guardrail, cartelli, lavori in corso, transenne, arredo ----------------
   function buildStrade31() {
     const T = G.T, r = rng(2031), W0 = M.world; if (!W0) return 0;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; });   /* [leggera] anche attorno */
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     let n = 0;
     const rail = sm('#8a8c8a', { metalness: .55, roughness: .45 }), railR = sm('#7a6250', { metalness: .4, roughness: .7 }), post = sm('#5a5c5e', { metalness: .5, roughness: .6 }), conc = concrete('#8a8682'), concD = concrete('#6e6a66');
@@ -6376,9 +6373,23 @@ var Render = (function () {
     for (let i = i0 - 2; i <= i0 + 2; i++) for (let j = j0 - 2; j <= j0 + 2; j++) for (const s of CH1.get(i * 4096 + j) || []) { if (s[5] === not) continue; const dx = s[2] - s[0], dz = s[3] - s[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s[0]) * dx + (z - s[1]) * dz) / L2, 0, 1); if (Math.hypot(s[0] + dx * t - x, s[1] + dz * t - z) < s[4] + (pad || 0)) return true; }
     return false;
   }
+  // [sporcherie] I VICOLI RESTANO PASSABILI: sulle bande dei vicoli (kind 'vicolo', lastricato COB) un oggetto di raggio r a distanza d
+  // dall'asse lascia libero al più (mezza larghezza + d - r) metri: sotto 1,2 m il vicolo è chiuso e lì non si posa niente.
+  // Usata da ok()/free()/OCC35.free/solidR1 (prima escludevano solo le caselle VIA: i vicoli e la Rua sono COB/WALK).
+  let VB1 = null;
+  function vicoloChiuso(x, z, r) {
+    if (!VB1) { VB1 = new Map(); const add = (ax, az, bx, bz, h) => { const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 6)); for (let k = 0; k < n; k++) { const s0 = [ax + (bx - ax) * k / n, az + (bz - az) * k / n, ax + (bx - ax) * (k + 1) / n, az + (bz - az) * (k + 1) / n, h], key = Math.floor((s0[0] + s0[2]) / 16) * 4096 + Math.floor((s0[1] + s0[3]) / 16); (VB1.get(key) || VB1.set(key, []).get(key)).push(s0); } };
+      (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo') return;
+        if (rd.rect) { const q = rd.rect, x0 = q[0] * TS, z0 = q[1] * TS, x1 = (q[2] + 1) * TS, z1 = (q[3] + 1) * TS; if (x1 - x0 >= z1 - z0) add(x0, (z0 + z1) / 2, x1, (z0 + z1) / 2, (z1 - z0) / 2); else add((x0 + x1) / 2, z0, (x0 + x1) / 2, z1, (x1 - x0) / 2); return; }
+        const P = rd.pts; if (P) for (let k = 0; k < P.length - 1; k++) add(P[k][0], P[k][1], P[k + 1][0], P[k + 1][1], rd.w / 2); }); }
+    r = r || .5; const i0 = Math.floor(x / 8), j0 = Math.floor(z / 8);
+    for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (const s of VB1.get(i * 4096 + j) || []) { const dx = s[2] - s[0], dz = s[3] - s[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s[0]) * dx + (z - s[1]) * dz) / L2, 0, 1), d = Math.hypot(s[0] + dx * t - x, s[1] + dz * t - z);
+      if (d < s[4] + r && s[4] + d - r < 1.2) return true; }
+    return false;
+  }
   const solid1 = (x, z) => { const T = G.T, v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v === T.BLD || v === T.WATER || v === T.CLIFF || v === T.FOUNT || v === T.TREE || v === undefined; };
   function busy1(x, z, r) { let hit = false; hashNear(x, z, r + 2, rec => { if (hit || rec.gone35 || rec.state !== 0) return; if (Math.abs(rec.c.x - x) < rec.he.x + r && Math.abs(rec.c.z - z) < rec.he.z + r) hit = true; }); return hit; }
-  const solidR1 = (x, z, d) => [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
+  const solidR1 = (x, z, d) => vicoloChiuso(x, z, d) || [[0, 0], [d, 0], [-d, 0], [0, d], [0, -d]].some(([u, w]) => solid1(x + u, z + w));   // [leggera] anche attorno, non solo al centro
   const okSpot1 = (x, z, r) => !solidR1(x, z, Math.max(.4, r || .3)) && !onCarr1(x, z, .15) && !busy1(x, z, r || .3);
 
   // ================= PITTURA DEL SUOLO =================
@@ -6506,7 +6517,7 @@ var Render = (function () {
   // ---- cantieri: in città (scavo nella corsia, rete arancione, barriere) e i 9 fuori città di [isola31] restano ----
   let WORKS1 = null;
   function works1() {
-    if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30);
+    if (WORKS1) return WORKS1; WORKS1 = []; const r = rng(3101), RD = (M.roads || []).filter(rd => asph1(rd) && rd.kind === 'citta' && rd.w >= 7 && rd.pts.length > 30 && rd.id !== 'passeggiata');   // [sporcherie] niente scavo sul Viale della Spianata: chiudeva la carreggiata del viale
     for (let tries = 0; tries < 200 && WORKS1.length < 5 && RD.length; tries++) {
       const rd = pick(r, RD), g = geo1(rd), k = 10 + Math.floor(r() * (g.n - 20)), [x0, y0] = rd.pts[k];
       if ((cn1() && (rd.pennoni || scenaVuotaV2(x0, y0))) || !cityAt1(x0, y0) ||   /* [percorsi2] la Vittoria resta una scena vuota: niente cantiere con le tavole */ junc1().some(J => (J.arms.length >= 3 || J.arms.some(a => a.minor)) && Math.hypot(J.x - x0, J.y - y0) < J.r + 14) || nearJ1(x0, y0, 3) < 0 || Math.abs(g.cv[k]) > .4 || WORKS1.some(w => Math.hypot(w.x - x0, w.y - y0) < 70)) continue;
@@ -8291,7 +8302,7 @@ var Render = (function () {
   const OCC35 = { g: new Map(), seed(list) { list.forEach(rec => this.mark(rec.c.x, rec.c.z, rec.he.x + .2, rec.he.z + .2)); },
     key: (i, j) => i * 8192 + j,
     mark(x, z, hx, hz) { for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) this.g.set(this.key(i, j), 1); },
-    free(x, z, hx, hz) { for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) { if (this.g.has(this.key(i, j))) return false; const tx = Math.floor(i * .5 / TS), ty = Math.floor(j * .5 / TS), v = gT(tx, ty); if (v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || (v === G.T.VIA && RW[ty * G.GW + tx] > 0)) return false; } return true; } };
+    free(x, z, hx, hz) { if (vicoloChiuso(x, z, Math.max(hx, hz))) return false; for (let i = Math.floor((x - hx) / .5); i <= Math.floor((x + hx) / .5); i++) for (let j = Math.floor((z - hz) / .5); j <= Math.floor((z + hz) / .5); j++) { if (this.g.has(this.key(i, j))) return false; const tx = Math.floor(i * .5 / TS), ty = Math.floor(j * .5 / TS), v = gT(tx, ty); if (v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || (v === G.T.VIA && RW[ty * G.GW + tx] > 0)) return false; } return true; } };
 
   // ================= LE COSE TROVATE PER CASO, MA CON UNA LOGICA =================
   const O35 = {};
@@ -10568,7 +10579,7 @@ var Render = (function () {
   function buildSets() {
     const W0 = M.world, SETS = W0 && W0.sets; if (!SETS) return 0;
     const T = G.T, r = rng(1986), tl = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); let n = 0;
-    const ok = (x, z, rr = .7) => [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]].every(([u, w]) => { const v = tl(x + u, z + w); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });
+    const ok = (x, z, rr = .7) => !vicoloChiuso(x, z, rr) && [[0, 0], [rr, 0], [-rr, 0], [0, rr], [0, -rr]].every(([u, w]) => { const v = tl(x + u, z + w); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });
     const TENDE = [['#2f6a4e', '#e9e0cf'], ['#b0283c', '#e9e0cf'], ['#3a5aa8', '#e9e0cf'], ['#c87a20', '#f0e6c8'], ['#6a3a7a', '#e9e0cf']];
     const MERCI = [['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'], ['#e0d0a0', '#f0e060', '#c83030', '#3a7a3a'], ['#9ab0c0', '#c0d0d8'], ['#8a6a3a', '#9a7444', '#6a4a2a'], ['#4a6a34', '#6a7a3a', '#7a3a2a']];
     const faceTo = (x, z, cx, cz) => Math.atan2(cx - x, cz - z);   // il davanti (+z) verso il punto
@@ -10594,14 +10605,14 @@ var Render = (function () {
         const cx = (q.x0 + q.x1) / 2, cz = (q.y0 + q.y1) / 2;
         [[q.x0 + 2, q.y0 + 2], [q.x1 - 2, q.y0 + 2]].forEach(([x, z]) => { if (ok(x, z)) { leafyTree(x, z, r, true); n++; } });
         [cx - 4, cx + 4].forEach(x => { if (ok(x, cz + 1.5)) { bench(x, cz + 1.5, Math.PI, 'iron'); n++; } });
-        if (ok(q.x1 - 2, q.y1 - 2, 1)) newsstand(q.x1 - 2, q.y1 - 2, -Math.PI / 2, r); if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
+        { const ex = q.x1 - 2.5, ez = (q.y0 + q.y1) / 2; if (ok(ex, ez, 1.3) && !onCarr1(ex, ez, 1.5)) newsstand(ex, ez, -Math.PI / 2, r); }   /* [sporcherie] l'edicola contro la facciata est del sagrato, a metà: nell'angolo sud-est finiva nella Rua */ if (ok(q.x0 + 1.5, q.y1 - 1.5)) phoneBooth(q.x0 + 1.5, q.y1 - 1.5, Math.PI / 2);
       } else if (q.k === 'adunata' && q.civica) {
         // [cucitura] la Piazza Grande (l'ex adunata): la fontana in mezzo alla metà sud (pezzo), attorno le panchine rivolte alla fontana, il
         // dehors del caffè lungo il filo sud, l'edicola dei giornali e la cabina sull'angolo verso il Mercato; a nord il sagrato del cinema libero
         const fx = (q.x0 + q.x1) / 2, fz = (q.y1 + (q.y0 + q.y1) / 2 + 3.5) / 2 + 1;
         [[-5.5, 0], [5.5, 0]].forEach(([dx, dz]) => { const x = fx + dx, z = fz + dz; if (ok(x, z)) { bench(x, z, dx < 0 ? Math.PI / 2 : -Math.PI / 2, 'iron'); n++; } });
         if (!SEG1.ok) for (let k = 0; k < 3; k++) { const x = q.x0 + 5 + k * 4.5, z = q.y1 - 2.2; if (ok(x, z)) { cafe(x, z, r, 'marble', 2, ['#2f6a4e', '#e9e0cf']); n++; } }
-        if (ok(q.x0 + 2, q.y1 - 2.5, 1)) newsstand(q.x0 + 2, q.y1 - 2.5, Math.PI / 2, r); if (ok(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6)) phoneBooth(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6, Math.PI / 2);
+        if (ok(q.x0 + 2, q.y1 - 2.5, 1.3) && !onCarr1(q.x0 + 2, q.y1 - 2.5, 1.5)) newsstand(q.x0 + 2, q.y1 - 2.5, Math.PI / 2, r); if (ok(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6)) phoneBooth(q.x0 + 1.5, (q.y0 + q.y1) / 2 - 6, Math.PI / 2);
         for (let k = 0; k < 4; k++) { const x = q.x0 + 3 + k * (q.x1 - q.x0 - 6) / 3, z = q.y0 + 1.6; if (ok(x, z, .4)) pot(x, z, r, k % 2 ? 'lemon' : 'geranio'); }
         cat(fx + 3, fz + 3, r);
       } else if (q.k === 'adunata') {
@@ -10638,7 +10649,7 @@ var Render = (function () {
         let last = -1e9, k = 0;
         for (let x = q.x0; x <= q.x1; x += 1) { let z = null; for (let zz = 150 + (M.world.OY || 0); zz < 260 + (M.world.OY || 0); zz += 1) if (tl(x, zz) === T.QUAY && tl(x, zz + 1.5) === T.WATER) { z = zz; break; }
           if (z === null || x - last < 8) continue; last = x; if (!po1Has('bitta')) bitta(x, z - .2); n++; k++;   // [posa] le bitte sono pezzi
-          const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1)) continue; const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
+          const ix = x + 4, iz = z - 3; if (!ok(ix, iz, 1) || onCarr1(ix, iz, 2.4) || (k % 8) > 3) continue;   /* [sporcherie] casse, reti e fusti fuori dalla carreggiata e dal marciapiede, e più radi */ const c = k % 4; if (c === 0) crateStack(ix, iz, 3, r, 'fish'); else if (c === 1) nets(ix, iz, r); else if (c === 2) barrel(ix, iz, r, r() < .3); else drumGroup(ix, iz, r, ['#2a5ab8', '#c8302a']); }
       }
     });
     // la vita dei vicoli: il bucato teso fra le case di fronte, le edicole votive sugli spigoli, i bidoni e i gatti
@@ -12425,7 +12436,7 @@ var Render = (function () {
 
   // ================= [inverno] PAESAGGIO: il Muro, la Base, il porto cargo, le stazioni, i beduini, i bivacchi, i fuochi =================
   // Tutto statico tranne i fuochi (fiamme che tremano), il radar, i riflettori delle torri e l'elicottero di notte.
-  const WX = { fires: [], beams: [], radar: null, heli: null, blink: [] };
+  const WX = { fires: [], beams: [], radar: null, heli: null, blink: [], barili: [] };
   function fireMat() { return WX.fm || (WX.fm = [new THREE.MeshBasicMaterial({ color: '#ffb040', toneMapped: false }), new THREE.MeshBasicMaterial({ color: '#ff5a1a', toneMapped: false }), new THREE.MeshBasicMaterial({ color: '#ffe8a0', toneMapped: false })]); }
   // fiamma: tre coni che tremano, una luce calda vera e un alone
   function flame(x, y, z, s, lightK) {
@@ -12433,7 +12444,7 @@ var Render = (function () {
     [[0, .9, 1], [.12, .7, 0], [-.1, .6, 2]].forEach(([o, h, mi]) => { const c = new THREE.Mesh(new THREE.ConeGeometry(.22 * s, h * s, 5), fm[mi]); c.position.set(o * s, h * s / 2, o * .7 * s); g.add(c); });
     g.position.set(x, y, z); scene.add(g); WX.fires.push({ g, ph: Math.random() * 9 });
     const L = addLight(x, y + .8 * s, z, '#ff8a3a', 2.4 * (lightK || 1), 11, .35); L.always = true;
-    glow(x, y + .6 * s, z, '#ff9a40', 2.6 * s);
+    g.userData.luce = L; g.userData.alone = glow(x, y + .6 * s, z, '#ff9a40', 2.6 * s);
     return g;
   }
   // il barile col fuoco per scaldarsi: ruggine, qualche cassetta intorno
@@ -12443,7 +12454,7 @@ var Render = (function () {
     add(g, cyl(.29, .29, .04, 10, sb('#ff6a20')), 0, .86, 0);
     if (r() < .6) add(g, box(.5, .3, .35, PM.wood()), .65, .15, .2, 0, r() * 2, 0);
     place(g, x, z, r() * 6);
-    flame(x, groundH(x, z) + .85, z, .9);
+    const fg = flame(x, groundH(x, z) + .85, z, .9); fg.userData.b0 = fg.userData.luce.base; WX.barili.push(fg);   // [sporcherie] acceso solo la sera e la notte
   }
   function camp(x, z, r) { // fuoco a terra: pietre in cerchio, legna
     const g = G0(), st = sm('#6a6660');
@@ -12604,7 +12615,7 @@ var Render = (function () {
   function buildWinter() {
     const W0 = M.world; if (!W0 || !W0.WALL) return;
     const P = G.PLACES, r = rng(1953), T = G.T;
-    const free = (x, z, r = .6) => [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
+    const free = (x, z, r = .6) => !vicoloChiuso(x, z, r) && [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => { const v = G.tileAt(Math.floor((x + u) / TS), Math.floor((z + w) / TS)); return v !== T.BLD && v !== T.WATER && v !== T.VIA && v !== T.FOUNT && v !== T.TREE; });   /* [leggera] anche attorno, non solo al centro: niente mezzi lampioni dentro le case */
     buildFortezza();   // [città2] i bastioni (solo con la città nuova)
     // ---- il Muro: lastre di cemento, filo spinato, scritte del regime e della Risacca, torri coi riflettori ----
     const WL = W0.WALL, slabM = [concrete('#7e7e7c'), concrete('#8a8a86'), concrete('#747472')], wire = sl('#2a2a2e');
@@ -12746,7 +12757,16 @@ var Render = (function () {
       for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z)) place(g, x, z, r()); }
     }
     // ---- dorsali: bivacchi, il monolite, gli spiazzi da campeggio ----
-    Object.values(P).forEach(q => {
+    // [sporcherie] I POSTI FUORI DAI SENTIERI: il bivacco, le tende, la carbonaia, la croce, la neviera stavano sull'asse del loro sentiero (o in mezzo
+    // alla via): il disegno si scosta del meno possibile finché il suo ingombro (R) non tocca più nessuna strada, sentiero o traccia; il posto resta lì
+    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6 }, viaSeg = [];
+    (M.roads || []).forEach(rd => { if (rd.pts) for (let k = 0; k < rd.pts.length - 1; k++) viaSeg.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2]); });
+    const sulSentiero = (x, z, R) => viaSeg.some(s0 => { if (Math.min(s0[0], s0[2]) - R - s0[4] > x || Math.max(s0[0], s0[2]) + R + s0[4] < x || Math.min(s0[1], s0[3]) - R - s0[4] > z || Math.max(s0[1], s0[3]) + R + s0[4] < z) return false;
+      const dx = s0[2] - s0[0], dz = s0[3] - s0[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s0[0]) * dx + (z - s0[1]) * dz) / L2, 0, 1); return Math.hypot(s0[0] + dx * t - x, s0[1] + dz * t - z) < s0[4] + R; });
+    const scosta = q => { const R = CAMPR[q.camp]; if (!R || !sulSentiero(q.x, q.y, R)) return q;
+      for (let d = 1; d <= 16; d += 1) for (let a = 0; a < 12; a++) { const x = q.x + Math.cos(a / 12 * 6.283) * d, z = q.y + Math.sin(a / 12 * 6.283) * d; if (!sulSentiero(x, z, R) && free(x, z, Math.min(R, 2.5))) return Object.assign({}, q, { x, y: z }); }
+      return q; };
+    Object.values(P).map(scosta).forEach(q => {
       if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
       else if (q.camp === 'tende') { for (let k = 0; k < 3; k++) { const x = q.x + (k - 1) * 3.4, z = q.y + (k % 2) * 2; if (free(x, z)) tent(x, z, r() * 6, pick(r, ['#6a2a2a', '#2a4a3a', '#5a5a2a']), .8); } camp(q.x, q.y - 3, r); }
       else if (q.camp === 'rudere' && typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { const C = Vegetazione.casale({ x: q.x + 2, y: q.y - 2, rot: r() * 6.28, groundH, seme: Math.round(q.x * 7 + q.y) }); scene.add(C.gruppo); Vegetazione.aggiungi(C.piante); }   // [vegetazione] il casale diroccato
@@ -12755,7 +12775,7 @@ var Render = (function () {
       else if (q.camp === 'legna') { for (let k = 0; k < 3; k++) { const g = G0(); for (let j = 0; j < 7; j++) add(g, cyl(.16, .16, 1.4, 6, PM.woodD()), (j % 4) * .34 - .5, .16 + Math.floor(j / 4) * .3, 0, 0, 0, Math.PI / 2); add(g, box(1.6, .1, 1.6, sm('#c8ccd2')), 0, .62, 0); place(g, q.x + k * 2.2 - 2, q.y + (k % 2) * 2, r()); } const sb2 = G0(); add(sb2, cyl(.35, .4, .5, 8, PM.woodD()), 0, .25, 0); add(sb2, box(.06, .7, .2, sl('#8a8a90')), .1, .75, 0, 0, 0, .4); place(sb2, q.x + 3, q.y - 2, 0); }
       else if (q.camp === 'vedetta') { const g = G0(), wd = PM.woodD(); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => add(g, box(.18, 6, .18, wd), a, 3, c)); add(g, box(2.6, .15, 2.6, wd), 0, 6, 0); add(g, box(2.8, .2, 2.8, sm('#c8ccd2')), 0, 7.6, 0); add(g, box(.1, 1.5, .1, wd), 1.2, 6.8, 1.2); place(g, q.x, q.y, .3); }
       else if (q.camp === 'grotta') { const g = G0(), rk = sm('#5a5856', { roughness: 1, flatShading: true }); [[0, 0, 3.2], [2.6, .5, 2.4], [-2.4, .3, 2.6], [.5, 2, 2]].forEach(([dx, dy, s2]) => { const m = add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(s2, 0), rk), dx, dy + 1, -1.5); m.scale.y = .8; }); add(g, new THREE.Mesh(new THREE.CircleGeometry(1.3, 10), sb('#08080a')), 0, 1.2, .6); place(g, q.x, q.y - 2, r()); }
-      else if (q.camp === 'sorgente') { const g = G0(); add(g, cyl(2.2, 2.4, .2, 12, sm('#a8c4d4', { roughness: .15 })), 0, .1, 0); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.4, 0), sm('#6a6866')), Math.cos(a) * 2.4, .2, Math.sin(a) * 2.4); } place(g, q.x, q.y, 0); }
+      else if (q.camp === 'sorgente') { const g = G0(); add(g, cyl(2.2, 2.4, .2, 12, sm('#3e6e80', { roughness: .05, metalness: .2 })), 0, .1, 0);   /* [sporcherie] acqua, non ghiaccio */ for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.4, 0), sm('#6a6866')), Math.cos(a) * 2.4, .2, Math.sin(a) * 2.4); } place(g, q.x, q.y, 0); }
       // [monte] i posti del Monte Scuro
       else if (q.camp === 'croce') {
         const g = G0(), iron = sm('#2a2a2e', { roughness: .6, metalness: .5 }), st2 = sm('#7a7670', { roughness: 1, flatShading: true });
@@ -12767,17 +12787,17 @@ var Render = (function () {
       else if (q.camp === 'neviera') {
         const g = G0(), st2 = sm('#6e6a64', { roughness: 1, flatShading: true });
         for (let k = 0; k < 16; k++) { const a = k / 16 * 6.28; add(g, box(1.1, .7 + (k % 3) * .25, .5, st2), Math.cos(a) * 2.6, .35, Math.sin(a) * 2.6, 0, -a, 0); }
-        add(g, new THREE.Mesh(new THREE.CircleGeometry(2.2, 16), sb('#0a0a0c')), 0, .05, 0, -Math.PI / 2, 0, 0); add(g, new THREE.Mesh(new THREE.CircleGeometry(1.6, 12), sm('#e8ecf2')), .3, .08, .2, -Math.PI / 2, 0, 0);
+        add(g, new THREE.Mesh(new THREE.CircleGeometry(2.2, 16), sb('#0a0a0c')), 0, .05, 0, -Math.PI / 2, 0, 0); 
         [[-1.6, .4], [1.6, -.2]].forEach(([x, z]) => add(g, box(.16, 2, .16, PM.woodD()), x, 1, z)); add(g, box(3.6, .14, .16, PM.woodD()), 0, 2, .1, 0, 0, .12);
         place(g, q.x, q.y, 0);
       }
       else if (q.camp === 'cascata') {
-        // la cascata gelata: canne di ghiaccio che pendono dal ciglio fino al fondo della gola
-        const g = G0(), ice = sm('#cfe4f0', { roughness: .15, metalness: .1, emissive: '#2a4a5a', emissiveIntensity: .25 }), ice2 = sm('#a8cce0', { roughness: .2 });
+        // [sporcherie] la cascata d'acqua (era gelata: un avanzo d'inverno): i fili d'acqua dal ciglio al fondo della gola, la pozza, i massi bagnati
+        const g = G0(), acqua = sm('#9cc8dc', { roughness: .08, metalness: .1, transparent: true, opacity: .62, emissive: '#1a3a4a', emissiveIntensity: .2 }), pozza = sm('#3e6e80', { roughness: .05, metalness: .2 }), sasso = sm('#5e5a56', { roughness: .5, flatShading: true });
         const top = 9.5;
-        for (let k = 0; k < 14; k++) { const x = (k - 7) * .42 + (k % 2) * .1, len = 3 + (k * 7 % 5) * 1.3, r2 = .18 + (k % 3) * .08; add(g, new THREE.Mesh(new THREE.ConeGeometry(r2, len, 6), k % 2 ? ice : ice2), x, top - len / 2, (k % 3) * .2, Math.PI, 0, 0); }
-        for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.7, 0), ice2), (k - 3) * .9, top + .1, -.3).scale.set(1, .5, .8); add(g, new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, .25, 14), ice2), 0, .12, 1.4);
-        for (let k = 0; k < 6; k++) add(g, new THREE.Mesh(new THREE.ConeGeometry(.3, 1 + k % 3, 5), ice), -1.6 + k * .65, .6, 1.2 + (k % 2) * .5);
+        for (let k = 0; k < 6; k++) add(g, box(.5 + (k % 3) * .25, top, .08, acqua), (k - 2.5) * .55, top / 2, (k % 2) * .12);
+        for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.7, 0), sasso), (k - 3) * .9, top + .1, -.3).scale.set(1, .5, .8); add(g, new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, .25, 14), pozza), 0, .12, 1.4);
+        for (let k = 0; k < 6; k++) add(g, new THREE.Mesh(new THREE.DodecahedronGeometry(.35 + (k % 3) * .12, 0), sasso), -1.6 + k * .65, .25, 2.6 + (k % 2) * .4);
         place(g, q.x, q.y + 1.2, Math.PI);
       }
       else if (q.camp === 'fiumara') {
@@ -12801,10 +12821,11 @@ var Render = (function () {
     });
     buildBridges();   // [monte]
     // ---- fuochi nei barili: dove la gente aspetta, lavora, si scalda ----
-    const spots = ['piazza', 'calata', 'molo', 'marina', 'caruggio', 'vico', 'piazzetta', 'lungomare', 'giardini', 'passeggiata', 'discarica', 'cava', 'macchia', 'sangiacomo', 'villaggio', 'muro', 'varco', 'poligono', 'molo_cargo', 'covo', 'spiaggia'];
+    const spots = ['molo_cargo', 'cava', 'muro', 'varco', 'poligono', 'covo'];   // [sporcherie] i bidoni col fuoco solo ai margini (il porto cargo, la cava, il Muro, il covo): via dal borgo, dai giardini, dai villaggi, dalla spiaggia
     spots.forEach(id => { const q = P[id]; if (!q) return; for (let t = 0; t < 12; t++) { const x = q.x + (r() - .5) * 8, z = q.y + (r() - .5) * 8; if (free(x, z) && free(x + .8, z) && free(x, z + .8)) { fireBarrel(x, z, r); break; } } });
-    // e qualcuno nei cortili e lungo le costiere, nelle periferie
-    let nb = 0; for (let t = 0; t < 900 && nb < 34; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
+    // e qualcuno nei cortili e lungo le costiere, nelle periferie ([sporcherie] solo fra le baracche: nel borgo e nei giardini no)
+    const BAR = (G.BUILDINGS || []).filter(b => b.shack).map(b => [(b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS]);
+    let nb = 0; for (let t = 0; t < 900 && nb < 34 && BAR.length; t++) { const x = 250 + r() * 300 + ((M.world && M.world.OX) || 0), z = 70 + r() * 150 + ((M.world && M.world.OY) || 0), tx = Math.floor(x / TS), tz = Math.floor(z / TS), v = G.tileAt(tx, tz); if ((v !== T.WALK && v !== T.COB) || !free(x + 1, z) || !free(x, z + 1) || !BAR.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < 10)) continue; let near = false; for (const f of WX.fires) if (Math.hypot(f.g.position.x - x, f.g.position.z - z) < 16) near = true; if (near) continue; fireBarrel(x, z, r); nb++; }
     // ---- neon sgangherati: tubi rosa, ciano, giallo, azzurro freddo sulle facciate; alcuni rotti o che sfarfallano ----
     const NEON = ['#f0a048', '#d4d0c6', '#f0a048', '#d4d0c6', '#f0a048', '#b84a3c'];
     WX.neon = WX.neon || [];
@@ -14736,6 +14757,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         if (b.shopFront && door === b.shopFront.door && window.Scorci && Scorci.attivo && Scorci.copre(b, 'gradino', b.__bot && b.__bot.face)) return;   // [scorci] la soglia consumata è dello scorcio
         const [dx, dy] = door, cx = dx * TS + 1, cz = dy * TS + 1, side = dy >= b.y + b.h ? [0, 1] : dy < b.y ? [0, -1] : dx >= b.x + b.w ? [1, 0] : [-1, 0];
         const ex = side[0] ? (side[0] > 0 ? g.x0 + g.w : g.x0) : cx, ez = side[1] ? (side[1] > 0 ? g.z0 + g.d : g.z0) : cz;
+        if (onCarr1(ex + side[0] * .5, ez + side[1] * .5, 0)) return;   // [sporcherie] niente gradino che sporge in carreggiata (la soglia sul Corso)
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
@@ -15100,7 +15122,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     tickVento(time);
     if (!MONDO.puffs) { MONDO.puffs = mondoPts(220, false); MONDO.sparks = mondoPts(140, true); MONDO.papers = initPapers(); MONDO.birds = initBirds(); }
     // scintille e fumo dai fuochi vicini (barili, falò, bivacchi)
-    const fires = MONDO.fuochi.concat(WX.fires.map(f => f.g.position));
+    const fires = MONDO.fuochi.concat(WX.fires.filter(f => f.g.visible).map(f => f.g.position));   // [sporcherie] i bidoni spenti di giorno non fanno scintille
     for (const f of fires) {
       const x = f.x, z = f.z; if (Math.abs(x - cam.x) > 45 || Math.abs(z - cam.y) > 45) continue;
       if (Math.random() < dt * (2.2 + night * 2)) emit(MONDO.sparks, x + (Math.random() - .5) * .3, f.y + .25, z + (Math.random() - .5) * .3, (Math.random() - .5) * .8, 1.6 + Math.random() * 2.2, (Math.random() - .5) * .8, .7 + Math.random() * .9, .09, .04, .9, 1, .55 + Math.random() * .3, .15, -2.2);
@@ -15118,6 +15140,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
 
   function tickWinter(time, night) {
+    { const sera = night > .3; WX.barili.forEach(g => { if (g.visible === sera) return; g.visible = sera; g.userData.luce.base = sera ? g.userData.b0 : 0; if (g.userData.alone) g.userData.alone.visible = sera; }); }   // [sporcherie] i bidoni col fuoco: accesi la sera e la notte
     WX.fires.forEach(f => { const k = 1 + Math.sin(time * 11 + f.ph) * .12 + Math.sin(time * 23 + f.ph * 2) * .06; f.g.scale.set(1, k, 1); f.g.rotation.y = time * .7 + f.ph; });
     WX.beams.forEach(b => { b.piv.rotation.y = Math.sin(time * .35 + b.ph) * 1.1 - Math.PI / 2; b.piv.children[0].material.opacity = .03 + night * .13; });
     WX.blink.forEach(b => { b.m.visible = Math.sin(time * (b.slow ? 2 : 3.2) + b.ph) > 0; });
@@ -15331,6 +15354,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     renderer.localClippingEnabled = true;   // [visuale3] il piano di taglio sui pezzi della casa fuori dalla fusione (solo mentre è tagliata)
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
     scene = new THREE.Scene(); scene.background = new THREE.Color('#0d0b1a');
+    { const rm0 = scene.remove; scene.remove = function () { for (let i = 0; i < arguments.length; i++) rilascia(arguments[i]); return rm0.apply(this, arguments); }; }   // [regge] chi esce dalla scena va nella coda del rilascio
     scene.fog = new THREE.Fog('#16122a', 85, 140);
     camera = new THREE.PerspectiveCamera(14, 1.6, 1, 400);
     hemi = new THREE.HemisphereLight('#5a64a8', '#1a1226', .55); scene.add(hemi);
@@ -16241,6 +16265,45 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       while (STR.warm.length && (bud > 0 || c === 0)) { const e = STR.warm.shift(); e.w = false; if (e.on) continue; e.on = true; e.o.visible = true; if (e.sh) e.sh.visible = true; e.o.frustumCulled = false; STR.rew.push(e); bud -= e.b; c++; STR.off--; STR.carichi++; } }
   }
   if (typeof window !== 'undefined') window.__stream = STR;
+  // [regge] IL RILASCIO: quello che esce dalla scena (persone che si allontanano, mezzi rifatti o spariti, interni, corpi, oggetti a
+  // terra, il bottino) usciva senza dispose(): three tiene per ogni geometria disegnata almeno una volta i suoi attributi (gli stati dei
+  // vertici, per geometry.id) e quindi i buffer sulla scheda video e gli array in memoria, per sempre. Giocando la memoria saliva senza
+  // fermarsi (decine di MB e migliaia di geometrie a ogni giro della città) finché il telefono chiudeva la pagina. Ora chi esce va in
+  // coda; ogni 3 s un giro della scena a fette (3000 oggetti per fotogramma, nessun picco) dice chi è ancora usato: una geometria della
+  // coda che la scheda video ha ricevuto e che per due giri di fila nessuna mesh della scena (né una persona tenuta da parte,
+  // PEOPLE_KEEP) usa più si libera. L'immagine non cambia: se torna in scena (dalle cache delle figure, dei
+  // modelli, dei kit) three la ricarica dagli array, che restano; quelle con gli array già svuotati dopo l'invio ([leggera]) non si
+  // toccano. ?norilascio: come prima; window.__rilascio: lo stato.
+  const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null };
+  const rilGeo = (g, out) => { if (g && g.isBufferGeometry) out.push(g); };
+  function rilascia(obj) {
+    if (!RIL.on || !obj || !obj.traverse) return; const L = [];
+    obj.traverse(o => { if (o.isMesh || o.isLine || o.isPoints) rilGeo(o.geometry, L); });
+    for (const g of L) if (rilCaricata(g)) RIL.coda.set(g, -1);   // -1: uscita ora (anche se c'era già): conta solo un giro della scena cominciato dopo. Mai disegnata (le case lontane che aspettano il loro settore): three non la tiene, niente da fare
+  }
+  function rilCaricata(g) { if (!Object.prototype.hasOwnProperty.call(g, '_listeners')) return false; const l = g._listeners.dispose; return !!(l && l.length); }   // three l'ha ricevuta (WebGLGeometries ascolta il suo dispose); i segnaposto che ereditano (lazyGeo1) no
+  function rilIntatta(g) {   // gli array ci sono ancora tutti: si potrà ricaricare
+    const ok = a => { if (!a) return true; if (a.isInterleavedBufferAttribute) return a.data.array.length >= a.data.count * a.data.stride; return a.array.length >= a.count * a.itemSize; };
+    if (!ok(g.index)) return false; for (const k in g.attributes) if (!ok(g.attributes[k])) return false;
+    for (const k in g.morphAttributes) for (const a of g.morphAttributes[k]) if (!ok(a)) return false; return true;
+  }
+  function rilascioTick(now) {
+    if (!RIL.on || !RIL.coda.size || (!RIL.W.stack && now - RIL.t < 3000)) return;
+    if (!RIL.W.stack) RIL.uso = new Set(); const uso = RIL.uso;
+    const fine = sliceWalk(RIL.W, scene, 3000, o => { const g = o.geometry; if (g) uso.add(g); });   // la scena a fette (3000 oggetti per fotogramma): nessun picco
+    const fin = () => { const d = performance.now() - now; RIL.ms += d; if (d > (RIL.picco || 0)) RIL.picco = d; };
+    if (!fine) { fin(); return; } RIL.t = now; RIL.gen++; RIL.uso = null;
+    const tenute = new Set(); PEOPLE_KEEP.forEach(p => p.traverse(o => { if (o.geometry) tenute.add(o.geometry); }));
+    for (const [g, m] of RIL.coda) {
+      if (m < 0) { RIL.coda.set(g, 0); continue; }
+      if (uso.has(g) || !rilCaricata(g)) { RIL.coda.delete(g); continue; }   // di nuovo in scena (o mai disegnata): niente da fare
+      if (tenute.has(g)) { RIL.coda.set(g, 0); continue; }   // una persona da parte: aspetta
+      if (!m) { RIL.coda.set(g, RIL.gen); continue; }   // la prima volta fuori: si riguarda al prossimo controllo
+      RIL.coda.delete(g); if (rilIntatta(g)) { g.dispose(); RIL.liberate++; }
+    }
+    fin();
+  }
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__rilascio', { configurable: true, get: () => ({ on: RIL.on, coda: RIL.coda.size, controlli: RIL.gen, liberate: RIL.liberate, ms: Math.round(RIL.ms), picco: +(RIL.picco || 0).toFixed(1) }) });
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
@@ -16631,6 +16694,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
+    rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
@@ -16710,5 +16774,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

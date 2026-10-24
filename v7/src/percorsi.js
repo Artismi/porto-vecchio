@@ -43,7 +43,7 @@ var Percorsi = (function () {
   if (DBG) console.error('[percorsi] t', 42, Date.now() - T0);
   // ================= LA VISTA: cosa copre cosa (case, pezzi grandi, archi sopra i vicoli) =================
   // l'altezza di un pezzo grande che riserva caselle piene (BLD senza casa): torre, porta, stazione, arco
-  const PZH = { torre_littoria: 34, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
+  const PZH = { torre_littoria: 21, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
   const PZBOX = []; (W.pezzi || []).forEach(p => { if (!p.imp) return; p.imp.forEach(r => { if (r[0] !== 'B') return; PZBOX.push({ p, r, h: (p.q || 0) + (PZH[p.tipo] || 8) }); }); });
   // gli archi e le volte sopra i vicoli: si passa sotto (la vista anche), ma sopra i 3,4 m coprono
   const VOLTE = []; (W.pezzi || []).forEach(p => { if (p.tipo === 'arco_sottopasso') VOLTE.push({ p, x0: -1, x1: 8.4, z0: -6, z1: 6, y0: (p.q || 0) + 3.2, y1: (p.q || 0) + 9.6 });
@@ -136,7 +136,7 @@ var Percorsi = (function () {
   const LANDMARK = [];
   const lm = (tipo, nome, lx, lz, h, r) => pz(tipo).forEach(p => { const [x, y] = pzW(p, lx, lz); LANDMARK.push({ k: 'landmark', tipo, nome, x, y, z: (p.q || 0) + h, r }); });
   lm('campanile', 'il campanile della Chiesa Madre', 2.2, 0, 26, 3.5);
-  lm('torre_littoria', 'la torre littoria', 4, 0, 30, 5);
+  lm('torre_littoria', 'la torre littoria', 3.5, 0, 17, 5);   // [sporcherie] la torre è di 15 m
   lm('porta_terra', 'la Porta di Terra', ptX, 0, 9, 4.5);
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
@@ -496,6 +496,6 @@ var Percorsi = (function () {
       scorciatoie: sc.length, nascondigli: na.length, guadagnoMedio: sc.length ? sc.reduce((s, q) => s + q.guadagno, 0) / sc.length : 0, circuiti: CIRCUITI.length, porte: PORTE.length,
       richiami: TRATTI.reduce((o, t) => (o[t.richiamo.k] = (o[t.richiamo.k] || 0) + 1, o), {}) };
   }
-  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop };
+  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop, cotto: { ZONE, TEMI4, GIRI4, NOMI4 } };   // [cotto] cotto: i dati di lega fuori da DATI (tetti.js li dà al punto della rete cotta)
 })();
 if (typeof module !== 'undefined') module.exports = Percorsi;

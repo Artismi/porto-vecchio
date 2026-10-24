@@ -3,10 +3,8 @@
       quando la scheda non ha ancora niente da fare. Chiederlo dopo (main.js gpuName, peso_schermo.js) fermava la pagina in coda
       dietro a tutte le compilazioni e i caricamenti già mandati (35-50 s in SwiftShader). Chi lo vuole legge PV_GPU().
    2. I kit (assets/mk, che boot() aspetta) si scaricano da subito, mentre si calcola la mappa: prima partivano dopo i 20-30 s di
-      calcolo. Si scaricano solo i byte: kit.js (__pvFetchModel) li prende da qui. I personaggi (assets/mc) NO: restano dove
-      erano (protagonista_ui.js, Models.attach), cioè chiesti a fine pagina e letti dopo R.init. Scaricati qui erano pronti prima di
-      R.init, e la costruzione con i personaggi veri teneva occupata la scheda video per tutto R.init (pagina ferma sulle sue chiamate:
-      R.init +45 s, «Gioca» +80 s nella misura). I kit bastano: sono loro che boot() aspetta.
+      calcolo. Con <link rel=preload>: solo i byte, nella cache del browser; Kit.load li chiede come prima e li trova lì. I personaggi
+      (assets/mc) restano dove erano (protagonista_ui.js, Models.attach: chiesti a fine pagina, letti dopo R.init).
    3. PV_V(url): l'indirizzo con l'impronta del file (?v=…, da build.py: window.PV_VER), così assets/ può stare in cache per sempre.
    Da file:// non si scarica niente in anticipo (file_shim.js serve i .json.js). Il punto 2 per ora è spento: ?precarico lo accende.                    */
 (function () {
@@ -30,10 +28,18 @@
   window.PV_GPU = gl => { if (nome === undefined && gl) leggi(gl); return nome || ''; };
   // 2. i modelli in anticipo
   const Q = location.search || '';
-  // SPENTO per ora (?precarico lo accende): nelle misure con i kit scaricati qui la scheda video restava occupata per tutto R.init
-  // (pagina ferma sulle sue chiamate, R.init +60-100 s): la causa è ancora da capire
+  // [avvio] PER ORA SPENTO (?precarico lo accende, ?precarico=fetch nella variante col fetch): in 6 giri su 6 con i kit in anticipo
+  // R.init è durato 1,5-2 volte tanto e il processo della scheda video lavorava per tutto R.init (senza: fermo). Causa da capire
   if (location.protocol === 'file:' || !/[?&]precarico\b/.test(Q) || !window.fetch) return;
   const KITS = window.PV_KITS = ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
+  if (!/[?&]precarico=fetch\b/.test(Q)) {
+    // <link rel=preload>: il browser scarica e tiene i byte nella sua cache, e il fetch di Kit.load (stesso indirizzo, stesso modo cors)
+    // li trova lì. Il codice resta com'era, cambia solo quando arrivano i byte. Con un fetch qui (?precarico=fetch) i kit si leggevano
+    // prima della fine della pagina e, nelle misure, la scheda video restava occupata per tutto R.init (R.init +60-100 s)
+    const h = document.head || document.documentElement;
+    KITS.forEach(k => { const l = document.createElement('link'); l.rel = 'preload'; l.as = 'fetch'; l.crossOrigin = 'anonymous'; l.href = PV_V('assets/mk/kit_' + k + '.glb'); h.appendChild(l); });
+    return;
+  }
   const PRE = window.__pvPre = {};
   const scarica = u => (PRE[u] = fetch(PV_V(u)).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null));
   KITS.forEach(k => scarica('assets/mk/kit_' + k + '.glb'));

@@ -94,7 +94,6 @@ var World = (function () {
   // La città (x ≥ 902, finale 1222) non si tocca: tutto si spegne fra 862 e 900.
   const C2X1 = 900;   // da qui a est la riva è quella di prima (la città, la Rocca)
   const C2STRADA = [[372, 488], [796, 886]];   // i tratti di costiera sul mare: [da x, a x] a tramontana e a mezzogiorno
-  const C2SCOGLI = [[906, 2, 5], [921, 4, 4], [940, 2, 6.5], [961, 5, 3.5], [983, 1.5, 6], [1004, 4, 4.5], [1027, 1, 7], [1051, 5, 3.8], [1072, 2, 5.5], [1096, 1.5, 6.5], [1119, 4, 4], [1140, 1, 6], [1163, 3, 5]];   // non oltre 1170: lì comincia il canale della Rocca   // [x, quanto fuori, raggio]: gli scogli sotto le mura
   const C2N = [   // [centro, larghezza, sporgenza, nome] riva nord (tramontana): alta, di roccia, con le calette strette
     [52, 17, 15, 'Punta del Maestrale'], [100, 12, -18, 'Cala dei Gabbiani'], [150, 26, 16, 'Capo del Bosco'], [211, 8, -11, 'Cala Lupara'], [256, 19, 18, 'Capo di Tramontana'],
     [332, 12, -5, ''], [400, 25, 22, 'Punta del Corvo'], [455, 7, -11, 'Caletta del Corvo'], [624, 24, 23, 'Capo Rosso'], [669, 8, -10, 'Caletta Rossa'],
@@ -1020,7 +1019,7 @@ var World = (function () {
       CITY.nodi = [];   // i nodi dove le strade finiscono senza chiusura (oltre alle scenografie di CITY.sets): piazzale, Scalo, spianata, Giardini, lotto del fuoco
       const nodoR = (nome, x0, y0, x1, y1) => CITY.nodi.push({ nome, poly: [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] }), nodoC = (nome, x, y, r) => CITY.nodi.push({ nome, x, y, r });
       CITY.pzStaz = [930, 104, 976, 113];   // il piazzale della stazione, fra il fabbricato e gli isolati a corte
-      nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); CITY.nodi.push({ nome: 'Piazza della Rocca', poly: [[1154, 116], [1184, 116], [1184, 130.5], [1171, 130.5], [1171, 139.5], [1154, 139.5]] });   /* [pianta] la spianata non è più un nodo vuoto: ci sono le case del glacis e la piazza del mercato */ nodoR('Giardini di Ponente', 902, 88, 930, 192); nodoC('Lotto del fuoco', 966, 71, 5);
+      nodoR('Piazzale della Stazione', ...CITY.pzStaz); nodoR('Scalo', 958, 180, 998, 193); CITY.nodi.push({ nome: 'Piazza della Rocca', poly: [[1154, 116], [1184, 116], [1184, 130.5], [1171, 130.5], [1171, 139.5], [1154, 139.5]] });   /* [pianta] la spianata non è più un nodo vuoto: ci sono le case del glacis e la piazza del mercato */ nodoR('Giardini di Ponente', 902, 122, 930, 158);   /* [sporcherie] un giardino davanti al Mercato (28 × 36 m), non un parco di 104 m lungo tutta la città: il resto della fascia torna prato */ nodoC('Lotto del fuoco', 966, 71, 5);
       // la Costiera Nord passa i binari al passaggio a livello e si ferma sul piazzale (resta l'id via_alta: la leggono posti, popolo, percorsi)
       const N0 = nordP[0], STAZ = chaikin([N0.slice(), [N0[0] - 4, N0[1] + 8], [922, 94], [927.5, 104], [936, 109.5]], 2); CITY.staz = STAZ;   /* [pianta] la curva sull'angolo della stazione mezzo metro più larga: la carreggiata non ne tocca lo spigolo */
       add('via_alta', 'Via della Stazione', 7, 'citta', STAZ, { era: 'E3', nudo: true });
@@ -1530,8 +1529,8 @@ var World = (function () {
         // la testa di ponte: il muro a tramontana dal varco al canale; il recinto: il muro lungo la spianata e quello verso la città, fino al mare
         muro(XCAN - .6, yP, Math.PI, XCAN - .6 - gx, { settore: 'SETTORE 1-B' });
         muro(gx, yN, Math.PI, gx - xw, { settore: 'SETTORE 1-D' });
-        const yW = riva(xw) + 1.5, nW = Math.max(1, Math.ceil((yW - yN) / 28)), sW = (yW - yN) / nW;
-        for (let k = 0; k < nW; k++) muro(xw, yN + k * sW, -Math.PI / 2, sW, { settore: 'SETTORE 1-' + 'EFGH'[k % 4] });
+        const yW = riva(xw) - .5, nW = Math.max(1, Math.ceil((yW - yN) / 28)), sW = (yW - yN) / nW;
+        for (let k = 0; k < nW; k++) muro(xw, yN + k * sW, -Math.PI / 2, sW, { settore: 'SETTORE 1-' + 'EFGH'[k % 4] });   // [sporcherie] il muro verso la città finisce sulla battigia (prima entrava 1,5 m in mare)
         // le torri: ai due lati del varco, agli angoli, lungo il muro verso la città e sulla riva
         torre(gx, yP, 'Torre del varco'); torre(gx, yN, 'Torre del varco'); torre(XCAN - 1.6, yP, 'Torre del canale'); torre(xw, yN, 'Torre di spigolo');
         for (let k = 1; k < nW; k++) torre(xw, yN + k * sW); torre(xw, yW - 2.5, 'Torre della riva');
@@ -1771,7 +1770,7 @@ var World = (function () {
         PZ('campanile', x1 - 4.85, y1 - 2.9, 0, { lato: 4.4, h: 30, campane: 2, orologio: true, cuspide: true }, { nome: 'Campanile della Chiesa Madre', b: ch.i }); }
       // [rocca2] nella Rocca a mare: il comando è il mastio col faro, la caserma sta sulla cortina nord, il raccordo e il corpo di levante
       // sono masse di carparo; il corpo del ponte ha l'erba in cima e, sulla faccia verso la darsena, il portale con lo stemma e la pensilina
-      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'corpo_rocca', 0, { h: 17, merli: true, finestre: 1 }], ['deposito_n', 'corpo_rocca', 0, { h: 10, erba: true, finestre: 1 }],
+      [['caserma_p', 'caserma', 0, { piani: 2 }], ['hangar2', 'corpo_rocca', 0, { h: 11, merli: true, finestre: 1 }]   /* [sporcherie] il deposito della Rocca a 11 m (prima 17: più alto dell'hangar) */, ['deposito_n', 'corpo_rocca', 0, { h: 10, erba: true, finestre: 1 }],
         ['hangar1', 'corpo_rocca', 0, { h: 13, finestre: 2 }], ['rocca', 'mastio', 0, { h: 24, merli: true, lanterna: true }], ['deposito_s', 'polveriera', Math.PI, { cinta: false }]].forEach(([id, tipo, rot, o]) => {
         const b = Bn(id); if (!b) return; const [x0, y0, x1, y1] = rect(b), yc = (y0 + y1) / 2; b.pezzo = tipo;
         if (tipo === 'caserma') PZ(tipo, rot ? x1 : x0, yc, rot, Object.assign({ L: x1 - x0, p: y1 - y0 - 1 }, o), { nome: b.name, b: b.i });
@@ -1782,7 +1781,7 @@ var World = (function () {
       // la torre littoria sta sulla punta della banchina, attaccata al Ministero, con l'arengario verso il piazzale e il ponte
       if (POSA.recinto) { const R = POSA.recinto, pc = Bn('pietra'), mi = Bn('ministero');
         if (pc) { const [x0, y0, x1, y1] = rect(pc); pc.pezzo = 'caserma'; PZ('caserma', (x0 + x1) / 2, y1, Math.PI / 2, { L: y1 - y0, p: x1 - x0 - 1, piani: 2 }, { nome: pc.name, b: pc.i, recinto: true }); }
-        { const yT = mi ? (mi.y + mi.h / 2) * TS : R.yS - 9.5, p = PZ('torre_littoria', R.xe - .5, yT, Math.PI, { h: 28, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria', recinto: true }); pzRis(p, 'B', -.3, 8.3, -5.2, 4.3); R.torreL = p; } }
+        { const yT = mi ? (mi.y + mi.h / 2) * TS : R.yS - 9.5, p = PZ('torre_littoria', R.xe - 1.4, yT, Math.PI, { h: 15, lato: 7, scritta: 'ORDINE', orologio: true, balcone: true, antenna: true }, { nome: 'Torre littoria', recinto: true }); pzRis(p, 'B', -.3, 7.3, -5.2, 4.3);   /* [sporcherie] 15 m (non 28) e un metro dentro la banchina: la base non scende più nel mare */ R.torreL = p; } }
     }
     // case lungo le strade di città e dei paesi: isolati di forme diverse, affacciati sulla strada
     let nH = 0;
@@ -2325,7 +2324,7 @@ var World = (function () {
     const ISLETS = [[14, 204, 4.2, 'faraglione_grande'], [6, 226, 3, 'faraglione_piccolo'], [24, 244, 2.4, 'scoglio_basso'], [346, 32, 3.2, 'scoglio_sirena'], [784, 34, 2.6, 'scoglio_monaco']];
     // [costa2] gli scogli sotto le mura di tramontana: una frangia di roccia che affiora a pochi metri dalla riva della città (la città non si
     // tocca, la riva sì: niente più bordo dritto). Le dice MAPPA_COMPATTA: «Baracche → Covo: gli scogli sotto le mura, con la bassa marea».
-    C2SCOGLI.forEach(([x, dy, rr], k) => ISLETS.push([x, NorthY(x) - dy, rr, 'scoglio_mura_' + k]));
+    // [sporcherie] tolti: i 12 massi grandi (scoglio_mura_*) finivano addosso al parapetto e in strada sul Lungomare di Tramontana; basta la scogliera del lungomare
     ISLETS.forEach(([cx, cy, rr, id]) => { blob(cx, cy, rr, rr * .85, i => { if (grid[i] === T.WATER && zone[i] === Z.MARE) { grid[i] = T.ROCK; elev[i] = .9; zone[i] = Z.SPIAGGIA; } }); SEA.rocks.push({ x: cx, y: cy, r: rr, big: true, id }); });
     // fondale: distanza dalla riva (trasformata di distanza a smusso 3-4) e tipo della riva più vicina
     const isSea = i => grid[i] === T.WATER && zone[i] === Z.MARE;
@@ -2394,7 +2393,7 @@ var World = (function () {
     // sulle mura di tramontana e sul lido; la discarica sugli scogli di ponente accanto ai binari
     const RELP = { piazza: [1063, 103], fontana: [1108, 124], vico: [1052, 130], fiori: [950, 143], piazzetta: [1046, 167], caruggio: [1085, 95],
       calata: [1030, 190], lungomare: [1100, 198], salita: [1088, 128], monte: [1118, 128], vetta: [1134, 126], belvedere: [1070, 74], osservatorio: [1112, 72],
-      bivacco_e: [1136, 206], campeggio_e: [1150, 212], covo: [1124, 98], ruderi: [1118, 170], grotta: [1100, 168], cava: [1150, 168],
+      covo: [1124, 98], ruderi: [1118, 170], grotta: [1100, 168], cava: [1150, 168],
       spiaggia: [1128, 210], passeggiata: [1104, 198], discarica: [912, 66], piazza_gov: [1008, 143], giardini: [916, 140] };   // [mappa_compatta] la discarica è alle baracche, dietro il rilevato; i Giardini di Ponente davanti al Mercato
     const PN0 = PN; PN = (id, name, x, y, ex) => RELP[id] ? PN0(id, name, RELP[id][0], RELP[id][1], ex) : PN0(id, name, x, y, ex);
     const P = (id, name, x, y, ex) => PN(id, name, xn(x), y, ex);   // [isola] i luoghi di prima sono in coordinate vecchie
@@ -2411,12 +2410,12 @@ var World = (function () {
     P('lungomare', 'Via al Mare', 466, 184);
     // periferia ovest e la sua collina
     P('giardini', 'Giardini di Ponente', 344, 140); P('pineta', 'Pineta della Collina dei Pini', 322, 156); P('collina_o', 'Collina dei Pini', 304, 140);
-    P('bivacco_o', 'Bivacco dei Pini', 284, 132, { camp: 'bivacco' }); P('monolite', 'Il Monolite', 322, 142, { camp: 'monolite' }); P('campeggio_o', 'Spiazzo della collina', 262, 138, { camp: 'tende' }); P('sorgente', 'Sorgente gelata', 244, 157, { camp: 'sorgente', scoperta: true }); P('rudere_o', 'Casale diroccato dei Pini', 300, 110, { camp: 'rudere' }); P('carbonaia', 'Carbonaia', 336, 168, { camp: 'carbonaia' }); P('pozzo_o', 'Spiazzo dei taglialegna', 214, 132, { camp: 'legna' });
+    P('bivacco_o', 'Bivacco dei Pini', 284, 132, { camp: 'bivacco' }); P('monolite', 'Il Monolite', 322, 142, { camp: 'monolite' }); P('campeggio_o', 'Spiazzo della collina', 262, 138, { camp: 'tende' }); P('sorgente', 'Sorgente del monte', 244, 157, { camp: 'sorgente', scoperta: true }); P('rudere_o', 'Casale diroccato dei Pini', 300, 110, { camp: 'rudere' }); P('carbonaia', 'Carbonaia', 336, 168, { camp: 'carbonaia' }); P('pozzo_o', 'Spiazzo dei taglialegna', 214, 132, { camp: 'legna' });
     // periferia est e la Collina Nera
-    P('salita', 'Salita della Collina Nera', 470, 128); P('monte', 'Collina Nera', 504, 132); P('vetta', 'Cima della Collina Nera', 518, 134);
-    P('belvedere', 'Belvedere', 494, 120); P('bivacco_e', 'Bivacco della Collina Nera', 486, 138, { camp: 'bivacco' }); P('campeggio_e', 'Spiazzo della Collina Nera', 528, 128, { camp: 'tende' });
+    P('salita', 'Salita dei Bottai', 470, 128); P('monte', 'Sopra il Pozzo', 504, 132); P('vetta', 'Cima del Vico del Sale', 518, 134);   // [sporcherie] nella città nuova stanno nei vicoli del borgo: i nomi della Collina Nera (che non c'è più) prendono quelli dei vicoli
+    P('belvedere', 'Belvedere', 494, 120);   // [sporcherie] tolti il bivacco e le tende della Collina Nera (bivacco_e, campeggio_e): nella città nuova cadevano in mezzo alla Via della Marina e alla Via del Lido
     P('covo', 'Il covo nel bunker delle mura', 506, 80, { hidden: true });   // [mappa_compatta] L6: sotto la vecchia vedetta, sulle mura di tramontana P('ruderi', 'Ruderi della Collina Nera', 512, 160, { camp: 'rudere' }); P('osservatorio', 'Vecchia vedetta', 496, 108, { camp: 'vedetta' }); P('grotta', 'La grotta', 470, 150, { camp: 'grotta', hidden: true }); P('cava', 'Cava della Collina Nera', 530, 150);
-    P('spiaggia', 'Spiaggia gelata', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
+    P('spiaggia', 'Spiaggia del Lido', 512, 198); P('passeggiata', 'Passeggiata a mare', 492, 194); P('discarica', 'Discarica di levante', 548, 184);
     // il Muro e la Base
     P('muro', 'Il Muro', 548, yc(548), { gate: true }); P('varco', 'Varco del Muro', 562, yc(562));
     P('poligono', 'Poligono della Base', 560, 178); P('eliporto', 'Eliporto della Base', 632, 134); P('molo_cargo', 'Porto cargo', 640, 200);
@@ -2424,13 +2423,13 @@ var World = (function () {
     if (POSA.recinto) { const R = POSA.recinto; PN('muro', 'Il Muro', R.xw - 2, R.yN + 14, { gate: true }); PN('varco', 'Varco del Muro', R.gx - 3, 143); PN('poligono', 'Piazzale del Recinto', R.xe - 13, R.yN + 34); }   // [rocca2] il porto cargo sul molo a sud dello scoglio
     // la foresta
     P('macchia', 'Pineta dell\'altopiano', 200, 138); P('sentiero', 'Sentiero dei carbonai', 214, 156); P('radura', 'Radura del pastore', 176, 142);
-    P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago gelato', 182, 138);
+    P('sugheri', 'Valle delle betulle', 202, 168); P('ovile', 'Ovile abbandonato', 176, 124); P('lago', 'Lago del monte', 182, 138);
     P('sangiacomo', 'San Giacomo', 205, 104); P('vigne', 'Vigne di San Giacomo', 208, 84); P('villaggio', 'Borgo dei Carbonai', 184, 190);
     P('oliveto', 'Uliveto delle terrazze', 262, 186); P('caletta', 'Caletta della fiumara', 215, 224);
     // il Monte Scuro: posti da scoprire girando attorno alla montagna (scoperta: compare la prima volta che ci arrivi)
     const SC = { scoperta: true };
     P('pizzo', 'Pizzo del Monte Scuro', 248, 143, { camp: 'croce', scoperta: true }); P('neviera', 'La neviera', 241, 135, { camp: 'neviera', scoperta: true });
-    P('cascata', 'Cascata gelata', 235, 115, { camp: 'cascata', scoperta: true }); P('gola', 'Gola del Lupo', 225, 82, SC); P('ponte_diavolo', 'Ponte del Diavolo', 221, 97, SC);
+    P('cascata', 'Cascata del Pizzo', 235, 115, { camp: 'cascata', scoperta: true }); P('gola', 'Gola del Lupo', 225, 82, SC); P('ponte_diavolo', 'Ponte del Diavolo', 221, 97, SC);
     P('fiumara', 'Fiumara dei Carbonai', 224, 196, { camp: 'fiumara', scoperta: true }); P('dita', 'Le Cinque Dita', 279, 182, SC);
     P('paese_vecchio', 'Paese Vecchio', 298, 173, { camp: 'rudere', scoperta: true }); P('vecchio_2', 'Case crollate del Paese Vecchio', 302, 168, { camp: 'rudere' }); P('vecchio_3', 'La chiesa senza tetto', 294, 178, { camp: 'rudere' });
     P('calanchi', 'I Calanchi', 168, 82, SC); P('eremo', 'Eremo del Romito', 162, 160, { camp: 'eremo', scoperta: true, hidden: true });
@@ -2904,16 +2903,17 @@ var World = (function () {
       eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
       for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
       // 2) la Via Cavour: a terra fino al sottopasso, poi la scalinata fino al piano della Via della Stazione
-      const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(1, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
-      C.ps.y = Math.max(ry(C.x) + 7.5, yTop - len); C.ps.opz.dislivello = +d.toFixed(2); C.ps.opz.pianerottoli = nPi; C.ps.q = Lr;
+      const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(.34, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
+      C.ps.y = Math.max(ry(C.x) + 7.5, yTop - len); C.ps.opz.dislivello = +d.toFixed(2);   // [sporcherie] i gradini salgono quanto sale davvero la via (prima almeno 1 m: in cima uno scalino di 25 cm sul Corso)
+      C.ps.opz.pianerottoli = nPi; C.ps.q = Lr;
       C.p.q = Lr; C.p.opz.hRilevato = +(Rf(C.x) - Lr - .25).toFixed(2);
       eachV(C.x - 2.1, C.y0, C.x + 2.1, C.y1 - 3.4, (i, j, x, y) => setV(i, j, y <= C.ps.y ? Lr : y >= C.ps.y + len ? Htop : Lr + (Htop - Lr) * (y - C.ps.y) / len));
       // 3) il piano della stazione: il marciapiede mezzo metro sopra il ferro; il piazzale scende o sale fino alla via
       if (S) { const Sq = Rf(S.xc) - .35; S.p.q = Sq; const suVia = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, b]) => a >= 0 && b >= 0 && a < GW && b < GH && roadW[b * GW + a] > 0);   /* [pianta] la Via Alta che passa accanto resta sul suo profilo: il marciapiede della stazione le sta sopra col suo muro */
         eachVL(S.p, -.5, S.L + 3, -11.6, 6.4, (i, j) => { if (!suVia(i, j)) setV(i, j, Sq); });   /* [pianta] il marciapiede della stazione finisce col suo rettangolo, mezzo metro oltre il fabbricato */
         const yr = S.yRoad; eachVL(S.p, -4, S.L + 4, 6.4, yr - S.p.y + .9, (i, j, lx, lz) => { if (suVia(i, j)) return; const hr = vAt(S.p.x + lx, yr + 1.5), t = Math.min(1, (lz - 6.4) / Math.max(1, yr - S.p.y - 6.4)); setV(i, j, Sq + (hr - Sq) * t); });
-        const t = S.tr; let gq = 1e9; for (let lx = 0; lx <= 32; lx += 4) gq = Math.min(gq, vAt(...pzW(t, lx, 2))); t.q = gq; t.opz.hRilevato = +Math.max(.9, Rf(S.xc) - gq - .6).toFixed(2);
-        [S.loco, S.carro].forEach(p => { p.q = Rf(p.x); }); }
+        const t = S.tr; let gq = -1e9; for (let lx = 0; lx <= 22; lx += 2) gq = Math.max(gq, vAt(...pzW(t, lx, 0))); t.q = gq; t.opz.rilevato = false; t.opz.hRilevato = 0;   // [sporcherie] il tronchino sta a terra, sul prato fra la via e il rilevato (prima su un suo rilevato di 4 m: sembrava sospeso sopra la linea)
+        [S.loco, S.carro].forEach(p => { p.q = +(gq + .6).toFixed(2); }); }   // sulle rotaie del tronchino (massicciata .3 + traversa .15 + rotaia .15)
       // 4) il fossato della Rocca: 5 m sotto la spianata, il ponte resta in quota
       // [rocca2] il canale è mare: il ponte e la porta stanno alla quota della spianata; il pezzo del canale scende sotto il pelo dell'acqua
       const F = FORT.posa; if (F) { const Sp = vAt(F.XF - F.CW - 3, F.gy); F.Sp = Sp;
@@ -2950,11 +2950,12 @@ var World = (function () {
       // 7) le tre scalinate dalla marina al borgo: i gradini per il dislivello vero fra il piede e dieci metri più su
       (POSA.scal || []).forEach(c => { const p = c.p, d0 = vAt(p.x, p.y), dd = Math.max(.6, vAt(...p.B2) - d0); p.q = d0; p.opz.dislivello = +dd.toFixed(2); p.opz.pianerottoli = dd > 3.2 ? 1 : 0; delete p.B2; });
       // 8) la quota di posa degli altri: il punto più basso dell'impronta (niente pezzi sospesi; dove il terreno sale, il pezzo ci entra)
-      const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 8, -4, 4], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
+      const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 7, -3.5, 3.5], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
         arco_sottopasso: [3, 4.4, -4.5, 4.5], arco_contrasto: [1.7, 2.7, -.4, .4], porta_terra: [5.6, 8.6, -3, 6], muro_garante: [0, 24, -.5, .5], palo_riflettori: [-.4, .4, -.4, .4], caserma: [0, 0, -3.5, 3.5], polveriera: [0, 0, -2.5, 2.5], torrione: [3, 13, -5, 5], passaggio_livello: [9, 13, -1, 1] };
-      PEZZI.forEach(p => { if (p.q !== undefined) return; let r = p.tipo === 'portico' ? [0, p.opz.campate * p.opz.campata, 1.5, 2.1] : p.tipo === 'caserma' || p.tipo === 'polveriera' ? [0, p.opz.L, QR[p.tipo][2], QR[p.tipo][3]] : QR[p.tipo] || (p.imp && p.imp[0].slice(1)) || [-.5, .5, -.5, .5];
+      PEZZI.forEach(p => { if (p.q !== undefined) return; let r = p.tipo === 'portico' ? [0, p.opz.campate * p.opz.campata, 1.5, 2.1] : p.tipo === 'caserma' || p.tipo === 'polveriera' || p.tipo === 'muro_garante' ? [0, p.opz.L, QR[p.tipo][2], QR[p.tipo][3]] : QR[p.tipo] || (p.imp && p.imp[0].slice(1)) || [-.5, .5, -.5, .5];
         const pts = [[r[0], r[2]], [r[1], r[2]], [r[1], r[3]], [r[0], r[3]], [(r[0] + r[1]) / 2, (r[2] + r[3]) / 2]]; p.q = Math.min(...pts.map(([a, b]) => vAt(...pzW(p, a, b))));
-        if (p.tipo === 'passaggio_livello') p.q = Rf(pzW(p, 11, 0)[0]) - .45; });
+        if (p.tipo === 'passaggio_livello') p.q = Rf(pzW(p, 11, 0)[0]) - .45;
+        if (p.tipo === 'torre_littoria' || (p.tipo === 'torre_guardia' && p.recinto)) p.q = Math.max(p.q, .3); });   // [sporcherie] la torre littoria e le torri di guardia del Recinto (la Torre del canale) posano sulla banchina, non sotto il pelo dell'acqua
       PEZZI.forEach(p => { p.q = Math.round(p.q * 100) / 100; });
       if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; PEZZI.forEach(p => { c[p.tipo] = (c[p.tipo] || 0) + 1; }); console.log('[posa] pezzi', PEZZI.length, JSON.stringify(c), 'rilevato al sottopasso', Rtop.toFixed(2), 'strada', Lr.toFixed(2)); }
     }
@@ -3005,6 +3006,35 @@ var World = (function () {
     ];
     return L.filter(q => q[3]).map(([n, id, nome, xy, ruoli, icona, firma, landmark, ingressi, segreto]) => ({ n, id, nome, x: +xy[0].toFixed(1), y: +xy[1].toFixed(1), ruoli, icona, firma, landmark, ingressi, segreto }));
   }
+  // [cotto] le funzioni della mappa grande che leggono i suoi vettori: le fa expand() e, col mondo cotto, le rifà la lettura (stesse funzioni)
+  function rivaFunzioni(W, grid, elev, vh, velev, isl) {
+    const T_ = T, VW2 = GW2 + 1;
+    const ix = (tx, ty) => ty * GW2 + tx, toD = (tx, ty) => [tx * TS + 1 - OX, ty * TS + 1 - OY];
+    const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {
+      let s2 = 0, c = 0, wet = false, made = false, any = false;
+      for (const [a, b2] of [[i2 - 1, j - 1], [i2, j - 1], [i2 - 1, j], [i2, j]]) { if (a < 0 || b2 < 0 || a >= GW2 || b2 >= GH2) { wet = true; continue; } const k = b2 * GW2 + a; if (isl[k]) any = true; if (grid[k] === T_.WATER) { wet = true; continue; } if (grid[k] === T_.QUAY || grid[k] === T_.PIER) made = true; s2 += elev[k]; c++; }
+      if (!any) continue; vh[j * VW2 + i2] = velev[j * VW2 + i2] = c ? (wet && !made ? Math.min(s2 / c, .5) : s2 / c) : -2.2; } };
+    const WL_SECCO = -.45 + .2, FATTO = new Set([T_.BLD, T_.VIA, T_.COB, T_.PIAZZA, T_.WALK, T_.STAIRS, T_.FOUNT, T_.QUAY, T_.PIER]);
+    const fatto = (i, j) => { for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || b < 0 || a >= GW2 || b >= GH2) continue; if (FATTO.has(grid[b * GW2 + a])) return true; } return false; };
+    const quotaRiva = (i, j) => {   // la quota del terreno che si vede al vertice (i, j): quella del mondo, con la riva ammorbidita dove è naturale
+      const ii = Math.max(0, Math.min(GW2, i)), jj = Math.max(0, Math.min(GH2, j)); let h = vh[jj * VW2 + ii];
+      if (fatto(i, j)) return Math.max(h, WL_SECCO);
+      const x = i * TS, y = j * TS, L = W.LAKE, lq = L ? Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry) : 9, lk = lq < 1.6;
+      const ci = lq < 1.6 ? (lq - .9) * Math.min(L.rx, L.ry) : W.inland(x, y), b0 = lk ? L.h - 1.9 : -1.6;
+      if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
+      return h;
+    };
+    return { __vfix: vfix, __ix: ix, __toD: toD, quotaRiva, WL_SECCO, FATTO, fatto };
+  }
+  function rivaGrande() {
+    return {
+      districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
+      yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
+      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY), inlandK: (x, y, cap) => InlandK(x - OX, y - OY, cap),   // [fluido] vedi InlandK
+      zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
+      xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
+      isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY) };
+  }
   function expand(W) {
     const N2 = GW2 * GH2, VW2 = GW2 + 1, T_ = T;
     const big = (src, Ctor, fill) => { const a = new Ctor(N2); if (fill !== undefined) a.fill(fill); for (let ty = 0; ty < GH; ty++) a.set(src.subarray(ty * GW, ty * GW + GW), (ty + OTY) * GW2 + OTX); return a; };
@@ -3044,21 +3074,15 @@ var World = (function () {
     // ---- le funzioni della riva, nelle coordinate grandi (le isole ora ci sono) ----
     ISLES_ON = true;
     const d2x = x => x - OX, d2y = y => y - OY;
-    Object.assign(W, {
-      districtAt: (x, y) => y !== undefined && isleIn(x - OX, y - OY) > Inland0(x - OX, y - OY) - 18 ? 'isole' : DistrictAt0(x - OX),
-      yc: x => Yc(x - OX) + OY, northY: x => NorthY(x - OX) + OY, southY: x => SouthY(x - OX) + OY,
-      onLand: (x, y) => OnLand(x - OX, y - OY), inland: (x, y) => Inland(x - OX, y - OY), inlandK: (x, y, cap) => InlandK(x - OX, y - OY, cap),
-      zoneAt: (x, y) => zoneAt(x - OX, y - OY), rawElev: (x, y) => rawElev(x - OX, y - OY), coastKind: (x, y) => coastKind(x - OX, y - OY), coastKind2: (x, y) => coastKind2(x - OX, y - OY),
-      xo: x => xo(x - OX), xn: a => xn(a) + OX, bosco: (x, y) => bosco(x - OX, y - OY),
-      isleAt: (x, y) => isleAt(x - OX, y - OY), isleIn: (x, y) => isleIn(x - OX, y - OY),
+    Object.assign(W, rivaGrande(), {
       DXF: DXF + OX, DXC: DXC + OX, XF: XF + OX, XG: XG + OX, XC: XC + OX, XE: XE + OX, CX: CX + OX, CY: CY + OY, OX, OY,
       GW: GW2, GH: GH2, VW: VW2, SX: SX2, SY: SY2, SIZE: SX2, grid, zone, elev, bIndex, roadW, feat, eco, reach, vh, velev,
     });
     void d2x; void d2y;
     // ---- le isole sulla mappa grande ----
-    const ix = (tx, ty) => ty * GW2 + tx, toD = (tx, ty) => [tx * TS + 1 - OX, ty * TS + 1 - OY];
-    const cellT = (tx, ty, C, p, sd) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + sd)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + sd)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + sd) < p; };
     const isl = new Uint8Array(N2);   // 1: casella di un'isola
+    const RF = rivaFunzioni(W, grid, elev, vh, velev, isl), ix = RF.__ix, toD = RF.__toD;   // [cotto] le funzioni della mappa grande (le rifà anche il mondo cotto)
+    const cellT = (tx, ty, C, p, sd) => { const x0 = tx * TS, y0 = ty * TS, ci = Math.floor((x0 + 1) / C), cj = Math.floor((y0 + 1) / C), px = (ci + .15 + .7 * hash2(ci, cj, 151 + sd)) * C, py = (cj + .15 + .7 * hash2(ci, cj, 152 + sd)) * C; return px >= x0 && px < x0 + TS && py >= y0 && py < y0 + TS && hash2(ci, cj, 153 + sd) < p; };
     ISOLE.forEach(I => {
       const RR = (I.arc ? I.R0 : I.R) + 4, tx0 = Math.max(1, Math.floor((I.x - RR + OX) / TS)), tx1 = Math.min(GW2 - 2, Math.ceil((I.x + RR + OX) / TS)), ty0 = Math.max(1, Math.floor((I.y - RR + OY) / TS)), ty1 = Math.min(GH2 - 2, Math.ceil((I.y + RR + OY) / TS));
       for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
@@ -3196,10 +3220,7 @@ var World = (function () {
     relaxS();   // dopo le radure spianate e gli edifici: ancora niente gradini
     for (let ty = 1; ty < GH2 - 1; ty++) for (let tx = 1; tx < GW2 - 1; tx++) { const i = ix(tx, ty); if (!isl[i] || grid[i] === T_.SAND || grid[i] === T_.BLD) continue; let drop = 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = i + dy * GW2 + dx; if (!isl[n]) continue; drop = Math.max(drop, elev[i] - elev[n]); } if (drop > (eco[i] === ECO.GIUNGLA ? 4.2 : 2.6)) grid[i] = T_.CLIFF; }   // sulle cupole la giungla tiene anche il ripido
     // le quote ai vertici attorno alle isole (come nella generazione: sulla riva il terreno scende sotto l'acqua)
-    const vfix = (tx0, ty0, tx1, ty1) => { for (let j = Math.max(0, ty0); j <= Math.min(GH2, ty1); j++) for (let i2 = Math.max(0, tx0); i2 <= Math.min(GW2, tx1); i2++) {
-      let s2 = 0, c = 0, wet = false, made = false, any = false;
-      for (const [a, b2] of [[i2 - 1, j - 1], [i2, j - 1], [i2 - 1, j], [i2, j]]) { if (a < 0 || b2 < 0 || a >= GW2 || b2 >= GH2) { wet = true; continue; } const k = b2 * GW2 + a; if (isl[k]) any = true; if (grid[k] === T_.WATER) { wet = true; continue; } if (grid[k] === T_.QUAY || grid[k] === T_.PIER) made = true; s2 += elev[k]; c++; }
-      if (!any) continue; vh[j * VW2 + i2] = velev[j * VW2 + i2] = c ? (wet && !made ? Math.min(s2 / c, .5) : s2 / c) : -2.2; } };
+    const vfix = RF.__vfix;
     ISOLE.forEach(I => { const RR = (I.arc ? I.R0 : I.R) + 6; vfix(Math.floor((I.x - RR + OX) / TS), Math.floor((I.y - RR + OY) / TS), Math.ceil((I.x + RR + OX) / TS), Math.ceil((I.y + RR + OY) / TS)); });
     // ---- il fondale di tutto il mare (stesse regole di generate, più il «reef»: un anello di sabbia bassa e turchese largo
     //      qualche metro attorno alle cupole, poi il fianco scende a picco nel blu dei canali) ----
@@ -3248,19 +3269,11 @@ var World = (function () {
     // ai vertici della città sul canale scendevano sotto il pelo dell'acqua già qui.
     // Ora (1) nessun vertice che tocca una casella costruita o calpestabile della città sta sotto WL_SECCO, (2) la riva si ammorbidisce
     // solo dove attorno c'è terra naturale, (3) la quota che si vede la calcola questa funzione sola (render.js e test_costa2.js).
-    const WL_SECCO = -.45 + .2, FATTO = new Set([T_.BLD, T_.VIA, T_.COB, T_.PIAZZA, T_.WALK, T_.STAIRS, T_.FOUNT, T_.QUAY, T_.PIER]);
-    const fatto = (i, j) => { for (const [a, b] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || b < 0 || a >= GW2 || b >= GH2) continue; if (FATTO.has(grid[b * GW2 + a])) return true; } return false; };
+    const WL_SECCO = RF.WL_SECCO, FATTO = RF.FATTO, fatto = RF.fatto;
     for (let j = 0; j <= GH2; j++) for (let i = 0; i <= GW2; i++) { const k = j * VW2 + i; if (vh[k] < WL_SECCO && fatto(i, j)) vh[k] = WL_SECCO; }
     for (let ty = 0; ty < GH2; ty++) for (let tx = 0; tx < GW2; tx++) { const i = ty * GW2 + tx; if (FATTO.has(grid[i])) { const k = ty * VW2 + tx; elev[i] = Math.max(elev[i], (vh[k] + vh[k + 1] + vh[k + VW2] + vh[k + VW2 + 1]) / 4); } }
     W.WL = -.45; W.WL_SECCO = WL_SECCO;
-    W.quotaRiva = (i, j) => {   // la quota del terreno che si vede al vertice (i, j): quella del mondo, con la riva ammorbidita dove è naturale
-      const ii = Math.max(0, Math.min(GW2, i)), jj = Math.max(0, Math.min(GH2, j)); let h = vh[jj * VW2 + ii];
-      if (fatto(i, j)) return Math.max(h, WL_SECCO);
-      const x = i * TS, y = j * TS, L = W.LAKE, lq = L ? Math.hypot((x - L.x) / L.rx, (y - L.y) / L.ry) : 9, lk = lq < 1.6;
-      const ci = lq < 1.6 ? (lq - .9) * Math.min(L.rx, L.ry) : W.inland(x, y), b0 = lk ? L.h - 1.9 : -1.6;
-      if (ci < 4) { const land = Math.max(lk ? L.h + .25 : .4, h > b0 + .6 ? h : .4), k = Math.max(0, Math.min(1, (ci + 1.2) / 5.2)); h = b0 + (land - b0) * k * k * (3 - 2 * k); }
-      return h;
-    };
+    W.quotaRiva = RF.quotaRiva;
     // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
     W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     if (W.sets) W.luoghi = luoghi(W);
@@ -3306,7 +3319,7 @@ var World = (function () {
       if (v === T.ROCK) {
         let mare = false; for (let b = -2; b <= 2 && !mare; b++) for (let a = -2; a <= 2; a++) if (isSea(i + b * GWx + a)) { mare = true; break; }
         if (!mare) continue; const k2 = W.coastKind2(x0 + 1, y0 + 1), x = x0 + .4 + h(8) * 1.2, y = y0 + .4 + h(9) * 1.2;
-        if (k2 === 'frangiflutti') { if (h(11) < .55) A.tetrapodi.push({ x, y, r: h(12) * 6.28, t: h(13) * 6.28, s: .9 + h(14) * .25 }); continue; }
+        if (k2 === 'frangiflutti') { if (h(11) < .55 && ![[0, 0], [2.2, 0], [-2.2, 0], [0, 2.2], [0, -2.2], [1.6, 1.6], [-1.6, 1.6], [1.6, -1.6], [-1.6, -1.6]].some(([a, b]) => { const j = at(x + a, y + b); return j >= 0 && strada(j); })) A.tetrapodi.push({ x, y, r: h(12) * 6.28, t: h(13) * 6.28, s: .9 + h(14) * .25 }); continue; }   // [sporcherie] i tetrapodi a 2 m dalla strada, mai a filo della Costiera
         if (!libero(x, y, .2)) continue;
         if (h(15) < .4) A.rocce.push({ k: 'lastra', x, y, s: 1 + h(16) * 1.4, r: h(17) * 6.28 });
         else if (h(15) < .55) A.rocce.push({ k: 'masso', x, y, s: .5 + h(16) * .9, r: h(17) * 6.28 });
@@ -3427,7 +3440,17 @@ var World = (function () {
       if (ok) { q.x = x; q.y = y; q.spostato = 1; tieni.push(q); sp++; } else via++; });
     S.rocks = tieni; S.scogliSpostati = sp; S.scogliTolti = via; return W;
   }
-  const W = scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
+  // [cotto] il mondo cotto nella build (cotto.js): le radici sono le costanti del modulo che il mondo richiama (le isole, i canali...):
+  // così il mondo letto punta agli stessi oggetti di quello calcolato
+  const CT = typeof Cotto !== 'undefined' ? Cotto : null;
+  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
+  const COT = CT ? CT.apri('mondo', RADICI) : null;
+  const rifare = CT ? CT.RIFARE : null;
+  const FUNZ = Object.assign({ monte, tavR, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
+  const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
+    ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
+  const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
+  const W = W0c || scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -3437,7 +3460,8 @@ var World = (function () {
   W.shopGeom = shopGeom;
   W.hash2 = hash2; W.fbm = fbm; W.rng = rng; W.monte = monte; W.MF = MF;
   { const VG = typeof Vegetazione !== 'undefined' ? Vegetazione : typeof require !== 'undefined' ? (() => { try { return require('./vegetazione.js'); } catch (e) { return null; } })() : null;
-    if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
+    if (COTTO) { if (VG && VG.adotta) VG.adotta(W); } else if (VG && VG.pianta) VG.pianta(W); }   // [vegetazione] il piano del verde: i tronchi sono le caselle TREE (?vecchioverde: com'era)
+  if (CT && CT.cuoci) CT.chiudi('mondo', { W }, null);
   return W;
 })();
 if (typeof module !== 'undefined') module.exports = World;

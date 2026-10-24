@@ -11,7 +11,7 @@ var Superfici = (function () {
   'use strict';
   const T = 0.5;                 // metri coperti da una texture
   const N = 64;                  // pixel della texture (128 px/m: fitto, ma sempre a pixel netti come il resto del gioco)
-  const TEX = {}, MATS = new Map(), GEOS = new Map();
+  const TEX = {}, MATS = new Map(), GEOS = new Map(), UVM = new WeakMap();   // [regge] UVM: le copie di uvMetri, per forma d'origine
   let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
   // ---------------- LE TEXTURE (grigio: 255 = il colore pieno, più scuro = segni) ----------------
@@ -125,10 +125,12 @@ var Superfici = (function () {
     else if (t === 'DodecahedronGeometry' || t === 'IcosahedronGeometry') { su = sv = 2 * p.radius * R; }
     else if (t === 'ExtrudeGeometry') { su = sv = R; }   // le uv degli estrusi sono già in metri: basta la scala
     else return geo;
-    const key = geo.uuid + '|' + su.toFixed(3) + '|' + sv.toFixed(3); if (GEOS.has(key)) return GEOS.get(key);
+    // [regge] la cache sta sulla forma d'origine (prima per uuid, in una mappa che non si svuotava: ogni modello rifatto, il bottino che
+    // entra e esce dai 45 m, ci lasciava le sue copie per sempre): finché la forma c'è, la sua copia in metri si riusa
+    const key = su.toFixed(3) + '|' + sv.toFixed(3); let per = UVM.get(geo); if (per && per.has(key)) return per.get(key);
     const g2 = geo.clone(), UV = g2.attributes.uv; if (!UV) return geo;
     for (let i = 0; i < UV.count; i++) UV.setXY(i, UV.getX(i) * Math.max(su, .02) / T, UV.getY(i) * Math.max(sv, .02) / T);
-    UV.needsUpdate = true; GEOS.set(key, g2); return g2;
+    UV.needsUpdate = true; if (!per) UVM.set(geo, per = new Map()); per.set(key, g2); return g2;
   }
 
   // uv per i modelli che non le hanno (Quaternius): ogni vertice prende la faccia della sua normale (sono modelli a facce piatte), in metri

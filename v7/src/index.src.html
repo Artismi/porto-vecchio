@@ -154,6 +154,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 .keys kbd { font-family: var(--f-label); font-size: 10px; background: var(--fg); color: var(--ink); padding: 1px 5px; margin-right: 4px; }
 .cta { justify-self: center; background: var(--neon); color: #1a0a14; border: 0; font-size: 20px; font-weight: 700; padding: 10px 28px; cursor: pointer; box-shadow: 4px 4px 0 #07060e; }
 .cta:hover { background: #ff7abb; }
+.carico0 { position: fixed; left: 0; right: 0; bottom: max(34px, calc(env(safe-area-inset-bottom) + 26px)); justify-items: center; gap: 8px !important; max-width: none !important; } .carico0 .lbl { font-size: 11px; color: var(--fg); opacity: .85; } .carico0 .bar { width: min(240px, 60vw); } .carico0 .bar i { transition: width .4s; } .carico0 .credits { position: fixed; left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom)); font-size: 10px; opacity: .55; padding: 0 12px; } .carico0 .credits a { color: inherit; }   /* [diretto] il caricamento, senza pulsanti */
 .intro2 { gap: 28px; padding: 0 20px; } .intro2 .logo { font-size: clamp(40px, 11vw, 92px); line-height: 1; text-transform: uppercase; } .intro2 .cta { font-size: 22px; padding: 16px 36px; } .intro2 .credits { position: fixed; left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom)); font-size: 10px; opacity: .55; padding: 0 12px; } .intro2 .credits a { color: inherit; }   /* [menu2] */
 .endlist { display: grid; gap: 6px; text-align: left; max-height: 44vh; overflow-y: auto; }
 .endlist .row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; background: rgba(13,11,26,.82); border: 2px solid var(--line); padding: 6px 8px; font-size: 14px; }
@@ -320,6 +321,11 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
      prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
+<!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
+     manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
+<script>window.PV_IMPRONTA_MONDO = '__IMPRONTA_MONDO__';</script>
+<script src="mondo_cotto.js"></script>
+<script data-m="cotto">/*cotto.js*/</script>
 <script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
 <script data-m="vegetazione">/*vegetazione.js*/</script>
 <script data-m="world_cittanuova">if (window.PV_NUOVA) { /*world_cittanuova.js*/ }</script>

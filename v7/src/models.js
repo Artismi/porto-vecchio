@@ -1,6 +1,6 @@
 
 /* Modelli esterni (Kenney, Quaternius, Poly Pizza — vedi Crediti) caricati da assets/m e messi nel mondo:
-   porto con barche e container, Rocca con elicottero e forca, poligono, discarica, accampamenti, luna park,
+   porto con container, Rocca con elicottero e forca, poligono, accampamenti,
    auto anni '70-'80. Si carica in sottofondo: il gioco parte subito, i pezzi compaiono quando arrivano. */
 var Models = (function () {
   'use strict';
@@ -9,13 +9,13 @@ var Models = (function () {
     pesca: ['k_boat-fishing-small.json', 'l', 7], rimorchiatore: ['k_boat-tug-a.json', 'l', 8], vela: ['k_boat-sail-a.json', 'l', 8], vela2: ['k_boat-sail-b.json', 'l', 8.5],
     motoscafo: ['k_boat-speed-a.json', 'l', 6.5], motoscafo2: ['k_boat-speed-c.json', 'l', 6], barchino: ['k_boat-row-small.json', 'l', 3.6], cargo: ['k_ship-cargo-a.json', 'l', 34],
     containerA: ['k_cargo-container-a.json', 'l', 6], containerB: ['k_cargo-container-b.json', 'l', 6], containerC: ['k_cargo-container-c.json', 'l', 6], merce: ['k_cargo-pile-a.json', 'l', 4],
-    elicottero: ['r_Helicopter.json', 'l', 12], ruota: ['r_SM_FerrisWheel_02.json', 'h', 24], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
+    elicottero: ['r_Helicopter.json', 'l', 12], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
     rx7: ['r_RX_7_3_v2.json', 'l', 4.3], gtr: ['r_GTR.json', 'l', 4.5], bursley: ['r_1972-bursley-defiance.json', 'l', 4.9],
     tenda: ['s_Tent.json', 'l', 3.2], falo: ['s_Bonfire_Fire.json', 'l', 1.3], tronco: ['s_WoodLog.json', 'l', 2.2], gommone: ['s_Raft.json', 'l', 3.6], bombola: ['s_PropaneTank.json', 'h', 1.1],
     forca: ['x_Gallows.json', 'h', 4.6],
     contLungo: ['t_Container_Long.json', 'l', 6.2], contCorto: ['t_Container_Small.json', 'l', 3.2], cassa: ['t_Crate.json', 'h', .9], scatole: ['t_CardboardBoxes_1.json', 'l', 1.2], scatole3: ['t_CardboardBoxes_3.json', 'h', 1.9],
     pallet: ['t_Pallet.json', 'l', 1.2], sacchi: ['t_SackTrench.json', 'l', 3.4], sacchi2: ['t_SackTrench_Small.json', 'l', 2.4], barriera: ['t_Barrier_Fixed.json', 'l', 3.6], cavalletto: ['t_Barrier_Single.json', 'l', 1.9],
-    carro: ['t_Tank.json', 'l', 6.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
+    carro: ['t_Tank.json', 'l', 3.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
     barile: ['t_ExplodingBarrel.json', 'h', 1], gas: ['t_GasTank.json', 'h', 1.4], rottame: ['t_Debris_BrokenCar.json', 'l', 4.3], gomme: ['t_Debris_Tires.json', 'l', 1.6], macerie: ['t_Debris_Pile.json', 'l', 2.6],
     cassonetto: ['t_TrashContainer.json', 'l', 2], cassonetto2: ['t_TrashContainer_Open.json', 'l', 2.2], cono: ['t_TrafficCone.json', 'h', .7], rete: ['t_MetalFence.json', 'l', 3.5], divano: ['t_Sofa.json', 'l', 2.2], tubi: ['t_Pipes.json', 'l', 4],
   };
@@ -355,15 +355,32 @@ var Models = (function () {
     }
     return null;
   }
-  const dyn = { guards: [], heli: null, wheel: null, fires: [], boats: [] };
+  // [sporcherie] FUORI DAI PASSAGGI: una cosa posata non sta su una strada (carreggiata VIA o banda di un vicolo) né dentro un muro, e non
+  // chiude un passaggio (da una parte o dall'altra restano almeno 1,2 m liberi fino al primo muro). Un gruppo (le casse del Wu) si sposta tutto insieme del meno possibile; se non c'è posto entro 25 m resta dov'era.
+  function duro(x, z) { const v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || v === G.T.TREE || v === undefined; }
+  let VIC = null;
+  const dSeg = (x, z, a, b) => { const ex = b[0] - a[0], ez = b[1] - a[1], L2 = ex * ex + ez * ez || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (z - a[1]) * ez) / L2)); return Math.hypot(x - a[0] - ex * t, z - a[1] - ez * t); };
+  function vicolo(x, z) { if (!VIC) VIC = ((G.MAP && G.MAP.roads) || []).filter(rd => rd.kind === 'vicolo' && rd.pts && !rd.rect);   // la banda di vicolo più vicina: [distanza dall'asse, mezza larghezza]
+    let best = null; VIC.forEach(rd => { for (let k = 1; k < rd.pts.length; k++) { const d = dSeg(x, z, rd.pts[k - 1], rd.pts[k]); if (d < rd.w / 2 + 3 && (!best || d - rd.w / 2 < best[0] - best[1])) best = [d, rd.w / 2]; } }); return best; }
+  function suVia(x, z) { const W = G.MAP && G.MAP.world, tx = Math.floor(x / G.TS), tz = Math.floor(z / G.TS); if (G.tileAt(tx, tz) === G.T.VIA) return true; if (!(W && W.roadW && W.roadW[tz * W.GW + tx] > 0)) return false;
+    const v = vicolo(x, z); return !v || v[0] > v[1] + 1; }   // in carreggiata; nei vicoli conta il corridoio (chiude)
+  function chiude(x, z, r) { const v = vicolo(x, z); if (v && v[0] < v[1] + r && v[1] + v[0] - r < 1.2) return true;
+    for (const [ux, uz] of [[1, 0], [0, 1]]) { let a = 6, b = 6; for (let d = r; d <= 6; d += .25) if (duro(x - ux * d, z - uz * d)) { a = d - r; break; } for (let d = r; d <= 6; d += .25) if (duro(x + ux * d, z + uz * d)) { b = d - r; break; } if (a < 6 && b < 6 && Math.max(a, b) < 1.2) return true; } return false; }
+  const buono = (x, z, r) => !duro(x, z) && !suVia(x, z) && !chiude(x, z, r) && [[r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => !duro(x + u, z + w) && !suVia(x + u, z + w));
+  function fuoriPassaggi(L, r) { if (!G.MAP || !G.MAP.world || !G.MAP.world.WALL) return L;   // solo nella città nuova
+    for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, dx = Math.cos(t) * rr, dz = Math.sin(t) * rr;
+      if (L.every(q => buono(q[0] + dx, q[1] + dz, q[3] || r))) return L.map(q => [q[0] + dx, q[1] + dz, q[2]]); }
+    return L; }
+  // un posto a filo muro (il retro a meno di 40 cm da una parete) fuori dai passaggi, il più vicino a (x, z); [x, z, rotazione col retro al muro]
+  function aMuro(x, z, r) { for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, px = x + Math.cos(t) * rr, pz = z + Math.sin(t) * rr;
+      if (!buono(px, pz, r)) continue; for (const [ux, uz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (duro(px + ux * (r + .4), pz + uz * (r + .4)) && !duro(px - ux * (r + .4), pz - uz * (r + .4))) return [px, pz, Math.atan2(-ux, -uz)]; }
+    return null; }
+  const dyn = { guards: [], heli: null, fires: [], boats: [] };
   async function dress() {
     const P = G.PLACES, all = Object.keys(CAT).filter(k => !['rx7', 'gtr', 'bursley'].includes(k));
     await Promise.all(all.map(load));
     // ---- porto: barche ai pontili, una nave fuori dai moli, container e merce in banchina ----
-    const B = [['pesca', 201.6, 384, 0], ['pesca', 201.6, 393, .05], ['motoscafo', 216.6, 386, 0], ['vela', 223.6, 392, Math.PI], ['rimorchiatore', 238.2, 385, 0], ['motoscafo2', 245.8, 391, Math.PI],
-      ['barchino', 205, 380, 1.4], ['barchino', 236, 380, 1.7], ['vela2', 210, 404, .4], ['motoscafo', 232, 406, -.5]];
-    B.forEach(([id, x, z, ry]) => { const o = put(id, x, z, ry, -.35); if (o) dyn.boats.push({ o, ph: x * .37 + z }); });
-    const ship = put('cargo', 220, 440, Math.PI / 2, -.5); if (ship) dyn.boats.push({ o: ship, ph: 1, slow: true });
+    // [sporcherie] tolte le dieci barche e la nave cargo della mappa vecchia (stavano in mare aperto): le barche sono quelle ai pontili della Marina
     // container: sul molo est, verso il magazzino
     const quay = []; for (let x = 252; x < 290; x += 2) for (let z = 366; z < 384; z += 2) { const v = G.tileAt(x >> 1, z >> 1); if (v === G.T.QUAY) quay.push([x, z]); }
     // piazzale dei container: file ordinate decise dal motore (Game.layout), impilati a scacchiera
@@ -371,15 +388,12 @@ var Models = (function () {
       const id = ['containerA', 'containerB', 'containerC'][it.col]; put(id, it.x, it.y, it.rot);
       if (it.up) { const gh = R.groundH ? R.groundH(it.x, it.y) : .4, h = LIB[id] ? LIB[id].size.y : 2.6; const o = put(['containerB', 'containerC', 'containerA'][it.col], it.x, it.y, it.rot); if (o) o.position.y = gh + h; }
     });
-    // ---- luna park sulla spiaggia del Lido ----
-    if (P.spiaggia) { const q = openSpot(P.spiaggia.x, P.spiaggia.y + 14, 10, 4, 70); if (q) dyn.wheel = put('ruota', q[0], q[1], Math.PI / 2); }
-    // ---- la Rocca: elicottero sullo spiazzo, forca, sbarramenti sulla strada ----
+    // [sporcherie] tolta la ruota panoramica di 24 m sulla spiaggia del Lido
+    // ---- la Rocca: elicottero sullo spiazzo, la forca sugli scogli ([sporcherie] tolti new jersey, transenne e sacchi dentro il mastio: avanzo della mappa vecchia) ----
     const PL = palco();   // [spianata2] nella città nuova il palco del potere (palco.js) dice dove stanno i carri e chi li guarda
     if (P.rocca) {
       const rx = P.rocca.x, rz = P.rocca.y;
       if (!PL) put('elicottero', rx - 14, rz + 4, .6); put('forca', rx + 12, rz + 2, Math.PI / 2);   // [spianata2] sul palco l'elicottero di giorno è quello sulla piazzola (render.js)
-      for (let i = -2; i <= 2; i++) put('newjersey', rx + i * 2.8, rz + 16, 0);
-      put('transenna', rx - 9, rz + 12, 0); put('transenna', rx + 9, rz + 12, 0); put('sacchi', rx - 5, rz + 9, 0); put('sacchi', rx + 5, rz + 9, 0);
     }
     // l'elicottero di pattuglia: gira sull'isola di notte col faro
     dyn.heli = make('elicottero'); if (dyn.heli) { scene.add(dyn.heli); dyn.heli.visible = false; }
@@ -394,8 +408,8 @@ var Models = (function () {
       put('carro', x - 8, z - 6, .4); put('carro', x + 6, z - 9, -.3); put('baracca', x - 14, z + 8, 0); put('torretta', x + 14, z + 8, 0); put('cisterna', x + 2, z + 12, 0);
       put('sacchi', x - 2, z - 2, 0); put('sacchi2', x + 2, z - 2, .2); put('barriera', x - 18, z - 4, Math.PI / 2);
     }
-    // ---- discarica ----
-    if (P.discarica) { const x = P.discarica.x, z = P.discarica.y; put('rottame', x - 3, z + 2, .7); put('rottame', x + 4, z - 3, 2.2); put('gomme', x + 1, z + 4, 0); put('macerie', x - 5, z - 3, 0); put('divano', x - 1, z - 5, 1.1); put('cassonetto2', x + 7, z + 5, .3); }
+    // [sporcherie] la discarica sul Lungomare di Tramontana è tolta: resta un cassonetto a filo del muro più vicino, fuori dai passaggi
+    if (P.discarica) { const q = aMuro(P.discarica.x, P.discarica.y, 1.1); if (q) put('cassonetto', q[0], q[1], q[2]); }
     // ---- accampamenti: radura del pastore, ovile, caletta ----
     [['radura', 1], ['ovile', 0], ['caletta', 1]].forEach(([id, tent]) => {
       const q0 = P[id]; if (!q0) return; const sp = openSpot(q0.x + 4, q0.y + 4, 8, 8, 30); if (!sp) return; const x = sp[0], z = sp[1];
@@ -403,7 +417,7 @@ var Models = (function () {
       if (f) dyn.fires.push({ x, z, o: f });
     });
     if (P.caletta) put('gommone', P.caletta.x + 6, P.caletta.y + 4, 1.2);
-    // ---- città: cassonetti nei vicoli, coni al cantiere, scatole davanti agli alimentari ----
+    // ---- città: cassonetti nei vicoli, scatole davanti agli alimentari ([sporcherie] tolti i coni in fila senza cantiere) ----
     let n = 0;
     for (let tz = 150; tz < 205 && n < 18; tz += 3) for (let tx = 50; tx < 175 && n < 18; tx += 5) {
       const v = G.tileAt(tx, tz); if (v !== G.T.WALK) continue;
@@ -411,13 +425,14 @@ var Models = (function () {
       if (!wall || ((tx * 7 + tz * 13) % 5)) continue;
       put(n % 3 ? 'cassonetto' : 'scatole', tx * 2 + 1, tz * 2 + 1, ((tx + tz) % 4) * Math.PI / 2); n++;
     }
-    if (P.cantiere) for (let i = 0; i < 5; i++) put('cono', P.cantiere.x - 4 + i * 1.6, P.cantiere.y + 2.5, 0);
-    if (P.wu) { put('scatole', P.wu.x + 1.5, P.wu.y + .5, .3); put('cassa', P.wu.x - 1.5, P.wu.y + .6, 0); }
+    if (P.wu) fuoriPassaggi([[P.wu.x + 1.5, P.wu.y + .5, 'scatole', .7], [P.wu.x - 1.5, P.wu.y + .6, 'cassa', .6]], .6).forEach(([x, z, id]) => put(id, x, z, id === 'scatole' ? .3 : 0));   // [sporcherie] fuori dalla Rua
     if (P.cava) { put('contCorto', P.cava.x + 6, P.cava.y + 4, .5); }
     // guardie della Tutela ai posti di blocco: sentinelle armate, ferme
     await Promise.all(['Soldier', 'Casual_2', 'Worker'].map(loadChar)); prepGuns();
     const guard = (x, z, ry, gun, who) => { const g = (Models.person && Models.person.__personaggi ? Models.person : person)(null, who || 'cop'); /* [personaggi] le sentinelle sono figure nuove (con ?vecchiagente restano come prima) */ if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
-    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y; guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
+    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y, F = G.MAP && G.MAP.world && G.MAP.world.FORT, g0 = F && F.gates && F.gates.find(g => g.kind === 'terra');
+      // [sporcherie] nella città nuova le due sentinelle stavano dentro il muro del mastio (rx ± 3, rz + 13): fanno la guardia alla Porta della Rocca, dal lato della corte
+      if (g0) { guard(g0.x + 8.5, g0.y - 2.2, -Math.PI / 2, 'AK'); guard(g0.x + 8.5, g0.y + 2.2, -Math.PI / 2, 'AK'); } else { guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); } guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
     if (PL) { const a = PL.carri[0], c = PL.container[0]; if (a) { guard(a.x - 1, a.z - PL.CARRO.hz - 1.6, 0, 'AK'); guard(a.x + PL.CARRO.passo * 1.5, a.z - PL.CARRO.hz - 1.8, .3, 'AK'); } if (c) guard(c.x + PL.CONT.hx + 1.3, c.z + 1, -Math.PI / 2, 'AK'); }   // [spianata2] di guardia ai carri e ai container
     else if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
     if (P.commissariato) { const c = P.commissariato; guard(c.x - 3, c.y + 4.5, 0, 'SMG'); guard(c.x + 3, c.y + 4.5, 0, 'AK'); }
@@ -466,8 +481,6 @@ var Models = (function () {
       }
       if (dyn.beam) { dyn.beam.visible = on; dyn.pool.visible = on; }
     }
-    // ruota panoramica: gira piano
-    if (dyn.wheel) { /* il modello è un pezzo unico: la ruota resta ferma, si accende la notte */ }
   }
   function attach(api) {
     R = api; scene = api.scene; G = api.G;
