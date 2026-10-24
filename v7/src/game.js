@@ -2162,7 +2162,7 @@ var Game = (function () {
       // [inverno] la piazza ora ha i viali che la attraversano: niente margine, e due file di banchi
       [[-10, ['frutta', 'verdura', 'pesce', 'forno']], [4, ['verdura', 'frutta', 'forno', 'pesce']]].forEach(([ox, goodsRow]) => {
         const q = rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
-        if (q) goodsRow.forEach((goods, k) => { const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
+        if (q) goodsRow.forEach((goods, k) => { if (k && MAP.world && MAP.world.WALL) return;   /* [sporcherie] nella città nuova due banchi soli, uno per fila, contro la facciata ovest del sagrato */ const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
       });
     }
     // --- piazzale dei container al porto: due file da tre, impilati a scacchiera, corridoio di una casella ---

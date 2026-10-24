@@ -99,4 +99,7 @@ if (A) {
     if (peggio > 0) dentro.push((q.id || 'scoglio') + '@' + q.x.toFixed(0) + ',' + q.y.toFixed(0) + ' ' + peggio.toFixed(1) + ' m in ' + dove); });
   ok((W.SEA.rocks || []).length > 300 && !dentro.length, `gli scogli (${(W.SEA.rocks || []).length}, ${W.SEA.scogliSpostati || 0} portati al largo) mai in carreggiata, sul marciapiede o sulle caselle della città (${dentro.length}: ${dentro.slice(0, 4).join('; ')})`); }
 
+// [sporcherie] i massi grandi sotto le mura (scoglio_mura_*) sono tolti: sul Lungomare di Tramontana basta la scogliera
+{ const sm = (W.SEA.rocks || []).filter(q => /^scoglio_mura/.test(q.id || '')); ok(!sm.length, `nessun masso scoglio_mura sotto il Lungomare (${sm.length})`); }
+
 console.log(fail ? `QUALCOSA NON VA (${fail})` : 'TUTTO BENE'); process.exit(fail ? 1 : 0);
