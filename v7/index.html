@@ -56308,7 +56308,7 @@ var Writing = (function () {
       if (!src || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof Blob === 'undefined') return (ARTW.ok = false);
       const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
-      ARTW.w.onmessage = e => { const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
+      ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
       return (ARTW.ok = true);
     } catch (e) { return (ARTW.ok = false); }
@@ -56334,9 +56334,16 @@ var Writing = (function () {
     try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); fired = true; sync(); return; }   // qualcosa nel lavoro non si copia: qui
     // [graffiti2] il disegnatore a parte non risponde (macchina strapiena, worker bloccato): dopo 4 s si fa qui; se non ha
     // mai risposto a niente, si spegne e da lì in poi si disegna qui (un po' di scatto, ma i muri si vedono)
-    setTimeout(() => { if (fired || !ARTW.wait.has(msg.id)) return; ARTW.wait.delete(msg.id); fired = true; ARTW.late = (ARTW.late || 0) + 1;
+    // [fluido] ma solo se è fermo davvero: se ha risposto (a questo o a un altro) negli ultimi 4 s è solo in coda (all'avvio ne arrivano
+    // 24 insieme, sulla macchina carica ognuno costa centinaia di ms) e si aspetta ancora; se non ha mai risposto, gli si danno 30 s.
+    // Prima i lavori in coda scadevano a 4 s, si disegnavano anche qui (50-200 ms l'uno, fermo il gioco) e il worker si spegneva
+    if (!ARTW.t0) ARTW.t0 = performance.now();
+    const tmo = () => setTimeout(() => { if (fired || !ARTW.wait.has(msg.id)) return; const nw = performance.now();
+      if (ARTW.ok && (ARTW.vivo ? nw - ARTW.vivo < 4000 : nw - ARTW.t0 < 30000)) { tmo(); return; }
+      ARTW.wait.delete(msg.id); fired = true; ARTW.late = (ARTW.late || 0) + 1;
       if (!ARTW.lastOk && ARTW.late >= 3 && ARTW.ok) { ARTW.ok = false; try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non risponde: i graffiti si disegnano nel gioco'); }
       ARTW.q.push(() => { try { sync(); } catch (e) { cb(null); } }); }, 4000);   // in coda: uno alla volta dentro il tempo dei graffiti
+    tmo();
   }
   function drawUpTo(w, g) {
     const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
@@ -57195,18 +57202,24 @@ var Writing = (function () {
   // della camera o quando attorno non c'è ancora niente di dipinto si va di corsa (RUSH: 30 ms e senza aspettare il turno),
   // così la città ha subito i suoi muri dipinti invece di riempirsi a uno a uno in mezzo minuto.
   const RUSH = { until: 0, cx: null, cy: null };
-  function scanNear(st, cx, cy, opt) {
-    const W = S(st), now = performance.now();
-    if (!(opt && opt.force) && now - (GFX.scanT || 0) <= 150) return 0;
-    GFX.scanT = now; let n = 0; const t0 = performance.now();
+  // [fluido] la lista dei vicini si rifà ogni 150 ms come prima, ma il lavoro (i raggi di placeWall, i veli) si spalma su tutti i
+  // fotogrammi: 1 ms a fotogramma di regola, 5 di corsa (prima 6 e 30 ms tutti in un fotogramma ogni 150 ms: uno scatto ogni 9
+  // fotogrammi, e sul telefono «di corsa» durava finché attorno c'erano meno di 12 lavori disegnati, cioè quasi sempre fuori città)
+  function scanList(st, W, cx, cy, now, force) {
     if (RUSH.cx == null || hyp(cx - RUSH.cx, cy - RUSH.cy) > 60) RUSH.until = now + 12000;   // partita nuova o salto: si riempie di corsa
     RUSH.cx = cx; RUSH.cy = cy;
     const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
     let shown = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.mesh && hyp(g.tgt.mesh.position.x - cx, g.tgt.mesh.position.z - cy) < 40) shown++; }
-    const rush = (opt && opt.force) || now < RUSH.until || (shown < 12 && near.length > 0), cap = opt && opt.ms ? opt.ms : rush ? 30 : 6;
+    return { near, rush: force || now < RUSH.until || (shown < 12 && near.length > 0) };
+  }
+  function scanNear(st, cx, cy, opt) {
+    const W = S(st), now = performance.now(), force = !!(opt && opt.force);
+    if (force || now - (GFX.scanT || 0) > 150 || !GFX.scanL) { GFX.scanT = now; GFX.scanL = scanList(st, W, cx, cy, now, force); GFX.scanI = 0; }
+    const L = GFX.scanL, near = L.near, rush = L.rush, cap = opt && opt.ms ? opt.ms : force ? 30 : rush ? 5 : 1;
+    let n = 0; const t0 = performance.now();
     for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
-    for (const w of near) {
-      if (performance.now() - t0 > cap) break;   /* [fluido] al massimo 6 ms di graffiti nuovi ogni 150 ms (di corsa 30) */
+    for (; GFX.scanI < near.length; GFX.scanI++) { const w = near[GFX.scanI];
+      if (performance.now() - t0 > cap) break;   /* [fluido] al massimo 1 ms di graffiti nuovi a fotogramma (di corsa 5) */
       const CB = typeof window !== 'undefined' && window.Costruzioni; if (!rush && CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
       if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
       if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
