@@ -224,7 +224,7 @@ var Vegetazione = (function () {
     for (let gy = Math.floor(y0 / E0); gy <= y1 / E0; gy++) for (let gx = Math.floor(x0 / E0); gx <= x1 / E0; gx++) {
       const x = (gx + hash2(gx, gy, 7971)) * E0, y = (gy + hash2(gx, gy, 7972)) * E0, i = tI(x, y); if (!terra(i) || P.dSen[i] < .9) continue;
       const fitto = sstep(.3, .7, fbm(x / 25, y / 25, 7973, 3)) * .75 + sstep(.4, .65, fbm(x / 7, y / 7, 7974, 2)) * .25, om = P.ombra ? P.ombra[i] : 0;
-      const rs = respiro(W, x, y); if (rs < .12) continue; const dens = Math.max(.06, (.1 + .4 * fitto) * rs) * (1 - om * .4); if (hash2(gx, gy, 7975) > dens) continue;
+      const rs = respiro(W, x, y); if (rs < .12) continue; const dens = Math.max(.04, (.1 + .4 * fitto) * rs) * (.35 + .65 * fili(W, x, y)) * (1 - om) * (1 - om);   // [tavolo] sotto le chiome la lettiera, non l'erba if (hash2(gx, gy, 7975) > dens) continue;
       const fid = FORM[P.form[i]].id, secca = fid === 'gariga' || fid === 'pineta' || fid === 'pinetaM' ? .55 : fid === 'prato' ? .3 : .15, u = hash2(gx, gy, 7976), sp = u < secca ? 'erbaSecca' : 'erbaVerde', S = SP[sp];
       out.push({ sp, x, y, h: S.h[0] + (S.h[1] - S.h[0]) * (.15 + fitto * .55) * (.8 + u * .4), rot: u * 6.28, v: Math.floor(hash2(gx, gy, 7977) * 4), t: u, eroe: false, P: fitto }); }
     // 1) le derive: una griglia di 2,6 m; la chiazza (≈ 8 m, bordi mossi) decide la composizione o il vuoto
@@ -233,7 +233,7 @@ var Vegetazione = (function () {
       const x = (gx + .2 + .6 * hash2(gx, gy, 7952)) * G, y = (gy + .2 + .6 * hash2(gx, gy, 7953)) * G, i = tI(x, y); if (!terra(i)) continue;
       const fid = FORM[P.form[i]].id, L = DERIVE[fid]; if (!L) continue;
       const cx = Math.floor((x + fbm(x / 12, y / 12, 7954, 2) * 9) / 8), cy = Math.floor((y + fbm(x / 12 + 7, y / 12, 7955, 2) * 9) / 8), hc = hash2(cx, cy, 7956);
-      const vuoto = fid === 'prato' || fid === 'uliveto' ? .45 : .7, om = P.ombra ? P.ombra[i] : 0; if (hc < vuoto || om > .45) continue;   // il tappeto fra le chiazze; niente fiori nell'ombra fitta
+      const vuoto = fid === 'prato' || fid === 'uliveto' ? .72 : .86, om = P.ombra ? P.ombra[i] : 0; if (hc < vuoto || om > .45) continue;   // il tappeto fra le chiazze; niente fiori nell'ombra fitta
       if (hash2(gx, gy, 7957) > .7) continue;   // dentro la chiazza, non ogni cella: la composizione respira
       if (fbm(x / 25, y / 25, 7973, 3) < .42 || respiro(W, x, y) < .55) continue;   // le composizioni fiorite stanno nelle zone fitte; in quelle rade resta l'erbetta
       let tot = 0; L.forEach(q => tot += q[1]); let a = hash2(cx, cy, 7958) * tot, nome = L[0][0]; for (const q of L) { a -= q[1]; if (a <= 0) { nome = q[0]; break; } }
@@ -1164,6 +1164,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const tmp = new Float32Array(w * h * 3), blr = new Float32Array(w * h * 3);
     for (let y = 0; y < h; y++) for (let c = 0; c < 3; c++) { let a = 0; for (let x = -R; x < w; x++) { if (x + R < w) a += src[(y * w + x + R) * 3 + c]; else a += src[(y * w + w - 1) * 3 + c]; if (x - R - 1 >= 0) a -= src[(y * w + x - R - 1) * 3 + c]; else a -= x - R - 1 >= -R - 1 ? src[(y * w) * 3 + c] : 0; if (x >= 0) tmp[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
     for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) { let a = 0; for (let y = -R; y < h; y++) { if (y + R < h) a += tmp[((y + R) * w + x) * 3 + c]; else a += tmp[((h - 1) * w + x) * 3 + c]; if (y - R - 1 >= 0) a -= tmp[((y - R - 1) * w + x) * 3 + c]; else a -= y - R - 1 >= -R - 1 ? tmp[x * 3 + c] : 0; if (y >= 0) blr[(y * w + x) * 3 + c] = a / (2 * R + 1); } }
+    const O = ombraSuolo(P), oS = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? 0 : O[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; };
     const smp = (fx, fy) => { const x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0; return ok(x0, y0) * (1 - ax) * (1 - ay) + ok(x0 + 1, y0) * ax * (1 - ay) + ok(x0, y0 + 1) * (1 - ax) * ay + ok(x0 + 1, y0 + 1) * ax * ay; };
     for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
       const wx = tx0 * TS + px / ppm, wy = ty0 * TS + py / ppm, a = smp(wx / TS - .5, wy / TS - .5); if (a < .02) continue;
@@ -1173,8 +1174,13 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
       const k = (py * w + px), q = k * 4, b0 = blr[k * 3], b1 = blr[k * 3 + 1], b2 = blr[k * 3 + 2];
       let r = b0 * lum + tip * 18, g = b1 * lum + tip * 16, bb = b2 * (lum - .04) - tip * 2;
       { const sc = gammaAt(GAMMA_CALDA, .6 + (alto - .5) * .2 + (grain - .5) * .14), kq = .5; r += (sc[0] * (.9 + grain * .2) - r) * kq; g += (sc[1] * (.92 + grain * .2) - g) * kq; bb += (sc[2] * .85 - bb) * kq; }   // il fondo chiaro e asciutto: la paglia calda fra i ciuffi
+      { const vz = sstep(.46, .66, fbm(wx / 13, wy / 13, 7997, 3)) * .5; if (vz > 0) { r += (140 * (.88 + grain * .2) - r) * vz; g += (156 * (.9 + grain * .2) - g) * vz; bb += (90 * .9 - bb) * vz; } }   // [tavolo] l'erba come pittura: chiazze larghe (8-15 m) di verde spento fra la paglia
       { const rs = respiro(W, wx, wy), te = 1 - sstep(.15, .45, rs + (grain - .5) * .25); if (te > 0) {   // la terra che viene fuori: calda, con la grana dei sassolini
           const tc = gammaAt(GAMMA_CALDA, .44 + (vnoise(wx * 3, wy * 3, 7993) - .5) * .18 + (alto - .5) * .12); r += (tc[0] - r) * te; g += (tc[1] - g) * te; bb += (tc[2] - bb) * te; } }
+      { const oc = sstep(.32, .68, oS(wx / TS - .5, wy / TS - .5)); if (oc > 0) {   // [tavolo] sotto le chiome la lettiera: aghi tabacco-ruggine sotto i pini, foglie brune sotto i lecci, con macule chiare
+          const ti = Math.floor(wy / TS) * GW + Math.floor(wx / TS), fo = FORM[P.form[ti]], pin = fo && /^pin/.test(fo.id), mac = vnoise(wx * 1.6, wy * 1.6, 7995), fg = vnoise(u / .22, v / .05, 7996);
+          const L = pin ? [150, 100, 58] : [112, 88, 62], l2 = .82 + mac * .3 + (pin ? (fg - .5) * .22 : (fg - .5) * .1), kk = oc * .85;
+          r += (L[0] * l2 - r) * kk; g += (L[1] * l2 - g) * kk; bb += (L[2] * l2 - bb) * kk; } }
       d[q] = d[q] + (Math.min(255, r) - d[q]) * a; d[q + 1] = d[q + 1] + (Math.min(255, g) - d[q + 1]) * a; d[q + 2] = d[q + 2] + (Math.max(0, Math.min(255, bb)) - d[q + 2]) * a;
     }
     ctx.putImageData(img, 0, 0);
@@ -1193,8 +1199,8 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano) continue;
       const x = tx * TS + 1, y = ty * TS + 1, fid = FORM[f].id, ds = P.dSen[i];
       let r = .45 + .55 * sstep(.32, .58, fbm(x / 34, y / 34, 7991, 3));                      // le campiture piene e leggere
-      r = Math.min(r, .25 + .75 * sstep(.2, 1.6, ds));                                        // il sentiero e i suoi lati
-      for (const rd of P.radure) { const q = Math.hypot(x - rd.x, y - rd.y) / rd.r; if (q < 1) r = Math.min(r, .55 + .45 * sstep(.5, 1, q)); }
+      r = Math.min(r, .15 + .85 * sstep(.3, 2.2, ds));                                        // il sentiero e i suoi lati
+      for (const rd of P.radure) { const q = Math.hypot(x - rd.x, y - rd.y) / rd.r; if (q < 1) r = Math.min(r, .18 + .82 * sstep(.55, 1, q)); }   // [tavolo] la radura si svuota davvero: un cuore di erbetta e terra
       r *= 1 - .4 * sstep(.5, .95, O[i]);                                                    // l'ombra fitta
       const nuda = fbm(x / 9, y / 9, 7992, 3), quanto = fid === 'gariga' ? .57 : fid === 'prato' || fid === 'pineta' || fid === 'pinetaM' ? .63 : .71;
       if (nuda > quanto + sstep(1, 8, ds) * .08) r *= .15 + .85 * (1 - sstep(quanto, quanto + .05, nuda));   // poche chiazze di terra, larghe, col bordo morbido                                   // le chiazze di terra (più vicino ai sentieri)
@@ -1203,6 +1209,24 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return (P.respiro = R);
   }
   function respiro(W, x, y) { const P = W && W.vegetazione; if (!P || SPENTO) return 1; const TS = W.TS, fx = x / TS - .5, fy = y / TS - .5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, R = respiroCampo(P), GW = W.GW, GH = W.GH;
+    const g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? 1 : R[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; }
+
+  // ================= I FILI SOLO DOVE SERVONO (il tavolo: giardiniere, paesaggista, botanico, pittore, leggibilità, level design) =================
+  // «L'erba confonde e non aiuta»: i fili d'erba come geometria sono l'alta frequenza dell'immagine e vanno messi solo dove dicono
+  // qualcosa: l'orlo dei sentieri (da 0,6 a 5 m oltre il ciglio) e l'orlo delle radure, e solo in luce. Altrove l'erba è pittura del
+  // suolo (suoloErboso) con pochi cespi radi; sotto le chiome fitte niente fili: la lettiera. fili(W, x, y, alta) (0 … 1) moltiplica
+  // la densità del tappeto; con alta = true la fascia comincia più in là (1,5 m: l'erba bassa si cammina, l'alta fa da bordo).
+  function filiCampo(P) {
+    if (P.fili) return P.fili; const W = P.W, GW = W.GW, GH = W.GH, TS = W.TS, O = ombraSuolo(P), A = new Float32Array(GW * GH).fill(1), B = new Float32Array(GW * GH).fill(1);
+    for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < GW; tx++) { const i = ty * GW + tx, f = P.form[i]; if (!f || f === F.costa || f === F.urbano) continue;
+      const x = tx * TS + 1, y = ty * TS + 1, ds = P.dSen[i]; let orlo = 0;
+      for (const rd of P.radure) { const q = Math.hypot(x - rd.x, y - rd.y) / rd.r; if (q < 1.4) orlo = Math.max(orlo, 1 - sstep(.1, .3, Math.abs(q - 1))); }
+      const luce = Math.pow(1 - sstep(.3, .62, O[i]), 2), fid = FORM[f].id, base = fid === 'prato' || fid === 'gariga' ? .2 : fid === 'uliveto' ? .16 : .1;
+      A[i] = Math.max(base, sstep(.6, 1.2, ds) * (1 - sstep(3.5, 5.5, ds)), orlo) * luce;
+      B[i] = Math.max(base * .4, sstep(1.5, 2.5, ds) * (1 - sstep(4, 6, ds)), orlo * .8) * luce; }
+    return (P.fili = [A, B]);
+  }
+  function fili(W, x, y, alta) { const P = W && W.vegetazione; if (!P || SPENTO) return 1; const TS = W.TS, fx = x / TS - .5, fy = y / TS - .5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0, R = filiCampo(P)[alta ? 1 : 0], GW = W.GW, GH = W.GH;
     const g = (a, b) => a < 0 || b < 0 || a >= GW || b >= GH ? 1 : R[b * GW + a]; return g(x0, y0) * (1 - ax) * (1 - ay) + g(x0 + 1, y0) * ax * (1 - ay) + g(x0, y0 + 1) * (1 - ax) * ay + g(x0 + 1, y0 + 1) * ax * ay; }
 
   // ================= GLI STRATI SI STACCANO =================
@@ -1217,8 +1241,8 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     const P = W && W.vegetazione; if (!P || SPENTO) return null; const TS = W.TS, i = Math.floor(y / TS) * W.GW + Math.floor(x / TS), f = P.form[i]; if (!f || f === F.costa || f === F.urbano) return null;
     if (FELCI.test(sp)) { const o = ombraSuolo(P)[i]; return o > .55 && /^(felce|felceL|felceR|felceV)$/.test(sp) ? [.62, .82, .66] : false; }   // le felci: solo all'ombra, e mai le foglie tropicali
     if (ARBUSTI.test(sp)) return [.5, .6, .66];       // scuri e freddi
-    if (ERBE.test(sp)) return [1, 1.06, .92];          // un tono sopra il prato, più verdi
-    if (sp[0] === 't') return [1.08, 1.04, .9];        // il prato: chiaro e caldo
+    if (ERBE.test(sp)) return [1, 1.04, .94, .62, .86];   // un tono sopra il prato, più verdi; [tavolo] spente: saturazione × .62, luce × .86
+    if (sp[0] === 't') return [1.04, 1, .92, .5, .8];   // il prato: caldo ma un gradino sotto la luce delle chiome, paglia e verde spento (mai lime)
     return null;
   }
 
@@ -1290,7 +1314,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, fili, strato, ecoTappeto, suoloErboso, prato, FIORI, DERIVE, dipingiSuolo, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;
