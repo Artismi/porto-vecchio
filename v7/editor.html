@@ -76066,7 +76066,7 @@ var Render = (function () {
   // accesa di notte, la spianata sempre a giorno. Ogni zona moltiplica (1 = come il resto dell'isola); il peso della zona viene dalle
   // case attorno alla camera (b.era) e si mescola piano mentre la camera si sposta. Fuori dalla città nuova i pesi sono zero.
   const SCENA = {
-    borgo:     { sole: 1.15, cielo: .84, esposizione: 1.03, saturazione: 1.07, contrasto: 1, velo: 0, espNotte: .9, finestre: .8, cieloNotte: .95 },   // calce al sole pieno; di notte poche finestre
+    borgo:     { sole: 1, cielo: .95, esposizione: .93, saturazione: 1.07, contrasto: 1, velo: 0, espNotte: .9, finestre: .8, cieloNotte: .95 },   // calce al sole pieno; di notte poche finestre
     metropoli: { sole: .94, cielo: 1.1, esposizione: 1, saturazione: .86, contrasto: .9, velo: .06, espNotte: 1.1, finestre: 1.4, cieloNotte: 1.25 },   // opaca di giorno (velo, meno sole), accesa di notte
     spianata:  { sole: .97, cielo: .9, esposizione: .86, saturazione: .9, contrasto: .94, velo: 0, espNotte: 1, finestre: 1, cieloNotte: 1, fari: .45, fariColore: '#d8e2ee',   // sempre a giorno: di notte i fari della Rocca
                  spalla: .82, spallaForza: 3.2 },   // [spianata2] al sole pieno i muri non bruciano: meno luce (sole .97, esposizione .86), la spalla dei bianchi parte prima (.82 × QUADRO.spallaBianchi) e piega morbida (eccesso / (1 + eccesso × 3,2)), così i conci restano leggibili; il salto luce-ombra resta duro
@@ -80574,8 +80574,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const time = ui.studio ? 30 : (ui.time || st.clock);   // [studio] tutto fermo: vento, bandiere, fumo, schermi
     updateLights(time, night, cam.x, cam.y);
     { const dayK = 1 - night;   /* [amb1] sole e cielo secondo il tempo; la notte resta della regia luci */
-      hemi.intensity = Math.max(hemi.intensity, (.3 + WXc * .34) * dayK);
-      moon.intensity = Math.max(moon.intensity * (1 - WXc * .7 * dayK), (1.5 - WXc * 1.2) * dayK * (1 - dusk * .3));   /* [scena1] sole pieno (era 1.05): luce e ombra nette, i volumi si leggono */
+      hemi.intensity = Math.max(hemi.intensity, (.36 + WXc * .34) * dayK);   /* [luce] muri meno bruciati, suolo meno nero: meno sole, più cielo (dalla revisione di design) */
+      moon.intensity = Math.max(moon.intensity * (1 - WXc * .7 * dayK), (1.25 - WXc * 1.2) * dayK * (1 - dusk * .3));   /* [scena1] sole pieno (era 1.05): luce e ombra nette, i volumi si leggono */
       fillAmb.intensity = Math.max(fillAmb.intensity, (.06 + WXc * .2) * dayK);
       if (dayK > .5) { moon.color.set(dusk > .3 ? '#f4a878' : '#ffe8c4').lerp(WXT.set('#e8ecf0'), WXc); hemi.color.set('#d6dce6').lerp(WXT.set('#d6d8da'), WXc); hemi.groundColor.set('#a08a60').lerp(WXT.set('#6a6c70'), WXc);   /* [scena1] sole caldo, cielo azzurro nelle ombre, riflesso caldo da terra */ }
       else { hemi.color.set('#4a5878'); hemi.groundColor.set('#2c3650'); }
