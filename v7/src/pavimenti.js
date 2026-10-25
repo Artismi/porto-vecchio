@@ -176,7 +176,7 @@ var Pavimenti = (function () {
     float pvRagno(vec2 p, float mpp){ vec4 S = pvSassi(p / .22, .9); return 1. - smoothstep(.0035, .0035 + mpp * 1.1, S.x * .22); }
 `;
   const GLSL = GLSL_FN + `
-    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvFi; uniform float pvStr; uniform float pvDbg; uniform float pvSmo; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce; uniform vec3 pvAsf;
+    uniform sampler2D pvId; uniform sampler2D pvId2; uniform sampler2D pvFi; uniform float pvStr; uniform float pvDbg; uniform float pvSmo; uniform sampler2D pvMk; uniform vec4 pvBox; uniform vec2 pvRes; uniform float pvHas; uniform float pvForza; uniform float pvForce; uniform vec3 pvAsf; uniform vec3 pvCl;
     varying vec3 vPw;
     #ifdef PV_LITE
     #define PV_K 1
@@ -185,8 +185,15 @@ var Pavimenti = (function () {
     #endif
     vec2 pvTilt; float pvWet; float pvPol; float pvSab;
     // il disegno: rende il colore, riempie pvTilt (la normale piegata, nel piano xz del mondo), pvWet, pvPol
+    vec3 pvCalmo(vec3 c){   // [sguardo] i suoli senza disegno (o da lontano): i chiari scendono verso i medi, il suolo non abbaglia più dei muri
+      #ifdef TONE_MAPPING
+      float L = pvLum(c); return c * mix(1., .55 / max(L, .05), .35 * smoothstep(.5, .8, L));
+      #else
+      return c;
+      #endif
+    }
     vec3 pvDett(vec3 base, vec2 p, vec3 blur){
-      pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.;
+      pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
       float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   // leggera: si spegne prima, niente grana fine
@@ -194,7 +201,7 @@ var Pavimenti = (function () {
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;
       #endif   // giunti morbidi: il quadro non ha antialiasing e il post affila
-      if (lod <= 0.) return base * (.95 + pvN(p * .045) * .08);
+      if (lod <= 0.) return pvCalmo(base * (.95 + pvN(p * .045) * .08));
       vec2 uv = (p - pvBox.xy) / pvBox.zw; vec4 I = vec4(0.), K = vec4(0.);
       float rf = 0., hw = 0., s = 0., v = 0., best = 1e9, scA = 9., sec = 9., e1 = 9., e2 = 9., gW = 0., gfN = 0., gB = 0.; vec2 du = vec2(1., 0.);   // sec: quanto si è fuori dall'altra via (incroci); gW: il suolo del texel vicino, interpolato
       if (pvHas > .5) { I = texture2D(pvId, uv); K = texture2D(pvMk, uv); gfN = mod(floor(I.a / 16.), 16.); gB = gfN;
@@ -227,7 +234,7 @@ var Pavimenti = (function () {
       float eU = pvSmo < .5 ? 9. : e2 < 8. ? min(e1, e2) - pow(max(3.8 - abs(e1 - e2), 0.) / 3.8, 2.) * 3.8 / 4. : e1;   // l'unione morbida: agli incroci l'asfalto gira l'angolo con la curva (come il cordolo)
       bool via = rf > 0. && (av < hw || eU < 0.);
       float fam = pvForce > 0. ? pvForce : via ? rf : gf;
-      if (fam < .5) return base;
+      if (fam < .5) return pvCalmo(base);
       // coordinate del disegno: lungo e attraverso la via, o il mondo ruotato
       bool lungo = rf > 0. && (av < hw || eU < 0. || (pvForce > 0. && av < hw + 3.));   // le coordinate della via solo sulla carreggiata (e sul marciapiede): fuori il mondo, niente cuciture a 3 m
       vec2 q = lungo ? vec2(s, v + hw) : pvRot(p, .6 + fam * .37), ux = lungo ? du : vec2(cos(.6 + fam * .37), sin(.6 + fam * .37)), uy = vec2(-ux.y, ux.x);
@@ -236,7 +243,7 @@ var Pavimenti = (function () {
         float rw = fam < 1.5 ? .52 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .6 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.05 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
         float bev = fam < 1.5 ? .06 : fam < 2.5 ? .035 : fam < 5.5 ? .07 : .025, wob = fam < 1.5 ? .05 : .012;
         vec2 qq = q; bool cord = fam > 8.5 && lungo && pvForce > 0. && eU > -.02 && eU < .3;   // sul ciglio vero (l'unione morbida delle vie: il cordolo gira l'angolo)   // il cordolo di granito sul ciglio del marciapiede
-        if (cord) { rw = .3; l0 = .8; l1 = 1.4; bev = .03; qq.y = clamp(eU, .001, .299); }
+        if (cord) { rw = .3; l0 = .8; l1 = 1.4; bev = .03; qq.y = clamp(eU, .001, .299); pvKerb = 1.; }
         else if (fam > 8.5 && lungo) qq.y = eU - .3;
         #ifndef PV_LITE
         qq += (vec2(pvN(q * 2.3), pvN(q * 2.3 + 9.)) - .5) * wob;
@@ -441,12 +448,21 @@ var Pavimenti = (function () {
       if (fam > 6.5 && fam < 7.5) pvWet = K.g;
       col *= 1. - pvWet * .26;
       col = mix(col, col * vec3(.42, .38, .36), K.b * pvForza);   // l'ombra di contatto, calda
+      #ifdef TONE_MAPPING
+      // [sguardo] il suolo calmo: la luminosità del disegno torna a metà strada verso la tinta media del posto (blur), i colori dei segni
+      // restano; un valore medio (45-60) sotto i muri; il raccordo col muro più deciso (l'occlusione di contatto); l'ombra delle nuvole
+      { float lc = pvLum(col), lb = pvLum(blur); col *= mix(1., lb / max(lc, 1e-3), .5 * lod * (1. - pvKerb)); col *= mix(1., .5 / max(pvLum(col), .05), .28 * (1. - pvKerb)) * (1.04 + pvKerb * .16); tw *= .6; }   // i valori del suolo stretti attorno ai medi: né il lastrico che abbaglia né l'asfalto nero   // il cordolo no: la linea fra strada e marciapiede resta netta, un filo più chiara
+      col = mix(col, col * vec3(.5, .45, .42), K.a * .75);
+      { float cl = smoothstep(.42, .7, pvN((p + pvCl.xy) * .022) * .7 + pvN((p + pvCl.xy * 1.3) * .061 + 7.) * .3); col *= 1. - cl * pvCl.z; }
+      #else
       col = mix(col, col * vec3(.62, .56, .5), K.a * .55);   // il raccordo muro-terreno: la riga calda e scura dove il muro tocca terra
+      #endif
       pvTilt = tw * pvForza;
       return mix(base, col, pvForza);
     }`;
   // aggiunge il disegno a un materiale (suolo: MeshStandardMaterial; marciapiede: MeshLambertMaterial)
   const DUMMY = { id: null, mk: null };
+  const CIELO = { value: new THREE.Vector3() };   // [sguardo] x, z: lo scorrimento delle nuvole (m); forza
   function dummy() { if (DUMMY.id) return DUMMY; DUMMY.id = new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType); DUMMY.id.needsUpdate = true; DUMMY.mk = new THREE.DataTexture(new Uint8Array(4), 1, 1); DUMMY.mk.needsUpdate = true; return DUMMY; }
   function patch(mat, U, chiave) {
     const prev = mat.onBeforeCompile, pk = mat.customProgramCacheKey;
@@ -470,7 +486,7 @@ var Pavimenti = (function () {
   let NZ = null;   // la tessitura di rumore della variante leggera: valori a caso per cella, filtrata, ripetuta
   function nz() { if (NZ) return NZ; const N = 256, a = new Uint8Array(N * N * 4); let sd = 7; for (let i = 0; i < a.length; i++) { sd = (sd * 16807) % 2147483647; a[i] = sd & 255; }
     NZ = new THREE.DataTexture(a, N, N, THREE.RGBAFormat); NZ.wrapS = NZ.wrapT = THREE.RepeatWrapping; NZ.magFilter = NZ.minFilter = THREE.LinearFilter; NZ.generateMipmaps = false; NZ.needsUpdate = true; return NZ; }
-  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvSmo: SMO, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 } }; }
+  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvSmo: SMO, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 }, pvCl: CIELO }; }
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
   function suolo(mat, tx0, ty0, n, m) { const it = suoloG(mat, tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
@@ -555,7 +571,7 @@ var Pavimenti = (function () {
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
     const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
-  const API = { SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, suoloG, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
+  const API = { CIELO,   /* [sguardo] l'ombra delle nuvole: render.js la muove */ SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, suoloG, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;
   return API;
 })();
