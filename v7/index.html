@@ -79727,14 +79727,17 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
     const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('margini9', () => { const g = RIVA9() ? Riva.costruisciMargini(groundH) : null; if (g) scene.add(g); });   /* [riva] i margini delle costiere */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
-    TT('senzacase', () => { if (!/[?&]senzacase\b/.test(typeof location !== 'undefined' ? location.search : '')) return;   /* [controllo] ?senzacase: via i palazzi (e quello che ci sta sopra o dentro), restano suolo, strade e arredo per vedere cosa è posato male */
-      const B = new THREE.Box3(), C = new THREE.Vector3(), via = []; let n = 0;
-      scene.traverse(o => { if (!o.isMesh || !o.parent) return; B.setFromObject(o); if (B.isEmpty()) return; B.getCenter(C);
-        const tx = Math.floor(C.x / TS), ty = Math.floor(C.z / TS); if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return;
-        if (G.bIndex[ty * G.GW + tx] >= 0 && B.max.y > 1.2) via.push(o); });
-      via.forEach(o => { o.parent.remove(o); n++; }); window.__senzacase = n; });
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
+    if (/[?&]senzacase\b/.test(typeof location !== 'undefined' ? location.search : '')) {   /* [controllo] ?senzacase: si spengono le mesh che stanno per lo più dentro i palazzi e sopra 1,2 m (anche quelle fuse e quelle che arrivano dopo con gli anelli): restano suolo, strade e arredo */
+      const V = new THREE.Vector3(), visto = new WeakSet(); window.__senzacase = 0;
+      const dentro = o => { const P = o.geometry && o.geometry.attributes && o.geometry.attributes.position; if (!P || !P.count) return false; o.updateWorldMatrix(true, false);
+        const n = Math.min(60, P.count), st = Math.max(1, Math.floor(P.count / n)); let k = 0, c = 0;
+        for (let i = 0; i < P.count; i += st) { V.fromBufferAttribute(P, i).applyMatrix4(o.matrixWorld); if (o.isInstancedMesh) continue; c++; const tx = Math.floor(V.x / TS), ty = Math.floor(V.z / TS);
+          if (V.y > 1.2 && tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && G.bIndex[ty * G.GW + tx] >= 0) k++; }
+        return c > 0 && k / c > .6; };
+      const giro = () => { scene.traverse(o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} }); };
+      giro(); setInterval(giro, 4000); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
