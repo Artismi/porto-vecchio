@@ -62,6 +62,7 @@ var Vievive = (function () {
   function inCitta(rd) { let c = 0; for (let k = 0; k < rd.pts.length; k += 3) if (zonaCitta(rd.pts[k][0], rd.pts[k][1])) c++; return c * 3 >= rd.pts.length * .5; }
   function rango(rd) {
     if (!rd || !rd.pts || rd.pts.length < 2 || rd.monte || rd.traccia || rd.vialetto || rd.sottopasso || rd.kind === 'sterrato') return 'nessuno';
+    if (rd.pedonale) return 'nessuno';   // [pedonale] le vie pedonali (le scalinate, i sottopassi, le piazze: world_cittanuova.js): nessun mezzo, nessuna sosta
     if (rd.kind === 'vicolo') return rd.w >= CFG.viaMinore ? 'via_minore' : 'vicolo';
     if (rd.kind !== 'citta' && !inCitta(rd)) return 'extra';
     if (rd.pennoni || rd.era === 'E4') return 'asse';
@@ -109,7 +110,7 @@ var Vievive = (function () {
   let INC = null;
   function incroci() {
     if (INC) return INC; INC = [];
-    const R = ROADS().filter(rd => { const r = rango(rd); return r === 'asse' || r === 'via' || r === 'via_minore' || r === 'vicolo' || r === 'extra'; });
+    const R = ROADS().filter(rd => { const r = rango(rd); return r === 'asse' || r === 'via' || r === 'via_minore' || r === 'vicolo' || r === 'extra' || (rd.pedonale && rd.kind === 'vicolo'); });   // [pedonale] lo sbocco di una via pedonale resta un incrocio (niente sosta davanti)
     const add = (x, y, a, b) => { const q = INC.find(j => hyp(j.x - x, j.y - y) < 6); if (q) { if (!q.rds.includes(a)) q.rds.push(a); if (!q.rds.includes(b)) q.rds.push(b); return; } INC.push({ x, y, rds: [a, b] }); };
     for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) {
       const A = R[i], B = R[j], PA = A.pts, PB = B.pts;
@@ -121,7 +122,7 @@ var Vievive = (function () {
       // le teste che finiscono dentro l'altra strada
       [[A, B], [B, A]].forEach(([X, Y]) => [X.pts[0], X.pts[X.pts.length - 1]].forEach(e => { const q = lNear(rdLinea(Y), e[0], e[1]); if (q.d < Y.w / 2 + 2.5) { const p = lAt(rdLinea(Y), q.s); add(p.x, p.y, X, Y); } }));
     }
-    INC.forEach(j => { j.peso = j.rds.reduce((s, rd) => s + ({ asse: 4, via: 3, extra: 2, via_minore: 1.5, vicolo: .5 })[rango(rd)] * rd.w, 0); j.r = Math.max(...j.rds.map(rd => rd.w)) / 2 + 2; j.grande = j.rds.filter(rd => rango(rd) === 'asse' || rango(rd) === 'via').length >= 2; });
+    INC.forEach(j => { j.peso = j.rds.reduce((s, rd) => s + (({ asse: 4, via: 3, extra: 2, via_minore: 1.5, vicolo: .5 })[rango(rd)] || .5) * rd.w, 0); j.r = Math.max(...j.rds.map(rd => rd.w)) / 2 + 2; j.grande = j.rds.filter(rd => rango(rd) === 'asse' || rango(rd) === 'via').length >= 2; });
     return INC;
   }
   const vicinoIncrocio = (x, y, pad) => incroci().some(j => hyp(j.x - x, j.y - y) < j.r + (pad || 0));

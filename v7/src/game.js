@@ -33,7 +33,68 @@ var Game = (function () {
 
   const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= GW || ty >= GH) ? T.WATER : grid[(ty | 0) * GW + (tx | 0)];   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const walkT = (tx, ty) => { const v = tileAt(tx, ty); return v !== T.BLD && v !== T.WATER && v !== T.FOUNT && v !== T.TREE && v !== T.CLIFF; };   // [monte] CLIFF: pareti e muri a secco
-  const walkM = (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
+  const DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1], OPP8 = [1, 0, 3, 2, 7, 6, 5, 4], DIR8 = [7, 3, 5, 1, -1, 0, 6, 2, 4];   // le otto direzioni della griglia, l'opposta, e la direzione dal passo (dy + 1) * 3 + dx + 1
+  // [pedonale] LE BARRIERE E LE SCALE (W0.barriere, W0.passaggi: world_cittanuova.js, opere()). Il ciglio dei muraglioni coi parapetti e le
+  // ringhiere, i corrimano e le testate delle scale dei gradoni, le spallette delle scalinate, i parapetti del lungomare: segmenti sottili
+  // che non si attraversano (né a piedi né coi mezzi). walkM li urta (mezzo spessore BR), taglia() dice se un passo li scavalca, la
+  // griglia dei percorsi li ha come lati chiusi (BLK: un bit per direzione) e le scale sono i soli passaggi fra il piano basso e quello
+  // alto (LINK: dall'attacco in basso all'uscita in cima, coi punti della scala). quotaScala: la quota sui gradini delle scale dei gradoni.
+  const BAR = W0.barriere || [], BR = .15, BCELL = new Map(), BLK = new Uint8Array(GW * GH), LINK = new Map(), SCELL = new Map(), SCALE = (W0.passaggi || []);
+  const dSeg = (px, py, b) => { const dx = b[2] - b[0], dy = b[3] - b[1], L2 = dx * dx + dy * dy || 1e-9, t = clamp(((px - b[0]) * dx + (py - b[1]) * dy) / L2, 0, 1); return Math.hypot(b[0] + dx * t - px, b[1] + dy * t - py); };
+  const incrocia = (x0, y0, x1, y1, b) => { const rx = x1 - x0, ry = y1 - y0, sx = b[2] - b[0], sy = b[3] - b[1], den = rx * sy - ry * sx; if (Math.abs(den) < 1e-12) return false; const qx = b[0] - x0, qy = b[1] - y0, t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den; return t >= 0 && t <= 1 && u >= 0 && u <= 1; };
+  const vicinoSeg = (x0, y0, x1, y1, b, m) => incrocia(x0, y0, x1, y1, b) || dSeg(b[0], b[1], [x0, y0, x1, y1]) < m || dSeg(b[2], b[3], [x0, y0, x1, y1]) < m;   // scavalca la barriera o ne sfiora una testa
+  const celle = (x0, y0, x1, y1, m, f) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(L / .5)), vis = new Set(); for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (const ox of [-m, 0, m]) for (const oy of [-m, 0, m]) { const tx = Math.floor((x + ox) / TS), ty = Math.floor((y + oy) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const c = ty * GW + tx; if (!vis.has(c)) { vis.add(c); f(c); } } } };
+  BAR.forEach((b, k) => celle(b[0], b[1], b[2], b[3], .8, c => { (BCELL.get(c) || BCELL.set(c, []).get(c)).push(k); }));
+  function muroM(x, y, r) { const L = BCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return false; r = r === undefined ? BR : r; for (let i = 0; i < L.length; i++) if (dSeg(x, y, BAR[L[i]]) < r) return true; return false; }
+  function taglia(x0, y0, x1, y1) {
+    if (!BAR.length) return false; const d = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(d / .5)); let prev = -1;
+    for (let i = 0; i <= n; i++) { const c = Math.floor((y0 + (y1 - y0) * i / n) / TS) * GW + Math.floor((x0 + (x1 - x0) * i / n) / TS); if (c === prev) continue;
+      if (prev >= 0 && SAL[prev]) { const dx = (c % GW) - (prev % GW), dy = ((c / GW) | 0) - ((prev / GW) | 0), k = DIR8[(dy + 1) * 3 + dx + 1]; if (k >= 0 && SAL[prev] & (1 << k)) return true; }   // un salto di quota
+      prev = c; const L = BCELL.get(c); if (L) for (let k = 0; k < L.length; k++) if (incrocia(x0, y0, x1, y1, BAR[L[k]])) return true; }
+    return false;
+  }
+  // i lati chiusi della griglia: il passo da centro a centro che scavalca una barriera
+  BCELL.forEach((L, c) => { const cx = c % GW, cy = (c / GW) | 0, x0 = cx * TS + TS / 2, y0 = cy * TS + TS / 2;
+    for (let k = 0; k < 8; k++) { const nx = cx + DX8[k], ny = cy + DY8[k]; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const x1 = nx * TS + TS / 2, y1 = ny * TS + TS / 2;
+      if (L.some(b => vicinoSeg(x0, y0, x1, y1, BAR[b], .45))) { BLK[c] |= 1 << k; BLK[ny * GW + nx] |= 1 << OPP8[k]; } } });   // anche chi sfiora la testa di un muro (il corpo è largo 70 cm): i varchi stretti si passano coi passaggi delle scale
+  // i salti di quota: fra due caselle lastricate della città (piazza, marciapiede, selciato, banchina, pontile, massicciata; fuori dalle
+  // carreggiate e dalle scale) più di un metro di dislivello è un ciglio (la banchina, il rilevato, il terrapieno, il muraglione): non si
+  // scende saltando. Le stesse caselle restano raggiungibili dalle loro rampe, scale e vie (le porte e i posti della città tutti: test_pedonale)
+  const SAL = new Uint8Array(GW * GH), SALTO = 1, PAV = new Set([T.PIAZZA, T.WALK, T.COB, T.QUAY, T.PIER, T.GRAVEL].filter(v => v !== undefined));
+  if (W0.zone && W0.Z && W0.roadW && BAR.length) { const SCP = (W0.pedonali || []).filter(o => o.poly && (o.tipo === 'scala' || o.tipo === 'scalinata')), inScala = c => { const x = (c % GW) * TS + TS / 2, y = ((c / GW) | 0) * TS + TS / 2; return SCP.some(o => { let q = false; const P = o.poly; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) q = !q; return q; }); };
+    const lastra = c => W0.zone[c] === W0.Z.CITTA && W0.roadW[c] === 0 && PAV.has(grid[c]);
+    for (let cy = 0; cy < GH; cy++) for (let cx = 0; cx < GW; cx++) { const c = cy * GW + cx; if (!lastra(c)) continue;
+      for (let k = 0; k < 8; k++) { const nx = cx + DX8[k], ny = cy + DY8[k]; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const n = ny * GW + nx; if (!lastra(n) || Math.abs(elev[c] - elev[n]) <= SALTO * (k >= 4 ? 1.414 : 1)) continue;
+        if (BCELL.has(c) || BCELL.has(n) || inScala(c) || inScala(n)) continue;   // dove c'è il pezzo (il muraglione, la scala) decide la sua barriera
+        SAL[c] |= 1 << k; BLK[c] |= 1 << k; } } }
+  // le scale: un passaggio dalla casella dell'attacco a quella dell'uscita (e ritorno), lungo i punti della scala
+  // i capi del passaggio: la casella il cui centro si raggiunge dritto dall'attacco in basso (o dall'uscita in cima) senza scavalcare niente
+  const libera = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0) || 1, ox = -(y1 - y0) / L * .35, oy = (x1 - x0) / L * .35, n = Math.ceil(L / .25); for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; for (const sg of [-1, 0, 1]) if (!walkT(Math.floor((x + ox * sg) / TS), Math.floor((y + oy * sg) / TS))) return false; } return true; };
+  const capo = (A, B) => { const ux = B[0] - A[0], uy = B[1] - A[1], l = Math.hypot(ux, uy) || 1, bx = Math.floor(B[0] / TS), by = Math.floor(B[1] / TS); let best = null, bd = 1e9;
+    for (let ty = by - 2; ty <= by + 2; ty++) for (let tx = bx - 2; tx <= bx + 2; tx++) { const cx = tx * TS + TS / 2, cy = ty * TS + TS / 2, d = Math.hypot(cx - B[0], cy - B[1]), av = ((cx - B[0]) * ux + (cy - B[1]) * uy) / l;
+      if (d > 3.2 || av < -.7 || tx < 0 || ty < 0 || tx >= GW || ty >= GH || !walkT(tx, ty) || taglia(B[0], B[1], cx, cy) || muroM(cx, cy, .3) || !libera(B[0], B[1], cx, cy)) continue;
+      const sc = d - av * .5; if (sc < bd) { bd = sc; best = [cx, cy]; } }
+    return best; };
+  SCALE.forEach((s, id) => { const P0 = s.pts, n = P0.length, a = capo(P0[1], P0[0]), b = capo(P0[n - 2], P0[n - 1]); if (!a || !b) return;
+    const P = [a].concat(P0, [b]), ca = Math.floor(a[1] / TS) * GW + Math.floor(a[0] / TS), cb = Math.floor(b[1] / TS) * GW + Math.floor(b[0] / TS); if (ca === cb) return;
+    let L = 0; for (let k = 1; k < P.length; k++) L += dist(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]);
+    const pts = P.slice(1, -1).map(q => ({ x: q[0], y: q[1] })), add = (c, to, q) => { (LINK.get(c) || LINK.set(c, []).get(c)).push({ to, cost: L / TS + .5, pts: q, id }); };
+    add(ca, cb, pts); add(cb, ca, pts.slice().reverse());
+    if (s.salita) { const c = Math.cos(s.rot), sn = Math.sin(s.rot), pw = (lx, lz) => [s.x + lx * c + lz * sn, s.y - lx * sn + lz * c];
+      const C = [[s.x0 - 1.6, -1.6], [s.x2 + .4, -1.6], [s.x2 + .4, s.z1 + .3], [s.x0 - 1.6, s.z1 + .3]].map(([u, v]) => pw(u, v)), xs = C.map(q => q[0]), ys = C.map(q => q[1]);
+      for (let ty = Math.floor(Math.min(...ys) / TS); ty <= Math.floor(Math.max(...ys) / TS); ty++) for (let tx = Math.floor(Math.min(...xs) / TS); tx <= Math.floor(Math.max(...xs) / TS); tx++) { const k = ty * GW + tx; (SCELL.get(k) || SCELL.set(k, []).get(k)).push(s); } } });
+  function suScala(x, y) {   // la scala di un gradone, col suo piede e l'arrivo in cima
+    const L = SCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)); if (!L) return false;
+    for (const s of L) { const c = Math.cos(s.rot), sn = Math.sin(s.rot), dx = x - s.x, dy = y - s.y, lx = dx * c - dy * sn, lz = dx * sn + dy * c; if (lx >= s.x0 - 1.6 && lx <= s.x2 + .4 && lz >= -1.6 && lz <= s.z1 + .3) return true; }
+    return false;
+  }
+  function quotaScala(x, y) {
+    const L = SCELL.size ? SCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null; if (!L) return null;
+    for (const s of L) { const c = Math.cos(s.rot), sn = Math.sin(s.rot), dx = x - s.x, dy = y - s.y, lx = dx * c - dy * sn, lz = dx * sn + dy * c;
+      if (lx >= s.x0 - .1 && lx <= s.x2 && lz >= s.z0 - .05 && lz <= s.z1 + .1) return s.q + s.h * clamp((lx - s.x0) / ((s.x1 - s.x0) || 1), 0, 1); }
+    return null;
+  }
+  const walkM = BAR.length ? (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS)) && !muroM(x, y) : (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
   // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
   const SEA = W0.SEA || null;
   const seaT = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH && grid[ty * GW + tx] === T.WATER && W0.zone[ty * GW + tx] === W0.Z.MARE;
@@ -76,6 +137,7 @@ var Game = (function () {
         if (j === i) return; let best = -1, bd = 1e9;
         for (let k = 0; k < B.pts.length; k++) { const d = dist(P[0], P[1], B.pts[k][0], B.pts[k][1]); if (d < bd) { bd = d; best = k; } }
         if (bd > Math.max(A.w, B.w) / 2 + 4) return;
+        if (taglia(P[0], P[1], B.pts[best][0], B.pts[best][1])) return;   // [pedonale] la svolta non passa per un muro
         const sj = B.cum[best];
         if (sj > 4) A.conn[e].push({ j, s: sj, dir: -1 });
         if (sj < B.L - 4) A.conn[e].push({ j, s: sj, dir: 1 });
@@ -111,14 +173,20 @@ var Game = (function () {
   }
 
   // A* con heap binario
-  const PF = { gen: 0, cap: 70000 }, DX8 = [1, -1, 0, 0, 1, 1, -1, -1], DY8 = [0, 0, 1, -1, 1, -1, 1, -1];
+  const PF = { gen: 0, cap: 70000 };
   function findPath(sx, sy, gx, gy, roadCost) {
-    const s = [clamp(Math.floor(sx / TS), 0, GW - 1), clamp(Math.floor(sy / TS), 0, GH - 1)];
-    const g = [Math.floor(gx / TS), Math.floor(gy / TS)];
+    let s = [clamp(Math.floor(sx / TS), 0, GW - 1), clamp(Math.floor(sy / TS), 0, GH - 1)];
+    let g = [Math.floor(gx / TS), Math.floor(gy / TS)];
     if (!walkT(g[0], g[1])) return [];
+    // [pedonale] una casella a cavallo di un muraglione: se il suo centro sta dall'altra parte del muro, si parte (o si arriva) dalla
+    // casella accanto il cui centro sta dalla parte del punto
+    if (BAR.length) { const lato = (c, x, y) => { if (!taglia(x, y, c[0] * TS + TS / 2, c[1] * TS + TS / 2)) return c; let best = c, bd = 1e9;
+        for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const tx = c[0] + i, ty = c[1] + j, cx = tx * TS + TS / 2, cy = ty * TS + TS / 2, d = Math.hypot(cx - x, cy - y); if (d < bd && walkT(tx, ty) && !taglia(x, y, cx, cy)) { bd = d; best = [tx, ty]; } }
+        return best; };
+      s = lato(s, sx, sy); g = lato(g, gx, gy); }
     // buffer riusati fra una ricerca e l'altra: l'isola ha 160.000 caselle
-    const N = GW * GH; if (!PF.came) { PF.came = new Int32Array(N); PF.cost = new Float32Array(N); PF.seen = new Uint32Array(N); PF.shut = new Uint32Array(N); }
-    const gen = ++PF.gen, came = PF.came, cost = PF.cost, seen = PF.seen, shut = PF.shut;
+    const N = GW * GH; if (!PF.came) { PF.came = new Int32Array(N); PF.cost = new Float32Array(N); PF.seen = new Uint32Array(N); PF.shut = new Uint32Array(N); PF.via = new Int32Array(N); }
+    const gen = ++PF.gen, came = PF.came, cost = PF.cost, seen = PF.seen, shut = PF.shut, via = PF.via;   // via: il passaggio (la scala) da cui si è arrivati, -1 a passo di griglia
     const C = i => seen[i] === gen ? cost[i] : 1e9;
     const si = s[1] * GW + s[0], gi = g[1] * GW + g[0];
     // [leggera] il mucchio in array tipizzati riusati: stesso algoritmo, stessi confronti e stessi scambi di prima (quindi stessi percorsi),
@@ -139,15 +207,20 @@ var Game = (function () {
       for (let k = 0; k < 8; k++) {
         const dx = DX8[k], dy = DY8[k];
         const nx = cx + dx, ny = cy + dy; if (!walkT(nx, ny)) continue;
+        if (BLK[cur] & (1 << k)) continue;   // [pedonale] un muraglione, un parapetto, il fianco di una scala
         if (k >= 4 && (!walkT(cx + dx, cy) || !walkT(cx, cy + dy))) continue;
         const ni = ny * GW + nx; if (shut[ni] === gen) continue;
         const nc = cost[cur] + (k >= 4 ? 1.414 : 1) * (grid[ni] === T.VIA ? (roadCost || 1) : roadCost > 1.5 && grid[ni] !== T.WALK && grid[ni] !== T.PIAZZA ? 1.25 : 1);   // [inverno] a piedi si preferisce il marciapiede
-        if (nc < C(ni)) { seen[ni] = gen; cost[ni] = nc; came[ni] = cur; push(ni, nc + Math.hypot(nx - hx, ny - hy) * 1.05); }
+        if (nc < C(ni)) { seen[ni] = gen; cost[ni] = nc; came[ni] = cur; via[ni] = -1; push(ni, nc + Math.hypot(nx - hx, ny - hy) * 1.05); }
       }
+      // [pedonale] le scale: dall'attacco all'uscita (i soli passaggi fra il piano basso e quello alto)
+      const LK = LINK.size ? LINK.get(cur) : null;
+      if (LK) for (let q = 0; q < LK.length; q++) { const l = LK[q], ni = l.to; if (shut[ni] === gen || !walkT(ni % GW, (ni / GW) | 0)) continue; const nc = cost[cur] + l.cost;
+        if (nc < C(ni)) { seen[ni] = gen; cost[ni] = nc; came[ni] = cur; via[ni] = q; PF.vl = PF.vl || new Map(); PF.vl.set(ni, l); push(ni, nc + Math.hypot((ni % GW) - hx, ((ni / GW) | 0) - hy) * 1.05); } }
     }
     if (!found) return [];
     const raw = []; let c = gi;
-    while (c !== si && c !== -1) { raw.push({ x: (c % GW) * TS + TS / 2, y: ((c / GW) | 0) * TS + TS / 2 }); c = came[c]; }
+    while (c !== si && c !== -1) { raw.push({ x: (c % GW) * TS + TS / 2, y: ((c / GW) | 0) * TS + TS / 2 }); if (via[c] >= 0) { const l = PF.vl.get(c); for (let q = l.pts.length - 1; q >= 0; q--) raw.push(l.pts[q]); } c = came[c]; }
     raw.reverse(); if (raw.length) raw[raw.length - 1] = { x: gx, y: gy }; else raw.push({ x: gx, y: gy });
     const out = []; let ax = sx, ay = sy, i = 0;
     // [passo] a piedi la scorciatoia non taglia la carreggiata: si raddrizza solo dentro i tratti dello stesso tipo
@@ -169,7 +242,9 @@ var Game = (function () {
       const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
       if (!walkM(x, y) || !walkM(x + .45, y) || !walkM(x - .45, y) || !walkM(x, y + .45) || !walkM(x, y - .45)) return false;
     }
-    return true;
+    if (!BAR.length) return true;   // [pedonale] la linea dritta (e i due fianchi di chi cammina) non scavalca un muro sottile né ne sfiora la testa
+    const l = d || 1, ox = -(y1 - y0) / l * .4, oy = (x1 - x0) / l * .4;
+    return !taglia(x0, y0, x1, y1) && !taglia(x0 + ox, y0 + oy, x1 + ox, y1 + oy) && !taglia(x0 - ox, y0 - oy, x1 - ox, y1 - oy);
   }
   function los(x0, y0, x1, y1) {
     const d = dist(x0, y0, x1, y1), n = Math.ceil(d / .6);
@@ -1312,7 +1387,7 @@ var Game = (function () {
     if (d <= Math.max(s, .12)) { const q = n.path.shift(); n.x = q === w ? w.x : n.x + dx; n.y = q === w ? w.y : n.y + dy; if (!n.path.length) { n.x = q.x; n.y = q.y; } return !n.path.length; }
     // si va nella direzione di marcia; se non si può (un muro) si va dritti al punto
     const mx = Math.cos(n.__hd) * s, my = Math.sin(n.__hd) * s;
-    if (walkM(n.x + mx, n.y + my)) { n.x += mx; n.y += my; } else { n.x += dx / d * s; n.y += dy / d * s; n.__hd = ta; }
+    if (walkM(n.x + mx, n.y + my) && !taglia(n.x, n.y, n.x + mx, n.y + my)) { n.x += mx; n.y += my; } else { if (!taglia(n.x, n.y, n.x + dx / d * s, n.y + dy / d * s)) { n.x += dx / d * s; n.y += dy / d * s; } n.__hd = ta; }   // [pedonale] dritti al punto, ma non attraverso un muraglione
     return false;
   }
   // [passo] chi cammina vicino al giocatore non passa attraverso gli altri: ci si scansa (appena, ognuno la sua metà)
@@ -1573,12 +1648,13 @@ var Game = (function () {
     if ((!p.lv || (p.lv.k !== 'ug' && p.lv.k !== 'tetto' && p.lv.k !== 'scala')) && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa; [tetti4] sui tetti e sulle scale sono sotto i piedi; [regia] dentro le case sono fuori
   }
   function tryMove(o, dx, dy, r, swim) {
+    if (SCELL.size && !o.lv && !o.indoor && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini e al loro piede (larghi 1,8 m, di sbieco) l'ingombro è quello di una persona, non il riquadro largo
     const LVf = o.lv && typeof Livelli !== 'undefined' ? Livelli.freeFn(o, r) : null, L = LVf ? null : indoorL(o);   // [monte]
     const wm = swim ? (x, y) => walkM(x, y) || seaM(x, y) : walkM;   // [costa] chi nuota passa anche per l'acqua
     const free = LVf || (L ? (x, y) => INT.walk(L, o.indoor.f, x, y, r) : (x, y) => wm(x - r, y - r) && wm(x + r, y - r) && wm(x - r, y + r) && wm(x + r, y + r));
-    let hit = false;
-    if (free(o.x + dx, o.y)) o.x += dx; else hit = true;
-    if (free(o.x, o.y + dy)) o.y += dy; else hit = true;
+    let hit = false; const sc = LVf || L ? () => false : taglia;   // [pedonale] all'aperto il passo non scavalca un muro sottile (un fotogramma lungo non ci passa attraverso)
+    if (free(o.x + dx, o.y) && !sc(o.x, o.y, o.x + dx, o.y)) o.x += dx; else hit = true;
+    if (free(o.x, o.y + dy) && !sc(o.x, o.y, o.x, o.y + dy)) o.y += dy; else hit = true;
     return hit;
   }
   // coordinate locali del veicolo: lx lungo il muso, ly di lato
@@ -2469,7 +2545,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]

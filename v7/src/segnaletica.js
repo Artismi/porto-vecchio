@@ -146,7 +146,17 @@ var Segnaletica = (function () {
   const STR = [], CART = [], PALI = [], IND = [], INS = [];
   // ---------------- 1. LE STRISCE ----------------
   // una striscia: { k: tessera, x, y (centro), ang (asse lungo, +u della tessera), L (lungo u), w (largo v), a (opacità), giallo }
-  function striscia(k, x, y, ang, L, w, a, o) { const s = Object.assign({ k, x, y, ang, L, w, a: a === undefined ? .8 : a }, o || {}); STR.push(s); return s; }
+  // [pedonale] niente segni da strada (frecce, linee d'arresto, zebre, STOP) sulle piazze e sulle zone pedonali: sul lastricato PIAZZA, sulle
+  // scale e le fontane, dentro le opere pedonali del mondo (W.pedonali: la piazza alta, le scalinate, i muraglioni) e sulle vie pedonali
+  // (rd.pedonale) fuori dalla carreggiata di una via dei veicoli
+  const PED_T = new Set([T.PIAZZA, T.STAIRS, T.FOUNT].filter(v => v !== undefined));
+  const dentroPoly = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; };
+  function pedonaleQui(x, y) {
+    if (PED_T.has(tile(x, y))) return true;
+    for (const o of W.pedonali || []) if (o.r !== undefined ? hyp(x - o.x, y - o.y) < o.r : dentroPoly(o.poly, x, y)) return true;
+    const rd = suCarreggiata(x, y, 0); return !!(rd && rd.pedonale && !ROADS().some(q => q !== rd && !q.pedonale && q.kind !== 'vicolo' && q.kind !== 'sterrato' && lNear(lin(q), x, y).d < q.w / 2));
+  }
+  function striscia(k, x, y, ang, L, w, a, o) { const s = Object.assign({ k, x, y, ang, L, w, a: a === undefined ? .8 : a }, o || {}); if (pedonaleQui(x, y)) return s; STR.push(s); return s; }
   // una linea lungo una polilinea (spostata di off a sinistra), a tratti: pezzi di al più 2 m
   function rigaLungo(rd, s0, s1, off, w, fn, tess) {
     const Ln = lin(rd); for (let s = s0; s < s1 - .05;) { const e = Math.min(s1, s + 2), a = lAt(Ln, s), b = lAt(Ln, e), ang = Math.atan2(b.y - a.y, b.x - a.x), nx = -Math.sin(ang), ny = Math.cos(ang), mx = (a.x + b.x) / 2 + nx * off, my = (a.y + b.y) / 2 + ny * off;
@@ -205,7 +215,7 @@ var Segnaletica = (function () {
     }); });
     // la Rua, la Via della Marina e le passeggiate (una corsia a senso alternato, Ape e motorini) che sboccano su una via: i triangoli
     junctions().forEach(([jx, jy, jr]) => { if (!zonaC(jx, jy)) return; const A = armsAt(jx, jy, jr, true), vie = A.filter(a => a.rd.kind === 'citta'); if (!vie.length) return;
-      A.forEach(a => { if (a.rd.kind !== 'vicolo' || a.w < 4.5) return; const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, w = a.w, d0 = Math.max(...vie.map(v => v.w)) / 2 + .6, sx = jx + ux * d0, sy = jy + uy * d0, ang = Math.atan2(uy, ux);
+      A.forEach(a => { if (a.rd.kind !== 'vicolo' || a.w < 4.5 || a.rd.pedonale) return;   /* [pedonale] sulle vie pedonali non entra nessun mezzo: niente triangoli */ const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, w = a.w, d0 = Math.max(...vie.map(v => v.w)) / 2 + .6, sx = jx + ux * d0, sy = jy + uy * d0, ang = Math.atan2(uy, ux);
         if (STR.some(s => s.k === 'triangolo' && hyp(s.x - sx, s.y - sy) < 3)) return;
         for (let o = -w / 2 + .45; o < w / 2 - .3; o += .7) striscia('triangolo', sx + rx * o, sy + ry * o, ang, .5, .45, .7, { minore: a.rd.id });
         PIANO.precedenze.push({ k: 'precedenza', x: sx, y: sy, ux, uy, rx, ry, lane: w / 2, minore: a.rd, J: { x: jx, y: jy, r: jr } }); }); });

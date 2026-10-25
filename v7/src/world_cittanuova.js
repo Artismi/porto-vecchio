@@ -1439,7 +1439,7 @@ var World = (function () {
       // [pianta] la tettoia di 28 m pesava sulla vista e prendeva tutta la piazza: il mercato è sceso sulla spianata. L'ottagono resta piazza,
       // alberata (otto lecci sull'anello) con la fontana in mezzo; lo spazio torna alla città (panchine, gente, il passeggio)
       if (CITY.octa) { const [ox, oy, orr] = CITY.octa; PZ('fontana', ox, oy, 0, { r: 2.6, h: 3, lati: 8, cannelle: 4 }, { nome: 'Fontana dell\'Ottagono' }); blob(ox, oy, 3.1, 3.1, i => { if (grid[i] !== T.BLD && roadW[i] === 0) grid[i] = T.FOUNT; });
-        for (let k = 0; k < 8; k++) { const a = (k + .5) * Math.PI / 4, i = T2i(oy + Math.sin(a) * (orr - 4.5)) * GW + T2i(ox + Math.cos(a) * (orr - 4.5)); if (grid[i] === T.PIAZZA && roadW[i] === 0) grid[i] = T.TREE; } }
+        for (let k = 0; k < 8; k++) { const a = (k + .5) * Math.PI / 4, i = T2i(oy + Math.sin(a) * (orr - 6)) * GW + T2i(ox + Math.cos(a) * (orr - 6)); if (grid[i] === T.PIAZZA && roadW[i] === 0) grid[i] = T.TREE; } }   // [pedonale] un metro e mezzo più dentro (prima a orr - 4,5): gli angoli restano liberi per le scale dei gradoni che ci arrivano
       // E3 la stazione in testa alla griglia: il fabbricato fra il binario e la Via della Stazione, il marciapiede col binario di corsa
       // (quello del treno: il pezzo non ne disegna un altro), il piazzale fino alla via; sul lato del mare il tronchino merci col
       // suo rilevato, la locomotiva da manovra e un carro fermi
@@ -1574,13 +1574,18 @@ var World = (function () {
       if (CITY.marina) { const MAR = CITY.marina, eAt = (x, y) => elev[Math.floor(y / TS) * GW + Math.floor(x / TS)], cand = [];
         CITY.roads.filter(rd => /^vic_/.test(rd.id) && rd.pts.length > 2).forEach(rd => { let P = rd.pts.slice(); if (Math.abs(P[0][1] - yOnP(MAR, P[0][0])) < Math.abs(P[P.length - 1][1] - yOnP(MAR, P[P.length - 1][0]))) P.reverse();
           const e = P[P.length - 1]; if (Math.abs(e[1] - yOnP(MAR, e[0])) > 5) return; const Q = P.slice().reverse(), L = lungo(Q, 0).L; if (L < 16) return;
-          const A = lungo(Q, 2.6 / L), B2 = lungo(Q, 12.6 / L), dd = eAt(B2.x, B2.y) - eAt(A.x, A.y); cand.push({ rd, A, B2, dd }); });
+          const A0 = lungo(Q, 2.6 / L), B0 = lungo(Q, 12.6 / L), dd = eAt(B0.x, B0.y) - eAt(A0.x, A0.y);
+          // [pedonale] il primo gradino fuori dalla carreggiata e dal marciapiede della Via della Marina (prima la scala ci entrava di un metro)
+          let s0 = 2.6; while (s0 < 7 && Math.abs(lungo(Q, s0 / L).y - yOnP(MAR, lungo(Q, s0 / L).x)) < 7 / 2 + 1.3) s0 += .2;
+          cand.push({ rd, A: A0, B2: B0, A1: lungo(Q, s0 / L), B1: lungo(Q, (s0 + 10) / L), dd }); });
         cand.sort((a, b) => b.dd - a.dd); POSA.scal = [];
         cand.forEach(c => { if (POSA.scal.length >= 3 || POSA.scal.some(o => Math.abs(o.A.x - c.A.x) < 14)) return;
           const ux = c.B2.x - c.A.x, uy = c.B2.y - c.A.y, l = Math.hypot(ux, uy) || 1, t = { x: c.A.x, y: c.A.y, rot: Math.atan2(-uy / l, ux / l) }; let ok = true;
           pzCells(t, -1.4, 11, -2.9, 2.9, i => { if (bIndex[i] >= 0 || grid[i] === T.PIAZZA || grid[i] === T.WATER || grid[i] === T.QUAY || (reserved[i] && roadW[i] === 0)) ok = false; }); if (!ok) return;
           const p = PZ('scalinata', c.A.x, c.A.y, Math.atan2(-uy / l, ux / l), { w: 2.4, dislivello: 2, pianerottoli: 0, lampada: true }, { nome: 'Scalinata di ' + c.rd.name, vicolo: c.rd.id, marina: true });
-          p.B2 = [c.B2.x, c.B2.y]; pzRis(p, 'B', -1.4, 11, -2.9, 2.9); pzRis(p, 'C', -1.4, 11, -1.3, 1.3); POSA.scal.push(Object.assign(c, { p })); }); }
+          p.B2 = [c.B2.x, c.B2.y]; pzRis(p, 'B', -1.4, 11, -2.9, 2.9); pzRis(p, 'C', -1.4, 11, -1.3, 1.3);
+          { const ux1 = c.B1.x - c.A1.x, uy1 = c.B1.y - c.A1.y, l1 = Math.hypot(ux1, uy1) || 1; p.x = c.A1.x; p.y = c.A1.y; p.rot = Math.atan2(-uy1 / l1, ux1 / l1); p.B2 = [c.B1.x, c.B1.y]; }   // [pedonale] la scala sale dal filo del marciapiede (il vicolo resta quello di prima)
+          POSA.scal.push(Object.assign(c, { p })); }); }
     }
     // ---- il Muro: dalla riva nord alla riva sud, un solo varco sul Viale della Tutela ----
     let FORT_X = 0;   // [città2] dentro la Rocca solo edifici militari (lo fissa il blocco della Rocca, lo legge stamp)
@@ -2926,8 +2931,10 @@ var World = (function () {
         const ring = []; for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ring.push(vAt(ox + Math.cos(a) * (orr - .5), oy + Math.sin(a) * (orr - .5))); }
         const lato = (x, y) => ((Math.round(Math.atan2(y - oy, x - ox) / (Math.PI / 4)) % 8) + 8) % 8, giu = k => ring[k] < qm - .5, aw = k => giu(k) ? ap - .5 : ap + .1;   // dove la piazza scende il muro sta mezzo metro dentro (la scala ci sta davanti)
         eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); if (tt) tt.q = qm;
+        // [pedonale] la scala anche sul lato dove sotto il muro c'è una porta (prima ci si arrivava solo saltando giù dal muraglione)
+        const portaSotto = (k, nx, ny) => B.some(b => { if (!b.door) return false; const dx = (b.door[0] + .5) * TS - ox, dy = (b.door[1] + .5) * TS - oy, v = dx * nx + dy * ny - aw(k), u = Math.abs(-dx * ny + dy * nx); return v > 0 && v < 5 && u < aw(k) * Math.tan(Math.PI / 8) + 1; });
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
-          const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && k % 2 === 0, ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
+          const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && (k % 2 === 0 || portaSotto(k, nx, ny)), ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
           g.q = +Math.min(qm, ring[k]).toFixed(2); } } }
       // 5) le banchine della darsena alla quota della calata; il molo e lo scalo alla quota del loro piano
       { const qd = Math.max(.6, vAt((DARS.x0 + DARS.x1) / 2, DARS.y0 - 3)); PEZZI.forEach(p => { if (p.tipo === 'darsena' && !p.opz.rocca) { p.q = qd; p.opz.hq = +(qd - WLp).toFixed(2); } });
@@ -2960,7 +2967,22 @@ var World = (function () {
       if (typeof process !== 'undefined' && process.env && process.env.PV_DBG) { const c = {}; PEZZI.forEach(p => { c[p.tipo] = (c[p.tipo] || 0) + 1; }); console.log('[posa] pezzi', PEZZI.length, JSON.stringify(c), 'rilevato al sottopasso', Rtop.toFixed(2), 'strada', Lr.toFixed(2)); }
     }
     // ---------------- PARTENZE DEI VEICOLI E CORSIE ----------------
-    const lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo').map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
+    // [pedonale] LE VIE PEDONALI (rd.pedonale): i vicoli che portano una scalinata, passano sotto una volta o in un sottopasso, o toccano
+    // una piazza lastricata, una fontana, la scala di un gradone. Su queste vie non va nessun mezzo: niente corsie (qui), niente Ape e
+    // motorini né sosta (vievive.js), niente segni da strada (segnaletica.js), nessuna auto che nasce o parcheggia (game.js usa le corsie)
+    { const OPd = opere(PEZZI, CITY.sets).pedonali, vicino = (o, x, y, m) => o.r !== undefined ? Math.hypot(x - o.x, y - o.y) < o.r + m : o.poly.some((q, i) => { const a = o.poly[(i + o.poly.length - 1) % o.poly.length], dx = q[0] - a[0], dy = q[1] - a[1], L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L2)); return Math.hypot(a[0] + dx * t - x, a[1] + dy * t - y) < m; }) || (() => { let c = false; const P = o.poly; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; })();
+      // la via dei veicoli che finisce contro un muraglione, una scala o la piazza alta (la Vittoria sotto il gradone dell'Ottagono: le auto
+      // uscivano dal muro, la freccia del semaforo finiva sulla piazza): la carreggiata si ferma all'ultimo incrocio con un'altra via dei
+      // veicoli e il tratto dopo diventa una via pedonale (stesso nome, stesso suolo; le case e i lotti restano quelli di prima)
+      const veic = rd => rd.pts && !rd.pedonale && (rd.kind === 'citta' || rd.kind === 'strada' || rd.kind === 'litoranea'), dSegP = (q, x, y) => { let b = 1e9; for (let k = 0; k < q.length - 1; k++) { const [ax, ay] = q[k], [bx, by] = q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); b = Math.min(b, Math.hypot(ax + dx * t - x, ay + dy * t - y)); } return b; };
+      roads.filter(veic).forEach(rd => { for (const e of [0, 1]) { const P = rd.pts, E = e ? P[P.length - 1] : P[0]; if (!OPd.some(o => (o.muro || o.tipo === 'scala' || o.tipo === 'piazza_alta') && vicino(o, E[0], E[1], 3))) continue;
+        const ord = e ? P.map((q, i) => i).reverse() : P.map((q, i) => i); let cut = -1;
+        for (let j = 1; j < ord.length / 2 && cut < 0; j++) { const q = P[ord[j]]; if (roads.some(o => o !== rd && veic(o) && dSegP(o.pts, q[0], q[1]) < o.w / 2)) cut = ord[j]; }
+        if (cut < 0) continue; const stub = (e ? P.slice(cut) : P.slice(0, cut + 1)).map(q => q.slice());   /* punti suoi: expand() sposta ogni punto una volta */ rd.pts = e ? P.slice(0, cut + 1) : P.slice(cut);
+        roads.push({ id: rd.id + '_piede', name: rd.name, w: rd.w, kind: 'vicolo', pts: stub, pedonale: true, era: rd.era }); } });
+      roads.forEach(rd => { if (rd.kind !== 'vicolo' || rd.pedonale || !rd.pts) return;
+        if (rd.sottopasso || OPd.some(o => o.vicolo === rd.id) || rd.pts.some(([x, y]) => OPd.some(o => o.tipo !== 'muraglione' && vicino(o, x, y, rd.w / 2 + .5)))) rd.pedonale = true; }); }
+    const lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !rd.pedonale).map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
     // ponti sospesi (si camminano sopra, sotto si passa) e grotte naturali che attraversano la montagna (sottosuolo)
     const BRIDGES = [];   // [isola] la gola non c'è più
     BRIDGES.forEach(B => { const ta = [Math.floor(B.a[0] / TS), Math.floor(B.a[1] / TS)], tb = [Math.floor(B.b[0] / TS), Math.floor(B.b[1] / TS)]; B.h0 = elev[ta[1] * GW + ta[0]]; B.h1 = elev[tb[1] * GW + tb[0]]; });
@@ -3005,6 +3027,50 @@ var World = (function () {
       [12, 'rocca', 'La Rocca', set('armi'), ['pericolo'], 'torre', 'il mastio col faro rosso', 'mastio', ['il ponte e la Porta della Rocca', 'la porta d\'acqua della darsena'], 'per mare dal Molo Vecchio fino alla porta d\'acqua; il cunicolo di fuga e la cisterna'],
     ];
     return L.filter(q => q[3]).map(([n, id, nome, xy, ruoli, icona, firma, landmark, ingressi, segreto]) => ({ n, id, nome, x: +xy[0].toFixed(1), y: +xy[1].toFixed(1), ruoli, icona, firma, landmark, ingressi, segreto }));
+  }
+  // [pedonale] LE OPERE PEDONALI dai pezzi e dalle piazze (in qualunque sistema di coordinate: quello dei pezzi e dei sets che riceve).
+  // pedonali: le impronte (poly in coordinate del mondo, o x, y, r) delle opere dove i veicoli non passano: i muraglioni dei gradoni
+  //   (muro: true) e la piazza alta che reggono, le scale addossate ai gradoni, le scalinate, le fontane, i pozzi e i lavatoi, i sottopassi
+  //   pedonali e le case a volta sui vicoli, le piazzette lastricate. src/pedonale.js le confronta con le vie dei veicoli.
+  // barriere: i segmenti che non si attraversano a piedi né coi mezzi [x0, y0, x1, y1, tipo]: il ciglio dei muraglioni (la ringhiera o il
+  //   salto), il corrimano e la testata delle scale dei gradoni, le spallette delle scalinate, i parapetti e i guardrail. game.js li usa per
+  //   urtare (walkM), per tagliare i passi (taglia) e come lati chiusi nella griglia dei percorsi.
+  // scale: i soli passaggi fra il piano basso e quello alto: pts = l'attacco in basso, il primo gradino, l'arrivo, l'uscita in cima;
+  //   per le scale dei gradoni (salita: true) anche la cornice locale (x, y, rot, x0 primo gradino, x1 ultimo, x2 fine del pianerottolo,
+  //   z0..z1 la fascia della scala) con la quota del piede q e il dislivello h: game.js ne fa la quota di chi ci cammina.
+  function opere(pezzi, sets) {
+    const OP = [], BAR = [], SCALE = [], r2 = v => Math.round(v * 100) / 100;
+    const pw = (p, lx, lz) => { const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0); return [r2(p.x + lx * c + lz * s), r2(p.y - lx * s + lz * c)]; };
+    const rett = (p, x0, x1, z0, z1) => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => pw(p, a, b));
+    const muro = (p, x0, z0, x1, z1, tipo) => { const a = pw(p, x0, z0), b = pw(p, x1, z1); BAR.push([a[0], a[1], b[0], b[1], tipo]); };
+    let n = 0; const nuovo = (tipo, p, o) => { const q = Object.assign({ id: tipo + '_' + (n++), tipo, nome: p && p.nome || tipo }, o); OP.push(q); return q; };
+    (pezzi || []).forEach(p => { const o = p.opz || {};
+      if (p.tipo === 'gradone') { const L = o.L, h = o.h, k = .12;
+        nuovo('muraglione', p, { muro: true, poly: rett(p, -.2, L + .2, -.4, h * k + .1) });
+        let gap = null;
+        if (o.scala) {   // la scala addossata al fronte (pezzi_citta.js T.gradone): sale lungo +X fino al pianerottolo, poi si passa sul muro
+          const nn = Math.ceil(h / .17), pd = Math.min(.32, (L - 1.6) / nn), xi = Math.max(0, L - nn * pd - 1.4), xt = xi + nn * pd, xl = Math.min(L, xt + 1.4), za = h * k * .5, zb = za + 1.8, zc = (za + zb) / 2, xm = (xt + xl) / 2;
+          gap = [xt, xl]; const s = nuovo('scala', p, { nome: 'Scala del ' + (p.nome || 'gradone').replace(/^Gradone del /, ''), poly: rett(p, xi - .1, xl, za - .05, zb + .1) });
+          muro(p, xi, zb + .1, xl, zb + .1, 'corrimano'); muro(p, xl, 0, xl, zb + .1, 'testata');
+          SCALE.push({ id: s.id, nome: s.nome, salita: true, x: r2(p.x), y: r2(p.y), rot: p.rot || 0, x0: r2(xi), x1: r2(xt), x2: r2(xl), z0: r2(za), z1: r2(zb), q: p.q || 0, h, pts: [pw(p, xi - .9, zc), pw(p, xi + .15, zc), pw(p, xm, zc), pw(p, xm, -1.2)] }); }
+        // il ciglio del muro (la ringhiera o il salto) da un canto all'altro, aperto solo dove arriva la scala
+        const tipo = o.ringhiera ? 'ringhiera' : 'muraglione';
+        if (gap) { muro(p, -.2, 0, gap[0], 0, tipo); if (gap[1] < L + .2 - .05) muro(p, gap[1], 0, L + .2, 0, tipo); } else muro(p, -.2, 0, L + .2, 0, tipo);
+      } else if (p.tipo === 'scalinata') {   // pezzi_citta.js T.scalinata: sale lungo +X, larga w, i muri d'ambito ai due lati
+        const H = o.dislivello || 8, nn = Math.max(1, Math.ceil(H / .17)), pd = o.pedata || .36, nf = Math.max(1, (o.pianerottoli || 0) + 1), w = o.w || 4, X = nn * pd + (nf - 1) * (1.6 - pd) + 1.2;
+        const s = nuovo('scalinata', p, { poly: rett(p, 0, X, -w / 2 - .45, w / 2 + .45), vicolo: p.vicolo || null });
+        for (const sd of [-1, 1]) muro(p, 0, sd * (w / 2 + .15), X, sd * (w / 2 + .15), 'spalletta');
+        SCALE.push({ id: s.id, nome: s.nome, salita: false, pts: [pw(p, -.9, 0), pw(p, .15, 0), pw(p, X - .15, 0), pw(p, X + .9, 0)] });
+      } else if (p.tipo === 'fontana' || p.tipo === 'pozzo') nuovo('fontana', p, { x: r2(p.x), y: r2(p.y), r: (o.r || 1) + .4 });
+      else if (p.tipo === 'lavatoio' || p.tipo === 'sottopasso' || p.tipo === 'arco_sottopasso') { const B = (p.imp || []).find(r => r[0] === 'B'); if (B) nuovo(p.tipo === 'lavatoio' ? 'fontana' : 'sottopasso', p, { poly: rett(p, B[1], B[2], B[3], B[4]), vicolo: p.vicolo || null }); }
+      else if (p.tipo === 'parapetto') muro(p, 0, 0, o.L || 12, 0, 'parapetto'); });
+    (sets || []).forEach(q => {
+      if (q.k === 'ottagono') { const alta = OP.some(o => o.muro && Math.hypot(o.poly[0][0] - q.x, o.poly[0][1] - q.y) < q.r + 4), ap = q.r - 1.7 - (alta ? .5 : 0), R = ap / Math.cos(Math.PI / 8), P = [];
+        for (let k = 0; k < 8; k++) { const a = (k + .5) * Math.PI / 4; P.push([r2(q.x + Math.cos(a) * R), r2(q.y + Math.sin(a) * R)]); }
+        nuovo(alta ? 'piazza_alta' : 'piazza', { nome: q.nome }, { poly: P }); }
+      else if (q.k === 'piazzetta') nuovo('piazza', { nome: q.nome || 'Piazzetta' }, { x: q.x, y: q.y, r: q.r });
+      else if (q.k === 'sagrato' || q.k === 'marina') nuovo('piazza', { nome: q.nome || q.k }, { poly: [[q.x0, q.y0], [q.x1, q.y0], [q.x1, q.y1], [q.x0, q.y1]] }); });
+    return { pedonali: OP, barriere: BAR, scale: SCALE };
   }
   // [cotto] le funzioni della mappa grande che leggono i suoi vettori: le fa expand() e, col mondo cotto, le rifà la lettura (stesse funzioni)
   function rivaFunzioni(W, grid, elev, vh, velev, isl) {
@@ -3277,6 +3343,7 @@ var World = (function () {
     // [pianta] la scatola di ogni casa nel suo riferimento: chi non l'ha già (un lotto orientato) prende quella della sua pianta a caselle
     W.BUILDINGS.forEach(b => { if (b.cx === undefined) { b.cx = (b.x + b.w / 2) * TS; b.cy = (b.y + b.h / 2) * TS; } if (b.lw === undefined) { b.lw = b.w * TS; b.ld = b.h * TS; } });
     if (W.sets) W.luoghi = luoghi(W);
+    { const O = opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }   // [pedonale] le opere pedonali, le barriere e le scale in coordinate finali
     return W;
   }
   // anteprima RGBA dall'alto (per la pianta)

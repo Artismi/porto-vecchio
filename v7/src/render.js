@@ -95,6 +95,7 @@ var Render = (function () {
   function groundH(x, z) { // quota del terreno: interpolata fra i quattro vertici della casella
     const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
     if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
+    if (G.quotaScala) { const qs = G.quotaScala(x, z); if (qs !== null) return qs; }   // [pedonale] sui gradini delle scale dei gradoni
     const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
     return VH(i, j) * (1 - u) * (1 - v) + VH(i + 1, j) * u * (1 - v) + VH(i, j + 1) * (1 - u) * v + VH(i + 1, j + 1) * u * v + swH(x, z);   // [isola35] sopra il marciapiede
   }
@@ -6458,6 +6459,7 @@ var Render = (function () {
   }
   const WHITE1 = '226,222,206', YEL1 = '214,170,60';
   const vvSeg1 = rd => (cn1() && typeof Vievive !== 'undefined' && Vievive && Vievive.attivo) ? Vievive.segnaletica(rd) : null;   // [vievive]
+  const pedT1 = (x, z) => { const v = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return v === G.T.PIAZZA || v === G.T.STAIRS || v === G.T.FOUNT; };   // [pedonale] il suolo delle piazze, delle scale, delle fontane
   function marks1(x, tx0, ty0, n, m) {
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     (M.roads || []).forEach((rd, ri) => {
@@ -6486,6 +6488,7 @@ var Render = (function () {
     junc1().forEach(J => { if (!inBox1(J.x, J.y, X0, Y0, X1, Y1, 30)) return;
       J.arms.forEach((a, ai) => { const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, lane = a.w / 2;   // destra di chi arriva (va verso -u)
         const d0 = J.r + (J.city ? 3.4 : 1.2), sx = J.x + ux * d0, sy = J.y + uy * d0, seed = (Math.round(J.x * 3 + J.y * 7 + ai) >>> 0);
+        if (pedT1(sx, sy) || pedT1(sx + ux * 7, sy + uy * 7)) return;   // [pedonale] niente linee d'arresto, STOP e frecce sulle piazze
         if (a.minor && !J.signal) {
           // linea d'arresto o fila di triangoli sulla corsia di chi arriva
           if (J.city || a.w >= 6.5) { for (let o = .2; o < lane - .15; o += .12) for (let w = 0; w < .45; w += .12) { const px = sx + rx * o + ux * w, py = sy + ry * o + uy * w; if (th(Math.round(px * 8), Math.round(py * 8), 61) > .18) { x.fillStyle = `rgba(${WHITE1},.8)`; x.fillRect(Math.round((px - X0) * PPM), Math.round((py - Y0) * PPM), 1, 1); } }
@@ -7517,7 +7520,7 @@ var Render = (function () {
   function strisce35(x, tx0, ty0, n, m) {
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS;
     crossings35().forEach(c => {
-      if (c.x < X0 - 8 || c.x > X1 + 8 || c.y < Y0 - 8 || c.y > Y1 + 8) return;
+      if (c.x < X0 - 8 || c.x > X1 + 8 || c.y < Y0 - 8 || c.y > Y1 + 8 || pedT1(c.x, c.y)) return;   // [pedonale] le zebre non sulle piazze
       const r = rng(c.s), ang = Math.atan2(c.uy, c.ux);
       // [ordine1] le zebre vere: bande di 50 cm parallele alla strada, lunghe 2,5 m, a 50 cm l'una dall'altra, tutte uguali; l'usura le
       // consuma dove passano le ruote (due solchi più chiari), non a scacchi

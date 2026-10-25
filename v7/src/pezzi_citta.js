@@ -1478,7 +1478,9 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     sezione(g, [[h * k, 0], [0, h], [-P, h], [-P, 0]], L, 'tufo', 0, 0, 0);                         // muro e terrapieno
     blocco(g, L, .05, P - .5, 'terra', L / 2, h, -P / 2 - .25);
     blocco(g, L, .16, .6, 'pietraChiara', L / 2, h, -.2, LOD ? 0 : .03);                            // copertina
-    if (o.ringhiera) ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2);
+    if (o.ringhiera) { if (o.scala) { const n = Math.ceil(h / .17), xt = Math.max(0, L - n * Math.min(.32, (L - 1.6) / n) - 1.4) + n * Math.min(.32, (L - 1.6) / n), xl = Math.min(L, xt + 1.4);   // [pedonale] la ringhiera si apre dove arriva la scala (il pianerottolo), come il varco di game.js
+        if (xt > .3) ringhiera(g, xt, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); if (L - xl > .3) ringhiera(g, L - xl, 1, 'ferro', xl, h + .16, -.2, 0, 1.2); }
+      else ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); }
     if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
     capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h);
     if (o.scala || o.rampa) { const W = 1.8, z0 = h * k * .5 + W / 2, cord = !o.scala;                  // la cordonata o la scala addossata
