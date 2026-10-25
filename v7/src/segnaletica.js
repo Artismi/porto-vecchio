@@ -686,8 +686,8 @@ var Segnaletica = (function () {
     const facce = [[[X, -Y, -Z], [X, -Y, Z], [X, Y, Z], [X, Y, -Z], [ux, 0, uz]], [[-X, -Y, Z], [-X, -Y, -Z], [-X, Y, -Z], [-X, Y, Z], [-ux, 0, -uz]], [[-X, Y, -Z], [X, Y, -Z], [X, Y, Z], [-X, Y, Z], [0, 1, 0]], [[-X, -Y, Z], [X, -Y, Z], [X, -Y, -Z], [-X, -Y, -Z], [0, -1, 0]], [[X, -Y, Z], [-X, -Y, Z], [-X, Y, Z], [X, Y, Z], [vx, 0, vz]], [[-X, -Y, -Z], [X, -Y, -Z], [X, Y, -Z], [-X, Y, -Z], [-vx, 0, -vz]]];
     facce.forEach(([a, b2, c2, d, N]) => { const A = P(...a), B2 = P(...b2), C2 = P(...c2), D = P(...d); tri(b, A, B2, C2, N, [0, 0], [0, 0], [0, 0], c); tri(b, A, C2, D, N, [0, 0], [0, 0], [0, 0], c); });
   }
-  // il palo zincato: un prisma a sei facce, col tappo e il piede
-  function palo(x, y0, z, h, r, col) { const b = mucchio('pali', x, z), c = C3(col || '#a4a8a6'), n = 6;
+  // il palo zincato: un prisma a otto facce (STILE.md, regola 1: il palo è un cilindro a 8 lati, mai sotto i 9 cm), col tappo e il piede
+  function palo(x, y0, z, h, r, col) { const b = mucchio('pali', x, z), c = C3(col || '#a4a8a6'), n = 8; r = Math.max(r, .045);   // [coerenza]
     for (let i = 0; i < n; i++) { const a0 = i / n * PI * 2, a1 = (i + 1) / n * PI * 2, am = (a0 + a1) / 2, A = [x + Math.cos(a0) * r, y0, z + Math.sin(a0) * r], Bv = [x + Math.cos(a1) * r, y0, z + Math.sin(a1) * r], C = [x + Math.cos(a1) * r, y0 + h, z + Math.sin(a1) * r], D = [x + Math.cos(a0) * r, y0 + h, z + Math.sin(a0) * r], N = [Math.cos(am), 0, Math.sin(am)];
       tri(b, A, C, Bv, N, [0, 0], [0, 0], [0, 0], c); tri(b, A, D, C, N, [0, 0], [0, 0], [0, 0], c); tri(b, [x, y0 + h, z], C, D, [0, 1, 0], [0, 0], [0, 0], [0, 0], c); }
     scatola(x, y0 + .04, z, 1, 0, r * 3.4, .08, r * 3.4, '#6a6c6a'); }

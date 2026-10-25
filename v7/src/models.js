@@ -20,6 +20,24 @@ var Models = (function () {
     cassonetto: ['t_TrashContainer.json', 'l', 2], cassonetto2: ['t_TrashContainer_Open.json', 'l', 2.2], cono: ['t_TrafficCone.json', 'h', .7], rete: ['t_MetalFence.json', 'l', 3.5], divano: ['t_Sofa.json', 'l', 2.2], tubi: ['t_Pipes.json', 'l', 4],
   };
   const LIB = {}, waiting = {}, placed = [];
+  // [coerenza] STILE.md, regola 6: le tre auto scaricate (RX-7 19,7 mila triangoli, GTR 14,8 mila, Bursley 11,2 mila; le nostre auto
+  // ne hanno 1-3 mila) hanno ruote da 3 mila triangoli l'una: alla distanza del gioco è grana che frigge accanto a palazzi e persone
+  // chunky. Al caricamento si semplificano per raggruppamento dei vertici (una cella di 4,5 cm veri, sotto il pixel del gioco; la normale divisa in sei
+  // direzioni, così gli spigoli netti restano netti); ?look=vecchio com'erano
+  const SEMPL = { rx7: .045, gtr: .045, bursley: .045 }, SEMPL_ON = !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search));
+  function semplifica(geo, cell) {
+    const P = geo.attributes.position, N = geo.attributes.normal, n = P.count, idx = geo.index, nT = (idx ? idx.count : n) / 3;
+    if (nT < 300 || geo.morphAttributes && Object.keys(geo.morphAttributes).length) return null;
+    const rep = new Int32Array(n), cl = new Map(), dir = i => { if (!N) return 0; const x = N.getX(i), y = N.getY(i), z = N.getZ(i), ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z); return ax > ay && ax > az ? (x > 0 ? 1 : 2) : ay > az ? (y > 0 ? 3 : 4) : (z > 0 ? 5 : 6); };
+    for (let i = 0; i < n; i++) { const k = Math.floor(P.getX(i) / cell) + ',' + Math.floor(P.getY(i) / cell) + ',' + Math.floor(P.getZ(i) / cell) + ',' + dir(i); let r = cl.get(k); if (r === undefined) cl.set(k, r = i); rep[i] = r; }
+    const out = []; for (let t = 0; t < nT; t++) { const a = rep[idx ? idx.getX(t * 3) : t * 3], b = rep[idx ? idx.getX(t * 3 + 1) : t * 3 + 1], c = rep[idx ? idx.getX(t * 3 + 2) : t * 3 + 2]; if (a !== b && b !== c && a !== c) out.push(a, b, c); }
+    if (out.length / 3 > nT * .85 || out.length / 3 < nT * .08) return null;
+    const used = new Map(), g = new THREE.BufferGeometry(), nu = []; out.forEach(v => { if (!used.has(v)) { used.set(v, nu.length); nu.push(v); } });
+    for (const name in geo.attributes) { const A = geo.attributes[name], sz = A.itemSize, arr = new Float32Array(nu.length * sz);
+      nu.forEach((v, j) => { for (let c = 0; c < sz; c++) arr[j * sz + c] = c === 0 ? A.getX(v) : c === 1 ? A.getY(v) : c === 2 ? A.getZ(v) : A.getW(v); });
+      g.setAttribute(name, new THREE.BufferAttribute(arr, sz)); }
+    g.setIndex(out.map(v => used.get(v))); g.groups = []; g.computeBoundingSphere(); g.computeBoundingBox(); return g;
+  }
   // tinte: i carri e le baracche del poligono color oliva, l'elicottero grigio Tutela
   const TINT = { carro: { c: '#5c6650' }, baracca: { c: '#6a7058' }, torretta: { c: '#6a7058' }, elicottero: { c: '#4a4f58' } };
   let base = 'assets/mj/', loader = null, R = null, scene = null, G = null;
@@ -32,6 +50,10 @@ var Models = (function () {
       const root = gl.scene; const drop = []; root.traverse(o => { if (o.isLight || o.isCamera) drop.push(o); }); drop.forEach(o => o.parent && o.parent.remove(o)); root.updateMatrixWorld(true);
       const bb = new THREE.Box3().setFromObject(root), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
       const L = c[1] === 'h' ? sz.y : Math.max(sz.x, sz.z), k = c[2] / (L || 1);
+      if (SEMPL_ON && SEMPL[id]) { let t0 = 0, t1 = 0; const done = new Map(); root.traverse(o => { if (!o.isMesh || o.isSkinnedMesh || (o.geometry.groups && o.geometry.groups.length > 1)) return; const ws = o.getWorldScale(new THREE.Vector3()), sc = Math.max(ws.x, ws.y, ws.z) * k || 1;   // [coerenza] la cella in metri veri
+        const g0 = o.geometry, n0 = (g0.index ? g0.index.count : g0.attributes.position.count) / 3; t0 += n0; let g1 = done.get(g0); if (g1 === undefined) { g1 = semplifica(g0, SEMPL[id] / sc); done.set(g0, g1); }
+        if (g1) { o.geometry = g1; t1 += g1.index.count / 3; } else t1 += n0; });
+        if (typeof window !== 'undefined' && window.__dbgCoerenza) console.log('[coerenza] auto', id, 'triangoli', t0, '->', t1); }
       const lenAxis = sz.x > sz.z ? 'x' : 'z';
       // la base va a terra e al centro; tutto in un gruppo normalizzato
       const g = new THREE.Group(); root.position.set(-ctr.x, -bb.min.y, -ctr.z); g.add(root); g.scale.setScalar(k);

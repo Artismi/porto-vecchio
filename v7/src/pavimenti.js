@@ -183,6 +183,16 @@ var Pavimenti = (function () {
     #else
     #define PV_K 8
     #endif
+    // [coerenza] il look nuovo (TONE_MAPPING c'è solo lì): il suolo a unità grandi e ad ampiezza bassa (STILE.md, regola 2). Le pietre
+    // si leggono a 6-10 px allo zoom del gioco (≥ 25 cm), i giunti a un terzo di forza, niente grana sotto i 10 cm; il valore medio resta
+    #ifdef TONE_MAPPING
+    #define PV_CALMO
+    #define PV_JT .22
+    #define PV_BV .11
+    #else
+    #define PV_JT .34
+    #define PV_BV .16
+    #endif
     vec2 pvTilt; float pvWet; float pvPol; float pvSab;
     // il disegno: rende il colore, riempie pvTilt (la normale piegata, nel piano xz del mondo), pvWet, pvPol
     vec3 pvCalmo(vec3 c){   // [sguardo] i suoli senza disegno (o da lontano): i chiari scendono verso i medi, il suolo non abbaglia più dei muri
@@ -201,6 +211,9 @@ var Pavimenti = (function () {
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;
       #endif   // giunti morbidi: il quadro non ha antialiasing e il post affila
+      #ifdef PV_CALMO
+      fin *= .4;   // [coerenza] la grana fine (pori, inerti, ciottolini) resta, a meno della metà: c'è ma non frigge
+      #endif
       if (lod <= 0.) return pvCalmo(base * (.95 + pvN(p * .045) * .08));
       vec2 uv = (p - pvBox.xy) / pvBox.zw; vec4 I = vec4(0.), K = vec4(0.);
       float rf = 0., hw = 0., s = 0., v = 0., best = 1e9, scA = 9., sec = 9., e1 = 9., e2 = 9., gW = 0., gfN = 0., gB = 0.; vec2 du = vec2(1., 0.);   // sec: quanto si è fuori dall'altra via (incroci); gW: il suolo del texel vicino, interpolato
@@ -242,6 +255,9 @@ var Pavimenti = (function () {
       if (fam < 1.5 || (fam > 1.5 && fam < 2.5) || (fam > 4.5 && fam < 5.5) || fam > 8.5) {   // pietre a file: basoli, travertino, banchina, lastre
         float rw = fam < 1.5 ? .52 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .6 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.05 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
         float bev = fam < 1.5 ? .06 : fam < 2.5 ? .035 : fam < 5.5 ? .07 : .025, wob = fam < 1.5 ? .05 : .012;
+        #ifdef PV_CALMO
+        rw *= 1.25; l0 *= 1.2; l1 *= 1.2; bev *= 1.15; wob *= .8;   // [coerenza] la stessa pietra un quarto più grande (basoli da 65 cm, travertino da 1,1 m): meno righe, stesso carattere
+        #endif
         vec2 qq = q; bool cord = fam > 8.5 && lungo && pvForce > 0. && eU > -.02 && eU < .3;   // sul ciglio vero (l'unione morbida delle vie: il cordolo gira l'angolo)   // il cordolo di granito sul ciglio del marciapiede
         if (cord) { rw = .3; l0 = .8; l1 = 1.4; bev = .03; qq.y = clamp(eU, .001, .299); pvKerb = 1.; }
         else if (fam > 8.5 && lungo) qq.y = eU - .3;
@@ -272,11 +288,16 @@ var Pavimenti = (function () {
         #endif
         mean = 1. - (jw * 2. / rw) * .5;
       } else if (fam < 3.5) {   // porfido a coda di pavone: cubetti di 11 cm su file ad arco (archi di 1,6 m), rosso-viola e grigio
-        float A = 1.6, u = fract(q.x / A) - .5; vec2 qa = vec2(q.x, q.y + u * u * A * .7);
+        #ifdef PV_CALMO
+        const float A = 2.4, PCU = .16;   // [coerenza] sempre porfido a coda di pavone: il cubetto da 16 cm (era 11), il ventaglio da 2,4 m: il motivo si legge, non frigge
+        #else
+        const float A = 1.6, PCU = .11;
+        #endif
+        float u = fract(q.x / A) - .5; vec2 qa = vec2(q.x, q.y + u * u * A * .7);
         #ifndef PV_LITE
         qa += (vec2(pvN(q * 9.), pvN(q * 9. + 4.)) - .5) * .012;
         #endif
-        vec4 F = pvFile(qa, .11, .09, .13, 31.); float jwE = max(.009, mpp * .5);
+        vec4 F = pvFile(qa, PCU, PCU * .82, PCU * 1.18, 31.); float jwE = max(.009, mpp * .5);
         jt = (1. - smoothstep(jwE - aa, jwE + aa, F.x)) * sqrt(.009 / jwE); bv = 1. - smoothstep(.009, .032, F.x); tq = F.zw * bv;
         float h = F.y; tone = .82 + h * .32; col *= h < .3 ? vec3(1.07, .94, .94) : h < .6 ? vec3(.95, .96, 1.05) : h < .8 ? vec3(1.03, 1., .96) : vec3(.92);
         mean = .9;
@@ -284,8 +305,11 @@ var Pavimenti = (function () {
         tone += (pvN(p * 19.) - .5) * .08 * fin;
         #endif
         // da lontano i cubetti (2 pixel) farebbero grana: sfumano, e resta il ventaglio, gli archi e le file più scure ogni 55 cm
-        float pc = 1. - smoothstep(.02, .05, mpp); jt *= pc; tq *= pc; tone = mix(.92 + (pvN(qa * vec2(.8, 3.)) - .5) * .1, tone, pc);
-        float ar = min(abs(fract(qa.y / .55) - .5) * .55, abs(u) > .47 ? 0. : 9.), al = (1. - smoothstep(.012, .012 + mpp * 1.2, ar)) * (1. - pc * .6);
+        float pc = 1. - smoothstep(.02 * PCU / .11, .05 * PCU / .11, mpp); jt *= pc; tq *= pc; tone = mix(.92 + (pvN(qa * vec2(.8, 3.)) - .5) * .1, tone, pc);
+        float RA = PCU * 5., ar = min(abs(fract(qa.y / RA) - .5) * RA, abs(u) > .47 ? 0. : 9.), al = (1. - smoothstep(.012, .012 + mpp * 1.2, ar)) * (1. - pc * .6);
+        #ifdef PV_CALMO
+        al *= .55;   // [coerenza] le file scure del ventaglio più leggere
+        #endif
         tone *= 1. - al * .22; jt = max(jt, al * .5);
       } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
         // una tinta sola per tutte le vie e i piazzali (la tela dipingeva ogni via con la sua usura: cambi netti agli incroci); della tela
@@ -351,8 +375,11 @@ var Pavimenti = (function () {
         tq = vec2(.8, .6) * cos(ph) * .12 * lod;
       }
       // il disegno da lontano si fonde nel suo valore medio (niente moiré)
+      #ifdef PV_CALMO
+      tone = mix(mean, tone, .65);   // [coerenza] da pietra a pietra un terzo di contrasto in meno: la massa del suolo prima della grana
+      #endif
       tone = mix(mean, tone / mean, lod) ;
-      col *= tone * (1. - jt * .34 * lod) * (1. - bv * bv * .16 * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
+      col *= tone * (1. - jt * PV_JT * lod) * (1. - bv * bv * PV_BV * lod);   // il bordo a cuscino: la pietra si arrotonda verso il giunto, uguale da ogni lato
       vec2 tw = (ux * tq.x + uy * tq.y) * .22 * lod;   // (sotto: il selciato attorno alle case vi aggiunge la sua luce)   // la luce radente sullo smusso, leggera
       // [strade] le finiture: tombini, chiusini, caditoie, pozzetti, rattoppi, olio e gomma, nitidi (la lista di render.js, nella mappa)
       if (pvStr > .5 && pvHas > .5 && mod(floor(pvDbg / 2.), 2.) < .5) { vec4 Fi = texture2D(pvFi, uv); float ft = mod(Fi.a, 16.);

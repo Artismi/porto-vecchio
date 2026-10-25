@@ -77,7 +77,15 @@ var Render = (function () {
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .9, metalness: 0 }, o));
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
-  const box = (w, h, d, mat) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  // [coerenza] STILE.md, regola 1: nel look nuovo un palo (una scatola sottile e alta: lato ≤ 20 cm, alta 1 m e 8 volte il lato) è un
+  // cilindro a 8 lati col tappo, mai un listello a spigoli vivi (22 triangoli invece di 12; la geometria si fa una volta per misura)
+  const POLO8 = !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search));
+  const poloGeo = (w, h, d) => { const r = Math.max(.045, Math.max(w, d) * .56), g = new THREE.CylinderGeometry(r, r, h, 8, 1, true), top = new THREE.CircleGeometry(r, 8);
+    top.rotateX(-Math.PI / 2); top.translate(0, h / 2, 0); return mergeGeos([g.toNonIndexed(), top.toNonIndexed()]); };
+  const box = (w, h, d, mat) => new THREE.Mesh(POLO8 && w <= .2 && d <= .2 && h >= 1 && h >= 8 * Math.max(w, d) ? poloGeo(w, h, d) : new THREE.BoxGeometry(w, h, d), mat);
+  // [coerenza] STILE.md, regola 5: gli anelli a terra (segni del gioco) sottili e tondi: la corona larga un quarto di prima, 48 lati,
+  // il colore pieno ma non abbagliante; nel look vecchio com'erano
+  const anello5 = (r0, r1, seg) => POLO8 ? new THREE.RingGeometry((r0 + r1) / 2 - Math.min(.045, (r1 - r0) * .3), (r0 + r1) / 2 + Math.min(.045, (r1 - r0) * .3), 48) : new THREE.RingGeometry(r0, r1, seg);
   const cyl = (rt, rb, h, seg, mat) => new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg || 8), mat);
   function shadowed(m, cast, rec) { m.traverse(o => { if (o.isMesh && !o.userData.waterMask) { o.castShadow = cast !== false; o.receiveShadow = rec !== false; } }); return m; }
   function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255; r = Math.min(255, Math.max(0, Math.round(r * f))); g = Math.min(255, Math.max(0, Math.round(g * f))); b = Math.min(255, Math.max(0, Math.round(b * f))); return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1); }
@@ -1947,8 +1955,11 @@ var Render = (function () {
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
       if (v === T.TREE && VEGN(ii)) continue;   // [vegetazione]
       if (v === T.TREE) {
-        const [name, s, lean] = eco38(tx, ty, r), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
-        add(name, cx, groundH(cx, cz) - .15, cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: treeCol36(name, cx, cz, r) });   // [isola36]
+        let [name, s, lean] = eco38(tx, ty, r), big = (th > .55 ? 1.05 : th < .35 ? .82 : .94) * .78;
+        const citta5 = LOOKV.nuovo && zoneT(tx, ty) === ZN.CITTA;   // [coerenza] in città l'albero del kit della natura (chioma scura a carte) diventa il leccio di città, della stessa famiglia dei viali
+        if (citta5) { name = 'Leccio_' + Math.floor(r() * 4); s = 1 / big; lean = 0; }
+        add(name, cx, groundH(cx, cz) - (citta5 ? 0 : .15), cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: citta5 ? '#ffffff' : treeCol36(name, cx, cz, r) });   // [isola36]
+        if (citta5) add('Ombra4', cx, groundH(cx, cz) + .03, cz, 2.3, 0, {});
         const k = (th > .5 ? 3 : 2) + (nt < 5 ? 1 : 0); for (let q = 0; q < k; q++) if (r() < .72) under(tx * TS + r() * 2, ty * TS + r() * 2, .8 + r() * .5);
         if (/DeadTree/.test(name) && r() < .45) for (let q = 0; q < 3; q++) add(r() < .7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', cx + (r() - .5) * 1.2, 0, cz + (r() - .5) * 1.2, .5 + r() * .5, r() * 6.28, { ground: true, col: '#f0e8dc' });
       } else if (orig && orig[ii] === T.TREE && v !== T.DIRT && v !== T.FIELD && v !== T.BLD) {   // [survival] sgombrato (terra battuta) o zappato: il ceppo è stato cavato
@@ -4041,7 +4052,7 @@ var Render = (function () {
   }
   function swimPose(pg, p, inVeh, time) {
     const on = !!p.swim && !inVeh && !p.indoor;
-    if (!COSTA.ring) { COSTA.ring = new THREE.Mesh(new THREE.RingGeometry(.55, .7, 20), new THREE.MeshBasicMaterial({ color: '#e8f4ff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); COSTA.ring.rotation.x = -Math.PI / 2; scene.add(COSTA.ring); }
+    if (!COSTA.ring) { COSTA.ring = new THREE.Mesh(anello5(.55, .7, 20), new THREE.MeshBasicMaterial({ color: '#e8f4ff', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); COSTA.ring.rotation.x = -Math.PI / 2; scene.add(COSTA.ring); }
     COSTA.ring.visible = on; if (!on) { if (pg.userData.swimTilt) { pg.rotation.x = 0; pg.userData.swimTilt = 0; } return; }
     const mv = Math.abs(p.speed || 0) > .2, tilt = mv ? 1.15 : .12;
     pg.rotation.order = 'YXZ'; pg.userData.swimTilt = (pg.userData.swimTilt || 0) + (tilt - (pg.userData.swimTilt || 0)) * .12; pg.rotation.x = pg.userData.swimTilt;
@@ -6830,7 +6841,7 @@ var Render = (function () {
     }
     const t = canvasTex(c); return (S1.tex.paper = t);
   }
-  function piece1(kind, w, h) { const g = new THREE.PlaneGeometry(w, h), uv = g.attributes.uv, ox = (kind % 4) / 4, oy = 1 - Math.floor(kind / 4) / 2 - .5;
+  function piece1(kind, w, h, seg) { const g = new THREE.PlaneGeometry(w, h, seg || 1, 1), uv = g.attributes.uv, ox = (kind % 4) / 4, oy = 1 - Math.floor(kind / 4) / 2 - .5;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, ox + uv.getX(i) * .25, oy + uv.getY(i) * .5); g.rotateX(-Math.PI / 2); return g; }
   let PAPM1 = null; const paperM = () => PAPM1 || (PAPM1 = new THREE.MeshLambertMaterial({ map: paperTex1() }));
   const zebra11 = (x, z) => crossings35().some(c => Math.hypot(c.x - x, c.y - z) < c.w / 2 + 2.5);   /* [unione11] sulle strisce non cresce niente */
@@ -6844,7 +6855,15 @@ var Render = (function () {
     const stat = (mesh, x, z, ry, y0) => { mesh.position.set(x, at(x, z) + (y0 || 0), z); mesh.rotation.y = ry; addStatic(mesh); n++; };
     const tuft = (x, z, s, kind) => { if (vnz(x / 16 + 3.1, z / 16 - 1.7) + .5 < .56 && th(Math.round(x * 4), Math.round(z * 4), 4251) > .12) return;   /* [ordine1] l'erba cresce a macchie, dove nessuno pulisce: niente velo uguale su ogni marciapiede */
       const m = new THREE.Mesh(tuftGeo1(), tuftMat1(kind)); m.scale.set(s * (.8 + r() * .5), s, s * (.8 + r() * .5)); m.position.set(x, at(x, z) - .02, z); m.rotation.y = r() * 6; addStatic(m, true); nt++; };
-    const paper = (x, z) => { const k = Math.floor(r() * 8), w = k % 4 === 2 ? .5 + r() * .5 : .22 + r() * .25, m = new THREE.Mesh(piece1(k, w, w * (.7 + r() * .5)), paperM); m.rotation.set(0, 0, 0); m.position.set(x, at(x, z) + .015, z); m.rotation.y = r() * 6; m.rotation.x = (r() - .5) * .2; addStatic(m, true); n++; };
+    // [coerenza] STILE.md, regola 4: nel look nuovo la carta a terra ha una forma vera (la pallottola accartocciata, il foglio piegato a
+    // tetto, il pezzo di cartone piegato), spenta (il valore del suolo ±10, mai il quadrato bianco o rosso piatto); quante erano
+    const paperM5 = new THREE.MeshLambertMaterial({ map: paperTex1(), color: '#77736b', side: THREE.DoubleSide });
+    const carta5 = (x, z) => { const k = Math.floor(r() * 8), q = r(); let g;
+      if (q < .5) { g = new THREE.OctahedronGeometry(.055 + r() * .035, 0); const p = g.attributes.position, jj = new Map(); for (let i = 0; i < p.count; i++) { const kk = [p.getX(i), p.getY(i), p.getZ(i)].map(v => Math.round(v * 1e3)).join(); if (!jj.has(kk)) jj.set(kk, .75 + r() * .5); const f = jj.get(kk); p.setXYZ(i, p.getX(i) * f, p.getY(i) * .6 * f, p.getZ(i) * f); } g.translate(0, .022, 0); g.computeVertexNormals(); }   // la pallottola (8 triangoli)
+      else { const w = k % 4 === 2 ? .4 + r() * .3 : .2 + r() * .2, h = w * (.7 + r() * .3); g = piece1(k, w, h, 2); const p = g.attributes.position, f = .1 + r() * .12;   // il foglio o il cartone piegato in due
+        for (let i = 0; i < p.count; i++) p.setY(i, (1 - Math.abs(p.getX(i)) / (w / 2)) * w * f + .008); g.computeVertexNormals(); }
+      const m = new THREE.Mesh(g, paperM5); m.position.set(x, at(x, z), z); m.rotation.y = r() * 6.28; addStatic(m, true); n++; };
+    const paper = (x, z) => { if (LOOKV.nuovo) return carta5(x, z); const k = Math.floor(r() * 8), w = k % 4 === 2 ? .5 + r() * .5 : .22 + r() * .25, m = new THREE.Mesh(piece1(k, w, w * (.7 + r() * .5)), paperM); m.rotation.set(0, 0, 0); m.position.set(x, at(x, z) + .015, z); m.rotation.y = r() * 6; m.rotation.x = (r() - .5) * .2; addStatic(m, true); n++; };
     const smallThing = (x, z) => { const q = r();
       if (q < .3) { const g = G0(), hx = pick(r, [C1.red, C1.galv, C1.blue]); g.add(fL([[.03, 0], [.033, .01], [.033, .11], [.028, .12], [.001, .121]], 8, hx, 'paint')); g.rotation.set(0, r() * 6, Math.PI / 2 * (r() < .8 ? 1 : 0)); g.scale.y = r() < .4 ? .55 : 1; g.position.set(x, at(x, z) + .033, z); addStatic(g, true); n++; }   // lattina, a volte schiacciata   // lattina schiacciata a terra
       else if (q < .48) { const g = G0(); g.add(fL([[.035, 0], [.04, .01], [.04, .17], [.03, .21], [.015, .25], [.016, .29], [.001, .29]], 8, pick(r, [C1.glassG, C1.glassB, '#8a9a94']), 'glass')); g.rotation.set(0, r() * 6, Math.PI / 2 - .05); g.position.set(x, at(x, z) + .04, z); addStatic(g, true); n++; }   // bottiglia col collo   // bottiglia
@@ -8802,6 +8821,14 @@ var Render = (function () {
     return (VD.atlas = t);
   }
   // un materiale per tutta la vegetazione nuova: atlante, ritaglio, colori per vertice, vento e il bosco che si apre attorno al giocatore
+  // [coerenza] la chioma a strati: lo stesso materiale del verde (vento, nebbia, ritaglio), con un filo di luce propria verde che tiene
+  // il lato in ombra dentro la scala dei valori (mai sotto ≈ 20): il volume lo fanno i colori dei vertici
+  function chiomaMat5() {
+    if (VD.mat5) return VD.mat5;
+    const m = natMat(vdAtlas(), false, '#fefffe'); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
+    m.emissive = new THREE.Color(CHIOMA5.luce); return (VD.mat5 = m);
+  }
+  const CHIOMA5 = { luce: '#121810' };
   function vdMat() {
     if (VD.mat) return VD.mat;
     const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
@@ -9439,6 +9466,39 @@ var Render = (function () {
     for (let k = 0; k < 7; k++) { const x = (r() * 2 - 1) * e * .85, z = (r() * 2 - 1) * e * .85, s = .05 + r() * .04, c = pick(r, [vdH('#7a6034'), vdH('#5a4a2c'), vdH('#8a7444')]);
       A.v([x - s, y + .005, z], up, c, WU4); A.v([x, y + .005, z - s], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x - s, y + .005, z], up, c, WU4); A.v([x + s, y + .005, z], up, c, WU4); A.v([x, y + .005, z + s], up, c, WU4); }
   }
+  // [coerenza] LA CHIOMA A STRATI (STILE.md, regola 3): due corone di lobi lisci (sotto larga, sopra stretta) e la calotta, come i
+  // personaggi e i palazzi: poche masse grandi, i bordi morbidi. Il valore lo fa l'altezza nella chioma, non il sole (la luce del gioco
+  // ci passa sopra): la calotta chiara e calda, il ventre più scuro e freddo, mai nero; in mezzo il verde della specie. Ogni lobo ha il
+  // suo cappello di luce (lo strato si legge). Il bordo chiaro lo dà il look nuovo (la luce di bordo). Meno triangoli di prima: i lobi
+  // della corona a icosaedro 1 (80), la calotta a 2 (320), poche carte sul contorno.
+  const PAL5 = { leccio: [vdH('#2c3a35'), vdH('#33432e'), vdH('#48573a')],   // ventre (verde-azzurro), mezzo, calotta (oliva): a schermo ≈ 25 / 35 / 48
+                 pino: [vdH('#2a3833'), vdH('#32432c'), vdH('#4a5a38')] };
+  function tintaS(P, N, env, pal, lc, lr) {
+    const hy = Math.max(0, Math.min(1, ((P[1] - env.c[1]) / env.r[1] + 1) * .5)), ly = Math.max(-1, Math.min(1, (P[1] - lc[1]) / lr));   // quota nella chioma, quota nel lobo
+    let c = hy < .5 ? vdL(pal[0], pal[1], Math.pow(hy * 2, .8)) : vdL(pal[1], pal[2], (hy - .5) * 2 * .7);
+    if (ly > .25) c = vdL(c, pal[2], (ly - .25) * .45);   // il cappello di luce del lobo
+    if (N[1] < -.35) c = vdK(c, .86);   // la pancia del lobo
+    return c;
+  }
+  function lobo5(A, c, r, env, pal, seed, det, H, amp) {
+    const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position, lr = r[1];
+    for (let i = 0; i < p.count; i++) {
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), qx = Math.round(x * 6), qy = Math.round(y * 6), qz = Math.round(z * 6);
+      const k = 1 + (vegHash(qx + seed, qy, qz + seed * 3) - .5) * .22 * amp, P = [c[0] + x * r[0] * k, c[1] + y * r[1] * k * (y < 0 ? .78 : 1), c[2] + z * r[2] * k];   // il fondo del lobo un po' schiacciato
+      const nl = nrm4([x / r[0], y / r[1], z / r[2]]), ne = nrm4([(P[0] - env.c[0]) / env.r[0], (P[1] - env.c[1]) / env.r[1], (P[2] - env.c[2]) / env.r[2]]);
+      const N = nrm4([nl[0] * .6 + ne[0] * .4, nl[1] * .6 + ne[1] * .4 + .1, nl[2] * .6 + ne[2] * .4]);
+      A.v(P, N, tintaS(P, N, env, pal, c, lr), WU4, Math.max(0, P[1]) / H * .35);
+    }
+    g.dispose();
+  }
+  function chiomaStrati(L, env, pal, seed, H, r, o) {
+    const TAU = 6.2832, rx = env.r[0], ry = env.r[1], cx = env.c[0], cy = env.c[1], cz = env.c[2], pt = o.piatto || 1, lobes = [];
+    for (let k = 0; k < o.basso; k++) { const a = k / o.basso * TAU + r() * .5, d = rx * (.52 + r() * .06); lobes.push([cx + Math.cos(a) * d, cy - ry * .28, cz + Math.sin(a) * d, .5 + r() * .05, 1]); }   // la corona bassa, larga
+    for (let k = 0; k < o.alto; k++) { const a = (k + .5) / o.alto * TAU + r() * .5, d = rx * (.3 + r() * .05); lobes.push([cx + Math.cos(a) * d, cy + ry * .12, cz + Math.sin(a) * d, .46 + r() * .04, 1]); }   // la corona alta, stretta
+    lobes.push([cx, cy + ry * .38, cz, .44, 2]);   // la calotta
+    lobes.forEach(([x, y, z, s, det], k) => lobo5(L, [x, y, z], [rx * s, ry * s * 1.1 * pt, rx * s], env, pal, seed * 13 + k, det, H, 1));
+    if (o.carte) frangia4(L, o.carte, lobes.slice(0, o.basso + o.alto).map(q => q.slice(0, 4)), env, o.cella, o.sz, r, [pal[0], pal[1], pal[2]], H, .3, .85);   // poche carte: rompono il contorno, stessa tinta
+  }
   // il leccio da viale. [chiarezza] Potato alto come i lecci veri dei corsi: fusto libero fin sopra il piano terra (Chiarezza.ALBERO.fusto),
   // la chioma stretta (≈3,4 m) sopra la gente e sopra la porta, una massa grande con quattro lobi bassi che la gonfiano (una sagoma
   // sola, non venti bozzi), poche carte di foglie della stessa tinta sul contorno, verde oliva scuro e opaco.
@@ -9452,6 +9512,7 @@ var Render = (function () {
       tubo4(W, [b0, m, e], [.09, .06, .03], BARK4.leccio, seed + k * 5, H); }
     const lobes = [[env.c[0], env.c[1] + ry * .12, env.c[2], .84]];   // [x, y, z, raggio relativo all'involucro]: la massa
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r() * .6, d = rx * (.42 + r() * .08); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - ry * (.12 + r() * .12), env.c[2] + Math.sin(a) * d, .56 + r() * .06]); }
+    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 }); formella4(W, r); return { wood: W.build(), leaf: L.build(), strati: true }; }   // [coerenza]
     lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [rx * s, ry * s * 1.15, rx * s], env, PAL4.leccio, seed * 13 + k, 2, H, .45));
     frangia4(L, A4.carte, lobes, env, 4, .3, r, PAL4.leccio, H, .2, .85);
     formella4(W, r);
@@ -9466,6 +9527,7 @@ var Render = (function () {
     for (let k = 0; k < NB; k++) { const a = k / NB * TAU + r() * .6, d = env.r[0] * (.45 + r() * .2), e = [env.c[0] + Math.cos(a) * d, env.c[1] - env.r[1] * .4, env.c[2] + Math.sin(a) * d];
       const m = [top[0] + (e[0] - top[0]) * .35, top[1] + (e[1] - top[1]) * .65, top[2] + (e[2] - top[2]) * .35];
       tubo4(W, [top, m, e], [.014 * H, .01 * H, .005 * H], BARK4.pino, seed + k * 7, H); }
+    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); formella4(W, r); return { wood: W.build(), leaf: L.build(), strati: true }; }   // [coerenza]
     const lobes = [[env.c[0], env.c[1] + env.r[1] * .3, env.c[2], .42]];
     for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + r() * .4, d = env.r[0] * (.6 + r() * .12); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .5) * env.r[1] * .5, env.c[2] + Math.sin(a) * d, .36 + r() * .08]); }
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r(), d = env.r[0] * .3; lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + env.r[1] * .15, env.c[2] + Math.sin(a) * d, .36]); }
@@ -9475,8 +9537,8 @@ var Render = (function () {
     return { wood: W.build(), leaf: L.build() };
   }
   function abeteModel(name) {
-    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [verde4]
-    if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: vdMat(), leafy: true }], top: H }; }   // [verde4]
+    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true }], top: H }; }   // [verde4]
+    if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true }], top: H }; }   // [verde4]
     if (name === 'Ombra4') {   // [verde4] l'ombra morbida sotto la chioma: un disco a terra che sfuma (raggio 1, si scala con la chioma)
       const geo = new THREE.PlaneGeometry(2, 2); geo.rotateX(-Math.PI / 2);
       const mat = new THREE.MeshBasicMaterial({ color: '#1a1814', alphaMap: blobT2(), transparent: true, opacity: typeof Chiarezza !== 'undefined' ? Chiarezza.ALBERO.ombra : .34,   /* [chiarezza] chiara e morbida */ depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
@@ -10437,8 +10499,19 @@ var Render = (function () {
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(3, .75), sm1);
     if (b.id === 'benzina') {   // [distributore1] l'insegna sulla fascia verso la strada, il totem dei prezzi sul ciglio
       const F = b.__fuel; sg.position.set(cx, F.y0 + 3.85, z0 - .12); sg.rotation.y = Math.PI;
-      const tx = F.px1 - .6, tz = F.pz0 - 1.2, tot = box(.4, 5, .4, sm('#d8d4cc')); tot.position.set(tx, F.y0 + 2.5, tz); addStatic(tot);
+      const tx = F.px1 - .6, tz = F.pz0 - 1.2;
+      if (LOOKV.nuovo) {   // [coerenza] il totem come un pezzo vero (STILE.md, regola 1): lo zoccolo, due montanti tondi a 8 lati, il pannello con lo spessore e la cornice, il tetto; il cartello dei prezzi sulle due facce, non un foglio nell'aria
+        const gr = sm('#4a4c50'), cr = sm('#d8d4cc'), Y = F.y0, T = new THREE.Group(), put = (m, x, y, z) => { m.position.set(x, y, z); T.add(m); return m; };
+        put(box(1.1, .3, .6, gr), 0, .15, 0); put(box(1.18, .06, .68, cr), 0, .33, 0);
+        [-.6, .6].forEach(o => { put(cyl(.065, .075, 3.9, 8, cr), o, 2.3, 0); put(cyl(.09, .09, .08, 8, gr), o, .4, 0); });
+        put(box(1.72, 2.36, .16, cr), 0, 3.5, 0); put(box(1.84, .12, .3, gr), 0, 4.74, 0);
+        T.position.set(tx, Y, tz); addStatic(T);
+        const pm = new THREE.MeshBasicMaterial({ map: priceTexture(), toneMapped: false });
+        [-1, 1].forEach(s2 => { const tsg = new THREE.Mesh(new THREE.PlaneGeometry(1.56, 2.14), pm); tsg.position.set(tx, Y + 3.5, tz + s2 * .085); if (s2 < 0) tsg.rotation.y = Math.PI; scene.add(tsg); });
+      } else {
+      const tot = box(.4, 5, .4, sm('#d8d4cc')); tot.position.set(tx, F.y0 + 2.5, tz); addStatic(tot);
       const tsg = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), new THREE.MeshBasicMaterial({ map: priceTexture(), toneMapped: false, side: THREE.DoubleSide })); tsg.position.set(tx, F.y0 + 5.2, tz - .22); scene.add(tsg);
+      }
     }
     else sg.position.set(cx, 3.2, z0 + d + 1.3);
     scene.add(sg); glow(sg.position.x, sg.position.y, sg.position.z, b.sign.c, 5).material.opacity = .45;
@@ -11819,8 +11892,8 @@ var Render = (function () {
     else if (kind === 'soldi') { for (let k = 0; k < 3; k++) { add2(box(.42, .06, .2, sm(k % 2 ? '#7aa06a' : '#a88a5a')), (k - 1) * .05, k * .07, (k - 1) * .03); add2(box(.08, .065, .21, sm('#e8e0c0')), (k - 1) * .05, k * .07, (k - 1) * .03); } }
     else if (kind === 'valigetta') { add2(box(.72, .52, .2, sm('#6a4428', { roughness: .5 })), 0, 0, 0); add2(box(.74, .04, .22, sm('#4a2a18')), 0, .1, 0); add2(box(.22, .08, .06, sm('#d8b040', { metalness: .8, roughness: .2 })), 0, .31, 0); [-.25, .25].forEach(o => add2(box(.08, .06, .22, sm('#d8b040', { metalness: .8, roughness: .2 })), o, .2, 0)); }
     const col = { pistola: '#ffd24a', lupara: '#ffd24a', mitra: '#ffd24a', molotov: '#ff8a30', munizioni: '#ffd24a', salute: '#7ee0a0', soldi: '#7ee0a0', valigetta: '#ff4fa3' }[kind] || '#ffffff';
-    const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .66, 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .85, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2;
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(.5, 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .18, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); disc.rotation.x = -Math.PI / 2;
+    const ring = new THREE.Mesh(anello5(.5, .66, 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: POLO8 ? .75 : .85, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(.5, POLO8 ? 32 : 20), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: POLO8 ? .1 : .18, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })); disc.rotation.x = -Math.PI / 2;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.45, .55, 2.4, 12, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); beam.position.y = 1.2;
     const glow2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: col, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false })); glow2.scale.set(1.8, 1.8, 1);
     const icon = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconTexture(kind, col), transparent: true, depthTest: false, depthWrite: false })); icon.scale.set(.75, .75, 1); icon.renderOrder = 998;
@@ -15586,12 +15659,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
     const mk2 = new THREE.Group();
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 14, 8, 1, true), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); beam.position.y = 7;
-    const ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1.2, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .8, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .05;
+    const ring = new THREE.Mesh(anello5(.9, 1.2, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: POLO8 ? .7 : .8, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .05;
     const dia = new THREE.Mesh(new THREE.OctahedronGeometry(.4, 0), new THREE.MeshBasicMaterial({ color: '#ffd24a', toneMapped: false })); dia.position.y = 3;
     mk2.add(beam, ring, dia); mk2.visible = false; scene.add(mk2); dyn.markers = { g: mk2, dia };
-    const aimR = new THREE.Mesh(new THREE.RingGeometry(.28, .4, 12), new THREE.MeshBasicMaterial({ color: '#ffe0b0', transparent: true, opacity: .6, depthWrite: false, toneMapped: false }));
+    const aimR = new THREE.Mesh(anello5(.28, .4, 12), new THREE.MeshBasicMaterial({ color: '#ffe0b0', transparent: true, opacity: .6, depthWrite: false, toneMapped: false }));
     aimR.rotation.x = -Math.PI / 2; aimR.position.y = .05; aimR.visible = false; scene.add(aimR); dyn.aim = aimR;
-    const mk3 = new THREE.Mesh(new THREE.RingGeometry(.32, .46, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: .9, depthWrite: false, toneMapped: false })); mk3.rotation.x = -Math.PI / 2; mk3.visible = false; scene.add(mk3); dyn.mark = mk3;
+    const mk3 = new THREE.Mesh(anello5(.32, .46, 16), new THREE.MeshBasicMaterial({ color: '#ffd24a', transparent: true, opacity: POLO8 ? .75 : .9, depthWrite: false, toneMapped: false })); mk3.rotation.x = -Math.PI / 2; mk3.visible = false; scene.add(mk3); dyn.mark = mk3;
     const laser = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#ff3a3a', transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); laser.visible = false; scene.add(laser); dyn.laser = laser;
     dyn.headlight = new THREE.SpotLight('#fff2c8', 0, 26, .55, .5, 1.5); scene.add(dyn.headlight); scene.add(dyn.headlight.target);
     cam.x = st.player.x; cam.y = st.player.y; cam.yaw = YAW; cam.dyaw = YAW; cam.drive = 0; cam.h = groundH(st.player.x, st.player.y);
@@ -16611,7 +16684,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!pg) {
       const plook = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
       pg = (window.Models && Models.charsReady() && Models.person(plook, 'player')) || person(plook, true); if (!pg.userData.model) pg.userData.voxelWait = !!window.Models; scene.add(pg); dyn.people.__player = pg;
-      const ring = new THREE.Mesh(new THREE.RingGeometry(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
+      const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta');   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)

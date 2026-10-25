@@ -35,7 +35,7 @@ var PezziCitta = (function () {
     if (nome === 'vetro') Object.assign(o, { roughness: .2, metalness: .1, transparent: true, opacity: .7 });
     if (nome === 'acqua') Object.assign(o, { roughness: .15, metalness: .05, transparent: true, opacity: .8 });
     if (nome === 'acquaFonda') Object.assign(o, { roughness: .08, metalness: .1 });
-    if (nome === 'acquaLuce') Object.assign(o, { roughness: .2, emissive: '#6aa8b4', emissiveIntensity: .25, transparent: true, opacity: .75, depthWrite: false });
+    if (nome === 'acquaLuce') Object.assign(o, { roughness: .2, emissive: '#6aa8b4', emissiveIntensity: .25, transparent: true, opacity: .55, depthWrite: false });
     if (nome === 'lampada') Object.assign(o, { emissive: '#ffd890', emissiveIntensity: .8 });
     if (nome === 'rosso') Object.assign(o, { roughness: .6 });
     if (nome === 'faro') Object.assign(o, { color: '#ff3a2a', emissive: '#ff2a1a', emissiveIntensity: 1 });   // la lampada rossa in cima alle antenne
@@ -1584,7 +1584,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       L([[R - .01, hv - .1], [R + .1, hv - .05], [R + .13, hv + .02], [R + .1, hv + .08], [R - .06, hv + .1], [R - .14, hv + .04], [R - .16, hv - .08]], 'pietraChiara', .18);
       L([[R - .03, hv - .14], [R + .02, hv - .09], [R + .01, hv - .06], [R - .05, hv - .11]], 'pietra', .18);   // l'ombra sotto il labbro
       add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acquaFonda', 0, .18 + hv - .02, 0, 0, ry);
-      const rg = new THREE.RingGeometry(R * .42, R * .5, 24); rg.rotateX(-PI / 2); add(g, rg, 'acquaLuce', 0, .18 + hv, 0).castShadow = false;   // l'increspatura chiara attorno al getto
+      [[.44, .025], [.6, .018]].forEach(([k, w]) => { const rg = new THREE.RingGeometry(R * (k - w), R * (k + w), 40); rg.rotateX(-PI / 2); add(g, rg, 'acquaLuce', 0, .18 + hv, 0).castShadow = false; });   // le increspature chiare attorno al getto: due fili sottili, non una fascia ([coerenza] STILE.md, regola 5)
       for (let k = 0; k < 4; k++) { const a = k * PI / 2 + PI / 4; cil(g, .018, .018, H - .4, 5, 'acqua', Math.cos(a) * .74, .18 + hv - .02, Math.sin(a) * .74); }   // i fili d'acqua dalla tazza
     } else {
     add(g, new THREE.CylinderGeometry(R, R, hv, n), 'pietraChiara', 0, .18 + hv / 2, 0, 0, ry);              // vasca
