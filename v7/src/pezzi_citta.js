@@ -23,7 +23,7 @@ var PezziCitta = (function () {
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
-    buio: '#1c1a18', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
+    buio: '#1c1a18', naso: '#f2e6c8', acquaFonda: '#1d4a58', acquaLuce: '#bfe6ec', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
     zinco: '#8c9298', piombo: '#64676a', castano: '#6a3d2c', castanoScuro: '#4a2c22', isabella: '#d6c49a', erba: '#6f7a4a', rotaia: '#8a8580',
     mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a', legnoScuro: '#5a4028', tela: '#a8936a'
   };
@@ -34,6 +34,8 @@ var PezziCitta = (function () {
     if (/ferro|ghisa|ruggine|alluminio|ottone|zinco|rotaia|lamiera/.test(nome)) Object.assign(o, { roughness: .5, metalness: .25 });   // (metallo pieno senza riflessi attorno viene nero)
     if (nome === 'vetro') Object.assign(o, { roughness: .2, metalness: .1, transparent: true, opacity: .7 });
     if (nome === 'acqua') Object.assign(o, { roughness: .15, metalness: .05, transparent: true, opacity: .8 });
+    if (nome === 'acquaFonda') Object.assign(o, { roughness: .08, metalness: .1 });
+    if (nome === 'acquaLuce') Object.assign(o, { roughness: .2, emissive: '#6aa8b4', emissiveIntensity: .25, transparent: true, opacity: .75, depthWrite: false });
     if (nome === 'lampada') Object.assign(o, { emissive: '#ffd890', emissiveIntensity: .8 });
     if (nome === 'rosso') Object.assign(o, { roughness: .6 });
     if (nome === 'faro') Object.assign(o, { color: '#ff3a2a', emissive: '#ff2a1a', emissiveIntensity: 1 });   // la lampada rossa in cima alle antenne
@@ -145,6 +147,9 @@ var PezziCitta = (function () {
     float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.68, .74, n2) * .5 * uz);   // sopra: sporco e licheni
     c *= 1. - step(.6, -nW.y) * .2; }
 #endif
+#ifdef TONE_MAPPING
+  { float l0 = dot(diffuseColor.rgb, vec3(.3, .59, .11)), l1 = dot(c, vec3(.3, .59, .11)); c *= mix(1., l0 / max(l1, 1e-3), .5) * .97; H *= .6; }   // [sguardo] meno rumore: la trama e l'usura a metà ampiezza, la massa si legge prima
+#endif
   diffuseColor.rgb = c; pzH = H; }`;
   }
   function veste(m, nome) {
@@ -181,6 +186,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     });
   }
   let LOD = false;   // acceso da make() con opzioni.lod = 'basso'
+  const SGUARDO = !/[?&]look=vecchio\b/.test(typeof location !== 'undefined' ? location.search : '');   // [sguardo] il look nuovo (?look=vecchio: com'era)
   const GC = {};     // geometrie condivise per chiave (pilastri, traversine, merli... la stessa forma non si rifà)
   function geoCache(k, f) { return GC[k] || (GC[k] = f()); }
   function add(g, geo, m, x, y, z, rx, ry, rz) { const o = new THREE.Mesh(geo, typeof m === 'string' ? mat(m) : m); o.position.set(x || 0, y || 0, z || 0); o.rotation.set(rx || 0, ry || 0, rz || 0); o.castShadow = o.receiveShadow = true; g.add(o); return o; }
@@ -842,11 +848,14 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   DOC.scalinata = { w: 4, dislivello: 8, pianerottoli: 1, lampada: true, pedata: .36, nota: 'scalinata parametrica che sale lungo +X: gradini di pietra (alzata ~17 cm), rampe divise da pianerottoli di 1,6 m, arrivo in cima, muri d\'ambito di tufo con la copertina inclinata, corrimano di ferro sul muro, lampioni di ghisa sui pianerottoli, fascia d\'umido al piede dei muri' };
   T.scalinata = o => {
     o = def(o, DOC.scalinata); const g = new THREE.Group(), H = o.dislivello, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata, nf = Math.max(1, o.pianerottoli + 1), lp = 1.6, W = o.w;
-    const pts = [[0, 0]], rampe = [], pian = []; let x = 0, y = 0;
+    const pts = [[0, 0]], rampe = [], pian = [], naso = []; let x = 0, y = 0;
     for (let f = 0; f < nf; f++) { const k = Math.round(n * (f + 1) / nf) - Math.round(n * f / nf), xb = x, yb = y;
-      for (let i = 0; i < k; i++) { y += a; if (LOD) pts.push([x, y]); else pts.push([x, y - .045], [x + .03, y - .005], [x + .06, y]); x += pd; pts.push([x, y]); }   // [pezzi2] lo spigolo del gradino consumato
+      for (let i = 0; i < k; i++) { y += a; naso.push([x, y]); if (LOD) pts.push([x, y]); else pts.push([x, y - .045], [x + .03, y - .005], [x + .06, y]); x += pd; pts.push([x, y]); }   // [pezzi2] lo spigolo del gradino consumato
       rampe.push([xb, yb, x - pd, y]); const lx = f < nf - 1 ? lp - pd : 1.2; x += lx; pts.push([x, y]); pian.push([x - lx - pd, x, y]); }
     pts.push([x, 0]); profilo(g, pts, W, 'pietraChiara', 0, 0, 0);                                  // i gradini e la massa sotto
+    if (!LOD && SGUARDO && naso.length) {   // [sguardo] la grammatica delle scale: il filo chiaro sul ciglio di ogni gradino (una mesh sola), il gradino si conta
+      const sh = naso.map(([nx, ny]) => { const q = new THREE.Shape(); q.moveTo(nx - .01, ny - .035); q.lineTo(nx + .075, ny - .035); q.lineTo(nx + .075, ny + .012); q.lineTo(nx - .01, ny + .012); return q; });
+      const ng = new THREE.ExtrudeGeometry(sh, { depth: W - .08, bevelEnabled: false }); ng.translate(0, 0, -(W - .08) / 2); ng.computeVertexNormals(); add(g, ng, 'naso', 0, 0, 0).castShadow = false; }
     const top = [[0, 0]]; rampe.forEach((r, f) => { top.push([r[0], r[1] + a + 1]); top.push([r[2], r[3] + 1]); top.push([pian[f][1], r[3] + 1]); }); top.push([x, 0]);
     for (const s of [-1, 1]) { profilo(g, top, .45, 'tufo', 0, 0, s * (W / 2 + .225));                // muri d'ambito
     }   // (la fascia d'umido la disegna il materiale) [pezzi2]
@@ -1569,9 +1578,18 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   T.fontana = o => {
     o = def(o, DOC.fontana); const g = new THREE.Group(), R = o.r, n = Math.max(4, o.lati), H = o.h, hv = .6, ry = PI / n;
     add(g, new THREE.CylinderGeometry(R + .5, R + .55, .18, n), 'pietra', 0, .09, 0, 0, ry);                  // gradino
+    if (SGUARDO && !LOD) {   // [sguardo] la vasca modellata: lo zoccolo, il ventre, il labbro arrotondato che sporge (più scuro sotto), lo specchio d'acqua scuro col riflesso chiaro
+      const L = (pts, m, y) => add(g, new THREE.LatheGeometry(pts.map(q => new THREE.Vector2(q[0], q[1])), n, ry + PI / 2), m, 0, y, 0);
+      L([[0, 0], [R + .06, 0], [R + .06, .1], [R - .02, .15], [R - .05, hv - .16], [R - .01, hv - .1]], 'pietraChiara', .18);
+      L([[R - .01, hv - .1], [R + .1, hv - .05], [R + .13, hv + .02], [R + .1, hv + .08], [R - .06, hv + .1], [R - .14, hv + .04], [R - .16, hv - .08]], 'pietraChiara', .18);
+      L([[R - .03, hv - .14], [R + .02, hv - .09], [R + .01, hv - .06], [R - .05, hv - .11]], 'pietra', .18);   // l'ombra sotto il labbro
+      add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acquaFonda', 0, .18 + hv - .02, 0, 0, ry);
+      const rg = new THREE.RingGeometry(R * .42, R * .5, 24); rg.rotateX(-PI / 2); add(g, rg, 'acquaLuce', 0, .18 + hv, 0).castShadow = false;   // l'increspatura chiara attorno al getto
+      for (let k = 0; k < 4; k++) { const a = k * PI / 2 + PI / 4; cil(g, .018, .018, H - .4, 5, 'acqua', Math.cos(a) * .74, .18 + hv - .02, Math.sin(a) * .74); }   // i fili d'acqua dalla tazza
+    } else {
     add(g, new THREE.CylinderGeometry(R, R, hv, n), 'pietraChiara', 0, .18 + hv / 2, 0, 0, ry);              // vasca
     add(g, new THREE.CylinderGeometry(R + .08, R + .08, .1, n), 'pietraChiara', 0, .18 + hv + .05, 0, 0, ry);   // orlo
-    add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acqua', 0, .18 + hv + .02, 0, 0, ry);
+    add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acqua', 0, .18 + hv + .02, 0, 0, ry); }
     tornito(g, [[0, 0], [.42, 0], [.42, .2], [.28, .35], [.22, H - .8], [.3, H - .6], [.25, H - .5], [0, H - .5]], 12, 'pietraChiara', 0, .18 + hv, 0);   // fusto
     tornito(g, [[0, 0], [.2, 0], [.75, .25], [.8, .35], [0, .35]], 14, 'pietraChiara', 0, .18 + hv + H - .6, 0);   // tazza
     tornito(g, [[0, 0], [.14, 0], [.18, .15], [.08, .3], [.1, .38], [0, .45]], 10, 'pietraChiara', 0, .18 + hv + H - .25, 0);   // pomo
