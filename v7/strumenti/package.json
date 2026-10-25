@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "Attrezzi della build: [tasselli] strumenti/tassella.js (meshoptimizer per i vettori, sharp per le tessiture WebP). npm install qui.",
+  "devDependencies": {
+    "meshoptimizer": "0.22.0",
+    "sharp": "0.33.5"
+  }
+}

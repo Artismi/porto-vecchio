@@ -1002,7 +1002,7 @@
   // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
   // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
   const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }

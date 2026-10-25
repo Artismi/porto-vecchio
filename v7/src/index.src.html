@@ -324,6 +324,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '__IMPRONTA_MONDO__';</script>
+<script>window.PV_IMPRONTA_TASS = '__IMPRONTA_TASS__';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -400,6 +401,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="pavimenti">/*pavimenti.js*/</script>   <!-- [pavimenti] le superfici a terra -->
 <script data-m="pulizia_rumore">/*pulizia_rumore.js*/</script>   <!-- [pulizia] il rumore: le regole sul registro di pulizia2 -->
 <script data-m="anelli">/*anelli.js*/</script>   <!-- [anelli] il caricamento ad anelli: i lavori a pezzi, la coda, le sfumature -->
+<script data-m="tasselli">/*tasselli.js*/</script>   <!-- [tasselli] la città cotta a tasselli (?tasselli=1): il caricatore, lo streaming -->
+<script type="text/plain" id="tasselli-lavoratore">/*meshopt_decoder.js*/
+/*tasselli_lavoratore.js*/</script>   <!-- [tasselli] il lavoratore (Web Worker, dal testo): meshopt e gzip fuori dal filo della pagina -->
 <script data-m="render">/*render.js*/</script>
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>
