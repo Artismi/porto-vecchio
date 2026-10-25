@@ -22259,6 +22259,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '9995d836d75199a1';</script>
+<script>window.PV_IMPRONTA_TASS = '75c99c118f50f86c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <script src="mondo_cotto.js"></script>
 <script data-m="cotto">/* Porto Vecchio — [cotto] IL MONDO COTTO NELLA BUILD.
    La mappa (world_cittanuova.js: strade, lotti, case, caselle) e la rete dei tetti (tetti.js, tetti_vissuti.js) nascono sempre uguali
@@ -64236,6 +64237,592 @@ var Anelli = (function () {
 })();
 if (typeof window !== 'undefined') window.Anelli = Anelli;
 </script>   <!-- [anelli] il caricamento ad anelli: i lavori a pezzi, la coda, le sfumature -->
+<script data-m="tasselli">/* Porto Vecchio — [tasselli] LA CITTÀ A TASSELLI (pilota: ?tasselli=1).
+   La città ferma (case fuse, tetti, strade, marciapiedi, arredi, segni, costa) non si costruisce più nel browser: strumenti/tassella.js
+   la costruisce una volta nella build, la taglia in settori di 48 m (gli stessi di anelli/fusione1) e la scrive in tasselli/. Qui:
+   - all'avvio (prima di R.init) si legge tasselli/indice.json; se l'impronta non è quella della pagina (PV_IMPRONTA_TASS, build.py)
+     si costruisce come prima, tutto;
+   - render.js salta le fasi della città (faseViva: restano cielo, isola coi blocchi del terreno, acqua) e chiama monta(): le uniform
+     di modulo che la città usa (FD1, la tavolozza), le luci e le pozze di luce (dati), la sagoma di tutta l'isola (il lontano);
+   - i tasselli si scaricano per distanza dal punto guardato (prima l'anello vicino, poi verso fuori, quello davanti alla camera
+     prima), in un lavoratore (gzip, meshopt, la posizione rifatta a 32 bit) e salgono alla scheda video a fette (un tetto di vertici e
+     di millisecondi per fotogramma, più largo finché manca l'anello vicino); i vettori della pagina si liberano dopo l'invio;
+   - oltre l'anello lontano il tassello si butta (geometrie via, la sagoma torna);
+   - la gente, i mezzi, il bottino, gli interni, il terreno a blocchi e il verde restano del gioco, come prima.
+   Il gioco (camminare, quote, porte, tetti, missioni) legge i dati del mondo, non le mesh (PESO.md §7.5).
+   window.__tasselli: lo stato (tasselli in scena, in volo, byte, vertici, quando è arrivato l'anello vicino). */
+var Tasselli = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
+  const CHIESTO = !STUDIO && /[?&]tasselli=1\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined';
+  const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
+  const BASE = 'tasselli/', V = '?v=' + (IMP || '0');
+  const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
+  const LOG = /[?&]tassellilog\b/.test(Q);
+  const log = (...a) => { if (LOG) console.log('[tasselli]', ...a); };
+  // le fasi di R.init che restano al gioco: il cielo, l'isola (la base e i blocchi del terreno), l'acqua
+  // e quelle che non sono città: scena (i dati dei segni e della rete), particles, fx, debris (pioggia, colpi, macerie), post (il passaggio finale)
+  const VIVE = new Set(['sky', 'island', 'water', 'scena', 'particles', 'fx', 'debris', 'post']);
+  // l'anello vicino è quello che la camera vede: l'impronta a terra del suo campo (fino alla nebbia, oltre c'è solo il colore della nebbia)
+  // più un margine; poi si scarica fino a «carica» dal punto guardato, si butta oltre «butta». ?tasselliraggio=k scala i raggi (le prove)
+  const KR = +((Q.match(/[?&]tasselliraggio=([\d.]+)/) || [])[1] || 1);
+  const CFG = {
+    margine: TEL ? 24 : 40,        // attorno all'impronta della camera: l'anello vicino (copre il riquadro dell'ombra del sole)
+    carica: (TEL ? 130 : 220) * KR, // fin dove si scarica, dal punto guardato (più lo sguardo davanti)
+    butta: (TEL ? 200 : 320) * KR,  // oltre questo il tassello si butta
+    volo: TEL ? 3 : 5,             // quanti tasselli in volo (scarico + decodifica) insieme
+    vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
+    ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
+    sguardo: 60,
+  };
+  let IND = null, ON = false, CTX = null;
+  const ST = { on: false, motivo: '', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0 };
+  // l'indice, prima di R.init (main.js aspetta questa promessa con i kit)
+  const pronto = !CHIESTO ? Promise.resolve(false) : fetch(BASE + 'indice.json' + V).then(r => r.ok ? r.json() : null).then(j => {
+    if (!j) { ST.motivo = 'indice mancante'; return false; }
+    if (j.versione !== 1 || !IMP || j.impronta !== IMP) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
+    IND = j; ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
+  }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); return false; });
+
+  // ---------------- il lavoratore ----------------
+  // più lavoratori (2 sul telefono, 3 sul computer): ogni richiesta va a quello con meno lavori in coda
+  let LAV = null, NID = 0; const ATTESE = new Map();
+  function lavoratori() {
+    if (LAV) return LAV;
+    const el = document.getElementById('tasselli-lavoratore'), src = el ? el.textContent : '', u = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    const n = Math.max(1, Math.min(TEL ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));
+    LAV = []; for (let i = 0; i < n; i++) { const w = new Worker(u); w.coda = 0;
+      w.onmessage = e => { const m = e.data, p = ATTESE.get(m.id); w.coda--; if (!p) return; ATTESE.delete(m.id); if (m.err) p[1](new Error(m.err)); else p[0](m); };
+      w.onerror = e => console.warn('[tasselli] lavoratore:', e.message || e); LAV.push(w); }
+    return LAV;
+  }
+  const chiedi = (msg, tr) => new Promise((ok, ko) => { const id = ++NID; ATTESE.set(id, [ok, ko]); const w = lavoratori().reduce((a, b) => b.coda < a.coda ? b : a); w.coda++; w.postMessage(Object.assign({ id }, msg), tr || []); });
+  // le immagini 2D si aprono qui (createImageBitmap decodifica fuori dal filo della pagina): i lavoratori restano ai tasselli
+  const immagine = (u, capovolgi) => fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.blob(); })
+    .then(bl => createImageBitmap(bl, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: capovolgi ? 'flipY' : 'from-image' })).then(bmp => ({ bmp }));
+  const url = f => new URL(BASE + f + V, location.href).href;
+
+  // ---------------- valori, tessiture, materiali ----------------
+  const TEX = new Map(), TEXP = new Map(), MAT = new Map(); let TEXI = null;
+  const COL = ['color', 'emissive', 'specular', 'sheenColor', 'attenuationColor'];
+  const TXP = ['wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'encoding', 'format', 'type', 'generateMipmaps', 'unpackAlignment', 'rotation', 'matrixAutoUpdate', 'internalFormat'];
+  const MK = ['map', 'emissiveMap', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap'];
+  const TA = { Float32Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Uint8ClampedArray, Float64Array };
+  function tessitura(i) {   // la tessitura subito (vuota), i pixel quando arrivano: tessituraPronta(i) è la promessa
+    let t = TEX.get(i); if (t) return t;
+    if (!TEXI) TEXI = new Map(IND.tessiture.map(q => [q.i, q]));   // le tessiture per numero (le uguali sono già unite: i buchi restano)
+    const r = TEXI.get(i); if (!r) { console.warn('[tasselli] tessitura mancante', i); const v = new THREE.Texture(); TEX.set(i, v); TEXP.set(i, Promise.resolve()); return v; }
+    if (r.k === 'array') t = new THREE.DataArrayTexture(null, 1, 1, 1);
+    else if (r.k === 'data' && /\.bin$/.test(r.file || '')) t = new THREE.DataTexture(null, 1, 1);
+    else t = new THREE.Texture();
+    TXP.forEach(k => { if (r[k] !== undefined) t[k] = r[k]; });
+    t.offset.fromArray(r.offset); t.repeat.fromArray(r.repeat); t.center.fromArray(r.center); if (r.matrix) t.matrix.fromArray(r.matrix);
+    t.flipY = r.da === 'gpu' ? false : !!r.flipY; t.premultiplyAlpha = false; t.userData = Object.assign({}, r.ud, { tassello: true });
+    TEX.set(i, t);
+    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file;
+    let p;
+    if (!file) p = Promise.resolve();
+    else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => {
+      t.image = { data: m.px, width: tel ? r.tel.w : r.w, height: tel ? r.tel.h : r.h, depth: r.d }; t.onUpdate = () => { t.image.data = null; }; t.needsUpdate = true; });
+    else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => {
+      const T = TA[r.dati] || Uint8Array, a = new T(m.buf); t.image = { data: a, width: r.w, height: r.h, depth: r.d || 1 }; t.needsUpdate = true; });
+    else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => {
+      t.image = m.bmp; t.onUpdate = () => { const b = t.image; if (b && b.close) { t.image = { width: b.width, height: b.height }; b.close(); } }; t.needsUpdate = true; });
+    TEXP.set(i, p.catch(e => console.warn('[tasselli] tessitura', i, e)));
+    return t;
+  }
+  function valore(v) {
+    if (v === null || v === undefined || typeof v !== 'object') return v;
+    if (v.c) return new THREE.Color(v.c[0], v.c[1], v.c[2]);
+    if (v.v) return v.v.length === 2 ? new THREE.Vector2().fromArray(v.v) : v.v.length === 3 ? new THREE.Vector3().fromArray(v.v) : new THREE.Vector4().fromArray(v.v);
+    if (v.m) return (v.n === 3 ? new THREE.Matrix3() : new THREE.Matrix4()).fromArray(v.m);
+    if ('t' in v) return v.t === null ? null : tessitura(v.t);
+    if (v.a) return v.a.map(valore);
+    if (v.f) return new (TA[v.k] || Float32Array)(v.f);
+    if (v.o) { const o = {}; for (const k in v.o) o[k] = valore(v.o[k]); return o; }
+    return null;
+  }
+  const uniform = u => { if (!u) return { value: null }; if (u.live && CTX.R.uni[u.live]) return CTX.R.uni[u.live]; return { value: valore(u.val) }; };
+  function texDi(v, out) { if (!v || typeof v !== 'object') return; if ('t' in v && v.t !== null) out.add(v.t); if (v.a) v.a.forEach(x => texDi(x, out)); if (v.o) for (const k in v.o) texDi(v.o[k], out); }
+  function texDelMateriale(r) { const s = new Set(); MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) s.add(r[k]); }); ['uni', 'cuni'].forEach(q => { if (r[q]) for (const k in r[q]) { const u = r[q][k]; if (u && !u.live) texDi(u.val, s); } }); return s; }
+  function materiale(i) {
+    let m = MAT.get(i); if (m) return m;
+    const r = IND.materiali[i], S = IND.stringhe;
+    if (r.type === 'ShaderMaterial' || r.type === 'RawShaderMaterial') {
+      const uni = {}; for (const k in r.uni) uni[k] = uniform(r.uni[k]);
+      m = new THREE[r.type]({ vertexShader: S[r.vs], fragmentShader: S[r.fs], uniforms: uni, defines: r.defines || {} });
+      if (r.extensions) Object.assign(m.extensions, r.extensions); if (r.lights !== undefined) m.lights = r.lights; if (r.fog !== undefined) m.fog = r.fog;
+    } else m = new (THREE[r.type] || THREE.MeshStandardMaterial)();
+    COL.forEach(k => { if (r[k] && m[k]) m[k].setRGB(r[k][0], r[k][1], r[k][2]); });
+    for (const k in r) { if (COL.includes(k) || MK.includes(k) || ['type', 'name', 'ud', 'vs', 'fs', 'uni', 'defines', 'extensions', 'lights', 'fog', 'cvs', 'cfs', 'cuni', 'cdef', 'key', 'clip', 'normalScale', 'obcErr', 'glslVersion'].includes(k)) continue;
+      if (typeof r[k] === 'number' || typeof r[k] === 'boolean') m[k] = r[k]; }
+    if (r.fog !== undefined && !m.isShaderMaterial) m.fog = r.fog;
+    if (r.normalScale && m.normalScale) m.normalScale.fromArray(r.normalScale);
+    MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) m[k] = tessitura(r[k]); });
+    m.name = r.name || ''; m.userData = Object.assign({}, r.ud, { tassello: true });
+    if (r.cvs !== undefined) {   // lo shader già trasformato nella build (onBeforeCompile del gioco): lo stesso testo, le stesse uniform
+      const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '');
+      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); };
+      m.customProgramCacheKey = () => key;
+    }
+    // chi il gioco accende di notte (render.js frame): le finestre delle case fuse, i fondali
+    if (r.notte === 'fd1' && CTX.R.FD1) CTX.R.FD1.emis.push(m);
+    else if (r.notte === 'fondale' && CTX.R.dyn) (CTX.R.dyn.backdropMats = CTX.R.dyn.backdropMats || []).push(m);
+    m.needsUpdate = true; MAT.set(i, m); return m;
+  }
+  const texPronte = ids => Promise.all([...ids].map(i => { tessitura(i); return TEXP.get(i); }));
+
+  // ---------------- la sagoma ----------------
+  let SAG = null;   // { mesh, mask (DataTexture: 255 = il tassello c'è), data }
+  async function sagoma() {
+    if (!IND.sagoma) return;
+    const m = await chiedi({ op: 'tassello', url: url(IND.sagoma.file) }), A = {}; m.testa.attr.forEach((a, i) => A[a.nome] = [m.vettori[i], a]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(A.position[0], 3)); g.setAttribute('normal', new THREE.BufferAttribute(A.normal[0], 3, A.normal[1].norm));
+    g.setAttribute('color', new THREE.BufferAttribute(A.color[0], 3, A.color[1].norm)); g.setAttribute('tas', new THREE.BufferAttribute(A.tas[0], 1)); g.computeBoundingSphere();
+    const W = Math.max(1, 1 << Math.ceil(Math.log2(IND.tasselli.length + 1))), data = new Uint8Array(W * 4), mask = new THREE.DataTexture(data, W, 1); mask.needsUpdate = true;
+    const mat = new THREE.MeshLambertMaterial({ vertexColors: true }), U = { value: mask };
+    mat.onBeforeCompile = sh => { sh.uniforms.uTas = U;
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float tas; uniform sampler2D uTas; varying float vTas;').replace('#include <begin_vertex>', `#include <begin_vertex>\nvTas = tas > 65000. ? 0. : texture2D(uTas, vec2((tas + .5) / ${W}., .5)).r;`);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vTas;\n' + (typeof Anelli !== 'undefined' ? Anelli.RETINO : 'float an1D() { return .5; }')).replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (vTas > an1D()) discard;'); };
+    mat.customProgramCacheKey = () => 'tasSagoma|' + W;
+    const mesh = new THREE.Mesh(g, mat); mesh.name = 'tasselli_sagoma'; mesh.matrixAutoUpdate = false; mesh.userData.keep = true; mesh.userData.thin2 = 1; mesh.raycast = () => { };
+    CTX.scene.add(mesh); SAG = { mesh, mask, data };
+    [g.attributes.position, g.attributes.normal, g.attributes.color, g.attributes.tas].forEach(a => a.onUpload(libera));
+  }
+  // la sagoma sfuma via dal tassello arrivato (e torna dove il tassello si butta): lo stesso retino degli anelli
+  function sagomaK(ti, k) { if (!SAG) return; SAG.data[ti * 4] = Math.round(255 * k); SAG.mask.needsUpdate = true; }
+
+  // ---------------- i tasselli ----------------
+  // Due anelli. Il tassello compresso (in gzip, ~100-300 KB) si scarica fino a «carica» dal punto guardato e resta nella pagina finché
+  // non va oltre «butta»; si apre (lavoratore) e sale alla scheda video solo quando entra nell'impronta della camera (più il margine:
+  // l'anello vicino), e lascia la scheda video quando ne esce del doppio del margine. Così la memoria della scheda video segue quello che
+  // si vede, la rete quello che sta intorno.
+  function libera() { this.array = new this.array.constructor(0); }   // [memoria] dopo l'invio alla scheda video la copia della pagina non serve
+  const noRay = () => { };
+  // per tassello: st 0 niente, 1 si scarica, 2 scaricato (zip), 3 si apre, 4 aperto (da montare), 5 in scena
+  const STATO = [];
+  const PRONTI = [], TIENI = new Set();   // TIENI: gli strumenti (finisci) li vogliono in scena
+  function centro(t) { return [(t.i + .5) * IND.cella, (t.j + .5) * IND.cella]; }
+  function dist(t, x, z) { const c = IND.cella, dx = Math.max(t.i * c - x, 0, x - (t.i + 1) * c), dz = Math.max(t.j * c - z, 0, z - (t.j + 1) * c); return Math.hypot(dx, dz); }
+  async function scarica(ti) {
+    const t = IND.tasselli[ti], S = STATO[ti]; S.st = 1; ST.inVolo++;
+    try {
+      const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status);
+      const ab = await r.arrayBuffer(); ST.byte += ab.byteLength; if (S.vicino) ST.byteVicino += ab.byteLength;
+      if (S.st !== 1) return; S.zip = ab; S.st = 2;
+    } catch (e) { console.warn('[tasselli] tassello', t.file, e); S.st = 0; S.errori = (S.errori || 0) + 1; }
+    finally { ST.inVolo--; }
+  }
+  async function apri(ti) {
+    const S = STATO[ti]; S.st = 3; ST.inApertura++;
+    try {
+      const buf = S.zip.slice(0), m = await chiedi({ op: 'tassello', buf }, [buf]); ST.decodMs += m.ms[1];
+      const ids = new Set(); m.testa.mesh.forEach(r => { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => ids.add(q))); });
+      await texPronte(ids);
+      if (S.st !== 3) return;   // uscito dalla vista nel frattempo
+      S.dati = m; S.st = 4; S.k = 0; PRONTI.push(ti);
+    } catch (e) { console.warn('[tasselli] apertura', IND.tasselli[ti].file, e); S.st = S.zip ? 2 : 0; S.errori = (S.errori || 0) + 1; }
+    finally { ST.inApertura--; }
+  }
+  // monta un pezzo del tassello (mesh dopo mesh) dentro i tetti: torna true quando ha finito
+  function monta1(ti, tetto, quota) {
+    const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
+    if (!S.attr) S.attr = new Map();
+    const attr = i => { let a = S.attr.get(i); if (a) return a; const d = T.attr[i], v = m.vettori[i];
+      a = d.idx ? new THREE.BufferAttribute(v, 1) : (d.nome === 'instanceMatrix' || d.nome === 'instanceColor') ? new THREE.InstancedBufferAttribute(v, d.s) : new THREE.BufferAttribute(v, d.s, d.norm);
+      a.onUpload(libera); S.attr.set(i, a); return a; };
+    let vf = 0;
+    while (S.k < T.mesh.length) {
+      if (performance.now() > tetto || vf > quota) return false;
+      const r = T.mesh[S.k++], g = new THREE.BufferGeometry();
+      for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
+      if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
+      if (r.g.gr) r.g.gr.forEach(q => g.addGroup(q[0], q[1], q[2]));
+      if (r.g.dr) g.setDrawRange(r.g.dr[0], r.g.dr[1]);
+      if (r.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5]));
+      if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else g.computeBoundingSphere();
+      const mat = Array.isArray(r.m) ? r.m.map(materiale) : materiale(r.m);
+      let o;
+      if (r.inst) { o = new THREE.InstancedMesh(g, mat, r.inst.n); o.instanceMatrix = attr(r.inst.m); if (r.inst.c !== null) o.instanceColor = attr(r.inst.c); }
+      else o = new THREE.Mesh(g, mat);
+      if (r.mx) { o.matrix.fromArray(r.mx); o.matrix.decompose(o.position, o.quaternion, o.scale); }
+      o.matrixAutoUpdate = false; o.updateMatrixWorld(true);
+      o.castShadow = r.cs; o.receiveShadow = r.rs; o.renderOrder = r.ro; o.layers.mask = r.ly; o.frustumCulled = r.fc; o.name = r.nm;
+      if (r.cdm !== null && r.cdm !== undefined) o.customDepthMaterial = materiale(r.cdm);
+      if (r.cdi !== null && r.cdi !== undefined) o.customDistanceMaterial = materiale(r.cdi);
+      o.raycast = noRay; o.userData.tassello = ti; o.userData.thin2 = 1;
+      sc.add(o); (S.mesh = S.mesh || []).push(o);
+      const nv = g.attributes.position.count; vf += nv; ST.vertici += nv; ST.mesh++;
+    }
+    S.attr = null; S.dati = null; S.st = 5; ST.inScena++;
+    ombre();
+    if (typeof Anelli !== 'undefined' && Anelli.sfuma) Anelli.sfuma(k => sagomaK(ti, k), .7); else sagomaK(ti, 1);
+    return true;
+  }
+  // [peso] le ombre in cache (peso_ombre.js) si ricuociono quando cambia chi fa ombra sul livello della camera: le sagome d'ombra delle
+  // case fuse stanno sul livello 1 e non le vede. Un tassello che arriva o se ne va la fa ricuocere (spegnere e riaccendere: firma rifatta)
+  function ombre() { if (typeof PesoOmbre !== 'undefined' && PesoOmbre.attivo) { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
+  // via dalla scheda video (resta il compresso, se c'è)
+  function smonta(ti) {
+    const S = STATO[ti]; if (S.st === 5) ST.inScena--;
+    if (S.mesh) S.mesh.forEach(o => { CTX.scene.remove(o); o.geometry.dispose(); ST.vertici -= o.geometry.attributes.position.count; ST.mesh--; });
+    S.mesh = null; S.dati = null; S.attr = null; S.st = S.zip ? 2 : 0; ST.smontati++; sagomaK(ti, 0);
+    ombre();
+    const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
+  }
+  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.st = 0; ST.buttati++; }
+  // ---------------- a ogni fotogramma ----------------
+  let lastX = null, lastZ = null, fx = 0, fz = 0;
+  // l'impronta della camera a terra: i raggi degli angoli e del centro dello schermo fino al suolo (o fino alla nebbia, se guardano
+  // sopra l'orizzonte), più la camera stessa; la scatola, allargata del margine
+  const IMV = new THREE.Vector3(), IMF = { x0: 0, z0: 0, x1: 0, z1: 0 }, IMF2 = { x0: 0, z0: 0, x1: 0, z1: 0 };
+  function impronta() {
+    const cam = CTX.camera, P = cam.position, ff = CTX.scene.fog ? CTX.scene.fog.far : 300, gy = CTX.cam.h || 0;
+    cam.updateMatrixWorld(); let x0 = P.x, x1 = P.x, z0 = P.z, z1 = P.z;
+    for (const [nx, ny] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, 1], [0, -1], [-1, 0], [1, 0]]) {
+      IMV.set(nx, ny, .5).unproject(cam).sub(P).normalize(); let t = IMV.y < -1e-3 ? (gy - P.y) / IMV.y : ff; t = Math.max(0, Math.min(t, ff));
+      const px = P.x + IMV.x * t, pz = P.z + IMV.z * t; if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+    const m = CFG.margine; IMF.x0 = x0 - m; IMF.x1 = x1 + m; IMF.z0 = z0 - m; IMF.z1 = z1 + m;
+    IMF2.x0 = x0 - 2 * m - 8; IMF2.x1 = x1 + 2 * m + 8; IMF2.z0 = z0 - 2 * m - 8; IMF2.z1 = z1 + 2 * m + 8; return IMF;
+  }
+  const inImpronta = (t, F) => { const c = IND.cella; return (t.i + 1) * c > F.x0 && t.i * c < F.x1 && (t.j + 1) * c > F.z0 && t.j * c < F.z1; };
+  function tick() {
+    requestAnimationFrame(tick);
+    if (!CTX) return;
+    const t0 = performance.now(), c = CTX.cam, x = c.x, z = c.y;
+    { const P = CTX.camera.position; if (Math.hypot(P.x - x, P.z - z) > 600) return; }   // la camera non è ancora andata al suo posto (il primo fotogramma)
+    if (KR === 0) { if (ST.vicinoT === null) { ST.vicinoT = Math.round(performance.now()); (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; } return; }   // ?tasselliraggio=0: nessun tassello, solo la sagoma (la misura di tutto il resto)
+    if (lastX !== null) { const dx = x - lastX, dz = z - lastZ, L = Math.hypot(dx, dz); if (L > .05 && L < 30) { fx += (dx / L - fx) * .1; fz += (dz / L - fz) * .1; } }
+    lastX = x; lastZ = z;
+    const vicinoFatto = ST.vicinoT !== null, F = impronta();
+    // la vista: si apre quello che entra nell'impronta, si smonta quello che esce dall'impronta larga; la rete: per distanza (il bordo del
+    // settore) meno un premio per quello davanti a dove si va, prima quello della vista
+    const L = [];
+    IND.tasselli.forEach((t, ti) => { const S = STATO[ti], d = dist(t, x, z), vede = inImpronta(t, F);
+      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) smonta(ti);
+      if (d > CFG.butta && !vede && S.st && !TIENI.has(ti)) { butta(ti); return; }
+      if (vede && S.st === 2 && ST.inApertura < CFG.volo) apri(ti);
+      if (S.st || (d > CFG.carica && !vede) || (S.errori || 0) > 3) return;
+      const [cx, cz] = centro(t), ax = cx - x, az = cz - z, l = Math.hypot(ax, az) || 1, dot = (ax * fx + az * fz) / l;
+      L.push([(vede ? -1e4 : 0) + d - CFG.sguardo * Math.max(0, dot), ti, vede]); });
+    L.sort((a, b) => a[0] - b[0]);
+    for (const [, ti, vede] of L) { if (ST.inVolo >= CFG.volo) break; STATO[ti].vicino = !vicinoFatto && vede; scarica(ti); }
+    // montare: il più vicino prima, dentro i tetti (larghi finché manca l'anello vicino)
+    if (PRONTI.length) {
+      PRONTI.sort((a, b) => dist(IND.tasselli[a], x, z) - dist(IND.tasselli[b], x, z));
+      const tetto = t0 + (vicinoFatto ? CFG.ms : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
+      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
+    }
+    if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
+      let tutti = true, n = 0; IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F)) { n++; if (STATO[ti].st !== 5) tutti = false; } });
+      if (tutti) { ST.vicinoT = Math.round(performance.now()); ST.vicinoN = n; (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; log('anello vicino in scena:', n, 'tasselli', (ST.byteVicino / 1048576).toFixed(2), 'MB', ST.vicinoT, 'ms'); }
+    }
+    const ms = performance.now() - t0; ST.creaMs += ms; if (ms > ST.picco) ST.picco = +ms.toFixed(1);
+  }
+  function monta(ctx) {
+    CTX = ctx; ST.t0 = Math.round(performance.now());
+    IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    const R = ctx.R;
+    // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
+    for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
+      if (v && typeof v === 'object' && 't' in v) { if (v.t !== null) u.value = tessitura(v.t); }
+      else if (u.value === null || u.value === undefined || (u.value && u.value.isVector2 && k === 'PAL1.s')) u.value = valore(v); }
+    if (IND.uni.__fd1W && R.FD1) R.FD1.W = IND.uni.__fd1W;
+    if (R.ombre1) R.ombre1();   // le sagome d'ombra delle case fuse stanno sul livello 1: le camere delle ombre lo vedono (come fus1Gen)
+    // le luci e le pozze di luce (le lampade dei lampioni, delle vetrine: la regia delle luci del gioco le accende di notte)
+    IND.luci.forEach(L => R.LSRC.push({ x: L.x, y: L.y, z: L.z, color: new THREE.Color(L.c[0], L.c[1], L.c[2]), base: L.base, dist: L.dist, flick: L.flick, phase: L.phase, always: L.always || undefined, landmark: L.landmark || undefined }));
+    IND.pozze.forEach(L => R.SPILLS.push({ x: L.x, z: L.z, y: L.y, gy: L.gy, nx: L.nx, nz: L.nz, color: new THREE.Color(L.c[0], L.c[1], L.c[2]), base: L.base, dist: L.dist, spill: true }));
+    sagoma().catch(e => console.warn('[tasselli] sagoma', e));
+    requestAnimationFrame(tick);
+    log('montati:', IND.tasselli.length, 'tasselli,', IND.materiali.length, 'materiali,', IND.tessiture.length, 'tessiture');
+  }
+  const stato = () => Object.assign({}, ST, { byteMB: +(ST.byte / 1048576).toFixed(2), byteVicinoMB: +(ST.byteVicino / 1048576).toFixed(2), materiali: MAT.size, tessiture: TEX.size, pronti: PRONTI.length });
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__tasselli', { configurable: true, get: stato });
+  // per gli strumenti: tutto quello che c'è entro r metri, subito
+  // (r: anche tutto quello entro r metri dal punto guardato, e lo si tiene in scena finché non si richiama finisci)
+  async function finisci(r) {
+    const x = CTX.cam.x, z = CTX.cam.y, F = impronta(), dentro = [];
+    TIENI.clear(); IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F) || (r && dist(t, x, z) <= r)) { dentro.push(ti); if (r) TIENI.add(ti); } });
+    for (;;) {
+      dentro.forEach(ti => { const S = STATO[ti]; if (!S.st) scarica(ti); else if (S.st === 2) apri(ti); });
+      while (PRONTI.length) monta1(PRONTI.shift(), Infinity, Infinity);
+      if (dentro.every(ti => STATO[ti].st === 5 || (STATO[ti].errori || 0) > 3)) break;
+      await new Promise(ok => setTimeout(ok, 100));
+    }
+  }
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci };
+})();
+if (typeof window !== 'undefined') window.Tasselli = Tasselli;
+</script>   <!-- [tasselli] la città cotta a tasselli (?tasselli=1): il caricatore, lo streaming -->
+<script type="text/plain" id="tasselli-lavoratore">// This file is part of meshoptimizer library and is distributed under the terms of MIT License.
+// Copyright (C) 2016-2024, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
+var MeshoptDecoder = (function () {
+	'use strict';
+	// Built with clang version 18.1.2
+	// Built from meshoptimizer 0.22
+	var wasm_base =
+		'b9H79Tebbbe8Fv9Gbb9Gvuuuuueu9Giuuub9Geueu9Giuuueuikqbeeedddillviebeoweuec:q:Odkr;leDo9TW9T9VV95dbH9F9F939H79T9F9J9H229F9Jt9VV7bb8A9TW79O9V9Wt9F9KW9J9V9KW9wWVtW949c919M9MWVbeY9TW79O9V9Wt9F9KW9J9V9KW69U9KW949c919M9MWVbdE9TW79O9V9Wt9F9KW9J9V9KW69U9KW949tWG91W9U9JWbiL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9p9JtblK9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9r919HtbvL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVT949Wbol79IV9Rbrq;w8Wqdbk;esezu8Jjjjjbcj;eb9Rgv8Kjjjjbc9:hodnadcefal0mbcuhoaiRbbc:Ge9hmbavaialfgrad9Radz1jjjbhwcj;abad9Uc;WFbGgocjdaocjd6EhDaicefhocbhqdnindndndnaeaq9nmbaDaeaq9RaqaDfae6Egkcsfglcl4cifcd4hxalc9WGgmTmecbhPawcjdfhsaohzinaraz9Rax6mvarazaxfgo9RcK6mvczhlcbhHinalgic9WfgOawcj;cbffhldndndndndnazaOco4fRbbaHcoG4ciGPlbedibkal9cb83ibalcwf9cb83ibxikalaoRblaoRbbgOco4gAaAciSgAE86bbawcj;cbfaifglcGfaoclfaAfgARbbaOcl4ciGgCaCciSgCE86bbalcVfaAaCfgARbbaOcd4ciGgCaCciSgCE86bbalc7faAaCfgARbbaOciGgOaOciSgOE86bbalctfaAaOfgARbbaoRbegOco4gCaCciSgCE86bbalc91faAaCfgARbbaOcl4ciGgCaCciSgCE86bbalc4faAaCfgARbbaOcd4ciGgCaCciSgCE86bbalc93faAaCfgARbbaOciGgOaOciSgOE86bbalc94faAaOfgARbbaoRbdgOco4gCaCciSgCE86bbalc95faAaCfgARbbaOcl4ciGgCaCciSgCE86bbalc96faAaCfgARbbaOcd4ciGgCaCciSgCE86bbalc97faAaCfgARbbaOciGgOaOciSgOE86bbalc98faAaOfgORbbaoRbigoco4gAaAciSgAE86bbalc99faOaAfgORbbaocl4ciGgAaAciSgAE86bbalc9:faOaAfgORbbaocd4ciGgAaAciSgAE86bbalcufaOaAfglRbbaociGgoaociSgoE86bbalaofhoxdkalaoRbwaoRbbgOcl4gAaAcsSgAE86bbawcj;cbfaifglcGfaocwfaAfgARbbaOcsGgOaOcsSgOE86bbalcVfaAaOfgORbbaoRbegAcl4gCaCcsSgCE86bbalc7faOaCfgORbbaAcsGgAaAcsSgAE86bbalctfaOaAfgORbbaoRbdgAcl4gCaCcsSgCE86bbalc91faOaCfgORbbaAcsGgAaAcsSgAE86bbalc4faOaAfgORbbaoRbigAcl4gCaCcsSgCE86bbalc93faOaCfgORbbaAcsGgAaAcsSgAE86bbalc94faOaAfgORbbaoRblgAcl4gCaCcsSgCE86bbalc95faOaCfgORbbaAcsGgAaAcsSgAE86bbalc96faOaAfgORbbaoRbvgAcl4gCaCcsSgCE86bbalc97faOaCfgORbbaAcsGgAaAcsSgAE86bbalc98faOaAfgORbbaoRbogAcl4gCaCcsSgCE86bbalc99faOaCfgORbbaAcsGgAaAcsSgAE86bbalc9:faOaAfgORbbaoRbrgocl4gAaAcsSgAE86bbalcufaOaAfglRbbaocsGgoaocsSgoE86bbalaofhoxekalao8Pbb83bbalcwfaocwf8Pbb83bbaoczfhokdnaiam9pmbaHcdfhHaiczfhlarao9RcL0mekkaiam6mvaoTmvdnakTmbawaPfRbbhHawcj;cbfhlashiakhOinaialRbbgzce4cbazceG9R7aHfgH86bbaiadfhialcefhlaOcufgOmbkkascefhsaohzaPcefgPad9hmbxikkcbc99arao9Radcaadca0ESEhoxlkaoaxad2fhCdnakmbadhlinaoTmlarao9Rax6mlaoaxfhoalcufglmbkaChoxekcbhmawcjdfhAinarao9Rax6miawamfRbbhHawcj;cbfhlaAhiakhOinaialRbbgzce4cbazceG9R7aHfgH86bbaiadfhialcefhlaOcufgOmbkaAcefhAaoaxfhoamcefgmad9hmbkaChokabaqad2fawcjdfakad2z1jjjb8Aawawcjdfakcufad2fadz1jjjb8Aakaqfhqaombkc9:hoxekc9:hokavcj;ebf8Kjjjjbaok;cseHu8Jjjjjbc;ae9Rgv8Kjjjjbc9:hodnaeci9UgrcHfal0mbcuhoaiRbbgwc;WeGc;Ge9hmbawcsGgwce0mbavc;abfcFecjez:jjjjb8AavcUf9cu83ibavc8Wf9cu83ibavcyf9cu83ibavcaf9cu83ibavcKf9cu83ibavczf9cu83ibav9cu83iwav9cu83ibaialfc9WfhDaicefgqarfhidnaeTmbcmcsawceSEhkcbhxcbhmcbhPcbhwcbhlindnaiaD9nmbc9:hoxikdndnaqRbbgoc;Ve0mbavc;abfalaocu7gscl4fcsGcitfgzydlhrazydbhzdnaocsGgHak9pmbavawasfcsGcdtfydbaxaHEhoaHThsdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkaxasfhxcdhHavawcdtfaoBdbawasfhwcehsalhOxdkdndnaHcsSmbaHc987aHamffcefhoxekaicefhoai8SbbgHcFeGhsdndnaHcu9mmbaohixekaicvfhiascFbGhscrhHdninao8SbbgOcFbGaHtasVhsaOcu9kmeaocefhoaHcrfgHc8J9hmbxdkkaocefhikasce4cbasceG9R7amfhokdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkcdhHavawcdtfaoBdbcehsawcefhwalhOaohmxekdnaocpe0mbaxcefgHavawaDaocsGfRbbgocl49RcsGcdtfydbaocz6gzEhravawao9RcsGcdtfydbaHazfgAaocsGgHEhoaHThCdndnadcd9hmbabaPcetfgHax87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHaxBdbaHcwfaoBdbaHclfarBdbkcdhsavawcdtfaxBdbavawcefgwcsGcdtfarBdbcihHavc;abfalcitfgOaxBdlaOarBdbavawazfgwcsGcdtfaoBdbalcefcsGhOawaCfhwaxhzaAaCfhxxekaxcbaiRbbgOEgzaoc;:eSgHfhraOcsGhCaOcl4hAdndnaOcs0mbarcefhoxekarhoavawaA9RcsGcdtfydbhrkdndnaCmbaocefhxxekaohxavawaO9RcsGcdtfydbhokdndnaHTmbaicefhHxekaicdfhHai8SbegscFeGhzdnascu9kmbaicofhXazcFbGhzcrhidninaH8SbbgscFbGaitazVhzascu9kmeaHcefhHaicrfgic8J9hmbkaXhHxekaHcefhHkazce4cbazceG9R7amfgmhzkdndnaAcsSmbaHhsxekaHcefhsaH8SbbgicFeGhrdnaicu9kmbaHcvfhXarcFbGhrcrhidninas8SbbgHcFbGaitarVhraHcu9kmeascefhsaicrfgic8J9hmbkaXhsxekascefhskarce4cbarceG9R7amfgmhrkdndnaCcsSmbashixekascefhias8SbbgocFeGhHdnaocu9kmbascvfhXaHcFbGhHcrhodninai8SbbgscFbGaotaHVhHascu9kmeaicefhiaocrfgoc8J9hmbkaXhixekaicefhikaHce4cbaHceG9R7amfgmhokdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkcdhsavawcdtfazBdbavawcefgwcsGcdtfarBdbcihHavc;abfalcitfgXazBdlaXarBdbavawaOcz6aAcsSVfgwcsGcdtfaoBdbawaCTaCcsSVfhwalcefcsGhOkaqcefhqavc;abfaOcitfgOarBdlaOaoBdbavc;abfalasfcsGcitfgraoBdlarazBdbawcsGhwalaHfcsGhlaPcifgPae6mbkkcbc99aiaDSEhokavc;aef8Kjjjjbaok:flevu8Jjjjjbcz9Rhvc9:hodnaecvfal0mbcuhoaiRbbc;:eGc;qe9hmbav9cb83iwaicefhraialfc98fhwdnaeTmbdnadcdSmbcbhDindnaraw6mbc9:skarcefhoar8SbbglcFeGhidndnalcu9mmbaohrxekarcvfhraicFbGhicrhldninao8SbbgdcFbGaltaiVhiadcu9kmeaocefhoalcrfglc8J9hmbxdkkaocefhrkabaDcdtfaic8Etc8F91aicd47avcwfaiceGcdtVgoydbfglBdbaoalBdbaDcefgDae9hmbxdkkcbhDindnaraw6mbc9:skarcefhoar8SbbglcFeGhidndnalcu9mmbaohrxekarcvfhraicFbGhicrhldninao8SbbgdcFbGaltaiVhiadcu9kmeaocefhoalcrfglc8J9hmbxdkkaocefhrkabaDcetfaic8Etc8F91aicd47avcwfaiceGcdtVgoydbfgl87ebaoalBdbaDcefgDae9hmbkkcbc99arawSEhokaok:Lvoeue99dud99eud99dndnadcl9hmbaeTmeindndnabcdfgd8Sbb:Yab8Sbbgi:Ygl:l:tabcefgv8Sbbgo:Ygr:l:tgwJbb;:9cawawNJbbbbawawJbbbb9GgDEgq:mgkaqaicb9iEalMgwawNakaqaocb9iEarMgqaqNMM:r:vglNJbbbZJbbb:;aDEMgr:lJbbb9p9DTmbar:Ohixekcjjjj94hikadai86bbdndnaqalNJbbbZJbbb:;aqJbbbb9GEMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkavad86bbdndnawalNJbbbZJbbb:;awJbbbb9GEMgw:lJbbb9p9DTmbaw:Ohdxekcjjjj94hdkabad86bbabclfhbaecufgembxdkkaeTmbindndnabclfgd8Ueb:Yab8Uebgi:Ygl:l:tabcdfgv8Uebgo:Ygr:l:tgwJb;:FSawawNJbbbbawawJbbbb9GgDEgq:mgkaqaicb9iEalMgwawNakaqaocb9iEarMgqaqNMM:r:vglNJbbbZJbbb:;aDEMgr:lJbbb9p9DTmbar:Ohixekcjjjj94hikadai87ebdndnaqalNJbbbZJbbb:;aqJbbbb9GEMgq:lJbbb9p9DTmbaq:Ohdxekcjjjj94hdkavad87ebdndnawalNJbbbZJbbb:;awJbbbb9GEMgw:lJbbb9p9DTmbaw:Ohdxekcjjjj94hdkabad87ebabcwfhbaecufgembkkk;oiliui99iue99dnaeTmbcbhiabhlindndnJ;Zl81Zalcof8UebgvciV:Y:vgoal8Ueb:YNgrJb;:FSNJbbbZJbbb:;arJbbbb9GEMgw:lJbbb9p9DTmbaw:OhDxekcjjjj94hDkalclf8Uebhqalcdf8UebhkabaiavcefciGfcetfaD87ebdndnaoak:YNgwJb;:FSNJbbbZJbbb:;awJbbbb9GEMgx:lJbbb9p9DTmbax:OhDxekcjjjj94hDkabaiavciGfgkcd7cetfaD87ebdndnaoaq:YNgoJb;:FSNJbbbZJbbb:;aoJbbbb9GEMgx:lJbbb9p9DTmbax:OhDxekcjjjj94hDkabaiavcufciGfcetfaD87ebdndnJbbjZararN:tawawN:taoaoN:tgrJbbbbarJbbbb9GE:rJb;:FSNJbbbZMgr:lJbbb9p9DTmbar:Ohvxekcjjjj94hvkabakcetfav87ebalcwfhlaiclfhiaecufgembkkk9mbdnadcd4ae2gdTmbinababydbgecwtcw91:Yaece91cjjj98Gcjjj;8if::NUdbabclfhbadcufgdmbkkk9teiucbcbydj1jjbgeabcifc98GfgbBdj1jjbdndnabZbcztgd9nmbcuhiabad9RcFFifcz4nbcuSmekaehikaik;LeeeudndnaeabVciGTmbabhixekdndnadcz9pmbabhixekabhiinaiaeydbBdbaiclfaeclfydbBdbaicwfaecwfydbBdbaicxfaecxfydbBdbaeczfheaiczfhiadc9Wfgdcs0mbkkadcl6mbinaiaeydbBdbaeclfheaiclfhiadc98fgdci0mbkkdnadTmbinaiaeRbb86bbaicefhiaecefheadcufgdmbkkabk;aeedudndnabciGTmbabhixekaecFeGc:b:c:ew2hldndnadcz9pmbabhixekabhiinaialBdbaicxfalBdbaicwfalBdbaiclfalBdbaiczfhiadc9Wfgdcs0mbkkadcl6mbinaialBdbaiclfhiadc98fgdci0mbkkdnadTmbinaiae86bbaicefhiadcufgdmbkkabkkkebcjwklzNbb'; // embed! base
+	var wasm_simd =
+		'b9H79TebbbeKl9Gbb9Gvuuuuueu9Giuuub9Geueuikqbbebeedddilve9Weeeviebeoweuec:q:6dkr;leDo9TW9T9VV95dbH9F9F939H79T9F9J9H229F9Jt9VV7bb8A9TW79O9V9Wt9F9KW9J9V9KW9wWVtW949c919M9MWVbdY9TW79O9V9Wt9F9KW9J9V9KW69U9KW949c919M9MWVblE9TW79O9V9Wt9F9KW9J9V9KW69U9KW949tWG91W9U9JWbvL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9p9JtboK9TW79O9V9Wt9F9KW9J9V9KWS9P2tWV9r919HtbrL9TW79O9V9Wt9F9KW9J9V9KWS9P2tWVT949Wbwl79IV9RbDq:p9sqlbzik9:evu8Jjjjjbcz9Rhbcbheincbhdcbhiinabcwfadfaicjuaead4ceGglE86bbaialfhiadcefgdcw9hmbkaec:q:yjjbfai86bbaecitc:q1jjbfab8Piw83ibaecefgecjd9hmbkk:N8JlHud97euo978Jjjjjbcj;kb9Rgv8Kjjjjbc9:hodnadcefal0mbcuhoaiRbbc:Ge9hmbavaialfgrad9Rad;8qbbcj;abad9UhlaicefhodnaeTmbadTmbalc;WFbGglcjdalcjd6EhwcbhDinawaeaD9RaDawfae6Egqcsfglc9WGgkci2hxakcethmalcl4cifcd4hPabaDad2fhsakc;ab6hzcbhHincbhOaohAdndninaraA9RaP6meavcj;cbfaOak2fhCaAaPfhocbhidnazmbarao9Rc;Gb6mbcbhlinaCalfhidndndndndnaAalco4fRbbgXciGPlbedibkaipxbbbbbbbbbbbbbbbbpklbxikaiaopbblaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLgQcdp:meaQpmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9ogLpxiiiiiiiiiiiiiiiip8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklbaoclfaYpQbfaKc:q:yjjbfRbbfhoxdkaiaopbbwaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLpxssssssssssssssssp9ogLpxssssssssssssssssp8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklbaocwfaYpQbfaKc:q:yjjbfRbbfhoxekaiaopbbbpklbaoczfhokdndndndndnaXcd4ciGPlbedibkaipxbbbbbbbbbbbbbbbbpklzxikaiaopbblaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLgQcdp:meaQpmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9ogLpxiiiiiiiiiiiiiiiip8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklzaoclfaYpQbfaKc:q:yjjbfRbbfhoxdkaiaopbbwaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLpxssssssssssssssssp9ogLpxssssssssssssssssp8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklzaocwfaYpQbfaKc:q:yjjbfRbbfhoxekaiaopbbbpklzaoczfhokdndndndndnaXcl4ciGPlbedibkaipxbbbbbbbbbbbbbbbbpklaxikaiaopbblaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLgQcdp:meaQpmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9ogLpxiiiiiiiiiiiiiiiip8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklaaoclfaYpQbfaKc:q:yjjbfRbbfhoxdkaiaopbbwaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLpxssssssssssssssssp9ogLpxssssssssssssssssp8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spklaaocwfaYpQbfaKc:q:yjjbfRbbfhoxekaiaopbbbpklaaoczfhokdndndndndnaXco4Plbedibkaipxbbbbbbbbbbbbbbbbpkl8WxikaiaopbblaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLgQcdp:meaQpmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9ogLpxiiiiiiiiiiiiiiiip8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgXcitc:q1jjbfpbibaXc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgXcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spkl8WaoclfaYpQbfaXc:q:yjjbfRbbfhoxdkaiaopbbwaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLpxssssssssssssssssp9ogLpxssssssssssssssssp8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgXcitc:q1jjbfpbibaXc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgXcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spkl8WaocwfaYpQbfaXc:q:yjjbfRbbfhoxekaiaopbbbpkl8Waoczfhokalc;abfhialcjefak0meaihlarao9Rc;Fb0mbkkdnaiak9pmbaici4hlinarao9RcK6miaCaifhXdndndndndnaAaico4fRbbalcoG4ciGPlbedibkaXpxbbbbbbbbbbbbbbbbpkbbxikaXaopbblaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLgQcdp:meaQpmbzeHdOiAlCvXoQrLpxiiiiiiiiiiiiiiiip9ogLpxiiiiiiiiiiiiiiiip8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spkbbaoclfaYpQbfaKc:q:yjjbfRbbfhoxdkaXaopbbwaopbbbgQclp:meaQpmbzeHdOiAlCvXoQrLpxssssssssssssssssp9ogLpxssssssssssssssssp8JgQp5b9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibaKc:q:yjjbfpbbbgYaYpmbbbbbbbbbbbbbbbbaQp5e9cjF;8;4;W;G;ab9:9cU1:NgKcitc:q1jjbfpbibp9UpmbedilvorzHOACXQLpPaLaQp9spkbbaocwfaYpQbfaKc:q:yjjbfRbbfhoxekaXaopbbbpkbbaoczfhokalcdfhlaiczfgiak6mbkkaoTmeaohAaOcefgOclSmdxbkkc9:hoxlkdnakTmbavcjdfaHfhiavaHfpbdbhYcbhXinaiavcj;cbfaXfglpblbgLcep9TaLpxeeeeeeeeeeeeeeeegQp9op9Hp9rgLalakfpblbg8Acep9Ta8AaQp9op9Hp9rg8ApmbzeHdOiAlCvXoQrLgEalamfpblbg3cep9Ta3aQp9op9Hp9rg3alaxfpblbg5cep9Ta5aQp9op9Hp9rg5pmbzeHdOiAlCvXoQrLg8EpmbezHdiOAlvCXorQLgQaQpmbedibedibedibediaYp9UgYp9AdbbaiadfglaYaQaQpmlvorlvorlvorlvorp9UgYp9AdbbaladfglaYaQaQpmwDqkwDqkwDqkwDqkp9UgYp9AdbbaladfglaYaQaQpmxmPsxmPsxmPsxmPsp9UgYp9AdbbaladfglaYaEa8EpmwDKYqk8AExm35Ps8E8FgQaQpmbedibedibedibedip9UgYp9AdbbaladfglaYaQaQpmlvorlvorlvorlvorp9UgYp9AdbbaladfglaYaQaQpmwDqkwDqkwDqkwDqkp9UgYp9AdbbaladfglaYaQaQpmxmPsxmPsxmPsxmPsp9UgYp9AdbbaladfglaYaLa8ApmwKDYq8AkEx3m5P8Es8FgLa3a5pmwKDYq8AkEx3m5P8Es8Fg8ApmbezHdiOAlvCXorQLgQaQpmbedibedibedibedip9UgYp9AdbbaladfglaYaQaQpmlvorlvorlvorlvorp9UgYp9AdbbaladfglaYaQaQpmwDqkwDqkwDqkwDqkp9UgYp9AdbbaladfglaYaQaQpmxmPsxmPsxmPsxmPsp9UgYp9AdbbaladfglaYaLa8ApmwDKYqk8AExm35Ps8E8FgQaQpmbedibedibedibedip9UgYp9AdbbaladfglaYaQaQpmlvorlvorlvorlvorp9UgYp9AdbbaladfglaYaQaQpmwDqkwDqkwDqkwDqkp9UgYp9AdbbaladfglaYaQaQpmxmPsxmPsxmPsxmPsp9UgYp9AdbbaladfhiaXczfgXak6mbkkaHclfgHad6mbkasavcjdfaqad2;8qbbavavcjdfaqcufad2fad;8qbbaqaDfgDae6mbkkcbc99arao9Radcaadca0ESEhokavcj;kbf8Kjjjjbaokwbz:bjjjbk::seHu8Jjjjjbc;ae9Rgv8Kjjjjbc9:hodnaeci9UgrcHfal0mbcuhoaiRbbgwc;WeGc;Ge9hmbawcsGgwce0mbavc;abfcFecje;8kbavcUf9cu83ibavc8Wf9cu83ibavcyf9cu83ibavcaf9cu83ibavcKf9cu83ibavczf9cu83ibav9cu83iwav9cu83ibaialfc9WfhDaicefgqarfhidnaeTmbcmcsawceSEhkcbhxcbhmcbhPcbhwcbhlindnaiaD9nmbc9:hoxikdndnaqRbbgoc;Ve0mbavc;abfalaocu7gscl4fcsGcitfgzydlhrazydbhzdnaocsGgHak9pmbavawasfcsGcdtfydbaxaHEhoaHThsdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkaxasfhxcdhHavawcdtfaoBdbawasfhwcehsalhOxdkdndnaHcsSmbaHc987aHamffcefhoxekaicefhoai8SbbgHcFeGhsdndnaHcu9mmbaohixekaicvfhiascFbGhscrhHdninao8SbbgOcFbGaHtasVhsaOcu9kmeaocefhoaHcrfgHc8J9hmbxdkkaocefhikasce4cbasceG9R7amfhokdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkcdhHavawcdtfaoBdbcehsawcefhwalhOaohmxekdnaocpe0mbaxcefgHavawaDaocsGfRbbgocl49RcsGcdtfydbaocz6gzEhravawao9RcsGcdtfydbaHazfgAaocsGgHEhoaHThCdndnadcd9hmbabaPcetfgHax87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHaxBdbaHcwfaoBdbaHclfarBdbkcdhsavawcdtfaxBdbavawcefgwcsGcdtfarBdbcihHavc;abfalcitfgOaxBdlaOarBdbavawazfgwcsGcdtfaoBdbalcefcsGhOawaCfhwaxhzaAaCfhxxekaxcbaiRbbgOEgzaoc;:eSgHfhraOcsGhCaOcl4hAdndnaOcs0mbarcefhoxekarhoavawaA9RcsGcdtfydbhrkdndnaCmbaocefhxxekaohxavawaO9RcsGcdtfydbhokdndnaHTmbaicefhHxekaicdfhHai8SbegscFeGhzdnascu9kmbaicofhXazcFbGhzcrhidninaH8SbbgscFbGaitazVhzascu9kmeaHcefhHaicrfgic8J9hmbkaXhHxekaHcefhHkazce4cbazceG9R7amfgmhzkdndnaAcsSmbaHhsxekaHcefhsaH8SbbgicFeGhrdnaicu9kmbaHcvfhXarcFbGhrcrhidninas8SbbgHcFbGaitarVhraHcu9kmeascefhsaicrfgic8J9hmbkaXhsxekascefhskarce4cbarceG9R7amfgmhrkdndnaCcsSmbashixekascefhias8SbbgocFeGhHdnaocu9kmbascvfhXaHcFbGhHcrhodninai8SbbgscFbGaotaHVhHascu9kmeaicefhiaocrfgoc8J9hmbkaXhixekaicefhikaHce4cbaHceG9R7amfgmhokdndnadcd9hmbabaPcetfgHaz87ebaHclfao87ebaHcdfar87ebxekabaPcdtfgHazBdbaHcwfaoBdbaHclfarBdbkcdhsavawcdtfazBdbavawcefgwcsGcdtfarBdbcihHavc;abfalcitfgXazBdlaXarBdbavawaOcz6aAcsSVfgwcsGcdtfaoBdbawaCTaCcsSVfhwalcefcsGhOkaqcefhqavc;abfaOcitfgOarBdlaOaoBdbavc;abfalasfcsGcitfgraoBdlarazBdbawcsGhwalaHfcsGhlaPcifgPae6mbkkcbc99aiaDSEhokavc;aef8Kjjjjbaok:flevu8Jjjjjbcz9Rhvc9:hodnaecvfal0mbcuhoaiRbbc;:eGc;qe9hmbav9cb83iwaicefhraialfc98fhwdnaeTmbdnadcdSmbcbhDindnaraw6mbc9:skarcefhoar8SbbglcFeGhidndnalcu9mmbaohrxekarcvfhraicFbGhicrhldninao8SbbgdcFbGaltaiVhiadcu9kmeaocefhoalcrfglc8J9hmbxdkkaocefhrkabaDcdtfaic8Etc8F91aicd47avcwfaiceGcdtVgoydbfglBdbaoalBdbaDcefgDae9hmbxdkkcbhDindnaraw6mbc9:skarcefhoar8SbbglcFeGhidndnalcu9mmbaohrxekarcvfhraicFbGhicrhldninao8SbbgdcFbGaltaiVhiadcu9kmeaocefhoalcrfglc8J9hmbxdkkaocefhrkabaDcetfaic8Etc8F91aicd47avcwfaiceGcdtVgoydbfgl87ebaoalBdbaDcefgDae9hmbkkcbc99arawSEhokaok:wPliuo97eue978Jjjjjbca9Rhiaec98Ghldndnadcl9hmbdnalTmbcbhvabhdinadadpbbbgocKp:RecKp:Sep;6egraocwp:RecKp:Sep;6earp;Geaoczp:RecKp:Sep;6egwp;Gep;Kep;LegDpxbbbbbbbbbbbbbbbbp:2egqarpxbbbjbbbjbbbjbbbjgkp9op9rp;Kegrpxbb;:9cbb;:9cbb;:9cbb;:9cararp;MeaDaDp;Meawaqawakp9op9rp;Kegrarp;Mep;Kep;Kep;Jep;Negwp;Mepxbbn0bbn0bbn0bbn0gqp;KepxFbbbFbbbFbbbFbbbp9oaopxbbbFbbbFbbbFbbbFp9op9qarawp;Meaqp;Kecwp:RepxbFbbbFbbbFbbbFbbp9op9qaDawp;Meaqp;Keczp:RepxbbFbbbFbbbFbbbFbp9op9qpkbbadczfhdavclfgval6mbkkalaeSmeaipxbbbbbbbbbbbbbbbbgqpklbaiabalcdtfgdaeciGglcdtgv;8qbbdnalTmbaiaipblbgocKp:RecKp:Sep;6egraocwp:RecKp:Sep;6earp;Geaoczp:RecKp:Sep;6egwp;Gep;Kep;LegDaqp:2egqarpxbbbjbbbjbbbjbbbjgkp9op9rp;Kegrpxbb;:9cbb;:9cbb;:9cbb;:9cararp;MeaDaDp;Meawaqawakp9op9rp;Kegrarp;Mep;Kep;Kep;Jep;Negwp;Mepxbbn0bbn0bbn0bbn0gqp;KepxFbbbFbbbFbbbFbbbp9oaopxbbbFbbbFbbbFbbbFp9op9qarawp;Meaqp;Kecwp:RepxbFbbbFbbbFbbbFbbp9op9qaDawp;Meaqp;Keczp:RepxbbFbbbFbbbFbbbFbp9op9qpklbkadaiav;8qbbskdnalTmbcbhvabhdinadczfgxaxpbbbgopxbbbbbbFFbbbbbbFFgkp9oadpbbbgDaopmbediwDqkzHOAKY8AEgwczp:Reczp:Sep;6egraDaopmlvorxmPsCXQL358E8FpxFubbFubbFubbFubbp9op;6eawczp:Sep;6egwp;Gearp;Gep;Kep;Legopxbbbbbbbbbbbbbbbbp:2egqarpxbbbjbbbjbbbjbbbjgmp9op9rp;Kegrpxb;:FSb;:FSb;:FSb;:FSararp;Meaoaop;Meawaqawamp9op9rp;Kegrarp;Mep;Kep;Kep;Jep;Negwp;Mepxbbn0bbn0bbn0bbn0gqp;KepxFFbbFFbbFFbbFFbbp9oaoawp;Meaqp;Keczp:Rep9qgoarawp;Meaqp;KepxFFbbFFbbFFbbFFbbp9ogrpmwDKYqk8AExm35Ps8E8Fp9qpkbbadaDakp9oaoarpmbezHdiOAlvCXorQLp9qpkbbadcafhdavclfgval6mbkkalaeSmbaiaeciGgvcitgdfcbcaad9R;8kbaiabalcitfglad;8qbbdnavTmbaiaipblzgopxbbbbbbFFbbbbbbFFgkp9oaipblbgDaopmbediwDqkzHOAKY8AEgwczp:Reczp:Sep;6egraDaopmlvorxmPsCXQL358E8FpxFubbFubbFubbFubbp9op;6eawczp:Sep;6egwp;Gearp;Gep;Kep;Legopxbbbbbbbbbbbbbbbbp:2egqarpxbbbjbbbjbbbjbbbjgmp9op9rp;Kegrpxb;:FSb;:FSb;:FSb;:FSararp;Meaoaop;Meawaqawamp9op9rp;Kegrarp;Mep;Kep;Kep;Jep;Negwp;Mepxbbn0bbn0bbn0bbn0gqp;KepxFFbbFFbbFFbbFFbbp9oaoawp;Meaqp;Keczp:Rep9qgoarawp;Meaqp;KepxFFbbFFbbFFbbFFbbp9ogrpmwDKYqk8AExm35Ps8E8Fp9qpklzaiaDakp9oaoarpmbezHdiOAlvCXorQLp9qpklbkalaiad;8qbbkk;4wllue97euv978Jjjjjbc8W9Rhidnaec98GglTmbcbhvabhoinaiaopbbbgraoczfgwpbbbgDpmlvorxmPsCXQL358E8Fgqczp:Segkclp:RepklbaopxbbjZbbjZbbjZbbjZpx;Zl81Z;Zl81Z;Zl81Z;Zl81Zakpxibbbibbbibbbibbbp9qp;6ep;NegkaraDpmbediwDqkzHOAKY8AEgrczp:Reczp:Sep;6ep;MegDaDp;Meakarczp:Sep;6ep;Megxaxp;Meakaqczp:Reczp:Sep;6ep;Megqaqp;Mep;Kep;Kep;Lepxbbbbbbbbbbbbbbbbp:4ep;Jepxb;:FSb;:FSb;:FSb;:FSgkp;Mepxbbn0bbn0bbn0bbn0grp;KepxFFbbFFbbFFbbFFbbgmp9oaxakp;Mearp;Keczp:Rep9qgxaDakp;Mearp;Keamp9oaqakp;Mearp;Keczp:Rep9qgkpmbezHdiOAlvCXorQLgrp5baipblbpEb:T:j83ibaocwfarp5eaipblbpEe:T:j83ibawaxakpmwDKYqk8AExm35Ps8E8Fgkp5baipblbpEd:T:j83ibaocKfakp5eaipblbpEi:T:j83ibaocafhoavclfgval6mbkkdnalaeSmbaiaeciGgvcitgofcbcaao9R;8kbaiabalcitfgwao;8qbbdnavTmbaiaipblbgraipblzgDpmlvorxmPsCXQL358E8Fgqczp:Segkclp:RepklaaipxbbjZbbjZbbjZbbjZpx;Zl81Z;Zl81Z;Zl81Z;Zl81Zakpxibbbibbbibbbibbbp9qp;6ep;NegkaraDpmbediwDqkzHOAKY8AEgrczp:Reczp:Sep;6ep;MegDaDp;Meakarczp:Sep;6ep;Megxaxp;Meakaqczp:Reczp:Sep;6ep;Megqaqp;Mep;Kep;Kep;Lepxbbbbbbbbbbbbbbbbp:4ep;Jepxb;:FSb;:FSb;:FSb;:FSgkp;Mepxbbn0bbn0bbn0bbn0grp;KepxFFbbFFbbFFbbFFbbgmp9oaxakp;Mearp;Keczp:Rep9qgxaDakp;Mearp;Keamp9oaqakp;Mearp;Keczp:Rep9qgkpmbezHdiOAlvCXorQLgrp5baipblapEb:T:j83ibaiarp5eaipblapEe:T:j83iwaiaxakpmwDKYqk8AExm35Ps8E8Fgkp5baipblapEd:T:j83izaiakp5eaipblapEi:T:j83iKkawaiao;8qbbkk:Pddiue978Jjjjjbc;ab9Rhidnadcd4ae2glc98GgvTmbcbheabhdinadadpbbbgocwp:Recwp:Sep;6eaocep:SepxbbjFbbjFbbjFbbjFp9opxbbjZbbjZbbjZbbjZp:Uep;Mepkbbadczfhdaeclfgeav6mbkkdnavalSmbaialciGgecdtgdVcbc;abad9R;8kbaiabavcdtfgvad;8qbbdnaeTmbaiaipblbgocwp:Recwp:Sep;6eaocep:SepxbbjFbbjFbbjFbbjFp9opxbbjZbbjZbbjZbbjZp:Uep;Mepklbkavaiad;8qbbkk9teiucbcbydj1jjbgeabcifc98GfgbBdj1jjbdndnabZbcztgd9nmbcuhiabad9RcFFifcz4nbcuSmekaehikaikkkebcjwklz:Dbb'; // embed! simd
+
+	var detector = new Uint8Array([
+		0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 3, 2, 0, 0, 5, 3, 1, 0, 1, 12, 1, 0, 10, 22, 2, 12, 0, 65, 0, 65, 0, 65, 0, 252, 10, 0, 0,
+		11, 7, 0, 65, 0, 253, 15, 26, 11,
+	]);
+	var wasmpack = new Uint8Array([
+		32, 0, 65, 2, 1, 106, 34, 33, 3, 128, 11, 4, 13, 64, 6, 253, 10, 7, 15, 116, 127, 5, 8, 12, 40, 16, 19, 54, 20, 9, 27, 255, 113, 17, 42, 67,
+		24, 23, 146, 148, 18, 14, 22, 45, 70, 69, 56, 114, 101, 21, 25, 63, 75, 136, 108, 28, 118, 29, 73, 115,
+	]);
+
+	if (typeof WebAssembly !== 'object') {
+		return {
+			supported: false,
+		};
+	}
+
+	var wasm = WebAssembly.validate(detector) ? unpack(wasm_simd) : unpack(wasm_base);
+
+	var instance;
+
+	var ready = WebAssembly.instantiate(wasm, {}).then(function (result) {
+		instance = result.instance;
+		instance.exports.__wasm_call_ctors();
+	});
+
+	function unpack(data) {
+		var result = new Uint8Array(data.length);
+		for (var i = 0; i < data.length; ++i) {
+			var ch = data.charCodeAt(i);
+			result[i] = ch > 96 ? ch - 97 : ch > 64 ? ch - 39 : ch + 4;
+		}
+		var write = 0;
+		for (var i = 0; i < data.length; ++i) {
+			result[write++] = result[i] < 60 ? wasmpack[result[i]] : (result[i] - 60) * 64 + result[++i];
+		}
+		return result.buffer.slice(0, write);
+	}
+
+	function decode(instance, fun, target, count, size, source, filter) {
+		var sbrk = instance.exports.sbrk;
+		var count4 = (count + 3) & ~3;
+		var tp = sbrk(count4 * size);
+		var sp = sbrk(source.length);
+		var heap = new Uint8Array(instance.exports.memory.buffer);
+		heap.set(source, sp);
+		var res = fun(tp, count, size, sp, source.length);
+		if (res == 0 && filter) {
+			filter(tp, count4, size);
+		}
+		target.set(heap.subarray(tp, tp + count * size));
+		sbrk(tp - sbrk(0));
+		if (res != 0) {
+			throw new Error('Malformed buffer data: ' + res);
+		}
+	}
+
+	var filters = {
+		NONE: '',
+		OCTAHEDRAL: 'meshopt_decodeFilterOct',
+		QUATERNION: 'meshopt_decodeFilterQuat',
+		EXPONENTIAL: 'meshopt_decodeFilterExp',
+	};
+
+	var decoders = {
+		ATTRIBUTES: 'meshopt_decodeVertexBuffer',
+		TRIANGLES: 'meshopt_decodeIndexBuffer',
+		INDICES: 'meshopt_decodeIndexSequence',
+	};
+
+	var workers = [];
+	var requestId = 0;
+
+	function createWorker(url) {
+		var worker = {
+			object: new Worker(url),
+			pending: 0,
+			requests: {},
+		};
+
+		worker.object.onmessage = function (event) {
+			var data = event.data;
+
+			worker.pending -= data.count;
+			worker.requests[data.id][data.action](data.value);
+			delete worker.requests[data.id];
+		};
+
+		return worker;
+	}
+
+	function initWorkers(count) {
+		var source =
+			'self.ready = WebAssembly.instantiate(new Uint8Array([' +
+			new Uint8Array(wasm) +
+			']), {})' +
+			'.then(function(result) { result.instance.exports.__wasm_call_ctors(); return result.instance; });' +
+			'self.onmessage = ' +
+			workerProcess.name +
+			';' +
+			decode.toString() +
+			workerProcess.toString();
+
+		var blob = new Blob([source], { type: 'text/javascript' });
+		var url = URL.createObjectURL(blob);
+
+		for (var i = workers.length; i < count; ++i) {
+			workers[i] = createWorker(url);
+		}
+
+		for (var i = count; i < workers.length; ++i) {
+			workers[i].object.postMessage({});
+		}
+
+		workers.length = count;
+
+		URL.revokeObjectURL(url);
+	}
+
+	function decodeWorker(count, size, source, mode, filter) {
+		var worker = workers[0];
+
+		for (var i = 1; i < workers.length; ++i) {
+			if (workers[i].pending < worker.pending) {
+				worker = workers[i];
+			}
+		}
+
+		return new Promise(function (resolve, reject) {
+			var data = new Uint8Array(source);
+			var id = ++requestId;
+
+			worker.pending += count;
+			worker.requests[id] = { resolve: resolve, reject: reject };
+			worker.object.postMessage({ id: id, count: count, size: size, source: data, mode: mode, filter: filter }, [data.buffer]);
+		});
+	}
+
+	function workerProcess(event) {
+		var data = event.data;
+		if (!data.id) {
+			return self.close();
+		}
+		self.ready.then(function (instance) {
+			try {
+				var target = new Uint8Array(data.count * data.size);
+				decode(instance, instance.exports[data.mode], target, data.count, data.size, data.source, instance.exports[data.filter]);
+				self.postMessage({ id: data.id, count: data.count, action: 'resolve', value: target }, [target.buffer]);
+			} catch (error) {
+				self.postMessage({ id: data.id, count: data.count, action: 'reject', value: error });
+			}
+		});
+	}
+
+	return {
+		ready: ready,
+		supported: true,
+		useWorkers: function (count) {
+			initWorkers(count);
+		},
+		decodeVertexBuffer: function (target, count, size, source, filter) {
+			decode(instance, instance.exports.meshopt_decodeVertexBuffer, target, count, size, source, instance.exports[filters[filter]]);
+		},
+		decodeIndexBuffer: function (target, count, size, source) {
+			decode(instance, instance.exports.meshopt_decodeIndexBuffer, target, count, size, source);
+		},
+		decodeIndexSequence: function (target, count, size, source) {
+			decode(instance, instance.exports.meshopt_decodeIndexSequence, target, count, size, source);
+		},
+		decodeGltfBuffer: function (target, count, size, source, mode, filter) {
+			decode(instance, instance.exports[decoders[mode]], target, count, size, source, instance.exports[filters[filter]]);
+		},
+		decodeGltfBufferAsync: function (count, size, source, mode, filter) {
+			if (workers.length > 0) {
+				return decodeWorker(count, size, source, decoders[mode], filters[filter]);
+			}
+
+			return ready.then(function () {
+				var target = new Uint8Array(count * size);
+				decode(instance, instance.exports[decoders[mode]], target, count, size, source, instance.exports[filters[filter]]);
+				return target;
+			});
+		},
+	};
+})();
+
+// export! MeshoptDecoder
+if (typeof exports === 'object' && typeof module === 'object') module.exports = MeshoptDecoder;
+else if (typeof define === 'function' && define['amd'])
+	define([], function () {
+		return MeshoptDecoder;
+	});
+else if (typeof exports === 'object') exports['MeshoptDecoder'] = MeshoptDecoder;
+else (typeof self !== 'undefined' ? self : this).MeshoptDecoder = MeshoptDecoder;
+
+/* Porto Vecchio — [tasselli] IL LAVORATORE DEI TASSELLI (un Web Worker; src/tasselli.js lo crea dal testo della pagina, insieme a
+   meshopt_decoder.js). Scarica, apre il gzip, decodifica meshopt e rifà i vettori come li vuole la scheda video; il filo della pagina
+   riceve solo vettori pronti (trasferiti, senza copia) e crea le BufferGeometry.
+   Messaggi: { op: 'tassello', id, url } → { id, testa, vettori }   { op: 'img', id, url, griglia, w, h, d, capovolgi } → { id, bmp | px }
+             { op: 'bin', id, url } → { id, buf } */
+'use strict';
+const TA = { Float32Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Uint8ClampedArray };
+async function scarica(url, gz) {
+  const r = await fetch(url); if (!r.ok) throw new Error(url + ' ' + r.status);
+  if (!gz) return r;
+  // i file sono in gzip (tassella.js): se il server ha già tolto la compressione (Content-Encoding) i byte arrivano aperti
+  return apri(await r.arrayBuffer());
+}
+function apri(ab) {
+  const u = new Uint8Array(ab);
+  if (u[0] !== 0x1f || u[1] !== 0x8b) return Promise.resolve(ab);
+  return new Response(new Blob([ab]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+function blocco(ab, h, B, a) {
+  const src = new Uint8Array(ab, h + B.off, B.len), T = TA[a.tipo];
+  if (a.enc === 'i') { const out = new T(a.n); MeshoptDecoder.decodeIndexBuffer(new Uint8Array(out.buffer), a.n, T.BYTES_PER_ELEMENT, src); return out; }
+  const st = a.st, st0 = a.st0 || st, n = a.idx ? a.n : a.n;
+  let u8;
+  if (a.enc === 'v') { u8 = new Uint8Array(n * st); MeshoptDecoder.decodeVertexBuffer(u8, n, st, src); } else u8 = src.slice();
+  if (!a.idx && st !== st0) { const p = new Uint8Array(n * st0); for (let i = 0; i < n; i++) p.set(u8.subarray(i * st, i * st + st0), i * st0); u8 = p; }
+  let arr = new T(u8.buffer, u8.byteOffset, u8.byteLength / T.BYTES_PER_ELEMENT);
+  if (a.q) {   // la posizione quantizzata torna a 32 bit (gli shader della città la leggono così)
+    const s = a.s, mn = a.q.min, k = a.q.max.map((v, c) => (v - mn[c]) / 65535), f = new Float32Array(arr.length);
+    for (let i = 0; i < arr.length; i++) { const c = i % s; f[i] = mn[c] + arr[i] * k[c]; }
+    arr = f;
+  }
+  return arr;
+}
+function contenitore(ab) {
+  const dv = new DataView(ab); if (dv.getUint32(0, true) !== 0x31545650) throw new Error('non è un tassello');   // 'PVT1'
+  const n = dv.getUint32(4, true), testa = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 8, n))), h = (8 + n + 7) & ~7;
+  const vettori = testa.attr.map(a => blocco(ab, h, testa.blocchi[a.b], a));
+  return { testa, vettori };
+}
+self.onmessage = async e => {
+  const m = e.data;
+  try {
+    await MeshoptDecoder.ready;
+    if (m.op === 'tassello') {
+      const t0 = performance.now(), ab = m.buf ? await apri(m.buf) : await scarica(m.url, true), t1 = performance.now(), { testa, vettori } = contenitore(ab);
+      const buf = [...new Set(vettori.map(v => v.buffer))];
+      self.postMessage({ id: m.id, testa, vettori, byte: ab.byteLength, ms: [t1 - t0, performance.now() - t1] }, buf);
+    } else if (m.op === 'img') {
+      const r = await scarica(m.url, false), bl = await r.blob();
+      const bmp = await createImageBitmap(bl, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: m.capovolgi ? 'flipY' : 'from-image' });
+      if (!m.griglia) { self.postMessage({ id: m.id, bmp }, [bmp]); return; }
+      // la pila: gli strati dalla griglia (colonne × righe), uno dopo l'altro
+      const [col] = m.griglia, W = m.w, H = m.h, D = m.d, cv = new OffscreenCanvas(bmp.width, bmp.height), cx = cv.getContext('2d', { willReadFrequently: true });
+      cx.drawImage(bmp, 0, 0); bmp.close();
+      const px = new Uint8Array(W * H * 4 * D);
+      for (let l = 0; l < D; l++) px.set(cx.getImageData((l % col) * W, Math.floor(l / col) * H, W, H).data, l * W * H * 4);
+      self.postMessage({ id: m.id, px }, [px.buffer]);
+    } else if (m.op === 'bin') {
+      const ab = await scarica(m.url, true); self.postMessage({ id: m.id, buf: ab }, [ab]);
+    }
+  } catch (err) { self.postMessage({ id: m.id, err: String(err && err.message || err) }); }
+};
+</script>   <!-- [tasselli] il lavoratore (Web Worker, dal testo): meshopt e gzip fuori dal filo della pagina -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -64725,9 +65312,9 @@ var Render = (function () {
   // [anelli] LA SAGOMA: le case che aspettano il loro settore, come volumi (la scatola della casa, girata come la casa) col colore del muro,
   // il lastrico o il tetto un po' più scuri; una mesh sola. Il quarto canale di FD1 dice quanto si vede ancora (255 tutta, 0 niente): la
   // casa vera scarta i pixel dove la sagoma li tiene, e viceversa (lo stesso retino, Anelli.RETINO)
-  function massa1() {
-    const pos = [], col = [], nor = [], ids = [], C = new THREE.Color(), G2 = new THREE.Color('#9a948c'), Rf = new THREE.Color(), tutte = [...FU1.onda];
-    FU1.att.forEach(S => S.recs.forEach(rec => tutte.push(rec)));
+  // [anelli] [tasselli] le scatole della sagoma (le case come volumi): la sagoma del caricamento ad anelli e quella cotta dei tasselli
+  function massaGeo1(tutte) {
+    const pos = [], col = [], nor = [], ids = [], C = new THREE.Color(), G2 = new THREE.Color('#9a948c'), Rf = new THREE.Color();
     tutte.forEach(rec => { const g = rec.geo, b = rec.b; if (!g || !b || !(g.w > 0) || !(g.d > 0) || !(g.H > 0)) return;
       const bi = FD1.idx.get(rec), a = rec.tier ? 0 : rotOf(b), cx = (b.x + b.w / 2) * TS, cz = (b.y + b.h / 2) * TS, ca = Math.cos(-a), sa = Math.sin(-a);
       C.set(b.__wallHex || (b.__ep && b.__ep.pal && typeof b.__ep.pal[0] === 'string' && b.__ep.pal[0]) || '#b8a890').lerp(G2, .35); Rf.copy(C).multiplyScalar(b.deco ? .78 : .62);
@@ -64738,8 +65325,15 @@ var Render = (function () {
       quad(P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(0, 1, 1), rn(0, 1), C); quad(P(1, 0, 0), P(0, 0, 0), P(0, 1, 0), P(1, 1, 0), rn(0, -1), C);
       quad(P(1, 0, 1), P(1, 0, 0), P(1, 1, 0), P(1, 1, 1), rn(1, 0), C); quad(P(0, 0, 0), P(0, 0, 1), P(0, 1, 1), P(0, 1, 0), rn(-1, 0), C);
       quad(P(0, 1, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0), [0, 1, 0], Rf); });
-    if (pos.length) {
-      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('bId1', new THREE.BufferAttribute(new Uint16Array(ids), 1)); geo.computeBoundingSphere();
+    if (!pos.length) return null;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); geo.setAttribute('bId1', new THREE.BufferAttribute(new Uint16Array(ids), 1)); geo.computeBoundingSphere();
+    return geo;
+  }
+  function massa1() {
+    const tutte = [...FU1.onda];
+    FU1.att.forEach(S => S.recs.forEach(rec => tutte.push(rec)));
+    const geo = massaGeo1(tutte);
+    if (geo) {
       const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
       mat.onBeforeCompile = sh => { sh.uniforms.uFd1 = FD1.u;
         sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float bId1; uniform sampler2D uFd1; varying float vFdA;').replace('#include <begin_vertex>', `#include <begin_vertex>\nvFdA = texture2D(uFd1, vec2((bId1 + .5) / ${FD1.W}., .5)).a;`);
@@ -79617,7 +80211,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
-    const TT = (n, f) => { P2.src = n; const t0 = performance.now(); f(); (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
+    // [tasselli] ogni oggetto messo in scena da una fase porta il nome della fase (__fase: l'esportatore dei tasselli sa chi è città);
+    // con i tasselli (src/tasselli.js) le fasi della città statica non girano: la città arriva cotta, a tasselli
+    const TASS = typeof Tasselli !== 'undefined' && Tasselli.attivo() ? Tasselli : null;
+    const TT = (n, f) => { P2.src = n; if (TASS && !TASS.faseViva(n)) return; const t0 = performance.now(), c0 = new Set(scene.children); f(); for (const c of scene.children) if (!c0.has(c) && !c.__fase) c.__fase = n; (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('margini9', () => { const g = RIVA9() ? Riva.costruisciMargini(groundH) : null; if (g) scene.add(g); });   /* [riva] i margini delle costiere */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
@@ -79639,6 +80236,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const laser = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: '#ff3a3a', transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); laser.visible = false; scene.add(laser); dyn.laser = laser;
     dyn.headlight = new THREE.SpotLight('#fff2c8', 0, 26, .55, .5, 1.5); scene.add(dyn.headlight); scene.add(dyn.headlight.target);
     cam.x = st.player.x; cam.y = st.player.y; cam.yaw = YAW; cam.dyaw = YAW; cam.drive = 0; cam.h = groundH(st.player.x, st.player.y);
+    if (TASS) TASS.monta({ scene, renderer, camera, st, cam, R: TASSR });   // [tasselli] la città cotta: la sagoma e l'anello vicino, poi il resto a tasselli
     if (typeof window !== 'undefined') window.__tl.init1 = Math.round(performance.now());   // [anelli]
     return { resize };
   }
@@ -81002,6 +81600,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function camBasis() { if (cam.yawIn !== undefined && isFinite(cam.yawIn)) { const fx = -Math.sin(cam.yawIn), fz = -Math.cos(cam.yawIn); return { fx, fz, rx: -fz, rz: fx }; }
     const f = new THREE.Vector3(); camera.getWorldDirection(f); f.y = 0; f.normalize(); return { fx: f.x, fz: f.z, rx: -f.z, rz: f.x }; }
   function snap(st) { cam.x = st.player.x; cam.y = st.player.y; cam.h = groundH(st.player.x, st.player.y); }
+  // [tasselli] quello che i tasselli condividono col gioco vivo: le uniform di modulo (per nome), le luci e le pozze di luce (dati)
+  const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
+    'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
+    ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); } };   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
@@ -81012,7 +81614,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { __tass: TASSR, rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -84309,7 +84911,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
   // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
   const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }

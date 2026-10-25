@@ -554,3 +554,45 @@ dai fotogrammi passati): spostando la foto di un pixel lo scarto della marina sc
 - La compilazione dei programmi (~180) è tutta nel caricamento: la si potrebbe dividere fra vicino e lontano solo con una compilazione
   asincrona che three r149 non ha.
 
+
+## 8. La città a tasselli ([tasselli], pilota: `?tasselli=1`)
+
+La città ferma non si costruisce più nel browser: `strumenti/tassella.js` la costruisce una volta nella build (il gioco vero in Chromium
+senza testa, seme fisso, `?tutto`), `strumenti/tassella_pagina.js` cammina la scena finale e la taglia in settori di 48 m; il gioco scarica
+solo i tasselli attorno alla camera (`src/tasselli.js`, il lavoratore `src/tasselli_lavoratore.js` con `meshopt_decoder.js`).
+
+- **Cosa c'è in un tassello**: le mesh ferme messe in scena dalle fasi della città (tutte le fasi di `R.init` tranne cielo, isola, acqua,
+  scena, particles, fx, debris, post), visibili, su un livello che una camera vede: case fuse con le loro sagome d'ombra (stesso buffer),
+  statiche fuse, tetti, marciapiedi, segni, costa, arredi, le istanze divise per settore. I materiali portano lo shader già trasformato
+  da `onBeforeCompile` (testo e uniform; quelle di modulo, come `FD1.u`, `PAL1.u`, `VENTO.t`, restano quelle vive di `render.js` per nome:
+  `R.__tass.uni`), le tessiture i pixel che il gioco manda alla scheda video.
+- **Il formato**: `PVT1` + testata JSON + blocchi; vettori quantizzati (posizione a 16 bit sulla scatola della mesh, normali a 8 bit),
+  meshopt (vertici e indici), tutto in gzip (il lavoratore lo apre con `DecompressionStream`: va con qualunque server). Le zuppe di
+  triangoli delle case fuse diventano vertici unici più indice (14,0 → 6,7 M vertici); le mesh uguali di un tassello si uniscono.
+- **Le impronte**: `build.py` scrive `PV_IMPRONTA_TASS` (tutti i moduli del gioco, i modelli, il mondo cotto, l'esportatore);
+  `tasselli/indice.json` deve averla uguale, se no il gioco costruisce come prima. `python3 build.py --tasselli` rifà i tasselli.
+- **Gli anelli**: si apre e si monta quello che entra nell'impronta della camera a terra (fino alla nebbia) più un margine (24 m
+  telefono, 40 computer: il riquadro dell'ombra del sole); si smonta quando ne esce di due margini; il compresso si scarica fino a 130 m
+  (220 sul computer) e si butta oltre 200 (320). Dove il tassello manca c'è la sagoma (le case come volumi, `massaGeo1`, 32 KB per tutta
+  l'isola) col retino di anelli. `?tassellilog`, `window.__tasselli`, `Tasselli.finisci(r)` per gli strumenti, `?tasselliraggio=0`.
+- **Le misure** (`strumenti/misura_tasselli.js`, `strumenti/confronta_tasselli.js`; macchina condivisa, carico 8-13 su 4 processori,
+  SwiftShader, disegni a vuoto: contano i rapporti):
+
+| | telefono oggi | telefono tasselli | computer oggi | computer tasselli |
+|---|---:|---:|---:|---:|
+| si gioca (`__tl.gioco`, coi tasselli anche l'anello vicino) | 90-134 s | 31-56 s | 177 s | 84 s |
+| `R.init` | 48-76 s | 5-10 s | 67 s | 7 s |
+| pagina + scheda video, picco | 2,61-2,67 GB | 1,88 GB | 3,34 GB | 2,58 GB |
+| pagina + scheda video, a regime | 2,50-2,62 GB | 1,86 GB | 3,31 GB | 2,53 GB |
+| heap JS | 1.009 MB | 607 MB | 1.189 MB | 746 MB |
+| disegni per fotogramma | 391 | 408 | 816 | 774 |
+| scaricato fino all'anello vicino (tasselli, tessiture, indice) | — | 15,6 MB | — | 26,7 MB |
+
+  Senza nessun tassello (`?tasselliraggio=0`) il telefono sta a 1,43 GB e 521 MB di heap: il resto del gioco (pagina, mondo cotto, kit,
+  persone, mezzi, treni, sottosuolo, terreno a blocchi) pesa più della città.
+- **L'immagine**: scarto medio contro oggi borgo 10,4 (il rumore fra due caricamenti di oggi è 1,5), città 4,8-6,5 (rumore 4,6). Quello che
+  resta: le ombre (la cache di peso_ombre si ricuoce all'arrivo di ogni tassello e riparte da un altro riquadro), le facciate dipinte dal
+  vivo (graffiti, murales) e le tele pigre ridipinte.
+- **Quello che manca** (passo 3): le case tagliate e i tetti nascosti (visuale3/4: leggono `dyn.buildings`), i colpi e la distruzione
+  sulle statiche, i graffiti sui muri, le luci che sfarfallano e gli aloni (sprite), bucato, bandiere e barche ferme come nella foto della
+  build; la compilazione dei programmi dei tasselli nel caricamento; meno disegni (materiali in tavolozza/atlante per tassello).
