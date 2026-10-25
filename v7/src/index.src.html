@@ -324,6 +324,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '__IMPRONTA_MONDO__';</script>
+<script>window.PV_IMPRONTA_TASS = '__IMPRONTA_TASS__';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <script src="mondo_cotto.js"></script>
 <script data-m="cotto">/*cotto.js*/</script>
 <script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
