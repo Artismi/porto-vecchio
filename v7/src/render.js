@@ -4222,15 +4222,36 @@ var Render = (function () {
   // pennello dipinge su un velo di vernice aderente alla superficie: stesso spruzzo, solo su quel pezzo di muro.
   const BMB = { rc: new THREE.Raycaster(), cands: null, candT: 0, cx: 1e9, cz: 1e9, use: new Map(), veli: [], tmp: document.createElement('canvas'), dirty: new Set(), chk: 0, sph: new THREE.Sphere(), va: new THREE.Vector3(), vb: new THREE.Vector3() };
   const bmbCanvas = t => { const im = t && t.image; return im && im.getContext ? im : null; };
+  // [scatti] chi si può dipingere: prima un giro intero della scena (50.000 oggetti) ogni volta che la richiesta veniva da più di 15 m o dopo
+  // 2 s, dentro il fotogramma (i graffiti che entrano in vista lo chiedono da punti diversi: uno scatto per ognuno). Ora l'elenco di tutta la
+  // scena (con la sfera nel mondo di ognuno) si rifà a rate, 4000 oggetti per fotogramma (bmbTick), e ogni richiesta filtra solo per distanza.
+  // Lo stesso criterio di prima (visibili, mesh piene, non veli, materiale visibile, sfera entro 10 m), la stessa età al massimo (~2 s).
+  const BMBW = { all: null, t: 0, used: 0, W: null, next: null, use: null };
+  function bmbVisit(o, all, use) {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) { const c = m && bmbCanvas(m.map); if (c) use.set(c, (use.get(c) || 0) + 1); }   // quanti oggetti usano lo stesso canvas
+    if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    all.push(o, BMB.sph.center.x, BMB.sph.center.z, BMB.sph.radius + 10);
+  }
+  function bmbWalk(n) {   // come traverseVisible: dentro un ramo spento non si entra
+    const W = BMBW.W; if (!W.stack) W.stack = [scene]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(); if (!o.visible) continue; const c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); bmbVisit(o, BMBW.next, BMBW.use); }
+    if (S.length) return false; W.stack = null; return true;
+  }
+  function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
+    const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
+    if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
+    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+  }
   function bmbCands(cx, cz) {
-    const now = performance.now(); if (BMB.cands && now - BMB.candT < 2000 && Math.hypot(BMB.cx - cx, BMB.cz - cz) < 15) return BMB.cands;
-    BMB.candT = now; BMB.cx = cx; BMB.cz = cz; const out = []; BMB.use.clear();
-    scene.traverseVisible(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      ms.forEach(m => { const c = m && bmbCanvas(m.map); if (c) BMB.use.set(c, (BMB.use.get(c) || 0) + 1); });   // quanti oggetti usano lo stesso canvas
-      if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
-      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
-      if (Math.hypot(BMB.sph.center.x - cx, BMB.sph.center.z - cz) > BMB.sph.radius + 10) return; out.push(o); });
+    const now = performance.now(); BMBW.used = now;
+    if (BMB.cands && BMB.cx === cx && BMB.cz === cz && now - BMBW.t <= 6000) return BMB.cands;
+    if (!BMBW.all || now - BMBW.t > 6000) {   // la prima volta (o dopo una lunga pausa): il giro intero subito, come prima
+      const all = [], use = new Map(); scene.traverseVisible(o => bmbVisit(o, all, use)); BMBW.all = all; BMB.use = use; BMBW.t = now; BMBW.W = null; }
+    BMB.cx = cx; BMB.cz = cz; const out = [], A = BMBW.all;
+    for (let i = 0; i < A.length; i += 4) { const dx = A[i + 1] - cx, dz = A[i + 2] - cz; if (dx * dx + dz * dz <= A[i + 3] * A[i + 3]) out.push(A[i]); }
     return (BMB.cands = out);
   }
   const bmbAlive = L => { let o = L.mesh; while (o.parent) o = o.parent; return o === scene; };
@@ -15934,7 +15955,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
   if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
-    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
@@ -16115,7 +16136,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (V.y > 1.2 && tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && G.bIndex[ty * G.GW + tx] >= 0) k++; }
         return c > 0 && k / c > .6; };
       const giro = () => { scene.traverse(o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} }); };
-      giro(); setInterval(giro, 4000); }
+      // [scatti] dopo il primo giro (intero, all'avvio) la scena si riguarda a rate, 3000 oggetti per fotogramma, un giro ogni 4 s:
+      // prima era un giro intero di 50.000 oggetti dentro un timer, uno scatto ogni 4 s
+      giro(); const SCW = { stack: null }; let scT = performance.now();
+      const scPasso = () => { const now = performance.now(); if (SCW.stack || now - scT > 4000) { if (sliceWalk(SCW, scene, 3000, o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} })) scT = now; } requestAnimationFrame(scPasso); };
+      requestAnimationFrame(scPasso); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
@@ -17424,6 +17449,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = !pveh && !ui.intro);   // [visuale3] la sagoma è sempre pronta: la scheda video la disegna solo dove qualcosa copre
     anelliTick1(ui, dt);   /* [anelli] i lavori del caricamento ad anelli, nel loro tetto di tempo (prima di mandare FD1: le sfumature lo toccano) */
+    // [scatti] i modelli degli alberi di città (generati, 100-300 ms l'uno e decine di MB di spazzatura la prima volta) si fanno nella
+    // schermata iniziale, uno per fotogramma, invece che camminando quando il primo blocco di piante li chiede. Gli stessi semi: gli stessi alberi
+    if (ui.intro && ZN.CITTA !== undefined && !NAT.caldi) { const nm = NAT_CITTA.find(k => NAT.models[k] === undefined); if (nm) { try { natModel(nm); } catch (e) { NAT.caldi = true; } } else NAT.caldi = true; }
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
     if (window.LeggeraMem) LeggeraMem.tick(performance.now());   /* [leggera] i pezzi rifatti che nessuno usa più */
     if (ARR1.all.length && frameN % 90 === 0) arrTick1();   /* [leggero] una tela delle case ridisegnata: la sua pila si rilegge */
@@ -17447,6 +17475,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
+    bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };

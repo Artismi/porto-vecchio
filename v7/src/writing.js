@@ -610,6 +610,35 @@ var Writing = (function () {
     for (const m of list) { const g = m.geometry; if (!g || (m.userData && typeof m.userData.lazy1 === 'function')) { out.push(m); continue; } if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); if (S.center.distanceTo(c) <= S.radius + rad) out.push(m); }
     return out;
   }
+  // [scatti] SOLO LE MESH CHE HANNO DAVVERO UN TRIANGOLO NEL RIQUADRO. La griglia di fitWall fa 50-130 raggi corti, tutti dentro una scatola
+  // attorno al riquadro; nearList tiene chi ha la SFERA vicina, e le mesh fuse e sottili della città (le vie vive, le statiche fuse: 100-200
+  // triangoli sparsi su 200 m) hanno sfere di 50-200 m: restavano ~150 mesh provate a ogni raggio, 100-500 ms in un fotogramma solo (lo
+  // scatto vicino ai muri dipinti). Qui una volta per riquadro: si tiene la mesh se almeno un triangolo tocca la scatola (con l'indice dei
+  // raggi, three-mesh-bvh, se c'è e torna; se no triangolo per triangolo, nello spazio della mesh). Un raggio dentro la scatola può colpire
+  // solo quei triangoli: stessi punti, stesso primo colpo, stesso risultato.
+  function nearTris(list, c, E) {
+    const THREE = T3(), out = [], B = GFX.ntB || (GFX.ntB = new THREE.Box3()), Bl = GFX.ntBl || (GFX.ntBl = new THREE.Box3()), M = GFX.ntM || (GFX.ntM = new THREE.Matrix4());
+    B.min.set(c.x - E, c.y - E, c.z - E); B.max.set(c.x + E, c.y + E, c.z + E);
+    for (const m of list) {
+      const g = m.geometry, pa = g && g.attributes && g.attributes.position;
+      if (!pa || (m.userData && typeof m.userData.lazy1 === 'function') || m.isInstancedMesh || m.isSkinnedMesh || (g.morphAttributes && g.morphAttributes.position)) { out.push(m); continue; }
+      M.copy(m.matrixWorld).invert();
+      const bt = g.boundsTree;   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
+      if (bt && g.__bvhVer === pa.version * 4194304 + (g.index ? g.index.version + 2 : 1)) { try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+      Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
+      const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
+      if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
+      const ix = g.index, n = ix ? ix.count : pa.count; let hit = false;
+      for (let t = 0; t + 2 < n && !hit; t += 3) {
+        const a = ix ? ix.getX(t) : t, b = ix ? ix.getX(t + 1) : t + 1, d = ix ? ix.getX(t + 2) : t + 2;
+        const ax = pa.getX(a), bx = pa.getX(b), dx = pa.getX(d); if ((ax < x0 && bx < x0 && dx < x0) || (ax > x1 && bx > x1 && dx > x1)) continue;
+        const az = pa.getZ(a), bz = pa.getZ(b), dz = pa.getZ(d); if ((az < z0 && bz < z0 && dz < z0) || (az > z1 && bz > z1 && dz > z1)) continue;
+        const ay = pa.getY(a), by = pa.getY(b), dy = pa.getY(d); if ((ay < y0 && by < y0 && dy < y0) || (ay > y1 && by > y1 && dy > y1)) continue;
+        hit = true; }
+      if (hit) out.push(m);
+    }
+    return out;
+  }
   // le aperture della facciata vicino a c (render.js R.aperture), quelle col fronte come n
   function openingsAt(c, n) { const R = R_(); let L = []; try { L = R && R.aperture ? R.aperture(c.x, c.z, 9) : []; } catch (e) { L = []; } return L.filter(a => a.nx * n.x + a.nz * n.z > .85 && Math.abs((c.x - a.x) * a.nx + (c.z - a.z) * a.nz) < .8); }
   const inOpening = (O, x, y, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .04 && y > a.y0 - .04 && y < a.y1 + .04; });
@@ -625,7 +654,7 @@ var Writing = (function () {
   // Ritorna { c, r, W, H } (c il centro nuovo, sul piano) o null se non c'è un pezzo di muro almeno minK della misura
   function fitWall(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
-    const L = nearList(list, c, Math.hypot(W, H) / 2 + 1.2), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;
+    const L = nearTris(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);

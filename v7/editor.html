@@ -22359,8 +22359,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '660c58d2c6d94c77';</script>
-<script>window.PV_IMPRONTA_TASS = '60351734ef514665';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '4cef63dce334979d';</script>
+<script>window.PV_IMPRONTA_TASS = '32b4b2a8116ed89c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -51439,13 +51439,17 @@ var Tetti = (function () {
   function scanWork(J, deadline) {   // true: finito (misurato, o il modello non si presta)
     const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = GFX.ro || (GFX.ro = new T3.Vector3()), dn = GFX.rd || (GFX.rd = new T3.Vector3(0, -1, 0));
     const { b, parts, W1, H1, g, floor, rule } = J;
+    // [scatti] il tempo si guarda ogni 4 raggi, non a fine riga: su un modello pieno di pezzi una riga intera passava di 20-100 ms il tetto
+    // del fotogramma. Stessi raggi, nello stesso ordine: il fotogramma si ferma a metà riga (J.gx) e riprende da lì
     while (J.gy < H1) {
-      const gy = J.gy++;
-      for (let gx = 0; gx < W1; gx++) {
+      const gy = J.gy;
+      for (let gx = J.gx || 0; gx < W1; gx++) {
         const x = b.x * TS + gx + .5, z = b.y * TS + gy + .5; o.set(x, rule + 40, z); rc.set(o, dn); rc.far = 80;
         const h = rc.intersectObjects(parts, true).find(h => !h.object.userData.velo && !h.object.userData.noRoof && h.point.y > floor);
         g[gy * W1 + gx] = h ? h.point.y : NaN; if (h) J.hits++;
+        if ((gx & 3) === 3 && gx < W1 - 1 && performance.now() > deadline) { J.gx = gx + 1; return false; }
       }
+      J.gx = 0; J.gy++;
       if (performance.now() > deadline) return J.gy >= H1 ? scanEnd(J) : false;
     }
     return scanEnd(J);
@@ -51628,7 +51632,10 @@ var Tetti = (function () {
       boards.push(m4.compose(p3.set(z.x, y + .2, z.y), q, s3.set(.6, .4, .45)).clone()); boards.push(m4.compose(p3.set(z.x, y + .41, z.y), q, s3.set(.64, .03, .49)).clone());
       rails.push(m4.compose(p3.set(z.x + .05, y + .5, z.y), q, s3.set(.3, .16, .22)).clone()); lamps.push(m4.compose(p3.set(z.x - .22, y + .48, z.y + .1), q, s3.set(.06, .1, .06)).clone()); });
     // [tetti4] LE CORTI: il lastrico chiaro (si legge come un posto, non come un avanzo) e la cosa che dice lo scopo
-    CORTI.forEach(C => { const foot = (x, y) => LADDERS.some(L => hyp(L.fx - x, L.fy - y) < 1.6), hc = (x, y) => tileH(x, y);
+    // [scatti] il piede di una scala vicino alla cella: le scale in una griglia di 1,6 m (prima tutte le 300 scale per ognuna delle 300 celle, a ogni rifacimento)
+    const PIEDI = new Map(); LADDERS.forEach(L => { const k = Math.floor(L.fx / 1.6) + ',' + Math.floor(L.fy / 1.6); const a = PIEDI.get(k); if (a) a.push(L); else PIEDI.set(k, [L]); });
+    const piede = (x, y) => { const i0 = Math.floor(x / 1.6), j0 = Math.floor(y / 1.6); for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const a = PIEDI.get(i + ',' + j); if (a) for (const L of a) if (hyp(L.fx - x, L.fy - y) < 1.6) return true; } return false; };
+    CORTI.forEach(C => { const foot = piede, hc = (x, y) => tileH(x, y);
       C.celle.forEach(([tx, ty]) => { const x = (tx + .5) * TS, y = (ty + .5) * TS; put(lastr, x, hc(x, y) + .02, y, TS - .04, .03, TS - .04, 0); });
       const cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).filter(([x, y]) => !foot(x, y)).sort((a, b) => hyp(a[0] - C.x, a[1] - C.y) - hyp(b[0] - C.x, b[1] - C.y));
       if (!cel.length) return; const [cx, cy] = cel[0], g0 = hc(cx, cy);
@@ -60214,6 +60221,35 @@ var Writing = (function () {
     for (const m of list) { const g = m.geometry; if (!g || (m.userData && typeof m.userData.lazy1 === 'function')) { out.push(m); continue; } if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); if (S.center.distanceTo(c) <= S.radius + rad) out.push(m); }
     return out;
   }
+  // [scatti] SOLO LE MESH CHE HANNO DAVVERO UN TRIANGOLO NEL RIQUADRO. La griglia di fitWall fa 50-130 raggi corti, tutti dentro una scatola
+  // attorno al riquadro; nearList tiene chi ha la SFERA vicina, e le mesh fuse e sottili della città (le vie vive, le statiche fuse: 100-200
+  // triangoli sparsi su 200 m) hanno sfere di 50-200 m: restavano ~150 mesh provate a ogni raggio, 100-500 ms in un fotogramma solo (lo
+  // scatto vicino ai muri dipinti). Qui una volta per riquadro: si tiene la mesh se almeno un triangolo tocca la scatola (con l'indice dei
+  // raggi, three-mesh-bvh, se c'è e torna; se no triangolo per triangolo, nello spazio della mesh). Un raggio dentro la scatola può colpire
+  // solo quei triangoli: stessi punti, stesso primo colpo, stesso risultato.
+  function nearTris(list, c, E) {
+    const THREE = T3(), out = [], B = GFX.ntB || (GFX.ntB = new THREE.Box3()), Bl = GFX.ntBl || (GFX.ntBl = new THREE.Box3()), M = GFX.ntM || (GFX.ntM = new THREE.Matrix4());
+    B.min.set(c.x - E, c.y - E, c.z - E); B.max.set(c.x + E, c.y + E, c.z + E);
+    for (const m of list) {
+      const g = m.geometry, pa = g && g.attributes && g.attributes.position;
+      if (!pa || (m.userData && typeof m.userData.lazy1 === 'function') || m.isInstancedMesh || m.isSkinnedMesh || (g.morphAttributes && g.morphAttributes.position)) { out.push(m); continue; }
+      M.copy(m.matrixWorld).invert();
+      const bt = g.boundsTree;   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
+      if (bt && g.__bvhVer === pa.version * 4194304 + (g.index ? g.index.version + 2 : 1)) { try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+      Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
+      const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
+      if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
+      const ix = g.index, n = ix ? ix.count : pa.count; let hit = false;
+      for (let t = 0; t + 2 < n && !hit; t += 3) {
+        const a = ix ? ix.getX(t) : t, b = ix ? ix.getX(t + 1) : t + 1, d = ix ? ix.getX(t + 2) : t + 2;
+        const ax = pa.getX(a), bx = pa.getX(b), dx = pa.getX(d); if ((ax < x0 && bx < x0 && dx < x0) || (ax > x1 && bx > x1 && dx > x1)) continue;
+        const az = pa.getZ(a), bz = pa.getZ(b), dz = pa.getZ(d); if ((az < z0 && bz < z0 && dz < z0) || (az > z1 && bz > z1 && dz > z1)) continue;
+        const ay = pa.getY(a), by = pa.getY(b), dy = pa.getY(d); if ((ay < y0 && by < y0 && dy < y0) || (ay > y1 && by > y1 && dy > y1)) continue;
+        hit = true; }
+      if (hit) out.push(m);
+    }
+    return out;
+  }
   // le aperture della facciata vicino a c (render.js R.aperture), quelle col fronte come n
   function openingsAt(c, n) { const R = R_(); let L = []; try { L = R && R.aperture ? R.aperture(c.x, c.z, 9) : []; } catch (e) { L = []; } return L.filter(a => a.nx * n.x + a.nz * n.z > .85 && Math.abs((c.x - a.x) * a.nx + (c.z - a.z) * a.nz) < .8); }
   const inOpening = (O, x, y, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .04 && y > a.y0 - .04 && y < a.y1 + .04; });
@@ -60229,7 +60265,7 @@ var Writing = (function () {
   // Ritorna { c, r, W, H } (c il centro nuovo, sul piano) o null se non c'è un pezzo di muro almeno minK della misura
   function fitWall(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
-    const L = nearList(list, c, Math.hypot(W, H) / 2 + 1.2), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;
+    const L = nearTris(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);
@@ -73115,15 +73151,36 @@ var Render = (function () {
   // pennello dipinge su un velo di vernice aderente alla superficie: stesso spruzzo, solo su quel pezzo di muro.
   const BMB = { rc: new THREE.Raycaster(), cands: null, candT: 0, cx: 1e9, cz: 1e9, use: new Map(), veli: [], tmp: document.createElement('canvas'), dirty: new Set(), chk: 0, sph: new THREE.Sphere(), va: new THREE.Vector3(), vb: new THREE.Vector3() };
   const bmbCanvas = t => { const im = t && t.image; return im && im.getContext ? im : null; };
+  // [scatti] chi si può dipingere: prima un giro intero della scena (50.000 oggetti) ogni volta che la richiesta veniva da più di 15 m o dopo
+  // 2 s, dentro il fotogramma (i graffiti che entrano in vista lo chiedono da punti diversi: uno scatto per ognuno). Ora l'elenco di tutta la
+  // scena (con la sfera nel mondo di ognuno) si rifà a rate, 4000 oggetti per fotogramma (bmbTick), e ogni richiesta filtra solo per distanza.
+  // Lo stesso criterio di prima (visibili, mesh piene, non veli, materiale visibile, sfera entro 10 m), la stessa età al massimo (~2 s).
+  const BMBW = { all: null, t: 0, used: 0, W: null, next: null, use: null };
+  function bmbVisit(o, all, use) {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) { const c = m && bmbCanvas(m.map); if (c) use.set(c, (use.get(c) || 0) + 1); }   // quanti oggetti usano lo stesso canvas
+    if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    all.push(o, BMB.sph.center.x, BMB.sph.center.z, BMB.sph.radius + 10);
+  }
+  function bmbWalk(n) {   // come traverseVisible: dentro un ramo spento non si entra
+    const W = BMBW.W; if (!W.stack) W.stack = [scene]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(); if (!o.visible) continue; const c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); bmbVisit(o, BMBW.next, BMBW.use); }
+    if (S.length) return false; W.stack = null; return true;
+  }
+  function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
+    const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
+    if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
+    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+  }
   function bmbCands(cx, cz) {
-    const now = performance.now(); if (BMB.cands && now - BMB.candT < 2000 && Math.hypot(BMB.cx - cx, BMB.cz - cz) < 15) return BMB.cands;
-    BMB.candT = now; BMB.cx = cx; BMB.cz = cz; const out = []; BMB.use.clear();
-    scene.traverseVisible(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      ms.forEach(m => { const c = m && bmbCanvas(m.map); if (c) BMB.use.set(c, (BMB.use.get(c) || 0) + 1); });   // quanti oggetti usano lo stesso canvas
-      if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
-      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
-      if (Math.hypot(BMB.sph.center.x - cx, BMB.sph.center.z - cz) > BMB.sph.radius + 10) return; out.push(o); });
+    const now = performance.now(); BMBW.used = now;
+    if (BMB.cands && BMB.cx === cx && BMB.cz === cz && now - BMBW.t <= 6000) return BMB.cands;
+    if (!BMBW.all || now - BMBW.t > 6000) {   // la prima volta (o dopo una lunga pausa): il giro intero subito, come prima
+      const all = [], use = new Map(); scene.traverseVisible(o => bmbVisit(o, all, use)); BMBW.all = all; BMB.use = use; BMBW.t = now; BMBW.W = null; }
+    BMB.cx = cx; BMB.cz = cz; const out = [], A = BMBW.all;
+    for (let i = 0; i < A.length; i += 4) { const dx = A[i + 1] - cx, dz = A[i + 2] - cz; if (dx * dx + dz * dz <= A[i + 3] * A[i + 3]) out.push(A[i]); }
     return (BMB.cands = out);
   }
   const bmbAlive = L => { let o = L.mesh; while (o.parent) o = o.parent; return o === scene; };
@@ -84827,7 +84884,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
   if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
-    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
@@ -85008,7 +85065,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (V.y > 1.2 && tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && G.bIndex[ty * G.GW + tx] >= 0) k++; }
         return c > 0 && k / c > .6; };
       const giro = () => { scene.traverse(o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} }); };
-      giro(); setInterval(giro, 4000); }
+      // [scatti] dopo il primo giro (intero, all'avvio) la scena si riguarda a rate, 3000 oggetti per fotogramma, un giro ogni 4 s:
+      // prima era un giro intero di 50.000 oggetti dentro un timer, uno scatto ogni 4 s
+      giro(); const SCW = { stack: null }; let scT = performance.now();
+      const scPasso = () => { const now = performance.now(); if (SCW.stack || now - scT > 4000) { if (sliceWalk(SCW, scene, 3000, o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} })) scT = now; } requestAnimationFrame(scPasso); };
+      requestAnimationFrame(scPasso); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
@@ -86317,6 +86378,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = !pveh && !ui.intro);   // [visuale3] la sagoma è sempre pronta: la scheda video la disegna solo dove qualcosa copre
     anelliTick1(ui, dt);   /* [anelli] i lavori del caricamento ad anelli, nel loro tetto di tempo (prima di mandare FD1: le sfumature lo toccano) */
+    // [scatti] i modelli degli alberi di città (generati, 100-300 ms l'uno e decine di MB di spazzatura la prima volta) si fanno nella
+    // schermata iniziale, uno per fotogramma, invece che camminando quando il primo blocco di piante li chiede. Gli stessi semi: gli stessi alberi
+    if (ui.intro && ZN.CITTA !== undefined && !NAT.caldi) { const nm = NAT_CITTA.find(k => NAT.models[k] === undefined); if (nm) { try { natModel(nm); } catch (e) { NAT.caldi = true; } } else NAT.caldi = true; }
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
     if (window.LeggeraMem) LeggeraMem.tick(performance.now());   /* [leggera] i pezzi rifatti che nessuno usa più */
     if (ARR1.all.length && frameN % 90 === 0) arrTick1();   /* [leggero] una tela delle case ridisegnata: la sua pila si rilegge */
@@ -86340,6 +86404,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
+    bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
@@ -90604,7 +90669,10 @@ var TascheUI = (function () {
     const st = ST(); if (!st || !mount()) return;
     const p = st.player, held = p.hand || p.cur || 'pugni';
     { const c = $('ts-btn').querySelector('canvas'); if (c.__held !== held) { c.__held = held; icon(c, held); } }   // [fluido] l'icona si ridisegna quando cambia
-    const A = st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
+    // [scatti] le azioni di qui (Azioni.playerActions: decine di ms nei posti pieni) servono solo a tasche aperte o al suggerimento, che col
+    // menu (MenuUI) resta spento: a tasche chiuse non si calcolano più quattro volte al secondo (le conta già il menu, ogni mezzo secondo)
+    const serve = U.open || typeof MenuUI === 'undefined';
+    const A = !serve || st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
     const hint = $('ts-hint');
     const hOn = !!first && !U.open && typeof MenuUI === 'undefined'; if (hint.classList.contains('on') !== hOn) hint.classList.toggle('on', hOn);   // [menu] in scena basta il riquadro «Qui»
     if (first && !U.open) { const c = hint.querySelector('canvas'), sp = hint.querySelector('span'); if (c.__held !== held) { c.__held = held; icon(c, held); } if (sp.textContent !== first.label) sp.textContent = first.label; }   // [fluido] solo se cambia
