@@ -25,6 +25,7 @@
  "polvere": 0.6,
  "spessore": 1.5,
  "buchi": 1,
+ "vivo": 0.7,
  "momenti": {
   "mattino": {
    "proOmbra": [
@@ -42,7 +43,8 @@
    "proPieno": 0.75,
    "proNeri": 0.02,
    "proTinta": "#6878c0",
-   "proTintaK": 0.24
+   "proTintaK": 0.24,
+   "proEsp": 1
   },
   "pomeriggio": {
    "proOmbra": [
@@ -60,7 +62,8 @@
    "proPieno": 0.75,
    "proNeri": 0.02,
    "proTinta": "#7080c4",
-   "proTintaK": 0.22
+   "proTintaK": 0.22,
+   "proEsp": 1
   },
   "sera": {
    "proOmbra": [
@@ -76,15 +79,16 @@
    "proSat": 1.0,
    "proContrasto": 1.1,
    "proPieno": 0.7,
-   "proNeri": 0.05,
+   "proNeri": 0.035,
    "proTinta": "#5a3a9a",
-   "proTintaK": 0.26
+   "proTintaK": 0.26,
+   "proEsp": 1.05
   },
   "notte": {
    "proOmbra": [
-    0.86,
-    0.9,
-    1.14
+    0.92,
+    0.94,
+    1.1
    ],
    "proLuce": [
     1.12,
@@ -92,11 +96,12 @@
     0.8
    ],
    "proSat": 1.02,
-   "proContrasto": 1.12,
-   "proPieno": 0.85,
-   "proNeri": 0.07,
-   "proTinta": "#24206a",
-   "proTintaK": 0.3
+   "proContrasto": 1.04,
+   "proPieno": 0.7,
+   "proNeri": 0.02,
+   "proTinta": "#4a46a0",
+   "proTintaK": 0.4,
+   "proEsp": 1.3
   }
  }
 }
