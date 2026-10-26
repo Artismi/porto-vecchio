@@ -89164,7 +89164,7 @@ var Personaggi = (function () {
     const tipo = (D.capelli && D.capelli.tipo) || 'corti', hat = D.cappello && D.cappello.tipo, scuro = mulc(col, .8), chiaro = mixc(col, [1, 1, 1], .1);
     const cc = (y, x, z, ax, a, b, l, c, o) => uovo(B, at(y, x, z), ax, a * K, b * K, l * K, c || col, wH, Object.assign({ anelli: 4, seg: 8 }, o || {}));
     const top = pa(1, 0), sotto = hat && !/^(fazzoletto|fascia|bandana|visiera)$/.test(hat) ? (hat === 'paglia' || hat === 'cappello' ? .16 : hat === 'basco' ? .175 : hat === 'casco' ? .075 : hat === 'elmetto' ? .11 : .135) : 0;   // [personaggi] il basco è inclinato e dietro sta alto. fascia, bandana e visiera non coprono la testa: i capelli restano interi
-    if (hat === 'fazzoletto') return;
+    if (/^(fazzoletto|passamontagna|maschera_gas|cappuccio_stelle)/.test(hat || '')) return;   // [personaggi] coprono tutta la testa: niente capelli sotto
     const r = rng('capelli' + JSON.stringify(D.capelli || {}) + (D.seme || '')), lato = r() < .5 ? 1 : -1;
     // [capelli] una calotta sola che segue il cranio, con lo spessore e il volume dello stile, l'attaccatura vera
     // (fronte, tempie, basette, nuca) e i ciuffi fatti di forma, non di palline
@@ -89449,7 +89449,7 @@ var Personaggi = (function () {
       uovo(B, at(.214, .022, -.008), [0, 1, 0], .004 * K, .004 * K, .008 * K, sc, wH, { anelli: 2, seg: 5 });
     } else if (tipo === 'fascia') { const ct = D.capelli && D.capelli.tipo, fsp = /ricci|permanente/.test(ct || '') ? .036 : /calvo/.test(ct || '') ? .006 : /lunghi|caschetto/.test(ct || '') ? .024 : .02; loft(B, [.145, .16, .173].map(y => ({ c: at(y, 0, pa(y, 3)), t: [0, 1, 0], f: [0, 0, 1], a: (pa(y, 1) + fsp) * K, b: (pa(y, 2) + fsp) * K, col: c, w: wH })), { seg: 16 }); }   // [personaggi] la fascia aderisce: sul cranio misurato più lo spessore dei capelli (era a misura fissa, larga sulle teste piccole)
     else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
-    else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa.PK && pa.PK.tris) passamontagna(B, D, pa.PK); 
+    else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa0.PK && pa0.PK.tris) passamontagna(B, D, pa0.PK);   /* [personaggi] pa è la copia spostata alla quota degli occhi e non ha PK: i passamontagna non si facevano più */ 
     } else if (tipo === 'durag') {   // [personaggi] il durag: la calotta di raso che segue la testa, la cucitura in mezzo, il nodo davanti, le due code dietro
       const R2 = y => [pa(Math.min(y, .2), 1) + .006, pa(Math.min(y, .2), 2) + .006];
       loft(B, [[.105, 1], [.13, 1], [.17, 1], [.2, .96], [.225, .8], [.24, .5], [.247, .05]].map(([y, q]) => ({ c: at(y, 0, pa(Math.min(y, .2), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * q * K, b: R2(y)[1] * q * K, col: c, w: wH })), { seg: 16 });
