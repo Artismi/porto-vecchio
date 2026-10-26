@@ -22359,8 +22359,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '73e94e75f4d32189';</script>
-<script>window.PV_IMPRONTA_TASS = 'ad30982ba893f0ee';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '660c58d2c6d94c77';</script>
+<script>window.PV_IMPRONTA_TASS = '082bdeb13d954e44';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -50624,20 +50624,40 @@ var Tetti = (function () {
       else if (chi === 'baracca' && f === face) { const dk = b.door ? (f === 'S' || f === 'N' ? (b.door[0] - b.x) * TS + 1 : (b.door[1] - b.y) * TS + 1) : L / 2, ud = Math.max(.7, Math.min(L - .7, dk));
         put(ud - .45, ud + .45, 0, 2); [-1.1, 1.1].forEach(s => { const uw = Math.max(.4, Math.min(L - .4, ud + s)); put(uw - .3, uw + .3, 1.2, 1.8); }); } });
   }
-  // [scale3] IL MODULO CIECO NON C'È PIÙ (il committente: «chiude finestre e rovina facciate murandole»): dove il muro non ha un posto
-  // libero a 25 cm dai vani la scala non si mette, e le finestre restano tutte (render.js buildModular le posa sempre).
+  // la scala (punto sul muro wx, wy, normale verso fuori ox, oy, sulla casa bi; il piede a terra o sul tetto della casa foot) passa su
+  // un vano (o, con ingombri, anche su un ingombro)? → { f, u, A } (la faccia, la u della scala, l'apertura) o null
+  // [scale-finestre] IL MODULO CIECO: dove la scala serve e il muro non ha un posto libero (le case strette dell'Ottocento, una casella
+  // con la finestra in mezzo a ogni piano) la casa lascia cieco quel modulo: niente finestra (e quindi niente persiane, davanzale, balcone)
+  // ai piani che la scala attraversa su quella faccia. Lo decide tetti.js (L.cieco = { f, u, y0 } sulla scala, cotto con le scale);
+  // render.js lo legge con Tetti.cieco4 quando posa le finestre di buildModular. Solo le finestre dei moduli ('fin'): mai porte e vetrine.
+  let CIE4 = null, CIE4n = -1, CIE4a = null;
+  const ciechi4 = () => { if (CIE4 && CIE4n === LADDERS.length && CIE4a === LADDERS[CIE4n - 1]) return CIE4; CIE4 = new Map(); CIE4n = LADDERS.length; CIE4a = LADDERS[CIE4n - 1];
+    LADDERS.forEach(L => { if (L.cieco) (CIE4.get(L.bi) || CIE4.set(L.bi, []).get(L.bi)).push(L.cieco); }); return CIE4; };
+  const accecata4 = (bi, f, A) => { if (A[5] !== 'fin') return false; const C = ciechi4().get(bi); return !!C && C.some(c => c.f === f && Math.abs((A[0] + A[1]) / 2 - c.u) < .15 && A[3] > c.y0 + .05); };
+  // render.js: il modulo della faccia f col centro a u (m dallo spigolo, nel verso di sidesOf), al piano (0 il terreno) è cieco?
+  function cieco4(bi, f, u, piano) { const C = ciechi4().get(bi); if (!C) return false; const top = (piano > 0 ? MG + (piano - 1) * MF : 0) + 2.25;
+    return C.some(c => c.f === f && Math.abs(c.u - u) < .15 && top > c.y0 + .05); }
   // la faccia, la u lungo la faccia e la quota del piede (sopra il piede della casa) di una scala sul muro di bi
   function loc4(bi, wx, wy, ox, oy, foot) { const b = B[bi], [lx, ly] = toL4(b, wx, wy), [nx, ny] = giraV4(-rotC4(b), ox, oy), L4 = lotto4(b);
     const f = Math.abs(nx) >= Math.abs(ny) ? (nx > 0 ? 'E' : 'W') : (ny > 0 ? 'S' : 'N'), u = f === 'S' || f === 'N' ? lx - L4.x0 : ly - L4.y0;
     const fl = Math.max(1, b.fl || 1), base = roofRule(b) - (b.fl >= 1 ? MG + (fl - 1) * MF : 3); return { f, u, y0: foot >= 0 && B[foot] ? roofRule(B[foot]) - base : -1 }; }
   // la scala (punto sul muro wx, wy, normale verso fuori ox, oy, sulla casa bi; il piede a terra o sul tetto della casa foot) passa su
-  // un vano (o, con ingombri, anche su un ingombro)? → { f, u, A } (la faccia, la u della scala, l'apertura) o null.
+  // un vano (o, con ingombri, anche su un ingombro)? → { f, u, A } (la faccia, la u della scala, l'apertura) o null. I moduli ciechi no.
   function sopraApertura4(bi, wx, wy, ox, oy, foot, ingombri) {
     const b = B[bi], O = aperture4(bi); if (!b || !O) return null;
     const { f, u, y0 } = loc4(bi, wx, wy, ox, oy, foot);
-    for (const A of O[f]) { void ingombri; const m = SCALA_HW4 + (A[4] ? SCALA_AGIO4 : .02);   // [scale3] anche gli ingombri (persiane aperte, davanzali, cornici, balconi): nessuna scala davanti a una finestra
-      if (u > A[0] - m && u < A[1] + m && A[3] > y0 + .05) return { f, u, A }; }
+    for (const A of O[f]) { if (!A[4] && !ingombri) continue; const m = SCALA_HW4 + (A[4] ? SCALA_AGIO4 : .02);
+      if (u > A[0] - m && u < A[1] + m && A[3] > y0 + .05 && !accecata4(bi, f, A)) return { f, u, A }; }
     return null;
+  }
+  // la scala può stare lì accecando il modulo? Solo sulle case di buildModular (non i gradoni), solo al centro di un modulo, e solo se
+  // tutti i vani che tocca sono le finestre di quel modulo → { f, u, y0 } (la marca da mettere sulla scala) o null
+  function ciecabile4(bi, wx, wy, ox, oy, foot) {
+    const b = B[bi], O = aperture4(bi); if (!b || !O || O.chi !== 'moduli' || b.__tierOf || (b.tiers && b.tiers.length)) return null;
+    const { f, u, y0 } = loc4(bi, wx, wy, ox, oy, foot), m = SCALA_HW4 + SCALA_AGIO4; let uc = null;
+    for (const A of O[f]) { if (!A[4] || !(u > A[0] - m && u < A[1] + m && A[3] > y0 + .05) || accecata4(bi, f, A)) continue;
+      const c = (A[0] + A[1]) / 2; if (A[5] !== 'fin' || Math.abs(c - u) > .15 || (uc !== null && Math.abs(c - uc) > .01)) return null; uc = c; }
+    return uc === null ? null : { f, u: uc, y0 };
   }
   // le posizioni lungo un lato di n caselle: il centro di ogni casella (k) e il giunto fra due caselle (k − ½: fra due colonne di finestre)
   const posti4 = n => { const P = []; for (let k = 0; k < n; k++) { if (k > 0) P.push(k - .5); P.push(k); } return P; };
@@ -50678,7 +50698,7 @@ var Tetti = (function () {
           const k0 = Math.floor(k), k1 = Math.ceil(k), A = libero4(b) ? tessera(k) : TE[k0], C = libero4(b) ? A : TE[k1]; if (!A || !C || A.foot !== C.foot) continue;
           const { tx, ty, foot } = C, cop = false;
           const [wa, wb] = libero4(b) ? toW4(b, ...muroL4(b, sd, k)) : sd.wall(k), [na, nb] = libero4(b) ? giraV4(rotC4(b), ...sd.out) : sd.out;
-          if (sopraApertura4(bi, wa, wb, na, nb, foot)) continue;   // [scale-finestre] solo sul muro libero ([scale3] niente modulo cieco)
+          let cieco = null; if (sopraApertura4(bi, wa, wb, na, nb, foot)) { cieco = ciecabile4(bi, wa, wb, na, nb, foot); if (!cieco) continue; }   // [scale-finestre] o il muro libero, o il modulo cieco
           const cieca = !sopraApertura4(bi, wa, wb, na, nb, foot, true);   // niente persiane, davanzali, balconi, tettoie: il muro cieco
           let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0) + (cieca ? 4 : 0);
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
@@ -50689,8 +50709,9 @@ var Tetti = (function () {
           if (CN3) { const h0 = foot >= 0 ? roofRule(B[foot]) : tileH(wa + na, wb + nb);
             vis = scalaVista3(wa, wb, na, nb, h0, roofRule(b));
             s +=(sd.f === front ? 3 : 0) + (sd.f === 'S' || sd.f === 'E' ? 3 : -3) + (vis ? 6 : 0); }
+          if (cieco) s -= 12;   // il modulo cieco solo dove la casa non ha un altro posto per la sua scala
           if (foot < 0 && P1 && P1.some(L => L.bi !== bi && hyp(L.x - wa, L.y - wb) < 6)) s -= 2;   // le scale da terra un po' sparse: lontano da quelle delle altre case (le vie dei giri le vogliono a 8 m l'una dall'altra)
-          cand.push({ s, sd, k, tx, ty, t0: [A.tx, A.ty], foot, cop, vis, cieca });
+          cand.push({ s, sd, k, tx, ty, t0: [A.tx, A.ty], foot, cop, vis, cieca, cieco });
         }
         // [scale-finestre] LO SPIGOLO FRA DUE CASE: nelle file di case strette (una casella, la finestra in mezzo a ogni piano) il muro non
         // ha un posto libero; la scala sta allora sul giunto fra due facciate a filo, coi due tetti alla stessa quota (entro 30 cm): 28 cm
@@ -50719,7 +50740,7 @@ var Tetti = (function () {
       const take = b.w * b.h >= 30 ? 2 : 1, got = [];
       for (const c of cand) {
         if (got.length >= take) break;
-        if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
+        if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis || c.cieco) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
         if (used.has(c.ty * GW + c.tx) || used.has(c.t0[1] * GW + c.t0[0])) continue;   // [scale-finestre] il giunto prende due caselle
         got.push(c); used.add(c.ty * GW + c.tx); used.add(c.t0[1] * GW + c.t0[0]);
         let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out, dp = .55;
@@ -50732,6 +50753,7 @@ var Tetti = (function () {
         if (c.foot >= 0 && [-.3, 0, .3].some(t => bAt(wx + ox * dp - oy * t, wy + oy * dp + ox * t) !== c.foot)) { got.pop(); used.delete(c.ty * GW + c.tx); used.delete(c.t0[1] * GW + c.t0[0]); continue; }   // [scale-finestre] il piede tutto sul tetto basso (sul giunto, vicino allo spigolo del lotto)
         const dx = c.dentro ? c.dentro[0] : 0, dy = c.dentro ? c.dentro[1] : 0;   // [scale-finestre] dallo spigolo fra due case, in cima si entra nel tetto suo
         LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * dp, fy: wy + oy * dp, tx: wx - ox * .8 + dx, ty: wy - oy * .8 + dy, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
+        if (c.cieco) LADDERS[LADDERS.length - 1].cieco = c.cieco;   // [scale-finestre] la marca per render.js
       }
     });
   }
@@ -50928,6 +50950,8 @@ var Tetti = (function () {
   const ZONE4 = { E0: 'borgo', E2: 'marina', E3: 'ottocento' };
   const ok4 = b => b && ZONE4[b.era] && !b.__tierOf && !b.lighthouse && !b.kiosk && !b.church && !b.military && !b.gov && !b.shack && !b.pezzo;   // [tetti4] anche le case girate
   const RETE4 = { scalette: [], archi: [], passerelle: [], anelli: 0 }, DBG4 = typeof process !== 'undefined' && process.env && process.env.RETE4_DBG ? [] : null;
+  let CIECO_OK4 = false;   // [scale-finestre] la scaletta può accecare il modulo (solo all'ultimo, se il legame non ha un posto libero)
+  const conCieco4 = fn => { CIECO_OK4 = true; try { return fn(); } finally { CIECO_OK4 = false; } };
   function rete4() {
     if (!CN3) return;
     const E0 = grafo(), par = new Map(), find = a => { while (par.has(a) && par.get(a) !== a) a = par.get(a); return a; }, uni = (a, b) => { a = find(a); b = find(b); if (a !== b) par.set(a, b); };
@@ -50995,11 +51019,11 @@ var Tetti = (function () {
           const tt = []; for (let t = 0; t <= 1.0001; t += .1) tt.push(t);
           { const Lf = nx ? LH.ld : LH.lw; for (let v = 1; v < Lf - .45; v += 1) for (const u of [v, Lf - v]) if (u > .45 && u < Lf - .45) tt.push((u - .45) / (Lf - .9)); }   // [scale-finestre] anche i centri e i giunti dei moduli della facciata alta tt.sort((p, q) => { const d = t => hyp(faccia[0][0] + (faccia[1][0] - faccia[0][0]) * t - loc0[0], faccia[0][1] + (faccia[1][1] - faccia[0][1]) * t - loc0[1]); return d(p) - d(q); });
           for (const t of tt) { [ax, ay] = toW4(H, faccia[0][0] + (faccia[1][0] - faccia[0][0]) * t, faccia[0][1] + (faccia[1][1] - faccia[0][1]) * t);
-            if (dentro4(B[lo], ax + ux * .55, ay + uy * .55, .05) && !dentro4(H, ax + ux * .55, ay + uy * .55, -.05) && dentro4(H, ax - ux * .8, ay - uy * .8, .2) && bAt(ax + ux * .55, ay + uy * .55) === lo && bAt(ax - ux * .8, ay - uy * .8) === hi && !sopraApertura4(hi, ax, ay, ux, uy, lo)) { ok = true; break; } }   // [scale-finestre] e non su un vano
+            if (dentro4(B[lo], ax + ux * .55, ay + uy * .55, .05) && !dentro4(H, ax + ux * .55, ay + uy * .55, -.05) && dentro4(H, ax - ux * .8, ay - uy * .8, .2) && bAt(ax + ux * .55, ay + uy * .55) === lo && bAt(ax - ux * .8, ay - uy * .8) === hi && (!sopraApertura4(hi, ax, ay, ux, uy, lo) || (CIECO_OK4 && ciecabile4(hi, ax, ay, ux, uy, lo)))) { ok = true; break; } }   // [scale-finestre] e non su un vano
           if (!ok) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'girata']), false); }
         const L = { i: LADDERS.length, bi: hi, f: 'r4', x: ax, y: ay, ox: ux, oy: uy, fx: ax + ux * .55, fy: ay + uy * .55, tx: ax - ux * .8, ty: ay - uy * .8, footB: lo, ang: Math.atan2(uy, ux), vis: true, tipo4: 'scaletta' };
         if (bAt(L.fx, L.fy) !== lo || bAt(L.tx, L.ty) !== hi) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'piede']), false);
-        if (sopraApertura4(hi, ax, ay, ux, uy, lo)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'finestra']), false);   // [scale-finestre] sopra il tetto basso il muro alto ha le finestre: la scaletta va fra le colonne cieche
+        if (sopraApertura4(hi, ax, ay, ux, uy, lo)) { const q = CIECO_OK4 ? ciecabile4(hi, ax, ay, ux, uy, lo) : null; if (!q) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'finestra']), false); L.cieco = q; }   // [scale-finestre] sopra il tetto basso il muro alto ha le finestre: la scaletta va fra le colonne cieche
         if (lad0.some(([x, y]) => hyp(x - L.tx, y - L.ty) < (sep < 4 ? 1.4 : sep < 6 ? 1.7 : 2.2) || hyp(x - L.fx, y - L.fy) < 1.4)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina']), false);
         if (passi.some(([x, y]) => hyp(x - ax, y - ay) < 3)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'passo vicino']), false);
         LADDERS.push(L); lad0.push([L.tx, L.ty]); RETE4.scalette.push(L.i);
@@ -51075,7 +51099,7 @@ var Tetti = (function () {
     // 1) l'albero: si legano pezzi di rete diversi, dal legame più economico
     const tutti = [...cand.values()].sort((p, q) => p.costo - q.costo || p.a - q.a || p.b - q.b), usati = new Set();
     tutti.push(...[...riserve4.values()].flat().sort((p, q) => p.costo - q.costo || p.a - q.a || p.b - q.b));   // [scale-finestre]
-    tutti.forEach(C => { if (find(C.a) === find(C.b)) return; if (mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2)) { uni(C.a, C.b); usati.add(C); } });   // [cucitura] se a 6 m c'è già un passaggio, a 4,5 m: un pezzo staccato vale un attraversamento in più
+    tutti.forEach(C => { if (find(C.a) === find(C.b)) return; if (mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2) || (C.tipo === 'scaletta' && conCieco4(() => mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2)))) { uni(C.a, C.b); usati.add(C); } });   // [cucitura] se a 6 m c'è già un passaggio, a 4,5 m: un pezzo staccato vale un attraversamento in più
     salite4(find, lad0, passi);
     // 2) gli anelli: dove sui tetti per andare da una casa all'altra servono più di otto passaggi, un legame li accorcia
     const E1 = grafo(), hop = (s, t, max) => { const d = new Map([[s, 0]]), Q = [s]; for (let k = 0; k < Q.length; k++) { const a = Q[k], da = d.get(a); if (a === t) return da; if (da >= max) continue; (E1.get(a) || []).forEach(e => { if (!d.has(e.b)) { d.set(e.b, da + 1); Q.push(e.b); } }); } return Infinity; };
@@ -51178,48 +51202,6 @@ var Tetti = (function () {
     });
   }
   if (!COT4) corti4();
-  // [scale3] LA POTATURA DELLE SCALE (il committente: «troppe scale, compenetrate, davanti alle finestre»). Si tolgono, prima che i percorsi
-  // le leghino: (1) le scale su un vano o un suo ingombro (la finestra con le persiane aperte, il davanzale, il balcone, la porta); (2) le
-  // scale compenetrate con il tetto di un'altra casa: la fascia della scala (70 cm lungo il muro, mezzo metro in fuori) dentro il lotto di
-  // un vicino allargato di 55 cm (la gronda, il cornicione, la copertina), se il tetto di quel vicino sta fra il piede e la cima della scala;
-  // (3) le scale in più su un tetto già raggiunto da SCALE3_MAX4 altre (si tengono la scala della corte, le salite, le scalette della rete,
-  // poi quelle che la camera vede); (4) le scale da terra in più su un pezzo di rete già raggiunto da altre. Gli indici si rifanno (L.i, RETE4, CORTI).
-  const SCALE3_MAX4 = 2, SCALE3_PEZZO4 = 1, POTA4 = { prima: 0, finestra: 0, compenetrata: 0, troppe: 0, pezzo: 0, dopo: 0 };
-  function pota4() {
-    if (!CN3) return; POTA4.prima = LADDERS.filter(L => !L.camm).length;
-    const via = new Set();
-    LADDERS.forEach(L => { if (L.camm || L.rampa) return;
-      if (sopraApertura4(L.bi, L.x, L.y, L.ox, L.oy, L.footB, true)) { via.add(L); POTA4.finestra++; return; }
-      const h0 = L.footB >= 0 ? roofRule(B[L.footB]) : tileH(L.fx, L.fy), h1 = roofRule(B[L.bi]) + .95;
-      let urta = false;
-      for (const t of [-.35, 0, .35]) { for (const v of [.06, .25, .5]) { const x = L.x + L.ox * v - L.oy * t, y = L.y + L.oy * v + L.ox * t;
-        for (const o of caseSotto4(x, y)) { if (o === L.bi || o === L.footB || !B[o]) continue; const ro = roofRule(B[o]);
-          if (ro > h0 + .3 && ro - .6 < h1 && dentro4(B[o], x, y, -.55)) { urta = true; break; } }
-        if (urta) break; } if (urta) break; }
-      if (urta) { via.add(L); POTA4.compenetrata++; } });
-    const rango = L => L.corte !== undefined ? 0 : L.tipo4 === 'salita' ? 1 : L.tipo4 === 'scaletta' ? 2 : L.vis ? 3 : 4;
-    const perTetto = new Map(); LADDERS.forEach(L => { if (L.camm || via.has(L)) return; (perTetto.get(L.bi) || perTetto.set(L.bi, []).get(L.bi)).push(L); });
-    perTetto.forEach(A => { if (A.length <= SCALE3_MAX4) return; A.slice().sort((p, q) => rango(p) - rango(q) || p.i - q.i).slice(SCALE3_MAX4).forEach(L => { if (rango(L) <= 2) return; via.add(L); POTA4.troppe++; }); });
-    // [scale3] e sul pezzo di rete: i tetti legati fra loro (a filo, gradini, salti, passerelle, scale fra tetto e tetto) sono un tetto solo
-    // per chi ci sale; le scale da terra che portano allo stesso pezzo sono al più SCALE3_PEZZO4 ogni 10 tetti (almeno 3), lontane 8 m
-    // l'una dall'altra; le altre si tolgono (si tengono prima la corte e le salite, poi quelle che la camera vede)
-    { const E = grafo(), par = new Map(), f = a => { while (par.has(a) && par.get(a) !== a) a = par.get(a); return a; }, u = (a, b) => { a = f(a); b = f(b); if (a !== b) par.set(a, b); };
-      E.forEach(l => l.forEach(e => { if (e.k !== 'scala') u(e.a, e.b); }));
-      LADDERS.forEach(L => { if (!L.camm && !via.has(L) && L.footB >= 0) u(L.bi, L.footB); });
-      const tetti = new Map(); B.forEach((b, i) => { const c = f(i); tetti.set(c, (tetti.get(c) || 0) + 1); });
-      const perPezzo = new Map(); LADDERS.forEach(L => { if (L.camm || L.rampa || via.has(L) || L.footB >= 0) return; const c = f(L.bi); (perPezzo.get(c) || perPezzo.set(c, []).get(c)).push(L); });
-      perPezzo.forEach((A, c) => { const K = Math.max(3, Math.ceil(SCALE3_PEZZO4 * tetti.get(c) / 10)); /* tre almeno: un giro sale da una, scende da un'altra, e vuole la terza */ if (A.length <= K) return; const tenute = [];
-        A.slice().sort((p, q) => rango(p) - rango(q) || p.i - q.i).forEach(L => {
-          if (rango(L) <= 1 || (tenute.length < K && !tenute.some(Q => hyp(Q.x - L.x, Q.y - L.y) < 8))) { tenute.push(L); return; }
-          via.add(L); POTA4.pezzo++; }); }); }
-    if (!via.size) { POTA4.dopo = POTA4.prima; return; }
-    const nuovo = new Map(), tenute = LADDERS.filter(L => !via.has(L)); tenute.forEach((L, k) => { nuovo.set(L.i, k); L.i = k; });
-    const ri = A => A.map(i => nuovo.has(i) ? nuovo.get(i) : -1).filter(i => i >= 0);
-    RETE4.scalette = ri(RETE4.scalette); if (RETE4.salite) RETE4.salite = ri(RETE4.salite);
-    CORTI.forEach(C => { if (C.scala >= 0) C.scala = nuovo.has(C.scala) ? nuovo.get(C.scala) : -1; });
-    LADDERS.length = 0; tenute.forEach(L => LADDERS.push(L)); POTA4.dopo = LADDERS.filter(L => !L.camm).length;
-  }
-  if (!COT4) pota4();
   // [percorsi] IL GRAFO DEI TETTI per i percorsi (percorsi.js): per ogni tetto gli archi orientati verso i tetti dove si passa, col punto
   // del passaggio. k: 'tetto' (si tocca, dislivello entro un gradino), 'gradino' (si tocca, si sale col salto fino a 1,2 m), 'salto'
   // (il vicolo di una casella coi bordi crema, JUMPS), 'passerella' (PLANKS), 'scala' (la scala di ferro fra un tetto basso e uno alto).
@@ -51543,7 +51525,7 @@ var Tetti = (function () {
         if (CN3) put(crema, L.x + L.ox * .012, y0 + (y1 - .4 - y0) / 2, L.y + L.oy * .012, .02, y1 - .4 - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
         for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
         for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
-        put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [scale3] in cima niente lanterna gialla   // [pulizia2] e una lucina all'attacco, a 2,3 m
+        put(lamps, wx + L.ox * .1, y1 - .2, wz + L.oy * .1, .1, .12, .1, yaw); put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [pulizia2] e una lucina all'attacco, a 2,3 m
       }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
@@ -51558,7 +51540,7 @@ var Tetti = (function () {
         for (const s of [-1, 1]) put(hoops, cx + L.ox * .2 + sx * s * 1.35, y, cz + L.oy * .2 + sz * s * 1.35, .36, .03, .03, yaw);
       }
       for (const s of [-1, 1]) put(yel, cx + sx * s, y0 + .55, cz + sz * s, .07, .9, .07, yaw);   // [tetti2] i montanti gialli: da lontano si vede dove si sale
-      // [scale3] in cima niente lanterna (il blocco giallo): il corrimano basta
+      put(lamps, cx - L.ox * .1, y1 + .12, cz - L.oy * .1, .14, .16, .14, yaw); put(rails, cx - L.ox * .1, y1 + .02, cz - L.oy * .1, .2, .04, .2, yaw);   // la lanterna in cima
       if (Hh > 4 && !(CN3 && Hh > 6)) for (const s of [-1, 0, 1]) { const top = y1 - .6, bot = y0 + 2.5; if (top > bot) put(hoops, cx + L.ox * (s ? .2 : .38) + sx * s * 1.35, (top + bot) / 2, cz + L.oy * (s ? .2 : .38) + sz * s * 1.35, .025, top - bot, .025, yaw); }
     });
     // [tetti2] le passerelle: tavole di traverso su due travi, i paletti alle estremità e la corda tesa ai lati
@@ -51672,7 +51654,9 @@ var Tetti = (function () {
       const giri = PD.circuiti.filter(c => c.k === 'tetti').concat(PD.porte.map(q => q.alternativa).filter(a => a && a.k === 'tetti' && !a.camm));
       giri.forEach((c, ci) => {
         const P = c.pts.slice(1, -1), ok = new Set(c.edifici), hAt = (x, y) => { const q = roofAt(x, y); return q && (ok.has(q.bi) || q.plank !== undefined) ? q.h : null; };
-        // [scale3] la traccia dipinta sul lastrico non c'è più (il committente: via i percorsi dipinti sui tetti)
+        // la traccia: [percorsi2] una striscia continua larga 72 cm (pezzi di 60 cm accostati, senza sovrapporsi), alla quota del lastrico
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay), yaw = -Math.atan2(by - ay, bx - ax), n = Math.max(1, Math.round(L / .6)), l = L / n;
+          for (let i = 0; i < n; i++) { const s = (i + .5) * l, x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, l, .02, .72, yaw); } }
         // le svolte: la lanterna sul ferro minio, mezzo metro fuori dalla svolta
         for (let k = 1; k < P.length - 1; k++) { const [ax, ay] = P[k - 1], [x, y] = P[k], [bx, by] = P[k + 1], a1 = Math.atan2(y - ay, x - ax), a2 = Math.atan2(by - y, bx - x);
           let d = Math.abs(a2 - a1); if (d > Math.PI) d = 2 * Math.PI - d; if (d < .6 || hyp(x - ax, y - ay) < 1.5) continue;
@@ -51691,7 +51675,10 @@ var Tetti = (function () {
           if (G.walkM(cx, cy) && bAt(cx, cy) < 0) { put(boards, cx, g0 + .26, cy, .55, .52, .6, yaw + .2); put(boards, cx, g0 + .53, cy, .58, .03, .63, yaw + .2);
             const ax = L0.x + L0.ox * .75 - sx * 1.1, ay = L0.y + L0.oy * .75 - sy * 1.1; if (G.walkM(ax, ay) && bAt(ax, ay) < 0) seg(boards, ax, g0 + .02, ay, L0.x + L0.ox * .08 - sx * 1.1, g0 + 1.7, L0.y + L0.oy * .08 - sy * 1.1, .26, .04, -Math.atan2(-L0.oy, -L0.ox)); } }
       });
-      // [scale3] nemmeno sul camminamento delle mura la traccia dipinta (via i percorsi dipinti)
+      // [percorsi2] anche il camminamento delle mura ha la sua traccia consumata, da una scala all'altra (la quota la dà il camminamento)
+      PD.circuiti.filter(c => c.k === 'mura').forEach(c => { const P = c.pts.slice(1, -1), hAt = (x, y) => { const q = roofAt(x, y); return q ? q.h : null; };
+        for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = hyp(bx - ax, by - ay); if (L < .3) continue; const yaw = -Math.atan2(by - ay, bx - ax), n = Math.max(1, Math.round(L / .6)), l = L / n;
+          for (let i = 0; i < n; i++) { const s = (i + .5) * l, x = ax + (bx - ax) * s / L, y = ay + (by - ay) * s / L, h = hAt(x, y); if (h === null) continue; put(traccia, x, h + .015, y, l, .02, .72, yaw); } } });
     }
     const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
     GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia), mk(fondo, G3.fondo),
@@ -51731,7 +51718,7 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  const API = { POTA4, lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH, aperture4, sopraApertura4 } };
+  const API = { cieco4, lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH, aperture4, sopraApertura4, ciecabile4 } };
   // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
   if (!COT4 && typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
   // [tetti4] I PREMI dei giri (percorsi.js, i rami): il belvedere entra fra i belvederi (la panca, la bandierina, «Siediti a guardare»),
@@ -51921,7 +51908,7 @@ var Tetti = (function () {
       return false;
     };
     if (P.vivo) {   // il primo gruppo dà il carattere; il secondo, se c'è, lo accompagna
-      const base = [];   // [scale3] niente più la stanza di lamiera (il blocco grigio con la finestrella sul filo della facciata, sopra le finestre)
+      const base = (era === 'E0' || era === 'E2' || era === 'E6') && fl <= 3 && W1 >= 6 && D1 >= 6 && q(51) < .14 ? ['stanza'] : [];
       const alt4 = c.premio === 'belvedere' || (c.premio !== 'terrazza' && q(57) < .3) ? ['altana'] : [], ter4 = c.premio === 'terrazza' ? ['pergola'] : [];   // [tetti4] l'altana sul belvedere e qua e là; il pergolato sulla terrazza nascosta
       const ord = ter4.concat(alt4, base, q(53) < .45 ? ['bucato', 'pergola', 'vasi'] : q(53) < .75 ? ['pergola', 'vasi', 'bucato'] : ['vasi', 'bucato', 'pergola']);
       for (const k of ord) if (prova(k)) break;
@@ -74400,6 +74387,8 @@ var Render = (function () {
     const face0 = faceOf(b);
     const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {}; b.__wallHex = pal[0];   // [inverno24] [ordine1] la tinta per i torrini
     const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
+    // [scale-finestre] il modulo dove passa una scala di Tetti resta cieco ai piani che la scala attraversa (lo decide tetti.js: Tetti.cieco4)
+    const cieco4 = (sd, k, f) => !!(window.Tetti && Tetti.cieco4 && !b.__tierOf && Tetti.cieco4(i, sd.f, sd.f === 'S' || sd.f === 'N' ? sd.at(k)[0] - x0 : sd.at(k)[1] - z0, f));
     const sides = [
       { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + k * TS + 1, z0 + d], tile: k => [b.x + k, b.y + b.h] },
       { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - k * TS - 1, z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
@@ -74431,7 +74420,7 @@ var Render = (function () {
         for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { ground.push([k, 'wall-window-wide-square', 2, 'vetrina']); used.add(k); used.add(k + 1); q++; } else { ground.push([k, 'wall-window-square', 1, 'vetrina']); used.add(k); } }
         b.__bot = { face: sd.f, n: sd.n, ks: SH.ks, portoneU: doorK * TS + 1, ents: ground.filter(e => e[3]).map(([k, name, span, role]) => ({ u: (span === 2 ? k + .5 : k) * TS + 1, w: name.includes('wide') ? 3.1 : name.includes('door') ? 1.1 : .95, role, name })) };
       } else if (SH) b.__bot = { face: sd.f, n: sd.n, ks: [], portoneU: doorK * TS + 1, ents: [] };   // bottega al primo piano: solo la targa al portone
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) || cieco4(sd, k, 0) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span, role]) => {
         if (poIn(sd, k) || (span === 2 && poIn(sd, k + 1))) return;   // [epoche] sotto il portico la testata è aperta
@@ -74461,7 +74450,7 @@ var Render = (function () {
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
-          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const nm = inMural(sd, k, y) || (!stD && cieco4(sd, k, f)) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
@@ -81525,7 +81514,7 @@ var Render = (function () {
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
@@ -81539,7 +81528,7 @@ var Render = (function () {
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
       rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
-      if (PRO.attivo) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
+      if (PRO.prof) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
       sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); return; }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H); occResize(W, H);   /* [amb3] */   /* [regia2] l'ombra degli angoli */
@@ -81579,7 +81568,7 @@ var Render = (function () {
   if (typeof window !== 'undefined') window.__SGU = SGU;
   // ================= [scorcio] LA PROPOSTA: gli stessi modelli che si leggono ricchi e fatti a mano, con la luce e i materiali =================
   // Niente contenuto nuovo: tutto nei materiali (pezzi di shader di three, una volta sola) e nel passo unico che c'era già.
-  // Si compila solo nel laboratorio (?scorcio=...) o con ?proposta; window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
+  // Si compila sempre ([look-ovunque], tranne con ?proposta=0); window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
   // di oggi, identico) e ogni manopola a zero spegne il suo pezzo, così si confronta un elemento alla volta.
   //   nei materiali: pittura (il muro più chiaro in alto e più scuro al piede, come una mano di colore), varia (ogni massa un filo diversa
   //   di valore e di tinta: rumore largo nel mondo, niente texture), grana (la micro-normale dipinta: la luce che trema sulla superficie,
@@ -81588,9 +81577,18 @@ var Render = (function () {
   //   nel passo unico (legge la profondità): spigoli (gli spigoli vivi che prendono la luce, come smussati), pieghe (le pieghe e gli
   //   angoli rientranti più scuri), ao (l'ombra di contatto al piede dei muri, sotto le cose), miniatura (il tilt-shift: una fascia a
   //   fuoco, il sopra e il sotto sfocati), grading (il viraggio dell'ora: i campi pro* dei quattro momenti).
-  const PRO = { attivo: typeof location !== 'undefined' && /[?&](scorcio=|proposta\b)/.test(location.search), pezzi: false,
+  // [look-ovunque] la proposta è il look di tutta la mappa (approvata dal committente): si compila sempre col look nuovo; ?proposta=0 la
+  // spegne (il look di prima, identico: niente pezzi di shader, niente profondità nel passo). Le chiome ricche e il verde che lascia passare
+  // la luce (SG_FOGLIA) restano del laboratorio (PRO.attivo: ?scorcio=... o ?proposta esplicito): gli alberi sono di un altro cantiere.
+  // La «base 4» scelta sullo scorcio: niente ombra di contatto, niente bordi da profondità o da curvatura (spigoli, pieghe, inchiostro a 0).
+  // Senza costi: fuori dal laboratorio il passo non legge la profondità (niente depthTexture, niente codice che la usa, mediump come prima);
+  // sul telefono (PHONE) restano fuori anche la micro-normale dipinta (grana: due rumori e le derivate a ogni pixel) e la miniatura (8 letture).
+  const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
+  const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
+    prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
-  SGU.pro = { on: /[?&]proposta\b/.test(typeof location !== 'undefined' ? location.search : ''),
+  PRO.prof = PRO.look && PRO.attivo;
+  SGU.pro = { on: !PRO_NO,
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
     miniatura: .55, fuoco: .48, fascia: .2, sfoca: 3.2,                     // il tilt-shift: forza, centro della fascia a fuoco (0 sotto, 1 sopra), mezza altezza, raggio (pixel a 540 righe)
@@ -81599,10 +81597,11 @@ var Render = (function () {
     // molto più leggere: mai dalla curvatura, il terreno non ha né salti né pieghe oltre la soglia) e la luce a celle; spinto verso la
     // strada (hip hop): accenti pieni e saturi, neri profondi nelle ombre di sera e di notte, polvere al piede dei muri, il suolo meno
     // bianco e vissuto, il verde acido spento. Il pastello resta una manopola (spento: troppo da libro per bambini)
-    inchiostro: 1, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
+    inchiostro: 0, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
     celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1,
     vivo: .7,
     chiomeRicche: 1, vento: 1, finestre: 1 };   // le chiome ricche (più lobi, sotto-masse, carte, ogni albero suo, ombra interna, toni a celle, vento); le finestre accese che sembrano finestre (non pannelli gialli)   // la tavolozza di fondo viva: i grigi caldi o freddi (mai fango), i marroni verso cotto e ocra, i verdi in luce verso il giallo-verde, più colore nei medi   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
+  if (PHONE) { SGU.pro.grana = 0; SGU.pro.miniatura = 0; }   // [look-ovunque] sul telefono: fuori dai programmi (vedi sopra)
   Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05, proSuolo: 1.55 });   // [scorcio] proSuolo: il suolo (il lastricato in piano, alla quota della camera) prende più cielo: di sera la piazza si legge
@@ -81685,7 +81684,7 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
 #endif`;
     // la micro-normale dipinta (e l'acqua che si muove): la pendenza di un rumore, letta con le derivate dello schermo
     C.normal_fragment_maps += `
-#if defined( STANDARD ) && !defined( USE_SKINNING )
+#if defined( STANDARD ) && !defined( USE_SKINNING ) && ( defined( SG_ACQUA ) || ${PHONE ? 0 : 1} )
 { float sgK = sgP1.y;
 #ifdef SG_ACQUA
   sgK = sgP2.y;
@@ -81755,7 +81754,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif`;
   }
   // l'acqua: i materiali d'acqua dei pezzi (la fontana, le vasche) prendono il loro ramo
-  function sguProAcqua() { if (!PRO.attivo) return 0; let n = 0; const visti = new Set();
+  function sguProAcqua() { if (!PRO.look) return 0; let n = 0; const visti = new Set();
     scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (visti.has(m) || !m.isMeshStandardMaterial || !/^acqua/.test(m.name || '')) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_ACQUA: '' }); m.needsUpdate = true; n++; }); });
     // i vetri delle case nel secchio comune (peso_vetro.js: l'attributo vt1): le finestre accese della proposta
     scene.traverse(o => { const m = o.material; if (!o.isMesh || !m || Array.isArray(m) || !m.isMeshStandardMaterial || !o.geometry || !o.geometry.attributes.vt1 || (m.defines && 'SG_VETRO' in m.defines)) return; m.defines = Object.assign(m.defines || {}, { SG_VETRO: '' }); m.needsUpdate = true; n++; });
@@ -81764,10 +81763,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     return n; }
   // a ogni fotogramma: le manopole nei materiali (spente se la proposta è spenta)
   function sguProTick(S) {
-    const P = SGU.pro, k = PRO.attivo && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
+    const P = SGU.pro, k = PRO.look && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
-    { const ric = !!(k && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
+    { const ric = !!(k && PRO.attivo && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
     PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
@@ -81789,7 +81788,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
   }
   // la curva filmica nei materiali e la luce di bordo (una volta sola: i pezzi di shader sono di three, valgono solo col tone mapping acceso)
   function sguPezzi() {
-    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.attivo) sguProPezzi(C);   // [scorcio]
+    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.look) sguProPezzi(C);   // [scorcio]
     C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
       `vec3 CustomToneMapping( vec3 color ) {   // [sguardo] la curva: un piede appena più profondo (neri puliti), i medi dritti, la spalla dei chiari che piega senza bruciare
         vec3 x = max(color * toneMappingExposure, 0.); x = x * (x + .011) / (x + .022);
@@ -81812,11 +81811,14 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) } },   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.attivo ? '#define SG_PRO\nprecision highp float;' : 'precision mediump float;') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
-        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform vec4 pT; uniform float pa; uniform vec4 pI; uniform vec4 pV; uniform vec2 fv;
+        uniform vec4 pT; uniform vec4 pI; uniform vec4 pV;
+#endif
+#ifdef SG_PROD
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform float pa; uniform vec2 fv;
         // [scorcio] l'inverso della profondità: su un piano va come una retta sullo schermo, così la sua «curvatura» è zero sul piano,
         // positiva sullo spigolo vivo (sporge verso la camera), negativa nell'angolo rientrante. Diviso per l'angolo di r pixel: ~1 su uno
         // spigolo a 90°, qualunque sia la distanza. Le coppie che saltano troppo (la sagoma di una cosa davanti a un'altra) non contano
@@ -81828,7 +81830,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif
         void main(){
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
-#ifdef SG_PRO
+#if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
             float coc = pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y));
             if (coc > .01) { vec2 rr = e * pT.w * coc; vec3 acc = c;
@@ -81839,6 +81841,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
 #ifdef SG_PRO
           float sgInk = 0.;
+#ifdef SG_PROD
           if (pI.x > 0.) {   // la linea d'inchiostro, un pixel: sul pixel davanti a un salto di profondità (la sagoma); più leggera fra due facce che girano oltre la soglia
             vec2 ex = vec2(e.x * pV.z, 0.), ey = vec2(0., e.y * pV.z);   // lo spessore: i vicini più lontani, la linea più larga
             vec3 c0 = sgV(vUv), r0 = sgV(vUv + ex), l0 = sgV(vUv - ex), u0 = sgV(vUv + ey), d0 = sgV(vUv - ey), ru = sgV(vUv + ex + ey), rd = sgV(vUv + ex - ey), lu = sgV(vUv - ex + ey);
@@ -81860,6 +81863,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
             c *= (1. - .3 * cr) * (1. - .4 * oc);                                    // le pieghe e l'ombra di contatto
             c += hl * (c * .5 + .03) * vec3(1.04, 1., .9);                           // lo spigolo che prende la luce (caldo)
           }
+#endif
           if (pV.x > 0.) {   // il verde acido (i prati chiari e saturi) verso la salvia: le chiome scure non si toccano
             float gx = c.g - max(c.r, c.b), ac = smoothstep(.06, .2, gx) * smoothstep(.3, .55, c.g) * pV.x;
             c = mix(c, vec3(.55 * c.g + .3 * c.r, .8 * c.g + .05, .42 * c.g + .35 * c.b), ac); }
@@ -81928,7 +81932,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
-    if (PRO.attivo) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
+    if (PRO.look) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -81945,9 +81949,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido); U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
-    if (PRO.attivo) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
+    if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
-      U.tD.value = rt.depthTexture; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
+      U.tD.value = rt.depthTexture || null; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
       U.pK.value.set(k * P.spigoli, k * P.pieghe, k * P.ao, Math.max(1, P.aoRaggio * h / 1080));
       U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), k * (P.vivo || 0)); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
       if (g > 0 && K.proOmbra) { U.sh.value.set(K.ombra[0] * (1 + (K.proOmbra[0] - 1) * g), K.ombra[1] * (1 + (K.proOmbra[1] - 1) * g), K.ombra[2] * (1 + (K.proOmbra[2] - 1) * g));
@@ -82800,13 +82804,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       { f: 'E', prof: (B0.x + B0.w - t.x - t.w) * TS, n: t.h, at: u => [(t.x + t.w) * TS, (t.y + t.h) * TS - u], yaw: Math.PI / 2 }, { f: 'W', prof: (t.x - B0.x) * TS, n: t.h, at: u => [t.x * TS, t.y * TS + u], yaw: -Math.PI / 2 }]
       .filter(q => q.prof >= Dv + .55 && q.n >= 2).sort((p, q) => q.prof - p.prof || q.n - p.n);
     if (!lati.length || th(bi, 5, 77) > .75) return;
-    // [scale3] la veranda non copre le finestre (il committente: «via i blocchi grigi con la finestra sul tetto che coprono le finestre»): il
-    // modulo del piano arretrato dietro deve essere cieco a tutti i piani, e nessuna scala di Tetti a meno di 2,5 m
-    const cieco = (f, k) => !(t.__win || []).some(q => q.f === f && Math.abs(q.u - (k * TS + TS / 2)) < 1.4 && q.name !== 'wall' && q.name !== 'wall-low');
-    const scala = (x, z) => !!(window.Tetti && Tetti.LADDERS && Tetti.LADDERS.some(Q => Math.hypot(Q.x - x, Q.y - z) < 2.5 || Math.hypot(Q.tx - x, Q.ty - z) < 2.5));
-    let L = null, k = 0; for (const L2 of lati) { for (const k2 of (L2.n >= 3 ? [1, 0, 2] : [0, 1])) { if (k2 >= L2.n || !cieco(L2.f, k2)) continue; const [qx, qz] = L2.at(k2 * TS + TS / 2); if (scala(qx, qz)) continue; L = L2; k = k2; break; } if (L) break; }
-    if (!L) { (window.__rt = window.__rt || {}).verandeCieche = ((window.__rt || {}).verandeCieche || 0) + 1; return; }
-    const [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
+    const L = lati[0], k = L.n >= 3 ? 1 : 0, [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
     const telaio = sm(pick(r, ['#e8e4dc', '#3a3430', '#5a4a3a']), { roughness: .7 }), muro = sm(pick(r, ['#d8cdb8', '#c8b8a0', '#e0d4c0']), { roughness: 1 }), tetto = sm('#bcc0c6', { roughness: 1 }), vetro = verLit1(r() < .6 ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0');
     const ad = (o, x, yy, z) => { o.position.set(x, yy, z); a.add(o); return o; }, zf = Dv + .02;
     [[-Wv / 2, .06], [Wv / 2, .06], [-Wv / 2, zf], [Wv / 2, zf]].forEach(([x, z]) => ad(box(.07, H, .07, telaio), x, H / 2, z));   // i montanti
@@ -85028,7 +85026,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       giro(); setInterval(giro, 4000); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
-    if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
+    if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
