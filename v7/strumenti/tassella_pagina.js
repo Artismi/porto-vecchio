@@ -25,13 +25,49 @@
     const pv = window.__pv, R = pv.R, S = R.__models.scene, rd = R.__models.renderer, gl = rd.getContext(), TR = R.__tass || null;
     const T0 = performance.now(), info = { scartati: {}, mosse: 0 };
     const scarta = k => { info.scartati[k] = (info.scartati[k] || 0) + 1; };
+    // [tasselli2] nessuna casa tagliata né col tetto sbiadito nella foto della build: la visuale si ferma e le case tornano intere
+    try { const V4 = R.__vis4; if (V4) { V4.camera = false; V4.muretto = false; }   /* (anche il taglio mirato: IQ5.v è nullo senza la camera) */
+      await pausa(2500); (TR.dyn.buildings || []).forEach(B => { R.casaVisibile(B, 'tetto', 0); R.casaVisibile(B, 'quota', null); }); if (TR.FD1 && TR.FD1.tex) TR.FD1.tex.needsUpdate = true; await pausa(500); } catch (e) { console.warn('[tassella] visuale', e); }
     S.updateMatrixWorld(true);
+    // 0) [tasselli2] le cose vive della città: si muovono, cambiano colore o lampeggiano (render.js frame e tickStrade1). Non entrano
+    // nella mesh ferma del tassello (sarebbero ferme come nella foto della build): vanno a parte, nei vivi (src/tasselli.js le rimette
+    // nelle liste del gioco, che le anima come prima). Prima i gruppi che si muovono, poi le cose dentro.
+    const dyn = TR.dyn, S1 = TR.S1 || { heads: [], blink: [] };
+    const topF = o => { let q = o; while (q.parent && q.parent !== S) q = q.parent; return q.parent === S ? q.__fase : null; };
+    const diCitta = o => { const f = topF(o); return !!f && !VIVE.has(f); };
+    const VSET = new Set(), VR = [], VDI = new Map();   // VR: [tipo, oggetto, extra]; VDI: oggetto → il suo numero in VR
+    const addV = (tipo, o, x) => { if (!o || !o.isObject3D || !diCitta(o)) return -1; if (VDI.has(o)) return VDI.get(o); if (VSET.has(o)) return -2; const i = VR.length; VR.push([tipo, o, x || {}]); VDI.set(o, i); o.traverse(q => VSET.add(q)); return i; };
+    (dyn.spin || []).forEach(q => addV('spin', q.o, { speed: q.speed }));
+    (dyn.boats || []).forEach(q => addV('boats', q.g, { ph: q.ph, y: q.y }));
+    (dyn.laundry || []).forEach(q => addV('laundry', q.m, { ph: q.ph, ax: q.ax }));
+    (S1.heads || []).forEach(h => { h.lens.forEach(m => addV('lens', m)); if (h.gl) addV('headgl', h.gl); });
+    (dyn.signs || []).forEach(q => { if (q.flick && q.gl) addV('signgl', q.gl); });
+    // gli aloni (sprite che sfarfallano: dyn.flicker; che lampeggiano: S1.blink) diventano strati istanziati (uno per materiale)
+    const ALONI = [], ALI = new Map();
+    const alone = (sp, k, base, ph, lm) => { if (!sp || !sp.isSprite || !diCitta(sp) || VSET.has(sp) || ALI.has(sp)) return; ALI.set(sp, ALONI.length); ALONI.push({ sp, k, base, ph, lm }); };
+    (dyn.flicker || []).forEach(f => alone(f.s, 0, f.base, 0, f.lm || 0));
+    (S1.blink || []).forEach(b => alone(b, 1, 0, (b.userData && b.userData.ph) || 0, 0));
+    ALONI.forEach(a => VSET.add(a.sp));
+    // gli oggetti fusi nelle statiche che si colpiscono (DZ.props: cadono, si rompono): il numero dell'oggetto su ogni suo vertice (pid),
+    // così il gioco li nasconde con una maschera (hideTag) e li rimette come corpi vivi
+    const PROPS = [], PRI = new Map(), DZ = TR.DZ, TAGS = TR.TAGS;
+    if (DZ && TAGS) DZ.props.forEach(rec => {
+      if (rec.state !== 0 || PROPS.length >= 65000) return; const t = TAGS.get(rec.tag); if (!t || t.hidden) return;
+      const parts = t.parts.filter(p => p.b && p.b.mesh && p.b.offs && p.b.offs[p.gi] !== undefined && p.n > 0 && diCitta(p.b.mesh) && p.b.mesh.geometry.attributes.position && p.b.offs[p.gi] + p.n <= p.b.mesh.geometry.attributes.position.count);
+      if (!parts.length) return;
+      const k = PROPS.length; PRI.set(rec, k);
+      parts.forEach(p => { const g = p.b.mesh.geometry; let a = g.attributes.pid; if (!a) { a = new THREE.BufferAttribute(new Uint16Array(g.attributes.position.count), 1); g.setAttribute('pid', a); } a.array.fill(k + 1, p.b.offs[p.gi], p.b.offs[p.gi] + p.n); });
+      const pal = []; try { if (rec.obj) rec.obj.traverse(m => { if (!m.isMesh || Array.isArray(m.material) || !m.material || !m.material.color) return; const g = m.geometry; if (!g || !g.attributes || !g.attributes.position) return; if (!g.boundingBox) g.computeBoundingBox(); const z = g.boundingBox.getSize(new THREE.Vector3()); pal.push([m.material.color.getHexString(), +Math.max(.01, z.x * z.y + z.y * z.z + z.x * z.z).toFixed(3)]); }); } catch (e) { }
+      PROPS.push({ tag: rec.tag, c: rec.c0.toArray().map(v => +v.toFixed(3)), he: rec.he.toArray().map(v => +v.toFixed(3)), mass: rec.mass, cls: rec.cls, base: +rec.base.toFixed(3), fragile: !!rec.fragile, pal: pal.length ? pal : [['8a7a6a', 1]],
+        luce: rec.light ? TR.LSRC.indexOf(rec.light) : -1, lbase: rec.lbase, alone: rec.glowS && ALI.has(rec.glowS) ? ALI.get(rec.glowS) : -1 });
+    });
     // 1) chi è città
     const cand = [];
     S.children.forEach(top => {
       const f = top.__fase; if (!f || VIVE.has(f)) { scarta('non città: ' + (f || 'dopo')); return; }
       let sk = false; top.traverse(x => { if (x.isSkinnedMesh) sk = true; }); if (sk) { scarta('scheletro'); return; }
       top.traverse(o => {
+        if (VSET.has(o)) { if (o.isMesh || o.isSprite) scarta('vivo'); return; }
         if (!o.isMesh) { if (o.isSprite || o.isPoints || o.isLine) scarta(o.type); return; }
         for (let q = o; q; q = q.parent) if (!q.visible) { scarta('spento'); return; }
         if (!o.layers.mask) { scarta('livello 0'); return; }
@@ -139,6 +175,56 @@
     let sagoma = null;
     if (TR && TR.sagoma) { const g = TR.sagoma(); if (g) { const P = g.attributes.position.array, N = g.attributes.normal.array, C = g.attributes.color.array;
       const bin = pack({ n: g.attributes.position.count, attr: [{ nome: 'position', s: 3, b: 0 }, { nome: 'normal', s: 3, b: 1 }, { nome: 'color', s: 3, b: 2 }] }, [P, N, C]); await up('grezzi/sagoma.bin', bin); sagoma = g.attributes.position.count; g.dispose(); } }
+    // 4b) [tasselli2] i vivi: ogni radice col suo sottoalbero (le matrici locali: il gioco le muove come prima) dentro la matrice del
+    // genitore nel mondo; le geometrie in grezzi/vivi.bin (lo stesso grezzo dei tasselli), il resto nelle tavole
+    const GV = new Map(), VA = [], VB = [];
+    const vattr = (a, isIdx) => { let i = GV.get(a); if (i !== undefined) return i; const arr = plain(a); i = VA.length; GV.set(a, i); VB.push(arr);
+      VA.push({ tipo: arr.constructor.name, n: isIdx ? arr.length : a.count, s: isIdx ? 1 : a.itemSize, norm: !!a.normalized, idx: !!isIdx, b: i }); return i; };
+    const GEOV = new Map(), GEOL = [];
+    const vgeo = g => { let i = GEOV.get(g); if (i !== undefined) return i; const at = {}; for (const k in g.attributes) at[k] = vattr(g.attributes[k], false);
+      if (!g.boundingSphere) g.computeBoundingSphere();
+      i = GEOL.length; GEOV.set(g, i); GEOL.push({ at, ix: g.index ? vattr(g.index, true) : null, gr: g.groups.length ? g.groups.map(q => [q.start, q.count, q.materialIndex || 0]) : null,
+        dr: g.drawRange.start || g.drawRange.count !== Infinity ? [g.drawRange.start, g.drawRange.count] : null, bs: g.boundingSphere ? [g.boundingSphere.center.x, g.boundingSphere.center.y, g.boundingSphere.center.z, g.boundingSphere.radius] : null }); return i; };
+    const nodo = o => { if (o.matrixAutoUpdate) o.updateMatrix(); const r = { t: o.isSprite ? 'Sprite' : o.isMesh ? 'Mesh' : 'Group', mx: Array.from(o.matrix.elements), ly: o.layers.mask, vis: o.visible, nm: o.name || '', ro: o.renderOrder, fc: o.frustumCulled, cs: o.castShadow, rs: o.receiveShadow };
+      if (o.isMesh || o.isSprite) { r.m = Array.isArray(o.material) ? o.material.map(matId) : matId(o.material); }
+      if (o.isMesh) r.g = vgeo(o.geometry);
+      if (o.isSprite) r.c = [o.center.x, o.center.y];
+      const ud = {}; for (const k in o.userData) { const v = o.userData[k]; if (['number', 'boolean', 'string'].includes(typeof v)) ud[k] = v; } if (Object.keys(ud).length) r.ud = ud;
+      const ch = o.children.filter(c => (c.isMesh || c.isSprite || c.type === 'Group' || c.type === 'Object3D') && !c.isSkinnedMesh && !c.isInstancedMesh); if (ch.length) r.ch = ch.map(nodo); return r; };
+    const IDM = new THREE.Matrix4();
+    const VIVI = VR.map(([tipo, o, x]) => { const P = o.parent && o.parent !== S ? o.parent.matrixWorld : IDM, w = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
+      return { tipo, k: tk(w.x, w.z), pw: P === IDM ? null : Array.from(P.elements), n: nodo(o), x }; });
+    const viI = o => VDI.has(o) ? VDI.get(o) : -1;
+    // chi li anima: i semafori (S1.heads: le tre lenti, l'alone, l'oggetto colpibile del palo), le insegne che sfarfallano (il materiale
+    // dell'insegna, che sta nel tassello: non si unisce a nessun altro), l'acqua delle fontane (S1.fwater: la tessitura che scorre)
+    let VIVOK = 0; const unico = m => { if (m && m.isMaterial) MATL[matId(m)].vivo = ++VIVOK; };
+    (S1.heads || []).forEach(h => { h.lens.forEach(o => unico(o.material)); if (h.gl) unico(h.gl.material); });
+    (dyn.signs || []).forEach(q => { if (q.flick) { unico(q.m); if (q.gl && q.gl.material) unico(q.gl.material); } });
+    const heads = (S1.heads || []).map(h => ({ lens: h.lens.map(viI), gl: h.gl ? viI(h.gl) : -1, gy: h.gy, ofs: h.ofs, phase: h.phase, prop: h.rec && PRI.has(h.rec) ? PRI.get(h.rec) : -1 })).filter(h => h.lens.every(i => i >= 0));
+    const insegne = (dyn.signs || []).filter(q => q.flick && q.m && q.m.isMaterial).map(q => ({ m: matId(q.m), gl: q.gl ? viI(q.gl) : -1 }));
+    const fwater = (S1.fwater || []).filter(t => t && t.isTexture).map(texId);
+    const aloni = ALONI.map(a => { const sp = a.sp, w = new THREE.Vector3().setFromMatrixPosition(sp.matrixWorld), sc = new THREE.Vector3().setFromMatrixScale(sp.matrixWorld);
+      return { k: tk(w.x, w.z), p: [w.x, w.y, w.z].map(v => +v.toFixed(3)), s: [+sc.x.toFixed(3), +sc.y.toFixed(3)], m: matId(sp.material), tipo: a.k, base: a.base, ph: a.ph, ly: sp.layers.mask || a.lm || 1, rot: sp.material.rotation || 0, c: [sp.center.x, sp.center.y], vis: (() => { for (let q = sp; q; q = q.parent) if (!q.visible) return false; return true; })() }; });
+    if (VB.length) await up('grezzi/vivi.bin', pack({ attr: VA }, VB));
+    // 4c) [tasselli2] i dati delle case che il gioco legge (il taglio, il tetto che sbiadisce, la sagoma del personaggio, le aperture dei
+    // graffiti): i record di dyn.buildings (senza le mesh) e quello che le fasi della città hanno scritto sulle case del mondo (b.__*)
+    const GB = (typeof Game !== 'undefined' && Game.BUILDINGS) || [];
+    const sicuro = (v, seen, d) => { if (v === null || v === undefined) return v; const t = typeof v; if (t === 'number') return isFinite(v) ? v : null; if (t === 'string' || t === 'boolean') return v; if (t !== 'object') return undefined;
+      if (v.isObject3D || v.isMaterial || v.isTexture || v.isBufferGeometry || v.isBufferAttribute) return true; if (v.isVector3 || v.isVector2) return v.toArray(); if (v.isColor) return '#' + v.getHexString(); if (v.isBox3) return [v.min.x, v.min.y, v.min.z, v.max.x, v.max.y, v.max.z];
+      if (ArrayBuffer.isView(v)) return v.length > 4096 ? undefined : Array.from(v); if (seen.has(v) || d > 6) return undefined; seen.add(v);
+      if (Array.isArray(v)) return v.map(x => { const q = sicuro(x, seen, d + 1); return q === undefined ? null : q; });
+      if (v instanceof Map || v instanceof Set) return undefined; const o = {}; for (const k in v) { const q = sicuro(v[k], seen, d + 1); if (q !== undefined) o[k] = q; } return o; };
+    const bmut = GB.map(b => { const o = {}; for (const k of Object.keys(b)) if (k.startsWith('__')) { const q = sicuro(b[k], new Set(), 0); if (q === undefined) continue; const js = JSON.stringify(q); if (js && js.length < 200000) o[k] = q; } return o; });
+    const bIdx = new Map(); (DZ && DZ.bRec || []).forEach((r, i) => { if (r) bIdx.set(r, i); });
+    const SALTA = new Set(['b', 'grp', 'mats', 'detGrp', 'mv1', 'mv3', 'box3', '__t4', '__pl3', '__cose3', '__own3']);
+    const fdIdx = TR.FD1 && TR.FD1.idx;
+    const casi = dyn.buildings.map(rec => { const o = { fd: fdIdx && fdIdx.has(rec) ? fdIdx.get(rec) : -1, bi: bIdx.has(rec) ? bIdx.get(rec) : GB.indexOf(rec.b), box3: rec.box3 ? sicuro(rec.box3) : null };
+      o.rb = o.bi >= 0 && bIdx.has(rec);   // DZ.bRec[bi] è questa casa
+      if (rec.b && (o.bi < 0 || GB[o.bi] !== rec.b)) { const bj = {}; for (const k in rec.b) { const v = rec.b[k]; if (v === null || ['number', 'boolean', 'string'].includes(typeof v)) bj[k] = v; } o.bj = bj; }
+      for (const k in rec) { if (SALTA.has(k) || k in o) continue; const v = rec[k]; if (v === null || ['number', 'boolean', 'string'].includes(typeof v)) o[k] = v; else if (v && typeof v === 'object' && !v.isObject3D && !v.isMaterial) { const q = sicuro(v, new Set(), 0); if (q !== undefined && q !== true) { const js = JSON.stringify(q); if (js && js.length < 20000) o[k] = q; } } }
+      return o; });
+    const grandi = DZ && TAGS ? DZ.big.filter(q => { const t = TAGS.get(q.tag); return t && t.parts.some(p => p.b && p.b.mesh && diCitta(p.b.mesh)); }).map(q => ({ c: q.c.toArray(), he: q.he.toArray(), base: q.base })) : [];
+    const dati = { case: casi, bmut, props: PROPS, grandi, vivi: VIVI, heads, insegne, fwater, aloni, geo: GEOL };
     // 5) le tessiture: i pixel dalla scheda video (o dai dati, per le DataTexture che li tengono)
     const fb = gl.createFramebuffer(), texInfo = [];
     const okF = !!gl.getExtension('EXT_color_buffer_float');
@@ -187,7 +273,8 @@
     // le uniform di modulo che la città usa: il loro valore adesso (il FD1 dei tasselli: nessuna casa tagliata né sfumata)
     const uni = {}; if (TR) for (const k in TR.uni) uni[k] = serV(TR.uni[k].value);
     if (TR && TR.FD1 && TR.FD1.u.value) uni.__fd1W = TR.FD1.W;
-    const tavole = { cella: CELLA, materiali: MATL, stringhe: STRL, tessiture: texInfo, luci, pozze, uni, tasselli: tiles, sagoma, info: Object.assign(info, { candidati: cand.length, citta: città.length, istanze: nInst, materiali: MATL.length, tessiture: TEXL.length, byteGrezzi: nb, ms: Math.round(performance.now() - T0), tempi: TM }) };
+    const tavole = { cella: CELLA, materiali: MATL, stringhe: STRL, tessiture: texInfo, luci, pozze, uni, tasselli: tiles, sagoma, dati, info: Object.assign(info, { candidati: cand.length, citta: città.length, istanze: nInst, materiali: MATL.length, tessiture: TEXL.length, byteGrezzi: nb, ms: Math.round(performance.now() - T0), tempi: TM,
+      vivi: VIVI.length, aloni: aloni.length, oggetti: PROPS.length, case: casi.length, semafori: heads.length, insegne: insegne.length }) };
     await up('grezzi/tavole.json', JSON.stringify(tavole));
     return tavole.info;
   };

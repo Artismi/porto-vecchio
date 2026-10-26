@@ -1705,6 +1705,7 @@ var Render = (function () {
     if (typeof B === 'number') B = dyn.buildings[B]; if (!B) return;
     const i = FD1.idx.get(B);
     if (modo === 'quota') { if (i === undefined || !FD1.data) return;
+      if (B.tas) { B.__q3 = v; v = B.__q4 === undefined || B.__q4 === null ? v : v === null || v === undefined ? B.__q4 : Math.min(v, B.__q4); }   // [tasselli] il taglio e il tetto (qui sotto) dividono la quota
       const code = v === null || v === undefined ? 0 : Math.max(1, Math.min(65535, Math.round((v + 50) * 100))), hi = code >> 8, lo = code & 255;
       if (FD1.data[i * 4 + 1] !== hi || FD1.data[i * 4 + 2] !== lo) { FD1.data[i * 4 + 1] = hi; FD1.data[i * 4 + 2] = lo; FD1.dirty = true; } return; }
     if (modo === 'tetto') tetto4(B, i, v || 0, opz);
@@ -1715,6 +1716,7 @@ var Render = (function () {
   // che il contorno del post segnava di bruno: [varco2]). Le cose del registro sul tetto (antenne, mensole) si spengono oltre metà.
   const T4M = new WeakMap();
   function tetto4(B, i, a, opz) {
+    if (B.tas) return tetto4Tas(B, a, opz);   // [tasselli] la casa è nella mesh del tassello (niente pezzi suoi da sbiadire)
     let T = B.__t4; const on = a > .002;
     if (!on && !T) return;
     if (!T) {
@@ -1733,6 +1735,15 @@ var Render = (function () {
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
     const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
     if (!on) B.__t4 = null;
+  }
+  // [tasselli] il tetto che sbiadisce di una casa che sta in un tassello: i pezzi della casa non ci sono (la mesh è del tassello), il tetto si
+  // toglie col taglio alla gronda (FD1, la stessa quota del muretto: la più bassa delle due) quando è sbiadito oltre metà, e sotto c'è la
+  // copertina nel tono del muro, come col tetto sbiadito del tutto
+  function tetto4Tas(B, a, opz) {
+    const on = a > .5, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : B.box3.max.y - 2.5, q4 = on ? gr : null;
+    if (B.__q4 !== q4) { B.__q4 = q4; casaVisibile(B, 'quota', B.__q3 === undefined ? null : B.__q3); }
+    if (B.__q3 !== undefined && B.__q3 !== null) return;   // il muretto è più basso: la copertina è la sua
+    const cap = vis3Cap(B), cv = on && !(opz && opz.nodisc); if (cv || cap.visible) { cap.visible = cv; if (cv) { cap.position.y = gr + .03; cap.material = capMat4(B, Visuale.TETTO4.copertina); } }
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
   function vis4Tetti(px, pz, fy, on, dt) {
@@ -16152,11 +16163,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function tagPart(b, n) { let t = TAGS.get(curTag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(curTag, t); } t.parts.push({ b, gi: b.geos.length - 1, n, obj: curObj }); }
   function tagObj(tag, o) { let t = TAGS.get(tag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(tag, t); } t.objs.push(o); }
   function hideTag(tag) {
-    const t = TAGS.get(tag); if (!t || t.hidden) return; t.hidden = true; DZ.touched = true;
+    const t = TAGS.get(tag); if (!t || t.hidden) return; t.hidden = true; DZ.touched = true; if (t.tas) t.tas(true);   // [tasselli] l'oggetto è nella mesh di un tassello: lo nasconde la sua maschera
     t.parts.forEach(p => { if (!p.b.mesh) return; const a = p.b.mesh.geometry.attributes.position, s = p.b.offs[p.gi] * 3, e = s + p.n * 3; if (!p.bak) p.bak = a.array.slice(s, e); for (let k = s; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; });
   }
   function showTag(tag) {
-    const t = TAGS.get(tag); if (!t || !t.hidden) return; t.hidden = false;
+    const t = TAGS.get(tag); if (!t || !t.hidden) return; t.hidden = false; if (t.tas) t.tas(false);
     t.parts.forEach(p => { if (!p.bak) return; const a = p.b.mesh.geometry.attributes.position; a.array.set(p.bak, p.b.offs[p.gi] * 3); a.needsUpdate = true; });
   }
   // griglia spaziale a celle di 4 m
@@ -17520,7 +17531,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [tasselli] quello che i tasselli condividono col gioco vivo: le uniform di modulo (per nome), le luci e le pozze di luce (dati)
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
     'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
-    ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); } };   // le sagome d'ombra delle case (livello 1), come fus1Gen
+    ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
+    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile };   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },

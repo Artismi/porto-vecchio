@@ -1,5 +1,5 @@
 // [tasselli] IL CONFRONTO DELL'IMMAGINE: le stesse inquadrature (quelle di banco_peso.js) fotografate con la città costruita nel browser
-// (oggi, Anelli.finisci) e con la città a tasselli (?tasselli=1, Tasselli.finisci), stesso seme, stessa ora, stesso tempo, senza chi si
+// (oggi, Anelli.finisci) e con la città a tasselli (il modo normale, Tasselli.finisci; oggi = ?tasselli=0), stesso seme, stessa ora, stesso tempo, senza chi si
 // muove (persone, mezzi, particelle); lo scarto per pixel (media 0-255, % di pixel oltre 8 su un canale) e l'immagine della differenza ×8.
 //   node strumenti/confronta_tasselli.js <cartella> [--solo=borgo,marina] [--vw=480] [--vh=300] [--modi=oggi,tasselli]
 'use strict';
@@ -30,7 +30,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
     await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true;
       const P = WebGL2RenderingContext.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } });
     await pg.addInitScript(seme => { let a = seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }, 12345);
-    await pg.goto(`http://localhost:${srv.address().port}/index.html${modo === 'tasselli' ? '?tasselli=1' : ''}`, { timeout: 0 });
+    await pg.goto(`http://localhost:${srv.address().port}/index.html${modo === 'tasselli' ? '' : '?tasselli=0'}`, { timeout: 0 });
     await pg.waitForFunction(() => window.__tl && window.__tl.gioco, null, { timeout: 0, polling: 1000 });
     log(modo, 'caricato', await pg.evaluate(() => window.Tasselli ? Tasselli.attivo() : null));
     if (modo === 'tasselli' && !(await pg.evaluate(() => window.Tasselli && Tasselli.attivo()))) { log('i tasselli non sono attivi (impronta?)', await pg.evaluate(() => window.__tasselli && window.__tasselli.motivo)); await pg.close(); continue; }

@@ -555,7 +555,7 @@ dai fotogrammi passati): spostando la foto di un pixel lo scarto della marina sc
   asincrona che three r149 non ha.
 
 
-## 8. La città a tasselli ([tasselli], pilota: `?tasselli=1`)
+## 8. La città a tasselli ([tasselli]: il modo normale; `?tasselli=0` costruisce la città nel browser come prima)
 
 La città ferma non si costruisce più nel browser: `strumenti/tassella.js` la costruisce una volta nella build (il gioco vero in Chromium
 senza testa, seme fisso, `?tutto`), `strumenti/tassella_pagina.js` cammina la scena finale e la taglia in settori di 48 m; il gioco scarica
@@ -596,3 +596,33 @@ solo i tasselli attorno alla camera (`src/tasselli.js`, il lavoratore `src/tasse
 - **Quello che manca** (passo 3): le case tagliate e i tetti nascosti (visuale3/4: leggono `dyn.buildings`), i colpi e la distruzione
   sulle statiche, i graffiti sui muri, le luci che sfarfallano e gli aloni (sprite), bucato, bandiere e barche ferme come nella foto della
   build; la compilazione dei programmi dei tasselli nel caricamento; meno disegni (materiali in tavolozza/atlante per tassello).
+
+### 8.6 Il deploy: i tasselli fuori da git
+
+I tasselli (~35 MB, 750 file) non stanno in git (`.gitignore`: `v7/tasselli/`), perché ogni sorgente del gioco cambia l'impronta e ogni
+cottura li riscriverebbe tutti nella storia.
+
+1. **La cottura in CI**: `.github/workflows/tasselli.yml`, a ogni push su `main` che tocca la pagina, il mondo cotto, i modelli o
+   l'esportatore (o a mano: *Actions → tasselli → Run workflow*). Legge `PV_IMPRONTA_TASS` da `v7/index.html`; se la release
+   `tasselli-<impronta>` c'è già non fa niente (cache per impronta); se no cuoce (`node strumenti/tassella.js`, Chromium senza testa,
+   20-30 min), mette `v7/tasselli/` in `tasselli.tar.gz` allegato a una release (pre-release, fuori dalla storia di git), tiene le 4
+   cotture più recenti e chiede un nuovo deploy a Vercel (`VERCEL_DEPLOY_HOOK`, se c'è).
+2. **Il build di Vercel**: `v7/vercel.json` (`buildCommand`: `sh strumenti/prendi_tasselli.sh`, `outputDirectory`: `.`) scarica
+   l'archivio dell'impronta della pagina da `github.com/<repo>/releases/download/tasselli-<impronta>/tasselli.tar.gz` in `tasselli/`.
+   Non fa mai fallire il build: se la release non c'è ancora (la cottura dura più del deploy) il sito va lo stesso.
+3. **Il ripiego**: senza tasselli, o con tasselli di un'altra impronta, o senza `dati.json`, `Tasselli.pronto` dà `false` e il gioco
+   costruisce la città nel browser come prima (`src/test_tasselli.js` lo prova). Appena la cottura finisce, il deploy hook rifà il deploy
+   e i tasselli arrivano.
+
+Da fare una volta: su Vercel *Settings → Git → Deploy Hooks*, un hook sul ramo di produzione; il suo indirizzo come segreto
+`VERCEL_DEPLOY_HOOK` su GitHub (*Settings → Secrets and variables → Actions*). Senza, i tasselli arrivano col deploy successivo. Il
+repository deve restare pubblico (l'archivio si scarica senza chiave); un altro repository: `PV_TASSELLI_REPO=proprietario/nome` su Vercel.
+
+### 8.7 Lo scarico vero ([tasselli3])
+
+Un tassello che esce dalla vista lascia la scheda video del tutto: geometrie, matrici delle istanze (`InstancedMesh.dispose`: prima
+restavano), i materiali e le tessiture contati per tassello (`texPrendi/texLascia`, `matPrendi/matLascia`): quando l'ultimo tassello che li
+usa se ne va, `dispose()` e i pixel buttati; tornano scaricati di nuovo. Restano sempre solo le tessiture che non sono dei tasselli (FD1, la
+tavolozza, gli aloni, l'acqua delle fontane). La prova: `node strumenti/misura_tasselli.js out.json --giri=10` (10 spostamenti lunghi fra
+i capi della città, poi di nuovo al punto di partenza: la memoria al ritorno contro quella di partenza).
+
