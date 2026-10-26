@@ -22584,8 +22584,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '8ff506920b0c34a0';</script>
-<script>window.PV_IMPRONTA_TASS = '52f298ffe6638d15';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'c0762fbc77698ab7';</script>
+<script>window.PV_IMPRONTA_TASS = 'd4e7b2e446541952';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -26589,12 +26589,21 @@ var World = (function () {
       [902, 'frangiflutti'], [950, 'porto'], [1082, 'scogli'], [1094, 'spiaggia'], [1152, 'scogli'], [1204, 'scogli']],
   };
   [COSTA2.N, COSTA2.S].forEach(L => L.forEach(q => { if (q[0] > 0 && q[0] < XF) q[0] = Math.round(Px(q[0])); }));   // [isola-ridotta] i tratti di riva sulla mappa (lo 0 resta 0: vale tutto il ponente)
+  // [campagna-b] dopo la compressione alcune cale erano fessure di 4 m: una cala larga meno di 18 m si allarga a 18 (attorno al suo
+  // centro); se un'altra cala sta a meno di 10 m le due si fondono; quelle di 4-8 m isolate tornano scogli. Solo fuori città (x < 840).
+  [COSTA2.N, COSTA2.S].forEach(L => { const COVE = k => k === 'cala' || k === 'foce';
+    for (let i = 1; i < L.length - 1; i++) { const [a, k] = L[i], b = L[i + 1][0]; if (!COVE(k) || b - a >= 18 || b > C2X1 - 20) continue;   // [costa-ferrovia] anche la caletta sotto la ferrovia (prima b > 840)
+      if (i + 2 < L.length - 1 && COVE(L[i + 2][1]) && L[i + 2][0] - b < 10) { L.splice(i + 1, 2); i--; continue; }   // la cala vicina: una sola
+      if (b - a < 8) { L.splice(i, 1); i--; continue; }
+      const c = (a + b) / 2, a1 = Math.max(L[i - 1][0] + 6, Math.round(c - 9)), b1 = Math.min(i + 2 < L.length ? L[i + 2][0] - 6 : 1e9, Math.round(c + 9)); L[i][0] = a1; L[i + 1][0] = b1; } });
   const C2BASE = { duna: 'spiaggia', foce: 'spiaggia', frangiflutti: 'scogli' };
   const COSTA = { N: COSTA2.N.map(([a, k]) => [a, C2BASE[k] || k]), S: COSTA2.S.map(([a, k]) => [a, C2BASE[k] || k]) };
   const costaSide = (x, y) => y < Yc(x) ? 'N' : 'S';
   function coastKind2(x, y) { const b = isleAt(x, y); if (b && b.q.d > Inland0(x, y)) return isleKind(b.I, b.q.a);   // [arcipelago] la riva di un'isola
     const L = COSTA2[costaSide(x, y)]; let k = L[0][1]; for (const [a, n] of L) if (x >= a) k = n; return k; }
   function coastKind(x, y) { const k = coastKind2(x, y); return C2BASE[k] || k; }
+  // [costa-ferrovia] la spiaggetta sta nel cuore della caletta: a meno di 5 m dalle punte di roccia che la chiudono niente sabbia
+  function calaFianco(x, y) { if (isleAt(x, y)) return false; const L = COSTA2[costaSide(x, y)]; for (let j = 0; j < L.length; j++) { const a = L[j][0], e = j + 1 < L.length ? L[j + 1][0] : 1e9; if (x >= a && x < e) return L[j][1] === 'cala' && (x - a < 5 || e - x < 5); } return false; }
   // il quartiere del governo: torri degli uffici sopra la baraccopoli (box in metri)
   const GOV = { x0: XG - 18, x1: XC + 4, piazza: [904, 136, 934, 156] };
 
@@ -26611,7 +26620,7 @@ var World = (function () {
   // lecci nelle doline e nel canalone, roccia nuda sulle pareti.
   const TAV = { x: Px(168), y: Py(168, 190), r: 37, h: 38.5, dip: .78, Rd: 32, Rs: 41, g: .16 };   // dip: la direzione in cui pendono i banchi; Rd, Rs: i semiassi (lungo il pendio, lungo i banchi); g: la pendenza del pianoro
   TAV.ud = [Math.cos(TAV.dip), Math.sin(TAV.dip)];
-  const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32, TERR: 64, LECCI: 128, POZZA: 256 };   // [altopiano] TERR i gradoni, LECCI doline e canalone (i lecci), POZZA il fondo della dolina
+  const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32, TERR: 64, LECCI: 128, POZZA: 256, ALVEO: 512 };   // [campagna-b] ALVEO il letto della Forra   // [altopiano] TERR i gradoni, LECCI doline e canalone (i lecci), POZZA il fondo della dolina
   // i canaloni: a l'angolo dal centro, in/out dove comincia (dentro il pianoro) e dove sbocca, w0 la mezza larghezza del fondo al ciglio, k quanto si allarga
   // fuori, sin l'ampiezza delle anse, f la ripidità dei fianchi, G la pendenza massima del sentiero che ci sale
   const CANALI = [{ id: 'levante', a: .15, in: -20, out: 31, w0: 9, k: .1, sin: 3.5, f: 5, G: .45 }, { id: 'ponente', a: -2.86, tilt: -.5, in: -26, out: 30, w0: 4.4, k: .04, sin: 1.2, f: 2, G: .62 }];
@@ -26620,7 +26629,13 @@ var World = (function () {
   // [altopiano] il ciglio: un'ellisse lungo i banchi, coi lobi larghi e, dove c'è la parete, gli speroni e le nicchie della frana
   const tavW = a => sstep(-.25, .5, Math.cos(a - TAV.dip - Math.PI));   // 1 la parete (a maestrale), 0 i gradoni (a scirocco)
   const tavR = a => { const c = Math.cos(a - TAV.dip), s = Math.sin(a - TAV.dip), E0 = 1 / Math.sqrt(c * c / (TAV.Rd * TAV.Rd) + s * s / (TAV.Rs * TAV.Rs)), ca = Math.cos(a), sa = Math.sin(a);
-    return E0 * (1 + .3 * (fbm(ca * 1.3 + 4, sa * 1.3 + 4, 401, 2) - .5) + (.1 + .12 * tavW(a)) * (fbm(ca * 3.6 + 9, sa * 3.6 + 9, 409, 2) - .5)); };
+    return E0 * (1 + .3 * (fbm(ca * 1.3 + 4, sa * 1.3 + 4, 401, 2) - .5) + (.1 + .12 * tavW(a)) * (fbm(ca * 3.6 + 9, sa * 3.6 + 9, 409, 2) - .5) + tavLobi(a)); };
+  // [costa-ferrovia] il contorno non è più un'ellisse liscia: due speroni dove i banchi duri reggono (a grecale, verso il mare di tramontana,
+  // e a libeccio), l'anfiteatro di una frana antica che morde la parete a tramontana, un rientro largo fra i gradoni a scirocco (lì l'acqua
+  // del pianoro scende e ha scavato), più le nicchie e i contrafforti fitti dove c'è la parete. Lontano dai due canaloni.
+  const TAV_LOBI = [[-.55, .24, .3], [2.35, .18, .26], [-1.55, -.2, .2], [.68, -.1, .3], [-2.2, .07, .14], [1.9, -.07, .18]];
+  function tavLobi(a) { let s = 0; for (const [c, A, w] of TAV_LOBI) { const d = Math.atan2(Math.sin(a - c), Math.cos(a - c)) / w; if (d > -4 && d < 4) s += A * Math.exp(-d * d); }
+    return s + .05 * tavW(a) * (fbm(Math.cos(a) * 9 + 3, Math.sin(a) * 9 + 3, 418, 2) - .5); }
   const tavUV = (x, y) => { const dx = x - TAV.x, dy = y - TAV.y; return [dx * TAV.ud[0] + dy * TAV.ud[1], -dx * TAV.ud[1] + dy * TAV.ud[0]]; };   // u lungo il pendio (verso scirocco), v lungo i banchi
   const tavP = (u, v) => [TAV.x + u * TAV.ud[0] - v * TAV.ud[1], TAV.y + u * TAV.ud[1] + v * TAV.ud[0]];
   const tavE = (x, y) => Math.hypot(x - TAV.x, y - TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x));   // la distanza dal ciglio (negativa: sul pianoro)
@@ -26647,8 +26662,11 @@ var World = (function () {
   // quanto spazio c'è, dal ciglio in quella direzione, per i gradoni: fino a 26 m dal mare (la costiera) e a 6 m dalle radure tenute (un valore per direzione)
   const SPAZIO = new Map(), tavSpazio = a => { const k = Math.round(a * 200); let v = SPAZIO.get(k); if (v === undefined) { const R = tavR(a), x = TAV.x + Math.cos(a) * R, y = TAV.y + Math.sin(a) * R; v = Math.min(Inland(x, y) - 26, tavFuori(x, y) - 6); SPAZIO.set(k, v); } return v; };
   // il sottobosco sale verso l'interno della testa e lungo la mezzeria del collo (lì corre la strada centrale); valloni scendono al mare
+  const HM_COLLO = 3.6;
   function boscoFloor(x, y, inl) {
-    const hm = .6 + 12.4 * (1 - sstep(330, XF - 6, Pxi(x))), prof = sstep(3, 48, inl);
+    // [campagna-b] il collo non scende più a 0,6 m (una conca al livello del mare chiusa fra le falesie e il Monte): l'interno resta
+    // a 3,6 m (la pianura del collo, dove corre la Forra) e a est di XF si raccorda al piede del Monte su 40 m (rawElev0)
+    const hm = Math.max(.6 + 12.4 * (1 - sstep(330, XF - 6, Pxi(x))), HM_COLLO), prof = sstep(3, 48, inl);
     const und = (fbm(x / 60, y / 60, 411, 2) - .5) * 4 * sstep(.3, 1, prof) * sstep(1.5, 5, hm);   // [isola] il sottobosco ondula largo
     const ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2;
     const vall = (1 - sstep(0, .35, rv)) * prof * (1 - prof) * 4 * (1.5 + hash2(vi, y > Yc(x) ? 1 : 0, 413) * 3) * sstep(2, 6, hm);
@@ -26664,18 +26682,69 @@ var World = (function () {
   const canHalf = (al, c) => c ? c.w0 + Math.max(0, al) * c.k : 7 + Math.max(0, al) * .12;
   const canLat0 = (c, al) => c.sin * Math.sin(al / 7);
   function canPt(c, al, lat) { const l = canLat0(c, al) + lat; return [c.p0[0] + c.u[0] * al - c.u[1] * l, c.p0[1] + c.u[1] * al + c.u[0] * l]; }   // un punto del canalone: lungo l'asse, di fianco
+  // [campagna-b] la quota dei fianchi di un canalone in (x, y) (Infinity fuori): la stessa forma che incide bosco0
+  function canWall(c, x, y, noise) {
+    const qx = x - c.p0[0], qy = y - c.p0[1], al = qx * c.u[0] + qy * c.u[1]; if (al < c.in - 12 || al > c.out + 6) return Infinity;
+    const lat = Math.abs(-qx * c.u[1] + qy * c.u[0] - canLat0(c, al)), hw2 = canHalf(al, c); if (lat > hw2 + c.f + 14) return Infinity;
+    return canFloor(c, al) + (noise ? (fbm(x / 5, y / 5, 405, 2) - .5) * .4 : 0) + Math.pow(Math.max(0, lat - hw2 + c.f) / c.f, 1.6) * 9 + Math.max(0, c.in - al) * 2.2;
+  }
+  // [campagna-b] il varco di un canalone nel ciglio: deciso dal terreno (dove il canalone abbassa davvero l'orlo), non da una finestra
+  // d'angolo (il canalone di ponente è di sbieco e fa l'ansa: la finestra stava 3-4° fuori dal taglio)
+  const VARCO = new Map();
+  function tavVarco(a) { const key = Math.round(a * 400); let v = VARCO.get(key); if (v !== undefined) return v; v = false;
+    const R = tavR(a), P = e => [TAV.x + Math.cos(a) * (R + e), TAV.y + Math.sin(a) * (R + e)], [xi, yi] = P(-4.5), [xo, yo] = P(1.5);
+    if (CANALI.some(c => canWall(c, xi, yi) < tavTop(xi, yi) - 1)) v = bosco(xi, yi).h - bosco(xo, yo).h < 5;   // il canalone ha mangiato l'orlo: resta solo la pendenza del fondo (3,5-4,7 m su 6 m)?
+    VARCO.set(key, v); return v; }
+  // [campagna-b] dove la grafica disegna la parete: tutto il fianco a maestrale finché ha un salto (alta w volte il salto pieno: si
+  // assottiglia fino a zero dove si scioglie nei gradoni), fuori dai varchi dei canaloni. Il terreno sotto è fatto per questa parete.
+  const TAVW_MIN = .05;
+  const tavParete = a => tavW(a) > TAVW_MIN && !tavVarco(a);
+  // [campagna-b] i letti dei torrenti incisi nel terreno: la Forra (dallo sbocco del canalone di levante giù fino al mare, alla sua foce
+  // sulla riva di mezzogiorno) e la Fiumara dei Carbonai (dalla sorgente sotto il Pizzo alla Foce della Fiumara). Prima la Forra c'era
+  // solo come verde (ecoAt, VALLONE) e la foce era una U senza acqua a monte. Il fondo scende sempre (mai una conca), dep metri sotto il
+  // terreno, e arriva al mare a zEnd; le sponde salgono a ~40°.
+  const FORRA0 = [canPt(CANALI[0], CANALI[0].out - 6, 0)].concat([[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]].map(q => PP(q[0], q[1])));   // [isola-ridotta] sulla mappa   [altopiano] comincia allo sbocco del canalone
+  { // dove la Forra arriva al mare la riva è una foce (18 m: sabbia e canne), non più la duna tagliata
+    let xc = null; for (let k = 1; k < FORRA0.length && xc === null; k++) { const a = FORRA0[k - 1], b = FORRA0[k]; for (let t = 0; t <= 1; t += .02) { const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t; if (!OnLand0(x, y)) { xc = Math.round(x); break; } } }
+    const L = COSTA2.S; if (xc !== null && xc < 840) { const a = xc - 9, b = xc + 9; let kb = L[0][1]; for (const [q, k] of L) if (q <= b) kb = k;
+      for (let i = L.length - 1; i >= 0; i--) if (L[i][0] >= a && L[i][0] <= b) L.splice(i, 1);
+      let j = L.findIndex(q => q[0] > a); if (j < 0) j = L.length; L.splice(j, 0, [a, 'foce'], [b, kb]);
+      if (j > 1 && a - L[j - 1][0] < 8) { L[j][0] = L[j - 1][0]; L[j + 1][0] = L[j][0] + 18; L.splice(j - 1, 1); } } }   // un moncone di meno di 8 m: la foce si sposta lì (sempre 18 m)
+  function alveoMk(P, hw, dep, zEnd, terr) { const seg = []; let L = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], len = Math.hypot(b[0] - a[0], b[1] - a[1]); seg.push([a, b, L, len]); L += len; }
+    P.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+    return { P, seg, L, hw, dep, zEnd, terr, bed: null, box: [x0 - hw - 16, x1 + hw + 16, y0 - hw - 16, y1 + hw + 16] }; }
+  function alveoQ(A, x, y) { let bd = 1e9, bs = 0; for (const [a, b, L0, len] of A.seg) { const dx = b[0] - a[0], dy = b[1] - a[1], t = clamp(((x - a[0]) * dx + (y - a[1]) * dy) / (len * len || 1), 0, 1), d = Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); if (d < bd) { bd = d; bs = L0 + t * len; } } return [bd, bs]; }
+  function alveoPt(A, s) { for (const [a, b, L0, len] of A.seg) if (s <= L0 + len || L0 + len >= A.L) { const t = clamp((s - L0) / (len || 1), 0, 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; } return A.P[A.P.length - 1]; }
+  function alveoBed(A, s) {
+    if (!A.bed) { const n = Math.ceil(A.L) + 1, z = new Float64Array(n);
+      for (let i = 0; i < n; i++) { const [px, py] = alveoPt(A, i), [qx, qy] = alveoPt(A, Math.min(A.L, i + 1)), [rx, ry] = alveoPt(A, Math.max(0, i - 1)), tl = Math.hypot(qx - rx, qy - ry) || 1, nx = -(qy - ry) / tl, ny = (qx - rx) / tl, t = A.terr(px, py), k = sstep(0, 14, i);
+        let lo = t; for (const d of [-9, -6, -3, 3, 6, 9]) { const u = A.terr(px + nx * d, py + ny * d); if (u > -1) lo = Math.min(lo, u); }   // anche sul fianco di un pendio: il fondo sotto la sponda più bassa
+        z[i] = t < -1 ? A.zEnd : Math.min(t - A.dep * k, lo - 1.8 * k); }   // in mare: la foce
+      for (let i = 1; i < n; i++) z[i] = Math.min(z[i], z[i - 1]);   // sempre in discesa
+      const sm = new Float64Array(n); for (let i = 0; i < n; i++) { let a = 0, c = 0; for (let j = Math.max(0, i - 6); j <= Math.min(n - 1, i + 6); j++) { a += z[j]; c++; } sm[i] = a / c; }
+      for (let i = 0; i < n; i++) sm[i] = Math.max(A.zEnd, i ? Math.min(sm[i], sm[i - 1]) : sm[i]);
+      A.bed = sm; }
+    const i = clamp(s, 0, A.bed.length - 1), i0 = Math.floor(i), i1 = Math.min(A.bed.length - 1, i0 + 1); return A.bed[i0] + (A.bed[i1] - A.bed[i0]) * (i - i0);
+  }
+  // la quota con il letto inciso (mai più alta di h); bed: true se (x, y) sta sul fondo
+  function alveoCarve(A, x, y, h) { const B = A.box; if (x < B[0] || x > B[1] || y < B[2] || y > B[3]) return h;
+    const [d, s] = alveoQ(A, x, y); if (d > A.hw + 16 || s <= 0) return h;
+    const e = Math.max(0, d - A.hw), surf = alveoBed(A, s) + .25 * sstep(0, A.hw, d) + e * .8 + e * e * .04; return Math.min(h, surf); }
+  const alveoFondo = (A, x, y) => { const B = A.box; if (x < B[0] || x > B[1] || y < B[2] || y > B[3]) return false; const [d, s] = alveoQ(A, x, y); return s > 2 && d < A.hw + .3; };
+  const FORRA_A = alveoMk(FORRA0, 2.6, 2.6, .35, (x, y) => OnLand(x, y) ? bosco0(x, y, true).h : -2);
   const BCACHE = new Map();
   function bosco(x, y) {
     const key = Math.round(x * 4) * 100000 + Math.round(y * 4), c0 = BCACHE.get(key); if (c0) return c0;
     const r = bosco0(x, y); if (BCACHE.size < 600000) BCACHE.set(key, r); return r;
   }
-  function bosco0(x, y) {
+  function bosco0(x, y, noAlveo) {
     let f = 0; const inl = Inland(x, y);
     let h = boscoFloor(x, y, inl);
     // la Spiaggia Lunga: la riva sud della testa e del collo è sabbia larga e bassa, poi una duna morbida
     // [costa2] la sabbia la decide il tipo di riva (spiaggia, cala, foce; la duna col suo cordone); la quota la fa c2Quota
     if (inl < 48) { const k = coastKind2(x, y), n1 = fbm(x / 23, y / 23, 710, 2);
-      if (C2BW[k] && inl < C2BW[k] + 4 * n1 + (k === 'duna' ? C2DUNA + 8 * n1 - 2 : 0)) f |= BF.RIVA; }
+      if (C2BW[k] && inl < C2BW[k] + 4 * n1 + (k === 'duna' ? C2DUNA + 8 * n1 - 2 : 0) && !calaFianco(x, y)) f |= BF.RIVA; }
     // [altopiano] il Tavolato: la parete col ghiaione a maestrale, i gradoni a scirocco, in mezzo si passano la mano; poi i canaloni
     const dx = x - TAV.x, dy = y - TAV.y, d = Math.hypot(dx, dy);
     if (d < TAV.Rs * 2.4) {
@@ -26689,12 +26758,16 @@ var World = (function () {
         const hcb = top - w * Math.max(0, top - talTop), e0 = w > .02 ? 1 : 0;   // il piede della parete
         // i gradoni: tre salti di roccia (dove non sono franati) coi ripiani che pendono appena verso valle; finiscono prima della costiera
         const Ll = Math.max(14, Math.min(28 + 12 * fbm(Math.cos(a) * 1.7 + 7, Math.sin(a) * 1.7 + 7, 411, 2) + 12 * (1 - sstep(0, .14, Math.max(MULA[0] - a, a - MULA[1]))), tavSpazio(a))), t = (e - e0) / Ll + .07 * (fbm(x / 13, y / 13, 412, 2) - .5);   // dove sale la mulattiera il pendio è più lungo (una frana vecchia, il cono di detrito)
-        let gL = 0; if (t >= 1) gL = 1; else if (t > 0) { const n = 3, k = t < .42 ? 0 : t < .72 ? 1 : 2, fr = (t - [0, .42, .72][k]) / [.42, .3, .28][k], rho = .2 + .74 * tavGap(a, k), st = (k + sstep(1 - rho, 1, fr)) / n; gL = .7 * st + .3 * t; }   // prima il ripiano, poi il salto
+        let gL = 0; if (t >= 1) gL = 1; else if (t > 0) { const n = 3, k = t < .42 ? 0 : t < .72 ? 1 : 2, fr = (t - [0, .42, .72][k]) / [.42, .3, .28][k], rho = .42 + .52 * tavGap(a, k), st = (k + sstep(1 - rho, 1, fr)) / n; gL = .7 * st + .3 * t; }   // prima il ripiano, poi il salto
         const gW = e < 1 ? 0 : e < 1 + Lt ? 1 - Math.pow(1 - (e - 1) / Lt, 1.3) : 1, gk = w * gW + (1 - w) * gL;   // quanto si è scesi dal piede della parete al bosco (0..1)
-        if (e < -3.5) ht = top;
-        else if (e < e0) ht = top + (hcb - top) * sstep(-3.5, 1, e);
+        // [campagna-b] dove c'è la parete (tavParete: anche sui fianchi, bassa) il salto del terreno sta tutto dietro la parete, sotto il
+        // ciglio (da R-4,4 a R-1,4): davanti alla roccia resta il piede, niente rampa d'erba che la copre («la tenda sospesa»)
+        const kw = sstep(.02, .1, w), r0 = -3.5 - .9 * kw, r1 = 1 - 2.4 * kw;
+        if (e < r0) ht = top;
+        else if (e < r1) ht = top + (hcb - top) * sstep(r0, r1, e);
         else ht = hcb + (foot - hcb) * gk + w * (fbm(x / 11, y / 11, 404, 2) - .5) * .8 * (1 - gW);
         if (w >= .5) { if (e < -1.5) f |= BF.TOP; else if (e < 2.4) f |= BF.WALL; else if (e < 1 + Lt) f |= BF.TALUS; else if (t < 1 && ht > foot + .8) f |= BF.TERR; }
+        else if (w > TAVW_MIN) { if (e < -1.5) f |= BF.TOP; else if (e < 2.4) f |= BF.WALL; else if (t < 1 && ht > foot + .8) f |= BF.TERR; }
         else { if (e < 0) f |= BF.TOP; else if (t < 1 && ht > foot + .8) f |= BF.TERR; }
         if (f & BF.TOP) for (const D of DOLINE) { const q = Math.hypot(x - D.x, y - D.y) / D.r; if (q < 1.08) f |= BF.LECCI; }   // i lecci sui fianchi e sull'orlo della dolina, al riparo dal vento
         if (Math.hypot(x - POZZA.x, y - POZZA.y) < POZZA.r) f |= BF.POZZA;
@@ -26704,22 +26777,91 @@ var World = (function () {
         const qx = x - c.p0[0], qy = y - c.p0[1], al = qx * c.u[0] + qy * c.u[1]; if (al < c.in - 12 || al > c.out + 6) continue;
         const lat = Math.abs(-qx * c.u[1] + qy * c.u[0] - canLat0(c, al)), hw2 = canHalf(al, c); if (lat > hw2 + c.f + 14) continue;
         const hc = canFloor(c, al) + (fbm(x / 5, y / 5, 405, 2) - .5) * .4, wall = hc + Math.pow(Math.max(0, lat - hw2 + c.f) / c.f, 1.6) * 9 + Math.max(0, c.in - al) * 2.2;
+        // [campagna-b] dove il canalone sbocca da una parete (ponente) il suo fondo resta sopra il ghiaione: sotto lo sbocco c'è il cono di
+        // detrito che scende col fondo e si apre ai lati (prima il fondo finiva in un gradino di 4-6 m sul ghiaione, e la rampa del ciglio ci
+        // scavava una buca)
+        if (al > -6 && tavW(c.a) > TAVW_MIN) { const hk = hc - Math.max(0, lat - (hw2 - c.f)) * 1.3; if (hk > ht + .05 && hk < hc + .01) { ht = hk; f &= ~(BF.TOP | BF.WALL | BF.POZZA | BF.TERR | BF.LECCI); f |= lat < hw2 - 1 ? BF.CANALE : BF.TALUS; continue; } }
         if (wall < ht) { ht = wall; f &= ~(BF.TOP | BF.WALL | BF.POZZA); if (lat < (c.id === 'levante' ? Math.max(1.6, (hw2 - c.f) * .45) : hw2 - 1) && al >= c.in) f |= BF.CANALE;   /* nel canalone di levante il letto di ghiaia sta in mezzo, ai lati i lecci */ if (c.id === 'levante') f |= BF.LECCI; else f &= ~BF.LECCI; }
       }
       h = ht;
     }
     for (const [rx, ry, rr] of RADURE) if (dist(x, y, rx, ry) < rr) f |= BF.RADURA;
+    if (!noAlveo) { const hc = alveoCarve(FORRA_A, x, y, h); if (hc < h - .05) { h = hc; f &= ~(BF.TOP | BF.TERR | BF.TALUS | BF.WALL); if (alveoFondo(FORRA_A, x, y) && !(f & BF.RIVA)) f |= BF.ALVEO; } }   // [costa-ferrovia] sulla spiaggia il letto è sabbia   // [campagna-b] la Forra
     return { h: Math.max(.4, h), f };
   }
   // [costa2] il profilo della riva secondo il suo tipo, sopra il terreno di prima (il bosco, il monte), che vicino al mare si spiana:
   // la falesia di tramontana sale quasi a picco a 5-11 m; gli scogli sono lastre basse a gradini; la cala scende a una spiaggetta;
   // la spiaggia è bassa e larga; la duna ha dietro la spiaggia il cordone (due o tre creste parallele alla riva con le conche in mezzo),
   // poi il terreno risale piano verso la pineta; la foce è piatta e bassa. A sud tutto più basso che a nord.
-  const C2BW = { duna: 13, foce: 10, spiaggia: 11, cala: 7 };   // la larghezza della sabbia asciutta (più 0-4 m)
+  const C2BW = { duna: 13, foce: 10, spiaggia: 11, cala: 4.5 };   // la larghezza della sabbia asciutta (più 0-4 m)   [costa-ferrovia] cala: 4,5 (prima 7): la spiaggetta in fondo alla caletta, non una fascia larga quanto una spiaggia
   const C2DUNA = 26;                                                // il cordone di dune dietro la spiaggia (più 0-8 m)
+  // [campagna-b] i tipi di riva si passano la mano. Prima c2Quota applicava il profilo del tipo scelto dalla sola x fino a 72 m dentro,
+  // senza fondere: una cala fra due falesie diventava una trincea dritta nord-sud a pareti verticali lunga 70 m, e a 72 m il profilo
+  // smetteva di colpo (un gradino di 3 m parallelo alla riva). Ora:
+  //  - lo «sfondo» (falesia, scogli, spiaggia, duna...) si fonde fra un tratto e l'altro su ~2×9 m lungo la riva, dalla parte del tipo
+  //    più alto (la sabbia resta sabbia fino al suo confine, è la roccia che scende a raggiungerla);
+  //  - cale e foci sono conche a ventaglio sopra lo sfondo: larghe quanto il tratto sulla riva, si chiudono entro bw + 14 + 0,8·larghezza;
+  //  - tutto l'effetto della riva sfuma fra 50 e 72 m (nessun gradino dove finisce).
+  // [costa-ferrovia] anche lungo la ferrovia (x 756-900, finale 1076-1220): lì la riva di prima metteva la falesia di 9-10 m accanto alla
+  // caletta a 0,6 m con un muro dritto nord-sud (i gradini sotto le baracche) e finiva di colpo a 72 m. Da C2X1 - 25 la riva torna
+  // quella di prima (scogli da tutte e due le parti: è la stessa), poi la città.
+  const C2COVE = { cala: 1, foce: 1 }, C2RANK = { falesia: 3, scogli: 2, frangiflutti: 2, porto: 2 }, C2NEW1 = C2X1;   // [costa-ferrovia] prima 800
+  function c2Prof(k, x, y, inl, h0, n1, n2) {
+    let h = .4 + (h0 - .4) * sstep(3, 34, inl);   // vicino al mare il terreno di prima si spiana
+    if (k === 'falesia') { const top = 5 + 6 * n1; return Math.max(h, top * sstep(.3, 3.4, inl) * (1 - .4 * sstep(12, 55, inl)) + (n2 - .5) * .9 * sstep(1, 4, inl)); }
+    if (k === 'scogli' || k === 'frangiflutti' || k === 'porto') { const st = .9 + 1.3 * n1 + Math.floor(n2 * 3) * .35; return Math.max(h, Math.min(st, .5 + inl * .5)); }
+    const bw = (C2BW[k] || 9) + 4 * n1, top = .45 + bw * .03;
+    if (inl < bw) return .45 + inl * .03;
+    const t = inl - bw;
+    if (k === 'duna') {
+      const D = C2DUNA + 8 * n1, al = x + y * .3, ph = t / (7 + 2 * fbm(al / 40, 3, 712, 2)) * Math.PI * 2 + fbm(al / 30, 5, 713, 2) * 4;
+      const env = sstep(0, 5, t) * (1 - sstep(D - 7, D, t)), cr = .5 + .5 * Math.cos(ph), hd = top + env * (1.2 + 2.8 * cr * (.6 + .8 * fbm(al / 18, 7, 714, 2)));
+      return t < D ? hd : top + (h - top) * sstep(D, D + 22, t);
+    }
+    if (k === 'foce') return Math.min(h, top + t * .05);
+    return top + (Math.max(h, top) - top) * sstep(0, 14, t);
+  }
+  // i pesi dei tipi di riva in (x, y) a inl metri dal mare: [[tipo, peso], ...]
+  function c2Mix(x, y, inl) {
+    const b = isleAt(x, y); if (b && b.q.d > Inland0(x, y)) return [[isleKind(b.I, b.q.a), 1]];
+    const L = COSTA2[costaSide(x, y)], n = L.length, BG = [];   // lo sfondo: i tratti che non sono conche (una conca si divide a metà fra i vicini)
+    for (let j = 0; j < n; j++) { const a = L[j][0], e = j + 1 < n ? L[j + 1][0] : 1e9; if (!C2COVE[L[j][1]]) { BG.push([a, e, L[j][1]]); continue; }
+      const m = (a + e) / 2; if (BG.length) BG[BG.length - 1][1] = m; BG.push([m, e, null]); }
+    for (let j = 0; j < BG.length; j++) if (BG[j][2] === null) { BG[j][2] = j + 1 < BG.length && BG[j + 1][2] && BG[j + 1][0] === BG[j][1] ? BG[j + 1][2] : BG[j - 1] ? BG[j - 1][2] : 'scogli'; }
+    const out = new Map(), add = (k, w) => { if (w > 1e-4) out.set(k, (out.get(k) || 0) + w); };
+    // lo sfondo: fra due tratti di tipo diverso la fascia di fusione sta dalla parte del più alto
+    const zone = j => { const L0 = BG[j - 1], R0 = BG[j], E = R0[0], rl = C2RANK[L0[2]] || 1, rr = C2RANK[R0[2]] || 1, Bw = Math.min(Math.abs(rl - rr) && Math.max(rl, rr) === 3 ? 20 : 9, .4 * Math.max(4, rl > rr ? L0[1] - L0[0] : R0[1] - R0[0]));   // [costa-ferrovia] la falesia scende in 2×20 m (prima 2×9: un muro di 8 m in 6)
+      return rl > rr ? [E - 2 * Bw, E] : rr > rl ? [E, E + 2 * Bw] : [E - Bw, E + Bw]; };
+    let tot = 0; const W = [];
+    for (let j = 0; j < BG.length; j++) { const [a, e, k] = BG[j]; if (x < a - 42 || x > e + 42) continue;   // [costa-ferrovia] oltre la fusione più larga (2×20 m)
+      let w = 1; if (j > 0 && BG[j - 1][2] !== k) { const [z0, z1] = zone(j); w *= sstep(z0, z1, x); } else if (j > 0 && x < a) w = 0;
+      if (j + 1 < BG.length && BG[j + 1][2] !== k) { const [z0, z1] = zone(j + 1); w *= 1 - sstep(z0, z1, x); } else if (j + 1 < BG.length && x >= e) w = 0;
+      if (w > 0) { W.push([k, w]); tot += w; } }
+    let free = 1;
+    // le conche (cala, foce): a ventaglio, piene sulla riva, chiuse entro Lc
+    for (let j = 0; j < n; j++) { const k = L[j][1]; if (!C2COVE[k]) continue; const a = L[j][0], e = j + 1 < n ? L[j + 1][0] : a, Wc = e - a, xc = (a + e) / 2;
+      if (Wc <= 0 || Math.abs(x - xc) > Wc / 2 + 8) continue;
+      const Lc = Math.min(C2BW[k] + 14 + .8 * Wc, 16), s = clamp(1 - inl / Lc, 0, 1), half = Wc / 2 * Math.sqrt(s), Bc = Math.min(10, .5 * Wc);
+      const m = sstep(xc - half - Bc, xc - half, x) * (1 - sstep(xc + half, xc + half + Bc, x)) * (1 - sstep(.7 * Lc, Lc, inl)) * free;
+      add(k, m); free -= m; }
+    for (const [k, w] of W) add(k, w / (tot || 1) * free);
+    if (!out.size) out.set(coastKind2(x, y), 1);
+    return [...out];
+  }
   function c2Quota(x, y, h0) {
-    const inl = Inland0(x, y); if (inl > 72 || inl < 0) return h0;
-    const k = coastKind2(x, y), n1 = fbm(x / 23, y / 23, 710, 2), n2 = fbm(x / 7, y / 7, 711, 2);
+    let inl = Inland0(x, y);
+    if (x < C2NEW1 && inl >= 64) { inl = c2Dist(x, y, 72); if (inl >= 72) return h0; }   // [campagna-b] Inland0 oltre 64 m dà la distanza in verticale: salta (48 → 66 m)
+    if (inl > 72 || inl < 0) return h0;
+    const n1 = fbm(x / 23, y / 23, 710, 2), n2 = fbm(x / 7, y / 7, 711, 2);
+    if (x < C2NEW1) {   // [campagna-b] la riva fusa (vedi sopra); fra C2NEW1 - 25 e C2NEW1 torna quella di prima
+      let hn = 0; for (const [k, w] of c2Mix(x, y, inl)) hn += w * c2Prof(k, x, y, inl, h0, n1, n2);
+      hn += (h0 - hn) * sstep(50, 72, inl);
+      const g = sstep(C2NEW1 - 25, C2NEW1, x); return g ? hn + (c2Quota0(x, y, h0, inl, n1, n2) - hn) * g : hn;
+    }
+    return c2Quota0(x, y, h0, inl, n1, n2);
+  }
+  function c2Quota0(x, y, h0, inl, n1, n2) {   // quella di prima (la città e il suo bordo)
+    const k = coastKind2(x, y);
     let h = .4 + (h0 - .4) * sstep(3, 34, inl);   // vicino al mare il terreno di prima si spiana
     if (k === 'falesia') { const top = 5 + 6 * n1; h = Math.max(h, top * sstep(.3, 3.4, inl) * (1 - .4 * sstep(12, 55, inl)) + (n2 - .5) * .9 * sstep(1, 4, inl)); }
     else if (k === 'scogli' || k === 'frangiflutti') { const st = .9 + 1.3 * n1 + Math.floor(n2 * 3) * .35; h = Math.max(h, Math.min(st, .5 + inl * .5)); }
@@ -26757,8 +26899,14 @@ var World = (function () {
     { const b = isleAt(x, y); if (b && b.q.d > 0 && !OnLand0(x, y)) return isleElev(b.I, b.q); }   // [arcipelago]
     if (!OnLand(x, y)) return -2;
     if (x < XF) return bosco(x, y).h;
-    if (x < XG) return Math.max(.4, monte(x - DXF, y).h, x < XF + 16 ? boscoFloor(x, y, Inland(x, y)) * (1 - sstep(XF, XF + 16, x)) : 0);
+    if (x < XG) return alveoCarve(FIUM_A, x, y, rawElevM(x, y));
     if (x < XC) return Math.max(.4, monte(347.9, y).h);
+    return rawElevC(x, y);
+  }
+  function rawElevM(x, y) {   // [campagna-b] il Monte prima della Fiumara incisa
+    return Math.max(.4, monte(x - DXF, y).h, x < XF + 40 ? boscoFloor(x, y, Inland(x, y)) * (1 - sstep(XF, XF + 40, x)) : 0);   // [campagna-b] 40 m (prima 16): il collo non è più a 0,6 m
+  }
+  function rawElevC(x, y) {   // la città (com'era)
     // [città2] il borgo sta su una groppa dolce che sale verso la Rocca (niente crepacci: le case si costruiscono in aderenza);
     // al bordo dell'acqua resta in piano (la marina, le mura di tramontana), oltre il fossato torna il colle della Rocca
     if (x >= 985 && x < 1215) { const hb = .4 + 6 * sstep(1000, 1150, x) * sstep(3, 34, Inland0(x, y)); return x < 1190 ? hb : hb + (rawElevO(x - DXC, y) - hb) * sstep(1190, 1215, x); }
@@ -26846,6 +26994,8 @@ var World = (function () {
   const gHead = .06;   // fin qui sopra la cascata
   // la fiumara: dalla sorgente sotto il Pizzo, larga di ghiaia, fino alla caletta a sud
   const FIUM = track([[244, 160], [238, 172], [230, 186], [222, 199], [217, 214], [215, 232], [215, 250]]);
+  // [campagna-b] la Fiumara incisa nel terreno (prima solo un nome): dalla sorgente sotto il Pizzo alla Foce della Fiumara
+  const FIUM_A = alveoMk([[244, 160], [238, 172], [230, 186], [222, 199], [217, 214], [215, 232], [215, 250]].map(([x, y]) => [x + DXF, y]), 2.2, 1.6, .3, (x, y) => OnLand(x, y) ? rawElevM(x, y) : -2);
   // i borghi arroccati sugli speroni: [x, y, raggio, quota]
   const BORGHI = { sangiacomo: [205, 103, 13, 10], carbonai: [184, 191, 12, 11], vecchio: [298, 173, 9, 11] };
   // le Cinque Dita: guglie di roccia [x, y, raggio, altezza sopra il suolo]
@@ -27171,7 +27321,7 @@ var World = (function () {
       // il Monte Scuro: il bosco cambia con la quota (ulivi e lecci in basso, castagni e faggi spogli a mezza costa, pini larici sull'altopiano, roccia in cima)
       const xm = x >= XF && x < XG ? x - DXF : x >= XC && x < XC + 32 ? x - DXC : -1;   // [isola] il Monte Scuro è in coordinate vecchie
       if (xm > 140 && xm < 380 && z !== Z.CITTA) {
-        const M = monte(xm, y), f = M.f, e = elev[i], h1 = hash2(tx, ty, 41); feat[i] = f;
+        const M = monte(xm, y), f = M.f | (x < XG && alveoFondo(FIUM_A, x, y) ? MF.FIUM : 0), e = elev[i], h1 = hash2(tx, ty, 41); feat[i] = f;   // [campagna-b] il greto della Fiumara
         if (f & MF.FIUM) v = T.GRAVEL;
         else if (f & MF.GOLA) v = T.GRAVEL;
         else if (f & (MF.CIMA | MF.DITA)) v = T.ROCK;
@@ -27188,8 +27338,9 @@ var World = (function () {
         const sv = velev[ty * VW + tx], sv1 = velev[ty * VW + tx + 1], sv2 = velev[(ty + 1) * VW + tx], sv3 = velev[(ty + 1) * VW + tx + 1];
         const ripido = (f & (BF.TOP | BF.TALUS | BF.TERR | BF.LECCI)) && !(f & BF.CANALE) && Math.hypot(sv1 + sv3 - sv - sv2, sv2 + sv3 - sv - sv1) / (2 * TS) > .68;
         if (f & BF.WALL || ripido) { v = T.CLIFF; feat[i] |= 4096; }
+        else if (f & BF.ALVEO) { v = h1 < .8 ? T.GRAVEL : T.ROCK; feat[i] |= 8192; }   // [campagna-b] il greto della Forra
         else if (f & BF.CANALE) { v = h1 < (dist(x, y, ...canPt(CANALI[1], 0, 0)) < 40 ? .3 : .72) ? T.GRAVEL : T.ROCK; feat[i] |= 8192; }   // il letto di ghiaia del canalone; nella spaccatura le lastre
-        else if (f & BF.POZZA) { v = T.SAND; feat[i] |= 2048; }   // il fondo d'argilla della pozza (l'acqua la mette la grafica)
+        else if (f & BF.POZZA) { v = T.DIRT; feat[i] |= 2048; }   // il fondo d'argilla della pozza (l'acqua la mette la grafica)   [campagna-b] terra, non più sabbia (era una toppa gialla nel pianoro)
         else if (f & BF.TALUS) { const dd = tavE(x, y), t = clamp((dd - 2.4) / 22, 0, 1);
           v = t < .38 + (fbm(x / 14, y / 14, 406, 2) - .5) * .3 ? (fbm(x / 6, y / 6, 407, 2) > .42 ? T.GRAVEL : T.ROCK) : fbm(x / 10, y / 10, 48, 2) > .45 - t * .25 ? T.TREE : T.SHRUB; feat[i] |= 8192; }   // [isola] il ghiaione a fascia continua, poi il bosco che ci risale
         else if (f & BF.TERR) {   // i gradoni: al piede dei salti il pietrame caduto, sui ripiani gariga e macchia, la roccia che affiora
@@ -27207,7 +27358,7 @@ var World = (function () {
         const k2 = x >= 1204 ? 'porto' : coastKind2(x, y), ck = C2BASE[k2] || k2, wob = (fbm(x / 9, y / 9, 81, 2) - .5) * 2.4, n1 = fbm(x / 23, y / 23, 710, 2);   // [costa2] la Rocca tiene le sue caselle di prima
         const band = x < C2X1 && C2BW[k2] ? C2BW[k2] + 4 * n1 + (k2 === 'duna' ? C2DUNA + 8 * n1 - 2 : 0) + wob * .5 : ck === 'spiaggia' ? 9 + wob : ck === 'cala' ? 6 + wob : ck === 'falesia' ? 7 + wob : ck === 'scogli' ? 4.2 + wob : 6;
         if (inl < band) {
-          const sandy = ck === 'spiaggia' || ck === 'cala' || (ck === 'scogli' && fbm(x / 16, y / 16, 82, 2) > .7);   // fra gli scogli, ogni tanto una tasca di sabbia
+          const sandy = ck === 'spiaggia' || (ck === 'cala' && !calaFianco(x, y)) || (ck === 'scogli' && fbm(x / 16, y / 16, 82, 2) > .7);   // fra gli scogli, ogni tanto una tasca di sabbia
           v = sandy ? T.SAND : T.ROCK; if (sandy && z !== Z.CITTA) zone[i] = Z.SPIAGGIA;
         }
       }
@@ -27224,7 +27375,7 @@ var World = (function () {
     const E = ECO;
     const eco = new Uint8Array(N);
     // la Forra: un torrente umido che scende dal canalone di levante del Tavolato fino al mare, al Borgo dei pescatori
-    const FORRA = [canPt(CANALI[0], CANALI[0].out - 6, 0)].concat([[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]].map(q => PP(q[0], q[1])));   // [isola-ridotta] sulla mappa   [altopiano] comincia allo sbocco del canalone
+    const FORRA = FORRA0;   // [campagna-b] la stessa polilinea che incide il terreno (bosco0, alveoCarve)
     const SAL0 = PP(100, 314), FARO0 = PP(41, 212), PX75 = Px(75);   // [isola-ridotta] le saline, la punta del faro
     const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
     const valloneK = (x, y, inl) => { const prof = sstep(3, 48, inl), ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2; return (1 - sstep(0, .5, rv)) * prof * (1 - prof) * 4; };
@@ -27528,16 +27679,54 @@ var World = (function () {
     const tavR0 = a => 58 * RID.s * (.95 + .1 * fbm(Math.cos(a) * 1.05 + 4, Math.sin(a) * 1.05 + 4, 401, 2));   // [altopiano] il Sentiero del Bosco Antico resta dov'era (gira largo attorno al Tavolato, fra il ghiaione e la costiera)
     const aroundTav = []; for (let a = .02; a > -2.62; a -= .1) { const R = tavR0(a) + 34 + 4 * Math.sin(a * 3); aroundTav.push([TAV.x + Math.cos(a) * R, TAV.y + Math.sin(a) * R]); }
     const PA = (a, e) => { const R = tavR(a) + e; return [TAV.x + Math.cos(a) * R, TAV.y + Math.sin(a) * R]; };   // un punto a e metri dal ciglio, nella direzione a
-    const TAVP = { campo: tavP(19, 18), centro: tavP(-8, -2), prateria: tavP(-18, -8), belvedere: PA(TAV.dip - Math.PI, -5.5) };   // i posti del pianoro
-    const MULP = [ringNear(...PA(1.25, 64)), PA(1.5, 52), PA(1.0, 45), PA(1.5, 37), PA(1.0, 29), PA(1.5, 21), PA(1.0, 13), PA(1.5, 5), PA(1.22, -3), tavP(14, 22), TAVP.campo];
-    const TOPP = [CE[CE.length - 1].slice(0, 2), tavP(20, 0), TAVP.campo, tavP(2, 20), tavP(-6, 8), TAVP.centro, tavP(-20, -4), TAVP.belvedere, tavP(-22, 9), CO[CO.length - 1].slice(0, 2)];
+    const TAVP = { campo: tavP(19, 18), centro: tavP(-8, -2), prateria: tavP(-18, -8), belvedere: PA(TAV.dip - Math.PI + .06, -6) };   // [campagna-b] sulla prua, a nord della spaccatura di ponente (prima stava sul fianco del canalone) e fuori dalla rampa del ciglio (da -4,4)   // i posti del pianoro
+    // [campagna-b] le due vie del pianoro rifatte (prima: 53% e 43% sul terreno contro il 20%, spigoli di 104° su punti quasi doppi, il fuoco
+    // dei beduini sulla mulattiera). La traccia gira attorno all'accampamento (a 8 m dal fuoco) e non scende più nella testata del canalone
+    // di ponente: la costeggia a nord. La mulattiera sale a tornanti veri: gambe a pendenza costante lungo le curve di livello del pendio di
+    // frana (fra gli angoli 1,0 e 1,5), tornanti di 3,5 m di raggio ai due fianchi, e arriva sulla traccia, non sul fuoco.
+    // l'accampamento sta fra la Dolina della Pozza e il ciglio: la traccia gira a nord della dolina, la mulattiera passa a est del campo
+    // (a ~9 m dal fuoco, fuori dalle tende e dagli stenditoi) e finisce in cima al Canalone di levante, dove comincia la traccia
+    const CAMPO_M = CE[CE.length - 1].slice(0, 2), CAMPO_V = tavP(22, 10);
+    const TOPP = [CE[CE.length - 1].slice(0, 2), tavP(6, -9), TAVP.centro, CO[CO.length - 1].slice(0, 2), canPt(CANALI[1], -24, 7.5), TAVP.belvedere];   // il belvedere in fondo, sulla striscia fra la spaccatura e il ciglio
+    const MULP = (() => {
+      const hT = (x, y) => bosco(x, y).h, G0 = .1, A0 = .98, A1 = 1.52, out = [];
+      // la partenza: la costiera qui corre in trincea (4 m sotto il pendio): la mulattiera comincia sul ciglio della sua carreggiata (6 m
+      // dall'asse: la prende come incrocio) e sale lungo la scarpata, di fianco alla costiera, per 24 m, prima di voltare sul pendio
+      const r0 = PA(1.25, 64); let ib = 0, bd = 1e9; RING.forEach((q, k) => { const d = dist(q[0], q[1], r0[0], r0[1]); if (d < bd) { bd = d; ib = k; } });
+      const q0 = RING[ib], qa = RING[Math.max(0, ib - 1)], qb = RING[Math.min(RING.length - 1, ib + 1)]; let tx0 = qb[0] - qa[0], ty0 = qb[1] - qa[1]; const tl = Math.hypot(tx0, ty0) || 1; tx0 /= tl; ty0 /= tl;
+      let nx0 = -ty0, ny0 = tx0; if (nx0 * (TAV.x - q0[0]) + ny0 * (TAV.y - q0[1]) < 0) { nx0 = -nx0; ny0 = -ny0; }   // verso il Tavolato
+      if (tx0 * -(q0[1] - TAV.y) + ty0 * (q0[0] - TAV.x) < 0) { tx0 = -tx0; ty0 = -ty0; }   // nel verso della prima gamba (angolo che cresce)
+      const sg = (qb[0] - qa[0]) * tx0 + (qb[1] - qa[1]) * ty0 > 0 ? 1 : -1;   // il verso lungo RING
+      const ringAt = d => { let k = ib, acc = 0; for (;;) { const k2 = k + sg; if (k2 < 0 || k2 >= RING.length) return [RING[k], [tx0, ty0]]; const L = dist(RING[k][0], RING[k][1], RING[k2][0], RING[k2][1]); if (acc + L >= d) { const t = (d - acc) / (L || 1), u = [(RING[k2][0] - RING[k][0]) / (L || 1), (RING[k2][1] - RING[k][1]) / (L || 1)]; return [[RING[k][0] + (RING[k2][0] - RING[k][0]) * t, RING[k][1] + (RING[k2][1] - RING[k][1]) * t], u]; } acc += L; k = k2; } };
+      let p; for (let d = 0; d <= 26; d++) { const [q, u] = ringAt(d); let nx = -u[1], ny = u[0]; if (nx * (TAV.x - q[0]) + ny * (TAV.y - q[1]) < 0) { nx = -nx; ny = -ny; } const o = 6 + Math.min(4.5, d * .45); p = [q[0] + nx * o, q[1] + ny * o]; out.push(p.slice()); }   // fuori dalla carreggiata della costiera (6,6 m dall'asse), di traverso: non ci corre dentro
+      let s = 1, zTop = hT(...CAMPO_V) - .8;
+      for (let it = 0; it < 900; it++) {
+        const h = hT(p[0], p[1]); if (h >= zTop || tavE(p[0], p[1]) < 1) break;
+        const gx = (hT(p[0] + .7, p[1]) - hT(p[0] - .7, p[1])) / 1.4, gy = (hT(p[0], p[1] + .7) - hT(p[0], p[1] - .7)) / 1.4, gm = Math.hypot(gx, gy) || 1e-6, ux = gx / gm, uy = gy / gm;
+        let tx = -uy, ty = ux; const rx = p[0] - TAV.x, ry = p[1] - TAV.y, rr = Math.hypot(rx, ry); if ((tx * -ry + ty * rx) * s < 0) { tx = -tx; ty = -ty; }   // lungo la curva di livello, verso il fianco
+        const sn = Math.min(1, G0 / gm), cs = Math.sqrt(1 - sn * sn), wq = sstep(.15, .4, gm);   // quasi in piano (il fondo del bosco): gira attorno, appena verso il ciglio
+        let dx = (tx * cs + ux * sn) * wq + (-ry / rr * s * .94 - rx / rr * .34) * (1 - wq), dy = (ty * cs + uy * sn) * wq + (rx / rr * s * .94 - ry / rr * .34) * (1 - wq); const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+        p = [p[0] + dx, p[1] + dy]; out.push(p.slice());
+        const a = Math.atan2(p[1] - TAV.y, p[0] - TAV.x);
+        if ((s > 0 && a > A1) || (s < 0 && a < A0)) {   // il tornante: mezzo giro di 3,5 m verso monte
+          const r = 3.5, cx = p[0] + ux * r, cy = p[1] + uy * r, a0 = Math.atan2(p[1] - cy, p[0] - cx), turn = (dx * uy - dy * ux) > 0 ? 1 : -1;
+          for (let k = 1; k <= 11; k++) out.push([cx + Math.cos(a0 + turn * Math.PI * k / 11) * r, cy + Math.sin(a0 + turn * Math.PI * k / 11) * r]);
+          p = out[out.length - 1].slice(); s = -s; }
+      }
+      { const q = out[out.length - 1], q1 = out[out.length - 2], L = Math.hypot(CAMPO_V[0] - q[0], CAMPO_V[1] - q[1]) + Math.hypot(CAMPO_M[0] - CAMPO_V[0], CAMPO_M[1] - CAMPO_V[1]), n = Math.max(2, Math.floor(L)), hd = Math.hypot(q[0] - q1[0], q[1] - q1[1]) || 1;   // l'ultimo tratto: una curva dolce (Bézier) lungo il campo fino in cima al canalone
+        const C1 = [q[0] + (q[0] - q1[0]) / hd * 8, q[1] + (q[1] - q1[1]) / hd * 8], B = (t, a, b, c, d) => (1 - t) ** 3 * a + 3 * t * (1 - t) ** 2 * b + 3 * t * t * (1 - t) * c + t ** 3 * d;
+        for (let k = 1; k < n; k++) { const t = k / n; out.push([B(t, q[0], C1[0], CAMPO_V[0], CAMPO_M[0]), B(t, q[1], C1[1], CAMPO_V[1], CAMPO_M[1])]); } out.push(CAMPO_M.slice()); }
+      for (let it = 0; it < 10; it++) for (let k = 2; k < out.length - 2; k++) out[k] = [(out[k - 1][0] + 2 * out[k][0] + out[k + 1][0]) / 4, (out[k - 1][1] + 2 * out[k][1] + out[k + 1][1]) / 4];   // gli spigoli si arrotondano
+      const keep = [out[0]]; for (let k = 1; k < out.length - 1; k++) { const q = keep[keep.length - 1]; if (Math.hypot(out[k][0] - q[0], out[k][1] - q[1]) >= .9) keep.push(out[k]); }   // fitti (un metro): niente chaikin (op.denso), che taglierebbe i tornanti
+      const z = out[out.length - 1], q = keep[keep.length - 1]; if (Math.hypot(z[0] - q[0], z[1] - q[1]) < .9) keep.pop(); keep.push(z); return keep;
+    })();
     const NEWR = [   // [isola-ridotta] i vertici scritti nel disegno, portati sulla mappa (PP); quelli dei canaloni sono già sulla mappa
       ['deserto', 'Strada del Bosco', 6, 'strada', [PP(680, 150), PP(646, 151), PP(612, 154), PP(578, 160), PP(548, 166), PP(522, 172)]],
       ['memoria', 'Via della Memoria', 3, 'sterrato', [PP(522, 172), PP(492, 178), PP(460, 186), PP(428, 192), PP(396, 198), PP(364, 203), PP(332, 205), PP(304, 203), PP(282, 200), [footE[0] + 6, footE[1] + 1], footE.slice(0, 2)]],
       ['canale_e', 'Sentiero del Canalone di levante', 2.6, 'sterrato', CE, true, { G: CANALI[0].G, traccia: true }],
       ['canale_o', 'Sentiero del Canalone di ponente', 2.8, 'sterrato', CO, true, { G: CANALI[1].G, traccia: true }],   // [altopiano] la spaccatura: si sale a gradini, tutta la larghezza del fondo
-      ['tav_top', 'Traccia del Tavolato', 2, 'sterrato', TOPP, false, { traccia: true }],
-      ['mulattiera_tav', 'Mulattiera del Tavolato', 2.6, 'sterrato', MULP, false, { G: .2, traccia: true }],   // [altopiano] la mulattiera: 2,6 m, a gradini dove tira
+      ['tav_top', 'Traccia del Tavolato', 2, 'sterrato', TOPP, false, { traccia: true, radi: .5 }],   // [campagna-b] radi: niente vertici a meno di mezzo metro
+      ['mulattiera_tav', 'Mulattiera del Tavolato', 2.6, 'sterrato', MULP, false, { G: .18, denso: true }],   // [campagna-b] una strada vera (non più traccia): la sede spianata, i tagli nella roccia ai tornanti   // [altopiano] la mulattiera: 2,6 m, a gradini dove tira
       ['bosco_antico', 'Sentiero del Bosco Antico', 2, 'sterrato', [footE.slice(0, 2)].concat(aroundTav, [footO.slice(0, 2)])],
       ['sent_faro', 'Sentiero del faro', 2, 'sterrato', [footO.slice(0, 2), PP(70, 168), PP(56, 190), PP(48, 206)]],
       ['miniera', 'Pista della Stazione Nord', 5, 'sterrato', [ringNear(...PP(252, 52)), PP(244, 66), PP(234, 80)]],
@@ -27547,9 +27736,10 @@ var World = (function () {
       ['campo_p', 'Traccia del campo', 2, 'sterrato', [ringNear(...PP(92, 72)), PP(96, 100), PP(98, 126)]],
     ];
     NEWR.forEach(([id, name, w, kind, cp, hq, op]) => {
-      const pts = hq ? chaikin(cp.map(q => [q[0], q[1]]), 2) : chaikin(cp, 3), rd = Object.assign({ id, name, w, kind, pts, monte: true }, op || {});   // [altopiano] op.G: la pendenza massima del sentiero (la spaccatura si sale a gradini)
+      const pts = op && op.denso ? cp.map(q => [q[0], q[1]]) : hq ? chaikin(cp.map(q => [q[0], q[1]]), 2) : chaikin(cp, 3), rd = Object.assign({ id, name, w, kind, pts, monte: true }, op || {});   // [campagna-b] op.denso: i punti sono già fitti e curvi (i tornanti)   // [altopiano] op.G: la pendenza massima del sentiero (la spaccatura si sale a gradini)
       if (hq) { const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + dist(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1])); const at = cp.map(q => { let bk = 0, bd = 1e9; pts.forEach((u, k) => { const d = dist(u[0], u[1], q[0], q[1]); if (d < bd) { bd = d; bk = k; } }); return cum[bk]; });
         rd.prof = cum.map(c => { let k = 0; while (k < at.length - 2 && c > at[k + 1]) k++; const t = clamp((c - at[k]) / ((at[k + 1] - at[k]) || 1), 0, 1); return cp[k][2] + (cp[k + 1][2] - cp[k][2]) * t; }); rd.trail = true; }
+      if (rd.radi) { const P = [rd.pts[0]]; for (let k = 1; k < rd.pts.length; k++) if (dist(rd.pts[k][0], rd.pts[k][1], P[P.length - 1][0], P[P.length - 1][1]) >= rd.radi || k === rd.pts.length - 1) P.push(rd.pts[k]); rd.pts = P; delete rd.radi; }
       roads.push(rd);
     });
     // strade di montagna: le quote disegnate (quando ci sono) si interpolano lungo il percorso
@@ -27704,6 +27894,7 @@ var World = (function () {
             if (v === T.VIA || roadW[i] === 0) { grid[i] = v; roadW[i] = Math.max(roadW[i], rd.w); }
           } else if (walk && d <= half + walk && roadW[i] === 0 && grid[i] !== T.WATER) grid[i] = zone[i] === Z.CITTA ? T.WALK : grid[i] === T.TREE ? T.SHRUB : grid[i];
           else if (d <= half + 1.5 && grid[i] === T.TREE) grid[i] = T.SHRUB;
+          else if (d <= half + .9 && grid[i] === T.CLIFF && rd.kind === 'sterrato' && rd.G && rd.G < .3) grid[i] = T.ROCK;   // [costa-ferrovia] la parete che resta a cavallo della sede dove il sentiero va di sbieco sulla griglia: roccia che si cammina, il passo c'è
         }
       }
     };
@@ -27720,6 +27911,14 @@ var World = (function () {
       // le pozze rimaste fra la colmata e la riva vecchia (davanti alle baracche) si riempiono: niente mare chiuso dietro la strada
       for (let tx = T2i(x0); tx <= T2i(Math.min(x1, 1140)); tx++) { const x = tx * TS + 1, yr = yOnP0(P, x); if (yr === null) continue;
         for (let ty = T2i(yr + 5); ty <= T2i(yr + 18); ty++) { const i = ty * GW + tx, v = grid[i]; if (!(v === T.WATER || v === T.ROCK || v === T.SAND)) { if (v !== T.COB && v !== T.QUAY) break; continue; } grid[i] = T.COB; zone[i] = Z.CITTA; elev[i] = Math.max(elev[i], 1.2); if (!(x > 970 && x < 992 && ty * TS > 64)) reserved[i] = 1; } } }   // [pianta] resta il piazzale delle baracche sul lungomare (niente lamiere fra la strada e Radio Luna)
+    // [costa-ferrovia] il mare non si mangia le costiere: dove la riva (i rientri delle calette, l'interno delle curve sul mare) arriva
+    // dentro la carreggiata o a meno di 2,5 m dal ciglio, quelle caselle di mare diventano terra: la sede della strada e, fuori, la
+    // scogliera di massi che la regge (ROCK, a filo dell'acqua). Le strade non si spostano.
+    { const MF0 = new Set(); roads.forEach(rd => { if (rd.kind !== 'litoranea') return; const half = rd.w / 2, R = half + 2.5;
+        rd.pts.forEach(([x, y]) => { for (let ty = Math.floor((y - R) / TS); ty <= Math.floor((y + R) / TS); ty++) for (let tx = Math.floor((x - R) / TS); tx <= Math.floor((x + R) / TS); tx++) {
+          if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const i = ty * GW + tx; if (grid[i] !== T.WATER || zone[i] !== Z.MARE || MF0.has(i)) continue;
+          if (dist(x, y, tx * TS + 1, ty * TS + 1) > R) continue; MF0.add(i); } }); });
+      MF0.forEach(i => { grid[i] = T.ROCK; zone[i] = Z.MACCHIA; let s = 0, c = 0; for (const j of [i - 1, i + 1, i - GW, i + GW]) if (grid[j] !== T.WATER) { s += elev[j]; c++; } elev[i] = Math.max(.6, c ? s / c : .6); }); }
     roads.forEach(paint);
     const livella = rd => {
       const hs = rd.pts.map(([x, y]) => rawElev(x, y)), sm = rd.prof ? rd.prof.map(h => Math.max(.4, h)) : hs.map((h, k) => { let s = 0, c = 0; for (let q = -6; q <= 6; q++) { const v = hs[clamp(k + q, 0, hs.length - 1)]; s += v; c++; } return Math.max(.4, s / c); });
@@ -28268,6 +28467,21 @@ var World = (function () {
       if (feat[i] & MF.TERR) { if (drop > 1.2) { if (hash2(tx, ty, 77) < .12) feat[i] |= 256; else { grid[i] = T.CLIFF; feat[i] |= 512; } } }
       else if (drop > 1.9) grid[i] = T.CLIFF;
     }
+    // [campagna-b] la pulizia della riva fuori città (x < 860), dopo le pareti (che spezzano le spiagge ripide): le briciole di sabbia (meno di 6 caselle, nate dalla soglia su caselle da 2 m
+    // e dai cambi di tipo) tornano al tipo vicino (roccia sulla roccia, erba altrove); le pozzette d'acqua interne di 1-3 caselle diventano terra
+    const pulisciRiva = () => { const TX1 = Math.floor(860 / TS), seen = new Int32Array(N).fill(-1), D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+      const comp = (i0, pred) => { const Q = [i0], out = [i0]; seen[i0] = i0; while (Q.length) { const i = Q.pop(), tx = i % GW, ty = (i - tx) / GW;
+        for (const [dx, dy] of D4) { const x2 = tx + dx, y2 = ty + dy; if (x2 < 0 || y2 < 0 || x2 >= GW || y2 >= GH) { out.bordo = true; continue; } const j = y2 * GW + x2; if (seen[j] === i0 || !pred(j)) continue; seen[j] = i0; Q.push(j); out.push(j); if (out.length > 64) return out; } } return out; };
+      const vicini = C => { const S = new Set(C), cnt = new Map(); C.forEach(i => { const tx = i % GW, ty = (i - tx) / GW; for (const [dx, dy] of D4) { const j = (ty + dy) * GW + tx + dx; if (S.has(j) || j < 0 || j >= N) continue; cnt.set(grid[j], (cnt.get(grid[j]) || 0) + 1); } }); return cnt; };
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = 1; tx < TX1; tx++) { const i = ty * GW + tx; if (seen[i] >= 0) continue;
+        if (grid[i] === T.SAND) { const C = comp(i, j => grid[j] === T.SAND); if (C.length >= 6 || C.some(j => j % GW >= TX1)) continue;
+          const cnt = vicini(C), roccia = (cnt.get(T.ROCK) || 0) + (cnt.get(T.CLIFF) || 0), terra = [...cnt].filter(([k]) => k !== T.WATER && k !== T.ROCK && k !== T.CLIFF).reduce((a, [, n]) => a + n, 0);
+          const v = roccia >= terra ? T.ROCK : T.GRASS; C.forEach(j => { grid[j] = v; if (zone[j] === Z.SPIAGGIA) zone[j] = Z.MACCHIA; }); }
+        else if (zone[i] === Z.MARE) { const C = comp(i, j => zone[j] === Z.MARE); if (C.length >= 4 || C.bordo || C.some(j => j % GW >= TX1)) continue;
+          const cnt = vicini(C), v = (cnt.get(T.SAND) || 0) > (cnt.get(T.GRASS) || 0) ? T.SAND : (cnt.get(T.ROCK) || 0) > 1 ? T.ROCK : T.GRASS;
+          let zz = Z.MACCHIA; { const tx2 = C[0] % GW, ty2 = (C[0] - tx2) / GW; for (const [dx, dy] of D4) { const z2 = zone[(ty2 + dy) * GW + tx2 + dx]; if (z2 !== Z.MARE) { zz = z2; break; } } }
+          C.forEach(j => { grid[j] = v; zone[j] = zz; }); } } };
+    pulisciRiva();
     // ---------------- EDIFICI ----------------
     const B = [];
     const flatOK = (x, y, w, h, m) => { let a = 1e9, b = -1e9; for (let ty = y; ty < y + h; ty++) for (let tx = x; tx < x + w; tx++) { if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return false; const e = elev[ty * GW + tx]; a = Math.min(a, e); b = Math.max(b, e); } return b - a <= m; };
@@ -29734,6 +29948,18 @@ var World = (function () {
         roads.push({ id: rd.id + '_piede', name: rd.name, w: rd.w, kind: 'vicolo', pts: stub, pedonale: true, era: rd.era }); } });
       roads.forEach(rd => { if (rd.kind !== 'vicolo' || rd.pedonale || !rd.pts) return;
         if (rd.sottopasso || OPd.some(o => o.vicolo === rd.id) || rd.pts.some(([x, y]) => OPd.some(o => o.tipo !== 'muraglione' && vicino(o, x, y, rd.w / 2 + .5)))) rd.pedonale = true; }); }
+    // [costa-ferrovia] il raccordo sotto le case di campagna (il faro e la casa del salinaio compresi), a terreno finito: attorno alla
+    // pianta, fino a 4 vertici, il terreno scende o sale verso la quota della posa (il bordo alla quota della casa, poi sempre meno):
+    // niente scalino di terreno contro un muro né zoccolo scoperto. Strade (non i vialetti di 2 m, che arrivano alla porta; il ciglio degli sterrati di 3 m a metà), acqua e altre case non si toccano; la roccia a
+    // picco lì vicino diventa roccia che si cammina.
+    { const WR = [1, 1, .75, .45, .2], tocca = new Set();
+      const libero = (i, j, b) => { let w = 1; for (const [a, c] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) { if (a < 0 || c < 0 || a >= GW || c >= GH) return 0; const t = c * GW + a; if (roadW[t] > 3.01 || grid[t] === T.WATER || grid[t] === T.VIA || grid[t] === T.QUAY || grid[t] === T.PIER || (bIndex[t] >= 0 && bIndex[t] !== b.i)) return 0; if (roadW[t] > 2.01) w = .5; } return w; };   // il ciglio di uno sterrato (3 m) a metà
+      B.forEach(b => { if (b.military || (b.x + b.w) * TS > CITY_W0 || b.base === undefined) return;
+        for (let j = b.y - 4; j <= b.y + b.h + 4; j++) for (let i = b.x - 4; i <= b.x + b.w + 4; i++) { if (i < 0 || j < 0 || i > GW || j > GH) continue;
+          const d = Math.max(b.x - i, i - (b.x + b.w), b.y - j, j - (b.y + b.h), 0); const lw = d > 4 ? 0 : libero(i, j, b); if (!lw) continue;
+          const k = j * VW + i; vh[k] += (b.base - vh[k]) * WR[d] * lw; for (const [a, c] of [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]]) tocca.add(c * GW + a); } });
+      tocca.forEach(t => { if (grid[t] === T.BLD) return; const tx = t % GW, ty = (t / GW) | 0, k = ty * VW + tx; elev[t] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4;
+        if (grid[t] === T.CLIFF && Math.hypot(vh[k + 1] + vh[k + VW + 1] - vh[k] - vh[k + VW], vh[k + VW] + vh[k + VW + 1] - vh[k] - vh[k + 1]) / (2 * TS) < .7) grid[t] = T.ROCK; }); }
     // [altopiano] sul Tavolato, a terreno finito (quello che si vede, levigato e scavato dai sentieri): la casella naturale più ripida del
     // ghiaione più ripido (34°) è roccia in piedi, non ci si sale. Così fra due caselle percorribili vicine non c'è mai un salto
     { const MIO = BF.TOP | BF.TALUS | BF.TERR | BF.LECCI, NAT = new Set([T.GRASS, T.SHRUB, T.ROCK, T.GRAVEL, T.TREE, T.SAND]);
@@ -29747,6 +29973,7 @@ var World = (function () {
     for (let it = 0; it < 4; it++) { const tocca = (P, L) => lanes.some(o => o !== L && o.pts.some(q => dist(P[0], P[1], q[0], q[1]) <= Math.max(L.w, o.w) / 2 + 4));
       const n0 = lanes.length; lanes = lanes.filter(L => L.pts.some(([x]) => x >= CITY_W0) || (tocca(L.pts[0], L) && tocca(L.pts[L.pts.length - 1], L))); if (lanes.length === n0) break; }
     // ponti sospesi (si camminano sopra, sotto si passa) e grotte naturali che attraversano la montagna (sottosuolo)
+    pulisciRiva();   // [campagna-b] di nuovo alla fine: strade, pontili e scogliere hanno spezzato altre spiagge
     const BRIDGES = [];   // [isola] la gola non c'è più
     BRIDGES.forEach(B => { const ta = [Math.floor(B.a[0] / TS), Math.floor(B.a[1] / TS)], tb = [Math.floor(B.b[0] / TS), Math.floor(B.b[1] / TS)]; B.h0 = elev[ta[1] * GW + ta[0]]; B.h1 = elev[tb[1] * GW + tb[0]]; });
     const CAVES0 = [
@@ -29757,7 +29984,7 @@ var World = (function () {
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
     return { pezzi: PEZZI, recinto: POSA.recinto || null, glacis: CITY.glacis || null, railCity: CITY.rail, railCampagna: CITY.railC ? { cp: CITY.railC.cp, P: CITY.railC.P, n: CITY.railC.n, h: CITY.railC.h || null, code: CITY.railC.code || null, pl: CITY.railC.pl.map(q => ({ road: q.road, i: q.i, x: q.x, y: q.y, ang: q.ang, la: q.la, pz: !!q.pz })), sotto: (CITY.railC.sotto || []).map(q => Object.assign({}, q)), yards: CITY.railC.yards || [], ponti: CITY.railC.ponti || [], RMIN: CITY.railC.RMIN, pad: CITY.railC.pad ? (pd => ({ H: pd.H, ang: pd.ang, cumuli: pd.cumuli.map(([u, v, r]) => pd.W2(u, v).concat([r])), rete: [[pd.U1, pd.v0], [pd.U1, pd.v1]].concat(Array.from({ length: 12 }, (_, k) => [pd.U1 - (pd.U1 - pd.U0) * (k + 1) / 12, pd.v1]), [[pd.U0, pd.v0]]).map(([u, v]) => pd.W2(u, v)) }))(CITY.railC.pad) : null } : null, cityW0: CITY_W0, stazSud: CITY.staz2 ? { H: CITY.staz2.H, ang: CITY.staz2.ang, cumuli: CITY.staz2.cumuli.map(([u, v, r]) => CITY.staz2.W2(u, v).concat([r])), rete: [[CITY.staz2.L, CITY.staz2.v0], [CITY.staz2.L, CITY.staz2.v1], [0, CITY.staz2.v1], [0, CITY.staz2.v0]].map(([u, v]) => CITY.staz2.W2(u, v)) } : null, sets: CITY.sets, nodi: CITY.nodi, eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
-      DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, tavW, POZZA, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
+      DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, tavW, tavParete, tavVarco, POZZA, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
 
   // ================= [arcipelago] LA MAPPA GRANDE =================
@@ -30284,7 +30511,7 @@ var World = (function () {
   const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, DOLINE, POZZA, MULA, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
   const COT = CT ? CT.apri('mondo', RADICI) : null;
   const rifare = CT ? CT.RIFARE : null;
-  const FUNZ = Object.assign({ monte, tavR, tavW, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
+  const FUNZ = Object.assign({ monte, tavR, tavW, tavParete, tavVarco, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
@@ -75794,12 +76021,19 @@ var Render = (function () {
     const W0 = M.world; if (!W0 || !W0.TAV || !W0.tavR) return 0;
     const TV = W0.TAV, C = W0.CANALI || [], pos = [], uv = [], cpos = [], cuv = [], tvTop = (a, rr) => groundH(TV.x + Math.cos(a) * rr, TV.y + Math.sin(a) * rr);
     const inCan = a => C.some(c => { const da = Math.atan2(Math.sin(a - c.a), Math.cos(a - c.a)); return Math.abs(da) * (c.R || TV.r) < (c.hw0 != null ? c.hw0 / Math.cos(c.tilt || 0) : W0.canHalf(0)) + .8; });   // [altopiano] lo spacco dei canaloni (di sbieco: più largo sul ciglio)
-    const noWall = a => inCan(a) || (W0.tavW && W0.tavW(a) < .5);   // [altopiano] la parete c'è solo a maestrale: a scirocco il ciglio si rompe nei gradoni (li fa il terreno)
-    const NA = 720, rib = a => .45 * Math.sin(a * 61) + .3 * Math.sin(a * 137 + 1.3) + .25 * (vegHash(Math.floor(a * 90), 3, 7) - .5);
+    // [campagna-b] la parete corre su tutto il fianco a maestrale finché c'è un salto (W0.tavParete: bassa sui fianchi, fino a zero dove
+    // nascono i gradoni) e si apre solo dove il canalone taglia davvero il ciglio (deciso dal terreno); i capi chiusi da una testata
+    const noWall = a => W0.tavParete ? !W0.tavParete(a) : inCan(a) || (W0.tavW && W0.tavW(a) < .5);   // [altopiano] la parete c'è solo a maestrale: a scirocco il ciglio si rompe nei gradoni (li fa il terreno)
+    const noMassi = a => noWall(a) || (W0.tavW && W0.tavW(a) < .5);
+    const NA = 720, rib = a => .3 + .45 * Math.sin(a * 61) + .3 * Math.sin(a * 137 + 1.3) + .25 * (vegHash(Math.floor(a * 90), 3, 7) - .5);
+    // il piede: sotto il terreno vero nel punto della parete (e un metro più in fuori), mai sopra; mai più alto del ciglio
+    const botAt = (a, Rw, top) => Math.min(top - .3, tvTop(a, Rw - .4) - 1.3, tvTop(a, Rw + 1) - 1.3);
+    const tests = [];   // le testate: [angolo, verso]
     for (let k = 0; k < NA; k++) {
       const a0 = k / NA * 6.2832, a1 = (k + 1) / NA * 6.2832; if (noWall(a0) || noWall(a1)) continue;
+      if (noWall((k - 1) / NA * 6.2832)) tests.push([a0, -1]); if (noWall((k + 2) / NA * 6.2832)) tests.push([a1, 1]);
       const R0 = W0.tavR(a0) + rib(a0), R1 = W0.tavR(a1) + rib(a1);
-      const top0 = tvTop(a0, W0.tavR(a0) - 4.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 4.5) + .25, bot0 = tvTop(a0, W0.tavR(a0) + 2.2) - .6, bot1 = tvTop(a1, W0.tavR(a1) + 2.2) - .6;
+      const top0 = tvTop(a0, W0.tavR(a0) - 4.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 4.5) + .25, bot0 = botAt(a0, R0, top0), bot1 = botAt(a1, R1, top1);
       // tre fasce: la parete rientra e sporge un poco salendo (strati di roccia)
       const rows = 4; for (let q = 0; q < rows; q++) { const t0 = q / rows, t1 = (q + 1) / rows, o0 = .35 * Math.sin(t0 * 7 + a0 * 9), o1 = .35 * Math.sin(t1 * 7 + a0 * 9);
         const P = (a, R, bot, top, t, o) => [TV.x + Math.cos(a) * (R + o), bot + (top - bot) * t, TV.y + Math.sin(a) * (R + o)];
@@ -75810,12 +76044,20 @@ var Render = (function () {
       const E = [TV.x + Math.cos(a0) * ri, top0 - .05, TV.y + Math.sin(a0) * ri], F = [TV.x + Math.cos(a1) * ri1, top1 - .05, TV.y + Math.sin(a1) * ri1], Gq = [TV.x + Math.cos(a1) * (R1 + .4), top1, TV.y + Math.sin(a1) * (R1 + .4)], Hq = [TV.x + Math.cos(a0) * (R0 + .4), top0, TV.y + Math.sin(a0) * (R0 + .4)];
       cpos.push(...E, ...Gq, ...F, ...E, ...Hq, ...Gq); cuv.push(E[0] / 4, E[2] / 4, Gq[0] / 4, Gq[2] / 4, F[0] / 4, F[2] / 4, E[0] / 4, E[2] / 4, Hq[0] / 4, Hq[2] / 4, Gq[0] / 4, Gq[2] / 4);
     }
+    // [campagna-b] le testate: dove la parete si apre sul canalone (o finisce bassa sui fianchi) una faccia di roccia chiude lo spessore,
+    // dal filo della parete fin dentro il ciglio (la «spalla» che gira nel varco)
+    for (const [a, s] of tests) {
+      const Ro = W0.tavR(a) + rib(a) + .35, Ri = W0.tavR(a) - 4.5, top = tvTop(a, Ri) + .25, bot = Math.min(botAt(a, Ro, top), tvTop(a, Ri + 1.5) - 1.3), c = Math.cos(a), sn = Math.sin(a);
+      if (top - bot < .2) continue;
+      const P = (r, h) => [TV.x + c * r, h, TV.y + sn * r], A = P(Ro, bot), B = P(Ri, bot), Cc = P(Ri, top), D = P(Ro, top);
+      pos.push(...A, ...B, ...Cc, ...A, ...Cc, ...D); const L = (Ro - Ri) / 6; uv.push(0, bot / 6, L, bot / 6, L, top / 6, 0, bot / 6, L, top / 6, 0, top / 6);
+    }
     const mkG = (p, u) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); g.computeVertexNormals(); return g; };
     const wall = new THREE.Mesh(mkG(pos, uv), std({ map: roccia32(), roughness: 1, side: THREE.DoubleSide })); wall.castShadow = true; wall.receiveShadow = true; scene.add(wall);
     const capT = tex32('ciglio', 32, 32, (x, r) => { x.fillStyle = '#3c4030'; x.fillRect(0, 0, 32, 32); for (let k = 0; k < 120; k++) { x.fillStyle = pick(r, ['#4a4e38', '#36402c', '#525446', '#444836', '#3a3e30']); x.fillRect(r() * 32, r() * 32, 2, 2); } });
     const cap = new THREE.Mesh(mkG(cpos, cuv), std({ map: capT, roughness: 1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); cap.receiveShadow = true; scene.add(cap);
     // massi caduti ai piedi della parete
-    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (noWall(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
+    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (noMassi(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
       const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), sm(pick(r, ['#6e6660', '#7a726a', '#5e5650']), { roughness: 1 })); m.position.set(x, groundH(x, z) + s * .3, z); m.rotation.set(r(), r(), r()); m.scale.y = .7; addStatic(m); }
     return pos.length / 18;
   }
