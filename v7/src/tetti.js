@@ -140,38 +140,242 @@ var Tetti = (function () {
   const potere3 = b => CN3 && !b.era && (b.gov || b.military || b.church);
   const vicinoTetto3 = (b, bi) => { for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { if (!inb(tx, ty)) continue; const o = BI[ty * GW + tx];
     if (o >= 0 && o !== bi && B[o] && !B[o].lighthouse && Math.abs(roofRule(B[o]) - roofRule(b)) <= 1.2) return true; } return false; };
-  function buildLadders() {
+  // ---------------- [scale-finestre] LE APERTURE DELLE FACCIATE ----------------
+  // Andrea: «scala su finestra, capita quasi ovunque». La scala di ferro stava al centro di una casella, cioè proprio sulla colonna
+  // delle finestre: render.js monta le facciate a moduli di una casella (buildModular: la finestra al centro del modulo) o coi blocchi
+  // del kit urbano (casaKit). Qui le stesse regole, dagli stessi dati (la casa, la vista del lotto come BLD(), le caselle, gli hash th
+  // di render.js), dicono dove la facciata ha le aperture: finestre, porte, vetrine e insegne delle botteghe, la scala esterna della
+  // marina, le serrande del kit. Dove render.js tira a sorte (rng) si sta larghi: l'apertura c'è.
+  // Ogni apertura ha due misure: il VANO (il buco nel muro: dalla scala ci vogliono almeno 25 cm, sempre) e l'INGOMBRO (le persiane
+  // aperte, il davanzale, il balcone che sta sulla finestra, la tettoia e il balcone del kit: la scala li evita se può). La scala
+  // va prima sul muro cieco (la colonna senza finestre a nessun piano, nessun ingombro), poi fra due colonne di finestre (fra i vani
+  // di due finestre di un modulo restano 1,05 m: la scala ne prende 49, 28 cm d'aria per parte), mai sopra un vano.
+  // aperture4(bi) → { S, N, E, W: [[u0, u1, y0, y1, vano]] } con u lungo la faccia come sidesOf (S e N da ovest, E e W da nord, nel
+  // riferimento della casa), y sopra il piede della casa, vano 1 (il buco) o 0 (l'ingombro); null se la facciata non la monta
+  // buildModular né casaKit.
+  const SCALA_HW4 = .245, SCALA_AGIO4 = .25;   // mezza larghezza della scala (i due montanti, 44 cm l'uno dall'altro, spessi 5) e l'aria fino al vano
+  const thR4 = (tx, ty, s) => { let h = (tx * 374761393 + ty * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };   // render.js th
+  const ZN4 = G.MAP.Z || {}, ZONA4 = G.MAP.zone || null;
+  const modKind4 = b => b.gov ? 'civic' : b.military ? (b.warehouse ? 'port' : 'mil') : b.warehouse ? 'port' : (b.farm || /^(masseria|cantina|ovile_b|salinaio)$/.test(b.id || '')) ? 'farm' : /^(commissariato|biblioteca|ambulatorio)$/.test(b.id || '') ? 'civic' : 'borgo';   // render.js modKind
+  const faceOf4 = b => !b.door ? 'S' : b.door[1] === b.y + b.h ? 'S' : b.door[0] === b.x + b.w ? 'E' : b.door[1] === b.y - 1 ? 'N' : 'W';   // render.js faceOf
+  const EPOCA4 = { E0: { wide: false, winP: .62 }, E2: { wide: false, winP: .75 }, E3: { wide: false, winP: 1 }, E4: { wide: true, winP: 1 }, E6: { wide: true, winP: 1 } };   // render.js epPiano: X.upper, X.winP
+  // come render.js BLD(): la casa col lotto suo si monta dritta sulla sua scatola (caselle frazionarie), le porte sulla faccia giusta
+  function vista4(b) {
+    if (!(b.cx !== undefined && !b.__tierOf && !(b.tiers && b.tiers.length) && (Math.abs(b.cx - (b.x + b.w / 2) * TS) > .01 || Math.abs(b.cy - (b.y + b.h / 2) * TS) > .01 || Math.abs(b.lw - b.w * TS) > .01 || Math.abs(b.ld - b.h * TS) > .01))) return b;
+    const a = b.rot && !b.sign && !b.shop ? b.rot : 0, c = Math.cos(a), s = Math.sin(a), vx = b.cx / TS - b.lw / (2 * TS), vy = b.cy / TS - b.ld / (2 * TS), vw = b.lw / TS, vh = b.ld / TS;
+    const porta = d => { if (!d) return d; const X = (d[0] + .5) * TS - b.cx, Y = (d[1] + .5) * TS - b.cy, lx = X * c + Y * s, ly = -X * s + Y * c, cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+      const ux = cl((b.cx + lx) / TS - .5, vx, vx + vw - 1), uy = cl((b.cy + ly) / TS - .5, vy, vy + vh - 1);
+      return Math.abs(ly) / vh >= Math.abs(lx) / vw ? [ux, ly > 0 ? vy + vh : vy - 1] : [lx > 0 ? vx + vw : vx - 1, uy]; };
+    const V = Object.create(b); Object.assign(V, { x: vx, y: vy, w: vw, h: vh, door: porta(b.door) }); if (b.shopFront) V.shopFront = Object.assign({}, b.shopFront, { door: porta(b.shopFront.door) }); return V;
+  }
+  // quale costruttore di render.js monta la casa (buildBuildings): 'kit' (casaKit, usaKit34), 'moduli' (buildModular), null (gli altri)
+  function muratore4(b) {
+    if (b.pezzo || b.lighthouse || b.id === 'rocca') return null;
+    if (b.kiosk) return 'chiosco'; if (b.shack) return 'baracca';
+    if (b.church || (b.gov && b.id)) return null;
+    if (b.deco) return 'deco';
+    if (b.house && !b.fisher && !b.farm && !b.block && !(b.tiers && b.tiers.length) && !b.name && ZONA4) { const z = ZONA4[b.y * GW + b.x];
+      if (z === ZN4.CITTA && (b.era ? b.era === 'E6' && thR4(b.x, b.y, 341) < .3 : thR4(b.x, b.y, 341) < .58)) return 'kit'; }
+    return 'moduli';
+  }
+  const libT4 = (tx, ty) => { const v = G.tileAt(tx, ty), T0 = G.T; return v === T0.VIA || v === T0.WALK || v === T0.PIAZZA || v === T0.COB || v === T0.QUAY || v === T0.DIRT; };
+  const AP4 = new Map();
+  function aperture4(bi) {
+    const b0 = B[bi]; if (!b0) return null; const c0 = AP4.get(bi); if (c0 && c0.b === b0 && c0.x === b0.x && c0.y === b0.y && c0.cx === b0.cx && c0.cy === b0.cy && c0.rot === b0.rot && c0.door === b0.door) return c0.O;
+    const b = vista4(b0), chi = muratore4(b), O = chi ? { S: [], N: [], E: [], W: [], chi } : null;
+    if (chi === 'moduli') apModuli4(b, O); else if (chi === 'kit') apKit4(b, O); else if (chi) apAltre4(b, O, chi);
+    AP4.set(bi, { b: b0, x: b0.x, y: b0.y, cx: b0.cx, cy: b0.cy, rot: b0.rot, door: b0.door, O }); return O;
+  }
+  // i lati come li gira render.js (sd.tile, sd.at): N ed E contano da est e da sud, qui si riportano al verso di sidesOf
+  const latiR4 = b => [
+    { f: 'S', n: b.w, L: b.w * TS, rev: false, tile: k => [b.x + k, b.y + b.h] },
+    { f: 'N', n: b.w, L: b.w * TS, rev: true, tile: k => [b.x + b.w - 1 - k, b.y - 1] },
+    { f: 'E', n: b.h, L: b.h * TS, rev: true, tile: k => [b.x + b.w, b.y + b.h - 1 - k] },
+    { f: 'W', n: b.h, L: b.h * TS, rev: false, tile: k => [b.x - 1, b.y + k] }];
+  const run4 = () => Math.round((MG - .2) / .26) * .22;   // render.js EP_RUN: quanto corre la scala esterna lungo la facciata
+  function apModuli4(b, O) {
+    const kind = modKind4(b), EP = kind === 'borgo' && !b.__tierOf ? EPOCA4[b.era] : null, fl = Math.max(1, b.fl || 1), face0 = faceOf4(b);
+    const wideUp = EP ? EP.wide : kind === 'port' || (kind === 'civic' && !!b.gov), winP = !EP ? 1 : b.era === 'E0' && b.torre ? .32 : EP.winP;
+    // [vano, ingombro] dal centro: la finestra (95 cm; le persiane aperte, il davanzale e il balcone arrivano a 1,25 m), la finestra a nastro
+    // (3,1 m), la porta (1 m, col telaio e la lampada 65 cm), il portone largo (3,2 m); la bottega: l'insegna sopra la porta e le vetrine
+    const WIN = [.475, 1.25], WIDE = [1.55, 1.75], DOOR = [.5, .65], WDOOR = [1.6, 1.8], SHOP = .15, G0 = [.4, 2.25], DOORY = [0, 2.75], SHOPY = [0, MG + .4];
+    const put = (sd, uR, H, y, q) => { const u = sd.rev ? sd.L - uR : uR; O[sd.f].push([u - H[0], u + H[0], y[0], y[1], 1, q || 'altro']); O[sd.f].push([u - H[1], u + H[1], y[0], y[1], 0, q || 'altro']); };   // q: 'fin' la finestra del modulo
+    const sides = latiR4(b);
+    // la scala esterna della marina (epPiano: E2 da due piani, l'85%): il primo lato sulla strada dove ci sta; il murale (propPlan, S o E)
+    // può spostarla al lato dopo, allora si segnano tutti e due
+    const scale = [], run = run4();
+    if (EP && b.era === 'E2' && fl >= 2) [null, 'S', 'E'].forEach(no => { let ok = null;
+      for (const sd of sides) { if (ok) break; if (sd.f === no || !(sd.n >= 3)) continue;
+        let doorK = -1; if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
+        if (((b.shop || b.sign) && doorK >= 0) || (b.shopFront && sd.f === face0)) continue;
+        const L = sd.n * TS, ks = doorK >= 0 ? [doorK] : Array.from({ length: Math.ceil(sd.n) }, (_, k) => k);
+        for (const kk of ks) { if (ok) break; const uD = kk * TS + 1; for (const dir of [1, -1]) { const uE = uD + dir * (.65 + run);
+          if (uE > .25 && uE < L - .25 && uD - .65 > .1 && uD + .65 < L - .1 && libT4(...sd.tile(kk)) && libT4(...sd.tile(Math.min(sd.n - 1, Math.max(0, Math.floor((uD + dir * 2.2) / TS)))))) { ok = { sd, u: uD, dir }; break; } } } }
+      if (ok && !scale.some(q => q.sd === ok.sd && q.u === ok.u && q.dir === ok.dir)) scale.push(ok); });
+    scale.forEach(S => { const a = Math.min(S.u - .9, S.u + S.dir * (.65 + run)), c = Math.max(S.u + .9, S.u + S.dir * (.65 + run)), h = (c - a) / 2 + .1; put(S.sd, (a + c) / 2, [h, h], [0, MG + 2.4]); });
+    sides.forEach(sd => {
+      let doorK = -1; if (b.door && face0 === sd.f) for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] === b.door[0] && t[1] === b.door[1]) doorK = k; }
+      const SH = b.shopFront && !b.__tierOf && sd.f === face0 ? (b.shopFront.span ? shopKs4(b, sd) : { ks: [], kd: -1 }) : null;
+      const shop = (b.shop || b.sign) && doorK >= 0 && !SH, front = sd.f === face0, used = new Set(), piu = (H, q) => [H[0] + q, H[1] + q];
+      // il piano terra
+      if (doorK >= 0) {
+        if ((shop || b.warehouse) && sd.n >= 2) { const k2 = doorK + 1 < sd.n ? doorK : doorK - 1; put(sd, (k2 + .5) * TS + 1, shop ? piu(WDOOR, SHOP) : WDOOR, shop ? SHOPY : DOORY); used.add(k2); used.add(k2 + 1); }
+        else { put(sd, doorK * TS + 1, DOOR, DOORY); used.add(doorK); }
+      }
+      if (SH && SH.kd >= 0) {   // la bottega: la porta, le vetrine, l'insegna sopra
+        put(sd, SH.kd * TS + 1, piu(DOOR, SHOP), SHOPY); used.add(SH.kd);
+        const rest = SH.ks.filter(k => !used.has(k)).sort((a, c) => a - c);
+        for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { put(sd, (k + .5) * TS + 1, piu(WIDE, SHOP), SHOPY); used.add(k); used.add(k + 1); q++; } else { put(sd, k * TS + 1, piu(WIN, SHOP), SHOPY); used.add(k); } }
+      }
+      for (let k = 0; k < sd.n; k++) { if (used.has(k)) continue;
+        if (EP && b.era === 'E0' && thR4(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45) continue;
+        if ((front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic')) put(sd, k * TS + 1, WIN, G0, 'fin'); }
+      // i piani sopra
+      for (let f = 1; f < fl; f++) {
+        const y = MG + (f - 1) * MF, Y = [y + G0[0], y + G0[1]];
+        if (wideUp) { let k = 0; if (sd.n % 2 === 1) k = 1; for (; k + 1 < sd.n; k += 2) put(sd, (k + .5) * TS + 1, WIDE, Y); continue; }
+        for (let k = 0; k < sd.n; k++) {
+          const back = sd.f === 'N' || sd.f === 'W', win = !EP || winP >= 1 || thR4(b.x * 31 + k + (sd.f.charCodeAt(0) << 4), b.y + f * 3, 1601) < winP || (f === 1 && k === Math.floor(sd.n / 2));
+          if (win && !(back && k % 2)) put(sd, k * TS + 1, WIN, Y, 'fin'); }
+      }
+    });
+  }
+  function shopKs4(b, sd) {   // render.js shopKs
+    const S = b.shopFront, [a, c] = S.span, ks = []; let kd = -1;
+    for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] >= Math.min(a[0], c[0]) && t[0] <= Math.max(a[0], c[0]) && t[1] >= Math.min(a[1], c[1]) && t[1] <= Math.max(a[1], c[1])) ks.push(k); if (S.door && t[0] === S.door[0] && t[1] === S.door[1]) kd = k; }
+    return { ks, kd };
+  }
+  // casaKit: blocchi di una casella (2,5 m a piano). Le colonne di mezzo possono avere la finestra o la serranda, gli spigoli mai
+  // (render.js: «corner» non ha finestre); la porta, la lampada accanto; sulla strada la tettoia sopra il piano terra e i balconi
+  // ai piani alti cadono a sorte su qualsiasi colonna, spigoli compresi (ingombri)
+  function apKit4(b, O) {
+    const fl = Math.max(1, b.fl || 1), FH = 2.5, top = fl * FH, d = b.door || null, face = faceOf4(b);
+    const sides = [
+      { f: 'S', n: b.w, out: k => [b.x + k, b.y + b.h] }, { f: 'N', n: b.w, out: k => [b.x + k, b.y - 1] },
+      { f: 'E', n: b.h, out: k => [b.x + b.w, b.y + k] }, { f: 'W', n: b.h, out: k => [b.x - 1, b.y + k] }];
+    sides.forEach(sd => { const put = (u, h, y0, y1, v) => O[sd.f].push([u - h, u + h, y0, y1, v]);
+      for (let k = 0; k < sd.n; k++) { const corner = (k === 0 || k === sd.n - 1) && sd.n > 1, street = libT4(...sd.out(k)), u = k * TS + 1;
+        if (!corner) { put(u, .55, 0, top, 1); if (street) put(u, .9, 0, FH, 1); }   // la finestra in colonna, la serranda sulla strada
+        if (d && sd.f === face && sd.out(k)[0] === d[0] && sd.out(k)[1] === d[1]) { put(u, .55, 0, 2.6, 1); const kl = Math.max(0, Math.min(sd.n - 1, (sd.f === 'S' || sd.f === 'N' ? d[0] - b.x : d[1] - b.y) + 1)); put(kl * TS + 1, .25, .8, 2.2, 1); }
+        if (street) { put(u, 1.15, FH * .6, FH * 1.05, 0); if (fl >= 2) put(u, 1.15, FH, top, 0); } }
+    });
+  }
+  // le altre facciate di render.js: il palazzo déco (decoFacade: il piano terra tutto vetrate da 50 cm dagli spigoli, sopra le colonne di
+  // vetrocemento larghe 1,5 m, max(2, L/2,4) per piano), la baracca (buildShack: la porta di 90 cm, la finestrella di 60 cm a 1,1 m di
+  // qua o di là), il chiosco (le vetrine e il banco su tutti i lati)
+  function apAltre4(b, O, chi) {
+    const fl = Math.max(1, b.fl || 1), face = faceOf4(b);
+    ['S', 'N', 'E', 'W'].forEach(f => { const L = (f === 'S' || f === 'N' ? b.w : b.h) * TS, put = (u0, u1, y0, y1) => { O[f].push([u0, u1, y0, y1, 1]); O[f].push([u0 - .2, u1 + .2, y0, y1, 0]); };
+      if (chi === 'chiosco') put(0, L, 0, 3);
+      else if (chi === 'deco') { put(.5, L - .5, 0, 3); const cols = Math.max(2, Math.floor(L / 2.4)); for (let f2 = 1; f2 < fl; f2++) for (let k = 0; k < cols; k++) { const u = (k + .5) * L / cols; put(u - .75, u + .75, f2 * 3 + .6, f2 * 3 + 2); } }
+      else if (chi === 'baracca' && f === face) { const dk = b.door ? (f === 'S' || f === 'N' ? (b.door[0] - b.x) * TS + 1 : (b.door[1] - b.y) * TS + 1) : L / 2, ud = Math.max(.7, Math.min(L - .7, dk));
+        put(ud - .45, ud + .45, 0, 2); [-1.1, 1.1].forEach(s => { const uw = Math.max(.4, Math.min(L - .4, ud + s)); put(uw - .3, uw + .3, 1.2, 1.8); }); } });
+  }
+  // la scala (punto sul muro wx, wy, normale verso fuori ox, oy, sulla casa bi; il piede a terra o sul tetto della casa foot) passa su
+  // un vano (o, con ingombri, anche su un ingombro)? → { f, u, A } (la faccia, la u della scala, l'apertura) o null
+  // [scale-finestre] IL MODULO CIECO: dove la scala serve e il muro non ha un posto libero (le case strette dell'Ottocento, una casella
+  // con la finestra in mezzo a ogni piano) la casa lascia cieco quel modulo: niente finestra (e quindi niente persiane, davanzale, balcone)
+  // ai piani che la scala attraversa su quella faccia. Lo decide tetti.js (L.cieco = { f, u, y0 } sulla scala, cotto con le scale);
+  // render.js lo legge con Tetti.cieco4 quando posa le finestre di buildModular. Solo le finestre dei moduli ('fin'): mai porte e vetrine.
+  let CIE4 = null, CIE4n = -1, CIE4a = null;
+  const ciechi4 = () => { if (CIE4 && CIE4n === LADDERS.length && CIE4a === LADDERS[CIE4n - 1]) return CIE4; CIE4 = new Map(); CIE4n = LADDERS.length; CIE4a = LADDERS[CIE4n - 1];
+    LADDERS.forEach(L => { if (L.cieco) (CIE4.get(L.bi) || CIE4.set(L.bi, []).get(L.bi)).push(L.cieco); }); return CIE4; };
+  const accecata4 = (bi, f, A) => { if (A[5] !== 'fin') return false; const C = ciechi4().get(bi); return !!C && C.some(c => c.f === f && Math.abs((A[0] + A[1]) / 2 - c.u) < .15 && A[3] > c.y0 + .05); };
+  // render.js: il modulo della faccia f col centro a u (m dallo spigolo, nel verso di sidesOf), al piano (0 il terreno) è cieco?
+  function cieco4(bi, f, u, piano) { const C = ciechi4().get(bi); if (!C) return false; const top = (piano > 0 ? MG + (piano - 1) * MF : 0) + 2.25;
+    return C.some(c => c.f === f && Math.abs(c.u - u) < .15 && top > c.y0 + .05); }
+  // la faccia, la u lungo la faccia e la quota del piede (sopra il piede della casa) di una scala sul muro di bi
+  function loc4(bi, wx, wy, ox, oy, foot) { const b = B[bi], [lx, ly] = toL4(b, wx, wy), [nx, ny] = giraV4(-rotC4(b), ox, oy), L4 = lotto4(b);
+    const f = Math.abs(nx) >= Math.abs(ny) ? (nx > 0 ? 'E' : 'W') : (ny > 0 ? 'S' : 'N'), u = f === 'S' || f === 'N' ? lx - L4.x0 : ly - L4.y0;
+    const fl = Math.max(1, b.fl || 1), base = roofRule(b) - (b.fl >= 1 ? MG + (fl - 1) * MF : 3); return { f, u, y0: foot >= 0 && B[foot] ? roofRule(B[foot]) - base : -1 }; }
+  // la scala (punto sul muro wx, wy, normale verso fuori ox, oy, sulla casa bi; il piede a terra o sul tetto della casa foot) passa su
+  // un vano (o, con ingombri, anche su un ingombro)? → { f, u, A } (la faccia, la u della scala, l'apertura) o null. I moduli ciechi no.
+  function sopraApertura4(bi, wx, wy, ox, oy, foot, ingombri) {
+    const b = B[bi], O = aperture4(bi); if (!b || !O) return null;
+    const { f, u, y0 } = loc4(bi, wx, wy, ox, oy, foot);
+    for (const A of O[f]) { if (!A[4] && !ingombri) continue; const m = SCALA_HW4 + (A[4] ? SCALA_AGIO4 : .02);
+      if (u > A[0] - m && u < A[1] + m && A[3] > y0 + .05 && !accecata4(bi, f, A)) return { f, u, A }; }
+    return null;
+  }
+  // la scala può stare lì accecando il modulo? Solo sulle case di buildModular (non i gradoni), solo al centro di un modulo, e solo se
+  // tutti i vani che tocca sono le finestre di quel modulo → { f, u, y0 } (la marca da mettere sulla scala) o null
+  function ciecabile4(bi, wx, wy, ox, oy, foot) {
+    const b = B[bi], O = aperture4(bi); if (!b || !O || O.chi !== 'moduli' || b.__tierOf || (b.tiers && b.tiers.length)) return null;
+    const { f, u, y0 } = loc4(bi, wx, wy, ox, oy, foot), m = SCALA_HW4 + SCALA_AGIO4; let uc = null;
+    for (const A of O[f]) { if (!A[4] || !(u > A[0] - m && u < A[1] + m && A[3] > y0 + .05) || accecata4(bi, f, A)) continue;
+      const c = (A[0] + A[1]) / 2; if (A[5] !== 'fin' || Math.abs(c - u) > .15 || (uc !== null && Math.abs(c - uc) > .01)) return null; uc = c; }
+    return uc === null ? null : { f, u: uc, y0 };
+  }
+  // le posizioni lungo un lato di n caselle: il centro di ogni casella (k) e il giunto fra due caselle (k − ½: fra due colonne di finestre)
+  const posti4 = n => { const P = []; for (let k = 0; k < n; k++) { if (k > 0) P.push(k - .5); P.push(k); } return P; };
+  // sul lotto libero i moduli di render.js corrono sulla scatola vera (un modulo ogni 2 m dallo spigolo, render.js BLD()): le posizioni
+  // sono i centri e i giunti dei moduli, in k di sidesOf (muroL4: la frazione (k + ½) / n del lato), più i centri delle caselle. I lati
+  // N ed E render.js li monta dall'altro capo (da est, da sud): lì i moduli partono dalla fine del lato
+  const postiL4 = (b, sd) => { if (!libero4(b)) return posti4(sd.n); const L4 = lotto4(b), L = sd.f === 'S' || sd.f === 'N' ? L4.lw : L4.ld, rev = sd.f === 'N' || sd.f === 'E', P = [];
+    for (let v = 1; v < L - .3; v += 1) if (v > .3) P.push(rev ? L - v : v);
+    return P.map(u => u / L * sd.n - .5).concat(Array.from({ length: sd.n }, (_, k) => k)); };
+  // [scale-finestre] due passate: la seconda sa dove la prima ha messo le scale da terra delle altre case e le tiene un po' sparse
+  function buildLadders() { buildLadders1(null); const P1 = LADDERS.filter(L => L.footB < 0).map(L => ({ bi: L.bi, x: L.x, y: L.y })); buildLadders1(P1); }
+  function buildLadders1(P1) {
     LADDERS.length = 0;
     const used = new Set();
     B.forEach((b, bi) => {
       if (b.lighthouse || potere3(b)) return;
       const d = DOOR(b), front = frontOf(b), cand = [];
       sidesOf(b).forEach(sd => {
-        for (let k = 0; k < sd.n; k++) {
+        // le caselle davanti al muro dove la scala può posare il piede (la porta, il vicino, il budello, i pezzi grandi)
+        const tessera = k => {
           let [tx, ty] = sd.tile(k);
           if (libero4(b)) { const [wx1, wy1] = toW4(b, ...muroL4(b, sd, k)), [nx1, ny1] = giraV4(rotC4(b), ...sd.out); tx = Math.floor((wx1 + nx1 * .7) / TS); ty = Math.floor((wy1 + ny1 * .7) / TS);   // [tetti4] il piede davanti al muro del lotto
-            if (d && hyp(wx1 + nx1 * .55 - (d[0] + .5) * TS, wy1 + ny1 * .55 - (d[1] + .5) * TS) < 2.6) continue; }
-          else if (d && Math.max(Math.abs(tx - d[0]), Math.abs(ty - d[1])) <= 1) continue;   // non davanti alla porta
-          if (!inb(tx, ty)) continue;
-          if (used.has(ty * GW + tx)) continue;
+            if (d && hyp(wx1 + nx1 * .55 - (d[0] + .5) * TS, wy1 + ny1 * .55 - (d[1] + .5) * TS) < .9) return null; }   // [scale-finestre] lontano dalla porta lo dice il vano (aperture4)
+          else if (d && tx === d[0] && ty === d[1]) return null;   // non davanti alla porta ([scale-finestre] accanto sì, a 25 cm dal vano: lo dice aperture4)
+          if (!inb(tx, ty)) return null;
+          if (used.has(ty * GW + tx)) return null;
           const other = BI[ty * GW + tx];
           let foot = -1;
-          if (other >= 0 && other !== bi && B[other]) { if (roofRule(B[other]) < roofRule(b) - 1.5) foot = other; else continue; }   // dal tetto più basso del vicino
-          else if (!G.walkT(tx, ty)) continue;
-          let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0);
+          if (other >= 0 && other !== bi && B[other]) { if (roofRule(B[other]) < roofRule(b) - 1.5) foot = other; else return null; }   // dal tetto più basso del vicino
+          else if (!G.walkT(tx, ty)) return null;
           // [pulizia2] davanti alla scala, verso la camera, non deve esserci un pezzo grande (arco, portico, mura, tettoia): la coprirebbe
-          const cop = (() => { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; return coperta(wx0, wy0, ox0, oy0); })(); if (cop) continue;   // [pianta] coperta da un pezzo grande (il portico, un arco, il carro sul tronchino): lì la scala non si mette
+          { const [wx0, wy0] = sd.wall(k), [ox0, oy0] = sd.out; if (coperta(wx0, wy0, ox0, oy0)) return null; }   // [pianta] coperta da un pezzo grande (il portico, un arco, il carro sul tronchino): lì la scala non si mette
+          if (CN3 && foot < 0) { const [ox0, oy0] = libero4(b) ? giraV4(rotC4(b), ...sd.out) : sd.out, o2 = inb(tx + ox0, ty + oy0) ? BI[(ty + oy0) * GW + tx + ox0] : -1; if (o2 >= 0 && o2 !== bi) return null; }   // nel budello di una casella (dove si salta da tetto a tetto) la scala ingombra il salto e non si vede
+          return { tx, ty, foot }; };
+        const TE = []; for (let k = 0; k < sd.n; k++) TE.push(libero4(b) ? null : tessera(k));
+        // [scale-finestre] la scala al centro di una casella (la colonna cieca) o sul giunto fra due (fra due colonne di finestre), mai su un vano
+        for (const k of postiL4(b, sd)) {
+          const k0 = Math.floor(k), k1 = Math.ceil(k), A = libero4(b) ? tessera(k) : TE[k0], C = libero4(b) ? A : TE[k1]; if (!A || !C || A.foot !== C.foot) continue;
+          const { tx, ty, foot } = C, cop = false;
+          const [wa, wb] = libero4(b) ? toW4(b, ...muroL4(b, sd, k)) : sd.wall(k), [na, nb] = libero4(b) ? giraV4(rotC4(b), ...sd.out) : sd.out;
+          let cieco = null; if (sopraApertura4(bi, wa, wb, na, nb, foot)) { cieco = ciecabile4(bi, wa, wb, na, nb, foot); if (!cieco) continue; }   // [scale-finestre] o il muro libero, o il modulo cieco
+          const cieca = !sopraApertura4(bi, wa, wb, na, nb, foot, true);   // niente persiane, davanzali, balconi, tettoie: il muro cieco
+          let s = (sd.f === front ? -4 : 0) + (k === 0 || k === sd.n - 1 ? 2 : 0) + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (foot >= 0 ? -3 : 0) + (cieca ? 4 : 0);
           // la casella davanti alla scala deve avere un po' di spazio (non un budello fra due muri ciechi)
-          if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(tx + ox, ty + oy)) s -= 1.5; }
+          if (foot < 0) { const [ox, oy] = sd.out; if (!G.walkT(A.tx + ox, A.ty + oy) || !G.walkT(tx + ox, ty + oy)) s -= 1.5; }
           // [tetti3] nella città nuova la scala sta dalla parte della camera (sud, est) e nessuno davanti la copre: il lato della porta va
           // bene (sta lontana dalla porta), il fianco nascosto no
           let vis = true;
-          if (CN3) { const [wx0, wy0] = libero4(b) ? toW4(b, ...muroL4(b, sd, k)) : sd.wall(k), [ox0, oy0] = libero4(b) ? giraV4(rotC4(b), ...sd.out) : sd.out, h0 = foot >= 0 ? roofRule(B[foot]) : tileH(wx0 + ox0, wy0 + oy0);
-            vis = scalaVista3(wx0, wy0, ox0, oy0, h0, roofRule(b));
-            if (foot < 0) { const o2 = inb(tx + ox0, ty + oy0) ? BI[(ty + oy0) * GW + tx + ox0] : -1; if (o2 >= 0 && o2 !== bi) continue; }   // nel budello di una casella (dove si salta da tetto a tetto) la scala ingombra il salto e non si vede
+          if (CN3) { const h0 = foot >= 0 ? roofRule(B[foot]) : tileH(wa + na, wb + nb);
+            vis = scalaVista3(wa, wb, na, nb, h0, roofRule(b));
             s +=(sd.f === front ? 3 : 0) + (sd.f === 'S' || sd.f === 'E' ? 3 : -3) + (vis ? 6 : 0); }
-          cand.push({ s, sd, k, tx, ty, foot, cop, vis });
+          if (cieco) s -= 12;   // il modulo cieco solo dove la casa non ha un altro posto per la sua scala
+          if (foot < 0 && P1 && P1.some(L => L.bi !== bi && hyp(L.x - wa, L.y - wb) < 6)) s -= 2;   // le scale da terra un po' sparse: lontano da quelle delle altre case (le vie dei giri le vogliono a 8 m l'una dall'altra)
+          cand.push({ s, sd, k, tx, ty, t0: [A.tx, A.ty], foot, cop, vis, cieca, cieco });
         }
+        // [scale-finestre] LO SPIGOLO FRA DUE CASE: nelle file di case strette (una casella, la finestra in mezzo a ogni piano) il muro non
+        // ha un posto libero; la scala sta allora sul giunto fra due facciate a filo, coi due tetti alla stessa quota (entro 30 cm): 28 cm
+        // d'aria dalle due finestre, il piede sulla strada davanti al giunto, in cima si entra nel tetto di questa casa
+        if (CN3 && !libero4(b)) [[-.5, -1, 0], [sd.n - .5, sd.n, sd.n - 1]].forEach(([k, kc, kb]) => {
+          const [ox, oy] = sd.out, al = ox ? [0, 1] : [1, 0], sgn = k < 0 ? -1 : 1, [tcx, tcy] = sd.tile(kc), cx0 = tcx - ox, cy0 = tcy - oy;   // la casella del vicino lungo il muro
+          if (!inb(cx0, cy0)) return; const ci = BI[cy0 * GW + cx0], Cb = ci >= 0 ? B[ci] : null;
+          if (!Cb || ci === bi || libero4(Cb) || Cb.lighthouse || Math.abs(roofRule(Cb) - roofRule(b)) > .3 || !aperture4(ci)) return;
+          const A = TE[kb], Cq = tessera(kc); if (!A || !Cq || A.foot >= 0 || Cq.foot >= 0) return;
+          const [wa, wb] = sd.wall(k); if (sopraApertura4(bi, wa, wb, ox, oy, -1) || sopraApertura4(ci, wa, wb, ox, oy, -1)) return;
+          const dentro = [-al[0] * sgn * .6, -al[1] * sgn * .6]; if (bAt(wa - ox * .8 + dentro[0], wb - oy * .8 + dentro[1]) !== bi) return;
+          const cieca = !sopraApertura4(bi, wa, wb, ox, oy, -1, true) && !sopraApertura4(ci, wa, wb, ox, oy, -1, true);
+          let s = (sd.f === front ? -4 : 0) + 2 + (sd.f === 'E' || sd.f === 'W' ? 1 : 0) + (cieca ? 4 : 0) - 1;   // un punto meno del muro suo
+          if (!G.walkT(A.tx + ox, A.ty + oy) || !G.walkT(Cq.tx + ox, Cq.ty + oy)) s -= 1.5;
+          const vis = scalaVista3(wa, wb, ox, oy, tileH(wa + ox, wb + oy), roofRule(b)); s += (sd.f === front ? 3 : 0) + (sd.f === 'S' || sd.f === 'E' ? 3 : -3) + (vis ? 6 : 0);
+          cand.push({ s, sd, k, tx: A.tx, ty: A.ty, t0: [Cq.tx, Cq.ty], foot: -1, cop: false, vis, cieca, dentro });
+        });
       });
       if (!cand.length) return;
       cand.sort((p, q) => q.s - p.s);
@@ -183,16 +387,20 @@ var Tetti = (function () {
       const take = b.w * b.h >= 30 ? 2 : 1, got = [];
       for (const c of cand) {
         if (got.length >= take) break;
-        if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
-        got.push(c); used.add(c.ty * GW + c.tx);
+        if (got.some(g => g.sd.f === c.sd.f) || ((c.cop || !c.vis || c.cieco) && got.length)) continue;   // [pulizia2] la seconda scala solo se si vede ([tetti3] anche dalla camera)
+        if (used.has(c.ty * GW + c.tx) || used.has(c.t0[1] * GW + c.t0[0])) continue;   // [scale-finestre] il giunto prende due caselle
+        got.push(c); used.add(c.ty * GW + c.tx); used.add(c.t0[1] * GW + c.t0[0]);
         let [wx, wy] = c.sd.wall(c.k), [ox, oy] = c.sd.out, dp = .55;
         // [città2] la casa che segue la strada è girata attorno al suo centro (render.js rotRec): la scala gira con il muro
         const rot = b.rot && !b.sign && !b.shop ? b.rot : 0;
         if (libero4(b)) { const [lx0, ly0] = muroL4(b, c.sd, c.k); [wx, wy] = toW4(b, lx0, ly0); [ox, oy] = giraV4(rot, ox, oy);   // [tetti4] il muro del lotto (girato, o col centro suo)
           dp = c.foot < 0 ? piede4(wx, wy, ox, oy) : .55; const fx2 = wx + ox * dp, fy2 = wy + oy * dp, d0 = b.door ? hyp(fx2 - (b.door[0] + .5) * TS, fy2 - (b.door[1] + .5) * TS) : 99;
-          if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < 2.6) { got.pop(); used.delete(c.ty * GW + c.tx); continue; } }
-        if (LIB4 && c.foot < 0 && bAt(wx + ox * dp, wy + oy * dp) >= 0) { got.pop(); used.delete(c.ty * GW + c.tx); continue; }   // [tetti4] il piede nel lotto girato di un vicino: no
-        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * dp, fy: wy + oy * dp, tx: wx - ox * .8, ty: wy - oy * .8, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
+          if ((c.foot < 0 && !G.walkM(fx2, fy2)) || bAt(wx - ox * .8, wy - oy * .8) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi || d0 < .9) { got.pop(); used.delete(c.ty * GW + c.tx); used.delete(c.t0[1] * GW + c.t0[0]); continue; } }
+        if (LIB4 && c.foot < 0 && bAt(wx + ox * dp, wy + oy * dp) >= 0) { got.pop(); used.delete(c.ty * GW + c.tx); used.delete(c.t0[1] * GW + c.t0[0]); continue; }   // [tetti4] il piede nel lotto girato di un vicino: no
+        if (c.foot >= 0 && [-.3, 0, .3].some(t => bAt(wx + ox * dp - oy * t, wy + oy * dp + ox * t) !== c.foot)) { got.pop(); used.delete(c.ty * GW + c.tx); used.delete(c.t0[1] * GW + c.t0[0]); continue; }   // [scale-finestre] il piede tutto sul tetto basso (sul giunto, vicino allo spigolo del lotto)
+        const dx = c.dentro ? c.dentro[0] : 0, dy = c.dentro ? c.dentro[1] : 0;   // [scale-finestre] dallo spigolo fra due case, in cima si entra nel tetto suo
+        LADDERS.push({ i: LADDERS.length, bi, f: c.sd.f, x: wx, y: wy, ox, oy, fx: wx + ox * dp, fy: wy + oy * dp, tx: wx - ox * .8 + dx, ty: wy - oy * .8 + dy, footB: c.foot, ang: Math.atan2(oy, ox), vis: c.vis });
+        if (c.cieco) LADDERS[LADDERS.length - 1].cieco = c.cieco;   // [scale-finestre] la marca per render.js
       }
     });
   }
@@ -389,12 +597,17 @@ var Tetti = (function () {
   const ZONE4 = { E0: 'borgo', E2: 'marina', E3: 'ottocento' };
   const ok4 = b => b && ZONE4[b.era] && !b.__tierOf && !b.lighthouse && !b.kiosk && !b.church && !b.military && !b.gov && !b.shack && !b.pezzo;   // [tetti4] anche le case girate
   const RETE4 = { scalette: [], archi: [], passerelle: [], anelli: 0 }, DBG4 = typeof process !== 'undefined' && process.env && process.env.RETE4_DBG ? [] : null;
+  let CIECO_OK4 = false;   // [scale-finestre] la scaletta può accecare il modulo (solo all'ultimo, se il legame non ha un posto libero)
+  const conCieco4 = fn => { CIECO_OK4 = true; try { return fn(); } finally { CIECO_OK4 = false; } };
   function rete4() {
     if (!CN3) return;
     const E0 = grafo(), par = new Map(), find = a => { while (par.has(a) && par.get(a) !== a) a = par.get(a); return a; }, uni = (a, b) => { a = find(a); b = find(b); if (a !== b) par.set(a, b); };
     B.forEach((b, i) => par.set(i, i));
     E0.forEach((L, a) => L.forEach(e => { if ((E0.get(e.b) || []).some(f => f.b === a)) uni(a, e.b); }));   // un pezzo di rete: ci si va e si torna
     const cand = new Map();   // per coppia: il legame migliore
+    // [scale-finestre] e gli altri legami della stessa coppia (un altro muro, l'arco o la passerella su un altro lato): se il migliore non ci
+    // sta (la scaletta finirebbe su una finestra), l'albero prova questi, dopo tutti i migliori
+    const riserve4 = new Map();
     const tileOk = (tx, ty) => { if (!inb(tx, ty) || !G.walkT(tx, ty)) return false; const k = ty * GW + tx; return BI[k] < 0 && (W.roadW[k] || 0) <= 7 && G.tileAt(tx, ty) !== G.T.PIAZZA; };   // [cucitura] la Vittoria ora è di 7 m: anche lei si scavalca, di rado
     const via5 = (tx, ty, ox, oy, g) => { for (let q = 0; q < g; q++) if ((W.roadW[(ty + oy * q) * GW + tx + ox * q] || 0) >= 5) return true; return false; };   // la Rua e la Marina: solo l'arco, uno ogni 30 m
     B.forEach((b, bi) => {
@@ -429,16 +642,17 @@ var Tetti = (function () {
               // e il mezzo della parte dove i due lotti si guardano (fra due spigoli vicini la finestra buona è stretta)
               if (!rotC4(b) && !rotC4(c)) { const La = lotto4(b), Lc = lotto4(c), ns = sd.f === 'N' || sd.f === 'S', lo = ns ? Math.max(La.x0, Lc.x0) : Math.max(La.y0, Lc.y0), hi = ns ? Math.min(La.x1, Lc.x1) : Math.min(La.y1, Lc.y1);
                 if (hi > lo) { const u = ((lo + hi) / 2 - (ns ? La.x0 : La.y0)) / (ns ? La.lw : La.ld), k = u * sd.n - .5; if (k >= Math.min(...R) - .5 && k <= Math.max(...R) + .5) Q.unshift(k); } }
-              return Q; })() : R;   // [tetti4] sul muro del lotto ogni mezzo metro, non solo ogni casella: fra due scale e un arretramento il posto giusto può stare a metà
+              return Q; })() : tipo === 'scaletta' ? R.concat(R.filter(k => R.includes(k + 1)).map(k => k + .5)) : R;   // [scale-finestre] la scaletta anche sul giunto fra due caselle (fra due colonne di finestre)   // [tetti4] sul muro del lotto ogni mezzo metro, non solo ogni casella: fra due scale e un arretramento il posto giusto può stare a metà
           const ks = R2.slice().sort((u, v) => Math.abs(u - m) - Math.abs(v - m));   // [tetti4] la posizione di mezzo, poi le altre: se una è occupata si prova la vicina
           const C = { tipo, costo: costo - Math.min(R.length, 4) * .1, a: bi, b: o, sd, k: m, ks, g, dh, v5: !!v5 };
           if (!q || C.costo < q.costo) cand.set(pk, C);
+          if (q && q !== C) (riserve4.get(pk) || riserve4.set(pk, []).get(pk)).push(C.costo < q.costo ? q : C);   // [scale-finestre] i legami di riserva della coppia
         });
       });
     });
     const per = new Map(), passi = [], archi5 = [], lad0 = LADDERS.map(L => [L.tx, L.ty]);
     PLANKS.forEach(P => passi.push([(P.wa[0] + P.wb[0]) / 2, (P.wa[1] + P.wb[1]) / 2]));
-    const mettiC = (C, sep) => { for (const k of C.ks) { if ((sep || 9) > 3 && k !== Math.round(k)) continue;   /* [tetti4] le posizioni a metà casella solo per ricucire (passi da 3 m in giù) */ const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
+    const mettiC = (C, sep) => { for (const k of C.ks) { if ((sep || 9) > 3 && k !== Math.round(k) && C.tipo !== 'scaletta') continue;   /* [tetti4] le posizioni a metà casella solo per ricucire (passi da 3 m in giù) */ const r = mettiK(C, k, sep || 9); if (r === true) return true; if (r === 'per') return false; } return false; };
     const mettiK = (C, kk, sep) => {
       SEP4 = sep;   // [tetti4] per ricucire un pezzo staccato (a meno di 4 m da un altro passaggio) le regole si allargano un poco
       const [wx, wy] = C.sd.wall(kk), [ox, oy] = C.sd.out;
@@ -449,12 +663,14 @@ var Tetti = (function () {
           const H = B[hi], LH = lotto4(H), hx0 = LH.x0, hy0 = LH.y0, hx1 = LH.x1, hy1 = LH.y1, [nx, ny] = [-ox, -oy];   // nel riferimento di hi, la faccia verso lo ha normale (nx, ny)
           const faccia = nx ? [[nx > 0 ? hx1 : hx0, hy0 + .45], [nx > 0 ? hx1 : hx0, hy1 - .45]] : [[hx0 + .45, ny > 0 ? hy1 : hy0], [hx1 - .45, ny > 0 ? hy1 : hy0]];
           [ux, uy] = giraV4(rotC4(H), nx, ny); const loc0 = toL4(H, wx, wy); let ok = false;
-          const tt = []; for (let t = 0; t <= 1.0001; t += .1) tt.push(t); tt.sort((p, q) => { const d = t => hyp(faccia[0][0] + (faccia[1][0] - faccia[0][0]) * t - loc0[0], faccia[0][1] + (faccia[1][1] - faccia[0][1]) * t - loc0[1]); return d(p) - d(q); });
+          const tt = []; for (let t = 0; t <= 1.0001; t += .1) tt.push(t);
+          { const Lf = nx ? LH.ld : LH.lw; for (let v = 1; v < Lf - .45; v += 1) for (const u of [v, Lf - v]) if (u > .45 && u < Lf - .45) tt.push((u - .45) / (Lf - .9)); }   // [scale-finestre] anche i centri e i giunti dei moduli della facciata alta tt.sort((p, q) => { const d = t => hyp(faccia[0][0] + (faccia[1][0] - faccia[0][0]) * t - loc0[0], faccia[0][1] + (faccia[1][1] - faccia[0][1]) * t - loc0[1]); return d(p) - d(q); });
           for (const t of tt) { [ax, ay] = toW4(H, faccia[0][0] + (faccia[1][0] - faccia[0][0]) * t, faccia[0][1] + (faccia[1][1] - faccia[0][1]) * t);
-            if (dentro4(B[lo], ax + ux * .55, ay + uy * .55, .05) && !dentro4(H, ax + ux * .55, ay + uy * .55, -.05) && dentro4(H, ax - ux * .8, ay - uy * .8, .2) && bAt(ax + ux * .55, ay + uy * .55) === lo && bAt(ax - ux * .8, ay - uy * .8) === hi) { ok = true; break; } }
+            if (dentro4(B[lo], ax + ux * .55, ay + uy * .55, .05) && !dentro4(H, ax + ux * .55, ay + uy * .55, -.05) && dentro4(H, ax - ux * .8, ay - uy * .8, .2) && bAt(ax + ux * .55, ay + uy * .55) === lo && bAt(ax - ux * .8, ay - uy * .8) === hi && (!sopraApertura4(hi, ax, ay, ux, uy, lo) || (CIECO_OK4 && ciecabile4(hi, ax, ay, ux, uy, lo)))) { ok = true; break; } }   // [scale-finestre] e non su un vano
           if (!ok) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'girata']), false); }
         const L = { i: LADDERS.length, bi: hi, f: 'r4', x: ax, y: ay, ox: ux, oy: uy, fx: ax + ux * .55, fy: ay + uy * .55, tx: ax - ux * .8, ty: ay - uy * .8, footB: lo, ang: Math.atan2(uy, ux), vis: true, tipo4: 'scaletta' };
         if (bAt(L.fx, L.fy) !== lo || bAt(L.tx, L.ty) !== hi) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'piede']), false);
+        if (sopraApertura4(hi, ax, ay, ux, uy, lo)) { const q = CIECO_OK4 ? ciecabile4(hi, ax, ay, ux, uy, lo) : null; if (!q) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'finestra']), false); L.cieco = q; }   // [scale-finestre] sopra il tetto basso il muro alto ha le finestre: la scaletta va fra le colonne cieche
         if (lad0.some(([x, y]) => hyp(x - L.tx, y - L.ty) < (sep < 4 ? 1.4 : sep < 6 ? 1.7 : 2.2) || hyp(x - L.fx, y - L.fy) < 1.4)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'scala vicina']), false);
         if (passi.some(([x, y]) => hyp(x - ax, y - ay) < 3)) return (DBG4 && DBG4.push([C.a, C.b, C.tipo, 'passo vicino']), false);
         LADDERS.push(L); lad0.push([L.tx, L.ty]); RETE4.scalette.push(L.i);
@@ -529,7 +745,8 @@ var Tetti = (function () {
     };
     // 1) l'albero: si legano pezzi di rete diversi, dal legame più economico
     const tutti = [...cand.values()].sort((p, q) => p.costo - q.costo || p.a - q.a || p.b - q.b), usati = new Set();
-    tutti.forEach(C => { if (find(C.a) === find(C.b)) return; if (mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2)) { uni(C.a, C.b); usati.add(C); } });   // [cucitura] se a 6 m c'è già un passaggio, a 4,5 m: un pezzo staccato vale un attraversamento in più
+    tutti.push(...[...riserve4.values()].flat().sort((p, q) => p.costo - q.costo || p.a - q.a || p.b - q.b));   // [scale-finestre]
+    tutti.forEach(C => { if (find(C.a) === find(C.b)) return; if (mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2) || (C.tipo === 'scaletta' && conCieco4(() => mettiC(C, 6) || mettiC(C, 4.5) || mettiC(C, 3) || mettiC(C, 2.2)))) { uni(C.a, C.b); usati.add(C); } });   // [cucitura] se a 6 m c'è già un passaggio, a 4,5 m: un pezzo staccato vale un attraversamento in più
     salite4(find, lad0, passi);
     // 2) gli anelli: dove sui tetti per andare da una casa all'altra servono più di otto passaggi, un legame li accorcia
     const E1 = grafo(), hop = (s, t, max) => { const d = new Map([[s, 0]]), Q = [s]; for (let k = 0; k < Q.length; k++) { const a = Q[k], da = d.get(a); if (a === t) return da; if (da >= max) continue; (E1.get(a) || []).forEach(e => { if (!d.has(e.b)) { d.set(e.b, da + 1); Q.push(e.b); } }); } return Infinity; };
@@ -538,7 +755,13 @@ var Tetti = (function () {
   // [tetti4] LE SALITE DELLA RETE: ogni pezzo di rete dei tre quartieri vecchi ha almeno tre scale da terra (due per un giro, una per
   // la terza via), viste dalla camera come vuole [tetti3]: sul lato sud o est, mai coperte da una casa o da un pezzo grande, mai nel
   // budello, lontane dalla porta, staccate dieci metri dalle altre scale del pezzo.
-  function salite4(find, lad0, passi) {
+  function salite4(find0, lad0, passi) {
+    // [scale-finestre] i pezzi si contano sui soli tetti dei quartieri vecchi (come i giri di percorsi.js): un pezzo che si tiene solo
+    // passando per una casa d'altra epoca sono due pezzi, e ognuno vuole le sue salite (le scale che non stanno sulle finestre sono meno,
+    // e i legami fra le case strette dell'Ottocento non ci stanno: senza questo un pezzo restava con una scala sola)
+    const E5 = grafo(), par5 = new Map(), find = a => { while (par5.get(a) !== a) a = par5.get(a); return a; };
+    B.forEach((b, i) => { if (ok4(b)) par5.set(i, i); });
+    E5.forEach((L, a) => { if (!par5.has(a)) return; L.forEach(e => { if (!par5.has(e.b) || !(E5.get(e.b) || []).some(f => f.b === a)) return; const u = find(a), v = find(e.b); if (u !== v) par5.set(u, v); }); });
     const pezzi = new Map(); B.forEach((b, i) => { if (!ok4(b)) return; const r = find(i); (pezzi.get(r) || pezzi.set(r, []).get(r)).push(i); });
     RETE4.salite = []; const no4 = (bi, r) => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
     pezzi.forEach(P => {
@@ -549,9 +772,10 @@ var Tetti = (function () {
         let best = null; const T0 = terra(), largo = giro >= 6 || forza4 || (giro >= 1 && T0.length === 0);   // [cucitura] il pezzo che non ha altre salite: anche nel vicolo di una casella, purché la scala si veda
         P.forEach(bi => { const b = B[bi], d = DOOR(b);
           if (libero4(b)) { sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E' && !(largo && T0.length < 2)) return;   /* [tetti4] il pezzo senza due salite: anche sugli altri muri, se la camera vede la scala */ const [ox, oy] = giraV4(rotC4(b), ...sd.out);   // [tetti4] la casa girata (o col lotto suo): la salita sul muro del lotto
-              for (let k = 0; k < sd.n; k++) { const [wx, wy] = toW4(b, ...muroL4(b, sd, k)), dp = piede4(wx, wy, ox, oy), fx = wx + ox * dp, fy = wy + oy * dp, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+              for (const k of postiL4(b, sd)) { const [wx, wy] = toW4(b, ...muroL4(b, sd, k)), dp = piede4(wx, wy, ox, oy), fx = wx + ox * dp, fy = wy + oy * dp, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
                 if (bAt(fx, fy) >= 0 || !G.walkM(fx, fy) || !G.walkM(wx + ox * 2.2, wy + oy * 2.2) || (bAt(wx + ox * 2.2, wy + oy * 2.2) >= 0 && !largo) || bAt(tx2, ty2) !== bi || bAt(wx - ox * 1.6, wy - oy * 1.6) !== bi) { no4(bi, 'budello'); continue; }
                 if (d && hyp(fx - (d[0] + .5) * TS, fy - (d[1] + .5) * TS) < 1.6) { no4(bi, 'porta'); continue; }
+                if (sopraApertura4(bi, wx, wy, ox, oy, -1)) { no4(bi, 'finestra'); continue; }   // [scale-finestre]
                 if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no4(bi, 'vicina'); continue; }
                 if (coperta(wx, wy, ox, oy)) { no4(bi, 'coperta'); continue; } if (!scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b))) { no4(bi, 'nonvista'); continue; }
                 const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no4(bi, '10m'); continue; }
@@ -559,10 +783,12 @@ var Tetti = (function () {
                 if (!best || s > best.s) best = { s, bi, sd, k, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2 }; } }); return; }
           sidesOf(b).forEach(sd => { if (sd.f !== 'S' && sd.f !== 'E' && !(largo && T0.length < 2)) return;   /* [tetti4] il pezzo senza due salite: anche sugli altri muri, se la camera vede la scala */ const [ox, oy] = sd.out;
             const no = r => { if (DBG4) DBG4.push([bi, bi, 'salita', r]); };
-            for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k); if (!inb(tx, ty) || BI[ty * GW + tx] >= 0 || !G.walkT(tx, ty) || !G.walkT(tx + ox, ty + oy) || (BI[(ty + oy) * GW + tx + ox] >= 0 && !largo)) { no('budello'); continue; }
-              if (d && Math.abs(tx - d[0]) + Math.abs(ty - d[1]) < 1) { no("porta"); continue; }   // accanto alla porta va bene (la porta è larga un metro)
+            for (const k of posti4(sd.n)) { const KT = [Math.floor(k), Math.ceil(k)].map(q => sd.tile(q)), [tx, ty] = KT[1];   // [scale-finestre] al centro della casella o sul giunto fra due
+              if (KT.some(([tx, ty]) => !inb(tx, ty) || BI[ty * GW + tx] >= 0 || !G.walkT(tx, ty) || !G.walkT(tx + ox, ty + oy) || (BI[(ty + oy) * GW + tx + ox] >= 0 && !largo))) { no('budello'); continue; }
+              if (d && k === Math.round(k) && Math.abs(tx - d[0]) + Math.abs(ty - d[1]) < 1) { no("porta"); continue; }   // [scale-finestre] sul giunto accanto alla porta il vano lo guarda aperture4   // accanto alla porta va bene (la porta è larga un metro)
               const [wx, wy] = sd.wall(k), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
               if (LIB4 && bAt(fx, fy) >= 0) { no('budello'); continue; }   // [tetti4] il piede nel lotto girato di un vicino
+              if (sopraApertura4(bi, wx, wy, ox, oy, -1)) { no('finestra'); continue; }   // [scale-finestre]
               if (lad0.some(([x, y]) => hyp(x - tx2, y - ty2) < 2.2) || LADDERS.some(L => hyp(L.fx - fx, L.fy - fy) < 2) || passi.some(([x, y]) => hyp(x - wx, y - wy) < 3)) { no('vicina'); continue; }
               if (coperta(wx, wy, ox, oy)) { no('coperta'); continue; } if (!scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b))) { no('nonvista'); continue; }
               const dmin = T0.length ? Math.min(...T0.map(L => hyp(L.fx - fx, L.fy - fy))) : 99; if (dmin < 10) { no('10m'); continue; }
@@ -610,9 +836,11 @@ var Tetti = (function () {
     CORTI.forEach(C => {
       if (C.k === 'passaggio' || C.n < 5) return; const S = new Set(C.celle.map(([x, y]) => y * GW + x)), L0 = lad0(); let best = null;
       B.forEach((b, bi) => { if (!ok4(b) || b.annesso || libero4(b)) return; const d = DOOR(b);
-        sidesOf(b).forEach(sd => { const [ox, oy] = sd.out; for (let k = 0; k < sd.n; k++) { const [tx, ty] = sd.tile(k); if (!S.has(ty * GW + tx) || !S.has((ty + oy) * GW + tx + ox)) continue;
-          if (d && d[0] === tx && d[1] === ty) continue; const [wx, wy] = sd.wall(k), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
+        sidesOf(b).forEach(sd => { const [ox, oy] = sd.out; for (const k of posti4(sd.n)) { const KT = [Math.floor(k), Math.ceil(k)].map(q => sd.tile(q));   // [scale-finestre] anche sul giunto fra due caselle
+          if (KT.some(([tx, ty]) => !S.has(ty * GW + tx) || !S.has((ty + oy) * GW + tx + ox))) continue;
+          if (d && KT.some(([tx, ty]) => d[0] === tx && d[1] === ty)) continue; const [wx, wy] = sd.wall(k), fx = wx + ox * .55, fy = wy + oy * .55, tx2 = wx - ox * .8, ty2 = wy - oy * .8;
           if (L0.some(([a, b2, c, e]) => hyp(a - fx, b2 - fy) < 2.5 || hyp(c - tx2, e - ty2) < 2.2)) continue;
+          if (sopraApertura4(bi, wx, wy, ox, oy, -1)) continue;   // [scale-finestre] anche in corte, sul muro cieco
           const vis = scalaVista3(wx, wy, ox, oy, tileH(fx, fy), roofRule(b)), s2 = (vis ? 5 : 0) + (sd.f === 'S' || sd.f === 'E' ? 2 : 0) - Math.abs(roofRule(b) - 6) * .3;
           if (!best || s2 > best.s) best = { s: s2, bi, sd, wx, wy, ox, oy, fx, fy, tx: tx2, ty: ty2, vis }; } }); });
       if (!best) return;
@@ -1140,7 +1368,7 @@ var Tetti = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  const API = { lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH } };
+  const API = { cieco4, lotto4, libero4, toW4, LADDERS, PLANKS, BELV, JUMPS, CAMM, belvNear, belvSit, plankAt, roofAt, roofH, roofRule, bAt, climb, ladderNear, onRoof, roofB, feetH, settle, scanRoof, grafo, edgeH, hooks, STEP, SAFE, _: { buildLadders, GFX, footH, topH, aperture4, sopraApertura4, ciecabile4 } };
   // [percorsi] la rete dei percorsi (percorsi.js) lega i circuiti sui tetti e le alternative delle porte, ora che le scale ci sono
   if (!COT4 && typeof Percorsi !== 'undefined' && Percorsi.attivo) try { Percorsi.lega({ Tetti: API, Sottosuolo: typeof Sottosuolo !== 'undefined' ? Sottosuolo : null, Game: G }); } catch (e) { if (typeof console !== 'undefined') console.warn('[percorsi]', e); }
   // [tetti4] I PREMI dei giri (percorsi.js, i rami): il belvedere entra fra i belvederi (la panca, la bandierina, «Siediti a guardare»),
