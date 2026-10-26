@@ -43,7 +43,17 @@ var Pennelli = (function () {
     legno:    { grain: .3, cell: .6, joints: 0, venatura: 1 },
   };
   // che pennello usa ogni lavoro (e la superficie per difetto di ogni appoggio)
-  const USO = { tag: 'skinny', mtag: 'marker', throw: 'fat', pezzo: 'spray', burner: 'spray', gotico: 'skinny', mostro: 'roller', wholecar: 'fat', rullo: 'roller', sticker: 'sticker' };
+  const USO = { tag: 'skinny', mtag: 'marker', throw: 'fat', pezzo: 'spray', burner: 'spray', gotico: 'skinny', mostro: 'roller', wholecar: 'fat', rullo: 'roller', sticker: 'sticker',
+    // [unione-graffiti] gli stili della strada di writer_arte.js: il verticale a rullo prende il rullo (vedi art), quelli a bolle e il pixo la bomboletta
+    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker' };
+  // [unione-graffiti] sul disegno di writer_arte.js (le lettere dai font, gli stili, la SUA grana della vernice: le passate, i pori, la
+  // nebbia stretta, i puntini dell'overspray, le colature disegnate nella forma) i pennelli passano solo quello che lui non fa, e meno:
+  // la grana del MURO dove sta il lavoro (intonaco, mattoni con le fughe, cemento, il metallo dei mezzi) e i giorni sul muro, la
+  // polvere del tappo (fat più larga, skinny appena), qualche colatura in più e, nei rulli, la passata del rullo che si asciuga.
+  // polvere / colature / grit: quanto dei pennelli resta sopra la sua resa (1 = come sui disegni nostri, la tavoletta e l'adesivo);
+  // gli schizzi (splatter) no: prendono il colore dai bianchi del bordo e delle luci e li spargono sulle lettere
+  const SU_ARTE = { polvere: .45, colature: .5, grit: .6, rullata: .6 };
+  const RULLATO = { rullo: 1, verticale: 'rullo' };   // dove passa il rullo sulle lettere (il verticale solo se è della famiglia rullo)
   const SUP_DI = { muro: 'intonaco', treno: 'metallo', vagone: 'metallo', auto: 'metallo' };
   // l'età: i giorni sul muro → quanto sbiadisce (alfa e colore) e quanto si scrosta
   const ETA = { fade: .07, desat: .1, chips: .05, max: 6 };
@@ -247,17 +257,36 @@ var Pennelli = (function () {
   // l'overspray e lo speckle di una tappa: la polvere fine appena fuori dai bordi (la bomboletta non ha mai il bordo netto)
   function polvere(c, o) {
     const P = tune(o.pen); if (!P.overspray) return c; const W = c.width, H = c.height, x = c.getContext('2d'), D = x.getImageData(0, 0, W, H).data, r = mulberry((o.seed || 1) ^ 0x1b873593), ppm = o.ppm || 100;
-    const n = Math.round(W * H / 900 * P.speckle * (P.cap === 'fat' ? 1.4 : P.cap === 'skinny' ? .6 : 1)), reach = ppm * (P.cap === 'fat' ? .045 : P.cap === 'skinny' ? .012 : .025);
+    const n = Math.round(W * H / 900 * P.speckle * (P.cap === 'fat' ? 1.4 : P.cap === 'skinny' ? .6 : 1) * (o.polK != null ? o.polK : 1)), reach = ppm * (P.cap === 'fat' ? .045 : P.cap === 'skinny' ? .012 : .025);
     for (let k = 0; k < n; k++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (D[j + 3] < 180) continue; const an = r() * PI * 2, d = reach * (.3 + Math.abs(gauss(r))), qx = px + Math.cos(an) * d, qy = py + Math.sin(an) * d; if (qx < 0 || qy < 0 || qx >= W || qy >= H) continue; const jj = ((qy | 0) * W + (qx | 0)) * 4; if (D[jj + 3] > 40) continue;
       x.fillStyle = `rgba(${D[j]},${D[j + 1]},${D[j + 2]},${(.2 + r() * .5).toFixed(2)})`; const s = r() < .12 ? 2 : 1; x.fillRect(qx, qy, s, s); }
-    for (let k = 0; k < Math.round(P.splatter * W / 60); k++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (D[j + 3] < 220) continue; splat(x, [px, py], ppm * .08, `rgb(${D[j]},${D[j + 1]},${D[j + 2]})`, r); }
+    for (let k = 0; k < Math.round(P.splatter * W / 60 * (o.splK != null ? o.splK : 1)); k++) { const px = Math.floor(r() * W), py = Math.floor(r() * H), j = (py * W + px) * 4; if (D[j + 3] < 220) continue; splat(x, [px, py], ppm * .08, `rgb(${D[j]},${D[j + 1]},${D[j + 2]})`, r); }
     x.globalAlpha = 1; return c;
   }
-  // tutto il passaggio di una tappa: polvere (spray), colature, grana ed età. o: { pen, sup, seed, ppm, eta, grit, last }
+  // [unione-graffiti] LA RULLATA: le lettere già disegnate (i font del rullo di writer_arte.js) passate col rullo nostro: bande
+  // dall'alto in basso larghe quanto il rullo (22 cm), un filo sovrapposte, con le strisce dove il rullo si asciuga, la spugna a
+  // buchini e il bordo carico; la vernice resta solo dove il rullo l'ha portata. Uguale per tutte le tappe (dal seme)
+  const RULL = new Map();
+  function rullataMask(W, H, ppm, seed) {
+    const key = [W, H, ppm | 0, seed].join(':'); if (RULL.has(key)) return RULL.get(key);
+    const r = mulberry((seed ^ 0x5bd1e995) >>> 0), P = tune('roller'), bw = Math.max(6, .22 * ppm), M = cv(W, H), m = M.getContext('2d');
+    for (let x0 = bw * .4; x0 < W + bw * .5; x0 += bw * (.8 + r() * .1)) {
+      const pts = [], dx = (r() - .5) * bw * .3; for (let y = -bw; y <= H + bw; y += 4) pts.push([x0 + dx * y / H, y]);
+      roller(m, pts, '#000', bw, Object.assign({}, P, { marks: 0 }), r);
+    }
+    const Lo = cv(W, H), lo = Lo.getContext('2d'); lo.fillStyle = '#000'; lo.fillRect(0, 0, W, H); lo.globalCompositeOperation = 'destination-out'; lo.drawImage(M, 0, 0);   // dove il rullo NON ha portato vernice
+    if (RULL.size > 8) RULL.clear(); RULL.set(key, Lo); return Lo;
+  }
+  function rullata(c, o) {
+    const W = c.width, H = c.height; if (W < 4 || H < 4) return c;
+    const x = c.getContext('2d'); x.save(); x.globalAlpha = clamp(o.rullK != null ? o.rullK : 1, 0, 1); x.globalCompositeOperation = 'destination-out'; x.drawImage(rullataMask(W, H, o.ppm || 100, o.seed || 1), 0, 0); x.restore(); return c;
+  }
+  // tutto il passaggio di una tappa: polvere (spray), colature, grana ed età. o: { pen, sup, seed, ppm, eta, grit, last, polK, dripK, rullata }
   function finisci(c, o) {
     if (!c || !c.getContext) return c;
     const P = tune(o.pen);
-    if (P.overspray) polvere(c, o);
+    if (o.rullata) rullata(c, o);
+    if (P.overspray && o.polK !== 0) polvere(c, o);
     if (o.last && P.drip > 0) colature(c, o);   // le colature solo sull'ultima tappa: vengono alla fine, quando la vernice è tanta
     grana(c, o);
     return c;
@@ -303,18 +332,25 @@ var Pennelli = (function () {
   // ogni tappa passa dal pennello del lavoro (polvere, colature, grana del muro, età). Lo chiamano il disegnatore a parte e writing.js
   function art(w) {
     const WA = typeof WriterArte !== 'undefined' ? WriterArte : null, WM = typeof WriterMano !== 'undefined' ? WriterMano : null; if (!WA) return null;
-    const pen = (w.rec && w.rec.pen) || (w.sticker ? 'sticker' : USO[w.style] || 'spray'), sup = w.sup || SUP_DI[w.surf] || 'intonaco';
+    let pen = (w.rec && w.rec.pen) || (w.sticker ? 'sticker' : USO[w.style] || 'spray'), arte = false;
+    const sup = w.sup || SUP_DI[w.surf] || 'intonaco';
     let A;
-    if (w.style === 'rullo') A = rollerArt(w, WA, WA.PPM);
-    else if (w.sticker && WM) A = stickerArt(w, WM, WA.PPM * 3);
+    // [unione-graffiti] il rullo: le lettere le disegna writer_arte.js (i font a blocchi del rullo, una o due righe, il contorno, le
+    // colature grosse) e il rullo nostro le passa; rollerArt (le lettere a tratti) resta per quando writer_arte.js non ce la fa
+    if (w.sticker && WM) A = stickerArt(w, WM, WA.PPM * 3);
     else if (w.rec && w.rec.pen && WM) { const TK = Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))), ppm = WA.PPM * TK, Wp = Math.round(w.W * ppm), Hp = Math.round(w.H * ppm), c = cv(Wp, Hp), r = mulberry(w.seed || 1), res = drawStrokes(c.getContext('2d'), w.rec, Wp, Hp, w.col || '#141418', r);
       A = { stages: [c], paths: [res.path.filter((q, i) => i % 3 === 0)], radii: [Math.max(res.W * 2.2, Hp * .08)], Wp, Hp, C: { q: .6 }, ppm }; }
-    else A = WA.art(w);
+    else { try { A = WA.art(w); arte = true; } catch (e) { if (w.style !== 'rullo') throw e; } if ((!A || !A.stages) && w.style === 'rullo') { A = rollerArt(w, WA, WA.PPM); arte = false; } }
     if (!A || !A.stages) return A;
-    const ppm = A.ppm || (A.Wp / Math.max(.01, w.W)), n = A.stages.length, o = { pen, sup, seed: w.seed || 1, ppm, eta: w.eta || 0, grit: w.grit, wall: w.wallRGB };
-    A.stages = A.stages.map((c, i) => finisci(c, Object.assign({ last: i === n - 1, dripK: w.style === 'tag' || w.style === 'mtag' ? .5 : 1 }, o)));
+    const rull = arte && (RULLATO[w.style] === 1 || (RULLATO[w.style] === 'rullo' && A.C && A.C.vfam === 'rullo'));
+    if (rull) pen = 'roller'; else if (arte && w.rec && w.tool === 'pennarello') pen = 'marker';
+    // su un disegno di writer_arte.js: meno polvere, colature e grana (la sua resa le ha già), e i lavori vecchi della storia hanno già
+    // la loro età (pioggia, crosta): i giorni sul muro contano dopo i primi due
+    const K = arte ? SU_ARTE : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
+    const ppm = A.ppm || (A.Wp / Math.max(.01, w.W)), n = A.stages.length, o = { pen, sup, seed: w.seed || 1, ppm, eta, grit: (w.grit != null ? w.grit : 1) * K.grit, wall: w.wallRGB, polK: K.polvere, splK: arte ? 0 : 1, rullata: rull, rullK: SU_ARTE.rullata };
+    A.stages = A.stages.map((c, i) => finisci(c, Object.assign({ last: i === n - 1, dripK: (w.style === 'tag' || w.style === 'mtag' ? .5 : 1) * K.colature }, o)));
     A.ppm = ppm; A.pen = pen; return A;
   }
-  return { PENNELLI, SUPERFICI, USO, SUP_DI, ETA, tune, spray, roller, marker, sticker, drip, splat, grana, colature, polvere, finisci, gritMask, rollerArt, stickerArt, drawStrokes, art, mulberry };
+  return { PENNELLI, SUPERFICI, USO, SUP_DI, ETA, SU_ARTE, RULLATO, tune, rullata, spray, roller, marker, sticker, drip, splat, grana, colature, polvere, finisci, gritMask, rollerArt, stickerArt, drawStrokes, art, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = Pennelli;

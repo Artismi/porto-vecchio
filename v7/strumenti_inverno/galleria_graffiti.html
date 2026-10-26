@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Galleria</title>
+<style>html,body{margin:0;background:#2a2622}#g{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:6px;padding:6px}.c{position:relative;background:#c9b9a0;overflow:hidden}.c canvas{display:block;width:100%;height:100%;image-rendering:auto}.c b{position:absolute;left:4px;top:2px;font:11px monospace;color:#20180f;background:rgba(255,245,230,.75);padding:0 3px}</style></head><body><div id="g"></div>
+<script>
+// La galleria dei lavori dei writer, senza il gioco: stubs per Game e Popolo (graffiti.js li tocca solo agli agganci).
+// ?s=stile:fam:pal:seed:W:H:parole,...   ?cols=4   ?ppm=60   ?stub=1 (senza Graffiti.F: come dentro il worker)
+// [unione-graffiti] ?pen=1: come nel gioco, coi pennelli (Pennelli.art: la grana del muro, la polvere, le colature, la rullata);
+// ?cmp=1: ogni lavoro due volte, solo writer_arte.js e coi pennelli; ?sup=mattoni (intonaco, cemento, pietra, metallo, legno)
+if (new URLSearchParams(location.search).get('old')) globalThis.__oldHand = 1; window.Game = { HOOKS: {}, byId: () => null }; window.Popolo = { _: { errand: function () { } } };
+</script>
+<script src="../src/graffiti.js"></script>
+<script>if (new URLSearchParams(location.search).get('stub')) window.Graffiti = undefined;</script>
+<script src="../src/fonts_graffiti.js"></script>
+<script src="../src/writer_mano.js"></script>
+<script src="../src/writer_arte.js"></script>
+<script src="../src/pennelli.js"></script>
+<script>
+(() => {
+  const Q = new URLSearchParams(location.search), items = (Q.get('s') || 'pezzo').split(','), cols = +(Q.get('cols') || 4), ppm = +(Q.get('ppm') || 60), g = document.getElementById('g');
+  g.style.setProperty('--n', cols);
+  const wallTex = (x, W, H, seed) => { let s = seed | 0 || 7; const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; x.fillStyle = '#c9b9a0'; x.fillRect(0, 0, W, H); for (let k = 0; k < W * H / 60; k++) { x.fillStyle = `rgba(${90 + r() * 60},${70 + r() * 50},${50 + r() * 40},${.06 + r() * .1})`; x.fillRect(r() * W, r() * H, 1 + r() * 3, 1 + r() * 2); } };
+  // ?worker=1: i disegni li fa un Web Worker come nel gioco (writer_mano.js + writer_arte.js, senza document né Graffiti)
+  const useWorker = !!Q.get('worker'); let WK = null, seq = 0; const wait = new Map();
+  const workerArt = (w, pen) => new Promise((res, rej) => { if (!WK) { const src = ['../src/writer_mano.js', '../src/writer_arte.js', '../src/pennelli.js'].map(u => { const x = new XMLHttpRequest(); x.open('GET', u, false); x.send(); return x.responseText; }).join('\n');
+      WK = new Worker(URL.createObjectURL(new Blob(['const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src + "\nonmessage = async e => { const m = e.data; if (m.fonts) { self.GraffitiFonts = { D: m.fonts }; return; } let A; await WriterArte.fontsReady(); try { A = m.pen ? Pennelli.art(m.w) : WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.stack || err) }); return; } const tr = [], bm = c => { const b = c.transferToImageBitmap(); tr.push(b); return b; }; postMessage({ id: m.id, A: { stages: A.stages.map(bm), Wp: A.Wp, Hp: A.Hp, font: A.font, pen: A.pen } }, tr); };"], { type: 'text/javascript' })));
+      WK.postMessage({ fonts: GraffitiFonts.D }); WK.onmessage = e => { const cb = wait.get(e.data.id); wait.delete(e.data.id); if (cb) cb(e.data); }; }
+    const id = ++seq; wait.set(id, m => m.err ? rej(new Error(m.err)) : res(m.A)); WK.postMessage({ id, w, pen }); });
+  (async () => {
+  if (!Q.get('nofont')) await WriterArte.fontsReady();
+  let k = 0;
+  const pen = !!Q.get('pen'), cmp = !!Q.get('cmp'), sup = Q.get('sup') || 'intonaco';
+  for (const it0 of items) for (const coi of cmp ? [false, true] : [pen]) {
+    const it = it0;
+    const [style, fam, pal, seed, W, H, words] = it.split(':');
+    const w = { style: style || 'pezzo', aka: 'DAKO', crew: 'PVK', seed: +(seed || 1) || 1, pal: +(pal || 0) || 0, q: .8, W: +(W || 0) || undefined, H: +(H || 0) || undefined, by: 'old', hand: (+(seed || 1) || 1) * 13 + 7 };
+    if (fam && fam !== '-') w.fam = fam; if (words && words !== '-') w.words = words;
+    if (Q.get('npc')) { const sk = +(pal || 6) / 10, AK = ['DAKO', 'KEOS', 'SPIK', 'RAKE', 'NOTE', 'BLES', 'SNEK', 'KAOS', 'TOXI', 'PHAZ', 'ZORA', 'MOSE', 'VIBE', 'KRAN', 'FUSE', 'RUSK', 'NEMO', 'ZULU', 'TREK', 'ODIO'], aka = AK[w.seed % AK.length];   // come npcWork: il bozzetto del writer (pal = mano ×10)
+      Object.assign(w, WriterArte.conceive({ aka, crew: 'PVK', style: w.style, dna: WriterArte.dnaOf(w.seed * 7 + 3, sk, w.seed % 14), seed: w.seed }), { by: 'old', hand: w.seed * 13 + 7, W: w.W, H: w.H }); if (fam && fam !== '-') w.fam = fam; }
+    const D = { tag: [1.1, .55], mtag: [.6, .32], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5], gotico: [1.4, 3.2], mostro: [3, 2.6], wholecar: [16, 2.9] };
+    const d = (window.WriterArte.DEF && window.WriterArte.DEF[w.style]) || D[w.style] || [3, 2]; if (!w.W) w.W = d[0]; if (!w.H) w.H = d[1];
+    w.cons = undefined; w.sup = sup;
+    const cell = document.createElement('div'); cell.className = 'c'; cell.style.aspectRatio = (w.W / w.H).toFixed(3); cell.style.gridRow = `span ${Math.max(1, Math.round(w.H / 1.3))}`;
+    const c = document.createElement('canvas'); c.width = Math.round(w.W * ppm); c.height = Math.round(w.H * ppm); const x = c.getContext('2d'); wallTex(x, c.width, c.height, w.seed);
+    try { const t0 = performance.now(), A = useWorker ? await workerArt(Object.assign({}, w), coi) : coi ? Pennelli.art(Object.assign({}, w)) : WriterArte.art(Object.assign({}, w)), ms = Math.round(performance.now() - t0); x.drawImage(A.stages[A.stages.length - 1], 0, 0, A.Wp, A.Hp, 0, 0, c.width, c.height); cell.appendChild(c); const b = document.createElement('b'); b.textContent = `${useWorker ? 'W ' : ''}${coi ? '+pennello ' + A.pen + ' ' + sup + ' ' : cmp ? 'solo arte ' : ''}${w.style}${w.fam ? '/' + w.fam : ''} p${w.pal} s${w.seed} ${w.W}×${w.H}m ${A.stages.length}t ${ms}ms${A.font ? ' ' + A.font : ''}`; cell.appendChild(b); }
+    catch (e) { cell.appendChild(c); const b = document.createElement('b'); b.textContent = `${it}: ERRORE ${e.message}`; b.style.color = '#a00'; cell.appendChild(b); console.log('[errore]', it, e.stack); }
+    g.appendChild(cell); k++;
+  }
+  document.title = 'pronto';
+  })();
+})();
+</script></body></html>

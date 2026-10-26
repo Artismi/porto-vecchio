@@ -43,13 +43,27 @@ var Writing = (function () {
     gotico: { nome: 'gotico', rank: 1, W: 1.4, H: 3.2, dur: 16, cans: .5, fame: 6 },   // la calligrafia verticale (piloni, spigoli alti)
     mostro: { nome: 'personaggio', rank: 2, W: 3, H: 2.6, dur: 40, cans: 2.6, fame: 12 },   // il mostro coi denti
     wholecar: { nome: 'whole car', rank: 4, W: 16, H: 2.9, dur: 110, cans: 7, fame: 45 },
-    rullo: { nome: 'roller', rank: 1, W: 5, H: 1.5, dur: 30, cans: 1.4, fame: 7 },   // [graffiti] le lettere a rullo (muri alti, tetti): pennelli.js
+    // [graffiti3] il ventaglio della strada (il disegno in writer_arte.js): il rullo, i verticali sui palazzi, l'estintore, lo stencil,
+    // la scritta a pennello, il manifesto, gli adesivi, il murale, il calligraffiti. `over`: si fa sopra a tutto senza crossare nessuno
+    rullo: { nome: 'rullo', rank: 3, W: 9, H: 2.4, dur: 45, cans: 0, fame: 22 },
+    verticale: { nome: 'verticale', rank: 3, W: 2, H: 7, dur: 50, cans: 3, fame: 24 },
+    estintore: { nome: 'tag a estintore', rank: 2, W: 3, H: 4, dur: 6, cans: 0, fame: 10, over: true },
+    stencil: { nome: 'stencil', rank: 1, W: 1, H: 1.1, dur: 4, cans: .15, fame: 3, over: true },
+    scritta: { nome: 'scritta', rank: 1, W: 4.5, H: .75, dur: 8, cans: .3, fame: 3, over: true },
+    manifesto: { nome: 'manifesto', rank: 0, W: 1.2, H: 1.4, dur: 3, cans: 0, fame: 2, over: true },
+    adesivi: { nome: 'adesivi', rank: 0, W: .6, H: .5, dur: 2, cans: 0, fame: 1, over: true },
+    murale: { nome: 'murale', rank: 3, W: 6.5, H: 4, dur: 90, cans: 5, fame: 28 },
+    calli: { nome: 'calligraffiti', rank: 2, W: 4.2, H: 2.2, dur: 20, cans: 1.2, fame: 10 },
   };
+  const SMALL = /^(tag|mtag|gotico|estintore|stencil|scritta|manifesto|adesivi)$/;   // [graffiti3] i lavori che vanno sopra a tutto e non contano come crossaggio
+  // [graffiti3] l'altezza da terra del centro (metri, da..a) per i lavori che stanno ad altezza d'uomo; decisa dal seme
+  const EYE = { adesivi: [.5, 1.6], stencil: [.7, 1.7], manifesto: [.9, 1.8], scritta: [1.0, 2.0], calli: [1.3, 1.6], murale: [2.1, 2.4] };
   const MODES = ['libero', 'tag', 'throw', 'pezzo', 'burner', 'tavoletta'];
   const MODE_TXT = { libero: 'a mano libera', tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner (sul treno: whole car)', tavoletta: 'tavoletta (trascina sul muro la finestra, poi disegni)' };
   const RANKS = [[0, 'toy'], [25, 'writer'], [120, 'king della zona'], [400, 'king della linea'], [1000, 'all city king']];
   const rankOf = f => RANKS.filter(r => f >= r[0]).pop()[1];
-  const un = k => (k === 'tag' || k === 'mtag' ? 'una ' : 'un ') + STYLES[k].nome;   // una tag, un pezzo
+  const ART = { tag: 'una ', mtag: 'una ', scritta: 'una ', estintore: 'una ', stencil: 'uno ', adesivi: 'degli ' };
+  const un = k => (ART[k] || 'un ') + STYLES[k].nome;   // una tag, un pezzo, uno stencil, degli adesivi
   const CREWS = [
     { id: 'PVK', nome: 'Porto Vecchio Kings', col: 0 },
     { id: 'BDS', nome: 'Banda della Scogliera', col: 3 },
@@ -332,7 +346,13 @@ var Writing = (function () {
     if (style === 'tag' || style === 'mtag') { const k = .8 + rnd() * .55; w.tagK = k; }
     if (style === 'tag' || style === 'mtag') { if (rnd() < .3) w.sign = pick(WA.SIGNS); }
     if (style === 'mtag' && rnd() < .3) { w.sticker = true; w.sign = null; }   // [graffiti] l'adesivo con la tag (pennelli.js)
-    else if (style === 'burner' && rnd() < .3) w.words = pick(WA.WORDS);
+    else if (style === 'burner' && wr.crew && rnd() < .25) w.words = wr.crew;
+    // [graffiti3] gli stili nuovi: la scritta di chi è politico parla di politica, gli altri d'amore o di strada; lo stencil di un
+    // writer è sempre lo stesso (la sua mascherina, ripetuta per la città); il rullo e il verticale dicono la crew o una parola
+    else if (style === 'scritta') { const pol = (dna && dna.pol != null) ? dna.pol : .4; w.kind = rnd() < pol ? 'politica' : pick(['amore', 'ultras', 'strada', 'amore']); if (w.kind === 'strada' && wr.crew) w.words = pick([wr.crew + ' IN CASA', 'ZONA ' + wr.crew, wr.crew + ' ' + wr.aka]); }
+    else if (style === 'stencil') { w.motifSeed = (wr.hand || seed) ^ 0x5a5a; }
+    else if (style === 'rullo' || style === 'verticale') { if (rnd() < .4 && wr.crew) w.words = wr.crew; else if (rnd() < .2) w.words = pick(WA.WORDS); }
+    else if (style === 'murale' && rnd() < .3) w.words = pick(WA.SLOGANS);
     return Object.assign(w, extra || {});
   }
   function addWork(st, w) {
@@ -714,7 +734,7 @@ var Writing = (function () {
   // è identico, arriva qualche fotogramma dopo, e intanto il gioco va avanti. I lavori finiti si tengono (gli ultimi 48),
   // così tornando in una zona non si rifanno. Senza Worker o OffscreenCanvas: come prima, qui.
   const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set(), q: [] };
-  const ARTW_MAIN = `onmessage = e => { const m = e.data; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A;
+  const ARTW_MAIN = `onmessage = async e => { const m = e.data; if (m.fonts) self.GraffitiFonts = { D: m.fonts }; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A; try { await WriterArte.fontsReady(); } catch (er) { }
     try { A = typeof Pennelli !== 'undefined' ? Pennelli.art(m.w) : WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); return; }
     const tr = [], bm = c => { if (c && typeof c.transferToImageBitmap === 'function') { const b = c.transferToImageBitmap(); tr.push(b); return b; } return c; };
     postMessage({ id: m.id, A: { stages: A.stages.map(bm), paths: A.paths, radii: A.radii, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm } }, tr); };`;
@@ -726,6 +746,7 @@ var Writing = (function () {
       const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
+      if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
       ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
       return (ARTW.ok = true);
     } catch (e) { return (ARTW.ok = false); }
@@ -852,10 +873,11 @@ var Writing = (function () {
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
-    const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style], base = w.sticker ? { W: .34, H: .24 } : sty;
-    const k = w.tagK || 1, H = base.H * k, W0 = base.W * k, small = /^(tag|mtag)$/.test(w.style);
-    // [graffiti] la quota del centro: dal suolo al piede del muro (non dove sta chi dipinge), e il raggio a QUELLA quota
-    const yc = sp.h != null ? sp.h : gh + .25 + H / 2 + (small ? .3 + mulberry((w.seed || 1) ^ 0x7a9)() * (w.sticker ? 1.2 : 1.4) : 0);
+    const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style], base = w.sticker ? { W: .34, H: .24 } : { W: w.W0 || sty.W, H: w.H0 || sty.H };   // [graffiti3] la misura può venire dal sito (i verticali alti quanto la facciata)
+    const k = w.tagK || 1, H = base.H * k, W0 = base.W * k, small = /^(tag|mtag)$/.test(w.style), ey = EYE[w.style], d0 = mulberry((w.seed || 1) ^ 0x3e3)();
+    // [graffiti] la quota del centro: dal suolo al piede del muro (non dove sta chi dipinge), e il raggio a QUELLA quota; [graffiti3] dal sito
+    // (sp.h), o ad altezza d'uomo (EYE, dal seme: ricaricando sta nello stesso punto), l'estintore da terra in su
+    const yc = sp.h != null ? sp.h : ey ? gh + ey[0] + (ey[1] - ey[0]) * d0 : w.style === 'estintore' ? gh + 1.2 + H / 2 : gh + .25 + H / 2 + (small ? .3 + mulberry((w.seed || 1) ^ 0x7a9)() * (w.sticker ? 1.2 : 1.4) : 0);
     const hit = rayWall(new THREE.Vector3(sp.x, yc, sp.y), d, sp.h != null ? 6 : 3, list); if (!hit || Math.abs(hit.n.y) > .3) return false;
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), c = hit.p.clone();
     const foot = sp.h != null ? null : footAt(c, n, W0, r);
@@ -865,7 +887,7 @@ var Writing = (function () {
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
     // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
-    const under = /^(tag|mtag|gotico)$/.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !/^(tag|mtag|gotico)$/.test(o.style));
+    const under = SMALL.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));
     if (under.length) { const R = sty.rank, d0 = mulberry((w.seed || 1) ^ 0x5eed)(), toy = (w.q != null ? w.q : .7) < .35, top = Math.max(...under.map(o => STYLES[o.style].rank));
       const ok = top < R ? d0 < .8 : top === R ? d0 < .3 : toy && d0 < .12; if (!ok) { w.gfxRect = null; return false; }
       under.forEach(o => { o.covered = true; }); w.over = under.map(o => o.id); }
