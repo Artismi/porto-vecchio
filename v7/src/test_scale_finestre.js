@@ -7,6 +7,7 @@
 //   2. le aperture rifatte hanno la forma di render.js: la finestra al centro di ogni modulo di 2 m, la porta sulla casella della porta;
 //   3. le scale si contano per tipo e per muro (cieco, fra due colonne di finestre, sul giunto fra due case), e nessuna casa con la scala ha
 //      la facciata sconosciuta senza che lo si dica.
+//   4. il modulo cieco: dove il muro non ha un posto la scala lo accieca (L.cieco); render.js non ci mette la finestra (Tetti.cieco4).
 // cd v7/src && node test_scale_finestre.js            (il seme: --seme=N, per difetto 12345)
 const path = require('path'), src = __dirname;
 require(path.join(src, 'seme.js'))(12345);
@@ -44,6 +45,19 @@ else ok(false, 'manca una casa dell\'Ottocento per la forma delle aperture');
 // fra due colonne di finestre (il giunto fra due moduli) la scala ci sta: 1,05 m fra i vani, 49 cm la scala, 28 cm d'aria per parte
 { const b = B[casa], [wx, wy] = [(b.x + 1) * TS, (b.y + b.h) * TS], [cx, cy] = [(b.x + .5) * TS, (b.y + b.h) * TS];
   ok(!SOPRA(casa, wx, wy, 0, 1, -1) && !!SOPRA(casa, cx, cy, 0, 1, -1), `sul giunto fra due moduli la scala sta (${!SOPRA(casa, wx, wy, 0, 1, -1)}), al centro del modulo no: lì c'è la finestra (${!!SOPRA(casa, cx, cy, 0, 1, -1)})`); }
+
+// ---------------- 4. il modulo cieco ----------------
+// dove il muro non ha un posto (le case strette dell'Ottocento), la scala accieca il suo modulo: la marca sta sulla scala (L.cieco) e
+// render.js la legge con Tetti.cieco4 quando posa le finestre di buildModular. La marca va solo sulle case di buildModular, su un modulo
+// dove c'è davvero una finestra, e Tetti.cieco4 la dice ai piani che la scala attraversa, non a quelli sotto il suo piede.
+const ciechi = scale.filter(L => L.cieco), MG = 3.6, MF = 2.4;
+const male = ciechi.filter(L => { const O = AP(L.bi), c = L.cieco, fl = Math.max(1, B[L.bi].fl || 1);
+  if (!O || O.chi !== 'moduli' || !O[c.f].some(A => A[5] === 'fin' && Math.abs((A[0] + A[1]) / 2 - c.u) < .15)) return true;
+  for (let p = 0; p < fl; p++) { const top = (p ? MG + (p - 1) * MF : 0) + 2.25; if (T.cieco4(L.bi, c.f, c.u, p) !== (top > c.y0 + .05)) return true; }
+  return false; });
+console.log(`moduli ciechi per le scale: ${ciechi.length} (${JSON.stringify(ciechi.reduce((o, L) => (o[tipo(L)] = (o[tipo(L)] || 0) + 1, o), {}))})`);
+ok(!male.length, `ogni modulo cieco sta su una finestra di buildModular e Tetti.cieco4 lo dice ai piani che la scala attraversa (${male.length} sbagliati)`);
+ok(ciechi.length <= scale.length * .3, `i moduli ciechi restano l'eccezione: ${ciechi.length} su ${scale.length} scale`);
 
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passate');
 process.exit(fail ? 1 : 0);
