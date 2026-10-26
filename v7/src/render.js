@@ -7471,8 +7471,12 @@ var Render = (function () {
     const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
     const H = new Float32Array(m.length); for (let k = 0; k < m.length; k++) H[k] = .16 * sstep(.43, .57, m[k]); const Hn = H.slice(); for (let k = 0; k < m.length; k++) if (C38[k]) H[k] = .15 * Math.max(0, Math.min(1, S38[k] / .2 + .5));   /* [strade1] cordolo più netto */
     scivoli1(H, R, NW, NH);   // [strade1]
-    return (SWF35 = { R, NW, NH, H, m, Hn, S38, D38, C38 });
+    SWF35 = { R, NW, NH, H, m, Hn, S38, D38, C38 }; if (SWF35fine) swLibera(); return SWF35;
   }
+  // [scarico] le griglie di lavoro dei marciapiedi (5 × 22 MB a mezzo metro, più la rampa degli scivoli) servono solo a costruirli: a
+  // gioco resta l'altezza (H, per swH). Con la città a tasselli i marciapiedi arrivano cotti e buildSidewalks non le liberava mai
+  let SWF35fine = false;
+  function swLibera() { SWF35fine = true; if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null; }
   // altezza del marciapiede sopra il terreno in (x, z): 0 fuori, 0,15 sopra
   function swH(x, z) {
     const F = SWF35ok ? SWF35 : swField(); if (!F) return 0;
@@ -13754,7 +13758,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         g.boundingSphere = new THREE.Sphere(new THREE.Vector3((i + .5) * TILE, (y0 + y1) / 2, (j + .5) * TILE), Math.hypot(TILE / 2 + 1, TILE / 2 + 1, (y1 - y0) / 2 + 1));
         const m = new THREE.Mesh(g, sMat); m.receiveShadow = true; if (window.Pavimenti) Pavimenti.marciapiede(m, i, j);   /* [pavimenti] */ scene.add(m); }); }
     // [memoria] le griglie di lavoro dei marciapiedi non servono più: a gioco resta solo l'altezza (H, per swH). ~130 MB
-    if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null;
+    swLibera();
     return ind.length / 3;
   }
   // ================= [inverno] CARATTERE DELLE FACCIATE =================
@@ -16365,6 +16369,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
+    swLibera();   // [scarico] dopo la costruzione (anche quando i marciapiedi vengono dai tasselli)
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
@@ -17423,7 +17428,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
       const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
-      let g = dyn.vehicles[v.id]; if (far) { if (g) g.visible = false; return; }
+      let g = dyn.vehicles[v.id]; if (far) { if (g) { if (Math.abs(v.x - cam.x) > VIEW_R + 60 || Math.abs(v.y - cam.y) > VIEW_R + 60) { scene.remove(g); delete dyn.vehicles[v.id]; } else g.visible = false; } return; }   // [scarico] ben oltre la vista il mezzo esce dalla scena (il rilascio ne libera le geometrie), si rifà quando torna
       if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
