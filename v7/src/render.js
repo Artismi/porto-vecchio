@@ -11569,6 +11569,7 @@ var Render = (function () {
   const V3LOD = 70;   // oltre questa distanza dalla camera, il livello basso
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
+    if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
     u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
     const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
     g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
@@ -17114,11 +17115,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
-    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta');   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
+    const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta' || pveh.kind === 'ciao');   // [animazioni] anche sul Ciao (prima in sella non si vedeva nessuno)   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     pg.visible = !pveh || onVespa;
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
-    { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
+    { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
@@ -17150,11 +17151,25 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       { const T = bmxTilt(v); if (T.a) { g.rotation.x -= T.a; g.position.x += Math.cos(v.ang) * T.dzB; g.position.y += T.dyB; g.position.z += Math.sin(v.ang) * T.dzB; } }   // [bmx] impennata sulla ruota dietro
       g.rotation.z = u.roll;
       v.lastAng = v.ang;
+      // [animazioni] chi è in sella segue il mezzo in tutto: piega in curva, impennata, salto, sospensioni, pendenza (come sulla chiatta).
+      // Prima il corpo girava solo con l'impennata: in curva la bici si piegava fino a 29° e le mani restavano mezzo metro fuori dal manubrio
+      if (v === pveh && onVespa && pg && pg.userData.model) { g.updateMatrixWorld(); pg.position.set(0, .35, 0).applyMatrix4(g.matrixWorld); pg.quaternion.copy(g.quaternion); }
       // ruote che girano e sterzano
       u.spin += (v.speed || 0) * dt; u.steer += (clamp(-(v.steer || 0) * .55, -.55, .55) - u.steer) * Math.min(1, dt * 12);
       skidTrack(v, u, g, dt);
-      u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = u.steer; });
+      // [animazioni] sulle due ruote lo sterzo si vede meno quando si va forte (in velocità si piega, non si sterza); manubrio e forcella girano con la ruota
+      const sA = u.two ? u.steer * (1 - .6 * clamp(Math.abs(v.speed || 0) / 9, 0, 1)) : u.steer;
+      u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = sA; });
+      if (u.ster) u.ster.quaternion.setFromAxisAngle(u.sterAx, sA);
+      if (u.two) { v.barA = sA; v.rollA = u.roll; }   // [animazioni] per la posa in sella (anim_lotta.js): le manopole girate, la piega del mezzo
       if (u.crank) { if (v.pedal) u.crankA = (u.crankA || 0) + (v.speed || 0) * dt / (BMX_GEO.R * BMX_GEO.ratio); const th = u.crankA || 0; u.crank.rotation.x = th; u.pedals.forEach(q => q.rotation.x = -th); v.crank = th; }   // [bmx] pedivelle: girano solo quando pedali (a ruota libera stanno ferme)   // [bmx] le pedivelle girano con le ruote, i pedali restano piatti; in_bmx ci mette i piedi
+      // [animazioni] chi guida le Vespe e i Ciao del traffico: prima nessuno (il mezzo andava da solo). Un abitante vero in sella,
+      // figlio del mezzo (ne segue piega e sobbalzi), con la posa in_vespa, le mani sul manubrio che gira; solo vicino alla camera
+      if (u.two && v.kind !== 'bmx' && v !== pveh) {
+        const want = !v.wreck && (v.traffic || v.rider === 'npc') && window.Models && Models.charsReady() && Math.abs(v.x - cam.x) + Math.abs(v.y - cam.y) < 70;
+        if (want && !u.riderG && BUD.ok(Math.hypot(v.x - p.x, v.y - p.y), 'gente')) { const t0 = performance.now(), r = Models.person(v.driverLook || { skin: '#d8b090', top: '#5a4a3a', bottom: '#2a2a33', hair: '#2a1a10', hat: 'none', build: 1, extra: '' }, null); BUD.add(performance.now() - t0, 'gente'); if (r) { r.position.set(0, .35, 0); g.add(r); u.riderG = r; } }
+        if (u.riderG) { u.riderG.visible = !!want; if (want) Models.animPerson(u.riderG, { speed: 0, inVeh: true, anim: { act: 'in_vespa', mezzo: v.kind, piega: u.roll, manubrio: sA, upper: null, mood: [], talk: false, lookAt: null } }, dt); }
+      }
       // danni progressivi
       if (v.hp < u.hpSeen - .5 && !v.wreck) {
         let hit = null; const lm = FX.lastMetal;

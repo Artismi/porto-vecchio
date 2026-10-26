@@ -427,8 +427,10 @@ var WriterVita = (function () {
       Anim.prop('mop', () => { const g = new THREE.Group(), m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .6 }); const b = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, .13, 6), m('#1e1e24')); b.rotation.z = Math.PI / 2; g.add(b); const t = new THREE.Mesh(new THREE.CylinderGeometry(.009, .006, .03, 5), m('#f0f0f0')); t.rotation.z = Math.PI / 2; t.position.x = .08; g.add(t); return g; }, 'WristR', [0, -.08, .04]);
       const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
       // SALE LA SCALA: le mani si alternano sui pioli, le ginocchia salgono a turno
-      Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P) {
-        const ph = Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
+      // [animazioni] A.quota: a che altezza è sulla scala; mani e piedi passano un piolo (30 cm) ogni mezzo ciclo, così salgono col corpo
+      // (prima giravano a tempo fisso, 5,2 rad/s, e il corpo saliva 3 volte più svelto dei pioli: scivolava su per la scala)
+      Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P, A) {
+        const ph = A && A.quota != null ? Math.sin(A.quota * Math.PI / .3) : Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
         P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
         P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
         P.legTo('L', .12, .12 + .35 * a, .22, .15, 1, .6, .2, 0); P.legTo('R', -.12, .12 + .35 * b, .22, -.15, 1, .6, .2, 0);
@@ -445,11 +447,11 @@ var WriterVita = (function () {
       } });
       Anim.npcMap((st, n, s) => {
         const now = performance.now();
-        if (n.__climb && now - n.__climb < 400) { s.act = 'scala'; s.upper = null; return; }
+        if (n.__climb && now - n.__climb < 400) { s.act = 'scala'; s.upper = null; s.quota = n.wrH || 0; return; }
         const tp = n.__tip; if (tp && now - tp.t < 600) { s.act = n.__mop ? 'tagga' : 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; s.upper = null; }
       });
       Anim.playerMap((st, p, s) => {
-        if (p.lv && p.lv.k === 'scala') { s.act = 'scala'; s.upper = null; return; }
+        if (p.lv && p.lv.k === 'scala') { s.act = 'scala'; s.upper = null; s.quota = p.lv.h0 + (p.lv.h1 - p.lv.h0) * p.lv.t; return; }
         const tp = p.__tip; if (p.hand === 'pennarello' && tp && performance.now() - tp.t < 350) { s.act = 'tagga'; s.tip = tp; }
       });
       return true;

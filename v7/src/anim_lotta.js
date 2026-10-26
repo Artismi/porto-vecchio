@@ -361,7 +361,8 @@
   // l'angolo delle pedivelle (A.crank, lo stesso che render.js dà al modello), le ginocchia salgono e scendono come nei
   // fotogrammi di una pedalata vera. A.carica (0-1): si accuccia prima del bunny hop; A.aria: in aria tira su il manubrio.
   // Le misure sono quelle di bmxMesh (BMX_GEO in render.js); il corpo è già alzato di 35 cm da render.js (LIFT).
-  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .16, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .36, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35 };
+  // [animazioni] axT/axB: l'asse del cannotto (in alto, in basso), attorno a cui girano manubrio e manopole (veicoli3d.js sterzo)
+  const BMX = { bbY: .29, bbZ: -.04, crank: .17, pedX: .16, seatY: .81, seatZ: -.27, gripY: 1.04, gripZ: .22, gripX: .36, pegX: .19, pegY: .31, pegZ: -.5, LIFT: .35, axT: [0, .73, .29], axB: [0, .56, .34] };
   const _bp = new THREE.Vector3(), _bs = new THREE.Vector3(), _be = new THREE.Vector3(), _bt = new THREE.Vector3(), _bw = new THREE.Vector3();
   const bmxLocal = (P, bone, out) => { P.R.b[bone].getWorldPosition(out); return P.g.worldToLocal(out); };
   // braccio a due ossa: il polso in (tx,ty,tz) nello spazio del personaggio, gomito verso il basso e in fuori
@@ -384,9 +385,12 @@
     if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
     // il sedere sul sellino; caricando si abbassa e va indietro, in aria si raccoglie in avanti
     const By = (BMX.seatY + .08 - BMX.LIFT) - (R.hipY || .95) + .06 * ck + .08 * air + .1 * pk, Bz = BMX.seatZ - .06 - (R.hipZ || 0) - .1 * ck + .06 * air - .05 * wk - .04 * pk, Bx = ps * .09 * pk;   // carica: su dal sellino e indietro, come prima di un bunny hop
-    P.body({ x: Bx, y: By, z: Bz, rz: -ps * .05 * pk });
-    P.rot('Hips', 0, 0, .05 * Math.sin(th) * (1 - air) * (1 - pk));   // [mani] il bacino ondeggia con la pedalata, non tutto il corpo: le mani restano sul manubrio
-    P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, 0); P.rot('Chest', .2, .06 * Math.sin(th), 0); P.rot('Neck', -.3 - .1 * ck, 0, 0); P.rot('Head', -.25, 0, 0);
+    P.body({ x: Bx, y: By, z: Bz });   // [animazioni] la sporgenza sul peg va nel bacino (sotto, prima dell'IK): ruotare tutto il corpo dopo l'IK scostava le mani
+    P.rot('Hips', 0, 0, .05 * Math.sin(th) * (1 - air) * (1 - pk) - ps * .05 * pk);   // [mani] il bacino ondeggia con la pedalata, non tutto il corpo: le mani restano sul manubrio
+    // [animazioni] il corpo segue la bici (render.js lo mette nel telaio): il busto contrappesa un poco la piega (A.piega, il rollio
+    // del mezzo) e la testa resta più dritta; in impennata il petto torna un filo in avanti (la bici è già girata all'indietro)
+    const lean = A.piega || 0, wa = wk * .5;
+    P.rot('Abdomen', .45 + .3 * ck + .1 * air - .3 * wk + .3 * pk, 0, -.22 * lean); P.rot('Chest', .2 + .12 * wa, .06 * Math.sin(th), -.12 * lean); P.rot('Neck', -.3 - .1 * ck, 0, -.1 * lean); P.rot('Head', -.25 + .2 * wa, 0, -.12 * lean);
     // i piedi sui pedali: destra a th, sinistra di fronte (th + π); la caviglia sta 7 cm sopra il pedale, la punta in avanti
     [['R', -1, th], ['L', 1, th + Math.PI]].forEach(([sd, sg, a]) => {
       let px = sg * BMX.pedX, py = BMX.bbY + BMX.crank * Math.cos(a) + .035, pz = BMX.bbZ + BMX.crank * Math.sin(a) - .07;   // la caviglia: sopra il pedale e un po' dietro, così ci poggia l'avampiede
@@ -394,32 +398,54 @@
       P.legTo(sd, px - Bx, py - BMX.LIFT - By, pz - Bz, sg * .2, .4, 1, .12 * Math.sin(a) - .05, .05);
     });
     // le mani sulle manopole: il polso sta dietro la manopola, così la mano la stringe (in aria le tira verso il petto)
-    grips(P, BMX.gripX, BMX.gripY - BMX.LIFT + .08 * air, BMX.gripZ - .06 * air, Bx, By, Bz);
+    grips(P, BMX.gripX, BMX.gripY - BMX.LIFT + .08 * air, BMX.gripZ - .06 * air, Bx, By, Bz, A.manubrio || 0, BMX.axT, BMX.axB, BMX.LIFT);
   } });
   // [mani] le mani sulle manopole (una barra di traverso, x = ±gx, nello spazio del personaggio dopo il sollevamento):
   // la manopola sta nel palmo, 7 cm davanti al polso e un filo sotto; le nocche guardano avanti, le dita la avvolgono
-  function grips(P, gx, gy, gz, Bx, By, Bz) {
+  // [animazioni] sa: l'angolo dello sterzo (render.js, v.barA); le manopole e la presa girano attorno all'asse del cannotto (axT→axB,
+  // nelle misure del mezzo, lift = quanto è alzato il corpo), così le mani restano sul manubrio anche in curva
+  const _sq = new THREE.Quaternion(), _sa = new THREE.Vector3(), _sv = new THREE.Vector3(), _sx = new THREE.Vector3(), _sy = new THREE.Vector3();
+  function grips(P, gx, gy, gz, Bx, By, Bz, sa, axT, axB, lift) {
+    const turn = sa && axT; if (turn) { _sa.set(axT[0] - axB[0], axT[1] - axB[1], axT[2] - axB[2]).normalize(); _sq.setFromAxisAngle(_sa, sa); }
     ['L', 'R'].forEach(sd => {
       const sg = sd === 'L' ? 1 : -1;
       // la manopola nel pugno: il pollice verso il centro del manubrio (per la sinistra il sistema della mano è specchiato:
       // in tutti e due i casi X va verso +x), le dita avanti e giù sopra la barra, il gomito in fuori e in basso
-      P.grab(sd, sg * gx - Bx, gy - By, gz - Bz, [1, 0, 0], [0, -.55, 1], [sg * .7, -1, -.2]);
+      _sv.set(sg * gx, gy, gz); _sx.set(1, 0, 0); _sy.set(0, -.55, 1);
+      if (turn) { _sv.y += lift; _sv.x -= axT[0]; _sv.y -= axT[1]; _sv.z -= axT[2]; _sv.applyQuaternion(_sq); _sv.x += axT[0]; _sv.y += axT[1] - lift; _sv.z += axT[2]; _sx.applyQuaternion(_sq); _sy.applyQuaternion(_sq); }
+      P.grab(sd, _sv.x - Bx, _sv.y - By, _sv.z - Bz, [_sx.x, _sx.y, _sx.z], [_sy.x, _sy.y, _sy.z], [sg * .7, -1, -.2]);
       P.fingers(sd, .92, .85);
     });
   }
   // ---------------- IN VESPA ----------------
   // seduti sulla sella, le mani alle manopole, i piedi sulla pedana. Misure di vespaMesh (render.js); il corpo è già
   // alzato di 35 cm da render.js. Prima le braccia andavano avanti «a occhio» e le mani, aperte, restavano 20 cm dentro.
-  const VESPA = { seatY: .98, seatZ: .02, gripX: .33, gripY: 1.3, gripZ: .7, floorY: .37, footX: .13, footZ: .3, LIFT: .35 };
+  const VESPA = { seatY: .98, seatZ: .02, gripX: .33, gripY: 1.3, gripZ: .7, floorY: .37, footX: .13, footZ: .3, LIFT: .35, axT: [0, 1.2, .7], axB: [0, .5, .8] };
+  // [animazioni] il Ciao (veicoli3d.js ciao): sella più bassa e indietro, manubrio basso, i piedi sui pedali fermi (uno su, uno giù)
+  const CIAO = { seatY: .93, seatZ: -.34, gripX: .31, gripY: 1.0, gripZ: .33, LIFT: .35, axT: [0, .97, .35], axB: [0, .7, .42], feet: [[.14, .16, .02], [-.14, .44, -.08]] };
   D('in_vespa', { fade: .1, base: 'Idle', air: true, fn(P, A) {
-    const R = P.R, V = VESPA;
+    const R = P.R, V = A.mezzo === 'ciao' ? CIAO : VESPA, lean = A.piega || 0;
     if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
     const By = (V.seatY + .08 - V.LIFT) - (R.hipY || .95), Bz = V.seatZ - (R.hipZ || 0);
     P.body({ y: By, z: Bz });
-    P.rot('Abdomen', .42, 0, 0); P.rot('Chest', .22, 0, 0); P.rot('Neck', -.36, 0, 0); P.rot('Head', -.2, 0, 0);
+    P.rot('Abdomen', V === CIAO ? .3 : .42, 0, -.2 * lean); P.rot('Chest', .22, 0, -.1 * lean); P.rot('Neck', -.36, 0, -.08 * lean); P.rot('Head', -.2, 0, -.1 * lean);   // [animazioni] contrappeso alla piega
     P.rot('ShoulderL', 0, -.18, 0); P.rot('ShoulderR', 0, .18, 0);   // le spalle in avanti, verso il manubrio
-    [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * V.footX, V.floorY + .075 - V.LIFT - By, V.footZ - Bz, sg * .15, .5, 1, .1, .12));
-    grips(P, V.gripX, V.gripY - V.LIFT, V.gripZ, 0, By, Bz);
+    if (V.feet) [['L', 1, 0], ['R', -1, 1]].forEach(([sd, sg, i]) => { const F = V.feet[i]; P.legTo(sd, F[0], F[1] + .075 - V.LIFT - By, F[2] - Bz, sg * .2, .4, 1, .1, .1); });
+    else [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * V.footX, V.floorY + .075 - V.LIFT - By, V.footZ - Bz, sg * .15, .5, 1, .1, .12));
+    grips(P, V.gripX, V.gripY - V.LIFT, V.gripZ, 0, By, Bz, A.manubrio || 0, V.axT, V.axB, V.LIFT);
+  } });
+  // ---------------- IN SKATE ----------------
+  // [animazioni] sulla tavola (skate.js): render mette il corpo di traverso, con l'asse della tavola lungo +x del personaggio
+  // (il muso verso la sua sinistra), 12 cm sopra la tavola e A.giu più basso quando si accuccia. Prima stava in piedi a piedi
+  // uniti in mezzo alla tavola, e quando spingeva camminava sul posto. Ora: piede davanti sul truck davanti, piede dietro sul
+  // truck dietro, ginocchia piegate, braccia larghe; A.spinta (0-1): il piede dietro scende a terra e spinge indietro.
+  D('in_skate', { fade: .12, base: 'Idle_Neutral', air: true, fn(P, A) {
+    const c = A.giu || 0, deck = .1125 - .12 + c, ground = -.12 + c, ank = .09, q = A.spinta || 0, s = q > 0 ? Math.sin(Math.PI * q) : 0;
+    P.rot('Abdomen', .18 + 1.2 * c + .15 * s, .15, 0); P.rot('Chest', .05, .1, 0); P.rot('Neck', 0, .35, 0); P.rot('Head', -.1, .45, 0);   // lo sguardo dove va la tavola
+    P.legTo('L', .2, deck + ank, .01, .25, .3, 1, 0, .25);
+    if (s > 0) P.legTo('R', .05 - .5 * q, deck + ank + (ground - deck) * s, .16 * s, -.2, .3, 1, -.3 * s, 0);   // spinge
+    else P.legTo('R', -.2, deck + ank, -.01, -.25, .3, 1, 0, -.15);
+    AIMS(P, 1, 'UpperArm', .55, -.8, .05); AIMS(P, -1, 'UpperArm', .55, -.8, -.05); AIMS(P, 1, 'LowerArm', .4, -.75, .3); AIMS(P, -1, 'LowerArm', .4, -.75, .2);
   } });
   // ---------------- SALTO A PIEDI ----------------
   // [salto] carica: ci si accuccia (più carichi, più giù), le braccia indietro; in aria: ginocchia al petto, braccia su
@@ -605,11 +631,13 @@
     // in Vespa: seduto, mani al manubrio; in auto non si vede
     if (p.vehicle) {
       let v = null; const vs = st.vehicles || []; for (let i = 0; i < vs.length; i++) if (vs[i].id === p.vehicle) { v = vs[i]; break; }
-      if (v && v.kind === 'vespa') { s.act = 'in_vespa'; s.upper = null; s.mood.length = 0; }
+      if (v && (v.kind === 'vespa' || v.kind === 'ciao')) { s.act = 'in_vespa'; s.mezzo = v.kind; s.upper = null; s.mood.length = 0; s.piega = v.rollA || 0; s.manubrio = v.barA || 0; }   // [animazioni] anche il Ciao; la piega e lo sterzo del mezzo (render.js)
       if (v && v.kind === 'chiatta') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = 0; s.aria = 0; s.impenna = 0; s.peg = 0; }   // [chiatta] pedala come sulla BMX
-      if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; }   // [bmx]
+      if (v && v.kind === 'bmx') { s.act = 'in_bmx'; s.upper = null; s.mood.length = 0; s.crank = v.crank || 0; s.carica = p.jcharge != null ? clamp(p.jcharge / .7, 0, 1) : 0; s.aria = p.jz > 0 ? clamp(p.jz / .5, 0, 1) : 0; s.impenna = v.wheelie || 0; s.peg = v.peg || 0; s.piega = v.rollA || 0; s.manubrio = v.barA || 0; }   // [bmx]   // [animazioni] piega e sterzo
       return;
     }
+    // [animazioni] in skate: la posa sulla tavola (prima la clip della camminata quando spingeva)
+    const sk = p.sk; if (sk && sk.on && !(p.stun > 0)) { s.act = 'in_skate'; s.giu = sk.crouch ? .14 : (sk.air ? .06 : 0); const q = (clock - (sk.pushA || -9)) / .45; s.spinta = q > 0 && q < 1 ? q : 0; }
     // [salto] a piedi: accucciato mentre carichi, raccolto in aria (sotto quello che fanno le braccia: si può saltare con la pistola in mano)
     if (p.jz > 0 && !(p.stun > 0)) { s.act = 'salto'; s.su = (p.jvz || 0) > 0; s.raccolto = clamp(p.jz / .6, 0, 1); }
     else if (p.jcharge != null && !(p.stun > 0)) { s.act = 'carica'; s.carica = clamp(p.jcharge / .7, 0, 1); }
