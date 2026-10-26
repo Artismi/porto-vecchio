@@ -13356,7 +13356,22 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       for (let k = 0; k < 26; k++) { const x = q.x - 22 + r() * 30, z = q.y - 30 + r() * 60; if (!free(x, z) || !free(x, z + 3) || !free(x, z - 3)) continue; container(x, z, r() < .7 ? 0 : Math.PI / 2, pick(r, ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70']), r() < .3 ? 2.6 : 0); }
     }
     // ---- le stazioni di estrazione nella prateria: torre di trivella, nastro, cumuli di carbone, recinto, guardie ----
-    ['miniera', 'stazione2'].forEach((id, k) => {
+    // [campagna] con la città nuova ogni stazione è un piazzale solo (world_cittanuova.js): la sala argani con la ciminiera, il castelletto del
+    // pozzo e la tramoggia sono pezzi (pezzi_citta.js), posati in piano. Qui restano i cumuli di minerale sul piazzale e la rete sul lato del
+    // monte; la torre di trivella, i condotti, il silo e i corpi di mattoni di stazione31 (un doppione posato su un'unica quota) non ci sono più
+    const PADS = W0 ? [W0.railCampagna && W0.railCampagna.pad, W0.stazSud].filter(Boolean) : [];
+    if (PADS.length) PADS.forEach(pd => {
+      const coal = sm('#1c1a1c', { roughness: 1 }), coal2 = sm('#2a2622', { roughness: 1 }), steel = sl('#3a3a40');
+      pd.cumuli.forEach(([x, z, rr], k) => { for (let c = 0; c < 3; c++) { const a = c * 2.1 + k, d = c ? rr * .55 : 0, gx = x + Math.cos(a) * d, gz = z + Math.sin(a) * d, hp = new THREE.Mesh(new THREE.ConeGeometry(rr * (c ? .62 : 1), rr * (c ? .5 : .72), 9), c % 2 ? coal2 : coal); hp.position.set(gx, pd.H + rr * (c ? .25 : .36) - .05, gz); hp.rotation.y = a; addStatic(hp); } });
+      // la rete: sul lato del monte e sui fianchi del piazzale, mai su una strada o sulla linea
+      const A = pd.rete, viaSegP = (M.roads || []).filter(rd => rd.pts && rd.pts.length > 1), lontano = (x, z) => viaSegP.every(rd => { for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1]; if (Math.min(ax, bx) - 8 > x || Math.max(ax, bx) + 8 < x || Math.min(ay, by) - 8 > z || Math.max(ay, by) + 8 < z) continue; const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (z - ay) * dy) / L2, 0, 1); if (Math.hypot(ax + dx * t - x, ay + dy * t - z) < rd.w / 2 + 1.2) return false; } return true; });
+      const R0 = W0.railCampagna && W0.railCampagna.P, sulBinario = (x, z) => R0 && R0.some(q => Math.abs(q[0] - x) < 4.5 && Math.abs(q[1] - z) < 4.5 && Math.hypot(q[0] - x, q[1] - z) < 4.2);
+      A.slice(1).forEach((_, i0) => { const [ax, az] = A[i0], [bx, bz] = A[i0 + 1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 2.6)), ang = Math.atan2(bz - az, bx - ax);
+        for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1, xm = (x0 + x1) / 2, zm = (z0 + z1) / 2;
+          if (!free(xm, zm, .4) || !lontano(xm, zm) || sulBinario(xm, zm)) continue; const pg = G0(); add(pg, box(.1, 2, .1, steel), -L / n / 2, 1, 0); add(pg, box(L / n, .03, .03, wire), 0, 1.7, 0); add(pg, box(L / n, .03, .03, wire), 0, 1.1, 0); add(pg, box(L / n, .03, .03, wire), 0, .5, 0); place(pg, xm, zm, -ang); } });
+      { const a = A[1], b = A[A.length - 2], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], c = pd.cumuli[0]; const fx = m[0] + (c[0] - m[0]) * .5, fz = m[1] + (c[1] - m[1]) * .5; if (free(fx, fz)) fireBarrel(fx, fz, r); }
+    });
+    else ['miniera', 'stazione2'].forEach((id, k) => {
       const b = G.BUILDINGS && G.BUILDINGS.find(o => o.id === id); const q = b ? { x: (b.x + b.w / 2) * TS, y: (b.y + b.h / 2) * TS } : P[k ? 'stazione_s' : 'stazione_n']; if (!q) return;
       const ox = q.x + 12, oz = q.y + (k ? -6 : 6), g = G0(), steel = sl('#3a3a40'), rust = sm('#7a4a2a');
       for (let y = 0; y < 16; y += 2) { const s = 1.6 - y * .07; [[-s, -s], [s, -s], [-s, s], [s, s]].forEach(([a, c]) => add(g, box(.16, 2.05, .16, steel), a, y + 1, c)); add(g, box(s * 2, .1, .1, rust), 0, y + 2, -s); add(g, box(.1, .1, s * 2, rust), -s, y + 2, 0); }
@@ -13369,16 +13384,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       fireBarrel(ox - 3, oz - 8, r);
       stazione31(q, k, r);   // [isola31]
     });
-    // ---- l'accampamento dei beduini: tende basse color erba secca, si vedono solo da vicino ----
-    if (P.beduini) { const q = P.beduini; const cols = ['#7a6c52', '#6e624a', '#84765a', '#5e5444'];
-      for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28 + r() * .3, d = 7 + r() * 4, x = q.x + Math.cos(a) * d, z = q.y + Math.sin(a) * d * .7; if (free(x, z)) tent(x, z, a + Math.PI / 2, pick(r, cols), 1 + r() * .3); }
-      camp(q.x, q.y, r);
-      for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z)) place(g, x, z, r()); }
-    }
     // ---- dorsali: bivacchi, il monolite, gli spiazzi da campeggio ----
     // [sporcherie] I POSTI FUORI DAI SENTIERI: il bivacco, le tende, la carbonaia, la croce, la neviera stavano sull'asse del loro sentiero (o in mezzo
     // alla via): il disegno si scosta del meno possibile finché il suo ingombro (R) non tocca più nessuna strada, sentiero o traccia; il posto resta lì
-    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6 }, viaSeg = [];
+    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6, beduini: 12 }, viaSeg = [];   // [campagna] anche l'accampamento dei beduini (il fuoco stava sulla mulattiera)
     (M.roads || []).forEach(rd => { if (rd.pts) for (let k = 0; k < rd.pts.length - 1; k++) viaSeg.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2]); });
     const sulSentiero = (x, z, R) => viaSeg.some(s0 => { if (Math.min(s0[0], s0[2]) - R - s0[4] > x || Math.max(s0[0], s0[2]) + R + s0[4] < x || Math.min(s0[1], s0[3]) - R - s0[4] > z || Math.max(s0[1], s0[3]) + R + s0[4] < z) return false;
       const dx = s0[2] - s0[0], dz = s0[3] - s0[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s0[0]) * dx + (z - s0[1]) * dz) / L2, 0, 1); return Math.hypot(s0[0] + dx * t - x, s0[1] + dz * t - z) < s0[4] + R; });
@@ -13386,7 +13395,12 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       for (let d = 1; d <= 16; d += 1) for (let a = 0; a < 12; a++) { const x = q.x + Math.cos(a / 12 * 6.283) * d, z = q.y + Math.sin(a / 12 * 6.283) * d; if (!sulSentiero(x, z, R) && free(x, z, Math.min(R, 2.5))) return Object.assign({}, q, { x, y: z }); }
       return q; };
     Object.values(P).map(scosta).forEach(q => {
-      if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
+      // ---- l'accampamento dei beduini: tende basse color erba secca, si vedono solo da vicino ([campagna] scostato dalla mulattiera) ----
+      if (q.camp === 'beduini') { const cols = ['#7a6c52', '#6e624a', '#84765a', '#5e5444'];
+        for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28 + r() * .3, d = 7 + r() * 4, x = q.x + Math.cos(a) * d, z = q.y + Math.sin(a) * d * .7; if (free(x, z) && !sulSentiero(x, z, 1.6)) tent(x, z, a + Math.PI / 2, pick(r, cols), 1 + r() * .3); }
+        camp(q.x, q.y, r);
+        for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z) && !sulSentiero(x, z, 1.2)) place(g, x, z, r()); } }
+      else if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
       else if (q.camp === 'tende') { for (let k = 0; k < 3; k++) { const x = q.x + (k - 1) * 3.4, z = q.y + (k % 2) * 2; if (free(x, z)) tent(x, z, r() * 6, pick(r, ['#6a2a2a', '#2a4a3a', '#5a5a2a']), .8); } camp(q.x, q.y - 3, r); }
       else if (q.camp === 'rudere' && typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { const C = Vegetazione.casale({ x: q.x + 2, y: q.y - 2, rot: r() * 6.28, groundH, seme: Math.round(q.x * 7 + q.y) }); scene.add(C.gruppo); Vegetazione.aggiungi(C.piante); }   // [vegetazione] il casale diroccato
       else if (q.camp === 'rudere') { const g = G0(), st2 = sm('#7a746c', { roughness: 1 }); [[0, 0, 6, .5], [3, 2.5, .5, 5], [-3, 1.5, .5, 3]].forEach(([dx, dz, w, d], k) => add(g, box(w, 1.2 + r() * 1.6, d, st2), dx, .8, dz)); add(g, box(2, .4, 2, sm('#c8ccd2')), 1, .2, 1.5); place(g, q.x + 2, q.y - 2, r() * 6); }
