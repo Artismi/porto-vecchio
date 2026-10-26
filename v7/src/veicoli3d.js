@@ -336,8 +336,17 @@ var Veicoli3D = (function () {
     });
     const zr2 = zs - (D.divano || .85), hd = zr2 > zL ? Math.min(.34, P.yR(zr2 - .1) - yAt(zr2) - .07) : 0; if (zr2 > zL + .05 && hd > .12) lista(alto, [0, yAt(zr2) - .006, zr2], [0, yAt(zr2) + hd, zr2 - .1], hb(zr2) * 2 - .04, .1, seatCol);
     const zd = zW - .17, yd = yAt(zd); M(alto, BX(hb(zd) * 2 - .02, .09, .26), C.nero, 0, yd + .04, zd);
-    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
-    asta(alto, [D.manubrio ? 0 : -xs, yv, zv], [D.manubrio ? 0 : -xs, yd + .06, zd - .1], .018, C.nero);
+    const zv = zW - .4, yv = yAt(zv) + .2;
+    let vol = null;
+    if (D.manubrio) vol = M(alto, CY(.015, .015, .62, 6), C.nero, 0, yv, zv, 0, 0, PI / 2);
+    else {   // [animazioni2] il volante gira con lo sterzo: il perno inclinato come il piantone (vol.piv), dentro il gruppo che gira (vol.spin,
+      // asse z locale = la normale del volante); render.js lo fonde in un pezzo solo (una chiamata di disegno in più per auto) e ci mette le mani
+      const VP = new THREE.Group(); VP.position.set(xs, yv, zv); VP.rotation.x = -1.05; VP.userData.keepTree = true; alto.add(VP);
+      const VS = new THREE.Group(); VP.add(VS);
+      vol = M(VS, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero); M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2);   // il volante con le razze
+      ud.vol = { piv: VP, spin: VS, r: .16 };
+    }
+    asta(alto, [D.manubrio ? 0 : xs, yv, zv], [D.manubrio ? 0 : xs, yd + .06, zd - .1], .018, C.nero);   // [animazioni2] il piantone sotto il volante (stava dal lato del passeggero)
     // porte: le fessure, le maniglie; specchietti, antenna, tappo della benzina
     const linea = (s, z, y0, y1) => M(alto, BX(.006, y1 - y0, .007), C.scuro, s * (hwAt(D, z) + .001), (y0 + y1) / 2, z);
     (D.porte || []).forEach(([a, b], i) => [-1, 1].forEach(s => {
