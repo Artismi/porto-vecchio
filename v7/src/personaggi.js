@@ -113,7 +113,7 @@ var Personaggi = (function () {
   const BUSTO = {
     // [misure] prese dai modelli del kit (Casual_2, Casual) nella posa a T: stesse larghezze e profondità di oggi
     m: [[0, .118, .09, .0], [.14, .132, .098, .0], [.34, .12, .094, .01], [.52, .122, .098, .015], [.68, .136, .104, .015], [.8, .148, .1, .0], [.9, .14, .086, -.01], [1, .058, .056, .0]],
-    f: [[0, .124, .09, .0], [.14, .14, .1, -.008], [.36, .1, .078, .008], [.52, .106, .082, .018], [.66, .118, .1, .03], [.79, .122, .088, .0], [.86, .116, .08, -.006], [.92, .094, .07, -.01], [.965, .07, .058, -.006], [1, .048, .048, .0]],   // [personaggi] le spalle delle donne scendono verso il braccio (prima un ripiano squadrato sopra l'attacco)
+    f: [[0, .124, .09, .0], [.14, .14, .1, -.008], [.36, .1, .078, .008], [.52, .106, .082, .018], [.66, .118, .1, .03], [.79, .123, .088, .0], [.87, .12, .082, -.006], [.93, .106, .072, -.01], [.97, .078, .06, -.006], [1, .048, .048, .0]],   // [personaggi] le spalle delle donne scendono verso il braccio (prima un ripiano squadrato sopra l'attacco)
   };
   function corpoDi(D, J) {
     const st = S(), f = D.sesso === 'f', C = D.corpo || {}, pan = C.pancia || 0, rob = C.robusto || 1, spa = (C.spalle || 1) * st.spalle;
