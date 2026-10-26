@@ -88741,7 +88741,8 @@ var Personaggi = (function () {
     return d * k;
   }
   // il deltoide: la spalla tonda sopra e fuori dove il braccio entra nel busto, e il bicipite davanti
-  function deltoide(th, t, sp) { const up = Math.max(0, -Math.sin(th)), fr = Math.cos(th), k = 1 / (1 + Math.max(0, sp || 0) * 24);   // sotto i capi spessi la spalla non si gonfia
+  function deltoide(th, t, sp, f) { const up = Math.max(0, -Math.sin(th)), fr = Math.cos(th), k = 1 / (1 + Math.max(0, sp || 0) * 24);   // sotto i capi spessi la spalla non si gonfia
+    if (f) return k * (.07 * g1(t, .24, .15) * up ** 1.8 + .025 * g1(t, .4, .12) * Math.max(0, fr) + .02 * g1(t, .24, .13) * Math.abs(fr));   // [personaggi] le donne: spalla tonda e bassa, niente punta che spunta sopra il braccio
     return k * (.16 * g1(t, .2, .11) * up ** 1.2 + .05 * g1(t, .4, .1) * Math.max(0, fr) + .04 * g1(t, .2, .1) * Math.abs(fr)); }
   // [personaggi] le forme dei capi: gonfio [sacchi, altezza], drop (spalla scesa), blusa (sbuffo sopra la costina), dritto (cade dal petto), box (sezione squadrata),
   // pieghe [quante, quanto] in fondo al busto o ai pantaloni, manica (si allarga verso il fondo), grinze (al gomito), pila (il mucchio sulla scarpa), ginocchio
@@ -88813,7 +88814,7 @@ var Personaggi = (function () {
         return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, tt: t, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
       };
       const nA = listaA.some(L => L.forma && (L.forma.gonfio || L.forma.grinze)) ? 12 : 8, camp = []; for (let k = 0; k <= nA; k++) camp.push(k / nA);
-      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { zona: 'braccio', lung: L1 - L0, seg: 10, flipU: sd === 'R', mod: (th, r) => deltoide(th, r.tt === undefined ? .5 : r.tt, r.spT) });
+      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { zona: 'braccio', lung: L1 - L0, seg: 10, flipU: sd === 'R', mod: (th, r) => deltoide(th, r.tt === undefined ? .5 : r.tt, r.spT, f) });
       mano(B, J, sd, sg, pelle, D);
     });
     tq('braccia');
