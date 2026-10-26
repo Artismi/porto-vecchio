@@ -1660,8 +1660,8 @@ var Game = (function () {
         if (INT.outside(L, p.x, p.y) || (p.indoor.f === 0 && Math.hypot(p.x - doorX, p.y - doorY) < 1.1 && (ix * ox + iy * oy) / (l * ol) > .3)) exitBuilding(st);
         else if (L.stairs && INT.stairGo) { const g = INT.stairGo(L, p.indoor.f, p.x, p.y); if (g) { p.indoor.f = g.f; p.x = g.x; p.y = g.y; p.path = []; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); } }   // [interni] scale di più piani
         else if (L.stairs && INT.onStairTop(L, p.x, p.y)) { const f = p.indoor.f; p.indoor.f = f ? 0 : 1; const q = f ? L.stairs.foot : L.stairs.landing; p.x = q[0]; p.y = q[1]; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); }
-      } else if (hitWall) {
-        // contro la facciata, sulla soglia di una porta: si entra
+      } else if (hitWall && !inp.noDoor) {
+        // contro la facciata, sulla soglia di una porta: si entra ([porte] col clic solo se si è cliccata la porta: inp.noDoor)
         const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
         for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const kT = (ty + oy) * GW + tx + ox, bi = DOOR_OF.get(kT); if (bi === undefined) continue;

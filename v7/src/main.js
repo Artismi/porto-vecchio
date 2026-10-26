@@ -406,7 +406,8 @@
     if (!c.path.length && !p.indoor && !p.lv) return stop();   // [pedonale] nessun percorso: ci si ferma (non si va dritti contro il muro)
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
     const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace };
+    // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door' };
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
