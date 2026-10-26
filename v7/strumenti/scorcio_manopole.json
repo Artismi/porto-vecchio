@@ -14,7 +14,7 @@
  "fascia": 0.2,
  "sfoca": 3.2,
  "grading": 1,
- "inchiostro": 1,
+ "inchiostro": 0,
  "piegaPenna": 0.35,
  "sogliaNormale": 0.3,
  "sogliaSagoma": 0.04,

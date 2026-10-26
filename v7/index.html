@@ -22359,7 +22359,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '660c58d2c6d94c77';</script>
-<script>window.PV_IMPRONTA_TASS = '60351734ef514665';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '082bdeb13d954e44';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -81513,7 +81513,7 @@ var Render = (function () {
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
@@ -81527,7 +81527,7 @@ var Render = (function () {
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
       rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
-      if (PRO.attivo) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
+      if (PRO.prof) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
       sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); return; }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H); occResize(W, H);   /* [amb3] */   /* [regia2] l'ombra degli angoli */
@@ -81567,7 +81567,7 @@ var Render = (function () {
   if (typeof window !== 'undefined') window.__SGU = SGU;
   // ================= [scorcio] LA PROPOSTA: gli stessi modelli che si leggono ricchi e fatti a mano, con la luce e i materiali =================
   // Niente contenuto nuovo: tutto nei materiali (pezzi di shader di three, una volta sola) e nel passo unico che c'era già.
-  // Si compila solo nel laboratorio (?scorcio=...) o con ?proposta; window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
+  // Si compila sempre ([look-ovunque], tranne con ?proposta=0); window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
   // di oggi, identico) e ogni manopola a zero spegne il suo pezzo, così si confronta un elemento alla volta.
   //   nei materiali: pittura (il muro più chiaro in alto e più scuro al piede, come una mano di colore), varia (ogni massa un filo diversa
   //   di valore e di tinta: rumore largo nel mondo, niente texture), grana (la micro-normale dipinta: la luce che trema sulla superficie,
@@ -81576,9 +81576,18 @@ var Render = (function () {
   //   nel passo unico (legge la profondità): spigoli (gli spigoli vivi che prendono la luce, come smussati), pieghe (le pieghe e gli
   //   angoli rientranti più scuri), ao (l'ombra di contatto al piede dei muri, sotto le cose), miniatura (il tilt-shift: una fascia a
   //   fuoco, il sopra e il sotto sfocati), grading (il viraggio dell'ora: i campi pro* dei quattro momenti).
-  const PRO = { attivo: typeof location !== 'undefined' && /[?&](scorcio=|proposta\b)/.test(location.search), pezzi: false,
+  // [look-ovunque] la proposta è il look di tutta la mappa (approvata dal committente): si compila sempre col look nuovo; ?proposta=0 la
+  // spegne (il look di prima, identico: niente pezzi di shader, niente profondità nel passo). Le chiome ricche e il verde che lascia passare
+  // la luce (SG_FOGLIA) restano del laboratorio (PRO.attivo: ?scorcio=... o ?proposta esplicito): gli alberi sono di un altro cantiere.
+  // La «base 4» scelta sullo scorcio: niente ombra di contatto, niente bordi da profondità o da curvatura (spigoli, pieghe, inchiostro a 0).
+  // Senza costi: fuori dal laboratorio il passo non legge la profondità (niente depthTexture, niente codice che la usa, mediump come prima);
+  // sul telefono (PHONE) restano fuori anche la micro-normale dipinta (grana: due rumori e le derivate a ogni pixel) e la miniatura (8 letture).
+  const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
+  const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
+    prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
-  SGU.pro = { on: /[?&]proposta\b/.test(typeof location !== 'undefined' ? location.search : ''),
+  PRO.prof = PRO.look && PRO.attivo;
+  SGU.pro = { on: !PRO_NO,
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
     miniatura: .55, fuoco: .48, fascia: .2, sfoca: 3.2,                     // il tilt-shift: forza, centro della fascia a fuoco (0 sotto, 1 sopra), mezza altezza, raggio (pixel a 540 righe)
@@ -81587,10 +81596,11 @@ var Render = (function () {
     // molto più leggere: mai dalla curvatura, il terreno non ha né salti né pieghe oltre la soglia) e la luce a celle; spinto verso la
     // strada (hip hop): accenti pieni e saturi, neri profondi nelle ombre di sera e di notte, polvere al piede dei muri, il suolo meno
     // bianco e vissuto, il verde acido spento. Il pastello resta una manopola (spento: troppo da libro per bambini)
-    inchiostro: 1, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
+    inchiostro: 0, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
     celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1,
     vivo: .7,
     chiomeRicche: 1, vento: 1, finestre: 1 };   // le chiome ricche (più lobi, sotto-masse, carte, ogni albero suo, ombra interna, toni a celle, vento); le finestre accese che sembrano finestre (non pannelli gialli)   // la tavolozza di fondo viva: i grigi caldi o freddi (mai fango), i marroni verso cotto e ocra, i verdi in luce verso il giallo-verde, più colore nei medi   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
+  if (PHONE) { SGU.pro.grana = 0; SGU.pro.miniatura = 0; }   // [look-ovunque] sul telefono: fuori dai programmi (vedi sopra)
   Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05, proSuolo: 1.55 });   // [scorcio] proSuolo: il suolo (il lastricato in piano, alla quota della camera) prende più cielo: di sera la piazza si legge
@@ -81673,7 +81683,7 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
 #endif`;
     // la micro-normale dipinta (e l'acqua che si muove): la pendenza di un rumore, letta con le derivate dello schermo
     C.normal_fragment_maps += `
-#if defined( STANDARD ) && !defined( USE_SKINNING )
+#if defined( STANDARD ) && !defined( USE_SKINNING ) && ( defined( SG_ACQUA ) || ${PHONE ? 0 : 1} )
 { float sgK = sgP1.y;
 #ifdef SG_ACQUA
   sgK = sgP2.y;
@@ -81743,7 +81753,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif`;
   }
   // l'acqua: i materiali d'acqua dei pezzi (la fontana, le vasche) prendono il loro ramo
-  function sguProAcqua() { if (!PRO.attivo) return 0; let n = 0; const visti = new Set();
+  function sguProAcqua() { if (!PRO.look) return 0; let n = 0; const visti = new Set();
     scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (visti.has(m) || !m.isMeshStandardMaterial || !/^acqua/.test(m.name || '')) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_ACQUA: '' }); m.needsUpdate = true; n++; }); });
     // i vetri delle case nel secchio comune (peso_vetro.js: l'attributo vt1): le finestre accese della proposta
     scene.traverse(o => { const m = o.material; if (!o.isMesh || !m || Array.isArray(m) || !m.isMeshStandardMaterial || !o.geometry || !o.geometry.attributes.vt1 || (m.defines && 'SG_VETRO' in m.defines)) return; m.defines = Object.assign(m.defines || {}, { SG_VETRO: '' }); m.needsUpdate = true; n++; });
@@ -81752,10 +81762,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     return n; }
   // a ogni fotogramma: le manopole nei materiali (spente se la proposta è spenta)
   function sguProTick(S) {
-    const P = SGU.pro, k = PRO.attivo && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
+    const P = SGU.pro, k = PRO.look && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
-    { const ric = !!(k && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
+    { const ric = !!(k && PRO.attivo && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
     PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
@@ -81777,7 +81787,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
   }
   // la curva filmica nei materiali e la luce di bordo (una volta sola: i pezzi di shader sono di three, valgono solo col tone mapping acceso)
   function sguPezzi() {
-    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.attivo) sguProPezzi(C);   // [scorcio]
+    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.look) sguProPezzi(C);   // [scorcio]
     C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
       `vec3 CustomToneMapping( vec3 color ) {   // [sguardo] la curva: un piede appena più profondo (neri puliti), i medi dritti, la spalla dei chiari che piega senza bruciare
         vec3 x = max(color * toneMappingExposure, 0.); x = x * (x + .011) / (x + .022);
@@ -81800,11 +81810,14 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) } },   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.attivo ? '#define SG_PRO\nprecision highp float;' : 'precision mediump float;') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
-        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform vec4 pT; uniform float pa; uniform vec4 pI; uniform vec4 pV; uniform vec2 fv;
+        uniform vec4 pT; uniform vec4 pI; uniform vec4 pV;
+#endif
+#ifdef SG_PROD
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform float pa; uniform vec2 fv;
         // [scorcio] l'inverso della profondità: su un piano va come una retta sullo schermo, così la sua «curvatura» è zero sul piano,
         // positiva sullo spigolo vivo (sporge verso la camera), negativa nell'angolo rientrante. Diviso per l'angolo di r pixel: ~1 su uno
         // spigolo a 90°, qualunque sia la distanza. Le coppie che saltano troppo (la sagoma di una cosa davanti a un'altra) non contano
@@ -81816,7 +81829,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif
         void main(){
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
-#ifdef SG_PRO
+#if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
             float coc = pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y));
             if (coc > .01) { vec2 rr = e * pT.w * coc; vec3 acc = c;
@@ -81827,6 +81840,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
 #ifdef SG_PRO
           float sgInk = 0.;
+#ifdef SG_PROD
           if (pI.x > 0.) {   // la linea d'inchiostro, un pixel: sul pixel davanti a un salto di profondità (la sagoma); più leggera fra due facce che girano oltre la soglia
             vec2 ex = vec2(e.x * pV.z, 0.), ey = vec2(0., e.y * pV.z);   // lo spessore: i vicini più lontani, la linea più larga
             vec3 c0 = sgV(vUv), r0 = sgV(vUv + ex), l0 = sgV(vUv - ex), u0 = sgV(vUv + ey), d0 = sgV(vUv - ey), ru = sgV(vUv + ex + ey), rd = sgV(vUv + ex - ey), lu = sgV(vUv - ex + ey);
@@ -81848,6 +81862,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
             c *= (1. - .3 * cr) * (1. - .4 * oc);                                    // le pieghe e l'ombra di contatto
             c += hl * (c * .5 + .03) * vec3(1.04, 1., .9);                           // lo spigolo che prende la luce (caldo)
           }
+#endif
           if (pV.x > 0.) {   // il verde acido (i prati chiari e saturi) verso la salvia: le chiome scure non si toccano
             float gx = c.g - max(c.r, c.b), ac = smoothstep(.06, .2, gx) * smoothstep(.3, .55, c.g) * pV.x;
             c = mix(c, vec3(.55 * c.g + .3 * c.r, .8 * c.g + .05, .42 * c.g + .35 * c.b), ac); }
@@ -81916,7 +81931,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
-    if (PRO.attivo) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
+    if (PRO.look) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -81933,9 +81948,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido); U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
-    if (PRO.attivo) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
+    if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
-      U.tD.value = rt.depthTexture; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
+      U.tD.value = rt.depthTexture || null; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
       U.pK.value.set(k * P.spigoli, k * P.pieghe, k * P.ao, Math.max(1, P.aoRaggio * h / 1080));
       U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), k * (P.vivo || 0)); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
       if (g > 0 && K.proOmbra) { U.sh.value.set(K.ombra[0] * (1 + (K.proOmbra[0] - 1) * g), K.ombra[1] * (1 + (K.proOmbra[1] - 1) * g), K.ombra[2] * (1 + (K.proOmbra[2] - 1) * g));
@@ -85010,7 +85025,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       giro(); setInterval(giro, 4000); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
-    if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
+    if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
