@@ -2313,34 +2313,39 @@ var Game = (function () {
   }
   const LBLOCK = new Set();
   // [writer] LA FERROVIA DELLA MINIERA. Dalla Stazione di estrazione Nord corre lungo la costa nord: nel bosco, a monte della
-  // Costiera Nord, tra il monte e il mare; dove la città arriva fino alla riva scavalca la strada e passa sul mare, su un viadotto
-  // a dieci metri dagli scogli; oltre il Muro scende lungo il primo pontile e finisce sulla banchina del porto militare della Base.
-  // L.rail = { pts: [[x, y, h, mare]] ogni metro, len }: h è il piano del ferro (rilevato sul bosco, viadotto sul mare).
+  // Costiera Nord, tra il monte e il mare; nella città nuova entra sul rilevato fra le baracche e la città (MAP.world.railCity) fino al
+  // tronchino; nell'isola di prima scavalcava la strada e passava sul mare fino alla banchina del porto militare della Base.
+  // L.rail = { pts: [[x, y, h, mare, campagna]] ogni metro, len }: h è il piano del ferro; campagna: 1 sulla massicciata, 2 sul ponte (la
+  // quota e i ponti li ha decisi il mondo: world_cittanuova.js railCampagna), 0 altrove (la quota la dà railProfile, come in writing.js).
   // Le caselle sotto il binario diventano massicciata (GRAVEL): niente alberi né sassi in mezzo ai binari.
+  // [campagna] Con la città nuova la traccia della campagna viene dai dati del mondo (la miniera, la costiera per ascissa curvilinea, le
+  // curve di raggio minimo, gli edifici lontani): niente più punti fissi della mappa di prima (che dopo la compressione stavano in mare).
   function railLine(L, T0) {
     const nord = MAP.roads.find(r => r.id === 'nord'); if (!nord) return;
-    const RP = nord.pts.filter(q => q[0] > 520 && q[0] < 1495);
+    const RCm = MAP.world && MAP.world.railCampagna, RCity = MAP.world && MAP.world.railCity, nuova = !!(RCm && RCity);
     const tile0 = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? T.WATER : T0[ty * GW + tx]; };
-    const roadAt = x => { let k = 0, bd = 1e9; RP.forEach((q, i) => { const d = Math.abs(q[0] - x); if (d < bd) { bd = d; k = i; } }); const a = RP[Math.max(0, k - 2)], b = RP[Math.min(RP.length - 1, k + 2)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; let nx = -ty, ny = tx; if (ny < 0) { nx = -nx; ny = -ny; } return { x: RP[k][0], y: RP[k][1], nx, ny }; };
-    const coastY = (x, y0) => { for (let y = y0; y > y0 - 60; y -= 1) if (tile0(x, y) === T.WATER) return y; return y0 - 14; };
-    const cp = [[542, 279], [556, 279]];
-    for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); if (r) cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
-    // [città2] con la città nuova la ferrovia corre a terra sulla costa nord, sul rilevato fra le baracche e la città (MAP.railCity)
-    if (MAP.world.railCity) { const RC = MAP.world.railCity; while (cp.length > 2 && cp[cp.length - 1][0] > RC[0][0] - 8) cp.pop(); RC.forEach((q, k) => { if (k % 2 === 0 || k === RC.length - 1) cp.push(q.slice()); }); }
-    else for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); }   // sul mare, davanti alla città
-    if (!MAP.world.railCity) cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]);   // [città2] con la città nuova finisce sul tronchino contro il Muro   // oltre il Muro, giù lungo il pontile, sulla banchina
-    // arrotondata (Chaikin) e campionata ogni metro
+    let cp;
+    if (nuova) { cp = RCm.cp.map(q => q.slice()); RCity.forEach((q, k) => { if (k % 2 === 0 || k === RCity.length - 1) cp.push(q.slice()); }); }
+    else {   // l'isola di prima (world.js): i suoi punti
+      const RP = nord.pts.filter(q => q[0] > 520 && q[0] < 1495);
+      const roadAt = x => { let k = 0, bd = 1e9; RP.forEach((q, i) => { const d = Math.abs(q[0] - x); if (d < bd) { bd = d; k = i; } }); const a = RP[Math.max(0, k - 2)], b = RP[Math.min(RP.length - 1, k + 2)]; let tx = b[0] - a[0], ty = b[1] - a[1]; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; let nx = -ty, ny = tx; if (ny < 0) { nx = -nx; ny = -ny; } return { x: RP[k][0], y: RP[k][1], nx, ny }; };
+      const coastY = (x, y0) => { for (let y = y0; y > y0 - 60; y -= 1) if (tile0(x, y) === T.WATER) return y; return y0 - 14; };
+      cp = [[542, 279], [556, 279]];
+      for (let x = 572; x <= 1070; x += 14) { const r = roadAt(x); if (r) cp.push([r.x + r.nx * 15, r.y + r.ny * 15]); }   // nel bosco, a monte della strada
+      if (RCity) { while (cp.length > 2 && cp[cp.length - 1][0] > RCity[0][0] - 8) cp.pop(); RCity.forEach((q, k) => { if (k % 2 === 0 || k === RCity.length - 1) cp.push(q.slice()); }); }
+      else { for (let x = 1112; x <= 1500; x += 14) { const r = roadAt(x); cp.push([x, coastY(x, r.y) - 10]); } cp.push([1514, 250], [1524, 262], [1527, 280], [1530, 296], [1538, 306], [1552, 310], [1568, 310], [1578, 310]); }   // sul mare, davanti alla città; oltre il Muro, giù lungo il pontile, sulla banchina
+    }
+    // arrotondata (Chaikin) e campionata ogni metro (world_cittanuova.js fa gli stessi conti per la sua parte)
     let P = cp; for (let it = 0; it < 4; it++) { const Q = [P[0]]; for (let k = 0; k < P.length - 1; k++) { const a = P[k], b = P[k + 1]; Q.push([.75 * a[0] + .25 * b[0], .75 * a[1] + .25 * b[1]], [.25 * a[0] + .75 * b[0], .25 * a[1] + .75 * b[1]]); } Q.push(P[P.length - 1]); P = Q; }
     const pts = [[P[0][0], P[0][1]]]; let acc = 0;
     for (let k = 1; k < P.length; k++) { const a = P[k - 1], b = P[k], l = Math.hypot(b[0] - a[0], b[1] - a[1]); let t = 1 - acc; while (t <= l) { pts.push([a[0] + (b[0] - a[0]) * t / l, a[1] + (b[1] - a[1]) * t / l]); t += 1; } acc = l - (t - 1); }
-    // la quota: sul bosco il terreno più alto lì attorno (il binario sta su un rilevato), sul mare il viadotto; pendenza al massimo 2,5%
-    const eAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? 0 : elev[ty * GW + tx]; };
-    const sea = pts.map(([x, y]) => tile0(x, y) === T.WATER || tile0(x, y) === T.PIER);
-    const ter = pts.map(([x, y], i) => { if (sea[i]) return 2.6; let m = -9; for (const [a, b] of [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]]) { const t = tile0(x + a, y + b); if (t !== T.WATER) m = Math.max(m, eAt(x + a, y + b)); } return Math.max(m, .4) + .35; });
-    const h = ter.slice(), G2 = .025;
-    for (let it = 0; it < 3; it++) { for (let i = 1; i < h.length; i++) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = h.length - 2; i >= 0; i--) h[i] = Math.max(h[i], h[i + 1] - G2); }
-    for (let it = 0; it < 6; it++) { const o = h.slice(); for (let i = 2; i < h.length - 2; i++) h[i] = Math.max(ter[i], (o[i - 2] + o[i - 1] + o[i] + o[i + 1] + o[i + 2]) / 5); }
-    L.rail = { pts: pts.map((q, i) => [q[0], q[1], h[i], sea[i] ? 1 : 0]), len: pts.length - 1, conflicts: 0 };
+    // la quota: quella del mondo in campagna (piano di posa e ponti), altrove railProfile (la stessa funzione che usa writing.js per disegnare)
+    const nC = nuova ? Math.min(RCm.n, pts.length) : 0;
+    const sea = pts.map(([x, y], i) => i >= nC && (tile0(x, y) === T.WATER || tile0(x, y) === T.PIER));
+    const PR = pts.map((q, i) => [q[0], q[1], i < nC ? RCm.h[i] : 0, sea[i] ? 1 : 0, i < nC ? RCm.code[i] : 0]);
+    railProfile(PR, groundV, { xMerge: MAP.world && MAP.world.cityW0 });
+    const xCity = (MAP.world && MAP.world.cityW0) || 1e9; let sCity = PR.length - 1; for (let i = 0; i < PR.length; i++) if (PR[i][0] >= xCity - 8) { sCity = i; break; }
+    L.rail = { pts: PR, len: pts.length - 1, conflicts: 0, nC, sCity };
     // la massicciata: le caselle del binario (2,5 m per parte) diventano ghiaia; strade, banchine e acqua restano come sono
     const SOFT = [T.TREE, T.SHRUB, T.GRASS, T.ROCK, T.DIRT, T.FIELD, T.SAND, T.CLIFF, T.DESERT];
     const done = new Set();
@@ -2349,20 +2354,56 @@ var Game = (function () {
       if (SOFT.includes(v)) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } } });
     // [ferrovia] gli scali: binari secondari a 4,6 m dalla linea (il deposito della miniera, lo scalo del bosco), coi deviatoi
     // di 18 m alle due punte; la massicciata si allarga e il bosco si taglia; dal lato dove non ci sono case, strade o acqua
-    const yards = [], landN = sea.indexOf(true) < 0 ? pts.length : sea.indexOf(true), YL = 110, OFF = 4.6;
-    const rmp = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YL - u) / 18))); };
+    const yards = [], landN = Math.min(sea.indexOf(true) < 0 ? pts.length : sea.indexOf(true), nuova ? nC : 1e9), YL = 110, OFF = 4.6;
     // una fascia libera per il binario secondario lungo YL da s0 dal lato side (le caselle da sgombrare, o null)
     const fit = (s0, YLk, side) => { const cells = []; const r2 = u => { const sm = t => t * t * (3 - 2 * t); return sm(Math.min(1, Math.max(0, u / 18))) * sm(Math.min(1, Math.max(0, (YLk - u) / 18))); };
-      for (let u = 0; u <= YLk; u += 1) { const q = pts[s0 + u], a = pts[Math.max(0, s0 + u - 2)], b = pts[Math.min(pts.length - 1, s0 + u + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), nx = -Math.sin(an) * side, ny = Math.cos(an) * side;
+      for (let u = 0; u <= YLk; u += 1) { if (s0 + u >= pts.length || PR[s0 + u][4] === 2) return null; const q = pts[s0 + u], a = pts[Math.max(0, s0 + u - 2)], b = pts[Math.min(pts.length - 1, s0 + u + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), nx = -Math.sin(an) * side, ny = Math.cos(an) * side;
         for (let o = Math.max(2.5, OFF * r2(u) - 1.6); o <= OFF * r2(u) + 1.6; o += .8) { const tx = Math.floor((q[0] + nx * o) / TS), ty = Math.floor((q[1] + ny * o) / TS); if (tx < 1 || ty < 1 || tx >= GW - 1 || ty >= GH - 1) return null; const k = ty * GW + tx, v = T0[k]; if (bIndex[k] >= 0 || v === T.BLD || v === T.WATER || v === T.VIA || v === T.PIER || v === T.QUAY || v === T.STAIRS) return null; cells.push(k); } }
       return cells; };
-    const take = (name, s0, YLk, side, cells) => { cells.forEach(k => { if (SOFT.includes(T0[k])) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } }); yards.push({ name, s0, len: YLk, side, off: OFF }); };
-    // il deposito accanto alla miniera; lo scalo del bosco nel tratto libero più lungo (le case del paese stanno a ridosso della linea)
-    for (const side of [1, -1]) { const c = s0ok(118) && fit(118, YL, side); if (c) { take('deposito della miniera', 118, YL, side, c); break; } }
+    const take = (name, s0, YLk, side, cells) => { (cells || []).forEach(k => { if (SOFT.includes(T0[k])) { T0[k] = T.GRAVEL; grid[k] = T.GRAVEL; } }); yards.push({ name, s0, len: YLk, side, off: OFF }); };
+    if (nuova && RCm.yards) RCm.yards.forEach(Y => take(Y.name, Y.s0, Y.len, Y.side, fit(Y.s0, Y.len, Y.side)));   // il deposito della miniera: lo prepara il piazzale
+    else { for (const side of [1, -1]) { const c = s0ok(118) && fit(118, YL, side); if (c) { take('deposito della miniera', 118, YL, side, c); break; } } }
     function s0ok(s0) { return s0 + YL < landN - 60; }
-    let bestY = null; for (let s0 = 235; s0 + 64 < Math.min(landN - 60, 470); s0 += 3) for (const side of [1, -1]) for (let YLk = 100; YLk >= 64; YLk -= 6) { if (s0 + YLk > Math.min(landN - 60, 470) || yards.some(y => s0 < y.s0 + y.len + 20 && s0 + YLk > y.s0 - 20)) continue; if (bestY && YLk <= bestY.YLk) break; const c = fit(s0, YLk, side); if (c) { bestY = { s0, YLk, side, c }; break; } }
-    if (bestY) take('scalo del bosco', bestY.s0, bestY.YLk, bestY.side, bestY.c);
+    // lo scalo del bosco nel tratto libero più lungo (le case del paese stanno a ridosso della linea; mai sul ponte)
+    const sA = yards.length ? yards[yards.length - 1].s0 + yards[yards.length - 1].len + 30 : 235, sB = nuova ? landN - 40 : Math.min(landN - 60, 470);
+    let bestY = null; for (let s0 = sA; s0 + 64 < sB; s0 += 3) for (const side of [1, -1]) for (let YLk = 100; YLk >= 64; YLk -= 6) { if (s0 + YLk > sB || yards.some(y => s0 < y.s0 + y.len + 20 && s0 + YLk > y.s0 - 20)) continue; if (bestY && YLk <= bestY.YLk) break; const c = fit(s0, YLk, side); if (c) { bestY = { s0, YLk, side, c }; break; } }
+    if (bestY && !nuova) take('scalo del bosco', bestY.s0, bestY.YLk, bestY.side, bestY.c);   // [campagna] la linea della città nuova è corta: fra i due ponti sta la stazione abbandonata, non un secondo scalo
     L.rail.yards = yards;
+  }
+  // la quota del terreno per la ferrovia: fra i quattro vertici della casella (MAP.vh, come render.js groundH), o la casella se non ci sono
+  function groundV(x, z) {
+    const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= GW || fz >= GH) return -2;
+    if (!MAP.vh) return elev[Math.floor(fz) * GW + Math.floor(fx)];
+    const VW = MAP.VW, VH = (i, j) => MAP.vh[Math.max(0, Math.min(GH, j)) * VW + Math.max(0, Math.min(GW, i))], i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
+    return VH(i, j) * (1 - u) * (1 - v) + VH(i + 1, j) * u * (1 - v) + VH(i, j + 1) * (1 - u) * v + VH(i + 1, j + 1) * u * v;
+  }
+  // [campagna] LA QUOTA DEL FERRO, una funzione sola per game.js (la logica) e writing.js railFit (il disegno): sulla terra una massicciata
+  // bassa che segue il terreno (pendenza al massimo 3 %), sul ponte in terra a 4,6 m sopra la valle, sul mare il viadotto, sopra le strade il
+  // ferro a 5,4 m dalla carreggiata (3,6 sui sentieri); dove il mondo ha già deciso (P[i][4]: 1 massicciata, 2 ponte) la quota resta la sua.
+  // P: [[x, y, h, mare, campagna]] ogni metro (scrive h); gH: la quota del terreno; o: { bridge: [s0, s1], cross: [{ x, y, s, hw, foot, pl }] }.
+  // Torna { el: 1 dove il binario sta su piloni, g: il terreno sotto }.
+  function railProfile(P, gH, o) {
+    o = o || {}; const n = P.length, fix = i => P[i][4] > 0, g = P.map(q => q[3] ? -3 : gH(q[0], q[1]));
+    const side = (i, d) => { const a = P[Math.max(0, i - 2)], b = P[Math.min(n - 1, i + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]); return [gH(P[i][0] - Math.sin(an) * d, P[i][1] + Math.cos(an) * d), gH(P[i][0] + Math.sin(an) * d, P[i][1] - Math.cos(an) * d)]; };
+    // il terreno sotto la massicciata: il centro e i due bordi (la media: in costa la massicciata taglia un poco il pendio)
+    const ter = P.map((q, i) => { if (fix(i)) return q[2]; if (q[3]) return 2.6; const [l, r] = side(i, 1.8); return Math.max(g[i], (g[i] * 2 + l + r) / 4) + .42; });
+    const t = ter.slice();
+    if (o.bridge) { const [b0, b1] = o.bridge; if (b1 > b0 && b1 < n) { const top = Math.max(g[b0], g[b1]) + 1.2; for (let i = b0; i <= b1; i++) if (!fix(i)) t[i] = Math.max(t[i], top, g[i] + 4.6); } }
+    (o.cross || []).forEach(c => { if (c.pl) return; const rh = gH(c.x, c.y) + (c.foot ? 3.6 : 5.4); for (let i = Math.max(0, Math.floor(c.s - c.hw - 2)); i <= Math.min(n - 1, Math.ceil(c.s + c.hw + 2)); i++) if (!fix(i)) t[i] = Math.max(t[i], rh); });
+    const h = t.slice(), G2 = .03;
+    for (let it = 0; it < 3; it++) { for (let i = 1; i < n; i++) if (!fix(i)) h[i] = Math.max(h[i], h[i - 1] - G2); for (let i = n - 2; i >= 0; i--) if (!fix(i)) h[i] = Math.max(h[i], h[i + 1] - G2); }
+    for (let it = 0; it < 4; it++) { const q = h.slice(); for (let i = 2; i < n - 2; i++) if (!fix(i)) h[i] = Math.max(t[i], (q[i - 2] + q[i - 1] + q[i] + q[i + 1] + q[i + 2]) / 5); }
+    const b0 = o.bridge ? o.bridge[0] : -1e9, b1 = o.bridge ? o.bridge[1] : -1e9, inX = i => (o.cross || []).some(c => !c.pl && Math.abs(i - c.s) < c.hw + 1);
+    const el = P.map((q, i) => fix(i) ? (q[4] === 2 ? 1 : 0) : !q[3] && ((i >= b0 - 3 && i <= b1 + 3 && h[i] - g[i] > 1.5) || h[i] - g[i] > 3.4 || inX(i)) ? 1 : 0);   // i piloni sul ponte, sopra le strade e dove il rilevato sarebbe una montagna (oltre 3,4 m: viadotto); altrove la massicciata
+    for (let it = 0; it < 2; it++) for (let i = 1; i < n - 1; i++) if (!fix(i) && !el[i] && el[i - 1] && el[i + 1]) el[i] = 1;   // niente buchi di un metro fra due tratti su piloni
+    // [campagna] dove la linea entra in città (prima di o.xMerge): niente piloni e rilevato a spezzoni di 10-20 m; due viadotti a meno di
+    // 40 m diventano uno solo, un viadotto più corto di 24 m torna rilevato (il ponte vero lo ha deciso il mondo)
+    if (o.xMerge) { let iX = n; for (let i = 0; i < n; i++) if (P[i][0] >= o.xMerge) { iX = i; break; }
+      const runs = v => { const R = []; let a = -1; for (let i = 0; i <= iX; i++) { const on = i < iX && !fix(i) && el[i] === v; if (on && a < 0) a = i; if (!on && a >= 0) { R.push([a, i - 1]); a = -1; } } return R; };
+      runs(0).forEach(([a, b]) => { if (a > 0 && el[a - 1] && b + 1 < n && el[b + 1] && b - a + 1 < 40) for (let i = a; i <= b; i++) el[i] = 1; });
+      runs(1).forEach(([a, b]) => { if (b - a + 1 < 24 && !(b + 1 < n && el[b + 1] && b + 1 >= iX)) for (let i = a; i <= b; i++) el[i] = 0; }); }
+    P.forEach((q, i) => { q[2] = h[i]; });
+    return { el, g };
   }
   function applyLayout() { layout().block.forEach(([tx, ty]) => { setT(tx, ty, T.BLD); LBLOCK.add(ty * GW + tx); }); }
   function baseTile(tx, ty) { const i = ty * GW + tx; return LBLOCK.has(i) ? MAP0.grid[i] : tileAt(tx, ty); }
@@ -2578,6 +2619,7 @@ var Game = (function () {
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
+    railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno
     HOOKS, NOISE, MIN_PER_SEC, layout, baseTile, HZ, hazardAt, hurtHazard, setTile: setT, makeVehicle, explode, damageVehicle, blastMap, goTo, stepAlong, say, addLog, feed, emit, addMemory, placeFor, nearestPlace, wanderSpot, makeNpc, walkM, los, panicAround, exitVehicle, giveWeapon, CAST,
   };
 })();

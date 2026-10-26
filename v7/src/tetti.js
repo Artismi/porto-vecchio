@@ -803,7 +803,7 @@ var Tetti = (function () {
           if (suolo(x, y)) { if (!seen[j]) { seen[j] = 1; Q.push([x, y]); } continue; }
           bordo++; const o = BI[j]; if (o >= 0 && B[o] && ZONE4[B[o].era]) { case4++; ere[B[o].era] = (ere[B[o].era] || 0) + 1; } else if (strada(x, y)) strade++; } }
       if (DBG4) DBG4.push(["corte", cel.length, Math.round(100 * case4 / bordo), Q.length >= 400]);
-      if (Q.length >= 400 || cel.length < 3 || cel.length > 160 || case4 < bordo * .25 || strade > bordo * .5) continue;   // chiuso almeno per un quarto da case dei quartieri vecchi, e non un marciapiede (metà del bordo strada)
+      if (Q.length >= 400 || cel.length < 3 || cel.length > 160 || !case4 || case4 < bordo * .25 || strade > bordo * .5) continue;   // chiuso almeno per un quarto da case dei quartieri vecchi, e non un marciapiede (metà del bordo strada)
       const xs = cel.map(c => c[0]), ys = cel.map(c => c[1]), wX = Math.max(...xs) - Math.min(...xs) + 1, wY = Math.max(...ys) - Math.min(...ys) + 1;
       if (PZ.length && cel.some(([tx, ty]) => inPz(tx * TS + 1, ty * TS + 1, 0))) continue;   // ci sta già un pezzo (lavatoio, pozzo, arco): non è vuoto
       const era = Object.entries(ere).sort((a, c) => c[1] - a[1])[0][0], h = ((tx0 * 73856093) ^ (ty0 * 19349663)) >>> 0;
