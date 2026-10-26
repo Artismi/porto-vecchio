@@ -33,6 +33,7 @@ async function cuoci(GREZZI, imp) {
   try {
     const pg = await b.newPage({ viewport: { width: 640, height: 400 } });
     pg.on('pageerror', e => log('[errore della pagina]', e.message));
+    pg.on('crash', () => { log('la pagina è crollata (memoria?): cottura fallita'); process.exit(2); });   // [tasselli3] se no si resta appesi per sempre
     // i disegni a vuoto (SwiftShader: la città si costruisce, non serve vederla) e il caso col seme fisso (come src/seme.js)
     await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true;
       const P = WebGL2RenderingContext.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } });

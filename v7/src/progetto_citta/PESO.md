@@ -626,3 +626,17 @@ usa se ne va, `dispose()` e i pixel buttati; tornano scaricati di nuovo. Restano
 tavolozza, gli aloni, l'acqua delle fontane). La prova: `node strumenti/misura_tasselli.js out.json --giri=10` (10 spostamenti lunghi fra
 i capi della città, poi di nuovo al punto di partenza: la memoria al ritorno contro quella di partenza).
 
+La misura (26/10, telefono, `node strumenti/banco_memoria.js --giro=lunghi`: 10 spostamenti lunghi mercato ⇄ rocca ⇄ marina ⇄ borgo,
+poi di nuovo alla partenza; heap JS + scheda video):
+
+| | partenza | 1° spostamento | dopo 10 e ritorno | picco |
+|---|---|---|---|---|
+| a tasselli (di serie) | 737 MB | 840 MB | 932 MB | 999 MB |
+| `?tasselli=0` (la città nel browser) | 976 MB | 1104 MB | 1325 MB | 1325 MB |
+
+I tasselli tornano esattamente come alla partenza (9 in scena, 742 mesh, 4,74 M vertici, 210 tessiture, 277 materiali; 1453 tessiture e
+1885 materiali liberati per strada) e nessuna mesh di un tassello smontato resta viva (sonda con WeakRef: 2556 tolte, 0 vive). Fra un
+giro e l'altro la memoria sta ferma (alla rocca 754 → 824 → 905 → 818 MB): niente che cresce a ogni spostamento. Il resto della salita
+dalla partenza è del gioco, che costruisce per strada e tiene (persone e mezzi, pavimenti, terreno a blocchi, pezzi delle case fuori
+fusione: ~150 MB, anche senza tasselli, dove è di più). `strumenti/tassella.js` ora si ferma se la pagina crolla (prima restava appeso).
+
