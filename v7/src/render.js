@@ -1953,6 +1953,7 @@ var Render = (function () {
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), f = F ? F[ii] : 0, r = rng((tx * 50411 + ty * 81239) >>> 0);
+      { const RM = railMask(); if (RM && RM[ii]) continue; }   // [campagna] la massicciata della ferrovia resta pulita: niente rocce sui binari
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
       if (v === T.TREE && VEGN(ii)) continue;   // [vegetazione]
@@ -7504,6 +7505,15 @@ var Render = (function () {
   }
   // [ferrovia] il suolo della linea: terra battuta e pietrisco sparso lungo il tracciato liscio (le caselle di ghiaia servono
   // solo alle collisioni: a terra niente scalini), sfumato verso l'erba; negli scali la fascia si allarga sotto i binari secondari
+  // [campagna] le caselle a meno di 4 m dal binario (e dai binari degli scali): niente massi, ceppi, cespugli né ciuffi sulla massicciata
+  function railMask() {
+    if (railMask.v !== undefined) return railMask.v; const L = G.layout && G.layout(), RL = L && L.rail; if (!RL || !RL.pts) return (railMask.v = null);
+    const GW = G.GW, GH = G.GH, M8 = new Uint8Array(GW * GH), P = RL.pts, R = 4;
+    const mark = (x, y) => { for (let a = -R; a <= R; a += 1) for (let b = -R; b <= R; b += 1) { if (a * a + b * b > R * R) continue; const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH) M8[ty * GW + tx] = 1; } };
+    P.forEach(q => { if (!q[3]) mark(q[0], q[1]); });
+    (RL.yards || []).forEach(Y => { for (let u = 0; u <= Y.len; u++) { const i = Y.s0 + u, q = P[i]; if (!q) break; const a = P[Math.max(0, i - 2)], b = P[Math.min(P.length - 1, i + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), o = Y.side * Y.off; mark(q[0] - Math.sin(an) * o, q[1] + Math.cos(an) * o); } });
+    return (railMask.v = M8);
+  }
   function railGround(x, tx0, ty0, n, m) {
     const L = G.layout && G.layout(), RL = L && L.rail; if (!RL || !RL.pts) return;
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, pad = 12, P = RL.pts;
@@ -9268,7 +9278,8 @@ var Render = (function () {
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
-      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione] il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
+      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione]
+      { const RM = railMask(); if (RM && RM[ii] && v !== T.VIA) continue; }   // [campagna] niente erba alta né sassi sulla massicciata il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
       if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;

@@ -1387,8 +1387,37 @@ var World = (function () {
       R.forEach(rd => { if (rd.w > 3.5 || rd.id === 'nord' || rd.id === 'litoranea') return; const P = rd.pts, n = P.length, S = [0]; for (let k = 1; k < n; k++) S.push(S[k - 1] + dist(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]));
         ALL.forEach(o => { if (o === rd || o.w <= rd.w) return; for (let k = 1; k < n - 1; k++) { if (S[k] < 6 || S[n - 1] - S[k] < 6) continue; const q = proj(o.pts, P[k][0], P[k][1]), lim = (rd.w + o.w) / 2 * .8; if (q.d >= lim) continue; const want = (rd.w + o.w) / 2 + .8, ux = q.d > .05 ? (P[k][0] - q.x) / q.d : -(o.pts[q.k + 1][1] - o.pts[q.k][1]), uy = q.d > .05 ? (P[k][1] - q.y) / q.d : (o.pts[q.k + 1][0] - o.pts[q.k][0]), ul = Math.hypot(ux, uy) || 1; P[k] = [q.x + ux / ul * want, q.y + uy / ul * want]; } });
         for (let it = 0; it < 2; it++) for (let k = 2; k < n - 2; k++) P[k] = [(P[k - 1][0] + 2 * P[k][0] + P[k + 1][0]) / 4, (P[k - 1][1] + 2 * P[k][1] + P[k + 1][1]) / 4]; });
+      // (f) NIENTE STRADE A U. Dopo la compressione al 60 % i tornanti disegnati sono diventati ganci che tornano indietro (la Strada del
+      //    Valico scendeva 20 m e risaliva) e qualche capo passava oltre la strada su cui finisce per poi tornarci (il Borgo dei Carbonai
+      //    sulla Costiera Sud). 1) il capo che finisce su un'altra strada si taglia dove ci entra la prima volta (venendo da dentro);
+      //    2) un tratto che fa più strada del doppio della corda (un gancio) diventa la corda, poi si leviga
+      { const cum = P => { const S = [0]; for (let k = 1; k < P.length; k++) S.push(S[k - 1] + dist(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1])); return S; };
+        const lerpH = (H, a, b, m) => { const out = []; for (let q = 1; q <= m; q++) out.push(H[a] + (H[b] - H[a]) * q / (m + 1)); return out; };
+        R.forEach(rd => { if (rd.id === 'nord' || rd.id === 'litoranea' || rd.vialetto) return;
+          for (const e of [0, 1]) { let P = rd.pts.map(q => q.slice()), H = rd.prof ? rd.prof.slice() : null; if (e === 1) { P.reverse(); if (H) H.reverse(); }   // il capo e in testa
+            const S = cum(P), tot = S[S.length - 1]; let kc = 0, o = null;
+            ALL.forEach(q => { if (q === rd || q.w < rd.w * .8 || proj(q.pts, P[0][0], P[0][1]).d > q.w / 2 + .5) return;   // il capo sta su q: se la strada esce da q e ci rientra, si taglia al rientro
+              let out = false, k2 = 0; for (let k = 1; k < P.length - 2 && S[k] < Math.min(30, tot * .45); k++) { if (proj(q.pts, P[k][0], P[k][1]).d >= q.w / 2) out = true; else if (out) k2 = k; }
+              if (k2 > kc) { kc = k2; o = q; } });
+            if (o && kc > 0) { const q = proj(o.pts, P[kc][0], P[kc][1]); P = [[q.x, q.y]].concat(P.slice(kc + 1)); if (H) H = [H[kc]].concat(H.slice(kc + 1)); if (e === 1) { P.reverse(); if (H) H.reverse(); } setPts(rd, P, H); } } });
+        R.forEach(rd => { if (rd.id === 'nord' || rd.id === 'litoranea' || rd.vialetto || rd.w < 3) return;
+          for (let it = 0; it < 6; it++) { const P = rd.pts, n = P.length, S = cum(P); let best = null;
+            for (let i = 0; i < n - 2; i++) for (let j = i + 2; j < n && S[j] - S[i] < 110; j++) { const c = dist(P[i][0], P[i][1], P[j][0], P[j][1]), a = S[j] - S[i]; if (c < 6 || a < 1.8 * c || a - c < 10) continue; if (!best || a - c > best.g) best = { i, j, g: a - c, c }; }
+            if (!best) break; const { i, j } = best;
+            // se nel gancio finiscono altre strade (i sentieri che partivano dal fondo del tornante) la corda ci passa: un nodo, non un moncone
+            const att = []; ALL.forEach(o => { if (o === rd || !o.pts || o.pts.length < 2) return; [o.pts[0], o.pts[o.pts.length - 1]].forEach(E => { for (let k = i + 1; k < j; k++) if (dist(E[0], E[1], P[k][0], P[k][1]) < rd.w / 2 + 2.5) { att.push(k); break; } }); });
+            const via = att.length ? [i, att.sort((a, b) => a - b)[att.length >> 1], j] : [i, j], mid = [], midH = [];
+            for (let v = 0; v < via.length - 1; v++) { const a = via[v], b = via[v + 1], m = Math.max(1, Math.round(dist(P[a][0], P[a][1], P[b][0], P[b][1]) / 2.5) - 1);
+              for (let q = 1; q <= m; q++) mid.push([P[a][0] + (P[b][0] - P[a][0]) * q / (m + 1), P[a][1] + (P[b][1] - P[a][1]) * q / (m + 1)]); if (rd.prof) midH.push(...lerpH(rd.prof, a, b, m));
+              if (v < via.length - 2) { mid.push(P[b].slice()); if (rd.prof) midH.push(rd.prof[b]); } }
+            if (via.length === 3) { const a = P[i], b = P[via[1]], c2 = P[j], an = Math.abs(((Math.atan2(c2[1] - b[1], c2[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0])) + 3 * Math.PI) % (2 * Math.PI) - Math.PI); if (an > 2) break; }   // il nodo farebbe ancora un gancio: si lascia com'è
+            const NP = P.slice(0, i + 1).concat(mid, P.slice(j)), NH = rd.prof ? rd.prof.slice(0, i + 1).concat(midH, rd.prof.slice(j)) : null;
+            for (let it2 = 0; it2 < 3; it2++) for (let k = 2; k < NP.length - 2; k++) NP[k] = [(NP[k - 1][0] + 2 * NP[k][0] + NP[k + 1][0]) / 4, (NP[k - 1][1] + 2 * NP[k][1] + NP[k + 1][1]) / 4];
+            setPts(rd, NP, NH); rd.sbrogliata = true; } });
+        R.forEach(rd => { if (rd.id === 'nord' || rd.id === 'litoranea') return; capo(rd, 0, 9); capo(rd, 1, 9); }); }   // chi finiva sul tratto levigato ci torna
       const RD2 = id => roads.find(rd => rd.id === id);
-      if (RD2('villaggio') && RD2('carbonai_alto')) { capo(RD2('villaggio'), 1, 10, ['carbonai_alto']); capo(RD2('villaggio'), 0, 14, ['litoranea']); capo(RD2('carbonai_alto'), 1, 24, ['macchia', 'sent_sugheri', 'lago']); }
+      if (RD2('villaggio') && RD2('carbonai_alto')) { capo(RD2('villaggio'), 1, 10, ['carbonai_alto']); capo(RD2('villaggio'), 0, 14, ['litoranea']); { const ca = RD2('carbonai_alto'), E = ca.pts[ca.pts.length - 1]; if (dist(E[0], E[1], 719, 166) < 4) { ca.pts.push([712, 160], [705, 154], [702, 149]); if (ca.prof) ca.prof.push(...Array(3).fill(ca.prof[ca.prof.length - 1])); } }   // [campagna] lo sterrato gira a ponente del laghetto (prima ci passava in mezzo) fino al nodo dei sentieri
+        capo(RD2('carbonai_alto'), 1, 24, ['macchia', 'sent_sugheri', 'lago', 'cresta']); }
     }
     const paint = (rd) => {
       if (rd.rect) {
@@ -1539,7 +1568,7 @@ var World = (function () {
     // della città (CITY.rail) con la stessa tangente. CITY.railC: cp, i punti di controllo (game.js li liscia e li campiona al metro come
     // ha sempre fatto); P, la stessa linea al metro fino all'innesto; sm, dove sta la miniera. La quota del ferro e i ponti li fissa il
     // piano di posa (più sotto, coi vertici); i passaggi a livello stanno dove una strada incrocia la linea in piano.
-    const RMIN = 45;
+    const RMIN = 52;   // [campagna] 52 nei punti di controllo: dopo Chaikin e il campionamento al metro la curva più stretta resta sopra i 40 m
     if (CITY.rail) {
       const CO = roads.find(rd => rd.id === 'nord'), RC = CITY.rail, mineQ = NAMED.find(q => q[0] === 'miniera');
       if (CO && mineQ) {
@@ -1759,7 +1788,10 @@ var World = (function () {
         for (let ty = T2i(y + 4.5); ty <= T2i(C.y1 - 3.5); ty++) for (const tx of [T2i(C.x - 3), T2i(C.x + 3) - 1]) { const i = ty * GW + tx; if (roadW[i] > 0 || grid[i] === T.WATER) continue; grid[i] = T.BLD; reserved[i] = 1; } }
       // E3 il passaggio a livello dove la Via della Stazione scavalca i binari: sbarre alzate, il casello del guardiano verso il mare
       { const va = RDp('lung_nord') || RDp('via_alta'); let best = null, bd = 1e9;   /* [pianta] le sbarre dove il lungomare passa i binari */ if (va) va.pts.forEach(q => CITY.rail.forEach((r0, k) => { const d = dist(q[0], q[1], r0[0], r0[1]); if (d < bd) { bd = d; best = k; } }));
-        if (best !== null && bd < 6) { const R = CITY.rail, a = R[Math.max(0, best - 2)], b = R[Math.min(R.length - 1, best + 2)], l = dist(a[0], a[1], b[0], b[1]) || 1, ux = (b[0] - a[0]) / l, uy = (b[1] - a[1]) / l, w = 8;
+        // [campagna] con la Costiera fuori dal sedime il binario arriva dalla campagna sul viadotto e il Lungomare (a 1,8 m, fra il rilevato
+        // e la stazione che stanno a 4-5 m) gli passa sotto: un sottopasso, non le sbarre a due metri sopra la strada sotto un binario a sei
+        if (best !== null && bd < 6 && CITY.costieraSpostata) { const R = CITY.rail; if (CITY.railC) (CITY.railC.sotto = CITY.railC.sotto || []).push({ x: R[best][0], y: R[best][1], road: va.id }); }
+        else if (best !== null && bd < 6) { const R = CITY.rail, a = R[Math.max(0, best - 2)], b = R[Math.min(R.length - 1, best + 2)], l = dist(a[0], a[1], b[0], b[1]) || 1, ux = (b[0] - a[0]) / l, uy = (b[1] - a[1]) / l, w = 8;
           const p = pzAt('passaggio_livello', R[best][0], R[best][1], Math.atan2(-uy, ux), (w + 14) / 2, 0, { w, aperto: true, casello: true }, { nome: 'Passaggio a livello' });
           pzRis(p, 'B', (w + 14) / 2 + w / 2 + .7, (w + 14) / 2 + w / 2 + 5.5, -8.8, -4); pzRis(p, 'P', 6, 16, -12, 12); pzCells(p, -1, w + 16, -14, 14, i => { if (roadW[i] === 0) reserved[i] = 1; }); } }   /* [mappa_compatta] attorno alle sbarre niente baracche */
       // E2 la marina: i magazzini a volta in fila sulla calata, fra un vicolo e l'altro (8 m l'uno, 10 m di fondo, la volta verso il mare)
@@ -2334,7 +2366,7 @@ var World = (function () {
         const i = ty * GW + tx, v = grid[i]; if ((zone[i] !== Z.CITTA && zone[i] !== Z.CAMPAGNA) || (v !== T.COB && v !== T.GRASS && v !== T.SHRUB && v !== T.TREE && v !== T.DIRT && v !== T.ROCK) || roadW[i] > 0) continue;   // [mappa_compatta] le baracche arrivano alla discarica, fuori dalla città murata
         if (!CITY.railY || ty * TS > CITY.railY(tx * TS) - 6) continue;
         const w = 2 + Math.floor(r() * 2), h = 2 + Math.floor(r() * 2);
-        if (!free(tx, ty, w, h, 0) || (ty + h) * TS > CITY.railY(tx * TS) - 3) continue;
+        if (!free(tx, ty, w, h, 0) || (ty + h) * TS > Math.min(CITY.railY(tx * TS), CITY.railY((tx + w) * TS)) - 5) continue;   // [campagna] a 5 m dall'asse: fuori dal rilevato (prima a 3, col muro sulla massicciata)
         let okN = true, okW = true; for (let k = 0; k < w && okN; k++) { const a = (ty - 1) * GW + tx + k; if (bIndex[a] >= 0) okN = false; } for (let k = 0; k < h && okW; k++) { const a = (ty + k) * GW + tx - 1; if (bIndex[a] >= 0) okW = false; }
         if (!(okN || okW) || !flatOK(tx, ty, w, h, 1.8)) continue;
         stamp({ id: 'casa_' + (nH++), x: tx, y: ty, w, h, fl: r() < .72 ? 1 : 2, style: SHSTY[Math.floor(r() * SHSTY.length)], house: true, shack: true, era: 'E7' });
@@ -3453,7 +3485,11 @@ var World = (function () {
         const f = bosco(x, y).f; if (!(f & (MIO | BF.CANALE)) || (f & BF.POZZA) || ((f & BF.CANALE) && dist(x, y, ...CANALI[1].p0) < 44)) continue;   // nella spaccatura di ponente si arrampica
         const k = ty * VW + tx, a = vh[k], b = vh[k + 1], c = vh[k + VW], d = vh[k + VW + 1];
         if (Math.hypot(b + d - a - c, c + d - a - b) / (2 * TS) > .7) { grid[i] = T.CLIFF; feat[i] |= 4096; } } }
-    const lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !rd.pedonale).map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
+    let lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !rd.pedonale).map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
+    // [campagna] fuori città niente traffico sulle strade a fondo cieco (la Strada del Borgo dei Carbonai finisce sullo sterrato): le auto
+    // arrivate al capo facevano inversione sul posto e restavano lì di traverso. Una corsia resta se tutti e due i capi toccano un'altra corsia
+    for (let it = 0; it < 4; it++) { const tocca = (P, L) => lanes.some(o => o !== L && o.pts.some(q => dist(P[0], P[1], q[0], q[1]) <= Math.max(L.w, o.w) / 2 + 4));
+      const n0 = lanes.length; lanes = lanes.filter(L => L.pts.some(([x]) => x >= CITY_W0) || (tocca(L.pts[0], L) && tocca(L.pts[L.pts.length - 1], L))); if (lanes.length === n0) break; }
     // ponti sospesi (si camminano sopra, sotto si passa) e grotte naturali che attraversano la montagna (sottosuolo)
     const BRIDGES = [];   // [isola] la gola non c'è più
     BRIDGES.forEach(B => { const ta = [Math.floor(B.a[0] / TS), Math.floor(B.a[1] / TS)], tb = [Math.floor(B.b[0] / TS), Math.floor(B.b[1] / TS)]; B.h0 = elev[ta[1] * GW + ta[0]]; B.h1 = elev[tb[1] * GW + tb[0]]; });
@@ -3464,7 +3500,7 @@ var World = (function () {
       { id: 'eremo', name: 'Eremo del Romito', mouth: 'imbocco', exit: 'pozzo', path: [[162.5, 158.5], [165.5, 158.5], [168.5, 156.5], [171.5, 154], [174.5, 152.5]], rooms: [[166.5, 159, 2.6, 2.4, 'eremo']] },
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
-    return { pezzi: PEZZI, recinto: POSA.recinto || null, glacis: CITY.glacis || null, railCity: CITY.rail, railCampagna: CITY.railC ? { cp: CITY.railC.cp, P: CITY.railC.P, n: CITY.railC.n, h: CITY.railC.h || null, code: CITY.railC.code || null, pl: CITY.railC.pl.map(q => ({ road: q.road, i: q.i, x: q.x, y: q.y, ang: q.ang, la: q.la, pz: !!q.pz })), yards: CITY.railC.yards || [], ponti: CITY.railC.ponti || [], RMIN: CITY.railC.RMIN, pad: CITY.railC.pad ? (pd => ({ H: pd.H, ang: pd.ang, cumuli: pd.cumuli.map(([u, v, r]) => pd.W2(u, v).concat([r])), rete: [[pd.U1, pd.v0], [pd.U1, pd.v1]].concat(Array.from({ length: 12 }, (_, k) => [pd.U1 - (pd.U1 - pd.U0) * (k + 1) / 12, pd.v1]), [[pd.U0, pd.v0]]).map(([u, v]) => pd.W2(u, v)) }))(CITY.railC.pad) : null } : null, cityW0: CITY_W0, stazSud: CITY.staz2 ? { H: CITY.staz2.H, ang: CITY.staz2.ang, cumuli: CITY.staz2.cumuli.map(([u, v, r]) => CITY.staz2.W2(u, v).concat([r])), rete: [[CITY.staz2.L, CITY.staz2.v0], [CITY.staz2.L, CITY.staz2.v1], [0, CITY.staz2.v1], [0, CITY.staz2.v0]].map(([u, v]) => CITY.staz2.W2(u, v)) } : null, sets: CITY.sets, nodi: CITY.nodi, eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
+    return { pezzi: PEZZI, recinto: POSA.recinto || null, glacis: CITY.glacis || null, railCity: CITY.rail, railCampagna: CITY.railC ? { cp: CITY.railC.cp, P: CITY.railC.P, n: CITY.railC.n, h: CITY.railC.h || null, code: CITY.railC.code || null, pl: CITY.railC.pl.map(q => ({ road: q.road, i: q.i, x: q.x, y: q.y, ang: q.ang, la: q.la, pz: !!q.pz })), sotto: (CITY.railC.sotto || []).map(q => Object.assign({}, q)), yards: CITY.railC.yards || [], ponti: CITY.railC.ponti || [], RMIN: CITY.railC.RMIN, pad: CITY.railC.pad ? (pd => ({ H: pd.H, ang: pd.ang, cumuli: pd.cumuli.map(([u, v, r]) => pd.W2(u, v).concat([r])), rete: [[pd.U1, pd.v0], [pd.U1, pd.v1]].concat(Array.from({ length: 12 }, (_, k) => [pd.U1 - (pd.U1 - pd.U0) * (k + 1) / 12, pd.v1]), [[pd.U0, pd.v0]]).map(([u, v]) => pd.W2(u, v)) }))(CITY.railC.pad) : null } : null, cityW0: CITY_W0, stazSud: CITY.staz2 ? { H: CITY.staz2.H, ang: CITY.staz2.ang, cumuli: CITY.staz2.cumuli.map(([u, v, r]) => CITY.staz2.W2(u, v).concat([r])), rete: [[CITY.staz2.L, CITY.staz2.v0], [CITY.staz2.L, CITY.staz2.v1], [0, CITY.staz2.v1], [0, CITY.staz2.v0]].map(([u, v]) => CITY.staz2.W2(u, v)) } : null, sets: CITY.sets, nodi: CITY.nodi, eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
       DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, tavW, POZZA, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
 
@@ -3602,7 +3638,7 @@ var World = (function () {
     W.LAKE = Object.assign({}, W.LAKE, { x: W.LAKE.x + OX, y: W.LAKE.y + OY });
     W.HEAD = { x: HEAD.x + OX, y: HEAD.y + OY, r: HEAD.r }; W.TAV = Object.assign({}, TAV, { x: TAV.x + OX, y: TAV.y + OY }); W.POZZA = Object.assign({}, POZZA, { x: POZZA.x + OX, y: POZZA.y + OY });   /* [altopiano] */
     if (W.railCity) W.railCity = W.railCity.map(([x, y]) => [x + OX, y + OY]);
-    if (W.railCampagna) { const R = W.railCampagna, sh = ([x, y, ...r]) => [x + OX, y + OY, ...r]; R.cp = R.cp.map(sh); R.P = R.P.map(sh); R.pl.forEach(q => { q.x += OX; q.y += OY; }); if (R.pad) { R.pad.cumuli = R.pad.cumuli.map(sh); R.pad.rete = R.pad.rete.map(sh); } }   // [campagna]
+    if (W.railCampagna) { const R = W.railCampagna, sh = ([x, y, ...r]) => [x + OX, y + OY, ...r]; R.cp = R.cp.map(sh); R.P = R.P.map(sh); R.pl.forEach(q => { q.x += OX; q.y += OY; }); (R.sotto || []).forEach(q => { q.x += OX; q.y += OY; }); if (R.pad) { R.pad.cumuli = R.pad.cumuli.map(sh); R.pad.rete = R.pad.rete.map(sh); } }   // [campagna]
     if (W.cityW0 !== undefined) W.cityW0 += OX;
     if (W.stazSud) { const sh = ([x, y, ...r]) => [x + OX, y + OY, ...r]; W.stazSud.cumuli = W.stazSud.cumuli.map(sh); W.stazSud.rete = W.stazSud.rete.map(sh); }
     if (W.pezzi) W.pezzi.forEach(p => { p.x += OX; p.y += OY; });   // [posa] i pezzi in coordinate finali

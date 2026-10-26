@@ -622,46 +622,66 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [2 * RE, yTop + (o.lanterna ? 4 : .4), 2 * RE]; return g;
   };
 
-  DOC.stazione = { L: 40, piani: 2, piazzale: true, binari: 2, pensilina: true, orologio: true, nome: 'PORTO VECCHIO', nota: 'fabbricato viaggiatori dell\'Ottocento: zoccolo di pietra, ali in ocra con le arcate al piano terra e le finestre con le persiane, corpo centrale avanzato con le lesene, il nome e l\'attico dell\'orologio, cornicione su modiglioni e balaustra; dietro (−Z) il marciapiede con la pensilina in ghisa, la mantovana, l\'orologio a bandiera e i binari; davanti (+Z) il piazzale coi lampioni' };
+  DOC.stazione = { L: 40, piani: 2, piazzale: true, binari: 2, pensilina: true, orologio: true, nome: 'PORTO VECCHIO', P: 11, hp: 5, marc: 6, hMarc: .9, abbandonata: false, nota: 'fabbricato viaggiatori dell\'Ottocento: zoccolo di pietra, ali in ocra con le arcate al piano terra e le finestre con le persiane, cantonali, corpo centrale avanzato con le lesene, il nome e l\'attico dell\'orologio, cornicione su modiglioni e balaustra, la marquise di ferro e vetro sull\'ingresso con le lanterne; dietro (−Z) le porte con l\'architrave, le finestre, il marciapiede (marc m, alto hMarc) col cordolo di pietra e la pensilina in ghisa: colonne coi capitelli e i saettoni, falda di zinco a campate col perlinato sotto, lucernario, gronda e pluviali, mantovana anche sulle testate, lampade appese, l\'orologio a bandiera, i cartelli del nome, la bacheca dell\'orario, panchine, la fontanella, il carrello dei bagagli, i cestini; i binari; davanti (+Z) il piazzale coi lampioni. P: profondità, hp: altezza dei piani; abbandonata: vani bui o murati, niente luci, la mantovana e la falda a pezzi, l\'orologio fermo' };
   T.stazione = o => {
-    o = def(o, DOC.stazione); const g = new THREE.Group(), L = o.L, P = 11, hp = 5, hW = o.piani * hp, Lc = Math.min(14, L * .34), xc = L / 2, zF = P / 2, hC = hW + 1.2, rr = caso(L * 7 + o.piani);
+    o = def(o, DOC.stazione); const g = new THREE.Group(), L = o.L, P = o.P, hp = o.hp, hW = o.piani * hp, Lc = Math.min(14, L * .34), xc = L / 2, zF = P / 2, hC = hW + 1.2, rr = caso(L * 7 + o.piani), ab = !!o.abbandonata, ha = Math.min(4, hp - .7);
+    const luce = p => ab ? (rr() < .25 ? 'mattone' : 'buio') : rr() < p ? 'finestraAccesa' : 'buio';   // [campagna] la stazione abbandonata: vani bui, qualcuno murato
     blocco(g, L, .9, P + .2, 'pietra', L / 2, 0, 0, .03);                                          // zoccolo
     blocco(g, L, hW - .9, P, 'ocra', L / 2, .9, 0);                                                 // le ali
     blocco(g, Lc, hC, P + .8, 'intonaco', xc, 0, 0);                                                // corpo centrale, avanzato di 40 cm
-    const nB = Math.max(3, Math.round(L / 4)), bay = L / nB, zC = zF + .4;
+    const nB = Math.max(3, Math.round(L / 4)), bay = L / nB, zC = zF + .4, hD = Math.min(3.5, ha - .5), hF = Math.min(2.4, hp - 1.3);
     for (let i = 0; i < nB; i++) { const x = (i + .5) * bay, cen = Math.abs(x - xc) < Lc / 2 - .5, z = cen ? zC : zF;
       if (Math.abs(x - xc) > Lc / 2 - .5 && Math.abs(x - xc) < Lc / 2 + .5) continue;            // niente vano a cavallo dello spigolo del corpo centrale
-      if (!LOD) vano(g, 2.6, 4, 'arco', 'pietraChiara', x, .15, z + .02, .04); vano(g, 2.1, 3.7, 'arco', cen ? 'finestraAccesa' : rr() < .3 ? 'finestraAccesa' : 'buio', x, .15, z + .045, .03);   // arcate del piano terra (la sala d'aspetto e qualche ufficio accesi di notte) [pezzi2]
-      if (!LOD) blocco(g, .4, .55, .14, 'pietraChiara', x, 3.75, z + .07, .02);   // chiave di volta
-      if (!LOD) vano(g, 1.9, 3.5, 'rett', 'buio', x, .15, -zF - (cen ? .4 : 0) - .03, .06);                 // porte sul marciapiede
-      for (let p = 1; p < o.piani; p++) finestra(g, 1.2, 2.4, x, p * hp + .9, z, { persiane: (i + p) % 3 ? 'persiana' : null, arco: cen, vetro: rr() < .35 ? 'finestraAccesa' : 'buio' });   // [pezzi2] gli alloggi del capostazione, accesi a caso
+      if (!LOD) vano(g, 2.6, ha, 'arco', 'pietraChiara', x, .15, z + .02, .04); vano(g, 2.1, ha - .3, 'arco', cen && !ab ? 'finestraAccesa' : luce(.3), x, .15, z + .045, .03);   // arcate del piano terra (la sala d'aspetto e qualche ufficio accesi di notte) [pezzi2]
+      if (!LOD) blocco(g, .4, .55, .14, 'pietraChiara', x, ha - .25, z + .07, .02);   // chiave di volta
+      if (!LOD) { const zb = -zF - (cen ? .4 : 0); vano(g, 1.9, hD, 'rett', ab && rr() < .3 ? 'mattone' : 'buio', x, .15, zb - .03, .06); if (nB <= 10) blocco(g, 2.3, .14, .2, 'pietraChiara', x, hD + .15, zb - .1);   // porte sul marciapiede, con l'architrave
+        if (nB <= 10 || i % 2 === 0) for (let p = 1; p < o.piani; p++) finestra(g, 1.2, hF, x, p * hp + .7, zb, { persiane: ab || i % 2 ? null : 'persiana', vetro: luce(.2) }); }   /* sul fabbricato lungo una campata sì e una no */   // [campagna] le finestre anche sul lato dei binari
+      for (let p = 1; p < o.piani; p++) finestra(g, 1.2, hF, x, p * hp + .7, z, { persiane: (i + p) % 3 ? 'persiana' : null, arco: cen, vetro: luce(.35) });   // [pezzi2] gli alloggi del capostazione, accesi a caso
     }
     for (let p = 1; p < o.piani; p++) cornice(g, L, P, .12, .3, 'pietraChiara', 0, p * hp - .1, 0);   // fasce marcapiano
     for (const s of [-1, 1]) blocco(g, .8, hC, .25, 'pietraChiara', xc + s * (Lc / 2 - .4), 0, zC + .1, .03);   // lesene bugnate del corpo centrale
+    if (!LOD) for (const s of [-1, 1]) for (const xx of [.25, L - .25]) blocco(g, .55, hW - .9, .55, 'pietraChiara', xx, .9, s * (zF - .25), .02);   // [campagna] i cantonali delle ali
     cornice(g, L, P, .3, .6, 'pietraChiara', 0, hW, 0); cornice(g, Lc, P + .8, .35, .6, 'pietraChiara', xc - Lc / 2, hC, 0);
-    if (!LOD) for (let x = .5; x < L; x += .9) if (Math.abs(x - xc) > Lc / 2 + .2) blocco(g, .18, .3, .3, 'pietraChiara', x, hW - .3, zF + .15);   // modiglioni sotto il cornicione
+    if (!LOD) for (let x = .5; x < L; x += L > 44 ? 1.4 : .9) if (Math.abs(x - xc) > Lc / 2 + .2) blocco(g, .18, .3, .3, 'pietraChiara', x, hW - .3, zF + .15);   // modiglioni sotto il cornicione
     for (const [x0, x1] of [[0, xc - Lc / 2], [xc + Lc / 2, L]]) balaustra(g, x1 - x0 - .3, 1, 'pietraChiara', x0 + .15, hW + .6, zF - .1);   // balaustre delle ali
     const wA = Lc * .62, yA = hC + .6; blocco(g, wA, 3, 1.4, 'intonaco', xc, yA, zC - .7);            // l'attico dell'orologio
     cornice(g, wA, 1.4, .25, .45, 'pietraChiara', xc - wA / 2, yA + 3, zC - .7);
     if (!LOD) for (const s of [-1, 1]) { blocco(g, .5, .5, .5, 'pietraChiara', xc + s * (wA / 2 - .25), yA + 3.45, zC - .4); add(g, new THREE.SphereGeometry(.3, 10, 8), 'pietraChiara', xc + s * (wA / 2 - .25), yA + 4.2, zC - .4); }   // acroteri a palla
-    if (o.orologio) { toro(g, 1.25, .12, 24, 'pietraChiara', xc, yA + 1.5, zC + .02, 0, 0); orologio(g, 1.1, xc, yA + 1.5, zC + .04, 0, o.ora, o.min); }
-    if (o.nome) { blocco(g, Math.min(Lc - 2, o.nome.length * .55 + 1), .9, .1, 'pietraChiara', xc, hC - 1.6, zC + .05); scritta(g, o.nome, Math.min(Lc - 2.2, o.nome.length * .5), .7, xc, hC - 1.15, zC + .11, 0, '#3a3630'); }   // il nome sulla fascia sotto il cornicione
-    if (o.pensilina) { const zP = -zF - 3, zE = -zF - 5.6, nc = Math.max(2, Math.round(L / 6));
-      blocco(g, L + 6, .9, 6, 'cemento', L / 2, 0, zP, .03); blocco(g, L + 6, .02, .25, 'bianco', L / 2, .9, -zF - 5.2);   // marciapiede con la linea bianca
-      for (let i = 0; i <= nc; i++) colonnaGhisa(g, 1 + i * (L - 2) / nc, .9, -zF - 3.8, 3.6, false, 6);
-      blocco(g, L + 4, .48, .22, 'ghisa', L / 2, 4.5, -zF - 3.8);                                  // trave sulle colonne
-      sezione(g, [[-zF, 5.5], [zE, 4.75], [zE, 4.9], [-zF, 5.68]], L + 4, 'zinco', -2, 0, 0);      // la falda di lamiera
-      if (!LOD) { for (let i = 0; i <= nc; i++) { const x = 1 + i * (L - 2) / nc; asta(g, [x, 4.2, -zF - 3.8], [x, 4.82, zE + .1], .05, 'ghisa'); asta(g, [x, 4.2, -zF - 3.8], [x, 5.2, -zF - .3], .05, 'ghisa'); }   // mensole
-        frangia(g, L + 4, .45, .9, 'legno', -2, 4.78, zE - .02);
-        const bc = (L - 2) / nc, xo = 1 + (Math.floor(nc / 2) - .5) * bc, xn = xo + bc; blocco(g, .08, .8, .08, 'ghisa', xo, 3.7, -zF - 3.8); for (const r of [0, PI]) orologio(g, .45, xo, 3.4, -zF - 3.8 + (r ? -.05 : .05), r, o.ora, o.min);   // l'orologio a bandiera, a due facce
-        blocco(g, Math.min(3.6, bc - .6), .7, .08, 'blu', xn, 3.9, -zF - 3.8); scritta(g, o.nome || 'STAZIONE', Math.min(3.3, bc - .9), .55, xn, 4.25, -zF - 3.85, PI, '#ffffff');   // il cartello del nome
-        for (const s of [-1, 1]) { const xb = xc + s * L * .28; for (const dx of [-.8, .8]) blocco(g, .08, .45, .45, 'ghisa', xb + dx, .9, -zF - 2.2); blocco(g, 1.8, .06, .45, 'legno', xb, 1.35, -zF - 2.2); blocco(g, 1.8, .4, .06, 'legno', xb, 1.4, -zF - 1.96); } }   // panchine
-      const zB0 = -zF - 6, zB1 = zB0 - 1.8 - (o.binari - 1) * 4.2 - 1.8;
+    if (o.orologio) { const ro = Math.min(1.1, wA * .36); toro(g, ro + .15, .12, 24, 'pietraChiara', xc, yA + 1.5, zC + .02, 0, 0); orologio(g, ro, xc, yA + 1.5, zC + .04, 0, ab ? 4 : o.ora, ab ? 37 : o.min); }
+    if (o.nome) { blocco(g, Math.min(Lc - .6, o.nome.length * .55 + 1), .9, .1, 'pietraChiara', xc, hC - 1.6, zC + .05); scritta(g, o.nome, Math.min(Lc - .8, o.nome.length * .5), .7, xc, hC - 1.15, zC + .11, 0, '#3a3630'); }   // il nome sulla fascia sotto il cornicione
+    // [campagna] la marquise sull'ingresso (ferro e vetro sulle mensole) e le lanterne a muro ai lati del corpo centrale
+    if (!LOD) { const wM = Math.min(Lc - 1, 5), yM = ha + .35;
+      blocco(g, wM, .1, 1.6, ab ? 'ruggine' : 'vetro', xc, yM, zC + .8); blocco(g, wM + .1, .14, .08, 'ghisa', xc, yM - .02, zC + 1.66); frangia(g, wM, .3, .3, 'ghisa', xc - wM / 2, yM, zC + 1.7);
+      for (const s of [-1, 1]) { asta(g, [xc + s * (wM / 2 - .2), yM - .9, zC + .05], [xc + s * (wM / 2 - .2), yM, zC + 1.6], .04, 'ghisa'); asta(g, [xc + s * (wM / 2 - .2), yM + 1.1, zC + .05], [xc + s * (wM / 2 - .2), yM + .1, zC + 1.6], .025, 'ghisa'); }
+      for (const s of [-1, 1]) { const xl = xc + s * (Lc / 2 + .7); blocco(g, .08, .08, .45, 'ghisa', xl, ha - .2, zF + .22); blocco(g, .3, .45, .3, ab ? 'buio' : 'lampada', xl, ha - .55, zF + .45); blocco(g, .38, .06, .38, 'ghisa', xl, ha - .1, zF + .45); } }
+    if (o.pensilina) { const dm = o.marc, hm = o.hMarc, dy = hm - .9, zE = -zF - dm + .4, zc = -zF - dm * .63, nc = Math.max(2, Math.round(L / 6)), Lp = L + 4, yT = 4.5 + dy, yW = 5.5 + dy, yE = 4.75 + dy;
+      blocco(g, L + 6, hm, dm, 'cemento', L / 2, 0, -zF - dm / 2, .03); blocco(g, L + 6, .04, .45, 'pietraChiara', L / 2, hm, -zF - dm + .23); blocco(g, L + 6, .02, .2, ab ? 'cemento' : 'bianco', L / 2, hm + .01, -zF - dm + .9);   // marciapiede col cordolo di pietra e la linea
+      const cols = []; for (let i = 0; i <= nc; i++) cols.push(1 + i * (L - 2) / nc);
+      cols.forEach((x, ic) => { colonnaGhisa(g, x, hm, zc, 3.6, false, nc > 6 ? 5 : 6); if (!LOD && (nc <= 6 || ic % 2 === 0 || ic === nc)) { blocco(g, .5, .2, .5, 'ghisa', x, yT - .62, zc); for (const s of [-1, 1]) asta(g, [x, yT - .9, zc], [x, yT - .05, zc + s * 1.2], .045, 'ghisa'); } });   // le colonne coi capitelli e i saettoni
+      blocco(g, Lp, .48, .22, 'ghisa', L / 2, yT, zc);                                              // trave sulle colonne
+      const yAt = z => yW + (yE - yW) * (z + zF) / (zE + zF);                                         // la quota della falda
+      // la falda di zinco a campate (alla stazione abbandonata ne manca qualcuna), il perlinato sotto, il lucernario
+      const nf = ab ? Math.max(2, Math.round(Lp / 4)) : 1, lf = Lp / nf;   /* a campate solo all'abbandonata (ne mancano); intera: una lastra sola */ for (let k = 0; k < nf; k++) { if (ab && (k === 1 || (k === nf - 2 && nf > 4))) continue;
+        sezione(g, [[-zF, yW], [zE, yE], [zE, yE + .15], [-zF, yW + .18]], lf + .02, ab && k % 3 === 2 ? 'ruggine' : 'zinco', -2 + k * lf, 0, 0);
+        if (!LOD) sezione(g, [[-zF, yW - .1], [zE + .1, yE - .1], [zE + .1, yE - .06], [-zF, yW - .06]], lf, 'legno', -2 + k * lf, 0, 0); }
+      if (!LOD && !ab) { const z0 = -zF - dm * .2, z1 = z0 - Math.min(1.4, dm * .25); sezione(g, [[z0, yAt(z0) + .14], [z1, yAt(z1) + .14], [z1, yAt(z1) + .3], [z0, yAt(z0) + .3]], Lp - 1, 'vetro', -1.5, 0, 0); }
+      if (!LOD) { cilX(g, .1, Lp, 8, 'zinco', L / 2, yE + .02, zE - .08); for (const x of [cols[0], cols[cols.length - 1]]) asta(g, [x + .3, yE, zE - .08], [x + .3, hm + .1, zc - .3], .06, 'zinco'); }   // la gronda e i pluviali
+      if (!LOD) { frangia(g, ab ? Lp * .45 : Lp, .45, L > 44 ? 1.2 : .9, 'legno', -2, yE + .03, zE - .02); if (ab) frangia(g, Lp * .3, .45, .9, 'legno', -2 + Lp * .62, yE + .03, zE - .02);   // la mantovana (a pezzi, all'abbandonata)
+        if (L <= 44) for (const xe of [-2, L + 2]) frangia(g, dm - .5, .35, .7, 'legno', xe, yAt(-zF - (dm - .4) / 2) - .05, -zF - .1, HP);   // le testate
+        const bc = (L - 2) / nc, xo = 1 + (Math.floor(nc / 2) - .5) * bc, xn = xo + bc; blocco(g, .08, .8, .08, 'ghisa', xo, yT - .8, zc); for (const r of [0, PI]) orologio(g, .45, xo, yT - 1.1, zc + (r ? -.05 : .05), r, ab ? 4 : o.ora, ab ? 37 : o.min);   // l'orologio a bandiera, a due facce
+        for (const xs of nc > 2 && nc <= 6 ? [cols[1] - bc / 2, xn, cols[nc - 1] + bc / 2] : [xn]) { const wc = Math.min(3.6, bc - .6); blocco(g, wc, .7, .08, 'blu', xs, yT - .4, zc); for (const s of [-1, 1]) asta(g, [xs + s * (wc / 2 - .3), yT + .25, zc], [xs + s * (wc / 2 - .3), yT - .05, zc], .02, 'ferro'); scritta(g, o.nome || 'STAZIONE', wc - .3, .55, xs, yT - .05, zc - .05, PI, '#ffffff'); }   // i cartelli del nome
+        for (let i = nc > 6 ? 1 : 0; i < nc; i += nc > 6 ? 2 : 1) { const x = cols[i] + bc / 2;   /* sulle pensiline lunghe una campata sì e una no */ asta(g, [x, yAt(zc) - .1, zc], [x, yT - .9, zc], .015, 'ferro'); blocco(g, .3, .36, .3, ab ? 'vetro' : 'lampada', x, yT - 1.26, zc); blocco(g, .5, .05, .5, 'ghisa', x, yT - .88, zc); }   // le lampade appese
+        { const xb = L * .5 + bc * .5; blocco(g, 2.2, 1.4, .08, 'legno', xb, hm + 1.2, -zF - .06); blocco(g, 1.9, 1.1, .03, ab ? 'buio' : 'intonaco', xb, hm + 1.35, -zF - .11); scritta(g, ab ? 'ORARIO' : 'ORARIO DEI TRENI', 1.7, .2, xb, hm + 2.25, -zF - .14, PI, '#2a2620'); }   // la bacheca dell'orario
+        for (const s of [-1, 1]) { const xb = xc + s * L * .28; for (const dx of [-.8, .8]) blocco(g, .08, .45, .45, 'ghisa', xb + dx, hm, -zF - 1.2); blocco(g, 1.8, .06, .45, 'legno', xb, hm + .45, -zF - 1.2); blocco(g, 1.8, .4, .06, 'legno', xb, hm + .5, -zF - .96); }   // panchine
+        { const xf = Math.min(L - 1.5, xc + L * .42); cil(g, .3, .3, .12, 10, 'ghisa', xf, hm, zc + .9); cil(g, .2, .16, .9, 8, 'ghisa', xf, hm + .12, zc + .9); blocco(g, .5, .08, .5, 'ghisa', xf, hm + 1.02, zc + .9); }   // la fontanella
+        if ((!ab || rr() < .7) && L <= 44) { const gc = grp(g, Math.max(1.5, xc - L * .4), hm, zc + .4, .2); blocco(gc, 2.2, .1, 1, 'legno', 0, .45, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) cilZ(gc, .22, .08, 10, ab ? 'ruggine' : 'ferroScuro', sx * .7, .22, sz * .45); asta(gc, [1.1, .55, 0], [1.7, 1.1, 0], .03, 'ferro'); if (!ab) { blocco(gc, .8, .5, .6, 'castano', -.4, .55, 0); blocco(gc, .5, .35, .4, 'legno', .45, .55, .1); } }   // il carrello dei bagagli
+        for (const x of [cols[0] + .6, cols[cols.length - 1] - .6]) cil(g, .2, .2, .7, 6, 'ghisa', x, hm, -zF - .5); }   // i cestini
+      const zB0 = -zF - dm, zB1 = zB0 - 1.8 - (o.binari - 1) * 4.2 - 1.8;
       if (o.binari > 0) { massicciata(g, L + 6, zB1, zB0, .3, -3, 0); for (let i = 0; i < o.binari; i++) binario(g, L + 6, -3, .3, zB0 - 1.75 - i * 4.2); }
     }
     if (o.piazzale) { blocco(g, L + 4, .15, 4, 'pietraChiara', L / 2, 0, zF + 2); blocco(g, L + 4, .06, 12, 'asfalto', L / 2, 0, zF + 10);
       for (let x = 2; x <= L - 2 + .01; x += Math.max(12, (L - 4) / Math.round((L - 4) / 16))) lampione(g, 'ghisa', x, zF + 3.5); }
-    g.userData.misure = [L + 6, yA + 4.5, P + (o.pensilina ? 6 + o.binari * 4.2 + 2 : 0) + (o.piazzale ? 16 : 0)]; return g;
+    g.userData.misure = [L + 6, yA + 4.5, P + (o.pensilina ? o.marc + o.binari * 4.2 + 2 : 0) + (o.piazzale ? 16 : 0)]; return g;
   };
 
   DOC.binari = { L: 25, binari: 2, rilevato: true, hRilevato: 2.5, palo: true, nota: 'segmento di ferrovia lungo +X: rilevato di terra col muro di pietra a scarpa sul fronte (+Z, il mare) con la copertina e i barbacani, scarpata d\'erba dietro, massicciata, traverse e rotaie; palo del telegrafo con gli isolatori. Si accostano traslando di L' };
