@@ -3055,10 +3055,28 @@ var World = (function () {
         const lato = (x, y) => ((Math.round(Math.atan2(y - oy, x - ox) / (Math.PI / 4)) % 8) + 8) % 8, giu = k => ring[k] < qm - .5, aw = k => giu(k) ? ap - .5 : ap + .1;   // dove la piazza scende il muro sta mezzo metro dentro (la scala ci sta davanti)
         eachV(ox - ap - 1, oy - ap - 1, ox + ap + 1, oy + ap + 1, (i, j, x, y) => { if (oct(x, y) <= aw(lato(x, y)) + .01) setV(i, j, qm); }); if (tt) tt.q = qm;
         // [pedonale] la scala anche sul lato dove sotto il muro c'è una porta (prima ci si arrivava solo saltando giù dal muraglione)
+        // [scorcio] LA SCALA DEL GRADONE SI POSA SUL TERRENO VERO, non sulla quota di metà lato: il piede alla quota della via sotto il primo
+        // gradino, l'alzata fino alla piazza (qm), nessun punto della via sopra le pedate (il terreno che passava dentro i gradini), nessuna
+        // casa dentro la scala, il suo pianerottolo e mezzo metro d'attacco (le scale che entravano nelle case sugli spigoli dell'ottagono).
+        // Si prova il pianerottolo dal canto del muro (xl = L) verso il mezzo, di 25 cm in 25 cm, e si tiene il primo posto pulito; sotto il
+        // primo gradino il basamento scende fin sotto il terreno più basso (la scala non resta sospesa). Il risultato va nelle opzioni del
+        // pezzo (scalaX = [primo gradino, ultimo, fine del pianerottolo], hs l'alzata, yb il piede e fondo il basamento, sopra la quota del
+        // muro): lo leggono pezzi_citta.js (la geometria), opere() (le barriere e la quota per game.js) e chiarezza.js (la fascia libera).
+        const scalaGradone = (p, qm) => { const o = p.opz, L = o.L, h = o.h, za = h * .12 * .5, zb = za + 1.8, q = p.q || 0, gL = (lx, lz) => { const [x, y] = pzW(p, lx, lz); return vAt(x, y); };
+          const casa = (x0, x1, z0, z1) => { const C = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([a, b]) => pzW(p, a, b)), X0 = Math.min(...C.map(c => c[0])), X1 = Math.max(...C.map(c => c[0])), Y0 = Math.min(...C.map(c => c[1])), Y1 = Math.max(...C.map(c => c[1]));
+            return B.some(b => { const bx0 = b.x * TS, by0 = b.y * TS, bx1 = bx0 + b.w * TS, by1 = by0 + b.h * TS; if (bx1 <= X0 || bx0 >= X1 || by1 <= Y0 || by0 >= Y1) return false;
+              for (let u = x0; u <= x1 + 1e-6; u += .2) for (let v = z0; v <= z1 + 1e-6; v += .2) { const [x, y] = pzW(p, u, v); if (x > bx0 && x < bx1 && y > by0 && y < by1) return true; } return false; }); };
+          for (let xl = L; xl >= 3; xl -= .25) { let hs = h, n = 0, pd = .32, xi = 0, yb = 0;
+            for (let it = 0; it < 3; it++) { n = Math.max(1, Math.ceil(hs / .17)); pd = Math.min(.32, (xl - 1.6) / n); xi = xl - 1.4 - n * pd; let gf = -1e9; for (let u = xi - .6; u <= xi + .3; u += .15) for (let v = za; v <= zb; v += .3) gf = Math.max(gf, gL(u, v)); yb = gf - q; hs = h - yb; }
+            if (xi < .2 || hs < .17) continue; const aa = hs / n; let ok = true, gmin = yb;
+            for (let u = xi; u <= xl && ok; u += .1) for (let v = za; v <= zb; v += .3) { const g = gL(u, v) - q, i = Math.min(n, Math.floor((u - xi) / pd)), pa = u >= xi + n * pd ? h : yb + aa * i; if (g > pa - .03) { ok = false; break; } gmin = Math.min(gmin, g); }
+            if (!ok || casa(xi - .6, xl, za - .05, zb + .3)) continue;
+            o.scalaX = [+xi.toFixed(3), +(xi + n * pd).toFixed(3), +xl.toFixed(3)]; o.n = n; o.pd = +pd.toFixed(4); o.hs = +hs.toFixed(3); o.yb = +yb.toFixed(3); o.fondo = +(Math.min(yb, gmin) - .15).toFixed(3); return; }
+          o.scala = false; CITY.scaleTolte = (CITY.scaleTolte || 0) + 1; };   // nessun posto pulito sul lato: niente scala (la ringhiera chiude il ciglio)
         const portaSotto = (k, nx, ny) => B.some(b => { if (!b.door) return false; const dx = (b.door[0] + .5) * TS - ox, dy = (b.door[1] + .5) * TS - oy, v = dx * nx + dy * ny - aw(k), u = Math.abs(-dx * ny + dy * nx); return v > 0 && v < 5 && u < aw(k) * Math.tan(Math.PI / 8) + 1; });
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
           const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && (k % 2 === 0 || portaSotto(k, nx, ny)), ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
-          g.q = +Math.min(qm, ring[k]).toFixed(2); } } }
+          g.q = +Math.min(qm, ring[k]).toFixed(2); if (g.opz.scala) scalaGradone(g, qm); } } }
       // 5) le banchine della darsena alla quota della calata; il molo e lo scalo alla quota del loro piano
       { const qd = Math.max(.6, vAt((DARS.x0 + DARS.x1) / 2, DARS.y0 - 3)); PEZZI.forEach(p => { if (p.tipo === 'darsena' && !p.opz.rocca) { p.q = qd; p.opz.hq = +(qd - WLp).toFixed(2); } });
         eachV(DARS.x0, DARS.y0, DARS.x1, DARS.y1, (i, j, x, y) => { if (x <= DARS.x0 + DARS.b || x >= DARS.x1 - DARS.b || y <= DARS.y0 + DARS.b) setV(i, j, qd); });
@@ -3078,7 +3096,18 @@ var World = (function () {
         let ye = null; for (let y = 180; y < 200; y += .5) { const i = Math.floor(y / TS) * GW + Math.floor(x / TS), i2 = Math.floor((y + 1) / TS) * GW + Math.floor(x / TS); if (grid[i] === T.QUAY && grid[i2] === T.WATER) { ye = Math.floor((y + 1) / TS) * TS; break; } }
         if (ye !== null) { const p = PZ('bitta', x, ye - .7, 0, { h: .6, cima: true }, { nome: 'Bitta' }); p.q = vAt(x, ye - 1.2); } }
       // 7) le tre scalinate dalla marina al borgo: i gradini per il dislivello vero fra il piede e dieci metri più su
-      (POSA.scal || []).forEach(c => { const p = c.p, d0 = vAt(p.x, p.y), dd = Math.max(.6, vAt(...p.B2) - d0); p.q = d0; p.opz.dislivello = +dd.toFixed(2); p.opz.pianerottoli = dd > 3.2 ? 1 : 0; delete p.B2; });
+      // [scorcio] la scala segue il vicolo: le rampe coprono i dieci metri fino al punto misurato (pedata lunga, la «gradonata» dei vicoli
+      // in salita, fino a 90 cm) e il dislivello si misura dove l'ultima rampa arriva davvero. Prima i gradini da 36 cm salivano il
+      // dislivello di dieci metri in cinque: la Scalinata di Vico Lungo finiva un metro sopra la via (un salto in cima) e più giù la via
+      // passava dentro i gradini
+      (POSA.scal || []).forEach(c => { const p = c.p, d0 = vAt(p.x, p.y), Lv = Math.max(3, Math.min(9.6, Math.hypot(p.B2[0] - p.x, p.B2[1] - p.y))); let dd = Math.max(.6, vAt(...p.B2) - d0), pd = .36;
+        for (let it = 0; it < 6; it++) { const n = Math.max(1, Math.ceil(dd / .17)), nf = dd > 3.2 ? 2 : 1; pd = Math.max(.36, Math.min(.9, (Lv - (nf - 1) * 1.6) / Math.max(1, n - (nf - 1)))); const X = n * pd + (nf - 1) * (1.6 - pd); dd = Math.max(.34, vAt(...pzW(p, X, 0)) - d0); }
+        p.q = d0; p.opz.dislivello = +dd.toFixed(2); p.opz.pianerottoli = dd > 3.2 ? 1 : 0; p.opz.pedata = +pd.toFixed(3); delete p.B2; });
+      // [scorcio] 7b) il terreno sotto le scalinate non passa sopra i gradini né sopra l'arrivo: i vertici sotto la scala (e una fila oltre i
+      // muri d'ambito, per l'interpolazione) scendono sotto la linea dei nasi (la retta dal piede alla fine dell'ultima rampa, che sta sotto
+      // ogni pedata) e sotto il ripiano d'arrivo; dove il terreno era già più basso resta com'è (la massa della scala scende fino a q)
+      PEZZI.forEach(p => { if (p.tipo !== 'scalinata' || p.q === undefined) return; const o = p.opz, H = o.dislivello || 8, n = Math.max(1, Math.ceil(H / .17)), pd = o.pedata || .36, nf = Math.max(1, (o.pianerottoli || 0) + 1), Xs = n * pd + (nf - 1) * (1.6 - pd), w = o.w || 4;
+        eachVL(p, -2, Xs + 3.3, -w / 2 - 2.4, w / 2 + 2.4, (i, j, lx) => { const e = p.q + (lx >= Xs ? H : Math.max(H / n, H * lx / Xs)) - .04; if (vh[j * VW + i] > e) setV(i, j, e); }); });   // oltre l'arrivo una fila di vertici in più: la via riprende a salire dopo il ripiano
       // 8) la quota di posa degli altri: il punto più basso dell'impronta (niente pezzi sospesi; dove il terreno sale, il pezzo ci entra)
       const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 7, -3.5, 3.5], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
         arco_sottopasso: [3, 4.4, -4.5, 4.5], arco_contrasto: [1.7, 2.7, -.4, .4], porta_terra: [5.6, 8.6, -3, 6], muro_garante: [0, 24, -.5, .5], palo_riflettori: [-.4, .4, -.4, .4], caserma: [0, 0, -3.5, 3.5], polveriera: [0, 0, -2.5, 2.5], torrione: [3, 13, -5, 5], passaggio_livello: [9, 13, -1, 1] };
@@ -3184,10 +3213,10 @@ var World = (function () {
         nuovo('muraglione', p, { muro: true, poly: rett(p, -.2, L + .2, -.4, h * k + .1) });
         let gap = null;
         if (o.scala) {   // la scala addossata al fronte (pezzi_citta.js T.gradone): sale lungo +X fino al pianerottolo, poi si passa sul muro
-          const nn = Math.ceil(h / .17), pd = Math.min(.32, (L - 1.6) / nn), xi = Math.max(0, L - nn * pd - 1.4), xt = xi + nn * pd, xl = Math.min(L, xt + 1.4), za = h * k * .5, zb = za + 1.8, zc = (za + zb) / 2, xm = (xt + xl) / 2;
+          const nn = Math.ceil(h / .17), pd = Math.min(.32, (L - 1.6) / nn), SX = o.scalaX, xi = SX ? SX[0] : Math.max(0, L - nn * pd - 1.4), xt = SX ? SX[1] : xi + nn * pd, xl = SX ? SX[2] : Math.min(L, xt + 1.4), za = h * k * .5, zb = za + 1.8, zc = (za + zb) / 2, xm = (xt + xl) / 2;   // [scorcio] il posto vero della scala (scalaGradone)
           gap = [xt, xl]; const s = nuovo('scala', p, { nome: 'Scala del ' + (p.nome || 'gradone').replace(/^Gradone del /, ''), poly: rett(p, xi - .1, xl, za - .05, zb + .1) });
           muro(p, xi, zb + .1, xl, zb + .1, 'corrimano'); muro(p, xl, 0, xl, zb + .1, 'testata');
-          SCALE.push({ id: s.id, nome: s.nome, salita: true, x: r2(p.x), y: r2(p.y), rot: p.rot || 0, x0: r2(xi), x1: r2(xt), x2: r2(xl), z0: r2(za), z1: r2(zb), q: p.q || 0, h, pts: [pw(p, xi - .9, zc), pw(p, xi + .15, zc), pw(p, xm, zc), pw(p, xm, -1.2)] }); }
+          SCALE.push({ id: s.id, nome: s.nome, salita: true, x: r2(p.x), y: r2(p.y), rot: p.rot || 0, x0: r2(xi), x1: r2(xt), x2: r2(xl), z0: r2(za), z1: r2(zb), q: r2((p.q || 0) + (SX ? o.yb : 0)), h: SX ? o.hs : h, pts: [pw(p, xi - .9, zc), pw(p, xi + .15, zc), pw(p, xm, zc), pw(p, xm, -1.2)] }); }
         // il ciglio del muro (la ringhiera o il salto) da un canto all'altro, aperto solo dove arriva la scala
         const tipo = o.ringhiera ? 'ringhiera' : 'muraglione';
         if (gap) { muro(p, -.2, 0, gap[0], 0, tipo); if (gap[1] < L + .2 - .05) muro(p, gap[1], 0, L + .2, 0, tipo); } else muro(p, -.2, 0, L + .2, 0, tipo);

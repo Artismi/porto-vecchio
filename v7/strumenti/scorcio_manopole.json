@@ -44,7 +44,8 @@
    "proNeri": 0.02,
    "proTinta": "#6878c0",
    "proTintaK": 0.24,
-   "proEsp": 1
+   "proEsp": 1,
+   "proSuolo": 1
   },
   "pomeriggio": {
    "proOmbra": [
@@ -63,7 +64,8 @@
    "proNeri": 0.02,
    "proTinta": "#7080c4",
    "proTintaK": 0.22,
-   "proEsp": 1
+   "proEsp": 1,
+   "proSuolo": 1
   },
   "sera": {
    "proOmbra": [
@@ -82,7 +84,8 @@
    "proNeri": 0.035,
    "proTinta": "#5a3a9a",
    "proTintaK": 0.26,
-   "proEsp": 1.05
+   "proEsp": 1.05,
+   "proSuolo": 1.55
   },
   "notte": {
    "proOmbra": [
@@ -101,7 +104,8 @@
    "proNeri": 0.02,
    "proTinta": "#4a46a0",
    "proTintaK": 0.4,
-   "proEsp": 1.3
+   "proEsp": 1.3,
+   "proSuolo": 1.25
   }
  }
 }

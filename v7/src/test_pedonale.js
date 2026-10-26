@@ -127,5 +127,45 @@ ok(!sulPed.length, `nessun segno da strada sulle vie pedonali (${sulPed.length})
     prova('l\'auto in fuga a tutto gas contro la scala', v, (v, dt) => G.vehicleMotion(st, v, dt, Math.atan2(pc[1] - v.y, pc[0] - v.x), 1, false, true, false), 12); }
 }
 
+// ---------------- 5. LE SCALE NON SI COMPENETRANO ----------------
+// (il committente, davanti all'Ottagono: «vedo ancora scale compenetrate»). Ogni scala dei gradoni e ogni scalinata, nella sua cornice:
+//   - il terreno (i vertici di vh, interpolati come render.js groundH) non passa sopra le pedate, il pianerottolo e l'arrivo (5 cm di
+//     tolleranza: la griglia dei vertici è di 2 m); il piede della scala del gradone sta sul terreno (entro 5 cm) o sopra il suo basamento;
+//   - nessuna casa dentro la scala, il pianerottolo e mezzo metro d'attacco al piede;
+//   - nessun'altra opera (muraglioni d'altri gradoni, altre scale, fontane, sottopassi) e nessuna barriera altrui la attraversa;
+//   - nessun albero (le caselle TREE, con la formella di 1,4 m) sopra la scala.
+// Soglia zero. Le scale di ferro sui muri hanno la loro prova in test_scale_finestre.js.
+{ const VH = (i, j) => G.MAP.vh[Math.max(0, Math.min(G.GH, j)) * G.MAP.VW + Math.max(0, Math.min(G.GW, i))];
+  const gH = (x, z) => { const fx = x / TS, fz = z / TS, i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j; return VH(i, j) * (1 - u) * (1 - v) + VH(i + 1, j) * u * (1 - v) + VH(i, j + 1) * (1 - u) * v + VH(i + 1, j + 1) * u * v; };
+  const dentroP = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [ax, ay] = P[j], [bx, by] = P[i]; if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) c = !c; } return c; };
+  const casaIn = (x, y) => G.BUILDINGS.find(b => x > b.x * TS + .02 && x < (b.x + b.w) * TS - .02 && y > b.y * TS + .02 && y < (b.y + b.h) * TS - .02);
+  const alberoIn = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) if (G.tileAt(tx + a, ty + c) === T.TREE && Math.abs(x - ((tx + a) * TS + 1)) < 1.5 && Math.abs(y - ((ty + c) * TS + 1)) < 1.5) return true; return false; };
+  const segX = (b, P) => { for (let t = 0; t <= 1; t += .02) if (dentroP(P, b[0] + (b[2] - b[0]) * t, b[1] + (b[3] - b[1]) * t)) return true; return false; };
+  const conti = { terreno: [], casa: [], opera: [], barriera: [], albero: [] }, segna = (k, nome) => { if (conti[k].indexOf(nome) < 0) conti[k].push(nome); };
+  // le scale dei gradoni (W.pezzi, opz.scalaX di world_cittanuova.js scalaGradone) e le scalinate, ognuna con la sua cornice e il suo profilo
+  const SCALE5 = [];
+  W.pezzi.filter(p => p.tipo === 'gradone' && p.opz.scala).forEach(p => { const o = p.opz, X = o.scalaX, h = o.h, za = h * .06, zb = za + 1.8;
+    if (!X) { const n = Math.ceil(h / .17), pd = Math.min(.32, (o.L - 1.6) / n), xi = Math.max(0, o.L - n * pd - 1.4), aa = h / n;   // senza il posto sul terreno: la scala di prima, in fondo al muro
+      SCALE5.push({ nome: p.nome + ' ' + Math.round(p.x) + ',' + Math.round(p.y), p, x0: xi, x1: Math.min(o.L, xi + n * pd + 1.4), z0: za, z1: zb, q: p.q, piede: 0, fondo: 0, senza: true, prof: u => u >= xi + n * pd ? h : aa * Math.min(n, Math.floor((u - xi) / pd) + 1) }); return; }
+    const n = o.n, pd = o.pd, aa = o.hs / n; SCALE5.push({ nome: p.nome + ' ' + Math.round(p.x) + ',' + Math.round(p.y), p, x0: X[0], x1: X[2], z0: za, z1: zb, q: p.q, piede: o.yb, fondo: o.fondo, prof: u => u >= X[1] ? h : o.yb + aa * Math.min(n, Math.floor((u - X[0]) / pd) + 1) }); });
+  W.pezzi.filter(p => p.tipo === 'scalinata').forEach(p => { const o = p.opz, H = o.dislivello || 8, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata || .36, nf = Math.max(1, (o.pianerottoli || 0) + 1), w = o.w || 4;
+    const st = []; let x = 0, y = 0; for (let f = 0; f < nf; f++) { const k = Math.round(n * (f + 1) / nf) - Math.round(n * f / nf); for (let i = 0; i < k; i++) { y += a; st.push([x, x + pd, y]); x += pd; } const lx = f < nf - 1 ? 1.6 - pd : 1.2; st.push([x, x + lx, y]); x += lx; }
+    SCALE5.push({ nome: p.nome, p, x0: 0, x1: x, z0: -w / 2, z1: w / 2, q: p.q, prof: u => { for (const q of st) if (u >= q[0] - 1e-6 && u < q[1]) return q[2]; return H; } }); });
+  SCALE5.forEach(S => { const p = S.p, c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0), pw = (lx, lz) => [p.x + lx * c + lz * sn, p.y - lx * sn + lz * c];
+    const poly = [[S.x0, S.z0], [S.x1, S.z0], [S.x1, S.z1], [S.x0, S.z1]].map(([u, v]) => pw(u, v));
+    let gmax = -9; for (let u = S.x0 + .02; u <= S.x1 - .02; u += .1) for (let v = S.z0; v <= S.z1 + 1e-6; v += .2) { const [x, z] = pw(u, v); gmax = Math.max(gmax, gH(x, z) - S.q - S.prof(u)); }
+    if (gmax > .05) segna('terreno', `${S.nome} (+${Math.round(gmax * 100)} cm)`);
+    if (S.piede !== undefined) { let gp = -9, gm = 9; for (let v = S.z0; v <= S.z1 + 1e-6; v += .3) { const [x, z] = pw(S.x0 + .05, v), g = gH(x, z) - S.q; gp = Math.max(gp, g); gm = Math.min(gm, g); }
+      if (gp > S.piede + .05 || gm < S.fondo) segna('terreno', `${S.nome} (il piede: terreno ${gp.toFixed(2)}, gradino ${S.piede.toFixed(2)}, basamento ${S.fondo.toFixed(2)})`); }
+    for (let u = S.x0 - .6; u <= S.x1 + 1e-6; u += .2) for (let v = S.z0 - .05; v <= S.z1 + .3 + 1e-6; v += .2) { const [x, z] = pw(u, v), b = casaIn(x, z); if (b) { segna('casa', `${S.nome} in ${b.id}`); u = 1e9; break; } }
+    for (let u = S.x0; u <= S.x1 + 1e-6; u += .25) for (let v = S.z0; v <= S.z1 + 1e-6; v += .3) { const [x, z] = pw(u, v); if (alberoIn(x, z)) { segna('albero', S.nome); u = 1e9; break; } }
+    const Lx = p.tipo === 'gradone' ? p.opz.L : S.x1, Z0 = p.tipo === 'gradone' ? -1 : S.z0 - .6, Z1 = p.tipo === 'gradone' ? S.z1 + .3 : S.z1 + .6, loc = (x, y) => { const dx = x - p.x, dy = y - p.y; return [dx * c - dy * sn, dx * sn + dy * c]; };
+    const mie = OP.filter(o => o.poly && o.poly.every(q => { const [lx, lz] = loc(q[0], q[1]); return lx > -.5 && lx < Lx + .5 && lz > Z0 && lz < Z1; }));   // le opere dello stesso pezzo (il suo muraglione, la sua impronta)
+    OP.forEach(o => { if (!o.poly || mie.indexOf(o) >= 0 || o.tipo === 'piazza' || o.tipo === 'piazza_alta') return; const inner = poly.map(q => q); if (o.poly.some(q => dentroP(inner, q[0], q[1])) || inner.some(q => dentroP(o.poly, q[0], q[1]))) segna('opera', `${S.nome} / ${o.id}`); });
+    BAR.forEach(b => { const [lx, lz] = loc((b[0] + b[2]) / 2, (b[1] + b[3]) / 2); if (lx > -.5 && lx < Lx + .5 && lz > Z0 - .5 && lz < Z1 + .5) return; if (segX(b, poly)) segna('barriera', `${S.nome} / ${b[4]}`); }); });   // le barriere del pezzo (corrimano, testata, spallette, il ciglio) sono sue
+  const tot = Object.values(conti).reduce((a, v) => a + v.length, 0);
+  ok(tot === 0, `nessuna scala dei gradoni né scalinata compenetrata (${SCALE5.length} scale; terreno sopra i gradini ${conti.terreno.length}, case ${conti.casa.length}, altre opere ${conti.opera.length}, barriere altrui ${conti.barriera.length}, alberi ${conti.albero.length}${tot ? ': ' + Object.values(conti).flat().slice(0, 6).join('; ') : ''})`);
+  ok(SCALE5.filter(S => S.p.tipo === 'gradone').every(S => !S.senza), 'ogni scala dei gradoni ha il suo posto sul terreno (opz.scalaX)'); }
+
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passate');
 process.exitCode = fail ? 1 : 0;

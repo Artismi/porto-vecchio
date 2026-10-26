@@ -59,5 +59,23 @@ console.log(`moduli ciechi per le scale: ${ciechi.length} (${JSON.stringify(ciec
 ok(!male.length, `ogni modulo cieco sta su una finestra di buildModular e Tetti.cieco4 lo dice ai piani che la scala attraversa (${male.length} sbagliati)`);
 ok(ciechi.length <= scale.length * .3, `i moduli ciechi restano l'eccezione: ${ciechi.length} su ${scale.length} scale`);
 
+// ---------------- 5. le scale di ferro non entrano in niente ----------------
+// [scorcio] (il committente: «vedo ancora scale compenetrate») la fascia della scala (70 cm lungo il muro, mezzo metro in fuori) non sta
+// dentro un'altra casa (la scala da terra) né fuori dal tetto basso del vicino (la scala dal vicino); quella da terra non posa i piedi
+// su una scala, un muraglione, una scalinata, una fontana o un albero, e nessuna barriera (parapetti, ringhiere, corrimano) la taglia.
+// Soglia zero. (Prima di [scorcio] 5 scale da terra stavano col fianco nella casa a filo sul giunto o sullo spigolo della corte.)
+{ const W = G.MAP.world, OP = W.pedonali || [], BAR = W.barriere || [], bIn = (x, y) => B.findIndex(b => x > b.x * TS + .01 && x < (b.x + b.w) * TS - .01 && y > b.y * TS + .01 && y < (b.y + b.h) * TS - .01);
+  const dentroP = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [ax, ay] = P[j], [bx, by] = P[i]; if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) c = !c; } return c; };
+  const dSeg = (b, x, y) => { const dx = b[2] - b[0], dy = b[3] - b[1], l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - b[0]) * dx + (y - b[1]) * dy) / l2)); return Math.hypot(b[0] + dx * t - x, b[1] + dy * t - y); };
+  const K = { casa: [], opera: [], albero: [], barriera: [] };
+  T.LADDERS.filter(L => !L.camm && !(T.libero4 && T.libero4(B[L.bi]))).forEach(L => { const P = []; for (const t of [-.35, 0, .35]) for (const v of [.08, .3, .5]) P.push([L.x + L.ox * v - L.oy * t, L.y + L.oy * v + L.ox * t]);
+    const altra = P.map(([x, y]) => bIn(x, y)).find(q => q >= 0 && q !== L.bi && q !== L.footB); if (altra !== undefined) K.casa.push(`${L.i} (${B[L.bi].id}) in ${B[altra].id}`);
+    if (L.footB >= 0) return;   // sul tetto del vicino: il suolo sotto non conta
+    const o = OP.find(o => o.tipo !== 'piazza' && o.tipo !== 'piazza_alta' && P.some(([x, y]) => o.poly ? dentroP(o.poly, x, y) : Math.hypot(x - o.x, y - o.y) < o.r)); if (o) K.opera.push(`${L.i} su ${o.id}`);
+    if (P.some(([x, y]) => G.tileAt(Math.floor(x / TS), Math.floor(y / TS)) === G.T.TREE)) K.albero.push(String(L.i));
+    const bb = BAR.find(b => P.some(([x, y]) => dSeg(b, x, y) < .1)); if (bb) K.barriera.push(`${L.i} / ${bb[4]}`); });
+  const n = Object.values(K).reduce((a, v) => a + v.length, 0);
+  ok(!n, `nessuna scala di ferro compenetrata (${T.LADDERS.length} scale; in un'altra casa ${K.casa.length}, su un'opera ${K.opera.length}, su un albero ${K.albero.length}, tagliate da una barriera ${K.barriera.length}${n ? ': ' + Object.values(K).flat().slice(0, 6).join('; ') : ''})`); }
+
 console.log(fail ? `\n${fail} prove non passate` : '\ntutte le prove passate');
 process.exit(fail ? 1 : 0);

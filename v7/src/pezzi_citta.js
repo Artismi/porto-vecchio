@@ -995,9 +995,9 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     return gg;
   }
   // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
-  function capperi(g, n, L, y0, y1, z0, k, seme, x0) {
+  function capperi(g, n, L, y0, y1, z0, k, seme, x0, libero) {   // libero(x): dove il ciuffo può stare (il gradone: non dietro la scala)
     if (LOD) return; const r = caso(seme);
-    for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05;   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
+    for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05; if (libero && !libero(x)) { if (r() < .5) r(); continue; }   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
       blocco(g, s, s * .6, .3, 'verde', x, y, z); blocco(g, s * .7, s * .5, .36, 'erba', x + s * .35, y + s * .25, z + .02); blocco(g, s * .5, s * .45, .32, 'verdeScuro', x - s * .4, y - s * .1, z + .01);
       if (r() < .5) blocco(g, .14, s * 1.4, .12, 'verde', x + (r() - .5) * s, y - s * 1.3, z + .04 + k * s * 1.3); }
   }
@@ -1487,22 +1487,25 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     sezione(g, [[h * k, 0], [0, h], [-P, h], [-P, 0]], L, 'tufo', 0, 0, 0);                         // muro e terrapieno
     blocco(g, L, .05, P - .5, SGUARDO ? 'pietra' : 'terra', L / 2, h, -P / 2 - .25);   // [scorcio] il camminamento in cima: pietra calda spenta come il lastricato (la terra battuta, tirata dal look, diventava una fascia gialla accesa)
     blocco(g, L, .16, .6, 'pietraChiara', L / 2, h, -.2, LOD ? 0 : .03);                            // copertina
-    if (o.ringhiera) { if (o.scala) { const n = Math.ceil(h / .17), xt = Math.max(0, L - n * Math.min(.32, (L - 1.6) / n) - 1.4) + n * Math.min(.32, (L - 1.6) / n), xl = Math.min(L, xt + 1.4);   // [pedonale] la ringhiera si apre dove arriva la scala (il pianerottolo), come il varco di game.js
+    const SX = o.scala && o.scalaX ? o.scalaX : null;   // [scorcio] il posto della scala deciso sul terreno (world_cittanuova.js scalaGradone): primo gradino, ultimo, fine del pianerottolo
+    if (o.ringhiera) { if (o.scala) { const n = Math.ceil(h / .17), xt = SX ? SX[1] : Math.max(0, L - n * Math.min(.32, (L - 1.6) / n) - 1.4) + n * Math.min(.32, (L - 1.6) / n), xl = SX ? SX[2] : Math.min(L, xt + 1.4);   // [pedonale] la ringhiera si apre dove arriva la scala (il pianerottolo), come il varco di game.js
         if (xt > .3) ringhiera(g, xt, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); if (L - xl > .3) ringhiera(g, L - xl, 1, 'ferro', xl, h + .16, -.2, 0, 1.2); }
       else ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); }
-    if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
-    capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h);
+    const libS = x => !SX || x < SX[0] - .7 || x > SX[2] + .3;   // [scorcio] niente barbacani, colature né capperi dietro la scala: passavano dentro i gradini
+    if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { if (!libS(x)) continue; blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
+    capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h, 0, libS);
     if (o.scala || o.rampa) { const W = 1.8, z0 = h * k * .5 + W / 2, cord = !o.scala;                  // la cordonata o la scala addossata
-      const a = cord ? .14 : .17, n = Math.ceil(h / a), pd = Math.min(cord ? .9 : .32, (L - 1.6) / n), aa = h / n, pts = [[0, 0]]; let x = Math.max(0, L - n * pd - 1.4), xi = x; pts[0] = [x, 0];
-      for (let i = 0; i < n; i++) { if (cord) { pts.push([x, aa * i + aa * .4]); x += pd; pts.push([x, aa * (i + 1)]); } else { pts.push([x, aa * (i + 1)]); x += pd; pts.push([x, aa * (i + 1)]); } }
-      pts.push([Math.min(L, x + 1.4), h], [Math.min(L, x + 1.4), 0]); profilo(g, pts, W, cord ? 'pietra' : SGUARDO ? 'travertino' : 'pietraChiara', 0, 0, z0);
+      const SC = !cord && SX, yb = SC ? o.yb : 0, hs = SC ? o.hs : h, fondo = SC ? Math.min(0, o.fondo) : 0;   // [scorcio] la scala sul terreno: il piede a yb sopra la quota del muro, l'alzata hs, il basamento fino a fondo
+      const a = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), aa = hs / n, pts = [[0, 0]]; let x = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xi = x; pts[0] = [x, fondo];
+      for (let i = 0; i < n; i++) { if (cord) { pts.push([x, aa * i + aa * .4]); x += pd; pts.push([x, aa * (i + 1)]); } else { pts.push([x, yb + aa * (i + 1)]); x += pd; pts.push([x, yb + aa * (i + 1)]); } }
+      const xe = SC ? SX[2] : Math.min(L, x + 1.4); pts.push([xe, h], [xe, fondo]); profilo(g, pts, W, cord ? 'pietra' : SGUARDO ? 'travertino' : 'pietraChiara', 0, 0, z0);
       if (SGUARDO && !cord && !LOD) {   // [scorcio] la scala si stacca dal muro: gradini di pietra chiara (non lo stesso tono del tufo), l'ombra sotto ogni pedata, la spalletta scura contro il muro, lo zoccolo al piede
-        for (let i = 0; i < n; i++) blocco(g, .03, aa * .55, W - .02, 'pietraScura', xi + i * pd - .016, aa * i, z0);
-        const run = x - xi, len = Math.hypot(run, h), sp = add(g, new THREE.BoxGeometry(len + .3, .24, .16), 'pietraScura', xi + run / 2, h / 2 + .1, z0 - W / 2 + .08); sp.rotation.z = Math.atan2(h, run);
-        blocco(g, Math.min(L, x + 1.4) - xi + .3, .1, W + .16, 'pietraScura', (xi + Math.min(L, x + 1.4)) / 2, -.04, z0 + .02); }
+        for (let i = 0; i < n; i++) blocco(g, .03, aa * .55, W - .02, 'pietraScura', xi + i * pd - .016, yb + aa * i, z0);
+        const run = x - xi, len = Math.hypot(run, hs), sp = add(g, new THREE.BoxGeometry(len + .3, .24, .16), 'pietraScura', xi + run / 2, yb + hs / 2 + .1, z0 - W / 2 + .08); sp.rotation.z = Math.atan2(hs, run);
+        blocco(g, xe - xi + .3, yb + .06 - fondo + .04, W + .16, 'pietraScura', (xi + xe) / 2, fondo - .04, z0 + .02); }   // lo zoccolo al piede (e il basamento sotto, dove il terreno scende)
       if (cord && !LOD) for (let i = 0; i < n; i++) blocco(g, .14, .14, W, 'pietraChiara', xi + i * pd + .07, Math.max(0, aa * i + aa * .4 - .1), z0);   // i cordoni
-      if (!LOD) asta(g, [xi + .3, 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
-      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, 0, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
+      if (!LOD) asta(g, [xi + .3, yb + 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
+      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, yb, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
     g.userData.misure = [L, h + (o.ringhiera ? 1.16 : .16), P + h * k + (o.scala || o.rampa ? 1.8 : 0)]; return g;
   };
 

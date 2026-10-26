@@ -1905,7 +1905,7 @@ var Render = (function () {
     if (name === '__ceppo') { const bark = natModel('Pine_1'); const geo = new THREE.CylinderGeometry(.28, .38, .5, 9); geo.translate(0, .25, 0); const top = new THREE.CircleGeometry(.28, 9); top.rotateX(-Math.PI / 2); top.translate(0, .5, 0);
       const mkp = (g, mat) => { const c = g.attributes.position.count; g.setAttribute('aSnow', new THREE.BufferAttribute(new Float32Array(c), 1)); g.setAttribute('aSway', new THREE.BufferAttribute(new Float32Array(c), 1)); return { geo: g, mat }; };
       return (NAT.models[name] = { parts: [mkp(geo, bark ? bark.parts.find(q => !q.leafy).mat : natMat(null, false, '#6a5040')), mkp(top, natMat(null, false, '#d8b888'))], top: .5 }); }
-    if (/^(Abete|Betulla|Quercia|Palma|Leccio|Pinodom)_|^Ombra4$/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde] [arcipelago] [verde4]
+    if (/^(Abete|Betulla|Quercia|Palma|Leccio|Pinodom)_|^(Ombra4|Formella4)$/.test(name)) return (NAT.models[name] = abeteModel(name));   // [verde] [arcipelago] [verde4]
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/' + name)) return (NAT.models[name] = null);
     const g = Kit.get('natura/' + name); g.updateMatrixWorld(true); const parts = []; let top = 0;
     g.traverse(o => { if (!o.isMesh) return; const geo = o.geometry.clone(); geo.applyMatrix4(o.matrixWorld); geo.computeBoundingBox(); top = Math.max(top, geo.boundingBox.max.y); parts.push({ geo, src: o.material }); });
@@ -1936,7 +1936,7 @@ var Render = (function () {
   let VEGR = null;   // [vegetazione] la posa del verde nuovo (Vegetazione.monta)
   const VEGN = (i) => typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione && Vegetazione.mia(M.world, i);
   function buildNat(tx0, ty0, n, m) { const it = buildNatG(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
-  const NAT_CITTA = ['Leccio_0', 'Leccio_1', 'Leccio_2', 'Leccio_3', 'Pinodom_0', 'Pinodom_1', 'Pinodom_2', 'Palma_0', 'Palma_1', 'Palma_2', 'Palma_3', 'Palma_4', 'Palma_5', 'Ombra4'];
+  const NAT_CITTA = ['Leccio_0', 'Leccio_1', 'Leccio_2', 'Leccio_3', 'Pinodom_0', 'Pinodom_1', 'Pinodom_2', 'Palma_0', 'Palma_1', 'Palma_2', 'Palma_3', 'Palma_4', 'Palma_5', 'Ombra4', 'Formella4'];
   function* buildNatG(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'nat';
     if (typeof Kit === 'undefined' || !Kit.has || !Kit.has('natura/Pine_1')) return grp;
@@ -1961,7 +1961,7 @@ var Render = (function () {
         const citta5 = LOOKV.nuovo && zoneT(tx, ty) === ZN.CITTA;   // [coerenza] in città l'albero del kit della natura (chioma scura a carte) diventa il leccio di città, della stessa famiglia dei viali
         if (citta5) { name = 'Leccio_' + Math.floor(r() * 4); s = 1 / big; lean = 0; }
         add(name, cx, groundH(cx, cz) - (citta5 ? 0 : .15), cz, s * big * (.9 + r() * .2), r() * 6.28, { rx: (r() - .5) * .06, rz: (r() - .5) * .06 + (lean || 0), col: citta5 ? '#ffffff' : treeCol36(name, cx, cz, r) });   // [isola36]
-        if (citta5) add('Ombra4', cx, groundH(cx, cz) + .03, cz, 2.3, 0, {});
+        if (citta5) { add('Ombra4', cx, groundH(cx, cz) + .03, cz, 2.3, 0, {}); add('Formella4', cx, groundH(cx, cz), cz, 1, asse4(cx, cz, 'piazza'), {}); }   // [scorcio] la formella quadrata a parte, dritta sulla griglia del lastricato (l'albero sopra gira come vuole)
         const k = (th > .5 ? 3 : 2) + (nt < 5 ? 1 : 0); for (let q = 0; q < k; q++) if (r() < .72) under(tx * TS + r() * 2, ty * TS + r() * 2, .8 + r() * .5);
         if (/DeadTree/.test(name) && r() < .45) for (let q = 0; q < 3; q++) add(r() < .7 ? 'Mushroom_Common' : 'Mushroom_Laetiporus', cx + (r() - .5) * 1.2, 0, cz + (r() - .5) * 1.2, .5 + r() * .5, r() * 6.28, { ground: true, col: '#f0e8dc' });
       } else if (orig && orig[ii] === T.TREE && v !== T.DIRT && v !== T.FIELD && v !== T.BLD) {   // [survival] sgombrato (terra battuta) o zappato: il ceppo è stato cavato
@@ -7682,12 +7682,25 @@ var Render = (function () {
         if (d < best) { best = d; bx = px; bz = pz; } if ((az > z) !== (cz > z) && x < (cx - ax) * (z - az) / (cz - az) + ax) dentro = !dentro; }
       if (dentro || best >= 1.3) continue; const L = best || 1e-3; x += (x - bx) / L * (1.3 - best); z += (z - bz) / L * (1.3 - best); }
     return x === t.x && z === t.z ? t : Object.assign({}, t, { x, z }); }
+  // [scorcio] il giro della formella quadrata: lungo una via (filare, viale) l'asse del tratto di via più vicino (entro 9 m), così il
+  // cordolo corre parallelo al ciglio; in piazza, nei cortili e nei giardini la griglia del lastricato e delle case (gli assi del mondo:
+  // l'Ottagono ha i lati sugli assi). Il valore è in [0, π/2): il quadrato è uguale a ogni quarto di giro.
+  let VIE4 = null;
+  function asse4(x, z, kind) {
+    if (kind !== 'filare' && kind !== 'viale') return 0;
+    if (!VIE4) { VIE4 = []; (M.roads || []).forEach(rd => { const P = rd.pts || []; for (let k = 0; k < P.length - 1; k++) VIE4.push([P[k][0], P[k][1], P[k + 1][0], P[k + 1][1], rd.w || 0]); }); }
+    let best = 9, a = 0;
+    for (const [ax, az, bx, bz, w] of VIE4) { const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz; if (L2 < 1e-6) continue; const u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)), d = Math.hypot(ax + dx * u - x, az + dz * u - z) - w / 2;
+      if (d < best) { best = d; a = Math.atan2(-dz, dx); } }
+    const q = Math.PI / 2; return ((a % q) + q) % q;
+  }
   function albero4(add, t, r) {
     t = lontanoMuro4(t);
     const sp = t.sp || (t.kind === 'piazza' && r() < .35 && !(NUOVA4() && !t.largo) ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
     const COL = ['#ffffff', '#f2f4ea', '#f8f6ee', '#eef2e8'], tilt = { rx: (r() - .5) * .04, rz: (r() - .5) * .04, col: pick(r, COL) };
     if (sp === 'palma') { add('Palma_' + Math.floor(r() * 6), t.x, y - .05, t.z, .82 * s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.6 * s, 0, {}); return; }
-    if (sp === 'pino') { add('Pinodom_' + Math.floor(r() * 3), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 4.8 * s, 0, {}); return; }
+    add('Formella4', t.x, y, t.z, 1, asse4(t.x, t.z, t.kind), {});   // [scorcio] la formella quadrata non gira con l'albero: sta dritta sull'asse della via (filari, viali) o sulla griglia del lastricato (piazze, cortili, giardini)
+    if (sp === 'pino') { add('Pinodom_' + Math.floor(r() * 3), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 3.7 * s, 0, {}); return; }   // [scorcio] l'ombra della chioma più piccola
     add('Leccio_' + Math.floor(r() * 4), t.x, y, t.z, s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.3 * s, 0, {});   // [chiarezza] l'ombra della chioma stretta
   }
   function verdeCitta35(add, tx0, ty0, n, m) {
@@ -9587,12 +9600,11 @@ var Render = (function () {
       tubo4(W, [b0, m, e], [.09, .06, .03], BARK4.leccio, seed + k * 5, H); }
     const lobes = [[env.c[0], env.c[1] + ry * .12, env.c[2], .84]];   // [x, y, z, raggio relativo all'involucro]: la massa
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r() * .6, d = rx * (.42 + r() * .08); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - ry * (.12 + r() * .12), env.c[2] + Math.sin(a) * d, .56 + r() * .06]); }
-    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 }); formella4(W, r);
+    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 });   // [scorcio] la formella è un modello a parte (Formella4), dritta sulla via
       const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.04, env.r[1] * 1.02, env.r[2] * 1.04] }, PAL5.leccio, seed, H, rng(seed + 7), { basso: 6, alto: 4, carte: Math.round(A4.carte * 1.8), cella: 4, sz: .3, amp: 1.9, minuti: 10 });   // [scorcio] la chioma ricca: tonda e compatta
       return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [rx * s, ry * s * 1.15, rx * s], env, PAL4.leccio, seed * 13 + k, 2, H, .45));
     frangia4(L, A4.carte, lobes, env, 4, .3, r, PAL4.leccio, H, .2, .85);
-    formella4(W, r);
     return { wood: W.build(), leaf: L.build() };
   }
   // il pino domestico: fusto alto, nudo e un po' piegato, a placche rossicce; in cima si apre in 4-5 branche e l'ombrello piatto
@@ -9600,22 +9612,24 @@ var Render = (function () {
     const r = rng(seed), W = acc4(), L = acc4(), TAU = 6.2832, phi = r() * TAU, lean = (.04 + r() * .06) * H, lx = Math.cos(phi) * lean, lz = Math.sin(phi) * lean, tT = H * .72;
     const pts = [0, .25, .5, .75, 1].map(t => [lx * Math.pow(t, 1.6) + Math.sin(t * 5 + seed) * .08, tT * t, lz * Math.pow(t, 1.6)]), top = pts[4];
     tubo4(W, pts, [.03 * H, .026 * H, .023 * H, .02 * H, .017 * H], BARK4.pino, seed, H);
-    const env = { c: [lx * 1.15, H * .87, lz * 1.15], r: [H * .44, H * .11, H * .44] }, NB = 4 + Math.floor(r() * 2);
+    // [scorcio] l'ombrello in proporzione col fusto: il raggio dell'involucro è il 36-44% del fusto (7-9 m), così la chioma (coi lobi che
+    // sporgono e la scala dell'istanza) fa 6-9 m di diametro, da pino di città; prima era il 44% dell'albero intero (≈ 11 m, più larga della via)
+    const rx = tT * (.36 + r() * .08), env = { c: [lx * 1.15, H * .87, lz * 1.15], r: [rx, H * .1, rx] }, NB = 4 + Math.floor(r() * 2);
     for (let k = 0; k < NB; k++) { const a = k / NB * TAU + r() * .6, d = env.r[0] * (.45 + r() * .2), e = [env.c[0] + Math.cos(a) * d, env.c[1] - env.r[1] * .4, env.c[2] + Math.sin(a) * d];
       const m = [top[0] + (e[0] - top[0]) * .35, top[1] + (e[1] - top[1]) * .65, top[2] + (e[2] - top[2]) * .35];
       tubo4(W, [top, m, e], [.014 * H, .01 * H, .005 * H], BARK4.pino, seed + k * 7, H); }
-    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); formella4(W, r); const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.06, env.r[1] * 2, env.r[2] * 1.06] }, PAL5.pino, seed, H, rng(seed + 7), { basso: 9, alto: 5, carte: 150, cella: 5, sz: H * .045, piatto: .45, amp: 1.8, minuti: 14 }); return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
+    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.06, env.r[1] * 2, env.r[2] * 1.06] }, PAL5.pino, seed, H, rng(seed + 7), { basso: 9, alto: 5, carte: 150, cella: 5, sz: H * .045, piatto: .45, amp: 1.8, minuti: 14 }); return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     const lobes = [[env.c[0], env.c[1] + env.r[1] * .3, env.c[2], .42]];
     for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + r() * .4, d = env.r[0] * (.6 + r() * .12); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .5) * env.r[1] * .5, env.c[2] + Math.sin(a) * d, .36 + r() * .08]); }
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r(), d = env.r[0] * .3; lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + env.r[1] * .15, env.c[2] + Math.sin(a) * d, .36]); }
     lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [env.r[0] * s, env.r[1] * 2.6 * s, env.r[0] * s], env, PAL4.pino, seed * 17 + k, 2, H));
     frangia4(L, 120, lobes.slice(0, 9), { c: env.c, r: [env.r[0], env.r[1] * 2.4, env.r[2]] }, 5, H * .055, r, PAL4.pino, H, .6);
-    formella4(W, r);
     return { wood: W.build(), leaf: L.build() };
   }
   function abeteModel(name) {
     if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true, semplice: !!g.leafR }].concat(g.leafR ? [{ geo: g.leafR, mat: chiomaMat5(), leafy: true, ricca: true }] : []), top: H }; }   // [scorcio] la chioma ricca accanto a quella di oggi (la proposta sceglie)   // [verde4]
     if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true, semplice: !!g.leafR }].concat(g.leafR ? [{ geo: g.leafR, mat: chiomaMat5(), leafy: true, ricca: true }] : []), top: H }; }   // [scorcio] la chioma ricca accanto a quella di oggi (la proposta sceglie)   // [verde4]
+    if (name === 'Formella4') { const W = acc4(); formella4(W, rng(4441)); return { parts: [{ geo: W.build(), mat: vdMat(), leafy: false }], top: .15 }; }   // [scorcio] la formella da sola: la posa albero4 col giro della via
     if (name === 'Ombra4') {   // [verde4] l'ombra morbida sotto la chioma: un disco a terra che sfuma (raggio 1, si scala con la chioma)
       const geo = new THREE.PlaneGeometry(2, 2); geo.rotateX(-Math.PI / 2);
       const mat = new THREE.MeshBasicMaterial({ color: '#1a1814', alphaMap: blobT2(), transparent: true, opacity: typeof Chiarezza !== 'undefined' ? Chiarezza.ALBERO.ombra : .34,   /* [chiarezza] chiara e morbida */ depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
@@ -12685,10 +12699,10 @@ var Render = (function () {
     celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1,
     vivo: .7,
     chiomeRicche: 1, vento: 1, finestre: 1 };   // le chiome ricche (più lobi, sotto-masse, carte, ogni albero suo, ombra interna, toni a celle, vento); le finestre accese che sembrano finestre (non pannelli gialli)   // la tavolozza di fondo viva: i grigi caldi o freddi (mai fango), i marroni verso cotto e ocra, i verdi in luce verso il giallo-verde, più colore nei medi   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
-  Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1 });
-  Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1 });
-  Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05 });
-  Object.assign(SGU.momenti.notte, { proOmbra: [0.92, 0.94, 1.1], proLuce: [1.12, 0.99, 0.8], proSat: 1.02, proContrasto: 1.04, proPieno: 0.7, proNeri: 0.02, proTinta: '#4a46a0', proTintaK: 0.4, proEsp: 1.3 });
+  Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1, proSuolo: 1 });
+  Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1, proSuolo: 1 });
+  Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05, proSuolo: 1.55 });   // [scorcio] proSuolo: il suolo (il lastricato in piano, alla quota della camera) prende più cielo: di sera la piazza si legge
+  Object.assign(SGU.momenti.notte, { proOmbra: [0.92, 0.94, 1.1], proLuce: [1.12, 0.99, 0.8], proSat: 1.02, proContrasto: 1.04, proPieno: 0.7, proNeri: 0.02, proTinta: '#4a46a0', proTintaK: 0.4, proEsp: 1.3, proSuolo: 1.25 });
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
@@ -12700,7 +12714,7 @@ float sgVetroK = -1.;
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
-uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), -, -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
+uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
 float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
@@ -12746,8 +12760,11 @@ if ( sgP1.x + sgP1.z > 0. ) {
   diffuseColor.rgb *= 1. + sgP1.x * sgV * ( sgQ * .17 - .06 ) + sgP1.z * ( ( sgL - .5 ) * .17 + ( sgB - .5 ) * .07 * ( .35 + .65 * sgV ) );
   diffuseColor.rgb *= 1. + sgP1.z * ( sgT - .5 ) * vec3( .1, .02, -.08 );   // caldo e freddo, a macchie larghe
 }
-if ( sgP4.y + sgP4.z > 0. ) {
+if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
   vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = abs( sgNw.y ), sgH = vSgW.y - sgP2.w;
+  // [scorcio] il riempimento di cielo sul suolo dell'ora (proSuolo del set, sera e notte): il lastricato in piano alla quota della camera
+  // o sotto prende più luce, appena fredda (il cielo); i muri (le facce in piedi) e i tetti no, così non bruciano
+  diffuseColor.rgb *= 1. + smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP5.z * vec3( .9, 1., 1.14 );
   float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
   // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
   float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
@@ -12849,6 +12866,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     { const ric = !!(k && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
     PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
+    PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
     if (k && S && S.proEsp) renderer.toneMappingExposure *= 1 + (S.proEsp - 1) * (P.grading || 0);   // l'esposizione dell'ora nella proposta (la notte meno chiusa)
     if (S && S.proTinta) { u3.x = S.proTinta.r * S.proTintaK; u3.y = S.proTinta.g * S.proTintaK; u3.z = S.proTinta.b * S.proTintaK; }
   }
@@ -13867,6 +13885,31 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     else { ['#ff3fa4', '#38e8ff', '#ffb050', '#38e8ff'].forEach((col, i) => { x.fillStyle = col; x.font = 'bold 13px sans-serif'; x.fillText('ONDA'.charAt(i), 4 + i * 11, 12 + (i % 2) * 11); }); }
     return MURAL[k] = canvasTex(c);
   }
+  // [scorcio] LA VERANDA CHE HA UN SENSO (il committente: «sembrano buttate lì a caso sui tetti»): la chiusura a vetri di un pezzo di
+  // terrazzo, addossata al muro del piano arretrato della stessa casa (b.tiers, world_cittanuova.js) e posata sul lastrico del corpo
+  // sotto. Larga un modulo (1,8 m, la casella di 2 m), profonda 1,4 m (il terrazzo davanti è largo almeno 2 m), alta 2,4 m: il suo tetto
+  // resta sotto le finestre del piano di sopra (il primo piano del volume arretrato è alto MG = 3,6 m). Davanti la porta-finestra (vetro
+  // fino a terra, il telaio, la maniglia), ai lati il parapetto pieno e il vetro sopra. Una per casa, sul lato col terrazzo più largo.
+  function veranda5(g, b, bi, yT) {
+    const B0 = b.__tierOf, t = b, r = rng(bi * 911 + 5), y = yT + .1, H = 2.4, Wv = 1.8, Dv = 1.4;
+    const lati = [{ f: 'S', prof: (B0.y + B0.h - t.y - t.h) * TS, n: t.w, at: u => [t.x * TS + u, (t.y + t.h) * TS], yaw: 0 }, { f: 'N', prof: (t.y - B0.y) * TS, n: t.w, at: u => [(t.x + t.w) * TS - u, t.y * TS], yaw: Math.PI },
+      { f: 'E', prof: (B0.x + B0.w - t.x - t.w) * TS, n: t.h, at: u => [(t.x + t.w) * TS, (t.y + t.h) * TS - u], yaw: Math.PI / 2 }, { f: 'W', prof: (t.x - B0.x) * TS, n: t.h, at: u => [t.x * TS, t.y * TS + u], yaw: -Math.PI / 2 }]
+      .filter(q => q.prof >= Dv + .55 && q.n >= 2).sort((p, q) => q.prof - p.prof || q.n - p.n);
+    if (!lati.length || th(bi, 5, 77) > .75) return;
+    const L = lati[0], k = L.n >= 3 ? 1 : 0, [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
+    const telaio = sm(pick(r, ['#e8e4dc', '#3a3430', '#5a4a3a']), { roughness: .7 }), muro = sm(pick(r, ['#d8cdb8', '#c8b8a0', '#e0d4c0']), { roughness: 1 }), tetto = sm('#bcc0c6', { roughness: 1 }), vetro = verLit1(r() < .6 ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0');
+    const ad = (o, x, yy, z) => { o.position.set(x, yy, z); a.add(o); return o; }, zf = Dv + .02;
+    [[-Wv / 2, .06], [Wv / 2, .06], [-Wv / 2, zf], [Wv / 2, zf]].forEach(([x, z]) => ad(box(.07, H, .07, telaio), x, H / 2, z));   // i montanti
+    ad(box(Wv + .12, .12, Dv + .14, tetto), 0, H + .06, Dv / 2 + .05);   // il tettuccio (sotto le finestre del piano di sopra)
+    ad(box(Wv + .07, .1, .07, telaio), 0, H - .05, zf);   // l'architrave
+    ad(box(.5, .9, .06, muro), -Wv / 2 + .28, .45, zf); ad(box(.5, .9, .06, muro), Wv / 2 - .28, .45, zf);   // i parapetti pieni ai lati della porta
+    [-1, 1].forEach(sd => { ad(new THREE.Mesh(new THREE.PlaneGeometry(.46, H - 1.05), vetro), sd * (Wv / 2 - .28), .95 + (H - 1.05) / 2, zf + .035); });   // i vetri sopra i parapetti
+    ad(box(.8, 2.1, .05, telaio), 0, 1.05, zf); ad(new THREE.Mesh(new THREE.PlaneGeometry(.66, 1.96), vetro), 0, 1.05, zf + .03);   // la porta-finestra: telaio e vetro fino a terra
+    ad(box(.04, .14, .05, sm('#c8a860', { roughness: .4, metalness: .6 })), .3, 1.05, zf + .05);   // la maniglia
+    [-1, 1].forEach(sd => { const fx = sd * (Wv / 2 + .005), q = ad(box(.06, .9, Dv - .06, muro), fx, .45, Dv / 2 + .04);   // i fianchi: il parapetto pieno
+      const v = ad(new THREE.Mesh(new THREE.PlaneGeometry(Dv - .1, H - 1.05), vetro), fx + sd * .035, .95 + (H - 1.05) / 2, Dv / 2 + .04); v.rotation.y = sd * Math.PI / 2; void q; });
+    (window.__rt = window.__rt || {}).verande = ((window.__rt || {}).verande || 0) + 1;
+  }
   function buildDetails2() {
     const T = G.T, cloth = ['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a', '#7a9a6a', '#c86aa0'].map(c => animMat(std({ color: c, roughness: 1 }), 'giu:panno:1.6')),   /* [animazioni-mondo] il bucato sventola */ dark = sm('#1c1c22', { roughness: 1 }), metal = sm('#4a4e54', { roughness: .6, metalness: .5 });
     const glowM = c => new THREE.MeshBasicMaterial({ color: c }), WALLC = ['#8a8278', '#7a7e86', '#8e7a68', '#6e7a70'];
@@ -13891,13 +13934,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           if (!copre) { const a = mkA(sd, u), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, yy, .09); } }
         if (fl >= 3 && r() < .3) { const a = mkA(sd, 1 + r() * (sd.len - 2)), f = 1 + Math.floor(r() * (fl - 1)), y = base + MG + (f - 1) * MF + .3, k = [0, 3, 5][Math.floor(r() * 3)];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(.8, 2.4), lam('b' + k, posterTex(k))); ad(a, m, 0, y + 1.2, .5); ad(a, box(.05, .05, .9, metal), 0, y + 2.45, .45); m.rotation.y = r() < .5 ? 0 : 0; m.rotation.x = -.04; const m2 = m.clone(); m2.rotation.y = Math.PI; m2.position.z = .52; a.add(m2); }
-        if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); { const wy = y + .8, warm = r() < .6, legno = sm('#3a3430', { roughness: .8 });   // [scorcio] la finestra della veranda: era un pannello giallo (o azzurro) pieno, senza luce né telaio, acceso anche di giorno
-            ad(a, box(1.04, .82, .06, legno), 0, wy, .8);   // il telaio
-            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.9, .68), verLit1(warm ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0')), 0, wy, .834);   // il vetro: buio di giorno, la luce calda (o la tele) la sera, come le altre finestre
-            ad(a, box(.04, .68, .03, legno), 0, wy, .845);   // il montante
-            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.4, .5), sm(pick(r, ['#d8c8a8', '#c8a890', '#b8c0a8']), { roughness: 1 })), r() < .5 ? -.22 : .22, wy + .07, .842);   // la tenda tirata a metà
-            (window.__rt = window.__rt || {}).verande = ((window.__rt || {}).verande || 0) + 1; } }
+        if (fl >= 3 && r() < .28) { r(); r(); r(); if (r() < .6) r(); r(); r(); (window.__rt = window.__rt || {}).verandeTolte = ((window.__rt || {}).verandeTolte || 0) + 1; }   // [scorcio] la veranda appesa al muro a un piano qualunque (una scatola sospesa senza terrazzo davanti) non c'è più: le verande le posa veranda5 qui sotto, solo dove c'è un terrazzo. Gli stessi numeri a caso: murali e manifesti restano dove erano
       });
+      if (b.__tierOf && b.__tierK === 0 && !b.room) veranda5(g, b, bi, bb.min.y);
       if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.det2Grp = gm; n++; }
     });
     // bucato steso tra le case, attraverso i vicoli
