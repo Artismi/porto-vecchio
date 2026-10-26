@@ -66,3 +66,41 @@ da un agente una volta su due; la mattina il feed dice cosa ti hanno cancellato.
 
 Prove: `test_writing.js` (agente che vede, nessuno che vede, muro del regime cancellato). Senza testa i giri dei graffiti
 seguono i fotogrammi (qui 5 s l'uno): per le foto si chiama `Writing._.scanNear(..., { force: true })`.
+
+## Graffiti 3 (26 ottobre): i pennelli, l'aderenza, quello che dipingi resta — riga `[graffiti]`
+**I pennelli** (`src/pennelli.js`, tutti procedurali, niente pennelli scaricati): la bomboletta (nuvola di puntini a densità
+gaussiana, overspray, speckle e splatter, colature dove la vernice si accumula, spessore che cala con la velocità), il fat cap e
+lo skinny cap, il rullo (banda piatta, copertura irregolare, strisce del rullo che si asciuga, creste ai bordi, segni di
+partenza e fermata), il pennarello (punta a scalpello, inchiostro che si raccoglie, colature sottili del mop), l'adesivo (la
+tag a pennarello su un'etichetta, l'angolo che si stacca) e la GRANA del muro (intonaco, mattoni con le fughe, cemento coi pori,
+pietra, metallo, legno) con l'età (sbiadisce, si scrosta). Tutti i numeri in tabelle in cima al file: `PENNELLI` (size, flow,
+pressure, drip, grit, cap…), `SUPERFICI`, `USO` (che pennello usa ogni lavoro: tag skinny, throw-up fat, pezzi e burner spray,
+mostro e roller a rullo, mtag pennarello, adesivo), `ETA`. `Pennelli.art(w)` = il disegno di writer_arte.js + il passaggio del
+pennello su ogni tappa; lo usa il disegnatore a parte (il Web Worker, `pv-artworker` in index.src.html) e, senza worker,
+writing.js. Lavori nuovi: lo stile `rullo` (le lettere a rullo: heaven spot e muri lunghi) e gli adesivi (`w.sticker`, un terzo
+delle tag a pennarello). La tavoletta ha il pennello (bomboletta, fat cap, skinny cap, rullo, pennarello) e le manopole
+(spessore, flusso, colature).
+
+**L'aderenza** (writing.js `fitWall`, `onPlane`, `placeWall`): galleggiavano perché il muro si cercava con un raggio a 1,4 m
+e poi il lavoro saliva o scendeva alla sua quota senza guardare se lì il muro c'era ancora (zoccolo, portico, insegna, facciata
+a gradoni); la prova accettava 28 cm di scarto e 36° di normale; il velo stava a 1,4 cm più 4 mm a strato; finestre e porte non
+contavano. Adesso il raggio va alla quota del lavoro, una griglia di raggi (~40 cm e i bordi) vuole lo stesso piano entro 1,5 cm
+con cos > .97, sopra la terra al piede del muro e fuori dalle aperture vere (`R.aperture`, render.js: finestre, porte, vetrine,
+la fascia dell'insegna, da `b.__win`), e il lavoro prende il rettangolo più grande tutto buono; il velo sta a 3 mm (più 1 a
+strato, al massimo 7) col polygonOffset. Sui mezzi la decalcomania (`decalGeo`): i triangoli della carrozzeria dentro il
+riquadro, tagliati, nello spazio del gruppo del mezzo (segue le curve, si muove col mezzo).
+Misura: `Writing._.galleggia()` e `node strumenti/graffiti_sonda.js [cartella] --nome=dopo` (nel gioco vero, con le foto da vicino).
+
+**Resta** (`salva`/`carica`, localStorage `pv.graffiti.v1`): i lavori tuoi con la chiave del posto (muro: casa:faccia:lungo:altezza
+più centro e normale; mezzo: id, lato, lungo, quota; treno: vettura e lato). Tornano a ogni partita (anche ricaricando la
+pagina), si rifanno uguali tornando vicino (il riquadro resta nel lavoro, non dipende dai settori), il mezzo sparito dal traffico
+se li porta via e li riporta quando ricompare (stesso id). Al massimo 220: oltre i tre quarti i più vecchi sbiadiscono.
+**Memoria**: le tele dei veli si riusano (pila per misura), a metà lato sul telefono (`LeggeraMem.meta2`), al massimo 170 veli
+vivi (70 sul telefono): i più lontani si liberano.
+
+**La tavoletta**: l'anteprima guardava il cielo perché vinceva qualunque faccia verticale sul raggio (anche dietro o sotto la
+terra) e la finestra trascinata usciva dal muro. Adesso il muro dietro vale solo a un passo dal primo colpo, la finestra si
+stringe alla superficie (`tavFit`), la camera (`tavCam`) sta lungo la normale a 3 m, puntata al centro, col margine del 4%
+(per terra dall'alto, sui mezzi dal lato scelto: fianco o muso, dritto sull'asse del mezzo).
+Prove: `node test_graffiti.js --seme=12345` (aderenza, decalcomania, lontano e ritorno coi modelli rifatti, ricarica in un
+processo nuovo, memoria, tavoletta); con `--file=<writing.js di prima>` conta i galleggianti della versione di prima.
