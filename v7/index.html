@@ -22583,8 +22583,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'c0762fbc77698ab7';</script>
-<script>window.PV_IMPRONTA_TASS = 'd4e7b2e446541952';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'd015b76e8abf2f16';</script>
+<script>window.PV_IMPRONTA_TASS = 'd46d65abbde3aeef';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -52319,13 +52319,17 @@ var Tetti = (function () {
   function scanWork(J, deadline) {   // true: finito (misurato, o il modello non si presta)
     const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = GFX.ro || (GFX.ro = new T3.Vector3()), dn = GFX.rd || (GFX.rd = new T3.Vector3(0, -1, 0));
     const { b, parts, W1, H1, g, floor, rule } = J;
+    // [scatti] il tempo si guarda ogni 4 raggi, non a fine riga: su un modello pieno di pezzi una riga intera passava di 20-100 ms il tetto
+    // del fotogramma. Stessi raggi, nello stesso ordine: il fotogramma si ferma a metà riga (J.gx) e riprende da lì
     while (J.gy < H1) {
-      const gy = J.gy++;
-      for (let gx = 0; gx < W1; gx++) {
+      const gy = J.gy;
+      for (let gx = J.gx || 0; gx < W1; gx++) {
         const x = b.x * TS + gx + .5, z = b.y * TS + gy + .5; o.set(x, rule + 40, z); rc.set(o, dn); rc.far = 80;
         const h = rc.intersectObjects(parts, true).find(h => !h.object.userData.velo && !h.object.userData.noRoof && h.point.y > floor);
         g[gy * W1 + gx] = h ? h.point.y : NaN; if (h) J.hits++;
+        if ((gx & 3) === 3 && gx < W1 - 1 && performance.now() > deadline) { J.gx = gx + 1; return false; }
       }
+      J.gx = 0; J.gy++;
       if (performance.now() > deadline) return J.gy >= H1 ? scanEnd(J) : false;
     }
     return scanEnd(J);
@@ -52508,7 +52512,10 @@ var Tetti = (function () {
       boards.push(m4.compose(p3.set(z.x, y + .2, z.y), q, s3.set(.6, .4, .45)).clone()); boards.push(m4.compose(p3.set(z.x, y + .41, z.y), q, s3.set(.64, .03, .49)).clone());
       rails.push(m4.compose(p3.set(z.x + .05, y + .5, z.y), q, s3.set(.3, .16, .22)).clone()); lamps.push(m4.compose(p3.set(z.x - .22, y + .48, z.y + .1), q, s3.set(.06, .1, .06)).clone()); });
     // [tetti4] LE CORTI: il lastrico chiaro (si legge come un posto, non come un avanzo) e la cosa che dice lo scopo
-    CORTI.forEach(C => { const foot = (x, y) => LADDERS.some(L => hyp(L.fx - x, L.fy - y) < 1.6), hc = (x, y) => tileH(x, y);
+    // [scatti] il piede di una scala vicino alla cella: le scale in una griglia di 1,6 m (prima tutte le 300 scale per ognuna delle 300 celle, a ogni rifacimento)
+    const PIEDI = new Map(); LADDERS.forEach(L => { const k = Math.floor(L.fx / 1.6) + ',' + Math.floor(L.fy / 1.6); const a = PIEDI.get(k); if (a) a.push(L); else PIEDI.set(k, [L]); });
+    const piede = (x, y) => { const i0 = Math.floor(x / 1.6), j0 = Math.floor(y / 1.6); for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const a = PIEDI.get(i + ',' + j); if (a) for (const L of a) if (hyp(L.fx - x, L.fy - y) < 1.6) return true; } return false; };
+    CORTI.forEach(C => { const foot = piede, hc = (x, y) => tileH(x, y);
       C.celle.forEach(([tx, ty]) => { const x = (tx + .5) * TS, y = (ty + .5) * TS; put(lastr, x, hc(x, y) + .02, y, TS - .04, .03, TS - .04, 0); });
       const cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).filter(([x, y]) => !foot(x, y)).sort((a, b) => hyp(a[0] - C.x, a[1] - C.y) - hyp(b[0] - C.x, b[1] - C.y));
       if (!cel.length) return; const [cx, cy] = cel[0], g0 = hc(cx, cy);
@@ -61101,6 +61108,35 @@ var Writing = (function () {
     for (const m of list) { const g = m.geometry; if (!g || (m.userData && typeof m.userData.lazy1 === 'function')) { out.push(m); continue; } if (!g.boundingSphere) g.computeBoundingSphere(); S.copy(g.boundingSphere).applyMatrix4(m.matrixWorld); if (S.center.distanceTo(c) <= S.radius + rad) out.push(m); }
     return out;
   }
+  // [scatti] SOLO LE MESH CHE HANNO DAVVERO UN TRIANGOLO NEL RIQUADRO. La griglia di fitWall fa 50-130 raggi corti, tutti dentro una scatola
+  // attorno al riquadro; nearList tiene chi ha la SFERA vicina, e le mesh fuse e sottili della città (le vie vive, le statiche fuse: 100-200
+  // triangoli sparsi su 200 m) hanno sfere di 50-200 m: restavano ~150 mesh provate a ogni raggio, 100-500 ms in un fotogramma solo (lo
+  // scatto vicino ai muri dipinti). Qui una volta per riquadro: si tiene la mesh se almeno un triangolo tocca la scatola (con l'indice dei
+  // raggi, three-mesh-bvh, se c'è e torna; se no triangolo per triangolo, nello spazio della mesh). Un raggio dentro la scatola può colpire
+  // solo quei triangoli: stessi punti, stesso primo colpo, stesso risultato.
+  function nearTris(list, c, E) {
+    const THREE = T3(), out = [], B = GFX.ntB || (GFX.ntB = new THREE.Box3()), Bl = GFX.ntBl || (GFX.ntBl = new THREE.Box3()), M = GFX.ntM || (GFX.ntM = new THREE.Matrix4());
+    B.min.set(c.x - E, c.y - E, c.z - E); B.max.set(c.x + E, c.y + E, c.z + E);
+    for (const m of list) {
+      const g = m.geometry, pa = g && g.attributes && g.attributes.position;
+      if (!pa || (m.userData && typeof m.userData.lazy1 === 'function') || m.isInstancedMesh || m.isSkinnedMesh || (g.morphAttributes && g.morphAttributes.position)) { out.push(m); continue; }
+      M.copy(m.matrixWorld).invert();
+      const bt = g.boundsTree;   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
+      if (bt && g.__bvhVer === pa.version * 4194304 + (g.index ? g.index.version + 2 : 1)) { try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+      Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
+      const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
+      if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
+      const ix = g.index, n = ix ? ix.count : pa.count; let hit = false;
+      for (let t = 0; t + 2 < n && !hit; t += 3) {
+        const a = ix ? ix.getX(t) : t, b = ix ? ix.getX(t + 1) : t + 1, d = ix ? ix.getX(t + 2) : t + 2;
+        const ax = pa.getX(a), bx = pa.getX(b), dx = pa.getX(d); if ((ax < x0 && bx < x0 && dx < x0) || (ax > x1 && bx > x1 && dx > x1)) continue;
+        const az = pa.getZ(a), bz = pa.getZ(b), dz = pa.getZ(d); if ((az < z0 && bz < z0 && dz < z0) || (az > z1 && bz > z1 && dz > z1)) continue;
+        const ay = pa.getY(a), by = pa.getY(b), dy = pa.getY(d); if ((ay < y0 && by < y0 && dy < y0) || (ay > y1 && by > y1 && dy > y1)) continue;
+        hit = true; }
+      if (hit) out.push(m);
+    }
+    return out;
+  }
   // le aperture della facciata vicino a c (render.js R.aperture), quelle col fronte come n
   function openingsAt(c, n) { const R = R_(); let L = []; try { L = R && R.aperture ? R.aperture(c.x, c.z, 9) : []; } catch (e) { L = []; } return L.filter(a => a.nx * n.x + a.nz * n.z > .85 && Math.abs((c.x - a.x) * a.nx + (c.z - a.z) * a.nz) < .8); }
   const inOpening = (O, x, y, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .04 && y > a.y0 - .04 && y < a.y1 + .04; });
@@ -61116,7 +61152,7 @@ var Writing = (function () {
   // Ritorna { c, r, W, H } (c il centro nuovo, sul piano) o null se non c'è un pezzo di muro almeno minK della misura
   function fitWall(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
-    const L = nearList(list, c, Math.hypot(W, H) / 2 + 1.2), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;
+    const L = nearTris(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);
@@ -69197,27 +69233,37 @@ var Anelli = (function () {
 })();
 if (typeof window !== 'undefined') window.Anelli = Anelli;
 </script>   <!-- [anelli] il caricamento ad anelli: i lavori a pezzi, la coda, le sfumature -->
-<script data-m="tasselli">/* Porto Vecchio — [tasselli] LA CITTÀ A TASSELLI (pilota: ?tasselli=1).
+<script data-m="tasselli">/* Porto Vecchio — [tasselli] LA CITTÀ A TASSELLI (il modo normale di partire; ?tasselli=0: la città costruita nel browser come prima).
    La città ferma (case fuse, tetti, strade, marciapiedi, arredi, segni, costa) non si costruisce più nel browser: strumenti/tassella.js
-   la costruisce una volta nella build, la taglia in settori di 48 m (gli stessi di anelli/fusione1) e la scrive in tasselli/. Qui:
-   - all'avvio (prima di R.init) si legge tasselli/indice.json; se l'impronta non è quella della pagina (PV_IMPRONTA_TASS, build.py)
-     si costruisce come prima, tutto;
+   la costruisce una volta nella build, la taglia in settori di 48 m (gli stessi di anelli/fusione1) e la scrive in tasselli/ (in git no:
+   la cuoce il workflow .github/workflows/tasselli.yml, la scarica il build di Vercel; PESO.md §8). Qui:
+   - all'avvio (prima di R.init) si legge tasselli/indice.json e tasselli/dati.json; se mancano, o l'impronta non è quella della pagina
+     (PV_IMPRONTA_TASS, build.py), si costruisce come prima, tutto;
    - render.js salta le fasi della città (faseViva: restano cielo, isola coi blocchi del terreno, acqua) e chiama monta(): le uniform
      di modulo che la città usa (FD1, la tavolozza), le luci e le pozze di luce (dati), la sagoma di tutta l'isola (il lontano);
+   - [tasselli2] il gioco che leggeva le mesh della città ha i suoi dati (dati.json): le case (dyn.buildings senza mesh: il taglio, il
+     tetto che sbiadisce, la sagoma del personaggio; FD1 vivo), quello che le fasi scrivono sulle case del mondo (b.__win per le aperture
+     dei graffiti, b.__top...), gli oggetti che si colpiscono (DZ.props: una maschera li nasconde nella mesh del tassello, tornano come
+     corpi vivi), le cose che si muovono o cambiano (bucato, barche, faro, semafori, insegne che sfarfallano, acqua delle fontane:
+     oggetti a parte, nelle liste del gioco che li anima come prima; gli aloni: strati istanziati con lo sfarfallio nello shader);
+     i muri si colpiscono coi raggi (i graffiti): le mesh opache tengono le posizioni e una griglia per i raggi;
+   - i programmi dei tasselli si compilano nel caricamento (una mesh fuori vista per programma, nella compilazione di main.js);
    - i tasselli si scaricano per distanza dal punto guardato (prima l'anello vicino, poi verso fuori, quello davanti alla camera
      prima), in un lavoratore (gzip, meshopt, la posizione rifatta a 32 bit) e salgono alla scheda video a fette (un tetto di vertici e
      di millisecondi per fotogramma, più largo finché manca l'anello vicino); i vettori della pagina si liberano dopo l'invio;
-   - oltre l'anello lontano il tassello si butta (geometrie via, la sagoma torna);
+   - oltre l'anello lontano il tassello si butta (geometrie via, la sagoma torna); [tasselli3] quando esce dalla vista lascia davvero la
+     scheda video: geometrie e matrici delle istanze (dispose), e i materiali e le tessiture contati per tassello, liberati quando l'ultimo
+     tassello che li usa se ne va (si riscaricano se torna): la memoria resta piatta dopo tanti giri (misura_tasselli.js --giri);
    - la gente, i mezzi, il bottino, gli interni, il terreno a blocchi e il verde restano del gioco, come prima.
-   Il gioco (camminare, quote, porte, tetti, missioni) legge i dati del mondo, non le mesh (PESO.md §7.5).
    window.__tasselli: lo stato (tasselli in scena, in volo, byte, vertici, quando è arrivato l'anello vicino). */
 var Tasselli = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
-  const CHIESTO = !STUDIO && /[?&]tasselli=1\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined';
+  // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto)
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
-  const BASE = 'tasselli/', V = '?v=' + (IMP || '0');
+  const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
   const LOG = /[?&]tassellilog\b/.test(Q);
   const log = (...a) => { if (LOG) console.log('[tasselli]', ...a); };
@@ -69235,15 +69281,25 @@ var Tasselli = (function () {
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
+    raggi: !/[?&]tasselliraggi=0\b/.test(Q),   // [tasselli2] le mesh opache tengono le posizioni per i raggi (graffiti, spruzzi)
   };
-  let IND = null, ON = false, CTX = null;
-  const ST = { on: false, motivo: '', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0 };
-  // l'indice, prima di R.init (main.js aspetta questa promessa con i kit)
-  const pronto = !CHIESTO ? Promise.resolve(false) : fetch(BASE + 'indice.json' + V).then(r => r.ok ? r.json() : null).then(j => {
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null;
+  const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
+    case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
+  const url = f => new URL(BASE + f + V, location.href).href;
+  // l'indice e i dati, prima di R.init (main.js aspetta questa promessa con i kit). Qualunque cosa vada storta: la città come prima
+  const pronto = !CHIESTO ? Promise.resolve(false) : fetch(url('indice.json')).then(r => r.ok ? r.json() : null).then(async j => {
     if (!j) { ST.motivo = 'indice mancante'; return false; }
     if (j.versione !== 1 || !IMP || j.impronta !== IMP) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
-    IND = j; ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
-  }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); return false; });
+    if (!j.dati) { ST.motivo = 'senza dati del gioco'; console.warn('[tasselli] tasselli senza i dati del gioco (cottura vecchia): la città si costruisce come prima'); return false; }
+    const d = await fetch(url(j.dati.file)).then(r => r.ok ? r.json() : null);
+    if (!d || d.impronta !== IMP) { ST.motivo = 'dati mancanti'; console.warn('[tasselli] dati.json mancante o di un\'altra build: la città si costruisce come prima'); return false; }
+    IND = j; DATI = d;
+    if (d.viviBin) VIVB = chiedi({ op: 'tassello', url: url(d.viviBin.file) });   // le geometrie dei vivi: servono in monta()
+    if (VIVB) await VIVB.then(m => { VIVB = m; });
+    try { bmut(); } catch (e) { }   // prima di R.init: chi legge b.__* durante il caricamento lo trova (e di nuovo in monta)
+    ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
+  }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
 
   // ---------------- il lavoratore ----------------
   // più lavoratori (2 sul telefono, 3 sul computer): ogni richiesta va a quello con meno lavori in coda
@@ -69261,7 +69317,6 @@ var Tasselli = (function () {
   // le immagini 2D si aprono qui (createImageBitmap decodifica fuori dal filo della pagina): i lavoratori restano ai tasselli
   const immagine = (u, capovolgi) => fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.blob(); })
     .then(bl => createImageBitmap(bl, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: capovolgi ? 'flipY' : 'from-image' })).then(bmp => ({ bmp }));
-  const url = f => new URL(BASE + f + V, location.href).href;
 
   // ---------------- valori, tessiture, materiali ----------------
   const TEX = new Map(), TEXP = new Map(), MAT = new Map(); let TEXI = null;
@@ -69269,28 +69324,50 @@ var Tasselli = (function () {
   const TXP = ['wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'encoding', 'format', 'type', 'generateMipmaps', 'unpackAlignment', 'rotation', 'matrixAutoUpdate', 'internalFormat'];
   const MK = ['map', 'emissiveMap', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap'];
   const TA = { Float32Array, Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Uint8ClampedArray, Float64Array };
-  function tessitura(i) {   // la tessitura subito (vuota), i pixel quando arrivano: tessituraPronta(i) è la promessa
+  // [tasselli2] la tessitura subito (vuota: il programma la conosce già), i pixel solo quando un tassello che la usa si apre (carica(i)):
+  // la compilazione del caricamento crea tutti i materiali senza scaricare tutte le tessiture
+  const texRec = i => { if (!TEXI) TEXI = new Map(IND.tessiture.map(q => [q.i, q])); return TEXI.get(i); };   // le tessiture per numero (le uguali sono già unite: i buchi restano)
+  function tessitura(i) {
     let t = TEX.get(i); if (t) return t;
-    if (!TEXI) TEXI = new Map(IND.tessiture.map(q => [q.i, q]));   // le tessiture per numero (le uguali sono già unite: i buchi restano)
-    const r = TEXI.get(i); if (!r) { console.warn('[tasselli] tessitura mancante', i); const v = new THREE.Texture(); TEX.set(i, v); TEXP.set(i, Promise.resolve()); return v; }
+    const r = texRec(i); if (!r) { console.warn('[tasselli] tessitura mancante', i); const v = new THREE.Texture(); TEX.set(i, v); TEXP.set(i, Promise.resolve()); return v; }
     if (r.k === 'array') t = new THREE.DataArrayTexture(null, 1, 1, 1);
     else if (r.k === 'data' && /\.bin$/.test(r.file || '')) t = new THREE.DataTexture(null, 1, 1);
     else t = new THREE.Texture();
     TXP.forEach(k => { if (r[k] !== undefined) t[k] = r[k]; });
     t.offset.fromArray(r.offset); t.repeat.fromArray(r.repeat); t.center.fromArray(r.center); if (r.matrix) t.matrix.fromArray(r.matrix);
     t.flipY = r.da === 'gpu' ? false : !!r.flipY; t.premultiplyAlpha = false; t.userData = Object.assign({}, r.ud, { tassello: true });
-    TEX.set(i, t);
-    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file;
-    let p;
+    TEX.set(i, t); return t;
+  }
+  // [tasselli3] TEXG: il giro di ogni tessitura (si scarica di nuovo dopo essere stata liberata: i pixel di un giro vecchio si buttano)
+  const TEXG = new Map();
+  function carica(i) {
+    let p = TEXP.get(i); if (p) return p;
+    const t = tessitura(i), r = texRec(i); if (!r) return Promise.resolve();
+    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
+    const vivo = x => { if (TEXG.get(i) === g && TEXP.has(i)) return true; if (x && x.close) x.close(); return false; };   // liberata nel frattempo
     if (!file) p = Promise.resolve();
-    else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => {
+    else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
       t.image = { data: m.px, width: tel ? r.tel.w : r.w, height: tel ? r.tel.h : r.h, depth: r.d }; t.onUpdate = () => { t.image.data = null; }; t.needsUpdate = true; });
-    else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => {
+    else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => { if (!vivo()) return;
       const T = TA[r.dati] || Uint8Array, a = new T(m.buf); t.image = { data: a, width: r.w, height: r.h, depth: r.d || 1 }; t.needsUpdate = true; });
-    else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => {
+    else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => { if (!vivo(m.bmp)) return;
       t.image = m.bmp; t.onUpdate = () => { const b = t.image; if (b && b.close) { t.image = { width: b.width, height: b.height }; b.close(); } }; t.needsUpdate = true; });
-    TEXP.set(i, p.catch(e => console.warn('[tasselli] tessitura', i, e)));
-    return t;
+    p = p.catch(e => console.warn('[tasselli] tessitura', i, e)); TEXP.set(i, p); return p;
+  }
+  // [tasselli3] LO SCARICO VERO: le tessiture e i materiali si contano per tassello (in scena o in apertura); quando l'ultimo tassello che
+  // li usa se ne va, via dalla scheda video (dispose) e dalla pagina (i pixel), e si riscaricano se tornano. FISSE: quelle che non sono dei
+  // tasselli (le uniform di modulo come FD1 e la tavolozza, gli aloni, l'acqua delle fontane): restano sempre.
+  const TEXU = new Map(), FISSE = new Set(), MATU = new Map();
+  const fissa = i => { FISSE.add(i); return carica(i); };
+  function texPrendi(ids) { ids.forEach(i => TEXU.set(i, (TEXU.get(i) || 0) + 1)); }
+  function texLascia(ids) {
+    ids.forEach(i => { const n = (TEXU.get(i) || 0) - 1; if (n > 0) { TEXU.set(i, n); return; } TEXU.delete(i);
+      if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
+      if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; } });
+  }
+  function matPrendi(S, m) { if (!m || S.mats.has(m)) return; S.mats.add(m); MATU.set(m, (MATU.get(m) || 0) + 1); }
+  function matLascia(S) {
+    if (!S.mats) return; S.mats.forEach(m => { const n = (MATU.get(m) || 0) - 1; if (n > 0) { MATU.set(m, n); return; } MATU.delete(m); m.dispose(); ST.matLiberati++; }); S.mats = null;
   }
   function valore(v) {
     if (v === null || v === undefined || typeof v !== 'object') return v;
@@ -69306,8 +69383,19 @@ var Tasselli = (function () {
   const uniform = u => { if (!u) return { value: null }; if (u.live && CTX.R.uni[u.live]) return CTX.R.uni[u.live]; return { value: valore(u.val) }; };
   function texDi(v, out) { if (!v || typeof v !== 'object') return; if ('t' in v && v.t !== null) out.add(v.t); if (v.a) v.a.forEach(x => texDi(x, out)); if (v.o) for (const k in v.o) texDi(v.o[k], out); }
   function texDelMateriale(r) { const s = new Set(); MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) s.add(r[k]); }); ['uni', 'cuni'].forEach(q => { if (r[q]) for (const k in r[q]) { const u = r[q][k]; if (u && !u.live) texDi(u.val, s); } }); return s; }
-  function materiale(i) {
-    let m = MAT.get(i); if (m) return m;
+  // [tasselli2] la maschera degli oggetti colpibili: un texel per oggetto (255 = nascosto); il vertice col numero dell'oggetto (pid) esce
+  // dal campo (davanti al piano vicino) quando l'oggetto è stato colpito e vive come corpo, o è andato in pezzi
+  const PIDM = { W: 256, H: 1, data: null, tex: null, u: { value: null } };
+  function pidMaschera(n) { PIDM.H = Math.max(1, Math.ceil((n + 1) / PIDM.W)); PIDM.data = new Uint8Array(PIDM.W * PIDM.H * 4); PIDM.tex = new THREE.DataTexture(PIDM.data, PIDM.W, PIDM.H); PIDM.tex.needsUpdate = true; PIDM.u.value = PIDM.tex; }
+  const PIDVS = () => `\n{ float pidI = floor(pid + .5); if (pidI > .5) { vec4 pm = texture2D(uPidM, vec2((mod(pidI, ${PIDM.W}.) + .5) / ${PIDM.W}., (floor(pidI / ${PIDM.W}.) + .5) / ${PIDM.H}.)); if (pm.r > .5) gl_Position = vec4(0., 0., -2., 1.); } }`;
+  function iniettaPid(sh) {
+    sh.uniforms.uPidM = PIDM.u;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float pid; uniform sampler2D uPidM;');
+    if (sh.vertexShader.indexOf('#include <project_vertex>') >= 0) sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>' + PIDVS());
+    else sh.vertexShader = sh.vertexShader.replace(/}\s*$/, PIDVS() + '\n}');
+  }
+  function materiale(i, pid) {
+    const ck = pid ? 'p' + i : i; let m = MAT.get(ck); if (m) return m;
     const r = IND.materiali[i], S = IND.stringhe;
     if (r.type === 'ShaderMaterial' || r.type === 'RawShaderMaterial') {
       const uni = {}; for (const k in r.uni) uni[k] = uniform(r.uni[k]);
@@ -69315,23 +69403,29 @@ var Tasselli = (function () {
       if (r.extensions) Object.assign(m.extensions, r.extensions); if (r.lights !== undefined) m.lights = r.lights; if (r.fog !== undefined) m.fog = r.fog;
     } else m = new (THREE[r.type] || THREE.MeshStandardMaterial)();
     COL.forEach(k => { if (r[k] && m[k]) m[k].setRGB(r[k][0], r[k][1], r[k][2]); });
-    for (const k in r) { if (COL.includes(k) || MK.includes(k) || ['type', 'name', 'ud', 'vs', 'fs', 'uni', 'defines', 'extensions', 'lights', 'fog', 'cvs', 'cfs', 'cuni', 'cdef', 'key', 'clip', 'normalScale', 'obcErr', 'glslVersion'].includes(k)) continue;
+    for (const k in r) { if (COL.includes(k) || MK.includes(k) || ['type', 'name', 'ud', 'vs', 'fs', 'uni', 'defines', 'extensions', 'lights', 'fog', 'cvs', 'cfs', 'cuni', 'cdef', 'key', 'clip', 'normalScale', 'obcErr', 'glslVersion', 'notte', 'vivo'].includes(k)) continue;
       if (typeof r[k] === 'number' || typeof r[k] === 'boolean') m[k] = r[k]; }
     if (r.fog !== undefined && !m.isShaderMaterial) m.fog = r.fog;
     if (r.normalScale && m.normalScale) m.normalScale.fromArray(r.normalScale);
     MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) m[k] = tessitura(r[k]); });
     m.name = r.name || ''; m.userData = Object.assign({}, r.ud, { tassello: true });
     if (r.cvs !== undefined) {   // lo shader già trasformato nella build (onBeforeCompile del gioco): lo stesso testo, le stesse uniform
-      const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '');
-      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); };
+      const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '') + (pid ? '|pid' : '');
+      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); };
       m.customProgramCacheKey = () => key;
-    }
+    } else if (pid) { m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPid'; }
     // chi il gioco accende di notte (render.js frame): le finestre delle case fuse, i fondali
     if (r.notte === 'fd1' && CTX.R.FD1) CTX.R.FD1.emis.push(m);
     else if (r.notte === 'fondale' && CTX.R.dyn) (CTX.R.dyn.backdropMats = CTX.R.dyn.backdropMats || []).push(m);
-    m.needsUpdate = true; MAT.set(i, m); return m;
+    m.needsUpdate = true; MAT.set(ck, m); return m;
   }
-  const texPronte = ids => Promise.all([...ids].map(i => { tessitura(i); return TEXP.get(i); }));
+  // l'ombra di un oggetto colpibile nascosto: la profondità con la stessa maschera (il materiale di profondità di three, più il pid)
+  function profonditaPid(base) {
+    const ck = 'dp' + (base.map ? base.map.id : '') + '|' + (base.alphaTest || 0); let m = MAT.get(ck); if (m) return m;
+    m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); if (base.map && base.alphaTest > 0) { m.map = base.map; m.alphaTest = base.alphaTest; } m.side = base.shadowSide !== null && base.shadowSide !== undefined ? base.shadowSide : base.side;
+    m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPidD'; MAT.set(ck, m); return m;
+  }
+  const texPronte = ids => Promise.all([...ids].map(carica));
 
   // ---------------- la sagoma ----------------
   let SAG = null;   // { mesh, mask (DataTexture: 255 = il tassello c'è), data }
@@ -69353,6 +69447,57 @@ var Tasselli = (function () {
   }
   // la sagoma sfuma via dal tassello arrivato (e torna dove il tassello si butta): lo stesso retino degli anelli
   function sagomaK(ti, k) { if (!SAG) return; SAG.data[ti * 4] = Math.round(255 * k); SAG.mask.needsUpdate = true; }
+
+  // ---------------- [tasselli2] i raggi sulle mesh dei tasselli ----------------
+  // Le mesh opache tengono le posizioni (e l'indice) dopo l'invio alla scheda video: i graffiti cercano il muro coi raggi (writing.js
+  // rayWall, render.js bmbCands). Una mesh di tassello è grande (tutto un materiale di 48 m): la prima volta che un raggio la tocca si fa
+  // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
+  const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
+  function griglia(g) {
+    const P = g.attributes.position.array, I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
+    const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
+    const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = P[i], z = P[i + 2]; if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
+      const i0 = Math.max(0, Math.floor(ax / c) - x0), i1 = Math.min(nx - 1, Math.floor(bx / c) - x0), j0 = Math.max(0, Math.floor(az / c) - z0), j1 = Math.min(nz - 1, Math.floor(bz / c) - z0);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * nx + i); };
+    for (let t = 0; t < nt; t++) span(t, k => { cnt[k + 1]++; });
+    for (let k = 0; k < nx * nz; k++) cnt[k + 1] += cnt[k];
+    const pos = cnt.slice(0, nx * nz), L = new Uint32Array(cnt[nx * nz]);
+    for (let t = 0; t < nt; t++) span(t, k => { L[pos[k]++] = t; });
+    ST.raggiV++;
+    return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
+  }
+  function rayTas(rc, out) {
+    const g = this.geometry, P = g.attributes.position; if (!P || !P.array || P.array.length < 9) return;
+    const mats = this.material; if (!g.boundingSphere) g.computeBoundingSphere();
+    RG.sph.copy(g.boundingSphere).applyMatrix4(this.matrixWorld); if (!rc.ray.intersectsSphere(RG.sph)) return;
+    RG.inv.copy(this.matrixWorld).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
+    const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.boundingBox;   // (griglia() fa la scatola se manca)
+    // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
+    let ta = Math.max(rc.near, 0), tb = rc.far;
+    for (const ax of ['x', 'y', 'z']) { const o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;
+      if (Math.abs(d) < 1e-12) { if (o < mn || o > mx) return; continue; }
+      let a = (mn - o) / d, b = (mx - o) / d; if (a > b) { const q = a; a = b; b = q; } if (a > ta) ta = a; if (b < tb) tb = b; if (ta > tb) return; }
+    const ox = ray.origin.x, oz = ray.origin.z, dx = ray.direction.x, dz = ray.direction.z;
+    const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
+    const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
+    const tim = ++RG.timbro, I = G.I, A = P.array, v = k => I ? I[k] : k, gr = g.groups;
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
+      const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
+      if (l2 > 1e-9) { const s = ((cx - ox) * dx + (cz - oz) * dz) / l2, ex = ox + dx * s - cx, ez = oz + dz * s - cz; if (ex * ex + ez * ez > c * c * .5 + 1e-6) continue; }
+      for (let q = G.cnt[k]; q < G.cnt[k + 1]; q++) {
+        const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
+        const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
+        let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
+        RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3);
+        const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
+        const pw = RG.p.clone().applyMatrix4(this.matrixWorld), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
+        const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
+        out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
+      }
+    }
+  }
 
   // ---------------- i tasselli ----------------
   // Due anelli. Il tassello compresso (in gzip, ~100-300 KB) si scarica fino a «carica» dal punto guardato e resta nella pagina finché
@@ -69376,23 +69521,32 @@ var Tasselli = (function () {
     finally { ST.inVolo--; }
   }
   async function apri(ti) {
-    const S = STATO[ti]; S.st = 3; ST.inApertura++;
+    const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
       const buf = S.zip.slice(0), m = await chiedi({ op: 'tassello', buf }, [buf]); ST.decodMs += m.ms[1];
-      const ids = new Set(); m.testa.mesh.forEach(r => { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => ids.add(q))); });
+      if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
+      const ids = new Set(); m.testa.mesh.forEach(r => { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).concat(r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => ids.add(q))); });
+      (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q)));
+      texPrendi(ids); S.tex = ids;   // [tasselli3] contate subito: nessuno le libera mentre arrivano
       await texPronte(ids);
-      if (S.st !== 3) return;   // uscito dalla vista nel frattempo
+      if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo (smonta le ha già lasciate)
       S.dati = m; S.st = 4; S.k = 0; PRONTI.push(ti);
-    } catch (e) { console.warn('[tasselli] apertura', IND.tasselli[ti].file, e); S.st = S.zip ? 2 : 0; S.errori = (S.errori || 0) + 1; }
+    } catch (e) { console.warn('[tasselli] apertura', IND.tasselli[ti].file, e); if (S.gen !== gen || S.st !== 3) return; if (S.tex) { texLascia(S.tex); S.tex = null; } S.st = S.zip ? 2 : 0; S.errori = (S.errori || 0) + 1; }
     finally { ST.inApertura--; }
   }
+  const opaco = m => m && !m.transparent && !m.isSpriteMaterial && !m.isMeshDepthMaterial && !m.isMeshDistanceMaterial && m.visible !== false;
   // monta un pezzo del tassello (mesh dopo mesh) dentro i tetti: torna true quando ha finito
   function monta1(ti, tetto, quota) {
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
-    if (!S.attr) S.attr = new Map();
+    if (!S.attr) {
+      S.attr = new Map(); S.tieni = new Set();
+      // [tasselli2] le posizioni (e gli indici) delle mesh che i raggi colpiscono restano nella pagina
+      if (CFG.raggi) T.mesh.forEach(r => { if (r.inst || !(r.ly & 1)) return; const ms = (Array.isArray(r.m) ? r.m : [r.m]).map(i => IND.materiali[i]); if (!ms.some(q => q && !q.transparent && q.type !== 'MeshDepthMaterial' && q.type !== 'SpriteMaterial' && q.visible !== false)) return;
+        S.tieni.add(r.g.at.position); if (r.g.ix !== null) S.tieni.add(r.g.ix); });
+    }
     const attr = i => { let a = S.attr.get(i); if (a) return a; const d = T.attr[i], v = m.vettori[i];
       a = d.idx ? new THREE.BufferAttribute(v, 1) : (d.nome === 'instanceMatrix' || d.nome === 'instanceColor') ? new THREE.InstancedBufferAttribute(v, d.s) : new THREE.BufferAttribute(v, d.s, d.norm);
-      a.onUpload(libera); S.attr.set(i, a); return a; };
+      if (!S.tieni.has(i)) a.onUpload(libera); S.attr.set(i, a); return a; };
     let vf = 0;
     while (S.k < T.mesh.length) {
       if (performance.now() > tetto || vf > quota) return false;
@@ -69403,7 +69557,7 @@ var Tasselli = (function () {
       if (r.g.dr) g.setDrawRange(r.g.dr[0], r.g.dr[1]);
       if (r.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5]));
       if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else g.computeBoundingSphere();
-      const mat = Array.isArray(r.m) ? r.m.map(materiale) : materiale(r.m);
+      const pid = r.g.at.pid !== undefined, mat = Array.isArray(r.m) ? r.m.map(i => materiale(i, pid)) : materiale(r.m, pid);
       let o;
       if (r.inst) { o = new THREE.InstancedMesh(g, mat, r.inst.n); o.instanceMatrix = attr(r.inst.m); if (r.inst.c !== null) o.instanceColor = attr(r.inst.c); }
       else o = new THREE.Mesh(g, mat);
@@ -69411,12 +69565,17 @@ var Tasselli = (function () {
       o.matrixAutoUpdate = false; o.updateMatrixWorld(true);
       o.castShadow = r.cs; o.receiveShadow = r.rs; o.renderOrder = r.ro; o.layers.mask = r.ly; o.frustumCulled = r.fc; o.name = r.nm;
       if (r.cdm !== null && r.cdm !== undefined) o.customDepthMaterial = materiale(r.cdm);
+      else if (pid && r.cs && !Array.isArray(mat)) o.customDepthMaterial = profonditaPid(mat);
       if (r.cdi !== null && r.cdi !== undefined) o.customDistanceMaterial = materiale(r.cdi);
-      o.raycast = noRay; o.userData.tassello = ti; o.userData.thin2 = 1;
+      o.raycast = !r.inst && S.tieni.has(r.g.at.position) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) ? rayTas : noRay;
+      o.userData.tassello = ti; o.userData.thin2 = 1;
+      if (!S.mats) S.mats = new Set();   // [tasselli3] i materiali del tassello, contati (matLascia in smonta)
+      (Array.isArray(mat) ? mat : [mat]).forEach(q => matPrendi(S, q)); matPrendi(S, o.customDepthMaterial); matPrendi(S, o.customDistanceMaterial);
       sc.add(o); (S.mesh = S.mesh || []).push(o);
       const nv = g.attributes.position.count; vf += nv; ST.vertici += nv; ST.mesh++;
     }
-    S.attr = null; S.dati = null; S.st = 5; ST.inScena++;
+    S.attr = null; S.dati = null; S.tieni = null; S.st = 5; ST.inScena++;
+    viviDentro(IND.tasselli[ti].k, true);
     ombre();
     if (typeof Anelli !== 'undefined' && Anelli.sfuma) Anelli.sfuma(k => sagomaK(ti, k), .7); else sagomaK(ti, 1);
     return true;
@@ -69426,13 +69585,146 @@ var Tasselli = (function () {
   function ombre() { if (typeof PesoOmbre !== 'undefined' && PesoOmbre.attivo) { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
   // via dalla scheda video (resta il compresso, se c'è)
   function smonta(ti) {
-    const S = STATO[ti]; if (S.st === 5) ST.inScena--;
-    if (S.mesh) S.mesh.forEach(o => { CTX.scene.remove(o); o.geometry.dispose(); ST.vertici -= o.geometry.attributes.position.count; ST.mesh--; });
-    S.mesh = null; S.dati = null; S.attr = null; S.st = S.zip ? 2 : 0; ST.smontati++; sagomaK(ti, 0);
+    const S = STATO[ti]; if (S.st === 5) { ST.inScena--; viviDentro(IND.tasselli[ti].k, false); }
+    // [tasselli3] via davvero: le geometrie (e le matrici delle istanze: InstancedMesh.dispose), i materiali e le tessiture che nessun altro
+    // tassello usa; le griglie dei raggi e i vettori tenuti per i raggi se ne vanno con le geometrie
+    if (S.mesh) S.mesh.forEach(o => { CTX.scene.remove(o); o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); ST.vertici -= o.geometry.attributes.position.count; ST.mesh--; o.geometry.__griglia = null; });
+    matLascia(S); if (S.tex) { texLascia(S.tex); S.tex = null; }
+    S.mesh = null; S.dati = null; S.attr = null; S.tieni = null; S.st = S.zip ? 2 : 0; ST.smontati++; sagomaK(ti, 0);
     ombre();
     const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
   }
   function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.st = 0; ST.buttati++; }
+
+  // ---------------- [tasselli2] i dati del gioco ----------------
+  // le case: i record di dyn.buildings senza mesh (B.tas: render.js casaVisibile e il tetto sbiadito sanno che la casa è nel tassello);
+  // FD1 è la tessitura viva (il gioco la riscrive: il taglio); quello che le fasi della città scrivono sulle case del mondo
+  function bmut() { const GB = (typeof Game !== 'undefined' && Game.BUILDINGS) || []; DATI.bmut.forEach((o, bi) => { const b = GB[bi]; if (!b) return; for (const k in o) if (b[k] === undefined) b[k] = o[k]; }); }
+  function caseDati() {
+    const R = CTX.R, dyn = R.dyn, GB = (typeof Game !== 'undefined' && Game.BUILDINGS) || [], DZ = R.DZ;
+    bmut();
+    const recs = DATI.case.map(c => {
+      const b = c.bj ? Object.assign({}, c.bj) : GB[c.bi] || null;
+      const rec = Object.assign({}, c, { b, mats: [], tas: true, box3: c.box3 ? new THREE.Box3(new THREE.Vector3(c.box3[0], c.box3[1], c.box3[2]), new THREE.Vector3(c.box3[3], c.box3[4], c.box3[5])) : null });
+      delete rec.bj; delete rec.rb; delete rec.fd; delete rec.bi;
+      if (c.rb && DZ && DZ.bRec) DZ.bRec[c.bi] = rec;
+      return rec; });
+    // le case che il gioco ha già (nessuna, di solito: le fasi della città non girano) restano davanti
+    const n0 = dyn.buildings.length; recs.forEach(r => dyn.buildings.push(r));
+    if (R.FD1) { if (!R.FD1.idx) R.FD1.idx = new Map(); DATI.case.forEach((c, i) => { if (c.fd >= 0) R.FD1.idx.set(recs[i], c.fd); }); }
+    ST.case = recs.length; return n0;
+  }
+  // gli oggetti colpibili: DZ.props come quelli di regProp (render.js), col corpo di riserva (una scatola del loro colore) per quando
+  // diventano vivi, la maschera al posto dei vertici spenti (TAGS.tas)
+  const BOXG = new THREE.BoxGeometry(1, 1, 1), BOXM = new Map();
+  function oggettiDati(luci, aloni) {
+    const R = CTX.R, DZ = R.DZ, TAGS = R.TAGS; if (!DZ || !TAGS) return [];
+    pidMaschera(DATI.props.length);
+    const out = DATI.props.map((p, k) => {
+      const c = new THREE.Vector3().fromArray(p.c), he = new THREE.Vector3().fromArray(p.he), tag = 'tas' + k;
+      let obj = null; const corpo = () => { if (obj) return obj; obj = new THREE.Group(); const hex = p.pal[0][0]; let m = BOXM.get(hex); if (!m) BOXM.set(hex, m = new THREE.MeshStandardMaterial({ color: '#' + hex, roughness: .8 }));
+        const ms = new THREE.Mesh(BOXG, m); ms.position.copy(c); ms.scale.set(Math.max(.04, he.x * 2), Math.max(.04, he.y * 2), Math.max(.04, he.z * 2)); obj.add(ms); obj.userData.pal = p.pal; obj.updateMatrixWorld(true); return obj; };
+      const rec = { tag, get obj() { return corpo(); }, set obj(v) { obj = v; }, c, c0: c.clone(), he, mass: p.mass, cls: p.cls, state: 0, base: p.base, hitT: -9, fragile: p.fragile, tas: k };
+      if (p.luce >= 0 && luci[p.luce]) { rec.light = luci[p.luce]; rec.lbase = p.lbase; }
+      if (p.alone >= 0 && aloni[p.alone]) rec.glowS = aloni[p.alone];
+      TAGS.set(tag, { parts: [], objs: [], tas: h => { PIDM.data[(k + 1) * 4] = h ? 255 : 0; PIDM.tex.needsUpdate = true; } });
+      DZ.props.push(rec); if (R.hashPut) R.hashPut(rec, c.x, c.z);
+      return rec; });
+    (DATI.grandi || []).forEach(q => DZ.big.push({ c: new THREE.Vector3().fromArray(q.c), he: new THREE.Vector3().fromArray(q.he), base: q.base, tag: null }));
+    ST.oggetti = out.length; return out;
+  }
+  // i vivi: gli oggetti (col loro sottoalbero) nelle liste del gioco subito; in scena quando il loro tassello è in scena
+  const VIVT = new Map();   // chiave del tassello → [radici]
+  function geoVivo(i) {
+    const G = DATI.geo[i], A = VIVB.testa.attr, Vt = VIVB.vettori; if (G.__g) return G.__g;
+    const g = new THREE.BufferGeometry(), at = j => { const d = A[j]; return d.idx ? new THREE.BufferAttribute(Vt[j], 1) : new THREE.BufferAttribute(Vt[j], d.s, d.norm); };
+    for (const k in G.at) { const nm = k; g.setAttribute(nm, at(G.at[k])); } if (G.ix !== null) g.setIndex(at(G.ix));
+    if (G.gr) G.gr.forEach(q => g.addGroup(q[0], q[1], q[2])); if (G.dr) g.setDrawRange(G.dr[0], G.dr[1]);
+    if (G.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(G.bs[0], G.bs[1], G.bs[2]), G.bs[3]);
+    return (G.__g = g);
+  }
+  function nodoVivo(n, tex) {
+    let o; const mat = n.m === undefined ? null : Array.isArray(n.m) ? n.m.map(i => materiale(i)) : materiale(n.m);
+    if (n.m !== undefined) (Array.isArray(n.m) ? n.m : [n.m]).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => tex.add(q)));
+    if (n.t === 'Sprite') { o = new THREE.Sprite(mat); if (n.c) o.center.set(n.c[0], n.c[1]); }
+    else if (n.t === 'Mesh' && n.g !== undefined && VIVB) o = new THREE.Mesh(geoVivo(n.g), mat);
+    else o = new THREE.Group();
+    o.matrix.fromArray(n.mx); o.matrix.decompose(o.position, o.quaternion, o.scale);
+    o.layers.mask = n.ly; o.visible = n.vis; o.name = n.nm; o.renderOrder = n.ro || 0; o.frustumCulled = n.fc !== false; o.castShadow = !!n.cs; o.receiveShadow = !!n.rs;
+    if (n.ud) Object.assign(o.userData, n.ud); o.userData.tassello = true;
+    if (n.ch) n.ch.forEach(c => o.add(nodoVivo(c, tex)));
+    return o;
+  }
+  function viviDati(oggetti) {
+    const R = CTX.R, dyn = R.dyn, S1 = R.S1, roots = DATI.vivi.map(v => {
+      const tex = new Set(), o = nodoVivo(v.n, tex); let top = o;
+      if (v.pw) { top = new THREE.Group(); top.matrix.fromArray(v.pw); top.matrixAutoUpdate = false; top.add(o); }
+      top.__tex = tex; top.userData.tassello = true; (VIVT.get(v.k) || VIVT.set(v.k, []).get(v.k)).push(top);
+      const x = v.x || {};
+      if (v.tipo === 'spin') dyn.spin.push({ o, speed: x.speed });
+      else if (v.tipo === 'boats') dyn.boats.push({ g: o, ph: x.ph, y: x.y });
+      else if (v.tipo === 'laundry') dyn.laundry.push({ m: o, ph: x.ph, ax: x.ax });
+      return o; });
+    if (S1) { DATI.heads.forEach(h => S1.heads.push({ lens: h.lens.map(i => roots[i]), gl: h.gl >= 0 ? roots[h.gl] : { material: { color: new THREE.Color(), opacity: 0 }, position: new THREE.Vector3() }, gy: h.gy, ofs: h.ofs, phase: h.phase, rec: h.prop >= 0 ? oggetti[h.prop] || null : null }));
+      if (DATI.fwater.length) S1.fwater = (S1.fwater || []).concat(DATI.fwater.map(i => { fissa(i); return tessitura(i); })); }
+    DATI.insegne.forEach(q => dyn.signs.push({ m: materiale(q.m), gl: q.gl >= 0 ? roots[q.gl] : null, flick: true }));
+    ST.vivi = roots.length;
+  }
+  // (fuori scena: le loro geometrie lasciano la scheda video; i vettori restano nella pagina, piccoli, e risalgono se il tassello torna)
+  function viviDentro(k, on) { (VIVT.get(k) || []).forEach(o => { if (on) { if (!o.parent) { CTX.scene.add(o); o.updateMatrixWorld(true); } } else if (o.parent) { o.parent.remove(o); o.traverse(q => { if (q.geometry && q.isMesh) q.geometry.dispose(); }); } }); }
+  // gli aloni: per materiale (a meno del colore) uno strato istanziato di quadrati rivolti alla camera (lo sprite di three con le istanze),
+  // il colore e lo sfarfallio per istanza nello shader: sfarfallio dyn.flicker (base · notte · (0,85 + 0,15 sin(9t + 7 base))), lampeggio
+  // S1.blink (sin(5t + fase) > 0,2: 0,55 + 0,4 notte, se no 0,04). Di giorno lo strato che sfarfalla non si disegna (come il livello 0 di frame)
+  const ALO = { strati: [], t: { value: 0 }, n: { value: 0 } };
+  function aloniDati() {
+    const per = new Map(), vis = [];
+    DATI.aloni.forEach((a, i) => { const r = IND.materiali[a.m]; if (!r) return; const sig = JSON.stringify(Object.assign({}, r, { color: 0, opacity: 0 })) + '|' + a.tipo + '|' + a.ly; let L = per.get(sig); if (!L) per.set(sig, L = { m: a.m, tipo: a.tipo, ly: a.ly, voci: [] }); L.voci.push(i); });
+    const quad = new THREE.PlaneGeometry(1, 1), m4 = new THREE.Matrix4(), out = [];
+    per.forEach(L => {
+      const base = materiale(L.m), mat = base.clone(); mat.color.setRGB(1, 1, 1); mat.opacity = 1; carica0(L.m);
+      mat.onBeforeCompile = sh => { sh.uniforms.uAlT = ALO.t; sh.uniforms.uAlN = ALO.n;
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 hc; attribute vec3 hp; uniform float uAlT; uniform float uAlN; varying vec4 vHc;')
+          .replace('vec4 mvPosition = modelViewMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );', 'vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );')
+          .replace('scale.x = length( vec3( modelMatrix[ 0 ].x, modelMatrix[ 0 ].y, modelMatrix[ 0 ].z ) );', 'scale.x = length( vec3( instanceMatrix[ 0 ].x, instanceMatrix[ 0 ].y, instanceMatrix[ 0 ].z ) );')
+          .replace('scale.y = length( vec3( modelMatrix[ 1 ].x, modelMatrix[ 1 ].y, modelMatrix[ 1 ].z ) );', 'scale.y = length( vec3( instanceMatrix[ 1 ].x, instanceMatrix[ 1 ].y, instanceMatrix[ 1 ].z ) );')
+          .replace('#include <uv_vertex>', '#include <uv_vertex>\n vHc.rgb = hc.rgb; vHc.a = hp.y < .5 ? hc.a * uAlN * (.85 + sin(uAlT * 9. + hc.a * 7.) * .15) : (sin(uAlT * 5. + hp.x) > .2 ? .55 + uAlN * .4 : .04); vHc.a *= hp.z;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec4 vHc;').replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'if (vHc.a <= 0.) discard;\n vec4 diffuseColor = vec4( diffuse * vHc.rgb, opacity * vHc.a );'); };
+      mat.customProgramCacheKey = () => 'tasAloni';
+      const n = L.voci.length, o = new THREE.InstancedMesh(quad, mat, n), hc = new Float32Array(n * 4), hp = new Float32Array(n * 3);
+      L.voci.forEach((i, j) => { const a = DATI.aloni[i], r = IND.materiali[a.m], c = r.color || [1, 1, 1];
+        m4.makeScale(a.s[0], a.s[1], 1).setPosition(a.p[0], a.p[1], a.p[2]); o.setMatrixAt(j, m4);
+        hc.set([c[0], c[1], c[2], a.base], j * 4); hp.set([a.ph, a.tipo, a.vis ? 1 : 0], j * 3);
+        // l'alone di un lampione che si rompe (rec.glowS.visible = false)
+        const hpA = () => o.geometry.attributes.hp;
+        vis[i] = { get visible() { return hpA().array[j * 3 + 2] > .5; }, set visible(v) { hpA().array[j * 3 + 2] = v ? 1 : 0; hpA().needsUpdate = true; }, isObject3D: false }; });
+      o.geometry = quad.clone(); o.geometry.setAttribute('hc', new THREE.InstancedBufferAttribute(hc, 4)); o.geometry.setAttribute('hp', new THREE.InstancedBufferAttribute(hp, 3));
+      o.frustumCulled = false; o.layers.mask = L.ly; o.renderOrder = 2; o.castShadow = o.receiveShadow = false; o.name = 'tasselli_aloni'; o.raycast = noRay; o.matrixAutoUpdate = false; o.userData.keep = true; o.userData.tipo = L.tipo;
+      CTX.scene.add(o); out.push(o); });
+    ALO.strati = out; ST.aloni = DATI.aloni.length;
+    return vis;
+  }
+  const carica0 = i => Promise.all([...texDelMateriale(IND.materiali[i])].map(fissa));
+  function aloniTick() {
+    if (!ALO.strati.length) return; const st = CTX.st, R = CTX.R;
+    const night = R.nightLevel ? R.nightLevel(st.t) : 0; ALO.t.value = st.clock || 0; ALO.n.value = night;
+    ALO.strati.forEach(o => { o.visible = o.userData.tipo === 1 || night > 0; });
+  }
+  // [tasselli2] i programmi dei tasselli nel caricamento: una mesh fuori vista (un triangolo a -500 m) per ogni programma che un tassello
+  // chiederà (materiale, istanze, colore delle istanze, colore a 4, il pid), più i materiali dei vivi; main.js compila la scena subito
+  // dopo R.init (anche loro, KHR_parallel_shader_compile) e al primo fotogramma del caricatore vanno via
+  let COMP = null;
+  function compila() {
+    const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', new THREE.Float32BufferAttribute([0, -500, 0, .01, -500, 0, 0, -500, .01], 3)); g0.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
+    g0.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    const g4 = g0.clone(); g4.setAttribute('color', new THREE.Float32BufferAttribute(new Array(12).fill(1), 4));
+    const grp = new THREE.Group(); grp.name = 'tasselli_compila';
+    (IND.programmi || []).forEach(([mi, inst, ic, c4, rs, pid]) => { if (!IND.materiali[mi]) return; const mat = materiale(mi, !!pid), g = c4 ? g4 : g0;
+      let o; if (inst) { o = new THREE.InstancedMesh(g, mat, 1); o.setMatrixAt(0, new THREE.Matrix4()); if (ic) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3).fill(1), 3); } else o = new THREE.Mesh(g, mat);
+      o.frustumCulled = false; o.castShadow = false; o.receiveShadow = !!rs; o.raycast = noRay; grp.add(o); });
+    VIVT.forEach(L => L.forEach(top => top.traverse(o => { if (!o.material) return; const q = o.isSprite ? new THREE.Sprite(o.material) : o.isMesh ? new THREE.Mesh(g0, o.material) : null; if (!q) return; q.position.y = -500; q.frustumCulled = false; q.raycast = noRay; grp.add(q); })));
+    CTX.scene.add(grp); COMP = grp; ST.programmi = grp.children.length;
+  }
+
   // ---------------- a ogni fotogramma ----------------
   let lastX = null, lastZ = null, fx = 0, fz = 0;
   // l'impronta della camera a terra: i raggi degli angoli e del centro dello schermo fino al suolo (o fino alla nebbia, se guardano
@@ -69451,6 +69743,8 @@ var Tasselli = (function () {
   function tick() {
     requestAnimationFrame(tick);
     if (!CTX) return;
+    if (COMP) { CTX.scene.remove(COMP); COMP = null; }   // compilati (main.js, subito dopo R.init)
+    try { aloniTick(); } catch (e) { }
     const t0 = performance.now(), c = CTX.cam, x = c.x, z = c.y;
     { const P = CTX.camera.position; if (Math.hypot(P.x - x, P.z - z) > 600) return; }   // la camera non è ancora andata al suo posto (il primo fotogramma)
     if (KR === 0) { if (ST.vicinoT === null) { ST.vicinoT = Math.round(performance.now()); (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; } return; }   // ?tasselliraggio=0: nessun tassello, solo la sagoma (la misura di tutto il resto)
@@ -69487,18 +69781,24 @@ var Tasselli = (function () {
     const R = ctx.R;
     // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
     for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
-      if (v && typeof v === 'object' && 't' in v) { if (v.t !== null) u.value = tessitura(v.t); }
+      if (v && typeof v === 'object' && 't' in v) { if (v.t === null) continue; const t = tessitura(v.t); fissa(v.t);
+        if (k === 'FD1.u' && R.FD1) { R.FD1.tex = t; TEXP.get(v.t).then(() => { if (t.image && t.image.data) { R.FD1.data = t.image.data; R.FD1.dirty = true; } }); }   // [tasselli2] FD1 vivo: il taglio lo riscrive
+        u.value = t; }
       else if (u.value === null || u.value === undefined || (u.value && u.value.isVector2 && k === 'PAL1.s')) u.value = valore(v); }
     if (IND.uni.__fd1W && R.FD1) R.FD1.W = IND.uni.__fd1W;
     if (R.ombre1) R.ombre1();   // le sagome d'ombra delle case fuse stanno sul livello 1: le camere delle ombre lo vedono (come fus1Gen)
     // le luci e le pozze di luce (le lampade dei lampioni, delle vetrine: la regia delle luci del gioco le accende di notte)
-    IND.luci.forEach(L => R.LSRC.push({ x: L.x, y: L.y, z: L.z, color: new THREE.Color(L.c[0], L.c[1], L.c[2]), base: L.base, dist: L.dist, flick: L.flick, phase: L.phase, always: L.always || undefined, landmark: L.landmark || undefined }));
+    const luci = IND.luci.map(L => { const o = { x: L.x, y: L.y, z: L.z, color: new THREE.Color(L.c[0], L.c[1], L.c[2]), base: L.base, dist: L.dist, flick: L.flick, phase: L.phase, always: L.always || undefined, landmark: L.landmark || undefined }; R.LSRC.push(o); return o; });
     IND.pozze.forEach(L => R.SPILLS.push({ x: L.x, z: L.z, y: L.y, gy: L.gy, nx: L.nx, nz: L.nz, color: new THREE.Color(L.c[0], L.c[1], L.c[2]), base: L.base, dist: L.dist, spill: true }));
+    // [tasselli2] i dati del gioco: case, aloni, oggetti colpibili, vivi; poi i programmi
+    const passi = [['case', caseDati], ['aloni', () => { ALOV = aloniDati(); }], ['oggetti', () => { OGG = oggettiDati(luci, ALOV || []); }], ['vivi', () => viviDati(OGG || [])], ['compila', compila]];
+    let ALOV = null, OGG = null;
+    passi.forEach(([n, f]) => { try { f(); } catch (e) { console.warn('[tasselli] ' + n, e); } });
     sagoma().catch(e => console.warn('[tasselli] sagoma', e));
     requestAnimationFrame(tick);
-    log('montati:', IND.tasselli.length, 'tasselli,', IND.materiali.length, 'materiali,', IND.tessiture.length, 'tessiture');
+    log('montati:', IND.tasselli.length, 'tasselli,', IND.materiali.length, 'materiali,', IND.tessiture.length, 'tessiture;', ST.case, 'case,', ST.oggetti, 'oggetti,', ST.vivi, 'vivi,', ST.aloni, 'aloni,', ST.programmi, 'programmi');
   }
-  const stato = () => Object.assign({}, ST, { byteMB: +(ST.byte / 1048576).toFixed(2), byteVicinoMB: +(ST.byteVicino / 1048576).toFixed(2), materiali: MAT.size, tessiture: TEX.size, pronti: PRONTI.length });
+  const stato = () => Object.assign({}, ST, { byteMB: +(ST.byte / 1048576).toFixed(2), byteVicinoMB: +(ST.byteVicino / 1048576).toFixed(2), materiali: MAT.size, tessiture: TEX.size, tessitureScaricate: TEXP.size, tessitureInUso: TEXU.size, materialiInUso: MATU.size, pronti: PRONTI.length });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__tasselli', { configurable: true, get: stato });
   // per gli strumenti: tutto quello che c'è entro r metri, subito
   // (r: anche tutto quello entro r metri dal punto guardato, e lo si tiene in scena finché non si richiama finisci)
@@ -69512,10 +69812,10 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
-</script>   <!-- [tasselli] la città cotta a tasselli (?tasselli=1): il caricatore, lo streaming -->
+</script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
 <script type="text/plain" id="tasselli-lavoratore">// This file is part of meshoptimizer library and is distributed under the terms of MIT License.
 // Copyright (C) 2016-2024, by Arseny Kapoulkine (arseny.kapoulkine@gmail.com)
 var MeshoptDecoder = (function () {
@@ -71490,6 +71790,7 @@ var Render = (function () {
     if (typeof B === 'number') B = dyn.buildings[B]; if (!B) return;
     const i = FD1.idx.get(B);
     if (modo === 'quota') { if (i === undefined || !FD1.data) return;
+      if (B.tas) { B.__q3 = v; v = B.__q4 === undefined || B.__q4 === null ? v : v === null || v === undefined ? B.__q4 : Math.min(v, B.__q4); }   // [tasselli] il taglio e il tetto (qui sotto) dividono la quota
       const code = v === null || v === undefined ? 0 : Math.max(1, Math.min(65535, Math.round((v + 50) * 100))), hi = code >> 8, lo = code & 255;
       if (FD1.data[i * 4 + 1] !== hi || FD1.data[i * 4 + 2] !== lo) { FD1.data[i * 4 + 1] = hi; FD1.data[i * 4 + 2] = lo; FD1.dirty = true; } return; }
     if (modo === 'tetto') tetto4(B, i, v || 0, opz);
@@ -71500,6 +71801,7 @@ var Render = (function () {
   // che il contorno del post segnava di bruno: [varco2]). Le cose del registro sul tetto (antenne, mensole) si spengono oltre metà.
   const T4M = new WeakMap();
   function tetto4(B, i, a, opz) {
+    if (B.tas) return tetto4Tas(B, a, opz);   // [tasselli] la casa è nella mesh del tassello (niente pezzi suoi da sbiadire)
     let T = B.__t4; const on = a > .002;
     if (!on && !T) return;
     if (!T) {
@@ -71518,6 +71820,15 @@ var Render = (function () {
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
     const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
     if (!on) B.__t4 = null;
+  }
+  // [tasselli] il tetto che sbiadisce di una casa che sta in un tassello: i pezzi della casa non ci sono (la mesh è del tassello), il tetto si
+  // toglie col taglio alla gronda (FD1, la stessa quota del muretto: la più bassa delle due) quando è sbiadito oltre metà, e sotto c'è la
+  // copertina nel tono del muro, come col tetto sbiadito del tutto
+  function tetto4Tas(B, a, opz) {
+    const on = a > .5, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : B.box3.max.y - 2.5, q4 = on ? gr : null;
+    if (B.__q4 !== q4) { B.__q4 = q4; casaVisibile(B, 'quota', B.__q3 === undefined ? null : B.__q3); }
+    if (B.__q3 !== undefined && B.__q3 !== null) return;   // il muretto è più basso: la copertina è la sua
+    const cap = vis3Cap(B), cv = on && !(opz && opz.nodisc); if (cv || cap.visible) { cap.visible = cv; if (cv) { cap.position.y = gr + .03; cap.material = capMat4(B, Visuale.TETTO4.copertina); } }
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
   function vis4Tetti(px, pz, fy, on, dt) {
@@ -74008,15 +74319,36 @@ var Render = (function () {
   // pennello dipinge su un velo di vernice aderente alla superficie: stesso spruzzo, solo su quel pezzo di muro.
   const BMB = { rc: new THREE.Raycaster(), cands: null, candT: 0, cx: 1e9, cz: 1e9, use: new Map(), veli: [], tmp: document.createElement('canvas'), dirty: new Set(), chk: 0, sph: new THREE.Sphere(), va: new THREE.Vector3(), vb: new THREE.Vector3() };
   const bmbCanvas = t => { const im = t && t.image; return im && im.getContext ? im : null; };
+  // [scatti] chi si può dipingere: prima un giro intero della scena (50.000 oggetti) ogni volta che la richiesta veniva da più di 15 m o dopo
+  // 2 s, dentro il fotogramma (i graffiti che entrano in vista lo chiedono da punti diversi: uno scatto per ognuno). Ora l'elenco di tutta la
+  // scena (con la sfera nel mondo di ognuno) si rifà a rate, 4000 oggetti per fotogramma (bmbTick), e ogni richiesta filtra solo per distanza.
+  // Lo stesso criterio di prima (visibili, mesh piene, non veli, materiale visibile, sfera entro 10 m), la stessa età al massimo (~2 s).
+  const BMBW = { all: null, t: 0, used: 0, W: null, next: null, use: null };
+  function bmbVisit(o, all, use) {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) { const c = m && bmbCanvas(m.map); if (c) use.set(c, (use.get(c) || 0) + 1); }   // quanti oggetti usano lo stesso canvas
+    if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    all.push(o, BMB.sph.center.x, BMB.sph.center.z, BMB.sph.radius + 10);
+  }
+  function bmbWalk(n) {   // come traverseVisible: dentro un ramo spento non si entra
+    const W = BMBW.W; if (!W.stack) W.stack = [scene]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(); if (!o.visible) continue; const c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); bmbVisit(o, BMBW.next, BMBW.use); }
+    if (S.length) return false; W.stack = null; return true;
+  }
+  function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
+    const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
+    if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
+    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+  }
   function bmbCands(cx, cz) {
-    const now = performance.now(); if (BMB.cands && now - BMB.candT < 2000 && Math.hypot(BMB.cx - cx, BMB.cz - cz) < 15) return BMB.cands;
-    BMB.candT = now; BMB.cx = cx; BMB.cz = cz; const out = []; BMB.use.clear();
-    scene.traverseVisible(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      ms.forEach(m => { const c = m && bmbCanvas(m.map); if (c) BMB.use.set(c, (BMB.use.get(c) || 0) + 1); });   // quanti oggetti usano lo stesso canvas
-      if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
-      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
-      if (Math.hypot(BMB.sph.center.x - cx, BMB.sph.center.z - cz) > BMB.sph.radius + 10) return; out.push(o); });
+    const now = performance.now(); BMBW.used = now;
+    if (BMB.cands && BMB.cx === cx && BMB.cz === cz && now - BMBW.t <= 6000) return BMB.cands;
+    if (!BMBW.all || now - BMBW.t > 6000) {   // la prima volta (o dopo una lunga pausa): il giro intero subito, come prima
+      const all = [], use = new Map(); scene.traverseVisible(o => bmbVisit(o, all, use)); BMBW.all = all; BMB.use = use; BMBW.t = now; BMBW.W = null; }
+    BMB.cx = cx; BMB.cz = cz; const out = [], A = BMBW.all;
+    for (let i = 0; i < A.length; i += 4) { const dx = A[i + 1] - cx, dz = A[i + 2] - cz; if (dx * dx + dz * dz <= A[i + 3] * A[i + 3]) out.push(A[i]); }
     return (BMB.cands = out);
   }
   const bmbAlive = L => { let o = L.mesh; while (o.parent) o = o.parent; return o === scene; };
@@ -85967,7 +86299,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
   if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
-    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
@@ -86148,7 +86480,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (V.y > 1.2 && tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && G.bIndex[ty * G.GW + tx] >= 0) k++; }
         return c > 0 && k / c > .6; };
       const giro = () => { scene.traverse(o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} }); };
-      giro(); setInterval(giro, 4000); }
+      // [scatti] dopo il primo giro (intero, all'avvio) la scena si riguarda a rate, 3000 oggetti per fotogramma, un giro ogni 4 s:
+      // prima era un giro intero di 50.000 oggetti dentro un timer, uno scatto ogni 4 s
+      giro(); const SCW = { stack: null }; let scT = performance.now();
+      const scPasso = () => { const now = performance.now(); if (SCW.stack || now - scT > 4000) { if (sliceWalk(SCW, scene, 3000, o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} })) scT = now; } requestAnimationFrame(scPasso); };
+      requestAnimationFrame(scPasso); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
@@ -86185,11 +86521,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function tagPart(b, n) { let t = TAGS.get(curTag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(curTag, t); } t.parts.push({ b, gi: b.geos.length - 1, n, obj: curObj }); }
   function tagObj(tag, o) { let t = TAGS.get(tag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(tag, t); } t.objs.push(o); }
   function hideTag(tag) {
-    const t = TAGS.get(tag); if (!t || t.hidden) return; t.hidden = true; DZ.touched = true;
+    const t = TAGS.get(tag); if (!t || t.hidden) return; t.hidden = true; DZ.touched = true; if (t.tas) t.tas(true);   // [tasselli] l'oggetto è nella mesh di un tassello: lo nasconde la sua maschera
     t.parts.forEach(p => { if (!p.b.mesh) return; const a = p.b.mesh.geometry.attributes.position, s = p.b.offs[p.gi] * 3, e = s + p.n * 3; if (!p.bak) p.bak = a.array.slice(s, e); for (let k = s; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; });
   }
   function showTag(tag) {
-    const t = TAGS.get(tag); if (!t || !t.hidden) return; t.hidden = false;
+    const t = TAGS.get(tag); if (!t || !t.hidden) return; t.hidden = false; if (t.tas) t.tas(false);
     t.parts.forEach(p => { if (!p.bak) return; const a = p.b.mesh.geometry.attributes.position; a.array.set(p.bak, p.b.offs[p.gi] * 3); a.needsUpdate = true; });
   }
   // griglia spaziale a celle di 4 m
@@ -87480,6 +87816,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = !pveh && !ui.intro);   // [visuale3] la sagoma è sempre pronta: la scheda video la disegna solo dove qualcosa copre
     anelliTick1(ui, dt);   /* [anelli] i lavori del caricamento ad anelli, nel loro tetto di tempo (prima di mandare FD1: le sfumature lo toccano) */
+    // [scatti] i modelli degli alberi di città (generati, 100-300 ms l'uno e decine di MB di spazzatura la prima volta) si fanno nella
+    // schermata iniziale, uno per fotogramma, invece che camminando quando il primo blocco di piante li chiede. Gli stessi semi: gli stessi alberi
+    if (ui.intro && ZN.CITTA !== undefined && !NAT.caldi) { const nm = NAT_CITTA.find(k => NAT.models[k] === undefined); if (nm) { try { natModel(nm); } catch (e) { NAT.caldi = true; } } else NAT.caldi = true; }
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
     if (window.LeggeraMem) LeggeraMem.tick(performance.now());   /* [leggera] i pezzi rifatti che nessuno usa più */
     if (ARR1.all.length && frameN % 90 === 0) arrTick1();   /* [leggero] una tela delle case ridisegnata: la sua pila si rilegge */
@@ -87503,6 +87842,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
+    bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
@@ -87576,7 +87916,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [tasselli] quello che i tasselli condividono col gioco vivo: le uniform di modulo (per nome), le luci e le pozze di luce (dati)
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
     'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
-    ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); } };   // le sagome d'ombra delle case (livello 1), come fus1Gen
+    ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
+    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile };   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
@@ -91787,7 +92128,10 @@ var TascheUI = (function () {
     const st = ST(); if (!st || !mount()) return;
     const p = st.player, held = p.hand || p.cur || 'pugni';
     { const c = $('ts-btn').querySelector('canvas'); if (c.__held !== held) { c.__held = held; icon(c, held); } }   // [fluido] l'icona si ridisegna quando cambia
-    const A = st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
+    // [scatti] le azioni di qui (Azioni.playerActions: decine di ms nei posti pieni) servono solo a tasche aperte o al suggerimento, che col
+    // menu (MenuUI) resta spento: a tasche chiuse non si calcolano più quattro volte al secondo (le conta già il menu, ogni mezzo secondo)
+    const serve = U.open || typeof MenuUI === 'undefined';
+    const A = !serve || st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
     const hint = $('ts-hint');
     const hOn = !!first && !U.open && typeof MenuUI === 'undefined'; if (hint.classList.contains('on') !== hOn) hint.classList.toggle('on', hOn);   // [menu] in scena basta il riquadro «Qui»
     if (first && !U.open) { const c = hint.querySelector('canvas'), sp = hint.querySelector('span'); if (c.__held !== held) { c.__held = held; icon(c, held); } if (sp.textContent !== first.label) sp.textContent = first.label; }   // [fluido] solo se cambia
