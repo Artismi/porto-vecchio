@@ -5494,8 +5494,6 @@ var Render = (function () {
     const face0 = faceOf(b);
     const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {}; b.__wallHex = pal[0];   // [inverno24] [ordine1] la tinta per i torrini
     const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
-    // [scale-finestre] il modulo dove passa una scala di Tetti resta cieco ai piani che la scala attraversa (lo decide tetti.js: Tetti.cieco4)
-    const cieco4 = (sd, k, f) => !!(window.Tetti && Tetti.cieco4 && !b.__tierOf && Tetti.cieco4(i, sd.f, sd.f === 'S' || sd.f === 'N' ? sd.at(k)[0] - x0 : sd.at(k)[1] - z0, f));
     const sides = [
       { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + k * TS + 1, z0 + d], tile: k => [b.x + k, b.y + b.h] },
       { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - k * TS - 1, z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
@@ -5527,7 +5525,7 @@ var Render = (function () {
         for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { ground.push([k, 'wall-window-wide-square', 2, 'vetrina']); used.add(k); used.add(k + 1); q++; } else { ground.push([k, 'wall-window-square', 1, 'vetrina']); used.add(k); } }
         b.__bot = { face: sd.f, n: sd.n, ks: SH.ks, portoneU: doorK * TS + 1, ents: ground.filter(e => e[3]).map(([k, name, span, role]) => ({ u: (span === 2 ? k + .5 : k) * TS + 1, w: name.includes('wide') ? 3.1 : name.includes('door') ? 1.1 : .95, role, name })) };
       } else if (SH) b.__bot = { face: sd.f, n: sd.n, ks: [], portoneU: doorK * TS + 1, ents: [] };   // bottega al primo piano: solo la targa al portone
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) || cieco4(sd, k, 0) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span, role]) => {
         if (poIn(sd, k) || (span === 2 && poIn(sd, k + 1))) return;   // [epoche] sotto il portico la testata è aperta
@@ -5557,7 +5555,7 @@ var Render = (function () {
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
-          const nm = inMural(sd, k, y) || (!stD && cieco4(sd, k, f)) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
@@ -13896,7 +13894,13 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       { f: 'E', prof: (B0.x + B0.w - t.x - t.w) * TS, n: t.h, at: u => [(t.x + t.w) * TS, (t.y + t.h) * TS - u], yaw: Math.PI / 2 }, { f: 'W', prof: (t.x - B0.x) * TS, n: t.h, at: u => [t.x * TS, t.y * TS + u], yaw: -Math.PI / 2 }]
       .filter(q => q.prof >= Dv + .55 && q.n >= 2).sort((p, q) => q.prof - p.prof || q.n - p.n);
     if (!lati.length || th(bi, 5, 77) > .75) return;
-    const L = lati[0], k = L.n >= 3 ? 1 : 0, [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
+    // [scale3] la veranda non copre le finestre (il committente: «via i blocchi grigi con la finestra sul tetto che coprono le finestre»): il
+    // modulo del piano arretrato dietro deve essere cieco a tutti i piani, e nessuna scala di Tetti a meno di 2,5 m
+    const cieco = (f, k) => !(t.__win || []).some(q => q.f === f && Math.abs(q.u - (k * TS + TS / 2)) < 1.4 && q.name !== 'wall' && q.name !== 'wall-low');
+    const scala = (x, z) => !!(window.Tetti && Tetti.LADDERS && Tetti.LADDERS.some(Q => Math.hypot(Q.x - x, Q.y - z) < 2.5 || Math.hypot(Q.tx - x, Q.ty - z) < 2.5));
+    let L = null, k = 0; for (const L2 of lati) { for (const k2 of (L2.n >= 3 ? [1, 0, 2] : [0, 1])) { if (k2 >= L2.n || !cieco(L2.f, k2)) continue; const [qx, qz] = L2.at(k2 * TS + TS / 2); if (scala(qx, qz)) continue; L = L2; k = k2; break; } if (L) break; }
+    if (!L) { (window.__rt = window.__rt || {}).verandeCieche = ((window.__rt || {}).verandeCieche || 0) + 1; return; }
+    const [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
     const telaio = sm(pick(r, ['#e8e4dc', '#3a3430', '#5a4a3a']), { roughness: .7 }), muro = sm(pick(r, ['#d8cdb8', '#c8b8a0', '#e0d4c0']), { roughness: 1 }), tetto = sm('#bcc0c6', { roughness: 1 }), vetro = verLit1(r() < .6 ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0');
     const ad = (o, x, yy, z) => { o.position.set(x, yy, z); a.add(o); return o; }, zf = Dv + .02;
     [[-Wv / 2, .06], [Wv / 2, .06], [-Wv / 2, zf], [Wv / 2, zf]].forEach(([x, z]) => ad(box(.07, H, .07, telaio), x, H / 2, z));   // i montanti
