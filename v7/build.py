@@ -65,8 +65,10 @@ if '--senza-cotto' not in sys.argv:
         if r.returncode != 0:
             print('mondo_cotto.js NON cotto (il gioco calcolerà il mondo): node strumenti/cuoci.js per vedere perché')
 # [tasselli] la città a tasselli (strumenti/tassella.js: la città costruita in Chromium senza testa, poi tagliata e compressa, 15-20 min
-# su questa macchina): solo se manca o è di un'altra impronta. Nel pilota solo con --tasselli (o PV_TASSELLI=1), perché la cottura è lunga
-# e ogni sorgente del gioco cambia l'impronta: finché non è rifatta, il gioco con ?tasselli=1 costruisce la città come prima
+# su questa macchina): solo se manca o è di un'altra impronta, e solo con --tasselli (o PV_TASSELLI=1), perché la cottura è lunga e ogni
+# sorgente del gioco cambia l'impronta. Per il sito non serve: i tasselli non stanno in git, li cuoce il workflow di GitHub
+# (.github/workflows/tasselli.yml) e li scarica il build di Vercel (strumenti/prendi_tasselli.sh). Finché mancano o sono di un'altra
+# impronta il gioco costruisce la città nel browser come prima
 if '--tasselli' in sys.argv or os.environ.get('PV_TASSELLI') == '1':
     fatto = None
     try:

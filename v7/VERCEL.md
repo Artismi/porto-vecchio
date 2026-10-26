@@ -37,7 +37,12 @@ Se il gioco nuovo è ancora su un altro branch, in **Settings → Git → Produc
 Git la ignora (`.gitignore`), quindi non finisce più online.
 
 ## Cosa va su Vercel
-Solo `index.html`, `assets/` e `api/`. Backup, sorgenti e strumenti restano fuori (`.vercelignore`).
+Solo `index.html`, `assets/`, `api/` e la città a tasselli. Backup e sorgenti restano fuori (`.vercelignore`).
+**La città a tasselli** non sta in git: la cuoce il workflow di GitHub `tasselli` (`.github/workflows/tasselli.yml`) in una release
+`tasselli-<impronta>`, e il build di Vercel (`vercel.json`: `buildCommand` = `sh strumenti/prendi_tasselli.sh`) la scarica in
+`tasselli/`. Finché non c'è, il gioco costruisce la città nel browser. Da fare una volta (dettagli in `src/progetto_citta/PESO.md` §8.6):
+un **Deploy Hook** su Vercel (Settings → Git → Deploy Hooks, ramo `main`) e il suo indirizzo come segreto `VERCEL_DEPLOY_HOOK` su GitHub
+(Settings → Secrets and variables → Actions).
 Se cambi la logica della Mente in `server.js`, rigenera `api/_mente.js`: `python3 strumenti_inverno/mente_vercel.py` (dentro `v7/`).
 
 ## Vedere un ramo prima di unirlo

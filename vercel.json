@@ -1,4 +1,6 @@
 {
+  "buildCommand": "sh v7/strumenti/prendi_tasselli.sh",
+  "outputDirectory": ".",
   "functions": { "api/*.js": { "maxDuration": 20 } },
   "headers": [
     { "source": "/v7/assets/(.*)", "missing": [{ "type": "query", "key": "v" }], "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }] },

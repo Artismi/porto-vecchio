@@ -11,3 +11,6 @@ v7/ritocchi.backup.json
 v7/strumenti_inverno/provino_tetti/prov/
 v7/sonda_mappa.json
 .claude/worktrees/
+
+# [tasselli] la città cotta non sta in git: la fa il workflow tasselli (release tasselli-<impronta>), la scarica il build di Vercel
+v7/tasselli/

@@ -20,7 +20,7 @@ const TEL_MAX = +arg('tel', 512), Q_TEL = 82;
 
 // ---------------- la cottura nel browser ----------------
 async function cuoci(GREZZI, imp) {
-  const pw = require(process.env.PW || '/opt/node-tools/node_modules/playwright-core'), exe = process.env.PW_CHROME || '/opt/pw-browsers/chromium';
+  const pw = require(process.env.PW || '/opt/node-tools/node_modules/playwright-core'), exe = process.env.PW_CHROME || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);   // in CI: il Chromium di playwright-core
   const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.glb': 'model/gltf-binary', '.webp': 'image/webp' };
   fs.rmSync(GREZZI, { recursive: true, force: true }); fs.mkdirSync(GREZZI, { recursive: true });
   const srv = http.createServer((q, res) => { let u = decodeURIComponent(q.url.split('?')[0]); if (u === '/') u = '/index.html';
@@ -33,11 +33,12 @@ async function cuoci(GREZZI, imp) {
   try {
     const pg = await b.newPage({ viewport: { width: 640, height: 400 } });
     pg.on('pageerror', e => log('[errore della pagina]', e.message));
+    pg.on('crash', () => { log('la pagina è crollata (memoria?): cottura fallita'); process.exit(2); });   // [tasselli3] se no si resta appesi per sempre
     // i disegni a vuoto (SwiftShader: la città si costruisce, non serve vederla) e il caso col seme fisso (come src/seme.js)
     await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true;
       const P = WebGL2RenderingContext.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } });
     await pg.addInitScript(seme => { let a = seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }, +arg('seme', 12345));
-    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus`, { timeout: 0 });
+    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus&tasselli=0`, { timeout: 0 });
     await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models.renderer, null, { timeout: 1800000, polling: 1000 });
     log('città costruita');
     await pg.waitForTimeout(3000);
@@ -70,7 +71,7 @@ function scriviContenitore(file, testa, blocchi) {
   const z = zlib.gzipSync(out, { level: 9 }); fs.writeFileSync(file, z); return z.length;   // tutto in gzip: il lavoratore lo apre con DecompressionStream (va con qualunque server)
 }
 // quantizza un attributo: posizione → Uint16 sulla sua scatola (se il passo resta sotto i 2 mm), normale → Int8, colore → Uint8 se in 0..1
-function quantizza(nome, arr, s, norm) {
+function quantizza(nome, arr, s, norm, c16) {
   if (!(arr instanceof Float32Array)) return { arr, norm };
   const n = arr.length / s;
   if (nome === 'position' && n) {
@@ -83,6 +84,7 @@ function quantizza(nome, arr, s, norm) {
     return { arr, norm };
   }
   if (nome === 'normal') { const q = new Int8Array(arr.length); for (let i = 0; i < arr.length; i++) q[i] = Math.max(-127, Math.min(127, Math.round(arr[i] * 127))); return { arr: q, norm: true }; }
+  if (nome === 'color' && c16) { const q = new Uint16Array(arr.length); for (let i = 0; i < arr.length; i++) q[i] = Math.max(0, Math.min(65535, Math.round(arr[i] * 65535))); return { arr: q, norm: true }; }
   if (nome === 'color') { let ok = true; for (let i = 0; i < arr.length; i++) if (arr[i] < 0 || arr[i] > 1) { ok = false; break; }
     if (ok) { const q = new Uint8Array(arr.length); for (let i = 0; i < arr.length; i++) q[i] = Math.round(arr[i] * 255); return { arr: q, norm: true }; } }
   return { arr, norm };
@@ -119,29 +121,48 @@ function indicizza(T, A) {
 // l'altro, l'indice spostato). Solo le opache, non istanziate, senza gruppi né drawRange, che non dividono i vettori con altre (la sagoma
 // d'ombra delle case fuse divide la posizione con la fusa); una matrice non identità si cuoce nei vertici solo se il materiale non ha uno
 // shader suo (lo shader potrebbe leggere la posizione dell'oggetto)
-function unisci(T, A, mats) {
+function unisci(T, A, mats, pal) {
   const uso = new Map(), conta = i => uso.set(i, (uso.get(i) || 0) + 1);
   T.mesh.forEach(r => { Object.values(r.g.at).forEach(conta); if (r.g.ix !== null) conta(r.g.ix); if (r.inst) { conta(r.inst.m); if (r.inst.c !== null) conta(r.inst.c); } });
-  const G = new Map();
+  // [tasselli2] la tavolozza per tassello: i materiali uguali a meno del colore (stesso tipo, stesse mappe, stesso shader trasformato) vanno
+  // in una mesh sola; il colore del materiale va su ogni vertice (color, 16 bit; moltiplicato per il colore del vertice se c'era) e il
+  // materiale comune è bianco con vertexColors. Non quelli che il gioco cambia uno per uno (vivo), i trasparenti, gli ShaderMaterial,
+  // quelli col colore a 4 componenti, quelli il cui shader non legge il colore del vertice (color_vertex / color_fragment)
+  const G = new Map(), PALOK = new Map();
+  const palOk = (i, r) => { if (!pal) return false; let v = PALOK.get(i); if (v === undefined) { const M = mats[i], S = pal.stringhe;
+      v = !!M && ['MeshStandardMaterial', 'MeshLambertMaterial', 'MeshPhongMaterial', 'MeshBasicMaterial', 'MeshPhysicalMaterial', 'MeshToonMaterial'].includes(M.type) && !M.vivo && Array.isArray(M.color) &&
+        (M.cvs === undefined || (S[M.cvs].indexOf('#include <color_vertex>') >= 0 && S[M.cvs].indexOf('#include <color_pars_vertex>') >= 0 && S[M.cfs].indexOf('#include <color_fragment>') >= 0 && S[M.cfs].indexOf('#include <color_pars_fragment>') >= 0));
+      PALOK.set(i, v); }
+    return v && (r.g.at.color === undefined || A[r.g.at.color].s === 3); };
+  const firmaPal = i => { const c = Object.assign({}, mats[i]); delete c.color; delete c.name; delete c.vertexColors; return JSON.stringify(c); };
   T.mesh.forEach((r, mi) => {
     if (r.inst || Array.isArray(r.m) || r.g.dr || (r.g.gr && r.g.gr.length > 1)) return;
     const M = mats[r.m]; if (!M || M.transparent || M.type === 'ShaderMaterial' || M.type === 'RawShaderMaterial') return;
     const ids = Object.values(r.g.at).concat(r.g.ix !== null ? [r.g.ix] : []); if (ids.some(i => uso.get(i) !== 1)) return;
     if (r.mx && (M.cvs !== undefined || !(A[r.g.at.position].arr instanceof Float32Array))) return;
-    const sig = Object.keys(r.g.at).sort().map(k => k + ':' + A[r.g.at[k]].arr.constructor.name + A[r.g.at[k]].s + A[r.g.at[k]].norm).join(',');
-    const key = [r.m, r.cs, r.rs, r.ro, r.ly, r.fc, r.cdm, r.cdi, sig].join('|');
+    const P = palOk(r.m, r) && !(M.vertexColors && r.g.at.color === undefined);
+    const sig = Object.keys(r.g.at).filter(k => !P || (k !== 'color' && k !== 'pid')).sort().map(k => k + ':' + A[r.g.at[k]].arr.constructor.name + A[r.g.at[k]].s + A[r.g.at[k]].norm).join(',');
+    const key = [P ? 'P' + firmaPal(r.m) : r.m, r.cs, r.rs, r.ro, r.ly, r.fc, r.cdm, r.cdi, sig].join('|');
     if (!G.has(key)) G.set(key, []); G.get(key).push(mi);
   });
   const via = new Set(); let prima = 0, dopo = 0;
   G.forEach(L => {
     if (L.length < 2) return;
-    const R0 = T.mesh[L[0]], nomi = Object.keys(R0.g.at);
+    const R0 = T.mesh[L[0]], mset = new Set(L.map(mi => T.mesh[mi].m)), conCol = L.map(mi => T.mesh[mi].g.at.color !== undefined), conPal = mset.size > 1 || (conCol.some(Boolean) && !conCol.every(Boolean));
+    const nomi = [...new Set(L.flatMap(mi => Object.keys(T.mesh[mi].g.at)).concat(conPal ? ['color'] : []))].filter(k => (conPal && k === 'color') || k === 'pid' || L.every(mi => T.mesh[mi].g.at[k] !== undefined));
     let nv = 0, ni = 0; L.forEach(mi => { const r = T.mesh[mi], n = A[r.g.at.position].n; nv += n; ni += r.g.ix !== null ? A[r.g.ix].n : n; });
-    const out = {}; nomi.forEach(k => { const a = A[R0.g.at[k]]; out[k] = { nome: k, arr: new a.arr.constructor(nv * a.s), s: a.s, n: nv, norm: a.norm, idx: false, q: null }; });
+    const out = {}; nomi.forEach(k => { const mi0 = L.find(mi => T.mesh[mi].g.at[k] !== undefined), a = mi0 === undefined ? null : A[T.mesh[mi0].g.at[k]];
+      if (k === 'color' && conPal) out[k] = { nome: k, arr: new Float32Array(nv * 3), s: 3, n: nv, norm: false, idx: false, q: null, c16: true };
+      else out[k] = { nome: k, arr: new a.arr.constructor(nv * a.s), s: a.s, n: nv, norm: a.norm, idx: false, q: null }; });
     const ix = nv < 65536 ? new Uint16Array(ni) : new Uint32Array(ni);
     let ov = 0, oi = 0; const mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
     L.forEach(mi => { const r = T.mesh[mi], n = A[r.g.at.position].n, e = r.mx;
-      nomi.forEach(k => { const a = A[r.g.at[k]], o = out[k], s = a.s; o.arr.set(a.arr, ov * s);
+      const MC = mats[r.m].color || [1, 1, 1];
+      nomi.forEach(k => { const o = out[k];
+        if (k === 'color' && conPal) { const ca = r.g.at.color !== undefined && mats[r.m].vertexColors ? A[r.g.at.color] : null, sc = !ca || !ca.norm ? 1 : ca.arr instanceof Uint8Array ? 255 : ca.arr instanceof Uint16Array ? 65535 : ca.arr instanceof Int8Array ? 127 : ca.arr instanceof Int16Array ? 32767 : 1;   // il colore del vertice conta solo se il materiale lo legge
+          for (let v = 0; v < n; v++) for (let c = 0; c < 3; c++) o.arr[(ov + v) * 3 + c] = MC[c] * (ca ? ca.arr[v * 3 + c] / sc : 1); return; }
+        if (r.g.at[k] === undefined) return;   // il pid che manca: zero (il vettore è nuovo)
+        const a = A[r.g.at[k]], s = a.s; o.arr.set(a.arr, ov * s);
         if (e && k === 'position') for (let v = 0; v < n; v++) { const q = (ov + v) * s, x = a.arr[v * s], y = a.arr[v * s + 1], z = a.arr[v * s + 2];
           o.arr[q] = e[0] * x + e[4] * y + e[8] * z + e[12]; o.arr[q + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; o.arr[q + 2] = e[2] * x + e[6] * y + e[10] * z + e[14]; }
         if (e && k === 'normal') { // la matrice delle normali: l'inversa trasposta del 3×3
@@ -157,7 +178,8 @@ function unisci(T, A, mats) {
     const at = {}; nomi.forEach(k => { at[k] = A.length; A.push(out[k]); });
     const ii = A.length; A.push({ nome: 'index', arr: ix, s: 1, n: ni, norm: false, idx: true, q: null });
     const c = [(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, (mn[2] + mx[2]) / 2], rad = Math.hypot(mx[0] - c[0], mx[1] - c[1], mx[2] - c[2]);
-    T.mesh.push(Object.assign({}, R0, { g: { at, ix: ii, gr: null, dr: null }, mx: null, bb: [mn[0], mn[1], mn[2], mx[0], mx[1], mx[2]], bs: [c[0], c[1], c[2], rad], unite: L.length }));
+    let mOut = R0.m; if (conPal) { mOut = pal.nuovo(Object.assign({}, mats[R0.m], { color: [1, 1, 1], vertexColors: true, name: '' })); pal.n++; }
+    T.mesh.push(Object.assign({}, R0, { m: mOut, g: { at, ix: ii, gr: null, dr: null }, mx: null, bb: [mn[0], mn[1], mn[2], mx[0], mx[1], mx[2]], bs: [c[0], c[1], c[2], rad], unite: L.length }));
     prima += L.length; dopo++;
   });
   // via le mesh unite e i vettori che non usa più nessuno (i numeri dei vettori si rifanno)
@@ -168,24 +190,26 @@ function unisci(T, A, mats) {
   A.length = 0; B.forEach(a => A.push(a));
   return { prima, dopo };
 }
-function tassello(file, dest, mats) {
+function tassello(file, dest, mats, pal) {
   const G = leggiGrezzo(file), T = G.testa, nomi = {};
   T.mesh.forEach(m => { for (const k in m.g.at) nomi[m.g.at[k]] = nomi[m.g.at[k]] || k; if (m.g.ix !== null) nomi[m.g.ix] = 'index'; if (m.inst) { nomi[m.inst.m] = 'instanceMatrix'; if (m.inst.c !== null) nomi[m.inst.c] = 'instanceColor'; } });
   const A = T.attr.map((a, i) => ({ nome: nomi[i] || '?', arr: G.view(T.bufs[a.b], TA[a.tipo]), s: a.s, n: a.n, norm: a.norm, idx: a.idx, q: null }));
-  const uni = mats ? unisci(T, A, mats) : { prima: 0, dopo: 0 };
-  A.forEach(x => { if (x.idx) return; const q = quantizza(x.nome, x.arr, x.s, x.norm); x.arr = q.arr; x.norm = q.norm; x.q = q.q || null; });
+  const uni = mats ? unisci(T, A, mats, pal) : { prima: 0, dopo: 0 };
+  A.forEach(x => { if (x.idx) return; const q = quantizza(x.nome, x.arr, x.s, x.norm, x.c16); x.arr = q.arr; x.norm = q.norm; x.q = q.q || null; });
   const ind = indicizza(T, A);
   const blocchi = [], attr = []; let vert = 0, tri = 0;
   A.forEach(x => { const b = blocco(x.arr, x.s, { idx: x.idx });
     attr.push({ nome: x.nome, tipo: x.arr.constructor.name, s: x.s, n: x.n, norm: x.norm, idx: x.idx, enc: b.enc, st: b.st, st0: b.st0, q: x.q, b: blocchi.length }); blocchi.push(b.dati);
     if (x.nome === 'position') vert += x.n; });
   T.mesh.forEach(m => { tri += (m.g.ix !== null ? A[m.g.ix].n : A[m.g.at.position].n) / 3 * (m.inst ? m.inst.n : 1); });
+  // [tasselli2] i programmi che il tassello chiede (il materiale, istanze, colore delle istanze, colore a 4): il gioco li prepara nel caricamento
+  const prog = new Set(); T.mesh.forEach(m => { const c = m.g.at.color !== undefined ? A[m.g.at.color].s : 0; (Array.isArray(m.m) ? m.m : [m.m]).forEach(q => prog.add([q, m.inst ? 1 : 0, m.inst && m.inst.c !== null ? 1 : 0, c === 4 ? 1 : 0, m.rs ? 1 : 0, m.g.at.pid !== undefined ? 1 : 0].join(','))); });
   const testa = { k: T.k, cella: T.cella, bb: T.bb, mesh: T.mesh, attr };
-  return { byte: scriviContenitore(dest, testa, blocchi), vert, tri, mesh: T.mesh.length, ind, uni };
+  return { byte: scriviContenitore(dest, testa, blocchi), vert, tri, mesh: T.mesh.length, ind, uni, prog };
 }
 async function tessitura(r, raw, dir) {
   const out = { i: r.i };
-  if (r.dati !== 'Uint8Array' || r.k === '3d' || r.format !== 1023) {   // non RGBA a 8 bit: i dati come sono, in gzip
+  if (r.dati !== 'Uint8Array' || r.k === '3d' || r.format !== 1023 || r.binario) {   // non RGBA a 8 bit (o FD1, che il gioco riscrive): i dati come sono, in gzip
     raw = zlib.gzipSync(raw, { level: 9 }); fs.writeFileSync(path.join(dir, r.i + '.bin'), raw); out.file = r.i + '.bin'; out.byte = raw.length; return out; }
   const W = r.w, H = r.h, D = r.d || 1;
   // la pila (DataArrayTexture) diventa una griglia di strati in un'immagine sola (colonne × righe)
@@ -222,7 +246,7 @@ async function comprimi(GREZZI, imp) {
     const meta = Object.assign({}, r); delete meta.i;
     const h = crypto.createHash('sha1').update(raw).update(JSON.stringify(meta)).digest('hex');
     if (H.has(h)) { alias[r.i] = H.get(h); continue; }
-    H.set(h, r.i); const o = await tessitura(r, raw, path.join(OUT, 'tex')); tex.push(Object.assign(meta, o));
+    H.set(h, r.i); const o = await tessitura(r.i === fd1 ? Object.assign({ binario: true }, r) : r, raw, path.join(OUT, 'tex')); tex.push(Object.assign(meta, o));
   }
   const tid = i => i === null || i === undefined ? i : alias[i] !== undefined ? alias[i] : i;
   const fixV = v => { if (!v || typeof v !== 'object') return v; if ('t' in v) return { t: tid(v.t) }; if (v.a) return { a: v.a.map(fixV) }; if (v.o) { const o = {}; for (const k in v.o) o[k] = fixV(v.o[k]); return { o }; } return v; };
@@ -233,14 +257,16 @@ async function comprimi(GREZZI, imp) {
     ['uni', 'cuni'].forEach(k => { if (c[k]) { const o = {}; for (const q in c[k]) o[q] = fixU(c[k][q]); c[k] = o; } });
     const s = JSON.stringify(c); let j = MS.get(s); if (j === undefined) { j = mats.length; MS.set(s, j); mats.push(c); } malias[i] = j; });
   // i tasselli
-  const tasselli = []; let tot = 0, vt = 0, ip = 0, id = 0, up = 0, ud = 0;
+  // [tasselli2] la tavolozza per tassello (unisci): i materiali comuni nuovi (bianchi, col colore sui vertici), uno per firma
+  const PAL = process.argv.includes('--senza-tavolozza') ? null : { stringhe: tav.stringhe, n: 0, nuovo: c => { const s = JSON.stringify(c); let j = MS.get(s); if (j === undefined) { j = mats.length; MS.set(s, j); mats.push(c); } return j; } };
+  const tasselli = [], PROG = new Set(); let tot = 0, vt = 0, ip = 0, id = 0, up = 0, ud = 0;
   for (const t of tav.tasselli) {
     const f = path.join(GREZZI, 'grezzi', 't_' + t.k + '.bin'), G = leggiGrezzo(f);
     G.testa.mesh.forEach(m => { m.m = Array.isArray(m.m) ? m.m.map(i => malias[i]) : malias[m.m]; if (m.cdm !== null) m.cdm = malias[m.cdm]; if (m.cdi !== null) m.cdi = malias[m.cdi]; });
     // riscrive il grezzo coi materiali uniti (poi lo comprime)
     const tmp = f + '.m'; { const buf = fs.readFileSync(f), n = buf.readUInt32LE(0), h = (4 + n + 7) & ~7, tj = Buffer.from(JSON.stringify(G.testa)), h2 = (4 + tj.length + 7) & ~7, o = Buffer.alloc(h2 + buf.length - h); o.writeUInt32LE(tj.length, 0); tj.copy(o, 4); buf.copy(o, h2, h); fs.writeFileSync(tmp, o); }
-    const [i, j] = t.k.split('_').map(Number), nome = 't_' + t.k + '.bin', r = tassello(tmp, path.join(OUT, nome), mats); fs.unlinkSync(tmp);
-    tasselli.push({ k: t.k, i, j, file: nome, byte: r.byte, mesh: r.mesh, vert: r.vert, tri: Math.round(r.tri), bb: t.bb.map(v => +v.toFixed(2)) }); tot += r.byte; vt += r.vert; ip += r.ind.prima; id += r.ind.dopo; up += r.uni.prima; ud += r.uni.dopo;
+    const [i, j] = t.k.split('_').map(Number), nome = 't_' + t.k + '.bin', r = tassello(tmp, path.join(OUT, nome), mats, PAL); fs.unlinkSync(tmp);
+    r.prog.forEach(q => PROG.add(q)); tasselli.push({ k: t.k, i, j, file: nome, byte: r.byte, mesh: r.mesh, vert: r.vert, tri: Math.round(r.tri), bb: t.bb.map(v => +v.toFixed(2)) }); tot += r.byte; vt += r.vert; ip += r.ind.prima; id += r.ind.dopo; up += r.uni.prima; ud += r.uni.dopo;
   }
   // la sagoma: ogni casa (30 vertici, 5 facce) col numero del suo tassello
   let sag = null;
@@ -252,10 +278,26 @@ async function comprimi(GREZZI, imp) {
     at.forEach(([nome, arr, s]) => { const q = quantizza(nome, arr, s, false), b = blocco(q.arr, s, {}); attr.push({ nome, tipo: q.arr.constructor.name, s, n, norm: q.norm, enc: b.enc, st: b.st, st0: b.st0, q: q.q || null, b: blocchi.length }); blocchi.push(b.dati); });
     sag = { file: 'sagoma.bin', byte: scriviContenitore(path.join(OUT, 'sagoma.bin'), { n, attr }, blocchi), vert: n }; }
   const uni = {}; for (const k in tav.uni) uni[k] = fixV(tav.uni[k]);
-  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, info: tav.info };
+  // [tasselli2] i dati del gioco (le case, gli oggetti colpibili, i vivi) in dati.json, le geometrie dei vivi in vivi.bin
+  let dati = null;
+  if (tav.dati) {
+    const D = tav.dati, mm = i => Array.isArray(i) ? i.map(q => malias[q]) : i === null || i === undefined ? i : malias[i];
+    const fixN = n => { if (n.m !== undefined) n.m = mm(n.m); if (n.ch) n.ch.forEach(fixN); };
+    D.vivi.forEach(v => fixN(v.n)); D.aloni.forEach(a => { a.m = mm(a.m); }); D.insegne.forEach(q => { q.m = mm(q.m); }); D.fwater = D.fwater.map(tid);
+    const fv = path.join(GREZZI, 'grezzi', 'vivi.bin'); let vivi = null;
+    if (fs.existsSync(fv)) { const G = leggiGrezzo(fv), blocchi = [], attr = [];
+      G.testa.attr.forEach(a => { const arr = G.view(G.testa.bufs[a.b], TA[a.tipo]), b = blocco(arr, a.s, { idx: a.idx }); attr.push(Object.assign({}, a, { enc: b.enc, st: b.st, st0: b.st0, q: null, b: blocchi.length })); blocchi.push(b.dati); });
+      vivi = { file: 'vivi.bin', byte: scriviContenitore(path.join(OUT, 'vivi.bin'), { attr }, blocchi) }; }
+    const js = JSON.stringify(Object.assign({ versione: 1, impronta: imp, viviBin: vivi }, D)), z = zlib.gzipSync(js, { level: 9 });
+    fs.writeFileSync(path.join(OUT, 'dati.json'), js);
+    dati = { file: 'dati.json', byte: js.length, gz: z.length, vivi: vivi ? vivi.byte : 0 };
+    console.log(`[tasselli] dati: ${D.case.length} case, ${D.props.length} oggetti colpibili, ${D.vivi.length} vivi, ${D.aloni.length} aloni, ${D.heads.length} semafori; ${(js.length / 1024).toFixed(0)} KB (${(z.length / 1024).toFixed(0)} KB in gzip), vivi.bin ${vivi ? (vivi.byte / 1024).toFixed(0) : 0} KB`);
+  }
+  const programmi = [...PROG].map(q => q.split(',').map(Number));
+  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, dati, programmi, info: tav.info };
   fs.writeFileSync(path.join(OUT, 'indice.json'), JSON.stringify(indice));
   const texB = tex.reduce((a, t) => a + (t.byte || 0), 0), texT = tex.reduce((a, t) => a + (t.tel ? t.tel.byte : t.byte || 0), 0);
-  console.log(`[tasselli] ${tasselli.length} tasselli, ${(tot / 1048576).toFixed(1)} MB (${(vt / 1e6).toFixed(2)} M vertici; zuppe indicizzate ${(ip / 1e6).toFixed(2)} → ${(id / 1e6).toFixed(2)} M; mesh unite ${up} → ${ud}, ${tasselli.reduce((a, t) => a + t.mesh, 0)} mesh in tutto); sagoma ${sag ? (sag.byte / 1024).toFixed(0) + ' KB' : 'no'}; ${mats.length} materiali (da ${tav.materiali.length}); ${tex.length} tessiture ${(texB / 1048576).toFixed(1)} MB, telefono ${(texT / 1048576).toFixed(1)} MB; indice ${(fs.statSync(path.join(OUT, 'indice.json')).size / 1024).toFixed(0)} KB`);
+  console.log(`[tasselli] ${tasselli.length} tasselli, ${(tot / 1048576).toFixed(1)} MB (${(vt / 1e6).toFixed(2)} M vertici; zuppe indicizzate ${(ip / 1e6).toFixed(2)} → ${(id / 1e6).toFixed(2)} M; mesh unite ${up} → ${ud} (in tavolozza ${PAL ? PAL.n : 0}), ${tasselli.reduce((a, t) => a + t.mesh, 0)} mesh in tutto); sagoma ${sag ? (sag.byte / 1024).toFixed(0) + ' KB' : 'no'}; ${mats.length} materiali (da ${tav.materiali.length}); ${tex.length} tessiture ${(texB / 1048576).toFixed(1)} MB, telefono ${(texT / 1048576).toFixed(1)} MB; indice ${(fs.statSync(path.join(OUT, 'indice.json')).size / 1024).toFixed(0)} KB`);
   if (!MO) console.log('[tasselli] meshoptimizer non trovato (npm install in strumenti/): vettori senza compressione');
   if (!sharp) console.log('[tasselli] sharp non trovato (npm install in strumenti/): tessiture grezze');
 }

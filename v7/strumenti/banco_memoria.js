@@ -1,7 +1,7 @@
 // [leggera] IL BANCO DELLA MEMORIA: quanto pesa il gioco vero in memoria, e chi la tiene.
 //   node strumenti/banco_memoria.js [--profilo=telefono|computer] [--query=&nomemoria] [--giro=borgo,marina,citta] [--out=file.json] [--attesa=6]
 //   (da v7/; --profilo=telefono è il predefinito: 390×844, DPR 3, tocco, ?cittanuova&leggera; computer: 1280×720, ?cittanuova)
-//   --vecchia: l'isola di prima (?vecchia) come riferimento.
+//   --vecchia: l'isola di prima (?vecchia) come riferimento. --giro=lunghi: 10 spostamenti lunghi e il ritorno alla partenza ([tasselli3]).
 // Chromium senza testa con SwiftShader. I disegni sono a vuoto (come in banco_peso.js: la memoria non cambia, il tempo sì), le
 // allocazioni della scheda video sono contate alla fonte: ogni chiamata WebGL che riserva memoria (texImage2D/3D, texStorage2D/3D,
 // compressedTexImage, generateMipmap, bufferData, renderbufferStorage[Multisample]) per oggetto GL, tolta a deleteTexture/Buffer/
@@ -198,15 +198,20 @@ const srv = http.createServer((req, res) => {
     console.log('per funzione (three e simili attribuiti a chi li chiama):'); Object.entries(byF).sort((a, c) => c[1] - a[1]).slice(0, +arg('topf', 45)).forEach(([k, v]) => console.log('   ' + MB(v).padStart(7) + ' MB  ' + k));
     out.campione = { per_modulo: byM, per_funzione: Object.fromEntries(Object.entries(byF).sort((a, c) => c[1] - a[1]).slice(0, 200)) }; };
   if (arg('js', null)) { const r = await pg.evaluate(src => { try { return (new Function(src))(); } catch (e) { return 'errore ' + e.message + ' ' + e.stack; } }, fs.readFileSync(arg('js'), 'utf8')); console.log('JS:', typeof r === 'string' ? r : JSON.stringify(r, null, 1)); if (has('solojs')) { await b.close(); srv.close(); process.exit(0); } }   // --js=file: un'analisi in più nella pagina (--solojs: solo quella)
+  // [tasselli3] «partenza»: il punto (e lo zoom) dove il gioco è partito, per misurare il ritorno dopo i giri (--giro=lunghi: 10 spostamenti
+  // lunghi fra i capi della città e di nuovo alla partenza; la memoria al ritorno contro quella dopo il caricamento)
+  POSTI.partenza = await pg.evaluate(() => { const pv = window.__pv; return { x: pv.st.player.x, y: pv.st.player.y, zoom: pv.R.cam.zoom }; });
+  if (GIRO.length === 1 && GIRO[0] === 'lunghi') GIRO.splice(0, 1, 'mercato', 'rocca', 'marina', 'rocca', 'mercato', 'borgo', 'rocca', 'mercato', 'rocca', 'mercato', 'partenza');
   const m0 = await misura('dopo il caricamento'); stampa(m0); out.misure.push(m0);
   for (const nome of GIRO) { const s = POSTI[nome]; if (!s) continue;
     await pg.evaluate(s => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R, ui = pv.ui; p.vehicle = null; p.indoor = null; p.lv = null; p.x = s.x; p.y = s.y; p.path = []; ui.focus = { x: s.x, y: s.y }; ui.zoom = s.zoom; R.cam.x = R.cam.tx = s.x; R.cam.y = R.cam.ty = s.y; R.cam.zoom = R.cam.tz = s.zoom; R.cam.uy = 0; }, s);
     await pg.waitForTimeout(2500);
-    for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 60000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
+    for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 60000 && quiet < 2; k++) { await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => { const t = window.__tasselli; return !(window.__pv.R.ISO && window.__pv.R.ISO.job) && (!t || !t.on || (t.inVolo === 0 && t.inApertura === 0 && t.pronti === 0)); })) ? quiet + 1 : 0; }   // [tasselli3] anche i tasselli fermi
     await pg.waitForTimeout(ATT * 1000);
     await pg.evaluate(() => { window.__pv.ui.focus = null; });
     if (FOTO) { fs.mkdirSync(FOTO, { recursive: true }); const url = await pg.evaluate(() => new Promise(r => { window.__nodraw = false; requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(() => { const d = window.__pv.R.__models.renderer.domElement.toDataURL("image/png"); window.__nodraw = true; r(d); }))); })); fs.writeFileSync(path.join(FOTO, nome + ".png"), Buffer.from(url.split(",")[1], "base64")); }   // --foto=cartella: la foto di ogni tappa (fuori dal repo)
     const m = await misura(nome); out.misure.push(m);
+    if (m.tasselli = await pg.evaluate(() => { const t = window.__tasselli; return t && t.on ? { inScena: t.inScena, mesh: t.mesh, vertici: t.vertici, tessitureScaricate: t.tessitureScaricate, materialiInUso: t.materialiInUso, texLiberate: t.texLiberate, matLiberati: t.matLiberati, smontati: t.smontati } : null; })) console.log('   tasselli', JSON.stringify(m.tasselli));
     console.log(`-- ${nome}: heap ${m.heap} MB · scheda ${MB(m.gpu)} MB (picco ${MB(m.picco)}) · totale ${(m.heap + m.gpu / 1048576).toFixed(0)} MB · con le tele ${(m.heap + (m.gpu + (m.cpu ? m.cpu.tele : 0)) / 1048576).toFixed(0)} MB · processi ${JSON.stringify(m.proc)}`); }
   if (GIRO.length) stampa(out.misure[out.misure.length - 1]);
   await campiona();
