@@ -22309,8 +22309,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'fd579cd89df6aa00';</script>
-<script>window.PV_IMPRONTA_TASS = '01aeb0beed2e1a7d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'ee18df010ce1b768';</script>
+<script>window.PV_IMPRONTA_TASS = '61b08e4372c22829';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -24859,6 +24859,7 @@ var Vegetazione = (function () {
       else if (e === E.ABETAIA) f = m < .3 ? F.macchia : m > .7 && m2 > .55 ? F.pinetaM : F.lecceta;          // il bosco scuro, con le chiarie di macchia
       else if (e === E.FAGGETA) f = m > .64 ? F.lecceta : m < .3 ? F.prato : m2 > .62 ? F.pinetaM : F.macchia;  // il versante al sole: macchia a mosaico
       else if (e === E.VALLONE || e === E.RIPARIALE) f = F.riparia;
+      else if (E.LECCETA && e === E.LECCETA) f = F.lecceta;   // [altopiano] i lecci delle doline e del canalone del Tavolato
       else if (e === E.PINETA) f = m < .26 ? F.prato : F.pineta;
       else if (e === E.MACCHIA) f = m < .34 ? F.gariga : F.macchia;
       else if (e === E.FARO || e === E.GHIAIONE) f = m > .7 ? F.macchia : F.gariga;
@@ -24883,7 +24884,7 @@ var Vegetazione = (function () {
     rudere_o: [16, 'ulivo'], sorgente: [12, 'fico'], monolite: [14, null], bivacco_o: [12, 'pino'], campeggio_o: [16, 'pino'], carbonaia: [12, null],
     pozzo_o: [12, 'carrubo'], radura: [18, 'carrubo'], ovile: [14, 'carrubo'], ovile_b: [12, 'carrubo'], eremo: [12, 'cipresso'], campo_p: [14, 'leccio'],
     bosco_antico: [16, 'leccio'], vecchio_3: [12, 'cipresso'], paese_vecchio: [14, 'fico'], passo: [12, 'pinoM'], neviera: [10, null], altopiano: [20, 'mandorlo'],
-    beduini: [16, 'carrubo'], tavolato: [22, 'carrubo'], pizzo: [10, null], masseria: [16, 'carrubo'], cantina: [12, 'fico'], sangiacomo: [14, 'cipresso'],
+    beduini: [8, 'carrubo'], tavolato: [9, 'carrubo'],   /* [altopiano] radure piccole: le doline accanto tengono i loro lecci */ pizzo: [10, null], masseria: [16, 'carrubo'], cantina: [12, 'fico'], sangiacomo: [14, 'cipresso'],
     salinaio: [12, 'tamerice'], miniera: [14, 'eucalipto'], stazione2: [14, 'eucalipto'], stazione_n: [14, 'eucalipto'], stazione_s: [14, 'eucalipto'],
   };
   function luoghi(W) {
@@ -26305,18 +26306,53 @@ var World = (function () {
   const GOV = { x0: XG - 18, x1: XC + 4, piazza: [904, 136, 934, 156] };
 
   // ---------------- [isola] LA TESTA DI BOSCO, IL COLLO DI FORESTA, IL TAVOLATO ----------------
-  // Il Tavolato è un tepui: pianoro a 42 m con pareti verticali e il ghiaione sotto, sopra il bosco che sta a ~13 m.
-  // Si sale solo a piedi, da due canaloni intagliati nella parete (levante, dove finisce la Via della Memoria; ponente, verso il faro).
-  const TAV = { x: Px(168), y: Py(168, 190), r: 58 * RID.s, h: 42 };   // [isola-ridotta] più piccolo con la testa (prima r 58 in x 168, y 190)
-  const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32 };
-  const CANALI = [{ id: 'levante', a: .16 }, { id: 'ponente', a: Math.PI + .42 }];
+  // [altopiano] Il Tavolato è un tavolato calcareo (una mesa carsica): banchi di calcare inclinati di qualche grado verso scirocco
+  // (sud-est). Dove gli strati si troncano, a maestrale (nord-ovest, verso il mare e il vento), c'è la scarpata: una parete di 20-25 m
+  // col ghiaione sotto. Dalla parte opposta i banchi scendono col pendio: il ciglio è basso e si rompe in tre gradoni (i banchi più duri
+  // che affiorano), coi ripiani in leggera pendenza e qualche frana che li raccorda. Il contorno segue gli strati: allungato lungo la
+  // direzione dei banchi (nord-est / sud-ovest), a lobi e speroni. Il pianoro pende piano verso scirocco (da 44 a 33 m), bucato dalle
+  // doline (la più grande tiene la pozza d'inverno), coi campi solcati (karren) e i massi sparsi. Due canaloni lo intaccano: quello di
+  // levante, largo, scende fra i gradoni verso la Forra; quello di ponente è una spaccatura stretta nella parete, sopra il faro.
+  // Si sale: dalla mulattiera a tornanti sui gradoni di mezzogiorno, dal sentiero ripido del canalone di levante, arrampicando su per
+  // la spaccatura di ponente. Il verde segue quota ed esposizione: gariga bassa sul pianoro ventoso, macchia sui gradoni al riparo,
+  // lecci nelle doline e nel canalone, roccia nuda sulle pareti.
+  const TAV = { x: Px(168), y: Py(168, 190), r: 37, h: 38.5, dip: .78, Rd: 32, Rs: 41, g: .16 };   // dip: la direzione in cui pendono i banchi; Rd, Rs: i semiassi (lungo il pendio, lungo i banchi); g: la pendenza del pianoro
+  TAV.ud = [Math.cos(TAV.dip), Math.sin(TAV.dip)];
+  const BF = { TOP: 1, WALL: 2, TALUS: 4, CANALE: 8, RADURA: 16, RIVA: 32, TERR: 64, LECCI: 128, POZZA: 256 };   // [altopiano] TERR i gradoni, LECCI doline e canalone (i lecci), POZZA il fondo della dolina
+  // i canaloni: a l'angolo dal centro, in/out dove comincia (dentro il pianoro) e dove sbocca, w0 la mezza larghezza del fondo al ciglio, k quanto si allarga
+  // fuori, sin l'ampiezza delle anse, f la ripidità dei fianchi, G la pendenza massima del sentiero che ci sale
+  const CANALI = [{ id: 'levante', a: .15, in: -20, out: 31, w0: 9, k: .1, sin: 3.5, f: 5, G: .45 }, { id: 'ponente', a: -2.86, tilt: -.5, in: -26, out: 30, w0: 4.4, k: .04, sin: 1.2, f: 2, G: .62 }];
   // [ambienti] gli ambienti del verde (vedi generate)
-  const ECO = { NONE: 0, FARO: 1, DUNA: 2, PINETA: 3, SALINA: 4, PASCOLO: 5, GHIAIONE: 6, ABETAIA: 7, FAGGETA: 8, VALLONE: 9, MACCHIA: 10, RUDERALE: 11, RADURA: 12, RIPARIALE: 13, BETULLE: 14, VIGNE: 15, ULIVETO: 16, PINIMONTE: 17, ISOLA: 18, PALMETO: 19, GIUNGLA: 20, NUDA: 21, CANNETO: 22, COSTA: 23 };   // [costa2] CANNETO: le canne alla foce e nelle conche dietro le dune; COSTA: le macchie verdi sulla riva di roccia (fichi d'india, agavi, pini)
-  const tavR = a => TAV.r * (.95 + .1 * fbm(Math.cos(a) * 1.05 + 4, Math.sin(a) * 1.05 + 4, 401, 2));   // [isola] pochi lobi larghi: un tavolato, non un bordo frastagliato
-  CANALI.forEach(c => { c.R = tavR(c.a); c.u = [Math.cos(c.a), Math.sin(c.a)]; });
+  const ECO = { NONE: 0, FARO: 1, DUNA: 2, PINETA: 3, SALINA: 4, PASCOLO: 5, GHIAIONE: 6, ABETAIA: 7, FAGGETA: 8, VALLONE: 9, MACCHIA: 10, RUDERALE: 11, RADURA: 12, RIPARIALE: 13, BETULLE: 14, VIGNE: 15, ULIVETO: 16, PINIMONTE: 17, ISOLA: 18, PALMETO: 19, GIUNGLA: 20, NUDA: 21, CANNETO: 22, COSTA: 23, LECCETA: 24 };   // [altopiano] LECCETA: i lecci nelle doline e nel canalone del Tavolato. [costa2] CANNETO: le canne alla foce e nelle conche dietro le dune; COSTA: le macchie verdi sulla riva di roccia (fichi d'india, agavi, pini)
+  // [altopiano] il ciglio: un'ellisse lungo i banchi, coi lobi larghi e, dove c'è la parete, gli speroni e le nicchie della frana
+  const tavW = a => sstep(-.25, .5, Math.cos(a - TAV.dip - Math.PI));   // 1 la parete (a maestrale), 0 i gradoni (a scirocco)
+  const tavR = a => { const c = Math.cos(a - TAV.dip), s = Math.sin(a - TAV.dip), E0 = 1 / Math.sqrt(c * c / (TAV.Rd * TAV.Rd) + s * s / (TAV.Rs * TAV.Rs)), ca = Math.cos(a), sa = Math.sin(a);
+    return E0 * (1 + .3 * (fbm(ca * 1.3 + 4, sa * 1.3 + 4, 401, 2) - .5) + (.1 + .12 * tavW(a)) * (fbm(ca * 3.6 + 9, sa * 3.6 + 9, 409, 2) - .5)); };
+  const tavUV = (x, y) => { const dx = x - TAV.x, dy = y - TAV.y; return [dx * TAV.ud[0] + dy * TAV.ud[1], -dx * TAV.ud[1] + dy * TAV.ud[0]]; };   // u lungo il pendio (verso scirocco), v lungo i banchi
+  const tavP = (u, v) => [TAV.x + u * TAV.ud[0] - v * TAV.ud[1], TAV.y + u * TAV.ud[1] + v * TAV.ud[0]];
+  const tavE = (x, y) => Math.hypot(x - TAV.x, y - TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x));   // la distanza dal ciglio (negativa: sul pianoro)
+  // le doline [u, v, raggio, profondità]: la prima è la Dolina della Pozza (il fondo d'argilla tiene l'acqua d'inverno)
+  const DOLINE = [[7, 7, 12, 5], [-13, -15, 7.5, 3], [-5, 19, 6.5, 2.4], [17, -16, 5.5, 2], [-21, 4, 5, 1.8], [3, -4, 4, 1.3]].map(([u, v, r, d]) => { const [x, y] = tavP(u, v); return { x, y, r, d }; });
+  const POZZA = { x: DOLINE[0].x, y: DOLINE[0].y, r: 4.2 };   // la pozza: l'acqua sta 0,7 m sopra il fondo
+  // il pianoro: pende verso scirocco, ondula appena; le doline, le conche piccole del carso
+  function tavTop(x, y) {
+    const [u] = tavUV(x, y); let h = TAV.h - TAV.g * u + 1.8 * (fbm(x / 21, y / 21, 402, 2) - .5);
+    for (const D of DOLINE) { const q = Math.hypot(x - D.x, y - D.y) / D.r; if (q < 1) h -= D.d * Math.pow(1 - q * q, 1.6); }
+    h -= .8 * sstep(.63, .75, fbm(x / 6.5, y / 6.5, 403, 2));   // le conchette (uvale piccole, vaschette di corrosione)
+    return h;
+  }
+  // i gradoni a scirocco: dove sono rotti (una frana li raccorda) e dove passa la mulattiera (a mezzogiorno, angoli 0,95-1,55) non c'è salto
+  const MULA = [.95, 1.55];
+  const tavGap = (a, k) => Math.max(sstep(.56, .66, fbm(Math.cos(a) * 2.6 + k * 5.3, Math.sin(a) * 2.6 + k * 2.1, 410, 2)), 1 - sstep(0, .14, Math.max(MULA[0] - a, a - MULA[1])));
+  CANALI.forEach(c => { c.R = tavR(c.a); c.p0 = [TAV.x + Math.cos(c.a) * c.R, TAV.y + Math.sin(c.a) * c.R]; c.u = [Math.cos(c.a + (c.tilt || 0)), Math.sin(c.a + (c.tilt || 0))]; c.hw0 = c.w0; });   // p0 dove taglia il ciglio, u l'asse (di sbieco se tilt)
   // radure del bosco [x, y, raggio]: stazioni, saline, faro, campo partigiano, borghi dei pescatori
   const RADURE = [[232, 82, 15], [262, 318, 15], [100, 312, 19], [44, 213, 12], [98, 128, 8]].map(([x, y, r]) => [Px(x), Py(x, y), r * sigY(x)])   // [isola-ridotta] sulla mappa (le stazioni, le saline, il faro, il campo)
     .concat([[Px(470), SouthY(Px(470)) - 23, 18], [Px(566), NorthY(Px(566)) + 21, 14], [Px(152), SouthY(Px(152)) - 24, 12]]);   // [costa2] i borghi dei pescatori stanno a filo della riva nuova
+  // [altopiano] dove i gradoni non arrivano: le radure delle due stazioni e il poggio della Casa del salinaio (restano dove erano)
+  const TAV_FUORI = [RADURE[0], RADURE[1], [430, 130, 12], [354, 266, 10]];   // (la stazione nord nella sua radura; la casa del salinaio sul poggio a nord delle saline)
+  const tavFuori = (x, y) => { let m = 1e9; for (const [kx, ky, kr] of TAV_FUORI) m = Math.min(m, dist(x, y, kx, ky) - kr); return m; };
+  // quanto spazio c'è, dal ciglio in quella direzione, per i gradoni: fino a 26 m dal mare (la costiera) e a 6 m dalle radure tenute (un valore per direzione)
+  const SPAZIO = new Map(), tavSpazio = a => { const k = Math.round(a * 200); let v = SPAZIO.get(k); if (v === undefined) { const R = tavR(a), x = TAV.x + Math.cos(a) * R, y = TAV.y + Math.sin(a) * R; v = Math.min(Inland(x, y) - 26, tavFuori(x, y) - 6); SPAZIO.set(k, v); } return v; };
   // il sottobosco sale verso l'interno della testa e lungo la mezzeria del collo (lì corre la strada centrale); valloni scendono al mare
   function boscoFloor(x, y, inl) {
     const hm = .6 + 12.4 * (1 - sstep(330, XF - 6, Pxi(x))), prof = sstep(3, 48, inl);
@@ -26325,10 +26361,16 @@ var World = (function () {
     const vall = (1 - sstep(0, .35, rv)) * prof * (1 - prof) * 4 * (1.5 + hash2(vi, y > Yc(x) ? 1 : 0, 413) * 3) * sstep(2, 6, hm);
     return .4 + (hm - .4) * prof + und - vall;
   }
-  // il fondo di un canalone a distanza `al` dal ciglio (negativo: dentro il pianoro)
-  const CAN0 = -14, CAN1 = Math.round(30 * RID.s);   // [isola-ridotta] il canalone esce dalla parete un po' meno (prima 30 m): la testa è più piccola
-  function canFloor(c, al) { if (!c.foot) { const fx = TAV.x + c.u[0] * (c.R + CAN1), fy = TAV.y + c.u[1] * (c.R + CAN1); c.foot = boscoFloor(fx, fy, Inland(fx, fy)) + 1.2; } return TAV.h - 1 + (c.foot - TAV.h + 1) * clamp((al - CAN0) / (CAN1 - CAN0), 0, 1); }
-  const canHalf = al => 11 + Math.max(0, al) * .16;
+  // [altopiano] il fondo di un canalone a distanza `al` dal ciglio (negativo: dentro il pianoro): dalla testata (un metro sotto il pianoro)
+  // allo sbocco (un metro sopra il bosco), a pendenza costante; l'asse fa qualche ansa (nessuna al ciglio)
+  const CAN0 = -20, CAN1 = 31;   // i valori del canalone di levante (per chi li legge da fuori)
+  function canFloor(c, al) {
+    if (c.head === undefined) { const [hx, hy] = canPt(c, c.in, 0), [fx, fy] = canPt(c, c.out, 0); c.head = tavTop(hx, hy) - 1.2; c.foot = boscoFloor(fx, fy, Inland(fx, fy)) + 1; }
+    return c.head + (c.foot - c.head) * clamp((al - c.in) / (c.out - c.in), 0, 1);
+  }
+  const canHalf = (al, c) => c ? c.w0 + Math.max(0, al) * c.k : 7 + Math.max(0, al) * .12;
+  const canLat0 = (c, al) => c.sin * Math.sin(al / 7);
+  function canPt(c, al, lat) { const l = canLat0(c, al) + lat; return [c.p0[0] + c.u[0] * al - c.u[1] * l, c.p0[1] + c.u[1] * al + c.u[0] * l]; }   // un punto del canalone: lungo l'asse, di fianco
   const BCACHE = new Map();
   function bosco(x, y) {
     const key = Math.round(x * 4) * 100000 + Math.round(y * 4), c0 = BCACHE.get(key); if (c0) return c0;
@@ -26341,24 +26383,35 @@ var World = (function () {
     // [costa2] la sabbia la decide il tipo di riva (spiaggia, cala, foce; la duna col suo cordone); la quota la fa c2Quota
     if (inl < 48) { const k = coastKind2(x, y), n1 = fbm(x / 23, y / 23, 710, 2);
       if (C2BW[k] && inl < C2BW[k] + 4 * n1 + (k === 'duna' ? C2DUNA + 8 * n1 - 2 : 0)) f |= BF.RIVA; }
-    // il Tavolato
+    // [altopiano] il Tavolato: la parete col ghiaione a maestrale, i gradoni a scirocco, in mezzo si passano la mano; poi i canaloni
     const dx = x - TAV.x, dy = y - TAV.y, d = Math.hypot(dx, dy);
-    if (d < TAV.r * 1.75) {
-      const a = Math.atan2(dy, dx), R = tavR(a), e = d - R, foot = h;
-      const top = TAV.h + (fbm(x / 26, y / 26, 402, 2) - .5) * 1.6 - sstep(-10, 0, e) * .6;
-      const talTop = foot + 11 + (fbm(Math.cos(a) * 1.6, Math.sin(a) * 1.6, 403, 2) - .5) * 3;
+    if (d < TAV.Rs * 2.4) {
+      const a = Math.atan2(dy, dx), R = tavR(a), e = d - R, foot = h, w = tavW(a);
       let ht = h;
-      // il bordo del terreno scende un po' dentro la parete vera (la grafica la disegna liscia sulla curva tavR e la copre col ciglio)
-      if (e < -6) { ht = top; f |= BF.TOP; }
-      else if (e < 1) { ht = top + (talTop - top) * sstep(-6, 1, e); f |= e < -1.5 ? BF.TOP : BF.WALL; }
-      else if (e < 28) { const t = (e - 1) / 27; ht = foot + (talTop - foot) * Math.pow(1 - t, 1.7) + (fbm(x / 11, y / 11, 404, 2) - .5) * .8 * (1 - t); f |= e < 2.4 ? BF.WALL : BF.TALUS; }
-      // i canaloni
+      if (e < 60) {
+        const top = tavTop(x, y);
+        // la parete: il bordo del terreno scende un po' dentro la parete vera (la grafica la disegna liscia sulla curva tavR e la copre col ciglio);
+        // la parete è alta w volte il salto pieno (sui fianchi si abbassa e si scioglie nei gradoni); sotto, il ghiaione e i gradoni si passano la mano
+        const talTop = foot + 8 + (fbm(Math.cos(a) * 1.6, Math.sin(a) * 1.6, 403, 2) - .5) * 3, Lt = 20 + 6 * fbm(Math.cos(a) * 2 + 3, Math.sin(a) * 2 + 3, 404, 2);
+        const hcb = top - w * Math.max(0, top - talTop), e0 = w > .02 ? 1 : 0;   // il piede della parete
+        // i gradoni: tre salti di roccia (dove non sono franati) coi ripiani che pendono appena verso valle; finiscono prima della costiera
+        const Ll = Math.max(14, Math.min(28 + 12 * fbm(Math.cos(a) * 1.7 + 7, Math.sin(a) * 1.7 + 7, 411, 2) + 12 * (1 - sstep(0, .14, Math.max(MULA[0] - a, a - MULA[1]))), tavSpazio(a))), t = (e - e0) / Ll + .07 * (fbm(x / 13, y / 13, 412, 2) - .5);   // dove sale la mulattiera il pendio è più lungo (una frana vecchia, il cono di detrito)
+        let gL = 0; if (t >= 1) gL = 1; else if (t > 0) { const n = 3, k = t < .42 ? 0 : t < .72 ? 1 : 2, fr = (t - [0, .42, .72][k]) / [.42, .3, .28][k], rho = .2 + .74 * tavGap(a, k), st = (k + sstep(1 - rho, 1, fr)) / n; gL = .7 * st + .3 * t; }   // prima il ripiano, poi il salto
+        const gW = e < 1 ? 0 : e < 1 + Lt ? 1 - Math.pow(1 - (e - 1) / Lt, 1.3) : 1, gk = w * gW + (1 - w) * gL;   // quanto si è scesi dal piede della parete al bosco (0..1)
+        if (e < -3.5) ht = top;
+        else if (e < e0) ht = top + (hcb - top) * sstep(-3.5, 1, e);
+        else ht = hcb + (foot - hcb) * gk + w * (fbm(x / 11, y / 11, 404, 2) - .5) * .8 * (1 - gW);
+        if (w >= .5) { if (e < -1.5) f |= BF.TOP; else if (e < 2.4) f |= BF.WALL; else if (e < 1 + Lt) f |= BF.TALUS; else if (t < 1 && ht > foot + .8) f |= BF.TERR; }
+        else { if (e < 0) f |= BF.TOP; else if (t < 1 && ht > foot + .8) f |= BF.TERR; }
+        if (f & BF.TOP) for (const D of DOLINE) { const q = Math.hypot(x - D.x, y - D.y) / D.r; if (q < 1.08) f |= BF.LECCI; }   // i lecci sui fianchi e sull'orlo della dolina, al riparo dal vento
+        if (Math.hypot(x - POZZA.x, y - POZZA.y) < POZZA.r) f |= BF.POZZA;
+      }
+      // i canaloni: il fondo piano e i fianchi che si alzano (a U nel canalone di levante, quasi a picco nella spaccatura di ponente, che sale di sbieco)
       for (const c of CANALI) {
-        const al = dx * c.u[0] + dy * c.u[1] - c.R, lat = Math.abs(dx * c.u[1] - dy * c.u[0]);
-        if (al < CAN0 - 10 || al > CAN1 + 6) continue;
-        const hw2 = canHalf(al); if (lat > hw2 + 12) continue;
-        const hc = canFloor(c, al) + (fbm(x / 5, y / 5, 405, 2) - .5) * .5, wall = hc + Math.pow(Math.max(0, lat - hw2 + 6) / 6, 1.6) * 9 + Math.max(0, CAN0 - al) * 2.2;   // fianchi a V larga: niente scalini sulla griglia
-        if (wall < ht) { ht = wall; f &= ~(BF.TOP | BF.WALL); if (lat < hw2 - 1 && al >= CAN0) f |= BF.CANALE; }
+        const qx = x - c.p0[0], qy = y - c.p0[1], al = qx * c.u[0] + qy * c.u[1]; if (al < c.in - 12 || al > c.out + 6) continue;
+        const lat = Math.abs(-qx * c.u[1] + qy * c.u[0] - canLat0(c, al)), hw2 = canHalf(al, c); if (lat > hw2 + c.f + 14) continue;
+        const hc = canFloor(c, al) + (fbm(x / 5, y / 5, 405, 2) - .5) * .4, wall = hc + Math.pow(Math.max(0, lat - hw2 + c.f) / c.f, 1.6) * 9 + Math.max(0, c.in - al) * 2.2;
+        if (wall < ht) { ht = wall; f &= ~(BF.TOP | BF.WALL | BF.POZZA); if (lat < (c.id === 'levante' ? Math.max(1.6, (hw2 - c.f) * .45) : hw2 - 1) && al >= c.in) f |= BF.CANALE;   /* nel canalone di levante il letto di ghiaia sta in mezzo, ai lati i lecci */ if (c.id === 'levante') f |= BF.LECCI; else f &= ~BF.LECCI; }
       }
       h = ht;
     }
@@ -26838,11 +26891,18 @@ var World = (function () {
       // [isola] la testa di bosco e il collo di foresta: bosco fitto, radure, la Spiaggia Lunga, il Tavolato (pareti, ghiaione, canaloni, pianoro)
       if (x < XF && z !== Z.MARE) {
         const Bq = bosco(x, y), f = Bq.f, h1 = hash2(tx, ty, 47);
-        if (f & BF.WALL) { v = T.CLIFF; feat[i] |= 4096; }
-        else if (f & BF.CANALE) { v = h1 < .72 ? T.GRAVEL : T.ROCK; feat[i] |= 8192; }
-        else if (f & BF.TALUS) { const dd = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x)), t = clamp((dd - 2.4) / 25.6, 0, 1);
+        // [altopiano] la pendenza vera della casella (dai quattro vertici): oltre 0,68 (34°, il ghiaione più ripido) è roccia in piedi, non si sale
+        const sv = velev[ty * VW + tx], sv1 = velev[ty * VW + tx + 1], sv2 = velev[(ty + 1) * VW + tx], sv3 = velev[(ty + 1) * VW + tx + 1];
+        const ripido = (f & (BF.TOP | BF.TALUS | BF.TERR | BF.LECCI)) && !(f & BF.CANALE) && Math.hypot(sv1 + sv3 - sv - sv2, sv2 + sv3 - sv - sv1) / (2 * TS) > .68;
+        if (f & BF.WALL || ripido) { v = T.CLIFF; feat[i] |= 4096; }
+        else if (f & BF.CANALE) { v = h1 < (dist(x, y, ...canPt(CANALI[1], 0, 0)) < 40 ? .3 : .72) ? T.GRAVEL : T.ROCK; feat[i] |= 8192; }   // il letto di ghiaia del canalone; nella spaccatura le lastre
+        else if (f & BF.POZZA) { v = T.SAND; feat[i] |= 2048; }   // il fondo d'argilla della pozza (l'acqua la mette la grafica)
+        else if (f & BF.TALUS) { const dd = tavE(x, y), t = clamp((dd - 2.4) / 22, 0, 1);
           v = t < .38 + (fbm(x / 14, y / 14, 406, 2) - .5) * .3 ? (fbm(x / 6, y / 6, 407, 2) > .42 ? T.GRAVEL : T.ROCK) : fbm(x / 10, y / 10, 48, 2) > .45 - t * .25 ? T.TREE : T.SHRUB; feat[i] |= 8192; }   // [isola] il ghiaione a fascia continua, poi il bosco che ci risale
-        else if (f & BF.TOP) { v = fbm(x / 11, y / 11, 49, 2) > .72 ? T.ROCK : fbm(x / 15, y / 15, 50, 2) > .52 ? T.SHRUB : h1 < .025 ? T.TREE : T.GRASS; feat[i] |= 2048; }
+        else if (f & BF.TERR) {   // i gradoni: al piede dei salti il pietrame caduto, sui ripiani gariga e macchia, la roccia che affiora
+          const dn = Math.max(sv, sv1, sv2, sv3) - Math.min(sv, sv1, sv2, sv3);
+          v = dn > 1.1 && h1 < .7 ? T.GRAVEL : fbm(x / 8, y / 8, 49, 2) > .7 ? T.ROCK : fbm(x / 12, y / 12, 50, 2) > .45 ? T.SHRUB : T.GRASS; if (v === T.GRAVEL) feat[i] |= 8192; }
+        else if (f & BF.TOP) { v = fbm(x / 9, y / 9, 49, 2) > .66 || hash2(tx, ty, 413) < .014 ? T.ROCK : fbm(x / 15, y / 15, 50, 2) > .5 ? T.SHRUB : T.GRASS; feat[i] |= 2048; }   // i campi solcati (karren) a chiazze, i massi sparsi, la gariga
         else if (f & BF.RIVA) v = T.SAND;
         else if (f & BF.RADURA) v = h1 < .05 ? T.TREE : fbm(x / 12, y / 12, 51, 2) > .55 ? T.SHRUB : T.GRASS;
         else { const gl = fbm(x / 34, y / 34, 52, 2); v = gl < .24 ? (h1 < .3 ? T.SHRUB : T.GRASS) : fbm(x / 13, y / 13, 53, 3) > .33 ? T.TREE : h1 < .6 ? T.SHRUB : T.GRASS; }
@@ -26871,7 +26931,7 @@ var World = (function () {
     const E = ECO;
     const eco = new Uint8Array(N);
     // la Forra: un torrente umido che scende dal canalone di levante del Tavolato fino al mare, al Borgo dei pescatori
-    const FORRA = [[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]].map(q => PP(q[0], q[1]));   // [isola-ridotta] sulla mappa
+    const FORRA = [canPt(CANALI[0], CANALI[0].out - 6, 0)].concat([[262, 214], [292, 228], [326, 236], [362, 244], [398, 252], [432, 258], [466, 266]].map(q => PP(q[0], q[1])));   // [isola-ridotta] sulla mappa   [altopiano] comincia allo sbocco del canalone
     const SAL0 = PP(100, 314), FARO0 = PP(41, 212), PX75 = Px(75);   // [isola-ridotta] le saline, la punta del faro
     const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy))); return Math.hypot(x - a[0] - dx * t, y - a[1] - dy * t); };
     const valloneK = (x, y, inl) => { const prof = sstep(3, 48, inl), ph = x / 44 + (fbm(x / 50, y / 30, 412, 2) - .5) * 1.4, vi = Math.floor(ph + .5), rv = Math.abs(ph - vi) * 2; return (1 - sstep(0, .5, rv)) * prof * (1 - prof) * 4; };
@@ -26885,7 +26945,11 @@ var World = (function () {
       const inl = Inland(x, y), wob = (fbm(x / 40, y / 40, 160, 2) - .5) * 16;
       if (x < XF) {
         const f = bosco(x, y).f;
-        if (f & BF.TOP) return E.PASCOLO;
+        // [altopiano] i lecci al riparo (doline, canalone di levante); il pianoro al vento: gariga a maestrale, macchia bassa verso scirocco;
+        // i gradoni al riparo: macchia; pareti, ghiaioni e letti dei canaloni: roccia e pietrame
+        if (f & BF.LECCI && !(f & (BF.CANALE | BF.POZZA))) return E.LECCETA;
+        if (f & BF.TOP) return tavUV(x, y)[0] < 8 + wob * .4 ? E.FARO : E.MACCHIA;
+        if (f & BF.TERR) return E.MACCHIA;
         if (f & (BF.TALUS | BF.CANALE | BF.WALL)) return E.GHIAIONE;
         if (dist(x, y, SAL0[0], SAL0[1]) < 28 * RID.s) return E.SALINA;
         if (f & BF.RIVA) return E.DUNA;
@@ -26896,8 +26960,7 @@ var World = (function () {
         for (let q = 0; q < RADURE.length; q++) { const [rx, ry, rr] = RADURE[q]; if (dist(x, y, rx, ry) < rr * 1.5 + wob * .3) return q < 2 ? E.RUDERALE : E.RADURA; }   // [isola-ridotta] le prime due sono le stazioni
         if (valloneK(x, y, inl) > .12) return E.VALLONE;
         if (FORRA.some((q, k) => k && segD(x, y, FORRA[k - 1], q) < 19 + wob * .8)) return E.VALLONE;   // la Forra: dal canalone di levante al Borgo dei pescatori
-        const dT = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x));
-        if (dT < 80 * RID.s + wob * 2) return E.ABETAIA;   // l'abetaia vecchia attorno al tepui (il Bosco Antico)
+        if (tavE(x, y) < 80 * RID.s + wob * 2) return E.ABETAIA;   // l'abetaia vecchia attorno al Tavolato (il Bosco Antico)
         return y < Yc(x) - 6 + wob ? E.ABETAIA : E.FAGGETA;   // al nord gli abeti, al sole i faggi e le querce
       }
       // il Monte Scuro
@@ -26918,7 +26981,9 @@ var World = (function () {
       const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; if (!eco[i]) continue;
       const v = grid[i]; if (v !== T.TREE && v !== T.SHRUB && v !== T.GRASS && !(v === T.SAND && eco[i] === E.PALMETO)) continue;   // [arcipelago] le palme crescono anche sulla sabbia
       const wx = x + (fbm(x / 30, y / 30, 171, 2) - .5) * 26 + (hash2(tx, ty, 172) - .5) * 9, wy = y + (fbm(x / 30 + 9, y / 30 + 4, 173, 2) - .5) * 26 + (hash2(tx, ty, 174) - .5) * 9;
-      const wi = Math.max(0, Math.min(GH - 1, Math.floor(wy / TS))) * GW + Math.max(0, Math.min(GW - 1, Math.floor(wx / TS))), e0 = v === T.SAND ? eco[i] : eco[wi] || eco[i];
+      const wi = Math.max(0, Math.min(GH - 1, Math.floor(wy / TS))) * GW + Math.max(0, Math.min(GW - 1, Math.floor(wx / TS)));
+      const fermo = x < XF && (bosco(x, y).f & (BF.TOP | BF.TERR | BF.TALUS | BF.WALL | BF.CANALE | BF.LECCI) || eco[wi] === E.LECCETA);   // [altopiano] sul Tavolato il verde segue la roccia (le doline sono piccole): niente lingue
+      const e0 = v === T.SAND || fermo ? eco[i] : eco[wi] || eco[i];
       const h1 = hash2(tx, ty, 141), n1 = fbm(x / 9, y / 9, 142, 2), gap = fbm(x / 40, y / 40, 144, 2);
       const under = th => n1 > th ? T.SHRUB : T.GRASS;
       let nv = v;
@@ -26930,6 +26995,7 @@ var World = (function () {
         case E.MACCHIA: nv = cellTree(tx, ty, 11, .45, 12) ? T.TREE : under(.33); break;                                             // cespugli fitti, pochi alberi storti
         case E.FARO: nv = cellTree(tx, ty, 17, .4, 15) ? T.TREE : under(.6); break;                                                  // la punta ventosa: erba, cuscini, pochi pini piegati
         case E.PASCOLO: { const dT = dist(x, y, TAV.x, TAV.y) - tavR(Math.atan2(y - TAV.y, x - TAV.x)); nv = dT > -20 && cellTree(tx, ty, 24, .45, 18) ? T.TREE : v === T.SHRUB && n1 > .6 ? T.SHRUB : T.GRASS; break; }   // alberi soli sul ciglio
+        case E.LECCETA: nv = cellTree(tx, ty, 4.4, .85, 45) ? T.TREE : under(.42); break;                                           // [altopiano] i lecci fitti nelle doline e nel canalone
         case E.SALINA: case E.RUDERALE: nv = under(.64); break;
         case E.RADURA: nv = cellTree(tx, ty, 14, .35, 21) ? T.TREE : under(.62); break;                                             // radura: qualche albero grande da solo
         case E.RIPARIALE: { const q = Math.hypot((x - xn(186)) / 13, (y - 150) / 9); nv = q > 1.1 && cellTree(tx, ty, 6, .55, 24) ? T.TREE : under(.45); break; }
@@ -27148,15 +27214,26 @@ var World = (function () {
     CITY.roads.forEach(rd => roads.push(rd));
     ROADS0.filter(q => !['porto', 'monte', 'deserto', 'miniera', 'stazione2', 'saline', 'faro', 'crinale_e', 'sent_o1', 'sent_o2', 'sent_e1', 'sent_e2', 'anello_on', 'anello_os', 'mulattiera_o', 'anello_en', 'anello_es', 'mulattiera_e'].includes(q[0])).forEach(([id, name, w, kind, cp]) => roads.push({ id, name, w, kind, pts: rounded(rel(cp).map(q => [xn(q[0]), q[1]]), w > 5 ? 16 : 8, false) }));
     // [isola] le strade della testa di bosco e del collo, in coordinate nuove. La strada centrale sale col terreno e diventa mulattiera.
-    const canTrail = c => { const N = 7, v = [-c.u[1], c.u[0]], out = []; for (let k = 0; k <= N; k++) { const al = CAN1 + 1 - (CAN1 + 1 - (CAN0 + 3)) * k / N, lat = k === 0 || k === N ? 0 : (k % 2 ? 1 : -1) * (canHalf(al) - 3.6); out.push([TAV.x + c.u[0] * (c.R + al) + v[0] * lat, TAV.y + c.u[1] * (c.R + al) + v[1] * lat, canFloor(c, al)]); } return out; };
-    const CE = canTrail(CANALI[0]), CO = canTrail(CANALI[1]), footE = CE[0], footO = CO[0];
-    const aroundTav = []; for (let a = .02; a > -2.62; a -= .1) { const R = tavR(a) + 34 + 4 * Math.sin(a * 3); aroundTav.push([TAV.x + Math.cos(a) * R, TAV.y + Math.sin(a) * R]); }
+    // [altopiano] le vie del Tavolato. Su per i canaloni: dallo sbocco alla testata sul fondo (nel canalone di levante da una sponda
+    // all'altra, nella spaccatura di ponente dritti per le lastre), poi fuori sul pianoro. La mulattiera: dalla costiera di mezzogiorno
+    // a tornanti sul pendio di frana fra i gradoni, fino all'accampamento. La traccia del pianoro: dal canalone di levante alla pozza e
+    // all'accampamento, la prateria, il belvedere sulla prua a maestrale, giù alla spaccatura di ponente.
+    const canTrail = (c, N, zig) => { const out = []; for (let k = 0; k <= N; k++) { const al = c.out + 1 - (c.out + 1 - (c.in + 3)) * k / N, lat = k === 0 || k === N ? 0 : (k % 2 ? 1 : -1) * zig * Math.max(0, canHalf(al, c) - c.f - .5); out.push(canPt(c, al, lat).concat([canFloor(c, al)])); }
+      const [tx, ty] = canPt(c, c.in - 5, 0); out.push([tx, ty, tavTop(tx, ty)]); return out; };
+    const CE = canTrail(CANALI[0], 9, .55), CO = canTrail(CANALI[1], 6, 0), footE = CE[0], footO = CO[0];
+    const tavR0 = a => 58 * RID.s * (.95 + .1 * fbm(Math.cos(a) * 1.05 + 4, Math.sin(a) * 1.05 + 4, 401, 2));   // [altopiano] il Sentiero del Bosco Antico resta dov'era (gira largo attorno al Tavolato, fra il ghiaione e la costiera)
+    const aroundTav = []; for (let a = .02; a > -2.62; a -= .1) { const R = tavR0(a) + 34 + 4 * Math.sin(a * 3); aroundTav.push([TAV.x + Math.cos(a) * R, TAV.y + Math.sin(a) * R]); }
+    const PA = (a, e) => { const R = tavR(a) + e; return [TAV.x + Math.cos(a) * R, TAV.y + Math.sin(a) * R]; };   // un punto a e metri dal ciglio, nella direzione a
+    const TAVP = { campo: tavP(19, 18), centro: tavP(-8, -2), prateria: tavP(-18, -8), belvedere: PA(TAV.dip - Math.PI, -5.5) };   // i posti del pianoro
+    const MULP = [ringNear(...PA(1.25, 64)), PA(1.5, 52), PA(1.0, 45), PA(1.5, 37), PA(1.0, 29), PA(1.5, 21), PA(1.0, 13), PA(1.5, 5), PA(1.22, -3), tavP(14, 22), TAVP.campo];
+    const TOPP = [CE[CE.length - 1].slice(0, 2), tavP(20, 0), TAVP.campo, tavP(2, 20), tavP(-6, 8), TAVP.centro, tavP(-20, -4), TAVP.belvedere, tavP(-22, 9), CO[CO.length - 1].slice(0, 2)];
     const NEWR = [   // [isola-ridotta] i vertici scritti nel disegno, portati sulla mappa (PP); quelli dei canaloni sono già sulla mappa
       ['deserto', 'Strada del Bosco', 6, 'strada', [PP(680, 150), PP(646, 151), PP(612, 154), PP(578, 160), PP(548, 166), PP(522, 172)]],
       ['memoria', 'Via della Memoria', 3, 'sterrato', [PP(522, 172), PP(492, 178), PP(460, 186), PP(428, 192), PP(396, 198), PP(364, 203), PP(332, 205), PP(304, 203), PP(282, 200), [footE[0] + 6, footE[1] + 1], footE.slice(0, 2)]],
-      ['canale_e', 'Sentiero del Canalone di levante', 2, 'sterrato', CE, true],
-      ['canale_o', 'Sentiero del Canalone di ponente', 2, 'sterrato', CO, true],
-      ['tav_top', 'Traccia del Tavolato', 2, 'sterrato', [CE[CE.length - 1].slice(0, 2), PP(196, 188), PP(176, 184), PP(156, 178), CO[CO.length - 1].slice(0, 2)]],
+      ['canale_e', 'Sentiero del Canalone di levante', 2.6, 'sterrato', CE, true, { G: CANALI[0].G, traccia: true }],
+      ['canale_o', 'Sentiero del Canalone di ponente', 2.8, 'sterrato', CO, true, { G: CANALI[1].G, traccia: true }],   // [altopiano] la spaccatura: si sale a gradini, tutta la larghezza del fondo
+      ['tav_top', 'Traccia del Tavolato', 2, 'sterrato', TOPP, false, { traccia: true }],
+      ['mulattiera_tav', 'Mulattiera del Tavolato', 2.6, 'sterrato', MULP, false, { G: .2, traccia: true }],   // [altopiano] la mulattiera: 2,6 m, a gradini dove tira
       ['bosco_antico', 'Sentiero del Bosco Antico', 2, 'sterrato', [footE.slice(0, 2)].concat(aroundTav, [footO.slice(0, 2)])],
       ['sent_faro', 'Sentiero del faro', 2, 'sterrato', [footO.slice(0, 2), PP(70, 168), PP(56, 190), PP(48, 206)]],
       ['miniera', 'Pista della Stazione Nord', 5, 'sterrato', [ringNear(...PP(252, 52)), PP(244, 66), PP(234, 80)]],
@@ -27165,8 +27242,8 @@ var World = (function () {
       ['faro', 'Pista della Punta', 3, 'sterrato', [ringNear(...PP(62, 214)), PP(50, 213)]],
       ['campo_p', 'Traccia del campo', 2, 'sterrato', [ringNear(...PP(92, 72)), PP(96, 100), PP(98, 126)]],
     ];
-    NEWR.forEach(([id, name, w, kind, cp, hq]) => {
-      const pts = hq ? chaikin(cp.map(q => [q[0], q[1]]), 2) : chaikin(cp, 3), rd = { id, name, w, kind, pts, monte: true };
+    NEWR.forEach(([id, name, w, kind, cp, hq, op]) => {
+      const pts = hq ? chaikin(cp.map(q => [q[0], q[1]]), 2) : chaikin(cp, 3), rd = Object.assign({ id, name, w, kind, pts, monte: true }, op || {});   // [altopiano] op.G: la pendenza massima del sentiero (la spaccatura si sale a gradini)
       if (hq) { const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + dist(pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1])); const at = cp.map(q => { let bk = 0, bd = 1e9; pts.forEach((u, k) => { const d = dist(u[0], u[1], q[0], q[1]); if (d < bd) { bd = d; bk = k; } }); return cum[bk]; });
         rd.prof = cum.map(c => { let k = 0; while (k < at.length - 2 && c > at[k + 1]) k++; const t = clamp((c - at[k]) / ((at[k + 1] - at[k]) || 1), 0, 1); return cp[k][2] + (cp[k + 1][2] - cp[k][2]) * t; }); rd.trail = true; }
       roads.push(rd);
@@ -27401,7 +27478,7 @@ var World = (function () {
     blob(xn(588), 166, 12, 6, i => { if (grid[i] !== T.VIA) grid[i] = T.DIRT; });            // poligono della Base
     blob(...PP(234, 78), 9, 6, i => { if (grid[i] !== T.VIA) grid[i] = T.DIRT; });              // piazzale della Stazione Nord
     blob(...PP(262, 324), 9, 6, i => { if (grid[i] !== T.VIA) grid[i] = T.DIRT; });             // piazzale della Stazione Sud
-    blob(...PP(148, 176), 14, 10, i => { if (grid[i] === T.SHRUB || grid[i] === T.FIELD || grid[i] === T.TREE) grid[i] = T.GRASS; }); // accampamento dei beduini, in cima al Tavolato
+    blob(...TAVP.campo, 10, 7, i => { if (grid[i] === T.SHRUB || grid[i] === T.FIELD || grid[i] === T.TREE) grid[i] = T.GRASS; }); // accampamento dei beduini, in cima al Tavolato   [altopiano] al riparo, sull'orlo della Dolina della Pozza (l'acqua)
     // radure sulle colline: bivacchi, monolite, spiazzi da campeggio (alberi tolti, si vede chi c'è)
     [[284, 132, 5], [322, 142, 5], [260, 146, 4], [262, 154, 4], [300, 110, 5], [336, 168, 4], [240, 128, 4]].forEach(([x, y, rr]) => blob(xn(x), y, rr, rr, i => { if (grid[i] === T.TREE || grid[i] === T.SHRUB) grid[i] = T.GRASS; }));
     // ================= [posa] I PEZZI URBANI GRANDI AL LORO POSTO (pezzi_citta.js) =================
@@ -28119,7 +28196,7 @@ var World = (function () {
     for (let k = 0; k < 48; k++) {
       const x = Px(60) + r() * (840 - Px(60)), y = 40 + r() * 330;   // [isola] tutta la testa e il collo   [isola-ridotta] da dove comincia la testa ora
       const z = zoneAt(x, y); if (z !== Z.CAMPAGNA && z !== Z.MACCHIA && z !== Z.DESERTO) continue;
-      if (z === Z.DESERTO || !OnLand0(x, y)) continue;   // [arcipelago] le isole sono disabitate          // il Tavolato è dei beduini: niente case
+      if (z === Z.DESERTO || !OnLand0(x, y) || (x < XF && (bosco(x, y).f & (BF.TOP | BF.TERR | BF.TALUS | BF.WALL | BF.CANALE | BF.LECCI)))) continue;   // [arcipelago] le isole sono disabitate          // il Tavolato è dei beduini: niente case   [altopiano] neanche sui gradoni, sui ghiaioni e nei canaloni
       const s = site(x, y, 4, 4, 2); if (!s || !flatOK(s[0], s[1], 4, 4, 1.4)) continue; stamp({ id: 'casa_' + (nH++), x: s[0], y: s[1], w: 4, h: 4, fl: 1, style: [4, 5, 8][k % 3], house: true, farm: true, wood: true });
     }
     // [isola] i borghi dei pescatori: casette basse sulla riva, sparse e storte, col pontile di legno e lo scalo
@@ -28448,12 +28525,14 @@ var World = (function () {
     // la prateria
     // [isola] la testa di bosco e il Tavolato (coordinate nuove)
     const PD = (id, name, x, y, ex) => PN(id, name, Px(x), Py(x, y), ex);   // [isola-ridotta] i posti della testa e del collo, scritti nel disegno
-    PD('deserto', 'Prateria del Tavolato', 178, 196); PD('beduini', 'Accampamento dei beduini', 148, 176, { camp: 'beduini' }); PD('saline', 'Saline', 100, 314);
+    PN('deserto', 'Prateria del Tavolato', ...TAVP.prateria); PN('beduini', 'Accampamento dei beduini', ...TAVP.campo, { camp: 'beduini' }); PD('saline', 'Saline', 100, 314);   // [altopiano] la gariga aperta del pianoro; il campo sull'orlo della pozza
     PD('punta', 'Punta Scogli', 38, 222); PD('stazione_n', 'Stazione Nord: piazzale', 234, 76); PD('stazione_s', 'Stazione Sud: piazzale', 262, 328);
-    PD('tavolato', 'Il Tavolato', 172, 186, SC); PN('canalone_e', 'Canalone di levante', footE[0], footE[1], SC); PN('canalone_o', 'Canalone di ponente', footO[0], footO[1], SC);
+    PN('tavolato', 'Il Tavolato', ...TAVP.centro, SC); PN('canalone_e', 'Canalone di levante', footE[0], footE[1], SC); PN('canalone_o', 'Canalone di ponente', footO[0], footO[1], SC);
     PD('bosco_antico', 'Bosco Antico', 290, 150, { camp: 'legna', scoperta: true }); PD('campo_p', 'Campo partigiano', 98, 128, { camp: 'bivacco', hidden: true });
     FISHP.forEach(([id, name, x, y]) => PN(id, name, x, y)); PN('piazza_gov', 'Piazza Grande', 919, 146);   // [cucitura] l'ex piazza d'adunata (l'id resta: skate, sottosuolo, missioni)
     PN('spiaggia_lunga', 'Spiaggia Lunga', Px(330), SouthY(Px(330)) - 5); PD('memoria', 'Via della Memoria', 420, 194);
+    // [altopiano] le due cose della roccia che hanno un nome: la dolina con la pozza d'inverno e il belvedere sulla prua della parete, sul mare
+    PN('dolina', 'Dolina della Pozza', POZZA.x + 4, POZZA.y - 3, SC); PN('belvedere_tav', 'Belvedere del Tavolato', ...TAVP.belvedere, SC);
     Object.values(PLACES).forEach(p => { p.x = p.tx * TS + TS / 2; p.y = p.ty * TS + TS / 2; });
     // ---------------- TUTTO RAGGIUNGIBILE ----------------
     const reach = new Uint8Array(N);
@@ -28721,7 +28800,7 @@ var World = (function () {
         let P = rd.prof ? rd.prof.slice() : rd.pts.map(([x, y]) => sampleVH(x, y));
         const blur = (A, r) => A.map((_, k) => { let sm = 0, c = 0; for (let q = -r; q <= r; q++) { sm += A[clamp(k + q, 0, n - 1)]; c++; } return sm / c; });
         for (let pass = 0; pass < 3; pass++) P = blur(P, rd.monte ? 5 : 4);
-        rd._seg = seg; rd._P = P; rd._G = rd.traccia ? .2 : rd.kind === 'sterrato' ? (rd.trail ? .26 : rd.w <= 2 ? .42 : rd.w <= 3 ? .3 : .2) : .15;   // i sentieri a piedi possono essere ripidi (gradini), le piste no
+        rd._seg = seg; rd._P = P; rd._G = rd.G || (rd.traccia ? .2 : rd.kind === 'sterrato' ? (rd.trail ? .26 : rd.w <= 2 ? .42 : rd.w <= 3 ? .3 : .2) : .15);   // i sentieri a piedi possono essere ripidi (gradini), le piste no; [altopiano] rd.G la decide il sentiero
         let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; rd.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }); rd._box = [x0, y0, x1, y1];
       });
       const done = [];
@@ -28989,6 +29068,13 @@ var World = (function () {
         roads.push({ id: rd.id + '_piede', name: rd.name, w: rd.w, kind: 'vicolo', pts: stub, pedonale: true, era: rd.era }); } });
       roads.forEach(rd => { if (rd.kind !== 'vicolo' || rd.pedonale || !rd.pts) return;
         if (rd.sottopasso || OPd.some(o => o.vicolo === rd.id) || rd.pts.some(([x, y]) => OPd.some(o => o.tipo !== 'muraglione' && vicino(o, x, y, rd.w / 2 + .5)))) rd.pedonale = true; }); }
+    // [altopiano] sul Tavolato, a terreno finito (quello che si vede, levigato e scavato dai sentieri): la casella naturale più ripida del
+    // ghiaione più ripido (34°) è roccia in piedi, non ci si sale. Così fra due caselle percorribili vicine non c'è mai un salto
+    { const MIO = BF.TOP | BF.TALUS | BF.TERR | BF.LECCI, NAT = new Set([T.GRASS, T.SHRUB, T.ROCK, T.GRAVEL, T.TREE, T.SAND]);
+      for (let ty = 1; ty < GH - 1; ty++) for (let tx = 1; tx < GW - 1; tx++) { const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1; if (x >= XF || roadW[i] > 0 || roadW[i - 1] > 0 || roadW[i + 1] > 0 || roadW[i - GW] > 0 || roadW[i + GW] > 0 || !NAT.has(grid[i]) || Math.abs(x - TAV.x) > 130 || Math.abs(y - TAV.y) > 130) continue;
+        const f = bosco(x, y).f; if (!(f & (MIO | BF.CANALE)) || (f & BF.POZZA) || ((f & BF.CANALE) && dist(x, y, ...CANALI[1].p0) < 44)) continue;   // nella spaccatura di ponente si arrampica
+        const k = ty * VW + tx, a = vh[k], b = vh[k + 1], c = vh[k + VW], d = vh[k + VW + 1];
+        if (Math.hypot(b + d - a - c, c + d - a - b) / (2 * TS) > .7) { grid[i] = T.CLIFF; feat[i] |= 4096; } } }
     const lanes = roads.filter(rd => rd.kind !== 'sterrato' && rd.kind !== 'vicolo' && !rd.pedonale).map(rd => ({ id: rd.id, w: rd.w, pts: rd.pts, closed: false }));
     // ponti sospesi (si camminano sopra, sotto si passa) e grotte naturali che attraversano la montagna (sottosuolo)
     const BRIDGES = [];   // [isola] la gola non c'è più
@@ -29001,7 +29087,7 @@ var World = (function () {
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
     return { pezzi: PEZZI, recinto: POSA.recinto || null, glacis: CITY.glacis || null, railCity: CITY.rail, sets: CITY.sets, nodi: CITY.nodi, eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
-      DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
+      DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, tavW, POZZA, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
 
   // ================= [arcipelago] LA MAPPA GRANDE =================
@@ -29136,7 +29222,7 @@ var World = (function () {
     W.CAVES = W.CAVES.map(c => Object.assign({}, c, { path: c.path.map(q => [q[0] + OX, q[1] + OY]), rooms: c.rooms.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2))) }));
     W.VILLAGES = W.VILLAGES.map(q => [q[0] + OX, q[1] + OY].concat(q.slice(2)));
     W.LAKE = Object.assign({}, W.LAKE, { x: W.LAKE.x + OX, y: W.LAKE.y + OY });
-    W.HEAD = { x: HEAD.x + OX, y: HEAD.y + OY, r: HEAD.r }; W.TAV = Object.assign({}, TAV, { x: TAV.x + OX, y: TAV.y + OY });
+    W.HEAD = { x: HEAD.x + OX, y: HEAD.y + OY, r: HEAD.r }; W.TAV = Object.assign({}, TAV, { x: TAV.x + OX, y: TAV.y + OY }); W.POZZA = Object.assign({}, POZZA, { x: POZZA.x + OX, y: POZZA.y + OY });   /* [altopiano] */
     if (W.railCity) W.railCity = W.railCity.map(([x, y]) => [x + OX, y + OY]);
     if (W.pezzi) W.pezzi.forEach(p => { p.x += OX; p.y += OY; });   // [posa] i pezzi in coordinate finali
     if (W.glacis) { const Gq = W.glacis; Gq.x0 += OX; Gq.x1 += OX; Gq.riva += OX; Gq.vico += OY; if (Gq.rivaPts) Gq.rivaPts = Gq.rivaPts.map(q => [q[0] + OX, q[1] + OY]); Gq.piazza = Gq.piazza.map((v, k) => v + (k % 2 ? OY : OX)); }   // [pianta] le case del glacis sulla spianata
@@ -29522,10 +29608,10 @@ var World = (function () {
   // [cotto] il mondo cotto nella build (cotto.js): le radici sono le costanti del modulo che il mondo richiama (le isole, i canali...):
   // così il mondo letto punta agli stessi oggetti di quello calcolato
   const CT = typeof Cotto !== 'undefined' ? Cotto : null;
-  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
+  const RADICI = { T, Z, ZNAME, HW, PORT, DISTR, HILLS, HEAD, C2STRADA, C2N, C2S, PUNTA, C2T, ISOLE, LAGUNE, ISLE_BK, COSTA2, C2BASE, COSTA, GOV, TAV, BF, CANALI, DOLINE, POZZA, MULA, ECO, RADURE, C2BW, FOCE, VILLAGES, FLAT, MF, CREST, ALTO, PIZZO, GOLA, FIUM, BORGHI, DITA, TERRAZZE, ROADS0, MONTI, NAMED };
   const COT = CT ? CT.apri('mondo', RADICI) : null;
   const rifare = CT ? CT.RIFARE : null;
-  const FUNZ = Object.assign({ monte, tavR, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
+  const FUNZ = Object.assign({ monte, tavR, tavW, canHalf, canFloor, hash2, fbm, rng, shopGeom, preview: rifare, apriBottega: rifare, __vfix: rifare, __ix: rifare, __toD: rifare, quotaRiva: rifare }, rivaGrande());
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
@@ -69543,6 +69629,7 @@ var Render = (function () {
     });
     const m = new THREE.Mesh(geo, mat); m.position.set(G.WW / 2, -.45, G.WH / 2); m.renderOrder = 1; scene.add(m); dyn.water = mat;   // [costa] dopo le sagome delle barche
     const LK = M.world && M.world.LAKE; if (LK) { const lg = new THREE.PlaneGeometry(LK.rx * 2 + 8, LK.ry * 2 + 8, 1, 1); lg.rotateX(-Math.PI / 2); const lm = new THREE.Mesh(lg, mat); lm.position.set(LK.x, LK.h - .5, LK.y); scene.add(lm); }
+    const PZ = M.world && M.world.POZZA; if (PZ) { const pg = new THREE.CircleGeometry(PZ.r + 1, 28); pg.rotateX(-Math.PI / 2); const pm = new THREE.Mesh(pg, mat); pm.position.set(PZ.x, groundH(PZ.x, PZ.y) + .55, PZ.y); scene.add(pm); }   // [altopiano] la pozza nella dolina del Tavolato: un palmo d'acqua sul fondo d'argilla
   }
 
   // ================= L'ISOLA: terreno a blocchi caricati vicino alla camera, vegetazione, arredo =================
@@ -74692,19 +74779,20 @@ var Render = (function () {
   function buildTavolato() {
     const W0 = M.world; if (!W0 || !W0.TAV || !W0.tavR) return 0;
     const TV = W0.TAV, C = W0.CANALI || [], pos = [], uv = [], cpos = [], cuv = [], tvTop = (a, rr) => groundH(TV.x + Math.cos(a) * rr, TV.y + Math.sin(a) * rr);
-    const inCan = a => C.some(c => { const da = Math.atan2(Math.sin(a - c.a), Math.cos(a - c.a)); return Math.abs(da) * (c.R || TV.r) < W0.canHalf(0) + .8; });
+    const inCan = a => C.some(c => { const da = Math.atan2(Math.sin(a - c.a), Math.cos(a - c.a)); return Math.abs(da) * (c.R || TV.r) < (c.hw0 != null ? c.hw0 / Math.cos(c.tilt || 0) : W0.canHalf(0)) + .8; });   // [altopiano] lo spacco dei canaloni (di sbieco: più largo sul ciglio)
+    const noWall = a => inCan(a) || (W0.tavW && W0.tavW(a) < .5);   // [altopiano] la parete c'è solo a maestrale: a scirocco il ciglio si rompe nei gradoni (li fa il terreno)
     const NA = 720, rib = a => .45 * Math.sin(a * 61) + .3 * Math.sin(a * 137 + 1.3) + .25 * (vegHash(Math.floor(a * 90), 3, 7) - .5);
     for (let k = 0; k < NA; k++) {
-      const a0 = k / NA * 6.2832, a1 = (k + 1) / NA * 6.2832; if (inCan(a0) || inCan(a1)) continue;
+      const a0 = k / NA * 6.2832, a1 = (k + 1) / NA * 6.2832; if (noWall(a0) || noWall(a1)) continue;
       const R0 = W0.tavR(a0) + rib(a0), R1 = W0.tavR(a1) + rib(a1);
-      const top0 = tvTop(a0, W0.tavR(a0) - 7.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 7.5) + .25, bot0 = tvTop(a0, W0.tavR(a0) + 2.2) - .6, bot1 = tvTop(a1, W0.tavR(a1) + 2.2) - .6;
+      const top0 = tvTop(a0, W0.tavR(a0) - 4.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 4.5) + .25, bot0 = tvTop(a0, W0.tavR(a0) + 2.2) - .6, bot1 = tvTop(a1, W0.tavR(a1) + 2.2) - .6;
       // tre fasce: la parete rientra e sporge un poco salendo (strati di roccia)
       const rows = 4; for (let q = 0; q < rows; q++) { const t0 = q / rows, t1 = (q + 1) / rows, o0 = .35 * Math.sin(t0 * 7 + a0 * 9), o1 = .35 * Math.sin(t1 * 7 + a0 * 9);
         const P = (a, R, bot, top, t, o) => [TV.x + Math.cos(a) * (R + o), bot + (top - bot) * t, TV.y + Math.sin(a) * (R + o)];
         const A = P(a0, R0, bot0, top0, t0, o0), B = P(a1, R1, bot1, top1, t0, o0), Cc = P(a1, R1, bot1, top1, t1, o1), D = P(a0, R0, bot0, top0, t1, o1);
         pos.push(...A, ...B, ...Cc, ...A, ...Cc, ...D); const u0 = k / 8, u1 = (k + 1) / 8, v0 = (bot0 + (top0 - bot0) * t0) / 6, v1 = (bot0 + (top0 - bot0) * t1) / 6; uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1); }
       // il ciglio: un anello di pianoro sopra il bordo del terreno
-      const ri = W0.tavR(a0) - 7.5, ri1 = W0.tavR(a1) - 7.5;
+      const ri = W0.tavR(a0) - 4.5, ri1 = W0.tavR(a1) - 4.5;
       const E = [TV.x + Math.cos(a0) * ri, top0 - .05, TV.y + Math.sin(a0) * ri], F = [TV.x + Math.cos(a1) * ri1, top1 - .05, TV.y + Math.sin(a1) * ri1], Gq = [TV.x + Math.cos(a1) * (R1 + .4), top1, TV.y + Math.sin(a1) * (R1 + .4)], Hq = [TV.x + Math.cos(a0) * (R0 + .4), top0, TV.y + Math.sin(a0) * (R0 + .4)];
       cpos.push(...E, ...Gq, ...F, ...E, ...Hq, ...Gq); cuv.push(E[0] / 4, E[2] / 4, Gq[0] / 4, Gq[2] / 4, F[0] / 4, F[2] / 4, E[0] / 4, E[2] / 4, Hq[0] / 4, Hq[2] / 4, Gq[0] / 4, Gq[2] / 4);
     }
@@ -74713,7 +74801,7 @@ var Render = (function () {
     const capT = tex32('ciglio', 32, 32, (x, r) => { x.fillStyle = '#3c4030'; x.fillRect(0, 0, 32, 32); for (let k = 0; k < 120; k++) { x.fillStyle = pick(r, ['#4a4e38', '#36402c', '#525446', '#444836', '#3a3e30']); x.fillRect(r() * 32, r() * 32, 2, 2); } });
     const cap = new THREE.Mesh(mkG(cpos, cuv), std({ map: capT, roughness: 1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); cap.receiveShadow = true; scene.add(cap);
     // massi caduti ai piedi della parete
-    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (inCan(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
+    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (noWall(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
       const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), sm(pick(r, ['#6e6660', '#7a726a', '#5e5650']), { roughness: 1 })); m.position.set(x, groundH(x, z) + s * .3, z); m.rotation.set(r(), r(), r()); m.scale.y = .7; addStatic(m); }
     return pos.length / 18;
   }
@@ -78080,6 +78168,7 @@ var Render = (function () {
       case E.ABETAIA: return q < .94 ? AB() : ['Pine_3', .9 + sc * .3];
       case E.FAGGETA: return q < .82 ? OAK(.72, [0, 1, 1, 6, 7]) : q < .92 ? ['Betulla_' + Math.floor(k * 3), .85 + sc * .25] : AB();
       case E.VALLONE: return q < .65 ? OAK(.8, [4, 0, 6, 1]) : AB();
+      case E.LECCETA: return OAK(.78, [4, 0, 6, 1]);   // [altopiano] i lecci delle doline e del canalone del Tavolato
       case E.PINETA: return q < .72 ? ['Pine_5', .9 + sc * .35] : ['Pine_2', .85 + sc * .3];
       case E.MACCHIA: return q < .8 ? [pk(['TwistedTree_1', 'TwistedTree_2', 'TwistedTree_3', 'TwistedTree_4', 'TwistedTree_5']), .26 + sc * .1] : ['Pine_5', .55 + sc * .2, -.12];
       case E.FARO: return ['Pine_5', .6 + sc * .25, -.18 - sc * .12];   // piegati dal vento di ponente

@@ -281,6 +281,7 @@ var Vegetazione = (function () {
       else if (e === E.ABETAIA) f = m < .3 ? F.macchia : m > .7 && m2 > .55 ? F.pinetaM : F.lecceta;          // il bosco scuro, con le chiarie di macchia
       else if (e === E.FAGGETA) f = m > .64 ? F.lecceta : m < .3 ? F.prato : m2 > .62 ? F.pinetaM : F.macchia;  // il versante al sole: macchia a mosaico
       else if (e === E.VALLONE || e === E.RIPARIALE) f = F.riparia;
+      else if (E.LECCETA && e === E.LECCETA) f = F.lecceta;   // [altopiano] i lecci delle doline e del canalone del Tavolato
       else if (e === E.PINETA) f = m < .26 ? F.prato : F.pineta;
       else if (e === E.MACCHIA) f = m < .34 ? F.gariga : F.macchia;
       else if (e === E.FARO || e === E.GHIAIONE) f = m > .7 ? F.macchia : F.gariga;
@@ -305,7 +306,7 @@ var Vegetazione = (function () {
     rudere_o: [16, 'ulivo'], sorgente: [12, 'fico'], monolite: [14, null], bivacco_o: [12, 'pino'], campeggio_o: [16, 'pino'], carbonaia: [12, null],
     pozzo_o: [12, 'carrubo'], radura: [18, 'carrubo'], ovile: [14, 'carrubo'], ovile_b: [12, 'carrubo'], eremo: [12, 'cipresso'], campo_p: [14, 'leccio'],
     bosco_antico: [16, 'leccio'], vecchio_3: [12, 'cipresso'], paese_vecchio: [14, 'fico'], passo: [12, 'pinoM'], neviera: [10, null], altopiano: [20, 'mandorlo'],
-    beduini: [16, 'carrubo'], tavolato: [22, 'carrubo'], pizzo: [10, null], masseria: [16, 'carrubo'], cantina: [12, 'fico'], sangiacomo: [14, 'cipresso'],
+    beduini: [8, 'carrubo'], tavolato: [9, 'carrubo'],   /* [altopiano] radure piccole: le doline accanto tengono i loro lecci */ pizzo: [10, null], masseria: [16, 'carrubo'], cantina: [12, 'fico'], sangiacomo: [14, 'cipresso'],
     salinaio: [12, 'tamerice'], miniera: [14, 'eucalipto'], stazione2: [14, 'eucalipto'], stazione_n: [14, 'eucalipto'], stazione_s: [14, 'eucalipto'],
   };
   function luoghi(W) {
