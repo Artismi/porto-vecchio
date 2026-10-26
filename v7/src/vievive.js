@@ -33,6 +33,7 @@ var Vievive = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const CH = typeof Chiarezza !== 'undefined' ? Chiarezza : (typeof require !== 'undefined' ? require('./chiarezza.js') : null);
+  const IG = typeof Ingombri !== 'undefined' ? Ingombri : (typeof require !== 'undefined' ? require('./ingombri.js') : null);   // [compenetrazioni2] lo spazio libero dalle case
   const W = G.MAP.world, TS = G.TS, T = G.T;
   const ATTIVO = !!(W && W.sets && W.roads);   // solo la città nuova (?cittanuova)
   const PI = Math.PI, hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -173,6 +174,10 @@ var Vievive = (function () {
 
   // ================= LA LINEA 1: il percorso, le fermate =================
   let LIN = null;
+  // [compenetrazioni2] la pianta della fermata (il gruppo di vievive_arte.js: +z verso la strada): la pensilina con la gronda e il palo, o la
+  // panchina col palo. u lungo il cordolo = (sin ang, -cos ang), v verso la strada = (cos ang, sin ang)
+  function fermataRett(f, pens) { const P = pens ? [.1, -.35, 1.75, .85] : [.3, -.15, 1.6, .7], ux = Math.sin(f.ang), uy = -Math.cos(f.ang), vx = Math.cos(f.ang), vy = Math.sin(f.ang);
+    return IG.rett(f.x + P[0] * ux + P[1] * vx, f.y + P[0] * uy + P[1] * vy, Math.atan2(uy, ux), P[2], P[3]); }
   function lineaBus() {
     if (LIN) return LIN; LIN = { ok: false, fermate: [], giro: null, nodi: [] }; if (!ATTIVO || !G.LANES) return LIN;
     adattaCorsie();
@@ -239,7 +244,11 @@ var Vievive = (function () {
         const rdL = rdLinea(q.rd), sc = lNear(rdL, q.x, q.y).s;
         let got = null;
         for (const dS of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24]) { const c = lAt(rdL, clamp(sc + dS * verso, 2, rdL.L - 2)), sgn = (Math.cos(c.ang) * ux + Math.sin(c.ang) * uy) >= 0 ? 1 : -1, nx = -Math.sin(c.ang) * sgn, ny = Math.cos(c.ang) * sgn;
-          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) }; break; }
+          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
+            // [compenetrazioni2] la pensilina (3,4 × 1,7 m dietro il palo) a mezzo metro dai muri, se no la panchina col palo a 20 cm; se nemmeno quella, più in là
+            if (IG && got.largo && !IG.libero(G, fermataRett(got, true), IG.MARGINE)) got.largo = false;
+            if (IG && !IG.libero(G, fermataRett(got, false), .2)) { got = null; continue; }
+            break; }
           if (got) break; }
         if (!got) return;
         const sg = lNear(Ln, got.cx, got.cy);

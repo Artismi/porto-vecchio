@@ -8333,6 +8333,45 @@ var Render = (function () {
       fine: () => { vai2(); P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear(); },
     };
   }
+  // [compenetrazioni2] LA MISURA DEI PEZZI GRANDI dopo il regista: pensiline, chioschi, tettoie, tende, dehors, banchi, fermate, edicole,
+  // plance, auto in sosta, pezzi grandi e degli scorci contro i volumi delle case (pianta × altezza) e fra loro, oltre 10 cm. Il regista
+  // non tocca i pezzi grandi ('grande' non si misura nemmeno contro i muri) e non vede quello che sta fuori dal registro (la pensilina del
+  // distributore, le auto in sosta): qui si contano tutti. strumenti/compenetrazioni.js lo legge (window.__pulizia2.grandi).
+  const GR2_K = new Set(['grande', 'ingombro', 'tettoia', 'dehors', 'scorcio', 'tenda']);
+  function grandi2(R) {
+    const SOGLIA = .1, L = [];
+    const ext = (k, x, z, yaw, hu, hv, y0, y1, o) => L.push(Object.assign({ k, B: box2(x, z, yaw, hu, hv, y0, y1), ext: true, g: 0 }, o || {}));
+    R.E.forEach(e => { if (e.gone || !e.B) return; const B = e.B, a = (B.u1 - B.u0) * (B.v1 - B.v0), h = B.y1 - B.y0;
+      if (GR2_K.has(e.k) || (e.k === 'arredo' && a >= 1.5 && h >= 1.2)) L.push(e); });
+    // i chioschi (il distributore): la pensilina, le isole delle pompe e il totem non sono nel registro
+    dyn.buildings.forEach(rec => { const F = rec.b && rec.b.__fuel; if (!F) return; F.parti.forEach(p => ext(p.k, (p.x0 + p.x1) / 2, (p.z0 + p.z1) / 2, 0, (p.x1 - p.x0) / 2, (p.z1 - p.z0) / 2, F.y0 + p.y0, F.y0 + p.y1, { b: rec.b, g: 'fuel' })); });
+    try { if (typeof Vievive !== 'undefined' && Vievive.attivo) { const rot = a => Math.PI / 2 - a;
+      Vievive.fermate().forEach(f => { const y0 = groundH(f.x, f.y), yaw = rot(f.dir), c = Math.cos(yaw), s = Math.sin(yaw), P = f.pensilina ? [.1, -.35, 1.75, .85, 2.35] : [.3, -.15, 1.6, .7, 2.6];   // la pensilina, o la panchina col palo
+        ext('fermata', f.x + P[0] * c + P[1] * s, f.y - P[0] * s + P[1] * c, yaw, P[2], P[3], y0, y0 + P[4]); });
+      Vievive.edicole().forEach(q => { const y0 = groundH(q.kx, q.ky), yaw = rot(q.kang), c = Math.cos(yaw), s = Math.sin(yaw); ext('edicola', q.kx + .37 * c + .2 * s, q.ky - .37 * s + .2 * c, yaw, 1.58, 1.0, y0, y0 + 2.5); });
+      Vievive.plance().forEach(q => { const y0 = groundH(q.x, q.y); ext('plancia', q.x, q.y, rot(q.ang + Math.PI / 2), 1.15, .08, y0, y0 + 2.45); });
+      Vievive.stalli().forEach(q => { const y0 = groundH(q.x, q.y); ext('auto_sosta', q.x, q.y, -q.ang, 2.0, .85, y0 + .15, y0 + 1.4); }); } } catch (e) { console.error('[compenetrazioni2] vievive', e); }   // ogni stallo con la sua auto
+    L.forEach((e, i) => { e.__gi2 = i; if (!e.vx) { const P = []; corners2(e.B).forEach(([x, z]) => P.push(x, e.B.y0, z, x, e.B.y1, z)); const [x, z] = ctr2(e.B); P.push(x, (e.B.y0 + e.B.y1) / 2, z); e.vx = new Float32Array(P); } });   // i pezzi esterni: gli spigoli della scatola
+    const nome = e => e.k + (e.tipo ? ':' + e.tipo : ''), out = { case: [], fra: [], controPezzi: [], per: {}, perFra: {}, perPezzi: {} }, I = { H: new Map(), E: new Map() }, k4 = (i, j) => i * 8192 + j;
+    const put = (M, B, o) => { const cs = corners2(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); });
+      for (let i = Math.floor(x0 / 4); i <= Math.floor(x1 / 4); i++) for (let j = Math.floor(z0 / 4); j <= Math.floor(z1 / 4); j++) { const k = k4(i, j); let a = M.get(k); if (!a) M.set(k, a = []); if (!a.includes(o)) a.push(o); } };
+    const near = (M, B, fn) => { const seen = new Set(), cs = corners2(B); let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity; cs.forEach(([x, z]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); });
+      for (let i = Math.floor(x0 / 4); i <= Math.floor(x1 / 4); i++) for (let j = Math.floor(z0 / 4); j <= Math.floor(z1 / 4); j++) for (const o of M.get(k4(i, j)) || []) if (!seen.has(o)) { seen.add(o); fn(o); } };
+    R.H.forEach(h => put(I.H, h.B, h)); L.forEach(e => put(I.E, e.B, e));
+    const pezzo = e => e.k === 'grande' && !!e.tipo;   // i pezzi urbani di [posa] (portici, archi, porte): architettura, si contano a parte
+    const vuoto = e => !e.ext && VUOTI2.has(e.k) && !pezzo(e);   // tende e tettoie (falde inclinate, telai): conta un vertice dentro, non la scatola
+    L.forEach(e => {
+      let peggio = null; near(I.H, e.B, h => { if (h.b === e.b && pezzo(e)) return; const d = Math.min(sat2(e.B, h.B), yov2(e.B, h.B)); if (d > SOGLIA && (!vuoto(e) || vertIn2(e, h.B, SOGLIA) > 0) && (!peggio || d > peggio.d)) peggio = { h, d }; });
+      if (peggio) { const [x, z] = ctr2(e.B), c = pezzo(e) ? 'pezzo:' + e.tipo : nome(e); out.per[c] = (out.per[c] || 0) + 1; out.case.push([c, Math.round(x * 10) / 10, Math.round(z * 10) / 10, 'casa ' + (peggio.h.b.id || peggio.h.b.i), Math.round(peggio.d * 100), e.src || (e.ext ? 'esterno' : '')]); }
+      near(I.E, e.B, o => { if (o.__gi2 <= e.__gi2 || (e.g && e.g === o.g) || (e.b && e.b === o.b && e.k === o.k)) return;   // ogni coppia una volta; la stessa composizione non si urta da sé
+        if (pezzo(e) && pezzo(o)) return;   // l'architettura con l'architettura (i parapetti in fila, le torri sulle mura): giunti voluti
+        const d = Math.min(sat2(e.B, o.B), yov2(e.B, o.B)); if (d <= SOGLIA) return; const den = (a, b) => vertIn2(a, b.B, SOGLIA) > 0; if (!((!vuoto(o) && den(e, o)) || (!vuoto(e) && den(o, e)) || (vuoto(e) && vuoto(o) && (den(e, o) || den(o, e))))) return;   // come il regista: un vertice dentro l'altro; dentro una tenda, una tettoia, una pensilina (vuote sotto) si sta sotto, non dentro
+        const kk = [nome(e), nome(o)].sort().join('/'), dove = pezzo(e) || pezzo(o) ? 'controPezzi' : 'fra', per = dove === 'fra' ? 'perFra' : 'perPezzi'; out[per][kk] = (out[per][kk] || 0) + 1;
+        const [x, z] = ctr2(e.B); out[dove].push([kk, Math.round(x * 10) / 10, Math.round(z * 10) / 10, Math.round(d * 100)]); });
+    });
+    out.n = L.length; out.perTipo = {}; L.forEach(e => { const c = pezzo(e) ? 'pezzo:' + e.tipo : nome(e); out.perTipo[c] = (out.perTipo[c] || 0) + 1; });
+    return out;
+  }
   function pulizia2() {
     if (!cn1() || !P2.on) return 0;
     try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kp); P2.kit = Math.max(0, bb.max.x); } catch (e) { P2.kit = 0; }   // quanto sporge il modulo di muro dal filo
@@ -8343,7 +8382,8 @@ var Render = (function () {
     let RU = null; if (typeof PuliziaRumore !== 'undefined') try { RU = PuliziaRumore.passa(rumore2(R)); } catch (e) { console.error('[rumore]', e); }   // [pulizia] il rumore (pulizia_rumore.js): dopo il regista, sulle stesse voci
     vai2(); P2.pend = null;
     const dopo = off ? prima : p2Misura(R);
-    window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null };
+    let GR = null; try { GR = grandi2(R); } catch (e) { console.error('[compenetrazioni2]', e); }
+    window.__pulizia2 = { prima: prima.rep, dopo: dopo.rep, azioni: az, punti: { prima: prima.pts, dopo: dopo.pts }, kit: P2.kit, spento: off, rumore: RU ? RU.numeri : null, grandi: GR };
     if (window.__dbg35) console.log('[dbg] pulizia2 prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'azioni', JSON.stringify(az));
     VIS3.reg = R.E.filter(e => !e.gone && e.B);   // [visuale3] il registro resta al taglio: le cose sui tetti e sulle facciate che non stanno nei gruppi della casa (antenne e mensole della rete, insegne, pluviali)
     P2.list = []; P2.on = false; return dopo.rep.tot;
@@ -10469,23 +10509,31 @@ var Render = (function () {
       at(box(w - 2.2, 1.3, .08, glass), cx + .4, 1.75, z0 + .28);
       for (let k = 0; k <= 2; k++) at(box(.1, 1.4, .12, dark), x0 + 1.5 + k * (w - 2.2) / 2, 1.75, z0 + .26);
       at(box(w - 2.2, .55, .1, sm('#7a7a78')), cx + .4, 2.6, z0 + .25);                 // la saracinesca mezza abbassata
-      // la porta a ovest (dove dice la mappa), con la tettoia e il campanello
-      const dz = (b.door ? (b.door[1] + .5) * TS : cz); at(box(.1, 2.2, 1.1, dark), x0 + .26, 1.4, dz); at(box(.06, 1.9, .8, glass), x0 + .22, 1.4, dz);
-      at(box(.9, .1, 1.6, red), x0 - .1, 2.75, dz);
-      // cartelli e cose contro i muri
-      const ad = at(box(1.4, 1, .05, sm('#2a5ab8')), x0 + 1.4, 1.6, z0 + d - .28); at(box(1.2, .2, .06, yel), ad.position.x, 1.85, z0 + d - .26);
-      at(box(1.2, .9, .7, sm('#e8e8f0')), x0 - .5, .75, dz + 1.4);                      // la cassa del ghiaccio
-      at(box(1.6, .1, .45, sm('#8a6440')), x0 - .45, .5, dz - 1.6); at(box(.1, .45, .4, dark), x0 - .45 - .7, .25, dz - 1.6); at(box(.1, .45, .4, dark), x0 - .45 + .7, .25, dz - 1.6);   // la panca
-      // pensilina sul piazzale a est
-      const px0 = x0 + w + 1, px1 = x0 + w + 11, pz0 = z0 - 1, pz1 = z0 + d + 1, pcx = (px0 + px1) / 2, pcz = (pz0 + pz1) / 2;
-      at(box(px1 - px0, .5, pz1 - pz0, sm('#f4f0e6')), pcx, 4.75, pcz);
-      at(box(px1 - px0 + .1, .3, pz1 - pz0 + .1, red), pcx, 4.4, pcz);
-      at(box(px1 - px0 + .12, .12, pz1 - pz0 + .12, yel), pcx, 4.22, pcz);
-      [[px0 + 1.2, pz0 + 1.2], [px1 - 1.2, pz0 + 1.2], [px0 + 1.2, pz1 - 1.2], [px1 - 1.2, pz1 - 1.2]].forEach(([x, z]) => at(box(.35, 4.2, .35, sm('#d8d4cc')), x, 2.1, z));
-      [pz0 + 2.6, pz1 - 2.6].forEach(z => at(box(px1 - px0 - 3, .25, 1.2, sm('#b8b2a6')), pcx, .12, z));   // le isole delle pompe
-      neonTube(px0, 4.12, pz1 + .07, px1, 4.12, pz1 + .07, neon, g); neonTube(px0, 4.12, pz0 - .07, px1, 4.12, pz0 - .07, '#ff4a4a', g);
-      for (let k = 0; k < 3; k++) addLight(px0 + 2 + k * 3, y0 + 4, pcz, '#f4f8ff', 2.4, 9, 0).always = true;
-      b.__fuel = { px0, px1, pz0, pz1, y0 };
+      // [compenetrazioni2] il lotto del distributore (ingombri.js): la pensilina, le isole, il totem e le gomme nello spazio libero, mezzo
+      // metro d'aria dai muri delle case e dal chiosco; la porta sul lato dove la mette la mappa (prima stava sempre a ovest, anche fuori dal chiosco)
+      const LZ = window.Ingombri ? Ingombri.distributore(G, b) : null, PO = LZ && LZ.porta ? LZ.porta : { f: 'W', u: cz };
+      { const ns = PO.f === 'N' || PO.f === 'S', sg = PO.f === 'S' || PO.f === 'E' ? 1 : -1, fx = PO.f === 'E' ? x0 + w : x0, fz = PO.f === 'S' ? z0 + d : z0, u = ns ? clamp(PO.u, x0 + .8, x0 + w - .8) : clamp(PO.u, z0 + .8, z0 + d - .8);
+        const P3 = (n, t) => ns ? [u + t, fz + sg * n] : [fx + sg * n, u + t];   // n verso fuori dal muro, t lungo il muro
+        const q1 = P3(-.26, 0), q2 = P3(-.22, 0), q3 = P3(.1, 0); at(ns ? box(1.1, 2.2, .1, dark) : box(.1, 2.2, 1.1, dark), q1[0], 1.4, q1[1]); at(ns ? box(.8, 1.9, .06, glass) : box(.06, 1.9, .8, glass), q2[0], 1.4, q2[1]);
+        at(ns ? box(1.6, .1, .9, red) : box(.9, .1, 1.6, red), q3[0], 2.75, q3[1]);   // la tettoietta sulla porta
+        // cartelli e cose contro i muri
+        const ad = at(box(1.4, 1, .05, sm('#2a5ab8')), x0 + 1.4, 1.6, z0 + d - .28); at(box(1.2, .2, .06, yel), ad.position.x, 1.85, z0 + d - .26);
+        const qc = P3(.5, 1.4), qp = P3(.45, -1.6);   // la cassa del ghiaccio e la panca, accanto alla porta
+        at(box(ns ? 1.2 : .7, .9, ns ? .7 : 1.2, sm('#e8e8f0')), qc[0], .75, qc[1]);   // [compenetrazioni2] a filo del muro, non dentro
+        at(box(ns ? 1.6 : .45, .1, ns ? .45 : 1.6, sm('#8a6440')), qp[0], .5, qp[1]); [-.7, .7].forEach(o => at(box(ns ? .1 : .4, .45, ns ? .4 : .1, dark), qp[0] + (ns ? o : 0), .25, qp[1] + (ns ? 0 : o))); }
+      // la pensilina nel lotto: lastra, fascia rossa, filo giallo, quattro pilastri, le isole delle pompe, i neon sui due lati lunghi
+      const PZ = LZ ? LZ.pensilina : null;
+      if (PZ) { const px0 = PZ.x0, px1 = PZ.x1, pz0 = PZ.z0, pz1 = PZ.z1, pcx = (px0 + px1) / 2, pcz = (pz0 + pz1) / 2, lungoX = px1 - px0 >= pz1 - pz0, ix = Math.min(1.2, (px1 - px0) / 4), iz = Math.min(1.2, (pz1 - pz0) / 4);
+        at(box(px1 - px0, .5, pz1 - pz0, sm('#f4f0e6')), pcx, 4.75, pcz);
+        at(box(px1 - px0 + .1, .3, pz1 - pz0 + .1, red), pcx, 4.4, pcz);
+        at(box(px1 - px0 + .12, .12, pz1 - pz0 + .12, yel), pcx, 4.22, pcz);
+        [[px0 + ix, pz0 + iz], [px1 - ix, pz0 + iz], [px0 + ix, pz1 - iz], [px1 - ix, pz1 - iz]].forEach(([x, z]) => at(box(.35, 4.2, .35, sm('#d8d4cc')), x, 2.1, z));
+        if (lungoX) { neonTube(px0, 4.12, pz1 + .07, px1, 4.12, pz1 + .07, neon, g); neonTube(px0, 4.12, pz0 - .07, px1, 4.12, pz0 - .07, '#ff4a4a', g); }
+        else { neonTube(px1 + .07, 4.12, pz0, px1 + .07, 4.12, pz1, neon, g); neonTube(px0 - .07, 4.12, pz0, px0 - .07, 4.12, pz1, '#ff4a4a', g); }
+        const Ll = lungoX ? px1 - px0 : pz1 - pz0, nl = Math.max(1, Math.min(3, Math.floor(Ll / 3)));
+        for (let k = 0; k < nl; k++) { const t = (k + .5) / nl; addLight(lungoX ? px0 + (px1 - px0) * t : pcx, y0 + 4, lungoX ? pcz : pz0 + (pz1 - pz0) * t, '#f4f8ff', 2.4, 9, 0).always = true; } }
+      if (LZ) LZ.isole.forEach(I => at(box(I.lungoX ? I.L : 1.2, .25, I.lungoX ? 1.2 : I.L, sm('#b8b2a6')), I.cx, .12, I.cz));   // le isole delle pompe
+      b.__fuel = { L: LZ, y0, parti: LZ ? LZ.parti : [] };
     } else {
       // bar della spiaggia: capanno di legno con tetto a strisce
       const k = box(w - .6, 2.6, d - .6, sm('#c89a6a')); k.position.set(cx, 1.3, cz); g.add(k);
@@ -10501,8 +10549,9 @@ var Render = (function () {
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(3, .75), sm1);
     if (b.id === 'benzina') {   // [distributore1] l'insegna sulla fascia verso la strada, il totem dei prezzi sul ciglio
       const F = b.__fuel; sg.position.set(cx, F.y0 + 3.85, z0 - .12); sg.rotation.y = Math.PI;
-      const tx = F.px1 - .6, tz = F.pz0 - 1.2;
-      if (LOOKV.nuovo) {   // [coerenza] il totem come un pezzo vero (STILE.md, regola 1): lo zoccolo, due montanti tondi a 8 lati, il pannello con lo spessore e la cornice, il tetto; il cartello dei prezzi sulle due facce, non un foglio nell'aria
+      const TO = F.L && F.L.totem, tx = TO ? TO.x : 0, tz = TO ? TO.z : 0;   // [compenetrazioni2] il totem dove il lotto lo lascia (ingombri.js), o niente
+      if (!TO) { }
+      else if (LOOKV.nuovo) {   // [coerenza] il totem come un pezzo vero (STILE.md, regola 1): lo zoccolo, due montanti tondi a 8 lati, il pannello con lo spessore e la cornice, il tetto; il cartello dei prezzi sulle due facce, non un foglio nell'aria
         const gr = sm('#4a4c50'), cr = sm('#d8d4cc'), Y = F.y0, T = new THREE.Group(), put = (m, x, y, z) => { m.position.set(x, y, z); T.add(m); return m; };
         put(box(1.1, .3, .6, gr), 0, .15, 0); put(box(1.18, .06, .68, cr), 0, .33, 0);
         [-.6, .6].forEach(o => { put(cyl(.065, .075, 3.9, 8, cr), o, 2.3, 0); put(cyl(.09, .09, .08, 8, gr), o, .4, 0); });
@@ -10518,7 +10567,7 @@ var Render = (function () {
     else sg.position.set(cx, 3.2, z0 + d + 1.3);
     scene.add(sg); glow(sg.position.x, sg.position.y, sg.position.z, b.sign.c, 5).material.opacity = .45;
     dyn.signs.push({ m: sm1, gl: null, flick: false });
-    const rec = { b, grp: merged, fade: 0, box3: b.id === 'benzina' ? new THREE.Box3(new THREE.Vector3(x0, 0, z0 - 1), new THREE.Vector3(x0 + w + 11, 5, z0 + d + 1)) :   /* [distributore1] chiosco e pensilina */ new THREE.Box3(new THREE.Vector3(x0 + .3, 0, z0 + .3), new THREE.Vector3(x0 + w - .3, 3.2, z0 + d - .3)), mats: [] };
+    const rec = { b, grp: merged, fade: 0, box3: b.id === 'benzina' ? (() => { const B3 = new THREE.Box3(new THREE.Vector3(x0, 0, z0), new THREE.Vector3(x0 + w, 5, z0 + d)); ((b.__fuel && b.__fuel.parti) || []).forEach(p => B3.union(new THREE.Box3(new THREE.Vector3(p.x0, 0, p.z0), new THREE.Vector3(p.x1, 5, p.z1)))); return B3; })() :   /* [distributore1] chiosco e pensilina   [compenetrazioni2] dal lotto */ new THREE.Box3(new THREE.Vector3(x0 + .3, 0, z0 + .3), new THREE.Vector3(x0 + w - .3, 3.2, z0 + d - .3)), mats: [] };
     ownMats(merged, rec); dyn.buildings.push(rec);
   }
   function priceTexture() {
@@ -11131,9 +11180,9 @@ var Render = (function () {
     streetLamp(7.8 * TS, 18.3 * TS, 'deco', 0); streetLamp(12 * TS, 21 * TS, 'deco', 0);
     // distributore: pompe, olio, gomme, fusti
     { const bz = G.BUILDINGS.find(q => q.id === 'benzina');   // [distributore1] attorno al distributore vero
-      if (bz) { const x0 = bz.x * TS, z0 = bz.y * TS, w = bz.w * TS, d = bz.h * TS, px0 = x0 + w + 1, px1 = x0 + w + 11, pz0 = z0 - 1, pz1 = z0 + d + 1;
-        [pz0 + 2.6, pz1 - 2.6].forEach((z, j) => [px0 + 3, (px0 + px1) / 2, px1 - 3].forEach((x, k) => fuelPump(x, z, 0, ['#d8282a', '#e8c030', '#2a8a4a'][(k + j) % 3])));
-        oilRack(x0 + w - 1.4, z0 + d + .55, 0, r); tireStack(px1 + .8, pz1 - .6, 5); tireStack(px1 + .8, pz1 - 1.5, 3); drumGroup(x0 + .6, z0 + d + 1.1, r, ['#c8302a', '#e8c030', '#2a5ab8']); } }
+      if (bz) { const x0 = bz.x * TS, z0 = bz.y * TS, w = bz.w * TS, d = bz.h * TS, LZ = bz.__fuel && bz.__fuel.L;   // [compenetrazioni2] pompe e gomme dove le mette il lotto (ingombri.js)
+        if (LZ) { LZ.pompe.forEach(p => fuelPump(p.x, p.z, p.rot, ['#d8282a', '#e8c030', '#2a8a4a'][(p.k + p.j) % 3])); if (LZ.gomme) { tireStack(LZ.gomme.x, LZ.gomme.z - .45, 5); tireStack(LZ.gomme.x, LZ.gomme.z + .45, 3); } }
+        oilRack(x0 + w - 1.4, z0 + d + .55, 0, r); drumGroup(x0 + .6, z0 + d + 1.1, r, ['#c8302a', '#e8c030', '#2a5ab8']); } }
     // Bar Sirena: tavolini con le birre davanti all'ingresso
     cafe(29.6 * TS, 16.4 * TS, r, 'plastic', 3, ['#2ab8b0', '#f4f0e6']);
     // marciapiede: lampioni, fermata dell'autobus, cestini
@@ -15102,6 +15151,36 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // ================= [inverno] SOGLIE: tettoie, fermate, vicoli e luoghi di mezzo =================
   // Tra la casa e la strada c'è sempre qualcosa: lamiera e teli, portici, panche, fuochi in barile, fermate dell'autobus, un cavo con una lampadina in un vicolo.
   // Le luci qui sono piccole e basse: illuminano sotto le tettoie e nei vicoli, non la strada.
+  // [compenetrazioni2] il posto della tettoia davanti alla porta di b sul lato f (P: il punto della porta sul filo e il verso): la larghezza
+  // fra i montanti W (stretta alla facciata), lo spostamento lungo il muro, la scala in altezza per stare sotto le aperture; null se non ci sta
+  const TETTOIA2 = { ali: [.25, .2, 0, .15], muro: [3.22, 3.3, 3.24, 2.72] };   // per tipo: quanto la falda sborda dai montanti, la quota della falda al muro
+  function tettoiaPosto2(b, f, P, W, D, k) {
+    if (rotOf(b)) return null; const x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, Lf = f === 'S' || f === 'N' ? w : d, al = TETTOIA2.ali[k];
+    W = Math.min(W, Lf - .2 - 2 * al); if (W < 2.4) return null; const Wt = W + 2 * al;
+    const uD = f === 'S' ? P[0] - x0 : f === 'N' ? x0 + w - P[0] : f === 'E' ? z0 + d - P[1] : P[1] - z0, uC = clamp(uD, Wt / 2 + .1, Lf - Wt / 2 - .1);
+    if (Math.abs(uC - uD) > W / 2 - .6 + 1e-6) return null;   // la porta resta sotto
+    const U = f === 'S' ? [1, 0] : f === 'N' ? [-1, 0] : f === 'E' ? [0, -1] : [0, 1], N = f === 'S' ? [0, 1] : f === 'N' ? [0, -1] : f === 'E' ? [1, 0] : [-1, 0];
+    const x = P[0] + U[0] * (uC - uD), z = P[1] + U[1] * (uC - uD);
+    if (window.Ingombri) { const IM = Ingombri.MARGINE, n0 = .1, n1 = D + .3 + IM, cxR = x + N[0] * (n0 + n1) / 2, czR = z + N[1] * (n0 + n1) / 2;
+      const RT = Ingombri.rett(cxR, czR, Math.atan2(U[1], U[0]), Wt / 2 + IM, (n1 - n0) / 2); if (Ingombri.casa(G, RT, 0, b) || ingombriVV2().some(R => Ingombri.pen(RT, R) > 0)) return null; }   // e non sopra le fermate, le edicole, le auto in sosta
+    // le aperture della facciata sopra la falda: finestre e porte di b su quel lato, nella striscia della tettoia
+    const gy = groundH(x + N[0] * .6, z + N[1] * .6); let cap = Infinity;
+    for (const q of b.__win || []) { if (q.f !== f) continue; const dm = WIN[q.name]; if (!dm) continue; const u0 = q.u - dm[0] / 2, u1 = q.u + dm[0] / 2; if (u1 < uC - Wt / 2 - .1 || u0 > uC + Wt / 2 + .1) continue;
+      const y0 = q.y + dm[2] - dm[1] / 2, y1 = q.y + dm[2] + dm[1] / 2; if (y1 <= gy + 2.3) continue; if (y0 <= gy + 2.3) return null; cap = Math.min(cap, y0); }
+    const s = Math.min(1, (cap - .08 - gy) / TETTOIA2.muro[k]); if (s < .8) return null;
+    return { x, z, W, s };
+  }
+  // [compenetrazioni2] le piante dei pezzi grandi delle vie vive (fermate, edicole, plance, auto in sosta), come le misura grandi2: chi posa
+  // dopo, da render.js, non ci va addosso
+  let IVV2 = null;
+  function ingombriVV2() {
+    if (IVV2) return IVV2; IVV2 = []; if (!window.Ingombri || typeof Vievive === 'undefined' || !Vievive.attivo) return IVV2; const IG = Ingombri;
+    const rotV = (x, y, a, lu, lv, hu, hv) => { const ux = Math.cos(a), uy = Math.sin(a); return IG.rett(x + lu * ux - lv * uy, y + lu * uy + lv * ux, a, hu, hv); };
+    try { Vievive.fermate().forEach(f => { const P = f.pensilina ? [.1, -.35, 1.75, .85] : [.3, -.15, 1.6, .7]; IVV2.push(rotV(f.x, f.y, Math.atan2(-Math.cos(f.dir), Math.sin(f.dir)), ...P)); });
+      Vievive.edicole().forEach(q => IVV2.push(rotV(q.kx, q.ky, Math.atan2(-Math.cos(q.kang), Math.sin(q.kang)), .37, .2, 1.58, 1.0)));
+      Vievive.plance().forEach(q => IVV2.push(IG.rett(q.x, q.y, q.ang, 1.15, .08))); Vievive.stalli().forEach(q => IVV2.push(IG.rett(q.x, q.y, q.ang, 2.0, .85))); } catch (e) { console.error('[compenetrazioni2]', e); }
+    return IVV2;
+  }
   function buildThresholds() {
     const T = G.T, r = rng(7717), g = new THREE.Group(), V3 = new THREE.Vector3();
     const iron = sm('#23262a', { roughness: .8, metalness: .3 }), tin = sm('#4e5652', { roughness: .65, metalness: .45 }), rustM = sm('#6a4a38', { roughness: 1 }), conc = sm('#6c7074', { roughness: 1 }), wood = sm('#5a4632', { roughness: 1 }), woodD = sm('#3a2e24', { roughness: 1 });
@@ -15132,20 +15211,27 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const f = faceOf(b), x0 = b.x * TS, z0 = b.y * TS, w = b.w * TS, d = b.h * TS, cx = (dx + .5) * TS, cz = (dy + .5) * TS;
       if (window.Scorci && Scorci.attivo && Scorci.riservato(cx, cz, 3)) return;   // [scorci] davanti a uno scorcio composto niente tettoie di passaggio
       const P = f === 'S' ? [cx, z0 + d, 0] : f === 'N' ? [cx, z0, Math.PI] : f === 'E' ? [x0 + w, cz, Math.PI / 2] : [x0, cz, -Math.PI / 2];
-      const gg = mk2(A(P[0], P[1], P[2]), 'tettoia', b, f), k = Math.floor(r() * 4), W = k === 1 ? 6 : 4.4, D = 2.0 + (k === 1 ? .2 : 0);   // [pulizia2]
+      const k = Math.floor(r() * 4); let W = k === 1 ? 6 : 4.4; const D = 2.0 + (k === 1 ? .2 : 0);
+      // [compenetrazioni2] LA TETTOIA ADDOSSATA SI ATTACCA PULITA: sta sulla facciata della sua casa (non sborda sui muri dei vicini: si
+      // stringe, fino a 2,4 m fra i montanti, e scorre lungo il muro tenendo coperta la porta), davanti ha l'aria libera (mezzo metro dalle
+      // case che sporgono, ingombri.js) e la falda attacca al muro sotto le finestre del piano di sopra (se non ci passa si abbassa, fino
+      // all'80%); se non si può attaccare così, non si mette
+      const QF = tettoiaPosto2(b, f, P, W, D, k); if (!QF) return; W = QF.W;
+      const gg = mk2(A(QF.x, QF.z, P[2]), 'tettoia', b, f);   // [pulizia2]
+      if (QF.s < 1) { gg.scale.y = QF.s; gg.updateMatrixWorld(true); }
       if (k === 0) { // lamiera
-        [-1, 1].forEach(s => bx(gg, .08, 2.9, .08, iron, s * W / 2, 1.45, D)); bx(gg, W + .5, .07, D + .6, tin, 0, 3.05, D / 2, .1);
+        [-1, 1].forEach(s => bx(gg, .08, 2.9, .08, iron, s * W / 2, 1.45, D)); bx(gg, W + .5, .07, D + .24, tin, 0, 3.05, D / 2 + .18, .1); bx(gg, W + .5, .12, .1, iron, 0, 3.08, .11);   // [compenetrazioni2] la lamiera dal filo del muro, sulla trave murata
         bx(gg, W - .6, .04, .12, L.amber, 0, 2.93, D - .25); hang(gg, -W * .22, 2.8, D * .6); crates(gg, W * .3, D * .7); barrel(gg, -W / 2 + .5, D * .75, r() < .35); lamp(gg, 0, 2.7, D * .55, '#ffb050', 2.4, 7);
       } else if (k === 1) { // portico a colonne
-        for (let c = 0; c <= 3; c++) cy(gg, .17, .2, 3.2, conc, -W / 2 + c * W / 3, 1.6, D, 8); bx(gg, W + .4, .3, .45, conc, 0, 3.35, D); bx(gg, W + .4, .1, D, conc, 0, 3.25, D / 2);
+        for (let c = 0; c <= 3; c++) cy(gg, .17, .2, 3.2, conc, -W / 2 + c * W / 3, 1.6, D, 8); bx(gg, W + .4, .3, .45, conc, 0, 3.35, D); bx(gg, W + .4, .1, D - .06, conc, 0, 3.25, D / 2 + .03); bx(gg, W + .4, .16, .1, conc, 0, 3.12, .11);   // [compenetrazioni2] la soletta dal filo del muro, sul cordolo
         for (let c = 0; c < 3; c++) { bx(gg, W / 3 - .6, .04, .1, c === 1 ? L.cold : L.amber, -W / 3 + c * W / 3, 3.18, D * .5); } bx(gg, 2.2, .08, .45, wood, -W * .22, .5, D * .8); lamp(gg, 0, 3.0, D * .5, '#ffb050', 2.6, 8);
         if (r() < .5) bx(gg, .05, 1.1, .05, r() < .5 ? L.cyan : L.mag, W / 2 + .1, 2.2, D);
       } else if (k === 2) { // telo teso
-        [-1, 1].forEach(s => { const p = bx(gg, .06, 2.7, .06, iron, s * W / 2, 1.35, D); p.rotation.x = -.04; }); bx(gg, W, .04, D + .5, col(), 0, 2.85, D / 2, .3);
+        [-1, 1].forEach(s => { const p = bx(gg, .06, 2.7, .06, iron, s * W / 2, 1.35, D); p.rotation.x = -.04; }); bx(gg, W, .04, D + .19, col(), 0, 2.85, D / 2 + .2, .3); bx(gg, W, .08, .08, wood, 0, 3.14, .1);   // [compenetrazioni2] il telo dal filo del muro, legato al listello
         hang(gg, 0, 2.3, D * .55); table(gg, W * .22, D * .6); stool(gg, W * .22 - .5, D * .6); stool(gg, W * .22 + .5, D * .6); lamp(gg, 0, 2.2, D * .55, '#ffb050', 2.2, 6.5);
       } else { // gazebo di teli e pallet
         [[-1, 0], [1, 0], [-1, 1], [1, 1]].forEach(([sx, sz]) => bx(gg, .07, 2.6, .07, iron, sx * W / 2, 1.3, .2 + sz * (D - .2)));
-        bx(gg, W + .3, .05, D + .2, col(), 0, 2.65, D / 2, 0, 0, (r() - .5) * .2); bx(gg, W * .5, .05, .09, r() < .5 ? L.cyan : L.mag, 0, 2.55, D);
+        bx(gg, W + .3, .05, D + .04, col(), 0, 2.65, D / 2 + .08, 0, 0, (r() - .5) * .2);   // [compenetrazioni2] dal filo del muro bx(gg, W * .5, .05, .09, r() < .5 ? L.cyan : L.mag, 0, 2.55, D);
         bx(gg, 1.2, .14, .9, wood, -W * .25, .08, D * .7); bx(gg, 1.2, .14, .9, wood, -W * .25, .22, D * .7, 0, .3, 0); crates(gg, W * .25, D * .6); lamp(gg, 0, 2.4, D * .5, '#ffb050', 2, 6.5);
       }
       nc++;
@@ -15164,10 +15250,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       cy(gg, .04, .04, 3, iron, -2.0, 1.5, .5, 5); const sg = new THREE.Mesh(new THREE.PlaneGeometry(.9, .26), new THREE.MeshBasicMaterial({ map: signTexture(pick(r, ['12', '7', '44', '3', 'N 1']), '#ffb050', null, 3.5), toneMapped: false })); sg.position.set(-2.0, 3.05, .55); gg.add(sg);
       barrel(gg, 2.3, -.4, false); lamp(gg, 0, 2.1, .1, '#8fe0d4', 2.4, 8, 2.2);
     }
+    const STZ2 = [];   // [compenetrazioni2] le pensiline posate
     // ---- stazioni: lunga pensilina su una spianata libera ----
     let ns = 0; const free = (tx, ty) => { const v = G.tileAt(tx, ty); return v === T.PIAZZA || v === T.COB || v === T.WALK; };
     for (let ty = 3; ty < G.GH - 4 && ns < 2; ty += 2) for (let tx = 3; tx < G.GW - 9 && ns < 2; tx += 2) {
       let ok = true; for (let j = 0; j < 3 && ok; j++) for (let i = 0; i < 7 && ok; i++) if (!free(tx + i, ty + j)) ok = false; if (!ok || r() > .35) continue;
+      if (window.Ingombri) { const RS = Ingombri.rett((tx + 3.5) * TS, (ty + 1.5) * TS - .6, 0, 6.7, 2.2);   // [compenetrazioni2] la pensilina (13,4 × 4,4 m) a mezzo metro dalle case, dalle altre pensiline e dalle vie vive
+        if (!Ingombri.libero(G, RS) || ingombriVV2().concat(STZ2).some(R => Ingombri.pen(Ingombri.rett(RS.cx, RS.cz, 0, RS.hu + .5, RS.hv + .5), R) > 0)) continue; STZ2.push(RS); }
       const px = (tx + 3.5) * TS, pz = (ty + 1.5) * TS, gg = mk2(A(px, pz, 0), 'grande'); ns++;   // [pulizia2]
       for (let c = 0; c < 5; c++) { cy(gg, .09, .09, 3.2, iron, -6 + c * 3, 1.6, .6, 6); cy(gg, .09, .09, 3.2, iron, -6 + c * 3, 1.6, -1.6, 6); }
       bx(gg, 13, .12, 3.6, tin, 0, 3.25, -.5, .06); bx(gg, 12, .05, .14, L.cold, 0, 3.15, .6); bx(gg, 12, .05, .14, L.cold, 0, 3.15, -1.6);
@@ -15193,6 +15282,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (let ty = 3; ty < G.GH - 3 && nk < 16; ty += 2) for (let tx = 3; tx < G.GW - 3 && nk < 16; tx += 2) {
       if (G.tileAt(tx, ty) !== T.PIAZZA && G.tileAt(tx, ty) !== T.COB) continue;
       let open = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (free(tx + i, ty + j)) open++; if (open < 9 || r() > .02) continue;
+      if (window.Ingombri && ingombriVV2().concat(STZ2).some(R => Ingombri.pen(Ingombri.rett((tx + .5) * TS, (ty + .5) * TS, 0, 2.2 + .5, 2.2 + .5), R) > 0)) continue;   // [compenetrazioni2] non addosso a edicole, fermate, plance, auto in sosta, pensiline
       const px = (tx + .5) * TS, pz = (ty + .5) * TS, gg = mk2(A(px, pz, r() * 6.28), 'arredo', null, null, ++P2.g), kk = nk % 3; nk++;   // [pulizia2]
       if (kk === 0) { barrel(gg, 0, 0, true); [0, 2.1, 4.2].forEach(a => bx(gg, 1.4, .1, .35, wood, Math.cos(a) * 1.5, .42, Math.sin(a) * 1.5, 0, -a + 1.57, 0)); }
       else if (kk === 1) { for (let c = 0; c < 3; c++) { bx(gg, .85, 1.9, .7, iron, -1.1 + c * 1.1, .95, 0); bx(gg, .6, .9, .04, [L.cyan, L.mag, L.amber][c], -1.1 + c * 1.1, 1.3, .37); } lamp(gg, 0, 2.2, .8, '#38e8ff', 1.8, 6, 2); }
