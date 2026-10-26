@@ -10767,6 +10767,7 @@ var Render = (function () {
 
   // --- panchine ---
   function bench(x, z, rot, kind) {
+    bancaAdd(x, z, rot, .55, kind === 'marble' ? .57 : .48);   // [animazioni2] per sedercisi
     if (ARR3()) return place(pm3(kind === 'marble' ? 'panchina_marmo' : kind === 'deco' ? 'panchina_cemento' : 'panchina_ghisa'), x, z, rot);   // [modelli1]
     const g = G0(), slat = kind === 'marble' ? PM.marble() : kind === 'deco' ? sm('#f2eee6') : PM.woodL(), leg = kind === 'deco' ? sm('#f4a6c0') : PM.ironG();
     if (kind === 'marble') { add(g, box(2, .14, .6, slat), 0, .5, 0); [-.7, .7].forEach(o => add(g, box(.2, .45, .5, slat), o, .22, 0)); return place(g, x, z, rot); }
@@ -11584,6 +11585,7 @@ var Render = (function () {
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
     if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
+    if (u.vol) { const S = u.vol.spin, m = mergeGroup(S); u.vol.piv.remove(S); u.vol.piv.add(m); u.vol.spin = m; }   // [animazioni2] il volante che gira: un pezzo solo (una chiamata di disegno)
     u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
     const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
     g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
@@ -11716,6 +11718,185 @@ var Render = (function () {
     const t = box(.46, .45, .28, lam(look.top)); t.position.y = .22; const h = box(.36, .36, .34, lam(look.skin)); h.position.y = .62;
     const hr = box(.38, .1, .36, lam(cap ? '#1b2544' : (look.hair || '#222'))); hr.position.y = .83;
     const arm = box(.12, .12, .4, lam(look.top)); arm.position.set(.2, .3, .25); g.add(t, h, hr, arm); return g;
+  }
+  // [animazioni2] AL VOLANTE: il personaggio vero al posto di guida (prima il pupazzo a scatole di driverMesh, che resta per le auto
+  // lontane e per quelle senza sedile). who: il gruppo della persona; se è figlio del mezzo (abitanti) la posizione è nel mezzo,
+  // se è nella scena (il giocatore) la si mette nel mondo. Il volante (veicoli3d.js, ud.vol) gira con lo sterzo e le mani ci restano
+  // sopra: i punti di presa sono sul cerchio vero, a «dieci e dieci» (±60° dall'alto) più l'angolo dello sterzo, portati nello spazio
+  // del personaggio. Il busto va un poco di lato con la forza della curva, la testa guarda dentro la curva.
+  const VOL_K = 2.6, VOL_PHI = Math.PI / 3, VOL_SLIP = .3;   // il volante gira 2,6 volte la ruota (0,55 rad di ruota → 82° di volante); le mani a ±60°
+  const _cd1 = new THREE.Vector3(), _cd2 = new THREE.Vector3(), _cdq = new THREE.Quaternion(), _cdq2 = new THREE.Quaternion(), _cdM = new THREE.Matrix4();
+  function carDriver(who, v, g, u, dt, opts) {
+    opts = opts || {};
+    const seat = opts.pass ? u.seat2 : u.seat; if (!seat) return null;
+    const out = opts.inWorld;
+    if (opts.keep) { }   // il corpo è già dove deve stare (salendo, scendendo)
+    else if (out) { g.updateMatrixWorld(true); _cd1.set(seat[0], seat[1], seat[2]).applyMatrix4(g.matrixWorld); who.position.copy(_cd1); who.quaternion.copy(g.quaternion); }
+    else { who.position.set(seat[0], seat[1], seat[2]); who.quaternion.identity(); }
+    who.updateMatrixWorld(true);
+    const roofC = u.porta ? u.porta.yw + .05 : seat[1] + .5;   // il tetto sopra il sedile (veicoli3d: il bordo alto del finestrino + 5 cm)
+    const A = { roof: roofC - seat[1], hipMax: u.porta ? -.42 : -.05, hipZ: -.02, hipX: 0, footY: Math.max(.22, seat[1] - .66) - seat[1], footZ: .62, pass: !!opts.pass,
+      lean: clamp(-(v.latA || 0) * .06, -1, 1), look: clamp((u.steer || 0) / .55, -1, 1) * (Math.abs(v.speed || 0) > .5 ? 1 : .4) };
+    const S = !opts.pass && u.vol && u.vol.spin;
+    if (S) {
+      S.rotation.z = -(u.steer || 0) * VOL_K;   // a sinistra (u.steer > 0) la cima del volante va a sinistra
+      g.updateMatrixWorld(true); who.updateMatrixWorld(true); S.updateMatrixWorld(true);
+      S.getWorldQuaternion(_cdq); who.getWorldQuaternion(_cdq2); _cdq2.invert().multiply(_cdq);   // dal volante al personaggio
+      const r = u.vol.r;
+      for (const [sd, ph] of [['L', -VOL_PHI], ['R', VOL_PHI]]) {
+        const ph2 = ph + VOL_SLIP * (u.steer || 0) * VOL_K, sn = Math.sin(ph2), cs = Math.cos(ph2);   // le mani girano col volante, scivolando un poco sul cerchio (30%)
+        _cd1.set(-r * sn, r * cs, 0).applyMatrix4(S.matrixWorld); who.worldToLocal(_cd1);
+        const ax = _cd2.set(cs, sn, 0).applyQuaternion(_cdq2).toArray();   // lungo il cerchio, verso le dodici per la destra (pollice) e via dalle dodici per la sinistra
+        const fy = _cd2.set(sn * .5, -cs * .5, .85).normalize().applyQuaternion(_cdq2).toArray();   // le dita: verso il cruscotto e dentro il cerchio
+        A['g' + sd] = { p: _cd1.toArray(), ax, fy };
+        A['w' + sd] = _cd1.clone();
+      }
+      // il sedile si regola sul volante: il bacino 46 cm dietro il centro del volante
+      if (u.__volZ === undefined) { _cd1.set(0, 0, 0).applyMatrix4(S.matrixWorld); g.worldToLocal(_cd1); u.__volZ = _cd1.z - seat[2]; u.__volX = _cd1.x - seat[0]; }   // il centro del volante rispetto al sedile
+      if (u.__volZ !== undefined) { A.hipZ = clamp(u.__volZ - .46, -.12, .1); A.footZ = A.hipZ + .64; A.hipX = clamp(u.__volX, -.08, .08); }
+    }
+    return A;
+  }
+  // [animazioni2] SALIRE E SCENDERE DALL'AUTO, solo da vedere: il gioco mette subito il giocatore al volante (o accanto all'auto) e qui
+  // il corpo ci arriva: alla portiera (che si apre da sé, vehMondo), giù sul sedile girandosi, le mani al volante; scendendo il
+  // contrario. Dura ~1,1 s e non ferma niente: appena si dà gas (o ci si muove, a piedi) salta alla fine.
+  const CARIO = { inDur: 1.1, outDur: 1.0 };
+  function carInOut(st, p, pveh, inCar, pg, dt) {
+    const prev = dyn.carPrev, now = inCar ? pveh.id : null;
+    if (now && (!prev || prev.id !== now)) {
+      const f = prev && prev.foot; dyn.carIO = f && !prev.id && Math.hypot(f.x - pveh.x, f.z - pveh.y) < 5 && st.clock - f.t < .5 ? { vid: now, out: false, t: 0, from: f } : null;
+    } else if (!now && prev && prev.id && prev.car) {
+      const vv = st.vehicles.find(q => q.id === prev.id); dyn.carIO = vv && !pveh && Math.hypot(p.x - vv.x, p.y - vv.y) < 5 ? { vid: prev.id, out: true, t: 0, to: { x: p.x, z: p.y } } : null;
+    }
+    dyn.carPrev = { id: pveh ? pveh.id : null, car: inCar, foot: !pveh ? { x: p.x, z: p.y, face: p.face, t: st.clock } : prev && prev.foot };
+    const C = dyn.carIO; if (!C) return null;
+    C.t += dt;
+    const skip = C.out ? (!!pveh || Math.hypot(p.x - C.to.x, p.y - C.to.z) > .05 || Math.abs(p.speed || 0) > .2 || !!p.path && p.path.length > 0)
+      : (!pveh || pveh.id !== C.vid || Math.abs(pveh.speed || 0) > .4);
+    if (skip || C.t >= (C.out ? CARIO.outDur : CARIO.inDur)) { dyn.carIO = null; return null; }
+    return C;
+  }
+  const _io1 = new THREE.Vector3(), _io2 = new THREE.Vector3(), _ioQ = new THREE.Quaternion(), _ioE = new THREE.Euler(0, 0, 0, 'YXZ');
+  const sm3 = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+  function driverPlayer(st, p, v, g, u, pg, C, dt) {
+    const an = window.Anim ? Anim.playerState(st) : { act: null, upper: null, mood: [], talk: false, lookAt: null };
+    an.act = 'in_auto'; an.upper = null; an.mood.length = 0; an.lookAt = null; an.talk = false;
+    let speed = 0, A;
+    if (!C) A = carDriver(pg, v, g, u, dt, { inWorld: true });
+    else {
+      g.updateMatrixWorld(true);
+      const S = _io1.set(u.seat[0], u.seat[1], u.seat[2]).applyMatrix4(g.matrixWorld), Dw = _io2.set(u.seat[0] + .62, 0, u.seat[2] + .12).applyMatrix4(g.matrixWorld); Dw.y = groundH(Dw.x, Dw.z);   // la portiera: 62 cm fuori dal sedile, a terra
+      const carYaw = Math.PI / 2 - v.ang, t = C.t;
+      let k = 1, hands = 1, yaw = carYaw, walkTo = null, walkFrom = null, wk = 0;
+      if (!C.out) {
+        if (t < .4 && C.from) { walkFrom = C.from; walkTo = Dw; wk = t / .4; }
+        else { const s = sm3((t - .4) / .5); k = s; hands = sm3((t - .85) / .25); yaw = carYaw + .55 * (1 - s); }
+      } else {
+        if (t < .55) { const s = 1 - sm3((t - .12) / .43); k = s; hands = 1 - sm3(t / .15); yaw = carYaw + .55 * (1 - s); }
+        else { walkFrom = { x: Dw.x, z: Dw.z }; walkTo = { x: C.to.x, z: C.to.z }; wk = (t - .55) / .45; }
+      }
+      if (walkTo) {   // a piedi fra il punto di prima e la portiera
+        const x = walkFrom.x + (walkTo.x - walkFrom.x) * wk, z = walkFrom.z + (walkTo.z - walkFrom.z) * wk, d = Math.hypot(walkTo.x - walkFrom.x, walkTo.z - walkFrom.z);
+        pg.position.set(x, groundH(x, z), z); speed = d / (C.out ? .45 : .4);
+        const wy = d > .05 ? Math.atan2(walkTo.x - walkFrom.x, walkTo.z - walkFrom.z) : carYaw;
+        _ioE.set(0, wk > .7 && !C.out ? wy + (carYaw - wy) * (wk - .7) / .3 : wy, 0); pg.quaternion.setFromEuler(_ioE);
+        an.act = null; k = 0; hands = 0;
+      } else {   // fra la portiera e il sedile: il corpo scivola dentro (o fuori) girandosi
+        pg.position.lerpVectors(Dw, S, k); _ioE.set(0, yaw, 0); pg.quaternion.setFromEuler(_ioE); _ioQ.copy(g.quaternion); pg.quaternion.slerp(_ioQ, k);
+      }
+      pg.updateMatrixWorld(true);
+      A = carDriver(pg, v, g, u, dt, { inWorld: true, keep: true });
+      A.dentro = k; A.mani = hands;
+    }
+    an.auto = A;
+    Models.animPerson(pg, { speed, inVeh: !!(st.player.vehicle), anim: an }, dt);
+  }
+  // [animazioni2] IL GIOCATORE A PIEDI, quello che si vede solo qui (la logica non cambia): i piedi sulle pedate di scale e scalinate,
+  // la caduta e l'atterraggio, la bracciata, seduto sulle panchine e sui belvederi quando ci si ferma accanto, lo scavalcare del
+  // bordo in cima alla scala, le mani sui pioli veri. window.__anim2off = true rimette tutto com'era (per le foto «prima»).
+  const PL2 = { dL: 0, dR: 0, cand: null, ckey: '', top: null, landT: -9, landF: 0, swim: 0, still: 0, sit: null, mant: null, lvPrev: null, rL: null, rR: null };
+  const BANCHE = [], BANCHE_G = new Map();   // le panchine (bench) e i belvederi: { x, z, yaw (verso dove si guarda seduti), w (mezza lunghezza), h (la seduta), bi (sul tetto) }
+  function bancaAdd(x, z, yaw, w, h, bi) { const b = { x, z, yaw, w, h, bi }; BANCHE.push(b); const k = Math.floor(x / 8) + ',' + Math.floor(z / 8); (BANCHE_G.get(k) || BANCHE_G.set(k, []).get(k)).push(b); }
+  function bancaNear(x, z, r) {
+    if (!PL2.belv && typeof Tetti !== 'undefined' && Tetti.BELV) { PL2.belv = true; Tetti.BELV.forEach(v => { const yaw = (v.i * 1.7) % 6.283; bancaAdd(v.x, v.y, yaw + Math.PI, .6, .48, v.bi); }); }   // la panca del belvedere: lo schienale verso (sin, cos) del suo angolo
+    let best = null, bd = r;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = BANCHE_G.get((Math.floor(x / 8) + i) + ',' + (Math.floor(z / 8) + j)); if (!L) continue;
+      for (const b of L) { const ca = Math.cos(b.yaw), sa = Math.sin(b.yaw), dx = x - b.x, dz = z - b.z, along = clamp(dx * ca - dz * sa, -b.w, b.w), sx = b.x + along * ca + sa * .06, sz = b.z - along * sa + ca * .06, d = Math.hypot(x - sx, z - sz); if (d < bd && (b.bi !== undefined || d < 1.1)) { bd = d; best = { b, x: sx, z: sz, d }; } } }
+    return best;
+  }
+  const _pr = new THREE.Raycaster(), _pv = new THREE.Vector3(), _pd = new THREE.Vector3(0, -1, 0);
+  function treadY(x, z, y0) {   // la pedata sotto (x, z): il primo piano orizzontale sotto y0 + 0,55 fra i pezzi fissi vicini
+    _pr.set(_pv.set(x, y0 + .55, z), _pd); _pr.far = 1.1; let best = null;
+    for (const m of PL2.cand) { const hs = _pr.intersectObject(m, false); for (const h of hs) { if (h.face && h.face.normal.y > .6 && (best === null || h.point.y > best)) best = h.point.y; break; } }
+    return best;
+  }
+  function onSteps(p) {   // su una scala o una scalinata (o a un passo da una)
+    if (G.quotaScala && G.quotaScala(p.x, p.y) !== null) return true;
+    const N = G.NOV; if (!N) return false;
+    for (const [a, b] of [[0, 0], [.6, 0], [-.6, 0], [0, .6], [0, -.6]]) if (N[Math.floor((p.y + b) / TS) * G.GW + Math.floor((p.x + a) / TS)] === 2) return true;
+    return false;
+  }
+  function piediGradini(st, p, pg, dt, an) {
+    const R0 = pg.userData.rig, on = !!R0 && !p.lv && !p.indoor && !p.swim && !(p.jz > 0) && !PL2.sit && onSteps(p);
+    let tL = 0, tR = 0;
+    if (on) {
+      const key = Math.floor(p.x / 3) + ',' + Math.floor(p.y / 3);
+      if (PL2.ckey !== key) { PL2.ckey = key; PL2.cand = []; const x0 = p.x - 4, x1 = p.x + 4, z0 = p.y - 4, z1 = p.y + 4;   // i pezzi fissi che stanno sotto i piedi da qui a 4 m
+        scene.children.forEach(o => { if (!o.isMesh || o.isSkinnedMesh || !o.visible || !o.geometry || !o.geometry.attributes.position || o.material.transparent) return; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); const B = g.boundingBox;
+          o.updateMatrixWorld(); const e = o.matrixWorld.elements; if (Math.abs(e[0] - 1) > 1e-6 || Math.abs(e[5] - 1) > 1e-6 || Math.abs(e[10] - 1) > 1e-6) { _pv.set(0, 0, 0).applyMatrix4(o.matrixWorld); if (Math.abs(_pv.x - p.x) > 12 || Math.abs(_pv.z - p.y) > 12) return; PL2.cand.push(o); return; }
+          if (B.max.x + e[12] < x0 || B.min.x + e[12] > x1 || B.max.z + e[14] < z0 || B.min.z + e[14] > z1) return; if (B.min.y + e[13] > playerH + 1.2 || B.max.y + e[13] < playerH - 1.2) return; PL2.cand.push(o); }); }
+      const b = R0.b;
+      for (const sd of ['L', 'R']) { const f = b['Foot' + sd]; if (!f) continue; f.getWorldPosition(_pv); const ty = treadY(_pv.x, _pv.z, playerH); const d = ty === null ? 0 : clamp(ty - playerH, -.36, .36); if (sd === 'L') tL = d; else tR = d; }
+    }
+    const k = 1 - Math.exp(-dt * 24); PL2.dL += (tL - PL2.dL) * k; PL2.dR += (tR - PL2.dR) * k;
+    if (Math.abs(PL2.dL) + Math.abs(PL2.dR) > .004) { an.mood.push('gradini'); an.gradini = { dL: PL2.dL, dR: PL2.dR }; }
+  }
+  function plAnim(st, p, pg, pveh, dt) {
+    const an = window.Anim ? Anim.playerState(st) : null; if (!an) return an;
+    pioli(st, p, an, dt);
+    const lvPrev = PL2.lvPrev; PL2.lvPrev = p.lv ? { k: p.lv.k, L: p.lv.L, up: p.lv.up, b: p.lv.b } : null;
+    if (window.__anim2off || pveh || p.stun > 0) { PL2.sit = null; PL2.mant = null; PL2.top = null; return an; }
+    // in aria: la caduta (scendendo veloci da più di un metro e mezzo), poi l'atterraggio a ginocchia piegate
+    const feet = playerH;
+    if (p.jz > 0) { PL2.top = Math.max(PL2.top === null ? feet + p.jz : PL2.top, feet + p.jz); if ((p.jvz || 0) < -3 && PL2.top - feet > 1.5) { an.act = 'cade'; an.giu = clamp((PL2.top - feet - 1.5) / 3, .3, 1); an.upper = null; } }
+    else if (PL2.top !== null) { const drop = PL2.top - feet; PL2.top = null; if (drop > .35) { PL2.landT = st.clock; PL2.landF = clamp(drop / 3, .35, 1); } }
+    const lk = 1 - (st.clock - PL2.landT) / .32; if (lk > 0 && !(p.jz > 0) && !an.act) { an.act = 'atterra'; an.atterra = Math.sin(clamp(lk, 0, 1) * Math.PI * .5) * (lk < .85 ? 1 : (1 - lk) / .15); an.forte = PL2.landF; }
+    // a nuoto: la bracciata, col ritmo della velocità
+    if (p.swim && !p.vehicle) { const sp = Math.abs(p.speed || 0), va = clamp(sp / 1.5, 0, 1); PL2.swim = (PL2.swim + dt * (.45 + .35 * va)) % 1; an.act = 'nuota'; an.va = va; an.fase = PL2.swim; an.upper = null; }
+    // in cima alla scala: si scavalca il bordo invece del salto sul tetto
+    if (lvPrev && lvPrev.k === 'scala' && lvPrev.up && p.lv && p.lv.k === 'tetto' && typeof Tetti !== 'undefined') { const L = Tetti.LADDERS[lvPrev.L]; if (L) { const top = p.lv.h, ed = Math.max(0, (Tetti.edgeH ? Tetti.edgeH(L.bi, L.x, L.y, L.ox, L.oy) : top) - top);
+      PL2.mant = { t: 0, fx: L.fx, fz: L.fy, tx: p.x, tz: p.y, y0: top + .05, y1: top, ed: ed + .12, wx: L.x, wz: L.y, yaw: Math.PI / 2 - p.face }; } }
+    const Mn = PL2.mant;
+    if (Mn) { Mn.t += dt; if (Mn.t > .75 || Math.hypot(p.x - Mn.tx, p.y - Mn.tz) > .05 || Math.abs(p.speed || 0) > .2 || p.jz > 0 || !p.lv) PL2.mant = null;
+      else { const k = Mn.t / .75, s = k * k * (3 - 2 * k), x = Mn.fx + (Mn.tx - Mn.fx) * s, z = Mn.fz + (Mn.tz - Mn.fz) * s, lift = Mn.ed * Math.sin(Math.PI * clamp(k / .8, 0, 1)) * .85;
+        pg.position.set(x, Mn.y0 + (Mn.y1 - Mn.y0) * s + lift, z); pg.rotation.y = pg.userData.__ry = Mn.yaw;
+        const fwx = Math.sin(Mn.yaw), fwz = Math.cos(Mn.yaw), av = (Mn.wx - x) * fwx + (Mn.wz - z) * fwz;
+        an.act = 'scavalca'; an.k = k; an.bordo = Mn.y1 + Mn.ed - pg.position.y; an.av = clamp(av, .15, .6); an.upper = null; an.mood.length = 0; } }
+    // la panchina: fermi accanto per un secondo e mezzo ci si siede; appena ci si muove ci si alza
+    const mv = Math.abs(p.speed || 0) > .05 || (p.path && p.path.length) || p.jz > 0 || p.jcharge != null || p.lv && p.lv.k === 'scala' || !!PL2.mant || p.swim || p.carrying || (p.punch || 0) > 0 || (p.cur && p.cur !== 'pugni') || (st.me && st.me.warp && !PL2.sit);
+    if (PL2.sit && !PL2.sit.up && (mv || Math.hypot(p.x - PL2.sit.px, p.y - PL2.sit.pz) > .03)) PL2.sit.up = true;
+    if (!PL2.sit) { PL2.still = mv ? 0 : PL2.still + dt; if (PL2.still > 1.5 && !p.indoor) { const bn = bancaNear(p.x, p.y, 3.3);   /* le panchine a un passo, il belvedere da dove lo si vede (3 m) */ if (bn && (bn.b.bi === undefined ? !p.lv : p.lv && p.lv.k === 'tetto' && p.lv.b === bn.b.bi)) PL2.sit = { b: bn.b, x: bn.x, z: bn.z, px: p.x, pz: p.y, k: 0, up: false, ry: pg.rotation.y, dur: .45 + .25 * bn.d }; } }
+    const Si = PL2.sit;
+    if (Si) {
+      Si.k = clamp(Si.k + (Si.up ? -dt / .3 : dt / Si.dur), 0, 1); if (Si.up && Si.k <= 0) PL2.sit = null;
+      else { const s = Si.k * Si.k * (3 - 2 * Si.k), y0 = pg.position.y, ys = Si.b.bi === undefined ? groundH(Si.x, Si.z) : y0;
+        pg.position.set(pg.position.x + (Si.x - pg.position.x) * s, y0 + (ys - y0) * s, pg.position.z + (Si.z - pg.position.z) * s);
+        let d = Si.b.yaw - Si.ry; d = Math.atan2(Math.sin(d), Math.cos(d)); pg.rotation.y = Si.ry + d * s; if (Si.up) pg.userData.__ry = pg.rotation.y;
+        if (s > .02) { an.act = 'siede'; an.upper = null; an.mood.length = 0; an.seduto = s; } }
+    }
+    piediGradini(st, p, pg, dt, an);
+    return an;
+  }
+  // [animazioni2] le mani sui pioli veri: la scala del giocatore, coi pioli dove li disegna tetti.js (ogni 30 cm da 30 cm sopra il piede)
+  function pioli(st, p, an, dt) {
+    const lv = p.lv; if (window.__anim2off || !lv || lv.k !== 'scala' || typeof Tetti === 'undefined') { PL2.rL = PL2.rR = null; return; }
+    const L = Tetti.LADDERS[lv.L]; if (!L || L.rampa) return;
+    const q = lv.h0 + (lv.h1 - lv.h0) * lv.t, base = Math.min(lv.h0, lv.h1), y0 = base + .3, step = .3, dz = Math.hypot(L.fx - L.x, L.fy - L.y) - .2;   // i pioli 20 cm fuori dal muro
+    const top = Math.max(lv.h0, lv.h1) + .95 - .9, reach = q + 1.62;   // le mani arrivano a 1,62 m sopra i piedi
+    const rung = par => { let k = Math.floor((reach - y0) / step); if ((k & 1) !== par) k--; return Math.min(y0 + k * step, top); };
+    const sm = 1 - Math.exp(-dt * 14), tL = rung(0) - q, tR = rung(1) - q;
+    PL2.rL = PL2.rL === null ? tL : PL2.rL + (tL - PL2.rL) * sm; PL2.rR = PL2.rR === null ? tR : PL2.rR + (tR - PL2.rR) * sm;
+    an.pioli = { yL: PL2.rL, yR: PL2.rR, z: dz, x: .2 };
   }
   // segni delle gomme: un nastro scuro a terra per ogni ruota posteriore che slitta (un solo buffer circolare)
   const SKID = { N: 2400, i: 0, geo: null, m: null };
@@ -17151,16 +17332,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!pg) {
       const plook = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
       pg = (window.Models && Models.charsReady() && Models.person(plook, 'player')) || person(plook, true); if (!pg.userData.model) pg.userData.voxelWait = !!window.Models; scene.add(pg); dyn.people.__player = pg;
-      const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
+      const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring); pg.userData.ring5 = ring;
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta' || pveh.kind === 'ciao');   // [animazioni] anche sul Ciao (prima in sella non si vedeva nessuno)   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
-    pg.visible = !pveh || onVespa;
+    // [animazioni2] in auto il giocatore si vede, seduto al volante (prima nascosto, al suo posto il pupazzo a scatole); salendo e
+    // scendendo (CARIN) va alla portiera, si siede, chiude: la posa si fa nel giro dei mezzi (serve il mezzo già messo a posto)
+    const pvg = pveh ? dyn.vehicles[pveh.id] : null, inCar = !!(pveh && !onVespa && !(G.VK[pveh.kind] || {}).boat && pg.userData.model && pvg && pvg.userData.seat && !pvg.userData.two && !pveh.wreck);
+    const CA = carInOut(st, p, pveh, inCar, pg, dt);
+    pg.visible = !pveh || onVespa || inCar;
+    if (pg.userData.ring5) pg.userData.ring5.visible = !inCar && !CA && !PL2.sit;   // [animazioni2] l'anello ai piedi non entra nell'abitacolo
+    if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid; } }
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
-    if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
+    let pgDefer = pg.userData.model && (inCar || (CA && CA.out)) ? (inCar ? pveh.id : CA.vid) : null;   // [animazioni2] al volante (o scendendo): la posa dopo, col mezzo
+    if (pgDefer) { } else if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? plAnim(st, p, pg, pveh, dt) : null }, dt); else   // [animazioni] recoil, inVeh, anim   // [animazioni2] plAnim: gradini, caduta, nuoto, panchina, bordo del tetto, pioli
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
     if (window.Skate && !pveh) Skate.pose(pg, st, playerH, dt);   // [skate] in tavola: di traverso, sopra la tavola, coi trick
@@ -17201,6 +17389,21 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = sA; });
       if (u.ster) u.ster.quaternion.setFromAxisAngle(u.sterAx, sA);
       if (u.two) { v.barA = sA; v.rollA = u.roll; }   // [animazioni] per la posa in sella (anim_lotta.js): le manopole girate, la piega del mezzo
+      // [animazioni2] al volante: il giocatore (seduto, salendo o scendendo) e gli automobilisti vicini alla camera, veri al posto del
+      // pupazzo; il volante gira con lo sterzo anche senza nessuno (le auto parcheggiate restano dritte)
+      if (u.vol && !u.two) u.vol.spin.rotation.z = -(u.steer || 0) * VOL_K;
+      if (pgDefer && v.id === pgDefer) { pgDefer = null; driverPlayer(st, p, v, g, u, pg, CA, dt); }
+      let realDrv = v === pveh && inCar, realPass = false;
+      if (!u.two && u.seat && v !== pveh) {
+        const drvOn = !v.wreck && (v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));
+        const want = drvOn && window.Models && Models.charsReady() && Math.abs(v.x - cam.x) + Math.abs(v.y - cam.y) < 45;
+        if (want && !u.drvG && BUD.ok(Math.hypot(v.x - p.x, v.y - p.y), 'gente')) { const t0 = performance.now(), r = Models.person(v.driverLook || { skin: '#d8b090', top: '#5a4a3a', bottom: '#2a2a33', hair: '#2a1a10', hat: 'none', build: 1, extra: '' }, v.police || v.livrea ? 'cop' : null); BUD.add(performance.now() - t0, 'gente'); if (r) { if (r.userData.shadowC) r.userData.shadowC.visible = false; g.add(r); u.drvG = r; } }
+        if (u.drvG) { u.drvG.visible = !!want; if (want) { realDrv = true; const A = carDriver(u.drvG, v, g, u, dt, {}); Models.animPerson(u.drvG, { speed: 0, inVeh: true, anim: { act: 'in_auto', auto: A, upper: null, mood: [], talk: false, lookAt: null } }, dt); } }
+        // l'agente accanto (volanti e Tutela): seduto, le mani sulle ginocchia
+        const want2 = want && u.seat2 && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;
+        if (want2 && !u.drv2G && BUD.ok(Math.hypot(v.x - p.x, v.y - p.y), 'gente')) { const r = Models.person({ top: v.livrea ? '#5c6672' : '#23355e', skin: '#c99a76', hair: '#1a1410', hat: 'none', build: 1, extra: '' }, 'cop'); if (r) { if (r.userData.shadowC) r.userData.shadowC.visible = false; g.add(r); u.drv2G = r; } }
+        if (u.drv2G) { u.drv2G.visible = !!want2; if (want2) { realPass = true; const A = carDriver(u.drv2G, v, g, u, dt, { pass: true }); Models.animPerson(u.drv2G, { speed: 0, inVeh: true, anim: { act: 'in_auto', auto: A, upper: null, mood: [], talk: false, lookAt: null } }, dt); } }
+      }
       if (u.crank) { if (v.pedal) u.crankA = (u.crankA || 0) + (v.speed || 0) * dt / (BMX_GEO.R * BMX_GEO.ratio); const th = u.crankA || 0; u.crank.rotation.x = th; u.pedals.forEach(q => q.rotation.x = -th); v.crank = th; }   // [bmx] pedivelle: girano solo quando pedali (a ruota libera stanno ferme)   // [bmx] le pedivelle girano con le ruote, i pedali restano piatti; in_bmx ci mette i piedi
       // [animazioni] chi guida le Vespe e i Ciao del traffico: prima nessuno (il mezzo andava da solo). Un abitante vero in sella,
       // figlio del mezzo (ne segue piega e sobbalzi), con la posa in_vespa, le mani sul manubrio che gira; solo vicino alla camera
@@ -17218,8 +17421,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       }
       u.hpSeen = v.hp;
       if (v.wreck && !u.burnt) { u.burnt = true; u.paint.forEach(m => { m.color.set('#141012'); m.roughness = 1; m.metalness = 0; }); if (u.drv) u.drv.visible = false; if (u.drv2) u.drv2.visible = false; if (u.glass) u.glass.color.set('#050505'); g.rotation.z = .05; u.wheels.forEach(w => w.wh.scale.setScalar(.85)); }
-      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
-      if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
+      if (u.drv) u.drv.visible = !realDrv && !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
+      if (u.drv2) u.drv2.visible = !realPass && !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
       u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn && u.lamps.length > 0;   // [bmx] senza fari, niente chiazza di luce
@@ -17229,6 +17432,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
+    if (pgDefer) { pgDefer = null; if (CA) CA.done = true; Models.animPerson(pg, { speed: pveh ? 0 : p.speed, down: p.stun > 0, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); }   // [animazioni2] il mezzo non c'era: la posa di sempre
     // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
     if (frameN % 15 === 0) {
       const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
@@ -17531,5 +17735,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

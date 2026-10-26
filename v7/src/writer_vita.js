@@ -431,8 +431,13 @@ var WriterVita = (function () {
       // (prima giravano a tempo fisso, 5,2 rad/s, e il corpo saliva 3 volte più svelto dei pioli: scivolava su per la scala)
       Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P, A) {
         const ph = A && A.quota != null ? Math.sin(A.quota * Math.PI / .3) : Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
-        P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
-        P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
+        const Pi = A && A.pioli;
+        if (Pi) {   // [animazioni2] le mani SUI PIOLI veri (render.js pioli: l'altezza del piolo di ogni mano, la distanza dei pioli davanti): il pugno chiuso sul piolo
+          [['L', Pi.yL, 1], ['R', Pi.yR, -1]].forEach(([sd, y, sg]) => { P.grab(sd, sg * Pi.x * .75, y, Pi.z, [1, 0, 0], [0, .35, 1], [sg * .8, -1, -.5]); P.fingers(sd, .95, .85); });
+        } else {
+          P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
+          P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
+        }
         P.legTo('L', .12, .12 + .35 * a, .22, .15, 1, .6, .2, 0); P.legTo('R', -.12, .12 + .35 * b, .22, -.15, 1, .6, .2, 0);
         P.rot('Head', -.35, 0, 0); P.rot('Chest', .08, 0, 0);
       } });
