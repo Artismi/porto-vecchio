@@ -7669,7 +7669,17 @@ var Render = (function () {
   }
   // [verde4] un albero di città istanziato: la specie del posto, la sua scala, l'ombra morbida sotto la chioma
   const ALB4 = [];   // gli alberi chiesti dalle piazze e dai giardini (leafyTree): si istanziano qui coi blocchi di terreno
+  // [scorcio] l'albero non sta sul ciglio di un muraglione: la formella (1,4 m) non entra nella copertina né nel camminamento; se ci cadrebbe,
+  // l'albero si sposta verso l'interno della piazza alta di quel che serve (1,3 m dal muro)
+  function lontanoMuro4(t) {
+    const OP = (M.world && M.world.pedonali) || []; let x = t.x, z = t.z;
+    for (const o of OP) { if (!o.muro || !o.poly) continue; const P = o.poly; let best = 1e9, bx = 0, bz = 0, dentro = false;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [ax, az] = P[j], [cx, cz] = P[i], dx = cx - ax, dz = cz - az, L2 = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)), px = ax + dx * u, pz = az + dz * u, d = Math.hypot(x - px, z - pz);
+        if (d < best) { best = d; bx = px; bz = pz; } if ((az > z) !== (cz > z) && x < (cx - ax) * (z - az) / (cz - az) + ax) dentro = !dentro; }
+      if (dentro || best >= 1.3) continue; const L = best || 1e-3; x += (x - bx) / L * (1.3 - best); z += (z - bz) / L * (1.3 - best); }
+    return x === t.x && z === t.z ? t : Object.assign({}, t, { x, z }); }
   function albero4(add, t, r) {
+    t = lontanoMuro4(t);
     const sp = t.sp || (t.kind === 'piazza' && r() < .35 && !(NUOVA4() && !t.largo) ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
     const COL = ['#ffffff', '#f2f4ea', '#f8f6ee', '#eef2e8'], tilt = { rx: (r() - .5) * .04, rz: (r() - .5) * .04, col: pick(r, COL) };
     if (sp === 'palma') { add('Palma_' + Math.floor(r() * 6), t.x, y - .05, t.z, .82 * s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.6 * s, 0, {}); return; }
@@ -13691,6 +13701,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     });
     scene.add(g); window.__propaganda = { ritratti: nR, slogan: nS };
   }
+  const VLIT1 = {}, verLit1 = c => VLIT1[c] || (VLIT1[c] = litMat(c));   // [scorcio] i vetri accesi delle verande
   function buildDetails() {
     const T = G.T, mats = [], plane = (k) => mats[k] || (mats[k] = new THREE.MeshLambertMaterial({ map: posterTex(k), transparent: k % 8 === 7, alphaTest: k % 8 === 7 ? .3 : 0, side: THREE.DoubleSide, emissive: '#2a2830' }));
     const metal = sm('#4a4e54', { roughness: .6, metalness: .5 }), dark = sm('#1c1c22', { roughness: 1 }), yel = sm('#c8a82a', { roughness: .8 }), red = sm('#a02a24', { roughness: .7 }), wood = sm('#6a5238', { roughness: 1 }), white = sm('#d8d4c8', { roughness: 1 });
@@ -13811,7 +13822,12 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           if (!copre) { const a = mkA(sd, u), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, yy, .09); } }
         if (fl >= 3 && r() < .3) { const a = mkA(sd, 1 + r() * (sd.len - 2)), f = 1 + Math.floor(r() * (fl - 1)), y = base + MG + (f - 1) * MF + .3, k = [0, 3, 5][Math.floor(r() * 3)];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(.8, 2.4), lam('b' + k, posterTex(k))); ad(a, m, 0, y + 1.2, .5); ad(a, box(.05, .05, .9, metal), 0, y + 2.45, .45); m.rotation.y = r() < .5 ? 0 : 0; m.rotation.x = -.04; const m2 = m.clone(); m2.rotation.y = Math.PI; m2.position.z = .52; a.add(m2); }
-        if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); ad(a, new THREE.Mesh(new THREE.PlaneGeometry(1.3, .9), glowM(r() < .6 ? '#ffd890' : '#38e8ff')), 0, y + .8, .81); }
+        if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); { const wy = y + .8, warm = r() < .6, legno = sm('#3a3430', { roughness: .8 });   // [scorcio] la finestra della veranda: era un pannello giallo (o azzurro) pieno, senza luce né telaio, acceso anche di giorno
+            ad(a, box(1.04, .82, .06, legno), 0, wy, .8);   // il telaio
+            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.9, .68), verLit1(warm ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0')), 0, wy, .834);   // il vetro: buio di giorno, la luce calda (o la tele) la sera, come le altre finestre
+            ad(a, box(.04, .68, .03, legno), 0, wy, .845);   // il montante
+            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.4, .5), sm(pick(r, ['#d8c8a8', '#c8a890', '#b8c0a8']), { roughness: 1 })), r() < .5 ? -.22 : .22, wy + .07, .842);   // la tenda tirata a metà
+            (window.__rt = window.__rt || {}).verande = ((window.__rt || {}).verande || 0) + 1; } }
       });
       if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.det2Grp = gm; n++; }
     });
