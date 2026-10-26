@@ -30,7 +30,7 @@ const zona = []; for (let i = 0; i < GW * GH; i++) { const x = cx(i), y = cy(i);
   const rk = top.filter(i => W.grid[i] === T.ROCK).length, tr = top.filter(i => W.grid[i] === T.TREE && W.eco[i] !== E.LECCETA).length;
   ok(rk / top.length > .04, `i campi solcati e i massi sul pianoro: ${(rk / top.length * 100).toFixed(1)}% di roccia`);
   ok(tr / top.length < .05, `sul pianoro al vento quasi niente alberi fuori dalle doline: ${(tr / top.length * 100).toFixed(1)}%`); }
-{ const P = W.POZZA, b = W.elev[idx(P.x, P.y)], orlo = [0, 1, 2, 3, 4, 5].map(k => W.elev[idx(P.x + Math.cos(k) * 12, P.y + Math.sin(k) * 12)]), sab = zona.filter(i => W.grid[i] === T.SAND && Math.hypot(cx(i) - P.x, cy(i) - P.y) < P.r + 2).length;
+{ const P = W.POZZA, b = W.elev[idx(P.x, P.y)], orlo = [0, 1, 2, 3, 4, 5].map(k => W.elev[idx(P.x + Math.cos(k) * 12, P.y + Math.sin(k) * 12)]), sab = zona.filter(i => (W.grid[i] === T.DIRT || W.grid[i] === T.SAND) && (W.feat[i] & 2048) && Math.hypot(cx(i) - P.x, cy(i) - P.y) < P.r + 2).length;
   ok(orlo.reduce((s, h) => s + h, 0) / orlo.length - b > 3 && sab >= 6, `la Dolina della Pozza: ${(orlo.reduce((s, h) => s + h, 0) / orlo.length - b).toFixed(1)} m sotto l'orlo, ${sab} caselle d'argilla per la pozza`);
   const lec = zona.filter(i => W.eco[i] === E.LECCETA && W.grid[i] === T.TREE).length; ok(lec >= 6, `i lecci nelle doline e nel canalone: ${lec} caselle d'albero`);
   const ga = zona.filter(i => (F[i] & TOP) && (W.eco[i] === E.FARO || W.eco[i] === E.MACCHIA)).length; ok(ga > 600, `gariga e macchia bassa sul pianoro: ${ga} caselle`); }
