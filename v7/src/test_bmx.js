@@ -39,8 +39,11 @@ const top = pace => { p.stun = 0; [bk.x, bk.y, bk.ang] = home; bk.vx = bk.vy = 0
 for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) { home[2] = a; if (top(3) > 7) break; }   // una direzione libera per 20 m
 const s1 = top(1), s2 = top(2), s3 = top(3);
 check(s1 < s2 && s2 < s3, `BMX: pedalata piano ${s1.toFixed(1)}, forte ${s2.toFixed(1)}, a tutta ${s3.toFixed(1)} m/s`);
-G.bmx(st); const run = pace => { const x0 = p.x, y0 = p.y; for (let i = 0; i < 30; i++) st.npcs.forEach(n => { if (!n.inside) { n.inside = true; hidden.push(n); } }), G.step(st, 1 / 30, { x: 1, y: 0, pace, sprint: pace >= 2 }); return Math.hypot(p.x - x0, p.y - y0); };
-const w1 = run(1), w2 = run(2), w3 = run(3);
+// a piedi: ogni prova parte dallo stesso punto, in una direzione libera per 8 m (la mappa cambia: un muro a est fermava la prova)
+G.bmx(st); const start = [p.x, p.y]; let wd = [1, 0];
+const run = pace => { [p.x, p.y] = start; p.vx = p.vy = 0; const x0 = p.x, y0 = p.y; for (let i = 0; i < 30; i++) st.npcs.forEach(n => { if (!n.inside) { n.inside = true; hidden.push(n); } }), G.step(st, 1 / 30, { x: wd[0], y: wd[1], pace, sprint: pace >= 2 }); return Math.hypot(p.x - x0, p.y - y0); };
+for (const d of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { wd = d; if (run(3) > 7) break; }
+const w1 = run(1), w2 = run(2), w3 = run(3); [p.x, p.y] = start;
 check(w1 < w2 && w2 < w3, `a piedi: cammini ${w1.toFixed(1)}, corri ${w2.toFixed(1)}, scatti ${w3.toFixed(1)} m in un secondo`);
 hidden.forEach(n => n.inside = false);
 // [bmx] trick con le frecce: giù impenna, destra/sinistra il piede sulla pedalina (e lì non si pedala: ruota libera)

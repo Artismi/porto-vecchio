@@ -162,7 +162,7 @@
   const PM = { still: 0, t: 0 };
   Anim.playerMap((st, p, s) => {
     const dt = clamp(st.clock - PM.t, 0, .2); PM.t = st.clock;
-    const idle = !p.vehicle && !(p.stun > 0) && Math.abs(p.speed || 0) < .1 && (!p.cur || p.cur === 'pugni') && !p.hand && !p.carrying && !(p.jz > 0);
+    const idle = !p.vehicle && !(p.sk && p.sk.on) && !(p.stun > 0) && Math.abs(p.speed || 0) < .1 && (!p.cur || p.cur === 'pugni') && !p.hand && !p.carrying && !(p.jz > 0);
     PM.still = idle ? PM.still + dt : 0;
     if (PM.still > 8) soli(s, 'player', st.clock, false, true);
   });

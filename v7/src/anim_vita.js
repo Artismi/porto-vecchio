@@ -750,6 +750,7 @@
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    { const D = typeof window !== 'undefined' && window.__pv && window.__pv.ui && window.__pv.ui.dialog; const n = D && st.npcs.find(q => q.id === D.npc); if (n) { s.talk = true; s.lookAt = { x: n.x, y: 1.55, z: n.y, ground: true }; } }   // [animazioni] in dialogo il protagonista gesticola e guarda chi ha davanti (prima restava impalato)
     const gb = p.__grab; if (gb) { const e = (performance.now() - gb.t) / 900; if (e < 1) { s.act = gb.low ? 'raccoglie' : 'prende'; s.grab = { k: e, h: gb.h }; } else p.__grab = null; }   // [design] il gesto del prendere
     const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });
