@@ -1294,10 +1294,7 @@ var Tetti = (function () {
         put(boards, cx, g0 + .45, cy, 1.6, .08, .7, 0); for (const sx of [-.7, .7]) put(boards, cx + sx, g0 + .22, cy, .08, .44, .6, 0);
         for (let k = 0; k < 3; k++) put(ropes, cx + 1.3 + k * .1, g0 + .25 + k * .3, cy + .6, .5, .3, .5, k);
         put(rails, cx - 1, g0 + .9, cy - .9, .05, 1.8, .05, 0); put(rails, cx + 1, g0 + .9, cy - .9, .05, 1.8, .05, 0); put(ropes, cx, g0 + 1.3, cy - .9, 2.0, .9, .03, 0);
-      } else if (C.k === 'passaggio') {   // il passaggio coperto: il pergolato di travi e la vite sopra, a 2,8 m
-        C.celle.forEach(([tx, ty], k) => { const x = (tx + .5) * TS, y = (ty + .5) * TS, g1 = hc(x, y), along = C.wX >= C.wY;
-          for (const sg of [-1, 1]) put(boards, x + (along ? 0 : sg * .85), g1 + 1.4, y + (along ? sg * .85 : 0), .1, 2.8, .1, 0);
-          put(boards, x, g1 + 2.82, y, along ? .1 : 1.9, .1, along ? 1.9 : .1, 0); if (k % 2 === 0) put(verde, x, g1 + 2.95, y, 1.6, .22, 1.6, k); });
+      // [verande2] il passaggio coperto resta scoperto: il pergolato verde sui pali tolto (il committente: «toglile, coi loro paletti»)
       } });
     // [percorsi] I CIRCUITI SUI TETTI SI VEDONO (percorsi.js): la traccia più chiara sul lastrico fra una scala e l'altra (i passi
     // consumano lo sporco), una lanterna su un ferro color minio a ogni svolta, il bucato teso lungo il tratto più lungo, la corda annodata
