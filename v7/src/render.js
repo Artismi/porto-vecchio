@@ -2006,10 +2006,15 @@ var Render = (function () {
       const tree = /Tree|Pine|Abete|Betulla|Quercia|Palma|Leccio|Pinodom/.test(name);   // [verde4] anche le palme e gli alberi di città fanno ombra
       mdl.parts.forEach(p => {
         const g2 = p.geo.clone(); g2.boundingSphere = sph;
+        if (p.leafy && PRO.attivo && p.mat && p.mat.isMeshStandardMaterial && !(p.mat.defines && 'SG_FOGLIA' in p.mat.defines)) { p.mat.defines = Object.assign(p.mat.defines || {}, { SG_FOGLIA: '' }); p.mat.needsUpdate = true; }   // [scorcio] le chiome: il loro ramo della proposta
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
-        arr.forEach((o, k) => { nE.set(o.rx, o.ry, o.rz, 'YXZ'); nQ.setFromEuler(nE); nV.set(o.x, o.y, o.z); nS.set(o.s, o.s * o.sy, o.s); nM4.compose(nV, nQ, nS); im.setMatrixAt(k, nM4); im.setColorAt(k, nC.set(o.col || '#ffffff')); });
+        arr.forEach((o, k) => { nE.set(o.rx, o.ry, o.rz, 'YXZ'); nQ.setFromEuler(nE); nV.set(o.x, o.y, o.z); nS.set(o.s, o.s * o.sy, o.s);
+          if (p.ricca) { const h1 = vegHash(Math.round(o.x * 7), Math.round(o.z * 7), 17), h2 = vegHash(Math.round(o.z * 5), Math.round(o.x * 3), 29); nS.x *= .9 + h1 * .22; nS.z *= .9 + h2 * .22; nS.y *= .94 + h2 * .12; nE.set(o.rx + (h1 - .5) * .05, o.ry + h2 * 6.28, o.rz + (h2 - .5) * .05, 'YXZ'); nQ.setFromEuler(nE); }   // [scorcio] ogni albero un po' suo: larghezza, altezza, inclinazione, giro
+          nM4.compose(nV, nQ, nS); im.setMatrixAt(k, nM4);
+          if (p.ricca) { const h3 = vegHash(Math.round(o.x * 3), Math.round(o.z * 11), 41); im.setColorAt(k, nC.setRGB(.96 + h3 * .12, .97 + (1 - h3) * .08, .9 + h3 * .1)); } else im.setColorAt(k, nC.set(o.col || '#ffffff')); });   // e la sua tinta
         im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
-        im.castShadow = tree && !LOWQ.on && !PHONE && !(p.leafy && /^(Leccio|Pinodom)_/.test(name)); im.receiveShadow = !tree; grp.add(im);   // [chiarezza] la chioma dei lecci e dei pini di città non fa la macchia nera: c'è Ombra4
+        im.castShadow = tree && !LOWQ.on && !PHONE && (!!p.ricca || !(p.leafy && /^(Leccio|Pinodom)_/.test(name))); im.receiveShadow = !tree; grp.add(im);   // [chiarezza] la chioma dei lecci e dei pini di città non fa la macchia nera: c'è Ombra4   // [scorcio] la chioma ricca la fa (l'ombra colorata della proposta), con la sua sagoma
+        if (p.ricca) { im.visible = !!PRO.ricOn; PRO.ricche.push(im); } else if (p.semplice) { im.visible = !PRO.ricOn; PRO.semplici.push(im); }
       });
     }
     return grp;
@@ -7668,7 +7673,17 @@ var Render = (function () {
   }
   // [verde4] un albero di città istanziato: la specie del posto, la sua scala, l'ombra morbida sotto la chioma
   const ALB4 = [];   // gli alberi chiesti dalle piazze e dai giardini (leafyTree): si istanziano qui coi blocchi di terreno
+  // [scorcio] l'albero non sta sul ciglio di un muraglione: la formella (1,4 m) non entra nella copertina né nel camminamento; se ci cadrebbe,
+  // l'albero si sposta verso l'interno della piazza alta di quel che serve (1,3 m dal muro)
+  function lontanoMuro4(t) {
+    const OP = (M.world && M.world.pedonali) || []; let x = t.x, z = t.z;
+    for (const o of OP) { if (!o.muro || !o.poly) continue; const P = o.poly; let best = 1e9, bx = 0, bz = 0, dentro = false;
+      for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [ax, az] = P[j], [cx, cz] = P[i], dx = cx - ax, dz = cz - az, L2 = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2)), px = ax + dx * u, pz = az + dz * u, d = Math.hypot(x - px, z - pz);
+        if (d < best) { best = d; bx = px; bz = pz; } if ((az > z) !== (cz > z) && x < (cx - ax) * (z - az) / (cz - az) + ax) dentro = !dentro; }
+      if (dentro || best >= 1.3) continue; const L = best || 1e-3; x += (x - bx) / L * (1.3 - best); z += (z - bz) / L * (1.3 - best); }
+    return x === t.x && z === t.z ? t : Object.assign({}, t, { x, z }); }
   function albero4(add, t, r) {
+    t = lontanoMuro4(t);
     const sp = t.sp || (t.kind === 'piazza' && r() < .35 && !(NUOVA4() && !t.largo) ? 'pino' : 'leccio'), y = groundH(t.x, t.z), s = (t.kind === 'filare' || t.kind === 'giardino' ? t.s || 1 : .9 + r() * .2) * (t.big ? 1.12 : 1);
     const COL = ['#ffffff', '#f2f4ea', '#f8f6ee', '#eef2e8'], tilt = { rx: (r() - .5) * .04, rz: (r() - .5) * .04, col: pick(r, COL) };
     if (sp === 'palma') { add('Palma_' + Math.floor(r() * 6), t.x, y - .05, t.z, .82 * s, r() * 6.28, tilt); add('Ombra4', t.x, y + .03, t.z, 2.6 * s, 0, {}); return; }
@@ -9555,7 +9570,8 @@ var Render = (function () {
     for (let k = 0; k < o.basso; k++) { const a = k / o.basso * TAU + r() * .5, d = rx * (.52 + r() * .06); lobes.push([cx + Math.cos(a) * d, cy - ry * .28, cz + Math.sin(a) * d, .5 + r() * .05, 1]); }   // la corona bassa, larga
     for (let k = 0; k < o.alto; k++) { const a = (k + .5) / o.alto * TAU + r() * .5, d = rx * (.3 + r() * .05); lobes.push([cx + Math.cos(a) * d, cy + ry * .12, cz + Math.sin(a) * d, .46 + r() * .04, 1]); }   // la corona alta, stretta
     lobes.push([cx, cy + ry * .38, cz, .44, 2]);   // la calotta
-    lobes.forEach(([x, y, z, s, det], k) => lobo5(L, [x, y, z], [rx * s, ry * s * 1.1 * pt, rx * s], env, pal, seed * 13 + k, det, H, 1));
+    if (o.minuti) for (let k = 0; k < o.minuti; k++) { const a = r() * TAU, h = r() * 2 - 1, d = rx * (.62 + r() * .14) * Math.sqrt(1 - h * h * .5); lobes.push([cx + Math.cos(a) * d, cy + h * ry * .42, cz + Math.sin(a) * d, .2 + r() * .1, 1]); }   // [scorcio] le sotto-masse sul contorno: la sagoma frastagliata
+    lobes.forEach(([x, y, z, s, det], k) => lobo5(L, [x, y, z], [rx * s, ry * s * 1.1 * pt, rx * s], env, pal, seed * 13 + k, det, H, o.amp || 1));
     if (o.carte) frangia4(L, o.carte, lobes.slice(0, o.basso + o.alto).map(q => q.slice(0, 4)), env, o.cella, o.sz, r, [pal[0], pal[1], pal[2]], H, .3, .85);   // poche carte: rompono il contorno, stessa tinta
   }
   // il leccio da viale. [chiarezza] Potato alto come i lecci veri dei corsi: fusto libero fin sopra il piano terra (Chiarezza.ALBERO.fusto),
@@ -9571,7 +9587,9 @@ var Render = (function () {
       tubo4(W, [b0, m, e], [.09, .06, .03], BARK4.leccio, seed + k * 5, H); }
     const lobes = [[env.c[0], env.c[1] + ry * .12, env.c[2], .84]];   // [x, y, z, raggio relativo all'involucro]: la massa
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r() * .6, d = rx * (.42 + r() * .08); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - ry * (.12 + r() * .12), env.c[2] + Math.sin(a) * d, .56 + r() * .06]); }
-    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 }); formella4(W, r); return { wood: W.build(), leaf: L.build(), strati: true }; }   // [coerenza]
+    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 }); formella4(W, r);
+      const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.04, env.r[1] * 1.02, env.r[2] * 1.04] }, PAL5.leccio, seed, H, rng(seed + 7), { basso: 6, alto: 4, carte: Math.round(A4.carte * 1.8), cella: 4, sz: .3, amp: 1.9, minuti: 10 });   // [scorcio] la chioma ricca: tonda e compatta
+      return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [rx * s, ry * s * 1.15, rx * s], env, PAL4.leccio, seed * 13 + k, 2, H, .45));
     frangia4(L, A4.carte, lobes, env, 4, .3, r, PAL4.leccio, H, .2, .85);
     formella4(W, r);
@@ -9586,7 +9604,7 @@ var Render = (function () {
     for (let k = 0; k < NB; k++) { const a = k / NB * TAU + r() * .6, d = env.r[0] * (.45 + r() * .2), e = [env.c[0] + Math.cos(a) * d, env.c[1] - env.r[1] * .4, env.c[2] + Math.sin(a) * d];
       const m = [top[0] + (e[0] - top[0]) * .35, top[1] + (e[1] - top[1]) * .65, top[2] + (e[2] - top[2]) * .35];
       tubo4(W, [top, m, e], [.014 * H, .01 * H, .005 * H], BARK4.pino, seed + k * 7, H); }
-    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); formella4(W, r); return { wood: W.build(), leaf: L.build(), strati: true }; }   // [coerenza]
+    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); formella4(W, r); const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.06, env.r[1] * 2, env.r[2] * 1.06] }, PAL5.pino, seed, H, rng(seed + 7), { basso: 9, alto: 5, carte: 150, cella: 5, sz: H * .045, piatto: .45, amp: 1.8, minuti: 14 }); return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     const lobes = [[env.c[0], env.c[1] + env.r[1] * .3, env.c[2], .42]];
     for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + r() * .4, d = env.r[0] * (.6 + r() * .12); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .5) * env.r[1] * .5, env.c[2] + Math.sin(a) * d, .36 + r() * .08]); }
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r(), d = env.r[0] * .3; lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + env.r[1] * .15, env.c[2] + Math.sin(a) * d, .36]); }
@@ -9596,8 +9614,8 @@ var Render = (function () {
     return { wood: W.build(), leaf: L.build() };
   }
   function abeteModel(name) {
-    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true }], top: H }; }   // [verde4]
-    if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true }], top: H }; }   // [verde4]
+    if (/^Leccio_/.test(name)) { const v = +name.slice(-1) || 0, H = [7.2, 7.6, 7, 7.8][v % 4], g = leccioGeo(6101 + v * 71, H);   /* [chiarezza] fusto libero ≈ 3,9 m + chioma ≈ 3,3 m */ return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true, semplice: !!g.leafR }].concat(g.leafR ? [{ geo: g.leafR, mat: chiomaMat5(), leafy: true, ricca: true }] : []), top: H }; }   // [scorcio] la chioma ricca accanto a quella di oggi (la proposta sceglie)   // [verde4]
+    if (/^Pinodom_/.test(name)) { const v = +name.slice(-1) || 0, H = [11, 12.5, 10][v % 3], g = pinoDomGeo(6907 + v * 89, H); return { parts: [{ geo: g.wood, mat: vdMat(), leafy: false }, { geo: g.leaf, mat: g.strati ? chiomaMat5() : vdMat(), leafy: true, semplice: !!g.leafR }].concat(g.leafR ? [{ geo: g.leafR, mat: chiomaMat5(), leafy: true, ricca: true }] : []), top: H }; }   // [scorcio] la chioma ricca accanto a quella di oggi (la proposta sceglie)   // [verde4]
     if (name === 'Ombra4') {   // [verde4] l'ombra morbida sotto la chioma: un disco a terra che sfuma (raggio 1, si scala con la chioma)
       const geo = new THREE.PlaneGeometry(2, 2); geo.rotateX(-Math.PI / 2);
       const mat = new THREE.MeshBasicMaterial({ color: '#1a1814', alphaMap: blobT2(), transparent: true, opacity: typeof Chiarezza !== 'undefined' ? Chiarezza.ALBERO.ombra : .34,   /* [chiarezza] chiara e morbida */ depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
@@ -12652,7 +12670,7 @@ var Render = (function () {
   //   angoli rientranti più scuri), ao (l'ombra di contatto al piede dei muri, sotto le cose), miniatura (il tilt-shift: una fascia a
   //   fuoco, il sopra e il sotto sfocati), grading (il viraggio dell'ora: i campi pro* dei quattro momenti).
   const PRO = { attivo: typeof location !== 'undefined' && /[?&](scorcio=|proposta\b)/.test(location.search), pezzi: false,
-    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 } };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
+    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   SGU.pro = { on: /[?&]proposta\b/.test(typeof location !== 'undefined' ? location.search : ''),
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
@@ -12663,23 +12681,40 @@ var Render = (function () {
     // strada (hip hop): accenti pieni e saturi, neri profondi nelle ombre di sera e di notte, polvere al piede dei muri, il suolo meno
     // bianco e vissuto, il verde acido spento. Il pastello resta una manopola (spento: troppo da libro per bambini)
     inchiostro: 1, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
-    celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1 };   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
-  Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24 });
-  Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22 });
-  Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.05, proTinta: '#5a3a9a', proTintaK: 0.26 });
-  Object.assign(SGU.momenti.notte, { proOmbra: [0.86, 0.9, 1.14], proLuce: [1.12, 0.99, 0.8], proSat: 1.02, proContrasto: 1.12, proPieno: 0.85, proNeri: 0.07, proTinta: '#24206a', proTintaK: 0.3 });
+    celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1,
+    vivo: .7,
+    chiomeRicche: 1, vento: 1, finestre: 1 };   // le chiome ricche (più lobi, sotto-masse, carte, ogni albero suo, ombra interna, toni a celle, vento); le finestre accese che sembrano finestre (non pannelli gialli)   // la tavolozza di fondo viva: i grigi caldi o freddi (mai fango), i marroni verso cotto e ocra, i verdi in luce verso il giallo-verde, più colore nei medi   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
+  Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1 });
+  Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1 });
+  Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05 });
+  Object.assign(SGU.momenti.notte, { proOmbra: [0.92, 0.94, 1.1], proLuce: [1.12, 0.99, 0.8], proSat: 1.02, proContrasto: 1.04, proPieno: 0.7, proNeri: 0.02, proTinta: '#4a46a0', proTintaK: 0.4, proEsp: 1.3 });
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 } }));
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 } }));
     C.common += `
 #ifdef STANDARD
 varying vec3 vSgW;
-uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4;   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
+float sgVetroK = -1.;
+#ifdef SG_FOGLIA
+varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
+#endif
+uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), -, -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
 float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
               mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }
+#endif`;
+    C.begin_vertex += `
+#if defined( STANDARD ) && defined( SG_FOGLIA )
+{ vec3 o = vec3( 0. );
+#ifdef USE_INSTANCING
+  o = instanceMatrix[ 3 ].xyz;
+#endif
+  vSgO = ( modelMatrix * vec4( o, 1. ) ).xyz;
+  float ph = dot( vSgO.xz, vec2( .37, .21 ) ), hh = max( transformed.y - 2.2, 0. ), t = sgP2.z;   // il vento: la chioma ondeggia più in alto, ogni albero col suo passo
+  transformed.x += ( sin( t * 1.3 + ph + transformed.y * .35 ) + .4 * sin( t * 3.1 + ph * 2. + transformed.z ) ) * .035 * hh * sgP3.w;
+  transformed.z += ( cos( t * 1.1 + ph * 1.7 + transformed.y * .3 ) + .4 * cos( t * 2.7 + ph + transformed.x ) ) * .03 * hh * sgP3.w; }
 #endif`;
     C.project_vertex += `
 #ifdef STANDARD
@@ -12691,6 +12726,14 @@ float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2
 #endif`;
     // la mano di colore: la scala del muro (chiaro in alto, scuro al piede), la variazione larga di valore e di tinta, la pennellata
     C.color_fragment += `
+#if defined( SG_VETRO ) && defined( STANDARD )
+{ float sgLit = max( vtB1.r, max( vtB1.g, vtB1.b ) ), sgN = sgP5.y;   // quanto è sera (dalla luce dell'ora: i pannelli hanno la stessa luce propria giorno e notte)   // il pannello acceso dietro al vetro: di giorno è vetro (scuro, col cielo), di sera la luce calda graduata
+  if ( sgLit > .01 && vtB1.r >= vtB1.g && vtB1.g >= vtB1.b && sgP5.x > 0. ) { float k = sgP5.x;   // solo i toni caldi (le finestre): il neon e le insegne restano accesi
+    float sgV = sgN3( floor( vSgW * .7 ) + 3.3 ), sgY = fract( ( vSgW.y - .3 ) / 3. );
+    vec3 vetro = vec3( .12, .15, .2 ) + vec3( .06, .07, .08 ) * smoothstep( .3, .9, sgY );
+    diffuseColor.rgb = mix( diffuseColor.rgb, vetro, k * ( 1. - sgN ) * .92 );
+    sgVetroK = ( .08 + .92 * sgN ) * ( .55 + .35 * sgV ) * ( .75 + .25 * smoothstep( .95, .2, sgY ) ); } }   // ogni finestra la sua luce (la tenda, la lampada), più calda in basso
+#endif
 #ifdef SG_BUCO
 diffuseColor.rgb = mix( diffuseColor.rgb, vec3( .085, .07, .15 ), sgP4.w );   // il vano nero: un fondo blu-viola, come l'ombra della strada
 #endif
@@ -12713,6 +12756,10 @@ if ( sgP4.y + sgP4.z > 0. ) {
   float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
   diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
 }
+#endif`;
+    C.emissivemap_fragment += `
+#if defined( SG_VETRO ) && defined( STANDARD )
+if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   // [scorcio] la luce della finestra graduata
 #endif`;
     // la micro-normale dipinta (e l'acqua che si muove): la pendenza di un rumore, letta con le derivate dello schermo
     C.normal_fragment_maps += `
@@ -12755,13 +12802,17 @@ ${OM}
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
 #endif
-#if NUM_DIR_LIGHTS > 0
-  if ( sgP1.w > 0. ) {   // il verde: la luce che passa dalle foglie dal lato in ombra, il bordo, il cappello di luce in cima
+#if NUM_DIR_LIGHTS > 0 && defined( SG_FOGLIA )
+  if ( sgP1.w > 0. ) {   // il verde delle chiome (solo i materiali delle foglie: un muro o una persiana verde non si accendono): la luce che passa dal lato in ombra, il bordo, il cappello di luce in cima
     float sgG = smoothstep( .008, .06, diffuseColor.g - max( diffuseColor.r, diffuseColor.b ) ) * sgP1.w;
     vec3 L = directionalLights[ 0 ].direction; float nl = dot( geometry.normal, L );
     reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * directionalLights[ 0 ].color * ( .55 * pow( saturate( .6 - nl ), 1.5 ) * vec3( 1.05, 1.2, .62 ) );
     reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * ( ambientLightColor * frS * frS * 2.2 + hemisphereLightColor( sgNw ) * .4 * smoothstep( .35, .95, sgNw.y ) );
-    reflectedLight.indirectDiffuse += sgG * sgP4.x * smoothstep( .45, .6, sgNw.y ) * vec3( .16, .13, .0 );   // la nuvola gialla in cima (a celle)
+    reflectedLight.indirectDiffuse += sgG * ( .4 + sgP4.x ) * smoothstep( .4, .58, sgNw.y ) * diffuseColor.rgb * vec3( 1.1, 1.05, .2 ) * 1.6;   // la nuvola giallo-verde in luce (a celle)
+    { vec2 rad = vSgW.xz - vSgO.xz; float dentro = smoothstep( .1, -.55, dot( normalize( rad + 1e-4 ), normalize( sgNw.xz + 1e-4 ) ) ) * ( 1. - smoothstep( .2, .7, sgNw.y ) );   // la faccia che guarda il fusto: coperta da un'altra massa
+      reflectedLight.directDiffuse *= 1. - sgG * dentro * .55; reflectedLight.indirectDiffuse *= 1. - sgG * dentro * .4;
+      reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * vec3( -.02, .01, .07 ) * smoothstep( .2, -.3, nl ) * 1.5;   // il tono freddo dell'ombra
+      reflectedLight.indirectDiffuse += sgG * directionalLights[ 0 ].color * vec3( .5, .55, .1 ) * pow( frS, 4. ) * smoothstep( -.3, .3, -nl ) * .5; }   // l'accento di luce trasmessa sul bordo, controsole
   }
 #endif
 #ifdef SG_ACQUA
@@ -12784,6 +12835,8 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
   // l'acqua: i materiali d'acqua dei pezzi (la fontana, le vasche) prendono il loro ramo
   function sguProAcqua() { if (!PRO.attivo) return 0; let n = 0; const visti = new Set();
     scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (visti.has(m) || !m.isMeshStandardMaterial || !/^acqua/.test(m.name || '')) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_ACQUA: '' }); m.needsUpdate = true; n++; }); });
+    // i vetri delle case nel secchio comune (peso_vetro.js: l'attributo vt1): le finestre accese della proposta
+    scene.traverse(o => { const m = o.material; if (!o.isMesh || !m || Array.isArray(m) || !m.isMeshStandardMaterial || !o.geometry || !o.geometry.attributes.vt1 || (m.defines && 'SG_VETRO' in m.defines)) return; m.defines = Object.assign(m.defines || {}, { SG_VETRO: '' }); m.needsUpdate = true; n++; });
     // i vani neri pieni (la bocca della metropolitana, i pozzi): il loro ramo, per non restare una macchia illeggibile
     scene.traverse(o => { const m = o.material; if (!m || Array.isArray(m) || visti.has(m) || !m.isMeshStandardMaterial || !m.color || m.map || Math.max(m.color.r, m.color.g, m.color.b) > .03) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_BUCO: '' }); m.needsUpdate = true; n++; });
     return n; }
@@ -12792,7 +12845,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     const P = SGU.pro, k = PRO.attivo && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
+    { const ric = !!(k && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
+    PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
+    if (k && S && S.proEsp) renderer.toneMappingExposure *= 1 + (S.proEsp - 1) * (P.grading || 0);   // l'esposizione dell'ora nella proposta (la notte meno chiusa)
     if (S && S.proTinta) { u3.x = S.proTinta.r * S.proTintaK; u3.y = S.proTinta.g * S.proTintaK; u3.z = S.proTinta.b * S.proTintaK; }
   }
   const SGT = { c: new THREE.Color(), c2: new THREE.Color(), blob: null, cielo: { value: new THREE.Vector3() }, letter: 0, t: 0 };
@@ -12884,6 +12940,16 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           if (pV.x > 0.) {   // il verde acido (i prati chiari e saturi) verso la salvia: le chiome scure non si toccano
             float gx = c.g - max(c.r, c.b), ac = smoothstep(.06, .2, gx) * smoothstep(.3, .55, c.g) * pV.x;
             c = mix(c, vec3(.55 * c.g + .3 * c.r, .8 * c.g + .05, .42 * c.g + .35 * c.b), ac); }
+          if (pV.w > 0.) {   // la tavolozza viva: si legge la tinta e la si porta dove deve stare, più piena nei medi (né i neri né i bianchi)
+            float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), ch = mx - mn, lv = dot(c, vec3(.299, .587, .114)), mid = smoothstep(.06, .3, lv) * (1. - smoothstep(.7, .95, lv));
+            float gri = 1. - smoothstep(.04, .12, ch);                                                   // i grigi: un filo caldo (il rosso sopra il blu) o freddo
+            c += pV.w * gri * mid * (c.r >= c.b ? vec3(.022, .008, -.02) : vec3(-.016, .0, .026));
+            float mar = smoothstep(.04, .12, ch) * step(c.b, c.g) * step(c.g, c.r) * (1. - smoothstep(.55, .8, (c.g - c.b) / max(c.r - c.b, 1e-3)));   // i marroni (rosso > verde > blu, non gialli): verso cotto e ocra puliti
+            c = mix(c, c * vec3(1.1, .98, .8) + vec3(.012, .004, 0.), pV.w * mar * mid);
+            float ver = smoothstep(.02, .08, c.g - max(c.r, c.b));                                         // i verdi: in luce verso il giallo-verde, vivi
+            c = mix(c, c * vec3(1.06, 1.08, .78) + vec3(.02, .03, 0.) * smoothstep(.25, .55, lv), pV.w * ver * mid);
+            float l2 = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(l2), c, 1. + .22 * pV.w * mid * (1. - gri)), 0.);   // più colore nei medi
+          }
           if (pI.w > 0.) {   // il pastello high-key: i medi e gli scuri si alzano verso una crema calda, l'ombra prende il lilla
             float l0 = dot(c, vec3(.299, .587, .114));
             c = mix(c, c * .78 + .22 * vec3(1., .9, .82) * (.35 + .65 * sqrt(max(c, 0.))), pI.w);
@@ -12939,7 +13005,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
-    if (PRO.attivo) sguProTick(S);   // [scorcio] le manopole della proposta
+    if (PRO.attivo) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -12960,7 +13026,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
       U.tD.value = rt.depthTexture; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
       U.pK.value.set(k * P.spigoli, k * P.pieghe, k * P.ao, Math.max(1, P.aoRaggio * h / 1080));
-      U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), 0); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
+      U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), k * (P.vivo || 0)); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
       if (g > 0 && K.proOmbra) { U.sh.value.set(K.ombra[0] * (1 + (K.proOmbra[0] - 1) * g), K.ombra[1] * (1 + (K.proOmbra[1] - 1) * g), K.ombra[2] * (1 + (K.proOmbra[2] - 1) * g));
         U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
         U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
@@ -13703,6 +13769,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     });
     scene.add(g); window.__propaganda = { ritratti: nR, slogan: nS };
   }
+  const VLIT1 = {}, verLit1 = c => VLIT1[c] || (VLIT1[c] = litMat(c));   // [scorcio] i vetri accesi delle verande
   function buildDetails() {
     const T = G.T, mats = [], plane = (k) => mats[k] || (mats[k] = new THREE.MeshLambertMaterial({ map: posterTex(k), transparent: k % 8 === 7, alphaTest: k % 8 === 7 ? .3 : 0, side: THREE.DoubleSide, emissive: '#2a2830' }));
     const metal = sm('#4a4e54', { roughness: .6, metalness: .5 }), dark = sm('#1c1c22', { roughness: 1 }), yel = sm('#c8a82a', { roughness: .8 }), red = sm('#a02a24', { roughness: .7 }), wood = sm('#6a5238', { roughness: 1 }), white = sm('#d8d4c8', { roughness: 1 });
@@ -13823,7 +13890,12 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           if (!copre) { const a = mkA(sd, u), m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.1), lam('m' + (k % 6), muralTex(k))); ad(a, m, 0, yy, .09); } }
         if (fl >= 3 && r() < .3) { const a = mkA(sd, 1 + r() * (sd.len - 2)), f = 1 + Math.floor(r() * (fl - 1)), y = base + MG + (f - 1) * MF + .3, k = [0, 3, 5][Math.floor(r() * 3)];
           const m = new THREE.Mesh(new THREE.PlaneGeometry(.8, 2.4), lam('b' + k, posterTex(k))); ad(a, m, 0, y + 1.2, .5); ad(a, box(.05, .05, .9, metal), 0, y + 2.45, .45); m.rotation.y = r() < .5 ? 0 : 0; m.rotation.x = -.04; const m2 = m.clone(); m2.rotation.y = Math.PI; m2.position.z = .52; a.add(m2); }
-        if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); ad(a, new THREE.Mesh(new THREE.PlaneGeometry(1.3, .9), glowM(r() < .6 ? '#ffd890' : '#38e8ff')), 0, y + .8, .81); }
+        if (fl >= 3 && r() < .28) { const f = 2 + Math.floor(r() * (fl - 2)), a = mkA(sd, 1.2 + r() * (sd.len - 2.4)), y = base + MG + (f - 1) * MF; ad(a, box(1.7, 1.5, .8, sm(WALLC[Math.floor(r() * 4)], { roughness: 1 })), 0, y + .75, .4); ad(a, box(1.8, .1, .9, sm('#bcc0c6', { roughness: 1 })), 0, y + 1.55, .42); { const wy = y + .8, warm = r() < .6, legno = sm('#3a3430', { roughness: .8 });   // [scorcio] la finestra della veranda: era un pannello giallo (o azzurro) pieno, senza luce né telaio, acceso anche di giorno
+            ad(a, box(1.04, .82, .06, legno), 0, wy, .8);   // il telaio
+            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.9, .68), verLit1(warm ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0')), 0, wy, .834);   // il vetro: buio di giorno, la luce calda (o la tele) la sera, come le altre finestre
+            ad(a, box(.04, .68, .03, legno), 0, wy, .845);   // il montante
+            ad(a, new THREE.Mesh(new THREE.PlaneGeometry(.4, .5), sm(pick(r, ['#d8c8a8', '#c8a890', '#b8c0a8']), { roughness: 1 })), r() < .5 ? -.22 : .22, wy + .07, .842);   // la tenda tirata a metà
+            (window.__rt = window.__rt || {}).verande = ((window.__rt || {}).verande || 0) + 1; } }
       });
       if (g.children.length) { const gm = shadowed(mergeGroup(g), false, false); ownMats(gm, rec); scene.add(gm); rec.det2Grp = gm; n++; }
     });

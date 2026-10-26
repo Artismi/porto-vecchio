@@ -95,6 +95,27 @@ var Game = (function () {
     return null;
   }
   const walkM = BAR.length ? (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS)) && !muroM(x, y) : (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
+  // [pedonale] DOVE I MEZZI NON VANNO (NOV, una casella per cella): 2 = le scale e i gradini (le caselle STAIRS, le scale dei gradoni, le
+  // scalinate, i muraglioni), mai; 1 = le piazze pedonali, la piazza alta, le fontane, i sottopassi pedonali e le vie pedonali (rd.pedonale),
+  // vietate a chi ci entra da fuori (chi c'è già, posato o spinto, ne esce per la via più corta). La carreggiata di una via dei veicoli
+  // (non pedonale, non sterrato) resta sempre libera, tranne i gradini. La usano la fisica dei mezzi (vehicleFree), i percorsi dei mezzi
+  // (findPath con veicolo) e la sosta (parkSpot). La BMX tascabile (pocket) sale e scende le scale come prima (i salti).
+  const NOV = new Uint8Array(GW * GH);
+  { const dentroP = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+    const segna = (o, k) => { let x0, x1, y0, y1; if (o.r !== undefined) { x0 = o.x - o.r; x1 = o.x + o.r; y0 = o.y - o.r; y1 = o.y + o.r; } else { const xs = o.poly.map(q => q[0]), ys = o.poly.map(q => q[1]); x0 = Math.min(...xs); x1 = Math.max(...xs); y0 = Math.min(...ys); y1 = Math.max(...ys); }
+      for (let ty = Math.max(0, Math.floor(y0 / TS)); ty <= Math.min(GH - 1, Math.floor(y1 / TS)); ty++) for (let tx = Math.max(0, Math.floor(x0 / TS)); tx <= Math.min(GW - 1, Math.floor(x1 / TS)); tx++) {
+        const cx = tx * TS + TS / 2, cy = ty * TS + TS / 2; if (o.r !== undefined ? Math.hypot(cx - o.x, cy - o.y) < o.r : dentroP(o.poly, cx, cy)) { const c = ty * GW + tx; NOV[c] = Math.max(NOV[c], k); } } };
+    const lungo = (rd, m, f) => { const P = rd.pts, hw = (rd.w || 4) / 2 + m; for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1];
+      for (let ty = Math.max(0, Math.floor((Math.min(ay, by) - hw) / TS)); ty <= Math.min(GH - 1, Math.floor((Math.max(ay, by) + hw) / TS)); ty++) for (let tx = Math.max(0, Math.floor((Math.min(ax, bx) - hw) / TS)); tx <= Math.min(GW - 1, Math.floor((Math.max(ax, bx) + hw) / TS)); tx++)
+        if (dSeg(tx * TS + TS / 2, ty * TS + TS / 2, [ax, ay, bx, by]) < hw) f(ty * GW + tx); } };
+    (W0.pedonali || []).forEach(o => { if (!o.poly && o.r === undefined) return; segna(o, o.tipo === 'scala' || o.tipo === 'scalinata' || o.tipo === 'muraglione' ? 2 : 1); });
+    (W0.roads || []).forEach(rd => { if (rd.pedonale && rd.pts && rd.pts.length > 1) lungo(rd, Math.max(0, TS * .75 - (rd.w || 4) / 2), c => { NOV[c] = Math.max(NOV[c], 1); }); });
+    const veic = rd => rd.pts && rd.pts.length > 1 && !rd.pedonale && rd.kind !== 'sterrato' && (rd.kind !== 'vicolo' || (rd.w >= 4.5 && !(rd.monte || rd.traccia || rd.vialetto || rd.sottopasso)));   // le vie dei veicoli (come pedonale.js)
+    (W0.roads || []).forEach(rd => { if (veic(rd)) lungo(rd, -.3, c => { if (NOV[c] === 1) NOV[c] = 0; }); });
+    if (T.STAIRS !== undefined) for (let c = 0; c < GW * GH; c++) if (grid[c] === T.STAIRS) NOV[c] = 2; }
+  const novAt = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? 0 : NOV[ty * GW + tx]; };
+  // un punto dove un mezzo può stare: libero a piedi, mai sui gradini; nelle zone pedonali solo se il mezzo ci sta già dentro (ne esce)
+  const driveM = (x, y, dentro) => walkM(x, y) && (k => k === 0 || (k === 1 && !!dentro))(novAt(x, y));
   // [costa] il mare: si nuota nell'acqua di mare dentro la mappa; le barche vanno dove è fondo almeno mezzo metro (World.SEA.depth)
   const SEA = W0.SEA || null;
   const seaT = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH && grid[ty * GW + tx] === T.WATER && W0.zone[ty * GW + tx] === W0.Z.MARE;
@@ -166,7 +187,7 @@ var Game = (function () {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
       const tx = tx0 + dx, ty = ty0 + dy, v = tileAt(tx, ty); if (!walkT(tx, ty)) continue;
       if (!wantRoad && v === T.VIA) continue;
-      let ok = true; for (let j = -1; j <= 1 && ok; j++) for (let i = -1; i <= 1 && ok; i++) if (!walkT(tx + i, ty + j) || (!wantRoad && tileAt(tx + i, ty + j) === T.VIA)) ok = false;
+      let ok = true; for (let j = -1; j <= 1 && ok; j++) for (let i = -1; i <= 1 && ok; i++) if (!walkT(tx + i, ty + j) || (!wantRoad && tileAt(tx + i, ty + j) === T.VIA) || NOV[clamp(ty + j, 0, GH - 1) * GW + clamp(tx + i, 0, GW - 1)]) ok = false;   // [pedonale] mai sui gradini né nelle zone pedonali
       if (ok) return { x: tx * TS + TS / 2, y: ty * TS + TS / 2 };
     }
     return { x, y };
@@ -174,10 +195,16 @@ var Game = (function () {
 
   // A* con heap binario
   const PF = { gen: 0, cap: 70000 };
-  function findPath(sx, sy, gx, gy, roadCost) {
+  function findPath(sx, sy, gx, gy, roadCost, veicolo) {
     let s = [clamp(Math.floor(sx / TS), 0, GW - 1), clamp(Math.floor(sy / TS), 0, GH - 1)];
     let g = [Math.floor(gx / TS), Math.floor(gy / TS)];
     if (!walkT(g[0], g[1])) return [];
+    // [pedonale] un mezzo: niente scale né zone pedonali (si esce da quella in cui si sta); la meta dentro una zona vietata diventa la casella
+    // libera più vicina fuori (la volante si ferma al bordo della piazza, gli agenti proseguono a piedi)
+    const VEI = !!veicolo, nS = VEI ? NOV[s[1] * GW + s[0]] : 0;
+    if (VEI && NOV[clamp(g[1], 0, GH - 1) * GW + clamp(g[0], 0, GW - 1)]) { let best = null, bd = 1e9;
+      for (let r = 1; r < 24 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = g[0] + i, ty = g[1] + j; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH || NOV[ty * GW + tx] || !walkT(tx, ty)) continue; const d = i * i + j * j; if (d < bd) { bd = d; best = [tx, ty]; } }
+      if (!best) return []; g = best; gx = best[0] * TS + TS / 2; gy = best[1] * TS + TS / 2; }
     // [pedonale] una casella a cavallo di un muraglione: se il suo centro sta dall'altra parte del muro, si parte (o si arriva) dalla
     // casella accanto il cui centro sta dalla parte del punto
     if (BAR.length) { const lato = (c, x, y) => { if (!taglia(x, y, c[0] * TS + TS / 2, c[1] * TS + TS / 2)) return c; let best = c, bd = 1e9;
@@ -207,6 +234,7 @@ var Game = (function () {
       for (let k = 0; k < 8; k++) {
         const dx = DX8[k], dy = DY8[k];
         const nx = cx + dx, ny = cy + dy; if (!walkT(nx, ny)) continue;
+        if (VEI) { const q = NOV[ny * GW + nx]; if (q === 2 || (q === 1 && !(nS === 1 && NOV[cur] === 1))) continue; }   // [pedonale] i mezzi
         if (BLK[cur] & (1 << k)) continue;   // [pedonale] un muraglione, un parapetto, il fianco di una scala
         if (k >= 4 && (!walkT(cx + dx, cy) || !walkT(cx, cy + dy))) continue;
         const ni = ny * GW + nx; if (shut[ni] === gen) continue;
@@ -214,7 +242,7 @@ var Game = (function () {
         if (nc < C(ni)) { seen[ni] = gen; cost[ni] = nc; came[ni] = cur; via[ni] = -1; push(ni, nc + Math.hypot(nx - hx, ny - hy) * 1.05); }
       }
       // [pedonale] le scale: dall'attacco all'uscita (i soli passaggi fra il piano basso e quello alto)
-      const LK = LINK.size ? LINK.get(cur) : null;
+      const LK = LINK.size && !VEI ? LINK.get(cur) : null;   // [pedonale] i mezzi non prendono le scale
       if (LK) for (let q = 0; q < LK.length; q++) { const l = LK[q], ni = l.to; if (shut[ni] === gen || !walkT(ni % GW, (ni / GW) | 0)) continue; const nc = cost[cur] + l.cost;
         if (nc < C(ni)) { seen[ni] = gen; cost[ni] = nc; came[ni] = cur; via[ni] = q; PF.vl = PF.vl || new Map(); PF.vl.set(ni, l); push(ni, nc + Math.hypot((ni % GW) - hx, ((ni / GW) | 0) - hy) * 1.05); } }
     }
@@ -1661,7 +1689,7 @@ var Game = (function () {
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
   function vehicleFree(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : (px, py) => driveM(px, py, dn);   // [costa]   // [pedonale] i mezzi non salgono le scale né entrano nelle zone pedonali
     for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
     return true;
   }
@@ -1700,7 +1728,7 @@ var Game = (function () {
   function loosen(st, v, secs) { if (v.traffic || (v.police && v.rider === 'npc')) v.looseUntil = Math.max(v.looseUntil || 0, st.clock + secs); }
   // primo punto del telaio che finisce dentro qualcosa di solido
   function vehicleHitPoint(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, pass = K.boat ? boatM : walkM;   // [costa]
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : (px, py) => driveM(px, py, dn);   // [costa] [pedonale]
     let bx = 0, by = 0, n = 0;
     for (const [a, b] of [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]]) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!pass(px, py)) { bx += px; by += py; n++; } }
     return n ? { x: bx / n, y: by / n } : null;
@@ -2021,7 +2049,7 @@ var Game = (function () {
     const p = st.player;
     if (v.leaving) {
       v.siren = false;
-      const hm = v.home || { x: 0, y: 0 }; if (!v.path || !v.path.length) v.path = findPath(v.x, v.y, hm.x, hm.y, 1);
+      const hm = v.home || { x: 0, y: 0 }; if (!v.path || !v.path.length) v.path = findPath(v.x, v.y, hm.x, hm.y, 1, true);
       const w = v.path[0]; if (w && dist(v.x, v.y, w.x, w.y) < 2.5) v.path.shift();
       vehicleMotion(st, v, dt, w ? Math.atan2(w.y - v.y, w.x - v.x) : v.ang, 1, false, false, false);
       if (dist(v.x, v.y, st.player.x, st.player.y) > 110 || !w || v.stuck > 4) v.hidden = true;
@@ -2029,7 +2057,7 @@ var Game = (function () {
       return;
     }
     if (v.arrived || v.looseUntil > st.clock) { freeRoll(st, v, dt, v.arrived); return; }
-    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > 3) { const tgt = st.lastSeen || p; v.path = findPath(v.x, v.y, tgt.x, tgt.y, 1); v.pathT = st.clock; }
+    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > 3) { const tgt = st.lastSeen || p; v.path = findPath(v.x, v.y, tgt.x, tgt.y, 1, true); v.pathT = st.clock; }
     const w = v.path[0];
     const tgt = st.lastSeen || p;
     if (!w || dist(v.x, v.y, tgt.x, tgt.y) < 9 || v.stuck > 5) { v.arrived = true; spawnCrew(st, v); return; }
@@ -2545,7 +2573,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]

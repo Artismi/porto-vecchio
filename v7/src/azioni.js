@@ -251,7 +251,7 @@ var Azioni = (function () {
     }
     if (watched(st, n)) {
       if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5) || []; }   // [vivi] per le strade, non per i marciapiedi
+      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5, true) || []; }   // [vivi] per le strade, non per i marciapiedi
       const w = v.dpath[0];
       if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
       v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;

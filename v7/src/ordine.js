@@ -737,7 +737,7 @@ var Ordine = (function () {
   function driveStep(st, v, dt) {
     const T = v.driveTo; if (!T || v.rider === 'player' || v.wreck) return;
     if (v.rider !== 'npc') v.rider = 'npc';
-    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > (T.chase ? 2.5 : 8)) { v.path = G.findPath(v.x, v.y, T.x, T.y, 1) || []; v.pathT = st.clock; }
+    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > (T.chase ? 2.5 : 8)) { v.path = G.findPath(v.x, v.y, T.x, T.y, 1, true) || []; v.pathT = st.clock; }
     const d = dist(v.x, v.y, T.x, T.y);
     if (d < (T.chase ? 6 : 3) || (!v.path.length && d < 14)) {
       v.speed *= .8; v.vx = (v.vx || 0) * .8; v.vy = (v.vy || 0) * .8;

@@ -82,7 +82,12 @@ const srv = http.createServer((req, res) => {
       const prima = await pg.evaluate(D => { const P = window.__SGU.pro, b = {}; for (const k in D) { b[k] = P[k]; P[k] = D[k]; } return b; }, D);
       for (const inq of INQ) for (const ora of ORE_P) await scatta('proposta-' + nome, inq, ora);
       await pg.evaluate(b => Object.assign(window.__SGU.pro, b), prima); }
-    const info = await pg.evaluate(() => ({ scorcio: window.__pv.R.scorcio, pro: window.__SGU.pro, gpu: window.__pv.R.gpuTimes && window.__pv.R.gpuTimes.info }));
+    // le finestre accese (i pannelli caldi dietro al vetro, peso_vetro.js): quante facce nello scorcio
+    const finestre = await pg.evaluate(() => { const V = window.PesoVetro && PesoVetro.voci1; if (!V) return null; let tri = 0, voci = new Set();
+      window.__pv.R.__models.scene.traverse(o => { const A = o.isMesh && o.geometry && o.geometry.attributes.vt1; if (!A) return; for (let i = 0; i < A.count; i += 3) { const c = V[Math.round(A.getX(i))]; if (c && c[4] > .01 && c[4] >= c[5] && c[5] >= c[6]) { tri++; voci.add(Math.round(A.getX(i))); } } });
+      return { facce: Math.round(tri / 2), toni: voci.size }; });
+    console.log('finestre accese (pannelli caldi):', JSON.stringify(finestre));
+    const info = await pg.evaluate(() => ({ finestre: null, scorcio: window.__pv.R.scorcio, pro: window.__SGU.pro, gpu: window.__pv.R.gpuTimes && window.__pv.R.gpuTimes.info }));
     fs.writeFileSync(path.join(outDir, 'scorcio_foto.json'), JSON.stringify({ quando: new Date().toISOString(), query: Q, W, H, errori, foto: fatti, info }, null, 1));
     console.log('fatto in', sec(), '· foto', fatti.length, '· errori', errori.length, '·', outDir);
     codice = errori.length ? 1 : 0;

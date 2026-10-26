@@ -91,5 +91,41 @@ ok(!segni.length, `nessun segno da strada (zebre, linee d'arresto, STOP, frecce)
 const sulPed = strisce.filter(q => { const rd = ped.find(r => { const P = r.pts; for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((q.x - ax) * dx + (q.y - ay) * dy) / L2)); if (Math.hypot(ax + dx * t - q.x, ay + dy * t - q.y) < r.w / 2 - .3) return true; } return false; });
   return rd && !VR.some(v => { const P = v.pts; for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((q.x - ax) * dx + (q.y - ay) * dy) / L2)); if (Math.hypot(ax + dx * t - q.x, ay + dy * t - q.y) < v.w / 2 + .5) return true; } return false; }); });
 ok(!sulPed.length, `nessun segno da strada sulle vie pedonali (${sulPed.length})`);
+// ---------------- 4. NESSUN MEZZO SULLE SCALE NÉ NELLE ZONE PEDONALI ----------------
+// (il committente: «che fa la polizia sulle scale con la macchina?», «ci sale scambiandole per una strada»). La griglia NOV di game.js,
+// la fisica dei mezzi (vehicleFree con driveM), i percorsi dei mezzi (findPath con veicolo) e la sosta (parkSpot)
+{ const GW = G.GW, NOV = G.NOV, at = (x, y) => G.novAt(x, y);
+  const scale = OP.filter(o => o.tipo === 'scala' || o.tipo === 'scalinata'), senza = scale.filter(o => { const c = o.poly.reduce((a, q) => [a[0] + q[0] / o.poly.length, a[1] + q[1] / o.poly.length], [0, 0]); return at(c[0], c[1]) !== 2; });
+  ok(scale.length && !senza.length, `le ${scale.length} scale e scalinate sono vietate ai mezzi${senza.length ? ' (libere: ' + senza.map(o => o.id).join(', ') + ')' : ''}`);
+  let stairs = 0, stairsNo = 0; for (let c = 0; c < GW * G.GH; c++) if (W.grid[c] === T.STAIRS) { stairs++; if (NOV[c] !== 2) stairsNo++; }
+  ok(!stairsNo, `ogni casella di gradini (${stairs}) è vietata ai mezzi`);
+  const ott = OP.find(o => o.tipo === 'piazza_alta'), oc = ott.poly.reduce((a, q) => [a[0] + q[0] / 8, a[1] + q[1] / 8], [0, 0]);
+  const oq = [oc[0] + (ott.poly[0][0] - oc[0]) * .55, oc[1] + (ott.poly[0][1] - oc[1]) * .55];   // fra la fontana e il bordo
+  ok(at(oq[0], oq[1]) >= 1 && !G.driveM(oq[0], oq[1]) && G.walkM(oq[0], oq[1]), `la piazza alta dell'Ottagono: a piedi sì, coi mezzi no`);
+  let suCorsia = 0; (W.lanes || []).forEach(l => { const P = l.pts; for (let k = 0; k < P.length - 1; k++) for (let t = 0; t < 1; t += .1) { const x = P[k][0] + (P[k + 1][0] - P[k][0]) * t, y = P[k][1] + (P[k + 1][1] - P[k][1]) * t; if (at(x, y)) suCorsia++; } });
+  ok(suCorsia === 0, `nessun punto delle corsie del traffico in una casella vietata ai mezzi (${suCorsia})`);
+  // le vie pedonali: le loro caselle (fuori dalle carreggiate) sono vietate
+  const pedv = W.roads.filter(r => r.pedonale && r.pts && r.pts.length > 1); let pedLib = 0, pedTot = 0;
+  pedv.forEach(r => { const P = r.pts; for (let k = 0; k < P.length - 1; k++) { const x = (P[k][0] + P[k + 1][0]) / 2, y = (P[k][1] + P[k + 1][1]) / 2; if (VR.some(v => (() => { const P = v.pts; for (let i = 0; i < P.length - 1; i++) { const [ax, ay] = P[i], [bx, by] = P[i + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(ax + dx * t - x, ay + dy * t - y) < v.w / 2 + TS) return true; } return false; })())) continue; pedTot++; if (!at(x, y)) { pedLib++; if (process.env.PEDDBG) console.log(r.id, r.w, x.toFixed(1), y.toFixed(1), G.tileAt(Math.floor(x / TS), Math.floor(y / TS))); } } });
+  ok(pedTot > 0 && pedLib === 0, `le vie pedonali (${pedv.length}, ${pedTot} tratti fuori dalle carreggiate) sono vietate ai mezzi (${pedLib} liberi)`);
+  // la sosta: parkSpot non posa un mezzo sui gradini né in piazza
+  const sp = G.parkSpot(oc[0], oc[1], false); ok(!at(sp.x, sp.y), `la sosta chiesta in mezzo all'Ottagono finisce fuori dalla piazza (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})`);
+  // l'inseguimento simulato: una volante sulla via sotto il gradone dell'Ottagono insegue chi sta sulla piazza alta; un'auto in fuga a tutto
+  // gas contro la scala. Mai una casella di scala sotto il telaio, mai dentro la piazza
+  const st = G.create(12345), K = G.VK.polizia;
+  const sc = W.passaggi.find(q => q.salita && Math.hypot(q.x - oc[0], q.y - oc[1]) < 40) || W.passaggi.find(q => q.salita), piede = sc.pts[0];
+  const parti = G.parkSpot(piede[0], piede[1], true);
+  const telaio = v => { const c = Math.cos(v.ang), s2 = Math.sin(v.ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05; return [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [0, 0]].map(([a, b]) => at(v.x + a * c - b * s2, v.y + a * s2 + b * c)); };
+  const prova = (nome, v, passo, sec) => { let sc2 = 0, pz = 0, mosso = 0, x0 = v.x, y0 = v.y; for (let t = 0; t < sec; t += 1 / 30) { passo(v, 1 / 30); const q = telaio(v); if (q.some(k => k === 2)) sc2++; if (q[4] === 1) pz++; mosso = Math.max(mosso, Math.hypot(v.x - x0, v.y - y0)); }
+    ok(!sc2 && !pz, `${nome}: mai sui gradini (${sc2}) né dentro la piazza (${pz}), mosso fino a ${mosso.toFixed(1)} m`); };
+  { const v = G.makeVehicle(st, { id: 'prova_volante', kind: 'polizia', x: parti.x, y: parti.y, ang: 0, rider: 'npc' }); st.vehicles.push(v); let path = [], pt = 9;
+    prova('la volante che insegue sulla piazza alta', v, (v, dt) => { pt += dt; if (pt > 2.5 || !path.length) { path = G.findPath(v.x, v.y, oc[0], oc[1], 1, true) || []; pt = 0; }
+      while (path.length > 1 && Math.hypot(path[0].x - v.x, path[0].y - v.y) < 3) path.shift(); const w = path[0] || { x: oc[0], y: oc[1] };
+      G.vehicleMotion(st, v, dt, Math.atan2(w.y - v.y, w.x - v.x), 1, false, true, false); }, 25);
+    const pp = G.findPath(parti.x, parti.y, oc[0], oc[1], 1, true); ok(pp.every(q => at(q.x, q.y) !== 2) && pp.every(q => !at(q.x, q.y)), `il percorso della volante verso la piazza alta non passa per la scala né per la piazza (${pp.length} punti)`); }
+  { const v = G.makeVehicle(st, { id: 'prova_fuga', kind: 'giulia', x: parti.x, y: parti.y, ang: 0, rider: 'npc' }); st.vehicles.push(v); const pc = sc.pts[2];
+    prova('l\'auto in fuga a tutto gas contro la scala', v, (v, dt) => G.vehicleMotion(st, v, dt, Math.atan2(pc[1] - v.y, pc[0] - v.x), 1, false, true, false), 12); }
+}
+
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passate');
 process.exitCode = fail ? 1 : 0;
