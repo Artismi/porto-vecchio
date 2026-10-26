@@ -95,7 +95,7 @@ var WriterVita = (function () {
   const watched = (st, n) => !!(n.pop && n.pop.near && hyp(n.x - st.player.x, n.y - st.player.y) < 45);
   const el = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);   // minuti di gioco passati nel passo
   const alive = n => n && !n.dead && !(n.stun > 0) && n.pop;
-  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80, rullo: 25 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
   const cops = (st, x, y, r) => st.npcs.some(c => !c.dead && !c.inside && (c.cop || c.military) && hyp(c.x - x, c.y - y) < r);
   // il passo della bomboletta: crea il lavoro, lo fa crescere, la mano va dove va la vernice; i Grigi interrompono
   function paintStep(label, mk) {
@@ -165,7 +165,7 @@ var WriterVita = (function () {
   // lo stile della notte: dalla mano e dall'esperienza
   function styleFor(n, kind) {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
-    if (kind === 'heaven') return r < .55 ? 'throw' : 'pezzo';
+    if (kind === 'heaven') return r < .4 ? 'throw' : r < .7 ? 'rullo' : 'pezzo';   // [graffiti] in cima ai palazzi anche il roller (le lettere a rullo, pennelli.js)
     if (kind === 'hall') return r < .4 ? 'pezzo' : r < .72 ? 'burner' : 'mostro';
     return r < .36 ? 'tag' : r < .66 ? 'throw' : r < .72 ? 'gotico' : r < .8 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
   }
@@ -252,12 +252,13 @@ var WriterVita = (function () {
       const s = pickW(), r = rnd(), old = rnd() < .5, who = old || !ws.length ? null : pick(ws);
       const [aka0, crew0] = pick(OLD), wr = who ? who.pop.writer : oldWr(aka0, crew0);
       let style;
-      if (s.kind === 'heaven') style = r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo';
+      if (s.kind === 'heaven') style = r < .4 ? 'throw' : r < .55 ? 'rullo' : r < .7 ? 'gotico' : 'pezzo';
       else if (s.kind === 'muro') style = r < .2 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'mostro' : r < .85 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
       else if (s.kind === 'ponte') style = r < .3 ? 'tag' : r < .55 ? 'throw' : r < .75 ? 'gotico' : r < .88 ? 'mostro' : 'pezzo';
       else style = r < .4 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
       if (wr.crew === 'TOY' && style !== 'mtag') style = r < .6 ? 'tag' : 'throw';   // i ragazzini: tag e throw storti
       if ((style === 'pezzo' || style === 'burner') && s.kind === 'strada' && s.len < 5) continue;
+      if (style === 'throw' && (s.kind === 'hall' || s.kind === 'muro') && s.len >= 6 && rnd() < .12) style = 'rullo';   // [graffiti] le lettere a rullo sui muri lunghi
       const big = style === 'pezzo' || style === 'burner' || style === 'mostro';
       const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2)), s.kind === 'heaven' ? s.h - .3 : null);
       // niente lavori grandi uno sull'altro: le tag sì, si ammucchiano (i muri delle fermate e dei bar sono fitti di firme)
