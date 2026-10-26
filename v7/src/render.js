@@ -2718,9 +2718,9 @@ var Render = (function () {
     const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#6a6c70', transparent: true, opacity: 0, depthWrite: false });
     AIR2.smoke = []; for (let i = 0; i < 150; i++) { const sp = new THREE.Sprite(smM.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR2.smoke.push(sp); }
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
-    const lidM = sm('#4a4846', { roughness: .55, metalness: .5 }), seen = {};   // [ordine1] ghisa, non buchi neri
+    const lidM = sm('#5c5852', { roughness: .8, metalness: .1 }), seen = {}, lids = [];   // [strade] ghisa opaca: senza riflessi da specchiare la metallica diventava un disco nero   // [ordine1] ghisa, non buchi neri
     VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      if (Object.keys(seen).length % 2) return; const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25)) return; lids.push([s.x, s.z]);   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -6494,7 +6494,7 @@ var Render = (function () {
       x.strokeStyle = 'rgba(70,66,62,.7)'; x.lineWidth = 1; x.stroke(); x.restore(); });
     S.drain.forEach(([px, py, ang]) => { if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; x.save(); x.translate(cx(px), cy(py)); x.rotate(ang);
       x.fillStyle = '#121012'; x.fillRect(-3, -2, 6, 4); x.fillStyle = '#4a4644'; for (let i = -2; i <= 2; i += 2) x.fillRect(i, -2, 1, 4); x.fillStyle = 'rgba(80,76,72,.6)'; x.fillRect(-4, -2.5, 8, 1); x.restore(); });
-    S.man.forEach(([px, py, seed]) => { if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const X = cx(px), Y = cy(py);
+    (false ? S.man : []).forEach(([px, py, seed]) => {   /* [strade] tolti i dischi scuri dipinti ogni 25-65 m: i tombini sono quelli di segniList1 */ if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const X = cx(px), Y = cy(py);
       x.fillStyle = '#1e1c1e'; x.beginPath(); x.arc(X, Y, 3.4, 0, 6.3); x.fill(); x.fillStyle = '#3e3a3a'; x.beginPath(); x.arc(X, Y, 2.7, 0, 6.3); x.fill();
       x.fillStyle = 'rgba(20,18,18,.8)'; for (let i = -2; i <= 2; i += 2) x.fillRect(X - 2, Y + i, 4, 1); x.fillStyle = 'rgba(120,80,50,.4)'; x.fillRect(X - 1 + (seed % 3), Y - 2, 1, 1); });
   }
@@ -7894,9 +7894,11 @@ var Render = (function () {
     // i cordoli di travertino: pezzi di 1,5 m a filo della carreggiata, alti 18 cm, interrotti agli incroci e dove la via entra nella piazza
     const cord = sm('#d6ccb4', { roughness: .75 }), cordS = sm('#9a9282', { roughness: .9 });
     lungoV2(rd, 1.5, .75).forEach(q => [-1, 1].forEach(sd => { const cx = q.x + q.nx * sd * (h + VIT2.cordolo / 2), cz = q.z + q.nz * sd * (h + VIT2.cordolo / 2);
-      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const y = groundH(q.x + q.nx * sd * (h - .5), q.z + q.nz * sd * (h - .5)), rot = Math.atan2(q.ux, q.uz);
-      const k = box(VIT2.cordolo, .2, 1.48, cord); k.position.set(cx, y + .1, cz); k.rotation.y = rot; addStatic(k);
-      const s = box(.04, .17, 1.48, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.y = rot; addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
+      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const ex = q.x + q.nx * sd * (h - .5), ez = q.z + q.nz * sd * (h - .5), rot = Math.atan2(q.ux, q.uz);
+      // [strade] il pezzo segue la pendenza: la quota ai suoi due capi, inclinato (non più a gradini), e lungo quanto il passo (niente fessure)
+      const ya = groundH(ex - q.ux * .75, ez - q.uz * .75), yb = groundH(ex + q.ux * .75, ez + q.uz * .75), y = (ya + yb) / 2, tilt = -Math.atan2(yb - ya, 1.5), Lc = Math.hypot(1.5, yb - ya) + .01;
+      const k = box(VIT2.cordolo, .2, Lc, cord); k.position.set(cx, y + .1, cz); k.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(k);
+      const s = box(.04, .17, Lc, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
     // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
     if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
@@ -9800,6 +9802,7 @@ var Render = (function () {
   let SGL1 = null;
   function segniList1() {
     if (SGL1) return SGL1; SGL1 = { gesso: [], rattoppi: [], grate: [], olio: [], gialle: [], tombini: [], caditoie: [], stalli: [], pozzetti: [] };
+    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
     const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [], VVst = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo;   // [vievive] gli stalli li decide vievive.js
     if (VVst) Vievive.stalli().forEach((q, i) => { const L0 = Vievive.CFG.stallo, ux = Math.cos(q.ang), uz = Math.sin(q.ang); [-1, 1].forEach(e => SGL1.stalli.push([q.cx + ux * e * L0 / 2, q.cy + uz * e * L0 / 2, q.nx, q.ny, q.ang, q.w, e > 0 && i % 6 === 2, e < 0 ? L0 : 0])); });
     // il gesso dei bambini: la campana e i disegni sulle piazzette del borgo, sul sagrato, sulla marina
@@ -9813,10 +9816,10 @@ var Render = (function () {
           if (rd.era === 'E0' && s > no && rr() < .08) { no = s + 30; SGL1.gesso.push({ x: x0 + nx * (rr() - .5) * rd.w * .5, z: z0 + nz * (rr() - .5) * rd.w * .5, a: ang, k: rr() < .5 ? 'campana' : 'disegno', s: Math.floor(rr() * 1e6) }); }
           continue; }
         if (nearJ1(x0, z0, 1) < 0) continue;
-        if (s > (rd.__tb1 || 0)) { rd.__tb1 = s + 20; SGL1.tombini.push([x0, z0, ang, rd.era === 'E4' ? 'quadro' : 'tondo', Math.floor(rr() * 1e6)]); }   // un tombino ogni 20 m in asse
+        if (s > (rd.__tb1 || 0) && !TV1.some(q => Math.hypot(q[0] - x0, q[1] - z0) < 12) && !SGL1.tombini.some(q => Math.hypot(q[0] - x0, q[1] - z0) < 35)) { rd.__tb1 = s + 60; SGL1.tombini.push([x0, z0, ang, rd.era === 'E4' ? 'quadro' : 'tondo', Math.floor(rr() * 1e6)]); }   // [strade] un tombino ogni 60 m in asse, a 35 m almeno da un altro
         if (!VVst && rd.era === 'E6' && rd.w >= 8 && s > (rd.__st1 || 12)) { rd.__st1 = s + 5.2; const sd = (nx + nz) < 0 ? 1 : -1; SGL1.stalli.push([x0, z0, nx * sd, nz * sd, ang, rd.w, Math.floor(s / 5.2) % 6 === 0]); }   // gli stalli sul lato lontano, la P ogni sei
-        if (rd.era === 'E6' && s > nx0) { nx0 = s + 7 + rr() * 16; const len = 1.4 + rr() * 3.6, wid = .9 + rr() * 1.6, lat = (rr() - .5) * (rd.w - wid - .6); SGL1.rattoppi.push([x0 + nx * lat, z0 + nz * lat, len, wid, ang + (rr() - .5) * .08, Math.floor(rr() * 1e6)]); }   // rattoppi di bitume nuovo
-        if ((rd.era === 'E6' || rd.era === 'E3') && rd.w >= 7 && s > no) { no = s + 4 + rr() * 9; const sd = rr() < .5 ? 1 : -1, lat = sd * (rd.w / 2 - 1.1); if (rr() < .6) SGL1.olio.push([x0 + nx * lat + g.ux[k] * (rr() - .5), z0 + nz * lat + g.uy[k] * (rr() - .5), ang, Math.floor(rr() * 1e6)]); }   // l'olio sotto le auto in sosta
+        if (rd.era === 'E6' && s > nx0) { nx0 = s + 18 + rr() * 30;   /* [strade] meno rattoppi, dritti lungo la via */ const len = 1.4 + rr() * 3.6, wid = .9 + rr() * 1.6, lat = (rr() - .5) * (rd.w - wid - .6); SGL1.rattoppi.push([x0 + nx * lat, z0 + nz * lat, len, wid, ang + (rr() - .5) * 0, Math.floor(rr() * 1e6)]); }   // rattoppi di bitume nuovo
+        if ((rd.era === 'E6' || rd.era === 'E3') && rd.w >= 7 && s > no) { no = s + 4 + rr() * 9; const sd = rr() < .5 ? 1 : -1, lat = sd * (rd.w / 2 - 1.1); if (rr() < .12) SGL1.olio.push([x0 + nx * lat + g.ux[k] * (rr() - .5), z0 + nz * lat + g.uy[k] * (rr() - .5), ang, Math.floor(rr() * 1e6)]); }   // l'olio sotto le auto in sosta
       } });
     junc1().forEach(J => { if (!J.city) return; J.arms.forEach(a => [-1, 1].forEach(sd => { const nx = -a.uy, nz = a.ux, o = a.w / 2 - .25, d = J.r + 1.2; SGL1.caditoie.push([J.x + a.ux * d + nx * sd * o, J.y + a.uy * d + nz * sd * o, Math.atan2(a.uy, a.ux)]); })); });   // le caditoie al cordolo, all'imbocco degli incroci
     return SGL1;
@@ -10097,10 +10100,11 @@ var Render = (function () {
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#3a3936', { roughness: .6, metalness: .5 });   // [ordine1] ghisa
     const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [pulizia2] i tombini veri
-    const tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 2.5)) return; const g = G0(); add(g, cyl(rr, rr, .012, 14, grate), 0, .006, 0); add(g, cyl(rr * .7, rr * .7, .014, 14, grate), 0, .007, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
+    const grate2 = sm('#5a5650', { roughness: .85, metalness: .1 }), grate3 = sm('#4c4944', { roughness: .85, metalness: .1 });   // [strade] ghisa opaca, poco più scura dell'asfalto (non un buco nero)
+    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40)) return; T38.push([x, z]); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
-      tombino(jx + (r() - .5) * 2, jy + (r() - .5) * 2, .36);
+      { const ox = (r() - .5) * 2, oz = (r() - .5) * 2; if (arms.length >= 3) tombino(jx + ox, jy + oz, .36); }   // [strade] solo agli incroci veri (tre bracci o più)
       for (let i = 0; i < arms.length; i++) for (let j = 0; j < arms.length; j++) {
         if (i === j) continue; const a = arms[i], b = arms[j], cr = a.ux * b.uy - a.uy * b.ux; if (cr <= 0 || a.ux * b.ux + a.uy * b.uy > .7) continue;   // due bracci vicini, in senso orario
         // l'angolo fra i due bracci: sul marciapiede, appena dentro il ciglio
@@ -10118,7 +10122,7 @@ var Render = (function () {
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = 20 + r() * 12;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, x = ax + nx * sd * (rd.w / 2 - .25), z = az + nz * sd * (rd.w / 2 - .25); if (!city(x, z) || nearJ(x, z, 2)) continue;
         const g = G0(); add(g, box(.62, .02, .32, grate), 0, .01, 0); for (let q = -2; q <= 2; q++) add(g, box(.04, .025, .3, iron), q * .12, .015, 0); DZ.hint = 'static'; place(g, x, z, Math.atan2(bx - ax, bz - az) + Math.PI / 2); n++;
-        if (r() < .4) tombino(ax + (bx - ax) * .5 + nx * sd * rd.w * .2, az + (bz - az) * .5 + nz * sd * rd.w * .2, .32); }
+        r(); }   // [strade] niente più tombini accanto alle caditoie (erano uno ogni 50 m in più)
     });
     return n;
   }
@@ -15455,11 +15459,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
-        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = new THREE.Mesh(gradino1(dep, hh + (base - low), 1.7, .035), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
-          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .06), low + hh + (base - low) + .004, ez + side[1] * (dep - .06)); addStatic(ns); } });
-        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
+        // [strade] gradini veri: alzata di circa 17 cm dalla quota del suolo davanti alla porta fino alla soglia (base + 20 cm), pedata
+        // di 24-34 cm; sotto, ogni gradino scende fino al punto più basso del lotto (niente vuoti sul suolo in pendenza). Prima: due
+        // blocchi alti quanto tutto il dislivello (fino a un metro)
+        const fH = Math.min(base, Math.max(low, groundH(ex + side[0] * .9, ez + side[1] * .9))), top = base + .2, R = top - fH, ns = Math.max(1, Math.round(R / .17)), rz = R / ns, td = Math.max(.2, Math.min(.34, 1.3 / ns));   // [strade] la scala non sporge più di 1,3-1,4 m
+        for (let k = 0; k < ns; k++) { const dep = (k + 1) * td, yt = top - k * rz, st = new THREE.Mesh(gradino1(dep, yt - low, 1.7, .03), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
+          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), nz = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); nz.position.set(ex + side[0] * (dep - .06), yt + .004, ez + side[1] * (dep - .06)); addStatic(nz); } }
+        if (nuova) { const fd = ns * td + .04, fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * fd, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * fd, ez + side[1] * fd) : low) + .005, ez + side[1] * fd);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
-        const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
+        const wd = Math.min(.3, td - .06), wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? wd : .8, .012, side[1] ? wd : .8, wm); wn.position.set(ex + side[0] * td * .5, top + .002, ez + side[1] * td * .5); addStatic(wn);
       }); P2.k = null;
       // neve ammucchiata contro i muri (non contro le porte né sul lato della strada principale tutta spalata)
       const sides = [[g.x0, g.z0 + g.d + .25, g.w, 0], [g.x0, g.z0 - .25, g.w, 0], [g.x0 + g.w + .25, g.z0, g.d, 1], [g.x0 - .25, g.z0, g.d, 1]];
