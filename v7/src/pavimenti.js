@@ -250,7 +250,7 @@ var Pavimenti = (function () {
       if (fam < .5) return pvCalmo(base);
       // coordinate del disegno: lungo e attraverso la via, o il mondo ruotato
       bool lungo = rf > 0. && (av < hw || eU < 0. || (pvForce > 0. && av < hw + 3.));   // le coordinate della via solo sulla carreggiata (e sul marciapiede): fuori il mondo, niente cuciture a 3 m
-      vec2 q = lungo ? vec2(s, v + hw) : pvRot(p, .6 + fam * .37), ux = lungo ? du : vec2(cos(.6 + fam * .37), sin(.6 + fam * .37)), uy = vec2(-ux.y, ux.x);
+      vec2 q = lungo ? vec2(s, v + hw) : p, ux = lungo ? du : vec2(1., 0.), uy = vec2(-ux.y, ux.x);   // [strade] fuori dalla via le file seguono gli assi della piazza e delle case (prima: ruotate di 55-100 gradi, di sbieco)
       vec3 col = base; float jt = 0., bv = 0., jw = .012; vec2 tq = vec2(0.); float tone = 1., mean = 1.;
       if (fam < 1.5 || (fam > 1.5 && fam < 2.5) || (fam > 4.5 && fam < 5.5) || fam > 8.5) {   // pietre a file: basoli, travertino, banchina, lastre
         float rw = fam < 1.5 ? .52 : fam < 2.5 ? .9 : fam < 5.5 ? 1.2 : .5, l0 = fam < 1.5 ? .6 : fam < 2.5 ? 1.1 : fam < 5.5 ? 1.6 : .45, l1 = fam < 1.5 ? 1.05 : fam < 2.5 ? 1.8 : fam < 5.5 ? 2.6 : .8;
@@ -314,20 +314,20 @@ var Pavimenti = (function () {
       } else if (fam < 4.5) {   // asfalto: la grana degli inerti, le chiazze, le crepe, le ruote sulle corsie, la canaletta
         // una tinta sola per tutte le vie e i piazzali (la tela dipingeva ogni via con la sua usura: cambi netti agli incroci); della tela
         // restano i segni, cioè quello che si stacca dalla tela sfocata (strisce, tombini, rattoppi, olio), con le chiazze lente del mondo
-        col = (pvStr > .5 ? pvAsf * 1.55 + vec3(.012, .008, 0.) : pvAsf) * (.88 + pvN(p * .06 + 31.) * .24) + clamp(base - blur, vec3(-.05), vec3(.6));   // [strade] un grigio consumato e caldo, non il nero: i segni dell'uso si leggono
+        col = (pvStr > .5 ? pvAsf * 1.55 + vec3(.012, .008, 0.) : pvAsf) * (.92 + pvN(p * .06 + 31.) * .16) + clamp(base - blur, vec3(-.05), vec3(.6));   // [strade] chiazze lente più calme: un asfalto pulito   // [strade] un grigio consumato e caldo, non il nero: i segni dell'uso si leggono
         #ifdef PV_LITE
         float pt = pvN(p * .5),
         #else
         float pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4,
         #endif
               mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
-        tone = .92 + (pt - .5) * .26 + gr * .1 * mid + (pvN(p * 4.7) - .5) * .08 * mid;   // le chiazze, gli inerti grossi, la grana media: a 5 cm per pixel l'asfalto ha una pelle
+        tone = .92 + (pt - .5) * .15 + gr * .08 * mid + (pvN(p * 4.7) - .5) * .08 * mid;   // le chiazze, gli inerti grossi, la grana media: a 5 cm per pixel l'asfalto ha una pelle
         #ifndef PV_LITE
         float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
         tone += (ag - .5) * .14 * lod + ((g1 - .5) * .12 + sp * .22) * fin;
         // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
         vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.16, 1.9) + 3.) * .85 + pvN(qc * vec2(.6, 3.)) * .15, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.74, .86, pvN(p * .11 + 17.)) * (lungo ? 1. : .4);
-        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .2 * lod;
+        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .12 * lod;
         #endif
         if (via) { float lane = abs(av - hw * .5), tr = pvG((lane - .8) / .3) * jf, oil = pvG(lane / .35) * step(2.6, hw) * jf;
           tone *= 1. + tr * .07 - oil * .1; pvPol = tr * .6;
@@ -342,13 +342,13 @@ var Pavimenti = (function () {
             float sea = max(gl * smoothstep(.35, .55, pvN(vec2(s * .08, 3.))), gt) * jf * lod; tone *= 1. - sea * .09; jt = max(jt, sea * .22);   // sottili e a tratti: sigillati, non tagli
             // le toppe: rettangoli di asfalto più nuovo, scuro e liscio, col bordo netto e il filo di bitume che li sigilla
             float cp = floor(s / 13.), hp = pvH(vec2(cp, hw * 7. + 3.));
-            if (hp < .46) { float L = 1.6 + pvH(vec2(cp, 9.)) * 4.4, Wd = .8 + pvH(vec2(cp, 11.)) * min(2., hw), s0 = cp * 13. + 1. + pvH(vec2(cp, 13.)) * (11. - L), v0 = (pvH(vec2(cp, 17.)) * 2. - 1.) * max(0., hw - Wd * .5 - .3);
+            if (hp < .16) {   /* [strade] le toppe rare (prima quasi una ogni 26 m: la via a riquadri) */ float L = 1.6 + pvH(vec2(cp, 9.)) * 4.4, Wd = .8 + pvH(vec2(cp, 11.)) * min(2., hw), s0 = cp * 13. + 1. + pvH(vec2(cp, 13.)) * (11. - L), v0 = (pvH(vec2(cp, 17.)) * 2. - 1.) * max(0., hw - Wd * .5 - .3);
               vec2 dq = vec2(abs(s - s0 - L * .5) - L * .5, abs(v - v0) - Wd * .5); float ed = max(dq.x, dq.y), inP = 1. - smoothstep(-aa, aa, ed), rim = 1. - smoothstep(.01, .01 + aa * 1.5, abs(ed));
-              tone = mix(tone, (hp < .2 ? .68 : 1.08) + (pvN(p * 3.) - .5) * .05, inP * jf); pvPol = mix(pvPol, .35, inP); tone *= 1. - rim * .4 * jf; jt = max(jt, rim * .6 * jf); } }   // le toppe nuove scure e quelle vecchie sbiadite, il filo di bitume
+              tone = mix(tone, (hp < .07 ? .84 : 1.04) + (pvN(p * 3.) - .5) * .04, inP * jf); pvPol = mix(pvPol, .35, inP); tone *= 1. - rim * .18 * jf; jt = max(jt, rim * .3 * jf); } }   // le toppe nuove scure e quelle vecchie sbiadite, il filo di bitume
           // le crepe a ragnatela nei punti stanchi: sulle ruote e dove l'asfalto è vecchio
           float tired = smoothstep(.6, .76, pvN(p * .23 + 41.)) * (via ? .35 + .65 * pvG((abs(av - hw * .5) - .8) / .6) : .5);
           #ifndef PV_LITE
-          if (tired > .02) { float rg = pvRagno(p, mpp) * smoothstep(.0, .25, tired - .08); tone -= rg * .3 * lod; jt = max(jt, rg * .5); }
+          if (tired > .02) { float rg = pvRagno(p, mpp) * smoothstep(.0, .25, tired - .08); tone -= rg * .16 * lod; jt = max(jt, rg * .3); }
           #endif
           if (via) {
             float dip = smoothstep(.74, .84, pvN(p * .38 + 23.)) * pvG((abs(av - hw * .5) - .8) / .45) * jf; pvWet = max(pvWet, dip * .45); tone *= 1. - dip * .1;   // gli avvallamenti sulle ruote tengono l'acqua
@@ -387,8 +387,8 @@ var Pavimenti = (function () {
           if (ft < 1.5) {   // il tombino tondo di ghisa: la cornice, il disco a bugne, la scritta circolare, l'alone
             float rim = 1. - smoothstep(.36 - aa, .36 + aa, rr), dk = 1. - smoothstep(.3 - aa, .3 + aa, rr); vec2 gq = abs(fract(d0 / .045) - .5);
             float bug = step(.28, min(gq.x, gq.y)) * fin, an = (1. - smoothstep(.006, .006 + aa, abs(rr - .22))) * dk;
-            vec3 gh = vec3(.19, .18, .17) * (.88 + bug * .28 + pvN(p * 21.) * .12) * (1. - an * .35), cr = vec3(.27, .25, .23) * (.9 + pvN(p * 13.) * .15);
-            col = mix(col, mix(cr, gh, dk), rim * lod); col *= 1. - (1. - smoothstep(.36, .5, rr)) * (1. - rim) * .22; jt = max(jt, (1. - smoothstep(.0, .01 + aa, abs(rr - .3))) * rim); pvWet *= 1. - rim * .6; pvPol = max(pvPol, dk * .5); }
+            vec3 gh = mix(vec3(.25, .24, .23), col, .35) * (.9 + bug * .22 + pvN(p * 21.) * .1) * (1. - an * .25), cr = mix(vec3(.31, .29, .27), col, .3) * (.92 + pvN(p * 13.) * .12);   /* [strade] ghisa vicina alla tinta della via: un tombino, non un buco */
+            col = mix(col, mix(cr, gh, dk), rim * lod); col *= 1. - (1. - smoothstep(.36, .46, rr)) * (1. - rim) * .07; jt = max(jt, (1. - smoothstep(.0, .01 + aa, abs(rr - .3))) * rim); pvWet *= 1. - rim * .6; pvPol = max(pvPol, dk * .5); }
           else if (ft < 2.5) {   // il chiusino quadro: il telaio di pietra, la piastra di ghisa a rombi
             vec2 a = abs(d0); float e = max(a.x, a.y), inS = 1. - smoothstep(.36 - aa, .36 + aa, e), inG = 1. - smoothstep(.29 - aa, .29 + aa, e);
             vec2 dm = abs(fract(vec2(d0.x + d0.y, d0.x - d0.y) / .06) - .5); float rom = step(.32, min(dm.x, dm.y)) * fin;
@@ -402,10 +402,10 @@ var Pavimenti = (function () {
             col = mix(col, mix(vec3(.46, .44, .41), vec3(.3, .29, .27), step(.27, e)) * (1. - rib * .2 * fin), inS * lod); jt = max(jt, (1. - smoothstep(.0, .01 + aa, abs(e - .27))) * inS); }
           else if (ft < 5.5) {   // l'olio dove le auto stanno ferme: la macchia scura irregolare e l'alone che luccica
             float r2 = length(d0 * vec2(1., 1.7)) + (pvN(p * 3.1 + sh * 9.) - .5) * .6, o = 1. - smoothstep(.35, 1.05, r2);
-            col = mix(col, col * vec3(.5, .49, .56), o * .7); col += vec3(.012, .004, .02) * (1. - smoothstep(.0, .12, abs(r2 - .9))) * lod; pvPol = max(pvPol, o); }
+            col = mix(col, col * vec3(.72, .71, .75), o * .45);   /* [strade] l'olio appena un velo, non una macchia nera */ col += vec3(.012, .004, .02) * (1. - smoothstep(.0, .12, abs(r2 - .9))) * lod; pvPol = max(pvPol, o); }
           else if (ft < 6.5) {   // il rattoppo di bitume nuovo (quelli della lista del boom)
             float L = mod(floor(Fi.a / 16.), 256.) / 10., Wd = floor(Fi.a / 4096.) / 10.; vec2 dq = abs(d0) - vec2(L, Wd) * .5; float ed = max(dq.x, dq.y), inP = 1. - smoothstep(-aa, aa, ed), rim = 1. - smoothstep(.01, .01 + aa * 1.5, abs(ed));
-            col = mix(col, col * (.72 + (pvN(p * 3.) - .5) * .05), inP); col *= 1. - rim * .25; jt = max(jt, rim * .5); pvPol = mix(pvPol, .35, inP); }
+            col = mix(col, col * (.86 + (pvN(p * 3.) - .5) * .04), inP); col *= 1. - rim * .1; jt = max(jt, rim * .3);   /* [strade] il bitume nuovo appena più scuro, il bordo netto ma leggero */ pvPol = mix(pvPol, .35, inP); }
           else {   // la gomma dove si frena (le fermate, gli STOP): strisciate scure lungo la corsia
             float al = 1. - smoothstep(2.5, 6.5, abs(d0.x)), tk = pvG((abs(abs(d0.y) - .8)) / .16) + pvG((abs(abs(d0.y) - .8) - .0) / .3) * .3;
             col *= 1. - al * tk * (.22 + pvN(vec2(d0.x * 1.7, d0.y * 9.)) * .2) * lod; pvPol = max(pvPol, al * tk * .5); }
@@ -423,7 +423,7 @@ var Pavimenti = (function () {
         vec4 Fb = pvFile(vec2(s, scA), .15, .12, .18, 43.); float bj = 1. - smoothstep(.008 - aa, .008 + aa, Fb.x), bw = 1. - smoothstep(.36, .4 + aa, scA);
         col = mix(col, blur * vec3(.86, .85, .84) * (.84 + Fb.y * .22) * (1. - bj * .35), bw * lod); jt = max(jt, bj * bw); }
       if ((bord > 0. || ciglio) && !via) {
-        vec2 qb = ciglio ? vec2(s, av - hw) : pvRot(p, .785); float bw = ciglio ? 1. - smoothstep(.36, .4 + aa, av - hw) : bord;
+        vec2 qb = ciglio ? vec2(s, av - hw) : p; float bw = ciglio ? 1. - smoothstep(.36, .4 + aa, av - hw) : bord;
         vec4 Fb = pvFile(qb, .12, .1, .14, 41.); float bj = 1. - smoothstep(.008 - aa, .008 + aa, Fb.x);
         vec3 bs = blur * vec3(.9, .89, .88) * (.86 + Fb.y * .2) * (1. - bj * .3);
         col = mix(col, bs, bw * lod); jt = max(jt, bj * bw);
@@ -437,7 +437,7 @@ var Pavimenti = (function () {
       #else
       if (fam > 6.5 && fam < 7.5 && dw < 3.4) {   // il lungomare: davanti alle case che stanno sulla sabbia, lastre a correre, la cordonata, la sabbia che ci soffia sopra
         float ed = 2.6 + (pvN(p * .35) - .5) * .25, inL = 1. - smoothstep(ed - aa * 2., ed + aa * 2., dw);
-        vec2 ql = pvRot(p, .785); vec4 F = pvFile(ql + (vec2(pvN(ql * 2.), pvN(ql * 2. + 5.)) - .5) * .015, .45, .5, .85, 77.);
+        vec2 ql = p; vec4 F = pvFile(ql + (vec2(pvN(ql * 2.), pvN(ql * 2. + 5.)) - .5) * .015, .45, .5, .85, 77.);
         float cb = smoothstep(ed - .34, ed - .3, dw) * inL, lj = 1. - smoothstep(.01 - aa, .01 + aa, cb > .5 ? abs(fract(dot(ql, vec2(1., 0.)) / 1.1) - .5) * 1.1 : F.x);
         vec3 lst = mix(base * vec3(.8, .78, .74), vec3(pvLum(base)) * vec3(.98, .93, .86) * .78, .55) * (.84 + F.y * .24) * (cb > .5 ? 1.18 : 1.);   // pietra calda, più grigia della sabbia
         float drift = smoothstep(.55, .75, pvN(p * 1.1 + 8.)) * smoothstep(ed - 1.4, ed, dw);   // la sabbia portata dal vento sul bordo

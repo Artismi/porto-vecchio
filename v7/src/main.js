@@ -297,10 +297,29 @@
       if (Math.abs(dx * c + dy * s) < K.len / 2 + .4 && Math.abs(-dx * s + dy * c) < K.wid / 2 + .4) return { kind: 'car', v };
     }
     // clic su una porta (o sul muro attorno): ci vai e ci entri. Il clic sulla porta in alto cade sul terreno dietro la facciata, quindi si cerca la porta più vicina entro ~3 m
-    if (!p.indoor && G.DOOR_OF) { const tx = Math.floor(g.x / G.TS), ty = Math.floor(g.y / G.TS), GWm = G.MAP.world.GW; let bd = 3.2, hit = null;
-      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) { const bi = G.DOOR_OF.get((ty + oy) * GWm + tx + ox); if (bi === undefined) continue; const b = G.BUILDINGS[bi], x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS, d = Math.hypot(x - g.x, y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x, y }; } }
+    // [porte] solo il clic SULLA PORTA: il rettangolo della porta sulla facciata (largo 1,4 m, alto 2,4 m) proiettato sullo schermo;
+    // prima bastava cliccare per terra a meno di 3 m da una porta e si entrava
+    if (!p.indoor && G.DOOR_OF) { const TS = G.TS, tx = Math.floor(g.x / TS), ty = Math.floor(g.y / TS), GWm = G.MAP.world.GW, px = nx * o.w, py = ny * o.h; let bd = 1e9, hit = null;
+      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) { const bi = G.DOOR_OF.get((ty + oy) * GWm + tx + ox); if (bi === undefined) continue; const b = G.BUILDINGS[bi]; if (!b || !b.door) continue;
+        const D = doorQuad(b, TS); if (!D) continue;
+        const Q = D.c.map(([x, h, y]) => R.project(x, h, y)); if (Q.some(q => q.behind)) continue;
+        const pts = Q.map(q => [q.x * o.w, q.y * o.h]); let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; }
+        if (!inside) continue;
+        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS }; } }
       if (hit) return hit; }
     const f = freeSpot(g.x, g.y); return { kind: 'move', x: f.x, y: f.y };
+  }
+  // [porte] i quattro angoli della porta sulla facciata (la casella della porta sta fuori dall'edificio, la facciata sul suo lato verso dentro)
+  function doorQuad(b, TS) {
+    const dx = b.door[0], dy = b.door[1]; let fx, fy, tx, ty;
+    if (dy === b.y + b.h) { fx = (dx + .5) * TS; fy = dy * TS; tx = 1; ty = 0; }
+    else if (dy === b.y - 1) { fx = (dx + .5) * TS; fy = (dy + 1) * TS; tx = 1; ty = 0; }
+    else if (dx === b.x + b.w) { fx = dx * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
+    else if (dx === b.x - 1) { fx = (dx + 1) * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
+    else return null;
+    const hw = .7, h0 = -.05, h1 = 2.4;
+    return { x: fx, y: fy, c: [[fx - tx * hw, h0, fy - ty * hw], [fx + tx * hw, h0, fy + ty * hw], [fx + tx * hw, h1, fy + ty * hw], [fx - tx * hw, h1, fy - ty * hw]] };
   }
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
@@ -387,7 +406,8 @@
     if (!c.path.length && !p.indoor && !p.lv) return stop();   // [pedonale] nessun percorso: ci si ferma (non si va dritti contro il muro)
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
     const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace };
+    // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door' };
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {

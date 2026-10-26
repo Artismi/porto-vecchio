@@ -1953,6 +1953,7 @@ var Render = (function () {
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, v = gT(tx, ty), f = F ? F[ii] : 0, r = rng((tx * 50411 + ty * 81239) >>> 0);
+      { const RM = railMask(); if (RM && RM[ii]) continue; }   // [campagna] la massicciata della ferrovia resta pulita: niente rocce sui binari
       const cx = tx * TS + .6 + r() * .8, cz = ty * TS + .6 + r() * .8, th = thick(tx * TS, ty * TS), nt = nearT(tx, ty);
       const under = (x, z, s0) => { const q = r(); add(q < .45 ? 'Fern_1' : q < .75 ? 'Bush_Common' : q < .9 ? 'Grass_Wispy_Tall' : 'Plant_1_Big', x, 0, z, s0 * (q < .45 ? .32 : q < .75 ? .55 : .9), r() * 6.28, { ground: true, col: pick(r, LEAF) }); };
       if (v === T.TREE && VEGN(ii)) continue;   // [vegetazione]
@@ -2718,9 +2719,9 @@ var Render = (function () {
     const smM = new THREE.SpriteMaterial({ map: smokeTexture(), color: '#6a6c70', transparent: true, opacity: 0, depthWrite: false });
     AIR2.smoke = []; for (let i = 0; i < 150; i++) { const sp = new THREE.Sprite(smM.clone()); sp.visible = false; sp.renderOrder = 3; scene.add(sp); AIR2.smoke.push(sp); }
     // --- tombini: il chiusino sotto ogni sbuffo di vapore in strada ---
-    const lidM = sm('#4a4846', { roughness: .55, metalness: .5 }), seen = {};   // [ordine1] ghisa, non buchi neri
+    const lidM = sm('#5c5852', { roughness: .8, metalness: .1 }), seen = {}, lids = [];   // [strade] ghisa opaca: senza riflessi da specchiare la metallica diventava un disco nero   // [ordine1] ghisa, non buchi neri
     VX.steam.forEach(s => { if (s.k > .9) return; const key = Math.round(s.x * 4) + ',' + Math.round(s.z * 4); if (seen[key]) return; seen[key] = 1;
-      if (Object.keys(seen).length % 2) return; const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
+      if (Object.keys(seen).length % 3 || lids.some(q => Math.hypot(q[0] - s.x, q[1] - s.z) < 25)) return; lids.push([s.x, s.z]);   /* [strade] un chiusino ogni 25 m al più */ const lid = new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, .03, 14), lidM); lid.position.set(s.x, s.y - .02, s.z); scene.add(lid); });
   }
   function tickAir2(time, night) {
     if (!AIR2.on) initAir2();
@@ -5494,8 +5495,6 @@ var Render = (function () {
     const face0 = faceOf(b);
     const PP = b.__prop !== undefined ? b.__prop : (b.__prop = propPlan(b, i, kind, fl, base, x0, z0, w, d)); b.__top = top; b.__gwall = {}; b.__wallHex = pal[0];   // [inverno24] [ordine1] la tinta per i torrini
     const inMural = (sd, k, y) => PP && PP.f === sd.f && k >= PP.k0 && k < PP.k1;   // tutta l'altezza: piano terra compreso
-    // [scale-finestre] il modulo dove passa una scala di Tetti resta cieco ai piani che la scala attraversa (lo decide tetti.js: Tetti.cieco4)
-    const cieco4 = (sd, k, f) => !!(window.Tetti && Tetti.cieco4 && !b.__tierOf && Tetti.cieco4(i, sd.f, sd.f === 'S' || sd.f === 'N' ? sd.at(k)[0] - x0 : sd.at(k)[1] - z0, f));
     const sides = [
       { f: 'S', n: b.w, rot: -Math.PI / 2, at: k => [x0 + k * TS + 1, z0 + d], tile: k => [b.x + k, b.y + b.h] },
       { f: 'N', n: b.w, rot: Math.PI / 2, at: k => [x0 + w - k * TS - 1, z0], tile: k => [b.x + b.w - 1 - k, b.y - 1] },
@@ -5527,7 +5526,7 @@ var Render = (function () {
         for (let q = 0; q < rest.length; q++) { const k = rest[q]; if (rest[q + 1] === k + 1) { ground.push([k, 'wall-window-wide-square', 2, 'vetrina']); used.add(k); used.add(k + 1); q++; } else { ground.push([k, 'wall-window-square', 1, 'vetrina']); used.add(k); } }
         b.__bot = { face: sd.f, n: sd.n, ks: SH.ks, portoneU: doorK * TS + 1, ents: ground.filter(e => e[3]).map(([k, name, span, role]) => ({ u: (span === 2 ? k + .5 : k) * TS + 1, w: name.includes('wide') ? 3.1 : name.includes('door') ? 1.1 : .95, role, name })) };
       } else if (SH) b.__bot = { face: sd.f, n: sd.n, ks: [], portoneU: doorK * TS + 1, ents: [] };   // bottega al primo piano: solo la targa al portone
-      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) || cieco4(sd, k, 0) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
+      for (let k = 0; k < sd.n; k++) if (!used.has(k)) ground.push([k, inMural(sd, k, base) ? 'wall' : X && X.era === 'E0' && th(b.x + k, b.y + sd.f.charCodeAt(0), 1607) > .45 ? 'wall' : (front || sd.f === 'S' || sd.f === 'E') && (k % 2 === (doorK + 1) % 2 || kind === 'civic') ? 'wall-window-square' : 'wall', 1]);
       // nota: sul piano terra le finestre si alternano col muro pieno, partendo dalla porta (ritmo regolare)
       ground.forEach(([k, name, span, role]) => {
         if (poIn(sd, k) || (span === 2 && poIn(sd, k + 1))) return;   // [epoche] sotto il portico la testata è aperta
@@ -5557,7 +5556,7 @@ var Render = (function () {
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
-          const nm = inMural(sd, k, y) || (!stD && cieco4(sd, k, f)) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
@@ -6509,7 +6508,7 @@ var Render = (function () {
       x.strokeStyle = 'rgba(70,66,62,.7)'; x.lineWidth = 1; x.stroke(); x.restore(); });
     S.drain.forEach(([px, py, ang]) => { if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; x.save(); x.translate(cx(px), cy(py)); x.rotate(ang);
       x.fillStyle = '#121012'; x.fillRect(-3, -2, 6, 4); x.fillStyle = '#4a4644'; for (let i = -2; i <= 2; i += 2) x.fillRect(i, -2, 1, 4); x.fillStyle = 'rgba(80,76,72,.6)'; x.fillRect(-4, -2.5, 8, 1); x.restore(); });
-    S.man.forEach(([px, py, seed]) => { if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const X = cx(px), Y = cy(py);
+    (false ? S.man : []).forEach(([px, py, seed]) => {   /* [strade] tolti i dischi scuri dipinti ogni 25-65 m: i tombini sono quelli di segniList1 */ if (!inBox1(px, py, X0, Y0, X1, Y1, 2)) return; const X = cx(px), Y = cy(py);
       x.fillStyle = '#1e1c1e'; x.beginPath(); x.arc(X, Y, 3.4, 0, 6.3); x.fill(); x.fillStyle = '#3e3a3a'; x.beginPath(); x.arc(X, Y, 2.7, 0, 6.3); x.fill();
       x.fillStyle = 'rgba(20,18,18,.8)'; for (let i = -2; i <= 2; i += 2) x.fillRect(X - 2, Y + i, 4, 1); x.fillStyle = 'rgba(120,80,50,.4)'; x.fillRect(X - 1 + (seed % 3), Y - 2, 1, 1); });
   }
@@ -7519,6 +7518,15 @@ var Render = (function () {
   }
   // [ferrovia] il suolo della linea: terra battuta e pietrisco sparso lungo il tracciato liscio (le caselle di ghiaia servono
   // solo alle collisioni: a terra niente scalini), sfumato verso l'erba; negli scali la fascia si allarga sotto i binari secondari
+  // [campagna] le caselle a meno di 4 m dal binario (e dai binari degli scali): niente massi, ceppi, cespugli né ciuffi sulla massicciata
+  function railMask() {
+    if (railMask.v !== undefined) return railMask.v; const L = G.layout && G.layout(), RL = L && L.rail; if (!RL || !RL.pts) return (railMask.v = null);
+    const GW = G.GW, GH = G.GH, M8 = new Uint8Array(GW * GH), P = RL.pts, R = 4;
+    const mark = (x, y) => { for (let a = -R; a <= R; a += 1) for (let b = -R; b <= R; b += 1) { if (a * a + b * b > R * R) continue; const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx >= 0 && ty >= 0 && tx < GW && ty < GH) M8[ty * GW + tx] = 1; } };
+    P.forEach(q => { if (!q[3]) mark(q[0], q[1]); });
+    (RL.yards || []).forEach(Y => { for (let u = 0; u <= Y.len; u++) { const i = Y.s0 + u, q = P[i]; if (!q) break; const a = P[Math.max(0, i - 2)], b = P[Math.min(P.length - 1, i + 2)], an = Math.atan2(b[1] - a[1], b[0] - a[0]), o = Y.side * Y.off; mark(q[0] - Math.sin(an) * o, q[1] + Math.cos(an) * o); } });
+    return (railMask.v = M8);
+  }
   function railGround(x, tx0, ty0, n, m) {
     const L = G.layout && G.layout(), RL = L && L.rail; if (!RL || !RL.pts) return;
     const X0 = tx0 * TS, Y0 = ty0 * TS, X1 = (tx0 + n) * TS, Y1 = (ty0 + m) * TS, pad = 12, P = RL.pts;
@@ -7909,9 +7917,11 @@ var Render = (function () {
     // i cordoli di travertino: pezzi di 1,5 m a filo della carreggiata, alti 18 cm, interrotti agli incroci e dove la via entra nella piazza
     const cord = sm('#d6ccb4', { roughness: .75 }), cordS = sm('#9a9282', { roughness: .9 });
     lungoV2(rd, 1.5, .75).forEach(q => [-1, 1].forEach(sd => { const cx = q.x + q.nx * sd * (h + VIT2.cordolo / 2), cz = q.z + q.nz * sd * (h + VIT2.cordolo / 2);
-      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const y = groundH(q.x + q.nx * sd * (h - .5), q.z + q.nz * sd * (h - .5)), rot = Math.atan2(q.ux, q.uz);
-      const k = box(VIT2.cordolo, .2, 1.48, cord); k.position.set(cx, y + .1, cz); k.rotation.y = rot; addStatic(k);
-      const s = box(.04, .17, 1.48, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.y = rot; addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
+      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const ex = q.x + q.nx * sd * (h - .5), ez = q.z + q.nz * sd * (h - .5), rot = Math.atan2(q.ux, q.uz);
+      // [strade] il pezzo segue la pendenza: la quota ai suoi due capi, inclinato (non più a gradini), e lungo quanto il passo (niente fessure)
+      const ya = groundH(ex - q.ux * .75, ez - q.uz * .75), yb = groundH(ex + q.ux * .75, ez + q.uz * .75), y = (ya + yb) / 2, tilt = -Math.atan2(yb - ya, 1.5), Lc = Math.hypot(1.5, yb - ya) + .01;
+      const k = box(VIT2.cordolo, .2, Lc, cord); k.position.set(cx, y + .1, cz); k.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(k);
+      const s = box(.04, .17, Lc, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
     // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
     if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
@@ -9283,7 +9293,8 @@ var Render = (function () {
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {
       const tx = tx0 + i, ty = ty0 + j, ii = ty * G.GW + tx, z = zoneT(tx, ty); let v = gT(tx, ty);
-      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione] il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
+      if (z === ZN.CITTA || !natural(v)) continue;   // [vegetazione]
+      { const RM = railMask(); if (RM && RM[ii] && v !== T.VIA) continue; }   // [campagna] niente erba alta né sassi sulla massicciata il tappeto di prima resta anche sotto il verde nuovo: è lui che fa il prato pieno
       if (RW[ii] > 0 || v === T.VIA || v === T.DIRT) { if (RECT[ii] || !(RW[ii] > 0)) continue; v = T.GRASS; }   // le caselle sotto la strada: erba fino al ciglio vero
       const f = F ? F[ii] : 0; if ((f & 8192) && v !== T.GRASS && v !== T.ROCK && v !== T.GRAVEL) continue;
       const r = rng((tx * 69061 + ty * 30011) >>> 0), wx = tx * TS, wy = ty * TS, X0 = wx + 1, Y0 = wy + 1;
@@ -9815,6 +9826,7 @@ var Render = (function () {
   let SGL1 = null;
   function segniList1() {
     if (SGL1) return SGL1; SGL1 = { gesso: [], rattoppi: [], grate: [], olio: [], gialle: [], tombini: [], caditoie: [], stalli: [], pozzetti: [] };
+    const TV1 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [strade] i tombini veri: niente chiusino dipinto accanto
     const r = rng(1986 * 7), sets = (M.world && M.world.sets) || [], VVst = typeof Vievive !== 'undefined' && Vievive && Vievive.attivo;   // [vievive] gli stalli li decide vievive.js
     if (VVst) Vievive.stalli().forEach((q, i) => { const L0 = Vievive.CFG.stallo, ux = Math.cos(q.ang), uz = Math.sin(q.ang); [-1, 1].forEach(e => SGL1.stalli.push([q.cx + ux * e * L0 / 2, q.cy + uz * e * L0 / 2, q.nx, q.ny, q.ang, q.w, e > 0 && i % 6 === 2, e < 0 ? L0 : 0])); });
     // il gesso dei bambini: la campana e i disegni sulle piazzette del borgo, sul sagrato, sulla marina
@@ -9828,10 +9840,10 @@ var Render = (function () {
           if (rd.era === 'E0' && s > no && rr() < .08) { no = s + 30; SGL1.gesso.push({ x: x0 + nx * (rr() - .5) * rd.w * .5, z: z0 + nz * (rr() - .5) * rd.w * .5, a: ang, k: rr() < .5 ? 'campana' : 'disegno', s: Math.floor(rr() * 1e6) }); }
           continue; }
         if (nearJ1(x0, z0, 1) < 0) continue;
-        if (s > (rd.__tb1 || 0)) { rd.__tb1 = s + 20; SGL1.tombini.push([x0, z0, ang, rd.era === 'E4' ? 'quadro' : 'tondo', Math.floor(rr() * 1e6)]); }   // un tombino ogni 20 m in asse
+        if (s > (rd.__tb1 || 0) && !TV1.some(q => Math.hypot(q[0] - x0, q[1] - z0) < 12) && !SGL1.tombini.some(q => Math.hypot(q[0] - x0, q[1] - z0) < 35)) { rd.__tb1 = s + 60; SGL1.tombini.push([x0, z0, ang, rd.era === 'E4' ? 'quadro' : 'tondo', Math.floor(rr() * 1e6)]); }   // [strade] un tombino ogni 60 m in asse, a 35 m almeno da un altro
         if (!VVst && rd.era === 'E6' && rd.w >= 8 && s > (rd.__st1 || 12)) { rd.__st1 = s + 5.2; const sd = (nx + nz) < 0 ? 1 : -1; SGL1.stalli.push([x0, z0, nx * sd, nz * sd, ang, rd.w, Math.floor(s / 5.2) % 6 === 0]); }   // gli stalli sul lato lontano, la P ogni sei
-        if (rd.era === 'E6' && s > nx0) { nx0 = s + 7 + rr() * 16; const len = 1.4 + rr() * 3.6, wid = .9 + rr() * 1.6, lat = (rr() - .5) * (rd.w - wid - .6); SGL1.rattoppi.push([x0 + nx * lat, z0 + nz * lat, len, wid, ang + (rr() - .5) * .08, Math.floor(rr() * 1e6)]); }   // rattoppi di bitume nuovo
-        if ((rd.era === 'E6' || rd.era === 'E3') && rd.w >= 7 && s > no) { no = s + 4 + rr() * 9; const sd = rr() < .5 ? 1 : -1, lat = sd * (rd.w / 2 - 1.1); if (rr() < .6) SGL1.olio.push([x0 + nx * lat + g.ux[k] * (rr() - .5), z0 + nz * lat + g.uy[k] * (rr() - .5), ang, Math.floor(rr() * 1e6)]); }   // l'olio sotto le auto in sosta
+        if (rd.era === 'E6' && s > nx0) { nx0 = s + 18 + rr() * 30;   /* [strade] meno rattoppi, dritti lungo la via */ const len = 1.4 + rr() * 3.6, wid = .9 + rr() * 1.6, lat = (rr() - .5) * (rd.w - wid - .6); SGL1.rattoppi.push([x0 + nx * lat, z0 + nz * lat, len, wid, ang + (rr() - .5) * 0, Math.floor(rr() * 1e6)]); }   // rattoppi di bitume nuovo
+        if ((rd.era === 'E6' || rd.era === 'E3') && rd.w >= 7 && s > no) { no = s + 4 + rr() * 9; const sd = rr() < .5 ? 1 : -1, lat = sd * (rd.w / 2 - 1.1); if (rr() < .12) SGL1.olio.push([x0 + nx * lat + g.ux[k] * (rr() - .5), z0 + nz * lat + g.uy[k] * (rr() - .5), ang, Math.floor(rr() * 1e6)]); }   // l'olio sotto le auto in sosta
       } });
     junc1().forEach(J => { if (!J.city) return; J.arms.forEach(a => [-1, 1].forEach(sd => { const nx = -a.uy, nz = a.ux, o = a.w / 2 - .25, d = J.r + 1.2; SGL1.caditoie.push([J.x + a.ux * d + nx * sd * o, J.y + a.uy * d + nz * sd * o, Math.atan2(a.uy, a.ux)]); })); });   // le caditoie al cordolo, all'imbocco degli incroci
     return SGL1;
@@ -10112,10 +10124,11 @@ var Render = (function () {
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     const iron = sm('#2a2a2e', { roughness: .7, metalness: .4 }), conc = sm('#77736c', { roughness: 1 }), grate = sm('#3a3936', { roughness: .6, metalness: .5 });   // [ordine1] ghisa
     const TV2 = window.Sottosuolo && Sottosuolo.TPL ? Sottosuolo.TPL.portals.filter(Q => Q.kind === 'tombino').map(Q => [(Q.s[0] + .5) * TS, (Q.s[1] + .5) * TS]) : [];   // [pulizia2] i tombini veri
-    const tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 2.5)) return; const g = G0(); add(g, cyl(rr, rr, .012, 14, grate), 0, .006, 0); add(g, cyl(rr * .7, rr * .7, .014, 14, grate), 0, .007, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
+    const grate2 = sm('#5a5650', { roughness: .85, metalness: .1 }), grate3 = sm('#4c4944', { roughness: .85, metalness: .1 });   // [strade] ghisa opaca, poco più scura dell'asfalto (non un buco nero)
+    const T38 = [], tombino = (x, z, rr) => { if (TV2.some(q => Math.hypot(q[0] - x, q[1] - z) < 12) || T38.some(q => Math.hypot(q[0] - x, q[1] - z) < 40)) return; T38.push([x, z]); const g = G0();   /* [strade] a 40 m almeno l'uno dall'altro */ add(g, cyl(rr, rr, .012, 14, grate2), 0, .006, 0); add(g, cyl(rr * .82, rr * .82, .014, 14, grate3), 0, .007, 0); add(g, cyl(rr * .6, rr * .6, .016, 14, grate2), 0, .008, 0); add(g, cyl(rr * .54, rr * .54, .018, 14, grate3), 0, .009, 0); DZ.hint = 'static'; place(g, x, z, r() * 6); n++; };   // [pulizia2] il tombino d'incrocio è solo un chiusino a filo: piatto e opaco, non si confonde con quello che si apre
     junctions().forEach(([jx, jy, jr]) => {
       if (!city(jx, jy)) return; const arms = armsAt(jx, jy, jr); if (arms.length < 2) return;
-      tombino(jx + (r() - .5) * 2, jy + (r() - .5) * 2, .36);
+      { const ox = (r() - .5) * 2, oz = (r() - .5) * 2; if (arms.length >= 3) tombino(jx + ox, jy + oz, .36); }   // [strade] solo agli incroci veri (tre bracci o più)
       for (let i = 0; i < arms.length; i++) for (let j = 0; j < arms.length; j++) {
         if (i === j) continue; const a = arms[i], b = arms[j], cr = a.ux * b.uy - a.uy * b.ux; if (cr <= 0 || a.ux * b.ux + a.uy * b.uy > .7) continue;   // due bracci vicini, in senso orario
         // l'angolo fra i due bracci: sul marciapiede, appena dentro il ciglio
@@ -10133,7 +10146,7 @@ var Render = (function () {
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = 20 + r() * 12;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, x = ax + nx * sd * (rd.w / 2 - .25), z = az + nz * sd * (rd.w / 2 - .25); if (!city(x, z) || nearJ(x, z, 2)) continue;
         const g = G0(); add(g, box(.62, .02, .32, grate), 0, .01, 0); for (let q = -2; q <= 2; q++) add(g, box(.04, .025, .3, iron), q * .12, .015, 0); DZ.hint = 'static'; place(g, x, z, Math.atan2(bx - ax, bz - az) + Math.PI / 2); n++;
-        if (r() < .4) tombino(ax + (bx - ax) * .5 + nx * sd * rd.w * .2, az + (bz - az) * .5 + nz * sd * rd.w * .2, .32); }
+        r(); }   // [strade] niente più tombini accanto alle caditoie (erano uno ogni 50 m in più)
     });
     return n;
   }
@@ -10782,6 +10795,7 @@ var Render = (function () {
 
   // --- panchine ---
   function bench(x, z, rot, kind) {
+    bancaAdd(x, z, rot, .55, kind === 'marble' ? .57 : .48);   // [animazioni2] per sedercisi
     if (ARR3()) return place(pm3(kind === 'marble' ? 'panchina_marmo' : kind === 'deco' ? 'panchina_cemento' : 'panchina_ghisa'), x, z, rot);   // [modelli1]
     const g = G0(), slat = kind === 'marble' ? PM.marble() : kind === 'deco' ? sm('#f2eee6') : PM.woodL(), leg = kind === 'deco' ? sm('#f4a6c0') : PM.ironG();
     if (kind === 'marble') { add(g, box(2, .14, .6, slat), 0, .5, 0); [-.7, .7].forEach(o => add(g, box(.2, .45, .5, slat), o, .22, 0)); return place(g, x, z, rot); }
@@ -11599,6 +11613,7 @@ var Render = (function () {
   function lod3d(R) {
     const u = R.ud; R.alto.updateMatrixWorld(true);
     if (u.ster) { const I = u.ster.children[0], m = mergeGroup(I); u.ster.remove(I); u.ster.add(m); }   // [animazioni] lo sterzo che gira: un pezzo solo (i segnaposti delle manopole restano)
+    if (u.vol) { const S = u.vol.spin, m = mergeGroup(S); u.vol.piv.remove(S); u.vol.piv.add(m); u.vol.spin = m; }   // [animazioni2] il volante che gira: un pezzo solo (una chiamata di disegno)
     u.tails = u.tails.map(t => ({ position: t.getWorldPosition(new THREE.Vector3()) }));   // i bagliori dei fanali stanno dove sono i fanali, anche dentro i loro gruppi
     const alto = finishVehicle(R.alto, u), basso = mergeGroup(R.basso), g = new THREE.LOD();
     g.addLevel(alto, 0); g.addLevel(basso, V3LOD); g.userData = u; u.v3d = true; return g;
@@ -11731,6 +11746,185 @@ var Render = (function () {
     const t = box(.46, .45, .28, lam(look.top)); t.position.y = .22; const h = box(.36, .36, .34, lam(look.skin)); h.position.y = .62;
     const hr = box(.38, .1, .36, lam(cap ? '#1b2544' : (look.hair || '#222'))); hr.position.y = .83;
     const arm = box(.12, .12, .4, lam(look.top)); arm.position.set(.2, .3, .25); g.add(t, h, hr, arm); return g;
+  }
+  // [animazioni2] AL VOLANTE: il personaggio vero al posto di guida (prima il pupazzo a scatole di driverMesh, che resta per le auto
+  // lontane e per quelle senza sedile). who: il gruppo della persona; se è figlio del mezzo (abitanti) la posizione è nel mezzo,
+  // se è nella scena (il giocatore) la si mette nel mondo. Il volante (veicoli3d.js, ud.vol) gira con lo sterzo e le mani ci restano
+  // sopra: i punti di presa sono sul cerchio vero, a «dieci e dieci» (±60° dall'alto) più l'angolo dello sterzo, portati nello spazio
+  // del personaggio. Il busto va un poco di lato con la forza della curva, la testa guarda dentro la curva.
+  const VOL_K = 2.6, VOL_PHI = Math.PI / 3, VOL_SLIP = .3;   // il volante gira 2,6 volte la ruota (0,55 rad di ruota → 82° di volante); le mani a ±60°
+  const _cd1 = new THREE.Vector3(), _cd2 = new THREE.Vector3(), _cdq = new THREE.Quaternion(), _cdq2 = new THREE.Quaternion(), _cdM = new THREE.Matrix4();
+  function carDriver(who, v, g, u, dt, opts) {
+    opts = opts || {};
+    const seat = opts.pass ? u.seat2 : u.seat; if (!seat) return null;
+    const out = opts.inWorld;
+    if (opts.keep) { }   // il corpo è già dove deve stare (salendo, scendendo)
+    else if (out) { g.updateMatrixWorld(true); _cd1.set(seat[0], seat[1], seat[2]).applyMatrix4(g.matrixWorld); who.position.copy(_cd1); who.quaternion.copy(g.quaternion); }
+    else { who.position.set(seat[0], seat[1], seat[2]); who.quaternion.identity(); }
+    who.updateMatrixWorld(true);
+    const roofC = u.porta ? u.porta.yw + .05 : seat[1] + .5;   // il tetto sopra il sedile (veicoli3d: il bordo alto del finestrino + 5 cm)
+    const A = { roof: roofC - seat[1], hipMax: u.porta ? -.42 : -.05, hipZ: -.02, hipX: 0, footY: Math.max(.22, seat[1] - .66) - seat[1], footZ: .62, pass: !!opts.pass,
+      lean: clamp(-(v.latA || 0) * .06, -1, 1), look: clamp((u.steer || 0) / .55, -1, 1) * (Math.abs(v.speed || 0) > .5 ? 1 : .4) };
+    const S = !opts.pass && u.vol && u.vol.spin;
+    if (S) {
+      S.rotation.z = -(u.steer || 0) * VOL_K;   // a sinistra (u.steer > 0) la cima del volante va a sinistra
+      g.updateMatrixWorld(true); who.updateMatrixWorld(true); S.updateMatrixWorld(true);
+      S.getWorldQuaternion(_cdq); who.getWorldQuaternion(_cdq2); _cdq2.invert().multiply(_cdq);   // dal volante al personaggio
+      const r = u.vol.r;
+      for (const [sd, ph] of [['L', -VOL_PHI], ['R', VOL_PHI]]) {
+        const ph2 = ph + VOL_SLIP * (u.steer || 0) * VOL_K, sn = Math.sin(ph2), cs = Math.cos(ph2);   // le mani girano col volante, scivolando un poco sul cerchio (30%)
+        _cd1.set(-r * sn, r * cs, 0).applyMatrix4(S.matrixWorld); who.worldToLocal(_cd1);
+        const ax = _cd2.set(cs, sn, 0).applyQuaternion(_cdq2).toArray();   // lungo il cerchio, verso le dodici per la destra (pollice) e via dalle dodici per la sinistra
+        const fy = _cd2.set(sn * .5, -cs * .5, .85).normalize().applyQuaternion(_cdq2).toArray();   // le dita: verso il cruscotto e dentro il cerchio
+        A['g' + sd] = { p: _cd1.toArray(), ax, fy };
+        A['w' + sd] = _cd1.clone();
+      }
+      // il sedile si regola sul volante: il bacino 46 cm dietro il centro del volante
+      if (u.__volZ === undefined) { _cd1.set(0, 0, 0).applyMatrix4(S.matrixWorld); g.worldToLocal(_cd1); u.__volZ = _cd1.z - seat[2]; u.__volX = _cd1.x - seat[0]; }   // il centro del volante rispetto al sedile
+      if (u.__volZ !== undefined) { A.hipZ = clamp(u.__volZ - .46, -.12, .1); A.footZ = A.hipZ + .64; A.hipX = clamp(u.__volX, -.08, .08); }
+    }
+    return A;
+  }
+  // [animazioni2] SALIRE E SCENDERE DALL'AUTO, solo da vedere: il gioco mette subito il giocatore al volante (o accanto all'auto) e qui
+  // il corpo ci arriva: alla portiera (che si apre da sé, vehMondo), giù sul sedile girandosi, le mani al volante; scendendo il
+  // contrario. Dura ~1,1 s e non ferma niente: appena si dà gas (o ci si muove, a piedi) salta alla fine.
+  const CARIO = { inDur: 1.1, outDur: 1.0 };
+  function carInOut(st, p, pveh, inCar, pg, dt) {
+    const prev = dyn.carPrev, now = inCar ? pveh.id : null;
+    if (now && (!prev || prev.id !== now)) {
+      const f = prev && prev.foot; dyn.carIO = f && !prev.id && Math.hypot(f.x - pveh.x, f.z - pveh.y) < 5 && st.clock - f.t < .5 ? { vid: now, out: false, t: 0, from: f } : null;
+    } else if (!now && prev && prev.id && prev.car) {
+      const vv = st.vehicles.find(q => q.id === prev.id); dyn.carIO = vv && !pveh && Math.hypot(p.x - vv.x, p.y - vv.y) < 5 ? { vid: prev.id, out: true, t: 0, to: { x: p.x, z: p.y } } : null;
+    }
+    dyn.carPrev = { id: pveh ? pveh.id : null, car: inCar, foot: !pveh ? { x: p.x, z: p.y, face: p.face, t: st.clock } : prev && prev.foot };
+    const C = dyn.carIO; if (!C) return null;
+    C.t += dt;
+    const skip = C.out ? (!!pveh || Math.hypot(p.x - C.to.x, p.y - C.to.z) > .05 || Math.abs(p.speed || 0) > .2 || !!p.path && p.path.length > 0)
+      : (!pveh || pveh.id !== C.vid || Math.abs(pveh.speed || 0) > .4);
+    if (skip || C.t >= (C.out ? CARIO.outDur : CARIO.inDur)) { dyn.carIO = null; return null; }
+    return C;
+  }
+  const _io1 = new THREE.Vector3(), _io2 = new THREE.Vector3(), _ioQ = new THREE.Quaternion(), _ioE = new THREE.Euler(0, 0, 0, 'YXZ');
+  const sm3 = k => k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k);
+  function driverPlayer(st, p, v, g, u, pg, C, dt) {
+    const an = window.Anim ? Anim.playerState(st) : { act: null, upper: null, mood: [], talk: false, lookAt: null };
+    an.act = 'in_auto'; an.upper = null; an.mood.length = 0; an.lookAt = null; an.talk = false;
+    let speed = 0, A;
+    if (!C) A = carDriver(pg, v, g, u, dt, { inWorld: true });
+    else {
+      g.updateMatrixWorld(true);
+      const S = _io1.set(u.seat[0], u.seat[1], u.seat[2]).applyMatrix4(g.matrixWorld), Dw = _io2.set(u.seat[0] + .62, 0, u.seat[2] + .12).applyMatrix4(g.matrixWorld); Dw.y = groundH(Dw.x, Dw.z);   // la portiera: 62 cm fuori dal sedile, a terra
+      const carYaw = Math.PI / 2 - v.ang, t = C.t;
+      let k = 1, hands = 1, yaw = carYaw, walkTo = null, walkFrom = null, wk = 0;
+      if (!C.out) {
+        if (t < .4 && C.from) { walkFrom = C.from; walkTo = Dw; wk = t / .4; }
+        else { const s = sm3((t - .4) / .5); k = s; hands = sm3((t - .85) / .25); yaw = carYaw + .55 * (1 - s); }
+      } else {
+        if (t < .55) { const s = 1 - sm3((t - .12) / .43); k = s; hands = 1 - sm3(t / .15); yaw = carYaw + .55 * (1 - s); }
+        else { walkFrom = { x: Dw.x, z: Dw.z }; walkTo = { x: C.to.x, z: C.to.z }; wk = (t - .55) / .45; }
+      }
+      if (walkTo) {   // a piedi fra il punto di prima e la portiera
+        const x = walkFrom.x + (walkTo.x - walkFrom.x) * wk, z = walkFrom.z + (walkTo.z - walkFrom.z) * wk, d = Math.hypot(walkTo.x - walkFrom.x, walkTo.z - walkFrom.z);
+        pg.position.set(x, groundH(x, z), z); speed = d / (C.out ? .45 : .4);
+        const wy = d > .05 ? Math.atan2(walkTo.x - walkFrom.x, walkTo.z - walkFrom.z) : carYaw;
+        _ioE.set(0, wk > .7 && !C.out ? wy + (carYaw - wy) * (wk - .7) / .3 : wy, 0); pg.quaternion.setFromEuler(_ioE);
+        an.act = null; k = 0; hands = 0;
+      } else {   // fra la portiera e il sedile: il corpo scivola dentro (o fuori) girandosi
+        pg.position.lerpVectors(Dw, S, k); _ioE.set(0, yaw, 0); pg.quaternion.setFromEuler(_ioE); _ioQ.copy(g.quaternion); pg.quaternion.slerp(_ioQ, k);
+      }
+      pg.updateMatrixWorld(true);
+      A = carDriver(pg, v, g, u, dt, { inWorld: true, keep: true });
+      A.dentro = k; A.mani = hands;
+    }
+    an.auto = A;
+    Models.animPerson(pg, { speed, inVeh: !!(st.player.vehicle), anim: an }, dt);
+  }
+  // [animazioni2] IL GIOCATORE A PIEDI, quello che si vede solo qui (la logica non cambia): i piedi sulle pedate di scale e scalinate,
+  // la caduta e l'atterraggio, la bracciata, seduto sulle panchine e sui belvederi quando ci si ferma accanto, lo scavalcare del
+  // bordo in cima alla scala, le mani sui pioli veri. window.__anim2off = true rimette tutto com'era (per le foto «prima»).
+  const PL2 = { dL: 0, dR: 0, cand: null, ckey: '', top: null, landT: -9, landF: 0, swim: 0, still: 0, sit: null, mant: null, lvPrev: null, rL: null, rR: null };
+  const BANCHE = [], BANCHE_G = new Map();   // le panchine (bench) e i belvederi: { x, z, yaw (verso dove si guarda seduti), w (mezza lunghezza), h (la seduta), bi (sul tetto) }
+  function bancaAdd(x, z, yaw, w, h, bi) { const b = { x, z, yaw, w, h, bi }; BANCHE.push(b); const k = Math.floor(x / 8) + ',' + Math.floor(z / 8); (BANCHE_G.get(k) || BANCHE_G.set(k, []).get(k)).push(b); }
+  function bancaNear(x, z, r) {
+    if (!PL2.belv && typeof Tetti !== 'undefined' && Tetti.BELV) { PL2.belv = true; Tetti.BELV.forEach(v => { const yaw = (v.i * 1.7) % 6.283; bancaAdd(v.x, v.y, yaw + Math.PI, .6, .48, v.bi); }); }   // la panca del belvedere: lo schienale verso (sin, cos) del suo angolo
+    let best = null, bd = r;
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const L = BANCHE_G.get((Math.floor(x / 8) + i) + ',' + (Math.floor(z / 8) + j)); if (!L) continue;
+      for (const b of L) { const ca = Math.cos(b.yaw), sa = Math.sin(b.yaw), dx = x - b.x, dz = z - b.z, along = clamp(dx * ca - dz * sa, -b.w, b.w), sx = b.x + along * ca + sa * .06, sz = b.z - along * sa + ca * .06, d = Math.hypot(x - sx, z - sz); if (d < bd && (b.bi !== undefined || d < 1.1)) { bd = d; best = { b, x: sx, z: sz, d }; } } }
+    return best;
+  }
+  const _pr = new THREE.Raycaster(), _pv = new THREE.Vector3(), _pd = new THREE.Vector3(0, -1, 0);
+  function treadY(x, z, y0) {   // la pedata sotto (x, z): il primo piano orizzontale sotto y0 + 0,55 fra i pezzi fissi vicini
+    _pr.set(_pv.set(x, y0 + .55, z), _pd); _pr.far = 1.1; let best = null;
+    for (const m of PL2.cand) { const hs = _pr.intersectObject(m, false); for (const h of hs) { if (h.face && h.face.normal.y > .6 && (best === null || h.point.y > best)) best = h.point.y; break; } }
+    return best;
+  }
+  function onSteps(p) {   // su una scala o una scalinata (o a un passo da una)
+    if (G.quotaScala && G.quotaScala(p.x, p.y) !== null) return true;
+    const N = G.NOV; if (!N) return false;
+    for (const [a, b] of [[0, 0], [.6, 0], [-.6, 0], [0, .6], [0, -.6]]) if (N[Math.floor((p.y + b) / TS) * G.GW + Math.floor((p.x + a) / TS)] === 2) return true;
+    return false;
+  }
+  function piediGradini(st, p, pg, dt, an) {
+    const R0 = pg.userData.rig, on = !!R0 && !p.lv && !p.indoor && !p.swim && !(p.jz > 0) && !PL2.sit && onSteps(p);
+    let tL = 0, tR = 0;
+    if (on) {
+      const key = Math.floor(p.x / 3) + ',' + Math.floor(p.y / 3);
+      if (PL2.ckey !== key) { PL2.ckey = key; PL2.cand = []; const x0 = p.x - 4, x1 = p.x + 4, z0 = p.y - 4, z1 = p.y + 4;   // i pezzi fissi che stanno sotto i piedi da qui a 4 m
+        scene.children.forEach(o => { if (!o.isMesh || o.isSkinnedMesh || !o.visible || !o.geometry || !o.geometry.attributes.position || o.material.transparent) return; const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); const B = g.boundingBox;
+          o.updateMatrixWorld(); const e = o.matrixWorld.elements; if (Math.abs(e[0] - 1) > 1e-6 || Math.abs(e[5] - 1) > 1e-6 || Math.abs(e[10] - 1) > 1e-6) { _pv.set(0, 0, 0).applyMatrix4(o.matrixWorld); if (Math.abs(_pv.x - p.x) > 12 || Math.abs(_pv.z - p.y) > 12) return; PL2.cand.push(o); return; }
+          if (B.max.x + e[12] < x0 || B.min.x + e[12] > x1 || B.max.z + e[14] < z0 || B.min.z + e[14] > z1) return; if (B.min.y + e[13] > playerH + 1.2 || B.max.y + e[13] < playerH - 1.2) return; PL2.cand.push(o); }); }
+      const b = R0.b;
+      for (const sd of ['L', 'R']) { const f = b['Foot' + sd]; if (!f) continue; f.getWorldPosition(_pv); const ty = treadY(_pv.x, _pv.z, playerH); const d = ty === null ? 0 : clamp(ty - playerH, -.36, .36); if (sd === 'L') tL = d; else tR = d; }
+    }
+    const k = 1 - Math.exp(-dt * 24); PL2.dL += (tL - PL2.dL) * k; PL2.dR += (tR - PL2.dR) * k;
+    if (Math.abs(PL2.dL) + Math.abs(PL2.dR) > .004) { an.mood.push('gradini'); an.gradini = { dL: PL2.dL, dR: PL2.dR }; }
+  }
+  function plAnim(st, p, pg, pveh, dt) {
+    const an = window.Anim ? Anim.playerState(st) : null; if (!an) return an;
+    pioli(st, p, an, dt);
+    const lvPrev = PL2.lvPrev; PL2.lvPrev = p.lv ? { k: p.lv.k, L: p.lv.L, up: p.lv.up, b: p.lv.b } : null;
+    if (window.__anim2off || pveh || p.stun > 0) { PL2.sit = null; PL2.mant = null; PL2.top = null; return an; }
+    // in aria: la caduta (scendendo veloci da più di un metro e mezzo), poi l'atterraggio a ginocchia piegate
+    const feet = playerH;
+    if (p.jz > 0) { PL2.top = Math.max(PL2.top === null ? feet + p.jz : PL2.top, feet + p.jz); if ((p.jvz || 0) < -3 && PL2.top - feet > 1.5) { an.act = 'cade'; an.giu = clamp((PL2.top - feet - 1.5) / 3, .3, 1); an.upper = null; } }
+    else if (PL2.top !== null) { const drop = PL2.top - feet; PL2.top = null; if (drop > .35) { PL2.landT = st.clock; PL2.landF = clamp(drop / 3, .35, 1); } }
+    const lk = 1 - (st.clock - PL2.landT) / .32; if (lk > 0 && !(p.jz > 0) && !an.act) { an.act = 'atterra'; an.atterra = Math.sin(clamp(lk, 0, 1) * Math.PI * .5) * (lk < .85 ? 1 : (1 - lk) / .15); an.forte = PL2.landF; }
+    // a nuoto: la bracciata, col ritmo della velocità
+    if (p.swim && !p.vehicle) { const sp = Math.abs(p.speed || 0), va = clamp(sp / 1.5, 0, 1); PL2.swim = (PL2.swim + dt * (.45 + .35 * va)) % 1; an.act = 'nuota'; an.va = va; an.fase = PL2.swim; an.upper = null; }
+    // in cima alla scala: si scavalca il bordo invece del salto sul tetto
+    if (lvPrev && lvPrev.k === 'scala' && lvPrev.up && p.lv && p.lv.k === 'tetto' && typeof Tetti !== 'undefined') { const L = Tetti.LADDERS[lvPrev.L]; if (L) { const top = p.lv.h, ed = Math.max(0, (Tetti.edgeH ? Tetti.edgeH(L.bi, L.x, L.y, L.ox, L.oy) : top) - top);
+      PL2.mant = { t: 0, fx: L.fx, fz: L.fy, tx: p.x, tz: p.y, y0: top + .05, y1: top, ed: ed + .12, wx: L.x, wz: L.y, yaw: Math.PI / 2 - p.face }; } }
+    const Mn = PL2.mant;
+    if (Mn) { Mn.t += dt; if (Mn.t > .75 || Math.hypot(p.x - Mn.tx, p.y - Mn.tz) > .05 || Math.abs(p.speed || 0) > .2 || p.jz > 0 || !p.lv) PL2.mant = null;
+      else { const k = Mn.t / .75, s = k * k * (3 - 2 * k), x = Mn.fx + (Mn.tx - Mn.fx) * s, z = Mn.fz + (Mn.tz - Mn.fz) * s, lift = Mn.ed * Math.sin(Math.PI * clamp(k / .8, 0, 1)) * .85;
+        pg.position.set(x, Mn.y0 + (Mn.y1 - Mn.y0) * s + lift, z); pg.rotation.y = pg.userData.__ry = Mn.yaw;
+        const fwx = Math.sin(Mn.yaw), fwz = Math.cos(Mn.yaw), av = (Mn.wx - x) * fwx + (Mn.wz - z) * fwz;
+        an.act = 'scavalca'; an.k = k; an.bordo = Mn.y1 + Mn.ed - pg.position.y; an.av = clamp(av, .15, .6); an.upper = null; an.mood.length = 0; } }
+    // la panchina: fermi accanto per un secondo e mezzo ci si siede; appena ci si muove ci si alza
+    const mv = Math.abs(p.speed || 0) > .05 || (p.path && p.path.length) || p.jz > 0 || p.jcharge != null || p.lv && p.lv.k === 'scala' || !!PL2.mant || p.swim || p.carrying || (p.punch || 0) > 0 || (p.cur && p.cur !== 'pugni') || (st.me && st.me.warp && !PL2.sit);
+    if (PL2.sit && !PL2.sit.up && (mv || Math.hypot(p.x - PL2.sit.px, p.y - PL2.sit.pz) > .03)) PL2.sit.up = true;
+    if (!PL2.sit) { PL2.still = mv ? 0 : PL2.still + dt; if (PL2.still > 1.5 && !p.indoor) { const bn = bancaNear(p.x, p.y, 3.3);   /* le panchine a un passo, il belvedere da dove lo si vede (3 m) */ if (bn && (bn.b.bi === undefined ? !p.lv : p.lv && p.lv.k === 'tetto' && p.lv.b === bn.b.bi)) PL2.sit = { b: bn.b, x: bn.x, z: bn.z, px: p.x, pz: p.y, k: 0, up: false, ry: pg.rotation.y, dur: .45 + .25 * bn.d }; } }
+    const Si = PL2.sit;
+    if (Si) {
+      Si.k = clamp(Si.k + (Si.up ? -dt / .3 : dt / Si.dur), 0, 1); if (Si.up && Si.k <= 0) PL2.sit = null;
+      else { const s = Si.k * Si.k * (3 - 2 * Si.k), y0 = pg.position.y, ys = Si.b.bi === undefined ? groundH(Si.x, Si.z) : y0;
+        pg.position.set(pg.position.x + (Si.x - pg.position.x) * s, y0 + (ys - y0) * s, pg.position.z + (Si.z - pg.position.z) * s);
+        let d = Si.b.yaw - Si.ry; d = Math.atan2(Math.sin(d), Math.cos(d)); pg.rotation.y = Si.ry + d * s; if (Si.up) pg.userData.__ry = pg.rotation.y;
+        if (s > .02) { an.act = 'siede'; an.upper = null; an.mood.length = 0; an.seduto = s; } }
+    }
+    piediGradini(st, p, pg, dt, an);
+    return an;
+  }
+  // [animazioni2] le mani sui pioli veri: la scala del giocatore, coi pioli dove li disegna tetti.js (ogni 30 cm da 30 cm sopra il piede)
+  function pioli(st, p, an, dt) {
+    const lv = p.lv; if (window.__anim2off || !lv || lv.k !== 'scala' || typeof Tetti === 'undefined') { PL2.rL = PL2.rR = null; return; }
+    const L = Tetti.LADDERS[lv.L]; if (!L || L.rampa) return;
+    const q = lv.h0 + (lv.h1 - lv.h0) * lv.t, base = Math.min(lv.h0, lv.h1), y0 = base + .3, step = .3, dz = Math.hypot(L.fx - L.x, L.fy - L.y) - .2;   // i pioli 20 cm fuori dal muro
+    const top = Math.max(lv.h0, lv.h1) + .95 - .9, reach = q + 1.62;   // le mani arrivano a 1,62 m sopra i piedi
+    const rung = par => { let k = Math.floor((reach - y0) / step); if ((k & 1) !== par) k--; return Math.min(y0 + k * step, top); };
+    const sm = 1 - Math.exp(-dt * 14), tL = rung(0) - q, tR = rung(1) - q;
+    PL2.rL = PL2.rL === null ? tL : PL2.rL + (tL - PL2.rL) * sm; PL2.rR = PL2.rR === null ? tR : PL2.rR + (tR - PL2.rR) * sm;
+    an.pioli = { yL: PL2.rL, yR: PL2.rR, z: dz, x: .2 };
   }
   // segni delle gomme: un nastro scuro a terra per ogni ruota posteriore che slitta (un solo buffer circolare)
   const SKID = { N: 2400, i: 0, geo: null, m: null };
@@ -12636,7 +12830,7 @@ var Render = (function () {
   }
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
   function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
@@ -12650,7 +12844,7 @@ var Render = (function () {
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
       rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
-      if (PRO.attivo) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
+      if (PRO.prof) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
       sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); return; }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H); occResize(W, H);   /* [amb3] */   /* [regia2] l'ombra degli angoli */
@@ -12690,7 +12884,7 @@ var Render = (function () {
   if (typeof window !== 'undefined') window.__SGU = SGU;
   // ================= [scorcio] LA PROPOSTA: gli stessi modelli che si leggono ricchi e fatti a mano, con la luce e i materiali =================
   // Niente contenuto nuovo: tutto nei materiali (pezzi di shader di three, una volta sola) e nel passo unico che c'era già.
-  // Si compila solo nel laboratorio (?scorcio=...) o con ?proposta; window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
+  // Si compila sempre ([look-ovunque], tranne con ?proposta=0); window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
   // di oggi, identico) e ogni manopola a zero spegne il suo pezzo, così si confronta un elemento alla volta.
   //   nei materiali: pittura (il muro più chiaro in alto e più scuro al piede, come una mano di colore), varia (ogni massa un filo diversa
   //   di valore e di tinta: rumore largo nel mondo, niente texture), grana (la micro-normale dipinta: la luce che trema sulla superficie,
@@ -12699,9 +12893,18 @@ var Render = (function () {
   //   nel passo unico (legge la profondità): spigoli (gli spigoli vivi che prendono la luce, come smussati), pieghe (le pieghe e gli
   //   angoli rientranti più scuri), ao (l'ombra di contatto al piede dei muri, sotto le cose), miniatura (il tilt-shift: una fascia a
   //   fuoco, il sopra e il sotto sfocati), grading (il viraggio dell'ora: i campi pro* dei quattro momenti).
-  const PRO = { attivo: typeof location !== 'undefined' && /[?&](scorcio=|proposta\b)/.test(location.search), pezzi: false,
+  // [look-ovunque] la proposta è il look di tutta la mappa (approvata dal committente): si compila sempre col look nuovo; ?proposta=0 la
+  // spegne (il look di prima, identico: niente pezzi di shader, niente profondità nel passo). Le chiome ricche e il verde che lascia passare
+  // la luce (SG_FOGLIA) restano del laboratorio (PRO.attivo: ?scorcio=... o ?proposta esplicito): gli alberi sono di un altro cantiere.
+  // La «base 4» scelta sullo scorcio: niente ombra di contatto, niente bordi da profondità o da curvatura (spigoli, pieghe, inchiostro a 0).
+  // Senza costi: fuori dal laboratorio il passo non legge la profondità (niente depthTexture, niente codice che la usa, mediump come prima);
+  // sul telefono (PHONE) restano fuori anche la micro-normale dipinta (grana: due rumori e le derivate a ogni pixel) e la miniatura (8 letture).
+  const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
+  const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
+    prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
-  SGU.pro = { on: /[?&]proposta\b/.test(typeof location !== 'undefined' ? location.search : ''),
+  PRO.prof = PRO.look && PRO.attivo;
+  SGU.pro = { on: !PRO_NO,
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
     miniatura: .55, fuoco: .48, fascia: .2, sfoca: 3.2,                     // il tilt-shift: forza, centro della fascia a fuoco (0 sotto, 1 sopra), mezza altezza, raggio (pixel a 540 righe)
@@ -12710,10 +12913,11 @@ var Render = (function () {
     // molto più leggere: mai dalla curvatura, il terreno non ha né salti né pieghe oltre la soglia) e la luce a celle; spinto verso la
     // strada (hip hop): accenti pieni e saturi, neri profondi nelle ombre di sera e di notte, polvere al piede dei muri, il suolo meno
     // bianco e vissuto, il verde acido spento. Il pastello resta una manopola (spento: troppo da libro per bambini)
-    inchiostro: 1, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
+    inchiostro: 0, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
     celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1,
     vivo: .7,
     chiomeRicche: 1, vento: 1, finestre: 1 };   // le chiome ricche (più lobi, sotto-masse, carte, ogni albero suo, ombra interna, toni a celle, vento); le finestre accese che sembrano finestre (non pannelli gialli)   // la tavolozza di fondo viva: i grigi caldi o freddi (mai fango), i marroni verso cotto e ocra, i verdi in luce verso il giallo-verde, più colore nei medi   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
+  if (PHONE) { SGU.pro.grana = 0; SGU.pro.miniatura = 0; }   // [look-ovunque] sul telefono: fuori dai programmi (vedi sopra)
   Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22, proEsp: 1, proSuolo: 1 });
   Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.035, proTinta: '#5a3a9a', proTintaK: 0.26, proEsp: 1.05, proSuolo: 1.55 });   // [scorcio] proSuolo: il suolo (il lastricato in piano, alla quota della camera) prende più cielo: di sera la piazza si legge
@@ -12796,7 +13000,7 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
 #endif`;
     // la micro-normale dipinta (e l'acqua che si muove): la pendenza di un rumore, letta con le derivate dello schermo
     C.normal_fragment_maps += `
-#if defined( STANDARD ) && !defined( USE_SKINNING )
+#if defined( STANDARD ) && !defined( USE_SKINNING ) && ( defined( SG_ACQUA ) || ${PHONE ? 0 : 1} )
 { float sgK = sgP1.y;
 #ifdef SG_ACQUA
   sgK = sgP2.y;
@@ -12866,7 +13070,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif`;
   }
   // l'acqua: i materiali d'acqua dei pezzi (la fontana, le vasche) prendono il loro ramo
-  function sguProAcqua() { if (!PRO.attivo) return 0; let n = 0; const visti = new Set();
+  function sguProAcqua() { if (!PRO.look) return 0; let n = 0; const visti = new Set();
     scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (visti.has(m) || !m.isMeshStandardMaterial || !/^acqua/.test(m.name || '')) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_ACQUA: '' }); m.needsUpdate = true; n++; }); });
     // i vetri delle case nel secchio comune (peso_vetro.js: l'attributo vt1): le finestre accese della proposta
     scene.traverse(o => { const m = o.material; if (!o.isMesh || !m || Array.isArray(m) || !m.isMeshStandardMaterial || !o.geometry || !o.geometry.attributes.vt1 || (m.defines && 'SG_VETRO' in m.defines)) return; m.defines = Object.assign(m.defines || {}, { SG_VETRO: '' }); m.needsUpdate = true; n++; });
@@ -12875,10 +13079,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     return n; }
   // a ogni fotogramma: le manopole nei materiali (spente se la proposta è spenta)
   function sguProTick(S) {
-    const P = SGU.pro, k = PRO.attivo && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
+    const P = SGU.pro, k = PRO.look && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
-    { const ric = !!(k && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
+    { const ric = !!(k && PRO.attivo && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
     PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
@@ -12900,7 +13104,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
   }
   // la curva filmica nei materiali e la luce di bordo (una volta sola: i pezzi di shader sono di three, valgono solo col tone mapping acceso)
   function sguPezzi() {
-    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.attivo) sguProPezzi(C);   // [scorcio]
+    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.look) sguProPezzi(C);   // [scorcio]
     C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
       `vec3 CustomToneMapping( vec3 color ) {   // [sguardo] la curva: un piede appena più profondo (neri puliti), i medi dritti, la spalla dei chiari che piega senza bruciare
         vec3 x = max(color * toneMappingExposure, 0.); x = x * (x + .011) / (x + .022);
@@ -12923,11 +13127,14 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) } },   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.attivo ? '#define SG_PRO\nprecision highp float;' : 'precision mediump float;') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
-        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform vec4 pT; uniform float pa; uniform vec4 pI; uniform vec4 pV; uniform vec2 fv;
+        uniform vec4 pT; uniform vec4 pI; uniform vec4 pV;
+#endif
+#ifdef SG_PROD
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform float pa; uniform vec2 fv;
         // [scorcio] l'inverso della profondità: su un piano va come una retta sullo schermo, così la sua «curvatura» è zero sul piano,
         // positiva sullo spigolo vivo (sporge verso la camera), negativa nell'angolo rientrante. Diviso per l'angolo di r pixel: ~1 su uno
         // spigolo a 90°, qualunque sia la distanza. Le coppie che saltano troppo (la sagoma di una cosa davanti a un'altra) non contano
@@ -12939,7 +13146,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif
         void main(){
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
-#ifdef SG_PRO
+#if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
             float coc = pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y));
             if (coc > .01) { vec2 rr = e * pT.w * coc; vec3 acc = c;
@@ -12950,6 +13157,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
 #ifdef SG_PRO
           float sgInk = 0.;
+#ifdef SG_PROD
           if (pI.x > 0.) {   // la linea d'inchiostro, un pixel: sul pixel davanti a un salto di profondità (la sagoma); più leggera fra due facce che girano oltre la soglia
             vec2 ex = vec2(e.x * pV.z, 0.), ey = vec2(0., e.y * pV.z);   // lo spessore: i vicini più lontani, la linea più larga
             vec3 c0 = sgV(vUv), r0 = sgV(vUv + ex), l0 = sgV(vUv - ex), u0 = sgV(vUv + ey), d0 = sgV(vUv - ey), ru = sgV(vUv + ex + ey), rd = sgV(vUv + ex - ey), lu = sgV(vUv - ex + ey);
@@ -12971,6 +13179,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
             c *= (1. - .3 * cr) * (1. - .4 * oc);                                    // le pieghe e l'ombra di contatto
             c += hl * (c * .5 + .03) * vec3(1.04, 1., .9);                           // lo spigolo che prende la luce (caldo)
           }
+#endif
           if (pV.x > 0.) {   // il verde acido (i prati chiari e saturi) verso la salvia: le chiome scure non si toccano
             float gx = c.g - max(c.r, c.b), ac = smoothstep(.06, .2, gx) * smoothstep(.3, .55, c.g) * pV.x;
             c = mix(c, vec3(.55 * c.g + .3 * c.r, .8 * c.g + .05, .42 * c.g + .35 * c.b), ac); }
@@ -13039,7 +13248,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
-    if (PRO.attivo) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
+    if (PRO.look) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -13056,9 +13265,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido); U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
-    if (PRO.attivo) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
+    if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
-      U.tD.value = rt.depthTexture; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
+      U.tD.value = rt.depthTexture || null; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
       U.pK.value.set(k * P.spigoli, k * P.pieghe, k * P.ao, Math.max(1, P.aoRaggio * h / 1080));
       U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), k * (P.vivo || 0)); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
       if (g > 0 && K.proOmbra) { U.sh.value.set(K.ombra[0] * (1 + (K.proOmbra[0] - 1) * g), K.ombra[1] * (1 + (K.proOmbra[1] - 1) * g), K.ombra[2] * (1 + (K.proOmbra[2] - 1) * g));
@@ -13371,7 +13580,22 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       for (let k = 0; k < 26; k++) { const x = q.x - 22 + r() * 30, z = q.y - 30 + r() * 60; if (!free(x, z) || !free(x, z + 3) || !free(x, z - 3)) continue; container(x, z, r() < .7 ? 0 : Math.PI / 2, pick(r, ['#7a3a2a', '#3a5a6a', '#5a6a4a', '#8a6a3a', '#6a6a70']), r() < .3 ? 2.6 : 0); }
     }
     // ---- le stazioni di estrazione nella prateria: torre di trivella, nastro, cumuli di carbone, recinto, guardie ----
-    ['miniera', 'stazione2'].forEach((id, k) => {
+    // [campagna] con la città nuova ogni stazione è un piazzale solo (world_cittanuova.js): la sala argani con la ciminiera, il castelletto del
+    // pozzo e la tramoggia sono pezzi (pezzi_citta.js), posati in piano. Qui restano i cumuli di minerale sul piazzale e la rete sul lato del
+    // monte; la torre di trivella, i condotti, il silo e i corpi di mattoni di stazione31 (un doppione posato su un'unica quota) non ci sono più
+    const PADS = W0 ? [W0.railCampagna && W0.railCampagna.pad, W0.stazSud].filter(Boolean) : [];
+    if (PADS.length) PADS.forEach(pd => {
+      const coal = sm('#1c1a1c', { roughness: 1 }), coal2 = sm('#2a2622', { roughness: 1 }), steel = sl('#3a3a40');
+      pd.cumuli.forEach(([x, z, rr], k) => { for (let c = 0; c < 3; c++) { const a = c * 2.1 + k, d = c ? rr * .55 : 0, gx = x + Math.cos(a) * d, gz = z + Math.sin(a) * d, hp = new THREE.Mesh(new THREE.ConeGeometry(rr * (c ? .62 : 1), rr * (c ? .5 : .72), 9), c % 2 ? coal2 : coal); hp.position.set(gx, pd.H + rr * (c ? .25 : .36) - .05, gz); hp.rotation.y = a; addStatic(hp); } });
+      // la rete: sul lato del monte e sui fianchi del piazzale, mai su una strada o sulla linea
+      const A = pd.rete, viaSegP = (M.roads || []).filter(rd => rd.pts && rd.pts.length > 1), lontano = (x, z) => viaSegP.every(rd => { for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1]; if (Math.min(ax, bx) - 8 > x || Math.max(ax, bx) + 8 < x || Math.min(ay, by) - 8 > z || Math.max(ay, by) + 8 < z) continue; const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (z - ay) * dy) / L2, 0, 1); if (Math.hypot(ax + dx * t - x, ay + dy * t - z) < rd.w / 2 + 1.2) return false; } return true; });
+      const R0 = W0.railCampagna && W0.railCampagna.P, sulBinario = (x, z) => R0 && R0.some(q => Math.abs(q[0] - x) < 4.5 && Math.abs(q[1] - z) < 4.5 && Math.hypot(q[0] - x, q[1] - z) < 4.2);
+      A.slice(1).forEach((_, i0) => { const [ax, az] = A[i0], [bx, bz] = A[i0 + 1], L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 2.6)), ang = Math.atan2(bz - az, bx - ax);
+        for (let k = 0; k < n; k++) { const t0 = k / n, t1 = (k + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1, xm = (x0 + x1) / 2, zm = (z0 + z1) / 2;
+          if (!free(xm, zm, .4) || !lontano(xm, zm) || sulBinario(xm, zm)) continue; const pg = G0(); add(pg, box(.1, 2, .1, steel), -L / n / 2, 1, 0); add(pg, box(L / n, .03, .03, wire), 0, 1.7, 0); add(pg, box(L / n, .03, .03, wire), 0, 1.1, 0); add(pg, box(L / n, .03, .03, wire), 0, .5, 0); place(pg, xm, zm, -ang); } });
+      { const a = A[1], b = A[A.length - 2], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], c = pd.cumuli[0]; const fx = m[0] + (c[0] - m[0]) * .5, fz = m[1] + (c[1] - m[1]) * .5; if (free(fx, fz)) fireBarrel(fx, fz, r); }
+    });
+    else ['miniera', 'stazione2'].forEach((id, k) => {
       const b = G.BUILDINGS && G.BUILDINGS.find(o => o.id === id); const q = b ? { x: (b.x + b.w / 2) * TS, y: (b.y + b.h / 2) * TS } : P[k ? 'stazione_s' : 'stazione_n']; if (!q) return;
       const ox = q.x + 12, oz = q.y + (k ? -6 : 6), g = G0(), steel = sl('#3a3a40'), rust = sm('#7a4a2a');
       for (let y = 0; y < 16; y += 2) { const s = 1.6 - y * .07; [[-s, -s], [s, -s], [-s, s], [s, s]].forEach(([a, c]) => add(g, box(.16, 2.05, .16, steel), a, y + 1, c)); add(g, box(s * 2, .1, .1, rust), 0, y + 2, -s); add(g, box(.1, .1, s * 2, rust), -s, y + 2, 0); }
@@ -13384,16 +13608,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       fireBarrel(ox - 3, oz - 8, r);
       stazione31(q, k, r);   // [isola31]
     });
-    // ---- l'accampamento dei beduini: tende basse color erba secca, si vedono solo da vicino ----
-    if (P.beduini) { const q = P.beduini; const cols = ['#7a6c52', '#6e624a', '#84765a', '#5e5444'];
-      for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28 + r() * .3, d = 7 + r() * 4, x = q.x + Math.cos(a) * d, z = q.y + Math.sin(a) * d * .7; if (free(x, z)) tent(x, z, a + Math.PI / 2, pick(r, cols), 1 + r() * .3); }
-      camp(q.x, q.y, r);
-      for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z)) place(g, x, z, r()); }
-    }
     // ---- dorsali: bivacchi, il monolite, gli spiazzi da campeggio ----
     // [sporcherie] I POSTI FUORI DAI SENTIERI: il bivacco, le tende, la carbonaia, la croce, la neviera stavano sull'asse del loro sentiero (o in mezzo
     // alla via): il disegno si scosta del meno possibile finché il suo ingombro (R) non tocca più nessuna strada, sentiero o traccia; il posto resta lì
-    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6 }, viaSeg = [];
+    const CAMPR = { bivacco: 5, tende: 6, carbonaia: 3.5, croce: 1.8, neviera: 3.6, monolite: 1.6, beduini: 12 }, viaSeg = [];   // [campagna] anche l'accampamento dei beduini (il fuoco stava sulla mulattiera)
     (M.roads || []).forEach(rd => { if (rd.pts) for (let k = 0; k < rd.pts.length - 1; k++) viaSeg.push([rd.pts[k][0], rd.pts[k][1], rd.pts[k + 1][0], rd.pts[k + 1][1], rd.w / 2]); });
     const sulSentiero = (x, z, R) => viaSeg.some(s0 => { if (Math.min(s0[0], s0[2]) - R - s0[4] > x || Math.max(s0[0], s0[2]) + R + s0[4] < x || Math.min(s0[1], s0[3]) - R - s0[4] > z || Math.max(s0[1], s0[3]) + R + s0[4] < z) return false;
       const dx = s0[2] - s0[0], dz = s0[3] - s0[1], L2 = dx * dx + dz * dz || 1, t = clamp(((x - s0[0]) * dx + (z - s0[1]) * dz) / L2, 0, 1); return Math.hypot(s0[0] + dx * t - x, s0[1] + dz * t - z) < s0[4] + R; });
@@ -13401,7 +13619,12 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       for (let d = 1; d <= 16; d += 1) for (let a = 0; a < 12; a++) { const x = q.x + Math.cos(a / 12 * 6.283) * d, z = q.y + Math.sin(a / 12 * 6.283) * d; if (!sulSentiero(x, z, R) && free(x, z, Math.min(R, 2.5))) return Object.assign({}, q, { x, y: z }); }
       return q; };
     Object.values(P).map(scosta).forEach(q => {
-      if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
+      // ---- l'accampamento dei beduini: tende basse color erba secca, si vedono solo da vicino ([campagna] scostato dalla mulattiera) ----
+      if (q.camp === 'beduini') { const cols = ['#7a6c52', '#6e624a', '#84765a', '#5e5444'];
+        for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28 + r() * .3, d = 7 + r() * 4, x = q.x + Math.cos(a) * d, z = q.y + Math.sin(a) * d * .7; if (free(x, z) && !sulSentiero(x, z, 1.6)) tent(x, z, a + Math.PI / 2, pick(r, cols), 1 + r() * .3); }
+        camp(q.x, q.y, r);
+        for (let k = 0; k < 3; k++) { const g = G0(), x = q.x - 8 + k * 5, z = q.y - 12; add(g, box(.08, 1.6, .08, PM.woodD()), -1, .8, 0); add(g, box(.08, 1.6, .08, PM.woodD()), 1, .8, 0); add(g, box(2.1, .06, .06, PM.woodD()), 0, 1.5, 0); add(g, box(1.6, .9, .02, sm(pick(r, ['#8a3a2a', '#6a5a3a', '#3a4a5a']))), 0, 1.0, 0); if (free(x, z) && !sulSentiero(x, z, 1.2)) place(g, x, z, r()); } }
+      else if (q.camp === 'bivacco') { hut(q.x + 2, q.y - 2, r() * 6, r); camp(q.x - 2.5, q.y + 2, r); }
       else if (q.camp === 'tende') { for (let k = 0; k < 3; k++) { const x = q.x + (k - 1) * 3.4, z = q.y + (k % 2) * 2; if (free(x, z)) tent(x, z, r() * 6, pick(r, ['#6a2a2a', '#2a4a3a', '#5a5a2a']), .8); } camp(q.x, q.y - 3, r); }
       else if (q.camp === 'rudere' && typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { const C = Vegetazione.casale({ x: q.x + 2, y: q.y - 2, rot: r() * 6.28, groundH, seme: Math.round(q.x * 7 + q.y) }); scene.add(C.gruppo); Vegetazione.aggiungi(C.piante); }   // [vegetazione] il casale diroccato
       else if (q.camp === 'rudere') { const g = G0(), st2 = sm('#7a746c', { roughness: 1 }); [[0, 0, 6, .5], [3, 2.5, .5, 5], [-3, 1.5, .5, 3]].forEach(([dx, dz, w, d], k) => add(g, box(w, 1.2 + r() * 1.6, d, st2), dx, .8, dz)); add(g, box(2, .4, 2, sm('#c8ccd2')), 1, .2, 1.5); place(g, q.x + 2, q.y - 2, r() * 6); }
@@ -13911,7 +14134,13 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       { f: 'E', prof: (B0.x + B0.w - t.x - t.w) * TS, n: t.h, at: u => [(t.x + t.w) * TS, (t.y + t.h) * TS - u], yaw: Math.PI / 2 }, { f: 'W', prof: (t.x - B0.x) * TS, n: t.h, at: u => [t.x * TS, t.y * TS + u], yaw: -Math.PI / 2 }]
       .filter(q => q.prof >= Dv + .55 && q.n >= 2).sort((p, q) => q.prof - p.prof || q.n - p.n);
     if (!lati.length || th(bi, 5, 77) > .75) return;
-    const L = lati[0], k = L.n >= 3 ? 1 : 0, [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
+    // [scale3] la veranda non copre le finestre (il committente: «via i blocchi grigi con la finestra sul tetto che coprono le finestre»): il
+    // modulo del piano arretrato dietro deve essere cieco a tutti i piani, e nessuna scala di Tetti a meno di 2,5 m
+    const cieco = (f, k) => !(t.__win || []).some(q => q.f === f && Math.abs(q.u - (k * TS + TS / 2)) < 1.4 && q.name !== 'wall' && q.name !== 'wall-low');
+    const scala = (x, z) => !!(window.Tetti && Tetti.LADDERS && Tetti.LADDERS.some(Q => Math.hypot(Q.x - x, Q.y - z) < 2.5 || Math.hypot(Q.tx - x, Q.ty - z) < 2.5));
+    let L = null, k = 0; for (const L2 of lati) { for (const k2 of (L2.n >= 3 ? [1, 0, 2] : [0, 1])) { if (k2 >= L2.n || !cieco(L2.f, k2)) continue; const [qx, qz] = L2.at(k2 * TS + TS / 2); if (scala(qx, qz)) continue; L = L2; k = k2; break; } if (L) break; }
+    if (!L) { (window.__rt = window.__rt || {}).verandeCieche = ((window.__rt || {}).verandeCieche || 0) + 1; return; }
+    const [px, pz] = L.at(k * TS + TS / 2), a = new THREE.Group(); a.position.set(px, y, pz); a.rotation.y = L.yaw; g.add(a);
     const telaio = sm(pick(r, ['#e8e4dc', '#3a3430', '#5a4a3a']), { roughness: .7 }), muro = sm(pick(r, ['#d8cdb8', '#c8b8a0', '#e0d4c0']), { roughness: 1 }), tetto = sm('#bcc0c6', { roughness: 1 }), vetro = verLit1(r() < .6 ? pick(r, ['#ffc878', '#ffb860', '#ffd27a']) : '#6aa8d0');
     const ad = (o, x, yy, z) => { o.position.set(x, yy, z); a.add(o); return o; }, zf = Dv + .02;
     [[-Wv / 2, .06], [Wv / 2, .06], [-Wv / 2, zf], [Wv / 2, zf]].forEach(([x, z]) => ad(box(.07, H, .07, telaio), x, H / 2, z));   // i montanti
@@ -15470,11 +15699,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
-        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = new THREE.Mesh(gradino1(dep, hh + (base - low), 1.7, .035), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
-          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .06), low + hh + (base - low) + .004, ez + side[1] * (dep - .06)); addStatic(ns); } });
-        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
+        // [strade] gradini veri: alzata di circa 17 cm dalla quota del suolo davanti alla porta fino alla soglia (base + 20 cm), pedata
+        // di 24-34 cm; sotto, ogni gradino scende fino al punto più basso del lotto (niente vuoti sul suolo in pendenza). Prima: due
+        // blocchi alti quanto tutto il dislivello (fino a un metro)
+        const fH = Math.min(base, Math.max(low, groundH(ex + side[0] * .9, ez + side[1] * .9))), top = base + .2, R = top - fH, ns = Math.max(1, Math.round(R / .17)), rz = R / ns, td = Math.max(.2, Math.min(.34, 1.3 / ns));   // [strade] la scala non sporge più di 1,3-1,4 m
+        for (let k = 0; k < ns; k++) { const dep = (k + 1) * td, yt = top - k * rz, st = new THREE.Mesh(gradino1(dep, yt - low, 1.7, .03), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
+          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), nz = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); nz.position.set(ex + side[0] * (dep - .06), yt + .004, ez + side[1] * (dep - .06)); addStatic(nz); } }
+        if (nuova) { const fd = ns * td + .04, fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * fd, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * fd, ez + side[1] * fd) : low) + .005, ez + side[1] * fd);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
-        const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
+        const wd = Math.min(.3, td - .06), wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? wd : .8, .012, side[1] ? wd : .8, wm); wn.position.set(ex + side[0] * td * .5, top + .002, ez + side[1] * td * .5); addStatic(wn);
       }); P2.k = null;
       // neve ammucchiata contro i muri (non contro le porte né sul lato della strada principale tutta spalata)
       const sides = [[g.x0, g.z0 + g.d + .25, g.w, 0], [g.x0, g.z0 - .25, g.w, 0], [g.x0 + g.w + .25, g.z0, g.d, 1], [g.x0 - .25, g.z0, g.d, 1]];
@@ -16133,7 +16366,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       giro(); setInterval(giro, 4000); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
-    if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
+    if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
@@ -17166,16 +17399,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!pg) {
       const plook = { skin: '#dcae88', top: '#8c2f24', bottom: '#34425f', hair: '#17110e', hat: 'none', build: 1.05, extra: '' };
       pg = (window.Models && Models.charsReady() && Models.person(plook, 'player')) || person(plook, true); if (!pg.userData.model) pg.userData.voxelWait = !!window.Models; scene.add(pg); dyn.people.__player = pg;
-      const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring);
+      const ring = new THREE.Mesh(anello5(.5, .62, 16), new THREE.MeshBasicMaterial({ color: '#ffb35c', transparent: true, opacity: POLO8 ? .6 : .7, depthWrite: false, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; pg.add(ring); pg.userData.ring5 = ring;
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta' || pveh.kind === 'ciao');   // [animazioni] anche sul Ciao (prima in sella non si vedeva nessuno)   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
-    pg.visible = !pveh || onVespa;
+    // [animazioni2] in auto il giocatore si vede, seduto al volante (prima nascosto, al suo posto il pupazzo a scatole); salendo e
+    // scendendo (CARIN) va alla portiera, si siede, chiude: la posa si fa nel giro dei mezzi (serve il mezzo già messo a posto)
+    const pvg = pveh ? dyn.vehicles[pveh.id] : null, inCar = !!(pveh && !onVespa && !(G.VK[pveh.kind] || {}).boat && pg.userData.model && pvg && pvg.userData.seat && !pvg.userData.two && !pveh.wreck);
+    const CA = carInOut(st, p, pveh, inCar, pg, dt);
+    pg.visible = !pveh || onVespa || inCar;
+    if (pg.userData.ring5) pg.userData.ring5.visible = !inCar && !CA && !PL2.sit;   // [animazioni2] l'anello ai piedi non entra nell'abitacolo
+    if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid; } }
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
-    if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); else   // [animazioni] recoil, inVeh, anim
+    let pgDefer = pg.userData.model && (inCar || (CA && CA.out)) ? (inCar ? pveh.id : CA.vid) : null;   // [animazioni2] al volante (o scendendo): la posa dopo, col mezzo
+    if (pgDefer) { } else if (pg.userData.model) Models.animPerson(pg, { speed: pveh ? 0 : p.speed, punch: p.punch, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, held: p.hand || null, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6, recoil, inVeh: !!pveh, anim: window.Anim ? plAnim(st, p, pg, pveh, dt) : null }, dt); else   // [animazioni] recoil, inVeh, anim   // [animazioni2] plAnim: gradini, caduta, nuoto, panchina, bordo del tetto, pioli
     animPerson(pg, { anim: p.anim, speed: pveh ? 0 : p.speed, carrying: p.carrying, punch: p.punch, seated: onVespa, down: p.stun > 0, weapon: p.cur !== 'pugni' ? p.cur : null, recoil, hit: Math.max(0, 1 - (st.clock - p.hurtT) * 10) * .6 });
     if (!pveh) flight(pg, p, st);
     if (window.Skate && !pveh) Skate.pose(pg, st, playerH, dt);   // [skate] in tavola: di traverso, sopra la tavola, coi trick
@@ -17216,6 +17456,21 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       u.wheels.forEach(w => { w.wh.rotation.x = u.spin / w.r; if (w.front) w.piv.rotation.y = sA; });
       if (u.ster) u.ster.quaternion.setFromAxisAngle(u.sterAx, sA);
       if (u.two) { v.barA = sA; v.rollA = u.roll; }   // [animazioni] per la posa in sella (anim_lotta.js): le manopole girate, la piega del mezzo
+      // [animazioni2] al volante: il giocatore (seduto, salendo o scendendo) e gli automobilisti vicini alla camera, veri al posto del
+      // pupazzo; il volante gira con lo sterzo anche senza nessuno (le auto parcheggiate restano dritte)
+      if (u.vol && !u.two) u.vol.spin.rotation.z = -(u.steer || 0) * VOL_K;
+      if (pgDefer && v.id === pgDefer) { pgDefer = null; driverPlayer(st, p, v, g, u, pg, CA, dt); }
+      let realDrv = v === pveh && inCar, realPass = false;
+      if (!u.two && u.seat && v !== pveh) {
+        const drvOn = !v.wreck && (v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));
+        const want = drvOn && window.Models && Models.charsReady() && Math.abs(v.x - cam.x) + Math.abs(v.y - cam.y) < 45;
+        if (want && !u.drvG && BUD.ok(Math.hypot(v.x - p.x, v.y - p.y), 'gente')) { const t0 = performance.now(), r = Models.person(v.driverLook || { skin: '#d8b090', top: '#5a4a3a', bottom: '#2a2a33', hair: '#2a1a10', hat: 'none', build: 1, extra: '' }, v.police || v.livrea ? 'cop' : null); BUD.add(performance.now() - t0, 'gente'); if (r) { if (r.userData.shadowC) r.userData.shadowC.visible = false; g.add(r); u.drvG = r; } }
+        if (u.drvG) { u.drvG.visible = !!want; if (want) { realDrv = true; const A = carDriver(u.drvG, v, g, u, dt, {}); Models.animPerson(u.drvG, { speed: 0, inVeh: true, anim: { act: 'in_auto', auto: A, upper: null, mood: [], talk: false, lookAt: null } }, dt); } }
+        // l'agente accanto (volanti e Tutela): seduto, le mani sulle ginocchia
+        const want2 = want && u.seat2 && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;
+        if (want2 && !u.drv2G && BUD.ok(Math.hypot(v.x - p.x, v.y - p.y), 'gente')) { const r = Models.person({ top: v.livrea ? '#5c6672' : '#23355e', skin: '#c99a76', hair: '#1a1410', hat: 'none', build: 1, extra: '' }, 'cop'); if (r) { if (r.userData.shadowC) r.userData.shadowC.visible = false; g.add(r); u.drv2G = r; } }
+        if (u.drv2G) { u.drv2G.visible = !!want2; if (want2) { realPass = true; const A = carDriver(u.drv2G, v, g, u, dt, { pass: true }); Models.animPerson(u.drv2G, { speed: 0, inVeh: true, anim: { act: 'in_auto', auto: A, upper: null, mood: [], talk: false, lookAt: null } }, dt); } }
+      }
       if (u.crank) { if (v.pedal) u.crankA = (u.crankA || 0) + (v.speed || 0) * dt / (BMX_GEO.R * BMX_GEO.ratio); const th = u.crankA || 0; u.crank.rotation.x = th; u.pedals.forEach(q => q.rotation.x = -th); v.crank = th; }   // [bmx] pedivelle: girano solo quando pedali (a ruota libera stanno ferme)   // [bmx] le pedivelle girano con le ruote, i pedali restano piatti; in_bmx ci mette i piedi
       // [animazioni] chi guida le Vespe e i Ciao del traffico: prima nessuno (il mezzo andava da solo). Un abitante vero in sella,
       // figlio del mezzo (ne segue piega e sobbalzi), con la posa in_vespa, le mani sul manubrio che gira; solo vicino alla camera
@@ -17233,8 +17488,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       }
       u.hpSeen = v.hp;
       if (v.wreck && !u.burnt) { u.burnt = true; u.paint.forEach(m => { m.color.set('#141012'); m.roughness = 1; m.metalness = 0; }); if (u.drv) u.drv.visible = false; if (u.drv2) u.drv2.visible = false; if (u.glass) u.glass.color.set('#050505'); g.rotation.z = .05; u.wheels.forEach(w => w.wh.scale.setScalar(.85)); }
-      if (u.drv) u.drv.visible = !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
-      if (u.drv2) u.drv2.visible = !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
+      if (u.drv) u.drv.visible = !realDrv && !v.wreck && (v.rider === 'player' || v.traffic || (v.police && v.rider === 'npc' && !v.arrived) || (v.rider === 'npc' && (v.livrea || v.driveTo || v.tutela)));   /* [ordine] */
+      if (u.drv2) u.drv2.visible = !realPass && !v.wreck && (v.police || v.livrea) && v.rider === 'npc' && !v.arrived;   /* [ordine] */
       const lampsOn = !v.wreck && (v.traffic || v.rider) && night > .3;
       u.glows.forEach(s => { s.visible = lampsOn && !s.userData.broken; s.material.opacity = .7; });
       u.beams.forEach(b => b.visible = lampsOn && !b.userData.broken); u.pool.visible = lampsOn && u.lamps.length > 0;   // [bmx] senza fari, niente chiazza di luce
@@ -17244,6 +17499,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (u.beacons) { const on = v.siren && Math.sin(st.clock * 14) > 0; u.beacons[0].color.set(on ? '#3a7aff' : '#10204a'); u.beacons[1].color.set(!on && v.siren ? '#3a7aff' : '#10204a'); }
       vehMondo(v, g, u, K, dt, time, night);   // [animazioni-mondo] portiere, tergicristalli, scarico, motore al minimo, lampeggianti
     });
+    if (pgDefer) { pgDefer = null; if (CA) CA.done = true; Models.animPerson(pg, { speed: pveh ? 0 : p.speed, down: p.stun > 0, inVeh: !!pveh, anim: window.Anim ? Anim.playerState(st) : null }, dt); }   // [animazioni2] il mezzo non c'era: la posa di sempre
     // [fluido] chi non c'è più: un insieme degli id, non una ricerca nell'elenco per ognuno (569 × 569 confronti a fotogramma)
     if (frameN % 15 === 0) {
       const vIds = new Set(st.vehicles.map(v => v.id)), nIds = new Set(st.npcs.map(n => n.id));
@@ -17546,5 +17802,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

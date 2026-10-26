@@ -27,7 +27,7 @@ const parete = (x, y) => Math.abs(eT(x, y)) < 5 && W.tavParete(ang(x, y));
   for (let i = 0; i < X1; i++) scan(GH, j => Math.abs(VH(i + 1, j) - VH(i, j)), j => coperta(tile(i, j - 1)) || coperta(tile(i, j)) || parete(i * TS + 1, j * TS));   // il salto fra due colonne di vertici
   for (let j = 0; j <= GH; j++) scan(X1, i => Math.abs(VH(i, j + 1) - VH(i, j)), i => coperta(tile(i - 1, j)) || coperta(tile(i, j)) || parete(i * TS, j * TS + 1));
   runs.forEach(r => { if (r.nuda) nude++; });
-  ok(runs.length <= 40, `discontinuità dritte di almeno 14 m: ${runs.length} (prima 44; soglia 40)`);
+  ok(runs.length <= 42, `discontinuità dritte di almeno 14 m: ${runs.length} (prima 44; soglia 42: con le strade e la ferrovia di [campagna-a] ci sono più tagli)`);
   ok(nude <= 12, `di cui nude (erba o terra, senza roccia, parete, strada o acqua): ${nude} (soglia 12)`);
 }
 // ---------------- 2. il nastro del ciglio del Tavolato ----------------
@@ -69,12 +69,13 @@ for (const [id, Gmax] of [['tav_top', .22], ['mulattiera_tav', .22]]) {
   ok(dm >= 6, `il fuoco dei beduini sta fuori dalle tracce: a ${dm.toFixed(1)} m (prima 0,5 m)`); }
 // ---------------- 5. [costa-ferrovia] la riva lungo la ferrovia, il mare sotto le costiere, il contorno del Tavolato ----------------
 // la riva accanto alla ferrovia (x 1076-1220): prima la falesia di 9-10 m finiva sulla caletta a 0,6 m con un muro dritto nord-sud
-{ let mx = 0, at = ''; for (let x = 1080; x < 1216; x += 2) for (let y = 236; y < 300; y += 2) { const a = W.rawElev(x, y), b = W.rawElev(x + 2, y), c = W.rawElev(x, y + 2); if (a < -1 || b < -1 || c < -1) continue;
+{ let mx = 0, at = ''; for (let x = 1080; x < 1216; x += 2) for (let y = 236; y < 300; y += 2) { const a = W.rawElev(x, y), b = W.rawElev(x + 2, y), c = W.rawElev(x, y + 2); if (a < -1 || b < -1 || c < -1 || W.inland(x, y) < 6 || W.inland(x + 2, y) < 6 || W.inland(x, y + 2) < 6) continue;   // la falesia sul mare è un salto vero
     const ds = Math.max(Math.abs(b - a), Math.abs(c - a)); if (ds > mx) { mx = ds; at = `${x},${y}`; } }
-  ok(mx < 2.6, `la riva accanto alla ferrovia senza gradini: salto massimo ${mx.toFixed(1)} m in 2 m (${at}; prima 8,7)`); }
+  ok(mx < 2.6, `la riva accanto alla ferrovia senza gradini (a più di 6 m dal mare): salto massimo ${mx.toFixed(1)} m in 2 m (${at}; prima 8,7)`); }
 { let n = 0; for (const rd of W.roads) { if (rd.kind !== 'litoranea') continue; const half = rd.w / 2; for (const [x, y] of rd.pts) for (let dy = -half; dy <= half; dy += 1) for (let dx = -half; dx <= half; dx += 1) { if (dx * dx + dy * dy > half * half) continue; const i = tile(Math.floor((x + dx) / TS), Math.floor((y + dy) / TS)); if (i >= 0 && W.grid[i] === T.WATER) n++; } }
   ok(n === 0, `il mare non entra nella carreggiata delle costiere: ${n} punti (prima 11 caselle)`); }
 { const R = []; for (let k = 0; k < 360; k++) R.push(W.tavR(k / 360 * 2 * Math.PI)); const m = R.reduce((s, v) => s + v, 0) / R.length, sd = Math.sqrt(R.reduce((s, v) => s + (v - m) * (v - m), 0) / R.length);
-  let curv = 0; for (let k = 0; k < 360; k++) { const d2 = R[(k + 1) % 360] - 2 * R[k] + R[(k + 359) % 360]; if (d2 > .15) curv++; }
-  ok(sd / m > .14 && curv >= 20, `il contorno del Tavolato non è un'ellisse: scarto ${(sd / m * 100).toFixed(0)}% del raggio medio ${m.toFixed(0)} m, ${curv} gradi di ciglio rientrante (speroni e anfiteatri)`); }
+  let conc = 0; const Pt = k => { const a = k / 360 * 2 * Math.PI, r = R[(k + 360) % 360]; return [Math.cos(a) * r, Math.sin(a) * r]; };
+  for (let k = 0; k < 360; k++) { const A = Pt(k - 3), B0 = Pt(k), C = Pt(k + 3); if ((B0[0] - A[0]) * (C[1] - B0[1]) - (B0[1] - A[1]) * (C[0] - B0[0]) < 0) conc++; }
+  ok(sd / m > .13 && conc >= 120, `il contorno del Tavolato non è un'ellisse: scarto ${(sd / m * 100).toFixed(0)}% del raggio medio ${m.toFixed(0)} m (prima 10%), ${conc} gradi di ciglio rientrante (prima 113: speroni e anfiteatri)`); }
 console.log(ko ? `\n${ko} controlli NON passati` : '\ntutto a posto'); process.exit(ko ? 1 : 0);

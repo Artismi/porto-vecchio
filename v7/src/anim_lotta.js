@@ -434,6 +434,102 @@
     else [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * V.footX, V.floorY + .075 - V.LIFT - By, V.footZ - Bz, sg * .15, .5, 1, .1, .12));
     grips(P, V.gripX, V.gripY - V.LIFT, V.gripZ, 0, By, Bz, A.manubrio || 0, V.axT, V.axB, V.LIFT);
   } });
+  // ---------------- AL VOLANTE ----------------
+  // [animazioni2] chi guida un'auto: prima un pupazzo a scatole con un braccio solo, e il volante fermo. Ora il personaggio vero,
+  // seduto (il bacino basso nell'abitacolo, la testa sotto il tetto), le mani SUL CERCHIO del volante che gira: render.js
+  // (carDriver) mette il corpo al posto di guida e dà, nello spazio del personaggio, i due punti di presa sul cerchio con la
+  // direzione del cerchio (ax) e quella delle dita (fy), già girati con lo sterzo. A.auto = { gL, gR, roof, hipZ, footY, footZ,
+  // lean, look, pass }: roof = il tetto (y), lean = quanto il corpo va di lato per la curva, look = la testa verso la curva;
+  // pass: chi siede accanto (mani sulle ginocchia). In salita/discesa dall'auto (A.dentro < 1) il corpo esce di lato (carDriver).
+  D('in_auto', { fade: .12, base: 'Idle', air: true, fn(P, A) {
+    const R = P.R, Q = A.auto; if (!Q) return;
+    const w0 = P.w, kIn = Q.dentro === undefined ? 1 : clamp(Q.dentro, 0, 1), kH = Q.mani === undefined ? 1 : clamp(Q.mani, 0, 1); P.w = w0 * kIn;   // salendo: la posa cresce col corpo che entra
+    if (R.hipY === undefined && R.b.Hips) { bmxLocal(P, 'Hips', _bp); R.hipY = _bp.y; R.hipZ = _bp.z; }
+    if (R.sitH === undefined && R.b.Head) { bmxLocal(P, 'Head', _bp); R.sitH = _bp.y + .2 - (R.hipY || .95); }   // dal bacino alla cima della testa
+    const rec = .26, lean = clamp(Q.lean || 0, -1, 1);   // lo schienale inclinato di 15°
+    const hip = Math.min(Q.hipMax === undefined ? -.4 : Q.hipMax, Q.roof - (R.sitH || .85) * Math.cos(rec) - .04);
+    const By = hip - (R.hipY || .95), Bz = (Q.hipZ || 0) - (R.hipZ || 0), Bx = (Q.hipX || 0);
+    P.body({ x: Bx, y: By, z: Bz });
+    // il busto appoggiato allo schienale; in curva va un poco di lato (la forza che spinge fuori), la testa guarda dentro la curva
+    P.rot('Abdomen', -rec * .6, 0, .07 * lean); P.rot('Chest', -rec * .4 + .05, .05 * (Q.look || 0), .05 * lean); P.rot('Neck', .2, .25 * (Q.look || 0), -.06 * lean); P.rot('Head', .08, .35 * (Q.look || 0), -.05 * lean);
+    // le gambe: cosce in avanti, i piedi sui pedali (il destro sull'acceleratore, un filo più avanti)
+    [['L', 1], ['R', -1]].forEach(([sd, sg]) => P.legTo(sd, sg * .15 - Bx, (Q.footY === undefined ? -.62 : Q.footY) + .075 - By, (Q.footZ === undefined ? .62 : Q.footZ) + (sg < 0 ? .04 : 0) - Bz, sg * .12, .8, .6, .35, .08));
+    const knees = Q.pass || !Q.gL ? 1 : 1 - kH;
+    if (knees > 0) {   // accanto al guidatore (o un'auto senza volante, o le mani non ancora al volante): le mani sulle ginocchia
+      P.w = w0 * kIn * knees;
+      [['L', 1], ['R', -1]].forEach(([sd, sg]) => { P.reach(sd, sg * .17 - Bx, hip + .13 - By, (Q.hipZ || 0) + .36 - Bz, [sg * .4, -1, -.3]); P.fingers(sd, .25, .2); });
+    }
+    if (!Q.pass && Q.gL && kH > 0) {   // le mani sul cerchio: il centro del pugno sul cerchio, la mano girata lungo il cerchio, le dita che lo avvolgono, i gomiti giù e in fuori
+      P.w = w0 * kIn * kH;
+      [['L', Q.gL, 1], ['R', Q.gR, -1]].forEach(([sd, g, sg]) => {
+        P.grab(sd, g.p[0] - Bx, g.p[1] - By, g.p[2] - Bz, g.ax, g.fy, [sg * .75, -1, -.15]);
+        P.fingers(sd, .9, .8);
+      });
+    }
+    P.w = w0;
+  } });
+  // ---------------- I PIEDI SUI GRADINI ----------------
+  // [animazioni2] su scale e scalinate il corpo seguiva la rampa liscia (la quota del suolo) e la camminata restava quella in piano:
+  // i piedi entravano nello scalino o restavano sospesi. render.js (piediGradini) cerca col raggio la pedata sotto ogni piede e dà
+  // A.gradini = { dL, dR }: di quanto la pedata è sopra (+) o sotto (-) la rampa. Il bacino scende fino al piede più basso, ogni
+  // caviglia va alla sua pedata (IK a due ossa, la pianta piatta sul gradino); il passo della clip resta (alzata e appoggio).
+  D('gradini', { fade: .15, fn(P, A) {
+    const Gd = A.gradini; if (!Gd) return;
+    const lo = Math.min(Gd.dL, Gd.dR, 0);
+    P.body({ y: lo });
+    [['L', Gd.dL, 1], ['R', Gd.dR, -1]].forEach(([sd, d, sg]) => {
+      if (!P.R.b['Foot' + sd]) return; bmxLocal(P, 'Foot' + sd, _bp);
+      P.legTo(sd, _bp.x, _bp.y + d - lo, _bp.z, sg * .08, .25, 1, 0, sg * .06);
+    });
+  } });
+  // ---------------- CADUTA, ATTERRAGGIO ----------------
+  // [animazioni2] giù da un tetto o da un muro: prima restava la posa del salto. Le braccia cercano l'equilibrio (girano larghe),
+  // le gambe si aprono un poco, il busto indietro. A.giu (0-1): quanto è alta la caduta.
+  D('cade', { fade: .15, air: true, fn(P, A) {
+    const k = clamp(A.giu === undefined ? 1 : A.giu, 0, 1), s = Math.sin(P.t * 9), c = Math.cos(P.t * 9);
+    P.rot('Abdomen', -.18 * k, 0, .05 * s); P.rot('Chest', -.1 * k, 0, 0); P.rot('Neck', .25 * k, 0, 0); P.rot('Head', .15 * k, 0, 0);
+    AIMS(P, 1, 'UpperArm', .8, .35 + .35 * s, .2 * c, k); AIMS(P, -1, 'UpperArm', .8, .35 - .35 * s, -.2 * c, k);
+    AIMS(P, 1, 'LowerArm', .6, .7, .3, k); AIMS(P, -1, 'LowerArm', .6, .7, .3, k);
+    P.legTo('L', .2, .3 + .1 * s, .12, .2, .3, 1, .2, .15); P.legTo('R', -.2, .22 - .1 * s, -.08, -.2, .3, 1, -.1, .15);
+  } });
+  // l'atterraggio morbido: per un attimo (A.atterra 1 → 0) le ginocchia si piegano e il busto va avanti, i piedi restano a terra
+  D('atterra', { fade: .06, fn(P, A) {
+    const k = clamp(A.atterra || 0, 0, 1), dn = .22 * k * (A.forte || .6);
+    P.body({ y: -dn }); P.rot('Abdomen', .35 * k, 0, 0); P.rot('Head', -.2 * k, 0, 0);
+    [['L', 1], ['R', -1]].forEach(([sd, sg]) => { if (!P.R.b['Foot' + sd]) return; bmxLocal(P, 'Foot' + sd, _bp); P.legTo(sd, _bp.x, Math.max(.07, _bp.y) + dn, _bp.z + .03, sg * .1, .2, 1, 0, sg * .08); });
+    AIMS(P, 1, 'UpperArm', .45, -.6, .35, k); AIMS(P, -1, 'UpperArm', .45, -.6, .35, k);
+  } });
+  // ---------------- A NUOTO ----------------
+  // [animazioni2] la bracciata (stile libero): render.js corica il corpo (66° quando va) e lo tiene giù fino alle spalle; qui le
+  // braccia girano alternate (sopra la testa → sotto il corpo fino all'anca → fuori dall'acqua di lato), le gambe battono.
+  // Da fermi si sta a galla: le mani remano davanti, le gambe pedalano piano. A.va (0-1): quanto si nuota; A.ritmo: bracciate al secondo.
+  D('nuota', { fade: .3, air: true, base: 'Idle', fn(P, A) {
+    const va = clamp(A.va || 0, 0, 1), th = (A.fase || 0) * Math.PI * 2;
+    P.rot('Neck', -.5 * va, .25 * va * Math.sin(th), 0); P.rot('Head', -.35 * va, 0, 0); P.rot('Chest', 0, .25 * va * Math.sin(th), 0);
+    [[1, th], [-1, th + Math.PI]].forEach(([sg, a]) => {
+      const s = Math.sin(a), c = Math.cos(a), out = Math.max(0, -s);
+      // nuotando: il braccio gira (y in alto = davanti al nuotatore coricato, z = sotto di lui)
+      AIMS(P, sg, 'UpperArm', .12 + .4 * out, c, .55 * s, va); AIMS(P, sg, 'LowerArm', .1 + .2 * out, c + .25 * out, .55 * s - .3 * out, va);
+      // a galla: le mani remano davanti al petto
+      const r = Math.sin(P.t * 2.4 + (sg > 0 ? 0 : 1.2)), w = 1 - va;
+      AIMS(P, sg, 'UpperArm', .55 + .2 * r, -.35, .55, w); AIMS(P, sg, 'LowerArm', .35 - .35 * r, -.1, .85, w);
+      P.fingers(sg > 0 ? 'L' : 'R', .15, .1);
+    });
+    const k = Math.sin(th * 3), pk = Math.sin(P.t * 2.2);
+    P.legTo('L', .1, .1 + .06 * va + .12 * (1 - va) * Math.max(0, pk), .12 * va * k + .08 * (1 - va) * pk, .1, .2, 1, -.6 * va, .05);
+    P.legTo('R', -.1, .1 + .06 * va + .12 * (1 - va) * Math.max(0, -pk), -.12 * va * k - .08 * (1 - va) * pk, -.1, .2, 1, -.6 * va, .05);
+  } });
+  // ---------------- SCAVALCARE IL BORDO DEL TETTO ----------------
+  // [animazioni2] in cima alla scala, prima, un salto netto sul tetto. render.js (scavalca) porta il corpo dalla scala al tetto in
+  // ~0,7 s e dà A.k (0 → 1): le mani sul bordo (A.bordo: quanto è alto rispetto ai piedi), il busto avanti sopra, un ginocchio su,
+  // poi in piedi col passo. Le mani in (±.22, bordo, A.av) davanti.
+  D('scavalca', { fade: .08, full: true, base: 'Idle', fn(P, A) {
+    const k = clamp(A.k || 0, 0, 1), up = k < .55 ? 1 : 1 - (k - .55) / .45, e = A.bordo || .9, av = A.av || .35, kn = Math.sin(clamp(k / .7, 0, 1) * Math.PI);
+    P.rot('Abdomen', .55 * up, 0, 0); P.rot('Chest', .2 * up, 0, 0); P.rot('Head', -.4 * up, 0, 0);
+    [['L', 1], ['R', -1]].forEach(([sd, sg]) => { const w = up; if (w <= 0) return; const w0 = P.w; P.w = w0 * w; P.reach(sd, sg * .24, e + .02, av, [sg * .6, -1, -.4]); P.fingers(sd, .7, .5); P.w = w0; });
+    P.legTo('L', .12, .1 + .55 * kn * e, .12 + .25 * kn, .1, .5, 1, .3 * kn, .1);
+    P.legTo('R', -.12, .1 + .1 * kn, -.05, -.1, .4, 1, 0, .1);
+  } });
   // ---------------- IN SKATE ----------------
   // [animazioni] sulla tavola (skate.js): render mette il corpo di traverso, con l'asse della tavola lungo +x del personaggio
   // (il muso verso la sua sinistra), 12 cm sopra la tavola e A.giu più basso quando si accuccia. Prima stava in piedi a piedi
@@ -441,6 +537,20 @@
   // truck dietro, ginocchia piegate, braccia larghe; A.spinta (0-1): il piede dietro scende a terra e spinge indietro.
   D('in_skate', { fade: .12, base: 'Idle_Neutral', air: true, fn(P, A) {
     const c = A.giu || 0, deck = .1125 - .12 + c, ground = -.12 + c, ank = .09, q = A.spinta || 0, s = q > 0 ? Math.sin(Math.PI * q) : 0;
+    // [animazioni2] i trick: grind (A.grind: accucciato, braccia larghe, lo sguardo sul bordo), grab in aria (A.presa: ginocchia al
+    // petto, la mano dietro alla tavola), flip (A.flip 0-1 col suo nome A.trucco: le gambe si raccolgono e il piede davanti calcia)
+    const gr = A.grind ? 1 : 0, gb = clamp(A.presa || 0, 0, 1), fq = clamp(A.flip || 0, 0, 1), fl = fq > 0 && fq < 1 ? Math.sin(Math.PI * fq) : 0;
+    if (gr || gb || fl) {
+      const dn = .1 * gr + .3 * gb + .16 * fl;   // il corpo scende verso la tavola (i piedi restano sul ponte)
+      P.body({ y: -dn });
+      P.rot('Abdomen', .35 * gr + .7 * gb + .3 * fl, .25 * gr, 0); P.rot('Chest', .1, .15 * gr, 0); P.rot('Neck', .15 * gr, .3, 0); P.rot('Head', .2 * gr - .1, .4, 0);
+      const kick = A.trucco === 'heel' ? -1 : 1;
+      P.legTo('L', .2 + .06 * fl * kick, deck + ank + dn + .14 * fl, .01 + .1 * fl, .25, .3 + .6 * gb, 1, .2 * fl, .25);
+      P.legTo('R', -.2, deck + ank + dn + .08 * fl, -.01, -.25, .3 + .6 * gb, 1, 0, -.15);
+      if (gb) { P.reach('R', -.02, deck + .1 + dn, -.14, [-.5, -1, -.3], gb); P.fingers('R', .85, .7); AIMS(P, 1, 'UpperArm', .6, .55, .1, gb); AIMS(P, 1, 'LowerArm', .4, .8, .1, gb); }
+      else { AIMS(P, 1, 'UpperArm', .9, -.15 + .3 * fl, .1); AIMS(P, -1, 'UpperArm', .9, -.15 + .3 * fl, -.1); AIMS(P, 1, 'LowerArm', .9, .05, .2); AIMS(P, -1, 'LowerArm', .9, .05, .15); }
+      return;
+    }
     P.rot('Abdomen', .18 + 1.2 * c + .15 * s, .15, 0); P.rot('Chest', .05, .1, 0); P.rot('Neck', 0, .35, 0); P.rot('Head', -.1, .45, 0);   // lo sguardo dove va la tavola
     P.legTo('L', .2, deck + ank, .01, .25, .3, 1, 0, .25);
     if (s > 0) P.legTo('R', .05 - .5 * q, deck + ank + (ground - deck) * s, .16 * s, -.2, .3, 1, -.3 * s, 0);   // spinge
@@ -637,7 +747,8 @@
       return;
     }
     // [animazioni] in skate: la posa sulla tavola (prima la clip della camminata quando spingeva)
-    const sk = p.sk; if (sk && sk.on && !(p.stun > 0)) { s.act = 'in_skate'; s.giu = sk.crouch ? .14 : (sk.air ? .06 : 0); const q = (clock - (sk.pushA || -9)) / .45; s.spinta = q > 0 && q < 1 ? q : 0; }
+    const sk = p.sk; if (sk && sk.on && !(p.stun > 0)) { s.act = 'in_skate'; s.giu = sk.crouch ? .14 : (sk.air ? .06 : 0); const q = (clock - (sk.pushA || -9)) / .45; s.spinta = q > 0 && q < 1 ? q : 0;
+      const T = sk.trick; s.grind = sk.grind ? sk.grind.kind || 1 : null; s.presa = T && T.air ? clamp((clock - T.t0) / .2, 0, 1) : 0; s.trucco = T && !T.air ? T.id : null; s.flip = T && !T.air && T.dur ? clamp((clock - T.t0) / T.dur, 0, 1) : 0; }   // [animazioni2] grind, grab, flip
     // [salto] a piedi: accucciato mentre carichi, raccolto in aria (sotto quello che fanno le braccia: si può saltare con la pistola in mano)
     if (p.jz > 0 && !(p.stun > 0)) { s.act = 'salto'; s.su = (p.jvz || 0) > 0; s.raccolto = clamp(p.jz / .6, 0, 1); }
     else if (p.jcharge != null && !(p.stun > 0)) { s.act = 'carica'; s.carica = clamp(p.jcharge / .7, 0, 1); }

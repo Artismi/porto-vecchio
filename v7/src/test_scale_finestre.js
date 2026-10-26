@@ -7,7 +7,7 @@
 //   2. le aperture rifatte hanno la forma di render.js: la finestra al centro di ogni modulo di 2 m, la porta sulla casella della porta;
 //   3. le scale si contano per tipo e per muro (cieco, fra due colonne di finestre, sul giunto fra due case), e nessuna casa con la scala ha
 //      la facciata sconosciuta senza che lo si dica.
-//   4. il modulo cieco: dove il muro non ha un posto la scala lo accieca (L.cieco); render.js non ci mette la finestra (Tetti.cieco4).
+//   4. [scale3] il modulo cieco non c'è più (nessuna finestra murata per una scala); al più due scale per tetto.
 // cd v7/src && node test_scale_finestre.js            (il seme: --seme=N, per difetto 12345)
 const path = require('path'), src = __dirname;
 require(path.join(src, 'seme.js'))(12345);
@@ -42,22 +42,19 @@ if (casa >= 0) { const b = B[casa], O = AP(casa), y1 = 3.6 + .4, fin = O.S.filte
   const attese = Array.from({ length: b.w }, (_, k) => k * TS + 1), porta = O.S.filter(A => A[4] && A[2] === 0 && Math.abs((A[0] + A[1]) / 2 - ((b.door[0] - b.x) * TS + 1)) < .01);
   ok(fin.length === b.w && fin.every((u, k) => Math.abs(u - attese[k]) < .01) && porta.length === 1, `le aperture di ${b.id} (${b.w}x${b.h}, ${b.fl} piani): al primo piano le finestre a ${fin.map(u => u.toFixed(1)).join(', ')} m, la porta sulla sua casella`); }
 else ok(false, 'manca una casa dell\'Ottocento per la forma delle aperture');
-// fra due colonne di finestre (il giunto fra due moduli) la scala ci sta: 1,05 m fra i vani, 49 cm la scala, 28 cm d'aria per parte
+// [scale3] fra due colonne di finestre (il giunto fra due moduli) la scala NON sta più: le persiane aperte e le cornici arrivano a 1,25 m
+// dal centro del vano, e nessuna scala passa davanti a una finestra; al centro del modulo nemmeno
 { const b = B[casa], [wx, wy] = [(b.x + 1) * TS, (b.y + b.h) * TS], [cx, cy] = [(b.x + .5) * TS, (b.y + b.h) * TS];
-  ok(!SOPRA(casa, wx, wy, 0, 1, -1) && !!SOPRA(casa, cx, cy, 0, 1, -1), `sul giunto fra due moduli la scala sta (${!SOPRA(casa, wx, wy, 0, 1, -1)}), al centro del modulo no: lì c'è la finestra (${!!SOPRA(casa, cx, cy, 0, 1, -1)})`); }
+  ok(!!SOPRA(casa, wx, wy, 0, 1, -1) && !!SOPRA(casa, cx, cy, 0, 1, -1), `sul giunto fra due colonne di finestre la scala non sta (${!!SOPRA(casa, wx, wy, 0, 1, -1)}), al centro del modulo nemmeno (${!!SOPRA(casa, cx, cy, 0, 1, -1)})`); }
 
-// ---------------- 4. il modulo cieco ----------------
-// dove il muro non ha un posto (le case strette dell'Ottocento), la scala accieca il suo modulo: la marca sta sulla scala (L.cieco) e
-// render.js la legge con Tetti.cieco4 quando posa le finestre di buildModular. La marca va solo sulle case di buildModular, su un modulo
-// dove c'è davvero una finestra, e Tetti.cieco4 la dice ai piani che la scala attraversa, non a quelli sotto il suo piede.
-const ciechi = scale.filter(L => L.cieco), MG = 3.6, MF = 2.4;
-const male = ciechi.filter(L => { const O = AP(L.bi), c = L.cieco, fl = Math.max(1, B[L.bi].fl || 1);
-  if (!O || O.chi !== 'moduli' || !O[c.f].some(A => A[5] === 'fin' && Math.abs((A[0] + A[1]) / 2 - c.u) < .15)) return true;
-  for (let p = 0; p < fl; p++) { const top = (p ? MG + (p - 1) * MF : 0) + 2.25; if (T.cieco4(L.bi, c.f, c.u, p) !== (top > c.y0 + .05)) return true; }
-  return false; });
-console.log(`moduli ciechi per le scale: ${ciechi.length} (${JSON.stringify(ciechi.reduce((o, L) => (o[tipo(L)] = (o[tipo(L)] || 0) + 1, o), {}))})`);
-ok(!male.length, `ogni modulo cieco sta su una finestra di buildModular e Tetti.cieco4 lo dice ai piani che la scala attraversa (${male.length} sbagliati)`);
-ok(ciechi.length <= scale.length * .3, `i moduli ciechi restano l'eccezione: ${ciechi.length} su ${scale.length} scale`);
+// ---------------- 4. [scale3] niente moduli ciechi, meno scale ----------------
+// il modulo cieco (la finestra murata per far posto alla scala) non c'è più: nessuna scala ne porta la marca, Tetti.cieco4 non esiste.
+// Nessun tetto è raggiunto da più di due scale fra quelle che si possono togliere (da terra, dal vicino); la potatura si conta (Tetti.POTA4).
+ok(!scale.some(L => L.cieco) && !T.cieco4, `nessun modulo cieco (${scale.filter(L => L.cieco).length} marche, Tetti.cieco4 ${T.cieco4 ? 'c\'è' : 'non c\'è'})`);
+{ const per = new Map(); scale.forEach(L => per.set(L.bi, (per.get(L.bi) || 0) + 1)); const P = T.POTA4 || {};
+  const troppe = [...per.entries()].filter(([bi, n]) => n > 2 && scale.filter(L => L.bi === bi && !L.tipo4 && L.corte === undefined).length > 0 && n - scale.filter(L => L.bi === bi && (L.tipo4 || L.corte !== undefined)).length > 0 && n > 2 + 0 && scale.filter(L => L.bi === bi && !L.tipo4 && L.corte === undefined).length > Math.max(0, 2 - scale.filter(L => L.bi === bi && (L.tipo4 || L.corte !== undefined)).length));
+  console.log(`potatura: ${P.prima} scale prima, ${P.finestra} davanti a una finestra, ${P.compenetrata} compenetrate, ${P.troppe} di troppo, ${P.pezzo || 0} in più sullo stesso pezzo di rete, ${P.dopo} dopo`);
+  ok(!troppe.length, `nessun tetto con più di due scale da togliere (${troppe.length})`); }
 
 // ---------------- 5. le scale di ferro non entrano in niente ----------------
 // [scorcio] (il committente: «vedo ancora scale compenetrate») la fascia della scala (70 cm lungo il muro, mezzo metro in fuori) non sta

@@ -511,6 +511,22 @@ var Vegetazione = (function () {
     // [vegetazione] le foto si accendono solo con ?verdefoto (la strada dipinta è quella scelta: una gamma sola)
     const FOTO_ON = typeof location !== 'undefined' && /[?&]verdefoto\b/.test(location.search || '');
     const colCella = (cell, sp, col) => FOTO.has(cell) ? (FOTO_ON ? tintaF(sp) : col) : GRIGIE.has(cell) ? col : [1, 1, 1];
+    // [alberi] LA CHIOMA DIPINTA NEI VERTICI (niente geometria in più: solo il colore di ogni carta). Nello stesso albero: la luce in
+    // alto e l'ombra in basso (in cima più chiaro e caldo, sotto più scuro e freddo), ogni ciuffo il suo tono di verde (blu-verde,
+    // smeraldo, oliva, giallo-verde, verde-grigio) e il suo valore, dentro più scuro, e qualche nota calda (ocra, ruggine, paglia) nei
+    // ciuffi della metà alta. Moltiplica la tinta della specie (la media resta quella); la pittura del materiale la porta allo schermo.
+    // g: il numero del ciuffo (0 … 1); hy: -1 sotto … 1 in cima; dentro: 0 fuori … 1 nel nucleo
+    const TONI = [[.84, 1, 1.14], [.92, 1.07, .9], [1.1, 1.02, .78], [1.14, 1.14, .7], [.96, .98, 1.02]];
+    const CALDI = [[1.55, 1.1, .5], [1.6, .9, .52], [1.35, 1.2, .62]];
+    const NOTE = { pino: .07, pinoM: .06, leccio: .09, carrubo: .1, ulivo: .06, fico: .1, agrume: .05, mandorlo: .12, tamerice: .12, eucalipto: .1, cipresso: .04, lentisco: .08, mirto: .06, oleandro: .04, rosmarino: .05 };
+    const fr = x => x - Math.floor(x);
+    function tonoChioma(col, sp, g, hy, dentro) {
+      const t = TONI[Math.floor(g * TONI.length) % TONI.length], v = .88 + fr(g * 7.31) * .26, s = sstep(-.95, .95, hy), d = 1 - .28 * (dentro || 0);
+      const q = [.7 + .48 * s, .78 + .38 * s, .97 - .05 * s];
+      let c = [col[0] * t[0] * q[0] * v * d, col[1] * t[1] * q[1] * v * d, col[2] * t[2] * q[2] * v * d];
+      if (fr(g * 13.73) < (NOTE[sp] === undefined ? .06 : NOTE[sp]) && hy > -.35) { const w = CALDI[Math.floor(fr(g * 31.17) * CALDI.length)]; c = mix(c, [c[0] * w[0], c[1] * w[1], c[2] * w[2]], .65); }
+      return c;
+    }
     const GRIGIE = new Set(['tamericeRamo', 'lettieraAghi', 'lettieraFoglie', 'erbaDab', 'erbaDab2', 'erbaAlta', 'felce', 'edera', 'pieno', 'corteccia', 'prato', 'lettieraAghi']);
     const CS = 256, NX = 8, NY = 5, IN = 3 / CS;
     const cellUV = k => { const i = CI[k], cx = i % NX, cy = Math.floor(i / NX); return [cx / NX + IN / NX, 1 - (cy + 1) / NY + IN / NY, (cx + 1) / NX - IN / NX, 1 - cy / NY - IN / NY]; };
@@ -659,14 +675,15 @@ var Vegetazione = (function () {
       for (let k = 0; k < nL; k++) { const a = k / nL * TAU + rr() * .8, yy = (rr() - .35) * .9 * (1 - fondo * .6); const rad = Math.sqrt(Math.max(0, 1 - yy * yy));
         lobi.push([c[0] + Math.cos(a) * rad * r[0] * .62, c[1] + yy * r[1] * .55, c[2] + Math.sin(a) * rad * r[2] * .62, .46 + rr() * .14]); }
       lobi.forEach(([lx, ly, lz, kl], li) => { const R = [r[0] * kl, r[1] * kl * (opz.lobiAlti || 1), r[2] * kl], lc = [lx, ly, lz];
-        nucleo(A, lc, [R[0] * .74, R[1] * .7, R[2] * .74], mul(col, .82), H, seed * 13 + li, { det: opz.detN === undefined ? 1 : opz.detN, schiaccia: fondo, flex: fl, nCentro: [c[0], c[1] - r[1] * .3, c[2]], occ: .25 });
+        const gL = hash2(li + 1, seed, 77);   // [alberi] il tono del lobo
+        nucleo(A, lc, [R[0] * .74, R[1] * .7, R[2] * .74], tonoChioma(mul(col, .82), sp, gL, (ly - c[1]) / Math.max(r[1], .1), .7), H, seed * 13 + li, { det: opz.detN === undefined ? 1 : opz.detN, schiaccia: fondo, flex: fl, nCentro: [c[0], c[1] - r[1] * .3, c[2]], occ: .25 });
         for (let k = 0; k < nC; k++) { const u = (k + .5) / nC, yy = 1 - 2 * Math.pow(u, .8), rad = Math.sqrt(Math.max(0, 1 - yy * yy)), th = k * 2.39996 + rr() * .6;
           let dx = Math.cos(th) * rad, dy = yy, dz = Math.sin(th) * rad; if (fondo && dy < 0) dy *= (1 - fondo);
           const d = .72 + rr() * .3, P = [lc[0] + dx * R[0] * d, lc[1] + dy * R[1] * d, lc[2] + dz * R[2] * d];
           const dL = nrm([dx, dy, dz]), dC = nrm([P[0] - c[0], (P[1] - c[1]) * (r[0] / r[1]) * .7, P[2] - c[2]]), nl = nrm([dL[0] * .6 + dC[0] * .4, dL[1] * .6 + dC[1] * .4 + .12, dL[2] * .6 + dC[2] * .4]);
           const nPosa = nrm([dL[0] + (rr() - .5) * .8, dL[1] * .5 + .5 + (rr() - .5) * .5, dL[2] + (rr() - .5) * .8]);
           const occ = clamp(.42 + dL[1] * .25 + (Math.hypot(P[0] - c[0], P[2] - c[2]) / Math.max(r[0], .1)) * .3 + (P[1] - c[1]) / r[1] * .15, .2, 1);
-          const fiore = opz.fiori && rr() < opz.fiori[1], cc = fiore ? opz.fiori[0] : cell, cColor = fiore ? [1, 1, 1] : colCella(cc, sp, col);
+          const fiore = opz.fiori && rr() < opz.fiori[1], cc = fiore ? opz.fiori[0] : cell, cColor = fiore ? [1, 1, 1] : tonoChioma(colCella(cc, sp, col), sp, fr(gL + (hash2(k, li, seed) - .5) * .08), (P[1] - c[1]) / Math.max(r[1], .1), 0);
           carta(A, P, (opz.s || 1) * (.8 + rr() * .4) * Math.max(.55, kl * 1.6) * (R[0] > 1.2 ? 1 : .8), nPosa, nl, cc, cColor, Math.min(1, Math.max(0, P[1] / H)) ** 1.3 * fl, rr() * TAU, occ, { sx: opz.sx, sy: opz.sy }); } });
     }
     // il tronco: tubo con la corteccia (grigia, tinta dal colore), più scuro alla base
@@ -759,7 +776,7 @@ var Vegetazione = (function () {
       // La luce di ogni carta: la normale presa per due terzi dal centro della chioma (il volume grande) e per un terzo dalla carta (il
       // dettaglio); l'occlusione: più scura quanto più sta dentro la chioma e in basso, più scura vicino al ramo che la porta.
       const ext = P.ext ? P.ext(H) : [H * .35, H * .25, H * .35], UPV = [0, 1, 0], cardsMax = P.carteMax || 2400; let nCard = 0;
-      const passo = cf.s * .3, kk = cf.carte / 8;
+      const passo = cf.s * .3, kk = cf.carte / 8, cT = Math.max(.7, cf.s * 1.15);
       fogliati.sort(() => r() - .5).forEach(([p0, m, e, liv]) => {
         const segs = [[p0, m], [m, e]];
         segs.forEach(([a0, a1], si) => { const L = Math.hypot(a1[0] - a0[0], a1[1] - a0[1], a1[2] - a0[2]); if (liv < b.liv && si === 0) return; const nP = Math.max(1, Math.round(L / passo));
@@ -773,7 +790,8 @@ var Vegetazione = (function () {
               const nl = nrm([dc[0] * .76 + nPosa[0] * .18, dc[1] * .76 + nPosa[1] * .18 + .12, dc[2] * .76 + nPosa[2] * .18]);   // [tavolo] la massa comanda (era .62 / .3): calotta, mezzotono, nucleo, non sette macchie
               const occ = clamp(.18 + .62 * sstep(.15, 1, rel) + .18 * Math.max(0, dc[1]) + .1 * (rad / cf.s), .18, 1);
               const fiore = cf.fiori && r() < cf.fiori[1], cell = fiore ? cf.fiori[0] : cf.cella;
-              carta(A, P2, cf.s * (.3 + r() * .2), nPosa, nl, cell, fiore ? [1, 1, 1] : colCella(cell, sp, col), Math.min(1, P2[1] / H) ** 1.2, r() * TAU, occ, { sy: pend ? 1.4 : 1 }); } } });
+              const gC = hash2(Math.floor(P2[0] / cT) * 31 + Math.floor(P2[1] / cT) * 7, Math.floor(P2[2] / cT), v * 7 + 3);   // [alberi] il ciuffo (una cella di qualche metro)
+              carta(A, P2, cf.s * (.3 + r() * .2), nPosa, nl, cell, fiore ? [1, 1, 1] : tonoChioma(colCella(cell, sp, col), sp, gC, (P2[1] - C0[1]) / ext[1], 1 - sstep(.3, 1, rel)), Math.min(1, P2[1] / H) ** 1.2, r() * TAU, occ, { sy: pend ? 1.4 : 1 }); } } });
       });
       ciuffi.length = 0; void UPV;
     }
@@ -963,7 +981,7 @@ var Vegetazione = (function () {
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
     uPittura: { value: .55 },   /* [tavolo] la gamma comanda la chioma (era .15, quando col tappeto lime il teal stonava; ora il tappeto è spento): la luce del gioco passa per tinta (uTintaLuce) */ uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.45 }, uOff: { value: .13 }, uTintaSpecie: { value: .22 } };
+    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.45 }, uOff: { value: .13 }, uTintaSpecie: { value: .45 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)

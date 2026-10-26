@@ -216,7 +216,7 @@ var Percorsi = (function () {
     // l'officina: dalla Piazza della Marina lungo la Via della Marina fino allo Scalo
     secondario('officina', 'Dalla marina allo Scalo', ['piazza_marina', vicino('marina', 1330, 386), 'scalo'], { lega: ['piazza_marina', 'marina', 'scalo'] });
     // le baracche: dal piazzale al passaggio a livello e al lotto del fuoco
-    { const pl = pz('passaggio_livello')[0], c = pl ? pzW(pl, 11, 0) : null;
+    { const pl = pz('passaggio_livello').find(p => !p.campagna), so = W.railCampagna && (W.railCampagna.sotto || [])[0], c = pl ? pzW(pl, 11, 0) : so ? [so.x, so.y] : null;   // [campagna] le sbarre della stazione sono diventate il sottopasso del Lungomare
       const VA = road('via_alta');   // su per la Via della Stazione, sul suo tracciato (la rampa del rilevato)
       secondario('baracche', 'Dal piazzale alle baracche', ['stazione'].concat(VA ? [VA.pts[VA.pts.length - 1], VA.pts[Math.floor(VA.pts.length / 2)]] : []).concat(c ? [c] : []).concat(['baracche']), { lega: ['stazione', 'passaggio_livello', 'baracche'] }); }
     // le mura: la Via delle Mura, sotto la cortina di tramontana, dal sagrato alla vedetta del covo
