@@ -4234,15 +4234,36 @@ var Render = (function () {
   // pennello dipinge su un velo di vernice aderente alla superficie: stesso spruzzo, solo su quel pezzo di muro.
   const BMB = { rc: new THREE.Raycaster(), cands: null, candT: 0, cx: 1e9, cz: 1e9, use: new Map(), veli: [], tmp: document.createElement('canvas'), dirty: new Set(), chk: 0, sph: new THREE.Sphere(), va: new THREE.Vector3(), vb: new THREE.Vector3() };
   const bmbCanvas = t => { const im = t && t.image; return im && im.getContext ? im : null; };
+  // [scatti] chi si può dipingere: prima un giro intero della scena (50.000 oggetti) ogni volta che la richiesta veniva da più di 15 m o dopo
+  // 2 s, dentro il fotogramma (i graffiti che entrano in vista lo chiedono da punti diversi: uno scatto per ognuno). Ora l'elenco di tutta la
+  // scena (con la sfera nel mondo di ognuno) si rifà a rate, 4000 oggetti per fotogramma (bmbTick), e ogni richiesta filtra solo per distanza.
+  // Lo stesso criterio di prima (visibili, mesh piene, non veli, materiale visibile, sfera entro 10 m), la stessa età al massimo (~2 s).
+  const BMBW = { all: null, t: 0, used: 0, W: null, next: null, use: null };
+  function bmbVisit(o, all, use) {
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms) { const c = m && bmbCanvas(m.map); if (c) use.set(c, (use.get(c) || 0) + 1); }   // quanti oggetti usano lo stesso canvas
+    if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
+    if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
+    all.push(o, BMB.sph.center.x, BMB.sph.center.z, BMB.sph.radius + 10);
+  }
+  function bmbWalk(n) {   // come traverseVisible: dentro un ramo spento non si entra
+    const W = BMBW.W; if (!W.stack) W.stack = [scene]; const S = W.stack;
+    while (n-- > 0 && S.length) { const o = S.pop(); if (!o.visible) continue; const c = o.children; for (let i = c.length - 1; i >= 0; i--) S.push(c[i]); bmbVisit(o, BMBW.next, BMBW.use); }
+    if (S.length) return false; W.stack = null; return true;
+  }
+  function bmbTick() {   // a ogni fotogramma: l'elenco si rinnova a rate, solo se qualcuno lo usa (negli ultimi 10 s)
+    const now = performance.now(); if (!BMBW.all || now - BMBW.used > 10000 || (now - BMBW.t < 2000 && !BMBW.W)) return;
+    if (!BMBW.W) { BMBW.W = { stack: null }; BMBW.next = []; BMBW.use = new Map(); }
+    if (bmbWalk(4000)) { BMBW.all = BMBW.next; BMB.use = BMBW.use; BMBW.W = null; BMBW.next = null; BMBW.use = null; BMBW.t = now; BMB.cands = null; }
+  }
   function bmbCands(cx, cz) {
-    const now = performance.now(); if (BMB.cands && now - BMB.candT < 2000 && Math.hypot(BMB.cx - cx, BMB.cz - cz) < 15) return BMB.cands;
-    BMB.candT = now; BMB.cx = cx; BMB.cz = cz; const out = []; BMB.use.clear();
-    scene.traverseVisible(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || o.userData.velo) return;
-      const ms = Array.isArray(o.material) ? o.material : [o.material];
-      ms.forEach(m => { const c = m && bmbCanvas(m.map); if (c) BMB.use.set(c, (BMB.use.get(c) || 0) + 1); });   // quanti oggetti usano lo stesso canvas
-      if (ms.every(m => !m || m.visible === false || (m.transparent && m.opacity < .3))) return;
-      if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); BMB.sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld);
-      if (Math.hypot(BMB.sph.center.x - cx, BMB.sph.center.z - cz) > BMB.sph.radius + 10) return; out.push(o); });
+    const now = performance.now(); BMBW.used = now;
+    if (BMB.cands && BMB.cx === cx && BMB.cz === cz && now - BMBW.t <= 6000) return BMB.cands;
+    if (!BMBW.all || now - BMBW.t > 6000) {   // la prima volta (o dopo una lunga pausa): il giro intero subito, come prima
+      const all = [], use = new Map(); scene.traverseVisible(o => bmbVisit(o, all, use)); BMBW.all = all; BMB.use = use; BMBW.t = now; BMBW.W = null; }
+    BMB.cx = cx; BMB.cz = cz; const out = [], A = BMBW.all;
+    for (let i = 0; i < A.length; i += 4) { const dx = A[i + 1] - cx, dz = A[i + 2] - cz; if (dx * dx + dz * dz <= A[i + 3] * A[i + 3]) out.push(A[i]); }
     return (BMB.cands = out);
   }
   const bmbAlive = L => { let o = L.mesh; while (o.parent) o = o.parent; return o === scene; };
@@ -6246,12 +6267,19 @@ var Render = (function () {
     const W0 = M.world; if (!W0 || !W0.TAV || !W0.tavR) return 0;
     const TV = W0.TAV, C = W0.CANALI || [], pos = [], uv = [], cpos = [], cuv = [], tvTop = (a, rr) => groundH(TV.x + Math.cos(a) * rr, TV.y + Math.sin(a) * rr);
     const inCan = a => C.some(c => { const da = Math.atan2(Math.sin(a - c.a), Math.cos(a - c.a)); return Math.abs(da) * (c.R || TV.r) < (c.hw0 != null ? c.hw0 / Math.cos(c.tilt || 0) : W0.canHalf(0)) + .8; });   // [altopiano] lo spacco dei canaloni (di sbieco: più largo sul ciglio)
-    const noWall = a => inCan(a) || (W0.tavW && W0.tavW(a) < .5);   // [altopiano] la parete c'è solo a maestrale: a scirocco il ciglio si rompe nei gradoni (li fa il terreno)
-    const NA = 720, rib = a => .45 * Math.sin(a * 61) + .3 * Math.sin(a * 137 + 1.3) + .25 * (vegHash(Math.floor(a * 90), 3, 7) - .5);
+    // [campagna-b] la parete corre su tutto il fianco a maestrale finché c'è un salto (W0.tavParete: bassa sui fianchi, fino a zero dove
+    // nascono i gradoni) e si apre solo dove il canalone taglia davvero il ciglio (deciso dal terreno); i capi chiusi da una testata
+    const noWall = a => W0.tavParete ? !W0.tavParete(a) : inCan(a) || (W0.tavW && W0.tavW(a) < .5);   // [altopiano] la parete c'è solo a maestrale: a scirocco il ciglio si rompe nei gradoni (li fa il terreno)
+    const noMassi = a => noWall(a) || (W0.tavW && W0.tavW(a) < .5);
+    const NA = 720, rib = a => .3 + .45 * Math.sin(a * 61) + .3 * Math.sin(a * 137 + 1.3) + .25 * (vegHash(Math.floor(a * 90), 3, 7) - .5);
+    // il piede: sotto il terreno vero nel punto della parete (e un metro più in fuori), mai sopra; mai più alto del ciglio
+    const botAt = (a, Rw, top) => Math.min(top - .3, tvTop(a, Rw - .4) - 1.3, tvTop(a, Rw + 1) - 1.3);
+    const tests = [];   // le testate: [angolo, verso]
     for (let k = 0; k < NA; k++) {
       const a0 = k / NA * 6.2832, a1 = (k + 1) / NA * 6.2832; if (noWall(a0) || noWall(a1)) continue;
+      if (noWall((k - 1) / NA * 6.2832)) tests.push([a0, -1]); if (noWall((k + 2) / NA * 6.2832)) tests.push([a1, 1]);
       const R0 = W0.tavR(a0) + rib(a0), R1 = W0.tavR(a1) + rib(a1);
-      const top0 = tvTop(a0, W0.tavR(a0) - 4.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 4.5) + .25, bot0 = tvTop(a0, W0.tavR(a0) + 2.2) - .6, bot1 = tvTop(a1, W0.tavR(a1) + 2.2) - .6;
+      const top0 = tvTop(a0, W0.tavR(a0) - 4.5) + .25, top1 = tvTop(a1, W0.tavR(a1) - 4.5) + .25, bot0 = botAt(a0, R0, top0), bot1 = botAt(a1, R1, top1);
       // tre fasce: la parete rientra e sporge un poco salendo (strati di roccia)
       const rows = 4; for (let q = 0; q < rows; q++) { const t0 = q / rows, t1 = (q + 1) / rows, o0 = .35 * Math.sin(t0 * 7 + a0 * 9), o1 = .35 * Math.sin(t1 * 7 + a0 * 9);
         const P = (a, R, bot, top, t, o) => [TV.x + Math.cos(a) * (R + o), bot + (top - bot) * t, TV.y + Math.sin(a) * (R + o)];
@@ -6262,12 +6290,20 @@ var Render = (function () {
       const E = [TV.x + Math.cos(a0) * ri, top0 - .05, TV.y + Math.sin(a0) * ri], F = [TV.x + Math.cos(a1) * ri1, top1 - .05, TV.y + Math.sin(a1) * ri1], Gq = [TV.x + Math.cos(a1) * (R1 + .4), top1, TV.y + Math.sin(a1) * (R1 + .4)], Hq = [TV.x + Math.cos(a0) * (R0 + .4), top0, TV.y + Math.sin(a0) * (R0 + .4)];
       cpos.push(...E, ...Gq, ...F, ...E, ...Hq, ...Gq); cuv.push(E[0] / 4, E[2] / 4, Gq[0] / 4, Gq[2] / 4, F[0] / 4, F[2] / 4, E[0] / 4, E[2] / 4, Hq[0] / 4, Hq[2] / 4, Gq[0] / 4, Gq[2] / 4);
     }
+    // [campagna-b] le testate: dove la parete si apre sul canalone (o finisce bassa sui fianchi) una faccia di roccia chiude lo spessore,
+    // dal filo della parete fin dentro il ciglio (la «spalla» che gira nel varco)
+    for (const [a, s] of tests) {
+      const Ro = W0.tavR(a) + rib(a) + .35, Ri = W0.tavR(a) - 4.5, top = tvTop(a, Ri) + .25, bot = Math.min(botAt(a, Ro, top), tvTop(a, Ri + 1.5) - 1.3), c = Math.cos(a), sn = Math.sin(a);
+      if (top - bot < .2) continue;
+      const P = (r, h) => [TV.x + c * r, h, TV.y + sn * r], A = P(Ro, bot), B = P(Ri, bot), Cc = P(Ri, top), D = P(Ro, top);
+      pos.push(...A, ...B, ...Cc, ...A, ...Cc, ...D); const L = (Ro - Ri) / 6; uv.push(0, bot / 6, L, bot / 6, L, top / 6, 0, bot / 6, L, top / 6, 0, top / 6);
+    }
     const mkG = (p, u) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); g.computeVertexNormals(); return g; };
     const wall = new THREE.Mesh(mkG(pos, uv), std({ map: roccia32(), roughness: 1, side: THREE.DoubleSide })); wall.castShadow = true; wall.receiveShadow = true; scene.add(wall);
     const capT = tex32('ciglio', 32, 32, (x, r) => { x.fillStyle = '#3c4030'; x.fillRect(0, 0, 32, 32); for (let k = 0; k < 120; k++) { x.fillStyle = pick(r, ['#4a4e38', '#36402c', '#525446', '#444836', '#3a3e30']); x.fillRect(r() * 32, r() * 32, 2, 2); } });
     const cap = new THREE.Mesh(mkG(cpos, cuv), std({ map: capT, roughness: 1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); cap.receiveShadow = true; scene.add(cap);
     // massi caduti ai piedi della parete
-    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (noWall(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
+    const r = rng(4242); for (let k = 0; k < 140; k++) { const a = r() * 6.2832; if (noMassi(a)) continue; const rr = W0.tavR(a) + 2 + r() * 9, x = TV.x + Math.cos(a) * rr, z = TV.y + Math.sin(a) * rr, s = .3 + r() * 1.1;
       const m = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), sm(pick(r, ['#6e6660', '#7a726a', '#5e5650']), { roughness: 1 })); m.position.set(x, groundH(x, z) + s * .3, z); m.rotation.set(r(), r(), r()); m.scale.y = .7; addStatic(m); }
     return pos.length / 18;
   }
@@ -16182,7 +16218,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // geometrie disegnate a metà, e quelle che qualcuno modifica dopo (oggetti distrutti, segni): lì il risultato è sempre giusto.
   if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
-    const verOf = g => g.attributes.position.version + ':' + (g.index ? g.index.version : -1);
+    const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
@@ -16363,7 +16399,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (V.y > 1.2 && tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && G.bIndex[ty * G.GW + tx] >= 0) k++; }
         return c > 0 && k / c > .6; };
       const giro = () => { scene.traverse(o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} }); };
-      giro(); setInterval(giro, 4000); }
+      // [scatti] dopo il primo giro (intero, all'avvio) la scena si riguarda a rate, 3000 oggetti per fotogramma, un giro ogni 4 s:
+      // prima era un giro intero di 50.000 oggetti dentro un timer, uno scatto ogni 4 s
+      giro(); const SCW = { stack: null }; let scT = performance.now();
+      const scPasso = () => { const now = performance.now(); if (SCW.stack || now - scT > 4000) { if (sliceWalk(SCW, scene, 3000, o => { if (!o.isMesh || visto.has(o)) return; visto.add(o); try { if (dentro(o)) { o.visible = false; window.__senzacase++; } } catch (e) {} })) scT = now; } requestAnimationFrame(scPasso); };
+      requestAnimationFrame(scPasso); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
     if (PRO.look) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
@@ -17696,6 +17736,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     });
     if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = !pveh && !ui.intro);   // [visuale3] la sagoma è sempre pronta: la scheda video la disegna solo dove qualcosa copre
     anelliTick1(ui, dt);   /* [anelli] i lavori del caricamento ad anelli, nel loro tetto di tempo (prima di mandare FD1: le sfumature lo toccano) */
+    // [scatti] i modelli degli alberi di città (generati, 100-300 ms l'uno e decine di MB di spazzatura la prima volta) si fanno nella
+    // schermata iniziale, uno per fotogramma, invece che camminando quando il primo blocco di piante li chiede. Gli stessi semi: gli stessi alberi
+    if (ui.intro && ZN.CITTA !== undefined && !NAT.caldi) { const nm = NAT_CITTA.find(k => NAT.models[k] === undefined); if (nm) { try { natModel(nm); } catch (e) { NAT.caldi = true; } } else NAT.caldi = true; }
     if (FD1.dirty && FD1.tex) { FD1.tex.needsUpdate = true; FD1.dirty = false; }   /* [pulitore1] */
     if (window.LeggeraMem) LeggeraMem.tick(performance.now());   /* [leggera] i pezzi rifatti che nessuno usa più */
     if (ARR1.all.length && frameN % 90 === 0) arrTick1();   /* [leggero] una tela delle case ridisegnata: la sua pila si rilegge */
@@ -17719,6 +17762,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ombre1(st, night);   /* [ombre1] */
     lazy1Sweep(performance.now() * .001);   /* [telefono] i pezzi originali delle case rifatti e non più usati tornano segnaposto */
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
+    bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };

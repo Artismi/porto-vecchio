@@ -184,7 +184,10 @@ var TascheUI = (function () {
     const st = ST(); if (!st || !mount()) return;
     const p = st.player, held = p.hand || p.cur || 'pugni';
     { const c = $('ts-btn').querySelector('canvas'); if (c.__held !== held) { c.__held = held; icon(c, held); } }   // [fluido] l'icona si ridisegna quando cambia
-    const A = st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
+    // [scatti] le azioni di qui (Azioni.playerActions: decine di ms nei posti pieni) servono solo a tasche aperte o al suggerimento, che col
+    // menu (MenuUI) resta spento: a tasche chiuse non si calcolano più quattro volte al secondo (le conta già il menu, ogni mezzo secondo)
+    const serve = U.open || typeof MenuUI === 'undefined';
+    const A = !serve || st.over || (PV().ui && (PV().ui.intro || PV().ui.dialog)) ? [] : acts(st), first = A.find(x => x.run);
     const hint = $('ts-hint');
     const hOn = !!first && !U.open && typeof MenuUI === 'undefined'; if (hint.classList.contains('on') !== hOn) hint.classList.toggle('on', hOn);   // [menu] in scena basta il riquadro «Qui»
     if (first && !U.open) { const c = hint.querySelector('canvas'), sp = hint.querySelector('span'); if (c.__held !== held) { c.__held = held; icon(c, held); } if (sp.textContent !== first.label) sp.textContent = first.label; }   // [fluido] solo se cambia

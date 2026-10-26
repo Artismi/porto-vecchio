@@ -1108,13 +1108,17 @@ var Tetti = (function () {
   function scanWork(J, deadline) {   // true: finito (misurato, o il modello non si presta)
     const T3 = THREE, rc = GFX.rc || (GFX.rc = new T3.Raycaster()), o = GFX.ro || (GFX.ro = new T3.Vector3()), dn = GFX.rd || (GFX.rd = new T3.Vector3(0, -1, 0));
     const { b, parts, W1, H1, g, floor, rule } = J;
+    // [scatti] il tempo si guarda ogni 4 raggi, non a fine riga: su un modello pieno di pezzi una riga intera passava di 20-100 ms il tetto
+    // del fotogramma. Stessi raggi, nello stesso ordine: il fotogramma si ferma a metà riga (J.gx) e riprende da lì
     while (J.gy < H1) {
-      const gy = J.gy++;
-      for (let gx = 0; gx < W1; gx++) {
+      const gy = J.gy;
+      for (let gx = J.gx || 0; gx < W1; gx++) {
         const x = b.x * TS + gx + .5, z = b.y * TS + gy + .5; o.set(x, rule + 40, z); rc.set(o, dn); rc.far = 80;
         const h = rc.intersectObjects(parts, true).find(h => !h.object.userData.velo && !h.object.userData.noRoof && h.point.y > floor);
         g[gy * W1 + gx] = h ? h.point.y : NaN; if (h) J.hits++;
+        if ((gx & 3) === 3 && gx < W1 - 1 && performance.now() > deadline) { J.gx = gx + 1; return false; }
       }
+      J.gx = 0; J.gy++;
       if (performance.now() > deadline) return J.gy >= H1 ? scanEnd(J) : false;
     }
     return scanEnd(J);
@@ -1297,7 +1301,10 @@ var Tetti = (function () {
       boards.push(m4.compose(p3.set(z.x, y + .2, z.y), q, s3.set(.6, .4, .45)).clone()); boards.push(m4.compose(p3.set(z.x, y + .41, z.y), q, s3.set(.64, .03, .49)).clone());
       rails.push(m4.compose(p3.set(z.x + .05, y + .5, z.y), q, s3.set(.3, .16, .22)).clone()); lamps.push(m4.compose(p3.set(z.x - .22, y + .48, z.y + .1), q, s3.set(.06, .1, .06)).clone()); });
     // [tetti4] LE CORTI: il lastrico chiaro (si legge come un posto, non come un avanzo) e la cosa che dice lo scopo
-    CORTI.forEach(C => { const foot = (x, y) => LADDERS.some(L => hyp(L.fx - x, L.fy - y) < 1.6), hc = (x, y) => tileH(x, y);
+    // [scatti] il piede di una scala vicino alla cella: le scale in una griglia di 1,6 m (prima tutte le 300 scale per ognuna delle 300 celle, a ogni rifacimento)
+    const PIEDI = new Map(); LADDERS.forEach(L => { const k = Math.floor(L.fx / 1.6) + ',' + Math.floor(L.fy / 1.6); const a = PIEDI.get(k); if (a) a.push(L); else PIEDI.set(k, [L]); });
+    const piede = (x, y) => { const i0 = Math.floor(x / 1.6), j0 = Math.floor(y / 1.6); for (let j = j0 - 1; j <= j0 + 1; j++) for (let i = i0 - 1; i <= i0 + 1; i++) { const a = PIEDI.get(i + ',' + j); if (a) for (const L of a) if (hyp(L.fx - x, L.fy - y) < 1.6) return true; } return false; };
+    CORTI.forEach(C => { const foot = piede, hc = (x, y) => tileH(x, y);
       C.celle.forEach(([tx, ty]) => { const x = (tx + .5) * TS, y = (ty + .5) * TS; put(lastr, x, hc(x, y) + .02, y, TS - .04, .03, TS - .04, 0); });
       const cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).filter(([x, y]) => !foot(x, y)).sort((a, b) => hyp(a[0] - C.x, a[1] - C.y) - hyp(b[0] - C.x, b[1] - C.y));
       if (!cel.length) return; const [cx, cy] = cel[0], g0 = hc(cx, cy);
