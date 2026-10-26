@@ -1,0 +1,102 @@
+{
+ "pittura": 0.55,
+ "varia": 0.6,
+ "grana": 0.45,
+ "chiome": 0.7,
+ "ombre": 0.7,
+ "acqua": 1,
+ "spigoli": 0,
+ "pieghe": 0,
+ "ao": 0,
+ "aoRaggio": 7,
+ "miniatura": 0.55,
+ "fuoco": 0.48,
+ "fascia": 0.2,
+ "sfoca": 3.2,
+ "grading": 1,
+ "inchiostro": 1,
+ "piegaPenna": 0.35,
+ "sogliaNormale": 0.3,
+ "sogliaSagoma": 0.04,
+ "celle": 0.75,
+ "pastello": 0,
+ "acido": 0.75,
+ "suolo": 0.55,
+ "polvere": 0.6,
+ "spessore": 1.5,
+ "buchi": 1,
+ "momenti": {
+  "mattino": {
+   "proOmbra": [
+    0.92,
+    0.96,
+    1.1
+   ],
+   "proLuce": [
+    1.05,
+    1.0,
+    0.93
+   ],
+   "proSat": 1.06,
+   "proContrasto": 1.06,
+   "proPieno": 0.75,
+   "proNeri": 0.02,
+   "proTinta": "#6878c0",
+   "proTintaK": 0.24
+  },
+  "pomeriggio": {
+   "proOmbra": [
+    0.92,
+    0.95,
+    1.1
+   ],
+   "proLuce": [
+    1.04,
+    1.0,
+    0.94
+   ],
+   "proSat": 1.06,
+   "proContrasto": 1.07,
+   "proPieno": 0.75,
+   "proNeri": 0.02,
+   "proTinta": "#7080c4",
+   "proTintaK": 0.22
+  },
+  "sera": {
+   "proOmbra": [
+    0.9,
+    0.9,
+    1.1
+   ],
+   "proLuce": [
+    1.06,
+    0.99,
+    0.9
+   ],
+   "proSat": 1.0,
+   "proContrasto": 1.1,
+   "proPieno": 0.7,
+   "proNeri": 0.05,
+   "proTinta": "#5a3a9a",
+   "proTintaK": 0.26
+  },
+  "notte": {
+   "proOmbra": [
+    0.86,
+    0.9,
+    1.14
+   ],
+   "proLuce": [
+    1.12,
+    0.99,
+    0.8
+   ],
+   "proSat": 1.02,
+   "proContrasto": 1.12,
+   "proPieno": 0.85,
+   "proNeri": 0.07,
+   "proTinta": "#24206a",
+   "proTintaK": 0.3
+  }
+ }
+}

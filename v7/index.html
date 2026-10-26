@@ -22310,7 +22310,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '20501e156088fede';</script>
-<script>window.PV_IMPRONTA_TASS = '1de52eeedf991355';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '08446816ebb4b768';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -65276,6 +65276,7 @@ var Render = (function () {
     for (let i = 2; i < L.length; i++) { const m = /at (?:new )?(?:Object\.)?([\w$.<>]+) \(.*:(\d+):\d+\)/.exec(L[i]), a = m ? null : /at .*:(\d+):\d+\)?$/.exec(L[i]);
       if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1])) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
   function addStatic(obj, noShadow) {
+    if (SCO.on) { obj.updateMatrixWorld(true); const e = obj.matrixWorld.elements; if (scoFuori(e[12], e[14], 12)) return; }   // [scorcio] le cose di strada fuori dallo scorcio non entrano
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
     if (window.Pavimenti && noShadow !== 'lamp') { const k2 = P2.k || (obj.userData.p2 && obj.userData.p2.k), dy = Pavimenti.oggetto(obj, k2 || obj.name, !FISSI2.has(k2) && !obj.parent);   // [pavimenti] l'ombra di contatto nel suolo, la misura del piede e la posa corretta
@@ -75185,6 +75186,7 @@ var Render = (function () {
       if (low > 50) low = base; low = Math.min(low, base);
       const plinth = base - low, hgt = b.fl * 3;
       b.base = base;
+      if (SCO.on && scoFuori(cx, cz, Math.hypot(w, d) / 2)) { SCO.saltate++; return; }   // [scorcio] la casa fuori dallo scorcio non si fa
       if (b.pezzo && po1List().length) return;   // [posa] la chiesa e le scatole della Rocca: le disegna il loro pezzo
       if (b.lighthouse) { buildLighthouse(b, cx, cz, base); return; }
       if (b.kiosk) { buildKiosk(b, i, cx, cz, base, w, d); return; }
@@ -77675,6 +77677,7 @@ var Render = (function () {
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
       rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
+      if (PRO.attivo) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
       sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); return; }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
     ambResize(W, H); paintResize(W, H); occResize(W, H);   /* [amb3] */   /* [regia2] l'ombra degli angoli */
@@ -77712,6 +77715,161 @@ var Render = (function () {
     cur: null,
   };
   if (typeof window !== 'undefined') window.__SGU = SGU;
+  // ================= [scorcio] LA PROPOSTA: gli stessi modelli che si leggono ricchi e fatti a mano, con la luce e i materiali =================
+  // Niente contenuto nuovo: tutto nei materiali (pezzi di shader di three, una volta sola) e nel passo unico che c'era già.
+  // Si compila solo nel laboratorio (?scorcio=...) o con ?proposta; window.__SGU.pro.on la accende e la spegne dal vivo (spenta: il look
+  // di oggi, identico) e ogni manopola a zero spegne il suo pezzo, così si confronta un elemento alla volta.
+  //   nei materiali: pittura (il muro più chiaro in alto e più scuro al piede, come una mano di colore), varia (ogni massa un filo diversa
+  //   di valore e di tinta: rumore largo nel mondo, niente texture), grana (la micro-normale dipinta: la luce che trema sulla superficie,
+  //   non la geometria), chiome (il verde: luce che passa, il bordo e il cappello di luce), ombre (l'ombra del sole più morbida e
+  //   colorata: mai nera, prende il cielo dell'ora), acqua (la fontana: increspature che si muovono, il cielo che si specchia, i lampi);
+  //   nel passo unico (legge la profondità): spigoli (gli spigoli vivi che prendono la luce, come smussati), pieghe (le pieghe e gli
+  //   angoli rientranti più scuri), ao (l'ombra di contatto al piede dei muri, sotto le cose), miniatura (il tilt-shift: una fascia a
+  //   fuoco, il sopra e il sotto sfocati), grading (il viraggio dell'ora: i campi pro* dei quattro momenti).
+  const PRO = { attivo: typeof location !== 'undefined' && /[?&](scorcio=|proposta\b)/.test(location.search), pezzi: false,
+    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 } };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
+  SGU.pro = { on: /[?&]proposta\b/.test(typeof location !== 'undefined' ? location.search : ''),
+    pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
+    spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
+    miniatura: .55, fuoco: .48, fascia: .2, sfoca: 3.2,                     // il tilt-shift: forza, centro della fascia a fuoco (0 sotto, 1 sopra), mezza altezza, raggio (pixel a 540 righe)
+    grading: 1,
+    // [scorcio] lo stile: dal riferimento isometrico la linea d'inchiostro solo sulle sagome (salti di profondità; le pieghe fra facce
+    // molto più leggere: mai dalla curvatura, il terreno non ha né salti né pieghe oltre la soglia) e la luce a celle; spinto verso la
+    // strada (hip hop): accenti pieni e saturi, neri profondi nelle ombre di sera e di notte, polvere al piede dei muri, il suolo meno
+    // bianco e vissuto, il verde acido spento. Il pastello resta una manopola (spento: troppo da libro per bambini)
+    inchiostro: 1, piegaPenna: .35, sogliaNormale: .3, sogliaSagoma: .04,   // forza della linea; quanto pesano le pieghe fra facce rispetto alla sagoma; 1 - coseno dell'angolo che fa piega (.3 ≈ 45°); salto di profondità relativo che fa sagoma
+    celle: .75, pastello: 0, acido: .75, suolo: .55, polvere: .6, spessore: 1.5, buchi: 1 };   // spessore della linea (pixel interni); buchi: il nero pieno dei vani (la bocca della metropolitana in piazza) diventa un fondo blu-viola leggibile
+  Object.assign(SGU.momenti.mattino, { proOmbra: [0.92, 0.96, 1.1], proLuce: [1.05, 1.0, 0.93], proSat: 1.06, proContrasto: 1.06, proPieno: 0.75, proNeri: 0.02, proTinta: '#6878c0', proTintaK: 0.24 });
+  Object.assign(SGU.momenti.pomeriggio, { proOmbra: [0.92, 0.95, 1.1], proLuce: [1.04, 1.0, 0.94], proSat: 1.06, proContrasto: 1.07, proPieno: 0.75, proNeri: 0.02, proTinta: '#7080c4', proTintaK: 0.22 });
+  Object.assign(SGU.momenti.sera, { proOmbra: [0.9, 0.9, 1.1], proLuce: [1.06, 0.99, 0.9], proSat: 1.0, proContrasto: 1.1, proPieno: 0.7, proNeri: 0.05, proTinta: '#5a3a9a', proTintaK: 0.26 });
+  Object.assign(SGU.momenti.notte, { proOmbra: [0.86, 0.9, 1.14], proLuce: [1.12, 0.99, 0.8], proSat: 1.02, proContrasto: 1.12, proPieno: 0.85, proNeri: 0.07, proTinta: '#24206a', proTintaK: 0.3 });
+  // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
+  function sguProPezzi(C) {
+    if (PRO.pezzi) return; PRO.pezzi = true;
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 } }));
+    C.common += `
+#ifdef STANDARD
+varying vec3 vSgW;
+uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4;   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
+float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
+float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+  return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
+              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }
+#endif`;
+    C.project_vertex += `
+#ifdef STANDARD
+{ vec4 sgw = vec4( transformed, 1.0 );
+#ifdef USE_INSTANCING
+  sgw = instanceMatrix * sgw;
+#endif
+  vSgW = ( modelMatrix * sgw ).xyz; }   // [scorcio] il punto nel mondo
+#endif`;
+    // la mano di colore: la scala del muro (chiaro in alto, scuro al piede), la variazione larga di valore e di tinta, la pennellata
+    C.color_fragment += `
+#ifdef SG_BUCO
+diffuseColor.rgb = mix( diffuseColor.rgb, vec3( .085, .07, .15 ), sgP4.w );   // il vano nero: un fondo blu-viola, come l'ombra della strada
+#endif
+#if defined( STANDARD ) && !defined( USE_SKINNING ) && !defined( SG_ACQUA )
+if ( sgP1.x + sgP1.z > 0. ) {
+  vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgV = 1. - smoothstep( .45, .8, abs( sgNw.y ) );   // le facce in piedi
+  float sgQ = clamp( ( vSgW.y - sgP2.w ) / 9., -.4, 1.2 );
+  float sgL = sgN3( vSgW * .21 ), sgT = sgN3( vSgW * .13 + 17.3 ), sgB = sgN3( vSgW * vec3( 1.7, .5, 1.7 ) );
+  diffuseColor.rgb *= 1. + sgP1.x * sgV * ( sgQ * .17 - .06 ) + sgP1.z * ( ( sgL - .5 ) * .17 + ( sgB - .5 ) * .07 * ( .35 + .65 * sgV ) );
+  diffuseColor.rgb *= 1. + sgP1.z * ( sgT - .5 ) * vec3( .1, .02, -.08 );   // caldo e freddo, a macchie larghe
+}
+if ( sgP4.y + sgP4.z > 0. ) {
+  vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = abs( sgNw.y ), sgH = vSgW.y - sgP2.w;
+  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
+  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+  float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
+  diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
+  diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
+  // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
+  float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
+}
+#endif`;
+    // la micro-normale dipinta (e l'acqua che si muove): la pendenza di un rumore, letta con le derivate dello schermo
+    C.normal_fragment_maps += `
+#if defined( STANDARD ) && !defined( USE_SKINNING )
+{ float sgK = sgP1.y;
+#ifdef SG_ACQUA
+  sgK = sgP2.y;
+#endif
+  if ( sgK > 0. ) {
+#ifdef SG_ACQUA
+    vec2 q = vSgW.xz; float t = sgP2.z;
+    float h = ( sin( q.x * 7.1 + t * 2.3 + sin( q.y * 3.3 + t ) ) + sin( q.y * 8.3 - t * 1.9 + sin( q.x * 2.7 - t * .7 ) ) ) * .012 + sgN3( vec3( q * 4., t * .8 ) ) * .02;
+#else
+    float h = ( sgN3( vSgW * 2.3 ) + .5 * sgN3( vSgW * 5.3 + 3.1 ) ) * .035;
+#endif
+    h *= sgK; vec3 dpx = dFdx( -vViewPosition ), dpy = dFdy( -vViewPosition ); float dhx = dFdx( h ), dhy = dFdy( h );
+    vec3 r1 = cross( dpy, normal ), r2 = cross( normal, dpx ); float det = dot( dpx, r1 );
+    if ( abs( det ) > 1e-9 ) normal = normalize( abs( det ) * normal - sign( det ) * ( dhx * r1 + dhy * r2 ) );
+  } }
+#endif`;
+    // la luce a celle: il coseno della luce diretta in 3 gradini morbidi (buio, mezzo, pieno)
+    const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
+    if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
+#ifdef STANDARD
+	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3, .4, dotNL ), sgP4.x );   // [scorcio] le celle
+#endif`);
+    // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
+    const OM = 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
+    if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
+#ifdef STANDARD
+{ float sgS = ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
+  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .35, .65, sgS ), sgP4.x ); sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
+#else
+${OM}
+#endif`).replace('GeometricContext geometry;', 'GeometricContext geometry;\n#ifdef STANDARD\nfloat sgOmbra = 1.;\n#endif');
+    else console.warn('[scorcio] l\'ombra del sole di three non è quella attesa: le ombre della proposta restano com\'erano');
+    C.lights_fragment_end += `
+#if defined( STANDARD ) && !defined( USE_SKINNING )
+{ vec3 sgNw = inverseTransformDirection( geometry.normal, viewMatrix ); float frS = 1. - saturate( dot( geometry.normal, geometry.viewDir ) );
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+  reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
+#endif
+#if NUM_DIR_LIGHTS > 0
+  if ( sgP1.w > 0. ) {   // il verde: la luce che passa dalle foglie dal lato in ombra, il bordo, il cappello di luce in cima
+    float sgG = smoothstep( .008, .06, diffuseColor.g - max( diffuseColor.r, diffuseColor.b ) ) * sgP1.w;
+    vec3 L = directionalLights[ 0 ].direction; float nl = dot( geometry.normal, L );
+    reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * directionalLights[ 0 ].color * ( .55 * pow( saturate( .6 - nl ), 1.5 ) * vec3( 1.05, 1.2, .62 ) );
+    reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * ( ambientLightColor * frS * frS * 2.2 + hemisphereLightColor( sgNw ) * .4 * smoothstep( .35, .95, sgNw.y ) );
+    reflectedLight.indirectDiffuse += sgG * sgP4.x * smoothstep( .45, .6, sgNw.y ) * vec3( .16, .13, .0 );   // la nuvola gialla in cima (a celle)
+  }
+#endif
+#ifdef SG_ACQUA
+  { float f = pow( frS, 2.5 ); vec3 cielo = hemisphereLightColor( vec3( 0., 1., 0. ) );
+    reflectedLight.indirectSpecular += sgP2.y * ( cielo * ( .12 + .5 * f ) + ambientLightColor * .3 );   // il cielo che si specchia
+    reflectedLight.indirectDiffuse *= 1. - .35 * sgP2.y; }   // il fondo più profondo
+#endif
+}
+#endif`;
+    // la luce emisferica come funzione (three la calcola dentro il ciclo; qui serve a parte)
+    C.lights_pars_begin += `
+#ifdef STANDARD
+vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
+#if NUM_HEMI_LIGHTS > 0
+  for ( int i = 0; i < NUM_HEMI_LIGHTS; i ++ ) { float k = .5 * dot( nW, hemisphereLights[ i ].direction ) + .5; c += mix( hemisphereLights[ i ].groundColor, hemisphereLights[ i ].skyColor, k ); }
+#endif
+  return c; }
+#endif`;
+  }
+  // l'acqua: i materiali d'acqua dei pezzi (la fontana, le vasche) prendono il loro ramo
+  function sguProAcqua() { if (!PRO.attivo) return 0; let n = 0; const visti = new Set();
+    scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (visti.has(m) || !m.isMeshStandardMaterial || !/^acqua/.test(m.name || '')) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_ACQUA: '' }); m.needsUpdate = true; n++; }); });
+    // i vani neri pieni (la bocca della metropolitana, i pozzi): il loro ramo, per non restare una macchia illeggibile
+    scene.traverse(o => { const m = o.material; if (!m || Array.isArray(m) || visti.has(m) || !m.isMeshStandardMaterial || !m.color || m.map || Math.max(m.color.r, m.color.g, m.color.b) > .03) return; visti.add(m); m.defines = Object.assign(m.defines || {}, { SG_BUCO: '' }); m.needsUpdate = true; n++; });
+    return n; }
+  // a ogni fotogramma: le manopole nei materiali (spente se la proposta è spenta)
+  function sguProTick(S) {
+    const P = SGU.pro, k = PRO.attivo && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
+    u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
+    u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
+    PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
+    if (S && S.proTinta) { u3.x = S.proTinta.r * S.proTintaK; u3.y = S.proTinta.g * S.proTintaK; u3.z = S.proTinta.b * S.proTintaK; }
+  }
   const SGT = { c: new THREE.Color(), c2: new THREE.Color(), blob: null, cielo: { value: new THREE.Vector3() }, letter: 0, t: 0 };
   // il set dell'ora: la fusione continua dei due piani attorno
   function sguMomento(hh) {
@@ -77727,7 +77885,7 @@ var Render = (function () {
   }
   // la curva filmica nei materiali e la luce di bordo (una volta sola: i pezzi di shader sono di three, valgono solo col tone mapping acceso)
   function sguPezzi() {
-    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk;
+    if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.attivo) sguProPezzi(C);   // [scorcio]
     C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
       `vec3 CustomToneMapping( vec3 color ) {   // [sguardo] la curva: un piede appena più profondo (neri puliti), i medi dritti, la spalla dei chiari che piega senza bruciare
         vec3 x = max(color * toneMappingExposure, 0.); x = x * (x + .011) / (x + .022);
@@ -77747,15 +77905,66 @@ var Render = (function () {
     SGP.scene = new THREE.Scene(); SGP.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     SGP.mat = new THREE.ShaderMaterial({
       uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, sh: { value: new THREE.Vector3(1, 1, 1) }, hi: { value: new THREE.Vector3(1, 1, 1) },
-        gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 } },
+        gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
+        tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) } },   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: `precision mediump float;
+      fragmentShader: (PRO.attivo ? '#define SG_PRO\nprecision highp float;' : 'precision mediump float;') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
+#ifdef SG_PRO
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 pK; uniform vec4 pT; uniform float pa; uniform vec4 pI; uniform vec4 pV; uniform vec2 fv;
+        // [scorcio] l'inverso della profondità: su un piano va come una retta sullo schermo, così la sua «curvatura» è zero sul piano,
+        // positiva sullo spigolo vivo (sporge verso la camera), negativa nell'angolo rientrante. Diviso per l'angolo di r pixel: ~1 su uno
+        // spigolo a 90°, qualunque sia la distanza. Le coppie che saltano troppo (la sagoma di una cosa davanti a un'altra) non contano
+        float sgI(vec2 q){ float z = texture2D(tD, q).r * 2. - 1.; return (nf.y + nf.x - z * (nf.y - nf.x)) / (2. * nf.x * nf.y); }
+        float sgCp(vec2 uv, float i0, vec2 o, float r, inout float n){ float v = (i0 - .5 * (sgI(uv + o) + sgI(uv - o))) / (i0 * pa * r); float ok = 1. - smoothstep(2.5, 6., abs(v)); n += ok; return v * ok; }
+        // [scorcio] il punto in vista (dalla profondità) e la sua normale: per la linea d'inchiostro
+        vec3 sgV(vec2 q){ float d = 1. / sgI(q); return vec3((q * 2. - 1.) * fv * d, -d); }
+        vec3 sgMn(vec3 a, vec3 b){ return abs(a.z) < abs(b.z) ? a : b; }
+#endif
         void main(){
-          vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb;
+          vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
+#ifdef SG_PRO
+          if (pT.x > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
+            float coc = pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y));
+            if (coc > .01) { vec2 rr = e * pT.w * coc; vec3 acc = c;
+              for (int k = 0; k < 8; k++) { float a = float(k) * 2.39996 + .4, rad = sqrt((float(k) + .5) / 8.); acc += texture2D(t, vUv + vec2(cos(a), sin(a)) * rad * rr).rgb; }
+              c = mix(c, acc / 9., smoothstep(0., .35, coc)); shp *= 1. - smoothstep(0., .3, coc); } }
+#endif
           vec3 n4 = texture2D(t, vUv + vec2(e.x, 0.)).rgb + texture2D(t, vUv - vec2(e.x, 0.)).rgb + texture2D(t, vUv + vec2(0., e.y)).rgb + texture2D(t, vUv - vec2(0., e.y)).rgb;
-          c = max(c + (c - n4 * .25) * gK.w, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
+          c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
+#ifdef SG_PRO
+          float sgInk = 0.;
+          if (pI.x > 0.) {   // la linea d'inchiostro, un pixel: sul pixel davanti a un salto di profondità (la sagoma); più leggera fra due facce che girano oltre la soglia
+            vec2 ex = vec2(e.x * pV.z, 0.), ey = vec2(0., e.y * pV.z);   // lo spessore: i vicini più lontani, la linea più larga
+            vec3 c0 = sgV(vUv), r0 = sgV(vUv + ex), l0 = sgV(vUv - ex), u0 = sgV(vUv + ey), d0 = sgV(vUv - ey), ru = sgV(vUv + ex + ey), rd = sgV(vUv + ex - ey), lu = sgV(vUv - ex + ey);
+            float dz = -c0.z;
+            float sil = max(max(-r0.z - dz, -l0.z - dz), max(-u0.z - dz, -d0.z - dz)) / dz;   // un vicino più lontano: io sono il bordo della cosa davanti
+            vec3 nc = normalize(cross(sgMn(r0 - c0, c0 - l0), sgMn(u0 - c0, c0 - d0)));
+            vec3 nr = normalize(cross(r0 - c0, sgMn(ru - r0, r0 - rd)));
+            vec3 nu = normalize(cross(sgMn(ru - u0, u0 - lu), u0 - c0));
+            float pie = max(1. - dot(nc, nr), 1. - dot(nc, nu));
+            float ok = 1. - smoothstep(.02, .06, max(abs(-r0.z - dz), abs(-u0.z - dz)) / dz);   // la piega solo dove la superficie è continua
+            sgInk = max(smoothstep(pI.z, pI.z * 1.6, sil), smoothstep(pI.y, pI.y * 1.5, pie) * ok * pV.y) * pI.x * (1. - smoothstep(150., 300., dz));
+          }
+          if (pK.x + pK.y + pK.z > 0.) {
+            float i0 = sgI(vUv), n1 = 0., n2 = 0.;
+            float sp = (sgCp(vUv, i0, vec2(e.x, 0.) * 1.5, 1.5, n1) + sgCp(vUv, i0, vec2(0., e.y) * 1.5, 1.5, n1)) / max(n1, .5);
+            vec2 R = e * pK.w;
+            float ao = (sgCp(vUv, i0, vec2(R.x, 0.), pK.w, n2) + sgCp(vUv, i0, vec2(0., R.y), pK.w, n2) + sgCp(vUv, i0, R * .7071, pK.w, n2) + sgCp(vUv, i0, vec2(R.x, -R.y) * .7071, pK.w, n2)) / max(n2, .5);
+            float hl = smoothstep(.3, .9, sp) * pK.x, cr = smoothstep(.3, .9, -sp) * pK.y, oc = smoothstep(.3, .9, -ao) * pK.z;   // sotto la soglia (le pieghe dolci del suolo, i triangoli del terreno) niente
+            c *= (1. - .3 * cr) * (1. - .4 * oc);                                    // le pieghe e l'ombra di contatto
+            c += hl * (c * .5 + .03) * vec3(1.04, 1., .9);                           // lo spigolo che prende la luce (caldo)
+          }
+          if (pV.x > 0.) {   // il verde acido (i prati chiari e saturi) verso la salvia: le chiome scure non si toccano
+            float gx = c.g - max(c.r, c.b), ac = smoothstep(.06, .2, gx) * smoothstep(.3, .55, c.g) * pV.x;
+            c = mix(c, vec3(.55 * c.g + .3 * c.r, .8 * c.g + .05, .42 * c.g + .35 * c.b), ac); }
+          if (pI.w > 0.) {   // il pastello high-key: i medi e gli scuri si alzano verso una crema calda, l'ombra prende il lilla
+            float l0 = dot(c, vec3(.299, .587, .114));
+            c = mix(c, c * .78 + .22 * vec3(1., .9, .82) * (.35 + .65 * sqrt(max(c, 0.))), pI.w);
+            c += pI.w * (1. - smoothstep(.1, .6, l0)) * vec3(.05, .035, .1); }
+          c = mix(c, mix(c * vec3(.3, .26, .45), vec3(.11, .09, .2), .55), sgInk);   // l'inchiostro: blu-viola scuro, non nero
+#endif
           float l = dot(c, vec3(.299, .587, .114));
           float l2 = clamp(.42 + (l - .42) * gK.y, 0., 1.); l2 = mix(l2, l, smoothstep(.75, 1., l)); c *= l2 / max(l, 1e-3); l = l2;   // il contrasto attorno ai medi (i chiari restano dove la curva li ha messi)
           c *= mix(sh, vec3(1.), smoothstep(.06, .55, l)); c *= mix(vec3(1.), hi, smoothstep(.45, .92, l));   // ombre fredde, luci calde
@@ -77805,6 +78014,7 @@ var Render = (function () {
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
+    if (PRO.attivo) sguProTick(S);   // [scorcio] le manopole della proposta
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -77821,6 +78031,15 @@ var Render = (function () {
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido); U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
+    if (PRO.attivo) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
+      const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
+      U.tD.value = rt.depthTexture; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
+      U.pK.value.set(k * P.spigoli, k * P.pieghe, k * P.ao, Math.max(1, P.aoRaggio * h / 1080));
+      U.pI.value.set(k * P.inchiostro, P.sogliaNormale, P.sogliaSagoma, k * P.pastello); U.pV.value.set(k * P.acido, P.piegaPenna, Math.max(1, P.spessore || 1), 0); { const ty = Math.tan(camera.fov * Math.PI / 360); U.fv.value.set(ty * camera.aspect, ty); } U.pT.value.set(k * P.miniatura, P.fuoco, P.fascia, P.sfoca * h / 540);
+      if (g > 0 && K.proOmbra) { U.sh.value.set(K.ombra[0] * (1 + (K.proOmbra[0] - 1) * g), K.ombra[1] * (1 + (K.proOmbra[1] - 1) * g), K.ombra[2] * (1 + (K.proOmbra[2] - 1) * g));
+        U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
+        U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
+        if (K.proPieno !== undefined) U.gN.value.set(SGU.neri + (K.proNeri - SGU.neri) * g, SGU.pieno + (K.proPieno - SGU.pieno) * g, 0, 0); } }   // gli accenti pieni, i neri profondi di sera e di notte
     renderer.setRenderTarget(null); renderer.render(SGP.scene, SGP.cam);
   }
 
@@ -80725,6 +80944,31 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // solo dove arriva (directLight.visible, che three calcola già). Una luce a zero moltiplica per zero: l'immagine è la stessa.
   // Spenta di norma: in SwiftShader (senza scheda video) il ramo costa più di quel che salta (scena 3.920 ms contro 3.459, stessa immagine);
   // su una scheda video vera saltare le luci spente dovrebbe rendere, ma qui non si può misurare. ?lucispente la accende per provarla (F3 con ?perf).
+  // ================= [scorcio] IL LABORATORIO DEL LOOK: uno scorcio solo, piccolo, che parte in fretta =================
+  // ?scorcio=ottagono (&raggio=75): si costruisce solo quello che sta entro il raggio dal centro dello scorcio (le case lontane non
+  // si fanno, quello che le fasi mettono fuori dal raggio esce subito dalla scena, le statiche lontane non si fondono), l'anello vicino
+  // è il raggio, gli anelli lontani restano vuoti. Il gioco (i dati del mondo, il mondo cotto) è quello vero: si cammina come sempre.
+  // SCO.cam (dagli strumenti, strumenti/scorcio_foto.js): una camera fissa sopra quella del gioco { x, z, y?, yaw, pitch, dist, fov }.
+  const SCO = (() => { const q = typeof location !== 'undefined' ? location.search : '', m = /[?&]scorcio=([a-z_]+)/.exec(q), rg = /[?&]raggio=(\d+)/.exec(q);
+    return { on: !!m, nome: m ? m[1] : null, r: rg ? +rg[1] : 75, c: null, cam: null, tolti: 0, saltate: 0 }; })();
+  // i centri degli scorci (in metri): dal mondo, così seguono la pianta
+  const SCO_LUOGHI = {
+    ottagono: () => { const s = ((M.world && M.world.sets) || []).find(q => q.k === 'ottagono'); return s ? { x: s.x, z: s.y, px: s.x - 1.5, pz: s.y + 7.5 } : null; },   // il personaggio sul lastricato a sud della fontana, verso i gradoni
+  };
+  function scoCentro() { if (!SCO.on) return null; if (!SCO.c) { const f = SCO_LUOGHI[SCO.nome]; SCO.c = (f && f()) || { x: cam.x, z: cam.y, px: cam.x, pz: cam.y }; } return SCO.c; }
+  // fuori dallo scorcio: un punto (con un raggio proprio) o una scatola di mondo
+  const scoFuori = (x, z, rr) => { const c = scoCentro(); return !!c && Math.hypot(x - c.x, z - c.z) - (rr || 0) > SCO.r; };
+  const SCO_B = new THREE.Box3();
+  function scoFuoriObj(o) {
+    if (!SCO.on || o.isLight || o.userData.keep || o === scene) return false; let ist = false; o.traverse(q => { if (q.isInstancedMesh || q.isPoints || q.isSprite) ist = true; }); if (ist) return false;   // le mesh a copie (gli alberi, la gente, l'arredo a pile): la scatola di three non conta le copie
+    o.updateMatrixWorld(true); SCO_B.setFromObject(o); if (SCO_B.isEmpty() || !isFinite(SCO_B.min.x)) return false;
+    const c = scoCentro(), dx = Math.max(SCO_B.min.x - c.x, 0, c.x - SCO_B.max.x), dz = Math.max(SCO_B.min.z - c.z, 0, c.z - SCO_B.max.z); return Math.hypot(dx, dz) > SCO.r; }
+  // la camera fissa dello strumento: si mette dopo quella del gioco (che intanto fa il suo lavoro: ombre, tagli, anelli)
+  function scoCamera() {
+    const C = SCO.cam; if (!C) return; const y = C.y !== undefined ? C.y : groundH(C.x, C.z) + 1, cp = Math.cos(C.pitch);
+    camera.fov = C.fov || 24; camera.near = Math.max(.5, C.dist * .3); camera.far = C.dist + 200; camera.updateProjectionMatrix();
+    camera.position.set(C.x + Math.sin(C.yaw) * cp * C.dist, y + Math.sin(C.pitch) * C.dist, C.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.x, y, C.z); }
+
   function luciSpente() {
     if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
@@ -80777,10 +81021,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
     dyn.vehicles = {};
     FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
+    if (SCO.on) { const c = scoCentro(); if (typeof Anelli !== 'undefined') Anelli.CFG.vicino = SCO.r + 10; console.log('[scorcio]', SCO.nome, 'centro', c && c.x, c && c.z, 'raggio', SCO.r); }   // [scorcio]
     // [tasselli] ogni oggetto messo in scena da una fase porta il nome della fase (__fase: l'esportatore dei tasselli sa chi è città);
     // con i tasselli (src/tasselli.js) le fasi della città statica non girano: la città arriva cotta, a tasselli
     const TASS = typeof Tasselli !== 'undefined' && Tasselli.attivo() ? Tasselli : null;
-    const TT = (n, f) => { P2.src = n; if (TASS && !TASS.faseViva(n)) return; const t0 = performance.now(), c0 = new Set(scene.children); f(); for (const c of scene.children) if (!c0.has(c) && !c.__fase) c.__fase = n; (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
+    const TT = (n, f) => { P2.src = n; if (TASS && !TASS.faseViva(n)) return; const t0 = performance.now(), c0 = new Set(scene.children); f(); for (const c of scene.children) if (!c0.has(c) && !c.__fase) c.__fase = n; if (SCO.on) scene.children.filter(c => !c0.has(c) && scoFuoriObj(c)).forEach(c => { scene.remove(c); SCO.tolti++; });   /* [scorcio] fuori dal raggio: via subito */ (window.__rt = window.__rt || {})[n] = Math.round(performance.now() - t0); };
     TT('sky', buildSky); TT('island', buildIsland); TT('water', buildWater); TT('buildings', buildBuildings); TT('scena', segniInit1); TT('props', buildPropsIsland); TT('costa', buildCosta); TT('costa2', buildCosta2);   /* [costa2] */ TT('margini9', () => { const g = RIVA9() ? Riva.costruisciMargini(groundH) : null; if (g) scene.add(g); });   /* [riva] i margini delle costiere */ TT('strade31', buildStrade31); TT('tavolato32', buildTavolato); TT('layout', buildLayout); TT('inverno', buildWinter); TT('posa1', posaPezzi1);   /* [posa] */ TT('facciate', buildFacades); TT('dettagli', buildDetails); TT('propaganda', buildPropaganda); TT('dettagli2', buildDetails2); TT('volumi', buildVolumes); TT('marciapiedi', buildSidewalks); TT('tetti', buildRoofs); TT('vissuti', () => window.TettiVissuti && TettiVissuti.costruisci(kitTV1()));   /* [vissuti] */ TT('citta', buildCity); TT('case', buildCase); if (window.__dbg35) console.log('[dbg] ordine1 programmi dei tetti', JSON.stringify(window.__rp1()), 'parapetto', kitH1('bkit/border-high'), kitH1('urbano/wall-a-low')); TT('soglie', buildThresholds); TT('pulizia', clearMurals); TT('muri', buildWallsAlive); TT('pulizia35', pulizia35); TT('oggetti35', oggetti35); TT('incroci38', incroci38); TT('strade1', buildStrade1); TT('vita1', buildVita1); TT('segnavia1', buildSegnavia1); TT('urbano1', buildUrbano1); TT('segni', buildSegni1); TT('guardrail1', buildGuardrail1); TT('pulizia1', puliziaFinale1); TT('percorsi1', buildPercorsi1);   /* [percorsi] */ TT('scorci', buildScorci);   /* [scorci] */ TT('pulizia2', pulizia2);   /* [pulizia2] */ TT('particles', buildParticles); TT('fx', buildFx); TT('debris', buildDebris); TT('post', buildPost);
     TT('flush', flushStatic);
     TT('fusione1', fusione1);   /* [pulitore1] */
@@ -80795,6 +81040,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       giro(); setInterval(giro, 4000); }
     if (window.LeggeraMem && LeggeraMem.on('firme') && !FU1.att.size) FD1.sigs.clear();   /* [leggera] le firme dei materiali servivano solo alla fusione */   /* [anelli] (con le case che aspettano, dopo l'ultimo settore) */
     if (window.LeggeraMem && LeggeraMem.on('cache')) { for (const k in GC) delete GC[k]; for (const k in BEVC) delete BEVC[k]; }   /* [leggera] le geometrie modello delle cose di strada: fuse nelle statiche, chi ne vuole ancora le rifà */
+    if (PRO.attivo) (window.__rt = window.__rt || {}).acquaPro = sguProAcqua();   // [scorcio] l'acqua della proposta (prima della compilazione)
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
@@ -82056,6 +82302,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
+    if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
     if (cam.uyS !== cam.yaw) { cam.uyS = cam.yaw; cam.rotT = time; }   // [fluido] quando la visuale ha girato l'ultima volta   // [visuale5] anche a mano e col ricentro
@@ -82192,7 +82439,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -85508,6 +85755,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
   function boot() {
   let glOk = true;
+  if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
