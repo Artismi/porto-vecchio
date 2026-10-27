@@ -90,14 +90,25 @@ var Pavimenti = (function () {
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   // [fluido] a pezzi: mappeG cede il passo quando cede() lo dice (render.js buildChunkGen, oltre 4 ms); mappe fa tutto subito. Stessi conti, stesso ordine
   // [calcolo] le vie e le finiture impacchettate per il lavoratore, una volta (vieTutte e finit non cambiano)
-  const PKV = { v: null, k: null, f: null, kf: null, n: 0 };
+  // [suolo] la gerarchia dei suoli (suolo.js): la via si ferma dove sotto c'è un suolo più alto (la piazza pedonale, le opere).
+  // Il lavoratore non vede il mondo: per ogni via i tagli lungo s e il suo rango (vieKey), per ogni blocco i ranghi delle caselle (mappeG)
+  const suoloDi = () => typeof Suolo !== 'undefined' && !Suolo.off && A.M && A.M.world ? Suolo.di(A.M.world) : null;
+  const PKV = { v: null, k: null, f: null, kf: null, n: 0, su: null };
   function vieKey() {
-    const VT = vieTutte(); if (PKV.v === VT) return PKV.k;
+    const VT = vieTutte(), SU = suoloDi(); if (PKV.v === VT && PKV.su === SU) return PKV.k;
     const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, P = [];
-    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0); continue; }
-      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1; P.push(Pt.length, hw, ext, f, pr);
-      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); }
-    PKV.v = VT; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+    // per via: np, hw, ext, f, pr, lat (rango della via + 1 se si ferma anche di lato, se no 0), nt (quanti tagli), poi np × (x, z), np − 1 s, nt × (s0, s1)
+    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0, 0, 0); continue; }
+      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1, rv = SU ? SU.rangoVia(rd) : 0, TG = SU ? SU.tagli(rd) : [];
+      P.push(Pt.length, hw, ext, f, pr, SU && rv < SU.R.carreggiata ? rv + 1 : 0, TG.length);
+      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); TG.forEach(c => P.push(c[0], c[1])); }
+    PKV.v = VT; PKV.su = SU; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+  }
+  // [suolo] i ranghi delle caselle del blocco, con un bordo di una casella (Suolo.rango al centro della casella)
+  function suoloBlocco(SU, tx0, ty0, n, m) {
+    if (!SU) return null; const w = n + 2, h = m + 2, M = new Uint8Array(w * h), TS = A.TS;
+    for (let b = 0; b < h; b++) for (let a = 0; a < w; a++) M[b * w + a] = SU.rango((tx0 - 1 + a + .5) * TS, (ty0 - 1 + b + .5) * TS);
+    return M;
   }
   function finKey() {
     const FL = finit(); if (PKV.f === FL) return PKV.kf;
@@ -109,7 +120,7 @@ var Pavimenti = (function () {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
     // [calcolo] le vie e le finiture (solo i loro dati: i conti di prima, nello stesso ordine) nel lavoratore (calcolo_lavoratore.js vie);
     // qui la parte che legge il mondo (famiglia del suolo, sabbia) e le tessiture
-    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
+    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), su: suoloBlocco(suoloDi(), tx0, ty0, n, m), sx0: tx0 - 1, sy0: ty0 - 1, kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
