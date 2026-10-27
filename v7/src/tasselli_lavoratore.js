@@ -27,7 +27,11 @@ function blocco(ab, h, B, a) {
   if (a.q) {   // la posizione quantizzata torna a 32 bit (gli shader della città la leggono così)
     const s = a.s, mn = a.q.min, k = a.q.max.map((v, c) => (v - mn[c]) / 65535), f = new Float32Array(arr.length);
     for (let i = 0; i < arr.length; i++) { const c = i % s; f[i] = mn[c] + arr[i] * k[c]; }
-    if (blocco.q16) blocco.q16.set(f, arr.byteOffset === 0 && arr.byteLength === arr.buffer.byteLength ? arr : arr.slice());   // [leggera] i 16 bit restano per i raggi
+    if (blocco.q16) {   // [leggera] la posizione anche in 16 bit su una scala sola (la mesh porta origine e scala: le normali non cambiano)
+      let e = 0; for (let c = 0; c < 3; c++) e = Math.max(e, a.q.max[c] - mn[c]);
+      if (s === 3 && e > 0 && e / 65535 <= .002) { const u = new Uint16Array(f.length), K = 65535 / e; for (let i = 0; i < f.length; i++) { const c = i % 3; u[i] = Math.round((f[i] - mn[c]) * K); } blocco.q16.set(f, { u, mn: mn.slice(), s: e }); }
+      else blocco.q16.set(f, { u: arr.byteOffset === 0 && arr.byteLength === arr.buffer.byteLength ? arr : arr.slice(), mn: mn.slice(), k: k.slice(), s: null });   // solo per i raggi
+    }
     arr = f;
   }
   return arr;
@@ -62,7 +66,7 @@ self.onmessage = async e => {
     await MeshoptDecoder.ready;
     if (m.op === 'tassello') {
       const t0 = performance.now(), ab = m.buf ? await apri(m.buf) : await scarica(m.url, true), t1 = performance.now(), { testa, vettori, q16 } = contenitore(ab, !!m.tel);
-      const buf = [...new Set(vettori.concat(q16.filter(Boolean)).map(v => v.buffer))].filter(b => b !== ab || !m.buf);
+      const buf = [...new Set(vettori.concat(q16.filter(Boolean).map(q => q.u)).map(v => v.buffer))].filter(b => b !== ab || !m.buf);
       self.postMessage({ id: m.id, testa, vettori, q16, byte: ab.byteLength, ms: [t1 - t0, performance.now() - t1] }, buf);
     } else if (m.op === 'img') {
       const r = await scarica(m.url, false), bl = await r.blob();

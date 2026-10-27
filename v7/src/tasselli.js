@@ -46,6 +46,8 @@ var Tasselli = (function () {
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
+    lontano: TEL ? 105 : 0,        // [leggera] sul telefono l'impronta si ferma a questa distanza dal punto guardato (oltre, fino alla nebbia, la sagoma: il lontano)
+    oltre: TEL ? 16 : 0,           // [leggera] e il tassello lascia la scheda video a margine + questo fuori dall'impronta (il computer: 2 margini + 8)
     raggi: !/[?&]tasselliraggi=0\b/.test(Q),   // [tasselli2] le mesh opache tengono le posizioni per i raggi (graffiti, spruzzi)
     // [leggera] sul telefono (?nomemoriatasselli lo spegne): attributi compatti per la scheda video (il lavoratore: colore a 8 bit, uv in
     // mezza precisione, interi a 16 bit), le posizioni per i raggi a 16 bit come arrivano (non la copia a 32), il compresso buttato
@@ -118,7 +120,9 @@ var Tasselli = (function () {
     else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
       t.image = { data: m.px, width: tel ? r.tel.w : r.w, height: tel ? r.tel.h : r.h, depth: r.d }; t.onUpdate = () => { t.image.data = null; }; t.needsUpdate = true; });
     else if (/\.bin$/.test(file)) p = chiedi({ op: 'bin', url: url('tex/' + file) }).then(m => { if (!vivo()) return;
-      const T = TA[r.dati] || Uint8Array, a = new T(m.buf); t.image = { data: a, width: r.w, height: r.h, depth: r.d || 1 }; t.needsUpdate = true; });
+      const T = TA[r.dati] || Uint8Array, a = new T(m.buf); t.image = { data: a, width: r.w, height: r.h, depth: r.d || 1 };
+      if (CFG.leggero && !FISSE.has(i)) t.onUpdate = () => { t.image.data = null; };   // [leggera] i dati vanno alla scheda video e via (FD1 e le fisse restano: il gioco le riscrive)
+      t.needsUpdate = true; });
     else p = immagine(url('tex/' + file), r.da !== 'gpu' && !!r.flipY).then(m => { if (!vivo(m.bmp)) return;
       t.image = m.bmp; t.onUpdate = () => { const b = t.image; if (b && b.close) { t.image = { width: b.width, height: b.height }; b.close(); } }; t.needsUpdate = true; });
     p = p.catch(e => console.warn('[tasselli] tessitura', i, e)); TEXP.set(i, p); return p;
@@ -194,6 +198,19 @@ var Tasselli = (function () {
     m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking }); if (base.map && base.alphaTest > 0) { m.map = base.map; m.alphaTest = base.alphaTest; } m.side = base.shadowSide !== null && base.shadowSide !== undefined ? base.shadowSide : base.side;
     m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPidD'; MAT.set(ck, m); return m;
   }
+  // [leggera] il materiale legge la posizione solo attraverso modelMatrix (le parti standard, o vec4(transformed) per modelMatrix): la
+  // posizione a 16 bit con origine e scala nella mesh dà gli stessi punti. No: ShaderMaterial, chi legge position, chi sposta transformed
+  // (vento, panni), chi usa mat3(modelMatrix) senza normalizzare
+  const MATQ = new Map();
+  function matQ(i) {
+    let v = MATQ.get(i); if (v !== undefined) return v; const r = IND.materiali[i], S = IND.stringhe; v = !!r;
+    if (r && (r.type === 'ShaderMaterial' || r.type === 'RawShaderMaterial')) v = false;
+    else if (r) { const vs = r.cvs !== undefined ? S[r.cvs] : null;
+      if (vs) for (const l0 of vs.split('\n')) { const l = l0.trim(); if (/^#include\s*<[a-z_]+>$/.test(l)) continue;
+        if (/[^\w.]position\b/.test(' ' + l) || /\btransformed(\.[xyzw]+)?\s*[-+*\/]?=(?!=)/.test(l) || (/mat3\(\s*modelMatrix\s*\)/.test(l) && !/normalize\(\s*mat3\(\s*modelMatrix/.test(l))) { v = false; break; }
+        if (/\btransformed\b/.test(l) && !/modelMatrix\s*\*\s*(instanceMatrix\s*\*\s*)?vec4\(\s*transformed/.test(l) && !/vec4\s+\w+\s*=\s*vec4\(\s*transformed\s*,\s*1\.?0?\s*\)\s*;/.test(l)) { v = false; break; } } }
+    MATQ.set(i, v); return v;
+  }
   const texPronte = ids => Promise.all([...ids].map(carica));
 
   // ---------------- la sagoma ----------------
@@ -226,7 +243,7 @@ var Tasselli = (function () {
   function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
   function griglia(g) {
-    const P = posL(g.attributes.position), I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const P = posL(g.attributes.position), I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
     const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
     const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
     const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
@@ -239,12 +256,13 @@ var Tasselli = (function () {
     ST.raggiV++;
     return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
   }
+  const IDM = new THREE.Matrix4();
   function rayTas(rc, out) {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array || (P.__q ? P.__q.u.length : P.array.length) < 9) return;
-    const mats = this.material; if (!g.boundingSphere) g.computeBoundingSphere();
-    RG.sph.copy(g.boundingSphere).applyMatrix4(this.matrixWorld); if (!rc.ray.intersectsSphere(RG.sph)) return;
-    RG.inv.copy(this.matrixWorld).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
-    const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.boundingBox;   // (griglia() fa la scatola se manca)
+    const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
+    RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
+    RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
+    const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
     let ta = Math.max(rc.near, 0), tb = rc.far;
     for (const ax of ['x', 'y', 'z']) { const o = ray.origin[ax], d = ray.direction[ax], mn = bb.min[ax] - .01, mx = bb.max[ax] + .01;
@@ -265,7 +283,7 @@ var Tasselli = (function () {
         if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
         else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
-        const pw = RG.p.clone().applyMatrix4(this.matrixWorld), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
+        const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
         const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
@@ -313,7 +331,10 @@ var Tasselli = (function () {
   function monta1(ti, tetto, quota) {
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
     if (!S.attr) {
-      S.attr = new Map(); S.tieni = new Set();
+      S.attr = new Map(); S.tieni = new Set(); S.q16ok = new Set();
+      if (m.q16 && m.q16.length) { const no = new Set(); T.mesh.forEach(r => { const p = r.g.at.position; if (p === undefined) return; S.q16ok.add(p);
+        if (r.inst || r.mx || ![].concat(r.m, r.cdm !== null && r.cdm !== undefined ? [r.cdm] : [], r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).every(matQ)) no.add(p); });
+        no.forEach(p => S.q16ok.delete(p)); }
       // [tasselli2] le posizioni (e gli indici) delle mesh che i raggi colpiscono restano nella pagina
       if (CFG.raggi) T.mesh.forEach(r => { if (r.inst || !(r.ly & 1)) return; const ms = (Array.isArray(r.m) ? r.m : [r.m]).map(i => IND.materiali[i]); if (!ms.some(q => q && !q.transparent && q.type !== 'MeshDepthMaterial' && q.type !== 'SpriteMaterial' && q.visible !== false)) return;
         S.tieni.add(r.g.at.position); if (r.g.ix !== null) S.tieni.add(r.g.ix); });
@@ -321,9 +342,12 @@ var Tasselli = (function () {
     const attr = i => { let a = S.attr.get(i); if (a) return a; const d = T.attr[i], v = m.vettori[i];
       a = d.idx ? new THREE.BufferAttribute(v, 1) : (d.nome === 'instanceMatrix' || d.nome === 'instanceColor') ? new THREE.InstancedBufferAttribute(v, d.s) : new THREE.BufferAttribute(v, d.s, d.norm);
       if (d.half) a.isFloat16BufferAttribute = true;   // [leggera] le uv in mezza precisione (il lavoratore)
-      const q = m.q16 && m.q16[i];   // [leggera] per i raggi bastano i 16 bit: la copia a 32 bit va alla scheda video e via
-      if (q && S.tieni.has(i)) { a.__q = { u: q, mn: d.q.min, k: d.q.max.map((x, c) => (x - d.q.min[c]) / 65535) }; a.count0 = a.count; }
-      if (!S.tieni.has(i) || q) a.onUpload(libera); S.attr.set(i, a); return a; };
+      // [leggera] la posizione a 16 bit: sulla scheda video (normalizzata, la mesh porta origine e scala) se i materiali di tutte le mesh
+      // che la usano leggono la posizione solo attraverso modelMatrix; per i raggi bastano comunque i 16 bit (la copia a 32 bit va e via)
+      const q = m.q16 && m.q16[i];
+      if (q && q.s && S.q16ok.has(i)) { a = new THREE.BufferAttribute(q.u, 3, true); a.__qs = q; }
+      if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
+      if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); S.attr.set(i, a); return a; };
     let vf = 0;
     while (S.k < T.mesh.length) {
       if (performance.now() > tetto || vf > quota) return false;
@@ -334,12 +358,17 @@ var Tasselli = (function () {
       if (r.g.dr) g.setDrawRange(r.g.dr[0], r.g.dr[1]);
       if (r.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5]));
       if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else g.computeBoundingSphere();
-      if (!g.boundingBox && g.attributes.position.__q) g.computeBoundingBox();   // (i raggi la vogliono: dopo l'invio la posizione è a 16 bit)
+      if (!g.boundingBox && g.attributes.position.__q && !g.attributes.position.__qs) g.computeBoundingBox();   // (i raggi la vogliono: dopo l'invio la posizione è a 16 bit)
+      const QS = g.attributes.position.__qs;   // [leggera] in 16 bit: scatola e sfera nello spazio della mesh, quelle del mondo per i raggi
+      if (QS) { const o3 = new THREE.Vector3().fromArray(QS.mn), k3 = 1 / QS.s; if (!g.boundingBox) { g.boundingBox = new THREE.Box3(); const u = QS.u; for (let v = 0; v < u.length; v += 3) { RG.p.set(u[v], u[v + 1], u[v + 2]).multiplyScalar(QS.s / 65535).add(o3); g.boundingBox.expandByPoint(RG.p); } }
+        g.__bbW = g.boundingBox; g.__bsW = r.bs ? g.boundingSphere : g.__bbW.getBoundingSphere(new THREE.Sphere()); g.boundingBox = g.__bbW.clone().translate(o3.clone().negate()); g.boundingBox.min.multiplyScalar(k3); g.boundingBox.max.multiplyScalar(k3);
+        g.boundingSphere = new THREE.Sphere(g.__bsW.center.clone().sub(o3).multiplyScalar(k3), g.__bsW.radius * k3); }
       const pid = r.g.at.pid !== undefined, mat = Array.isArray(r.m) ? r.m.map(i => materiale(i, pid)) : materiale(r.m, pid);
       let o;
       if (r.inst) { o = new THREE.InstancedMesh(g, mat, r.inst.n); o.instanceMatrix = attr(r.inst.m); if (r.inst.c !== null) o.instanceColor = attr(r.inst.c); }
       else o = new THREE.Mesh(g, mat);
       if (r.mx) { o.matrix.fromArray(r.mx); o.matrix.decompose(o.position, o.quaternion, o.scale); }
+      else if (QS) { o.position.fromArray(QS.mn); o.scale.setScalar(QS.s); o.updateMatrix(); o.userData.qs = true; }
       o.matrixAutoUpdate = false; o.updateMatrixWorld(true);
       o.castShadow = r.cs; o.receiveShadow = r.rs; o.renderOrder = r.ro; o.layers.mask = r.ly; o.frustumCulled = r.fc; o.name = r.nm;
       if (r.cdm !== null && r.cdm !== undefined) o.customDepthMaterial = materiale(r.cdm);
@@ -513,9 +542,10 @@ var Tasselli = (function () {
     cam.updateMatrixWorld(); let x0 = P.x, x1 = P.x, z0 = P.z, z1 = P.z;
     for (const [nx, ny] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, 1], [0, -1], [-1, 0], [1, 0]]) {
       IMV.set(nx, ny, .5).unproject(cam).sub(P).normalize(); let t = IMV.y < -1e-3 ? (gy - P.y) / IMV.y : ff; t = Math.max(0, Math.min(t, ff));
-      const px = P.x + IMV.x * t, pz = P.z + IMV.z * t; if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+      let px = P.x + IMV.x * t, pz = P.z + IMV.z * t;
+      if (CFG.lontano) { const cx = CTX.cam.x, cz = CTX.cam.y, h = Math.hypot(px - cx, pz - cz); if (h > CFG.lontano) { px = cx + (px - cx) * CFG.lontano / h; pz = cz + (pz - cz) * CFG.lontano / h; } } if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
     const m = CFG.margine; IMF.x0 = x0 - m; IMF.x1 = x1 + m; IMF.z0 = z0 - m; IMF.z1 = z1 + m;
-    IMF2.x0 = x0 - 2 * m - 8; IMF2.x1 = x1 + 2 * m + 8; IMF2.z0 = z0 - 2 * m - 8; IMF2.z1 = z1 + 2 * m + 8; return IMF;
+    const m2 = CFG.oltre ? m + CFG.oltre : 2 * m + 8; IMF2.x0 = x0 - m2; IMF2.x1 = x1 + m2; IMF2.z0 = z0 - m2; IMF2.z1 = z1 + m2; return IMF;
   }
   const inImpronta = (t, F) => { const c = IND.cella; return (t.i + 1) * c > F.x0 && t.i * c < F.x1 && (t.j + 1) * c > F.z0 && t.j * c < F.z1; };
   function tick() {
