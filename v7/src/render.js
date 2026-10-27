@@ -2018,7 +2018,7 @@ var Render = (function () {
       const tree = /Tree|Pine|Abete|Betulla|Quercia|Palma|Leccio|Pinodom/.test(name);   // [verde4] anche le palme e gli alberi di città fanno ombra
       mdl.parts.forEach(p => {
         const g2 = p.geo.clone(); g2.boundingSphere = sph;
-        if (p.leafy && PRO.attivo && p.mat && p.mat.isMeshStandardMaterial && !(p.mat.defines && 'SG_FOGLIA' in p.mat.defines)) { p.mat.defines = Object.assign(p.mat.defines || {}, { SG_FOGLIA: '' }); p.mat.needsUpdate = true; }   // [scorcio] le chiome: il loro ramo della proposta
+        if (p.leafy && PRO.look && p.mat && p.mat.isMeshStandardMaterial && !(p.mat.defines && 'SG_FOGLIA' in p.mat.defines)) { p.mat.defines = Object.assign(p.mat.defines || {}, { SG_FOGLIA: '' }); p.mat.needsUpdate = true; }   // [scorcio] le chiome: il loro ramo della proposta
         const im = new THREE.InstancedMesh(g2, p.mat, arr.length);
         arr.forEach((o, k) => { nE.set(o.rx, o.ry, o.rz, 'YXZ'); nQ.setFromEuler(nE); nV.set(o.x, o.y, o.z); nS.set(o.s, o.s * o.sy, o.s);
           if (p.ricca) { const h1 = vegHash(Math.round(o.x * 7), Math.round(o.z * 7), 17), h2 = vegHash(Math.round(o.z * 5), Math.round(o.x * 3), 29); nS.x *= .9 + h1 * .22; nS.z *= .9 + h2 * .22; nS.y *= .94 + h2 * .12; nE.set(o.rx + (h1 - .5) * .05, o.ry + h2 * 6.28, o.rz + (h2 - .5) * .05, 'YXZ'); nQ.setFromEuler(nE); }   // [scorcio] ogni albero un po' suo: larghezza, altezza, inclinazione, giro
@@ -9587,7 +9587,7 @@ var Render = (function () {
     g.dispose();
   }
   // la frangia: carte di foglie (cella 4) o di ciuffi d'aghi (cella 5) posate sulle masse verso fuori, tangenti all'involucro
-  function frangia4(A, n, lobes, env, cell, sz, r, pal, H, up, mix) {   // [chiarezza] mix: quanto la carta prende la tinta della chioma (.4 come prima)
+  function frangia4(A, n, lobes, env, cell, sz, r, pal, H, up, mix, sp) {   // [chiarezza] mix: quanto la carta prende la tinta della chioma (.4 come prima)
     const uA = vdUV(cell, 0, 0), uB = vdUV(cell, 1, 0), uC = vdUV(cell, 1, 1), uD = vdUV(cell, 0, 1);
     for (let k = 0; k < n; k++) {
       const L = lobes[Math.floor(r() * lobes.length)]; let d; do d = [r() * 2 - 1, r() * 2 - 1 + (up || 0), r() * 2 - 1]; while (Math.hypot(d[0], d[1], d[2]) > 1.3 || Math.hypot(d[0], d[1], d[2]) < .2); d = nrm4(d);
@@ -9596,7 +9596,7 @@ var Render = (function () {
       const N = nrm4([ne[0] + d[0], ne[1] + d[1] + .2, ne[2] + d[2]]); let t1 = nrm4([-N[2], 0, N[0]]); if (!isFinite(t1[0])) t1 = [1, 0, 0];
       const t2 = [N[1] * t1[2] - N[2] * t1[1], N[2] * t1[0] - N[0] * t1[2], N[0] * t1[1] - N[1] * t1[0]], an = r() * 6.28, ca = Math.cos(an), sa = Math.sin(an);
       const u = [t1[0] * ca + t2[0] * sa, t1[1] * ca + t2[1] * sa, t1[2] * ca + t2[2] * sa], v = [t2[0] * ca - t1[0] * sa, t2[1] * ca - t1[1] * sa, t2[2] * ca - t1[2] * sa], s = sz * (.75 + r() * .5);
-      const tc = tinta4(P, N, env, pal, r()), c = vdK(vdL([.36, .4, .32], tc, mix === undefined ? .4 : mix), (.5 + Math.min(1, N[1] * .5 + .5) * .45) * (mix === undefined ? 1 : .8)), w = Math.max(0, P[1]) / H * .4;   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
+      const tc = tinta4(P, N, env, pal, r()), c0 = vdK(vdL([.36, .4, .32], tc, mix === undefined ? .4 : mix), (.5 + Math.min(1, N[1] * .5 + .5) * .45) * (mix === undefined ? 1 : .8)), c = sp ? tono5(c0, sp, r(), (P[1] - env.c[1]) / env.r[1], 0) : c0, w = Math.max(0, P[1]) / H * .4;   // [nitore] ogni carta il suo tono   // la carta ha già il suo verde: la tinta la scurisce o la schiarisce
       const Q = (a, b) => [P[0] + u[0] * a * s + v[0] * b * s, P[1] + u[1] * a * s + v[1] * b * s, P[2] + u[2] * a * s + v[2] * b * s];
       const a = Q(-1, -1), b = Q(1, -1), cc = Q(1, 1), dd = Q(-1, 1);
       A.v(a, N, c, uA, w); A.v(b, N, c, uB, w); A.v(cc, N, c, uC, w); A.v(a, N, c, uA, w); A.v(cc, N, c, uC, w); A.v(dd, N, c, uD, w);
@@ -9632,14 +9632,18 @@ var Render = (function () {
     if (N[1] < -.35) c = vdK(c, .86);   // la pancia del lobo
     return c;
   }
-  function lobo5(A, c, r, env, pal, seed, det, H, amp) {
-    const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position, lr = r[1];
+  // [nitore] il tono del ciuffo (vegetazione.js, tonoChioma: lo stesso del verde di campagna): ogni lobo e ogni carta il suo verde
+  // (blu-verde, smeraldo, oliva, giallo-verde, verde-grigio) e il suo valore, qualche nota calda in alto. La quota la fa già tintaS:
+  // qui solo mezza (hy), così la calotta resta chiara e il ventre scuro come prima, ma la chioma non è più di un colore solo
+  const tono5 = (c, sp, g, hy, dentro) => (sp && typeof Vegetazione !== 'undefined' && Vegetazione.tonoChioma) ? Vegetazione.tonoChioma(c, sp, g, hy * .5, dentro) : c;
+  function lobo5(A, c, r, env, pal, seed, det, H, amp, sp) {
+    const g = new THREE.IcosahedronGeometry(1, det), p = g.attributes.position, lr = r[1], gL = vegHash(seed, 7, 91);
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), y = p.getY(i), z = p.getZ(i), qx = Math.round(x * 6), qy = Math.round(y * 6), qz = Math.round(z * 6);
       const k = 1 + (vegHash(qx + seed, qy, qz + seed * 3) - .5) * .22 * amp, P = [c[0] + x * r[0] * k, c[1] + y * r[1] * k * (y < 0 ? .78 : 1), c[2] + z * r[2] * k];   // il fondo del lobo un po' schiacciato
       const nl = nrm4([x / r[0], y / r[1], z / r[2]]), ne = nrm4([(P[0] - env.c[0]) / env.r[0], (P[1] - env.c[1]) / env.r[1], (P[2] - env.c[2]) / env.r[2]]);
       const N = nrm4([nl[0] * .6 + ne[0] * .4, nl[1] * .6 + ne[1] * .4 + .1, nl[2] * .6 + ne[2] * .4]);
-      A.v(P, N, tintaS(P, N, env, pal, c, lr), WU4, Math.max(0, P[1]) / H * .35);
+      A.v(P, N, tono5(tintaS(P, N, env, pal, c, lr), sp, gL, Math.max(-1, Math.min(1, (P[1] - c[1]) / lr)), 0), WU4, Math.max(0, P[1]) / H * .35);
     }
     g.dispose();
   }
@@ -9649,8 +9653,8 @@ var Render = (function () {
     for (let k = 0; k < o.alto; k++) { const a = (k + .5) / o.alto * TAU + r() * .5, d = rx * (.3 + r() * .05); lobes.push([cx + Math.cos(a) * d, cy + ry * .12, cz + Math.sin(a) * d, .46 + r() * .04, 1]); }   // la corona alta, stretta
     lobes.push([cx, cy + ry * .38, cz, .44, 2]);   // la calotta
     if (o.minuti) for (let k = 0; k < o.minuti; k++) { const a = r() * TAU, h = r() * 2 - 1, d = rx * (.62 + r() * .14) * Math.sqrt(1 - h * h * .5); lobes.push([cx + Math.cos(a) * d, cy + h * ry * .42, cz + Math.sin(a) * d, .2 + r() * .1, 1]); }   // [scorcio] le sotto-masse sul contorno: la sagoma frastagliata
-    lobes.forEach(([x, y, z, s, det], k) => lobo5(L, [x, y, z], [rx * s, ry * s * 1.1 * pt, rx * s], env, pal, seed * 13 + k, det, H, o.amp || 1));
-    if (o.carte) frangia4(L, o.carte, lobes.slice(0, o.basso + o.alto).map(q => q.slice(0, 4)), env, o.cella, o.sz, r, [pal[0], pal[1], pal[2]], H, .3, .85);   // poche carte: rompono il contorno, stessa tinta
+    lobes.forEach(([x, y, z, s, det], k) => lobo5(L, [x, y, z], [rx * s, ry * s * 1.1 * pt, rx * s], env, pal, seed * 13 + k, det, H, o.amp || 1, o.sp));
+    if (o.carte) frangia4(L, o.carte, lobes.slice(0, o.basso + o.alto).map(q => q.slice(0, 4)), env, o.cella, o.sz, r, [pal[0], pal[1], pal[2]], H, .3, .85, o.sp);   // poche carte: rompono il contorno, stessa tinta
   }
   // il leccio da viale. [chiarezza] Potato alto come i lecci veri dei corsi: fusto libero fin sopra il piano terra (Chiarezza.ALBERO.fusto),
   // la chioma stretta (≈3,4 m) sopra la gente e sopra la porta, una massa grande con quattro lobi bassi che la gonfiano (una sagoma
@@ -9665,8 +9669,8 @@ var Render = (function () {
       tubo4(W, [b0, m, e], [.09, .06, .03], BARK4.leccio, seed + k * 5, H); }
     const lobes = [[env.c[0], env.c[1] + ry * .12, env.c[2], .84]];   // [x, y, z, raggio relativo all'involucro]: la massa
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r() * .6, d = rx * (.42 + r() * .08); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] - ry * (.12 + r() * .12), env.c[2] + Math.sin(a) * d, .56 + r() * .06]); }
-    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 });   // [scorcio] la formella è un modello a parte (Formella4), dritta sulla via
-      const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.04, env.r[1] * 1.02, env.r[2] * 1.04] }, PAL5.leccio, seed, H, rng(seed + 7), { basso: 6, alto: 4, carte: Math.round(A4.carte * 1.8), cella: 4, sz: .3, amp: 1.9, minuti: 10 });   // [scorcio] la chioma ricca: tonda e compatta
+    if (LOOKV.nuovo) { chiomaStrati(L, env, PAL5.leccio, seed, H, r, { sp: 'leccio', basso: 5, alto: 3, carte: A4.carte, cella: 4, sz: .32 });   // [scorcio] la formella è un modello a parte (Formella4), dritta sulla via
+      const LR = PRO.ricche5 ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.04, env.r[1] * 1.02, env.r[2] * 1.04] }, PAL5.leccio, seed, H, rng(seed + 7), { sp: 'leccio', basso: 6, alto: 4, carte: Math.round(A4.carte * 1.8), cella: 4, sz: .3, amp: 1.9, minuti: 10 });   // [scorcio] la chioma ricca: tonda e compatta
       return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     lobes.forEach(([x, y, z, s], k) => massa4(L, [x, y, z], [rx * s, ry * s * 1.15, rx * s], env, PAL4.leccio, seed * 13 + k, 2, H, .45));
     frangia4(L, A4.carte, lobes, env, 4, .3, r, PAL4.leccio, H, .2, .85);
@@ -9683,7 +9687,7 @@ var Render = (function () {
     for (let k = 0; k < NB; k++) { const a = k / NB * TAU + r() * .6, d = env.r[0] * (.45 + r() * .2), e = [env.c[0] + Math.cos(a) * d, env.c[1] - env.r[1] * .4, env.c[2] + Math.sin(a) * d];
       const m = [top[0] + (e[0] - top[0]) * .35, top[1] + (e[1] - top[1]) * .65, top[2] + (e[2] - top[2]) * .35];
       tubo4(W, [top, m, e], [.014 * H, .01 * H, .005 * H], BARK4.pino, seed + k * 7, H); }
-    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); const LR = PRO.attivo ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.06, env.r[1] * 2, env.r[2] * 1.06] }, PAL5.pino, seed, H, rng(seed + 7), { basso: 9, alto: 5, carte: 150, cella: 5, sz: H * .045, piatto: .45, amp: 1.8, minuti: 14 }); return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
+    if (LOOKV.nuovo) { chiomaStrati(L, { c: env.c, r: [env.r[0], env.r[1] * 2.2, env.r[2]] }, PAL5.pino, seed, H, r, { sp: 'pino', basso: 7, alto: 4, carte: 100, cella: 5, sz: H * .05, piatto: .55 }); const LR = PRO.ricche5 ? acc4() : null; if (LR) chiomaStrati(LR, { c: env.c, r: [env.r[0] * 1.06, env.r[1] * 2, env.r[2] * 1.06] }, PAL5.pino, seed, H, rng(seed + 7), { sp: 'pino', basso: 9, alto: 5, carte: 150, cella: 5, sz: H * .045, piatto: .45, amp: 1.8, minuti: 14 }); return { wood: W.build(), leaf: L.build(), leafR: LR ? LR.build() : null, strati: true }; }   // [coerenza]
     const lobes = [[env.c[0], env.c[1] + env.r[1] * .3, env.c[2], .42]];
     for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + r() * .4, d = env.r[0] * (.6 + r() * .12); lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + (r() - .5) * env.r[1] * .5, env.c[2] + Math.sin(a) * d, .36 + r() * .08]); }
     for (let k = 0; k < 4; k++) { const a = k / 4 * TAU + r(), d = env.r[0] * .3; lobes.push([env.c[0] + Math.cos(a) * d, env.c[1] + env.r[1] * .15, env.c[2] + Math.sin(a) * d, .36]); }
@@ -12869,7 +12873,11 @@ var Render = (function () {
   }
   const V2T = new THREE.Vector2();   /* [ritmo] */
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
-  function setRes(k) { k = Math.max(.6, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */   /* [ritmo] .6 l'ultimo gradino (peso_ritmo.js): la tela del look resta piena, scende solo la scena */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
+  // [nitore] l'antialiasing della scena: MSAA 4× nel bersaglio del look nuovo sul computer (WebGL2), mai sul telefono né in grafica ridotta
+  // (lì costa memoria e banda che non ci sono). ?noaa lo spegne, ?aa=2|4|8 lo sceglie.
+  const AA_Q = typeof location !== 'undefined' ? location.search : '', AA_N = /[?&]noaa\b/.test(AA_Q) ? 0 : +((AA_Q.match(/[?&]aa=(2|4|8)\b/) || [])[1] || 4);
+  const msaa = () => (!PHONE && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2) ? Math.min(AA_N, renderer.capabilities.maxSamples || 4) : 0;
+  function setRes(k) { k = Math.max(PHONE ? .6 : .8, Math.min(1, k));   /* [nitore] sul computer mai sotto l'80%: a .6 i pixel si vedevano su ogni linea */   /* [colore1] non sotto il 70% (a metà era pastoso) */   /* [ritmo] .6 l'ultimo gradino (peso_ritmo.js): la tela del look resta piena, scende solo la scena */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
@@ -12884,7 +12892,7 @@ var Render = (function () {
     { const sz = renderer.getSize(V2T); if (sz.x !== FW || sz.y !== FH) renderer.setSize(FW, FH, false); else renderer.setViewport(0, 0, FW, FH); }   /* [sviluppo] */   /* [ritmo] la tela rifatta solo se cambia davvero (rifarla la svuota e rialloca) */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
-      rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
+      rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType, samples: msaa() });   // [nitore] l'antialiasing (MSAA 4×) sul computer: senza, ogni spigolo di ogni poligono era una scala di pixel
       if (PRO.prof) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }   // [scorcio] la proposta legge la profondità nel passo unico
       sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix(); return; }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.HalfFloatType });   /* [amb2] HDR [unione11] ingrandita morbida */
@@ -12945,6 +12953,10 @@ var Render = (function () {
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
+  // [nitore] le chiome ricche e il verde che lascia passare la luce (SG_FOGLIA) escono dal laboratorio: sul computer in tutta la mappa
+  // (il committente: «il look provato sullo scorcio non si vede», «le chiome di un colore solo»). Sul telefono le ricche restano fuori
+  // (il doppio dei triangoli delle chiome e la loro ombra); il ramo SG_FOGLIA del materiale (poche righe di luce) va ovunque col look.
+  PRO.ricche5 = PRO.look && (PRO.attivo || !PHONE);
   SGU.pro = { on: !PRO_NO,
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
@@ -13051,7 +13063,8 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     vec2 q = vSgW.xz; float t = sgP2.z;
     float h = ( sin( q.x * 7.1 + t * 2.3 + sin( q.y * 3.3 + t ) ) + sin( q.y * 8.3 - t * 1.9 + sin( q.x * 2.7 - t * .7 ) ) ) * .012 + sgN3( vec3( q * 4., t * .8 ) ) * .02;
 #else
-    float h = ( sgN3( vSgW * 2.3 ) + .5 * sgN3( vSgW * 5.3 + 3.1 ) ) * .035;
+    float sgFw = length( fwidth( vSgW ) );   // [nitore] quanti metri copre un pixel: il rumore più fine di 3-4 pixel si spegne (era grana, puntini di luce e d'ombra sui rilievi lontani)
+    float h = ( sgN3( vSgW * 2.3 ) * ( 1. - smoothstep( .06, .12, sgFw ) ) + .5 * sgN3( vSgW * 5.3 + 3.1 ) * ( 1. - smoothstep( .025, .05, sgFw ) ) ) * .035;
 #endif
     h *= sgK; vec3 dpx = dFdx( -vViewPosition ), dpy = dFdy( -vViewPosition ); float dhx = dFdx( h ), dhy = dFdy( h );
     vec3 r1 = cross( dpy, normal ), r2 = cross( normal, dpx ); float det = dot( dpx, r1 );
@@ -13123,7 +13136,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     const P = SGU.pro, k = PRO.look && P.on ? 1 : 0, u1 = PRO.u1, u2 = PRO.u2, u3 = PRO.u3;
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
-    { const ric = !!(k && PRO.attivo && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
+    { const ric = !!(k && PRO.ricche5 && !LOWQ.on && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
     PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
@@ -13303,7 +13316,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     SGT.letter += ((ui.letterbox ? 1 : 0) - SGT.letter) * Math.min(1, dt * 5);
     const hurtK = Math.max(0, 1 - (st.clock - p.hurtT) * 1.5);
     U.t.value = rt.texture; U.sh.value.fromArray(K.ombra); U.hi.value.fromArray(K.luce);
-    U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido); U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
+    U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido * (RES < .99 ? .4 : 1));   /* [nitore] con la scena ingrandita la nitidezza segnava i gradini: un filo solo */ U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
     if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)

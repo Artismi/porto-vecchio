@@ -485,6 +485,19 @@ var Vegetazione = (function () {
   //   occ: 0 dentro e sotto, 1 fuori e in alto) scurisce il cuore della chioma e la base dei cespugli.
   // - Le pennellate sono in grigio: la tinta la dà la specie (colore nei vertici). Fiori, frutti, fronde, pale e agavi hanno le loro
   //   celle a colori. Un atlante solo per tutte le specie (8 × 5 celle da 256 px).
+  // [nitore] la chioma dipinta nei vertici, condivisa: il verde di campagna (KIT) e le chiome della città (render.js, Vegetazione.tonoChioma)
+  const mixC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  const TONI = [[.84, 1, 1.14], [.92, 1.07, .9], [1.1, 1.02, .78], [1.14, 1.14, .7], [.96, .98, 1.02]];
+  const CALDI = [[1.55, 1.1, .5], [1.6, .9, .52], [1.35, 1.2, .62]];
+  const NOTE = { pino: .07, pinoM: .06, leccio: .09, carrubo: .1, ulivo: .06, fico: .1, agrume: .05, mandorlo: .12, tamerice: .12, eucalipto: .1, cipresso: .04, lentisco: .08, mirto: .06, oleandro: .04, rosmarino: .05 };
+  const fr = x => x - Math.floor(x);
+  function tonoChioma(col, sp, g, hy, dentro) {
+    const t = TONI[Math.floor(g * TONI.length) % TONI.length], v = .88 + fr(g * 7.31) * .26, s = sstep(-.95, .95, hy), d = 1 - .28 * (dentro || 0);
+    const q = [.7 + .48 * s, .78 + .38 * s, .97 - .05 * s];
+    let c = [col[0] * t[0] * q[0] * v * d, col[1] * t[1] * q[1] * v * d, col[2] * t[2] * q[2] * v * d];
+    if (fr(g * 13.73) < (NOTE[sp] === undefined ? .06 : NOTE[sp]) && hy > -.35) { const w = CALDI[Math.floor(fr(g * 31.17) * CALDI.length)]; c = mixC(c, [c[0] * w[0], c[1] * w[1], c[2] * w[2]], .65); }
+    return c;
+  }
   const KIT = typeof THREE === 'undefined' ? null : (function () {
     const TAU = Math.PI * 2;
     const rngK = s => { let a = (s >>> 0) || 1; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
@@ -516,17 +529,7 @@ var Vegetazione = (function () {
     // smeraldo, oliva, giallo-verde, verde-grigio) e il suo valore, dentro più scuro, e qualche nota calda (ocra, ruggine, paglia) nei
     // ciuffi della metà alta. Moltiplica la tinta della specie (la media resta quella); la pittura del materiale la porta allo schermo.
     // g: il numero del ciuffo (0 … 1); hy: -1 sotto … 1 in cima; dentro: 0 fuori … 1 nel nucleo
-    const TONI = [[.84, 1, 1.14], [.92, 1.07, .9], [1.1, 1.02, .78], [1.14, 1.14, .7], [.96, .98, 1.02]];
-    const CALDI = [[1.55, 1.1, .5], [1.6, .9, .52], [1.35, 1.2, .62]];
-    const NOTE = { pino: .07, pinoM: .06, leccio: .09, carrubo: .1, ulivo: .06, fico: .1, agrume: .05, mandorlo: .12, tamerice: .12, eucalipto: .1, cipresso: .04, lentisco: .08, mirto: .06, oleandro: .04, rosmarino: .05 };
-    const fr = x => x - Math.floor(x);
-    function tonoChioma(col, sp, g, hy, dentro) {
-      const t = TONI[Math.floor(g * TONI.length) % TONI.length], v = .88 + fr(g * 7.31) * .26, s = sstep(-.95, .95, hy), d = 1 - .28 * (dentro || 0);
-      const q = [.7 + .48 * s, .78 + .38 * s, .97 - .05 * s];
-      let c = [col[0] * t[0] * q[0] * v * d, col[1] * t[1] * q[1] * v * d, col[2] * t[2] * q[2] * v * d];
-      if (fr(g * 13.73) < (NOTE[sp] === undefined ? .06 : NOTE[sp]) && hy > -.35) { const w = CALDI[Math.floor(fr(g * 31.17) * CALDI.length)]; c = mix(c, [c[0] * w[0], c[1] * w[1], c[2] * w[2]], .65); }
-      return c;
-    }
+    // [nitore] tonoChioma, TONI, CALDI, NOTE: fuori dal KIT (sopra, prima del KIT), così le chiome della città (render.js) li usano
     const GRIGIE = new Set(['tamericeRamo', 'lettieraAghi', 'lettieraFoglie', 'erbaDab', 'erbaDab2', 'erbaAlta', 'felce', 'edera', 'pieno', 'corteccia', 'prato', 'lettieraAghi']);
     const CS = 256, NX = 8, NY = 5, IN = 3 / CS;
     const cellUV = k => { const i = CI[k], cx = i % NX, cy = Math.floor(i / NX); return [cx / NX + IN / NX, 1 - (cy + 1) / NY + IN / NY, (cx + 1) / NX - IN / NX, 1 - cy / NY - IN / NY]; };
@@ -1396,7 +1399,7 @@ if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(
     return { gruppo, aggiorna, misura: () => { let draw = 1, istanze = 0, tri = 0; IM.forEach(g => { if (g.mesh && g.n) { draw++; istanze += g.n; tri += g.n * g.geo.attributes.position.count / 3; } }); return { draw, istanze, tri: Math.round(tri) }; } };
   }
 
-  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, adotta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, fili, strato, ecoTappeto, suoloErboso, suoloErbosoG, prato, FIORI, DERIVE, dipingiSuolo, dipingiSuoloG, SUOLO, casale, aggiungi, GAMMA, gammaAt, attivo: !SPENTO };
+  const api = { BOUQUET, BQF, SP, SPECIE, PAL, FORM, F, RADURE, SPENTO, piano, pianta, adotta, mia, copertura, misura, formazioni, hash2, fbm, KIT, U, materiale, ombra, monta, respiro, fili, strato, ecoTappeto, suoloErboso, suoloErbosoG, prato, FIORI, DERIVE, dipingiSuolo, dipingiSuoloG, SUOLO, casale, aggiungi, GAMMA, gammaAt, tonoChioma, attivo: !SPENTO };
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Vegetazione;

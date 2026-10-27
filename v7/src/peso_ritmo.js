@@ -5,7 +5,7 @@
    - SI MISURA l'intervallo fra due fotogrammi disegnati (media su ~1 s, e la quota di quelli fuori tempo: oltre il 125% del ritmo).
      Il ritmo voluto è 60 (o 30 quando c'è il tetto). Il periodo dello schermo si stima dai giri del browser (il 20° percentile).
    - PRESSIONE (media oltre il 108% o più di un fotogramma su cinque fuori tempo, per 1 s): si scende di un gradino della scala della
-     scena (1 · .9 · .8 · .7 · .6 sul computer; 1 · .9 · .8, la 'bassa' .9 · .8 · .7, sul telefono). Arrivati al gradino del tetto (sul
+     scena (1 · .9 · .8 sul computer, [nitore]: sotto si vedevano i pixel; 1 · .9 · .8, la 'bassa' .9 · .8 · .7, sul telefono). Arrivati al gradino del tetto (sul
      computer l'ultimo, sul telefono .8) e ancora fuori tempo, si mette il TETTO a 30: un 30 regolare invece dell'altalena 60/30. Con il
      tetto il ritmo voluto diventa 30 e la scala può risalire. Sugli schermi veloci (oltre 75 Hz) che non tengono il loro ritmo ma stanno
      sotto i 16,7 ms il tetto è a 60 (un 60, o 72 a 144 Hz, regolare).
@@ -29,7 +29,7 @@ var PesoRitmo = (function () {
     S.R = R; S.pronto = true; S.tel = !!R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches);
     const liv = (window.__pesoLivello && window.__pesoLivello.livello) || 'media';
     if (S.tel) { S.scala = liv === 'bassa' ? [.9, .8, .7] : [1, .9, .8]; S.iTetto = liv === 'bassa' ? 1 : S.scala.length - 1; }
-    else { S.scala = [1, .9, .8, .7, .6]; S.iTetto = S.scala.length - 1; }
+    else { S.scala = [1, .9, .8]; S.iTetto = S.scala.length - 1; }   // [nitore] sul computer mai sotto l'80% (a .7 e .6 si vedevano i pixel su ogni linea): poi il tetto a 30
     S.i = 0; if (R.setRes) R.setRes(S.scala[0]);
     if (!S.tel && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
   }
