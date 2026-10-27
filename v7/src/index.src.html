@@ -408,6 +408,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="tasselli">/*tasselli.js*/</script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
 <script type="text/plain" id="tasselli-lavoratore">/*meshopt_decoder.js*/
 /*tasselli_lavoratore.js*/</script>   <!-- [tasselli] il lavoratore (Web Worker, dal testo): meshopt e gzip fuori dal filo della pagina -->
+<script data-m="calcolo_lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] i conti pesanti (CalcoloF): qui per quando il lavoratore non c'è -->
+<script type="text/plain" id="calcolo-lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] e lo stesso testo per il lavoratore (Web Worker) -->
+<script data-m="calcolo">/*calcolo.js*/</script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
 <script data-m="render">/*render.js*/</script>
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>

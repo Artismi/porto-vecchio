@@ -2585,30 +2585,27 @@ var Render = (function () {
   // SPILL = luce che esce da vetrine e finestre: calda, bassa, solo verso la strada.
   const SPILLS = [], BAKEQ = 4;   // 4 texel per casella = mezzo metro
   function addSpill(x, z, nx, nz, color, base, dist) { const gy = groundH(x, z); SPILLS.push({ x, z, y: gy + 1.3, gy, nx, nz, color: new THREE.Color(color), base, dist: dist || 6, spill: true }); }
-  function bakeLight(tx0, ty0, n, m) {
-    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, acc = new Float32Array(W * H * 3), X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q;
-    const solid = (wx, wz) => { const tx = Math.floor(wx / TS), ty = Math.floor(wz / TS); return G.tileAt(tx, ty) === T.BLD; };
-    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS);
+  // [calcolo] i conti (pozze, ombre delle case, i pixel) li fa il lavoratore (calcolo_lavoratore.js, CalcoloF.luce: lo stesso codice di
+  // prima); qui solo le luci che toccano il blocco e la maschera delle case attorno. yield*: il blocco aspetta la risposta a passi
+  function* bakeLightG(tx0, ty0, n, m) {
+    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q, LK = CalcoloF.LK;
+    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS), sel = [];
+    let ax = X0, bx = X0 + n * TS, az = Z0, bz = Z0 + m * TS;
     src.forEach(L => {
       const R = (L.dist || 8) * (L.spill ? 1 : 1.5); if (L.x < X0 - R || L.x > X0 + n * TS + R || L.z < Z0 - R || L.z > Z0 + m * TS + R) return;
-      if (L.gy === undefined) L.gy = groundH(L.x, L.z); if (solid(L.x, L.z)) return;
-      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .46) * (L.flick > .5 ? .7 : 1);   // [luci1]
-      const i0 = Math.max(0, Math.floor((L.x - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((L.x + R - X0) / tq)), j0 = Math.max(0, Math.floor((L.z - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((L.z + R - Z0) / tq));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - L.x, dz = pz - L.z, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
-        const d = Math.sqrt(d2);
-        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
-        if (L.spill) { const dot = (dx * L.nx + dz * L.nz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
-        if (f < .004) continue;
-        if (solid(px, pz)) continue;
-        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
-        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
-        if (!lit) continue;
-        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
-      }
+      if (L.gy === undefined) L.gy = groundH(L.x, L.z);
+      sel.push(L, R); if (L.x < ax) ax = L.x; if (L.x > bx) bx = L.x; if (L.z < az) az = L.z; if (L.z > bz) bz = L.z;
     });
-    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H), D = id.data;
-    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
+    const Ls = new Float64Array(sel.length / 2 * LK);
+    for (let k = 0, o = 0; k < sel.length; k += 2, o += LK) { const L = sel[k];
+      Ls[o] = L.x; Ls[o + 1] = L.z; Ls[o + 2] = L.y; Ls[o + 3] = L.gy; Ls[o + 4] = L.color.r; Ls[o + 5] = L.color.g; Ls[o + 6] = L.color.b; Ls[o + 7] = L.base;
+      Ls[o + 8] = +L.flick || 0; Ls[o + 9] = L.spill ? 1 : 0; Ls[o + 10] = L.nx || 0; Ls[o + 11] = L.nz || 0; Ls[o + 12] = L.dist || 0; Ls[o + 13] = sel[k + 1]; }
+    // le case (G.tileAt === BLD) dove i conti guardano: il blocco e le luci scelte (i raggi d'ombra stanno fra un texel e la sua luce), più una casella
+    const mx0 = Math.floor(ax / TS) - 1, mz0 = Math.floor(az / TS) - 1, mw = Math.floor(bx / TS) + 2 - mx0, mh = Math.floor(bz / TS) + 2 - mz0, mask = new Uint8Array(mw * mh);
+    if (sel.length) for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) if (G.tileAt(mx0 + i, mz0 + j) === T.BLD) mask[j * mw + i] = 1;
+    const D = sel.length ? yield* Calcolo.G('luce', { W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask, L: Ls }) : CalcoloF.luce({ W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask, L: Ls });
+    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H);
+    id.data.set(D);
     x.putImageData(id, 0, 0);
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
     return t;
@@ -2996,9 +2993,11 @@ var Render = (function () {
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
-    try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
-      rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    // [calcolo] la scabrosità dalla luminosità dei pixel: il conto (CalcoloF.ruvido, lo stesso di prima) nel lavoratore, qui la lettura e la tela
+    let RU = null; try { const W = c.width, H = c.height; RU = { W, H, d: x.getImageData(0, 0, W, H).data }; } catch (e) { RU = null; }
+    if (RU) { let o = null; try { o = yield* Calcolo.G('ruvido', RU); } catch (e) { o = null; }
+      try { const rc = mk(RU.W, RU.H), rxx = rc.getContext('2d'), od = rxx.createImageData(RU.W, RU.H); od.data.set(o);
+        rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; } }
     freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [], RV9 = RIVA9();
@@ -3022,7 +3021,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     yield;
-    const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
+    const btex = yield* bakeLightG(tx0, ty0, n, m);   // [inverno30]   [calcolo] i conti nel lavoratore
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
@@ -3096,6 +3095,7 @@ var Render = (function () {
       while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
         const tA = ISO.t1 = performance.now(), r = J.it.next(); steps++; J.n1 = (J.n1 || 0) + 1; if (typeof Anelli !== 'undefined') { const dA = performance.now() - tA; if (dA > 20) Anelli.picchi('blocco:' + J.n1 + (J.near ? ':vicino' : ''), dA); }   // [anelli] i passi lunghi dei blocchi
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
+        if (r.value === Calcolo.ATTESA) break;   // [calcolo] il blocco aspetta il lavoratore: si riprende al fotogramma dopo
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
     if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
