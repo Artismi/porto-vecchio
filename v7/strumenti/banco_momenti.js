@@ -78,7 +78,7 @@ const srv = http.createServer((req, res) => {
     // il vento si può forzare: window.__vf (null: quello del gioco)
     const V = pv.R.__mondo.V.g; let v0 = V.value; Object.defineProperty(V, 'value', { get() { return window.__vf != null ? window.__vf : v0; }, set(x) { v0 = x; } }); });
   const OUTJ = { seme: SEME, rip: RIP, disegna: has('disegna'), momenti: {}, errori };
-  const nfa = async (n) => { const s = await pg.evaluate(() => window.__sc.rec.length); for (let tb = Date.now(), lt = Date.now(); ;) { await pg.waitForTimeout(500); const k = await pg.evaluate(() => window.__sc.rec.length); if (k >= s + n) return; if (Date.now() - lt > 30000) { lt = Date.now(); log('fotogrammi', k, '/', s + n, JSON.stringify(await pg.evaluate(() => ({ intro: window.__pv.ui.intro, t: window.__pv.ui.time })))); } if (Date.now() - tb > 900000) throw new Error('troppo lento'); } };
+  const nfa = async (n) => { const s = await pg.evaluate(() => window.__sc.rec.length); for (let tb = Date.now(), lt = Date.now(); ;) { await pg.waitForTimeout(500); const k = await pg.evaluate(() => window.__sc.rec.length); if (k >= s + n) return; if (Date.now() - lt > 30000) { lt = Date.now(); log('fotogrammi', k, '/', s + n, JSON.stringify(await pg.evaluate(() => ({ intro: window.__pv.ui.intro, t: window.__pv.ui.time })))); } if (Date.now() - tb > 3600000) throw new Error('troppo lento'); } };
   for (const nome of MOM) {
     // la partenza: un marciapiede della città nuova, di giorno, fermi; il mondo si assesta
     await pg.evaluate(() => { const pv = window.__pv, st = pv.st, p = st.player; p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = 1424; p.y = 322; p.vx = p.vy = 0;
@@ -93,7 +93,7 @@ const srv = http.createServer((req, res) => {
       const corri = (st, pts) => { const p = st.player; if (Math.hypot(p.x - lx, p.y - ly) < .01) ferm++; else ferm = 0; lx = p.x; ly = p.y; if (ferm > 30 && pts.length) { p.x = pts[0][0]; p.y = pts[0][1]; ferm = 0; window.__salti++; }   // incastrati: al punto
         while (pts.length > 1 && Math.hypot(pts[0][0] - p.x, pts[0][1] - p.y) < 1.2) pts.shift(); const q = pts[0], dx = q[0] - p.x, dy = q[1] - p.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l, sprint: true, aim: Math.atan2(dy, dx), mag: 1 }; };
       if (nome === 'corsa') { const A = rotta(P0, P1), Bk = rotta(P1, P0); let pts = null, k = 0;
-        B.inp = st => { f++; const ph = f % 420; if (ph === 120) { pts = (k++ % 2 ? Bk : A).slice(); B.ev = 'corre'; } if (ph === 0) B.ev = 'ferma'; return ph >= 120 ? corri(st, pts) : { x: 0, y: 0 }; }; }
+        B.inp = st => { f++; const ph = f % 300; if (ph === 90) { pts = (k++ % 2 ? Bk : A).slice(); B.ev = 'corre'; } if (ph === 0) B.ev = 'ferma'; return ph >= 90 ? corri(st, pts) : { x: 0, y: 0 }; }; }
       else if (nome === 'piccioni') { B.inp = () => { f++; return { x: 0, y: 0 }; };
         B.dopo = st => { const ph = f % 360; if (ph === 300 && M.birds && M.birds.F.length) { st.sfx = st.sfx || []; st.sfx.push({ k: 'honk', x: st.player.x, y: st.player.y }); B.ev = 'clacson'; } }; }
       else if (nome === 'cadenza') { const p = pv.st.player; B.fisso = [p.x, 0, p.y]; B.ph = 0; let pts = rotta(P0, P1); B.inp = st => { f++; const q = corri(st, pts); q.sprint = false; q.mag = (3.8 - 1.3) / 5.1; return q; }; }
@@ -112,7 +112,7 @@ const srv = http.createServer((req, res) => {
       const rr = await pg.evaluate(() => window.__sc.rec), mx = k => rr.reduce((m, f) => Math.max(m, f[k] || 0), 0), md = k => { const a = rr.map(f => f[k] || 0).sort((x, y) => x - y); return a[a.length >> 1]; };
       const Z = { fotogrammi: rr.length, contesti_persi: await pg.evaluate(() => window.__persi), zoom_camera: await pg.evaluate(() => window.__pv.R.cam.zoom), far: mx('far'), nebbia: mx('fog'), disegni_med: md('calls'), disegni_max: mx('calls'), triangoli_max: mx('tris'), geometrie_max: mx('geo'), tessiture_max: mx('tex'), lavoro_med: md('step') + md('frame') };
       OUTJ.momenti[nome] = Z; log('== zoom', JSON.stringify(Z)); continue; }
-    const NF = nome === 'cadenza' ? 240 : nome === 'corsa' ? 420 * RIP + 60 : nome === 'piccioni' ? 360 * RIP + 60 : 300 * RIP + 60;
+    const NF = nome === 'cadenza' ? 240 : nome === 'corsa' ? 300 * RIP + 60 : nome === 'piccioni' ? 360 * RIP + 60 : 300 * RIP + 60;
     await nfa(NF);
     await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; B.dopo = null; window.__vf = null; });
     const { profile } = await cdp.send('Profiler.stop');
@@ -131,7 +131,7 @@ const srv = http.createServer((req, res) => {
       if (nome === 'corsa' && f.ev === 'corre') ev.push(i);
       if (nome === 'piccioni' && f.vol > 0 && !p.vol) ev.push(i);
       if (nome === 'fogli' && f.ev === 'raffica') ev.push(i); });
-    const finestra = (i) => rec.slice(Math.max(0, i - 2), i + (nome === 'corsa' ? 240 : 90));
+    const finestra = (i) => rec.slice(Math.max(0, i - 2), i + (nome === 'corsa' ? 200 : 90));
     const med = (a) => { const s = a.slice().sort((x, y) => x - y); return s[s.length >> 1]; };
     const base = med(rec.map(f => f.lavoro));
     const eventi = ev.map(i => { const F = finestra(i), w = F.reduce((m, f) => f.lavoro > m.lavoro ? f : m, F[0]); return { da: i, peggiore_ms: w.lavoro, a: w.i, dopo: w.i - i, shader: F.reduce((s, f) => s + Math.max(0, f.progs), 0), gc: F.filter(f => f.gc).length, mediana: med(F.map(f => f.lavoro)) }; });
