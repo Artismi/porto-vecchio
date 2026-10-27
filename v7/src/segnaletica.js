@@ -184,8 +184,7 @@ var Segnaletica = (function () {
     if (VVm) VVm.fermate().forEach(f => ancora(f.x, f.y, 'fermata'));
     Z.forEach((c, ci) => { const ang = Math.atan2(c.uy, c.ux), nb = Math.max(2, Math.floor((c.w - .8) / 1)), o0 = -(nb - 1) / 2;
       for (let b = 0; b < nb; b++) { const o = o0 + b; striscia('zebra', c.x - c.uy * o, c.y + c.ux * o, ang, CFG.zebra.L, CFG.zebra.b, .8 + hash(c.x, c.y, b) * .06, { zebra: ci, motivo: c.motivo });   /* [strade] le bande tutte uguali */ }
-      if (c.motivo === 'incrocio') { const L = c.w / 2 - .3; striscia('riga', c.x + c.ux * 2.55 - c.uy * L / 2, c.y + c.uy * 2.55 + c.ux * L / 2, ang + PI / 2, L, .3, .7, { arresto: true }); }   // la linea d'arresto di render.js
-      c.i = ci; });
+      c.i = ci; });   // [suolo] la linea d'arresto della zebra non c'è più da sola: è quella dello STOP o del semaforo, prima delle strisce (sotto)
     PIANO.zebre = Z;
     // mezzeria e margini sulle vie a due corsie (vievive: la mezzeria al centro della carreggiata, spostata dalla sosta)
     ROADS().forEach(rd => { if (rd.kind !== 'citta' || !rd.pts.some(p => inC(p[0], p[1]))) return; const S = VVm ? VVm.segnaletica(rd) : { mezzeria: rd.w >= 5.5, asse: 0, sosta: [] }, P = VVm ? VVm.profilo(rd) : { rango: 'via' };
@@ -200,18 +199,23 @@ var Segnaletica = (function () {
         const dj = nearJ(mx, my, 0); if (dj < .5 || suCarreggiata(mx, my, -.3, rd)) continue; const city = zonaC(mx, my), L = hyp(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax), nx = -g.uy[k], ny = g.ux[k];
         const cont = Math.abs(g.cv[k]) > (city ? 9 : .42) || (!city && dj < 18), period = city ? 6 : 9, on = city ? 3 : 4.5;
         if (cont || (g.s[k] % period) < on) striscia('riga', mx, my, ang, L, CFG.mezzeria.w, .74 + hash(mx, my, 5) * .06);
-        if (!city && dj > 3) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (suCarreggiata(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd)) return; striscia('riga', mx + nx * o, my + ny * o, ang, L, CFG.margine, .62 + hash(mx, my, 7 + sd) * .06); }); } });
+        if (!city && dj > 3) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (suCarreggiata(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd)) return; striscia('riga', mx + nx * o, my + ny * o, ang, L, CFG.margine, .62 + hash(mx, my, 7 + sd) * .06, { asse: [mx, my] }); }); } });   // asse: il punto della mezzeria (la tela decide lì)
     // gli incroci: STOP e linea d'arresto, o i triangoli, sulle strade che danno la precedenza (gli stessi punti della tela); frecce ai semafori
     PIANO.precedenze = [];
+    // [suolo] un solo strato e il verso vero: la linea d'arresto sta sulla corsia di destra di chi arriva (va verso -u), e se sul braccio c'è
+    // la zebra sta PRIMA delle strisce, col bordo a 1 m dal loro; lo STOP e la freccia ancora prima, nella stessa corsia
+    const zebraDi = (J, ux, uy) => Z.find(z => z.motivo === 'incrocio' && z.j && hyp(z.j[0] - J.x, z.j[1] - J.y) < 1.5 && z.ux * ux + z.uy * uy > .9);
     junc1().forEach(J => { if (!inC(J.x, J.y, 140)) return; J.arms.forEach((a, ai) => { const ux = a.ux, uy = a.uy, rx = uy, ry = -ux, lane = a.w / 2;   // destra di chi arriva (va verso -u): si guida a destra
-      const d0 = J.r + (J.city ? 3.4 : 1.2), sx = J.x + ux * d0, sy = J.y + uy * d0, ang = Math.atan2(uy, ux);
+      const d0 = J.r + (J.city ? 3.4 : 1.2), sx = J.x + ux * d0, sy = J.y + uy * d0, ang = Math.atan2(uy, ux), arm = { jx: J.x, jy: J.y, ux, uy };
+      const zb = zebraDi(J, ux, uy), dA = zb ? (zb.x - J.x) * ux + (zb.y - J.y) * uy + CFG.zebra.L / 2 + 1.1 + .45 / 2 : d0 + .22, ax = J.x + ux * dA, ay = J.y + uy * dA;   // il centro della linea d'arresto lungo il braccio
+      const arresto = () => striscia('riga', ax + rx * lane / 2, ay + ry * lane / 2, ang + PI / 2, lane - .35, .45, .78, Object.assign({ arresto: true }, arm));
       if (a.minor && !J.signal) {
-        if (J.city || a.w >= 6.5) { striscia('riga', sx + rx * lane / 2 + ux * .22, sy + ry * lane / 2 + uy * .22, ang + PI / 2, lane - .35, .45, .78, { arresto: true });
-          striscia('stop', sx + ux * 2.6 + rx * lane / 2, sy + uy * 2.6 + ry * lane / 2, ang + PI, 2.4, Math.min(1.7, lane - .4), .74);   // STOP lungo la corsia, allungato per chi guida
+        if (J.city || a.w >= 6.5) { arresto();
+          striscia('stop', ax + ux * 2.1 + rx * lane / 2, ay + uy * 2.1 + ry * lane / 2, ang + PI, 2.4, Math.min(1.7, lane - .4), .74, arm);   // STOP lungo la corsia, allungato per chi guida, prima della linea
           PIANO.precedenze.push({ k: 'stop', x: sx, y: sy, ux, uy, rx, ry, lane, J }); }
-        else { for (let o = .4; o < lane - .2; o += .7) striscia('triangolo', sx + rx * o, sy + ry * o, ang, .5, .45, .75); PIANO.precedenze.push({ k: 'precedenza', x: sx, y: sy, ux, uy, rx, ry, lane, J }); }
+        else { for (let o = .4; o < lane - .2; o += .7) striscia('triangolo', ax + rx * o, ay + ry * o, ang, .5, .45, .75, arm); PIANO.precedenze.push({ k: 'precedenza', x: sx, y: sy, ux, uy, rx, ry, lane, J }); }
       }
-      if (J.city && J.signal && a.w >= 7) { striscia('riga', sx + rx * lane / 2 + ux * .22, sy + ry * lane / 2 + uy * .22, ang + PI / 2, lane - .35, .45, .78, { arresto: true }); striscia('freccia_dritta', sx + ux * 7 + rx * lane / 2, sy + uy * 7 + ry * lane / 2, ang + PI, 3.2, 1.1, .62); }
+      if (J.city && J.signal && a.w >= 7) { arresto(); striscia('freccia_dritta', ax + ux * (dA - d0 < 1 ? 6.8 : 4.4) + rx * lane / 2, ay + uy * (dA - d0 < 1 ? 6.8 : 4.4) + ry * lane / 2, ang + PI, 3.2, 1.1, .62, arm); }
     }); });
     // la Rua, la Via della Marina e le passeggiate (una corsia a senso alternato, Ape e motorini) che sboccano su una via: i triangoli
     junctions().forEach(([jx, jy, jr]) => { if (!zonaC(jx, jy)) return; const A = armsAt(jx, jy, jr, true), vie = A.filter(a => a.rd.kind === 'citta'); if (!vie.length) return;
@@ -795,7 +799,18 @@ var Segnaletica = (function () {
     try { prenota(); } catch (e) { console.error('[segnaletica] prenota', e); }   // subito, solo le insegne: le bandiere al neon di render.js sanno già quali botteghe hanno la loro
   }
 
-  const API = { visibile, ATTIVO, attivo: ATTIVO, CFG, TIPI, SEGNI, SETT, CORNICE, piano, conta, riquadri, junctions, junc1, crossings35, armsAt, nearJ, facciata, tipoDi, mete, campo, dAt, suCarreggiata, liberoPalo, lin, lNear, lAt, attach, tick, mostra, get mesh() { return MESH; }, get costruito() { return CNT; } };
+  // [suolo] UN SOLO STRATO: la tela del suolo (render.js marks1, strisce35, segniSuolo1) può dipingere questo segno qui? No, dove lo fa
+  // già questo filone con le decalcomanie: le zebre, i segni degli incroci della città, mezzeria e margini delle vie di città, gli stalli
+  function tela(k, x, y, rd) {
+    if (!ATTIVO) return true;
+    if (k === 'zebra') return false;
+    if (k === 'stallo' || k === 'P') return !VV();
+    if (k === 'incrocio' || k === 'arresto' || k === 'stop' || k === 'triangolo' || k === 'freccia_dritta') return !inC(x, y, 140);
+    if (rd && rd.kind === 'citta') return !rd.pts.some(p => inC(p[0], p[1]));
+    if (rd && rd.kind !== 'litoranea') return true;   // le strade di campagna: solo la tela
+    return !inC(x, y, 140);   // le righe: mezzeria e margini (le costiere fino a 140 m dalla cornice)
+  }
+  const API = { tela, visibile, ATTIVO, attivo: ATTIVO, CFG, TIPI, SEGNI, SETT, CORNICE, piano, conta, riquadri, junctions, junc1, crossings35, armsAt, nearJ, facciata, tipoDi, mete, campo, dAt, suCarreggiata, liberoPalo, lin, lNear, lAt, attach, tick, mostra, get mesh() { return MESH; }, get costruito() { return CNT; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();
