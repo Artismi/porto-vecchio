@@ -30,3 +30,5 @@ for (const dir of fs.readdirSync(root)) {
   }
 }
 console.log(`${n} modelli: ${(a / 1048576).toFixed(1)} MB in testo → ${(b / 1048576).toFixed(1)} MB in GLB`);
+// [compressi] e i .glb.gz che il gioco chiede per primi (gltfpack/meshopt dove la prova dice «uguale», poi gzip): comprimi_glb.js (--senza-gz: no)
+if (!process.argv.includes('--senza-gz')) require('child_process').execFileSync(process.execPath, [path.join(__dirname, 'comprimi_glb.js')], { stdio: 'inherit' });

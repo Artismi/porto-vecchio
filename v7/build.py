@@ -25,7 +25,7 @@ import hashlib, json, os
 VER = {}
 for d, _, fs in os.walk('assets'):
     for f in sorted(fs):
-        if f.rsplit('.', 1)[-1].lower() in ('glb', 'json', 'png', 'jpg', 'webp'):
+        if f.rsplit('.', 1)[-1].lower() in ('glb', 'json', 'png', 'jpg', 'webp', 'gz'):   # [compressi] anche i .glb.gz
             q = os.path.join(d, f).replace(os.sep, '/')
             VER[q] = hashlib.sha1(open(q, 'rb').read()).hexdigest()[:10]
 VER_JS = '<script>window.PV_VER = ' + json.dumps(dict(sorted(VER.items())), separators=(',', ':')) + ';</script>\n'
