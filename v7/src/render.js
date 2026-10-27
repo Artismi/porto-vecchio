@@ -17466,12 +17466,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
-    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1));
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1)); const VFAR = PHONE ? 25 : 60;   // [scarico]
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
       const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
-      let g = dyn.vehicles[v.id]; if (far) { if (g) { if (Math.abs(v.x - cam.x) > VIEW_R + 60 || Math.abs(v.y - cam.y) > VIEW_R + 60) { scene.remove(g); delete dyn.vehicles[v.id]; } else g.visible = false; } return; }   // [scarico] ben oltre la vista il mezzo esce dalla scena (il rilascio ne libera le geometrie), si rifà quando torna
+      let g = dyn.vehicles[v.id]; if (far) { if (g) { if (Math.abs(v.x - cam.x) > VIEW_R + VFAR || Math.abs(v.y - cam.y) > VIEW_R + VFAR) { scene.remove(g); delete dyn.vehicles[v.id]; } else g.visible = false; } return; }   // [scarico] ben oltre la vista il mezzo esce dalla scena (il rilascio ne libera le geometrie), si rifà quando torna
       if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
