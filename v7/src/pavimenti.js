@@ -112,27 +112,6 @@ var Pavimenti = (function () {
     const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
-<<<<<<< HEAD
-=======
-    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    const SU = typeof Suolo !== 'undefined' && A.M && A.M.world ? Suolo.di(A.M.world) : null;   // [suolo] la gerarchia: la via si ferma dove sotto c'è un suolo più alto (la piazza pedonale, le opere)
-    const VT = vieTutte(); for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri]; if (cede && ri && cede()) yield; const P = rd.pts; if (!P || P.length < 2) continue; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
-      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
-        if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
-        const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
-        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - ext - X0) / q)), i1 = Math.min(NI - 1, Math.ceil((Math.max(ax, bx) + ext - X0) / q));
-        const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
-          if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
-          if (SU && !SU.via(rd, px, pz, g.s[k] - g.s[0] + Math.max(0, Math.min(L, t)))) continue;   // [suolo] il tratto tagliato, o il vicolo contro la piazza
-          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = g.s[k] + t;
-          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
-          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
-          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); const o = I2[kk * 4 + 3] % 256; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
-            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
-          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
-          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
->>>>>>> worktree-agent-a8fc07f9b8635e358
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
       I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); } }
