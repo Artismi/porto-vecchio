@@ -321,15 +321,18 @@ var Tasselli = (function () {
       const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
       const m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
-      const ids = new Set(); m.testa.mesh.forEach(r => { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).concat(r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => ids.add(q))); });
-      (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q)));
+      const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids));
+      const vivi = new Set(); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => { ids.add(q); vivi.add(q); }));
       texPrendi(ids); S.tex = ids;   // [tasselli3] contate subito: nessuno le libera mentre arrivano
-      await texPronte(ids);
+      prepara(ti, m, null);
+      // [leggera] si scaricano (e si aprono) solo le tessiture delle mesh che montano adesso: quelle delle rimandate quando arrivano
+      if (CFG.leggero && S.rinv) { const ora = new Set(vivi); S.lista.forEach(i => texMesh(m.testa.mesh[i], ora)); await texPronte(ora); } else await texPronte(ids);
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo (smonta le ha già lasciate)
-      S.dati = m; S.st = 4; prepara(ti, m, null); PRONTI.push(ti);
+      S.dati = m; S.st = 4; S.k = 0; PRONTI.push(ti);
     } catch (e) { console.warn('[tasselli] apertura', IND.tasselli[ti].file, e); if (S.gen !== gen || S.st !== 3) return; if (S.tex) { texLascia(S.tex); S.tex = null; } S.st = S.zip ? 2 : 0; S.errori = (S.errori || 0) + 1; }
     finally { ST.inApertura--; }
   }
+  function texMesh(r, out) { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).concat(r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => out.add(q))); }
   const opaco = m => m && !m.transparent && !m.isSpriteMaterial && !m.isMeshDepthMaterial && !m.isMeshDistanceMaterial && m.visible !== false;
   // monta un pezzo del tassello (mesh dopo mesh) dentro i tetti: torna true quando ha finito
   // [leggera] sul telefono il tassello monta subito solo le mesh che toccano l'impronta (la vista più il margine delle ombre): le altre
@@ -443,6 +446,7 @@ var Tasselli = (function () {
         S.ragg && S.ragg.forEach((x, i) => { const a = S.attrs.get(i); if (a) raggiA(a, m.testa.attr[i], m.vettori[i], m.q16 && m.q16[i]); });
         (S.mesh || []).forEach(o => { o.geometry.__griglia = null; }); S.rdati = true; S.raggi = true; S.rvuole = false; S.rusa = performance.now(); }
       if (vista && S.rinv && S.rinv.size) { const solo = [...S.rinv].filter(i => { const b = scatolaW(m.testa.mesh[i]); return !b || vede(m.testa.mesh[i], b, 30); });
+        const tx = new Set(); solo.forEach(i => texMesh(m.testa.mesh[i], tx)); if (solo.length) await texPronte(tx); if (S.rgen !== gen || S.st !== 5) return;
         if (solo.length && PRONTI.indexOf(ti) < 0 && !S.dati) { solo.forEach(i => S.rinv.delete(i)); S.dati = m; prepara(ti, m, solo); S.lista = solo; S.rinvB = [...S.rinv].map(i => [m.testa.mesh[i], scatolaW(m.testa.mesh[i])]); PRONTI.push(ti); } }
     } catch (e) { console.warn('[tasselli] riapertura', t.file, e); }
     finally { RIAPRI--; if (S.rgen === gen) S.rvolo = false; }
