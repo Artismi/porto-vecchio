@@ -13,10 +13,64 @@ var PesoPronti = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(pronti)?\b/.test(Q);
-  const ST = { programmi: 0, ms: 0, errori: 0 };
+  const ST = { programmi: 0, ms: 0, errori: 0, esempi: 0, firme: 0, tagli: 0, parallelo: false };
+  // [ritmo] LA LETTURA CHE ASPETTA. renderer.compile, per ogni programma nuovo, ne legge subito le uniform (getProgram -> getUniforms):
+  // quella domanda aspetta che la scheda video abbia finito di compilarlo, e così i programmi si compilavano uno dopo l'altro anche con
+  // KHR_parallel_shader_compile. TG.on: la lettura su un programma non ancora pronto si interrompe (TAGLIO, preso oggetto per oggetto): il
+  // programma resta nella cache di three, le uniform le legge il primo disegno vero. Lo stesso taglio serve a vivo() più sotto.
+  const TAGLIO = { taglio: true }, TG = { on: false, ext: null, gl: null };
+  function taglio(rd) {
+    const gl = rd.getContext(); if (TG.gl === gl) return TG; TG.gl = gl;
+    try { TG.ext = gl.getExtension('KHR_parallel_shader_compile'); } catch (e) { TG.ext = null; }
+    const gpp0 = gl.getProgramParameter;
+    gl.getProgramParameter = function (p, pname) { if (TG.on && pname === 35718 && !(TG.ext && gpp0.call(this, p, TG.ext.COMPLETION_STATUS_KHR))) throw TAGLIO; return gpp0.call(this, p, pname); };   // 35718: ACTIVE_UNIFORMS
+    return TG;
+  }
+  // una scena finta per renderer.compile: le luci (e la nebbia, l'ambiente) della scena vera, gli oggetti dati da «giro»; chi si interrompe
+  // sul TAGLIO torna com'era (il doppio lato trasparente) e si va avanti col prossimo
+  function finta(S, giro) {
+    return { isScene: true, fog: S.fog, environment: S.environment, overrideMaterial: null, background: null,
+      traverseVisible(f) { S.traverseVisible(o => { if (o.isLight) f(o); }); },
+      traverse(f) { giro(o => { const ms = Array.isArray(o.material) ? o.material : [o.material], lati = ms.map(m => m && m.side);
+        try { f(o); } catch (e) { ms.forEach((m, k) => { if (m && m.side !== lati[k]) { m.side = lati[k]; m.needsUpdate = true; } }); if (e !== TAGLIO) throw e; ST.tagli++; } }); } };
+  }
+  const soloVis = () => typeof LeggeraMem !== 'undefined' && LeggeraMem.on && LeggeraMem.on('compila');   // leggera_memoria.js: si compila solo quello che si vede
+  function compilaScena(rd, S, cam) {
+    const T = TG.ext && !NOTAGLIO ? TG : null;
+    if (!T) return typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam);
+    T.on = true; try { rd.compile(finta(S, f => soloVis() ? S.traverseVisible(f) : S.traverse(f)), cam); } finally { T.on = false; }
+  }
+  function compilaLista(rd, S, cam, L) {
+    if (!L.length) return; const T = TG.ext && !NOTAGLIO ? TG : null;
+    if (T) T.on = true; try { rd.compile(finta(S, f => L.forEach(f)), cam); } finally { if (T) T.on = false; }
+  }
+  // [ritmo] LE COSE SPENTE, UNA PER TIPO. La compilazione solo del visibile (leggera_memoria.js) lascia fuori i pezzi in streaming (quelli
+  // oltre la nebbia, render.js streamTick), i pezzi originali delle case, le stanze, i boschi lontani: il primo sguardo su uno di loro
+  // chiedeva un programma nuovo. Qui si cercano i materiali spenti senza programma, si raggruppano per la loro FIRMA (quello che decide il
+  // programma di three: tipo, oggetto, tessiture, colori dei vertici, trasparenza, lato, nebbia, codice aggiunto…) e se ne compila uno per
+  // firma: pochi programmi invece di migliaia di materiali (rilascia() poi libera le loro proprietà, il programma resta in cache).
+  const TEXK = ['map', 'alphaMap', 'normalMap', 'bumpMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap', 'gradientMap', 'matcap', 'clearcoatMap', 'clearcoatNormalMap', 'transmissionMap', 'sheenColorMap', 'specularIntensityMap', 'iridescenceMap'];
+  const varianteO = o => (o.isInstancedMesh ? 1 : 0) | (o.isSkinnedMesh ? 2 : 0) | (o.isPoints ? 4 : 0) | (o.isLine ? 8 : 0) | (o.isSprite ? 16 : 0) | (o.instanceColor ? 32 : 0);
+  function firma(o, m) {
+    const g = o.geometry, A = (g && g.attributes) || {}, mo = g && g.morphAttributes, t = [];
+    for (const k of TEXK) { const x = m[k]; if (x) t.push(k + (x.isDataArrayTexture ? 'A' : x.isCubeTexture ? 'C' : '') + (x.encoding || 0) + (x.mapping || 0)); }
+    return [m.type, varianteO(o), m.customProgramCacheKey ? m.customProgramCacheKey() : '', m.isShaderMaterial ? (m.vertexShader.length + ':' + m.fragmentShader.length + ':' + m.vertexShader.slice(0, 80)) : '',
+      JSON.stringify(m.defines || null), JSON.stringify(m.extensions || null), t.join(','), m.vertexColors ? 1 : 0, A.color ? A.color.itemSize : 0, A.uv ? 1 : 0, A.uv2 ? 1 : 0, A.tangent ? 1 : 0,
+      mo ? Object.keys(mo).map(k => k + mo[k].length).join() : '', m.transparent ? 1 : 0, m.alphaTest > 0 ? 1 : 0, m.side, m.blending, m.flatShading ? 1 : 0, m.fog ? 1 : 0, m.toneMapped ? 1 : 0, m.dithering ? 1 : 0,
+      m.premultipliedAlpha ? 1 : 0, m.depthPacking || 0, m.sizeAttenuation ? 1 : 0, m.wireframe ? 1 : 0, (m.clippingPlanes || []).length, m.precision || '', m.alphaToCoverage ? 1 : 0, m.opacity < 1 ? 1 : 0].join('|');
+  }
+  function spenti(rd, S) {
+    const vis = new Set(), F = new Map(), each = (o, f) => { const m = o.material; if (!m) return; if (Array.isArray(m)) m.forEach(f); else f(m); };
+    S.traverseVisible(o => each(o, m => vis.add(m)));
+    S.traverse(o => { if (!o.isMesh && !o.isPoints && !o.isLine && !o.isSprite) return; each(o, m => { if (!m || vis.has(m) || m.visible === false) return; const mp = rd.properties.get(m); if (mp.programs !== undefined) return;
+      const k = firma(o, m); if (!F.has(k)) F.set(k, o); }); });
+    return [...F.values()];
+  }
+  const NOTAGLIO = /[?&]noprontitaglio\b/.test(Q);
   function compila(R) {
     if (!ON) return; const M0 = R && R.__models; if (!M0 || !M0.renderer || !M0.scene || !R.getCamera) return;
     const T = window.THREE, rd = M0.renderer, S = M0.scene, cam = R.getCamera(), t0 = performance.now(), extra = [];
+    taglio(rd); ST.parallelo = !!TG.ext && !NOTAGLIO;
     try {
       const mats = R.__pronti5 ? R.__pronti5() : [];
       const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute([0, -500, 0, .01, -500, 0, 0, -500, .01], 3));
@@ -24,12 +78,16 @@ var PesoPronti = (function () {
       g.setAttribute('m3', new T.Float32BufferAttribute(new Array(12).fill(1), 4));
       mats.forEach(m => { const ms = new T.Mesh(g, m); ms.frustumCulled = false; ms.castShadow = ms.receiveShadow = false; S.add(ms); extra.push(ms); });
     } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    // [ritmo] i modelli d'esempio (render.js esempi5: un mezzo per tipo, le cose a terra), sotto il mondo, accesi solo per la compilazione
+    if (!/[?&]noesempi\b/.test(Q) && R.__esempi5) try { R.__esempi5().forEach(o => { o.position.set(0, -500, 0); o.traverse(q => { q.frustumCulled = false; }); S.add(o); extra.push(o); ST.esempi++; }); } catch (e) { ST.errori++; console.warn('[peso] esempi', e); }
     const n0 = rd.info.programs ? rd.info.programs.length : 0;
-    try { (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    try { compilaScena(rd, S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    // [ritmo] le cose spente, una per firma
+    if (!/[?&]nospenti\b/.test(Q) && rd.properties) try { const L = spenti(rd, S); ST.firme = L.length; compilaLista(rd, S, cam, L); } catch (e) { ST.errori++; console.warn('[peso] spenti', e); }
     // le due varianti del pavimento: l'altra, poi di nuovo quella di adesso (dalla cache)
     const P = window.Pavimenti;
     if (P && typeof P.qualita === 'function') { const q = P.qualita(), altra = q === 'alta' ? 'leggera' : 'alta';
-      try { P.qualita(altra); (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
+      try { P.qualita(altra); compilaScena(rd, S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
     extra.forEach(ms => S.remove(ms));
     ST.programmi = (rd.info.programs ? rd.info.programs.length : 0) - n0; ST.ms = +(performance.now() - t0).toFixed(1);
     ST.rilasciati = rilascia(rd, S);
@@ -60,8 +118,7 @@ var PesoPronti = (function () {
       traverse(f) { for (const o of cur) { const ms = Array.isArray(o.material) ? o.material : [o.material], lati = ms.map(m => m && m.side);
         try { f(o); } catch (e) { ms.forEach((m, k) => { if (m && m.side !== lati[k]) { m.side = lati[k]; m.needsUpdate = true; } }); if (e !== TAGLIO) throw e; VIVO.tagli++; } } } };   // il doppio lato trasparente (three lo compila da dietro e da davanti) torna com'era
     // la lettura delle uniform di un programma nuovo, mentre si prepara: se non è pronto (senza l'estensione, nella prova: sempre) si interrompe
-    const TAGLIO = { taglio: true }, gpp0 = gl.getProgramParameter; let taglia = false;
-    gl.getProgramParameter = function (p, pname) { if (taglia && pname === 35718 && !(ext && gpp0.call(this, p, DONE))) throw TAGLIO; return gpp0.call(this, p, pname); };   // 35718: ACTIVE_UNIFORMS
+    taglio(rd);   // [ritmo] il taglio è uno solo (sopra): senza l'estensione TG.ext è nullo e nella prova si interrompe sempre
     let FR = 0;
     const pronto = A => { if (!ext) return FR - A.f0 >= 2; try { return !!A.prog.program && gl.getProgramParameter(A.prog.program, DONE) === true; } catch (e) { return true; } };
     const r0 = rd.render, b0 = rd.renderBufferDirect;
@@ -88,7 +145,7 @@ var PesoPronti = (function () {
       for (const m of NUOVI.splice(0)) { const A = ATT.get(m); if (!A) continue; (perRT.get(A.rt) || perRT.set(A.rt, []).get(A.rt)).push(m); }
       try {
         perRT.forEach((ms, rt) => { rd.setRenderTarget(rt); cur = []; ms.forEach(m => ATT.get(m).objs.forEach(o => cur.push(o)));
-          taglia = true; try { rd.compile(finta, camera); } catch (e) { ST.errori++; } finally { taglia = false; }
+          TG.on = true; try { rd.compile(finta, camera); } catch (e) { ST.errori++; } finally { TG.on = false; }
           ms.forEach(m => { const A = ATT.get(m), mp = props.get(m); let pr = mp && mp.currentProgram; if (!pr && mp && mp.programs) for (const v of mp.programs.values()) pr = v;   // interrotto: l'ultimo messo in cache
             A.prog = pr || { program: null }; A.f0 = FR; if (!A.prog.program) { ATT.delete(m); m.__pv5 = (m.__pv5 || 0) | A.vb; } A.objs.clear(); }); });
       } finally { cur = null; rd.setRenderTarget(prev); }

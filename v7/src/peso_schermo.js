@@ -7,6 +7,7 @@
       fotogrammi stanno sopra il 118% del ritmo (60 Hz, o 30 quando main.js ha fermato il ritmo a 30), si scende di un gradino; se per 6 s
       stanno sotto il 90%, si risale. Gradini 1, 0,9, 0,8 (0,72 sulla bassa); al più un cambio ogni 3 s. L'interfaccia è nel DOM e la tela
       finale resta a piena risoluzione (render.js [sviluppo]): restano nitide. Sul computer ci pensa già main.js.
+      [ritmo] ora lo fa peso_ritmo.js, per il telefono e per il computer (con ?noritmo torna questo).
    3. Il pavimento (pavimenti.js, fino a 8 letture di mappa per pixel): sul telefono e sulla scheda 'bassa' Pavimenti.qualita('leggera'),
       altrove 'alta'. ?nopesosuolo lo lascia com'è. window.__pesoLivello.suolo dice quale.
    ?nopesoschermo spegne tutto (come prima: telefono a risoluzione fissa).                                                             */
@@ -33,7 +34,7 @@ var PesoSchermo = (function () {
     S.livello = livelloDa(S.nome); window.__pesoLivello = { livello: S.livello, scheda: S.nome };
     S.telefono = !!(pv.R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches));
     suolo(0);
-    if (!S.telefono || !ON) return;
+    if (!S.telefono || !ON || (window.PesoRitmo && PesoRitmo.ON)) return;   // [ritmo] il regolatore ora è uno solo, per tutti (peso_ritmo.js)
     // il ritmo: l'intervallo fra due fotogrammi del gioco (R.frame), non quello del browser (con il ritmo a 30 il gioco salta un giro su due)
     const R = pv.R, f0 = R.frame;
     R.frame = function () { const t = performance.now(); if (S.ultimo) { S.buf.push(t - S.ultimo); if (S.buf.length > 60) S.buf.shift(); } S.ultimo = t; valuta(t); return f0.apply(this, arguments); };
