@@ -664,13 +664,19 @@ var Writing = (function () {
   }
   // IL RIQUADRO SUL MURO: c un punto del piano (alla quota voluta), n la normale orizzontale, W × H la misura voluta.
   // Ritorna { c, r, W, H } (c il centro nuovo, sul piano) o null se non c'è un pezzo di muro almeno minK della misura
-  function fitWall(c, n, W, H, list, opt) {
+  // [audit] A DOSI: fitWall e placeWall sono generatori (fitWallG, placeWallG) che si fermano ogni sei raggi; scanNear li porta avanti nel
+  // tempo del fotogramma e li riprende al fotogramma dopo. Stessi raggi, stesso ordine, stesso risultato: solo spezzato. Prima un lavoro
+  // si piazzava tutto in un colpo (50-210 raggi: 20-60 ms su un telefono, più la spazzatura dei colpi) e il tetto di 1 ms a fotogramma si
+  // guardava solo fra un lavoro e l'altro: camminando verso muri dipinti era la prima voce del processore (banco_audit.js, giro a piedi)
+  const finisci = it => { let r; while (!(r = it.next()).done); return r.value; };
+  function fitWall(c, n, W, H, list, opt) { return finisci(fitWallG(c, n, W, H, list, opt)); }
+  function* fitWallG(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
     const L = nearTris(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);
-    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) ok[j * NX + i] = onPlane(P(us[i], vs[j]), n, L, O, foot) ? 1 : 0;
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { ok[j * NX + i] = onPlane(P(us[i], vs[j]), n, L, O, foot) ? 1 : 0; if ((j * NX + i) % 6 === 5) yield; }
     // il rettangolo più grande di punti tutti buoni (somme prefisse); a parità, il più vicino al centro voluto
     const S0 = new Int32Array((NX + 1) * (NY + 1)); for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) S0[(j + 1) * (NX + 1) + i + 1] = ok[j * NX + i] + S0[j * (NX + 1) + i + 1] + S0[(j + 1) * (NX + 1) + i] - S0[j * (NX + 1) + i];
     const sum = (i0, j0, i1, j1) => S0[(j1 + 1) * (NX + 1) + i1 + 1] - S0[j0 * (NX + 1) + i1 + 1] - S0[(j1 + 1) * (NX + 1) + i0] + S0[j0 * (NX + 1) + i0];
@@ -685,7 +691,7 @@ var Writing = (function () {
     // i bordi: mezzo passo più in là, se anche lì è tutto muro (la griglia è rada)
     const colOk = u => vs.filter(v => v >= v0 - 1e-6 && v <= v1 + 1e-6).every(v => onPlane(P(u, v), n, L, O, foot)), rowOk = v => us.filter(u => u >= u0 - 1e-6 && u <= u1 + 1e-6).every(u => onPlane(P(u, v), n, L, O, foot));
     const su = W / (NX - 1) / 2, sv = H / (NY - 1) / 2;
-    if (best.i0 > 0 && colOk(u0 - su)) u0 -= su; if (best.i1 < NX - 1 && colOk(u1 + su)) u1 += su;
+    yield; if (best.i0 > 0 && colOk(u0 - su)) u0 -= su; if (best.i1 < NX - 1 && colOk(u1 + su)) u1 += su;
     if (best.j0 > 0 && rowOk(v0 - sv)) v0 -= sv; if (best.j1 < NY - 1 && rowOk(v1 + sv)) v1 += sv;
     // le proporzioni: un lavoro non si stira; si tiene la misura voluta dentro il buono, centrata dove c'è più muro
     let w = Math.min(u1 - u0, W), h = Math.min(v1 - v0, H); if (Math.min(w / W, h / H) < minK) return null;
@@ -693,7 +699,7 @@ var Writing = (function () {
     const cu = clamp(0, u0 + w / 2, u1 - w / 2), cvv = clamp(0, v0 + h / 2, v1 - h / 2);
     let out = { c: P(cu, cvv), r, W: w, H: h };
     // la prova finale: i bordi e il dentro punto per punto (5 × 4, come la sonda); se qualcosa non torna si stringe
-    for (let t = 0; t < 4; t++) { if (rectOnWall(out.c, n, r, out.W, out.H, L, O, foot)) return out; out = { c: out.c, r, W: out.W * .88, H: out.H * .88 }; if (Math.min(out.W / W, out.H / H) < minK) return null; }
+    for (let t = 0; t < 4; t++) { yield; if (rectOnWall(out.c, n, r, out.W, out.H, L, O, foot)) return out; out = { c: out.c, r, W: out.W * .88, H: out.H * .88 }; if (Math.min(out.W / W, out.H / H) < minK) return null; }
     return null;
   }
   function rectOnWall(c, n, r, W, H, list, O, foot) {
@@ -909,7 +915,8 @@ var Writing = (function () {
   // [graffiti] i giorni sul muro (fino a 6): l'età del lavoro per i pennelli (sbiadisce); deciso quando si piazza, così il disegno resta in memoria
   const etaOf = w => w.by === 'player' && !w.old ? (w.sbiadito || 0) : clamp(Math.floor(((GFX.st ? GFX.st.t : 0) - (w.t0 || 0)) / 1440) + (w.old ? 2 + ((w.seed || 0) % 4) : 0), 0, 6);
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
-  function placeWall(w) {
+  function placeWall(w) { return finisci(placeWallG(w)); }
+  function* placeWallG(w) {
     if (w.surf === 'auto') return placeVeh(w);
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
@@ -923,7 +930,7 @@ var Writing = (function () {
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), c = hit.p.clone();
     const foot = sp.h != null ? null : footAt(c, n, W0, r);
     if (foot != null && c.y - H / 2 < foot + .12) c.y = foot + .12 + H / 2;   // mai sotto terra
-    const fit = fitWall(c, n, W0, H, list, { foot, minK: small ? .5 : .55 }); if (!fit) return false;
+    const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: small ? .5 : .55 }); if (!fit) return false;
     w.W = fit.W; w.H = fit.H; w.gfxRect = { c: fit.c, n, r: fit.r, W: fit.W, H: fit.H, foot }; w.pos = { x: fit.c.x, y: fit.c.y, z: fit.c.z };
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
@@ -1851,7 +1858,10 @@ var Writing = (function () {
   function scanNear(st, cx, cy, opt) {
     const W = S(st), now = performance.now(), force = !!(opt && opt.force);
     if (force || now - (GFX.scanT || 0) > 150 || !GFX.scanL) { GFX.scanT = now; GFX.scanL = scanList(st, W, cx, cy, now, force); GFX.scanI = 0; }
-    const L = GFX.scanL, near = L.near, rush = L.rush, cap = opt && opt.ms ? opt.ms : force ? 30 : rush ? 5 : 1;
+    const L = GFX.scanL, rush = L.rush, cap = opt && opt.ms ? opt.ms : force ? 30 : rush ? 5 : 1;
+    // [audit] il lavoro piazzato a metà passa davanti (la lista si rifà ogni 150 ms e lui potrebbe scivolare indietro: si butterebbe il fatto)
+    if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
+    let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
     let n = 0; const t0 = performance.now();
     for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
     for (; GFX.scanI < near.length; GFX.scanI++) { const w = near[GFX.scanI];
@@ -1866,7 +1876,11 @@ var Writing = (function () {
       if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
       if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
       const sp = w.surf === 'auto' ? (st.vehicles.find(x => x.id === w.veh) || null) : w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
-      if (!w.gfxRect) { const tp = performance.now(), okW = placeWall(w); if (CB) CB.add(performance.now() - tp, 'graffiti'); if (!okW) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
+      if (!w.gfxRect) {   // [audit] a dosi: il lavoro in corso si riprende al fotogramma dopo (vedi fitWallG)
+        if (!GFX.pw || GFX.pw.w !== w) GFX.pw = { w, it: placeWallG(w) };
+        const tp = performance.now(); let r; do r = GFX.pw.it.next(); while (!r.done && performance.now() - t0 < cap); if (CB) CB.add(performance.now() - tp, 'graffiti');
+        if (!r.done) break;
+        GFX.pw = null; if (!r.value) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
       ready(A => { const tv = performance.now(), g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; drawUpTo(w, g); if (CB) CB.add(performance.now() - tv, 'graffiti'); }); n++;
     }
     return n;
