@@ -6056,7 +6056,7 @@ var Render = (function () {
       const bt = box(2, .26, .04, std({ map: (() => { const k = 'tr'; if (I31.tex[k]) return I31.tex[k]; const c = mk(32, 8), x2 = c.getContext('2d'); for (let i = 0; i < 32; i += 8) { x2.fillStyle = '#d8d0c0'; x2.fillRect(i, 0, 4, 8); x2.fillStyle = '#9a3a2a'; x2.fillRect(i + 4, 0, 4, 8); } x2.fillStyle = 'rgba(60,40,30,.35)'; x2.fillRect(0, 5, 32, 3); return (I31.tex[k] = canvasTex(c)); })(), roughness: .9 })); add(g, bt, 0, .88, 0);
       return place(g, x, z, rot); };
     const cone = (x, z) => { const g = G0(); add(g, box(.42, .05, .42, sm('#2a2a2a')), 0, .025, 0); add(g, new THREE.Mesh(new THREE.ConeGeometry(.17, .62, 8), sm('#c8642a', { roughness: .7 })), 0, .34, 0); add(g, cyl(.12, .14, .08, 8, sm('#d8d4cc')), 0, .38, 0); return place(g, x, z, r() * 6); };
-    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada'));
+    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada') && (rd.pts.length >= 12 || !(typeof window !== 'undefined' && window.PV_MAPPA === 'nuova')));   // [mappa_nuova] le strade corte non reggono un cantiere
     for (let tries = 0; tries < 80 && SITES.length < 9; tries++) {
       const rd = pick(r, RD), k = 4 + Math.floor(r() * (rd.pts.length - 8)), [x, z] = rd.pts[k]; if (SITES.some(s => Math.hypot(s[0] - x, s[1] - z) < 120) || nearJ(x, z, 6)) continue;
       SITES.push([x, z]); const a = rd.pts[k - 2], c = rd.pts[k + 2], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, ux = (c[0] - a[0]) / L, uz = (c[1] - a[1]) / L, nx = -uz, nz = ux, sd = r() < .5 ? 1 : -1, off = rd.w / 4;
