@@ -22827,8 +22827,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '6411e92042344d26';</script>
-<script>window.PV_IMPRONTA_TASS = 'a9aae5a268773c55';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'f146787cf9d8f5eb';</script>
+<script>window.PV_IMPRONTA_TASS = '0bed0902fc00d54e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -32864,6 +32864,10 @@ var Game = (function () {
   }
   function clearLine(x0, y0, x1, y1) {
     const d = dist(x0, y0, x1, y1), n = Math.ceil(d / .5);
+    // [audit] prima a passo largo (un campione su quattro, solo il centro): la linea che sbatte contro un muro si scopre con 1/20 delle
+    // prove. Il risultato è identico: sono le stesse prove del giro fine, in un altro ordine (ne basta una per tornare falso). La lisciatura
+    // del percorso (findPath) prova centinaia di linee lunghe che falliscono, e i passanti la chiamano di continuo
+    if (n > 8) for (let i = 4; i <= n; i += 4) if (!walkM(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
     for (let i = 1; i <= n; i++) {
       const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
       if (!walkM(x, y) || !walkM(x + .45, y) || !walkM(x - .45, y) || !walkM(x, y + .45) || !walkM(x, y - .45)) return false;
@@ -91252,6 +91256,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     const r = input0(); if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
@@ -91396,7 +91401,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     // non si parte: niente ripiego in linea retta (prima si andava dritti attraverso i muraglioni invece di prendere la scala)
     if (!path.length && !G.walkM(x, y)) { const f = freeSpot(x, y); if (G.walkM(f.x, f.y)) { path = G.findPath(p.x, p.y, f.x, f.y, p.vehicle ? .6 : 1.4); if (path.length) path.push({ x, y }); } }
     return path; }
+  // [audit] INP: il gestore del tocco/clic sulla tela registra solo l'intenzione (dove, se doppio); la scelta (persone, roba, porte, il
+  // punto a terra) e il percorso (G.findPath) si fanno all'inizio del fotogramma dopo (input → clickRun). Prima tutto stava nel gestore:
+  // un percorso lungo o una meta irraggiungibile tenevano fermo il filo (e la risposta a schermo) per decine o centinaia di ms
   function onClick(nx, ny, dbl) {
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
+    click.q = { nx, ny, dbl: !!(dbl || (click.q && click.q.dbl)), t: performance.now() };
+  }
+  function clickRun() {
+    const q = click.q; click.q = null; if (performance.now() - q.t > 600) return;   // rimasto in coda mentre il gioco era fermo: non vale più
+    clickNow(q.nx, q.ny, q.dbl);
+  }
+  function clickNow(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
