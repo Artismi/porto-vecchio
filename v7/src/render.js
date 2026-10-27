@@ -17312,7 +17312,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const cx = camera.position.x, cz = camera.position.z, near = camera.far + 20, lontano = camera.far + 90; let k = Math.min(n, 4000);
     while (k-- > 0) { STR.i = (STR.i + 1) % n; const e = L[STR.i], s = e.s, d = Math.hypot(s.center.x - cx, s.center.z - cz) - s.radius; e.d = d;
       if (e.on) { if (d > lontano) streamOff(e); } else if (d < near && !e.w) { e.w = true; STR.warm.push(e); } }
-    if (STR.warm.length) { STR.warm.sort((a, b) => a.d - b.d); let bud = PHONE ? 8e6 : 24e6, c = 0;
+    if (STR.warm.length) { STR.warm.sort((a, b) => a.d - b.d); let bud = PHONE ? 3e6 : 6e6, c = 0;   // [momenti] era 8/24 MB in un fotogramma: correndo si attraversano più soglie e un invio da 24 MB alla scheda video è uno scatto; a 6 MB per fotogramma sono comunque 360 MB al secondo
       while (STR.warm.length && (bud > 0 || c === 0)) { const e = STR.warm.shift(); e.w = false; if (e.on) continue; e.on = true; e.o.visible = true; if (e.sh) e.sh.visible = true; e.o.frustumCulled = false; STR.rew.push(e); bud -= e.b; c++; STR.off--; STR.carichi++; } }
   }
   if (typeof window !== 'undefined') window.__stream = STR;

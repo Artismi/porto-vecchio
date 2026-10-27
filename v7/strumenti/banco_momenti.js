@@ -45,6 +45,7 @@ function initPage(opt) {
         const cm = R.getCamera(), cv = rd.domElement, Hh = cv.height / 2, Wh = cv.width / 2, V3 = window.__v3 || (window.__v3 = new cm.position.constructor());
         V3.set(p.x, (B.ph || 0) + 1, p.y).project(cm); c.px = V3.x * Wh; c.py = V3.y * Hh; if (B.fisso) { V3.set(B.fisso[0], B.fisso[1], B.fisso[2]).project(cm); c.wx = V3.x * Wh; c.wy = V3.y * Hh; }
         const ri = rd.info; c.calls = ri.render.calls; c.tris = ri.render.triangles; c.geo = ri.memory.geometries; c.tex = ri.memory.textures; c.far = cm.far; c.fog = R.__models.scene && R.__models.scene.fog ? R.__models.scene.fog.far : 0;
+        c.str = window.__stream ? window.__stream.carichi : 0; c.cot = window.PesoOmbre ? PesoOmbre.conto().cotture : 0; c.job = !!(R.ISO && R.ISO.job);
         c.camx = cm.position.x; c.camz = cm.position.z; c.plx = p.x; c.ply = p.y;
         let vol = 0, su = 0; if (M && M.birds) for (const b of M.birds.S) if (b.st === 'volo') vol++; if (M && M.papers) for (const q of M.papers.S) if (!q.dead && q.y > 0) su++; c.vol = vol; c.su = su; } }
     };
@@ -112,7 +113,7 @@ const srv = http.createServer((req, res) => {
     await nfa(NF);
     await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; B.dopo = null; window.__vf = null; });
     const { profile } = await cdp.send('Profiler.stop');
-    const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));
+    const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, str: f.str, cot: f.cot, job: f.job, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));
     if (nome === 'cadenza') { // lo scarto da un fotogramma all'altro: il personaggio sullo schermo (deve stare fermo) e il mondo che scorre (deve scorrere uguale)
       // il mondo: lo scarto fra lo spostamento di un fotogramma e quello del precedente (a passo costante deve essere ~0); il personaggio: quanto
       // si sposta sullo schermo da un fotogramma all'altro (la camera gli è legata: deve stare fermo)
@@ -139,11 +140,11 @@ const srv = http.createServer((req, res) => {
     const peggiori = new Set(eventi.map(e => e.a)); const inEv = new Set(); ev.forEach(i => finestra(i).forEach(f => inEv.add(f.i)));
     const fuori = rec.filter(f => !inEv.has(f.i)), Mx = a => a.reduce((m, f) => Math.max(m, f.lavoro), 0);
     const R = { mediana_ms: base, peggiore_eventi_ms: Mx(rec.filter(f => inEv.has(f.i))), peggiore_fuori_ms: Mx(fuori), eventi,
-      profili: [...peggiori].map(i => ({ i, ms: rec[i].lavoro, step: rec[i].step, frame: rec[i].frame, timer: rec[i].timer, progs: rec[i].progs, gc: rec[i].gc, prof: prof(rec[i]) })), rec };
+      profili: [...peggiori].map(i => ({ i, ms: rec[i].lavoro, step: rec[i].step, frame: rec[i].frame, timer: rec[i].timer, progs: rec[i].progs, gc: rec[i].gc, carichi: i ? rec[i].str - rec[i - 1].str : 0, cotture: i ? rec[i].cot - rec[i - 1].cot : 0, blocco: rec[i].job, prof: prof(rec[i]) })), rec };
     OUTJ.momenti[nome] = R;
     log(`== ${nome}: mediana ${base} ms, peggiore negli eventi ${R.peggiore_eventi_ms} ms, fuori ${R.peggiore_fuori_ms} ms`);
     eventi.forEach(e => console.log(`   evento @${e.da}: peggiore ${e.peggiore_ms} ms (+${e.dopo} fotogrammi), mediana ${e.mediana}, shader nuovi ${e.shader}, raccolte ${e.gc}`));
-    R.profili.forEach(p => console.log(`   #${p.i} ${p.ms} ms (logica ${p.step} grafica ${p.frame} timer ${p.timer} shader+${p.progs} gc ${p.gc})\n      ${p.prof.join(' | ')}`));
+    R.profili.forEach(p => console.log(`   #${p.i} ${p.ms} ms (logica ${p.step} grafica ${p.frame} timer ${p.timer} shader+${p.progs} gc ${p.gc} carichi ${p.carichi} cotture ${p.cotture} blocco ${p.blocco})\n      ${p.prof.join(' | ')}`));
   }
   const slim = JSON.parse(JSON.stringify(OUTJ)); for (const k in slim.momenti) delete slim.momenti[k].rec;
   fs.writeFileSync(path.join(OUT, 'momenti.json'), JSON.stringify(OUTJ));
