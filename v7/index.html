@@ -22828,7 +22828,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f146787cf9d8f5eb';</script>
-<script>window.PV_IMPRONTA_TASS = 'db4be2bed913cd5b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'a4d0e43207c3d2eb';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -91339,7 +91339,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
     // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
     // al fotogramma dopo (DOPO, letto da input)
-    DOPO.push(() => { if (window.Writing) Writing.release(st); if (!on) return;
+    (/[?&]noclicdopo\b/.test(location.search) ? f => f() : f => DOPO.push(f))(() => { if (window.Writing) Writing.release(st); if (!on) return;
       if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
   const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
@@ -91548,8 +91548,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // un percorso lungo o una meta irraggiungibile tenevano fermo il filo (e la risposta a schermo) per decine o centinaia di ms
   function onClick(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
+    if (CLIC_SUBITO) { clickNow(nx, ny, dbl); return; }   // ?noclicdopo: come prima, tutto nel gestore (per il confronto)
     click.q = { nx, ny, dbl: !!(dbl || (click.q && click.q.dbl)), t: performance.now() };
   }
+  const CLIC_SUBITO = /[?&]noclicdopo\b/.test(location.search);
   function clickRun() {
     const q = click.q; click.q = null; if (performance.now() - q.t > 600) return;   // rimasto in coda mentre il gioco era fermo: non vale più
     clickNow(q.nx, q.ny, q.dbl);

@@ -143,7 +143,7 @@
     const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
     // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
     // al fotogramma dopo (DOPO, letto da input)
-    DOPO.push(() => { if (window.Writing) Writing.release(st); if (!on) return;
+    (/[?&]noclicdopo\b/.test(location.search) ? f => f() : f => DOPO.push(f))(() => { if (window.Writing) Writing.release(st); if (!on) return;
       if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
   const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
@@ -352,8 +352,10 @@
   // un percorso lungo o una meta irraggiungibile tenevano fermo il filo (e la risposta a schermo) per decine o centinaia di ms
   function onClick(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
+    if (CLIC_SUBITO) { clickNow(nx, ny, dbl); return; }   // ?noclicdopo: come prima, tutto nel gestore (per il confronto)
     click.q = { nx, ny, dbl: !!(dbl || (click.q && click.q.dbl)), t: performance.now() };
   }
+  const CLIC_SUBITO = /[?&]noclicdopo\b/.test(location.search);
   function clickRun() {
     const q = click.q; click.q = null; if (performance.now() - q.t > 600) return;   // rimasto in coda mentre il gioco era fermo: non vale più
     clickNow(q.nx, q.ny, q.dbl);
