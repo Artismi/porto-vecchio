@@ -58,10 +58,12 @@ let tries = 0; while (!(p.lv.ride !== undefined) && tries++ < 200) { m = LV.key(
 ok(p.lv.ride !== undefined, 'salgo sul treno: ' + m);
 const hs = []; for (let k = 0; k < 80 && p.lv.ride !== undefined; k++) { wait(1); hs.push(LV.heightOf(st, p).toFixed(1)); }
 console.log('    quote del viaggio', hs.filter((_, i) => i % 6 === 0).join(' '));
+// [mappa_nuova] la linea a più stazioni: si scende alla prossima; alle fermate di mezzo si risale finché si arriva al capolinea
+if (MT.linea) for (let leg = 1; leg < MT.stazioni.length - 1 && Math.hypot(p.x - MT.B.x, p.y - MT.B.y) >= 4; leg++) { console.log('    fermata', (st.feed[0] && st.feed[0].text), where()); let t2 = 0; while (p.lv.ride === undefined && t2++ < 200) { m = LV.key(st, 'v'); if (p.lv.ride === undefined) wait(1); } for (let k = 0; k < 80 && p.lv.ride !== undefined; k++) wait(1); }
 ok(p.lv.ride === undefined && Math.hypot(p.x - MT.B.x, p.y - MT.B.y) < 4, 'sceso a ' + MT.B.name + ': ' + (st.feed[0] && st.feed[0].text) + ' ' + where());
 const EN = L.portals.find(P => P.kind === 'scala' && P.metro === 'nord'); p.x = (EN.u[0] + .5) * TS; p.y = (EN.u[1] + .5) * TS; m = LV.key(st, 'v'); ok(!p.lv, 'su per le scale: ' + m + ' ' + where());
 // le due gallerie si incrociano a metà: una sopra, una sotto
-const a = SS.trackAt(0, .5), c = SS.trackAt(1, .5), a0 = SS.trackAt(0, 0), c0 = SS.trackAt(1, 0);
+const tm = MT.linea ? (MT.seg[0].s0 + MT.seg[0].L / 2) / MT.L : .5, a = SS.trackAt(0, tm), c = SS.trackAt(1, tm), a0 = SS.trackAt(0, 0), c0 = SS.trackAt(1, 0);
 ok(Math.abs(a.h - c.h) > 7 && Math.abs(a0.h - c0.h) < .01, `mezza elica: a metà ${a.h.toFixed(1)} sopra ${c.h.toFixed(1)}, ai capi alla stessa quota`);
 console.log(fail ? `\n${fail} prove fallite` : '\nTutto bene.');
 process.exitCode = fail ? 1 : 0;

@@ -19,6 +19,7 @@ var Sottosuolo = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const LV = typeof Livelli !== 'undefined' ? Livelli : require('./livelli.js');
+  const MNm = G.MAP.world && G.MAP.world.MAPPA === 'nuova';   // [mappa_nuova] la metropolitana che attraversa la mappa
   const W = G.MAP.world, TS = G.TS, GW = G.GW, GH = G.GH, T = G.T, N = GW * GH, EL = G.MAP.elev, ZC = W.Z.CITTA;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const idx = (tx, ty) => ty * GW + tx, inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
@@ -463,7 +464,39 @@ var Sottosuolo = (function () {
     const VMq = VM ? VM.pts.reduce((b, q) => (!b || Math.hypot(q[0] - 1455, q[1] - 288) < Math.hypot(b[0] - 1455, b[1] - 288) ? q : b), null) : null;
     const COMP = !!(W.luoghi && MKT && VMq);
     const aS = COMP ? [MKT.x - 12, MKT.y + 9] : cityAt(.2, .92), aN = COMP ? [VMq[0], VMq[1] + 6] : cityAt(.8, .08);
-    const S0 = aS && spot(...aS), N0 = aN && spot(...aN), metro = { ok: false };
+    const S0 = MNm ? null : aS && spot(...aS), N0 = MNm ? null : aN && spot(...aN), metro = { ok: false };
+    // [mappa_nuova] LA LINEA CHE ATTRAVERSA LA MAPPA: la ferrovia di superficie non c'è più, il treno passa sotto. Tre stazioni da ponente a
+    // levante: San Giacomo (sul colle, sotto il paese), Stazione (l'atrio è il fabbricato della vecchia stazione, sul piazzale) e Mercato della
+    // Rocca (la spianata). Ogni stazione ha la sua banchina a isola fra i due binari, girata lungo la linea; le gallerie fanno la mezza elica
+    // fra una stazione e l'altra. I treni fanno la spola fermando a tutte (San Giacomo → Stazione → Mercato → Stazione → …)
+    if (MNm) {
+      const spotM = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 22 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty)) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
+      const SG = G.PLACES.sangiacomo || G.PLACES.chiesa_sg, STZ = (W.sets || []).find(q => q.k === 'stazione'), MER = (W.sets || []).find(q => q.k === 'mercato');
+      const capi = [SG && { id: 'colle', name: 'San Giacomo', at: [SG.x + 4, SG.y + 14] }, STZ && { id: 'sud', name: 'Stazione', at: [(STZ.x0 + STZ.x1) / 2, (STZ.y0 + STZ.y1) / 2 + 1] }, MER && { id: 'nord', name: 'Mercato', at: [MER.x - 4, MER.y + 9] }].filter(Boolean);
+      const st = capi.map(c => Object.assign(c, { ent: spotM(...c.at) })).filter(c => c.ent);
+      if (st.length >= 2) {
+        const R = 4.4, OFF = 11;
+        // la linea passa per i punti delle banchine: prima si fissa la direzione di ciascuna (la media dei due tratti), poi la banchina sta OFF m oltre l'ingresso
+        st.forEach((S, k) => { const a = st[Math.max(0, k - 1)].ent, b = st[Math.min(st.length - 1, k + 1)].ent, dx = cen(b[0]) - cen(a[0]), dy = cen(b[1]) - cen(a[1]), L0 = Math.hypot(dx, dy) || 1; S.ux = dx / L0; S.uy = dy / L0; S.nx = -S.uy; S.ny = S.ux;
+          S.sgn = k === st.length - 1 ? -1 : 1; const ex = cen(S.ent[0]), ey = cen(S.ent[1]); S.x = ex + S.ux * OFF * S.sgn; S.y = ey + S.uy * OFF * S.sgn; });
+        st.forEach(S => {
+          let lo = 1e9; for (let a = -10; a <= 10; a += 2) for (let l = -3; l <= 3; l += 3) { const [tx, ty] = ti(S.x + S.ux * a + S.nx * l, S.y + S.uy * a + S.ny * l); if (inb(tx, ty)) lo = Math.min(lo, EL[idx(tx, ty)]); }
+          S.f = Math.min(lo, EL[idx(...S.ent)]) - 9;
+          for (let ty = Math.floor((S.y - 13) / TS); ty <= Math.floor((S.y + 13) / TS); ty++) for (let tx = Math.floor((S.x - 13) / TS); tx <= Math.floor((S.x + 13) / TS); tx++) {
+            const dx = cen(tx) - S.x, dy = cen(ty) - S.y, a = dx * S.ux + dy * S.uy, l = dx * S.nx + dy * S.ny; if (Math.abs(a) <= 10.5 && Math.abs(l) <= 2.7) put(tx, ty, S.f, K.BANCHINA, true); }
+          const [hx, hy] = ti(S.x - S.ux * 9 * S.sgn, S.y - S.uy * 9 * S.sgn);
+          corridor(S.ent[0], S.ent[1], hx, hy, EL[idx(...S.ent)] - 3.2, S.f, K.METRO);
+          portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id });
+          rooms.push({ x: S.x, y: S.y, f: S.f, deco: 'metro', ux: S.ux, uy: S.uy, name: S.name, sid: S.id, linea: true });
+          place('metro_' + S.id, 'Metropolitana, stazione ' + S.name, S.x, S.y, 12, 'metro');
+          toSewer(...ti(S.x + S.ux * 8 * S.sgn, S.y + S.uy * 8 * S.sgn), S.f, K.METRO);
+          for (const a of [-7, 0, 7]) lamp(S.x + S.ux * a, S.y + S.uy * a, S.f + 3.6, '#e8f0ff', 'neon');
+        });
+        // i tratti fra una banchina e l'altra
+        const seg = []; let s0 = 0; for (let k = 0; k < st.length - 1; k++) { const a = st[k], b = st[k + 1], L = Math.hypot(b.x - a.x, b.y - a.y); seg.push({ a, b, L, s0, ux: (b.x - a.x) / L, uy: (b.y - a.y) / L, nx: -(b.y - a.y) / L, ny: (b.x - a.x) / L }); s0 += L; }
+        Object.assign(metro, { ok: true, R, A: st[0], B: st[st.length - 1], stazioni: st, seg, L: s0, ux: seg[0].ux, uy: seg[0].uy, nx: seg[0].nx, ny: seg[0].ny, linea: true });
+      }
+    }
     if (S0 && N0) {
       const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
       const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
@@ -500,17 +533,35 @@ var Sottosuolo = (function () {
   const M = TPL.metro;
   // il punto della galleria j (0: andata, 1: ritorno) a una frazione t del percorso: x, y del mondo e quota h del piano del binario
   function trackAt(j, t) {
+    if (M.linea) {   // [mappa_nuova] la linea a più stazioni: il tratto k, la mezza elica fra le sue due banchine (ai capi i binari affiancati)
+      const S = t * M.L; let k = 0; while (k < M.seg.length - 1 && S > M.seg[k].s0 + M.seg[k].L) k++; const Q = M.seg[k], u = (S - Q.s0) / Q.L;
+      const ph = Math.PI * u + (j + k) * Math.PI, l = M.R * Math.cos(ph), v = M.R * Math.sin(ph) * .92;
+      const w = clamp(u, 0, 1), nx = w < .5 ? Q.a.nx + (Q.nx - Q.a.nx) * w * 2 : Q.nx + (Q.b.nx - Q.nx) * (w - .5) * 2, ny = w < .5 ? Q.a.ny + (Q.ny - Q.a.ny) * w * 2 : Q.ny + (Q.b.ny - Q.ny) * (w - .5) * 2;
+      const cx = Q.a.x + (Q.b.x - Q.a.x) * u, cy = Q.a.y + (Q.b.y - Q.a.y) * u, f = Q.a.f + (Q.b.f - Q.a.f) * w - 11 * Math.sin(Math.PI * w);
+      return { x: cx + nx * l, y: cy + ny * l, h: f - 1.05 + v, l, v };
+    }
     const A = M.A, B = M.B, ph = Math.PI * t + j * Math.PI, l = M.R * Math.cos(ph), v = M.R * Math.sin(ph) * .92;
     // l'asse scende in mezzo (11 m sotto le stazioni): l'elica passa sotto le fogne, le cripte e il mercato
     const cx = A.x + (B.x - A.x) * t, cy = A.y + (B.y - A.y) * t, f = A.f + (B.f - A.f) * t - 11 * Math.sin(Math.PI * clamp(t, 0, 1));
     return { x: cx + M.nx * l, y: cy + M.ny * l, h: f - 1.05 + v, l, v };
   }
   const DW = 14, VM = 15, AC = 1.3;   // sosta (s), velocità (m/s), accelerazione (m/s²)
-  const TT = M.ok ? M.L / VM + VM / AC : 1, CYC = 2 * (TT + DW);
-  function sAt(tau) { const ta = VM / AC, da = .5 * AC * ta * ta; if (tau < ta) return .5 * AC * tau * tau; if (tau < TT - ta) return da + VM * (tau - ta); const r = TT - tau; return M.L - .5 * AC * r * r; }
+  const TT = M.ok ? M.L / VM + VM / AC : 1, CYC0 = 2 * (TT + DW);
+  function sAt(tau, TTk, Lk) { TTk = TTk || TT; Lk = Lk || M.L; const ta = VM / AC, da = .5 * AC * ta * ta; if (tau < ta) return .5 * AC * tau * tau; if (tau < TTk - ta) return da + VM * (tau - ta); const r = TTk - tau; return Lk - .5 * AC * r * r; }
+  // [mappa_nuova] l'orario della linea a più stazioni: le tratte di andata e di ritorno (0 → 1 → … → n−1 → … → 1), ognuna con la sosta in
+  // partenza e il viaggio; il secondo treno è mezzo giro indietro
+  const LEGS = []; if (M.ok && M.linea) { const n = M.stazioni.length, ord = []; for (let k = 0; k < n; k++) ord.push(k); for (let k = n - 2; k >= 1; k--) ord.push(k);
+    let t0 = 0; ord.forEach((a, i) => { const b = ord[(i + 1) % ord.length], S0p = M.stazioni[a], S1p = M.stazioni[b], sA = a ? M.seg[a - 1].s0 + M.seg[a - 1].L : 0, sB = b ? M.seg[b - 1].s0 + M.seg[b - 1].L : 0, Lk = Math.abs(sB - sA), TTk = Lk / VM + VM / AC;
+      LEGS.push({ a: S0p, b: S1p, sA, sB, Lk, TTk, t0 }); t0 += DW + TTk; }); }
+  const CYC = LEGS.length ? LEGS.reduce((q, g) => q + DW + g.TTk, 0) : CYC0;
   // il treno j: dove è, dove va, se è fermo e dove
   function train(st, j) {
     if (!M.ok) return null;
+    if (M.linea) { const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC; let g = LEGS[0]; for (const q of LEGS) if (ph >= q.t0) g = q;
+      const tau = ph - g.t0, dir = g.sB > g.sA ? 1 : -1; let t, at = null, left = 0;
+      if (tau < DW) { t = g.sA / M.L; at = g.a.id; left = DW - tau; } else t = clamp((g.sA + dir * sAt(tau - DW, g.TTk, g.Lk)) / M.L, 0, 1);
+      const q = trackAt(j, t), q2 = trackAt(j, clamp(t + .002, 0, 1)), q1 = trackAt(j, clamp(t - .002, 0, 1)), sg = dir;
+      return { j, t, dir, at, left, next: g.b.id, nextName: g.b.name, x: q.x, y: q.y, h: q.h, ang: Math.atan2(q2.y - q1.y, q2.x - q1.x), pitch: Math.atan2(q2.h - q1.h, Math.hypot(q2.x - q1.x, q2.y - q1.y)), sg }; }
     const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC;
     let t, dir, at = null, left = 0;
     if (ph < DW) { t = 0; dir = 1; at = 'sud'; left = DW - ph; }
@@ -520,13 +571,23 @@ var Sottosuolo = (function () {
     const q = trackAt(j, t), q2 = trackAt(j, clamp(t + .002, 0, 1)), q1 = trackAt(j, clamp(t - .002, 0, 1));
     return { j, t, dir, at, left, x: q.x, y: q.y, h: q.h, ang: Math.atan2(q2.y - q1.y, q2.x - q1.x), pitch: Math.atan2(q2.h - q1.h, Math.hypot(q2.x - q1.x, q2.y - q1.y)) };
   }
-  const stationOf = id => id === 'sud' ? M.A : M.B;
+  const stationOf = id => M.linea ? M.stazioni.find(S => S.id === id) || M.A : id === 'sud' ? M.A : M.B;
+  const stazioni = () => M.linea ? M.stazioni : [M.A, M.B];
+  // [mappa_nuova] fra quanto arriva il prossimo treno alla stazione S (e per dove riparte)
+  function arrivo(st, S) { let best = { t: 1e9, per: null, j: 0 }; for (const j of [0, 1]) { const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC;
+    LEGS.forEach(g => { if (g.a !== S) return; const dt = ((g.t0 - ph) % CYC + CYC) % CYC; if (dt < best.t) best = { t: dt, per: g.b.name, j }; }); } return best; }
+  // [mappa_nuova] GLI ANNUNCI IN BANCHINA (come alla stazione di sopra): il treno in arrivo, il binario, la linea gialla; sul treno la fermata
+  function annunci(st) { const p = st.player, R0 = S0(st); if (!M.linea || !p.lv || p.lv.k !== 'ug') return; R0.annunci = R0.annunci || {};
+    if (p.lv.ride !== undefined) { const tr = train(st, p.lv.ride); if (tr && !tr.at) { const k = 'v' + p.lv.ride + ':' + tr.next + ':' + Math.floor((st.clock || 0) / CYC); const Sx = stationOf(tr.next); if (!R0.annunci[k] && Sx && Math.hypot(tr.x - Sx.x, tr.y - Sx.y) < 60) { R0.annunci[k] = 1; G.feed(st, `«Prossima fermata: ${Sx.name}. Scendere dal lato della banchina.»`, 'info'); } } return; }
+    for (const S of M.stazioni) { if (!onPlatform(st, S)) continue; const w = arrivo(st, S); if (w.t > 12) continue; const k = S.id + ':' + Math.round((st.clock || 0) + w.t);
+      if (!R0.annunci[k]) { R0.annunci[k] = 1; G.feed(st, `«Treno per ${w.per} in arrivo al binario ${w.j + 1}. Allontanarsi dalla linea gialla.»`, 'info'); st.sfx && st.sfx.push({ k: 'campanello' }); } } }
   const onPlatform = (st, S) => { const p = st.player; return p.lv && p.lv.k === 'ug' && p.lv.ride === undefined && Math.hypot(p.x - S.x, p.y - S.y) < 12.5; };
   function board(st, j) {
     const p = st.player, tr = train(st, j); if (!tr || !tr.at) return 'Il treno non è in banchina.';
     const S = stationOf(tr.at); if (!onPlatform(st, S)) return 'Devi essere sulla banchina.';
     p.lv = { k: 'ug', ride: j }; p.path = []; const R0 = S0(st); R0.ride = { j, from: tr.at, t0: st.clock };
     p.x = tr.x; p.y = tr.y; st.sfx && st.sfx.push({ k: 'porta' });
+    if (M.linea) { R0.ride.to = tr.next; G.feed(st, `Prossima fermata: ${tr.nextName}.`, 'info'); return `Sali sul treno per ${tr.nextName}. Le porte si chiudono tra ${Math.ceil(tr.left)} secondi.`; }
     return `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}. Le porte si chiudono tra ${Math.ceil(tr.left)} secondi.`;
   }
   function rideStep(st) {
@@ -535,8 +596,8 @@ var Sottosuolo = (function () {
     const tr = train(st, R0.ride.j); if (!tr) return;
     p.x = tr.x; p.y = tr.y; p.face = tr.ang + (tr.dir < 0 ? Math.PI : 0); p.speed = 0;
     if (tr.at && tr.at !== R0.ride.from) {
-      const S = stationOf(tr.at), side = (tr.x - S.x) * M.nx + (tr.y - S.y) * M.ny > 0 ? 1 : -1;
-      p.lv = { k: 'ug' }; p.x = S.x + M.nx * side * 1.6; p.y = S.y + M.ny * side * 1.6; R0.ride = null;
+      const S = stationOf(tr.at), Nx = M.linea ? S.nx : M.nx, Ny = M.linea ? S.ny : M.ny, side = (tr.x - S.x) * Nx + (tr.y - S.y) * Ny > 0 ? 1 : -1;
+      p.lv = { k: 'ug' }; p.x = S.x + Nx * side * 1.6; p.y = S.y + Ny * side * 1.6; R0.ride = null;
       const L = LV.S(st); L.lastU = ti(p.x, p.y);
       G.feed(st, `${S.name}. Si scende. Le scale sono in fondo alla banchina (V per salire in strada).`, 'good');
     }
@@ -545,8 +606,9 @@ var Sottosuolo = (function () {
   function metroKey(st) {
     const p = st.player; if (!M.ok || !p.lv || p.lv.k !== 'ug') return null;
     if (p.lv.ride !== undefined) return 'Sei sul treno: scendi alla prossima.';
-    for (const S of [M.A, M.B]) if (onPlatform(st, S)) {
+    for (const S of stazioni()) if (onPlatform(st, S)) {
       for (const j of [0, 1]) { const tr = train(st, j); if (tr && tr.at === S.id) return board(st, j); }
+      if (M.linea) { const w = arrivo(st, S); return `Il prossimo treno arriva tra ${Math.max(1, Math.ceil(w.t))} secondi${w.per ? ' (per ' + w.per + ')' : ''}.`; }
       // un treno arriva a sud all'inizio del suo ciclo, a nord dopo una sosta e un viaggio
       const arr = S.id === 'sud' ? 0 : DW + TT, wait = Math.min(...[0, 1].map(j => ((arr - ((st.clock || 0) + j * CYC / 2)) % CYC + CYC) % CYC));
       return `Il prossimo treno arriva tra ${Math.max(1, Math.ceil(wait))} secondi.`;
@@ -681,7 +743,7 @@ var Sottosuolo = (function () {
   { const k0 = LV.key; LV.key = (st, k, sh) => { if (k === 'v' && !st.player.indoor) { const p = st.player, [tx, ty] = ti(p.x, p.y), L = LV.S(st); const onPortal = p.lv && L.portals.some(P => LV.CLIMB.has(P.kind) && P.u[0] === tx && P.u[1] === ty); if (!onPortal) { const m = metroKey(st); if (m) return m; } } return k0(st, k, sh); }; }
   function step(st, dt) {
     if (!st.player) return; const R0 = S0(st), p = st.player;
-    rideStep(st); folkStep(st, dt);
+    rideStep(st); folkStep(st, dt); if (M.linea) annunci(st);
     if (!st.__ssT || st.clock - st.__ssT > .5) {
       st.__ssT = st.clock;
       if (p.lv && p.lv.k === 'ug') TPL.places.forEach(q => { if (!R0.found[q.id] && Math.hypot(q.x - p.x, q.y - p.y) < q.r) { R0.found[q.id] = st.t; G.feed(st, `Hai scoperto: ${q.name}.`, 'good'); } });
@@ -735,7 +797,7 @@ var Sottosuolo = (function () {
     if (!p.lv) return best;
     R0.folk.forEach(n => test(n.x, n.y, n.f + 1.2, 'n:' + n.id, `${n.name} · ${n.role}`));
     R0.crates.forEach(c => test(c.x, c.y, c.f + .5, 'c:' + c.id, c.open ? `${c.label} (vuota)` : `Apri: ${c.label}`));
-    if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}`); });
+    if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.nextName || (tr.at === 'sud' ? M.B.name : M.A.name)}`); });
     return best;
   }
   function find(st, ref) {
@@ -981,6 +1043,15 @@ var Sottosuolo = (function () {
           wall(25, 5.6, 0, -6.2, 0); wall(25, 5.6, 0, 6.2, Math.PI); }
         for (const x of [-7, 0, 7]) { cy(g, .3, .3, 4.2, '#c8c4b4', x, 2.1, 0); for (const z of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.6, .65), new THREE.MeshBasicMaterial({ map: signTex(Rm.name || '') })); sn.position.set(x, 2.6, z * .32); sn.rotation.y = z > 0 ? 0 : Math.PI; g.add(sn); } }
         for (const x of [-4, 4]) for (const z of [-1, 1]) { bx(g, 1.6, .08, .45, '#c83a2a', x, .45, z * 1.5); bx(g, .1, .45, .35, iron, x - .7, .22, z * 1.5); bx(g, .1, .45, .35, iron, x + .7, .22, z * 1.5); }
+        // [mappa_nuova] la stazione di sopra portata sotto: la pensilina di ghisa con le mensole sulla banchina, l'orologio a due facce, il
+        // tabellone delle partenze, la panchina di legno e il nome PORTO VECCHIO sotto quello della fermata
+        if (Rm.linea) { const ghisa = mat('#3a4a3e', { metalness: .4, roughness: .55 }), legno = '#7a5434';
+          bx(g, 22, .1, 5.6, ghisa, 0, 3.55, 0); bx(g, 22, .06, 5.2, '#8a8a7c', 0, 3.47, 0); bx(g, 22, .22, .08, ghisa, 0, 3.4, 2.78); bx(g, 22, .22, .08, ghisa, 0, 3.4, -2.78);
+          for (const x of [-10.5, -3.5, 3.5, 10.5]) { cy(g, .11, .14, 3.5, ghisa, x, 1.75, 0); for (const z of [-1, 1]) { const m = bx(g, .08, .08, 2.4, ghisa, x, 3.1, z * 1.2); m.rotation.x = z * .5; } bx(g, .34, .12, .34, ghisa, x, .06, 0); }
+          { const ck = new THREE.Group(); ck.position.set(1.8, 2.85, 0); cy(ck, .48, .48, .14, ghisa, 0, 0, 0).rotation.x = Math.PI / 2; for (const z of [-1, 1]) { const fc = cy(ck, .42, .42, .02, glow('#fff6dc', .9), 0, 0, z * .08); fc.rotation.x = Math.PI / 2; bx(ck, .03, .3, .01, '#1a1a1a', 0, .1, z * .095); bx(ck, .22, .03, .01, '#1a1a1a', .08, 0, z * .095); } cy(ck, .03, .03, .6, ghisa, 0, .55, 0); g.add(ck); }
+          { const tb = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.1), new THREE.MeshBasicMaterial({ map: signTex('PARTENZE') })); tb.position.set(-5.2, 2.2, .2); g.add(tb); const tb2 = tb.clone(); tb2.rotation.y = Math.PI; tb2.position.z = -.2; g.add(tb2); }
+          for (const x of [-9, 9]) { bx(g, 2.2, .07, .5, legno, x, .48, 0); bx(g, 2.2, .45, .06, legno, x, .75, -.22); for (const xx of [-.9, .9]) bx(g, .08, .45, .45, ghisa, x + xx, .24, 0); }
+          for (const x of [-10.5, 10.5]) for (const z of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .38), new THREE.MeshBasicMaterial({ map: signTex('PORTO VECCHIO') })); sn.position.set(x, 3.0, z * .16); sn.rotation.y = z > 0 ? 0 : Math.PI; g.add(sn); } }
         // i letti dei binari lungo la banchina, coi binari
         for (const z of [-1, 1]) { bx(g, 24, .1, 2.6, '#2a2622', 0, -1.1, z * 4.4); for (const o of [-.72, .72]) bx(g, 24, .1, .1, mat('#9aa0a8', { metalness: .7, roughness: .35 }), 0, -1, z * 4.4 + o); for (let x = -11.5; x <= 11.5; x += .8) bx(g, .25, .08, 2, '#4a3a2a', x, -1.08, z * 4.4); bx(g, 24, 1.05, .2, '#c8c4b4', 0, -.52, z * 2.95); }
         break; }
@@ -1280,23 +1351,25 @@ var Sottosuolo = (function () {
   // le gallerie: due tubi che si avvolgono per mezzo giro, i binari, i passaggi di servizio a pioli (i «gradini» dell'elica)
   function buildMetro() {
     const g = new THREE.Group(), cut = 12.5 / M.L, rail = mat('#9aa0a8', { metalness: .7, roughness: .35 }); GFX.tubes = [];
-    for (const j of [0, 1]) {
-      const pts = []; for (let k = 0; k <= 160; k++) { const t = cut + (1 - 2 * cut) * k / 160, q = trackAt(j, t); pts.push(new THREE.Vector3(q.x, q.h + 1.4, q.y)); }
+    // [mappa_nuova] con la linea a più stazioni un tubo per tratto (fra le banchine), come per i due capi
+    const TR = M.linea ? M.seg.map(Q => [(Q.s0 + 12.5) / M.L, (Q.s0 + Q.L - 12.5) / M.L]) : [[cut, 1 - cut]];
+    for (const j of [0, 1]) for (const [ta, tb] of TR) {
+      const pts = []; for (let k = 0; k <= 160; k++) { const t = ta + (tb - ta) * k / 160, q = trackAt(j, t); pts.push(new THREE.Vector3(q.x, q.h + 1.4, q.y)); }
       // il cemento della galleria con gli anelli dei conci: le fasce chiare si accendono appena (si legge la forma anche al buio)
       const tex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = j ? '#4a4c50' : '#504c46'; x.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.06)'; x.fillRect(Math.random() * w, Math.random() * h, 3, 1); } x.fillStyle = j ? '#8ab0d8' : '#d8b080'; x.fillRect(0, 0, 3, h); x.fillStyle = 'rgba(20,20,20,.6)'; x.fillRect(4, 0, 1, h); x.fillRect(32, 0, 1, h); });
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(Math.round(M.L / 6), 2);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(Math.max(1, Math.round((tb - ta) * M.L / 6)), 2);
       const wall = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: .45, side: THREE.BackSide, roughness: 1, transparent: true, opacity: 1 });
       const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 2.6, 12, false), wall); g.add(tube); GFX.tubes.push(tube);
       // i binari e le luci di galleria
       const r0 = [], r1 = []; for (let k = 0; k <= 200; k++) { const t = -cut * .9 + (1 + 1.8 * cut) * k / 200, q = trackAt(j, t), q2 = trackAt(j, t + .001), dx = q2.x - q.x, dy = q2.y - q.y, d = Math.hypot(dx, dy) || 1, px = -dy / d, py = dx / d; r0.push(new THREE.Vector3(q.x + px * .72, q.h + .06, q.y + py * .72)); r1.push(new THREE.Vector3(q.x - px * .72, q.h + .06, q.y - py * .72)); }
-      for (const rr of [r0, r1]) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rr), 300, .06, 4, false), rail));
-      for (let k = 1; k < 30; k++) { const t = cut + (1 - 2 * cut) * k / 30, q = trackAt(j, t); bx(g, .5, .12, .5, glow(j ? '#9ad0ff' : '#ffe0a0', 1.4), q.x, q.h + 3.6, q.y); }
+      if (ta === TR[0][0]) for (const rr of [r0, r1]) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rr), 300, .06, 4, false), rail));
+      for (let k = 1; k < 30; k++) { const t = ta + (tb - ta) * k / 30, q = trackAt(j, t); bx(g, .5, .12, .5, glow(j ? '#9ad0ff' : '#ffe0a0', 1.4), q.x, q.h + 3.6, q.y); }
     }
     // i pioli dell'elica: passaggi di servizio tra le due gallerie, a due colori per metà come le basi del DNA
     const PAIR = [['#d8503a', '#3a8ad8'], ['#e8c03a', '#3ac87a']];
-    for (let k = 1; k < 12; k++) {
-      const t = k / 12, a = trackAt(0, t), b = trackAt(1, t), A = new THREE.Vector3(a.x, a.h + 1.4, a.y), Bv = new THREE.Vector3(b.x, b.h + 1.4, b.y), mid = A.clone().add(Bv).multiplyScalar(.5), len = A.distanceTo(Bv) - 5;
-      if (len <= .5) continue; const dir = Bv.clone().sub(A).normalize(), cols = PAIR[k % 2];
+    for (let k = 1; k < (M.linea ? 24 : 12); k++) {
+      const t = k / (M.linea ? 24 : 12), a = trackAt(0, t), b = trackAt(1, t), A = new THREE.Vector3(a.x, a.h + 1.4, a.y), Bv = new THREE.Vector3(b.x, b.h + 1.4, b.y), mid = A.clone().add(Bv).multiplyScalar(.5), len = A.distanceTo(Bv) - 5;
+      if (len <= .5 || (M.linea && M.stazioni.some(S => Math.hypot(a.x - S.x, a.y - S.y) < 16))) continue; const dir = Bv.clone().sub(A).normalize(), cols = PAIR[k % 2];
       [[A, cols[0]], [Bv, cols[1]]].forEach(([E, c]) => { const half = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, len / 2, 10, 1, true), mat(c, { emissive: c, emissiveIntensity: .35, side: THREE.DoubleSide })); const at = mid.clone().add(E.clone().sub(mid).normalize().multiplyScalar(len / 4)); half.position.copy(at); half.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(half); });
     }
     // i treni
@@ -1338,7 +1411,7 @@ var Sottosuolo = (function () {
     }
     L.portals.filter(P => P.kind === 'grata').forEach(P => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
     L.portals.filter(P => P.kind === 'scala').forEach(P => {
-      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = P.metro === 'sud' ? M.A : M.B, a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
+      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = stationOf(P.metro), a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
       bx(q, 2.6, .04, 1.7, '#060606', 0, .02, 0); for (let k = 0; k < 4; k++) bx(q, .5, .02, 1.5, '#5a5a56', -.9 + k * .5, -.1 - k * .25, 0);
       for (const s of [-1, 1]) { bx(q, 2.7, .06, .06, mat('#9aa0a8', { metalness: .6 }), 0, .95, s * .9); for (const xx of [-1.3, 0, 1.3]) bx(q, .06, .95, .06, mat('#9aa0a8', { metalness: .6 }), xx, .48, s * .9); }
       bx(q, .06, .95, 1.8, mat('#9aa0a8', { metalness: .6 }), -1.33, .48, 0);
@@ -1361,7 +1434,7 @@ var Sottosuolo = (function () {
     const under = !!(p.lv && p.lv.k === 'ug'), t = performance.now() / 1000, dt = Math.min(.1, t - (GFX.t0 || t)); GFX.t0 = t;
     GFX.ug.visible = under; GFX.lights.forEach(l => { l.visible = under; });
     // le gallerie si vedono dalle banchine e dal treno, non dalle fogne (passano sotto, più in basso)
-    if (GFX.metro) GFX.metro.visible = under && M.ok && (p.lv.ride !== undefined || Math.hypot(p.x - M.A.x, p.y - M.A.y) < 34 || Math.hypot(p.x - M.B.x, p.y - M.B.y) < 34);
+    if (GFX.metro) GFX.metro.visible = under && M.ok && (p.lv.ride !== undefined || stazioni().some(S => Math.hypot(p.x - S.x, p.y - S.y) < 34));
     if (!under) { if (GFX.surf) GFX.surf.visible = true; Object.values(GFX.people).forEach(g => { g.visible = false; }); Object.values(GFX.crates).forEach(g => { g.visible = false; }); return; }
     // sul treno: si toglie il tetto della carrozza e si sbiadisce l'altra galleria (passa sopra o sotto)
     const ride = p.lv.ride; GFX.trains.forEach((m, j) => m.traverse(o => { if (o.name === 'tetto') o.visible = ride !== j; }));
