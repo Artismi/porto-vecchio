@@ -17414,6 +17414,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       let g = dyn.people[n.id];
       // [popolo] il modello si crea solo per chi si vede; gli abitanti lontani (popolo.js) lo liberano
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
+      // [leggera] sul telefono anche chi entra in casa lascia la scena (tra le figure tenute da parte, PEOPLE_KEEP): non resta nascosto a pesare
       if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
