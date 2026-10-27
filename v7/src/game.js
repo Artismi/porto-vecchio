@@ -126,6 +126,29 @@ var Game = (function () {
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
   // [botteghe] la porta della bottega sotto casa (b.shopFront.door) porta nel suo locale, il portone nell'androne: stesso edificio, due ingressi (L.ent, L.ent2)
   const SHOP_T = new Set(); W0.BUILDINGS.forEach((b, i) => { const S = b.shopFront; if (S && S.door) { const k = S.door[1] * W0.GW + S.door[0]; DOOR_OF.set(k, i); SHOP_T.add(k); } });
+  // [porte] nella città nuova 31 caselle sono la porta di due edifici (due case a schiera che si toccano d'angolo): in DOOR_OF
+  // vinceva l'ultimo (si entrava nel 342 dalla porta del Bar Da Gino, e la Banja del Lido non si apriva). DOORS_AT tiene tutti
+  // gli edifici di ogni casella-porta, e chi entra sceglie quello che ha davanti (doorFront)
+  const DOORS_AT = new Map(), addDoor = (k, bi, shop) => { const a = DOORS_AT.get(k); if (a) a.push({ bi, shop }); else DOORS_AT.set(k, [{ bi, shop }]); };
+  W0.BUILDINGS.forEach((b, i) => { if (b.door) addDoor(b.door[1] * W0.GW + b.door[0], i, false); const S = b.shopFront; if (S && S.door) addDoor(S.door[1] * W0.GW + S.door[0], i, true); });
+  // [porte] la porta davanti al giocatore (a meno di 1,6 m dal centro della sua casella). dir: verso dove spinge o guarda;
+  // only: soltanto le porte di quell'edificio (quella cliccata); minDot: quanto bisogna puntare verso l'interno (null: non conta).
+  // Fra due edifici sulla stessa casella vince quello verso cui si punta, poi il più vicino.
+  function doorFront(st, dir, only, minDot) {
+    const p = st.player; if (p.indoor || p.vehicle || p.lv) return null;
+    const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS), al = dir ? Math.hypot(dir[0], dir[1]) : 0; let best = null, bs = -1e9;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const k = (ty + oy) * GW + tx + ox, A = DOORS_AT.get(k); if (!A) continue;
+      for (const D of A) {
+        if (only !== undefined && only !== null && D.bi !== only) continue;
+        const b = W0.BUILDINGS[D.bi], dr = D.shop ? b.shopFront.door : b.door, dx = (dr[0] + .5) * TS, dy = (dr[1] + .5) * TS, d = Math.hypot(dx - p.x, dy - p.y); if (d >= 1.6) continue;
+        const qx = clamp(dx, b.x * TS, (b.x + b.w) * TS) - p.x, qy = clamp(dy, b.y * TS, (b.y + b.h) * TS) - p.y, ql = Math.hypot(qx, qy) || 1;   // il punto della facciata dietro la porta
+        const dot = al ? (qx * dir[0] + qy * dir[1]) / (ql * al) : 0; if (minDot != null && dot <= minDot) continue;
+        const sc = dot * 2 - d; if (sc > bs) { bs = sc; best = { bi: D.bi, shop: D.shop, d, dot, x: dx, y: dy }; }
+      }
+    }
+    return best;
+  }
   const entNear = (L, o) => L.ent2 && (!L.ent || Math.hypot(o.x - L.ent2.in[0], o.y - L.ent2.in[1]) < Math.hypot(o.x - L.ent.in[0], o.y - L.ent.in[1])) ? L.ent2 : L.ent;
   function enterBuilding(st, bi, shop) {
     const p = st.player, b = W0.BUILDINGS[bi]; if (!INT || !b || p.vehicle) return false;
@@ -643,6 +666,9 @@ var Game = (function () {
     for (const n of st.npcs) { if (n.dead || n.inside || n.jailedUntil > st.t) continue; const d = dist(n.x, n.y, st.player.x, st.player.y); if (d < bd) { bd = d; best = n; } }
     return best;
   }
+  function vehDist(st, v) { const K = VK[v.kind], q = vLocal(v, st.player.x, st.player.y); return Math.hypot(Math.max(0, Math.abs(q.lx) - K.len / 2), Math.max(0, Math.abs(q.ly) - K.wid / 2)); }
+  // [porte] cosa fa il tasto azione (F) a piedi: entra dalla porta che hai davanti, se la guardi o se è più vicina del mezzo; se no il mezzo
+  function actionKey(st) { const p = st.player; if (p.vehicle) return 'veicolo'; const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]); if (!D) return 'veicolo'; const v = nearestVehicle(st, 1.8); return !v || D.dot > .5 || D.d < vehDist(st, v) ? 'porta' : 'veicolo'; }   // guardando la porta, la porta
   function nearestVehicle(st, range) {
     let best = null, bd = 1e9;
     for (const v of st.vehicles) { if (v.rider || v.hidden || v.wreck || v.burning) continue; const K = VK[v.kind], q = vLocal(v, st.player.x, st.player.y); const d = Math.hypot(Math.max(0, Math.abs(q.lx) - K.len / 2), Math.max(0, Math.abs(q.ly) - K.wid / 2)); if (d < (range || 1.8) && d < bd) { bd = d; best = v; } }
@@ -662,7 +688,9 @@ var Game = (function () {
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
     else if (n && !n.cop && !n.faction) out.push({ key: 'E', label: `Scippa ${n.first}`, bad: true });
-    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
+    const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]);   // [porte] davanti a una porta (più vicina del mezzo): F entra
+    if (D && (!v || D.dot > .5 || D.d < vehDist(st, v))) { const b = W0.BUILDINGS[D.bi]; out.push({ key: 'F', label: 'Entra' + (b.name ? ': ' + b.name : '') }); }
+    else if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
     return out;
   }
 
@@ -699,6 +727,10 @@ var Game = (function () {
   function act(st, type) {
     const p = st.player, rng = st.rng;
     if (st.over || p.stun > 0) return { ok: false };
+    if (type === 'porta') {   // [porte] il tasto azione davanti a una porta: si entra (l'edificio verso cui si guarda)
+      const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]); if (!D) return { ok: false, msg: 'Qui non c\'è una porta.' };
+      return enterBuilding(st, D.bi, D.shop) ? { ok: true, msg: '' } : { ok: false, msg: 'Questa porta non si apre.' };
+    }
     if (type === 'veicolo') {
       if (p.vehicle) { exitVehicle(st); return { ok: true, msg: '' }; }
       const v = nearestVehicle(st, 1.8); if (!v) return { ok: false, msg: 'Nessun mezzo qui vicino.' };
@@ -1419,6 +1451,11 @@ var Game = (function () {
     return false;
   }
   // [passo] chi cammina vicino al giocatore non passa attraverso gli altri: ci si scansa (appena, ognuno la sua metà)
+  // [seduti] chi sta seduto al suo posto (panchina, cinema, tavolino delle carte, spiaggia…: il blocco della giornata con un oggetto,
+  // fermo) non si sposta di peso: prima separate(), lo scostamento a griglia e pushOutOfVehicles lo facevano scivolare di 0,3-1 m
+  // al secondo quando gli altri seduti accanto o un'auto lo sfioravano. Lo scostamento lo fa tutto chi è in piedi
+  const SIT_OBJ = { panchina: 1, cinema: 1, carte: 1, spiaggia: 1, tavola: 1, barbiere: 1, tv: 1, radio: 1, bancone: 1, banco_chiesa: 1, canna: 1, libri: 1, album: 1 };
+  const seated = n => (n.speedNow || 0) < .3 && !n.dead && n.stun <= 0 && ((n.pop && n.pop.cur && SIT_OBJ[n.pop.cur.obj] && n.action && n.action.name === 'routine') || (n.__posto && n.__posto.arrived && /^(siede|siede_terra|carte|tavola|dorme)$/.test(n.__posto.pose || '')));   // anche chi riempie un posto (popolo.js) seduto
   function separate(st) {
     const p = st.player, cell = {}, L = [];
     for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
@@ -1426,7 +1463,8 @@ var Game = (function () {
       const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
         for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
-          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = (n.speedNow > .3 ? .5 : .3), b = (k.speedNow > .3 ? .5 : .3);
+          const sn = seated(n), sk = seated(k); if (sn && sk) continue;   // [seduti] due seduti vicini restano dove sono
+          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = sn ? 0 : sk ? (n.speedNow > .3 ? 1 : .6) : (n.speedNow > .3 ? .5 : .3), b = sk ? 0 : sn ? (k.speedNow > .3 ? 1 : .6) : (k.speedNow > .3 ? .5 : .3);
           if (walkM(n.x - ux * push * a, n.y - uy * push * a)) { n.x -= ux * push * a; n.y -= uy * push * a; }
           if (walkM(k.x + ux * push * b, k.y + uy * push * b)) { k.x += ux * push * b; k.y += uy * push * b; } } }
     }
@@ -1660,14 +1698,12 @@ var Game = (function () {
         if (INT.outside(L, p.x, p.y) || (p.indoor.f === 0 && Math.hypot(p.x - doorX, p.y - doorY) < 1.1 && (ix * ox + iy * oy) / (l * ol) > .3)) exitBuilding(st);
         else if (L.stairs && INT.stairGo) { const g = INT.stairGo(L, p.indoor.f, p.x, p.y); if (g) { p.indoor.f = g.f; p.x = g.x; p.y = g.y; p.path = []; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); } }   // [interni] scale di più piani
         else if (L.stairs && INT.onStairTop(L, p.x, p.y)) { const f = p.indoor.f; p.indoor.f = f ? 0 : 1; const q = f ? L.stairs.foot : L.stairs.landing; p.x = q[0]; p.y = q[1]; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); }
-      } else if (hitWall && !inp.noDoor) {
-        // contro la facciata, sulla soglia di una porta: si entra ([porte] col clic solo se si è cliccata la porta: inp.noDoor)
-        const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
-        for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const kT = (ty + oy) * GW + tx + ox, bi = DOOR_OF.get(kT); if (bi === undefined) continue;
-          const b = W0.BUILDINGS[bi], sh = SHOP_T.has(kT), dr = sh ? b.shopFront.door : b.door, cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
-          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((dr[0] + .5) * TS - p.x, (dr[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi, sh); break; }   // [botteghe]
-        }
+      } else if (inp.door !== undefined && inp.door !== null) {
+        // [porte] si entra solo dalla porta cliccata (inp.door, l'edificio): camminare coi tasti o con la levetta lungo un muro non apre
+        // più le porte che si sfiorano (prima bastavano 5° verso il muro: 54 porte su 80). Coi tasti si entra col tasto azione (F, act
+        // 'porta'; sul telefono e sul Game Boy il pulsante Entra). Non serve più sbattere contro il muro (hitWall): alcune case della città
+        // nuova hanno la casella dietro la porta senza muro (la casa bi 489, larga una casella) e lì non si entrava mai
+        const D = doorFront(st, [ix, iy], inp.door, .35); if (D) enterBuilding(st, D.bi, D.shop);   // [botteghe] la porta della bottega o il portone
       }
       const back = inp.aim !== undefined && Math.abs(angDiff(Math.atan2(iy, ix), inp.aim)) > 2.2;
       const ta = inp.aim !== undefined ? inp.aim : Math.atan2(iy, ix); p.face += angDiff(ta, p.face) * (1 - Math.exp(-dt * 28)); p.speed = back ? -sp : sp;   // [fluido] girarsi non dipende dai fotogrammi (1 - e^-k·dt) ed è svelto: un dietrofront in ~0,1 s (prima ~0,2 s e più lento coi fotogrammi lunghi)
@@ -2017,28 +2053,45 @@ var Game = (function () {
     }
     const panic = st.clock - (v.panicT || -99) < 8 || st.clock - st.panicAt < 3 && dist(v.x, v.y, st.player.x, st.player.y) < 30;
     const Ln = LANES[v.lane.i], target = (panic ? 13 : 0) || (Ln.id === 'litoranea' ? 10 : 7.5);
-    let block = 99;
+    let block = 99, blocker = null;
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
-    const check = (x, y, r, lat0, look) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5)) block = Math.min(block, along - r); };
+    const check = (x, y, r, lat0, look, o) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5) && along - r < block) { block = along - r; blocker = o || null; } };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
     // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
     for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13) continue; if (n.__ev) check(n.x, n.y, .4, 2.4, 12); else check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
     const K = VK[v.kind];
     let want = target;
     if (HOOKS.corsa) want = HOOKS.corsa(st, v, want);   // [vievive] la velocità per rango di strada
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
     if (v.speed < want) v.speed = Math.min(want, v.speed + K.accel * .6 * dt); else v.speed = Math.max(want, v.speed - 14 * dt);
     if (block < 3 && v.speed < .5) { v.stuck += dt; if (v.stuck > 2.5 && st.clock > v.honk) { v.honk = st.clock + 3; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } else v.stuck = 0;
+    const Lr = v.lane;
+    // [traffico] dietro un mezzo fermo che non ripartirà (in panne, abbandonato, un relitto, parcheggiato in mezzo) non si resta per
+    // sempre (prima 6 auto ferme 18 minuti dietro un furgone in panne): dopo 3 s si sorpassa sull'altra corsia, se è libera per 30 m;
+    // chi resta fermo 15 s (corsia opposta sempre occupata, coda dietro a chi aspetta) fa inversione e prende l'altro senso
+    const fermo = o => o && !o.traffic && o.rider !== 'player' && Math.hypot(o.vx || 0, o.vy || 0) < .3;
+    if (!v.pass && v.stuck > 3 && fermo(blocker) && Ln.w >= 5) {
+      let libera = true; const lx = Math.sin(v.ang) * Ln.w / 2, ly = -Math.cos(v.ang) * Ln.w / 2;   // il centro della corsia di sinistra
+      for (const o of st.vehicles) { if (o === v || o === blocker || o.hidden) continue; const dx = o.x - (v.x + lx), dy = o.y - (v.y + ly), al = dx * fx + dy * fy, la = Math.abs(-dx * fy + dy * fx); if (al > -4 && al < 30 && la < 2.2) { libera = false; break; } }
+      if (libera) v.pass = { by: blocker.id, k: 0, until: st.clock + 12 };
+    }
+    if (v.pass) {   // in sorpasso: la corsia di sinistra finché l'ostacolo non è 6 m dietro, poi si rientra
+      const o = st.vehicles.find(z => z.id === v.pass.by), dx = o ? o.x - v.x : -99, dy = o ? o.y - v.y : 0, dietro = !o || o.hidden || dx * fx + dy * fy < -(VK[o.kind].len / 2 + 6);
+      if (dietro || st.clock > v.pass.until) { v.pass.k -= dt * .8; if (v.pass.k <= 0) v.pass = null; } else v.pass.k = Math.min(1, v.pass.k + dt * .8);
+      if (v.pass && o && v.pass.k > .5 && blocker === o) { block = 99; want = target * .6; if (v.speed < want) v.speed = Math.min(want, v.speed + K.accel * .6 * dt); v.stuck = 0; }   // spostati di lato non è più davanti
+    }
+    if (v.stuck > 15) { Lr.dir *= -1; v.stuck = 0; v.pass = null; v.speed = 0; }   // [traffico] inversione: si torna indietro
     // segue la sua corsia; a fine strada fa inversione
-    const Lr = v.lane; Lr.s += v.speed * dt * Lr.dir;
+    Lr.s += v.speed * dt * Lr.dir;
     if (!Ln.closed && (Lr.s > Ln.L - 3 || Lr.s < 3)) {
       const e = Lr.s > Ln.L - 3 ? 1 : 0, opts = (e === 1) === (Lr.dir > 0) ? Ln.conn[e] : null;
       if (opts && opts.length) { const o = (HOOKS.svolta && HOOKS.svolta(st, v, opts)) || opts[Math.floor(st.rng() * opts.length)];   /* [vievive] chi gira in città sceglie la svolta per rango */ v.lane = { i: o.j, s: o.s + o.dir * 1, dir: o.dir }; v.speed = Math.min(v.speed, 5); }
       else if (opts) { Lr.dir *= -1; Lr.s = clamp(Lr.s, 3, Ln.L - 3); }
     }
     const q = lanePos(Ln, Lr.s, Lr.dir), q2 = lanePos(Ln, Lr.s + Lr.dir * 5, Lr.dir);
+    if (v.pass) { const k = Math.min(1, v.pass.k) * Ln.w / 2, h = q.ang; q.x += Math.sin(h) * k; q.y -= Math.cos(h) * k; q2.x += Math.sin(h) * k; q2.y -= Math.cos(h) * k; }   // [traffico] in sorpasso, spostato sulla corsia di sinistra
     { const k = Math.min(1, dt * 3); let mx = (q.x - v.x) * k, my = (q.y - v.y) * k; const md = Math.hypot(mx, my), cap = (v.speed + 1.5) * dt * 1.3; if (md > cap) { mx *= cap / md; my *= cap / md; } v.x += mx; v.y += my; }
     v.ang += angDiff(Math.atan2(q2.y - q.y, q2.x - q.x), v.ang) * Math.min(1, dt * 4);
     v.vx = Math.cos(v.ang) * v.speed; v.vy = Math.sin(v.ang) * v.speed; v.w = 0; v._spd = v.speed; v.skid = 0; v.steer = 0;
@@ -2541,7 +2594,7 @@ var Game = (function () {
       n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
       moveNpc(st, n, ndt);
-      if (!n.inside) pushOutOfVehicles(st, n, .35);
+      if (!n.inside && !seated(n)) pushOutOfVehicles(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
     }
     separate(st);   // [passo]
     for (const v of st.vehicles) {
@@ -2575,7 +2628,7 @@ var Game = (function () {
         for (const a of C) for (const b of D) {
           if (a === b || (D === C ? C.indexOf(b) < C.indexOf(a) : (ox * 3 + oy) < 0)) continue;
           const d = dist(a.x, a.y, b.x, b.y);
-          if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+          if (d < .55 && d > .001) { const sa = seated(a), sb = seated(b); if (sa && sb) continue; const push = (.55 - d) / 2 * (sa || sb ? 2 : 1), ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (!sa && walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (!sb && walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }   // [seduti]
         }
       }
     }
@@ -2615,7 +2668,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche

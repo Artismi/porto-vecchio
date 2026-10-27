@@ -162,7 +162,7 @@
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
-    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
+    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
@@ -300,19 +300,19 @@
     // [porte] solo il clic SULLA PORTA: il rettangolo della porta sulla facciata (largo 1,4 m, alto 2,4 m) proiettato sullo schermo;
     // prima bastava cliccare per terra a meno di 3 m da una porta e si entrava
     if (!p.indoor && G.DOOR_OF) { const TS = G.TS, tx = Math.floor(g.x / TS), ty = Math.floor(g.y / TS), GWm = G.MAP.world.GW, px = nx * o.w, py = ny * o.h; let bd = 1e9, hit = null;
-      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) { const bi = G.DOOR_OF.get((ty + oy) * GWm + tx + ox); if (bi === undefined) continue; const b = G.BUILDINGS[bi]; if (!b || !b.door) continue;
-        const D = doorQuad(b, TS); if (!D) continue;
+      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) for (const E of (G.DOORS_AT ? G.DOORS_AT.get((ty + oy) * GWm + tx + ox) : null) || []) { const bi = E.bi, b = G.BUILDINGS[bi], dr = b && (E.shop ? b.shopFront.door : b.door); if (!dr) continue;   // [porte] tutti gli edifici di una casella-porta contesa
+        const D = doorQuad(b, TS, dr); if (!D) continue;
         const Q = D.c.map(([x, h, y]) => R.project(x, h, y)); if (Q.some(q => q.behind)) continue;
         const pts = Q.map(q => [q.x * o.w, q.y * o.h]); let inside = false;
         for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; }
         if (!inside) continue;
-        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS }; } }
+        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (dr[0] + .5) * TS, y: (dr[1] + .5) * TS }; } }
       if (hit) return hit; }
     const f = freeSpot(g.x, g.y); return { kind: 'move', x: f.x, y: f.y };
   }
   // [porte] i quattro angoli della porta sulla facciata (la casella della porta sta fuori dall'edificio, la facciata sul suo lato verso dentro)
-  function doorQuad(b, TS) {
-    const dx = b.door[0], dy = b.door[1]; let fx, fy, tx, ty;
+  function doorQuad(b, TS, dr) {
+    dr = dr || b.door; const dx = dr[0], dy = dr[1]; let fx, fy, tx, ty;
     if (dy === b.y + b.h) { fx = (dx + .5) * TS; fy = dy * TS; tx = 1; ty = 0; }
     else if (dy === b.y - 1) { fx = (dx + .5) * TS; fy = (dy + 1) * TS; tx = 1; ty = 0; }
     else if (dx === b.x + b.w) { fx = dx * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
@@ -374,7 +374,7 @@
     }
     if (c.kind === 'door') {
       if (p.indoor) return stop();
-      const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
+      const b = G.BUILDINGS[c.bi], cx = Math.max(b.x * G.TS, Math.min((b.x + b.w) * G.TS, gx)), cy = Math.max(b.y * G.TS, Math.min((b.y + b.h) * G.TS, gy));   // [porte] si spinge verso la facciata dietro la porta (come G.doorFront), non verso il centro dell'edificio
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
@@ -407,7 +407,7 @@
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
     const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
     // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door' };
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door', door: c.kind === 'door' ? c.bi : undefined };   // [porte] door: si entra solo nell'edificio cliccato
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -755,6 +755,7 @@
   function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
   function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
   const TB = {
+    entra: { l: 'Entra', big: 1, dn: () => { click.t = null; ui.mark = null; doAct('porta'); } },   // [porte]
     salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
     corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
     arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
@@ -777,6 +778,7 @@
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
     if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
+    if (G.actionKey && G.actionKey(st) === 'porta') return ['entra', 'salta'];   // [porte] davanti a una porta: Entra (sul Game Boy il pulsante A)
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
