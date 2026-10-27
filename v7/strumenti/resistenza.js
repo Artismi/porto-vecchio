@@ -385,8 +385,8 @@ const COPIONI = {
   // la guardia della memoria
   const guardia = setInterval(async () => {
     const m = memDisp(), v = vive();
-    if (m < SOGLIA_MB && v.length >= 3) { const C = v[v.length - 1]; decisioni.push({ s: sec(), cosa: `memoria disponibile ${m} MB < ${SOGLIA_MB}: chiudo la scheda ${C.nome}, si resta a 2 (il copione ${C.copioni.join('+')} passa a ${v[1].nome})` }); log('GUARDIA', decisioni[decisioni.length - 1].cosa); C.chiusa = true; C.chiusaA = sec(); v[1].copioni.push(...C.copioni); await C.b.close().catch(() => { }); }
-    else if (m < SOGLIA2_MB && v.length >= 2) { const C = v[v.length - 1]; decisioni.push({ s: sec(), cosa: `memoria disponibile ${m} MB < ${SOGLIA2_MB}: chiudo anche la scheda ${C.nome}` }); log('GUARDIA', decisioni[decisioni.length - 1].cosa); C.chiusa = true; C.chiusaA = sec(); v[0].copioni.push(...C.copioni); await C.b.close().catch(() => { }); }
+    if (m < SOGLIA_MB && v.length >= 3) { const C = v[v.length - 1]; decisioni.push({ s: sec(), cosa: `memoria disponibile ${m} MB < ${SOGLIA_MB}: chiudo la scheda ${C.nome}, si resta a 2 (il copione ${C.copioni.join('+')} passa a ${v[1].nome})` }); log('GUARDIA', decisioni[decisioni.length - 1].cosa); C.chiusa = true; C.chiusaA = sec(); v[1].copioni.push(...C.copioni); if (C.b) await C.b.close().catch(() => { }); }
+    else if (m < SOGLIA2_MB && v.length >= 2) { const C = v[v.length - 1]; decisioni.push({ s: sec(), cosa: `memoria disponibile ${m} MB < ${SOGLIA2_MB}: chiudo anche la scheda ${C.nome}` }); log('GUARDIA', decisioni[decisioni.length - 1].cosa); C.chiusa = true; C.chiusaA = sec(); v[0].copioni.push(...C.copioni); if (C.b) await C.b.close().catch(() => { }); }
   }, 5000);
   const gioca = async S => {
     if (S.chiusa) return; S.inizio = sec(); const fine = Date.now() + MINUTI * 60000; let i = 0, tC = 0, tA = 0;
@@ -405,6 +405,7 @@ const COPIONI = {
   // si aprono una dopo l'altra (il caricamento è la parte più pesante); ognuna gioca appena è pronta
   const SERVE_MB = +(ARG.serve || 2600), ATTESA_MIN = +(ARG.attesa || 45);   // quanto chiede un browser col gioco (renderer ~2 GB + scheda video) e quanto si aspetta che si liberi
   for (const S of SCHEDE) {
+    if (S.chiusa) continue;   // la guardia l'ha già tolta
     if (memDisp() < SERVE_MB) { const t = Date.now(), lim = (S === SCHEDE[0] ? ATTESA_MIN : 10) * 60000; log(`[${S.nome}] memoria disponibile ${memDisp()} MB < ${SERVE_MB}: aspetto fino a ${lim / 60000} min`); while (memDisp() < SERVE_MB && Date.now() - t < lim) await sleep(10000); decisioni.push({ s: sec(), cosa: `prima di aprire ${S.nome} aspettati ${Math.round((Date.now() - t) / 1000)} s di memoria; ora ${memDisp()} MB` }); }
     if (S !== SCHEDE[0] && memDisp() < SOGLIA_MB && SCHEDE.filter(q => q.b && !q.chiusa).length >= 2) { decisioni.push({ s: sec(), cosa: `memoria ${memDisp()} MB < ${SOGLIA_MB}: la scheda ${S.nome} non si apre, il suo copione passa a ${SCHEDE[1].nome}` }); log('GUARDIA', decisioni[decisioni.length - 1].cosa); S.chiusa = true; S.chiusaA = sec(); SCHEDE[1].copioni.push(...S.copioni); continue; }
     try { await S.apri(SRV.url); giri.push(gioca(S)); } catch (e) { S.L('apertura fallita', e.message); S.apertura = String(e.message).slice(0, 300); S.chiusa = true; } }
