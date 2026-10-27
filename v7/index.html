@@ -22612,7 +22612,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '6411e92042344d26';</script>
-<script>window.PV_IMPRONTA_TASS = 'ab2acbf2c5dd17fd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '30b8e902b6018f1e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -67517,6 +67517,7 @@ if (typeof window !== 'undefined') { window.PesoLontano = PesoLontano; (window._
       fotogrammi stanno sopra il 118% del ritmo (60 Hz, o 30 quando main.js ha fermato il ritmo a 30), si scende di un gradino; se per 6 s
       stanno sotto il 90%, si risale. Gradini 1, 0,9, 0,8 (0,72 sulla bassa); al più un cambio ogni 3 s. L'interfaccia è nel DOM e la tela
       finale resta a piena risoluzione (render.js [sviluppo]): restano nitide. Sul computer ci pensa già main.js.
+      [ritmo] ora lo fa peso_ritmo.js, per il telefono e per il computer (con ?noritmo torna questo).
    3. Il pavimento (pavimenti.js, fino a 8 letture di mappa per pixel): sul telefono e sulla scheda 'bassa' Pavimenti.qualita('leggera'),
       altrove 'alta'. ?nopesosuolo lo lascia com'è. window.__pesoLivello.suolo dice quale.
    ?nopesoschermo spegne tutto (come prima: telefono a risoluzione fissa).                                                             */
@@ -67543,7 +67544,7 @@ var PesoSchermo = (function () {
     S.livello = livelloDa(S.nome); window.__pesoLivello = { livello: S.livello, scheda: S.nome };
     S.telefono = !!(pv.R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches));
     suolo(0);
-    if (!S.telefono || !ON) return;
+    if (!S.telefono || !ON || (window.PesoRitmo && PesoRitmo.ON)) return;   // [ritmo] il regolatore ora è uno solo, per tutti (peso_ritmo.js)
     // il ritmo: l'intervallo fra due fotogrammi del gioco (R.frame), non quello del browser (con il ritmo a 30 il gioco salta un giro su due)
     const R = pv.R, f0 = R.frame;
     R.frame = function () { const t = performance.now(); if (S.ultimo) { S.buf.push(t - S.ultimo); if (S.buf.length > 60) S.buf.shift(); } S.ultimo = t; valuta(t); return f0.apply(this, arguments); };
@@ -67570,6 +67571,112 @@ var PesoSchermo = (function () {
 })();
 if (typeof window !== 'undefined') window.PesoSchermo = PesoSchermo;
 </script>   <!-- [peso] lo schermo si adatta al telefono -->
+<script data-m="peso_ritmo">/* Porto Vecchio — [ritmo] la risoluzione dinamica e il tetto dei fotogrammi, insieme (v7).
+   Prima erano due regolatori (main.js sul computer, peso_schermo.js sul telefono) più il «30 per sempre» del telefono; nessuno dei due
+   sapeva risalire: con la sincronia dello schermo un fotogramma che sta nel tempo dura 16,7 ms sia che il lavoro sia 5 ms sia 16, e
+   la soglia «sotto il 90%» non arrivava mai. Qui un regolatore solo:
+   - SI MISURA l'intervallo fra due fotogrammi disegnati (media su ~1 s, e la quota di quelli fuori tempo: oltre il 125% del ritmo).
+     Il ritmo voluto è 60 (o 30 quando c'è il tetto). Il periodo dello schermo si stima dai giri del browser (il 20° percentile).
+   - PRESSIONE (media oltre il 108% o più di un fotogramma su cinque fuori tempo, per 1 s): si scende di un gradino della scala della
+     scena (1 · .9 · .8 · .7 · .6 sul computer; 1 · .9 · .8, la 'bassa' .9 · .8 · .7, sul telefono). Arrivati al gradino del tetto (sul
+     computer l'ultimo, sul telefono .8) e ancora fuori tempo, si mette il TETTO a 30: un 30 regolare invece dell'altalena 60/30. Con il
+     tetto il ritmo voluto diventa 30 e la scala può risalire. Sugli schermi veloci (oltre 75 Hz) che non tengono il loro ritmo ma stanno
+     sotto i 16,7 ms il tetto è a 60 (un 60, o 72 a 144 Hz, regolare).
+   - MARGINE: con i tempi della scheda video (EXT_disjoint_timer_query, render.js gpuTiming) si sale quando il lavoro stimato al gradino
+     sopra sta sotto l'80% del ritmo (per 2 s). Senza (quasi sempre sul telefono) si PROVA: dopo un tratto calmo si sale di un gradino (o si
+     toglie il tetto); se entro 2,5 s torna la pressione si torna giù e la prossima prova aspetta il doppio (5 s, 10, 20… fino a 2 minuti);
+     una prova che regge 6 s rimette l'attesa a 5 s (10 s per il tetto).
+   - Al più un cambio al secondo (dopo un cambio i primi 300 ms non si contano: si rifanno i bersagli). La scala cambia SOLO il bersaglio
+     della scena: il passo finale del look e la sua tela restano della loro misura (render.js resize/setRes).
+   main.js: PesoRitmo.salta(now) a ogni giro del browser (true: questo giro non si disegna), PesoRitmo.misura(now, raw, attivo) sui
+   fotogrammi disegnati, PesoRitmo.lavoro(ms) a fine fotogramma. ?noritmo spegne (i regolatori di prima); ?ritmo=30|60 fissa il tetto.
+   window.__ritmo per le sonde.                                                                                                       */
+var PesoRitmo = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const ON = !/[?&]noritmo\b/.test(Q);
+  const FISSO = +((Q.match(/[?&]ritmo=(30|60)\b/) || [])[1] || 0);
+  const S = { R: null, tel: false, scala: [1], i: 0, iTetto: 0, tetto: FISSO, periodo: 1000 / 60, giri: [], gn: 0, int: [], ultimo: 0,
+    pres: 0, calma: 0, cambio: 0, prova: null, attesa: 5000, attesaT: 10000, gpu: false, cpu: 0, cambi: 0, giu: 0, su: 0, prove: 0, fallite: 0, tetti: 0, pronto: false };
+  function avvia(R) {
+    S.R = R; S.pronto = true; S.tel = !!R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches);
+    const liv = (window.__pesoLivello && window.__pesoLivello.livello) || 'media';
+    if (S.tel) { S.scala = liv === 'bassa' ? [.9, .8, .7] : [1, .9, .8]; S.iTetto = liv === 'bassa' ? 1 : S.scala.length - 1; }
+    else { S.scala = [1, .9, .8, .7, .6]; S.iTetto = S.scala.length - 1; }
+    S.i = 0; if (R.setRes) R.setRes(S.scala[0]);
+    if (!S.tel && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
+  }
+  const T0 = () => S.tetto || 60, budget = () => 1000 / T0();
+  // quanti giri dello schermo per fotogramma, col tetto (30 a 60 Hz: 2; 60 a 144 Hz: 2, cioè 72 regolari)
+  const passi = () => S.tetto ? Math.max(1, Math.round(1000 / S.tetto / S.periodo)) : 1;
+  function salta(now) {
+    if (!ON) return false;
+    if (S.gn) { const d = now - S.gn; if (d > 2 && d < 60) { S.giri.push(d); if (S.giri.length >= 90) { const b = S.giri.sort((x, y) => x - y); S.periodo = Math.min(34, Math.max(4, b[Math.floor(b.length * .2)])); S.giri.length = 0; } } }
+    S.gn = now;
+    if (!S.tetto || !S.ultimo) return false;
+    return now - S.ultimo < (passi() - .5) * S.periodo;
+  }
+  function lavoro(ms) { S.cpu += (ms - S.cpu) * .1; }
+  function scala(i, now) { i = Math.max(0, Math.min(S.scala.length - 1, i)); if (i === S.i) return false; const su = i < S.i; S.i = i; S.R.setRes(S.scala[i]); dopo(now); S.cambi++; su ? S.su++ : S.giu++; return true; }
+  function tetto(v, now) { if (FISSO || v === S.tetto) return false; S.tetto = v; dopo(now); S.cambi++; S.tetti++; return true; }
+  function dopo(now) { S.cambio = now; S.int.length = 0; S.pres = 0; S.calma = 0; }
+  function gpuMs() { const g = S.gpu && S.R.gpuTimes; if (!g || !g.ok) return 0; let s = 0; for (const k in g.ms) s += g.ms[k]; return s; }
+  // la prova è andata male: si torna com'era e la prossima aspetta il doppio
+  function fallita(now) {
+    const P = S.prova; S.prova = null; S.fallite++;
+    if (P.tipo === 'scala') { scala(P.da, now); S.attesa = Math.min(120000, S.attesa * 2); }
+    else { tetto(P.da, now); S.attesaT = Math.min(120000, S.attesaT * 2); }
+  }
+  function misura(now, raw, attivo) {
+    if (!ON) return;
+    if (!S.pronto) { const R = window.__pv && window.__pv.R; if (!R || !R.setRes) return; S.t0 = S.t0 || now;
+      if (!window.__pesoLivello && window.PesoSchermo && now - S.t0 < 5000) return;   // il livello della scheda (peso_schermo.js) decide la scala del telefono
+      avvia(R); }
+    const d = now - (S.ultimo || now); S.ultimo = now;
+    if (!S.R.setRes) { S.tetto = FISSO; return; }   // i banchi (strumenti/banco_*.js) fermano la scala: si ferma anche il tetto
+    if (!attivo || raw > .25 || d <= 0 || now - S.cambio < 300) return;   // il caricamento, una pausa, i bersagli appena rifatti: non contano
+    S.int.push([now, d]); while (S.int.length && now - S.int[0][0] > 1000) S.int.shift();
+    if (S.int.length < 12) return;
+    const B = budget(); let m = 0, fuori = 0; for (const q of S.int) { m += q[1]; if (q[1] > B * 1.25) fuori++; }
+    m /= S.int.length; const qf = fuori / S.int.length, dd = Math.min(100, d);
+    const veloce = S.periodo < 13.3, lento = veloce && !S.tetto && m > S.periodo * 1.3 && m <= B * 1.08;   // lo schermo veloce che non tiene il suo ritmo
+    const pressione = m > B * 1.08 || qf > .2, calmo = !pressione && m < B * 1.02 && qf < .03;
+    if (pressione || lento) { S.pres += dd; S.calma = 0; } else if (calmo) { S.calma += dd; S.pres = 0; } else { S.pres = Math.max(0, S.pres - dd); S.calma = 0; }
+    if (S.prova && now - S.prova.t > 6000) { if (S.prova.tipo === 'scala') S.attesa = 5000; else S.attesaT = 10000; S.prova = null; }   // ha retto
+    if (now - S.cambio < 1000) return;   // al più un cambio al secondo
+    if (S.prova && S.pres > 400 && now - S.prova.t < 2500) { fallita(now); return; }
+    if (S.pres > 1000) {
+      if (lento && !pressione) { tetto(60, now); return; }
+      if (S.i < S.iTetto || (S.tetto === 30 && S.i < S.scala.length - 1)) { scala(S.i + 1, now); return; }
+      if (S.tetto !== 30 && tetto(30, now)) return;
+      if (S.i < S.scala.length - 1) { scala(S.i + 1, now); return; }
+      S.pres = 0; return;   // in fondo: ci pensa la grafica ridotta di main.js
+    }
+    // il margine misurato (scheda video e processore): si sale senza provare
+    const g = gpuMs();
+    if (g > 0 && !pressione && (S.i > 0 || (S.tetto && !FISSO))) {
+      const k = S.i > 0 ? S.scala[S.i - 1] / S.scala[S.i] : 1, Bs = S.i > 0 ? B : 1000 / 60, st = Math.max(g * k * k, S.cpu);   // il lavoro al gradino sopra (i pixel vanno col quadrato), o senza tetto
+      if (st < Bs * .8) { S.calma2 = (S.calma2 || 0) + dd; if (S.calma2 > 2000) { S.calma2 = 0; if (S.i > 0) scala(S.i - 1, now); else tetto(S.tetto === 30 && veloce ? 60 : 0, now); } }
+      else S.calma2 = 0;
+      if (S.i > 0) return;   // con i tempi la scala non si prova
+    }
+    if (FISSO && S.i === 0) return;
+    // senza i tempi: la prova
+    if (S.calma > (S.i > 0 ? S.attesa : S.attesaT) && (S.i > 0 || S.tetto)) {
+      S.prove++;
+      if (S.i > 0) { const da = S.i; if (scala(S.i - 1, now)) S.prova = { tipo: 'scala', da, t: now }; }
+      else { const da = S.tetto; if (tetto(da === 30 && veloce ? 60 : 0, now)) S.prova = { tipo: 'tetto', da, t: now }; }
+    }
+  }
+  // per main.js: la grafica ridotta solo quando il regolatore è in fondo (scala minima e tetto a 30)
+  const inFondo = () => !ON || (S.i >= S.scala.length - 1 && S.tetto === 30);
+  const stato = () => ({ on: ON, tel: S.tel, scala: S.scala[S.i], gradino: S.i, scalaTutta: S.scala.slice(), tetto: S.tetto, periodo: +S.periodo.toFixed(2), passi: passi(),
+    gpu: S.gpu, gpuMs: +gpuMs().toFixed(2), cpuMs: +S.cpu.toFixed(2), attesa: S.attesa, attesaT: S.attesaT, prova: S.prova && S.prova.tipo, cambi: S.cambi, giu: S.giu, su: S.su, prove: S.prove, fallite: S.fallite, tetti: S.tetti });
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__ritmo', { get: stato, configurable: true });
+  return { ON, salta, misura, lavoro, inFondo, stato, get tetto() { return S.tetto; } };
+})();
+if (typeof window !== 'undefined') window.PesoRitmo = PesoRitmo;
+</script>   <!-- [ritmo] la risoluzione dinamica e il tetto dei fotogrammi -->
 <script data-m="peso_bagliori">/* Porto Vecchio — [peso] gli aloni in un disegno solo (v7).
    Gli aloni dei lampioni, delle insegne e dei neon sono sprite additivi (render.js glow, lampade accese): uno sprite, un materiale, un
    disegno. Di notte nel borgo sono un centinaio, sulla città dall'alto più di trecento. Sommati con la miscela additiva (che non dipende
@@ -67946,10 +68053,64 @@ var PesoPronti = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(pronti)?\b/.test(Q);
-  const ST = { programmi: 0, ms: 0, errori: 0 };
+  const ST = { programmi: 0, ms: 0, errori: 0, esempi: 0, firme: 0, tagli: 0, parallelo: false };
+  // [ritmo] LA LETTURA CHE ASPETTA. renderer.compile, per ogni programma nuovo, ne legge subito le uniform (getProgram -> getUniforms):
+  // quella domanda aspetta che la scheda video abbia finito di compilarlo, e così i programmi si compilavano uno dopo l'altro anche con
+  // KHR_parallel_shader_compile. TG.on: la lettura su un programma non ancora pronto si interrompe (TAGLIO, preso oggetto per oggetto): il
+  // programma resta nella cache di three, le uniform le legge il primo disegno vero. Lo stesso taglio serve a vivo() più sotto.
+  const TAGLIO = { taglio: true }, TG = { on: false, ext: null, gl: null };
+  function taglio(rd) {
+    const gl = rd.getContext(); if (TG.gl === gl) return TG; TG.gl = gl;
+    try { TG.ext = gl.getExtension('KHR_parallel_shader_compile'); } catch (e) { TG.ext = null; }
+    const gpp0 = gl.getProgramParameter;
+    gl.getProgramParameter = function (p, pname) { if (TG.on && pname === 35718 && !(TG.ext && gpp0.call(this, p, TG.ext.COMPLETION_STATUS_KHR))) throw TAGLIO; return gpp0.call(this, p, pname); };   // 35718: ACTIVE_UNIFORMS
+    return TG;
+  }
+  // una scena finta per renderer.compile: le luci (e la nebbia, l'ambiente) della scena vera, gli oggetti dati da «giro»; chi si interrompe
+  // sul TAGLIO torna com'era (il doppio lato trasparente) e si va avanti col prossimo
+  function finta(S, giro) {
+    return { isScene: true, fog: S.fog, environment: S.environment, overrideMaterial: null, background: null,
+      traverseVisible(f) { S.traverseVisible(o => { if (o.isLight) f(o); }); },
+      traverse(f) { giro(o => { const ms = Array.isArray(o.material) ? o.material : [o.material], lati = ms.map(m => m && m.side);
+        try { f(o); } catch (e) { ms.forEach((m, k) => { if (m && m.side !== lati[k]) { m.side = lati[k]; m.needsUpdate = true; } }); if (e !== TAGLIO) throw e; ST.tagli++; } }); } };
+  }
+  const soloVis = () => typeof LeggeraMem !== 'undefined' && LeggeraMem.on && LeggeraMem.on('compila');   // leggera_memoria.js: si compila solo quello che si vede
+  function compilaScena(rd, S, cam) {
+    const T = TG.ext && !NOTAGLIO ? TG : null;
+    if (!T) return typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam);
+    T.on = true; try { rd.compile(finta(S, f => soloVis() ? S.traverseVisible(f) : S.traverse(f)), cam); } finally { T.on = false; }
+  }
+  function compilaLista(rd, S, cam, L) {
+    if (!L.length) return; const T = TG.ext && !NOTAGLIO ? TG : null;
+    if (T) T.on = true; try { rd.compile(finta(S, f => L.forEach(f)), cam); } finally { if (T) T.on = false; }
+  }
+  // [ritmo] LE COSE SPENTE, UNA PER TIPO. La compilazione solo del visibile (leggera_memoria.js) lascia fuori i pezzi in streaming (quelli
+  // oltre la nebbia, render.js streamTick), i pezzi originali delle case, le stanze, i boschi lontani: il primo sguardo su uno di loro
+  // chiedeva un programma nuovo. Qui si cercano i materiali spenti senza programma, si raggruppano per la loro FIRMA (quello che decide il
+  // programma di three: tipo, oggetto, tessiture, colori dei vertici, trasparenza, lato, nebbia, codice aggiunto…) e se ne compila uno per
+  // firma: pochi programmi invece di migliaia di materiali (rilascia() poi libera le loro proprietà, il programma resta in cache).
+  const TEXK = ['map', 'alphaMap', 'normalMap', 'bumpMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap', 'gradientMap', 'matcap', 'clearcoatMap', 'clearcoatNormalMap', 'transmissionMap', 'sheenColorMap', 'specularIntensityMap', 'iridescenceMap'];
+  const varianteO = o => (o.isInstancedMesh ? 1 : 0) | (o.isSkinnedMesh ? 2 : 0) | (o.isPoints ? 4 : 0) | (o.isLine ? 8 : 0) | (o.isSprite ? 16 : 0) | (o.instanceColor ? 32 : 0);
+  function firma(o, m) {
+    const g = o.geometry, A = (g && g.attributes) || {}, mo = g && g.morphAttributes, t = [];
+    for (const k of TEXK) { const x = m[k]; if (x) t.push(k + (x.isDataArrayTexture ? 'A' : x.isCubeTexture ? 'C' : '') + (x.encoding || 0) + (x.mapping || 0)); }
+    return [m.type, varianteO(o), m.customProgramCacheKey ? m.customProgramCacheKey() : '', m.isShaderMaterial ? (m.vertexShader.length + ':' + m.fragmentShader.length + ':' + m.vertexShader.slice(0, 80)) : '',
+      JSON.stringify(m.defines || null), JSON.stringify(m.extensions || null), t.join(','), m.vertexColors ? 1 : 0, A.color ? A.color.itemSize : 0, A.uv ? 1 : 0, A.uv2 ? 1 : 0, A.tangent ? 1 : 0,
+      mo ? Object.keys(mo).map(k => k + mo[k].length).join() : '', m.transparent ? 1 : 0, m.alphaTest > 0 ? 1 : 0, m.side, m.blending, m.flatShading ? 1 : 0, m.fog ? 1 : 0, m.toneMapped ? 1 : 0, m.dithering ? 1 : 0,
+      m.premultipliedAlpha ? 1 : 0, m.depthPacking || 0, m.sizeAttenuation ? 1 : 0, m.wireframe ? 1 : 0, (m.clippingPlanes || []).length, m.precision || '', m.alphaToCoverage ? 1 : 0, m.opacity < 1 ? 1 : 0].join('|');
+  }
+  function spenti(rd, S) {
+    const vis = new Set(), F = new Map(), each = (o, f) => { const m = o.material; if (!m) return; if (Array.isArray(m)) m.forEach(f); else f(m); };
+    S.traverseVisible(o => each(o, m => vis.add(m)));
+    S.traverse(o => { if (!o.isMesh && !o.isPoints && !o.isLine && !o.isSprite) return; each(o, m => { if (!m || vis.has(m) || m.visible === false) return; const mp = rd.properties.get(m); if (mp.programs !== undefined) return;
+      const k = firma(o, m); if (!F.has(k)) F.set(k, o); }); });
+    return [...F.values()];
+  }
+  const NOTAGLIO = /[?&]noprontitaglio\b/.test(Q);
   function compila(R) {
     if (!ON) return; const M0 = R && R.__models; if (!M0 || !M0.renderer || !M0.scene || !R.getCamera) return;
     const T = window.THREE, rd = M0.renderer, S = M0.scene, cam = R.getCamera(), t0 = performance.now(), extra = [];
+    taglio(rd); ST.parallelo = !!TG.ext && !NOTAGLIO;
     try {
       const mats = R.__pronti5 ? R.__pronti5() : [];
       const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute([0, -500, 0, .01, -500, 0, 0, -500, .01], 3));
@@ -67957,12 +68118,16 @@ var PesoPronti = (function () {
       g.setAttribute('m3', new T.Float32BufferAttribute(new Array(12).fill(1), 4));
       mats.forEach(m => { const ms = new T.Mesh(g, m); ms.frustumCulled = false; ms.castShadow = ms.receiveShadow = false; S.add(ms); extra.push(ms); });
     } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    // [ritmo] i modelli d'esempio (render.js esempi5: un mezzo per tipo, le cose a terra), sotto il mondo, accesi solo per la compilazione
+    if (!/[?&]noesempi\b/.test(Q) && R.__esempi5) try { R.__esempi5().forEach(o => { o.position.set(0, -500, 0); o.traverse(q => { q.frustumCulled = false; }); S.add(o); extra.push(o); ST.esempi++; }); } catch (e) { ST.errori++; console.warn('[peso] esempi', e); }
     const n0 = rd.info.programs ? rd.info.programs.length : 0;
-    try { (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    try { compilaScena(rd, S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); }
+    // [ritmo] le cose spente, una per firma
+    if (!/[?&]nospenti\b/.test(Q) && rd.properties) try { const L = spenti(rd, S); ST.firme = L.length; compilaLista(rd, S, cam, L); } catch (e) { ST.errori++; console.warn('[peso] spenti', e); }
     // le due varianti del pavimento: l'altra, poi di nuovo quella di adesso (dalla cache)
     const P = window.Pavimenti;
     if (P && typeof P.qualita === 'function') { const q = P.qualita(), altra = q === 'alta' ? 'leggera' : 'alta';
-      try { P.qualita(altra); (typeof LeggeraMem !== 'undefined' ? LeggeraMem.compila(rd, S, cam) : rd.compile(S, cam)); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
+      try { P.qualita(altra); compilaScena(rd, S, cam); } catch (e) { ST.errori++; console.warn('[peso] pronti', e); } finally { P.qualita(q); } }
     extra.forEach(ms => S.remove(ms));
     ST.programmi = (rd.info.programs ? rd.info.programs.length : 0) - n0; ST.ms = +(performance.now() - t0).toFixed(1);
     ST.rilasciati = rilascia(rd, S);
@@ -67993,8 +68158,7 @@ var PesoPronti = (function () {
       traverse(f) { for (const o of cur) { const ms = Array.isArray(o.material) ? o.material : [o.material], lati = ms.map(m => m && m.side);
         try { f(o); } catch (e) { ms.forEach((m, k) => { if (m && m.side !== lati[k]) { m.side = lati[k]; m.needsUpdate = true; } }); if (e !== TAGLIO) throw e; VIVO.tagli++; } } } };   // il doppio lato trasparente (three lo compila da dietro e da davanti) torna com'era
     // la lettura delle uniform di un programma nuovo, mentre si prepara: se non è pronto (senza l'estensione, nella prova: sempre) si interrompe
-    const TAGLIO = { taglio: true }, gpp0 = gl.getProgramParameter; let taglia = false;
-    gl.getProgramParameter = function (p, pname) { if (taglia && pname === 35718 && !(ext && gpp0.call(this, p, DONE))) throw TAGLIO; return gpp0.call(this, p, pname); };   // 35718: ACTIVE_UNIFORMS
+    taglio(rd);   // [ritmo] il taglio è uno solo (sopra): senza l'estensione TG.ext è nullo e nella prova si interrompe sempre
     let FR = 0;
     const pronto = A => { if (!ext) return FR - A.f0 >= 2; try { return !!A.prog.program && gl.getProgramParameter(A.prog.program, DONE) === true; } catch (e) { return true; } };
     const r0 = rd.render, b0 = rd.renderBufferDirect;
@@ -68021,7 +68185,7 @@ var PesoPronti = (function () {
       for (const m of NUOVI.splice(0)) { const A = ATT.get(m); if (!A) continue; (perRT.get(A.rt) || perRT.set(A.rt, []).get(A.rt)).push(m); }
       try {
         perRT.forEach((ms, rt) => { rd.setRenderTarget(rt); cur = []; ms.forEach(m => ATT.get(m).objs.forEach(o => cur.push(o)));
-          taglia = true; try { rd.compile(finta, camera); } catch (e) { ST.errori++; } finally { taglia = false; }
+          TG.on = true; try { rd.compile(finta, camera); } catch (e) { ST.errori++; } finally { TG.on = false; }
           ms.forEach(m => { const A = ATT.get(m), mp = props.get(m); let pr = mp && mp.currentProgram; if (!pr && mp && mp.programs) for (const v of mp.programs.values()) pr = v;   // interrotto: l'ultimo messo in cache
             A.prog = pr || { program: null }; A.f0 = FR; if (!A.prog.program) { ATT.delete(m); m.__pv5 = (m.__pv5 || 0) | A.vb; } A.objs.clear(); }); });
       } finally { cur = null; rd.setRenderTarget(prev); }
@@ -83130,19 +83294,21 @@ var Render = (function () {
     const sv = STRADA.on && !LOWQ.on; U.tD.value = sv && rt ? rt.depthTexture : null; U.nf.value.set(camera.near, camera.far); U.sK.value.set(sv && rt ? STRADA.contorno : 0, sv ? STRADA.segni * (PHONE ? .7 : 1) : 0, sv ? STRADA.pieno : 0, 0); U.tm.value = performance.now() / 1000;
     renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
   }
+  const V2T = new THREE.Vector2();   /* [ritmo] */
   let TARGET = 540, lastSize = null, RES = 1;   /* [fluido] RES: la scala della risoluzione interna, decisa da main.js secondo i tempi del fotogramma */
-  function setRes(k) { k = Math.max(.7, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
+  function setRes(k) { k = Math.max(.6, Math.min(1, k));   /* [colore1] non sotto il 70% (a metà era pastoso) */   /* [ritmo] .6 l'ultimo gradino (peso_ritmo.js): la tela del look resta piena, scende solo la scena */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
   function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
+    const W1 = Math.max(64, Math.floor(cw * dpr / PX)), H1 = Math.max(64, Math.floor(ch * dpr / PX));   /* [ritmo] la misura a scala piena: è quella della tela */
     PX /= RES;   /* [fluido] */
     W = Math.max(64, Math.floor(cw * dpr / PX)); H = Math.max(64, Math.floor(ch * dpr / PX));
     GPUT.px = W + '×' + H;   /* [prestazioni] */
     if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose(); DEV.rt = null;
     if (!LOOKV.nuovo) { DEV.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }); DEV.mat.uniforms.src.value.set(W, H); }   /* [sguardo] solo il look vecchio */
-    const PIC = LOWQ.on || DIETA.on('tela'), FW = PIC ? W : Math.max(W, Math.floor(cw * dpr)), FH = PIC ? H : Math.max(H, Math.floor(ch * dpr));   // [sviluppo] [dieta] sul telefono la tela alla risoluzione interna
-    renderer.setSize(FW, FH, false);   /* [sviluppo] */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
+    const PIC = LOWQ.on || DIETA.on('tela'), FW = PIC ? W1 : Math.max(W1, Math.floor(cw * dpr)), FH = PIC ? H1 : Math.max(H1, Math.floor(ch * dpr));   /* [ritmo] la tela non segue la scala dinamica: il passo finale ingrandisce */   // [sviluppo] [dieta] sul telefono la tela alla risoluzione interna
+    { const sz = renderer.getSize(V2T); if (sz.x !== FW || sz.y !== FH) renderer.setSize(FW, FH, false); else renderer.setViewport(0, 0, FW, FH); }   /* [sviluppo] */   /* [ritmo] la tela rifatta solo se cambia davvero (rifarla la svuota e rialloca) */   /* [colore1] l'immagine finale esce alla risoluzione interna (prima a quella CSS della finestra: con lo schermo scalato il browser la ingrandiva a blocchi); il CSS la stende morbida */
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     if (LOOKV.nuovo) {   // [sguardo] il look nuovo: la scena in 8 bit già sviluppata (la curva la fa ogni materiale), niente profondità da leggere, niente bersagli intermedi
       rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType });
@@ -88111,11 +88277,21 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     materiali: () => ['asfalto', 'piazza', 'banchina', 'sabbia', 'roccia'].map(k => { const c = texCanvas1(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 32 }; }).concat(['basolato', 'lastre'].map(k => { const c = patCanvas35(k); return { nome: k, gruppo: 'Strade e suoli', c, ppm: c.width / 16 }; })) };
   // [carico] quanti programmi della scheda video sono già pronti (0..1): chiederlo non fa aspettare. Senza l'estensione si
   // risponde 1 e il primo fotogramma li aspetta come sempre
+  // [ritmo] i modelli d'esempio, uno per tipo, delle cose che arrivano a metà gioco (i mezzi di ogni tipo, anche la volante; le cose a
+  // terra): peso_pronti.js li mette un attimo in scena nel caricamento e ne compila i programmi; poi se ne vanno (non entrano mai nel gioco)
+  function esempi5() {
+    const out = [], mk = f => { try { const o = f(); if (o) out.push(o); } catch (e) { } };
+    const VK = (G && G.VK) || {}, vv = (kind, x) => Object.assign({ kind, color: '#8a7a6a', x: 0, y: 0, ang: 0, hp: (VK[kind] && VK[kind].hp) || 100, skid: 0, id: -1 }, x);
+    Object.keys(VK).forEach(k => mk(() => vehicleMesh(vv(k))));
+    const auto = Object.keys(VK).find(k => !VK[k].two); if (auto) mk(() => vehicleMesh(vv(auto, { police: true })));
+    Object.keys((G && G.WEAPONS) || {}).concat(['munizioni', 'salute', 'soldi', 'valigetta']).forEach(k => mk(() => pickupMesh(k)));
+    return out;
+  }
   function shadersPronti() {
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()],   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -91471,6 +91647,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
   // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
   const FC = { on: false, t: 0, n: 0 };
+  // [ritmo] ora un regolatore solo (peso_ritmo.js): la scala della scena a gradini con isteresi, e il tetto a 30 (o a 60 sugli schermi
+  // veloci) quando la scheda non regge, per tutti; quelli qui sotto restano per ?noritmo
+  const RIT = typeof PesoRitmo !== 'undefined' && PesoRitmo.ON;
   const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
   // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
   // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
@@ -91492,20 +91671,22 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
   function loop0(now) {
-    if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
+    if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
+    const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;
     if (VIVO.on) vivoTick(raw);
+    if (RIT) PesoRitmo.misura(now, raw, !VIVO.on && !ui.intro && ui.time > 6 && !document.hidden && !(window.Studio && Studio.hidesGame()));   // [ritmo]
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
     // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
     // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
     if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
     let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
     const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
-    if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
+    if (!RIT && touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (RIT ? PesoRitmo.inFondo() : touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
-    if (R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+    if (!RIT && R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
       // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
       // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
       const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
@@ -91538,6 +91719,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); conLabels(); }
+    if (RIT) PesoRitmo.lavoro(performance.now() - tL0);   // [ritmo] il lavoro del processore in questo fotogramma
     requestAnimationFrame(loop);
   }
   // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
