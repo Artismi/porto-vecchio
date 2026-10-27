@@ -17309,7 +17309,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function streamTick() {
     if (!STR.on || !camera) return; if (!STR.list) streamInit(); const L = STR.list, n = L.length; if (!n) return;
     for (const e of STR.rew) e.o.frustumCulled = e.fc; STR.rew.length = 0;   // le ricaricate ieri tornano al controllo d'inquadratura
-    const cx = camera.position.x, cz = camera.position.z, near = camera.far + 20, lontano = camera.far + 90; let k = Math.min(n, 4000);
+    // [zoom2] il cerchio sta attorno al punto guardato, non alla camera: con lo zoom indietro la camera va lontano e il cerchio attorno a lei
+    // (camera.far + 20) caricava anche tutto quello che le sta dietro. Il raggio arriva fin dove la nebbia è piena (vista dalla camera) più
+    // un margine: a zoom 1 è quello che si vedeva prima, allontanandosi non cresce
+    const cx = cam.x, cz = cam.y, dh = Math.hypot(camera.position.x - cx, camera.position.z - cz), rv = (scene.fog ? scene.fog.far : camera.far) - dh + 40, near = rv, lontano = rv + 70; let k = Math.min(n, 4000);
     while (k-- > 0) { STR.i = (STR.i + 1) % n; const e = L[STR.i], s = e.s, d = Math.hypot(s.center.x - cx, s.center.z - cz) - s.radius; e.d = d;
       if (e.on) { if (d > lontano) streamOff(e); } else if (d < near && !e.w) { e.w = true; STR.warm.push(e); } }
     if (STR.warm.length) { STR.warm.sort((a, b) => a.d - b.d); let bud = PHONE ? 3e6 : 6e6, c = 0;   // [momenti] era 8/24 MB in un fotogramma: correndo si attraversano più soglie e un invio da 24 MB alla scheda video è uno scatto; a 6 MB per fotogramma sono comunque 360 MB al secondo
