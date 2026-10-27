@@ -20036,8 +20036,9 @@ Anim.npcMap((st, n, s) => {
     let have = 0; for (const n of st.npcs) if (n.rotelle) have++;
     if (have >= ROT.max) return;
     const cand = st.npcs.filter(n => !n.rotelle && n.pop && !n.cop && !n.military && !n.faction && !n.dead && (n.pop.age || 30) >= 18 && (n.pop.age || 30) <= 68)
-      .map(n => ({ n, h: Anim.hashStr('rotelle:' + n.id) })).filter(e => e.h < .02).sort((a, b) => a.h - b.h);
-    for (const e of cand) { if (have >= ROT.max) break; e.n.rotelle = true; have++; }
+      .map(n => ({ n, h: Anim.hashStr('rotelle:' + n.id) })).sort((a, b) => a.h - b.h);
+    const quanti = st.npcs.length < 40 ? 0 : st.npcs.length < 150 ? 2 : ROT.max;   // i primi due o tre per un numero fisso: sempre gli stessi
+    for (const e of cand) { if (have >= quanti) break; e.n.rotelle = true; have++; }
   }
   // il modo (in avanti o all'indietro: uno preferito per persona, l'altro ogni tanto) e la piroetta (un giro o due, ogni tanto)
   function rotelleModo(st, n) {
@@ -22964,7 +22965,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'db5f6afcfc47142c';</script>
-<script>window.PV_IMPRONTA_TASS = '571b7e5ce5f52ca5';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '5ead6c29285fbe54';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->

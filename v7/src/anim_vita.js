@@ -773,8 +773,9 @@
     let have = 0; for (const n of st.npcs) if (n.rotelle) have++;
     if (have >= ROT.max) return;
     const cand = st.npcs.filter(n => !n.rotelle && n.pop && !n.cop && !n.military && !n.faction && !n.dead && (n.pop.age || 30) >= 18 && (n.pop.age || 30) <= 68)
-      .map(n => ({ n, h: Anim.hashStr('rotelle:' + n.id) })).filter(e => e.h < .02).sort((a, b) => a.h - b.h);
-    for (const e of cand) { if (have >= ROT.max) break; e.n.rotelle = true; have++; }
+      .map(n => ({ n, h: Anim.hashStr('rotelle:' + n.id) })).sort((a, b) => a.h - b.h);
+    const quanti = st.npcs.length < 40 ? 0 : st.npcs.length < 150 ? 2 : ROT.max;   // i primi due o tre per un numero fisso: sempre gli stessi
+    for (const e of cand) { if (have >= quanti) break; e.n.rotelle = true; have++; }
   }
   // il modo (in avanti o all'indietro: uno preferito per persona, l'altro ogni tanto) e la piroetta (un giro o due, ogni tanto)
   function rotelleModo(st, n) {
