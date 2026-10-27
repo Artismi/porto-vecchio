@@ -34,6 +34,9 @@ var Popolo = (function () {
   // mappa che ha i luoghi-missione (W.luoghi); la mappa vecchia, più larga, resta com'era (con più gente le scene si rompono)
   const COMPATTA = !!(W && W.luoghi);
   if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
+  // [leggera] sul telefono meno gente viva attorno al giocatore, con un tetto: ogni figura costa ~0,4 MB (pelle, scheletro, animazioni).
+  // Si vive per intero entro 40 m (non 52), al massimo 36 insieme; gli altri restano abitanti leggeri, come quelli lontani
+  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { near: 40, far: 50, maxNear: 36 });
 
 
   // ---------------- CALENDARIO ----------------

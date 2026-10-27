@@ -182,6 +182,20 @@ var Models = (function () {
       guns[k].visible = false; guns[k].userData.vecchia = true; root.visible = false; guns[k] = root;   // il kit resta spento
     }
   }
+  // [leggera] LE ARMI PIGRE (telefono): ogni figura portava, spente, le sei armi del kit (copie) e le sei vere di oggetti3d.js, più gli
+  // attrezzi in mano. Qui resta solo il supporto nel polso (un gruppo vuoto, con la stessa scala e lo stesso giro di armiVere): l'arma
+  // si costruisce la prima volta che qualcuno la chiede (guns[k], un getter che non si conta nei for…in), poi resta. Stesso posto, stessa
+  // misura: il supporto segue il polso come prima (e personaggi.js lo corregge per il braccio lungo come gli altri figli del polso)
+  const PIGRE = () => typeof LeggeraMem !== 'undefined' && LeggeraMem.on('armi') && typeof Oggetti3D !== 'undefined' && !!Oggetti3D;
+  function pigro(o, k, fai) { Object.defineProperty(o, k, { configurable: true, enumerable: false, get() { const v = fai(); Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); return v; }, set(v) { Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); } }); }
+  function armiPigre(g, m, guns) {
+    const wr = m.getObjectByName('WristR'); if (!wr) return;
+    g.updateMatrixWorld(true); const ws = new THREE.Vector3(), gs = new THREE.Vector3(); wr.getWorldScale(ws); g.getWorldScale(gs);
+    const HAND = (window.Anim && Anim.HAND) || 1, holder = new THREE.Group(); holder.name = 'armi';
+    holder.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); holder.scale.setScalar(gs.x / (ws.x || 1) / HAND); wr.add(holder);
+    for (const k in ARMI_VERE) { if (!GUNTPL.guns[k]) continue;
+      pigro(guns, k, () => { const root = Oggetti3D.armaInMano(ARMI_VERE[k], .1, .02); root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); root.visible = false; holder.add(root); return root; }); }
+  }
   function parallel(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallel(a.children[i], b.children[i], cb); }
   function cloneSkinned(src) {
     const sl = new Map(), cl = new Map(), c = src.clone(true);
@@ -223,7 +237,8 @@ var Models = (function () {
     // armi del soldato: sono già nella mano, si accende solo quella giusta
     const guns = {}; m.traverse(o => { if (/^(AK|Pistol|Revolver|Revolver_Small|Shotgun|SMG|Sniper|Sniper_2|Knife_1|Knife_2|GrenadeLauncher|RocketLauncher|ShortCannon|Shovel)$/.test(o.name)) { guns[o.name] = o; o.visible = false; } });
     // i civili non hanno armi nel modello: si prendono quelle del kit (stesse ossa Quaternius) e si agganciano all'indice destro
-    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
+    if (!Object.keys(guns).length && GUNTPL && PIGRE()) armiPigre(g, m, guns);   // [leggera] sul telefono le armi nascono quando servono
+    else if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
@@ -237,13 +252,24 @@ var Models = (function () {
     const wr = m.getObjectByName('WristR');
     if (wr) {
       g.updateMatrixWorld(true); const hp = new THREE.Vector3(); wr.getWorldPosition(hp);
-      const mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
+      let mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
+      if (PIGRE()) { const P = pin(g, wr, new THREE.Group(), hp.x, hp.y - .07, hp.z + .05), fai = {}; P.name = 'attrezzi';   // [leggera] gli attrezzi pigri: il posto subito, l'oggetto quando serve
+        const pr = g.userData.props;
+        ['bomboletta', 'telefono', 'fotocamera', 'piede', 'gesso', 'manganello', 'cartello'].forEach(k => pigro(pr, k, () => { const obj = fai[k](); obj.visible = false; obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); P.add(obj); return obj; }));
+        mk = (k, f) => { fai[k] = f; };
+        mk('bomboletta', () => C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', () => B(.05, .11, .025, '#151518')); mk('fotocamera', () => B(.13, .08, .06, '#202024'));
+        mk('piede', () => B(.03, .55, .03, '#4a4a54')); mk('gesso', () => B(.02, .07, .02, '#f4f4ee')); mk('manganello', () => B(.035, .5, .035, '#14141a'));
+        mk('cartello', () => { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
+          if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
+          const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); return cg; });
+      } else {
       mk('bomboletta', C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', B(.05, .11, .025, '#151518')); mk('fotocamera', B(.13, .08, .06, '#202024'));
       mk('piede', B(.03, .55, .03, '#4a4a54')); mk('gesso', B(.02, .07, .02, '#f4f4ee'));
       mk('manganello', B(.035, .5, .035, '#14141a'));   // [ordine]
       { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
         if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
         const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); mk('cartello', cg); }   // [ordine] il cartello di chi protesta
+      }
     }
     play(g, 'Idle'); return g;
   }
@@ -335,9 +361,11 @@ var Models = (function () {
   function animPerson(g, o, dt) {
     const u = g.userData, sp = Math.abs(o.speed || 0);
     const gunName = (o.weapon && u.gunsByWeapon[o.weapon]) || (o.held && u.gunsByWeapon[o.held]);
+    if (o.held && u.props) u.props[o.held];   // [leggera] (l'attrezzo pigro nasce qui, se serve)
     for (const k in (u.props || {})) u.props[k].visible = o.held === k;   // [azioni]
     if (u.riotHat) { const on = !!o.riot; if (u.riotOn !== on) { u.riotOn = on; u.riotHat.visible = on; if (u.copHat) u.copHat.visible = !on; if (u.riotShield) u.riotShield.visible = on; } }   // [ordine]
     if (o.banner && u.props && u.props.cartello && u.props.cartello.userData.cv && u.bannerTxt !== o.banner) { u.bannerTxt = o.banner; const cv = u.props.cartello.userData.cv, x = cv.getContext('2d'); x.fillStyle = '#f2ecdc'; x.fillRect(0, 0, 128, 64); x.strokeStyle = '#8a2020'; x.lineWidth = 4; x.strokeRect(2, 2, 124, 60); x.fillStyle = '#b01818'; let fs = 30; x.font = 'bold ' + fs + 'px sans-serif'; while (x.measureText(o.banner).width > 118 && fs > 12) { fs -= 2; x.font = 'bold ' + fs + 'px sans-serif'; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.banner, 64, 33); u.props.cartello.userData.tx.needsUpdate = true; }
+    if (gunName) u.mguns[gunName]; if (o.gun) u.mguns[o.gun];   // [leggera] (l'arma pigra nasce qui, se serve)
     for (const k in u.mguns) u.mguns[k].visible = !!(k === gunName || (o.gun && k === o.gun));
     let clip = 'Idle';
     if (o.down) clip = 'Death';
