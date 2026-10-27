@@ -3706,7 +3706,7 @@ var World = (function () {
             (CITY.terrazze = CITY.terrazze || []).push({ nome, q, poly: P0.map(p => p.slice()), accessi: SC.size + RP.size }); };
           // il Borgo alto (+6): il sagrato (la scalinata scende alla Rua e verso la Marina) e il ciglio delle Mura col belvedere: la scala delle
           // Mura scende al Lungomare di Tramontana (+2)
-          terrazza('del sagrato', [[1369, 296], [1397, 296], [1397, 309], [1369, 309]], 6, { scale: [[1384, 312], [1366, 303]] });
+          terrazza('del sagrato', [[1369, 296], [1397, 296], [1397, 307], [1369, 307]], 6, { scale: [[1384, 310], [1366, 303]] });
           terrazza('delle Mura', [[1366, 266], [1466, 263], [1466, 270], [1366, 273]], 6, { lati: [0, 3], scale: [[1458, 260], [1392, 262]] });
           // le Terrazze di Ponente (correzione 2): la piazza dei Giardini e della vasca dello skate (+6, due scalinate: dall'Ottagono e dalla via
           // verso la Marina) e il Belvedere (+9) rivolto a mezzogiorno, sul porto e sulle isole, col parapetto

@@ -23,13 +23,13 @@ const srv = http.createServer((req, res) => {
   await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { timeout: 900000 });
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models && window.__pv.R.__models.renderer, null, { timeout: 1500000, polling: 1000 });
   log('partito');
-  const info = await pg.evaluate(() => { const G = window.__pv, W = G.MAP && G.MAP.world || (window.World || {}); return { mappa: W.MAPPA || '(prima)', GW: W.GW, GH: W.GH, luoghi: Object.keys(W.PLACES || {}).length, case: (W.BUILDINGS || []).length, alias: Object.keys(W.ALIAS || {}).length, metro: window.Sottosuolo && Sottosuolo.metro ? Sottosuolo.metro().stazioni.map(s => s.nome) : null }; });
+  const info = await pg.evaluate(() => { const G = window.__pv, W = G.MAP && G.MAP.world || (window.World || {}); return { mappa: W.MAPPA || '(prima)', GW: W.GW, GH: W.GH, luoghi: Object.keys(W.PLACES || {}).length, case: (W.BUILDINGS || []).length, alias: Object.keys(W.ALIAS || {}).length, metro: window.Sottosuolo && Sottosuolo.TPL && Sottosuolo.TPL.metro.ok ? (Sottosuolo.TPL.metro.stazioni || [Sottosuolo.TPL.metro.A, Sottosuolo.TPL.metro.B]).map(s => s.name) : null }; });
   log('mondo', JSON.stringify(info));
-  if (FOTO) { fs.mkdirSync(FOTO, { recursive: true }); await pg.waitForTimeout(8000); await pg.screenshot({ path: path.join(FOTO, 'avvio.png') }); log('foto', path.join(FOTO, 'avvio.png')); }
+  if (FOTO) { fs.mkdirSync(FOTO, { recursive: true }); await pg.waitForTimeout(8000); await pg.screenshot({ path: path.join(FOTO, 'avvio.png'), timeout: 300000 }).then(() => log('foto', path.join(FOTO, 'avvio.png')), e => log('foto non fatta', e.message.split('\n')[0])); }
   if (has('metro')) {
     const r = await pg.evaluate(async () => { const S = window.Sottosuolo; if (!S || !S.provaViaggio) return 'niente provaViaggio'; return await S.provaViaggio(window.__pv.st); });
     log('metro', JSON.stringify(r));
-    if (FOTO) { await pg.waitForTimeout(4000); await pg.screenshot({ path: path.join(FOTO, 'metro.png') }); }
+    if (FOTO) { await pg.waitForTimeout(4000); await pg.screenshot({ path: path.join(FOTO, 'metro.png'), timeout: 300000 }).catch(() => {}); }
   }
   await pg.waitForTimeout(6000);
   log(errori.length ? 'ERRORI: ' + errori.length : 'nessun errore');

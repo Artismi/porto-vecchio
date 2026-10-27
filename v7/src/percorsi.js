@@ -257,6 +257,12 @@ var Percorsi = (function () {
   porta('posto_blocco', 'Il posto di blocco sulla Vittoria', 'blocco', mgC[0], mgC[1], [[mgC[0] - 16, mgC[1]], [mgC[0] + 14, mgC[1]]]);
   // [mappa_compatta] la sesta: il passaggio a livello della Via della Stazione (le sbarre, il casello); l'alternativa è il sottopasso Cavour
   { const p = pz('passaggio_livello')[0]; if (p) { const c = pzW(p, 11, 0); porta('passaggio_livello', 'Il passaggio a livello', 'passaggio', c[0], c[1], [pzW(p, 11, -9), pzW(p, 11, 9)], { altra: 'sottopasso' }); } }
+  // [mappa_nuova] senza la ferrovia di superficie il sottopasso del rilevato e le sbarre non ci sono: la Via Cavour resta la salita (con la
+  // sua scalinata) fra il Corso e il piazzale, e la sesta porta è l'ingresso della metropolitana sul piazzale della vecchia stazione
+  if (W.MAPPA === 'nuova') {
+    { const C = road('cavour_sotto'); if (C && !PORTE.some(q => q.id === 'sottopasso')) { const a = C.pts[0], z = C.pts[C.pts.length - 1]; porta('sottopasso', 'La salita della Via Cavour', 'sottopasso', (a[0] + z[0]) / 2, (a[1] + z[1]) / 2, [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
+    { const S = (W.sets || []).find(q => q.k === 'stazione'); if (S && !PORTE.some(q => q.id === 'passaggio_livello')) porta('passaggio_livello', "L'ingresso della metropolitana (Stazione)", 'passaggio', (S.x0 + S.x1) / 2, (S.y0 + S.y1) / 2, [[(S.x0 + S.x1) / 2, S.y0 - 6], [(S.x0 + S.x1) / 2, S.y1 + 6]], { altra: 'sottopasso', metro: 'sud' }); }
+  }
 
   if (DBG) console.error('[percorsi] t', 225, Date.now() - T0);
   // ================= I RICHIAMI DEI TRATTI =================
