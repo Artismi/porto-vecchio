@@ -15882,7 +15882,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       Q.S[i] = Q.s0[i] + (Q.s1[i] - Q.s0[i]) * k; Q.A[i] = Q.a0[i] * Math.min(1, k * 6) * (1 - k) * (1 - k);
       if (Q.life[i] <= 0) { Q.A[i] = 0; Q.P[j + 1] = -999; }
     }
-    ['position', 'aSize', 'aAlpha', 'aCol'].forEach(n => Q.g.attributes[n].needsUpdate = true);
+    const A = Q.g.attributes; A.position.needsUpdate = A.aSize.needsUpdate = A.aAlpha.needsUpdate = A.aCol.needsUpdate = true;   // [momenti] niente array nuovo a ogni fotogramma
     Q.pts.material.uniforms.uScale.value = MONDO.pxH * camera.projectionMatrix.elements[5] * .5;
   }
   // ---- veicoli: portiere, tergicristalli, scarico, motore, lampeggianti ----
@@ -15965,7 +15965,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ color: '#ffffff', side: THREE.DoubleSide }), N);
     m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.receiveShadow = true; scene.add(m);
     const S = []; for (let i = 0; i < N; i++) { S.push({ x: 0, z: 0, y: 0, vx: 0, vy: 0, vz: 0, ry: Math.random() * 6, rx: 0, rz: 0, sp: 0, seed: Math.random(), dead: true }); m.setColorAt(i, new THREE.Color('#d8d4c8')); }
-    return { m, S, N, d: new THREE.Object3D(), c: new THREE.Color() };
+    const C = ['#7a5a34', '#94703c', '#c8b088', '#b84a3c', '#dcd8cc'].map(c => new THREE.Color(c));   // [momenti] i colori già letti: niente stringhe da interpretare quando un foglio rinasce
+    return { m, S, N, d: new THREE.Object3D(), c: new THREE.Color(), C };
   }
   const PAPER_OK = t => t === G.T.VIA || t === G.T.WALK || t === G.T.PIAZZA || t === G.T.COB || t === G.T.QUAY || t === G.T.DIRT || t === G.T.GRAVEL;
   const LEAF_OK = t => t === G.T.TREE || t === G.T.GRASS || t === G.T.SHRUB || t === G.T.DIRT;
@@ -15976,8 +15977,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (q.dead || Math.abs(q.x - cam.x) > 34 || Math.abs(q.z - cam.y) > 34) {   // rinasce in un punto a caso attorno alla camera, su strada o nel bosco
         q.dead = true; const a = Math.random() * 6.28, r = 6 + Math.random() * 26, x = cam.x + Math.cos(a) * r, z = cam.y + Math.sin(a) * r, t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS));
         const paper = PAPER_OK(t), leaf = !paper && LEAF_OK(t); if (!paper && !leaf) continue;
-        Object.assign(q, { x, z, y: 0, vx: 0, vy: 0, vz: 0, dead: false, leaf });
-        Pp.m.setColorAt(i, Pp.c.set(leaf ? (q.seed < .5 ? '#7a5a34' : '#94703c') : (q.seed < .2 ? '#c8b088' : q.seed < .35 ? '#b84a3c' : '#dcd8cc')));
+        q.x = x; q.z = z; q.y = 0; q.vx = 0; q.vy = 0; q.vz = 0; q.dead = false; q.leaf = leaf;   // [momenti] senza oggetti nuovi
+        Pp.m.setColorAt(i, Pp.C[leaf ? (q.seed < .5 ? 0 : 1) : (q.seed < .2 ? 2 : q.seed < .35 ? 3 : 4)]);
         Pp.m.instanceColor.needsUpdate = true;
       }
       // la raffica locale: passa sulla strada da ovest a est
@@ -16010,35 +16011,40 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         float fl = sin(wT * 24. + instanceMatrix[3].x * 3.1) * iFlap; transformed.y += abs(aWing) * (fl * .55 - (1. - min(iFlap * 3., 1.)) * .0); transformed.x -= aWing * (1. - min(iFlap * 3., 1.)) * .11;`); };
     const m = new THREE.InstancedMesh(geo, mat, N); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.castShadow = true; scene.add(m);
     const S = []; for (let i = 0; i < N; i++) { S.push({ flock: -1, x: 0, z: 0, y: 0, h: 0, ry: 0, st: 'off' }); m.setColorAt(i, new THREE.Color(['#8a8c94', '#6e7078', '#9a9aa0', '#5a5c64', '#c8c4bc'][i % 5])); }
-    return { m, S, N, F: [], flap, d: new THREE.Object3D() };
+    return { m, S, N, F: [], T: [], flap, d: new THREE.Object3D() };
   }
-  function birdSpot(x0, z0, r0, r1) { for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28, r = r0 + Math.random() * (r1 - r0), x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (t === G.T.PIAZZA || t === G.T.WALK || t === G.T.COB || t === G.T.QUAY) return [x, z]; } return null; }
+  function birdSpot(x0, z0, r0, r1) { for (let k = 0; k < 14; k++) { const a = Math.random() * 6.28, r = r0 + Math.random() * (r1 - r0), x = x0 + Math.cos(a) * r, z = z0 + Math.sin(a) * r, t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); if (t === G.T.PIAZZA || t === G.T.WALK || t === G.T.COB || t === G.T.QUAY) { const P = birdSpot.P = birdSpot.P || [0, 0]; P[0] = x; P[1] = z; return P; } } return null; }   // [momenti] la coppia riusata: chi la riceve la legge subito
   function tickBirds(st, time, dt, night) {   // [animazioni-mondo]
     const B = MONDO.birds, p = st.player; B.m.visible = night < .6;
     if (!B.m.visible) return;
     // al massimo 3 stormi vicini alla camera; quelli lontani si liberano
-    B.F = B.F.filter(f => { const far = Math.hypot(f.x - cam.x, f.z - cam.y) > 50; if (far) B.S.forEach(b => { if (b.flock === f.id) { b.flock = -1; b.st = 'off'; } }); return !far; });
+    // [momenti] tutto senza oggetti nuovi a ogni giro: gli stormi tolti sul posto, le minacce in un array piatto riusato, i cicli senza chiusure
+    for (let j = B.F.length - 1; j >= 0; j--) { const f = B.F[j], fx = f.x - cam.x, fz = f.z - cam.y; if (fx * fx + fz * fz <= 2500) continue;
+      for (let i = 0; i < B.N; i++) { const b = B.S[i]; if (b.flock === f.id) { b.flock = -1; b.st = 'off'; } } B.F[j] = B.F[B.F.length - 1]; B.F.length--; }
     if (B.F.length < 3 && Math.random() < dt * 2) {
-      const sp = birdSpot(cam.x, cam.y, 14, 34), free = B.S.filter(b => b.flock < 0);
-      if (sp && free.length >= 5) { const f = { id: Math.random(), x: sp[0], z: sp[1] }; B.F.push(f); free.slice(0, 5 + Math.floor(Math.random() * 4)).forEach(b => Object.assign(b, { flock: f.id, x: sp[0] + (Math.random() - .5) * 3, z: sp[1] + (Math.random() - .5) * 3, y: 0, ry: Math.random() * 6.28, st: 'terra', t: Math.random() * 2, hop: 0 })); }
+      let free = 0; for (let i = 0; i < B.N; i++) if (B.S[i].flock < 0) free++;
+      const sp = free >= 5 ? birdSpot(cam.x, cam.y, 14, 34) : null;
+      if (sp) { const f = { id: Math.random(), x: sp[0], z: sp[1], fly: null }; B.F.push(f); let n = 5 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < B.N && n > 0; i++) { const b = B.S[i]; if (b.flock >= 0) continue; n--; b.flock = f.id; b.x = sp[0] + (Math.random() - .5) * 3; b.z = sp[1] + (Math.random() - .5) * 3; b.y = 0; b.ry = Math.random() * 6.28; b.st = 'terra'; b.t = Math.random() * 2; b.hop = 0; } }
     }
     // chi li spaventa: il giocatore che si avvicina, la gente che corre, le macchine, gli spari
-    const bang = (st.sfx || []).some(s => s.k === 'shot' || s.k === 'explosion' || s.k === 'honk');
-    const threats = [[p.x, p.y, (p.speed || 0) > 3 ? 5 : 3.4]];
-    st.npcs.forEach(n => { if (!n.inside && !n.dead && Math.abs(n.x - cam.x) < 40 && Math.abs(n.y - cam.y) < 40) threats.push([n.x, n.y, (n.speedNow || 0) > 2.5 ? 3.5 : 1.6]); });
-    st.vehicles.forEach(v => { if (!v.hidden && Math.abs(v.speed || 0) > 1 && Math.abs(v.x - cam.x) < 45 && Math.abs(v.y - cam.y) < 45) threats.push([v.x, v.y, 6]); });
-    B.F.forEach(f => {
-      let scare = bang && Math.hypot(f.x - p.x, f.z - p.y) < 40 ? [p.x, p.y] : null;
-      if (!scare) for (const [tx, tz, r] of threats) if (Math.hypot(tx - f.x, tz - f.z) < r + 2) { scare = [tx, tz]; break; }
+    let bang = false; if (st.sfx) for (let i = 0; i < st.sfx.length; i++) { const k = st.sfx[i].k; if (k === 'shot' || k === 'explosion' || k === 'honk') { bang = true; break; } }
+    const T = B.T; T.length = 0; T.push(p.x, p.y, (p.speed || 0) > 3 ? 5 : 3.4);
+    for (let i = 0; i < st.npcs.length; i++) { const n = st.npcs[i]; if (!n.inside && !n.dead && Math.abs(n.x - cam.x) < 40 && Math.abs(n.y - cam.y) < 40) T.push(n.x, n.y, (n.speedNow || 0) > 2.5 ? 3.5 : 1.6); }
+    for (let i = 0; i < st.vehicles.length; i++) { const v = st.vehicles[i]; if (!v.hidden && Math.abs(v.speed || 0) > 1 && Math.abs(v.x - cam.x) < 45 && Math.abs(v.y - cam.y) < 45) T.push(v.x, v.y, 6); }
+    for (let j = 0; j < B.F.length; j++) {
+      const f = B.F[j]; let scare = false, sx0 = 0, sz0 = 0;
+      if (bang && Math.hypot(f.x - p.x, f.z - p.y) < 40) { scare = true; sx0 = p.x; sz0 = p.y; }
+      if (!scare) for (let q = 0; q < T.length; q += 3) if (Math.hypot(T[q] - f.x, T[q + 1] - f.z) < T[q + 2] + 2) { scare = true; sx0 = T[q]; sz0 = T[q + 1]; break; }
       if (scare && !f.fly) {   // tutto lo stormo si alza, uno dopo l'altro, e va a posarsi più in là, lontano da chi l'ha spaventato
-        const ax = f.x - scare[0], az = f.z - scare[1], al = Math.hypot(ax, az) || 1;
-        let L = null; for (let k = 0; k < 6 && !L; k++) { const s = birdSpot(f.x + ax / al * 18, f.z + az / al * 18, 0, 10); if (s && threats.every(([tx, tz]) => Math.hypot(tx - s[0], tz - s[1]) > 7)) L = s; }
-        L = L || birdSpot(cam.x, cam.y, 20, 36); if (!L) return;
-        f.fly = { x0: f.x, z0: f.z, x1: L[0], z1: L[1] }; f.x = L[0]; f.z = L[1];
-        B.S.forEach(b => { if (b.flock === f.id) { b.st = 'volo'; b.t = -Math.random() * .35; b.sx = b.x; b.sz = b.z; b.ex = L[0] + (Math.random() - .5) * 3; b.ez = L[1] + (Math.random() - .5) * 3; b.T = Math.hypot(b.ex - b.sx, b.ez - b.sz) / 6.5 + 2.2 + Math.random(); b.H = 6 + Math.random() * 5; b.side = (Math.random() - .5) * 8; } });
+        const ax = f.x - sx0, az = f.z - sz0, al = Math.hypot(ax, az) || 1;
+        let L = null; for (let k = 0; k < 6 && !L; k++) { const s = birdSpot(f.x + ax / al * 18, f.z + az / al * 18, 0, 10); if (!s) continue; let ok = true; for (let q = 0; q < T.length; q += 3) if (Math.hypot(T[q] - s[0], T[q + 1] - s[1]) <= 7) { ok = false; break; } if (ok) L = s; }
+        L = L || birdSpot(cam.x, cam.y, 20, 36); if (!L) continue;
+        f.fly = true; f.x = L[0]; f.z = L[1];
+        for (let i = 0; i < B.N; i++) { const b = B.S[i]; if (b.flock !== f.id) continue; b.st = 'volo'; b.t = -Math.random() * .35; b.sx = b.x; b.sz = b.z; b.ex = L[0] + (Math.random() - .5) * 3; b.ez = L[1] + (Math.random() - .5) * 3; b.T = Math.hypot(b.ex - b.sx, b.ez - b.sz) / 6.5 + 2.2 + Math.random(); b.H = 6 + Math.random() * 5; b.side = (Math.random() - .5) * 8; }
       }
-      if (f.fly && B.S.every(b => b.flock !== f.id || b.st === 'terra')) f.fly = null;
-    });
+      if (f.fly) { let giu = true; for (let i = 0; i < B.N; i++) { const b = B.S[i]; if (b.flock === f.id && b.st !== 'terra') { giu = false; break; } } if (giu) f.fly = null; }
+    }
     for (let i = 0; i < B.N; i++) {
       const b = B.S[i]; let fl = 0;
       if (b.st === 'off') { B.d.position.set(0, -99, 0); B.d.scale.setScalar(.001); }
@@ -16105,8 +16111,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     tickVento(time);
     if (!MONDO.puffs) { MONDO.puffs = mondoPts(220, false); MONDO.sparks = mondoPts(140, true); MONDO.papers = initPapers(); MONDO.birds = initBirds(); }
     // scintille e fumo dai fuochi vicini (barili, falò, bivacchi)
-    const fires = MONDO.fuochi.concat(WX.fires.filter(f => f.g.visible).map(f => f.g.position));   // [sporcherie] i bidoni spenti di giorno non fanno scintille
-    for (const f of fires) {
+    const nF = MONDO.fuochi.length;   // [momenti] i fuochi fissi e poi i bidoni accesi (quelli spenti di giorno non fanno scintille), senza array nuovi
+    for (let fi = 0; fi < nF + WX.fires.length; fi++) {
+      const f = fi < nF ? MONDO.fuochi[fi] : WX.fires[fi - nF].g.visible ? WX.fires[fi - nF].g.position : null; if (!f) continue;
       const x = f.x, z = f.z; if (Math.abs(x - cam.x) > 45 || Math.abs(z - cam.y) > 45) continue;
       if (Math.random() < dt * (2.2 + night * 2)) emit(MONDO.sparks, x + (Math.random() - .5) * .3, f.y + .25, z + (Math.random() - .5) * .3, (Math.random() - .5) * .8, 1.6 + Math.random() * 2.2, (Math.random() - .5) * .8, .7 + Math.random() * .9, .09, .04, .9, 1, .55 + Math.random() * .3, .15, -2.2);
       if (Math.random() < dt * .9) { const c = .22 + (1 - night) * .25; emit(MONDO.puffs, x, f.y + .5, z, 0, .5, 0, 2.6 + Math.random() * 1.5, .35, 1.8, .22, c, c * .98, c * .96, .7); }
@@ -16445,13 +16452,25 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   let curObj = null;
   function tagPart(b, n) { let t = TAGS.get(curTag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(curTag, t); } t.parts.push({ b, gi: b.geos.length - 1, n, obj: curObj }); }
   function tagObj(tag, o) { let t = TAGS.get(tag); if (!t) { t = { parts: [], objs: [] }; TAGS.set(tag, t); } t.objs.push(o); }
+  // [momenti] una cosa calciata (correndo se ne calciano tante) spariva dalla mesh fusa rimandando alla scheda video TUTTE le posizioni
+  // della mesh (migliaia di vertici, megabyte): ora solo la fetta toccata (updateRange; più fette nello stesso fotogramma: la loro unione)
+  // Se qualcun altro la cambia tutta dopo di noi (needsUpdate senza fetta), prima del disegno fetteChiudi la rimanda tutta
+  const FETTE = [];
+  function fetta(a, s, e) {
+    const r = a.updateRange;
+    if (a.__fN === frameN && r.count > 0) { const z = Math.max(r.offset + r.count, e); r.offset = Math.min(r.offset, s); r.count = z - r.offset; }
+    else if (a.__fN === frameN) { }   // già tutta da rimandare in questo fotogramma
+    else { r.offset = s; r.count = e - s; FETTE.push(a); }
+    a.__fN = frameN; a.needsUpdate = true; a.__v0 = a.version;
+  }
+  function fetteChiudi() { for (let i = 0; i < FETTE.length; i++) { const a = FETTE[i]; if (a.version !== a.__v0) { a.updateRange.offset = 0; a.updateRange.count = -1; } a.__fN = -1; } FETTE.length = 0; }
   function hideTag(tag) {
     const t = TAGS.get(tag); if (!t || t.hidden) return; t.hidden = true; DZ.touched = true; if (t.tas) t.tas(true);   // [tasselli] l'oggetto è nella mesh di un tassello: lo nasconde la sua maschera
-    t.parts.forEach(p => { if (!p.b.mesh) return; const a = p.b.mesh.geometry.attributes.position, s = p.b.offs[p.gi] * 3, e = s + p.n * 3; if (!p.bak) p.bak = a.array.slice(s, e); for (let k = s; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; });
+    t.parts.forEach(p => { if (!p.b.mesh) return; const a = p.b.mesh.geometry.attributes.position, s = p.b.offs[p.gi] * 3, e = s + p.n * 3; if (!p.bak) p.bak = a.array.slice(s, e); for (let k = s; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } fetta(a, s, e); });
   }
   function showTag(tag) {
     const t = TAGS.get(tag); if (!t || !t.hidden) return; t.hidden = false; if (t.tas) t.tas(false);
-    t.parts.forEach(p => { if (!p.bak) return; const a = p.b.mesh.geometry.attributes.position; a.array.set(p.bak, p.b.offs[p.gi] * 3); a.needsUpdate = true; });
+    t.parts.forEach(p => { if (!p.bak) return; const a = p.b.mesh.geometry.attributes.position, s = p.b.offs[p.gi] * 3; a.array.set(p.bak, s); fetta(a, s, s + p.bak.length); });
   }
   // griglia spaziale a celle di 4 m
   const hkey = (x, z) => (Math.floor(x / 4) + 50) * 1000 + Math.floor(z / 4) + 50;
@@ -16664,7 +16683,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (t && e.n < e.need) t.objs.forEach(o => { if (o.userData.bal && Math.random() < .25 * e.n && !o.userData.gone) { o.userData.gone = true; const bb = new THREE.Box3().setFromObject(o), cc = bb.getCenter(new THREE.Vector3()), he = bb.getSize(new THREE.Vector3()).multiplyScalar(.5); hideTagObj(t, o); const b = liveBody(o, cc, he, .08, null); b.v.set(-c * 2 + (Math.random() - .5) * 2, 3, -s * 2 + (Math.random() - .5) * 2); b.w.set(Math.random() * 8 - 4, 0, Math.random() * 8 - 4); } });
   }
   // nasconde un solo pezzo di un gruppo di tag (le colonnine cadono una per una)
-  function hideTagObj(t, o) { const p = t.parts.find(p => p.obj === o); if (!p || p.gone || !p.b.mesh) return; p.gone = true; const a = p.b.mesh.geometry.attributes.position, st0 = p.b.offs[p.gi] * 3, e = st0 + p.n * 3; if (!p.bak) p.bak = a.array.slice(st0, e); for (let k = st0; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } a.needsUpdate = true; DZ.touched = true; }
+  function hideTagObj(t, o) { const p = t.parts.find(p => p.obj === o); if (!p || p.gone || !p.b.mesh) return; p.gone = true; const a = p.b.mesh.geometry.attributes.position, st0 = p.b.offs[p.gi] * 3, e = st0 + p.n * 3; if (!p.bak) p.bak = a.array.slice(st0, e); for (let k = st0; k < e; k += 3) { a.array[k] = 0; a.array[k + 1] = -80; a.array[k + 2] = 0; } fetta(a, st0, e); DZ.touched = true; }
   function wallBreak(e) {
     const c = Math.cos(e.a), s = Math.sin(e.a);
     e.cells.forEach(([tx, ty]) => {
@@ -17199,6 +17218,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  // [zoom2] il tetto dello zoom indietro (main.js zoomBy usa lo stesso): a 4,2 la camera stava a 345 m, la nebbia a 765 m e la scheda
+  // video caricava mezza isola fino a perdere il contesto (schermo bianco, «la grafica non regge»). A 2 si vede il quartiere
+  const ZOOM_MAX = 2;
   const LFR = new THREE.Frustum(), LPM = new THREE.Matrix4(), LSPH = new THREE.Sphere();
   function updateLights(time, night, fx, fz) {   // [inverno28] studio luci
     frameN++;
@@ -17595,7 +17617,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const driving = !!pveh && !ui.intro && !ui.dialogNpc;
     cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * 1.6);
     const D = cam.drive, ease = D * D * (3 - 2 * D);
-    let tx = p.x, ty = p.y, tz = ui.zoom || 1;
+    let tx = p.x, ty = p.y, tz = ui.studio ? ui.zoom || 1 : Math.min(ZOOM_MAX, ui.zoom || 1);   // [zoom2] lo zoom indietro ha un tetto (anche per chi lo scrive da fuori: sviluppo.js, le prove)
     if (!pveh && ui.aimPoint && !ui.intro && !ui.dialogNpc) { const la = p.cur !== 'pugni' ? .28 : .12; const dx = ui.aimPoint.x - p.x, dy = ui.aimPoint.y - p.y, l = Math.hypot(dx, dy), m = Math.min(l * la, p.cur !== 'pugni' ? 5 : 2.5); if (l > .1) { tx += dx / l * m; ty += dy / l * m; } tz *= p.cur !== 'pugni' ? 1.12 : 1; }
     {   // [telefono] la visuale guarda dove vai (a piedi) e si trascina col dito per guardarsi attorno
       const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
@@ -17716,7 +17738,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
     if (cam.uyS !== cam.yaw) { cam.uyS = cam.yaw; cam.rotT = time; }   // [fluido] quando la visuale ha girato l'ultima volta   // [visuale5] anche a mano e col ricentro
-    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+    // [cadenza] e nemmeno mentre la camera trasla: camminando la camera agganciata avanzava di 1 o 2 texel per fotogramma (a 1080 righe
+    // un passo è ~1,5 texel) e il personaggio, che non si aggancia, tremava di mezzo texel attorno al centro. Da ferma si riaggancia
+    { const cp = camera.position; if (cam.__cpx === undefined || Math.abs(cp.x - cam.__cpx) + Math.abs(cp.y - cam.__cpy) + Math.abs(cp.z - cam.__cpz) > 1e-4) cam.movN = frameN; cam.__cpx = cp.x; cam.__cpy = cp.y; cam.__cpz = cp.z; }
+    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
       const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
       const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
@@ -17724,7 +17749,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       camera.position.copy(pos);
     }
     camera.updateMatrixWorld();
-    scene.fog.near = lerp(walkDist * 1.05 + 10 - WXfog * (walkDist * .25 + 12), 40 - WXfog * 30, ease); scene.fog.far = lerp(walkDist * 1.9 + 110 - WXfog * (walkDist * .45 + 50), 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
+    // [zoom2] oltre lo zoom 1 l'aria non si allarga con la camera: la nebbia sta alla stessa distanza dal punto guardato (la camera si
+    // allontana, la nebbia la segue di altrettanto) e con lei tutto quello che si carica e si disegna (tasselli, blocchi, streaming)
+    const wd1 = walkDist / Math.max(1, cam.zoom), wdX = walkDist - wd1;
+    scene.fog.near = lerp(wd1 * 1.05 + 10 - WXfog * (wd1 * .25 + 12) + wdX, 40 - WXfog * 30, ease); scene.fog.far = lerp(wd1 * 1.9 + 110 - WXfog * (wd1 * .45 + 50) + wdX, 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
@@ -17775,6 +17803,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
+    fetteChiudi();   // [momenti]
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); return; }   // [sguardo] un passo solo
