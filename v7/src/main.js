@@ -140,9 +140,13 @@
     }
   }
   function sprayEnd() {
-    const S = ui.spray; if (window.Writing) Writing.release(st); if (!S || !S.on) return; S.on = false;
-    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+    const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
+    // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
+    // al fotogramma dopo (DOPO, letto da input)
+    DOPO.push(() => { if (window.Writing) Writing.release(st); if (!on) return;
+      if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
+  const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
     if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
@@ -197,6 +201,7 @@
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
     if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     const r = input0(); if (!r) return r;
     const p = st.player;

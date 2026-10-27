@@ -22829,7 +22829,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f146787cf9d8f5eb';</script>
-<script>window.PV_IMPRONTA_TASS = '722c261bc8a3db50';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'db4be2bed913cd5b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -91337,9 +91337,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     }
   }
   function sprayEnd() {
-    const S = ui.spray; if (window.Writing) Writing.release(st); if (!S || !S.on) return; S.on = false;
-    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+    const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
+    // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
+    // al fotogramma dopo (DOPO, letto da input)
+    DOPO.push(() => { if (window.Writing) Writing.release(st); if (!on) return;
+      if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
+  const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
     if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
@@ -91394,6 +91398,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
     if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     const r = input0(); if (!r) return r;
     const p = st.player;
