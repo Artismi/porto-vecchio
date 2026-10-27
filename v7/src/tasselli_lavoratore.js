@@ -27,24 +27,43 @@ function blocco(ab, h, B, a) {
   if (a.q) {   // la posizione quantizzata torna a 32 bit (gli shader della città la leggono così)
     const s = a.s, mn = a.q.min, k = a.q.max.map((v, c) => (v - mn[c]) / 65535), f = new Float32Array(arr.length);
     for (let i = 0; i < arr.length; i++) { const c = i % s; f[i] = mn[c] + arr[i] * k[c]; }
+    if (blocco.q16) blocco.q16.set(f, arr.byteOffset === 0 && arr.byteLength === arr.buffer.byteLength ? arr : arr.slice());   // [leggera] i 16 bit restano per i raggi
     arr = f;
   }
   return arr;
 }
-function contenitore(ab) {
+// [leggera] sul telefono gli attributi più compatti per la scheda video (stesso aspetto): il colore a 16 bit (tavolozza) a 8 bit, le uv
+// in mezza precisione se stanno in ±2 (un quarto di texel a 512), i numeri interi in virgola mobile (pid…) a 16 bit
+const H = new Float32Array(1), HI = new Uint32Array(H.buffer);
+function mezza(v) { H[0] = v; const x = HI[0], s = (x >>> 16) & 0x8000, e = ((x >>> 23) & 0xff) - 112, m = x & 0x7fffff;
+  if (e <= 0) { if (e < -10) return s; const mm = (m | 0x800000) >> (1 - e); return s | ((mm + 0x1000) >> 13); }
+  const r = s | (e << 10) | (m >> 13), q = (m >> 12) & 1; return e >= 31 ? s | 0x7c00 : r + q; }
+function compatta(a, v) {
+  if (a.idx || a.nome === 'position' || a.nome === 'instanceMatrix' || a.nome === 'instanceColor') return null;
+  if (v instanceof Uint16Array && a.norm && a.nome === 'color') { const o = new Uint8Array(v.length); for (let i = 0; i < v.length; i++) o[i] = (v[i] * 255 + 32767) / 65535 | 0; return { v: o, tipo: 'Uint8Array', norm: true }; }
+  if (!(v instanceof Float32Array) || a.norm) return null;
+  let lo = Infinity, hi = -Infinity, int = true; for (let i = 0; i < v.length; i++) { const x = v[i]; if (x < lo) lo = x; if (x > hi) hi = x; if (int && x !== Math.round(x)) int = false; }
+  if (int && lo >= 0 && hi < 65536) return { v: Uint16Array.from(v), tipo: 'Uint16Array', norm: false };
+  if (a.nome === 'uv' && lo >= -2 && hi <= 2) { const o = new Uint16Array(v.length); for (let i = 0; i < v.length; i++) o[i] = mezza(v[i]); return { v: o, tipo: 'Uint16Array', norm: false, half: true }; }
+  return null;
+}
+function contenitore(ab, tel) {
   const dv = new DataView(ab); if (dv.getUint32(0, true) !== 0x31545650) throw new Error('non è un tassello');   // 'PVT1'
   const n = dv.getUint32(4, true), testa = JSON.parse(new TextDecoder().decode(new Uint8Array(ab, 8, n))), h = (8 + n + 7) & ~7;
-  const vettori = testa.attr.map(a => blocco(ab, h, testa.blocchi[a.b], a));
-  return { testa, vettori };
+  blocco.q16 = tel ? new Map() : null;
+  const vettori = testa.attr.map(a => blocco(ab, h, testa.blocchi[a.b], a)), q16 = [];
+  if (tel) { blocco.q16.forEach((u, f) => { const i = vettori.indexOf(f); if (i >= 0) q16[i] = u; }); blocco.q16 = null;
+    testa.attr.forEach((a, i) => { const c = compatta(a, vettori[i]); if (!c) return; vettori[i] = c.v; testa.attr[i] = Object.assign({}, a, { tipo: c.tipo, norm: c.norm, half: !!c.half }); }); }
+  return { testa, vettori, q16 };
 }
 self.onmessage = async e => {
   const m = e.data;
   try {
     await MeshoptDecoder.ready;
     if (m.op === 'tassello') {
-      const t0 = performance.now(), ab = m.buf ? await apri(m.buf) : await scarica(m.url, true), t1 = performance.now(), { testa, vettori } = contenitore(ab);
-      const buf = [...new Set(vettori.map(v => v.buffer))];
-      self.postMessage({ id: m.id, testa, vettori, byte: ab.byteLength, ms: [t1 - t0, performance.now() - t1] }, buf);
+      const t0 = performance.now(), ab = m.buf ? await apri(m.buf) : await scarica(m.url, true), t1 = performance.now(), { testa, vettori, q16 } = contenitore(ab, !!m.tel);
+      const buf = [...new Set(vettori.concat(q16.filter(Boolean)).map(v => v.buffer))].filter(b => b !== ab || !m.buf);
+      self.postMessage({ id: m.id, testa, vettori, q16, byte: ab.byteLength, ms: [t1 - t0, performance.now() - t1] }, buf);
     } else if (m.op === 'img') {
       const r = await scarica(m.url, false), bl = await r.blob();
       const bmp = await createImageBitmap(bl, { premultiplyAlpha: 'none', colorSpaceConversion: 'none', imageOrientation: m.capovolgi ? 'flipY' : 'from-image' });

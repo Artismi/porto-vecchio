@@ -47,6 +47,10 @@ var Tasselli = (function () {
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
     raggi: !/[?&]tasselliraggi=0\b/.test(Q),   // [tasselli2] le mesh opache tengono le posizioni per i raggi (graffiti, spruzzi)
+    // [leggera] sul telefono (?nomemoriatasselli lo spegne): attributi compatti per la scheda video (il lavoratore: colore a 8 bit, uv in
+    // mezza precisione, interi a 16 bit), le posizioni per i raggi a 16 bit come arrivano (non la copia a 32), il compresso buttato
+    // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
+    leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
   let IND = null, DATI = null, VIVB = null, ON = false, CTX = null;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
@@ -218,11 +222,14 @@ var Tasselli = (function () {
   // rayWall, render.js bmbCands). Una mesh di tassello è grande (tutto un materiale di 48 m): la prima volta che un raggio la tocca si fa
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
   const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
+  // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
+  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
+  const pget = (P, i) => P.__q ? P.get(i) : P[i];
   function griglia(g) {
-    const P = g.attributes.position.array, I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const P = posL(g.attributes.position), I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
     const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
     const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
-    const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = P[i], z = P[i + 2]; if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
+    const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
       const i0 = Math.max(0, Math.floor(ax / c) - x0), i1 = Math.min(nx - 1, Math.floor(bx / c) - x0), j0 = Math.max(0, Math.floor(az / c) - z0), j1 = Math.min(nz - 1, Math.floor(bz / c) - z0);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * nx + i); };
     for (let t = 0; t < nt; t++) span(t, k => { cnt[k + 1]++; });
@@ -233,7 +240,7 @@ var Tasselli = (function () {
     return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
   }
   function rayTas(rc, out) {
-    const g = this.geometry, P = g.attributes.position; if (!P || !P.array || P.array.length < 9) return;
+    const g = this.geometry, P = g.attributes.position; if (!P || !P.array || (P.__q ? P.__q.u.length : P.array.length) < 9) return;
     const mats = this.material; if (!g.boundingSphere) g.computeBoundingSphere();
     RG.sph.copy(g.boundingSphere).applyMatrix4(this.matrixWorld); if (!rc.ray.intersectsSphere(RG.sph)) return;
     RG.inv.copy(this.matrixWorld).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
@@ -246,7 +253,7 @@ var Tasselli = (function () {
     const ox = ray.origin.x, oz = ray.origin.z, dx = ray.direction.x, dz = ray.direction.z;
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
-    const tim = ++RG.timbro, I = G.I, A = P.array, v = k => I ? I[k] : k, gr = g.groups;
+    const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
       const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
@@ -255,7 +262,8 @@ var Tasselli = (function () {
         const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
         const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
         let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
-        RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3);
+        if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
+        else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
         const pw = RG.p.clone().applyMatrix4(this.matrixWorld), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
         const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
@@ -288,7 +296,8 @@ var Tasselli = (function () {
   async function apri(ti) {
     const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
-      const buf = S.zip.slice(0), m = await chiedi({ op: 'tassello', buf }, [buf]); ST.decodMs += m.ms[1];
+      const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
+      const m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
       const ids = new Set(); m.testa.mesh.forEach(r => { (Array.isArray(r.m) ? r.m : [r.m]).concat(r.cdm !== null && r.cdm !== undefined ? [r.cdm] : []).concat(r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).forEach(i => texDelMateriale(IND.materiali[i]).forEach(q => ids.add(q))); });
       (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q)));
@@ -311,7 +320,10 @@ var Tasselli = (function () {
     }
     const attr = i => { let a = S.attr.get(i); if (a) return a; const d = T.attr[i], v = m.vettori[i];
       a = d.idx ? new THREE.BufferAttribute(v, 1) : (d.nome === 'instanceMatrix' || d.nome === 'instanceColor') ? new THREE.InstancedBufferAttribute(v, d.s) : new THREE.BufferAttribute(v, d.s, d.norm);
-      if (!S.tieni.has(i)) a.onUpload(libera); S.attr.set(i, a); return a; };
+      if (d.half) a.isFloat16BufferAttribute = true;   // [leggera] le uv in mezza precisione (il lavoratore)
+      const q = m.q16 && m.q16[i];   // [leggera] per i raggi bastano i 16 bit: la copia a 32 bit va alla scheda video e via
+      if (q && S.tieni.has(i)) { a.__q = { u: q, mn: d.q.min, k: d.q.max.map((x, c) => (x - d.q.min[c]) / 65535) }; a.count0 = a.count; }
+      if (!S.tieni.has(i) || q) a.onUpload(libera); S.attr.set(i, a); return a; };
     let vf = 0;
     while (S.k < T.mesh.length) {
       if (performance.now() > tetto || vf > quota) return false;
@@ -322,6 +334,7 @@ var Tasselli = (function () {
       if (r.g.dr) g.setDrawRange(r.g.dr[0], r.g.dr[1]);
       if (r.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5]));
       if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else g.computeBoundingSphere();
+      if (!g.boundingBox && g.attributes.position.__q) g.computeBoundingBox();   // (i raggi la vogliono: dopo l'invio la posizione è a 16 bit)
       const pid = r.g.at.pid !== undefined, mat = Array.isArray(r.m) ? r.m.map(i => materiale(i, pid)) : materiale(r.m, pid);
       let o;
       if (r.inst) { o = new THREE.InstancedMesh(g, mat, r.inst.n); o.instanceMatrix = attr(r.inst.m); if (r.inst.c !== null) o.instanceColor = attr(r.inst.c); }
