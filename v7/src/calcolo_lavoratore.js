@@ -51,13 +51,15 @@ var CalcoloF = (function () {
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
     return f;
   }
-  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, poi np × (x, z), poi np − 1 s);
+  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, su, sx0, sy0, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, lat, nt, poi np × (x, z),
+  // poi np − 1 s, poi nt × (s0, s1) i tagli); [suolo] su: i ranghi delle caselle del blocco ((n + 2) × (m + 2) da sx0, sy0; null: niente gerarchia);
+  // la via salta il punto a s metri dentro un taglio, o (lat > 0, i vicoli e i sentieri) su una casella di rango più alto di lat − 1 (suolo.js via);
   // mem[kf]: le finiture (7 numeri l'una: x, z, a, t, sd, len, wid; NaN dove mancano). → { I, I2, R1, R2, S2, FI }
   function vie(a, mem) {
-    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv];
+    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv], SM = a.su, sx0 = a.sx0, sy0 = a.sy0, sw = n + 2;
     const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
     const put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], oP = o + 5, oS = oP + np * 2; o = oS + Math.max(0, np - 1); if (np < 2) continue;
+    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], lat = SM ? V[o + 5] : 0, nt = V[o + 6], oP = o + 7, oS = oP + np * 2, oT = oS + Math.max(0, np - 1); o = oT + nt * 2; if (np < 2) continue;
       for (let k = 0; k < np - 1; k++) { const ax = V[oP + k * 2], az = V[oP + k * 2 + 1], bx = V[oP + k * 2 + 2], bz = V[oP + k * 2 + 3], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -65,6 +67,8 @@ var CalcoloF = (function () {
         const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
           if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          if (nt) { const s = V[oS + k] - V[oS] + Math.max(0, Math.min(L, t)); let cut = false; for (let c = 0; c < nt; c++) if (s >= V[oT + c * 2] && s < V[oT + c * 2 + 1]) { cut = true; break; } if (cut) continue; }   // [suolo] il tratto tagliato
+          if (lat && SM[(Math.floor(pz / TS) - sy0) * sw + Math.floor(px / TS) - sx0] > lat - 1) continue;   // [suolo] il vicolo contro la piazza
           const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = V[oS + k] + t;
           if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
           if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }

@@ -22828,7 +22828,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '6411e92042344d26';</script>
-<script>window.PV_IMPRONTA_TASS = '8b227dd6dd1b469b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'b002f004ad60d609';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -68749,14 +68749,25 @@ var Pavimenti = (function () {
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   // [fluido] a pezzi: mappeG cede il passo quando cede() lo dice (render.js buildChunkGen, oltre 4 ms); mappe fa tutto subito. Stessi conti, stesso ordine
   // [calcolo] le vie e le finiture impacchettate per il lavoratore, una volta (vieTutte e finit non cambiano)
-  const PKV = { v: null, k: null, f: null, kf: null, n: 0 };
+  // [suolo] la gerarchia dei suoli (suolo.js): la via si ferma dove sotto c'è un suolo più alto (la piazza pedonale, le opere).
+  // Il lavoratore non vede il mondo: per ogni via i tagli lungo s e il suo rango (vieKey), per ogni blocco i ranghi delle caselle (mappeG)
+  const suoloDi = () => typeof Suolo !== 'undefined' && !Suolo.off && A.M && A.M.world ? Suolo.di(A.M.world) : null;
+  const PKV = { v: null, k: null, f: null, kf: null, n: 0, su: null };
   function vieKey() {
-    const VT = vieTutte(); if (PKV.v === VT) return PKV.k;
+    const VT = vieTutte(), SU = suoloDi(); if (PKV.v === VT && PKV.su === SU) return PKV.k;
     const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, P = [];
-    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0); continue; }
-      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1; P.push(Pt.length, hw, ext, f, pr);
-      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); }
-    PKV.v = VT; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+    // per via: np, hw, ext, f, pr, lat (rango della via + 1 se si ferma anche di lato, se no 0), nt (quanti tagli), poi np × (x, z), np − 1 s, nt × (s0, s1)
+    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0, 0, 0); continue; }
+      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1, rv = SU ? SU.rangoVia(rd) : 0, TG = SU ? SU.tagli(rd) : [];
+      P.push(Pt.length, hw, ext, f, pr, SU && rv < SU.R.carreggiata ? rv + 1 : 0, TG.length);
+      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); TG.forEach(c => P.push(c[0], c[1])); }
+    PKV.v = VT; PKV.su = SU; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+  }
+  // [suolo] i ranghi delle caselle del blocco, con un bordo di una casella (Suolo.rango al centro della casella)
+  function suoloBlocco(SU, tx0, ty0, n, m) {
+    if (!SU) return null; const w = n + 2, h = m + 2, M = new Uint8Array(w * h), TS = A.TS;
+    for (let b = 0; b < h; b++) for (let a = 0; a < w; a++) M[b * w + a] = SU.rango((tx0 - 1 + a + .5) * TS, (ty0 - 1 + b + .5) * TS);
+    return M;
   }
   function finKey() {
     const FL = finit(); if (PKV.f === FL) return PKV.kf;
@@ -68768,7 +68779,7 @@ var Pavimenti = (function () {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
     // [calcolo] le vie e le finiture (solo i loro dati: i conti di prima, nello stesso ordine) nel lavoratore (calcolo_lavoratore.js vie);
     // qui la parte che legge il mondo (famiglia del suolo, sabbia) e le tessiture
-    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
+    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), su: suoloBlocco(suoloDi(), tx0, ty0, n, m), sx0: tx0 - 1, sy0: ty0 - 1, kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
@@ -70767,13 +70778,15 @@ var CalcoloF = (function () {
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
     return f;
   }
-  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, poi np × (x, z), poi np − 1 s);
+  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, su, sx0, sy0, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, lat, nt, poi np × (x, z),
+  // poi np − 1 s, poi nt × (s0, s1) i tagli); [suolo] su: i ranghi delle caselle del blocco ((n + 2) × (m + 2) da sx0, sy0; null: niente gerarchia);
+  // la via salta il punto a s metri dentro un taglio, o (lat > 0, i vicoli e i sentieri) su una casella di rango più alto di lat − 1 (suolo.js via);
   // mem[kf]: le finiture (7 numeri l'una: x, z, a, t, sd, len, wid; NaN dove mancano). → { I, I2, R1, R2, S2, FI }
   function vie(a, mem) {
-    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv];
+    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv], SM = a.su, sx0 = a.sx0, sy0 = a.sy0, sw = n + 2;
     const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
     const put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], oP = o + 5, oS = oP + np * 2; o = oS + Math.max(0, np - 1); if (np < 2) continue;
+    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], lat = SM ? V[o + 5] : 0, nt = V[o + 6], oP = o + 7, oS = oP + np * 2, oT = oS + Math.max(0, np - 1); o = oT + nt * 2; if (np < 2) continue;
       for (let k = 0; k < np - 1; k++) { const ax = V[oP + k * 2], az = V[oP + k * 2 + 1], bx = V[oP + k * 2 + 2], bz = V[oP + k * 2 + 3], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -70781,6 +70794,8 @@ var CalcoloF = (function () {
         const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
           if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          if (nt) { const s = V[oS + k] - V[oS] + Math.max(0, Math.min(L, t)); let cut = false; for (let c = 0; c < nt; c++) if (s >= V[oT + c * 2] && s < V[oT + c * 2 + 1]) { cut = true; break; } if (cut) continue; }   // [suolo] il tratto tagliato
+          if (lat && SM[(Math.floor(pz / TS) - sy0) * sw + Math.floor(px / TS) - sx0] > lat - 1) continue;   // [suolo] il vicolo contro la piazza
           const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = V[oS + k] + t;
           if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
           if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
@@ -70864,13 +70879,15 @@ var CalcoloF = (function () {
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
     return f;
   }
-  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, poi np × (x, z), poi np − 1 s);
+  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, su, sx0, sy0, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, lat, nt, poi np × (x, z),
+  // poi np − 1 s, poi nt × (s0, s1) i tagli); [suolo] su: i ranghi delle caselle del blocco ((n + 2) × (m + 2) da sx0, sy0; null: niente gerarchia);
+  // la via salta il punto a s metri dentro un taglio, o (lat > 0, i vicoli e i sentieri) su una casella di rango più alto di lat − 1 (suolo.js via);
   // mem[kf]: le finiture (7 numeri l'una: x, z, a, t, sd, len, wid; NaN dove mancano). → { I, I2, R1, R2, S2, FI }
   function vie(a, mem) {
-    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv];
+    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv], SM = a.su, sx0 = a.sx0, sy0 = a.sy0, sw = n + 2;
     const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
     const put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], oP = o + 5, oS = oP + np * 2; o = oS + Math.max(0, np - 1); if (np < 2) continue;
+    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], lat = SM ? V[o + 5] : 0, nt = V[o + 6], oP = o + 7, oS = oP + np * 2, oT = oS + Math.max(0, np - 1); o = oT + nt * 2; if (np < 2) continue;
       for (let k = 0; k < np - 1; k++) { const ax = V[oP + k * 2], az = V[oP + k * 2 + 1], bx = V[oP + k * 2 + 2], bz = V[oP + k * 2 + 3], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
         if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
         const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
@@ -70878,6 +70895,8 @@ var CalcoloF = (function () {
         const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
         for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
           if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          if (nt) { const s = V[oS + k] - V[oS] + Math.max(0, Math.min(L, t)); let cut = false; for (let c = 0; c < nt; c++) if (s >= V[oT + c * 2] && s < V[oT + c * 2 + 1]) { cut = true; break; } if (cut) continue; }   // [suolo] il tratto tagliato
+          if (lat && SM[(Math.floor(pz / TS) - sy0) * sw + Math.floor(px / TS) - sx0] > lat - 1) continue;   // [suolo] il vicolo contro la piazza
           const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = V[oS + k] + t;
           if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
           if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
