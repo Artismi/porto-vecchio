@@ -1526,7 +1526,7 @@ var Personaggi = (function () {
     return g;
   }
   // il modello del kit diventa la figura: le sue mesh se ne vanno, resta lo scheletro (con armi e attrezzi agganciati)
-  const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 40 : 260,   /* [leggera] sul telefono 40 figure in cache */ STAT = { n: 0, ms: 0 };
+  const GEO = new Map(), GEO_MAX = typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente') ? 12 : 260,   /* [leggera] sul telefono 12 figure in cache */ STAT = { n: 0, ms: 0 };
   function veste(g, D) { const it = vesteGen(g, D); let r; do r = it.next(); while (!r.done); return r.value; }
   function* vesteGen(g, D) {
     const u = g.userData, m = u.mixer && u.mixer.getRoot ? u.mixer.getRoot() : null; let ref = null; const kit = [], vecchie = [];
