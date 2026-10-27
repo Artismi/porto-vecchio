@@ -94,7 +94,7 @@ var VievieveArte = (function () {
     V.fermate().forEach(f => { const asse = /^E4/.test(f.zona || ''), g = gruppo(f.x, f.y, f.dir);   // +z del gruppo: verso la strada
       const pl = new THREE.Group(); pl.position.set(1.7, 0, .45); palo(pl, asse); g.add(pl);
       if (f.pensilina && AR) { const p = AR.make('fermata'); p.position.set(0, 0, -.5); g.add(p); cnt.pensiline++; }
-      else if (AR) { const b = AR.make(asse ? 'panchina_marmo' : 'panchina_ghisa'); b.position.set(-.4, 0, -.55); g.add(b); }
+      else if (AR) { const b = AR.make(asse ? 'panchina_marmo' : 'panchina_ghisa'); b.position.set(-.4, 0, -.55); g.add(b); if (typeof Anim !== 'undefined' && Anim.sedileObj) Anim.sedileObj(b, .6); }   // [seduti]
       add(g); cnt.fermate++; });
     // le edicole e la locandina del giorno, a cavalletto accanto al bancone
     B.locandine = [];
