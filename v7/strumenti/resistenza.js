@@ -3,6 +3,7 @@
 // salvo tre comodità dichiarate qui sotto (niente scadenza dello Squalo, salute piena, auto «prestate» per non finire in cella).
 //   node strumenti/resistenza.js                       (da v7/; serve il gioco da sé con python3 -m http.server)
 //   node strumenti/resistenza.js --schede=3 --minuti=20 --uscita=/percorso/cartella --url=http://127.0.0.1:8000/index.html
+//   node strumenti/resistenza.js --logica=20 [--seme=N]   la sola logica del gioco in node: 20 minuti di gioco a passo fisso, stesse sonde (vedi logica())
 // Copioni: A = a piedi (cammina, corre, clic a terra, porte, dentro e fuori dagli edifici)
 //          B = in auto (salire col clic, guidare, scendere, viaggi lunghi da un capo all'altro)
 //          C = zoom ai limiti, menu e Tasche/zaino, giorno e notte accelerati, visuale
@@ -26,7 +27,8 @@ const CAMPIONE_S = 5, ASSURDI_S = 20;
 fs.mkdirSync(OUT, { recursive: true });
 const T0 = Date.now(), sec = () => +((Date.now() - T0) / 1000).toFixed(1);
 const LOGF = fs.createWriteStream(path.join(OUT, 'diario.txt'));
-const log = (...a) => { const s = `[${sec().toFixed(0).padStart(5)} s] ` + a.join(' '); console.log(s); LOGF.write(s + '\n'); };
+const SCRIVI = console.log.bind(console);   // il nostro diario non passa dai filtri della console che --logica mette al gioco
+const log = (...a) => { const s = `[${sec().toFixed(0).padStart(5)} s] ` + a.join(' '); SCRIVI(s); LOGF.write(s + '\n'); };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 // la memoria che resta davvero: la minore tra quella della macchina (MemAvailable) e il margine del gruppo di controllo (cgroup) in cui
 // gira la prova (limite - uso, senza la cache dei file che si può liberare): sulle macchine condivise è il gruppo a decidere l'OOM
@@ -374,7 +376,111 @@ const COPIONI = {
 };
 
 // ------------------------------------------------------------------ via
+// ------------------------------------------------------------------ --logica: il motore del gioco in node, senza grafica
+// Nel browser senza scheda video (SwiftShader) e su una macchina carica un fotogramma può durare decine di secondi: i copioni
+// in tempo reale fanno pochi passi di gioco. Qui la stessa logica (game.js e i moduli della città) gira a passo fisso di 1/30 s
+// per --logica=N minuti di gioco, con lo stesso copione (a piedi, porte, accanto alle porte, auto, giorno e notte, salti) e le
+// stesse sonde degli stati assurdi (seduti che scivolano, gente e auto nei muri o in acqua, fuori dal mondo, auto ferme per
+// sempre, ingressi senza porta), più le eccezioni del motore e i passi di logica oltre 50 ms.
+async function logica(minuti) {
+  const vm = require('vm'), SRC = path.join(ROOT, 'src') + '/', r = m => require(SRC + m);
+  const seme = +(ARG.seme || 1); r('seme.js')(seme);
+  global.THREE = r('three.min.js');
+  const avvisi = new Map(), cw = console.warn, ce = console.error, cl = console.log; let faseOra = 'carico';
+  const nota = (k, a) => { const t = a.map(String).join(' ').slice(0, 300), key = k + ' ' + t.replace(/\d+(\.\d+)?/g, '#'); const e = avvisi.get(key); if (e) e.n++; else avvisi.set(key, { tipo: k, testo: t, n: 1, fase: faseOra }); };
+  console.warn = (...a) => nota('avviso', a); console.error = (...a) => nota('errore', a);
+  console.log = (...a) => { const t = a.join(' '); if (/^\[|THREE\./.test(t)) nota('log', a); else cl(...a); };
+  global.World = r('world_cittanuova.js'); global.Interior = r('interiors.js');
+  global.Game = r('game.js'); global.Posti = r('posti.js'); global.Risacca = r('risacca.js'); global.Popolo = r('popolo.js'); global.Azioni = r('azioni.js');
+  global.Economia = r('economia.js'); global.Fazioni = r('fazioni.js'); global.Soldi = r('soldi.js'); global.Oggetti = r('oggetti.js');
+  global.Graffiti = r('graffiti.js'); global.Livelli = r('livelli.js'); global.Sottosuolo = r('sottosuolo.js'); global.Tetti = r('tetti.js');
+  global.WriterArte = r('writer_arte.js'); global.Writing = r('writing.js'); global.WriterVita = r('writer_vita.js'); global.Eventi = r('eventi.js');
+  for (const [g, f] of [['Chiarezza', 'chiarezza.js'], ['Vievive', 'vievive.js'], ['Ordine', 'ordine.js'], ['Scambi', 'scambi.js'], ['Matti', 'matti.js'], ['Imprese', 'imprese.js'], ['Convivenza', 'convivenza.js'], ['Animali', 'animali.js'], ['Protagonista', 'protagonista.js']]) { try { global[g] = r(f); } catch (e) { nota('modulo', [f, e.message]); } }
+  let anim = false; try { global.window = global; vm.runInThisContext(fs.readFileSync(SRC + 'animazioni.js', 'utf8'), { filename: 'animazioni.js' }); vm.runInThisContext(fs.readFileSync(SRC + 'anim_vita.js', 'utf8'), { filename: 'anim_vita.js' }); anim = typeof Anim !== 'undefined'; } catch (e) { nota('modulo', ['animazioni', e.message]); }
+  const G = Game, st = G.create(seme), p = st.player, TS = G.TS, TN = {}; for (const k in G.T) TN[G.T[k]] = k; st.deadline = 1e12;
+  const tile = (x, y) => TN[G.tileAt(Math.floor(x / TS), Math.floor(y / TS))], SOLIDI = { BLD: 1, CLIFF: 1, FOUNT: 1, TREE: 1 }, SEDUTI = { siede: 1, siede_terra: 1, dorme: 1, tavola: 1, carte: 1 };
+  const DT = 1 / 30, FINE = minuti * 60; let sim = 0; const eccezioni = new Map(), lenti = [], out = { seme, npc: st.npcs.length, veicoli: st.vehicles.length, anim, fasi: [], ingressi_senza_porta: [], porte: [], auto: [], assurdi: {}, memoria: [] };
+  const A = (k, o) => { const L = out.assurdi[k] || (out.assurdi[k] = { n: 0, chi: {}, esempi: [] }); L.n++; const id = o.id || 'giocatore'; L.chi[id] = (L.chi[id] || 0) + 1; if (L.esempi.length < 30) L.esempi.push(Object.assign({ sim_s: Math.round(sim), ora: G.clockStr(st.t), fase: faseOra }, o)); };
+  const prev = new Map(), traff = new Map();
+  function sonde() {
+    for (const n of st.npcs) {
+      if (n.dead) continue;
+      if (!isFinite(n.x) || !isFinite(n.y) || n.x < 0 || n.y < 0 || n.x > G.WW || n.y > G.WH) { A('gente_fuori_mondo', { id: n.id, x: n.x, y: n.y }); continue; }
+      if (n.inside || n.inVeh || n.room) { prev.delete(n.id); continue; }
+      const d = Math.hypot(n.x - p.x, n.y - p.y), tl = tile(n.x, n.y);
+      if (SOLIDI[tl] && !n.wrH && !n.lv && d < 150) A('gente_nei_muri', { id: n.id, pas: !!n.passante, x: +n.x.toFixed(1), y: +n.y.toFixed(1), casella: tl, azione: n.action && n.action.name, d: Math.round(d) });
+      if (!anim || d > 80) continue;
+      let act = null; try { act = (Anim.npcState(st, n) || {}).act; } catch (e) { }
+      const q = prev.get(n.id); prev.set(n.id, { x: n.x, y: n.y, act, s: sim });
+      if (q && SEDUTI[act] && SEDUTI[q.act] && sim - q.s < 1.5) { const m = Math.hypot(n.x - q.x, n.y - q.y); if (m > .25) A('seduti_che_scivolano', { id: n.id, pas: !!n.passante, act, m_in_1s: +m.toFixed(2), speedNow: +(n.speedNow || 0).toFixed(2), azione: n.action && n.action.name, blocco: n.pop && n.pop.cur ? (n.pop.cur.obj || n.pop.cur.act || n.pop.cur.label) : null, x: Math.round(n.x), y: Math.round(n.y) }); }
+    }
+    for (const v of st.vehicles) {
+      if (v.hidden || v.wreck) continue; const tl = tile(v.x, v.y), K = G.VK[v.kind] || {}, d = Math.hypot(v.x - p.x, v.y - p.y);
+      if (!isFinite(v.x) || !isFinite(v.y)) { A('auto_fuori_mondo', { id: v.id, x: v.x, y: v.y }); continue; }
+      if (SOLIDI[tl]) A('auto_nei_muri', { id: v.id, kind: v.kind, traffico: !!v.traffic, mia: v.id === p.vehicle, x: +v.x.toFixed(1), y: +v.y.toFixed(1), casella: tl, d: Math.round(d) });
+      if (tl === 'WATER' && !K.boat) A('auto_in_acqua', { id: v.id, kind: v.kind, traffico: !!v.traffic, x: Math.round(v.x), y: Math.round(v.y), d: Math.round(d) });
+      if (v.traffic && !v.rider) { const T = traff.get(v.id); if (!T || Math.hypot(T.x - v.x, T.y - v.y) > 1) traff.set(v.id, { x: v.x, y: v.y, da: sim, kind: v.kind, d }); else { T.fino = sim; T.d = Math.min(T.d, d); T.stuck = v.stuck; } }
+    }
+    if (!p.indoor && !p.vehicle && !p.lv && !p.swim && !G.walkM(p.x, p.y)) A('giocatore_nel_muro', { x: +p.x.toFixed(1), y: +p.y.toFixed(1), casella: tile(p.x, p.y) });
+  }
+  let ultimaSonda = 0;
+  const passo = inp => {
+    const was = p.indoor ? p.indoor.b : null, t = process.hrtime.bigint();
+    try { G.step(st, DT, inp || { x: 0, y: 0 }); } catch (e) { const k = String(e && e.message).slice(0, 160); const E = eccezioni.get(k); if (E) E.n++; else eccezioni.set(k, { n: 1, fase: faseOra, sim_s: Math.round(sim), stack: String(e && e.stack).split('\n').slice(0, 5).join(' | ') }); }
+    const ms = Number(process.hrtime.bigint() - t) / 1e6; if (ms > 50) lenti.push({ sim_s: +sim.toFixed(1), ms: Math.round(ms), fase: faseOra, ora: G.clockStr(st.t), x: Math.round(p.x), y: Math.round(p.y) });
+    if (was === null && p.indoor && inp && inp.noDoor) out.ingressi_senza_porta.push({ sim_s: Math.round(sim), fase: faseOra, edificio: p.indoor.b, x: +p.x.toFixed(1), y: +p.y.toFixed(1) });
+    sim += DT; st.over = null; if (p.hp < 50) p.hp = 100;
+    if (sim - ultimaSonda >= 1) { ultimaSonda = sim; sonde(); }
+  };
+  const verso = (x, y, extra) => { const a = Math.atan2(y - p.y, x - p.x); return Object.assign({ x: Math.cos(a), y: Math.sin(a), aim: a }, extra || {}); };
+  // segue un percorso come il clic (main.js clickInput): noDoor salvo che si vada a una porta
+  const segui = (gx, gy, maxS, extra) => { let path = G.findPath(p.x, p.y, gx, gy, 1.4, false) || []; if (!path.length) return 'senza percorso'; const t0 = sim; let best = 1e9, bestT = sim;
+    while (sim - t0 < maxS) { while (path.length > 1 && Math.hypot(path[0].x - p.x, path[0].y - p.y) < .4) path.shift(); const left = Math.hypot(gx - p.x, gy - p.y); if (left < .35) return 'arrivato'; if (left < best - .2) { best = left; bestT = sim; } else if (sim - bestT > 1.5) return 'bloccato a ' + left.toFixed(1) + ' m';
+      const w = path[0] || { x: gx, y: gy }; passo(verso(w.x, w.y, extra)); if (p.indoor && extra && extra.noDoor) return 'entrato'; }
+    return 'tempo scaduto'; };
+  const porteVicine = R => { const o = []; G.BUILDINGS.forEach((b, i) => { if (!b.door) return; const x = (b.door[0] + .5) * TS, y = (b.door[1] + .5) * TS, d = Math.hypot(x - p.x, y - p.y); if (d < R && d > 2) o.push({ i, b, x, y, d }); }); return o.sort((a, c) => a.d - c.d); };
+  const posti = Object.entries(G.PLACES).map(([k, v]) => [k, v.x, v.y]);
+  const salta = (x, y) => { if (p.vehicle) G.act(st, 'veicolo'); p.vehicle = null; p.indoor = null; p.lv = null; p.x = x; p.y = y; };
+  const COP = [
+    function cammina() { const a = Math.random() * 6.28, d = 10 + Math.random() * 30, gx = p.x + Math.cos(a) * d, gy = p.y + Math.sin(a) * d; if (!G.walkM(gx, gy)) return; const esito = segui(gx, gy, 40, { noDoor: true, sprint: Math.random() < .5 }); out.fasi.push({ sim_s: Math.round(sim), cosa: 'cammina', esito }); },
+    function accantoPorta() { const D = porteVicine(40)[0]; if (!D) return; for (const off of [-2.2, -1.6, 1.6, 2.2]) { const ns = D.b.door[1] === D.b.y + D.b.h || D.b.door[1] === D.b.y - 1, gx = ns ? D.x + off : D.x, gy = ns ? D.y : D.y + off; if (!G.walkM(gx, gy)) continue; const esito = segui(gx, gy, 30, { noDoor: true }); if (esito === 'entrato') G.exitBuilding(st); out.fasi.push({ sim_s: Math.round(sim), cosa: 'accanto alla porta ' + D.i, off, esito }); } },
+    function porta() { const D = porteVicine(40)[0]; if (!D) return; const esito = segui(D.x, D.y, 40, {}); const cx = (D.b.x + D.b.w / 2) * TS, cy = (D.b.y + D.b.h / 2) * TS; let k = 0; while (!p.indoor && k++ < 60) passo(verso(cx, cy)); const R = { sim_s: Math.round(sim), porta: D.i, verso_porta: esito, entrato: p.indoor ? p.indoor.b : null, giusto: p.indoor ? p.indoor.b === D.i : null };
+      if (p.indoor) { const L = G.INT.layout(G.BUILDINGS[p.indoor.b]); for (let j = 0; j < 90; j++) passo(verso(p.x + Math.cos(j) * 3, p.y + Math.sin(j) * 3)); const e = L.ent; let u = 0; if (e) { while (p.indoor && u++ < 300) { const pth = !p.indoor.f && G.INT.findPath ? G.INT.findPath(L, p.indoor.f, p.x, p.y, e.in[0], e.in[1]) : null; const w = pth && pth.length > 1 ? pth[0] : { x: e.out[0], y: e.out[1] }; passo(verso(w.x, w.y)); } } R.uscito = !p.indoor; R.uscita_s = +(u * DT).toFixed(1); if (p.indoor) { R.piano = p.indoor.f; G.exitBuilding(st); } }
+      out.porte.push(R); },
+    function auto() { const c = st.vehicles.filter(v => !v.hidden && !v.wreck && !v.traffic && !v.rider && v.kind !== 'bmx' && !(G.VK[v.kind] || {}).boat && !(G.VK[v.kind] || {}).pocket && Math.hypot(v.x - p.x, v.y - p.y) < 200); const v = c[Math.floor(Math.random() * c.length)]; if (!v) return; v.lent = true;
+      const K = G.VK[v.kind]; let ok = false; for (let a = 0; a < 6.28 && !ok; a += .4) for (const rr of [K.wid / 2 + .8, K.len / 2 + .8]) { const x = v.x + Math.cos(a) * rr, y = v.y + Math.sin(a) * rr; if (G.walkM(x, y)) { salta(x, y); ok = true; break; } }
+      const r0 = G.act(st, 'veicolo'); const R = { sim_s: Math.round(sim), id: v.id, kind: v.kind, salito: !!p.vehicle, msg: r0 && r0.msg }; if (!p.vehicle) { out.auto.push(R); return; }
+      const meta = posti.slice().sort((a, b) => Math.hypot(b[1] - p.x, b[2] - p.y) - Math.hypot(a[1] - p.x, a[2] - p.y))[Math.floor(Math.random() * 3)]; R.meta = meta[0]; R.da_m = Math.round(Math.hypot(meta[1] - p.x, meta[2] - p.y));
+      let path = G.findPath(p.x, p.y, meta[1], meta[2], .6, true) || []; R.percorso = path.length; const t0 = sim; let best = 1e9, bestT = sim, incastri = 0;
+      while (sim - t0 < 90) { const V = st.vehicles.find(q => q.id === p.vehicle); if (!V) { R.perso = p.vehicle ? 'auto sparita dalla lista con il giocatore dentro' : 'sceso senza volerlo: ' + st.feed.slice(0, 3).map(f => f.text).join(' / '); break; } while (path.length > 1 && Math.hypot(path[0].x - V.x, path[0].y - V.y) < 3) path.shift(); const w = path[0] || { x: meta[1], y: meta[2] }, dd = Math.hypot(meta[1] - V.x, meta[2] - V.y); if (dd < 20) break; if (dd < best - 2) { best = dd; bestT = sim; }
+        let d = Math.atan2(w.y - V.y, w.x - V.x) - V.ang; d = Math.atan2(Math.sin(d), Math.cos(d)); const steer = Math.max(-1, Math.min(1, d * 1.6));
+        if (sim - bestT > 8) { incastri++; for (let k = 0; k < 45; k++) passo({ x: 0, y: 0, drive: { thr: -1, steer: -steer, hb: false, boost: false } }); bestT = sim; path = G.findPath(V.x, V.y, meta[1], meta[2], .6, true) || path; }
+        passo({ x: 0, y: 0, drive: { thr: 1, steer, hb: false, boost: Math.random() < .2, assist: true } }); }
+      const V = st.vehicles.find(q => q.id === p.vehicle); R.resta_m = V ? Math.round(Math.hypot(meta[1] - V.x, meta[2] - V.y)) : null; R.s = Math.round(sim - t0); R.incastri = incastri;
+      for (let k = 0; k < 60; k++) passo({ x: 0, y: 0, drive: { thr: 0, steer: 0, hb: true } }); G.act(st, 'veicolo'); R.sceso = !p.vehicle; if (p.vehicle) { R.non_scende = true; p.vehicle = null; } out.auto.push(R); },
+    function tempo() { st.t += 110 + Math.random() * 40; for (let k = 0; k < 150; k++) passo(); },
+    function salto() { const q = posti[Math.floor(Math.random() * posti.length)]; salta(q[1], q[2]); for (let k = 0; k < 90; k++) passo(); },
+  ];
+  const T0r = Date.now(); let i = 0, lastLog = 0;
+  for (let k = 0; k < 150; k++) passo();
+  while (sim < FINE) {
+    const f = COP[i++ % COP.length]; faseOra = f.name; try { f(); } catch (e) { const k = 'copione ' + f.name + ': ' + String(e.message).slice(0, 140); const E = eccezioni.get(k); if (E) E.n++; else eccezioni.set(k, { n: 1, fase: faseOra, sim_s: Math.round(sim), stack: String(e.stack).split('\n').slice(0, 4).join(' | ') }); }
+    if (sim - lastLog > 60) { lastLog = sim; const m = process.memoryUsage(); out.memoria.push({ sim_s: Math.round(sim), heap_MB: Math.round(m.heapUsed / 1048576), rss_MB: Math.round(m.rss / 1048576), ora: G.clockStr(st.t), npc: st.npcs.length, veicoli: st.vehicles.length }); cl(`[logica] ${Math.round(sim)} s di gioco · ${G.clockStr(st.t)} · heap ${Math.round(m.heapUsed / 1048576)} MB · ${((Date.now() - T0r) / 1000).toFixed(0)} s veri`); }
+  }
+  out.sim_s = Math.round(sim); out.veri_s = Math.round((Date.now() - T0r) / 1000); out.eccezioni = [...eccezioni.entries()].map(([k, v]) => Object.assign({ msg: k }, v));
+  out.passi_lenti = { n: lenti.length, peggiori: lenti.sort((a, b) => b.ms - a.ms).slice(0, 25) };
+  out.auto_ferme = [...traff.entries()].map(([id, T]) => ({ id, kind: T.kind, x: Math.round(T.x), y: Math.round(T.y), ferma_s: Math.round((T.fino || T.da) - T.da), d_min: Math.round(T.d), stuck: T.stuck })).filter(q => q.ferma_s >= 180).sort((a, b) => b.ferma_s - a.ferma_s);
+  out.avvisi = [...avvisi.values()].sort((a, b) => b.n - a.n);
+  console.warn = cw; console.error = ce; console.log = cl;
+  fs.writeFileSync(path.join(OUT, 'logica.json'), JSON.stringify(out, null, 1));
+  const n = k => (out.assurdi[k] || { n: 0 }).n;
+  log(`[logica] ${out.sim_s} s di gioco in ${out.veri_s} s · eccezioni ${out.eccezioni.length} · ingressi senza porta ${out.ingressi_senza_porta.length} · seduti che scivolano ${n('seduti_che_scivolano')} · gente nei muri ${n('gente_nei_muri')} · auto nei muri ${n('auto_nei_muri')} · auto in acqua ${n('auto_in_acqua')} · auto ferme ${out.auto_ferme.length} · passi lenti ${lenti.length}`);
+  log('scritto', path.join(OUT, 'logica.json'));
+  return out.eccezioni.length + out.ingressi_senza_porta.length + Object.keys(out.assurdi).length;
+}
+
 (async () => {
+  if (ARG.logica) { const g = await logica(ARG.logica === true ? 20 : +ARG.logica); LOGF.end(); setTimeout(() => process.exit(g ? 1 : 0), 300); return; }
   const SRV = await server(); let tC = 0; log('gioco su', SRV.url, '· memoria disponibile', memDisp(), 'MB · carico', os.loadavg()[0].toFixed(1), '· CPU', os.cpus().length);
   let n = NSCHEDE; const decisioni = [];
   if (n === 3 && memDisp() < SOGLIA_MB) { n = 2; decisioni.push({ s: sec(), cosa: `memoria disponibile ${memDisp()} MB < ${SOGLIA_MB}: si parte con 2 schede` }); }
