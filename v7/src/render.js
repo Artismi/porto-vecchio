@@ -10063,7 +10063,7 @@ var Render = (function () {
         placeYS1(pd, a[0] + Nn[0] * 1.1, top, a[1] + Nn[1] * 1.1, d.yaw); }   // la pedana di legno sul vicolo in pendenza
       d.tavoli.forEach((t, i) => { const y = pedana ? top : groundH(t.x, t.z), o = pm3('tavolino', { tipo: kind === 'marmo' ? 'marmo' : kind === 'plastica' ? 'plastica' : 'ferro' });   // [modelli1] tavolino e sedie veri
         tableItems(o, .755, pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra'], ['caffe', 'giornale'], ['boccale', 'posacenere']]), r);
-        [-1, 1].forEach(s => { const c = pm3('sedia', { tipo: kind === 'plastica' ? 'plastica' : 'bistrot' }); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); });
+        [-1, 1].forEach(s => { const c = pm3('sedia', { tipo: kind === 'plastica' ? 'plastica' : 'bistrot' }); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); if (window.Anim && Anim.sedileObj) Anim.sedileObj(c, 0); });   // [seduti]
         placeYS1(o, t.x, y, t.z, d.yaw); cnt.tavolini++; });
       d.fioriere.forEach(f => { const o = pm3('fioriera', { w: .95, cotto: true });   // [modelli1] la fioriera di cotto vera
         placeYS1(o, f.x, pedana ? top : groundH(f.x, f.z), f.z, d.yaw + Math.PI / 2 * (d.f === 'E' ? 1 : 0)); });
@@ -11002,6 +11002,7 @@ var Render = (function () {
 
   // --- tavolini e sedie ---
   function chair(x, z, rot, kind) {
+    if (window.Anim && Anim.sedileAdd) Anim.sedileAdd(x, z, rot, 0);   // [seduti]
     if (ARR3()) return place(pm3('sedia', { tipo: kind === 'plastic' || kind === 'deco' ? 'plastica' : 'bistrot' }), x, z, rot);   // [modelli1]
     const g = G0();
     if (kind === 'plastic') { const m = sm('#f4f2ee', { roughness: .5 }); add(g, box(.46, .06, .44, m), 0, .44, 0); add(g, box(.46, .46, .05, m), 0, .7, -.22, -.12, 0, 0); [[-.2, .19], [.2, .19], [-.2, -.19], [.2, -.19]].forEach(([a, b]) => add(g, box(.05, .44, .05, m), a, .22, b)); [-.23, .23].forEach(a => add(g, box(.04, .05, .38, m), a, .6, 0)); }
@@ -11883,7 +11884,7 @@ var Render = (function () {
   // bordo in cima alla scala, le mani sui pioli veri. window.__anim2off = true rimette tutto com'era (per le foto «prima»).
   const PL2 = { dL: 0, dR: 0, cand: null, ckey: '', top: null, landT: -9, landF: 0, swim: 0, still: 0, sit: null, mant: null, lvPrev: null, rL: null, rR: null };
   const BANCHE = [], BANCHE_G = new Map();   // le panchine (bench) e i belvederi: { x, z, yaw (verso dove si guarda seduti), w (mezza lunghezza), h (la seduta), bi (sul tetto) }
-  function bancaAdd(x, z, yaw, w, h, bi) { const b = { x, z, yaw, w, h, bi }; BANCHE.push(b); const k = Math.floor(x / 8) + ',' + Math.floor(z / 8); (BANCHE_G.get(k) || BANCHE_G.set(k, []).get(k)).push(b); }
+  function bancaAdd(x, z, yaw, w, h, bi) { const b = { x, z, yaw, w, h, bi }; BANCHE.push(b); if (bi === undefined && window.Anim && Anim.sedileAdd) Anim.sedileAdd(x, z, yaw, w);   /* [seduti] anche per gli abitanti */ const k = Math.floor(x / 8) + ',' + Math.floor(z / 8); (BANCHE_G.get(k) || BANCHE_G.set(k, []).get(k)).push(b); }
   function bancaNear(x, z, r) {
     if (!PL2.belv && typeof Tetti !== 'undefined' && Tetti.BELV) { PL2.belv = true; Tetti.BELV.forEach(v => { const yaw = (v.i * 1.7) % 6.283; bancaAdd(v.x, v.y, yaw + Math.PI, .6, .48, v.bi); }); }   // la panca del belvedere: lo schienale verso (sin, cos) del suo angolo
     let best = null, bd = r;
@@ -17420,7 +17421,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
       if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
-        const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; }   // [fluido] torna com'era, già vestito
+        const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; if (window.Anim && Anim.reset) Anim.reset(g); }   /* [seduti] niente pose rimaste accese da prima */   // [fluido] torna com'era, già vestito
         else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
         if (!g.userData.model) g.userData.voxelWait = !!window.Models; scene.add(g); dyn.people[n.id] = g; }
       if (g.userData.dressing) {   // [fluido] si sta vestendo: una fase per fotogramma (a budget), invisibile finché non ha finito
@@ -17430,13 +17431,16 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10);   // [anim] si gira, non scatta
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
         if (every > 1 && (frameN + (g.id || 0)) % every) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; } }
       const dtA = dt + (g.userData.dt1 || 0); g.userData.dt1 = 0;
-      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: window.Anim ? Anim.npcState(st, n) : null }, dtA); else   // [animazioni] anim
+      const anN = g.userData.model && window.Anim ? Anim.npcState(st, n) : null;
+      if (n.rotelle && g.userData.model && window.Anim && Anim.sediaRotelle) { const u = g.userData; if (!u.sediaR) { u.sediaR = Anim.sediaRotelle(); g.add(u.sediaR); } u.sediaR.visible = !!(anN && anN.act === 'rotelle'); }   // [rotelle] la sedia sotto
+      else if (g.userData.sediaR) g.userData.sediaR.visible = false;
+      if (g.userData.model) Models.animPerson(g, { speed: n.speedNow, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, held: n.hand || null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), punch: n.gesture === 'punch' ? 1 : 0, handsUp: !n.dead && n.stun <= 0 && ((n.action.name === 'fugge' && n.panic <= 0) || n.action.name === 'ordine_fermato'), riot: !!(n.ord && n.ord.riot), banner: n.ord && n.ord.protester ? n.ord.protester.banner : null, anim: anN }, dtA); else   // [animazioni] anim
       animPerson(g, { anim: n.anim, speed: n.speedNow, gesture: n.gesture, down: n.stun > 0 || n.dead, weapon: armed ? n.weapon : null, hit: Math.max(0, 1 - (st.clock - n.hitT) * 12), handsUp: !n.dead && n.stun <= 0 && n.action.name === 'fugge' && n.panic <= 0 && p.cur !== 'pugni' && Math.hypot(n.x - p.x, n.y - p.y) < 6, twoHand: n.cop });
       g.userData.shadowC.visible = !n.dead;
       flight(g, n, st);
