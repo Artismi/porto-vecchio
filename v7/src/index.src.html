@@ -321,6 +321,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="arredo3d">/*arredo3d.js*/</script>
 <!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
      prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
+<!-- [mappa_nuova] ?mappa=nuova: la mappa nuova (world_cittanuova.js, MN), in prova finché il committente non la approva. Il mondo cotto e i
+     tasselli sono della mappa di prima: con la mappa nuova il gioco calcola il mondo e costruisce la città nel browser -->
+<script>window.PV_MAPPA = (function () { try { return /[?&]mappa=nuova\b/.test(location.search) ? 'nuova' : ''; } catch (e) { return ''; } })();</script>
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
@@ -330,7 +333,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
 <script>(function () {
-  if (window.PV_CUOCI) return;
+  if (window.PV_CUOCI || window.PV_MAPPA === 'nuova') return;
   let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
   if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
     const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
