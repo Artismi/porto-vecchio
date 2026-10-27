@@ -19,7 +19,7 @@ global.Chiarezza = require(path.join(src, 'chiarezza.js')); global.Vievive = req
 global.Scena = require(path.join(src, 'scena.js')); global.Rete = require(path.join(src, 'rete.js'));
 Scena.init(Game); Scena.piano(); Rete.init(Game, Scena);
 global.Suolo = require(path.join(src, 'suolo.js')); if (PRIMA) Suolo.vecchio(true);
-const SG = require(path.join(src, 'segnaletica.js')); SG.piano();
+const SG = require(process.env.PV_SEGNALETICA || path.join(src, 'segnaletica.js'));   // PV_SEGNALETICA: un'altra versione, per il prima SG.piano();
 console.log = log; console.warn = warn;
 const W = World, T = W.T, TS = W.TS, GW = W.GW, GH = W.GH, S = Suolo.di(W), R = Suolo.R;
 // le vie come le disegna pavimenti.js: quelle del mondo più le vie cucite (pavimenti.js vieTutte)
@@ -62,18 +62,19 @@ ok(PRIMA || tagliate.length > 0, `le vie che si interrompono su una piazza e rip
 
 // ---------------- 2. LA SEGNALETICA: UN SOLO STRATO ----------------
 const P = SG.piano(), STR = P.strisce, hyp = Math.hypot;
-const sulla_tela = SG.tela ? STR.filter(s => SG.tela(s.k === 'zebra' ? 'zebra' : s.arresto ? 'arresto' : s.k, s.x, s.y)) : STR.filter(s => /^(stop|zebra|riga|triangolo|freccia_dritta)$/.test(s.k));
-ok(PRIMA ? true : sulla_tela.length === 0, `doppioni: nessun segno dipinto due volte (tela sotto e decalcomania sopra): ${sulla_tela.length}${sulla_tela.length ? ' — ' + sulla_tela.slice(0, 4).map(s => s.k + ' ' + s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
+// prima di [suolo] la tela dipingeva sotto ogni decalcomania della città (marks1, strisce35): le zebre, gli STOP, le linee, gli stalli
+const sulla_tela = SG.tela ? STR.filter(s => SG.tela(s.k === 'zebra' ? 'zebra' : s.arresto ? 'arresto' : s.stallo ? 'stallo' : s.k, s.asse ? s.asse[0] : s.x, s.asse ? s.asse[1] : s.y)) : STR.filter(s => s.k !== 'bus' && !/^parola|^freccia_(destra|sinistra)|^freccia_dritta_/.test(s.k));
+ok(sulla_tela.length === 0, `doppioni: nessun segno dipinto due volte (tela sotto e decalcomania sopra): ${sulla_tela.length}${sulla_tela.length ? ' — ' + sulla_tela.slice(0, 4).map(s => s.k + ' ' + s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
 // le linee d'arresto rispetto alle zebre: mai sopra, il bordo a 1 m almeno prima delle strisce
 const Z = STR.filter(s => s.k === 'zebra'), AR = STR.filter(s => s.arresto);
-const sopra = AR.filter(a => Z.some(z => { const ux = Math.cos(z.ang), uy = Math.sin(z.ang), dx = a.x - z.x, dy = a.y - z.y, u = Math.abs(dx * ux + dy * uy), v = Math.abs(-dx * uy + dy * ux); return v < z.w / 2 + 1.2 && u < z.L / 2 + 1 + a.w / 2; }));
+const sopra = AR.filter(a => Z.some(z => { const ux = Math.cos(z.ang), uy = Math.sin(z.ang), dx = a.x - z.x, dy = a.y - z.y, u = Math.abs(dx * ux + dy * uy), v = Math.abs(-dx * uy + dy * ux); return v < z.w / 2 + a.L / 2 && u - z.L / 2 - a.w / 2 < .95; }));   // il bordo della linea a meno di 1 m (5 cm di tolleranza) dal bordo della banda
+if (process.argv.includes('--dbg')) sopra.forEach(a => { const z = Z.filter(z => hyp(z.x - a.x, z.y - a.y) < 6); console.log('  arresto', a.x.toFixed(1), a.y.toFixed(1), a.jx, a.jy, z.map(q => q.motivo + ' ' + q.zebra + ' ' + q.x.toFixed(1) + ',' + q.y.toFixed(1)).join(' | ')); });
 ok(sopra.length === 0, `arresto_zebra: nessuna linea d'arresto sulle strisce o a meno di 1 m (${sopra.length} su ${AR.length})${sopra.length ? ' — ' + sopra.slice(0, 4).map(s => s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
-// il verso: la linea d'arresto e lo STOP sulla corsia di chi arriva all'incrocio (si guida a destra), come le corsie del traffico (G.LANES)
-const LN = (Game.LANES || []).filter(l => l.pts && l.pts.length > 1);
-function versoOk(s) {   // la corsia più vicina al segno: deve andare verso l'incrocio più vicino
-  let best = null, bd = 3; LN.forEach(l => { for (let k = 0; k < l.pts.length - 1; k++) { const [ax, ay] = l.pts[k], [bx, by] = l.pts[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((s.x - ax) * dx + (s.y - ay) * dy) / L2)), d = hyp(ax + dx * t - s.x, ay + dy * t - s.y); if (d < bd) { bd = d; best = { ux: dx, uy: dy }; } } });
-  if (!best) return null; const J = s.J; if (!J) return null; return (J.x - s.x) * best.ux + (J.y - s.y) * best.uy > 0; }
-const AV = STR.filter(s => (s.arresto || s.k === 'stop') && s.J).map(s => ({ s, v: versoOk(s) })).filter(q => q.v !== null), storti = AV.filter(q => !q.v);
-ok(storti.length === 0, `arresto_verso: linee d'arresto e STOP sulla corsia di chi arriva (${AV.length - storti.length} su ${AV.length})${storti.length ? ' — ' + storti.slice(0, 4).map(q => q.s.k + ' ' + q.s.x.toFixed(0) + ',' + q.s.y.toFixed(0)).join('; ') : ''}`);
+// il verso: la linea d'arresto, lo STOP e la freccia sulla corsia di chi arriva all'incrocio. Si guida a destra (come G.lanePos): chi arriva va
+// verso -u (u: dal centro dell'incrocio lungo il braccio), la sua corsia è a destra, dalla parte di (u.y, -u.x) rispetto alla mezzeria
+const VIA = STR.filter(s => (s.arresto || s.k === 'stop' || s.k === 'freccia_dritta' || s.k === 'triangolo') && s.jx !== undefined);
+const storti = VIA.filter(s => { const ux = s.ux, uy = s.uy, d = (s.x - s.jx) * ux + (s.y - s.jy) * uy, cx = s.jx + ux * d, cy = s.jy + uy * d; return (s.x - cx) * uy + (s.y - cy) * -ux < .1; });
+const senza = STR.filter(s => (s.arresto || s.k === 'stop') && s.jx === undefined);
+ok(VIA.length > 0 && storti.length === 0 && senza.length === 0, `arresto_verso: linee d'arresto, STOP, frecce e triangoli degli incroci sulla corsia di chi arriva (${VIA.length - storti.length} su ${VIA.length}; senza incrocio ${senza.length})${storti.length ? ' — ' + storti.slice(0, 4).map(s => s.k + ' ' + s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passate');
 process.exitCode = fail ? 1 : 0;
