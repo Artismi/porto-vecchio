@@ -89,44 +89,34 @@ var Pavimenti = (function () {
   let FIN = null; const finit = () => FIN || (FIN = A.finiture());   // la lista delle finiture (render.js segniList1), una volta sola
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   // [fluido] a pezzi: mappeG cede il passo quando cede() lo dice (render.js buildChunkGen, oltre 4 ms); mappe fa tutto subito. Stessi conti, stesso ordine
-  function mappe(tx0, ty0, n, m) { const it = mappeG(tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [calcolo] le vie e le finiture impacchettate per il lavoratore, una volta (vieTutte e finit non cambiano)
+  const PKV = { v: null, k: null, f: null, kf: null, n: 0 };
+  function vieKey() {
+    const VT = vieTutte(); if (PKV.v === VT) return PKV.k;
+    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, P = [];
+    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0); continue; }
+      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1; P.push(Pt.length, hw, ext, f, pr);
+      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); }
+    PKV.v = VT; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+  }
+  function finKey() {
+    const FL = finit(); if (PKV.f === FL) return PKV.kf;
+    const P = new Float64Array(FL.length * 7); FL.forEach((e, i) => { for (let c = 0; c < 7; c++) P[i * 7 + c] = e[c] === undefined ? NaN : e[c]; });
+    PKV.f = FL; PKV.kf = 'fin' + (++PKV.n); Calcolo.metti(PKV.kf, P); return PKV.kf;
+  }
+  function mappe(tx0, ty0, n, m) { return Calcolo.tutto(() => { const it = mappeG(tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [calcolo] tutto qui
   function* mappeG(tx0, ty0, n, m, cede) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
-    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
-    // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede. Ogni texel ricorda due vie (agli incroci): la prima è
-    // quella dipinta sopra se il texel ci sta dentro (asfalto > travertino > porfido > basoli > terra, come strade1Era), se no la più vicina
-    // la sabbia vicina (0-15): entro 4 m da una casella di sabbia, per la sabbia portata dal vento sull'asfalto
+    // [calcolo] le vie e le finiture (solo i loro dati: i conti di prima, nello stesso ordine) nel lavoratore (calcolo_lavoratore.js vie);
+    // qui la parte che legge il mondo (famiglia del suolo, sabbia) e le tessiture
+    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
-    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
-    const VT = vieTutte(); for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri]; if (cede && ri && cede()) yield; const P = rd.pts; if (!P || P.length < 2) continue; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
-      for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
-        if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
-        const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
-        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - ext - X0) / q)), i1 = Math.min(NI - 1, Math.ceil((Math.max(ax, bx) + ext - X0) / q));
-        const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
-          if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
-          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = g.s[k] + t;
-          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
-          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
-          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); const o = I2[kk * 4 + 3] % 256; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
-            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
-          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
-          if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
       I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); } }
     const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return libera(t); };
     const id = tex(I), id2 = tex(I2);
-    // [strade] le finiture: per ogni texel la cosa più importante che lo tocca (tombino, chiusino, caditoia, pozzetto, rattoppo, olio,
-    // gomma), col centro, l'angolo e le misure: lo shader le disegna nitide al pixel, senza geometria
-    const FI = new Float32Array(NI * MJ * 4), FP = new Uint8Array(NI * MJ);
-    if (strade() && A.finiture) { const RAG = { 1: .5, 2: .5, 3: .56, 4: .42, 5: 1.3, 7: 6.5 }, PRI = { 1: 9, 2: 9, 3: 8, 4: 7, 6: 5, 5: 3, 7: 2 };
-      const FL = finit(); for (let fq = 0; fq < FL.length; fq++) { if (cede && (fq & 255) === 255 && cede()) yield; const [x, z, a, t, sd, len, wid] = FL[fq]; const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) continue;
-        const i0 = Math.max(0, Math.floor((x - r - X0) / q)), i1 = Math.min(NI - 1, Math.floor((x + r - X0) / q)), j0 = Math.max(0, Math.floor((z - r - Z0) / q)), j1 = Math.min(MJ - 1, Math.floor((z + r - Z0) / q));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const kk = j * NI + i, px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q; if (Math.hypot(px - x, pz - z) > r + .36) continue; if (FP[kk] > PRI[t]) continue;
-          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = a; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } } }
     const fi = tex(FI);
     // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
     const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
