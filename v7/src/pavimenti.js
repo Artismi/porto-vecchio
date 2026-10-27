@@ -117,7 +117,7 @@ var Pavimenti = (function () {
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
       I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); } }
-    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return t; };
+    const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return libera(t); };
     const id = tex(I), id2 = tex(I2);
     // [strade] le finiture: per ogni texel la cosa più importante che lo tocca (tombino, chiusino, caditoia, pozzetto, rattoppo, olio,
     // gomma), col centro, l'angolo e le misure: lo shader le disegna nitide al pixel, senza geometria
@@ -141,7 +141,7 @@ var Pavimenti = (function () {
       const ex = rx * 1.18 + .16, ez = rz * 1.18 + .16, i0 = Math.max(0, Math.floor((cx - ex - X0) / q2)), i1 = Math.min(NI2 - 1, Math.ceil((cx + ex - X0) / q2)), j0 = Math.max(0, Math.floor((cz - ez - Z0) / q2)), j1 = Math.min(MJ2 - 1, Math.ceil((cz + ez - Z0) / q2));
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const dx = (X0 + (i + .5) * q2 - cx) / ex, dz = (Z0 + (j + .5) * q2 - cz) / ez, r = Math.hypot(dx, dz); if (r >= 1) continue;
         const o = (j * NI2 + i) * 4 + 2, t = 1 - r, v = Math.round(255 * f * t * t * (3 - 2 * t)); if (v > K[o]) K[o] = v; } });
-    const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true;
+    const mk = new THREE.DataTexture(K, NI2, MJ2, THREE.RGBAFormat, THREE.UnsignedByteType); mk.magFilter = mk.minFilter = THREE.LinearFilter; mk.generateMipmaps = false; mk.needsUpdate = true; libera(mk);
     return { id, id2, fi, mk, box: new THREE.Vector4(X0, Z0, n * TS, m * TS), res: new THREE.Vector2(NI, MJ) };
   }
 
@@ -517,6 +517,8 @@ var Pavimenti = (function () {
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
   function suolo(mat, tx0, ty0, n, m) { const it = suoloG(mat, tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [scarico] le mappe di un blocco non si ritoccano (il blocco cambiato si rifà): dopo l'invio alla scheda video la copia in memoria se ne va (~25 MB a gioco)
+  function libera(t) { t.onUpdate = () => { t.onUpdate = null; if (t.image) t.image.data = null; }; return t; }
   // [fluido] lo stesso a pezzi: cede() vero → cede il passo (render.js buildChunkGen)
   function* suoloG(mat, tx0, ty0, n, m, cede) {
     if (!attivo()) return mat; const key = tx0 / 32 + ',' + ty0 / 32, b = yield* mappeG(tx0, ty0, n, m, cede); BLK.set(key, b); mat.userData.pav = key; mat.userData.pavB = b;
@@ -596,7 +598,7 @@ var Pavimenti = (function () {
   // la sonda: cosa dice la mappa in (x, z)
   const STAT = { comp: 0, ok: null };
   function sonda(x, z) { const C = A.TS * 32, key = Math.floor(x / C) + ',' + Math.floor(z / C), b = BLK.get(key); if (!b) return { key, blocco: false, blocchi: BLK.size, STAT };
-    const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4, pk = d[o + 3];
+    const i = Math.floor((x - b.box.x) / b.box.z * b.res.x), j = Math.floor((z - b.box.y) / b.box.w * b.res.y), d = b.id.image.data, o = (j * b.res.x + i) * 4; if (!d) return { key, blocco: true, liberata: true, STAT }; const pk = d[o + 3];
     return { key, s: d[o], v: d[o + 1], th: d[o + 2], rf: pk % 16, gf: Math.floor(pk / 16) % 16, hw: Math.floor(pk / 256) / 8, blocchi: BLK.size, STAT }; }
   const API = { CIELO,   /* [sguardo] l'ombra delle nuvole: render.js la muove */ SPIGOLI, STRU, DBG, strade, ruote, quota: (x, z) => A && A.quota ? A.quota(x, z) : null, vernice, cucite: () => (vieTutte(), CUCITE), vie: B => ON ? vieTutte(B) : B.roads, qualita, sonda, STAT, __mappe: mappe, __patch: patch, __uniforms: uniforms, get on() { return ON; }, init, attivo, piatto, suolo, suoloG, via, marciapiede, oggetto, ombra, misura, FAM, forza: FORZA, blocchi: BLK };
   if (typeof window !== 'undefined') window.__PAV = API;

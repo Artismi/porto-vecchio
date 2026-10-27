@@ -7512,13 +7512,15 @@ var Render = (function () {
   // [scarico] le griglie di lavoro dei marciapiedi (5 × 22 MB a mezzo metro, più la rampa degli scivoli) servono solo a costruirli: a
   // gioco resta l'altezza (H, per swH). Con la città a tasselli i marciapiedi arrivano cotti e buildSidewalks non le liberava mai
   let SWF35fine = false;
-  function swLibera() { SWF35fine = true; if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null; } S1.ramp = null; }
+  function swLibera() { SWF35fine = true; if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null;
+    const H = SWF35.H; if (H instanceof Float32Array) { const q = new Uint8Array(H.length); for (let k = 0; k < H.length; k++) q[k] = Math.max(0, Math.min(255, Math.round(H[k] * 1275))); SWF35.H = q; SWF35.Hk = 1 / 1275; } }   // e l'altezza in un byte (passo di 0,8 mm, fino a 20 cm): 22 → 5,6 MB
+    S1.ramp = null; }
   // altezza del marciapiede sopra il terreno in (x, z): 0 fuori, 0,15 sopra
   function swH(x, z) {
     const F = SWF35ok ? SWF35 : swField(); if (!F) return 0;
     const fx = x / F.R, fz = z / F.R, i = Math.floor(fx), j = Math.floor(fz); if (i < 0 || j < 0 || i >= F.NW - 1 || j >= F.NH - 1) return 0;
     const u = fx - i, v = fz - j, H = F.H, k = j * F.NW + i;
-    return H[k] * (1 - u) * (1 - v) + H[k + 1] * u * (1 - v) + H[k + F.NW] * (1 - u) * v + H[k + F.NW + 1] * u * v;
+    return (H[k] * (1 - u) * (1 - v) + H[k + 1] * u * (1 - v) + H[k + F.NW] * (1 - u) * v + H[k + F.NW + 1] * u * v) * (F.Hk || 1);
   }
 
   // ---- texture a pattern allineate al mondo (niente cuciture fra i blocchi del terreno) ----
