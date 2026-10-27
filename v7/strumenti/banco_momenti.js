@@ -65,6 +65,7 @@ const srv = http.createServer((req, res) => {
   pg.on('crash', () => { log('[pagina morta]'); process.exit(2); });
   pg.on('pageerror', e => { errori.push(e.message); log('[errore]', e.message); });
   await pg.addInitScript(initPage, { disegna: has('disegna'), seme: SEME });
+  if (arg('zoom')) await pg.addInitScript(z => { window.__zv = z; }, +arg('zoom'));
   const cdp = await pg.context().newCDPSession(pg);
   await pg.goto(`http://localhost:${srv.address().port}/${arg('pagina', 'index.html')}${Q}`, { timeout: 900000 });
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__sc && window.__sc.pronto, null, { timeout: 1200000, polling: 1000 });
@@ -88,21 +89,23 @@ const srv = http.createServer((req, res) => {
     // i comandi del momento
     await pg.evaluate(([nome, RIP]) => { const pv = window.__pv, G = pv.G, B = window.__sc, M = pv.R.__mondo.M; let f = 0;
       const P0 = [1424, 322], P1 = [1372, 388], rotta = (a, q) => (G.findPath(a[0], a[1], q[0], q[1]) || []).map(n => Array.isArray(n) ? n : [n.x, n.y]).concat([q]);
-      const corri = (st, pts) => { const p = st.player; while (pts.length > 1 && Math.hypot(pts[0][0] - p.x, pts[0][1] - p.y) < 1.2) pts.shift(); const q = pts[0], dx = q[0] - p.x, dy = q[1] - p.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l, sprint: true, aim: Math.atan2(dy, dx), mag: 1 }; };
+      let lx = 0, ly = 0, ferm = 0; window.__salti = 0;
+      const corri = (st, pts) => { const p = st.player; if (Math.hypot(p.x - lx, p.y - ly) < .01) ferm++; else ferm = 0; lx = p.x; ly = p.y; if (ferm > 30 && pts.length) { p.x = pts[0][0]; p.y = pts[0][1]; ferm = 0; window.__salti++; }   // incastrati: al punto
+        while (pts.length > 1 && Math.hypot(pts[0][0] - p.x, pts[0][1] - p.y) < 1.2) pts.shift(); const q = pts[0], dx = q[0] - p.x, dy = q[1] - p.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l, sprint: true, aim: Math.atan2(dy, dx), mag: 1 }; };
       if (nome === 'corsa') { const A = rotta(P0, P1), Bk = rotta(P1, P0); let pts = null, k = 0;
         B.inp = st => { f++; const ph = f % 420; if (ph === 120) { pts = (k++ % 2 ? Bk : A).slice(); B.ev = 'corre'; } if (ph === 0) B.ev = 'ferma'; return ph >= 120 ? corri(st, pts) : { x: 0, y: 0 }; }; }
       else if (nome === 'piccioni') { B.inp = () => { f++; return { x: 0, y: 0 }; };
         B.dopo = st => { const ph = f % 360; if (ph === 300 && M.birds && M.birds.F.length) { st.sfx = st.sfx || []; st.sfx.push({ k: 'honk', x: st.player.x, y: st.player.y }); B.ev = 'clacson'; } }; }
-      else if (nome === 'cadenza') { const p = pv.st.player; B.fisso = [p.x, 0, p.y]; B.ph = 0; let pts = rotta(P0, P1); B.inp = st => { f++; const q = corri(st, pts); q.sprint = false; return q; }; }
-      else if (nome === 'zoom') { window.__persi = 0; pv.R.__models.renderer.domElement.addEventListener('webglcontextlost', () => window.__persi++);
-        const A = rotta(P0, P1), Bk = rotta(P1, P0); let pts = A.slice(), k = 0; pv.ui.zoom = 4.2;   // il vecchio massimo: chi lo scrive da fuori arriva lì
-        B.inp = st => { f++; pv.ui.zoom = 4.2; if (pts.length < 2 && Math.hypot(pts[0][0] - st.player.x, pts[0][1] - st.player.y) < 1.5) pts = (k++ % 2 ? A : Bk).slice(); return corri(st, pts); }; }
+      else if (nome === 'cadenza') { const p = pv.st.player; B.fisso = [p.x, 0, p.y]; B.ph = 0; let pts = rotta(P0, P1); B.inp = st => { f++; const q = corri(st, pts); q.sprint = false; q.mag = (3.8 - 1.3) / 5.1; return q; }; }
+      else if (nome === 'zoom') { const ZV = window.__zv || 4.2; window.__persi = 0; pv.R.__models.renderer.domElement.addEventListener('webglcontextlost', () => window.__persi++);
+        const A = rotta(P0, P1), Bk = rotta(P1, P0); let pts = A.slice(), k = 0; pv.ui.zoom = ZV;   // il vecchio massimo: chi lo scrive da fuori arriva lì
+        B.inp = st => { f++; pv.ui.zoom = ZV; if (pts.length < 2 && Math.hypot(pts[0][0] - st.player.x, pts[0][1] - st.player.y) < 1.5) pts = (k++ % 2 ? A : Bk).slice(); return corri(st, pts); }; }
       else if (nome === 'fogli') { B.inp = () => { f++; const ph = f % 300; window.__vf = ph < 150 ? .2 : 1.6; if (ph === 150) B.ev = 'raffica'; return { x: 0, y: 0 }; }; }
     }, [nome, RIP]);
     await pg.waitForTimeout(3000); await pg.evaluate(() => window.gc && window.gc());
     await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 250 }); await cdp.send('Profiler.start');
     const marca = await pg.evaluate(() => { const t = performance.now(); (function __marca_scatti() { let x = 0; while (performance.now() - t < 40) x += Math.sqrt(x + 1); return x; })(); return t; });
-    await pg.evaluate(() => { const B = window.__sc; B.rec = []; B.cur = null; B.on = true; });
+    await pg.evaluate(() => { const B = window.__sc; B.rec = []; B.cur = null; B.on = true; if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } });
     if (nome === 'zoom') { // due minuti veri allo zoom massimo, correndo avanti e indietro: il contesto della scheda video regge?
       for (let tb = Date.now(); Date.now() - tb < 120000;) { await pg.waitForTimeout(5000); if (await pg.evaluate(() => window.__persi)) break; }
       await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; }); await cdp.send('Profiler.stop');
@@ -113,14 +116,15 @@ const srv = http.createServer((req, res) => {
     await nfa(NF);
     await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; B.dopo = null; window.__vf = null; });
     const { profile } = await cdp.send('Profiler.stop');
+    log(nome, 'ombre', JSON.stringify(await pg.evaluate(() => window.PesoOmbre ? { conto: PesoOmbre.conto(), diag: PesoOmbre.diag(true) } : null)));
     const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, str: f.str, cot: f.cot, job: f.job, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));
     if (nome === 'cadenza') { // lo scarto da un fotogramma all'altro: il personaggio sullo schermo (deve stare fermo) e il mondo che scorre (deve scorrere uguale)
       // il mondo: lo scarto fra lo spostamento di un fotogramma e quello del precedente (a passo costante deve essere ~0); il personaggio: quanto
       // si sposta sullo schermo da un fotogramma all'altro (la camera gli è legata: deve stare fermo)
       const R1 = rec.slice(30).filter(f => f.v > .5), dW = [], dP = [], dPl = [];
-      R1.forEach((f, i) => { if (i < 2) return; const q = R1[i - 1], q2 = R1[i - 2]; dW.push(Math.hypot((f.wx - q.wx) - (q.wx - q2.wx), (f.wy - q.wy) - (q.wy - q2.wy))); dP.push(Math.hypot(f.px - q.px, f.py - q.py)); dPl.push(Math.hypot(f.plx - q.plx, f.ply - q.ply)); });
+      R1.forEach((f, i) => { if (i < 2) return; const q = R1[i - 1], q2 = R1[i - 2]; const m1 = Math.hypot(f.plx - q.plx, f.ply - q.ply), m2 = Math.hypot(q.plx - q2.plx, q.ply - q2.ply); if (m1 > .5 || m2 > .5 || m1 < .01 || m2 < .01) return; dW.push(Math.hypot((f.wx - q.wx) - (q.wx - q2.wx), (f.wy - q.wy) - (q.wy - q2.wy))); dP.push(Math.hypot(f.px - q.px, f.py - q.py)); dPl.push(Math.hypot(f.plx - q.plx, f.ply - q.ply)); });
       const st = a => { const m = a.reduce((s, x) => s + x, 0) / a.length; return { media: +m.toFixed(3), dev: +Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length).toFixed(3), min: +Math.min(...a).toFixed(3), max: +Math.max(...a).toFixed(3) }; };
-      const C = { fotogrammi: R1.length, h_px: await pg.evaluate(() => window.__pv.R.__models.renderer.domElement.height), scarto_mondo_px: st(dW), personaggio_px: st(dP), passo_m: st(dPl), prime: R1.slice(1, 25).map((f, i) => +Math.hypot(f.wx - R1[i].wx, f.wy - R1[i].wy).toFixed(2)), rec };
+      const C = { fotogrammi: R1.length, salti: await pg.evaluate(() => window.__salti), h_px: await pg.evaluate(() => window.__pv.R.__models.renderer.domElement.height), scarto_mondo_px: st(dW), personaggio_px: st(dP), passo_m: st(dPl), prime: R1.slice(1, 25).map((f, i) => +Math.hypot(f.wx - R1[i].wx, f.wy - R1[i].wy).toFixed(2)), rec };
       OUTJ.momenti[nome] = C; log('== cadenza', JSON.stringify(Object.assign({}, C, { rec: undefined }))); continue; }
     // gli eventi: la corsa che parte, lo stormo che si alza (i piccioni in volo da 0 a più), i fogli che si alzano (in aria che cresce di 3 in pochi fotogrammi)
     const ev = []; rec.forEach((f, i) => { const p = rec[i - 1]; if (!p) return;
