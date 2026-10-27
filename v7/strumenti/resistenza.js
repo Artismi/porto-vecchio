@@ -47,6 +47,10 @@ function rssAlbero(pid) {
 }
 
 const PRESI = new Set();
+// dove comincia ogni modulo in index.html (come build.py e sonda_memoria.js): riga della pagina → [modulo, riga nel modulo]
+const SPANS = (() => { try { const html = fs.readFileSync(path.join(ROOT, 'src/index.src.html'), 'utf8'), sp = []; let out = '', last = 0; const re = /\/\*([a-z_.0-9]+\.js)\*\//g; let m;
+  while ((m = re.exec(html))) { out += html.slice(last, m.index); last = m.index + m[0].length; if (m[1] === 'studio.js') continue; let src = ''; try { src = fs.readFileSync(path.join(ROOT, 'src', m[1]), 'utf8'); } catch (e) { } const l0 = out.split('\n').length; out += src; sp.push([l0, out.split('\n').length, m[1]]); } return sp; } catch (e) { return []; } })();
+const modulo = ln0 => { const ln = ln0 + 1, s = SPANS.find(q => ln >= q[0] && ln < q[1]); return s ? [s[2], ln - s[0] + 1] : ['index.html', ln]; };
 function figliBrowser() { const o = []; for (const d of fs.readdirSync('/proc')) { if (!/^\d+$/.test(d)) continue; try { const st = fs.readFileSync(`/proc/${d}/stat`, 'utf8'), pp = +st.slice(st.lastIndexOf(')') + 2).split(' ')[1]; if (pp !== process.pid) continue; const cl = fs.readFileSync(`/proc/${d}/cmdline`, 'utf8'); if (/chrom|headless_shell/.test(cl)) o.push(+d); } catch (e) { } } return o; }
 
 // ------------------------------------------------------------------ dentro la pagina
@@ -70,11 +74,11 @@ function initQA() {
       if (g > 50) S.o50++; if (g > 100) S.o100++; if (g > 250) S.o250++; if (g > 1000) S.o1000++;
       if (w > 50) S.w50++; if (w > 100) S.w100++; if (w > 250) S.w250++;
       if (g > S.max) S.max = g; if (w > S.wmax) S.wmax = w; if (S.gaps.length < 4000) S.gaps.push(Math.round(g));
-      if (w > 50 || g > 250) { let p = null; try { const st = window.__pv.st, pl = st.player; p = { x: Math.round(pl.x), y: Math.round(pl.y), in: pl.indoor ? pl.indoor.b : null, auto: pl.vehicle || null, zoom: +(window.__pv.ui.zoom || 0).toFixed(2), ora: window.__pv.G.clockStr ? window.__pv.G.clockStr(st) : '' }; } catch (e) { }
-        Q.lunghi.push({ t: now(), gap: Math.round(g), lavoro: Math.round(w), passo: Math.round(F.step || 0), fase: Q.fase, posto: Q.posto, p });
+      if (w > 50 || g > 250) { let p = null; try { const st = window.__pv.st, pl = st.player; p = { x: Math.round(pl.x), y: Math.round(pl.y), in: pl.indoor ? pl.indoor.b : null, auto: pl.vehicle || null, zoom: +(window.__pv.ui.zoom || 0).toFixed(2), ora: window.__pv.G.clockStr ? window.__pv.G.clockStr(st.t) : '' }; } catch (e) { }
+        Q.lunghi.push({ t: now(), gap: Math.round(g), lavoro: Math.round(w), passo: Math.round(F.step || 0), programmi_nuovi: F.prog || 0, fase: Q.fase, posto: Q.posto, p });
         if (Q.lunghi.length > 1500) { Q.lunghi.sort((a, b) => b.lavoro - a.lavoro); Q.lunghi.length = 800; } }
     }
-    F.last = t; F.work = 0; F.step = 0; requestAnimationFrame(tick);
+    F.last = t; F.work = 0; F.step = 0; F.prog = 0; requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
   const hook = () => {
@@ -88,7 +92,8 @@ function initQA() {
       if (prima !== null && dopo === null) Q.uscite++;
       return r;
     };
-    R.frame = function () { const t = performance.now(); try { return f0.apply(this, arguments); } finally { F.work += performance.now() - t; } };
+    const rdq = () => { try { return R.__models.renderer.info.programs.length; } catch (e) { return 0; } };
+    R.frame = function () { const t = performance.now(), p0 = rdq(); try { return f0.apply(this, arguments); } finally { F.work += performance.now() - t; F.prog = rdq() - p0; } };
     Q.agganciato = now();
   };
   hook();
@@ -100,7 +105,7 @@ function initQA() {
       try { o.perso = rd.getContext().isContextLost(); } catch (e) { o.perso = 'errore'; } }
     try { o.scena = R.__models.scene.children.length; } catch (e) { }
     o.dom = document.getElementsByTagName('*').length;
-    if (st) { const p = st.player; o.p = { x: Math.round(p.x), y: Math.round(p.y), in: p.indoor ? p.indoor.b : null, auto: p.vehicle, hp: Math.round(p.hp), lv: p.lv ? p.lv.k : null, swim: !!p.swim }; o.ora = pv.G.clockStr(st); o.notte = +(R.nightLevel ? R.nightLevel() : 0).toFixed(2); o.npc = st.npcs.length; o.veicoli = st.vehicles.length; o.zoom = +(pv.ui.zoom || 0).toFixed(2); o.res = R.res; o.over = !!st.over; }
+    if (st) { const p = st.player; o.p = { x: Math.round(p.x), y: Math.round(p.y), in: p.indoor ? p.indoor.b : null, auto: p.vehicle, hp: Math.round(p.hp), lv: p.lv ? p.lv.k : null, swim: !!p.swim }; o.ora = pv.G.clockStr(st.t); o.notte = +(R.nightLevel ? R.nightLevel() : 0).toFixed(2); o.npc = st.npcs.length; o.veicoli = st.vehicles.length; o.zoom = +(pv.ui.zoom || 0).toFixed(2); o.res = R.res; o.over = !!st.over; }
     return o;
   };
   // stati assurdi a campione
@@ -181,6 +186,16 @@ class Scheda {
   ev(fn, arg, ms = 90000) { return Promise.race([this.pg.evaluate(fn, arg), new Promise((_, j) => setTimeout(() => j(new Error('evaluate oltre ' + ms / 1000 + ' s')), ms))]); }
   async fase(f, posto) { this.faseOra = f; await this.ev(([f, p]) => { window.__qa.fase = f; if (p !== undefined) window.__qa.posto = p; }, [f, posto]).catch(() => { }); }
   azione(cosa, esito) { this.azioni.push({ t: sec(), fase: this.faseOra, cosa, esito }); this.L(cosa, esito === undefined ? '' : JSON.stringify(esito).slice(0, 220)); }
+  // il profilo del processore a pezzi di 2 minuti: il tempo proprio per funzione e per modulo (src/*.js), sommato su tutta la prova
+  async profilo() {
+    if (this.chiusa || !this.cdp || this.__prof) return; this.__prof = 1;
+    try {
+      if (this.profOn) { const { profile } = await this.cdp.send('Profiler.stop'); this.profOn = false; const byId = new Map(profile.nodes.map(n => [n.id, n])), dts = profile.timeDeltas, P = this.prof || (this.prof = { fn: {}, mod: {}, tot: 0 });
+        profile.samples.forEach((id, i) => { const n = byId.get(id), cf = n.callFrame, d = (dts[i] || 0) / 1000; let mod = cf.url ? cf.url.split('/').pop().split('?')[0] : '(' + (cf.functionName || 'interno') + ')', ln = cf.lineNumber + 1;
+          if (/index\.html$/.test(mod)) { const m = modulo(cf.lineNumber); mod = m[0]; ln = m[1]; } const k = (cf.functionName || '(anonima)') + ' ' + mod + ':' + ln; P.fn[k] = (P.fn[k] || 0) + d; P.mod[mod] = (P.mod[mod] || 0) + d; P.tot += d; }); }
+      await this.cdp.send('Profiler.enable'); await this.cdp.send('Profiler.setSamplingInterval', { interval: 4000 }); await this.cdp.send('Profiler.start'); this.profOn = true;
+    } catch (e) { this.note.push({ t: sec(), profilo: String(e.message).slice(0, 120) }); } finally { this.__prof = 0; }
+  }
   async campiona() {
     if (this.chiusa) return; const o = await this.ev(() => window.__qa.campione(), null, 60000).catch(e => ({ errore: String(e.message).slice(0, 100) }));
     o.s = sec(); const m = await this.cdp.send('Performance.getMetrics').catch(() => null); if (m) { const g = k => (m.metrics.find(q => q.name === k) || {}).value; o.nodi = g('Nodes'); o.ascoltatori = g('JSEventListeners'); o.heapCdp = Math.round((g('JSHeapUsedSize') || 0) / 1048576); }
@@ -348,7 +363,7 @@ const COPIONI = {
     async S => { // giorno e notte: l'orologio avanza a salti di 20 minuti, due ore per volta
       await S.fase('C:tempo'); const s0 = await S.stato();
       for (let i = 0; i < 6; i++) { await S.ev(() => { window.__pv.st.t += 20; }); await sleep(1500); }
-      const s1 = await S.ev(() => ({ ora: window.__pv.G.clockStr(window.__pv.st), notte: window.__pv.R.nightLevel(), t: window.__pv.st.t })); await S.fase('C:tempo', 'ore ' + s1.ora); await S.campiona();
+      const s1 = await S.ev(() => ({ ora: window.__pv.G.clockStr(window.__pv.st.t), notte: window.__pv.R.nightLevel(), t: window.__pv.st.t })); await S.fase('C:tempo', 'ore ' + s1.ora); await S.campiona();
       S.azione('tempo avanti di 2 ore', { da_min: Math.round(s0.t), ora: s1.ora, notte: +s1.notte.toFixed(2) });
     },
     async S => { // visuale: girare e dall'alto, a piedi in giro
@@ -377,12 +392,13 @@ const COPIONI = {
     if (S.chiusa) return; S.inizio = sec(); const fine = Date.now() + MINUTI * 60000; let i = 0, tC = 0, tA = 0;
     while (Date.now() < fine && !S.chiusa && !S.crash) {
       if (Date.now() - tA > ASSURDI_S * 1000) { tA = Date.now(); await S.controllaAssurdi(); }
+      if (!ARG.senzaprofilo && Date.now() - (S.tP || 0) > 120000) { S.tP = Date.now(); await S.profilo(); }
       const cop = S.copioni[i % S.copioni.length], L = COPIONI[cop], step = L[Math.floor(i / S.copioni.length) % L.length]; i++;
       try { await Promise.race([step(S), sleep(240000).then(() => { throw new Error('passo del copione oltre 4 minuti'); })]); }
       catch (e) { if (S.chiusa) break; S.note.push({ t: sec(), fase: S.faseOra, errore_copione: String(e.message).slice(0, 300) }); S.L('passo fallito:', e.message.slice(0, 200)); await S.pulito().catch(() => { }); await sleep(3000); }
       await S.pulito().catch(() => { });
     }
-    S.fineGioco = sec(); await S.campiona(); await S.controllaAssurdi();
+    S.fineGioco = sec(); await S.campiona(); await S.controllaAssurdi(); if (S.profOn) { S.tP = 0; await S.profilo(); await S.cdp.send('Profiler.stop').catch(() => { }); }
   };
   // campionamento anche durante i passi lunghi
   const campi = setInterval(() => { vive().forEach(S => { if (S.inizio && !S.fineGioco && !S.__c) { S.__c = 1; S.campiona().finally(() => { S.__c = 0; }); } }); }, CAMPIONE_S * 1000);
@@ -405,6 +421,7 @@ const COPIONI = {
     const R = { copioni: S.copioni, caricamento_s: S.caricamento_s, apertura: S.apertura, crash: S.crash || null, chiusa_dalla_guardia: S.chiusaA || null, inizio_s: S.inizio, fine_s: S.fineGioco,
       memoria: m0 && m1 ? { heap_MB: [m0.heap, m1.heap], heap_max_MB: Math.max(...c.map(q => q.heap)), geometrie: [m0.geo, m1.geo], texture: [m0.tex, m1.tex], programmi: [m0.prog, m1.prog], nodi_dom: [m0.nodi, m1.nodi], ascoltatori: [m0.ascoltatori, m1.ascoltatori], rss_MB: [m0.rss && m0.rss.tot, m1.rss && m1.rss.tot], rss_max_MB: Math.max(...c.map(q => q.rss ? q.rss.tot : 0)), gpu_MB: [m0.rss && m0.rss.gpu, m1.rss && m1.rss.gpu] } : null,
       errori: [...S.err.values()].sort((a, b) => b.n - a.n), richieste_fallite: [...S.richieste.entries()].map(([u, n]) => ({ u, n })), fotogrammi: qa, auto_ferme_per_sempre: fermi, ingressi_sospetti: ingressiSospetti,
+      profilo: S.prof ? { campionato_s: Math.round(S.prof.tot / 1000), moduli: Object.entries(S.prof.mod).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([k, v]) => [k, +(v / S.prof.tot * 100).toFixed(1)]), funzioni: Object.entries(S.prof.fn).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, v]) => [k, +(v / S.prof.tot * 100).toFixed(1)]) } : null,
       assurdi: S.assurdi, note: S.note, azioni: S.azioni, campioni: S.campioni };
     guai += R.errori.filter(e => e.tipo !== 'avviso').length + (qa && qa.lost ? qa.lost.length : 0) + S.assurdi.length + ingressiSospetti.length + (S.crash ? 1 : 0);
     tutto.schede[S.nome] = R;
