@@ -23,11 +23,18 @@ var Calcolo = (function () {
     } catch (e) { console.warn('[calcolo] niente lavoratore:', e); guasto = true; W = null; }
     return W;
   }
+  // i dati che restano (le strade...): una volta al lavoratore, e qui per i conti fatti qui
+  const MEM = {};
+  function metti(k, v) { MEM[k] = v; const w = lavoratore(); if (w) try { w.postMessage({ op: 'metti', k, v }); } catch (e) { } }
+  const ha = k => k in MEM;
   // il conto qui, sul filo della pagina (come prima)
-  function qui(op, a) { ST.qui++; return CalcoloF[op](a); }
+  function qui(op, a) { ST.qui++; return CalcoloF[op](a, MEM); }
+  // chi fa girare un generatore tutto d'un fiato (buildChunk, verde38) non può aspettare: dentro tutto() i conti si fanno qui
+  let SINC = 0;
+  function tutto(fn) { SINC++; try { return fn(); } finally { SINC--; } }
   // dentro un generatore: yield* G(op, a). I dati si copiano (niente trasferimento): se il lavoratore si guasta il conto si rifà qui
   function* G(op, a) {
-    const w = lavoratore(); if (!w) return qui(op, a);
+    const w = SINC ? null : lavoratore(); if (!w) return qui(op, a);
     const h = { fatto: false, val: null, err: null }, id = ++NID; ATT.set(id, h); ST.inVolo++;
     try { w.postMessage({ id, op, a }); } catch (e) { ATT.delete(id); ST.inVolo--; h.err = String(e); h.fatto = true; }
     while (!h.fatto) yield ATTESA;
@@ -36,5 +43,5 @@ var Calcolo = (function () {
   }
   const stato = () => Object.assign({ lavoratore: !!W, guasto }, ST, { msFuori: Math.round(ST.msFuori) });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__calcolo', { get: stato, configurable: true });
-  return { ATTESA, G, qui, stato, get attivo() { return !guasto; } };
+  return { ATTESA, G, qui, tutto, metti, ha, stato, get attivo() { return !guasto; } };
 })();

@@ -2981,7 +2981,7 @@ var Render = (function () {
   }
   // [fluido] un blocco si costruisce in fasi (dipinto del terreno in tre passate, scabrosità, geometria, luce, vegetazione,
   // bosco, verde): buildChunkGen ne fa una per volta e lo mette in scena solo finito; buildChunk le fa tutte subito.
-  function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
+  function buildChunk(ci, cj) { return Calcolo.tutto(() => { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [calcolo] tutto qui
   // [fluido] i passi dei pittori lunghi (pavimenti, il suolo della vegetazione, il mare fine) cedono oltre 4 ms dall'inizio del passo, come paintTilesG
   const CEDE1 = () => performance.now() - ISO.t1 > 4;
   function* buildChunkGen(ci, cj) {
@@ -9308,15 +9308,20 @@ var Render = (function () {
   function vdGroundTint(X, Y) { let r = 0, g = 0, b = 0; for (const [ox, oy] of [[-7, -3], [6, -6], [-4, 7], [7, 5]]) { const c = vdPlan(vdEcoMix(X + ox, Y + oy)).g; r += c[0]; g += c[1]; b += c[2]; } return [r / 4, g / 4, b / 4]; }
   const vdCol = (k, X, Y, sc) => Math.max(0, Math.min(1.6, .15 + 2.4 * (vnz(X / sc + k * 17.13, Y / sc + k * 9.31) + .25)));
   function vdPick(r, W) { let t = 0; for (const k in W) t += Math.max(0, W[k]); let q = r() * t; for (const k in W) { q -= Math.max(0, W[k]); if (q <= 0) return k; } return 'none'; }
-  function vdRoadField(tx0, ty0, n, m) {
-    const S = .5, X0 = tx0 * TS - 4, Y0 = ty0 * TS - 4, NX = Math.ceil((n * TS + 8) / S), NY = Math.ceil((m * TS + 8) / S), f = new Float32Array(NX * NY).fill(99);
-    (M.roads || []).forEach(rd => { if (rd.rect) return; const urb = rd.kind === 'citta' || rd.kind === 'litoranea', hw = rd.w / 2 + (urb ? 3.2 : rd.kind === 'sterrato' ? .35 : .6), R = hw + 2.5;
-      rd.pts.forEach(([ax, ay]) => { if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) return;
-        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } }); });
+  // [calcolo] le strade impacchettate per il lavoratore (calcolo_lavoratore.js strade, lo stesso conto di prima): una volta per elenco
+  const VDR = { roads: null, n: -1, k: null, v: 0 };
+  function vdRoadsKey() {
+    const RS = M.roads || []; if (VDR.roads === RS && VDR.n === RS.length) return VDR.k;
+    const P = []; RS.forEach(rd => { if (rd.rect) return; const urb = rd.kind === 'citta' || rd.kind === 'litoranea', hw = rd.w / 2 + (urb ? 3.2 : rd.kind === 'sterrato' ? .35 : .6), R = hw + 2.5;
+      P.push(hw, R, rd.pts.length); rd.pts.forEach(([ax, ay]) => P.push(ax, ay)); });
+    VDR.roads = RS; VDR.n = RS.length; VDR.k = 'strade' + (++VDR.v); Calcolo.metti(VDR.k, new Float64Array(P)); return VDR.k;
+  }
+  function* vdRoadFieldG(tx0, ty0, n, m) {
+    const S = .5, X0 = tx0 * TS - 4, Y0 = ty0 * TS - 4, NX = Math.ceil((n * TS + 8) / S), NY = Math.ceil((m * TS + 8) / S);
+    const f = yield* Calcolo.G('strade', { X0, Y0, NX, NY, S, k: vdRoadsKey() });
     return (X, Y) => { const i = Math.floor((X - X0) / S), j = Math.floor((Y - Y0) / S); return i < 0 || j < 0 || i >= NX || j >= NY ? 99 : f[j * NX + i]; };
   }
-  function verde38(tx0, ty0, n, m) { const it = verde38G(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  function verde38(tx0, ty0, n, m) { return Calcolo.tutto(() => { const it = verde38G(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [anelli] tutto in un colpo
   function* verde38G(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
@@ -9327,7 +9332,7 @@ var Render = (function () {
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
     const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.84 + (vnz(X / 22 + 3, Y / 22 + 8) + .5) * .3 + vnz(X / 7, Y / 7) * .06); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
     const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND || v === T.DIRT || v === T.VIA;
-    const rdAt = vdRoadField(tx0, ty0, n, m);
+    const rdAt = yield* vdRoadFieldG(tx0, ty0, n, m);   // [calcolo] nel lavoratore
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {

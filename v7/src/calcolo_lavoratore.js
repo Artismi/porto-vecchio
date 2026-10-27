@@ -3,7 +3,8 @@
    nella pagina (CalcoloF): senza lavoratore, o se il lavoratore si guasta, gli stessi conti si fanno qui, uguali.
    Le funzioni copiano alla lettera il codice di prima (stesso ordine delle operazioni: lo stesso risultato al bit).
    - luce: la luce cotta di un blocco di terreno (render.js bakeLight): le pozze di luce con le ombre delle case, già in pixel RGBA;
-   - ruvido: la scabrosità del terreno dipinto (render.js buildChunkGen): dalla luminosità dei pixel. */
+   - ruvido: la scabrosità del terreno dipinto (render.js buildChunkGen): dalla luminosità dei pixel;
+   - strade: la distanza dalle strade attorno a un blocco (render.js vdRoadField, per il verde): le strade stanno nel lavoratore (metti). */
 var CalcoloF = (function () {
   'use strict';
   // a: { W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask (Uint8Array: 1 = casa), L (Float64Array, LK numeri per luce) }
@@ -40,14 +41,25 @@ var CalcoloF = (function () {
     for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
     return o;
   }
-  return { LK, luce, ruvido };
+  // a: { X0, Y0, NX, NY, S, k }; mem[k]: le strade impacchettate (per strada: hw, R, quanti punti, poi x, y di ogni punto)
+  function strade(a, mem) {
+    const S = a.S, X0 = a.X0, Y0 = a.Y0, NX = a.NX, NY = a.NY, f = new Float32Array(NX * NY).fill(99), P = mem[a.k];
+    for (let q = 0; q < P.length;) { const hw = P[q], R = P[q + 1], np = P[q + 2]; q += 3;
+      for (let e = q + np * 2; q < e; q += 2) { const ax = P[q], ay = P[q + 1]; if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) continue;
+        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
+    return f;
+  }
+  return { LK, luce, ruvido, strade };
 })();
-// nel lavoratore: { id, op, a } → { id, val } (il vettore del risultato trasferito, senza copia) o { id, err }
+// nel lavoratore: { op: 'metti', k, v } tiene un dato; { id, op, a } → { id, val } (il vettore del risultato trasferito, senza copia) o { id, err }
 if (typeof window === 'undefined' && typeof self !== 'undefined' && typeof importScripts === 'function') {
+  const MEM = {};   // i dati che restano (metti): le strade...
   self.onmessage = e => {
     const m = e.data;
-    try { const f = CalcoloF[m.op]; if (typeof f !== 'function' || m.op === 'LK') throw new Error('conto sconosciuto ' + m.op);
-      const t0 = performance.now(), val = f(m.a); self.postMessage({ id: m.id, val, ms: performance.now() - t0 }, val && val.buffer ? [val.buffer] : []); }
+    if (m.op === 'metti') { MEM[m.k] = m.v; return; }
+    try { const f = CalcoloF[m.op]; if (typeof f !== 'function') throw new Error('conto sconosciuto ' + m.op);
+      const t0 = performance.now(), val = f(m.a, MEM); self.postMessage({ id: m.id, val, ms: performance.now() - t0 }, val && val.buffer ? [val.buffer] : []); }
     catch (err) { self.postMessage({ id: m.id, err: String(err && err.message || err) }); }
   };
 }
