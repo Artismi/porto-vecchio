@@ -46,6 +46,8 @@ var Tasselli = (function () {
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
+    raggiR: TEL ? 6 : Infinity,    // [leggera] i dati dei raggi (graffiti, spruzzi) nel tassello del giocatore (entro 6 m) e in quelli che un raggio
+                                   // ha toccato da poco (arrivano al volo, dopo un paio di fotogrammi; via dopo 20 s senza raggi)
     lontano: TEL ? 105 : 0,        // [leggera] sul telefono l'impronta si ferma a questa distanza dal punto guardato (oltre, fino alla nebbia, la sagoma: il lontano)
     oltre: TEL ? 16 : 0,           // [leggera] e il tassello lascia la scheda video a margine + questo fuori dall'impronta (il computer: 2 margini + 8)
     raggi: !/[?&]tasselliraggi=0\b/.test(Q),   // [tasselli2] le mesh opache tengono le posizioni per i raggi (graffiti, spruzzi)
@@ -240,10 +242,10 @@ var Tasselli = (function () {
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
   const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
-  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
+  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
   function griglia(g) {
-    const P = posL(g.attributes.position), I = g.index ? g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const P = posL(g.attributes.position), I = g.index ? g.index.__ix || g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
     const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
     const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
     const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
@@ -258,9 +260,11 @@ var Tasselli = (function () {
   }
   const IDM = new THREE.Matrix4();
   function rayTas(rc, out) {
-    const g = this.geometry, P = g.attributes.position; if (!P || !P.array || (P.__q ? P.__q.u.length : P.array.length) < 9) return;
+    const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
+    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; return; } } }   // [leggera] i dati dei raggi arrivano al volo
+    if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
     // il tratto del raggio dentro la scatola della mesh (e dentro near-far: le matrici dei tasselli non scalano, le distanze sono quelle del mondo)
@@ -295,7 +299,7 @@ var Tasselli = (function () {
   // non va oltre «butta»; si apre (lavoratore) e sale alla scheda video solo quando entra nell'impronta della camera (più il margine:
   // l'anello vicino), e lascia la scheda video quando ne esce del doppio del margine. Così la memoria della scheda video segue quello che
   // si vede, la rete quello che sta intorno.
-  function libera() { this.array = new this.array.constructor(0); }   // [memoria] dopo l'invio alla scheda video la copia della pagina non serve
+  function libera() { this.array = new this.array.constructor(0); if (this.__qs) this.__qs.u = null; }   // [memoria] dopo l'invio alla scheda video la copia della pagina non serve
   const noRay = () => { };
   // per tassello: st 0 niente, 1 si scarica, 2 scaricato (zip), 3 si apre, 4 aperto (da montare), 5 in scena
   const STATO = [];
@@ -322,22 +326,49 @@ var Tasselli = (function () {
       texPrendi(ids); S.tex = ids;   // [tasselli3] contate subito: nessuno le libera mentre arrivano
       await texPronte(ids);
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo (smonta le ha già lasciate)
-      S.dati = m; S.st = 4; S.k = 0; PRONTI.push(ti);
+      S.dati = m; S.st = 4; prepara(ti, m, null); PRONTI.push(ti);
     } catch (e) { console.warn('[tasselli] apertura', IND.tasselli[ti].file, e); if (S.gen !== gen || S.st !== 3) return; if (S.tex) { texLascia(S.tex); S.tex = null; } S.st = S.zip ? 2 : 0; S.errori = (S.errori || 0) + 1; }
     finally { ST.inApertura--; }
   }
   const opaco = m => m && !m.transparent && !m.isSpriteMaterial && !m.isMeshDepthMaterial && !m.isMeshDistanceMaterial && m.visible !== false;
   // monta un pezzo del tassello (mesh dopo mesh) dentro i tetti: torna true quando ha finito
+  // [leggera] sul telefono il tassello monta subito solo le mesh che toccano l'impronta (la vista più il margine delle ombre): le altre
+  // aspettano (S.rinv) e arrivano quando la camera le raggiunge, da una nuova apertura del tassello (riapri). E i dati dei raggi (posizioni
+  // a 16 bit e indici) si tengono solo nei tasselli vicini al giocatore: quelli che si avvicinano li riprendono (riapri), quelli che si
+  // allontanano li lasciano. Così nella pagina non restano vettori che la scheda video non ha mai chiesto
+  const scatolaW = r => { if (r.__bw !== undefined) return r.__bw; if (!r.bb) return (r.__bw = null); const b = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5])); if (r.mx) b.applyMatrix4(new THREE.Matrix4().fromArray(r.mx)); return (r.__bw = b); };
+  const toccaF = (b, F) => b.max.x > F.x0 && b.min.x < F.x1 && b.max.z > F.z0 && b.min.z < F.z1;
+  // quello che la scheda video chiede davvero: la vista della camera e quella del sole (la mappa d'ombra), più un margine in metri
+  const VF = { cam: new THREE.Frustum(), sole: new THREE.Frustum(), m: new THREE.Matrix4(), s: new THREE.Sphere(), luce: null, t: -1 };
+  function visteAgg() {
+    const c = CTX.camera; c.updateMatrixWorld(); VF.m.multiplyMatrices(c.projectionMatrix, c.matrixWorldInverse); VF.cam.setFromProjectionMatrix(VF.m);
+    if (!VF.luce || !VF.luce.parent) { VF.luce = null; CTX.scene.traverse(o => { if (!VF.luce && o.isDirectionalLight && o.castShadow) VF.luce = o; }); }
+    const sc = VF.luce && VF.luce.shadow && VF.luce.shadow.camera; VF.okS = !!sc;
+    if (sc) { VF.m.multiplyMatrices(sc.projectionMatrix, sc.matrixWorldInverse); VF.sole.setFromProjectionMatrix(VF.m); }
+  }
+  // (la camera disegna i suoi livelli; il sole solo chi fa ombra)
+  function vede(r, b, mg) { b.getBoundingSphere(VF.s); VF.s.radius += mg; return ((r.ly & CTX.camera.layers.mask) && VF.cam.intersectsSphere(VF.s)) || (r.cs && VF.okS && VF.sole.intersectsSphere(VF.s)); }
+  const vicinoG = ti => { const c = CTX.cam; return dist(IND.tasselli[ti], c.x, c.y) < CFG.raggiR; };
+  function prepara(ti, m, solo) {
+    const S = STATO[ti], T = m.testa; S.k = 0; S.attr = S.attrs || new Map();
+    if (!CFG.leggero || TIENI.has(ti)) { S.lista = solo ? [...solo] : T.mesh.map((r, i) => i); if (!solo) { S.rinv = null; S.rdati = true; } S.raggi = true; return; }
+    if (!solo) { S.raggi = vicinoG(ti); S.rdati = S.raggi; }
+    const L = [], R = new Set(); (solo || T.mesh.map((r, i) => i)).forEach(i => { const b = scatolaW(T.mesh[i]); if (!b || vede(T.mesh[i], b, solo ? 30 : 12)) L.push(i); else R.add(i); });
+    S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
+    S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
+  }
   function monta1(ti, tetto, quota) {
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
-    if (!S.attr) {
-      S.attr = new Map(); S.tieni = new Set(); S.q16ok = new Set();
+    if (!S.tieni) {
+      S.tieni = new Set(); S.q16ok = new Set();
       if (m.q16 && m.q16.length) { const no = new Set(); T.mesh.forEach(r => { const p = r.g.at.position; if (p === undefined) return; S.q16ok.add(p);
         if (r.inst || r.mx || ![].concat(r.m, r.cdm !== null && r.cdm !== undefined ? [r.cdm] : [], r.cdi !== null && r.cdi !== undefined ? [r.cdi] : []).every(matQ)) no.add(p); });
         no.forEach(p => S.q16ok.delete(p)); }
       // [tasselli2] le posizioni (e gli indici) delle mesh che i raggi colpiscono restano nella pagina
-      if (CFG.raggi) T.mesh.forEach(r => { if (r.inst || !(r.ly & 1)) return; const ms = (Array.isArray(r.m) ? r.m : [r.m]).map(i => IND.materiali[i]); if (!ms.some(q => q && !q.transparent && q.type !== 'MeshDepthMaterial' && q.type !== 'SpriteMaterial' && q.visible !== false)) return;
+      if (CFG.raggi && S.raggi !== false) T.mesh.forEach(r => { if (r.inst || !(r.ly & 1)) return; const ms = (Array.isArray(r.m) ? r.m : [r.m]).map(i => IND.materiali[i]); if (!ms.some(q => q && !q.transparent && q.type !== 'MeshDepthMaterial' && q.type !== 'SpriteMaterial' && q.visible !== false)) return;
         S.tieni.add(r.g.at.position); if (r.g.ix !== null) S.tieni.add(r.g.ix); });
+      if (CFG.leggero && CFG.raggi) { S.ragg = new Map(); T.mesh.forEach(r => { if (r.inst || !(r.ly & 1)) return; const ms = (Array.isArray(r.m) ? r.m : [r.m]).map(i => IND.materiali[i]); if (!ms.some(q => q && !q.transparent && q.type !== 'MeshDepthMaterial' && q.type !== 'SpriteMaterial' && q.visible !== false)) return;
+        S.ragg.set(r.g.at.position, 1); if (r.g.ix !== null) S.ragg.set(r.g.ix, 1); }); }
     }
     const attr = i => { let a = S.attr.get(i); if (a) return a; const d = T.attr[i], v = m.vettori[i];
       a = d.idx ? new THREE.BufferAttribute(v, 1) : (d.nome === 'instanceMatrix' || d.nome === 'instanceColor') ? new THREE.InstancedBufferAttribute(v, d.s) : new THREE.BufferAttribute(v, d.s, d.norm);
@@ -345,22 +376,25 @@ var Tasselli = (function () {
       // [leggera] la posizione a 16 bit: sulla scheda video (normalizzata, la mesh porta origine e scala) se i materiali di tutte le mesh
       // che la usano leggono la posizione solo attraverso modelMatrix; per i raggi bastano comunque i 16 bit (la copia a 32 bit va e via)
       const q = m.q16 && m.q16[i];
-      if (q && q.s && S.q16ok.has(i)) { a = new THREE.BufferAttribute(q.u, 3, true); a.__qs = q; }
-      if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
-      if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); S.attr.set(i, a); return a; };
+      if (q && q.s && S.q16ok.has(i)) { a = new THREE.BufferAttribute(q.u, 3, true); a.__qs = { mn: q.mn, s: q.s, u: q.u }; }
+      if (CFG.leggero) { if (S.tieni.has(i)) raggiA(a, d, v, q); a.onUpload(libera); }   // [leggera] i dati dei raggi a parte: l'attributo si svuota sempre
+      else { if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
+        if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); }
+      S.attr.set(i, a); return a; };
     let vf = 0;
-    while (S.k < T.mesh.length) {
+    while (S.k < S.lista.length) {
       if (performance.now() > tetto || vf > quota) return false;
-      const r = T.mesh[S.k++], g = new THREE.BufferGeometry();
+      const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
       if (r.g.gr) r.g.gr.forEach(q => g.addGroup(q[0], q[1], q[2]));
       if (r.g.dr) g.setDrawRange(r.g.dr[0], r.g.dr[1]);
       if (r.bb) g.boundingBox = new THREE.Box3(new THREE.Vector3(r.bb[0], r.bb[1], r.bb[2]), new THREE.Vector3(r.bb[3], r.bb[4], r.bb[5]));
-      if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else g.computeBoundingSphere();
+      if (r.bs) g.boundingSphere = new THREE.Sphere(new THREE.Vector3(r.bs[0], r.bs[1], r.bs[2]), r.bs[3]); else if (g.attributes.position.array.length) g.computeBoundingSphere(); else g.boundingSphere = (g.boundingBox || new THREE.Box3()).getBoundingSphere(new THREE.Sphere());
       if (!g.boundingBox && g.attributes.position.__q && !g.attributes.position.__qs) g.computeBoundingBox();   // (i raggi la vogliono: dopo l'invio la posizione è a 16 bit)
       const QS = g.attributes.position.__qs;   // [leggera] in 16 bit: scatola e sfera nello spazio della mesh, quelle del mondo per i raggi
-      if (QS) { const o3 = new THREE.Vector3().fromArray(QS.mn), k3 = 1 / QS.s; if (!g.boundingBox) { g.boundingBox = new THREE.Box3(); const u = QS.u; for (let v = 0; v < u.length; v += 3) { RG.p.set(u[v], u[v + 1], u[v + 2]).multiplyScalar(QS.s / 65535).add(o3); g.boundingBox.expandByPoint(RG.p); } }
+      if (QS) { const o3 = new THREE.Vector3().fromArray(QS.mn), k3 = 1 / QS.s; if (!g.boundingBox && QS.u) { g.boundingBox = new THREE.Box3(); const u = QS.u; for (let v = 0; v < u.length; v += 3) { RG.p.set(u[v], u[v + 1], u[v + 2]).multiplyScalar(QS.s / 65535).add(o3); g.boundingBox.expandByPoint(RG.p); } }
+        if (!g.boundingBox) g.boundingBox = new THREE.Box3().setFromCenterAndSize(g.boundingSphere.center, new THREE.Vector3(2, 2, 2).multiplyScalar(g.boundingSphere.radius));
         g.__bbW = g.boundingBox; g.__bsW = r.bs ? g.boundingSphere : g.__bbW.getBoundingSphere(new THREE.Sphere()); g.boundingBox = g.__bbW.clone().translate(o3.clone().negate()); g.boundingBox.min.multiplyScalar(k3); g.boundingBox.max.multiplyScalar(k3);
         g.boundingSphere = new THREE.Sphere(g.__bsW.center.clone().sub(o3).multiplyScalar(k3), g.__bsW.radius * k3); }
       const pid = r.g.at.pid !== undefined, mat = Array.isArray(r.m) ? r.m.map(i => materiale(i, pid)) : materiale(r.m, pid);
@@ -374,18 +408,55 @@ var Tasselli = (function () {
       if (r.cdm !== null && r.cdm !== undefined) o.customDepthMaterial = materiale(r.cdm);
       else if (pid && r.cs && !Array.isArray(mat)) o.customDepthMaterial = profonditaPid(mat);
       if (r.cdi !== null && r.cdi !== undefined) o.customDistanceMaterial = materiale(r.cdi);
-      o.raycast = !r.inst && S.tieni.has(r.g.at.position) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) ? rayTas : noRay;
+      o.raycast = !r.inst && (S.tieni.has(r.g.at.position) || (CFG.leggero && S.ragg && S.ragg.has(r.g.at.position))) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) ? rayTas : noRay;
       o.userData.tassello = ti; o.userData.thin2 = 1;
       if (!S.mats) S.mats = new Set();   // [tasselli3] i materiali del tassello, contati (matLascia in smonta)
       (Array.isArray(mat) ? mat : [mat]).forEach(q => matPrendi(S, q)); matPrendi(S, o.customDepthMaterial); matPrendi(S, o.customDistanceMaterial);
       sc.add(o); (S.mesh = S.mesh || []).push(o);
       const nv = g.attributes.position.count; vf += nv; ST.vertici += nv; ST.mesh++;
     }
-    S.attr = null; S.dati = null; S.tieni = null; S.st = 5; ST.inScena++;
+    if (CFG.leggero) S.attrs = S.attr;   // [leggera] gli attributi (vuoti) restano: le mesh che arrivano dopo li dividono, i raggi ci si appoggiano
+    S.attr = null; S.dati = null; S.tieni = null; S.lista = null;
+    if (S.st === 5) { ombre(); return true; }   // [leggera] le mesh rimandate (riapri)
+    S.st = 5; ST.inScena++;
     viviDentro(IND.tasselli[ti].k, true);
     ombre();
     if (typeof Anelli !== 'undefined' && Anelli.sfuma) Anelli.sfuma(k => sagomaK(ti, k), .7); else sagomaK(ti, 1);
     return true;
+  }
+  // [leggera] i dati dei raggi di un attributo: la posizione a 16 bit (o a 32 se non è quantizzata), l'indice
+  function raggiA(a, d, v, q) {
+    if (d.idx) a.__ix = v; else if (q) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k }; else a.__pf = v;
+  }
+  function raggiVia(S) { if (S.attrs) S.attrs.forEach(a => { a.__ix = a.__q = a.__pf = null; }); if (S.mesh) S.mesh.forEach(o => { o.geometry.__griglia = null; }); S.rdati = false; S.raggi = false; ST.raggiVia = (ST.raggiVia || 0) + 1; }
+  // [leggera] riapre un tassello in scena (il compresso si riscarica: è nella cache del navigatore) per le mesh rimandate che la camera
+  // ora tocca e, se il giocatore è vicino, per i dati dei raggi
+  let RIAPRI = 0;
+  async function riapri(ti, vista, raggi) {
+    const S = STATO[ti], gen = S.rgen = (S.rgen || 0) + 1, t = IND.tasselli[ti]; S.rvolo = true; RIAPRI++;
+    try {
+      const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status);
+      const buf = await r.arrayBuffer(); if (S.rgen !== gen || S.st !== 5) return;
+      const m = await chiedi({ op: 'tassello', buf, tel: true }, [buf]); if (S.rgen !== gen || S.st !== 5) return;
+      ST.riaperti = (ST.riaperti || 0) + 1;
+      if (raggi && S.attrs && !S.rdati) {   // i dati dei raggi sugli attributi che ci sono già (e le mesh rimandate li prendono da sé)
+        S.ragg && S.ragg.forEach((x, i) => { const a = S.attrs.get(i); if (a) raggiA(a, m.testa.attr[i], m.vettori[i], m.q16 && m.q16[i]); });
+        (S.mesh || []).forEach(o => { o.geometry.__griglia = null; }); S.rdati = true; S.raggi = true; S.rvuole = false; S.rusa = performance.now(); }
+      if (vista && S.rinv && S.rinv.size) { const solo = [...S.rinv].filter(i => { const b = scatolaW(m.testa.mesh[i]); return !b || vede(m.testa.mesh[i], b, 30); });
+        if (solo.length && PRONTI.indexOf(ti) < 0 && !S.dati) { solo.forEach(i => S.rinv.delete(i)); S.dati = m; prepara(ti, m, solo); S.lista = solo; S.rinvB = [...S.rinv].map(i => [m.testa.mesh[i], scatolaW(m.testa.mesh[i])]); PRONTI.push(ti); } }
+    } catch (e) { console.warn('[tasselli] riapertura', t.file, e); }
+    finally { RIAPRI--; if (S.rgen === gen) S.rvolo = false; }
+  }
+  let RT = 0;
+  function riaperture() {
+    if (!CFG.leggero || ++RT % 6 || RIAPRI) return;
+    let best = null, bd = 1e9; const c = CTX.cam;
+    IND.tasselli.forEach((t, ti) => { const S = STATO[ti]; if (S.st !== 5 || S.rvolo || S.dati || TIENI.has(ti)) return; const d = dist(t, c.x, c.y);
+      if (S.rdati && d > CFG.raggiR + 24 && !(performance.now() - (S.rusa || 0) < 20000)) raggiVia(S);
+      const vuoleR = CFG.raggi && (d < CFG.raggiR || S.rvuole) && !S.rdati && S.ragg && S.ragg.size;
+      const vuoleV = !!(S.rinv && S.rinv.size && S.rinvB && S.rinvB.some(q => vede(q[0], q[1], 8)));   // le scatole delle mesh rimandate
+      if ((vuoleR || vuoleV) && d - (S.rvuole ? 1e4 : 0) < bd) { bd = d - (S.rvuole ? 1e4 : 0); best = [ti, vuoleV, vuoleR]; } });
+    if (best) riapri(best[0], best[1], best[2]);
   }
   // [peso] le ombre in cache (peso_ombre.js) si ricuociono quando cambia chi fa ombra sul livello della camera: le sagome d'ombra delle
   // case fuse stanno sul livello 1 e non le vede. Un tassello che arriva o se ne va la fa ricuocere (spegnere e riaccendere: firma rifatta)
@@ -398,6 +469,7 @@ var Tasselli = (function () {
     if (S.mesh) S.mesh.forEach(o => { CTX.scene.remove(o); o.geometry.dispose(); if (o.isInstancedMesh) o.dispose(); ST.vertici -= o.geometry.attributes.position.count; ST.mesh--; o.geometry.__griglia = null; });
     matLascia(S); if (S.tex) { texLascia(S.tex); S.tex = null; }
     S.mesh = null; S.dati = null; S.attr = null; S.tieni = null; S.st = S.zip ? 2 : 0; ST.smontati++; sagomaK(ti, 0);
+    S.attrs = null; S.rinv = null; S.ragg = null; S.rdati = false; S.rgen = (S.rgen || 0) + 1; S.rvolo = false; S.lista = null;
     ombre();
     const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
   }
@@ -559,6 +631,7 @@ var Tasselli = (function () {
     if (lastX !== null) { const dx = x - lastX, dz = z - lastZ, L = Math.hypot(dx, dz); if (L > .05 && L < 30) { fx += (dx / L - fx) * .1; fz += (dz / L - fz) * .1; } }
     lastX = x; lastZ = z;
     const vicinoFatto = ST.vicinoT !== null, F = impronta();
+    if (CFG.leggero) visteAgg();
     // la vista: si apre quello che entra nell'impronta, si smonta quello che esce dall'impronta larga; la rete: per distanza (il bordo del
     // settore) meno un premio per quello davanti a dove si va, prima quello della vista
     const L = [];
@@ -577,6 +650,7 @@ var Tasselli = (function () {
       const tetto = t0 + (vicinoFatto ? CFG.ms : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
       while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
     }
+    try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
       let tutti = true, n = 0; IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F)) { n++; if (STATO[ti].st !== 5) tutti = false; } });
       if (tutti) { ST.vicinoT = Math.round(performance.now()); ST.vicinoN = n; (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; log('anello vicino in scena:', n, 'tasselli', (ST.byteVicino / 1048576).toFixed(2), 'MB', ST.vicinoT, 'ms'); }
