@@ -3080,12 +3080,13 @@ var Render = (function () {
   function updateChunks(cx, cz) {
     const W = ISO.CH * TS, NCX = Math.ceil(G.GW / ISO.CH), NCY = Math.ceil(G.GH / ISO.CH);
     let best = null, bd = 1e9;
+    const RL = PHONE && scene.fog ? Math.max(70, Math.min(135, scene.fog.far + 8)) : 135, RB = PHONE ? RL + 20 : 190;   // [scarico] sul telefono i blocchi fino alla nebbia (oltre c'è solo il suo colore), e fuori 20 m dopo
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
       if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on || PHONE ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on || PHONE ? 26 : 44); }   // [verde]
       if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on || PHONE ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
-      if (d < 135) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
-      else if (ch && d > (PHONE ? 150 : 190)) { dropChunk(ch); ISO.chunks.delete(key); }   // [scarico] sul telefono il blocco esce prima (tra 135 e 190 m ne restavano una decina in più)
+      if (d < RL) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
+      else if (ch && d > RB) { dropChunk(ch); ISO.chunks.delete(key); }
     }
     // [fluido] un blocco alla volta, a fasi: lontano (si vede da 62 m) una fase quando c'è tempo; vicino almeno una per
     // fotogramma e, se il budget lo concede, di più. Il blocco vecchio resta finché il nuovo non è finito.
