@@ -60,6 +60,7 @@ var PesoRitmo = (function () {
       if (!window.__pesoLivello && window.PesoSchermo && now - S.t0 < 5000) return;   // il livello della scheda (peso_schermo.js) decide la scala del telefono
       avvia(R); }
     const d = now - (S.ultimo || now); S.ultimo = now;
+    if (!S.R.setRes) { S.tetto = FISSO; return; }   // i banchi (strumenti/banco_*.js) fermano la scala: si ferma anche il tetto
     if (!attivo || raw > .25 || d <= 0 || now - S.cambio < 300) return;   // il caricamento, una pausa, i bersagli appena rifatti: non contano
     S.int.push([now, d]); while (S.int.length && now - S.int[0][0] > 1000) S.int.shift();
     if (S.int.length < 12) return;
