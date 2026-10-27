@@ -8,7 +8,8 @@
 //   - la raccolta della memoria: Tracing (devtools.timeline, v8.gc) → raccolte minori/maggiori per minuto e ms;
 //   - a fine giro, l'inventario: programmi, texture e geometrie di three, MB sulla scheda (texture, buffer, renderbuffer, contati alla fonte),
 //     le luci con l'ombra e la misura delle loro mappe, mesh visibili, materiali diversi, istanze.
-//   node strumenti/banco_audit.js [cartella] [--giro=cammina,corsa,auto] [--nf=900] [--query=&...] [--seme=12345] [--computer]
+//   node strumenti/banco_audit.js [cartella] [--giro=cammina,corsa,auto] [--nf=900] [--query=&...] [--seme=12345] [--computer] [--indice=<un altro index.html>]
+// (--indice: la pagina di un'altra build con gli stessi assets, per il prima e dopo: git show <commit>:v7/index.html > prima.html)
 // Esce audit.json e la sintesi a schermo. Sotto SwiftShader i disegni vanno a vuoto (i conti restano veri, il tempo è del processore).
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node-tools/node_modules/playwright-core');
@@ -110,7 +111,7 @@ function initPage(opt) {
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
   if (u.startsWith('/api/')) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":false}'); return; }
-  const p = path.join(root, u); fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); res.end(d); });
+  const p = u === '/index.html' && arg('indice', null) ? path.resolve(arg('indice')) : path.join(root, u); fs.readFile(p, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); res.end(d); });
 }).listen(0, async () => {
   const T0 = Date.now(), log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)} s]`, ...a);
   const b = await chromium.launch({ executablePath: process.env.PW_CHROME || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--js-flags=--expose-gc'] });
@@ -157,7 +158,7 @@ const srv = http.createServer((req, res) => {
     const { profile: hp } = await cdp.send('HeapProfiler.stopSampling');
     await new Promise(r => { cdp.once('Tracing.tracingComplete', r); cdp.send('Tracing.end'); });
     cdp.removeAllListeners('Tracing.dataCollected');
-    const rec = await pg.evaluate(() => window.__au.rec.map(f => ({ step: +f.step.toFixed(2), frame: +f.frame.toFixed(2), progs: f.progs || 0, trisMain: f.trisMain, callsMain: f.callsMain, ...f.d })));
+    const rec = await pg.evaluate(() => window.__au.rec.map(f => ({ step: +f.step.toFixed(2), frame: +f.frame.toFixed(2), lav: +(f.step + f.frame).toFixed(2), progs: f.progs || 0, trisMain: f.trisMain, callsMain: f.callsMain, ...f.d })));
     const big = await pg.evaluate(() => window.__au.big);
     const salti = await pg.evaluate(() => window.__rotta.salti);
     // l'inventario a fine giro
@@ -199,6 +200,7 @@ const srv = http.createServer((req, res) => {
     const media = k => +(rec.reduce((s, f) => s + (f[k] || 0), 0) / nfr).toFixed(1), mx = k => Math.max(...rec.map(f => f[k] || 0)), qq = (k, p) => { const a = rec.map(f => f[k] || 0).sort((x, y) => x - y); return a[Math.floor(a.length * p)]; };
     const Gx = { fotogrammi: nfr, salti, minuti_pagina: +min.toFixed(2),
       perFotogramma: { disegni: media('draw'), disegni_p95: qq('draw', .95), disegni_max: mx('draw'), disegniPrincipale: media('callsMain'), istanziati: media('inst'), istanze: media('istanze'), triangoli_k: +(media('tri') / 1000).toFixed(0), triangoliPrincipale_k: +(media('trisMain') / 1000).toFixed(0), cambiProgramma: media('prog'), bindTexture: media('btex'), uniform: media('unif'), bindFramebuffer: media('fbo'), caricatoTexKB: +(media('upTex') / 1024).toFixed(0), caricatoBufKB: +(media('upBuf') / 1024).toFixed(0), texNuove: media('texNuove'), bufNuovi: media('bufNuovi'),
+        lavoro_mediana_ms: qq('lav', .5), lavoro_p95_ms: qq('lav', .95), lavoro_p99_ms: qq('lav', .99), lavoro_max_ms: mx('lav'), picchi2x: (() => { const m = qq('lav', .5); return rec.filter(f => f.lav > 2 * m).length; })(), picchi3x: (() => { const m = qq('lav', .5); return rec.filter(f => f.lav > 3 * m).length; })(),
         caricatoTexMB_max: +(mx('upTex') / 1048576).toFixed(1), caricatoBufMB_max: +(mx('upBuf') / 1048576).toFixed(1), shaderNuovi: rec.reduce((s, f) => s + Math.max(0, f.progs), 0), logica_ms: media('step'), grafica_ms: media('frame') },
       gc: { minori: gc.minori, maggiori: gc.maggiori, minoriPerMin: +(gc.minori / min).toFixed(1), maggioriPerMin: +(gc.maggiori / min).toFixed(1), msMinori: +gc.msMinori.toFixed(0), msMaggiori: +gc.msMaggiori.toFixed(0), msGcPerFotogramma: +((gc.msMinori + gc.msMaggiori) / nfr).toFixed(2) },
       allocatoMBperFotogramma: +(alloT / 1048576 / nfr).toFixed(3), allocatoMBperMin: +(alloT / 1048576 / min).toFixed(0),
