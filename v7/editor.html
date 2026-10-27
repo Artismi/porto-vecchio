@@ -22829,7 +22829,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '6411e92042344d26';</script>
-<script>window.PV_IMPRONTA_TASS = 'e157ae1c7ce82012';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '526279d44110afe4';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -68749,15 +68749,31 @@ var Pavimenti = (function () {
   let FIN = null; const finit = () => FIN || (FIN = A.finiture());   // la lista delle finiture (render.js segniList1), una volta sola
   const famVia = rd => rd.kind === 'vicolo' ? FAM.basoli : rd.kind === 'sterrato' ? FAM.terra : rd.era === 'E3' ? FAM.porfido : rd.era === 'E4' ? FAM.travertino : FAM.asfalto;
   // [fluido] a pezzi: mappeG cede il passo quando cede() lo dice (render.js buildChunkGen, oltre 4 ms); mappe fa tutto subito. Stessi conti, stesso ordine
-  function mappe(tx0, ty0, n, m) { const it = mappeG(tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }
+  // [calcolo] le vie e le finiture impacchettate per il lavoratore, una volta (vieTutte e finit non cambiano)
+  const PKV = { v: null, k: null, f: null, kf: null, n: 0 };
+  function vieKey() {
+    const VT = vieTutte(); if (PKV.v === VT) return PKV.k;
+    const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, P = [];
+    for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri], Pt = rd.pts; if (!Pt || Pt.length < 2) { P.push(0, 0, 0, 0, 0); continue; }
+      const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1; P.push(Pt.length, hw, ext, f, pr);
+      for (let k = 0; k < Pt.length; k++) P.push(Pt[k][0], Pt[k][1]); for (let k = 0; k < Pt.length - 1; k++) P.push(g.s[k]); }
+    PKV.v = VT; PKV.k = 'vie' + (++PKV.n); Calcolo.metti(PKV.k, new Float64Array(P)); return PKV.k;
+  }
+  function finKey() {
+    const FL = finit(); if (PKV.f === FL) return PKV.kf;
+    const P = new Float64Array(FL.length * 7); FL.forEach((e, i) => { for (let c = 0; c < 7; c++) P[i * 7 + c] = e[c] === undefined ? NaN : e[c]; });
+    PKV.f = FL; PKV.kf = 'fin' + (++PKV.n); Calcolo.metti(PKV.kf, P); return PKV.kf;
+  }
+  function mappe(tx0, ty0, n, m) { return Calcolo.tutto(() => { const it = mappeG(tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [calcolo] tutto qui
   function* mappeG(tx0, ty0, n, m, cede) {
     const TS = A.TS, X0 = tx0 * TS, Z0 = ty0 * TS, NI = n * RID, MJ = m * RID, q = TS / RID, G = A.G, T = G.T;
-    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
-    // le vie: per ogni tratto i texel entro la mezza larghezza più il marciapiede. Ogni texel ricorda due vie (agli incroci): la prima è
-    // quella dipinta sopra se il texel ci sta dentro (asfalto > travertino > porfido > basoli > terra, come strade1Era), se no la più vicina
-    // la sabbia vicina (0-15): entro 4 m da una casella di sabbia, per la sabbia portata dal vento sull'asfalto
+    // [calcolo] le vie e le finiture (solo i loro dati: i conti di prima, nello stesso ordine) nel lavoratore (calcolo_lavoratore.js vie);
+    // qui la parte che legge il mondo (famiglia del suolo, sabbia) e le tessiture
+    const { I, I2, R1, R2, S2, FI } = yield* Calcolo.G('vie', { X0, Z0, n, m, TS, NI, MJ, q, kv: vieKey(), kf: strade() && A.finiture ? finKey() : null, fin: !!(strade() && A.finiture) });
     const sab = (px, pz) => { const tx = Math.floor(px / TS), ty = Math.floor(pz / TS); if (A.zoneT(tx, ty) !== A.ZN.CITTA) return 0; let d = 9;   // fuori città le lingue di sabbia sulle costiere le fa la costa (riva.js)
       for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { if (A.gT(tx + a, ty + b) !== T.SAND) continue; const x0 = (tx + a) * TS, z0 = (ty + b) * TS; d = Math.min(d, Math.hypot(Math.max(x0 - px, 0, px - x0 - TS), Math.max(z0 - pz, 0, pz - z0 - TS))); } return d >= 4 ? 0 : Math.round(15 * (1 - d / 4)); };
+<<<<<<< HEAD
+=======
     const PR = { 4: 5, 2: 4, 3: 3, 1: 2, 6: 1 }, put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
     const SU = typeof Suolo !== 'undefined' && A.M && A.M.world ? Suolo.di(A.M.world) : null;   // [suolo] la gerarchia: la via si ferma dove sotto c'è un suolo più alto (la piazza pedonale, le opere)
     const VT = vieTutte(); for (let ri = 0; ri < VT.length; ri++) { const rd = VT[ri]; if (cede && ri && cede()) yield; const P = rd.pts; if (!P || P.length < 2) continue; const hw = rd.w / 2, ext = hw + 2.8, g = rd.__g || A.geo1(rd), f = famVia(rd), pr = PR[f] || 1;
@@ -68776,19 +68792,12 @@ var Pavimenti = (function () {
             K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
           else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
           if (K2[kk] < K1[kk]) { const a = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
+>>>>>>> worktree-agent-a8fc07f9b8635e358
     for (let j = 0; j < MJ; j++) { if (cede && cede()) yield; for (let i = 0; i < NI; i++) { const kk = j * NI + i, tx = tx0 + Math.floor(i / RID), ty = ty0 + Math.floor(j / RID), two = R2[kk] >= 0 && S2[kk] < .9;
       if (R1[kk] < 0) I[kk * 4 + 3] = 0; if (!two) I2.fill(0, kk * 4, kk * 4 + 4);
       I[kk * 4 + 3] += 16 * famSuolo(tx, ty, X0 + (i + .5) * q, Z0 + (j + .5) * q) + (two ? 32768 : 0) + 65536 * sab(X0 + (i + .5) * q, Z0 + (j + .5) * q); } }
     const tex = A4 => { const t = new THREE.DataTexture(A4, NI, MJ, THREE.RGBAFormat, THREE.FloatType); t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true; return libera(t); };
     const id = tex(I), id2 = tex(I2);
-    // [strade] le finiture: per ogni texel la cosa più importante che lo tocca (tombino, chiusino, caditoia, pozzetto, rattoppo, olio,
-    // gomma), col centro, l'angolo e le misure: lo shader le disegna nitide al pixel, senza geometria
-    const FI = new Float32Array(NI * MJ * 4), FP = new Uint8Array(NI * MJ);
-    if (strade() && A.finiture) { const RAG = { 1: .5, 2: .5, 3: .56, 4: .42, 5: 1.3, 7: 6.5 }, PRI = { 1: 9, 2: 9, 3: 8, 4: 7, 6: 5, 5: 3, 7: 2 };
-      const FL = finit(); for (let fq = 0; fq < FL.length; fq++) { if (cede && (fq & 255) === 255 && cede()) yield; const [x, z, a, t, sd, len, wid] = FL[fq]; const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) continue;
-        const i0 = Math.max(0, Math.floor((x - r - X0) / q)), i1 = Math.min(NI - 1, Math.floor((x + r - X0) / q)), j0 = Math.max(0, Math.floor((z - r - Z0) / q)), j1 = Math.min(MJ - 1, Math.floor((z + r - Z0) / q));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const kk = j * NI + i, px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q; if (Math.hypot(px - x, pz - z) > r + .36) continue; if (FP[kk] > PRI[t]) continue;
-          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = a; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } } }
     const fi = tex(FI);
     // le maschere: R muro vicino, G umido della riva, B ombra di contatto, A il raccordo al piede del muro
     const NI2 = n * RMK, MJ2 = m * RMK, q2 = TS / RMK, K = new Uint8Array(NI2 * MJ2 * 4), BLD = (tx, ty) => tx >= 0 && ty >= 0 && tx < G.GW && ty < G.GH && A.gT(tx, ty) === T.BLD;
@@ -70727,6 +70736,248 @@ self.onmessage = async e => {
   } catch (err) { self.postMessage({ id: m.id, err: String(err && err.message || err) }); }
 };
 </script>   <!-- [tasselli] il lavoratore (Web Worker, dal testo): meshopt e gzip fuori dal filo della pagina -->
+<script data-m="calcolo_lavoratore">/* Porto Vecchio — [calcolo] I CONTI DEL LAVORATORE: funzioni pure (numeri dentro, vettori tipizzati fuori) che il filo della pagina
+   manda a un Web Worker (src/calcolo.js lo crea dal testo di <script id="calcolo-lavoratore">) mentre si gioca. Lo stesso file è anche
+   nella pagina (CalcoloF): senza lavoratore, o se il lavoratore si guasta, gli stessi conti si fanno qui, uguali.
+   Le funzioni copiano alla lettera il codice di prima (stesso ordine delle operazioni: lo stesso risultato al bit).
+   - luce: la luce cotta di un blocco di terreno (render.js bakeLight): le pozze di luce con le ombre delle case, già in pixel RGBA;
+   - ruvido: la scabrosità del terreno dipinto (render.js buildChunkGen): dalla luminosità dei pixel;
+   - strade: la distanza dalle strade attorno a un blocco (render.js vdRoadField, per il verde): le strade stanno nel lavoratore (metti);
+   - vie: le mappe delle vie e delle finiture di un blocco (pavimenti.js mappeG, la parte che legge solo le vie e le finiture). */
+var CalcoloF = (function () {
+  'use strict';
+  // a: { W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask (Uint8Array: 1 = casa), L (Float64Array, LK numeri per luce) }
+  // per luce: x, z, y, gy, r, g, b, base, flick, spill (0/1), nx, nz, dist, R
+  const LK = 14;
+  function luce(a) {
+    const W = a.W, H = a.H, X0 = a.X0, Z0 = a.Z0, tq = a.tq, TS = a.TS, mx0 = a.mx0, mz0 = a.mz0, mw = a.mw, mh = a.mh, mask = a.mask, Ls = a.L, acc = new Float32Array(W * H * 3);
+    const solid = (wx, wz) => { const tx = Math.floor(wx / TS) - mx0, ty = Math.floor(wz / TS) - mz0; return tx >= 0 && ty >= 0 && tx < mw && ty < mh ? mask[ty * mw + tx] === 1 : false; };
+    for (let l = 0; l < Ls.length; l += LK) {
+      const Lx = Ls[l], Lz = Ls[l + 1], Ly = Ls[l + 2], Lgy = Ls[l + 3], spill = Ls[l + 9] === 1, Lnx = Ls[l + 10], Lnz = Ls[l + 11], R = Ls[l + 13];
+      if (solid(Lx, Lz)) continue;
+      const h = Math.max(.8, Ly - Lgy), h2 = h * h, cr = Ls[l + 4], cg = Ls[l + 5], cb = Ls[l + 6], I = Ls[l + 7] * (spill ? .55 : .46) * (Ls[l + 8] > .5 ? .7 : 1);   // [luci1]
+      const i0 = Math.max(0, Math.floor((Lx - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((Lx + R - X0) / tq)), j0 = Math.max(0, Math.floor((Lz - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((Lz + R - Z0) / tq));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - Lx, dz = pz - Lz, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
+        const d = Math.sqrt(d2);
+        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
+        if (spill) { const dot = (dx * Lnx + dz * Lnz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
+        if (f < .004) continue;
+        if (solid(px, pz)) continue;
+        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
+        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
+        if (!lit) continue;
+        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
+      }
+    }
+    const D = new Uint8ClampedArray(W * H * 4);
+    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
+    return D;
+  }
+  // a: { d (i pixel RGBA del terreno dipinto), W, H } → i pixel RGBA della scabrosità
+  function ruvido(a) {
+    const W = a.W, H = a.H, d = a.d, o = new Uint8ClampedArray(W * H * 4);
+    for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
+    return o;
+  }
+  // a: { X0, Y0, NX, NY, S, k }; mem[k]: le strade impacchettate (per strada: hw, R, quanti punti, poi x, y di ogni punto)
+  function strade(a, mem) {
+    const S = a.S, X0 = a.X0, Y0 = a.Y0, NX = a.NX, NY = a.NY, f = new Float32Array(NX * NY).fill(99), P = mem[a.k];
+    for (let q = 0; q < P.length;) { const hw = P[q], R = P[q + 1], np = P[q + 2]; q += 3;
+      for (let e = q + np * 2; q < e; q += 2) { const ax = P[q], ay = P[q + 1]; if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) continue;
+        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
+    return f;
+  }
+  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, poi np × (x, z), poi np − 1 s);
+  // mem[kf]: le finiture (7 numeri l'una: x, z, a, t, sd, len, wid; NaN dove mancano). → { I, I2, R1, R2, S2, FI }
+  function vie(a, mem) {
+    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv];
+    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
+    const put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
+    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], oP = o + 5, oS = oP + np * 2; o = oS + Math.max(0, np - 1); if (np < 2) continue;
+      for (let k = 0; k < np - 1; k++) { const ax = V[oP + k * 2], az = V[oP + k * 2 + 1], bx = V[oP + k * 2 + 2], bz = V[oP + k * 2 + 3], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
+        if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
+        const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
+        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - ext - X0) / q)), i1 = Math.min(NI - 1, Math.ceil((Math.max(ax, bx) + ext - X0) / q));
+        const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
+          if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = V[oS + k] + t;
+          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
+          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
+          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
+            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
+          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
+          if (K2[kk] < K1[kk]) { const a4 = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a4, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
+    // [strade] le finiture: per ogni texel la cosa più importante che lo tocca
+    const FI = new Float32Array(NI * MJ * 4), FP = new Uint8Array(NI * MJ);
+    if (a.fin) { const RAG = { 1: .5, 2: .5, 3: .56, 4: .42, 5: 1.3, 7: 6.5 }, PRI = { 1: 9, 2: 9, 3: 8, 4: 7, 6: 5, 5: 3, 7: 2 }, FL = mem[a.kf], nl = n => (n !== n ? undefined : n);
+      for (let fo = 0; fo < FL.length; fo += 7) { const x = FL[fo], z = FL[fo + 1], an = FL[fo + 2], t = FL[fo + 3], len = nl(FL[fo + 5]), wid = nl(FL[fo + 6]); const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) continue;
+        const i0 = Math.max(0, Math.floor((x - r - X0) / q)), i1 = Math.min(NI - 1, Math.floor((x + r - X0) / q)), j0 = Math.max(0, Math.floor((z - r - Z0) / q)), j1 = Math.min(MJ - 1, Math.floor((z + r - Z0) / q));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const kk = j * NI + i, px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q; if (Math.hypot(px - x, pz - z) > r + .36) continue; if (FP[kk] > PRI[t]) continue;
+          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = an; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } } }
+    return { I, I2, R1, R2, S2, FI };
+  }
+  return { LK, luce, ruvido, strade, vie };
+})();
+// nel lavoratore: { op: 'metti', k, v } tiene un dato; { id, op, a } → { id, val } (il vettore del risultato trasferito, senza copia) o { id, err }
+if (typeof window === 'undefined' && typeof self !== 'undefined' && typeof importScripts === 'function') {
+  const MEM = {};   // i dati che restano (metti): le strade...
+  self.onmessage = e => {
+    const m = e.data;
+    if (m.op === 'metti') { MEM[m.k] = m.v; return; }
+    try { const f = CalcoloF[m.op]; if (typeof f !== 'function') throw new Error('conto sconosciuto ' + m.op);
+      const t0 = performance.now(), val = f(m.a, MEM); self.postMessage({ id: m.id, val, ms: performance.now() - t0 }, val && val.buffer ? [val.buffer] : val && typeof val === 'object' ? Object.values(val).filter(v => v && v.buffer).map(v => v.buffer) : []); }
+    catch (err) { self.postMessage({ id: m.id, err: String(err && err.message || err) }); }
+  };
+}
+</script>   <!-- [calcolo] i conti pesanti (CalcoloF): qui per quando il lavoratore non c'è -->
+<script type="text/plain" id="calcolo-lavoratore">/* Porto Vecchio — [calcolo] I CONTI DEL LAVORATORE: funzioni pure (numeri dentro, vettori tipizzati fuori) che il filo della pagina
+   manda a un Web Worker (src/calcolo.js lo crea dal testo di <script id="calcolo-lavoratore">) mentre si gioca. Lo stesso file è anche
+   nella pagina (CalcoloF): senza lavoratore, o se il lavoratore si guasta, gli stessi conti si fanno qui, uguali.
+   Le funzioni copiano alla lettera il codice di prima (stesso ordine delle operazioni: lo stesso risultato al bit).
+   - luce: la luce cotta di un blocco di terreno (render.js bakeLight): le pozze di luce con le ombre delle case, già in pixel RGBA;
+   - ruvido: la scabrosità del terreno dipinto (render.js buildChunkGen): dalla luminosità dei pixel;
+   - strade: la distanza dalle strade attorno a un blocco (render.js vdRoadField, per il verde): le strade stanno nel lavoratore (metti);
+   - vie: le mappe delle vie e delle finiture di un blocco (pavimenti.js mappeG, la parte che legge solo le vie e le finiture). */
+var CalcoloF = (function () {
+  'use strict';
+  // a: { W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask (Uint8Array: 1 = casa), L (Float64Array, LK numeri per luce) }
+  // per luce: x, z, y, gy, r, g, b, base, flick, spill (0/1), nx, nz, dist, R
+  const LK = 14;
+  function luce(a) {
+    const W = a.W, H = a.H, X0 = a.X0, Z0 = a.Z0, tq = a.tq, TS = a.TS, mx0 = a.mx0, mz0 = a.mz0, mw = a.mw, mh = a.mh, mask = a.mask, Ls = a.L, acc = new Float32Array(W * H * 3);
+    const solid = (wx, wz) => { const tx = Math.floor(wx / TS) - mx0, ty = Math.floor(wz / TS) - mz0; return tx >= 0 && ty >= 0 && tx < mw && ty < mh ? mask[ty * mw + tx] === 1 : false; };
+    for (let l = 0; l < Ls.length; l += LK) {
+      const Lx = Ls[l], Lz = Ls[l + 1], Ly = Ls[l + 2], Lgy = Ls[l + 3], spill = Ls[l + 9] === 1, Lnx = Ls[l + 10], Lnz = Ls[l + 11], R = Ls[l + 13];
+      if (solid(Lx, Lz)) continue;
+      const h = Math.max(.8, Ly - Lgy), h2 = h * h, cr = Ls[l + 4], cg = Ls[l + 5], cb = Ls[l + 6], I = Ls[l + 7] * (spill ? .55 : .46) * (Ls[l + 8] > .5 ? .7 : 1);   // [luci1]
+      const i0 = Math.max(0, Math.floor((Lx - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((Lx + R - X0) / tq)), j0 = Math.max(0, Math.floor((Lz - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((Lz + R - Z0) / tq));
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - Lx, dz = pz - Lz, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
+        const d = Math.sqrt(d2);
+        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
+        if (spill) { const dot = (dx * Lnx + dz * Lnz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
+        if (f < .004) continue;
+        if (solid(px, pz)) continue;
+        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
+        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
+        if (!lit) continue;
+        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
+      }
+    }
+    const D = new Uint8ClampedArray(W * H * 4);
+    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
+    return D;
+  }
+  // a: { d (i pixel RGBA del terreno dipinto), W, H } → i pixel RGBA della scabrosità
+  function ruvido(a) {
+    const W = a.W, H = a.H, d = a.d, o = new Uint8ClampedArray(W * H * 4);
+    for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
+    return o;
+  }
+  // a: { X0, Y0, NX, NY, S, k }; mem[k]: le strade impacchettate (per strada: hw, R, quanti punti, poi x, y di ogni punto)
+  function strade(a, mem) {
+    const S = a.S, X0 = a.X0, Y0 = a.Y0, NX = a.NX, NY = a.NY, f = new Float32Array(NX * NY).fill(99), P = mem[a.k];
+    for (let q = 0; q < P.length;) { const hw = P[q], R = P[q + 1], np = P[q + 2]; q += 3;
+      for (let e = q + np * 2; q < e; q += 2) { const ax = P[q], ay = P[q + 1]; if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) continue;
+        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } } }
+    return f;
+  }
+  // a: { X0, Z0, n, m, TS, NI, MJ, q, kv, kf, fin }; mem[kv]: le vie (per via: np, hw, ext, f, pr, poi np × (x, z), poi np − 1 s);
+  // mem[kf]: le finiture (7 numeri l'una: x, z, a, t, sd, len, wid; NaN dove mancano). → { I, I2, R1, R2, S2, FI }
+  function vie(a, mem) {
+    const TS = a.TS, X0 = a.X0, Z0 = a.Z0, n = a.n, m = a.m, NI = a.NI, MJ = a.MJ, q = a.q, V = mem[a.kv];
+    const I = new Float32Array(NI * MJ * 4), I2 = new Float32Array(NI * MJ * 4), K1 = new Float32Array(NI * MJ).fill(1e9), K2 = new Float32Array(NI * MJ).fill(1e9), S2 = new Float32Array(NI * MJ).fill(9), R1 = new Int32Array(NI * MJ).fill(-1), R2 = new Int32Array(NI * MJ).fill(-1);
+    const put = (A4, kk, s0, v, th, f, hw) => { A4[kk * 4] = s0; A4[kk * 4 + 1] = v; A4[kk * 4 + 2] = th; A4[kk * 4 + 3] = f + 256 * Math.min(127, Math.round(hw * 8)); };
+    for (let ri = 0, o = 0; o < V.length; ri++) { const np = V[o], hw = V[o + 1], ext = V[o + 2], f = V[o + 3], pr = V[o + 4], oP = o + 5, oS = oP + np * 2; o = oS + Math.max(0, np - 1); if (np < 2) continue;
+      for (let k = 0; k < np - 1; k++) { const ax = V[oP + k * 2], az = V[oP + k * 2 + 1], bx = V[oP + k * 2 + 2], bz = V[oP + k * 2 + 3], L = Math.hypot(bx - ax, bz - az); if (L < 1e-4) continue;
+        if (Math.max(ax, bx) < X0 - ext || Math.min(ax, bx) > X0 + n * TS + ext || Math.max(az, bz) < Z0 - ext || Math.min(az, bz) > Z0 + m * TS + ext) continue;
+        const ux = (bx - ax) / L, uz = (bz - az) / L, th = Math.atan2(uz, ux);
+        const i0 = Math.max(0, Math.floor((Math.min(ax, bx) - ext - X0) / q)), i1 = Math.min(NI - 1, Math.ceil((Math.max(ax, bx) + ext - X0) / q));
+        const j0 = Math.max(0, Math.floor((Math.min(az, bz) - ext - Z0) / q)), j1 = Math.min(MJ - 1, Math.ceil((Math.max(az, bz) + ext - Z0) / q));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q, dx = px - ax, dz = pz - az, t = dx * ux + dz * uz;
+          if (t < -.6 || t > L + .6) continue; const v = ux * dz - uz * dx, sc = Math.abs(v) - hw; if (Math.abs(v) > ext) continue;
+          const kk = j * NI + i, key = sc < 0 ? sc - pr * 100 : sc, s0 = V[oS + k] + t;
+          if (R1[kk] === ri) { if (key < K1[kk]) { K1[kk] = key; put(I, kk, s0, v, th, f, hw); } continue; }
+          if (R2[kk] === ri) { if (key < K2[kk]) { K2[kk] = key; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); } }
+          else if (key < K1[kk]) { if (R1[kk] >= 0) { K2[kk] = K1[kk]; R2[kk] = R1[kk]; S2[kk] = 0; I2.set(I.subarray(kk * 4, kk * 4 + 4), kk * 4); S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; }
+            K1[kk] = key; R1[kk] = ri; put(I, kk, s0, v, th, f, hw); continue; }
+          else if (key < K2[kk]) { K2[kk] = key; R2[kk] = ri; S2[kk] = sc; put(I2, kk, s0, v, th, f, hw); continue; }
+          if (K2[kk] < K1[kk]) { const a4 = I.slice(kk * 4, kk * 4 + 4); I.set(I2.subarray(kk * 4, kk * 4 + 4), kk * 4); I2.set(a4, kk * 4); [K1[kk], K2[kk]] = [K2[kk], K1[kk]]; [R1[kk], R2[kk]] = [R2[kk], R1[kk]]; S2[kk] = Math.abs(I2[kk * 4 + 1]) - Math.floor(I2[kk * 4 + 3] / 256) / 8; } } } }
+    // [strade] le finiture: per ogni texel la cosa più importante che lo tocca
+    const FI = new Float32Array(NI * MJ * 4), FP = new Uint8Array(NI * MJ);
+    if (a.fin) { const RAG = { 1: .5, 2: .5, 3: .56, 4: .42, 5: 1.3, 7: 6.5 }, PRI = { 1: 9, 2: 9, 3: 8, 4: 7, 6: 5, 5: 3, 7: 2 }, FL = mem[a.kf], nl = n => (n !== n ? undefined : n);
+      for (let fo = 0; fo < FL.length; fo += 7) { const x = FL[fo], z = FL[fo + 1], an = FL[fo + 2], t = FL[fo + 3], len = nl(FL[fo + 5]), wid = nl(FL[fo + 6]); const r = t === 6 ? Math.hypot(len, wid) / 2 + .2 : RAG[t]; if (x < X0 - r || x > X0 + n * TS + r || z < Z0 - r || z > Z0 + m * TS + r) continue;
+        const i0 = Math.max(0, Math.floor((x - r - X0) / q)), i1 = Math.min(NI - 1, Math.floor((x + r - X0) / q)), j0 = Math.max(0, Math.floor((z - r - Z0) / q)), j1 = Math.min(MJ - 1, Math.floor((z + r - Z0) / q));
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const kk = j * NI + i, px = X0 + (i + .5) * q, pz = Z0 + (j + .5) * q; if (Math.hypot(px - x, pz - z) > r + .36) continue; if (FP[kk] > PRI[t]) continue;
+          FP[kk] = PRI[t]; FI[kk * 4] = x; FI[kk * 4 + 1] = z; FI[kk * 4 + 2] = an; FI[kk * 4 + 3] = t + 16 * Math.min(255, Math.round((len || 0) * 10)) + 4096 * Math.min(255, Math.round((wid || 0) * 10)); } } }
+    return { I, I2, R1, R2, S2, FI };
+  }
+  return { LK, luce, ruvido, strade, vie };
+})();
+// nel lavoratore: { op: 'metti', k, v } tiene un dato; { id, op, a } → { id, val } (il vettore del risultato trasferito, senza copia) o { id, err }
+if (typeof window === 'undefined' && typeof self !== 'undefined' && typeof importScripts === 'function') {
+  const MEM = {};   // i dati che restano (metti): le strade...
+  self.onmessage = e => {
+    const m = e.data;
+    if (m.op === 'metti') { MEM[m.k] = m.v; return; }
+    try { const f = CalcoloF[m.op]; if (typeof f !== 'function') throw new Error('conto sconosciuto ' + m.op);
+      const t0 = performance.now(), val = f(m.a, MEM); self.postMessage({ id: m.id, val, ms: performance.now() - t0 }, val && val.buffer ? [val.buffer] : val && typeof val === 'object' ? Object.values(val).filter(v => v && v.buffer).map(v => v.buffer) : []); }
+    catch (err) { self.postMessage({ id: m.id, err: String(err && err.message || err) }); }
+  };
+}
+</script>   <!-- [calcolo] e lo stesso testo per il lavoratore (Web Worker) -->
+<script data-m="calcolo">/* Porto Vecchio — [calcolo] I CONTI FUORI DAL FILO DELLA PAGINA. Un Web Worker (il testo di src/calcolo_lavoratore.js, nella pagina in
+   <script type="text/plain" id="calcolo-lavoratore">) fa i conti pesanti che nascono mentre ci si muove e che restituiscono vettori
+   tipizzati (trasferiti, senza copia): sul filo della pagina restano solo la raccolta dei dati e il montaggio (tessiture, geometrie),
+   dentro i tetti di tempo di chi lo chiama. Senza Worker (o con ?nocalcolo, o se il lavoratore si guasta) gli stessi conti
+   (CalcoloF) si fanno qui come prima: il risultato è lo stesso.
+   Si usa dai generatori a passi (i blocchi di terreno di render.js): const px = yield* Calcolo.G('luce', dati);
+   finché il lavoratore non risponde il generatore dà Calcolo.ATTESA (chi lo fa girare passa al fotogramma dopo).
+   window.__calcolo: quanti conti fuori, quanti qui, i ms del lavoratore. */
+var Calcolo = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const SI = typeof Worker !== 'undefined' && typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof document !== 'undefined' && !/[?&]nocalcolo\b/.test(Q);
+  const ATTESA = { attesa: true };
+  const ST = { fuori: 0, qui: 0, guasti: 0, msFuori: 0, inVolo: 0 };
+  let W = null, guasto = !SI, NID = 0; const ATT = new Map();
+  function lavoratore() {
+    if (W || guasto) return W;
+    try {
+      const el = document.getElementById('calcolo-lavoratore'); if (!el || !el.textContent) { guasto = true; return null; }
+      W = new Worker(URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' })));
+      W.onmessage = e => { const m = e.data, h = ATT.get(m.id); if (!h) return; ATT.delete(m.id); ST.inVolo--; if (m.err) h.err = m.err; else { h.val = m.val; ST.msFuori += m.ms || 0; } h.fatto = true; };
+      W.onerror = e => { console.warn('[calcolo] lavoratore:', e && e.message || e); guasto = true; ST.guasti++; ATT.forEach(h => { h.err = 'lavoratore guasto'; h.fatto = true; }); ATT.clear(); ST.inVolo = 0; try { W.terminate(); } catch (x) { } W = null; };
+    } catch (e) { console.warn('[calcolo] niente lavoratore:', e); guasto = true; W = null; }
+    return W;
+  }
+  // i dati che restano (le strade...): una volta al lavoratore, e qui per i conti fatti qui
+  const MEM = {};
+  function metti(k, v) { MEM[k] = v; const w = lavoratore(); if (w) try { w.postMessage({ op: 'metti', k, v }); } catch (e) { } }
+  const ha = k => k in MEM;
+  // il conto qui, sul filo della pagina (come prima)
+  function qui(op, a) { ST.qui++; return CalcoloF[op](a, MEM); }
+  // chi fa girare un generatore tutto d'un fiato (buildChunk, verde38) non può aspettare: dentro tutto() i conti si fanno qui
+  let SINC = 0;
+  function tutto(fn) { SINC++; try { return fn(); } finally { SINC--; } }
+  // dentro un generatore: yield* G(op, a). I dati si copiano (niente trasferimento): se il lavoratore si guasta il conto si rifà qui
+  function* G(op, a) {
+    const w = SINC ? null : lavoratore(); if (!w) return qui(op, a);
+    const h = { fatto: false, val: null, err: null }, id = ++NID; ATT.set(id, h); ST.inVolo++;
+    try { w.postMessage({ id, op, a }); } catch (e) { ATT.delete(id); ST.inVolo--; h.err = String(e); h.fatto = true; }
+    while (!h.fatto) yield ATTESA;
+    if (h.err) { ST.guasti++; console.warn('[calcolo]', op, h.err); return qui(op, a); }
+    ST.fuori++; return h.val;
+  }
+  const stato = () => Object.assign({ lavoratore: !!W, guasto }, ST, { msFuori: Math.round(ST.msFuori) });
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__calcolo', { get: stato, configurable: true });
+  return { ATTESA, G, qui, tutto, metti, ha, stato, get attivo() { return !guasto; } };
+})();
+</script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -73327,30 +73578,27 @@ var Render = (function () {
   // SPILL = luce che esce da vetrine e finestre: calda, bassa, solo verso la strada.
   const SPILLS = [], BAKEQ = 4;   // 4 texel per casella = mezzo metro
   function addSpill(x, z, nx, nz, color, base, dist) { const gy = groundH(x, z); SPILLS.push({ x, z, y: gy + 1.3, gy, nx, nz, color: new THREE.Color(color), base, dist: dist || 6, spill: true }); }
-  function bakeLight(tx0, ty0, n, m) {
-    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, acc = new Float32Array(W * H * 3), X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q;
-    const solid = (wx, wz) => { const tx = Math.floor(wx / TS), ty = Math.floor(wz / TS); return G.tileAt(tx, ty) === T.BLD; };
-    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS);
+  // [calcolo] i conti (pozze, ombre delle case, i pixel) li fa il lavoratore (calcolo_lavoratore.js, CalcoloF.luce: lo stesso codice di
+  // prima); qui solo le luci che toccano il blocco e la maschera delle case attorno. yield*: il blocco aspetta la risposta a passi
+  function* bakeLightG(tx0, ty0, n, m) {
+    const T = G.T, Q = BAKEQ, W = n * Q, H = m * Q, X0 = tx0 * TS, Z0 = ty0 * TS, tq = TS / Q, LK = CalcoloF.LK;
+    const src = LSRC.filter(L => !L.off && L.base > 0).concat(SPILLS), sel = [];
+    let ax = X0, bx = X0 + n * TS, az = Z0, bz = Z0 + m * TS;
     src.forEach(L => {
       const R = (L.dist || 8) * (L.spill ? 1 : 1.5); if (L.x < X0 - R || L.x > X0 + n * TS + R || L.z < Z0 - R || L.z > Z0 + m * TS + R) return;
-      if (L.gy === undefined) L.gy = groundH(L.x, L.z); if (solid(L.x, L.z)) return;
-      const h = Math.max(.8, L.y - L.gy), h2 = h * h, cr = L.color.r, cg = L.color.g, cb = L.color.b, I = L.base * (L.spill ? .55 : .46) * (L.flick > .5 ? .7 : 1);   // [luci1]
-      const i0 = Math.max(0, Math.floor((L.x - R - X0) / tq)), i1 = Math.min(W - 1, Math.ceil((L.x + R - X0) / tq)), j0 = Math.max(0, Math.floor((L.z - R - Z0) / tq)), j1 = Math.min(H - 1, Math.ceil((L.z + R - Z0) / tq));
-      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-        const px = X0 + (i + .5) * tq, pz = Z0 + (j + .5) * tq, dx = px - L.x, dz = pz - L.z, d2 = dx * dx + dz * dz; if (d2 > R * R) continue;
-        const d = Math.sqrt(d2);
-        let f = Math.pow(h2 / (d2 + h2), 1.5) * Math.pow(1 - d / R, 2);
-        if (L.spill) { const dot = (dx * L.nx + dz * L.nz) / (d || 1); if (dot <= .05) continue; f *= Math.pow(dot, .6); }
-        if (f < .004) continue;
-        if (solid(px, pz)) continue;
-        // ombra: dal punto verso la sorgente, a passi di un metro; il primo metro vicino alla sorgente non conta (lampade a muro)
-        let lit = true; const st = Math.floor(d / 1); for (let s = 1; s < st; s++) { const t = s / st; if (d * (1 - t) < .9) break; if (solid(px - dx * t, pz - dz * t)) { lit = false; break; } }
-        if (!lit) continue;
-        const o = (j * W + i) * 3, v = f * I; acc[o] += cr * v; acc[o + 1] += cg * v; acc[o + 2] += cb * v;
-      }
+      if (L.gy === undefined) L.gy = groundH(L.x, L.z);
+      sel.push(L, R); if (L.x < ax) ax = L.x; if (L.x > bx) bx = L.x; if (L.z < az) az = L.z; if (L.z > bz) bz = L.z;
     });
-    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H), D = id.data;
-    for (let q = 0; q < W * H; q++) { for (let k = 0; k < 3; k++) D[q * 4 + k] = Math.round((1 - Math.exp(-acc[q * 3 + k] * 1.35)) * 255); D[q * 4 + 3] = 255; }
+    const Ls = new Float64Array(sel.length / 2 * LK);
+    for (let k = 0, o = 0; k < sel.length; k += 2, o += LK) { const L = sel[k];
+      Ls[o] = L.x; Ls[o + 1] = L.z; Ls[o + 2] = L.y; Ls[o + 3] = L.gy; Ls[o + 4] = L.color.r; Ls[o + 5] = L.color.g; Ls[o + 6] = L.color.b; Ls[o + 7] = L.base;
+      Ls[o + 8] = +L.flick || 0; Ls[o + 9] = L.spill ? 1 : 0; Ls[o + 10] = L.nx || 0; Ls[o + 11] = L.nz || 0; Ls[o + 12] = L.dist || 0; Ls[o + 13] = sel[k + 1]; }
+    // le case (G.tileAt === BLD) dove i conti guardano: il blocco e le luci scelte (i raggi d'ombra stanno fra un texel e la sua luce), più una casella
+    const mx0 = Math.floor(ax / TS) - 1, mz0 = Math.floor(az / TS) - 1, mw = Math.floor(bx / TS) + 2 - mx0, mh = Math.floor(bz / TS) + 2 - mz0, mask = new Uint8Array(mw * mh);
+    if (sel.length) for (let j = 0; j < mh; j++) for (let i = 0; i < mw; i++) if (G.tileAt(mx0 + i, mz0 + j) === T.BLD) mask[j * mw + i] = 1;
+    const D = sel.length ? yield* Calcolo.G('luce', { W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask, L: Ls }) : CalcoloF.luce({ W, H, X0, Z0, tq, TS, mx0, mz0, mw, mh, mask, L: Ls });
+    const c = mk(W, H), x = c.getContext('2d'), id = x.createImageData(W, H);
+    id.data.set(D);
     x.putImageData(id, 0, 0);
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
     return t;
@@ -73726,7 +73974,7 @@ var Render = (function () {
   }
   // [fluido] un blocco si costruisce in fasi (dipinto del terreno in tre passate, scabrosità, geometria, luce, vegetazione,
   // bosco, verde): buildChunkGen ne fa una per volta e lo mette in scena solo finito; buildChunk le fa tutte subito.
-  function buildChunk(ci, cj) { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }
+  function buildChunk(ci, cj) { return Calcolo.tutto(() => { const it = buildChunkGen(ci, cj); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [calcolo] tutto qui
   // [fluido] i passi dei pittori lunghi (pavimenti, il suolo della vegetazione, il mare fine) cedono oltre 4 ms dall'inizio del passo, come paintTilesG
   const CEDE1 = () => performance.now() - ISO.t1 > 4;
   function* buildChunkGen(ci, cj) {
@@ -73738,9 +73986,11 @@ var Render = (function () {
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
     let rtex = null;
-    try { const W = c.width, H = c.height, id = x.getImageData(0, 0, W, H), d = id.data, rc = mk(W, H), rxx = rc.getContext('2d'), od = rxx.createImageData(W, H), o = od.data;
-      for (let q = 0; q < W * H; q++) { const lum = d[q * 4] * .3 + d[q * 4 + 1] * .59 + d[q * 4 + 2] * .11, r = Math.max(.9, Math.min(1, .9 + (lum - 40) / 120 * .1)) * 255   /* [plastica2] era .72 sullo scuro: l'asfalto luccicava più dei palazzi */   /* [isola35] */; o[q * 4] = o[q * 4 + 1] = o[q * 4 + 2] = r; o[q * 4 + 3] = 255; }
-      rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; }
+    // [calcolo] la scabrosità dalla luminosità dei pixel: il conto (CalcoloF.ruvido, lo stesso di prima) nel lavoratore, qui la lettura e la tela
+    let RU = null; try { const W = c.width, H = c.height; RU = { W, H, d: x.getImageData(0, 0, W, H).data }; } catch (e) { RU = null; }
+    if (RU) { let o = null; try { o = yield* Calcolo.G('ruvido', RU); } catch (e) { o = null; }
+      try { const rc = mk(RU.W, RU.H), rxx = rc.getContext('2d'), od = rxx.createImageData(RU.W, RU.H); od.data.set(o);
+        rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; } }
     freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
     const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [], RV9 = RIVA9();
@@ -73764,7 +74014,7 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     yield;
-    const btex = bakeLight(tx0, ty0, n, m);   // [inverno30]
+    const btex = yield* bakeLightG(tx0, ty0, n, m);   // [inverno30]   [calcolo] i conti nel lavoratore
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
     if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
@@ -73838,6 +74088,7 @@ var Render = (function () {
       while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
         const tA = ISO.t1 = performance.now(), r = J.it.next(); steps++; J.n1 = (J.n1 || 0) + 1; if (typeof Anelli !== 'undefined') { const dA = performance.now() - tA; if (dA > 20) Anelli.picchi('blocco:' + J.n1 + (J.near ? ':vicino' : ''), dA); }   // [anelli] i passi lunghi dei blocchi
         if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
+        if (r.value === Calcolo.ATTESA) break;   // [calcolo] il blocco aspetta il lavoratore: si riprende al fotogramma dopo
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
     if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
@@ -80056,15 +80307,20 @@ var Render = (function () {
   function vdGroundTint(X, Y) { let r = 0, g = 0, b = 0; for (const [ox, oy] of [[-7, -3], [6, -6], [-4, 7], [7, 5]]) { const c = vdPlan(vdEcoMix(X + ox, Y + oy)).g; r += c[0]; g += c[1]; b += c[2]; } return [r / 4, g / 4, b / 4]; }
   const vdCol = (k, X, Y, sc) => Math.max(0, Math.min(1.6, .15 + 2.4 * (vnz(X / sc + k * 17.13, Y / sc + k * 9.31) + .25)));
   function vdPick(r, W) { let t = 0; for (const k in W) t += Math.max(0, W[k]); let q = r() * t; for (const k in W) { q -= Math.max(0, W[k]); if (q <= 0) return k; } return 'none'; }
-  function vdRoadField(tx0, ty0, n, m) {
-    const S = .5, X0 = tx0 * TS - 4, Y0 = ty0 * TS - 4, NX = Math.ceil((n * TS + 8) / S), NY = Math.ceil((m * TS + 8) / S), f = new Float32Array(NX * NY).fill(99);
-    (M.roads || []).forEach(rd => { if (rd.rect) return; const urb = rd.kind === 'citta' || rd.kind === 'litoranea', hw = rd.w / 2 + (urb ? 3.2 : rd.kind === 'sterrato' ? .35 : .6), R = hw + 2.5;
-      rd.pts.forEach(([ax, ay]) => { if (ax < X0 - R || ay < Y0 - R || ax > X0 + NX * S + R || ay > Y0 + NY * S + R) return;
-        const i0 = Math.max(0, Math.floor((ax - R - X0) / S)), i1 = Math.min(NX - 1, Math.ceil((ax + R - X0) / S)), j0 = Math.max(0, Math.floor((ay - R - Y0) / S)), j1 = Math.min(NY - 1, Math.ceil((ay + R - Y0) / S));
-        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const d = Math.hypot(X0 + (i + .5) * S - ax, Y0 + (j + .5) * S - ay) - hw, k = j * NX + i; if (d < f[k]) f[k] = d; } }); });
+  // [calcolo] le strade impacchettate per il lavoratore (calcolo_lavoratore.js strade, lo stesso conto di prima): una volta per elenco
+  const VDR = { roads: null, n: -1, k: null, v: 0 };
+  function vdRoadsKey() {
+    const RS = M.roads || []; if (VDR.roads === RS && VDR.n === RS.length) return VDR.k;
+    const P = []; RS.forEach(rd => { if (rd.rect) return; const urb = rd.kind === 'citta' || rd.kind === 'litoranea', hw = rd.w / 2 + (urb ? 3.2 : rd.kind === 'sterrato' ? .35 : .6), R = hw + 2.5;
+      P.push(hw, R, rd.pts.length); rd.pts.forEach(([ax, ay]) => P.push(ax, ay)); });
+    VDR.roads = RS; VDR.n = RS.length; VDR.k = 'strade' + (++VDR.v); Calcolo.metti(VDR.k, new Float64Array(P)); return VDR.k;
+  }
+  function* vdRoadFieldG(tx0, ty0, n, m) {
+    const S = .5, X0 = tx0 * TS - 4, Y0 = ty0 * TS - 4, NX = Math.ceil((n * TS + 8) / S), NY = Math.ceil((m * TS + 8) / S);
+    const f = yield* Calcolo.G('strade', { X0, Y0, NX, NY, S, k: vdRoadsKey() });
     return (X, Y) => { const i = Math.floor((X - X0) / S), j = Math.floor((Y - Y0) / S); return i < 0 || j < 0 || i >= NX || j >= NY ? 99 : f[j * NX + i]; };
   }
-  function verde38(tx0, ty0, n, m) { const it = verde38G(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }   // [anelli] tutto in un colpo
+  function verde38(tx0, ty0, n, m) { return Calcolo.tutto(() => { const it = verde38G(tx0, ty0, n, m); let r; do r = it.next(); while (!r.done); return r.value; }); }   // [anelli] tutto in un colpo
   function* verde38G(tx0, ty0, n, m) {
     const grp = new THREE.Group(); grp.name = 'verde'; const tapG = new THREE.Group(); tapG.name = 'tap'; grp.add(tapG); grp.userData.tap = tapG;
     if (!VD.on) return grp;
@@ -80075,7 +80331,7 @@ var Render = (function () {
       a.push(Object.assign({ x, z, s: sr[0] + r() * (sr[1] - sr[0]), ry: r() * 6.2832, rx: (r() - .5) * .12, rz: (r() - .5) * .12, sy: 1, col: null }, o || {})); };
     const tone = (hex, k, X, Y) => { const c = new THREE.Color(hex), w = vdWet(X, Y), l = k * (.84 + (vnz(X / 22 + 3, Y / 22 + 8) + .5) * .3 + vnz(X / 7, Y / 7) * .06); return '#' + c.setRGB(Math.min(1, c.r * l * (1 - w * .05)), Math.min(1, c.g * l * (1 + w * .06)), Math.min(1, c.b * l)).getHexString(); };
     const natural = v => v === T.GRASS || v === T.SHRUB || v === T.ROCK || v === T.GRAVEL || v === T.FIELD || v === T.TREE || v === T.SAND || v === T.DIRT || v === T.VIA;
-    const rdAt = vdRoadField(tx0, ty0, n, m);
+    const rdAt = yield* vdRoadFieldG(tx0, ty0, n, m);   // [calcolo] nel lavoratore
     const forest = e => e === E.ABETAIA || e === E.FAGGETA || e === E.VALLONE || e === E.PINETA || e === E.BETULLE || e === E.PINIMONTE;
     for (let j = 0; j < m; j++) { if (j && performance.now() - ISO.t1 > 4) yield;   /* [anelli] a righe: cede il passo oltre 4 ms */
     for (let i = 0; i < n; i++) {
