@@ -10,7 +10,7 @@ for (const a of process.argv.slice(2)) { const m = /^--([a-z]+)(?:=(.*))?$/.exec
 const root = path.resolve(POS[0] || path.join(__dirname, '..')), NOME = ARG.nome || 'avvio', SEC = +(ARG.secondi || 15);
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.woff2': 'font/woff2', '.gz': 'application/gzip' };
 const GZ = new Map(); const gz = (p, d) => { if (!GZ.has(p)) GZ.set(p, /\.(html|js|json|txt|css)$/.test(p) ? zlib.gzipSync(d, { level: 6 }).length : d.length); return GZ.get(p); };
-const servito = [];
+const servito = [], TR = { ev: null };
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
   if (u.startsWith('/api/')) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":false}'); return; }
@@ -51,6 +51,7 @@ const srv = http.createServer((req, res) => {
     out.rete = { file: servito.length, MB: +(tot / 1048576).toFixed(1), gzMB: +(totgz / 1048576).toFixed(1), per: Object.fromEntries(Object.entries(per).sort((a, b) => b[1].MB - a[1].MB).map(([k, v]) => [k, { n: v.n, MB: +v.MB.toFixed(1), gzMB: +v.gzMB.toFixed(1) }])), grossi: servito.slice().sort((a, b) => b.b - a.b).slice(0, 12).map(s => [s.u, +(s.b / 1048576).toFixed(2), +(s.gz / 1048576).toFixed(2)]) };
     // i primi secondi di gioco: i fotogrammi, col profilo del processore (lo scatto all'apertura)
     await cdp.send('Profiler.start');
+    if (ARG.traccia) { TR.ev = []; cdp.on('Tracing.dataCollected', e => { for (const x of e.value) if (x.ph === 'X' || x.ph === 'B' || x.ph === 'E') TR.ev.push(x); }); await cdp.send('Tracing.start', { categories: 'gpu,gpu.service,disabled-by-default-gpu.service,gpu.decoder,disabled-by-default-gpu.decoder,toplevel', transferMode: 'ReportEvents' }); }
     out.fotogrammi = await pg.evaluate(SEC => new Promise(res => { const D = []; let l = performance.now(); const t0 = l; (function f(t) { D.push(t - l); l = t; if (t - t0 < SEC * 1000) requestAnimationFrame(f); else { D.sort((a, b) => a - b); const q = k => Math.round(D[Math.min(D.length - 1, Math.floor(D.length * k))]); res({ n: D.length, fps: +(D.length / SEC).toFixed(1), mediana: q(.5), p95: q(.95), max: Math.round(D[D.length - 1]), oltre100: D.filter(x => x > 100).length }); } })(l); }), SEC);
     { const { profile: P2 } = await cdp.send('Profiler.stop'), c2 = new Map(), b2 = new Map(P2.nodes.map(n => [n.id, n])); P2.samples.forEach((id, i) => c2.set(id, (c2.get(id) || 0) + (P2.timeDeltas[i] || 0)));
       const s2 = new Map(); c2.forEach((us, id) => { const f = b2.get(id).callFrame, k = `${f.functionName || '(anonima)'} ${f.url ? sezOf(f.url, f.lineNumber) : ''}:${f.lineNumber + 1}`; s2.set(k, (s2.get(k) || 0) + us); });
@@ -59,6 +60,10 @@ const srv = http.createServer((req, res) => {
       let top = null, tv = 0; c2.forEach((us, id) => { if (us > tv) { tv = us; top = id; } });
       const ramo = []; for (let id = top, k = 0; id && k < 14; id = par.get(id), k++) { const f = b2.get(id).callFrame; ramo.push(`${f.functionName || '(anonima)'} ${f.url ? sezOf(f.url, f.lineNumber) : ''}:${f.lineNumber + 1}`); }
       out.cpuGioco = { funzioni: [...s2].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([k, us]) => [k, Math.round(us / 1000)]), ramoDelPiuPesante: ramo }; }
+    if (ARG.traccia) { const fine = new Promise(r => cdp.once('Tracing.tracingComplete', r)); await cdp.send('Tracing.end'); await fine;
+      const durata = new Map(), aperti = new Map(), conta = new Map();
+      for (const x of TR.ev) { const k = x.name; if (x.ph === 'X') { durata.set(k, (durata.get(k) || 0) + (x.dur || 0)); conta.set(k, (conta.get(k) || 0) + 1); } else if (x.ph === 'B') aperti.set(x.tid + k, x.ts); else if (x.ph === 'E') { const t = aperti.get(x.tid + k); if (t != null) { durata.set(k, (durata.get(k) || 0) + x.ts - t); conta.set(k, (conta.get(k) || 0) + 1); } } }
+      out.traccia = [...durata].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, us]) => [k, Math.round(us / 1000), conta.get(k)]); }
     out.memDopo = await pg.evaluate(() => performance.memory ? { heapMB: Math.round(performance.memory.usedJSHeapSize / 1048576) } : null);
     out.errori = errori.slice(0, 5);
   } catch (e) { out.errore = String(e); console.error(e); }
