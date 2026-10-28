@@ -22968,7 +22968,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'b136b0e6a8d759c6';</script>
-<script>window.PV_IMPRONTA_TASS = 'fb16e0d50cfd854d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'd515eeccac699364';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -68324,7 +68324,8 @@ var PesoFusi = (function () {
       const pos = new Float32Array(nv * 3), idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni); let ov = 0, oi = 0;
       G.parti.forEach(p => { const g = p.m.geometry, a = g.attributes.position; _mm.multiplyMatrices(_mi, p.m.matrixWorld);
         for (let i = 0; i < a.count; i++) { _v.set(a.getX(i), a.getY(i), a.getZ(i)).applyMatrix4(_mm); pos[(ov + i) * 3] = _v.x; pos[(ov + i) * 3 + 1] = _v.y; pos[(ov + i) * 3 + 2] = _v.z; }
-        if (g.index) { const ix = g.index; for (let i = 0; i < ix.count; i++) idx[oi + i] = ix.getX(i) + ov; oi += ix.count; } else { for (let i = 0; i < a.count; i++) idx[oi + i] = ov + i; oi += a.count; }
+        const n0 = oi; if (g.index) { const ix = g.index; for (let i = 0; i < ix.count; i++) idx[oi + i] = ix.getX(i) + ov; oi += ix.count; } else { for (let i = 0; i < a.count; i++) idx[oi + i] = ov + i; oi += a.count; }
+        if (_mm.determinant() < 0) for (let i = n0; i + 2 < oi; i += 3) { const q = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = q; }   // un pezzo specchiato rispetto al genitore: three gli girava il verso delle facce (frontFace), qui lo fa l'ordine dei vertici
         ov += a.count; });
       const geo = new T3.BufferGeometry(); geo.setAttribute('position', new T3.BufferAttribute(pos, 3)); geo.setIndex(new T3.BufferAttribute(idx, 1)); geo.computeBoundingSphere(); geo.computeBoundingBox();
       const sm = new T3.Mesh(geo, matDi(G.side)); sm.name = 'ombra_fusa'; sm.matrixAutoUpdate = false; sm.matrixWorldAutoUpdate = false; sm.castShadow = true; sm.receiveShadow = false; sm.raycast = noRay; sm.userData.pfProxy = true; sm.userData.keep = true; sm.userData.thin2 = 1;
@@ -87977,9 +87978,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     return false;
   }
   if (UMW.on && !THREE.Object3D.prototype.updateMatrixWorld.__umw) {
-    const P = THREE.Object3D.prototype, add0 = P.add;
-    const umw = function (force) { force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
+    const P = THREE.Object3D.prototype, add0 = P.add, U0 = P.updateMatrixWorld;
+    const umw = function (force) { if (!UMW.on) return U0.call(this, force); force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
     umw.__umw = true; P.updateMatrixWorld = umw;
+    if (typeof window !== 'undefined') (window.__pesoAB = window.__pesoAB || {}).matrici = v => { UMW.on = !!v; };   // per il confronto nella stessa pagina (strumenti/sonda_uguale_fusi.js)
     P.add = function (o) { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const a = arguments[i]; if (a && a.isObject3D && a.parent === this) a.__mwRe = true; } return r; };   // appena attaccato: la matrice nel mondo va rifatta col genitore nuovo
   }
   const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null, ver: 0 };   // [fusi] ver: cresce a ogni ramo che si congela o si scioglie (peso_fusi.js)

@@ -16312,9 +16312,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     return false;
   }
   if (UMW.on && !THREE.Object3D.prototype.updateMatrixWorld.__umw) {
-    const P = THREE.Object3D.prototype, add0 = P.add;
-    const umw = function (force) { force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
+    const P = THREE.Object3D.prototype, add0 = P.add, U0 = P.updateMatrixWorld;
+    const umw = function (force) { if (!UMW.on) return U0.call(this, force); force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
     umw.__umw = true; P.updateMatrixWorld = umw;
+    if (typeof window !== 'undefined') (window.__pesoAB = window.__pesoAB || {}).matrici = v => { UMW.on = !!v; };   // per il confronto nella stessa pagina (strumenti/sonda_uguale_fusi.js)
     P.add = function (o) { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const a = arguments[i]; if (a && a.isObject3D && a.parent === this) a.__mwRe = true; } return r; };   // appena attaccato: la matrice nel mondo va rifatta col genitore nuovo
   }
   const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null, ver: 0 };   // [fusi] ver: cresce a ogni ramo che si congela o si scioglie (peso_fusi.js)

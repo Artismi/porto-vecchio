@@ -134,7 +134,8 @@ var PesoFusi = (function () {
       const pos = new Float32Array(nv * 3), idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni); let ov = 0, oi = 0;
       G.parti.forEach(p => { const g = p.m.geometry, a = g.attributes.position; _mm.multiplyMatrices(_mi, p.m.matrixWorld);
         for (let i = 0; i < a.count; i++) { _v.set(a.getX(i), a.getY(i), a.getZ(i)).applyMatrix4(_mm); pos[(ov + i) * 3] = _v.x; pos[(ov + i) * 3 + 1] = _v.y; pos[(ov + i) * 3 + 2] = _v.z; }
-        if (g.index) { const ix = g.index; for (let i = 0; i < ix.count; i++) idx[oi + i] = ix.getX(i) + ov; oi += ix.count; } else { for (let i = 0; i < a.count; i++) idx[oi + i] = ov + i; oi += a.count; }
+        const n0 = oi; if (g.index) { const ix = g.index; for (let i = 0; i < ix.count; i++) idx[oi + i] = ix.getX(i) + ov; oi += ix.count; } else { for (let i = 0; i < a.count; i++) idx[oi + i] = ov + i; oi += a.count; }
+        if (_mm.determinant() < 0) for (let i = n0; i + 2 < oi; i += 3) { const q = idx[i + 1]; idx[i + 1] = idx[i + 2]; idx[i + 2] = q; }   // un pezzo specchiato rispetto al genitore: three gli girava il verso delle facce (frontFace), qui lo fa l'ordine dei vertici
         ov += a.count; });
       const geo = new T3.BufferGeometry(); geo.setAttribute('position', new T3.BufferAttribute(pos, 3)); geo.setIndex(new T3.BufferAttribute(idx, 1)); geo.computeBoundingSphere(); geo.computeBoundingBox();
       const sm = new T3.Mesh(geo, matDi(G.side)); sm.name = 'ombra_fusa'; sm.matrixAutoUpdate = false; sm.matrixWorldAutoUpdate = false; sm.castShadow = true; sm.receiveShadow = false; sm.raycast = noRay; sm.userData.pfProxy = true; sm.userData.keep = true; sm.userData.thin2 = 1;
