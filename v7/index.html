@@ -16747,8 +16747,10 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     return gg;
   }
   // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
+  // [pulizia-verde] spenti: erano tre scatole verdi a cuscino (cespugli-cubo sul muro, il low poly che il committente vuole via); il muro resta pulito
+  const CAPPERI = false;
   function capperi(g, n, L, y0, y1, z0, k, seme, x0, libero) {   // libero(x): dove il ciuffo può stare (il gradone: non dietro la scala)
-    if (LOD) return; const r = caso(seme);
+    if (LOD || !CAPPERI) return; const r = caso(seme);
     for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05; if (libero && !libero(x)) { if (r() < .5) r(); continue; }   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
       blocco(g, s, s * .6, .3, 'verde', x, y, z); blocco(g, s * .7, s * .5, .36, 'erba', x + s * .35, y + s * .25, z + .02); blocco(g, s * .5, s * .45, .32, 'verdeScuro', x - s * .4, y - s * .1, z + .01);
       if (r() < .5) blocco(g, .14, s * 1.4, .12, 'verde', x + (r() - .5) * s, y - s * 1.3, z + .04 + k * s * 1.3); }
@@ -16956,7 +16958,8 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
       else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
     blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
-    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+    // [pulizia-verde] le scatole verdi sparse sul terrapieno erboso (cespugli-cubo): spente con i capperi, resta il prato
+    if (o.erba && !LOD && CAPPERI) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
   }
 
   DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };
@@ -22967,8 +22970,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '30cd8caf70e76767';</script>
-<script>window.PV_IMPRONTA_TASS = 'b04a674f329baba0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
+<script>window.PV_IMPRONTA_TASS = '17847715f4d50b5b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -53225,9 +53228,10 @@ var Tetti = (function () {
         put(pietra, cx, g0 + .45, cy, 1.2, .9, 1.2, 0); put(fondo, cx, g0 + .91, cy, .8, .02, .8, 0);
         for (const sx of [-.62, .62]) put(rails, cx + sx, g0 + 1.25, cy, .08, 1.7, .08, 0); put(rails, cx, g0 + 2.1, cy, 1.4, .08, .08, 0); put(ropes, cx, g0 + 1.6, cy, .02, 1.0, .02, 0); put(rails, cx, g0 + 1.05, cy, .22, .26, .22, 0);
         for (const [dx, dy] of [[1.6, 0], [0, 1.6]]) if (C.celle.length > 4) put(pietra, cx + dx, g0 + .22, cy + dy, 1.4, .44, .4, dx ? 0 : Math.PI / 2);   // le panche di pietra
-      } else if (C.k === 'orto') {   // le aiuole rialzate con la terra e il verde, il limone in mezzo
-        cel.slice(1, 7).forEach(([x, y]) => { put(pietra, x, g0 + .15, y, 1.5, .3, 1.5, 0); put(terra, x, g0 + .31, y, 1.3, .04, 1.3, 0); for (let k = 0; k < 3; k++) put(verde, x - .4 + k * .4, g0 + .45, y + ((k % 2) - .5) * .4, .3, .26, .3, k); });
-        put(boards, cx, g0 + .8, cy, .16, 1.6, .16, 0); put(verde, cx, g0 + 2.0, cy, 1.5, 1.1, 1.5, .4); put(verde, cx, g0 + 2.5, cy, 1.0, .6, 1.0, .1);
+      // [pulizia-verde] l'orto murato non ha più le aiuole a scatola coi cubetti verdi né il «limone» a cubi sul paletto (il committente:
+      // «le cose low poly come questi alberi e aiuole vanno rimosse»): resta il lastrico pulito; l'albero vero (il leccio istanziato) lo
+      // mette render.js (alberiCitta35) dove la corte ha posto per la chioma
+      } else if (C.k === 'orto') {
       } else if (C.k === 'bottega') {   // il banco del pescatore, le nasse, le reti stese su due paletti
         put(boards, cx, g0 + .45, cy, 1.6, .08, .7, 0); for (const sx of [-.7, .7]) put(boards, cx + sx, g0 + .22, cy, .08, .44, .6, 0);
         for (let k = 0; k < 3; k++) put(ropes, cx + 1.3 + k * .1, g0 + .25 + k * .3, cy + .6, .5, .3, .5, k);
@@ -79492,6 +79496,12 @@ var Render = (function () {
       }
     });
     }
+    // [pulizia-verde] l'orto murato delle corti (tetti.js) aveva un «limone» a cubi: al suo posto il leccio vero, sulla cella della corte più
+    // vicina al centro, se la chioma ci sta (niente muri a 2,2 m, niente piede di scala, niente altri alberi a 4,5 m); se no la corte resta vuota
+    if (typeof Tetti !== 'undefined' && Tetti.CORTI) Tetti.CORTI.forEach(C => { if (C.k !== 'orto' || !C.celle) return;
+      const LAD = Tetti.LADDERS || [], cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).sort((a, b) => Math.hypot(a[0] - C.x, a[1] - C.y) - Math.hypot(b[0] - C.x, b[1] - C.y));
+      const p = cel.find(([x, z]) => roomy(x, z, 2.2) && !onRoad(x, z) && !LAD.some(L => Math.hypot(L.fx - x, L.fy - z) < 1.8) && !TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5) && libero(x, z));
+      if (p) TREES35.push({ x: p[0], z: p[1], kind: 'cortile', s: .42 + th(Math.round(p[0]), Math.round(p[1]), 356) * .2 }); });
     // un albero nelle piazzette e negli slarghi, uno ogni tanto nei cortili grandi
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.GRASS) continue;
@@ -82823,7 +82833,7 @@ var Render = (function () {
   function pot(x, z, r, kind) {
     const g = G0(), terra = PM.terra();
     if (kind === 'lemon') { const pt = oPot(r, 2.1, false); g.add(pt); const tr = oTree(r, 1.25, '#4a6a38'); tr.position.y = .7; g.add(tr); for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), sl('#e8c020')), Math.cos(k * 2.3) * .32, 1.25 + (k % 3) * .16, Math.sin(k * 2.3) * .32); }   // [ordine1] limone vero nel vaso tornito
-    else if (kind === 'palm') { add(g, box(.7, .6, .7, sm('#f2eee6')), 0, .3, 0); for (let k = 0; k < 7; k++) { const l = box(.14, .05, 1, sl(pick(r, ['#3f8a3a', '#4f9a44']))); l.position.set(Math.cos(k) * .3, 1.1, Math.sin(k) * .3); l.rotation.set(-.6, k * .9, 0); g.add(l); } add(g, cyl(.06, .08, .7, 5, sm('#7a5a3a')), 0, .8, 0); }
+    else if (kind === 'palm') { const pt = oPot(r, 1.6, 'cespo'); g.add(pt); }   // [pulizia-verde] non più la cassetta a scatola con le foglie a listelli verdi: il vaso tornito col cespo
     else if (kind === 'planter') {   // [ordine1] fioriera di cemento col bordo, terra, cespi e gerani (non icosaedri e cubetti)
       fAt(g, fB(1.6, .46, .52, '#8a8680', 'concrete', .03), 0, .23, 0); fAt(g, fB(1.68, .06, .6, '#9a968e', 'concrete', .02), 0, .47, 0); fAt(g, fB(1.48, .04, .4, '#3a2e24', 'solid', 0), 0, .49, 0);
       const fc = pick(r, ['#c03a3a', '#d04a6a', '#e0603a', '#e8e0d0']); for (let k = 0; k < 4; k++) { const sh = oShrub(r, .9 + r() * .3); sh.position.set(-.55 + k * .37, .48, (r() - .5) * .1); g.add(sh); for (let q = 0; q < 3; q++) { const fl = fB(.06, .06, .06, fc, 'solid', 0); fl.position.set(-.55 + k * .37 + (r() - .5) * .3, .72 + r() * .1, (r() - .5) * .3); g.add(fl); } } }
