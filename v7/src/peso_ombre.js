@@ -134,7 +134,7 @@ var PesoOmbre = (function () {
   // la camera dell'ombra di una luce (la matrice proiezione × vista) e chi c'è dentro, fermo o mobile
   function contenuto(light, tutti, r) {
     const sh = light.shadow; sh.updateMatrices(light); const cam = sh.camera, fz = sh.getFrustum();
-    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); const e = Float64Array.from(pm.elements);
+    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); const e = r.eT || (r.eT = new Float64Array(16)); e.set(pm.elements);   // [momenti] la stessa scatola a ogni fotogramma (chi la tiene ne fa una copia)
     let chiave = false; for (let k = 0; k < 16; k++) if (e[k] !== r.key[k]) { chiave = true; break; }
     if (chiave && tutti) r.ver++;   // il sole: la risposta «dentro il riquadro» di ogni cosa ferma vale finché la camera dell'ombra non cambia
     const fermi = [], mob = [], lp = light.position, R2 = tutti ? 0 : (light.distance || 30) + 1; let sig = 0;
@@ -198,7 +198,7 @@ var PesoOmbre = (function () {
         if (vuole === 'next') { const pos = [light.position.clone(), light.target.position.clone()]; G = A.next; metti(light, G); const C2 = contenuto(light, tutti, { key: new Float64Array(16), ver: -1 }); list = C2.fermi; e = C2.e; sig = C2.sig;
           if (A.G) metti(light, A.G); else { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); } sh.updateMatrices(light); r.ver++; }
         { let rt = r.job ? r.job.rt : null; if (!rt && r.spare) { rt = r.spare; r.spare = null; }   // [audit] la mappa di riserva si ricicla
-          r.job = { tipo: vuole, list, i: 0, e, sig, n: list.length, G, rt }; } if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
+          r.job = { tipo: vuole, list, i: 0, e: Float64Array.from(e), sig, n: list.length, G, rt }; } if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
         if (DIAG.on && vuole === 'qui' && r.ids) { const now = new Set(C.fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
           C.fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); }
         if (DIAG.on) { r.ids = new Set(C.fermi.map(o => o.id)); r.idsObj = C.fermi.slice(); } }

@@ -174,7 +174,7 @@
     else if (k >= '1' && k <= '5') { const id = Object.keys(G.WEAPONS).find(w => G.WEAPONS[w].slot === +k); if (!G.switchWeapon(st, id)) toast(`Non hai ${G.WEAPONS[id].name.toLowerCase()}.`, 'bad'); }
   });
   // zoom: rotella, tasti + e −, pulsanti a schermo
-  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
+  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(2, (ui.zoom || 1) * f)); }   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
@@ -1069,7 +1069,7 @@
   // [ritmo] ora un regolatore solo (peso_ritmo.js): la scala della scena a gradini con isteresi, e il tetto a 30 (o a 60 sugli schermi
   // veloci) quando la scheda non regge, per tutti; quelli qui sotto restano per ?noritmo
   const RIT = typeof PesoRitmo !== 'undefined' && PesoRitmo.ON;
-  const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
+  const PACE = { avg: 1 / 60, debt: 0, off: 0 };   // [fluido]
   // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
   // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
   const LEAD = { x: 0, y: 0, m: 0 };
@@ -1098,7 +1098,10 @@
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
     // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
     // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
-    if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
+    // [cadenza] la media impara solo dai fotogrammi «in ritmo»: prima uno scatto da 50 ms la tirava su e per ~20 fotogrammi il gioco
+    // avanzava di 20 ms ogni 16,7 (fino a +2,2 ms, poi il debito lo riportava indietro: il personaggio accelerava e frenava dopo ogni scatto).
+    // Se il ritmo cambia davvero (il tetto a 30) dopo 4 fotogrammi fuori la media salta al ritmo nuovo (prima ci arrivava a strattoni, fino a 4,7 ms)
+    if (raw > 0 && raw < .25) { if (Math.abs(raw - PACE.avg) < PACE.avg * .2) { PACE.avg += (raw - PACE.avg) * .08; PACE.off = 0; } else if (++PACE.off >= 4) { PACE.avg = raw; PACE.off = 0; } } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
     let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
     const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
     if (!RIT && touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }

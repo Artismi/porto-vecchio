@@ -1179,7 +1179,9 @@ var Tetti = (function () {
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
     try { if (!GFX.affinato4) { affinaVero4(R); GFX.affinato4 = true; } } catch (e2) { if (!affinaVero4.err) { affinaVero4.err = 1; console.warn('[tetti4]', e2); } }
-    if (GFX.meshes) GFX.meshes.forEach(m => { scene.remove(m); });
+    // [momenti] le 15 forme si riusano: prima ogni rifacimento (ogni 2,5 s finché si esplora, più spesso correndo) toglieva le vecchie senza
+    // liberarle e ne creava 15 nuove (buffer nuovi da mandare alla scheda video, e le ombre in cache da ricuocere perché qualcosa spariva)
+    const OLD = GFX.meshes;
     const G3 = GFX.geo || (GFX.geo = ladderGeo()), rails = [], rungs = [], hoops = [], yel = [], lamps = [], boards = [], ropes = [], flags = [], crema = [], fondo = [], pietra = [], terra = [], verde = [], lastr = [];
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
@@ -1351,7 +1353,11 @@ var Tetti = (function () {
       });
       // [scale3] nemmeno sul camminamento delle mura la traccia dipinta (via i percorsi dipinti)
     }
-    const mk = (arr, m) => { const im = new T3.InstancedMesh(G3.box, m, Math.max(1, arr.length)); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
+    let mkI = 0;
+    const mk = (arr, m) => { const k = mkI++, o = OLD && OLD[k];
+      if (o && o.parent === scene && o.instanceMatrix.count >= arr.length) { arr.forEach((mm, i) => o.setMatrixAt(i, mm)); o.count = arr.length; o.instanceMatrix.needsUpdate = true; return o; }   // c'è posto: le stesse istanze, i numeri nuovi
+      if (o) { scene.remove(o); o.dispose(); }   // troppo piccola: una più grande, con margine per i prossimi giri
+      const im = new T3.InstancedMesh(G3.box, m, Math.max(8, Math.ceil(arr.length * 1.5))); arr.forEach((mm, i) => im.setMatrixAt(i, mm)); im.count = arr.length; im.castShadow = true; im.receiveShadow = true; im.userData.noRoof = true; im.frustumCulled = false; scene.add(im); return im; };
     GFX.meshes = [mk(rails, G3.iron), mk(rungs, G3.iron), mk(hoops, G3.rust), mk(yel, G3.yell), mk(lamps, G3.lamp), mk(boards, G3.wood), mk(ropes, G3.rope), mk(flags, G3.flag), mk(crema, G3.crema), mk(traccia, G3.traccia), mk(fondo, G3.fondo),
       mk(pietra, G3.pietra), mk(terra, G3.terra), mk(verde, G3.verde), mk(lastr, G3.lastrico)];   // [tetti4]
     GFX.meshes[14].castShadow = false;

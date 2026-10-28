@@ -635,8 +635,16 @@ var Writing = (function () {
       const g = m.geometry, pa = g && g.attributes && g.attributes.position;
       if (!pa || (m.userData && typeof m.userData.lazy1 === 'function') || m.isInstancedMesh || m.isSkinnedMesh || (g.morphAttributes && g.morphAttributes.position)) { out.push(m); continue; }
       M.copy(m.matrixWorld).invert();
-      const bt = g.boundsTree;   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
-      if (bt && g.__bvhVer === pa.version * 4194304 + (g.index ? g.index.version + 2 : 1)) { try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+      const bt = g.boundsTree, vv = pa.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
+      // [momenti] cambiata (una cosa calciata via dalla mesh fusa, il pulitore): stessi triangoli in posti nuovi, l'indice si riadatta come
+      // fanno i raggi veloci di render.js. Prima si provava triangolo per triangolo tutta la mesh fusa (decine di migliaia, centinaia di MB di numeri)
+      if (bt && g.__bvhVer !== vv && g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { bt.refit(); g.__bvhVer = vv; } catch (e) { } }
+      // [momenti] una mesh grande senza indice: lo si fa qui (lo stesso dei raggi veloci di render.js, che poi lo usano anche loro), invece di
+      // provare ogni triangolo a ogni riquadro; correndo verso muri dipinti nuovi era il grosso della spazzatura e degli scatti
+      let bt2 = bt; const nT = g.index ? g.index.count : pa.count, dr = g.drawRange;
+      if (!bt2 && nT >= 2700 && !g.__bvhNo && !(g.boundingBox && !g.boundingBox.intersectsBox(Bl.copy(B).applyMatrix4(M))) && !pa.isInterleavedBufferAttribute && !(dr.start > 0) && !(dr.count !== Infinity && dr.count < nT) && typeof MeshBVHLib !== 'undefined') {
+        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
+      if (bt2 && g.__bvhVer === vv) { const bt = bt2; try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
       Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
       const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
       if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
