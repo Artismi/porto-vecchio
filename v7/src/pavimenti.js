@@ -58,8 +58,8 @@ var Pavimenti = (function () {
     if (px !== undefined && A.mista && z === A.ZN.CITTA && (v === T.QUAY || v === T.COB || v === T.PIAZZA || v === T.VIA || v === T.WALK || v === T.DIRT) && A.mista(tx, ty)) {   // la banchina col confine smussato (come la tela)
       if (A.banchinaSm(px, pz)) return FAM.banchina; if (v === T.QUAY) { const k = A.suoloW(px, pz); return k ? FAM[k] || FAM.asfalto : FAM.asfalto; } }
     if (z === A.ZN.CITTA && v === T.COB && vicinoSabbia(tx, ty)) return FAM.lastre;   // il terrapieno davanti alle case sulla spiaggia (costa): il lungomare di lastre
-    if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
-    if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA) return FAM.piazza;
+    if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.FOUNT || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
+    if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA || v === T.FOUNT) return FAM.piazza;   // [suolo2] sotto la vasca il lastricato
     if (v === T.DIRT || v === T.GRAVEL) return FAM.terra; if (v === T.VIA || v === T.COB) return FAM.asfalto;
     return 0;
   }

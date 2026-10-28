@@ -1194,7 +1194,7 @@ var Render = (function () {
       } else if ((v === T.GRASS || v === T.DIRT) && z === ZN.CITTA && !(RW[ii] > 0)) { suolo35(x, px, py, P, tx, ty, r, v);   // [isola35]
       } else if (v === T.WALK) {
         x.fillStyle = '#54525a'; x.fillRect(px, py, P, P); dots(px, py, 6, ['#48464e', '#62606a'], r);
-      } else if (v === T.PIAZZA) {
+      } else if (v === T.PIAZZA || v === T.FOUNT) {   // [suolo2] sotto la vasca il lastricato della piazza (era la tinta dell'acqua: il quadrato blu attorno alle fontane)
         x.fillStyle = '#7a7064'; x.fillRect(px, py, P, P);   // [isola35] pietra scura, non chiara [inverno17] lastre a correre: righe di 7 px, giunti sfalsati per riga, misure variabili; continuano fra le caselle
         for (let yy = 0; yy < P; yy++) { const gy = ty * P + yy, row = Math.floor(gy / 7); if (gy % 7 === 0) { x.fillStyle = 'rgba(44,38,34,.6)'; x.fillRect(px, py + yy, P, 1); continue; }
           for (let xx = 0; xx < P; xx++) { const gx = tx * P + xx, off = th(row, 0, 51) * 23, cell = Math.floor((gx + off) / (9 + th(row, 1, 52) * 6)); if (Math.floor((gx + 1 + off) / (9 + th(row, 1, 52) * 6)) !== cell) { x.fillStyle = 'rgba(44,38,34,.55)'; x.fillRect(px + xx, py + yy, 1, 1); } else if (th(cell, row, 53) < .3) { x.fillStyle = 'rgba(150,138,122,.1)'; x.fillRect(px + xx, py + yy, 1, 1); } } }
@@ -1237,7 +1237,7 @@ var Render = (function () {
         const dry = z === ZN.MONTE || z === ZN.DESERTO || z === ZN.SPIAGGIA; x.fillStyle = dry ? '#7a7a48' : '#4a7a3a'; x.fillRect(px, py, P, P);
         dots(px, py, 30, dry ? ['#8a8a52', '#6a6a3e', '#9a8e5a'] : ['#4f7c3e', '#5a8a44', '#37602f', '#6a9a4a'], r);
         if (!dry && r() < .4) { x.fillStyle = pick(r, ['#f06a8a', '#f0e060', '#ffffff', '#c080f0']); x.fillRect(px + Math.floor(r() * 14), py + Math.floor(r() * 14), 1, 1); }
-      } else if (v === T.FOUNT || v === T.WATER) {
+      } else if (v === T.WATER) {
         x.fillStyle = '#2a6a8a'; x.fillRect(px, py, P, P);
       } else { x.fillStyle = '#2a2433'; x.fillRect(px, py, P, P); } // sotto gli edifici
     } }
@@ -3025,7 +3025,7 @@ var Render = (function () {
       pos[k * 3] = tx * TS; pos[k * 3 + 1] = h; pos[k * 3 + 2] = ty * TS; uv[k * 2] = i / n; uv[k * 2 + 1] = 1 - j / m;
     }
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
-      const v = gT(tx0 + i, ty0 + j); if (v === T.FOUNT || v === T.PIER) continue;   // [costa] il pontile è un modello (tavole e pali), sotto si vede l'acqua
+      const v = gT(tx0 + i, ty0 + j); if (typeof Suolo !== 'undefined' ? Suolo.bucoTerreno(v, T) : v === T.FOUNT || v === T.PIER) continue;   // [costa] il pontile è un modello (tavole e pali), sotto si vede l'acqua   [suolo2] le fontane no: la vasca poggia sul lastricato (il buco quadrato mostrava il mare sotto: il rettangolo d'acqua blu)
       if (RV9 && Riva.inBanda(tx0 + i, ty0 + j)) continue;   // [riva] la casella la ridisegna la riva fine
       if (v === T.WATER && coastIn((tx0 + i + .5) * TS, (ty0 + j + .5) * TS) < -3) continue;   // il fondale vicino alla riva c'è, il mare aperto no
       if (v === T.WATER) { let made = false; for (let b2 = -1; b2 <= 1 && !made; b2++) for (let a2 = -1; a2 <= 1; a2++) { const vv = gT(tx0 + i + a2, ty0 + j + b2); if (vv === T.QUAY || vv === T.PIER) { made = true; break; } } if (made) continue; }   // [costa] accanto a banchine e moli il muro scende dritto: niente scivolo di terreno
@@ -3064,7 +3064,7 @@ var Render = (function () {
   function buildBase() {   // [inverno17]
     const T = G.T, S = 4, nx = Math.ceil(G.GW / S), ny = Math.ceil(G.GH / S);
     const c = mk(G.GW, G.GH), x = c.getContext('2d'), img = x.createImageData(G.GW, G.GH);
-    const COL = { [T.COB]: [104, 98, 92], [T.VIA]: [64, 63, 64], [T.BLD]: [96, 90, 84],   /* [scena1] i colori del terreno vero: viola (44, 41, 52), saturato, faceva le strade lilla finché non arrivava il blocco dipinto */ [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [86, 84, 86], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [42, 106, 138], [T.STAIRS]: [140, 130, 120] };
+    const COL = { [T.COB]: [104, 98, 92], [T.VIA]: [64, 63, 64], [T.BLD]: [96, 90, 84],   /* [scena1] i colori del terreno vero: viola (44, 41, 52), saturato, faceva le strade lilla finché non arrivava il blocco dipinto */ [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [86, 84, 86], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [184, 172, 152] /* [suolo2] il lastricato sotto la vasca, non l'acqua */, [T.STAIRS]: [140, 130, 120] };
     const PLb = palco2();   // [spianata2] il palco anche da lontano e prima che arrivi il blocco: terra battuta, non il beige chiaro delle piazze
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { const v = gT(tx, ty), o = (ty * G.GW + tx) * 4, c0 = PLb && (v === T.PIAZZA || v === T.COB) && PLb.zona(tx * TS + 1, ty * TS + 1) ? [100, 89, 74] : COL[v] || [40, 60, 80], dd = M.world && M.world.districtAt ? M.world.districtAt(tx * TS) : '', urb = v === T.VIA || v === T.COB || v === T.WALK || v === T.PIAZZA || v === T.QUAY, k = !NEVE || v === T.WATER || v === T.BLD || dd === 'prateria' ? 0 : v === T.VIA ? .3 : urb ? .5 : .8, sn = urb ? [160, 164, 170] : [214, 218, 224], cc = (dd === 'prateria' && !urb ? [128, 114, 80] : c0).map((q, i) => q + (sn[i] - q) * k); img.data[o] = cc[0]; img.data[o + 1] = cc[1]; img.data[o + 2] = cc[2]; img.data[o + 3] = 255; }  // [inverno] neve
     x.putImageData(img, 0, 0);
@@ -6663,18 +6663,18 @@ var Render = (function () {
 
   // ---- scivoli dei marciapiedi davanti alle strisce: il marciapiede scende a filo strada ----
   function scivoli1(H, R, NW, NH) {
-    const ramp = new Float32Array(H.length); S1.ramp = ramp;
+    const ramp = new Float32Array(H.length); S1.ramp = ramp; const SU2 = typeof Suolo !== 'undefined', H0 = new Map(); S1.H0 = H0;   // [suolo2] l'altezza di prima dello scivolo: il colore segue quella
     crossings35().forEach(c => { const ux = c.ux, uy = c.uy, rx = -uy, ry = ux, half = c.w / 2, ext = half + 2.6;
       const x0 = c.x - ext - 2, x1 = c.x + ext + 2, z0 = c.y - ext - 2, z1 = c.y + ext + 2;
       for (let j = Math.max(0, Math.floor(z0 / R)); j <= Math.min(NH - 1, Math.ceil(z1 / R)); j++) for (let i = Math.max(0, Math.floor(x0 / R)); i <= Math.min(NW - 1, Math.ceil(x1 / R)); i++) {
-        const k = j * NW + i; if (H[k] < .002) continue; const dx = i * R - c.x, dz = j * R - c.y, al = Math.abs(dx * ux + dz * uy), pe = Math.abs(dx * rx + dz * ry);
-        if (pe < half - .5 || pe > ext) continue;
-        const sstep = (a, b, t) => { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-        const low = (1 - sstep(1.2, 1.9, al)) * (1 - sstep(half + 1.1, half + 2.3, pe)); if (low <= ramp[k]) continue;
-        ramp[k] = low; H[k] *= 1 - .82 * low; }
+        const k = j * NW + i; if (H[k] < .002) continue;
+        const low = SU2 ? Suolo.scivolo(c, i * R, j * R) : 0; if (low <= ramp[k]) continue;   // [suolo2] la regola dello scivolo (suolo.js): a filo e raccordato
+        if (!H0.has(k)) H0.set(k, H[k]); ramp[k] = low; H[k] = Suolo.scivoloH(H0.get(k), low); }
     });
   }
-  function scivoloCol1(c, k) { const a = S1.ramp && S1.ramp[k]; if (a > .05) c.lerp(_c35.set('#8c857a'), a * .6); return c; }
+  function scivoloCol1(c, k, n1, n2) { const a = S1.ramp && S1.ramp[k]; if (!(a > .05)) return c;
+    if (typeof Suolo !== 'undefined' && !Suolo.off2) return c;   // [suolo2] il colore dello scivolo è quello del marciapiede senza scivolo (buildSidewalks prende top dall'altezza di prima): le lastre, il cordolo al suo posto, niente fascia chiara né canaletta scura sul pendio
+    c.lerp(_c35.set('#8c857a'), a * .6); return c; }
 
   // ================= OGGETTI =================
   function signTex1(kind, text) {
@@ -7534,7 +7534,7 @@ var Render = (function () {
   let SWF35fine = false;
   function swLibera() { SWF35fine = true; if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null;
     const H = SWF35.H; if (H instanceof Float32Array) { const q = new Uint8Array(H.length); for (let k = 0; k < H.length; k++) q[k] = Math.max(0, Math.min(255, Math.round(H[k] * 1275))); SWF35.H = q; SWF35.Hk = 1 / 1275; } }   // e l'altezza in un byte (passo di 0,8 mm, fino a 20 cm): 22 → 5,6 MB
-    S1.ramp = null; }
+    S1.ramp = null; S1.H0 = null; }
   // altezza del marciapiede sopra il terreno in (x, z): 0 fuori, 0,15 sopra
   function swH(x, z) {
     const F = SWF35ok ? SWF35 : swField(); if (!F) return 0;
@@ -7644,6 +7644,10 @@ var Render = (function () {
   let CW35 = null;
   function crossings35() {
     if (CW35) return CW35; CW35 = [];
+    // [suolo2] nella città nuova le zebre sono quelle del piano di segnaletica.js, già sulla mezzeria vera, perpendicolari alla via e intere
+    // (quelle che non trovano posto non ci sono): gli scivoli, i cartelli e il verde le leggono da qui, così nessuno scivolo resta senza
+    // zebra o di sbieco rispetto alle strisce
+    try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo && !(typeof Suolo !== 'undefined' && Suolo.off2)) { Segnaletica.piano().zebre.forEach(z => { if (z.bande) CW35.push({ x: z.x, y: z.y, ux: z.ux, uy: z.uy, w: z.w, L: Segnaletica.CFG.zebra.L, s: (Math.round(z.x * 7 + z.y * 3) >>> 0) }); }); return CW35; } } catch (e) { CW35 = []; }
     const urb = rd => rd.kind === 'citta' || rd.kind === 'litoranea', R = (M.roads || []).filter(urb);
     const nearRoad = (rd, x, y) => { const P = rd.pts; for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], ay = P[k][1], dx = P[k + 1][0] - ax, dy = P[k + 1][1] - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(ax + dx * t - x, ay + dy * t - y) < rd.w / 2 + 1.5) return true; } return false; };
     junctions().forEach(([jx, jy, jr]) => {
@@ -7978,14 +7982,8 @@ var Render = (function () {
     const rd = vitRoad2(); if (!rd) return 0; const h = rd.w / 2, F = fronti4(), T = G.T, A = (M.world.sets || []).find(q => q.k === 'adunata'); let n = 0;
     const inAdunata = (x, z) => A && x > A.x0 - 1 && x < A.x1 + 1 && z > A.y0 - 1 && z < A.y1 + 1;
     const piena = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === T.BLD;
-    // i cordoli di travertino: pezzi di 1,5 m a filo della carreggiata, alti 18 cm, interrotti agli incroci e dove la via entra nella piazza
-    const cord = sm('#d6ccb4', { roughness: .75 }), cordS = sm('#9a9282', { roughness: .9 });
-    lungoV2(rd, 1.5, .75).forEach(q => [-1, 1].forEach(sd => { const cx = q.x + q.nx * sd * (h + VIT2.cordolo / 2), cz = q.z + q.nz * sd * (h + VIT2.cordolo / 2);
-      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const ex = q.x + q.nx * sd * (h - .5), ez = q.z + q.nz * sd * (h - .5), rot = Math.atan2(q.ux, q.uz);
-      // [strade] il pezzo segue la pendenza: la quota ai suoi due capi, inclinato (non più a gradini), e lungo quanto il passo (niente fessure)
-      const ya = groundH(ex - q.ux * .75, ez - q.uz * .75), yb = groundH(ex + q.ux * .75, ez + q.uz * .75), y = (ya + yb) / 2, tilt = -Math.atan2(yb - ya, 1.5), Lc = Math.hypot(1.5, yb - ya) + .01;
-      const k = box(VIT2.cordolo, .2, Lc, cord); k.position.set(cx, y + .1, cz); k.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(k);
-      const s = box(.04, .17, Lc, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
+    // [suolo2] niente cordoli rigidi di travertino (erano ~300 blocchi di 1,5 m, più alti, più chiari e interrotti): il cordolo è UNO, il
+    // bordo del campo dei marciapiedi (buildSidewalks), alla stessa quota e dello stesso colore su tutte le vie
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
     // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
     if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
@@ -13972,8 +13970,8 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       // rumore continuo (non a blocchi): niente losanghe e pieghe a spigolo sul marciapiede
       const vn = (px, pz, cell, seed) => { const fx = px / cell, fz = pz / cell, i = Math.floor(fx), j = Math.floor(fz); let u = fx - i, w = fz - j; u = u * u * (3 - 2 * u); w = w * w * (3 - 2 * w);
         const a = vegHash(i, j, seed), b = vegHash(i + 1, j, seed), d = vegHash(i, j + 1, seed), e = vegHash(i + 1, j + 1, seed); return a + (b - a) * u + (d - a) * w + (a - b - d + e) * u * w; };
-      const top = sstep(.05, .14, h), n1 = vn(x, z, 4, 8) - .5, n2 = vn(x, z, 1.3, 9) - .5, snow = sstep(.45, .85, vn(x, z, 6, 10));
-      colMarc35(c, top, n1, n2); scivoloCol1(c, k);   // [isola35] lastre, cordolo chiaro, canaletta scura [strade1] scivoli
+      const h0c = S1.H0 && !(typeof Suolo !== 'undefined' && Suolo.off2) && S1.H0.has(k) ? S1.H0.get(k) : h, top = sstep(.05, .14, h0c), n1 = vn(x, z, 4, 8) - .5, n2 = vn(x, z, 1.3, 9) - .5, snow = sstep(.45, .85, vn(x, z, 6, 10));
+      colMarc35(c, top, n1, n2); scivoloCol1(c, k, n1, n2);   // [isola35] lastre, cordolo chiaro, canaletta scura [strade1] scivoli
       pos.push(x, y, z); col.push(c.r, c.g, c.b); uv35.push(x / 2, z / 2); return (idx[k] = pos.length / 3 - 1); };
     for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NW - 1; i++) {
       const k = j * NW + i; if (H[k] < .004 && H[k + 1] < .004 && H[k + NW] < .004 && H[k + NW + 1] < .004) continue;

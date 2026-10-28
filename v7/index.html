@@ -16747,10 +16747,8 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     return gg;
   }
   // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
-  // [pulizia-verde] spenti: erano tre scatole verdi a cuscino (cespugli-cubo sul muro, il low poly che il committente vuole via); il muro resta pulito
-  const CAPPERI = false;
   function capperi(g, n, L, y0, y1, z0, k, seme, x0, libero) {   // libero(x): dove il ciuffo può stare (il gradone: non dietro la scala)
-    if (LOD || !CAPPERI) return; const r = caso(seme);
+    if (LOD) return; const r = caso(seme);
     for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05; if (libero && !libero(x)) { if (r() < .5) r(); continue; }   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
       blocco(g, s, s * .6, .3, 'verde', x, y, z); blocco(g, s * .7, s * .5, .36, 'erba', x + s * .35, y + s * .25, z + .02); blocco(g, s * .5, s * .45, .32, 'verdeScuro', x - s * .4, y - s * .1, z + .01);
       if (r() < .5) blocco(g, .14, s * 1.4, .12, 'verde', x + (r() - .5) * s, y - s * 1.3, z + .04 + k * s * 1.3); }
@@ -16958,8 +16956,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
       else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
     blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
-    // [pulizia-verde] le scatole verdi sparse sul terrapieno erboso (cespugli-cubo): spente con i capperi, resta il prato
-    if (o.erba && !LOD && CAPPERI) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
   }
 
   DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };
@@ -22970,8 +22967,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = 'd1f700741adfad38';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '30cd8caf70e76767';</script>
+<script>window.PV_IMPRONTA_TASS = 'b04a674f329baba0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -53228,10 +53225,9 @@ var Tetti = (function () {
         put(pietra, cx, g0 + .45, cy, 1.2, .9, 1.2, 0); put(fondo, cx, g0 + .91, cy, .8, .02, .8, 0);
         for (const sx of [-.62, .62]) put(rails, cx + sx, g0 + 1.25, cy, .08, 1.7, .08, 0); put(rails, cx, g0 + 2.1, cy, 1.4, .08, .08, 0); put(ropes, cx, g0 + 1.6, cy, .02, 1.0, .02, 0); put(rails, cx, g0 + 1.05, cy, .22, .26, .22, 0);
         for (const [dx, dy] of [[1.6, 0], [0, 1.6]]) if (C.celle.length > 4) put(pietra, cx + dx, g0 + .22, cy + dy, 1.4, .44, .4, dx ? 0 : Math.PI / 2);   // le panche di pietra
-      // [pulizia-verde] l'orto murato non ha più le aiuole a scatola coi cubetti verdi né il «limone» a cubi sul paletto (il committente:
-      // «le cose low poly come questi alberi e aiuole vanno rimosse»): resta il lastrico pulito; l'albero vero (il leccio istanziato) lo
-      // mette render.js (alberiCitta35) dove la corte ha posto per la chioma
-      } else if (C.k === 'orto') {
+      } else if (C.k === 'orto') {   // le aiuole rialzate con la terra e il verde, il limone in mezzo
+        cel.slice(1, 7).forEach(([x, y]) => { put(pietra, x, g0 + .15, y, 1.5, .3, 1.5, 0); put(terra, x, g0 + .31, y, 1.3, .04, 1.3, 0); for (let k = 0; k < 3; k++) put(verde, x - .4 + k * .4, g0 + .45, y + ((k % 2) - .5) * .4, .3, .26, .3, k); });
+        put(boards, cx, g0 + .8, cy, .16, 1.6, .16, 0); put(verde, cx, g0 + 2.0, cy, 1.5, 1.1, 1.5, .4); put(verde, cx, g0 + 2.5, cy, 1.0, .6, 1.0, .1);
       } else if (C.k === 'bottega') {   // il banco del pescatore, le nasse, le reti stese su due paletti
         put(boards, cx, g0 + .45, cy, 1.6, .08, .7, 0); for (const sx of [-.7, .7]) put(boards, cx + sx, g0 + .22, cy, .08, .44, .6, 0);
         for (let k = 0; k < 3; k++) put(ropes, cx + 1.3 + k * .1, g0 + .25 + k * .3, cy + .6, .5, .3, .5, k);
@@ -69408,7 +69404,27 @@ var Suolo = (function () {
     S = { R, CL, rango, rangoVia, tagli, tagliata, via, marciapiede, pezzi, TS, GW, GH };
     CACHE.set(W, S); return S;
   }
-  return { R, di, rangoVia, vecchio: v => { OFF = !!v; CACHE = new WeakMap(); }, get off() { return OFF; } };   // vecchio(true): com'era, per la prova del prima
+  // [suolo2] LE REGOLE DEL BORDO DELLA VIA (render.js le usa per costruire, src/test_suolo.js per contare; ?vecchiosuolo2: com'era).
+  //  - LO SCIVOLO sta solo davanti a una zebra dipinta (render.js prende le zebre del piano di segnaletica.js, già sulla mezzeria vera e
+  //    perpendicolari alla via), largo quanto le strisce più 20 cm per parte e raccordato col marciapiede in 1,2 m lungo la via; scende
+  //    A FILO della strada (resta mezzo centimetro: la mesh c'è) e ha il colore delle lastre, senza la fascia chiara del cordolo né la canaletta
+  //    scura (prima: scendeva all'82%, e mentre scendeva l'altezza passava per quella del cordolo e per quella della canaletta, e il colore
+  //    che segue l'altezza dipingeva sul marciapiede rettangoli chiari e una chiazza tonda scura). Il rilievo lo dà la forma, non la tinta.
+  //  - LE FONTANE: la vasca poggia sul lastricato; il terreno sotto non si buca (si bucava la casella intera e sotto si vedeva il mare: il
+  //    quadrato d'acqua blu attorno alla vasca ottagonale) e la casella si dipinge come la piazza.
+  let OFF2 = typeof location !== 'undefined' && /[?&]vecchiosuolo2\b/.test(location.search);
+  const ss = (a, b, t) => { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // quanto lo scivolo della zebra c (x, y al centro, ux, uy lungo la via, w la carreggiata, L la lunghezza delle bande) abbassa il punto (x, z): 0..1
+  function scivolo(c, x, z) {
+    const dx = x - c.x, dz = z - c.y, al = Math.abs(dx * c.ux + dz * c.uy), pe = Math.abs(-dx * c.uy + dz * c.ux), half = c.w / 2;
+    if (OFF2) { if (pe < half - .5 || pe > half + 2.6) return 0; return (1 - ss(1.2, 1.9, al)) * (1 - ss(half + 1.1, half + 2.3, pe)); }
+    if (pe < half - .5 || pe > half + 2.2) return 0; const a0 = (c.L || 2.6) / 2 + .2;
+    return (1 - ss(a0, a0 + 1.2, al)) * (1 - ss(half + 1.2, half + 2.0, pe));
+  }
+  // l'altezza del marciapiede h dopo lo scivolo (low 0..1)
+  const scivoloH = (h, low) => OFF2 ? h * (1 - .82 * low) : h <= .005 ? h : Math.max(.005, h * (1 - low));
+  const bucoTerreno = (v, T) => OFF2 ? v === T.FOUNT || v === T.PIER : v === T.PIER;   // il terreno si buca sotto la casella? (il pontile sì: sotto c'è l'acqua)
+  return { R, di, rangoVia, scivolo, scivoloH, bucoTerreno, vecchio: v => { OFF = !!v; CACHE = new WeakMap(); }, vecchio2: v => { OFF2 = !!v; }, get off() { return OFF; }, get off2() { return OFF2; } };   // vecchio(true): com'era, per la prova del prima; vecchio2(true): le regole del bordo di prima
 })();
 if (typeof window !== 'undefined') window.Suolo = Suolo;
 if (typeof module !== 'undefined') module.exports = Suolo;
@@ -69473,8 +69489,8 @@ var Pavimenti = (function () {
     if (px !== undefined && A.mista && z === A.ZN.CITTA && (v === T.QUAY || v === T.COB || v === T.PIAZZA || v === T.VIA || v === T.WALK || v === T.DIRT) && A.mista(tx, ty)) {   // la banchina col confine smussato (come la tela)
       if (A.banchinaSm(px, pz)) return FAM.banchina; if (v === T.QUAY) { const k = A.suoloW(px, pz); return k ? FAM[k] || FAM.asfalto : FAM.asfalto; } }
     if (z === A.ZN.CITTA && v === T.COB && vicinoSabbia(tx, ty)) return FAM.lastre;   // il terrapieno davanti alle case sulla spiaggia (costa): il lungomare di lastre
-    if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
-    if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA) return FAM.piazza;
+    if (z === A.ZN.CITTA && (v === T.COB || v === T.PIAZZA || v === T.FOUNT || v === T.DIRT || v === T.VIA || v === T.WALK)) { const k = (px !== undefined && A.suoloW && A.suoloK(tx, ty) ? A.suoloW(px, pz) : null) || A.suoloK(tx, ty); if (k) return FAM[k] || 0; }   // il punto, col confine organico come sulla tela
+    if (v === T.QUAY) return FAM.banchina; if (v === T.SAND) return FAM.sabbia; if (v === T.PIAZZA || v === T.FOUNT) return FAM.piazza;   // [suolo2] sotto la vasca il lastricato
     if (v === T.DIRT || v === T.GRAVEL) return FAM.terra; if (v === T.VIA || v === T.COB) return FAM.asfalto;
     return 0;
   }
@@ -72927,7 +72943,7 @@ var Render = (function () {
       } else if ((v === T.GRASS || v === T.DIRT) && z === ZN.CITTA && !(RW[ii] > 0)) { suolo35(x, px, py, P, tx, ty, r, v);   // [isola35]
       } else if (v === T.WALK) {
         x.fillStyle = '#54525a'; x.fillRect(px, py, P, P); dots(px, py, 6, ['#48464e', '#62606a'], r);
-      } else if (v === T.PIAZZA) {
+      } else if (v === T.PIAZZA || v === T.FOUNT) {   // [suolo2] sotto la vasca il lastricato della piazza (era la tinta dell'acqua: il quadrato blu attorno alle fontane)
         x.fillStyle = '#7a7064'; x.fillRect(px, py, P, P);   // [isola35] pietra scura, non chiara [inverno17] lastre a correre: righe di 7 px, giunti sfalsati per riga, misure variabili; continuano fra le caselle
         for (let yy = 0; yy < P; yy++) { const gy = ty * P + yy, row = Math.floor(gy / 7); if (gy % 7 === 0) { x.fillStyle = 'rgba(44,38,34,.6)'; x.fillRect(px, py + yy, P, 1); continue; }
           for (let xx = 0; xx < P; xx++) { const gx = tx * P + xx, off = th(row, 0, 51) * 23, cell = Math.floor((gx + off) / (9 + th(row, 1, 52) * 6)); if (Math.floor((gx + 1 + off) / (9 + th(row, 1, 52) * 6)) !== cell) { x.fillStyle = 'rgba(44,38,34,.55)'; x.fillRect(px + xx, py + yy, 1, 1); } else if (th(cell, row, 53) < .3) { x.fillStyle = 'rgba(150,138,122,.1)'; x.fillRect(px + xx, py + yy, 1, 1); } } }
@@ -72970,7 +72986,7 @@ var Render = (function () {
         const dry = z === ZN.MONTE || z === ZN.DESERTO || z === ZN.SPIAGGIA; x.fillStyle = dry ? '#7a7a48' : '#4a7a3a'; x.fillRect(px, py, P, P);
         dots(px, py, 30, dry ? ['#8a8a52', '#6a6a3e', '#9a8e5a'] : ['#4f7c3e', '#5a8a44', '#37602f', '#6a9a4a'], r);
         if (!dry && r() < .4) { x.fillStyle = pick(r, ['#f06a8a', '#f0e060', '#ffffff', '#c080f0']); x.fillRect(px + Math.floor(r() * 14), py + Math.floor(r() * 14), 1, 1); }
-      } else if (v === T.FOUNT || v === T.WATER) {
+      } else if (v === T.WATER) {
         x.fillStyle = '#2a6a8a'; x.fillRect(px, py, P, P);
       } else { x.fillStyle = '#2a2433'; x.fillRect(px, py, P, P); } // sotto gli edifici
     } }
@@ -74758,7 +74774,7 @@ var Render = (function () {
       pos[k * 3] = tx * TS; pos[k * 3 + 1] = h; pos[k * 3 + 2] = ty * TS; uv[k * 2] = i / n; uv[k * 2 + 1] = 1 - j / m;
     }
     for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
-      const v = gT(tx0 + i, ty0 + j); if (v === T.FOUNT || v === T.PIER) continue;   // [costa] il pontile è un modello (tavole e pali), sotto si vede l'acqua
+      const v = gT(tx0 + i, ty0 + j); if (typeof Suolo !== 'undefined' ? Suolo.bucoTerreno(v, T) : v === T.FOUNT || v === T.PIER) continue;   // [costa] il pontile è un modello (tavole e pali), sotto si vede l'acqua   [suolo2] le fontane no: la vasca poggia sul lastricato (il buco quadrato mostrava il mare sotto: il rettangolo d'acqua blu)
       if (RV9 && Riva.inBanda(tx0 + i, ty0 + j)) continue;   // [riva] la casella la ridisegna la riva fine
       if (v === T.WATER && coastIn((tx0 + i + .5) * TS, (ty0 + j + .5) * TS) < -3) continue;   // il fondale vicino alla riva c'è, il mare aperto no
       if (v === T.WATER) { let made = false; for (let b2 = -1; b2 <= 1 && !made; b2++) for (let a2 = -1; a2 <= 1; a2++) { const vv = gT(tx0 + i + a2, ty0 + j + b2); if (vv === T.QUAY || vv === T.PIER) { made = true; break; } } if (made) continue; }   // [costa] accanto a banchine e moli il muro scende dritto: niente scivolo di terreno
@@ -74797,7 +74813,7 @@ var Render = (function () {
   function buildBase() {   // [inverno17]
     const T = G.T, S = 4, nx = Math.ceil(G.GW / S), ny = Math.ceil(G.GH / S);
     const c = mk(G.GW, G.GH), x = c.getContext('2d'), img = x.createImageData(G.GW, G.GH);
-    const COL = { [T.COB]: [104, 98, 92], [T.VIA]: [64, 63, 64], [T.BLD]: [96, 90, 84],   /* [scena1] i colori del terreno vero: viola (44, 41, 52), saturato, faceva le strade lilla finché non arrivava il blocco dipinto */ [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [86, 84, 86], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [42, 106, 138], [T.STAIRS]: [140, 130, 120] };
+    const COL = { [T.COB]: [104, 98, 92], [T.VIA]: [64, 63, 64], [T.BLD]: [96, 90, 84],   /* [scena1] i colori del terreno vero: viola (44, 41, 52), saturato, faceva le strade lilla finché non arrivava il blocco dipinto */ [T.PIAZZA]: [184, 172, 152], [T.QUAY]: [110, 104, 98], [T.PIER]: [106, 74, 50], [T.SAND]: [230, 208, 160], [T.GRASS]: [74, 122, 58], [T.WALK]: [86, 84, 86], [T.ROCK]: [122, 114, 112], [T.TREE]: [44, 62, 36], [T.DIRT]: [138, 106, 74], [T.FIELD]: [150, 130, 70], [T.DESERT]: [220, 180, 122], [T.SALT]: [236, 238, 238], [T.SHRUB]: [86, 104, 58], [T.FOUNT]: [184, 172, 152] /* [suolo2] il lastricato sotto la vasca, non l'acqua */, [T.STAIRS]: [140, 130, 120] };
     const PLb = palco2();   // [spianata2] il palco anche da lontano e prima che arrivi il blocco: terra battuta, non il beige chiaro delle piazze
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) { const v = gT(tx, ty), o = (ty * G.GW + tx) * 4, c0 = PLb && (v === T.PIAZZA || v === T.COB) && PLb.zona(tx * TS + 1, ty * TS + 1) ? [100, 89, 74] : COL[v] || [40, 60, 80], dd = M.world && M.world.districtAt ? M.world.districtAt(tx * TS) : '', urb = v === T.VIA || v === T.COB || v === T.WALK || v === T.PIAZZA || v === T.QUAY, k = !NEVE || v === T.WATER || v === T.BLD || dd === 'prateria' ? 0 : v === T.VIA ? .3 : urb ? .5 : .8, sn = urb ? [160, 164, 170] : [214, 218, 224], cc = (dd === 'prateria' && !urb ? [128, 114, 80] : c0).map((q, i) => q + (sn[i] - q) * k); img.data[o] = cc[0]; img.data[o + 1] = cc[1]; img.data[o + 2] = cc[2]; img.data[o + 3] = 255; }  // [inverno] neve
     x.putImageData(img, 0, 0);
@@ -78396,18 +78412,18 @@ var Render = (function () {
 
   // ---- scivoli dei marciapiedi davanti alle strisce: il marciapiede scende a filo strada ----
   function scivoli1(H, R, NW, NH) {
-    const ramp = new Float32Array(H.length); S1.ramp = ramp;
+    const ramp = new Float32Array(H.length); S1.ramp = ramp; const SU2 = typeof Suolo !== 'undefined', H0 = new Map(); S1.H0 = H0;   // [suolo2] l'altezza di prima dello scivolo: il colore segue quella
     crossings35().forEach(c => { const ux = c.ux, uy = c.uy, rx = -uy, ry = ux, half = c.w / 2, ext = half + 2.6;
       const x0 = c.x - ext - 2, x1 = c.x + ext + 2, z0 = c.y - ext - 2, z1 = c.y + ext + 2;
       for (let j = Math.max(0, Math.floor(z0 / R)); j <= Math.min(NH - 1, Math.ceil(z1 / R)); j++) for (let i = Math.max(0, Math.floor(x0 / R)); i <= Math.min(NW - 1, Math.ceil(x1 / R)); i++) {
-        const k = j * NW + i; if (H[k] < .002) continue; const dx = i * R - c.x, dz = j * R - c.y, al = Math.abs(dx * ux + dz * uy), pe = Math.abs(dx * rx + dz * ry);
-        if (pe < half - .5 || pe > ext) continue;
-        const sstep = (a, b, t) => { t = clamp((t - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-        const low = (1 - sstep(1.2, 1.9, al)) * (1 - sstep(half + 1.1, half + 2.3, pe)); if (low <= ramp[k]) continue;
-        ramp[k] = low; H[k] *= 1 - .82 * low; }
+        const k = j * NW + i; if (H[k] < .002) continue;
+        const low = SU2 ? Suolo.scivolo(c, i * R, j * R) : 0; if (low <= ramp[k]) continue;   // [suolo2] la regola dello scivolo (suolo.js): a filo e raccordato
+        if (!H0.has(k)) H0.set(k, H[k]); ramp[k] = low; H[k] = Suolo.scivoloH(H0.get(k), low); }
     });
   }
-  function scivoloCol1(c, k) { const a = S1.ramp && S1.ramp[k]; if (a > .05) c.lerp(_c35.set('#8c857a'), a * .6); return c; }
+  function scivoloCol1(c, k, n1, n2) { const a = S1.ramp && S1.ramp[k]; if (!(a > .05)) return c;
+    if (typeof Suolo !== 'undefined' && !Suolo.off2) return c;   // [suolo2] il colore dello scivolo è quello del marciapiede senza scivolo (buildSidewalks prende top dall'altezza di prima): le lastre, il cordolo al suo posto, niente fascia chiara né canaletta scura sul pendio
+    c.lerp(_c35.set('#8c857a'), a * .6); return c; }
 
   // ================= OGGETTI =================
   function signTex1(kind, text) {
@@ -79267,7 +79283,7 @@ var Render = (function () {
   let SWF35fine = false;
   function swLibera() { SWF35fine = true; if (SWF35) { SWF35.m = SWF35.Hn = SWF35.S38 = SWF35.D38 = SWF35.C38 = null;
     const H = SWF35.H; if (H instanceof Float32Array) { const q = new Uint8Array(H.length); for (let k = 0; k < H.length; k++) q[k] = Math.max(0, Math.min(255, Math.round(H[k] * 1275))); SWF35.H = q; SWF35.Hk = 1 / 1275; } }   // e l'altezza in un byte (passo di 0,8 mm, fino a 20 cm): 22 → 5,6 MB
-    S1.ramp = null; }
+    S1.ramp = null; S1.H0 = null; }
   // altezza del marciapiede sopra il terreno in (x, z): 0 fuori, 0,15 sopra
   function swH(x, z) {
     const F = SWF35ok ? SWF35 : swField(); if (!F) return 0;
@@ -79377,6 +79393,10 @@ var Render = (function () {
   let CW35 = null;
   function crossings35() {
     if (CW35) return CW35; CW35 = [];
+    // [suolo2] nella città nuova le zebre sono quelle del piano di segnaletica.js, già sulla mezzeria vera, perpendicolari alla via e intere
+    // (quelle che non trovano posto non ci sono): gli scivoli, i cartelli e il verde le leggono da qui, così nessuno scivolo resta senza
+    // zebra o di sbieco rispetto alle strisce
+    try { if (typeof Segnaletica !== 'undefined' && Segnaletica.attivo && !(typeof Suolo !== 'undefined' && Suolo.off2)) { Segnaletica.piano().zebre.forEach(z => { if (z.bande) CW35.push({ x: z.x, y: z.y, ux: z.ux, uy: z.uy, w: z.w, L: Segnaletica.CFG.zebra.L, s: (Math.round(z.x * 7 + z.y * 3) >>> 0) }); }); return CW35; } } catch (e) { CW35 = []; }
     const urb = rd => rd.kind === 'citta' || rd.kind === 'litoranea', R = (M.roads || []).filter(urb);
     const nearRoad = (rd, x, y) => { const P = rd.pts; for (let k = 0; k < P.length - 1; k++) { const ax = P[k][0], ay = P[k][1], dx = P[k + 1][0] - ax, dy = P[k + 1][1] - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); if (Math.hypot(ax + dx * t - x, ay + dy * t - y) < rd.w / 2 + 1.5) return true; } return false; };
     junctions().forEach(([jx, jy, jr]) => {
@@ -79472,12 +79492,6 @@ var Render = (function () {
       }
     });
     }
-    // [pulizia-verde] l'orto murato delle corti (tetti.js) aveva un «limone» a cubi: al suo posto il leccio vero, sulla cella della corte più
-    // vicina al centro, se la chioma ci sta (niente muri a 2,2 m, niente piede di scala, niente altri alberi a 4,5 m); se no la corte resta vuota
-    if (typeof Tetti !== 'undefined' && Tetti.CORTI) Tetti.CORTI.forEach(C => { if (C.k !== 'orto' || !C.celle) return;
-      const LAD = Tetti.LADDERS || [], cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).sort((a, b) => Math.hypot(a[0] - C.x, a[1] - C.y) - Math.hypot(b[0] - C.x, b[1] - C.y));
-      const p = cel.find(([x, z]) => roomy(x, z, 2.2) && !onRoad(x, z) && !LAD.some(L => Math.hypot(L.fx - x, L.fy - z) < 1.8) && !TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5) && libero(x, z));
-      if (p) TREES35.push({ x: p[0], z: p[1], kind: 'cortile', s: .42 + th(Math.round(p[0]), Math.round(p[1]), 356) * .2 }); });
     // un albero nelle piazzette e negli slarghi, uno ogni tanto nei cortili grandi
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.GRASS) continue;
@@ -79711,14 +79725,8 @@ var Render = (function () {
     const rd = vitRoad2(); if (!rd) return 0; const h = rd.w / 2, F = fronti4(), T = G.T, A = (M.world.sets || []).find(q => q.k === 'adunata'); let n = 0;
     const inAdunata = (x, z) => A && x > A.x0 - 1 && x < A.x1 + 1 && z > A.y0 - 1 && z < A.y1 + 1;
     const piena = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === T.BLD;
-    // i cordoli di travertino: pezzi di 1,5 m a filo della carreggiata, alti 18 cm, interrotti agli incroci e dove la via entra nella piazza
-    const cord = sm('#d6ccb4', { roughness: .75 }), cordS = sm('#9a9282', { roughness: .9 });
-    lungoV2(rd, 1.5, .75).forEach(q => [-1, 1].forEach(sd => { const cx = q.x + q.nx * sd * (h + VIT2.cordolo / 2), cz = q.z + q.nz * sd * (h + VIT2.cordolo / 2);
-      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const ex = q.x + q.nx * sd * (h - .5), ez = q.z + q.nz * sd * (h - .5), rot = Math.atan2(q.ux, q.uz);
-      // [strade] il pezzo segue la pendenza: la quota ai suoi due capi, inclinato (non più a gradini), e lungo quanto il passo (niente fessure)
-      const ya = groundH(ex - q.ux * .75, ez - q.uz * .75), yb = groundH(ex + q.ux * .75, ez + q.uz * .75), y = (ya + yb) / 2, tilt = -Math.atan2(yb - ya, 1.5), Lc = Math.hypot(1.5, yb - ya) + .01;
-      const k = box(VIT2.cordolo, .2, Lc, cord); k.position.set(cx, y + .1, cz); k.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(k);
-      const s = box(.04, .17, Lc, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
+    // [suolo2] niente cordoli rigidi di travertino (erano ~300 blocchi di 1,5 m, più alti, più chiari e interrotti): il cordolo è UNO, il
+    // bordo del campo dei marciapiedi (buildSidewalks), alla stessa quota e dello stesso colore su tutte le vie
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
     // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
     if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
@@ -82815,7 +82823,7 @@ var Render = (function () {
   function pot(x, z, r, kind) {
     const g = G0(), terra = PM.terra();
     if (kind === 'lemon') { const pt = oPot(r, 2.1, false); g.add(pt); const tr = oTree(r, 1.25, '#4a6a38'); tr.position.y = .7; g.add(tr); for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), sl('#e8c020')), Math.cos(k * 2.3) * .32, 1.25 + (k % 3) * .16, Math.sin(k * 2.3) * .32); }   // [ordine1] limone vero nel vaso tornito
-    else if (kind === 'palm') { const pt = oPot(r, 1.6, 'cespo'); g.add(pt); }   // [pulizia-verde] non più la cassetta a scatola con le foglie a listelli verdi: il vaso tornito col cespo
+    else if (kind === 'palm') { add(g, box(.7, .6, .7, sm('#f2eee6')), 0, .3, 0); for (let k = 0; k < 7; k++) { const l = box(.14, .05, 1, sl(pick(r, ['#3f8a3a', '#4f9a44']))); l.position.set(Math.cos(k) * .3, 1.1, Math.sin(k) * .3); l.rotation.set(-.6, k * .9, 0); g.add(l); } add(g, cyl(.06, .08, .7, 5, sm('#7a5a3a')), 0, .8, 0); }
     else if (kind === 'planter') {   // [ordine1] fioriera di cemento col bordo, terra, cespi e gerani (non icosaedri e cubetti)
       fAt(g, fB(1.6, .46, .52, '#8a8680', 'concrete', .03), 0, .23, 0); fAt(g, fB(1.68, .06, .6, '#9a968e', 'concrete', .02), 0, .47, 0); fAt(g, fB(1.48, .04, .4, '#3a2e24', 'solid', 0), 0, .49, 0);
       const fc = pick(r, ['#c03a3a', '#d04a6a', '#e0603a', '#e8e0d0']); for (let k = 0; k < 4; k++) { const sh = oShrub(r, .9 + r() * .3); sh.position.set(-.55 + k * .37, .48, (r() - .5) * .1); g.add(sh); for (let q = 0; q < 3; q++) { const fl = fB(.06, .06, .06, fc, 'solid', 0); fl.position.set(-.55 + k * .37 + (r() - .5) * .3, .72 + r() * .1, (r() - .5) * .3); g.add(fl); } } }
@@ -85705,8 +85713,8 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       // rumore continuo (non a blocchi): niente losanghe e pieghe a spigolo sul marciapiede
       const vn = (px, pz, cell, seed) => { const fx = px / cell, fz = pz / cell, i = Math.floor(fx), j = Math.floor(fz); let u = fx - i, w = fz - j; u = u * u * (3 - 2 * u); w = w * w * (3 - 2 * w);
         const a = vegHash(i, j, seed), b = vegHash(i + 1, j, seed), d = vegHash(i, j + 1, seed), e = vegHash(i + 1, j + 1, seed); return a + (b - a) * u + (d - a) * w + (a - b - d + e) * u * w; };
-      const top = sstep(.05, .14, h), n1 = vn(x, z, 4, 8) - .5, n2 = vn(x, z, 1.3, 9) - .5, snow = sstep(.45, .85, vn(x, z, 6, 10));
-      colMarc35(c, top, n1, n2); scivoloCol1(c, k);   // [isola35] lastre, cordolo chiaro, canaletta scura [strade1] scivoli
+      const h0c = S1.H0 && !(typeof Suolo !== 'undefined' && Suolo.off2) && S1.H0.has(k) ? S1.H0.get(k) : h, top = sstep(.05, .14, h0c), n1 = vn(x, z, 4, 8) - .5, n2 = vn(x, z, 1.3, 9) - .5, snow = sstep(.45, .85, vn(x, z, 6, 10));
+      colMarc35(c, top, n1, n2); scivoloCol1(c, k, n1, n2);   // [isola35] lastre, cordolo chiaro, canaletta scura [strade1] scivoli
       pos.push(x, y, z); col.push(c.r, c.g, c.b); uv35.push(x / 2, z / 2); return (idx[k] = pos.length / 3 - 1); };
     for (let j = 0; j < NH - 1; j++) for (let i = 0; i < NW - 1; i++) {
       const k = j * NW + i; if (H[k] < .004 && H[k + 1] < .004 && H[k + NW] < .004 && H[k + NW + 1] < .004) continue;
@@ -90731,7 +90739,7 @@ var Segnaletica = (function () {
     cartello: 2.2,                           // il bordo basso del cartello sul marciapiede
     bandiera: { y0: 2.8, h: .66, da: .26, a: 1.05, stretta: .72 },   // l'insegna a bandiera: dal muro, sopra le tende (2,68) e sotto i balconi (3,54)
     liberoPorta: 1.0,                        // m liberi attorno a porte, vetrine, scale
-    mezzeria: { on: 3, off: 3, w: .2 }, margine: .18, zebra: { b: .5, L: 2.6 },   // le linee un po' più larghe del vero (12 cm): dall'alto devono leggersi
+    mezzeria: { on: 3, off: 3, w: .2 }, margine: .18, zebra: { b: .5, L: 2.6, cordolo: .2 },   // le linee un po' più larghe del vero (12 cm): dall'alto devono leggersi
   };
 
   // ================= LA GRIGLIA E LE STRADE =================
@@ -90845,11 +90853,14 @@ var Segnaletica = (function () {
     for (const o of W.pedonali || []) if (o.r !== undefined ? hyp(x - o.x, y - o.y) < o.r : dentroPoly(o.poly, x, y)) return true;
     const rd = suCarreggiata(x, y, 0); return !!(rd && rd.pedonale && !ROADS().some(q => q !== rd && !q.pedonale && q.kind !== 'vicolo' && q.kind !== 'sterrato' && lNear(lin(q), x, y).d < q.w / 2));
   }
-  function striscia(k, x, y, ang, L, w, a, o) { const s = Object.assign({ k, x, y, ang, L, w, a: a === undefined ? .8 : a }, o || {}); if (pedonaleQui(x, y)) return s; STR.push(s); return s; }
+  function striscia(k, x, y, ang, L, w, a, o) { const s = Object.assign({ k, x, y, ang, L, w, a: a === undefined ? .8 : a }, o || {}); if (pedonaleQui(x, y) || !dentroVia(s)) return s; STR.push(s); return s; }   // [suolo2] e mai sul marciapiede
+  // [suolo2] la striscia sta tutta sulla via (carreggiata o vicolo dei mezzi minori)? I suoi quattro angoli entro 5 cm dal ciglio
+  function dentroVia(s) { const c = Math.cos(s.ang), n = Math.sin(s.ang); return [[1, 1], [1, -1], [-1, 1], [-1, -1]].every(([a, b]) => { const x = s.x + c * a * s.L / 2 - n * b * s.w / 2, y = s.y + n * a * s.L / 2 + c * b * s.w / 2;
+    for (const rd of ROADS()) { if (rd.kind === 'sterrato') continue; const P = rd.pts; let near = false; for (let k = 0; k < P.length; k += 4) if (Math.abs(P[k][0] - x) < 60 && Math.abs(P[k][1] - y) < 60) { near = true; break; } if (near && lNear(lin(rd), x, y).d < rd.w / 2 + .05) return true; } return false; }); }
   // una linea lungo una polilinea (spostata di off a sinistra), a tratti: pezzi di al più 2 m
-  function rigaLungo(rd, s0, s1, off, w, fn, tess, passo) {   // [strade] passo: la mezzeria a tratti di 3 m esatti (prima pezzi di 2 m: tratti di 4 e buchi di 2, a caso)
+  function rigaLungo(rd, s0, s1, off, w, fn, tess, passo, o) {   // [strade] passo: la mezzeria a tratti di 3 m esatti (prima pezzi di 2 m: tratti di 4 e buchi di 2, a caso)
     const Ln = lin(rd); for (let s = s0; s < s1 - .05;) { const e = Math.min(s1, s + (passo || 2)), a = lAt(Ln, s), b = lAt(Ln, e), ang = Math.atan2(b.y - a.y, b.x - a.x), nx = -Math.sin(ang), ny = Math.cos(ang), mx = (a.x + b.x) / 2 + nx * off, my = (a.y + b.y) / 2 + ny * off;
-      if (fn(mx, my, s, e)) striscia(tess || 'riga', mx, my, ang, hyp(b.x - a.x, b.y - a.y), w, .78 + hash(mx, my, 3) * .06); s = e; }   // [strade] la stessa vernice su tutta la linea
+      if (fn(mx, my, s, e)) striscia(tess || 'riga', mx, my, ang, hyp(b.x - a.x, b.y - a.y), w, .78 + hash(mx, my, 3) * .06, o); s = e; }   // [strade] la stessa vernice su tutta la linea
   }
   // il riquadro giallo BUS alle fermate della linea 1: sulla carreggiata, lungo il cordolo, 12 m, letto da chi guida (a destra il cordolo)
   function busBox(VVm, Z) {
@@ -90859,11 +90870,43 @@ var Segnaletica = (function () {
         const x = c.x + nx * o, y = c.y + ny * o; if ([-6, 0, 6].some(e => nearJ(x + ux * e, y + uy * e, .5) < 0) || Z.some(z => hyp(z.x - x, z.y - y) < 8.5) || PIANO.bus.some(b => hyp(b.x - x, b.y - y) < 14)) continue;
         striscia('bus', x, y, c.ang + (sd > 0 ? 0 : PI), 12, 2.5, .78, { giallo: true }); PIANO.bus.push({ x, y, f: f.id }); return; } });
   }
+  // [suolo2] GLI INCROCI DEI VEICOLI: i punti di junctions() dove si toccano almeno due vie dei veicoli (non i vicoli, le vie pedonali, gli
+  // sterrati: la bocca di un vicolo non ferma la mezzeria né i margini); il raggio è quello delle vie dei veicoli che ci passano
+  const veicoli = rd => rd && rd.kind !== 'vicolo' && rd.kind !== 'sterrato' && !rd.pedonale;
+  let JV = null, JVH = null;
+  function junctionsV() {
+    if (JV) return JV; JV = [];
+    junctions().forEach(([x, y]) => { const V = ROADS().filter(rd => veicoli(rd) && lNear(lin(rd), x, y).d < rd.w / 2 + 2); if (V.length >= 2) JV.push([x, y, Math.max(...V.map(rd => rd.w)) / 2 + 2]); });
+    return JV;
+  }
+  function nearJV(x, y, extra) { if (!JVH) { JVH = new Map(); junctionsV().forEach(j => { const k = Math.floor(j[0] / 24) * 4096 + Math.floor(j[1] / 24); (JVH.get(k) || JVH.set(k, []).get(k)).push(j); }); }
+    const i0 = Math.floor(x / 24), j0 = Math.floor(y / 24); let best = 1e9; for (let i = i0 - 1; i <= i0 + 1; i++) for (let j = j0 - 1; j <= j0 + 1; j++) for (const q of JVH.get(i * 4096 + j) || []) best = Math.min(best, hyp(q[0] - x, q[1] - y) - q[2] - (extra || 0)); return best; }
+  function suCarreggiataV(x, y, pad, salta) { for (const rd of ROADS()) { if (rd === salta || !veicoli(rd)) continue; const P = rd.pts; let near = false; for (let k = 0; k < P.length; k += 6) if (Math.abs(P[k][0] - x) < 80 && Math.abs(P[k][1] - y) < 80) { near = true; break; } if (!near) continue; if (lNear(lin(rd), x, y).d < rd.w / 2 + (pad || 0)) return rd; } return null; }
+  // il punto sta sulle strisce di una zebra (il rettangolo delle bande, allungato di pad lungo la via)?
+  const suZebra = (x, y, pad) => (PIANO.zebre || []).some(z => { const dx = x - z.x, dy = y - z.y; return Math.abs(dx * z.ux + dy * z.uy) < CFG.zebra.L / 2 + (pad || 0) && Math.abs(-dx * z.uy + dy * z.ux) < z.w / 2 + .3; });
+  // la zebra sulla mezzeria vera della sua via, con la tangente media dei 4 m attorno (non la corda del braccio dell'incrocio)
+  function allinea(c) { if (!c.rd) return; const Ln = lin(c.rd), q = lNear(Ln, c.x, c.y), a = lAt(Ln, q.s - 2), b = lAt(Ln, q.s + 2), p = lAt(Ln, q.s), L = hyp(b.x - a.x, b.y - a.y) || 1;
+    let ux = (b.x - a.x) / L, uy = (b.y - a.y) / L; if (ux * c.ux + uy * c.uy < 0) { ux = -ux; uy = -uy; } c.x = p.x; c.y = p.y; c.ux = ux; c.uy = uy; c.w = c.rd.w; }
+  // una linea lungo la via, spostata di off a sinistra: si ferma dove ferma(x, y, s) e riprende dopo; nei tratti liberi tratteggiata a passo
+  // fisso dall'inizio del tratto (periodo, acceso: numeri o funzioni del punto), continua dove pieno(x, y, s); i pezzi di 3 m al più
+  // seguono la curva, i mozziconi sotto i 75 cm non si dipingono
+  function lineaLungo(rd, off, ferma, pieno, periodo, acceso, a0, o) {
+    const Ln = lin(rd), st = .25, n = Math.floor(Ln.L / st), at = s => { const p = lAt(Ln, s), nx = -Math.sin(p.ang), ny = Math.cos(p.ang); return [p.x + nx * off, p.y + ny * off]; };
+    const liberi = []; let a = null;
+    for (let i = 0; i <= n; i++) { const s = i * st, [x, y] = at(s), f = ferma(x, y, s); if (!f && a === null) a = s; else if (f && a !== null) { liberi.push([a, s - st]); a = null; } }
+    if (a !== null) liberi.push([a, n * st]);
+    liberi.forEach(([a, b]) => { let r0 = null; const runs = [];
+      for (let s = a; s <= b + 1e-6; s += st) { const [x, y] = at(s), per = typeof periodo === 'function' ? periodo(x, y) : periodo, on = typeof acceso === 'function' ? acceso(x, y) : acceso, su = pieno(x, y, s) || ((s - a) % per) < on - 1e-6;
+        if (su && r0 === null) r0 = s; else if (!su && r0 !== null) { runs.push([r0, s]); r0 = null; } }
+      if (r0 !== null) runs.push([r0, b]);
+      runs.forEach(([u, v]) => { if (v - u < .75) return; const k = Math.ceil((v - u) / 3 - 1e-6), d = (v - u) / k;
+        for (let i = 0; i < k; i++) { const [x0, y0] = at(u + i * d), [x1, y1] = at(u + (i + 1) * d), mx = (x0 + x1) / 2, my = (y0 + y1) / 2; striscia('riga', mx, my, Math.atan2(y1 - y0, x1 - x0), hyp(x1 - x0, y1 - y0), CFG.mezzeria.w, a0 + hash(mx, my, 3) * .06, o); } }); });
+  }
   const vicinoZebra = (x, y, pad) => STR.some(s => s.k === 'zebra' && hyp(s.x - x, s.y - y) < 2.2 + (pad || 0));
   function strisce() {
     const VVm = VV();
     // le zebre: quelle di render.js (stessi punti), poi quelle chieste dai posti (la scuola, le piazze, le fermate)
-    const Z = crossings35().slice();
+    const Z = crossings35().map(c => Object.assign({}, c));   // [suolo2] copie: allinea le sposta sulla mezzeria, la lista di render.js resta com'è
     const ancora = (x, y, motivo) => { let best = null, bd = 30; ROADS().forEach(rd => { if (!(rd.kind === 'citta') || !zonaC(x, y)) return; const q = lNear(lin(rd), x, y); if (q.d < bd) { bd = q.d; best = { rd, s: q.s }; } }); if (!best) return;
       const Ln = lin(best.rd); for (const dS of [0, 3, -3, 6, -6, 9, -9, 12, -12]) { const p = lAt(Ln, best.s + dS); if (p.x < 0 || nearJ(p.x, p.y, 2) < 0 || Z.some(c => hyp(c.x - p.x, c.y - p.y) < 14) || (PIANO.bus || []).some(q => hyp(q.x - p.x, q.y - p.y) < 8.5)) continue;
         const ux = Math.cos(p.ang), uy = Math.sin(p.ang); Z.push({ x: p.x, y: p.y, ux, uy, w: best.rd.w, rd: best.rd, motivo }); return; } };
@@ -90871,23 +90914,35 @@ var Segnaletica = (function () {
     const scuola = G.BUILDINGS.find(b => b.use === 'scuola' && b.door); if (scuola) ancora((scuola.door[0] + .5) * TS, (scuola.door[1] + .5) * TS, 'scuola');
     (W.sets || []).filter(q => /^(mercato|stazione|adunata|marina)$/.test(q.k)).forEach(q => ancora(q.x !== undefined ? q.x : (q.x0 + q.x1) / 2, q.y !== undefined ? q.y : (q.y0 + q.y1) / 2, 'piazza'));
     if (VVm) VVm.fermate().forEach(f => ancora(f.x, f.y, 'fermata'));
-    Z.forEach((c, ci) => { const ang = Math.atan2(c.uy, c.ux), nb = Math.max(2, Math.floor((c.w - .8) / 1)), o0 = -(nb - 1) / 2;
-      for (let b = 0; b < nb; b++) { const o = o0 + b; striscia('zebra', c.x - c.uy * o, c.y + c.ux * o, ang, CFG.zebra.L, CFG.zebra.b, .8 + hash(c.x, c.y, b) * .06, { zebra: ci, motivo: c.motivo });   /* [strade] le bande tutte uguali */ }
+    Z.forEach(allinea);   // [suolo2] sulla mezzeria vera, perpendicolari alla via
+    Z.forEach((c, ci) => { const ang = Math.atan2(c.uy, c.ux), Bz = CFG.zebra.b, cop = c.w - 2 * CFG.zebra.cordolo - Bz, nb = Math.max(2, Math.floor(cop / 1) + 1), pz = cop / (nb - 1), o0 = -cop / 2;   // [suolo2] a filo dei marciapiedi: le bande esterne a 20 cm dal cordolo, il passo di un metro circa
+      // [suolo2] la zebra intera o niente: se una banda cadrebbe sul lastricato pedonale o fuori dalla via, la zebra scivola lungo la via (fino a 4 m)
+      // (e su un tratto dritto) e, se non trova posto, non c'è (e con lei lo scivolo)
+      const bande = d => { const Ln = lin(c.rd), q = lNear(Ln, c.x, c.y), p = lAt(Ln, q.s + d), cx = p.x, cy = p.y, out = [], a1 = lAt(Ln, q.s + d - 1.6).ang, a2 = lAt(Ln, q.s + d + 1.6).ang;
+        if (Math.abs(Math.sin(a2 - a1)) > Math.sin(3 * PI / 180)) return null;   // su un tratto dritto: le bande perpendicolari alla via da un capo all'altro
+        for (let b = 0; b < nb; b++) { const o = o0 + b * pz, B = { k: 'zebra', x: cx - c.uy * o, y: cy + c.ux * o, ang, L: CFG.zebra.L, w: CFG.zebra.b }; if (pedonaleQui(B.x, B.y) || !dentroVia(B)) return null; out.push(B); } return { cx, cy, out }; };
+      let q = null; for (const d of [0, .5, -.5, 1, -1, 1.5, -1.5, 2, -2, 3, -3, 4, -4]) if ((q = bande(d))) break;
+      c.bande = 0; if (!q) { c.i = ci; return; } c.x = q.cx; c.y = q.cy; allinea(c); const angZ = Math.atan2(c.uy, c.ux);
+      for (let b = 0; b < nb; b++) { const o = o0 + b * pz; striscia('zebra', c.x - c.uy * o, c.y + c.ux * o, angZ, CFG.zebra.L, CFG.zebra.b, .8 + hash(c.x, c.y, b) * .06, { zebra: ci, motivo: c.motivo }); c.bande++;   /* [strade] le bande tutte uguali */ }
       c.i = ci; });   // [suolo] la linea d'arresto della zebra non c'è più da sola: è quella dello STOP o del semaforo, prima delle strisce (sotto)
     PIANO.zebre = Z;
     // mezzeria e margini sulle vie a due corsie (vievive: la mezzeria al centro della carreggiata, spostata dalla sosta)
     ROADS().forEach(rd => { if (rd.kind !== 'citta' || !rd.pts.some(p => inC(p[0], p[1]))) return; const S = VVm ? VVm.segnaletica(rd) : { mezzeria: rd.w >= 5.5, asse: 0, sosta: [] }, P = VVm ? VVm.profilo(rd) : { rango: 'via' };
-      const Ln = lin(rd), fuori = (x, y) => !zonaC(x, y) || nearJ(x, y, 1) < 0 || vicinoZebra(x, y, .6) || suCarreggiata(x, y, -.6, rd);
-      if (S.mezzeria) rigaLungo(rd, 0, Ln.L, S.asse || 0, CFG.mezzeria.w, (x, y, s) => { if (fuori(x, y)) return false; const dj = nearJ(x, y, 0); return dj < 15 || (s % 6) < 3; }, null, 3);   // continua nei 15 m prima dell'incrocio
+      const Ln = lin(rd), fuori = (x, y) => !zonaC(x, y) || nearJV(x, y, 1) < 0 || vicinoZebra(x, y, .6) || suCarreggiataV(x, y, -.6, rd);
+      // [suolo2] la mezzeria: si ferma solo agli incroci fra vie dei veicoli, alle strisce, sul lastricato pedonale; tratteggiata regolare
+      // (3 m su 6, dall'inizio di ogni tratto), continua nei 15 m prima dell'incrocio
+      if (S.mezzeria) lineaLungo(rd, S.asse || 0, (x, y) => !zonaC(x, y) || nearJV(x, y, 0) < 0 || suZebra(x, y, .5) || suCarreggiataV(x, y, -.6, rd), (x, y) => nearJV(x, y, 0) < 15, 6, 3, .76, { mezz: rd.id });
       const mar = P.rango === 'asse' ? [-1, 1] : [-1, 1].filter(sd => !(S.sosta || []).includes(sd));
-      mar.forEach(sd => rigaLungo(rd, 0, Ln.L, sd * (rd.w / 2 - .3), CFG.margine, (x, y) => !fuori(x, y) && nearJ(x, y, 3) >= 0));
+      mar.forEach(sd => rigaLungo(rd, 0, Ln.L, sd * (rd.w / 2 - .3), CFG.margine, (x, y) => !fuori(x, y) && nearJV(x, y, 3) >= 0));
     });
     // le costiere dove arrivano in città: la stessa regola della tela (render.js marks1: tratti 4,5 su 9, continua in curva e prima degli incroci)
+    // [suolo2] la mezzeria delle costiere come quella delle vie: tratteggiata regolare a passo fisso (prima un pezzo per segmento del tracciato,
+    // acceso se il suo inizio cadeva nel tratto: tratti lunghi e corti a caso), ferma solo agli incroci e alle strisce
+    ROADS().forEach(rd => { if (rd.kind !== 'litoranea' || !rd.pts.some(p => inC(p[0], p[1], 140))) return; const g = geo1(rd), cvAt = s => { let k = 0; while (k < g.n - 2 && g.s[k + 1] < s) k++; return Math.abs(g.cv[k]); };
+      lineaLungo(rd, 0, (x, y) => !inC(x, y, 140) || nearJV(x, y, 0) < .5 || suZebra(x, y, .5) || suCarreggiataV(x, y, -.3, rd), (x, y, s) => { const city = zonaC(x, y); return cvAt(s) > (city ? 9 : .42) || (!city && nearJV(x, y, 0) < 18); }, (x, y) => zonaC(x, y) ? 6 : 9, (x, y) => zonaC(x, y) ? 3 : 4.5, .74, { mezz: rd.id }); });
     ROADS().forEach(rd => { if (rd.kind !== 'litoranea') return; const g = geo1(rd), P = rd.pts;
       for (let k = 0; k < g.n - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], mx = (ax + bx) / 2, my = (ay + by) / 2; if (!inC(mx, my, 140)) continue;
-        const dj = nearJ(mx, my, 0); if (dj < .5 || suCarreggiata(mx, my, -.3, rd)) continue; const city = zonaC(mx, my), L = hyp(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax), nx = -g.uy[k], ny = g.ux[k];
-        const cont = Math.abs(g.cv[k]) > (city ? 9 : .42) || (!city && dj < 18), period = city ? 6 : 9, on = city ? 3 : 4.5;
-        if (cont || (g.s[k] % period) < on) striscia('riga', mx, my, ang, L, CFG.mezzeria.w, .74 + hash(mx, my, 5) * .06);
+        const dj = nearJV(mx, my, 0); if (dj < .5 || suCarreggiataV(mx, my, -.3, rd)) continue; const city = zonaC(mx, my), L = hyp(bx - ax, by - ay), ang = Math.atan2(by - ay, bx - ax), nx = -g.uy[k], ny = g.ux[k];
         if (!city && dj > 3) [-1, 1].forEach(sd => { const o = sd * (rd.w / 2 - .35); if (suCarreggiata(mx + nx * (o + sd * .6), my + ny * (o + sd * .6), 0, rd)) return; striscia('riga', mx + nx * o, my + ny * o, ang, L, CFG.margine, .62 + hash(mx, my, 7 + sd) * .06, { asse: [mx, my] }); }); } });   // asse: il punto della mezzeria (la tela decide lì)
     // gli incroci: STOP e linea d'arresto, o i triangoli, sulle strade che danno la precedenza (gli stessi punti della tela); frecce ai semafori
     PIANO.precedenze = [];

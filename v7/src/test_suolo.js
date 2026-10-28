@@ -76,5 +76,49 @@ const VIA = STR.filter(s => (s.arresto || s.k === 'stop' || s.k === 'freccia_dri
 const storti = VIA.filter(s => { const ux = s.ux, uy = s.uy, d = (s.x - s.jx) * ux + (s.y - s.jy) * uy, cx = s.jx + ux * d, cy = s.jy + uy * d; return (s.x - cx) * uy + (s.y - cy) * -ux < .1; });
 const senza = STR.filter(s => (s.arresto || s.k === 'stop') && s.jx === undefined);
 ok(VIA.length > 0 && storti.length === 0 && senza.length === 0, `arresto_verso: linee d'arresto, STOP, frecce e triangoli degli incroci sulla corsia di chi arriva (${VIA.length - storti.length} su ${VIA.length}; senza incrocio ${senza.length})${storti.length ? ' — ' + storti.slice(0, 4).map(s => s.k + ' ' + s.x.toFixed(0) + ',' + s.y.toFixed(0)).join('; ') : ''}`);
+// ---------------- 3. [suolo2] IL BORDO DELLA VIA: SCIVOLI E FONTANE (le regole di suolo.js, come le usa render.js) ----------------
+// Il marciapiede come lo costruisce render.js (swField, buildSidewalks): in città la fascia di 2,1 m dal ciglio delle vie di città, alta
+// 15 cm (H = 0,15 · clamp(S/0,2 + 0,5), S = min(e − 0,02, 2,1 − e), e la distanza dal ciglio con l'unione morbida delle due vie più vicine),
+// a vertici di mezzo metro; il colore segue l'altezza (colMarc35: top = smoothstep(0,05, 0,14, H); la fascia chiara del cordolo dove top
+// è vicino a 0,7, la canaletta scura dove top < 0,5). Lo scivolo (Suolo.scivolo, Suolo.scivoloH) lo abbassa davanti alle zebre (render.js
+// crossings35). Si contano, su tutta la mappa:
+//   scivoli_orfani    uno scivolo senza una zebra dipinta a meno di 1 m (le bande intere), o con l'asse a più di 3° dalla via;
+//   chiari            i vertici del marciapiede vero (oltre 15 cm dal ciglio) che lo scivolo dipinge col chiaro del cordolo (il colore
+//                     che seguiva l'altezza abbassata passava per quella del cordolo): i
+//                     «rettangoli chiari» lungo la carreggiata;
+//   scuri             i vertici del marciapiede vero che lo scivolo dipinge con la canaletta scura: la «chiazza tonda» accanto alle strisce
+//                     (chiari e scuri: solo dove senza lo scivolo il marciapiede non lo sarebbe);
+//   non_a_filo        i vertici in fondo allo scivolo (abbassati del tutto) che restano più di 1 cm sopra la strada;
+//   fontane_bucate    le caselle di fontana dove il terreno si buca (sotto si vede il mare: il quadrato d'acqua blu attorno alla vasca).
+// --prima2: le regole di prima (Suolo.vecchio2), per il confronto.
+const PRIMA2 = process.argv.includes('--prima2'); if (PRIMA2) Suolo.vecchio2(true);
+{ const CW = PRIMA2 ? SG.crossings35().map(c => Object.assign({}, c)) : P.zebre.filter(z => z.bande).map(z => ({ x: z.x, y: z.y, ux: z.ux, uy: z.uy, w: z.w, L: SG.CFG.zebra.L }));
+  const ZB = P.strisce.filter(s => s.k === 'zebra'), D2 = { scivoli_orfani: 0, chiari: 0, scuri: 0, non_a_filo: 0, fontane_bucate: 0 }, es = [];
+  CW.forEach(c => { const zb = ZB.filter(s => hyp(s.x - c.x, s.y - c.y) < c.w / 2 + 1), rd = VIE.find(r => (r.kind === 'citta' || r.kind === 'litoranea') && SG.lNear(SG.lin(r), c.x, c.y).d < r.w / 2);
+    let storto = false; if (rd) { const Ln = SG.lin(rd), q = SG.lNear(Ln, c.x, c.y), a = SG.lAt(Ln, q.s - 1.5), b = SG.lAt(Ln, q.s + 1.5), t = Math.atan2(b.y - a.y, b.x - a.x); storto = Math.abs(Math.sin(t - Math.atan2(c.uy, c.ux))) > Math.sin(3 * Math.PI / 180); }
+    if (zb.length < 2 || storto || !zb.some(s => hyp(s.x - c.x, s.y - c.y) < 1)) { D2.scivoli_orfani++; if (es.length < 4) es.push('scivolo ' + (storto ? 'storto' : 'senza zebra') + ' ' + c.x.toFixed(0) + ',' + c.y.toFixed(0)); } });
+  // il campo del marciapiede attorno agli scivoli
+  const RR = .5, urb = VIE.map((rd, i) => i).filter(i => (VIE[i].kind === 'citta' || VIE[i].kind === 'litoranea') && !VIE[i].rect), sst = (a, b, t) => { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+  const eDi = (x, z) => { let e1 = 1e9, e2 = 1e9, r1 = -1; for (const ri of urb) { const rd = VIE[ri]; if (!rd.pts.some(p => Math.abs(p[0] - x) < 40 && Math.abs(p[1] - z) < 40)) continue; const P0 = rd.pts; let s0 = 0;
+      for (let k = 0; k < P0.length - 1; k++) { const [ax, az] = P0[k], [bx, bz] = P0[k + 1], L = Math.hypot(bx - ax, bz - az) || 1e-6, t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / (L * L))), sk = s0; s0 += L;
+        if (S.tagliata(rd, sk + t * L)) continue; const d = Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t), e = d - rd.w / 2; if (d > rd.w / 2 + 3.4) continue;
+        if (r1 === ri) { if (e < e1) e1 = e; } else if (e < e1) { e2 = e1; e1 = e; r1 = ri; } else if (e < e2) e2 = e; } }
+    if (e1 > 1e8) return 9; if (e2 > 1e8) return e1; const hk = Math.max(3.8 - Math.abs(e1 - e2), 0) / 3.8; return Math.min(e1, e2) - hk * hk * 3.8 / 4; };
+  const visti = new Set();
+  CW.forEach(c => { const ext = c.w / 2 + 3; for (let j = Math.floor((c.y - ext) / RR); j <= Math.ceil((c.y + ext) / RR); j++) for (let i = Math.floor((c.x - ext) / RR); i <= Math.ceil((c.x + ext) / RR); i++) {
+    const kk = j * 100000 + i; if (visti.has(kk)) continue; visti.add(kk); const x = i * RR, z = j * RR; if (zona(x, z) !== W.Z.CITTA) continue;
+    const e0 = eDi(x, z); let S38 = Math.min(e0 - .02, 2.1 - e0); if (!S.marciapiede(x, z)) S38 = -.05; const h0 = .15 * Math.max(0, Math.min(1, S38 / .2 + .5)); if (h0 < .002) continue;
+    let low = 0; CW.forEach(q => { low = Math.max(low, Suolo.scivolo(q, x, z)); }); if (low <= 0) continue;
+    const h = Suolo.scivoloH(h0, low), top = sst(.05, .14, Suolo.off2 ? h : h0), curb = Math.max(0, 1 - Math.abs(top - .7) / .32) * 1.1, scuro = top < .5 ? (1 - top * 2) * .95 : 0;   // render.js buildSidewalks: il colore dall'altezza di prima dello scivolo
+    const lastra = Suolo.off2 ? 0 : 0;   // (prima: scivoloCol1 tirava appena verso il grigio, non toglieva né il chiaro né lo scuro)
+    const t0 = sst(.05, .14, h0), curb0 = Math.max(0, 1 - Math.abs(t0 - .7) / .32) * 1.1, scuro0 = t0 < .5 ? (1 - t0 * 2) * .95 : 0;   // il colore che il marciapiede avrebbe lì senza scivolo
+    if (e0 > .15 && curb * (1 - lastra) > .5 && curb0 <= .5) { D2.chiari++; if (es.length < 8) es.push('chiaro ' + x + ',' + z); }
+    if (e0 > .15 && scuro * (1 - lastra) > .5 && scuro0 <= .5) { D2.scuri++; if (es.length < 8) es.push('scuro ' + x + ',' + z); }
+    if (low > .98 && e0 > 0 && h > .01) D2.non_a_filo++; } });
+  for (let i = 0; i < GW * GH; i++) if (W.grid[i] === T.FOUNT && Suolo.bucoTerreno(W.grid[i], T)) D2.fontane_bucate++;
+  const tot = Object.values(D2).reduce((a, b) => a + b, 0);
+  console.log(`${PRIMA2 ? 'PRIMA (regole del bordo di prima)' : 'DOPO'}: il bordo della via, ${CW.length} scivoli: ${JSON.stringify(D2)} = ${tot}${es.length ? '\n   ' + es.join('; ') : ''}`);
+  ok(PRIMA2 || tot === 0, `[suolo2] niente rettangoli spuntati: ogni scivolo davanti a una zebra, a filo e raccordato, col colore delle lastre (niente chiaro del cordolo né chiazza scura); nessuna fontana col terreno bucato (${tot})`); }
+
 console.log(fail ? `\n${fail} prove fallite` : '\ntutte le prove passate');
 process.exitCode = fail ? 1 : 0;
