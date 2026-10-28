@@ -17513,8 +17513,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
       // [blindato] la scocca poggia su quello che ha sotto: con muso e coda più bassi del centro (un mezzo fermo su un rilevato, su un
-      // gradino: il blindato della Rocca) la media sprofondava la pancia nel terreno (0,5 m). La quota è la più alta fra la media e il centro
-      const yB = Math.max((hF + hR) / 2, groundH(v.x, v.y));
+      // gradino: il blindato della Rocca) la media sprofondava la pancia nel terreno (0,5 m). Se il centro sta più in alto della media, il
+      // mezzo poggia sul centro e sul capo più alto (l'altro sporge nel vuoto): la quota è quella del centro, la pendenza quella verso quel capo
+      const hC = groundH(v.x, v.y), cresta = hC > (hF + hR) / 2 + .02, yB = cresta ? hC : (hF + hR) / 2;
+      const pendB = cresta ? (hF >= hR ? (hF - hC) / hl : (hC - hR) / hl) : (hF - hR) / (hl * 2);
       // sospensioni: una molla smorzata porta la scocca verso il carico (curva → rollio, gas e freno → beccheggio)
       const sd = Math.min(dt, 1 / 20), latA = v.latA || 0, longA = v.longA || 0;
       const rollT = u.two ? (v.rider ? clamp(latA * .045, -.5, .5) : 0) : clamp(-latA * .011, -.1, .1), pitchT = u.two ? 0 : clamp(-longA * .0055, -.06, .07);
@@ -17524,7 +17526,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       u.hv += (-u.hop * 120 - u.hv * 10) * sd; u.hop += u.hv * sd;
       // [salto] la BMX sale col giocatore e in aria impenna (su) e poi abbassa il muso; all'atterraggio le gomme si schiacciano
       const air = v.jz > 0 ? clamp((v.jvz || 0) * .05, -.18, .3) : 0; if (u.wasAir && !(v.jz > 0)) u.hv -= 6 + Math.min(10, (st.player.landV || 0) * 1.5); u.wasAir = v.jz > 0;
-      g.position.set(v.x, yB + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch - air;
+      g.position.set(v.x, yB + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan(pendB) + u.pitch - air;
       { const T = bmxTilt(v); if (T.a) { g.rotation.x -= T.a; g.position.x += Math.cos(v.ang) * T.dzB; g.position.y += T.dyB; g.position.z += Math.sin(v.ang) * T.dzB; } }   // [bmx] impennata sulla ruota dietro
       g.rotation.z = u.roll;
       v.lastAng = v.ang;
