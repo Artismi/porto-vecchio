@@ -68,7 +68,7 @@ const srv = http.createServer((req, res) => {
       T3.Frustum.prototype.intersectsObject = function () { D.prove++; if (rec) PRV[inSh ? 'ombra' : 'main']++; return io.apply(this, arguments); };
       T3.Frustum.prototype.intersectsSprite = function () { D.prove++; return isp.apply(this, arguments); };
       // il tempo di scene.updateMatrixWorld (quello che three chiama in render) e di tutto render() (culling compreso, disegni a vuoto)
-      const umw0 = S.updateMatrixWorld; let tU = 0; S.updateMatrixWorld = function () { const t = performance.now(); inU = true; try { return umw0.apply(this, arguments); } finally { inU = false; tU += performance.now() - t; } };
+      const umw0 = S.updateMatrixWorld; let tU = 0; const FORZ = {}; S.updateMatrixWorld = function (force) { const t = performance.now(); inU = true; if (cnt) { const k = (force ? 'forzata ' : 'normale ') + (new Error().stack || '').split('\n').slice(2, 5).map(l => l.trim().replace(/^at /, '').replace(/\(?http[^)]*index\.html:/, '@').replace(/\)$/, '')).join(' < '); FORZ[k] = (FORZ[k] || 0) + 1; } try { return umw0.apply(this, arguments); } finally { inU = false; tU += performance.now() - t; } };
       const ume = T3.Object3D.prototype.updateMatrixWorld; let cnt = false; T3.Object3D.prototype.updateMatrixWorld = function () { if (cnt) { D.umwN++; if (inU) { const t = top(this), k = t === this ? 'radice:' + (this.name || this.type) + '[' + udk(this) + ']' : (t.name || t.type) + '[' + udk(t) + ']'; TOPU[k] = (TOPU[k] || 0) + 1; } } return ume.apply(this, arguments); };
       const r0 = rd.render; let tR = 0; rd.render = function (sc) { const t = performance.now(); try { return r0.apply(this, arguments); } finally { if (sc === S) tR += performance.now() - t; } };
       // due fotogrammi registrati (le ombre sul telefono vanno a fotogrammi alterni): i conti sono per fotogramma, le liste per due
@@ -84,11 +84,11 @@ const srv = http.createServer((req, res) => {
       const ord = o => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, v]) => `${v} ${k}`);
       return { disegni: (D.nMain + D.nOmbra) / 2, principale: D.nMain / 2, ombre: D.nOmbra / 2, altri: D.nAltro / 2, umwChiamate2: D.umwN, proveFrustum: med(prove), umw_ms: med(umwArr), render_ms: med(rArr),
         oggetti, autoMatrice: auto, figliScena: S.children.length, rami: F ? F.list.length : 0, ramiCongelati: frz, fannoOmbra: ombra,
-        perMain: ord(D.main), perOmbra: ord(D.ombra), perOmbraOggetti: ord(ombraPer), umwPerRamo: ord(TOPU), proveMainOmbra2: PRV, raw: RAW, info: { calls: rd.info.render.calls, tri: rd.info.render.triangles } };
+        perMain: ord(D.main), perOmbra: ord(D.ombra), perOmbraOggetti: ord(ombraPer), umwPerRamo: ord(TOPU), umwChi: ord(FORZ), scena: { mwnu: S.matrixWorldNeedsUpdate, pos: S.position.toArray(), rot: S.rotation.toArray().slice(0, 3), sc: S.scale.toArray(), auto: S.matrixAutoUpdate }, proveMainOmbra2: PRV, raw: RAW, info: { calls: rd.info.render.calls, tri: rd.info.render.triangles } };
     }, NF);
     OUTJ.punti[P.join(',')] = r;
     log('punto', P.join(','), JSON.stringify({ ...r, perMain: undefined, perOmbra: undefined, perOmbraOggetti: undefined, umwPerRamo: undefined, raw: undefined }));
-    console.log('  matrici (scene.updateMatrixWorld, due fotogrammi):\n    ' + r.umwPerRamo.slice(0, 15).join('\n    '));
+    console.log('  matrici (scene.updateMatrixWorld, due fotogrammi):\n    ' + r.umwPerRamo.slice(0, 15).join('\n    ')); console.log('  chi chiama scene.updateMatrixWorld:\n    ' + r.umwChi.slice(0, 10).join('\n    ')); console.log('  scena', JSON.stringify(r.scena));
     console.log('  main:\n    ' + r.perMain.slice(0, 25).join('\n    '));
     console.log('  ombra:\n    ' + r.perOmbra.slice(0, 15).join('\n    '));
     console.log('  fanno ombra:\n    ' + r.perOmbraOggetti.slice(0, 15).join('\n    '));

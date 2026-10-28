@@ -16284,6 +16284,39 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // Tre reti: se dentro un ramo congelato si aggiunge qualcosa (add, attach) si scongela subito; un controllo a rotazione (4000
   // oggetti per fotogramma) riguarda posizione, rotazione e scala di tutti e scongela chi si è mosso; chi si scongela non si
   // ricongela più. Restano fuori persone, mezzi, ossa e luci. ?nofrz lo spegne (per le misure).
+  // [matrici] LE MATRICI SI RIFANNO SOLO SE CAMBIANO. three, a ogni fotogramma, per ogni oggetto con matrixAutoUpdate ricompone la matrice da
+  // posizione, rotazione e scala, e la ricomposizione alza matrixWorldNeedsUpdate: tutti i figli rifanno la matrice nel mondo, fermi o no.
+  // Peggio: ogni getWorldPosition (updateWorldMatrix) ricompone i genitori fino alla scena e lascia alzato il flag della scena, così il
+  // fotogramma dopo la scena obbligava TUTTI i ~38.000 oggetti, anche i rami congelati (FRZ): 51.000 chiamate e 26 ms a fotogramma nel borgo
+  // (strumenti/sonda_disegni.js). Qui, per ogni oggetto: la matrice locale si ricompone solo se posizione, rotazione o scala sono cambiate
+  // dall'ultima volta (con matrixAutoUpdate spento: se la matrice locale è cambiata); la matrice nel mondo si rifà se è cambiata la locale,
+  // se il genitore l'ha rifatta, se l'oggetto è stato appena attaccato (add, attach) o se qualcuno ha alzato il flag; e in quest'ultimo caso
+  // i figli sono obbligati solo se la matrice nel mondo è venuta diversa. Gli stessi numeri di three, senza i conti che li rifanno uguali.
+  // ?nomatrici: come prima
+  const UMW = { on: typeof location === 'undefined' || !/[?&]nomatrici\b/.test(location.search) };
+  const _umwW = new Float64Array(16);
+  function umwSelf(o, force) {
+    let t = o.__mt, loc = false;
+    if (o.matrixAutoUpdate) { const p = o.position, q = o.quaternion, s = o.scale;
+      if (t === undefined || t.length !== 10 || t[0] !== p.x || t[1] !== p.y || t[2] !== p.z || t[3] !== q.x || t[4] !== q.y || t[5] !== q.z || t[6] !== q.w || t[7] !== s.x || t[8] !== s.y || t[9] !== s.z) {
+        if (t === undefined || t.length !== 10) t = o.__mt = new Float64Array(10);
+        t[0] = p.x; t[1] = p.y; t[2] = p.z; t[3] = q.x; t[4] = q.y; t[5] = q.z; t[6] = q.w; t[7] = s.x; t[8] = s.y; t[9] = s.z; o.updateMatrix(); loc = true; } }
+    else { const e = o.matrix.elements; if (t === undefined || t.length !== 16) { t = o.__mt = new Float64Array(16); loc = true; } else for (let k = 0; k < 16; k++) if (t[k] !== e[k]) { loc = true; break; }
+      if (loc) for (let k = 0; k < 16; k++) t[k] = e[k]; }
+    if (loc || force || o.__mwRe) {
+      if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+      o.matrixWorldNeedsUpdate = false; o.__mwRe = false; return true; }
+    if (o.matrixWorldNeedsUpdate) { const w = o.matrixWorld.elements; for (let k = 0; k < 16; k++) _umwW[k] = w[k];
+      if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+      o.matrixWorldNeedsUpdate = false; for (let k = 0; k < 16; k++) if (_umwW[k] !== w[k]) return true; }
+    return false;
+  }
+  if (UMW.on && !THREE.Object3D.prototype.updateMatrixWorld.__umw) {
+    const P = THREE.Object3D.prototype, add0 = P.add;
+    const umw = function (force) { force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
+    umw.__umw = true; P.updateMatrixWorld = umw;
+    P.add = function (o) { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const a = arguments[i]; if (a && a.isObject3D && a.parent === this) a.__mwRe = true; } return r; };   // appena attaccato: la matrice nel mondo va rifatta col genitore nuovo
+  }
   const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null };
   const FRZ_UMW = function (force) { if (force) THREE.Object3D.prototype.updateMatrixWorld.call(this, true); };
   { const add0 = THREE.Object3D.prototype.add, att0 = THREE.Object3D.prototype.attach;
@@ -16308,8 +16341,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     scene.updateMatrixWorld = function (force) {   // updateMatrixWorld di three, col salto dei rami congelati
       // la scena stessa non si muove: three la ricomponeva a ogni fotogramma e questo (matrixWorldNeedsUpdate) obbligava TUTTI i ~50.000
       // oggetti a rifare la matrice nel mondo, anche quelli fermi. Si ricompone solo se posizione, rotazione o scala cambiano davvero
+      if (UMW.on) force = umwSelf(this, force);   // [matrici] la scena è come tutti: ricalcola (e obbliga i figli) solo se è cambiata davvero
+      else {
       if (this.matrixAutoUpdate) { frzSnap(this, _frzT, 0); let ch = false; for (let q = 0; q < 10; q++) if (_frzT[q] !== SCN[q]) { ch = true; SCN[q] = _frzT[q]; } if (ch) this.updateMatrix(); }
       if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      }
       const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && c.__frz.frozen && !force) continue; c.updateMatrixWorld(force); }
     };
   }
