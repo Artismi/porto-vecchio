@@ -21,8 +21,9 @@ function initPage(opt) {
     for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; if (f) P[k] = function () { }; } } }
   { let a = opt.seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   const B = window.__sc = { on: false, rec: [], cur: null, inp: null };
-  const avvolgi = (orig) => function (fn, ms, ...rest) { if (typeof fn !== 'function') return orig.call(this, fn, ms, ...rest);
-    return orig.call(this, function () { if (!B.on || !B.cur) return fn.apply(this, arguments); const t = performance.now(); try { return fn.apply(this, arguments); } finally { B.cur.timer += performance.now() - t; } }, ms, ...rest); };
+  const chi = () => (new Error().stack || '').split('\n').slice(3, 5).map(s => (s.match(/at (?:new )?([\w$.<>]+)? ?\(?(?:.*\/)?([^/:]+):(\d+)/) || []).slice(1).join(':')).join(' < ');
+  const avvolgi = (orig) => function (fn, ms, ...rest) { if (typeof fn !== 'function') return orig.call(this, fn, ms, ...rest); const k = B.on ? chi() : '';
+    return orig.call(this, function () { if (!B.on || !B.cur) return fn.apply(this, arguments); const t = performance.now(); try { return fn.apply(this, arguments); } finally { const d = performance.now() - t; B.cur.timer += d; if (d > (B.cur.tmax || 0)) { B.cur.tmax = d; B.cur.tchi = k; } } }, ms, ...rest); };
   window.setInterval = avvolgi(window.setInterval); window.setTimeout = avvolgi(window.setTimeout);
   for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype;
     for (const k of Object.getOwnPropertyNames(P)) { const d = Object.getOwnPropertyDescriptor(P, k); if (!d || typeof d.value !== 'function' || k === 'constructor') continue; const f = d.value;
@@ -104,6 +105,7 @@ const srv = http.createServer((req, res) => {
     }, [nome, RIP]);
     await pg.waitForTimeout(3000); await pg.evaluate(() => window.gc && window.gc());
     await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 250 }); await cdp.send('Profiler.start');
+    if (has('alloc')) { await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 16384 }); }
     const marca = await pg.evaluate(() => { const t = performance.now(); (function __marca_scatti() { let x = 0; while (performance.now() - t < 40) x += Math.sqrt(x + 1); return x; })(); return t; });
     await pg.evaluate(() => { const B = window.__sc; B.rec = []; B.cur = null; B.on = true; if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } });
     if (nome === 'zoom') { // due minuti veri allo zoom massimo, correndo avanti e indietro: il contesto della scheda video regge?
@@ -116,8 +118,11 @@ const srv = http.createServer((req, res) => {
     await nfa(NF);
     await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; B.dopo = null; window.__vf = null; });
     const { profile } = await cdp.send('Profiler.stop');
+    if (has('alloc')) { const { profile: hp } = await cdp.send('HeapProfiler.stopSampling'); const m = {}; let tot = 0;
+      const giu = n => { const cf = n.callFrame, k = `${cf.functionName || '(anon)'} @${(cf.url || '').split('/').pop().split('?')[0]}:${cf.lineNumber + 1}`; m[k] = (m[k] || 0) + n.selfSize; tot += n.selfSize; (n.children || []).forEach(giu); }; giu(hp.head);
+      log(nome, 'allocazioni MB', (tot / 1048576).toFixed(0), JSON.stringify(Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `${(v / 1048576).toFixed(1)} ${k}`))); }
     log(nome, 'ombre', JSON.stringify(await pg.evaluate(() => window.PesoOmbre ? { conto: PesoOmbre.conto(), diag: PesoOmbre.diag(true) } : null)));
-    const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, str: f.str, cot: f.cot, job: f.job, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));
+    const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, tchi: f.tchi, tmax: f.tmax, str: f.str, cot: f.cot, job: f.job, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));
     if (nome === 'cadenza') { // lo scarto da un fotogramma all'altro: il personaggio sullo schermo (deve stare fermo) e il mondo che scorre (deve scorrere uguale)
       // il mondo: lo scarto fra lo spostamento di un fotogramma e quello del precedente (a passo costante deve essere ~0); il personaggio: quanto
       // si sposta sullo schermo da un fotogramma all'altro (la camera gli è legata: deve stare fermo)
@@ -144,11 +149,12 @@ const srv = http.createServer((req, res) => {
     const peggiori = new Set(eventi.map(e => e.a)); const inEv = new Set(); ev.forEach(i => finestra(i).forEach(f => inEv.add(f.i)));
     const fuori = rec.filter(f => !inEv.has(f.i)), Mx = a => a.reduce((m, f) => Math.max(m, f.lavoro), 0);
     const R = { mediana_ms: base, peggiore_eventi_ms: Mx(rec.filter(f => inEv.has(f.i))), peggiore_fuori_ms: Mx(fuori), eventi,
-      profili: [...peggiori].map(i => ({ i, ms: rec[i].lavoro, step: rec[i].step, frame: rec[i].frame, timer: rec[i].timer, progs: rec[i].progs, gc: rec[i].gc, carichi: i ? rec[i].str - rec[i - 1].str : 0, cotture: i ? rec[i].cot - rec[i - 1].cot : 0, blocco: rec[i].job, prof: prof(rec[i]) })), rec };
+      profili: [...peggiori].map(i => ({ i, ms: rec[i].lavoro, step: rec[i].step, frame: rec[i].frame, timer: rec[i].timer, tchi: rec[i].tchi, progs: rec[i].progs, gc: rec[i].gc, carichi: i ? rec[i].str - rec[i - 1].str : 0, cotture: i ? rec[i].cot - rec[i - 1].cot : 0, blocco: rec[i].job, prof: prof(rec[i]) })), rec };
     OUTJ.momenti[nome] = R;
     log(`== ${nome}: mediana ${base} ms, peggiore negli eventi ${R.peggiore_eventi_ms} ms, fuori ${R.peggiore_fuori_ms} ms`);
     eventi.forEach(e => console.log(`   evento @${e.da}: peggiore ${e.peggiore_ms} ms (+${e.dopo} fotogrammi), mediana ${e.mediana}, shader nuovi ${e.shader}, raccolte ${e.gc}`));
-    R.profili.forEach(p => console.log(`   #${p.i} ${p.ms} ms (logica ${p.step} grafica ${p.frame} timer ${p.timer} shader+${p.progs} gc ${p.gc} carichi ${p.carichi} cotture ${p.cotture} blocco ${p.blocco})\n      ${p.prof.join(' | ')}`));
+    try { const sl = JSON.parse(JSON.stringify(OUTJ)); for (const k in sl.momenti) delete sl.momenti[k].rec; fs.writeFileSync(path.join(OUT, 'momenti_sintesi.json'), JSON.stringify(sl, null, 1)); } catch (e) { }
+    R.profili.forEach(p => console.log(`   #${p.i} ${p.ms} ms (logica ${p.step} grafica ${p.frame} timer ${p.timer}${p.tchi ? ' [' + p.tchi + ']' : ''} shader+${p.progs} gc ${p.gc} carichi ${p.carichi} cotture ${p.cotture} blocco ${p.blocco})\n      ${p.prof.join(' | ')}`));
   }
   const slim = JSON.parse(JSON.stringify(OUTJ)); for (const k in slim.momenti) delete slim.momenti[k].rec;
   fs.writeFileSync(path.join(OUT, 'momenti.json'), JSON.stringify(OUTJ));
