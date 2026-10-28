@@ -152,6 +152,8 @@ var PesoOmbre = (function () {
     for (let i = 0; i < list.length; i++) { const o = list[i], f = impronta(o, o.__po), k = rest.get(f); if (k) rest.set(f, k - 1); else add.push(o); }
     for (const k of rest.values()) if (k > 0) return null;
     return add; }
+  // [audit] il lavoro lasciato a metà: la sua mappa va da parte (prima restava allocata sulla scheda video, senza più nessuno che la usasse)
+  function lascia(r) { const J = r.job; r.job = null; if (J && J.rt && J.rt !== r.spare) { if (r.spare) r.spare.dispose(); r.spare = J.rt; } }
   function nuovaRT(w, h) { return new T3.WebGLRenderTarget(w, h, { minFilter: T3.NearestFilter, magFilter: T3.NearestFilter }); }
   // un pezzo della cottura in sottofondo: P.lotto cose ferme nella mappa di riserva, con la camera del lavoro
   function lavora(light, r, tutti) {
@@ -181,27 +183,28 @@ var PesoOmbre = (function () {
         // è un mobile: se torna e risparisce non chiede un'altra cottura intera (questa sì, per togliere la sua ombra)
         const qui = new Set(C.fermi); for (const o of r.objs) if (!qui.has(o) && o.__po) { o.__po.dyn = frame; o.__po.mosse = 2; } r.objs = null; } }
     if (misura || (C.chiave && tutti)) {   // niente da riusare: si cuoce subito (all'inizio, al cambio di zoom, oltre il margine)
-      MOT[misura ? 'misura' : 'chiave']++; r.job = null;
+      MOT[misura ? 'misura' : 'chiave']++; lascia(r);
       disegna(light, C.fermi, true); const m2 = sh.map;
       if (!r.cache || r.cache.width !== m2.width || r.cache.height !== m2.height) { if (r.cache) r.cache.dispose(); r.cache = nuovaRT(m2.width, m2.height); }
       copia(m2, r.cache); r.key.set(C.e); r.sig = C.sig; r.n = C.fermi.length; r.fps = impronte(C.fermi); r.objs = C.fermi; ST.cotture++;
       if (C.mob.length) disegna(light, C.mob, false);
     } else {
       if (C.chiave) {   // un faretto passato a un altro lampione: finché la mappa nuova non è pronta, la luce non fa ombra (mappa al fondo)
-        disegna(light, EMPTY, true); copia(sh.map, r.cache); r.key.set(C.e); r.sig = -2; r.n = -1; r.fps = null; r.job = null; MOT.chiave++; }
+        disegna(light, EMPTY, true); copia(sh.map, r.cache); r.key.set(C.e); r.sig = -2; r.n = -1; r.fps = null; lascia(r); MOT.chiave++; }
       // il lavoro in sottofondo: verso l'aggancio nuovo del sole, o per le cose ferme cambiate sotto la stessa camera
       const vuole = tutti && A.next ? 'next' : (C.chiave || vecchia) ? 'qui' : null;
       if (vuole && (!r.job || r.job.tipo !== vuole || (vuole === 'next' && r.job.G !== A.next))) {
         let list = C.fermi, e = C.e, sig = C.sig, G = null;
         if (vuole === 'next') { const pos = [light.position.clone(), light.target.position.clone()]; G = A.next; metti(light, G); const C2 = contenuto(light, tutti, { key: new Float64Array(16), ver: -1 }); list = C2.fermi; e = C2.e; sig = C2.sig;
           if (A.G) metti(light, A.G); else { light.position.copy(pos[0]); light.target.position.copy(pos[1]); light.updateMatrixWorld(); light.target.updateMatrixWorld(); } sh.updateMatrices(light); r.ver++; }
-        r.job = { tipo: vuole, list, i: 0, e, sig, n: list.length, G, rt: r.job ? r.job.rt : null }; if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
+        { let rt = r.job ? r.job.rt : null; if (!rt && r.spare) { rt = r.spare; r.spare = null; }   // [audit] la mappa di riserva si ricicla
+          r.job = { tipo: vuole, list, i: 0, e, sig, n: list.length, G, rt }; } if (vuole === 'qui') MOT.firma++; else MOT.aggancio++;
         if (DIAG.on && vuole === 'qui' && r.ids) { const now = new Set(C.fermi.map(o => o.id)), nome = o => { let q = o; while (q.parent && q.parent !== K.scene) q = q.parent; return (q.name || q.type) + (Object.keys(q.userData || {}).length ? ' {' + Object.keys(q.userData).slice(0, 3).join(',') + '}' : '') + ' > ' + (o.name || o.type); };
           C.fermi.forEach(o => { if (!r.ids.has(o.id)) { const k = '+ ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); r.idsObj.forEach(o => { if (!now.has(o.id)) { const k = '- ' + nome(o); DIAG.firma.set(k, (DIAG.firma.get(k) || 0) + 1); } }); }
         if (DIAG.on) { r.ids = new Set(C.fermi.map(o => o.id)); r.idsObj = C.fermi.slice(); } }
       if (r.job && lavora(light, r, tutti)) {   // finita: la mappa di riserva diventa quella in uso
         const J = r.job, old = r.cache; r.cache = J.rt; r.key.set(J.e); r.sig = J.sig; r.n = J.n; r.fps = impronte(J.list); r.objs = J.list; r.job = null; ST.cotture++; ST.sottofondo++;
-        if (old) { old.dispose(); }
+        if (old) { if (r.spare) r.spare.dispose(); r.spare = old; }   // [audit] la vecchia resta da parte per la cottura dopo: prima si buttava e la cottura dopo ne creava una nuova (30-40 mappe da 949² in un giro di 10 s a piedi: memoria della scheda video presa e lasciata, e su un telefono vero ogni allocazione è un'attesa)
         if (J.G) { A.G = J.G; if (A.next === J.G) A.next = null; metti(light, J.G); sh.updateMatrices(light); r.ver++; C = contenuto(light, tutti, r); } }
       if (C.mob.length || r.dyn) { copia(r.cache, sh.map); if (C.mob.length) disegna(light, C.mob, false); ST.riprese++; }
     }

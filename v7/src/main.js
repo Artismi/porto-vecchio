@@ -140,9 +140,13 @@
     }
   }
   function sprayEnd() {
-    const S = ui.spray; if (window.Writing) Writing.release(st); if (!S || !S.on) return; S.on = false;
-    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+    const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
+    // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
+    // al fotogramma dopo (DOPO, letto da input)
+    (/[?&]noclicdopo\b/.test(location.search) ? f => f() : f => DOPO.push(f))(() => { if (window.Writing) Writing.release(st); if (!on) return;
+      if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
+  const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
     if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
@@ -197,6 +201,8 @@
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
+    if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     const r = input0(); if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
@@ -341,7 +347,20 @@
     // non si parte: niente ripiego in linea retta (prima si andava dritti attraverso i muraglioni invece di prendere la scala)
     if (!path.length && !G.walkM(x, y)) { const f = freeSpot(x, y); if (G.walkM(f.x, f.y)) { path = G.findPath(p.x, p.y, f.x, f.y, p.vehicle ? .6 : 1.4); if (path.length) path.push({ x, y }); } }
     return path; }
+  // [audit] INP: il gestore del tocco/clic sulla tela registra solo l'intenzione (dove, se doppio); la scelta (persone, roba, porte, il
+  // punto a terra) e il percorso (G.findPath) si fanno all'inizio del fotogramma dopo (input → clickRun). Prima tutto stava nel gestore:
+  // un percorso lungo o una meta irraggiungibile tenevano fermo il filo (e la risposta a schermo) per decine o centinaia di ms
   function onClick(nx, ny, dbl) {
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
+    if (CLIC_SUBITO) { clickNow(nx, ny, dbl); return; }   // ?noclicdopo: come prima, tutto nel gestore (per il confronto)
+    click.q = { nx, ny, dbl: !!(dbl || (click.q && click.q.dbl)), t: performance.now() };
+  }
+  const CLIC_SUBITO = /[?&]noclicdopo\b/.test(location.search);
+  function clickRun() {
+    const q = click.q; click.q = null; if (performance.now() - q.t > 600) return;   // rimasto in coda mentre il gioco era fermo: non vale più
+    clickNow(q.nx, q.ny, q.dbl);
+  }
+  function clickNow(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;

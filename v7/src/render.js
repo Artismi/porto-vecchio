@@ -17333,7 +17333,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // PEOPLE_KEEP) usa più si libera. L'immagine non cambia: se torna in scena (dalle cache delle figure, dei
   // modelli, dei kit) three la ricarica dagli array, che restano; quelle con gli array già svuotati dopo l'invio ([leggera]) non si
   // toccano. ?norilascio: come prima; window.__rilascio: lo stato.
-  const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null };
+  const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null,
+    farOn: !/[?&]nolontane\b/.test(location.search), lontane: 0, nonIntatte: 0, far: () => Math.max(PHONE ? 150 : 200, (scene.fog ? scene.fog.far : 400) + Math.hypot(camera.position.x - cam.x, camera.position.z - cam.y) + 40) };   // [audit] oltre la nebbia (vista dalla camera, che sta indietro dal punto guardato) e oltre i blocchi del suolo (135-190 m)
   const rilGeo = (g, out) => { if (g && g.isBufferGeometry) out.push(g); };
   function rilascia(obj) {
     if (!RIL.on || !obj || !obj.traverse) return; const L = [];
@@ -17348,8 +17349,17 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   function rilascioTick(now) {
     if (!RIL.on || !RIL.coda.size || (!RIL.W.stack && now - RIL.t < 3000)) return;
-    if (!RIL.W.stack) RIL.uso = new Set(); const uso = RIL.uso;
-    const fine = sliceWalk(RIL.W, scene, 3000, o => { const g = o.geometry; if (g) uso.add(g); });   // la scena a fette (3000 oggetti per fotogramma): nessun picco
+    if (!RIL.W.stack) { RIL.uso = new Set(); RIL.dmin = new Map(); RIL.cx = cam.x; RIL.cz = cam.y; } const uso = RIL.uso, dmin = RIL.dmin;
+    // [audit] LE LONTANE: la città costruita nel browser (senza tasselli) resta tutta in scena, e ogni pezzo visto una volta restava sulla
+    // scheda video per sempre (QA, 20 minuti di viaggi: geometrie 1188 → 2366, processo della scheda 1,3 → 2,4 GB, mai giù tornando).
+    // Nello stesso giro a fette si misura per ogni geometria la distanza (a terra, dal punto guardato) della mesh più vicina che la usa;
+    // quella che per due giri di fila sta oltre RIL.far, caricata e con gli array interi, lascia la scheda video (dispose: three la
+    // ricarica dagli array se torna in vista). L'immagine non cambia. ?nolontane: come prima
+    const far = RIL.farOn ? RIL.far() : 0;
+    const fine = sliceWalk(RIL.W, scene, 3000, o => { const g = o.geometry; if (!g) return; uso.add(g);
+      if (!far) return; const bs = g.boundingSphere; let d = 0;
+      if (o.isMesh && !o.isSkinnedMesh && !o.isInstancedMesh && bs && o.frustumCulled !== false) { const e = o.matrixWorld.elements, sx = Math.hypot(e[0], e[1], e[2]), c = bs.center, x = e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12], z = e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14]; d = Math.hypot(x - RIL.cx, z - RIL.cz) - bs.radius * sx; }
+      const q = dmin.get(g); if (q === undefined || d < q) dmin.set(g, d); });   // la scena a fette (3000 oggetti per fotogramma): nessun picco
     const fin = () => { const d = performance.now() - now; RIL.ms += d; if (d > (RIL.picco || 0)) RIL.picco = d; };
     if (!fine) { fin(); return; } RIL.t = now; RIL.gen++; RIL.uso = null;
     const tenute = new Set(); PEOPLE_KEEP.forEach(p => p.traverse(o => { if (o.geometry) tenute.add(o.geometry); }));
@@ -17360,9 +17370,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (!m) { RIL.coda.set(g, RIL.gen); continue; }   // la prima volta fuori: si riguarda al prossimo controllo
       RIL.coda.delete(g); if (rilIntatta(g)) { g.dispose(); RIL.liberate++; }
     }
+    if (far) { const lon = RIL.lon || (RIL.lon = new Set()), nuove = new Set();   // [audit] le lontane: due giri di fila oltre far
+      for (const [g, d] of RIL.dmin) { if (d < far || tenute.has(g) || !rilCaricata(g)) continue; if (lon.has(g)) { if (rilIntatta(g)) { g.dispose(); RIL.lontane++; } else RIL.nonIntatte++; } else nuove.add(g); }
+      RIL.lon = nuove; }
+    RIL.dmin = null;
     fin();
   }
-  if (typeof window !== 'undefined') Object.defineProperty(window, '__rilascio', { configurable: true, get: () => ({ on: RIL.on, coda: RIL.coda.size, controlli: RIL.gen, liberate: RIL.liberate, ms: Math.round(RIL.ms), picco: +(RIL.picco || 0).toFixed(1) }) });
+  if (typeof window !== 'undefined') Object.defineProperty(window, '__rilascio', { configurable: true, get: () => ({ on: RIL.on, coda: RIL.coda.size, controlli: RIL.gen, liberate: RIL.liberate, lontane: RIL.lontane, nonIntatte: RIL.nonIntatte, ms: Math.round(RIL.ms), picco: +(RIL.picco || 0).toFixed(1) }) });
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma

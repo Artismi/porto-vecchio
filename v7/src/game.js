@@ -289,6 +289,10 @@ var Game = (function () {
   }
   function clearLine(x0, y0, x1, y1) {
     const d = dist(x0, y0, x1, y1), n = Math.ceil(d / .5);
+    // [audit] prima a passo largo (un campione su quattro, solo il centro): la linea che sbatte contro un muro si scopre con 1/20 delle
+    // prove. Il risultato è identico: sono le stesse prove del giro fine, in un altro ordine (ne basta una per tornare falso). La lisciatura
+    // del percorso (findPath) prova centinaia di linee lunghe che falliscono, e i passanti la chiamano di continuo
+    if (n > 8) for (let i = 4; i <= n; i += 4) if (!walkM(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
     for (let i = 1; i <= n; i++) {
       const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
       if (!walkM(x, y) || !walkM(x + .45, y) || !walkM(x - .45, y) || !walkM(x, y + .45) || !walkM(x, y - .45)) return false;

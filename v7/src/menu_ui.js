@@ -240,7 +240,7 @@ var MenuUI = (function () {
   }
   function makeThumb(id) {
     const T = THREE, st = ST();
-    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0);
+    if (!THR) { THR = new T.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true }); THR.debug.checkShaderErrors = false; THR.setSize(THS, THS, false); THR.setClearColor(0x000000, 0);   // [audit] senza la lettura sincrona dei registri di compilazione (getProgramInfoLog a ogni programma nuovo), come il renderer del gioco
       // [roba3d] la luce da studio fotografico: ombre morbide, tono filmico e un ambiente da riflettere (metallo e vetro non sono più piatti)
       THR.shadowMap.enabled = true; THR.shadowMap.type = T.PCFSoftShadowMap; THR.toneMapping = T.ACESFilmicToneMapping; THR.toneMappingExposure = 1.05; }
     const sc = new T.Scene(); sc.environment = envThumb(); sc.add(new T.HemisphereLight('#f2e8d4', '#1f3a34', .45)); const k = new T.DirectionalLight('#fff0dc', 1.5); k.position.set(-2, 4, 3); k.castShadow = true; k.shadow.mapSize.set(1024, 1024); k.shadow.radius = 4; k.shadow.bias = -.0004; sc.add(k); sc.add(k.target); const rim = new T.DirectionalLight('#c8a070', .9); rim.position.set(3, 2, -3); sc.add(rim);
@@ -293,7 +293,8 @@ var MenuUI = (function () {
     requestAnimationFrame(thumbPump);
     // [dieta] sul telefono il contesto WebGL delle anteprime (programmi, ombre, ambiente: memoria della scheda video) si chiude quando la coda
     // è vuota da 3 s; le anteprime fatte restano (sono tele 2D), una nuova lo riapre
-    if (DIETA_TEL && THR && !THQ.length && performance.now() - (THR.__usato || 0) > 3000) { try { if (ENV) ENV.dispose(); THR.dispose(); THR.forceContextLoss(); } catch (e) { } THR = null; ENV = null; }
+    if (THR && !THQ.length && performance.now() - (THR.__usato || 0) > (DIETA_TEL ? 3000 : 15000)) {   // [audit] anche sul computer (dopo 15 s): il contesto restava aperto per sempre
+      try { if (ENV) ENV.dispose(); THR.dispose(); THR.forceContextLoss(); } catch (e) { } THR = null; ENV = null; }
     if (!THQ.length || !window.THREE || !thumbOk()) return;
     const t0 = performance.now(); if (THR) THR.__usato = t0;
     while (THQ.length && performance.now() - t0 < 14) {
@@ -369,10 +370,11 @@ var MenuUI = (function () {
     requestAnimationFrame(draw3);
     const dt = Math.min(.05, (now - (R3.t || now)) / 1000); R3.t = now;
     const m = $('mu'), st = ST();
-    if (DIETA_TEL && R3.r && !U.open) { try { R3.r.dispose(); R3.r.forceContextLoss(); } catch (e) { } R3.r = null; }   // [dieta] sul telefono il contesto delle figure del menu si chiude col menu
+    if (U.open) R3.aperto = now;
+    if (R3.r && !U.open && (DIETA_TEL || now - (R3.aperto || 0) > 15000)) { try { R3.r.dispose(); R3.r.forceContextLoss(); } catch (e) { } R3.r = null; }   // [audit] anche sul computer, 15 s dopo la chiusura del menu (prima il secondo contesto WebGL non si chiudeva mai)   // [dieta] sul telefono il contesto delle figure del menu si chiude col menu
     if (!U.open || !m || !st || !ready3()) return;
     const cvs = m.querySelectorAll('canvas.r3'); if (!cvs.length) return;
-    if (!R3.r) { R3.r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); R3.r.setClearColor(0x000000, 0); }
+    if (!R3.r) { R3.r = new THREE.WebGLRenderer({ alpha: true, antialias: true }); R3.r.debug.checkShaderErrors = false; R3.r.setClearColor(0x000000, 0); }
     const p = st.player;
     cvs.forEach(cv => {
       const key = cv.dataset.r3, e = scene3(st, key, cv.dataset.frame || 'full'); if (!e) return;
