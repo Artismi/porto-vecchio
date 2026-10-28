@@ -16355,8 +16355,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const now = performance.now();
     if (now > FRZ.t) { FRZ.t = now + 2000;   // i rami nuovi entrano in prova; quelli tolti dalla scena escono
       const ex = new Set(Object.values(dyn.people || {}).concat(Object.values(dyn.vehicles || {})));
-      for (const o of scene.children) if (!ex.has(o) && frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now }; FRZ.list.push(o); }
-      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== scene) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; FRZ.ver++; } }
+      // [matrici] un ramo sciolto perché qualcosa dentro si è mosso (una sbarra, una porta) non resta tutto sciolto: si riprova sui suoi figli,
+      // fino a tre livelli sotto la scena, e restano sciolti solo quelli che si muovono (mai dentro i mezzi e le persone)
+      const prova = (o, liv) => { if (ex.has(o)) return; if (frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now, par: o.parent }; FRZ.list.push(o); }
+        else if (liv < 3 && o.__frzNo && !o.__frzBad && !o.__frz && UMW.on) { const c = o.children; for (let i = 0; i < c.length; i++) prova(c[i], liv + 1); } };
+      for (const o of scene.children) prova(o, 0);
+      const attaccato = o => { for (let q = o.parent; q; q = q.parent) if (q === scene) return true; return false; };
+      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== (o.__frz.par || scene) || (o.parent !== scene && !attaccato(o))) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; FRZ.ver++; } }
     }
     let budget = 4000;   // il controllo a rotazione
     while (budget > 0 && FRZ.list.length) {

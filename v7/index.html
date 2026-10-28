@@ -22968,7 +22968,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'b136b0e6a8d759c6';</script>
-<script>window.PV_IMPRONTA_TASS = 'd515eeccac699364';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '463be3b628cdd0a2';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -88021,8 +88021,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const now = performance.now();
     if (now > FRZ.t) { FRZ.t = now + 2000;   // i rami nuovi entrano in prova; quelli tolti dalla scena escono
       const ex = new Set(Object.values(dyn.people || {}).concat(Object.values(dyn.vehicles || {})));
-      for (const o of scene.children) if (!ex.has(o) && frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now }; FRZ.list.push(o); }
-      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== scene) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; FRZ.ver++; } }
+      // [matrici] un ramo sciolto perché qualcosa dentro si è mosso (una sbarra, una porta) non resta tutto sciolto: si riprova sui suoi figli,
+      // fino a tre livelli sotto la scena, e restano sciolti solo quelli che si muovono (mai dentro i mezzi e le persone)
+      const prova = (o, liv) => { if (ex.has(o)) return; if (frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now, par: o.parent }; FRZ.list.push(o); }
+        else if (liv < 3 && o.__frzNo && !o.__frzBad && !o.__frz && UMW.on) { const c = o.children; for (let i = 0; i < c.length; i++) prova(c[i], liv + 1); } };
+      for (const o of scene.children) prova(o, 0);
+      const attaccato = o => { for (let q = o.parent; q; q = q.parent) if (q === scene) return true; return false; };
+      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== (o.__frz.par || scene) || (o.parent !== scene && !attaccato(o))) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; FRZ.ver++; } }
     }
     let budget = 4000;   // il controllo a rotazione
     while (budget > 0 && FRZ.list.length) {
