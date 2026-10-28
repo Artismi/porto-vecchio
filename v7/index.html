@@ -21793,6 +21793,21 @@ var Models = (function () {
 })();
 </script>
 <script data-m="kit">
+/* [ospite] Dentro il sito (artismidesignstudio.com) il gioco si carica in anticipo, nascosto, mentre la pagina scorre.
+   La pagina, finché scorre, ripete {pvc:'attendi', ms}: per quei millisecondi i passi pesanti del caricamento (leggere un
+   modello, preparare la scena per la scheda video) aspettano, così lo scroll del sito resta fluido. Si riparte da soli
+   quando i messaggi smettono. Fuori da un altro sito non arriva niente e non si aspetta mai. */
+window.PV_ATTESA = (function () {
+  let fino = 0;
+  if (window.parent !== window) addEventListener('message', e => {
+    const d = e.data; if (e.source !== window.parent || !d || d.pvc !== 'attendi') return;
+    fino = Math.max(fino, performance.now() + Math.min(2000, Math.max(0, +d.ms || 0)));
+  });
+  const on = () => performance.now() < fino;
+  // aspetta finché la pagina scorre, al massimo 20 s in tutto: il gioco non resta mai fermo per sempre
+  const libero = () => new Promise(ok => { const t0 = performance.now(); (function g() { if (!on() || performance.now() - t0 > 20000) ok(); else setTimeout(g, 100); })(); });
+  return { on, libero };
+})();
 /* Caricamento dei modelli senza richieste "data:" né "blob:".
    I file in assets/ sono glTF con buffer e immagini incorporati in base64. Alcune pagine (gli artifact) non permettono
    di scaricare indirizzi data:/blob:, e il caricatore di three li scarica proprio così: i modelli non arrivano mai.
@@ -21905,6 +21920,7 @@ var Kit = (function () {
     const L = new THREE.GLTFLoader();
     await Promise.all(kits.map(async k => {
       const buf = await (window.__pvFetchModel ? window.__pvFetchModel(base + 'kit_' + k + '.json') : (await fetch(base + 'kit_' + k + '.json')).text());   // [leggera] .glb se c'è
+      await window.PV_ATTESA.libero();   // [ospite] non mentre la pagina che ospita il gioco scorre
       const g = await new Promise((res, rej) => L.parse(buf, '', res, rej));
       g.scene.updateMatrixWorld(true);
       for (const c of [...g.scene.children]) { c.traverse(o => { if (o.isMesh) { dequant(o.geometry); o.material = fixMat(o.material); } }); LIB[k + '/' + c.name] = c; }
@@ -22971,7 +22987,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '17847715f4d50b5b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'e85876de84fcfc3e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -93324,7 +93340,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
   // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
   const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(() => window.PV_ATTESA && PV_ATTESA.libero()).then(boot);   // [editor] i ritocchi arrivano prima della scena; [ospite] la scena si prepara a pagina ferma
   function boot() {
   let glOk = true;
   if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
@@ -93371,6 +93387,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
   function loop0(now) {
+    if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
     if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
     const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;

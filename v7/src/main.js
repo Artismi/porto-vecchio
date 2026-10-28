@@ -1043,7 +1043,7 @@
   // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
   // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
   const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(() => window.PV_ATTESA && PV_ATTESA.libero()).then(boot);   // [editor] i ritocchi arrivano prima della scena; [ospite] la scena si prepara a pagina ferma
   function boot() {
   let glOk = true;
   if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
@@ -1090,6 +1090,7 @@
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
   function loop0(now) {
+    if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
     if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
     const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;
