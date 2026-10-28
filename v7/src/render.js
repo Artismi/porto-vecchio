@@ -12995,8 +12995,8 @@ var Render = (function () {
         ao: .85, aoR: 1.1, aoTinta: aaaC('#5a4a7a'), haze: .45, hazeD: [8, 70], dof: .7, dofD: 34, mini: .35, bloom: .22, soglia: .78,
         giorno: { esp: .97, sole: aaaC('#ffd6aa'), soleK: 1.3, cielo: aaaC('#8aa6dc'), terra: aaaC('#b88a62'), cieloK: .52, bordo: aaaC('#ffd8b0'), bordoK: .2, nebbia: aaaC('#e2cdb6'),
           ombra: aaaC('#4a62b8'), ombraK: .28, hz: aaaC('#ead6c0'), sl: [1.0, .99, .97], of: [.0, .0, .008], pw: [1.02, 1.03, 1.04], sat: 1.0, sh: [.93, .96, 1.08], hi: [1.03, 1.0, .95], vign: 1.5 },
-        tramonto: { esp: .98, sole: aaaC('#ffa064'), soleK: 1.22, cielo: aaaC('#8a8cc0'), terra: aaaC('#a87060'), cieloK: .55, bordo: aaaC('#ffb080'), bordoK: .26, nebbia: aaaC('#cfa090'),
-          ombra: aaaC('#5a58a8'), ombraK: .22, hz: aaaC('#e8b8a0'), sl: [1.02, .99, .95], of: [.004, .0, .01], pw: [1.0, 1.03, 1.04], sat: .98, sh: [.94, .93, 1.06], hi: [1.05, 1.0, .93], vign: 1.6 },
+        tramonto: { esp: .98, sole: aaaC('#ffa064'), soleK: 1.24, cielo: aaaC('#9294b4'), terra: aaaC('#a87060'), cieloK: .55, bordo: aaaC('#ffb080'), bordoK: .26, nebbia: aaaC('#cfa090'),
+          ombra: aaaC('#5a5aa0'), ombraK: .15, hz: aaaC('#e8b8a0'), sl: [1.02, .99, .95], of: [.004, .0, .01], pw: [1.0, 1.03, 1.04], sat: .98, sh: [.94, .93, 1.06], hi: [1.05, 1.0, .93], vign: 1.6 },
         notte: { esp: 1.05, sole: aaaC('#8ca6e8'), soleK: .28, cielo: aaaC('#2c3c78'), terra: aaaC('#1c1c34'), cieloK: .34, bordo: aaaC('#6c8ade'), bordoK: .18, nebbia: aaaC('#101830'),
           ombra: aaaC('#2a2a70'), ombraK: .4, hz: aaaC('#1a2448'), sl: [1, 1, 1.04], of: [0, 0, .01], pw: [1.04, 1.03, 1], sat: 1.05, sh: [.86, .92, 1.2], hi: [1.12, 1, .84], vign: 1.6 } },
       // v2 · STREET POP SATURO: luce piena alta e bianca, ombre ciano-turchesi nette ma colorate, colori pieni, neri profondi, niente foschia
@@ -13005,8 +13005,8 @@ var Render = (function () {
         ao: 1, aoR: .8, aoTinta: aaaC('#283a6a'), haze: .12, hazeD: [12, 80], dof: .25, dofD: 40, mini: .2, bloom: .14, soglia: .86,
         giorno: { esp: .98, sole: aaaC('#fff4e4'), soleK: 1.34, cielo: aaaC('#80b8f0'), terra: aaaC('#c89068'), cieloK: .56, bordo: aaaC('#fff0e0'), bordoK: .16, nebbia: aaaC('#c8dcf0'),
           ombra: aaaC('#2a80d0'), ombraK: .4, hz: aaaC('#d8e8f8'), sl: [.99, 1.0, 1.02], of: [.004, .006, .012], pw: [1.05, 1.04, 1.03], sat: 1.18, sh: [.9, .98, 1.08], hi: [1.03, 1.0, .97], vign: 1.2 },
-        tramonto: { esp: 1.0, sole: aaaC('#ff8a58'), soleK: 1.15, cielo: aaaC('#6a74c4'), terra: aaaC('#a85868'), cieloK: .56, bordo: aaaC('#ff78b0'), bordoK: .22, nebbia: aaaC('#9a78a8'),
-          ombra: aaaC('#3a40b0'), ombraK: .3, hz: aaaC('#b088b0'), sl: [1.02, .98, 1.0], of: [.0, .0, .01], pw: [1.02, 1.04, 1.0], sat: 1.08, sh: [.94, .92, 1.1], hi: [1.05, .99, .95], vign: 1.4 },
+        tramonto: { esp: 1.0, sole: aaaC('#ff9058'), soleK: 1.18, cielo: aaaC('#7484bc'), terra: aaaC('#a06858'), cieloK: .5, bordo: aaaC('#ffa080'), bordoK: .16, nebbia: aaaC('#a08aa8'),
+          ombra: aaaC('#2c58b8'), ombraK: .26, hz: aaaC('#b098b0'), sl: [1.0, .99, 1.0], of: [.0, .004, .01], pw: [1.03, 1.03, 1.0], sat: 1.06, sh: [.92, .97, 1.06], hi: [1.04, .99, .95], vign: 1.4 },
         notte: { esp: 1.08, sole: aaaC('#80a0ff'), soleK: .3, cielo: aaaC('#3a2c88'), terra: aaaC('#24143a'), cieloK: .38, bordo: aaaC('#c060ff'), bordoK: .22, nebbia: aaaC('#140c30'),
           ombra: aaaC('#3018a0'), ombraK: .45, hz: aaaC('#24164a'), sl: [1, 1, 1.04], of: [-.006, -.008, .006], pw: [1.06, 1.06, 1], sat: 1.25, sh: [.9, .84, 1.24], hi: [1.12, .98, .9], vign: 1.4 } },
       // v3 · MINIATURA MORBIDA: luce alta e avvolgente, ombre lunghe e morbide lilla, AgX, tilt-shift forte per profondità, foschia lattea
