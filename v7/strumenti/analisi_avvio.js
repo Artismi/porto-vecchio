@@ -49,8 +49,16 @@ const srv = http.createServer((req, res) => {
     // i byte: per cartella/tipo, i più grossi
     const per = {}; let tot = 0, totgz = 0; servito.forEach(s => { const k = s.u.split('/').slice(0, 3).join('/').replace(/\/[^/]*\.[a-z0-9]+$/, '') + (/\.\w+$/.exec(s.u) || [''])[0]; per[k] = per[k] || { n: 0, MB: 0, gzMB: 0 }; per[k].n++; per[k].MB += s.b / 1048576; per[k].gzMB += s.gz / 1048576; tot += s.b; totgz += s.gz; });
     out.rete = { file: servito.length, MB: +(tot / 1048576).toFixed(1), gzMB: +(totgz / 1048576).toFixed(1), per: Object.fromEntries(Object.entries(per).sort((a, b) => b[1].MB - a[1].MB).map(([k, v]) => [k, { n: v.n, MB: +v.MB.toFixed(1), gzMB: +v.gzMB.toFixed(1) }])), grossi: servito.slice().sort((a, b) => b.b - a.b).slice(0, 12).map(s => [s.u, +(s.b / 1048576).toFixed(2), +(s.gz / 1048576).toFixed(2)]) };
-    // i primi secondi di gioco: i fotogrammi
+    // i primi secondi di gioco: i fotogrammi, col profilo del processore (lo scatto all'apertura)
+    await cdp.send('Profiler.start');
     out.fotogrammi = await pg.evaluate(SEC => new Promise(res => { const D = []; let l = performance.now(); const t0 = l; (function f(t) { D.push(t - l); l = t; if (t - t0 < SEC * 1000) requestAnimationFrame(f); else { D.sort((a, b) => a - b); const q = k => Math.round(D[Math.min(D.length - 1, Math.floor(D.length * k))]); res({ n: D.length, fps: +(D.length / SEC).toFixed(1), mediana: q(.5), p95: q(.95), max: Math.round(D[D.length - 1]), oltre100: D.filter(x => x > 100).length }); } })(l); }), SEC);
+    { const { profile: P2 } = await cdp.send('Profiler.stop'), c2 = new Map(), b2 = new Map(P2.nodes.map(n => [n.id, n])); P2.samples.forEach((id, i) => c2.set(id, (c2.get(id) || 0) + (P2.timeDeltas[i] || 0)));
+      const s2 = new Map(); c2.forEach((us, id) => { const f = b2.get(id).callFrame, k = `${f.functionName || '(anonima)'} ${f.url ? sezOf(f.url, f.lineNumber) : ''}:${f.lineNumber + 1}`; s2.set(k, (s2.get(k) || 0) + us); });
+      // chi chiama la funzione più pesante: il ramo dei genitori (per lo scatto)
+      const par = new Map(); P2.nodes.forEach(n => (n.children || []).forEach(c => par.set(c, n.id)));
+      let top = null, tv = 0; c2.forEach((us, id) => { if (us > tv) { tv = us; top = id; } });
+      const ramo = []; for (let id = top, k = 0; id && k < 14; id = par.get(id), k++) { const f = b2.get(id).callFrame; ramo.push(`${f.functionName || '(anonima)'} ${f.url ? sezOf(f.url, f.lineNumber) : ''}:${f.lineNumber + 1}`); }
+      out.cpuGioco = { funzioni: [...s2].sort((a, b) => b[1] - a[1]).slice(0, 20).map(([k, us]) => [k, Math.round(us / 1000)]), ramoDelPiuPesante: ramo }; }
     out.memDopo = await pg.evaluate(() => performance.memory ? { heapMB: Math.round(performance.memory.usedJSHeapSize / 1048576) } : null);
     out.errori = errori.slice(0, 5);
   } catch (e) { out.errore = String(e); console.error(e); }

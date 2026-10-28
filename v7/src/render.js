@@ -16618,7 +16618,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target); }   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
     // poche luci vere, spostate ogni fotogramma sulle sorgenti più vicine
     // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
-    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, QL = typeof location !== 'undefined' ? location.search : '', qF = /[?&]faretti=(\d+)/.exec(QL), N = qF ? +qF[1] : PHONE ? 2 : Math.max(4, Math.min(12, maxT - 7));   /* [fluido] sul telefono due faretti senza ombra; [analisi] ?faretti=N per misurare */
+    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, QL = typeof location !== 'undefined' ? location.search : '', qF = /[?&]faretti=(\d+)/.exec(QL), N = qF ? +qF[1] : PHONE ? 2 : Math.min(4, Math.max(2, maxT - 7));   /* [fluido] sul telefono due faretti senza ombra. [analisi] sul computer 4 (erano fino a 12): ogni faretto con ombra entra in OGNI programma, srotolato (PCF morbido), e il caricamento aspettava la compilazione di 198 programmi da 78 KB: con 4, da 74 a 43 s per giocare (SwiftShader), l'attesa degli shader da 46 a 21 s. Le luci vanno comunque sulle sorgenti più vicine alla camera. ?faretti=12 com'era */
       const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
       for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .4, 1.25); /* [luci5] bordo deciso */   // [inverno29] caduta morbida, bordo sfumato
         l.castShadow = !PHONE; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(1024, 1024); l.shadow.radius = 1; /* [luci5] ombre nette */ l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
@@ -16627,8 +16627,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
           sh.fragmentShader = 'varying float vFr; varying float vH;\n' + sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a *= pow(vFr, 1.6) * (.12 + .88 * vH * vH);'); };
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
-      { const qP = /[?&]punti=(\d+)/.exec(typeof location !== 'undefined' ? location.search : ''); for (let i = 0; i < (qP ? +qP[1] : PHONE ? 3 : 8); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); } }
-      window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
+      { const qP = /[?&]punti=(\d+)/.exec(typeof location !== 'undefined' ? location.search : ''); for (let i = 0; i < (qP ? +qP[1] : PHONE ? 3 : 4); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); } }
+      window.__luci = { faretti: N, punti: PPOOL.length, maxTextures: maxT }; }
     dyn.vehicles = {};
     FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
     if (SCO.on) { const c = scoCentro(); if (typeof Anelli !== 'undefined') Anelli.CFG.vicino = SCO.r + 10; console.log('[scorcio]', SCO.nome, 'centro', c && c.x, c && c.z, 'raggio', SCO.r); }   // [scorcio]
