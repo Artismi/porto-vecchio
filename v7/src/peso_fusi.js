@@ -24,7 +24,7 @@ var PesoFusi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nofusi\b/.test(Q), SETT = ON && !/[?&]nosettori\b/.test(Q), OMB = ON && !/[?&]noombrefuse\b/.test(Q);
-  const P = { cella: 32, margine: 2, giro: 150, oss: 90, passo: 30, vicino: 160, pausa: 120, riprova: 600, scansione: 60, min: 2, sciolte: 6 };
+  const P = { cella: 32, margine: 2, grande: 48, mezziOgni: 120, giro: 150, oss: 90, passo: 30, vicino: 160, pausa: 120, riprova: 600, scansione: 60, min: 2, sciolte: 6 };
   const ST = { celle: 0, celleFuori: 0, ramiFuori: 0, ramiInCelle: 0, sagome: 0, pezziFusi: 0, sciolte: 0, perche: {}, ms: 0, msSett: 0, msOmb: 0, msTaglia: 0, fotogrammi: 0 };
   let K = null, T3 = null, S = null, frame = 0, attivo = true;
   const noRay = () => { };
@@ -55,7 +55,7 @@ var PesoFusi = (function () {
   function cellaDi(o) {   // dentro una cella (o fuori dalle celle): la cella si allarga fino a contenerlo
     const s = o.__pfS; if (!s || s.r < 0) return null;
     const k = Math.floor(s.x / P.cella) + ',' + Math.floor(s.z / P.cella);
-    let C = CEL.get(k); if (!C) CEL.set(k, C = { k, i: CEL.size + 1, x: s.x, y: s.y, z: s.z, r: s.r, n: 0, fuori: false });
+    let C = CEL.get(k); if (!C) CEL.set(k, C = { k, i: CEL.size + 1, x: s.x, y: s.y, z: s.z, r: s.r, n: 0, fuori: false, gen: CV + 1 });
     const d = Math.hypot(s.x - C.x, s.y - C.y, s.z - C.z); if (d + s.r > C.r) { if (d + C.r <= s.r) { C.x = s.x; C.y = s.y; C.z = s.z; C.r = s.r; } else { const R = (d + C.r + s.r) / 2, t = (R - C.r) / (d || 1); C.x += (s.x - C.x) * t; C.y += (s.y - C.y) * t; C.z += (s.z - C.z) * t; C.r = R; } }
     C.n++; return C;
   }
@@ -65,12 +65,25 @@ var PesoFusi = (function () {
     const F = K.frz; if (!F || !F.list) return;
     if (!giroL) { giroL = F.list.slice(); giroI = 0; }
     const end = Math.min(giroL.length, giroI + P.giro);
-    for (; giroI < end; giroI++) { const o = giroL[giroI]; if (!o.__frz || !o.__frz.frozen || o.parent !== S) { o.__pfS = null; continue; } o.__pfS = sferaRamo(o); }
+    for (; giroI < end; giroI++) { const o = giroL[giroI]; if (!o.__frz || !o.__frz.frozen || !(o.parent === S || (o.parent && o.parent.parent === S))) { o.__pfS = null; continue; } o.__pfS = sferaRamo(o); }   // anche i figli congelati di un ramo sciolto (render.js FRZ li riprova uno per uno)
     if (giroI >= giroL.length) {
-      CEL.clear(); let n = 0;
-      for (const o of giroL) { o.__pfC = null; if (o.__pfS && o.__frz && o.__frz.frozen && o.parent === S) { const C = cellaDi(o); if (C) { o.__pfC = C; n++; } } }
-      CEL.forEach(C => { C.r += P.margine; }); ST.celle = CEL.size; ST.ramiInCelle = n; giroL = null; CV++;
+      CEL.clear(); SPLIT.length = 0; let n = 0;
+      for (const o of giroL) { o.__pfC = null; if (o.__frz && o.__frz.frozen && o.parent === S) {
+        if (o.__pfS && o.__pfS.r <= P.grande) { const C = cellaDi(o); if (C) { o.__pfC = C; n++; } }
+        // un ramo grande (il treno fermo, la ferrovia, un gruppo che attraversa mezza isola) o con dentro qualcosa che non sta in una cella
+        // (istanze, un LOD): non in una cella sola, ma ogni figlio nella sua (fino a due livelli sotto)
+        else if (o.children.length >= 2 && dividi(o, o, 0)) n++; }
+        else if (o.__pfS && o.__frz && o.__frz.frozen && o.parent && o.parent.parent === S && !(o.parent.__frz && o.parent.__frz.frozen)) {   // il figlio fermo di un ramo che si muove dentro: nella sua cella, si toglie da solo
+          const C = cellaDi(o); if (C) { o.__pfC = C; n++; if (o.parent.__pfSp2 !== CV + 1) { o.parent.__pfSp2 = CV + 1; o.parent.__pfTop = null; SPLIT.push(o.parent); } } } }
+      CEL.forEach(C => { C.r += P.margine; }); ST.celle = CEL.size; ST.ramiInCelle = n; giroL = null; CV++;   // le celle vecchie (gen < CV) restano appese a qualche ramo, ma non contano più
     }
+  }
+  function dividi(o, top, liv) {   // i figli di o (tutto fermo: il ramo in cima è congelato) ognuno nella sua cella
+    let k = 0;
+    for (const c of o.children) { c.__pfC = null; const sc = sferaRamo(c); c.__pfS = sc; if (sc && sc.r < 0) continue;
+      if (sc && sc.r <= P.grande) { c.__pfC = cellaDi(c); if (c.__pfC) k++; }
+      else if (liv < 2 && c.children.length >= 2 && dividi(c, top, liv + 1)) k++; }
+    if (k) { o.__pfTop = top; SPLIT.push(o); } return k > 0;
   }
   // prima della proiezione (scene.onBeforeRender, camera di gioco): le celle fuori; i loro rami fermi escono dalla lista per la proiezione
   function taglia(camera) {
@@ -78,17 +91,45 @@ var PesoFusi = (function () {
     pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pm);
     const pl = fr.planes; let cf = 0, h = 0;
     CEL.forEach(C => { let out = false; for (let i = 0; i < 6; i++) { const p = pl[i], n = p.normal; if (n.x * C.x + n.y * C.y + n.z * C.z + p.constant < -C.r) { out = true; break; } } C.fuori = out; if (out) { cf++; h = (Math.imul(h, 31) + C.i) | 0; } });
-    ST.celleFuori = cf; if (!cf) return;
+    // i mezzi (si muovono: la sfera del mezzo, nelle sue coordinate, portata dove sta ora)
+    let mf = 0; for (let i = 0; i < VEH.length; i++) { const v = VEH[i], L = v.__pfLS; let out = false; if (!L || v.parent !== S || !v.visible) continue;
+      const e = v.matrixWorld.elements, x = e[0] * L.x + e[4] * L.y + e[8] * L.z + e[12], y = e[1] * L.x + e[5] * L.y + e[9] * L.z + e[13], z = e[2] * L.x + e[6] * L.y + e[10] * L.z + e[14];
+      const r = L.r * Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10]));
+      for (let k = 0; k < 6; k++) { const p = pl[k], n = p.normal; if (n.x * x + n.y * y + n.z * z + p.constant < -r) { out = true; break; } }
+      if (out) { v.__pfOutF = frame; mf++; h = (Math.imul(h, 31) + v.id * 7 + 3) | 0; if (v.isLOD && v.autoUpdate) v.update(camera); } }   // il livello del LOD come se three l'avesse visitato (per la sua ombra)
+    ST.celleFuori = cf; ST.mezziFuori = mf; if (!cf && !mf) return;
+    // i rami grandi a figli: i figli delle celle fuori escono per la proiezione
+    for (let i = 0; i < SPLIT.length; i++) { const o = SPLIT[i], T = o.__pfTop || o; if (T.parent !== S) continue; const fo = !!(T.__frz && T.__frz.frozen), k = o.children, f = o.__pfF || (o.__pfF = []); f.length = 0;
+      for (let j = 0; j < k.length; j++) { const c = k[j], C = c.__pfC; if (C && C.fuori && C.gen === CV && (fo || (c.__frz && c.__frz.frozen))) continue; f.push(c); }
+      if (f.length < k.length) { SPL.push(o, k); o.children = f; } }
     // la lista corta si rifà solo se cambiano le celle fuori, i figli della scena (add, remove) o un ramo si congela o si scioglie
     const ch = S.children, fv = K.frz ? K.frz.ver : 0;
     if (h !== TG.h || cf !== TG.cf || TG.sv !== SV.v || TG.fv !== fv || TG.n !== ch.length || TG.cv !== CV) {
       corti.length = 0; let tolti = 0;
-      for (let i = 0, l = ch.length; i < l; i++) { const o = ch[i], C = o.__pfC; if (C && C.fuori && o.__frz && o.__frz.frozen) { tolti++; continue; } corti.push(o); }
+      for (let i = 0, l = ch.length; i < l; i++) { const o = ch[i], C = o.__pfC; if ((C && C.fuori && C.gen === CV && o.__frz && o.__frz.frozen) || o.__pfOutF === frame) { tolti++; continue; } corti.push(o); }
       TG.h = h; TG.cf = cf; TG.sv = SV.v; TG.fv = fv; TG.n = ch.length; TG.cv = CV; TG.tolti = tolti; }
     ST.ramiFuori = TG.tolti; if (!TG.tolti) return;
     orig = ch; S.children = corti;
   }
-  function rimetti() { if (orig) { S.children = orig; orig = null; } }
+  function rimetti() { if (orig) { S.children = orig; orig = null; } for (let i = 0; i < SPL.length; i += 2) SPL[i].children = SPL[i + 1]; SPL.length = 0; }
+  const SPLIT = [], SPL = [], VEH = [];
+  // la sfera di un mezzo nelle sue coordinate (si rifà ogni P.mezziOgni fotogrammi): nessuna se porta qualcuno (chi guida la bici, la Vespa)
+  // o un pezzo che three disegna sempre
+  let _vi = null, _vm = null, _vs = null;
+  function sferaMezzo(v) {
+    if (!_vi) { _vi = new T3.Matrix4(); _vm = new T3.Matrix4(); _vs = new T3.Sphere(); }
+    v.updateWorldMatrix(true, true); _vi.copy(v.matrixWorld).invert(); let ok = true, x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    v.traverse(o => { if (!ok) return; if (o !== v && persona(o)) { ok = false; return; } if (o.isSprite || o.isLight || o.isInstancedMesh || o.isPoints || o.isLine) { ok = false; return; }
+      if (!o.isMesh) return; if (o.frustumCulled === false) { ok = false; return; } const g = o.geometry; if (!g) return; if (g.boundingSphere === null) { if (!g.attributes.position) { ok = false; return; } g.computeBoundingSphere(); }
+      _vm.multiplyMatrices(_vi, o.matrixWorld); _vs.copy(g.boundingSphere).applyMatrix4(_vm); const c = _vs.center, r = _vs.radius;
+      x0 = Math.min(x0, c.x - r); y0 = Math.min(y0, c.y - r); z0 = Math.min(z0, c.z - r); x1 = Math.max(x1, c.x + r); y1 = Math.max(y1, c.y + r); z1 = Math.max(z1, c.z + r); });
+    if (!ok || !isFinite(x0)) return null;
+    return { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2, r: Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 * 1.2 + .5 };   // largo: le ruote e le porte si muovono dentro
+  }
+  function mezzi() {
+    VEH.length = 0; const V = K.vehicles; if (!V) return;
+    for (const id in V) { const v = V[id]; if (!v || v.parent !== S) continue; VEH.push(v); if (!(frame < v.__pfLT)) { v.__pfLT = frame + P.mezziOgni + (v.id % 17); v.__pfLS = sferaMezzo(v); } }
+  }
   const TG = { h: 0, cf: -1, sv: -1, fv: -1, n: -1, cv: -1, tolti: 0 }, SV = { v: 0 }; let CV = 0;   // CV: le celle rifatte
 
   // ------------------------------------------------------------------ le ombre fuse
@@ -211,12 +252,12 @@ var PesoFusi = (function () {
     rimetti();
     const L = K.renderer.renderLists.get(S, 0); if (L !== lista) { lista = L; const f0 = L.finish; L.finish = function () { finisci(); return f0.apply(this, arguments); }; }
     if (!attivo) { if (grp) grp.visible = false; ST.ms += performance.now() - t0; return; }
-    if (SETT) giro(); const t1 = performance.now(); ST.msSett += t1 - t0;
+    if (SETT) { giro(); mezzi(); } const t1 = performance.now(); ST.msSett += t1 - t0;
     if (OMB && K.renderer.shadowMap.enabled) try { ombre(); } catch (e) { console.warn('[fusi] ombre', e); spegniOmbre(); } ST.msOmb += performance.now() - t1;
     ST.fotogrammi++; ST.ms += performance.now() - t0;
   }
   function spegniOmbre() { RIG.forEach(R => sciogliTutto(R)); RIG.clear(); if (grp && grp.parent) grp.parent.remove(grp); }
-  function conto() { const n = ST.fotogrammi || 1; return { on: ON, settori: SETT, ombre: OMB, celle: ST.celle, celleFuori: ST.celleFuori, ramiInCelle: ST.ramiInCelle, ramiFuori: ST.ramiFuori, rami: RIG.size, sagome: ST.sagome, pezziFusi: ST.pezziFusi, sciolte: ST.sciolte, perche: ST.perche, ms_fot: +(ST.ms / n).toFixed(2), msSettori_fot: +(ST.msSett / n).toFixed(2), msOmbre_fot: +(ST.msOmb / n).toFixed(2), msTaglio_fot: +(ST.msTaglia / n).toFixed(2), stati: (() => { const c = {}; RIG.forEach(R => c[R.stato] = (c[R.stato] || 0) + 1); return c; })() }; }
+  function conto() { const n = ST.fotogrammi || 1; return { on: ON, settori: SETT, ombre: OMB, celle: ST.celle, celleFuori: ST.celleFuori, ramiInCelle: ST.ramiInCelle, ramiFuori: ST.ramiFuori, mezziFuori: ST.mezziFuori, ramiGrandi: SPLIT.length, rami: RIG.size, sagome: ST.sagome, pezziFusi: ST.pezziFusi, sciolte: ST.sciolte, perche: ST.perche, ms_fot: +(ST.ms / n).toFixed(2), msSettori_fot: +(ST.msSett / n).toFixed(2), msOmbre_fot: +(ST.msOmb / n).toFixed(2), msTaglio_fot: +(ST.msTaglia / n).toFixed(2), stati: (() => { const c = {}; RIG.forEach(R => c[R.stato] = (c[R.stato] || 0) + 1); return c; })() }; }
   function azzera() { ST.ms = ST.msSett = ST.msOmb = ST.msTaglia = 0; ST.fotogrammi = 0; ST.sciolte = 0; ST.perche = {}; }
   return { ON, P, prima, conto, azzera, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) { rimetti(); spegniOmbre(); CEL.clear(); } } };
 })();

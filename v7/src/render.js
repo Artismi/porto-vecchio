@@ -17865,7 +17865,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; } };
+    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
