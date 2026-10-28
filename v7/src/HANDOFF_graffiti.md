@@ -324,3 +324,33 @@ slogan e brillantini), Graffiti 6 è COME ci va sopra (i pennelli, la grana del 
   (anche i woff2 e le licenze), `src/` e `strumenti_inverno/` no (`.vercelignore`).
 - Galleria: `Q="cmp=1&sup=mattoni" NPC=1 node strumenti_inverno/galleria_graffiti.js out.png "pezzo:-:8:201,rullo:-:6:301" 2 120`
   mette accanto «solo arte» e «+pennello» (`pen=1` solo coi pennelli).
+
+## Graffiti 7 (28 ottobre): l'atlante, le tag delle vie, la tavoletta rifatta — righe `[atlante]` e `[tavoletta]`
+**Perché i graffiti erano pochi.** Ogni lavoro era un velo: una mesh, un materiale e una texture, cioè un disegno trasparente a
+fotogramma. Per questo c'era un tetto di 170 veli vivi (70 sul telefono) e la storia si fermava a 1500 lavori in memoria.
+- **L'atlante** (`writing.js`, sezione «I LAVORI FINITI IN UNA TELA SOLA»). Un lavoro finito non cambia più: la sua tela si copia in
+  una texture grande sulla scheda video (4096² sul computer, 2048² sul telefono, sRGB con le mipmap), il suo piano diventa
+  un'istanza di una InstancedMesh che legge il suo riquadro dall'atlante (`aRect`). Due InstancedMesh: i lavori sul muro nudo e quelli
+  sopra un altro (le tag sui pezzi), disegnati dopo. Tutti i lavori finiti costano due disegni. Le copie si fanno in un disegno solo per
+  fotogramma (al più 8, `atlFlush`), le mipmap si rifanno una volta. Lo scaffale ha righe a gradini di 16 px; piena, si liberano i
+  lavori più lontani (oltre 45 m). Restano veli i lavori in corso, sui mezzi, sul treno e sui carri. Senza WebGL2, o con
+  `?noatlante`, tutto come prima. Il tetto dei veli (`VEIL_MAX`) ora conta solo i veli veri.
+- **Le tag delle vie** (`writer_vita.js history`): dopo le produzioni, lungo i muri di strada, hall, ponti e ferrovia, gruppetti di
+  tag, tag a pennarello, adesivi, qualche stencil e throw-up, tanti quanto è calda la zona (`heatOf`: bar, vicoli, sottopassi sì;
+  regime quasi niente). Un muro con solo tag e adesivi resta libero per i writer (`freeSite`). Lavori in memoria: fino a 3500.
+- **Misura**: `node strumenti/graffiti_sonda.js <cartella>` ora scrive anche `giro` (lavori entro 80 m, sul muro, nell'atlante,
+  veli, falliti, le pagine dell'atlante, gli stili).
+
+**La tavoletta** (`tavPad`, `tavShot`): non si capiva, a volte la foto sembrava vuota, il tratto non si vedeva, a volte non salvava.
+- Un tocco sul muro basta (la finestra di un throw-up attorno al punto); trascinando si sceglie la misura a mano. Nel pannello la
+  misura si cambia con un tocco (Tag, Throw-up, Pezzo, Burner): la foto si rifà attorno al punto, stretta alla superficie.
+- La foto ha un margine di contesto attorno (scurito) e il riquadro giallo dove si dipinge; la luce si regola (contrasto allargato
+  se il muro è piatto, schiarita di notte); il far della camera arriva a 9 m (prima 0,9-1,2: una strada in pendenza, un muro
+  arretrato o un portico restavano fuori e la foto era vuota).
+- Il tratto mentre disegni ha uno spessore minimo di 3 px a schermo e un bordo che lo stacca dal muro; staccato, la resa del pennello.
+- «Salva sul muro» sempre in vista; se non può salvare dice perché. Il salvataggio non si ferma più se `nearestPlace` non trova
+  niente o se la reazione della città sbaglia (prima il pannello restava aperto e il lavoro non c'era).
+- Col pannello aperto il gioco non disegna la città (main.js `loop0`): il tratto resta fluido anche sul telefono.
+- Game Boy (main.js `conMap`, `conKey`): A salva, B esce, la croce ◄ ► colore e ▲ ▼ spessore, il tasto bomboletta annulla.
+- Prova nel gioco vero: `node strumenti/tavoletta_sonda.js <cartella>` (muri e pavimenti davanti alla camera: la foto, il tratto, il
+  salvataggio).

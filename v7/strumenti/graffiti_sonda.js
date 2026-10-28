@@ -38,8 +38,15 @@ const srv = http.createServer((req, res) => {
       await pg.waitForTimeout(1500); await fot();
       if (k > 6 && n.pend === 0) { console.log('veli', n.veli, 'in', sec()); break; }
     }
+    // [atlante] quanti lavori ci sono attorno, quanti sono sul muro, quanti nell'atlante, quanti disegni costano
+    const giro = await pg.evaluate(() => { const pv = window.__pv, R = pv.R, st = pv.st, W = Writing.S(st), c = (R.scoCentro && R.scoCentro()) || { x: st.player.x, z: st.player.y }, A = Writing._.ATL || { pages: [] };
+      const vicini = W.works.filter(w => !w.erased && (w.spot || w.pos) && Math.hypot((w.spot ? w.spot.x : w.pos.x) - c.x, (w.spot ? w.spot.y : w.pos.z) - c.z) < 80);
+      let veli = 0, atl = 0; for (const id in Writing.GFX.works) { const g = Writing.GFX.works[id]; if (g.tgt && g.tgt.atl) atl++; else if (g.tgt && g.tgt.mesh) veli++; }
+      const per = {}; vicini.forEach(w => { per[w.style] = (per[w.style] || 0) + 1; });
+      return { lavori: W.works.length, vicini80: vicini.length, sulMuro: veli + atl, veli, atlante: atl, falliti: vicini.filter(w => w.gfxFail > 3).length, pagine: A.pages.map(P => ({ S: P.S, istanze: P.L ? P.L.map(l => l.n) : null, scaffali: P.shelves.length, altezza: P.top })), stili: per, disegniVeli: veli + (A.pages.length ? A.pages.length * 2 : 0) }; });
+    console.log('giro', JSON.stringify(giro));
     const conta = await pg.evaluate(() => Writing._.galleggia ? Writing._.galleggia() : null);
-    const rep = conta || await pg.evaluate(() => {   // la misura per la versione di prima (senza Writing._.galleggia)
+    let rep = conta || await pg.evaluate(() => {   // la misura per la versione di prima (senza Writing._.galleggia)
       const THREE = window.THREE, pv = window.__pv, R = pv.R, W = Writing.S(pv.st), rc = new THREE.Raycaster(), out = { n: 0, gall: 0, lista: [] };
       for (const id in Writing.GFX.works) { const g = Writing.GFX.works[id], w = W.works.find(o => o.id === +id); if (!w || !g.tgt || !g.tgt.mesh || w.surf !== 'muro' || !w.gfxRect) continue;
         const m = g.tgt.mesh; m.updateMatrixWorld(true); const n = new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld), list = R.__bmb.bmbCands(m.position.x, m.position.z).filter(o => !o.userData.velo);
@@ -48,7 +55,7 @@ const srv = http.createServer((req, res) => {
           const d = h ? Math.abs(h.distance - .5) : 9; worst = Math.max(worst, d); if (d > .02) bad++; }
         out.n++; if (bad) { out.gall++; out.lista.push({ id: w.id, style: w.style, peggio: +worst.toFixed(3), punti: bad }); } }
       return out; });
-    console.log(`lavori sui muri misurati: ${rep.n}, galleggianti: ${rep.gall}`);
+    rep.giro = giro; console.log(`lavori sui muri misurati: ${rep.n}, galleggianti: ${rep.gall}`);
     // il costo del piazzamento: dieci lavori rifatti da capo (il muro, la griglia dei raggi)
     rep.piazza = await pg.evaluate(() => { const W = Writing.S(window.__pv.st), L = W.works.filter(w => w.surf === 'muro' && w.spot && w.gfxRect).slice(0, 10), t = []; L.forEach(w => { const k = Object.assign({}, w, { gfxRect: null }); const t0 = performance.now(); Writing._.placeWall(k); t.push(performance.now() - t0); }); return { n: t.length, ms: t.length ? +(t.reduce((a, b) => a + b, 0) / t.length).toFixed(1) : 0, max: t.length ? +Math.max(...t).toFixed(1) : 0 }; });
     rep.mem = await pg.evaluate(() => { const G0 = Writing.GFX; let px = 0, n = 0; for (const id in G0.works) { const g = G0.works[id]; if (g.tgt && g.tgt.mesh && g.tgt.c && g.tgt.c.width) { px += g.tgt.c.width * g.tgt.c.height; n++; } } return { veli: n, mpx: +(px / 1e6).toFixed(2), mb: +(px * 4 / 1048576).toFixed(1), conti: G0.mem || null }; });

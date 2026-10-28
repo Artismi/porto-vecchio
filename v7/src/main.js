@@ -901,6 +901,8 @@
     const p = st.player, M = {};
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
+    const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
+    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
@@ -925,6 +927,8 @@
     return M;
   }
   function conKey(k, down) {
+    const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;
+    if (TV && (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu')) { if (down) { if (k === 'sx' || k === 'dx') TV.col(k === 'dx' ? 1 : -1); else TV.size(k === 'su' ? 1 : -1); } CON.sent = ''; return; }   // [tavoletta]
     if (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu') {   // la croce, finché la tieni: la visuale, o in BMX i trick
       CON.dir[k] = down; const D = CON.dir, bx = conBmx();
       CON.trick.wheelie = bx && !!D.giu; CON.trick.peg = bx ? (D.sx && !D.dx ? 1 : D.dx && !D.sx ? -1 : 0) : 0;
@@ -1091,6 +1095,7 @@
   }
   function loop0(now) {
     if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
+    if (window.Writing && Writing._ && Writing._.TAV.pad) { last = now; try { conLabels(); } catch (e) { } requestAnimationFrame(loop); return; }   // [tavoletta] col pannello aperto (copre tutto) la città non si disegna: il tratto resta fluido anche sul telefono
     if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
     const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;
