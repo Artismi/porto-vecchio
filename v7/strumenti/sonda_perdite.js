@@ -35,9 +35,17 @@ function conta() {
   const gb = g => { let b = 0; for (const k in g.attributes) { const a = g.attributes[k]; b += (a.count || 0) * (a.itemSize || 1) * (a.array && a.array.BYTES_PER_ELEMENT || 4); } if (g.index) b += g.index.count * (g.index.array && g.index.array.BYTES_PER_ELEMENT || 2); return b; };
   P.geo.forEach(g => add('G ' + (g.__pk || ''), inS.has(g), gb(g), 'geo'));
   P.tex.forEach(t => { const im = t.image || {}; add('T ' + (t.__pk || (t.constructor.name + ' ' + (im.width || 0) + '×' + (im.height || 0) + (t.name ? ' ' + t.name : ''))), tS.has(t), (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4, 'tex'); });
-  const inf = rd.info.memory;
+  const inf = rd.info.memory; let bufB = 0, texB = 0; window.__gb.buf.forEach(v => bufB += v); window.__gb.tex.forEach(v => texB += v);
   let gpuGeo = 0; P.geo.forEach(g => { gpuGeo += gb(g); });
-  return { geometrie: inf.geometries, texture: inf.textures, nuoveGeo: P.geo.size, nuoveTex: P.tex.size, mbGeoNuove: Math.round(gpuGeo / 1048576), by, heap: Math.round(performance.memory.usedJSHeapSize / 1048576), scena: inS.size, rilascio: window.__rilascio };
+  // chi sono le geometrie nuove in scena: il ramo (figlio della scena), il raggio della sfera, la distanza dal punto guardato
+  const mOf = new Map(); S.traverse(o => { if (o.geometry && !mOf.has(o.geometry)) mOf.set(o.geometry, o); });
+  const diag = { ramo: {}, raggio: {}, dist: {}, tipo: {} }, cx = R.cam.x, cz = R.cam.y, bk = (o, k, b) => { o[k] = o[k] || { n: 0, mb: 0 }; o[k].n++; o[k].mb = +(o[k].mb + b / 1048576).toFixed(1); };
+  P.geo.forEach(g => { const o = mOf.get(g); if (!o) return; let q = o; while (q.parent && q.parent !== S) q = q.parent; const b = gb(g);
+    bk(diag.ramo, (q.name || q.type) + (q.userData && Object.keys(q.userData).length ? ' {' + Object.keys(q.userData).slice(0, 3) + '}' : ''), b);
+    bk(diag.tipo, (o.isInstancedMesh ? 'istanze ' : o.isMesh ? 'mesh ' : o.type + ' ') + (o.material && o.material.type) + (o.castShadow ? ' ombra' : '') + (o.visible ? '' : ' spenta') + (o.frustumCulled === false ? ' senzaCull' : ''), b);
+    if (!g.boundingSphere) g.computeBoundingSphere(); const bs = g.boundingSphere, e = o.matrixWorld.elements, c = bs.center, x = e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12], z = e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14], r = bs.radius * Math.hypot(e[0], e[1], e[2]);
+    bk(diag.raggio, r < 10 ? '<10' : r < 30 ? '10-30' : r < 60 ? '30-60' : r < 120 ? '60-120' : '>120', b); const d = Math.hypot(x - cx, z - cz); bk(diag.dist, d < 150 ? '<150' : d < 300 ? '150-300' : d < 500 ? '300-500' : '>500', b); });
+  return { schedaBufferMB: Math.round(bufB / 1048576), schedaTextureMB: Math.round(texB / 1048576), geometrie: inf.geometries, texture: inf.textures, nuoveGeo: P.geo.size, nuoveTex: P.tex.size, mbGeoNuove: Math.round(gpuGeo / 1048576), diag, by, heap: Math.round(performance.memory.usedJSHeapSize / 1048576), scena: inS.size, rilascio: window.__rilascio };
 }
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
@@ -50,7 +58,17 @@ const srv = http.createServer((req, res) => {
   const pg = await ctx.newPage();
   pg.on('crash', () => { log('[pagina morta]'); process.exit(2); });
   pg.on('pageerror', e => log('[errore]', e.message));
-  await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true; for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } } });
+  await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true; const GB = window.__gb = { buf: new Map(), tex: new Map(), bb: new WeakMap(), tb: new WeakMap() };
+    for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype;
+      // i byte sulla scheda video, contati alla fonte: buffer (bufferData − deleteBuffer) e texture (texImage/texStorage − deleteTexture)
+      const bB = P.bindBuffer, bD = P.bufferData, dB = P.deleteBuffer, bT = P.bindTexture, dT = P.deleteTexture;
+      P.bindBuffer = function (t, o) { let m = GB.bb.get(this); if (!m) GB.bb.set(this, m = {}); m[t] = o; return bB.apply(this, arguments); };
+      P.bufferData = function (t, d) { const o = (GB.bb.get(this) || {})[t]; if (o) GB.buf.set(o, typeof d === 'number' ? d : d ? d.byteLength : 0); return bD.apply(this, arguments); };
+      P.deleteBuffer = function (o) { GB.buf.delete(o); return dB.apply(this, arguments); };
+      P.bindTexture = function (t, o) { let m = GB.tb.get(this); if (!m) GB.tb.set(this, m = {}); m[t] = o; return bT.apply(this, arguments); };
+      P.deleteTexture = function (o) { GB.tex.delete(o); return dT.apply(this, arguments); };
+      for (const k of ['texImage2D', 'texImage3D', 'texStorage2D', 'texStorage3D']) { const f = P[k]; if (!f) continue; P[k] = function (t, lv) { try { const o = (GB.tb.get(this) || {})[t === 34069 || (t > 34069 && t < 34075) ? 34067 : t]; if (o && (lv === 0 || /Storage/.test(k))) { const a = arguments; let w = 0, h = 0, d = 1; if (k === 'texImage2D') { if (a.length >= 8) { w = a[3]; h = a[4]; } else { w = a[5].width || 0; h = a[5].height || 0; } } else if (k === 'texStorage2D') { w = a[3]; h = a[4]; } else { w = a[3]; h = a[4]; d = a[5]; } GB.tex.set(o, Math.max(GB.tex.get(o) || 0, w * h * d * 4)); } } catch (e) { } return f.apply(this, arguments); }; } }
+    for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) { if (!C) continue; const P = C.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } } });
   await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { timeout: 900000 });
   await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models && window.__pv.R.__models.renderer, null, { timeout: 1500000, polling: 1000 });
   log('caricato', Q);
@@ -67,11 +85,12 @@ const srv = http.createServer((req, res) => {
   const [x0, y0] = posti.partenza, campioni = [];
   const misura = async (nome) => { await pg.evaluate(() => window.gc && window.gc()); await pg.waitForTimeout(500); const m = await pg.evaluate(conta); m.nome = nome; campioni.push(m);
     const top = Object.entries(m.by).sort((a, b) => b[1].n - a[1].n).slice(0, 8).map(([k, v]) => `${v.n} (${v.scena} in scena, ${v.mb.toFixed(1)} MB, fuori ${v.fuori_mb.toFixed(1)}) ${chi(k.slice(2)).slice(0, 110)} [${v.tipo}]`);
+    console.log(JSON.stringify({ ramo: Object.entries(m.diag.ramo).sort((a, b) => b[1].mb - a[1].mb).slice(0, 10), tipo: Object.entries(m.diag.tipo).sort((a, b) => b[1].mb - a[1].mb).slice(0, 6), raggio: m.diag.raggio, dist: m.diag.dist }));
     log(`== ${nome}: three geometrie ${m.geometrie}, texture ${m.texture}; caricate dopo l'aggancio e vive: geo ${m.nuoveGeo}, tex ${m.nuoveTex}; heap ${m.heap} MB\n    ` + top.join('\n    ')); };
   await misura('partenza');
   for (let g = 0; g < GIRI; g++) { await vai(posti.a[0], posti.a[1]); await vai(posti.b[0], posti.b[1]); await vai(posti.c[0], posti.c[1]); await vai(x0, y0); await misura('ritorno ' + (g + 1)); }
   const fin = campioni[campioni.length - 1];
-  const S = { query: Q, telefono: TEL, posti, campioni: campioni.map(c => ({ nome: c.nome, geometrie: c.geometrie, texture: c.texture, nuoveGeo: c.nuoveGeo, nuoveTex: c.nuoveTex, mbGeoNuove: c.mbGeoNuove, heap: c.heap, rilascio: c.rilascio })),
+  const S = { query: Q, telefono: TEL, posti, campioni: campioni.map(c => ({ nome: c.nome, schedaBufferMB: c.schedaBufferMB, schedaTextureMB: c.schedaTextureMB, geometrie: c.geometrie, texture: c.texture, nuoveGeo: c.nuoveGeo, nuoveTex: c.nuoveTex, mbGeoNuove: c.mbGeoNuove, heap: c.heap, rilascio: c.rilascio })),
     perChi: Object.entries(fin.by).sort((a, b) => b[1].n - a[1].n).slice(0, 40).map(([k, v]) => ({ chi: chi(k.slice(2)), pila: k.slice(2), ...v })) };
   if (OUTF) fs.writeFileSync(OUTF, JSON.stringify(S, null, 1));
   console.log(JSON.stringify(S.campioni));
