@@ -22987,7 +22987,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '22b2f20f72355fee';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '4106131a94fc91ac';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -61960,7 +61960,7 @@ var Writing = (function () {
   // 4096² sul computer, 2048² sul telefono, sulla scheda video) e il suo piano diventa un'istanza di una InstancedMesh sola, che
   // legge il suo riquadro dall'atlante. Tutti i lavori finiti sui muri e per terra costano un disegno. Restano veli i lavori in
   // corso, sui mezzi, sul treno e sui carri (quelli sopra un altro vanno nella seconda InstancedMesh, disegnata dopo). Senza WebGL2 o con ?noatlante: i veli di prima.
-  const ATL = { pages: [], pend: [], off: typeof location !== 'undefined' && /[?&]noatlante\b/.test(location.search), ok: null, scn: null, cam: null, PAD: 3, CAP: 2048 };
+  const ATL = { pages: [], pend: [], pc: null, off: typeof location !== 'undefined' && /[?&]noatlante\b/.test(location.search), ok: null, PAD: 3, CAP: 2048 };
   function atlOk() {
     if (ATL.ok !== null) return ATL.ok; const R = R_(), rd = R && R.__models && R.__models.renderer; if (!rd || typeof document === 'undefined') return false;
     return (ATL.ok = !ATL.off && !!rd.capabilities.isWebGL2);
@@ -62026,31 +62026,27 @@ var Writing = (function () {
     return got > 0;
   }
   function veilGone(v) { if (!v || !v.mesh) return; if (v.mesh.parent) v.mesh.parent.remove(v.mesh); v.mesh.geometry.dispose(); v.mesh.material.dispose(); if (v.tex) v.tex.dispose(); GFX.mem.veli = Math.max(0, GFX.mem.veli - 1); }
-  // le copie in attesa, tutte in un disegno solo (le mipmap dell'atlante si rifanno una volta)
+  // le copie in attesa: ogni tela va dritta nel suo scaffale (texSubImage2D sulla texture dell'atlante, il margine trasparente
+  // compreso), poi le mipmap si rifanno una volta. Prima la tela si ridisegnava nell'atlante con uno shader: nel gioco la leggeva
+  // vuota e l'atlante si riempiva di nero
   function atlFlush() {
-    if (!ATL.pend.length) return; const THREE = T3(), rd = R_().__models.renderer;
-    if (!ATL.scn) {
-      ATL.scn = new THREE.Scene(); ATL.cam = new THREE.Camera();
-      ATL.mat = new THREE.ShaderMaterial({ uniforms: { map: { value: null } }, depthTest: false, depthWrite: false, blending: THREE.NoBlending, transparent: false,
-        vertexShader: 'attribute vec4 aIn; varying vec2 vQ; varying vec4 vIn; void main(){ vQ = uv; vIn = aIn; gl_Position = vec4(position.xy, 0., 1.); }',
-        fragmentShader: 'uniform sampler2D map; varying vec2 vQ; varying vec4 vIn; void main(){ vec2 q = (vQ - vIn.xy) / vIn.zw; if (q.x < 0. || q.y < 0. || q.x > 1. || q.y > 1.) { gl_FragColor = vec4(0.); return; } gl_FragColor = texture2D(map, q); }' });
-    }
+    if (!ATL.pend.length) return; const THREE = T3(), rd = R_().__models.renderer, gl = rd.getContext();
     const byP = new Map(); ATL.pend.splice(0, 8).forEach(o => { (byP.get(o.P) || byP.set(o.P, []).get(o.P)).push(o); });
-    const prev = rd.getRenderTarget(), ar = rd.info.autoReset; rd.info.autoReset = false;
     byP.forEach((L, P) => {
-      const S = P.S, made = [];
+      if (P.fresh) { const prev = rd.getRenderTarget(), cc = rd.getClearColor(new THREE.Color()), ca = rd.getClearAlpha(); rd.setRenderTarget(P.rt); rd.setClearColor(0, 0); rd.clear(true, false, false); rd.setClearColor(cc, ca); rd.setRenderTarget(prev); P.fresh = false; }   // la prima volta: la texture nasce sulla scheda, trasparente
+      const tx = rd.properties.get(P.rt.texture).__webglTexture; if (!tx) return;
+      rd.state.bindTexture(gl.TEXTURE_2D, tx);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+      const pc = ATL.pc || (ATL.pc = document.createElement('canvas')), px = pc.getContext('2d');
       L.forEach(o => {
-        const x0 = o.sl.x / S * 2 - 1, x1 = (o.sl.x + o.sl.w) / S * 2 - 1, y0 = o.sl.y / S * 2 - 1, y1 = (o.sl.y + o.sl.h) / S * 2 - 1;
-        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y1, 0], 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)); g.setIndex([0, 1, 2, 0, 2, 3]);
-        const a = [(o.ix - o.sl.x) / o.sl.w, (o.iy - o.sl.y) / o.sl.h, o.iw / o.sl.w, o.ih / o.sl.h]; g.setAttribute('aIn', new THREE.Float32BufferAttribute([].concat(a, a, a, a), 4));
-        const tex = new THREE.CanvasTexture(o.c); tex.encoding = THREE.sRGBEncoding; tex.generateMipmaps = false; tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.NearestFilter;
-        const mt = ATL.mat.clone(); mt.uniforms.map.value = tex; const q = new THREE.Mesh(g, mt); q.frustumCulled = false; ATL.scn.add(q); made.push({ q, g, mt, tex, o });
+        pc.width = o.sl.w; pc.height = o.sl.h; px.clearRect(0, 0, o.sl.w, o.sl.h); px.drawImage(o.c, ATL.PAD, o.sl.h - ATL.PAD - o.ih);   // girata in su: il fondo della tela a PAD dal fondo dello scaffale
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, o.sl.x, o.sl.y, gl.RGBA, gl.UNSIGNED_BYTE, pc);
+        const M3 = o.Ly.mesh; M3.setMatrixAt(o.i, o.M); M3.count = Math.max(M3.count, o.i + 1); M3.instanceMatrix.needsUpdate = true;
+        veilGone(o.veil); poolPut(o.c);
       });
-      rd.setRenderTarget(P.rt); if (P.fresh) { const cc = rd.getClearColor(new THREE.Color()), ca = rd.getClearAlpha(); rd.setClearColor(0, 0); rd.clear(true, false, false); rd.setClearColor(cc, ca); P.fresh = false; }
-      rd.render(ATL.scn, ATL.cam);
-      made.forEach(m => { const o = m.o, M3 = o.Ly.mesh; M3.setMatrixAt(o.i, o.M); M3.count = Math.max(M3.count, o.i + 1); M3.instanceMatrix.needsUpdate = true; ATL.scn.remove(m.q); m.g.dispose(); m.mt.dispose(); m.tex.dispose(); veilGone(m.o.veil); poolPut(m.o.c); });
+      gl.generateMipmap(gl.TEXTURE_2D); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      pc.width = pc.height = 1;
     });
-    rd.setRenderTarget(prev); rd.info.autoReset = ar;
   }
   function atlReset() { ATL.pages.forEach(P => { P.L.forEach(Ly => { if (Ly.mesh.parent) Ly.mesh.parent.remove(Ly.mesh); Ly.mesh.geometry.dispose(); Ly.mesh.material.dispose(); }); P.rt.dispose(); }); ATL.pages = []; ATL.pend = []; }
   // si può mettere nell'atlante? un lavoro finito, fermo sulla scena (non su un mezzo né sul treno)
