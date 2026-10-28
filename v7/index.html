@@ -311,6 +311,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   try { q = location.search || ''; } catch (e) { return; }
   if (/[?&](alta|piena)\b/.test(q)) { P.motivo = '?alta'; return; }
   if (/[?&](leggera|bassa)\b/.test(q)) { P.profilo = 'leggera'; P.motivo = '?leggera'; return; }
+  // il forno dei tasselli (strumenti/tassella.js), i banchi e le sonde girano in un browser automatico in software: lì il profilo resta
+  // quello che chiede l'indirizzo (la città a tasselli si cuoce col profilo pieno, e le misure restano confrontabili con le vecchie)
+  try { if (navigator.webdriver) { P.motivo = 'browser automatico'; return; } } catch (e) { }
   // il nome della scheda: un contesto minimo, letto e subito restituito (avvio.js lo ritrova in PV_GPU_NOME, senza chiederlo di nuovo)
   let nome = '';
   try {
@@ -23030,7 +23033,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '2dcde7de1f7d0d62';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'b34aecae3bfeca3f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->

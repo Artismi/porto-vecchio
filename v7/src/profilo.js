@@ -14,6 +14,9 @@
   try { q = location.search || ''; } catch (e) { return; }
   if (/[?&](alta|piena)\b/.test(q)) { P.motivo = '?alta'; return; }
   if (/[?&](leggera|bassa)\b/.test(q)) { P.profilo = 'leggera'; P.motivo = '?leggera'; return; }
+  // il forno dei tasselli (strumenti/tassella.js), i banchi e le sonde girano in un browser automatico in software: lì il profilo resta
+  // quello che chiede l'indirizzo (la città a tasselli si cuoce col profilo pieno, e le misure restano confrontabili con le vecchie)
+  try { if (navigator.webdriver) { P.motivo = 'browser automatico'; return; } } catch (e) { }
   // il nome della scheda: un contesto minimo, letto e subito restituito (avvio.js lo ritrova in PV_GPU_NOME, senza chiederlo di nuovo)
   let nome = '';
   try {
