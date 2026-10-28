@@ -12993,30 +12993,30 @@ var Render = (function () {
       v1: { tm: 1, prof: { soleLato: [-30, -118], soleAlto: [14, 27] },
         mat: { pittura: .9, varia: .75, polvere: .8, suolo: .6, ombre: .9, celle: .35, chiome: 1 }, tetti: .9, sporco: .8, chiomaVol: 1,
         ao: .85, aoR: 1.1, aoTinta: aaaC('#5a4a7a'), haze: .45, hazeD: [8, 70], dof: .7, dofD: 34, mini: .35, bloom: .22, soglia: .78,
-        giorno: { esp: 1.02, sole: aaaC('#ffc488'), soleK: 1.32, cielo: aaaC('#7f9fd8'), terra: aaaC('#c08458'), cieloK: .5, bordo: aaaC('#ffd2a0'), bordoK: .2, nebbia: aaaC('#e6c8a8'),
-          ombra: aaaC('#4a58b0'), ombraK: .34, hz: aaaC('#f0d2b0'), sl: [1.04, 1.0, .93], of: [.0, -.004, .01], pw: [1.02, 1.04, 1.06], sat: 1.12, sh: [.9, .94, 1.12], hi: [1.06, 1.0, .9], vign: 1.5 },
-        tramonto: { esp: 1.0, sole: aaaC('#ff8a48'), soleK: 1.25, cielo: aaaC('#6a6cc0'), terra: aaaC('#b06048'), cieloK: .55, bordo: aaaC('#ff9a60'), bordoK: .3, nebbia: aaaC('#d89080'),
-          ombra: aaaC('#5040a8'), ombraK: .4, hz: aaaC('#f0a088'), sl: [1.08, .98, .86], of: [.008, -.004, .015], pw: [1.0, 1.05, 1.08], sat: 1.12, sh: [.86, .86, 1.18], hi: [1.1, .98, .84], vign: 1.7 },
+        giorno: { esp: .97, sole: aaaC('#ffd6aa'), soleK: 1.3, cielo: aaaC('#8aa6dc'), terra: aaaC('#b88a62'), cieloK: .52, bordo: aaaC('#ffd8b0'), bordoK: .2, nebbia: aaaC('#e2cdb6'),
+          ombra: aaaC('#4a62b8'), ombraK: .28, hz: aaaC('#ead6c0'), sl: [1.0, .99, .97], of: [.0, .0, .008], pw: [1.02, 1.03, 1.04], sat: 1.0, sh: [.93, .96, 1.08], hi: [1.03, 1.0, .95], vign: 1.5 },
+        tramonto: { esp: .98, sole: aaaC('#ffa064'), soleK: 1.22, cielo: aaaC('#8a8cc0'), terra: aaaC('#a87060'), cieloK: .55, bordo: aaaC('#ffb080'), bordoK: .26, nebbia: aaaC('#cfa090'),
+          ombra: aaaC('#5a58a8'), ombraK: .22, hz: aaaC('#e8b8a0'), sl: [1.02, .99, .95], of: [.004, .0, .01], pw: [1.0, 1.03, 1.04], sat: .98, sh: [.94, .93, 1.06], hi: [1.05, 1.0, .93], vign: 1.6 },
         notte: { esp: 1.05, sole: aaaC('#8ca6e8'), soleK: .28, cielo: aaaC('#2c3c78'), terra: aaaC('#1c1c34'), cieloK: .34, bordo: aaaC('#6c8ade'), bordoK: .18, nebbia: aaaC('#101830'),
           ombra: aaaC('#2a2a70'), ombraK: .4, hz: aaaC('#1a2448'), sl: [1, 1, 1.04], of: [0, 0, .01], pw: [1.04, 1.03, 1], sat: 1.05, sh: [.86, .92, 1.2], hi: [1.12, 1, .84], vign: 1.6 } },
       // v2 · STREET POP SATURO: luce piena alta e bianca, ombre ciano-turchesi nette ma colorate, colori pieni, neri profondi, niente foschia
       v2: { tm: 1, prof: { soleLato: [-48, -135], soleAlto: [26, 44] },
-        mat: { pittura: .7, varia: .9, polvere: .9, suolo: .7, ombre: .55, celle: .9, chiome: 1 }, tetti: 1, sporco: 1, chiomaVol: 1.3,
+        mat: { pittura: .7, varia: .9, polvere: .9, suolo: .7, ombre: .6, celle: .9, chiome: .8 }, tetti: 1, sporco: 1, chiomaVol: 1,
         ao: 1, aoR: .8, aoTinta: aaaC('#283a6a'), haze: .12, hazeD: [12, 80], dof: .25, dofD: 40, mini: .2, bloom: .14, soglia: .86,
-        giorno: { esp: 1.0, sole: aaaC('#fff2dc'), soleK: 1.38, cielo: aaaC('#78b4f0'), terra: aaaC('#d0905c'), cieloK: .46, bordo: aaaC('#ffe8d0'), bordoK: .16, nebbia: aaaC('#c8dcf0'),
-          ombra: aaaC('#2878c8'), ombraK: .42, hz: aaaC('#d8e8f8'), sl: [1.02, 1.0, 1.0], of: [-.01, -.008, -.002], pw: [1.08, 1.06, 1.04], sat: 1.32, sh: [.84, .98, 1.12], hi: [1.06, 1.0, .92], vign: 1.2 },
-        tramonto: { esp: 1.0, sole: aaaC('#ff7a50'), soleK: 1.2, cielo: aaaC('#7a58c8'), terra: aaaC('#c04868'), cieloK: .58, bordo: aaaC('#ff60a0'), bordoK: .32, nebbia: aaaC('#b070a8'),
-          ombra: aaaC('#3a2ab8'), ombraK: .5, hz: aaaC('#c87ab0'), sl: [1.06, .97, 1.0], of: [.0, -.01, .012], pw: [1.04, 1.08, 1.02], sat: 1.3, sh: [.92, .82, 1.2], hi: [1.1, .98, .88], vign: 1.4 },
+        giorno: { esp: .98, sole: aaaC('#fff4e4'), soleK: 1.34, cielo: aaaC('#80b8f0'), terra: aaaC('#c89068'), cieloK: .56, bordo: aaaC('#fff0e0'), bordoK: .16, nebbia: aaaC('#c8dcf0'),
+          ombra: aaaC('#2a80d0'), ombraK: .4, hz: aaaC('#d8e8f8'), sl: [.99, 1.0, 1.02], of: [.004, .006, .012], pw: [1.05, 1.04, 1.03], sat: 1.18, sh: [.9, .98, 1.08], hi: [1.03, 1.0, .97], vign: 1.2 },
+        tramonto: { esp: 1.0, sole: aaaC('#ff8a58'), soleK: 1.15, cielo: aaaC('#6a74c4'), terra: aaaC('#a85868'), cieloK: .56, bordo: aaaC('#ff78b0'), bordoK: .22, nebbia: aaaC('#9a78a8'),
+          ombra: aaaC('#3a40b0'), ombraK: .3, hz: aaaC('#b088b0'), sl: [1.02, .98, 1.0], of: [.0, .0, .01], pw: [1.02, 1.04, 1.0], sat: 1.08, sh: [.94, .92, 1.1], hi: [1.05, .99, .95], vign: 1.4 },
         notte: { esp: 1.08, sole: aaaC('#80a0ff'), soleK: .3, cielo: aaaC('#3a2c88'), terra: aaaC('#24143a'), cieloK: .38, bordo: aaaC('#c060ff'), bordoK: .22, nebbia: aaaC('#140c30'),
           ombra: aaaC('#3018a0'), ombraK: .45, hz: aaaC('#24164a'), sl: [1, 1, 1.04], of: [-.006, -.008, .006], pw: [1.06, 1.06, 1], sat: 1.25, sh: [.9, .84, 1.24], hi: [1.12, .98, .9], vign: 1.4 } },
       // v3 · MINIATURA MORBIDA: luce alta e avvolgente, ombre lunghe e morbide lilla, AgX, tilt-shift forte per profondità, foschia lattea
       v3: { tm: 2, prof: { soleLato: [-40, -125], soleAlto: [24, 40] },
-        mat: { pittura: .8, varia: .55, polvere: .5, suolo: .45, ombre: 1, celle: .15, chiome: .9 }, tetti: .6, sporco: .45, chiomaVol: .9,
+        mat: { pittura: .8, varia: .55, polvere: .5, suolo: .45, ombre: 1, celle: .15, chiome: .6 }, tetti: .6, sporco: .45, chiomaVol: .5,
         ao: .7, aoR: 1.4, aoTinta: aaaC('#7a6a9a'), haze: .5, hazeD: [4, 55], dof: 1, dofD: 22, mini: .6, bloom: .2, soglia: .8,
-        giorno: { esp: 1.3, sole: aaaC('#fff0dc'), soleK: 1.12, cielo: aaaC('#b0c4f0'), terra: aaaC('#d8b088'), cieloK: .7, bordo: aaaC('#fff4e8'), bordoK: .2, nebbia: aaaC('#e8e4f0'),
-          ombra: aaaC('#8070c8'), ombraK: .45, hz: aaaC('#f2eef8'), sl: [1.02, 1.0, .98], of: [.02, .018, .03], pw: [.96, .96, .96], sat: 1.22, sh: [.96, .94, 1.08], hi: [1.03, 1.0, .97], vign: .9 },
-        tramonto: { esp: 1.3, sole: aaaC('#ffa070'), soleK: 1.1, cielo: aaaC('#9a90d8'), terra: aaaC('#d89080'), cieloK: .72, bordo: aaaC('#ffb890'), bordoK: .28, nebbia: aaaC('#e0b0b8'),
-          ombra: aaaC('#7a5ac0'), ombraK: .5, hz: aaaC('#f0c8c8'), sl: [1.04, 1.0, .96], of: [.03, .015, .035], pw: [.96, .98, .96], sat: 1.2, sh: [.96, .9, 1.12], hi: [1.05, .99, .94], vign: 1.0 },
+        giorno: { esp: 1.24, sole: aaaC('#fff0dc'), soleK: 1.12, cielo: aaaC('#b0c4f0'), terra: aaaC('#d8b088'), cieloK: .7, bordo: aaaC('#fff4e8'), bordoK: .2, nebbia: aaaC('#e8e4f0'),
+          ombra: aaaC('#8070c8'), ombraK: .38, hz: aaaC('#f2eef8'), sl: [1.0, 1.0, 1.0], of: [.015, .015, .028], pw: [.98, .98, .97], sat: 1.06, sh: [.96, .95, 1.06], hi: [1.02, 1.0, .98], vign: .9 },
+        tramonto: { esp: 1.24, sole: aaaC('#ffac80'), soleK: 1.1, cielo: aaaC('#a0a0d4'), terra: aaaC('#d09888'), cieloK: .7, bordo: aaaC('#ffc0a0'), bordoK: .24, nebbia: aaaC('#dcb8c0'),
+          ombra: aaaC('#7a62b8'), ombraK: .34, hz: aaaC('#f0d0d0'), sl: [1.02, 1.0, .98], of: [.02, .012, .03], pw: [.98, .99, .97], sat: 1.04, sh: [.97, .94, 1.06], hi: [1.04, 1.0, .96], vign: 1.0 },
         notte: { esp: 1.35, sole: aaaC('#a0b4f0'), soleK: .32, cielo: aaaC('#4a5498'), terra: aaaC('#2a2440'), cieloK: .42, bordo: aaaC('#90a0e8'), bordoK: .2, nebbia: aaaC('#202848'),
           ombra: aaaC('#4a4090'), ombraK: .4, hz: aaaC('#2a3058'), sl: [1, 1, 1.02], of: [.02, .02, .035], pw: [.98, .98, .96], sat: 1.12, sh: [.94, .92, 1.12], hi: [1.06, 1, .92], vign: 1 } },
     } };
@@ -13366,9 +13366,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
             // Le coppie che saltano troppo (una sagoma davanti) non contano. La tinta non è grigia: moltiplica verso aAo
             float rp = clamp(aA.y / (pa * aD0), 2., 40.), occ = 0.;
             for (int k = 0; k < 4; k++) { float a = .3 + float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .55 : 1.);
-              float da = 1. / sgI(vUv + o), db = 1. / sgI(vUv - o), cr = aD0 - .5 * (da + db), ok = 1. - smoothstep(aA.y * 3., aA.y * 6., max(abs(da - aD0), abs(db - aD0)));
-              occ += smoothstep(.03, .45, cr / aA.y) * ok; }
-            c *= mix(vec3(1.), aAo, min(1., occ * .3) * aA.x); }
+              float da = 1. / sgI(vUv + o), db = 1. / sgI(vUv - o), cr = aD0 - .5 * (da + db), ok = 1. - smoothstep(aA.y * .9, aA.y * 1.8, max(abs(da - aD0), abs(db - aD0)));
+              occ += smoothstep(.04, .4, cr / aA.y) * ok; }
+            c *= mix(vec3(1.), aAo, min(1., occ * .35) * aA.x); }
           if (aA.z > 0.) c = mix(c, aH, smoothstep(0., aF.z, aD0 - aDF - aF.y) * aA.z);   // [look-aaa] la foschia: quello che sta dietro il fuoco prende l'aria dell'ora
 #endif
 #ifdef SG_PRO
