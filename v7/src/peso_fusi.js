@@ -24,7 +24,7 @@ var PesoFusi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nofusi\b/.test(Q), SETT = ON && !/[?&]nosettori\b/.test(Q), OMB = ON && !/[?&]noombrefuse\b/.test(Q);
-  const P = { cella: 32, margine: 2, giro: 150, oss: 90, passo: 30, pausa: 120, riprova: 600, scansione: 60, min: 2, sciolte: 6 };
+  const P = { cella: 32, margine: 2, giro: 150, oss: 90, passo: 30, vicino: 160, pausa: 120, riprova: 600, scansione: 60, min: 2, sciolte: 6 };
   const ST = { celle: 0, celleFuori: 0, ramiFuori: 0, ramiInCelle: 0, sagome: 0, pezziFusi: 0, sciolte: 0, perche: {}, ms: 0, msSett: 0, msOmb: 0, msTaglia: 0, fotogrammi: 0 };
   let K = null, T3 = null, S = null, frame = 0, attivo = true;
   const noRay = () => { };
@@ -93,7 +93,7 @@ var PesoFusi = (function () {
 
   // ------------------------------------------------------------------ le ombre fuse
   const RIG = new Map();   // ramo (figlio della scena) → { stato: 'oss'|'fatto'|'pausa', t, nodi: Map(nodo → istantanea), sagome: [], sciolte }
-  let grp = null, scanT = 0, MATS = {}, typeVSM = false;
+  let grp = null, scanT = 0, MATS = {}, typeVSM = false, CX = 0, CZ = 0;
   const istante = (o, a) => { const p = o.position, q = o.quaternion, s = o.scale; if (!o.matrixAutoUpdate) { const e = o.matrix.elements; a[0] = e[12]; a[1] = e[13]; a[2] = e[14]; a[3] = e[0]; a[4] = e[1]; a[5] = e[2]; a[6] = e[5]; a[7] = e[6]; a[8] = e[9]; a[9] = e[10]; }
     else { a[0] = p.x; a[1] = p.y; a[2] = p.z; a[3] = q.x; a[4] = q.y; a[5] = q.z; a[6] = q.w; a[7] = s.x; a[8] = s.y; a[9] = s.z; } a[10] = o.visible ? 1 : 0; a[11] = o.matrixAutoUpdate ? 1 : 0; return a; };
   const _t = new Float64Array(12);
@@ -168,7 +168,7 @@ var PesoFusi = (function () {
   function ombre() {
     if (!grp) { grp = new T3.Group(); grp.name = 'ombre_fuse'; grp.matrixAutoUpdate = false; grp.matrixWorldAutoUpdate = false; grp.__frzNo = true; grp.userData.keep = true; grp.visible = false; }
     if (grp.parent !== S) S.add(grp);
-    typeVSM = K.renderer.shadowMap.type === 3;
+    typeVSM = K.renderer.shadowMap.type === 3; { const e = K.camera().matrixWorld.elements; CX = e[12]; CZ = e[14]; }
     // i rami nuovi che si muovono (o non ancora congelati) entrano in osservazione; chi esce dalla scena si scioglie
     if (frame >= scanT) { scanT = frame + P.scansione;
       const pers = new Set(); if (K.people) for (const k in K.people) pers.add(K.people[k]);
@@ -182,7 +182,9 @@ var PesoFusi = (function () {
       if (R.stato === 'oss') { const d = frame - R.t; if (d > 0 && d % P.passo === 0) confronta(R); if (d >= P.oss) { R.nodi = null; costruisci(o, R); } return; }   // tre confronti in P.oss fotogrammi
       if (R.stato === 'fermo' && R.rs && frame % P.passo === 0 && !uguale(o, R.rs)) R.t = frame;   // il ramo fermo si è mosso: si osserva subito
       if (R.stato === 'pausa' || R.stato === 'fermo') { if (frame >= R.t) { R.stato = 'oss'; R.t = frame; R.nodi = osserva(o); } return; }
-      for (let i = R.sagome.length - 1; i >= 0; i--) { const s = R.sagome[i], c = regge(s);
+      for (let i = R.sagome.length - 1; i >= 0; i--) { const s = R.sagome[i];
+        { const e = s.Rn.matrixWorld.elements, dx = e[12] - CX, dz = e[14] - CZ, rr = P.vicino + s.sm.geometry.boundingSphere.radius; if (dx * dx + dz * dz > rr * rr && (frame + s.sm.id) % P.passo) continue; }   // lontano dalla camera (fuori da ogni ombra che si vede): un controllo ogni P.passo fotogrammi
+        const c = regge(s);
         if (c) { ST.perche[perche] = (ST.perche[perche] || 0) + 1; sciogli(R, s, c); R.sagome.splice(i, 1); R.sciolte++; if (R.sciolte > P.sciolte) { sciogliTutto(R); o.__pfNo = true; RIG.delete(o); return; }
           sciogliTutto(R); R.stato = 'pausa'; R.t = frame + P.pausa; return; } }
     });

@@ -35,7 +35,7 @@ const srv = http.createServer((req, res) => {
     await pg.waitForTimeout(+(process.env.ATTESA || 15000));   // i rami fermi si congelano (10 s), le ombre fuse si fanno (1,5 s di osservazione)
     await pg.waitForFunction(() => { const c = window.PesoFusi && PesoFusi.conto(); return !c || !c.on || (c.sagome > 0 && !(c.stati.oss > 5) && c.ramiInCelle > 0); }, null, { timeout: 600000, polling: 2000 }).catch(() => log('le ombre fuse non sono pronte'));   // sotto SwiftShader un fotogramma è lento: si aspetta che le ombre fuse siano fatte
     // si ferma il gioco e si disegna la sola scena in un bersaglio nostro, a lotti di 10 (per vedere a che punto è)
-    await pg.evaluate(() => { window.__raf0 = window.__raf0 || window.requestAnimationFrame; window.requestAnimationFrame = () => 0;
+    await pg.evaluate(() => { window.__raf0 = window.__raf0 || window.requestAnimationFrame; window.__rafPend = []; window.requestAnimationFrame = cb => { window.__rafPend.push(cb); return 0; };   /* i cicli a fotogramma si fermano e ripartono dopo */
       const R = window.__pv.R, rd = R.__models.renderer, S = R.__models.scene, cam = R.getCamera(), W = rd.domElement.width, H = rd.domElement.height;
       const T = new THREE.WebGLRenderTarget(W, H, { depthBuffer: true }), auto = rd.shadowMap.autoUpdate; rd.shadowMap.autoUpdate = true;
       const px = () => { const a = new Uint8Array(W * H * 4); rd.setRenderTarget(T); rd.render(S, cam); rd.readRenderTargetPixels(T, 0, 0, W, H, a); rd.setRenderTarget(null); return a; };
@@ -49,7 +49,7 @@ const srv = http.createServer((req, res) => {
     const fb = await fermo('B');
     const r = await pg.evaluate(([fa, fb]) => { const U = window.__U, A = U.A, B = U.prev, W = U.W, H = U.H;
         if (window.__pesoAB.fusi) window.__pesoAB.fusi(true); if (window.__pesoAB.matrici) window.__pesoAB.matrici(true);
-        U.rd.shadowMap.autoUpdate = U.auto; U.T.dispose(); window.requestAnimationFrame = window.__raf0;
+        U.rd.shadowMap.autoUpdate = U.auto; U.T.dispose(); window.requestAnimationFrame = window.__raf0; window.__rafPend.forEach(cb => window.__raf0.call(window, cb));
         let diff = 0, max = 0, pxd = 0; for (let i = 0; i < A.length; i += 4) { let dd = 0; for (let c = 0; c < 3; c++) { const d = Math.abs(A[i + c] - B[i + c]); if (d) { diff++; dd = 1; if (d > max) max = d; } } pxd += dd; }
         const toB64 = a => { const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d'), im = x.createImageData(W, H); for (let yy = 0; yy < H; yy++) im.data.set(a.subarray((H - 1 - yy) * W * 4, (H - yy) * W * 4), yy * W * 4); for (let i = 3; i < im.data.length; i += 4) im.data[i] = 255; x.putImageData(im, 0, 0); return c.toDataURL('image/png').split(',')[1]; };
         return { W, H, fusi: U.fusi, fermaA: fa, fermaB: fb, canali_diversi: diff, pixel_diversi: pxd, scarto_max: max, pngA: toB64(A), pngB: toB64(B) }; }, [fa, fb]);
