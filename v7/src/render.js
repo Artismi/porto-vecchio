@@ -16451,7 +16451,41 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // Tre reti: se dentro un ramo congelato si aggiunge qualcosa (add, attach) si scongela subito; un controllo a rotazione (4000
   // oggetti per fotogramma) riguarda posizione, rotazione e scala di tutti e scongela chi si è mosso; chi si scongela non si
   // ricongela più. Restano fuori persone, mezzi, ossa e luci. ?nofrz lo spegne (per le misure).
-  const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null };
+  // [matrici] LE MATRICI SI RIFANNO SOLO SE CAMBIANO. three, a ogni fotogramma, per ogni oggetto con matrixAutoUpdate ricompone la matrice da
+  // posizione, rotazione e scala, e la ricomposizione alza matrixWorldNeedsUpdate: tutti i figli rifanno la matrice nel mondo, fermi o no.
+  // Peggio: ogni getWorldPosition (updateWorldMatrix) ricompone i genitori fino alla scena e lascia alzato il flag della scena, così il
+  // fotogramma dopo la scena obbligava TUTTI i ~38.000 oggetti, anche i rami congelati (FRZ): 51.000 chiamate e 26 ms a fotogramma nel borgo
+  // (strumenti/sonda_disegni.js). Qui, per ogni oggetto: la matrice locale si ricompone solo se posizione, rotazione o scala sono cambiate
+  // dall'ultima volta (con matrixAutoUpdate spento: se la matrice locale è cambiata); la matrice nel mondo si rifà se è cambiata la locale,
+  // se il genitore l'ha rifatta, se l'oggetto è stato appena attaccato (add, attach) o se qualcuno ha alzato il flag; e in quest'ultimo caso
+  // i figli sono obbligati solo se la matrice nel mondo è venuta diversa. Gli stessi numeri di three, senza i conti che li rifanno uguali.
+  // ?nomatrici: come prima
+  const UMW = { on: typeof location === 'undefined' || !/[?&]nomatrici\b/.test(location.search) };
+  const _umwW = new Float64Array(16);
+  function umwSelf(o, force) {
+    let t = o.__mt, loc = false;
+    if (o.matrixAutoUpdate) { const p = o.position, q = o.quaternion, s = o.scale;
+      if (t === undefined || t.length !== 10 || t[0] !== p.x || t[1] !== p.y || t[2] !== p.z || t[3] !== q.x || t[4] !== q.y || t[5] !== q.z || t[6] !== q.w || t[7] !== s.x || t[8] !== s.y || t[9] !== s.z) {
+        if (t === undefined || t.length !== 10) t = o.__mt = new Float64Array(10);
+        t[0] = p.x; t[1] = p.y; t[2] = p.z; t[3] = q.x; t[4] = q.y; t[5] = q.z; t[6] = q.w; t[7] = s.x; t[8] = s.y; t[9] = s.z; o.updateMatrix(); loc = true; } }
+    else { const e = o.matrix.elements; if (t === undefined || t.length !== 16) { t = o.__mt = new Float64Array(16); loc = true; } else for (let k = 0; k < 16; k++) if (t[k] !== e[k]) { loc = true; break; }
+      if (loc) for (let k = 0; k < 16; k++) t[k] = e[k]; }
+    if (loc || force || o.__mwRe) {
+      if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+      o.matrixWorldNeedsUpdate = false; o.__mwRe = false; return true; }
+    if (o.matrixWorldNeedsUpdate) { const w = o.matrixWorld.elements; for (let k = 0; k < 16; k++) _umwW[k] = w[k];
+      if (o.parent === null) o.matrixWorld.copy(o.matrix); else o.matrixWorld.multiplyMatrices(o.parent.matrixWorld, o.matrix);
+      o.matrixWorldNeedsUpdate = false; for (let k = 0; k < 16; k++) if (_umwW[k] !== w[k]) return true; }
+    return false;
+  }
+  if (UMW.on && !THREE.Object3D.prototype.updateMatrixWorld.__umw) {
+    const P = THREE.Object3D.prototype, add0 = P.add, U0 = P.updateMatrixWorld;
+    const umw = function (force) { if (!UMW.on) return U0.call(this, force); force = umwSelf(this, force); const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.matrixWorldAutoUpdate === true || force === true) c.updateMatrixWorld(force); } };
+    umw.__umw = true; P.updateMatrixWorld = umw;
+    if (typeof window !== 'undefined') (window.__pesoAB = window.__pesoAB || {}).matrici = v => { UMW.on = !!v; };   // per il confronto nella stessa pagina (strumenti/sonda_uguale_fusi.js)
+    P.add = function (o) { const r = add0.apply(this, arguments); for (let i = 0; i < arguments.length; i++) { const a = arguments[i]; if (a && a.isObject3D && a.parent === this) a.__mwRe = true; } return r; };   // appena attaccato: la matrice nel mondo va rifatta col genitore nuovo
+  }
+  const FRZ = { on: typeof location === 'undefined' || !/[?&]nofrz\b/.test(location.search), list: [], ri: 0, oi: 0, t: 0, scene: null, ver: 0 };   // [fusi] ver: cresce a ogni ramo che si congela o si scioglie (peso_fusi.js)
   const FRZ_UMW = function (force) { if (force) THREE.Object3D.prototype.updateMatrixWorld.call(this, true); };
   { const add0 = THREE.Object3D.prototype.add, att0 = THREE.Object3D.prototype.attach;
     const touch = o => { for (let q = o; q; q = q.parent) if (q.__frz) { frzThaw(q, q.__frz.frozen); break; } };   // in prova: si ricomincia; congelato: resta sciolto
@@ -16460,7 +16494,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const frzSnap = (o, a, i) => { const P = o.position, Q = o.quaternion, S = o.scale; if (!o.matrixAutoUpdate) { const e = o.matrix.elements; a[i] = e[12] + e[0]; a[i + 1] = e[13] + e[5]; a[i + 2] = e[14] + e[10] + e[2]; } else { a[i] = P.x; a[i + 1] = P.y; a[i + 2] = P.z; } a[i + 3] = Q.x; a[i + 4] = Q.y; a[i + 5] = Q.z; a[i + 6] = Q.w; a[i + 7] = S.x; a[i + 8] = S.y; a[i + 9] = S.z; };
   const _frzT = new Float64Array(10);
   function frzThaw(root, no) {
-    const F = root.__frz; if (!F) return; root.__frz = null; if (no) root.__frzNo = true;
+    const F = root.__frz; if (!F) return; root.__frz = null; if (no) root.__frzNo = true; FRZ.ver++;
     if (F.frozen) { delete root.updateMatrixWorld; root.updateMatrixWorld(true); }
     const i = FRZ.list.indexOf(root); if (i >= 0) FRZ.list.splice(i, 1);
   }
@@ -16475,8 +16509,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     scene.updateMatrixWorld = function (force) {   // updateMatrixWorld di three, col salto dei rami congelati
       // la scena stessa non si muove: three la ricomponeva a ogni fotogramma e questo (matrixWorldNeedsUpdate) obbligava TUTTI i ~50.000
       // oggetti a rifare la matrice nel mondo, anche quelli fermi. Si ricompone solo se posizione, rotazione o scala cambiano davvero
+      if (UMW.on) force = umwSelf(this, force);   // [matrici] la scena è come tutti: ricalcola (e obbliga i figli) solo se è cambiata davvero
+      else {
       if (this.matrixAutoUpdate) { frzSnap(this, _frzT, 0); let ch = false; for (let q = 0; q < 10; q++) if (_frzT[q] !== SCN[q]) { ch = true; SCN[q] = _frzT[q]; } if (ch) this.updateMatrix(); }
       if (this.matrixWorldNeedsUpdate || force) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); this.matrixWorldNeedsUpdate = false; force = true; }
+      }
       const ch = this.children; for (let i = 0, l = ch.length; i < l; i++) { const c = ch[i]; if (c.__frz && c.__frz.frozen && !force) continue; c.updateMatrixWorld(force); }
     };
   }
@@ -16485,8 +16522,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const now = performance.now();
     if (now > FRZ.t) { FRZ.t = now + 2000;   // i rami nuovi entrano in prova; quelli tolti dalla scena escono
       const ex = new Set(Object.values(dyn.people || {}).concat(Object.values(dyn.vehicles || {})));
-      for (const o of scene.children) if (!ex.has(o) && frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now }; FRZ.list.push(o); }
-      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== scene) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; } }
+      // [matrici] un ramo sciolto perché qualcosa dentro si è mosso (una sbarra, una porta) non resta tutto sciolto: si riprova sui suoi figli,
+      // fino a tre livelli sotto la scena, e restano sciolti solo quelli che si muovono (mai dentro i mezzi e le persone)
+      const prova = (o, liv) => { if (ex.has(o)) return; if (frzOk(o)) { const objs = []; o.traverse(q => objs.push(q)); const snap = new Float64Array(objs.length * 10); objs.forEach((q, k) => frzSnap(q, snap, k * 10)); o.__frz = { objs, snap, frozen: false, since: now, par: o.parent }; FRZ.list.push(o); }
+        else if (liv < 3 && o.__frzNo && !o.__frzBad && !o.__frz && UMW.on) { const c = o.children; for (let i = 0; i < c.length; i++) prova(c[i], liv + 1); } };
+      for (const o of scene.children) prova(o, 0);
+      const attaccato = o => { for (let q = o.parent; q; q = q.parent) if (q === scene) return true; return false; };
+      for (let i = FRZ.list.length - 1; i >= 0; i--) { const o = FRZ.list[i]; if (o.parent !== (o.__frz.par || scene) || (o.parent !== scene && !attaccato(o))) frzThaw(o, false); else if (!o.__frz.frozen && now - o.__frz.since > 10000) { o.updateMatrixWorld(true); o.__frz.frozen = true; o.updateMatrixWorld = FRZ_UMW; FRZ.ver++; } }
     }
     let budget = 4000;   // il controllo a rotazione
     while (budget > 0 && FRZ.list.length) {
@@ -18014,9 +18056,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE };
+    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
