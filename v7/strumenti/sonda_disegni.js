@@ -65,30 +65,33 @@ const srv = http.createServer((req, res) => {
         return rbd.apply(this, arguments); };
       const smr = rd.shadowMap.render; rd.shadowMap.render = function () { inSh++; try { return smr.apply(this, arguments); } finally { inSh--; } };
       const io = T3.Frustum.prototype.intersectsObject, isp = T3.Frustum.prototype.intersectsSprite;
-      T3.Frustum.prototype.intersectsObject = function () { D.prove++; if (rec) PRV[inSh ? 'ombra' : 'main']++; return io.apply(this, arguments); };
+      const PRC = {}; T3.Frustum.prototype.intersectsObject = function (o) { D.prove++; if (rec) { PRV[inSh ? 'ombra' : 'main']++; if (!inSh) { const t = top(o), k = (t === o ? 'radice:' : '') + (t.name || t.type) + '[' + udk(t) + ']' + (t.__frz && t.__frz.frozen ? ' congelato' : t.__frzNo ? ' sciolto' : ''); PRC[k] = (PRC[k] || 0) + 1; } } return io.apply(this, arguments); };
       T3.Frustum.prototype.intersectsSprite = function () { D.prove++; return isp.apply(this, arguments); };
       // il tempo di scene.updateMatrixWorld (quello che three chiama in render) e di tutto render() (culling compreso, disegni a vuoto)
       const umw0 = S.updateMatrixWorld; let tU = 0; const FORZ = {}; S.updateMatrixWorld = function (force) { const t = performance.now(); inU = true; if (cnt) { const k = (force ? 'forzata ' : 'normale ') + (new Error().stack || '').split('\n').slice(2, 5).map(l => l.trim().replace(/^at /, '').replace(/\(?http[^)]*index\.html:/, '@').replace(/\)$/, '')).join(' < '); FORZ[k] = (FORZ[k] || 0) + 1; } try { return umw0.apply(this, arguments); } finally { inU = false; tU += performance.now() - t; } };
       const ume = T3.Object3D.prototype.updateMatrixWorld; let cnt = false; T3.Object3D.prototype.updateMatrixWorld = function () { if (cnt) { D.umwN++; if (inU) { const t = top(this), k = t === this ? 'radice:' + (this.name || this.type) + '[' + udk(this) + ']' : (t.name || t.type) + '[' + udk(t) + ']'; TOPU[k] = (TOPU[k] || 0) + 1; } } return ume.apply(this, arguments); };
+      // la proiezione (prove di frustum e lista dei disegni): da scene.onBeforeRender a renderList.finish del passaggio principale
+      let tP = 0, tP0 = 0; const ob0 = S.onBeforeRender; S.onBeforeRender = function () { tP0 = performance.now(); return ob0.apply(this, arguments); };
+      const LL = rd.renderLists.get(S, 0), lf0 = LL.finish; LL.finish = function () { if (tP0) { tP += performance.now() - tP0; tP0 = 0; } return lf0.apply(this, arguments); };
       const r0 = rd.render; let tR = 0; rd.render = function (sc) { const t = performance.now(); try { return r0.apply(this, arguments); } finally { if (sc === S) tR += performance.now() - t; } };
       // due fotogrammi registrati (le ombre sul telefono vanno a fotogrammi alterni): i conti sono per fotogramma, le liste per due
       await new Promise(res => requestAnimationFrame(res)); rd.shadowMap.needsUpdate = true; window.__pv.R.__dz;
-      const fr0 = window.__pv.R.frame; let n = 0, umwArr = [], rArr = [], prove = [];
-      await new Promise(res => { window.__pv.R.frame = function () { if (n < 2) { rec = true; cnt = true; } tU = 0; tR = 0; const p0 = D.prove; try { return fr0.apply(this, arguments); } finally { rec = false; cnt = false; umwArr.push(tU); rArr.push(tR); prove.push(D.prove - p0); if (++n >= NF) { window.__pv.R.frame = fr0; res(); } } }; });
-      rd.renderBufferDirect = rbd; T3.Frustum.prototype.intersectsObject = io; T3.Frustum.prototype.intersectsSprite = isp; S.updateMatrixWorld = umw0; T3.Object3D.prototype.updateMatrixWorld = ume; rd.render = r0; rd.shadowMap.render = smr;
+      if (window.PesoFusi) PesoFusi.azzera(); const fr0 = window.__pv.R.frame; let n = 0, umwArr = [], rArr = [], prove = [], pArr = [];
+      await new Promise(res => { window.__pv.R.frame = function () { if (n < 2) { rec = true; cnt = true; } tU = 0; tR = 0; tP = 0; const p0 = D.prove; try { return fr0.apply(this, arguments); } finally { rec = false; cnt = false; umwArr.push(tU); rArr.push(tR); pArr.push(tP); prove.push(D.prove - p0); if (++n >= NF) { window.__pv.R.frame = fr0; res(); } } }; });
+      rd.renderBufferDirect = rbd; T3.Frustum.prototype.intersectsObject = io; T3.Frustum.prototype.intersectsSprite = isp; S.updateMatrixWorld = umw0; T3.Object3D.prototype.updateMatrixWorld = ume; rd.render = r0; rd.shadowMap.render = smr; S.onBeforeRender = ob0; LL.finish = lf0;
       const med = a => { const s = a.slice().sort((x, y) => x - y); return +s[Math.floor(s.length / 2)].toFixed(2); };
       // inventario: chi fa ombra, quanti oggetti, quanti figli diretti, quanti congelati
       let oggetti = 0, ombra = 0, auto = 0; const ombraPer = {};
       S.traverse(o => { oggetti++; if (o.matrixAutoUpdate) auto++; if ((o.isMesh || o.isPoints) && o.castShadow && o.visible) { ombra++; const c = chi(o); ombraPer[c] = (ombraPer[c] || 0) + 1; } });
       const F = R.__frz, frz = F ? F.list.filter(o => o.__frz && o.__frz.frozen).length : 0;
       const ord = o => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 40).map(([k, v]) => `${v} ${k}`);
-      return { disegni: (D.nMain + D.nOmbra) / 2, principale: D.nMain / 2, ombre: D.nOmbra / 2, altri: D.nAltro / 2, umwChiamate2: D.umwN, proveFrustum: med(prove), umw_ms: med(umwArr), render_ms: med(rArr),
+      return { disegni: (D.nMain + D.nOmbra) / 2, principale: D.nMain / 2, ombre: D.nOmbra / 2, altri: D.nAltro / 2, umwChiamate2: D.umwN, proveFrustum: med(prove), umw_ms: med(umwArr), proiezione_ms: med(pArr), render_ms: med(rArr),
         oggetti, autoMatrice: auto, figliScena: S.children.length, rami: F ? F.list.length : 0, ramiCongelati: frz, fannoOmbra: ombra,
-        perMain: ord(D.main), perOmbra: ord(D.ombra), perOmbraOggetti: ord(ombraPer), umwPerRamo: ord(TOPU), umwChi: ord(FORZ), scena: { mwnu: S.matrixWorldNeedsUpdate, pos: S.position.toArray(), rot: S.rotation.toArray().slice(0, 3), sc: S.scale.toArray(), auto: S.matrixAutoUpdate }, proveMainOmbra2: PRV, raw: RAW, info: { calls: rd.info.render.calls, tri: rd.info.render.triangles } };
+        perMain: ord(D.main), perOmbra: ord(D.ombra), perOmbraOggetti: ord(ombraPer), umwPerRamo: ord(TOPU), umwChi: ord(FORZ), scena: { mwnu: S.matrixWorldNeedsUpdate, pos: S.position.toArray(), rot: S.rotation.toArray().slice(0, 3), sc: S.scale.toArray(), auto: S.matrixAutoUpdate }, proveMainOmbra2: PRV, provePerRamo: ord(PRC), raw: RAW, fusi: window.PesoFusi ? PesoFusi.conto() : null, pesoOmbre: window.PesoOmbre ? PesoOmbre.conto() : null, info: { calls: rd.info.render.calls, tri: rd.info.render.triangles } };
     }, NF);
     OUTJ.punti[P.join(',')] = r;
     log('punto', P.join(','), JSON.stringify({ ...r, perMain: undefined, perOmbra: undefined, perOmbraOggetti: undefined, umwPerRamo: undefined, raw: undefined }));
-    console.log('  matrici (scene.updateMatrixWorld, due fotogrammi):\n    ' + r.umwPerRamo.slice(0, 15).join('\n    ')); console.log('  chi chiama scene.updateMatrixWorld:\n    ' + r.umwChi.slice(0, 10).join('\n    ')); console.log('  scena', JSON.stringify(r.scena));
+    console.log('  matrici (scene.updateMatrixWorld, due fotogrammi):\n    ' + r.umwPerRamo.slice(0, 15).join('\n    ')); console.log('  chi chiama scene.updateMatrixWorld:\n    ' + r.umwChi.slice(0, 10).join('\n    ')); console.log('  scena', JSON.stringify(r.scena)); console.log('  prove di frustum (principale, due fotogrammi):\n    ' + r.provePerRamo.slice(0, 14).join('\n    '));
     console.log('  main:\n    ' + r.perMain.slice(0, 25).join('\n    '));
     console.log('  ombra:\n    ' + r.perOmbra.slice(0, 15).join('\n    '));
     console.log('  fanno ombra:\n    ' + r.perOmbraOggetti.slice(0, 15).join('\n    '));
