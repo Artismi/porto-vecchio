@@ -284,11 +284,10 @@ var MenuUI = (function () {
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
     return cv;
   }
-  // [avvio] le anteprime hanno un secondo contesto WebGL: crearlo durante il caricamento fermava la pagina (40 s in getContext,
-  // in coda dietro alle compilazioni del gioco). Si fanno quando il gioco risponde (main.js: __tl.vivo) e si è in strada da 5 s,
-  // o subito se il menu dello zaino è aperto. Nello studio (editor.html) subito; anteprima() (studio, prove) non passa da qui.
-  let thIn = 0; const thumbOk = () => { if (THR || window.PV_STUDIO) return true; if (!PV()) return false; const tl = window.__tl, ui = PV().ui; if (!tl || !tl.vivo) return false; if (U.open) return true;
-    if (!ui || ui.intro) return false; const t = performance.now(); if (!thIn) thIn = t; return t - thIn > 5000; };   // in strada da 5 s: i primi passi senza lo scatto del contesto nuovo
+  // [avvio] le anteprime hanno un secondo contesto WebGL: crearlo durante il caricamento o nei primi secondi di gioco fermava la pagina
+  // (40-69 s in getContext, in coda dietro alle compilazioni del gioco). Si fanno solo a menu aperto (o nel cantiere), a gioco vivo. Nello studio (editor.html) subito; anteprima() (studio, prove) non passa da qui.
+  const thumbOk = () => { if (THR || window.PV_STUDIO) return true; if (!PV()) return false; const tl = window.__tl, ui = PV().ui; if (!tl || !tl.vivo) return false; if (U.open) return true;
+    return typeof Cantiere !== 'undefined' && !!Cantiere.active && !!Cantiere.active(); };   // [avvio] solo a menu aperto (o nel cantiere, che ha le sue schede): in strada niente contesto nuovo
   function thumbPump() {
     requestAnimationFrame(thumbPump);
     // [dieta] sul telefono il contesto WebGL delle anteprime (programmi, ombre, ambiente: memoria della scheda video) si chiude quando la coda
@@ -658,7 +657,7 @@ var MenuUI = (function () {
     if (U.tab !== tab || U.arg !== arg) U.sel = null;
     U.open = true; U.tab = tab || 'zaino'; U.arg = arg === undefined ? null : arg; U.msg = ''; U.sig = ''; if (tab === 'bottega') U.shopTab = 'compra';
     if (PV().ui) { PV().ui.menu = true; PV().ui.menuSlow = !inCovo(ST()); }   // in strada il mondo rallenta, nel covo si ferma
-    $('mu').classList.add('on'); render(true);
+    $('mu').classList.add('on'); render(true); thumb('zaino');   // [avvio] l'anteprima 3D del pulsante si fa adesso, col contesto già aperto per il menu
   }
   const inCovo = st => { if (!st) return false; const p = st.player; return !!O().pocketsView(st).base || !!(p.indoor && G().BUILDINGS[p.indoor.b] && G().BUILDINGS[p.indoor.b].playerHome); };
   function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } const cv = $('cv'); if (cv) cv.focus(); }
@@ -1043,7 +1042,11 @@ var MenuUI = (function () {
     const app = $('app'), st = ST(), ui = PV() && PV().ui; if (!app || !st || !ui) return; if (!$('mu')) mount();
     let b = $('muBtn'); if (!b) { b = document.createElement('button'); b.id = 'muBtn'; b.innerHTML = '<canvas width="96" height="96"></canvas><span>Zaino<kbd>I</kbd></span><span class="dot" hidden></span>'; app.appendChild(b); b.onclick = () => toggle('zaino'); }
     const dsp = ui.intro || ui.over || U.open || (typeof Cantiere !== 'undefined' && Cantiere.active()) ? 'none' : ''; if (b.style.display !== dsp) b.style.display = dsp;   // [fluido] solo se cambia
-    const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
+    // [avvio] il pulsante non chiede l'anteprima 3D: chiederla apriva il secondo contesto WebGL 5 s dopo l'avvio (69 s di blocco sul telefono,
+    // in coda dietro alle compilazioni del gioco). Subito l'icona 2D; la versione 3D arriva quando c'è già (fatta col menu aperto)
+    const c = b.querySelector('canvas'); if (!c.dataset.done) { const x = c.getContext('2d'), t = TH.get('zaino');
+      if (t) { x.clearRect(0, 0, 96, 96); x.imageSmoothingEnabled = true; x.drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; }
+      else if (!c.dataset.ic2) { const s16 = document.createElement('canvas'); s16.width = s16.height = 16; icon(s16, 'zaino'); x.clearRect(0, 0, 96, 96); x.imageSmoothingEnabled = false; x.drawImage(s16, 0, 0, 96, 96); c.dataset.ic2 = 1; } }
     const n = quiCount(st), d = b.querySelector('.dot'); if (d.hidden !== !n) d.hidden = !n; if (d.textContent !== String(n)) d.textContent = n;
   } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove
