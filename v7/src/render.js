@@ -12975,6 +12975,99 @@ var Render = (function () {
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
+  // ================= [look-aaa] TRE VARIANTI DEL LOOK FINITO (?look=v1|v2|v3): il default non cambia finché il committente non sceglie =================
+  // Solo luce, materiali (pezzi di shader) e passo finale: nessuna geometria, nessuna camera, nessun passo fisso. Ogni variante è:
+  //   la curva dei materiali (tm: 0 quella di oggi, 1 ACES, 2 AgX: la scelta viaggia nell'esposizione, così si cambia dal vivo),
+  //   la luce con un carattere (key = il sole: colore, forza, altezza e lato; fill = il cielo e il rimbalzo da terra; rim = la luce di
+  //   bordo dei materiali), l'ombra colorata e morbida (mai grigia), la mano sui materiali (facciate sporche in basso e chiare in alto,
+  //   tetti a macchie, chiome a volumi di colore), e nel passo: l'ombra di contatto dalla profondità (8 letture), la foschia per
+  //   profondità, il tilt-shift per profondità, il bagliore leggero (un quarto di risoluzione), il grading per ora (CDL: pendenza,
+  //   spostamento, potenza; saturazione; viraggio ombre/luci). Ogni set ha giorno, tramonto e notte; l'ora li fonde come i quattro momenti.
+  // Dal vivo: window.__AAA.v = 'v1' | 'v2' | 'v3' | '' (spenta: il look di oggi, identico). Il telefono tiene curva, luce, materiali e
+  // grading (costo ~0); la profondità (ombra di contatto, foschia, tilt-shift) e il bagliore restano fuori.
+  const AAA_Q = (PRO_Q.match(/[?&]look=(v[123])\b/) || [])[1] || null;
+  const aaaC = s => { const c = new THREE.Color(s); return [c.r, c.g, c.b]; };
+  const AAA = { on: !!AAA_Q && PRO.look, v: AAA_Q || '', mix: {}, prof0: null, u6: { x: 0, y: 0, z: 0, w: 0 }, bl: null,
+    V: {
+      // v1 · GOLDEN HOUR CINEMATOGRAFICA: sole basso e caldo di lato, ombre lunghe blu-viola, ACES, bagliore caldo, foschia d'ambra
+      v1: { tm: 1, prof: { soleLato: [-30, -118], soleAlto: [14, 27] },
+        mat: { pittura: .9, varia: .75, polvere: .8, suolo: .6, ombre: .9, celle: .35, chiome: 1 }, tetti: .9, sporco: .8, chiomaVol: 1,
+        ao: .85, aoR: 1.1, aoTinta: aaaC('#5a4a7a'), haze: .45, hazeD: [8, 70], dof: .7, dofD: 34, mini: .35, bloom: .22, soglia: .78,
+        giorno: { esp: .97, sole: aaaC('#ffd6aa'), soleK: 1.3, cielo: aaaC('#8aa6dc'), terra: aaaC('#b88a62'), cieloK: .52, bordo: aaaC('#ffd8b0'), bordoK: .2, nebbia: aaaC('#e2cdb6'),
+          ombra: aaaC('#4a62b8'), ombraK: .28, hz: aaaC('#ead6c0'), sl: [1.0, .99, .97], of: [.0, .0, .008], pw: [1.02, 1.03, 1.04], sat: 1.0, sh: [.93, .96, 1.08], hi: [1.03, 1.0, .95], vign: 1.5 },
+        tramonto: { esp: .98, sole: aaaC('#ffa064'), soleK: 1.24, cielo: aaaC('#9294b4'), terra: aaaC('#a87060'), cieloK: .55, bordo: aaaC('#ffb080'), bordoK: .26, nebbia: aaaC('#cfa090'),
+          ombra: aaaC('#5a5aa0'), ombraK: .15, hz: aaaC('#e8b8a0'), sl: [1.02, .99, .95], of: [.004, .0, .01], pw: [1.0, 1.03, 1.04], sat: .98, sh: [.94, .93, 1.06], hi: [1.05, 1.0, .93], vign: 1.6 },
+        notte: { esp: 1.05, sole: aaaC('#8ca6e8'), soleK: .28, cielo: aaaC('#2c3c78'), terra: aaaC('#1c1c34'), cieloK: .34, bordo: aaaC('#6c8ade'), bordoK: .18, nebbia: aaaC('#101830'),
+          ombra: aaaC('#2a2a70'), ombraK: .4, hz: aaaC('#1a2448'), sl: [1, 1, 1.04], of: [0, 0, .01], pw: [1.04, 1.03, 1], sat: 1.05, sh: [.86, .92, 1.2], hi: [1.12, 1, .84], vign: 1.6 } },
+      // v2 · STREET POP SATURO: luce piena alta e bianca, ombre ciano-turchesi nette ma colorate, colori pieni, neri profondi, niente foschia
+      v2: { tm: 1, prof: { soleLato: [-48, -135], soleAlto: [26, 44] },
+        mat: { pittura: .7, varia: .9, polvere: .9, suolo: .7, ombre: .6, celle: .9, chiome: .8 }, tetti: 1, sporco: 1, chiomaVol: 1,
+        ao: 1, aoR: .8, aoTinta: aaaC('#283a6a'), haze: .12, hazeD: [12, 80], dof: .25, dofD: 40, mini: .2, bloom: .14, soglia: .86,
+        giorno: { esp: .98, sole: aaaC('#fff4e4'), soleK: 1.34, cielo: aaaC('#80b8f0'), terra: aaaC('#c89068'), cieloK: .56, bordo: aaaC('#fff0e0'), bordoK: .16, nebbia: aaaC('#c8dcf0'),
+          ombra: aaaC('#2a80d0'), ombraK: .4, hz: aaaC('#d8e8f8'), sl: [.99, 1.0, 1.02], of: [.004, .006, .012], pw: [1.05, 1.04, 1.03], sat: 1.18, sh: [.9, .98, 1.08], hi: [1.03, 1.0, .97], vign: 1.2 },
+        tramonto: { esp: 1.0, sole: aaaC('#ff9058'), soleK: 1.18, cielo: aaaC('#7484bc'), terra: aaaC('#a06858'), cieloK: .5, bordo: aaaC('#ffa080'), bordoK: .16, nebbia: aaaC('#a08aa8'),
+          ombra: aaaC('#2c58b8'), ombraK: .26, hz: aaaC('#b098b0'), sl: [1.0, .99, 1.0], of: [.0, .004, .01], pw: [1.03, 1.03, 1.0], sat: 1.06, sh: [.92, .97, 1.06], hi: [1.04, .99, .95], vign: 1.4 },
+        notte: { esp: 1.08, sole: aaaC('#80a0ff'), soleK: .3, cielo: aaaC('#3a2c88'), terra: aaaC('#24143a'), cieloK: .38, bordo: aaaC('#c060ff'), bordoK: .22, nebbia: aaaC('#140c30'),
+          ombra: aaaC('#3018a0'), ombraK: .45, hz: aaaC('#24164a'), sl: [1, 1, 1.04], of: [-.006, -.008, .006], pw: [1.06, 1.06, 1], sat: 1.25, sh: [.9, .84, 1.24], hi: [1.12, .98, .9], vign: 1.4 } },
+      // v3 · MINIATURA MORBIDA: luce alta e avvolgente, ombre lunghe e morbide lilla, AgX, tilt-shift forte per profondità, foschia lattea
+      v3: { tm: 2, prof: { soleLato: [-40, -125], soleAlto: [24, 40] },
+        mat: { pittura: .8, varia: .55, polvere: .5, suolo: .45, ombre: 1, celle: .15, chiome: .6 }, tetti: .6, sporco: .45, chiomaVol: .5,
+        ao: .7, aoR: 1.4, aoTinta: aaaC('#7a6a9a'), haze: .5, hazeD: [4, 55], dof: 1, dofD: 22, mini: .6, bloom: .2, soglia: .8,
+        giorno: { esp: 1.24, sole: aaaC('#fff0dc'), soleK: 1.12, cielo: aaaC('#b0c4f0'), terra: aaaC('#d8b088'), cieloK: .7, bordo: aaaC('#fff4e8'), bordoK: .2, nebbia: aaaC('#e8e4f0'),
+          ombra: aaaC('#8070c8'), ombraK: .38, hz: aaaC('#f2eef8'), sl: [1.0, 1.0, 1.0], of: [.015, .015, .028], pw: [.98, .98, .97], sat: 1.06, sh: [.96, .95, 1.06], hi: [1.02, 1.0, .98], vign: .9 },
+        tramonto: { esp: 1.24, sole: aaaC('#ffac80'), soleK: 1.1, cielo: aaaC('#a0a0d4'), terra: aaaC('#d09888'), cieloK: .7, bordo: aaaC('#ffc0a0'), bordoK: .24, nebbia: aaaC('#dcb8c0'),
+          ombra: aaaC('#7a62b8'), ombraK: .34, hz: aaaC('#f0d0d0'), sl: [1.02, 1.0, .98], of: [.02, .012, .03], pw: [.98, .99, .97], sat: 1.04, sh: [.97, .94, 1.06], hi: [1.04, 1.0, .96], vign: 1.0 },
+        notte: { esp: 1.35, sole: aaaC('#a0b4f0'), soleK: .32, cielo: aaaC('#4a5498'), terra: aaaC('#2a2440'), cieloK: .42, bordo: aaaC('#90a0e8'), bordoK: .2, nebbia: aaaC('#202848'),
+          ombra: aaaC('#4a4090'), ombraK: .4, hz: aaaC('#2a3058'), sl: [1, 1, 1.02], of: [.02, .02, .035], pw: [.98, .98, .96], sat: 1.12, sh: [.94, .92, 1.12], hi: [1.06, 1, .92], vign: 1 } },
+    } };
+  if (AAA.on && !PHONE) PRO.prof = true;   // la profondità nel passo: l'ombra di contatto, la foschia e il tilt-shift per profondità
+  if (typeof window !== 'undefined' && AAA.on) window.__AAA = AAA;
+  const aaaCur = () => (AAA.on && AAA.v && AAA.V[AAA.v]) || null;
+  // il set dell'ora della variante: lo stesso piano e la stessa rampa dei quattro momenti (mattino e pomeriggio → giorno, sera → tramonto)
+  function aaaSet(V, S) {
+    const pick = n => n === 'sera' ? V.tramonto : n === 'notte' ? V.notte : V.giorno;
+    const A = pick(S && S.da), B = pick(S && S.a), t = S ? S.t || 0 : 0, r = AAA.mix;
+    for (const k in A) { const x = A[k], y = B[k]; r[k] = Array.isArray(x) ? x.map((v, j) => v + (y[j] - v) * t) : x + (y - x) * t; }
+    return r; }
+  // il sole della variante (altezza e lato): PROF lo legge a ogni fotogramma; spenta, torna quello di prima
+  function aaaProf(V) {
+    if (!AAA.prof0) AAA.prof0 = { soleLato: PROF.soleLato.slice(), soleAlto: PROF.soleAlto.slice() };
+    const P = (V && V.prof) || AAA.prof0; PROF.soleLato = P.soleLato; PROF.soleAlto = P.soleAlto; }
+  // key, fill e rim della variante sopra quelle del momento (il meteo, la zona e la notte della regia restano: si cambia in proporzione)
+  const AAT = { c: new THREE.Color() };
+  function aaaLuci(S, WXc, dk) {
+    const V = aaaCur(); aaaProf(V); if (!V || !S) return null; const A = aaaSet(V, S), cov = WXc * dk;
+    moon.intensity *= A.soleK / Math.max(.01, S.soleK); moon.color.fromArray(A.sole).lerp(AAT.c.set('#e8ecf0'), cov);
+    hemi.intensity *= A.cieloK / Math.max(.01, S.cieloK); hemi.color.fromArray(A.cielo).lerp(AAT.c.set('#d0d4da'), cov * .7); hemi.groundColor.fromArray(A.terra).lerp(AAT.c.set('#6a6c70'), cov * .6);
+    fillAmb.intensity *= A.bordoK / Math.max(.01, S.bordoK); fillAmb.color.fromArray(A.bordo);
+    scene.fog.color.lerp(AAT.c.fromArray(A.nebbia), .75); scene.background.copy(scene.fog.color);
+    return A; }
+  // dopo le manopole della proposta: quelle della variante (i materiali, l'ombra colorata) e l'esposizione con la curva scelta
+  function aaaTick(A) {
+    const V = aaaCur(), P = SGU.pro, k = PRO.look && P.on ? 1 : 0, u6 = AAA.u6;
+    if (!V || !A) { u6.x = u6.y = u6.z = 0; return; }
+    const m = V.mat; PRO.u1.x = k * m.pittura; PRO.u1.z = k * m.varia; PRO.u1.w = k * m.chiome; PRO.u2.x = k * m.ombre; PRO.u4.x = k * m.celle; PRO.u4.y = k * m.suolo; PRO.u4.z = k * m.polvere;
+    PRO.u3.x = A.ombra[0] * A.ombraK; PRO.u3.y = A.ombra[1] * A.ombraK; PRO.u3.z = A.ombra[2] * A.ombraK;
+    u6.x = k * V.tetti; u6.y = k * V.sporco; u6.z = k * V.chiomaVol;
+    renderer.toneMappingExposure = Math.min(15.9, renderer.toneMappingExposure * A.esp) + 16 * (k ? V.tm : 0); }   // la curva dei materiali: l'intero dice quale, il resto l'esposizione
+  // il bagliore: la parte chiara dell'immagine a un quarto, sfocata in due passi (orizzontale, verticale); il passo finale la somma a schermo
+  function aaaBagliore(src, W, H, soglia) {
+    let B = AAA.bl; const w = Math.max(16, W >> 2), h = Math.max(16, H >> 2);
+    if (!B) { B = AAA.bl = { sc: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), a: null, b: null };
+      const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }';
+      B.mC = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() }, s: { value: .8 } }, vertexShader: vs, depthTest: false, depthWrite: false,
+        fragmentShader: `precision mediump float; uniform sampler2D t; uniform vec2 px; uniform float s; varying vec2 vUv;
+          vec3 k(vec2 o){ vec3 c = texture2D(t, vUv + o * px).rgb; float m = max(c.r, max(c.g, c.b)); return c * smoothstep(s, s + .2, m); }
+          void main(){ vec3 c = k(vec2(0.)) * .2 + (k(vec2(-1.5, -1.5)) + k(vec2(1.5, -1.5)) + k(vec2(-1.5, 1.5)) + k(vec2(1.5, 1.5))) * .125 + (k(vec2(-3., 0.)) + k(vec2(3., 0.)) + k(vec2(0., -3.)) + k(vec2(0., 3.))) * .075; gl_FragColor = vec4(c, 1.); }` });
+      B.mS = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
+        fragmentShader: `precision mediump float; uniform sampler2D t; uniform vec2 d; varying vec2 vUv;
+          void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d * 1.385).rgb + texture2D(t, vUv - d * 1.385).rgb) * .316; c += (texture2D(t, vUv + d * 3.231).rgb + texture2D(t, vUv - d * 3.231).rgb) * .07; gl_FragColor = vec4(c, 1.); }` });
+      B.q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), B.mC); B.q.frustumCulled = false; B.sc.add(B.q); }
+    if (!B.a || B.a.width !== w || B.a.height !== h) { if (B.a) { B.a.dispose(); B.b.dispose(); } const o = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }; B.a = new THREE.WebGLRenderTarget(w, h, o); B.b = new THREE.WebGLRenderTarget(w, h, o); }
+    B.q.material = B.mC; B.mC.uniforms.t.value = src; B.mC.uniforms.px.value.set(1 / W, 1 / H); B.mC.uniforms.s.value = soglia; renderer.setRenderTarget(B.a); renderer.render(B.sc, B.cam);
+    B.q.material = B.mS; B.mS.uniforms.t.value = B.a.texture; B.mS.uniforms.d.value.set(2 / w, 0); renderer.setRenderTarget(B.b); renderer.render(B.sc, B.cam);
+    B.mS.uniforms.t.value = B.b.texture; B.mS.uniforms.d.value.set(0, 2 / h); renderer.setRenderTarget(B.a); renderer.render(B.sc, B.cam);
+    return B.a.texture; }
   SGU.pro = { on: !PRO_NO,
     pittura: .55, varia: .6, grana: .45, chiome: .7, ombre: .7, acqua: 1,   // nei materiali
     spigoli: 0, pieghe: 0, ao: 0, aoRaggio: 7,                              // nel passo (aoRaggio: pixel a 1080 righe). Spenti per difetto (scelta del committente sullo scorcio): spigoli e pieghe sul suolo in pendenza disegnavano i triangoli del terreno (righe); l'ombra di contatto resta come manopola
@@ -12996,7 +13089,7 @@ var Render = (function () {
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 } }));
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     C.common += `
 #ifdef STANDARD
 varying vec3 vSgW;
@@ -13005,6 +13098,7 @@ float sgVetroK = -1.;
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
+${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
 float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
@@ -13064,6 +13158,20 @@ if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
   float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
   diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
 }
+${AAA.on ? `if ( sgP6.x + sgP6.y > 0. ) {   // [look-aaa] la mano della variante
+  vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, sgV = 1. - smoothstep( .45, .8, abs( sgUp ) );
+  float n1 = sgN3( vSgW * .32 + 7.7 ), n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
+  // i tetti (le falde, non il suolo né i terrazzi piani): macchie larghe di coppi nuovi e vecchi, il sole che li sbianca più in alto, il muschio scuro a chiazze
+  float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP6.x;
+  diffuseColor.rgb *= 1. + sgR * ( ( n1 - .5 ) * .34 + ( n2 - .5 ) * .14 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .22 );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .72, .74, .62 ), sgR * smoothstep( .58, .82, n1 ) * .55 );
+  diffuseColor.rgb *= 1. + sgR * ( n2 - .5 ) * vec3( .08, 0., -.08 );
+  // le facciate: lo sporco al piede che sale a colature (i primi 4 m sopra la strada), la luce in alto più pulita e calda
+  float foot = ( 1. - smoothstep( .2, 3.6 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH ), sgW = sgV * sgP6.y;
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .7, .66 ), sgW * foot * ( .45 + .4 * st ) );
+  diffuseColor.rgb *= 1. - sgW * smoothstep( .62, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .12;   // le colature sotto le finestre
+  diffuseColor.rgb *= 1. + sgW * smoothstep( 4., 14., sgH ) * vec3( .07, .05, .02 );
+}` : ''}
 #endif`;
     C.emissivemap_fragment += `
 #if defined( SG_VETRO ) && defined( STANDARD )
@@ -13121,6 +13229,9 @@ ${OM}
       reflectedLight.directDiffuse *= 1. - sgG * dentro * .55; reflectedLight.indirectDiffuse *= 1. - sgG * dentro * .4;
       reflectedLight.indirectDiffuse += sgG * diffuseColor.rgb * vec3( -.02, .01, .07 ) * smoothstep( .2, -.3, nl ) * 1.5;   // il tono freddo dell'ombra
       reflectedLight.indirectDiffuse += sgG * directionalLights[ 0 ].color * vec3( .5, .55, .1 ) * pow( frS, 4. ) * smoothstep( -.3, .3, -nl ) * .5; }   // l'accento di luce trasmessa sul bordo, controsole
+${AAA.on ? `    { float vk = sgG * sgP6.z;   // [look-aaa] i volumi di colore: la massa al sole verso il giallo-verde caldo, quella in ombra verso il verde-blu profondo
+      reflectedLight.directDiffuse *= mix( vec3( 1. ), vec3( 1.16, 1.08, .74 ), vk * smoothstep( .05, .6, nl ) );
+      reflectedLight.indirectDiffuse *= mix( vec3( 1. ), vec3( .7, .95, 1.25 ), vk * smoothstep( .25, -.45, nl ) ); }` : ''}
   }
 #endif
 #ifdef SG_ACQUA
@@ -13176,11 +13287,24 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
   // la curva filmica nei materiali e la luce di bordo (una volta sola: i pezzi di shader sono di three, valgono solo col tone mapping acceso)
   function sguPezzi() {
     if (LOOKV.pezzi) return; LOOKV.pezzi = true; const C = THREE.ShaderChunk; if (PRO.look) sguProPezzi(C);   // [scorcio]
-    C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }',
+    C.tonemapping_pars_fragment = C.tonemapping_pars_fragment.replace('vec3 CustomToneMapping( vec3 color ) { return color; }', !AAA.on ?
       `vec3 CustomToneMapping( vec3 color ) {   // [sguardo] la curva: un piede appena più profondo (neri puliti), i medi dritti, la spalla dei chiari che piega senza bruciare
         vec3 x = max(color * toneMappingExposure, 0.); x = x * (x + .011) / (x + .022);
         vec3 e = max(x - .6, 0.); x = min(x, vec3(.6)) + .4 * (1. - exp(-e * 2.5));
-        return x; }`);
+        return x; }` :
+      // [look-aaa] le tre curve: l'intero dell'esposizione dice quale (0 quella di oggi, identica; 1 ACES; 2 AgX), il resto è l'esposizione.
+      // I colori del gioco sono già «da schermo»: si portano in luce lineare (2,2), si passa la curva e si torna allo schermo
+      `vec3 sgAgxC( vec3 x ) { vec3 x2 = x * x, x4 = x2 * x2; return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + .4298 * x2 + .1191 * x - .00232; }
+      vec3 CustomToneMapping( vec3 color ) {
+        float sgM = floor( toneMappingExposure / 16. ), sgE = toneMappingExposure - sgM * 16.;
+        if ( sgM < .5 ) { vec3 x = max(color * sgE, 0.); x = x * (x + .011) / (x + .022);
+          vec3 e = max(x - .6, 0.); return min(x, vec3(.6)) + .4 * (1. - exp(-e * 2.5)); }
+        vec3 x = pow( max( color * sgE, 0. ), vec3( 2.2 ) );
+        if ( sgM < 1.5 ) { x = clamp( ( x * ( 2.51 * x + .03 ) ) / ( x * ( 2.43 * x + .59 ) + .14 ), 0., 1. ); return pow( x, vec3( 1. / 2.2 ) ); }   // ACES (Narkowicz)
+        x = mat3( .842479062253094, .0423282422610123, .0423756549057051, .0784335999999992, .878468636469772, .0784336, .0792237451477643, .0791661274605434, .879142973793104 ) * x;   // AgX (Wrensch, primarie sRGB)
+        x = clamp( ( log2( max( x, 1e-10 ) ) + 12.47393 ) / 16.5, 0., 1. ); x = sgAgxC( x );
+        x = mat3( 1.19687900512017, -.0528968517574562, -.0529716355144438, -.0980208811401368, 1.15190312990417, -.0980434501171241, -.0990297440797205, -.0989611768448433, 1.15107367264116 ) * x;
+        return clamp( x, 0., 1. ); }`);
     C.lights_fragment_end = C.lights_fragment_end + `
 #if defined( TONE_MAPPING )
 	{ float frS = 1. - saturate( dot( geometry.normal, geometry.viewDir ) ); reflectedLight.indirectDiffuse += diffuseColor.rgb * ambientLightColor * ( frS * frS * frS * ${SGU.bordo.toFixed(2)} ); }   // [sguardo] la luce di bordo sulle masse
@@ -13196,9 +13320,11 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     SGP.mat = new THREE.ShaderMaterial({
       uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, sh: { value: new THREE.Vector3(1, 1, 1) }, hi: { value: new THREE.Vector3(1, 1, 1) },
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
-        tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) } },   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) },
+        aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
+        aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -13215,17 +13341,36 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         vec3 sgV(vec2 q){ float d = 1. / sgI(q); return vec3((q * 2. - 1.) * fv * d, -d); }
         vec3 sgMn(vec3 a, vec3 b){ return abs(a.z) < abs(b.z) ? a : b; }
 #endif
+#ifdef SG_AAA
+        uniform vec4 aA; uniform vec4 aF; uniform vec4 aB; uniform vec4 aT; uniform vec3 aS; uniform vec3 aO; uniform vec3 aP; uniform vec3 aSh; uniform vec3 aHi; uniform vec3 aH; uniform vec3 aAo; uniform sampler2D tB;
+#endif
         void main(){
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
+#if defined(SG_AAA) && defined(SG_PROD)
+          float aD0 = 1. / sgI(vUv), aDF = 1. / sgI(vec2(.5, .48)), aCoc = aA.w * smoothstep(aF.w * .12, aF.w, abs(aD0 - aDF));   // [look-aaa] la profondità qui e al centro (il fuoco): il tilt-shift per profondità
+#else
+          float aCoc = 0.;
+#endif
 #if defined(SG_PRO) && !defined(SG_TEL)
-          if (pT.x > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
-            float coc = pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y));
+          if (pT.x > 0. || aCoc > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
+            float coc = max(aCoc, pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y)));
             if (coc > .01) { vec2 rr = e * pT.w * coc; vec3 acc = c;
               for (int k = 0; k < 8; k++) { float a = float(k) * 2.39996 + .4, rad = sqrt((float(k) + .5) / 8.); acc += texture2D(t, vUv + vec2(cos(a), sin(a)) * rad * rr).rgb; }
               c = mix(c, acc / 9., smoothstep(0., .35, coc)); shp *= 1. - smoothstep(0., .3, coc); } }
 #endif
           vec3 n4 = texture2D(t, vUv + vec2(e.x, 0.)).rgb + texture2D(t, vUv - vec2(e.x, 0.)).rgb + texture2D(t, vUv + vec2(0., e.y)).rgb + texture2D(t, vUv - vec2(0., e.y)).rgb;
           c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
+#if defined(SG_AAA) && defined(SG_PROD)
+          if (aA.x > 0.) {   // [look-aaa] l'ombra di contatto: 4 coppie di letture opposte (8) a un raggio fisso nel mondo (aA.y metri); il punto più lontano
+            // della media della coppia sta in una piega (il piede del muro, sotto la gronda, fra due volumi); sul piano la coppia si annulla.
+            // Le coppie che saltano troppo (una sagoma davanti) non contano. La tinta non è grigia: moltiplica verso aAo
+            float rp = clamp(aA.y / (pa * aD0), 2., 40.), occ = 0.;
+            for (int k = 0; k < 4; k++) { float a = .3 + float(k) * .7854; vec2 o = vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .55 : 1.);
+              float da = 1. / sgI(vUv + o), db = 1. / sgI(vUv - o), cr = aD0 - .5 * (da + db), ok = 1. - smoothstep(aA.y * .9, aA.y * 1.8, max(abs(da - aD0), abs(db - aD0)));
+              occ += smoothstep(.04, .4, cr / aA.y) * ok; }
+            c *= mix(vec3(1.), aAo, min(1., occ * .35) * aA.x); }
+          if (aA.z > 0.) c = mix(c, aH, smoothstep(0., aF.z, aD0 - aDF - aF.y) * aA.z);   // [look-aaa] la foschia: quello che sta dietro il fuoco prende l'aria dell'ora
+#endif
 #ifdef SG_PRO
           float sgInk = 0.;
 #ifdef SG_PROD
@@ -13277,6 +13422,11 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           float sv = gK.x * (1. + gN.y * smoothstep(.12, .45, ch) * (1. - smoothstep(.6, .95, ch)));   // il colore pieno dove c'è già colore; i grigi restano grigi, i saturi non diventano acidi
           c = max(mix(vec3(l), c, mix(1., sv, smoothstep(.04, .14, ch))), 0.);
           c = max(c - gN.x, 0.) / (1. - gN.x);                                         // neri profondi e puliti
+#ifdef SG_AAA
+          if (aB.x > 0.) { vec3 bl = texture2D(tB, vUv).rgb; c = 1. - (1. - c) * (1. - bl * aB.x); }   // [look-aaa] il bagliore, a schermo (non brucia)
+          c = pow(max(c * aS + aO, 0.), aP);                                            // [look-aaa] il grading dell'ora: pendenza, spostamento, potenza per canale
+          { float la = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(la), c, aT.x), 0.); c *= mix(aSh, vec3(1.), smoothstep(.05, .5, la)); c *= mix(vec3(1.), aHi, smoothstep(.5, .95, la)); }
+#endif
           vec2 q = vUv - .5; c *= 1. - dot(q, q) * gK.z;                                // la vignetta
           c = mix(c, vec3(.55, .02, .05), smoothstep(.18, .5, length(q * vec2(1., 1.2))) * fx.x * .75);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))), fx.w);
@@ -13320,6 +13470,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
     if (PRO.look) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
+    if (AAA.on) { SGT.aaa = aaaLuci(S, WXc, dk); aaaTick(SGT.aaa); }   // [look-aaa] la luce e i materiali della variante (spenta: niente)
     return S;
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
@@ -13345,6 +13496,13 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
         U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
         if (K.proPieno !== undefined) U.gN.value.set(SGU.neri + (K.proNeri - SGU.neri) * g, SGU.pieno + (K.proPieno - SGU.pieno) * g, 0, 0); } }   // gli accenti pieni, i neri profondi di sera e di notte
+    if (AAA.on) {   // [look-aaa] la variante nel passo (spenta: tutto neutro, il passo di oggi)
+      const V = aaaCur(), A = V && PRO.look && SGU.pro.on ? SGT.aaa : null;
+      if (A) { U.aA.value.set(V.ao, V.aoR, V.haze, LOWQ.on ? 0 : V.dof); U.aF.value.set(0, V.hazeD[0], V.hazeD[1], V.dofD); U.aAo.value.fromArray(V.aoTinta); U.aH.value.fromArray(A.hz);
+        U.aS.value.fromArray(A.sl); U.aO.value.fromArray(A.of); U.aP.value.fromArray(A.pw); U.aT.value.x = A.sat; U.aSh.value.fromArray(A.sh); U.aHi.value.fromArray(A.hi);
+        U.gK.value.z *= A.vign; U.pT.value.x = LOWQ.on ? 0 : V.mini;
+        U.aB.value.x = !PHONE && !LOWQ.on && V.bloom > 0 ? V.bloom : 0; if (U.aB.value.x > 0) U.tB.value = aaaBagliore(rt.texture, rt.width, rt.height, V.soglia); }
+      else { U.aA.value.set(0, 1, 0, 0); U.aB.value.x = 0; U.aS.value.set(1, 1, 1); U.aO.value.set(0, 0, 0); U.aP.value.set(1, 1, 1); U.aT.value.x = 1; U.aSh.value.set(1, 1, 1); U.aHi.value.set(1, 1, 1); } }
     renderer.setRenderTarget(null); renderer.render(SGP.scene, SGP.cam);
   }
 
