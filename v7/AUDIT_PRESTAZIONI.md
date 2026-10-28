@@ -175,6 +175,18 @@ Prima: `484da2b` (il merge di partenza). Dopo: questa build.
 Le ombre nella colonna di sinistra variano da una passata all'altra: a volte capita una cottura in sottofondo della mappa del sole, con le sue
 prove. Il resto dello scarto di `render()` è il disegno delle ombre in meno.
 
+In movimento: `banco_audit.js --giro=cammina,auto --nf=150`, prima (`--indice=` la build di partenza) e dopo, una passata dopo l'altra. I ms
+sono il tempo incluso nel profilo del processore, per fotogramma.
+
+| | a piedi, prima | dopo | in auto, prima | dopo |
+|---|---:|---:|---:|---:|
+| disegni per fotogramma | 1.271 | 762 | 1.285 | 1.019 |
+| uniform per fotogramma | 3.748 | 3.262 | 4.487 | 4.227 |
+| `updateMatrixWorld` | 22,9 ms | 4,6 ms | 25,5 ms | 6,4 ms |
+| `Frustum.intersectsObject` | 5,8 ms | 3,0 ms | 6,6 ms | 2,9 ms |
+| oggetti che fanno ombra | 5.235 | 3.833 | 5.520 | 4.333 |
+| lavoro per fotogramma (mediana) | 84 ms | 53 ms | 93 ms | 65 ms |
+
 **Stessa immagine.** `sonda_uguale_fusi.js`, 390×640, borgo e via Vittoria, alle 11 e alle 21 (sole e faretti), con 127-143 sagome fuse e i
 settori attivi: 0 pixel diversi su 0 canali in tutte e quattro le inquadrature. In B il controllo usa le matrici di three come prima, quindi
 anche una matrice che non si fosse rifatta in A si sarebbe vista.
