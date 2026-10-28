@@ -22961,19 +22961,16 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 </script>
 <!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
      prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
-<!-- [mappa_nuova] ?mappa=nuova: la mappa nuova (world_cittanuova.js, MN), in prova finché il committente non la approva. Il mondo cotto e i
-     tasselli sono della mappa di prima: con la mappa nuova il gioco calcola il mondo e costruisce la città nel browser -->
-<script>window.PV_MAPPA = (function () { try { return /[?&]mappa=nuova\b/.test(location.search) ? 'nuova' : ''; } catch (e) { return ''; } })();</script>
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '7f0334baf3a5d429';</script>
-<script>window.PV_IMPRONTA_TASS = '2d0f9fc9ef9248f5';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'b8427c30f7030922';</script>
+<script>window.PV_IMPRONTA_TASS = 'b301d2687d6dc7c9';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
 <script>(function () {
-  if (window.PV_CUOCI || window.PV_MAPPA === 'nuova') return;
+  if (window.PV_CUOCI) return;
   let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
   if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
     const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
@@ -26788,26 +26785,14 @@ var World = (function () {
   function SouthY(x) { let v = SYM.get(x); if (v === undefined) { v = SouthY0(x); if (SYM.size > 200000) SYM.clear(); SYM.set(x, v); } return v; }
   // [isola-ridotta] a ovest del Monte la forma (la testa, il collo, le calette, la Punta) si legge nel disegno in Pxi(x) e si porta sulla
   // mappa con Py; i capi e i golfi con nome (C2N, C2S, già sulla mappa) e i rumori della riva si fanno sulla mappa, alla loro scala
-  // ================= [mappa_nuova] LA MAPPA NUOVA (?mappa=nuova, in Node PV_MAPPA=nuova; piano in mappa_nuova/piano.md e revisione.md) =================
-  // Si taglia l'isola a ovest di x 702 (finale 1022): resta un capo di scogli arrotondato (la Punta del Faro) che esce 28 m oltre il taglio.
-  // A tramontana, sotto il colle, la riva entra di 10-33 m fin dove passavano la ferrovia e la Costiera Nord (correzione 1): una falesia
-  // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Senza ?mappa=nuova niente cambia.
-  const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA === 'nuova'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=nuova\b/.test(location.search)) return true; if (typeof process !== 'undefined' && process.env && process.env.PV_MAPPA === 'nuova') return true; } catch (e) { } return false; })();
-  const MNX = 702, MNW = 674, MNL = 120, MNY = 146;   // il taglio, la punta del capo, quanto è lungo il capo che si stringe, la sua mezzeria
-  const MNN = [[688, 0], [698, 22], [710, 27], [720, 27], [730, 17], [740, 10], [750, 7], [760, 7], [770, 10], [780, 25], [790, 31], [800, 30], [810, 23], [820, 18], [830, 16], [840, 15], [850, 21], [860, 18], [870, 15], [880, 11], [890, 9], [902, 0]];
-  const mnShift = m => { if (m <= MNN[0][0] || m >= MNN[MNN.length - 1][0]) return 0; for (let k = 0; k < MNN.length - 1; k++) { const [a, ha] = MNN[k], [b, hb] = MNN[k + 1]; if (m >= a && m < b) { const t = (m - a) / (b - a), e = t * t * (3 - 2 * t); return ha + (hb - ha) * e; } } return 0; };
-  const mnE = m => { const t = (m - MNW) / MNL; return t >= 1 ? 1 : Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))); };
-  const mnCapo = (m, sd) => 2.6 * (fbm(m / 7, sd, 721, 2) - .5) * 2 * (1 - mnE(m));   // la frastagliatura degli scogli sul capo
-  function NorthY0(m) { if (!MN) return NorthYb(m); if (m < MNW) return 1e4; const y = NorthYb(m) + mnShift(m), e = mnE(m); return e >= 1 ? y : MNY - (MNY - y) * e + mnCapo(m, 1.3); }
-  function SouthY0(m) { if (!MN) return SouthYb(m); if (m < MNW) return -1e4; const y = SouthYb(m), e = mnE(m); return e >= 1 ? y : MNY + (y - MNY) * e + mnCapo(m, 4.7); }
-  function NorthYb(m) {
+  function NorthY0(m) {
     if (m >= XF) { const x = m, y0 = northY(xo(x)) + gapK(x) * nH(x, 2.1); return x >= C2X1 ? y0 : y0 - c2Out(x, true); }
     const x = Pxi(m), c = Math.abs(x - HEADd.x) < HEADd.r ? HEADd.y - headHalf(x) : 1e4;
     let y = Py(x, smin(c, x < 250 ? 1e4 : neckN(x), 34) + cove(x, 300, 11, 7) + cove(x, 520, 9, 5)) + nH(m, 2.1) * (1 - sstep(XF - 60, XF, m)) - c2Out(m, true);
     if (x > PUNTA.x0 && x < PUNTA.x1 + 30) y = smin(y, Py(x, PUNTA.y - puntaHW(x)), 8);
     return y;
   }
-  function SouthYb(m) {
+  function SouthY0(m) {
     if (m >= XF) { const x = m, y0 = southY(xo(x)) - gapK(x) * nH(x, 5.3); return x >= C2X1 ? y0 : y0 + c2Out(x, false); }
     const x = Pxi(m), c = Math.abs(x - HEADd.x) < HEADd.r ? HEADd.y + headHalf(x) : -1e4;
     let y = Py(x, -smin(-c, x < 250 ? 1e4 : -neckS(x), 46)) - nH(m, 5.3) * .45 * (1 - sstep(XF - 60, XF, m)) + c2Out(m, false);   // la Spiaggia Lunga: riva liscia
@@ -26897,9 +26882,6 @@ var World = (function () {
   // meno terra da costruire e da disegnare, meno gente da muovere. Le definizioni restano qui sopra.
   { const KEEP = new Set(['palme', 'grande_sud']); const keep = ISOLE.filter(I => KEEP.has(I.id)); ISOLE.length = 0; ISOLE.push(...keep);
     LAGUNE.splice(0, 1); }   // la laguna dietro l'Isola Lunga
-  // [mappa_nuova] l'Isola Grande del Sud diventa l'Isolotto di Mezzogiorno (correzione 5): piccolo, fuori dall'imboccatura, a sud-est della
-  // Rocca (fa da quinta al castello e lascia libero il cono di vista del porto); riva di scogli con una cala, un ciuffo di pini, senza la tribù
-  if (MN) { const G = ISOLE.find(I => I.id === 'grande_sud'); if (G) { Object.assign(G, { name: 'Isolotto di Mezzogiorno', x: 1336, y: 262, rx: 34, ry: 22, rot: .35, h: 8, top: [.1, -.05], amp: .2, bay: [Math.PI / 2 - .4, .3, .22], def: 'scogli', kinds: [[Math.PI / 2 - .4, .38, 'cala'], [-Math.PI / 2, .9, 'falesia']], veg: 'macchia', tema: 'pini', use: 'vuota' }); delete G.dome; } }
   let ISLES_ON = false;   // [arcipelago] durante la generazione dell'isola grande le isole non ci sono: le aggiunge expand() sulla mappa grande
   // [arcipelago] forme organiche: ogni isola è un corpo principale più alcuni lobi che ci si saldano sopra (come colline che si
   // fondono), su cui passa una deformazione a più scale: penisole, golfi, promontori; le creste serpeggiano.
@@ -26994,10 +26976,6 @@ var World = (function () {
       if (i + 2 < L.length - 1 && COVE(L[i + 2][1]) && L[i + 2][0] - b < 10) { L.splice(i + 1, 2); i--; continue; }   // la cala vicina: una sola
       if (b - a < 8) { L.splice(i, 1); i--; continue; }
       const c = (a + b) / 2, a1 = Math.max(L[i - 1][0] + 6, Math.round(c - 9)), b1 = Math.min(i + 2 < L.length ? L[i + 2][0] - 6 : 1e9, Math.round(c + 9)); L[i][0] = a1; L[i + 1][0] = b1; } });
-  if (MN) {   // [mappa_nuova] il capo è di scogli; a tramontana sotto il colle la falesia (correzione 1); a mezzogiorno, al riparo del capo, la cala dei pescatori
-    const N2 = COSTA2.N.filter(q => q[0] >= 902); COSTA2.N.length = 0; COSTA2.N.push([0, 'scogli'], [712, 'falesia'], [900, 'scogli'], ...N2.filter(q => q[0] > 900));
-    const S2 = COSTA2.S.filter(q => q[0] >= 739); COSTA2.S.length = 0; COSTA2.S.push([0, 'scogli'], [704, 'cala'], [724, 'scogli'], ...S2);
-  }
   const C2BASE = { duna: 'spiaggia', foce: 'spiaggia', frangiflutti: 'scogli' };
   const COSTA = { N: COSTA2.N.map(([a, k]) => [a, C2BASE[k] || k]), S: COSTA2.S.map(([a, k]) => [a, C2BASE[k] || k]) };
   const costaSide = (x, y) => y < Yc(x) ? 'N' : 'S';
@@ -27311,15 +27289,9 @@ var World = (function () {
   function rawElevC(x, y) {   // la città (com'era)
     // [città2] il borgo sta su una groppa dolce che sale verso la Rocca (niente crepacci: le case si costruiscono in aderenza);
     // al bordo dell'acqua resta in piano (la marina, le mura di tramontana), oltre il fossato torna il colle della Rocca
-    if (x >= 985 && x < 1215) { let hb = .4 + 6 * sstep(1000, 1150, x) * sstep(3, 34, Inland0(x, y)); if (MN) hb = Math.max(hb, mnBorgo(x, y)); return x < 1190 ? hb : hb + (rawElevC2(x, y) - hb) * sstep(1190, 1215, x); }
+    if (x >= 985 && x < 1215) { const hb = .4 + 6 * sstep(1000, 1150, x) * sstep(3, 34, Inland0(x, y)); return x < 1190 ? hb : hb + (rawElevO(x - DXC, y) - hb) * sstep(1190, 1215, x); }
     return rawElevO(x - DXC, y);
   }
-  const rawElevC2 = (x, y) => rawElevO(x - DXC, y);
-  // [mappa_nuova] IL BORGO ALTO (correzione 3): fra la Via delle Mura e il sagrato il borgo sale a +6 (la sagoma di Rovigno, il nucleo che
-  // sale, senza chiesa in cima); la Rua resta sotto, a +2/+4, sul ciglio. Si alza il terreno prima delle case: le case, i vicoli e le
-  // scalinate del borgo si posano sul terreno nuovo con le regole di sempre (niente si alza sotto una casa già fatta)
-  const MNB = { x0: 1046, x1: 1146, y0: 68, y1: 107, h: 6, m: 4.5 };   // coordinate di progetto (finali − 320, − 200)
-  const mnBorgo = (x, y) => { const d = Math.min(x - MNB.x0, MNB.x1 - x, y - MNB.y0, MNB.y1 - y); return d < -MNB.m ? 0 : MNB.h * sstep(-MNB.m, 0, d); };
   const CITY_W0 = 930;   // [mappa_compatta] il bordo ovest della città: la stazione (finale 1250; prima 750)
   function zoneAt(x, y) {
     { const b = isleAt(x, y); if (b && b.q.d > 0 && !OnLand0(x, y)) { const k = isleKind(b.I, b.q.a); return (k === 'spiaggia' || k === 'cala') && b.q.d < 9 ? Z.SPIAGGIA : Z.MACCHIA; } }   // [arcipelago]
@@ -27642,9 +27614,6 @@ var World = (function () {
     NAMED.forEach(q => { const p = RELOC[q[0]]; if (p) { q[6] = p; q[7] = Object.assign({}, q[7], { nuovo: true }); } if (q[0] === 'disco') { q[2] = 6; q[7] = Object.assign({}, q[7], { portaS: true }); }   /* il portone verso il tronchino, la vetrina della radio sul lungomare */   // [pianta] il magazzino di Radio Luna: 12 × 10 m sul lungomare
      
       const rc = RECINTO_N[q[0]]; if (rc) { q[2] = rc[0]; q[3] = rc[1]; q[7] = Object.assign({}, q[7], { recinto: true }); } }); }
-  // [mappa_nuova] le stazioni di estrazione e la casa del salinaio stavano nella campagna tagliata; il faro va sulla Punta del Faro (correzione 5)
-  if (MN) { for (let k = NAMED.length - 1; k >= 0; k--) if (['miniera', 'stazione2', 'salinaio'].includes(NAMED[k][0])) NAMED.splice(k, 1);
-    const f = NAMED.find(n => n[0] === 'faro'); if (f) { f[1] = 'Faro della Punta'; f[6] = [691, 184]; } }
 
   // ---------------- IL CENTRO ----------------
   // Isolati regolari: quattro vie est-ovest e le traverse nord-sud, il corso che si apre sulla piazza.
@@ -28322,21 +28291,6 @@ var World = (function () {
       // le pozze rimaste fra la colmata e la riva vecchia (davanti alle baracche) si riempiono: niente mare chiuso dietro la strada
       for (let tx = T2i(x0); tx <= T2i(Math.min(x1, 1140)); tx++) { const x = tx * TS + 1, yr = yOnP0(P, x); if (yr === null) continue;
         for (let ty = T2i(yr + 5); ty <= T2i(yr + 18); ty++) { const i = ty * GW + tx, v = grid[i]; if (!(v === T.WATER || v === T.ROCK || v === T.SAND)) { if (v !== T.COB && v !== T.QUAY) break; continue; } grid[i] = T.COB; zone[i] = Z.CITTA; elev[i] = Math.max(elev[i], 1.2); if (!(x > 970 && x < 992 && ty * TS > 64)) reserved[i] = 1; } } }   // [pianta] resta il piazzale delle baracche sul lungomare (niente lamiere fra la strada e Radio Luna)
-    // [mappa_nuova] le strade della campagna tagliata se ne vanno; la Costiera Nord e il Raccordo del Valico pure (correzione 1); chi passa il
-    // taglio (la Costiera Sud) si ferma dove finisce la terra: a fondo cieco sulla Punta del Faro. La città non si tocca (x ≥ 902)
-    // Le strade del colle diventano sentieri (correzione 1: una sola strada, la Costiera Sud); la Costiera Sud, che ora girerebbe attorno al
-    // capo e risalirebbe a tramontana, si ferma a mezzogiorno della Punta, sotto il faro
-    if (MN) { const ok = (rd, x, y) => x >= 902 || (x >= MNW && Inland0(x, y) > -3 && (rd.id !== 'litoranea' || x > 760 || y > MNY + 34));   // le costiere sul mare (C2STRADA) stanno sul ciglio: valgono
-      for (let k = roads.length - 1; k >= 0; k--) { const rd = roads[k]; if (rd.rect || !rd.pts || rd.pts.length < 2 || CITY.roads.includes(rd)) continue;
-        if (rd.id === 'nord' || rd.id === 'raccordo_o') { roads.splice(k, 1); continue; }
-        if (rd.kind === 'strada' && rd.pts.every(q => q[0] < 902)) { rd.kind = 'sterrato'; rd.w = Math.min(rd.w, 3); rd.sentiero = true; }
-        const P = rd.pts, n = P.length; let best = null, a = -1;
-        for (let i = 0; i <= n; i++) { const on = i < n && ok(rd, P[i][0], P[i][1]); if (on && a < 0) a = i; if (!on && a >= 0) { if (!best || i - a > best[1] - best[0]) best = [a, i]; a = -1; } }
-        if (best && best[0] === 0 && best[1] === n) continue;
-        if (!best || best[1] - best[0] < 3) { roads.splice(k, 1); continue; }
-        Object.keys(rd).forEach(key => { const v = rd[key]; if (key !== 'pts' && v && v.length === n && typeof v !== 'string') rd[key] = Array.prototype.slice.call(v, best[0], best[1]); });
-        rd.pts = P.slice(best[0], best[1]); rd.cieco = true;
-        if (rd.id === 'litoranea') { const e = rd.pts[0][0] < rd.pts[rd.pts.length - 1][0] ? 0 : 1; rd.capi = [null, null]; rd.capi[e] = { tipo: 'luogo', perche: 'la Punta del Faro: la Costiera Sud finisce a fondo cieco sotto il faro (mappa nuova)' }; } } }
     // [costa-ferrovia] il mare non si mangia le costiere: dove la riva (i rientri delle calette, l'interno delle curve sul mare) arriva
     // dentro la carreggiata o a meno di 2,5 m dal ciglio, quelle caselle di mare diventano terra: la sede della strada e, fuori, la
     // scogliera di massi che la regge (ROCK, a filo dell'acqua). Le strade non si spostano.
@@ -28564,9 +28518,9 @@ var World = (function () {
           pista.pts = chaikin([b.slice(), e0, m1, e1], 1); pista.prof = pista.pts.map((q, k, A) => { const i0 = tI(b[0], b[1]), h0 = i0 >= 0 ? elev[i0] : H; return h0 + (H - h0) * sstep(0, .45, k / (A.length - 1)); }); paint(pista); livella(pista); } } }
     // [città2] la ferrovia: la massicciata sul rilevato (nessuno ci costruisce sopra); le mura di tramontana sopra gli scogli del borgo
     if (CITY.rail) {
-      CITY.rail.forEach(([x, y]) => { for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { if (a * a + b * b > 9.5) continue; const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const i = ty * GW + tx; if (grid[i] === T.WATER || roadW[i] > 0) continue; grid[i] = MN ? T.GRASS : T.GRAVEL; reserved[i] = 1; } });
+      CITY.rail.forEach(([x, y]) => { for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { if (a * a + b * b > 9.5) continue; const tx = Math.floor((x + a) / TS), ty = Math.floor((y + b) / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; const i = ty * GW + tx; if (grid[i] === T.WATER || roadW[i] > 0) continue; grid[i] = T.GRAVEL; reserved[i] = 1; } });
       // [pianta] fra il marciapiede del Lungomare e la massicciata la striscia del guardrail: niente case schiacciate fra la strada e i binari
-      if (CITY.lungN) CITY.lungN.forEach(([x, y]) => { if (x < 1030 || x > 1141) return; const yr = CITY.railY(x); for (let yy = yr - 6; yy <= yr - 2; yy += 1) { const i = T2i(yy) * GW + T2i(x); if (grid[i] === T.WATER || roadW[i] > 0) continue; grid[i] = MN ? T.GRASS : T.GRAVEL; reserved[i] = 1; } });
+      if (CITY.lungN) CITY.lungN.forEach(([x, y]) => { if (x < 1030 || x > 1141) return; const yr = CITY.railY(x); for (let yy = yr - 6; yy <= yr - 2; yy += 1) { const i = T2i(yy) * GW + T2i(x); if (grid[i] === T.WATER || roadW[i] > 0) continue; grid[i] = T.GRAVEL; reserved[i] = 1; } });
       for (let tx = T2i(1000); tx < T2i(CITY.spian0); tx++) { const y0 = CITY.muraY(tx * TS + 1); for (let ty = T2i(y0); ty <= T2i(y0 + 5); ty++) { const i = ty * GW + tx; if (grid[i] === T.WATER || roadW[i] > 0) continue; grid[i] = T.COB; reserved[i] = 1; } }
     }
     // [città2] il parco della metropoli: prato, alberi in filari lungo i bordi e a macchie dentro, due vialetti in croce e uno in diagonale,
@@ -29407,9 +29361,8 @@ var World = (function () {
     }
     // [isola] i borghi dei pescatori: casette basse sulla riva, sparse e storte, col pontile di legno e lo scalo
     const FISHP = [];
-    // [mappa_nuova] un borgo solo: la Cala dei Pescatori al riparo della Punta del Faro, sei capanni, il pontile e le barche in secca (correzione 5)
-    (MN ? [['pescatori_s', 'Cala dei Pescatori', 714, SouthY(714) - 16, 1]] : [['pescatori_s', 'Borgo dei pescatori', Px(470), SouthY(Px(470)) - 21, 1], ['pescatori_n', 'Case della Tramontana', Px(566), NorthY(Px(566)) + 21, -1], ['pescatori_t', 'Capanni della Punta', Px(152), SouthY(Px(152)) - 21, 1]]).forEach(([id, name, cx, cy, sd]) => {
-      let n = 0; for (let k = 0; k < 90 && n < (MN ? 6 : 8); k++) {
+    [['pescatori_s', 'Borgo dei pescatori', Px(470), SouthY(Px(470)) - 21, 1], ['pescatori_n', 'Case della Tramontana', Px(566), NorthY(Px(566)) + 21, -1], ['pescatori_t', 'Capanni della Punta', Px(152), SouthY(Px(152)) - 21, 1]].forEach(([id, name, cx, cy, sd]) => {
+      let n = 0; for (let k = 0; k < 90 && n < 8; k++) {
         const a = r() * 6.283, d = 3 + r() * 22, x = cx + Math.cos(a) * d * 1.3, y = cy + Math.sin(a) * d * .6, w = 2 + Math.floor(r() * 3), h = 2 + Math.floor(r() * 2);
         const tx = Math.floor(x / TS - w / 2), ty = Math.floor(y / TS - h / 2);
         if (!OnLand(x, y) || !free(tx, ty, w, h, 1) || !flatOK(tx, ty, w, h, 1.3)) continue;
@@ -30265,12 +30218,12 @@ var World = (function () {
       // 1) il rilevato: la ferrovia sale col 2,4% verso il sottopasso della Via Cavour, dove passa 5 m sopra la strada
       const Lr = Math.max(.5, vAt(C.x, C.y0 + 3)), Rtop = Lr + 4.8 + .25, g0 = {};
       for (let x = 740; x <= CITY.spian0; x += 2) g0[x] = vAt(x, ry(x));
-      const Rf = x => { const k = Math.round(x / 2) * 2; return Math.max((g0[k] !== undefined ? g0[k] : vAt(x, ry(x))) + .35, MN ? -9 : Rtop - .024 * Math.abs(x - C.x)); };   // [mappa_nuova] senza ferrovia niente rilevato: il terreno resta il suo
+      const Rf = x => { const k = Math.round(x / 2) * 2; return Math.max((g0[k] !== undefined ? g0[k] : vAt(x, ry(x))) + .35, Rtop - .024 * Math.abs(x - C.x)); };
       POSA.Rf = Rf;
       const SUOLO = new Set([T.VIA, T.COB, T.PIAZZA, T.WALK, T.DIRT, T.GRASS]), accanto = (i, j) => { for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) { const tx = i + a, ty = j + b; if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) continue; if (roadW[ty * GW + tx] > 0 || (SUOLO.has(grid[ty * GW + tx]) && Math.abs((ty + .5) * TS - ry((tx + .5) * TS)) > 2.2)) return true; } return false; };   // e la strada che passa sotto il viadotto resta alla sua quota
       // [pianta] il rilevato sta dentro la massicciata: i vertici del selciato accanto (il vicolo, lo slargo, il prato) restano alla loro quota, il muro a scarpa del binario fa il salto (prima la casella accanto saliva di tre metri in due)
-      if (!MN) eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
-      if (!MN) for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
+      eachV(740, 0, CITY.spian0, GH * TS, (i, j, x, y) => { const d = Math.abs(y - ry(x)); if (d > 2.3 || Math.abs(x - C.x) < 2.2 || accanto(i, j)) return; const h = Rf(x) - .45; if (h > vh[j * VW + i]) setV(i, j, h); });
+      for (let ty = 0; ty < GH; ty++) for (let tx = T2i(740); tx < T2i(CITY.spian0); tx++) { const x = tx * TS + 1, y = ty * TS + 1; if (Math.abs(y - ry(x)) > 2.6 || Math.abs(x - C.x) < 2.2) continue; const i = ty * GW + tx; if (grid[i] === T.WATER) continue; elev[i] = Math.max(elev[i], Rf(x) - .35); }
       // 2) la Via Cavour: a terra fino al sottopasso, poi la scalinata fino al piano della Via della Stazione
       const Htop = vAt(C.x, C.y1), yTop = C.y1 - 3.5, d = Math.max(.34, Htop - Lr), nPi = d > 2.6 ? 1 : 0, len = Math.round(d / .17) * .36 + nPi * 1.6 + .3;
       C.ps.y = Math.max(ry(C.x) + 7.5, yTop - len); C.ps.opz.dislivello = +d.toFixed(2);   // [sporcherie] i gradini salgono quanto sale davvero la via (prima almeno 1 m: in cima uno scalino di 25 cm sul Corso)
@@ -30317,46 +30270,7 @@ var World = (function () {
         const portaSotto = (k, nx, ny) => B.some(b => { if (!b.door) return false; const dx = (b.door[0] + .5) * TS - ox, dy = (b.door[1] + .5) * TS - oy, v = dx * nx + dy * ny - aw(k), u = Math.abs(-dx * ny + dy * nx); return v > 0 && v < 5 && u < aw(k) * Math.tan(Math.PI / 8) + 1; });
         for (let k = 0; k < 8; k++) { const d = ring[k] - qm; if (Math.abs(d) < .5) continue; const a = k * Math.PI / 4, nx = Math.cos(a), ny = Math.sin(a), fx = d > 0 ? -nx : nx, fy = d > 0 ? -ny : ny, L = 2 * aw(k) * Math.tan(Math.PI / 8) - .3;
           const g = pzAt('gradone', ox + nx * aw(k), oy + ny * aw(k), Math.atan2(fx, fy), L / 2, 0, { L: +L.toFixed(2), h: +Math.abs(d).toFixed(2), P: d > 0 ? .8 : 2.4, rampa: false, scala: d < 0 && (k % 2 === 0 || portaSotto(k, nx, ny)), ringhiera: d < 0 }, { nome: d > 0 ? 'Muro di sostegno del Mercato' : 'Gradone del Mercato' });
-          g.q = +Math.min(qm, ring[k]).toFixed(2); if (g.opz.scala) scalaGradone(g, qm); }
-        // [mappa_nuova] I DISLIVELLI (piano, passi 5-6; revisione, correzioni 2-4): una piazza su quota è un poligono portato alla sua quota
-        // (i vertici che toccano una casa restano: niente si alza sotto le case), coi lati a pezzi di ~10 m: dove fuori il terreno è più
-        // basso il gradone col muro e la ringhiera (lo stesso pezzo dell'Ottagono), dove è più alto il muro di sostegno; contro una casa
-        // niente (la facciata fa da bordo). Le scale e le cordonate stanno sui pezzi di lato più vicini ai punti chiesti: ogni piazza ha
-        // almeno due accessi a piedi. Coordinate finali (− OX, − OY).
-        if (MN) { const F = ([x, y]) => [x - OX, y - OY];
-          const dentro = (P, x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
-          const sottoCasa = (i, j) => [[i - 1, j - 1], [i, j - 1], [i - 1, j], [i, j]].some(([a, c]) => a >= 0 && c >= 0 && a < GW && c < GH && grid[c * GW + a] === T.BLD);
-          const terrazza = (nome, P0, q, o) => { o = o || {}; const P = P0.map(F), lati = [];
-            P.forEach((a, k) => { const b = P[(k + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 2) return; const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2; let nx = uy, ny = -ux; if (dentro(P, mx + nx * 1.2, my + ny * 1.2)) { nx = -nx; ny = -ny; }
-              const nS = Math.max(1, Math.round(L / (o.passo || 10))), Ls = L / nS;
-              for (let s2 = 0; s2 < nS; s2++) { const c0 = (s2 + .5) * Ls, cx = a[0] + ux * c0, cy = a[1] + uy * c0; let g = 0, cnt = 0, casa = 0, acqua = 0;
-                for (let u = -Ls / 2 + .5; u <= Ls / 2 - .5 + 1e-6; u += 1) { const x = cx + ux * u + nx * 2.5, y = cy + uy * u + ny * 2.5, t = Math.floor(y / TS) * GW + Math.floor(x / TS); g += vAt(x, y); cnt++; if (grid[t] === T.BLD) casa++; if (grid[t] === T.WATER) acqua++; }
-                lati.push({ k, cx, cy, ux, uy, nx, ny, Ls, g: g / cnt, casa: casa > cnt * .3, acqua: acqua > cnt * .5 }); } });
-            let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
-            eachV(x0, y0, x1, y1, (i, j, x, y) => { if (dentro(P, x, y) && (o.molo || !sottoCasa(i, j))) setV(i, j, q); });
-            if (o.molo) { SEA.moorings = SEA.moorings.filter(m => !(m.x > x0 - 3 && m.x < x1 + 3 && m.y > y0 - 3 && m.y < y1 + 3));   // la loggia sull'acqua: un molo di pietra, le barche si spostano
-              for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) { const i = ty * GW + tx; if (!dentro(P, tx * TS + 1, ty * TS + 1)) continue; grid[i] = T.QUAY; zone[i] = Z.CITTA; elev[i] = q; reserved[i] = 1; roadW[i] = 0; } }
-            for (let ty = Math.floor(y0 / TS); ty <= Math.floor(y1 / TS); ty++) for (let tx = Math.floor(x0 / TS); tx <= Math.floor(x1 / TS); tx++) { const i = ty * GW + tx; if (dentro(P, tx * TS + 1, ty * TS + 1) && (grid[i] === T.GRASS || grid[i] === T.DIRT || grid[i] === T.FIELD || grid[i] === T.SHRUB || grid[i] === T.GRAVEL)) { grid[i] = o.prato ? T.GRASS : T.PIAZZA; reserved[i] = 1; } }
-            const vicino = pts => (pts || []).map(F).map(([x, y]) => { let b = null, bd = 1e9; lati.forEach(l => { const d = Math.hypot(l.cx - x, l.cy - y); if (l.g < q - .5 && !l.casa && d < bd) { bd = d; b = l; } }); return b; });
-            const SC = new Set(vicino(o.scale)), RP = new Set(vicino(o.rampe));
-            lati.forEach(l => { const d = l.g - q; if (Math.abs(d) < .5 || l.casa || (o.lati && !o.lati.includes(l.k))) return; const giu = d < 0, fx = giu ? l.nx : -l.nx, fy = giu ? l.ny : -l.ny, L = +(l.Ls - .3).toFixed(2);
-              const g = pzAt('gradone', l.cx, l.cy, Math.atan2(fx, fy), L / 2, 0, { L, h: +Math.abs(d).toFixed(2), P: giu ? 2.4 : .8, rampa: giu && RP.has(l) && !l.acqua, scala: giu && SC.has(l) && !RP.has(l) && !l.acqua, ringhiera: giu }, { nome: (giu ? 'Gradone ' : 'Muro di sostegno ') + nome });
-              g.q = +Math.min(q, l.g).toFixed(2); g.terrazza = nome; if (g.opz.scala) { scalaGradone(g, q); if (!g.opz.scala) g.opz.rampa = true; } });   // dove la scala non trova un posto pulito, la cordonata
-            (CITY.terrazze = CITY.terrazze || []).push({ nome, q, poly: P0.map(p => p.slice()), accessi: SC.size + RP.size }); };
-          // il Borgo alto (+6): il sagrato (la scalinata scende alla Rua e verso la Marina) e il ciglio delle Mura col belvedere: la scala delle
-          // Mura scende al Lungomare di Tramontana (+2)
-          terrazza('del sagrato', [[1369, 296], [1397, 296], [1397, 307], [1369, 307]], 6, { scale: [[1384, 310], [1366, 303]] });
-          terrazza('delle Mura', [[1366, 266], [1466, 263], [1466, 270], [1366, 273]], 6, { lati: [0, 3], scale: [[1458, 260], [1392, 262]] });
-          // le Terrazze di Ponente (correzione 2): la piazza dei Giardini e della vasca dello skate (+6, due scalinate: dall'Ottagono e dalla via
-          // verso la Marina) e il Belvedere (+9) rivolto a mezzogiorno, sul porto e sulle isole, col parapetto
-          terrazza('dei Giardini', [[1214, 302], [1237, 302], [1237, 334], [1214, 334]], 6, { scale: [[1240, 318], [1226, 338]] });
-          terrazza('del Belvedere', [[1192, 336], [1214, 334], [1214, 352], [1194, 354]], 9, { scale: [[1212, 330], [1216, 346]], prato: true });
-          // la loggia della Marina (correzione 4): solo il tratto fra il secondo e il terzo pontile, a +4, la gradinata larga verso la calata
-          // e la cordonata da un lato; la calata a +1 corre davanti alle case senza interruzioni
-          terrazza('della Loggia', [[1340, 393], [1352, 393], [1352, 401], [1340, 401]], 4, { molo: true, passo: 6, scale: [[1343, 390]], rampe: [[1349, 390]] });
-          // la Rocca (+7): la piazza d'armi sale, la rampa dalla riva del ponte (+2)
-          terrazza("d'armi della Rocca", [[1544, 323], [1569, 323], [1569, 341], [1544, 341]], 7, { rampe: [[1540, 328]], scale: [[1540, 337]] });
-        } } }
+          g.q = +Math.min(qm, ring[k]).toFixed(2); if (g.opz.scala) scalaGradone(g, qm); } } }
       // 5) le banchine della darsena alla quota della calata; il molo e lo scalo alla quota del loro piano
       { const qd = Math.max(.6, vAt((DARS.x0 + DARS.x1) / 2, DARS.y0 - 3)); PEZZI.forEach(p => { if (p.tipo === 'darsena' && !p.opz.rocca) { p.q = qd; p.opz.hq = +(qd - WLp).toFixed(2); } });
         eachV(DARS.x0, DARS.y0, DARS.x1, DARS.y1, (i, j, x, y) => { if (x <= DARS.x0 + DARS.b || x >= DARS.x1 - DARS.b || y <= DARS.y0 + DARS.b) setV(i, j, qd); });
@@ -30449,10 +30363,6 @@ var World = (function () {
       { id: 'eremo', name: 'Eremo del Romito', mouth: 'imbocco', exit: 'pozzo', path: [[162.5, 158.5], [165.5, 158.5], [168.5, 156.5], [171.5, 154], [174.5, 152.5]], rooms: [[166.5, 159, 2.6, 2.4, 'eremo']] },
     ];
     const CAVES = CAVES0.map(c => Object.assign({}, c, { path: c.path.map(q => [xn(q[0]), q[1]]), rooms: c.rooms.map(q => [xn(q[0])].concat(q.slice(1))) }));
-    // [mappa_nuova] oltre la punta del capo non resta niente: i piazzali, i pontili e le pozze delle stazioni e delle saline tagliate tornano mare
-    if (MN) { const X0 = T2i(MNW - 4);
-      for (let ty = 0; ty < GH; ty++) for (let tx = 0; tx < X0; tx++) { const i = ty * GW + tx; if (grid[i] === T.WATER && elev[i] <= -1.9) continue; grid[i] = T.WATER; zone[i] = Z.MARE; elev[i] = -2; roadW[i] = 0; feat[i] = 0; eco[i] = 0; reach[i] = 0; reserved[i] = 0; }
-      for (let j = 0; j <= GH; j++) for (let i = 0; i <= X0; i++) { const k = j * VW + i; vh[k] = Math.min(vh[k], -2); velev[k] = Math.min(velev[k], -2); } }
     return { pezzi: PEZZI, recinto: POSA.recinto || null, glacis: CITY.glacis || null, railCity: CITY.rail, railCampagna: CITY.railC ? { cp: CITY.railC.cp, P: CITY.railC.P, n: CITY.railC.n, h: CITY.railC.h || null, code: CITY.railC.code || null, pl: CITY.railC.pl.map(q => ({ road: q.road, i: q.i, x: q.x, y: q.y, ang: q.ang, la: q.la, pz: !!q.pz })), sotto: (CITY.railC.sotto || []).map(q => Object.assign({}, q)), yards: CITY.railC.yards || [], ponti: CITY.railC.ponti || [], RMIN: CITY.railC.RMIN, pad: CITY.railC.pad ? (pd => ({ H: pd.H, ang: pd.ang, cumuli: pd.cumuli.map(([u, v, r]) => pd.W2(u, v).concat([r])), rete: [[pd.U1, pd.v0], [pd.U1, pd.v1]].concat(Array.from({ length: 12 }, (_, k) => [pd.U1 - (pd.U1 - pd.U0) * (k + 1) / 12, pd.v1]), [[pd.U0, pd.v0]]).map(([u, v]) => pd.W2(u, v)) }))(CITY.railC.pad) : null } : null, cityW0: CITY_W0, stazSud: CITY.staz2 ? { H: CITY.staz2.H, ang: CITY.staz2.ang, cumuli: CITY.staz2.cumuli.map(([u, v, r]) => CITY.staz2.W2(u, v).concat([r])), rete: [[CITY.staz2.L, CITY.staz2.v0], [CITY.staz2.L, CITY.staz2.v1], [0, CITY.staz2.v1], [0, CITY.staz2.v0]].map(([u, v]) => CITY.staz2.W2(u, v)) } : null, sets: CITY.sets, nodi: CITY.nodi, eco, ECO, monte, MF, feat, BRIDGES, CAVES, WALL, FORT, HILLS, VILLAGES: VILLAGES.map(q => [xn(q[0])].concat(q.slice(1))), districtAt: DistrictAt, yc: Yc, northY: NorthY, southY: SouthY, onLand: OnLand, inland: Inland, LAKE,
       DXF, DXC, XF, XG, XC, XE, xo, xn, SEA, COSTA, COSTA2, coastKind, coastKind2, ISOLE, LAGUNE, isleAt, isleIn, HEAD, TAV, CANALI, GOV, BF, bosco, RING, TUNNELS, tavR, tavW, tavParete, tavVarco, POZZA, canHalf, CAN0, CAN1, canFloor, TS, GW, GH, SIZE, SX, SY, T, Z, ZNAME, grid, zone, elev, velev, vh, VW, reach, bIndex, roadW, roads, lanes, BUILDINGS: B, PLACES, zoneAt, rawElev, CX, CY };
   }
@@ -30468,7 +30378,7 @@ var World = (function () {
   // di caselle, di tele dell'acqua e di campi grandi quanto la mappa). OX e OY restano: le coordinate finali della città non cambiano.
   // A ovest il mare guadagnato dalla campagna più corta resta dentro la mappa: per toglierlo bisognerebbe spostare l'origine e con lei
   // tutte le coordinate finali della città (la cornice 1222-1610 di MAPPA_COMPATTA, percorsi.js, render.js, gli strumenti).
-  const OX = 320, OY = 200, SX2 = SX + OX + 120, SY2 = SY + OY + (MN ? 20 : 240), GW2 = SX2 / TS, GH2 = SY2 / TS, OTX = OX / TS, OTY = OY / TS;
+  const OX = 320, OY = 200, SX2 = SX + OX + 120, SY2 = SY + OY + 240, GW2 = SX2 / TS, GH2 = SY2 / TS, OTX = OX / TS, OTY = OY / TS;
   // [mappa_compatta] I DODICI LUOGHI-MISSIONE (MAPPA_COMPATTA.md sez. 4): lo scheletro della città compatta. Ognuno ha i suoi ruoli
   // (hub, segreto, pericolo, premio), l'icona della mappa, la firma che si vede dalla strada, il landmark del quartiere, gli ingressi e il
   // segreto. La posizione la prende dal gioco (l'edificio, la scenografia, il pezzo), così resta vera se il generatore sposta le cose.
@@ -30513,8 +30423,8 @@ var World = (function () {
       if (p.tipo === 'gradone') { const L = o.L, h = o.h, k = .12;
         nuovo('muraglione', p, { muro: true, poly: rett(p, -.2, L + .2, -.4, h * k + .1) });
         let gap = null;
-        if (o.scala || o.rampa) {   // la scala addossata al fronte (pezzi_citta.js T.gradone): sale lungo +X fino al pianerottolo, poi si passa sul muro   [mappa_nuova] anche la cordonata (rampa coi cordoni)
-          const rp = !o.scala, nn = Math.ceil(h / (rp ? .14 : .17)), pd = Math.min(rp ? .9 : .32, (L - 1.6) / nn), SX = o.scalaX, xi = SX ? SX[0] : Math.max(0, L - nn * pd - 1.4), xt = SX ? SX[1] : xi + nn * pd, xl = SX ? SX[2] : Math.min(L, xt + 1.4), za = h * k * .5, zb = za + 1.8, zc = (za + zb) / 2, xm = (xt + xl) / 2;   // [scorcio] il posto vero della scala (scalaGradone)
+        if (o.scala) {   // la scala addossata al fronte (pezzi_citta.js T.gradone): sale lungo +X fino al pianerottolo, poi si passa sul muro
+          const nn = Math.ceil(h / .17), pd = Math.min(.32, (L - 1.6) / nn), SX = o.scalaX, xi = SX ? SX[0] : Math.max(0, L - nn * pd - 1.4), xt = SX ? SX[1] : xi + nn * pd, xl = SX ? SX[2] : Math.min(L, xt + 1.4), za = h * k * .5, zb = za + 1.8, zc = (za + zb) / 2, xm = (xt + xl) / 2;   // [scorcio] il posto vero della scala (scalaGradone)
           gap = [xt, xl]; const s = nuovo('scala', p, { nome: 'Scala del ' + (p.nome || 'gradone').replace(/^Gradone del /, ''), poly: rett(p, xi - .1, xl, za - .05, zb + .1) });
           muro(p, xi, zb + .1, xl, zb + .1, 'corrimano'); muro(p, xl, 0, xl, zb + .1, 'testata');
           SCALE.push({ id: s.id, nome: s.nome, salita: true, x: r2(p.x), y: r2(p.y), rot: p.rot || 0, x0: r2(xi), x1: r2(xt), x2: r2(xl), z0: r2(za), z1: r2(zb), q: r2((p.q || 0) + (SX ? o.yb : 0)), h: SX ? o.hs : h, pts: [pw(p, xi - .9, zc), pw(p, xi + .15, zc), pw(p, xm, zc), pw(p, xm, -1.2)] }); }
@@ -30834,62 +30744,6 @@ var World = (function () {
   //  tetrapodi: la scogliera artificiale del frangiflutti e il piede del Molo Vecchio verso il largo
   //  passerelle: le passerelle di tavole sulle dune, dalla costiera alla spiaggia, con la staccionata di pali e corda
   //  piazzole, muretti, scale: la strada sul mare (la piazzola di sosta, il muretto basso sul ciglio, la scaletta verso la riva)
-  // [mappa_nuova] GLI ALIAS DEI LUOGHI TAGLIATI (passo 4 del piano): chi nomina un luogo che non c'è più (missioni, eventi, routine,
-  // BIBBIA_MISSIONI) trova quello che ne fa le veci. Gli alias non si contano (non enumerabili): la mappa e gli elenchi vedono solo i luoghi veri.
-  const MN_ALIAS = {
-    miniera: 'romito', stazione2: 'romito', stazione_n: 'stazione', stazione_s: 'stazione', bosco_antico: 'pineta', memoria: 'pineta',
-    punta: 'faro', saline: 'faro', salinaio: 'faro', scogli_6: 'faro', scogli_7: 'faro', scogli_1: 'scogli_3', scogli_2: 'scogli_3',
-    pescatori_n: 'pescatori_s', pescatori_t: 'pescatori_s', pesca_pontile_pescatori_n: 'pesca_pontile_pescatori_s', pesca_pontile_pescatori_t: 'pesca_pontile_pescatori_s',
-    spiaggia_lunga: 'caletta', bagno_0: 'caletta', bagno_1: 'caletta', bagno_2: 'caletta', bagno_3: 'caletta', bagno_4: 'bagno_6', bagno_5: 'bagno_6',
-    deserto: 'altopiano', tavolato: 'altopiano', dolina: 'lago', belvedere_tav: 'monolite', canalone_e: 'gola', canalone_o: 'gola',
-    beduini: 'paese_vecchio', campo_p: 'bivacco_o', conservificio: 'magazzino', mattonificio: 'cantiere',
-    villaggio_tribu: 'isola_grande_sud', spiaggia_tribu: 'isola_grande_sud', bagno_isola_9: 'isola_grande_sud' };
-  const MN_VIA_PZ = new Set(['binari', 'locomotiva', 'carro_merci', 'sottopasso', 'passaggio_livello']);
-  function mnTaglia(W) {
-    if (!MN) return W;
-    const g = W.grid, GWx = W.GW, GHx = W.GH, XW = MNW + OX - 6, XCITY = 902 + OX, MAXY = GHx * TS - 4;
-    const tile = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? T.WATER : g[ty * GWx + tx]; };
-    const asciutto = (x, y, r) => { for (let dy = -r; dy <= r; dy += TS) for (let dx = -r; dx <= r; dx += TS) if (tile(x + dx, y + dy) !== T.WATER) return true; return false; };
-    const fuori = (x, y, r) => x < XW || y < 2 || y > MAXY || (x < XCITY && !asciutto(x, y, r));
-    W.MAPPA = 'nuova';
-    // i capi delle vie della città che arrivavano sulla Costiera Nord: ora finiscono sull'affaccio del colle
-    W.roads.forEach(rd => { if (rd.id === 'via_alta' || rd.id === 'passo_lung') { rd.capi = (rd.capi || [null, null]).slice(); rd.capi[0] = { tipo: 'affaccio', perche: "l'affaccio sul colle e sulla falesia di tramontana: la Costiera Nord non c'è più (mappa nuova)" }; } });
-    // la ferrovia di superficie se ne va tutta (decisione del committente): la linea, la campagna, il piazzale della stazione Sud
-    W.railCity = null; W.railCampagna = null; W.stazSud = null;
-    // i pezzi: la ferrovia (binari e tronchino col convoglio, il sottopasso del rilevato, i passaggi a livello, i guardrail della linea) e
-    // quelli rimasti nella campagna tagliata; le caselle d'ingombro tornano selciato (in città) o prato. La stazione resta: è l'atrio della
-    // metropolitana (sottosuolo.js), senza pensilina
-    if (W.pezzi) { const tolti = [];
-      W.pezzi = W.pezzi.filter(p => { const via = MN_VIA_PZ.has(p.tipo) || (p.tipo === 'parapetto' && /ferrovia/i.test(p.nome || '')) || fuori(p.x, p.y, 4); if (via) tolti.push(p); return !via; });
-      tolti.forEach(p => (p.imp || []).forEach(([k, x0, x1, z0, z1]) => { if (k !== 'B') return; const c = Math.cos(p.rot || 0), sn = Math.sin(p.rot || 0);
-        for (let u = x0; u <= x1; u += .5) for (let v = z0; v <= z1; v += .5) { const x = p.x + u * c + v * sn, y = p.y - u * sn + v * c, tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; const i = ty * GWx + tx;
-          if (g[i] === T.BLD && W.bIndex[i] < 0) g[i] = W.zone[i] === Z.CITTA ? T.COB : T.GRASS; } }));
-      W.pezzi.forEach(p => { if (p.tipo === 'stazione') { p.opz = Object.assign({}, p.opz, { pensilina: false, nome: 'METROPOLITANA' }); p.nome = 'Stazione della metropolitana'; } }); }
-    // i luoghi: chi è rimasto in mare se ne va, il suo nome passa all'alias
-    const PL = W.PLACES, via = [];
-    Object.keys(PL).forEach(id => { const p = PL[id]; if (fuori(p.x, p.y, 6) && !(p.isola && asciutto(p.x, p.y, 10))) { via.push(id); delete PL[id]; } });
-    const vicino = (x, y) => { let b = null, bd = 1e9; Object.keys(PL).forEach(k => { const q = PL[k]; if (q.isola) return; const d = Math.hypot(q.x - x, q.y - y); if (d < bd) { bd = d; b = k; } }); return b; };
-    const alias = {}; Object.keys(MN_ALIAS).concat(via).forEach(id => { if (PL[id] || alias[id]) return; let t = MN_ALIAS[id]; while (t && !PL[t] && MN_ALIAS[t]) t = MN_ALIAS[t]; if (!t || !PL[t]) t = vicino(XW + 60, 345); if (t) alias[id] = t; });
-    Object.keys(alias).forEach(id => Object.defineProperty(PL, id, { value: PL[alias[id]], enumerable: false, configurable: true, writable: true }));
-    W.ALIAS = alias; W.TAGLIATI = via;
-    // il mare: posti barca, pesca, bagni, luci, scogli e strutture della campagna tagliata
-    const S = W.SEA;
-    ['moorings', 'fishing', 'swim', 'lights'].forEach(k => { if (S[k]) S[k] = S[k].filter(q => !fuori(q.x, q.y, 16)); });
-    S.rocks = S.rocks.filter(q => q.x >= XW - 4 && q.y > 2 && q.y < MAXY);
-    S.structs = S.structs.filter(st => { const q = st.pts && st.pts[0]; return !q || !fuori(q[0], q[1], 12); });
-    S.camps = (S.camps || []).filter(c => !fuori(c.x, c.y, 8));
-    // il giro al largo: passa a ponente del capo (prima girava attorno alla testa); le rotte dentro la mappa
-    if (S.routes) { Object.keys(S.routes).forEach(k => { const R = S.routes[k]; if (!Array.isArray(R)) return; const Q = R.filter(q => q[1] > 4 && q[1] < MAXY - 4 && (k !== 'giro' || q[0] >= XW - 30)); R.length = 0; R.push(...Q); });
-      const Gr = S.routes.giro; if (Gr && Gr.length > 2) { let gk = -1, gd = 0; for (let k = 1; k < Gr.length; k++) { const d = Math.hypot(Gr[k][0] - Gr[k - 1][0], Gr[k][1] - Gr[k - 1][1]); if (d > gd) { gd = d; gk = k; } }
-        if (gd > 40) { const a = Gr[gk - 1], b = Gr[gk], yc = MNY + OY, xt = MNW + OX - 46, arc = [[xt + 22, yc - 70], [xt, yc - 30], [xt - 4, yc], [xt, yc + 30], [xt + 22, yc + 70]]; if (a[1] > b[1]) arc.reverse(); Gr.splice(gk, 0, ...arc.map(q => q.slice())); } } }
-    // strade, corsie, grotte
-    W.roads = W.roads.filter(rd => rd.rect || !rd.pts || rd.pts.some(q => !fuori(q[0], q[1], 2)));
-    W.lanes = W.lanes.filter(L => L.pts.some(q => !fuori(q[0], q[1], 2)));
-    W.CAVES = W.CAVES.filter(c => asciutto(c.path[0][0], c.path[0][1], 2));
-    if (W.sets) W.luoghi = luoghi(W);
-    { const O = opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
-    return W;
-  }
   function costa2Arredo(W) {
     const g = W.grid, GWx = W.GW, GHx = W.GH, E = ECO, A = { piante: [], rocce: [], tetrapodi: [], passerelle: [], piazzole: [], muretti: [], scale: [] };
     const at = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GWx || ty >= GHx ? -1 : ty * GWx + tx; };
@@ -30960,7 +30814,7 @@ var World = (function () {
       flush();
     });
     A.terrapieni = W.SEA.terrapieni || []; W.SEA.costa2 = A;
-    W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3] && (!MN || q[0] >= MNX + 6)).concat(MN ? [[MNW + 4, 10, 1, 'Punta del Faro']] : []).map(([c, w, a, nome]) => { const N = C2N.some(q => q[3] === nome); return { nome, x: c + OX, y: +(N ? NorthY(c) : SouthY(c)).toFixed(1) + OY, lato: N ? 'N' : 'S', capo: a > 0 }; }), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
+    W.COSTA2 = { N: COSTA2.N.map(([a, k]) => [a + OX, k]), S: COSTA2.S.map(([a, k]) => [a + OX, k]), nomi: C2N.concat(C2S).filter(q => q[3]).map(([c, w, a, nome]) => { const N = C2N.some(q => q[3] === nome); return { nome, x: c + OX, y: +(N ? NorthY(c) : SouthY(c)).toFixed(1) + OY, lato: N ? 'N' : 'S', capo: a > 0 }; }), strada: C2STRADA.map(([a, b]) => [a + OX, b + OX]) };
     return W;
   }
   // [costa] I TERRAPIENI: nessuna casa in mezzo alla sabbia. Il committente: «non si sono mai viste case in mezzo alla sabbia». Le case
@@ -31041,7 +30895,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(costa2Arredo(terrapieni(mnTaglia(expand(generate())))));
+  const W = W0c || scogliFuori(costa2Arredo(terrapieni(expand(generate()))));
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -31316,12 +31170,6 @@ var Percorsi = (function () {
   porta('posto_blocco', 'Il posto di blocco sulla Vittoria', 'blocco', mgC[0], mgC[1], [[mgC[0] - 16, mgC[1]], [mgC[0] + 14, mgC[1]]]);
   // [mappa_compatta] la sesta: il passaggio a livello della Via della Stazione (le sbarre, il casello); l'alternativa è il sottopasso Cavour
   { const p = pz('passaggio_livello')[0]; if (p) { const c = pzW(p, 11, 0); porta('passaggio_livello', 'Il passaggio a livello', 'passaggio', c[0], c[1], [pzW(p, 11, -9), pzW(p, 11, 9)], { altra: 'sottopasso' }); } }
-  // [mappa_nuova] senza la ferrovia di superficie il sottopasso del rilevato e le sbarre non ci sono: la Via Cavour resta la salita (con la
-  // sua scalinata) fra il Corso e il piazzale, e la sesta porta è l'ingresso della metropolitana sul piazzale della vecchia stazione
-  if (W.MAPPA === 'nuova') {
-    { const C = road('cavour_sotto'); if (C && !PORTE.some(q => q.id === 'sottopasso')) { const a = C.pts[0], z = C.pts[C.pts.length - 1]; porta('sottopasso', 'La salita della Via Cavour', 'sottopasso', (a[0] + z[0]) / 2, (a[1] + z[1]) / 2, [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
-    { const S = (W.sets || []).find(q => q.k === 'stazione'); if (S && !PORTE.some(q => q.id === 'passaggio_livello')) porta('passaggio_livello', "L'ingresso della metropolitana (Stazione)", 'passaggio', (S.x0 + S.x1) / 2, (S.y0 + S.y1) / 2, [[(S.x0 + S.x1) / 2, S.y0 - 6], [(S.x0 + S.x1) / 2, S.y1 + 6]], { altra: 'sottopasso', metro: 'sud' }); }
-  }
 
   if (DBG) console.error('[percorsi] t', 225, Date.now() - T0);
   // ================= I RICHIAMI DEI TRATTI =================
@@ -33013,6 +32861,29 @@ var Game = (function () {
   const DOOR_OF = new Map(); W0.BUILDINGS.forEach((b, i) => { if (b.door) DOOR_OF.set(b.door[1] * W0.GW + b.door[0], i); });
   // [botteghe] la porta della bottega sotto casa (b.shopFront.door) porta nel suo locale, il portone nell'androne: stesso edificio, due ingressi (L.ent, L.ent2)
   const SHOP_T = new Set(); W0.BUILDINGS.forEach((b, i) => { const S = b.shopFront; if (S && S.door) { const k = S.door[1] * W0.GW + S.door[0]; DOOR_OF.set(k, i); SHOP_T.add(k); } });
+  // [porte] nella città nuova 31 caselle sono la porta di due edifici (due case a schiera che si toccano d'angolo): in DOOR_OF
+  // vinceva l'ultimo (si entrava nel 342 dalla porta del Bar Da Gino, e la Banja del Lido non si apriva). DOORS_AT tiene tutti
+  // gli edifici di ogni casella-porta, e chi entra sceglie quello che ha davanti (doorFront)
+  const DOORS_AT = new Map(), addDoor = (k, bi, shop) => { const a = DOORS_AT.get(k); if (a) a.push({ bi, shop }); else DOORS_AT.set(k, [{ bi, shop }]); };
+  W0.BUILDINGS.forEach((b, i) => { if (b.door) addDoor(b.door[1] * W0.GW + b.door[0], i, false); const S = b.shopFront; if (S && S.door) addDoor(S.door[1] * W0.GW + S.door[0], i, true); });
+  // [porte] la porta davanti al giocatore (a meno di 1,6 m dal centro della sua casella). dir: verso dove spinge o guarda;
+  // only: soltanto le porte di quell'edificio (quella cliccata); minDot: quanto bisogna puntare verso l'interno (null: non conta).
+  // Fra due edifici sulla stessa casella vince quello verso cui si punta, poi il più vicino.
+  function doorFront(st, dir, only, minDot) {
+    const p = st.player; if (p.indoor || p.vehicle || p.lv) return null;
+    const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS), al = dir ? Math.hypot(dir[0], dir[1]) : 0; let best = null, bs = -1e9;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const k = (ty + oy) * GW + tx + ox, A = DOORS_AT.get(k); if (!A) continue;
+      for (const D of A) {
+        if (only !== undefined && only !== null && D.bi !== only) continue;
+        const b = W0.BUILDINGS[D.bi], dr = D.shop ? b.shopFront.door : b.door, dx = (dr[0] + .5) * TS, dy = (dr[1] + .5) * TS, d = Math.hypot(dx - p.x, dy - p.y); if (d >= 1.6) continue;
+        const qx = clamp(dx, b.x * TS, (b.x + b.w) * TS) - p.x, qy = clamp(dy, b.y * TS, (b.y + b.h) * TS) - p.y, ql = Math.hypot(qx, qy) || 1;   // il punto della facciata dietro la porta
+        const dot = al ? (qx * dir[0] + qy * dir[1]) / (ql * al) : 0; if (minDot != null && dot <= minDot) continue;
+        const sc = dot * 2 - d; if (sc > bs) { bs = sc; best = { bi: D.bi, shop: D.shop, d, dot, x: dx, y: dy }; }
+      }
+    }
+    return best;
+  }
   const entNear = (L, o) => L.ent2 && (!L.ent || Math.hypot(o.x - L.ent2.in[0], o.y - L.ent2.in[1]) < Math.hypot(o.x - L.ent.in[0], o.y - L.ent.in[1])) ? L.ent2 : L.ent;
   function enterBuilding(st, bi, shop) {
     const p = st.player, b = W0.BUILDINGS[bi]; if (!INT || !b || p.vehicle) return false;
@@ -33530,6 +33401,9 @@ var Game = (function () {
     for (const n of st.npcs) { if (n.dead || n.inside || n.jailedUntil > st.t) continue; const d = dist(n.x, n.y, st.player.x, st.player.y); if (d < bd) { bd = d; best = n; } }
     return best;
   }
+  function vehDist(st, v) { const K = VK[v.kind], q = vLocal(v, st.player.x, st.player.y); return Math.hypot(Math.max(0, Math.abs(q.lx) - K.len / 2), Math.max(0, Math.abs(q.ly) - K.wid / 2)); }
+  // [porte] cosa fa il tasto azione (F) a piedi: entra dalla porta che hai davanti, se la guardi o se è più vicina del mezzo; se no il mezzo
+  function actionKey(st) { const p = st.player; if (p.vehicle) return 'veicolo'; const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]); if (!D) return 'veicolo'; const v = nearestVehicle(st, 1.8); return !v || D.dot > .5 || D.d < vehDist(st, v) ? 'porta' : 'veicolo'; }   // guardando la porta, la porta
   function nearestVehicle(st, range) {
     let best = null, bd = 1e9;
     for (const v of st.vehicles) { if (v.rider || v.hidden || v.wreck || v.burning) continue; const K = VK[v.kind], q = vLocal(v, st.player.x, st.player.y); const d = Math.hypot(Math.max(0, Math.abs(q.lx) - K.len / 2), Math.max(0, Math.abs(q.ly) - K.wid / 2)); if (d < (range || 1.8) && d < bd) { bd = d; best = v; } }
@@ -33549,7 +33423,9 @@ var Game = (function () {
     if (n) out.push({ key: 'T', label: `Parla con ${n.first}` });
     if (sk) out.push({ key: 'E', label: `Rapina ${PLACES[sk.shop].name}`, bad: true });
     else if (n && !n.cop && !n.faction) out.push({ key: 'E', label: `Scippa ${n.first}`, bad: true });
-    if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
+    const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]);   // [porte] davanti a una porta (più vicina del mezzo): F entra
+    if (D && (!v || D.dot > .5 || D.d < vehDist(st, v))) { const b = W0.BUILDINGS[D.bi]; out.push({ key: 'F', label: 'Entra' + (b.name ? ': ' + b.name : '') }); }
+    else if (v) out.push({ key: 'F', label: v.lent ? 'Sali sulla Vespa di Beppe' : v.mine && VK[v.kind].boat ? `Sali sul${VK[v.kind].m0 ? '' : 'la'} ${VK[v.kind].label.toLowerCase()}` : v.traffic ? `Tira giù l'automobilista (${VK[v.kind].label})` : `Ruba ${vehicleName(st, v)}`, bad: !v.lent && !v.mine });
     return out;
   }
 
@@ -33586,6 +33462,10 @@ var Game = (function () {
   function act(st, type) {
     const p = st.player, rng = st.rng;
     if (st.over || p.stun > 0) return { ok: false };
+    if (type === 'porta') {   // [porte] il tasto azione davanti a una porta: si entra (l'edificio verso cui si guarda)
+      const D = doorFront(st, [Math.cos(p.face), Math.sin(p.face)]); if (!D) return { ok: false, msg: 'Qui non c\'è una porta.' };
+      return enterBuilding(st, D.bi, D.shop) ? { ok: true, msg: '' } : { ok: false, msg: 'Questa porta non si apre.' };
+    }
     if (type === 'veicolo') {
       if (p.vehicle) { exitVehicle(st); return { ok: true, msg: '' }; }
       const v = nearestVehicle(st, 1.8); if (!v) return { ok: false, msg: 'Nessun mezzo qui vicino.' };
@@ -33799,9 +33679,15 @@ var Game = (function () {
     st.fx.push({ k: 'hurt', a: ang }); st.sfx.push({ k: 'hurt' });
     if (p.hp <= 0) wasted(st);
   }
-  function damageVehicle(st, v, dmg, by) {
+  // [urti] urto: la velocità d'impatto (m/s) quando il danno viene da un muro o da un altro mezzo. Gli urti da soli portano il mezzo
+  // «a pezzi» (fuma, 12% della salute) ma non lo fanno esplodere, salvo uno schianto vero (oltre 18 m/s, 65 km/h): prima tre o
+  // quattro musate contro gli spigoli a 40 km/h facevano saltare in aria un'auto in 15-84 s di guida, e una Vespa urtata da un'auto
+  // (si prende quasi tutto il danno: pesa 150 kg) esplodeva al primo colpo. Una moto per un urto non brucia mai. Spari, fuoco ed
+  // esplosioni (urto non dato) restano come prima
+  function damageVehicle(st, v, dmg, by, urto) {
     if (v.wreck) return;
     dmg *= 1 - Math.min(.8, ((v.armor || 0) + (VK[v.kind].armor0 || 0) * (v.armor === undefined ? 1 : 0)) * .22); // le lamiere saldate reggono i colpi
+    if (urto !== undefined) { const K0 = VK[v.kind], floor = K0.two || urto <= 18 ? K0.hp * .12 : 0; if (v.hp <= floor) dmg = 0; else dmg = Math.min(dmg, v.hp - floor); }
     v.hp -= dmg; if (by) v.lastHitBy = by;
     if (v.traffic) { v.panicT = st.clock; }
     if (VK[v.kind].pocket) { if (v.hp <= 0) { v.hp = VK[v.kind].hp; if (v.rider === 'player') { exitVehicle(st); st.player.stun = .6; feed(st, 'Voli giù dalla BMX. Per fortuna si raddrizza: è di nuovo in tasca.', 'bad'); } } return; }   // [bmx] non brucia: ti butta giù e torna in tasca
@@ -34306,6 +34192,11 @@ var Game = (function () {
     return false;
   }
   // [passo] chi cammina vicino al giocatore non passa attraverso gli altri: ci si scansa (appena, ognuno la sua metà)
+  // [seduti] chi sta seduto al suo posto (panchina, cinema, tavolino delle carte, spiaggia…: il blocco della giornata con un oggetto,
+  // fermo) non si sposta di peso: prima separate(), lo scostamento a griglia e pushOutOfVehicles lo facevano scivolare di 0,3-1 m
+  // al secondo quando gli altri seduti accanto o un'auto lo sfioravano. Lo scostamento lo fa tutto chi è in piedi
+  const SIT_OBJ = { panchina: 1, cinema: 1, carte: 1, spiaggia: 1, tavola: 1, barbiere: 1, tv: 1, radio: 1, bancone: 1, banco_chiesa: 1, canna: 1, libri: 1, album: 1 };
+  const seated = n => (n.speedNow || 0) < .3 && !n.dead && n.stun <= 0 && ((n.pop && n.pop.cur && SIT_OBJ[n.pop.cur.obj] && n.action && n.action.name === 'routine') || (n.__posto && n.__posto.arrived && /^(siede|siede_terra|carte|tavola|dorme)$/.test(n.__posto.pose || '')));   // anche chi riempie un posto (popolo.js) seduto
   function separate(st) {
     const p = st.player, cell = {}, L = [];
     for (const n of st.npcs) { if (n.dead || n.inside || n.room || n.stun > 0 || (n.pop && !n.pop.near) || Math.abs(n.x - p.x) > 60 || Math.abs(n.y - p.y) > 60) continue; const k = Math.floor(n.x / 1.2) + ',' + Math.floor(n.y / 1.2); (cell[k] = cell[k] || []).push(n); L.push(n); }
@@ -34313,7 +34204,8 @@ var Game = (function () {
       const cx = Math.floor(n.x / 1.2), cy = Math.floor(n.y / 1.2);
       for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const C = cell[(cx + ox) + ',' + (cy + oy)]; if (!C) continue;
         for (const k of C) { if (k === n || k.id < n.id) continue; const dx = k.x - n.x, dy = k.y - n.y, d = Math.hypot(dx, dy), R = .62; if (d >= R || d < 1e-4) continue;
-          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = (n.speedNow > .3 ? .5 : .3), b = (k.speedNow > .3 ? .5 : .3);
+          const sn = seated(n), sk = seated(k); if (sn && sk) continue;   // [seduti] due seduti vicini restano dove sono
+          const push = (R - d) / 2, ux = dx / d, uy = dy / d, a = sn ? 0 : sk ? (n.speedNow > .3 ? 1 : .6) : (n.speedNow > .3 ? .5 : .3), b = sk ? 0 : sn ? (k.speedNow > .3 ? 1 : .6) : (k.speedNow > .3 ? .5 : .3);
           if (walkM(n.x - ux * push * a, n.y - uy * push * a)) { n.x -= ux * push * a; n.y -= uy * push * a; }
           if (walkM(k.x + ux * push * b, k.y + uy * push * b)) { k.x += ux * push * b; k.y += uy * push * b; } } }
     }
@@ -34547,14 +34439,12 @@ var Game = (function () {
         if (INT.outside(L, p.x, p.y) || (p.indoor.f === 0 && Math.hypot(p.x - doorX, p.y - doorY) < 1.1 && (ix * ox + iy * oy) / (l * ol) > .3)) exitBuilding(st);
         else if (L.stairs && INT.stairGo) { const g = INT.stairGo(L, p.indoor.f, p.x, p.y); if (g) { p.indoor.f = g.f; p.x = g.x; p.y = g.y; p.path = []; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); } }   // [interni] scale di più piani
         else if (L.stairs && INT.onStairTop(L, p.x, p.y)) { const f = p.indoor.f; p.indoor.f = f ? 0 : 1; const q = f ? L.stairs.foot : L.stairs.landing; p.x = q[0]; p.y = q[1]; if (HOOKS.indoor) HOOKS.indoor(st, L.b, true); }
-      } else if (hitWall && !inp.noDoor) {
-        // contro la facciata, sulla soglia di una porta: si entra ([porte] col clic solo se si è cliccata la porta: inp.noDoor)
-        const tx = Math.floor(p.x / TS), ty = Math.floor(p.y / TS);
-        for (const [ox, oy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          const kT = (ty + oy) * GW + tx + ox, bi = DOOR_OF.get(kT); if (bi === undefined) continue;
-          const b = W0.BUILDINGS[bi], sh = SHOP_T.has(kT), dr = sh ? b.shopFront.door : b.door, cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS, dc = Math.hypot(cx - p.x, cy - p.y);
-          if (((cx - p.x) * ix + (cy - p.y) * iy) / (dc * l) > .35 && Math.hypot((dr[0] + .5) * TS - p.x, (dr[1] + .5) * TS - p.y) < 1.6) { enterBuilding(st, bi, sh); break; }   // [botteghe]
-        }
+      } else if (inp.door !== undefined && inp.door !== null) {
+        // [porte] si entra solo dalla porta cliccata (inp.door, l'edificio): camminare coi tasti o con la levetta lungo un muro non apre
+        // più le porte che si sfiorano (prima bastavano 5° verso il muro: 54 porte su 80). Coi tasti si entra col tasto azione (F, act
+        // 'porta'; sul telefono e sul Game Boy il pulsante Entra). Non serve più sbattere contro il muro (hitWall): alcune case della città
+        // nuova hanno la casella dietro la porta senza muro (la casa bi 489, larga una casella) e lì non si entrava mai
+        const D = doorFront(st, [ix, iy], inp.door, .35); if (D) enterBuilding(st, D.bi, D.shop);   // [botteghe] la porta della bottega o il portone
       }
       const back = inp.aim !== undefined && Math.abs(angDiff(Math.atan2(iy, ix), inp.aim)) > 2.2;
       const ta = inp.aim !== undefined ? inp.aim : Math.atan2(iy, ix); p.face += angDiff(ta, p.face) * (1 - Math.exp(-dt * 28)); p.speed = back ? -sp : sp;   // [fluido] girarsi non dipende dai fotogrammi (1 - e^-k·dt) ed è svelto: un dietrofront in ~0,1 s (prima ~0,2 s e più lento coi fotogrammi lunghi)
@@ -34658,7 +34548,7 @@ var Game = (function () {
   function onWallHit(st, v, vn, cp, ang) {
     if (!VK[v.kind].boat) vehicleBump(st, v, vn, cp, ang);   // [costa] una barca contro il molo non sfonda niente
     const pl = v.rider === 'player';
-    if (vn > 6) damageVehicle(st, v, (vn - 6) * 4, pl ? 'player' : null);
+    if (vn > 7) damageVehicle(st, v, (vn - 7) * 3.5, pl ? 'player' : null, vn);   // [urti] sotto i 25 km/h di botta contro il muro niente danno
     if (vn > 3) { st.fx.push({ k: 'carhit', x: cp.x, y: cp.y, v: vn, a: ang, wall: true }); if (pl || dist(v.x, v.y, st.player.x, st.player.y) < 30) st.sfx.push({ k: vn > 9 ? 'crash' : 'bump', x: cp.x, y: cp.y, v: vn }); }
     if (pl) { st.shake = Math.max(st.shake, clamp(vn * .045, .1, .8)); if (vn > 13) st.hitstop = Math.max(st.hitstop || 0, .06); }
     loosen(st, v, 1.5);
@@ -34813,7 +34703,7 @@ var Game = (function () {
     if (hit < 2.5 || st.clock - (a.crashT || -99) < .25 && st.clock - (b.crashT || -99) < .25) return;
     a.crashT = b.crashT = st.clock;
     const by = a.rider === 'player' || b.rider === 'player' ? 'player' : null;
-    if (hit > 4) { damageVehicle(st, a, (hit - 4) * 7 * mb / (ma + mb), by); damageVehicle(st, b, (hit - 4) * 7 * ma / (ma + mb), by); }
+    if (hit > 5) { damageVehicle(st, a, (hit - 5) * 6 * mb / (ma + mb), by, hit); damageVehicle(st, b, (hit - 5) * 6 * ma / (ma + mb), by, hit); }   // [urti]
     if (a.traffic) a.panicT = st.clock; if (b.traffic) b.panicT = st.clock;
     st.fx.push({ k: 'carhit', x: cx, y: cy, v: hit, a: Math.atan2(ny, nx), ids: [a.id, b.id] });
     if (by || dist(cx, cy, st.player.x, st.player.y) < 30) st.sfx.push({ k: hit > 8 ? 'crash' : 'bump', x: cx, y: cy, v: hit });
@@ -34904,28 +34794,45 @@ var Game = (function () {
     }
     const panic = st.clock - (v.panicT || -99) < 8 || st.clock - st.panicAt < 3 && dist(v.x, v.y, st.player.x, st.player.y) < 30;
     const Ln = LANES[v.lane.i], target = (panic ? 13 : 0) || (Ln.id === 'litoranea' ? 10 : 7.5);
-    let block = 99;
+    let block = 99, blocker = null;
     const fx = Math.cos(v.ang), fy = Math.sin(v.ang);
-    const check = (x, y, r, lat0, look) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5)) block = Math.min(block, along - r); };
+    const check = (x, y, r, lat0, look, o) => { const dx = x - v.x, dy = y - v.y, along = dx * fx + dy * fy, lat = Math.abs(-dx * fy + dy * fx); if (along > 0 && along < (look || 9) && lat < (lat0 || 1.3) + Math.min(r, .5) && along - r < block) { block = along - r; blocker = o || null; } };
     if (!st.player.vehicle) check(st.player.x, st.player.y, .4);
     // [eventi] chi recita una scena non guarda la strada (la scena lo porta dritto dove deve andare): l'auto lo vede prima e più largo
     for (const n of st.npcs) { if (n.inside || n.vigile || Math.abs(n.x - v.x) > 13 || Math.abs(n.y - v.y) > 13) continue; if (n.__ev) check(n.x, n.y, .4, 2.4, 12); else check(n.x, n.y, n.dead ? .3 : .4); }   // [fluido] solo chi è a portata   // [vievive] il vigile in mezzo all'incrocio non ferma le auto: le dirige
     // [inverno] chi viene in senso opposto sulla sua corsia non blocca (prima due file contrarie si fermavano a vicenda)
-    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1); });
+    st.vehicles.forEach(o => { if (o === v || o.hidden || Math.abs(o.x - v.x) > 16 || Math.abs(o.y - v.y) > 16) return; if (o.traffic && Math.cos(angDiff(o.ang, v.ang)) < -.3) { const dx = o.x - v.x, dy = o.y - v.y; if (Math.abs(-dx * fy + dy * fx) > .9) return; } check(o.x, o.y, VK[o.kind].len / 2 + VK[v.kind].len / 2 - 1, 0, 0, o); });
     const K = VK[v.kind];
     let want = target;
     if (HOOKS.corsa) want = HOOKS.corsa(st, v, want);   // [vievive] la velocità per rango di strada
     if (block < 7) want = Math.max(0, (block - 2.2) * 1.6);
     if (v.speed < want) v.speed = Math.min(want, v.speed + K.accel * .6 * dt); else v.speed = Math.max(want, v.speed - 14 * dt);
     if (block < 3 && v.speed < .5) { v.stuck += dt; if (v.stuck > 2.5 && st.clock > v.honk) { v.honk = st.clock + 3; st.sfx.push({ k: 'honk', x: v.x, y: v.y }); } } else v.stuck = 0;
+    const Lr = v.lane;
+    // [traffico] dietro un mezzo fermo che non ripartirà (in panne, abbandonato, un relitto, parcheggiato in mezzo) non si resta per
+    // sempre (prima 6 auto ferme 18 minuti dietro un furgone in panne): dopo 3 s si sorpassa sull'altra corsia, se è libera per 30 m;
+    // chi resta fermo 15 s (corsia opposta sempre occupata, coda dietro a chi aspetta) fa inversione e prende l'altro senso
+    const fermo = o => o && !o.traffic && o.rider !== 'player' && Math.hypot(o.vx || 0, o.vy || 0) < .3;
+    if (!v.pass && v.stuck > 3 && fermo(blocker) && Ln.w >= 5) {
+      let libera = true; const lx = Math.sin(v.ang) * Ln.w / 2, ly = -Math.cos(v.ang) * Ln.w / 2;   // il centro della corsia di sinistra
+      for (const o of st.vehicles) { if (o === v || o === blocker || o.hidden) continue; const dx = o.x - (v.x + lx), dy = o.y - (v.y + ly), al = dx * fx + dy * fy, la = Math.abs(-dx * fy + dy * fx); if (al > -4 && al < 30 && la < 2.2) { libera = false; break; } }
+      if (libera) v.pass = { by: blocker.id, k: 0, until: st.clock + 12 };
+    }
+    if (v.pass) {   // in sorpasso: la corsia di sinistra finché l'ostacolo non è 6 m dietro, poi si rientra
+      const o = st.vehicles.find(z => z.id === v.pass.by), dx = o ? o.x - v.x : -99, dy = o ? o.y - v.y : 0, dietro = !o || o.hidden || dx * fx + dy * fy < -(VK[o.kind].len / 2 + 6);
+      if (dietro || st.clock > v.pass.until) { v.pass.k -= dt * .8; if (v.pass.k <= 0) v.pass = null; } else v.pass.k = Math.min(1, v.pass.k + dt * .8);
+      if (v.pass && o && v.pass.k > .5 && blocker === o) { block = 99; want = target * .6; if (v.speed < want) v.speed = Math.min(want, v.speed + K.accel * .6 * dt); v.stuck = 0; }   // spostati di lato non è più davanti
+    }
+    if (v.stuck > 15) { Lr.dir *= -1; v.stuck = 0; v.pass = null; v.speed = 0; }   // [traffico] inversione: si torna indietro
     // segue la sua corsia; a fine strada fa inversione
-    const Lr = v.lane; Lr.s += v.speed * dt * Lr.dir;
+    Lr.s += v.speed * dt * Lr.dir;
     if (!Ln.closed && (Lr.s > Ln.L - 3 || Lr.s < 3)) {
       const e = Lr.s > Ln.L - 3 ? 1 : 0, opts = (e === 1) === (Lr.dir > 0) ? Ln.conn[e] : null;
       if (opts && opts.length) { const o = (HOOKS.svolta && HOOKS.svolta(st, v, opts)) || opts[Math.floor(st.rng() * opts.length)];   /* [vievive] chi gira in città sceglie la svolta per rango */ v.lane = { i: o.j, s: o.s + o.dir * 1, dir: o.dir }; v.speed = Math.min(v.speed, 5); }
       else if (opts) { Lr.dir *= -1; Lr.s = clamp(Lr.s, 3, Ln.L - 3); }
     }
     const q = lanePos(Ln, Lr.s, Lr.dir), q2 = lanePos(Ln, Lr.s + Lr.dir * 5, Lr.dir);
+    if (v.pass) { const k = Math.min(1, v.pass.k) * Ln.w / 2, h = q.ang; q.x += Math.sin(h) * k; q.y -= Math.cos(h) * k; q2.x += Math.sin(h) * k; q2.y -= Math.cos(h) * k; }   // [traffico] in sorpasso, spostato sulla corsia di sinistra
     { const k = Math.min(1, dt * 3); let mx = (q.x - v.x) * k, my = (q.y - v.y) * k; const md = Math.hypot(mx, my), cap = (v.speed + 1.5) * dt * 1.3; if (md > cap) { mx *= cap / md; my *= cap / md; } v.x += mx; v.y += my; }
     v.ang += angDiff(Math.atan2(q2.y - q.y, q2.x - q.x), v.ang) * Math.min(1, dt * 4);
     v.vx = Math.cos(v.ang) * v.speed; v.vy = Math.sin(v.ang) * v.speed; v.w = 0; v._spd = v.speed; v.skid = 0; v.steer = 0;
@@ -35428,7 +35335,7 @@ var Game = (function () {
       n.thinkAt -= ndt;
       if (n.thinkAt <= 0) { n.thinkAt = n.action.name === 'combatte' ? .25 : .35; think(st, n); }
       moveNpc(st, n, ndt);
-      if (!n.inside) pushOutOfVehicles(st, n, .35);
+      if (!n.inside && !seated(n)) pushOutOfVehicles(st, n, .35);   // [seduti] l'auto che sfiora la panchina non sposta chi ci è seduto
     }
     separate(st);   // [passo]
     for (const v of st.vehicles) {
@@ -35462,7 +35369,7 @@ var Game = (function () {
         for (const a of C) for (const b of D) {
           if (a === b || (D === C ? C.indexOf(b) < C.indexOf(a) : (ox * 3 + oy) < 0)) continue;
           const d = dist(a.x, a.y, b.x, b.y);
-          if (d < .55 && d > .001) { const push = (.55 - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }
+          if (d < .55 && d > .001) { const sa = seated(a), sb = seated(b); if (sa && sb) continue; const push = (.55 - d) / 2 * (sa || sb ? 2 : 1), ux = (b.x - a.x) / d, uy = (b.y - a.y) / d; if (!sa && walkM(a.x - ux * push, a.y - uy * push)) { a.x -= ux * push; a.y -= uy * push; } if (!sb && walkM(b.x + ux * push, b.y + uy * push)) { b.x += ux * push; b.y += uy * push; } }   // [seduti]
         }
       }
     }
@@ -35502,7 +35409,7 @@ var Game = (function () {
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
-    attitude, enterBuilding, exitBuilding, DOOR_OF, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
+    attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
@@ -48375,7 +48282,6 @@ var Sottosuolo = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const LV = typeof Livelli !== 'undefined' ? Livelli : require('./livelli.js');
-  const MNm = G.MAP.world && G.MAP.world.MAPPA === 'nuova';   // [mappa_nuova] la metropolitana che attraversa la mappa
   const W = G.MAP.world, TS = G.TS, GW = G.GW, GH = G.GH, T = G.T, N = GW * GH, EL = G.MAP.elev, ZC = W.Z.CITTA;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const idx = (tx, ty) => ty * GW + tx, inb = (tx, ty) => tx >= 0 && ty >= 0 && tx < GW && ty < GH;
@@ -48820,39 +48726,7 @@ var Sottosuolo = (function () {
     const VMq = VM ? VM.pts.reduce((b, q) => (!b || Math.hypot(q[0] - 1455, q[1] - 288) < Math.hypot(b[0] - 1455, b[1] - 288) ? q : b), null) : null;
     const COMP = !!(W.luoghi && MKT && VMq);
     const aS = COMP ? [MKT.x - 12, MKT.y + 9] : cityAt(.2, .92), aN = COMP ? [VMq[0], VMq[1] + 6] : cityAt(.8, .08);
-    const S0 = MNm ? null : aS && spot(...aS), N0 = MNm ? null : aN && spot(...aN), metro = { ok: false };
-    // [mappa_nuova] LA LINEA CHE ATTRAVERSA LA MAPPA: la ferrovia di superficie non c'è più, il treno passa sotto. Tre stazioni da ponente a
-    // levante: San Giacomo (sul colle, sotto il paese), Stazione (l'atrio è il fabbricato della vecchia stazione, sul piazzale) e Mercato della
-    // Rocca (la spianata). Ogni stazione ha la sua banchina a isola fra i due binari, girata lungo la linea; le gallerie fanno la mezza elica
-    // fra una stazione e l'altra. I treni fanno la spola fermando a tutte (San Giacomo → Stazione → Mercato → Stazione → …)
-    if (MNm) {
-      const spotM = (x, y) => { const [cx, cy] = ti(x, y); for (const strict of [true, false]) { let best = null, bd = 1e9; for (let r = 0; r < 22 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { if (Math.max(Math.abs(i), Math.abs(j)) !== r) continue; const tx = cx + i, ty = cy + j; if (!inb(tx, ty)) continue; const v = G.tileAt(tx, ty); if (![T.WALK, T.COB, T.PIAZZA, T.GRASS, T.DIRT].includes(v) || (strict && !open(tx, ty))) continue; const d = Math.hypot(i, j); if (d < bd) { bd = d; best = [tx, ty]; } } if (best) return best; } return null; };
-      const SG = G.PLACES.sangiacomo || G.PLACES.chiesa_sg, STZ = (W.sets || []).find(q => q.k === 'stazione'), MER = (W.sets || []).find(q => q.k === 'mercato');
-      const capi = [SG && { id: 'colle', name: 'San Giacomo', at: [SG.x + 4, SG.y + 14] }, STZ && { id: 'sud', name: 'Stazione', at: [(STZ.x0 + STZ.x1) / 2, (STZ.y0 + STZ.y1) / 2 + 1] }, MER && { id: 'nord', name: 'Mercato', at: [MER.x - 4, MER.y + 9] }].filter(Boolean);
-      const st = capi.map(c => Object.assign(c, { ent: spotM(...c.at) })).filter(c => c.ent);
-      if (st.length >= 2) {
-        const R = 4.4, OFF = 11;
-        // la linea passa per i punti delle banchine: prima si fissa la direzione di ciascuna (la media dei due tratti), poi la banchina sta OFF m oltre l'ingresso
-        st.forEach((S, k) => { const a = st[Math.max(0, k - 1)].ent, b = st[Math.min(st.length - 1, k + 1)].ent, dx = cen(b[0]) - cen(a[0]), dy = cen(b[1]) - cen(a[1]), L0 = Math.hypot(dx, dy) || 1; S.ux = dx / L0; S.uy = dy / L0; S.nx = -S.uy; S.ny = S.ux;
-          S.sgn = k === st.length - 1 ? -1 : 1; const ex = cen(S.ent[0]), ey = cen(S.ent[1]); S.x = ex + S.ux * OFF * S.sgn; S.y = ey + S.uy * OFF * S.sgn; });
-        st.forEach(S => {
-          let lo = 1e9; for (let a = -10; a <= 10; a += 2) for (let l = -3; l <= 3; l += 3) { const [tx, ty] = ti(S.x + S.ux * a + S.nx * l, S.y + S.uy * a + S.ny * l); if (inb(tx, ty)) lo = Math.min(lo, EL[idx(tx, ty)]); }
-          S.f = Math.min(lo, EL[idx(...S.ent)]) - 9;
-          for (let ty = Math.floor((S.y - 13) / TS); ty <= Math.floor((S.y + 13) / TS); ty++) for (let tx = Math.floor((S.x - 13) / TS); tx <= Math.floor((S.x + 13) / TS); tx++) {
-            const dx = cen(tx) - S.x, dy = cen(ty) - S.y, a = dx * S.ux + dy * S.uy, l = dx * S.nx + dy * S.ny; if (Math.abs(a) <= 10.5 && Math.abs(l) <= 2.7) put(tx, ty, S.f, K.BANCHINA, true); }
-          const [hx, hy] = ti(S.x - S.ux * 9 * S.sgn, S.y - S.uy * 9 * S.sgn);
-          corridor(S.ent[0], S.ent[1], hx, hy, EL[idx(...S.ent)] - 3.2, S.f, K.METRO);
-          portals.push({ kind: 'scala', s: S.ent, u: S.ent, name: 'Metropolitana · ' + S.name, metro: S.id });
-          rooms.push({ x: S.x, y: S.y, f: S.f, deco: 'metro', ux: S.ux, uy: S.uy, name: S.name, sid: S.id, linea: true });
-          place('metro_' + S.id, 'Metropolitana, stazione ' + S.name, S.x, S.y, 12, 'metro');
-          toSewer(...ti(S.x + S.ux * 8 * S.sgn, S.y + S.uy * 8 * S.sgn), S.f, K.METRO);
-          for (const a of [-7, 0, 7]) lamp(S.x + S.ux * a, S.y + S.uy * a, S.f + 3.6, '#e8f0ff', 'neon');
-        });
-        // i tratti fra una banchina e l'altra
-        const seg = []; let s0 = 0; for (let k = 0; k < st.length - 1; k++) { const a = st[k], b = st[k + 1], L = Math.hypot(b.x - a.x, b.y - a.y); seg.push({ a, b, L, s0, ux: (b.x - a.x) / L, uy: (b.y - a.y) / L, nx: -(b.y - a.y) / L, ny: (b.x - a.x) / L }); s0 += L; }
-        Object.assign(metro, { ok: true, R, A: st[0], B: st[st.length - 1], stazioni: st, seg, L: s0, ux: seg[0].ux, uy: seg[0].uy, nx: seg[0].nx, ny: seg[0].ny, linea: true });
-      }
-    }
+    const S0 = aS && spot(...aS), N0 = aN && spot(...aN), metro = { ok: false };
     if (S0 && N0) {
       const ax = cen(S0[0]), ay = cen(S0[1]), bx = cen(N0[0]), by = cen(N0[1]), Ld = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / Ld, uy = (by - ay) / Ld, nx = -uy, ny = ux;
       const R = 4.4, OFF = 11;   // raggio dell'elica (mezza distanza tra le gallerie); la banchina comincia 11 m oltre l'ingresso
@@ -48889,35 +48763,17 @@ var Sottosuolo = (function () {
   const M = TPL.metro;
   // il punto della galleria j (0: andata, 1: ritorno) a una frazione t del percorso: x, y del mondo e quota h del piano del binario
   function trackAt(j, t) {
-    if (M.linea) {   // [mappa_nuova] la linea a più stazioni: il tratto k, la mezza elica fra le sue due banchine (ai capi i binari affiancati)
-      const S = t * M.L; let k = 0; while (k < M.seg.length - 1 && S > M.seg[k].s0 + M.seg[k].L) k++; const Q = M.seg[k], u = (S - Q.s0) / Q.L;
-      const ph = Math.PI * u + (j + k) * Math.PI, l = M.R * Math.cos(ph), v = M.R * Math.sin(ph) * .92;
-      const w = clamp(u, 0, 1), nx = w < .5 ? Q.a.nx + (Q.nx - Q.a.nx) * w * 2 : Q.nx + (Q.b.nx - Q.nx) * (w - .5) * 2, ny = w < .5 ? Q.a.ny + (Q.ny - Q.a.ny) * w * 2 : Q.ny + (Q.b.ny - Q.ny) * (w - .5) * 2;
-      const cx = Q.a.x + (Q.b.x - Q.a.x) * u, cy = Q.a.y + (Q.b.y - Q.a.y) * u, f = Q.a.f + (Q.b.f - Q.a.f) * w - 11 * Math.sin(Math.PI * w);
-      return { x: cx + nx * l, y: cy + ny * l, h: f - 1.05 + v, l, v };
-    }
     const A = M.A, B = M.B, ph = Math.PI * t + j * Math.PI, l = M.R * Math.cos(ph), v = M.R * Math.sin(ph) * .92;
     // l'asse scende in mezzo (11 m sotto le stazioni): l'elica passa sotto le fogne, le cripte e il mercato
     const cx = A.x + (B.x - A.x) * t, cy = A.y + (B.y - A.y) * t, f = A.f + (B.f - A.f) * t - 11 * Math.sin(Math.PI * clamp(t, 0, 1));
     return { x: cx + M.nx * l, y: cy + M.ny * l, h: f - 1.05 + v, l, v };
   }
   const DW = 14, VM = 15, AC = 1.3;   // sosta (s), velocità (m/s), accelerazione (m/s²)
-  const TT = M.ok ? M.L / VM + VM / AC : 1, CYC0 = 2 * (TT + DW);
-  function sAt(tau, TTk, Lk) { TTk = TTk || TT; Lk = Lk || M.L; const ta = VM / AC, da = .5 * AC * ta * ta; if (tau < ta) return .5 * AC * tau * tau; if (tau < TTk - ta) return da + VM * (tau - ta); const r = TTk - tau; return Lk - .5 * AC * r * r; }
-  // [mappa_nuova] l'orario della linea a più stazioni: le tratte di andata e di ritorno (0 → 1 → … → n−1 → … → 1), ognuna con la sosta in
-  // partenza e il viaggio; il secondo treno è mezzo giro indietro
-  const LEGS = []; if (M.ok && M.linea) { const n = M.stazioni.length, ord = []; for (let k = 0; k < n; k++) ord.push(k); for (let k = n - 2; k >= 1; k--) ord.push(k);
-    let t0 = 0; ord.forEach((a, i) => { const b = ord[(i + 1) % ord.length], S0p = M.stazioni[a], S1p = M.stazioni[b], sA = a ? M.seg[a - 1].s0 + M.seg[a - 1].L : 0, sB = b ? M.seg[b - 1].s0 + M.seg[b - 1].L : 0, Lk = Math.abs(sB - sA), TTk = Lk / VM + VM / AC;
-      LEGS.push({ a: S0p, b: S1p, sA, sB, Lk, TTk, t0 }); t0 += DW + TTk; }); }
-  const CYC = LEGS.length ? LEGS.reduce((q, g) => q + DW + g.TTk, 0) : CYC0;
+  const TT = M.ok ? M.L / VM + VM / AC : 1, CYC = 2 * (TT + DW);
+  function sAt(tau) { const ta = VM / AC, da = .5 * AC * ta * ta; if (tau < ta) return .5 * AC * tau * tau; if (tau < TT - ta) return da + VM * (tau - ta); const r = TT - tau; return M.L - .5 * AC * r * r; }
   // il treno j: dove è, dove va, se è fermo e dove
   function train(st, j) {
     if (!M.ok) return null;
-    if (M.linea) { const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC; let g = LEGS[0]; for (const q of LEGS) if (ph >= q.t0) g = q;
-      const tau = ph - g.t0, dir = g.sB > g.sA ? 1 : -1; let t, at = null, left = 0;
-      if (tau < DW) { t = g.sA / M.L; at = g.a.id; left = DW - tau; } else t = clamp((g.sA + dir * sAt(tau - DW, g.TTk, g.Lk)) / M.L, 0, 1);
-      const q = trackAt(j, t), q2 = trackAt(j, clamp(t + .002, 0, 1)), q1 = trackAt(j, clamp(t - .002, 0, 1)), sg = dir;
-      return { j, t, dir, at, left, next: g.b.id, nextName: g.b.name, x: q.x, y: q.y, h: q.h, ang: Math.atan2(q2.y - q1.y, q2.x - q1.x), pitch: Math.atan2(q2.h - q1.h, Math.hypot(q2.x - q1.x, q2.y - q1.y)), sg }; }
     const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC;
     let t, dir, at = null, left = 0;
     if (ph < DW) { t = 0; dir = 1; at = 'sud'; left = DW - ph; }
@@ -48927,23 +48783,13 @@ var Sottosuolo = (function () {
     const q = trackAt(j, t), q2 = trackAt(j, clamp(t + .002, 0, 1)), q1 = trackAt(j, clamp(t - .002, 0, 1));
     return { j, t, dir, at, left, x: q.x, y: q.y, h: q.h, ang: Math.atan2(q2.y - q1.y, q2.x - q1.x), pitch: Math.atan2(q2.h - q1.h, Math.hypot(q2.x - q1.x, q2.y - q1.y)) };
   }
-  const stationOf = id => M.linea ? M.stazioni.find(S => S.id === id) || M.A : id === 'sud' ? M.A : M.B;
-  const stazioni = () => M.linea ? M.stazioni : [M.A, M.B];
-  // [mappa_nuova] fra quanto arriva il prossimo treno alla stazione S (e per dove riparte)
-  function arrivo(st, S) { let best = { t: 1e9, per: null, j: 0 }; for (const j of [0, 1]) { const ph = (((st.clock || 0) + j * CYC / 2) % CYC + CYC) % CYC;
-    LEGS.forEach(g => { if (g.a !== S) return; const dt = ((g.t0 - ph) % CYC + CYC) % CYC; if (dt < best.t) best = { t: dt, per: g.b.name, j }; }); } return best; }
-  // [mappa_nuova] GLI ANNUNCI IN BANCHINA (come alla stazione di sopra): il treno in arrivo, il binario, la linea gialla; sul treno la fermata
-  function annunci(st) { const p = st.player, R0 = S0(st); if (!M.linea || !p.lv || p.lv.k !== 'ug') return; R0.annunci = R0.annunci || {};
-    if (p.lv.ride !== undefined) { const tr = train(st, p.lv.ride); if (tr && !tr.at) { const k = 'v' + p.lv.ride + ':' + tr.next + ':' + Math.floor((st.clock || 0) / CYC); const Sx = stationOf(tr.next); if (!R0.annunci[k] && Sx && Math.hypot(tr.x - Sx.x, tr.y - Sx.y) < 60) { R0.annunci[k] = 1; G.feed(st, `«Prossima fermata: ${Sx.name}. Scendere dal lato della banchina.»`, 'info'); } } return; }
-    for (const S of M.stazioni) { if (!onPlatform(st, S)) continue; const w = arrivo(st, S); if (w.t > 12) continue; const k = S.id + ':' + Math.round((st.clock || 0) + w.t);
-      if (!R0.annunci[k]) { R0.annunci[k] = 1; G.feed(st, `«Treno per ${w.per} in arrivo al binario ${w.j + 1}. Allontanarsi dalla linea gialla.»`, 'info'); st.sfx && st.sfx.push({ k: 'campanello' }); } } }
+  const stationOf = id => id === 'sud' ? M.A : M.B;
   const onPlatform = (st, S) => { const p = st.player; return p.lv && p.lv.k === 'ug' && p.lv.ride === undefined && Math.hypot(p.x - S.x, p.y - S.y) < 12.5; };
   function board(st, j) {
     const p = st.player, tr = train(st, j); if (!tr || !tr.at) return 'Il treno non è in banchina.';
     const S = stationOf(tr.at); if (!onPlatform(st, S)) return 'Devi essere sulla banchina.';
     p.lv = { k: 'ug', ride: j }; p.path = []; const R0 = S0(st); R0.ride = { j, from: tr.at, t0: st.clock };
     p.x = tr.x; p.y = tr.y; st.sfx && st.sfx.push({ k: 'porta' });
-    if (M.linea) { R0.ride.to = tr.next; G.feed(st, `Prossima fermata: ${tr.nextName}.`, 'info'); return `Sali sul treno per ${tr.nextName}. Le porte si chiudono tra ${Math.ceil(tr.left)} secondi.`; }
     return `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}. Le porte si chiudono tra ${Math.ceil(tr.left)} secondi.`;
   }
   function rideStep(st) {
@@ -48952,8 +48798,8 @@ var Sottosuolo = (function () {
     const tr = train(st, R0.ride.j); if (!tr) return;
     p.x = tr.x; p.y = tr.y; p.face = tr.ang + (tr.dir < 0 ? Math.PI : 0); p.speed = 0;
     if (tr.at && tr.at !== R0.ride.from) {
-      const S = stationOf(tr.at), Nx = M.linea ? S.nx : M.nx, Ny = M.linea ? S.ny : M.ny, side = (tr.x - S.x) * Nx + (tr.y - S.y) * Ny > 0 ? 1 : -1;
-      p.lv = { k: 'ug' }; p.x = S.x + Nx * side * 1.6; p.y = S.y + Ny * side * 1.6; R0.ride = null;
+      const S = stationOf(tr.at), side = (tr.x - S.x) * M.nx + (tr.y - S.y) * M.ny > 0 ? 1 : -1;
+      p.lv = { k: 'ug' }; p.x = S.x + M.nx * side * 1.6; p.y = S.y + M.ny * side * 1.6; R0.ride = null;
       const L = LV.S(st); L.lastU = ti(p.x, p.y);
       G.feed(st, `${S.name}. Si scende. Le scale sono in fondo alla banchina (V per salire in strada).`, 'good');
     }
@@ -48962,9 +48808,8 @@ var Sottosuolo = (function () {
   function metroKey(st) {
     const p = st.player; if (!M.ok || !p.lv || p.lv.k !== 'ug') return null;
     if (p.lv.ride !== undefined) return 'Sei sul treno: scendi alla prossima.';
-    for (const S of stazioni()) if (onPlatform(st, S)) {
+    for (const S of [M.A, M.B]) if (onPlatform(st, S)) {
       for (const j of [0, 1]) { const tr = train(st, j); if (tr && tr.at === S.id) return board(st, j); }
-      if (M.linea) { const w = arrivo(st, S); return `Il prossimo treno arriva tra ${Math.max(1, Math.ceil(w.t))} secondi${w.per ? ' (per ' + w.per + ')' : ''}.`; }
       // un treno arriva a sud all'inizio del suo ciclo, a nord dopo una sosta e un viaggio
       const arr = S.id === 'sud' ? 0 : DW + TT, wait = Math.min(...[0, 1].map(j => ((arr - ((st.clock || 0) + j * CYC / 2)) % CYC + CYC) % CYC));
       return `Il prossimo treno arriva tra ${Math.max(1, Math.ceil(wait))} secondi.`;
@@ -49099,7 +48944,7 @@ var Sottosuolo = (function () {
   { const k0 = LV.key; LV.key = (st, k, sh) => { if (k === 'v' && !st.player.indoor) { const p = st.player, [tx, ty] = ti(p.x, p.y), L = LV.S(st); const onPortal = p.lv && L.portals.some(P => LV.CLIMB.has(P.kind) && P.u[0] === tx && P.u[1] === ty); if (!onPortal) { const m = metroKey(st); if (m) return m; } } return k0(st, k, sh); }; }
   function step(st, dt) {
     if (!st.player) return; const R0 = S0(st), p = st.player;
-    rideStep(st); folkStep(st, dt); if (M.linea) annunci(st);
+    rideStep(st); folkStep(st, dt);
     if (!st.__ssT || st.clock - st.__ssT > .5) {
       st.__ssT = st.clock;
       if (p.lv && p.lv.k === 'ug') TPL.places.forEach(q => { if (!R0.found[q.id] && Math.hypot(q.x - p.x, q.y - p.y) < q.r) { R0.found[q.id] = st.t; G.feed(st, `Hai scoperto: ${q.name}.`, 'good'); } });
@@ -49153,7 +48998,7 @@ var Sottosuolo = (function () {
     if (!p.lv) return best;
     R0.folk.forEach(n => test(n.x, n.y, n.f + 1.2, 'n:' + n.id, `${n.name} · ${n.role}`));
     R0.crates.forEach(c => test(c.x, c.y, c.f + .5, 'c:' + c.id, c.open ? `${c.label} (vuota)` : `Apri: ${c.label}`));
-    if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.nextName || (tr.at === 'sud' ? M.B.name : M.A.name)}`); });
+    if (M.ok) [0, 1].forEach(j => { const tr = train(st, j); if (tr && tr.at) test(tr.x, tr.y, tr.h + 2, 't:' + j, `Sali sul treno per ${tr.at === 'sud' ? M.B.name : M.A.name}`); });
     return best;
   }
   function find(st, ref) {
@@ -49399,15 +49244,6 @@ var Sottosuolo = (function () {
           wall(25, 5.6, 0, -6.2, 0); wall(25, 5.6, 0, 6.2, Math.PI); }
         for (const x of [-7, 0, 7]) { cy(g, .3, .3, 4.2, '#c8c4b4', x, 2.1, 0); for (const z of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(2.6, .65), new THREE.MeshBasicMaterial({ map: signTex(Rm.name || '') })); sn.position.set(x, 2.6, z * .32); sn.rotation.y = z > 0 ? 0 : Math.PI; g.add(sn); } }
         for (const x of [-4, 4]) for (const z of [-1, 1]) { bx(g, 1.6, .08, .45, '#c83a2a', x, .45, z * 1.5); bx(g, .1, .45, .35, iron, x - .7, .22, z * 1.5); bx(g, .1, .45, .35, iron, x + .7, .22, z * 1.5); }
-        // [mappa_nuova] la stazione di sopra portata sotto: la pensilina di ghisa con le mensole sulla banchina, l'orologio a due facce, il
-        // tabellone delle partenze, la panchina di legno e il nome PORTO VECCHIO sotto quello della fermata
-        if (Rm.linea) { const ghisa = mat('#3a4a3e', { metalness: .4, roughness: .55 }), legno = '#7a5434';
-          bx(g, 22, .1, 5.6, ghisa, 0, 3.55, 0); bx(g, 22, .06, 5.2, '#8a8a7c', 0, 3.47, 0); bx(g, 22, .22, .08, ghisa, 0, 3.4, 2.78); bx(g, 22, .22, .08, ghisa, 0, 3.4, -2.78);
-          for (const x of [-10.5, -3.5, 3.5, 10.5]) { cy(g, .11, .14, 3.5, ghisa, x, 1.75, 0); for (const z of [-1, 1]) { const m = bx(g, .08, .08, 2.4, ghisa, x, 3.1, z * 1.2); m.rotation.x = z * .5; } bx(g, .34, .12, .34, ghisa, x, .06, 0); }
-          { const ck = new THREE.Group(); ck.position.set(1.8, 2.85, 0); cy(ck, .48, .48, .14, ghisa, 0, 0, 0).rotation.x = Math.PI / 2; for (const z of [-1, 1]) { const fc = cy(ck, .42, .42, .02, glow('#fff6dc', .9), 0, 0, z * .08); fc.rotation.x = Math.PI / 2; bx(ck, .03, .3, .01, '#1a1a1a', 0, .1, z * .095); bx(ck, .22, .03, .01, '#1a1a1a', .08, 0, z * .095); } cy(ck, .03, .03, .6, ghisa, 0, .55, 0); g.add(ck); }
-          { const tb = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.1), new THREE.MeshBasicMaterial({ map: signTex('PARTENZE') })); tb.position.set(-5.2, 2.2, .2); g.add(tb); const tb2 = tb.clone(); tb2.rotation.y = Math.PI; tb2.position.z = -.2; g.add(tb2); }
-          for (const x of [-9, 9]) { bx(g, 2.2, .07, .5, legno, x, .48, 0); bx(g, 2.2, .45, .06, legno, x, .75, -.22); for (const xx of [-.9, .9]) bx(g, .08, .45, .45, ghisa, x + xx, .24, 0); }
-          for (const x of [-10.5, 10.5]) for (const z of [-1, 1]) { const sn = new THREE.Mesh(new THREE.PlaneGeometry(1.8, .38), new THREE.MeshBasicMaterial({ map: signTex('PORTO VECCHIO') })); sn.position.set(x, 3.0, z * .16); sn.rotation.y = z > 0 ? 0 : Math.PI; g.add(sn); } }
         // i letti dei binari lungo la banchina, coi binari
         for (const z of [-1, 1]) { bx(g, 24, .1, 2.6, '#2a2622', 0, -1.1, z * 4.4); for (const o of [-.72, .72]) bx(g, 24, .1, .1, mat('#9aa0a8', { metalness: .7, roughness: .35 }), 0, -1, z * 4.4 + o); for (let x = -11.5; x <= 11.5; x += .8) bx(g, .25, .08, 2, '#4a3a2a', x, -1.08, z * 4.4); bx(g, 24, 1.05, .2, '#c8c4b4', 0, -.52, z * 2.95); }
         break; }
@@ -49707,25 +49543,23 @@ var Sottosuolo = (function () {
   // le gallerie: due tubi che si avvolgono per mezzo giro, i binari, i passaggi di servizio a pioli (i «gradini» dell'elica)
   function buildMetro() {
     const g = new THREE.Group(), cut = 12.5 / M.L, rail = mat('#9aa0a8', { metalness: .7, roughness: .35 }); GFX.tubes = [];
-    // [mappa_nuova] con la linea a più stazioni un tubo per tratto (fra le banchine), come per i due capi
-    const TR = M.linea ? M.seg.map(Q => [(Q.s0 + 12.5) / M.L, (Q.s0 + Q.L - 12.5) / M.L]) : [[cut, 1 - cut]];
-    for (const j of [0, 1]) for (const [ta, tb] of TR) {
-      const pts = []; for (let k = 0; k <= 160; k++) { const t = ta + (tb - ta) * k / 160, q = trackAt(j, t); pts.push(new THREE.Vector3(q.x, q.h + 1.4, q.y)); }
+    for (const j of [0, 1]) {
+      const pts = []; for (let k = 0; k <= 160; k++) { const t = cut + (1 - 2 * cut) * k / 160, q = trackAt(j, t); pts.push(new THREE.Vector3(q.x, q.h + 1.4, q.y)); }
       // il cemento della galleria con gli anelli dei conci: le fasce chiare si accendono appena (si legge la forma anche al buio)
       const tex = canvasTex(64, 32, (x, w, h) => { x.fillStyle = j ? '#4a4c50' : '#504c46'; x.fillRect(0, 0, w, h); for (let i = 0; i < 90; i++) { x.fillStyle = Math.random() < .5 ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.06)'; x.fillRect(Math.random() * w, Math.random() * h, 3, 1); } x.fillStyle = j ? '#8ab0d8' : '#d8b080'; x.fillRect(0, 0, 3, h); x.fillStyle = 'rgba(20,20,20,.6)'; x.fillRect(4, 0, 1, h); x.fillRect(32, 0, 1, h); });
-      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(Math.max(1, Math.round((tb - ta) * M.L / 6)), 2);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(Math.round(M.L / 6), 2);
       const wall = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: '#ffffff', emissiveIntensity: .45, side: THREE.BackSide, roughness: 1, transparent: true, opacity: 1 });
       const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 240, 2.6, 12, false), wall); g.add(tube); GFX.tubes.push(tube);
       // i binari e le luci di galleria
       const r0 = [], r1 = []; for (let k = 0; k <= 200; k++) { const t = -cut * .9 + (1 + 1.8 * cut) * k / 200, q = trackAt(j, t), q2 = trackAt(j, t + .001), dx = q2.x - q.x, dy = q2.y - q.y, d = Math.hypot(dx, dy) || 1, px = -dy / d, py = dx / d; r0.push(new THREE.Vector3(q.x + px * .72, q.h + .06, q.y + py * .72)); r1.push(new THREE.Vector3(q.x - px * .72, q.h + .06, q.y - py * .72)); }
-      if (ta === TR[0][0]) for (const rr of [r0, r1]) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rr), 300, .06, 4, false), rail));
-      for (let k = 1; k < 30; k++) { const t = ta + (tb - ta) * k / 30, q = trackAt(j, t); bx(g, .5, .12, .5, glow(j ? '#9ad0ff' : '#ffe0a0', 1.4), q.x, q.h + 3.6, q.y); }
+      for (const rr of [r0, r1]) g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rr), 300, .06, 4, false), rail));
+      for (let k = 1; k < 30; k++) { const t = cut + (1 - 2 * cut) * k / 30, q = trackAt(j, t); bx(g, .5, .12, .5, glow(j ? '#9ad0ff' : '#ffe0a0', 1.4), q.x, q.h + 3.6, q.y); }
     }
     // i pioli dell'elica: passaggi di servizio tra le due gallerie, a due colori per metà come le basi del DNA
     const PAIR = [['#d8503a', '#3a8ad8'], ['#e8c03a', '#3ac87a']];
-    for (let k = 1; k < (M.linea ? 24 : 12); k++) {
-      const t = k / (M.linea ? 24 : 12), a = trackAt(0, t), b = trackAt(1, t), A = new THREE.Vector3(a.x, a.h + 1.4, a.y), Bv = new THREE.Vector3(b.x, b.h + 1.4, b.y), mid = A.clone().add(Bv).multiplyScalar(.5), len = A.distanceTo(Bv) - 5;
-      if (len <= .5 || (M.linea && M.stazioni.some(S => Math.hypot(a.x - S.x, a.y - S.y) < 16))) continue; const dir = Bv.clone().sub(A).normalize(), cols = PAIR[k % 2];
+    for (let k = 1; k < 12; k++) {
+      const t = k / 12, a = trackAt(0, t), b = trackAt(1, t), A = new THREE.Vector3(a.x, a.h + 1.4, a.y), Bv = new THREE.Vector3(b.x, b.h + 1.4, b.y), mid = A.clone().add(Bv).multiplyScalar(.5), len = A.distanceTo(Bv) - 5;
+      if (len <= .5) continue; const dir = Bv.clone().sub(A).normalize(), cols = PAIR[k % 2];
       [[A, cols[0]], [Bv, cols[1]]].forEach(([E, c]) => { const half = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, len / 2, 10, 1, true), mat(c, { emissive: c, emissiveIntensity: .35, side: THREE.DoubleSide })); const at = mid.clone().add(E.clone().sub(mid).normalize().multiplyScalar(len / 4)); half.position.copy(at); half.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); g.add(half); });
     }
     // i treni
@@ -49767,7 +49601,7 @@ var Sottosuolo = (function () {
     }
     L.portals.filter(P => P.kind === 'grata').forEach(P => { const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z); const q = new THREE.Group(); q.position.set(x, y, z); bx(q, 1.1, .05, .8, '#141414', 0, .01, 0); for (let i = -4; i <= 4; i++) bx(q, .05, .06, .8, iron, i * .12, .04, 0); g.add(q); });
     L.portals.filter(P => P.kind === 'scala').forEach(P => {
-      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = stationOf(P.metro), a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
+      const x = cen(P.s[0]), z = cen(P.s[1]), y = R.groundH(x, z), S = P.metro === 'sud' ? M.A : M.B, a = Math.atan2(S.y - z, S.x - x), q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = -a;
       bx(q, 2.6, .04, 1.7, '#060606', 0, .02, 0); for (let k = 0; k < 4; k++) bx(q, .5, .02, 1.5, '#5a5a56', -.9 + k * .5, -.1 - k * .25, 0);
       for (const s of [-1, 1]) { bx(q, 2.7, .06, .06, mat('#9aa0a8', { metalness: .6 }), 0, .95, s * .9); for (const xx of [-1.3, 0, 1.3]) bx(q, .06, .95, .06, mat('#9aa0a8', { metalness: .6 }), xx, .48, s * .9); }
       bx(q, .06, .95, 1.8, mat('#9aa0a8', { metalness: .6 }), -1.33, .48, 0);
@@ -49790,7 +49624,7 @@ var Sottosuolo = (function () {
     const under = !!(p.lv && p.lv.k === 'ug'), t = performance.now() / 1000, dt = Math.min(.1, t - (GFX.t0 || t)); GFX.t0 = t;
     GFX.ug.visible = under; GFX.lights.forEach(l => { l.visible = under; });
     // le gallerie si vedono dalle banchine e dal treno, non dalle fogne (passano sotto, più in basso)
-    if (GFX.metro) GFX.metro.visible = under && M.ok && (p.lv.ride !== undefined || stazioni().some(S => Math.hypot(p.x - S.x, p.y - S.y) < 34));
+    if (GFX.metro) GFX.metro.visible = under && M.ok && (p.lv.ride !== undefined || Math.hypot(p.x - M.A.x, p.y - M.A.y) < 34 || Math.hypot(p.x - M.B.x, p.y - M.B.y) < 34);
     if (!under) { if (GFX.surf) GFX.surf.visible = true; Object.values(GFX.people).forEach(g => { g.visible = false; }); Object.values(GFX.crates).forEach(g => { g.visible = false; }); return; }
     // sul treno: si toglie il tetto della carrozza e si sbiadisce l'altra galleria (passa sopra o sotto)
     const ride = p.lv.ride; GFX.trains.forEach((m, j) => m.traverse(o => { if (o.name === 'tetto') o.visible = ride !== j; }));
@@ -50022,7 +49856,20 @@ var Ordine = (function () {
 
   // ================= MOVIMENTO =================
   // verso un punto: dritti se è vicino e si vede, altrimenti col percorso (ricalcolato al massimo ogni 1,5 s)
+  // [ordine] i posti fissi (guardie d'onore, sentinelle, piantone, le tappe delle ronde) sono scostamenti dal centro di un luogo: nella
+  // città nuova parecchi cadono dentro un edificio (gg_0/gg_1 davanti al Governo, sd_2/sd_3 alla Rocca, il piantone della caserma) e
+  // seek, senza percorso, ci andava dritto e restava nel muro. Il punto si sposta sul selciato libero più vicino (con 30 cm di margine)
+  const SNAP = new Map(), libero = (x, y) => G.walkM(x, y) && G.walkM(x - .3, y - .3) && G.walkM(x + .3, y - .3) && G.walkM(x - .3, y + .3) && G.walkM(x + .3, y + .3);
+  function aPiedi(x, y) {
+    if (libero(x, y)) return { x, y };
+    const k = Math.round(x * 4) + ',' + Math.round(y * 4), c = SNAP.get(k); if (c) return c; if (SNAP.size > 4000) SNAP.clear();
+    let q = { x, y };
+    { let best = null, bd = 1e9; for (let r = .5; r <= 12 && !best; r += .5) for (let a = 0; a < 24; a++) { const px = x + Math.cos(a / 24 * 6.283) * r, py = y + Math.sin(a / 24 * 6.283) * r; if (libero(px, py) && r < bd) { bd = r; best = { x: px, y: py }; } } if (best) q = best; }
+    SNAP.set(k, q); return q;
+  }
   function seek(st, n, x, y, dt, sp, near) {
+    { const q = aPiedi(x, y); x = q.x; y = q.y; }   // [ordine] mai dentro un muro
+    if (!n.inside && !n.lv && !G.walkM(n.x, n.y)) { const f = aPiedi(n.x, n.y); n.x = f.x; n.y = f.y; n.path = []; }   // [ordine] chi è già nel muro (sceso dalla volante, uscito dalla caserma su una casella piena) ne esce: da lì il percorso non c'è e si andava dritti attraverso le case
     const d = dist(n.x, n.y, x, y);
     if (d < (near || .5)) { n.speedNow = 0; n.path = []; return true; }
     const O = n.ord || (n.ord = {});
@@ -65358,9 +65205,12 @@ var Vievive = (function () {
   function step(st, dt) {
     if (!ATTIVO || !st.vv) return; const V = st.vv;
     if (Math.floor(hourOf(st)) !== V.hr || (V.oraT = (V.oraT || 0) + dt) > 4) { V.oraT = 0; ora(st, false); }
-    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì
-    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.vvTr || !v.stalled || v.rider || v.wreck || !v.lane) continue; v.vvPanne = (v.vvPanne || 0) + 2;
-      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: true, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0 }); } } }
+    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì.
+    // [traffico] anche i mezzi del traffico di game.js (tr*: la panne di azioni.js spawnDriver, «imprevisto») e non solo i nostri (vvTr): prima
+    // un furgone tr10 restava in mezzo alla strada per tutta la partita. Quelli rubati o del giocatore (mine, stolen) no.
+    // I nostri tornano nascosti (li riaccende il conto dell'ora); i tr* tornano a girare (li spegne di notte lo stesso conto, in città)
+    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.stalled || v.rider || v.wreck || v.burning > 0 || !v.lane || v.mine || v.stolen || v.police || !(v.vvTr || /^tr\d/.test(v.id))) continue; v.vvPanne = (v.vvPanne || 0) + 2;
+      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: !!v.vvTr, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0, owner: null, stuck: 0 }); if (v.hp < G.VK[v.kind].hp * .6) v.hp = G.VK[v.kind].hp; } } }
     // vicino al giocatore un'auto entra o esce dal conto dell'ora solo in fondo alla via (svolta e sparisce dietro l'angolo, o ne arriva una)
     for (const v of st.vehicles) { if (!v.vvCambia || !v.traffic || !v.lane) continue; const L = G.LANES[v.lane.i]; if (!L) continue; if (v.lane.s < 5 || v.lane.s > L.L - 5) { v.hidden = v.vvCambia === 'spegni'; v.vvCambia = null; } }
     for (const v of st.vehicles) { if (!v.guida) continue;
@@ -70130,7 +69980,7 @@ var Tasselli = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
   // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto)
-  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
   const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
@@ -77404,7 +77254,7 @@ var Render = (function () {
       const bt = box(2, .26, .04, std({ map: (() => { const k = 'tr'; if (I31.tex[k]) return I31.tex[k]; const c = mk(32, 8), x2 = c.getContext('2d'); for (let i = 0; i < 32; i += 8) { x2.fillStyle = '#d8d0c0'; x2.fillRect(i, 0, 4, 8); x2.fillStyle = '#9a3a2a'; x2.fillRect(i + 4, 0, 4, 8); } x2.fillStyle = 'rgba(60,40,30,.35)'; x2.fillRect(0, 5, 32, 3); return (I31.tex[k] = canvasTex(c)); })(), roughness: .9 })); add(g, bt, 0, .88, 0);
       return place(g, x, z, rot); };
     const cone = (x, z) => { const g = G0(); add(g, box(.42, .05, .42, sm('#2a2a2a')), 0, .025, 0); add(g, new THREE.Mesh(new THREE.ConeGeometry(.17, .62, 8), sm('#c8642a', { roughness: .7 })), 0, .34, 0); add(g, cyl(.12, .14, .08, 8, sm('#d8d4cc')), 0, .38, 0); return place(g, x, z, r() * 6); };
-    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada') && (rd.pts.length >= 12 || !(typeof window !== 'undefined' && window.PV_MAPPA === 'nuova')));   // [mappa_nuova] le strade corte non reggono un cantiere
+    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada'));
     for (let tries = 0; tries < 80 && SITES.length < 9; tries++) {
       const rd = pick(r, RD), k = 4 + Math.floor(r() * (rd.pts.length - 8)), [x, z] = rd.pts[k]; if (SITES.some(s => Math.hypot(s[0] - x, s[1] - z) < 120) || nearJ(x, z, 6)) continue;
       SITES.push([x, z]); const a = rd.pts[k - 2], c = rd.pts[k + 2], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, ux = (c[0] - a[0]) / L, uz = (c[1] - a[1]) / L, nx = -uz, nz = ux, sd = r() < .5 ? 1 : -1, off = rd.w / 4;
@@ -88860,6 +88710,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
+      // [blindato] la scocca poggia su quello che ha sotto: con muso e coda più bassi del centro (un mezzo fermo su un rilevato, su un
+      // gradino: il blindato della Rocca) la media sprofondava la pancia nel terreno (0,5 m). Se il centro sta più in alto della media, il
+      // mezzo poggia sul centro e sul capo più alto (l'altro sporge nel vuoto): la quota è quella del centro, la pendenza quella verso quel capo
+      const hC = groundH(v.x, v.y), cresta = hC > (hF + hR) / 2 + .02, yB = cresta ? hC : (hF + hR) / 2;
+      const pendB = cresta ? (hF >= hR ? (hF - hC) / hl : (hC - hR) / hl) : (hF - hR) / (hl * 2);
       // sospensioni: una molla smorzata porta la scocca verso il carico (curva → rollio, gas e freno → beccheggio)
       const sd = Math.min(dt, 1 / 20), latA = v.latA || 0, longA = v.longA || 0;
       const rollT = u.two ? (v.rider ? clamp(latA * .045, -.5, .5) : 0) : clamp(-latA * .011, -.1, .1), pitchT = u.two ? 0 : clamp(-longA * .0055, -.06, .07);
@@ -88869,7 +88724,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       u.hv += (-u.hop * 120 - u.hv * 10) * sd; u.hop += u.hv * sd;
       // [salto] la BMX sale col giocatore e in aria impenna (su) e poi abbassa il muso; all'atterraggio le gomme si schiacciano
       const air = v.jz > 0 ? clamp((v.jvz || 0) * .05, -.18, .3) : 0; if (u.wasAir && !(v.jz > 0)) u.hv -= 6 + Math.min(10, (st.player.landV || 0) * 1.5); u.wasAir = v.jz > 0;
-      g.position.set(v.x, (hF + hR) / 2 + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan2(hF - hR, hl * 2) + u.pitch - air;
+      g.position.set(v.x, yB + u.hop * .12 + (v.jz || 0), v.y); g.rotation.y = Math.PI / 2 - v.ang; g.rotation.x = -Math.atan(pendB) + u.pitch - air;
       { const T = bmxTilt(v); if (T.a) { g.rotation.x -= T.a; g.position.x += Math.cos(v.ang) * T.dzB; g.position.y += T.dyB; g.position.z += Math.sin(v.ang) * T.dzB; } }   // [bmx] impennata sulla ruota dietro
       g.rotation.z = u.roll;
       v.lastAng = v.ang;
@@ -90911,7 +90766,6 @@ var Audio8 = (function () {
         else { nz(t, .2, 'lowpass', 3600, .7 * v, pan); tone(t, .12, 'sine', 160, 45, .7 * v, pan); nz(t + .03, .5, 'lowpass', 600, .12 * v, pan); }
         if (e.npc) nz(t, .12, 'highpass', 1200, .15 * v, pan);
         break;
-      case 'campanello': [659, 523, 392].forEach((f, i) => tone(t + i * .42, .7, 'sine', f, f, .22 * v, pan)); break;   // [mappa_nuova] il din-don-dan degli annunci in banchina
       case 'hit': tone(t, .05, 'square', 1500, 1200, .12); break;
       case 'kill': tone(t, .07, 'square', 900, 600, .18); tone(t + .06, .12, 'square', 600, 300, .15); break;
       case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); break;
@@ -91734,7 +91588,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
-    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
+    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
@@ -91872,19 +91726,19 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     // [porte] solo il clic SULLA PORTA: il rettangolo della porta sulla facciata (largo 1,4 m, alto 2,4 m) proiettato sullo schermo;
     // prima bastava cliccare per terra a meno di 3 m da una porta e si entrava
     if (!p.indoor && G.DOOR_OF) { const TS = G.TS, tx = Math.floor(g.x / TS), ty = Math.floor(g.y / TS), GWm = G.MAP.world.GW, px = nx * o.w, py = ny * o.h; let bd = 1e9, hit = null;
-      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) { const bi = G.DOOR_OF.get((ty + oy) * GWm + tx + ox); if (bi === undefined) continue; const b = G.BUILDINGS[bi]; if (!b || !b.door) continue;
-        const D = doorQuad(b, TS); if (!D) continue;
+      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) for (const E of (G.DOORS_AT ? G.DOORS_AT.get((ty + oy) * GWm + tx + ox) : null) || []) { const bi = E.bi, b = G.BUILDINGS[bi], dr = b && (E.shop ? b.shopFront.door : b.door); if (!dr) continue;   // [porte] tutti gli edifici di una casella-porta contesa
+        const D = doorQuad(b, TS, dr); if (!D) continue;
         const Q = D.c.map(([x, h, y]) => R.project(x, h, y)); if (Q.some(q => q.behind)) continue;
         const pts = Q.map(q => [q.x * o.w, q.y * o.h]); let inside = false;
         for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; }
         if (!inside) continue;
-        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (b.door[0] + .5) * TS, y: (b.door[1] + .5) * TS }; } }
+        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (dr[0] + .5) * TS, y: (dr[1] + .5) * TS }; } }
       if (hit) return hit; }
     const f = freeSpot(g.x, g.y); return { kind: 'move', x: f.x, y: f.y };
   }
   // [porte] i quattro angoli della porta sulla facciata (la casella della porta sta fuori dall'edificio, la facciata sul suo lato verso dentro)
-  function doorQuad(b, TS) {
-    const dx = b.door[0], dy = b.door[1]; let fx, fy, tx, ty;
+  function doorQuad(b, TS, dr) {
+    dr = dr || b.door; const dx = dr[0], dy = dr[1]; let fx, fy, tx, ty;
     if (dy === b.y + b.h) { fx = (dx + .5) * TS; fy = dy * TS; tx = 1; ty = 0; }
     else if (dy === b.y - 1) { fx = (dx + .5) * TS; fy = (dy + 1) * TS; tx = 1; ty = 0; }
     else if (dx === b.x + b.w) { fx = dx * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
@@ -91946,7 +91800,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     }
     if (c.kind === 'door') {
       if (p.indoor) return stop();
-      const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
+      const b = G.BUILDINGS[c.bi], cx = Math.max(b.x * G.TS, Math.min((b.x + b.w) * G.TS, gx)), cy = Math.max(b.y * G.TS, Math.min((b.y + b.h) * G.TS, gy));   // [porte] si spinge verso la facciata dietro la porta (come G.doorFront), non verso il centro dell'edificio
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
@@ -91979,7 +91833,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
     const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
     // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door' };
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door', door: c.kind === 'door' ? c.bi : undefined };   // [porte] door: si entra solo nell'edificio cliccato
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -92327,6 +92181,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
   function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
   const TB = {
+    entra: { l: 'Entra', big: 1, dn: () => { click.t = null; ui.mark = null; doAct('porta'); } },   // [porte]
     salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
     corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
     arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
@@ -92349,6 +92204,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
     if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
+    if (G.actionKey && G.actionKey(st) === 'porta') return ['entra', 'salta'];   // [porte] davanti a una porta: Entra (sul Game Boy il pulsante A)
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;

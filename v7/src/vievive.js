@@ -564,9 +564,12 @@ var Vievive = (function () {
   function step(st, dt) {
     if (!ATTIVO || !st.vv) return; const V = st.vv;
     if (Math.floor(hourOf(st)) !== V.hr || (V.oraT = (V.oraT || 0) + dt) > 4) { V.oraT = 0; ora(st, false); }
-    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì
-    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.vvTr || !v.stalled || v.rider || v.wreck || !v.lane) continue; v.vvPanne = (v.vvPanne || 0) + 2;
-      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: true, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0 }); } } }
+    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì.
+    // [traffico] anche i mezzi del traffico di game.js (tr*: la panne di azioni.js spawnDriver, «imprevisto») e non solo i nostri (vvTr): prima
+    // un furgone tr10 restava in mezzo alla strada per tutta la partita. Quelli rubati o del giocatore (mine, stolen) no.
+    // I nostri tornano nascosti (li riaccende il conto dell'ora); i tr* tornano a girare (li spegne di notte lo stesso conto, in città)
+    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.stalled || v.rider || v.wreck || v.burning > 0 || !v.lane || v.mine || v.stolen || v.police || !(v.vvTr || /^tr\d/.test(v.id))) continue; v.vvPanne = (v.vvPanne || 0) + 2;
+      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: !!v.vvTr, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0, owner: null, stuck: 0 }); if (v.hp < G.VK[v.kind].hp * .6) v.hp = G.VK[v.kind].hp; } } }
     // vicino al giocatore un'auto entra o esce dal conto dell'ora solo in fondo alla via (svolta e sparisce dietro l'angolo, o ne arriva una)
     for (const v of st.vehicles) { if (!v.vvCambia || !v.traffic || !v.lane) continue; const L = G.LANES[v.lane.i]; if (!L) continue; if (v.lane.s < 5 || v.lane.s > L.L - 5) { v.hidden = v.vvCambia === 'spegni'; v.vvCambia = null; } }
     for (const v of st.vehicles) { if (!v.guida) continue;
