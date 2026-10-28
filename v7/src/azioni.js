@@ -36,7 +36,12 @@ var Azioni = (function () {
   const PHONES = ['piazza', 'bar', 'wu', 'molo', 'sirena', 'lungomare', 'calata', 'benzina', 'osteria', 'flipper', 'piazzetta', 'fontana'];
   const has = id => !!PLACES[id];
   const tgtOf = id => (typeof id === 'object' ? id : id && id.startsWith && id.startsWith('use:') ? (useT(id.slice(4))[0] || null) : has(id) ? target(id) : null);
-  function useT(use) { return G.BUILDINGS.map((b, bi) => [b, bi]).filter(([b]) => b.use === use && b.door).map(([, bi]) => I.tB(bi)).filter(Boolean); }
+  // [momenti] le porte di un uso si cercano una volta (finché le case non cambiano): prima ogni persona che cercava un negozio rifaceva
+  // la lista di tutte le case e un oggetto per porta, a ogni passo (decine di MB di spazzatura al secondo)
+  const USE_T = new Map(); let useTn = -1, useTt = 0;   // e comunque si rifà ogni 5 s (una bottega che apre o cambia mestiere: economia.js, fazioni.js)
+  function useT(use) { const now = Date.now(); if (useTn !== G.BUILDINGS.length || now - useTt > 5000) { USE_T.clear(); useTn = G.BUILDINGS.length; useTt = now; }
+    let L = USE_T.get(use); if (!L) { L = G.BUILDINGS.map((b, bi) => [b, bi]).filter(([b]) => b.use === use && b.door).map(([, bi]) => I.tB(bi)).filter(Boolean); USE_T.set(use, L); }
+    return L.slice(); }
   function nearest(list, x, y) { let b = null, bd = 1e9; list.forEach(id => { const ts = typeof id === 'string' && id.startsWith('use:') ? useT(id.slice(4)) : [tgtOf(id)]; ts.forEach(t => { if (t) { const d = dist(t.x, t.y, x, y); if (d < bd) { bd = d; b = t; } } }); }); return b; }
   const placeName = (x, y) => G.nearestPlace(x, y).name;
   const isNightT = t => { const h = Math.floor(t / 60) % 24; return h >= 21 || h < 6; };

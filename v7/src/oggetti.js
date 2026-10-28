@@ -938,7 +938,7 @@ var Oggetti = (function () {
   // DOVE SONO (postazioni, contenitori, luoghi)
   // =====================================================================================================================
   const p_ = st => st.player;
-  function nearPlace(st, r) { const p = p_(st); let best = null, bd = r || 14; Object.entries(PLACES).forEach(([id, P0]) => { const d = dist(P0.x, P0.y, p.x, p.y); if (d < bd) { bd = d; best = id; } }); return best; }
+  function nearPlace(st, r) { const p = p_(st); let best = null, bd = r || 14; for (const id in PLACES) { const P0 = PLACES[id], d = dist(P0.x, P0.y, p.x, p.y); if (d < bd) { bd = d; best = id; } } return best; }   // [momenti] senza l'array di coppie di Object.entries a ogni chiamata
   function nearBase(st) { const R = st.ris; if (!R) return null; const p = p_(st); return R.bases.find(b => b.alive && dist(b.x, b.y, p.x, p.y) < 6) || null; }
   // i mobili vicini (dentro un edificio)
   function nearFurn(st, r) {

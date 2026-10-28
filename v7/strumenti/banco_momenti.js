@@ -105,7 +105,7 @@ const srv = http.createServer((req, res) => {
     }, [nome, RIP]);
     await pg.waitForTimeout(3000); await pg.evaluate(() => window.gc && window.gc());
     await cdp.send('Profiler.enable'); await cdp.send('Profiler.setSamplingInterval', { interval: 250 }); await cdp.send('Profiler.start');
-    if (has('alloc')) { await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 16384 }); }
+    if (has('alloc')) { await cdp.send('HeapProfiler.enable'); await cdp.send('HeapProfiler.startSampling', { samplingInterval: 16384, includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true }); }
     const marca = await pg.evaluate(() => { const t = performance.now(); (function __marca_scatti() { let x = 0; while (performance.now() - t < 40) x += Math.sqrt(x + 1); return x; })(); return t; });
     await pg.evaluate(() => { const B = window.__sc; B.rec = []; B.cur = null; B.on = true; if (window.PesoOmbre) { PesoOmbre.azzera(); PesoOmbre.diag(true); } });
     if (nome === 'zoom') { // due minuti veri allo zoom massimo, correndo avanti e indietro: il contesto della scheda video regge?
@@ -119,7 +119,9 @@ const srv = http.createServer((req, res) => {
     await pg.evaluate(() => { const B = window.__sc; B.on = false; B.inp = null; B.dopo = null; window.__vf = null; });
     const { profile } = await cdp.send('Profiler.stop');
     if (has('alloc')) { const { profile: hp } = await cdp.send('HeapProfiler.stopSampling'); const m = {}; let tot = 0;
-      const giu = n => { const cf = n.callFrame, k = `${cf.functionName || '(anon)'} @${(cf.url || '').split('/').pop().split('?')[0]}:${cf.lineNumber + 1}`; m[k] = (m[k] || 0) + n.selfSize; tot += n.selfSize; (n.children || []).forEach(giu); }; giu(hp.head);
+      // per ognuno, il primo chiamante del gioco (non three, che sta tutto alla riga 433, né le funzioni del motore)
+      const nomeF = cf => `${cf.functionName || '(anon)'} @${(cf.url || '').split('/').pop().split('?')[0]}:${cf.lineNumber + 1}`, delGioco = cf => /index/.test(cf.url || '') && cf.lineNumber + 1 !== 433 && cf.lineNumber > 3400;
+      const giu = (n, gs) => { const cf = n.callFrame, g = delGioco(cf) ? gs.concat(nomeF(cf)).slice(-3) : gs, k = nomeF(cf) + ' < ' + g.filter(x => x !== nomeF(cf)).reverse().join(' < '); m[k] = (m[k] || 0) + n.selfSize; tot += n.selfSize; (n.children || []).forEach(c => giu(c, g)); }; giu(hp.head, []);
       log(nome, 'allocazioni MB', (tot / 1048576).toFixed(0), JSON.stringify(Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `${(v / 1048576).toFixed(1)} ${k}`))); }
     log(nome, 'ombre', JSON.stringify(await pg.evaluate(() => window.PesoOmbre ? { conto: PesoOmbre.conto(), diag: PesoOmbre.diag(true) } : null)));
     const rec = await pg.evaluate(() => window.__sc.rec.map(f => ({ i: f.i, t0: f.t0, t1: f.t1, lavoro: +(f.step + f.frame + f.timer - f.gl).toFixed(1), step: +f.step.toFixed(1), frame: +f.frame.toFixed(1), timer: +f.timer.toFixed(1), gl: +f.gl.toFixed(1), progs: f.progs, gc: f.h1 && f.h0 && f.h1 < f.h0 ? Math.round((f.h0 - f.h1) / 1048576) : 0, ev: f.ev, v: +(f.v || 0).toFixed(1), vol: f.vol, su: f.su, tchi: f.tchi, tmax: f.tmax, str: f.str, cot: f.cot, job: f.job, px: f.px, py: f.py, wx: f.wx, wy: f.wy, camx: f.camx, camz: f.camz, plx: f.plx, ply: f.ply })));

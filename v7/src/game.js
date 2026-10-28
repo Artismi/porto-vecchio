@@ -1696,11 +1696,12 @@ var Game = (function () {
   function pushOutOfVehicles(st, o, r) {
     for (const v of st.vehicles) {
       if (v.hidden || v.rider === 'player' && o === st.player) continue;
-      const K = VK[v.kind], q = vLocal(v, o.x, o.y), px = K.len / 2 + r - Math.abs(q.lx), py = K.wid / 2 + r - Math.abs(q.ly);
+      // [momenti] lontano non serve il conto (né l'oggetto {lx, ly} di vLocal, per ogni mezzo per ogni persona a ogni passo: MB di spazzatura)
+      const K = VK[v.kind], dx = o.x - v.x, dy = o.y - v.y, R0 = K.len / 2 + K.wid / 2 + 2 * r; if (dx > R0 || dx < -R0 || dy > R0 || dy < -R0) continue;
+      const c = Math.cos(v.ang), s = Math.sin(v.ang), qlx = dx * c + dy * s, qly = -dx * s + dy * c, px = K.len / 2 + r - Math.abs(qlx), py = K.wid / 2 + r - Math.abs(qly);
       if (px <= 0 || py <= 0) continue;
-      const c = Math.cos(v.ang), s = Math.sin(v.ang);
       let nx = o.x, ny = o.y;
-      if (px < py) { const d = Math.sign(q.lx || 1) * px; nx += c * d; ny += s * d; } else { const d = Math.sign(q.ly || 1) * py; nx += -s * d; ny += c * d; }
+      if (px < py) { const d = Math.sign(qlx || 1) * px; nx += c * d; ny += s * d; } else { const d = Math.sign(qly || 1) * py; nx += -s * d; ny += c * d; }
       if (walkM(nx, ny)) { o.x = nx; o.y = ny; }
     }
   }
