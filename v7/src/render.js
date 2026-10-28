@@ -16231,19 +16231,21 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   if (typeof MeshBVHLib !== 'undefined' && !THREE.Mesh.prototype.raycast.__bvh) {
     const orig = THREE.Mesh.prototype.raycast, acc = MeshBVHLib.acceleratedRaycast;
     const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
+    // [momenti] window.__rlOn: i raggi col metodo lento, per motivo (quante volte, quanti triangoli): per strumenti/banco_momenti.js
+    const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position; q[1] += g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; };
     const fast = function (rc, out) {
       const g = this.geometry;
-      if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) return orig.call(this, rc, out);
+      if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) { if (window.__rlOn) lento(!g ? 'senza' : g.__bvhNo ? 'mai' : this.isSkinnedMesh ? 'scheletro' : 'altro', g); return orig.call(this, rc, out); }
       // [leggera] è cambiata (il pulitore sposta e toglie pezzi dentro le mesh fuse, i segni): stessi triangoli in posti nuovi, l'indice si
       // riadatta (refit: i riquadri tornano a contenere i triangoli, i punti trovati sono gli stessi). Prima si tornava per sempre al
       // metodo lento: una mesh di 167.000 triangoli provata intera a ogni raggio era tre quarti del costo dei raggi dei graffiti
       if (g.boundsTree) { if (g.__bvhVer === verOf(g)) return acc.call(this, rc, out);
         if (g.index && g.index.version === g.__bvhIdx && g.index.count === g.__bvhN) { try { g.boundsTree.refit(); g.__bvhVer = verOf(g); return acc.call(this, rc, out); } catch (e) { } }
-        g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; return orig.call(this, rc, out); }
+        g.boundsTree = null; g.__bvhSeen = null; g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('persa', g); return orig.call(this, rc, out); }
       const pos = g.attributes.position, dr = g.drawRange, n = g.index ? g.index.count : pos ? pos.count : 0;
-      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; return orig.call(this, rc, out); }
-      if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
-      if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
+      if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
+      if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
+      if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
       try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
       return acc.call(this, rc, out);
     };
