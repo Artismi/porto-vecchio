@@ -76,11 +76,11 @@ var Riva = (function () {
   // [sabbia, scogli, falesia, duna, cala]
   let vK = null;
   let vK0 = null;
-  function kV0(i, j) { if (!vK0) vK0 = new Float32Array(VW * (GH + 1) * 5).fill(NaN); const k = VI(i, j) * 5; if (vK0[k] !== vK0[k]) { const kk = W.coastKind2(i * TS, j * TS), f = FAM[kk] || 0;
+  function kV0(i, j) { if (!vK0) vK0 = new Uint8Array(VW * (GH + 1) * 5).fill(255); const k = VI(i, j) * 5; if (vK0[k] === 255) { const kk = W.coastKind2(i * TS, j * TS), f = FAM[kk] || 0;
       vK0[k] = f === 1 ? 1 : 0; vK0[k + 1] = f === 2 ? 1 : 0; vK0[k + 2] = f === 3 ? 1 : 0; vK0[k + 3] = kk === 'duna' ? 1 : 0; vK0[k + 4] = kk === 'cala' ? 1 : 0; } return k; }
-  function kV(i, j) { if (!vK) vK = new Float32Array(VW * (GH + 1) * 5).fill(NaN); const k = VI(i, j) * 5; if (vK[k] !== vK[k]) {   // sfumati su 5×5 vertici (10 m): fra sabbia e scogli la forma passa piano
+  function kV(i, j) { if (!vK) vK = new Uint8Array(VW * (GH + 1) * 5).fill(255); const k = VI(i, j) * 5; if (vK[k] === 255) {   // sfumati su 5×5 vertici (10 m): fra sabbia e scogli la forma passa piano
       const t = [0, 0, 0, 0, 0]; let n = 0; for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) { const q = kV0(i + a, j + b); for (let c = 0; c < 5; c++) t[c] += vK0[q + c]; n++; }
-      const own = kV0(i, j), fam = vK0[own] + vK0[own + 1] + vK0[own + 2]; for (let c = 0; c < 5; c++) vK[k + c] = fam > 0 || c > 2 ? t[c] / n : 0; } return k; }
+      const own = kV0(i, j), fam = vK0[own] + vK0[own + 1] + vK0[own + 2]; for (let c = 0; c < 5; c++) vK[k + c] = fam > 0 || c > 2 ? Math.round(t[c] * 25 / n) : 0; } return k; }   // [scarico] in venticinquesimi, un byte (255: da fare): 2 × 7 MB → 2 × 1,75
   const LAND = (f, du, ca) => f === 1 ? 16 + 14 * du - 4 * ca : BANDA[f][1];
   // la casella entra nella fascia fine? (lontano dalla città, e per una delle famiglie che ha ai vertici la distanza dalla riva entra nella sua fascia)
   function inBanda(tx, ty) {
@@ -119,7 +119,7 @@ var Riva = (function () {
   function peso(f, d, du, ca) { const B = BANDA[f], L = LAND(f, du, ca); return sstep(B[0], B[0] + 3, d) * (1 - sstep(L - 7, L, d)); }
   const bil = (a, b, c, e, u, v) => a * (1 - u) * (1 - v) + b * u * (1 - v) + c * (1 - u) * v + e * u * v;
   // i tipi interpolati nel punto: [sabbia, scogli, falesia, duna, cala]
-  function tipi(tx, ty, u, v) { const a = kV(tx, ty), b = kV(tx + 1, ty), c = kV(tx, ty + 1), e = kV(tx + 1, ty + 1), o = [0, 0, 0, 0, 0]; for (let q = 0; q < 5; q++) o[q] = bil(vK[a + q], vK[b + q], vK[c + q], vK[e + q], u, v); return o; }
+  function tipi(tx, ty, u, v) { const a = kV(tx, ty), b = kV(tx + 1, ty), c = kV(tx, ty + 1), e = kV(tx + 1, ty + 1), o = [0, 0, 0, 0, 0]; for (let q = 0; q < 5; q++) o[q] = bil(vK[a + q], vK[b + q], vK[c + q], vK[e + q], u, v) / 25; return o; }
   // la quota nuda (senza gli scogli) in un punto della casella tx, ty
   function quotaNuda(tx, ty, x, y) {
     const u = x / TS - tx, v = y / TS - ty, q = bil(qV(tx, ty), qV(tx + 1, ty), qV(tx, ty + 1), qV(tx + 1, ty + 1), u, v);

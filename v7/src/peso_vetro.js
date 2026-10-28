@@ -55,6 +55,6 @@ var PesoVetro = (function () {
     if (V.u.value) V.u.value.dispose(); V.u.value = t; V.s.value = new T.Vector2(W, H);
   }
   function prepara(c) { c.color.setRGB(1, 1, 1); c.emissive.setRGB(1, 1, 1); }
-  return { ON, ok, idx, tessitura, prepara, inietta, get voci() { return V.col.length; } };
+  return { ON, ok, idx, tessitura, prepara, inietta, get voci() { return V.col.length; }, get voci1() { return V.col; } };   // [scorcio] le voci (gli strumenti contano le finestre accese)
 })();
 if (typeof window !== 'undefined') window.PesoVetro = PesoVetro;

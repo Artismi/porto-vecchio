@@ -16,6 +16,7 @@
 // e salva il json (reports/compenetrazioni.json) e la pianta dei punti prima/dopo (reports/compenetrazioni.png).
 //   node strumenti/compenetrazioni.js [--spento] [uscita.json]
 //   --spento: il regista misura soltanto (?nopulizia2), per vedere com'era.
+// [compenetrazioni2] in più i pezzi grandi contro i volumi delle case e fra loro ([grandi], GRANDI_ESIGI=1 esce con errore se toccano le case).
 // [tetti3] in più i tetti (window.__tetti3): oggetti per tetto e compenetrazioni dei gruppi del piano; TETTI3_ESIGI=1 esce con errore se non sono zero.
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || '/opt/node22/lib/node_modules/playwright');
@@ -67,8 +68,20 @@ const srv = http.createServer((req, res) => {
   console.log('\nprima, per voce:', top(R.prima.perVoce, 24)); console.log('prima, per passo:', top(R.prima.perPasso, 16));
   console.log('\ndopo, per voce:', top(R.dopo.perVoce, 24) || '—'); console.log('dopo, per passo:', top(R.dopo.perPasso, 16) || '—');
   if (R.punti.dopo.length) { console.log('\nquello che resta (tipo, x, z, voce, passo, contro, quota):'); R.punti.dopo.slice(0, 60).forEach(p => console.log('  ' + p.join('  '))); }
+  // [compenetrazioni2] I PEZZI GRANDI (window.__pulizia2.grandi, render.js grandi2): pensiline, chioschi, tettoie, tende, dehors, banchi,
+  // fermate, edicole, plance, auto in sosta, pezzi grandi e degli scorci contro i volumi delle case (pianta × altezza) e fra loro, oltre
+  // 10 cm. GRANDI_ESIGI=1 esce con errore se contro le case non sono zero (i pezzi di [posa], architettura, a parte).
+  const GR = R.grandi;
+  if (GR) { const nc = GR.case.filter(q => !/^pezzo:/.test(q[0])).length;
+    console.log('\n[grandi] pezzi grandi', GR.n, JSON.stringify(GR.perTipo));
+    console.log('[grandi] dentro le case (oltre 10 cm):', nc, '· pezzi di [posa]:', GR.case.length - nc, JSON.stringify(GR.per));
+    GR.case.slice(0, 80).forEach(q => console.log('  ' + q.join('  ')));
+    console.log('[grandi] fra loro (oltre 10 cm):', GR.fra.length, JSON.stringify(GR.perFra));
+    GR.fra.slice(0, 60).forEach(q => console.log('  ' + q.join('  ')));
+    if (GR.controPezzi) { console.log('[grandi] contro i pezzi di [posa] (scatole intere, misura grossa):', GR.controPezzi.length, JSON.stringify(GR.perPezzi)); GR.controPezzi.slice(0, 30).forEach(q => console.log('  ' + q.join('  '))); }
+    if (process.env.GRANDI_ESIGI && nc) process.exitCode = 1; }
   fs.mkdirSync(path.dirname(outJ), { recursive: true });
-  fs.writeFileSync(outJ, JSON.stringify({ quando: new Date().toISOString(), spento, prima: R.prima, dopo: R.dopo, azioni: R.azioni, punti: R.punti, tetti3: T3 }, null, 1));
+  fs.writeFileSync(outJ, JSON.stringify({ quando: new Date().toISOString(), spento, prima: R.prima, dopo: R.dopo, azioni: R.azioni, punti: R.punti, tetti3: T3, grandi: R.grandi || null }, null, 1));
   // la pianta: le case, i punti per tipo, prima a sinistra e dopo a destra
   const png = await pg.evaluate(R => {
     const G = window.__pv.G, B = G.BUILDINGS, TS = G.TS, all = R.punti.prima.concat(R.punti.dopo);

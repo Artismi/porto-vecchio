@@ -39,8 +39,17 @@ var Roba3D = (function () {
   const PT = {}, TILE = .12;
   function patinaTela(k) {
     if (PT[k] !== undefined) return PT[k]; if (!HAS_DOC) return (PT[k] = null);
-    const N = 128, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d'); const r = rng(hashS(k));
-    const g = (v, X, Y, w, h, a) => { x.fillStyle = `rgba(${v | 0},${v | 0},${v | 0},${a === undefined ? 1 : a})`; x.fillRect(X, Y, w || 1, h || 1); };
+    const N = 128, c = document.createElement('canvas'); c.width = c.height = N; const x0 = c.getContext('2d'); const r = rng(hashS(k));
+    // [anelli] i rettangoli pieni e opachi (decine di migliaia di fillRect da un pixel, ognuno con la sua stringa di colore: era più di un
+    // minuto d'avvio col processore occupato) si scrivono nei pixel; il resto (graffi, macchie, venature) passa alla tela come prima.
+    // Tutta la tela è opaca (parte da un grigio pieno): lettura e scrittura dei pixel sono esatte, l'immagine è la stessa al bit
+    let D = null, sporco = false; const fl = () => { if (sporco) { x0.putImageData(D, 0, 0); sporco = false; } D = null; };
+    const x = new Proxy(x0, { get(t, p) { fl(); const v = t[p]; return typeof v === 'function' ? v.bind(t) : v; }, set(t, p, v) { fl(); t[p] = v; return true; } });
+    const g = (v, X, Y, w, h, a) => { w = w || 1; h = h || 1;
+      if ((a === undefined || a === 1) && Number.isInteger(X) && Number.isInteger(Y) && Number.isInteger(w) && Number.isInteger(h)) {
+        if (!D) D = x0.getImageData(0, 0, N, N); const d = D.data, q = v | 0, x1 = Math.max(0, X), y1 = Math.max(0, Y), x2 = Math.min(N, X + w), y2 = Math.min(N, Y + h);
+        for (let yy = y1; yy < y2; yy++) for (let xx = x1; xx < x2; xx++) { const o = (yy * N + xx) * 4; d[o] = d[o + 1] = d[o + 2] = q; d[o + 3] = 255; } sporco = true; return; }
+      x.fillStyle = `rgba(${v | 0},${v | 0},${v | 0},${a === undefined ? 1 : a})`; x.fillRect(X, Y, w, h); };
     const rumore = (a, b, n) => { for (let i = 0; i < n; i++) g(a + r() * (b - a), r() * N | 0, r() * N | 0, 1, 1); };
     const macchie = (v, n, rr, a) => { for (let i = 0; i < n; i++) { const X = r() * N, Y = r() * N, R = rr * (.4 + r()); const gr = x.createRadialGradient(X, Y, 0, X, Y, R); gr.addColorStop(0, `rgba(${v},${v},${v},${a})`); gr.addColorStop(1, `rgba(${v},${v},${v},0)`); x.fillStyle = gr; x.fillRect(X - R, Y - R, 2 * R, 2 * R); } };
     const graffi = (v, n, L, a) => { x.strokeStyle = `rgba(${v},${v},${v},${a})`; x.lineWidth = 1; for (let i = 0; i < n; i++) { const X = r() * N, Y = r() * N, an = r() * PI; x.beginPath(); x.moveTo(X, Y); x.lineTo(X + Math.cos(an) * L * (.3 + r()), Y + Math.sin(an) * L * (.3 + r())); x.stroke(); } };
@@ -56,7 +65,7 @@ var Roba3D = (function () {
     else if (k === 'cibo' || k === 'cera') { macchie(195, 22, 14, .35); macchie(255, 12, 10, .3); rumore(200, 250, N * N * .3); }
     else if (k === 'pietra') { rumore(160, 250, N * N * .9); for (let i = 0; i < 120; i++) g(120 + r() * 40, r() * N | 0, r() * N | 0, 1 + (r() * 3 | 0), 1 + (r() * 2 | 0)); macchie(130, 8, 20, .3); }
     else { rumore(200, 250, N * N * .5); graffi(180, 14, 14, .3); macchie(150, 7, 22, .22); }   // opaco e il resto: vernice usata
-    const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return (PT[k] = t);
+    fl(); const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return (PT[k] = t);
   }
   const BUMPK = { legno: 1, metallo: .5, acciaio: .5, cromo: .3, ottone: .5, ghisa: 1.4, ruggine: 1.6, plastica: .4, lucido: .3, carta: .6, cartone: .9, tessuto: 1.2, gomma: 1, ceramica: .3, cibo: .9, cera: .5, pietra: 1.6, opaco: .7 };
   const STINGI = '#a0968a';

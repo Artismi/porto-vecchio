@@ -1,0 +1,69 @@
+# [tasselli] LA CITTÀ A TASSELLI, COTTA FUORI DA GIT (v7/src/progetto_citta/PESO.md §8.6).
+# A ogni push sul ramo di produzione: si legge l'impronta della città dalla pagina (v7/index.html, PV_IMPRONTA_TASS, la scrive
+# build.py). Se la release «tasselli-<impronta>» c'è già, niente da fare (la cottura è in cache per impronta). Se no: il gioco si
+# costruisce in Chromium senza testa (strumenti/tassella.js, 20-30 min), i tasselli vanno in un archivio allegato a una release
+# (fuori dalla storia di git), le release vecchie si potano e si chiede a Vercel un nuovo deploy (VERCEL_DEPLOY_HOOK, facoltativo).
+# Il build di Vercel (strumenti/prendi_tasselli.sh) scarica l'archivio dell'impronta della pagina in v7/tasselli/; se non c'è
+# ancora, il sito va lo stesso e il gioco costruisce la città nel browser come prima.
+name: tasselli
+on:
+  push:
+    branches: [main]
+    paths: ['v7/index.html', 'v7/mondo_cotto.js', 'v7/assets/**', 'v7/strumenti/tassella*.js', '.github/workflows/tasselli.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: tasselli-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cuoci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TIENI: 4   # quante cotture tenere (le release tasselli-* più recenti)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Impronta
+        id: imp
+        run: |
+          IMP=$(grep -o "PV_IMPRONTA_TASS = '[0-9a-f]*'" v7/index.html | head -1 | grep -o "[0-9a-f]\{16\}" || true)
+          test -n "$IMP" || { echo "impronta non trovata in v7/index.html"; exit 1; }
+          echo "imp=$IMP" >> "$GITHUB_OUTPUT"
+          if gh release view "tasselli-$IMP" > /dev/null 2>&1; then echo "fatto=1" >> "$GITHUB_OUTPUT"; echo "tasselli-$IMP già cotti"; fi
+      - uses: actions/setup-node@v4
+        if: steps.imp.outputs.fatto != '1'
+        with:
+          node-version: 20
+      - name: Attrezzi (meshoptimizer, sharp, Chromium)
+        if: steps.imp.outputs.fatto != '1'
+        working-directory: v7/strumenti
+        run: |
+          npm ci --no-audit --no-fund
+          npm install --no-save --no-audit --no-fund playwright-core@1.56.1
+          npx playwright-core install --with-deps chromium
+      - name: Cottura
+        if: steps.imp.outputs.fatto != '1'
+        working-directory: v7
+        env:
+          PW: ${{ github.workspace }}/v7/strumenti/node_modules/playwright-core
+        run: node strumenti/tassella.js --impronta=${{ steps.imp.outputs.imp }}
+      - name: Release
+        if: steps.imp.outputs.fatto != '1'
+        run: |
+          IMP=${{ steps.imp.outputs.imp }}
+          grep -q "\"impronta\":\"$IMP\"" v7/tasselli/indice.json
+          tar czf tasselli.tar.gz -C v7 tasselli
+          ls -la tasselli.tar.gz
+          gh release create "tasselli-$IMP" tasselli.tar.gz --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Tasselli $IMP" --notes "La città a tasselli per l'impronta $IMP (commit $GITHUB_SHA). La scarica il build di Vercel: v7/strumenti/prendi_tasselli.sh."
+          # le cotture vecchie: restano le TIENI più recenti (le release e i loro tag)
+          gh release list --limit 100 --json tagName,createdAt --jq '[.[] | select(.tagName | startswith("tasselli-"))] | sort_by(.createdAt) | reverse | .[(env.TIENI | tonumber):] | .[].tagName' \
+            | while read -r T; do gh release delete "$T" --yes --cleanup-tag || true; done
+      - name: Nuovo deploy su Vercel
+        if: steps.imp.outputs.fatto != '1'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$HOOK" ]; then curl -fsS -X POST "$HOOK" > /dev/null && echo "deploy chiesto"; else echo "VERCEL_DEPLOY_HOOK non impostato: i tasselli arrivano col prossimo deploy"; fi

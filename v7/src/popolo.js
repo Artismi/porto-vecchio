@@ -34,6 +34,9 @@ var Popolo = (function () {
   // mappa che ha i luoghi-missione (W.luoghi); la mappa vecchia, più larga, resta com'era (con più gente le scene si rompono)
   const COMPATTA = !!(W && W.luoghi);
   if (COMPATTA) Object.assign(CFG, { max: 260, nearR: 190, nearShare: .85, maxNear: 84 });
+  // [leggera] sul telefono meno gente viva attorno al giocatore, con un tetto: ogni figura costa ~0,4 MB (pelle, scheletro, animazioni).
+  // Si vive per intero entro 40 m (non 52), al massimo 36 insieme; gli altri restano abitanti leggeri, come quelli lontani
+  if (typeof LeggeraMem !== 'undefined' && LeggeraMem.on('gente')) Object.assign(CFG, { near: 40, far: 50, maxNear: 36 });
 
 
   // ---------------- CALENDARIO ----------------
@@ -2092,7 +2095,7 @@ var Popolo = (function () {
   // chi può fermarsi: ha un buco (non il lavoro a orario, non un appuntamento, non il sonno), non è nei guai, non recita
   const BUSYACT = { lavoro: 1, appuntamento: 1, impresa: 1, sonno: 1, bollettino: 1, messa: 1, giro: 1, scritta: 1 };
   function canStop(st, n, far) {
-    const P = n.pop; if (!P || !P.ints || n.dead || n.cop || n.faction || n.__ev || n.__posto || P.emer || P.errand || n.panic > 0 || n.stun > 0 || n.inVeh || n.jailedUntil > st.t || isPassive(st, n) || n.room) return false;
+    const P = n.pop; if (!P || !P.ints || n.dead || n.cop || n.faction || n.__ev || n.__posto || n.rotelle || P.emer || P.errand || n.panic > 0 || n.stun > 0 || n.inVeh || n.jailedUntil > st.t || isPassive(st, n) || n.room) return false;
     const b = P.cur || blockNow(st, n); if (!b || BUSYACT[b.act] || (b.fixed && b.act !== 'casa')) return false;
     if (far) return !P.near || n.inside;
     return P.near && !n.inside && n.action && n.action.name === 'routine';
@@ -2118,15 +2121,20 @@ var Popolo = (function () {
       if (have >= want) continue;
       const who = D.who || 'any'; let n = null, from = null, comparsa = false;
       if (!q.tetto) { let bd = 1e9; for (const k of st.npcs) { if (!canStop(st, k, false) || !whoOk(k, who)) continue; const d = dist(k.x, k.y, q.x, q.y); if (d < 34 && d < bd) { bd = d; n = k; } } }
-      const slot = pickSlot(st, q, occ[q.id] || 0, D);
+      let slot = pickSlot(st, q, occ[q.id] || 0, D);
       if (!n) {
         // una comparsa: esce da una porta vicina al posto (non sotto gli occhi del giocatore) da cui il posto si raggiunge a piedi; sui tetti si è già lì
         from = q.tetto ? { x: q.x, y: q.y } : doorNear(st, q, p, slot); if (!from) { q.__ko = (q.__ko || 0) + 1; continue; }
         let best = null, bs = -1e9; for (const k of st.npcs) { if (!canStop(st, k, true) || !whoOk(k, who)) continue; const H = k.pop.homeT; const s = -(H ? dist(H.x, H.y, q.x, q.y) : 400) / 100 + Math.random() * 1.5 + (k.pop.near ? 1 : 0); if (s > bs) { bs = s; best = k; } }
         if (!best) continue; n = best; comparsa = true;
       } else if (!q.tetto && !G.findPath(n.x, n.y, slot.x, slot.y).length && dist(n.x, n.y, slot.x, slot.y) > 2) continue;   // da dov'è non ci arriva: lascia stare
-      const pose = pickFrom(FPOSE[q.k], n, slot), hand = pickFrom(FHAND[q.k], n, slot);
-      const Pn = n.pop; n.__posto = { id: q.id, p: q, slot, until: st.t + FILL.dur[0] + Math.random() * (FILL.dur[1] - FILL.dur[0]), pose, hand, hand0: n.hand || null, arrived: false, comparsa, tetto: !!q.tetto, t0: st.clock };
+      let pose = pickFrom(FPOSE[q.k], n, slot), sed = null; const hand = pickFrom(FHAND[q.k], n, slot);
+      // [seduti] chi si siede va su un sedile vero (panchina, sedia del dehors) vicino al posto; se non ce n'è uno libero, sta in piedi
+      if (pose === 'siede' && typeof Anim !== 'undefined' && Anim.sediliOn && Anim.sediliOn()) {
+        const sn = Anim.sedileNear(slot.x, slot.y, 4, true, n.id) || Anim.sedileNear(q.x, q.y, 5, true, n.id);
+        if (sn) { sed = sn.q; sed.by = n.id; slot = { x: sn.x + Math.sin(sn.yaw) * .06, y: sn.z + Math.cos(sn.yaw) * .06, face: Math.PI / 2 - sn.yaw }; } else pose = 'aspetta';
+      }
+      const Pn = n.pop; n.__posto = { id: q.id, p: q, slot, sed, until: st.t + FILL.dur[0] + Math.random() * (FILL.dur[1] - FILL.dur[0]), pose, hand, hand0: n.hand || null, arrived: false, comparsa, tetto: !!q.tetto, t0: st.clock };
       if (comparsa) { n.x = from.x; n.y = from.y; n.inside = false; Pn.near = true; Pn.lod = 'vicino'; n.path = []; Pn.goalSet = false; n.action = { name: 'routine', scores: [], why: `${cap(labelOf(q))}.`, since: st.clock }; if (q.tetto) { n.__posto.arrived = true; n.wrH = q.h3 - (G.MAP.elev[Math.floor(q.y / TS) * G.MAP.world.GW + Math.floor(q.x / TS)] || 0); n.face = slot.face; } }
       else { n.path = []; Pn.goalSet = false; }
       if (hand) n.hand = hand;
@@ -2155,6 +2163,7 @@ var Popolo = (function () {
   }
   function endPosto(st, n) {
     const q = n.__posto; if (!q) return; delete n.__posto;
+    if (q.sed && q.sed.by === n.id) q.sed.by = null;   // [seduti] il sedile torna libero
     if (q.hand) n.hand = q.hand0; n.path = []; if (n.pop) n.pop.goalSet = false;
     if (q.tetto) { n.wrH = null; const b = G.BUILDINGS[q.p.bi]; if (b && b.door) { n.x = b.door[0] * TS + TS / 2; n.y = b.door[1] * TS + TS / 2; } }
     (st.pop.fillDone = st.pop.fillDone || 0); st.pop.fillDone++;
@@ -2192,7 +2201,10 @@ var Popolo = (function () {
   // per le prove: quanti stanno in ogni tipo di posto adesso
   function fillReport(st) { const c = {}; st.npcs.forEach(n => { if (n.__posto) c[n.__posto.p.k] = (c[n.__posto.p.k] || 0) + 1; }); return c; }
   if (typeof Anim !== 'undefined' && Anim.npcMap) Anim.npcMap((st, n, s) => {
-    const q = n.__posto; if (!q || !q.arrived || n.__ev || n.dead || n.stun > 0) return; const p = q.pose; if (!p) { if (s.act && s.act !== 'aspetta' && s.act !== 'appoggiato') s.act = null; return; }
+    const q = n.__posto; if (!q || !q.arrived || n.__ev || n.dead || n.stun > 0) return;
+    if ((n.pop && n.pop.emer) || (n.action && n.action.name !== 'routine') || Math.abs(n.speedNow || 0) > .2 || dist(n.x, n.y, q.slot.x, q.slot.y) > .6) return;   // [seduti] chiamato altrove, o già in cammino: la posa del posto non vale più
+    if (q.sed) s.sedile = true;
+    const p = q.pose; if (!p) { if (s.act && s.act !== 'aspetta' && s.act !== 'appoggiato') s.act = null; return; }
     if (p.endsWith('_su')) { s.upper = p.slice(0, -3); if (s.act && s.act !== 'aspetta' && s.act !== 'appoggiato' && s.act !== 'siede') s.act = null; } else { s.act = p; if (p !== 'siede') s.upper = null; }
   });
 

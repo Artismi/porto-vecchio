@@ -1,6 +1,6 @@
 
 /* Modelli esterni (Kenney, Quaternius, Poly Pizza — vedi Crediti) caricati da assets/m e messi nel mondo:
-   porto con barche e container, Rocca con elicottero e forca, poligono, discarica, accampamenti, luna park,
+   porto con container, Rocca con elicottero e forca, poligono, accampamenti,
    auto anni '70-'80. Si carica in sottofondo: il gioco parte subito, i pezzi compaiono quando arrivano. */
 var Models = (function () {
   'use strict';
@@ -9,17 +9,35 @@ var Models = (function () {
     pesca: ['k_boat-fishing-small.json', 'l', 7], rimorchiatore: ['k_boat-tug-a.json', 'l', 8], vela: ['k_boat-sail-a.json', 'l', 8], vela2: ['k_boat-sail-b.json', 'l', 8.5],
     motoscafo: ['k_boat-speed-a.json', 'l', 6.5], motoscafo2: ['k_boat-speed-c.json', 'l', 6], barchino: ['k_boat-row-small.json', 'l', 3.6], cargo: ['k_ship-cargo-a.json', 'l', 34],
     containerA: ['k_cargo-container-a.json', 'l', 6], containerB: ['k_cargo-container-b.json', 'l', 6], containerC: ['k_cargo-container-c.json', 'l', 6], merce: ['k_cargo-pile-a.json', 'l', 4],
-    elicottero: ['r_Helicopter.json', 'l', 12], ruota: ['r_SM_FerrisWheel_02.json', 'h', 24], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
+    elicottero: ['r_Helicopter.json', 'l', 12], newjersey: ['r_ConcreteBarrier.json', 'l', 2.6], transenna: ['r_Barrier_Large.json', 'l', 3.8],
     rx7: ['r_RX_7_3_v2.json', 'l', 4.3], gtr: ['r_GTR.json', 'l', 4.5], bursley: ['r_1972-bursley-defiance.json', 'l', 4.9],
     tenda: ['s_Tent.json', 'l', 3.2], falo: ['s_Bonfire_Fire.json', 'l', 1.3], tronco: ['s_WoodLog.json', 'l', 2.2], gommone: ['s_Raft.json', 'l', 3.6], bombola: ['s_PropaneTank.json', 'h', 1.1],
     forca: ['x_Gallows.json', 'h', 4.6],
     contLungo: ['t_Container_Long.json', 'l', 6.2], contCorto: ['t_Container_Small.json', 'l', 3.2], cassa: ['t_Crate.json', 'h', .9], scatole: ['t_CardboardBoxes_1.json', 'l', 1.2], scatole3: ['t_CardboardBoxes_3.json', 'h', 1.9],
     pallet: ['t_Pallet.json', 'l', 1.2], sacchi: ['t_SackTrench.json', 'l', 3.4], sacchi2: ['t_SackTrench_Small.json', 'l', 2.4], barriera: ['t_Barrier_Fixed.json', 'l', 3.6], cavalletto: ['t_Barrier_Single.json', 'l', 1.9],
-    carro: ['t_Tank.json', 'l', 6.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
+    carro: ['t_Tank.json', 'l', 3.5], baracca: ['t_Structure_1.json', 'l', 8], torretta: ['t_Structure_3.json', 'h', 8], cisterna: ['t_WaterTank_Platform.json', 'h', 5],
     barile: ['t_ExplodingBarrel.json', 'h', 1], gas: ['t_GasTank.json', 'h', 1.4], rottame: ['t_Debris_BrokenCar.json', 'l', 4.3], gomme: ['t_Debris_Tires.json', 'l', 1.6], macerie: ['t_Debris_Pile.json', 'l', 2.6],
     cassonetto: ['t_TrashContainer.json', 'l', 2], cassonetto2: ['t_TrashContainer_Open.json', 'l', 2.2], cono: ['t_TrafficCone.json', 'h', .7], rete: ['t_MetalFence.json', 'l', 3.5], divano: ['t_Sofa.json', 'l', 2.2], tubi: ['t_Pipes.json', 'l', 4],
   };
   const LIB = {}, waiting = {}, placed = [];
+  // [coerenza] STILE.md, regola 6: le tre auto scaricate (RX-7 19,7 mila triangoli, GTR 14,8 mila, Bursley 11,2 mila; le nostre auto
+  // ne hanno 1-3 mila) hanno ruote da 3 mila triangoli l'una: alla distanza del gioco è grana che frigge accanto a palazzi e persone
+  // chunky. Al caricamento si semplificano per raggruppamento dei vertici (una cella di 4,5 cm veri, sotto il pixel del gioco; la normale divisa in sei
+  // direzioni, così gli spigoli netti restano netti); ?look=vecchio com'erano
+  const SEMPL = { rx7: .045, gtr: .045, bursley: .045 }, SEMPL_ON = !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search));
+  function semplifica(geo, cell) {
+    const P = geo.attributes.position, N = geo.attributes.normal, n = P.count, idx = geo.index, nT = (idx ? idx.count : n) / 3;
+    if (nT < 300 || geo.morphAttributes && Object.keys(geo.morphAttributes).length) return null;
+    const rep = new Int32Array(n), cl = new Map(), dir = i => { if (!N) return 0; const x = N.getX(i), y = N.getY(i), z = N.getZ(i), ax = Math.abs(x), ay = Math.abs(y), az = Math.abs(z); return ax > ay && ax > az ? (x > 0 ? 1 : 2) : ay > az ? (y > 0 ? 3 : 4) : (z > 0 ? 5 : 6); };
+    for (let i = 0; i < n; i++) { const k = Math.floor(P.getX(i) / cell) + ',' + Math.floor(P.getY(i) / cell) + ',' + Math.floor(P.getZ(i) / cell) + ',' + dir(i); let r = cl.get(k); if (r === undefined) cl.set(k, r = i); rep[i] = r; }
+    const out = []; for (let t = 0; t < nT; t++) { const a = rep[idx ? idx.getX(t * 3) : t * 3], b = rep[idx ? idx.getX(t * 3 + 1) : t * 3 + 1], c = rep[idx ? idx.getX(t * 3 + 2) : t * 3 + 2]; if (a !== b && b !== c && a !== c) out.push(a, b, c); }
+    if (out.length / 3 > nT * .85 || out.length / 3 < nT * .08) return null;
+    const used = new Map(), g = new THREE.BufferGeometry(), nu = []; out.forEach(v => { if (!used.has(v)) { used.set(v, nu.length); nu.push(v); } });
+    for (const name in geo.attributes) { const A = geo.attributes[name], sz = A.itemSize, arr = new Float32Array(nu.length * sz);
+      nu.forEach((v, j) => { for (let c = 0; c < sz; c++) arr[j * sz + c] = c === 0 ? A.getX(v) : c === 1 ? A.getY(v) : c === 2 ? A.getZ(v) : A.getW(v); });
+      g.setAttribute(name, new THREE.BufferAttribute(arr, sz)); }
+    g.setIndex(out.map(v => used.get(v))); g.groups = []; g.computeBoundingSphere(); g.computeBoundingBox(); return g;
+  }
   // tinte: i carri e le baracche del poligono color oliva, l'elicottero grigio Tutela
   const TINT = { carro: { c: '#5c6650' }, baracca: { c: '#6a7058' }, torretta: { c: '#6a7058' }, elicottero: { c: '#4a4f58' } };
   let base = 'assets/mj/', loader = null, R = null, scene = null, G = null;
@@ -32,6 +50,10 @@ var Models = (function () {
       const root = gl.scene; const drop = []; root.traverse(o => { if (o.isLight || o.isCamera) drop.push(o); }); drop.forEach(o => o.parent && o.parent.remove(o)); root.updateMatrixWorld(true);
       const bb = new THREE.Box3().setFromObject(root), sz = bb.getSize(new THREE.Vector3()), ctr = bb.getCenter(new THREE.Vector3());
       const L = c[1] === 'h' ? sz.y : Math.max(sz.x, sz.z), k = c[2] / (L || 1);
+      if (SEMPL_ON && SEMPL[id]) { let t0 = 0, t1 = 0; const done = new Map(); root.traverse(o => { if (!o.isMesh || o.isSkinnedMesh || (o.geometry.groups && o.geometry.groups.length > 1)) return; const ws = o.getWorldScale(new THREE.Vector3()), sc = Math.max(ws.x, ws.y, ws.z) * k || 1;   // [coerenza] la cella in metri veri
+        const g0 = o.geometry, n0 = (g0.index ? g0.index.count : g0.attributes.position.count) / 3; t0 += n0; let g1 = done.get(g0); if (g1 === undefined) { g1 = semplifica(g0, SEMPL[id] / sc); done.set(g0, g1); }
+        if (g1) { o.geometry = g1; t1 += g1.index.count / 3; } else t1 += n0; });
+        if (typeof window !== 'undefined' && window.__dbgCoerenza) console.log('[coerenza] auto', id, 'triangoli', t0, '->', t1); }
       const lenAxis = sz.x > sz.z ? 'x' : 'z';
       // la base va a terra e al centro; tutto in un gruppo normalizzato
       const g = new THREE.Group(); root.position.set(-ctr.x, -bb.min.y, -ctr.z); g.add(root); g.scale.setScalar(k);
@@ -160,6 +182,20 @@ var Models = (function () {
       guns[k].visible = false; guns[k].userData.vecchia = true; root.visible = false; guns[k] = root;   // il kit resta spento
     }
   }
+  // [leggera] LE ARMI PIGRE (telefono): ogni figura portava, spente, le sei armi del kit (copie) e le sei vere di oggetti3d.js, più gli
+  // attrezzi in mano. Qui resta solo il supporto nel polso (un gruppo vuoto, con la stessa scala e lo stesso giro di armiVere): l'arma
+  // si costruisce la prima volta che qualcuno la chiede (guns[k], un getter che non si conta nei for…in), poi resta. Stesso posto, stessa
+  // misura: il supporto segue il polso come prima (e personaggi.js lo corregge per il braccio lungo come gli altri figli del polso)
+  const PIGRE = () => typeof LeggeraMem !== 'undefined' && LeggeraMem.on('armi') && typeof Oggetti3D !== 'undefined' && !!Oggetti3D;
+  function pigro(o, k, fai) { Object.defineProperty(o, k, { configurable: true, enumerable: false, get() { const v = fai(); Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); return v; }, set(v) { Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); } }); }
+  function armiPigre(g, m, guns) {
+    const wr = m.getObjectByName('WristR'); if (!wr) return;
+    g.updateMatrixWorld(true); const ws = new THREE.Vector3(), gs = new THREE.Vector3(); wr.getWorldScale(ws); g.getWorldScale(gs);
+    const HAND = (window.Anim && Anim.HAND) || 1, holder = new THREE.Group(); holder.name = 'armi';
+    holder.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI); holder.scale.setScalar(gs.x / (ws.x || 1) / HAND); wr.add(holder);
+    for (const k in ARMI_VERE) { if (!GUNTPL.guns[k]) continue;
+      pigro(guns, k, () => { const root = Oggetti3D.armaInMano(ARMI_VERE[k], .1, .02); root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); root.visible = false; holder.add(root); return root; }); }
+  }
   function parallel(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallel(a.children[i], b.children[i], cb); }
   function cloneSkinned(src) {
     const sl = new Map(), cl = new Map(), c = src.clone(true);
@@ -201,7 +237,8 @@ var Models = (function () {
     // armi del soldato: sono già nella mano, si accende solo quella giusta
     const guns = {}; m.traverse(o => { if (/^(AK|Pistol|Revolver|Revolver_Small|Shotgun|SMG|Sniper|Sniper_2|Knife_1|Knife_2|GrenadeLauncher|RocketLauncher|ShortCannon|Shovel)$/.test(o.name)) { guns[o.name] = o; o.visible = false; } });
     // i civili non hanno armi nel modello: si prendono quelle del kit (stesse ossa Quaternius) e si agganciano all'indice destro
-    if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
+    if (!Object.keys(guns).length && GUNTPL && PIGRE()) armiPigre(g, m, guns);   // [leggera] sul telefono le armi nascono quando servono
+    else if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
@@ -215,13 +252,24 @@ var Models = (function () {
     const wr = m.getObjectByName('WristR');
     if (wr) {
       g.updateMatrixWorld(true); const hp = new THREE.Vector3(); wr.getWorldPosition(hp);
-      const mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
+      let mk = (k, obj) => { obj.visible = false; g.userData.props[k] = pin(g, wr, obj, hp.x, hp.y - .07, hp.z + .05); };
+      if (PIGRE()) { const P = pin(g, wr, new THREE.Group(), hp.x, hp.y - .07, hp.z + .05), fai = {}; P.name = 'attrezzi';   // [leggera] gli attrezzi pigri: il posto subito, l'oggetto quando serve
+        const pr = g.userData.props;
+        ['bomboletta', 'telefono', 'fotocamera', 'piede', 'gesso', 'manganello', 'cartello'].forEach(k => pigro(pr, k, () => { const obj = fai[k](); obj.visible = false; obj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } }); P.add(obj); return obj; }));
+        mk = (k, f) => { fai[k] = f; };
+        mk('bomboletta', () => C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', () => B(.05, .11, .025, '#151518')); mk('fotocamera', () => B(.13, .08, .06, '#202024'));
+        mk('piede', () => B(.03, .55, .03, '#4a4a54')); mk('gesso', () => B(.02, .07, .02, '#f4f4ee')); mk('manganello', () => B(.035, .5, .035, '#14141a'));
+        mk('cartello', () => { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
+          if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
+          const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); return cg; });
+      } else {
       mk('bomboletta', C(.035, .035, .17, '#c8302a', 0, 0, 0, 10)); mk('telefono', B(.05, .11, .025, '#151518')); mk('fotocamera', B(.13, .08, .06, '#202024'));
       mk('piede', B(.03, .55, .03, '#4a4a54')); mk('gesso', B(.02, .07, .02, '#f4f4ee'));
       mk('manganello', B(.035, .5, .035, '#14141a'));   // [ordine]
       { const cg = new THREE.Group(), cv = document.createElement ? document.createElement('canvas') : null; cg.add(B(.025, 1.0, .025, '#8a6a48', 0, .35, 0)); let bm = lm('#f2ecdc');
         if (cv) { cv.width = 128; cv.height = 64; const tx = new THREE.CanvasTexture(cv); tx.magFilter = THREE.NearestFilter; bm = new THREE.MeshLambertMaterial({ map: tx }); cg.userData.cv = cv; cg.userData.tx = tx; }
         const bd = new THREE.Mesh(new THREE.BoxGeometry(.62, .34, .015), bm); bd.position.set(0, .92, 0); cg.add(bd); mk('cartello', cg); }   // [ordine] il cartello di chi protesta
+      }
     }
     play(g, 'Idle'); return g;
   }
@@ -313,9 +361,11 @@ var Models = (function () {
   function animPerson(g, o, dt) {
     const u = g.userData, sp = Math.abs(o.speed || 0);
     const gunName = (o.weapon && u.gunsByWeapon[o.weapon]) || (o.held && u.gunsByWeapon[o.held]);
+    if (o.held && u.props) u.props[o.held];   // [leggera] (l'attrezzo pigro nasce qui, se serve)
     for (const k in (u.props || {})) u.props[k].visible = o.held === k;   // [azioni]
     if (u.riotHat) { const on = !!o.riot; if (u.riotOn !== on) { u.riotOn = on; u.riotHat.visible = on; if (u.copHat) u.copHat.visible = !on; if (u.riotShield) u.riotShield.visible = on; } }   // [ordine]
     if (o.banner && u.props && u.props.cartello && u.props.cartello.userData.cv && u.bannerTxt !== o.banner) { u.bannerTxt = o.banner; const cv = u.props.cartello.userData.cv, x = cv.getContext('2d'); x.fillStyle = '#f2ecdc'; x.fillRect(0, 0, 128, 64); x.strokeStyle = '#8a2020'; x.lineWidth = 4; x.strokeRect(2, 2, 124, 60); x.fillStyle = '#b01818'; let fs = 30; x.font = 'bold ' + fs + 'px sans-serif'; while (x.measureText(o.banner).width > 118 && fs > 12) { fs -= 2; x.font = 'bold ' + fs + 'px sans-serif'; } x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(o.banner, 64, 33); u.props.cartello.userData.tx.needsUpdate = true; }
+    if (gunName) u.mguns[gunName]; if (o.gun) u.mguns[o.gun];   // [leggera] (l'arma pigra nasce qui, se serve)
     for (const k in u.mguns) u.mguns[k].visible = !!(k === gunName || (o.gun && k === o.gun));
     let clip = 'Idle';
     if (o.down) clip = 'Death';
@@ -355,15 +405,32 @@ var Models = (function () {
     }
     return null;
   }
-  const dyn = { guards: [], heli: null, wheel: null, fires: [], boats: [] };
+  // [sporcherie] FUORI DAI PASSAGGI: una cosa posata non sta su una strada (carreggiata VIA o banda di un vicolo) né dentro un muro, e non
+  // chiude un passaggio (da una parte o dall'altra restano almeno 1,2 m liberi fino al primo muro). Un gruppo (le casse del Wu) si sposta tutto insieme del meno possibile; se non c'è posto entro 25 m resta dov'era.
+  function duro(x, z) { const v = G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)); return v === G.T.BLD || v === G.T.WATER || v === G.T.FOUNT || v === G.T.TREE || v === undefined; }
+  let VIC = null;
+  const dSeg = (x, z, a, b) => { const ex = b[0] - a[0], ez = b[1] - a[1], L2 = ex * ex + ez * ez || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (z - a[1]) * ez) / L2)); return Math.hypot(x - a[0] - ex * t, z - a[1] - ez * t); };
+  function vicolo(x, z) { if (!VIC) VIC = ((G.MAP && G.MAP.roads) || []).filter(rd => rd.kind === 'vicolo' && rd.pts && !rd.rect);   // la banda di vicolo più vicina: [distanza dall'asse, mezza larghezza]
+    let best = null; VIC.forEach(rd => { for (let k = 1; k < rd.pts.length; k++) { const d = dSeg(x, z, rd.pts[k - 1], rd.pts[k]); if (d < rd.w / 2 + 3 && (!best || d - rd.w / 2 < best[0] - best[1])) best = [d, rd.w / 2]; } }); return best; }
+  function suVia(x, z) { const W = G.MAP && G.MAP.world, tx = Math.floor(x / G.TS), tz = Math.floor(z / G.TS); if (G.tileAt(tx, tz) === G.T.VIA) return true; if (!(W && W.roadW && W.roadW[tz * W.GW + tx] > 0)) return false;
+    const v = vicolo(x, z); return !v || v[0] > v[1] + 1; }   // in carreggiata; nei vicoli conta il corridoio (chiude)
+  function chiude(x, z, r) { const v = vicolo(x, z); if (v && v[0] < v[1] + r && v[1] + v[0] - r < 1.2) return true;
+    for (const [ux, uz] of [[1, 0], [0, 1]]) { let a = 6, b = 6; for (let d = r; d <= 6; d += .25) if (duro(x - ux * d, z - uz * d)) { a = d - r; break; } for (let d = r; d <= 6; d += .25) if (duro(x + ux * d, z + uz * d)) { b = d - r; break; } if (a < 6 && b < 6 && Math.max(a, b) < 1.2) return true; } return false; }
+  const buono = (x, z, r) => !duro(x, z) && !suVia(x, z) && !chiude(x, z, r) && [[r, 0], [-r, 0], [0, r], [0, -r]].every(([u, w]) => !duro(x + u, z + w) && !suVia(x + u, z + w));
+  function fuoriPassaggi(L, r) { if (!G.MAP || !G.MAP.world || !G.MAP.world.WALL) return L;   // solo nella città nuova
+    for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, dx = Math.cos(t) * rr, dz = Math.sin(t) * rr;
+      if (L.every(q => buono(q[0] + dx, q[1] + dz, q[3] || r))) return L.map(q => [q[0] + dx, q[1] + dz, q[2]]); }
+    return L; }
+  // un posto a filo muro (il retro a meno di 40 cm da una parete) fuori dai passaggi, il più vicino a (x, z); [x, z, rotazione col retro al muro]
+  function aMuro(x, z, r) { for (let rr = 0; rr <= 25; rr += .5) for (let a = 0; a < Math.max(1, Math.round(rr * 3)); a++) { const t = a / Math.max(1, Math.round(rr * 3)) * 6.283, px = x + Math.cos(t) * rr, pz = z + Math.sin(t) * rr;
+      if (!buono(px, pz, r)) continue; for (const [ux, uz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (duro(px + ux * (r + .4), pz + uz * (r + .4)) && !duro(px - ux * (r + .4), pz - uz * (r + .4))) return [px, pz, Math.atan2(-ux, -uz)]; }
+    return null; }
+  const dyn = { guards: [], heli: null, fires: [], boats: [] };
   async function dress() {
     const P = G.PLACES, all = Object.keys(CAT).filter(k => !['rx7', 'gtr', 'bursley'].includes(k));
     await Promise.all(all.map(load));
     // ---- porto: barche ai pontili, una nave fuori dai moli, container e merce in banchina ----
-    const B = [['pesca', 201.6, 384, 0], ['pesca', 201.6, 393, .05], ['motoscafo', 216.6, 386, 0], ['vela', 223.6, 392, Math.PI], ['rimorchiatore', 238.2, 385, 0], ['motoscafo2', 245.8, 391, Math.PI],
-      ['barchino', 205, 380, 1.4], ['barchino', 236, 380, 1.7], ['vela2', 210, 404, .4], ['motoscafo', 232, 406, -.5]];
-    B.forEach(([id, x, z, ry]) => { const o = put(id, x, z, ry, -.35); if (o) dyn.boats.push({ o, ph: x * .37 + z }); });
-    const ship = put('cargo', 220, 440, Math.PI / 2, -.5); if (ship) dyn.boats.push({ o: ship, ph: 1, slow: true });
+    // [sporcherie] tolte le dieci barche e la nave cargo della mappa vecchia (stavano in mare aperto): le barche sono quelle ai pontili della Marina
     // container: sul molo est, verso il magazzino
     const quay = []; for (let x = 252; x < 290; x += 2) for (let z = 366; z < 384; z += 2) { const v = G.tileAt(x >> 1, z >> 1); if (v === G.T.QUAY) quay.push([x, z]); }
     // piazzale dei container: file ordinate decise dal motore (Game.layout), impilati a scacchiera
@@ -371,15 +438,12 @@ var Models = (function () {
       const id = ['containerA', 'containerB', 'containerC'][it.col]; put(id, it.x, it.y, it.rot);
       if (it.up) { const gh = R.groundH ? R.groundH(it.x, it.y) : .4, h = LIB[id] ? LIB[id].size.y : 2.6; const o = put(['containerB', 'containerC', 'containerA'][it.col], it.x, it.y, it.rot); if (o) o.position.y = gh + h; }
     });
-    // ---- luna park sulla spiaggia del Lido ----
-    if (P.spiaggia) { const q = openSpot(P.spiaggia.x, P.spiaggia.y + 14, 10, 4, 70); if (q) dyn.wheel = put('ruota', q[0], q[1], Math.PI / 2); }
-    // ---- la Rocca: elicottero sullo spiazzo, forca, sbarramenti sulla strada ----
+    // [sporcherie] tolta la ruota panoramica di 24 m sulla spiaggia del Lido
+    // ---- la Rocca: elicottero sullo spiazzo, la forca sugli scogli ([sporcherie] tolti new jersey, transenne e sacchi dentro il mastio: avanzo della mappa vecchia) ----
     const PL = palco();   // [spianata2] nella città nuova il palco del potere (palco.js) dice dove stanno i carri e chi li guarda
     if (P.rocca) {
       const rx = P.rocca.x, rz = P.rocca.y;
       if (!PL) put('elicottero', rx - 14, rz + 4, .6); put('forca', rx + 12, rz + 2, Math.PI / 2);   // [spianata2] sul palco l'elicottero di giorno è quello sulla piazzola (render.js)
-      for (let i = -2; i <= 2; i++) put('newjersey', rx + i * 2.8, rz + 16, 0);
-      put('transenna', rx - 9, rz + 12, 0); put('transenna', rx + 9, rz + 12, 0); put('sacchi', rx - 5, rz + 9, 0); put('sacchi', rx + 5, rz + 9, 0);
     }
     // l'elicottero di pattuglia: gira sull'isola di notte col faro
     dyn.heli = make('elicottero'); if (dyn.heli) { scene.add(dyn.heli); dyn.heli.visible = false; }
@@ -394,8 +458,8 @@ var Models = (function () {
       put('carro', x - 8, z - 6, .4); put('carro', x + 6, z - 9, -.3); put('baracca', x - 14, z + 8, 0); put('torretta', x + 14, z + 8, 0); put('cisterna', x + 2, z + 12, 0);
       put('sacchi', x - 2, z - 2, 0); put('sacchi2', x + 2, z - 2, .2); put('barriera', x - 18, z - 4, Math.PI / 2);
     }
-    // ---- discarica ----
-    if (P.discarica) { const x = P.discarica.x, z = P.discarica.y; put('rottame', x - 3, z + 2, .7); put('rottame', x + 4, z - 3, 2.2); put('gomme', x + 1, z + 4, 0); put('macerie', x - 5, z - 3, 0); put('divano', x - 1, z - 5, 1.1); put('cassonetto2', x + 7, z + 5, .3); }
+    // [sporcherie] la discarica sul Lungomare di Tramontana è tolta: resta un cassonetto a filo del muro più vicino, fuori dai passaggi
+    if (P.discarica) { const q = aMuro(P.discarica.x, P.discarica.y, 1.1); if (q) put('cassonetto', q[0], q[1], q[2]); }
     // ---- accampamenti: radura del pastore, ovile, caletta ----
     [['radura', 1], ['ovile', 0], ['caletta', 1]].forEach(([id, tent]) => {
       const q0 = P[id]; if (!q0) return; const sp = openSpot(q0.x + 4, q0.y + 4, 8, 8, 30); if (!sp) return; const x = sp[0], z = sp[1];
@@ -403,7 +467,7 @@ var Models = (function () {
       if (f) dyn.fires.push({ x, z, o: f });
     });
     if (P.caletta) put('gommone', P.caletta.x + 6, P.caletta.y + 4, 1.2);
-    // ---- città: cassonetti nei vicoli, coni al cantiere, scatole davanti agli alimentari ----
+    // ---- città: cassonetti nei vicoli, scatole davanti agli alimentari ([sporcherie] tolti i coni in fila senza cantiere) ----
     let n = 0;
     for (let tz = 150; tz < 205 && n < 18; tz += 3) for (let tx = 50; tx < 175 && n < 18; tx += 5) {
       const v = G.tileAt(tx, tz); if (v !== G.T.WALK) continue;
@@ -411,13 +475,14 @@ var Models = (function () {
       if (!wall || ((tx * 7 + tz * 13) % 5)) continue;
       put(n % 3 ? 'cassonetto' : 'scatole', tx * 2 + 1, tz * 2 + 1, ((tx + tz) % 4) * Math.PI / 2); n++;
     }
-    if (P.cantiere) for (let i = 0; i < 5; i++) put('cono', P.cantiere.x - 4 + i * 1.6, P.cantiere.y + 2.5, 0);
-    if (P.wu) { put('scatole', P.wu.x + 1.5, P.wu.y + .5, .3); put('cassa', P.wu.x - 1.5, P.wu.y + .6, 0); }
+    if (P.wu) fuoriPassaggi([[P.wu.x + 1.5, P.wu.y + .5, 'scatole', .7], [P.wu.x - 1.5, P.wu.y + .6, 'cassa', .6]], .6).forEach(([x, z, id]) => put(id, x, z, id === 'scatole' ? .3 : 0));   // [sporcherie] fuori dalla Rua
     if (P.cava) { put('contCorto', P.cava.x + 6, P.cava.y + 4, .5); }
     // guardie della Tutela ai posti di blocco: sentinelle armate, ferme
     await Promise.all(['Soldier', 'Casual_2', 'Worker'].map(loadChar)); prepGuns();
     const guard = (x, z, ry, gun, who) => { const g = (Models.person && Models.person.__personaggi ? Models.person : person)(null, who || 'cop'); /* [personaggi] le sentinelle sono figure nuove (con ?vecchiagente restano come prima) */ if (!g) return; g.position.set(x, (R.groundH ? R.groundH(x, z) : .4), z); g.rotation.y = ry; scene.add(g); dyn.guards.push({ g, gun }); };
-    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y; guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
+    if (P.rocca) { const rx = P.rocca.x, rz = P.rocca.y, F = G.MAP && G.MAP.world && G.MAP.world.FORT, g0 = F && F.gates && F.gates.find(g => g.kind === 'terra');
+      // [sporcherie] nella città nuova le due sentinelle stavano dentro il muro del mastio (rx ± 3, rz + 13): fanno la guardia alla Porta della Rocca, dal lato della corte
+      if (g0) { guard(g0.x + 8.5, g0.y - 2.2, -Math.PI / 2, 'AK'); guard(g0.x + 8.5, g0.y + 2.2, -Math.PI / 2, 'AK'); } else { guard(rx - 3, rz + 13, 0, 'AK'); guard(rx + 3, rz + 13, 0, 'AK'); } guard(rx - 12, rz + 6, .8, 'SMG'); guard(rx + 10, rz + 4, -.6, 'AK', 'hazmat'); }
     if (PL) { const a = PL.carri[0], c = PL.container[0]; if (a) { guard(a.x - 1, a.z - PL.CARRO.hz - 1.6, 0, 'AK'); guard(a.x + PL.CARRO.passo * 1.5, a.z - PL.CARRO.hz - 1.8, .3, 'AK'); } if (c) guard(c.x + PL.CONT.hx + 1.3, c.z + 1, -Math.PI / 2, 'AK'); }   // [spianata2] di guardia ai carri e ai container
     else if (P.poligono) { const x = P.poligono.x, z = P.poligono.y; guard(x - 1, z - 4, 0, 'AK'); guard(x + 3, z - 4, .3, 'AK'); guard(x - 10, z - 4, .5, 'AK'); guard(x + 12, z + 6, -.8, 'SMG', 'hazmat'); }
     if (P.commissariato) { const c = P.commissariato; guard(c.x - 3, c.y + 4.5, 0, 'SMG'); guard(c.x + 3, c.y + 4.5, 0, 'AK'); }
@@ -466,8 +531,6 @@ var Models = (function () {
       }
       if (dyn.beam) { dyn.beam.visible = on; dyn.pool.visible = on; }
     }
-    // ruota panoramica: gira piano
-    if (dyn.wheel) { /* il modello è un pezzo unico: la ruota resta ferma, si accende la notte */ }
   }
   function attach(api) {
     R = api; scene = api.scene; G = api.G;

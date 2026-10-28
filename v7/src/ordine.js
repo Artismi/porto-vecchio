@@ -173,7 +173,20 @@ var Ordine = (function () {
 
   // ================= MOVIMENTO =================
   // verso un punto: dritti se è vicino e si vede, altrimenti col percorso (ricalcolato al massimo ogni 1,5 s)
+  // [ordine] i posti fissi (guardie d'onore, sentinelle, piantone, le tappe delle ronde) sono scostamenti dal centro di un luogo: nella
+  // città nuova parecchi cadono dentro un edificio (gg_0/gg_1 davanti al Governo, sd_2/sd_3 alla Rocca, il piantone della caserma) e
+  // seek, senza percorso, ci andava dritto e restava nel muro. Il punto si sposta sul selciato libero più vicino (con 30 cm di margine)
+  const SNAP = new Map(), libero = (x, y) => G.walkM(x, y) && G.walkM(x - .3, y - .3) && G.walkM(x + .3, y - .3) && G.walkM(x - .3, y + .3) && G.walkM(x + .3, y + .3);
+  function aPiedi(x, y) {
+    if (libero(x, y)) return { x, y };
+    const k = Math.round(x * 4) + ',' + Math.round(y * 4), c = SNAP.get(k); if (c) return c; if (SNAP.size > 4000) SNAP.clear();
+    let q = { x, y };
+    { let best = null, bd = 1e9; for (let r = .5; r <= 12 && !best; r += .5) for (let a = 0; a < 24; a++) { const px = x + Math.cos(a / 24 * 6.283) * r, py = y + Math.sin(a / 24 * 6.283) * r; if (libero(px, py) && r < bd) { bd = r; best = { x: px, y: py }; } } if (best) q = best; }
+    SNAP.set(k, q); return q;
+  }
   function seek(st, n, x, y, dt, sp, near) {
+    { const q = aPiedi(x, y); x = q.x; y = q.y; }   // [ordine] mai dentro un muro
+    if (!n.inside && !n.lv && !G.walkM(n.x, n.y)) { const f = aPiedi(n.x, n.y); n.x = f.x; n.y = f.y; n.path = []; }   // [ordine] chi è già nel muro (sceso dalla volante, uscito dalla caserma su una casella piena) ne esce: da lì il percorso non c'è e si andava dritti attraverso le case
     const d = dist(n.x, n.y, x, y);
     if (d < (near || .5)) { n.speedNow = 0; n.path = []; return true; }
     const O = n.ord || (n.ord = {});
@@ -737,7 +750,7 @@ var Ordine = (function () {
   function driveStep(st, v, dt) {
     const T = v.driveTo; if (!T || v.rider === 'player' || v.wreck) return;
     if (v.rider !== 'npc') v.rider = 'npc';
-    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > (T.chase ? 2.5 : 8)) { v.path = G.findPath(v.x, v.y, T.x, T.y, 1) || []; v.pathT = st.clock; }
+    if (!v.path || !v.path.length || st.clock - (v.pathT || 0) > (T.chase ? 2.5 : 8)) { v.path = G.findPath(v.x, v.y, T.x, T.y, 1, true) || []; v.pathT = st.clock; }
     const d = dist(v.x, v.y, T.x, T.y);
     if (d < (T.chase ? 6 : 3) || (!v.path.length && d < 14)) {
       v.speed *= .8; v.vx = (v.vx || 0) * .8; v.vy = (v.vy || 0) * .8;

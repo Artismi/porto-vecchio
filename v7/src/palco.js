@@ -14,7 +14,7 @@
    Nessuna grafica: gira anche in Node (test_chiarezza.js). Coordinate in metri, x est, z sud. */
 var Palco = (function () {
   'use strict';
-  const CARRO = { hx: 3.1, hz: 3.3, passo: 7.2, n: 3 };   // m: la mezza sagoma di un carro (il modello è largo 6,2 m e lungo 6,5) e il passo della fila
+  const CARRO = { hx: 1.8, hz: 1.8, passo: 5, n: 3 };   // m: la mezza sagoma di un carro ([sporcherie] il modello in scala vera: lungo 3,5 m, largo 3,3, alto 3; prima 6,5 × 6,2 × 5,6, giocattoloni alti come una casa) e il passo della fila
   const CONT = { hx: 1.2, hz: 3, passo: 6.6, n: 3, dalMuro: 4.2 };   // container da 6 m, il fianco a 3 m dal Muro (le torri ci stanno davanti)
   const PAD = 6, ANT = { h: 16, r: 3.6 };   // la piazzola (mezzo lato libero) e l'antenna (altezza, raggio dei tiranti)
   const MUCCHI = { recinto: 24, max: 14 };   // un mucchietto ogni ~24 m al piede del Muro; al massimo tanti in tutto

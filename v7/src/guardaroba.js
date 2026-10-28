@@ -198,6 +198,12 @@ var Guardaroba = (function () {
     ['maglietta_ringer', 'maglietta ringer col collo colorato', 'Ringer', 'busto', [T, B], .008, '#f0ece2', 7, .2, .05],
     ['maglietta_resisti', 'maglietta con la scritta dietro', 'Resisti', 'busto', [T, B], .01, '#141418', 6, .25, .05],
     ['maglietta_tramonto', 'maglietta col tramonto e le palme', 'Riviera', 'busto', [T, B], .01, '#e8601a', 8, .25, .05],
+    ['maglietta_onda', 'maglietta con la grande onda', 'Onda', 'busto', [T, B], .01, '#f4f0e6', 9, .25, .05],
+    ['maglietta_limoni', 'maglietta coi limoni', 'Limoni', 'busto', [T, B], .01, '#2a5aa8', 9, .25, .05],
+    ['maglietta_tattoo', 'maglietta col cuore tatuato', 'Tattoo', 'busto', [T, B], .01, '#f4e6c0', 9, .25, .05],
+    ['maglietta_boombox', 'maglietta con lo stereo', 'Boombox', 'busto', [T, B], .01, '#2a5aa8', 9, .25, .05],
+    ['maglia_cross', 'maglia da motocross', 'Cross', 'busto', [T, B, A], .012, '#f4f0e6', 14, .3, .05],
+    ['felpa_chrome', 'felpa con la scritta cromata', 'Felpa chrome', 'busto', [T, B, A], .024, '#141418', 20, .7, .25],
     ['maglia_lunga', 'maglia a maniche lunghe da sotto', 'Manica lunga', 'busto', [T, B, A], .004, '#f0ece2', 5, .1, .1],
     ['maglia_basket', 'maglia da basket larga col numero', 'Maglia basket', 'busto', [T], .02, '#c83a2a', 12, .2, 0],
     ['felpa_college', 'felpa col cappuccio e la scritta ad arco', 'Felpa college', 'busto', [T, B, A], .024, '#5a5e66', 18, .7, .25],
@@ -254,7 +260,7 @@ var Guardaroba = (function () {
   sell('use:emporio', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'jeans_risvolto']);
   const MONTE = ['giacca_guscio', 'piumino_sacchi', 'gilet_piuma', 'pile_montagna', 'pantaloni_arrampicata', 'imbrago', 'corda', 'scarpe_trail'];
   sell('use:emporio', MONTE); sell('use:abbigliamento', MONTE);
-  const STREET = ['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
+  const STREET = ['maglietta_onda', 'maglietta_limoni', 'maglietta_tattoo', 'maglietta_boombox', 'maglia_cross', 'felpa_chrome', 'maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglia_lunga', 'maglia_basket', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'camicia_bowling', 'pantaloni_paracadute', 'joggers', 'pantaloncini_basket', 'jeans_carpenter', 'durag', 'visiera'];   // [personaggi] lo streetwear: negli abiti e all'emporio; al second hand le giacche e le maglie da gioco
   sell('use:emporio', STREET); sell('use:abbigliamento', STREET);
   O.SHOPLIST.filter(r => /mercato|magazzino|porto/.test(r[0])).forEach(r => ['maglietta_resisti', 'varsity', 'coach_jacket', 'giacca_raso', 'track_retro', 'camicia_bowling', 'maglia_basket', 'jeans_carpenter', 'pile', 'maglietta_tramonto'].forEach(id => { if (!r[1].includes(id)) r[1].push(id); }));
   sell('use:abbigliamento', ['tuta_nylon', 'puffer_corto', 'scarpe_chunky', 'cappello_pescatora', 'cardigan', 'camicia_70', 'jeans_risvolto', 'maglione_fairisle']);
@@ -371,10 +377,10 @@ var Guardaroba = (function () {
       if (r(13, 4) === 2) {   // [personaggi] hip hop: maglietta stampata larga (o la maglia da basket sopra la manica lunga), giacca da crew o felpa, jeans larghi o paracadute o joggers, sneakers grosse, durag, visiera o pescatora, la catena
         legs(pk(['jeans_larghi', 'pantaloni_paracadute', 'joggers', 'jeans_carpenter', 'cargo', 'pantaloncini_basket'], 49), pk(['#3e5a86', '#1a1a1e', '#2a2a2e', '#c8b898', '#5a5e66', '#4a5038', '#6a8ab8'], 50));
         if (r(51, 4) === 0) { put('maglia_lunga', pk(['#f0ece2', '#141418'], 52)); put('maglia_basket', pk(['#c83a2a', '#2a5aa8', '#e8a020', '#141418', '#3a8a4a', '#7a1e2a'], 53)); }
-        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
-        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
+        else put(pk(['maglietta_box', 'maglietta_college', 'maglietta_fiamme', 'maglietta_tiedye', 'maglietta_graffiti', 'maglietta_ringer', 'maglietta_tramonto', 'maglietta_oversize', 'maglietta_onda', 'maglietta_limoni', 'maglietta_tattoo', 'maglietta_boombox', 'maglia_cross'], 52), pk(['#f0ece2', '#141418', '#1e2a4a', '#e8a020', '#c83a2a', '#5a5e66', '#8a4ab8', '#3a8a4a'], 53));
+        if (r(54, 3)) put(pk(['varsity', 'coach_jacket', 'giacca_raso', 'anorak', 'pile', 'track_retro', 'felpa_college', 'felpa_blocchi', 'felpa_cappuccio_zip', 'felpa_tiedye', 'felpa_chrome', 'puffer_corto', 'camicia_bowling'], 55), pk(['#141418', '#1e2a4a', '#7a1e2a', '#e8a020', '#3a8a4a', '#2a5aa8', '#5a5e66', '#f0ece2', '#8a4ab8'], 56));
         put(pk(['scarpe_chunky', 'scarpe_air', 'scarpe_skate'], 57), pk(['#f4f2ee', '#141418', '#e8a020', '#c83a2a'], 58));
-        if (r(59, 3)) put(pk(['durag', 'visiera', 'cappello_pescatora', 'cappellino_dritto', 'berretto_corto', 'bandana'], 60), pk(['#141418', '#f0ece2', '#c83a2a', '#1e2a4a', '#e8a020', '#3a8a4a'], 61));
+        if (r(59, 3)) put(pk(['durag', 'visiera', 'cappello_pescatora', 'cappellino_dritto', 'berretto_corto', 'cappellino'], 60), pk(['#141418', '#f0ece2', '#c83a2a', '#1e2a4a', '#e8a020', '#3a8a4a'], 61));
         if (r(62, 2)) put(pk(['collana_oro', 'collana_oro', 'catenina'], 63)); if (r(64, 3) === 0) put(pk(['occhiali_mascherina', 'occhiali_ovali', 'occhiali_sole'], 65)); if (r(66, 3) === 0) put(pk(['borsello', 'marsupio_tracolla', 'zaino'], 67));
       } else if (r(13, 4) === 0) {   // skater: oversize, felpa larga, jeans larghi o cargo, scarpe da skate, berretto corto o cappellino
         legs(r(14, 3) ? 'jeans_larghi' : 'cargo', r(14, 3) ? pk(['#6a8ab8', '#2a3a5a', '#1a1a1e'], 15) : pk(['#4a5038', '#8a7a5a', '#2a2a2e'], 15));

@@ -154,6 +154,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 .keys kbd { font-family: var(--f-label); font-size: 10px; background: var(--fg); color: var(--ink); padding: 1px 5px; margin-right: 4px; }
 .cta { justify-self: center; background: var(--neon); color: #1a0a14; border: 0; font-size: 20px; font-weight: 700; padding: 10px 28px; cursor: pointer; box-shadow: 4px 4px 0 #07060e; }
 .cta:hover { background: #ff7abb; }
+.carico0 { position: fixed; left: 0; right: 0; bottom: max(34px, calc(env(safe-area-inset-bottom) + 26px)); justify-items: center; gap: 8px !important; max-width: none !important; } .carico0 .lbl { font-size: 11px; color: var(--fg); opacity: .85; } .carico0 .bar { width: min(240px, 60vw); } .carico0 .bar i { transition: width .4s; } .carico0 .credits { position: fixed; left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom)); font-size: 10px; opacity: .55; padding: 0 12px; } .carico0 .credits a { color: inherit; }   /* [diretto] il caricamento, senza pulsanti */
 .intro2 { gap: 28px; padding: 0 20px; } .intro2 .logo { font-size: clamp(40px, 11vw, 92px); line-height: 1; text-transform: uppercase; } .intro2 .cta { font-size: 22px; padding: 16px 36px; } .intro2 .credits { position: fixed; left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom)); font-size: 10px; opacity: .55; padding: 0 12px; } .intro2 .credits a { color: inherit; }   /* [menu2] */
 .endlist { display: grid; gap: 6px; text-align: left; max-height: 44vh; overflow-y: auto; }
 .endlist .row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; background: rgba(13,11,26,.82); border: 2px solid var(--line); padding: 6px 8px; font-size: 14px; }
@@ -295,9 +296,12 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 
 <script data-m="misura">/*misura.js*/</script>
 <script data-m="file_shim">/*file_shim.js*/</script>
+<script data-m="avvio">/*avvio.js*/</script>   <!-- [avvio] il nome della scheda video, i kit scaricati da subito, le impronte degli assets -->
 <script data-m="three.min">/*three.min.js*/</script>
+<script data-m="leggera_memoria">/*leggera_memoria.js*/</script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
 <script data-m="mesh_bvh">/*mesh_bvh.js*/</script>
 <script data-m="gltf_loader">/*gltf_loader.js*/</script>
+<script data-m="meshopt_decoder">/*meshopt_decoder.js*/</script>   <!-- [compressi] per i .glb.gz con meshopt (kit.js); lo stesso file è anche nel lavoratore dei tasselli -->
 <script data-m="editor">/*editor.js*/</script>
 <script data-m="officina">/*officina.js*/</script>
 <script data-m="oggetti3d">/*oggetti3d.js*/</script>
@@ -315,21 +319,28 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="superfici">/*superfici.js*/</script>
 <script data-m="modella">/*modella.js*/</script>
 <script data-m="arredo3d">/*arredo3d.js*/</script>
-<!-- [sito] quale isola: la città nuova dappertutto. Sul telefono c'è una rete di sicurezza in localStorage: all'avvio si segna «in corso»,
-     «ok» quando la pagina va in secondo piano o si chiude per bene. Se all'avvio è ancora «in corso», l'ultima volta la pagina è morta mentre
-     giocava (la memoria del telefono): alla seconda volta di fila si passa all'isola di prima e ci si resta. ?cittanuova riprova la città
-     nuova (e azzera il conto), ?vecchia apre l'isola di prima anche sul computer -->
-<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false;
-  if (!matchMedia('(pointer: coarse)').matches) return true;
-  const K = 'pv-avvio', C = 'pv-cadute', LS = window.localStorage, forza = /[?&]cittanuova/.test(q);
-  const get = k => { try { return LS.getItem(k); } catch (e) { return null; } }, set = (k, v) => { try { LS.setItem(k, v); } catch (e) { } };
-  const prev = get(K); let cadute = +get(C) || 0;
-  if (forza) { cadute = 0; set(C, '0'); }
-  else { if (prev === 'in corso') { cadute++; set(C, String(cadute)); } if (prev === 'vecchia' || cadute >= 2) { set(K, 'vecchia'); return false; } }
-  set(K, 'in corso');
-  const via = () => { set(K, 'ok'); set(C, '0'); }; addEventListener('pagehide', via); addEventListener('beforeunload', via);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) via(); else set(K, 'in corso'); });
-  return true; } catch (e) { return !/[?&]vecchia/.test(location.search); } })();</script>
+<!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
+     prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
+<!-- [mappa_nuova] ?mappa=nuova: la mappa nuova (world_cittanuova.js, MN), in prova finché il committente non la approva. Il mondo cotto e i
+     tasselli sono della mappa di prima: con la mappa nuova il gioco calcola il mondo e costruisce la città nel browser -->
+<script>window.PV_MAPPA = (function () { try { return /[?&]mappa=nuova\b/.test(location.search) ? 'nuova' : ''; } catch (e) { return ''; } })();</script>
+<script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
+<!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
+     manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
+<script>window.PV_IMPRONTA_MONDO = '__IMPRONTA_MONDO__';</script>
+<script>window.PV_IMPRONTA_TASS = '__IMPRONTA_TASS__';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
+     (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
+     e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
+<script>(function () {
+  if (window.PV_CUOCI || window.PV_MAPPA === 'nuova') return;
+  let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
+  if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
+    const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
+    if (a > 0 && b > a && c > b && im && ve) { window.PV_COTTO = { versione: +ve[1], impronta: im[1], punti: JSON.parse(JSON.parse(s.slice(a + 18, b))), bin: JSON.parse(s.slice(b + 8, c + 1)) }; s = null; return; } } catch (e) { console.warn('[cotto] lettura', e); }
+  document.write('<script src="mondo_cotto.js"><\/script>');
+})();</script>
+<script data-m="cotto">/*cotto.js*/</script>
 <script data-m="world">if (!window.PV_NUOVA) { /*world.js*/ }</script>
 <script data-m="vegetazione">/*vegetazione.js*/</script>
 <script data-m="world_cittanuova">if (window.PV_NUOVA) { /*world_cittanuova.js*/ }</script>
@@ -366,15 +377,19 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="skate">/*skate.js*/</script>
 <script data-m="tetti">/*tetti.js*/</script>
 <script data-m="tetti_vissuti">/*tetti_vissuti.js*/</script>
+<script data-m="fonts_graffiti">/*fonts_graffiti.js*/</script>
 <script type="text/plain" id="pv-artworker">/*writer_mano.js*/
-/*writer_arte.js*/</script>
+/*writer_arte.js*/
+/*pennelli.js*/</script>
 <script data-m="writer_mano">/*writer_mano.js*/</script>
 <script data-m="writer_arte">/*writer_arte.js*/</script>
+<script data-m="pennelli">/*pennelli.js*/</script>   <!-- [graffiti] i pennelli: bomboletta, fat e skinny cap, rullo, pennarello, adesivo, la grana del muro -->
 <script data-m="writing">/*writing.js*/</script>
 <script>/*writer_vita.js*/
 /*eventi.js*/</script>
 <script data-m="matti">/*matti.js*/</script>
 <script data-m="chiarezza">/*chiarezza.js*/</script>
+<script data-m="ingombri">/*ingombri.js*/</script>
 <script data-m="vievive">/*vievive.js*/</script>
 <script data-m="palco">/*palco.js*/</script>
 <script data-m="scena">/*scena.js*/</script>
@@ -386,13 +401,23 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="peso_vetro">/*peso_vetro.js*/</script>   <!-- [peso] i vetri in tavolozza -->
 <script data-m="peso_gente">/*peso_gente.js*/</script>   <!-- [peso] le persone fuse -->
 <script data-m="peso_lontano">/*peso_lontano.js*/</script>   <!-- [peso] le cose piccole lontane -->
+<script data-m="peso_fusi">/*peso_fusi.js*/</script>   <!-- [fusi] i settori (culling per cella) e le ombre fuse dei gruppi rigidi -->
 <script data-m="peso_schermo">/*peso_schermo.js*/</script>   <!-- [peso] lo schermo si adatta al telefono -->
+<script data-m="peso_ritmo">/*peso_ritmo.js*/</script>   <!-- [ritmo] la risoluzione dinamica e il tetto dei fotogrammi -->
 <script data-m="peso_bagliori">/*peso_bagliori.js*/</script>   <!-- [peso] gli aloni in un disegno -->
 <script data-m="peso_ombre">/*peso_ombre.js*/</script>   <!-- [peso] le ombre in cache -->
 <script data-m="peso_pronti">/*peso_pronti.js*/</script>   <!-- [peso] i programmi che nascono tardi, preparati nel caricamento -->
 <script data-m="inquadratura">/*inquadratura.js*/</script>   <!-- [inquadratura] la via in strada -->
+<script data-m="suolo">/*suolo.js*/</script>   <!-- [suolo] la gerarchia dei suoli: chi sta sopra e chi si interrompe al confine -->
 <script data-m="pavimenti">/*pavimenti.js*/</script>   <!-- [pavimenti] le superfici a terra -->
 <script data-m="pulizia_rumore">/*pulizia_rumore.js*/</script>   <!-- [pulizia] il rumore: le regole sul registro di pulizia2 -->
+<script data-m="anelli">/*anelli.js*/</script>   <!-- [anelli] il caricamento ad anelli: i lavori a pezzi, la coda, le sfumature -->
+<script data-m="tasselli">/*tasselli.js*/</script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
+<script type="text/plain" id="tasselli-lavoratore">/*meshopt_decoder.js*/
+/*tasselli_lavoratore.js*/</script>   <!-- [tasselli] il lavoratore (Web Worker, dal testo): meshopt e gzip fuori dal filo della pagina -->
+<script data-m="calcolo_lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] i conti pesanti (CalcoloF): qui per quando il lavoratore non c'è -->
+<script type="text/plain" id="calcolo-lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] e lo stesso testo per il lavoratore (Web Worker) -->
+<script data-m="calcolo">/*calcolo.js*/</script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
 <script data-m="render">/*render.js*/</script>
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>

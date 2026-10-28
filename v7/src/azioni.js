@@ -36,7 +36,12 @@ var Azioni = (function () {
   const PHONES = ['piazza', 'bar', 'wu', 'molo', 'sirena', 'lungomare', 'calata', 'benzina', 'osteria', 'flipper', 'piazzetta', 'fontana'];
   const has = id => !!PLACES[id];
   const tgtOf = id => (typeof id === 'object' ? id : id && id.startsWith && id.startsWith('use:') ? (useT(id.slice(4))[0] || null) : has(id) ? target(id) : null);
-  function useT(use) { return G.BUILDINGS.map((b, bi) => [b, bi]).filter(([b]) => b.use === use && b.door).map(([, bi]) => I.tB(bi)).filter(Boolean); }
+  // [momenti] le porte di un uso si cercano una volta (finché le case non cambiano): prima ogni persona che cercava un negozio rifaceva
+  // la lista di tutte le case e un oggetto per porta, a ogni passo (decine di MB di spazzatura al secondo)
+  const USE_T = new Map(); let useTn = -1, useTt = 0;   // e comunque si rifà ogni 5 s (una bottega che apre o cambia mestiere: economia.js, fazioni.js)
+  function useT(use) { const now = Date.now(); if (useTn !== G.BUILDINGS.length || now - useTt > 5000) { USE_T.clear(); useTn = G.BUILDINGS.length; useTt = now; }
+    let L = USE_T.get(use); if (!L) { L = G.BUILDINGS.map((b, bi) => [b, bi]).filter(([b]) => b.use === use && b.door).map(([, bi]) => I.tB(bi)).filter(Boolean); USE_T.set(use, L); }
+    return L.slice(); }
   function nearest(list, x, y) { let b = null, bd = 1e9; list.forEach(id => { const ts = typeof id === 'string' && id.startsWith('use:') ? useT(id.slice(4)) : [tgtOf(id)]; ts.forEach(t => { if (t) { const d = dist(t.x, t.y, x, y); if (d < bd) { bd = d; b = t; } } }); }); return b; }
   const placeName = (x, y) => G.nearestPlace(x, y).name;
   const isNightT = t => { const h = Math.floor(t / 60) % 24; return h >= 21 || h < 6; };
@@ -251,12 +256,13 @@ var Azioni = (function () {
     }
     if (watched(st, n)) {
       if (v.__hp0 === undefined) v.__hp0 = v.hp; v.hp = Math.max(v.hp, v.__hp0);   // [vivi] il mezzo guidato così segue la strada: gli urti finti contro i bordi non lo rompono
-      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5) || []; }   // [vivi] per le strade, non per i marciapiedi
+      if (!v.dpath || !v.dgoal || dist(v.dgoal.x, v.dgoal.y, to.x, to.y) > 3) { v.dgoal = { x: to.x, y: to.y }; v.dpath = G.findPath(v.x, v.y, to.x, to.y, .5, true) || []; }   // [vivi] per le strade, non per i marciapiedi
       const w = v.dpath[0];
       if (w) { const dx = w.x - v.x, dy = w.y - v.y, d = Math.hypot(dx, dy), sp = (v.kind === 'vespa' ? 9 : 11) * dt;   /* [vivi] in città sui 35-40 km/h */ if (d <= sp) { v.x = w.x; v.y = w.y; v.dpath.shift(); } else { v.x += dx / d * sp; v.y += dy / d * sp; v.ang = Math.atan2(dy, dx); } }
       v.vx = v.vy = v.w = 0; v.speed = v.kind === 'vespa' ? 9 : 11; n.x = v.x; n.y = v.y;
       if (!v.dpath.length || dist(v.x, v.y, to.x, to.y) < 3) { v.speed = 0; v.dpath = null; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     } else {
+      v.vx = v.vy = v.w = 0; v.speed = 0; v.dpath = null;   // [eventi] da lontano il mezzo aspetta fermo e poi c'è: non resta lanciato a 11 m/s a rotolare da solo
       if (!E.arr) E.arr = st.t + 2 + dist(v.x, v.y, to.x, to.y) / 150;
       if (st.t >= E.arr) { v.x = to.x; v.y = to.y; n.x = to.x; n.y = to.y; v.vx = v.vy = v.w = 0; E.arr = 0; E.phase = 'do'; E.t0 = st.t; E.c0 = st.clock; }
     }

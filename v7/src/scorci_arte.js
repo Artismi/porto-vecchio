@@ -42,7 +42,8 @@ var ScorciKit = (function () {
   let ATL = null;
   function atlante() {
     if (ATL) return ATL; const S = 2048; ATL = { S, x: 0, y: 0, rowH: 0, tiles: new Map(), c: null, g: null, tex: null };
-    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; }   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1;   // [dieta] sul telefono la tela a metà lato, le tessere disegnate in scala (la scheda video la riceveva già a metà)
+    if (DOC) { ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = S * ATL.f; ATL.g = ATL.c.getContext('2d'); ATL.tex = new THREE.CanvasTexture(ATL.c); ATL.tex.anisotropy = 4; ATL.tex.minFilter = THREE.LinearMipmapLinearFilter; if (typeof LeggeraMem !== 'undefined' && ATL.f === 1) LeggeraMem.mezza(ATL.tex); }   // [leggera] sul telefono a metà lato   // come canvasTex di render.js: i colori come sono dipinti (il gioco esce lineare)
     return ATL;
   }
   // la tessera key, pw × ph pixel, disegnata da draw(g, w, h, r) (r: un caso deterministico); torna [u0, v0, u1, v1]
@@ -50,7 +51,7 @@ var ScorciKit = (function () {
     const A = atlante(); if (A.tiles.has(key)) return A.tiles.get(key);
     if (A.x + pw > A.S) { A.x = 0; A.y += A.rowH + 2; A.rowH = 0; } if (A.y + ph > A.S) { A.x = 0; A.y = 0; A.rowH = 0; }   // l'atlante pieno ricomincia (non succede con questi scorci)
     const x = A.x, y = A.y; A.x += pw + 2; A.rowH = Math.max(A.rowH, ph);
-    if (A.g) { const g = A.g; g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
+    if (A.g) { const g = A.g; g.save(); if (A.f !== 1) g.scale(A.f, A.f); g.translate(x, y); g.beginPath(); g.rect(0, 0, pw, ph); g.clip(); try { draw(g, pw, ph, rngS(key)); } catch (e) { console.warn('[scorci] tessera', key, e); } g.restore(); A.tex.needsUpdate = true; }
     const t = [x / A.S, 1 - (y + ph) / A.S, (x + pw) / A.S, 1 - y / A.S]; A.tiles.set(key, t); return t;
   }
   const SERIF = 'Georgia, "Times New Roman", serif', SANS = '"Arial Narrow", Arial, Helvetica, sans-serif';
@@ -285,8 +286,8 @@ var ScorciKit = (function () {
   K.catasta = () => { const g = new THREE.Group(); [-1, 1].forEach(s => Bx(g, .08, .08, .5, '#5a4a3a', s * .5, .04, 0, 'opaco')); for (let r = 0; r < 4; r++) for (let i = 0; i < 6 - (r % 2); i++) Cy(g, .085, .5, ['#8a6a46', '#6a4a2e', '#9a7a52'][(r + i) % 3], -.55 + i * .2 + (r % 2) * .1, .13 + r * .165, 0, 'opaco', PI / 2, 0, 0, 6);
     for (let i = 0; i < 7; i++) As(g, [-.7 + i * .03, .05, .24], [-.5 + i * .02, .95, .1], .012, '#7a6a4a', 'opaco'); return g; };
   K.casse_birre = () => { const g = new THREE.Group(), t = T('birre', 256, 96, DIS.birre()); [[0, 0, 0], [0, .3, 0], [.05, .6, 0]].forEach(([x, y, z], k) => { if (k === 2) { Bx(g, .5, .28, .36, '#c8202a', x, y + .14, z, 'medio'); return; } Bx(g, .5, .28, .36, '#c8202a', x, y + .14, z, 'medio'); Pi(g, t, .4, .12, x, y + .16, z + .182); }); for (let i = 0; i < 6; i++) Cy(g, .028, .22, '#3a5a2a', -.17 + (i % 3) * .17, .99, -.09 + Math.floor(i / 3) * .18, 'lucido'); return g; };
-  K.panca = () => { const g = new THREE.Group(); Bx(g, 1.4, .05, .38, '#8a6a46', 0, .45, 0, 'opaco'); [-1, 1].forEach(s => { Bx(g, .05, .45, .34, '#6a4a2e', s * .6, .225, 0, 'opaco'); Bx(g, .05, .45, .04, '#6a4a2e', s * .6, .7, -.17, 'opaco'); }); Bx(g, 1.4, .3, .04, '#8a6a46', 0, .75, -.17, 'opaco'); Cy(g, .08, .9, '#8a8e92', .77, .45, 0, 'lucido'); Cy(g, .14, .05, '#6a6e72', .77, .92, 0, 'lucido'); return g; };
-  K.sedia = () => { const g = new THREE.Group(); if (!arredo(g, 'sedia', { tipo: 'bistrot' }, 0, 0, 0, PI)) Bx(g, .4, .45, .4, '#8a6a46', 0, .22, 0, 'opaco'); return g; };
+  K.panca = () => { const g = new THREE.Group(); if (typeof Anim !== 'undefined' && Anim.sedileObj) Anim.sedileObj(g, .6);   /* [seduti] */ Bx(g, 1.4, .05, .38, '#8a6a46', 0, .45, 0, 'opaco'); [-1, 1].forEach(s => { Bx(g, .05, .45, .34, '#6a4a2e', s * .6, .225, 0, 'opaco'); Bx(g, .05, .45, .04, '#6a4a2e', s * .6, .7, -.17, 'opaco'); }); Bx(g, 1.4, .3, .04, '#8a6a46', 0, .75, -.17, 'opaco'); Cy(g, .08, .9, '#8a8e92', .77, .45, 0, 'lucido'); Cy(g, .14, .05, '#6a6e72', .77, .92, 0, 'lucido'); return g; };
+  K.sedia = () => { const g = new THREE.Group(); if (typeof Anim !== 'undefined' && Anim.sedileObj) Anim.sedileObj(g, 0);   /* [seduti] */ if (!arredo(g, 'sedia', { tipo: 'bistrot' }, 0, 0, 0, PI)) Bx(g, .4, .45, .4, '#8a6a46', 0, .22, 0, 'opaco'); return g; };
   K.rifiuti = () => { const g = new THREE.Group(), r = rngS('rif'); for (let i = 0; i < 6; i++) M(g, GEO.ico, '#e8e4dc', 'opaco', -.45 + r() * .9, .03, -.15 + r() * .3, .04 + r() * .03); Cy(g, .033, .12, '#c8202a', .2, .033, .1, 'lucido', 0, 0, PI / 2); Bx(g, .09, .02, .055, '#e8e0cc', -.1, .01, .12, 'medio', 0, .6, 0);
     Pi(g, T('giornale', 256, 320, DIS.giornale()), .38, .48, -.25, .006, -.02, 'carta', -PI / 2, 0, .3); return g; };
   K.secchi_fiori = () => { const g = new THREE.Group(); Bx(g, 1.05, .3, .42, '#6a5040', 0, .15, 0, 'opaco'); [-.32, 0, .32].forEach((x, i) => { Cy(g, .14, .26, '#9a9ea0', x, .43, 0, 'lucido'); for (let k = 0; k < 7; k++) Sp(g, .055, ['#e0405a', '#f4f0e6', '#f0c040', '#c84aa0'][(i + k) % 4], x + Math.cos(k) * .08, .62 + (k % 3) * .04, Math.sin(k) * .08, 'opaco'); for (let k = 0; k < 3; k++) As(g, [x, .5, 0], [x + Math.cos(k * 2) * .1, .66, Math.sin(k * 2) * .1], .006, '#4a6a3a', 'opaco'); }); return g; };
@@ -295,7 +296,7 @@ var ScorciKit = (function () {
   // il tavolino della scopa: il piano di marmo, le carte, i bicchierini, il posacenere; le sedie attorno (tavoli) o impilate (impilati)
   K.tavolo_scopa = () => { const g = new THREE.Group(), A = AR(); if (A) arredo(g, 'tavolino', { tipo: 'marmo' }, 0, 0, 0); else { Cy(g, .35, .04, '#e8e2d6', 0, .74, 0, 'medio'); Cy(g, .03, .72, '#2a2a2c', 0, .36, 0, 'lucido'); }
     Pi(g, T('carte', 256, 160, DIS.carte()), .36, .22, 0, .758, 0, 'carta', -PI / 2, 0, .2); Cy(g, .022, .07, '#d8e0e0', .2, .79, .1, 'vetro'); Cy(g, .022, .07, '#d8e0e0', -.18, .79, -.12, 'vetro'); Cy(g, .05, .02, '#9a9ea0', .05, .765, -.22, 'lucido');
-    stato(g, 'tavoli', () => [[0, .58], [PI / 2 + .2, .6], [PI, .58], [-PI / 2, .62]].forEach(([a, r]) => { if (A) arredo(g, 'sedia', { tipo: 'bistrot' }, Math.sin(a) * r, 0, Math.cos(a) * r, a + PI); else Bx(g, .4, .45, .4, '#8a6a46', Math.sin(a) * r, .22, Math.cos(a) * r, 'opaco'); }));
+    stato(g, 'tavoli', () => [[0, .58], [PI / 2 + .2, .6], [PI, .58], [-PI / 2, .62]].forEach(([a, r]) => { if (A) { const c = arredo(g, 'sedia', { tipo: 'bistrot' }, Math.sin(a) * r, 0, Math.cos(a) * r, a + PI); if (c) if (typeof Anim !== 'undefined' && Anim.sedileObj) Anim.sedileObj(c, 0); } else Bx(g, .4, .45, .4, '#8a6a46', Math.sin(a) * r, .22, Math.cos(a) * r, 'opaco'); }));
     stato(g, 'impilati', () => { for (let k = 0; k < 4; k++) { if (A) { const s = arredo(g, 'sedia', { tipo: 'bistrot' }, .62, k * .07, .1, PI * .5); if (s) s.rotation.z = 0; } } }); return g; };
   // il banco del pesce: il piano di marmo sui cavalletti, le cassette inclinate col ghiaccio e il pesce, la bilancia, il telo sui pali, la lampadina, il cartello
   K.banco_pesce = () => { const g = new THREE.Group(); [-1, 1].forEach(s => [-1, 1].forEach(t => Bx(g, .06, .8, .06, '#5a5e62', s * 1.1, .4, t * .5, 'lucido'))); Bx(g, 2.4, .06, 1.1, '#e8e4dc', 0, .83, 0, 'medio'); Bx(g, 2.42, .5, .04, '#c8c4bc', 0, .55, .55, 'medio');
@@ -313,7 +314,7 @@ var ScorciKit = (function () {
   K.banco_lavoro = () => { const g = new THREE.Group(); [-1, 1].forEach(s => [-1, 1].forEach(t => Bx(g, .06, .9, .06, '#4a4e52', s * .82, .45, t * .28, 'lucido'))); Bx(g, 1.8, .06, .7, '#7a5a3a', 0, .93, 0, 'opaco'); Bx(g, 1.7, .03, .6, '#5a4a3a', 0, .25, 0, 'opaco');
     Bx(g, .2, .14, .14, '#3a5a8a', .6, 1.03, .2, 'lucido'); Bx(g, .5, .22, .25, '#c8302a', -.4, 1.07, -.1, 'medio'); As(g, [.1, .97, .15], [.4, .97, .25], .015, '#8a8e92', 'lucido'); Cy(g, .07, .16, '#2a5a2a', -.1, 1.04, .2, 'lucido'); Bx(g, .4, .3, .3, '#4a4e52', -.5, .4, 0, 'medio'); return g; };
   K.motore = () => { const g = new THREE.Group(); for (let i = 0; i < 4; i++) Bx(g, .8, .03, .12, '#a88a5a', 0, .1, -.3 + i * .2, 'opaco'); [-1, 1].forEach(s => Bx(g, .1, .1, .8, '#8a6a46', s * .35, .05, 0, 'opaco')); Bx(g, .5, .4, .45, '#5a5e62', 0, .32, 0, 'lucido'); Bx(g, .4, .14, .38, '#3a3e42', 0, .59, 0, 'lucido'); for (let i = 0; i < 2; i++) As(g, [.25, .4, -.1 + i * .2], [.4, .45, -.15 + i * .3], .03, '#6a4a3a', 'medio'); return g; };
-  K.panchina = () => { const g = new THREE.Group(); if (!arredo(g, 'panchina_ghisa', {}, 0, 0, 0)) Bx(g, 1.6, .45, .5, '#2f5a3e', 0, .22, 0, 'medio'); return g; };
+  K.panchina = () => { const g = new THREE.Group(); if (typeof Anim !== 'undefined' && Anim.sedileObj) Anim.sedileObj(g, .6);   /* [seduti] */ if (!arredo(g, 'panchina_ghisa', {}, 0, 0, 0)) Bx(g, 1.6, .45, .5, '#2f5a3e', 0, .22, 0, 'medio'); return g; };
   // ---- di traverso ----
   // le luminarie: il filo a catenaria fra due ganci, le lampadine ogni 40 cm (accese la sera: lo stato luminarie)
   K.luminarie = (o) => { const g = new THREE.Group(), fili = o.fili || [];
@@ -347,7 +348,7 @@ var ScorciArte = (function () {
         let cls = o.material.userData && o.material.userData.scorci; const st = o.userData.stato || stato0 || 'base';
         let col = o.userData.col;
         if (!cls) {   // un pezzo di Arredo3D: il suo materiale diventa un colore nei vertici e una classe
-          const m = Array.isArray(o.material) ? o.material[0] : o.material; if (m.map && !(m.map.image && m.map.image === (ScorciKit.atlante().c))) { cls = 'proprio'; } else if (m.isMeshBasicMaterial) { cls = 'luce'; col = '#' + m.color.getHexString(); } else if (m.transparent) { cls = 'vetro'; col = '#' + m.color.getHexString(); } else { cls = m.roughness < .4 ? 'lucido' : m.roughness < .75 ? 'medio' : 'opaco'; col = '#' + m.color.getHexString(); } }
+          const m = Array.isArray(o.material) ? o.material[0] : o.material; if (m.map && !(m.map.image && (m.map.image === ScorciKit.atlante().c || m.map.userData.lmGrande === ScorciKit.atlante().c))) { cls = 'proprio'; } else if (m.isMeshBasicMaterial) { cls = 'luce'; col = '#' + m.color.getHexString(); } else if (m.transparent) { cls = 'vetro'; col = '#' + m.color.getHexString(); } else { cls = m.roughness < .4 ? 'lucido' : m.roughness < .75 ? 'medio' : 'opaco'; col = '#' + m.color.getHexString(); } }
         const k = st + '|' + (cls === 'proprio' ? 'proprio:' + o.material.uuid : cls); let e = L.get(k); if (!e) L.set(k, e = { st, cls, mat: cls === 'proprio' ? o.material : null, parts: [] });
         e.parts.push({ g: o.geometry, mw: o.matrixWorld.clone(), col: col || '#ffffff', pezzo, doppia: !!o.userData.doppia }); }); },
     build(mats) { const out = [];
