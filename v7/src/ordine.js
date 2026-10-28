@@ -186,6 +186,7 @@ var Ordine = (function () {
   }
   function seek(st, n, x, y, dt, sp, near) {
     { const q = aPiedi(x, y); x = q.x; y = q.y; }   // [ordine] mai dentro un muro
+    if (!n.inside && !n.lv && !G.walkM(n.x, n.y)) { const f = aPiedi(n.x, n.y); n.x = f.x; n.y = f.y; n.path = []; }   // [ordine] chi è già nel muro (sceso dalla volante, uscito dalla caserma su una casella piena) ne esce: da lì il percorso non c'è e si andava dritti attraverso le case
     const d = dist(n.x, n.y, x, y);
     if (d < (near || .5)) { n.speedNow = 0; n.path = []; return true; }
     const O = n.ord || (n.ord = {});
