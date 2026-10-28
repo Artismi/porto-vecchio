@@ -987,7 +987,7 @@
   if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
   host(.15);
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(() => window.PV_ATTESA && PV_ATTESA.libero()).then(boot);   // [editor] i ritocchi arrivano prima della scena; [ospite] la scena si prepara a pagina ferma
   function boot() {
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
@@ -1017,6 +1017,7 @@
     const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
   }
   function loop0(now) {
+    if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000); last = now;
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,

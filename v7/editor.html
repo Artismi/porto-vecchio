@@ -20835,6 +20835,21 @@ var Models = (function () {
 })();
 </script>
 <script data-m="kit">
+/* [ospite] Dentro il sito (artismidesignstudio.com) il gioco si carica in anticipo, nascosto, mentre la pagina scorre.
+   La pagina, finché scorre, ripete {pvc:'attendi', ms}: per quei millisecondi i passi pesanti del caricamento (leggere un
+   modello, preparare la scena per la scheda video) aspettano, così lo scroll del sito resta fluido. Si riparte da soli
+   quando i messaggi smettono. Fuori da un altro sito non arriva niente e non si aspetta mai. */
+window.PV_ATTESA = (function () {
+  let fino = 0;
+  if (window.parent !== window) addEventListener('message', e => {
+    const d = e.data; if (e.source !== window.parent || !d || d.pvc !== 'attendi') return;
+    fino = Math.max(fino, performance.now() + Math.min(2000, Math.max(0, +d.ms || 0)));
+  });
+  const on = () => performance.now() < fino;
+  // aspetta finché la pagina scorre, al massimo 20 s in tutto: il gioco non resta mai fermo per sempre
+  const libero = () => new Promise(ok => { const t0 = performance.now(); (function g() { if (!on() || performance.now() - t0 > 20000) ok(); else setTimeout(g, 100); })(); });
+  return { on, libero };
+})();
 /* Caricamento dei modelli senza richieste "data:" né "blob:".
    I file in assets/ sono glTF con buffer e immagini incorporati in base64. Alcune pagine (gli artifact) non permettono
    di scaricare indirizzi data:/blob:, e il caricatore di three li scarica proprio così: i modelli non arrivano mai.
@@ -20935,6 +20950,7 @@ var Kit = (function () {
     const L = new THREE.GLTFLoader();
     await Promise.all(kits.map(async k => {
       const buf = await (window.__pvFetchModel ? window.__pvFetchModel(base + 'kit_' + k + '.json') : (await fetch(base + 'kit_' + k + '.json')).text());   // [leggera] .glb se c'è
+      await window.PV_ATTESA.libero();   // [ospite] non mentre la pagina che ospita il gioco scorre
       const g = await new Promise((res, rej) => L.parse(buf, '', res, rej));
       g.scene.updateMatrixWorld(true);
       for (const c of [...g.scene.children]) { c.traverse(o => { if (o.isMesh) { dequant(o.geometry); o.material = fixMat(o.material); } }); LIB[k + '/' + c.name] = c; }
@@ -82555,7 +82571,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
   host(.15);
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(() => window.PV_ATTESA && PV_ATTESA.libero()).then(boot);   // [editor] i ritocchi arrivano prima della scena; [ospite] la scena si prepara a pagina ferma
   function boot() {
   let glOk = true;
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
@@ -82585,6 +82601,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
   }
   function loop0(now) {
+    if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
     if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
     const raw = Math.max(0, (now - last) / 1000); last = now;
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
