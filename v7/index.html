@@ -22828,7 +22828,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f146787cf9d8f5eb';</script>
-<script>window.PV_IMPRONTA_TASS = 'a3111bd91ce3ec8e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '7cf01fd2a7c0d9a9';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -88327,7 +88327,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // modelli, dei kit) three la ricarica dagli array, che restano; quelle con gli array già svuotati dopo l'invio ([leggera]) non si
   // toccano. ?norilascio: come prima; window.__rilascio: lo stato.
   const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null,
-    farOn: !/[?&]nolontane\b/.test(location.search), lontane: 0, nonIntatte: 0, far: () => Math.max(PHONE ? 200 : 300, (scene.fog ? scene.fog.far : 400) + Math.hypot(camera.position.x - cam.x, camera.position.z - cam.y) + 40) };   // [audit] oltre la nebbia (vista dalla camera, che sta indietro dal punto guardato) e oltre i blocchi del suolo (135-190 m)
+    farOn: !/[?&]nolontane\b/.test(location.search), lontane: 0, nonIntatte: 0, far: () => Math.max(PHONE ? 150 : 200, (scene.fog ? scene.fog.far : 400) + Math.hypot(camera.position.x - cam.x, camera.position.z - cam.y) + 40) };   // [audit] oltre la nebbia (vista dalla camera, che sta indietro dal punto guardato) e oltre i blocchi del suolo (135-190 m)
   const rilGeo = (g, out) => { if (g && g.isBufferGeometry) out.push(g); };
   function rilascia(obj) {
     if (!RIL.on || !obj || !obj.traverse) return; const L = [];

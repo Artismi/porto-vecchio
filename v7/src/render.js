@@ -17329,7 +17329,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // modelli, dei kit) three la ricarica dagli array, che restano; quelle con gli array già svuotati dopo l'invio ([leggera]) non si
   // toccano. ?norilascio: come prima; window.__rilascio: lo stato.
   const RIL = { on: !/[?&]norilascio\b/.test(location.search), coda: new Map(), t: 0, gen: 0, liberate: 0, ms: 0, W: { stack: null }, uso: null,
-    farOn: !/[?&]nolontane\b/.test(location.search), lontane: 0, nonIntatte: 0, far: () => Math.max(PHONE ? 200 : 300, (scene.fog ? scene.fog.far : 400) + Math.hypot(camera.position.x - cam.x, camera.position.z - cam.y) + 40) };   // [audit] oltre la nebbia (vista dalla camera, che sta indietro dal punto guardato) e oltre i blocchi del suolo (135-190 m)
+    farOn: !/[?&]nolontane\b/.test(location.search), lontane: 0, nonIntatte: 0, far: () => Math.max(PHONE ? 150 : 200, (scene.fog ? scene.fog.far : 400) + Math.hypot(camera.position.x - cam.x, camera.position.z - cam.y) + 40) };   // [audit] oltre la nebbia (vista dalla camera, che sta indietro dal punto guardato) e oltre i blocchi del suolo (135-190 m)
   const rilGeo = (g, out) => { if (g && g.isBufferGeometry) out.push(g); };
   function rilascia(obj) {
     if (!RIL.on || !obj || !obj.traverse) return; const L = [];
