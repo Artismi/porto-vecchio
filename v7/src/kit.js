@@ -1,4 +1,19 @@
 
+/* [ospite] Dentro il sito (artismidesignstudio.com) il gioco si carica in anticipo, nascosto, mentre la pagina scorre.
+   La pagina, finché scorre, ripete {pvc:'attendi', ms}: per quei millisecondi i passi pesanti del caricamento (leggere un
+   modello, preparare la scena per la scheda video) aspettano, così lo scroll del sito resta fluido. Si riparte da soli
+   quando i messaggi smettono. Fuori da un altro sito non arriva niente e non si aspetta mai. */
+window.PV_ATTESA = (function () {
+  let fino = 0;
+  if (window.parent !== window) addEventListener('message', e => {
+    const d = e.data; if (e.source !== window.parent || !d || d.pvc !== 'attendi') return;
+    fino = Math.max(fino, performance.now() + Math.min(2000, Math.max(0, +d.ms || 0)));
+  });
+  const on = () => performance.now() < fino;
+  // aspetta finché la pagina scorre, al massimo 20 s in tutto: il gioco non resta mai fermo per sempre
+  const libero = () => new Promise(ok => { const t0 = performance.now(); (function g() { if (!on() || performance.now() - t0 > 20000) ok(); else setTimeout(g, 100); })(); });
+  return { on, libero };
+})();
 /* Caricamento dei modelli senza richieste "data:" né "blob:".
    I file in assets/ sono glTF con buffer e immagini incorporati in base64. Alcune pagine (gli artifact) non permettono
    di scaricare indirizzi data:/blob:, e il caricatore di three li scarica proprio così: i modelli non arrivano mai.
@@ -99,6 +114,7 @@ var Kit = (function () {
     const L = new THREE.GLTFLoader();
     await Promise.all(kits.map(async k => {
       const buf = await (window.__pvFetchModel ? window.__pvFetchModel(base + 'kit_' + k + '.json') : (await fetch(base + 'kit_' + k + '.json')).text());   // [leggera] .glb se c'è
+      await window.PV_ATTESA.libero();   // [ospite] non mentre la pagina che ospita il gioco scorre
       const g = await new Promise((res, rej) => L.parse(buf, '', res, rej));
       g.scene.updateMatrixWorld(true);
       for (const c of [...g.scene.children]) { c.traverse(o => { if (o.isMesh) { dequant(o.geometry); o.material = fixMat(o.material); } }); LIB[k + '/' + c.name] = c; }
