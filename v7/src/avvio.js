@@ -14,7 +14,7 @@
   const VER = window.PV_VER || {};
   window.PV_V = u => { const v = VER[u]; return v ? u + (u.indexOf('?') < 0 ? '?' : '&') + 'v=' + v : u; };
   // 1. il nome della scheda video, letto una volta sola
-  let nome;   // undefined finché non c'è un contesto
+  let nome = window.PV_GPU_NOME;   // undefined finché non c'è un contesto ([profilo] profilo.js l'ha già letto, se ha potuto)
   const leggi = gl => { try { const e = gl.getExtension('WEBGL_debug_renderer_info'); nome = String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)); } catch (x) { nome = ''; } };
   try {
     const P = HTMLCanvasElement.prototype, g0 = P.getContext;
