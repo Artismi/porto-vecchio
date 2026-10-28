@@ -120,6 +120,50 @@ const ME = SG.mete(), campi = new Map(ME.map(m => [m.id, SG.campo(m.x, m.y)])); 
 P.indicazioni.forEach(q => q.frecce.forEach(f => { const D = campi.get(f.meta), d0 = SG.dAt(D, q.incrocio[0], q.incrocio[1]), d1 = SG.dAt(D, q.incrocio[0] + Math.cos(f.dir) * 12, q.incrocio[1] + Math.sin(f.dir) * 12); if (!(d1 < d0)) freKo.push(f.testo); }));
 ok(!freKo.length, `ogni freccia punta verso la sua meta sul cammino vero (${P.indicazioni.reduce((a, q) => a + q.frecce.length, 0)} frecce${freKo.length ? '; no: ' + freKo.join(' ') : ''})`);
 
+// ---------------- 3c. [suolo2] LA SEGNALETICA REGOLARE: i casi contati su tutto il piano (obiettivo zero) ----------------
+// - la mezzeria continua o tratteggiata regolare (3 m su 6) per tutto il tratto: si ferma solo agli incroci fra vie dei veicoli (i vicoli e le
+//   vie pedonali che sboccano non sono incroci), alle strisce, sul lastricato pedonale e fuori città. «Interrotta»: un buco di più di 3,6 m che
+//   non tocca uno di questi motivi; «irregolare»: un tratto più corto di 2,5 m fra due buchi (un pezzo che si ferma a caso);
+// - nessuna striscia sul marciapiede (un angolo oltre 5 cm fuori dalla via: carreggiata o vicolo dei mezzi minori);
+// - le zebre perpendicolari alla via (le bande lungo la tangente vera, entro 3°), centrate (30 cm) e a filo dei marciapiedi (le bande
+//   esterne a meno di 60 cm dal cordolo, mai oltre).
+const Suolo = require(path.join(src, 'suolo.js')), SU = Suolo.di(W);
+const VEI = W.roads.filter(r => r.pts && r.pts.length > 1 && r.kind !== 'sterrato' && r.kind !== 'vicolo' && !r.pedonale);
+const vicineV = (x, y) => VEI.filter(rd => rd.pts.some(p => Math.abs(p[0] - x) < 90 && Math.abs(p[1] - y) < 90));
+const SUOLI = W.roads.filter(r => r.pts && r.pts.length > 1 && r.kind !== 'sterrato'), vicineS = (x, y) => SUOLI.filter(rd => rd.pts.some(p => Math.abs(p[0] - x) < 90 && Math.abs(p[1] - y) < 90));
+const oltreVia = (x, y) => { let e = 1e9; for (const rd of vicineS(x, y)) e = Math.min(e, SG.lNear(SG.lin(rd), x, y).d - rd.w / 2); return e; };   // fuori da ogni via lastricata (anche i vicoli dei mezzi minori): il marciapiede o le case
+const oltreCarr = (x, y, salta) => { let e = 1e9; for (const rd of vicineV(x, y)) if (rd !== salta) e = Math.min(e, SG.lNear(SG.lin(rd), x, y).d - rd.w / 2); return e; };
+const angoli = s => { const c = Math.cos(s.ang), n = Math.sin(s.ang); return [[1, 1], [1, -1], [-1, 1], [-1, -1]].map(([a, b]) => [s.x + c * a * s.L / 2 - n * b * s.w / 2, s.y + n * a * s.L / 2 + c * b * s.w / 2]); };
+const GI = SG.junctions().filter(([x, y]) => vicineV(x, y).filter(rd => SG.lNear(SG.lin(rd), x, y).d < rd.w / 2 + 2).length >= 2).map(([x, y]) => [x, y, Math.max(...vicineV(x, y).filter(rd => SG.lNear(SG.lin(rd), x, y).d < rd.w / 2 + 2).map(rd => rd.w)) / 2 + 2]);
+const zonaCitta = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return G.MAP.zone[ty * G.GW + tx] === G.MAP.Z.CITTA; };
+function difettiSegnaletica(P) {
+  const D = { mezzeria_interrotta: 0, mezzeria_irregolare: 0, sul_marciapiede: 0, zebre_storte: 0, zebre_non_a_filo: 0 }, es = [], quanti = {}, nota = (k, t) => { quanti[k] = (quanti[k] || 0) + 1; if (quanti[k] <= 3) es.push(t); };
+  P.strisce.forEach(s => { if (angoli(s).some(([x, y]) => oltreVia(x, y) > .05)) { D.sul_marciapiede++; nota('marciapiede', 'marciapiede ' + s.k + '@' + s.x.toFixed(0) + ',' + s.y.toFixed(0)); } });
+  P.zebre.forEach((z, zi) => { const B = P.strisce.filter(s => s.k === 'zebra' && s.zebra === zi), Ln = SG.lin(z.rd), q = SG.lNear(Ln, z.x, z.y), t = SG.lAt(Ln, q.s), tx = Math.cos(t.ang), ty = Math.sin(t.ang);
+    if (!B.length) return;
+    if (q.d > .3 || B.some(s => Math.abs(Math.sin(s.ang - t.ang)) > Math.sin(3 * Math.PI / 180))) { D.zebre_storte++; nota('storta', 'storta@' + z.x.toFixed(0) + ',' + z.y.toFixed(0)); return; }
+    const v = B.map(s => -(s.x - t.x) * ty + (s.y - t.y) * tx), lo = Math.min(...v) - CFGz.b / 2, hi = Math.max(...v) + CFGz.b / 2, h = z.rd.w / 2;
+    if (lo < -h - .02 || hi > h + .02 || lo > -h + .6 || hi < h - .6) { D.zebre_non_a_filo++; nota('non', 'non a filo@' + z.x.toFixed(0) + ',' + z.y.toFixed(0) + ' ' + lo.toFixed(2) + '..' + hi.toFixed(2) + '/' + h); } });
+  // la mezzeria, via per via, a passi di 25 cm lungo la via
+  const perVia = new Map(); P.strisce.forEach(s => { if (s.mezz) (perVia.get(s.mezz) || perVia.set(s.mezz, []).get(s.mezz)).push(s); });
+  perVia.forEach((L0, id) => { const rd = W.roads.find(r => r.id === id), Ln = SG.lin(rd), n = Math.floor(Ln.L / .25) + 1, pit = new Uint8Array(n), ferma = new Uint8Array(n);
+    L0.forEach(s => { const q = SG.lNear(Ln, s.x, s.y).s; for (let i = Math.max(0, Math.ceil((q - s.L / 2 - .1) / .25)); i <= Math.min(n - 1, Math.floor((q + s.L / 2 + .1) / .25)); i++) pit[i] = 1; });
+    const asse = Math.abs(SG.lNear(Ln, L0[0].x, L0[0].y).d) * Math.sign(1);
+    for (let i = 0; i < n; i++) { const p = SG.lAt(Ln, i * .25), nx = -Math.sin(p.ang), ny = Math.cos(p.ang);
+      const pts = [[p.x + nx * asse, p.y + ny * asse], [p.x - nx * asse, p.y - ny * asse], [p.x, p.y]];
+      ferma[i] = i < 8 || i > n - 9 || pts.some(([x, y]) => !zonaCitta(x, y) || GI.some(j => hyp(j[0] - x, j[1] - y) < j[2] + .5) || P.strisce.some(s => (s.k === 'zebra' || s.k === 'bus' || s.arresto) && hyp(s.x - x, s.y - y) < 3.2) || oltreCarr(x, y, rd) < -.6 || PEDT.has(tile(x, y)) || SU.rango(x, y) > SU.R.carreggiata || SU.tagliata(rd, i * .25)) ? 1 : 0; }
+    // i buchi e i tratti
+    for (let i = 0; i < n;) { const v0 = pit[i]; let j = i; while (j < n && pit[j] === v0) j++; const lung = (j - i) * .25, tocca = () => { for (let k = Math.max(0, i - 2); k < Math.min(n, j + 2); k++) if (ferma[k]) return true; return false; };
+      if (!v0 && lung > 3.6 && !tocca()) { D.mezzeria_interrotta++; nota('interrotta', 'interrotta ' + id + ' s=' + (i * .25).toFixed(0) + ' (' + lung.toFixed(1) + ' m)'); }
+      if (v0 && lung < 2.5 && i > 0 && j < n && !tocca()) { D.mezzeria_irregolare++; nota('irregolare', 'irregolare ' + id + ' s=' + (i * .25).toFixed(0) + ' (' + lung.toFixed(1) + ' m)'); }
+      i = j; } });
+  return { D, es, tot: Object.values(D).reduce((a, b) => a + b, 0) };
+}
+const CFGz = SG.CFG.zebra, PEDT = new Set([T.PIAZZA, T.STAIRS, T.FOUNT].filter(v => v !== undefined));
+{ const R0 = difettiSegnaletica(P);
+  console.log('     [suolo2] segnaletica, casi:', JSON.stringify(R0.D), R0.es.length ? '\n       ' + R0.es.join('\n       ') : '');
+  ok(R0.tot === 0, `[suolo2] la mezzeria regolare e intera fra incroci e strisce, nessuna striscia sul marciapiede, le zebre perpendicolari e a filo dei marciapiedi (${R0.tot} casi)`); }
+
 // ---------------- 3b. LA CAMERA LE VEDE ----------------
 // dalla camera di gioco (sud-est, ~41° in giù), senza il taglio delle case attorno al personaggio: i pali (in cima) e le bandiere (al centro)
 const vPali = aTerra.filter(p => SG.visibile(p.x, p.y, p.tipo === 'indicazioni' ? 2.9 : 2.7)).length, vBand = band.filter(q => SG.visibile(q.x + q.nx * .7, q.y + q.ny * .7, 3.1)).length;

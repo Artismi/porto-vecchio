@@ -7972,14 +7972,8 @@ var Render = (function () {
     const rd = vitRoad2(); if (!rd) return 0; const h = rd.w / 2, F = fronti4(), T = G.T, A = (M.world.sets || []).find(q => q.k === 'adunata'); let n = 0;
     const inAdunata = (x, z) => A && x > A.x0 - 1 && x < A.x1 + 1 && z > A.y0 - 1 && z < A.y1 + 1;
     const piena = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === T.BLD;
-    // i cordoli di travertino: pezzi di 1,5 m a filo della carreggiata, alti 18 cm, interrotti agli incroci e dove la via entra nella piazza
-    const cord = sm('#d6ccb4', { roughness: .75 }), cordS = sm('#9a9282', { roughness: .9 });
-    lungoV2(rd, 1.5, .75).forEach(q => [-1, 1].forEach(sd => { const cx = q.x + q.nx * sd * (h + VIT2.cordolo / 2), cz = q.z + q.nz * sd * (h + VIT2.cordolo / 2);
-      if (inAdunata(cx, cz) || piena(cx, cz) || incrocioV2(cx, cz, 1)) return; const ex = q.x + q.nx * sd * (h - .5), ez = q.z + q.nz * sd * (h - .5), rot = Math.atan2(q.ux, q.uz);
-      // [strade] il pezzo segue la pendenza: la quota ai suoi due capi, inclinato (non più a gradini), e lungo quanto il passo (niente fessure)
-      const ya = groundH(ex - q.ux * .75, ez - q.uz * .75), yb = groundH(ex + q.ux * .75, ez + q.uz * .75), y = (ya + yb) / 2, tilt = -Math.atan2(yb - ya, 1.5), Lc = Math.hypot(1.5, yb - ya) + .01;
-      const k = box(VIT2.cordolo, .2, Lc, cord); k.position.set(cx, y + .1, cz); k.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(k);
-      const s = box(.04, .17, Lc, cordS); s.position.set(cx - q.nx * sd * (VIT2.cordolo / 2 + .01), y + .085, cz - q.nz * sd * (VIT2.cordolo / 2 + .01)); s.rotation.set(tilt, rot, 0, 'YXZ'); addStatic(s); n++; }));   // la faccia in ombra verso la carreggiata
+    // [suolo2] niente cordoli rigidi di travertino (erano ~300 blocchi di 1,5 m, più alti, più chiari e interrotti): il cordolo è UNO, il
+    // bordo del campo dei marciapiedi (buildSidewalks), alla stessa quota e dello stesso colore su tutte le vie
     // pennoni e lampioni del regime alternati, a passo fisso, simmetrici sui due lati; mai davanti a una porta, a un incrocio o nella piazza
     // [cucitura] sulla Vittoria viva niente pennoni: i lampioni a palo dell'Ottocento a passo di 18 m sul lato sud (il nord ha il portico)
     if (rd.viva) lungoV2(rd, 18, 9).forEach(q => { const o = h + .6, x = q.x + q.nx * o, z = q.z + q.nz * o;
