@@ -1017,8 +1017,10 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     return gg;
   }
   // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
+  // [pulizia-verde] spenti: erano tre scatole verdi a cuscino (cespugli-cubo sul muro, il low poly che il committente vuole via); il muro resta pulito
+  const CAPPERI = false;
   function capperi(g, n, L, y0, y1, z0, k, seme, x0, libero) {   // libero(x): dove il ciuffo può stare (il gradone: non dietro la scala)
-    if (LOD) return; const r = caso(seme);
+    if (LOD || !CAPPERI) return; const r = caso(seme);
     for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05; if (libero && !libero(x)) { if (r() < .5) r(); continue; }   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
       blocco(g, s, s * .6, .3, 'verde', x, y, z); blocco(g, s * .7, s * .5, .36, 'erba', x + s * .35, y + s * .25, z + .02); blocco(g, s * .5, s * .45, .32, 'verdeScuro', x - s * .4, y - s * .1, z + .01);
       if (r() < .5) blocco(g, .14, s * 1.4, .12, 'verde', x + (r() - .5) * s, y - s * 1.3, z + .04 + k * s * 1.3); }
@@ -1226,7 +1228,8 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
       else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
     blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
-    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+    // [pulizia-verde] le scatole verdi sparse sul terrapieno erboso (cespugli-cubo): spente con i capperi, resta il prato
+    if (o.erba && !LOD && CAPPERI) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
   }
 
   DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };

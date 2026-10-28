@@ -7739,6 +7739,12 @@ var Render = (function () {
       }
     });
     }
+    // [pulizia-verde] l'orto murato delle corti (tetti.js) aveva un «limone» a cubi: al suo posto il leccio vero, sulla cella della corte più
+    // vicina al centro, se la chioma ci sta (niente muri a 2,2 m, niente piede di scala, niente altri alberi a 4,5 m); se no la corte resta vuota
+    if (typeof Tetti !== 'undefined' && Tetti.CORTI) Tetti.CORTI.forEach(C => { if (C.k !== 'orto' || !C.celle) return;
+      const LAD = Tetti.LADDERS || [], cel = C.celle.map(([tx, ty]) => [(tx + .5) * TS, (ty + .5) * TS]).sort((a, b) => Math.hypot(a[0] - C.x, a[1] - C.y) - Math.hypot(b[0] - C.x, b[1] - C.y));
+      const p = cel.find(([x, z]) => roomy(x, z, 2.2) && !onRoad(x, z) && !LAD.some(L => Math.hypot(L.fx - x, L.fy - z) < 1.8) && !TREES35.some(t => Math.hypot(t.x - x, t.z - z) < 4.5) && libero(x, z));
+      if (p) TREES35.push({ x: p[0], z: p[1], kind: 'cortile', s: .42 + th(Math.round(p[0]), Math.round(p[1]), 356) * .2 }); });
     // un albero nelle piazzette e negli slarghi, uno ogni tanto nei cortili grandi
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.GRASS) continue;
@@ -11076,7 +11082,7 @@ var Render = (function () {
   function pot(x, z, r, kind) {
     const g = G0(), terra = PM.terra();
     if (kind === 'lemon') { const pt = oPot(r, 2.1, false); g.add(pt); const tr = oTree(r, 1.25, '#4a6a38'); tr.position.y = .7; g.add(tr); for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), sl('#e8c020')), Math.cos(k * 2.3) * .32, 1.25 + (k % 3) * .16, Math.sin(k * 2.3) * .32); }   // [ordine1] limone vero nel vaso tornito
-    else if (kind === 'palm') { add(g, box(.7, .6, .7, sm('#f2eee6')), 0, .3, 0); for (let k = 0; k < 7; k++) { const l = box(.14, .05, 1, sl(pick(r, ['#3f8a3a', '#4f9a44']))); l.position.set(Math.cos(k) * .3, 1.1, Math.sin(k) * .3); l.rotation.set(-.6, k * .9, 0); g.add(l); } add(g, cyl(.06, .08, .7, 5, sm('#7a5a3a')), 0, .8, 0); }
+    else if (kind === 'palm') { const pt = oPot(r, 1.6, 'cespo'); g.add(pt); }   // [pulizia-verde] non più la cassetta a scatola con le foglie a listelli verdi: il vaso tornito col cespo
     else if (kind === 'planter') {   // [ordine1] fioriera di cemento col bordo, terra, cespi e gerani (non icosaedri e cubetti)
       fAt(g, fB(1.6, .46, .52, '#8a8680', 'concrete', .03), 0, .23, 0); fAt(g, fB(1.68, .06, .6, '#9a968e', 'concrete', .02), 0, .47, 0); fAt(g, fB(1.48, .04, .4, '#3a2e24', 'solid', 0), 0, .49, 0);
       const fc = pick(r, ['#c03a3a', '#d04a6a', '#e0603a', '#e8e0d0']); for (let k = 0; k < 4; k++) { const sh = oShrub(r, .9 + r() * .3); sh.position.set(-.55 + k * .37, .48, (r() - .5) * .1); g.add(sh); for (let q = 0; q < 3; q++) { const fl = fB(.06, .06, .06, fc, 'solid', 0); fl.position.set(-.55 + k * .37 + (r() - .5) * .3, .72 + r() * .1, (r() - .5) * .3); g.add(fl); } } }
