@@ -209,7 +209,7 @@ var Segnaletica = (function () {
   function strisce() {
     const VVm = VV();
     // le zebre: quelle di render.js (stessi punti), poi quelle chieste dai posti (la scuola, le piazze, le fermate)
-    const Z = crossings35().slice();
+    const Z = crossings35().map(c => Object.assign({}, c));   // [suolo2] copie: allinea le sposta sulla mezzeria, la lista di render.js resta com'è
     const ancora = (x, y, motivo) => { let best = null, bd = 30; ROADS().forEach(rd => { if (!(rd.kind === 'citta') || !zonaC(x, y)) return; const q = lNear(lin(rd), x, y); if (q.d < bd) { bd = q.d; best = { rd, s: q.s }; } }); if (!best) return;
       const Ln = lin(best.rd); for (const dS of [0, 3, -3, 6, -6, 9, -9, 12, -12]) { const p = lAt(Ln, best.s + dS); if (p.x < 0 || nearJ(p.x, p.y, 2) < 0 || Z.some(c => hyp(c.x - p.x, c.y - p.y) < 14) || (PIANO.bus || []).some(q => hyp(q.x - p.x, q.y - p.y) < 8.5)) continue;
         const ux = Math.cos(p.ang), uy = Math.sin(p.ang); Z.push({ x: p.x, y: p.y, ux, uy, w: best.rd.w, rd: best.rd, motivo }); return; } };

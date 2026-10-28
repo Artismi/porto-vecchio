@@ -76,7 +76,27 @@ var Suolo = (function () {
     S = { R, CL, rango, rangoVia, tagli, tagliata, via, marciapiede, pezzi, TS, GW, GH };
     CACHE.set(W, S); return S;
   }
-  return { R, di, rangoVia, vecchio: v => { OFF = !!v; CACHE = new WeakMap(); }, get off() { return OFF; } };   // vecchio(true): com'era, per la prova del prima
+  // [suolo2] LE REGOLE DEL BORDO DELLA VIA (render.js le usa per costruire, src/test_suolo.js per contare; ?vecchiosuolo2: com'era).
+  //  - LO SCIVOLO sta solo davanti a una zebra dipinta (render.js prende le zebre del piano di segnaletica.js, già sulla mezzeria vera e
+  //    perpendicolari alla via), largo quanto le strisce più 20 cm per parte e raccordato col marciapiede in 1,2 m lungo la via; scende
+  //    A FILO della strada (resta mezzo centimetro: la mesh c'è) e ha il colore delle lastre, senza la fascia chiara del cordolo né la canaletta
+  //    scura (prima: scendeva all'82%, e mentre scendeva l'altezza passava per quella del cordolo e per quella della canaletta, e il colore
+  //    che segue l'altezza dipingeva sul marciapiede rettangoli chiari e una chiazza tonda scura). Il rilievo lo dà la forma, non la tinta.
+  //  - LE FONTANE: la vasca poggia sul lastricato; il terreno sotto non si buca (si bucava la casella intera e sotto si vedeva il mare: il
+  //    quadrato d'acqua blu attorno alla vasca ottagonale) e la casella si dipinge come la piazza.
+  let OFF2 = typeof location !== 'undefined' && /[?&]vecchiosuolo2\b/.test(location.search);
+  const ss = (a, b, t) => { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+  // quanto lo scivolo della zebra c (x, y al centro, ux, uy lungo la via, w la carreggiata, L la lunghezza delle bande) abbassa il punto (x, z): 0..1
+  function scivolo(c, x, z) {
+    const dx = x - c.x, dz = z - c.y, al = Math.abs(dx * c.ux + dz * c.uy), pe = Math.abs(-dx * c.uy + dz * c.ux), half = c.w / 2;
+    if (OFF2) { if (pe < half - .5 || pe > half + 2.6) return 0; return (1 - ss(1.2, 1.9, al)) * (1 - ss(half + 1.1, half + 2.3, pe)); }
+    if (pe < half - .5 || pe > half + 2.2) return 0; const a0 = (c.L || 2.6) / 2 + .2;
+    return (1 - ss(a0, a0 + 1.2, al)) * (1 - ss(half + 1.2, half + 2.0, pe));
+  }
+  // l'altezza del marciapiede h dopo lo scivolo (low 0..1)
+  const scivoloH = (h, low) => OFF2 ? h * (1 - .82 * low) : h <= .005 ? h : Math.max(.005, h * (1 - low));
+  const bucoTerreno = (v, T) => OFF2 ? v === T.FOUNT || v === T.PIER : v === T.PIER;   // il terreno si buca sotto la casella? (il pontile sì: sotto c'è l'acqua)
+  return { R, di, rangoVia, scivolo, scivoloH, bucoTerreno, vecchio: v => { OFF = !!v; CACHE = new WeakMap(); }, vecchio2: v => { OFF2 = !!v; }, get off() { return OFF; }, get off2() { return OFF2; } };   // vecchio(true): com'era, per la prova del prima; vecchio2(true): le regole del bordo di prima
 })();
 if (typeof window !== 'undefined') window.Suolo = Suolo;
 if (typeof module !== 'undefined') module.exports = Suolo;
