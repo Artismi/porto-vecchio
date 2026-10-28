@@ -944,9 +944,15 @@ var Game = (function () {
     st.fx.push({ k: 'hurt', a: ang }); st.sfx.push({ k: 'hurt' });
     if (p.hp <= 0) wasted(st);
   }
-  function damageVehicle(st, v, dmg, by) {
+  // [urti] urto: la velocità d'impatto (m/s) quando il danno viene da un muro o da un altro mezzo. Gli urti da soli portano il mezzo
+  // «a pezzi» (fuma, 12% della salute) ma non lo fanno esplodere, salvo uno schianto vero (oltre 18 m/s, 65 km/h): prima tre o
+  // quattro musate contro gli spigoli a 40 km/h facevano saltare in aria un'auto in 15-84 s di guida, e una Vespa urtata da un'auto
+  // (si prende quasi tutto il danno: pesa 150 kg) esplodeva al primo colpo. Una moto per un urto non brucia mai. Spari, fuoco ed
+  // esplosioni (urto non dato) restano come prima
+  function damageVehicle(st, v, dmg, by, urto) {
     if (v.wreck) return;
     dmg *= 1 - Math.min(.8, ((v.armor || 0) + (VK[v.kind].armor0 || 0) * (v.armor === undefined ? 1 : 0)) * .22); // le lamiere saldate reggono i colpi
+    if (urto !== undefined) { const K0 = VK[v.kind], floor = K0.two || urto <= 18 ? K0.hp * .12 : 0; if (v.hp <= floor) dmg = 0; else dmg = Math.min(dmg, v.hp - floor); }
     v.hp -= dmg; if (by) v.lastHitBy = by;
     if (v.traffic) { v.panicT = st.clock; }
     if (VK[v.kind].pocket) { if (v.hp <= 0) { v.hp = VK[v.kind].hp; if (v.rider === 'player') { exitVehicle(st); st.player.stun = .6; feed(st, 'Voli giù dalla BMX. Per fortuna si raddrizza: è di nuovo in tasca.', 'bad'); } } return; }   // [bmx] non brucia: ti butta giù e torna in tasca
@@ -1807,7 +1813,7 @@ var Game = (function () {
   function onWallHit(st, v, vn, cp, ang) {
     if (!VK[v.kind].boat) vehicleBump(st, v, vn, cp, ang);   // [costa] una barca contro il molo non sfonda niente
     const pl = v.rider === 'player';
-    if (vn > 6) damageVehicle(st, v, (vn - 6) * 4, pl ? 'player' : null);
+    if (vn > 7) damageVehicle(st, v, (vn - 7) * 3.5, pl ? 'player' : null, vn);   // [urti] sotto i 25 km/h di botta contro il muro niente danno
     if (vn > 3) { st.fx.push({ k: 'carhit', x: cp.x, y: cp.y, v: vn, a: ang, wall: true }); if (pl || dist(v.x, v.y, st.player.x, st.player.y) < 30) st.sfx.push({ k: vn > 9 ? 'crash' : 'bump', x: cp.x, y: cp.y, v: vn }); }
     if (pl) { st.shake = Math.max(st.shake, clamp(vn * .045, .1, .8)); if (vn > 13) st.hitstop = Math.max(st.hitstop || 0, .06); }
     loosen(st, v, 1.5);
@@ -1962,7 +1968,7 @@ var Game = (function () {
     if (hit < 2.5 || st.clock - (a.crashT || -99) < .25 && st.clock - (b.crashT || -99) < .25) return;
     a.crashT = b.crashT = st.clock;
     const by = a.rider === 'player' || b.rider === 'player' ? 'player' : null;
-    if (hit > 4) { damageVehicle(st, a, (hit - 4) * 7 * mb / (ma + mb), by); damageVehicle(st, b, (hit - 4) * 7 * ma / (ma + mb), by); }
+    if (hit > 5) { damageVehicle(st, a, (hit - 5) * 6 * mb / (ma + mb), by, hit); damageVehicle(st, b, (hit - 5) * 6 * ma / (ma + mb), by, hit); }   // [urti]
     if (a.traffic) a.panicT = st.clock; if (b.traffic) b.panicT = st.clock;
     st.fx.push({ k: 'carhit', x: cx, y: cy, v: hit, a: Math.atan2(ny, nx), ids: [a.id, b.id] });
     if (by || dist(cx, cy, st.player.x, st.player.y) < 30) st.sfx.push({ k: hit > 8 ? 'crash' : 'bump', x: cx, y: cy, v: hit });
