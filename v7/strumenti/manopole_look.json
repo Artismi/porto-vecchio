@@ -1,0 +1,5 @@
+{
+  "nota": "[look] Il prima e il dopo della bibbia del look (HANDOFF_look.md). Il grading, la tavolozza dei tetti e la camera si decidono al caricamento: il prima vero è PV_QUERY='?cittanuova&vecchiolook&nonitida'. Qui solo lo shader nitida acceso/spento sulla stessa scena.",
+  "prima": { "NIT": { "acceso": false } },
+  "dopo": {}
+}
