@@ -23037,7 +23037,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '9257940f5c775a22';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'beb6ae8a8fdb01ed';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -93586,7 +93586,7 @@ if (typeof module !== 'undefined') module.exports = Regia;
     }
     PAD.gas = bv(7); PAD.brk = bv(6);
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
-    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 - PAD.pan * dt * 1.4);   // [levette] la levetta destra in verticale: lo zoom (in su si avvicina, e da vicino la visuale scende dietro al personaggio)   // [visuale5] la levetta destra in verticale sposta la visuale
+    // [morbida] la levetta destra del controller va nella levetta della visuale (conTick, camStick): curva e inerzia come le altre
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
@@ -93662,10 +93662,29 @@ if (typeof module !== 'undefined') module.exports = Regia;
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
+  // [morbida] LA LEVETTA DELLA VISUALE, UNA SOLA: il controller (levetta destra), il Game Boy e lo schermo (vstick), le frecce. Prima ognuna
+  // girava e zoomava a modo suo, subito a piena velocità e lineare: difficile prendere un'inquadratura, e a pochi fotogrammi si vedeva a
+  // scatti. Qui: zona morta, curva (poco inclinata gira piano e preciso, a fondo veloce) e inerzia (la velocità sale e scende in ~0,12 s,
+  // niente partenze e fermate secche). La rotazione va a ui.drag (render.js la somma alla visuale), lo zoom a zoomBy.
+  const CAMS = { vy: 0, vz: 0, giro: 1.9, zoom: 1.1, dz: .12, esp: 1.8, tau: .12 };
+  const camCurva = v => { const a = Math.abs(v); if (a <= CAMS.dz) return 0; return Math.sign(v) * Math.pow(Math.min(1, (a - CAMS.dz) / (1 - CAMS.dz)), CAMS.esp); };
+  function camStick(dt) {
+    let x = 0, y = 0; const libero = !ui.intro && !ui.dialog && !ui.book && !ui.menu;
+    if (libero) {
+      x += vstick.x; y += vstick.y;
+      if (PAD.on) { x += -PAD.rot / 1.6; y += -PAD.pan; }
+      if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
+      const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
+    const k = 1 - Math.exp(-dt / CAMS.tau);
+    CAMS.vy += (-camCurva(x) * CAMS.giro - CAMS.vy) * k; CAMS.vz += (camCurva(y) * CAMS.zoom - CAMS.vz) * k;
+    if (Math.abs(CAMS.vy) < 1e-3) CAMS.vy = 0; if (Math.abs(CAMS.vz) < 1e-3) CAMS.vz = 0;
+    if (CAMS.vy) ui.drag = (ui.drag || 0) + CAMS.vy * dt;
+    if (CAMS.vz) zoomBy(Math.exp(CAMS.vz * dt));
+    ui.camStickOn = !!(CAMS.vy || CAMS.vz);
+  }
   function conTick(dt) {
     if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);
-    if (frecceVisuale() && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) { const fx = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), fy = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); ui.drag = (ui.drag || 0) - fx * dt * 2.2; if (fy) zoomBy(1 + fy * dt * 1.5); }   // [levette] le frecce: ← → girano attorno al personaggio, ↑ ↓ lo zoom
-    if ((vstick.x || vstick.y) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) { const zx = Math.abs(vstick.x) > .15 ? vstick.x : 0, zy = Math.abs(vstick.y) > .15 ? vstick.y : 0; ui.drag = (ui.drag || 0) - zx * dt * 2.4; if (zy) zoomBy(1 + zy * dt * 1.5); }   // [levette] la levetta della visuale a schermo
+    camStick(dt);   // [morbida] la levetta della visuale: controller, Game Boy, schermo, frecce
     if ((keys.pagedown || keys.pageup) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) tiltBy(((keys.pagedown ? 1 : 0) - (keys.pageup ? 1 : 0)) * dt * .9);   // [bassa]   // la croce tenuta: lo zoom
     if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
     if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
@@ -93878,7 +93897,7 @@ if (typeof module !== 'undefined') module.exports = Regia;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
