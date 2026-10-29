@@ -93,6 +93,15 @@ ok(Anim.sediaRotelle().geometry === sg, 'la geometria è condivisa');
 let modi = new Set(), piro = 0; const r2 = { id: 'r2' };
 for (let t = 0; t < 1200; t += .25) { st.clock = t; const y = Anim.rotelleYaw(st, r2); modi.add(Math.abs(y - Math.PI) < 1e-9 ? 'indietro' : y === 0 ? 'avanti' : 'giro'); if (y !== 0 && Math.abs(y - Math.PI) > 1e-9) piro++; }
 ok(modi.has('avanti') && modi.has('indietro') && piro > 0, 'in 20 minuti: avanti, all\'indietro e qualche piroetta (' + [...modi].join(', ') + ')');
+
+// 6) le manie (Matti.MANIE): la posa delle braccia sopra la camminata, sempre o a tratti
+global.Matti = { MANIE: { giornale: { upper: 'legge' }, saluta: { upper: 'saluta', ogni: [7, 2.5] } } };
+const mg = npc('mg', 60, 60); mg.forza = false; mg.pop = { age: 50, mania: 'giornale' }; mg.speedNow = 1.2; tick(.1);
+ok(Anim.npcState(st, mg).upper === 'legge', 'chi ha la mania del giornale lo legge camminando');
+const ms = npc('ms', 70, 70); ms.forza = false; ms.pop = { age: 30, mania: 'saluta' }; let su = 0, tot = 0;
+for (let t = 0; t < 70; t += .5) { st.clock = t; tot++; if (Anim.npcState(st, ms).upper === 'saluta') su++; }
+ok(su > 0 && su < tot * .6, `chi saluta lo fa a tratti (${su} volte su ${tot})`);
+mg.__ev = 'scena'; ok(Anim.npcState(st, mg).upper !== 'legge', 'dentro una scena la mania si ferma');
 // la scelta: pochi in tutta la città
 const S2 = { clock: 0, npcs: [], player: { x: 0, y: 0 } };
 for (let i = 0; i < 1500; i++) S2.npcs.push({ id: 'p' + i, x: 0, y: 0, pop: { age: 20 + (i % 50) }, action: { name: 'routine' } });

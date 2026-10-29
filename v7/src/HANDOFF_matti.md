@@ -36,3 +36,12 @@ Richiesta: dare a dialoghi, scene e personaggi un tono comico. Chi gioca deve sp
 - Più frammenti e più matti (il formato è solo dati). Un sesto matto per la Base o per il Monte Scuro.
 - Far scrivere nuovi frammenti all'IA di notte (il Coro), con questi come esempi.
 - Una sottile reazione del giocatore (una scelta di risposta) alle scene che vengono verso di te.
+
+## I ragazzi e le manie (29 ottobre)
+Richiesta: il linguaggio dei ragazzi di oggi (la siga, il drum, «hai da accendere?», bella, fra, zio, oi, fottiti), ma non troppo cattivo; e altre stranezze come la sedia da ufficio con le rotelle, assurde e basta.
+- **`FRAM_G`** (26 frammenti): se i due che parlano hanno tutti e due ≤ 26 anni (`CFG.giovane`) pescano dal loro mazzo. Niente battuta finale: la scena si chiude un attimo prima. «Fottiti» fra amici è affetto.
+- **`SCROCCO`**: un ragazzo che ti passa a meno di 3,8 m ogni tanto ti chiede da accendere (una volta a testa, ogni 70-150 s al massimo).
+- **Scene nuove**: `drum_condiviso`, `fottiti_affetto` (fra ragazzi), `hai_da_accendere` (viene da te).
+- **`MANIE`**: otto abitanti (scelti all'avvio dopo i matti) fanno sempre una cosa sola: due leggono il giornale camminando, uno gira con la cornetta del telefono senza filo, uno porta un cero acceso, uno spinge una carriola vuota, uno porta una cassa, uno saluta tutto (a tratti), uno guarda l'orologio (a tratti). La posa la mette `anim_vita.js` (`n.pop.mania` → `s.upper`; si ferma dentro una scena, al chiuso, nel panico). Nessuno lo spiega: se gli passi accanto dicono una cosa normale («Permesso.», «Buongiorno.»). Anche chi va in sedia con le rotelle adesso ti dice qualcosa (`ROTELLE`).
+- Prove: `node test_matti.js [seme]` (le manie, la frase quando passi, il mazzo dei ragazzi), `node test_seduti.js` (la posa delle manie).
+- Da fare: manie con un oggetto nuovo (l'ombrello aperto col sole, il guinzaglio senza cane, chi cammina all'indietro: serve girare la figura in render.js come `Anim.rotelleYaw`).

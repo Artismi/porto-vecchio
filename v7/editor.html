@@ -20059,6 +20059,13 @@ Anim.npcMap((st, n, s) => {
     if (!n.rotelle || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto) return;
     s.act = 'rotelle'; s.rotelle = rotelleModo(st, n); if (s.upper && s.upper !== 'telefona' && s.upper !== 'fuma') s.upper = null;
   });
+  // [manie] chi fa sempre una cosa sola (matti.js, Matti.MANIE): la posa delle braccia sopra la camminata, sempre o a tratti
+  Anim.npcPost((st, n, s) => {
+    const k = n.pop && n.pop.mania, D = k && typeof Matti !== 'undefined' && Matti.MANIE[k];
+    if (!D || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto || n.panic > 0) return;
+    if (D.ogni) { const ph = (n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97)), c = ((st.clock || 0) + ph) % D.ogni[0]; if (c > D.ogni[1]) return; }
+    s.upper = D.upper;
+  });
   // la sedia: seduta imbottita, schienale, colonna a gas, la stella a cinque razze con le rotelle. Una geometria sola coi colori nei
   // vertici, condivisa da tutte le sedie (poche decine di triangoli); seduta a 48 cm, lo schienale dietro (-z), davanti +z
   let SEDIA = null;
@@ -22988,7 +22995,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = 'e85876de84fcfc3e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'be89231a6147a12a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -64400,13 +64407,17 @@ if (typeof module !== 'undefined') module.exports = Eventi;
       loro, ti riconoscono le volte dopo, e la chat dell'IA sa chi sono (Matti.scheda → mente.js).
    3. LE SCENE STRANE: schede per eventi.js (in fondo), con il filtro 'matto' (prima un matto, se non c'è un vecchio
       qualsiasi) e le battute del matto giusto ({matto:'a', k:'chiave'}).
+   4. I RAGAZZI: due sotto i 27 anni si dicono le loro (FRAM_G: fra, zio, bella, oi, la siga, il drum, «hai da accendere?»,
+      «fottiti» detto con affetto); uno che ti passa accanto ogni tanto ti scrocca (SCROCCO). Mai cattivi davvero.
+   5. LE MANIE: come la sedia con le rotelle, otto abitanti fanno sempre una cosa sola (il giornale camminando, la cornetta senza
+      filo, il cero a mezzogiorno, la carriola vuota, la cassa, chi saluta tutto, chi guarda l'orologio). Nessuno lo spiega.
    Costo: un giro sui 5 matti e, ogni tanto, una ricerca di due persone vicine al giocatore.
    Prove: node test_matti.js; anche test_eventi.js prova le scene nuove. */
 var Matti = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const EV = () => (typeof Eventi !== 'undefined' ? Eventi : null);
-  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7 };
+  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7, giovane: 26, scrocco: [70, 150], scroccoR: 3.8 };
   const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
   // il cast scritto a mano non diventa matto (ha già la sua voce)
   const CAST = new Set(['lupo', 'beppe', 'lucia', 'pietro', 'vinile', 'betamax', 'divisa', 'cono', 'vasco', 'pardo', 'zia', 'malanotte', 'gino', 'wu', 'marta', 'tonino', 'elena', 'rosa', 'nico', 'sandro', 'carla', 'ferri']);
@@ -64474,6 +64485,22 @@ var Matti = (function () {
   };
   const KEYS = Object.keys(MATTI);
 
+  // ================= LE MANIE (come la sedia con le rotelle) =================
+  // gente qualunque che fa una cosa sola, sempre, per tutta la città: legge il giornale camminando, porta un cero a mezzogiorno,
+  // spinge una carriola vuota. Nessuno lo spiega, neanche loro: se gli passi accanto dicono una cosa normale. Si vede soltanto
+  // (anim_vita.js legge n.pop.mania: upper è la posa delle braccia; ogni = [periodo, durata] in secondi se la fa a tratti).
+  const MANIE = {
+    giornale: { quanti: 2, upper: 'legge', chi: n => n.pop.age >= 30, passa: ['Mm.', 'Buongiorno.', 'Permesso.', 'Scusi.'] },
+    cornetta: { quanti: 1, upper: 'telefona', chi: n => n.pop.age >= 20, passa: ['Sì. Sì. No. Sì.', 'Aspetta, c\'è uno.', 'Sì, sono qui.', 'Ti richiamo.'] },
+    cero: { quanti: 1, upper: 'cero', chi: n => n.pop.age >= 35, passa: ['Buongiorno.', 'Non soffi, per favore.', 'Buonasera.'] },
+    carriola: { quanti: 1, upper: 'carriola', chi: n => n.pop.sex !== 'f' && n.pop.age >= 25 && n.pop.age <= 70, passa: ['Permesso.', 'Permesso, permesso.', 'Buongiorno.'] },
+    cassa: { quanti: 1, upper: 'porta', chi: n => n.pop.age >= 18 && n.pop.age <= 60, passa: ['Permesso.', 'Non è pesante.', 'Scusi.'] },
+    saluta: { quanti: 1, upper: 'saluta', ogni: [7, 2.5], chi: n => n.pop.age >= 12, passa: ['Ciao!', 'Ciao ciao.', 'Ciao! Ciao.'] },
+    orologio: { quanti: 1, upper: 'orologio', ogni: [6, 1.8], chi: n => n.pop.age >= 30, passa: ['Ancora niente.', 'Le quattro e venti.', 'Mm. No.'] },
+  };
+  // e chi va in sedia da ufficio (anim_vita.js, n.rotelle) quando gli passi accanto
+  const ROTELLE = ['Permesso.', 'Buongiorno.', 'Scusi, mi sposto.', 'Sto bene così, grazie.', 'Attento ai piedi.'];
+
   // ================= I FRAMMENTI SENTITI PASSANDO =================
   // due, tre battute fra A e B, senza contesto: tu passi, loro sono a metà della loro vita
   const FRAM = [
@@ -64520,10 +64547,45 @@ var Matti = (function () {
     ['Lei è vedova?', 'Quasi.', 'Come quasi?', 'Lui sta benissimo. Io mi porto avanti.'],
     ['L\'oroscopo dice che oggi incontro l\'amore.', 'Sono le sette di sera.', 'Ancora cinque ore. Non mi muovo da qui.'],
   ];
+  // i ragazzi (tutti e due sotto i 27 anni) parlano fra loro: niente battuta finale, la scena finisce un attimo prima.
+  // «Fottiti» fra amici è affetto, non insulto: nessuno qui è cattivo davvero.
+  const FRAM_G = [
+    ['Fra, c\'hai da accendere?', 'No.', 'Neanche io. Stiamo qua.'],
+    ['Hai da accendere?', 'Sì.', 'Ok. Era per sapere.'],
+    ['Oi. Mi giri una siga?', 'Ho solo il drum.', 'Va bene il drum.', 'Non ho le cartine.'],
+    ['C\'ho un drum, una cartina e un filtro.', 'E?', 'E basta. Volevo che lo sapessi.'],
+    ['Zio, mi giri una siga?', 'È l\'ultima.', 'Allora no. Tienila.', 'Grazie.', 'Me la giri però?'],
+    ['Fra, ma il drum è tabacco o è una marca?', 'Tabacco.', 'E il tabacco è una marca?', 'Fra. Non mi fare questo.'],
+    ['Oi, ce l\'hai un accendino?', 'Ce l\'ho blu.', 'Va bene blu.'],
+    ['Bella fra.', 'Bella.', 'Bella.'],
+    ['Bella zio, tutto a posto?', 'Mi sono rotto un dito.', 'Bella.', 'Sì.'],
+    ['Fottiti.', 'Perché?', 'Niente, mi andava. Come stai?', 'Bene, fra.'],
+    ['Fottiti, te e il tuo motorino.', 'Che ha il mio motorino?', 'Niente. È bellissimo.'],
+    ['Zio, stasera che si fa?', 'Qua.', 'Ancora qua?', 'Qua è bello.', 'Vero.'],
+    ['Mi presti cinquemila?', 'Per cosa?', 'Per averle.'],
+    ['Oi, mia nonna ti saluta.', 'Non la conosco.', 'Lei dice di sì.'],
+    ['Fra, ho fatto un sogno, c\'eri tu.', 'E che facevo?', 'Stavi lì. Avevi un drum.', 'E poi?', 'Era tutto il sogno.'],
+    ['Oi, ma quello là è tuo padre?', 'Sì.', 'Che fa?', 'Non lo so. Lo fa da stamattina.'],
+    ['Zio, ho visto un cavallo sul motorino.', 'Guidava lui?', 'No, dietro. Col casco.'],
+    ['Dicono che hai baciato la Debora.', 'Chi è la Debora?', 'Non lo so. L\'ho sentito.'],
+    ['Fra, tu da grande che fai?', 'Sono già grande.', 'E quindi che fai?', 'Questo.'],
+    ['Oi, chi ha preso la mia felpa?', 'Ce l\'hai addosso.', 'Ah.', '...', 'È calda.'],
+    ['Zio, ti devo dire una cosa seria.', 'Dimmi.', 'No, niente. Mi è passata.', 'Bella.'],
+    ['Fra, Matteo dice che sei uno sfigato.', 'E tu?', 'Gli ho detto di sì. Con affetto.'],
+    ['Oi. Oi. Fra.', 'Che c\'è?', 'Niente. Sei girato.'],
+    ['Zio, quanto manca alle otto?', 'Che c\'è alle otto?', 'Niente. Volevo sapere quanto manca.'],
+    ['Mi sono tagliato i capelli da solo.', 'Si vede.', 'Grazie fra.'],
+    ['Andiamo al mare?', 'È dicembre.', 'Lo so. Andiamo a guardarlo.', 'Ok.'],
+  ];
+  // quando gli passi accanto, un ragazzo ogni tanto ti scrocca (o ci prova)
+  const SCROCCO = ['Oi fra, c\'hai da accendere?', 'Zio, mi giri una siga? No? Bella lo stesso.', 'Scusa, hai un drum? ...Ok. Bella.', 'Fra. Fra. No, niente. Bella.',
+    'Oi! ...Ah, pensavo fossi Davide.', 'Hai da accendere? Va be\', ciao zio.', 'Zio, che ore sono? Non importa. Bella.', 'Bel giubbotto, fra. Davvero. Fottiti.',
+    'Oi, hai una cartina? Anche usata.', 'Fra, sai dov\'è la Debora? Neanche io.'];
 
   // ================= STATO =================
-  const S = st => st.__matti || (st.__matti = { ready: false, ids: {}, cd: 0, fram: 0, deck: [], q: [], incontri: {} });
+  const S = st => st.__matti || (st.__matti = { ready: false, ids: {}, cd: 0, fram: 0, deck: [], deckG: [], q: [], incontri: {}, scr: 0, manie: [] });
   const isMatto = n => !!(n && n.pop && n.pop.matto);
+  const giovane = n => n.pop && n.pop.age <= CFG.giovane;
   const alive = n => n && !n.dead;
   function ok(st, n) {   // può parlare per conto suo (né dentro, né in una scena, né in una rissa)
     return alive(n) && !n.inside && !n.room && !n.__ev && !n.cop && !n.faction && !n.aggro && !(n.stun > 0) && !n.inVeh && !(n.panic > 0) && !(n.jailedUntil > st.t) && n.pop && n.pop.near !== false && (!n.action || n.action.name === 'routine');
@@ -64542,6 +64604,10 @@ var Matti = (function () {
       used.add(n); homes.push(h(n)); n.pop.matto = k; M.ids[k] = n.id; n.nick = (n.pop.sex === 'f' && D.nickF) || D.nick;
       card(st, n, D);
     });
+    for (const k in MANIE) {   // le manie: fra chi resta, sparsi a caso
+      const D = MANIE[k], c = pool.filter(n => !used.has(n) && !n.pop.matto && D.chi(n)).sort(() => rnd() - .5);
+      c.slice(0, D.quanti).forEach(n => { used.add(n); n.pop.mania = k; M.manie.push(n.id); });
+    }
     M.ready = true;
   }
   // la scheda che legge la chat: la voce e la fissazione vengono prima della biografia
@@ -64576,14 +64642,26 @@ var Matti = (function () {
       if (typeof Popolo !== 'undefined' && Popolo.note && d < CFG.passa && M.incontri[k] === 1) try { Popolo.note(st, n, 'ha parlato con lo straniero, che lo ha ascoltato', 'info', { w: .2, tag: 'giocatore', who: 'player' }); } catch (e) { }
       break;
     }
+    // le manie e la sedia con le rotelle: una frase normale quando gli passi accanto, poi più niente per un po'
+    if (st.clock > M.cd) for (const n of st.npcs) {
+      const D = n.pop && MANIE[n.pop.mania], L = D ? D.passa : n.rotelle ? ROTELLE : null;
+      if (!L || (n.__mtCd || 0) > st.clock || !ok(st, n) && !(n.rotelle && alive(n) && !n.__ev && !n.inside) || hyp(n.x - p.x, n.y - p.y) > 4) continue;
+      G.say(st, n, pick(L), 3); n.__mtCd = st.clock + 90; M.cd = st.clock + CFG.cdTutti; break;
+    }
+    // i ragazzi: uno che ti passa accanto ti chiede da accendere (una volta a testa, ogni un paio di minuti al massimo)
+    if (st.clock > M.scr && st.clock > M.cd) {
+      const n = st.npcs.find(k => giovane(k) && !k.__scr && !isMatto(k) && hyp(k.x - p.x, k.y - p.y) < CFG.scroccoR && ok(st, k));
+      if (n && rnd() < .25) { n.__scr = 1; n.face = Math.atan2(p.y - n.y, p.x - n.x); G.say(st, n, pick(SCROCCO), 3.6); M.scr = st.clock + CFG.scrocco[0] + rnd() * (CFG.scrocco[1] - CFG.scrocco[0]); M.cd = st.clock + CFG.cdTutti; }
+    }
     // i frammenti: due che parlano lì vicino, a metà della loro storia
     if (st.clock < M.fram || M.q.length) return;
     M.fram = st.clock + CFG.fram[0] + rnd() * (CFG.fram[1] - CFG.fram[0]);
     const near = st.npcs.filter(n => { const d = hyp(n.x - p.x, n.y - p.y); return d > CFG.framR[0] && d < CFG.framR[1] && ok(st, n) && !isMatto(n); });
     for (const a of near) {
       const b = near.find(k => k !== a && hyp(k.x - a.x, k.y - a.y) < CFG.coppia); if (!b) continue;
-      if (!M.deck.length) M.deck = FRAM.map((_, i) => i).sort(() => rnd() - .5);
-      const F = FRAM[M.deck.pop()], g = st.clock;
+      const G2 = giovane(a) && giovane(b), L = G2 ? FRAM_G : FRAM, dk = G2 ? 'deckG' : 'deck';   // due ragazzi: il loro mazzo
+      if (!M[dk].length) M[dk] = L.map((_, i) => i).sort(() => rnd() - .5);
+      const F = L[M[dk].pop()], g = st.clock;
       F.forEach((text, i) => M.q.push({ id: (i % 2 ? b : a).id, text, at: st.clock + i * CFG.gap, g }));
       a.face = Math.atan2(b.y - a.y, b.x - a.x); b.face = Math.atan2(a.y - b.y, a.x - b.x);
       return;
@@ -64684,6 +64762,18 @@ var Matti = (function () {
       SAY('b', '...è una bella notizia lo stesso.', '...cade lo stesso.', 'La luna è una spia.'), { mood: 'b', m: 'ubriaco' }, { wait: 2 },
       SAY('a', 'Ti voglio bene. Ma non te lo dico.', 'Se domani mi sveglio scrivo un libro.'), SAY('b', 'Me l\'hai detto adesso.', 'Scrivilo su di me. Mettimi più alto.'), { wander: 'a', r: 4, sp: .7 }, { follow: 'b', who: 'a', sp: .9, d: 1.2 }, { wait: 4 }] },
 
+    { id: 'drum_condiviso', w: 1, posto: ['panchina', 'angolo', 'dehors', 'fermata'], soft: true, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.3, d: 1.1, t: 16 }, SAY('b', 'Oi zio.', 'Bella fra.'), SAY('a', 'Bella.', 'Oi.'), { pose: 'a', p: 'merce' },
+      SAY('a', 'C\'ho il drum. Le cartine ce le hai tu?', 'Giramene una che io non sono capace.'), SAY('b', 'Sì.', 'Una. L\'ultima.'), { wait: 3 },
+      SAY('b', 'Ecco. È storta.', 'Fra, è venuta a forma di Italia.'), SAY('a', 'Va bene storta.', 'Bella.'), { wait: 2 },
+      SAY('a', 'Hai da accendere?', 'L\'accendino?'), SAY('b', 'No.', 'Pensavo ce l\'avessi tu.'), { pose: 'a' }, { wait: 3 },
+      SAY('a', 'Vabbè.', 'Stiamo qua.'), { wait: 4 }] },
+    { id: 'fottiti_affetto', w: 1, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 14 }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Oi! Fottiti!', 'Zio! Fottiti!'), { look: 'b', at: 'a' },
+      SAY('b', 'Fottiti tu, fra.', 'Bella zio. Fottiti.'), { pose: 'a' }, { pose: 'b', p: 'saluta_su' }, { wait: 1.5 }, { pose: 'b' },
+      SAY('a', 'Com\'è andato l\'esame?', 'Tua madre come sta?'), SAY('b', 'Bene. Grazie.', 'Bene. Ti saluta.'), { wait: 2 },
+      SAY('a', 'Sono contento.', 'Mi fa piacere davvero.'), SAY('b', 'Fottiti.', '...'), { flee: 'a', from: 'b', sp: 1.3 }, { wait: 2 }] },
+
     // --- ti tirano dentro (vengono da te; di rado) ---
     { id: 'fai_mio_fratello', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
       { go: 'a', to: 'player', sp: 1.9, d: 1.4, t: 16 }, { look: 'a', at: 'player' }, SAY('a', 'Psst. Fai finta di essere mio fratello. Due secondi.', 'Abbracciami. Sei mio cugino di Torino. Non chiedere.'), { wait: 2 },
@@ -64709,11 +64799,16 @@ var Matti = (function () {
     { id: 'tienimi_posto', w: 1, player: true, posto: ['fila', 'edicola', 'fermata', 'pensilina'], soft: true, roles: [{ id: 'a', ring: [6, 22] }], beats: [
       { go: 'a', to: 'player', sp: 1.8, d: 1.4, t: 14 }, { look: 'a', at: 'player' }, SAY('a', 'Mi tieni il posto? Torno subito.', 'Mi guardi la borsa un attimo? Dentro c\'è un gallo, non gli dar retta.'), { wait: 2 },
       { go: 'a', to: 'away', sp: 2.2, d: 2, t: 8, soft: true }, SAY('a', 'Se chiede di me, sono morto.', 'Se arriva mia moglie, io sono te!'), { wait: 2 }] },
+    { id: 'hai_da_accendere', w: 1, player: true, roles: [{ id: 'a', f: 'young', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.4, t: 14 }, { look: 'a', at: 'player' }, SAY('a', 'Oi fra. Hai da accendere?', 'Zio, scusa. C\'hai da accendere?'), { wait: 3 },
+      SAY('a', 'No? Bella.', 'Neanche io.'), { wait: 2.5 },
+      SAY('a', 'Ma una siga ce l\'hai?', 'Tanto non ce l\'ho neanche la siga.'), { wait: 2.5 },
+      SAY('a', 'Vabbè. Grazie lo stesso fra. Ciao.', 'Bella. Sei a posto tu.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
   ];
   // si aggiungono al catalogo di eventi.js (che le prova come le altre, test_eventi.js)
   { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
 
-  return { CFG, MATTI, FRAM, SCENE, S, scheda, linea, choose, step };
+  return { CFG, MATTI, MANIE, ROTELLE, FRAM, FRAM_G, SCROCCO, SCENE, S, scheda, linea, choose, step };
 })();
 if (typeof module !== 'undefined') module.exports = Matti;
 </script>

@@ -792,6 +792,13 @@
     if (!n.rotelle || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto) return;
     s.act = 'rotelle'; s.rotelle = rotelleModo(st, n); if (s.upper && s.upper !== 'telefona' && s.upper !== 'fuma') s.upper = null;
   });
+  // [manie] chi fa sempre una cosa sola (matti.js, Matti.MANIE): la posa delle braccia sopra la camminata, sempre o a tratti
+  Anim.npcPost((st, n, s) => {
+    const k = n.pop && n.pop.mania, D = k && typeof Matti !== 'undefined' && Matti.MANIE[k];
+    if (!D || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto || n.panic > 0) return;
+    if (D.ogni) { const ph = (n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97)), c = ((st.clock || 0) + ph) % D.ogni[0]; if (c > D.ogni[1]) return; }
+    s.upper = D.upper;
+  });
   // la sedia: seduta imbottita, schienale, colonna a gas, la stella a cinque razze con le rotelle. Una geometria sola coi colori nei
   // vertici, condivisa da tutte le sedie (poche decine di triangoli); seduta a 48 cm, lo schienale dietro (-z), davanti +z
   let SEDIA = null;
