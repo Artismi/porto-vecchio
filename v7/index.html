@@ -23033,7 +23033,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = 'b34aecae3bfeca3f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '5a96d674635ace87';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -69319,9 +69319,24 @@ var PesoPronti = (function () {
     return [...F.values()];
   }
   const NOTAGLIO = /[?&]noprontitaglio\b/.test(Q);
+  // [tieni] I PROGRAMMI NON SI BUTTANO. three cancella un programma quando l'ultimo materiale che lo usa viene liberato (usedTimes a 0): la
+  // vegetazione, i blocchi del terreno, i veli dei graffiti, i pezzi della città entrano ed escono dalla vista, i loro materiali si
+  // liberano e il programma si ricompila al ritorno. Su Intel con Direct3D (ANGLE) ogni compilazione ferma il gioco per centinaia di ms:
+  // in una camminata di 150 fotogrammi nascevano 9 programmi e alla fine ne restava 1. Qui ogni programma tiene un uso in più, quindi resta
+  // nella cache di three (stessa chiave, stesso programma): al ritorno non si compila niente. Costa la memoria di qualche centinaio di
+  // programmi. ?notieni come prima.
+  const TIENI = ON && !/[?&]notieni\b/.test(Q);
+  function tieni(rd) {
+    if (!TIENI || !rd || !rd.info || !Array.isArray(rd.info.programs) || rd.info.programs.__tieni) return;
+    const L = rd.info.programs; L.__tieni = true;
+    const fissa = p => { if (p && !p.__tieni) { p.__tieni = true; p.usedTimes++; ST.tenuti = (ST.tenuti || 0) + 1; } };
+    L.forEach(fissa);
+    const push0 = L.push; L.push = function () { for (let i = 0; i < arguments.length; i++) fissa(arguments[i]); return push0.apply(this, arguments); };
+  }
   function compila(R) {
     if (!ON) return; const M0 = R && R.__models; if (!M0 || !M0.renderer || !M0.scene || !R.getCamera) return;
     const T = window.THREE, rd = M0.renderer, S = M0.scene, cam = R.getCamera(), t0 = performance.now(), extra = [];
+    tieni(rd);   // [tieni]
     taglio(rd); ST.parallelo = !!TG.ext && !NOTAGLIO;
     try {
       const mats = R.__pronti5 ? R.__pronti5() : [];
@@ -69416,7 +69431,7 @@ var PesoPronti = (function () {
     S.traverse(o => each(o, m => { if (!vis.has(m)) inv.add(m); }));
     inv.forEach(m => rd.properties.remove(m)); return inv.size;
   }
-  return { ON, compila, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
+  return { ON, compila, tieni, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
 })();
 if (typeof window !== 'undefined') window.PesoPronti = PesoPronti;
 </script>   <!-- [peso] i programmi che nascono tardi, preparati nel caricamento -->

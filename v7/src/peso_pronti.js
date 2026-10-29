@@ -67,9 +67,24 @@ var PesoPronti = (function () {
     return [...F.values()];
   }
   const NOTAGLIO = /[?&]noprontitaglio\b/.test(Q);
+  // [tieni] I PROGRAMMI NON SI BUTTANO. three cancella un programma quando l'ultimo materiale che lo usa viene liberato (usedTimes a 0): la
+  // vegetazione, i blocchi del terreno, i veli dei graffiti, i pezzi della città entrano ed escono dalla vista, i loro materiali si
+  // liberano e il programma si ricompila al ritorno. Su Intel con Direct3D (ANGLE) ogni compilazione ferma il gioco per centinaia di ms:
+  // in una camminata di 150 fotogrammi nascevano 9 programmi e alla fine ne restava 1. Qui ogni programma tiene un uso in più, quindi resta
+  // nella cache di three (stessa chiave, stesso programma): al ritorno non si compila niente. Costa la memoria di qualche centinaio di
+  // programmi. ?notieni come prima.
+  const TIENI = ON && !/[?&]notieni\b/.test(Q);
+  function tieni(rd) {
+    if (!TIENI || !rd || !rd.info || !Array.isArray(rd.info.programs) || rd.info.programs.__tieni) return;
+    const L = rd.info.programs; L.__tieni = true;
+    const fissa = p => { if (p && !p.__tieni) { p.__tieni = true; p.usedTimes++; ST.tenuti = (ST.tenuti || 0) + 1; } };
+    L.forEach(fissa);
+    const push0 = L.push; L.push = function () { for (let i = 0; i < arguments.length; i++) fissa(arguments[i]); return push0.apply(this, arguments); };
+  }
   function compila(R) {
     if (!ON) return; const M0 = R && R.__models; if (!M0 || !M0.renderer || !M0.scene || !R.getCamera) return;
     const T = window.THREE, rd = M0.renderer, S = M0.scene, cam = R.getCamera(), t0 = performance.now(), extra = [];
+    tieni(rd);   // [tieni]
     taglio(rd); ST.parallelo = !!TG.ext && !NOTAGLIO;
     try {
       const mats = R.__pronti5 ? R.__pronti5() : [];
@@ -164,6 +179,6 @@ var PesoPronti = (function () {
     S.traverse(o => each(o, m => { if (!vis.has(m)) inv.add(m); }));
     inv.forEach(m => rd.properties.remove(m)); return inv.size;
   }
-  return { ON, compila, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
+  return { ON, compila, tieni, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
 })();
 if (typeof window !== 'undefined') window.PesoPronti = PesoPronti;
