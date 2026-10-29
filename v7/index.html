@@ -22987,7 +22987,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '392315924c6370fc';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '8d8f2cf28896c66a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -84767,6 +84767,7 @@ var Render = (function () {
     luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .35,
     tetti: .8, tettiDa: 2.5, tettiPer: 5,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
+    ciglio: .7, piede: .55, calma: .7, piedeR: 1.4,   // i volumi: la linea sul ciglio, l'ombra al piede dei muri, il suolo spianato, il raggio del piede (m)
     spalla: .4,                            // le luci piene meno sature
     acceso: true };
   if (typeof window !== 'undefined') window.__NIT = NIT;
@@ -85118,7 +85119,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) },
         aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
-        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
+        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + `
@@ -85138,6 +85139,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         vec3 sgV(vec2 q){ float d = 1. / sgI(q); return vec3((q * 2. - 1.) * fv * d, -d); }
         vec3 sgMn(vec3 a, vec3 b){ return abs(a.z) < abs(b.z) ? a : b; }
 #endif
+#if defined(SG_NIT) && defined(SG_PROD)
+        uniform vec4 nY2; uniform vec4 nG;   // [nitida] nG: il ciglio dei volumi, il piede dei muri, la calma del suolo, il raggio del piede (m)
+        float nQ(vec2 q){ return dot(nY2.xyz, sgV(q)) + nY2.w; }   // la quota nel mondo di un pixel (m)
+#endif
 #ifdef SG_NIT
         uniform vec4 nA; uniform vec4 nB; uniform vec4 nC; uniform vec4 nD; uniform vec3 nH; uniform float nS; uniform vec4 nY; uniform vec4 nE;   // [nitida] nY: la riga della quota (camera → mondo); nE: tetti, da, in quanto, quota del personaggio
 #endif
@@ -85155,7 +85160,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           // [nitida] dove sta questo pixel rispetto al personaggio: rel < 0 davanti (verso la camera), > 0 dietro
           float nD0 = 1. / sgI(vUv), nRel = (nD0 - nB.z) / nB.z;
           vec3 nV = sgV(vUv); float nTet = nE.x * smoothstep(nE.y, nE.y + nE.z, dot(nY.xyz, nV) + nY.w - nE.w);   // [nitida] i tetti: quanto questo pixel sta sopra il piano del personaggio
-          aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel) + nTet * .3);   // il fuoco per profondità (e un velo sui tetti)
+          aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel) + nTet * .55);   // il fuoco per profondità (e un velo sui tetti)
 #endif
 #if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0. || aCoc > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
@@ -85177,9 +85182,22 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
               float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
               c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
             c *= 1. - nA.z * smoothstep(.25, .6, -nRel);                                   // la quinta
+            if (nG.x + nG.y + nG.z > 0.) {   // i volumi e le divisioni, dalla quota vera (con la camera quasi dall'alto la profondità relativa dice poco)
+              float q0 = nQ(vUv), dr = 0.;
+              for (int k = 0; k < 4; k++) { float a = float(k) * 1.5708; dr = max(dr, q0 - nQ(vUv + vec2(cos(a), sin(a)) * e * 1.5)); }   // il ciglio: un vicino molto più basso
+              float rp = clamp(nG.w / (pa * nD0), 2., 28.), oc = 0., un = 0.;
+              for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; float hn = nQ(vUv + vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .6 : 1.)) - q0;
+                oc += smoothstep(.6, 2.5, hn); un += step(abs(hn), .08); }
+              c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
+              c *= mix(vec3(1.), vec3(.62, .6, .72), min(1., oc * .22) * nG.y);                  // il piede dei muri: l'ombra di contatto (il suolo si separa dalla casa)
+              float pl = smoothstep(6., 8., un) * (1. - smoothstep(.1, .6, dr)) * (1. - nTet) * nG.z;   // la calma: le superfici piane, lontano dagli spigoli
+              if (pl > .01) { vec3 m = (texture2D(t, vUv + vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv + vec2(e.x, -e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, -e.y) * 1.5).rgb) * .25;
+                float dl = abs(dot(m - c, vec3(.299, .587, .114)));
+                c = mix(c, m, pl * (1. - smoothstep(.06, .16, dl))); }   // il rumore fine del lastricato si spiana; i segni netti (strisce, ombre) restano
+            }
             float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
             c = mix(c, nH + (c - nH) * .55, hz);
-            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt) * vec3(1.02, 1., .97) + (c - vec3(lt)) * .55, nTet); c = mix(c, nH, nTet * .14); }   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
+            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .9 + .08) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .38, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
           }
 #endif
 #if defined(SG_AAA) && defined(SG_PROD)
@@ -85325,7 +85343,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
         U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
         if (K.proPieno !== undefined) U.gN.value.set(SGU.neri + (K.proNeri - SGU.neri) * g, SGU.pieno + (K.proPieno - SGU.pieno) * g, 0, 0); } }   // gli accenti pieni, i neri profondi di sera e di notte
-    if (NIT.on && PRO.look && !NIT.acceso) { U.nA.value.set(0, 0, 0, 0); U.nB.value.w = 0; U.nC.value.set(0, 0, 1, 0); U.nS.value = 0; U.nE.value.x = 0; }   // spento dal vivo (le prove): il passo di prima
+    if (NIT.on && PRO.look && !NIT.acceso) { U.nA.value.set(0, 0, 0, 0); U.nB.value.w = 0; U.nC.value.set(0, 0, 1, 0); U.nS.value = 0; U.nE.value.x = 0; U.nG.value.set(0, 0, 0, 1); }   // spento dal vivo (le prove): il passo di prima
     if (NIT.on && PRO.look && NIT.acceso) {   // [nitida] il personaggio sullo schermo e la sua distanza; le manopole (spente con la grafica ridotta, tranne la luce)
       const N = NIT, d3 = SGT.nv || (SGT.nv = new THREE.Vector3()), f = ui.focus, fx0 = f ? f.x : p.x, fz0 = f ? f.y : p.y, fh0 = f ? groundH(fx0, fz0) : playerH;
       d3.set(fx0, fh0 + 1, fz0).applyMatrix4(camera.matrixWorldInverse); const dist = Math.max(2, -d3.z);
@@ -85337,7 +85355,8 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       U.nB.value.set(SGT.nfx, SGT.nfy, dist, dep ? N.chiarezza : 0);
       U.nC.value.set(N.luce, N.ombraBordo, N.cerchio, dep ? N.vicino : 0); U.nD.value.set(N.ariaDa, N.ariaPer, N.fuocoDa, N.fuocoPer);
       U.nH.value.set(fc.r, fc.g, fc.b); U.nS.value = N.spalla;
-      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); }   // la riga della quota: dal punto in vista al mondo
+      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); U.nY2.value.copy(U.nY.value); }
+      U.nG.value.set(dep ? N.ciglio : 0, dep ? N.piede : 0, dep ? N.calma : 0, N.piedeR);   // la riga della quota: dal punto in vista al mondo
       U.nE.value.set(dep ? N.tetti : 0, N.tettiDa, N.tettiPer, fh0);
       U.gK.value.z *= .45;   // la vignetta fissa al centro cede il posto a quella che segue il personaggio
       if (dep) { U.pT.value.x = 0; U.pT.value.w = N.raggio * (rt.height || 540) / 540; } }   // la fascia fissa della miniatura cede il posto al fuoco per profondità
