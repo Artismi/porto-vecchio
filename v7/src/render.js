@@ -12997,8 +12997,8 @@ var Render = (function () {
     quinta: .16,                           // il primo piano più scuro
     luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .35,
-    tetti: .55, tettiDa: 2.5, tettiPer: 6,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
-    spalla: .3,                            // le luci piene meno sature
+    tetti: .8, tettiDa: 2.5, tettiPer: 5,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
+    spalla: .4,                            // le luci piene meno sature
     acceso: true };
   if (typeof window !== 'undefined') window.__NIT = NIT;
   if (NIT.on && PRO.look && !PHONE) PRO.prof = true;   // la profondità nel passo (sul telefono no: costa banda)

@@ -22987,7 +22987,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = 'f1fc7df3fd67caa8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '392315924c6370fc';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -84766,8 +84766,8 @@ var Render = (function () {
     quinta: .16,                           // il primo piano più scuro
     luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .35,
-    tetti: .55, tettiDa: 2.5, tettiPer: 6,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
-    spalla: .3,                            // le luci piene meno sature
+    tetti: .8, tettiDa: 2.5, tettiPer: 5,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
+    spalla: .4,                            // le luci piene meno sature
     acceso: true };
   if (typeof window !== 'undefined') window.__NIT = NIT;
   if (NIT.on && PRO.look && !PHONE) PRO.prof = true;   // la profondità nel passo (sul telefono no: costa banda)
