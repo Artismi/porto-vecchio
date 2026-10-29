@@ -165,6 +165,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #touch { inset: auto 0 0 0; height: 44%; pointer-events: none; }
 #stick { position: absolute; left: 22px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.35); pointer-events: auto; touch-action: none; }
 #knob { position: absolute; left: 43px; top: 43px; width: 44px; height: 44px; border-radius: 50%; background: rgba(240,230,208,.6); }
+/* [levette] la levetta della visuale, a destra sopra i pulsanti: di lato gira attorno al personaggio, in su e in giù lo zoom */
+#stick2 { position: absolute; right: 22px; bottom: 196px; width: 116px; height: 116px; border-radius: 50%; border: 2px solid rgba(240,230,208,.3); background: rgba(13,11,26,.3); pointer-events: auto; touch-action: none; }
+#knob2 { position: absolute; left: 37px; top: 37px; width: 40px; height: 40px; border-radius: 50%; background: rgba(240,230,208,.45); }
 /* [mobile] i pulsanti di adesso: il principale in basso a destra, sotto il pollice; gli altri sopra e a sinistra */
 #tbtns { position: absolute; right: 14px; bottom: 16px; width: 224px; display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px; pointer-events: auto; }
 #tbtns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.62); color: var(--fg); font-family: var(--f-label); font-size: 11px; line-height: 1.1; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-content: center; }
@@ -285,6 +288,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   </div>
   <div class="layer" id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
+    <div id="stick2"><div id="knob2"></div></div>
     <div id="tbtns"></div>
     </div>
   </div>
@@ -23033,7 +23037,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '5a96d674635ace87';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '6274804376453f00';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -69539,9 +69543,11 @@ var Inquadratura = (function () {
   // dyn.buildings; cam: la posizione della camera. Solo le case sul lato camera che coprono un punto del disco di suolo attorno al
   // personaggio (o il suo corpo); la quota è la linea di solaio più alta sotto il primo raggio che vi entra
   // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
-  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme) {
+  // [bassa] Rv: il raggio del disco (di difetto K.raggio). Con la visuale bassa il disco è stretto (il personaggio e poco più): un disco di
+  // 5 m coi raggi quasi orizzontali prendeva le case ai lati del vicolo e lo appiattiva; così scende solo quello che sta fra te e la camera
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv) {
     out = out || new Map(); out.clear(); if (!on) return out;
-    const P = [], R = K.raggio, st = K.passoD;
+    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
     for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
     P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
@@ -69585,6 +69591,87 @@ var Inquadratura = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Inquadratura;
 </script>   <!-- [inquadratura] la via in strada -->
+<script data-m="regia">/* Porto Vecchio — [regia] LA CAMERA CHE TENDE ALLO SCORCIO MIGLIORE (le regole, senza grafica: le usa render.js, le prova test_regia.js).
+   Il committente (29 ottobre): due levette, una per camminare e una per la visuale (gira attorno al personaggio e fa lo zoom); la camera
+   resta dove la metti, ma quando non la tocchi tende all'inquadratura che mostra lo scorcio migliore e combacia con la direzione del
+   personaggio, senza correggere in continuazione, in modo equilibrato, favorendo le inquadrature cinematografiche.
+   Come:
+   - SI ASPETTA: niente regia mentre il giocatore tocca la visuale e per K.mano secondi dopo, da fermi, e finché la direzione di marcia non
+     è stabile da K.stabile secondi (una svolta breve non sposta la camera).
+   - SI SCEGLIE di rado (ogni K.ogni s): poche inquadrature attorno al «dietro» della marcia (dritto, tre quarti a destra e a sinistra, più
+     di lato), ognuna col suo voto: quanto si vede del personaggio e della strada davanti (raggi verso la camera che non devono passare
+     dentro le case), quanto si allontana dal dietro, un premio al tre quarti (più cinematografico del dritto alle spalle) e la continuità
+     con la scelta di adesso. Il bersaglio cambia solo se il nuovo è oltre K.banda dal vecchio (niente ritocchi piccoli).
+   - SI VA PIANO: verso il bersaglio con un tempo lungo (K.tau) e una velocità massima (K.vmax), così non si sente la mano della regia.
+   Gli angoli sono nello stesso spazio di cam.uy in render.js (la visuale meno YAW). ?noregia: la camera resta sempre dove la metti.  */
+var Regia = (function () {
+  'use strict';
+  const K = {
+    mano: 3,          // s: dopo che il giocatore ha toccato la visuale, la regia aspetta tanto
+    vel: .5,          // m/s: sotto questa velocità si è fermi (niente regia)
+    stabile: .7,      // s: la direzione di marcia deve restare dentro K.svolta per tanto prima di scegliere
+    svolta: .35,      // rad
+    ogni: .6,         // s: una scelta ogni tanto, non a ogni fotogramma
+    banda: .3,        // rad: un bersaglio nuovo solo se diverso di tanto dal vecchio
+    tau: 1.4,         // s: il tempo con cui la camera va verso il bersaglio
+    vmax: .8,         // rad/s
+    vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
+    piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
+    mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
+    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
+  };
+  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
+  const dietro = (hd, YAW) => ang(Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW);
+  // il voto di un'inquadratura (più basso è meglio). copre(o, q): il numero di raggi bloccati fra il punto o (in metri, {x, y, z} con y in
+  // alto) e la camera q. q.cam(yaw): la posizione della camera per quella visuale
+  function voto(off, base, cur, q) {
+    const P = K.pesi, yaw = base + off, C = q.cam(yaw), a = q.avanti, f = q.fy;
+    let v = 0;
+    v += P.copreMe * (q.copre({ x: q.x, y: f + .4, z: q.z }, C) + q.copre({ x: q.x, y: f + 1.6, z: q.z }, C));
+    v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
+    v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
+    v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    return v;
+  }
+  // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
+  // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
+  function passo(S, q, dt) {
+    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
+    S.t += dt; S.tSc += dt;
+    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
+    S.tMano += dt;
+    if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
+    if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
+    if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
+    S.tHd += dt;
+    if (S.tHd >= K.stabile && S.tSc >= K.ogni) {
+      S.tSc = 0; const base = dietro(S.hd0, q.YAW), cur = S.tgt === null ? q.uy : S.tgt;
+      q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
+      let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, cur, q); if (v < bv) { bv = v; best = base + off; } }
+      if (best !== null && (S.tgt === null || Math.abs(ang(best - S.tgt)) > K.banda)) { S.tgt = ang(best); S.n++; S.perche = 'scelta'; }
+    }
+    if (S.tgt === null) return q.uy;
+    const d = ang(S.tgt - q.uy); if (Math.abs(d) < .005) return q.uy;
+    // morbida all'inizio (il tempo K.tau), ma con una velocità minima (K.vmin): arriva e si ferma, senza la coda lunga dei millimetri
+    const m = K.vmax * dt, mn = K.vmin * dt; let step = d * (1 - Math.exp(-dt / K.tau));
+    if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
+    return q.uy + step;
+  }
+  // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
+  function taglia(o, c, b) {
+    let t0 = 0, t1 = 1;
+    for (const k of ['x', 'y', 'z']) { const d = c[k] - o[k], lo = b.min[k], hi = b.max[k];
+      if (Math.abs(d) < 1e-9) { if (o[k] < lo || o[k] > hi) return false; continue; }
+      let a = (lo - o[k]) / d, e = (hi - o[k]) / d; if (a > e) { const t = a; a = e; e = t; }
+      if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
+    return true;
+  }
+  return { K, passo, voto, dietro, taglia, ang };
+})();
+if (typeof window !== 'undefined') window.__REGIA = Regia.K;
+if (typeof module !== 'undefined') module.exports = Regia;
+</script>   <!-- [regia] la camera che tende allo scorcio migliore -->
 <script data-m="suolo">/* Porto Vecchio — [suolo] LA GERARCHIA DEI SUOLI: chi sta sopra e chi si interrompe al confine (città nuova e campagna).
    Il committente: «il suolo fa ancora cose strane»: una via scura che passa sopra il lastricato della piazza invece di fermarsi al
    bordo e riprendere dall'altra parte, il marciapiede rialzato in mezzo a una piazza, la tinta del marciapiede sotto il lastricato.
@@ -73627,7 +73714,7 @@ var Render = (function () {
   function vis3Tick(px, pz, fy, on, dt, pitch) {
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on), vv, IQ5.v.uniforme)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
@@ -89465,6 +89552,30 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  // [regia] un passo della regia (src/regia.js): la direzione di marcia, le case vicine (ogni mezzo secondo), la camera per una visuale
+  function regiaTick(p, pveh, dt, st) {
+    const sp = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
+    const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : (sp > .3 ? Math.atan2(cam.pvy, cam.pvx) : null);
+    const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null, fy = lh !== null ? lh : groundH(p.x, p.y), x = pveh ? pveh.x : p.x, z = pveh ? pveh.y : p.y;
+    const now = performance.now();
+    const copre = (o, c) => {
+      if (now - REG.vicT > 500) { REG.vicT = now; REG.vic = (dyn.buildings || []).filter(B => { const b3 = B.box3; if (!b3) return false; const cx = (b3.min.x + b3.max.x) / 2 - x, cz = (b3.min.z + b3.max.z) / 2 - z; return cx * cx + cz * cz < 45 * 45 && b3.max.y > fy + 1.2; }); }
+      let n = 0; for (const B of REG.vic) { const b = B.box3; if (x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z) continue; if (Regia.taglia(o, c, b)) n++; } return n; };
+    const camDi = uy => { const y = YAW + uy, cp = Math.cos(REG.lp); return { x: x + Math.sin(y) * cp * REG.ld, y: fy + 1 + Math.sin(REG.lp) * REG.ld, z: z + Math.cos(y) * cp * REG.ld }; };
+    cam.uy = Regia.passo(REG.S, { uy: cam.uy || 0, YAW, hd, vel: pveh ? sp : sp * 1.2, mano: !!REG.mano, mezzo: !!pveh, x, z, fy, copre, cam: camDi }, dt);
+  }
+
+  // [bassa] LA VISUALE BASSA: k da 0 (la visuale di sempre, dall'alto) a 1 (bassa dietro al personaggio, si guarda avanti e lontano).
+  // La chiede il giocatore (main.js ui.tilt: la rotella premuta trascinata in su e in giù, la levetta destra in verticale, PagSu/PagGiù) e
+  // la avvicina lo zoom (sotto lo zoom .42 scende da sola). Con k alto: la pendenza scende a ~10°, la camera si avvicina, il campo si
+  // allarga, si guarda all'altezza del petto, la visuale segue la marcia, la nebbia va più lontano e il taglio mirato è sempre acceso,
+  // stretto sul personaggio (inquadratura.js tagli, Rv): quello che sta fra la camera e te scende a muretto con le sue cose. ?nobassa spegne
+  const BASSA = { k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
+  // [regia] LA CAMERA LIBERA: la visuale la gira il giocatore (levetta destra, tasto destro del mouse, , e .) e resta dove la mette: niente
+  // ricentro (Visuale.mano gira solo lo spostamento), niente giro lungo i vicoli ([inquadratura] IQ5.dy) né della camera che si adatta
+  // (VIS4.C.g). Quando non la tocchi la regia (src/regia.js) la porta piano allo scorcio migliore dietro la marcia. ?camauto: com'era
+  const LIBERA = !(typeof location !== 'undefined' && /[?&]camauto\b/.test(location.search)) && typeof Regia !== 'undefined';
+  const REG = { S: {}, on: !(typeof location !== 'undefined' && /[?&]noregia\b/.test(location.search)), vic: [], vicT: -9, lp: .8, ld: 30 };
   // [zoom2] il tetto dello zoom indietro (main.js zoomBy usa lo stesso): a 4,2 la camera stava a 345 m, la nebbia a 765 m e la scheda
   // video caricava mezza isola fino a perdere il contesto (schermo bianco, «la grafica non regge»). A 2 si vede il quartiere
   const ZOOM_MAX = 2;
@@ -89926,8 +90037,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const km = 1 - Math.exp(-dt / .1); cam.mvx = (cam.mvx || 0) + (ivx - (cam.mvx || 0)) * km; cam.mvy = (cam.mvy || 0) + (ivy - (cam.mvy || 0)) * km;   // la marcia, appena smorzata
       const inV = !!pveh, forza = !!(ui.intro || ui.focus || ui.dialogNpc || (inV && !cam.inV)); cam.inV = inV;   // sali su un mezzo, un dialogo, l'intro: si ricentra
       const yA = MN.yaw || 0;
+      if (LIBERA) { cam.uy = (cam.uy || 0) + dyaw; REG.mano = !!(ui.camMano || dyaw); dyaw = 0; }   // [regia] la visuale girata a mano resta dov'è
       Visuale.mano(MN, { dyaw, dpx, dpz, attivo: !!(ui.camMano || dyaw || dpx || dpz), vel: Math.hypot(cam.mvx, cam.mvy), dir: Math.atan2(cam.mvy, cam.mvx), avanti: Math.atan2(fz0, fx0), segue: PHONE && !p.indoor, forza }, dt, KM);
-      if (!ui.lead || pveh) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
+      if (!ui.lead || pveh || LIBERA) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
       if (!pveh && !ui.intro && !ui.focus) { const d0 = vh0 / 2 / Math.tan(15 * Math.PI / 180), a0 = 15 * Math.PI / 180;   // in prospettiva: quanto suolo c'è fra il centro e il bordo basso (verso la camera) e alto
         Visuale.limita(MN, cam.lx, cam.ly, yaw0, vh0 / 2 * asp0, d0 * (Math.cos(pp0) - sp0 / Math.tan(pp0 + a0)), KM, d0 * (sp0 / Math.tan(Math.max(.05, pp0 - a0)) - Math.cos(pp0))); }
       cam.panX = MN.px; cam.panY = MN.pz;
@@ -89972,7 +90084,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [visuale5] cam.uy è la sola visuale automatica (gli strumenti, la visuale che segue la marcia sul telefono): quello che il giocatore
     // gira a mano sta in cam.mano.yaw (sopra) e torna da sé
     cam.uy = cam.uy || 0; const MNy = cam.mano ? cam.mano.yaw : 0, MNtieni = !!(cam.mano && cam.mano.off && !cam.mano.ric), MNgiro = !!(cam.mano && cam.mano.giro < Visuale.MANO.giro);
-    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
+    { const zq = ui.zoom || 1, zk = Math.max(0, Math.min(1, (.42 - zq) / .27)), want = BASSA.on && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.top ? Math.max(0, Math.min(1, zk + (ui.tilt || 0))) : 0;   // [bassa]
+      BASSA.k += (want - BASSA.k) * (1 - Math.exp(-dt * 5)); if (BASSA.k < .002) BASSA.k = 0; }
+    const KB = BASSA.k * BASSA.k * (3 - 2 * BASSA.k);   // [bassa] liscia agli estremi
+    if (LIBERA) { if (REG.on && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !ui.studio) try { regiaTick(p, pveh, dt, st); } catch (e) { if (!REG.err) { REG.err = 1; console.warn('[regia]', e); } } }   // [regia]
+    else if ((PHONE || KB > .45) && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [bassa] bassa: la visuale sta dietro alla marcia anche sul computer   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
       // [fluido] a piedi: se tiri la levetta indietro il personaggio si volta e la visuale guarda subito là (sguardo avanti), senza il
@@ -89981,7 +90097,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && !MNgiro && Math.abs(Math.atan2(Math.sin(tgt - cam.uy - MNy - IQ5.dy), Math.cos(tgt - cam.uy - MNy - IQ5.dy))) > 1.75;
       if (hd !== null && !far) cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 3.2))); }
     if (VIS4.camera) try { vis4Camera(p, pveh, playerH, ui, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
-    cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (IQ5.v ? IQ5.dy : 0);   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
+    cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
     let pitch = lerp(c4p(), onVespa ? .78 : .82, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -89989,9 +90105,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const ph0 = (p.lv && typeof Livelli !== 'undefined' ? Livelli.heightOf(st, p) : null), py0 = (ph0 !== null ? ph0 : groundH(p.x, p.y)) + 1.5, ux = Math.sin(cam.yaw), uz = Math.cos(cam.yaw);
       let cover = false; if (!(p.lv && p.lv.k === 'ug')) for (let s2 = 2; s2 < 40 && !cover; s2 += 1.5) { const qx = p.x + ux * Math.cos(pitch) * s2, qz = p.y + uz * Math.cos(pitch) * s2, qy = py0 + Math.sin(pitch) * s2; if (groundH(qx, qz) > qy - .2) cover = true; }
       cam.lift = (cam.lift || 0) + (((cover || ui.top) ? 1 : 0) - (cam.lift || 0)) * Math.min(1, dt * (cover ? 1.2 : .8));
-      pitch = lerp(pitch, 1.15, cam.lift);
+      pitch = lerp(pitch, 1.15, cam.lift * (1 - KB));   // [bassa] bassa: non si sale sopra la collina, la camera ci sta sopra (sotto)
     }
-    const fov = lerp(30, onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
+    pitch = lerp(pitch, .17, KB);   // [bassa] ~10°: si guarda avanti
+    const fov = lerp(lerp(30, 52, KB), onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
     const viewH = VIEW * cam.zoom * c4z() * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
     let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
@@ -90000,12 +90117,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (let s = 1.5; s < driveDist; s += .4) { const x = cam.x + hx * cp * s, z = cam.y + hz * cp * s; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD && !isWall(Math.floor(x / G.TS), Math.floor(z / G.TS))) { driveDist = Math.max(5, s - 1); break; } }
     }
     cam.cd = cam.cd === undefined ? driveDist : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));
-    const dist = lerp(walkDist, cam.cd, ease);
-    camera.fov = fov; camera.near = lerp(Math.min(8, Math.max(.6, dist * .35)), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    const dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
+    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .25, KB), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    REG.lp = pitch; REG.ld = dist;   // [regia] la camera di questo fotogramma, per le candidate della prossima scelta
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
-    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
-    camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
+    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [bassa] si guarda all'altezza del petto
+    camera.position.set(cx + ox, cy + oy, cz + oz);
+    if (KB > .01) { const gc = groundH(camera.position.x, camera.position.z) + .7; if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
+    camera.lookAt(cx, cy, cz);
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
@@ -90013,7 +90133,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [cadenza] e nemmeno mentre la camera trasla: camminando la camera agganciata avanzava di 1 o 2 texel per fotogramma (a 1080 righe
     // un passo è ~1,5 texel) e il personaggio, che non si aggancia, tremava di mezzo texel attorno al centro. Da ferma si riaggancia
     { const cp = camera.position; if (cam.__cpx === undefined || Math.abs(cp.x - cam.__cpx) + Math.abs(cp.y - cam.__cpy) + Math.abs(cp.z - cam.__cpz) > 1e-4) cam.movN = frameN; cam.__cpx = cp.x; cam.__cpy = cp.y; cam.__cpz = cp.z; }
-    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+    if (ease < .02 && KB < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
       const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
       const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
@@ -90025,7 +90145,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // allontana, la nebbia la segue di altrettanto) e con lei tutto quello che si carica e si disegna (tasselli, blocchi, streaming)
     const wd1 = walkDist / Math.max(1, cam.zoom), wdX = walkDist - wd1;
     scene.fog.near = lerp(wd1 * 1.05 + 10 - WXfog * (wd1 * .25 + 12) + wdX, 40 - WXfog * 30, ease); scene.fog.far = lerp(wd1 * 1.9 + 110 - WXfog * (wd1 * .45 + 50) + wdX, 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
-    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
+    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }
+    if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
@@ -92405,137 +92526,86 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = Mente;
 }
 </script>
-<script data-m="regia">/* Porto Vecchio — La Regia: chi decide cosa succede per strada.
-   Due strati, come vuole Andrea:
-   1. Il mondo è sempre vivo da solo (motore, senza IA): la gente va al lavoro, fa la spesa, ha i suoi progetti (popolo.js),
-      reagisce agli imprevisti (azioni.js). Qui si aggiunge che le auto sono di qualcuno e che chi ha l'auto e deve andare
-      lontano la prende: se prendi la macchina è per andare da qualche parte.
-   2. Vicino al giocatore, l'IA fa da regista invisibile: ogni tanto guarda la scena (chi c'è, cosa fa, bisogni, progetti,
-      rapporti, posti vicini) e fa succedere da 1 a 3 cose piccole e vere — un cambio di strada, due che si fermano a parlare,
-      un'offerta, una lite per un vecchio conto, uno che si mette a lavorare a un suo progetto, un gesto, una battuta.
-      Il motore le esegue con i suoi piani (strade vere, oggetti, effetti sui rapporti e sui ricordi).
-   La chat col giocatore passa sempre davanti (mente.js): mentre chatti la regia non parte e decide il motore.
-   Si carica dopo mente.js. Non tocca game.js, popolo.js, azioni.js: usa solo quello che espongono. */
+<script data-m="regia">/* Porto Vecchio — [regia] LA CAMERA CHE TENDE ALLO SCORCIO MIGLIORE (le regole, senza grafica: le usa render.js, le prova test_regia.js).
+   Il committente (29 ottobre): due levette, una per camminare e una per la visuale (gira attorno al personaggio e fa lo zoom); la camera
+   resta dove la metti, ma quando non la tocchi tende all'inquadratura che mostra lo scorcio migliore e combacia con la direzione del
+   personaggio, senza correggere in continuazione, in modo equilibrato, favorendo le inquadrature cinematografiche.
+   Come:
+   - SI ASPETTA: niente regia mentre il giocatore tocca la visuale e per K.mano secondi dopo, da fermi, e finché la direzione di marcia non
+     è stabile da K.stabile secondi (una svolta breve non sposta la camera).
+   - SI SCEGLIE di rado (ogni K.ogni s): poche inquadrature attorno al «dietro» della marcia (dritto, tre quarti a destra e a sinistra, più
+     di lato), ognuna col suo voto: quanto si vede del personaggio e della strada davanti (raggi verso la camera che non devono passare
+     dentro le case), quanto si allontana dal dietro, un premio al tre quarti (più cinematografico del dritto alle spalle) e la continuità
+     con la scelta di adesso. Il bersaglio cambia solo se il nuovo è oltre K.banda dal vecchio (niente ritocchi piccoli).
+   - SI VA PIANO: verso il bersaglio con un tempo lungo (K.tau) e una velocità massima (K.vmax), così non si sente la mano della regia.
+   Gli angoli sono nello stesso spazio di cam.uy in render.js (la visuale meno YAW). ?noregia: la camera resta sempre dove la metti.  */
 var Regia = (function () {
   'use strict';
-  const CFG = {
-    every: 40000,      // ms di orologio vero tra una regia e l'altra
-    radius: 34,        // metri intorno al giocatore
-    maxPeople: 6,
-    maxActs: 3,
-    rest: 3 * 60,      // minuti di gioco prima che la regia riprenda la stessa persona
-    driveMin: 130,     // metri oltre i quali chi ha l'auto vicina la prende
-    carNear: 60,       // metri: l'auto deve essere a portata
+  const K = {
+    mano: 3,          // s: dopo che il giocatore ha toccato la visuale, la regia aspetta tanto
+    vel: .5,          // m/s: sotto questa velocità si è fermi (niente regia)
+    stabile: .7,      // s: la direzione di marcia deve restare dentro K.svolta per tanto prima di scegliere
+    svolta: .35,      // rad
+    ogni: .6,         // s: una scelta ogni tanto, non a ogni fotogramma
+    banda: .3,        // rad: un bersaglio nuovo solo se diverso di tanto dal vecchio
+    tau: 1.4,         // s: il tempo con cui la camera va verso il bersaglio
+    vmax: .8,         // rad/s
+    vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
+    piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
+    mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
+    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
   };
-  const S = { next: 0, busy: false, log: [], owners: false, drives: 0, last: null };
-  const G = () => window.Game, P = () => window.Popolo, A = () => window.Azioni, M = () => window.Mente;
-  const dist = (a, b, c, d) => Math.hypot(a - c, b - d);
-  const SOCIAL = ['chiacchiera', 'sfotti', 'apprezza', 'offri', 'gioca', 'litiga'];
-  const VERBI = ['vai', 'fai', 'mangia', 'gesto'].concat(SOCIAL);
-
-  // ---------------- 1. LA VITA DI BASE: le auto sono di qualcuno, e servono per andare lontano ----------------
-  const freeCar = v => v && !v.traffic && !v.police && !v.military && !v.wreck && !v.hidden && !v.rider && v.kind !== 'heli';
-  function assignOwners(st) {
-    if (S.owners) return; S.owners = true;
-    const adults = st.npcs.filter(n => n.pop && !n.dead && n.pop.homeT && !n.cop && (n.pop.age || 30) >= 20);
-    st.vehicles.forEach(v => {
-      if (!freeCar(v) || v.owner) return;
-      let best = null, bd = 45;
-      adults.forEach(n => { if (n.pop.car) return; const d = dist(v.x, v.y, n.pop.homeT.x, n.pop.homeT.y); if (d < bd) { bd = d; best = n; } });
-      if (best) { v.owner = best.id; best.pop.car = v.id; }
-    });
+  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
+  const dietro = (hd, YAW) => ang(Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW);
+  // il voto di un'inquadratura (più basso è meglio). copre(o, q): il numero di raggi bloccati fra il punto o (in metri, {x, y, z} con y in
+  // alto) e la camera q. q.cam(yaw): la posizione della camera per quella visuale
+  function voto(off, base, cur, q) {
+    const P = K.pesi, yaw = base + off, C = q.cam(yaw), a = q.avanti, f = q.fy;
+    let v = 0;
+    v += P.copreMe * (q.copre({ x: q.x, y: f + .4, z: q.z }, C) + q.copre({ x: q.x, y: f + 1.6, z: q.z }, C));
+    v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
+    v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
+    v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    return v;
   }
-  function carOf(st, n) { const id = n.pop && n.pop.car; if (!id) return null; const v = st.vehicles.find(v => v.id === id); return v && freeCar(v) ? v : null; }
-  function driveIfFar(st, n) {
-    const Pn = n.pop, Po = P(), Az = A(); if (!Po || !Az || Pn.emer || n.dead || n.cop || Po.isPassive(st, n)) return;
-    const b = Po.blockNow(st, n); if (!b || !b.tgt || b === Pn.__regBlk) return; Pn.__regBlk = b;
-    if (b.act === 'sonno' || dist(n.x, n.y, b.tgt.x, b.tgt.y) < CFG.driveMin) return;
-    const v = carOf(st, n); if (!v || dist(n.x, n.y, v.x, v.y) > CFG.carNear) return;
-    const name = G().vehicleName ? G().vehicleName(st, v) : 'la macchina', label = `prende ${name} per andare ${b.label.replace(/^(va |andare )/, '')}`;
-    const step = { label, drive: { veh: () => v, to: () => ({ x: b.tgt.x, y: b.tgt.y }) }, dur: 1 };
-    const park = { label: `parcheggia e va ${b.label}`, at: () => b.tgt, dur: 1, outside: true };
-    if (Az.startPlan(st, n, 'guida', label, [step, park], 1)) { S.drives++; note(`${n.name}: ${label}`); }
+  // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
+  // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
+  function passo(S, q, dt) {
+    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
+    S.t += dt; S.tSc += dt;
+    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
+    S.tMano += dt;
+    if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
+    if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
+    if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
+    S.tHd += dt;
+    if (S.tHd >= K.stabile && S.tSc >= K.ogni) {
+      S.tSc = 0; const base = dietro(S.hd0, q.YAW), cur = S.tgt === null ? q.uy : S.tgt;
+      q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
+      let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, cur, q); if (v < bv) { bv = v; best = base + off; } }
+      if (best !== null && (S.tgt === null || Math.abs(ang(best - S.tgt)) > K.banda)) { S.tgt = ang(best); S.n++; S.perche = 'scelta'; }
+    }
+    if (S.tgt === null) return q.uy;
+    const d = ang(S.tgt - q.uy); if (Math.abs(d) < .005) return q.uy;
+    // morbida all'inizio (il tempo K.tau), ma con una velocità minima (K.vmin): arriva e si ferma, senza la coda lunga dei millimetri
+    const m = K.vmax * dt, mn = K.vmin * dt; let step = d * (1 - Math.exp(-dt / K.tau));
+    if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
+    return q.uy + step;
   }
-
-  // ---------------- 2. LA REGIA DELL'IA vicino al giocatore ----------------
-  const TRATTI = { loq: ['chiacchierone', 'di poche parole'], cor: ['coraggioso', 'pauroso'], legge: ['ligio', 'insofferente alle regole'], avid: ['avido', 'generoso'] };
-  function character(n) { const t = n.tr || {}, out = []; Object.keys(TRATTI).forEach(k => { if (t[k] === undefined) return; if (t[k] > .68) out.push(TRATTI[k][0]); else if (t[k] < .32) out.push(TRATTI[k][1]); }); return out.slice(0, 3).join(', '); }
-  function mood(Pn) { const N = Pn.need || {}; return Object.keys(N).filter(k => N[k] > .6).sort((a, b) => N[b] - N[a]).slice(0, 3); }
-  function candidates(st) {
-    const p = st.player, Po = P();
-    return st.npcs.filter(n => n.pop && !n.dead && !n.cop && !n.inside && n.pop.near && !n.pop.emer && !(n.jailedUntil > st.t) && !Po.isPassive(st, n)
-      && dist(n.x, n.y, p.x, p.y) < CFG.radius && !(n.pop.regiaT && st.t - n.pop.regiaT < CFG.rest))
-      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y)).slice(0, CFG.maxPeople);
-  }
-  function placesNear(st, x, y) {
-    const PL = G().PLACES || {}; return Object.keys(PL).map(id => ({ id, nome: PL[id].name, d: dist(PL[id].x, PL[id].y, x, y) })).filter(q => q.d < 120).sort((a, b) => a.d - b.d).slice(0, 8).map(q => ({ id: q.id, nome: q.nome, metri: Math.round(q.d) }));
-  }
-  function scene(st, people) {
-    const Po = P(), Az = A(), g = G(), p = st.player;
-    const persone = people.map(n => { const Pn = n.pop, b = Po.blockNow(st, n), pj = Pn.projects && Pn.projects[0];
-      return { id: n.id, nome: n.name, eta: Pn.age, mestiere: Pn.job ? Pn.job.title : (Pn.status || n.role), carattere: character(n), umore: mood(Pn), sta_facendo: b ? b.label : 'gironzola',
-        progetto: pj ? pj.label : undefined, pensiero: Pn.thoughts && Pn.thoughts.length ? Pn.thoughts[Pn.thoughts.length - 1].text : undefined,
-        ricordo: Pn.diary && Pn.diary.length ? Pn.diary[Pn.diary.length - 1].text : undefined, soldi: Math.round(Pn.money || 0) }; });
-    const rapporti = [];
-    for (let i = 0; i < people.length; i++) for (let j = 0; j < people.length; j++) { if (i === j) continue; const R = Az.rel(st, people[i], people[j]); if (Math.abs(R.a) > .2) rapporti.push(`${people[i].id} → ${people[j].id}: ${R.a > .5 ? 'molto amici' : R.a > .2 ? 'si stimano' : R.a < -.5 ? 'si odiano' : 'non si sopportano'}`); }
-    return { ora: g.clockStr(st.t), giorno: g.dayName ? g.dayName(st.t) : '', luogo: g.nearestPlace ? g.nearestPlace(p.x, p.y).name : '', repressione: st.ris ? Math.round(st.ris.repr) : 0,
-      persone, rapporti, posti: placesNear(st, p.x, p.y), verbi: VERBI };
-  }
-  function act(st, people, places, a) {
-    const g = G(), Po = P(), Az = A();
-    const n = people.find(k => k.id === a.chi); if (!n || !VERBI.includes(a.verbo)) return false;
-    const say = a.battuta ? String(a.battuta).slice(0, 80) : '';
-    const why = a.perche ? String(a.perche).slice(0, 80) : '';
-    let ok = false;
-    if (SOCIAL.includes(a.verbo)) {
-      const o = people.find(k => k.id === a.con && k !== n); if (!o) return false;
-      const r = Az.intend(st, n, a.verbo, { chi: o }, 2, why ? `${a.verbo} con ${o.first} (${why})` : null); ok = r && r.ok;
-    } else if (a.verbo === 'vai') {
-      if (!places.some(q => q.id === a.dove)) return false;
-      const r = Az.intend(st, n, 'vai', { dove: a.dove }, 2, why ? `va a ${g.PLACES[a.dove].name}: ${why}` : null); ok = r && r.ok;
-    } else if (a.verbo === 'fai') {   // un'attività inventata dall'IA (un progetto personale, un lavoretto): il motore la porta in un posto vero
-      if (!places.some(q => q.id === a.dove) || !a.cosa) return false;
-      const t = Po.target(a.dove); if (!t) return false; const cosa = String(a.cosa).slice(0, 60), min = Math.max(5, Math.min(60, Number(a.minuti) || 15));
-      ok = !!Az.startPlan(st, n, 'fai', cosa, [{ label: `va a ${t.label}`, at: () => t, dur: 0, outside: true }, { label: cosa, dur: min }], 2);
-    } else if (a.verbo === 'mangia') { const r = Az.intend(st, n, 'mangia', { modo: 'fuori' }, 2); ok = r && r.ok; }
-    else if (a.verbo === 'gesto') ok = true;
-    if (!ok) return false;
-    n.pop.regiaT = st.t;
-    if (say) g.say(st, n, say, 3.6);
-    if (why && Po.note) Po.note(st, n, why, 'pensiero', { w: .25 });
-    note(`${n.name} · ${a.verbo}${a.con ? ' ' + a.con : ''}${a.dove ? ' → ' + a.dove : ''}${a.cosa ? ' (' + a.cosa + ')' : ''}${say ? ' «' + say + '»' : ''}`);
+  // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
+  function taglia(o, c, b) {
+    let t0 = 0, t1 = 1;
+    for (const k of ['x', 'y', 'z']) { const d = c[k] - o[k], lo = b.min[k], hi = b.max[k];
+      if (Math.abs(d) < 1e-9) { if (o[k] < lo || o[k] > hi) return false; continue; }
+      let a = (lo - o[k]) / d, e = (hi - o[k]) / d; if (a > e) { const t = a; a = e; e = t; }
+      if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
     return true;
   }
-  async function direct(st) {
-    const m = M(); if (!m || !m.state || !m.state.active || m.chatting() || st.player.indoor || st.player.vehicle) return;
-    const people = candidates(st); if (people.length < 2) return;
-    const sc = scene(st, people); S.busy = true; S.last = { t: Date.now(), scena: sc };
-    try {
-      const r = await m.call({ kind: 'regia', scena: sc });
-      if (!r || !Array.isArray(r.azioni)) return;
-      let done = 0; r.azioni.slice(0, CFG.maxActs).forEach(a => { try { if (act(st, people, sc.posti, a)) done++; } catch (e) { console.warn('[Regia]', e); } });
-      S.last.fatte = done; S.last.risposta = r;
-    } finally { S.busy = false; }
-  }
-
-  // ---------------- il battito ----------------
-  let tAcc = 0;
-  function step(st, dt) {
-    if (!st || !st.npcs || !P() || !A()) return;
-    assignOwners(st);
-    tAcc += dt; if (tAcc > 1.2) { tAcc = 0; st.npcs.forEach(n => { if (n.pop && n.pop.near && !n.dead) try { driveIfFar(st, n); } catch (e) { } }); }
-    const now = Date.now();
-    if (!S.busy && now > S.next) { S.next = now + CFG.every; direct(st).catch(e => console.warn('[Regia]', e)); }
-  }
-  function note(s) { S.log.push(s); if (S.log.length > 40) S.log.shift(); }
-  function hook() {
-    const g = G(); if (!g || !g.HOOKS) return;
-    const prev = g.HOOKS.step; g.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { console.warn('[Regia]', e); } };
-  }
-  hook();
-  return { CFG, S, scene, candidates, direct, act, assignOwners };
+  return { K, passo, voto, dietro, taglia, ang };
 })();
-if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
+if (typeof window !== 'undefined') window.__REGIA = Regia.K;
+if (typeof module !== 'undefined') module.exports = Regia;
 </script>
 <script data-m="main">
 (function () {
@@ -92592,7 +92662,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   // [visuale5] e la sposta: di lato gira, in su e in giù sposta la visuale (il mondo segue il mouse); con Maiusc sposta anche di lato.
   // ui.pan si somma fino al fotogramma (frazioni dello schermo); render.js (Visuale.mano) decide quando la camera torna da sola
-  let camDrag = null; ui.drag = 0;
+  let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
+  const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
   // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
   const pin = new Map(); let pinD = 0, pinA = 0, pinM = null;
@@ -92609,7 +92680,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { const r = cv.getBoundingClientRect(), dx = e.clientX - camDrag.x, dy = e.clientY - camDrag.y;
-    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; addPan(0, dy / r.height); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [visuale5]
+    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
@@ -92700,7 +92771,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
-    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
@@ -92717,7 +92788,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
-  const stick = { x: 0, y: 0 }; let stickB = null;   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
+  const stick = { x: 0, y: 0 }; let stickB = null;
+  const vstick = { x: 0, y: 0 };
+  const FRECCE_PASSI = /[?&]frecce\b/.test(location.search);   // [levette] sul computer WASD è la levetta sinistra, le frecce la destra (gira e zoom)
+  const frecceVisuale = () => !FRECCE_PASSI && !(st && st.player.vehicle && jumpMode()) && !ui.intro && !ui.dialog && !ui.book && !ui.menu;   // [levette] la levetta della visuale a schermo (a destra): di lato gira attorno al personaggio, in su e in giù lo zoom   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -92777,7 +92851,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode || (CON.on && !mouse.active) ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
-    const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
+    const ar = FRECCE_PASSI && !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
     if (keys.w || (ar && keys.arrowup)) f += 1; if (keys.s || (ar && keys.arrowdown)) f -= 1;
     if (keys.d || (ar && keys.arrowright)) s += 1; if (keys.a || (ar && keys.arrowleft)) s -= 1;
     const a = touchMode ? (ui.faceIdle !== undefined ? ui.faceIdle : st.player.face) : aimAngle();   // [camera4] sul telefono, da fermo: guarda dove l'hai girato con la visuale (o resta com'è)
@@ -93367,6 +93441,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
     const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
+    { const vEl = $('stick2'), vk = $('knob2'); let vid = null;   // [levette] la levetta della visuale
+      const vmv = e => { const r = vEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 58) / 44, dy = (e.clientY - r.top - 58) / 44; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } vstick.x = dx; vstick.y = dy; vk.style.left = 37 + dx * 36 + 'px'; vk.style.top = 37 + dy * 36 + 'px'; };
+      vEl.addEventListener('pointerdown', e => { e.stopPropagation(); A.init(); vid = e.pointerId; vEl.setPointerCapture(vid); vmv(e); });
+      vEl.addEventListener('pointermove', e => { if (e.pointerId === vid) vmv(e); });
+      const vend = () => { vid = null; vstick.x = vstick.y = 0; vk.style.left = '37px'; vk.style.top = '37px'; };
+      vEl.addEventListener('pointerup', vend); vEl.addEventListener('pointercancel', vend); }
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
 
@@ -93404,7 +93484,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     }
     PAD.gas = bv(7); PAD.brk = bv(6);
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
-    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book) addPan(0, PAD.pan * dt * (window.Visuale ? Visuale.MANO.spostaK : .6));   // [visuale5] la levetta destra in verticale sposta la visuale
+    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 - PAD.pan * dt * 1.4);   // [levette] la levetta destra in verticale: lo zoom (in su si avvicina, e da vicino la visuale scende dietro al personaggio)   // [visuale5] la levetta destra in verticale sposta la visuale
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
@@ -93413,7 +93493,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // soldi, minimappa né suggerimenti sopra il mondo. I comandi sono tasti veri nella pulsantiera della console; soldi, ora, mappa,
   // taccuino e il resto stanno nel menu (lo zaino), in ordine; sullo schermo un avviso alla volta (CSS: #app.console).
   // La pagina che ospita il gioco si presenta con {pvc:'ciao'}: il gioco risponde {pv:'console', v:2}.
-  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
+  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'levetta2', x, y} ([levette] la visuale: di lato gira
+  // attorno al personaggio, in su e in giù lo zoom; dalla v3), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
   // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, croce, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, mano, n,
   // audio} (la scritta di ogni tasto, null = ora non fa niente; acceso o spento; quello che hai in mano; le cose da fare qui) e
   // {pv:'stato', giorno, ora, soldi, debito, scade, ricercato}, per il display della console.
@@ -93429,7 +93510,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
   //   rotella     l'audio
-  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
+  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, lev2: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
   const conBmx = () => !!(st.player.vehicle && jumpMode());   // in BMX la croce fa i trick
   const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
   const conFake = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
@@ -93459,7 +93540,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
       else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
     }
-    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
+    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };   // [levette] la stessa scritta sotto la levetta della visuale
     if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
     if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
     M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
@@ -93478,9 +93559,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
-  function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; }
+  function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
   function conTick(dt) {
-    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);   // la croce tenuta: lo zoom
+    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);
+    if (frecceVisuale() && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) { const fx = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), fy = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); ui.drag = (ui.drag || 0) - fx * dt * 2.2; if (fy) zoomBy(1 + fy * dt * 1.5); }   // [levette] le frecce: ← → girano attorno al personaggio, ↑ ↓ lo zoom
+    if ((vstick.x || vstick.y) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) { const zx = Math.abs(vstick.x) > .15 ? vstick.x : 0, zy = Math.abs(vstick.y) > .15 ? vstick.y : 0; ui.drag = (ui.drag || 0) - zx * dt * 2.4; if (zy) zoomBy(1 + zy * dt * 1.5); }   // [levette] la levetta della visuale a schermo
+    if ((keys.pagedown || keys.pageup) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) tiltBy(((keys.pagedown ? 1 : 0) - (keys.pageup ? 1 : 0)) * dt * .9);   // [bassa]   // la croce tenuta: lo zoom
     if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
     if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
       const p = st.player; if (!p.vehicle && !p.hand && p.cur !== 'pugni') conAim(); else ui.aimPoint = null;
@@ -93511,9 +93595,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
       if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
-      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 2 }); conLabels(); return;
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 3 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale
     }
     if (!CON.on) return;
+    if (d.pvc === 'levetta2') {   // [levette] la levetta della visuale del Game Boy (al posto della croce)
+      const c = v => Math.max(-1, Math.min(1, +v || 0)); let x = c(d.x), y = c(d.y); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+      const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;
+      if (conBmx() || TV) {   // in BMX (i trick) e nella tavoletta (colore, spessore) vale come la croce: le quattro direzioni, come le leggeva il Game Boy
+        vstick.x = vstick.y = 0; const ax = Math.abs(x), ay = Math.abs(y), nx = {};
+        if (Math.max(ax, ay) > .35) { if (ax >= ay * .45) nx[x < 0 ? 'sx' : 'dx'] = true; if (ay >= ax * .45) nx[y < 0 ? 'su' : 'giu'] = true; }
+        ['sx', 'dx', 'su', 'giu'].forEach(k => { if (!!nx[k] !== !!CON.lev2[k]) conKey(k, !!nx[k]); }); CON.lev2 = nx; return; }
+      if (Object.keys(CON.lev2).length) { Object.keys(CON.lev2).forEach(k => conKey(k, false)); CON.lev2 = {}; }
+      vstick.x = x; vstick.y = y; return; }
     if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
     else if (d.pvc === 'tasto' && typeof d.k === 'string') conKey(d.k, !!d.giu);
     else if (d.pvc === 'lascia') conLetGo();
@@ -93683,7 +93776,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();

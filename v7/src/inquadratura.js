@@ -102,9 +102,11 @@ var Inquadratura = (function () {
   // dyn.buildings; cam: la posizione della camera. Solo le case sul lato camera che coprono un punto del disco di suolo attorno al
   // personaggio (o il suo corpo); la quota è la linea di solaio più alta sotto il primo raggio che vi entra
   // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
-  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme) {
+  // [bassa] Rv: il raggio del disco (di difetto K.raggio). Con la visuale bassa il disco è stretto (il personaggio e poco più): un disco di
+  // 5 m coi raggi quasi orizzontali prendeva le case ai lati del vicolo e lo appiattiva; così scende solo quello che sta fra te e la camera
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv) {
     out = out || new Map(); out.clear(); if (!on) return out;
-    const P = [], R = K.raggio, st = K.passoD;
+    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
     for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
     P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
