@@ -38,7 +38,10 @@ var Inquadratura = (function () {
     verticale: { stretta: 1.16, max: 1.32, larga: 7, strettaL: 4.2, entra: .5 },   // la variante 'verticale': sopra CAMERA4
     // il taglio mirato
     raggio: 5,            // m: il disco di suolo attorno al personaggio che deve vedersi
-    sporge: .6,           // m: [bassa] con la visuale bassa la casa conta anche per quello che sporge dal filo (balconi, insegne)
+    sporge: .6,
+    striscia: [4, 8],     // m: [sempre] il pavimento dietro e davanti al personaggio che deve vedersi, lungo la marcia
+    strisciaL: 1.2,       // m: mezza larghezza della striscia
+    terra: .15,           // m sopra la base: [sempre] dove scende la casa che copre (resta la pianta)           // m: [bassa] con la visuale bassa la casa conta anche per quello che sporge dal filo (balconi, insegne)
     passoD: 1.25,         // m: il passo dei punti del disco
     margine: .25,         // m sotto il primo raggio che entra nella casa
     muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
@@ -105,10 +108,16 @@ var Inquadratura = (function () {
   // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
   // [bassa] Rv: il raggio del disco (di difetto K.raggio). Con la visuale bassa il disco è stretto (il personaggio e poco più): un disco di
   // 5 m coi raggi quasi orizzontali prendeva le case ai lati del vicolo e lo appiattiva; così scende solo quello che sta fra te e la camera
-  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv) {
+  // [sempre] opz: { avanti: {x, z} (la direzione di marcia), gh(x, z) (la quota del suolo), terra: true }. La regola del committente: quello
+  // che copre il personaggio o il pavimento su cui può camminare nei metri davanti (K.striscia[1]) e dietro (K.striscia[0]) sparisce, come
+  // un muro invisibile: ai punti del disco si aggiunge una striscia lungo la marcia, larga K.strisciaL, e la casa scende fino a terra
+  // (K.terra: resta la pianta). I punti dentro la pianta di una casa non contano per quella casa (non sono pavimento)
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv, opz) {
     out = out || new Map(); out.clear(); if (!on) return out;
     const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
     for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
+    if (opz && opz.avanti) { const ax = opz.avanti.x, az = opz.avanti.z;
+      for (let t = -K.striscia[0]; t <= K.striscia[1] + 1e-6; t += 1.5) for (const l of [-K.strisciaL, 0, K.strisciaL]) { const x = px + ax * t - az * l, z = pz + az * t + ax * l; P.push({ x, y: (opz.gh ? opz.gh(x, z) : fy) + .1, z }); } }
     P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
     const D = P.map(p => { const ex = cam.x - p.x, ey = cam.y - p.y, ez = cam.z - p.z, ll = Math.hypot(ex, ey, ez) || 1; return { x: ex / ll, y: ey / ll, z: ez / ll }; });
@@ -117,14 +126,15 @@ var Inquadratura = (function () {
       const cx = (b3.min.x + b3.max.x) / 2 - px, cz = (b3.min.z + b3.max.z) / 2 - pz; if (cx * cx + cz * cz > K.vicine * K.vicine) continue;
       // lo scarto veloce: il raggio dal centro del disco verso la camera manca la casa allargata del raggio del disco (più lo scarto delle direzioni)
       bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
-      if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
+      if (!opz && cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre ([sempre] con la striscia decidono i raggi)
       if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
       // [bassa] col disco stretto la scatola si allarga di K.sporge sui lati: i balconi, le insegne e le gronde che sporgono dal filo contano
       const bx = Rv ? { min: { x: b3.min.x - K.sporge, y: b3.min.y, z: b3.min.z - K.sporge }, max: { x: b3.max.x + K.sporge, y: b3.max.y, z: b3.max.z + K.sporge } } : b3;
-      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], bx); if (y !== null && y < need) need = y; }
+      let need = Infinity; for (let i = 0; i < P.length; i++) { const q = P[i]; if (opz && q.x > b3.min.x && q.x < b3.max.x && q.z > b3.min.z && q.z < b3.max.z) continue; const y = V.entra(q, D[i], bx); if (y !== null && y < need) need = y; }
       if (need === Infinity) continue;
       const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
       const lim = need - K.margine; let y = base + K.muretto;
+      if (opz && opz.terra) { out.set(B, { y: base + K.terra, top: b3.max.y }); continue; }   // [sempre] giù fino a terra: resta la pianta
       if (uniforme) { if (lim < gr) out.set(B, { y, top: b3.max.y }); continue; }
       for (let h = base + K.primo; h <= Math.min(lim, gr); h += K.piano) y = h;
       if (lim >= gr) y = gr;   // basta togliere il tetto: la casa resta coi suoi muri fino alla gronda

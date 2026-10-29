@@ -1619,7 +1619,7 @@ var Render = (function () {
   function vis3Tick(px, pz, fy, on, dt, pitch) {
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (SEMPRE.on || !IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0, SEMPRE.on ? SEMPRE.opz : undefined)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
@@ -17537,17 +17537,23 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const now = performance.now() / 1000, M = BASSA.cose;
     if (!attivo) { if (M.size) { M.forEach((v, tag) => showTag(tag)); M.clear(); } return; }
     if (now - BASSA.coseT < .15) return; BASSA.coseT = now;
-    const A = { x: px, y: fy + 1.2, z: pz }, F = { x: px, y: fy + .35, z: pz }, C = { x: cp.x, y: cp.y, z: cp.z }, visti = new Set();
-    const L = Math.hypot(C.x - A.x, C.z - A.z), n = Math.max(1, Math.ceil(L / 2.5));
-    for (let i = 0; i <= n; i++) { const t = i / n, x = A.x + (C.x - A.x) * t, z = A.z + (C.z - A.z) * t;
-      hashNear(x, z, 3, rec => { if (visti.has(rec) || !rec.tag || rec.state) return; visti.add(rec);
-        const c = rec.c, h = rec.he; if (Math.hypot(c.x - px, c.z - pz) < .9 + Math.max(h.x, h.z) * .5) return;   // accanto a te: resta
-        if (c.y + h.y < fy + .15) return;   // piatto a terra: non copre
-        const b = { min: { x: c.x - h.x - .3, y: c.y - h.y, z: c.z - h.z - .3 }, max: { x: c.x + h.x + .3, y: c.y + h.y + .2, z: c.z + h.z + .3 } };
-        if (!(Regia.taglia(A, C, b) || Regia.taglia(F, C, b))) return;
-        const t0 = TAGS.get(rec.tag); if (!t0) return;
-        if (!M.has(rec.tag)) { if (t0.hidden) return; hideTag(rec.tag); }   // già spenta da altro: non è nostra
-        M.set(rec.tag, now); }); }
+    const C = { x: cp.x, y: cp.y, z: cp.z }, visti = new Set();
+    // [sempre] le sorgenti: il petto e i piedi, e il pavimento della striscia lungo la marcia (dietro e davanti)
+    const S = [{ x: px, y: fy + 1.2, z: pz }, { x: px, y: fy + .35, z: pz }], av = SEMPRE.opz.avanti, KS = typeof Inquadratura !== 'undefined' ? Inquadratura.K : { striscia: [4, 8], strisciaL: 1.2 };
+    if (SEMPRE.on) for (let t = -KS.striscia[0]; t <= KS.striscia[1] + 1e-6; t += 2) for (const l of [-KS.strisciaL, KS.strisciaL]) { const x = px + av.x * t - av.z * l, z = pz + av.z * t + av.x * l; S.push({ x, y: groundH(x, z) + .3, z }); }
+    const cand = []; const prendi = rec => { if (visti.has(rec) || !rec.tag || rec.state) return; visti.add(rec); cand.push(rec); };
+    for (const A of S) {   // solo il tratto basso del raggio (fino a 8 m sopra il suolo): le cose stanno lì
+      const dy = C.y - A.y, tMax = dy > 1e-3 ? Math.min(1, 8 / dy) : 1, L = Math.hypot(C.x - A.x, C.z - A.z) * tMax, n = Math.max(1, Math.ceil(L / 2.5));
+      for (let i = 0; i <= n; i++) { const t = i / n * tMax; hashNear(A.x + (C.x - A.x) * t, A.z + (C.z - A.z) * t, 3, prendi); } }
+    for (const rec of cand) {
+      const c = rec.c, h = rec.he; if (Math.hypot(c.x - px, c.z - pz) < .9 + Math.max(h.x, h.z) * .5) continue;   // accanto a te: resta
+      if (c.y + h.y < fy + .15) continue;   // piatto a terra: non copre
+      const b = { min: { x: c.x - h.x - .3, y: c.y - h.y, z: c.z - h.z - .3 }, max: { x: c.x + h.x + .3, y: c.y + h.y + .2, z: c.z + h.z + .3 } };
+      let copre = false; for (const A of S) { if (A.x > b.min.x && A.x < b.max.x && A.z > b.min.z && A.z < b.max.z) continue; if (Regia.taglia(A, C, b)) { copre = true; break; } }
+      if (!copre) continue;
+      const t0 = TAGS.get(rec.tag); if (!t0) continue;
+      if (!M.has(rec.tag)) { if (t0.hidden) continue; hideTag(rec.tag); }   // già spenta da altro: non è nostra
+      M.set(rec.tag, now); }
     M.forEach((t, tag) => { if (now - t > BASSA_TIENI) { showTag(tag); M.delete(tag); } });
   }
   // [regia] un passo della regia (src/regia.js): la direzione di marcia, le case vicine (ogni mezzo secondo), la camera per una visuale
@@ -17568,6 +17574,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // la avvicina lo zoom (sotto lo zoom .42 scende da sola). Con k alto: la pendenza scende a ~10°, la camera si avvicina, il campo si
   // allarga, si guarda all'altezza del petto, la visuale segue la marcia, la nebbia va più lontano e il taglio mirato è sempre acceso,
   // stretto sul personaggio (inquadratura.js tagli, Rv): quello che sta fra la camera e te scende a muretto con le sue cose. ?nobassa spegne
+  // [sempre] LA REGOLA DEL TAGLIO, IN OGNI VISUALE: quello che copre il personaggio o il pavimento dove può camminare nei metri davanti e
+  // dietro (la striscia lungo la marcia, Inquadratura.K.striscia) sparisce come un muro invisibile: le case giù fino alla pianta, le cose
+  // registrate spente (bassaCose). Le collisioni restano. ?vecchiotaglio: come prima (solo nella stretta e con la visuale bassa)
+  const SEMPRE = { on: !(typeof location !== 'undefined' && /[?&]vecchiotaglio\b/.test(location.search)), opz: { avanti: { x: 1, z: 0 }, gh: null, terra: true }, hd: 0 };
   const BASSA = { cose: new Map(), coseT: -9, k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
   // [regia] LA CAMERA LIBERA: la visuale la gira il giocatore (levetta destra, tasto destro del mouse, , e .) e resta dove la mette: niente
   // ricentro (Visuale.mano gira solo lo spostamento), niente giro lungo i vicoli ([inquadratura] IQ5.dy) né della camera che si adatta
@@ -18179,10 +18189,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (typeof Livelli !== 'undefined' && st.lv) { surfacePortals(st); if (!indoorNow && ugPass(st)) { ugNow = true; scene.fog.near = dist + 3; scene.fog.far = dist + 46; scene.fog.color.copy(UGR.fogC || tmpC.set('#0c0b0a')); scene.background.copy(scene.fog.color); } }   // [monte] [sotto2] la nebbia prende il colore della cavità
     {   // [visuale5] la visuale sul personaggio: il muretto o il tetto che sbiadisce, fuori, mai sul tetto o sulle scale dei tetti (feet0)
       const fy = (feet0 !== null ? feet0 : groundH(focus[0][0], focus[0][1])), fuori = !ui.intro && !ui.studio && !ui.focus && !p.indoor && !indoorNow && !ugNow && feet0 === null;
-      const iqT = !!(IQ5.v && IQ5.v.taglio), iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
+      { const v = Math.hypot(cam.pvx || 0, cam.pvy || 0), hd = pveh ? pveh.ang : v > .3 ? Math.atan2(cam.pvy, cam.pvx) : p.face;   // [sempre] la direzione della striscia
+        if (hd !== undefined && isFinite(hd)) { SEMPRE.opz.avanti.x = Math.cos(hd); SEMPRE.opz.avanti.z = Math.sin(hd); } if (!SEMPRE.opz.gh) SEMPRE.opz.gh = groundH; }
+      const iqT = !!(IQ5.v && IQ5.v.taglio) || SEMPRE.on, iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
       if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);
-      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && BASSA.k > .25 && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
+      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && (SEMPRE.on || BASSA.k > .25) && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
       if (LOOKV.nuovo || SGT.blob) sguPersonaggio(p.x, playerH + (p.jz || 0) * 0, p.y, LOOKV.nuovo && !!dyn.people.__player && dyn.people.__player.visible && !pveh && !ui.studio && !ui.intro);   // [sguardo] l'ombra di contatto del personaggio   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
