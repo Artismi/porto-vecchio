@@ -38,6 +38,7 @@ var Inquadratura = (function () {
     verticale: { stretta: 1.16, max: 1.32, larga: 7, strettaL: 4.2, entra: .5 },   // la variante 'verticale': sopra CAMERA4
     // il taglio mirato
     raggio: 5,            // m: il disco di suolo attorno al personaggio che deve vedersi
+    sporge: .6,           // m: [bassa] con la visuale bassa la casa conta anche per quello che sporge dal filo (balconi, insegne)
     passoD: 1.25,         // m: il passo dei punti del disco
     margine: .25,         // m sotto il primo raggio che entra nella casa
     muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
@@ -118,7 +119,9 @@ var Inquadratura = (function () {
       bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
       if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
       if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
-      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], b3); if (y !== null && y < need) need = y; }
+      // [bassa] col disco stretto la scatola si allarga di K.sporge sui lati: i balconi, le insegne e le gronde che sporgono dal filo contano
+      const bx = Rv ? { min: { x: b3.min.x - K.sporge, y: b3.min.y, z: b3.min.z - K.sporge }, max: { x: b3.max.x + K.sporge, y: b3.max.y, z: b3.max.z + K.sporge } } : b3;
+      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], bx); if (y !== null && y < need) need = y; }
       if (need === Infinity) continue;
       const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
       const lim = need - K.margine; let y = base + K.muretto;

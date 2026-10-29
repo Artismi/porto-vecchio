@@ -23037,7 +23037,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '6274804376453f00';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '6c8b944b3e139bd5';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -69479,6 +69479,7 @@ var Inquadratura = (function () {
     verticale: { stretta: 1.16, max: 1.32, larga: 7, strettaL: 4.2, entra: .5 },   // la variante 'verticale': sopra CAMERA4
     // il taglio mirato
     raggio: 5,            // m: il disco di suolo attorno al personaggio che deve vedersi
+    sporge: .6,           // m: [bassa] con la visuale bassa la casa conta anche per quello che sporge dal filo (balconi, insegne)
     passoD: 1.25,         // m: il passo dei punti del disco
     margine: .25,         // m sotto il primo raggio che entra nella casa
     muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
@@ -69559,7 +69560,9 @@ var Inquadratura = (function () {
       bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
       if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
       if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
-      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], b3); if (y !== null && y < need) need = y; }
+      // [bassa] col disco stretto la scatola si allarga di K.sporge sui lati: i balconi, le insegne e le gronde che sporgono dal filo contano
+      const bx = Rv ? { min: { x: b3.min.x - K.sporge, y: b3.min.y, z: b3.min.z - K.sporge }, max: { x: b3.max.x + K.sporge, y: b3.max.y, z: b3.max.z + K.sporge } } : b3;
+      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], bx); if (y !== null && y < need) need = y; }
       if (need === Infinity) continue;
       const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
       const lim = need - K.margine; let y = base + K.muretto;
@@ -89552,6 +89555,27 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  // [bassa] LE COSE FRA LA CAMERA E TE: con la visuale bassa ogni cosa registrata (DZ.props: ringhiere, cartelli, tavolini, lampioni, fusi
+  // nelle mesh statiche o nei tasselli) che taglia il tratto dalla camera al personaggio si spegne (hideTag, come quando si rompe) e torna
+  // quando non è più in mezzo da BASSA_TIENI s. Non si toccano le cose vive o rotte (state) né quelle spente da altri (t.hidden prima).
+  const BASSA_TIENI = .5;
+  function bassaCose(px, pz, fy, cp, attivo) {
+    const now = performance.now() / 1000, M = BASSA.cose;
+    if (!attivo) { if (M.size) { M.forEach((v, tag) => showTag(tag)); M.clear(); } return; }
+    if (now - BASSA.coseT < .15) return; BASSA.coseT = now;
+    const A = { x: px, y: fy + 1.2, z: pz }, F = { x: px, y: fy + .35, z: pz }, C = { x: cp.x, y: cp.y, z: cp.z }, visti = new Set();
+    const L = Math.hypot(C.x - A.x, C.z - A.z), n = Math.max(1, Math.ceil(L / 2.5));
+    for (let i = 0; i <= n; i++) { const t = i / n, x = A.x + (C.x - A.x) * t, z = A.z + (C.z - A.z) * t;
+      hashNear(x, z, 3, rec => { if (visti.has(rec) || !rec.tag || rec.state) return; visti.add(rec);
+        const c = rec.c, h = rec.he; if (Math.hypot(c.x - px, c.z - pz) < .9 + Math.max(h.x, h.z) * .5) return;   // accanto a te: resta
+        if (c.y + h.y < fy + .15) return;   // piatto a terra: non copre
+        const b = { min: { x: c.x - h.x - .3, y: c.y - h.y, z: c.z - h.z - .3 }, max: { x: c.x + h.x + .3, y: c.y + h.y + .2, z: c.z + h.z + .3 } };
+        if (!(Regia.taglia(A, C, b) || Regia.taglia(F, C, b))) return;
+        const t0 = TAGS.get(rec.tag); if (!t0) return;
+        if (!M.has(rec.tag)) { if (t0.hidden) return; hideTag(rec.tag); }   // già spenta da altro: non è nostra
+        M.set(rec.tag, now); }); }
+    M.forEach((t, tag) => { if (now - t > BASSA_TIENI) { showTag(tag); M.delete(tag); } });
+  }
   // [regia] un passo della regia (src/regia.js): la direzione di marcia, le case vicine (ogni mezzo secondo), la camera per una visuale
   function regiaTick(p, pveh, dt, st) {
     const sp = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
@@ -89570,7 +89594,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // la avvicina lo zoom (sotto lo zoom .42 scende da sola). Con k alto: la pendenza scende a ~10°, la camera si avvicina, il campo si
   // allarga, si guarda all'altezza del petto, la visuale segue la marcia, la nebbia va più lontano e il taglio mirato è sempre acceso,
   // stretto sul personaggio (inquadratura.js tagli, Rv): quello che sta fra la camera e te scende a muretto con le sue cose. ?nobassa spegne
-  const BASSA = { k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
+  const BASSA = { cose: new Map(), coseT: -9, k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
   // [regia] LA CAMERA LIBERA: la visuale la gira il giocatore (levetta destra, tasto destro del mouse, , e .) e resta dove la mette: niente
   // ricentro (Visuale.mano gira solo lo spostamento), niente giro lungo i vicoli ([inquadratura] IQ5.dy) né della camera che si adatta
   // (VIS4.C.g). Quando non la tocchi la regia (src/regia.js) la porta piano allo scorcio migliore dietro la marcia. ?camauto: com'era
@@ -90179,6 +90203,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const iqT = !!(IQ5.v && IQ5.v.taglio), iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
       if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);
+      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && BASSA.k > .25 && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
       if (LOOKV.nuovo || SGT.blob) sguPersonaggio(p.x, playerH + (p.jz || 0) * 0, p.y, LOOKV.nuovo && !!dyn.people.__player && dyn.people.__player.visible && !pveh && !ui.studio && !ui.intro);   // [sguardo] l'ombra di contatto del personaggio   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
