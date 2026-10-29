@@ -140,19 +140,24 @@
     }
   }
   function sprayEnd() {
-    const S = ui.spray; if (window.Writing) Writing.release(st); if (!S || !S.on) return; S.on = false;
-    if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } }   // chi ti vede, ti ha visto
+    const S = ui.spray, on = !!(S && S.on); if (S) S.on = false;
+    // [audit] INP: si chiama dal gestore del rilascio; il lavoro (il pezzo finito, i testimoni: G.emit li fa vedere a tutti i passanti) va
+    // al fotogramma dopo (DOPO, letto da input)
+    (/[?&]noclicdopo\b/.test(location.search) ? f => f() : f => DOPO.push(f))(() => { if (window.Writing) Writing.release(st); if (!on) return;
+      if (S.dabs - (S.told || 0) > 25) { S.told = S.dabs; try { G.emit(st, 'vandalismo'); } catch (e) { } } });   // chi ti vede, ti ha visto
   }
+  const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
     if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
-    if (ui.intro || ui.over) { if (k === 'enter') { e.preventDefault(); ui.over ? restart() : start(); } return; }
+    if (ui.intro) return;   // [diretto] si entra da soli, quando il gioco risponde
+    if (ui.over) { if (k === 'enter') { e.preventDefault(); restart(); } return; }
     if (k === 'tab') { e.preventDefault(); toggleBook(); return; }
     if (k === 'm') { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }
-    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); return; }
+    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
@@ -161,7 +166,7 @@
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
     if (e.repeat) return;
-    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct('veicolo'); else if (k === 't') openTalk();
+    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
@@ -169,7 +174,7 @@
     else if (k >= '1' && k <= '5') { const id = Object.keys(G.WEAPONS).find(w => G.WEAPONS[w].slot === +k); if (!G.switchWeapon(st, id)) toast(`Non hai ${G.WEAPONS[id].name.toLowerCase()}.`, 'bad'); }
   });
   // zoom: rotella, tasti + e −, pulsanti a schermo
-  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(4.2, (ui.zoom || 1) * f)); }  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
+  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(2, (ui.zoom || 1) * f)); }   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
@@ -196,6 +201,8 @@
   }
   // [bmx] in BMX si va col punta e clicca; le frecce fanno i trick: giù impenna, destra e sinistra il piede sulla pedalina
   function input() {
+    while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
+    if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     const r = input0(); if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
@@ -296,10 +303,29 @@
       if (Math.abs(dx * c + dy * s) < K.len / 2 + .4 && Math.abs(-dx * s + dy * c) < K.wid / 2 + .4) return { kind: 'car', v };
     }
     // clic su una porta (o sul muro attorno): ci vai e ci entri. Il clic sulla porta in alto cade sul terreno dietro la facciata, quindi si cerca la porta più vicina entro ~3 m
-    if (!p.indoor && G.DOOR_OF) { const tx = Math.floor(g.x / G.TS), ty = Math.floor(g.y / G.TS), GWm = G.MAP.world.GW; let bd = 3.2, hit = null;
-      for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) { const bi = G.DOOR_OF.get((ty + oy) * GWm + tx + ox); if (bi === undefined) continue; const b = G.BUILDINGS[bi], x = (b.door[0] + .5) * G.TS, y = (b.door[1] + .5) * G.TS, d = Math.hypot(x - g.x, y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x, y }; } }
+    // [porte] solo il clic SULLA PORTA: il rettangolo della porta sulla facciata (largo 1,4 m, alto 2,4 m) proiettato sullo schermo;
+    // prima bastava cliccare per terra a meno di 3 m da una porta e si entrava
+    if (!p.indoor && G.DOOR_OF) { const TS = G.TS, tx = Math.floor(g.x / TS), ty = Math.floor(g.y / TS), GWm = G.MAP.world.GW, px = nx * o.w, py = ny * o.h; let bd = 1e9, hit = null;
+      for (let oy = -4; oy <= 4; oy++) for (let ox = -4; ox <= 4; ox++) for (const E of (G.DOORS_AT ? G.DOORS_AT.get((ty + oy) * GWm + tx + ox) : null) || []) { const bi = E.bi, b = G.BUILDINGS[bi], dr = b && (E.shop ? b.shopFront.door : b.door); if (!dr) continue;   // [porte] tutti gli edifici di una casella-porta contesa
+        const D = doorQuad(b, TS, dr); if (!D) continue;
+        const Q = D.c.map(([x, h, y]) => R.project(x, h, y)); if (Q.some(q => q.behind)) continue;
+        const pts = Q.map(q => [q.x * o.w, q.y * o.h]); let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; }
+        if (!inside) continue;
+        const d = Math.hypot(D.x - g.x, D.y - g.y); if (d < bd) { bd = d; hit = { kind: 'door', bi, x: (dr[0] + .5) * TS, y: (dr[1] + .5) * TS }; } }
       if (hit) return hit; }
     const f = freeSpot(g.x, g.y); return { kind: 'move', x: f.x, y: f.y };
+  }
+  // [porte] i quattro angoli della porta sulla facciata (la casella della porta sta fuori dall'edificio, la facciata sul suo lato verso dentro)
+  function doorQuad(b, TS, dr) {
+    dr = dr || b.door; const dx = dr[0], dy = dr[1]; let fx, fy, tx, ty;
+    if (dy === b.y + b.h) { fx = (dx + .5) * TS; fy = dy * TS; tx = 1; ty = 0; }
+    else if (dy === b.y - 1) { fx = (dx + .5) * TS; fy = (dy + 1) * TS; tx = 1; ty = 0; }
+    else if (dx === b.x + b.w) { fx = dx * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
+    else if (dx === b.x - 1) { fx = (dx + 1) * TS; fy = (dy + .5) * TS; tx = 0; ty = 1; }
+    else return null;
+    const hw = .7, h0 = -.05, h1 = 2.4;
+    return { x: fx, y: fy, c: [[fx - tx * hw, h0, fy - ty * hw], [fx + tx * hw, h0, fy + ty * hw], [fx + tx * hw, h1, fy + ty * hw], [fx - tx * hw, h1, fy - ty * hw]] };
   }
   // se il punto cliccato è dentro un edificio o in acqua, prende la casella libera più vicina (verso il giocatore)
   function freeSpot(x, y) {
@@ -316,8 +342,25 @@
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
     if (p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala')) return [{ x, y }];   // [writer] sui tetti: in linea retta (il bordo ferma, Spazio salta)
     if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
-    let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4); if (!path.length) path = [{ x, y }]; return path; }
+    let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4, !!p.vehicle);   // [pedonale] in macchina niente scale né zone pedonali
+    // [pedonale] la meta dentro un muro (una porta, un pezzo): il percorso fino alla casella libera accanto, poi l'ultimo passo. Senza percorso
+    // non si parte: niente ripiego in linea retta (prima si andava dritti attraverso i muraglioni invece di prendere la scala)
+    if (!path.length && !G.walkM(x, y)) { const f = freeSpot(x, y); if (G.walkM(f.x, f.y)) { path = G.findPath(p.x, p.y, f.x, f.y, p.vehicle ? .6 : 1.4); if (path.length) path.push({ x, y }); } }
+    return path; }
+  // [audit] INP: il gestore del tocco/clic sulla tela registra solo l'intenzione (dove, se doppio); la scelta (persone, roba, porte, il
+  // punto a terra) e il percorso (G.findPath) si fanno all'inizio del fotogramma dopo (input → clickRun). Prima tutto stava nel gestore:
+  // un percorso lungo o una meta irraggiungibile tenevano fermo il filo (e la risposta a schermo) per decine o centinaia di ms
   function onClick(nx, ny, dbl) {
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
+    if (CLIC_SUBITO) { clickNow(nx, ny, dbl); return; }   // ?noclicdopo: come prima, tutto nel gestore (per il confronto)
+    click.q = { nx, ny, dbl: !!(dbl || (click.q && click.q.dbl)), t: performance.now() };
+  }
+  const CLIC_SUBITO = /[?&]noclicdopo\b/.test(location.search);
+  function clickRun() {
+    const q = click.q; click.q = null; if (performance.now() - q.t > 600) return;   // rimasto in coda mentre il gioco era fermo: non vale più
+    clickNow(q.nx, q.ny, q.dbl);
+  }
+  function clickNow(nx, ny, dbl) {
     if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu) return;
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
@@ -350,7 +393,7 @@
     }
     if (c.kind === 'door') {
       if (p.indoor) return stop();
-      const b = G.BUILDINGS[c.bi], cx = (b.x + b.w / 2) * G.TS, cy = (b.y + b.h / 2) * G.TS;
+      const b = G.BUILDINGS[c.bi], cx = Math.max(b.x * G.TS, Math.min((b.x + b.w) * G.TS, gx)), cy = Math.max(b.y * G.TS, Math.min((b.y + b.h) * G.TS, gy));   // [porte] si spinge verso la facciata dietro la porta (come G.doorFront), non verso il centro dell'edificio
       if (Math.hypot(gx - p.x, gy - p.y) < .8) { c.pushT = c.pushT || ui.time; if (ui.time - c.pushT > 1.6) return stop(); const a2 = Math.atan2(cy - p.y, cx - p.x); return { x: Math.cos(a2), y: Math.sin(a2), sprint: false, aim: a2 }; }
     }
     if (c.kind === 'loot') {   // [bottino] ci si avvicina; arrivati si raccoglie o si apre il pannello
@@ -379,9 +422,11 @@
       // bloccato da più di un secondo e mezzo senza avvicinarsi: lascia perdere
       if (left < c.best - .2) { c.best = left; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
     }
+    if (!c.path.length && !p.indoor && !p.lv) return stop();   // [pedonale] nessun percorso: ci si ferma (non si va dritti contro il muro)
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
     const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace };
+    // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door', door: c.kind === 'door' ? c.bi : undefined };   // [porte] door: si entra solo nell'edificio cliccato
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -511,13 +556,16 @@
   }
 
   // ---------- Schermate ----------
-  function introScreen() {   // [menu2] una scritta, un pulsante: niente nome né storia, leggibile anche in verticale
-    $('screen').innerHTML = `<div class="in intro2"><div class="logo">Get out and state your business</div>
-      <button class="cta" id="go">Scendi in strada</button>
+  // [diretto] niente schermata d'avvio né pulsanti: aprendo la pagina si carica e si entra in partita appena il gioco risponde
+  // (vivoTick). Finché carica, una riga e una barra in basso; la camera sta già sul personaggio (così gli anelli preparano la zona
+  // dove si gioca, non la piazza del vecchio menu). I crediti restano qui, durante il caricamento.
+  function introScreen() {
+    $('screen').style.pointerEvents = 'none';
+    $('screen').innerHTML = `<div class="in carico0"><div class="lbl" id="caricoTxt">Carico il porto…</div><div class="bar"><i id="caricoBar" style="width:5%"></i></div>
       <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
-    $('go').onclick = start;
   }
-  function start() { A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
+  function carico(txt, p) { const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
+  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
   function endScreen() {
     const o = st.over; ui.over = true; ui.letterbox = true; showHud(false); $('bubbles').style.visibility = 'hidden'; $('xhair').hidden = true;
     const named = st.npcs.filter(n => !n.passante && !n.cop).concat(st.npcs.filter(n => n.cop && !n.reinforcement));
@@ -549,14 +597,15 @@
   // ---------- Minimappa ----------
   let miniBase = null;
   function buildMinimap() { // pixel per pixel: sull'isola sono 160.000 caselle
-    miniBase = document.createElement('canvas'); miniBase.width = G.GW * 2; miniBase.height = G.GH * 2;
-    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * 2, G.GH * 2), T = G.T;
+    const K = window.PV_TELEFONO && !/[?&]nodieta\b/.test(location.search) ? 1 : 2;   // [dieta] sul telefono un pixel a casella (ogni casella era 2×2 dello stesso colore: si allarga disegnando, senza sfumare)
+    miniBase = document.createElement('canvas'); miniBase.width = G.GW * K; miniBase.height = G.GH * K;
+    const x = miniBase.getContext('2d'), img = x.createImageData(G.GW * K, G.GH * K), T = G.T;
     const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const C = {}; [[T.CLIFF, '#3a3432'], [T.GRAVEL, '#a8a49c'], [T.BLD, '#3a3150'], [T.WATER, '#0f3448'], [T.PIAZZA, '#4a5a66'], [T.VIA, '#2c2934'], [T.QUAY, '#5a5048'], [T.PIER, '#5a5048'], [T.SAND, '#b89a6a'], [T.GRASS, '#2f5a30'], [T.ROCK, '#4a4248'], [T.STAIRS, '#8a7a6a'], [T.WALK, '#6a5a6a'], [T.COB, '#1f1a2c'], [T.TREE, '#1c3a1c'], [T.DIRT, '#5a4430'], [T.FIELD, '#5a5a2a'], [T.DESERT, '#9a7a4a'], [T.SALT, '#b8bcc0'], [T.SHRUB, '#344a24'], [T.FOUNT, '#2a6a8a']].forEach(([k, v]) => { if (k !== undefined) C[k] = hex(v); });
-    const W2 = G.GW * 2;
+    const W2 = G.GW * K;
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       const c = C[G.tileAt(tx, ty)] || [31, 26, 44];
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) { const o = ((ty * 2 + dy) * W2 + tx * 2 + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
+      for (let dy = 0; dy < K; dy++) for (let dx = 0; dx < K; dx++) { const o = ((ty * K + dy) * W2 + tx * K + dx) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
     }
     x.putImageData(img, 0, 0);
   }
@@ -564,7 +613,7 @@
     const c = $('minic'), x = c.getContext('2d'); c.width = 88; c.height = 88;
     const p = st.player, sc = 2 / G.TS;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
-    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); x.drawImage(miniBase, 0, 0);
+    x.save(); x.translate(44 - p.x * sc, 44 - p.y * sc); if (miniBase.width === G.GW * 2) x.drawImage(miniBase, 0, 0); else { x.imageSmoothingEnabled = false; x.drawImage(miniBase, 0, 0, G.GW * 2, G.GH * 2); x.imageSmoothingEnabled = true; }
     const jt = G.jobTarget(st); if (jt) { x.fillStyle = '#ffd24a'; x.fillRect(jt.x * sc - 2, jt.y * sc - 2, 4, 4); }
     // [sottosuolo] le porte di sotto: la metro (quadrato rosso), tombini, pozzi e grate (puntini grigi)
     if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c = p.lv ? P.u : P.s, X = (c[0] + .5) * G.TS, Y = (c[1] + .5) * G.TS; if (Math.abs(X - p.x) > 46 || Math.abs(Y - p.y) > 46) return;
@@ -725,6 +774,7 @@
   function sprayColor(d) { const S = ui.spray; if (!S) return; S.col = (S.col + (d || 1) + SPRAY_COLS.length) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[S.col][1] + '.'); }
   function sprayMode() { if (!window.Writing || st.player.hand !== 'bomboletta') return; const m = Writing.cycleMode(st); toast('Bomboletta: ' + MODE_NM[m] + (m === 'libero' ? '' : m === 'tavoletta' ? ' — trascina sul muro la finestra, poi disegni' : ' — tieni premuto sul muro') + '.'); }
   const TB = {
+    entra: { l: 'Entra', big: 1, dn: () => { click.t = null; ui.mark = null; doAct('porta'); } },   // [porte]
     salta: { l: 'Salta', hold: 1, big: 1, dn: () => { if (jumpMode()) G.jumpHold(st, true); else touchBrake = true; }, up: () => { touchBrake = false; G.jumpHold(st, false); } },
     corri: { l: 'Corri', dn: () => { touchRun = !touchRun; }, on: () => touchRun },
     arma: { l: 'Arma', dn: () => G.switchWeapon(st, 1) },
@@ -747,6 +797,7 @@
     if (window.Skate && Skate.on(st)) return ['ollie'];
     if (p.vehicle) return jumpMode() ? ['salta', 'impenna'] : ['freno', 'scendi'];
     if (ui.spray) return window.Writing && Writing.mode(st) === 'tavoletta' ? [] : ['colore', 'modo'];   // [graffiti3] con la tavoletta i colori si scelgono nel pannello
+    if (G.actionKey && G.actionKey(st) === 'porta') return ['entra', 'salta'];   // [porte] davanti a una porta: Entra (sul Game Boy il pulsante A)
     return ['salta'];
   }
   const lab = d => typeof d.l === 'function' ? d.l() : d.l;
@@ -849,7 +900,7 @@
   function conMap() {
     const p = st.player, M = {};
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
-    if (ui.intro) { M.a = { l: 'Gioca', dn: () => { const b = $('go'); if (b && !b.disabled) b.click(); } }; return M; }
+    if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
@@ -940,7 +991,9 @@
   // qualunque cosa si alleggerisca: lo si dice subito, con cosa fare.
   function gpuName() {
     if (gpuName.v !== undefined) return gpuName.v;
-    try { const gl = R.__models && R.__models.renderer && R.__models.renderer.getContext(), e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
+    const gl0 = R.__models && R.__models.renderer && R.__models.renderer.getContext();
+    if (window.PV_GPU) return (gpuName.v = PV_GPU(gl0));   // [avvio] letto una volta, quando il contesto è nato (avvio.js)
+    try { const gl = gl0, e = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpuName.v = gl ? String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) : ''; } catch (x) { gpuName.v = ''; }
     return gpuName.v;
   }
   const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
@@ -979,17 +1032,21 @@
   // ---------- Avvio ----------
   buildMinimap(); introScreen(); showHud(false);
   // i moduli degli edifici (Kenney Building Kit) arrivano prima della scena: la città nasce già montata
-  const goBtn = $('go'); if (goBtn) { goBtn.disabled = true; goBtn.dataset.label = goBtn.textContent; goBtn.textContent = 'Carico il porto…'; }
+  carico('Carico il porto…', .05);
   // [ospite] dentro un altro sito (artismidesignstudio.com) il caricamento lo mostra la pagina che ospita il gioco:
   // le si dice a che punto siamo e quando il menu è pronto, così i caricamenti diventano uno solo
-  const host = (p, ready) => { try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
-  const KITS = ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
+  const host = (p, ready) => { if (!ready) carico(null, p); try { if (window.parent !== window) window.parent.postMessage({ pv: ready ? 'pronto' : 'carico', p }, '*'); } catch (e) { } };
+  const KITS = window.PV_KITS || ['bkit', 'rurban', 'food', 'arcade', 'train', 'grave', 'urban', 'natura', 'urbano', 'casa', 'stazione', 'garage', 'tortura'];
   if (window.__pvFetchModel) { const f0 = window.__pvFetchModel; let kd = 0; window.__pvFetchModel = url => { const r = f0(url); if (/kit_/.test(url)) r.then(() => host(.15 + .7 * ++kd / KITS.length), () => { }); return r; }; }
   host(.15);
   const kitWait = window.Kit ? Promise.race([Kit.load('assets/mk/', KITS), new Promise(r => setTimeout(() => r(false), 45000))]).catch(e => { console.warn('Kit:', e); return false; }) : Promise.resolve(false);
-  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null]).then(boot);   // [editor] i ritocchi arrivano prima della scena
+  // [avvio] e la pagina letta fino in fondo: con i kit già scaricati (avvio.js) Kit.load finisce subito, e boot() partiva prima che
+  // i moduli dopo main.js (personaggi, menu_ui, protagonista_ui…) fossero caricati. Prima ci pensava l'attesa della rete
+  const domWait = document.readyState === 'loading' ? new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true })) : null;
+  Promise.all([kitWait, window.Editor ? Editor.load().catch(e => console.warn('[editor]', e)) : null, domWait, window.Tasselli ? Tasselli.pronto : null]).then(() => window.PV_ATTESA && PV_ATTESA.libero()).then(boot);   // [editor] i ritocchi arrivano prima della scena; [ospite] la scena si prepara a pagina ferma
   function boot() {
   let glOk = true;
+  if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
@@ -1003,12 +1060,16 @@
   // [fluido] i programmi della scheda video si preparano adesso, durante il caricamento, non a scatti mentre si gioca
   if (window.PesoPronti && PesoPronti.ON) PesoPronti.compila(R); else   /* [peso] più la casa tagliata e le due varianti del pavimento */
   try { const M0 = R.__models; if (M0 && M0.renderer && M0.scene && R.getCamera) M0.renderer.compile(M0.scene, R.getCamera()); } catch (e) { console.warn('[compile]', e); }
+  (window.__tl = window.__tl || {}).compilato = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
   let last = performance.now(), hudT = 0, perfT = 0, perfN = 0, perfDone = false, resAvg = .016, resT = 0;
   const loop = typeof Misura !== 'undefined' ? Misura.timed(loop0, 'main:ciclo') : loop0;   // [misura]
   // [fluido3] sul telefono: risoluzione fissa (niente cali) e, se i 60 fotogrammi non reggono, 30 regolari. Un 30 costante
   // sembra più fluido di un 45 che oscilla (era il tremolio), e la risoluzione dinamica che scendeva era la «perdita di risoluzione»
   const FC = { on: false, t: 0, n: 0 };
-  const PACE = { avg: 1 / 60, debt: 0 };   // [fluido]
+  // [ritmo] ora un regolatore solo (peso_ritmo.js): la scala della scena a gradini con isteresi, e il tetto a 30 (o a 60 sugli schermi
+  // veloci) quando la scheda non regge, per tutti; quelli qui sotto restano per ?noritmo
+  const RIT = typeof PesoRitmo !== 'undefined' && PesoRitmo.ON;
+  const PACE = { avg: 1 / 60, debt: 0, off: 0 };   // [fluido]
   // [fluido] lo sguardo avanti della camera: la direzione (nel mondo) che la levetta chiede in questo fotogramma, la stessa data al
   // motore; render.js la sposta verso quel lato dello schermo subito (pochi centesimi di secondo), non dietro alla velocità
   const LEAD = { x: 0, y: 0, m: 0 };
@@ -1016,20 +1077,39 @@
     if (!inp || inp.mag === undefined || !(inp.x || inp.y) || st.player.vehicle || ui.intro) return null;
     const l = Math.hypot(inp.x, inp.y); LEAD.x = inp.x / l; LEAD.y = inp.y / l; LEAD.m = .4 + .6 * Math.min(1, inp.mag); return LEAD;
   }
+  // [avvio] [diretto] si entra in partita quando il gioco risponde davvero: disegnati i primi fotogrammi (che caricano tutto sulla
+  // scheda video e la aspettano: in SwiftShader 10-45 s ciascuno) e visto almeno un fotogramma sotto i 100 ms. Prima «Gioca» si
+  // accendeva appena i programmi erano pronti, e per un minuto restava acceso su una pagina ferma. Se i 100 ms non arrivano mai (scheda
+  // lentissima) dopo 12 fotogrammi sotto il secondo si parte lo stesso, e comunque dopo 90 s di fotogrammi.
+  const VIVO = { on: true, n: 0, t0: 0 };
+  function vivoTick(raw) {
+    if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
+    if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
+    VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
+    start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
+    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
+  }
   function loop0(now) {
-    if (FC.on && now - last < 30) { requestAnimationFrame(loop); return; }
+    if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
+    if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
+    const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;
+    if (VIVO.on) vivoTick(raw);
+    if (RIT) PesoRitmo.misura(now, raw, !VIVO.on && !ui.intro && ui.time > 6 && !document.hidden && !(window.Studio && Studio.hidesGame()));   // [ritmo]
     // [fluido] passo regolare: i fotogrammi quasi uguali (16,4 / 17,1 ms: il ritmo dello schermo letto dal browser) usano la media,
     // così il movimento non trema; quello che avanza o manca si restituisce a poco a poco (il tempo di gioco non deriva).
     // I salti veri (un fotogramma lungo) passano com'erano, al massimo 50 ms
-    if (raw > 0 && raw < .25) { PACE.avg += (raw - PACE.avg) * .08; } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
+    // [cadenza] la media impara solo dai fotogrammi «in ritmo»: prima uno scatto da 50 ms la tirava su e per ~20 fotogrammi il gioco
+    // avanzava di 20 ms ogni 16,7 (fino a +2,2 ms, poi il debito lo riportava indietro: il personaggio accelerava e frenava dopo ogni scatto).
+    // Se il ritmo cambia davvero (il tetto a 30) dopo 4 fotogrammi fuori la media salta al ritmo nuovo (prima ci arrivava a strattoni, fino a 4,7 ms)
+    if (raw > 0 && raw < .25) { if (Math.abs(raw - PACE.avg) < PACE.avg * .2) { PACE.avg += (raw - PACE.avg) * .08; PACE.off = 0; } else if (++PACE.off >= 4) { PACE.avg = raw; PACE.off = 0; } } const near = Math.abs(raw - PACE.avg) < PACE.avg * .2;
     let dtv = near ? PACE.avg : raw; PACE.debt += raw - dtv; const pay = PACE.debt * .1; dtv += pay; PACE.debt -= pay; if (!near) PACE.debt = 0;
     const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
-    if (touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
+    if (!RIT && touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (RIT ? PesoRitmo.inFondo() : touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
-    if (R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
+    if (!RIT && R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
       // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica
       // (uno scatto, e sul telefono memoria che si rimescola). Prima poteva cambiare ogni 1,5 s, proprio quando acceleri o zoomi
       const RL = [1, .85, .72], ri = RL.reduce((b, v, i) => Math.abs(v - R.res) < Math.abs(RL[b] - R.res) ? i : b, 0);
@@ -1057,11 +1137,12 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed && ed.focus, mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); conLabels(); }
+    if (RIT) PesoRitmo.lavoro(performance.now() - tL0);   // [ritmo] il lavoro del processore in questo fotogramma
     requestAnimationFrame(loop);
   }
   // [carico] i programmi della scheda video si preparano insieme (vedi render.js, KHR_parallel_shader_compile): finché non
@@ -1070,10 +1151,10 @@
   const shT0 = performance.now();
   (function shWait() {
     let f = 1; try { f = R.shadersPronti ? R.shadersPronti() : 1; } catch (e) { }
-    if (f < 1 && performance.now() - shT0 < 60000) { if (goBtn) goBtn.textContent = 'Preparo la grafica… ' + Math.round(f * 100) + '%'; host(.85 + .15 * f); setTimeout(shWait, 100); return; }
-    if (goBtn) { goBtn.disabled = false; goBtn.textContent = goBtn.dataset.label; }
+    if (f < 1 && performance.now() - shT0 < 60000) { carico('Preparo la grafica… ' + Math.round(f * 100) + '%'); host(.85 + .1 * f); setTimeout(shWait, 100); return; }
+    carico('Quasi pronto…', .95);   // [avvio] si entra in vivoTick, quando i fotogrammi corrono
+    (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
-    requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il menu è disegnato: si può mostrare
   })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }

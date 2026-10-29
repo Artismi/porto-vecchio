@@ -43,7 +43,7 @@ var Percorsi = (function () {
   if (DBG) console.error('[percorsi] t', 42, Date.now() - T0);
   // ================= LA VISTA: cosa copre cosa (case, pezzi grandi, archi sopra i vicoli) =================
   // l'altezza di un pezzo grande che riserva caselle piene (BLD senza casa): torre, porta, stazione, arco
-  const PZH = { torre_littoria: 34, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
+  const PZH = { torre_littoria: 21, porta_terra: 13, stazione: 11, magazzini_volta: 5.2, sottopasso: 4.8, arco_sottopasso: 9.6, lavatoio: 3, caserma: 10, polveriera: 6, torrione: 16, porta_monumentale: 12, cortina: 12, bastione: 12, muro_garante: 3.6, mura_tramontana: 7, campanile: 30, facciata_chiesa: 16 };
   const PZBOX = []; (W.pezzi || []).forEach(p => { if (!p.imp) return; p.imp.forEach(r => { if (r[0] !== 'B') return; PZBOX.push({ p, r, h: (p.q || 0) + (PZH[p.tipo] || 8) }); }); });
   // gli archi e le volte sopra i vicoli: si passa sotto (la vista anche), ma sopra i 3,4 m coprono
   const VOLTE = []; (W.pezzi || []).forEach(p => { if (p.tipo === 'arco_sottopasso') VOLTE.push({ p, x0: -1, x1: 8.4, z0: -6, z1: 6, y0: (p.q || 0) + 3.2, y1: (p.q || 0) + 9.6 });
@@ -136,7 +136,7 @@ var Percorsi = (function () {
   const LANDMARK = [];
   const lm = (tipo, nome, lx, lz, h, r) => pz(tipo).forEach(p => { const [x, y] = pzW(p, lx, lz); LANDMARK.push({ k: 'landmark', tipo, nome, x, y, z: (p.q || 0) + h, r }); });
   lm('campanile', 'il campanile della Chiesa Madre', 2.2, 0, 26, 3.5);
-  lm('torre_littoria', 'la torre littoria', 4, 0, 30, 5);
+  lm('torre_littoria', 'la torre littoria', 3.5, 0, 17, 5);   // [sporcherie] la torre è di 15 m
   lm('porta_terra', 'la Porta di Terra', ptX, 0, 9, 4.5);
   lm('tettoia_mercato', 'la tettoia verde del Mercato', 14, 0, 7, 15);
   lm('porta_monumentale', 'la Porta della Rocca', 5.5, 0, 11, 5);
@@ -216,7 +216,7 @@ var Percorsi = (function () {
     // l'officina: dalla Piazza della Marina lungo la Via della Marina fino allo Scalo
     secondario('officina', 'Dalla marina allo Scalo', ['piazza_marina', vicino('marina', 1330, 386), 'scalo'], { lega: ['piazza_marina', 'marina', 'scalo'] });
     // le baracche: dal piazzale al passaggio a livello e al lotto del fuoco
-    { const pl = pz('passaggio_livello')[0], c = pl ? pzW(pl, 11, 0) : null;
+    { const pl = pz('passaggio_livello').find(p => !p.campagna), so = W.railCampagna && (W.railCampagna.sotto || [])[0], c = pl ? pzW(pl, 11, 0) : so ? [so.x, so.y] : null;   // [campagna] le sbarre della stazione sono diventate il sottopasso del Lungomare
       const VA = road('via_alta');   // su per la Via della Stazione, sul suo tracciato (la rampa del rilevato)
       secondario('baracche', 'Dal piazzale alle baracche', ['stazione'].concat(VA ? [VA.pts[VA.pts.length - 1], VA.pts[Math.floor(VA.pts.length / 2)]] : []).concat(c ? [c] : []).concat(['baracche']), { lega: ['stazione', 'passaggio_livello', 'baracche'] }); }
     // le mura: la Via delle Mura, sotto la cortina di tramontana, dal sagrato alla vedetta del covo
@@ -257,6 +257,12 @@ var Percorsi = (function () {
   porta('posto_blocco', 'Il posto di blocco sulla Vittoria', 'blocco', mgC[0], mgC[1], [[mgC[0] - 16, mgC[1]], [mgC[0] + 14, mgC[1]]]);
   // [mappa_compatta] la sesta: il passaggio a livello della Via della Stazione (le sbarre, il casello); l'alternativa è il sottopasso Cavour
   { const p = pz('passaggio_livello')[0]; if (p) { const c = pzW(p, 11, 0); porta('passaggio_livello', 'Il passaggio a livello', 'passaggio', c[0], c[1], [pzW(p, 11, -9), pzW(p, 11, 9)], { altra: 'sottopasso' }); } }
+  // [mappa_nuova] senza la ferrovia di superficie il sottopasso del rilevato e le sbarre non ci sono: la Via Cavour resta la salita (con la
+  // sua scalinata) fra il Corso e il piazzale, e la sesta porta è l'ingresso della metropolitana sul piazzale della vecchia stazione
+  if (W.MAPPA === 'nuova') {
+    { const C = road('cavour_sotto'); if (C && !PORTE.some(q => q.id === 'sottopasso')) { const a = C.pts[0], z = C.pts[C.pts.length - 1]; porta('sottopasso', 'La salita della Via Cavour', 'sottopasso', (a[0] + z[0]) / 2, (a[1] + z[1]) / 2, [[a[0], a[1] - 1], [z[0], z[1] + 2]]); } }
+    { const S = (W.sets || []).find(q => q.k === 'stazione'); if (S && !PORTE.some(q => q.id === 'passaggio_livello')) porta('passaggio_livello', "L'ingresso della metropolitana (Stazione)", 'passaggio', (S.x0 + S.x1) / 2, (S.y0 + S.y1) / 2, [[(S.x0 + S.x1) / 2, S.y0 - 6], [(S.x0 + S.x1) / 2, S.y1 + 6]], { altra: 'sottopasso', metro: 'sud' }); }
+  }
 
   if (DBG) console.error('[percorsi] t', 225, Date.now() - T0);
   // ================= I RICHIAMI DEI TRATTI =================
@@ -310,6 +316,8 @@ var Percorsi = (function () {
     giro_tramontana: { tema: 'il vento di tramontana sulle mura', premio: 'belvedere', altro: 'tesoro' },
     giro_molo: { tema: 'le reti e le nasse del molo', premio: 'terrazza', altro: 'tesoro' },
     giro_calata: { tema: 'le gru e la calata del porto', premio: 'belvedere', altro: 'tesoro' },   // [cucitura]
+    giro_piazza: { tema: 'i tetti sopra la Piazza Grande', premio: 'belvedere', altro: 'terrazza' },   // [tetti4] le case girate fanno pezzi nuovi
+    giro_ferrovia: { tema: 'i fumi della ferrovia', premio: 'tesoro', altro: 'belvedere' },
   };
   // i giri nuovi: uno per ogni pezzo grande della rete dei tetti che non ha ancora il suo giro, col nome del nodo (W.percorsi) o del
   // landmark più vicino fra questi; al più nove giri sui tetti in tutto (più il camminamento delle mura)
@@ -322,7 +330,9 @@ var Percorsi = (function () {
     { id: 'giro_stazione', nome: 'Il giro della Stazione', ancora: 'stazione', fuoriBorgo: true },
     { id: 'giro_torre', nome: "Il giro della torre dell'acqua", ancora: 'torre_acqua' },
     { id: 'giro_tramontana', nome: 'Il giro di tramontana', ancora: 'covo' },
-    { id: 'giro_calata', nome: 'Il giro della calata', ancora: 'scalo', fuoriBorgo: true },   // [cucitura] l'Ottocento verso il porto ha due pezzi di rete
+    { id: 'giro_calata', nome: 'Il giro della calata', ancora: 'scalo', fuoriBorgo: true },
+    { id: 'giro_piazza', nome: 'Il giro della Piazza Grande', ancora: 'adunata' },
+    { id: 'giro_ferrovia', nome: 'Il giro della ferrovia', ancora: 'mercato', fuoriBorgo: true },   // [cucitura] l'Ottocento verso il porto ha due pezzi di rete
   ], MAXGIRI4 = 10;   // [cucitura] dieci giri sui tetti, più il camminamento delle mura
   const ancora4 = id => { const n = NODI.find(q => q.id === id) || LANDMARK.find(q => q.tipo === id); return n ? [n.x, n.y] : null; };
   const NOMI4 = { belvedere: 'il belvedere', terrazza: 'la terrazza nascosta', tesoro: 'la cassetta nascosta', corte: 'la scala nella corte' };
@@ -384,11 +394,13 @@ var Percorsi = (function () {
     const usati = new Set();
     // [tetti4] i passaggi buoni per un giro: niente annessi da 2 m né tetti stretti nel verso del passo (scendendo ci si cade oltre),
     // niente salti verso un tetto più alto ([mappa_compatta])
-    const passOk = e => !((BB[e.b].annesso && Math.min(BB[e.b].w, BB[e.b].h) < 2) || (e.k === 'tetto' && Math.abs(e.ux || 0) * BB[e.b].w * TS + Math.abs(e.uy || 0) * BB[e.b].h * TS < (Math.abs(TT.roofRule(BB[e.b]) - TT.roofRule(BB[e.a])) <= TT.STEP ? 1.9 : 3.9)) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5));   // [tetti4] a pari quota anche i tetti di una casella; gli annessi larghi due caselle sì
+    // [tetti4] la profondità della casa nel verso del passo, dal suo lotto (arretrato da [pianta]) se c'è
+    const prof4 = (i, e) => { const L = TT.lotto4 ? TT.lotto4(BB[i]) : { lw: BB[i].w * TS, ld: BB[i].h * TS }; return Math.abs(e.ux || 0) * L.lw + Math.abs(e.uy || 0) * L.ld; };
+    const passOk = e => !((BB[e.b].annesso && Math.min(BB[e.b].w, BB[e.b].h) < 2) || ((e.k === 'tetto' || e.k === 'gradino') && (prof4(e.a, e) < 1.95 || prof4(e.a, { ux: e.uy, uy: e.ux }) < 1.95)) || (e.k === 'tetto' && prof4(e.b, e) < (Math.abs(TT.roofRule(BB[e.b]) - TT.roofRule(BB[e.a])) <= TT.STEP ? 1.9 : 3.9)) || (e.k === 'salto' && TT.roofRule(BB[e.b]) > TT.roofRule(BB[e.a]) + .5));   // [tetti4] a pari quota anche i tetti di una casella; gli annessi larghi due caselle sì
     const crema4 = e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala';
     const passo4 = e => ({ k: e.k, a: e.a, b: e.b, x: e.x, y: e.y, i: e.i, ux: e.ux, uy: e.uy });
     function cerca(Z, inZ, ex) {
-      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && inZ(L.bi) && !usati.has(L.bi));
+      const scale = TT.LADDERS.filter(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && inZ(L.bi) && !usati.has(L.bi));   // [tetti4] si sale e si scende da scale che si vedono
       let best = null;
       scale.forEach(L => { if (ex && ex.saliIn && !ex.saliIn.has(L.bi)) return;   // [cucitura] il giro parte dal suo pezzo
         // il cammino migliore da questa scala: si premiano i passaggi crema (salti, passerelle, scale fra tetti) e la lunghezza
@@ -397,7 +409,7 @@ var Percorsi = (function () {
         scale.forEach(M => { if (M.bi === L.bi || !prev.has(M.bi) || usati.has(M.bi)) return; const dd = hyp(M.fx - L.fx, M.fy - L.fy); if (dd < ((ex && ex.minDD) || 14)) return;   /* [cucitura] da un'altra parte: 14 m (un isolato dell'Ottocento) */
           const pass = []; let c = M.bi; while (prev.get(c)) { const q = prev.get(c); pass.unshift(q.e); c = q.a; }
           if (ex && ex.maxPassi && pass.length > ex.maxPassi) return;
-          const crema = pass.filter(crema4).length; if (!crema) return;
+          const crema = pass.filter(crema4).length; if (!crema && !(ex && ex.crema0)) return;   /* [tetti4] in ultimo anche un giro di soli tetti attaccati */
           let Lr = hyp(L.tx - cen(L.bi)[0], L.ty - cen(L.bi)[1]); let px = L.tx, py = L.ty; pass.forEach(e => { Lr += hyp(e.x - px, e.y - py); px = e.x; py = e.y; }); Lr += hyp(M.tx - px, M.ty - py);
           const s = Lr + crema * 12 + dd * .5; if (!best || s > best.s) best = { s, L, M, pass, Lr, crema }; });
       });
@@ -407,22 +419,42 @@ var Percorsi = (function () {
       const c = { id: Z.id, nome: Z.nome, k: 'tetti', fuoriBorgo: !!Z.fuoriBorgo || !(pts[0][0] > BORGO.x0 && pts[0][0] < BORGO.x1 && pts[0][1] > BORGO.y0 && pts[0][1] < BORGO.y1), sali: best.L.i, scendi: best.M.i, edifici: bs, passi: best.pass.map(passo4), pts, L: best.Lr, crema: best.crema };
       CIRCUITI.push(c); return c;
     }
-    ZONE.forEach(Z => cerca(Z, i => inZ(Z, i)));
+    // [tetti4] se il giro della zona non si chiude (un legame che manca, una scala che non c'è più), si riprova: le scale più vicine
+    // (10 m), poi la zona allargata di 15 m per parte. La rete cambia con la pianta; il giro la segue
+    ZONE.forEach(Z => { const Zl = Object.assign({}, Z, { x0: Z.x0 - 15, x1: Z.x1 + 15, y0: Z.y0 - 15, y1: Z.y1 + 15 });
+      cerca(Z, i => inZ(Z, i)) || cerca(Z, i => inZ(Z, i), { minDD: 10 }) || cerca(Z, i => inZ(Zl, i), { maxPassi: 18 }); });
     // [tetti4] I GIRI NUOVI: ognuno attorno a un nodo della rete (una piazzetta, un sagrato, uno scalo), fra le case delle sue epoche;
     // nessuna coordinata scritta: cambia la pianta, il giro si rifà attorno al suo nodo
     { const ERE4 = ['E0', 'E2', 'E3'], par = new Map(), find = a => { while (par.get(a) !== a) a = par.get(a); return a; };
       BB.forEach((b, i) => par.set(i, i)); E.forEach((L, a) => L.forEach(e => { if ((E.get(e.b) || []).some(f => f.b === a)) { const u = find(a), v = find(e.b); if (u !== v) par.set(u, v); } }));
       const pezzi = new Map(); BB.forEach((b, i) => { if (!ERE4.includes(b.era)) return; const r = find(i); (pezzi.get(r) || pezzi.set(r, []).get(r)).push(i); });
-      const liberi = [...pezzi.values()].filter(P => P.length >= 8).sort((p, q) => (p.some(i => usati.has(i)) - q.some(i => usati.has(i))) || q.length - p.length || p[0] - q[0])   /* [cucitura] prima i pezzi che un giro non l'hanno */, presi4 = new Set();
-      for (const P of liberi) {
+      // [tetti4] prima il pezzo con più tetti che dai giri fatti non si raggiungono (case girate comprese): ogni giro nuovo copre il più possibile
+      const raggiunti = () => { const S = new Set(), Q = []; CIRCUITI.filter(c => c.k === 'tetti').forEach(c => c.edifici.forEach(i => { if (!S.has(i)) { S.add(i); Q.push(i); } }));
+        for (let k = 0; k < Q.length; k++) (E.get(Q[k]) || []).forEach(e => { if (!S.has(e.b)) { S.add(e.b); Q.push(e.b); } }); return S; };
+      const restano = [...pezzi.values()].filter(P => P.length >= 6), presi4 = new Set(), provati = new Set(), prove4 = new Map(), PERERA4 = {}; BB.forEach(b => { if (ERE4.includes(b.era)) PERERA4[b.era] = (PERERA4[b.era] || 0) + 1; });
+      let MINP4 = 8;   // [tetti4] i pezzi da otto tetti scoperti; se i giri restano meno di otto, anche quelli da sei
+      for (;;) {
         if (CIRCUITI.filter(c => c.k === 'tetti').length >= MAXGIRI4) break;
-        if (P.filter(i => !usati.has(i)).length < 20 && P.filter(i => usati.has(i)).length >= 2) continue;   // il pezzo ha già il suo giro ([cucitura] i pezzi grandi ne hanno più d'uno)
-        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }); if (!c) continue;   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
+        const R4 = raggiunti(), cand4 = restano.filter(P => !provati.has(P)).map(P => { const sc = P.filter(i => !R4.has(i)); return { P, n: sc.length, w: sc.reduce((s2, i) => s2 + 1 / (PERERA4[BB[i].era] || 1), 0) }; }).filter(q => q.n >= MINP4).sort((u, v) => v.w - u.w || u.P[0] - v.P[0]);   // [tetti4] pesato sul quartiere: un tetto della marina (pochi) vale più di uno del borgo (tanti)
+        if (!cand4.length) { if (MINP4 > 6 && CIRCUITI.filter(c => c.k === 'tetti').length < 8) { MINP4 = 6; continue; } break; } const P = cand4[0].P; prove4.set(P, (prove4.get(P) || 0) + 1); if (prove4.get(P) >= 3) provati.add(P);   // [tetti4] un pezzo grande può avere più giri, finché ha otto tetti scoperti (tre prove)
+        const S = new Set(P), Z = { id: 'giro_' + P[0], nome: 'Il giro dei tetti' }, g0 = P.map(cen).reduce((s, q) => [s[0] + q[0] / P.length, s[1] + q[1] / P.length], [0, 0]), c = cerca(Z, i => S.has(i), { maxPassi: 16 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 40, { maxPassi: 16, saliIn: S }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => ERE4.includes(BB[i].era) && hyp(cen(i)[0] - g0[0], cen(i)[1] - g0[1]) < 55, { maxPassi: 20, saliIn: S, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true });   /* [tetti4] se non si chiude: scale a 9 m, il giro più lungo, le case attorno fino a 55 m */ if (!c) { provati.add(P); continue; }
+        { const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], ES = new Set(c.edifici), terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && (S.has(L.bi) || ES.has(L.bi)) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
+          if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); provati.add(P); continue; } }   // [tetti4] un giro vuole una terza scala (due vie su, due giù): senza, non si fa   // [cucitura] se nel pezzo le scale sono troppo vicine, il giro scende anche sui tetti attorno
         const g = c.edifici.map(cen).reduce((s, q) => [s[0] + q[0] / c.edifici.length, s[1] + q[1] / c.edifici.length], [0, 0]);
         const A = GIRI4.filter(q => !presi4.has(q.id) && ancora4(q.ancora)).map(q => ({ q, d: hyp(ancora4(q.ancora)[0] - g[0], ancora4(q.ancora)[1] - g[1]) })).sort((u, v) => u.d - v.d)[0];
         if (A && A.d < 80) { presi4.add(A.q.id); c.id = A.q.id; c.nome = A.q.nome; }
+        else { const n = NODI.slice().sort((u, v) => hyp(u.x - g[0], u.y - g[1]) - hyp(v.x - g[0], v.y - g[1]))[0]; if (n) { c.id = 'giro_' + n.id + '_' + c.edifici[0]; c.nome = 'Il giro dei tetti · ' + n.nome; TEMI4[c.id] = { tema: 'i tetti attorno a ' + n.nome, premio: 'belvedere', altro: 'tesoro' }; } }   // [tetti4] finite le ancore, il nome del nodo più vicino
         { const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!(A && A.d < 80 && A.q.fuoriBorgo) || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }   // nel borgo se ci si sale nel borgo
-      } }
+      }
+      // [tetti4] se i giri restano meno di otto (la pianta ha staccato dei pezzi), un giro attorno a ogni nodo libero: le case vecchie
+      // entro 45 m dall'ancora, qualunque pezzo, le scale a 9 m, anche di soli tetti attaccati; sempre con la terza scala
+      for (const q of GIRI4) { if (CIRCUITI.filter(c => c.k === 'tetti').length >= 8) break; if (presi4.has(q.id) || !ancora4(q.ancora)) continue; const [ax, ay] = ancora4(q.ancora);
+        const S = new Set(); BB.forEach((b, i) => { if (ERE4.includes(b.era) && !usati.has(i) && hyp(cen(i)[0] - ax, cen(i)[1] - ay) < 45) S.add(i); }); if (S.size < 6) continue;
+        const Z = { id: q.id, nome: q.nome }, c = cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9 }) || cerca(Z, i => S.has(i), { maxPassi: 20, minDD: 9, crema0: true }); if (!c) continue;
+        const L0 = TT.LADDERS[c.sali], L1 = TT.LADDERS[c.scendi], terza = TT.LADDERS.some(L => L.footB < 0 && !L.camm && L.corte === undefined && L.vis !== false && L.i !== c.sali && L.i !== c.scendi && S.has(L.bi) && hyp(L.fx - L0.fx, L.fy - L0.fy) >= 8 && hyp(L.fx - L1.fx, L.fy - L1.fy) >= 8);
+        if (!terza) { CIRCUITI.splice(CIRCUITI.indexOf(c), 1); c.edifici.forEach(i => usati.delete(i)); continue; }
+        presi4.add(q.id); const [x0, y0] = c.pts[0]; c.fuoriBorgo = !!q.fuoriBorgo || !(x0 > BORGO.x0 && x0 < BORGO.x1 && y0 > BORGO.y0 && y0 < BORGO.y1); }
+    }
     // [tetti4] il tema e il premio di ogni giro, le altre vie su e giù, i rami verso il premio
     vieRami4(TT, BB, E, cen, passOk, passo4);
     // il camminamento delle mura di tramontana: dalla scala di ronda alla scala di ferro dall'altra parte
@@ -470,6 +502,6 @@ var Percorsi = (function () {
       scorciatoie: sc.length, nascondigli: na.length, guadagnoMedio: sc.length ? sc.reduce((s, q) => s + q.guadagno, 0) / sc.length : 0, circuiti: CIRCUITI.length, porte: PORTE.length,
       richiami: TRATTI.reduce((o, t) => (o[t.richiamo.k] = (o[t.richiamo.k] || 0) + 1, o), {}) };
   }
-  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop };
+  return { attivo: true, dati: DATI, lega, vista, occhio, elevAt, borgoAt, cammino, conteggio, roofTop, cotto: { ZONE, TEMI4, GIRI4, NOMI4 } };   // [cotto] cotto: i dati di lega fuori da DATI (tetti.js li dà al punto della rete cotta)
 })();
 if (typeof module !== 'undefined') module.exports = Percorsi;

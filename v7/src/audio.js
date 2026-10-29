@@ -47,6 +47,7 @@ var Audio8 = (function () {
         else { nz(t, .2, 'lowpass', 3600, .7 * v, pan); tone(t, .12, 'sine', 160, 45, .7 * v, pan); nz(t + .03, .5, 'lowpass', 600, .12 * v, pan); }
         if (e.npc) nz(t, .12, 'highpass', 1200, .15 * v, pan);
         break;
+      case 'campanello': [659, 523, 392].forEach((f, i) => tone(t + i * .42, .7, 'sine', f, f, .22 * v, pan)); break;   // [mappa_nuova] il din-don-dan degli annunci in banchina
       case 'hit': tone(t, .05, 'square', 1500, 1200, .12); break;
       case 'kill': tone(t, .07, 'square', 900, 600, .18); tone(t + .06, .12, 'square', 600, 300, .15); break;
       case 'punch': nz(t, .12, 'lowpass', 500, .8, pan); tone(t, .08, 'sine', 120, 60, .5); break;

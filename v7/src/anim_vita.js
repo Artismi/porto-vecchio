@@ -213,6 +213,29 @@
   }
   def('siede', FULL, (P) => seated(P, pickR(P, 3, 1)));
 
+  // ---- [rotelle] LA SEDIA DA UFFICIO CON LE ROTELLE: la chicca. Due o tre passanti in tutta la città vanno in giro seduti su una
+  // sedia girevole. Due modi, per persona e alternati ogni tanto (A.rotelle.back): rivolti in avanti si tirano coi talloni (i piedi
+  // vanno avanti alzati, puntano il tallone e tirano a sé strisciando); rivolti all'indietro si spingono coi piedi e vanno a ritroso
+  // (i piedi piantati vicino si stendono in avanti spingendo, poi tornano su). Ogni tanto la sedia piroetta (render.js gira la figura
+  // di Anim.rotelleYaw). Fermi: i piedi a terra davanti alla sedia. La sedia (Anim.sediaRotelle) è una mesh sola condivisa.
+  def('rotelle', FULL, (P, A) => {
+    P.body({ y: -SEAT });
+    const R = P.R || P, sp = Math.abs(P.o.speed || 0), back = !!(A && A.rotelle && A.rotelle.back);
+    const dtt = Math.max(0, Math.min(.2, P.t - (R.__rotT === undefined || P.t < R.__rotT ? P.t : R.__rotT))); R.__rotT = P.t;
+    const vk = clamp(sp / 1.3, 0, 1.6); R.__rotF = ((R.__rotF || 0) + dtt * (.55 + .5 * vk)) % 1;   // un colpo ogni ~1 s al passo
+    const near = .3, far = .66, f = R.__rotF; let z = .45, lift = 0;
+    if (sp > .2) {
+      if (f < .35) { const k = smooth(f / .35); z = near + (far - near) * k; lift = Math.sin(k * PI) * .08; }   // i piedi avanti, alzati
+      else { const k = (f - .35) / .65; z = far + (near - far) * smooth(k); }                                   // il tallone tira a sé
+      if (back) z = near + far - z;   // all'indietro: piantati vicino, spingono via; poi tornano alzati
+    }
+    const zz = z * Math.min(1, P.w * 1.2);
+    legTo(P, 'L', .14, SEAT + GF + lift, zz, .1, .3, 1, back ? 0 : .25 * (1 - lift * 8)); legTo(P, 'R', .14, SEAT + GF + lift * .9, zz - .03, .1, .3, 1, back ? 0 : .25 * (1 - lift * 8));
+    const lean = sp > .2 ? (back ? -.08 : .14) + .06 * Math.sin(f * 2 * PI) : -.04;   // in avanti chi tira, appoggiato indietro chi spinge
+    P.rot('Abdomen', lean, 0, 0);
+    arm(P, 'L', .2, -.9, .2, .05, -.55, .8); arm(P, 'R', .2, -.9, .2, .05, -.55, .8);   // le mani sui braccioli / sulle cosce
+  });
+
   // ---- SEDUTO A TERRA: ginocchia su e braccia attorno, oppure gambe stese e mani dietro ----
   const FLOOR = .74;
   def('siede_terra', FULL, (P) => {
@@ -743,6 +766,55 @@
     }
     if (!s.upper && !s.act) { groupLook(st, n, s); intent(st, n, s); }   // [passo] gesti con un motivo
   });
+  // [rotelle] chi va in sedia: 2-3 abitanti scelti per sempre (lo stesso seme: gli stessi, a ogni partita), mai poliziotti o soldati
+  const ROT = { max: 3, n0: -1 };
+  function rotelleScegli(st) {
+    if (ROT.n0 === st.npcs.length) return; ROT.n0 = st.npcs.length;
+    let have = 0; for (const n of st.npcs) if (n.rotelle) have++;
+    if (have >= ROT.max) return;
+    const cand = st.npcs.filter(n => !n.rotelle && n.pop && !n.cop && !n.military && !n.faction && !n.dead && (n.pop.age || 30) >= 18 && (n.pop.age || 30) <= 68)
+      .map(n => ({ n, h: Anim.hashStr('rotelle:' + n.id) })).sort((a, b) => a.h - b.h);
+    const quanti = st.npcs.length < 40 ? 0 : st.npcs.length < 150 ? 2 : ROT.max;   // i primi due o tre per un numero fisso: sempre gli stessi
+    for (const e of cand) { if (have >= quanti) break; e.n.rotelle = true; have++; }
+  }
+  // il modo (in avanti o all'indietro: uno preferito per persona, l'altro ogni tanto) e la piroetta (un giro o due, ogni tanto)
+  function rotelleModo(st, n) {
+    const ph = n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97), clock = st.clock || 0, slot = Math.floor((clock + ph) / 40);
+    const pref = Anim.hashStr('rotpref:' + n.id) < .5, back = Anim.hashStr(n.id + ':rot:' + slot) < .7 ? pref : !pref;
+    const ss = Math.floor((clock + ph * 3) / 24), k0 = (clock + ph * 3) / 24 - ss, roll = Anim.hashStr(n.id + ':piro:' + ss), turns = roll < .12 ? 2 : roll < .4 ? 1 : 0;
+    const dur = 1.3 * turns, e = k0 * 24;
+    const spin = turns && e < dur ? smooth(e / dur) * turns * 2 * PI : 0;
+    return { back, spin };
+  }
+  Anim.rotelleYaw = (st, n) => { const m = rotelleModo(st, n); return (m.back ? PI : 0) + m.spin; };
+  Anim.npcPost((st, n, s) => {
+    rotelleScegli(st);
+    if (!n.rotelle || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto) return;
+    s.act = 'rotelle'; s.rotelle = rotelleModo(st, n); if (s.upper && s.upper !== 'telefona' && s.upper !== 'fuma') s.upper = null;
+  });
+  // la sedia: seduta imbottita, schienale, colonna a gas, la stella a cinque razze con le rotelle. Una geometria sola coi colori nei
+  // vertici, condivisa da tutte le sedie (poche decine di triangoli); seduta a 48 cm, lo schienale dietro (-z), davanti +z
+  let SEDIA = null;
+  Anim.sediaRotelle = () => {
+    if (!SEDIA) {
+      const parts = [], C = (h) => new THREE.Color(h);
+      const add = (geo, x, y, z, ry, col) => { const g = geo.index ? geo.toNonIndexed() : geo; g.rotateY(ry || 0); g.translate(x, y, z); parts.push([g, col]); };
+      const nero = C('#2a2a2e'), stoffa = C('#3a4a6a'), cromo = C('#9a9ca2');
+      add(new THREE.BoxGeometry(.48, .07, .46), 0, .445, .02, 0, stoffa);                 // la seduta
+      const sch = new THREE.BoxGeometry(.44, .42, .06); sch.rotateX(-.12); add(sch, 0, .74, -.22, 0, stoffa);   // lo schienale
+      add(new THREE.BoxGeometry(.06, .3, .04), 0, .52, -.24, 0, nero);                    // il supporto dello schienale
+      add(new THREE.CylinderGeometry(.028, .028, .3, 6), 0, .27, 0, 0, cromo);             // la colonna a gas
+      add(new THREE.CylinderGeometry(.05, .05, .08, 6), 0, .14, 0, 0, nero);
+      for (let k = 0; k < 5; k++) { const a = k / 5 * 2 * PI; add(new THREE.BoxGeometry(.05, .04, .3), Math.sin(a) * .15, .09, Math.cos(a) * .15, a, nero);   // le razze
+        const w = new THREE.CylinderGeometry(.035, .035, .035, 6); w.rotateZ(PI / 2); add(w, Math.sin(a) * .3, .035, Math.cos(a) * .3, a + PI / 2, nero); }   // le rotelle
+      let nv = 0; parts.forEach(([g]) => nv += g.attributes.position.count);
+      const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3); let o = 0;
+      parts.forEach(([g, c]) => { const P0 = g.attributes.position.array, N0 = g.attributes.normal.array; pos.set(P0, o * 3); nor.set(N0, o * 3); for (let i = 0; i < g.attributes.position.count; i++) { col[(o + i) * 3] = c.r; col[(o + i) * 3 + 1] = c.g; col[(o + i) * 3 + 2] = c.b; } o += g.attributes.position.count; g.dispose(); });
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeBoundingSphere();
+      SEDIA = { geo, mat: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7, metalness: .1 }) };
+    }
+    const m = new THREE.Mesh(SEDIA.geo, SEDIA.mat); m.castShadow = true; m.name = 'sediaRotelle'; return m;
+  };
   // il protagonista: il tempo che corre (dorme, lavora, mangia...) e l'attrezzo in mano
   Anim.playerMap((st, p, s) => {
     if (p.stun > 0 || p.vehicle) return;
@@ -750,6 +822,7 @@
     if (W) { const k = W.kind || ''; if (/sonno/.test(k)) s.act = W.nap ? 'siede' : 'dorme'; else if (/lavor/.test(k)) s.act = 'lavora'; else if (/mang|pranz/.test(k)) s.act = 'tavola'; else if (/tv|casa|svago/.test(k)) s.act = 'siede'; else byLabel(W.label, s); return; }
     if (p.hand && HELD_UP[p.hand]) s.upper = HELD_UP[p.hand];
     if (p.carrying) s.upper = 'porta';
+    { const D = typeof window !== 'undefined' && window.__pv && window.__pv.ui && window.__pv.ui.dialog; const n = D && st.npcs.find(q => q.id === D.npc); if (n) { s.talk = true; s.lookAt = { x: n.x, y: 1.55, z: n.y, ground: true }; } }   // [animazioni] in dialogo il protagonista gesticola e guarda chi ha davanti (prima restava impalato)
     const gb = p.__grab; if (gb) { const e = (performance.now() - gb.t) / 900; if (e < 1) { s.act = gb.low ? 'raccoglie' : 'prende'; s.grab = { k: e, h: gb.h }; } else p.__grab = null; }   // [design] il gesto del prendere
     const tp = p.__tip; if (tp && performance.now() - tp.t < 350) { s.act = 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; }   // [graffiti] la bomboletta del giocatore
   });

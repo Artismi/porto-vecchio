@@ -59,6 +59,16 @@ var WriterVita = (function () {
           if (ok) run.push(k); else flush();
         }
         flush();
+        // [graffiti3] la facciata alta: dal tetto in giù un verticale (col palo del rullo, a bolle, in pixo), o da terra una tag a
+        // estintore, o in cima un rullo: il fianco libero di un palazzo di almeno due piani
+        if (roofH - (b.base || 0) >= 7 && sd.n >= 2) {
+          const k = Math.floor(sd.n / 2), [tx, ty] = sd.tile(k);
+          if (inb(tx, ty) && G.walkT(tx, ty)) {
+            const [wx, wy] = sd.wall(k), [ox, oy] = sd.out, gh = tileH(wx + ox, wy + oy), Hv = Math.min(9, roofH - gh - 1.6);
+            if (Hv >= 4) { const L = ladders.length ? ladders.reduce((a, c) => hyp(c.x - wx, c.y - wy) < hyp(a.x - wx, a.y - wy) ? c : a) : null;
+              SITES.push({ x: wx + ox * .7, y: wy + oy * .7, face: Math.atan2(-oy, -ox), kind: 'facciata', bi, len: sd.n * TS, h: gh + 1.2 + Hv / 2, Hv, gh, top: gh + 1.2 + Hv, L: L ? L.i : -1, roof: { x: wx - ox * .55, y: wy - oy * .55 }, out: [ox, oy], along: [-oy, ox] }); }
+          }
+        }
         // l'heaven spot: in cima alla facciata, sopra la strada, se il palazzo ha la scala e la facciata è alta
         if (ladders.length && roofH - (b.base || 0) >= 6 && sd.n >= 3) {
           const k = Math.floor(sd.n / 2), [tx, ty] = sd.tile(k); if (!inb(tx, ty) || !G.walkT(tx, ty)) return;
@@ -95,7 +105,15 @@ var WriterVita = (function () {
   const watched = (st, n) => !!(n.pop && n.pop.near && hyp(n.x - st.player.x, n.y - st.player.y) < 45);
   const el = (st, n, E) => (watched(st, n) ? (st.clock - E.c0) * MPS : st.t - E.t0);   // minuti di gioco passati nel passo
   const alive = n => n && !n.dead && !(n.stun > 0) && n.pop;
-  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  const STY_MIN = { tag: 3, mtag: 1.5, throw: 9, gotico: 12, mostro: 40, pezzo: 32, burner: 55, wholecar: 80, rullo: 45, verticale: 50, estintore: 6, stencil: 4, scritta: 8, manifesto: 3, adesivi: 2, murale: 90, calli: 20 };   // minuti di gioco per lavoro (come writing.js STYLES.dur, ma in minuti)
+  // [graffiti3] la misura e la quota di un lavoro dal suo sito: i verticali alti quanto la facciata, il rullo largo quanto il muro,
+  // l'estintore da terra fino a cinque metri e mezzo
+  function sizeFor(s, style) {
+    if (style === 'verticale') return { H0: s.Hv || 7, W0: 1.6 + rnd() * .8 };
+    if (style === 'rullo') return { W0: Math.max(5, Math.min(9, (s.len || 9) - .5)) };
+    return {};
+  }
+  const heightFor = (s, style) => style === 'estintore' ? (s.gh != null ? s.gh + 3.4 : null) : style === 'rullo' && s.top ? s.top - 1.4 : style === 'verticale' ? s.h : (s.kind === 'facciata' ? null : s.h);
   const cops = (st, x, y, r) => st.npcs.some(c => !c.dead && !c.inside && (c.cop || c.military) && hyp(c.x - x, c.y - y) < r);
   // il passo della bomboletta: crea il lavoro, lo fa crescere, la mano va dove va la vernice; i Grigi interrompono
   function paintStep(label, mk) {
@@ -165,9 +183,10 @@ var WriterVita = (function () {
   // lo stile della notte: dalla mano e dall'esperienza
   function styleFor(n, kind) {
     const wr = n.pop.writer, r = rnd() + (wr.skill || .5) * .2;
-    if (kind === 'heaven') return r < .55 ? 'throw' : 'pezzo';
-    if (kind === 'hall') return r < .4 ? 'pezzo' : r < .72 ? 'burner' : 'mostro';
-    return r < .36 ? 'tag' : r < .66 ? 'throw' : r < .72 ? 'gotico' : r < .8 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
+    if (kind === 'heaven') return r < .5 ? 'throw' : r < .85 ? 'pezzo' : 'rullo';
+    if (kind === 'facciata') return r < .6 ? 'verticale' : 'estintore';
+    if (kind === 'hall') return r < .3 ? 'pezzo' : r < .55 ? 'burner' : r < .7 ? 'pezzo' : r < .82 ? 'murale' : r < .92 ? 'calli' : 'rullo';   // [graffiti3] murali, calligraffiti, rulli
+    return r < .3 ? 'tag' : r < .5 ? 'throw' : r < .56 ? 'gotico' : r < .64 ? 'throw' : r < .7 ? 'scritta' : r < .76 ? 'stencil' : r < .8 ? 'calli' : r < .94 ? 'pezzo' : 'burner';
   }
   const spotOf = (s, du, h) => ({ x: s.x + s.along[0] * (du || 0), y: s.y + s.along[1] * (du || 0), face: s.face, h: h != null ? h : s.h, place: placeOf(s), kind: s.kind });
   // UNA USCITA: muro di strada, heaven spot, hall of fame con la crew, treno al deposito
@@ -181,18 +200,25 @@ var WriterVita = (function () {
       const E = start(st, n, 'writer', 'fare il treno al deposito', [goStep('va al deposito della miniera, al buio', q), paintStep('spruzza la bomboletta sul treno', (st2, n2) => WR.npcWork(st2, n2, wr, WR.TR.CARS[car].k === 'loco' ? 'burner' : 'wholecar', null, { surf: 'treno', car, side, u0: .3, vb: .25, W: L - .6, H: 2.55 })), homeStep()]);
       return E;
     }
-    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'hall' ? ['hall'] : kind === 'muro' ? ['strada', 'ferrovia'] : ['strada', 'hall', 'ferrovia'], here, 260); if (!s) return null;   // [writer] il muro col palo è un muro di strada: la hall of fame ha la sua missione
-    const style = styleFor(n, s.kind);
-    if (s.kind === 'heaven') {
-      const L = TT.LADDERS[s.L]; if (!L) return null;
+    const s = freeSite(st, kind === 'heaven' ? ['heaven'] : kind === 'facciata' ? ['facciata'] : kind === 'hall' ? ['hall'] : kind === 'muro' ? ['strada', 'ferrovia'] : ['strada', 'hall', 'ferrovia'], here, 260); if (!s) return null;   // [writer] il muro col palo è un muro di strada: la hall of fame ha la sua missione
+    let style = styleFor(n, s.kind);
+    if (s.kind === 'facciata' && style === 'verticale' && !(s.L >= 0 && TT.LADDERS[s.L])) style = 'estintore';   // [graffiti3] senza scala niente tetto: l'estintore da terra
+    if (s.kind === 'heaven' || (s.kind === 'facciata' && style === 'verticale')) {
+      const L = TT.LADDERS[s.L]; if (!L) return null; const vert = style === 'verticale';
       const steps = [goStep('va alla scala di ferro, di notte', { x: L.fx, y: L.fy }), ladderStep(true, s.L),
         walkStep('cammina sul tetto fino al bordo', () => ({ x: L.tx, y: L.ty }), () => s.roof, (st2, n2) => { n2.wrH = (TT.roofH(s.bi, n2.x, n2.y) ?? TT.roofRule(B[s.bi])) - tileH(n2.x, n2.y); }),
-        paintStep('si sporge dal tetto e spruzza la bomboletta', (st2, n2) => WR.npcWork(st2, n2, wr, style, spotOf(s, 0, s.h - (style === 'throw' ? 0 : .3)))),
+        paintStep(vert ? 'cala il rullo dal tetto, lettera dopo lettera' : 'si sporge dal tetto e spruzza la bomboletta', (st2, n2) => WR.npcWork(st2, n2, wr, style, spotOf(s, 0, vert ? s.h : heightFor(s, style) != null ? heightFor(s, style) : s.h - (style === 'throw' ? 0 : .3)), sizeFor(s, style))),
         walkStep('torna alla scala sul tetto', () => s.roof, () => ({ x: L.tx, y: L.ty })), ladderStep(false, s.L), homeStep()];
-      return start(st, n, 'writer', 'un heaven spot in cima al palazzo', steps, { L: s.L });
+      return start(st, n, 'writer', vert ? 'un verticale dal tetto del palazzo' : 'un heaven spot in cima al palazzo', steps, { L: s.L });
     }
+    if (s.kind === 'facciata') {   // [graffiti3] l'estintore: da terra, in un minuto, lettere alte metri
+      const spot = spotOf(s, (rnd() - .5) * Math.max(0, s.len - 3.5), heightFor(s, 'estintore'));
+      return start(st, n, 'writer', 'una tag a estintore sul palazzo', [goStep(`va col suo estintore ${spot.place}`, { x: spot.x, y: spot.y }), paintStep('scarica l\'estintore sul muro', (st2, n2) => WR.npcWork(st2, n2, wr, 'estintore', spot)), homeStep()]);
+    }
+    if ((style === 'murale' || style === 'rullo') && s.len < 7) style = 'pezzo';
     const du = s.kind === 'hall' && partner ? -2.6 : 0, spot = spotOf(s, du, null);
-    const E = start(st, n, 'writer', s.kind === 'hall' ? 'la hall of fame della crew' : 'bombare un muro', [goStep(`va a dipingere ${spot.place}`, { x: spot.x, y: spot.y }), paintStep(style === 'tag' ? 'fa la sua tag con la bomboletta' : 'agita la bomboletta e spruzza', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot)), homeStep()]);
+    const LAB = { tag: 'fa la sua tag con la bomboletta', scritta: 'scrive col pennello, a lettere grandi', stencil: 'appoggia la mascherina e spruzza', murale: 'stende le campiture del murale', rullo: 'passa il rullo, lettera dopo lettera', calli: 'scrive con la pennellessa' };
+    const E = start(st, n, 'writer', s.kind === 'hall' ? 'la hall of fame della crew' : 'bombare un muro', [goStep(`va a dipingere ${spot.place}`, { x: spot.x, y: spot.y }), paintStep(LAB[style] || 'agita la bomboletta e spruzza', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, sizeFor(s, style))), homeStep()]);
     if (E && partner && alive(partner) && partner.pop.writer) {
       if (s.kind === 'hall') {   // la produzione: il compagno dipinge accanto
         const sp2 = spotOf(s, 2.6, null), st2y = styleFor(partner, 'hall');
@@ -220,8 +246,9 @@ var WriterVita = (function () {
     const run = [first], used = new Set([first]);
     for (let k = 0; k < 3 + Math.floor(rnd() * 5); k++) { const last = run[run.length - 1]; let best = null, bd = 1e9; for (const s of SITES) { if (used.has(s) || s.kind === 'heaven') continue; const d = hyp(s.x - last.x, s.y - last.y); if (d > 6 && d < 40 && d < bd) { bd = d; best = s; } } if (!best) break; used.add(best); run.push(best); }
     const steps = [];
-    run.forEach((s, k) => { const style = rnd() < .65 ? (wr.mop && rnd() < .5 ? 'mtag' : 'tag') : 'throw', spot = spotOf(s, (rnd() - .5) * Math.min(4, s.len - 1), null);
-      steps.push(goStep(k ? 'passa al muro dopo' : `esce a bombare ${spot.place}`, { x: spot.x, y: spot.y }, false), paintStep(style === 'throw' ? 'fa un throw-up veloce' : 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: style !== 'throw' && rnd() < .35 ? pick(WA.SIGNS) : undefined }))); });
+    run.forEach((s, k) => { const r0 = rnd(), style = r0 < .55 ? (wr.mop && rnd() < .5 ? 'mtag' : 'tag') : r0 < .75 ? 'throw' : pick(['stencil', 'adesivi', 'scritta', 'manifesto', 'stencil']), spot = spotOf(s, (rnd() - .5) * Math.min(4, s.len - 1), null);   // [graffiti3] nello zaino anche mascherina, adesivi, colla
+      const LAB = { throw: 'fa un throw-up veloce', stencil: 'appoggia la mascherina e spruzza', adesivi: 'attacca gli adesivi', scritta: 'scrive col pennello', manifesto: 'attacca un manifesto con la colla' };
+      steps.push(goStep(k ? 'passa al muro dopo' : `esce a bombare ${spot.place}`, { x: spot.x, y: spot.y }, false), paintStep(LAB[style] || 'fa la sua tag', (st2, n2) => WR.npcWork(st2, n2, wr, style, spot, { sign: (style === 'tag' || style === 'mtag') && rnd() < .35 ? pick(WA.SIGNS) : undefined }))); });
     steps.push(homeStep());
     return start(st, n, 'writer', 'bombare la strada', steps);
   }
@@ -232,46 +259,71 @@ var WriterVita = (function () {
     ['VERA', 'RSC'], ['MOLO', 'RSC'], ['ZERO', 'RSC'], ['KAOS', 'FLM'], ['BLUE', 'OGS'], ['TOKE', 'KMT'], ['RUGA', 'SPK'], ['ORZO', 'SPK'], ['NEVA', 'SPK'], ['DUKA', 'CVR'], ['ULTR', 'CVR'], ['BOSS', 'CVR'],
     ['PIX', 'TOY'], ['GEKO', 'TOY'], ['LUPO', 'TOY'], ['MIRO', ''], ['SKAN', ''], ['ATOM', ''], ['ROSA', ''], ['TEO', ''], ['DOGE', 'FLM'], ['NEMO', 'OGS'], ['SALE', 'RSC'], ['TUFO', 'KMT']];
   const BEEF0 = { OGS: 'KMT', KMT: 'OGS', FLM: 'SPK', SPK: 'FLM', CVR: 'RSC', RSC: 'CVR' };   // le vecchie guerre: chi crossa chi
-  const POLW = ['RISACCA', 'LIBERI', 'FUORI', 'RIBELLI', 'MAREA', 'NOMURO', 'DISGELO', 'RESPIRA', 'ISOLA'];
+  const POLW = ['LIBERI', 'FUORI', 'RIBELLI', 'MAREA', 'NOMURO', 'DISGELO', 'RESPIRA', 'ISOLA'];
   const HOT = ['bar', 'osteria', 'flipper', 'disco', 'cinema', 'video', 'stella', 'aurora', 'magazzino', 'cantiere', 'scalo', 'calata', 'giardini', 'piazzetta', 'caruggio', 'vico', 'spiaggia', 'discarica', 'muro', 'varco'];
   const COLD = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'chiesa', 'santuario', 'cultura'];
   // quanto un muro attira la vernice: i ritrovi, la ferrovia, il Muro, i sottopassi sì; i palazzi del regime no (li ripuliscono)
+  // [graffiti3] LE ZONE CALDE: dove la città è bombardata davvero, muro dopo muro (il cantiere, lo scalo, la discarica, i magazzini,
+  // il varco e il Muro, i caruggi e i vicoli del borgo, la calata): lì i lavori sono il doppio e mezzo, stretti uno all'altro, e le
+  // hall of fame sono produzioni intere. Altrove la vernice si dirada, e attorno ai palazzi del regime quasi sparisce.
+  const DENSE = ['cantiere', 'scalo', 'discarica', 'magazzino', 'varco', 'muro', 'caruggio', 'vico', 'calata', 'flipper'];
+  function denseAt(x, y) { const P = G.PLACES; return DENSE.some(id => { const q = P[id]; return q && hyp(q.x - x, q.y - y) < 40; }); }
   function heatOf(s) { if (s.kind === 'muro' || s.kind === 'ponte') return 3.2; if (s.kind === 'ferrovia') return 2.2; const P = G.PLACES; let h = 1;
     COLD.forEach(id => { const q = P[id]; if (q && hyp(q.x - s.x, q.y - s.y) < 28) h *= .18; }); HOT.forEach(id => { const q = P[id]; if (q && hyp(q.x - s.x, q.y - s.y) < 30) h *= 1.8; });
-    return Math.min(h, 4); }
+    if (denseAt(s.x, s.y)) h *= 2.5;
+    return Math.min(h, 6); }
+  // la distanza minima fra due lavori grandi, per stile (nelle zone calde si stringe)
+  const MIND = { pezzo: 4.2, burner: 5.5, mostro: 3.5, murale: 7, rullo: 7, calli: 4, verticale: 2.4, estintore: 3, wholecar: 9 };
   function history(st) {
     const v = V(st); if (v.hist) return; v.hist = true;
-    const W = WR.S(st), N = 820, now = st.t;
+    const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
     // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
-    const pool = SITES.filter(s => s.kind !== 'heaven' || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);
+    const pool = SITES.filter(s => (s.kind !== 'heaven' && s.kind !== 'facciata') || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);
     const pickW = () => { let t = rnd() * tot; for (let i = 0; i < pool.length; i++) { t -= wts[i]; if (t <= 0) return pool[i]; } return pool[pool.length - 1]; };
     const ws = W.writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer);
     const oldWr = (aka, crew) => { const h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1) * 31 + (aka.charCodeAt(2) || 7); const sk = crew === 'TOY' ? .12 + (h % 20) / 100 : .35 + (h % 50) / 100; return { aka, crew, skill: sk, dna: WA.dnaOf(h, sk, h % 14), hand: h * 13 }; };
-    const made = [];
+    const made = [], BIG = /^(pezzo|burner|mostro|murale|rullo|calli|verticale|estintore)$/;
+    const place = (s, who, wr, style, du, h, extra) => {   // un lavoro vecchio sul muro s (null se lì non c'è posto)
+      const big = BIG.test(style), spot = spotOf(s, du, h), dn = denseAt(spot.x, spot.y);
+      if (big && made.some(m => m.big && hyp(m.x - spot.x, m.y - spot.y) < (MIND[style] || 4.2) * (dn ? .55 : 1))) return null;   // niente lavori grandi uno sull'altro: le tag sì, si ammucchiano
+      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, Object.assign({ prog: 1, done: true, old: true }, sizeFor(s, style), extra || {})));
+      w.t0 = w.tDone = now - Math.floor(rnd() * 60) * 1440;   // fatto nei giorni (e nei mesi) prima
+      if (!who) w.by = 'old';
+      made.push({ x: spot.x, y: spot.y, big }); return w;
+    };
     for (let k = 0; k < N; k++) {
       const s = pickW(), r = rnd(), old = rnd() < .5, who = old || !ws.length ? null : pick(ws);
       const [aka0, crew0] = pick(OLD), wr = who ? who.pop.writer : oldWr(aka0, crew0);
       let style;
-      if (s.kind === 'heaven') style = r < .5 ? 'throw' : r < .7 ? 'gotico' : 'pezzo';
-      else if (s.kind === 'muro') style = r < .2 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'mostro' : r < .85 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
-      else if (s.kind === 'ponte') style = r < .3 ? 'tag' : r < .55 ? 'throw' : r < .75 ? 'gotico' : r < .88 ? 'mostro' : 'pezzo';
-      else style = r < .4 ? 'tag' : r < .56 ? 'mtag' : r < .76 ? 'throw' : r < .8 ? 'gotico' : r < .86 ? 'mostro' : r < .96 ? 'pezzo' : 'burner';
-      if (wr.crew === 'TOY' && style !== 'mtag') style = r < .6 ? 'tag' : 'throw';   // i ragazzini: tag e throw storti
-      if ((style === 'pezzo' || style === 'burner') && s.kind === 'strada' && s.len < 5) continue;
-      const big = style === 'pezzo' || style === 'burner' || style === 'mostro';
-      const spot = spotOf(s, s.kind === 'heaven' ? 0 : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2)), s.kind === 'heaven' ? s.h - .3 : null);
-      // niente lavori grandi uno sull'altro: le tag sì, si ammucchiano (i muri delle fermate e dei bar sono fitti di firme)
-      if (big && made.some(m => m.big && hyp(m.x - spot.x, m.y - spot.y) < 4.2)) continue;
-      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .55 ? pick(POLW) : undefined;
-      const extra = { prog: 1, done: true, old: true, sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined };
+      if (s.kind === 'facciata') style = r < .5 ? 'verticale' : r < .8 ? 'estintore' : s.len >= 8 ? 'rullo' : 'verticale';   // [graffiti3] sui palazzi
+      else if (s.kind === 'heaven') style = r < .4 ? 'throw' : r < .55 ? 'gotico' : r < .8 ? 'pezzo' : s.len >= 7 ? 'rullo' : 'pezzo';
+      else if (s.kind === 'muro') style = r < .15 ? 'tag' : r < .35 ? 'throw' : r < .45 ? 'pezzo' : r < .55 ? 'scritta' : r < .66 ? 'murale' : r < .71 ? 'calli' : r < .9 ? 'pezzo' : 'burner';   // sul Muro le produzioni e le parole
+      else if (s.kind === 'ponte') style = r < .25 ? 'tag' : r < .45 ? 'throw' : r < .55 ? 'gotico' : r < .65 ? 'throw' : r < .75 ? 'scritta' : r < .82 ? 'stencil' : r < .9 ? 'estintore' : 'pezzo';
+      else if (s.kind === 'hall') style = r < .12 ? 'tag' : r < .22 ? 'throw' : r < .28 ? 'scritta' : r < .33 ? 'stencil' : r < .4 ? 'calli' : r < .5 ? 'pezzo' : r < .7 ? 'pezzo' : r < .82 ? 'burner' : r < .94 ? 'murale' : 'rullo';
+      else style = r < .3 ? 'tag' : r < .42 ? 'mtag' : r < .56 ? 'throw' : r < .62 ? 'stencil' : r < .68 ? 'scritta' : r < .74 ? 'adesivi' : r < .78 ? 'manifesto' : r < .81 ? 'gotico' : r < .85 ? 'throw' : r < .88 ? 'calli' : r < .96 ? 'pezzo' : 'burner';
+      if (wr.crew === 'TOY' && !/^(mtag|adesivi|stencil|manifesto)$/.test(style)) style = r < .5 ? 'tag' : r < .8 ? 'throw' : 'adesivi';   // i ragazzini: tag e throw storti, adesivi
+      if (/^(pezzo|burner|calli)$/.test(style) && s.kind === 'strada' && s.len < 5) continue;
+      if (/^(murale|rullo)$/.test(style) && s.kind !== 'heaven' && s.kind !== 'facciata' && s.len < 7) style = 'pezzo';
+      const big = BIG.test(style), top = s.kind === 'heaven' || s.kind === 'facciata';
+      const du = top ? (style === 'estintore' ? (rnd() - .5) * Math.max(0, s.len - 3.5) : 0) : (rnd() - .5) * Math.max(0, s.len - (big ? 4 : 1.2));
+      const h = s.kind === 'facciata' ? heightFor(s, style) : s.kind === 'heaven' ? (style === 'rullo' ? s.h - .5 : s.h - .3) : null;
+      const words = (s.kind === 'muro' || (wr.crew === 'RSC' && big)) && rnd() < .3 && /^(pezzo|burner)$/.test(style) ? pick(POLW) : undefined;
+      const extra = { sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined };
       if (words) extra.words = words;
-      const w = WR._.addWork(st, WR.npcWork(st, who || { id: 'old:' + wr.aka }, wr, style, spot, extra));
-      w.t0 = w.tDone = now - Math.floor(rnd() * 60) * 1440;   // fatto nei giorni (e nei mesi) prima
-      if (!who) w.by = 'old';
+      const w = place(s, who, wr, style, du, h, extra); if (!w) continue;
       // le vecchie guerre: un pezzo su sei della crew rivale è crossato
-      if (!who && big && BEEF0[wr.crew] && rnd() < .17) { const [ra] = pick(OLD.filter(o => o[1] === BEEF0[wr.crew])) || []; if (ra) w.crossed = { aka: ra, crew: BEEF0[wr.crew], t: w.t0 + 1440 }; }
-      made.push({ x: spot.x, y: spot.y, big });
+      if (!who && big && style !== 'murale' && BEEF0[wr.crew] && rnd() < .17) { const [ra] = pick(OLD.filter(o => o[1] === BEEF0[wr.crew])) || []; if (ra) w.crossed = { aka: ra, crew: BEEF0[wr.crew], t: w.t0 + 1440 }; }
     }
+    // [graffiti3] LE PRODUZIONI: nelle zone calde le hall of fame sono piene da un capo all'altro, un pezzo accanto all'altro, della
+    // stessa crew, con le tag e gli adesivi sotto; e sui palazzi delle zone calde i verticali stanno fianco a fianco
+    SITES.filter(s => s.kind === 'hall' && denseAt(s.x, s.y) && rnd() < .75).forEach(s => {
+      const crew = pick(['OGS', 'KMT', 'FLM', 'RSC', 'SPK']), mem = OLD.filter(o => o[1] === crew), n = Math.max(2, Math.floor((s.len - 1) / 5.2));
+      for (let i = 0; i < n; i++) { const [aka0] = pick(mem), wr = oldWr(aka0, crew), style = pick(['pezzo', 'pezzo', 'burner', 'mostro', 'calli', 'pezzo']); place(s, null, wr, style, -s.len / 2 + 2.8 + i * 5.2, null, { prod: true }); }
+      for (let i = 0; i < 2 + Math.floor(rnd() * 3); i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, pick(['tag', 'mtag', 'adesivi', 'stencil', 'tag']), (rnd() - .5) * (s.len - 1), null, {}); }
+    });
+    SITES.filter(s => s.kind === 'facciata' && s.len >= 6 && denseAt(s.x, s.y) && rnd() < .6).forEach(s => {
+      const n = Math.floor((s.len - .5) / 2.6); for (let i = 0; i < n; i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, 'verticale', -s.len / 2 + 1.4 + i * 2.6, s.h, {}); }
+    });
   }
   // il calendario della notte: chi esce, quando, dove
   function planNight(st) {
@@ -284,7 +336,7 @@ var WriterVita = (function () {
     for (let k = 0; k < n0 && used.size < ws.length; k++) {
       const n = pick(ws.filter(m => !used.has(m.id))); if (!n) break; used.add(n.id);
       const wr = n.pop.writer, r = rnd();
-      const kind = wr.train && r < .22 ? 'treno' : wr.roof && r < .4 ? 'heaven' : r < .52 ? 'auto' : r < .74 ? 'bombing' : r < .9 ? 'muro' : 'hall';
+      const kind = wr.train && r < .22 ? 'treno' : wr.roof && r < .34 ? 'heaven' : r < .44 ? 'facciata' : r < .54 ? 'auto' : r < .74 ? 'bombing' : r < .9 ? 'muro' : 'hall';   // [graffiti3] le facciate dei palazzi
       const mates = (crewOf[wr.crew] || []).filter(m => !used.has(m.id)), partner = (kind === 'muro' || kind === 'hall') && mates.length && rnd() < .7 ? pick(mates) : null;
       if (partner) used.add(partner.id);
       v.plan.push({ id: n.id, partner: partner && partner.id, kind, at: dayIdx(st.t + 120) * 1440 - 90 + Math.floor(rnd() * 300) });   // fra le 22:30 e le 3:30
@@ -375,10 +427,17 @@ var WriterVita = (function () {
       Anim.prop('mop', () => { const g = new THREE.Group(), m = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: .6 }); const b = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, .13, 6), m('#1e1e24')); b.rotation.z = Math.PI / 2; g.add(b); const t = new THREE.Mesh(new THREE.CylinderGeometry(.009, .006, .03, 5), m('#f0f0f0')); t.rotation.z = Math.PI / 2; t.position.x = .08; g.add(t); return g; }, 'WristR', [0, -.08, .04]);
       const _v = new THREE.Vector3(), _m = new THREE.Matrix4();
       // SALE LA SCALA: le mani si alternano sui pioli, le ginocchia salgono a turno
-      Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P) {
-        const ph = Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
-        P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
-        P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
+      // [animazioni] A.quota: a che altezza è sulla scala; mani e piedi passano un piolo (30 cm) ogni mezzo ciclo, così salgono col corpo
+      // (prima giravano a tempo fisso, 5,2 rad/s, e il corpo saliva 3 volte più svelto dei pioli: scivolava su per la scala)
+      Anim.def('scala', { base: 'Idle_Neutral', fade: .2, full: true, fn(P, A) {
+        const ph = A && A.quota != null ? Math.sin(A.quota * Math.PI / .3) : Math.sin(P.t * 5.2), a = Math.max(0, ph), b = Math.max(0, -ph);
+        const Pi = A && A.pioli;
+        if (Pi) {   // [animazioni2] le mani SUI PIOLI veri (render.js pioli: l'altezza del piolo di ogni mano, la distanza dei pioli davanti): il pugno chiuso sul piolo
+          [['L', Pi.yL, 1], ['R', Pi.yR, -1]].forEach(([sd, y, sg]) => { P.grab(sd, sg * Pi.x * .75, y, Pi.z, [1, 0, 0], [0, .35, 1], [sg * .8, -1, -.5]); P.fingers(sd, .95, .85); });
+        } else {
+          P.aim('UpperArmL', [.12, .75 + .2 * a, .55]); P.aim('LowerArmL', [.05, .9, .25]);
+          P.aim('UpperArmR', [-.12, .75 + .2 * b, .55]); P.aim('LowerArmR', [-.05, .9, .25]);
+        }
         P.legTo('L', .12, .12 + .35 * a, .22, .15, 1, .6, .2, 0); P.legTo('R', -.12, .12 + .35 * b, .22, -.15, 1, .6, .2, 0);
         P.rot('Head', -.35, 0, 0); P.rot('Chest', .08, 0, 0);
       } });
@@ -393,11 +452,11 @@ var WriterVita = (function () {
       } });
       Anim.npcMap((st, n, s) => {
         const now = performance.now();
-        if (n.__climb && now - n.__climb < 400) { s.act = 'scala'; s.upper = null; return; }
+        if (n.__climb && now - n.__climb < 400) { s.act = 'scala'; s.upper = null; s.quota = n.wrH || 0; return; }
         const tp = n.__tip; if (tp && now - tp.t < 600) { s.act = n.__mop ? 'tagga' : 'vernicia'; s.tip = tp; s.lookAt = { x: tp.x, y: tp.y, z: tp.z }; s.upper = null; }
       });
       Anim.playerMap((st, p, s) => {
-        if (p.lv && p.lv.k === 'scala') { s.act = 'scala'; s.upper = null; return; }
+        if (p.lv && p.lv.k === 'scala') { s.act = 'scala'; s.upper = null; s.quota = p.lv.h0 + (p.lv.h1 - p.lv.h0) * p.lv.t; return; }
         const tp = p.__tip; if (p.hand === 'pennarello' && tp && performance.now() - tp.t < 350) { s.act = 'tagga'; s.tip = tp; }
       });
       return true;

@@ -45,7 +45,9 @@ var Chiarezza = (function () {
     // le scale dei pezzi grandi (scalinate dei vicoli, gradoni con la scala, la Porta di Terra): un cerchio libero che copre la rampa
     (pezzi || []).forEach(p => { const o = p.opz || {};
       if (p.tipo === 'scalinata') F.push({ x: p.x, z: p.y, nx: 0, nz: 0, half: SCALA + Math.max(o.w || 3, (o.dislivello || 1) * 2.4) / 2, tipo: 'scala' });
-      else if (p.tipo === 'gradone' && o.scala) F.push({ x: p.x, z: p.y, nx: 0, nz: 0, half: SCALA + 2, tipo: 'scala' });
+      else if (p.tipo === 'gradone' && o.scala) {   // [scorcio] il cerchio sulla scala vera (prima stava sull'origine del pezzo, il canto opposto del muro: alberi e arredo finivano sui gradini)
+        const L = o.L || 12, X = o.scalaX || [Math.max(0, L - 6), L - 1.4, L], lx = (X[0] + X[2]) / 2, lz = (o.h || 2.4) * .06 + .9, c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0);
+        F.push({ x: p.x + lx * c + lz * s, z: p.y - lx * s + lz * c, nx: 0, nz: 0, half: SCALA + Math.max(2, (X[2] - X[0]) / 2), tipo: 'scala' }); }
       else if (p.tipo === 'porta_terra' || p.tipo === 'porta_monumentale') F.push({ x: p.x, z: p.y, nx: 0, nz: 0, half: SCALA + 4, tipo: 'scala' }); });
     const H = new Map(), C = 8; F.forEach(q => { const k = Math.floor(q.x / C) * 8192 + Math.floor(q.z / C); (H.get(k) || H.set(k, []).get(k)).push(q); });
     F.cella = H; F.C = C; return F;
@@ -63,10 +65,12 @@ var Chiarezza = (function () {
   }
   // i posti di un filare lungo un tracciato: uno ogni passo metri misurati sul tracciato, sui due lati a off metri dall'asse
   function filare(pts, passo, off, inizio) {
-    const out = []; if (!pts || pts.length < 2) return out; let next = inizio === undefined ? passo / 2 : inizio, s = 0;
+    const out = [], ult = {}; if (!pts || pts.length < 2) return out; let next = inizio === undefined ? passo / 2 : inizio, s = 0;
     for (let k = 0; k < pts.length - 1; k++) { const [ax, az] = pts[k], [bx, bz] = pts[k + 1], L = Math.hypot(bx - ax, bz - az); if (L < 1e-6) continue;
       const tx = (bx - ax) / L, tz = (bz - az) / L, nx = -tz, nz = tx;
-      while (next <= s + L) { const t = next - s, x = ax + tx * t, z = az + tz * t; [-1, 1].forEach(sd => out.push({ x: x + nx * sd * off, z: z + nz * sd * off, sd, s: next, nx: nx * sd, nz: nz * sd })); next += passo; }
+      while (next <= s + L) { const t = next - s, x = ax + tx * t, z = az + tz * t; [-1, 1].forEach(sd => { const q = { x: x + nx * sd * off, z: z + nz * sd * off, sd, s: next, nx: nx * sd, nz: nz * sd }, u = ult[sd];
+          if (u && Math.hypot(q.x - u.x, q.z - u.z) < passo - 2) return;   // [scorcio] sul lato dentro della curva il filare si stringe: il posto troppo vicino al precedente si salta (il passo resta leggibile)
+          ult[sd] = q; out.push(q); }); next += passo; }
       s += L; }
     return out;
   }

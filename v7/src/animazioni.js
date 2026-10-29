@@ -300,8 +300,68 @@ var Anim = (function () {
     for (const fn of list) { try { fn(st, who, s); } catch (e) { if (!fn.__err) { fn.__err = 1; console.warn('[anim] mappa', e); } } }
     return s;
   }
-  const npcState = (st, n) => runMaps(NPCMAPS, st, n);
   const playerState = (st) => runMaps(PLMAPS, st, st.player);
+
+  // ---------------- [seduti] chi è seduto ha un sedile sotto, e chi si muove sta in piedi ----------------
+  // Il passante che scivolava per strada in posa seduta («Gigi · va a…»): la posa arrivava da mappe che non guardano se ci si muove
+  // (il posto di popolo.js resta «arrivato» quando un piano lo porta via; chi è fermo al cordolo verso la panchina passava per
+  // «seduto»), e lo strato restava acceso nella figura ripresa dalla cache. Qui, dopo TUTTE le mappe e per tutti:
+  //  - chi si muove (passo dichiarato n.speedNow o spostamento vero, ≥ 0,2 m/s) non ha pose sedute, e in apply() lo strato seduto
+  //    si spegne subito (non sfuma camminando);
+  //  - le pose che vogliono un sedile (siede, carte, tavola) all'aperto valgono solo con un sedile vero a meno di 0,8 m (il registro
+  //    qui sotto, riempito da chi posa panchine e sedie) o se la mappa lo garantisce (s.sedile: il mobile dentro casa);
+  //  - l'unica eccezione al «nessuno si muove seduto»: la sedia da ufficio con le rotelle (pochi passanti, anim_vita.js), e solo se la
+  //    figura ha la sedia (userData.sediaR visibile).
+  const SEDUTE = { siede: 1, carte: 1, tavola: 1, siede_terra: 1, dorme: 1, rotelle: 1 };   // pose col bacino giù
+  const SEDILE = { siede: 1, carte: 1, tavola: 1 };   // quelle che vogliono un sedile sotto (le altre stanno per terra o sulla sedia propria)
+  const MOSSO = .2;   // m/s
+  const SED = { list: [], grid: new Map(), viol: 0, last: null, log: [] };
+  const sedKey = (x, z) => Math.floor(x / 4) * 65536 + Math.floor(z / 4);
+  // un sedile: (x, z) il centro, yaw come rotation.y di chi ci sta seduto (guarda verso +z girato di yaw), w la mezza lunghezza
+  function sedileAdd(x, z, yaw, w) { if (!isFinite(x) || !isFinite(z)) return null; const q = { x, z, yaw: yaw || 0, w: w || 0, by: null }; SED.list.push(q); const k = sedKey(x, z); let a = SED.grid.get(k); if (!a) SED.grid.set(k, a = []); a.push(q); return q; }
+  // un sedile dentro un gruppo non ancora posato: la posizione nel mondo si legge alla prima domanda (le matrici ci sono già)
+  const SED_O = [];
+  function sedileObj(o, w) { if (o) SED_O.push({ o, w: w || 0 }); }
+  let sedT = -1e9;
+  function sedFlush() { if (!SED_O.length) return; const now = Date.now(); if (now - sedT < 1500) return; sedT = now; for (let i = SED_O.length - 1; i >= 0; i--) { const e = SED_O[i]; let r = e.o; while (r.parent) r = r.parent; if (!r.isScene) continue; e.o.updateWorldMatrix(true, false); e.o.getWorldPosition(_a); e.o.getWorldQuaternion(_q); _b.set(0, 0, 1).applyQuaternion(_q); sedileAdd(_a.x, _a.z, Math.atan2(_b.x, _b.z), e.w); SED_O.splice(i, 1); } }
+  // il sedile più vicino a (x, z) entro r: il punto sul sedile (lungo la panca), con il verso; libero = non preso da un altro
+  function sedileNear(x, z, r, libero, chi) {
+    sedFlush(); let best = null, bd = r; const k0 = Math.floor(x / 4), j0 = Math.floor(z / 4), R = Math.ceil(r / 4);
+    for (let i = -R; i <= R; i++) for (let j = -R; j <= R; j++) { const L = SED.grid.get((k0 + i) * 65536 + j0 + j); if (!L) continue;
+      for (const q of L) { if (libero && q.by && q.by !== chi) continue; const ca = Math.cos(q.yaw), sa = Math.sin(q.yaw), dx = x - q.x, dz = z - q.z, al = clamp(dx * ca - dz * sa, -q.w, q.w), sx = q.x + al * ca, sz = q.z - al * sa, d = Math.hypot(x - sx, z - sz);
+        if (d < bd) { bd = d; best = { q, x: sx, z: sz, yaw: q.yaw, d }; } } }
+    return best;
+  }
+  const sediliOn = () => SED.list.length > 0 || SED_O.length > 0;
+  const NPCPOST = [], npcPost = fn => NPCPOST.push(fn);   // dopo tutte le mappe (la sedia con le rotelle, anim_vita.js)
+  function npcState(st, n) {
+    const s = runMaps(NPCMAPS, st, n);
+    for (const fn of NPCPOST) { try { fn(st, n, s); } catch (e) { if (!fn.__err) { fn.__err = 1; console.warn('[anim] dopo', e); } } }
+    try { seduti(st, n, s); } catch (e) { }
+    return s;
+  }
+  // quanto va davvero: il passo dichiarato o lo spostamento dall'ultima volta (i salti oltre 3 m sono teletrasporti, non passi)
+  function velo(st, n) {
+    const c = st.clock || 0, m = n.__mv || (n.__mv = { x: n.x, y: n.y, t: c, v: 0 }), dtm = c - m.t;
+    if (dtm > 1e-4) { const d = Math.hypot(n.x - m.x, n.y - m.y); m.v = d > 3 ? 0 : d / dtm; m.x = n.x; m.y = n.y; m.t = c; }
+    return Math.max(Math.abs(n.speedNow || 0), m.v);
+  }
+  function seduti(st, n, s) {
+    const v = velo(st, n); s.velo = v;
+    if (!s.act || !SEDUTE[s.act]) return;
+    if (s.act === 'rotelle') { if (!n.rotelle) s.act = null; return; }   // la sedia con le rotelle si porta in giro: si può andare
+    if (v > MOSSO && !n.inVeh) { s.act = null; s.sedile = false; return; }
+    if (SEDILE[s.act] && !s.sedile && !n.room && sediliOn() && !sedileNear(n.x, n.y, .8)) s.act = null;   // niente sedute nel vuoto
+  }
+  // per le prove e la sonda: le volte che qualcuno si è mosso in posa seduta (in apply, sulla figura vera)
+  function sedutiReport() { return { viol: SED.viol, last: SED.last, sedili: SED.list.length + SED_O.length }; }
+  // la figura torna neutra (ripresa dalla cache, o messa da parte): niente pose rimaste accese da prima
+  function reset(g) {
+    const u = g && g.userData; if (!u) return; const R = u.rig;
+    if (R) { R.layers = {}; R.headYaw = 0; R.headPitch = 0; }
+    if (u.body && !u.__flying) { u.body.position.set(0, 0, 0); u.body.rotation.set(0, 0, 0); }
+    if (u.sediaR) u.sediaR.visible = false;
+  }
 
   // ---------------- per fotogramma: chiamato da Models.animPerson dopo il mixer ----------------
   // o.anim = { act, upper, mood, talk, lookAt } (da npcState/playerState). Restituisce la clip di base voluta (o null).
@@ -319,6 +379,9 @@ var Anim = (function () {
     (A.mood || []).forEach(k => { if (POSES[k] && !o.down) wanted[k] = 1; });
     if (A.talk && POSES.parla && !o.down) wanted.parla = 1;
     if (POSES.vita && !o.down) wanted.vita = 1;   // respiro, peso che si sposta: sempre
+    // [seduti] chi si muove sta in piedi, subito: la posa seduta non sfuma camminando (la sedia con le rotelle sì, se c'è)
+    const mossoA = Math.max(Math.abs(o.speed || 0), A.velo || 0) > MOSSO && !o.inVeh, conSedia = !!(u.sediaR && u.sediaR.visible);
+    if (mossoA) for (const k in SEDUTE) { if (k === 'rotelle' && conSedia) continue; delete wanted[k]; delete R.layers[k]; }
     // pesi: salgono e scendono col fade della posa
     for (const k in wanted) if (!R.layers[k]) R.layers[k] = { w: 0, t: 0 };
     // [anim] niente scatti: si entra in una posa in almeno 0,1 s e se ne esce in almeno 0,18 (uscire è più lento, come nei
@@ -358,6 +421,7 @@ var Anim = (function () {
       try { spec.fn(P, A); } catch (e) { disabled[k] = true; console.warn('[anim] posa spenta:', k, e); }
       if (P._props && L.w > .5) P._props.forEach(n => showProps[n] = 1);
     }
+    if (mossoA) for (const k in R.layers) if (SEDUTE[k] && R.layers[k].w > .05 && !(k === 'rotelle' && conSedia)) { SED.viol++; SED.last = { k, sp: Math.max(Math.abs(o.speed || 0), A.velo || 0), model: u.model || '' }; }   // [seduti] il controllo
     P._air = !!(A.act && POSES[A.act] && POSES[A.act].air);   // in sella o in aria: i piedi non cercano il pavimento
     limits(P, R);
     toeFollow(R);
@@ -526,7 +590,8 @@ var Anim = (function () {
     P.w = 1; P.rot('Neck', R.headPitch * .4, R.headYaw * .4, 0); P.rot('Head', R.headPitch * .6, R.headYaw * .6, 0);
   }
 
-  return { HAND, restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr };
+  return { HAND, restore, def, npcMap, playerMap, npcState, playerState, apply, want, prop, rig, POSES, PROPS, CHILD, clamp, smooth, hashStr,
+    SEDUTE, SEDILE, npcPost, sedileAdd, sedileObj, sedileNear, sediliOn, sedutiReport, reset, velo };   // [seduti]
 })();
 
 // ================= POSE DI BASE (motore) =================

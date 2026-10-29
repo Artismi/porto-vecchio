@@ -1,4 +1,19 @@
 
+/* [ospite] Dentro il sito (artismidesignstudio.com) il gioco si carica in anticipo, nascosto, mentre la pagina scorre.
+   La pagina, finché scorre, ripete {pvc:'attendi', ms}: per quei millisecondi i passi pesanti del caricamento (leggere un
+   modello, preparare la scena per la scheda video) aspettano, così lo scroll del sito resta fluido. Si riparte da soli
+   quando i messaggi smettono. Fuori da un altro sito non arriva niente e non si aspetta mai. */
+window.PV_ATTESA = (function () {
+  let fino = 0;
+  if (window.parent !== window) addEventListener('message', e => {
+    const d = e.data; if (e.source !== window.parent || !d || d.pvc !== 'attendi') return;
+    fino = Math.max(fino, performance.now() + Math.min(2000, Math.max(0, +d.ms || 0)));
+  });
+  const on = () => performance.now() < fino;
+  // aspetta finché la pagina scorre, al massimo 20 s in tutto: il gioco non resta mai fermo per sempre
+  const libero = () => new Promise(ok => { const t0 = performance.now(); (function g() { if (!on() || performance.now() - t0 > 20000) ok(); else setTimeout(g, 100); })(); });
+  return { on, libero };
+})();
 /* Caricamento dei modelli senza richieste "data:" né "blob:".
    I file in assets/ sono glTF con buffer e immagini incorporati in base64. Alcune pagine (gli artifact) non permettono
    di scaricare indirizzi data:/blob:, e il caricatore di three li scarica proprio così: i modelli non arrivano mai.
@@ -49,11 +64,23 @@
   // [leggera] prima il gemello binario .glb (strumenti/pack_glb.js: un terzo più piccolo, niente atob); se manca, il .json di sempre.
   // Da file:// fetch non può leggere i .glb: lì si va dritti al .json (file_shim.js lo serve dal .json.js).
   const GLB_OK = typeof location === 'undefined' || location.protocol !== 'file:';
-  const fetchModel = window.__pvFetchModel = url => (GLB_OK && /\.json$/.test(url) ? fetch(url.replace(/\.json$/, '.glb')).then(r => r.ok ? r.arrayBuffer() : null).catch(() => null) : Promise.resolve(null))
-    .then(ab => ab || fetch(url).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); }));
+  // [avvio] il .glb che avvio.js ha già cominciato a scaricare; gli indirizzi con l'impronta del file (PV_V: la cache lunga)
+  const V = u => window.PV_V ? PV_V(u) : u, preso = u => (window.__pvPreso && __pvPreso(u)) || null;
+  // [compressi] prima ancora il .glb.gz (strumenti/comprimi_glb.js: gltfpack/meshopt dove la prova dice «uguale», poi gzip; Vercel non
+  // comprime i .glb): si apre con DecompressionStream (se il server l'ha già aperto, Content-Encoding, arrivano i byte del .glb) e
+  // i vettori meshopt si leggono con MeshoptDecoder (src/meshopt_decoder.js). Senza l'uno o l'altro, o se manca il file: il .glb, poi il .json
+  const GZ_OK = GLB_OK && typeof DecompressionStream !== 'undefined' && typeof MeshoptDecoder !== 'undefined' && MeshoptDecoder.supported && !/[?&]noglbgz\b/.test(typeof location !== 'undefined' ? location.search : '');
+  const apri = ab => { if (!ab) return null; const u = new Uint8Array(ab, 0, Math.min(2, ab.byteLength)); if (u[0] !== 0x1f || u[1] !== 0x8b) return ab;
+    return new Response(new Blob([ab]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer().catch(() => null); };
+  const prendi = u => (preso(u) || fetch(V(u)).then(r => r.ok ? r.arrayBuffer() : null)).catch(() => null);
+  const fetchModel = window.__pvFetchModel = url => (GZ_OK && /\.json$/.test(url) ? prendi(url.replace(/\.json$/, '.glb.gz')).then(apri).catch(() => null) : Promise.resolve(null))
+    .then(ab => ab || (GLB_OK && /\.json$/.test(url) ? prendi(url.replace(/\.json$/, '.glb')) : null))
+    .then(ab => ab || fetch(V(url)).then(r => { if (!r.ok) throw new Error(r.status + ' ' + url); return r.text(); }));
+  window.__pvGlbGz = GZ_OK;
   const P = THREE.GLTFLoader.prototype, load0 = P.load, parse0 = P.parse;
   P.parse = function (data, path, onLoad, onError) {
     if (!this.__pvReg) { this.register(imagePlugin); this.__pvReg = true; }
+    if (!this.meshoptDecoder && typeof MeshoptDecoder !== 'undefined') this.setMeshoptDecoder(MeshoptDecoder);   // [compressi] i .glb.gz convertiti con gltfpack
     if (typeof data === 'string') { let j; try { j = JSON.parse(data); } catch (e) { return parse0.call(this, data, path, onLoad, onError); } data = toGLB(j); }
     return parse0.call(this, data, path, onLoad, onError);
   };
@@ -99,6 +126,7 @@ var Kit = (function () {
     const L = new THREE.GLTFLoader();
     await Promise.all(kits.map(async k => {
       const buf = await (window.__pvFetchModel ? window.__pvFetchModel(base + 'kit_' + k + '.json') : (await fetch(base + 'kit_' + k + '.json')).text());   // [leggera] .glb se c'è
+      await window.PV_ATTESA.libero();   // [ospite] non mentre la pagina che ospita il gioco scorre
       const g = await new Promise((res, rej) => L.parse(buf, '', res, rej));
       g.scene.updateMatrixWorld(true);
       for (const c of [...g.scene.children]) { c.traverse(o => { if (o.isMesh) { dequant(o.geometry); o.material = fixMat(o.material); } }); LIB[k + '/' + c.name] = c; }

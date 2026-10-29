@@ -33,6 +33,7 @@ var Vievive = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const CH = typeof Chiarezza !== 'undefined' ? Chiarezza : (typeof require !== 'undefined' ? require('./chiarezza.js') : null);
+  const IG = typeof Ingombri !== 'undefined' ? Ingombri : (typeof require !== 'undefined' ? require('./ingombri.js') : null);   // [compenetrazioni2] lo spazio libero dalle case
   const W = G.MAP.world, TS = G.TS, T = G.T;
   const ATTIVO = !!(W && W.sets && W.roads);   // solo la città nuova (?cittanuova)
   const PI = Math.PI, hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -62,6 +63,7 @@ var Vievive = (function () {
   function inCitta(rd) { let c = 0; for (let k = 0; k < rd.pts.length; k += 3) if (zonaCitta(rd.pts[k][0], rd.pts[k][1])) c++; return c * 3 >= rd.pts.length * .5; }
   function rango(rd) {
     if (!rd || !rd.pts || rd.pts.length < 2 || rd.monte || rd.traccia || rd.vialetto || rd.sottopasso || rd.kind === 'sterrato') return 'nessuno';
+    if (rd.pedonale) return 'nessuno';   // [pedonale] le vie pedonali (le scalinate, i sottopassi, le piazze: world_cittanuova.js): nessun mezzo, nessuna sosta
     if (rd.kind === 'vicolo') return rd.w >= CFG.viaMinore ? 'via_minore' : 'vicolo';
     if (rd.kind !== 'citta' && !inCitta(rd)) return 'extra';
     if (rd.pennoni || rd.era === 'E4') return 'asse';
@@ -109,7 +111,7 @@ var Vievive = (function () {
   let INC = null;
   function incroci() {
     if (INC) return INC; INC = [];
-    const R = ROADS().filter(rd => { const r = rango(rd); return r === 'asse' || r === 'via' || r === 'via_minore' || r === 'vicolo' || r === 'extra'; });
+    const R = ROADS().filter(rd => { const r = rango(rd); return r === 'asse' || r === 'via' || r === 'via_minore' || r === 'vicolo' || r === 'extra' || (rd.pedonale && rd.kind === 'vicolo'); });   // [pedonale] lo sbocco di una via pedonale resta un incrocio (niente sosta davanti)
     const add = (x, y, a, b) => { const q = INC.find(j => hyp(j.x - x, j.y - y) < 6); if (q) { if (!q.rds.includes(a)) q.rds.push(a); if (!q.rds.includes(b)) q.rds.push(b); return; } INC.push({ x, y, rds: [a, b] }); };
     for (let i = 0; i < R.length; i++) for (let j = i + 1; j < R.length; j++) {
       const A = R[i], B = R[j], PA = A.pts, PB = B.pts;
@@ -121,7 +123,7 @@ var Vievive = (function () {
       // le teste che finiscono dentro l'altra strada
       [[A, B], [B, A]].forEach(([X, Y]) => [X.pts[0], X.pts[X.pts.length - 1]].forEach(e => { const q = lNear(rdLinea(Y), e[0], e[1]); if (q.d < Y.w / 2 + 2.5) { const p = lAt(rdLinea(Y), q.s); add(p.x, p.y, X, Y); } }));
     }
-    INC.forEach(j => { j.peso = j.rds.reduce((s, rd) => s + ({ asse: 4, via: 3, extra: 2, via_minore: 1.5, vicolo: .5 })[rango(rd)] * rd.w, 0); j.r = Math.max(...j.rds.map(rd => rd.w)) / 2 + 2; j.grande = j.rds.filter(rd => rango(rd) === 'asse' || rango(rd) === 'via').length >= 2; });
+    INC.forEach(j => { j.peso = j.rds.reduce((s, rd) => s + (({ asse: 4, via: 3, extra: 2, via_minore: 1.5, vicolo: .5 })[rango(rd)] || .5) * rd.w, 0); j.r = Math.max(...j.rds.map(rd => rd.w)) / 2 + 2; j.grande = j.rds.filter(rd => rango(rd) === 'asse' || rango(rd) === 'via').length >= 2; });
     return INC;
   }
   const vicinoIncrocio = (x, y, pad) => incroci().some(j => hyp(j.x - x, j.y - y) < j.r + (pad || 0));
@@ -172,6 +174,10 @@ var Vievive = (function () {
 
   // ================= LA LINEA 1: il percorso, le fermate =================
   let LIN = null;
+  // [compenetrazioni2] la pianta della fermata (il gruppo di vievive_arte.js: +z verso la strada): la pensilina con la gronda e il palo, o la
+  // panchina col palo. u lungo il cordolo = (sin ang, -cos ang), v verso la strada = (cos ang, sin ang)
+  function fermataRett(f, pens) { const P = pens ? [.1, -.35, 1.75, .85] : [.3, -.15, 1.6, .7], ux = Math.sin(f.ang), uy = -Math.cos(f.ang), vx = Math.cos(f.ang), vy = Math.sin(f.ang);
+    return IG.rett(f.x + P[0] * ux + P[1] * vx, f.y + P[0] * uy + P[1] * vy, Math.atan2(uy, ux), P[2], P[3]); }
   function lineaBus() {
     if (LIN) return LIN; LIN = { ok: false, fermate: [], giro: null, nodi: [] }; if (!ATTIVO || !G.LANES) return LIN;
     adattaCorsie();
@@ -238,7 +244,11 @@ var Vievive = (function () {
         const rdL = rdLinea(q.rd), sc = lNear(rdL, q.x, q.y).s;
         let got = null;
         for (const dS of [0, 4, -4, 8, -8, 12, -12, 16, -16, 20, -20, 24, -24]) { const c = lAt(rdL, clamp(sc + dS * verso, 2, rdL.L - 2)), sgn = (Math.cos(c.ang) * ux + Math.sin(c.ang) * uy) >= 0 ? 1 : -1, nx = -Math.sin(c.ang) * sgn, ny = Math.cos(c.ang) * sgn;
-          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) }; break; }
+          for (const o of [.8, 1.3, 2.1, 2.9]) { const x = c.x + nx * (half + o), y = c.y + ny * (half + o), ux2 = Math.cos(c.ang), uy2 = Math.sin(c.ang); if (!fascia(x, y, ux2, uy2, 1.4, .35) || davanti(x, y, 1.2) || vicinoIncrocio(x, y, -2)) continue; got = { x, y, ang: Math.atan2(-ny, -nx), cx: c.x + nx * (half - 1.4), cy: c.y + ny * (half - 1.4), largo: fascia(x + nx * .9, y + ny * .9, ux2, uy2, 1.6, .7) };
+            // [compenetrazioni2] la pensilina (3,4 × 1,7 m dietro il palo) a mezzo metro dai muri, se no la panchina col palo a 20 cm; se nemmeno quella, più in là
+            if (IG && got.largo && !IG.libero(G, fermataRett(got, true), IG.MARGINE)) got.largo = false;
+            if (IG && !IG.libero(G, fermataRett(got, false), .2)) { got = null; continue; }
+            break; }
           if (got) break; }
         if (!got) return;
         const sg = lNear(Ln, got.cx, got.cy);
@@ -554,9 +564,12 @@ var Vievive = (function () {
   function step(st, dt) {
     if (!ATTIVO || !st.vv) return; const V = st.vv;
     if (Math.floor(hourOf(st)) !== V.hr || (V.oraT = (V.oraT || 0) + dt) > 4) { V.oraT = 0; ora(st, false); }
-    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì
-    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.vvTr || !v.stalled || v.rider || v.wreck || !v.lane) continue; v.vvPanne = (v.vvPanne || 0) + 2;
-      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: true, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0 }); } } }
+    // il mezzo in panne (urtato, girato di traverso: game.js lo ferma e il guidatore scende) dopo mezzo minuto lo portano via, se il giocatore non è lì.
+    // [traffico] anche i mezzi del traffico di game.js (tr*: la panne di azioni.js spawnDriver, «imprevisto») e non solo i nostri (vvTr): prima
+    // un furgone tr10 restava in mezzo alla strada per tutta la partita. Quelli rubati o del giocatore (mine, stolen) no.
+    // I nostri tornano nascosti (li riaccende il conto dell'ora); i tr* tornano a girare (li spegne di notte lo stesso conto, in città)
+    if ((V.panT = (V.panT || 0) + dt) > 2) { V.panT = 0; for (const v of st.vehicles) { if (!v.stalled || v.rider || v.wreck || v.burning > 0 || !v.lane || v.mine || v.stolen || v.police || !(v.vvTr || /^tr\d/.test(v.id))) continue; v.vvPanne = (v.vvPanne || 0) + 2;
+      if (v.vvPanne > 30 && hyp(v.x - st.player.x, v.y - st.player.y) > 30) { const L = G.LANES[v.lane.i]; if (!L) continue; const q = G.lanePos(L, v.lane.s, v.lane.dir); Object.assign(v, { stalled: false, traffic: true, hidden: !!v.vvTr, speed: 0, _spd: 0, vx: 0, vy: 0, w: 0, x: q.x, y: q.y, ang: q.ang, vvPanne: 0, looseUntil: 0, owner: null, stuck: 0 }); if (v.hp < G.VK[v.kind].hp * .6) v.hp = G.VK[v.kind].hp; } } }
     // vicino al giocatore un'auto entra o esce dal conto dell'ora solo in fondo alla via (svolta e sparisce dietro l'angolo, o ne arriva una)
     for (const v of st.vehicles) { if (!v.vvCambia || !v.traffic || !v.lane) continue; const L = G.LANES[v.lane.i]; if (!L) continue; if (v.lane.s < 5 || v.lane.s > L.L - 5) { v.hidden = v.vvCambia === 'spegni'; v.vvCambia = null; } }
     for (const v of st.vehicles) { if (!v.guida) continue;

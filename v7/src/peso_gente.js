@@ -227,10 +227,11 @@ var PesoGente = (function () {
     C.t += performance.now() - t0; ST.caldo_ms = Math.round(C.t);
   }
   let LASTP = null;
+  const inScena = g => { let o = g; while (o.parent) o = o.parent; return !!o.isScene; };
   function passo(people, kit) {
     KIT = kit || KIT; LASTP = people || LASTP; people = LASTP; if (!people) return; if (!caldo && ON) scalda();
     if (!ON) return; if (!T3) T3 = window.THREE; frame++;
-    LIVE.forEach(g => { if (g.__pg && (g.__pg.rotta || !attivo)) sciogli(g); });
+    LIVE.forEach(g => { if (g.__pg && (g.__pg.rotta || !attivo || !inScena(g))) sciogli(g); });   // [scarico] anche chi è uscito dalla scena: prima restava qui per sempre (coi suoi pezzi fusi, e le versioni lontane rifatte per chi non c'era più)
     if (!attivo) { JOB = null; return; }
     const t0 = performance.now();
     // vicino o lontano: l'altezza della persona sullo schermo (pixel della risoluzione interna), con un margine per non fare avanti e indietro

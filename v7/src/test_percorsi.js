@@ -56,7 +56,7 @@ function passa(e) {
   if (e.k === 'scala') { const L = T.LADDERS[e.i], up = e.a === L.footB; p.lv = { k: 'tetto', b: e.a, h: up ? roofAt(e.a, L.fx, L.fy) : roofAt(e.a, L.tx, L.ty) }; p.x = up ? L.fx : L.tx; p.y = up ? L.fy : L.ty; calm(); clear();
     T.climb(st, L, up); run(9, {}); return p.lv && p.lv.k === 'tetto' && p.lv.b === e.b && p.hp === 100; }
   const PK = e.k === 'passerella' ? T.PLANKS[e.i] : null;   // [tetti4] sulle assi che entrano meno (case di una casella) si parte più vicino al bordo
-  const ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + PK.pin + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
+  const ux = e.ux, uy = e.uy, back = e.k === 'salto' ? 2.2 : e.k === 'passerella' ? (PK && PK.pin ? PK.gap / 2 + (e.a === PK.b ? (PK.pinB || PK.pin) : PK.pin) + .3 : 3.4) : e.k === 'gradino' ? .55 : 1.2;
   p.x = e.x - ux * back; p.y = e.y - uy * back; p.lv = { k: 'tetto', b: e.a, h: roofAt(e.a, p.x, p.y) }; calm(); clear(); T.settle(st);
   if (!(p.lv && p.lv.b === e.a)) return false;
   if (e.k === 'salto' || e.k === 'gradino') { G.jumpHold(st, true); run(.7, {}); G.jumpHold(st, false); }
@@ -75,30 +75,14 @@ function percorri(c) {
   console.log('grafo dei tetti nel borgo', nb, JSON.stringify(k));
   // [cucitura] la Vittoria viva ha il fronte sud a 2 piani (lato camera) invece della cortina del regime a 3: i gradini fra la cortina e il
   // borgo dietro si sono appiattiti (prima 25 gradini e 16 salti, ora ~18 e ~8); i giri sui tetti restano tutti
-  // [nitida] via le casette di troppo in mezzo al selciato (world_cittanuova.js, casette()): erano isolotti su cui si saltava; i giri sui
-  // tetti restano tutti, i salti e i gradini del borgo scendono da 30 a ~21
-  ok((k.salto || 0) + (k.gradino || 0) >= 18 && (k.tetto || 0) >= 600, `il borgo basso si gira sui tetti: ${k.tetto || 0} passi a pari, ${k.gradino || 0} gradini, ${k.salto || 0} salti (prima: 854, 18, 12; senza le casette di troppo 741, 15, 6)`); }
+  ok((k.salto || 0) + (k.gradino || 0) >= (World.MAPPA === 'nuova' ? 16 : 24) && (k.tetto || 0) >= 600,   /* [mappa_nuova] il Borgo alto sta su un pianoro a +6: i tetti sono più in fila */ `il borgo basso si gira sui tetti: ${k.tetto || 0} passi a pari, ${k.gradino || 0} gradini, ${k.salto || 0} salti (prima: 854, 18, 12)`); }
 const giri = D.circuiti.filter(c => c.k === 'tetti'), borgo = (x, y) => x > D.borgo.x0 && x < D.borgo.x1 && y > D.borgo.y0 && y < D.borgo.y1;
 ok(giri.filter(c => !c.fuoriBorgo).length >= 3 && giri.filter(c => !c.fuoriBorgo).every(c => borgo(c.pts[0][0], c.pts[0][1])), `almeno tre giri sui tetti nel borgo (${giri.length})`);
 ok(giri.some(c => c.id === 'giro_mercato'), 'il giro del Mercato sui tetti dell\'Ottocento ([mappa_compatta])');
 giri.forEach(c => { const L0 = T.LADDERS[c.sali], L1 = T.LADDERS[c.scendi], es = percorri(c), crema = c.passi.filter(e => e.k === 'salto' || e.k === 'passerella' || e.k === 'scala').length;
   ok(!es.some(s => /^NO/.test(s)) && crema >= 1 && hyp(L0.fx - L1.fx, L0.fy - L1.fy) >= 14, `${c.nome}: ${Math.round(c.L)} m, ${c.edifici.length} tetti, ${crema} passaggi crema; sale e scende da un'altra parte (${Math.round(hyp(L0.fx - L1.fx, L0.fy - L1.fy))} m): ${es.join(' ')}`); });   // [cucitura] 14 m: le case dell'Ottocento a nord della Vittoria fanno isolati corti
-// il camminamento delle mura: dalla scala di levante a quella di ponente, a piedi sul camminamento
-const mura = D.circuiti.find(c => c.k === 'mura');
-ok(!!mura && T.CAMM.filter(c => c.tipo === 'mura_tramontana').length >= 5, 'il camminamento delle mura di tramontana');
-if (mura) {
-  const CM = T.CAMM.filter(c => c.tipo === 'mura_tramontana'), sc = T.LADDERS.filter(L => L.camm && L.camm.tipo === 'mura_tramontana' && !L.rampa).sort((a, b) => b.fx - a.fx);
-  const L0 = sc[0], L1 = sc[sc.length - 1]; let es = [];
-  p.lv = null; p.x = L0.fx; p.y = L0.fy; calm(); clear(); LV.key(st, 'v'); run(9, {}); es.push(p.lv && p.lv.k === 'tetto' ? 'su' : 'NOsu');
-  const h0 = p.lv ? p.lv.h : 0, wp = CM.map(c => [(c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2]).concat(CM.length ? [CM[CM.length - 1].b] : []).concat([[L1.tx, L1.ty]]);
-  let caduto = false; for (const [x, y] of wp) { for (let k = 0; k < 20 * 30 && hyp(p.x - x, p.y - y) > .8; k++) { const dx = x - p.x, dy = y - p.y, d = hyp(dx, dy); G.step(st, DT, { x: dx / d, y: dy / d }); if (!p.lv) { caduto = true; break; } } if (caduto) break; }
-  es.push(caduto ? 'NOcaduto' : 'camminamento'); LV.key(st, 'v'); run(9, {}); es.push(!p.lv && hyp(p.x - L1.fx, p.y - L1.fy) < .3 ? 'giù' : 'NOgiù');
-  ok(!es.some(s => /^NO/.test(s)), `le mura: ${Math.round(mura.L)} m a ${h0.toFixed(1)} m, dalla scala di levante a quella di ponente: ${es.join(' ')}`);
-  // la scala di ronda di pietra porta anch'essa sul camminamento
-  const R = T.LADDERS.find(L => L.rampa); if (R) { p.lv = null; p.x = R.fx; p.y = R.fy; calm(); clear(); LV.key(st, 'v'); run(9, {}); ok(p.lv && p.lv.k === 'tetto' && T.roofAt(p.x, p.y) && T.roofAt(p.x, p.y).camm >= 0, 'dalla scala di ronda si sale sul camminamento'); }
-  // dal camminamento non si cade camminando verso la città
-  if (p.lv) { const c = CM[0], [nx, ny] = [c.b[1] - c.a[1], -(c.b[0] - c.a[0])].map(v => v / c.L); run(2, { x: -nx, y: -ny }); run(2, { x: nx, y: ny }); ok(p.lv && p.lv.k === 'tetto' && p.hp === 100, 'sul camminamento i bordi tengono'); }
-}
+// [ordine] le mura di tramontana lungo i binari non ci sono più (doppia divisione con la massicciata): nessun camminamento, nessun giro
+ok(!D.circuiti.some(c => c.k === 'mura') && !T.CAMM.some(c => c.tipo === 'mura_tramontana'), 'niente mura di tramontana accanto alla ferrovia');
 
 // ---------------- 4. le porte della città e la loro alternativa ----------------
 ok(D.porte.length >= 5 && ['porta_terra', 'sottoportico', 'sottopasso', 'scala_pescatori', 'posto_blocco'].every(id => D.porte.some(q => q.id === id)), 'le cinque porte: Porta di Terra, sottoportico, sottopasso, scala dei pescatori, posto di blocco');

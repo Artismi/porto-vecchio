@@ -23,7 +23,7 @@ var PezziCitta = (function () {
     ghisa: '#2f4a3a', cemento: '#9a968e', cementoScuro: '#7c7873', ferro: '#4a4c50', ferroScuro: '#2e3034', ruggine: '#7a4a30',
     maiolica: '#2e7d5a', intonaco: '#d3c5a3', calce: '#ddd7c8', intonacoRosso: '#b5604a', ocra: '#c29a5e', coppi: '#8f6656', tegole: '#9b5a3c', legno: '#7a5a38',
     vetro: '#7fa3b8', asfalto: '#4a4a48', massicciata: '#7d7467', terra: '#8b7355', acqua: '#3f6f7a', bianco: '#e8e4da', rosso: '#b8322a',
-    buio: '#1c1a18', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
+    buio: '#1c1a18', naso: '#f2e6c8', acquaFonda: '#1d4a58', acquaLuce: '#bfe6ec', lampada: '#ffe9b0', verde: '#3e6b3a', ottone: '#b08d4a', alluminio: '#b9bcc0', arancio: '#d8772a', giallo: '#e3b23c', blu: '#2a4a7a',
     zinco: '#8c9298', piombo: '#64676a', castano: '#6a3d2c', castanoScuro: '#4a2c22', isabella: '#d6c49a', erba: '#6f7a4a', rotaia: '#8a8580',
     mattone: '#9a5a40', lamiera: '#7d8288', intonacoGrigio: '#b9b4aa', azzurro: '#8fb0c0', verdeScuro: '#2c3d2e', corda: '#b8a27a', legnoScuro: '#5a4028', tela: '#a8936a'
   };
@@ -34,6 +34,8 @@ var PezziCitta = (function () {
     if (/ferro|ghisa|ruggine|alluminio|ottone|zinco|rotaia|lamiera/.test(nome)) Object.assign(o, { roughness: .5, metalness: .25 });   // (metallo pieno senza riflessi attorno viene nero)
     if (nome === 'vetro') Object.assign(o, { roughness: .2, metalness: .1, transparent: true, opacity: .7 });
     if (nome === 'acqua') Object.assign(o, { roughness: .15, metalness: .05, transparent: true, opacity: .8 });
+    if (nome === 'acquaFonda') Object.assign(o, { roughness: .08, metalness: .1 });
+    if (nome === 'acquaLuce') Object.assign(o, { roughness: .2, emissive: '#6aa8b4', emissiveIntensity: .25, transparent: true, opacity: .55, depthWrite: false });
     if (nome === 'lampada') Object.assign(o, { emissive: '#ffd890', emissiveIntensity: .8 });
     if (nome === 'rosso') Object.assign(o, { roughness: .6 });
     if (nome === 'faro') Object.assign(o, { color: '#ff3a2a', emissive: '#ff2a1a', emissiveIntensity: 1 });   // la lampada rossa in cima alle antenne
@@ -145,6 +147,9 @@ var PezziCitta = (function () {
     float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.68, .74, n2) * .5 * uz);   // sopra: sporco e licheni
     c *= 1. - step(.6, -nW.y) * .2; }
 #endif
+#ifdef TONE_MAPPING
+  { float l0 = dot(diffuseColor.rgb, vec3(.3, .59, .11)), l1 = dot(c, vec3(.3, .59, .11)); c *= mix(1., l0 / max(l1, 1e-3), .5) * .97; H *= .6; }   // [sguardo] meno rumore: la trama e l'usura a metà ampiezza, la massa si legge prima
+#endif
   diffuseColor.rgb = c; pzH = H; }`;
   }
   function veste(m, nome) {
@@ -181,6 +186,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     });
   }
   let LOD = false;   // acceso da make() con opzioni.lod = 'basso'
+  const SGUARDO = !/[?&]look=vecchio\b/.test(typeof location !== 'undefined' ? location.search : '');   // [sguardo] il look nuovo (?look=vecchio: com'era)
   const GC = {};     // geometrie condivise per chiave (pilastri, traversine, merli... la stessa forma non si rifà)
   function geoCache(k, f) { return GC[k] || (GC[k] = f()); }
   function add(g, geo, m, x, y, z, rx, ry, rz) { const o = new THREE.Mesh(geo, typeof m === 'string' ? mat(m) : m); o.position.set(x || 0, y || 0, z || 0); o.rotation.set(rx || 0, ry || 0, rz || 0); o.castShadow = o.receiveShadow = true; g.add(o); return o; }
@@ -401,9 +407,9 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     if (!LOD) archi.forEach(a => blocco(g, .34, .5, .58, 'pietraChiara', a.x, H - .28, zF, .02));   // la chiave
     const porte = []; for (let i = 0; i < n; i++) { const v = hs(i, 1) < .62; porte.push({ x: i * cw + cw / 2, w: v ? Math.min(2.6, cw - 1) : 1.5, h: v ? 3.1 : 3.3, tipo: 'rett', h0: v ? .55 : 0, v }); }
     // [pianta] varchi: le porte vere delle case dietro (x locali); lì il fondo è aperto e si vede il portone della casa, senza la vetrina finta
-    if (o.varchi && o.varchi.length) { const V = []; o.varchi.slice().sort((p, q) => p - q).forEach(x => { const u = V[V.length - 1]; if (u && x - u.b < 2.9) u.b = x; else V.push({ a: x, b: x }); });
-      for (let i = n - 1; i >= 0; i--) if (V.some(v => v.b + 1.4 > i * cw && v.a - 1.4 < (i + 1) * cw)) porte.splice(i, 1);
-      V.forEach(v => porte.push({ x: (v.a + v.b) / 2, w: v.b - v.a + 2.8, h: 3.1, tipo: 'rett', h0: 0, aperto: true })); }
+    if (o.varchi && o.varchi.length) { const aperte = new Set(); o.varchi.forEach(x => { for (let i = 0; i < n; i++) if (x + 1.3 > i * cw && x - 1.3 < (i + 1) * cw) aperte.add(i); });   // la campata intera: il portone disegnato cade fino a un metro dal centro della casella
+      for (let i = n - 1; i >= 0; i--) if (aperte.has(i)) porte.splice(i, 1);
+      aperte.forEach(i => porte.push({ x: i * cw + cw / 2, w: cw - .3, h: 3.1, tipo: 'rett', h0: 0, aperto: true })); }
     pareteArchi(g, L, hA, .4, porte, 'calce', 0, 0, -P / 2 - .25);                            // il fondo: vetrine e portoni delle botteghe
     if (!LOD) porte.forEach(a => { if (a.aperto) return; if (a.v) { blocco(g, a.w, a.h - a.h0, .08, 'vetro', a.x, a.h0, -P / 2 - .25); blocco(g, a.w + .2, .12, .3, 'pietraChiara', a.x, a.h0 - .12, -P / 2 - .1); }
       else { blocco(g, a.w, a.h, .1, 'legnoScuro', a.x, 0, -P / 2 - .3); blocco(g, .5, .5, .1, 'vetro', a.x, a.h - .7, -P / 2 - .24); } });
@@ -616,46 +622,66 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     g.userData.misure = [2 * RE, yTop + (o.lanterna ? 4 : .4), 2 * RE]; return g;
   };
 
-  DOC.stazione = { L: 40, piani: 2, piazzale: true, binari: 2, pensilina: true, orologio: true, nome: 'PORTO VECCHIO', nota: 'fabbricato viaggiatori dell\'Ottocento: zoccolo di pietra, ali in ocra con le arcate al piano terra e le finestre con le persiane, corpo centrale avanzato con le lesene, il nome e l\'attico dell\'orologio, cornicione su modiglioni e balaustra; dietro (−Z) il marciapiede con la pensilina in ghisa, la mantovana, l\'orologio a bandiera e i binari; davanti (+Z) il piazzale coi lampioni' };
+  DOC.stazione = { L: 40, piani: 2, piazzale: true, binari: 2, pensilina: true, orologio: true, nome: 'PORTO VECCHIO', P: 11, hp: 5, marc: 6, hMarc: .9, abbandonata: false, nota: 'fabbricato viaggiatori dell\'Ottocento: zoccolo di pietra, ali in ocra con le arcate al piano terra e le finestre con le persiane, cantonali, corpo centrale avanzato con le lesene, il nome e l\'attico dell\'orologio, cornicione su modiglioni e balaustra, la marquise di ferro e vetro sull\'ingresso con le lanterne; dietro (−Z) le porte con l\'architrave, le finestre, il marciapiede (marc m, alto hMarc) col cordolo di pietra e la pensilina in ghisa: colonne coi capitelli e i saettoni, falda di zinco a campate col perlinato sotto, lucernario, gronda e pluviali, mantovana anche sulle testate, lampade appese, l\'orologio a bandiera, i cartelli del nome, la bacheca dell\'orario, panchine, la fontanella, il carrello dei bagagli, i cestini; i binari; davanti (+Z) il piazzale coi lampioni. P: profondità, hp: altezza dei piani; abbandonata: vani bui o murati, niente luci, la mantovana e la falda a pezzi, l\'orologio fermo' };
   T.stazione = o => {
-    o = def(o, DOC.stazione); const g = new THREE.Group(), L = o.L, P = 11, hp = 5, hW = o.piani * hp, Lc = Math.min(14, L * .34), xc = L / 2, zF = P / 2, hC = hW + 1.2, rr = caso(L * 7 + o.piani);
+    o = def(o, DOC.stazione); const g = new THREE.Group(), L = o.L, P = o.P, hp = o.hp, hW = o.piani * hp, Lc = Math.min(14, L * .34), xc = L / 2, zF = P / 2, hC = hW + 1.2, rr = caso(L * 7 + o.piani), ab = !!o.abbandonata, ha = Math.min(4, hp - .7);
+    const luce = p => ab ? (rr() < .25 ? 'mattone' : 'buio') : rr() < p ? 'finestraAccesa' : 'buio';   // [campagna] la stazione abbandonata: vani bui, qualcuno murato
     blocco(g, L, .9, P + .2, 'pietra', L / 2, 0, 0, .03);                                          // zoccolo
     blocco(g, L, hW - .9, P, 'ocra', L / 2, .9, 0);                                                 // le ali
     blocco(g, Lc, hC, P + .8, 'intonaco', xc, 0, 0);                                                // corpo centrale, avanzato di 40 cm
-    const nB = Math.max(3, Math.round(L / 4)), bay = L / nB, zC = zF + .4;
+    const nB = Math.max(3, Math.round(L / 4)), bay = L / nB, zC = zF + .4, hD = Math.min(3.5, ha - .5), hF = Math.min(2.4, hp - 1.3);
     for (let i = 0; i < nB; i++) { const x = (i + .5) * bay, cen = Math.abs(x - xc) < Lc / 2 - .5, z = cen ? zC : zF;
       if (Math.abs(x - xc) > Lc / 2 - .5 && Math.abs(x - xc) < Lc / 2 + .5) continue;            // niente vano a cavallo dello spigolo del corpo centrale
-      if (!LOD) vano(g, 2.6, 4, 'arco', 'pietraChiara', x, .15, z + .02, .04); vano(g, 2.1, 3.7, 'arco', cen ? 'finestraAccesa' : rr() < .3 ? 'finestraAccesa' : 'buio', x, .15, z + .045, .03);   // arcate del piano terra (la sala d'aspetto e qualche ufficio accesi di notte) [pezzi2]
-      if (!LOD) blocco(g, .4, .55, .14, 'pietraChiara', x, 3.75, z + .07, .02);   // chiave di volta
-      if (!LOD) vano(g, 1.9, 3.5, 'rett', 'buio', x, .15, -zF - (cen ? .4 : 0) - .03, .06);                 // porte sul marciapiede
-      for (let p = 1; p < o.piani; p++) finestra(g, 1.2, 2.4, x, p * hp + .9, z, { persiane: (i + p) % 3 ? 'persiana' : null, arco: cen, vetro: rr() < .35 ? 'finestraAccesa' : 'buio' });   // [pezzi2] gli alloggi del capostazione, accesi a caso
+      if (!LOD) vano(g, 2.6, ha, 'arco', 'pietraChiara', x, .15, z + .02, .04); vano(g, 2.1, ha - .3, 'arco', cen && !ab ? 'finestraAccesa' : luce(.3), x, .15, z + .045, .03);   // arcate del piano terra (la sala d'aspetto e qualche ufficio accesi di notte) [pezzi2]
+      if (!LOD) blocco(g, .4, .55, .14, 'pietraChiara', x, ha - .25, z + .07, .02);   // chiave di volta
+      if (!LOD) { const zb = -zF - (cen ? .4 : 0); vano(g, 1.9, hD, 'rett', ab && rr() < .3 ? 'mattone' : 'buio', x, .15, zb - .03, .06); if (nB <= 10) blocco(g, 2.3, .14, .2, 'pietraChiara', x, hD + .15, zb - .1);   // porte sul marciapiede, con l'architrave
+        if (nB <= 10 || i % 2 === 0) for (let p = 1; p < o.piani; p++) finestra(g, 1.2, hF, x, p * hp + .7, zb, { persiane: ab || i % 2 ? null : 'persiana', vetro: luce(.2) }); }   /* sul fabbricato lungo una campata sì e una no */   // [campagna] le finestre anche sul lato dei binari
+      for (let p = 1; p < o.piani; p++) finestra(g, 1.2, hF, x, p * hp + .7, z, { persiane: (i + p) % 3 ? 'persiana' : null, arco: cen, vetro: luce(.35) });   // [pezzi2] gli alloggi del capostazione, accesi a caso
     }
     for (let p = 1; p < o.piani; p++) cornice(g, L, P, .12, .3, 'pietraChiara', 0, p * hp - .1, 0);   // fasce marcapiano
     for (const s of [-1, 1]) blocco(g, .8, hC, .25, 'pietraChiara', xc + s * (Lc / 2 - .4), 0, zC + .1, .03);   // lesene bugnate del corpo centrale
+    if (!LOD) for (const s of [-1, 1]) for (const xx of [.25, L - .25]) blocco(g, .55, hW - .9, .55, 'pietraChiara', xx, .9, s * (zF - .25), .02);   // [campagna] i cantonali delle ali
     cornice(g, L, P, .3, .6, 'pietraChiara', 0, hW, 0); cornice(g, Lc, P + .8, .35, .6, 'pietraChiara', xc - Lc / 2, hC, 0);
-    if (!LOD) for (let x = .5; x < L; x += .9) if (Math.abs(x - xc) > Lc / 2 + .2) blocco(g, .18, .3, .3, 'pietraChiara', x, hW - .3, zF + .15);   // modiglioni sotto il cornicione
+    if (!LOD) for (let x = .5; x < L; x += L > 44 ? 1.4 : .9) if (Math.abs(x - xc) > Lc / 2 + .2) blocco(g, .18, .3, .3, 'pietraChiara', x, hW - .3, zF + .15);   // modiglioni sotto il cornicione
     for (const [x0, x1] of [[0, xc - Lc / 2], [xc + Lc / 2, L]]) balaustra(g, x1 - x0 - .3, 1, 'pietraChiara', x0 + .15, hW + .6, zF - .1);   // balaustre delle ali
     const wA = Lc * .62, yA = hC + .6; blocco(g, wA, 3, 1.4, 'intonaco', xc, yA, zC - .7);            // l'attico dell'orologio
     cornice(g, wA, 1.4, .25, .45, 'pietraChiara', xc - wA / 2, yA + 3, zC - .7);
     if (!LOD) for (const s of [-1, 1]) { blocco(g, .5, .5, .5, 'pietraChiara', xc + s * (wA / 2 - .25), yA + 3.45, zC - .4); add(g, new THREE.SphereGeometry(.3, 10, 8), 'pietraChiara', xc + s * (wA / 2 - .25), yA + 4.2, zC - .4); }   // acroteri a palla
-    if (o.orologio) { toro(g, 1.25, .12, 24, 'pietraChiara', xc, yA + 1.5, zC + .02, 0, 0); orologio(g, 1.1, xc, yA + 1.5, zC + .04, 0, o.ora, o.min); }
-    if (o.nome) { blocco(g, Math.min(Lc - 2, o.nome.length * .55 + 1), .9, .1, 'pietraChiara', xc, hC - 1.6, zC + .05); scritta(g, o.nome, Math.min(Lc - 2.2, o.nome.length * .5), .7, xc, hC - 1.15, zC + .11, 0, '#3a3630'); }   // il nome sulla fascia sotto il cornicione
-    if (o.pensilina) { const zP = -zF - 3, zE = -zF - 5.6, nc = Math.max(2, Math.round(L / 6));
-      blocco(g, L + 6, .9, 6, 'cemento', L / 2, 0, zP, .03); blocco(g, L + 6, .02, .25, 'bianco', L / 2, .9, -zF - 5.2);   // marciapiede con la linea bianca
-      for (let i = 0; i <= nc; i++) colonnaGhisa(g, 1 + i * (L - 2) / nc, .9, -zF - 3.8, 3.6, false, 6);
-      blocco(g, L + 4, .48, .22, 'ghisa', L / 2, 4.5, -zF - 3.8);                                  // trave sulle colonne
-      sezione(g, [[-zF, 5.5], [zE, 4.75], [zE, 4.9], [-zF, 5.68]], L + 4, 'zinco', -2, 0, 0);      // la falda di lamiera
-      if (!LOD) { for (let i = 0; i <= nc; i++) { const x = 1 + i * (L - 2) / nc; asta(g, [x, 4.2, -zF - 3.8], [x, 4.82, zE + .1], .05, 'ghisa'); asta(g, [x, 4.2, -zF - 3.8], [x, 5.2, -zF - .3], .05, 'ghisa'); }   // mensole
-        frangia(g, L + 4, .45, .9, 'legno', -2, 4.78, zE - .02);
-        const bc = (L - 2) / nc, xo = 1 + (Math.floor(nc / 2) - .5) * bc, xn = xo + bc; blocco(g, .08, .8, .08, 'ghisa', xo, 3.7, -zF - 3.8); for (const r of [0, PI]) orologio(g, .45, xo, 3.4, -zF - 3.8 + (r ? -.05 : .05), r, o.ora, o.min);   // l'orologio a bandiera, a due facce
-        blocco(g, Math.min(3.6, bc - .6), .7, .08, 'blu', xn, 3.9, -zF - 3.8); scritta(g, o.nome || 'STAZIONE', Math.min(3.3, bc - .9), .55, xn, 4.25, -zF - 3.85, PI, '#ffffff');   // il cartello del nome
-        for (const s of [-1, 1]) { const xb = xc + s * L * .28; for (const dx of [-.8, .8]) blocco(g, .08, .45, .45, 'ghisa', xb + dx, .9, -zF - 2.2); blocco(g, 1.8, .06, .45, 'legno', xb, 1.35, -zF - 2.2); blocco(g, 1.8, .4, .06, 'legno', xb, 1.4, -zF - 1.96); } }   // panchine
-      const zB0 = -zF - 6, zB1 = zB0 - 1.8 - (o.binari - 1) * 4.2 - 1.8;
+    if (o.orologio) { const ro = Math.min(1.1, wA * .36); toro(g, ro + .15, .12, 24, 'pietraChiara', xc, yA + 1.5, zC + .02, 0, 0); orologio(g, ro, xc, yA + 1.5, zC + .04, 0, ab ? 4 : o.ora, ab ? 37 : o.min); }
+    if (o.nome) { blocco(g, Math.min(Lc - .6, o.nome.length * .55 + 1), .9, .1, 'pietraChiara', xc, hC - 1.6, zC + .05); scritta(g, o.nome, Math.min(Lc - .8, o.nome.length * .5), .7, xc, hC - 1.15, zC + .11, 0, '#3a3630'); }   // il nome sulla fascia sotto il cornicione
+    // [campagna] la marquise sull'ingresso (ferro e vetro sulle mensole) e le lanterne a muro ai lati del corpo centrale
+    if (!LOD) { const wM = Math.min(Lc - 1, 5), yM = ha + .35;
+      blocco(g, wM, .1, 1.6, ab ? 'ruggine' : 'vetro', xc, yM, zC + .8); blocco(g, wM + .1, .14, .08, 'ghisa', xc, yM - .02, zC + 1.66); frangia(g, wM, .3, .3, 'ghisa', xc - wM / 2, yM, zC + 1.7);
+      for (const s of [-1, 1]) { asta(g, [xc + s * (wM / 2 - .2), yM - .9, zC + .05], [xc + s * (wM / 2 - .2), yM, zC + 1.6], .04, 'ghisa'); asta(g, [xc + s * (wM / 2 - .2), yM + 1.1, zC + .05], [xc + s * (wM / 2 - .2), yM + .1, zC + 1.6], .025, 'ghisa'); }
+      for (const s of [-1, 1]) { const xl = xc + s * (Lc / 2 + .7); blocco(g, .08, .08, .45, 'ghisa', xl, ha - .2, zF + .22); blocco(g, .3, .45, .3, ab ? 'buio' : 'lampada', xl, ha - .55, zF + .45); blocco(g, .38, .06, .38, 'ghisa', xl, ha - .1, zF + .45); } }
+    if (o.pensilina) { const dm = o.marc, hm = o.hMarc, dy = hm - .9, zE = -zF - dm + .4, zc = -zF - dm * .63, nc = Math.max(2, Math.round(L / 6)), Lp = L + 4, yT = 4.5 + dy, yW = 5.5 + dy, yE = 4.75 + dy;
+      blocco(g, L + 6, hm, dm, 'cemento', L / 2, 0, -zF - dm / 2, .03); blocco(g, L + 6, .04, .45, 'pietraChiara', L / 2, hm, -zF - dm + .23); blocco(g, L + 6, .02, .2, ab ? 'cemento' : 'bianco', L / 2, hm + .01, -zF - dm + .9);   // marciapiede col cordolo di pietra e la linea
+      const cols = []; for (let i = 0; i <= nc; i++) cols.push(1 + i * (L - 2) / nc);
+      cols.forEach((x, ic) => { colonnaGhisa(g, x, hm, zc, 3.6, false, nc > 6 ? 5 : 6); if (!LOD && (nc <= 6 || ic % 2 === 0 || ic === nc)) { blocco(g, .5, .2, .5, 'ghisa', x, yT - .62, zc); for (const s of [-1, 1]) asta(g, [x, yT - .9, zc], [x, yT - .05, zc + s * 1.2], .045, 'ghisa'); } });   // le colonne coi capitelli e i saettoni
+      blocco(g, Lp, .48, .22, 'ghisa', L / 2, yT, zc);                                              // trave sulle colonne
+      const yAt = z => yW + (yE - yW) * (z + zF) / (zE + zF);                                         // la quota della falda
+      // la falda di zinco a campate (alla stazione abbandonata ne manca qualcuna), il perlinato sotto, il lucernario
+      const nf = ab ? Math.max(2, Math.round(Lp / 4)) : 1, lf = Lp / nf;   /* a campate solo all'abbandonata (ne mancano); intera: una lastra sola */ for (let k = 0; k < nf; k++) { if (ab && (k === 1 || (k === nf - 2 && nf > 4))) continue;
+        sezione(g, [[-zF, yW], [zE, yE], [zE, yE + .15], [-zF, yW + .18]], lf + .02, ab && k % 3 === 2 ? 'ruggine' : 'zinco', -2 + k * lf, 0, 0);
+        if (!LOD) sezione(g, [[-zF, yW - .1], [zE + .1, yE - .1], [zE + .1, yE - .06], [-zF, yW - .06]], lf, 'legno', -2 + k * lf, 0, 0); }
+      if (!LOD && !ab) { const z0 = -zF - dm * .2, z1 = z0 - Math.min(1.4, dm * .25); sezione(g, [[z0, yAt(z0) + .14], [z1, yAt(z1) + .14], [z1, yAt(z1) + .3], [z0, yAt(z0) + .3]], Lp - 1, 'vetro', -1.5, 0, 0); }
+      if (!LOD) { cilX(g, .1, Lp, 8, 'zinco', L / 2, yE + .02, zE - .08); for (const x of [cols[0], cols[cols.length - 1]]) asta(g, [x + .3, yE, zE - .08], [x + .3, hm + .1, zc - .3], .06, 'zinco'); }   // la gronda e i pluviali
+      if (!LOD) { frangia(g, ab ? Lp * .45 : Lp, .45, L > 44 ? 1.2 : .9, 'legno', -2, yE + .03, zE - .02); if (ab) frangia(g, Lp * .3, .45, .9, 'legno', -2 + Lp * .62, yE + .03, zE - .02);   // la mantovana (a pezzi, all'abbandonata)
+        if (L <= 44) for (const xe of [-2, L + 2]) frangia(g, dm - .5, .35, .7, 'legno', xe, yAt(-zF - (dm - .4) / 2) - .05, -zF - .1, HP);   // le testate
+        const bc = (L - 2) / nc, xo = 1 + (Math.floor(nc / 2) - .5) * bc, xn = xo + bc; blocco(g, .08, .8, .08, 'ghisa', xo, yT - .8, zc); for (const r of [0, PI]) orologio(g, .45, xo, yT - 1.1, zc + (r ? -.05 : .05), r, ab ? 4 : o.ora, ab ? 37 : o.min);   // l'orologio a bandiera, a due facce
+        for (const xs of nc > 2 && nc <= 6 ? [cols[1] - bc / 2, xn, cols[nc - 1] + bc / 2] : [xn]) { const wc = Math.min(3.6, bc - .6); blocco(g, wc, .7, .08, 'blu', xs, yT - .4, zc); for (const s of [-1, 1]) asta(g, [xs + s * (wc / 2 - .3), yT + .25, zc], [xs + s * (wc / 2 - .3), yT - .05, zc], .02, 'ferro'); scritta(g, o.nome || 'STAZIONE', wc - .3, .55, xs, yT - .05, zc - .05, PI, '#ffffff'); }   // i cartelli del nome
+        for (let i = nc > 6 ? 1 : 0; i < nc; i += nc > 6 ? 2 : 1) { const x = cols[i] + bc / 2;   /* sulle pensiline lunghe una campata sì e una no */ asta(g, [x, yAt(zc) - .1, zc], [x, yT - .9, zc], .015, 'ferro'); blocco(g, .3, .36, .3, ab ? 'vetro' : 'lampada', x, yT - 1.26, zc); blocco(g, .5, .05, .5, 'ghisa', x, yT - .88, zc); }   // le lampade appese
+        { const xb = L * .5 + bc * .5; blocco(g, 2.2, 1.4, .08, 'legno', xb, hm + 1.2, -zF - .06); blocco(g, 1.9, 1.1, .03, ab ? 'buio' : 'intonaco', xb, hm + 1.35, -zF - .11); scritta(g, ab ? 'ORARIO' : 'ORARIO DEI TRENI', 1.7, .2, xb, hm + 2.25, -zF - .14, PI, '#2a2620'); }   // la bacheca dell'orario
+        for (const s of [-1, 1]) { const xb = xc + s * L * .28; for (const dx of [-.8, .8]) blocco(g, .08, .45, .45, 'ghisa', xb + dx, hm, -zF - 1.2); blocco(g, 1.8, .06, .45, 'legno', xb, hm + .45, -zF - 1.2); blocco(g, 1.8, .4, .06, 'legno', xb, hm + .5, -zF - .96); }   // panchine
+        { const xf = Math.min(L - 1.5, xc + L * .42); cil(g, .3, .3, .12, 10, 'ghisa', xf, hm, zc + .9); cil(g, .2, .16, .9, 8, 'ghisa', xf, hm + .12, zc + .9); blocco(g, .5, .08, .5, 'ghisa', xf, hm + 1.02, zc + .9); }   // la fontanella
+        if ((!ab || rr() < .7) && L <= 44) { const gc = grp(g, Math.max(1.5, xc - L * .4), hm, zc + .4, .2); blocco(gc, 2.2, .1, 1, 'legno', 0, .45, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) cilZ(gc, .22, .08, 10, ab ? 'ruggine' : 'ferroScuro', sx * .7, .22, sz * .45); asta(gc, [1.1, .55, 0], [1.7, 1.1, 0], .03, 'ferro'); if (!ab) { blocco(gc, .8, .5, .6, 'castano', -.4, .55, 0); blocco(gc, .5, .35, .4, 'legno', .45, .55, .1); } }   // il carrello dei bagagli
+        for (const x of [cols[0] + .6, cols[cols.length - 1] - .6]) cil(g, .2, .2, .7, 6, 'ghisa', x, hm, -zF - .5); }   // i cestini
+      const zB0 = -zF - dm, zB1 = zB0 - 1.8 - (o.binari - 1) * 4.2 - 1.8;
       if (o.binari > 0) { massicciata(g, L + 6, zB1, zB0, .3, -3, 0); for (let i = 0; i < o.binari; i++) binario(g, L + 6, -3, .3, zB0 - 1.75 - i * 4.2); }
     }
     if (o.piazzale) { blocco(g, L + 4, .15, 4, 'pietraChiara', L / 2, 0, zF + 2); blocco(g, L + 4, .06, 12, 'asfalto', L / 2, 0, zF + 10);
       for (let x = 2; x <= L - 2 + .01; x += Math.max(12, (L - 4) / Math.round((L - 4) / 16))) lampione(g, 'ghisa', x, zF + 3.5); }
-    g.userData.misure = [L + 6, yA + 4.5, P + (o.pensilina ? 6 + o.binari * 4.2 + 2 : 0) + (o.piazzale ? 16 : 0)]; return g;
+    g.userData.misure = [L + 6, yA + 4.5, P + (o.pensilina ? o.marc + o.binari * 4.2 + 2 : 0) + (o.piazzale ? 16 : 0)]; return g;
   };
 
   DOC.binari = { L: 25, binari: 2, rilevato: true, hRilevato: 2.5, palo: true, nota: 'segmento di ferrovia lungo +X: rilevato di terra col muro di pietra a scarpa sul fronte (+Z, il mare) con la copertina e i barbacani, scarpata d\'erba dietro, massicciata, traverse e rotaie; palo del telegrafo con gli isolatori. Si accostano traslando di L' };
@@ -696,27 +722,29 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
 
   DOC.passaggio_livello = { w: 8, aperto: false, casello: true, nota: 'passaggio a livello: binario lungo X, strada lungo Z (larga w) con le rampe e il riempimento fra le rotaie; due sbarre a strisce bianche e rosse col contrappeso e la forcella, croci di Sant\'Andrea, lanterne rosse, casello del guardiano col tetto di coppi' };
   T.passaggio_livello = o => {
-    o = def(o, DOC.passaggio_livello); const g = new THREE.Group(), w = o.w, Lt = w + 14, xc = Lt / 2;
+    // [campagna] obliquo: l'angolo fra la strada e il binario (di serie π/2, a squadra); la strada e le sue cose girano attorno al centro
+    o = def(o, DOC.passaggio_livello); const g = new THREE.Group(), ob = Math.max(.6, Math.min(PI - .6, o.obliquo || HP)), sq = Math.abs(ob - HP) < .001, w = o.w, wx = sq ? w : w / Math.sin(ob), Lt = wx + 14, xc = Lt / 2, sk = sq ? 1 : 1 / Math.sin(ob);
     massicciata(g, Lt, -1.6, 1.6, .15, 0, 0); binario(g, Lt, 0, .15, 0);                          // binario (rotaie in cima a .45)
-    blocco(g, w, .44, 3.4, 'asfalto', xc, 0, 0);                                                     // il riempimento fra le rotaie
-    for (const s of [-1, 1]) { sezione(g, [[s * 1.7, 0], [s * 4.7, 0], [s * 4.7, .06], [s * 1.7, .44]], w, 'asfalto', xc - w / 2, 0, 0); blocco(g, w, .06, 5, 'asfalto', xc, 0, s * 7.2); }   // rampe e strada
+    const r = sq ? g : grp(g, xc, 0, 0, HP - ob), x0 = sq ? xc : 0;
+    blocco(r, w, .44, 3.4 * sk, 'asfalto', x0, 0, 0);                                                // il riempimento fra le rotaie
+    for (const s of [-1, 1]) { sezione(r, [[s * 1.7 * sk, 0], [s * 4.7 * sk, 0], [s * 4.7 * sk, .06], [s * 1.7 * sk, .44]], w, 'asfalto', x0 - w / 2, 0, 0); blocco(r, w, .06, 5, 'asfalto', x0, 0, s * (4.7 * sk + 2.5)); }   // rampe e strada
     const strada = strisce('bianco', 'rosso', 4, false);
     for (const s of [1, -1]) {                                                                       // le due sbarre, una per lato, ai capi opposti della strada
-      const xp = xc - s * (w / 2 + .7), zp = s * 4, hb = 1.1;
-      blocco(g, .5, .5, .5, 'cemento', xp, 0, zp); cil(g, .12, .1, hb + .1, 8, 'bianco', xp, .5, zp);
-      const pv = grp(g, xp, .5 + hb, zp); if (o.aperto) pv.rotation.z = s * HP * .95;
+      const xp = x0 - s * (w / 2 + .7), zp = s * 4 * sk, hb = 1.1;
+      blocco(r, .5, .5, .5, 'cemento', xp, 0, zp); cil(r, .12, .1, hb + .1, 8, 'bianco', xp, .5, zp);
+      const pv = grp(r, xp, .5 + hb, zp); if (o.aperto) pv.rotation.z = s * HP * .95;
       blocco(pv, w + .6, .12, .1, strada, s * (w + .6) / 2, -.06, .14); blocco(pv, 1.1, .3, .25, 'cemento', -s * .6, -.15, .14);   // asta e contrappeso
-      if (!LOD) { blocco(pv, .2, .2, .2, 'ferro', 0, -.1, 0); cil(g, .05, .05, .5 + hb - .18, 6, 'bianco', xp + s * (w + .3), 0, zp + .14); blocco(g, .3, .08, .1, 'bianco', xp + s * (w + .3), .5 + hb - .2, zp + .14); }   // perno e forcella
-      if (!LOD) { cil(g, .05, .05, 1, 6, 'ferro', xp, .6 + hb, zp); blocco(g, .25, .3, .2, 'buio', xp, 1.6 + hb, zp); for (const d of [-1, 1]) blocco(g, .14, .14, .05, 'faro', xp, 1.68 + hb, zp + d * .11); }   // lanterna rossa
-      const xc2 = xc + s * (w / 2 + .9), zc = s * 6.5; cil(g, .05, .05, 2.6, 6, 'ferro', xc2, 0, zc);   // croce di Sant'Andrea
-      for (const r of [.55, -.55]) { const b = blocco(g, 1.3, .22, .04, 'rosso', xc2, 2.3, zc + s * .05); b.rotation.set(0, s > 0 ? 0 : PI, r); if (!LOD) { const c = blocco(g, 1.1, .1, .02, 'bianco', xc2, 2.36, zc + s * .08); c.rotation.set(0, s > 0 ? 0 : PI, r); } }
+      if (!LOD) { blocco(pv, .2, .2, .2, 'ferro', 0, -.1, 0); cil(r, .05, .05, .5 + hb - .18, 6, 'bianco', xp + s * (w + .3), 0, zp + .14); blocco(r, .3, .08, .1, 'bianco', xp + s * (w + .3), .5 + hb - .2, zp + .14); }   // perno e forcella
+      if (!LOD) { cil(r, .05, .05, 1, 6, 'ferro', xp, .6 + hb, zp); blocco(r, .25, .3, .2, 'buio', xp, 1.6 + hb, zp); for (const d of [-1, 1]) blocco(r, .14, .14, .05, 'faro', xp, 1.68 + hb, zp + d * .11); }   // lanterna rossa
+      const xc2 = x0 + s * (w / 2 + .9), zc = s * 6.5 * sk; cil(r, .05, .05, 2.6, 6, 'ferro', xc2, 0, zc);   // croce di Sant'Andrea
+      for (const rq of [.55, -.55]) { const b = blocco(r, 1.3, .22, .04, 'rosso', xc2, 2.3, zc + s * .05); b.rotation.set(0, s > 0 ? 0 : PI, rq); if (!LOD) { const c = blocco(r, 1.1, .1, .02, 'bianco', xc2, 2.36, zc + s * .08); c.rotation.set(0, s > 0 ? 0 : PI, rq); } }
     }
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) blocco(g, 1.4, .12, 7.9, 'cemento', xc + sx * (w / 2 + .7), 0, sz * 5.75);   // le banchine ai lati della strada
-    if (o.casello) { const gx = xc + w / 2 + 3.1, gz = -6.4, gc = grp(g, gx, 0, gz);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) blocco(r, 1.4, .12, 7.9, 'cemento', x0 + sx * (w / 2 + .7), 0, sz * (5.75 * sk));   // le banchine ai lati della strada
+    if (o.casello) { const gx = x0 + w / 2 + 3.1, gz = -6.4 * sk, gc = grp(r, gx, 0, gz);
       blocco(gc, 3.6, .4, 3.6, 'pietra', 0, 0, 0); blocco(gc, 3.4, 2.6, 3.4, 'intonacoRosso', 0, .4, 0); tettoFalde(gc, 3.4, 3.4, 1.1, 'coppi', -1.7, 3, 0, .35);
       finestra(gc, .8, 1.1, .7, 1.3, 1.7, { persiane: 'verdeScuro', cimasa: false }); vano(gc, .9, 2, 'rett', 'legno', -.8, .4, 1.73, .06);
-      if (!LOD) { blocco(gc, 1.2, .3, .04, 'bianco', -.8, 2.55, 1.72); scritta(gc, 'CASELLO 21', 1.1, .26, -.8, 2.7, 1.75, 0, '#222'); cil(gc, .12, .12, .8, 8, 'cemento', 1.2, 3.2, -.6); } }   // targa e comignolo
-    g.userData.misure = [Lt + (o.casello ? 6 : 0), 4.2, 19]; return g;
+      if (!LOD) { blocco(gc, 1.2, .3, .04, 'bianco', -.8, 2.55, 1.72); scritta(gc, o.nome || 'CASELLO 21', 1.1, .26, -.8, 2.7, 1.75, 0, '#222'); cil(gc, .12, .12, .8, 8, 'cemento', 1.2, 3.2, -.6); } }   // targa e comignolo
+    g.userData.misure = [Lt + (o.casello ? 6 : 0), 4.2, 19 * sk]; return g;
   };
 
   DOC.carro_merci = { aperto: false, colore: 'castano', numero: 'PV 21 83 140', nota: 'carro chiuso a due assi (10 m ai respingenti): ruote, assi, boccole e balestre, longheroni e traverse di testa, respingenti e gancio, cassa con i montanti e le crociere, porta scorrevole sulla guida (aperta = buio dentro), tetto a botte, finestrelle d\'aerazione, scaletta. Le ruote poggiano a y = 0 (il piano del ferro)' };
@@ -842,11 +870,14 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   DOC.scalinata = { w: 4, dislivello: 8, pianerottoli: 1, lampada: true, pedata: .36, nota: 'scalinata parametrica che sale lungo +X: gradini di pietra (alzata ~17 cm), rampe divise da pianerottoli di 1,6 m, arrivo in cima, muri d\'ambito di tufo con la copertina inclinata, corrimano di ferro sul muro, lampioni di ghisa sui pianerottoli, fascia d\'umido al piede dei muri' };
   T.scalinata = o => {
     o = def(o, DOC.scalinata); const g = new THREE.Group(), H = o.dislivello, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata, nf = Math.max(1, o.pianerottoli + 1), lp = 1.6, W = o.w;
-    const pts = [[0, 0]], rampe = [], pian = []; let x = 0, y = 0;
+    const pts = [[0, 0]], rampe = [], pian = [], naso = []; let x = 0, y = 0;
     for (let f = 0; f < nf; f++) { const k = Math.round(n * (f + 1) / nf) - Math.round(n * f / nf), xb = x, yb = y;
-      for (let i = 0; i < k; i++) { y += a; if (LOD) pts.push([x, y]); else pts.push([x, y - .045], [x + .03, y - .005], [x + .06, y]); x += pd; pts.push([x, y]); }   // [pezzi2] lo spigolo del gradino consumato
+      for (let i = 0; i < k; i++) { y += a; naso.push([x, y]); if (LOD) pts.push([x, y]); else pts.push([x, y - .045], [x + .03, y - .005], [x + .06, y]); x += pd; pts.push([x, y]); }   // [pezzi2] lo spigolo del gradino consumato
       rampe.push([xb, yb, x - pd, y]); const lx = f < nf - 1 ? lp - pd : 1.2; x += lx; pts.push([x, y]); pian.push([x - lx - pd, x, y]); }
     pts.push([x, 0]); profilo(g, pts, W, 'pietraChiara', 0, 0, 0);                                  // i gradini e la massa sotto
+    if (!LOD && SGUARDO && naso.length) {   // [sguardo] la grammatica delle scale: il filo chiaro sul ciglio di ogni gradino (una mesh sola), il gradino si conta
+      const sh = naso.map(([nx, ny]) => { const q = new THREE.Shape(); q.moveTo(nx - .01, ny - .035); q.lineTo(nx + .075, ny - .035); q.lineTo(nx + .075, ny + .012); q.lineTo(nx - .01, ny + .012); return q; });
+      const ng = new THREE.ExtrudeGeometry(sh, { depth: W - .08, bevelEnabled: false }); ng.translate(0, 0, -(W - .08) / 2); ng.computeVertexNormals(); add(g, ng, 'naso', 0, 0, 0).castShadow = false; }
     const top = [[0, 0]]; rampe.forEach((r, f) => { top.push([r[0], r[1] + a + 1]); top.push([r[2], r[3] + 1]); top.push([pian[f][1], r[3] + 1]); }); top.push([x, 0]);
     for (const s of [-1, 1]) { profilo(g, top, .45, 'tufo', 0, 0, s * (W / 2 + .225));                // muri d'ambito
     }   // (la fascia d'umido la disegna il materiale) [pezzi2]
@@ -986,9 +1017,11 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     return gg;
   }
   // ciuffi d'erba e di capperi sui muri vecchi (usura): n ciuffi su una faccia che guarda +Z larga L, fra y0 e y1, a scarpa k (z = z0 - k·y)
-  function capperi(g, n, L, y0, y1, z0, k, seme, x0) {
-    if (LOD) return; const r = caso(seme);
-    for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05;   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
+  // [pulizia-verde] spenti: erano tre scatole verdi a cuscino (cespugli-cubo sul muro, il low poly che il committente vuole via); il muro resta pulito
+  const CAPPERI = false;
+  function capperi(g, n, L, y0, y1, z0, k, seme, x0, libero) {   // libero(x): dove il ciuffo può stare (il gradone: non dietro la scala)
+    if (LOD || !CAPPERI) return; const r = caso(seme);
+    for (let i = 0; i < n; i++) { const y = y0 + r() * (y1 - y0), s = .3 + r() * .35, x = (x0 || 0) + .5 + r() * (L - 1), z = z0 - k * y + .05; if (libero && !libero(x)) { if (r() < .5) r(); continue; }   // [pezzi2] il ciuffo nella crepa: tre foglie a cuscino e il ramo che pende
       blocco(g, s, s * .6, .3, 'verde', x, y, z); blocco(g, s * .7, s * .5, .36, 'erba', x + s * .35, y + s * .25, z + .02); blocco(g, s * .5, s * .45, .32, 'verdeScuro', x - s * .4, y - s * .1, z + .01);
       if (r() < .5) blocco(g, .14, s * 1.4, .12, 'verde', x + (r() - .5) * s, y - s * 1.3, z + .04 + k * s * 1.3); }
   }
@@ -1195,7 +1228,8 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
       if (o.merli) merli(gf, l + 2 * sp, .9, .8, 1.7, 'carparo', -sp, hp, sp - .27, 0, 'guelfo', true);
       else if (!LOD) blocco(gf, l + 2 * sp + .06, .1, .62, 'pietraChiara', l / 2, hp, sp - .27); });
     blocco(g, L - .4, .06, P - .4, o.erba ? 'erba' : 'pietra', L / 2, H, 0);
-    if (o.erba && !LOD) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
+    // [pulizia-verde] le scatole verdi sparse sul terrapieno erboso (cespugli-cubo): spente con i capperi, resta il prato
+    if (o.erba && !LOD && CAPPERI) { const r = caso(seme); for (let i = 0; i < Math.round(L * P / 30); i++) blocco(g, .6 + r() * 1.2, .25 + r() * .3, .6 + r() * 1.2, r() < .5 ? 'verde' : 'verdeScuro', .8 + r() * (L - 1.6), H + .02, (r() - .5) * (P - 1.6), .05); }
   }
 
   DOC.mastio = { L: 14, P: 18, h: 24, merli: true, lanterna: true, nota: 'il mastio del castello a mare: torre quadra di conci di carparo (L lungo X da x = 0, P lungo Z centrata), il piede a scarpa col cordone, poche finestrelle, il parapetto merlato sui beccatelli; in cima il faro: il casotto di pietra, il castelletto di ferro a traliccio e la cabina di vetro con la luce rossa (il riflettore della Tutela)' };
@@ -1476,18 +1510,27 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   T.gradone = o => {
     o = def(o, DOC.gradone); const g = new THREE.Group(), L = o.L, h = o.h, P = o.P, k = .12;
     sezione(g, [[h * k, 0], [0, h], [-P, h], [-P, 0]], L, 'tufo', 0, 0, 0);                         // muro e terrapieno
-    blocco(g, L, .05, P - .5, 'terra', L / 2, h, -P / 2 - .25);
+    blocco(g, L, .05, P - .5, SGUARDO ? 'pietra' : 'terra', L / 2, h, -P / 2 - .25);   // [scorcio] il camminamento in cima: pietra calda spenta come il lastricato (la terra battuta, tirata dal look, diventava una fascia gialla accesa)
     blocco(g, L, .16, .6, 'pietraChiara', L / 2, h, -.2, LOD ? 0 : .03);                            // copertina
-    if (o.ringhiera) ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2);
-    if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
-    capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h);
+    const SX = o.scala && o.scalaX ? o.scalaX : null;   // [scorcio] il posto della scala deciso sul terreno (world_cittanuova.js scalaGradone): primo gradino, ultimo, fine del pianerottolo
+    if (o.ringhiera) { if (o.scala) { const n = Math.ceil(h / .17), xt = SX ? SX[1] : Math.max(0, L - n * Math.min(.32, (L - 1.6) / n) - 1.4) + n * Math.min(.32, (L - 1.6) / n), xl = SX ? SX[2] : Math.min(L, xt + 1.4);   // [pedonale] la ringhiera si apre dove arriva la scala (il pianerottolo), come il varco di game.js
+        if (xt > .3) ringhiera(g, xt, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); if (L - xl > .3) ringhiera(g, L - xl, 1, 'ferro', xl, h + .16, -.2, 0, 1.2); }
+      else ringhiera(g, L, 1, 'ferro', 0, h + .16, -.2, 0, 1.2); }
+    const libS = x => !SX || x < SX[0] - .7 || x > SX[2] + .3;   // [scorcio] niente barbacani, colature né capperi dietro la scala: passavano dentro i gradini
+    if (!LOD) for (let x = 1.5; x < L - .5; x += 3) { if (!libS(x)) continue; blocco(g, .12, .12, .3, 'buio', x, h * .3, h * k * .7 - .1); blocco(g, .25, h * .3 - .1, .03, 'tufoScuro', x, .05, h * k * .85 + .01).rotation.x = -Math.atan(k); }   // barbacani e colature
+    capperi(g, Math.max(1, Math.round(L / 5)), L, .3, h - .4, h * k, k, L * 17 + h, 0, libS);
     if (o.scala || o.rampa) { const W = 1.8, z0 = h * k * .5 + W / 2, cord = !o.scala;                  // la cordonata o la scala addossata
-      const a = cord ? .14 : .17, n = Math.ceil(h / a), pd = Math.min(cord ? .9 : .32, (L - 1.6) / n), aa = h / n, pts = [[0, 0]]; let x = Math.max(0, L - n * pd - 1.4), xi = x; pts[0] = [x, 0];
-      for (let i = 0; i < n; i++) { if (cord) { pts.push([x, aa * i + aa * .4]); x += pd; pts.push([x, aa * (i + 1)]); } else { pts.push([x, aa * (i + 1)]); x += pd; pts.push([x, aa * (i + 1)]); } }
-      pts.push([Math.min(L, x + 1.4), h], [Math.min(L, x + 1.4), 0]); profilo(g, pts, W, cord ? 'pietra' : 'pietraChiara', 0, 0, z0);
+      const SC = !cord && SX, yb = SC ? o.yb : 0, hs = SC ? o.hs : h, fondo = SC ? Math.min(0, o.fondo) : 0;   // [scorcio] la scala sul terreno: il piede a yb sopra la quota del muro, l'alzata hs, il basamento fino a fondo
+      const a = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), aa = hs / n, pts = [[0, 0]]; let x = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xi = x; pts[0] = [x, fondo];
+      for (let i = 0; i < n; i++) { if (cord) { pts.push([x, aa * i + aa * .4]); x += pd; pts.push([x, aa * (i + 1)]); } else { pts.push([x, yb + aa * (i + 1)]); x += pd; pts.push([x, yb + aa * (i + 1)]); } }
+      const xe = SC ? SX[2] : Math.min(L, x + 1.4); pts.push([xe, h], [xe, fondo]); profilo(g, pts, W, cord ? 'pietra' : SGUARDO ? 'travertino' : 'pietraChiara', 0, 0, z0);
+      if (SGUARDO && !cord && !LOD) {   // [scorcio] la scala si stacca dal muro: gradini di pietra chiara (non lo stesso tono del tufo), l'ombra sotto ogni pedata, la spalletta scura contro il muro, lo zoccolo al piede
+        for (let i = 0; i < n; i++) blocco(g, .03, aa * .55, W - .02, 'pietraScura', xi + i * pd - .016, yb + aa * i, z0);
+        const run = x - xi, len = Math.hypot(run, hs), sp = add(g, new THREE.BoxGeometry(len + .3, .24, .16), 'pietraScura', xi + run / 2, yb + hs / 2 + .1, z0 - W / 2 + .08); sp.rotation.z = Math.atan2(hs, run);
+        blocco(g, xe - xi + .3, yb + .06 - fondo + .04, W + .16, 'pietraScura', (xi + xe) / 2, fondo - .04, z0 + .02); }   // lo zoccolo al piede (e il basamento sotto, dove il terreno scende)
       if (cord && !LOD) for (let i = 0; i < n; i++) blocco(g, .14, .14, W, 'pietraChiara', xi + i * pd + .07, Math.max(0, aa * i + aa * .4 - .1), z0);   // i cordoni
-      if (!LOD) asta(g, [xi + .3, 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
-      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, 0, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
+      if (!LOD) asta(g, [xi + .3, yb + 1, z0 + W / 2 - .05], [x, h + 1, z0 + W / 2 - .05], .03, 'ferro');
+      if (!LOD) { cil(g, .03, .03, 1, 6, 'ferro', xi + .3, yb, z0 + W / 2 - .05); cil(g, .03, .03, 1, 6, 'ferro', x, h, z0 + W / 2 - .05); } }
     g.userData.misure = [L, h + (o.ringhiera ? 1.16 : .16), P + h * k + (o.scala || o.rampa ? 1.8 : 0)]; return g;
   };
 
@@ -1567,9 +1610,18 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
   T.fontana = o => {
     o = def(o, DOC.fontana); const g = new THREE.Group(), R = o.r, n = Math.max(4, o.lati), H = o.h, hv = .6, ry = PI / n;
     add(g, new THREE.CylinderGeometry(R + .5, R + .55, .18, n), 'pietra', 0, .09, 0, 0, ry);                  // gradino
+    if (SGUARDO && !LOD) {   // [sguardo] la vasca modellata: lo zoccolo, il ventre, il labbro arrotondato che sporge (più scuro sotto), lo specchio d'acqua scuro col riflesso chiaro
+      const L = (pts, m, y) => add(g, new THREE.LatheGeometry(pts.map(q => new THREE.Vector2(q[0], q[1])), n, ry + PI / 2), m, 0, y, 0);
+      L([[0, 0], [R + .06, 0], [R + .06, .1], [R - .02, .15], [R - .05, hv - .16], [R - .01, hv - .1]], 'pietraChiara', .18);
+      L([[R - .01, hv - .1], [R + .1, hv - .05], [R + .13, hv + .02], [R + .1, hv + .08], [R - .06, hv + .1], [R - .14, hv + .04], [R - .16, hv - .08]], 'pietraChiara', .18);
+      L([[R - .03, hv - .14], [R + .02, hv - .09], [R + .01, hv - .06], [R - .05, hv - .11]], 'pietra', .18);   // l'ombra sotto il labbro
+      add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acquaFonda', 0, .18 + hv - .02, 0, 0, ry);
+      [[.44, .025], [.6, .018]].forEach(([k, w]) => { const rg = new THREE.RingGeometry(R * (k - w), R * (k + w), 40); rg.rotateX(-PI / 2); add(g, rg, 'acquaLuce', 0, .18 + hv, 0).castShadow = false; });   // le increspature chiare attorno al getto: due fili sottili, non una fascia ([coerenza] STILE.md, regola 5)
+      for (let k = 0; k < 4; k++) { const a = k * PI / 2 + PI / 4; cil(g, .018, .018, H - .4, 5, 'acqua', Math.cos(a) * .74, .18 + hv - .02, Math.sin(a) * .74); }   // i fili d'acqua dalla tazza
+    } else {
     add(g, new THREE.CylinderGeometry(R, R, hv, n), 'pietraChiara', 0, .18 + hv / 2, 0, 0, ry);              // vasca
     add(g, new THREE.CylinderGeometry(R + .08, R + .08, .1, n), 'pietraChiara', 0, .18 + hv + .05, 0, 0, ry);   // orlo
-    add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acqua', 0, .18 + hv + .02, 0, 0, ry);
+    add(g, new THREE.CylinderGeometry(R - .15, R - .15, .02, n), 'acqua', 0, .18 + hv + .02, 0, 0, ry); }
     tornito(g, [[0, 0], [.42, 0], [.42, .2], [.28, .35], [.22, H - .8], [.3, H - .6], [.25, H - .5], [0, H - .5]], 12, 'pietraChiara', 0, .18 + hv, 0);   // fusto
     tornito(g, [[0, 0], [.2, 0], [.75, .25], [.8, .35], [0, .35]], 14, 'pietraChiara', 0, .18 + hv + H - .6, 0);   // tazza
     tornito(g, [[0, 0], [.14, 0], [.18, .15], [.08, .3], [.1, .38], [0, .45]], 10, 'pietraChiara', 0, .18 + hv + H - .25, 0);   // pomo
@@ -1644,6 +1696,89 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     for (let i = 0; i < n; i++) { const row = Math.floor(i / 3), col = i % 3, nc = Math.min(3, n - row * 3), gr2 = grp(g, (col - (nc - 1) / 2) * .6, h + .08 + row * .55, .25);
       const b = blocco(gr2, .48, .4, .3, 'ferroScuro', 0, 0, 0); b.rotation.x = .45; const v = blocco(gr2, .4, .32, .02, 'lampada', 0, .04, .16); v.rotation.x = .45; }
     g.userData.misure = [Math.max(1, wq), h + nr * .55 + .2, 1]; return g;
+  };
+
+  // ================= [campagna] LE OPERE DELLA CAMPAGNA: l'opificio, il castelletto del pozzo, la tramoggia sul binario =================
+  // Le stazioni di estrazione e le fabbriche fuori città con la stessa mano della città (mattone e tufo, ferro, tegole, coppi), non più scatole
+  // colorate: un corpo solo per edificio, posato in piano sul suo piazzale. Convenzioni come sopra: lungo +X da x = 0, il fronte guarda +Z.
+  DOC.opificio = { L: 24, P: 10, h: 7.5, ciminiera: 24, insegna: '', banchina: true, lucernario: true, nota: 'capannone industriale di mattoni (fine Ottocento): zoccolo di pietra, lesene di tufo a campate, finestroni ad arco col telaio di ferro, due portoni sul fronte, tetto a due falde di tegole col lucernario sul colmo, timpani di mattoni con l\'occhio, cornicione; la banchina di carico sul fronte con la pensilina di lamiera; la ciminiera tonda di mattoni a fasce di ferro sul retro (ciminiera = altezza, 0 = niente); insegna sul fronte' };
+  T.opificio = o => {
+    o = def(o, DOC.opificio); const g = new THREE.Group(), L = o.L, P = o.P, H = o.h, zF = P / 2, hc = P * .3, rr = caso(Math.round(L * 13 + P * 7 + H));
+    blocco(g, L + .3, .7, P + .3, 'pietra', L / 2, 0, 0, .03);                                          // zoccolo
+    blocco(g, L, H - .7, P, 'mattone', L / 2, .7, 0);                                                   // il corpo
+    const nB = Math.max(3, Math.round(L / 4)), bay = L / nB, por = new Set(nB >= 5 ? [1, nB - 2] : [Math.floor(nB / 2)]);
+    for (let i = 0; i <= nB; i++) for (const s of [-1, 1]) blocco(g, .6, H - .7, .24, 'tufo', Math.min(L - .3, Math.max(.3, i * bay)), .7, s * (zF + .1), .02);   // lesene
+    const wW = Math.min(2.2, bay - 1.5), hW = H - 2.6;
+    for (let i = 0; i < nB; i++) { const x = (i + .5) * bay;
+      for (const s of [-1, 1]) { const z = s * (zF + .03);
+        if (s > 0 && por.has(i)) { const wp = Math.min(3.6, bay - 1);                                   // il portone ad arco, di legno con le fasce
+          vano(g, wp + .5, 4.6, 'arco', 'tufo', x, .7, z, .06); vano(g, wp, 4.3, 'arco', 'legno', x, .7, z + s * .02, .05);
+          if (!LOD) { blocco(g, .05, 4.0, .04, 'buio', x, .7, z + s * .05); for (const y of [1.6, 3.2]) blocco(g, wp - .1, .1, .04, 'ferroScuro', x, .7 + y, z + s * .05); }
+          continue; }
+        vano(g, wW + .4, hW + .3, 'arco', 'tufo', x, 1.25, z, .05);                                      // la ghiera
+        vano(g, wW, hW, 'arco', rr() < .25 ? 'finestraAccesa' : 'buio', x, 1.4, z + s * .02, .04);
+        if (!LOD) { for (const dx of [-wW / 6, wW / 6]) blocco(g, .06, hW - wW / 2, .03, 'ferroScuro', x + dx, 1.4, z + s * .04);   // il telaio di ferro
+          for (let y = 1.4 + .9; y < 1.4 + hW - wW / 2; y += .9) blocco(g, wW, .05, .03, 'ferroScuro', x, y, z + s * .04);
+          blocco(g, wW + .5, .12, .3, 'pietraChiara', x, 1.28, z + s * .12); } } }
+    cornice(g, L, P, .22, .5, 'tufo', 0, H - .5, 0);                                                     // il cornicione
+    tettoFalde(g, L, P, hc, 'tegole', 0, H, 0, .55);
+    for (const x of [0, L]) { sezione(g, [[-zF, 0], [zF, 0], [0, hc]], .3, 'mattone', x - .15, H, 0);   // i timpani con l'occhio
+      if (!LOD) { toro(g, .55, .09, 16, 'tufo', x + (x ? .17 : -.17), H + hc * .45, 0, 0, HP); add(g, geoCache('OPo', () => new THREE.CircleGeometry(.5, 14)), 'buio', x + (x ? .18 : -.18), H + hc * .45, 0, 0, x ? HP : -HP); } }
+    if (o.lucernario && L > 10) { const lL = L * .66, x0 = (L - lL) / 2, yL = H + hc - .45;               // il lucernario sul colmo
+      blocco(g, lL, 1.05, 1.9, 'legno', L / 2, yL, 0); if (!LOD) for (const s of [-1, 1]) blocco(g, lL - .4, .6, .04, 'buio', L / 2, yL + .25, s * .96);
+      tettoFalde(g, lL, 1.9, .55, 'tegole', x0, yL + 1.05, 0, .3); }
+    if (o.insegna) { const wI = Math.min(L - 4, o.insegna.length * .55 + 1.2); blocco(g, wI, .95, .12, 'intonaco', L / 2, H - 1.45, zF + .2); scritta(g, o.insegna, wI - .4, .7, L / 2, H - .97, zF + .27, 0, '#5a2a1c'); }
+    if (o.banchina) { const bL = L - 1.2;                                                                 // la banchina di carico e la pensilina
+      blocco(g, bL, 1.1, 2.4, 'cemento', L / 2, 0, zF + 1.2, .03); blocco(g, bL, .12, .25, 'pietraChiara', L / 2, 1.0, zF + 2.32);
+      sezione(g, [[zF, H - 1.6], [zF + 2.8, H - 2.15], [zF + 2.8, H - 2.03], [zF, H - 1.45]], bL, 'lamiera', .6, 0, 0);
+      if (!LOD) for (let x = 1.2; x < L - .8; x += 3.2) asta(g, [x, H - 3.1, zF + .12], [x, H - 2.1, zF + 2.6], .05, 'ferroScuro');
+      if (!LOD) for (const x of [1.4, L - 1.4]) blocco(g, 1.2, .55, .5, 'buio', x, 0, zF + 2.65); }   // i gradini di testa
+    if (o.ciminiera > 0) { const Hc = o.ciminiera, xC = L - 2, zC = -zF - 2.1;                              // la ciminiera
+      blocco(g, 2.8, 3.4, 2.8, 'mattone', xC, 0, zC, .03); cornice(g, 2.8, 2.8, .14, .35, 'tufo', xC - 1.4, 3.4, zC);
+      blocco(g, 1.4, 1.2, 1.2, 'mattone', xC, 0, zC + 1.85);                                              // il condotto verso la caldaia
+      cil(g, 1.05, .66, Hc - 3.75, 14, 'mattone', xC, 3.75, zC);
+      if (!LOD) for (let y = 6.5; y < Hc - 1.5; y += 3.4) toro(g, 1.05 - .39 * (y - 3.75) / (Hc - 3.75) + .03, .05, 14, 'ferroScuro', xC, y, zC, HP, 0);
+      cil(g, .78, .92, .9, 14, 'mattone', xC, Hc - .9, zC); cil(g, .6, .6, .1, 12, 'buio', xC, Hc - .02, zC);
+      if (!LOD) { asta(g, [xC + .7, Hc - 1, zC], [xC + .7, Hc + 1.4, zC], .025, 'ferro'); for (let y = 4; y < Hc - 1.5; y += .45) blocco(g, .32, .03, .03, 'ferro', xC, y, zC + 1.07 - .39 * (y - 3.75) / (Hc - 3.75) * .9); } }
+    g.userData.misure = [L + 1.1, Math.max(H + hc + 1.6, o.ciminiera || 0), P + (o.banchina ? 2.9 : .4) + (o.ciminiera > 0 ? 3.5 : 0)]; return g;
+  };
+
+  DOC.castelletto = { h: 18, b: 5, funi: 12, nota: 'castelletto del pozzo (la torre di estrazione): il collare di cemento sulla bocca del pozzo, la torre a traliccio di ferro, i due puntoni verso la sala argani (+X), il ballatoio, le due ruote delle funi coi raggi, le funi che scendono verso +X per funi metri, la gabbia ferma alla bocca, la scaletta' };
+  T.castelletto = o => {
+    o = def(o, DOC.castelletto); const g = new THREE.Group(), H = o.h, b = o.b, c = b * .5, yT = .6 + H;
+    blocco(g, b + 1.8, .6, b + 1.8, 'cemento', 0, 0, 0, .04); blocco(g, b * .5, .04, b * .5, 'buio', 0, .6, 0);   // il collare e la bocca
+    traliccio(g, b, c, H, 'ruggine', 0, .6, 0, 2.4);                                                      // la torre
+    for (const s of [-1, 1]) { asta(g, [c / 2 + H * .5, .6, s * b * .32], [c / 2, H * .82, s * c * .45], .16, 'ruggine', 8);   // i puntoni
+      blocco(g, 1.1, .6, 1.1, 'cemento', c / 2 + H * .5, 0, s * b * .32); }
+    if (!LOD) for (let k = 1; k <= 3; k++) { const t = k / 4, x = c / 2 + H * .5 * (1 - t), y = .6 + (H * .82 - .6) * t; asta(g, [x, y, -b * .32 + (b * .32 - c * .45) * t], [x, y, b * .32 - (b * .32 - c * .45) * t], .06, 'ruggine'); }
+    blocco(g, c + 1.6, .16, c + 1.6, 'ferroScuro', 0, yT, 0); ringhiera(g, c + 1.6, 1, 'ferro', -(c + 1.6) / 2, yT + .16, (c + 1.6) / 2, 0); ringhiera(g, c + 1.6, 1, 'ferro', -(c + 1.6) / 2, yT + .16, -(c + 1.6) / 2, 0);
+    const rw = Math.min(2, c * .75);
+    for (const s of [-1, 1]) { const z = s * c * .28, y = yT + rw + .5;                                    // le ruote delle funi
+      toro(g, rw, .09, LOD ? 12 : 26, 'ferroScuro', 0, y, z); if (!LOD) for (let k = 0; k < 8; k++) { const a = k * PI / 4; asta(g, [0, y, z], [Math.cos(a) * rw, y + Math.sin(a) * rw, z], .035, 'ferroScuro'); }
+      for (const dx of [-rw * .7, rw * .7]) asta(g, [dx, yT + .16, z], [0, y, z], .07, 'ruggine');      // i cavalletti delle ruote
+      asta(g, [rw, y, z], [rw + o.funi, 5.5, z], .025, 'buio');                                          // la fune verso l'argano
+      asta(g, [-rw, y, z], [-rw, .6, z], .025, 'buio'); }                                                  // e giù nel pozzo
+    cilZ(g, .12, c * .56 + .3, 8, 'ferro', 0, yT + rw + .5, 0);
+    blocco(g, 1.5, 2.3, 1.5, 'ferro', -rw, .6, 0); if (!LOD) blocco(g, 1.3, 2, .04, 'buio', -rw, .75, .78);   // la gabbia alla bocca
+    if (!LOD) { const zl = y => -b / 2 - .25 + (b - c) / 2 * y / H; for (let y = 1; y < H; y += .4) blocco(g, .5, .03, .03, 'ferro', 0, .6 + y, zl(y)); for (const s of [-1, 1]) asta(g, [s * .25, .6, zl(0)], [s * .25, yT + .1, zl(H)], .025, 'ferro'); }   // la scaletta coi montanti
+    g.userData.misure = [b + 1.8 + H * .5 + o.funi, yT + rw * 2 + 1, b + 1.8]; return g;
+  };
+
+  DOC.tramoggia = { L: 8, W: 6.4, h: 10, nastro: 7, salita: 2.5, nota: 'la tramoggia di carico sopra il binario (lungo X, l\'asse in z = 0): quattro pilastri di cemento fuori dalla sagoma, la vasca di cemento a cassaforma, il fondo a piramide di lamiera con la bocca e la saracinesca (luce libera 5 m sul ferro), il tetto di lamiera, la scaletta e il parapetto; il nastro in galleria che sale verso +Z (nastro m, salita m) dal castelletto' };
+  T.tramoggia = o => {
+    o = def(o, DOC.tramoggia); const g = new THREE.Group(), L = o.L, W = o.W, H = o.h, yV = H - 3.6, zP = W / 2 - .35;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { blocco(g, .7, yV, .7, 'cemento', sx * (L / 2 - .4), 0, sz * zP, .03); blocco(g, 1.1, .5, 1.1, 'cemento', sx * (L / 2 - .4), 0, sz * zP); }
+    for (const sx of [-1, 1]) blocco(g, .5, .6, W - .2, 'cemento', sx * (L / 2 - .4), yV - 1.2, 0);       // i traversi
+    blocco(g, L, 3, W, 'cemento', 0, yV, 0, .04);                                                         // la vasca
+    const fr = add(g, geoCache(`TRf${L}|${W}`, () => { const q = new THREE.CylinderGeometry(.75, 1, 1.6, 4, 1, false, PI / 4); q.scale(L * .66, 1, W * .66); return q; }), 'lamiera', 0, yV - .8, 0);   // il fondo a piramide
+    blocco(g, 1, .9, 1, 'ferroScuro', 0, yV - 2.4, 0); if (!LOD) blocco(g, 1.2, .1, 1.2, 'ruggine', 0, yV - 2.45, 0);   // la bocca
+    sezione(g, [[-W / 2 - .4, 0], [W / 2 + .4, 0], [W / 2 + .4, .1], [0, 1.2], [-W / 2 - .4, .1]], L + .8, 'lamiera', -L / 2 - .4, yV + 3, 0);   // il tetto
+    if (!LOD) { for (let y = .5; y < yV + 2.8; y += .42) blocco(g, .03, .03, .5, 'ferro', L / 2 + .3, y, -zP); for (const s of [-1, 1]) blocco(g, .04, yV + 3, .04, 'ferro', L / 2 + .3, 0, -zP + s * .25);
+      ringhiera(g, L, 1, 'ferro', -L / 2, yV + 3, -W / 2 - .02, 0); }
+    if (o.nastro > 0) { const len = Math.hypot(o.nastro, o.salita), a = Math.atan2(o.salita, o.nastro), yS = yV + 2.2;   // la galleria del nastro
+      const gq = grp(g, 0, yS, W / 2 - .3, 0); gq.rotation.x = -a; blocco(gq, 1.8, 1.7, len, 'lamiera', 0, 0, len / 2, .02); if (!LOD) for (let z = 1.5; z < len; z += 2.4) blocco(gq, .06, 1.0, .5, 'buio', .92, .4, z);
+      for (const zz of [o.nastro * .45, o.nastro * .9]) { const yy = yS + o.salita * zz / o.nastro; blocco(g, .4, yy, .4, 'ferro', -.6, 0, W / 2 - .3 + zz); blocco(g, .4, yy, .4, 'ferro', .6, 0, W / 2 - .3 + zz); } }
+    g.userData.misure = [L + .8, H + .6, W + .8 + (o.nastro || 0)]; return g;
   };
 
   const TIPI = Object.keys(T);

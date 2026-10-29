@@ -336,8 +336,17 @@ var Veicoli3D = (function () {
     });
     const zr2 = zs - (D.divano || .85), hd = zr2 > zL ? Math.min(.34, P.yR(zr2 - .1) - yAt(zr2) - .07) : 0; if (zr2 > zL + .05 && hd > .12) lista(alto, [0, yAt(zr2) - .006, zr2], [0, yAt(zr2) + hd, zr2 - .1], hb(zr2) * 2 - .04, .1, seatCol);
     const zd = zW - .17, yd = yAt(zd); M(alto, BX(hb(zd) * 2 - .02, .09, .26), C.nero, 0, yd + .04, zd);
-    const zv = zW - .4, yv = yAt(zv) + .2, vol = D.manubrio ? M(alto, CY(.015, .015, .62, 6), C.nero, -xs * 0, yv, zv, 0, 0, PI / 2) : M(alto, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero, xs, yv, zv, -1.05); if (!D.manubrio) { M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2); }   // il volante con le razze
-    asta(alto, [D.manubrio ? 0 : -xs, yv, zv], [D.manubrio ? 0 : -xs, yd + .06, zd - .1], .018, C.nero);
+    const zv = zW - .4, yv = yAt(zv) + .2;
+    let vol = null;
+    if (D.manubrio) vol = M(alto, CY(.015, .015, .62, 6), C.nero, 0, yv, zv, 0, 0, PI / 2);
+    else {   // [animazioni2] il volante gira con lo sterzo: il perno inclinato come il piantone (vol.piv), dentro il gruppo che gira (vol.spin,
+      // asse z locale = la normale del volante); render.js lo fonde in un pezzo solo (una chiamata di disegno in più per auto) e ci mette le mani
+      const VP = new THREE.Group(); VP.position.set(xs, yv, zv); VP.rotation.x = -1.05; VP.userData.keepTree = true; alto.add(VP);
+      const VS = new THREE.Group(); VP.add(VS);
+      vol = M(VS, new THREE.TorusGeometry(.16, .013, 4, 14), C.nero); M(vol, BX(.31, .03, .012), C.nero); M(vol, BX(.03, .14, .012), C.nero, 0, -.07, 0); M(vol, CY(.04, .04, .03, 10), C.nero, 0, 0, 0, PI / 2);   // il volante con le razze
+      ud.vol = { piv: VP, spin: VS, r: .16 };
+    }
+    asta(alto, [D.manubrio ? 0 : xs, yv, zv], [D.manubrio ? 0 : xs, yd + .06, zd - .1], .018, C.nero);   // [animazioni2] il piantone sotto il volante (stava dal lato del passeggero)
     // porte: le fessure, le maniglie; specchietti, antenna, tappo della benzina
     const linea = (s, z, y0, y1) => M(alto, BX(.006, y1 - y0, .007), C.scuro, s * (hwAt(D, z) + .001), (y0 + y1) / 2, z);
     (D.porte || []).forEach(([a, b], i) => [-1, 1].forEach(s => {
@@ -761,6 +770,16 @@ var Veicoli3D = (function () {
     M(w, CY(.024, .024, hubW || .09, 8), C.acciaio, 0, 0, 0, 0, 0, PI / 2); return w;
   }
   function parafango(g, R, w, z, y, t0, tl, m) { return M(g, new THREE.CylinderGeometry(R, R, w, 12, 1, true, t0, tl), m, 0, y, z, 0, 0, PI / 2); }
+  // [animazioni] lo sterzo: manubrio, forcella e quel che ci sta sopra girano attorno all'asse del cannotto (da a, in alto, verso b, in basso).
+  // Si costruisce nelle misure del mezzo dentro il gruppo restituito; render.js lo fa girare con la ruota (ud.ster, ud.sterAx) e la posa
+  // (anim_lotta.js) gira le manopole attorno allo stesso asse. ud.gripObj: i segnaposti delle manopole (L = +x, la sinistra di chi guida).
+  function sterzo(g, ud, a, b, grips) {
+    const S = new THREE.Group(); S.position.set(a[0], a[1], a[2]); S.userData.keepTree = true; S.userData.ster = true;
+    const I = new THREE.Group(); I.position.set(-a[0], -a[1], -a[2]); S.add(I); g.add(S);
+    ud.ster = S; ud.sterAx = new THREE.Vector3(a[0] - b[0], a[1] - b[1], a[2] - b[2]).normalize(); ud.gripObj = {};
+    if (grips) [['L', 1], ['R', -1]].forEach(([sd, s]) => { const o = new THREE.Group(); o.position.set(s * grips[0], grips[1], grips[2]); o.userData.keepTree = true; I.add(o); ud.gripObj[sd] = o; });
+    return I;
+  }
   function mettiRuota(ud, g, wh, z, r, front) { const piv = new THREE.Group(); piv.position.set(0, r, z); piv.add(wh); g.add(piv); ud.wheels.push({ wh, piv, front, r }); return piv; }
 
   // Vespa PX (1977): scudo, scocca bombata coi cofani, sella lunga, faro nel manubrio. Le misure dei punti di contatto sono quelle della posa in_vespa
@@ -771,17 +790,18 @@ var Veicoli3D = (function () {
     for (let i = 0; i < 5; i++) M(g, BX(.012, .014, .54), C.cromo, -.15 + i * .075, .37, .32);
     M(g, new THREE.CylinderGeometry(.46, .46, .8, 12, 1, true, -.62, 1.24), p, 0, .76, .3, -.12);   // lo scudo
     M(g, BX(.09, .2, .04), mat('#9a9ca2', 'metallo'), 0, .92, .76, -.12);   // la cravatta del clacson
-    asta(g, [0, 1.2, .7], [0, .5, .8], .035, p, 8);   // il piantone dello sterzo
-    const cap = M(g, new THREE.SphereGeometry(1, 12, 8), p, 0, 1.27, .72); cap.scale.set(.17, .09, .15);   // il manubrio carenato
-    const f = faroTondo(.062, C.cromo); f.position.set(0, 1.27, .855); g.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, 1.27, .9]);
-    M(g, CY(.045, .045, .03, 10), nero, 0, 1.355, .66, -.6);   // il tachimetro
+    const sv = sterzo(g, ud, [0, 1.2, .7], [0, .5, .8], [.33, 1.3, .7]);   // [animazioni] il manubrio, il faro, il parafango e la forcella girano col piantone
+    asta(sv, [0, 1.2, .7], [0, .5, .8], .035, p, 8);   // il piantone dello sterzo
+    const cap = M(sv, new THREE.SphereGeometry(1, 12, 8), p, 0, 1.27, .72); cap.scale.set(.17, .09, .15);   // il manubrio carenato
+    const f = faroTondo(.062, C.cromo); f.position.set(0, 1.27, .855); sv.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, 1.27, .9]);
+    M(sv, CY(.045, .045, .03, 10), nero, 0, 1.355, .66, -.6);   // il tachimetro
     [-1, 1].forEach(s => {
-      asta(g, [s * .14, 1.29, .7], [s * .3, 1.3, .7], .018, p, 6); M(g, CY(.032, .032, .07, 8), nero, s * .33, 1.3, .7, 0, 0, PI / 2);
-      lista(g, [s * .2, 1.31, .72], [s * .32, 1.33, .78], .02, .012, C.cromo);   // le leve
-      asta(g, [s * .22, 1.31, .7], [s * .25, 1.5, .67], .006, C.cromo, 4); M(g, CY(.05, .05, .014, 10), C.cromo, s * .25, 1.52, .665, PI / 2);   // gli specchietti
+      asta(sv, [s * .14, 1.29, .7], [s * .3, 1.3, .7], .018, p, 6); M(sv, CY(.032, .032, .07, 8), nero, s * .33, 1.3, .7, 0, 0, PI / 2);
+      lista(sv, [s * .2, 1.31, .72], [s * .32, 1.33, .78], .02, .012, C.cromo);   // le leve
+      asta(sv, [s * .22, 1.31, .7], [s * .25, 1.5, .67], .006, C.cromo, 4); M(sv, CY(.05, .05, .014, 10), C.cromo, s * .25, 1.52, .665, PI / 2);   // gli specchietti
     });
-    const fe = M(g, new THREE.SphereGeometry(.26, 10, 6, 0, PI * 2, 0, PI / 2), p, 0, .22, .86); fe.scale.set(.55, 1, 1);   // il parafango davanti
-    asta(g, [0, .52, .8], [-.07, .5, .82], .025, C.scuro, 5); asta(g, [-.07, .5, .82], [-.07, .22, .86], .022, C.scuro, 5);   // il braccio della sospensione
+    const fe = M(sv, new THREE.SphereGeometry(.26, 10, 6, 0, PI * 2, 0, PI / 2), p, 0, .22, .86); fe.scale.set(.55, 1, 1);   // il parafango davanti
+    asta(sv, [0, .52, .8], [-.07, .5, .82], .025, C.scuro, 5); asta(sv, [-.07, .5, .82], [-.07, .22, .86], .022, C.scuro, 5);   // il braccio della sospensione
     ud.body = M(g, new THREE.SphereGeometry(1, 14, 10).scale(.31, .25, .4).translate(0, .64, -.4), p);   // la scocca coi cofani (la misura dentro la geometria: le ammaccature lavorano in metri)
     [-1, 1].forEach(s => M(g, BX(.01, .03, .3), C.cromo, s * .3, .62, -.42));   // i fregi sui cofani
     M(g, BX(.24, .28, .34), p, 0, .48, -.06);   // il tunnel
@@ -806,10 +826,11 @@ var Veicoli3D = (function () {
     lista(g, [0, .74, .4], [0, .34, .06], .09, .07, p); lista(g, [0, .34, .06], [0, .8, -.28], .09, .08, p);   // la trave
     ud.body = M(g, new THREE.SphereGeometry(1, 10, 8).scale(.12, .1, .2).translate(0, .72, -.32), mat('#ece8dc', 'plastica'));   // il serbatoio
     asta(g, [0, .8, -.28], [0, .86, -.32], .02, C.cromo, 6); M(g, BX(.2, .07, .32), mat('#1e1e20', 'plastica'), 0, .9, -.34);   // la sella
-    [-1, 1].forEach(s => asta(g, [s * .05, .74, .41], [s * .05, R, zF], .016, C.cromo, 6));   // la forcella
-    asta(g, [0, .97, .35], [0, 1.0, .35], .02, C.cromo, 6); asta(g, [-.28, 1.0, .33], [.28, 1.0, .33], .012, C.cromo, 6);
-    [-1, 1].forEach(s => { M(g, CY(.02, .02, .1, 8), C.nero, s * .31, 1.0, .33, 0, 0, PI / 2); lista(g, [s * .18, 1.0, .35], [s * .28, 1.0, .4], .02, .01, C.nero); });
-    const f = faroTondo(.055, C.cromo); f.position.set(0, .93, .405); g.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, .93, .45]);
+    const sc = sterzo(g, ud, [0, .97, .35], [0, .7, .42], [.31, 1.0, .33]);   // [animazioni] forcella, manubrio e faro girano col cannotto
+    [-1, 1].forEach(s => asta(sc, [s * .05, .74, .41], [s * .05, R, zF], .016, C.cromo, 6));   // la forcella
+    asta(sc, [0, .97, .35], [0, 1.0, .35], .02, C.cromo, 6); asta(sc, [-.28, 1.0, .33], [.28, 1.0, .33], .012, C.cromo, 6);
+    [-1, 1].forEach(s => { M(sc, CY(.02, .02, .1, 8), C.nero, s * .31, 1.0, .33, 0, 0, PI / 2); lista(sc, [s * .18, 1.0, .35], [s * .28, 1.0, .4], .02, .01, C.nero); });
+    const f = faroTondo(.055, C.cromo); f.position.set(0, .93, .405); sc.add(f); ud.front.push(f.userData.lente); ud.lamps.push([0, .93, .45]);
     M(g, BX(.18, .2, .26), mat('#6a6c72', 'metallo'), 0, .28, .02); for (let i = 0; i < 4; i++) M(g, CY(.075, .075, .012, 10), mat('#8a8c92', 'metallo'), 0, .4 + i * .025, .08, -.5);   // il motore con le alette
     asta(g, [-.06, .24, -.08], [-.12, .3, -.5], .018, C.scuro, 5); M(g, CY(.04, .04, .24, 8), C.scuro, -.12, .3, -.6, PI / 2);
     [-1, 1].forEach(s => { asta(g, [s * .1, .28, .02], [s * .1, .28 - s * .14, .02 + s * .04], .012, C.scuro, 4); M(g, BX(.08, .02, .05), C.nero, s * .14, .28 - s * .14, .02 + s * .04); });   // i pedali
@@ -864,11 +885,12 @@ var Veicoli3D = (function () {
     asta(g, bb, st, .024, c, 8); asta(g, st, ht, .026, c, 8); asta(g, bb, hb, .03, c, 8); asta(g, hb, ht, .034, c, 8);
     [-1, 1].forEach(s => { asta(g, [s * .03, Gm.bbY, Gm.bbZ], [s * .065, R, Gm.zR], .016, c, 6); asta(g, [s * .025, .65, -.22], [s * .065, R, Gm.zR], .014, c, 6); });
     ud.body = M(g, CY(.035, .035, .1, 10), c, 0, Gm.bbY, Gm.bbZ, 0, 0, PI / 2);
-    [-1, 1].forEach(s => asta(g, [s * .045, .57, .35], [s * .065, R, Gm.zF], .018, blk, 6));
-    asta(g, [0, .73, .29], [0, .82, .27], .02, blk, 6); M(g, BX(.1, .05, .1), blk, 0, .82, .28);
-    [-1, 1].forEach(s => { asta(g, [s * .06, .82, .28], [s * .2, Gm.gripY, Gm.gripZ], .014, blk, 6); asta(g, [s * .2, Gm.gripY, Gm.gripZ], [s * .35, Gm.gripY, Gm.gripZ], .014, blk, 6); M(g, CY(.02, .02, .08, 8), blk, s * Gm.gripX, Gm.gripY, Gm.gripZ, 0, 0, PI / 2); });
-    asta(g, [-.13, .94, .25], [.13, .94, .25], .011, blk, 6);
-    const tab = M(g, BX(.2, .17, .01), mat('#f0ece0', 'plastica'), 0, .9, .3, -.25); M(tab, BX(.1, .1, .004), mat('#1a1a1a', 'plastica'), 0, 0, .007);   // la tabella col numero
+    const sz = sterzo(g, ud, ht, hb, [Gm.gripX, Gm.gripY, Gm.gripZ]);   // [animazioni] forcella, attacco, manubrio e tabella girano col cannotto
+    [-1, 1].forEach(s => asta(sz, [s * .045, .57, .35], [s * .065, R, Gm.zF], .018, blk, 6));
+    asta(sz, [0, .73, .29], [0, .82, .27], .02, blk, 6); M(sz, BX(.1, .05, .1), blk, 0, .82, .28);
+    [-1, 1].forEach(s => { asta(sz, [s * .06, .82, .28], [s * .2, Gm.gripY, Gm.gripZ], .014, blk, 6); asta(sz, [s * .2, Gm.gripY, Gm.gripZ], [s * .35, Gm.gripY, Gm.gripZ], .014, blk, 6); M(sz, CY(.02, .02, .08, 8), blk, s * Gm.gripX, Gm.gripY, Gm.gripZ, 0, 0, PI / 2); });
+    asta(sz, [-.13, .94, .25], [.13, .94, .25], .011, blk, 6);
+    const tab = M(sz, BX(.2, .17, .01), mat('#f0ece0', 'plastica'), 0, .9, .3, -.25); M(tab, BX(.1, .1, .004), mat('#1a1a1a', 'plastica'), 0, 0, .007);   // la tabella col numero
     asta(g, [0, .66, -.21], [0, .78, -.25], .016, C.cromo, 6); M(g, BX(.13, .05, .27), blk, 0, Gm.seatY - .02, Gm.seatZ, .1); M(g, BX(.07, .04, .06), blk, 0, Gm.seatY - .03, Gm.seatZ + .15);
     M(g, CY(.075, .075, .012, 14), steel, -.06, Gm.bbY, Gm.bbZ, 0, 0, PI / 2);
     asta(g, [-.06, Gm.bbY + .07, Gm.bbZ], [-.06, R + .03, Gm.zR], .006, steel, 4); asta(g, [-.06, Gm.bbY - .07, Gm.bbZ], [-.06, R - .03, Gm.zR], .006, steel, 4);

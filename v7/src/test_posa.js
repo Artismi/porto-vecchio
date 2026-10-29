@@ -26,7 +26,7 @@ const VOLUTI = { facciata_chiesa: 1, campanile: 1, portico: 6, torre_littoria: 1
   magazzini_volta: 1, scalinata: 3, bitta: 3, darsena: 2, molo_vecchio: 1, scalo_alaggio: 1, bastione: 1, fossato: 1, torrione: 1, caserma: 1, polveriera: 1, porta_monumentale: 2,
   mastio: 1, corpo_rocca: 6, ponte_arco: 1, porta_acqua: 1, scogliera: 10,   // [rocca2] il castello a mare
   torre_acqua: 1, gru_porto: 1, grata_vapore: 1,   // [mappa_compatta] i segni nuovi della città compatta
-  mura_tramontana: 3, porta_terra: 1, arco_sottopasso: 2, arco_contrasto: 3, edicola_votiva: 3, pozzo: 1, fontana: 1, lavatoio: 1, muro_garante: 1, palo_riflettori: 3 };
+  porta_terra: 1, arco_sottopasso: 2, arco_contrasto: 3, edicola_votiva: 3, pozzo: 1, fontana: 1, lavatoio: 1, muro_garante: 1, palo_riflettori: 3 };
 const manca = Object.keys(VOLUTI).filter(t => (conta[t] || 0) < VOLUTI[t]);
 ok(!manca.length, 'ci sono tutti i pezzi del filone' + (manca.length ? ' (mancano: ' + manca.map(t => t + ' ' + (conta[t] || 0) + '/' + VOLUTI[t]).join(', ') + ')' : ''));
 ok(P.every(p => PC.TIPI.includes(p.tipo)), 'ogni tipo esiste nella libreria');

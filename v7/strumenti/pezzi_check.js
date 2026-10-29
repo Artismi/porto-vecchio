@@ -16,7 +16,7 @@ const PROVE = {
   stazione: [{}, { L: 28, piani: 1, piazzale: false }, { L: 52, binari: 4 }],
   binari: [{}, { L: 12, binari: 1, rilevato: false }, { L: 40, binari: 3, hRilevato: 4 }],
   sottopasso: [{}, { w: 4, h: 3, L: 14 }, { binario: false }],
-  passaggio_livello: [{}, { w: 6, aperto: true }, { w: 12 }],
+  passaggio_livello: [{}, { w: 6, aperto: true }, { w: 12 }, { w: 8, obliquo: .9, aperto: true, nome: 'CASELLO 7' }],   // [campagna] anche di sbieco
   carro_merci: [{}, { aperto: true }, { colore: 'ruggine' }],
   locomotiva: [{}, { colore: 'verde' }],
   magazzini_volta: [{}, { n: 1 }, { n: 7, w: 7, p: 14, h: 5 }],
@@ -56,7 +56,10 @@ const PROVE = {
   scogliera: [{}, { L: 6, w: 3, n: 6 }, { L: 16, w: 5, n: 20, seme: 4 }],
   torre_acqua: [{}, { h: 14, antenna: false }, { h: 22, r: 4 }],   // [mappa_compatta]
   gru_porto: [{}, { h: 16, braccio: 12 }, { h: 26, braccio: 22 }],
-  grata_vapore: [{}, { w: 1.6 }]
+  grata_vapore: [{}, { w: 1.6 }],
+  opificio: [{}, { L: 16, P: 8, ciminiera: 0, banchina: false, insegna: 'MATTONIFICIO' }, { L: 30, P: 12, h: 9, ciminiera: 30 }],   // [campagna]
+  castelletto: [{}, { h: 14, b: 4, funi: 8 }, { h: 22, b: 6 }],
+  tramoggia: [{}, { nastro: 0 }, { L: 10, W: 7, h: 11, nastro: 10, salita: 3 }]
 };
 const solo = process.argv[2], SOGLIA = { pieno: 12000, basso: 2000 };
 let fail = 0, totali = 0;
