@@ -12997,7 +12997,7 @@ var Render = (function () {
     quinta: .16,                           // il primo piano più scuro
     luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .35,
-    tetti: .8, tettiDa: 2.5, tettiPer: 5,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
+    tetti: .85, tettiDa: 2, tettiPer: 3,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
     ciglio: .7, piede: .55, calma: .7, piedeR: 1.4,   // i volumi: la linea sul ciglio, l'ombra al piede dei muri, il suolo spianato, il raggio del piede (m)
     spalla: .4,                            // le luci piene meno sature
     acceso: true };
