@@ -60,8 +60,8 @@ var Visuale = (function () {
   // le manopole (window.__CAMERA4 per le prove dal vivo)
   const CAMERA4 = {
     base: .78,            // rad: la pendenza a piedi di sempre (render.js la riscrive con quella vera, anche ?pendenza=)
-    stretta: 1.08,        // rad: la pendenza più bassa quando si è nella stretta
-    max: 1.22,            // rad: la più alta (quasi dall'alto: si legge ancora il piede della facciata lontana)
+    stretta: .98,         // rad: la pendenza più bassa quando si è nella stretta   // [look] era 1.08: il panel (cineasta, animatore) vuole facciate e un asse di fuga, non la pianta
+    max: 1.08,            // rad: la più alta (era 1.22, 70°: dall'alto era una pianta e il personaggio spariva)
     margine: .08,         // rad sopra la pendenza che libera il busto dal muro sul lato camera
     larga: 5.6,           // m: da questa larghezza libera in su la strada è larga (niente stretta)
     strettaL: 3.2,        // m: da qui in giù è stretta piena (vicolo, corte, sottoportico)

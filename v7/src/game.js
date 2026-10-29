@@ -1038,6 +1038,17 @@ var Game = (function () {
   function worstAboutPlayer(st, n) {
     return n.mem.filter(m => m.actor === 'player' && NEG[m.type] && !(m.type === 'corruzione' && m.accepted && m.target === n.id)).sort((a, b) => weight(st, b) - weight(st, a))[0];
   }
+  // [coerenza] cosa pensa di te, in una parola: decide il tono di tutto quello che ti viene a dire (le scene che vengono da te, lo scrocco,
+  // i matti, le manie). Chi ha paura o ce l'ha con te non ti chiede una sigaretta un minuto dopo averti detto che hai sparato.
+  // 'paura' | 'rancore' | 'complice' (sa, ma sta dalla tua: chi ha poco rispetto per la legge) | 'sospetto' | null (niente di brutto)
+  function tono(st, n) {
+    if (!n || !n.op || !n.mem) return null;
+    const w = worstAboutPlayer(st, n), ww = w ? weight(st, w) : 0, tr = n.tr || {};
+    if (n.op.fear > .3 || (ww > .5 && (tr.cor || .5) < .4)) return 'paura';
+    if (n.op.grudge > .25 || (w && w.target === n.id)) return 'rancore';
+    if (ww > .25) return (tr.legge || .5) < .38 ? 'complice' : 'sospetto';
+    return null;
+  }
 
   const JOBS = {
     wu: { title: 'Casse dal molo', pickup: 'molo', drop: 'wu', pay: 40, ask: 'Al molo dei pescatori c\'è una cassa di verdura per me. Me la porti?', item: 'una cassa di verdura' },
@@ -1375,9 +1386,15 @@ var Game = (function () {
     if (!top) return;
     if (top.silenced && n.bribed) return say(st, n, 'Io non ho visto niente, eh.');
     if (NEG[top.type] && d < 6) {
-      if (top.source === 'visto') return say(st, n, `Sei quello che ${verbPast(st, top, n.id)}!`);
       if (top.source === 'sentito') return;
-      return say(st, n, `${top.via[top.via.length - 1] || 'Si'} dice che ${youVerb(st, top, n.id)}…`);
+      // [coerenza] quello che dice dopo viene da quello che prova: chi ha paura si allontana, chi è dalla tua ti avverte, gli altri prendono le distanze
+      const T = tono(st, n), cosa = top.source === 'visto' ? `Ti ho visto: ${youVerb(st, top, n.id)}.` : `${top.via[top.via.length - 1] || 'Si'} dice che ${youVerb(st, top, n.id)}.`;
+      const poi = T === 'paura' ? ['Io non ho visto niente, va bene?', 'Stammi lontano, per favore.', 'Io ho famiglia, eh.']
+        : T === 'rancore' ? ['Con me hai chiuso.', 'Non farti più vedere da queste parti.', 'Prima o poi la paghi.']
+        : T === 'complice' ? ['Stai attento, che i Grigi ti cercano.', 'Io sto zitto. Ma altri no.', 'Fai piano, che qui parlano tutti.']
+        : ['Io non voglio problemi.', 'Non so se è vero. Spero di no.', 'Vedi di non farlo davanti a casa mia.'];
+      n.__tonoT = st.clock;   // per un po' niente chiacchiere leggere col giocatore (matti.js, eventi.js)
+      return say(st, n, `${cosa} ${poi[Math.floor(st.rng() * poi.length)]}`, 3.6);
     }
     if (top.type === 'lavoro' && d < 6) return say(st, n, top.source === 'visto' ? 'Ciao Nino! Grazie ancora.' : `Ho sentito che ${youVerb(st, top, n.id)}. Bravo.`);
   }
@@ -2680,7 +2697,7 @@ var Game = (function () {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
     tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
-    verbPast, youVerb, rumorText, hoursLeft, findPath, vehicleName,
+    verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno

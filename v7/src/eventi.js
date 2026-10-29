@@ -67,6 +67,8 @@ var Eventi = (function () {
     shop: (st, n) => free(st, n) && !!(n.shop || (n.pop && n.pop.job && /commess|barist|camerier|oste\b|cuoc|forn|macell|tabacc|gelat|pescivend|fruttiv|bottega|barbier|ferrament|farmac|sart|lavand|tipograf|edicol|panett/i.test(n.pop.job.title || ''))),
   };
   const dP = (st, o) => hyp(o.x - st.player.x, o.y - st.player.y);
+  // [coerenza] chi ha paura di te, ce l'ha con te o ti ha appena detto in faccia cosa hai fatto non viene a chiederti una sigaretta
+  const freddo = (st, n) => !!((G.tono && G.tono(st, n)) || st.clock - (n.__tonoT || -1e9) < 600);
   function near(st, x, y, r, f) { const out = []; for (const n of st.npcs) if (Math.abs(n.x - x) < r && Math.abs(n.y - y) < r && hyp(n.x - x, n.y - y) < r && f(n)) out.push(n); return out; }
 
   // ---------------- MOVIMENTO ----------------
@@ -304,7 +306,7 @@ var Eventi = (function () {
       let c = [];
       for (const fk of alts) {
         const F = FILTERS[fk] || FILTERS.any, f = (st2, n) => { DOORS = false; if (F(st2, n)) return true; if (fk === 'cop' || fk === 'writer' || !R.doors) return false; DOORS = true; const r0 = F(st2, n); DOORS = false; return r0; };
-        c = near(st, base.x, base.y, r, n => !used.has(n) && f(st, n) && (!ring || (dP(st, n) >= ring[0] && dP(st, n) <= ring[1])) && dP(st, n) > (R.min !== undefined ? R.min : 4));
+        c = near(st, base.x, base.y, r, n => !used.has(n) && f(st, n) && !(D.player && freddo(st, n)) && (!ring || (dP(st, n) >= ring[0] && dP(st, n) <= ring[1])) && dP(st, n) > (R.min !== undefined ? R.min : 4));
         if (c.length) break;
       }
       if (!c.length) return null; const n = pick(c); roles[R.id] = n; used.add(n);
