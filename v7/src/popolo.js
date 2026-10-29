@@ -22,9 +22,10 @@ var Popolo = (function () {
     max: 207,          // abitanti al massimo (la mappa ne può offrire di più) [leggera] 207, decisi una volta: densi attorno a casa, radi lontano
     nearR: 250,        // [leggera] entro questa distanza dalla casa di partenza del giocatore le case sono piene
     nearShare: .7,     // [leggera] la parte degli abitanti che vive lì
-    near: 52,          // entro questa distanza dal giocatore si vive per intero (m)
-    far: 66,           // oltre questa si torna al livello leggero (isteresi)
-    maxNear: 70,       // quanti al massimo a pieno contemporaneamente
+    near: 84,          // entro questa distanza dal giocatore si vive per intero (m) [folla] fino a dove comincia la nebbia (85 m): prima 52, e fra 52 e 140 m le strade che si vedono erano vuote
+    far: 98,           // oltre questa si torna al livello leggero (isteresi)
+    dentroPeso: 45,    // [folla] chi è al chiuso conta come 45 m più lontano: col tetto (maxNear) pieno passa avanti chi si vede, in strada
+    maxNear: 84,       // quanti al massimo a pieno contemporaneamente [folla] 84 come la mappa compatta (prima 70: il tetto era sempre pieno)
     lodEvery: .5,      // secondi reali tra due controlli di distanza
     talkEvery: 15,     // minuti di gioco tra due giri di chiacchiere lontane
     maxProj: 2,        // progetti in testa contemporaneamente
@@ -725,7 +726,7 @@ var Popolo = (function () {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
       const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d + (n.inside && d > 20 ? CFG.dentroPeso : 0)) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
       // [eventi] e chi recita una scena passa davanti a tutti: con la città compatta piena i vicini arrivano al tetto (maxNear) e l'attore
       // un po' più lontano degli altri veniva addormentato (snapFar lo mette «dentro» casa) a metà scena: la scena si rompeva con «entrato»
     }
@@ -746,9 +747,28 @@ var Popolo = (function () {
     const b = blockNow(st, n), t = b && b.tgt;
     if (!t) return;
     P.cur = b; P.curKey = tkey(t) + '@' + b.at;
+    if (inViaggio(st, n, b)) return;   // [folla] era per strada fra un posto e l'altro: lo si trova lì, che cammina
     if (t.k === 'b' && P.at && tkey(P.at) === tkey(t)) { n.inside = true; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
     else if (t.k === 'p') { const s = G.wanderSpot(st, PLACES[t.pid]); n.x = s.x; n.y = s.y; n.inside = false; P.at = t; n.path = []; n.action = { name: 'routine', scores: [], why: b.label, since: st.clock }; }
     else { n.inside = true; P.at = t; n.x = t.x; n.y = t.y; n.action = { name: 'dentro', scores: [], why: `È dentro ${t.label}.`, since: st.clock }; }
+  }
+  // [folla] chi si «sveglia» vicino al giocatore poco dopo l'inizio di un blocco è ancora in cammino: invece di comparire già arrivato
+  // (tutti fermi nei posti, nessuno per strada) lo si mette sulla strada fra il posto di prima e quello nuovo, al punto dove sarebbe
+  // arrivato a piedi, e da lì cammina. Solo a piedi, solo se la strada c'è e il punto è all'aperto.
+  function inViaggio(st, n, b) {
+    const P = n.pop, i = P.plan.indexOf(b), prev = i > 0 && P.plan[i - 1], a = prev && prev.tgt, t = b.tgt;
+    if (!a || tkey(a) === tkey(t)) return false;
+    const at = b.fixed ? b.at : b.at + P.jit + (b.__j || 0), passati = (minOfDay(st.t) - at + 1440) % 1440;
+    const d = dist(a.x, a.y, t.x, t.y), viaggio = d * 1.15 / 1.35 * MPS;   // minuti a piedi
+    if (d < 25 || d > 600 || passati >= viaggio) return false;
+    const path = [{ x: a.x, y: a.y }].concat(G.findPath(a.x, a.y, t.x, t.y)); if (path.length < 2) return false;
+    let tot = 0; for (let j = 1; j < path.length; j++) tot += dist(path[j - 1].x, path[j - 1].y, path[j].x, path[j].y);
+    let rest = tot * Math.max(.08, Math.min(.92, passati / viaggio)), x = path[0].x, y = path[0].y;   // il punto lungo la strada, a quella distanza
+    for (let j = 1; j < path.length; j++) { const L = dist(path[j - 1].x, path[j - 1].y, path[j].x, path[j].y); if (rest <= L) { const f = rest / L; x = path[j - 1].x + (path[j].x - path[j - 1].x) * f; y = path[j - 1].y + (path[j].y - path[j - 1].y) * f; break; } rest -= L; }
+    if (!G.walkM(x, y)) return false;
+    n.x = x; n.y = y; n.inside = false; n.path = []; P.goalSet = false; P.at = null; P.spot = null;
+    n.action = { name: 'routine', scores: [], why: `${cap(b.label)}: va a ${t.label}.`, since: st.clock };
+    return true;
   }
   function sleepFar(st, n) { const P = n.pop; P.near = false; P.lod = 'lontano'; n.path = []; n.speedNow = 0; if (!P.emer) snapFar(st, n); }
   // il livello leggero: sempre "dentro" (invisibile, fuori dal passaparola del motore), nel posto del blocco
@@ -1867,6 +1887,7 @@ var Popolo = (function () {
     if (b && b.act === 'mercato') return pick(Math.random, ['A quanto le vende?', 'Ieri costavano meno.', 'Che belle, oggi.']);
     const iw = P.intW || {}, top = (P.ints || []).slice().sort((x, y) => (iw[y.k] || 0) - (iw[x.k] || 0))[0], IL = top && TALK_INT[top.k];
     if (IL && r < .85) return pick(Math.random, IL);
+    if (P.age <= 30) return pick(Math.random, ['Fra, che freddo.', 'Hai visto chi è tornato?', 'Zio, stasera usciamo?', 'Tuo fratello come sta?', 'Domenica c\'è la partita, ci sei?', 'Non ci si può fidare di nessuno, fra.', 'Oh, c\'hai da accendere?']);   // [street]
     return pick(Math.random, ['Che freddo, eh?', 'Hai visto chi è tornato?', 'Mia figlia si sposa a primavera.', 'E tuo fratello come sta?', 'Domenica c\'è la partita.', 'Non si sa più di chi fidarsi.']);
   }
 

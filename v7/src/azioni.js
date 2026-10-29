@@ -720,17 +720,26 @@ var Azioni = (function () {
     apprezza: ['Bella giacca, sai?', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno.', 'Tu sei l\'unico che non mi ha mai chiesto soldi. Mi offende un po\'.'], offri: ['Ti offro qualcosa, dai.', 'Questo lo pago io.', 'Offro io. Coi soldi che mi devi.'], gioca: ['Una partita?', 'Scopa!', 'Tocca a te!', 'Se perdi, mi sposi la sorella.'], regala: ['Tieni, è per te.', 'Tieni. Non chiedere da dove viene.'],
     litiga: ['Ma che dici?!', 'Vattene!', 'Non ti permettere!', 'Questa me la segno! Ho un quaderno!', 'Lo dico a tua nonna! Quella viva!'],
   };
+  // [street] i ragazzi (fino a 30 anni) si parlano così: stesse intenzioni, un altro registro
+  const LINES_G = {
+    chiacchiera: ['Oh, hai sentito cos\'è successo?', 'Fra, che freddo oggi.', 'Tutto a posto a casa?', 'Zio, stasera che si fa?', 'Bella. Come butta?', 'Hai visto chi è tornato?'],
+    sfotti: ['Ma guardalo, sembra un Grigio in libera uscita.', 'Ancora con \'sta giacca, fra?', 'Eccolo, il grande esperto.', 'Ma come ti sei vestito, zio?', 'Fottiti, va\'.'],
+    apprezza: ['Bella giacca, fra.', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno, zio.', 'Rispetto, fra.'], offri: ['Offro io, dai.', 'Questa la pago io, zio.', 'Dai, ti offro una birra.'],
+    gioca: ['Una partita?', 'Scopa! Prendi e porta a casa.', 'Tocca a te, fra.', 'Se perdi paghi il giro.'], regala: ['Tieni, è per te.', 'Prendi, fra. Non chiedere.'],
+    litiga: ['Ma che dici, fra?!', 'Vattene, va\'!', 'Non ti permettere, zio!', 'Oh, abbassa i toni!', 'Fottiti, sul serio!'],
+  };
+  const G_ETA = 30, lineFor = (n, kind) => (n && n.pop && n.pop.age <= G_ETA && LINES_G[kind]) || LINES[kind] || LINES.chiacchiera;
   function social(st, a, b, kind, args) {
     if (!alive(a) || !alive(b) || !a.pop || !b.pop) return;
     const Ra = rel(st, a, b), Rb = rel(st, b, a), place = (a.pop.at && a.pop.at.label) || placeName(a.x, a.y);
     st.pop.stats.incontri = (st.pop.stats.incontri || 0) + 1;
-    { const real = kind === 'chiacchiera' && I.chatLine ? I.chatLine(st, a, a.pop.cur) : null; if (real) G.say(st, a, real, 3); else say(st, a, LINES[kind] || LINES.chiacchiera); }   // [vivi] si parla di cose vere
+    { const real = kind === 'chiacchiera' && I.chatLine ? I.chatLine(st, a, a.pop.cur) : null; if (real) G.say(st, a, real, 3); else say(st, a, lineFor(a, kind)); }   // [vivi] si parla di cose vere
     if (CFG.talk) try { CFG.talk(st, a, b, kind); } catch (e) { } // la Mente può dare voce vera allo scambio
     switch (kind) {
       case 'chiacchiera': I.share(st, a, b); I.share(st, b, a); moveRel(st, a, b, .03); moveRel(st, b, a, .03); feel(a, 'compagnia', -.15); feel(b, 'compagnia', -.15); break;
       case 'sfotti': {
         const banter = Rb.a > .4 && b.tr.loq > .5;
-        if (banter) { moveRel(st, b, a, .04); feel(b, 'svago', -.1); say(st, b, ['Ah ah, senti chi parla!', 'Sei sempre il solito.', 'Detto da uno che si è sposato due volte la stessa donna.']); }
+        if (banter) { moveRel(st, b, a, .04); feel(b, 'svago', -.1); say(st, b, b.pop.age <= G_ETA ? ['Senti chi parla, fra.', 'Sei sempre il solito, zio.', 'Fottiti, dai.'] : ['Ah ah, senti chi parla!', 'Sei sempre il solito.', 'Detto da uno che si è sposato due volte la stessa donna.']); }
         else { moveRel(st, b, a, -.15); feel(b, 'rabbia', .15); note(st, b, `${a.first} l'ha pres${o(b)} in giro a ${place}`, 'bad', { w: .45, who: a.id, tag: 'offesa' }); if (b.pop.need.rabbia > .55 && b.tr.cor > .5 && rnd() < .5) quarrel(st, b, a, 'presa in giro'); }
         break;
       }
@@ -758,7 +767,7 @@ var Azioni = (function () {
     note(st, a, `litigato con ${b.first}${why ? ` (${why})` : ''}`, 'bad', { w: .5, who: b.id, tag: 'lite' });
     note(st, b, `litigato con ${a.first}${why ? ` (${why})` : ''}`, 'bad', { w: .5, who: a.id, tag: 'lite' });
     feel(a, 'rabbia', .15); feel(b, 'rabbia', .15); moveRel(st, a, b, -.15); moveRel(st, b, a, -.15);
-    say(st, a, LINES.litiga, 3); say(st, b, LINES.litiga, 3);
+    say(st, a, lineFor(a, 'litiga'), 3); say(st, b, lineFor(b, 'litiga'), 3);
     const vino = n => n.pop.using && n.pop.using.some(x => x.tag === 'vino') && n.pop.vice === 'vino';
     const heat = (a.pop.need.rabbia + b.pop.need.rabbia) / 2 + (a.tr.cor + b.tr.cor) / 4 - (a.tr.legge + b.tr.legge) / 4 + (vino(a) || vino(b) ? .2 : 0);
     if (heat > .55 && rnd() < heat - .35) brawl(st, a, b, { why });

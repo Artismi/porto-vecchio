@@ -32,5 +32,35 @@ for (let r = 0; r < 3; r++) {
 }
 ok(lines.length >= 2, `${M.MATTI[k0].nick} ti parla quando passi: «${lines.join('» «')}»`);
 ok(S.incontri[k0] >= 2, `si ricorda di te: ${S.incontri[k0]} incontri`);
+const ok0 = n => n && !n.dead && !n.inside && !n.room && !n.cop && !n.faction && !n.__ev && (!n.action || n.action.name === 'routine');   // fuori, per conto suo
+// le manie: chi le ha, e una frase normale quando gli passi accanto
+const man = S.manie.map(id => G.byId(st, id));
+ok(man.length >= 6 && man.every(n => M.MANIE[n.pop.mania] && !n.pop.matto), `manie: ${man.map(n => `${n.pop.mania} = ${n.name}`).join('; ')}`);
+{ let k = 0; while (!man.some(n => ok0(n)) && k++ < 600) G.step(st, DT, { x: 0, y: 0 }); const n = man.find(n => ok0(n)) || man[0]; let l = null; n.inside = false; n.__mtCd = 0; S.cd = 0; n.action = { name: 'routine', scores: [] }; p.indoor = null;
+  for (let t = 0; t < 60 && !l; t++) { n.inside = false; n.room = null; n.action = { name: 'routine', scores: [] }; p.x = n.x + 2; p.y = n.y; G.step(st, DT, { x: 0, y: 0 }); if (n.bark && n.bark.until > st.clock && M.MANIE[n.pop.mania].passa.includes(n.bark.text)) l = n.bark.text; }
+  ok(!!l, `la mania ${n.pop.mania} ti dice: «${l}»`); }
+// due ragazzi vicini: il loro mazzo (fra, zio, la siga, il drum)
+{ const yg = st.npcs.filter(n => n.pop && n.pop.age <= M.CFG.giovane && !n.pop.matto && !n.pop.mania && ok0(n)).slice(0, 2);
+  if (yg.length === 2) {
+    const others = st.npcs.filter(n => !yg.includes(n)); others.forEach(n => { n.__x = n.x; n.x += 5000; });
+    yg.forEach((n, i) => { n.inside = false; n.room = null; n.inVeh = false; n.action = { name: 'routine', scores: [] }; n.x = p.x + 5 + i; n.y = p.y; });
+    S.fram = 0; S.q = []; S.scr = 1e12; let hit = null;
+    for (let t = 0; t < 120 && !hit; t++) { yg.forEach((n, i) => { n.inside = false; n.room = null; n.action = { name: 'routine', scores: [] }; n.x = p.x + 5 + i; n.y = p.y; }); G.step(st, DT, { x: 0, y: 0 }); yg.forEach(n => { if (n.bark && n.bark.until > st.clock && M.FRAM_G.some(F => F.includes(n.bark.text))) hit = n.bark.text; }); }
+    others.forEach(n => { n.x = n.__x; });
+    ok(!!hit, `due ragazzi si parlano col loro mazzo: «${hit}»`);
+  } }
+// [coerenza] ti ha visto sparare: ha un tono, e non ti viene a chiedere una sigaretta; la voce passa con il posto vero
+{ const pool = st.npcs.filter(n => n.pop && !n.pop.matto && !n.pop.mania && !n.dead && !n.cop && !n.faction && n.mem);
+  const a = pool[0], b = pool.find(n => n !== a && !n.mem.length) || pool[1], ev = 900000 + st.nextId;
+  a.mem.push({ id: st.nextId++, eventId: ev, type: 'spari', trueType: 'spari', actor: 'player', target: null, place: 'Calata del porto', t: st.t - 30, conf: .95, source: 'visto', via: [], distorted: false, silenced: false, closed: false, framedBy: null });
+  const T = G.tono(st, a); ok(!!T, `chi ti ha visto sparare ha un tono: ${T}`);
+  ok(!G.tono(st, b), 'chi non sa niente no');
+  const F = M.voce(st, a, b); ok(F && /sparato/.test(F[0]) && /Calata del porto/.test(F[0]), `la voce: «${F && F.join('» «')}»`);
+  ok(b.mem.some(m => m.eventId === ev && m.source === 'voce'), 'chi l\'ha sentita adesso la sa');
+  const F2 = M.voce(st, a, b); ok(F2 && F2.length === 3, `la seconda volta l'altro lo sa già: «${F2 && F2.join('» «')}»`);
+  if (a.pop.age > M.CFG.giovane) a.pop.age = 20;
+  S.scr = 0; S.cd = 0; a.__scr = 0; a.inside = false; a.room = null; a.action = { name: 'routine', scores: [] }; p.x = a.x + 1.5; p.y = a.y; p.indoor = null;
+  let scr = false; for (let t = 0; t < 90; t++) { a.inside = false; a.action = { name: 'routine', scores: [] }; p.x = a.x + 1.5; p.y = a.y; G.step(st, DT, { x: 0, y: 0 }); if (a.bark && a.bark.until > st.clock && M.SCROCCO.includes(a.bark.text)) scr = true; }
+  ok(!scr, 'chi ti ha visto sparare non ti scrocca una siga'); }
 console.log(fail ? `\n${fail} prove fallite.` : '\nTutto bene.');
 process.exit(fail ? 1 : 0);
