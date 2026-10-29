@@ -18044,7 +18044,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     cam.cd = cam.cd === undefined ? driveDist : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));
     const dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
-    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .25, KB), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), Math.max(.3, Math.min(3, dist - 1.5)), KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     REG.lp = pitch; REG.ld = dist;   // [regia] la camera di questo fotogramma, per le candidate della prossima scelta
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
