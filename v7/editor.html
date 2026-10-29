@@ -23038,7 +23038,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '13ce90bee50cdc7d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'a03308fa1cde1505';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -90143,7 +90143,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     cam.cd = cam.cd === undefined ? driveDist : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));
     const dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
-    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), Math.max(.3, Math.min(3, dist - 1.5)), KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .3, KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     REG.lp = pitch; REG.ld = dist;   // [regia] la camera di questo fotogramma, per le candidate della prossima scelta
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
@@ -90151,6 +90151,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.position.set(cx + ox, cy + oy, cz + oz);
     if (KB > .01) { const gc = groundH(camera.position.x, camera.position.z) + .7; if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
     camera.lookAt(cx, cy, cz);
+    if (KB > .01) {   // [bassa] IL TAGLIO: niente fra la camera e te. Il piano vicino arriva a 1,2 m prima del personaggio; si ferma solo dove il suolo
+      // entra nel quadro (il raggio più basso dell'inquadratura tocca terra a hg/sin(pendenza + mezzo campo): oltre, il taglio aprirebbe un buco nel suolo)
+      const dd = Math.hypot(camera.position.x - cx, camera.position.y - cy, camera.position.z - cz), hg = Math.max(.3, camera.position.y - groundH(camera.position.x, camera.position.z)), hf = camera.fov * Math.PI / 360;
+      const suolo = hg / Math.sin(Math.min(1.5, pitch + hf)) * Math.cos(hf) - .1, nv = Math.max(.3, Math.min(dd - 1.2, suolo));
+      camera.near = lerp(camera.near, Math.max(camera.near, nv), KB); camera.updateProjectionMatrix(); }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
