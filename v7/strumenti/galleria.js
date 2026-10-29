@@ -38,7 +38,7 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
-  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
+  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`, { timeout: 300000 });   // [nitida] con la macchina carica il caricamento passa i 30 s
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: +(process.env.GALLERIA_CARICO || process.env.GALLERIA_ATTESA || 300000) });   // GALLERIA_CARICO (o GALLERIA_ATTESA): ms per caricare (sotto carico 300 s non bastano)
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });

@@ -18,7 +18,8 @@ var Rete = (function () {
   const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const INTERRATA = { vittoria: 1, corso: 1 };   // E4 e il Corso: niente fili in aria
   const ABUSO = { E7: .8, E0: .3, E2: .3, E3: .1, E4: 0, E6: .2 };
-  const PASSO_LAMP = { E0: 12, E2: 12, E3: 18, E4: 0, E6: 25, E7: 0 };   // interasse fisso per epoca (il modello lo decide render: braccio, ghisa, stelo; sulla Vittoria i lampioni del regime li mette già render coi pennoni)
+  // [nitida] nel borgo e sulla marina un lampione ogni 18 m (era 12), sempre da un lato solo; ?vecchiapulizia: com'era
+  const PASSO_LAMP = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? { E0: 12, E2: 12, E3: 18, E4: 0, E6: 25, E7: 0 } : { E0: 18, E2: 18, E3: 18, E4: 0, E6: 25, E7: 0 };   // interasse fisso per epoca (il modello lo decide render: braccio, ghisa, stelo; sulla Vittoria i lampioni del regime li mette già render coi pennoni)
   let R = null, G = null;
   const open = v => v === G.T.VIA || v === G.T.WALK || v === G.T.PIAZZA || v === G.T.COB || v === G.T.QUAY || v === G.T.DIRT;
   const tl = (tx, ty) => (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) ? -1 : G.tileAt(tx, ty);

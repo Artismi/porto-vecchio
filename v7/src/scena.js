@@ -199,12 +199,15 @@ var Scena = (function () {
     const at = (x, z) => tl(Math.floor(x / TS), Math.floor(z / TS)), bld = (x, z) => at(x, z) === T.BLD;
     const SCR = typeof Scorci !== 'undefined' && Scorci && Scorci.attivo ? (x, z, m) => Scorci.riservato(x, z, m) : () => false;   // [scorci] dove c'è uno scorcio gli altri non posano
     const lungo = (rd, f) => { const Pt = rd.pts; let s = 0; for (let k = 0; k < Pt.length - 1; k++) { const [ax, az] = Pt[k], [bx, bz] = Pt[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L; for (let t = 0; t < L; t += 1, s += 1) f(ax + ux * t, az + uz * t, -uz, ux, s, ux, uz); } return s; };
+    // [nitida] «meno ma leggibilissimo»: un bidone ogni 60 m di vicolo e una piazzola di cassonetti ogni ~130 m di via (un isolato), non a
+    // ogni 30 e 60 m; ?vecchiapulizia torna al passo di prima
+    const NIT = !(typeof PuliziaRumore !== 'undefined' && PuliziaRumore.vecchia()), passoB = NIT ? 60 : 30, passoC = NIT ? 130 : 60;
     roads.forEach((rd, ri) => { const vic = rd.kind === 'vicolo';
       if (vic) { let nb = 8 + hash(ri, 1, 61) * 10, nl = 6 + hash(ri, 2, 61) * 8;
         P.metriVicoli += lungo(rd, (x, z, nx, nz, s, ux, uz) => {
           // il bidone: contro il muro (lato lontano dalla camera), nella fascia, sulla pagina che lo prevede
           if (s > nb) { const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 - .45, bx = x + nx * far * o, bz = z + nz * far * o; if (bld(x + nx * far * (rd.w / 2 + .6), z + nz * far * (rd.w / 2 + .6)) && open(at(bx, bz)) && !SCR(bx, bz, .6)) {
-              const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + 30; } else nb = s + 4; } else nb = s + 3; }
+              const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + passoB; } else nb = s + 4; } else nb = s + 3; }
           // il bucato: solo dove due case si guardano a meno di 5 m
           if (rd.w <= 5 && s > nl) { const d = rd.w / 2 + .9; if (bld(x + nx * d, z + nz * d) && bld(x - nx * d, z - nz * d) && !SCR(x, z, 1.5)) { const far = (nx + nz) < 0 ? 1 : -1, sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bucato', { tipo: 'parete' });
               if (sl) { P.bucato.push({ x, z, y: 4.2 + hash(ri, Math.round(s), 62) * .8, len: rd.w + 1.6, ux: nx, uz: nz, capi: 3 + Math.floor(hash(ri, Math.round(s), 63) * 4), via: rd.id }); nl = s + 15 + hash(ri, Math.round(s), 64) * 5; } else nl = s + 5; } else nl = s + 2; } }); }
@@ -212,7 +215,7 @@ var Scena = (function () {
         P.metriVie += lungo(rd, (x, z, nx, nz, s, ux, uz) => { if (s < nc) return; const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 + .7, cx = x + nx * far * o, cz = z + nz * far * o;
           // la coppia di cassonetti sul marciapiede lontano, a filo del cordolo, lontano dalle porte
           const c2x = cx + ux * 1.8, c2z = cz + uz * 1.8, porta = G.BUILDINGS.some(b => b.door && Math.hypot((b.door[0] + .5) * TS - cx, (b.door[1] + .5) * TS - cz) < 3.5);
-          if (!porta && !SCR(cx, cz, 1) && !SCR(c2x, c2z, 1) && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + 60; } else nc = s + 4; }); } });
+          if (!porta && !SCR(cx, cz, 1) && !SCR(c2x, c2z, 1) && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + passoC; } else nc = s + 4; }); } });
     // i dehors: dove la pagina è il bar col dehors, e sulla piazzetta col bar (davanti alla casa che la guarda)
     S.pagine.forEach(p => { if (p.tipo === 'parete' && p.nome === 'bar_col_dehors') { const sl = chiedi(p.x, p.z, 'dehors', { pagina: p }); if (sl) P.dehors.push(dehorsDi(p, p.porta, p.b.use || (p.b.shopFront && p.b.shopFront.use))); } });
     S.pagine.filter(p => p.tipo === 'piazzetta' && p.bar).forEach(q => { let best = null, bd = 1e9; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.scorcio) return; const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < q.r + 6 && d < bd && p.len >= 4) { bd = d; best = p; } });

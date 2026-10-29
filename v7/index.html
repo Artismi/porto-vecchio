@@ -27688,8 +27688,11 @@ var World = (function () {
         for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY); if (grid[i] === T.WALK && d > P.d0 && d < P.d1) nW++; }
         if (nW * 2 >= b.w && b.w >= 2) { b.vittoria = true; b.fl = Math.min(b.fl, 3); } });
       B.forEach(b => { if (b.vittoria) sides[b.y * TS < VY ? 0 : 1].push(b); });
+      // [nitida] la cortina scavalca solo le fessure fra due case (1 m), non i varchi: sopra un varco di 2-4 m i piani sopra le arcate
+      // restavano un muro ritto nel vuoto, senza casa dietro (strumenti/muri_vaganti.js, fuori_casa). ?vecchiapulizia: 4,2 m come prima
+      const PONTE_PORT = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? 4.2 : 1;
       sides.forEach((L, sd) => { if (P.lati && !P.lati.includes(sd)) return; L.sort((a, b) => a.x - b.x); const runs = []; let cur = null;
-        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= 4.2) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
+        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= PONTE_PORT) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
         // [volumi2] non più un blocco unico: il tratto si divide in corpi di 2-3 campate (8-12 m), ognuno col suo cornicione e la sua quota,
         // arcate + 1 o 2 piani (al più tre piani in tutto) che si alternano; sul lato sud (verso la camera) prevalgono i corpi bassi, così
         // la strada si vede; il corpo più lungo del tratto porta le lettere. La torre littoria resta l'unica cosa alta.
@@ -28453,7 +28456,72 @@ var World = (function () {
         lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
     W.SEA.terrapieni = lati; W.SEA.terrapieniM = fatti; return W;
   }
-  const W = costa2Arredo(terrapieni(expand(generate())));
+  // [nitida] LE CASETTE DI TROPPO. Il committente: «questa casa coi coppi forse è di troppo, sta in mezzo alla strada». Una casetta piccola
+  // (al più 9 caselle, 36 m²) senza nome, senza bottega e senza luogo, che sta quasi tutta libera in mezzo al selciato (tre quarti del giro
+  // attorno è suolo libero: via, marciapiede, piazza, ciottolato, banchina; o il 60% via, marciapiede, piazza o banchina) o incastrata fra due tratti di carreggiata, rompe la
+  // continuità della strada e si legge come un errore: se ne va, e il suo posto torna al suolo che ha attorno (il marciapiede, la piazza, il
+  // ciottolato) alla quota dei vicini. Le case grandi, i portici, le baracche dei quartieri poveri a schiera restano. ?vecchiapulizia: com'era.
+  // W.casetteTolte: quante e dove (strumenti/muri_vaganti.js le conta).
+  function casette(W, passo) {   // passo: tolte le prime, una vicina può restare sola in mezzo al selciato; si rifà finché ce ne sono (al più tre volte)
+    passo = passo || 0; if (!passo) W.casetteTolte = [];
+    if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, GHx = W.GH, B = W.BUILDINGS, PL = W.PLACES || {}, OPEN = new Set([T.VIA, T.WALK, T.PIAZZA, T.COB]), LARGO = new Set([T.VIA, T.WALK, T.PIAZZA]), tolte = [];
+    const luogo = new Set(Object.values(PL).map(p => p && p.id));
+    const giro = b => { const L = []; for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const e = tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h; if (!e || tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; L.push(ty * GWx + tx); } return L; };
+    const via = (b, side) => { let n = 0, t = 0; const [a, c] = side; if (a) { const tx = a > 0 ? b.x + b.w : b.x - 1; for (let ty = b.y; ty < b.y + b.h; ty++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } else { const ty = c > 0 ? b.y + b.h : b.y - 1; for (let tx = b.x; tx < b.x + b.w; tx++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } return t && n * 2 >= t; };
+    const via2 = b => (via(b, [1, 0]) && via(b, [-1, 0])) || (via(b, [0, 1]) && via(b, [0, -1]));
+    const PORT = (W.pezzi || []).filter(p => p.tipo === 'portico').map(p => { const L = p.opz.campate * p.opz.campata, x0 = Math.cos(p.rot || 0) < 0 ? p.x - L : p.x; return [x0, x0 + L, p.y]; });
+    const dietroPortico = b => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; return PORT.some(([x0, x1, y]) => cx > x0 - 2 && cx < x1 + 2 && Math.abs(cy - y) < 4 + b.h * TS / 2); };   // regge la cortina dei portici
+    B.forEach(b => { if (!b.house || b.pezzo || b.shack || b.name || b.shop || b.shopFront || b.sign || b.military || b.kiosk || b.vittoria || b.sottoPortico || b.portico || b.lighthouse || b.isola || luogo.has(b.id) || dietroPortico(b)) return;   // le baracche a schiera del quartiere povero restano
+      if (W.zone[b.y * GWx + b.x] !== Z.CITTA || (b.use && b.use !== 'casa')) return; const n = b.w * b.h; if (n > 9) return;
+      const R = giro(b), quota = R.filter(i => OPEN.has(g[i])).length / R.length, largo = R.filter(i => LARGO.has(g[i])).length / R.length;
+      if (!(quota >= .75 || largo >= .6 || via2(b))) return;
+      b.__via = { R, quota, largo }; tolte.push(b); });
+    if (!tolte.length) return W;
+    const togli = new Set(tolte);
+    tolte.forEach(b => { const R = b.__via.R, cnt = new Map(); let h = 0, nh = 0, rc = 0;
+      R.forEach(i => { const v = g[i]; if (OPEN.has(v) && v !== T.VIA) cnt.set(v, (cnt.get(v) || 0) + 1); if (OPEN.has(v)) { h += W.elev[i]; nh++; rc = Math.max(rc, W.reach[i]); } });
+      let v = T.COB, best = 0; cnt.forEach((c, k) => { if (c > best) { best = c; v = k; } }); if (!cnt.size && R.some(i => g[i] === T.VIA)) v = T.WALK;
+      for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GWx + tx; g[i] = v; W.bIndex[i] = -1; if (nh) W.elev[i] = h / nh; W.reach[i] = rc; }
+      delete b.__via; });
+    // gli indici: al posto della casetta tolta va l'ultima della lista (una casa delle isole, lontana), così le case della città tengono il
+    // loro indice e con lui tutto quello che ne discende (i semi delle insegne, degli allacci, delle facciate): la città resta com'era
+    const sposta = new Map(); tolte.map(b => B.indexOf(b)).sort((a, c) => c - a).forEach(j => { const ult = B.pop(); if (j < B.length) { B[j] = ult; sposta.set(ult.i, j); ult.i = j; } });
+    for (let i = 0; i < W.bIndex.length; i++) { const j = W.bIndex[i]; if (j >= 0 && sposta.has(j)) W.bIndex[i] = sposta.get(j); }
+    B.forEach((b, j) => { b.i = j; });
+    W.casetteTolte = W.casetteTolte.concat(tolte.map(b => ({ id: b.id, x: Math.round((b.x + b.w / 2) * TS), y: Math.round((b.y + b.h / 2) * TS), w: b.w * TS, h: b.h * TS, passo })));
+    return passo < 2 ? casette(W, passo + 1) : W;
+  }
+  // [nitida] LE CASE SUL MARCIAPIEDE. Il committente: «dove il marciapiede è una striscia sottile e la casa ci sta sopra a metà». Il
+  // marciapiede delle vie di città è la fascia di 2,1 m oltre il bordo della carreggiata (render.js, swField): una casa col fronte a meno di
+  // 1,5 m dal bordo (il minimo per camminare in due) lo copre a metà e lascia una striscia. Se la casa è profonda almeno tre caselle si arretra di una casella (due se serve e
+  // ne restano tre): il fronte torna sul filo del lotto, la casella liberata diventa marciapiede, la porta e il luogo arretrano con lei. La bottega
+  // arretra col suo fronte (porta e vetrine). Le case basse di fondo (due caselle) restano: lì render.js chiude il marciapiede contro il muro
+  // (niente lastre sotto la casa). ?vecchiapulizia: com'era. W.caseArretrate: quali.
+  function arretra(W) {
+    W.caseArretrate = []; if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, B = W.BUILDINGS, MIN = 1.5, R = (W.roads || []).filter(rd => rd && rd.pts && rd.pts.length > 1 && (rd.kind === 'citta' || rd.kind === 'litoranea'));
+    const bordo = (x, y) => { let d = 1e9; R.forEach(rd => { for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); d = Math.min(d, Math.hypot(ax + dx * t - x, ay + dy * t - y) - (rd.w || 6) / 2); } }); return d; };
+    B.forEach(b => { if (b.pezzo || b.military || b.kiosk || b.lighthouse || b.isola || b.rot || b.tiers || b.sottoPortico || b.vittoria) return;   // solo lungo le vie di città (anche la casa sul lungomare fuori dalla zona)
+      // i quattro lati: [verso, profondità in caselle, i punti del filo]
+      const lati = [['S', b.h, k => [(b.x + k) * TS, (b.y + b.h) * TS], b.w], ['N', b.h, k => [(b.x + k) * TS, b.y * TS], b.w], ['E', b.w, k => [(b.x + b.w) * TS, (b.y + k) * TS], b.h], ['W', b.w, k => [b.x * TS, (b.y + k) * TS], b.h]];   // gli spigoli compresi
+      let best = null; lati.forEach(([f, prof, at, n]) => { let d = 1e9; for (let k = 0; k <= n * 2; k++) d = Math.min(d, bordo(...at(k / 2))); if (d < MIN && d > -1.5 && (!best || d < best.d)) best = { f, prof, d }; });
+      if (!best) return; const serve = Math.ceil((MIN + .4 - best.d) / TS), SF = b.shopFront; if (best.prof - serve < 3 || (SF && SF.face && SF.face !== best.f)) return;   // la bottega arretra solo col suo fronte
+      const NV = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[best.f];
+      for (let s = 0; s < serve; s++) { const f = best.f, cells = [];
+        if (f === 'S') { const ty = b.y + b.h - 1; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.h--; }
+        else if (f === 'N') { const ty = b.y; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.y++; b.h--; }
+        else if (f === 'E') { const tx = b.x + b.w - 1; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.w--; }
+        else { const tx = b.x; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.x++; b.w--; }
+        cells.forEach(i => { g[i] = T.WALK; W.bIndex[i] = -1; W.reach[i] = W.reach[i - NV[1] * GWx - NV[0]] || W.reach[i]; });
+        if (SF && SF.door) { SF.door = [SF.door[0] + NV[0], SF.door[1] + NV[1]]; if (SF.span) SF.span = SF.span.map(([x, y]) => [x + NV[0], y + NV[1]]); }
+        if (b.door) { const [dx, dy] = b.door; if (f === 'S' && dy === b.y + b.h + 1) b.door = [dx, dy - 1]; else if (f === 'N' && dy === b.y - 2) b.door = [dx, dy + 1]; else if (f === 'E' && dx === b.x + b.w + 1) b.door = [dx - 1, dy]; else if (f === 'W' && dx === b.x - 2) b.door = [dx + 1, dy]; } }
+      if (b.door) { let [dx, dy] = b.door; if (dx >= b.x - 1 && dx <= b.x + b.w && (dx === b.x - 1 || dx === b.x + b.w)) dy = Math.max(b.y, Math.min(b.y + b.h - 1, dy)); else dx = Math.max(b.x, Math.min(b.x + b.w - 1, dx)); b.door = [dx, dy]; }   // la porta su un fianco resta sul fianco
+      const P = W.PLACES && W.PLACES[b.id], pd = (SF && SF.door) || b.door; if (P && pd) { P.tx = pd[0]; P.ty = pd[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; }
+      W.caseArretrate.push({ id: b.id, f: best.f, prima: +best.d.toFixed(2), caselle: serve }); });
+    return W;
+  }
+  const W = costa2Arredo(terrapieni(casette(arretra(expand(generate())))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.
@@ -50806,6 +50874,9 @@ var TettiVissuti = (function () {
   // distanza dalla gronda: 16 m per unità), i licheni a macchiette, il coppo rotto o mancante (la cella del manto: si vede il sotto).
   // lastrici: le chiazze d'umido scure, le crepe (la cresta di un rumore), i rappezzi di cemento fra le pianelle, il muschio, la pianella rotta.
   // Niente commenti nel GLSL (gli accenti non passano ovunque); niente `diffuse` né `map` (la tavolozza e la pila di [leggero] lo provano a vuoto).
+  // [nitida] il coppo mancante era una cella quasi nera (il sotto, all'85%): dall'alto si leggeva come un buco nel tetto. Ora un coppo rotto
+  // è solo un poco più scuro dei vicini; ?vecchiapulizia lo rimette com'era
+  const BUCO_TV = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? .85 : .22;
   function applica(m) {
     const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole', f = v => v.toFixed(4);
     m.customProgramCacheKey = () => 'tv1-' + kind;
@@ -50827,13 +50898,13 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
   c = mix(c, vec3(.27, .31, .16), mu * .72);
   float li = step(.9, tvH(floor(w * 6.3))) * smoothstep(.35, .6, a) * (.6 + nord * .4); c = mix(c, vec3(.8, .78, .64), li * .5);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})); float ro = step(.9955, tvH(ce + floor(w * .07) * 17.));
-  c = mix(c, vec3(.15, .11, .09), ro * .85);` : `float umido = smoothstep(.6, .8, a);
+  c = mix(c, vec3(.15, .11, .09), ro * ${BUCO_TV});` : `float umido = smoothstep(.6, .8, a);
   c = mix(c, c * vec3(.74, .76, .78), umido * .75);
   float cr = 1. - smoothstep(.0, .018, abs(tvN(w * 1.1 + 11.) - .5)); c = mix(c, c * .55, cr * smoothstep(.45, .7, mo) * .8);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})), bl = floor(w * .7); float rp = step(.93, tvH(bl + 3.1));
   c = mix(c, vec3(lum * .8 + .06), rp * ${kind === 'pianelle' ? '.4' : '.18'});
   float mu = smoothstep(.62, .8, mo) * smoothstep(.45, .2, a); c = mix(c, vec3(.3, .34, .19), mu * .45);
-  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * .62, ro);`}
+  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * ${BUCO_TV > .5 ? '.62' : '.86'}, ro);`}
   diffuseColor.rgb = c; }
 #endif`);
     };
@@ -59091,12 +59162,15 @@ var Scena = (function () {
     const at = (x, z) => tl(Math.floor(x / TS), Math.floor(z / TS)), bld = (x, z) => at(x, z) === T.BLD;
     const SCR = typeof Scorci !== 'undefined' && Scorci && Scorci.attivo ? (x, z, m) => Scorci.riservato(x, z, m) : () => false;   // [scorci] dove c'è uno scorcio gli altri non posano
     const lungo = (rd, f) => { const Pt = rd.pts; let s = 0; for (let k = 0; k < Pt.length - 1; k++) { const [ax, az] = Pt[k], [bx, bz] = Pt[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L; for (let t = 0; t < L; t += 1, s += 1) f(ax + ux * t, az + uz * t, -uz, ux, s, ux, uz); } return s; };
+    // [nitida] «meno ma leggibilissimo»: un bidone ogni 60 m di vicolo e una piazzola di cassonetti ogni ~130 m di via (un isolato), non a
+    // ogni 30 e 60 m; ?vecchiapulizia torna al passo di prima
+    const NIT = !(typeof PuliziaRumore !== 'undefined' && PuliziaRumore.vecchia()), passoB = NIT ? 60 : 30, passoC = NIT ? 130 : 60;
     roads.forEach((rd, ri) => { const vic = rd.kind === 'vicolo';
       if (vic) { let nb = 8 + hash(ri, 1, 61) * 10, nl = 6 + hash(ri, 2, 61) * 8;
         P.metriVicoli += lungo(rd, (x, z, nx, nz, s, ux, uz) => {
           // il bidone: contro il muro (lato lontano dalla camera), nella fascia, sulla pagina che lo prevede
           if (s > nb) { const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 - .45, bx = x + nx * far * o, bz = z + nz * far * o; if (bld(x + nx * far * (rd.w / 2 + .6), z + nz * far * (rd.w / 2 + .6)) && open(at(bx, bz)) && !SCR(bx, bz, .6)) {
-              const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + 30; } else nb = s + 4; } else nb = s + 3; }
+              const sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bidone', { tipo: 'parete' }); if (sl) { P.bidoni.push({ x: bx, z: bz, yaw: Math.atan2(nx * far, nz * far), via: rd.id }); nb = s + passoB; } else nb = s + 4; } else nb = s + 3; }
           // il bucato: solo dove due case si guardano a meno di 5 m
           if (rd.w <= 5 && s > nl) { const d = rd.w / 2 + .9; if (bld(x + nx * d, z + nz * d) && bld(x - nx * d, z - nz * d) && !SCR(x, z, 1.5)) { const far = (nx + nz) < 0 ? 1 : -1, sl = chiedi(x + nx * far * (rd.w / 2 + .3), z + nz * far * (rd.w / 2 + .3), 'bucato', { tipo: 'parete' });
               if (sl) { P.bucato.push({ x, z, y: 4.2 + hash(ri, Math.round(s), 62) * .8, len: rd.w + 1.6, ux: nx, uz: nz, capi: 3 + Math.floor(hash(ri, Math.round(s), 63) * 4), via: rd.id }); nl = s + 15 + hash(ri, Math.round(s), 64) * 5; } else nl = s + 5; } else nl = s + 2; } }); }
@@ -59104,7 +59178,7 @@ var Scena = (function () {
         P.metriVie += lungo(rd, (x, z, nx, nz, s, ux, uz) => { if (s < nc) return; const far = (nx + nz) < 0 ? 1 : -1, o = rd.w / 2 + .7, cx = x + nx * far * o, cz = z + nz * far * o;
           // la coppia di cassonetti sul marciapiede lontano, a filo del cordolo, lontano dalle porte
           const c2x = cx + ux * 1.8, c2z = cz + uz * 1.8, porta = G.BUILDINGS.some(b => b.door && Math.hypot((b.door[0] + .5) * TS - cx, (b.door[1] + .5) * TS - cz) < 3.5);
-          if (!porta && !SCR(cx, cz, 1) && !SCR(c2x, c2z, 1) && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + 60; } else nc = s + 4; }); } });
+          if (!porta && !SCR(cx, cz, 1) && !SCR(c2x, c2z, 1) && [at(cx, cz), at(c2x, c2z)].every(v => v === T.WALK || v === T.PIAZZA)) { P.cassonetti.push({ x: cx, z: cz, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }, { x: c2x, z: c2z, yaw: Math.atan2(-nx * far, -nz * far), via: rd.id }); nota(cx, cz, 'cassonetti'); nc = s + passoC; } else nc = s + 4; }); } });
     // i dehors: dove la pagina è il bar col dehors, e sulla piazzetta col bar (davanti alla casa che la guarda)
     S.pagine.forEach(p => { if (p.tipo === 'parete' && p.nome === 'bar_col_dehors') { const sl = chiedi(p.x, p.z, 'dehors', { pagina: p }); if (sl) P.dehors.push(dehorsDi(p, p.porta, p.b.use || (p.b.shopFront && p.b.shopFront.use))); } });
     S.pagine.filter(p => p.tipo === 'piazzetta' && p.bar).forEach(q => { let best = null, bd = 1e9; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.scorcio) return; const d = Math.hypot(p.x - q.x, p.z - q.z); if (d < q.r + 6 && d < bd && p.len >= 4) { bd = d; best = p; } });
@@ -60169,7 +60243,8 @@ var Rete = (function () {
   const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + (s || 0) * 1442695041) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
   const INTERRATA = { vittoria: 1, corso: 1 };   // E4 e il Corso: niente fili in aria
   const ABUSO = { E7: .8, E0: .3, E2: .3, E3: .1, E4: 0, E6: .2 };
-  const PASSO_LAMP = { E0: 12, E2: 12, E3: 18, E4: 0, E6: 25, E7: 0 };   // interasse fisso per epoca (il modello lo decide render: braccio, ghisa, stelo; sulla Vittoria i lampioni del regime li mette già render coi pennoni)
+  // [nitida] nel borgo e sulla marina un lampione ogni 18 m (era 12), sempre da un lato solo; ?vecchiapulizia: com'era
+  const PASSO_LAMP = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? { E0: 12, E2: 12, E3: 18, E4: 0, E6: 25, E7: 0 } : { E0: 18, E2: 18, E3: 18, E4: 0, E6: 25, E7: 0 };   // interasse fisso per epoca (il modello lo decide render: braccio, ghisa, stelo; sulla Vittoria i lampioni del regime li mette già render coi pennoni)
   let R = null, G = null;
   const open = v => v === G.T.VIA || v === G.T.WALK || v === G.T.PIAZZA || v === G.T.COB || v === G.T.QUAY || v === G.T.DIRT;
   const tl = (tx, ty) => (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) ? -1 : G.tileAt(tx, ty);
@@ -62597,9 +62672,9 @@ var PuliziaRumore = (function () {
     quota: .06,
     doppioni: { arredo: 1.2, applique: 2.2, tabellone: 3.0, pluviale: 1.0, citofono: .9, lampione: 3.5, cartello: 2.0, tenda: .6, ingombro: 2.0 },
     stessaCasa: { applique: .8, citofono: .5, pluviale: .5, tabellone: 1.0, tenda: 0 },   // fra due case accanto sono doppioni solo se quasi attaccati (due lampade ai due lati dello stesso muro di confine)
-    facciata: { base: 1, ogni: 3.2, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // cose appese: base + una ogni 3,2 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
-    marciapiede: { tratto: 6, max: 3, slargo: 4, fascia: 2.4 },
-    vicolo: .9,
+    facciata: { base: 1, ogni: 5, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // [nitida] una ogni 5 m (era 3,2)   // cose appese: base + una ogni 5 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
+    marciapiede: { tratto: 6, max: 1, slargo: 4, fascia: 2.4 },   // [nitida] una cosa a terra ogni 6 m di marciapiede (era 3), oltre ai posti delle persone, ai lampioni e ai cartelli
+    vicolo: .9, vicoloLibero: 2.4,   // [nitida] nei vicoli resta libero 2,4 m (o tutto il vicolo meno 60 cm, se è più stretto)
     porta: { fondo: 1.8, fianco: .3, alto: 1.8 },   // davanti a ogni porta: 1,8 m di corridoio libero, largo la porta più 30 cm per parte, fino a 1,8 m d'altezza
   };
   // la gerarchia: 0 si tiene sempre (ingresso, insegna, architettura, impianti), 1 la vita, 2 il resto
@@ -62722,7 +62797,7 @@ var PuliziaRumore = (function () {
     // 6) i passaggi stretti nei vicoli
     E.forEach(e => { if (!terra(e) || e.k === 'lampione' || e.k === 'cartello') return; const v = A.vicolo(e.c[0], e.c[1]); if (!v) return;
       const hu = (e.B.u1 - e.B.u0) / 2, hv = (e.B.v1 - e.B.v0) / 2, r = Math.min(hu, hv), resta = Math.max(v.w / 2 - (v.d + r), v.w / 2 - (r - v.d));   // il lato più largo che resta
-      if (resta < CFG.vicolo && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
+      if (resta < (vecchia() ? CFG.vicolo : Math.max(CFG.vicolo, Math.min(CFG.vicoloLibero, v.w - .6))) && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
     // 7) la densità: facciate e tratti di marciapiede pieni (cosa si toglierebbe)
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
@@ -62840,7 +62915,7 @@ var PuliziaRumore = (function () {
     // 6) i vicoli strozzati: verso il muro più vicino, o via
     E.forEach(e => { if (e.gone || !e.strozza) return; const v = e.strozza, sg = v.d >= 0 ? 1 : -1, G = grp(e), r = Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
       for (const s of [.3, .5, .8]) { const dx = v.n[0] * s * sg, dz = v.n[1] * s * sg;
-        if (prova(G, () => muovi(G, dx, 0, dz), () => muovi(G, -dx, 0, -dz))) { const c = A.ctr(e.B), w = A.vicolo(c[0], c[1]); if (!w || Math.max(w.w / 2 - (w.d + r), w.w / 2 - (r - w.d)) >= CFG.vicolo) { conta(az.spostati, e.k); return; } } }
+        if (prova(G, () => muovi(G, dx, 0, dz), () => muovi(G, -dx, 0, -dz))) { const c = A.ctr(e.B), w = A.vicolo(c[0], c[1]); if (!w || Math.max(w.w / 2 - (w.d + r), w.w / 2 - (r - w.d)) >= (vecchia() ? CFG.vicolo : Math.max(CFG.vicolo, Math.min(CFG.vicoloLibero, w.w - .6)))) { conta(az.spostati, e.k); return; } } }
       togli(e, 'passaggio'); });
     // 7) la densità, rifatta su quello che resta: si toglie il di più, dal fondo della gerarchia
     const D = densita(A, E.concat(X).filter(e => !e.gone), C.FAC, C.vicini, C.terra);
@@ -62850,6 +62925,127 @@ var PuliziaRumore = (function () {
     return az;
   }
   const dentro = (A, e, F) => { const q = inFacciata(e, F), L = A.larghezza(e.b, e.f); return !L || (q.u0 > .1 && q.u1 < L - .1); };   // resta sulla sua facciata
+
+  // ================= [nitida] LA DISCIPLINA DELL'ARREDO DI STRADA =================
+  // Il committente: «la mappa è pienissima ma anche piena di imperfezioni: cestini, cabine telefoniche e panchine che affollano le strade
+  // e sono ancora un po' a caso. La strada non sembra un percorso invitante: è rumorosa in modo uniforme, non sai dove guardare. Meglio un
+  // po' meno ma ultra leggibile». Dopo il censimento e le correzioni del rumore, su quello che resta del registro:
+  // - ogni cosa ha la sua ragione: la panchina sta a un posto delle persone, su una piazza o a una fermata; la cabina sull'angolo di una
+  //   piazza o a una fermata (una ogni 80 m); il cestino accanto a una panchina, a una fermata, a un'edicola, a un dehors o all'angolo
+  //   (uno ogni 25 m); i cassonetti in una piazzola sola per isolato (al più 3, una piazzola ogni 90 m); niente distributori dei giornali
+  //   (ci sono le edicole) e niente buche delle lettere fuori dalle piazze;
+  // - la carreggiata, il cuore degli incroci e le teste delle strisce restano libere;
+  // - su ogni marciapiede la corsia di chi cammina (almeno 0,9 m): quello che ci sta in mezzo va contro il muro, o se ne va;
+  // - lungo le vie al più una cosa minuta (vasi, casse, sedie, bici...) ogni 10 m di casa per lato: la vita si raccoglie nelle botteghe,
+  //   nei dehors, nei vicoli e sulle piazze, non a velo uguale su ogni muro.
+  // ?vecchiapulizia salta tutto (anche le regole di posa [nitida] di render.js e scena.js) e misura soltanto.
+  const vecchia = () => typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search);
+  const FAM = { panchina_ghisa: 'panchina', panchina_cemento: 'panchina', panchina_marmo: 'panchina', cestino: 'cestino', bidone: 'bidone', cassonetto: 'cassonetto', campana: 'cassonetto',
+    cabina_sip: 'cabina', cassetta_postale: 'cassetta', paletto: 'paletto', paletti_catena: 'paletto', parchimetro: 'parchimetro', giornali: 'giornali', fioriera: 'fioriera',
+    fontanella: 'fontanella', idrante: 'idrante', transenna: 'transenna', jersey: 'transenna', edicola: 'edicola', chiosco: 'chiosco', fermata: 'fermata' };
+  const NCFG = {
+    passo: { cabina: 80, cassetta: 100, panchina: 8, cestino: 25, parchimetro: 45, piazzola: 90 },   // la distanza minima fra due dello stesso tipo (m)
+    piazzola: { r: 4, max: 3 }, vicino: { panchina: 4, fermata: 10, angolo: 8 }, corsia: .9, angolo: 1.5, strisce: 1.6, minuto: { tratto: 10, max: 1 },
+  };
+  const FISSE_N = new Set(['fermata', 'edicola', 'chiosco', 'transenna', 'fontanella', 'idrante']);   // si contano, non si toccano (altri piani, o cose che servono)
+  function famiglia(e) { if (e.k === 'dehors') return 'dehors'; if (e.arr && FAM[e.arr]) return FAM[e.arr]; if (e.k === 'arredo' || e.k === 'ingombro') return 'minuto'; return null; }
+  // il contesto di un punto: la piazza, la fermata o l'edicola vicina, l'incrocio, il vicolo, il marciapiede (distanze dal muro e dal cordolo)
+  function contesto(A, x, z, N) {
+    const T = A.T, piazza = [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]].some(([a, b]) => A.casella(x + a, z + b) === T.PIAZZA);
+    let fermata = false; N.X.forEach(q => { if (!fermata && (q.k === 'fermata' || q.k === 'edicola') && hyp(q.c[0] - x, q.c[1] - z) < NCFG.vicino.fermata) fermata = true; });
+    let J = null, dj = Infinity; N.J.forEach(j => { const d = hyp(j.x - x, j.y - z) - j.r; if (d < dj) { dj = d; J = j; } });
+    const h = A.casaVicina(x, z, 3.5), rd = A.roadDir(x, z);
+    const mare = [0, 1, 2, 3, 4, 5, 6, 7].some(k => A.casella(x + Math.cos(k * PI / 4) * 10, z + Math.sin(k * PI / 4) * 10) === T.WATER);   // il lungomare: il mare entro 10 m
+    return { piazza, fermata, mare, dj, J, vicolo: !!A.vicolo(x, z), dw: h ? h.d : Infinity, h, dc: rd.a === null ? Infinity : rd.d, carr: A.carreggiata(x, z, 0) && rd.d < -.1 };
+  }
+  const raggio = e => Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
+  // i pannelli sul tetto: una cosa appesa alla facciata (insegna, targa, manifesto, lampada, tenda, citofono, il pannello della segnaletica)
+  // che sale oltre la gronda della sua casa (b.__top) di più di 20 cm: dalla camera sta ritta o coricata sul tetto, come un cartello dimenticato
+  const SUL_TETTO = new Set(['insegna', 'tabellone', 'tenda', 'applique', 'citofono', 'cartello']);
+  function sulTetto(A) { const L = []; A.R.E.concat(A.esterni || []).forEach(e => { if (e.gone || !e.B || !e.b || !e.F || !SUL_TETTO.has(e.k) || (e.ext && e.terra) || ((e.c = A.ctr(e.B)), inFacciata(e, e.F).d0 > 1.5)) return; const top = e.b.__top;   // solo sul filo del muro (le insegne sui tetti sono dei tetti)
+      if (typeof top === 'number' && e.B.y1 > top + .2) L.push(e); }); return L; }
+  // in mezzo alla corsia: sul marciapiede (muro e cordolo vicini) e né contro il muro né contro il cordolo resta 0,9 m per passare
+  function corsia(q) { const c = q.ctx, r = raggio(q.e); if (c.piazza || c.vicolo || !(c.dw < 3.5) || !(c.dc >= 0 && c.dc < 3.5) || c.dw + c.dc < 1.4) return false; return Math.max(c.dw - r, c.dc - r) < NCFG.corsia && c.dw - r > .2 && c.dc - r > .2; }
+  function ragione(A, N, q) { const f = q.fam, c = q.ctx;
+    if (f === 'panchina') return q.posto || c.piazza || c.mare;   // solo sulle piazze e sul lungomare (i posti delle persone stanno lì)
+    if (f === 'cabina') return c.piazza;   // solo sulle piazze, una ogni 80 m
+    if (f === 'cassetta') return c.piazza;
+    if (f === 'giornali') return false;
+    if (f === 'cestino') return c.fermata || c.dj < NCFG.vicino.angolo || N.vicinoA(q, ['panchina', 'dehors'], NCFG.vicino.panchina);
+    return true; }
+  // il censimento dell'arredo di strada (prima e dopo): quanti per tipo, per km di via, e quanti stanno dove non devono
+  function contaN(A, N) {
+    const out = { per: {}, km: N.km, kmVicoli: N.kmV, perKm: {}, ostacoli: { corsia: 0, carreggiata: 0, angolo: 0, strisce: 0, senzaRagione: 0 }, tot: 0, lungoVie: 0 };
+    N.voci().forEach(q => { const f = q.fam, c = q.ctx; out.per[f] = (out.per[f] || 0) + 1; out.tot++;
+      if (!c.piazza && !c.vicolo && c.dw < 3.5 && c.dc < 4) out.lungoVie++;
+      if (FISSE_N.has(f)) return;
+      if (c.carr && f !== 'transenna') out.ostacoli.carreggiata++;
+      if (f !== 'paletto' && c.J && c.J.n >= 3 && c.dj < NCFG.angolo) out.ostacoli.angolo++;
+      if (N.strisce(q.c[0], q.c[1], raggio(q.e))) out.ostacoli.strisce++;
+      if (f !== 'dehors' && corsia(q)) out.ostacoli.corsia++;
+      if (!ragione(A, N, q)) out.ostacoli.senzaRagione++; });
+    Object.keys(out.per).forEach(f => { out.perKm[f] = +(out.per[f] / Math.max(.1, N.km + N.kmV)).toFixed(1); }); out.perKmTot = +(out.tot / Math.max(.1, N.km + N.kmV)).toFixed(1);
+    out.ostacoli.sulTetto = sulTetto(A).length; out.ostacoli.tot = Object.values(out.ostacoli).reduce((s, v) => s + v, 0);
+    return out;
+  }
+  function nitida(A, N) {
+    const az = { tolti: {}, spostati: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
+    const I = A.indici(), nv = G => G.reduce((s, m) => s + A.viol(m, I).length, 0);
+    const toglie = (q, perche) => { const G = (q.e.membri || [q.e]).filter(m => !m.gone); if (G.some(m => LIV[m.k] === 0 || m.free) || q.posto) { conta(az.tenuti, perche + ':' + q.fam); return false; }
+      const su = []; G.forEach(m => A.sopra(m, I).forEach(o => { if (!G.includes(o) && !su.includes(o)) su.push(o); })); if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free)) { conta(az.tenuti, perche + ':' + q.fam); return false; }
+      G.concat(su).forEach(m => A.togli(m)); q.gone = true; conta(az.tolti, perche + ':' + q.fam); return true; };
+    const V = N.voci().filter(q => !q.ext);
+    // 1) la ragione d'essere e il passo: chi non ne ha una se ne va; dello stesso tipo, chi sta troppo vicino a uno tenuto se ne va
+    const tenuti = {}, vicinoT = (q, f, r) => (tenuti[f] || []).some(o => hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < r);
+    const ordine = V.filter(q => q.fam !== 'minuto' && q.fam !== 'dehors' && !FISSE_N.has(q.fam)).sort((a, b) => (b.posto - a.posto) || (b.ctx.piazza - a.ctx.piazza) || (b.ctx.fermata - a.ctx.fermata) || (a.e.id > b.e.id ? 1 : -1));
+    // i cassonetti: le piazzole (cassonetti a meno di 4 m l'uno dall'altro); la prima resta, quelle a meno di 90 m se ne vanno; al più 3 per piazzola
+    const baie = [];
+    ordine.filter(q => q.fam === 'cassonetto').forEach(q => { let b = baie.find(B => B.some(o => hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < NCFG.piazzola.r)); if (!b) baie.push(b = []); b.push(q); });
+    const baieT = []; baie.forEach(B => { const c = [B.reduce((s, o) => s + o.c[0], 0) / B.length, B.reduce((s, o) => s + o.c[1], 0) / B.length];
+      if (baieT.some(o => hyp(o[0] - c[0], o[1] - c[1]) < NCFG.passo.piazzola)) { B.forEach(q => toglie(q, 'piazzola')); return; } baieT.push(c); B.slice(NCFG.piazzola.max).forEach(q => toglie(q, 'piazzola')); });
+    ordine.forEach(q => { if (q.gone || q.fam === 'cassonetto' || q.fam === 'paletto' || q.fam === 'bidone') return;
+      if (!ragione(A, N, q)) { toglie(q, 'ragione'); return; }
+      const p = NCFG.passo[q.fam]; if (p && !q.posto && vicinoT(q, q.fam, p)) { toglie(q, 'passo'); return; }
+      (tenuti[q.fam] = tenuti[q.fam] || []).push(q); });
+    // 2) la carreggiata, il cuore degli incroci, le teste delle strisce: libere
+    V.forEach(q => { if (q.gone || q.e.gone || FISSE_N.has(q.fam) || q.fam === 'dehors') return; const c = q.ctx;
+      if (c.carr) toglie(q, 'carreggiata'); else if (q.fam !== 'paletto' && c.J && c.J.n >= 3 && c.dj < NCFG.angolo) toglie(q, 'angolo'); else if (N.strisce(q.c[0], q.c[1], raggio(q.e))) toglie(q, 'strisce'); });
+    // 3) la corsia di chi cammina: quello che sta in mezzo va contro il muro (a 12 cm), se il regista non trova niente di nuovo; se no via
+    V.forEach(q => { if (q.gone || q.e.gone || FISSE_N.has(q.fam) || q.fam === 'dehors' || !corsia(q)) return; const c = q.ctx, h = c.h.h.B, e = q.e, G = (e.membri || [e]).filter(m => !m.gone);
+      const u = e.c[0] * h.c - e.c[1] * h.s, v = e.c[0] * h.s + e.c[1] * h.c, cu = clamp(u, h.u0, h.u1), cv = clamp(v, h.v0, h.v1), wx = cu * h.c + cv * h.s, wz = -cu * h.s + cv * h.c;
+      const L = hyp(wx - e.c[0], wz - e.c[1]) || 1, s = c.dw - raggio(e) - .12, dx = (wx - e.c[0]) / L * s, dz = (wz - e.c[1]) / L * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]);
+      const prima = nv(G); G.forEach(m => A.sposta(m, dx, dy, dz));
+      if (nv(G) <= prima && !A.inCasa(e)) { G.forEach(m => A.rimetti(I, m)); q.ctx = e.ctxN = contesto(A, e.c[0], e.c[1], N); conta(az.spostati, 'corsia:' + q.fam); return; }
+      G.forEach(m => A.sposta(m, -dx, -dy, -dz)); toglie(q, 'corsia'); });
+    // 4) la cosa minuta lungo le vie: al più una ogni 10 m di casa per lato (la più grande; i posti delle persone restano)
+    const TR = new Map(); V.forEach(q => { if (q.gone || q.e.gone || q.fam !== 'minuto') return; const c = q.ctx; if (c.piazza || c.vicolo || !c.h || c.dc > 4 || c.dw > 2.4) return;
+      const key = c.h.i + ':' + c.h.lato + ':' + Math.floor(c.h.u / NCFG.minuto.tratto); let a = TR.get(key); if (!a) TR.set(key, a = []); a.push(q); });
+    TR.forEach(L => { L.sort((a, b) => (b.posto - a.posto) || ((b.e.vol || 0) - (a.e.vol || 0))); L.slice(NCFG.minuto.max).forEach(q => toglie(q, 'minuto')); });
+    // 5) i pannelli sul tetto: scendono sotto la gronda (a 15 cm) se restano sopra la testa di chi passa (1,9 m); se no se ne vanno
+    sulTetto(A).forEach(e => { const top = e.b.__top, dy = top - .15 - e.B.y1, c = A.ctr(e.B), g0 = A.groundH(c[0], c[1]);
+      if (e.ext) { A.togliEsterno(e); conta(az.tolti, 'tetto:' + e.k); return; }
+      const G = (e.membri || [e]).filter(m => !m.gone);
+      if (e.B.y0 + dy > g0 + 1.9) { G.forEach(m => A.sposta(m, 0, dy, 0)); G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'tetto:' + e.k); }
+      else { G.forEach(m => A.togli(m)); conta(az.tolti, 'tetto:' + e.k); } });
+    A.fine();
+    return az;
+  }
+  // le voci dell'arredo di strada: a terra, in città, una per composizione, col contesto; più le fermate e le edicole delle vie vive
+  function vociN(A) {
+    const X = (A.esterni || []).filter(x => !x.gone); X.forEach(x => { x.c = A.ctr(x.B); });
+    const J = A.incroci(), S = [].concat(...A.strisce().map(c => { const nx = -c.uy, ny = c.ux, o = c.w / 2 + .9; return [[c.x + nx * o, c.y + ny * o], [c.x - nx * o, c.y - ny * o]]; }));
+    let km = 0, kmV = 0; A.vie().forEach(v => { let L = 0; for (let k = 0; k < v.pts.length - 1; k++) { const [ax, az] = v.pts[k], [bx, bz] = v.pts[k + 1]; if (A.citta((ax + bx) / 2, (az + bz) / 2)) L += hyp(bx - ax, bz - az); } if (v.kind === 'vicolo') kmV += L / 1000; else km += L / 1000; });
+    const N = { X, J, km: +km.toFixed(2), kmV: +kmV.toFixed(2), strisce: (x, z, r) => S.some(p => hyp(p[0] - x, p[1] - z) < NCFG.strisce + r) };
+    let cache = null;
+    N.voci = () => { if (cache) return cache; const L = [], visti = new Set(); A.R.E.forEach(e => { if (e.gone || !e.B) return; const f = famiglia(e); if (!f) return; const key = e.membri && e.membri.length > 1 ? e.membri : e; if (visti.has(key)) return; visti.add(key);
+        const c = A.ctr(e.B); e.c = c; if (Math.abs(e.B.y0 - A.groundH(c[0], c[1])) > .6 || !A.citta(c[0], c[1])) return;
+        if (!e.ctxN) e.ctxN = contesto(A, c[0], c[1], N);
+        const q = { e, fam: f, c, ctx: e.ctxN, posto: A.posto(e) }; Object.defineProperty(q, 'gone', { get: () => (e.membri || [e]).every(m => m.gone), set: () => {} }); L.push(q); });
+      X.forEach(x => { if ((x.k === 'fermata' || x.k === 'edicola') && A.citta(x.c[0], x.c[1])) L.push({ e: x, fam: x.k, c: x.c, ctx: x.ctxN || (x.ctxN = contesto(A, x.c[0], x.c[1], N)), posto: true, ext: true, gone: false }); });
+      return (cache = L); };
+    N.vicinoA = (q, fams, r) => N.voci().some(o => o !== q && !o.gone && fams.includes(o.fam) && hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < r) || X.some(x => (x.k === 'fermata' || x.k === 'edicola') && hyp(x.c[0] - q.c[0], x.c[1] - q.c[1]) < r + 2);
+    return N;
+  }
 
   // ================= I MODELLI: quanto si vedono e quanto sono poveri (solo col censimento acceso, window.__rumoreChi) =================
   // per chi li posa (la funzione e la riga di index.html): quanti, quanta superficie occupano sullo schermo della camera di gioco
@@ -62864,20 +63060,24 @@ var PuliziaRumore = (function () {
 
   // ================= L'INGRESSO (da render.js, pulizia2, dopo il regista) =================
   function passa(A) {
+    if (vecchia()) { CFG.facciata.ogni = 3.2; CFG.marciapiede.max = 3; }   // [nitida] ?vecchiapulizia: le densità di prima
     const t0 = performance.now(), prima = censisci(A), off = spento(), chi = typeof window !== 'undefined' && window.__rumoreChi;
     const mod0 = chi ? modelli(A, prima.E) : null;
     const az = off ? { spento: true } : correggi(A, prima);
+    // [nitida] la disciplina dell'arredo di strada, dopo il rumore (?vecchiapulizia o ?norumore: solo la misura)
+    let NI = null; try { if (A.incroci) { const vv = vecchia() || off, n0 = contaN(A, vociN(A)), azN = vv ? { spento: true } : nitida(A, vociN(A));
+        if (!vv) A.R.E.forEach(e => { e.ctxN = null; }); NI = { prima: n0, dopo: vv ? n0 : contaN(A, vociN(A)), azioni: azN, spento: vv }; } } catch (e) { console.error('[nitida]', e); }
     const dopo = off ? prima : censisci(A);
     const somma = o => Object.values(o || {}).reduce((s, v) => s + v, 0);
     const R = { prima: prima.rep, dopo: dopo.rep, azioni: az, spento: off, ms: Math.round(performance.now() - t0),
       numeri: off ? null : { tolti: somma(az.tolti), ruotati: somma(az.ruotati), spostati: somma(az.spostati), posati: somma(az.posati), tenuti: somma(az.tenuti) } };
     if (chi) { R.modelli = { prima: mod0, dopo: modelli(A, dopo.E) }; R.punti = { prima: prima.rep.punti, dopo: dopo.rep.punti }; }
     delete prima.rep.punti; if (dopo !== prima) delete dopo.rep.punti;
-    if (typeof window !== 'undefined') window.__rumore = R;
+    R.nitida = NI; if (typeof window !== 'undefined') { window.__rumore = R; window.__nitida = NI; }
     if (typeof window !== 'undefined' && window.__dbg35) console.log('[rumore] prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'numeri', JSON.stringify(R.numeri), R.ms + ' ms');
     return R;
   }
-  const API = { CFG, LIV, passa, censisci, sagoma, wrap90, spento, SALTA: new Set() };   // SALTA: le voci della segnaletica tolte (segnaletica.js non le disegna)
+  const API = { CFG, LIV, NCFG, FAM, passa, censisci, sagoma, wrap90, spento, vecchia, SALTA: new Set() };   // [nitida] vecchia(): ?vecchiapulizia   // SALTA: le voci della segnaletica tolte (segnaletica.js non le disegna)
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();
@@ -63007,6 +63207,7 @@ var Render = (function () {
   function chi2() { const L = (new Error().stack || '').split('\n'); let riga = null;   // la riga più interna che non è un attrezzo (anche dentro una funzione senza nome), col nome della prima funzione che ce l'ha
     for (let i = 2; i < L.length; i++) { const m = /at (?:new )?(?:Object\.)?([\w$.<>]+) \(.*:(\d+):\d+\)/.exec(L[i]), a = m ? null : /at .*:(\d+):\d+\)?$/.exec(L[i]);
       if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1])) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
+  const arrDi2 = o => { if (o.userData.arr) return o.userData.arr; for (const c of o.children) if (c.userData && c.userData.arr) return c.userData.arr; return null; };   // [nitida]
   function addStatic(obj, noShadow) {
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
     obj.updateMatrixWorld(true); curObj = obj;
@@ -63014,7 +63215,7 @@ var Render = (function () {
       if (dy) { obj.position.y -= dy; obj.updateMatrixWorld(true); } }
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
-    if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); if (window.__rumoreChi) { e2.chi = chi2(); e2.nm = 0; e2.nb = 0; } }   // [pulizia] chi l'ha fatto (solo per il censimento dei modelli)
+    if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); if (window.__rumoreChi) { e2.chi = chi2(); e2.nm = 0; e2.nb = 0; } e2.arr = arrDi2(obj); }   // [pulizia] chi l'ha fatto (solo per il censimento dei modelli)   [nitida] il tipo d'arredo (pm3) della cosa o del suo primo figlio che ce l'ha
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
       o.getWorldPosition(_wp);
@@ -68682,7 +68883,7 @@ var Render = (function () {
     [G.PLACES.varco, G.PLACES.piazza_gov, G.PLACES.muro].forEach(p => { if (!p || (cn1() && vitRoad2())) return; if (!(NUOVA4() && filaBlocco4(p))) for (let k = 0; k < 4; k++) { const a = k * 1.57 + .4, x = p.x + Math.cos(a) * 6, z = p.y + Math.sin(a) * 6; if (free(x, z)) transenna(x, z, a); }
       for (let k = 0; k < 2; k++) { const g = G0(); for (let q = 0; q < 7; q++) add(g, box(.7, .3, .4, sm(pick(r, ['#7a6e56', '#6a5e48', '#84785e']), { roughness: 1 })), (q % 4) * .65 - 1, .15 + Math.floor(q / 4) * .3, 0, 0, r() * .2, 0); const x = p.x + (k ? 5 : -5), z = p.y + 4; if (free(x, z)) place(g, x, z, r()); } });
     // arredo delle vie di città: panchine scrostate, paletti, cabine del telefono, buche delle lettere; mai sulla carreggiata
-    (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'litoranea').forEach(rd => {
+    (M.roads || []).filter(rd => (rd.kind === 'citta' || rd.kind === 'litoranea') && !NIT1()).forEach(rd => {   // [nitida] nella città nuova niente panchine, paletti, cabine e buche a caso lungo la via: le panchine sono dei posti, le cabine delle piazze e delle fermate (pulizia_rumore.js)
       let acc = 0, nx0 = 16 + r() * 14;   // [ordine1] meno arredo sparso, con un ritmo
       for (let k = 1; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < nx0) continue; acc = 0; nx0 = 22 + r() * 22;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = r() < .5 ? 1 : -1, off = rd.w / 2 + (rd.rect ? 1.1 : 1.5), x = ax + nx * sd * off, z = az + nz * sd * off;
@@ -69521,26 +69722,27 @@ var Render = (function () {
         [-1, 1].forEach(sd => {
           const off = (o) => [x0 + nx * sd * o, z0 + nz * sd * o];
           // canaletta: carte, lattine, bottiglie, foglie contro il cordolo
-          { const [x, z] = off(rd.w / 2 - .25 - rr() * .2); if (rr() < (vic ? .2 : .42) && !solid1(x, z)) smallThing(x, z); }
+          { const [x, z] = off(rd.w / 2 - .25 - rr() * .2); if (rr() < (vic ? .2 : .42) * (NIT1() ? .1 : 1) && !solid1(x, z)) smallThing(x, z); }   // [nitida] nella città nuova la canaletta è quasi pulita: una cosa ogni ~15 m, non ogni 3
           // erba che spunta fra cordolo e asfalto (o fra i basoli lungo il muro, nei vicoli)
           { const [x, z] = off(rd.w / 2 + (vic ? -.15 : .02)); if (rr() < (vic ? .24 : .14) /* [unione11] [ordine1] */ && !solid1(x, z) && !zebra11(x, z)) tuft(x, z, .22 + rr() * .26, rr() < .5 ? 0 : 1); }
           if (vic || !side) return;
           // sul marciapiede: un foglio, un volantino, erba fra le lastre
-          { const [x, z] = off(rd.w / 2 + .5 + rr() * (side - .9)); if (!solid1(x, z) && !onCarr1(x, z, 0)) { const q = rr(); if (q < .14) paper(x, z); else if (q < .2) smallThing(x, z); else if (q < .26 && !zebra11(x, z)) tuft(x, z, .15 + rr() * .12, 0); } }   /* [unione11] */
+          { const [x, z] = off(rd.w / 2 + .5 + rr() * (side - .9)); if (!solid1(x, z) && !onCarr1(x, z, 0)) { const q = rr(); if (q < .14) { if (!NIT1()) paper(x, z); } else if (q < .2) { if (!NIT1()) smallThing(x, z); } else if (q < .26 && !zebra11(x, z)) tuft(x, z, .15 + rr() * .12, 0); } }   // [nitida] la corsia di chi cammina resta pulita   /* [unione11] */
           // al piede del muro: erbacce fitte, e le cose grandi
           { const [x, z] = off(rd.w / 2 + side - .3); const behind = off(rd.w / 2 + side + .9); const wall = G.tileAt(Math.floor(behind[0] / TS), Math.floor(behind[1] / TS)) === T.BLD;
             if (!solid1(x, z) && !onCarr1(x, z, 0)) { if (rr() < (wall ? .36 : .15)) for (let q = 0; q < 1 + Math.floor(rr() * 2); q++) tuft(x + (rr() - .5) * .7, z + (rr() - .5) * .3, .26 + rr() * .36, rr() < .35 ? 2 : rr() < .6 ? 0 : 1);   /* [unione11] */
-              if (rr() < (wall ? .22 : .1)) bigThing(x, z, ry + (rr() - .5) * .6); else if (rr() < .3) smallThing(x, z); } }
+              if (rr() < (wall ? .22 : .1)) { if (!NIT1()) bigThing(x, z, ry + (rr() - .5) * .6); } else if (rr() < .3 && !NIT1()) smallThing(x, z); } }   // [nitida] sulle vie niente sacchi, cartoni e copertoni a ogni muro: la roba sta nei vicoli e nei cortili
         });
         // nei vicoli anche qualcosa in mezzo, contro il muro
-        if (vic && rr() < .16) { const sd = rr() < .5 ? 1 : -1, x = x0 + nx * sd * (rd.w / 2 - .4), z = z0 + nz * sd * (rd.w / 2 - .4); if (!solid1(x, z)) bigThing(x, z, ry); }
+        if (vic && rr() < (NIT1() ? .06 : .16)) {   // [nitida] nei vicoli meno, a gruppi radi
+          const sd = rr() < .5 ? 1 : -1, x = x0 + nx * sd * (rd.w / 2 - .4), z = z0 + nz * sd * (rd.w / 2 - .4); if (!solid1(x, z)) bigThing(x, z, ry); }
       }
     });
     // 2) piazze, cortili, soglie: erba nelle fughe, cartacce sparse
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.PIAZZA && v !== T.WALK && v !== T.COB && v !== T.DIRT) continue;
       const h = th(tx, ty, 4242); if (h > (v === T.DIRT ? .6 : .3)) continue; const x = tx * TS + .3 + th(tx, ty, 4243) * 1.4, z = ty * TS + .3 + th(tx, ty, 4244) * 1.4; if (solid1(x, z) || busy1(x, z, .15)) continue; if (PLv && PLv.zona(x, z)) continue;   // [spianata2] la spianata e la piazza d'armi non hanno cartacce sparse: le cose a terra stanno nei mucchietti delle scene (sotto)
-      if (h < .17) { if (v === T.DIRT || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const w = gT(tx + a, ty + b); return w === T.BLD || w === T.GRASS || w === T.DIRT; })) tuft(x, z, .2 + h * 2, v === T.DIRT ? 1 : 0); } else if (h < .24) paper(x, z); else smallThing(x, z);   /* [unione11] */
+      if (h < .17) { if (v === T.DIRT || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const w = gT(tx + a, ty + b); return w === T.BLD || w === T.GRASS || w === T.DIRT; })) tuft(x, z, .2 + h * 2, v === T.DIRT ? 1 : 0); } else if (NIT1()) continue; else if (h < .24) paper(x, z); else smallThing(x, z);   /* [unione11] */   // [nitida] piazze e marciapiedi senza cartacce sparse a tappeto
     }
     // 3) [spianata2] i mucchietti del palco (palco.js), solo nelle scene ammesse da Chiarezza.SCENE_A_TERRA: scuri, raccolti in un raggio
     // di un metro (lattine schiacciate, cicche, uno straccio, un pezzo di sacco di sabbia, una tanica, la corda, una tavola), mai un foglio chiaro
@@ -69825,8 +70027,9 @@ var Render = (function () {
         const led = new THREE.Mesh(new THREE.SphereGeometry(.025, 6, 4), sb('#ff2a1a')); add(head, led, -.05, .06, .1); head.position.set(hx, y, hz); scene.add(head);
         S1.cams.push({ head, led, base: Math.atan2(cz0 - hz, cx0 - hx), ph: ci * 1.3 }); nc++; break; } });
     // 4) paletti: agli angoli degli incroci di città e allo sbocco dei vicoli sulle vie larghe; zona pedonale e divieto di sosta
-    const paletto = (x, z) => { const gg = G0(); MD1.bollard(gg); place(gg, x, z, 0); np++; };
-    junc1().forEach(J => { if (!J.city || J.arms.length < 3) return; J.arms.forEach(a => { const rx = a.uy, ry = -a.ux, d = J.r + 1, o = a.w / 2 + .4, x = J.x + a.ux * d + rx * o, z = J.y + a.uy * d + ry * o; if (swH(x, z) > .1 && okSpot1(x, z, .25)) paletto(x, z); }); });
+    // [nitida] nella città nuova solo allo sbocco dei vicoli: gli angoli degli incroci restano liberi per chi attraversa
+    const paletto = (x, z) => { const gg = G0(); MD1.bollard(gg); gg.userData.arr = 'paletto'; place(gg, x, z, 0); np++; };   // [nitida] il tipo per il registro
+    junc1().forEach(J => { if (!J.city || J.arms.length < 3 || NIT1()) return; J.arms.forEach(a => { const rx = a.uy, ry = -a.ux, d = J.r + 1, o = a.w / 2 + .4, x = J.x + a.ux * d + rx * o, z = J.y + a.uy * d + ry * o; if (swH(x, z) > .1 && okSpot1(x, z, .25)) paletto(x, z); }); });
     (M.roads || []).forEach(rd => { if (rd.kind !== 'vicolo' || !rd.pts || rd.pts.length < 3) return; const g = geo1(rd), P = rd.pts;
       [[0, 1], [g.n - 1, -1]].forEach(([e, dir]) => { const [x0, z0] = P[e]; if (!(M.roads || []).some(o => o !== rd && urb1(o) && o.pts.some(q => Math.hypot(q[0] - x0, q[1] - z0) < o.w / 2 + 2))) return;
         const k = Math.max(0, Math.min(g.n - 1, e + dir * 2)), ux = g.ux[k] * dir, uz = g.uy[k] * dir, cx = P[k][0], cz = P[k][1];
@@ -69846,19 +70049,20 @@ var Render = (function () {
       if (r() < .3) { gg.add(at1(fB(.06, 1.7, .06, C1.wood, 'wood', 0), -2, .85, 0)); fRod(gg, [-2.45, 1.3, 0], [-1.55, 1.3, 0], .025, C1.wood, 'wood'); gg.add(at1(fI(.14, 1, '#c8b88a', 'cloth'), -2, 1.66, 0)); gg.add(at1(fB(.5, .6, .2, '#6a2a2a', 'cloth', .02), -2, 1.1, 0)); gg.add(at1(fC(.2, .26, .1, 10, '#5a4a2a', 'cloth'), -2, 1.82, 0)); }   // spaventapasseri col cappello
       gg.position.set(cx, groundH(cx, cz), cz); gg.rotation.y = r() < .5 ? 0 : Math.PI / 2; addStatic(gg); no++; n++; }
     // 6) parchimetri lungo gli stalli (lato destro delle vie larghe), distributori di giornali agli angoli e davanti a bar e tabacchi
+    // [nitida] nella città nuova un parchimetro ogni ~60 m e niente distributori dei giornali (ci sono le edicole delle vie vive)
     let npm = 0, ngz = 0; const zinc = sm('#8a8e90', { metalness: .55, roughness: .45 }), dark = sm('#2a2c30', { metalness: .4, roughness: .5 });
-    const parchimetro = (x, z, rot) => { const gg = G0(); MD1.meter(gg);
+    const parchimetro = (x, z, rot) => { const gg = G0(); MD1.meter(gg); gg.userData.arr = 'parchimetro';
       place(gg, x, z, rot); npm++; };
     const GZ = [['LA VOCE', '#8a2a24'], ['IL GARANTE', '#2a3a6a'], ['IL TIRRENO', '#c89a30'], ['GAZZETTA', '#3a5a3a'], ['LA SERA', '#5a5a5a']];
     const giornali = (x, z, rot) => { const gg = G0(), k = Math.floor(r() * GZ.length), tm = S1.tex['gz' + k] || (S1.tex['gz' + k] = new THREE.MeshLambertMaterial({ map: signTexture(GZ[k][0], '#f0ead8', GZ[k][1]) }));
-      MD1.newsbox(gg, GZ[k][1], tm);
+      MD1.newsbox(gg, GZ[k][1], tm); gg.userData.arr = 'giornali';
 
 
       if (!OCC35.free(x, z, .35, .35)) return false; OCC35.mark(x, z, .35, .35); place(gg, x, z, rot); ngz++; return true; };
     (M.roads || []).forEach(rd => { if (!asph1(rd) || !urb1(rd) || rd.w < 8 || !rd.pts) return; const g = geo1(rd), P = rd.pts; let next = 8;
-      for (let k = 1; k < g.n; k++) { if (g.s[k] < next) continue; const [px, pz] = P[k]; if (!cityAt1(px, pz) || nearJ1(px, pz, 8) < 0) continue; next = g.s[k] + 22 + r() * 10;
+      for (let k = 1; k < g.n; k++) { if (g.s[k] < next) continue; const [px, pz] = P[k]; if (!cityAt1(px, pz) || nearJ1(px, pz, NIT1() ? 14 : 8) < 0) continue; next = g.s[k] + (NIT1() ? 55 : 22) + r() * 10;   /* [nitida] un parchimetro ogni ~60 m, lontano dagli angoli */
         const x = px - g.uy[k] * (rd.w / 2 + .45), z = pz + g.ux[k] * (rd.w / 2 + .45); if (swH(x, z) > .1 && okSpot1(x, z, .25)) parchimetro(x, z, Math.atan2(g.uy[k], -g.ux[k])); } });
-    junc1().forEach(J => { if (!J.city || J.arms.length < 3 || r() < .4) return; const a = pick(r, J.arms), rx = -a.uy, ry = a.ux, x0 = J.x + a.ux * (J.r + 3) + rx * (a.w / 2 + 1.2), z0 = J.y + a.uy * (J.r + 3) + ry * (a.w / 2 + 1.2), rot = Math.atan2(-rx, -ry);
+    junc1().forEach(J => { if (!J.city || J.arms.length < 3 || r() < .4 || NIT1()) return; const a = pick(r, J.arms), rx = -a.uy, ry = a.ux, x0 = J.x + a.ux * (J.r + 3) + rx * (a.w / 2 + 1.2), z0 = J.y + a.uy * (J.r + 3) + ry * (a.w / 2 + 1.2), rot = Math.atan2(-rx, -ry);
       if (swH(x0, z0) < .1 || solid1(x0, z0)) return; const k = 1 + Math.floor(r() * 3); for (let q = 0; q < k; q++) giornali(x0 + a.ux * q * .58, z0 + a.uy * q * .58, rot); });
     // [ordine1] davanti ai bar niente distributori girati a caso attorno alla porta: stanno agli angoli, in fila, verso la strada
     if (window.__dbg35) console.log('[dbg] urbano1 parchimetri', npm, 'giornali', ngz);
@@ -70063,7 +70267,11 @@ var Render = (function () {
       for (let kk = 0; kk < DM.length; kk++) { const x = (kk % NW) * R, z = Math.floor(kk / NW) * R, tx = Math.floor(x / TS), tz = Math.floor(z / TS);
         if (zoneT(tx, tz) !== ZN.CITTA) continue; C38[kk] = 1; m[kk] = 0; if (DM[kk] > 1e8) continue; const d = DM[kk], h0 = HW[kk];
         let e0 = d - h0; if (SM1 && E2[kk] < 1e8) { const a = E1[kk], b = E2[kk], hk = Math.max(3.8 - Math.abs(a - b), 0) / 3.8; e0 = Math.min(a, b) - hk * hk * 3.8 / 4; }   // [pavimenti] l'unione morbida: il cordolo gira l'angolo col raggio della svolta dipinta (3,2 m)
-        D38[kk] = e0; S38[kk] = Math.min(e0 - .02, 2.1 - e0); } }   // [isola35] in città solo la fascia lungo le vie
+        D38[kk] = e0; S38[kk] = Math.min(e0 - .02, 2.1 - e0);   // [isola35] in città solo la fascia lungo le vie
+        // [nitida] dove una casa sta a meno di 1,5 m dal cordolo il marciapiede non resta una striscia sotto il muro: lì finisce (il cordolo
+        // gira e chiude contro la casa), il selciato resta a filo strada
+        if (e0 >= 0 && e0 < 1.5 && NIT1()) { let dB = 9; for (const r of [0, .5, 1, 1.5]) { if (dB < 9) break; for (let a = 0; a < (r ? 8 : 1); a++) { const qx = x + Math.cos(a * .785) * r, qz = z + Math.sin(a * .785) * r; if (G.tileAt(Math.floor(qx / TS), Math.floor(qz / TS)) === T.BLD && Math.hypot(qx - x, qz - z) < 1.51) { dB = r; break; } } }
+          if (e0 + dB < 1.5) S38[kk] = -.05; } } }
     // [carico] le colonne si sommano tutte insieme riga per riga (prima una colonna alla volta, saltando in memoria): stessi conti
     // nello stesso ordine per ogni colonna, quindi stessi numeri, ma 4 s in meno all'avvio della città nuova
     const CS = new Float64Array(NW);
@@ -70898,6 +71106,11 @@ var Render = (function () {
       sopra: (e, I) => { const L = []; I.near(I.E, e.B, o => { if (o !== e && !o.gone && Math.abs(o.B.y0 - e.B.y1) < .12 && sat2(e.B, o.B) > .02) L.push(o); }); return L; }, rimetti: (I, e) => I.put(I.E, e.B, e),
       togli: e => togli2(e), sposta: (e, dx, dy, dz) => { sposta2(e, dx, dy, dz); e.c = ctr2(e.B); }, ruota: (e, da) => { ruota2(e, da); e.c = ctr2(e.B); }, ruotabile: e => !e.free && (e.parts.length || e.objs.length),
       fine: () => { P2.dirty.forEach(g => { g.computeBoundingSphere(); g.computeBoundingBox(); }); P2.dirty.clear(); },
+      // [nitida] il contesto dell'arredo per pulizia_rumore.js: la casella, la carreggiata, gli incroci di città, le teste delle strisce, le vie
+      casella: (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)), T: G.T, citta: (x, z) => cityAt1(x, z), carreggiata: (x, z, m) => onCarr1(x, z, m || 0),
+      incroci: () => junc1().filter(J => J.city).map(J => ({ x: J.x, y: J.y, r: J.r, n: J.arms.length })),
+      strisce: () => crossings35().map(c => ({ x: c.x, y: c.y, ux: c.ux, uy: c.uy, w: c.w || 6 })),
+      vie: () => (M.roads || []).filter(rd => rd.pts && rd.pts.length > 1 && (rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'litoranea')).map(rd => ({ id: rd.id, kind: rd.kind, w: rd.w || 6, pts: rd.pts })),
     };
   }
   function pulizia2() {
@@ -71015,7 +71228,9 @@ var Render = (function () {
         const [x, z] = at(side * 1.4, .5); const g = G0(); B35.sedia(g, 0, 0, 0, pick(rb, ['#5a4a3a', '#e8e4dc', '#2a4a6a'])); if (rb() < .6) B35.vaso(g, .6, 0, .3); put(g, x, z, ry, .6, .35);
       } else {   // casa: i vasi ai lati della porta, la bici appoggiata, la bombola, la sedia di chi si siede al sole
         const k = rb();
-        if (k < .55) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
+        if (NIT1()) {   // [nitida] nella città nuova la porta di casa ha al più i due vasi, uguali e simmetrici (una casa su tre): niente bici, bombole e sedie sparse a ogni portone
+          if (k < .33) { const h = .3 + rb() * .1, col = pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a']); [-1, 1].forEach(s => { const [x, z] = at(s * 1.0, .3); const g = G0(); B35.vaso(g, 0, 0, h, col); put(g, x, z, ry, .22, .22); }); }
+        } else if (k < .55) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
         if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, 0); put(g, x, z, ry, .65, .2);   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
         else if (rb() < .25) { const [x, z] = at(side * 1.3, .3); const g = G0(); B35.bombola(g, 0, 0, pick(rb, ['#c84a2a', '#4a6a8a', '#a8a8a0'])); put(g, x, z, ry, .2, .2); }
         else if (rb() < .2) { const [x, z] = at(side * 1.3, .45); const g = G0(); B35.sedia(g, 0, 0, Math.PI, pick(rb, ['#5a4a3a', '#7a6a50'])); put(g, x, z, ry, .3, .3); }
@@ -71044,7 +71259,7 @@ var Render = (function () {
     // i cortili: roba vecchia buttata (poltrona, televisore, frigo, gomme, pallet), una cassetta di piante, un fusto per il fuoco
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.GRASS && v !== T.DIRT && v !== T.COB) continue; if (RW[ty * G.GW + tx] > 0) continue;
-      const rr = rng((tx * 9337 + ty * 1291 + 35) >>> 0); if (rr() > .03) continue;
+      const rr = rng((tx * 9337 + ty * 1291 + 35) >>> 0); if (rr() > (NIT1() ? .012 : .03)) continue;   // [nitida] la roba vecchia nei cortili, più rada
       const near = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => gT(tx + a, ty + b) === T.BLD); if (!near.length) continue;
       const [a, b] = near[0], ry = Math.atan2(-a, -b), x = tx * TS + 1 + a * .3, z = ty * TS + 1 + b * .3, g = G0(), q = rr();
       if (q < .4) { B35.poltrona(g, 0, 0, rr() * .6 - .3, pick(rr, ['#8a2a24', '#4a5a3a', '#6a5040', '#3a4a6a'])); if (rr() < .6) B35.tv(g, .9, .2, rr() - .5); if (rr() < .5) B35.cartone(g, -.8, .2, rr(), .8, true); }
@@ -71085,7 +71300,7 @@ var Render = (function () {
       strings++; break; }
     });
     // pattume sparso lungo i cordoli e nei vicoli: lattine, bottiglie, bicchieri, un sacco abbandonato
-    (M.roads || []).filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo').forEach((rd, ri) => {
+    (M.roads || []).filter(rd => (rd.kind === 'citta' || rd.kind === 'vicolo') && !NIT1()).forEach((rd, ri) => {   // [nitida] nella città nuova niente pattume a passo fisso lungo ogni cordolo (la canaletta di vita1 basta)
       const P = rd.pts; let acc = 0, next = 3 + th(ri, 0, 358) * 6;
       for (let k = 0; k < P.length - 1; k++) { const [ax, az] = P[k], [bx, bz] = P[k + 1], L = Math.hypot(bx - ax, bz - az) || 1; acc += L; if (acc < next) continue; acc = 0; next = (rd.kind === 'vicolo' ? 4 : 7) + th(ri, k, 359) * 8;
         const nx = -(bz - az) / L, nz = (bx - ax) / L, sd = th(ri, k, 360) < .5 ? -1 : 1, off = rd.kind === 'vicolo' ? rd.w / 2 - .25 : rd.w / 2 + .35, x = ax + nx * sd * off, z = az + nz * sd * off;
@@ -72105,6 +72320,9 @@ var Render = (function () {
   // lastricato grigio a giunti di 6 m sulla spianata della Rocca. Sopra, i segni dell'uso: rattoppi, crepe, tombini, caditoie,
   // gesso dei bambini, l'olio. La mappa vecchia non passa mai di qui (cn1).
   const cn1 = () => !!(M.world && M.world.sets);
+  // [nitida] la città nuova «meno ma leggibilissima» (pulizia_rumore.js, HANDOFF_pulizia.md): niente arredo sparso a caso, la vita nei posti;
+  // ?vecchiapulizia torna alle regole di prima per il confronto
+  const NIT1 = () => cn1() && !(typeof PuliziaRumore !== 'undefined' && PuliziaRumore.vecchia());
   // [pavimenti] i motivi dipinti diventano tinta: il disegno delle pietre lo fa lo shader del suolo (pavimenti.js)
   const PAVR1 = typeof location !== 'undefined' && /[?&]pavrush\b/.test(location.search);
   const PAV1 = (c, ppm, kind) => window.Pavimenti && Pavimenti.on && cn1() ? Pavimenti.piatto(c, ppm, kind === 'lastre' ? .25 : .6, kind) : c;
@@ -73037,7 +73255,7 @@ var Render = (function () {
       else { const src = o.geometry; o.geometry = fGeo('A3' + src.uuid, () => src.clone(), hex, kind, mode); }
       o.material = FA.mat; });
     return g; }
-  function pm3(tipo, o) { const g = typeof Arredo3D !== 'undefined' && Arredo3D ? Arredo3D.make(tipo, o) : null; return g ? vesti3(g) : G0(); }
+  function pm3(tipo, o) { const g = typeof Arredo3D !== 'undefined' && Arredo3D ? Arredo3D.make(tipo, o) : null, q = g ? vesti3(g) : G0(); q.userData.arr = tipo; return q; }   // [nitida] il nome del modello resta sul gruppo: il registro sa cos'è (panchina, cestino, cabina...)
   const ARR3 = () => typeof Arredo3D !== 'undefined' && !!Arredo3D;
   // piazza un oggetto sul terreno e lo manda alla geometria statica
   // [pulitore2] il verso delle cose: allineate alla strada vicina o alla griglia, mai a un angolo a caso
@@ -77309,7 +77527,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const b = rec.b, g = rec.geo; if (!b || !g) return;
       const base = g.y0, low = Math.min(groundH(g.x0, g.z0), groundH(g.x0 + g.w, g.z0 + g.d), base, ...(window.Pavimenti && Pavimenti.attivo() ? [groundH(g.x0 + g.w, g.z0), groundH(g.x0, g.z0 + g.d), groundH(g.x0 + g.w / 2, g.z0), groundH(g.x0 + g.w / 2, g.z0 + g.d), groundH(g.x0, g.z0 + g.d / 2), groundH(g.x0 + g.w, g.z0 + g.d / 2)].map(h => h - .03) : []));   // [pavimenti] lo zoccolo e i gradini arrivano a terra anche sull'angolo in discesa
       const zh = .55 + (base - low);
-      const pl = box(g.w + .18, zh, g.d + .18, plinthM); pl.position.set(g.x0 + g.w / 2, low + zh / 2 - .02, g.z0 + g.d / 2); addStatic(pl);
+      const pl = box(g.w + .18, zh, g.d + .18, plinthM); pl.position.set(g.x0 + g.w / 2, low + zh / 2 - .02, g.z0 + g.d / 2); addStatic(rotRec(rec, pl));   // [nitida] lo zoccolo e i gradini girano con la casa (dritti sotto una casa girata sporgevano dagli spigoli come un muretto)
       // gradini davanti alla porta
       P2.k = 'gradino'; [b.door, b.shopFront && b.shopFront.door].forEach(door => { if (!door) return;   // [botteghe] anche davanti alla porta della bottega   [pulizia2] i gradini sono della porta
         if (b.shopFront && door === b.shopFront.door && window.Scorci && Scorci.attivo && Scorci.copre(b, 'gradino', b.__bot && b.__bot.face)) return;   // [scorci] la soglia consumata è dello scorcio
@@ -77318,11 +77536,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         // [percorsi2] nella città nuova la porta è la cosa più contrastata del fotogramma: gradini di pietra chiara col bordo acceso
         // (lo spigolo lucidato che prende la luce) e la base netta (la riga scura del piede, sul selciato)
         const nuova = cn1(), sM = nuova ? (BOT.marmo || (BOT.marmo = sm('#cfc6b2', { roughness: .6 }))) : stepM;
-        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = new THREE.Mesh(gradino1(dep, hh + (base - low), 1.7, .035), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(st);   // [pulizia] la pietra col naso smussato
-          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .06), low + hh + (base - low) + .004, ez + side[1] * (dep - .06)); addStatic(ns); } });
-        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(fo); }
+        [[.5, .2], [1, .1]].forEach(([dep, hh], k) => { const st = new THREE.Mesh(gradino1(dep, hh + (base - low), 1.7, .035), sM); st.position.set(ex, low, ez); st.rotation.y = Math.atan2(-side[1], side[0]); addStatic(rotRec(rec, st));   // [pulizia] la pietra col naso smussato
+          if (nuova) { const nm = BOT.naso || (BOT.naso = std({ color: '#f4ecd8', emissive: '#4a3e28', emissiveIntensity: .6, roughness: .35 })), ns = box(side[0] ? .05 : 1.72, .03, side[1] ? .05 : 1.72, nm); ns.position.set(ex + side[0] * (dep - .06), low + hh + (base - low) + .004, ez + side[1] * (dep - .06)); addStatic(rotRec(rec, ns)); } });
+        if (nuova) { const fm = BOT.piede || (BOT.piede = sm('#1c1816', { roughness: 1 })), fo = box(side[0] ? .1 : 1.86, .03, side[1] ? .1 : 1.86, fm); fo.position.set(ex + side[0] * 1.04, (window.Pavimenti && Pavimenti.attivo() ? groundH(ex + side[0] * 1.04, ez + side[1] * 1.04) : low) + .005, ez + side[1] * 1.04);   /* [pavimenti] la riga del piede sul suolo vero */ addStatic(rotRec(rec, fo)); }
         // [botteghe] il gradino consumato: in mezzo la pietra è lisciata e più chiara, dove si mette il piede da cent'anni
-        const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(wn);
+        const wm = nuova ? (BOT.worn2 || (BOT.worn2 = sm('#e6dcc6', { roughness: .3 }))) : BOT.worn || (BOT.worn = sm('#8a857c', { roughness: .35 })), wn = box(side[0] ? .3 : .8, .012, side[1] ? .3 : .8, wm); wn.position.set(ex + side[0] * .27, low + .2 + (base - low) + .002, ez + side[1] * .27); addStatic(rotRec(rec, wn));
       }); P2.k = null;
       // neve ammucchiata contro i muri (non contro le porte né sul lato della strada principale tutta spalata)
       const sides = [[g.x0, g.z0 + g.d + .25, g.w, 0], [g.x0, g.z0 - .25, g.w, 0], [g.x0 + g.w + .25, g.z0, g.d, 1], [g.x0 - .25, g.z0, g.d, 1]];

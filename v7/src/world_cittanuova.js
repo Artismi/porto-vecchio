@@ -2412,8 +2412,11 @@ var World = (function () {
         for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY); if (grid[i] === T.WALK && d > P.d0 && d < P.d1) nW++; }
         if (nW * 2 >= b.w && b.w >= 2) { b.vittoria = true; b.fl = Math.min(b.fl, 3); } });
       B.forEach(b => { if (b.vittoria) sides[b.y * TS < VY ? 0 : 1].push(b); });
+      // [nitida] la cortina scavalca solo le fessure fra due case (1 m), non i varchi: sopra un varco di 2-4 m i piani sopra le arcate
+      // restavano un muro ritto nel vuoto, senza casa dietro (strumenti/muri_vaganti.js, fuori_casa). ?vecchiapulizia: 4,2 m come prima
+      const PONTE_PORT = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? 4.2 : 1;
       sides.forEach((L, sd) => { if (P.lati && !P.lati.includes(sd)) return; L.sort((a, b) => a.x - b.x); const runs = []; let cur = null;
-        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= 4.2) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
+        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= PONTE_PORT) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
         // [volumi2] non più un blocco unico: il tratto si divide in corpi di 2-3 campate (8-12 m), ognuno col suo cornicione e la sua quota,
         // arcate + 1 o 2 piani (al più tre piani in tutto) che si alternano; sul lato sud (verso la camera) prevalgono i corpi bassi, così
         // la strada si vede; il corpo più lungo del tratto porta le lettere. La torre littoria resta l'unica cosa alta.
@@ -3177,7 +3180,72 @@ var World = (function () {
         lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
     W.SEA.terrapieni = lati; W.SEA.terrapieniM = fatti; return W;
   }
-  const W = costa2Arredo(terrapieni(expand(generate())));
+  // [nitida] LE CASETTE DI TROPPO. Il committente: «questa casa coi coppi forse è di troppo, sta in mezzo alla strada». Una casetta piccola
+  // (al più 9 caselle, 36 m²) senza nome, senza bottega e senza luogo, che sta quasi tutta libera in mezzo al selciato (tre quarti del giro
+  // attorno è suolo libero: via, marciapiede, piazza, ciottolato, banchina; o il 60% via, marciapiede, piazza o banchina) o incastrata fra due tratti di carreggiata, rompe la
+  // continuità della strada e si legge come un errore: se ne va, e il suo posto torna al suolo che ha attorno (il marciapiede, la piazza, il
+  // ciottolato) alla quota dei vicini. Le case grandi, i portici, le baracche dei quartieri poveri a schiera restano. ?vecchiapulizia: com'era.
+  // W.casetteTolte: quante e dove (strumenti/muri_vaganti.js le conta).
+  function casette(W, passo) {   // passo: tolte le prime, una vicina può restare sola in mezzo al selciato; si rifà finché ce ne sono (al più tre volte)
+    passo = passo || 0; if (!passo) W.casetteTolte = [];
+    if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, GHx = W.GH, B = W.BUILDINGS, PL = W.PLACES || {}, OPEN = new Set([T.VIA, T.WALK, T.PIAZZA, T.COB]), LARGO = new Set([T.VIA, T.WALK, T.PIAZZA]), tolte = [];
+    const luogo = new Set(Object.values(PL).map(p => p && p.id));
+    const giro = b => { const L = []; for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const e = tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h; if (!e || tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; L.push(ty * GWx + tx); } return L; };
+    const via = (b, side) => { let n = 0, t = 0; const [a, c] = side; if (a) { const tx = a > 0 ? b.x + b.w : b.x - 1; for (let ty = b.y; ty < b.y + b.h; ty++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } else { const ty = c > 0 ? b.y + b.h : b.y - 1; for (let tx = b.x; tx < b.x + b.w; tx++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } return t && n * 2 >= t; };
+    const via2 = b => (via(b, [1, 0]) && via(b, [-1, 0])) || (via(b, [0, 1]) && via(b, [0, -1]));
+    const PORT = (W.pezzi || []).filter(p => p.tipo === 'portico').map(p => { const L = p.opz.campate * p.opz.campata, x0 = Math.cos(p.rot || 0) < 0 ? p.x - L : p.x; return [x0, x0 + L, p.y]; });
+    const dietroPortico = b => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; return PORT.some(([x0, x1, y]) => cx > x0 - 2 && cx < x1 + 2 && Math.abs(cy - y) < 4 + b.h * TS / 2); };   // regge la cortina dei portici
+    B.forEach(b => { if (!b.house || b.pezzo || b.shack || b.name || b.shop || b.shopFront || b.sign || b.military || b.kiosk || b.vittoria || b.sottoPortico || b.portico || b.lighthouse || b.isola || luogo.has(b.id) || dietroPortico(b)) return;   // le baracche a schiera del quartiere povero restano
+      if (W.zone[b.y * GWx + b.x] !== Z.CITTA || (b.use && b.use !== 'casa')) return; const n = b.w * b.h; if (n > 9) return;
+      const R = giro(b), quota = R.filter(i => OPEN.has(g[i])).length / R.length, largo = R.filter(i => LARGO.has(g[i])).length / R.length;
+      if (!(quota >= .75 || largo >= .6 || via2(b))) return;
+      b.__via = { R, quota, largo }; tolte.push(b); });
+    if (!tolte.length) return W;
+    const togli = new Set(tolte);
+    tolte.forEach(b => { const R = b.__via.R, cnt = new Map(); let h = 0, nh = 0, rc = 0;
+      R.forEach(i => { const v = g[i]; if (OPEN.has(v) && v !== T.VIA) cnt.set(v, (cnt.get(v) || 0) + 1); if (OPEN.has(v)) { h += W.elev[i]; nh++; rc = Math.max(rc, W.reach[i]); } });
+      let v = T.COB, best = 0; cnt.forEach((c, k) => { if (c > best) { best = c; v = k; } }); if (!cnt.size && R.some(i => g[i] === T.VIA)) v = T.WALK;
+      for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GWx + tx; g[i] = v; W.bIndex[i] = -1; if (nh) W.elev[i] = h / nh; W.reach[i] = rc; }
+      delete b.__via; });
+    // gli indici: al posto della casetta tolta va l'ultima della lista (una casa delle isole, lontana), così le case della città tengono il
+    // loro indice e con lui tutto quello che ne discende (i semi delle insegne, degli allacci, delle facciate): la città resta com'era
+    const sposta = new Map(); tolte.map(b => B.indexOf(b)).sort((a, c) => c - a).forEach(j => { const ult = B.pop(); if (j < B.length) { B[j] = ult; sposta.set(ult.i, j); ult.i = j; } });
+    for (let i = 0; i < W.bIndex.length; i++) { const j = W.bIndex[i]; if (j >= 0 && sposta.has(j)) W.bIndex[i] = sposta.get(j); }
+    B.forEach((b, j) => { b.i = j; });
+    W.casetteTolte = W.casetteTolte.concat(tolte.map(b => ({ id: b.id, x: Math.round((b.x + b.w / 2) * TS), y: Math.round((b.y + b.h / 2) * TS), w: b.w * TS, h: b.h * TS, passo })));
+    return passo < 2 ? casette(W, passo + 1) : W;
+  }
+  // [nitida] LE CASE SUL MARCIAPIEDE. Il committente: «dove il marciapiede è una striscia sottile e la casa ci sta sopra a metà». Il
+  // marciapiede delle vie di città è la fascia di 2,1 m oltre il bordo della carreggiata (render.js, swField): una casa col fronte a meno di
+  // 1,5 m dal bordo (il minimo per camminare in due) lo copre a metà e lascia una striscia. Se la casa è profonda almeno tre caselle si arretra di una casella (due se serve e
+  // ne restano tre): il fronte torna sul filo del lotto, la casella liberata diventa marciapiede, la porta e il luogo arretrano con lei. La bottega
+  // arretra col suo fronte (porta e vetrine). Le case basse di fondo (due caselle) restano: lì render.js chiude il marciapiede contro il muro
+  // (niente lastre sotto la casa). ?vecchiapulizia: com'era. W.caseArretrate: quali.
+  function arretra(W) {
+    W.caseArretrate = []; if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, B = W.BUILDINGS, MIN = 1.5, R = (W.roads || []).filter(rd => rd && rd.pts && rd.pts.length > 1 && (rd.kind === 'citta' || rd.kind === 'litoranea'));
+    const bordo = (x, y) => { let d = 1e9; R.forEach(rd => { for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); d = Math.min(d, Math.hypot(ax + dx * t - x, ay + dy * t - y) - (rd.w || 6) / 2); } }); return d; };
+    B.forEach(b => { if (b.pezzo || b.military || b.kiosk || b.lighthouse || b.isola || b.rot || b.tiers || b.sottoPortico || b.vittoria) return;   // solo lungo le vie di città (anche la casa sul lungomare fuori dalla zona)
+      // i quattro lati: [verso, profondità in caselle, i punti del filo]
+      const lati = [['S', b.h, k => [(b.x + k) * TS, (b.y + b.h) * TS], b.w], ['N', b.h, k => [(b.x + k) * TS, b.y * TS], b.w], ['E', b.w, k => [(b.x + b.w) * TS, (b.y + k) * TS], b.h], ['W', b.w, k => [b.x * TS, (b.y + k) * TS], b.h]];   // gli spigoli compresi
+      let best = null; lati.forEach(([f, prof, at, n]) => { let d = 1e9; for (let k = 0; k <= n * 2; k++) d = Math.min(d, bordo(...at(k / 2))); if (d < MIN && d > -1.5 && (!best || d < best.d)) best = { f, prof, d }; });
+      if (!best) return; const serve = Math.ceil((MIN + .4 - best.d) / TS), SF = b.shopFront; if (best.prof - serve < 3 || (SF && SF.face && SF.face !== best.f)) return;   // la bottega arretra solo col suo fronte
+      const NV = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[best.f];
+      for (let s = 0; s < serve; s++) { const f = best.f, cells = [];
+        if (f === 'S') { const ty = b.y + b.h - 1; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.h--; }
+        else if (f === 'N') { const ty = b.y; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.y++; b.h--; }
+        else if (f === 'E') { const tx = b.x + b.w - 1; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.w--; }
+        else { const tx = b.x; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.x++; b.w--; }
+        cells.forEach(i => { g[i] = T.WALK; W.bIndex[i] = -1; W.reach[i] = W.reach[i - NV[1] * GWx - NV[0]] || W.reach[i]; });
+        if (SF && SF.door) { SF.door = [SF.door[0] + NV[0], SF.door[1] + NV[1]]; if (SF.span) SF.span = SF.span.map(([x, y]) => [x + NV[0], y + NV[1]]); }
+        if (b.door) { const [dx, dy] = b.door; if (f === 'S' && dy === b.y + b.h + 1) b.door = [dx, dy - 1]; else if (f === 'N' && dy === b.y - 2) b.door = [dx, dy + 1]; else if (f === 'E' && dx === b.x + b.w + 1) b.door = [dx - 1, dy]; else if (f === 'W' && dx === b.x - 2) b.door = [dx + 1, dy]; } }
+      if (b.door) { let [dx, dy] = b.door; if (dx >= b.x - 1 && dx <= b.x + b.w && (dx === b.x - 1 || dx === b.x + b.w)) dy = Math.max(b.y, Math.min(b.y + b.h - 1, dy)); else dx = Math.max(b.x, Math.min(b.x + b.w - 1, dx)); b.door = [dx, dy]; }   // la porta su un fianco resta sul fianco
+      const P = W.PLACES && W.PLACES[b.id], pd = (SF && SF.door) || b.door; if (P && pd) { P.tx = pd[0]; P.ty = pd[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; }
+      W.caseArretrate.push({ id: b.id, f: best.f, prima: +best.d.toFixed(2), caselle: serve }); });
+    return W;
+  }
+  const W = costa2Arredo(terrapieni(casette(arretra(expand(generate())))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.

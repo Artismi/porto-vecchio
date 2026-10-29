@@ -529,6 +529,9 @@ var TettiVissuti = (function () {
   // distanza dalla gronda: 16 m per unità), i licheni a macchiette, il coppo rotto o mancante (la cella del manto: si vede il sotto).
   // lastrici: le chiazze d'umido scure, le crepe (la cresta di un rumore), i rappezzi di cemento fra le pianelle, il muschio, la pianella rotta.
   // Niente commenti nel GLSL (gli accenti non passano ovunque); niente `diffuse` né `map` (la tavolozza e la pila di [leggero] lo provano a vuoto).
+  // [nitida] il coppo mancante era una cella quasi nera (il sotto, all'85%): dall'alto si leggeva come un buco nel tetto. Ora un coppo rotto
+  // è solo un poco più scuro dei vicini; ?vecchiapulizia lo rimette com'era
+  const BUCO_TV = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? .85 : .22;
   function applica(m) {
     const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole', f = v => v.toFixed(4);
     m.customProgramCacheKey = () => 'tv1-' + kind;
@@ -550,13 +553,13 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
   c = mix(c, vec3(.27, .31, .16), mu * .72);
   float li = step(.9, tvH(floor(w * 6.3))) * smoothstep(.35, .6, a) * (.6 + nord * .4); c = mix(c, vec3(.8, .78, .64), li * .5);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})); float ro = step(.9955, tvH(ce + floor(w * .07) * 17.));
-  c = mix(c, vec3(.15, .11, .09), ro * .85);` : `float umido = smoothstep(.6, .8, a);
+  c = mix(c, vec3(.15, .11, .09), ro * ${BUCO_TV});` : `float umido = smoothstep(.6, .8, a);
   c = mix(c, c * vec3(.74, .76, .78), umido * .75);
   float cr = 1. - smoothstep(.0, .018, abs(tvN(w * 1.1 + 11.) - .5)); c = mix(c, c * .55, cr * smoothstep(.45, .7, mo) * .8);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})), bl = floor(w * .7); float rp = step(.93, tvH(bl + 3.1));
   c = mix(c, vec3(lum * .8 + .06), rp * ${kind === 'pianelle' ? '.4' : '.18'});
   float mu = smoothstep(.62, .8, mo) * smoothstep(.45, .2, a); c = mix(c, vec3(.3, .34, .19), mu * .45);
-  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * .62, ro);`}
+  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * ${BUCO_TV > .5 ? '.62' : '.86'}, ro);`}
   diffuseColor.rgb = c; }
 #endif`);
     };

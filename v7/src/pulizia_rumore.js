@@ -30,9 +30,9 @@ var PuliziaRumore = (function () {
     quota: .06,
     doppioni: { arredo: 1.2, applique: 2.2, tabellone: 3.0, pluviale: 1.0, citofono: .9, lampione: 3.5, cartello: 2.0, tenda: .6, ingombro: 2.0 },
     stessaCasa: { applique: .8, citofono: .5, pluviale: .5, tabellone: 1.0, tenda: 0 },   // fra due case accanto sono doppioni solo se quasi attaccati (due lampade ai due lati dello stesso muro di confine)
-    facciata: { base: 1, ogni: 3.2, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // cose appese: base + una ogni 3,2 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
-    marciapiede: { tratto: 6, max: 3, slargo: 4, fascia: 2.4 },
-    vicolo: .9,
+    facciata: { base: 1, ogni: 5, vita: 4, tabellone: 1, pluviale: 7, applique: 5 },   // [nitida] una ogni 5 m (era 3,2)   // cose appese: base + una ogni 5 m; di vita al più una ogni 4 m (almeno 2), 1 manifesto, 1 tubo ogni 7 m, 1 lampada ogni 5 m (più una per porta)
+    marciapiede: { tratto: 6, max: 1, slargo: 4, fascia: 2.4 },   // [nitida] una cosa a terra ogni 6 m di marciapiede (era 3), oltre ai posti delle persone, ai lampioni e ai cartelli
+    vicolo: .9, vicoloLibero: 2.4,   // [nitida] nei vicoli resta libero 2,4 m (o tutto il vicolo meno 60 cm, se è più stretto)
     porta: { fondo: 1.8, fianco: .3, alto: 1.8 },   // davanti a ogni porta: 1,8 m di corridoio libero, largo la porta più 30 cm per parte, fino a 1,8 m d'altezza
   };
   // la gerarchia: 0 si tiene sempre (ingresso, insegna, architettura, impianti), 1 la vita, 2 il resto
@@ -155,7 +155,7 @@ var PuliziaRumore = (function () {
     // 6) i passaggi stretti nei vicoli
     E.forEach(e => { if (!terra(e) || e.k === 'lampione' || e.k === 'cartello') return; const v = A.vicolo(e.c[0], e.c[1]); if (!v) return;
       const hu = (e.B.u1 - e.B.u0) / 2, hv = (e.B.v1 - e.B.v0) / 2, r = Math.min(hu, hv), resta = Math.max(v.w / 2 - (v.d + r), v.w / 2 - (r - v.d));   // il lato più largo che resta
-      if (resta < CFG.vicolo && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
+      if (resta < (vecchia() ? CFG.vicolo : Math.max(CFG.vicolo, Math.min(CFG.vicoloLibero, v.w - .6))) && v.w > 1.6) { e.strozza = v; segna('passaggio', e, v.w.toFixed(1) + ' m'); } });
     // 7) la densità: facciate e tratti di marciapiede pieni (cosa si toglierebbe)
     const D = densita(A, E.concat(X), FAC, vicini, terra); D.facciate.forEach(([e]) => segna('facciata_piena', e)); D.tratti.forEach(([e]) => segna('tratto_pieno', e));
     out.tot = TIPI.reduce((s, t) => s + out.per[t], 0); out.facciate = FAC.size; out.densita = D.conti;
@@ -273,7 +273,7 @@ var PuliziaRumore = (function () {
     // 6) i vicoli strozzati: verso il muro più vicino, o via
     E.forEach(e => { if (e.gone || !e.strozza) return; const v = e.strozza, sg = v.d >= 0 ? 1 : -1, G = grp(e), r = Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
       for (const s of [.3, .5, .8]) { const dx = v.n[0] * s * sg, dz = v.n[1] * s * sg;
-        if (prova(G, () => muovi(G, dx, 0, dz), () => muovi(G, -dx, 0, -dz))) { const c = A.ctr(e.B), w = A.vicolo(c[0], c[1]); if (!w || Math.max(w.w / 2 - (w.d + r), w.w / 2 - (r - w.d)) >= CFG.vicolo) { conta(az.spostati, e.k); return; } } }
+        if (prova(G, () => muovi(G, dx, 0, dz), () => muovi(G, -dx, 0, -dz))) { const c = A.ctr(e.B), w = A.vicolo(c[0], c[1]); if (!w || Math.max(w.w / 2 - (w.d + r), w.w / 2 - (r - w.d)) >= (vecchia() ? CFG.vicolo : Math.max(CFG.vicolo, Math.min(CFG.vicoloLibero, w.w - .6)))) { conta(az.spostati, e.k); return; } } }
       togli(e, 'passaggio'); });
     // 7) la densità, rifatta su quello che resta: si toglie il di più, dal fondo della gerarchia
     const D = densita(A, E.concat(X).filter(e => !e.gone), C.FAC, C.vicini, C.terra);
@@ -283,6 +283,127 @@ var PuliziaRumore = (function () {
     return az;
   }
   const dentro = (A, e, F) => { const q = inFacciata(e, F), L = A.larghezza(e.b, e.f); return !L || (q.u0 > .1 && q.u1 < L - .1); };   // resta sulla sua facciata
+
+  // ================= [nitida] LA DISCIPLINA DELL'ARREDO DI STRADA =================
+  // Il committente: «la mappa è pienissima ma anche piena di imperfezioni: cestini, cabine telefoniche e panchine che affollano le strade
+  // e sono ancora un po' a caso. La strada non sembra un percorso invitante: è rumorosa in modo uniforme, non sai dove guardare. Meglio un
+  // po' meno ma ultra leggibile». Dopo il censimento e le correzioni del rumore, su quello che resta del registro:
+  // - ogni cosa ha la sua ragione: la panchina sta a un posto delle persone, su una piazza o a una fermata; la cabina sull'angolo di una
+  //   piazza o a una fermata (una ogni 80 m); il cestino accanto a una panchina, a una fermata, a un'edicola, a un dehors o all'angolo
+  //   (uno ogni 25 m); i cassonetti in una piazzola sola per isolato (al più 3, una piazzola ogni 90 m); niente distributori dei giornali
+  //   (ci sono le edicole) e niente buche delle lettere fuori dalle piazze;
+  // - la carreggiata, il cuore degli incroci e le teste delle strisce restano libere;
+  // - su ogni marciapiede la corsia di chi cammina (almeno 0,9 m): quello che ci sta in mezzo va contro il muro, o se ne va;
+  // - lungo le vie al più una cosa minuta (vasi, casse, sedie, bici...) ogni 10 m di casa per lato: la vita si raccoglie nelle botteghe,
+  //   nei dehors, nei vicoli e sulle piazze, non a velo uguale su ogni muro.
+  // ?vecchiapulizia salta tutto (anche le regole di posa [nitida] di render.js e scena.js) e misura soltanto.
+  const vecchia = () => typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search);
+  const FAM = { panchina_ghisa: 'panchina', panchina_cemento: 'panchina', panchina_marmo: 'panchina', cestino: 'cestino', bidone: 'bidone', cassonetto: 'cassonetto', campana: 'cassonetto',
+    cabina_sip: 'cabina', cassetta_postale: 'cassetta', paletto: 'paletto', paletti_catena: 'paletto', parchimetro: 'parchimetro', giornali: 'giornali', fioriera: 'fioriera',
+    fontanella: 'fontanella', idrante: 'idrante', transenna: 'transenna', jersey: 'transenna', edicola: 'edicola', chiosco: 'chiosco', fermata: 'fermata' };
+  const NCFG = {
+    passo: { cabina: 80, cassetta: 100, panchina: 8, cestino: 25, parchimetro: 45, piazzola: 90 },   // la distanza minima fra due dello stesso tipo (m)
+    piazzola: { r: 4, max: 3 }, vicino: { panchina: 4, fermata: 10, angolo: 8 }, corsia: .9, angolo: 1.5, strisce: 1.6, minuto: { tratto: 10, max: 1 },
+  };
+  const FISSE_N = new Set(['fermata', 'edicola', 'chiosco', 'transenna', 'fontanella', 'idrante']);   // si contano, non si toccano (altri piani, o cose che servono)
+  function famiglia(e) { if (e.k === 'dehors') return 'dehors'; if (e.arr && FAM[e.arr]) return FAM[e.arr]; if (e.k === 'arredo' || e.k === 'ingombro') return 'minuto'; return null; }
+  // il contesto di un punto: la piazza, la fermata o l'edicola vicina, l'incrocio, il vicolo, il marciapiede (distanze dal muro e dal cordolo)
+  function contesto(A, x, z, N) {
+    const T = A.T, piazza = [[0, 0], [2, 0], [-2, 0], [0, 2], [0, -2]].some(([a, b]) => A.casella(x + a, z + b) === T.PIAZZA);
+    let fermata = false; N.X.forEach(q => { if (!fermata && (q.k === 'fermata' || q.k === 'edicola') && hyp(q.c[0] - x, q.c[1] - z) < NCFG.vicino.fermata) fermata = true; });
+    let J = null, dj = Infinity; N.J.forEach(j => { const d = hyp(j.x - x, j.y - z) - j.r; if (d < dj) { dj = d; J = j; } });
+    const h = A.casaVicina(x, z, 3.5), rd = A.roadDir(x, z);
+    const mare = [0, 1, 2, 3, 4, 5, 6, 7].some(k => A.casella(x + Math.cos(k * PI / 4) * 10, z + Math.sin(k * PI / 4) * 10) === T.WATER);   // il lungomare: il mare entro 10 m
+    return { piazza, fermata, mare, dj, J, vicolo: !!A.vicolo(x, z), dw: h ? h.d : Infinity, h, dc: rd.a === null ? Infinity : rd.d, carr: A.carreggiata(x, z, 0) && rd.d < -.1 };
+  }
+  const raggio = e => Math.min(e.B.u1 - e.B.u0, e.B.v1 - e.B.v0) / 2;
+  // i pannelli sul tetto: una cosa appesa alla facciata (insegna, targa, manifesto, lampada, tenda, citofono, il pannello della segnaletica)
+  // che sale oltre la gronda della sua casa (b.__top) di più di 20 cm: dalla camera sta ritta o coricata sul tetto, come un cartello dimenticato
+  const SUL_TETTO = new Set(['insegna', 'tabellone', 'tenda', 'applique', 'citofono', 'cartello']);
+  function sulTetto(A) { const L = []; A.R.E.concat(A.esterni || []).forEach(e => { if (e.gone || !e.B || !e.b || !e.F || !SUL_TETTO.has(e.k) || (e.ext && e.terra) || ((e.c = A.ctr(e.B)), inFacciata(e, e.F).d0 > 1.5)) return; const top = e.b.__top;   // solo sul filo del muro (le insegne sui tetti sono dei tetti)
+      if (typeof top === 'number' && e.B.y1 > top + .2) L.push(e); }); return L; }
+  // in mezzo alla corsia: sul marciapiede (muro e cordolo vicini) e né contro il muro né contro il cordolo resta 0,9 m per passare
+  function corsia(q) { const c = q.ctx, r = raggio(q.e); if (c.piazza || c.vicolo || !(c.dw < 3.5) || !(c.dc >= 0 && c.dc < 3.5) || c.dw + c.dc < 1.4) return false; return Math.max(c.dw - r, c.dc - r) < NCFG.corsia && c.dw - r > .2 && c.dc - r > .2; }
+  function ragione(A, N, q) { const f = q.fam, c = q.ctx;
+    if (f === 'panchina') return q.posto || c.piazza || c.mare;   // solo sulle piazze e sul lungomare (i posti delle persone stanno lì)
+    if (f === 'cabina') return c.piazza;   // solo sulle piazze, una ogni 80 m
+    if (f === 'cassetta') return c.piazza;
+    if (f === 'giornali') return false;
+    if (f === 'cestino') return c.fermata || c.dj < NCFG.vicino.angolo || N.vicinoA(q, ['panchina', 'dehors'], NCFG.vicino.panchina);
+    return true; }
+  // il censimento dell'arredo di strada (prima e dopo): quanti per tipo, per km di via, e quanti stanno dove non devono
+  function contaN(A, N) {
+    const out = { per: {}, km: N.km, kmVicoli: N.kmV, perKm: {}, ostacoli: { corsia: 0, carreggiata: 0, angolo: 0, strisce: 0, senzaRagione: 0 }, tot: 0, lungoVie: 0 };
+    N.voci().forEach(q => { const f = q.fam, c = q.ctx; out.per[f] = (out.per[f] || 0) + 1; out.tot++;
+      if (!c.piazza && !c.vicolo && c.dw < 3.5 && c.dc < 4) out.lungoVie++;
+      if (FISSE_N.has(f)) return;
+      if (c.carr && f !== 'transenna') out.ostacoli.carreggiata++;
+      if (f !== 'paletto' && c.J && c.J.n >= 3 && c.dj < NCFG.angolo) out.ostacoli.angolo++;
+      if (N.strisce(q.c[0], q.c[1], raggio(q.e))) out.ostacoli.strisce++;
+      if (f !== 'dehors' && corsia(q)) out.ostacoli.corsia++;
+      if (!ragione(A, N, q)) out.ostacoli.senzaRagione++; });
+    Object.keys(out.per).forEach(f => { out.perKm[f] = +(out.per[f] / Math.max(.1, N.km + N.kmV)).toFixed(1); }); out.perKmTot = +(out.tot / Math.max(.1, N.km + N.kmV)).toFixed(1);
+    out.ostacoli.sulTetto = sulTetto(A).length; out.ostacoli.tot = Object.values(out.ostacoli).reduce((s, v) => s + v, 0);
+    return out;
+  }
+  function nitida(A, N) {
+    const az = { tolti: {}, spostati: {}, tenuti: {} }, conta = (o, k) => { o[k] = (o[k] || 0) + 1; };
+    const I = A.indici(), nv = G => G.reduce((s, m) => s + A.viol(m, I).length, 0);
+    const toglie = (q, perche) => { const G = (q.e.membri || [q.e]).filter(m => !m.gone); if (G.some(m => LIV[m.k] === 0 || m.free) || q.posto) { conta(az.tenuti, perche + ':' + q.fam); return false; }
+      const su = []; G.forEach(m => A.sopra(m, I).forEach(o => { if (!G.includes(o) && !su.includes(o)) su.push(o); })); if (su.some(o => LIV[o.k] === 0 || A.posto(o) || o.free)) { conta(az.tenuti, perche + ':' + q.fam); return false; }
+      G.concat(su).forEach(m => A.togli(m)); q.gone = true; conta(az.tolti, perche + ':' + q.fam); return true; };
+    const V = N.voci().filter(q => !q.ext);
+    // 1) la ragione d'essere e il passo: chi non ne ha una se ne va; dello stesso tipo, chi sta troppo vicino a uno tenuto se ne va
+    const tenuti = {}, vicinoT = (q, f, r) => (tenuti[f] || []).some(o => hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < r);
+    const ordine = V.filter(q => q.fam !== 'minuto' && q.fam !== 'dehors' && !FISSE_N.has(q.fam)).sort((a, b) => (b.posto - a.posto) || (b.ctx.piazza - a.ctx.piazza) || (b.ctx.fermata - a.ctx.fermata) || (a.e.id > b.e.id ? 1 : -1));
+    // i cassonetti: le piazzole (cassonetti a meno di 4 m l'uno dall'altro); la prima resta, quelle a meno di 90 m se ne vanno; al più 3 per piazzola
+    const baie = [];
+    ordine.filter(q => q.fam === 'cassonetto').forEach(q => { let b = baie.find(B => B.some(o => hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < NCFG.piazzola.r)); if (!b) baie.push(b = []); b.push(q); });
+    const baieT = []; baie.forEach(B => { const c = [B.reduce((s, o) => s + o.c[0], 0) / B.length, B.reduce((s, o) => s + o.c[1], 0) / B.length];
+      if (baieT.some(o => hyp(o[0] - c[0], o[1] - c[1]) < NCFG.passo.piazzola)) { B.forEach(q => toglie(q, 'piazzola')); return; } baieT.push(c); B.slice(NCFG.piazzola.max).forEach(q => toglie(q, 'piazzola')); });
+    ordine.forEach(q => { if (q.gone || q.fam === 'cassonetto' || q.fam === 'paletto' || q.fam === 'bidone') return;
+      if (!ragione(A, N, q)) { toglie(q, 'ragione'); return; }
+      const p = NCFG.passo[q.fam]; if (p && !q.posto && vicinoT(q, q.fam, p)) { toglie(q, 'passo'); return; }
+      (tenuti[q.fam] = tenuti[q.fam] || []).push(q); });
+    // 2) la carreggiata, il cuore degli incroci, le teste delle strisce: libere
+    V.forEach(q => { if (q.gone || q.e.gone || FISSE_N.has(q.fam) || q.fam === 'dehors') return; const c = q.ctx;
+      if (c.carr) toglie(q, 'carreggiata'); else if (q.fam !== 'paletto' && c.J && c.J.n >= 3 && c.dj < NCFG.angolo) toglie(q, 'angolo'); else if (N.strisce(q.c[0], q.c[1], raggio(q.e))) toglie(q, 'strisce'); });
+    // 3) la corsia di chi cammina: quello che sta in mezzo va contro il muro (a 12 cm), se il regista non trova niente di nuovo; se no via
+    V.forEach(q => { if (q.gone || q.e.gone || FISSE_N.has(q.fam) || q.fam === 'dehors' || !corsia(q)) return; const c = q.ctx, h = c.h.h.B, e = q.e, G = (e.membri || [e]).filter(m => !m.gone);
+      const u = e.c[0] * h.c - e.c[1] * h.s, v = e.c[0] * h.s + e.c[1] * h.c, cu = clamp(u, h.u0, h.u1), cv = clamp(v, h.v0, h.v1), wx = cu * h.c + cv * h.s, wz = -cu * h.s + cv * h.c;
+      const L = hyp(wx - e.c[0], wz - e.c[1]) || 1, s = c.dw - raggio(e) - .12, dx = (wx - e.c[0]) / L * s, dz = (wz - e.c[1]) / L * s, dy = A.groundH(e.c[0] + dx, e.c[1] + dz) - A.groundH(e.c[0], e.c[1]);
+      const prima = nv(G); G.forEach(m => A.sposta(m, dx, dy, dz));
+      if (nv(G) <= prima && !A.inCasa(e)) { G.forEach(m => A.rimetti(I, m)); q.ctx = e.ctxN = contesto(A, e.c[0], e.c[1], N); conta(az.spostati, 'corsia:' + q.fam); return; }
+      G.forEach(m => A.sposta(m, -dx, -dy, -dz)); toglie(q, 'corsia'); });
+    // 4) la cosa minuta lungo le vie: al più una ogni 10 m di casa per lato (la più grande; i posti delle persone restano)
+    const TR = new Map(); V.forEach(q => { if (q.gone || q.e.gone || q.fam !== 'minuto') return; const c = q.ctx; if (c.piazza || c.vicolo || !c.h || c.dc > 4 || c.dw > 2.4) return;
+      const key = c.h.i + ':' + c.h.lato + ':' + Math.floor(c.h.u / NCFG.minuto.tratto); let a = TR.get(key); if (!a) TR.set(key, a = []); a.push(q); });
+    TR.forEach(L => { L.sort((a, b) => (b.posto - a.posto) || ((b.e.vol || 0) - (a.e.vol || 0))); L.slice(NCFG.minuto.max).forEach(q => toglie(q, 'minuto')); });
+    // 5) i pannelli sul tetto: scendono sotto la gronda (a 15 cm) se restano sopra la testa di chi passa (1,9 m); se no se ne vanno
+    sulTetto(A).forEach(e => { const top = e.b.__top, dy = top - .15 - e.B.y1, c = A.ctr(e.B), g0 = A.groundH(c[0], c[1]);
+      if (e.ext) { A.togliEsterno(e); conta(az.tolti, 'tetto:' + e.k); return; }
+      const G = (e.membri || [e]).filter(m => !m.gone);
+      if (e.B.y0 + dy > g0 + 1.9) { G.forEach(m => A.sposta(m, 0, dy, 0)); G.forEach(m => A.rimetti(I, m)); conta(az.spostati, 'tetto:' + e.k); }
+      else { G.forEach(m => A.togli(m)); conta(az.tolti, 'tetto:' + e.k); } });
+    A.fine();
+    return az;
+  }
+  // le voci dell'arredo di strada: a terra, in città, una per composizione, col contesto; più le fermate e le edicole delle vie vive
+  function vociN(A) {
+    const X = (A.esterni || []).filter(x => !x.gone); X.forEach(x => { x.c = A.ctr(x.B); });
+    const J = A.incroci(), S = [].concat(...A.strisce().map(c => { const nx = -c.uy, ny = c.ux, o = c.w / 2 + .9; return [[c.x + nx * o, c.y + ny * o], [c.x - nx * o, c.y - ny * o]]; }));
+    let km = 0, kmV = 0; A.vie().forEach(v => { let L = 0; for (let k = 0; k < v.pts.length - 1; k++) { const [ax, az] = v.pts[k], [bx, bz] = v.pts[k + 1]; if (A.citta((ax + bx) / 2, (az + bz) / 2)) L += hyp(bx - ax, bz - az); } if (v.kind === 'vicolo') kmV += L / 1000; else km += L / 1000; });
+    const N = { X, J, km: +km.toFixed(2), kmV: +kmV.toFixed(2), strisce: (x, z, r) => S.some(p => hyp(p[0] - x, p[1] - z) < NCFG.strisce + r) };
+    let cache = null;
+    N.voci = () => { if (cache) return cache; const L = [], visti = new Set(); A.R.E.forEach(e => { if (e.gone || !e.B) return; const f = famiglia(e); if (!f) return; const key = e.membri && e.membri.length > 1 ? e.membri : e; if (visti.has(key)) return; visti.add(key);
+        const c = A.ctr(e.B); e.c = c; if (Math.abs(e.B.y0 - A.groundH(c[0], c[1])) > .6 || !A.citta(c[0], c[1])) return;
+        if (!e.ctxN) e.ctxN = contesto(A, c[0], c[1], N);
+        const q = { e, fam: f, c, ctx: e.ctxN, posto: A.posto(e) }; Object.defineProperty(q, 'gone', { get: () => (e.membri || [e]).every(m => m.gone), set: () => {} }); L.push(q); });
+      X.forEach(x => { if ((x.k === 'fermata' || x.k === 'edicola') && A.citta(x.c[0], x.c[1])) L.push({ e: x, fam: x.k, c: x.c, ctx: x.ctxN || (x.ctxN = contesto(A, x.c[0], x.c[1], N)), posto: true, ext: true, gone: false }); });
+      return (cache = L); };
+    N.vicinoA = (q, fams, r) => N.voci().some(o => o !== q && !o.gone && fams.includes(o.fam) && hyp(o.c[0] - q.c[0], o.c[1] - q.c[1]) < r) || X.some(x => (x.k === 'fermata' || x.k === 'edicola') && hyp(x.c[0] - q.c[0], x.c[1] - q.c[1]) < r + 2);
+    return N;
+  }
 
   // ================= I MODELLI: quanto si vedono e quanto sono poveri (solo col censimento acceso, window.__rumoreChi) =================
   // per chi li posa (la funzione e la riga di index.html): quanti, quanta superficie occupano sullo schermo della camera di gioco
@@ -297,20 +418,24 @@ var PuliziaRumore = (function () {
 
   // ================= L'INGRESSO (da render.js, pulizia2, dopo il regista) =================
   function passa(A) {
+    if (vecchia()) { CFG.facciata.ogni = 3.2; CFG.marciapiede.max = 3; }   // [nitida] ?vecchiapulizia: le densità di prima
     const t0 = performance.now(), prima = censisci(A), off = spento(), chi = typeof window !== 'undefined' && window.__rumoreChi;
     const mod0 = chi ? modelli(A, prima.E) : null;
     const az = off ? { spento: true } : correggi(A, prima);
+    // [nitida] la disciplina dell'arredo di strada, dopo il rumore (?vecchiapulizia o ?norumore: solo la misura)
+    let NI = null; try { if (A.incroci) { const vv = vecchia() || off, n0 = contaN(A, vociN(A)), azN = vv ? { spento: true } : nitida(A, vociN(A));
+        if (!vv) A.R.E.forEach(e => { e.ctxN = null; }); NI = { prima: n0, dopo: vv ? n0 : contaN(A, vociN(A)), azioni: azN, spento: vv }; } } catch (e) { console.error('[nitida]', e); }
     const dopo = off ? prima : censisci(A);
     const somma = o => Object.values(o || {}).reduce((s, v) => s + v, 0);
     const R = { prima: prima.rep, dopo: dopo.rep, azioni: az, spento: off, ms: Math.round(performance.now() - t0),
       numeri: off ? null : { tolti: somma(az.tolti), ruotati: somma(az.ruotati), spostati: somma(az.spostati), posati: somma(az.posati), tenuti: somma(az.tenuti) } };
     if (chi) { R.modelli = { prima: mod0, dopo: modelli(A, dopo.E) }; R.punti = { prima: prima.rep.punti, dopo: dopo.rep.punti }; }
     delete prima.rep.punti; if (dopo !== prima) delete dopo.rep.punti;
-    if (typeof window !== 'undefined') window.__rumore = R;
+    R.nitida = NI; if (typeof window !== 'undefined') { window.__rumore = R; window.__nitida = NI; }
     if (typeof window !== 'undefined' && window.__dbg35) console.log('[rumore] prima', JSON.stringify(prima.rep.per), 'dopo', JSON.stringify(dopo.rep.per), 'numeri', JSON.stringify(R.numeri), R.ms + ' ms');
     return R;
   }
-  const API = { CFG, LIV, passa, censisci, sagoma, wrap90, spento, SALTA: new Set() };   // SALTA: le voci della segnaletica tolte (segnaletica.js non le disegna)
+  const API = { CFG, LIV, NCFG, FAM, passa, censisci, sagoma, wrap90, spento, vecchia, SALTA: new Set() };   // [nitida] vecchia(): ?vecchiapulizia   // SALTA: le voci della segnaletica tolte (segnaletica.js non le disegna)
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   return API;
 })();
