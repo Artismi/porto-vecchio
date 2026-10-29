@@ -12979,6 +12979,26 @@ var Render = (function () {
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
     u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
+  // ================= [nitida] LA LEGGIBILITÀ NEL PASSO UNICO: dove guardare, cosa sta davanti e cosa sta dietro =================
+  // Il committente: «si vede in bassa qualità; uno shader leggero che ridia leggibilità, oltre all'effetto cinematografico; non sai dove
+  // guardare, non si percepisce una profondità naturale». Niente geometria, niente bersagli nuovi: tutto nel passo unico che c'era già,
+  // con la profondità della scena (sul computer; il telefono tiene solo la luce sul personaggio, che è gratis).
+  //   prospettiva aerea: quello che sta oltre il personaggio prende l'aria dell'ora e perde contrasto, a scalini morbidi (i piani si staccano);
+  //   fuoco: il piano del personaggio nitido, il lontano e il primo piano (i tetti sotto la camera) appena sfocati, per profondità vera
+  //     (prende il posto della fascia fissa della miniatura, che sfocava anche il personaggio quando non stava al centro);
+  //   primo piano: le masse vicinissime alla camera un filo più scure, come una quinta (la profondità si legge davanti-dietro);
+  //   luce sul personaggio: la vignetta segue il personaggio, non il centro dello schermo, e attorno a lui il valore si apre un poco;
+  //   sagome: un filo d'inchiostro caldo solo dove la profondità salta (la cosa davanti a un'altra), forte vicino e nullo lontano;
+  //   chiarezza: il contrasto locale (un velo largo, 4 letture) solo nel piano del fuoco, così le forme vicine si leggono e il fondo resta calmo.
+  // ?nonitida lo spegne (il passo di prima, identico); window.__NIT per le prove dal vivo (ogni manopola a 0 spegne il suo pezzo).
+  const NIT = { on: !(typeof location !== 'undefined' && /[?&]nonitida\b/.test(location.search)),
+    aria: .5, ariaDa: .1, ariaPer: 1.1,   // prospettiva aerea: forza; da quanto oltre il fuoco (frazione della distanza); in quanto arriva piena
+    fuoco: .85, fuocoDa: .16, fuocoPer: .9, vicino: .55, raggio: 2.6,   // la sfocatura del lontano (forza, da, in quanto) e del primo piano; raggio in pixel a 540 righe
+    quinta: .16,                           // il primo piano più scuro
+    luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
+    sagome: .4, chiarezza: .35, acceso: true };
+  if (typeof window !== 'undefined') window.__NIT = NIT;
+  if (NIT.on && PRO.look && !PHONE) PRO.prof = true;   // la profondità nel passo (sul telefono no: costa banda)
   // ================= [look-aaa] TRE VARIANTI DEL LOOK FINITO (?look=v1|v2|v3): il default non cambia finché il committente non sceglie =================
   // Solo luce, materiali (pezzi di shader) e passo finale: nessuna geometria, nessuna camera, nessun passo fisso. Ogni variante è:
   //   la curva dei materiali (tm: 0 quella di oggi, 1 ACES, 2 AgX: la scelta viaggia nell'esposizione, così si cambia dal vivo),
@@ -13326,9 +13346,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) },
         aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
+        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv;
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -13345,6 +13366,9 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         vec3 sgV(vec2 q){ float d = 1. / sgI(q); return vec3((q * 2. - 1.) * fv * d, -d); }
         vec3 sgMn(vec3 a, vec3 b){ return abs(a.z) < abs(b.z) ? a : b; }
 #endif
+#ifdef SG_NIT
+        uniform vec4 nA; uniform vec4 nB; uniform vec4 nC; uniform vec4 nD; uniform vec3 nH;   // [nitida]
+#endif
 #ifdef SG_AAA
         uniform vec4 aA; uniform vec4 aF; uniform vec4 aB; uniform vec4 aT; uniform vec3 aS; uniform vec3 aO; uniform vec3 aP; uniform vec3 aSh; uniform vec3 aHi; uniform vec3 aH; uniform vec3 aAo; uniform sampler2D tB;
 #endif
@@ -13355,6 +13379,11 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #else
           float aCoc = 0.;
 #endif
+#if defined(SG_NIT) && defined(SG_PROD)
+          // [nitida] dove sta questo pixel rispetto al personaggio: rel < 0 davanti (verso la camera), > 0 dietro
+          float nD0 = 1. / sgI(vUv), nRel = (nD0 - nB.z) / nB.z;
+          aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel));   // il fuoco per profondità
+#endif
 #if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0. || aCoc > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
             float coc = max(aCoc, pT.x * smoothstep(pT.z, pT.z + .32, abs(vUv.y - pT.y)));
@@ -13364,6 +13393,21 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
 #endif
           vec3 n4 = texture2D(t, vUv + vec2(e.x, 0.)).rgb + texture2D(t, vUv - vec2(e.x, 0.)).rgb + texture2D(t, vUv + vec2(0., e.y)).rgb + texture2D(t, vUv - vec2(0., e.y)).rgb;
           c = max(c + (c - n4 * .25) * shp, 0.);                                    // un filo di nitidezza (i dettagli netti, l'immagine interna ingrandita)
+#if defined(SG_NIT) && defined(SG_PROD)
+          {   // [nitida] la chiarezza nel piano del fuoco (contrasto locale largo, solo sul valore: niente aloni colorati), poi le sagome, la quinta, l'aria
+            float nF = 1. - smoothstep(.06, .45, abs(nRel));
+            if (nB.w > 0. && nF > 0.) { vec2 o = e * 5.;
+              vec3 lb = (texture2D(t, vUv + vec2(o.x, o.y)).rgb + texture2D(t, vUv - vec2(o.x, o.y)).rgb + texture2D(t, vUv + vec2(o.x, -o.y)).rgb + texture2D(t, vUv - vec2(o.x, -o.y)).rgb) * .25;
+              float lc = dot(c, vec3(.299, .587, .114)), ll = dot(lb, vec3(.299, .587, .114)), dl = clamp(lc - ll, -.12, .12);
+              c *= (lc + dl * nB.w * nF) / max(lc, 1e-3); }
+            if (nA.w > 0.) { float dn = max(max(1. / sgI(vUv + vec2(e.x, 0.)), 1. / sgI(vUv - vec2(e.x, 0.))), max(1. / sgI(vUv + vec2(0., e.y)), 1. / sgI(vUv - vec2(0., e.y))));
+              float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
+              c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
+            c *= 1. - nA.z * smoothstep(.25, .6, -nRel);                                   // la quinta
+            float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
+            c = mix(c, nH + (c - nH) * .55, hz);
+          }
+#endif
 #if defined(SG_AAA) && defined(SG_PROD)
           if (aA.x > 0.) {   // [look-aaa] l'ombra di contatto: 4 coppie di letture opposte (8) a un raggio fisso nel mondo (aA.y metri); il punto più lontano
             // della media della coppia sta in una piega (il piede del muro, sotto la gronda, fra due volumi); sul piano la coppia si annulla.
@@ -13432,6 +13476,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           { float la = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(la), c, aT.x), 0.); c *= mix(aSh, vec3(1.), smoothstep(.05, .5, la)); c *= mix(vec3(1.), aHi, smoothstep(.5, .95, la)); }
 #endif
           vec2 q = vUv - .5; c *= 1. - dot(q, q) * gK.z;                                // la vignetta
+#ifdef SG_NIT
+          { float rr = length((vUv - nB.xy) * vec2(src.x / src.y, 1.)) / max(nC.z, .05);   // [nitida] la luce sul personaggio: si apre attorno a lui, scende verso i bordi
+            c *= (1. + nC.x * (1. - smoothstep(0., .7, rr))) * (1. - nC.y * smoothstep(.55, 1.5, rr)); }
+#endif
           c = mix(c, vec3(.55, .02, .05), smoothstep(.18, .5, length(q * vec2(1., 1.2))) * fx.x * .75);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))), fx.w);
           c += fx.y * vec3(.9, .2, .3);
@@ -13500,6 +13548,20 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
         U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
         if (K.proPieno !== undefined) U.gN.value.set(SGU.neri + (K.proNeri - SGU.neri) * g, SGU.pieno + (K.proPieno - SGU.pieno) * g, 0, 0); } }   // gli accenti pieni, i neri profondi di sera e di notte
+    if (NIT.on && PRO.look && !NIT.acceso) { U.nA.value.set(0, 0, 0, 0); U.nB.value.w = 0; U.nC.value.set(0, 0, 1, 0); }   // spento dal vivo (le prove): il passo di prima
+    if (NIT.on && PRO.look && NIT.acceso) {   // [nitida] il personaggio sullo schermo e la sua distanza; le manopole (spente con la grafica ridotta, tranne la luce)
+      const N = NIT, d3 = SGT.nv || (SGT.nv = new THREE.Vector3()), f = ui.focus, fx0 = f ? f.x : p.x, fz0 = f ? f.y : p.y;
+      d3.set(fx0, groundH(fx0, fz0) + 1, fz0).applyMatrix4(camera.matrixWorldInverse); const dist = Math.max(2, -d3.z);
+      d3.set(fx0, groundH(fx0, fz0) + 1, fz0).project(camera);
+      const sx = Math.min(.85, Math.max(.15, d3.x * .5 + .5)), sy = Math.min(.85, Math.max(.15, d3.y * .5 + .5));
+      SGT.nfx = SGT.nfx === undefined ? sx : SGT.nfx + (sx - SGT.nfx) * Math.min(1, dt * 6); SGT.nfy = SGT.nfy === undefined ? sy : SGT.nfy + (sy - SGT.nfy) * Math.min(1, dt * 6);   // la luce segue morbida
+      const dep = PRO.prof && !LOWQ.on, fc = scene.fog.color, fl = .299 * fc.r + .587 * fc.g + .114 * fc.b, ar = N.aria * (.45 + .55 * Math.min(1, fl / .45));   // di notte l'aria è buia: meno, o spegne le finestre lontane
+      U.nA.value.set(dep ? ar : 0, dep ? N.fuoco : 0, dep ? N.quinta : 0, dep ? N.sagome : 0);
+      U.nB.value.set(SGT.nfx, SGT.nfy, dist, dep ? N.chiarezza : 0);
+      U.nC.value.set(N.luce, N.ombraBordo, N.cerchio, dep ? N.vicino : 0); U.nD.value.set(N.ariaDa, N.ariaPer, N.fuocoDa, N.fuocoPer);
+      U.nH.value.set(fc.r, fc.g, fc.b);
+      U.gK.value.z *= .45;   // la vignetta fissa al centro cede il posto a quella che segue il personaggio
+      if (dep) { U.pT.value.x = 0; U.pT.value.w = N.raggio * (rt.height || 540) / 540; } }   // la fascia fissa della miniatura cede il posto al fuoco per profondità
     if (AAA.on) {   // [look-aaa] la variante nel passo (spenta: tutto neutro, il passo di oggi)
       const V = aaaCur(), A = V && PRO.look && SGU.pro.on ? SGT.aaa : null;
       if (A) { U.aA.value.set(V.ao, V.aoR, V.haze, LOWQ.on ? 0 : V.dof); U.aF.value.set(0, V.hazeD[0], V.hazeD[1], V.dofD); U.aAo.value.fromArray(V.aoTinta); U.aH.value.fromArray(A.hz);
