@@ -18,7 +18,7 @@ var Matti = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const EV = () => (typeof Eventi !== 'undefined' ? Eventi : null);
-  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7, giovane: 26, scrocco: [70, 150], scroccoR: 3.8 };
+  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7, giovane: 26, scrocco: [70, 150], scroccoR: 3.8, voce: .6 };
   const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
   // il cast scritto a mano non diventa matto (ha già la sua voce)
   const CAST = new Set(['lupo', 'beppe', 'lucia', 'pietro', 'vinile', 'betamax', 'divisa', 'cono', 'vasco', 'pardo', 'zia', 'malanotte', 'gino', 'wu', 'marta', 'tonino', 'elena', 'rosa', 'nico', 'sandro', 'carla', 'ferri']);
@@ -183,10 +183,45 @@ var Matti = (function () {
     'Oi! ...Ah, pensavo fossi Davide.', 'Hai da accendere? Va be\', ciao zio.', 'Zio, che ore sono? Non importa. Bella.', 'Bel giubbotto, fra. Davvero. Fottiti.',
     'Oi, hai una cartina? Anche usata.', 'Fra, sai dov\'è la Debora? Neanche io.'];
 
+  // ================= LE VOCI: due che parlano di una cosa successa davvero =================
+  // Il motore fa correre le voci (game.js, gossip); qui la voce diventa una conversazione: chi la porta, chi risponde secondo quello
+  // che sa (lo sapeva già, da chi, o no), e una chiusa che dipende da quanto è grave. Chi la sente per la prima volta adesso la sa.
+  const GRAVI = { spari: 1, ferimento: 1, omicidio: 1, esplosione: 1, molotov: 1 }, FURTI = { scippo: 1, rapina: 1, furto_vespa: 1, furto_auto: 1 };
+  // «alla Calata», «al Bar Sirena», «all'Osteria», «a casa Rizzo»: la preposizione giusta davanti al nome del posto
+  function aLuogo(pl) {
+    const w = pl.split(' ')[0], l = w.toLowerCase();
+    if (l === 'casa') return 'a casa' + pl.slice(4);
+    if (/^[aeiouh]/i.test(w)) return 'all\'' + pl;
+    return (/a$/.test(l) && !/^(cinema|sistema)$/.test(l) ? 'alla ' : 'al ') + pl;
+  }
+  function quando(st, t) { const h = (st.t - t) / 60; return h < 1 ? 'Neanche un\'ora fa.' : h < 4 ? 'Stamattina. Cioè, qualche ora fa.' : h < 20 ? 'Ieri sera, mi pare.' : 'L\'altro giorno.'; }
+  function voce(st, a, b) {
+    const m = a.mem && a.mem.filter(m => m.conf >= .35 && !m.silenced && !m.liar && (G.NEG[m.type] || m.type === 'lavoro') && st.t - m.t < 60 * 30 && m.actor !== a.id)
+      .sort((x, y) => G.weight(st, y) - G.weight(st, x))[0];
+    if (!m) return null;
+    const g = giovane(a) && giovane(b), apri = g ? pick(['Fra, ', 'Zio, ', 'Oi, ']) : pick(['Oh, ', '', 'Senti, ']);
+    const chi = m.actor === 'player' ? G.PLAYER_NAME : m.actor === 'ignoto' ? null : G.nameOf(st, m.actor), v = G.verbPast(st, m, a.id);
+    const v2 = m.place ? v.replace(' in mezzo alla strada', ' in strada,') : v, fatto = chi ? `${chi} ${v2}` : v2.replace(/^ha /, 'hanno ').replace(/^mi ha /, 'mi hanno ');
+    const k = b.mem && b.mem.find(x => x.eventId === m.eventId);
+    const dove = m.place ? ` ${aLuogo(m.place)}` : '', su = t => t[0].toUpperCase() + t.slice(1);
+    const L = [su(m.source === 'visto' ? `${apri}l'ho visto io: ${fatto}${dove}.` : `${apri}hai sentito? ${su(fatto)}${dove}.`)];
+    if (k) L.push(k.source === 'visto' ? pick(['Sì, ero lì. Ho visto tutto.', 'Lo so, c\'ero anch\'io.']) : pick([`Sì, me l'ha detto ${(k.via && k.via[k.via.length - 1]) || 'mia cognata'}.`, 'Sì, lo sanno tutti ormai.', g ? 'Sì fra, lo so.' : 'Sì, lo so.']));
+    else { L.push(pick(['Davvero? Quando?', 'Ma dai. Quando?', g ? 'Seria? Quando?' : 'No. Quando?'])); L.push(quando(st, m.t)); }
+    L.push(m.type === 'lavoro' ? pick(['Bravo. Non me l\'aspettavo.', 'Meno male che c\'è ancora qualcuno così.'])
+      : GRAVI[m.type] ? pick(g ? ['Fra, stasera io sto a casa.', 'Raga, qua si mette male.', 'Adesso arrivano i Grigi, vedrai.'] : ['Io stasera non esco.', 'Ci mancava solo questa.', 'Adesso arrivano i Grigi, vedrai.', 'Mia madre non dorme più.'])
+      : FURTI[m.type] ? pick(['Chiudi bene la porta, stanotte.', 'Non c\'è più rispetto.', g ? 'Che sfiga, fra.' : 'Poi dicono che è un posto tranquillo.'])
+      : pick(['Che schifo.', 'Uno non può più uscire tranquillo.', 'Speriamo che lo prendano.']));
+    if (!k) G.addMemory(st, b, { eventId: m.eventId, type: m.type, trueType: m.trueType, actor: m.actor, target: m.target, owner: m.owner, place: m.place, shop: m.shop, t: m.t, conf: m.conf * .8, source: 'voce', via: (m.via || []).concat([a.first]), distorted: m.distorted, framedBy: m.framedBy });
+    return L;
+  }
+
   // ================= STATO =================
   const S = st => st.__matti || (st.__matti = { ready: false, ids: {}, cd: 0, fram: 0, deck: [], deckG: [], q: [], incontri: {}, scr: 0, manie: [] });
   const isMatto = n => !!(n && n.pop && n.pop.matto);
   const giovane = n => n.pop && n.pop.age <= CFG.giovane;
+  // [coerenza] chi ha paura di te o ce l'ha con te (Game.tono), o ti ha appena detto cosa hai fatto, non ti fa battute: tace
+  const freddo = n => !!((G.tono && G.tono(st0, n)) || (st0 && st0.clock - (n.__tonoT || -1e9) < 600));
+  let st0 = null;
   const alive = n => n && !n.dead;
   function ok(st, n) {   // può parlare per conto suo (né dentro, né in una scena, né in una rissa)
     return alive(n) && !n.inside && !n.room && !n.__ev && !n.cop && !n.faction && !n.aggro && !(n.stun > 0) && !n.inVeh && !(n.panic > 0) && !(n.jailedUntil > st.t) && n.pop && n.pop.near !== false && (!n.action || n.action.name === 'routine');
@@ -225,7 +260,7 @@ var Matti = (function () {
 
   // ================= IL PASSO =================
   function step(st, dt) {
-    const M = S(st), p = st.player;
+    const M = S(st), p = st.player; st0 = st;
     if (!M.ready) { if (st.pop && st.npcs && st.npcs.length && st.clock > 2) choose(st); return; }
     // le battute in coda (i frammenti a due voci): ognuno parla al suo turno, se è ancora lì
     if (M.q.length) { const now = st.clock; while (M.q.length && M.q[0].at <= now) { const b = M.q.shift(); const n = G.byId(st, b.id); if (ok(st, n) && hyp(n.x - p.x, n.y - p.y) < 20) G.say(st, n, b.text, 3.4); else M.q = M.q.filter(x => x.g !== b.g); } }
@@ -236,6 +271,7 @@ var Matti = (function () {
       const n = G.byId(st, M.ids[k]); if (!ok(st, n) || (n.__mtCd || 0) > st.clock) continue;
       const d = hyp(n.x - p.x, n.y - p.y);
       let line = null;
+      if (freddo(n)) continue;
       if (d < CFG.passa) { const met = M.incontri[k] || 0; line = linea(n, met > 0 && rnd() < .55 ? 'ritorno' : 'passa'); M.incontri[k] = met + 1; if (G.HOOKS && n.face !== undefined) n.face = Math.atan2(p.y - n.y, p.x - n.x); }
       else if (d > CFG.solo[0] && d < CFG.solo[1] && rnd() < .08) line = linea(n, 'solo');
       if (!line) continue;
@@ -246,12 +282,12 @@ var Matti = (function () {
     // le manie e la sedia con le rotelle: una frase normale quando gli passi accanto, poi più niente per un po'
     if (st.clock > M.cd) for (const n of st.npcs) {
       const D = n.pop && MANIE[n.pop.mania], L = D ? D.passa : n.rotelle ? ROTELLE : null;
-      if (!L || (n.__mtCd || 0) > st.clock || !ok(st, n) && !(n.rotelle && alive(n) && !n.__ev && !n.inside) || hyp(n.x - p.x, n.y - p.y) > 4) continue;
+      if (!L || (n.__mtCd || 0) > st.clock || freddo(n) || !ok(st, n) && !(n.rotelle && alive(n) && !n.__ev && !n.inside) || hyp(n.x - p.x, n.y - p.y) > 4) continue;
       G.say(st, n, pick(L), 3); n.__mtCd = st.clock + 90; M.cd = st.clock + CFG.cdTutti; break;
     }
     // i ragazzi: uno che ti passa accanto ti chiede da accendere (una volta a testa, ogni un paio di minuti al massimo)
     if (st.clock > M.scr && st.clock > M.cd) {
-      const n = st.npcs.find(k => giovane(k) && !k.__scr && !isMatto(k) && hyp(k.x - p.x, k.y - p.y) < CFG.scroccoR && ok(st, k));
+      const n = st.npcs.find(k => giovane(k) && !k.__scr && !isMatto(k) && !freddo(k) && hyp(k.x - p.x, k.y - p.y) < CFG.scroccoR && ok(st, k));
       if (n && rnd() < .25) { n.__scr = 1; n.face = Math.atan2(p.y - n.y, p.x - n.x); G.say(st, n, pick(SCROCCO), 3.6); M.scr = st.clock + CFG.scrocco[0] + rnd() * (CFG.scrocco[1] - CFG.scrocco[0]); M.cd = st.clock + CFG.cdTutti; }
     }
     // i frammenti: due che parlano lì vicino, a metà della loro storia
@@ -261,9 +297,12 @@ var Matti = (function () {
     for (const a of near) {
       const b = near.find(k => k !== a && hyp(k.x - a.x, k.y - a.y) < CFG.coppia); if (!b) continue;
       const G2 = giovane(a) && giovane(b), L = G2 ? FRAM_G : FRAM, dk = G2 ? 'deckG' : 'deck';   // due ragazzi: il loro mazzo
-      if (!M[dk].length) M[dk] = L.map((_, i) => i).sort(() => rnd() - .5);
-      const F = L[M[dk].pop()], g = st.clock;
-      F.forEach((text, i) => M.q.push({ id: (i % 2 ? b : a).id, text, at: st.clock + i * CFG.gap, g }));
+      // prima le cose successe davvero (una voce fresca), poi i pezzi di vita
+      let F = null, x = a, y = b;
+      if (rnd() < CFG.voce) { F = voce(st, a, b); if (!F && (F = voce(st, b, a))) { x = b; y = a; } }   // la porta chi la sa
+      if (!F) { if (!M[dk].length) M[dk] = L.map((_, i) => i).sort(() => rnd() - .5); F = L[M[dk].pop()]; }
+      const g = st.clock;
+      F.forEach((text, i) => M.q.push({ id: (i % 2 ? y : x).id, text, at: st.clock + i * CFG.gap, g }));
       a.face = Math.atan2(b.y - a.y, b.x - a.x); b.face = Math.atan2(a.y - b.y, a.x - b.x);
       return;
     }
@@ -409,6 +448,6 @@ var Matti = (function () {
   // si aggiungono al catalogo di eventi.js (che le prova come le altre, test_eventi.js)
   { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
 
-  return { CFG, MATTI, MANIE, ROTELLE, FRAM, FRAM_G, SCROCCO, SCENE, S, scheda, linea, choose, step };
+  return { CFG, voce, MATTI, MANIE, ROTELLE, FRAM, FRAM_G, SCROCCO, SCENE, S, scheda, linea, choose, step };
 })();
 if (typeof module !== 'undefined') module.exports = Matti;
