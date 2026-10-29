@@ -165,6 +165,9 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 #touch { inset: auto 0 0 0; height: 44%; pointer-events: none; }
 #stick { position: absolute; left: 22px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.35); pointer-events: auto; touch-action: none; }
 #knob { position: absolute; left: 43px; top: 43px; width: 44px; height: 44px; border-radius: 50%; background: rgba(240,230,208,.6); }
+/* [levette] la levetta della visuale, a destra sopra i pulsanti: di lato gira attorno al personaggio, in su e in giù lo zoom */
+#stick2 { position: absolute; right: 22px; bottom: 196px; width: 116px; height: 116px; border-radius: 50%; border: 2px solid rgba(240,230,208,.3); background: rgba(13,11,26,.3); pointer-events: auto; touch-action: none; }
+#knob2 { position: absolute; left: 37px; top: 37px; width: 40px; height: 40px; border-radius: 50%; background: rgba(240,230,208,.45); }
 /* [mobile] i pulsanti di adesso: il principale in basso a destra, sotto il pollice; gli altri sopra e a sinistra */
 #tbtns { position: absolute; right: 14px; bottom: 16px; width: 224px; display: flex; flex-direction: row-reverse; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px; pointer-events: auto; }
 #tbtns button { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(240,230,208,.35); background: rgba(13,11,26,.62); color: var(--fg); font-family: var(--f-label); font-size: 11px; line-height: 1.1; padding: 0; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; place-content: center; }
@@ -285,6 +288,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   </div>
   <div class="layer" id="touch" hidden>
     <div id="stick"><div id="knob"></div></div>
+    <div id="stick2"><div id="knob2"></div></div>
     <div id="tbtns"></div>
     </div>
   </div>
@@ -295,6 +299,52 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 </div>
 
 <script>window.PV_VER = {"assets/mc/Casual.glb":"008506e99a","assets/mc/Casual.glb.gz":"bc85ed8fe5","assets/mc/Casual.json":"59f9bb4e28","assets/mc/Casual_2.glb":"34694e9570","assets/mc/Casual_2.glb.gz":"f0296d8a83","assets/mc/Casual_2.json":"27b3314830","assets/mc/Casual_Hoodie.glb":"13c668b5e3","assets/mc/Casual_Hoodie.glb.gz":"6a96f9e298","assets/mc/Casual_Hoodie.json":"b21f971e60","assets/mc/Enemy.glb":"a1cbf8e9ee","assets/mc/Enemy.glb.gz":"4ec25529f7","assets/mc/Enemy.json":"aa80b45847","assets/mc/Formal.glb":"d37eed5227","assets/mc/Formal.glb.gz":"fb9554ed6f","assets/mc/Formal.json":"8527eb5c25","assets/mc/Hazmat.glb":"a603d50d31","assets/mc/Hazmat.glb.gz":"7d08b2b0a1","assets/mc/Hazmat.json":"dada813f54","assets/mc/Soldier.glb":"3020c1dd66","assets/mc/Soldier.glb.gz":"e1fc4a0a57","assets/mc/Soldier.json":"e6e0e1744c","assets/mc/Worker.glb":"8df5ee694b","assets/mc/Worker.glb.gz":"0b0ca5f182","assets/mc/Worker.json":"8cf20815fc","assets/mf/ar_air-hockey.glb":"8de9386ca2","assets/mf/ar_air-hockey.glb.gz":"0beb30779c","assets/mf/ar_air-hockey.json":"1090f44a58","assets/mf/ar_arcade-machine.glb":"2e973bf4e1","assets/mf/ar_arcade-machine.glb.gz":"d4bae03a1c","assets/mf/ar_arcade-machine.json":"6d46254dc1","assets/mf/ar_basketball-game.glb":"86cc73ee14","assets/mf/ar_basketball-game.glb.gz":"d21f72febe","assets/mf/ar_basketball-game.json":"781cbadd29","assets/mf/ar_cash-register.glb":"3be0c665fc","assets/mf/ar_cash-register.glb.gz":"7b06b78397","assets/mf/ar_cash-register.json":"c178dbeb4c","assets/mf/ar_claw-machine.glb":"cf24f2a49e","assets/mf/ar_claw-machine.glb.gz":"601fb46c5f","assets/mf/ar_claw-machine.json":"3b4f2292d8","assets/mf/ar_dance-machine.glb":"f7e7655139","assets/mf/ar_dance-machine.glb.gz":"289fb3fe8a","assets/mf/ar_dance-machine.json":"98f0f9af8f","assets/mf/ar_gambling-machine.glb":"022ab60e17","assets/mf/ar_gambling-machine.glb.gz":"67491a664a","assets/mf/ar_gambling-machine.json":"f562a91e1b","assets/mf/ar_pinball.glb":"5d81c2e4eb","assets/mf/ar_pinball.glb.gz":"23ab596254","assets/mf/ar_pinball.json":"4a19c09f23","assets/mf/ar_prizes.glb":"46d1349bd0","assets/mf/ar_prizes.glb.gz":"13bef86954","assets/mf/ar_prizes.json":"71a3f1d6c6","assets/mf/ar_vending-machine.glb":"694e2066b6","assets/mf/ar_vending-machine.glb.gz":"75d66a63eb","assets/mf/ar_vending-machine.json":"b123b5a78a","assets/mf/bathroomSink.glb":"d4726c65f1","assets/mf/bathroomSink.glb.gz":"3e0df7686b","assets/mf/bathroomSink.json":"6b5910d634","assets/mf/bathtub.glb":"c579039382","assets/mf/bathtub.glb.gz":"30cc5d2183","assets/mf/bathtub.json":"2c98320692","assets/mf/bedDouble.glb":"556014097c","assets/mf/bedDouble.glb.gz":"d9513e4fa6","assets/mf/bedDouble.json":"d11d4ccc2c","assets/mf/bedSingle.glb":"83bb9508f7","assets/mf/bedSingle.glb.gz":"1a757f5a2a","assets/mf/bedSingle.json":"1fc7821fdc","assets/mf/bench.glb":"3b4365cd5b","assets/mf/bench.glb.gz":"d88d6a29aa","assets/mf/bench.json":"cf4842f9a0","assets/mf/bookcaseClosedWide.glb":"30aac412f1","assets/mf/bookcaseClosedWide.glb.gz":"70f4c25be2","assets/mf/bookcaseClosedWide.json":"838853639a","assets/mf/bookcaseOpen.glb":"7d90be475c","assets/mf/bookcaseOpen.glb.gz":"3997836265","assets/mf/bookcaseOpen.json":"02237a14ff","assets/mf/bookcaseOpenLow.glb":"cf4b8d8154","assets/mf/bookcaseOpenLow.glb.gz":"ad6abaf935","assets/mf/bookcaseOpenLow.json":"d07f6a777c","assets/mf/cabinetTelevision.glb":"a3d7001a42","assets/mf/cabinetTelevision.glb.gz":"d7b9361b0f","assets/mf/cabinetTelevision.json":"94bec2825a","assets/mf/cardboardBoxClosed.glb":"a462053034","assets/mf/cardboardBoxClosed.glb.gz":"b486178630","assets/mf/cardboardBoxClosed.json":"7e0b8f246a","assets/mf/chair.glb":"c94750ca6f","assets/mf/chair.glb.gz":"8a9bca0143","assets/mf/chair.json":"e2af738868","assets/mf/chairCushion.glb":"0a40ee2b11","assets/mf/chairCushion.glb.gz":"896968847f","assets/mf/chairCushion.json":"4a7b57eabd","assets/mf/chairDesk.glb":"513c5d4ca4","assets/mf/chairDesk.glb.gz":"f3aa5a537f","assets/mf/chairDesk.json":"4f986d8fc1","assets/mf/coatRackStanding.glb":"d98c5ef8ff","assets/mf/coatRackStanding.glb.gz":"cde567a033","assets/mf/coatRackStanding.json":"03192e1e5a","assets/mf/computerScreen.glb":"9e5338a0eb","assets/mf/computerScreen.glb.gz":"9313f47142","assets/mf/computerScreen.json":"3396361c6e","assets/mf/desk.glb":"2df0b4f669","assets/mf/desk.glb.gz":"38d8266d1b","assets/mf/desk.json":"01bb6557a6","assets/mf/fd_barrel.glb":"91a712dd45","assets/mf/fd_barrel.glb.gz":"919ebe3b44","assets/mf/fd_barrel.json":"bba3b72218","assets/mf/fd_bread.glb":"f738286832","assets/mf/fd_bread.glb.gz":"863a3ee4e8","assets/mf/fd_bread.json":"2061e81ce6","assets/mf/fd_cake.glb":"1739d4c9ab","assets/mf/fd_cake.glb.gz":"b3d31cf691","assets/mf/fd_cake.json":"762d0584b8","assets/mf/fd_cheese.glb":"4e4b8e66e2","assets/mf/fd_cheese.glb.gz":"03c329c9a8","assets/mf/fd_cheese.json":"599d66ff2f","assets/mf/fd_croissant.glb":"651450e15e","assets/mf/fd_croissant.glb.gz":"e32d7f0ac5","assets/mf/fd_croissant.json":"f2af279792","assets/mf/fd_cup-coffee.glb":"b19a3f26cd","assets/mf/fd_cup-coffee.glb.gz":"10cc4f2425","assets/mf/fd_cup-coffee.json":"87712dc9b3","assets/mf/fd_fish.glb":"830c42deaf","assets/mf/fd_fish.glb.gz":"2fd169ed34","assets/mf/fd_fish.json":"eefb01c7ae","assets/mf/fd_glass-wine.glb":"d1d3039852","assets/mf/fd_glass-wine.glb.gz":"bf7abaeb46","assets/mf/fd_glass-wine.json":"9643d05fc1","assets/mf/fd_loaf-baguette.glb":"0ea5f7d422","assets/mf/fd_loaf-baguette.glb.gz":"e525162da2","assets/mf/fd_loaf-baguette.json":"60eab2a4a4","assets/mf/fd_pizza.glb":"78cf280854","assets/mf/fd_pizza.glb.gz":"0c09f3cece","assets/mf/fd_pizza.json":"f3f169e2e1","assets/mf/fd_wine-red.glb":"13b0f23f3b","assets/mf/fd_wine-red.glb.gz":"ff460f72a4","assets/mf/fd_wine-red.json":"8c0458ab52","assets/mf/fx_box-large.glb":"bfbbbc968c","assets/mf/fx_box-large.glb.gz":"d100a8d6f6","assets/mf/fx_box-large.json":"05b32333b8","assets/mf/fx_box-small.glb":"6b1cb44ed1","assets/mf/fx_box-small.glb.gz":"749e411c02","assets/mf/fx_box-small.json":"515595977d","assets/mf/fx_conveyor-long.glb":"3dfa13f3bd","assets/mf/fx_conveyor-long.glb.gz":"cae840ccc9","assets/mf/fx_conveyor-long.json":"94cec89ce3","assets/mf/fx_hopper-round.glb":"4e1417029b","assets/mf/fx_hopper-round.glb.gz":"81f225ae50","assets/mf/fx_hopper-round.json":"232ea45eb7","assets/mf/fx_machine.glb":"7a3881d5c9","assets/mf/fx_machine.glb.gz":"ecab8c838f","assets/mf/fx_machine.json":"5dfbf9de17","assets/mf/fx_pipe-large-long.glb":"9bc6c7330c","assets/mf/fx_pipe-large-long.glb.gz":"4d42273949","assets/mf/fx_pipe-large-long.json":"44348126c2","assets/mf/fx_robot-arm-a.glb":"db5329a979","assets/mf/fx_robot-arm-a.glb.gz":"72e46fc6d5","assets/mf/fx_robot-arm-a.json":"e5c8d0008c","assets/mf/fx_scanner-high.glb":"16b4671b99","assets/mf/fx_scanner-high.glb.gz":"88d8351ac5","assets/mf/fx_scanner-high.json":"4abff411da","assets/mf/fx_screen-wide.glb":"2927c7aaa7","assets/mf/fx_screen-wide.glb.gz":"a571397bea","assets/mf/fx_screen-wide.json":"bb5a5011c5","assets/mf/kitchenBar.glb":"44bf2daefd","assets/mf/kitchenBar.glb.gz":"a0e7b02e81","assets/mf/kitchenBar.json":"5168e6be9c","assets/mf/kitchenCabinet.glb":"1d26e2dd69","assets/mf/kitchenCabinet.glb.gz":"bef8159f78","assets/mf/kitchenCabinet.json":"97cdc45d43","assets/mf/kitchenCabinetDrawer.glb":"6f4b2dbc67","assets/mf/kitchenCabinetDrawer.glb.gz":"8af1f12656","assets/mf/kitchenCabinetDrawer.json":"667a1f001a","assets/mf/kitchenCoffeeMachine.glb":"ca78b4afb1","assets/mf/kitchenCoffeeMachine.glb.gz":"1fb4635a00","assets/mf/kitchenCoffeeMachine.json":"172e1ed02d","assets/mf/kitchenFridge.glb":"d5781345e3","assets/mf/kitchenFridge.glb.gz":"a347060f14","assets/mf/kitchenFridge.json":"29f0f7cb6c","assets/mf/kitchenSink.glb":"622d5ac24f","assets/mf/kitchenSink.glb.gz":"5e0ab598db","assets/mf/kitchenSink.json":"783f5c8184","assets/mf/kitchenStove.glb":"c7ee8a502a","assets/mf/kitchenStove.glb.gz":"bf24df34d7","assets/mf/kitchenStove.json":"3ee701918e","assets/mf/lampRoundFloor.glb":"56d013b659","assets/mf/lampRoundFloor.glb.gz":"a047716dd0","assets/mf/lampRoundFloor.json":"d44944bcd2","assets/mf/loungeChair.glb":"c544602430","assets/mf/loungeChair.glb.gz":"0661fbb7ee","assets/mf/loungeChair.json":"f34251bb7b","assets/mf/loungeSofa.glb":"8e149c6ff4","assets/mf/loungeSofa.glb.gz":"c0a510a0ef","assets/mf/loungeSofa.json":"37f6b1c175","assets/mf/loungeSofaLong.glb":"64280d8b87","assets/mf/loungeSofaLong.glb.gz":"fd84c3cd33","assets/mf/loungeSofaLong.json":"b2c0501405","assets/mf/nx_agusha.glb":"719e89d4ed","assets/mf/nx_agusha.glb.gz":"116d0701c0","assets/mf/nx_agusha.json":"e27cf8e4b7","assets/mf/nx_caramella.glb":"9c7148f552","assets/mf/nx_caramella.glb.gz":"0430c49ae0","assets/mf/nx_caramella.json":"8a84653c1b","assets/mf/nx_caramella_35.glb":"412fae3022","assets/mf/nx_caramella_35.glb.gz":"20aa14eaab","assets/mf/nx_caramella_35.json":"d7c0be9b4c","assets/mf/nx_caramelle.glb":"234a7ad9c1","assets/mf/nx_caramelle.glb.gz":"d2c2bddd21","assets/mf/nx_caramelle.json":"bbb633acfc","assets/mf/nx_cartuccia.glb":"871de5de1d","assets/mf/nx_cartuccia.glb.gz":"2cad2a4e97","assets/mf/nx_cartuccia.json":"711f0b5f86","assets/mf/nx_cioccolato.glb":"7a1959c915","assets/mf/nx_cioccolato.glb.gz":"9fc3f913ea","assets/mf/nx_cioccolato.json":"decb5bcc6c","assets/mf/nx_crostini.glb":"8c811ed7d7","assets/mf/nx_crostini.glb.gz":"7f488a5d78","assets/mf/nx_crostini.json":"8d49ab84b9","assets/mf/nx_doshirak.glb":"d2ebdb45ef","assets/mf/nx_doshirak.glb.gz":"de936f9386","assets/mf/nx_doshirak.json":"c3b5577600","assets/mf/nx_fetta_pane.glb":"7549cdcd17","assets/mf/nx_fetta_pane.glb.gz":"d999b5bbe8","assets/mf/nx_fetta_pane.json":"bc11bf1f92","assets/mf/nx_kitkat.glb":"e00b8c6f3d","assets/mf/nx_kitkat.glb.gz":"b6cac91557","assets/mf/nx_kitkat.json":"1c6ea361df","assets/mf/nx_lettera.glb":"18f929fe31","assets/mf/nx_lettera.glb.gz":"8da137da90","assets/mf/nx_lettera.json":"eb19fbbf17","assets/mf/nx_maionese.glb":"b6e964d12f","assets/mf/nx_maionese.glb.gz":"03a1cc4010","assets/mf/nx_maionese.json":"d1e5bf1505","assets/mf/nx_nokia.glb":"8b569a2a22","assets/mf/nx_nokia.glb.gz":"eca8f69445","assets/mf/nx_nokia.json":"95df6ff7ac","assets/mf/nx_noodles_funghi.glb":"53cb57fa19","assets/mf/nx_noodles_funghi.glb.gz":"58de4f8fff","assets/mf/nx_noodles_funghi.json":"d2ebe62721","assets/mf/nx_noodles_pollo.glb":"929f481833","assets/mf/nx_noodles_pollo.glb.gz":"c90fc6328c","assets/mf/nx_noodles_pollo.json":"43455fb4a9","assets/mf/nx_pan_zenzero.glb":"ea3098c825","assets/mf/nx_pan_zenzero.glb.gz":"4e8f6bd376","assets/mf/nx_pan_zenzero.json":"96ed868a76","assets/mf/nx_semi.glb":"e85434d194","assets/mf/nx_semi.glb.gz":"2f2c7bec3c","assets/mf/nx_semi.json":"0517d5612d","assets/mf/nx_wafer.glb":"a4504b4271","assets/mf/nx_wafer.glb.gz":"feb9f11d52","assets/mf/nx_wafer.json":"1156d6a15f","assets/mf/plantSmall1.glb":"a94af151fb","assets/mf/plantSmall1.glb.gz":"b83f4458c9","assets/mf/plantSmall1.json":"caaf03a54c","assets/mf/pottedPlant.glb":"082fa80250","assets/mf/pottedPlant.glb.gz":"9e9a3a20c6","assets/mf/pottedPlant.json":"5211c3f645","assets/mf/radio.glb":"dcdf6875e2","assets/mf/radio.glb.gz":"db675c1cb6","assets/mf/radio.json":"b22a26630e","assets/mf/rc_cinecamera.glb":"6ef3b89876","assets/mf/rc_cinecamera.glb.gz":"fd300d9fa8","assets/mf/rc_cinecamera.json":"3c51ebb522","assets/mf/rc_glove.glb":"32d7c7b48d","assets/mf/rc_glove.glb.gz":"a84d5517da","assets/mf/rc_glove.json":"99a7871a01","assets/mf/rc_screen.glb":"2ef812b2b9","assets/mf/rc_screen.glb.gz":"13cf975bb7","assets/mf/rc_screen.json":"08697aba17","assets/mf/rc_seat.glb":"9928d51481","assets/mf/rc_seat.glb.gz":"0d4404c5dd","assets/mf/rc_seat.json":"4165ffafc9","assets/mf/rugRectangle.glb":"bdd581abf1","assets/mf/rugRectangle.glb.gz":"69c2ac53fc","assets/mf/rugRectangle.json":"95a81255e8","assets/mf/rugRound.glb":"29bd827e99","assets/mf/rugRound.glb.gz":"29f4747e7f","assets/mf/rugRound.json":"f3cbb4b177","assets/mf/shower.glb":"f13a2a1fc5","assets/mf/shower.glb.gz":"aa54b4b835","assets/mf/shower.json":"fecaf81bd1","assets/mf/sideTable.glb":"ed40f05ad2","assets/mf/sideTable.glb.gz":"0495eb27ba","assets/mf/sideTable.json":"8478cc0099","assets/mf/speaker.glb":"1ba02e30f7","assets/mf/speaker.glb.gz":"8efa294b02","assets/mf/speaker.json":"1d1708bd80","assets/mf/stairs.glb":"a3cd93f4d2","assets/mf/stairs.glb.gz":"b4f84639df","assets/mf/stairs.json":"4d9ee70cba","assets/mf/stoolBar.glb":"6840cd471a","assets/mf/stoolBar.glb.gz":"df60d60b4c","assets/mf/stoolBar.json":"c74c48a7c6","assets/mf/table.glb":"39364d19e5","assets/mf/table.glb.gz":"6c543aafe5","assets/mf/table.json":"3ed949c974","assets/mf/tableCloth.glb":"da716fd148","assets/mf/tableCloth.glb.gz":"055d651daf","assets/mf/tableCloth.json":"d50850ff0b","assets/mf/tableCoffee.glb":"423e4aeef8","assets/mf/tableCoffee.glb.gz":"bea076a6c7","assets/mf/tableCoffee.json":"caf18fa61f","assets/mf/tableRound.glb":"62749d19aa","assets/mf/tableRound.glb.gz":"8f05e815e7","assets/mf/tableRound.json":"d577308a2d","assets/mf/televisionVintage.glb":"33a339aeb9","assets/mf/televisionVintage.glb.gz":"6496037549","assets/mf/televisionVintage.json":"1171382c53","assets/mf/toilet.glb":"97239b33db","assets/mf/toilet.glb.gz":"a628a1627d","assets/mf/toilet.json":"ba0ddd4473","assets/mf/trashcan.glb":"6511b6a985","assets/mf/trashcan.glb.gz":"fa9c033c8e","assets/mf/trashcan.json":"e339f8a48e","assets/mf/washer.glb":"06553fb398","assets/mf/washer.glb.gz":"b07e44ec8b","assets/mf/washer.json":"d0d29c1281","assets/mj/k_boat-fishing-small.glb":"88e4909df2","assets/mj/k_boat-fishing-small.glb.gz":"bb8fc8e6a1","assets/mj/k_boat-fishing-small.json":"383c09f59c","assets/mj/k_boat-row-small.glb":"8576900e27","assets/mj/k_boat-row-small.glb.gz":"0bfe884bae","assets/mj/k_boat-row-small.json":"1f6f9ce01c","assets/mj/k_boat-sail-a.glb":"924f0b3d7e","assets/mj/k_boat-sail-a.glb.gz":"4e5b8bfb9c","assets/mj/k_boat-sail-a.json":"a6f5dd4f8a","assets/mj/k_boat-sail-b.glb":"0bb2d72ac8","assets/mj/k_boat-sail-b.glb.gz":"87500e6d78","assets/mj/k_boat-sail-b.json":"944a7468c1","assets/mj/k_boat-speed-a.glb":"2c1cfe0e97","assets/mj/k_boat-speed-a.glb.gz":"2bd97ef810","assets/mj/k_boat-speed-a.json":"8c5df6478a","assets/mj/k_boat-speed-c.glb":"6aeeb503e0","assets/mj/k_boat-speed-c.glb.gz":"e79182fccd","assets/mj/k_boat-speed-c.json":"c4b06134dc","assets/mj/k_boat-tug-a.glb":"02403395af","assets/mj/k_boat-tug-a.glb.gz":"d54dedbf5e","assets/mj/k_boat-tug-a.json":"8feee63b44","assets/mj/k_cargo-container-a.glb":"6786c8e221","assets/mj/k_cargo-container-a.glb.gz":"14a1dcdc5b","assets/mj/k_cargo-container-a.json":"353c997a79","assets/mj/k_cargo-container-b.glb":"2001daae51","assets/mj/k_cargo-container-b.glb.gz":"6be265277e","assets/mj/k_cargo-container-b.json":"aa05a7bde9","assets/mj/k_cargo-container-c.glb":"e1c88eed43","assets/mj/k_cargo-container-c.glb.gz":"2cd97658ac","assets/mj/k_cargo-container-c.json":"50099b9b58","assets/mj/k_cargo-pile-a.glb":"d292155351","assets/mj/k_cargo-pile-a.glb.gz":"3f95c02468","assets/mj/k_cargo-pile-a.json":"d19e2943b9","assets/mj/k_ship-cargo-a.glb":"ba6ebc21ce","assets/mj/k_ship-cargo-a.glb.gz":"2f23021a2b","assets/mj/k_ship-cargo-a.json":"bc1815586f","assets/mj/r_1972-bursley-defiance.glb":"7a4ece4b5e","assets/mj/r_1972-bursley-defiance.glb.gz":"11531924f7","assets/mj/r_1972-bursley-defiance.json":"0672b23994","assets/mj/r_Barrier_Large.glb":"a56ba71c0b","assets/mj/r_Barrier_Large.glb.gz":"ac340a5311","assets/mj/r_Barrier_Large.json":"03ae3dfeef","assets/mj/r_ConcreteBarrier.glb":"dee1e5340b","assets/mj/r_ConcreteBarrier.glb.gz":"bf207c1655","assets/mj/r_ConcreteBarrier.json":"c4700d1cb4","assets/mj/r_GTR.glb":"45e6b98f36","assets/mj/r_GTR.glb.gz":"f33d9e85ed","assets/mj/r_GTR.json":"35dadc58db","assets/mj/r_Helicopter.glb":"c46cc96931","assets/mj/r_Helicopter.glb.gz":"cc5a93505e","assets/mj/r_Helicopter.json":"75e335126f","assets/mj/r_RX_7_3_v2.glb":"264d3e89ec","assets/mj/r_RX_7_3_v2.glb.gz":"06df054209","assets/mj/r_RX_7_3_v2.json":"2c0602d084","assets/mj/r_SM_FerrisWheel_02.glb":"f593255574","assets/mj/r_SM_FerrisWheel_02.glb.gz":"cf234cfd62","assets/mj/r_SM_FerrisWheel_02.json":"367bc47f66","assets/mj/s_Backpack.glb":"9c47b5b7d0","assets/mj/s_Backpack.glb.gz":"e0c2ede1d9","assets/mj/s_Backpack.json":"6b19916208","assets/mj/s_Bonfire_Fire.glb":"e06527ea56","assets/mj/s_Bonfire_Fire.glb.gz":"db5c14beaa","assets/mj/s_Bonfire_Fire.json":"54948af061","assets/mj/s_PropaneTank.glb":"e938b30501","assets/mj/s_PropaneTank.glb.gz":"b8fd2be19e","assets/mj/s_PropaneTank.json":"4b2c17ec33","assets/mj/s_Radio.glb":"fb0348f55f","assets/mj/s_Radio.glb.gz":"b7e1d4d3e6","assets/mj/s_Radio.json":"67c03e382e","assets/mj/s_Raft.glb":"6196b39d2a","assets/mj/s_Raft.glb.gz":"88343236e9","assets/mj/s_Raft.json":"22e81e1824","assets/mj/s_Tent.glb":"a53eff22a3","assets/mj/s_Tent.glb.gz":"a0d0819634","assets/mj/s_Tent.json":"6424fdb822","assets/mj/s_WoodLog.glb":"c61df7d0c6","assets/mj/s_WoodLog.glb.gz":"4f2d38cb66","assets/mj/s_WoodLog.json":"1a89b8dfab","assets/mj/t_Barrier_Fixed.glb":"ee2042e899","assets/mj/t_Barrier_Fixed.glb.gz":"6b89446f27","assets/mj/t_Barrier_Fixed.json":"dbbe8e39a4","assets/mj/t_Barrier_Single.glb":"7299ca7305","assets/mj/t_Barrier_Single.glb.gz":"f62ff4c725","assets/mj/t_Barrier_Single.json":"8855df156b","assets/mj/t_CardboardBoxes_1.glb":"10e7c1bac2","assets/mj/t_CardboardBoxes_1.glb.gz":"86928e43b8","assets/mj/t_CardboardBoxes_1.json":"04795fbf86","assets/mj/t_CardboardBoxes_3.glb":"ced5d0788f","assets/mj/t_CardboardBoxes_3.glb.gz":"9bdb41db8b","assets/mj/t_CardboardBoxes_3.json":"aff70e3cf3","assets/mj/t_Container_Long.glb":"7d295b9171","assets/mj/t_Container_Long.glb.gz":"745370012a","assets/mj/t_Container_Long.json":"8db2fbcfa0","assets/mj/t_Container_Small.glb":"530174a51e","assets/mj/t_Container_Small.glb.gz":"56800ab5a0","assets/mj/t_Container_Small.json":"5122bac3fc","assets/mj/t_Crate.glb":"c55de229c2","assets/mj/t_Crate.glb.gz":"caa4ef8273","assets/mj/t_Crate.json":"fdb1dcf813","assets/mj/t_Debris_BrokenCar.glb":"e3f71059df","assets/mj/t_Debris_BrokenCar.glb.gz":"7a159ab341","assets/mj/t_Debris_BrokenCar.json":"9b124c9918","assets/mj/t_Debris_Pile.glb":"34e5877f0d","assets/mj/t_Debris_Pile.glb.gz":"faf14f0946","assets/mj/t_Debris_Pile.json":"ca15b51195","assets/mj/t_Debris_Tires.glb":"ab479ec45a","assets/mj/t_Debris_Tires.glb.gz":"fd96201661","assets/mj/t_Debris_Tires.json":"22da84ec19","assets/mj/t_ExplodingBarrel.glb":"52d2093f35","assets/mj/t_ExplodingBarrel.glb.gz":"57b41d1ee9","assets/mj/t_ExplodingBarrel.json":"469b9a50d6","assets/mj/t_GasTank.glb":"fc4703f252","assets/mj/t_GasTank.glb.gz":"bc206f1200","assets/mj/t_GasTank.json":"ff6abea365","assets/mj/t_MetalFence.glb":"4648147ad7","assets/mj/t_MetalFence.glb.gz":"6e7b760582","assets/mj/t_MetalFence.json":"b182f4e430","assets/mj/t_Pallet.glb":"92e46b4bb8","assets/mj/t_Pallet.glb.gz":"19d6878e64","assets/mj/t_Pallet.json":"15627e0076","assets/mj/t_Pipes.glb":"d08b1ef201","assets/mj/t_Pipes.glb.gz":"6ffbc3eec6","assets/mj/t_Pipes.json":"f3721126ef","assets/mj/t_SackTrench.glb":"df6f5eec63","assets/mj/t_SackTrench.glb.gz":"8991667353","assets/mj/t_SackTrench.json":"47e398735d","assets/mj/t_SackTrench_Small.glb":"d5f90122d9","assets/mj/t_SackTrench_Small.glb.gz":"a60a0f1af4","assets/mj/t_SackTrench_Small.json":"dff31e43fa","assets/mj/t_Sofa.glb":"048bfc1cdd","assets/mj/t_Sofa.glb.gz":"87430c78cc","assets/mj/t_Sofa.json":"9fa073a787","assets/mj/t_Structure_1.glb":"fb4ff7b904","assets/mj/t_Structure_1.glb.gz":"5c8f3b6506","assets/mj/t_Structure_1.json":"3e8928b595","assets/mj/t_Structure_3.glb":"9eeb9beec4","assets/mj/t_Structure_3.glb.gz":"f15365dd78","assets/mj/t_Structure_3.json":"6cdaa8a454","assets/mj/t_Tank.glb":"b2adca2060","assets/mj/t_Tank.glb.gz":"159a2126cd","assets/mj/t_Tank.json":"6745c57fc3","assets/mj/t_TrafficCone.glb":"4b40efce82","assets/mj/t_TrafficCone.glb.gz":"e8c9f7f026","assets/mj/t_TrafficCone.json":"fa4673390d","assets/mj/t_TrashContainer.glb":"ed420ccbf1","assets/mj/t_TrashContainer.glb.gz":"a2ae5d9dc6","assets/mj/t_TrashContainer.json":"3aa63b9655","assets/mj/t_TrashContainer_Open.glb":"603a2e1f4c","assets/mj/t_TrashContainer_Open.glb.gz":"1bf113a480","assets/mj/t_TrashContainer_Open.json":"cc5f0d0d62","assets/mj/t_WaterTank_Platform.glb":"a7fff2e02e","assets/mj/t_WaterTank_Platform.glb.gz":"f212c9fb1c","assets/mj/t_WaterTank_Platform.json":"0f6b60e556","assets/mj/x_Gallows.glb":"4055ad4d20","assets/mj/x_Gallows.glb.gz":"8def905b0d","assets/mj/x_Gallows.json":"56b629cb67","assets/mk/kit_arcade.glb":"38b8336efc","assets/mk/kit_arcade.glb.gz":"72d166cc6c","assets/mk/kit_arcade.json":"42fc8e00d2","assets/mk/kit_bkit.glb":"f9d9079278","assets/mk/kit_bkit.glb.gz":"928bee83b9","assets/mk/kit_bkit.json":"70e92932bc","assets/mk/kit_casa.glb":"2e1605073d","assets/mk/kit_casa.glb.gz":"a9a21e8c40","assets/mk/kit_casa.json":"6ce5403c44","assets/mk/kit_food.glb":"e561d75a41","assets/mk/kit_food.glb.gz":"cdd6e430ce","assets/mk/kit_food.json":"e1cf173fbc","assets/mk/kit_garage.glb":"0f51c35827","assets/mk/kit_garage.glb.gz":"8e2d5eb3a6","assets/mk/kit_garage.json":"937bbd00bc","assets/mk/kit_grave.glb":"99930e08d8","assets/mk/kit_grave.glb.gz":"a100c06d8a","assets/mk/kit_grave.json":"006bcb375b","assets/mk/kit_natura.glb":"d3dbad69f8","assets/mk/kit_natura.glb.gz":"d077db22fd","assets/mk/kit_natura.json":"7eecf47142","assets/mk/kit_rurban.glb":"d2d07e04b3","assets/mk/kit_rurban.glb.gz":"527edaebdf","assets/mk/kit_rurban.json":"fd96b42cbd","assets/mk/kit_stazione.glb":"8a7d419392","assets/mk/kit_stazione.glb.gz":"5c391bfd2c","assets/mk/kit_stazione.json":"6c8f4e2869","assets/mk/kit_tortura.glb":"66ff1e1322","assets/mk/kit_tortura.glb.gz":"1e056536c8","assets/mk/kit_tortura.json":"9f191327f9","assets/mk/kit_train.glb":"f3ee57ab10","assets/mk/kit_train.glb.gz":"7ef0dc5578","assets/mk/kit_train.json":"30a77f2bf8","assets/mk/kit_urban.glb":"9e8919a830","assets/mk/kit_urban.glb.gz":"86e0c2c5a4","assets/mk/kit_urban.json":"3225120982","assets/mk/kit_urbano.glb":"b2cab997dc","assets/mk/kit_urbano.glb.gz":"ec6baff5fc","assets/mk/kit_urbano.json":"2b6ae1a820","assets/vegetazione/atlante_foto.png":"db1d1f9507","assets/vegetazione/corteccia_leccio.jpg":"3a819c1d37","assets/vegetazione/corteccia_pino.jpg":"4bed0922bc","assets/vegetazione/muro_pietra.jpg":"ae0dbcc0c1","assets/vegetazione/suolo_lecceta.jpg":"3475633822","assets/vegetazione/suolo_pineta.jpg":"ddbc14d737","assets/vegetazione/suolo_prato.jpg":"b80cbdfdb1","assets/vegetazione/suolo_radura.jpg":"30f5b400af","assets/vegetazione/suolo_terra.jpg":"aa206ab265"};</script>
+<script data-m="profilo">/* Porto Vecchio — [profilo] IL PROFILO LEGGERO SULLE SCHEDE INTEGRATE, DECISO PRIMA DI TUTTO (v7).
+   Il profilo leggero (render.js PHONE, leggera_memoria.js, peso_*: 2 faretti senza ombra, la mappa del sole più piccola, la risoluzione
+   interna sul lato corto, le mappe a metà) si accendeva solo col tocco o con ?leggera. Su un portatile con la grafica integrata il profilo
+   pieno non regge: Intel Iris Xe (D3D11) a 7 fps, 113 ms di processore e 60 ms di scheda per fotogramma (il riquadro F3 del committente).
+   Qui, prima di ogni altro modulo (tutti leggono location.search quando si caricano): un contesto WebGL usa e getta legge il nome della
+   scheda; se è integrata o in software si aggiunge «leggera» all'indirizzo (history.replaceState, la pagina non si ricarica) e ogni modulo
+   sceglie il profilo leggero come sul telefono. I comandi restano quelli del computer (li decide il puntatore, non ?leggera).
+   ?alta (o ?piena) tiene il profilo pieno; ?leggera lo forza. window.PV_PROFILO dice cosa si è scelto e perché.                          */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const P = window.PV_PROFILO = { profilo: 'pieno', motivo: '', scheda: '' };
+  let q = '';
+  try { q = location.search || ''; } catch (e) { return; }
+  if (/[?&](alta|piena)\b/.test(q)) { P.motivo = '?alta'; return; }
+  if (/[?&](leggera|bassa)\b/.test(q)) { P.profilo = 'leggera'; P.motivo = '?leggera'; return; }
+  // il forno dei tasselli (strumenti/tassella.js), i banchi e le sonde girano in un browser automatico in software: lì il profilo resta
+  // quello che chiede l'indirizzo (la città a tasselli si cuoce col profilo pieno, e le misure restano confrontabili con le vecchie)
+  try { if (navigator.webdriver) { P.motivo = 'browser automatico'; return; } } catch (e) { }
+  // il nome della scheda: un contesto minimo, letto e subito restituito (avvio.js lo ritrova in PV_GPU_NOME, senza chiederlo di nuovo)
+  let nome = '';
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 1;
+    const gl = c.getContext('webgl', { failIfMajorPerformanceCaveat: false, powerPreference: 'high-performance' }) || c.getContext('experimental-webgl');
+    if (gl) {
+      const e = gl.getExtension('WEBGL_debug_renderer_info');
+      nome = String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+      const lc = gl.getExtension('WEBGL_lose_context'); if (lc) lc.loseContext();
+    }
+  } catch (e) { nome = ''; }
+  P.scheda = nome; if (nome) window.PV_GPU_NOME = nome;
+  const n = nome.toLowerCase();
+  // integrate e in software: Intel (non le Arc da tavolo), le AMD dei processori («Radeon(TM) Graphics», Vega), i disegnatori in software
+  const soft = /swiftshader|llvmpipe|softpipe|software|microsoft basic/.test(n);
+  const intel = /intel/.test(n) && !/arc\(tm\)\s*a\d|arc a\d/.test(n);
+  const apu = /radeon\(tm\) graphics|radeon graphics|radeon vega|vega \d+ graphics|radeon\(tm\) (\d{3}m|610m|660m|680m|760m|780m)/.test(n);
+  if (!(soft || intel || apu)) { P.motivo = nome ? 'scheda dedicata' : 'scheda sconosciuta'; return; }
+  P.profilo = 'leggera'; P.motivo = soft ? 'in software' : 'scheda integrata';
+  try {
+    const u = new URL(location.href);
+    u.search = (u.search ? u.search + '&' : '?') + 'leggera';
+    history.replaceState(history.state, '', u.toString());
+  } catch (e) { P.profilo = 'pieno'; P.motivo = 'indirizzo non modificabile'; }
+  try { console.log('[profilo]', P.profilo, '·', P.motivo, '·', nome); } catch (e) { }
+})();
+</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->
 <script data-m="misura">// Porto Vecchio — Il misuratore per modulo [misura]
 // Solo con ?perf nell'indirizzo (altrimenti non si installa e non costa niente). Cronometra, attribuendo il tempo al file
 // da cui arriva: gli agganci del motore (HOOKS.step, move, think…: ogni modulo mette il suo davanti al precedente, il
@@ -390,7 +440,7 @@ const Misura = (() => {
   const VER = window.PV_VER || {};
   window.PV_V = u => { const v = VER[u]; return v ? u + (u.indexOf('?') < 0 ? '?' : '&') + 'v=' + v : u; };
   // 1. il nome della scheda video, letto una volta sola
-  let nome;   // undefined finché non c'è un contesto
+  let nome = window.PV_GPU_NOME;   // undefined finché non c'è un contesto ([profilo] profilo.js l'ha già letto, se ha potuto)
   const leggi = gl => { try { const e = gl.getExtension('WEBGL_debug_renderer_info'); nome = String(e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)); } catch (x) { nome = ''; } };
   try {
     const P = HTMLCanvasElement.prototype, g0 = P.getContext;
@@ -22987,7 +23037,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = 'f1fc7df3fd67caa8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '9257940f5c775a22';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -61581,7 +61631,7 @@ var Writing = (function () {
   }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w); if (w.by === 'player') W.__dirty = true;
-    if (W.works.length > 1500) {   // [ordine1] più spazio: la città parte già piena di storia
+    if (W.works.length > 3500) {   // [ordine1] più spazio: la città parte già piena di storia ([atlante] 3500: le tag delle vie)
   let i = W.works.findIndex(o => o.erased && o.by !== 'player'); if (i < 0) i = W.works.findIndex(o => o.by !== 'player' && o.done); if (i >= 0) W.works.splice(i, 1); }
     return w;
   }
@@ -61945,17 +61995,114 @@ var Writing = (function () {
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - layer, polygonOffsetUnits: -4 - layer * 2 });
     const dg = w.surf === 'auto' && R.obj && Math.abs(R.n.y || 0) < .5 ? decalGeo(R.obj, R) : null;   // sul tetto del mezzo resta il velo steso
     const mesh = new THREE.Mesh(dg || new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
-    if (dg) { R.obj.add(mesh); mesh.updateMatrixWorld(true); mesh.receiveShadow = true; GFX.mem.veli++; return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, decal: true }; }   // [graffiti] la decalcomania: già nello spazio del mezzo, si muove con lui
+    if (dg) { R.obj.add(mesh); mesh.updateMatrixWorld(true); mesh.receiveShadow = true; GFX.mem.veli++; return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, decal: true, layer }; }   // [graffiti] la decalcomania: già nello spazio del mezzo, si muove con lui
     const ny = R.n.y || 0, off = Math.abs(ny) > .5 ? .012 : GAP + layer * .001;; mesh.position.set(R.c.x + R.n.x * off, R.c.y + ny * off, R.c.z + R.n.z * off);   // [graffiti] per terra un filo di più: l'asfalto non è mai piano
     if (Math.abs(ny) > .5) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x, mesh.position.y + ny, mesh.position.z); }   // [writer] per terra, su un tetto: il velo si stende, con l'alto del disegno dove guardavi
     else mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
     mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
     if (R.obj && R.veh) R.obj.attach(mesh);   // sulle auto il velo segue il mezzo
     GFX.mem.veli++;
-    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq };
+    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, layer };
   }
+  // ---------------- [atlante] I LAVORI FINITI IN UNA TELA SOLA ----------------
+  // Un velo è un disegno a sé (una mesh, un materiale, una texture): con 150 veli vivi sono 150 disegni trasparenti a fotogramma,
+  // e per questo i lavori in giro erano pochi. Un lavoro finito non cambia più: la sua tela va in un atlante (una texture grande,
+  // 4096² sul computer, 2048² sul telefono, sulla scheda video) e il suo piano diventa un'istanza di una InstancedMesh sola, che
+  // legge il suo riquadro dall'atlante. Tutti i lavori finiti sui muri e per terra costano un disegno. Restano veli i lavori in
+  // corso, sui mezzi, sul treno e sui carri (quelli sopra un altro vanno nella seconda InstancedMesh, disegnata dopo). Senza WebGL2 o con ?noatlante: i veli di prima.
+  const ATL = { pages: [], pend: [], pc: null, off: typeof location !== 'undefined' && /[?&]noatlante\b/.test(location.search), ok: null, PAD: 3, CAP: 2048 };
+  function atlOk() {
+    if (ATL.ok !== null) return ATL.ok; const R = R_(), rd = R && R.__models && R.__models.renderer; if (!rd || typeof document === 'undefined') return false;
+    return (ATL.ok = !ATL.off && !!rd.capabilities.isWebGL2);
+  }
+  function atlPage() {
+    const THREE = T3(), rd = R_().__models.renderer, S = Math.min(PHONE_K() < 1 ? 2048 : 4096, rd.capabilities.maxTextureSize || 4096);
+    const rt = new THREE.WebGLRenderTarget(S, S, { depthBuffer: false, stencilBuffer: false, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: true, encoding: THREE.sRGBEncoding });
+    rt.texture.anisotropy = 4;
+    const geo = new THREE.PlaneGeometry(1, 1), rect = new THREE.InstancedBufferAttribute(new Float32Array(ATL.CAP * 4), 4); rect.setUsage(THREE.DynamicDrawUsage); geo.setAttribute('aRect', rect);
+    // due strati: i lavori sul muro nudo e quelli sopra un altro (le tag sui pezzi), disegnati dopo e un filo più avanti
+    const z = new THREE.Matrix4().makeScale(0, 0, 0), meshes = [0, 1].map(L => {
+      const g = L ? geo.clone() : geo, rc = L ? new THREE.InstancedBufferAttribute(new Float32Array(ATL.CAP * 4), 4) : rect; if (L) { rc.setUsage(THREE.DynamicDrawUsage); g.setAttribute('aRect', rc); }
+      const mat = new THREE.MeshLambertMaterial({ map: rt.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - L * 2, polygonOffsetUnits: -4 - L * 4 });
+      mat.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRect;').replace('#include <uv_vertex>', '#ifdef USE_UV\n vUv = aRect.xy + uv * aRect.zw;\n#endif'); };
+      mat.customProgramCacheKey = () => 'pv-atlante';
+      const mesh = new THREE.InstancedMesh(g, mat, ATL.CAP); mesh.count = 0; mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.renderOrder = 3 + L * 2; mesh.userData.velo = true; mesh.userData.atlante = true;
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); for (let i = 0; i < ATL.CAP; i++) mesh.setMatrixAt(i, z); scene().add(mesh);
+      return { mesh, rect: rc, freeI: [], n: 0 }; });
+    const P = { S, rt, L: meshes, shelves: [], top: 0, fresh: true }; ATL.pages.push(P); return P;
+  }
+  // lo scaffale: righe alte a gradini di 16 px; in ogni riga i tratti liberi [x, larghezza]
+  function atlAlloc(P, w, h) {
+    const pw = w + ATL.PAD * 2, ph = Math.ceil((h + ATL.PAD * 2) / 16) * 16; if (pw > P.S || ph > P.S) return null;
+    let best = null;
+    for (const s of P.shelves) { if (s.h < ph || s.h > ph * 1.3 + 16) continue; for (let i = 0; i < s.free.length; i++) { const f = s.free[i]; if (f[1] >= pw && (!best || s.h < best.s.h || (s.h === best.s.h && f[1] < best.f[1]))) best = { s, i, f }; } }
+    if (!best && P.top + ph <= P.S) { const s = { y: P.top, h: ph, free: [[0, P.S]] }; P.shelves.push(s); P.top += ph; best = { s, i: 0, f: s.free[0] }; }
+    if (!best) return null;
+    const x = best.f[0]; best.f[0] += pw; best.f[1] -= pw; if (best.f[1] <= 0) best.s.free.splice(best.i, 1);
+    return { x, y: best.s.y, w: pw, h: best.s.h, s: best.s };
+  }
+  function atlRelease(P, sl) {
+    const F = sl.s.free; F.push([sl.x, sl.w]); F.sort((a, b) => a[0] - b[0]);
+    for (let i = F.length - 2; i >= 0; i--) if (F[i][0] + F[i][1] === F[i + 1][0]) { F[i][1] += F[i + 1][1]; F.splice(i + 1, 1); }
+  }
+  // un lavoro finito passa dal velo all'atlante: la tela si copia sulla scheda (al prossimo atlFlush), il velo si libera
+  function atlMove(w, g, cx, cy) {
+    const T = g.tgt, c = T.c, m = T.mesh; if (!c || !c.width || !m) return false;
+    let P = null, sl = null;
+    for (const p of ATL.pages) { sl = atlAlloc(p, c.width, c.height); if (sl) { P = p; break; } }
+    if (!sl && !ATL.pages.length) { P = atlPage(); sl = atlAlloc(P, c.width, c.height); }
+    if (!sl) { P = ATL.pages[0]; if (atlEvict(P, cx, cy, c.width * c.height)) sl = atlAlloc(P, c.width, c.height); }   // piena: via i più lontani
+    if (!sl) return false;
+    const THREE = T3(), Ly = P.L[T.layer > 0 ? 1 : 0], i = Ly.freeI.length ? Ly.freeI.pop() : Ly.n++; if (i >= ATL.CAP) { Ly.n--; atlRelease(P, sl); return false; }
+    m.updateMatrixWorld(true);
+    const M = new THREE.Matrix4().copy(m.matrixWorld).multiply(new THREE.Matrix4().makeScale(w.gfxRect.W, w.gfxRect.H, 1));
+    const S = P.S, pad = ATL.PAD, ix = sl.x + pad, iy = sl.y + pad, iw = c.width, ih = c.height;
+    Ly.rect.setXYZW(i, ix / S, iy / S, iw / S, ih / S); Ly.rect.needsUpdate = true;
+    const px = new THREE.Object3D(); px.position.copy(m.position); px.quaternion.copy(m.quaternion); px.updateMatrixWorld(true);   // per chi misura il piano (galleggia, la distanza)
+    // il velo resta acceso finché la copia non è sulla scheda (niente buco di un fotogramma)
+    ATL.pend.push({ P, Ly, i, sl, c, ix, iy, iw, ih, M, veil: { mesh: m, tex: T.tex } });   // l'istanza si accende con la copia (lo scaffale può avere ancora il disegno di un altro)
+    g.tgt = { atl: true, P, Ly, i, sl, mesh: px, c: null, k: T.k }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;   // la tela del disegno non serve più (è nell'atlante)
+  }
+  function atlFree(g) {
+    const T = g.tgt, P = T.P; if (!P) return; const THREE = T3();
+    T.Ly.mesh.setMatrixAt(T.i, new THREE.Matrix4().makeScale(0, 0, 0)); T.Ly.mesh.instanceMatrix.needsUpdate = true; T.Ly.freeI.push(T.i); atlRelease(P, T.sl);
+    const q = ATL.pend.findIndex(o => o.Ly === T.Ly && o.i === T.i); if (q >= 0) { const o = ATL.pend[q]; ATL.pend.splice(q, 1); veilGone(o.veil); poolPut(o.c); }
+    T.P = null;
+  }
+  function atlEvict(P, cx, cy, need) {
+    const L = []; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.atl && g.tgt.P === P) { const q = g.tgt.mesh.position; L.push([hyp(q.x - cx, q.z - cy), id, g]); } }
+    L.sort((a, b) => b[0] - a[0]); let got = 0;
+    for (const [d, id, g] of L) { if (d < 45 || got >= need * 1.6) break; got += g.tgt.sl.w * g.tgt.sl.h; atlFree(g); delete GFX.works[id]; }
+    return got > 0;
+  }
+  function veilGone(v) { if (!v || !v.mesh) return; if (v.mesh.parent) v.mesh.parent.remove(v.mesh); v.mesh.geometry.dispose(); v.mesh.material.dispose(); if (v.tex) v.tex.dispose(); GFX.mem.veli = Math.max(0, GFX.mem.veli - 1); }
+  // le copie in attesa: ogni tela va dritta nel suo scaffale (texSubImage2D sulla texture dell'atlante, il margine trasparente
+  // compreso), poi le mipmap si rifanno una volta. Prima la tela si ridisegnava nell'atlante con uno shader: nel gioco la leggeva
+  // vuota e l'atlante si riempiva di nero
+  function atlFlush() {
+    if (!ATL.pend.length) return; const THREE = T3(), rd = R_().__models.renderer, gl = rd.getContext();
+    const byP = new Map(); ATL.pend.splice(0, 8).forEach(o => { (byP.get(o.P) || byP.set(o.P, []).get(o.P)).push(o); });
+    byP.forEach((L, P) => {
+      if (P.fresh) { const prev = rd.getRenderTarget(), cc = rd.getClearColor(new THREE.Color()), ca = rd.getClearAlpha(); rd.setRenderTarget(P.rt); rd.setClearColor(0, 0); rd.clear(true, false, false); rd.setClearColor(cc, ca); rd.setRenderTarget(prev); P.fresh = false; }   // la prima volta: la texture nasce sulla scheda, trasparente
+      const tx = rd.properties.get(P.rt.texture).__webglTexture; if (!tx) return;
+      rd.state.bindTexture(gl.TEXTURE_2D, tx);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
+      const pc = ATL.pc || (ATL.pc = document.createElement('canvas')), px = pc.getContext('2d');
+      L.forEach(o => {
+        pc.width = o.sl.w; pc.height = o.sl.h; px.clearRect(0, 0, o.sl.w, o.sl.h); px.drawImage(o.c, ATL.PAD, o.sl.h - ATL.PAD - o.ih);   // girata in su: il fondo della tela a PAD dal fondo dello scaffale
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, o.sl.x, o.sl.y, gl.RGBA, gl.UNSIGNED_BYTE, pc);
+        const M3 = o.Ly.mesh; M3.setMatrixAt(o.i, o.M); M3.count = Math.max(M3.count, o.i + 1); M3.instanceMatrix.needsUpdate = true;
+        veilGone(o.veil); poolPut(o.c);
+      });
+      gl.generateMipmap(gl.TEXTURE_2D); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      pc.width = pc.height = 1;
+    });
+  }
+  function atlReset() { ATL.pages.forEach(P => { P.L.forEach(Ly => { if (Ly.mesh.parent) Ly.mesh.parent.remove(Ly.mesh); Ly.mesh.geometry.dispose(); Ly.mesh.material.dispose(); }); P.rt.dispose(); }); ATL.pages = []; ATL.pend = []; }
+  // si può mettere nell'atlante? un lavoro finito, fermo sulla scena (non su un mezzo né sul treno)
+  const atlFits = (w, g, W) => w.done && w !== W.cur && !w.trace && g.tgt && g.tgt.mesh && !g.tgt.atl && !g.tgt.decal && w.surf !== 'auto' && w.surf !== 'vagone' && w.surf !== 'treno' && w.gfxRect && !w.gfxRect.veh && !(w.crossed && !g.crossDrawn) && g.drawn >= (g.art && g.art.stages ? g.art.stages.length : 1) - 1e-6 && g.tgt.mesh.parent === scene();
   // libera la grafica di un lavoro (la tela torna nella pila)
-  function freeVeil(g) { if (!g || !g.tgt || !g.tgt.mesh) return; const m = g.tgt.mesh; if (m.parent) m.parent.remove(m); m.geometry.dispose(); m.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); poolPut(g.tgt.c); GFX.mem.veli = Math.max(0, GFX.mem.veli - 1); }
+  function freeVeil(g) { if (g && g.tgt && g.tgt.atl) { atlFree(g); return; } if (!g || !g.tgt || !g.tgt.mesh) return; const m = g.tgt.mesh; if (m.parent) m.parent.remove(m); m.geometry.dispose(); m.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); poolPut(g.tgt.c); GFX.mem.veli = Math.max(0, GFX.mem.veli - 1); }
   // [graffiti] LA DECALCOMANIA SUL MEZZO: i triangoli della carrozzeria dentro il riquadro (proiettato lungo la normale del
   // fianco), tagliati ai bordi, portati nello spazio del gruppo del mezzo con le coordinate del disegno: la vernice segue le
   // curve della carrozzeria (niente piano sospeso davanti alla portiera) e si muove col mezzo
@@ -62051,7 +62198,7 @@ var Writing = (function () {
     tmo();
   }
   function drawUpTo(w, g) {
-    const A = g.art, T = g.tgt; if (!A || !T) return; const nS = A.stages.length;
+    const A = g.art, T = g.tgt; if (!A || !T || T.atl) return; const nS = A.stages.length;
     if (w.trace && !w.done) {   // il giocatore: lo disegna traceAt; qui solo il ritorno (le tappe già fatte, dopo che la grafica è stata liberata)
       if (g.ts == null) { g.ts = Math.min(nS - 1, Math.floor(w.prog * nS)); ghost(T, A, w); if (g.ts > 0) fullStage(T, A.stages[g.ts - 1], A); g.drawn = g.ts; T.tex.needsUpdate = true; }
       return;
@@ -62682,7 +62829,7 @@ var Writing = (function () {
   function tavRect() {
     const A = TAV.a, rx = A.r, up = A.u, d = { x: TAV.b.x - A.pt.x, y: TAV.b.y - A.pt.y, z: TAV.b.z - A.pt.z }, ub = d.x * rx.x + d.y * (rx.y || 0) + d.z * rx.z, vb = d.x * up.x + d.y * up.y + d.z * up.z;   // [writer] r a destra, u in alto sulla superficie (sul muro è la verticale, per terra è avanti)
     let Wm = Math.abs(ub), Hm = Math.abs(vb), cu = ub / 2, cv0 = vb / 2;
-    if (Wm < .25 || Hm < .2) { Wm = 1.6; Hm = .9; cu = 0; cv0 = 0; }   // un clic solo: la finestra della tag
+    if (Wm < .25 || Hm < .2) { Wm = 2.7; Hm = 1.3; cu = 0; cv0 = 0; A.size = 'throw'; } else A.size = null;   // [tavoletta] un tocco solo: la finestra di un throw-up attorno al punto (la misura poi si cambia nel pannello)
     Wm = clamp(Wm, .25, 16); Hm = clamp(Hm, .2, 4);
     return { W: Wm, H: Hm, c: { x: A.pt.x + rx.x * cu + up.x * cv0, y: A.pt.y + (rx.y || 0) * cu + up.y * cv0, z: A.pt.z + rx.z * cu + up.z * cv0 } };
   }
@@ -62749,19 +62896,37 @@ var Writing = (function () {
   // guarda dall'alto (l'alto del disegno dove guardavi), sui mezzi dal lato scelto
   function tavCam(Rc, A) {
     const n = A.n, D = 3, m = 1.04, flat = Math.abs(n.y || 0) > .5;
-    return { pos: { x: Rc.c.x + n.x * D, y: Rc.c.y + (n.y || 0) * D, z: Rc.c.z + n.z * D }, target: { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z }, up: A.u || { x: 0, y: 1, z: 0 }, halfW: Rc.W / 2 * m, halfH: Rc.H / 2 * m, near: D - (flat ? .6 : .35), far: D + (flat ? .9 : 1.2), dist: D };
+    return { pos: { x: Rc.c.x + n.x * D, y: Rc.c.y + (n.y || 0) * D, z: Rc.c.z + n.z * D }, target: { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z }, up: A.u || { x: 0, y: 1, z: 0 }, halfW: Rc.W / 2 * m, halfH: Rc.H / 2 * m, near: D - (flat ? .6 : .35), far: D + 9, dist: D };   // [tavoletta] dietro la superficie la vede lei stessa (la profondità): il far corto (0,9-1,2 m) tagliava una strada in pendenza, un muro arretrato o il portico, e la foto restava vuota
   }
   // la foto della zona: una camera ortogonale dritta davanti al muro (così il writer non c'è)
-  function tavShot(Rc, n, rx) {
+  // [tavoletta] con un margine attorno (il contesto: lo spigolo, le finestre, la strada; nel pannello si vede scurito) e la luce
+  // regolata (di notte, o un intonaco chiaro e uniforme, la foto sembrava vuota). Ritorna la tela con .inner, il riquadro dove si
+  // disegna, in pixel
+  function tavShot(Rc, n, rx, mg) {
     const THREE = T3(), R = R_(), rend = R.__models && R.__models.renderer, sc = scene(); if (!rend || !sc) return null;
-    const MAX = 2048, pw = Rc.W >= Rc.H ? MAX : Math.round(MAX * Rc.W / Rc.H), ph = Rc.W >= Rc.H ? Math.round(MAX * Rc.H / Rc.W) : MAX;
-    const K = tavCam(Rc, TAV.a || { n, u: new THREE.Vector3(0, 1, 0) }), cam = new THREE.OrthographicCamera(-K.halfW, K.halfW, K.halfH, -K.halfH, K.near, K.far);
+    mg = mg == null ? 1.12 : mg;
+    const FW = Rc.W * mg + .2, FH = Rc.H * mg + .2, MAX = PHONE_K() < 1 ? 1400 : 2048, pw = FW >= FH ? MAX : Math.round(MAX * FW / FH), ph = FW >= FH ? Math.round(MAX * FH / FW) : MAX;
+    const K = tavCam(Rc, TAV.a || { n, u: new THREE.Vector3(0, 1, 0) }), cam = new THREE.OrthographicCamera(-FW / 2, FW / 2, FH / 2, -FH / 2, K.near, K.far);
     cam.position.set(K.pos.x, K.pos.y, K.pos.z); cam.up.set(K.up.x, K.up.y, K.up.z); cam.lookAt(K.target.x, K.target.y, K.target.z); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
     const rt = new THREE.WebGLRenderTarget(pw, ph), prev = rend.getRenderTarget(), fr = TAV.frame; if (fr) fr.visible = false;
+    const ar = rend.info.autoReset; rend.info.autoReset = false;
     rend.setRenderTarget(rt); rend.clear(); rend.render(sc, cam); const buf = new Uint8Array(pw * ph * 4); rend.readRenderTargetPixels(rt, 0, 0, pw, ph, buf); rend.setRenderTarget(prev); rt.dispose(); if (fr) fr.visible = true;
+    rend.info.autoReset = ar;
     const c = cv(pw, ph), x = c.getContext('2d'), im = x.createImageData(pw, ph);
     for (let y = 0; y < ph; y++) im.data.set(buf.subarray((ph - 1 - y) * pw * 4, (ph - y) * pw * 4), y * pw * 4);   // la riga di sotto va su
-    x.putImageData(im, 0, 0); return c;
+    const iw = Math.round(pw * Rc.W / FW), ih = Math.round(ph * Rc.H / FH), inner = { x: Math.round((pw - iw) / 2), y: Math.round((ph - ih) / 2), w: iw, h: ih };
+    tavLevels(im.data, pw, inner);
+    x.putImageData(im, 0, 0); c.inner = inner; return c;
+  }
+  // la luce della foto: il contrasto del riquadro (dal 2° al 98° percentile) allargato fino a ×2,2 se è piatto, il centro portato almeno a
+  // 120 se è buio (di notte), con un filo di gamma
+  function tavLevels(d, pw, In) {
+    const H = new Uint32Array(256); let n = 0;
+    for (let y = In.y; y < In.y + In.h; y += 3) for (let x = In.x; x < In.x + In.w; x += 3) { const i = (y * pw + x) * 4, l = (d[i] * 54 + d[i + 1] * 183 + d[i + 2] * 19) >> 8; H[l]++; n++; }
+    if (!n) return; let a = 0, b = 255, acc = 0; for (let i = 0; i < 256; i++) { acc += H[i]; if (acc >= n * .02) { a = i; break; } } acc = 0; for (let i = 255; i >= 0; i--) { acc += H[i]; if (acc >= n * .02) { b = i; break; } }
+    const span = Math.max(1, b - a), k = span < 150 ? Math.min(2.2, 150 / span) : 1, mid = (a + b) / 2, to = clamp(mid, 120, 205), g = mid < 70 ? .8 : 1, L = new Uint8ClampedArray(256);   // il tono del muro resta (il colore che scegli si confronta con quello), il buio si schiarisce
+    for (let i = 0; i < 256; i++) { const v = clamp((i - mid) * k + to, 0, 255) / 255; L[i] = Math.round(Math.pow(v, g) * 255); }
+    if (k < 1.05 && g === 1 && Math.abs(to - mid) < 4) return; for (let i = 0; i < d.length; i += 4) { d[i] = L[d[i]]; d[i + 1] = L[d[i + 1]]; d[i + 2] = L[d[i + 2]]; }
   }
   function tavRelease(st) {
     if (!TAV.a || TAV.pad) return;
@@ -62779,92 +62944,142 @@ var Writing = (function () {
     } catch (e) { console.warn('[Writing] tavoletta', e); return false; }
   }
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
+  // [tavoletta] Rifatto: la foto ha il contesto attorno (scurito) e il riquadro dove si dipinge in giallo; la misura si sceglie con un
+  // tocco (tag, throw-up, pezzo, burner: la foto si rifà attorno al punto toccato); il tratto si vede subito com'è nel gioco
+  // (spessore minimo a schermo, la resa del pennello mentre disegni); «Salva sul muro» è sempre in vista, in basso, e se non può
+  // salvare dice perché. Le stesse regole di prima per la vernice, la fama, i crossaggi.
+  const TAV_SIZES = [['tag', 'Tag', 1.5, .75], ['throw', 'Throw-up', 2.7, 1.3], ['pezzo', 'Pezzo', 4.8, 2.05], ['burner', 'Burner', 6.6, 2.5]];
   function tavPad(st, shot, Rc, A) {
     if (typeof document === 'undefined') return;
-    const TOUCH = matchMedia('(pointer: coarse)').matches;   // [graffiti3] sul telefono: pulsanti e colori grandi da dito
-    const pw = shot.width, ph = shot.height, strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
+    const TOUCH = matchMedia('(pointer: coarse)').matches, SMALL_UI = innerWidth < 560 || innerHeight < 480;   // [graffiti3] sul telefono (e nel Game Boy piccolo): tutto da dito
+    let In = shot.inner || { x: 0, y: 0, w: shot.width, h: shot.height }, pw = In.w, ph = In.h;
+    const strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
     // [graffiti] i pennelli regolabili (pennelli.js): la bomboletta col suo tappo (standard, fat, skinny), il rullo, il pennarello; il flusso e le colature
     const PNs = PN ? [['spray', 'Bomboletta'], ['fat', 'Fat cap'], ['skinny', 'Skinny cap'], ['roller', 'Rullo'], ['marker', 'Pennarello']] : null;
     let pen = tool === 'pennarello' ? 'marker' : 'spray', flow = PN ? PN.PENNELLI[pen].flow : 1, dripK = PN ? PN.PENNELLI[pen].drip : 0;
-    const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font:14px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:env(safe-area-inset-top,0) 8px env(safe-area-inset-bottom,0);box-sizing:border-box';
-    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center';
-    const wrap = document.createElement('div'); wrap.style.cssText = 'position:relative;touch-action:none;box-shadow:0 0 0 2px #ffe14a';
-    const bg = document.createElement('canvas'), ink = document.createElement('canvas'), live = document.createElement('canvas');
-    [bg, ink, live].forEach((c, i) => { c.width = pw; c.height = ph; c.style.cssText = (i ? 'position:absolute;left:0;top:0;' : 'display:block;') + 'width:100%;height:100%'; wrap.appendChild(c); });
-    bg.getContext('2d').drawImage(shot, 0, 0);
-    const fit = () => { const used = (head.offsetHeight || 40) + (bar.offsetHeight || 60) + 40, k = Math.min((innerWidth - 20) / pw, Math.max(80, innerHeight - used) / ph); wrap.style.width = pw * k + 'px'; wrap.style.height = ph * k + 'px'; };   // [graffiti3] lo spazio vero: sul telefono la barra va su più righe
+    const el = (t, css, par) => { const e = document.createElement(t); if (css) e.style.cssText = css; if (par) par.appendChild(e); return e; };
+    const box = el('div', 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.96);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:' + (SMALL_UI ? 4 : 8) + 'px;font:' + (SMALL_UI ? 13 : 14) + 'px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:max(6px,env(safe-area-inset-top,0)) 6px max(6px,env(safe-area-inset-bottom,0));box-sizing:border-box');
+    const head = el('div', 'text-align:center;line-height:1.35;flex:none', box);
+    const stage = el('div', 'flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center', box);
+    const wrap = el('div', 'position:relative;touch-action:none', stage);
+    const bg = el('canvas', 'display:block;width:100%;height:100%', wrap);
+    const pane = el('div', 'position:absolute;box-shadow:0 0 0 2px #ffe14a,0 0 0 4px rgba(0,0,0,.6);touch-action:none', wrap);   // il riquadro dove si dipinge
+    const ink = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%', pane), live = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%;cursor:crosshair', pane);
+    const rowT = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box);
+    const rowA = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box), rowS = el('span', 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-right:10px', rowA);   // la misura e le azioni sulla stessa riga
+    const info = el('div', 'min-height:1.3em;color:#ffcf6a;text-align:center;flex:none', box);
+    const btn = (t, f, hot, par, big) => { const b = el('button', 'padding:' + (TOUCH || SMALL_UI ? '10px 14px;font-size:15px;' : '7px 14px;') + 'border-radius:6px;border:1px solid ' + (hot ? '#ff7a5c' : '#555') + ';cursor:pointer;color:#fff;font-weight:' + (big ? 700 : 400) + ';background:' + (hot ? '#d8402a' : '#34312c'), par || rowA); b.textContent = t; b.onclick = e => { e.preventDefault(); f(); }; return b; };
+    // la foto e il riquadro
+    function setShot(sh) {
+      In = sh.inner || { x: 0, y: 0, w: sh.width, h: sh.height }; pw = In.w; ph = In.h;
+      bg.width = sh.width; bg.height = sh.height; const x = bg.getContext('2d'); x.drawImage(sh, 0, 0);
+      x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, 0, sh.width, In.y); x.fillRect(0, In.y + In.h, sh.width, sh.height - In.y - In.h); x.fillRect(0, In.y, In.x, In.h); x.fillRect(In.x + In.w, In.y, sh.width - In.x - In.w, In.h);   // fuori dal riquadro: scurito
+      pane.style.left = In.x / sh.width * 100 + '%'; pane.style.top = In.y / sh.height * 100 + '%'; pane.style.width = In.w / sh.width * 100 + '%'; pane.style.height = In.h / sh.height * 100 + '%';
+      [ink, live].forEach(c => { c.width = pw; c.height = ph; });
+      fit();
+    }
+    const fit = () => { const r = stage.getBoundingClientRect(), Wv = Math.max(80, r.width || innerWidth - 12), Hv = Math.max(80, r.height || innerHeight * .6), k = Math.min(Wv / bg.width, Hv / bg.height); wrap.style.width = bg.width * k + 'px'; wrap.style.height = bg.height * k + 'px'; };
     addEventListener('resize', fit);
-    const btn = (t, f, hot, par) => { const b = document.createElement('button'); b.textContent = t; b.style.cssText = 'padding:' + (TOUCH ? '11px 16px;font-size:15px;' : '7px 14px;') + 'border-radius:5px;border:1px solid #555;cursor:pointer;color:#fff;background:' + (hot ? '#d8402a' : '#34312c'); b.onclick = f; (par || bar).appendChild(b); return b; };
-    // [graffiti2] in cima: dove sei, quanto è grande, che lavoro diventa, come si usa
-    const head = document.createElement('div'); head.style.cssText = 'text-align:center;line-height:1.45';
-    const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
-    const place = G.nearestPlace ? (G.nearestPlace(Rc.c.x, Rc.c.z) || {}).name : '';
-    const inv0 = () => (OG() ? OG().inv(st) : {}) || {};
-    box.appendChild(head);
-    const info = document.createElement('span'); info.style.color = '#bbb';
-    const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; pen = nt === 'pennarello' ? 'marker' : 'spray'; upd(); render(); });
-    // i colori: tutti in vista, si sceglie con un clic (o coi tasti 1-8)
-    const pal = document.createElement('span'); pal.style.cssText = 'display:inline-flex;gap:4px'; bar.appendChild(pal);
-    const sw = TAV_COLS.map((c, i) => { const b = document.createElement('button'); b.title = c[1] + ' (' + (i + 1) + ')'; b.style.cssText = (TOUCH ? 'width:36px;height:36px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;background:' + c[0]; b.onclick = () => { colI = i; upd(); render(); }; pal.appendChild(b); return b; });
-    const sl = document.createElement('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.oninput = () => { cm = +sl.value; upd(); drawLive(); render(); };
-    const lab = document.createElement('label'); lab.style.color = '#bbb'; lab.append('spessore ', sl); bar.appendChild(lab);
-    if (PNs) {   // [graffiti] il pennello e le sue manopole
-      const ps = document.createElement('select'); ps.style.cssText = 'padding:4px;border-radius:4px;background:#34312c;color:#fff;border:1px solid #555' + (TOUCH ? ';font-size:15px' : ''); PNs.forEach(([k, t]) => { const o = document.createElement('option'); o.value = k; o.textContent = t; ps.appendChild(o); }); ps.value = pen;
-      const mk = (t, v, f) => { const r = document.createElement('input'); r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(v * 100); r.oninput = () => { f(+r.value / 100); render(); }; const l = document.createElement('label'); l.style.color = '#bbb'; l.append(t + ' ', r); bar.appendChild(l); return r; };
-      const fl = mk('flusso', flow, v => { flow = v; }), dr = mk('colature', dripK, v => { dripK = v; });
-      ps.onchange = () => { const nt = ps.value === 'marker' ? 'pennarello' : 'bomboletta'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; ps.value = pen; return; } pen = ps.value; tool = nt; flow = PN.PENNELLI[pen].flow; dripK = PN.PENNELLI[pen].drip; fl.value = Math.round(flow * 100); dr.value = Math.round(dripK * 100);
+    // la misura: si rifà la foto attorno al punto toccato (il disegno fatto si perde: lo dice)
+    let sizeK = A.size || null; const sizeB = [];
+    function reshoot(k) {
+      const S0 = TAV_SIZES.find(q => q[0] === k); if (!S0) return;
+      if (strokes.length && !reshoot.ok) { reshoot.ok = true; info.textContent = 'Cambiando misura il disegno si cancella: tocca di nuovo per confermare.'; setTimeout(() => { reshoot.ok = false; }, 2500); return; }
+      reshoot.ok = false;
+      const R0 = { W: S0[2], H: S0[3], c: { x: A.pt.x, y: A.pt.y, z: A.pt.z } }, R1 = tavFit(R0, A), sh = tavShot(R1, A.n, A.r); if (!sh) return;
+      Rc = R1; strokes.length = 0; cur = null; sizeK = k; setShot(sh); upd(); drawLive(); render();
+      info.textContent = R1.W < S0[2] - .05 || R1.H < S0[3] - .05 ? `Qui c'è posto per ${R1.W.toFixed(1)} × ${R1.H.toFixed(1)} m (il muro finisce o c'è un'apertura).` : '';
+    }
+    el('span', 'color:#aaa', rowS).textContent = 'Misura';
+    TAV_SIZES.forEach(([k, t]) => { const b = btn(t, () => reshoot(k), false, rowS); b.dataset.k = k; sizeB.push(b); });
+    // gli strumenti: il pennello, i colori (tutti in vista: un clic o i tasti 1-8), lo spessore
+    let ps = null, fl = null, dr = null;
+    if (PNs) {
+      ps = el('select', 'padding:6px;border-radius:5px;background:#34312c;color:#fff;border:1px solid #555' + (TOUCH || SMALL_UI ? ';font-size:15px' : ''), rowT); PNs.forEach(([k, t]) => { const o = el('option', '', ps); o.value = k; o.textContent = t; }); ps.value = pen;
+      ps.onchange = () => { const nt = ps.value === 'marker' ? 'pennarello' : 'bomboletta'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; ps.value = pen; return; } pen = ps.value; tool = nt; flow = PN.PENNELLI[pen].flow; dripK = PN.PENNELLI[pen].drip; if (fl) fl.value = Math.round(flow * 100); if (dr) dr.value = Math.round(dripK * 100);
         sl.max = pen === 'roller' ? 60 : 30; if (pen === 'roller' && cm < 12) cm = 20; if (pen === 'skinny' && cm > 4) cm = 2; if (pen === 'fat' && cm < 6) cm = 8; sl.value = cm; upd(); render(); };
-      bar.insertBefore(ps, pal); }
-    btn('Annulla tratto', () => { strokes.pop(); drawLive(); render(); });
-    btn('Pulisci', () => { strokes.length = 0; drawLive(); render(); });
-    btn('Salva sul muro', () => apply(), true);
+    } else { const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; pen = nt === 'pennarello' ? 'marker' : 'spray'; upd(); render(); }, false, rowT); tb.dataset.tool = 1; }
+    const pal = el('span', 'display:inline-flex;gap:' + (TOUCH || SMALL_UI ? 6 : 4) + 'px', rowT);
+    const sw = TAV_COLS.map((c, i) => { const b = el('button', (TOUCH || SMALL_UI ? 'width:34px;height:34px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;padding:0;background:' + c[0], pal); b.title = c[1] + ' (' + (i + 1) + ')'; b.onclick = () => { colI = i; upd(); render(); }; return b; });
+    const sl = el('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.style.width = SMALL_UI ? '90px' : '120px'; sl.oninput = () => { cm = +sl.value; upd(); render(); };
+    const lab = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); lab.append('spessore ', sl); const cmT = el('span', 'color:#fff;min-width:3.2em', lab);
+    if (PNs && !SMALL_UI) {   // [graffiti] le manopole del pennello (sul piccolo restano quelle del pennello scelto)
+      const mk = (t, v, f) => { const r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(v * 100); r.style.width = '90px'; r.oninput = () => { f(+r.value / 100); render(); }; const l = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); l.append(t + ' ', r); return r; };
+      fl = mk('flusso', flow, v => { flow = v; }); dr = mk('colature', dripK, v => { dripK = v; });
+    }
+    btn('↶ Annulla', () => { strokes.pop(); drawLive(); render(); upd(); });
+    btn('Pulisci', () => { strokes.length = 0; drawLive(); render(); upd(); });
     btn('Esci', () => close());
-    bar.appendChild(info);
-    const upd = () => { tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta'; sw.forEach((b, i) => { b.style.borderColor = i === colI ? '#ffe14a' : '#222'; b.style.transform = i === colI ? 'scale(1.18)' : ''; });
-      const sty = STYLES[styleOf()], inv = inv0();
+    const save = btn('Salva sul muro', () => apply(), true, rowA, true);
+    // in cima: dove sei, quanto è grande, che lavoro diventa, quante bombolette
+    const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
+    let place = ''; try { const q = G.nearestPlace ? G.nearestPlace(Rc.c.x, Rc.c.z) : null; place = q && q.name || ''; } catch (e) { }
+    const inv0 = () => (OG() ? OG().inv(st) : {}) || {};
+    const upd = () => {
+      const tb = rowT.querySelector('button[data-tool]'); if (tb) tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta';
+      sw.forEach((b, i) => { b.style.borderColor = i === colI ? '#ffe14a' : '#222'; b.style.transform = i === colI ? 'scale(1.18)' : ''; });
+      sizeB.forEach(b => { const on = b.dataset.k === sizeK; b.style.background = on ? '#5a4a1a' : '#34312c'; b.style.borderColor = on ? '#ffe14a' : '#555'; });
+      const sty = STYLES[styleOf()], inv = inv0(), have = tool === 'pennarello' ? inv.pennarello || 0 : inv.bomboletta || 0;
       head.innerHTML = '';
-      const t1 = document.createElement('div'); t1.style.cssText = 'font-size:16px;color:#ffe14a'; t1.textContent = `Tavoletta${place ? ' · ' + place : ''} · ${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m → ${sty ? sty.nome : ''} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`;
-      const t2 = document.createElement('div'); t2.style.cssText = 'color:#aaa;font-size:12px'; t2.textContent = `${TOUCH ? 'Disegna col dito o con la penna.' : 'Disegna col mouse o con la penna (la pressione conta). Colori 1-8 · Ctrl+Z annulla · Invio salva sul muro · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli: ' + (inv.pennarello || 0) : 'Bombolette: ' + (inv.bomboletta || 0)}`;
-      head.append(t1, t2); info.textContent = `${cm} cm`; };
-    upd();
-    box.appendChild(bar); box.appendChild(wrap); document.body.appendChild(box); fit();
-    const pxm = pw / Rc.W, wpx = () => cm / 100 * pxm;
+      const t1 = el('div', 'font-size:' + (SMALL_UI ? 14 : 16) + 'px;color:#ffe14a', head); t1.textContent = `${sty ? sty.nome[0].toUpperCase() + sty.nome.slice(1) : 'Tavoletta'} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''} · ${Rc.W.toFixed(1)} × ${Rc.H.toFixed(1)} m${place && !SMALL_UI ? ' · ' + place : ''}`;
+      const t2 = el('div', 'color:#aaa;font-size:12px', head); t2.textContent = `${TOUCH ? 'Disegna col dito dentro il riquadro giallo.' : 'Disegna dentro il riquadro giallo (la pressione della penna conta). 1-8 colori · Ctrl+Z annulla · Invio salva · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli' : 'Bombolette'}: ${have}`;
+      cmT.textContent = cm + ' cm';
+      save.style.opacity = strokes.length && have > 0 ? '1' : '.55';
+    };
+    box.appendChild(info);
+    document.body.appendChild(box); setShot(shot); upd(); requestAnimationFrame(fit);
+    const pxm = () => pw / Rc.W, wpx = () => cm / 100 * pxm();
     const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
-    live.addEventListener('pointerdown', e => { live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); drawLive(); });
+    live.addEventListener('pointerdown', e => { e.preventDefault(); live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); info.textContent = ''; drawLive(); });
     live.addEventListener('pointermove', e => { if (!cur) return; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; (evs.length ? evs : [e]).forEach(ev => { const [x, y] = pos(ev), l = cur[cur.length - 1]; if (hyp(x - l[0], y - l[1]) < 1.5) return; cur.push([x, y, ev.timeStamp, ev.pressure || .5]); }); drawLive(); });
-    const end = () => { if (!cur) return; cur = null; drawLive(); render(); }; live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
-    // mentre si disegna: il tratto com'è; appena staccato: la resa del gioco
-    function drawLive() { const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return; x.strokeStyle = TAV_COLS[colI][0]; x.globalAlpha = .7; x.lineCap = x.lineJoin = 'round'; x.lineWidth = wpx(); x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1])); x.stroke(); }
+    const end = () => { if (!cur) return; cur = null; drawLive(); render(); upd(); }; live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
+    // mentre si disegna: il tratto pieno, mai più sottile di 3 px a schermo (prima su un riquadro grande era un filo da 1 px, e
+    // col nero su un muro scuro non si vedeva); appena staccato: la resa del gioco
+    function drawLive() {
+      const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return;
+      const k = live.getBoundingClientRect().width / pw || 1, lw = Math.max(wpx(), 3 / k), col = TAV_COLS[colI][0];
+      x.lineCap = x.lineJoin = 'round'; x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]));
+      const lum = parseInt(col.slice(1, 3), 16) * .3 + parseInt(col.slice(3, 5), 16) * .59 + parseInt(col.slice(5, 7), 16) * .11;
+      x.strokeStyle = lum < 90 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.45)'; x.lineWidth = lw + 2 / k; x.stroke();   // il bordo che lo stacca dal muro
+      x.strokeStyle = col; x.lineWidth = lw; x.stroke();
+    }
     const rec = () => Object.assign({ strokes: strokes.map(s => s.map(q => [q[0], q[1], q[2] - strokes[0][0][2], q[3]])), wpx: wpx(), frame: { w: pw, h: ph } }, PNs ? { pen, cfg: { flow, drip: dripK } } : {});
     function render() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!strokes.length) return; try { if (PNs) PN.drawStrokes(x, rec(), pw, ph, TAV_COLS[colI][0], mulberry(11)); else WriterMano.drawRecorded(x, rec(), { seed: 7 }, pw, ph, mulberry(11), TAV_COLS[colI][0], tool === 'pennarello' ? 'mtag' : 'tag'); } catch (e) { console.error(e); } }
     const keys = e => { e.stopPropagation(); if (e.type !== 'keydown') return;
       if (e.key === 'Escape') close(); else if (e.key === 'Enter') { e.preventDefault(); apply(); }
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); strokes.pop(); drawLive(); render(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); strokes.pop(); drawLive(); render(); upd(); }
       else if (/^[1-8]$/.test(e.key)) { colI = +e.key - 1; upd(); render(); } }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
-    function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; tavClear(); GFX.held = false; }
+    function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; }
     function apply() {
-      if (!strokes.length) { info.textContent = 'Prima disegna qualcosa (o Esc per uscire).'; return; }
-      if (OG() && !(inv0()[tool] > 0)) { info.textContent = tool === 'bomboletta' ? 'Senza bombolette non si salva: comprane in ferramenta.' : 'Senza pennarello non si salva.'; return; }
-      const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec();
-      let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxm, cmM = cm / 100;
-      // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
-      if (inv && tool === 'bomboletta') { W.canUse += lenM * cmM / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
-      if (inv && tool === 'pennarello') { W.mkUse += lenM / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
-      const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
-      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: G.nearestPlace ? 'a ' + G.nearestPlace(st.player.x, st.player.y).name : '', W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
-      nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
-      nw.gfxRect.u = A.u.clone();
-      const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
-      if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
-        const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
-        Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
-      else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
-      else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
-      addWork(st, nw); const m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
-      finish(st, nw); try { G.emit(st, 'graffito'); } catch (e) { }
-      saveOnWall(nw);
-      close();
+      if (!strokes.length) { info.textContent = 'Prima disegna qualcosa dentro il riquadro giallo (Esci per uscire).'; return; }
+      if (OG() && !(inv0()[tool] > 0)) { info.textContent = tool === 'bomboletta' ? 'Senza bombolette non si salva: comprane in ferramenta (o scegli il pennarello).' : 'Senza pennarello non si salva.'; return; }
+      try {
+        const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec(), pxM = pxm();
+        let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxM, cmM = cm / 100;
+        // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
+        if (inv && tool === 'bomboletta') { W.canUse = (W.canUse || 0) + lenM * cmM / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
+        if (inv && tool === 'pennarello') { W.mkUse = (W.mkUse || 0) + lenM / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
+        const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
+        let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }   // [tavoletta] lontano da tutto nearestPlace non trova niente: prima qui il salvataggio si fermava
+        const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
+        nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
+        nw.gfxRect.u = A.u.clone();
+        const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
+        if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
+          const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
+          Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
+        else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
+        else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
+        addWork(st, nw); let m = null; try { m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+        try { finish(st, nw); } catch (e) { console.warn('[Writing] tavoletta, fine', e); nw.done = true; nw.prog = 1; }   // [tavoletta] la città che reagisce non deve fermare il salvataggio
+        try { G.emit(st, 'graffito'); } catch (e) { }
+        if (!saveOnWall(nw)) { nw.gfxFail = 0; W.__dirty = true; }   // il giro dei graffiti lo rimette al suo posto
+        close();
+        try { G.feed(st, `${STYLES[nw.style].nome[0].toUpperCase() + STYLES[nw.style].nome.slice(1)} salvato sul muro.`, 'good'); } catch (e) { }
+      } catch (e) { console.warn('[Writing] tavoletta', e); info.textContent = 'Non sono riuscito a salvarlo: riprova (o Esci).'; }
     }
+    // [tavoletta] i tasti del Game Boy (main.js conMap): A salva, B esce, la croce cambia colore (◄ ►) e spessore (▲ ▼), annulla col tasto bomboletta
+    TAV.api = { apply, close, undo: () => { strokes.pop(); drawLive(); render(); upd(); }, col: d => { colI = (colI + d + TAV_COLS.length) % TAV_COLS.length; upd(); render(); info.textContent = 'Colore: ' + TAV_COLS[colI][1]; }, size: d => { cm = clamp(cm + d, 1, +sl.max); sl.value = cm; upd(); render(); } };
     TAV.pad = box; GFX.held = false;
   }
 
@@ -63039,7 +63254,7 @@ var Writing = (function () {
   if (typeof addEventListener === 'function') { try { addEventListener('pagehide', () => { if (GFX.st) salva(GFX.st); }); addEventListener('beforeunload', () => { if (GFX.st) salva(GFX.st); }); } catch (e) { } }
   // il tetto dei veli vivi: oltre VEIL_MAX si liberano i più lontani dalla camera (tornando vicino si rifanno)
   function capVeils(W, cx, cy, byId) {
-    const L = []; for (const id in GFX.works) { const g = GFX.works[id], w = g && g.tgt && g.tgt.mesh ? (byId ? byId.get(+id) : W.works.find(o => o.id === +id)) : null; if (w && w.surf !== 'treno' && w !== W.cur && w.pos) L.push([hyp(w.pos.x - cx, w.pos.z - cy), id]); }
+    const L = []; for (const id in GFX.works) { const g = GFX.works[id], w = g && g.tgt && g.tgt.mesh && !g.tgt.atl ? (byId ? byId.get(+id) : W.works.find(o => o.id === +id)) : null; if (w && w.surf !== 'treno' && w !== W.cur && w.pos) L.push([hyp(w.pos.x - cx, w.pos.z - cy), id]); }
     GFX.mem.vivi = L.length; const M = VEIL_MAX(); if (L.length <= M) return; L.sort((a, b) => b[0] - a[0]);
     for (let k = 0; k < L.length - M; k++) { freeVeil(GFX.works[L[k][1]]); delete GFX.works[L[k][1]]; }
   }
@@ -63112,7 +63327,7 @@ var Writing = (function () {
       if (R && R.__models && R.__models.scene && st && window.THREE && R.__bmb) {
         const sc = R.__models.scene;
         if (GFX.st !== st) {   // una partita nuova: via i veli, il treno si ridipinge da capo
-          Object.values(GFX.works).forEach(g => { if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); }); GFX.works = {};
+          Object.values(GFX.works).forEach(g => { if (g.tgt && g.tgt.mesh && g.tgt.mesh.parent) g.tgt.mesh.parent.remove(g.tgt.mesh); }); GFX.works = {}; atlReset();
           if (GFX.train) { TR.CARS.forEach((c, i) => [0, 1].forEach(sd => washSide(i, sd))); }
           GFX.st = st;
         }
@@ -63129,7 +63344,7 @@ var Writing = (function () {
         scanNear(st, cx, cy);
         if (W.__dirty && performance.now() - (GFX.saveT || 0) > 4000) { GFX.saveT = performance.now(); salva(st); }   // [graffiti] quello che hai dipinto resta (anche ricaricando)
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
-        const byId = new Map(W.works.map(o => [o.id, o]));
+        const byId = new Map(W.works.map(o => [o.id, o])); let nMove = 0;
         capVeils(W, cx, cy, byId);   // [graffiti] il tetto dei veli vivi
         for (const id in GFX.works) {
           const g = GFX.works[id], w = byId.get(+id);
@@ -63143,8 +63358,11 @@ var Writing = (function () {
             if (w && w.surf === 'treno' && w.washed && !g.washed) { g.washed = true; washSide(w.car, w.side); W.works.filter(o => o.surf === 'treno' && o.car === w.car && o.side === w.side && !o.erased).forEach(o => { delete GFX.works[o.id]; }); }
             delete GFX.works[id]; continue;
           }
+          if (g.tgt && g.tgt.atl && w.crossed && !g.crossDrawn) { freeVeil(g); delete GFX.works[id]; continue; }   // [atlante] crossato dopo: si rifà col velo (la X sopra), poi torna qui
           if (w.trace && !w.done) { if (g.ts == null) drawUpTo(w, g); } else if (g.drawn < (w.done ? 1 : w.prog) * g.art.stages.length - 1e-6 || (w.crossed && !g.crossDrawn)) drawUpTo(w, g);
+          if (nMove < 8 && atlOk() && atlFits(w, g, W) && atlMove(w, g, cx, cy)) nMove++;   // [atlante] finito: nella tela comune
         }
+        if (ATL.ok) atlFlush();
       }
     } catch (e) { GFX.err = e; if (!frame.err) { frame.err = 1; console.warn('[Writing]', e); } }
     if (once !== true) requestAnimationFrame(frame);
@@ -63160,7 +63378,7 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
 </script>
@@ -63256,7 +63474,7 @@ var WriterVita = (function () {
   const placeOf = s => { if (s.name) return s.name; try { const p = G.nearestPlace(s.x, s.y); return p ? 'a ' + p.name : ''; } catch (e) { return ''; } };
   // un muro per una notte: libero (niente lavori sopra), lontano dal giocatore se non vuoi farti vedere... ma non troppo
   function freeSite(st, kinds, near, maxD) {
-    const W = WR.S(st), live = W.works.filter(w => !w.erased && w.spot);
+    const W = WR.S(st), live = W.works.filter(w => !w.erased && w.spot && !/^(tag|mtag|adesivi|stencil|manifesto)$/.test(w.style));   // [atlante] un muro con sopra solo tag e adesivi è ancora libero: ci si va sopra
     for (let k = 0; k < 40; k++) {
       const s = pick(SITES); if (!kinds.includes(s.kind)) continue;
       if (near && hyp(s.x - near.x, s.y - near.y) > (maxD || 200)) continue;
@@ -63486,6 +63704,16 @@ var WriterVita = (function () {
       const crew = pick(['OGS', 'KMT', 'FLM', 'RSC', 'SPK']), mem = OLD.filter(o => o[1] === crew), n = Math.max(2, Math.floor((s.len - 1) / 5.2));
       for (let i = 0; i < n; i++) { const [aka0] = pick(mem), wr = oldWr(aka0, crew), style = pick(['pezzo', 'pezzo', 'burner', 'mostro', 'calli', 'pezzo']); place(s, null, wr, style, -s.len / 2 + 2.8 + i * 5.2, null, { prod: true }); }
       for (let i = 0; i < 2 + Math.floor(rnd() * 3); i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, pick(['tag', 'mtag', 'adesivi', 'stencil', 'tag']), (rnd() - .5) * (s.len - 1), null, {}); }
+    });
+    // [atlante] LA STRADA COME LA FA UN WRITER VERO: la maggior parte di quello che c'è sui muri sono tag. Lungo le vie (di più dove si sta:
+    // bar, vicoli, sottopassi, la ferrovia, le zone calde; quasi niente vicino al regime, heatOf) a gruppetti, ad altezza di mano, una
+    // accanto e sopra l'altra; adesivi e qualche stencil; un throw-up dove il muro è lungo. Costano poco: finiti stanno nell'atlante
+    SITES.filter(s => s.kind === 'strada' || s.kind === 'hall' || s.kind === 'ponte' || s.kind === 'ferrovia').forEach(s => {
+      const h = heatOf(s); if (rnd() > Math.min(.95, .3 * h)) return;
+      const n = 1 + Math.floor(rnd() * Math.min(6, 1 + h * 1.5));
+      for (let i = 0; i < n; i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0), r = rnd(), style = r < .5 ? 'tag' : r < .72 ? 'mtag' : r < .83 ? 'adesivi' : r < .91 ? 'throw' : 'stencil';
+        if (style === 'throw' && s.len < 4) continue;
+        place(s, null, wr, style, (rnd() - .5) * Math.max(0, s.len - 1.2), null, { sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined }); }
     });
     SITES.filter(s => s.kind === 'facciata' && s.len >= 6 && denseAt(s.x, s.y) && rnd() < .6).forEach(s => {
       const n = Math.floor((s.len - .5) / 2.6); for (let i = 0; i < n; i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, 'verticale', -s.len / 2 + 1.4 + i * 2.6, s.h, {}); }
@@ -69095,9 +69323,24 @@ var PesoPronti = (function () {
     return [...F.values()];
   }
   const NOTAGLIO = /[?&]noprontitaglio\b/.test(Q);
+  // [tieni] I PROGRAMMI NON SI BUTTANO. three cancella un programma quando l'ultimo materiale che lo usa viene liberato (usedTimes a 0): la
+  // vegetazione, i blocchi del terreno, i veli dei graffiti, i pezzi della città entrano ed escono dalla vista, i loro materiali si
+  // liberano e il programma si ricompila al ritorno. Su Intel con Direct3D (ANGLE) ogni compilazione ferma il gioco per centinaia di ms:
+  // in una camminata di 150 fotogrammi nascevano 9 programmi e alla fine ne restava 1. Qui ogni programma tiene un uso in più, quindi resta
+  // nella cache di three (stessa chiave, stesso programma): al ritorno non si compila niente. Costa la memoria di qualche centinaio di
+  // programmi. ?notieni come prima.
+  const TIENI = ON && !/[?&]notieni\b/.test(Q);
+  function tieni(rd) {
+    if (!TIENI || !rd || !rd.info || !Array.isArray(rd.info.programs) || rd.info.programs.__tieni) return;
+    const L = rd.info.programs; L.__tieni = true;
+    const fissa = p => { if (p && !p.__tieni) { p.__tieni = true; p.usedTimes++; ST.tenuti = (ST.tenuti || 0) + 1; } };
+    L.forEach(fissa);
+    const push0 = L.push; L.push = function () { for (let i = 0; i < arguments.length; i++) fissa(arguments[i]); return push0.apply(this, arguments); };
+  }
   function compila(R) {
     if (!ON) return; const M0 = R && R.__models; if (!M0 || !M0.renderer || !M0.scene || !R.getCamera) return;
     const T = window.THREE, rd = M0.renderer, S = M0.scene, cam = R.getCamera(), t0 = performance.now(), extra = [];
+    tieni(rd);   // [tieni]
     taglio(rd); ST.parallelo = !!TG.ext && !NOTAGLIO;
     try {
       const mats = R.__pronti5 ? R.__pronti5() : [];
@@ -69192,7 +69435,7 @@ var PesoPronti = (function () {
     S.traverse(o => each(o, m => { if (!vis.has(m)) inv.add(m); }));
     inv.forEach(m => rd.properties.remove(m)); return inv.size;
   }
-  return { ON, compila, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
+  return { ON, compila, tieni, vivo, conto: () => Object.assign({ on: ON }, ST, { vivo: Object.assign({}, VIVO, { ms: +VIVO.ms.toFixed(1) }) }) };
 })();
 if (typeof window !== 'undefined') window.PesoPronti = PesoPronti;
 </script>   <!-- [peso] i programmi che nascono tardi, preparati nel caricamento -->
@@ -69236,6 +69479,7 @@ var Inquadratura = (function () {
     verticale: { stretta: 1.16, max: 1.32, larga: 7, strettaL: 4.2, entra: .5 },   // la variante 'verticale': sopra CAMERA4
     // il taglio mirato
     raggio: 5,            // m: il disco di suolo attorno al personaggio che deve vedersi
+    sporge: .6,           // m: [bassa] con la visuale bassa la casa conta anche per quello che sporge dal filo (balconi, insegne)
     passoD: 1.25,         // m: il passo dei punti del disco
     margine: .25,         // m sotto il primo raggio che entra nella casa
     muretto: 1,           // m sopra la base: la quota più bassa (come il muretto)
@@ -69300,9 +69544,11 @@ var Inquadratura = (function () {
   // dyn.buildings; cam: la posizione della camera. Solo le case sul lato camera che coprono un punto del disco di suolo attorno al
   // personaggio (o il suo corpo); la quota è la linea di solaio più alta sotto il primo raggio che vi entra
   // uniforme: tutte al muretto, e solo le case che coprono coi muri (sotto la gronda)
-  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme) {
+  // [bassa] Rv: il raggio del disco (di difetto K.raggio). Con la visuale bassa il disco è stretto (il personaggio e poco più): un disco di
+  // 5 m coi raggi quasi orizzontali prendeva le case ai lati del vicolo e lo appiattiva; così scende solo quello che sta fra te e la camera
+  function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv) {
     out = out || new Map(); out.clear(); if (!on) return out;
-    const P = [], R = K.raggio, st = K.passoD;
+    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
     for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
     P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
@@ -69314,7 +69560,9 @@ var Inquadratura = (function () {
       bb.min.x = b3.min.x - E; bb.min.y = b3.min.y - E; bb.min.z = b3.min.z - E; bb.max.x = b3.max.x + E; bb.max.y = b3.max.y + E; bb.max.z = b3.max.z + E; if (V.entra(o0, d0, bb) === null) continue;
       if (cx * ux + cz * uz < K.davanti) continue;   // dietro il personaggio: non copre
       if (px > b3.min.x && px < b3.max.x && pz > b3.min.z && pz < b3.max.z) continue;   // ci sta sotto (androne, sottopasso)
-      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], b3); if (y !== null && y < need) need = y; }
+      // [bassa] col disco stretto la scatola si allarga di K.sporge sui lati: i balconi, le insegne e le gronde che sporgono dal filo contano
+      const bx = Rv ? { min: { x: b3.min.x - K.sporge, y: b3.min.y, z: b3.min.z - K.sporge }, max: { x: b3.max.x + K.sporge, y: b3.max.y, z: b3.max.z + K.sporge } } : b3;
+      let need = Infinity; for (let i = 0; i < P.length; i++) { const y = V.entra(P[i], D[i], bx); if (y !== null && y < need) need = y; }
       if (need === Infinity) continue;
       const base = B.geo && B.geo.y0 !== undefined ? B.geo.y0 : b3.min.y, gr = B.gr !== undefined ? B.gr : B.b && B.b.__top !== undefined ? B.b.__top : b3.max.y - 2.5;
       const lim = need - K.margine; let y = base + K.muretto;
@@ -69346,6 +69594,87 @@ var Inquadratura = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Inquadratura;
 </script>   <!-- [inquadratura] la via in strada -->
+<script data-m="regia">/* Porto Vecchio — [regia] LA CAMERA CHE TENDE ALLO SCORCIO MIGLIORE (le regole, senza grafica: le usa render.js, le prova test_regia.js).
+   Il committente (29 ottobre): due levette, una per camminare e una per la visuale (gira attorno al personaggio e fa lo zoom); la camera
+   resta dove la metti, ma quando non la tocchi tende all'inquadratura che mostra lo scorcio migliore e combacia con la direzione del
+   personaggio, senza correggere in continuazione, in modo equilibrato, favorendo le inquadrature cinematografiche.
+   Come:
+   - SI ASPETTA: niente regia mentre il giocatore tocca la visuale e per K.mano secondi dopo, da fermi, e finché la direzione di marcia non
+     è stabile da K.stabile secondi (una svolta breve non sposta la camera).
+   - SI SCEGLIE di rado (ogni K.ogni s): poche inquadrature attorno al «dietro» della marcia (dritto, tre quarti a destra e a sinistra, più
+     di lato), ognuna col suo voto: quanto si vede del personaggio e della strada davanti (raggi verso la camera che non devono passare
+     dentro le case), quanto si allontana dal dietro, un premio al tre quarti (più cinematografico del dritto alle spalle) e la continuità
+     con la scelta di adesso. Il bersaglio cambia solo se il nuovo è oltre K.banda dal vecchio (niente ritocchi piccoli).
+   - SI VA PIANO: verso il bersaglio con un tempo lungo (K.tau) e una velocità massima (K.vmax), così non si sente la mano della regia.
+   Gli angoli sono nello stesso spazio di cam.uy in render.js (la visuale meno YAW). ?noregia: la camera resta sempre dove la metti.  */
+var Regia = (function () {
+  'use strict';
+  const K = {
+    mano: 3,          // s: dopo che il giocatore ha toccato la visuale, la regia aspetta tanto
+    vel: .5,          // m/s: sotto questa velocità si è fermi (niente regia)
+    stabile: .7,      // s: la direzione di marcia deve restare dentro K.svolta per tanto prima di scegliere
+    svolta: .35,      // rad
+    ogni: .6,         // s: una scelta ogni tanto, non a ogni fotogramma
+    banda: .3,        // rad: un bersaglio nuovo solo se diverso di tanto dal vecchio
+    tau: 1.4,         // s: il tempo con cui la camera va verso il bersaglio
+    vmax: .8,         // rad/s
+    vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
+    piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
+    mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
+    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
+  };
+  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
+  const dietro = (hd, YAW) => ang(Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW);
+  // il voto di un'inquadratura (più basso è meglio). copre(o, q): il numero di raggi bloccati fra il punto o (in metri, {x, y, z} con y in
+  // alto) e la camera q. q.cam(yaw): la posizione della camera per quella visuale
+  function voto(off, base, cur, q) {
+    const P = K.pesi, yaw = base + off, C = q.cam(yaw), a = q.avanti, f = q.fy;
+    let v = 0;
+    v += P.copreMe * (q.copre({ x: q.x, y: f + .4, z: q.z }, C) + q.copre({ x: q.x, y: f + 1.6, z: q.z }, C));
+    v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
+    v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
+    v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    return v;
+  }
+  // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
+  // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
+  function passo(S, q, dt) {
+    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
+    S.t += dt; S.tSc += dt;
+    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
+    S.tMano += dt;
+    if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
+    if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
+    if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
+    S.tHd += dt;
+    if (S.tHd >= K.stabile && S.tSc >= K.ogni) {
+      S.tSc = 0; const base = dietro(S.hd0, q.YAW), cur = S.tgt === null ? q.uy : S.tgt;
+      q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
+      let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, cur, q); if (v < bv) { bv = v; best = base + off; } }
+      if (best !== null && (S.tgt === null || Math.abs(ang(best - S.tgt)) > K.banda)) { S.tgt = ang(best); S.n++; S.perche = 'scelta'; }
+    }
+    if (S.tgt === null) return q.uy;
+    const d = ang(S.tgt - q.uy); if (Math.abs(d) < .005) return q.uy;
+    // morbida all'inizio (il tempo K.tau), ma con una velocità minima (K.vmin): arriva e si ferma, senza la coda lunga dei millimetri
+    const m = K.vmax * dt, mn = K.vmin * dt; let step = d * (1 - Math.exp(-dt / K.tau));
+    if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
+    return q.uy + step;
+  }
+  // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
+  function taglia(o, c, b) {
+    let t0 = 0, t1 = 1;
+    for (const k of ['x', 'y', 'z']) { const d = c[k] - o[k], lo = b.min[k], hi = b.max[k];
+      if (Math.abs(d) < 1e-9) { if (o[k] < lo || o[k] > hi) return false; continue; }
+      let a = (lo - o[k]) / d, e = (hi - o[k]) / d; if (a > e) { const t = a; a = e; e = t; }
+      if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
+    return true;
+  }
+  return { K, passo, voto, dietro, taglia, ang };
+})();
+if (typeof window !== 'undefined') window.__REGIA = Regia.K;
+if (typeof module !== 'undefined') module.exports = Regia;
+</script>   <!-- [regia] la camera che tende allo scorcio migliore -->
 <script data-m="suolo">/* Porto Vecchio — [suolo] LA GERARCHIA DEI SUOLI: chi sta sopra e chi si interrompe al confine (città nuova e campagna).
    Il committente: «il suolo fa ancora cose strane»: una via scura che passa sopra il lastricato della piazza invece di fermarsi al
    bordo e riprendere dall'altra parte, il marciapiede rialzato in mezzo a una piazza, la tinta del marciapiede sotto il lastricato.
@@ -73388,7 +73717,7 @@ var Render = (function () {
   function vis3Tick(px, pz, fy, on, dt, pitch) {
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on), vv, IQ5.v.uniforme)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (!IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
@@ -83874,7 +84203,10 @@ var Render = (function () {
     const tg = new THREE.BoxGeometry(1, 1, 1);
     for (let i = 0; i < 40; i++) { const m = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: '#ffe7a0', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); m.visible = false; scene.add(m); FX.tracers.push({ m, life: 0 }); }
     for (let i = 0; i < 12; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTexture('pistola'), color: '#ffffff', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffb050', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); h.visible = false; scene.add(h); FX.muzzles.push({ s, h, life: 0 }); }
-    for (let i = 0; i < (LOWQ.phone ? 1 : 3); i++) { const l = new THREE.PointLight('#ffb050', 0, 10, 2); scene.add(l); FX.mlights.push({ l, life: 0, base: 0 }); }   /* [fluido] sul telefono una sola */
+    // [avvio2] le luci degli effetti (spari, fuochi, esplosioni) erano 3+3+4 vere sul computer, quasi sempre spente: ogni luce vera entra in OGNI
+    // programma (anche a intensità 0) e allunga la compilazione all'avvio. Come sul telefono: una vera per tipo (?fxluci=3 com'era).
+    const FXL_N = (() => { const m = /[?&]fxluci=(\d+)/.exec(typeof location !== 'undefined' ? location.search : ''); return m ? Math.max(1, +m[1]) : 1; })();
+    for (let i = 0; i < FXL_N; i++) { const l = new THREE.PointLight('#ffb050', 0, 10, 2); scene.add(l); FX.mlights.push({ l, life: 0, base: 0 }); }   /* [fluido] sul telefono una sola */
     const mkPts = (N, additive, size) => {
       const pos = new Float32Array(N * 3), col = new Float32Array(N * 3), geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -83890,8 +84222,8 @@ var Render = (function () {
     FX.decalI = 0;
     for (let i = 0; i < 70; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTexture(), color: '#555', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; scene.add(s); FX.smokes.push({ s, life: 0, max: 1, v: new THREE.Vector3(), grow: 1 }); }
     for (let i = 0; i < 30; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ff7a20', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); FX.flames.push({ s }); }
-    for (let i = 0; i < (LOWQ.phone ? 1 : 3); i++) { const l = new THREE.PointLight('#ff7a30', 0, 12, 2); scene.add(l); FX.flights.push(l); }
-    for (let i = 0; i < 4; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc070', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const l = LOWQ.phone && i > 0 ? Object.assign(new THREE.Object3D(), { intensity: 0, color: new THREE.Color('#ffa040'), distance: 26 }) : new THREE.PointLight('#ffa040', 0, 26, 2); scene.add(l); /* [fluido] sul telefono una sola luce vera per le esplosioni */ const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring); FX.explos.push({ s, l, ring, life: 0 }); }
+    for (let i = 0; i < FXL_N; i++) { const l = new THREE.PointLight('#ff7a30', 0, 12, 2); scene.add(l); FX.flights.push(l); }
+    for (let i = 0; i < 4; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc070', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })); s.visible = false; scene.add(s); const l = i >= FXL_N ? Object.assign(new THREE.Object3D(), { intensity: 0, color: new THREE.Color('#ffa040'), distance: 26 }) : new THREE.PointLight('#ffa040', 0, 26, 2); scene.add(l); /* [fluido] sul telefono una sola luce vera per le esplosioni */ const ring = new THREE.Mesh(new THREE.RingGeometry(.8, 1, 24), new THREE.MeshBasicMaterial({ color: '#ffd8a0', transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })); ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring); FX.explos.push({ s, l, ring, life: 0 }); }
     for (let i = 0; i < 4; i++) { const b = weaponModel('molotov'); b.scale.multiplyScalar(1.6); b.visible = false; scene.add(b); FX.bottles.push(b); }
     FX.siren = new THREE.PointLight('#2a6aff', 0, 16, 2); scene.add(FX.siren);
   }
@@ -88459,7 +88791,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     dyn.fill = new THREE.DirectionalLight('#6f8fb0', .3); scene.add(dyn.fill); scene.add(dyn.fill.target); }   // [inverno] riempimento sud: pareti in ombra leggibili   // [inverno] controluce: stacca i volumi dal fondo
     // poche luci vere, spostate ogni fotogramma sulle sorgenti più vicine
     // [inverno28] faretti con ombra (quanti ne regge la scheda video) + punti senza ombra per i fuochi
-    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, N = PHONE ? 2 : Math.max(4, Math.min(12, maxT - 7));   /* [fluido] sul telefono due faretti senza ombra */
+    { const maxT = (renderer.capabilities && renderer.capabilities.maxTextures) || 16, QL = typeof location !== 'undefined' ? location.search : '', qF = /[?&]faretti=(\d+)/.exec(QL), N = qF ? +qF[1] : PHONE ? 2 : Math.min(4, Math.max(2, maxT - 7));   /* [fluido] sul telefono due faretti senza ombra. [analisi] sul computer 4 (erano fino a 12): ogni faretto con ombra entra in OGNI programma, srotolato (PCF morbido), e il caricamento aspettava la compilazione di 198 programmi da 78 KB: con 4, da 74 a 43 s per giocare (SwiftShader), l'attesa degli shader da 46 a 21 s. Le luci vanno comunque sulle sorgenti più vicine alla camera. ?faretti=12 com'era */
       const coneG = new THREE.ConeGeometry(1, 1, 18, 1, true); coneG.translate(0, -.5, 0);
       for (let i = 0; i < N; i++) { const l = new THREE.SpotLight('#ffb35c', 0, 10, 1.2, .4, 1.25); /* [luci5] bordo deciso */   // [inverno29] caduta morbida, bordo sfumato
         l.castShadow = !PHONE; l.shadow.autoUpdate = false; l.shadow.needsUpdate = true; l.shadow.mapSize.set(1024, 1024); l.shadow.radius = 1; /* [luci5] ombre nette */ l.shadow.bias = -.0012; l.shadow.normalBias = .035; l.shadow.camera.near = .2; l.shadow.camera.far = 14;
@@ -88468,8 +88800,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           sh.vertexShader = 'varying float vFr; varying float vH;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vec3 nV = normalize(normalMatrix * normal); vec4 mvq = modelViewMatrix * vec4(position, 1.); vFr = abs(dot(nV, normalize(-mvq.xyz))); vH = uv.y;');
           sh.fragmentShader = 'varying float vFr; varying float vH;\n' + sh.fragmentShader.replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\n diffuseColor.a *= pow(vFr, 1.6) * (.12 + .88 * vH * vH);'); };
         l.userData.cone = cone; scene.add(l); scene.add(l.target); scene.add(cone); SPOOL.push(l); LPOOL.push(l); }
-      for (let i = 0; i < (PHONE ? 3 : 8); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); }
-      window.__luci = { faretti: N, punti: 8, maxTextures: maxT }; }
+      { const qP = /[?&]punti=(\d+)/.exec(typeof location !== 'undefined' ? location.search : ''); for (let i = 0; i < (qP ? +qP[1] : PHONE ? 3 : 4); i++) { const l = new THREE.PointLight('#ffa040', 0, 8, 2); scene.add(l); PPOOL.push(l); LPOOL.push(l); } }
+      window.__luci = { faretti: N, punti: PPOOL.length, maxTextures: maxT }; }
     dyn.vehicles = {};
     FU1.st = st;   // [anelli] il punto di partenza: l'anello vicino si conta da lì
     if (SCO.on) { const c = scoCentro(); if (typeof Anelli !== 'undefined') Anelli.CFG.vicino = SCO.r + 10; console.log('[scorcio]', SCO.nome, 'centro', c && c.x, c && c.z, 'raggio', SCO.r); }   // [scorcio]
@@ -89295,6 +89627,51 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  // [bassa] LE COSE FRA LA CAMERA E TE: con la visuale bassa ogni cosa registrata (DZ.props: ringhiere, cartelli, tavolini, lampioni, fusi
+  // nelle mesh statiche o nei tasselli) che taglia il tratto dalla camera al personaggio si spegne (hideTag, come quando si rompe) e torna
+  // quando non è più in mezzo da BASSA_TIENI s. Non si toccano le cose vive o rotte (state) né quelle spente da altri (t.hidden prima).
+  const BASSA_TIENI = .5;
+  function bassaCose(px, pz, fy, cp, attivo) {
+    const now = performance.now() / 1000, M = BASSA.cose;
+    if (!attivo) { if (M.size) { M.forEach((v, tag) => showTag(tag)); M.clear(); } return; }
+    if (now - BASSA.coseT < .15) return; BASSA.coseT = now;
+    const A = { x: px, y: fy + 1.2, z: pz }, F = { x: px, y: fy + .35, z: pz }, C = { x: cp.x, y: cp.y, z: cp.z }, visti = new Set();
+    const L = Math.hypot(C.x - A.x, C.z - A.z), n = Math.max(1, Math.ceil(L / 2.5));
+    for (let i = 0; i <= n; i++) { const t = i / n, x = A.x + (C.x - A.x) * t, z = A.z + (C.z - A.z) * t;
+      hashNear(x, z, 3, rec => { if (visti.has(rec) || !rec.tag || rec.state) return; visti.add(rec);
+        const c = rec.c, h = rec.he; if (Math.hypot(c.x - px, c.z - pz) < .9 + Math.max(h.x, h.z) * .5) return;   // accanto a te: resta
+        if (c.y + h.y < fy + .15) return;   // piatto a terra: non copre
+        const b = { min: { x: c.x - h.x - .3, y: c.y - h.y, z: c.z - h.z - .3 }, max: { x: c.x + h.x + .3, y: c.y + h.y + .2, z: c.z + h.z + .3 } };
+        if (!(Regia.taglia(A, C, b) || Regia.taglia(F, C, b))) return;
+        const t0 = TAGS.get(rec.tag); if (!t0) return;
+        if (!M.has(rec.tag)) { if (t0.hidden) return; hideTag(rec.tag); }   // già spenta da altro: non è nostra
+        M.set(rec.tag, now); }); }
+    M.forEach((t, tag) => { if (now - t > BASSA_TIENI) { showTag(tag); M.delete(tag); } });
+  }
+  // [regia] un passo della regia (src/regia.js): la direzione di marcia, le case vicine (ogni mezzo secondo), la camera per una visuale
+  function regiaTick(p, pveh, dt, st) {
+    const sp = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
+    const hd = pveh ? ((pveh.speed || 0) > .8 ? pveh.ang : null) : (sp > .3 ? Math.atan2(cam.pvy, cam.pvx) : null);
+    const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null, fy = lh !== null ? lh : groundH(p.x, p.y), x = pveh ? pveh.x : p.x, z = pveh ? pveh.y : p.y;
+    const now = performance.now();
+    const copre = (o, c) => {
+      if (now - REG.vicT > 500) { REG.vicT = now; REG.vic = (dyn.buildings || []).filter(B => { const b3 = B.box3; if (!b3) return false; const cx = (b3.min.x + b3.max.x) / 2 - x, cz = (b3.min.z + b3.max.z) / 2 - z; return cx * cx + cz * cz < 45 * 45 && b3.max.y > fy + 1.2; }); }
+      let n = 0; for (const B of REG.vic) { const b = B.box3; if (x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z) continue; if (Regia.taglia(o, c, b)) n++; } return n; };
+    const camDi = uy => { const y = YAW + uy, cp = Math.cos(REG.lp); return { x: x + Math.sin(y) * cp * REG.ld, y: fy + 1 + Math.sin(REG.lp) * REG.ld, z: z + Math.cos(y) * cp * REG.ld }; };
+    cam.uy = Regia.passo(REG.S, { uy: cam.uy || 0, YAW, hd, vel: pveh ? sp : sp * 1.2, mano: !!REG.mano, mezzo: !!pveh, x, z, fy, copre, cam: camDi }, dt);
+  }
+
+  // [bassa] LA VISUALE BASSA: k da 0 (la visuale di sempre, dall'alto) a 1 (bassa dietro al personaggio, si guarda avanti e lontano).
+  // La chiede il giocatore (main.js ui.tilt: la rotella premuta trascinata in su e in giù, la levetta destra in verticale, PagSu/PagGiù) e
+  // la avvicina lo zoom (sotto lo zoom .42 scende da sola). Con k alto: la pendenza scende a ~10°, la camera si avvicina, il campo si
+  // allarga, si guarda all'altezza del petto, la visuale segue la marcia, la nebbia va più lontano e il taglio mirato è sempre acceso,
+  // stretto sul personaggio (inquadratura.js tagli, Rv): quello che sta fra la camera e te scende a muretto con le sue cose. ?nobassa spegne
+  const BASSA = { cose: new Map(), coseT: -9, k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
+  // [regia] LA CAMERA LIBERA: la visuale la gira il giocatore (levetta destra, tasto destro del mouse, , e .) e resta dove la mette: niente
+  // ricentro (Visuale.mano gira solo lo spostamento), niente giro lungo i vicoli ([inquadratura] IQ5.dy) né della camera che si adatta
+  // (VIS4.C.g). Quando non la tocchi la regia (src/regia.js) la porta piano allo scorcio migliore dietro la marcia. ?camauto: com'era
+  const LIBERA = !(typeof location !== 'undefined' && /[?&]camauto\b/.test(location.search)) && typeof Regia !== 'undefined';
+  const REG = { S: {}, on: !(typeof location !== 'undefined' && /[?&]noregia\b/.test(location.search)), vic: [], vicT: -9, lp: .8, ld: 30 };
   // [zoom2] il tetto dello zoom indietro (main.js zoomBy usa lo stesso): a 4,2 la camera stava a 345 m, la nebbia a 765 m e la scheda
   // video caricava mezza isola fino a perdere il contesto (schermo bianco, «la grafica non regge»). A 2 si vede il quartiere
   const ZOOM_MAX = 2;
@@ -89756,8 +90133,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const km = 1 - Math.exp(-dt / .1); cam.mvx = (cam.mvx || 0) + (ivx - (cam.mvx || 0)) * km; cam.mvy = (cam.mvy || 0) + (ivy - (cam.mvy || 0)) * km;   // la marcia, appena smorzata
       const inV = !!pveh, forza = !!(ui.intro || ui.focus || ui.dialogNpc || (inV && !cam.inV)); cam.inV = inV;   // sali su un mezzo, un dialogo, l'intro: si ricentra
       const yA = MN.yaw || 0;
+      if (LIBERA) { cam.uy = (cam.uy || 0) + dyaw; REG.mano = !!(ui.camMano || dyaw); dyaw = 0; }   // [regia] la visuale girata a mano resta dov'è
       Visuale.mano(MN, { dyaw, dpx, dpz, attivo: !!(ui.camMano || dyaw || dpx || dpz), vel: Math.hypot(cam.mvx, cam.mvy), dir: Math.atan2(cam.mvy, cam.mvx), avanti: Math.atan2(fz0, fx0), segue: PHONE && !p.indoor, forza }, dt, KM);
-      if (!ui.lead || pveh) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
+      if (!ui.lead || pveh || LIBERA) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
       if (!pveh && !ui.intro && !ui.focus) { const d0 = vh0 / 2 / Math.tan(15 * Math.PI / 180), a0 = 15 * Math.PI / 180;   // in prospettiva: quanto suolo c'è fra il centro e il bordo basso (verso la camera) e alto
         Visuale.limita(MN, cam.lx, cam.ly, yaw0, vh0 / 2 * asp0, d0 * (Math.cos(pp0) - sp0 / Math.tan(pp0 + a0)), KM, d0 * (sp0 / Math.tan(Math.max(.05, pp0 - a0)) - Math.cos(pp0))); }
       cam.panX = MN.px; cam.panY = MN.pz;
@@ -89802,7 +90180,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [visuale5] cam.uy è la sola visuale automatica (gli strumenti, la visuale che segue la marcia sul telefono): quello che il giocatore
     // gira a mano sta in cam.mano.yaw (sopra) e torna da sé
     cam.uy = cam.uy || 0; const MNy = cam.mano ? cam.mano.yaw : 0, MNtieni = !!(cam.mano && cam.mano.off && !cam.mano.ric), MNgiro = !!(cam.mano && cam.mano.giro < Visuale.MANO.giro);
-    if (PHONE && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
+    { const zq = ui.zoom || 1, zk = Math.max(0, Math.min(1, (.42 - zq) / .27)), want = BASSA.on && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.top ? Math.max(0, Math.min(1, zk + (ui.tilt || 0))) : 0;   // [bassa]
+      BASSA.k += (want - BASSA.k) * (1 - Math.exp(-dt * 5)); if (BASSA.k < .002) BASSA.k = 0; }
+    const KB = BASSA.k * BASSA.k * (3 - 2 * BASSA.k);   // [bassa] liscia agli estremi
+    if (LIBERA) { if (REG.on && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !ui.studio) try { regiaTick(p, pveh, dt, st); } catch (e) { if (!REG.err) { REG.err = 1; console.warn('[regia]', e); } } }   // [regia]
+    else if ((PHONE || KB > .45) && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [bassa] bassa: la visuale sta dietro alla marcia anche sul computer   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
       // [fluido] a piedi: se tiri la levetta indietro il personaggio si volta e la visuale guarda subito là (sguardo avanti), senza il
@@ -89811,7 +90193,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const tgt = hd === null ? 0 : Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW, far = hd !== null && !pveh && !MNgiro && Math.abs(Math.atan2(Math.sin(tgt - cam.uy - MNy - IQ5.dy), Math.cos(tgt - cam.uy - MNy - IQ5.dy))) > 1.75;
       if (hd !== null && !far) cam.uy = angLerp(cam.uy, tgt, 1 - Math.exp(-dt * (pveh ? 2.6 : 3.2))); }
     if (VIS4.camera) try { vis4Camera(p, pveh, playerH, ui, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
-    cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (IQ5.v ? IQ5.dy : 0);   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
+    cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
     let pitch = lerp(c4p(), onVespa ? .78 : .82, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
@@ -89819,9 +90201,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const ph0 = (p.lv && typeof Livelli !== 'undefined' ? Livelli.heightOf(st, p) : null), py0 = (ph0 !== null ? ph0 : groundH(p.x, p.y)) + 1.5, ux = Math.sin(cam.yaw), uz = Math.cos(cam.yaw);
       let cover = false; if (!(p.lv && p.lv.k === 'ug')) for (let s2 = 2; s2 < 40 && !cover; s2 += 1.5) { const qx = p.x + ux * Math.cos(pitch) * s2, qz = p.y + uz * Math.cos(pitch) * s2, qy = py0 + Math.sin(pitch) * s2; if (groundH(qx, qz) > qy - .2) cover = true; }
       cam.lift = (cam.lift || 0) + (((cover || ui.top) ? 1 : 0) - (cam.lift || 0)) * Math.min(1, dt * (cover ? 1.2 : .8));
-      pitch = lerp(pitch, 1.15, cam.lift);
+      pitch = lerp(pitch, 1.15, cam.lift * (1 - KB));   // [bassa] bassa: non si sale sopra la collina, la camera ci sta sopra (sotto)
     }
-    const fov = lerp(30, onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
+    pitch = lerp(pitch, .17, KB);   // [bassa] ~10°: si guarda avanti
+    const fov = lerp(lerp(30, 52, KB), onVespa ? 40 : 40, ease) * (1 + (pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0) / 18 * .16 * ease);
     const viewH = VIEW * cam.zoom * c4z() * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
     let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
@@ -89830,12 +90213,20 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       for (let s = 1.5; s < driveDist; s += .4) { const x = cam.x + hx * cp * s, z = cam.y + hz * cp * s; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD && !isWall(Math.floor(x / G.TS), Math.floor(z / G.TS))) { driveDist = Math.max(5, s - 1); break; } }
     }
     cam.cd = cam.cd === undefined ? driveDist : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));
-    const dist = lerp(walkDist, cam.cd, ease);
-    camera.fov = fov; camera.near = lerp(Math.min(8, Math.max(.6, dist * .35)), 2, ease); camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    const dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
+    camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .3, KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
+    REG.lp = pitch; REG.ld = dist;   // [regia] la camera di questo fotogramma, per le candidate della prossima scelta
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
-    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
-    camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
+    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [bassa] si guarda all'altezza del petto
+    camera.position.set(cx + ox, cy + oy, cz + oz);
+    if (KB > .01) { const gc = groundH(camera.position.x, camera.position.z) + .7; if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
+    camera.lookAt(cx, cy, cz);
+    if (KB > .01) {   // [bassa] IL TAGLIO: niente fra la camera e te. Il piano vicino arriva a 1,2 m prima del personaggio; si ferma solo dove il suolo
+      // entra nel quadro (il raggio più basso dell'inquadratura tocca terra a hg/sin(pendenza + mezzo campo): oltre, il taglio aprirebbe un buco nel suolo)
+      const dd = Math.hypot(camera.position.x - cx, camera.position.y - cy, camera.position.z - cz), hg = Math.max(.3, camera.position.y - groundH(camera.position.x, camera.position.z)), hf = camera.fov * Math.PI / 360;
+      const suolo = hg / Math.sin(Math.min(1.5, pitch + hf)) * Math.cos(hf) - .1, nv = Math.max(.3, Math.min(dd - 1.2, suolo));
+      camera.near = lerp(camera.near, Math.max(camera.near, nv), KB); camera.updateProjectionMatrix(); }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
@@ -89843,7 +90234,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [cadenza] e nemmeno mentre la camera trasla: camminando la camera agganciata avanzava di 1 o 2 texel per fotogramma (a 1080 righe
     // un passo è ~1,5 texel) e il personaggio, che non si aggancia, tremava di mezzo texel attorno al centro. Da ferma si riaggancia
     { const cp = camera.position; if (cam.__cpx === undefined || Math.abs(cp.x - cam.__cpx) + Math.abs(cp.y - cam.__cpy) + Math.abs(cp.z - cam.__cpz) > 1e-4) cam.movN = frameN; cam.__cpx = cp.x; cam.__cpy = cp.y; cam.__cpz = cp.z; }
-    if (ease < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+    if (ease < .02 && KB < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
       const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
       const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
@@ -89855,7 +90246,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // allontana, la nebbia la segue di altrettanto) e con lei tutto quello che si carica e si disegna (tasselli, blocchi, streaming)
     const wd1 = walkDist / Math.max(1, cam.zoom), wdX = walkDist - wd1;
     scene.fog.near = lerp(wd1 * 1.05 + 10 - WXfog * (wd1 * .25 + 12) + wdX, 40 - WXfog * 30, ease); scene.fog.far = lerp(wd1 * 1.9 + 110 - WXfog * (wd1 * .45 + 50) + wdX, 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
-    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
+    if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }
+    if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) dyn.sky.position.copy(camera.position);
 
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
@@ -89888,6 +90280,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const iqT = !!(IQ5.v && IQ5.v.taglio), iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
       if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);
+      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && BASSA.k > .25 && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
       if (LOOKV.nuovo || SGT.blob) sguPersonaggio(p.x, playerH + (p.jz || 0) * 0, p.y, LOOKV.nuovo && !!dyn.people.__player && dyn.people.__player.visible && !pveh && !ui.studio && !ui.intro);   // [sguardo] l'ombra di contatto del personaggio   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
@@ -92235,137 +92628,86 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = Mente;
 }
 </script>
-<script data-m="regia">/* Porto Vecchio — La Regia: chi decide cosa succede per strada.
-   Due strati, come vuole Andrea:
-   1. Il mondo è sempre vivo da solo (motore, senza IA): la gente va al lavoro, fa la spesa, ha i suoi progetti (popolo.js),
-      reagisce agli imprevisti (azioni.js). Qui si aggiunge che le auto sono di qualcuno e che chi ha l'auto e deve andare
-      lontano la prende: se prendi la macchina è per andare da qualche parte.
-   2. Vicino al giocatore, l'IA fa da regista invisibile: ogni tanto guarda la scena (chi c'è, cosa fa, bisogni, progetti,
-      rapporti, posti vicini) e fa succedere da 1 a 3 cose piccole e vere — un cambio di strada, due che si fermano a parlare,
-      un'offerta, una lite per un vecchio conto, uno che si mette a lavorare a un suo progetto, un gesto, una battuta.
-      Il motore le esegue con i suoi piani (strade vere, oggetti, effetti sui rapporti e sui ricordi).
-   La chat col giocatore passa sempre davanti (mente.js): mentre chatti la regia non parte e decide il motore.
-   Si carica dopo mente.js. Non tocca game.js, popolo.js, azioni.js: usa solo quello che espongono. */
+<script data-m="regia">/* Porto Vecchio — [regia] LA CAMERA CHE TENDE ALLO SCORCIO MIGLIORE (le regole, senza grafica: le usa render.js, le prova test_regia.js).
+   Il committente (29 ottobre): due levette, una per camminare e una per la visuale (gira attorno al personaggio e fa lo zoom); la camera
+   resta dove la metti, ma quando non la tocchi tende all'inquadratura che mostra lo scorcio migliore e combacia con la direzione del
+   personaggio, senza correggere in continuazione, in modo equilibrato, favorendo le inquadrature cinematografiche.
+   Come:
+   - SI ASPETTA: niente regia mentre il giocatore tocca la visuale e per K.mano secondi dopo, da fermi, e finché la direzione di marcia non
+     è stabile da K.stabile secondi (una svolta breve non sposta la camera).
+   - SI SCEGLIE di rado (ogni K.ogni s): poche inquadrature attorno al «dietro» della marcia (dritto, tre quarti a destra e a sinistra, più
+     di lato), ognuna col suo voto: quanto si vede del personaggio e della strada davanti (raggi verso la camera che non devono passare
+     dentro le case), quanto si allontana dal dietro, un premio al tre quarti (più cinematografico del dritto alle spalle) e la continuità
+     con la scelta di adesso. Il bersaglio cambia solo se il nuovo è oltre K.banda dal vecchio (niente ritocchi piccoli).
+   - SI VA PIANO: verso il bersaglio con un tempo lungo (K.tau) e una velocità massima (K.vmax), così non si sente la mano della regia.
+   Gli angoli sono nello stesso spazio di cam.uy in render.js (la visuale meno YAW). ?noregia: la camera resta sempre dove la metti.  */
 var Regia = (function () {
   'use strict';
-  const CFG = {
-    every: 40000,      // ms di orologio vero tra una regia e l'altra
-    radius: 34,        // metri intorno al giocatore
-    maxPeople: 6,
-    maxActs: 3,
-    rest: 3 * 60,      // minuti di gioco prima che la regia riprenda la stessa persona
-    driveMin: 130,     // metri oltre i quali chi ha l'auto vicina la prende
-    carNear: 60,       // metri: l'auto deve essere a portata
+  const K = {
+    mano: 3,          // s: dopo che il giocatore ha toccato la visuale, la regia aspetta tanto
+    vel: .5,          // m/s: sotto questa velocità si è fermi (niente regia)
+    stabile: .7,      // s: la direzione di marcia deve restare dentro K.svolta per tanto prima di scegliere
+    svolta: .35,      // rad
+    ogni: .6,         // s: una scelta ogni tanto, non a ogni fotogramma
+    banda: .3,        // rad: un bersaglio nuovo solo se diverso di tanto dal vecchio
+    tau: 1.4,         // s: il tempo con cui la camera va verso il bersaglio
+    vmax: .8,         // rad/s
+    vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
+    piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
+    mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
+    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
   };
-  const S = { next: 0, busy: false, log: [], owners: false, drives: 0, last: null };
-  const G = () => window.Game, P = () => window.Popolo, A = () => window.Azioni, M = () => window.Mente;
-  const dist = (a, b, c, d) => Math.hypot(a - c, b - d);
-  const SOCIAL = ['chiacchiera', 'sfotti', 'apprezza', 'offri', 'gioca', 'litiga'];
-  const VERBI = ['vai', 'fai', 'mangia', 'gesto'].concat(SOCIAL);
-
-  // ---------------- 1. LA VITA DI BASE: le auto sono di qualcuno, e servono per andare lontano ----------------
-  const freeCar = v => v && !v.traffic && !v.police && !v.military && !v.wreck && !v.hidden && !v.rider && v.kind !== 'heli';
-  function assignOwners(st) {
-    if (S.owners) return; S.owners = true;
-    const adults = st.npcs.filter(n => n.pop && !n.dead && n.pop.homeT && !n.cop && (n.pop.age || 30) >= 20);
-    st.vehicles.forEach(v => {
-      if (!freeCar(v) || v.owner) return;
-      let best = null, bd = 45;
-      adults.forEach(n => { if (n.pop.car) return; const d = dist(v.x, v.y, n.pop.homeT.x, n.pop.homeT.y); if (d < bd) { bd = d; best = n; } });
-      if (best) { v.owner = best.id; best.pop.car = v.id; }
-    });
+  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+  // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
+  const dietro = (hd, YAW) => ang(Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW);
+  // il voto di un'inquadratura (più basso è meglio). copre(o, q): il numero di raggi bloccati fra il punto o (in metri, {x, y, z} con y in
+  // alto) e la camera q. q.cam(yaw): la posizione della camera per quella visuale
+  function voto(off, base, cur, q) {
+    const P = K.pesi, yaw = base + off, C = q.cam(yaw), a = q.avanti, f = q.fy;
+    let v = 0;
+    v += P.copreMe * (q.copre({ x: q.x, y: f + .4, z: q.z }, C) + q.copre({ x: q.x, y: f + 1.6, z: q.z }, C));
+    v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
+    v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
+    v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    return v;
   }
-  function carOf(st, n) { const id = n.pop && n.pop.car; if (!id) return null; const v = st.vehicles.find(v => v.id === id); return v && freeCar(v) ? v : null; }
-  function driveIfFar(st, n) {
-    const Pn = n.pop, Po = P(), Az = A(); if (!Po || !Az || Pn.emer || n.dead || n.cop || Po.isPassive(st, n)) return;
-    const b = Po.blockNow(st, n); if (!b || !b.tgt || b === Pn.__regBlk) return; Pn.__regBlk = b;
-    if (b.act === 'sonno' || dist(n.x, n.y, b.tgt.x, b.tgt.y) < CFG.driveMin) return;
-    const v = carOf(st, n); if (!v || dist(n.x, n.y, v.x, v.y) > CFG.carNear) return;
-    const name = G().vehicleName ? G().vehicleName(st, v) : 'la macchina', label = `prende ${name} per andare ${b.label.replace(/^(va |andare )/, '')}`;
-    const step = { label, drive: { veh: () => v, to: () => ({ x: b.tgt.x, y: b.tgt.y }) }, dur: 1 };
-    const park = { label: `parcheggia e va ${b.label}`, at: () => b.tgt, dur: 1, outside: true };
-    if (Az.startPlan(st, n, 'guida', label, [step, park], 1)) { S.drives++; note(`${n.name}: ${label}`); }
+  // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
+  // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
+  function passo(S, q, dt) {
+    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
+    S.t += dt; S.tSc += dt;
+    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
+    S.tMano += dt;
+    if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
+    if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
+    if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
+    S.tHd += dt;
+    if (S.tHd >= K.stabile && S.tSc >= K.ogni) {
+      S.tSc = 0; const base = dietro(S.hd0, q.YAW), cur = S.tgt === null ? q.uy : S.tgt;
+      q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
+      let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, cur, q); if (v < bv) { bv = v; best = base + off; } }
+      if (best !== null && (S.tgt === null || Math.abs(ang(best - S.tgt)) > K.banda)) { S.tgt = ang(best); S.n++; S.perche = 'scelta'; }
+    }
+    if (S.tgt === null) return q.uy;
+    const d = ang(S.tgt - q.uy); if (Math.abs(d) < .005) return q.uy;
+    // morbida all'inizio (il tempo K.tau), ma con una velocità minima (K.vmin): arriva e si ferma, senza la coda lunga dei millimetri
+    const m = K.vmax * dt, mn = K.vmin * dt; let step = d * (1 - Math.exp(-dt / K.tau));
+    if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
+    return q.uy + step;
   }
-
-  // ---------------- 2. LA REGIA DELL'IA vicino al giocatore ----------------
-  const TRATTI = { loq: ['chiacchierone', 'di poche parole'], cor: ['coraggioso', 'pauroso'], legge: ['ligio', 'insofferente alle regole'], avid: ['avido', 'generoso'] };
-  function character(n) { const t = n.tr || {}, out = []; Object.keys(TRATTI).forEach(k => { if (t[k] === undefined) return; if (t[k] > .68) out.push(TRATTI[k][0]); else if (t[k] < .32) out.push(TRATTI[k][1]); }); return out.slice(0, 3).join(', '); }
-  function mood(Pn) { const N = Pn.need || {}; return Object.keys(N).filter(k => N[k] > .6).sort((a, b) => N[b] - N[a]).slice(0, 3); }
-  function candidates(st) {
-    const p = st.player, Po = P();
-    return st.npcs.filter(n => n.pop && !n.dead && !n.cop && !n.inside && n.pop.near && !n.pop.emer && !(n.jailedUntil > st.t) && !Po.isPassive(st, n)
-      && dist(n.x, n.y, p.x, p.y) < CFG.radius && !(n.pop.regiaT && st.t - n.pop.regiaT < CFG.rest))
-      .sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y)).slice(0, CFG.maxPeople);
-  }
-  function placesNear(st, x, y) {
-    const PL = G().PLACES || {}; return Object.keys(PL).map(id => ({ id, nome: PL[id].name, d: dist(PL[id].x, PL[id].y, x, y) })).filter(q => q.d < 120).sort((a, b) => a.d - b.d).slice(0, 8).map(q => ({ id: q.id, nome: q.nome, metri: Math.round(q.d) }));
-  }
-  function scene(st, people) {
-    const Po = P(), Az = A(), g = G(), p = st.player;
-    const persone = people.map(n => { const Pn = n.pop, b = Po.blockNow(st, n), pj = Pn.projects && Pn.projects[0];
-      return { id: n.id, nome: n.name, eta: Pn.age, mestiere: Pn.job ? Pn.job.title : (Pn.status || n.role), carattere: character(n), umore: mood(Pn), sta_facendo: b ? b.label : 'gironzola',
-        progetto: pj ? pj.label : undefined, pensiero: Pn.thoughts && Pn.thoughts.length ? Pn.thoughts[Pn.thoughts.length - 1].text : undefined,
-        ricordo: Pn.diary && Pn.diary.length ? Pn.diary[Pn.diary.length - 1].text : undefined, soldi: Math.round(Pn.money || 0) }; });
-    const rapporti = [];
-    for (let i = 0; i < people.length; i++) for (let j = 0; j < people.length; j++) { if (i === j) continue; const R = Az.rel(st, people[i], people[j]); if (Math.abs(R.a) > .2) rapporti.push(`${people[i].id} → ${people[j].id}: ${R.a > .5 ? 'molto amici' : R.a > .2 ? 'si stimano' : R.a < -.5 ? 'si odiano' : 'non si sopportano'}`); }
-    return { ora: g.clockStr(st.t), giorno: g.dayName ? g.dayName(st.t) : '', luogo: g.nearestPlace ? g.nearestPlace(p.x, p.y).name : '', repressione: st.ris ? Math.round(st.ris.repr) : 0,
-      persone, rapporti, posti: placesNear(st, p.x, p.y), verbi: VERBI };
-  }
-  function act(st, people, places, a) {
-    const g = G(), Po = P(), Az = A();
-    const n = people.find(k => k.id === a.chi); if (!n || !VERBI.includes(a.verbo)) return false;
-    const say = a.battuta ? String(a.battuta).slice(0, 80) : '';
-    const why = a.perche ? String(a.perche).slice(0, 80) : '';
-    let ok = false;
-    if (SOCIAL.includes(a.verbo)) {
-      const o = people.find(k => k.id === a.con && k !== n); if (!o) return false;
-      const r = Az.intend(st, n, a.verbo, { chi: o }, 2, why ? `${a.verbo} con ${o.first} (${why})` : null); ok = r && r.ok;
-    } else if (a.verbo === 'vai') {
-      if (!places.some(q => q.id === a.dove)) return false;
-      const r = Az.intend(st, n, 'vai', { dove: a.dove }, 2, why ? `va a ${g.PLACES[a.dove].name}: ${why}` : null); ok = r && r.ok;
-    } else if (a.verbo === 'fai') {   // un'attività inventata dall'IA (un progetto personale, un lavoretto): il motore la porta in un posto vero
-      if (!places.some(q => q.id === a.dove) || !a.cosa) return false;
-      const t = Po.target(a.dove); if (!t) return false; const cosa = String(a.cosa).slice(0, 60), min = Math.max(5, Math.min(60, Number(a.minuti) || 15));
-      ok = !!Az.startPlan(st, n, 'fai', cosa, [{ label: `va a ${t.label}`, at: () => t, dur: 0, outside: true }, { label: cosa, dur: min }], 2);
-    } else if (a.verbo === 'mangia') { const r = Az.intend(st, n, 'mangia', { modo: 'fuori' }, 2); ok = r && r.ok; }
-    else if (a.verbo === 'gesto') ok = true;
-    if (!ok) return false;
-    n.pop.regiaT = st.t;
-    if (say) g.say(st, n, say, 3.6);
-    if (why && Po.note) Po.note(st, n, why, 'pensiero', { w: .25 });
-    note(`${n.name} · ${a.verbo}${a.con ? ' ' + a.con : ''}${a.dove ? ' → ' + a.dove : ''}${a.cosa ? ' (' + a.cosa + ')' : ''}${say ? ' «' + say + '»' : ''}`);
+  // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
+  function taglia(o, c, b) {
+    let t0 = 0, t1 = 1;
+    for (const k of ['x', 'y', 'z']) { const d = c[k] - o[k], lo = b.min[k], hi = b.max[k];
+      if (Math.abs(d) < 1e-9) { if (o[k] < lo || o[k] > hi) return false; continue; }
+      let a = (lo - o[k]) / d, e = (hi - o[k]) / d; if (a > e) { const t = a; a = e; e = t; }
+      if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
     return true;
   }
-  async function direct(st) {
-    const m = M(); if (!m || !m.state || !m.state.active || m.chatting() || st.player.indoor || st.player.vehicle) return;
-    const people = candidates(st); if (people.length < 2) return;
-    const sc = scene(st, people); S.busy = true; S.last = { t: Date.now(), scena: sc };
-    try {
-      const r = await m.call({ kind: 'regia', scena: sc });
-      if (!r || !Array.isArray(r.azioni)) return;
-      let done = 0; r.azioni.slice(0, CFG.maxActs).forEach(a => { try { if (act(st, people, sc.posti, a)) done++; } catch (e) { console.warn('[Regia]', e); } });
-      S.last.fatte = done; S.last.risposta = r;
-    } finally { S.busy = false; }
-  }
-
-  // ---------------- il battito ----------------
-  let tAcc = 0;
-  function step(st, dt) {
-    if (!st || !st.npcs || !P() || !A()) return;
-    assignOwners(st);
-    tAcc += dt; if (tAcc > 1.2) { tAcc = 0; st.npcs.forEach(n => { if (n.pop && n.pop.near && !n.dead) try { driveIfFar(st, n); } catch (e) { } }); }
-    const now = Date.now();
-    if (!S.busy && now > S.next) { S.next = now + CFG.every; direct(st).catch(e => console.warn('[Regia]', e)); }
-  }
-  function note(s) { S.log.push(s); if (S.log.length > 40) S.log.shift(); }
-  function hook() {
-    const g = G(); if (!g || !g.HOOKS) return;
-    const prev = g.HOOKS.step; g.HOOKS.step = (st, dt) => { if (prev) prev(st, dt); try { step(st, dt); } catch (e) { console.warn('[Regia]', e); } };
-  }
-  hook();
-  return { CFG, S, scene, candidates, direct, act, assignOwners };
+  return { K, passo, voto, dietro, taglia, ang };
 })();
-if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
+if (typeof window !== 'undefined') window.__REGIA = Regia.K;
+if (typeof module !== 'undefined') module.exports = Regia;
 </script>
 <script data-m="main">
 (function () {
@@ -92422,7 +92764,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   // [visuale5] e la sposta: di lato gira, in su e in giù sposta la visuale (il mondo segue il mouse); con Maiusc sposta anche di lato.
   // ui.pan si somma fino al fotogramma (frazioni dello schermo); render.js (Visuale.mano) decide quando la camera torna da sola
-  let camDrag = null; ui.drag = 0;
+  let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
+  const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
   // [telefono] due dita sullo schermo: pizzico per lo zoom (il secondo dito non cammina, non spara, non spruzza)
   const pin = new Map(); let pinD = 0, pinA = 0, pinM = null;
@@ -92439,7 +92782,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { const r = cv.getBoundingClientRect(), dx = e.clientX - camDrag.x, dy = e.clientY - camDrag.y;
-    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; addPan(0, dy / r.height); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [visuale5]
+    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
@@ -92530,7 +92873,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
-    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.'].includes(k)) { keys[k] = true; e.preventDefault(); }
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
@@ -92547,7 +92890,10 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
-  const stick = { x: 0, y: 0 }; let stickB = null;   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
+  const stick = { x: 0, y: 0 }; let stickB = null;
+  const vstick = { x: 0, y: 0 };
+  const FRECCE_PASSI = /[?&]frecce\b/.test(location.search);   // [levette] sul computer WASD è la levetta sinistra, le frecce la destra (gira e zoom)
+  const frecceVisuale = () => !FRECCE_PASSI && !(st && st.player.vehicle && jumpMode()) && !ui.intro && !ui.dialog && !ui.book && !ui.menu;   // [levette] la levetta della visuale a schermo (a destra): di lato gira attorno al personaggio, in su e in giù lo zoom   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -92607,7 +92953,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode || (CON.on && !mouse.active) ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
-    const ar = !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick
+    const ar = FRECCE_PASSI && !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
     if (keys.w || (ar && keys.arrowup)) f += 1; if (keys.s || (ar && keys.arrowdown)) f -= 1;
     if (keys.d || (ar && keys.arrowright)) s += 1; if (keys.a || (ar && keys.arrowleft)) s -= 1;
     const a = touchMode ? (ui.faceIdle !== undefined ? ui.faceIdle : st.player.face) : aimAngle();   // [camera4] sul telefono, da fermo: guarda dove l'hai girato con la visuale (o resta com'è)
@@ -93197,6 +93543,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
     const end = () => { sid = null; stickB = null; stick.x = stick.y = 0; kn.style.left = '43px'; kn.style.top = '43px'; };
     sEl.addEventListener('pointerup', end); sEl.addEventListener('pointercancel', end);
+    { const vEl = $('stick2'), vk = $('knob2'); let vid = null;   // [levette] la levetta della visuale
+      const vmv = e => { const r = vEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 58) / 44, dy = (e.clientY - r.top - 58) / 44; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } vstick.x = dx; vstick.y = dy; vk.style.left = 37 + dx * 36 + 'px'; vk.style.top = 37 + dy * 36 + 'px'; };
+      vEl.addEventListener('pointerdown', e => { e.stopPropagation(); A.init(); vid = e.pointerId; vEl.setPointerCapture(vid); vmv(e); });
+      vEl.addEventListener('pointermove', e => { if (e.pointerId === vid) vmv(e); });
+      const vend = () => { vid = null; vstick.x = vstick.y = 0; vk.style.left = '37px'; vk.style.top = '37px'; };
+      vEl.addEventListener('pointerup', vend); vEl.addEventListener('pointercancel', vend); }
     function mv(e) { const r = sEl.getBoundingClientRect(); let dx = (e.clientX - r.left - 65) / 50, dy = (e.clientY - r.top - 65) / 50; const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; } stick.x = dx; stick.y = dy; kn.style.left = 43 + dx * 40 + 'px'; kn.style.top = 43 + dy * 40 + 'px'; }
   }
 
@@ -93234,7 +93586,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     }
     PAD.gas = bv(7); PAD.brk = bv(6);
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
-    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book) addPan(0, PAD.pan * dt * (window.Visuale ? Visuale.MANO.spostaK : .6));   // [visuale5] la levetta destra in verticale sposta la visuale
+    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 - PAD.pan * dt * 1.4);   // [levette] la levetta destra in verticale: lo zoom (in su si avvicina, e da vicino la visuale scende dietro al personaggio)   // [visuale5] la levetta destra in verticale sposta la visuale
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
@@ -93243,7 +93595,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   // soldi, minimappa né suggerimenti sopra il mondo. I comandi sono tasti veri nella pulsantiera della console; soldi, ora, mappa,
   // taccuino e il resto stanno nel menu (lo zaino), in ordine; sullo schermo un avviso alla volta (CSS: #app.console).
   // La pagina che ospita il gioco si presenta con {pvc:'ciao'}: il gioco risponde {pv:'console', v:2}.
-  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
+  // Dalla console: {pvc:'levetta', x, y} (da -1 a 1, come la levetta a schermo), {pvc:'levetta2', x, y} ([levette] la visuale: di lato gira
+  // attorno al personaggio, in su e in giù lo zoom; dalla v3), {pvc:'tasto', k, giu}, {pvc:'lascia'} (rilascia tutto).
   // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, croce, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, mano, n,
   // audio} (la scritta di ogni tasto, null = ora non fa niente; acceso o spento; quello che hai in mano; le cose da fare qui) e
   // {pv:'stato', giorno, ora, soldi, debito, scade, ricercato}, per il display della console.
@@ -93259,7 +93612,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
   //   rotella     l'audio
-  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
+  const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, lev2: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
   const conBmx = () => !!(st.player.vehicle && jumpMode());   // in BMX la croce fa i trick
   const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
   const conFake = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
@@ -93270,6 +93623,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const p = st.player, M = {};
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
+    const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
+    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
@@ -93287,13 +93642,15 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
       else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
       else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
     }
-    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
+    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };   // [levette] la stessa scritta sotto la levetta della visuale
     if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
     if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
     M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
     return M;
   }
   function conKey(k, down) {
+    const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;
+    if (TV && (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu')) { if (down) { if (k === 'sx' || k === 'dx') TV.col(k === 'dx' ? 1 : -1); else TV.size(k === 'su' ? 1 : -1); } CON.sent = ''; return; }   // [tavoletta]
     if (k === 'sx' || k === 'dx' || k === 'su' || k === 'giu') {   // la croce, finché la tieni: la visuale, o in BMX i trick
       CON.dir[k] = down; const D = CON.dir, bx = conBmx();
       CON.trick.wheelie = bx && !!D.giu; CON.trick.peg = bx ? (D.sx && !D.dx ? 1 : D.dx && !D.sx ? -1 : 0) : 0;
@@ -93304,9 +93661,12 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
-  function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; }
+  function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
   function conTick(dt) {
-    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);   // la croce tenuta: lo zoom
+    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);
+    if (frecceVisuale() && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) { const fx = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), fy = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); ui.drag = (ui.drag || 0) - fx * dt * 2.2; if (fy) zoomBy(1 + fy * dt * 1.5); }   // [levette] le frecce: ← → girano attorno al personaggio, ↑ ↓ lo zoom
+    if ((vstick.x || vstick.y) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) { const zx = Math.abs(vstick.x) > .15 ? vstick.x : 0, zy = Math.abs(vstick.y) > .15 ? vstick.y : 0; ui.drag = (ui.drag || 0) - zx * dt * 2.4; if (zy) zoomBy(1 + zy * dt * 1.5); }   // [levette] la levetta della visuale a schermo
+    if ((keys.pagedown || keys.pageup) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) tiltBy(((keys.pagedown ? 1 : 0) - (keys.pageup ? 1 : 0)) * dt * .9);   // [bassa]   // la croce tenuta: lo zoom
     if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
     if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
       const p = st.player; if (!p.vehicle && !p.hand && p.cur !== 'pugni') conAim(); else ui.aimPoint = null;
@@ -93337,9 +93697,18 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
       if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
-      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 2 }); conLabels(); return;
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 3 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale
     }
     if (!CON.on) return;
+    if (d.pvc === 'levetta2') {   // [levette] la levetta della visuale del Game Boy (al posto della croce)
+      const c = v => Math.max(-1, Math.min(1, +v || 0)); let x = c(d.x), y = c(d.y); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+      const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;
+      if (conBmx() || TV) {   // in BMX (i trick) e nella tavoletta (colore, spessore) vale come la croce: le quattro direzioni, come le leggeva il Game Boy
+        vstick.x = vstick.y = 0; const ax = Math.abs(x), ay = Math.abs(y), nx = {};
+        if (Math.max(ax, ay) > .35) { if (ax >= ay * .45) nx[x < 0 ? 'sx' : 'dx'] = true; if (ay >= ax * .45) nx[y < 0 ? 'su' : 'giu'] = true; }
+        ['sx', 'dx', 'su', 'giu'].forEach(k => { if (!!nx[k] !== !!CON.lev2[k]) conKey(k, !!nx[k]); }); CON.lev2 = nx; return; }
+      if (Object.keys(CON.lev2).length) { Object.keys(CON.lev2).forEach(k => conKey(k, false)); CON.lev2 = {}; }
+      vstick.x = x; vstick.y = y; return; }
     if (d.pvc === 'levetta') { const c = v => Math.max(-1, Math.min(1, +v || 0)); stick.x = c(d.x); stick.y = c(d.y); const l = Math.hypot(stick.x, stick.y); if (l > 1) { stick.x /= l; stick.y /= l; } }
     else if (d.pvc === 'tasto' && typeof d.k === 'string') conKey(d.k, !!d.giu);
     else if (d.pvc === 'lascia') conLetGo();
@@ -93391,6 +93760,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
       `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
       `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
+      (window.PV_PROFILO ? `profilo: ${PV_PROFILO.profilo} (${PV_PROFILO.motivo})${PV_PROFILO.profilo === 'leggera' ? ' · ?alta per il pieno' : ''}\n` : '') +   // [profilo]
+     
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
       `${I.calls || '?'} disegni · ${I.tris ? Math.round(I.tris / 1000) + 'k' : '?'} triangoli · ${I.progs || '?'} shader · ${I.px || ''} · abitanti fuori ${st.npcs.filter(k => !k.dead && !k.inside).length}/${st.npcs.length} · bolla ${st.bubble ? Math.round(st.bubble.r) + ' m' : '-'}` +
@@ -93460,6 +93831,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
   }
   function loop0(now) {
     if (window.PV_ATTESA && PV_ATTESA.on()) { last = now; requestAnimationFrame(loop); return; }   // [ospite] nascosto, mentre il sito scorre: niente fotogrammi
+    if (window.Writing && Writing._ && Writing._.TAV.pad) { last = now; try { conLabels(); } catch (e) { } requestAnimationFrame(loop); return; }   // [tavoletta] col pannello aperto (copre tutto) la città non si disegna: il tratto resta fluido anche sul telefono
     if (RIT ? PesoRitmo.salta(now) : FC.on && now - last < 30) { requestAnimationFrame(loop); return; }   // [ritmo] il tetto: questo giro non si disegna
     const tL0 = performance.now();
     const raw = Math.max(0, (now - last) / 1000); last = now;
@@ -93506,7 +93878,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = Regia;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
@@ -102450,11 +102822,10 @@ var MenuUI = (function () {
     sc.traverse(o => { if (o.isMesh && o.geometry && !o.isSkinnedMesh) o.geometry.dispose(); });
     return cv;
   }
-  // [avvio] le anteprime hanno un secondo contesto WebGL: crearlo durante il caricamento fermava la pagina (40 s in getContext,
-  // in coda dietro alle compilazioni del gioco). Si fanno quando il gioco risponde (main.js: __tl.vivo) e si è in strada da 5 s,
-  // o subito se il menu dello zaino è aperto. Nello studio (editor.html) subito; anteprima() (studio, prove) non passa da qui.
-  let thIn = 0; const thumbOk = () => { if (THR || window.PV_STUDIO) return true; if (!PV()) return false; const tl = window.__tl, ui = PV().ui; if (!tl || !tl.vivo) return false; if (U.open) return true;
-    if (!ui || ui.intro) return false; const t = performance.now(); if (!thIn) thIn = t; return t - thIn > 5000; };   // in strada da 5 s: i primi passi senza lo scatto del contesto nuovo
+  // [avvio] le anteprime hanno un secondo contesto WebGL: crearlo durante il caricamento o nei primi secondi di gioco fermava la pagina
+  // (40-69 s in getContext, in coda dietro alle compilazioni del gioco). Si fanno solo a menu aperto (o nel cantiere), a gioco vivo. Nello studio (editor.html) subito; anteprima() (studio, prove) non passa da qui.
+  const thumbOk = () => { if (THR || window.PV_STUDIO) return true; if (!PV()) return false; const tl = window.__tl, ui = PV().ui; if (!tl || !tl.vivo) return false; if (U.open) return true;
+    return typeof Cantiere !== 'undefined' && !!Cantiere.active && !!Cantiere.active(); };   // [avvio] solo a menu aperto (o nel cantiere, che ha le sue schede): in strada niente contesto nuovo
   function thumbPump() {
     requestAnimationFrame(thumbPump);
     // [dieta] sul telefono il contesto WebGL delle anteprime (programmi, ombre, ambiente: memoria della scheda video) si chiude quando la coda
@@ -102824,7 +103195,7 @@ var MenuUI = (function () {
     if (U.tab !== tab || U.arg !== arg) U.sel = null;
     U.open = true; U.tab = tab || 'zaino'; U.arg = arg === undefined ? null : arg; U.msg = ''; U.sig = ''; if (tab === 'bottega') U.shopTab = 'compra';
     if (PV().ui) { PV().ui.menu = true; PV().ui.menuSlow = !inCovo(ST()); }   // in strada il mondo rallenta, nel covo si ferma
-    $('mu').classList.add('on'); render(true);
+    $('mu').classList.add('on'); render(true); thumb('zaino');   // [avvio] l'anteprima 3D del pulsante si fa adesso, col contesto già aperto per il menu
   }
   const inCovo = st => { if (!st) return false; const p = st.player; return !!O().pocketsView(st).base || !!(p.indoor && G().BUILDINGS[p.indoor.b] && G().BUILDINGS[p.indoor.b].playerHome); };
   function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } const cv = $('cv'); if (cv) cv.focus(); }
@@ -103209,7 +103580,11 @@ var MenuUI = (function () {
     const app = $('app'), st = ST(), ui = PV() && PV().ui; if (!app || !st || !ui) return; if (!$('mu')) mount();
     let b = $('muBtn'); if (!b) { b = document.createElement('button'); b.id = 'muBtn'; b.innerHTML = '<canvas width="96" height="96"></canvas><span>Zaino<kbd>I</kbd></span><span class="dot" hidden></span>'; app.appendChild(b); b.onclick = () => toggle('zaino'); }
     const dsp = ui.intro || ui.over || U.open || (typeof Cantiere !== 'undefined' && Cantiere.active()) ? 'none' : ''; if (b.style.display !== dsp) b.style.display = dsp;   // [fluido] solo se cambia
-    const c = b.querySelector('canvas'); if (!c.dataset.done) { const t = thumb('zaino'); if (t) { c.getContext('2d').drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; } }
+    // [avvio] il pulsante non chiede l'anteprima 3D: chiederla apriva il secondo contesto WebGL 5 s dopo l'avvio (69 s di blocco sul telefono,
+    // in coda dietro alle compilazioni del gioco). Subito l'icona 2D; la versione 3D arriva quando c'è già (fatta col menu aperto)
+    const c = b.querySelector('canvas'); if (!c.dataset.done) { const x = c.getContext('2d'), t = TH.get('zaino');
+      if (t) { x.clearRect(0, 0, 96, 96); x.imageSmoothingEnabled = true; x.drawImage(t, 0, 0, 96, 96); c.dataset.done = 1; }
+      else if (!c.dataset.ic2) { const s16 = document.createElement('canvas'); s16.width = s16.height = 16; icon(s16, 'zaino'); x.clearRect(0, 0, 96, 96); x.imageSmoothingEnabled = false; x.drawImage(s16, 0, 0, 96, 96); c.dataset.ic2 = 1; } }
     const n = quiCount(st), d = b.querySelector('.dot'); if (d.hidden !== !n) d.hidden = !n; if (d.textContent !== String(n)) d.textContent = n;
   } catch (e) { } }, 300);
   return { open, close, toggle, render, icon, state: U, quiList, quiCount, thumbFor, famOf, anteprima: id => makeThumb(id) };   // anteprima: per lo studio e le prove

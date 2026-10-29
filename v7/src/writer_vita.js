@@ -90,7 +90,7 @@ var WriterVita = (function () {
   const placeOf = s => { if (s.name) return s.name; try { const p = G.nearestPlace(s.x, s.y); return p ? 'a ' + p.name : ''; } catch (e) { return ''; } };
   // un muro per una notte: libero (niente lavori sopra), lontano dal giocatore se non vuoi farti vedere... ma non troppo
   function freeSite(st, kinds, near, maxD) {
-    const W = WR.S(st), live = W.works.filter(w => !w.erased && w.spot);
+    const W = WR.S(st), live = W.works.filter(w => !w.erased && w.spot && !/^(tag|mtag|adesivi|stencil|manifesto)$/.test(w.style));   // [atlante] un muro con sopra solo tag e adesivi è ancora libero: ci si va sopra
     for (let k = 0; k < 40; k++) {
       const s = pick(SITES); if (!kinds.includes(s.kind)) continue;
       if (near && hyp(s.x - near.x, s.y - near.y) > (maxD || 200)) continue;
@@ -320,6 +320,16 @@ var WriterVita = (function () {
       const crew = pick(['OGS', 'KMT', 'FLM', 'RSC', 'SPK']), mem = OLD.filter(o => o[1] === crew), n = Math.max(2, Math.floor((s.len - 1) / 5.2));
       for (let i = 0; i < n; i++) { const [aka0] = pick(mem), wr = oldWr(aka0, crew), style = pick(['pezzo', 'pezzo', 'burner', 'mostro', 'calli', 'pezzo']); place(s, null, wr, style, -s.len / 2 + 2.8 + i * 5.2, null, { prod: true }); }
       for (let i = 0; i < 2 + Math.floor(rnd() * 3); i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, pick(['tag', 'mtag', 'adesivi', 'stencil', 'tag']), (rnd() - .5) * (s.len - 1), null, {}); }
+    });
+    // [atlante] LA STRADA COME LA FA UN WRITER VERO: la maggior parte di quello che c'è sui muri sono tag. Lungo le vie (di più dove si sta:
+    // bar, vicoli, sottopassi, la ferrovia, le zone calde; quasi niente vicino al regime, heatOf) a gruppetti, ad altezza di mano, una
+    // accanto e sopra l'altra; adesivi e qualche stencil; un throw-up dove il muro è lungo. Costano poco: finiti stanno nell'atlante
+    SITES.filter(s => s.kind === 'strada' || s.kind === 'hall' || s.kind === 'ponte' || s.kind === 'ferrovia').forEach(s => {
+      const h = heatOf(s); if (rnd() > Math.min(.95, .3 * h)) return;
+      const n = 1 + Math.floor(rnd() * Math.min(6, 1 + h * 1.5));
+      for (let i = 0; i < n; i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0), r = rnd(), style = r < .5 ? 'tag' : r < .72 ? 'mtag' : r < .83 ? 'adesivi' : r < .91 ? 'throw' : 'stencil';
+        if (style === 'throw' && s.len < 4) continue;
+        place(s, null, wr, style, (rnd() - .5) * Math.max(0, s.len - 1.2), null, { sign: (style === 'tag' || style === 'mtag') && rnd() < .3 ? pick(WA.SIGNS) : undefined }); }
     });
     SITES.filter(s => s.kind === 'facciata' && s.len >= 6 && denseAt(s.x, s.y) && rnd() < .6).forEach(s => {
       const n = Math.floor((s.len - .5) / 2.6); for (let i = 0; i < n; i++) { const [aka0, crew0] = pick(OLD), wr = oldWr(aka0, crew0); place(s, null, wr, 'verticale', -s.len / 2 + 1.4 + i * 2.6, s.h, {}); }
