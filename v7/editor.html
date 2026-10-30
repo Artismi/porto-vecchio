@@ -20109,6 +20109,13 @@ Anim.npcMap((st, n, s) => {
     if (!n.rotelle || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto) return;
     s.act = 'rotelle'; s.rotelle = rotelleModo(st, n); if (s.upper && s.upper !== 'telefona' && s.upper !== 'fuma') s.upper = null;
   });
+  // [manie] chi fa sempre una cosa sola (matti.js, Matti.MANIE): la posa delle braccia sopra la camminata, sempre o a tratti
+  Anim.npcPost((st, n, s) => {
+    const k = n.pop && n.pop.mania, D = k && typeof Matti !== 'undefined' && Matti.MANIE[k];
+    if (!D || n.dead || n.stun > 0 || n.inside || n.room || n.inVeh || n.__ev || n.__posto || n.panic > 0) return;
+    if (D.ogni) { const ph = (n.__h || (n.__h = Anim.hashStr(String(n.id)) * 97)), c = ((st.clock || 0) + ph) % D.ogni[0]; if (c > D.ogni[1]) return; }
+    s.upper = D.upper;
+  });
   // la sedia: seduta imbottita, schienale, colonna a gas, la stella a cinque razze con le rotelle. Una geometria sola coi colori nei
   // vertici, condivisa da tutte le sedie (poche decine di triangoli); seduta a 48 cm, lo schienale dietro (-z), davanti +z
   let SEDIA = null;
@@ -23031,19 +23038,20 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 </script>
 <!-- [sito] quale isola: la città nuova dappertutto, anche sul telefono ([leggera]: leggera_memoria.js la fa stare nella memoria del telefono;
      prima il telefono aveva l'isola di prima perché la pagina si chiudeva). ?vecchia riapre l'isola di prima, ?cittanuova resta accettato -->
-<!-- [mappa_nuova] ?mappa=nuova: la mappa nuova (world_cittanuova.js, MN), in prova finché il committente non la approva. Il mondo cotto e i
-     tasselli sono della mappa di prima: con la mappa nuova il gioco calcola il mondo e costruisce la città nel browser -->
-<script>window.PV_MAPPA = (function () { try { return /[?&]mappa=nuova\b/.test(location.search) ? 'nuova' : ''; } catch (e) { return ''; } })();</script>
+<!-- [mappa_nuova] la mappa nuova (world_cittanuova.js, MN) è quella di serie, approvata dal committente: senza ferrovia di superficie, la Punta
+     del Faro, la falesia, la metropolitana. Il mondo cotto e i tasselli sono suoi. ?mappa=prima riapre la mappa di prima (con la ferrovia):
+     allora il gioco calcola il mondo e costruisce la città nel browser. ?mappa=nuova resta accettato -->
+<script>window.PV_MAPPA = (function () { try { return /[?&]mappa=(prima|vecchia)\b/.test(location.search) ? 'prima' : 'nuova'; } catch (e) { return 'nuova'; } })();</script>
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'cca52eea77c3facd';</script>
-<script>window.PV_IMPRONTA_TASS = '9257940f5c775a22';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '3b83deb78f7cdc43';</script>
+<script>window.PV_IMPRONTA_TASS = 'e315f8d393769320';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
 <script>(function () {
-  if (window.PV_CUOCI || window.PV_MAPPA === 'nuova') return;
+  if (window.PV_CUOCI || window.PV_MAPPA === 'prima') return;
   let s = null; try { const x = new XMLHttpRequest(); x.open('GET', 'mondo_cotto.js', false); x.send(); if (x.status === 200 || (x.status === 0 && x.responseText)) s = x.responseText; } catch (e) { s = null; }
   if (s) try { const a = s.indexOf('punti: JSON.parse('), b = s.indexOf('), bin: "', a), c = s.lastIndexOf('"');
     const im = /impronta: "([0-9a-f]+)"/.exec(s.slice(0, 600)), ve = /versione: (\d+)/.exec(s.slice(0, 600));
@@ -25709,6 +25717,13 @@ var Vegetazione = (function () {
         }
       }));
     });
+    // 2b) LA VILLA COMUNALE A MARE (i posti li prepara la costa: W.VILLA, claude/pv-costa): palme al cancello, lecci sul viale, pini
+    //     domestici dentro la balaustra; nelle quattro aiuole ellittiche oleandri e agavi, un giardino pubblico d'Impero consumato.
+    if (W.VILLA) { const VS = { palma: 'palma', leccio: 'leccio', pino: 'pino' }, fu = F.giardino;
+      (W.VILLA.alberi || []).forEach((a, k) => { const sp = VS[a.k] || 'leccio'; posa(sp, a.x, a.y, fu, { villa: true, h: SP[sp].h[0] + (SP[sp].h[1] - SP[sp].h[0]) * (.5 + hash2(k, 3, 7381) * .5) }); });
+      (W.VILLA.aiuole || []).forEach((q, k) => { const n = Math.max(3, Math.round(q.rx * q.ry / 2.2));
+        for (let j = 0; j < n; j++) { const a = j / n * 6.2832 + hash2(k, j, 7382), d = .35 + .45 * hash2(j, k, 7383), sp = j % 4 === 0 ? 'agave' : hash2(j, k, 7384) < .2 ? 'erbaSecca' : 'oleandro';
+          posa(sp, q.x + Math.cos(a) * q.rx * d, q.y + Math.sin(a) * q.ry * d, fu, { villa: true }); } }); }
     // 3) I BOUQUET: composizioni progettate posate lungo il cammino (soglie, fondali sulle curve, soste, ritmo), e attorno alle radure.
     //    Ogni bouquet è un elenco [specie, dx, dy, scala] in metri nel suo riferimento: +y verso il sentiero (la luce, chi guarda), +x lungo.
     const bq = (nome, x, y, ang, fi, ruolo) => { const B = BOUQUET[nome]; if (!B) return 0; const c = Math.cos(ang), sn = Math.sin(ang); let n = 0;
@@ -26858,11 +26873,11 @@ var World = (function () {
   function SouthY(x) { let v = SYM.get(x); if (v === undefined) { v = SouthY0(x); if (SYM.size > 200000) SYM.clear(); SYM.set(x, v); } return v; }
   // [isola-ridotta] a ovest del Monte la forma (la testa, il collo, le calette, la Punta) si legge nel disegno in Pxi(x) e si porta sulla
   // mappa con Py; i capi e i golfi con nome (C2N, C2S, già sulla mappa) e i rumori della riva si fanno sulla mappa, alla loro scala
-  // ================= [mappa_nuova] LA MAPPA NUOVA (?mappa=nuova, in Node PV_MAPPA=nuova; piano in mappa_nuova/piano.md e revisione.md) =================
+  // ================= [mappa_nuova] LA MAPPA NUOVA (di serie; ?mappa=prima, in Node PV_MAPPA=prima, per la mappa di prima; piano in mappa_nuova/piano.md e revisione.md) =================
   // Si taglia l'isola a ovest di x 702 (finale 1022): resta un capo di scogli arrotondato (la Punta del Faro) che esce 28 m oltre il taglio.
   // A tramontana, sotto il colle, la riva entra di 10-33 m fin dove passavano la ferrovia e la Costiera Nord (correzione 1): una falesia
-  // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Senza ?mappa=nuova niente cambia.
-  const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA === 'nuova'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=nuova\b/.test(location.search)) return true; if (typeof process !== 'undefined' && process.env && process.env.PV_MAPPA === 'nuova') return true; } catch (e) { } return false; })();
+  // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Con ?mappa=prima niente di questo: la mappa di prima.
+  const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA !== 'prima'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=(prima|vecchia)\b/.test(location.search)) return false; if (typeof process !== 'undefined' && process.env && /^(prima|vecchia)$/.test(process.env.PV_MAPPA || '')) return false; } catch (e) { } return true; })();
   const MNX = 702, MNW = 674, MNL = 120, MNY = 146;   // il taglio, la punta del capo, quanto è lungo il capo che si stringe, la sua mezzeria
   const MNN = [[688, 0], [698, 22], [710, 27], [720, 27], [730, 17], [740, 10], [750, 7], [760, 7], [770, 10], [780, 25], [790, 31], [800, 30], [810, 23], [820, 18], [830, 16], [840, 15], [850, 21], [860, 18], [870, 15], [880, 11], [890, 9], [902, 0]];
   const mnShift = m => { if (m <= MNN[0][0] || m >= MNN[MNN.length - 1][0]) return 0; for (let k = 0; k < MNN.length - 1; k++) { const [a, ha] = MNN[k], [b, hb] = MNN[k + 1]; if (m >= a && m < b) { const t = (m - a) / (b - a), e = t * t * (3 - 2 * t); return ha + (hb - ha) * e; } } return 0; };
@@ -34244,7 +34259,7 @@ var Game = (function () {
   // ---------------- DECISIONI ----------------
   function say(st, n, text, dur) { n.bark = { text, until: st.clock + (dur || 3.4) }; n.barkCd = st.clock + 8; }
   const COMBAT_BARKS = {
-    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!'],
+    cop: ['Polizia! Getta l\'arma!', 'Fermo o sparo!', 'Centrale, sparatoria in corso!', 'A terra!', 'Centrale, sparatoria! Sì, lo so che è la mia pausa!', 'Ogni proiettile è un modulo da compilare, maledetto!', 'Arrenditi! Ho la suocera a cena, non ho tempo!', 'Calmati! CALMATI! È un Dovere!', 'Ai sensi del comma antani, fuoco!'],
     squalo: ['Lo Squalo ti saluta!', 'Vieni fuori, Nino!', 'Sei un uomo morto!', 'Te la sei cercata!', 'Nino! Lo Squalo dice che ti vuole bene! Ma deve spararti!', 'Esci, che mia madre mi aspetta per pranzo!'],
     marsiglia: ['Tirez! Tirez!', 'Putain, il est là!', 'Crève, petit!', 'À gauche! À gauche!', 'Mais qui a pris ma baguette?! Pardon. Tirez!'],
     // [arcipelago]
@@ -35073,7 +35088,8 @@ var Game = (function () {
       const hm = v.home || { x: 0, y: 0 }; if (!v.path || !v.path.length) v.path = findPath(v.x, v.y, hm.x, hm.y, 1, true);
       const w = v.path[0]; if (w && dist(v.x, v.y, w.x, w.y) < 2.5) v.path.shift();
       vehicleMotion(st, v, dt, w ? Math.atan2(w.y - v.y, w.x - v.x) : v.ang, 1, false, false, false);
-      if (dist(v.x, v.y, st.player.x, st.player.y) > 110 || !w || v.stuck > 4) v.hidden = true;
+      // [sparizioni] se ne va solo fuori dalla vista (st.viewR, main.js): senza strada o incastrata sotto gli occhi resta lì (prima spariva)
+      { const d = dist(v.x, v.y, st.player.x, st.player.y); if (d > Math.max(60, Math.min(st.viewR || 0, 170)) && (d > 110 || !w || v.stuck > 4)) v.hidden = true; }
       if (dist(v.x, v.y, v.x - Math.cos(v.ang) * v.speed * dt, v.y) < .005) v.stuck += dt;
       return;
     }
@@ -37323,7 +37339,8 @@ var Risacca = (function () {
     if (hr === 20) {
       if (st.t < R.ripetitore.brokenUntil) G.feed(st, 'Ore 20: gli schermi restano neri. Il Garante tace.', 'good');
       else if (R.onAir && st.t - R.onAir < 30) { R.morale = clamp(R.morale + 10, 0, 100); G.feed(st, 'Ore 20: al posto del Garante, in molti bar si sente Radio Scirocco.', 'good'); }
-      else { G.feed(st, 'Ore 20: il Garante parla da tutti gli schermi. «L\'ordine è una carezza.»', 'radio'); R.morale = clamp(R.morale - 1, 0, 100); }
+      else { G.feed(st, `Ore 20: il Garante parla da tutti gli schermi. ${typeof Culto !== 'undefined' ? Culto.garante(st) : '«L\'ordine è una carezza.»'}`, 'radio');   // [culto] ogni sera un discorso diverso
+        R.morale = clamp(R.morale - 1, 0, 100); }
     }
     if (hr === 22 && rl >= 4) G.feed(st, 'Ora Quieta anticipata: coprifuoco su tutta l\'isola.', 'bad');
     // chi parla troppo
@@ -38335,8 +38352,10 @@ var Popolo = (function () {
     for (const n of st.npcs) {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
-      const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      // [sparizioni] chi è già vivo e si vede resta vivo fino al bordo della vista (st.viewR, main.js; al più 140 m): prima a 66 m dal
+      // giocatore tornava «dentro» sotto gli occhi (con la visuale bassa e la camera libera si vede molto più in là)
+      const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < Math.max(CFG.far, Math.min(st.viewR || 0, 140)));
+      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : P.near ? Math.max(.001, d - 15) : d) : 1e9]);   // [sparizioni] chi è già vivo vince di 15 m al tetto (maxNear): niente scambi continui fra due quasi alla stessa distanza   // [ordine] chi è in piazza o in fila resta vivo anche lontano
       // [eventi] e chi recita una scena passa davanti a tutti: con la città compatta piena i vicini arrivano al tetto (maxNear) e l'attore
       // un po' più lontano degli altri veniva addormentato (snapFar lo mette «dentro» casa) a metà scena: la scena si rompeva con «entrato»
     }
@@ -39807,7 +39826,7 @@ var Popolo = (function () {
   // di notte il traffico della città si dirada (sparisce e torna con l'alba); nel pomeriggio tutte le auto in giro
   function trafficHour(st) {
     const hr = minOfDay(st.t) / 60; let k = 0;
-    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > 60) v.hidden = !want; }
+    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > Math.max(60, Math.min(st.viewR || 0, 170))) v.hidden = !want; }   // [sparizioni] fuori dalla vista, non a 60 m: con la visuale bassa si vede più in là
   }
   // per le prove: quanti stanno in ogni tipo di posto adesso
   function fillReport(st) { const c = {}; st.npcs.forEach(n => { if (n.__posto) c[n.__posto.p.k] = (c[n.__posto.p.k] || 0) + 1; }); return c; }
@@ -40588,7 +40607,7 @@ var Azioni = (function () {
 
   // ================= TRA PERSONE =================
   const LINES = {
-    chiacchiera: ['Hai sentito cosa è successo?', 'Che freddo, eh?', 'Come va la famiglia?', 'Tuo cognato è ancora convinto di essere un cantante?', 'Ho sognato tua madre. Non ti dico cosa faceva.'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!', 'Hai la faccia di uno che parla con le piante. E le piante non rispondono.', 'Tua madre era bellissima. Cos\'è successo?'],
+    chiacchiera: ['Hai sentito cosa è successo?', 'Che freddo, eh?', 'Come va la famiglia?', 'Tuo cognato è ancora convinto di essere un cantante?', 'Ho sognato tua madre. Non ti dico cosa faceva.', 'Hai messo qualcosa nella Lira Serena? Non dirmelo. Non voglio piangere per due.', 'Il Calcolatore dice che oggi sono felice. Io aspetto di vedere.', 'Mi hanno messo a chiamata. Mi chiamano per dirmi che non mi chiamano.'], sfotti: ['Ma guardalo, sembra un Grigio in libera uscita!', 'Ancora con quella giacca?', 'Ah, il grande esperto!', 'Hai la faccia di uno che parla con le piante. E le piante non rispondono.', 'Tua madre era bellissima. Cos\'è successo?', 'Sei felice al settantaquattro per cento, si vede. Il resto è la faccia.', 'Hai il carisma di un modulo azzurro.'],
     apprezza: ['Bella giacca, sai?', 'Sei uno a posto, tu.', 'Grazie per l\'altro giorno.', 'Tu sei l\'unico che non mi ha mai chiesto soldi. Mi offende un po\'.'], offri: ['Ti offro qualcosa, dai.', 'Questo lo pago io.', 'Offro io. Coi soldi che mi devi.'], gioca: ['Una partita?', 'Scopa!', 'Tocca a te!', 'Se perdi, mi sposi la sorella.'], regala: ['Tieni, è per te.', 'Tieni. Non chiedere da dove viene.'],
     litiga: ['Ma che dici?!', 'Vattene!', 'Non ti permettere!', 'Questa me la segno! Ho un quaderno!', 'Lo dico a tua nonna! Quella viva!'],
   };
@@ -45374,7 +45393,7 @@ var Protagonista = (function () {
         return night ? 'Ti butti sul letto.' : 'Ti stendi un attimo.'; } : null, 'non hai sonno');
       add('mangia_casa', `Mangia qualcosa a casa (dispensa: ${M.pantry})`, M.pantry > 0 ? () => { M.pantry--; N.fame = clamp(N.fame - .6, 0, 1); M.stats.mangiato++; startWarp(st, 'pasto', st.t + 25, 'mangi'); return 'Pane, un po\' di formaggio, il caffè della moka.'; } : null, 'la dispensa è vuota: fai la spesa');
       add('lavati', 'Lavati', () => { N.igiene = 0; startWarp(st, 'bagno', st.t + 20, 'ti lavi'); return 'Acqua tiepida, più o meno.'; });
-      add('tv', 'Guarda la TV del Garante', () => { N.svago = clamp(N.svago - .2, 0, 1); startWarp(st, 'tv', st.t + 45, 'guardi la TV'); return pick(['«L\'ordine è una carezza.» Il Garante sorride.', 'Varietà del sabato, applausi registrati.', 'Il telegiornale: il raccolto è record, il carbone abbonda.']); });
+      add('tv', 'Guarda la TV del Garante', () => { N.svago = clamp(N.svago - .2, 0, 1); startWarp(st, 'tv', st.t + 45, 'guardi la TV'); return typeof Culto !== 'undefined' && Math.random() < .7 ? Culto.tv() : pick(['«L\'ordine è una carezza.» Il Garante sorride.', 'Varietà del sabato, applausi registrati.', 'Il telegiornale: il raccolto è record, il carbone abbonda.']); });   // [culto] la TV del Garante
       const hot = Object.entries(P.inv || {}).filter(([k, v]) => v > 0 && ['refurtiva', 'roba', 'pistola', 'mitra', 'lupara', 'coltello'].includes(k));
       if (hot.length) add('nascondi', 'Nascondi la roba che scotta sotto le assi', () => { hot.forEach(([k, v]) => { M.stash[k] = (M.stash[k] || 0) + v; delete P.inv[k]; if (P.arms && P.arms[k]) { M.stash['_arm_' + k] = P.arms[k]; delete P.arms[k]; if (P.cur === k) P.cur = 'pugni'; } }); return 'Sotto le assi del pavimento. Nessuno ci guarda.'; });
       if (Object.keys(M.stash).some(k => !k.startsWith('_') && M.stash[k] > 0)) add('riprendi', 'Riprendi la roba nascosta', () => { P.inv = P.inv || {}; Object.entries(M.stash).forEach(([k, v]) => { if (k.startsWith('_arm_')) { P.arms[k.slice(5)] = v; } else P.inv[k] = (P.inv[k] || 0) + v; }); M.stash = {}; return 'Ripresa.'; });
@@ -50460,14 +50479,14 @@ var Ordine = (function () {
     if (esito === 'ok' && k.ris && k.ris.ideo > .6 && Math.random() < .12) { esito = 'fermo'; why = 'sospetto della Risacca'; }
     if (esito === 'ok' && (O.sorvegliati[k.id] || 0) >= 2 && Math.random() < .3) { esito = 'fermo'; why = 'segnalato dall\'Ufficio Rettifiche'; }
     k.ord.stopped = null;
-    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
+    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.', 'Per stavolta la sua Calma è sufficiente.', 'Sereno. Abbastanza. Circolare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
     else if (esito === 'multa') {
       const m = 2 + Math.floor(Math.random() * 4); if (P.money !== undefined) P.money -= m; O.stats.multe++;
-      G.say(st, n, `Multa: ${why}. ${m}.000 lire.`, 2.6);
+      G.say(st, n, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why}. ${m}.000 lire. Lunga Calma.` : `Multa: ${why}. ${m}.000 lire.`, 3);   // [culto]
       if (PL) { PL.note(st, k, `multa dai Grigi (${why}): ${m}.000 lire`, 'bad', { w: .45, tag: 'multa' }); if (P.need) P.need.rabbia = clamp((P.need.rabbia || 0) + .12, 0, 1); }
     } else {
-      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.']), 2.6);
-      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?']), 2.6);
+      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.', 'Ai sensi del comma antani, con scappellamento, lei viene con noi.', 'Lei è stato selezionato per un colloquio di Calma.']), 2.6);
+      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?', 'Ma io sono calmissimo!', 'Lunga Calma! Ho detto Lunga Calma!']), 2.6);
       n.ord.chk = null; fermo(st, n, k, why); return true;
     }
     done(); return true;
@@ -50524,7 +50543,7 @@ var Ordine = (function () {
     if (d > 1.4) { seek(st, cop, p.x, p.y, dt, 1.9, 1.2); } else { stand(cop, undefined, dt); faceTo(cop, p.x, p.y, dt); }
     const moving = Math.abs(p.speed || 0) > 1.2 || p.vehicle && Math.hypot(...(() => { const v = st.vehicles.find(k => k.id === p.vehicle); return v ? [v.vx || 0, v.vy || 0] : [0, 0]; })()) > 2;
     if (C.phase === 'alt') {
-      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.']), 2.5); }
+      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.', 'Documenti, tessera e la faccia serena.']), 2.5); }
       else if (d > 16 || (st.clock - C.t0 > 9 && moving)) return flee(st, cop, C);
       else if (st.clock - C.t0 > 20) end();
       return;
@@ -50574,7 +50593,7 @@ var Ordine = (function () {
     }
     if (bad <= 2) {
       const m = 5 + bad * 5; p.money -= m; O.stats.multe++;
-      G.say(st, cop, `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3);
+      G.say(st, cop, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why.join(', ')}. ${m}.000 lire.` : `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3.4);   // [culto]
       G.feed(st, `Multa di ${m}.000 lire (${why.join(', ')})${seized.length ? '. Sequestrati: ' + seized.map(nomeOgg).join(', ') : ''}.`, 'bad');
       G.addLog(st, `${G.clockStr(st.t)} · Controllo dei Grigi: multa di ${m}.000 lire (${why.join(', ')}).`, 'bad');
       if (C.why === 'base' || C.why === 'varco') { const v = PLACES.varco; if (v) { p.x = v.x - 10; p.y = v.y; } G.feed(st, 'Ti riaccompagnano fuori dal Varco.', 'info'); }
@@ -50882,9 +50901,9 @@ var Ordine = (function () {
 
   // ================= PROTESTE =================
   const SLOGAN = {
-    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!'],
+    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!', 'Il miracolo non si mangia!'],
     arresto: ['Liberatelo!', 'Assassini!', 'Ridateci {nome}!', 'Vergogna!', 'Non ha fatto niente!'],
-    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!'],
+    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!', 'Meno Calma, più pane!', 'Il Garante è calvo!'],
     risacca: ['La Risacca non si ferma!', 'Libertà!', 'Abbasso il Garante!', 'Ridateci i nostri!', 'L\'onda torna sempre!'],
   };
   const BANNER = { pane: ['PANE', 'ABBIAMO FAME', 'LA NAVE È NOSTRA'], arresto: ['LIBERATELI', 'RIDATECI {NOME}', 'BASTA FERMI'], rabbia: ['BASTA', 'VIA I GRIGI', 'NON ABBIAMO PAURA'], risacca: ['LIBERTÀ', 'LA RISACCA', 'ABBASSO IL GARANTE', 'L\'ONDA TORNA'] };
@@ -64075,7 +64094,7 @@ var Eventi = (function () {
       n.__ev.pose = null; n.__ev.down = st.clock + (b.t || 2.6); n.stun = Math.max(n.stun || 0, .05); n.hitT = st.clock; st.sfx.push({ k: 'thud', x: n.x, y: n.y }); setMv(n, { k: 'stay' }); }, wait: b => b.w !== undefined ? b.w : 1 },
     up: { start(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev) { n.__ev.down = 0; n.stun = 0; n.__ev.pose = 'rialza'; } }, wait: () => 1.2, after(st, sc, b) { const n = actor(sc, b.up); if (n && n.__ev && n.__ev.pose === 'rialza') n.__ev.pose = null; } },
     brawl: { start(st, sc, b) { const A = AZ(), x = actor(sc, b.brawl[0]), y = b.brawl[1] === 'player' ? 'player' : actor(sc, b.brawl[1]); sc.over = true; if (!A || !A.brawl || !x || !x.pop || (y !== 'player' && !(y && y.pop))) return; sc.after = () => { try { A.brawl(st, x, y, { why: sc.def.id }); } catch (e) { } }; }, wait: () => 0 },
-    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!', 'Avvisate mia madre! Anzi no.', 'Posso almeno finire il gelato?']), 3); } }, wait: () => 0 },
+    jail: { start(st, sc, b) { const n = actor(sc, b.jail); if (n) { n.jailedUntil = st.t + 180; sayEv(st, n, pick(['Chiamo il mio avvocato!', 'Non ho fatto niente!', 'Ve ne pentirete!', 'Avvisate mia madre! Anzi no.', 'Posso almeno finire il gelato?', 'Lunga Calma! Lunga Calma! Sono calmissimo!']), 3); } }, wait: () => 0 },
     pay: { start(st, sc, b) { const x = actor(sc, b.pay[0]), y = actor(sc, b.pay[1]), k = b.pay[2] || 1; if (x && y && x.pop && y.pop && x.pop.money >= k) { x.pop.money -= k; y.pop.money += k; } }, wait: () => 0 },
     p: { start(st, sc, b) { splice(sc, rnd() < b.p ? b.then : b.else); }, wait: () => 0 },
     fn: { start(st, sc, b) { b.fn(st, sc); }, wait: b => b.w || 0 },
@@ -64491,7 +64510,7 @@ var Eventi = (function () {
     { id: 'vecchi_panchina', w: 3, posto: 'panchina', ora: [14, 19.5], roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', f: 'old|any', r: 20 }, { id: 'c', near: 'a', f: 'old|any', r: 20 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.1 }, { slot: 'b', i: 1, n: 3, sp: 1.1 }] }, { pose: 'a', p: 'siede' }, { pose: 'b', p: 'siede' }, SAY('a', 'Una volta qui c\'era il mare fino alla chiesa.', 'Mio nipote vuole andare in Germania.', 'Il Garante? Ne ho visti passare tre.'),
       { hand: 'c', id: 'giornale' }, { slot: 'c', i: 2, n: 3, sp: 1.1 }, { pose: 'c', p: 'legge_su' }, SAY('b', 'E dove andava il mare, scusa?', 'Tutti vogliono andare via.', 'Parla piano, Peppino.'), { wait: 3 },
-      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { hand: 'c', id: null }, { wait: 1 }] },
+      SAY('c', 'Qui dice che la Vittoria la allargano.', 'Il Bollettino, come sempre: tutto bene.', 'Qui dice che il Garante ha sconfitto l\'inverno. Fuori gela.'), SAY('a', 'Allargano, allargano. E noi?', 'Ai miei tempi il pane costava cento lire.'), { wait: 4 }, SAY('b', 'Andiamo, che si fa fresco.'), { pose: 'a' }, { pose: 'b' }, { pose: 'c' }, { hand: 'c', id: null }, { wait: 1 }] },
     { id: 'madri_pensilina', w: 3, posto: ['pensilina', 'fermata'], ora: [15, 18.5], roles: [{ id: 'a', f: 'f' }, { id: 'b', near: 'a', f: 'f|any', r: 22 }], beats: [
       { hand: 'b', id: 'borsa' }, { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { pose: 'a', p: 'orologio_su' }, { pose: 'b', p: 'aspetta' }, SAY('a', 'Il sette è in ritardo di venti minuti.', 'Con questo autobus non si arriva mai.', 'I bambini escono alle cinque.'),
       SAY('b', 'Ieri non è passato proprio.', 'Mia figlia ha preso otto in italiano.', 'Hai visto i Grigi stamattina al Mercato?'), { pose: 'a', p: 'discute_su' }, SAY('a', 'Otto! Brava. La mia solo in ginnastica.', 'Li ho visti. Hanno preso il figlio della Pina.'), { wait: 3 },
@@ -64543,9 +64562,9 @@ var Eventi = (function () {
       { p: .35, then: [{ pose: 'c', p: 'porge', w: 1.5 }, SAY('c', 'Ho della roba dal porto. Sigarette, vere.', 'Mi servono due radio. Pago.'), { pay: ['a', 'c', 2] }, { pose: 'c', p: 'scalda' }, SAY('a', 'Non qui, dopo.', 'Dammene due stecche.')],
         else: [SAY('c', 'Mio padre faceva il pescatore. Ora fa la fila alla Rocca.', 'Cantiamo? No, che arrivano.'), SAY('a', 'Tutti in fila alla Rocca, un giorno o l\'altro.')] }, { wait: 5 }, SAY('b', 'Un altro po\' di legna e vado a dormire.'), { wait: 2 }, { pose: 'a' }, { pose: 'b' }, { pose: 'c' }] },
     { id: 'posto_blocco', w: 3, posto: 'porta_della_citta', ora: [17, 24.5], roles: [{ id: 'a', f: 'cop', r: 30 }, { id: 'b', near: 'a', r: 26, min: 6 }], beats: [
-      { slot: 'a', i: 0, n: 1, sp: 1.6 }, { pose: 'a', p: 'aspetta' }, { go: 'b', to: 'spot', sp: 1.5, d: 1.8, t: 16 }, { look: 'a', at: 'b' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Alt. Documenti.', 'Fermo. Dove va a quest\'ora?', 'Posto di blocco. I documenti.'),
-      { look: 'b', at: 'a' }, { pose: 'b', p: 'porge', w: 1.5 }, SAY('b', 'Torno a casa, agente.', 'Ecco... sono in ordine.', 'Lavoro al porto, finisco adesso.'), { pose: 'a', p: 'perquisisce', w: 3 },
-      { p: .2, then: [SAY('a', 'Questo nome mi dice qualcosa. Vieni con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Circolare. E a casa prima dell\'Ora Quieta.', 'Vada. E si tagli i capelli.'), SAY('b', 'Grazie, agente.', 'Buonasera.'), { flee: 'b', from: 'a', sp: 1.5 }] }, { pose: 'a', p: 'aspetta' }, { wait: 3 }, { pose: 'a' }] },
+      { slot: 'a', i: 0, n: 1, sp: 1.6 }, { pose: 'a', p: 'aspetta' }, { go: 'b', to: 'spot', sp: 1.5, d: 1.8, t: 16 }, { look: 'a', at: 'b' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Alt. Documenti.', 'Fermo. Dove va a quest\'ora?', 'Posto di blocco. I documenti.', 'Alt. Controllo di Calma. Documenti, tessera e un\'espressione serena.'),
+      { look: 'b', at: 'a' }, { pose: 'b', p: 'porge', w: 1.5 }, SAY('b', 'Torno a casa, agente.', 'Ecco... sono in ordine.', 'Lavoro al porto, finisco adesso.', 'Lunga Calma, agente. Lunghissima.'), { pose: 'a', p: 'perquisisce', w: 3 },
+      { p: .2, then: [SAY('a', 'Questo nome mi dice qualcosa. Vieni con me.', 'Questo nome è poco sereno. Ai sensi del comma antani, viene con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }], else: [{ pose: 'a' }, { pose: 'b' }, SAY('a', 'Circolare. E a casa prima dell\'Ora Quieta.', 'Vada. E si tagli i capelli.', 'Circolare. E sorrida verso la Rocca: la vedono.'), SAY('b', 'Grazie, agente.', 'Buonasera.'), { flee: 'b', from: 'a', sp: 1.5 }] }, { pose: 'a', p: 'aspetta' }, { wait: 3 }, { pose: 'a' }] },
     // --- [mappa_compatta] le scene nuove della città compatta: il cypher alla grata, la fila del pane, la parata della domenica ---
     { id: 'cypher', w: 3, posto: 'cypher', ora: [20, 26], roles: [{ id: 'a', f: 'young|m' }, { id: 'b', near: 'a', f: 'young|any', r: 24 }, { id: 'c', near: 'a', f: 'young|any', r: 24 }], beats: [
       { all: [{ slot: 'a', i: 0, n: 3, sp: 1.3 }, { slot: 'b', i: 1, n: 3, sp: 1.3 }, { slot: 'c', i: 2, n: 3, sp: 1.3 }] }, { pose: 'b', p: 'appoggiato' }, { pose: 'c', p: 'fuma_su' },
@@ -64563,13 +64582,13 @@ var Eventi = (function () {
       { hand: 'a', id: 'pane' }, SAY('a', 'Finalmente. Buona giornata!', 'A domani, Lella.'), { go: 'a', to: 'away', sp: 1.3, d: 2, t: 10 }, { hand: 'a', id: null }, { pose: 'b' }] },
     { id: 'parata', w: 2, posto: 'parata', ora: [10.5, 12.5], giorni: [6], roles: [{ id: 'a', f: 'cop', r: 60 }, { id: 'b', near: 'a', r: 30 }, { id: 'c', near: 'a', r: 30 }], beats: [
       { all: [{ slot: 'b', i: 0, n: 3, sp: 1.3 }, { slot: 'c', i: 1, n: 3, sp: 1.3 }, { go: 'a', to: 'spot', sp: 1.4, d: 3, t: 20 }] }, { crowd: 6, around: 'b', r: 26 }, { pose: 'a', p: 'aspetta' },
-      SAY('a', 'Indietro! Dietro la linea!', 'Fate largo alla banda!', 'Le bandiere in alto, su!'), { look: 'b', at: 'away' }, { look: 'c', at: 'away' },
-      SAY('folla', 'Eccoli che arrivano.', 'Viva... viva il Garante.', 'Mio figlio è in seconda fila!'), { pose: 'b', p: 'braccia_su' }, { wait: 4 },
-      SAY('c', 'Applaudi, che ti guardano.', 'Quanto dura quest\'anno?', 'L\'anno scorso pioveva, almeno.'), { pose: 'c', p: 'discute_su' }, SAY('b', 'Sorridi e stai zitto.', 'Fino a mezzogiorno, come sempre.'), { wait: 4 },
+      SAY('a', 'Indietro! Dietro la linea!', 'Fate largo alla banda!', 'Le bandiere in alto, su!', 'Applausi più lunghi! Il Garante li conta!'), { look: 'b', at: 'away' }, { look: 'c', at: 'away' },
+      SAY('folla', 'Eccoli che arrivano.', 'Viva... viva il Garante.', 'Mio figlio è in seconda fila!', 'Lunga Calma! Lunga Calma!', 'L\'ho visto! Era più alto della Rocca!'), { pose: 'b', p: 'braccia_su' }, { wait: 4 },
+      SAY('c', 'Applaudi, che ti guardano.', 'Quanto dura quest\'anno?', 'L\'anno scorso pioveva, almeno.', 'Dicono che quest\'anno cammina sull\'acqua. Della fontana.'), { pose: 'c', p: 'discute_su' }, SAY('b', 'Sorridi e stai zitto.', 'Fino a mezzogiorno, come sempre.', 'Applaudi e basta. Le mani contano.'), { wait: 4 },
       { pose: 'b' }, { pose: 'c' }, { pose: 'a', p: 'indica_su' }, SAY('a', 'Circolare! La parata è finita.', 'Tutti a casa, avanti.'), { pose: 'a' }, { all: [{ go: 'b', to: 'away', sp: 1.3, d: 2, t: 10 }, { go: 'c', to: 'away', sp: 1.3, d: 2, t: 10 }] }] },
     // --- la notte: la pattuglia, chi si guarda attorno ---
     { id: 'pattuglia_notte', w: 2, posto: ['porta_della_citta', 'angolo'], ora: [22.5, 29], roles: [{ id: 'a', f: 'cop', r: 34 }, { id: 'b', near: 'a', f: 'cop', r: 30 }], beats: [
-      { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { look: 'a', at: 'around' }, { look: 'b', at: 'around' }, SAY('a', 'Tutto tranquillo.', 'Hai sentito? Lì dietro.', 'Alle due si smonta.'), SAY('b', 'Troppo tranquillo.', 'Gatti. Sono sempre gatti.', 'Il capitano vuole due fermi stanotte.'), { wait: 4 },
+      { all: [{ slot: 'a', i: 0, n: 2, sp: 1.3 }, { slot: 'b', i: 1, n: 2, sp: 1.3 }] }, { look: 'a', at: 'around' }, { look: 'b', at: 'around' }, SAY('a', 'Tutto tranquillo.', 'Hai sentito? Lì dietro.', 'Alle due si smonta.', 'Il capitano dice che stanotte il Garante ci sogna. Stiamo dritti.'), SAY('b', 'Troppo tranquillo.', 'Gatti. Sono sempre gatti.', 'Il capitano vuole due fermi stanotte.', 'Mi hanno dato la medaglia della Calma. Da allora non dormo.'), { wait: 4 },
       { all: [{ go: 'a', to: 'away', sp: 1.1, d: 2.5, t: 14 }, { follow: 'b', who: 'a', sp: 1.2, d: 1.6 }] }, SAY('a', 'Controlliamo i portoni.'), { wait: 2 }] },
     { id: 'circospetto', w: 1, posto: ['angolo', 'portone'], roles: [{ id: 'a', f: 'm', min: 6 }], beats: [
       { go: 'a', to: 'spot', sp: 1.7, d: .9, t: 16 }, { look: 'a', at: 'around' }, { pose: 'a', p: 'tasche_su' }, { wait: 4 }, { look: 'a', at: 'player' }, { wait: 1.5 }, { look: 'a', at: 'around' }, SAY('a', '...', 'Non adesso.', 'Qui no.'), { wait: 2.5 }, { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.8 }, { wait: 2 }] },
@@ -64628,13 +64647,17 @@ if (typeof module !== 'undefined') module.exports = Eventi;
       loro, ti riconoscono le volte dopo, e la chat dell'IA sa chi sono (Matti.scheda → mente.js).
    3. LE SCENE STRANE: schede per eventi.js (in fondo), con il filtro 'matto' (prima un matto, se non c'è un vecchio
       qualsiasi) e le battute del matto giusto ({matto:'a', k:'chiave'}).
+   4. I RAGAZZI: due sotto i 27 anni si dicono le loro (FRAM_G: fra, zio, bella, oi, la siga, il drum, «hai da accendere?»,
+      «fottiti» detto con affetto); uno che ti passa accanto ogni tanto ti scrocca (SCROCCO). Mai cattivi davvero.
+   5. LE MANIE: come la sedia con le rotelle, otto abitanti fanno sempre una cosa sola (il giornale camminando, la cornetta senza
+      filo, il cero a mezzogiorno, la carriola vuota, la cassa, chi saluta tutto, chi guarda l'orologio). Nessuno lo spiega.
    Costo: un giro sui 5 matti e, ogni tanto, una ricerca di due persone vicine al giocatore.
    Prove: node test_matti.js; anche test_eventi.js prova le scene nuove. */
 var Matti = (function () {
   'use strict';
   const G = typeof Game !== 'undefined' ? Game : require('./game.js');
   const EV = () => (typeof Eventi !== 'undefined' ? Eventi : null);
-  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7 };
+  const CFG = { fram: [35, 75], framR: [2.5, 11], coppia: 3.6, passa: 5.5, solo: [6, 15], cdMatto: 45, cdTutti: 18, gap: 2.7, giovane: 26, scrocco: [70, 150], scroccoR: 3.8 };
   const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
   // il cast scritto a mano non diventa matto (ha già la sua voce)
   const CAST = new Set(['lupo', 'beppe', 'lucia', 'pietro', 'vinile', 'betamax', 'divisa', 'cono', 'vasco', 'pardo', 'zia', 'malanotte', 'gino', 'wu', 'marta', 'tonino', 'elena', 'rosa', 'nico', 'sandro', 'carla', 'ferri']);
@@ -64699,8 +64722,57 @@ var Matti = (function () {
       offre2: ['Per lei, signora, la scatola grande. Dentro c\'è più silenzio.', 'Le ombre col cappello costano di più. Si capisce.', 'Questa sedia invisibile è antica. Antichissima. Non l\'ha mai vista nessuno.'],
       venduto: ['Lo apra a casa. E se sente qualcosa, me lo riporti: è difettoso.', 'Ottimo acquisto. È l\'ultimo. Fino a domani.', 'Firmi qui. No, la penna non c\'è. Ma la firma vale.'],
     },
+    motivatore: {
+      nick: 'il Motivatore', chi: n => n.pop.age >= 28 && n.pop.age <= 58,
+      fissa: 'Ex scaricatore di porto, ha letto mezzo libro americano sul successo e da allora fa il motivatore per strada. Crede che la povertà sia una questione di atteggiamento. È povero. Molto motivato.',
+      voce: 'entusiasta da imbonitore del successo, frasi da poster motivazionale applicate alla miseria; mai cattivo, solo inarrestabile',
+      passa: ['Tu! Sì, tu! Il tuo limite è solo nella tua testa. E nella tessera annonaria.', 'Sveglia alle quattro. Doccia fredda. Tanto l\'acqua calda non c\'è.', 'Non sei povero. Sei un ricco che non ha ancora cominciato.', 'Ogni no è un sì che non ha ancora capito.', 'Fallire è bellissimo. Io ho fallito sei volte. Guarda dove sono: qui. Al freddo. Ma motivato.', 'Il successo è una scelta. La fame anche, ma quella l\'hanno scelta per me.'],
+      ritorno: ['Ancora tu! Vedo progressi. Non so dove, ma li vedo.', 'Allora? Hai visualizzato il successo? Io ho visualizzato una stufa. Funziona quasi.', 'Campione! Quanto hai guadagnato da martedì? Niente? Il niente è un inizio!'],
+      solo: ['Sono il capitano della mia anima. L\'anima però è in affitto.', 'Respira. Visualizza il successo. Visualizza una stufa.', 'Cinque obiettivi per oggi. Uno: mangiare. Gli altri quattro dopo.', 'Pensa positivo. Pensa positivo. Quel Grigio mi guarda. Pensa positivo.'],
+      sfida: ['Tu! Cosa vuoi dalla vita?', 'Fermo! Dimmi il tuo sogno. Subito!', 'Campione! Quanto vali?'],
+      sfida2: ['Sbagliato! Devi volere di più! Di più! Anche se non c\'è!', 'Bene! Adesso dillo come se ci credessi. Ancora. Più forte. Ecco, adesso ti guardano tutti.', 'Bellissimo. Io ti vedo. Ti vedo tra cinque anni: ricco. O qui. Più probabile qui.'],
+      congedo: ['Vai, campione! Il mondo è tuo! Tranne le cose che hanno già dato agli altri.', 'Prima lezione gratis. La seconda costa mille lire. La terza è la tua vita.', 'Vai! E se fallisci, è perché non ci hai creduto. Non è colpa mia.'],
+    },
+    complottista: {
+      nick: 'il Complottista', chi: n => n.pop.sex !== 'f' && n.pop.age >= 30,
+      fissa: 'Vede trame dappertutto, tranne quella vera. Il regime gli sembra una copertura per qualcosa di più grosso: i gabbiani, le gru, il martedì. Sulla Tutela ha quasi sempre torto per i motivi sbagliati, e ogni tanto ragione per caso.',
+      voce: 'sottovoce e concitato, «pensaci», «non è un caso», collega cose che non c\'entrano niente; diffidente ma bisognoso di essere ascoltato',
+      passa: ['Le gru del porto non sono gru. Pensaci.', 'I gabbiani lavorano per il Ministero. Hai mai visto un gabbiano morto? Ecco.', 'L\'acqua della fontana la cambiano di notte. Con acqua più obbediente.', 'Il Garante non esiste. Sono tre uomini uno sopra l\'altro. Per questo è così alto.', 'Io la tessera non ce l\'ho. Mi tracciano col formaggio.', 'Il pane è finito? Non è un caso. Niente è un caso. Tranne mio cugino, quello è proprio un caso.'],
+      ritorno: ['Ti stanno seguendo. No, non girarti. Ecco, ti sei girato. Adesso lo sanno.', 'Ancora tu. Strano. Troppo strano. Chi ti manda?', 'Hai controllato i gabbiani, come ti ho detto? No? Allora sei uno di loro.'],
+      solo: ['Il martedì non esiste. L\'hanno messo per far quadrare la settimana.', 'Sette Doveri. Sette giorni. Sette nani. Pensaci.', 'Quel lampione si è acceso quando sono passato. Lo sa.', 'La luna è troppo puntuale. Nessuno è così puntuale se non lavora per qualcuno.'],
+      rivela: ['Psst. Tu. Vieni qui. Te lo dico solo una volta.', 'Ascoltami bene, che non ho molto tempo. Mi cercano.', 'Lo sai perché il pane costa così tanto?'],
+      rivela2: ['Il mare. Il mare non è vero. È dipinto. Di notte lo arrotolano.', 'Perché il grano lo mangiano i gabbiani. E i gabbiani chi li paga? Esatto.', 'La nave del lunedì non porta niente. È vuota. Fa il giro dell\'isola e torna. Serve per farci aspettare.'],
+      congedo: ['Non hai sentito niente. E se lo racconti, nessuno ti crede. È così che funziona.', 'Mangia il formaggio solo il giovedì. Fidati.', 'Ci vediamo. Ma non qui. Qui ci guardano.'],
+    },
+    polaroid: {
+      nick: 'la Polaroid', nickM: 'il Polaroid', chi: n => n.pop.age >= 16 && n.pop.age <= 34,
+      fissa: 'Gira con una Polaroid di contrabbando e fotografa sé stessa con tutto: il pane, i Grigi, i funerali, il tramonto. Le foto finiscono in «l\'album», che le sue amiche guardano ogni domenica: ha trentadue seguaci, dal vivo. Vive per far vedere la sua vita, e la sua vita è fare le foto.',
+      voce: 'svelta, entusiasta, parla di «pubblico», «album» e «vita vera», chiede a tutti di mettersi in posa; superficiale e affettuosa',
+      passa: ['Fermo! Non muoverti, sei perfetto per lo sfondo. Ecco. Grazie, puoi andare.', 'Questa è per l\'album. Le mie amiche lo guardano ogni domenica. Trentadue persone. Dal vivo.', 'Faccio vedere la vita vera. Aspetta, rifacciamola: la vita vera era venuta storta.', 'Sorridi per l\'album. No, più vero. Più vero di così.', 'Mi fai una foto col Grigio? Di spalle, così non lo sa.', 'Oggi sono triste. Guarda che bella foto triste.'],
+      ritorno: ['Ancora tu! Sei venuto benissimo l\'altra volta. Piccolissimo, in fondo, ma benissimo.', 'Ti ho messo nell\'album! Pagina quattro. Le mie amiche chiedono chi sei. Ho detto: nessuno.', 'Facciamone un\'altra. Quella di prima ha avuto troppo successo: ventinove su trentadue.'],
+      solo: ['Il tramonto non è venuto bene. Domani lo rifaccio.', 'Polaroid col pane. Polaroid col pane finito. Si chiama «prima e dopo».', 'Ultima pellicola. La tengo per una cosa importante. Tipo me.', 'Al funerale di zio Tore ho fatto la foto più bella della mia vita. Lui un po\' meno.'],
+      foto: ['Fermi tutti! Foto per l\'album!', 'Tu! Mettiti lì. No, lì. Un po\' più a destra. Ancora. Fuori.', 'Vieni, facciamo una foto insieme! Io in primo piano, tu dietro.'],
+      foto2: ['Sorridi! No. Sorridi meglio. Pensa a una cosa bella. Non quella.', 'Fai finta di conoscermi da sempre. Così. Ecco: siamo migliori amici. Per l\'album.', 'Guarda lontano, come uno che pensa. Più pensieroso. Più. Basta, sembri malato.'],
+      congedo: ['Perfetta! Cioè: io sono perfetta. Tu ci sei.', 'Grazie! Se domenica piace, sei famoso. Se non piace, non eri tu.', 'Bellissima. Me la tengo. Tu no, tu puoi andare.'],
+    },
   };
   const KEYS = Object.keys(MATTI);
+
+  // ================= LE MANIE (come la sedia con le rotelle) =================
+  // gente qualunque che fa una cosa sola, sempre, per tutta la città: legge il giornale camminando, porta un cero a mezzogiorno,
+  // spinge una carriola vuota. Nessuno lo spiega, neanche loro: se gli passi accanto dicono una cosa normale. Si vede soltanto
+  // (anim_vita.js legge n.pop.mania: upper è la posa delle braccia; ogni = [periodo, durata] in secondi se la fa a tratti).
+  const MANIE = {
+    giornale: { quanti: 2, upper: 'legge', chi: n => n.pop.age >= 30, passa: ['Mm.', 'Buongiorno.', 'Permesso.', 'Scusi.'] },
+    cornetta: { quanti: 1, upper: 'telefona', chi: n => n.pop.age >= 20, passa: ['Sì. Sì. No. Sì.', 'Aspetta, c\'è uno.', 'Sì, sono qui.', 'Ti richiamo.'] },
+    cero: { quanti: 1, upper: 'cero', chi: n => n.pop.age >= 35, passa: ['Buongiorno.', 'Non soffi, per favore.', 'Buonasera.'] },
+    carriola: { quanti: 1, upper: 'carriola', chi: n => n.pop.sex !== 'f' && n.pop.age >= 25 && n.pop.age <= 70, passa: ['Permesso.', 'Permesso, permesso.', 'Buongiorno.'] },
+    cassa: { quanti: 1, upper: 'porta', chi: n => n.pop.age >= 18 && n.pop.age <= 60, passa: ['Permesso.', 'Non è pesante.', 'Scusi.'] },
+    saluta: { quanti: 1, upper: 'saluta', ogni: [7, 2.5], chi: n => n.pop.age >= 12, passa: ['Ciao!', 'Ciao ciao.', 'Ciao! Ciao.'] },
+    orologio: { quanti: 1, upper: 'orologio', ogni: [6, 1.8], chi: n => n.pop.age >= 30, passa: ['Ancora niente.', 'Le quattro e venti.', 'Mm. No.'] },
+  };
+  // e chi va in sedia da ufficio (anim_vita.js, n.rotelle) quando gli passi accanto
+  const ROTELLE = ['Permesso.', 'Buongiorno.', 'Scusi, mi sposto.', 'Sto bene così, grazie.', 'Attento ai piedi.'];
 
   // ================= I FRAMMENTI SENTITI PASSANDO =================
   // due, tre battute fra A e B, senza contesto: tu passi, loro sono a metà della loro vita
@@ -64747,11 +64819,87 @@ var Matti = (function () {
     ['Ma tu cosa fai di lavoro, alla fine?', 'Te l\'ho detto cento volte.', 'Lo so. Ma non ho mai capito.', 'Neanche io. Ma pagano il venerdì.'],
     ['Lei è vedova?', 'Quasi.', 'Come quasi?', 'Lui sta benissimo. Io mi porto avanti.'],
     ['L\'oroscopo dice che oggi incontro l\'amore.', 'Sono le sette di sera.', 'Ancora cinque ore. Non mi muovo da qui.'],
+    // [attualita] i temi di oggi, nel 1986 dell'isola
+    ['Mio figlio ha lasciato la miniera per fare il motivatore.', 'E chi motiva?', 'Quelli della miniera. A tornare in miniera.'],
+    ['Ho fatto il corso di respirazione della Tutela.', 'E?', 'Adesso respiro meno. Dicono che è più efficiente.'],
+    ['Mi sono iscritto all\'agenzia matrimoniale.', 'E?', 'Mi hanno dato una scheda: compatibile al novantadue per cento. Con mia moglie. Non lo sapevano.'],
+    ['Il geometra dice che la casa adesso vale il doppio.', 'Bene!', 'Male. Non posso più permettermi di abitarci.'],
+    ['L\'hai letto il contratto della tessera?', 'Chi lo legge?', 'Io. Pagina quaranta: cedo l\'anima in comodato d\'uso. Rinnovo automatico.'],
+    ['Ho dato cinque stelle al dentista.', 'Era bravo?', 'No. Ma aveva ancora la pinza in mano.'],
+    ['Mio nipote lavora da casa.', 'E che fa?', 'Non lo sa nessuno. Neanche lui. Però è sempre stanchissimo.'],
+    ['Hai sentito? Il Ministero ha inventato la fila verticale.', 'Come verticale?', 'Uno sopra l\'altro. Si risparmia piazza.'],
+    ['La miniera adesso è ecologica.', 'Davvero?', 'Hanno dipinto il carbone di verde.'],
+    ['Ho trovato lavoro al porto. A chiamata.', 'Ti chiamano spesso?', 'No. Ma devo stare vicino al telefono. Che non ho. Quindi sto vicino a quello del bar.'],
+    ['Mia figlia dice che non è triste, è in una fase.', 'Da quando?', 'Dal \'79.'],
+    ['Ho messo tutto nella Lira Serena.', 'Cos\'è?', 'Una moneta. Vale quanto ci credi.', 'E quanto ci credi?', 'Ieri tantissimo. Oggi devo parlare con mia moglie.'],
+    ['Il medico mi ha detto: meno stress.', 'E tu?', 'Ho smesso di andare dal medico.'],
+    ['Mio cognato ha aperto una bottega che vende niente.', 'Niente?', 'L\'esperienza di entrare. C\'è la fila.'],
+    ['Il gabinetto della stazione adesso è in abbonamento.', 'E se non sei abbonato?', 'C\'è la prova gratuita. Dura poco. Bisogna essere veloci.'],
+    ['Ho fatto il ritiro spirituale al Monte Scuro.', 'Com\'era?', 'Tre giorni in silenzio. Mia moglie dice che è il periodo più bello del matrimonio.'],
+    ['L\'isola è rotonda. Lo dice il Garante.', 'E allora?', 'E allora è piatta. Lui mente sempre. Fai due conti.'],
+    ['Un turista mi ha fotografato la casa.', 'E?', 'Adesso è sulla cartolina. Non riesco più a entrare: c\'è la fila per vederla.'],
+    ['Ho chiesto al Calcolatore del Ministero se sono felice.', 'E?', 'Ha detto di sì. Mi sono tolto un pensiero.'],
+    ['Mi hanno messo in cassa integrazione emotiva.', 'Cioè?', 'Posso essere triste solo il mercoledì.'],
+    ['Ce l\'hai un hobby?', 'La fila.', 'Per lavoro?', 'No, per piacere. Il lavoro è un\'altra fila.'],
+    ['Il nuovo capo dice che siamo una famiglia.', 'Bello.', 'Quindi non ci paga. In famiglia non ci si paga.'],
+    ['Hai visto il palazzo di vetro nuovo?', 'Cosa c\'è dentro?', 'Niente. Per far vedere che non c\'è niente. Si chiama trasparenza.'],
+    ['Ho preso un cane contro la solitudine.', 'E?', 'Adesso è solo il cane. Io lavoro sedici ore.'],
+    ['Mia madre a ottantasei anni ha scoperto lo yoga.', 'Brava!', 'Si è incastrata martedì. La sblocchiamo a turno.'],
+    ['Mi hanno fatto le analisi del sangue.', 'E?', 'Ho il sangue di un consumatore medio. Mi hanno dato un buono sconto.'],
+    ['Tuo nipote cosa fa all\'Ufficio Preferenze?', 'Indovina cosa vuoi prima che lo vuoi.', 'E ci prende?', 'Con me sì. Ha detto che voglio andarmene. Ma era lunedì, lo vogliono tutti.'],
+    ['Hanno chiuso il forno di Lella.', 'Perché?', 'Non era abbastanza «esperienza». Adesso c\'è un forno che fa vedere come si faceva il pane. Senza pane.'],
+    ['Il predicatore della Calma dice che la povertà è una scelta.', 'E tu?', 'Gli ho chiesto chi l\'ha scelta per me. Mi ha dato un opuscolo. A pagamento.'],
+    ['Ho fatto un colloquio di lavoro.', 'Com\'è andato?', 'Mi hanno chiesto dove mi vedo tra cinque anni. Ho detto: vivo. Dicono che non ho ambizione.'],
+    ['Mi è arrivata una lettera dal Banco.', 'Brutte notizie?', 'Mi hanno assegnato dei debiti nuovi. Come premio fedeltà.'],
+    ['Mia moglie fa la dieta del Garante.', 'Cioè?', 'Mangia solo mentre parla lui. Venti minuti al giorno. È dimagrita tantissimo.'],
+    ['Lo vedi quello? Si allena per sembrare felice.', 'E come va?', 'La bocca ce l\'ha già. Gli occhi ancora no.'],
+    ['Devo fare la denuncia dei redditi.', 'Quanto hai guadagnato?', 'Niente.', 'E quanto paghi?', 'Il doppio.'],
+    ['Mio figlio l\'ha licenziato una macchina.', 'Una macchina?', 'La gru nuova del porto. Poi gli ha stretto la mano. Con la pinza.'],
+    ['Ho smesso di fumare.', 'Bravo!', 'Adesso le mastico. Dicono che fa meno male. Non è vero, ma passa il tempo.'],
+    ['Mio nipote vuole diventare famoso.', 'Per fare cosa?', 'Niente. Solo famoso. Dice che la cosa da fare viene dopo.'],
+    ['Il Calcolatore ha deciso i turni della miniera.', 'Com\'è venuto?', 'Io lavoro il giorno trentuno di ogni mese. Anche febbraio.'],
+    ['Al Lido hanno messo il mare a pagamento.', 'Tutto il mare?', 'Fino alla boa. Dopo la boa è gratis, ma lì sparano.'],
+    ['Mi hanno rubato la bici.', 'Hai fatto denuncia?', 'Sì. Adesso mi fanno pagare la custodia della denuncia.'],
   ];
+  // i ragazzi (tutti e due sotto i 27 anni) parlano fra loro: niente battuta finale, la scena finisce un attimo prima.
+  // «Fottiti» fra amici è affetto, non insulto: nessuno qui è cattivo davvero.
+  const FRAM_G = [
+    ['Fra, c\'hai da accendere?', 'No.', 'Neanche io. Stiamo qua.'],
+    ['Hai da accendere?', 'Sì.', 'Ok. Era per sapere.'],
+    ['Oi. Mi giri una siga?', 'Ho solo il drum.', 'Va bene il drum.', 'Non ho le cartine.'],
+    ['C\'ho un drum, una cartina e un filtro.', 'E?', 'E basta. Volevo che lo sapessi.'],
+    ['Zio, mi giri una siga?', 'È l\'ultima.', 'Allora no. Tienila.', 'Grazie.', 'Me la giri però?'],
+    ['Fra, ma il drum è tabacco o è una marca?', 'Tabacco.', 'E il tabacco è una marca?', 'Fra. Non mi fare questo.'],
+    ['Oi, ce l\'hai un accendino?', 'Ce l\'ho blu.', 'Va bene blu.'],
+    ['Bella fra.', 'Bella.', 'Bella.'],
+    ['Bella zio, tutto a posto?', 'Mi sono rotto un dito.', 'Bella.', 'Sì.'],
+    ['Fottiti.', 'Perché?', 'Niente, mi andava. Come stai?', 'Bene, fra.'],
+    ['Fottiti, te e il tuo motorino.', 'Che ha il mio motorino?', 'Niente. È bellissimo.'],
+    ['Zio, stasera che si fa?', 'Qua.', 'Ancora qua?', 'Qua è bello.', 'Vero.'],
+    ['Mi presti cinquemila?', 'Per cosa?', 'Per averle.'],
+    ['Oi, mia nonna ti saluta.', 'Non la conosco.', 'Lei dice di sì.'],
+    ['Fra, ho fatto un sogno, c\'eri tu.', 'E che facevo?', 'Stavi lì. Avevi un drum.', 'E poi?', 'Era tutto il sogno.'],
+    ['Oi, ma quello là è tuo padre?', 'Sì.', 'Che fa?', 'Non lo so. Lo fa da stamattina.'],
+    ['Zio, ho visto un cavallo sul motorino.', 'Guidava lui?', 'No, dietro. Col casco.'],
+    ['Dicono che hai baciato la Debora.', 'Chi è la Debora?', 'Non lo so. L\'ho sentito.'],
+    ['Fra, tu da grande che fai?', 'Sono già grande.', 'E quindi che fai?', 'Questo.'],
+    ['Oi, chi ha preso la mia felpa?', 'Ce l\'hai addosso.', 'Ah.', '...', 'È calda.'],
+    ['Zio, ti devo dire una cosa seria.', 'Dimmi.', 'No, niente. Mi è passata.', 'Bella.'],
+    ['Fra, Matteo dice che sei uno sfigato.', 'E tu?', 'Gli ho detto di sì. Con affetto.'],
+    ['Oi. Oi. Fra.', 'Che c\'è?', 'Niente. Sei girato.'],
+    ['Zio, quanto manca alle otto?', 'Che c\'è alle otto?', 'Niente. Volevo sapere quanto manca.'],
+    ['Mi sono tagliato i capelli da solo.', 'Si vede.', 'Grazie fra.'],
+    ['Andiamo al mare?', 'È dicembre.', 'Lo so. Andiamo a guardarlo.', 'Ok.'],
+  ];
+  // quando gli passi accanto, un ragazzo ogni tanto ti scrocca (o ci prova)
+  const SCROCCO = ['Oi fra, c\'hai da accendere?', 'Zio, mi giri una siga? No? Bella lo stesso.', 'Scusa, hai un drum? ...Ok. Bella.', 'Fra. Fra. No, niente. Bella.',
+    'Oi! ...Ah, pensavo fossi Davide.', 'Hai da accendere? Va be\', ciao zio.', 'Zio, che ore sono? Non importa. Bella.', 'Bel giubbotto, fra. Davvero. Fottiti.',
+    'Oi, hai una cartina? Anche usata.', 'Fra, sai dov\'è la Debora? Neanche io.'];
 
   // ================= STATO =================
-  const S = st => st.__matti || (st.__matti = { ready: false, ids: {}, cd: 0, fram: 0, deck: [], q: [], incontri: {} });
+  const S = st => st.__matti || (st.__matti = { ready: false, ids: {}, cd: 0, fram: 0, deck: [], deckG: [], q: [], incontri: {}, scr: 0, manie: [] });
   const isMatto = n => !!(n && n.pop && n.pop.matto);
+  const giovane = n => n.pop && n.pop.age <= CFG.giovane;
   const alive = n => n && !n.dead;
   function ok(st, n) {   // può parlare per conto suo (né dentro, né in una scena, né in una rissa)
     return alive(n) && !n.inside && !n.room && !n.__ev && !n.cop && !n.faction && !n.aggro && !(n.stun > 0) && !n.inVeh && !(n.panic > 0) && !(n.jailedUntil > st.t) && n.pop && n.pop.near !== false && (!n.action || n.action.name === 'routine');
@@ -64767,9 +64915,13 @@ var Matti = (function () {
       const h = n => n.pop.homeT;
       const score = i === 0 ? (n => -hyp(h(n).x - p.x, h(n).y - p.y)) : (n => Math.min(...homes.map(q => hyp(h(n).x - q.x, h(n).y - q.y)), 400) + rnd() * 30);
       c.sort((a, b) => score(b) - score(a)); const n = c[0];
-      used.add(n); homes.push(h(n)); n.pop.matto = k; M.ids[k] = n.id; n.nick = (n.pop.sex === 'f' && D.nickF) || D.nick;
+      used.add(n); homes.push(h(n)); n.pop.matto = k; M.ids[k] = n.id; n.nick = (n.pop.sex === 'f' && D.nickF) || (n.pop.sex !== 'f' && D.nickM) || D.nick;
       card(st, n, D);
     });
+    for (const k in MANIE) {   // le manie: fra chi resta, sparsi a caso
+      const D = MANIE[k], c = pool.filter(n => !used.has(n) && !n.pop.matto && D.chi(n)).sort(() => rnd() - .5);
+      c.slice(0, D.quanti).forEach(n => { used.add(n); n.pop.mania = k; M.manie.push(n.id); });
+    }
     M.ready = true;
   }
   // la scheda che legge la chat: la voce e la fissazione vengono prima della biografia
@@ -64804,14 +64956,26 @@ var Matti = (function () {
       if (typeof Popolo !== 'undefined' && Popolo.note && d < CFG.passa && M.incontri[k] === 1) try { Popolo.note(st, n, 'ha parlato con lo straniero, che lo ha ascoltato', 'info', { w: .2, tag: 'giocatore', who: 'player' }); } catch (e) { }
       break;
     }
+    // le manie e la sedia con le rotelle: una frase normale quando gli passi accanto, poi più niente per un po'
+    if (st.clock > M.cd) for (const n of st.npcs) {
+      const D = n.pop && MANIE[n.pop.mania], L = D ? D.passa : n.rotelle ? ROTELLE : null;
+      if (!L || (n.__mtCd || 0) > st.clock || !ok(st, n) && !(n.rotelle && alive(n) && !n.__ev && !n.inside) || hyp(n.x - p.x, n.y - p.y) > 4) continue;
+      G.say(st, n, pick(L), 3); n.__mtCd = st.clock + 90; M.cd = st.clock + CFG.cdTutti; break;
+    }
+    // i ragazzi: uno che ti passa accanto ti chiede da accendere (una volta a testa, ogni un paio di minuti al massimo)
+    if (st.clock > M.scr && st.clock > M.cd) {
+      const n = st.npcs.find(k => giovane(k) && !k.__scr && !isMatto(k) && hyp(k.x - p.x, k.y - p.y) < CFG.scroccoR && ok(st, k));
+      if (n && rnd() < .25) { n.__scr = 1; n.face = Math.atan2(p.y - n.y, p.x - n.x); G.say(st, n, pick(SCROCCO), 3.6); M.scr = st.clock + CFG.scrocco[0] + rnd() * (CFG.scrocco[1] - CFG.scrocco[0]); M.cd = st.clock + CFG.cdTutti; }
+    }
     // i frammenti: due che parlano lì vicino, a metà della loro storia
     if (st.clock < M.fram || M.q.length) return;
     M.fram = st.clock + CFG.fram[0] + rnd() * (CFG.fram[1] - CFG.fram[0]);
     const near = st.npcs.filter(n => { const d = hyp(n.x - p.x, n.y - p.y); return d > CFG.framR[0] && d < CFG.framR[1] && ok(st, n) && !isMatto(n); });
     for (const a of near) {
       const b = near.find(k => k !== a && hyp(k.x - a.x, k.y - a.y) < CFG.coppia); if (!b) continue;
-      if (!M.deck.length) M.deck = FRAM.map((_, i) => i).sort(() => rnd() - .5);
-      const F = FRAM[M.deck.pop()], g = st.clock;
+      const G2 = giovane(a) && giovane(b), L = G2 ? FRAM_G : FRAM, dk = G2 ? 'deckG' : 'deck';   // due ragazzi: il loro mazzo
+      if (!M[dk].length) M[dk] = L.map((_, i) => i).sort(() => rnd() - .5);
+      const F = L[M[dk].pop()], g = st.clock;
       F.forEach((text, i) => M.q.push({ id: (i % 2 ? b : a).id, text, at: st.clock + i * CFG.gap, g }));
       a.face = Math.atan2(b.y - a.y, b.x - a.x); b.face = Math.atan2(a.y - b.y, a.x - b.x);
       return;
@@ -64912,6 +65076,18 @@ var Matti = (function () {
       SAY('b', '...è una bella notizia lo stesso.', '...cade lo stesso.', 'La luna è una spia.'), { mood: 'b', m: 'ubriaco' }, { wait: 2 },
       SAY('a', 'Ti voglio bene. Ma non te lo dico.', 'Se domani mi sveglio scrivo un libro.'), SAY('b', 'Me l\'hai detto adesso.', 'Scrivilo su di me. Mettimi più alto.'), { wander: 'a', r: 4, sp: .7 }, { follow: 'b', who: 'a', sp: .9, d: 1.2 }, { wait: 4 }] },
 
+    { id: 'drum_condiviso', w: 1, posto: ['panchina', 'angolo', 'dehors', 'fermata'], soft: true, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.3, d: 1.1, t: 16 }, SAY('b', 'Oi zio.', 'Bella fra.'), SAY('a', 'Bella.', 'Oi.'), { pose: 'a', p: 'merce' },
+      SAY('a', 'C\'ho il drum. Le cartine ce le hai tu?', 'Giramene una che io non sono capace.'), SAY('b', 'Sì.', 'Una. L\'ultima.'), { wait: 3 },
+      SAY('b', 'Ecco. È storta.', 'Fra, è venuta a forma di Italia.'), SAY('a', 'Va bene storta.', 'Bella.'), { wait: 2 },
+      SAY('a', 'Hai da accendere?', 'L\'accendino?'), SAY('b', 'No.', 'Pensavo ce l\'avessi tu.'), { pose: 'a' }, { wait: 3 },
+      SAY('a', 'Vabbè.', 'Stiamo qua.'), { wait: 4 }] },
+    { id: 'fottiti_affetto', w: 1, roles: [{ id: 'a', f: 'young' }, { id: 'b', near: 'a', f: 'young', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 14 }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Oi! Fottiti!', 'Zio! Fottiti!'), { look: 'b', at: 'a' },
+      SAY('b', 'Fottiti tu, fra.', 'Bella zio. Fottiti.'), { pose: 'a' }, { pose: 'b', p: 'saluta_su' }, { wait: 1.5 }, { pose: 'b' },
+      SAY('a', 'Com\'è andato l\'esame?', 'Tua madre come sta?'), SAY('b', 'Bene. Grazie.', 'Bene. Ti saluta.'), { wait: 2 },
+      SAY('a', 'Sono contento.', 'Mi fa piacere davvero.'), SAY('b', 'Fottiti.', '...'), { flee: 'a', from: 'b', sp: 1.3 }, { wait: 2 }] },
+
     // --- ti tirano dentro (vengono da te; di rado) ---
     { id: 'fai_mio_fratello', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
       { go: 'a', to: 'player', sp: 1.9, d: 1.4, t: 16 }, { look: 'a', at: 'player' }, SAY('a', 'Psst. Fai finta di essere mio fratello. Due secondi.', 'Abbracciami. Sei mio cugino di Torino. Non chiedere.'), { wait: 2 },
@@ -64937,13 +65113,280 @@ var Matti = (function () {
     { id: 'tienimi_posto', w: 1, player: true, posto: ['fila', 'edicola', 'fermata', 'pensilina'], soft: true, roles: [{ id: 'a', ring: [6, 22] }], beats: [
       { go: 'a', to: 'player', sp: 1.8, d: 1.4, t: 14 }, { look: 'a', at: 'player' }, SAY('a', 'Mi tieni il posto? Torno subito.', 'Mi guardi la borsa un attimo? Dentro c\'è un gallo, non gli dar retta.'), { wait: 2 },
       { go: 'a', to: 'away', sp: 2.2, d: 2, t: 8, soft: true }, SAY('a', 'Se chiede di me, sono morto.', 'Se arriva mia moglie, io sono te!'), { wait: 2 }] },
+    { id: 'hai_da_accendere', w: 1, player: true, roles: [{ id: 'a', f: 'young', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.4, t: 14 }, { look: 'a', at: 'player' }, SAY('a', 'Oi fra. Hai da accendere?', 'Zio, scusa. C\'hai da accendere?'), { wait: 3 },
+      SAY('a', 'No? Bella.', 'Neanche io.'), { wait: 2.5 },
+      SAY('a', 'Ma una siga ce l\'hai?', 'Tanto non ce l\'ho neanche la siga.'), { wait: 2.5 },
+      SAY('a', 'Vabbè. Grazie lo stesso fra. Ciao.', 'Bella. Sei a posto tu.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
+    // --- [attualita] i matti nuovi ---
+    { id: 'matto_motivatore', w: 1, when: 'day', roles: [{ id: 'a', f: 'matto|adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.9, d: 1.2, t: 14 }, { look: 'b', at: 'a' }, { pose: 'a', p: 'braccia_su' }, ML('a', 'sfida', ['Tu! Cosa vuoi dalla vita?', 'Campione! Quanto vali?']),
+      SAY('b', 'Un panino.', 'Che mi lasci passare.', 'Dormire. Una volta.'), { pose: 'a', p: 'indica_su' }, ML('a', 'sfida2', ['Sbagliato! Devi volere di più! Di più! Anche se non c\'è!']),
+      SAY('b', '...un panino grande?', 'Va bene. Voglio di più.', 'Lei mi fa paura.'), { pose: 'a' }, ML('a', 'congedo', ['Vai, campione! Il mondo è tuo!', 'Prima lezione gratis. La seconda costa mille lire.']), { flee: 'b', from: 'a', sp: 1.7 }, { wait: 2 }] },
+    { id: 'matto_complotto', w: 1, roles: [{ id: 'a', f: 'matto|m' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.6, d: 1, t: 16 }, { look: 'a', at: 'around' }, ML('a', 'rivela', ['Psst. Tu. Vieni qui.', 'Lo sai perché il pane costa così tanto?']),
+      SAY('b', 'Cosa?', 'Non ho tempo.', 'Mi dica, ma veloce.'), { look: 'a', at: 'b' }, ML('a', 'rivela2', ['Il mare non è vero. È dipinto. Di notte lo arrotolano.'], 3.8),
+      SAY('b', 'Ma il mare l\'ho toccato stamattina.', 'E i pesci?', 'E la Tutela allora?'), SAY('a', 'Appunto. Toccare è il primo passo. Poi ti abitui.', 'I pesci sono comparse. Pagati pochissimo.', 'La Tutela? Quella è vera, purtroppo. È l\'unica cosa vera.'),
+      ML('a', 'congedo', ['Non hai sentito niente.', 'Ci vediamo. Ma non qui.']), { flee: 'a', from: 'b', sp: 2.1 }, { wait: 2 }] },
+    { id: 'matto_polaroid', w: 1, when: 'day', roles: [{ id: 'a', f: 'matto|young' }, { id: 'b', near: 'a', r: 16 }, { id: 'c', near: 'a', r: 18 }], beats: [
+      ML('a', 'foto', ['Fermi tutti! Foto per l\'album!']), { all: [{ go: 'b', to: 'a', sp: 1.5, d: 2.2, t: 12, soft: true }, { go: 'c', to: 'a', sp: 1.5, d: 2.6, t: 12, soft: true }] }, { look: 'b', at: 'a' }, { look: 'c', at: 'a' },
+      { pose: 'a', p: 'foto' }, ML('a', 'foto2', ['Sorridi! No. Sorridi meglio.', 'Fai finta di conoscermi da sempre.']), SAY('b', 'Così?', 'Ma io non la conosco.', 'Posso andare a lavorare?'), SAY('c', 'Io non vengo mai bene.', 'Mi si vede la canottiera?'), { wait: 2 },
+      ML('a', 'congedo', ['Perfetta! Cioè: io sono perfetta. Voi ci siete.', 'Bellissima. Me la tengo.']), { pose: 'a' }, { flee: 'b', from: 'a', sp: 1.4 }, { flee: 'c', from: 'a', sp: 1.4 }, { wait: 2 }] },
+    // --- [attualita] la vita di oggi, nel 1986 dell'isola ---
+    { id: 'colloquio_lavoro', w: 1, posto: ['dehors', 'portone'], soft: true, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'young|any', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.4, d: 1.2, t: 16 }, { pose: 'a', p: 'legge_su' }, SAY('a', 'Allora. Dove si vede tra cinque anni?', 'Mi dica un suo difetto.', 'Perché dovremmo scegliere proprio lei?'),
+      SAY('b', 'Vivo?', 'Lavoro troppo.', 'Perché sono l\'unico che è venuto.'), { pose: 'a' }, SAY('a', 'Le manca ambizione.', 'Troppo poco. Qui lavorano tutti troppissimo.', 'Esatto. Ma non lo dica in giro.'),
+      SAY('a', 'Il posto è suo. Prova gratuita di sei mesi.', 'Bene. Ci faremo sentire. Forse. Non aspetti vicino al telefono.'), SAY('b', 'Gratuita per chi?', 'Grazie. Lunga Calma.', 'Io il telefono non ce l\'ho.'), SAY('a', 'Per noi.', 'Ottimo. Siamo una famiglia.'), { wait: 2 }] },
+    { id: 'turista_autentico', w: 1, when: 'day', roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { pose: 'a', p: 'foto' }, SAY('a', 'Che autentico! Che povero! Che bello!', 'Oh, la vera vita del popolo!'), { go: 'a', to: 'b', sp: 1.5, d: 1.4, t: 14 }, { look: 'b', at: 'a' },
+      SAY('b', 'È la mia biancheria.', 'Quella è casa mia.', 'Mi sta fotografando le scarpe?'), SAY('a', 'Ancora più autentico! Rimanga così, triste!', 'Non si muova! Faccia la faccia di prima!'), { pay: ['a', 'b', 1] },
+      SAY('b', 'Torni domani. Stendo anche il nonno.', 'Per duemila mi metto a piangere.', 'Se vuole le faccio vedere anche la fame. Da vicino.'), { pose: 'a' }, { flee: 'a', from: 'b', sp: 1.3 }, { wait: 2 }] },
+    { id: 'aria_abbonamento', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 14 }, SAY('a', 'Buongiorno! Lei respira?', 'Scusi, posso farle una domanda sul suo respiro?'), SAY('b', 'Sì.', 'Come tutti.'),
+      SAY('a', 'Senza abbonamento? Mi spiace, è un problema.', 'Con Aria Più respira meglio. E respira di più. Ma paga.'), SAY('b', 'E quanto costa?', 'E se non mi abbono?'),
+      SAY('a', 'Prova gratuita di tre respiri. Uno. Due. Ecco: il terzo lo paga.', 'Niente. Respira lo stesso. Ma lo sa che non dovrebbe.'), { p: .3, then: [{ pay: ['b', 'a', 1] }, SAY('b', 'Va bene. Ma solo il sabato.')], else: [SAY('b', 'Trattengo il fiato. Arrivederci.', 'Respiro quella del vicino.')] }, { wait: 2 }] },
+    { id: 'calcolatore_felice', w: 1, posto: ['panchina', 'dehors', 'edicola'], soft: true, roles: [{ id: 'a', f: 'old|any' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'legge_su' }, SAY('a', 'Il Calcolatore del Ministero dice che sono felice.', 'Mi è arrivato il foglio: felicità al settantaquattro per cento.'), { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 },
+      SAY('b', 'E lo sei?', 'E il resto?'), SAY('a', 'Lui è più intelligente di me. Lo sono.', 'Il resto lo devo dichiarare entro venerdì.'),
+      SAY('b', 'Il mio dice che sono ricco.', 'A me non è arrivato niente.'), SAY('a', 'Allora sei ricco. Offri tu.', 'Allora sei morto. Mi dispiace tanto.'), { wait: 2 }] },
+    { id: 'sondaggio_preferenze', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.5, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'legge_su' }, SAY('a', 'Sondaggio dell\'Ufficio Preferenze. Da uno a cinque, quanto ama il Garante?', 'Breve sondaggio di gradimento: com\'è stata la sua ultima perquisizione?'), { wait: 3.4 },
+      SAY('a', 'Cinque. Ho segnato cinque. Il cinque lo segno sempre io, così nessuno sbaglia.', 'Benissimo. «Eccellente». Lo sapevo: ce l\'ha scritto in faccia.'), { wait: 1.6 },
+      SAY('a', 'Ultima domanda: consiglierebbe la Tutela a un amico? Non risponda. Me lo dica il suo amico.', 'Grazie. La sua opinione è importante. Adesso ce l\'abbiamo noi.'), { pose: 'a' }, { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
   ];
   // si aggiungono al catalogo di eventi.js (che le prova come le altre, test_eventi.js)
   { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
 
-  return { CFG, MATTI, FRAM, SCENE, S, scheda, linea, choose, step };
+  return { CFG, MATTI, MANIE, ROTELLE, FRAM, FRAM_G, SCROCCO, SCENE, S, scheda, linea, choose, step };
 })();
 if (typeof module !== 'undefined') module.exports = Matti;
+</script>
+<script data-m="culto">/* Porto Vecchio — [culto] LA VOCE DEL REGIME: il culto della Calma (solo logica e testi, niente IA)
+   Il regime non perde la sua violenza, ma è grottesco: il Garante parla come un tribuno gonfio di sé (superlativi, folle
+   record, nemici coi soprannomi, «moltissimi lo dicono»), venerato da una religione tutta sua, la Calma (niente
+   cristianesimo: saluti, doveri, reliquie e miracoli suoi), e l'apparato parla per supercazzole burocratiche. La gente ci
+   vive dentro: ripete le formule, ci crede a metà, si arrangia, ha paura.
+   1. IL DISCORSO DELLE 20 (Culto.garante, lo usa risacca.js) e la TV di casa (Culto.tv, protagonista.js): ogni sera un pezzo diverso.
+   2. GLI ALTOPARLANTI: ogni 3-6 minuti, se sei all'aperto, un comunicato della Tutela; poco dopo uno lì vicino commenta.
+   3. LE SCENE del culto per eventi.js (in fondo).
+   4. Culto.supercazzola(): un comma a caso, per multe e ordinanze (ordine.js).
+   Prova: node test_culto.js */
+var Culto = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const EV = () => (typeof Eventi !== 'undefined' ? Eventi : null);
+  const CFG = { annuncio: [190, 360], reazione: 3.2, reazR: 13 };
+  const rnd = Math.random, hyp = Math.hypot, pick = a => a[Math.floor(rnd() * a.length)];
+
+  // ================= IL GARANTE, ALLE 20 =================
+  const GARANTE = [
+    'Stasera il mare è calmo. Ci ho parlato io. Il mare mi rispetta. Moltissimo.',
+    'La folla di domenica era la più grande della storia. Più grande del mare. Il mare stesso era lì, a guardare.',
+    'Il nostro pane è il pane più bello del mondo. Pane enorme. Così bello che mangiarlo è quasi uno spreco. Quindi ve ne diamo meno.',
+    'La Risacca? Gente piccola. Gente triste, con le biciclette. Io non ho mai visto una bicicletta vincere. Mai.',
+    'Mi chiamano il Padre della Calma. Non lo dico io. Lo dicono tutti. Chi non lo dice, lo dirà.',
+    'Ho inventato il freddo per insegnarvi a stare vicini. Prego. Non c\'è di che.',
+    'Oggi abbiamo rettificato meno gente di ieri. Un record. Domani faremo ancora meglio. O ancora di più. Vedremo.',
+    'Gli esperti mi dicono: Garante, l\'isola non può crescere. Io dico: guardate la mia faccia. È cresciuta.',
+    'Ricordate i Sette Doveri. Il primo è la Calma. Gli altri sei li conosco io. Fidatevi.',
+    'Lupo il Lento ha detto cose cattive su di me. Ha settant\'anni. Settanta! Io alla sua età avrò ancora la mia età.',
+    'Chi applaude vivrà a lungo. Chi non applaude verrà applaudito. In caserma. Forte.',
+    'Il prezzo del carbone è sceso. Me l\'ha detto il carbone. Personalmente.',
+    'Non esistono sparizioni. Esistono persone che hanno scelto di essere irraggiungibili. Rispettiamo le loro scelte.',
+    'Lunga Calma a tutti. Lunga Calma soprattutto a me.',
+    'La crescita, come dicevo, è circolare ma dritta, in senso antiorario per chi viene da destra. Chi ha capito è con noi. Chi non ha capito è con noi lo stesso.',
+    'Stasera vi dico una cosa che non ho mai detto a nessuno. Non ve la dico. È troppo forte. Ma è fortissima.',
+    'Il Mare Grande mi ha scelto. L\'ha scritto sulla sabbia. Poi è arrivata l\'onda, ma io l\'avevo già letto.',
+    'Rita la Radiolina dice che io non dormo. È vero. Io non dormo: io ricarico.',
+    'Malanotte Malaconcia vive in un ovile. Un ovile! Io vivo nella Rocca. Pensateci, quando scegliete.',
+    'Il Continente ci invidia. Ci invidia tantissimo. Mi telefonano piangendo: Garante, come fai? Io non rispondo. Calma.',
+    // [attualita]
+    'Abbiamo creato due milioni di posti di lavoro. L\'isola ha diecimila abitanti. Pensate quanto lavoro. Tantissimo.',
+    'Il Continente dice che il nostro carbone inquina. Falso. Il nostro carbone è il più pulito del mondo. Lo laviamo. Personalmente.',
+    'Ho fatto fare un sondaggio. Il novantanove per cento mi ama. L\'uno per cento è stato ricontattato.',
+    'Le notizie false sono un problema enorme. Per questo da domani le notizie le do solo io.',
+    'La povertà sull\'isola non esiste. Esiste gente che non ci ha creduto abbastanza.',
+    'Abbiamo il nuovo Calcolatore. Pensa al posto vostro. Molto più veloce. E non si lamenta mai.',
+    'Mi dicono: Garante, il mare si alza. Io dico: allora alziamo l\'isola. Ci stiamo lavorando. Progetto bellissimo.',
+    'Il Banco dice che i vostri debiti sono un\'opportunità. Lo dico anch\'io. Un\'opportunità enorme. Per il Banco.',
+    'I giovani vogliono la libertà. Gliela daremo. A rate.',
+    'Non ho perso io le elezioni. Sono le elezioni che hanno perso me. Infatti non le facciamo più.',
+    'Il turismo è record. Turisti bellissimi vengono a vedere la nostra Calma. Poi non vogliono più andarsene. Non possono, ma non vogliono.',
+    'Qualcuno dice che sono vecchio. Ho l\'energia di tre giovani. Infatti ne abbiamo presi tre.',
+  ];
+  const garante = st => `«${GARANTE[(Math.floor((st && st.t || 0) / 1440) * 7 + 3) % GARANTE.length]}»`;
+  const TV = [
+    '«Lunga Calma a tutti. Soprattutto a me.» Il Garante si applaude da solo per sei minuti.',
+    'Il quiz del sabato: «Quanto ami il Garante?». Vincono tutti. Chi perde non è più in studio.',
+    'Il telegiornale: il carbone è record, il pane è enorme, il mare è d\'accordo.',
+    'Una televendita di ritratti del Garante. Il presentatore piange. Anche il ritratto, sembra.',
+    'Documentario: «Il Garante e il freddo, una storia d\'amore». Due ore. Nessuno sbatte le palpebre.',
+    'Il meteo della Calma: domani sereno. Chi vede nuvole è pregato di non vederle.',
+    'Un reality: dieci famiglie in una casa senza riscaldamento. Vince chi ringrazia di più. Lo guardano tutti, per sentirsi al caldo.',
+    'La pubblicità della Lira Serena: un uomo sorride su una montagna di monete. Le monete sono disegnate. Anche l\'uomo, sembra.',
+    'Il dibattito della sera: cinque esperti litigano su quanto è bravo il Garante. Vince «tantissimo».',
+    'Cucina con la Tessera: oggi il brodo di niente. Lo chef piange, poi lo assaggia, poi piange di più.',
+    'Il programma dei motivatori: «Sei povero perché non ci credi». Il pubblico applaude a credito.',
+  ];
+
+  // ================= GLI ALTOPARLANTI =================
+  const ANNUNCI = [
+    'Oggi il cielo è stato approvato. Eventuali nuvole sono da considerarsi sovversive.',
+    'Si ricorda che segnalare è un gesto d\'amore. Ama il tuo vicino: segnalalo.',
+    'Il pane non è finito: è in fase di miracolo. Ripassate.',
+    'Cittadino, ti senti osservato? È il Garante che ti vuole bene. Da vicino. Da molto vicino.',
+    'Questa settimana l\'Ora Quieta comincia prima, per farvi riposare di più. Chi non riposa verrà riposato.',
+    'Le sparizioni di oggi sono state un grande successo. Grazie a tutti i partecipanti.',
+    'Ricordiamo i Sette Doveri: Calma, Calma, Rata, Calma, Applauso, Silenzio. E quello segreto.',
+    'È vietato pensare ad alta voce. Pensare a bassa voce è tollerato fino alle ventidue.',
+    'Il Garante ha toccato la fontana di Piazza San Rocco. L\'acqua ora è più buona. Il prezzo aumenta.',
+    'Firma una cambiale, ricevi in omaggio un ritratto del Garante. Appenderlo è facoltativo e obbligatorio.',
+    'Gli interrogatori sono registrati per migliorare la qualità della Calma.',
+    'Il Garante ha battuto il record di Calma: sei ore senza sbattere le palpebre. Gli occhi stanno bene. Gli occhi stanno benissimo.',
+    'Ricordiamo che il Muro non è un muro: è un abbraccio molto lungo, in cemento.',
+    'La Commissaria Pardo comunica: non esistono domande sbagliate. Solo persone sbagliate. Le aspettiamo.',
+    'La felicità di questo quartiere è stata misurata: insufficiente. Seguirà controllo.',
+    'Chi ha capito questo comunicato è pregato di presentarsi in caserma.',
+    'Lunga Calma! Ripetete con noi: Lunga Calma! Più forte! Ecco. Vi abbiamo sentiti. Tutti.',
+    'Oggi è la Giornata del Sorriso. I volti non sorridenti verranno fotografati per un ricordo.',
+    // [attualita]
+    'È attivo il servizio Aria Più: aria filtrata e serena per gli abbonati. Gli altri respirino con discrezione.',
+    'Il Calcolatore del Ministero ha stabilito che il quartiere è felice al settantaquattro per cento. Il restante ventisei per cento è pregato di adeguarsi.',
+    'Da oggi la miniera è ecosostenibile: il carbone è stato riverniciato di verde.',
+    'La Lira Serena guadagna il trenta per cento! Non chiedete rispetto a cosa.',
+    'Lavorare è un privilegio. Per questo da lunedì sarà anche a pagamento.',
+    'Si ricorda che la tristezza va dichiarata all\'Ufficio Umori entro le diciotto.',
+    'Avviso ai lavoratori del porto: siete una famiglia. Le famiglie non scioperano.',
+    'L\'Ufficio Preferenze vi informa: sappiamo cosa volete. Non insistete.',
+    'È la settimana della Gratitudine: ringraziare un Grigio dà diritto a un punto Calma.',
+    'Le notizie non approvate verranno considerate rumore e sanzionate come schiamazzo.',
+    'Nuova promozione del Banco: compra adesso, paga dopo, soffri sempre.',
+    'Il Muro è stato ridipinto nei nuovi colori pastello. Sparare dalle torri è ora più rilassante.',
+    'Si informa che da oggi i sorrisi sono tassati: uno su tre è dovuto allo Stato.',
+    'Concorso «Il Delatore dell\'Anno»: in palio un fine settimana in caserma. Dalla parte giusta delle sbarre.',
+    'Chi ha visto il Garante inciampare sabato non l\'ha visto. Grazie.',
+    'Il mare del Lido è ora a pagamento fino alla boa. Oltre la boa il mare è gratuito e sorvegliato dai tiratori.',
+  ];
+  // la supercazzola: commi, decreti e scappellamenti per multe e ordinanze
+  const SC = [['Ai sensi del comma', 'Visto il decreto', 'In ottemperanza al disposto', 'Come da circolare'], ['antani', 'tarapìa bis', 'sette e mezzo', 'quater prematurato', 'della Calma ventitré'], ['con scappellamento a destra', 'salvo conguaglio', 'in modalità serena', 'come fosse antani', 'per la sbrindellata della pratica']];
+  const supercazzola = () => SC.map(pick).join(' ');
+  const ordinanza = () => `${supercazzola()}, ${pick(['la fila è da intendersi prematurata', 'la piazza è temporaneamente rotonda', 'il marciapiede di sinistra è riservato ai fedeli', 'i cappelli vanno portati con Calma', 'il vento è autorizzato solo da nord', 'il caffè è dichiarato bevanda serena'])}. Lunga Calma.`;
+  // la gente lì vicino: ripete, ci crede a metà, si arrangia
+  const REAZIONI = [
+    'Lunga Calma.', '...lunga Calma, sì.', 'Lunga Calma a te. E a chi ci ascolta. Ci ascoltano, eh.',
+    'Mio cugino dice che il Garante ha toccato il mare e il mare si è calmato. Era bassa marea. Ma vabbè.',
+    'Il ritratto l\'ho messo in bagno. Girato verso il muro. Per rispetto.',
+    'Sette Doveri. Io ne so cinque. Gli altri due li faccio a caso.',
+    'In fase di miracolo. Anche ieri. È un miracolo lunghissimo.',
+    'Hai capito il comma? Neanch\'io. Applaudiamo e basta.',
+    'Ho segnalato mia suocera. Per amore. Lei ha segnalato me. Per amore anche lei. Siamo una famiglia molto amorevole.',
+    'Shh. Ha detto che è registrato.',
+    'Ogni volta che parla il pane costa di più. Dovrebbe parlare meno. Non l\'ho detto.',
+    'Io penso a bassissima voce. Anche adesso. Non sento niente.',
+    'Mia nonna prega lo schermo. Lo schermo è rotto. Lei dice che così ascolta meglio.',
+    'Sei ore senza sbattere le palpebre. Mio zio ce ne ha messe otto. Era morto, ma conta.',
+    'Un abbraccio in cemento. Allora lasciami andare, abbraccio. ...Non l\'ho detto.',
+    'Io sorrido sempre. Mi fanno male le guance dal \'79.',
+    'Applausi?', 'Ma chi l\'ha scritto questo? Mio figlio fa la terza e scrive meglio. Non dirglielo.',
+    // [attualita]
+    'Aria Più. Io respiro quella dei vicini. Non se ne accorgono.',
+    'Ventisei per cento. Sicuro sono io. Mi adeguo, mi adeguo.',
+    'Verde. Il carbone verde. Mio figlio l\'ha leccato, pensava fosse menta.',
+    'Io ho tutto in Lira Serena. Ci credo tantissimo. Devo crederci, ho tutto lì.',
+    'Io la tristezza la dichiaro tutta il lunedì. Mi fanno lo sconto.',
+    'Sanno cosa voglio? Allora datemelo.',
+    'Paga dopo, soffri sempre. Almeno sono sinceri.',
+    'Il Muro rosa. Adesso quando sparano è quasi carino.',
+    'Uno su tre. Io sorrido due volte e la terza la tengo per me.',
+    'Inciampato? Io non ho visto niente. Era bellissimo, non ho visto niente.',
+    'Il fine settimana in caserma l\'ha vinto mio zio. Non è ancora tornato.',
+    'Famiglia. Mio padre almeno ogni tanto mi dava la paghetta.',
+  ];
+
+  // ================= STATO E PASSO =================
+  const S = st => st.__culto || (st.__culto = { next: (st.clock || 0) + 60, q: null, deckA: [], deckR: [] });
+  const ok = (st, n) => n && !n.dead && !n.inside && !n.room && !n.__ev && !n.cop && !n.faction && !n.aggro && !(n.stun > 0) && !n.inVeh && !(n.panic > 0) && n.pop && (!n.action || n.action.name === 'routine');
+  const draw = (deck, L) => { if (!deck.length) L.forEach((_, i) => deck.push(i)), deck.sort(() => rnd() - .5); return L[deck.pop()]; };
+  function annuncio(st) {
+    const C = S(st), text = rnd() < .2 ? ordinanza() : draw(C.deckA, ANNUNCI);
+    G.feed(st, `Altoparlante della Tutela: «${text}»`, 'radio');
+    const f = st.feed && st.feed[0]; if (f && f.text.endsWith(`«${text}»`)) f.until = st.clock + 11;   // il tempo di leggerlo
+    C.q = { at: st.clock + CFG.reazione };
+    return text;
+  }
+  function step(st, dt) {
+    const C = S(st), p = st.player;
+    if (C.q && st.clock >= C.q.at) {   // uno lì vicino commenta
+      C.q = null;
+      const n = st.npcs.filter(k => ok(st, k) && hyp(k.x - p.x, k.y - p.y) < CFG.reazR).sort((a, b) => hyp(a.x - p.x, a.y - p.y) - hyp(b.x - p.x, b.y - p.y))[0];
+      if (n) G.say(st, n, draw(C.deckR, REAZIONI), 3.6);
+    }
+    if (st.clock < C.next) return;
+    C.next = st.clock + CFG.annuncio[0] + rnd() * (CFG.annuncio[1] - CFG.annuncio[0]);
+    if (p.indoor || st.chase || st.over || (p.lv && p.lv.k !== 'tetto')) return;
+    annuncio(st);
+  }
+  { const s0 = G.HOOKS.step; G.HOOKS.step = (st, dt) => { if (s0) s0(st, dt); try { step(st, dt); } catch (e) { if (!step.err) { step.err = 1; if (typeof console !== 'undefined') console.warn('[Culto]', e); } } }; }
+
+  // ================= LE SCENE DEL CULTO (per eventi.js) =================
+  const SAY = (r, ...l) => ({ say: r, l });
+  const SCENE = [
+    { id: 'preghiera_schermo', w: 1, posto: ['sagrato', 'mercato', 'panchina'], soft: true, roles: [{ id: 'a', f: 'old' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'siede_terra' }, SAY('a', 'Garante, fa\' che domani la rata sia più leggera. Non tanto. Un po\'.', 'Padre della Calma, proteggi il mio nipote. E se proprio devi prendere qualcuno, prendi il genero.'), { wait: 3 },
+      { go: 'b', to: 'a', sp: 1.4, d: 1.3, t: 14 }, SAY('b', 'Nonna, lo schermo è spento.', 'Signora, si alzi, fa freddo.'),
+      SAY('a', 'Lui ascolta lo stesso. Ha le antenne.', 'Spento è più intimo.'), SAY('b', '...Lunga Calma, nonna.', 'Va bene. Chieda anche per me.'), SAY('a', 'Per te ho già chiesto. Ha detto di no.', 'Lunga Calma, caro.'), { wait: 2 }] },
+    { id: 'reliquia', w: 1, when: 'day', posto: ['mercato', 'sagrato', 'angolo'], soft: true, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { pose: 'a', p: 'merce' }, SAY('a', 'Reliquie della Calma! Autentiche!', 'Un capello del Garante! Caduto durante il Discorso del \'79!'), { wait: 2 }, { go: 'a', to: 'b', sp: 1.5, d: 1.3, t: 14 }, { pose: 'a', p: 'porge' },
+      SAY('b', 'Ma è biondo. Il Garante è calvo.', 'E questo cos\'è? Un tappo?'), SAY('a', 'Appunto. È l\'ultimo.', 'Il tappo della bottiglia che ha guardato. Guardato! Funziona per il mal di schiena.'),
+      { p: .4, then: [{ pay: ['b', 'a', 2] }, SAY('b', 'Va bene, uno. Per mia madre.', 'Lo prendo. Non si sa mai.'), SAY('a', 'Lunga Calma a sua madre. E a lei, quando ha pagato tutto.')], else: [SAY('b', 'Ne ho già tre a casa.', 'No, grazie, sono a posto con la Calma.'), SAY('a', 'Poi non dica che non gliel\'ho offerto. Lo dica, anzi: in caserma.')] }, { pose: 'a' }, { wait: 2 }] },
+    { id: 'convertito', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'adult', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.6, d: 1.2, t: 16 }, SAY('b', 'Ti vedo bene!', 'Ma sei tu? Sembri un altro.'), SAY('a', 'Ho preso la tessera della Calma. Dormo benissimo.', 'Ho fatto il corso dei Sette Doveri. Ora sono sereno di terzo grado.'),
+      SAY('b', 'Ma non ti hanno preso la casa?', 'E il negozio?'), SAY('a', 'Appunto. Meno pensieri.', 'Il negozio pensava troppo.'), { wait: 1 },
+      SAY('b', 'E adesso dove dormi?', 'E tua moglie?'), SAY('a', 'Benissimo. Te l\'ho detto.', 'Anche lei è serena. Da sua madre.'), { pose: 'a', p: 'saluta_su' }, SAY('a', 'Lunga Calma!'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'sportello', w: 1, posto: ['portone', 'vetrina', 'edicola'], soft: true, roles: [{ id: 'a', f: 'shop|adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.5, d: 1.2, t: 16 }, SAY('b', 'Scusi, per la licenza del banco?', 'Sono venuto per la pratica della casa.'),
+      { pose: 'a', p: 'discute_su' }, { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `La sua domanda è stata accolta in via prematurata. ${supercazzola()}.`, 4.4); }, w: 4.4 },
+      SAY('b', 'Quindi me la danno?', 'Cioè sì?'), SAY('a', 'Quindi no. Ma con molta Calma.', 'Quindi ripassi. Con un\'altra faccia.', 'Quindi sì, salvo il no.'),
+      SAY('b', 'E quando?', 'E adesso?'), { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `Come fosse antani: entro i termini, ${pick(['salvo i termini', 'oltre i termini', 'quando lo dice il Bollettino'])}.`, 3.8); }, w: 3.8 }, { pose: 'a' }, { flee: 'b', from: 'a', sp: 1.4 }, { wait: 2 }] },
+    { id: 'nuvola_garante', w: 1, when: 'day', roles: [{ id: 'a' }], beats: [
+      { pose: 'a', p: 'indica_su' }, SAY('a', 'Guardate! La nuvola! Ha la faccia del Garante!', 'Un segno! Il Garante è nel cielo!'), { crowd: 3, around: 'a', r: 22, p: 'indica_su' }, { wait: 2 },
+      SAY('folla', 'È uguale!', 'È più magra.', 'Non dirlo forte che è più magra.', 'Quella è una nuvola a forma di pera.'), { wait: 2.5 },
+      SAY('folla', 'Lunga Calma!', 'Bisogna denunciarla, quella nuvola. Per somiglianza.', 'Se piove adesso, è lui che piange.'), SAY('a', 'Se n\'è andata. Ci ha guardati ed è andata.', 'Io lo sapevo. Lo sapevo da martedì.'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'lunga_calma', w: 1, player: true, roles: [{ id: 'a', f: 'adult', ring: [6, 22] }], beats: [
+      { go: 'a', to: 'player', sp: 1.6, d: 1.5, t: 14 }, { look: 'a', at: 'player' }, { pose: 'a', p: 'saluta_su' }, SAY('a', 'Lunga Calma, fratello!', 'Lunga Calma! Sereno?'), { wait: 3.2 }, { pose: 'a' },
+      SAY('a', 'Non rispondi? Va bene. Va bene. Non ti ho visto.', 'Niente formula? Ognuno ha i suoi tempi.'), { wait: 1.6 },
+      SAY('a', 'Però non ti ho visto molto bene. Chiaro?', 'Ma io non lo dico a nessuno. Lo scrivo soltanto.'), { flee: 'a', from: 'player', sp: 1.3 }, { wait: 2 }] },
+    { id: 'controllo_calma', w: 2, roles: [{ id: 'a', f: 'cop', ring: [8, 40] }, { id: 'b', near: 'a', r: 22 }], beats: [
+      { go: 'a', to: 'b', sp: 1.7, d: 1.2, t: 18 }, { look: 'b', at: 'a' }, SAY('a', 'Alt. Controllo di Calma. Lei mi sembra agitato.', 'Fermo. Lei cammina in modo poco sereno.'),
+      SAY('b', 'Sono calmissimo, agente.', 'Lunga Calma, agente. Calmissimo.'), SAY('a', 'Troppo calmo. È sospetto.', 'Calmissimo è un superlativo. I superlativi li usa solo il Garante.'),
+      SAY('a', 'Mi reciti i Sette Doveri.', 'Il secondo Dovere. Subito.'), SAY('b', '...Il primo è stare calmi?', 'Calma, Calma... Rata?'),
+      { p: .7, then: [SAY('a', 'Il primo è non chiedere qual è il primo. Quindicimila lire.', 'Insufficiente. Multa serena.'), { pay: ['b', 'a', 3] }, SAY('b', 'Lunga Calma...', 'Grazie, agente. Molto calmo.')],
+        else: [SAY('a', 'Ai sensi del comma antani, lei viene con me.'), { pose: 'a', p: 'ammanetta' }, { pose: 'b', p: 'ammanettato' }, { wait: 3 }, { jail: 'b' }] }, { wait: 2 }] },
+    { id: 'segnalazione_amore', w: 1, posto: ['portone', 'dehors', 'panchina'], soft: true, roles: [{ id: 'a', f: 'f|any' }, { id: 'b', near: 'a', r: 18 }], beats: [
+      { go: 'b', to: 'a', sp: 1.5, d: 1.2, t: 16 }, SAY('a', 'Ti ho segnalato. Non prenderla male.', 'Volevo dirtelo io: ti ho segnalato.'),
+      SAY('b', 'Mi hai segnalato?!', 'Per cosa?'), SAY('a', 'Per amore. Ama il tuo vicino: segnalalo.', 'Avevi stretto la mano con poca Calma.'),
+      SAY('b', 'Va bene. Allora ti segnalo anch\'io.', 'Ah sì? Io ti ho segnalata martedì.'), SAY('a', 'Che bello. Siamo vicini davvero.', 'Lo sapevo. Per questo ti ho segnalato.'), { pose: 'a', p: 'saluta_su' }, { wait: 2 }] },
+    // [attualita]
+    { id: 'lira_serena', w: 1, roles: [{ id: 'a', f: 'adult' }, { id: 'b', near: 'a', f: 'adult', r: 18 }], beats: [
+      { go: 'a', to: 'b', sp: 1.8, d: 1.2, t: 14 }, SAY('a', 'Hai messo i soldi nella Lira Serena?', 'Ascolta: Lira Serena. Adesso. Prima che salga.'), SAY('b', 'Cos\'è?', 'Ancora con questa storia?'),
+      SAY('a', 'Una moneta nuova. Non esiste, per questo vale tantissimo.', 'Ieri valeva dieci. Oggi trenta. Domani, il Garante.'), SAY('b', 'E dove si spende?', 'E se scende?'),
+      SAY('a', 'Non si spende! Si tiene! Si guarda!', 'Non scende. Se scende è perché qualcuno non ci crede. Tu ci credi?'), SAY('b', '...un po\'.', 'Ci credo meno di te.', 'Io ci credo, ma i soldi li tengo sotto il materasso.'),
+      SAY('a', 'Ecco, per colpa tua è scesa.', 'Un po\' basta. Firma qui.'), { wait: 2 }] },
+    { id: 'ufficio_umori', w: 1, posto: ['portone', 'edicola', 'vetrina'], soft: true, roles: [{ id: 'a', f: 'shop|adult' }, { id: 'b', near: 'a', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.4, d: 1.2, t: 16 }, SAY('b', 'Sono venuto a dichiarare la tristezza.', 'Devo denunciare un umore.'), { pose: 'a', p: 'legge_su' },
+      SAY('a', 'Tristezza lieve, media o sovversiva?', 'Modulo azzurro. Quello rosa è per la malinconia.'), SAY('b', 'Media. Forse lieve.', 'Non lo so. È una tristezza normale.'),
+      { fn: (st, sc) => { const E = EV(); if (E) E._.sayEv(st, sc.roles.a, `${supercazzola()}, la sua tristezza è accolta. Ne ha diritto fino a mercoledì.`, 4.2); }, w: 4.2 },
+      SAY('b', 'E dopo mercoledì?', 'E se mi dura di più?'), SAY('a', 'Dopo mercoledì è un\'opinione. E le opinioni le dichiara al piano di sotto.', 'Allora è depressione. Quella è a pagamento.'), { pose: 'a' }, { wait: 2 }] },
+    { id: 'delatore_anno', w: 1, posto: ['dehors', 'panchina', 'sagrato'], soft: true, roles: [{ id: 'a', f: 'old|any' }, { id: 'b', near: 'a', f: 'old|any', r: 16 }], beats: [
+      { go: 'b', to: 'a', sp: 1.3, d: 1.2, t: 16 }, SAY('a', 'Sono in finale per il Delatore dell\'Anno.', 'Mi hanno nominato. Delatore dell\'Anno. Categoria anziani.'),
+      SAY('b', 'Complimenti! Chi hai segnalato?', 'E come hai fatto?'), SAY('a', 'Tutti. Anche te. Tre volte.', 'Ho segnalato chi segnala. Vale doppio.'), { wait: 1.4 },
+      SAY('b', 'Anche me?!', 'Ah. Grazie.'), SAY('a', 'Per affetto. Se vinco andiamo insieme al fine settimana in caserma. Io dalla parte bella.', 'Non te la prendere. Tu sei arrivato quarto.'), { wait: 2 }] },
+  ];
+  { const E = EV(); if (E && E.SCENE) SCENE.forEach(D => { if (!E.SCENE.some(s => s.id === D.id)) E.SCENE.push(D); }); }
+
+  return { CFG, GARANTE, TV, ANNUNCI, REAZIONI, SCENE, S, garante, tv: () => pick(TV), annuncio, supercazzola, ordinanza, step };
+})();
+if (typeof module !== 'undefined') module.exports = Culto;
 </script>
 <script data-m="chiarezza">/* Porto Vecchio — [chiarezza] LE REGOLE DELLA LETTURA DEL FOTOGRAMMA (solo nella città nuova).
    «Qui uno vede mille cose eppure non si capisce nulla»: ogni inquadratura si legge in tre piani, il suolo (dove cammino), il fronte
@@ -65503,8 +65946,8 @@ var Vievive = (function () {
   // ================= LE PLANCE DELLE AFFISSIONI, I GIORNALI =================
   // il titolo del giorno: il Corriere del Gelo (il regime) e il Disgelo (il clandestino, ciclostilato, attaccato di notte)
   const TITOLI = {
-    corriere: ['RATE A TASSO ZERO PER OGNI FAMIGLIA', 'IL GARANTE INAUGURA IL NUOVO VIALE', 'RECORD DI CARBONE ALLA MINIERA', 'ORDINE E LAVORO: LA PARATA DI DOMENICA', 'ARRIVA LA NUOVA UTILITARIA DEL POPOLO', 'SVENTATO UN COVO DI SOVVERSIVI', 'IL CARBONE SCALDA L\'ISOLA'],
-    disgelo: ['LA MINIERA CI MANGIA VIVI', 'CHI HA SPARITO I RAGAZZI DEL PORTO?', 'IL GHIACCIO SI ROMPE', 'NON FIRMATE LE CAMBIALI', 'SABATO CYPHER ALLA GRATA', 'RADIO LUNA 98.6 · ACCENDETE', 'IL 20% NON SI DIMENTICA'],
+    corriere: ['RATE A TASSO ZERO PER OGNI FAMIGLIA', 'IL GARANTE INAUGURA IL NUOVO VIALE', 'RECORD DI CARBONE ALLA MINIERA', 'ORDINE E LAVORO: LA PARATA DI DOMENICA', 'ARRIVA LA NUOVA UTILITARIA DEL POPOLO', 'SVENTATO UN COVO DI SOVVERSIVI', 'IL CARBONE SCALDA L\'ISOLA', 'IL GARANTE PARLA COL MARE: È D\'ACCORDO', 'PANE ENORME PER TUTTI, PIÙ O MENO', 'FOLLA RECORD: PIÙ GRANDE DEL MARE', 'SPARIZIONI GIÙ, FELICITÀ SU', 'IL GARANTE INVENTA IL FREDDO', 'LUNGA CALMA! IL RECORD DELLE PALPEBRE'],
+    disgelo: ['LA MINIERA CI MANGIA VIVI', 'CHI HA SPARITO I RAGAZZI DEL PORTO?', 'IL GHIACCIO SI ROMPE', 'NON FIRMATE LE CAMBIALI', 'SABATO CYPHER ALLA GRATA', 'RADIO LUNA 98.6 · ACCENDETE', 'IL 20% NON SI DIMENTICA', 'IL PANE NON È UN MIRACOLO: È UN DIRITTO', 'IL GARANTE È CALVO'],
   };
   const titolo = (t, chi) => { const L = TITOLI[chi], d = Math.floor((t || 0) / 1440); return L[(d * (chi === 'corriere' ? 3 : 5) + 1) % L.length]; };
   let PLA = null;
@@ -70881,7 +71324,7 @@ var Tasselli = (function () {
   const Q = typeof location !== 'undefined' ? location.search : '';
   const STUDIO = typeof window !== 'undefined' && !!window.PV_STUDIO;
   // di difetto sì: no nello Studio, con ?tasselli=0, nel laboratorio degli scorci (?scorcio=: la città tagliata attorno a un punto)
-  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=nuova\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
+  const CHIESTO = !STUDIO && !/[?&]tasselli=0\b/.test(Q) && !/[?&]scorcio=/.test(Q) && !/[?&]mappa=(prima|vecchia)\b/.test(Q) && typeof Worker !== 'undefined' && typeof DecompressionStream !== 'undefined' && typeof fetch !== 'undefined';
   const IMP = typeof window !== 'undefined' ? window.PV_IMPRONTA_TASS : null;
   const BASE = (typeof window !== 'undefined' && window.PV_TASSELLI_BASE) || 'tasselli/', V = '?v=' + (IMP || '0');
   const TEL = typeof Anelli !== 'undefined' ? Anelli.TEL : false;
@@ -72097,6 +72540,62 @@ var Calcolo = (function () {
   return { ATTESA, G, qui, tutto, metti, ha, stato, get attivo() { return !guasto; } };
 })();
 </script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
+<script data-m="post_stile">/* Porto Vecchio — Il tono di strada: un filo d'inchiostro sulle sagome vicine, segni leggeri dove il colore salta,
+   un retino appena nelle ombre, colore più pieno. Vive nel passaggio finale di render.js (devPass): nessun bersaglio nuovo,
+   5 letture di profondità in più per pixel. render.js ci mette tre ganci: uniformi, il pezzo di GLSL, passo() a ogni fotogramma.
+   Lo shader è sempre lo stesso (uniformi fisse): accenderlo o spegnerlo non ricompila niente.
+   ?nostile lo spegne (anche ?nostrada, il nome di prima); sul telefono e con la qualità bassa è spento (il passaggio finale
+   gira alla risoluzione vera dello schermo); ?stile_tel lo accende anche lì, per le prove.
+   Le manopole: window.__STRADA (galleria.js, strumenti/manopole_strada.json per il prima e dopo). */
+var PostStile = (function () {
+  const Q = (typeof location !== 'undefined' && location.search) || '';
+  const STRADA = { on: !/[?&](nostile|nostrada)\b/.test(Q), telefono: /[?&]stile_tel\b/.test(Q), contorno: .55, segni: .24, pieno: .45, tavolozza: 1 };
+  if (typeof window !== 'undefined') window.__STRADA = STRADA;
+
+  const testa = `
+        uniform sampler2D tD; uniform vec2 nf; uniform vec4 sK;   // [personaggi] sK: contorno (e alone), segni, colore pieno, tavolozza pulita
+        float linD(vec2 q){ float z = texture2D(tD, q).r * 2. - 1.; return 2. * nf.x * nf.y / (nf.y + nf.x - z * (nf.y - nf.x)); }`;
+  // usa c, n, s, w, r (il pixel e i quattro vicini già letti), e (un texel) e scrive su o
+  const corpo = `
+          if (sK.x + sK.y + sK.z + sK.w > 0.) {
+            vec3 LW = vec3(.299, .587, .114); float l = dot(o, LW);
+            vec3 ink = o * vec3(.2, .16, .26);   // inchiostro: lo stesso colore, molto più scuro e un po' viola (niente nero piatto)
+            if (sK.x > 0.) { float d = linD(vUv), d1 = linD(vUv - vec2(0., e.y)), d2 = linD(vUv + vec2(0., e.y)), d3 = linD(vUv - vec2(e.x, 0.)), d4 = linD(vUv + vec2(e.x, 0.));
+              float dn = max(max(d1, d2), max(d3, d4)), dm = min(min(d1, d2), min(d3, d4)), lon = 1. - smoothstep(60., 180., d);
+              float sil = smoothstep(.03, .07, (dn - d) / d) * lon;   // solo il lato davanti del salto: la linea sta sull'oggetto, sottile, e svanisce lontano
+              float alo = smoothstep(.03, .08, (d - dm) / d) * lon;   // il lato dietro: il fondo accanto a una sagoma si schiarisce appena (persone, oggetti, case si staccano)
+              o = mix(o, ink, sil * sK.x); o = mix(o, o * 1.12 + .035, alo * sK.x * .6); }
+            if (sK.y > 0.) { float gl = max(abs(dot(n - s, LW)), abs(dot(w - r, LW)));
+              o = mix(o, ink, smoothstep(.16, .34, gl) * sK.y * .8 * (1. - smoothstep(.75, .95, l)) * smoothstep(.04, .14, l));   // i salti di colore netti (orli, scritte, finestre) prendono un segno; sulle trame fini (tegole) niente velo scuro
+              vec2 hp = gl_FragCoord.xy * .7071; hp = vec2(hp.x + hp.y, hp.y - hp.x) * .45;   // retino a 45° nelle ombre, appena
+              float dot0 = length(fract(hp) - .5), rr = smoothstep(.03, .1, l) * (1. - smoothstep(.12, .32, l)) * .42;   // nei neri veri niente (di sera scuriva tutto)
+              o *= 1. - (1. - smoothstep(rr - .08, rr + .08, dot0)) * sK.y * .22; }
+            if (sK.z > 0.) { vec3 av = (n + s + w + r) * .25, dt = c - av; float dl = dot(dt, LW);   // il dettaglio: tegole, mattoni, assi, scritte (i gradini di luce di prima appiattivano le trame di giorno)
+              o += vec3(clamp(dl, -.08, .08)) * sK.z * 1.1 * (1. - smoothstep(.85, 1., l));   // solo la luce: il colore delle trame non si sporca, e niente aloni sui salti grandi (clamp)
+              float l2 = dot(o, LW), mx2 = max(o.r, max(o.g, o.b)), sa = (mx2 - min(o.r, min(o.g, o.b))) / max(mx2, 1e-3);   // colore pop: spinge di più i colori spenti, poco quelli già accesi (niente fluo)
+              o = max(mix(vec3(l2), o, 1. + sK.z * (.75 - .5 * sa) * smoothstep(.12, .3, sa)), 0.); }   // i quasi neutri (muri, intonaci) restano puliti: niente pesca dappertutto
+            if (sK.w > 0.) {   // la tavolozza pulita: via l'ocra e l'oliva impastati, ombre fredde e chiare invece che marroni
+              vec4 K4 = vec4(0., -1. / 3., 2. / 3., -1.); vec4 pp = mix(vec4(o.bg, K4.wz), vec4(o.gb, K4.xy), step(o.b, o.g)); vec4 qq = mix(vec4(pp.xyw, o.r), vec4(o.r, pp.yzx), step(pp.x, o.r));
+              float dd = qq.x - min(qq.w, qq.y); vec3 hsv = vec3(abs(qq.z + (qq.w - qq.y) / (6. * dd + 1e-5)), dd / (qq.x + 1e-5), qq.x); float hd = hsv.x * 360.;
+              float caldo = smoothstep(14., 26., hd) * (1. - smoothstep(66., 80., hd)), ocra = smoothstep(26., 38., hd) * (1. - smoothstep(72., 90., hd)) * smoothstep(.3, .45, hsv.y);   // gialli sporchi, ocra, oliva (solo i saturi)
+              hsv.y *= 1. - caldo * (1. - smoothstep(.18, .34, hsv.y)) * .4 * sK.w;   // i beige e i sabbia verso il crema: più chiari e puliti, l'occhio riposa e i colori veri spiccano
+              hsv.x += (hd < 52. ? -1. : 1.) * ocra * sK.w * 14. / 360.;   // l'ocra verso il pesca e il cotto, l'oliva verso il verde fresco
+              hsv.y = min(1., hsv.y * (1. + ocra * sK.w * .3)); hsv.z = min(1., hsv.z * (1. + ocra * sK.w * .06));
+              vec3 rr3 = clamp(abs(fract(hsv.xxx + vec3(1., 2. / 3., 1. / 3.)) * 6. - 3.) - 1., 0., 1.); o = hsv.z * mix(vec3(1.), rr3, hsv.y);
+              float l3 = dot(o, LW), sh = 1. - smoothstep(.06, .32, l3);
+              o = mix(o, o * vec3(.92, .96, 1.14) + vec3(.014, .016, .034), sh * sK.w); }   // le ombre: un velo blu viola, alzate appena
+          }`;
+
+  const uniformi = () => ({ tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, sK: { value: new THREE.Vector4(0, 0, 0, 0) } });
+  function passo(U, o) {
+    const on = STRADA.on && !o.lowq && (!o.phone || STRADA.telefono) && o.rt && o.rt.depthTexture;
+    U.tD.value = on ? o.rt.depthTexture : null; U.nf.value.set(o.camera.near, o.camera.far);
+    U.sK.value.set(on ? STRADA.contorno : 0, on ? STRADA.segni : 0, on ? STRADA.pieno : 0, on ? STRADA.tavolozza : 0);
+  }
+  return { STRADA, testa, corpo, uniformi, passo };
+})();
+if (typeof window !== 'undefined') window.PostStile = PostStile;
+</script>   <!-- [personaggi] il tono di strada (gancio nel passaggio finale di render.js) -->
 <script data-m="render">
 /* Porto Vecchio — resa 3D in stile pixel art (Three.js r149).
    Scena renderizzata a bassa risoluzione, poi ingrandita con contorni e color grading.
@@ -78155,7 +78654,7 @@ var Render = (function () {
       const bt = box(2, .26, .04, std({ map: (() => { const k = 'tr'; if (I31.tex[k]) return I31.tex[k]; const c = mk(32, 8), x2 = c.getContext('2d'); for (let i = 0; i < 32; i += 8) { x2.fillStyle = '#d8d0c0'; x2.fillRect(i, 0, 4, 8); x2.fillStyle = '#9a3a2a'; x2.fillRect(i + 4, 0, 4, 8); } x2.fillStyle = 'rgba(60,40,30,.35)'; x2.fillRect(0, 5, 32, 3); return (I31.tex[k] = canvasTex(c)); })(), roughness: .9 })); add(g, bt, 0, .88, 0);
       return place(g, x, z, rot); };
     const cone = (x, z) => { const g = G0(); add(g, box(.42, .05, .42, sm('#2a2a2a')), 0, .025, 0); add(g, new THREE.Mesh(new THREE.ConeGeometry(.17, .62, 8), sm('#c8642a', { roughness: .7 })), 0, .34, 0); add(g, cyl(.12, .14, .08, 8, sm('#d8d4cc')), 0, .38, 0); return place(g, x, z, r() * 6); };
-    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada') && (rd.pts.length >= 12 || !(typeof window !== 'undefined' && window.PV_MAPPA === 'nuova')));   // [mappa_nuova] le strade corte non reggono un cantiere
+    const SITES = [], RD = (M.roads || []).filter(rd => !rd.rect && (rd.kind === 'litoranea' || rd.kind === 'strada') && (rd.pts.length >= 12 || (typeof window !== 'undefined' && window.PV_MAPPA === 'prima')));   // [mappa_nuova] le strade corte non reggono un cantiere
     for (let tries = 0; tries < 80 && SITES.length < 9; tries++) {
       const rd = pick(r, RD), k = 4 + Math.floor(r() * (rd.pts.length - 8)), [x, z] = rd.pts[k]; if (SITES.some(s => Math.hypot(s[0] - x, s[1] - z) < 120) || nearJ(x, z, 6)) continue;
       SITES.push([x, z]); const a = rd.pts[k - 2], c = rd.pts[k + 2], L = Math.hypot(c[0] - a[0], c[1] - a[1]) || 1, ux = (c[0] - a[0]) / L, uz = (c[1] - a[1]) / L, nx = -uz, nz = ux, sd = r() < .5 ? 1 : -1, off = rd.w / 4;
@@ -84949,20 +85448,14 @@ var Render = (function () {
   // (sul telefono 2-3 volte più fine dei pixel della scena), più forte nei toni medi e quasi niente nei neri e nei bianchi:
   // fa anche da retino contro le bande nei gradienti del cielo.
   const DEV = { rt: null, scene: null, cam: null, mat: null };
-  // [personaggi] IL TONO DI STRADA, nello stesso passaggio finale (5 letture di profondità in più, niente bersagli nuovi):
-  // un filo d'inchiostro sulle sagome vicine, segni leggeri sui salti di colore con un retino appena nelle ombre fonde, colore più pieno.
-  // ?nostrada lo spegne; con la qualità bassa si spegne da solo.
-  const STRADA = { on: !/[?&]nostrada\b/.test((typeof location !== 'undefined' && location.search) || ''), contorno: .55, segni: .3, pieno: .35, granaTel: .35 };
-  if (typeof window !== 'undefined') window.__STRADA = STRADA;
   function devInit() {
     DEV.scene = new THREE.Scene(); DEV.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     DEV.mat = new THREE.ShaderMaterial({
-      uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, k: { value: .5 }, g: { value: 0 }, tm: { value: 0 }, tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, sK: { value: new THREE.Vector4(0, 0, 0, 0) } },   /* [personaggi] tD, nf, sK: il tono di strada */
+      uniforms: Object.assign({ t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, k: { value: .5 }, g: { value: 0 }, tm: { value: 0 } }, window.PostStile ? PostStile.uniformi() : {}),   /* [personaggi] il tono di strada (post_stile.js) */
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: `precision highp float; precision highp sampler2D;
         uniform sampler2D t; uniform vec2 src; uniform float k; uniform float g; uniform float tm; varying vec2 vUv;
-        uniform sampler2D tD; uniform vec2 nf; uniform vec4 sK;   // [personaggi] sK: contorno, segni, colore pieno, (libero)
-        float linD(vec2 q){ float z = texture2D(tD, q).r * 2. - 1.; return 2. * nf.x * nf.y / (nf.y + nf.x - z * (nf.y - nf.x)); }
+        ${window.PostStile ? PostStile.testa : ''}
         float h21(vec2 p){ p = fract(p * vec2(443.897, 441.423)); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
         void main(){
           vec2 e = 1. / src;
@@ -84972,20 +85465,7 @@ var Render = (function () {
           vec3 amp = sqrt(clamp(min(mn, 1. - mx) / max(mx, 1e-4), 0., 1.));   // dove c'è già contrasto forte si spinge poco: niente aloni
           vec3 wt = amp * (-1. / mix(8., 5., k));
           vec3 o = clamp((c + (n + s + w + r) * wt) / (1. + 4. * wt), mn, mx);
-          if (sK.x + sK.y + sK.z > 0.) {   // [personaggi] il tono di strada: un filo d'inchiostro sulle sagome, segni leggeri dove il colore salta, colore più pieno
-            vec3 LW = vec3(.299, .587, .114); float l = dot(o, LW);
-            vec3 ink = o * vec3(.2, .16, .26);   // inchiostro: lo stesso colore, molto più scuro e un po' viola (niente nero piatto)
-            if (sK.x > 0.) { float d = linD(vUv), dn = max(max(linD(vUv - vec2(0., e.y)), linD(vUv + vec2(0., e.y))), max(linD(vUv - vec2(e.x, 0.)), linD(vUv + vec2(e.x, 0.))));
-              float sil = smoothstep(.03, .07, (dn - d) / d) * (1. - smoothstep(60., 180., d));   // solo il lato davanti del salto: la linea sta sull'oggetto, sottile, e svanisce lontano
-              o = mix(o, ink, sil * sK.x); }
-            if (sK.y > 0.) { float gl = max(max(abs(dot(n - s, LW)), abs(dot(w - r, LW))), 0.);
-              o = mix(o, ink, smoothstep(.1, .28, gl) * sK.y * (1. - smoothstep(.75, .95, l)) * smoothstep(.04, .14, l));   // i salti di colore netti (orli, scritte, finestre) prendono un segno
-              vec2 hp = gl_FragCoord.xy * .7071; hp = vec2(hp.x + hp.y, hp.y - hp.x) * .45;   // retino a 45° nelle ombre fonde, appena
-              float dot0 = length(fract(hp) - .5), rr = smoothstep(.03, .1, l) * (1. - smoothstep(.12, .32, l)) * .42;   // nei neri veri niente (di sera scuriva tutto)
-              o *= 1. - (1. - smoothstep(rr - .08, rr + .08, dot0)) * sK.y * .35; }
-            if (sK.z > 0.) { float l2 = dot(o, LW); vec3 sat = mix(vec3(l2), o, 1. + sK.z * .6);   // colore pieno e luci in tre gradini morbidi
-              float q = (floor(l2 * 4. + .5) / 4.), lq = mix(l2, q, .35); o = max(sat * (lq / max(l2, 1e-3)), 0.) * sK.z + o * (1. - sK.z); }
-          }
+          ${window.PostStile ? PostStile.corpo : ''}
           if (g > 0.) { vec2 fp = floor(gl_FragCoord.xy); float fr = floor(tm * 24.);   // la grana cambia 24 volte al secondo, come la pellicola
             float gr = h21(fp + fr * 17.31) + h21(fp * 1.37 + fr * 7.13 + 3.1) - 1.;   // triangolare: morbida, senza puntini isolati
             float l = dot(o, vec3(.299, .587, .114));
@@ -84995,8 +85475,8 @@ var Render = (function () {
     DEV.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), DEV.mat));
   }
   function devPass() {
-    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = (AMB.film || 0) * (PHONE ? STRADA.granaTel : 1);   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */   /* [personaggi] ora un velo leggerissimo, come chiesto */
-    const sv = STRADA.on && !LOWQ.on; U.tD.value = sv && rt ? rt.depthTexture : null; U.nf.value.set(camera.near, camera.far); U.sK.value.set(sv && rt ? STRADA.contorno : 0, sv ? STRADA.segni * (PHONE ? .7 : 1) : 0, sv ? STRADA.pieno : 0, 0); U.tm.value = performance.now() / 1000;
+    const U = DEV.mat.uniforms; U.t.value = DEV.rt.texture; U.k.value = AMB.crisp || 0; U.g.value = (AMB.film || 0) * (PHONE ? .35 : 1);   /* [grafica3] sul telefono niente grana: sullo schermo piccolo sembrava sgranato */   /* [personaggi] ora un velo leggerissimo, come chiesto */ U.tm.value = performance.now() / 1000;
+    if (window.PostStile) PostStile.passo(U, { rt, camera, phone: PHONE, lowq: LOWQ.on });   /* [personaggi] */
     renderer.setRenderTarget(null); renderer.render(DEV.scene, DEV.cam);
   }
   const V2T = new THREE.Vector2();   /* [ritmo] */
@@ -85099,8 +85579,9 @@ var Render = (function () {
     quinta: .16,                           // il primo piano più scuro
     luce: .1, ombraBordo: .2, cerchio: .62, // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .35,
-    tetti: .55, tettiDa: 2.5, tettiPer: 6,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
-    spalla: .3,                            // le luci piene meno sature
+    tetti: .85, tettiDa: 2, tettiPer: 3,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
+    ciglio: .7, piede: .55, calma: .7, piedeR: 1.4,   // i volumi: la linea sul ciglio, l'ombra al piede dei muri, il suolo spianato, il raggio del piede (m)
+    spalla: .4,                            // le luci piene meno sature
     acceso: true };
   if (typeof window !== 'undefined') window.__NIT = NIT;
   if (NIT.on && PRO.look && !PHONE) PRO.prof = true;   // la profondità nel passo (sul telefono no: costa banda)
@@ -85451,7 +85932,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) },
         aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
-        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
+        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + `
@@ -85471,6 +85952,10 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         vec3 sgV(vec2 q){ float d = 1. / sgI(q); return vec3((q * 2. - 1.) * fv * d, -d); }
         vec3 sgMn(vec3 a, vec3 b){ return abs(a.z) < abs(b.z) ? a : b; }
 #endif
+#if defined(SG_NIT) && defined(SG_PROD)
+        uniform vec4 nY2; uniform vec4 nG;   // [nitida] nG: il ciglio dei volumi, il piede dei muri, la calma del suolo, il raggio del piede (m)
+        float nQ(vec2 q){ return dot(nY2.xyz, sgV(q)) + nY2.w; }   // la quota nel mondo di un pixel (m)
+#endif
 #ifdef SG_NIT
         uniform vec4 nA; uniform vec4 nB; uniform vec4 nC; uniform vec4 nD; uniform vec3 nH; uniform float nS; uniform vec4 nY; uniform vec4 nE;   // [nitida] nY: la riga della quota (camera → mondo); nE: tetti, da, in quanto, quota del personaggio
 #endif
@@ -85488,7 +85973,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
           // [nitida] dove sta questo pixel rispetto al personaggio: rel < 0 davanti (verso la camera), > 0 dietro
           float nD0 = 1. / sgI(vUv), nRel = (nD0 - nB.z) / nB.z;
           vec3 nV = sgV(vUv); float nTet = nE.x * smoothstep(nE.y, nE.y + nE.z, dot(nY.xyz, nV) + nY.w - nE.w);   // [nitida] i tetti: quanto questo pixel sta sopra il piano del personaggio
-          aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel) + nTet * .3);   // il fuoco per profondità (e un velo sui tetti)
+          aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel) + nTet * .55);   // il fuoco per profondità (e un velo sui tetti)
 #endif
 #if defined(SG_PRO) && !defined(SG_TEL)
           if (pT.x > 0. || aCoc > 0.) {   // la miniatura: fuori dalla fascia a fuoco un disco di 8 campioni (angolo d'oro), che cresce allontanandosi
@@ -85510,9 +85995,22 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
               float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
               c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
             c *= 1. - nA.z * smoothstep(.25, .6, -nRel);                                   // la quinta
+            if (nG.x + nG.y + nG.z > 0.) {   // i volumi e le divisioni, dalla quota vera (con la camera quasi dall'alto la profondità relativa dice poco)
+              float q0 = nQ(vUv), dr = 0.;
+              for (int k = 0; k < 4; k++) { float a = float(k) * 1.5708; dr = max(dr, q0 - nQ(vUv + vec2(cos(a), sin(a)) * e * 1.5)); }   // il ciglio: un vicino molto più basso
+              float rp = clamp(nG.w / (pa * nD0), 2., 28.), oc = 0., un = 0.;
+              for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; float hn = nQ(vUv + vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .6 : 1.)) - q0;
+                oc += smoothstep(.6, 2.5, hn); un += step(abs(hn), .08); }
+              c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
+              c *= mix(vec3(1.), vec3(.62, .6, .72), min(1., oc * .22) * nG.y);                  // il piede dei muri: l'ombra di contatto (il suolo si separa dalla casa)
+              float pl = smoothstep(6., 8., un) * (1. - smoothstep(.1, .6, dr)) * (1. - nTet) * nG.z;   // la calma: le superfici piane, lontano dagli spigoli
+              if (pl > .01) { vec3 m = (texture2D(t, vUv + vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv + vec2(e.x, -e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, -e.y) * 1.5).rgb) * .25;
+                float dl = abs(dot(m - c, vec3(.299, .587, .114)));
+                c = mix(c, m, pl * (1. - smoothstep(.06, .16, dl))); }   // il rumore fine del lastricato si spiana; i segni netti (strisce, ombre) restano
+            }
             float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
             c = mix(c, nH + (c - nH) * .55, hz);
-            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt) * vec3(1.02, 1., .97) + (c - vec3(lt)) * .55, nTet); c = mix(c, nH, nTet * .14); }   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
+            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .9 + .08) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .38, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
           }
 #endif
 #if defined(SG_AAA) && defined(SG_PROD)
@@ -85658,7 +86156,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
         U.hi.value.set(K.luce[0] * (1 + (K.proLuce[0] - 1) * g), K.luce[1] * (1 + (K.proLuce[1] - 1) * g), K.luce[2] * (1 + (K.proLuce[2] - 1) * g));
         U.gK.value.x *= 1 + (K.proSat - 1) * g; U.gK.value.y *= 1 + (K.proContrasto - 1) * g;
         if (K.proPieno !== undefined) U.gN.value.set(SGU.neri + (K.proNeri - SGU.neri) * g, SGU.pieno + (K.proPieno - SGU.pieno) * g, 0, 0); } }   // gli accenti pieni, i neri profondi di sera e di notte
-    if (NIT.on && PRO.look && !NIT.acceso) { U.nA.value.set(0, 0, 0, 0); U.nB.value.w = 0; U.nC.value.set(0, 0, 1, 0); U.nS.value = 0; U.nE.value.x = 0; }   // spento dal vivo (le prove): il passo di prima
+    if (NIT.on && PRO.look && !NIT.acceso) { U.nA.value.set(0, 0, 0, 0); U.nB.value.w = 0; U.nC.value.set(0, 0, 1, 0); U.nS.value = 0; U.nE.value.x = 0; U.nG.value.set(0, 0, 0, 1); }   // spento dal vivo (le prove): il passo di prima
     if (NIT.on && PRO.look && NIT.acceso) {   // [nitida] il personaggio sullo schermo e la sua distanza; le manopole (spente con la grafica ridotta, tranne la luce)
       const N = NIT, d3 = SGT.nv || (SGT.nv = new THREE.Vector3()), f = ui.focus, fx0 = f ? f.x : p.x, fz0 = f ? f.y : p.y, fh0 = f ? groundH(fx0, fz0) : playerH;
       d3.set(fx0, fh0 + 1, fz0).applyMatrix4(camera.matrixWorldInverse); const dist = Math.max(2, -d3.z);
@@ -85670,7 +86168,8 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
       U.nB.value.set(SGT.nfx, SGT.nfy, dist, dep ? N.chiarezza : 0);
       U.nC.value.set(N.luce, N.ombraBordo, N.cerchio, dep ? N.vicino : 0); U.nD.value.set(N.ariaDa, N.ariaPer, N.fuocoDa, N.fuocoPer);
       U.nH.value.set(fc.r, fc.g, fc.b); U.nS.value = N.spalla;
-      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); }   // la riga della quota: dal punto in vista al mondo
+      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); U.nY2.value.copy(U.nY.value); }
+      U.nG.value.set(dep ? N.ciglio : 0, dep ? N.piede : 0, dep ? N.calma : 0, N.piedeR);   // la riga della quota: dal punto in vista al mondo
       U.nE.value.set(dep ? N.tetti : 0, N.tettiDa, N.tettiPer, fh0);
       U.gK.value.z *= .45;   // la vignetta fissa al centro cede il posto a quella che segue il personaggio
       if (dep) { U.pT.value.x = 0; U.pT.value.w = N.raggio * (rt.height || 540) / 540; } }   // la fascia fissa della miniatura cede il posto al fuoco per profondità
@@ -89912,7 +90411,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const inRoom = !!(n.room && p.indoor && !n.dead);   // [scopo] dentro l'edificio del giocatore: si vede chi c'è
       // [leggera] sul telefono anche chi entra in casa lascia la scena (tra le figure tenute da parte, PEOPLE_KEEP): non resta nascosto a pesare
       if ((n.inside && !inRoom) || (n.pop && !n.pop.near)) { if (g) { g.visible = false; g.userData.inRoom = false; if ((n.pop && !n.pop.near) || (PHONE && n.pop && !g.userData.dressing)) { scene.remove(g); delete dyn.people[n.id]; if (!g.userData.voxelWait) { PEOPLE_KEEP.set(n.id, g); if (PEOPLE_KEEP.size > (PHONE ? 6 : 40)) PEOPLE_KEEP.delete(PEOPLE_KEEP.keys().next().value); } } } return; }
-      if (g && g.userData.voxelWait && window.Models && Models.charsReady()) { scene.remove(g); g = null; }
+      if (g && g.userData.voxelWait && window.Models && Models.charsReady() && (PEOPLE_KEEP.has(n.id) || BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente'))) { scene.remove(g); g = null; }   /* [sparizioni] come per i mezzi: il segnaposto resta finché la figura vera non nasce */
       if (!g) { const who = (n.cop || n.military) && !n.borghese ? 'cop' : null;   /* [ordine] l'Ufficio Rettifiche va in borghese */
         const kept = PEOPLE_KEEP.get(n.id); if (kept && (kept.userData.who || null) === who) { PEOPLE_KEEP.delete(n.id); g = kept; if (window.Anim && Anim.reset) Anim.reset(g); }   /* [seduti] niente pose rimaste accese da prima */   // [fluido] torna com'era, già vestito
         else { if (!BUD.ok(Math.hypot(n.x - p.x, n.y - p.y), 'gente')) return; const t0 = performance.now(); if (window.Models) Models.__aRate = true; try { g = (window.Models && Models.charsReady() && Models.person(n.look, who)) || person(n.look, false); } finally { if (window.Models) Models.__aRate = false; } g.userData.who = who; BUD.add(performance.now() - t0, 'gente'); }   // [fluido] nasce quando c'è tempo
@@ -89966,13 +90465,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
-    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1)); const VFAR = PHONE ? 25 : 60;   // [scarico]
+    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1), scene.fog ? Math.min(170, scene.fog.far) : 0); const VFAR = PHONE ? 25 : 60;   // [scarico]   // [sparizioni] fino alla nebbia: con la visuale bassa e la camera libera si vede fino a 120-160 m, e oltre i 75 m le macchine sparivano sotto gli occhi
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
       const far = v !== pveh && (Math.abs(v.x - cam.x) > VIEW_R || Math.abs(v.y - cam.y) > VIEW_R);
       let g = dyn.vehicles[v.id]; if (far) { if (g) { if (Math.abs(v.x - cam.x) > VIEW_R + VFAR || Math.abs(v.y - cam.y) > VIEW_R + VFAR) { scene.remove(g); delete dyn.vehicles[v.id]; } else g.visible = false; } return; }   // [scarico] ben oltre la vista il mezzo esce dalla scena (il rilascio ne libera le geometrie), si rifà quando torna
-      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
+      if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb))) && (v.hidden || BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi'))) { scene.remove(g); g = null; }   /* [sparizioni] il vecchio si toglie solo se il nuovo nasce adesso: prima, senza tempo nel fotogramma, il mezzo restava senza modello */ if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
@@ -93587,7 +94086,7 @@ if (typeof module !== 'undefined') module.exports = Regia;
     }
     PAD.gas = bv(7); PAD.brk = bv(6);
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
-    if (PAD.pan && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 - PAD.pan * dt * 1.4);   // [levette] la levetta destra in verticale: lo zoom (in su si avvicina, e da vicino la visuale scende dietro al personaggio)   // [visuale5] la levetta destra in verticale sposta la visuale
+    // [morbida] la levetta destra del controller va nella levetta della visuale (conTick, camStick): curva e inerzia come le altre
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
   }
 
@@ -93663,10 +94162,29 @@ if (typeof module !== 'undefined') module.exports = Regia;
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
+  // [morbida] LA LEVETTA DELLA VISUALE, UNA SOLA: il controller (levetta destra), il Game Boy e lo schermo (vstick), le frecce. Prima ognuna
+  // girava e zoomava a modo suo, subito a piena velocità e lineare: difficile prendere un'inquadratura, e a pochi fotogrammi si vedeva a
+  // scatti. Qui: zona morta, curva (poco inclinata gira piano e preciso, a fondo veloce) e inerzia (la velocità sale e scende in ~0,12 s,
+  // niente partenze e fermate secche). La rotazione va a ui.drag (render.js la somma alla visuale), lo zoom a zoomBy.
+  const CAMS = { vy: 0, vz: 0, giro: 1.9, zoom: 1.1, dz: .12, esp: 1.8, tau: .12 };
+  const camCurva = v => { const a = Math.abs(v); if (a <= CAMS.dz) return 0; return Math.sign(v) * Math.pow(Math.min(1, (a - CAMS.dz) / (1 - CAMS.dz)), CAMS.esp); };
+  function camStick(dt) {
+    let x = 0, y = 0; const libero = !ui.intro && !ui.dialog && !ui.book && !ui.menu;
+    if (libero) {
+      x += vstick.x; y += vstick.y;
+      if (PAD.on) { x += -PAD.rot / 1.6; y += -PAD.pan; }
+      if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
+      const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
+    const k = 1 - Math.exp(-dt / CAMS.tau);
+    CAMS.vy += (-camCurva(x) * CAMS.giro - CAMS.vy) * k; CAMS.vz += (camCurva(y) * CAMS.zoom - CAMS.vz) * k;
+    if (Math.abs(CAMS.vy) < 1e-3) CAMS.vy = 0; if (Math.abs(CAMS.vz) < 1e-3) CAMS.vz = 0;
+    if (CAMS.vy) ui.drag = (ui.drag || 0) + CAMS.vy * dt;
+    if (CAMS.vz) zoomBy(Math.exp(CAMS.vz * dt));
+    ui.camStickOn = !!(CAMS.vy || CAMS.vz);
+  }
   function conTick(dt) {
     if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);
-    if (frecceVisuale() && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) { const fx = (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0), fy = (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); ui.drag = (ui.drag || 0) - fx * dt * 2.2; if (fy) zoomBy(1 + fy * dt * 1.5); }   // [levette] le frecce: ← → girano attorno al personaggio, ↑ ↓ lo zoom
-    if ((vstick.x || vstick.y) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) { const zx = Math.abs(vstick.x) > .15 ? vstick.x : 0, zy = Math.abs(vstick.y) > .15 ? vstick.y : 0; ui.drag = (ui.drag || 0) - zx * dt * 2.4; if (zy) zoomBy(1 + zy * dt * 1.5); }   // [levette] la levetta della visuale a schermo
+    camStick(dt);   // [morbida] la levetta della visuale: controller, Game Boy, schermo, frecce
     if ((keys.pagedown || keys.pageup) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) tiltBy(((keys.pagedown ? 1 : 0) - (keys.pageup ? 1 : 0)) * dt * .9);   // [bassa]   // la croce tenuta: lo zoom
     if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
     if (CON.on && (touchMode || !mouse.active) && !ui.intro) {   // con l'arma in mano il raggio della mira, dove guarda
@@ -93879,7 +94397,7 @@ if (typeof module !== 'undefined') module.exports = Regia;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + PAD.rot + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
@@ -99102,7 +99620,7 @@ var Vesti3D = (function () {
 var Personaggi = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), stile: ((Q.match(/[?&]stile=([abck])/i) || [])[1] || 'k').toLowerCase() };
+  const CFG = { teste: ((Q.match(/[?&]teste=(\w+)/) || [])[1] || 'kit'), facce: ((Q.match(/[?&]facce=(\w+)/) || [])[1] || 'scolpite'), on: !/[?&]vecchiagente\b/.test(Q), capelli: ((Q.match(/[?&]capelli=(\w+)/) || [])[1] || 'mie'), stile: ((Q.match(/[?&]stile=([abck])/i) || [])[1] || 'k').toLowerCase() };
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => (t = cl(t, 0, 1), t * t * (3 - 2 * t));
   const spow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
   function rng(seed) { let h = 2166136261; for (const ch of String(seed)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
@@ -99117,7 +99635,7 @@ var Personaggi = (function () {
   const BRACCIO = 1.07;   // [personaggi] le braccia del kit sono corte: +7% scalando l'osso del braccio (la scala non è nelle clip)
   const STILI = {
     a: { nome: 'Statuina dipinta', testa: 1, mani: 1, piedi: 1, naso: 1, p: 2.25, seg: 16, spalle: 1, toon: 0, contorno: 0 },
-    k: { nome: 'Kit', testa: 1.08, testaKit: 1.2, occhi: 1.4, mani: 1.2, piedi: 1.12, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
+    k: { nome: 'Kit', testa: 1.08, testaKit: 1, occhi: 1, mani: 1, piedi: 1, naso: .6, p: 2.6, seg: 10, pTesta: 2.35, spalle: 1, toon: 0, contorno: 0, piatto: 1, inchiostro: .32, luce: .3 },   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno (la tavola scelta)   // [personaggi] come i modelli del kit: sfaccettato, luce piatta, niente contorno, segni appena
     b: { nome: 'Linea chiara', testa: 1.08, mani: 1, piedi: 1, naso: .6, p: 3.1, seg: 14, pTesta: 2.35, spalle: 1, toon: 3, contorno: .008 },
     c: { nome: 'Carosello', testa: 1.55, mani: 1.4, piedi: 1.35, naso: 1.8, p: 2.0, seg: 16, spalle: .9, toon: 3, contorno: 0 },
   };
@@ -99202,7 +99720,7 @@ var Personaggi = (function () {
   const BUSTO = {
     // [misure] prese dai modelli del kit (Casual_2, Casual) nella posa a T: stesse larghezze e profondità di oggi
     m: [[0, .118, .09, .0], [.14, .132, .098, .0], [.34, .12, .094, .01], [.52, .122, .098, .015], [.68, .136, .104, .015], [.8, .148, .1, .0], [.9, .14, .086, -.01], [1, .058, .056, .0]],
-    f: [[0, .124, .09, .0], [.14, .14, .1, -.008], [.36, .1, .078, .008], [.52, .106, .082, .018], [.66, .118, .1, .03], [.8, .124, .088, .0], [.91, .112, .074, -.01], [1, .048, .048, .0]],
+    f: [[0, .124, .09, .0], [.14, .14, .1, -.008], [.36, .1, .078, .008], [.52, .106, .082, .018], [.66, .118, .1, .03], [.79, .123, .088, .0], [.87, .12, .082, -.006], [.93, .106, .072, -.01], [.97, .078, .06, -.006], [1, .048, .048, .0]],   // [personaggi] le spalle delle donne scendono verso il braccio (prima un ripiano squadrato sopra l'attacco)
   };
   function corpoDi(D, J) {
     const st = S(), f = D.sesso === 'f', C = D.corpo || {}, pan = C.pancia || 0, rob = C.robusto || 1, spa = (C.spalle || 1) * st.spalle;
@@ -99385,7 +99903,8 @@ var Personaggi = (function () {
     return d * k;
   }
   // il deltoide: la spalla tonda sopra e fuori dove il braccio entra nel busto, e il bicipite davanti
-  function deltoide(th, t, sp) { const up = Math.max(0, -Math.sin(th)), fr = Math.cos(th), k = 1 / (1 + Math.max(0, sp || 0) * 24);   // sotto i capi spessi la spalla non si gonfia
+  function deltoide(th, t, sp, f) { const up = Math.max(0, -Math.sin(th)), fr = Math.cos(th), k = 1 / (1 + Math.max(0, sp || 0) * 24);   // sotto i capi spessi la spalla non si gonfia
+    if (f) return k * (.07 * g1(t, .24, .15) * up ** 1.8 + .025 * g1(t, .4, .12) * Math.max(0, fr) + .02 * g1(t, .24, .13) * Math.abs(fr));   // [personaggi] le donne: spalla tonda e bassa, niente punta che spunta sopra il braccio
     return k * (.16 * g1(t, .2, .11) * up ** 1.2 + .05 * g1(t, .4, .1) * Math.max(0, fr) + .04 * g1(t, .2, .1) * Math.abs(fr)); }
   // [personaggi] le forme dei capi: gonfio [sacchi, altezza], drop (spalla scesa), blusa (sbuffo sopra la costina), dritto (cade dal petto), box (sezione squadrata),
   // pieghe [quante, quanto] in fondo al busto o ai pantaloni, manica (si allarga verso il fondo), grinze (al gomito), pila (il mucchio sulla scarpa), ginocchio
@@ -99405,6 +99924,7 @@ var Personaggi = (function () {
   };
   function costruisci(D, J) {
     const B = new Builder(), st = S(), f = D.sesso === 'f', K = corpoDi(D, J), pelle = C3(D.pelle || '#d8a888');
+    const PTRI = typeof window !== 'undefined' && window.__partiTri, tq = n => { if (PTRI) { PTRI[n] = (PTRI[n] || 0) + (B.I.length - tq.i) / 3; } tq.i = B.I.length; }; tq.i = 0;   // [personaggi] i triangoli per parte (solo per la sonda)
     // l'ordine degli strati: le magliette dentro i pantaloni, i pantaloni sotto le felpe e le giacche (stabile a pari rango)
     const ORD = v => v.ord !== undefined ? v.ord : v.gamba && !v.busto ? 2 : /^(canottiera|maglietta|maglietta_righe|camicia|camicia_corta)$/.test(v.tipo) ? 1 : /cappotto|cerata/.test(v.tipo) ? 5 : /giacca|divisa|bomber|tuta_giacca/.test(v.tipo) ? 4 : v.busto ? 3 : 6;
     const vesti = (D.vesti || []).map((v, i) => Object.assign({}, CAPI[v.tipo] || {}, v, { col: C3(v.col || '#888'), col2: v.col2 ? C3(v.col2) : null, col3: v.col3 ? C3(v.col3) : null, _i: i })).map(v => Object.assign(v, { _o: ORD(v) })).sort((a, b) => a._o - b._o || a._i - b._i);
@@ -99435,14 +99955,15 @@ var Personaggi = (function () {
       if (v.gamba) listaG.push(Object.assign({}, base, bnd, { dritti: v.dritti || 0, tile: bnd.tileC || TL[v.gtile] || 0, col2: bnd.col2 || (v.col2 ? C3v(v.col2) : mulc(v.col, .6)), da: v.gamba[0], a: v.gamba[1], sp: v.gamba[2], orlo: base.orlo ? .04 : 0, orloSolo: 'giu', zampa: v.zampa || 0 }));
       if (v.bacino && !v.busto) listaB.push(Object.assign({}, base, { tile: 0, ptile: ptOf(v), da: -.05, a: .2, sp: v.bacino, orlo: .05, orloSp: .004, orloSolo: 'su', colOrlo: mulc(v.col, .8) }));
     });
-    const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 22 : 15, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
+    const nB = listaB.some(L => L.forma && (L.forma.gonfio || L.forma.blusa)) ? 19 : 14, campB = []; for (let k = 0; k <= nB; k++) campB.push(-.15 + k / nB * 1.15);
     // il busto parte un po' sotto l'inguine (chiuso dalle cosce) e arriva al collo; il collo fino a dentro la testa
     const tlo = Math.min(-.02, ...listaB.map(L => L.da)) - .001;
-    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 16 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
+    catenaStrati(B, listaB, tlo, 1, campB, t => { const G = geomB(Math.max(t, 0)), Lt = strati(listaB, t).top, sv = Lt && Lt.svasa || 0; if (t < 0) { const k = 1 + t * (sv ? .3 : 2.2); G.a *= k; G.b *= k; } if (sv && t < .2) { const k = sv * sm((.2 - t) / .25); G.a += k; G.b += k * .9; } return G; }, pelle, { zona: 'busto', lung: tLen, wfn: p => wBusto(p), seg: st.piatto ? 14 : undefined, mod: (th, r) => scolpisciBusto(th, r.tt === undefined ? .5 : r.tt, f, r.spT || 0) });
     // il fondo del busto: si chiude tra le cosce
     { const G = geomB(0), y0 = yOf(tlo); const L = strati(listaB, tlo + .002).top; loft(B, [{ c: [0, y0, G.c[2]], t: [0, 1, 0], a: G.a * (1 + tlo * 2.2) + .01, b: G.b * (1 + tlo * 2.2) + .01, col: L ? L.col : pelle, ao: .7, w: [['Hips', 1]] }, { c: [0, y0 - .01, G.c[2]], t: [0, 1, 0], a: .01, b: .01, col: L ? L.col : pelle, ao: .6, w: [['Hips', 1]] }]); }
     // il collo e il pomo: dentro la testa
     loft(B, [0, .5, 1].map(q => { const y = lerp(yT - .01, J.Head[1] + .05, q); return { c: [0, y, lerp(J.Neck[2], J.Head[2] - .005, q)], t: [0, 1, 0], a: (f ? .038 : .047) * (D.corpo && D.corpo.robusto || 1) * lerp(1, .92, q), b: (f ? .038 : .045) * lerp(1, .9, q), col: pelle, ao: lerp(.8, .9, q), w: catena(y, ys, spine, [0, .05, .06, .07, .03, .025]) }; }));
+    tq('busto');
     // ---------------- BRACCIA ----------------
     ['L', 'R'].forEach(sd => {
       const sg = sd === 'L' ? 1 : -1, j0 = J['UpperArm' + sd], j1 = J['LowerArm' + sd], j2 = J['Wrist' + sd], jS = J['Shoulder' + sd];
@@ -99454,10 +99975,11 @@ var Personaggi = (function () {
         const kb = x > xs[1] - .01 ? 1 / BRACCIO : 1;   // dove pesa il braccio la scala dell'osso lo ingrossa: qui si assottiglia di quanto
         return { c: [sg * x, y, z], t: [sg, 0, 0], f: [0, 0, 1], a: r * kb * (u > .55 ? .82 : 1), b: r * kb, ao: t < .15 ? .85 : 1, tt: t, w: catena(x, xs, ['Shoulder' + sd, 'UpperArm' + sd, 'LowerArm' + sd, 'Wrist' + sd], [0, .03, .035, .02]) };
       };
-      const nA = listaA.some(L => L.forma && (L.forma.gonfio || L.forma.grinze)) ? 14 : 9, camp = []; for (let k = 0; k <= nA; k++) camp.push(k / nA);
-      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { zona: 'braccio', lung: L1 - L0, seg: 12, flipU: sd === 'R', mod: (th, r) => deltoide(th, r.tt === undefined ? .5 : r.tt, r.spT) });
+      const nA = listaA.some(L => L.forma && (L.forma.gonfio || L.forma.grinze)) ? 12 : 8, camp = []; for (let k = 0; k <= nA; k++) camp.push(k / nA);
+      catenaStrati(B, listaA, 0, 1, camp, geomA, pelle, { zona: 'braccio', lung: L1 - L0, seg: 10, flipU: sd === 'R', mod: (th, r) => deltoide(th, r.tt === undefined ? .5 : r.tt, r.spT, f) });
       mano(B, J, sd, sg, pelle, D);
     });
+    tq('braccia');
     // ---------------- GAMBE ----------------
     const sc = SCARPE[D.scarpe && D.scarpe.tipo] || SCARPE.scarpe, colS = C3((D.scarpe && D.scarpe.col) || '#2a2018');
     ['L', 'R'].forEach(sd => {
@@ -99475,14 +99997,16 @@ var Personaggi = (function () {
       listaB.filter(L => L.da < -.09).forEach(L => { const yb = yOf(L.da); lst.push(Object.assign({}, L, { tile: 0, da: 0, a: cl((y0 - yb) / Lg + .04, .05, .4), sp: L.sp + .004, orlo: .03, orloSolo: 'giu', colOrlo: null })); });
       // il gambale degli stivali e le calze sono strati della gamba
       if (sc[0] > 0) lst.push({ da: 1 - sc[0] * .92, a: 1, sp: .012 + (lst.length ? lst.reduce((s, L) => s + (L.a > .9 ? L.sp : 0), 0) * 0 : 0), col: colS, tile: 0, ptile: 0, orlo: .04, orloSp: .006, orloSolo: 'su' });
-      const nG = lst.some(L => L.forma && (L.forma.pila || L.forma.pieghe)) ? 16 : 10, camp = []; for (let k = 0; k <= nG; k++) camp.push(k / nG);
+      const nG = lst.some(L => L.forma && (L.forma.pila || L.forma.pieghe)) ? 13 : 9, camp = []; for (let k = 0; k <= nG; k++) camp.push(k / nG);
       const gonne = vesti.filter(v => v.gonna).map(v => lerp(J.UpperLegL[1], J.FootL[1] + .03, v.gonna[1]) + .16), yv = Math.max(-1, ...gonne), tg0 = yv > -1 ? cl((y0 - yv) / Lg, 0, .9) : 0;
       const zampa = lst.find(L => L.zampa && L.a > .9 && !(sc[0] > 0));
-      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 12, flipU: sd === 'R' });
+      catenaStrati(B, lst, tg0, 1, camp, t => { const G = geomG(t); const dr = lst.reduce((m, L) => Math.max(m, t >= L.da && t <= L.a && L.dritti ? L.dritti : 0), 0); if (dr && t > .3) { const R0 = K.gamba * .92, k = dr * sm((t - .3) / .25); G.a = lerp(G.a, Math.max(G.a, R0), k); G.b = lerp(G.b, Math.max(G.b, R0 * 1.05), k); } if (zampa && t > .55) { const k = sm((t - .55) / .45) * zampa.zampa; G.a += k * .8; G.b += k; } return G; }, pelle, { zona: 'gamba', lung: Lg, seg: 10, flipU: sd === 'R' });
       scarpa(B, J, sd, sg, sc, colS, D, pelle);
     });
     // ---------------- TESTA ----------------
+    tq('gambe');
     testa(B, J, D, pelle);
+    tq('testa');
     // ---------------- PEZZI LIBERI: gonne, falde, grembiuli, scialli, colletti, cinture ----------------
     vesti.forEach((v, i) => {
       if (v.gonna) gonna(B, J, K, profAt, zAt, v.gonna, v, tileOf(v), ptOf(v), false, listaB);
@@ -99502,18 +100026,20 @@ var Personaggi = (function () {
       uovo(B, [0, y, zAt(y) + P0[1] + P0[2] + sp + .006], [0, 0, 1], .02, .016, .005, C3('#b8b0a0'), [['Hips', 1]], { anelli: 2, seg: 6, p: 4, f: [0, 1, 0] }); }
     if (D.imbrago) imbrago(B, J, D, K, profAt, zAt, yOf, listaB, listaG);
     if (D.corda) corda(B, J, profAt, zAt, yOf, listaB, D);
+    tq('pezzi');
     accessori(B, J, D, K, profAt, zAt, yOf, listaB, listaA);
     addosso(B, J, D, K, profAt, zAt, yOf, listaB, vesti);
+    tq('accessori');
     return B;
   }
   // ---------------- LE COLLANE: un filo che posa sul corpo vero (sezione a superellisse del busto, più lo spessore dei vestiti), dal collo al petto ----------------
   function collana(B, profAt, zAt, yOf, LB, it) {
-    const col = C3v(it.col || '#d8b040'), e = 2 / (S().p || 2.6), tipo = it.tipo, drop = tipo === 'catenone' ? .2 : tipo === 'perle' ? .1 : .13, tHi = .975, N = tipo === 'perle' ? 26 : 30, pts = [];
+    const col = C3v(it.col || '#d8b040'), e = 2 / (S().p || 2.6), tipo = it.tipo, drop = tipo === 'catenone' ? .2 : tipo === 'perle' ? .1 : .13, tHi = .975, N = tipo === 'perle' ? 22 : tipo === 'catenone' ? 24 : 18, pts = [];   // [personaggi] meno maglie, più lunghe: da vicino si legge uguale
     for (let k = 0; k <= N; k++) { const a = (k / N - .5) * Math.PI * 1.2, ca = Math.cos(a), t = lerp(tHi, tHi - drop, Math.pow(Math.max(ca, 0), 2.2)), y = yOf(t), P0 = profAt(y), sp = strati(LB, t).sp + .006;
       pts.push([spow(Math.sin(a), e) * (P0[0] * lerp(.55, 1, Math.pow(Math.max(ca, 0), .5)) + sp), y, zAt(y) + P0[2] + spow(Math.max(ca, 0), e) * (P0[1] + sp) - (ca < .3 ? .02 * (.3 - ca) : 0)]); }
     const w = p => p[1] > yOf(.9) ? [['Chest', .6], ['Neck', .4]] : [['Chest', 1]];
     if (tipo === 'perle') pts.forEach((p, k) => uovo(B, p, [0, 1, 0], .0085, .0085, .0085, mixc(col, [1, 1, 1], k % 2 ? .1 : 0), w(p), { anelli: 2, seg: 6 }));
-    else { const r = tipo === 'catenone' ? .0042 : .0022; pts.forEach((p, k) => { if (k === pts.length - 1) return; const q = pts[k + 1], m = mul(add(p, q), .5), d = norm(sub(q, p)); uovo(B, m, d, r, r * (k % 2 ? 1.5 : .7), dist(p, q) * .62, col, w(m), { anelli: 2, seg: 5 }); });   // le maglie, alternate di piatto e di taglio
+    else { const r = tipo === 'catenone' ? .0042 : .0022; pts.forEach((p, k) => { if (k === pts.length - 1) return; const q = pts[k + 1], m = mul(add(p, q), .5), d = norm(sub(q, p)); uovo(B, m, d, r, r * (k % 2 ? 1.5 : .7), dist(p, q) * .62, col, w(m), { anelli: 2, seg: 4 }); });   // le maglie, alternate di piatto e di taglio
       if (tipo === 'catenone') { const c0 = pts[N >> 1], y = c0[1] - .03, P0 = profAt(y), z = zAt(y) + P0[2] + P0[1] + strati(LB, .8).sp + .01; uovo(B, [c0[0], y, z], [0, 0, 1], .022, .022, .005, mulc(col, 1.05), [['Chest', 1]], { anelli: 2, seg: 12, f: [0, 1, 0] }); uovo(B, [c0[0], y, z + .004], [0, 0, 1], .014, .014, .003, mulc(col, .8), [['Chest', 1]], { anelli: 2, seg: 10, f: [0, 1, 0] }); } }   // il medaglione
   }
   const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -99663,26 +100189,41 @@ var Personaggi = (function () {
     const tipo = (D.capelli && D.capelli.tipo) || (f ? 'lunghi' : 'corti'), capelli = (D.capelli && D.capelli.kit) || HAIR_KIT[tipo] || (f ? 'Casual' : 'Casual_Hoodie');
     return { faccia, capelli };
   }
+  // [personaggi] il cranio sotto i capelli: le teste del kit da donna sopra la fronte non hanno pelle (c'erano i capelli), e qualche
+  // quota bassa di quelle da uomo esce bucata. Le righe che mancano o non tornano si rifanno da un cranio intero (Casual_Hoodie misurato),
+  // scalato alla larghezza e alla profondità della testa alla quota della fronte; sopra si chiude la cupola.
+  const CRANIO = [[.04, .065, .095, .03], [.06, .077, .103, .024], [.08, .086, .117, .027], [.1, .093, .119, .02], [.12, .098, .119, .015], [.14, .1, .122, .015], [.16, .1, .123, .015],
+    [.18, .097, .119, .014], [.2, .094, .114, .013], [.22, .085, .099, .01], [.235, .074, .084, .008], [.25, .056, .062, .006], [.26, .034, .038, .004], [.265, .012, .014, .003]];
+  function cranio(out) {
+    const T = y => { let i = 0; while (i < CRANIO.length - 2 && y > CRANIO[i + 1][0]) i++; const A = CRANIO[i], Bq = CRANIO[i + 1], t = cl((y - A[0]) / (Bq[0] - A[0]), 0, 1); return [lerp(A[1], Bq[1], t), lerp(A[2], Bq[2], t), lerp(A[3], Bq[3], t)]; };
+    const ok = r => r[1] > .03 && r[2] > .03, rif = out.find(r => Math.abs(r[0] - .09) < .006 && ok(r)) || out.find(r => r[0] > .06 && r[0] < .11 && ok(r));
+    const t9 = T(rif ? rif[0] : .09), sa = rif ? rif[1] / t9[0] : 1, sb = rif ? rif[2] / t9[1] : 1, dz = rif ? rif[3] - t9[2] : 0;
+    let su = false; for (let i = 0; i < out.length; i++) { const r = out[i];   // dalla prima riga che manca in su, il cranio intero (le righe più alte del kit a volte sono il bordo di un buco)
+      if (r[0] > .1 && (!ok(r) || su)) { su = true; const t = T(r[0]); out[i] = [r[0], t[0] * sa, t[1] * sb, t[2] + dz]; }
+      else if (!ok(r)) { const q = out.slice(0, i).reverse().find(ok) || rif; if (q) out[i] = [r[0], q[1], q[2], q[3]]; } }
+    const top = out.length ? out[out.length - 1][0] : .1; for (let y = top + .01; y <= .27; y += .01) { const t = T(y); out.push([y, t[0] * sa, t[1] * sb, t[2] + dz]); }   // la cupola fino in cima
+  }
   // cuce le parti nella figura; restituisce il profilo della testa misurato (per cappelli, baffi, barbe, occhiali)
   function testaKit(B, J, D, pelle, capH, K, base, taglio) {
     const sc = sceltaKit(D), F = KT.f[sc.faccia], H = KT.f[sc.capelli], hb = J.Head, sk = (D.testa && D.testa.scala || 1) * (S().testaKit || 1), OE = S().occhi || 1;   // [personaggi] testaKit, occhi: la testa e gli occhi del kit più grandi (lo stile cartoon)
     const col = { pelle, ombra: mulc(pelle, .86), occhi: [.06, .045, .04], ciglia: mulc(capH, .72), capelli: capH, baffi: mulc(capH, .85), casco: C3('#e8b030') };
     const neckY = hb[1] + F.neck, wOf = y => y < neckY + .035 ? [['Neck', 1 - sm((y - neckY) / .035)], ['Head', sm((y - neckY) / .035)]].filter(e => e[1] > 1e-3) : [['Head', 1]];
-    const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi)), ...H.parts.filter(p => p.kind === 'capelli')];
-    if (sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
+    const mie = CFG.capelli !== 'kit';   // [personaggi] i capelli sono i miei (capelli(), a calotta col volume dello stile) anche sulle teste del kit: ?capelli=kit per quelli del kit
+    const usa = [...F.parts.filter(p => p.kind !== 'capelli' && p.kind !== 'casco' && (p.kind !== 'baffi' || D.baffi) && !(mie && p.kind === 'ciglia' && sc.faccia === 'Worker' && false)), ...(mie ? [] : H.parts.filter(p => p.kind === 'capelli'))];
+    if (!mie && sc.capelli === 'Worker' && sc.faccia !== 'Worker') usa.push(...H.parts.filter(p => p.kind === 'ciglia'));   // il calvo: la corona di capelli del Worker sta nelle sue "sopracciglia"
     if (D.cappello && D.cappello.tipo === 'casco_cantiere') usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'casco'));
     if (D.baffi && !usa.some(p => p.kind === 'baffi')) usa.push(...KT.f.Worker.parts.filter(p => p.kind === 'baffi'));   // i baffi del Worker, su qualunque faccia
-    const pk = [sc.faccia, sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
+    const pk = [sc.faccia, mie ? 'mie' : sc.capelli, sk, taglio, D.baffi ? 1 : 0, D.cappello && D.cappello.tipo === 'casco_cantiere' ? 1 : 0, hb.map(v => v.toFixed(4))].join('|'), cached = PROF.get(pk), misura = !cached;   // [leggera] il profilo della testa si misura una volta per combinazione
     const tris = []; let eyS = 0, eyN = 0, chinY = 9, skTop = -9; const eyA = { y: 0, x: 0, z: -9 };
     const capV = [];   // [personaggi] i vertici dei capelli: col cappello si stringono sotto la tesa
     usa.forEach(pt => {
-      const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; if (pt.kind === 'capelli') capV.push([v0, n]);
+      const v0 = B.n, c = col[pt.kind] || pelle, n = pt.P.length / 3; if (pt.kind === 'capelli') capV.push([v0, n]); const DBG = typeof window !== 'undefined' && window.__capDbg; if (DBG && (pt.kind === 'pelle' || pt.kind === 'capelli')) DBG.r.push([pt.kind, v0, v0 + n]);   // [personaggi] la sonda dei cappelli (strumenti/sonda_cappelli.js)
       let oc = null; if (pt.kind === 'occhi' && OE !== 1) { oc = [0, 0, 0]; for (let i = 0; i < n; i++) { oc[0] += Math.abs(pt.P[i * 3]); oc[1] += pt.P[i * 3 + 1]; oc[2] += pt.P[i * 3 + 2]; } oc = oc.map(v => v / n); }   // il centro di ciascun occhio (sono simmetrici: |x|) B.ol = pt.kind === 'occhi' || pt.kind === 'ciglia' || pt.kind === 'baffi' ? 0 : 1;
       const keep = new Uint8Array(n).fill(1);
       for (let i = 0; i < n; i++) {
         let q0 = pt.P[i * 3], q1 = pt.P[i * 3 + 1], q2 = pt.P[i * 3 + 2]; if (oc) { const cx = Math.sign(q0) * oc[0]; q0 = cx + (q0 - cx) * OE; q1 = oc[1] + (q1 - oc[1]) * OE; q2 += .002; }
         const p = [hb[0] + q0 * sk, hb[1] + q1 * sk, hb[2] + q2 * sk];
-        if (taglio < 0 && pt.kind === 'capelli' && p[1] > taglio) keep[i] = 0;   // [personaggi] sotto un cappello i capelli non si tagliano più (restava lo scalino): si stringono dentro (stringi)
+        if (taglio && pt.kind === 'capelli' && p[1] > taglio + (taglio > 0 ? .035 * K : 0)) keep[i] = 0;   // [personaggi] sotto un cappello i capelli si stringono dentro (stringi) e si tagliano solo ben dentro la cupola: niente scalino, niente triangoli che non si vedono
         B.v(p, c, ZERO, ZERO, [0, 0, 0], [0, 0, 0], wOf(p[1])); B.N[(v0 + i) * 3] = pt.N[i * 3]; B.N[(v0 + i) * 3 + 1] = pt.N[i * 3 + 1]; B.N[(v0 + i) * 3 + 2] = pt.N[i * 3 + 2];
         if (pt.kind === 'occhi') { eyS += (p[1] - base[1]) / K; eyN++; eyA.y += p[1]; eyA.x += Math.abs(p[0] - hb[0]); eyA.z = Math.max(eyA.z, p[2]); }
         if (pt.kind === 'pelle') { chinY = Math.min(chinY, p[1]); skTop = Math.max(skTop, p[1]); }
@@ -99704,10 +100245,10 @@ var Personaggi = (function () {
       return pr; };
     if (cached) { KT.ultimo = cached; return stringi(cached); }
     const ray = (o, d, solo) => { let best = null; for (const T3 of tris) { if (solo && !T3.pelle) continue; const [A, Bv, C] = T3; const e1 = sub(Bv, A), e2 = sub(C, A), pv = cross(d, e2), det = dot(e1, pv); if (Math.abs(det) < 1e-9) continue; const iv = 1 / det, tv = sub(o, A), u = dot(tv, pv) * iv; if (u < 0 || u > 1) continue; const qv = cross(tv, e1), w = dot(d, qv) * iv; if (w < 0 || u + w > 1) continue; const t = dot(e2, qv) * iv; if (t > 0 && (best === null || t < best)) best = t; } return best; };
-    const out = []; for (let yk = -.05; yk <= .24; yk += .01) { const y = base[1] + yk * K;
+    const out = []; for (let yk = -.05; yk <= (mie ? .3 : .24); yk += .01) { const y = base[1] + yk * K;
       const tf = ray([base[0], y, base[2] + .5], [0, 0, -1], true), tbA = ray([base[0], y, base[2] - .5], [0, 0, 1]), tbS = ray([base[0], y, base[2] - .5], [0, 0, 1], true), tb = capp && tbS !== null && (tbA === null || tbS - tbA < .1) ? tbS - .004 : tbS !== null && tbA !== null && tbS - tbA < .1 ? Math.max(tbA, tbS - .012) : tbA; if (tf === null || tb === null) continue; /* la nuca sulla pelle, se c.è lì */
       const zf = .5 - tf, zb = -.5 + tb, zc = (zf + zb) / 2, tsA = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0]), tsS = ray([base[0] + .5, y, base[2] + zc], [-1, 0, 0], true), ts = capp && tsS !== null && (tsA === null || tsS - tsA < .1) ? tsS - .004 : tsS !== null && tsA !== null && tsS - tsA < .1 ? Math.max(tsA, tsS - .01) : tsA; if (ts === null) continue; /* le tempie sulla pelle */
-      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return stringi(out);
+      out.push([yk, (.5 - ts) / K, (zf - zb) / 2 / K, zc / K]); } if (mie) cranio(out); out.ey = eyN ? eyS / eyN : .093; out.tris = tris; out.eye = eyN ? { y: eyA.y / eyN, x: eyA.x / eyN, z: eyA.z } : null; out.chin = chinY; out.skTop = skTop; out.hb = hb.slice(); KT.ultimo = out; PROF.set(pk, out); return stringi(out);
   }
   function testa(B, J, D, pelle) {
     const st = S(), T = D.testa || {}, K = st.testa * (T.scala || 1) * (D.sesso === 'f' ? .95 : 1), h = J.Head, base = [h[0], h[1] - .01 * K, h[2] - .005], wH = [['Head', 1]];
@@ -99764,6 +100305,10 @@ var Personaggi = (function () {
     if (false) uovo(B, at(-.02, 0, front(-.02) - .03), [0, 0, 1], .06 * K, .025 * K, .03 * K, mulc(pelle, .96), wH, { anelli: 3, seg: 8 });
     B.ol = 1;
     if (!kitOn) capelli(B, at, K, D, capH, front, wid, wH, pa);
+    else if (CFG.capelli !== 'kit') { const dy = PK && PK.ey ? PK.ey - .093 : 0;   // [personaggi] i miei capelli sul cranio del kit (misurato senza i suoi capelli), alla quota dei suoi occhi
+      const pa2 = (y, k) => k === 0 ? pa(y + dy, 0) - dy : pa(y + dy, k) + (k === 1 || k === 2 ? .006 : 0); pa2.PK = PK;   // un filo più larga: il cranio del kit è squadrato, gli spigoli bucavano la calotta tonda
+      pa2.lim = PK && PK.skTop > -9 ? (PK.skTop - base[1]) / K - dy - .006 : 9;   // l'attaccatura non sopra dove finisce la pelle del viso (le teste da donna del kit finiscono basse)
+      const DBG = typeof window !== 'undefined' && window.__capDbg, c0 = B.n; capelli(B, (y, x, z) => at(y + dy, x, z), K, D, capH, y => front(y + dy), y => wid(y + dy), wH, pa2); if (DBG) DBG.r.push(['capelli', c0, B.n]); }
     B.ol = 0;
     if (D.baffi && !kitOn) { const by = .036, bz = front(by) + .002, tipo = D.baffi; [1, -1].forEach(s => uovo(B, at(by - (tipo === 'spioventi' ? .006 : 0), s * .019, bz), [s, tipo === 'spioventi' ? -.6 : -.18, 0], .008 * K * (tipo === 'folti' || tipo === 'spioventi' ? 1.5 : 1), .009 * K, .026 * K * (tipo === 'spioventi' ? 1.2 : 1), capH, wH, { anelli: 4, seg: 6, punta: -.3, f: [0, 0, 1] })); }
     if (D.barba) { const corta = D.barba === 'corta' || D.barba === 'pizzetto';
@@ -99773,15 +100318,15 @@ var Personaggi = (function () {
           mod: th => { const fr = Math.cos(th); return (fr < .05 ? -.6 * sm((.05 - fr) / .4) : 0) - (y > yM - .005 && fr > .55 ? .25 * sm((fr - .55) / .2) : 0); } }; }), { seg: 16 }); } }
     if (D.occhiali) { B.ol = 0; occhiali(B, D, PK, at, K, ey, front, wid, wH); B.ol = 1; }
     B.ol = 1;
-    pa.PK = PK; if (D.cappello && D.cappello.tipo) cappello(B, at, K, D, front, wid, wH, pa);
+    pa.PK = PK; if (D.cappello && D.cappello.tipo) { const DBG = typeof window !== 'undefined' && window.__capDbg, c0 = B.n; cappello(B, at, K, D, front, wid, wH, pa); if (DBG) { DBG.r.push(['cappello', c0, B.n]); DBG.P = B.P; DBG.base = base; DBG.K = K; } }
   }
   // ---------------- I CAPELLI A CIOCCHE ----------------
   const P0top = pa => { let y = .2; while (y < .3 && pa(y + .002, 1) > .012 && pa(y + .002, 1) < pa(y, 1) + 1e-6) y += .002; return y; };
   function capelli(B, at, K, D, col, front, wid, wH, pa) {
     const tipo = (D.capelli && D.capelli.tipo) || 'corti', hat = D.cappello && D.cappello.tipo, scuro = mulc(col, .8), chiaro = mixc(col, [1, 1, 1], .1);
     const cc = (y, x, z, ax, a, b, l, c, o) => uovo(B, at(y, x, z), ax, a * K, b * K, l * K, c || col, wH, Object.assign({ anelli: 4, seg: 8 }, o || {}));
-    const top = pa(1, 0), sotto = hat && hat !== 'fazzoletto' ? (hat === 'paglia' || hat === 'cappello' ? .16 : .135) : 0;
-    if (hat === 'fazzoletto') return;
+    const top = pa(1, 0), sotto = hat && !/^(fazzoletto|fascia|bandana|visiera)$/.test(hat) ? (hat === 'paglia' || hat === 'cappello' ? .16 : hat === 'basco' ? .175 : hat === 'casco' ? .075 : hat === 'elmetto' ? .11 : .135) : 0;   // [personaggi] il basco è inclinato e dietro sta alto. fascia, bandana e visiera non coprono la testa: i capelli restano interi
+    if (/^(fazzoletto|passamontagna|maschera_gas|cappuccio_stelle)/.test(hat || '')) return;   // [personaggi] coprono tutta la testa: niente capelli sotto
     const r = rng('capelli' + JSON.stringify(D.capelli || {}) + (D.seme || '')), lato = r() < .5 ? 1 : -1;
     // [capelli] una calotta sola che segue il cranio, con lo spessore e il volume dello stile, l'attaccatura vera
     // (fronte, tempie, basette, nuca) e i ciuffi fatti di forma, non di palline
@@ -99800,8 +100345,9 @@ var Personaggi = (function () {
     }[tipo] || {};
     const g2 = (y, c, w) => Math.exp(-((y - c) / w) * ((y - c) / w));
     // dove ci sono capelli: sopra l'attaccatura, che scende dalla fronte alle tempie, alle basette e alla nuca
-    const attacco = (th) => { const fr = Math.cos(th), sn = Math.sin(th), as = Math.abs(sn);
+    const attacco = (th) => attacco1(th, true), attacco0 = th => attacco1(th, false), attacco1 = (th, lim) => { const fr = Math.cos(th), sn = Math.sin(th), as = Math.abs(sn);
       if (S.calvo) return fr > -.35 ? 1 : lerp(.06, .2, sm((fr + .9) / .55));   // la corona: solo dietro e ai lati
+      if (lim && pa.lim !== undefined && fr > -.2) { const yy = attacco0(th); return Math.min(yy, pa.lim + (1 - sm((fr + .2) / .5)) * .05); }
       let y = fr > .25 ? S.fronte - (S.riga && sn * lato > 0 ? .008 : 0) - (S.punta ? .01 * Math.exp(-sn * sn * 60) : 0) : lerp(S.tempia, S.fronte, sm((fr - .0) / .25));
       if (as > .8 && fr > -.3) y = Math.min(y, lerp(S.tempia, .07, sm((as - .8) / .15)));   // le basette
       if (fr < -.2) y = Math.min(y, lerp(y, S.nuca, sm((-.2 - fr) / .4)));             // la nuca
@@ -99820,15 +100366,17 @@ var Personaggi = (function () {
       const a0 = pa(yy, 1), b0 = pa(yy, 2), kk = sop ? (last ? .25 : .65) : 1;
       return { c: at(Math.min(y, top + .006), 0, 0), t: [0, 1, 0], f: [0, 0, 1], a: a0 * K * kk, b: b0 * K * kk, fz: pa(yy, 3) * K, p: S.ricci ? 2.2 : 2.35, col: y < .1 ? scuro : col,
         colFn: S.riga && !sotto ? (th => { const sn = Math.sin(th) * lato, fr = Math.cos(th); return Math.abs(sn - .32) < .05 && fr > 0 && y > .19 ? mulc(col, .6) : y < .1 ? scuro : col; }) : null,
-        w: wH, mod: th => { if (sotto && y > sotto - .002) return -.04; const o = volume(th, y) * (sop ? .6 : 1) + (sotto ? .004 : 0), k = -hl(th, y); return lerp(o / ((a0 + b0) * .5), -.12, k); } }; }), { seg: 22 });
+        w: wH, mod: th => { if (sotto && y > sotto - .002) return -.04; let o = volume(th, y) * (sop ? .6 : 1) + (sotto ? .004 : 0); const k = -hl(th, y);
+          if (sotto && pa.lim !== undefined) o = lerp(o, -.004, sm((y - (sotto - .1)) / .085));   /* [personaggi] sotto la tesa i capelli rientrano dentro il cappello: niente cercine che esce */ return lerp(o / ((a0 + b0) * .5), -.32, k); } }; }), { seg: 22 });   // [personaggi] sotto l'attaccatura rientra molto: sulle teste del kit (naso, labbra in avanti) a -.12 usciva sul viso
     // gli stili che hanno pezzi in più
     if (tipo === 'lunghi' || tipo === 'caschetto') {   // il tendone dietro e ai lati: fino alle spalle (lunghi) o al mento (caschetto), aperto davanti
-      const lo = tipo === 'lunghi' ? -.13 : -.025;
-      loft(B, [[.15, 1], [.08, 1.03], [.02, 1.03], [lo * .5, 1.0], [lo, .95]].map(([y, q], j) => ({ c: at(y, 0, -.012), t: [0, -1, 0], f: [0, 0, 1], a: (pa(Math.max(y, .03), 1) + .016) * q * K, b: (pa(Math.max(y, .03), 2) + .014) * q * K, fz: (pa(Math.max(y, .03), 3) - .006) * K, col: j > 2 ? scuro : col, w: y < -.04 ? [['Head', .5], ['Neck', .5]] : wH,
+      const lo = tipo === 'lunghi' ? -.13 : -.025, yA = sotto && pa.lim !== undefined ? Math.min(.17, sotto + .03) : .15, st = y => sotto && pa.lim !== undefined ? sm((y - (sotto - .11)) / .08) : 0;   // [personaggi] sotto un cappello il tendone parte sotto la tesa e stretto: niente blocco più largo del cappello
+      loft(B, [[yA, 1], [.08, 1.03], [.02, 1.03], [lo * .5, 1.0], [lo, .95]].map(([y, q], j) => ({ c: at(y, 0, -.012), t: [0, -1, 0], f: [0, 0, 1], a: (pa(Math.max(y, .03), 1) + lerp(.016, .001, st(y))) * q * K, b: (pa(Math.max(y, .03), 2) + lerp(.014, .001, st(y))) * q * K, fz: (pa(Math.max(y, .03), 3) - .006) * K, col: j > 2 ? scuro : col, w: y < -.04 ? [['Head', .5], ['Neck', .5]] : wH,
         mod: th => { const fr = Math.cos(th); return (fr > .15 ? -.9 * sm((fr - .15) / .25) : 0) + .02 * Math.sin(th * 11) * sm(j / 3); } })), { seg: 22 });
     }
     if (tipo === 'raccolti' && !sotto) cc(.165, 0, -.1, [0, .45, -1], .042, .042, .044, chiaro);   // lo chignon
-    if (tipo === 'coda') { cc(.14, 0, -.112, [0, .2, -1], .018, .018, .022, scuro); loft(B, [0, .4, .8, 1].map((q, j) => ({ c: at(.14 - q * .2, 0, -.12 - q * .03), t: [0, -1, -.2], f: [0, 0, 1], a: [.024, .028, .02, .004][j] * K, b: [.022, .026, .018, .004][j] * K, col: j > 1 ? scuro : col, w: q > .4 ? [['Head', .5], ['Neck', .5]] : wH })), { seg: 8 }); }
+    if (tipo === 'coda') { const yc = sotto ? Math.min(.14, sotto - .07) : /^(visiera|fascia)$/.test(hat || '') ? .1 : .14, zb = pa.lim !== undefined ? pa(yc, 3) - pa(yc, 2) - .004 : -.112;   // [personaggi] il nodo sulla nuca vera (le teste del kit sono più profonde) e, col cappello, sotto la tesa: non buca più
+      cc(yc, 0, zb, [0, .2, -1], .018, .018, .022, scuro); loft(B, [0, .4, .8, 1].map((q, j) => ({ c: at(yc - q * .2, 0, zb - .008 - q * .03), t: [0, -1, -.2], f: [0, 0, 1], a: [.024, .028, .02, .004][j] * K, b: [.022, .026, .018, .004][j] * K, col: j > 1 ? scuro : col, w: q > .4 ? [['Head', .5], ['Neck', .5]] : wH })), { seg: 8 }); }
   }
   // ---------------- GLI OCCHIALI: a goccia (montatura d'oro), ovali (lenti colorate), mascherina e visiera avvolgenti, da vista ----------------
   const LENTI = { scuro: ['#3a4a5a', '#0a0c10', '#141820'], fumo: ['#5a5048', '#1a1612', '#2a221a'], blu: ['#7ad0ff', '#1a3a8a', '#0e1a3a'], fuoco: ['#ffe070', '#e8502a', '#5a1a10'], verde: ['#8ae0a0', '#1a5a3a', '#0a2a1a'], chiaro: ['#e8f0f4', '#c8d8e0', '#b0c4d0'] };
@@ -99982,16 +100530,16 @@ var Personaggi = (function () {
       for (const s of [-1, 1]) { const a = aOf(s * ex, ey), q = P(a, ey, .004), m = Nrm(a, ey); tuboP(B, [q, add(q, mul(m, .012))], () => .022, dk, wH); uovo(B, add(q, mul(m, .012)), m, .019, .019, .003, [.55, .62, .58], wH, { anelli: 2, seg: 10, f: [0, 1, 0] }); } }
   }
   // aiuti: un tubo lungo una polilinea (raggio per punto), una curva Catmull-Rom, un cono, una stella, una foglia (orecchie), una griglia a due facce
-  function tuboP(B, pts, rFn, col, w, chiuso, mat) {
-    if (pts.length < 2) return; const P2 = chiuso ? pts.concat([pts[0], pts[1]]) : pts, n = P2.length;
-    loft(B, P2.map((p, k) => { const a = P2[Math.max(0, k - 1)], b = P2[Math.min(n - 1, k + 1)], r = rFn(chiuso ? k % pts.length : k); return { c: p, t: norm(sub(b, a)), f: Math.abs(norm(sub(b, a))[1]) > .9 ? [1, 0, 0] : [0, 1, 0], a: r, b: r, p: 2, col, ptile: mat ? mat.ptile : 0, col3: mat ? mat.col3 : null, mv: k * .01, w }; }).slice(0, chiuso ? pts.length + 1 : n), { seg: 6 });
+  function tuboP(B, pts, rFn, col, w, chiuso, mat, sg) {
+    if (pts.length < 2) return; const r00 = rFn(0);   /* [personaggi] i fili sottili (cuciture, impunture) a 4 lati: da vicino non si vede la differenza */ const P2 = chiuso ? pts.concat([pts[0], pts[1]]) : pts, n = P2.length;
+    loft(B, P2.map((p, k) => { const a = P2[Math.max(0, k - 1)], b = P2[Math.min(n - 1, k + 1)], r = rFn(chiuso ? k % pts.length : k); return { c: p, t: norm(sub(b, a)), f: Math.abs(norm(sub(b, a))[1]) > .9 ? [1, 0, 0] : [0, 1, 0], a: r, b: r, p: 2, col, ptile: mat ? mat.ptile : 0, col3: mat ? mat.col3 : null, mv: k * .01, w }; }).slice(0, chiuso ? pts.length + 1 : n), { seg: sg || (r00 < .0026 ? 4 : 6) });
   }
   function curva(pts) { const n = pts.length - 1; return t => { const f = cl(t, 0, 1) * n, i = Math.min(n - 1, Math.floor(f)), u = f - i, p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n, i + 2)];
     return [0, 1, 2].map(k => .5 * ((2 * p1[k]) + (-p0[k] + p2[k]) * u + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * u * u + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * u * u * u)); }; }
   function cono(B, base, dir, r, len, col, w, seg) { loft(B, [0, .5, 1].map(q => ({ c: add(base, mul(dir, q * len)), t: dir, f: Math.abs(dir[1]) > .9 ? [1, 0, 0] : [0, 1, 0], a: r * (1 - q) + .0005, b: r * (1 - q) + .0005, p: 2, col, w })), { seg: seg || 6 }); }
   function stella(B, c, R, r, col, w) { for (let k = 0; k < 5; k++) { const q = -Math.PI / 2 + k * Math.PI * 2 / 5, d = [Math.cos(q), Math.sin(q), 0]; cono(B, add(c, mul(d, r * .4)), d, r * .7, R - r * .4, col, w, 4); } uovo(B, c, [0, 0, 1], r * .9, r * .9, r * .6, col, w, { anelli: 2, seg: 8 }); }
   function griglia(B, na, nr, pos, col, w, dueLati, pt) {
-    for (const side of dueLati ? [1, -1] : [1]) { const v0 = B.n, i0 = B.I.length;
+    for (const side of dueLati === -1 ? [-1] : dueLati ? [1, -1] : [1]) { const v0 = B.n, i0 = B.I.length;   // dueLati -1: solo il rovescio
       for (let j = 0; j <= nr; j++) for (let i = 0; i <= na; i++) B.v(pos(i, j), col, ZERO, mulc(col, .7), [0, 0, 0], [i * .01, j * .01, pt === undefined ? PT.maglia : pt], w);
       for (let j = 0; j < nr; j++) for (let i = 0; i < na; i++) { const q = v0 + j * (na + 1) + i, r2 = q + na + 1; if (side > 0) B.I.push(q, r2, q + 1, q + 1, r2, r2 + 1); else B.I.push(q, q + 1, r2, q + 1, r2 + 1, r2); }
       B.chiudi(v0, i0, null); }
@@ -100007,12 +100555,12 @@ var Personaggi = (function () {
   function cappello(B, at0, K, D, front0, wid0, wH, pa0) {
     const dy = pa0.PK && pa0.PK.ey ? pa0.PK.ey - .093 : 0, at = (y, x, z) => at0(y + dy, x, z), pa = (y, k) => pa0(y + dy, k), front = y => front0(y + dy), wid = y => wid0(y + dy);
     const H = D.cappello, c = C3(H.col || '#2a2a2e'), sc = mulc(c, .7), tipo = H.tipo, top = .2;
-    const tesa = (y, r0, r1, rf, col, dz) => loft(B, [[r0 * .9, 0], [r0, .003], [r1, .0], [r1, -.006], [r0 * .95, -.006]].map(([r, dy]) => ({ c: at(y + dy, 0, (dz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: r * K, b: r * K * (rf || 1.06), col, w: wH })), { seg: 18 });
+    const tesa = (y, r0, r1, rf, col, dz) => loft(B, [[r0 * .9, 0], [r0, .003], [r1, .0], [r1, -.006], [r0 * .95, -.006]].map(([r, dy]) => ({ c: at(y + dy, 0, (dz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: r * K, b: r * K * (rf || 1.06), col, w: wH })), { seg: 14 });
     // [personaggi] la cupola si allarga dove la testa misurata (fronte, nuca, tempie) uscirebbe: niente fronte che buca il cappello
     const PKt = pa0.PK && pa0.PK.length > 4 ? pa0.PK[pa0.PK.length - 1][0] - dy : -9;
     const fit = (yy, a, b, cz) => { if (yy > PKt - .004 || yy < .125) return [a, b];   // solo sopra le sopracciglia: il viso resta scoperto (fazzoletto, coppola)
       const fr = front(yy), bk = pa(yy, 3) - pa(yy, 2); return [Math.max(a, Math.min(pa(yy, 1) + .006, a * 1.2)), Math.max(b, fr - cz + .007, cz - bk + .006)]; };
-    const cupola = (y0, rows, col, fz, tile, c2, pt, c3) => loft(B, rows.map(([y, a0, b0], j) => { const [a, b] = fit(y0 + y, a0, b0, (fz || 0) - .012); return { c: at(y0 + y, 0, (fz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, col, v: j / (rows.length - 1), tile: tile || 0, col2: c2, ptile: pt || 0, col3: c3, mv: j * .05, w: wH }; }), { seg: 16 });
+    const cupola = (y0, rows, col, fz, tile, c2, pt, c3) => loft(B, rows.map(([y, a0, b0], j) => { const [a, b] = fit(y0 + y, a0, b0, (fz || 0) - .012); return { c: at(y0 + y, 0, (fz || 0) - .012), t: [0, 1, 0], f: [0, 0, 1], a: a * K, b: b * K, col, v: j / (rows.length - 1), tile: tile || 0, col2: c2, ptile: pt || 0, col3: c3, mv: j * .05, w: wH }; }), { seg: 12 });
     if (tipo === 'coppola') {   // la coppola: piatta, avanti, con la visierina
       cupola(.15, [[0, .1, .108], [.04, .108, .12], [.065, .1, .118], [.08, .07, .09], [.084, .01, .01]], c, .012);
       loft(B, [[.0, .07, .2], [.5, .08, .3], [1, .06, .25]].map(([q, a]) => ({ c: at(.16 - q * .01, 0, front(.15) + q * .05), t: [0, 0, 1], f: [0, 1, 0], a: a * K, b: .006 * K, p: 2.6, col: sc, w: wH })), { seg: 8 });
@@ -100033,16 +100581,16 @@ var Personaggi = (function () {
       const dz = tipo === 'cappellino_indietro' ? -1 : 1, flat = tipo === 'snapback', y0 = .128, Hc = flat ? .104 : .097;
       const crown = (a, t) => { const fr = Math.max(0, Math.cos(a) * dz), rb = (pa(y0, 1) * Math.abs(Math.sin(a)) + pa(y0, 2) * Math.abs(Math.cos(a))) * .95 + .006, rr = rb * Math.pow(Math.cos(t * Math.PI / 2), flat ? .6 : .75) * (1 + (flat ? .06 : .04) * fr * Math.sin(Math.PI * t)), yb = -.004 - .03 * Math.pow(Math.max(0, -Math.cos(a) * dz), 1.5);
         return at(y0 + yb + (Hc - yb) * Math.pow(Math.sin(t * Math.PI / 2), flat ? .7 : .85), Math.sin(a) * rr, Math.cos(a) * rr * 1.04 + pa(y0, 3) + .004 * fr); };
-      griglia(B, 36, 9, (i, j) => crown(-Math.PI + i / 36 * Math.PI * 2, j / 9), c, wH, true, 0);
-      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6, L = []; for (let j = 0; j <= 8; j++) L.push(crown(a, j / 8 * .98)); tuboP(B, L, () => .0016, sc, wH); }   // le cuciture degli spicchi
-      { const L = []; for (let i = 0; i < 28; i++) L.push(crown(-Math.PI + i / 28 * Math.PI * 2, 0)); tuboP(B, L, () => .0024, sc, wH, true); }
+      griglia(B, 24, 7, (i, j) => crown(-Math.PI + i / 24 * Math.PI * 2, j / 7), c, wH, -1, 0);   // [personaggi] una faccia sola (dentro non si vede): era 36×9 sui due lati
+      for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6, L = []; for (let j = 0; j <= 4; j++) L.push(crown(a, j / 4 * .98)); tuboP(B, L, () => .0016, sc, wH); }   // le cuciture degli spicchi
+      { const L = []; for (let i = 0; i < 20; i++) L.push(crown(-Math.PI + i / 20 * Math.PI * 2, 0)); tuboP(B, L, () => .0024, sc, wH, true); }
       uovo(B, crown(0, 1), [0, 1, 0], .009 * K, .009 * K, .005 * K, mulc(c, .85), wH, { anelli: 2, seg: 8 });   // il bottone
       // la visiera a D
       const VL = (flat ? .1 : .088) * K, VA = flat ? 1.05 : .95, vpt = (u, w, d) => { const a0 = -VA + u * 2 * VA, a = dz > 0 ? a0 : Math.PI + a0, base = crown(a, 0), out = norm([Math.sin(a), 0, Math.cos(a) * 1.04]), len = VL * Math.pow(Math.max(0, Math.cos(a0 / VA * Math.PI / 2)), .55) * w, side = Math.abs(a0) / VA;
         return [base[0] + out[0] * len, base[1] + (flat ? -.004 * w : -.012 * w * w - .03 * side * side * w) - d, base[2] + out[2] * len + .002 * dz]; };
-      griglia(B, 16, 4, (i, j) => vpt(i / 16, j / 4, 0), mulc(c, .95), wH, true, 0); griglia(B, 16, 4, (i, j) => vpt(i / 16, j / 4, .006), flat ? C3('#2a3a2a') : mulc(c, .45), wH, true, 0);
-      { const L = []; for (let i = 0; i <= 16; i++) L.push(vpt(i / 16, 1, .003)); tuboP(B, L, () => .003, mulc(c, .9), wH); const L2 = []; for (let i = 0; i <= 12; i++) L2.push(vpt(i / 12, .82, -.0005)); tuboP(B, L2, () => .0011, sc, wH); }
-      { const L = []; for (let i = 0; i <= 8; i++) { const a = (dz > 0 ? Math.PI : 0) - .32 + i / 8 * .64, p = crown(a, 0); L.push([p[0], p[1] + .028 * Math.sin(i / 8 * Math.PI), p[2]]); } tuboP(B, L, () => .003, C3('#1a1a1c'), wH); }   // dietro: la regolazione
+      griglia(B, 12, 3, (i, j) => vpt(i / 12, j / 3, 0), mulc(c, .95), wH, false, 0); griglia(B, 12, 3, (i, j) => vpt(i / 12, j / 3, .006), flat ? C3('#2a3a2a') : mulc(c, .45), wH, true, 0);   // sopra una faccia, sotto due (si vede da sotto e chiude il bordo)
+      { const L = []; for (let i = 0; i <= 12; i++) L.push(vpt(i / 12, 1, .003)); tuboP(B, L, () => .003, mulc(c, .9), wH, false, null, 4); }
+      { const L = []; for (let i = 0; i <= 5; i++) { const a = (dz > 0 ? Math.PI : 0) - .32 + i / 5 * .64, p = crown(a, 0); L.push([p[0], p[1] + .028 * Math.sin(i / 5 * Math.PI), p[2]]); } tuboP(B, L, () => .003, C3('#1a1a1c'), wH, false, null, 4); }   // dietro: la regolazione
       if (flat) { const q = crown(0, .45); uovo(B, [q[0], q[1], q[2] + .003], [0, 0, 1], .028, .014, .002, C3(H.col2 || (/^#[0-3]/.test(H.col || '') ? '#e8e4dc' : '#1a1a1c')), wH, { anelli: 2, seg: 4, p: 6, f: [0, 1, 0] }); const v = vpt(.5, .6, -.0006); uovo(B, v, [0, 1, 0], .011, .011, .001, C3('#d8c050'), wH, { anelli: 2, seg: 10 }); }   // il ricamo davanti e il bollino d'oro sulla visiera
     } else if (tipo === 'docker') {   // il berretto corto da pescatore: alto sopra le orecchie, il risvolto largo a costine, l'etichetta
       const rr = y => [pa(Math.min(y, .17), 1) + .008, pa(Math.min(y, .17), 2) + .008];
@@ -100061,9 +100609,9 @@ var Personaggi = (function () {
     } else if (tipo === 'basco') {   // il basco: un disco morbido, calato di lato, col picciolo
       loft(B, [[0, .102, .11], [.012, .118, .124], [.03, .12, .126], [.045, .1, .106], [.052, .02, .02]].map(([y, a0, b0]) => fit(.155 + y, a0, b0, -.02)).map((ab, j) => [[0, .012, .03, .045, .052][j], ...ab]).map(([y, a, b]) => ({ c: at(.155 + y - (a > .11 ? .006 : 0), .012, -.008), t: norm([.18, 1, 0]), f: [0, 0, 1], a: a * K, b: b * K, col: c, w: wH })), { seg: 16 });
       uovo(B, at(.214, .022, -.008), [0, 1, 0], .004 * K, .004 * K, .008 * K, sc, wH, { anelli: 2, seg: 5 });
-    } else if (tipo === 'fascia') { cupola(.145, [[0, .095, .108], [.028, .094, .107]].map(([y, a, b]) => [y, a + .016, b + .016]), c, .0); }
+    } else if (tipo === 'fascia') { const ct = D.capelli && D.capelli.tipo, fsp = /ricci|permanente/.test(ct || '') ? .036 : /calvo/.test(ct || '') ? .006 : /lunghi|caschetto/.test(ct || '') ? .024 : .02; loft(B, [.145, .16, .173].map(y => ({ c: at(y, 0, pa(y, 3)), t: [0, 1, 0], f: [0, 0, 1], a: (pa(y, 1) + fsp) * K, b: (pa(y, 2) + fsp) * K, col: c, w: wH })), { seg: 16 }); }   // [personaggi] la fascia aderisce: sul cranio misurato più lo spessore dei capelli (era a misura fissa, larga sulle teste piccole)
     else if (tipo === 'bandana') { const ey = .108; loft(B, [ey - .03, ey - .065, ey - .1, ey - .13].map((y, j) => ({ c: at(y, 0, -.012), t: [0, 1, 0], f: [0, 0, 1], a: (pa(Math.max(y, -.01), 1) + .008) * K, b: (pa(Math.max(y, -.01), 2) + .01 + j * .003) * K, fz: pa(Math.max(y, -.01), 3) * K, col: c, ptile: PT.pois, col3: [.95, .93, .88], mv: j * .04, w: wH })), { seg: 16 }); }
-    else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa.PK && pa.PK.tris) passamontagna(B, D, pa.PK); 
+    else if (/^passamontagna|^maschera_gas|^cappuccio_stelle/.test(tipo)) { if (pa0.PK && pa0.PK.tris) passamontagna(B, D, pa0.PK);   /* [personaggi] pa è la copia spostata alla quota degli occhi e non ha PK: i passamontagna non si facevano più */ 
     } else if (tipo === 'durag') {   // [personaggi] il durag: la calotta di raso che segue la testa, la cucitura in mezzo, il nodo davanti, le due code dietro
       const R2 = y => [pa(Math.min(y, .2), 1) + .006, pa(Math.min(y, .2), 2) + .006];
       loft(B, [[.105, 1], [.13, 1], [.17, 1], [.2, .96], [.225, .8], [.24, .5], [.247, .05]].map(([y, q]) => ({ c: at(y, 0, pa(Math.min(y, .2), 3)), t: [0, 1, 0], f: [0, 0, 1], a: R2(y)[0] * q * K, b: R2(y)[1] * q * K, col: c, w: wH })), { seg: 16 });
@@ -100090,7 +100638,7 @@ var Personaggi = (function () {
       for (const sx of [-1, 1]) tuboP(B, [at(.02, sx * R(.02)[0], pa(.02, 3)), at(-.035, sx * .025, pa(-.03, 3) + pa(-.03, 2) * .5)], () => .003, C3('#1a1a1c'), wH);
     } else if (tipo === 'fazzoletto') {   // il fazzoletto delle anziane: annodato sotto il mento, la punta dietro
       const fp = PT.fiori, f3 = C3(H.col2 || '#f0e0b0');
-      cupola(.0, [[.03, .1, .11], [.13, .104, .116], [.19, .09, .1], [.23, .06, .07], [.25, .01, .01]].map(r => r), c, -.008, 0, null, fp, f3);
+      cupola(.0, [[.03, .096, .106], [.13, .1, .11], [.19, .087, .096], [.23, .058, .066], [.25, .01, .01]].map(r => r), c, -.008, 0, null, fp, f3);   // [personaggi] un filo più stretto: il fit lo allarga dove la testa lo chiede
       loft(B, [[.14, .1, .112], [.06, .102, .11], [-.02, .08, .06], [-.055, .035, .025]].map(([y, a, b]) => ({ c: at(y, 0, -.012), t: [0, -1, 0], f: [0, 0, 1], a: a * K, b: b * K, col: c, ptile: fp, col3: f3, mv: y, w: wH, mod: th => { const fr = Math.cos(th); return fr > .3 ? -.95 * sm((fr - .3) / .2) : 0; } })), { seg: 16 });
       uovo(B, at(.05, 0, -.13), [0, -1, -.6], .03 * K, .01 * K, .06 * K, sc, wH, { anelli: 3, seg: 6, punta: .6 });
       uovo(B, at(-.05, 0, front(-.04) - .028), [0, -1, .3], .022 * K, .016 * K, .02 * K, sc, wH, { anelli: 3, seg: 7 }); [1, -1].forEach(q => uovo(B, at(-.07, q * .014, front(-.04) - .028), [q * .3, -1, .2], .012 * K, .006 * K, .03 * K, c, wH, { anelli: 3, seg: 5 }));   // il nodo sotto il mento
