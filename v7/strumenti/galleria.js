@@ -89,6 +89,12 @@ const srv = http.createServer((req, res) => {
       if (v.manopole.VISUALE || v.manopole.PENDENZA || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
+      if (process.env.GALLERIA_RAGGIO) console.log('[raggio]', JSON.stringify(await pg.evaluate(() => {   // [ad] cosa sta fra la camera e il personaggio (per il taglio del primo piano)
+        const R = window.__pv.R, cam = R.getCamera(), sc = R.__ed.scene, P = window.__pv.st.player, T = window.THREE, rc = new T.Raycaster(), tgt = new T.Vector3(P.x, R.__ed.groundH(P.x, P.y) + 1, P.y);
+        const dir = tgt.clone().sub(cam.position), L = dir.length(); rc.set(cam.position, dir.normalize()); rc.far = L; const all = [];
+        sc.traverse(o => { if (!o.isMesh || !o.visible) return; try { rc.intersectObject(o, false, all); } catch (e) { } }); all.sort((a, b) => a.distance - b.distance);
+        const m = o => (Array.isArray(o.material) ? o.material[0] : o.material) || {};
+        return { L: +L.toFixed(1), gy: +R.__ed.groundH(P.x, P.y).toFixed(2), u7: window.__AD && window.__AD.u7, hits: all.slice(0, 5).map(h => ({ d: +h.distance.toFixed(1), y: +h.point.y.toFixed(2), n: h.object.name, t: m(h.object).type, dw: m(h.object).depthWrite, tr: m(h.object).transparent, ro: h.object.renderOrder })) }; })));
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
       // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
       // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)
