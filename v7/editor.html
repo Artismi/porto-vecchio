@@ -22990,7 +22990,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '83ab3c2640d8519c';</script>
-<script>window.PV_IMPRONTA_TASS = '511332cf0508f6e0';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'eb2d0b33c1e5ffba';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -85336,7 +85336,7 @@ var Render = (function () {
     PROF.soleLato = [-68, -112]; PROF.soleAlto = [22, 40];   // il sole sempre in diagonale alle vie: prima correva quasi parallelo ai caruggi e li riempiva d'ombra
     Object.assign(NIT, { luce: .06, avanti: .25 });
   }
-  if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; }
+  if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
@@ -90503,7 +90503,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota
-      const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !ui.intro && !(p.indoor) && dyn.people.__player && dyn.people.__player.visible;
+      const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !(p.indoor);   // (non dyn.people.__player.visible: con le persone fuse di peso_gente.js l'originale è nascosto)
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
         u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; }
