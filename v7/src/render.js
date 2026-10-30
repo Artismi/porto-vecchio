@@ -35,6 +35,15 @@ var Render = (function () {
       put(['molo', 'calata', 'pontile', 'marina', 'molo_cargo', 'cantiere'], 'porto', 16); }
     let best = null, bd = 1e9; for (const Z of ZONES) { const d = (Z.x - x) * (Z.x - x) + (Z.z - z) * (Z.z - z); if (d < Z.r2 && d < bd) { bd = d; best = Z.k; } }
     return best; }
+  // [ad] la maschera del regime per il passo finale: i cerchi di zoneAt('regime'), sfumati, su una tela di 256 (un pixel ~2 m)
+  let REGM = null;
+  function regimeMaschera() {
+    if (REGM) return REGM; zoneAt(0, 0); const w = (G.GW || 150) * (G.TS || 2), h = (G.GH || 100) * (G.TS || 2), N = 256, c = document.createElement('canvas'); c.width = c.height = N;
+    const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, N, N);
+    (ZONES || []).filter(Z => Z.k === 'regime').forEach(Z => { const r = Math.sqrt(Z.r2), cx = Z.x / w * N, cy = Z.z / h * N, rx = r / w * N, g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, rx * 1.15));
+      g.addColorStop(0, '#fff'); g.addColorStop(.75, '#fff'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.save(); x.translate(cx, cy); x.scale(1, (r / h * N) / Math.max(1e-3, rx)); x.translate(-cx, -cy); x.beginPath(); x.arc(cx, cy, rx * 1.15, 0, Math.PI * 2); x.fill(); x.restore(); });
+    const t = new THREE.CanvasTexture(c); t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.flipY = false;
+    return (REGM = { t, w, h }); }
   function tone(hex, x, z) { const q = nq(hex); if (q === '#' + NQ[1].getHexString()) return q; const c = new THREE.Color(hex), h = {}; c.getHSL(h);
     const zo = zoneAt(x, z), lamp = LAMPS.includes(hex), k = Math.imul((Math.round(x * 2) * 73856093) ^ (Math.round(z * 2) * 19349663), 2654435761) >>> 0;
     if (h.s >= .5 && h.h * 360 < 26) return hex;                  // fuochi e rossi: restano come sono
@@ -13000,7 +13009,7 @@ var Render = (function () {
   const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
   const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
-    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
+    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, u7: { x: 0, y: 0, z: 1, w: 0 }, u8: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   /* [ad] u7, u8: il taglio del primo piano */   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
   // ================= [nitida] LA LEGGIBILITÀ NEL PASSO UNICO: dove guardare, cosa sta davanti e cosa sta dietro =================
   // Il committente: «si vede in bassa qualità; uno shader leggero che ridia leggibilità, oltre all'effetto cinematografico; non sai dove
@@ -13177,7 +13186,7 @@ var Render = (function () {
   // la sera a due colori (arancio sui muri, cobalto nelle ombre), la notte al sodio, la pozza sul personaggio appena (era un occhio di bue),
   // la grana d'emulsione a 12 al secondo nei medi, il tratto che prende il colore della cosa (un pennarello, non il viola fisso).
   // ?noad torna alla pellicola di prima; window.__AD dal vivo.
-  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .09 };
+  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: .92, tagliaH: 2.2, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   if (AD.on) {
     PELL.gonfio = .045;   // il centro meno ingrandito (era .055: 5,8% e un centro più morbido dei bordi)
     const M = SGU.momenti;
@@ -13192,7 +13201,18 @@ var Render = (function () {
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
+    // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
+    // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
+    C.clipping_planes_fragment += `
+#if defined( STANDARD ) && !defined( USE_SKINNING )
+if ( sgP7.w > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sgRr = length( sgD * vec2( 1., 1.3 ) );
+  if ( sgRr < 1. && vSgW.y > sgP8.y + sgP8.z && distance( vSgW, cameraPosition ) < sgP8.x - 1.5 ) {
+    vec2 sgB = mod( floor( gl_FragCoord.xy ), 4. ), sgH = floor( sgB * .5 ); vec2 sgL = sgB - 2. * sgH;
+    float sgBy = fract( sgL.x * .5 + sgL.y * sgL.y * .75 ) + fract( sgH.x * .5 + sgH.y * sgH.y * .75 ) * .25 + .03;   // Bayer 4×4
+    if ( sgBy < sgP7.w * ( 1. - smoothstep( .55, 1., sgRr ) ) ) discard; } }
+#endif`;
     C.common += `
 #ifdef STANDARD
 varying vec3 vSgW;
@@ -13200,6 +13220,7 @@ float sgVetroK = -1.;
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
+uniform vec4 sgP7; uniform vec4 sgP8;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px), forza · la sua distanza dalla camera, la sua quota, l'altezza del taglio
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
@@ -13320,11 +13341,11 @@ ${OM}
 { vec3 sgNw = inverseTransformDirection( geometry.normal, viewMatrix ); float frS = 1. - saturate( dot( geometry.normal, geometry.viewDir ) );
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
-  if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 14 cm sul piano della superficie (ancorati al muro, non allo
+  if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 32 cm sul piano della superficie (ancorati al muro, non allo
     // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
     vec3 sgAn = abs( sgNw ); vec2 sgHp = sgAn.y > max( sgAn.x, sgAn.z ) ? vSgW.xz : ( sgAn.x > sgAn.z ? vSgW.zy : vSgW.xy );
-    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .14 ); vec2 sgFw = fwidth( sgHp );
-    float sgOn = 1. - smoothstep( .2, .34, max( sgFw.x, sgFw.y ) ), sgR = sqrt( 1. - sgOmbra ) * .42, sgDt = length( fract( sgHp ) - .5 );
+    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .32 );   // [ad] 32 cm: si legge dalla camera di gioco (a 14 cm si spegneva) vec2 sgFw = fwidth( sgHp );
+    float sgOn = 1. - smoothstep( .25, .4, max( sgFw.x, sgFw.y ) ), sgR = sqrt( 1. - sgOmbra ) * .42, sgDt = length( fract( sgHp ) - .5 );
     float sgDot = 1. - smoothstep( sgR - .07, sgR + .07, sgDt );
     reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( 1. ), sgP3.rgb * 2.2, .5 ) * ( sgDot - .45 ) * sgP5.w * sgOn * ( 1. - sgOmbra ); }
 #endif
@@ -13433,7 +13454,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
         gK: { value: new THREE.Vector4(1, 1, .2, .3) }, gN: { value: new THREE.Vector4(.018, .55, 0, 0) }, fx: { value: new THREE.Vector4() }, lb: { value: new THREE.Vector2() }, tm: { value: 0 },
         tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, pK: { value: new THREE.Vector4() }, pT: { value: new THREE.Vector4() }, pa: { value: .001 }, pI: { value: new THREE.Vector4() }, pV: { value: new THREE.Vector4() }, fv: { value: new THREE.Vector2(1, 1) },
         aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
-        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
+        nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nXr: { value: new THREE.Vector4(1, 0, 0, 0) }, nZr: { value: new THREE.Vector4(0, 0, 1, 0) }, nRm: { value: null }, nRs: { value: new THREE.Vector2(1, 1) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         gS: { value: new THREE.Vector4() },   // [strada]
         aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
@@ -13457,6 +13478,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
 #if defined(SG_NIT) && defined(SG_PROD)
         uniform vec4 nY2; uniform vec4 nG;   // [nitida] nG: il ciglio dei volumi, il piede dei muri, la calma del suolo, il raggio del piede (m)
         float nQ(vec2 q){ return dot(nY2.xyz, sgV(q)) + nY2.w; }   // la quota nel mondo di un pixel (m)
+        uniform vec4 nXr; uniform vec4 nZr; uniform sampler2D nRm; uniform vec2 nRs;   // [ad] le righe x e z (camera → mondo), la maschera del regime e la misura del mondo
 #endif
 #ifdef SG_NIT
         uniform vec4 nA; uniform vec4 nB; uniform vec4 nC; uniform vec4 nD; uniform vec3 nH; uniform float nS; uniform vec4 nY; uniform vec4 nE;   // [nitida] nY: la riga della quota (camera → mondo); nE: tetti, da, in quanto, quota del personaggio
@@ -13481,6 +13503,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
 #endif
 #if defined(SG_NIT) && defined(SG_PROD)
           // [nitida] dove sta questo pixel rispetto al personaggio: rel < 0 davanti (verso la camera), > 0 dietro
+          float nRg = 0.;
+#ifdef SG_AD
+          { vec3 v0 = sgV(vUv); nRg = texture2D(nRm, vec2(dot(nXr.xyz, v0) + nXr.w, dot(nZr.xyz, v0) + nZr.w) / nRs).r; }   // [ad] dentro il regime: 1
+#endif
           float nD0 = 1. / sgI(vUv), nRel = (nD0 - nB.z) / nB.z;
           vec3 nV = sgV(vUv); float nTet = nE.x * smoothstep(nE.y, nE.y + nE.z, dot(nY.xyz, nV) + nY.w - nE.w);   // [nitida] i tetti: quanto questo pixel sta sopra il piano del personaggio
           aCoc = max(aCoc, nA.y * smoothstep(nD.z, nD.z + nD.w, nRel) + nC.w * smoothstep(.22, .6, -nRel) + nTet * .2);   // il fuoco per profondità (e un velo sui tetti)
@@ -13508,7 +13534,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             if (nA.w > 0.) { float dn = max(max(1. / sgI(vUv + vec2(e.x, 0.)), 1. / sgI(vUv - vec2(e.x, 0.))), max(1. / sgI(vUv + vec2(0., e.y)), 1. / sgI(vUv - vec2(0., e.y))));
               float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
 #ifdef SG_AD
-              c = mix(c, c * c * .85 + vec3(.035, .02, .05), sil * nA.w); }   // [ad] il pennarello: il colore della cosa, più scuro e più pieno
+              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), sil * nA.w * mix(1., .7, nRg)); }   // il regime: linea tecnica uniforme #4a4e58   // [ad] il pennarello: il colore della cosa, più scuro e più pieno
 #else
               c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
 #endif
@@ -13520,7 +13546,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
               for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; float hn = nQ(vUv + vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .6 : 1.)) - q0;
                 oc += smoothstep(.6, 2.5, hn); un += step(abs(hn), .08); }
 #ifdef SG_AD
-              c = mix(c, c * c * .85 + vec3(.035, .02, .05), smoothstep(1.2, 2.5, dr) * nG.x);   // [ad] il ciglio col pennarello
+              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), smoothstep(1.2, 2.5, dr) * nG.x);   // [ad] il ciglio col pennarello
 #else
               c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);
 #endif                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
@@ -13535,6 +13561,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             }
             float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
             c = mix(c, nH + (c - nH) * .55, hz);
+#ifdef SG_AD
+            if (nRg > .01) { float lr = dot(c, vec3(.299, .587, .114)); c = mix(c, mix(vec3(lr), c, .25) * vec3(.99, 1., 1.02), nRg); }   // [ad] il regime stampato a macchina: quasi senza colore (S ≤ .12), freddo
+#endif
 #ifdef SG_AD
             { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .95 + .03) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .6, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno   // [ad] i tetti tengono trama e colore
 #else
@@ -13747,7 +13776,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
       U.nB.value.set(SGT.nfx, SGT.nfy, dist, dep ? N.chiarezza : 0);
       U.nC.value.set(N.luce, N.ombraBordo, N.cerchio, dep ? N.vicino : 0); U.nD.value.set(N.ariaDa, N.ariaPer, N.fuocoDa, N.fuocoPer);
       U.nH.value.set(fc.r, fc.g, fc.b); U.nS.value = N.spalla;
-      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); U.nY2.value.copy(U.nY.value); }
+      { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); U.nY2.value.copy(U.nY.value); U.nXr.value.set(m[0], m[4], m[8], m[12]); U.nZr.value.set(m[2], m[6], m[10], m[14]); }
+      if (AD.on && !U.nRm.value) { const R = regimeMaschera(); U.nRm.value = R.t; U.nRs.value.set(R.w, R.h); }   // [ad]
       U.nG.value.set(dep ? N.ciglio : 0, dep ? N.piede : 0, dep ? N.calma : 0, N.piedeR);   // la riga della quota: dal punto in vista al mondo
       U.nE.value.set(dep ? N.tetti : 0, N.tettiDa, N.tettiPer, fh0);
       U.gK.value.z *= .45;   // la vignetta fissa al centro cede il posto a quella che segue il personaggio
@@ -18248,6 +18278,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(0, 1, ease) + cam.jz;
     camera.position.set(cx + ox, cy + oy, cz + oz); camera.lookAt(cx, cy, cz);
+    if (AD.on && AD.rollio > 0 && !ui.studio) {   // [ad] LO SBIECO: la camera appena inclinata, che deriva lenta (25 e 41 s) solo in marcia; nel regime e da fermi torna dritta
+      const reg = zoneAt(cx, cz) === 'regime', mv = pveh ? Math.min(1, Math.abs(pveh.speed || 0) / 6) : Math.min(1, Math.hypot(cam.pvx || 0, cam.pvy || 0) / 1.5);
+      const want = reg ? 0 : (Math.sin(time * Math.PI * 2 / 25) * .7 + Math.sin(time * Math.PI * 2 / 41 + 1.7) * .3) * (pveh ? AD.rollioMezzi : AD.rollio) * Math.PI / 180 * mv;
+      cam.roll = (cam.roll || 0) + (want - (cam.roll || 0)) * Math.min(1, dt * .8); if (Math.abs(cam.roll) > 1e-5) camera.rotateZ(cam.roll); }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
@@ -18318,6 +18352,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
+    if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota
+      const u7 = PRO.u7, u8 = PRO.u8, on = LOOKV.nuovo && rt && !ui.studio && !ui.intro && !(p.indoor) && dyn.people.__player && dyn.people.__player.visible;
+      if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
+        const dc = v.distanceTo(camera.position); v.project(camera);
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.tagliaR * rt.height; u7.w = AD.taglio; u8.x = dc; u8.y = playerH; u8.z = AD.tagliaH; }
+      else u7.w = 0; }
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); return; }   // [sguardo] un passo solo
