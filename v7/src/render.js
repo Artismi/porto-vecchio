@@ -13393,6 +13393,9 @@ varying vec3 vSgW2; uniform vec4 sgP7; uniform vec4 sgP9;
 #define SG_CY sgP9.x
 #endif
 if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sgRr = length( sgD * vec2( 1., 1.3 ) );
+#ifdef SG_TAGLIO2
+  if ( sgP9.y > 0. && sgRr < 1. ) discard;   // la prova (window.__AD.prova): tutto quello che non è STANDARD nell'ellisse
+#endif
   if ( sgRr < 1. && SG_WP.y > SG_CY + 2.2 && distance( SG_WP, cameraPosition ) < sgP7.w - 1.5 ) {
     vec2 sgB = mod( floor( gl_FragCoord.xy ), 4. ), sgH = floor( sgB * .5 ); vec2 sgL = sgB - 2. * sgH;
     float sgBy = fract( sgL.x * .5 + sgL.y * sgL.y * .75 ) + fract( sgH.x * .5 + sgH.y * sgH.y * .75 ) * .25 + .03;   // Bayer 4×4
@@ -18552,7 +18555,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !(p.indoor);   // (non dyn.people.__player.visible: con le persone fuse di peso_gente.js l'originale è nascosto)
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
-        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; }
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; }
       else u7.z = 0; }
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
