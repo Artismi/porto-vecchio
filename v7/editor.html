@@ -22987,8 +22987,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '59cef4172c35ba22';</script>
-<script>window.PV_IMPRONTA_TASS = 'af4c15bada55d6b9';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '83ab3c2640d8519c';</script>
+<script>window.PV_IMPRONTA_TASS = '1061c5ce50dd376f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -31049,6 +31049,7 @@ var World = (function () {
       if (W.zone[b.y * GWx + b.x] !== Z.CITTA || (b.use && b.use !== 'casa')) return; const n = b.w * b.h; if (n > 9) return;
       const R = giro(b), quota = R.filter(i => OPEN.has(g[i])).length / R.length, largo = R.filter(i => LARGO.has(g[i])).length / R.length;
       if (!(quota >= .75 || largo >= .6 || via2(b))) return;
+      if (n > 2 && R.some(i => g[i] === T.BLD)) return;   // appoggiata a un'altra casa (più grande di un annesso): è un tetto dei giri sui tetti, resta
       b.__via = { R, quota, largo }; tolte.push(b); });
     if (!tolte.length) return W;
     const togli = new Set(tolte);

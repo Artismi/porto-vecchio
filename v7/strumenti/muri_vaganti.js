@@ -7,7 +7,8 @@
 //   dentro_casa  un muro che entra in una casa (oltre 30 cm)
 //   moncone      un pezzo di muro isolato, corto (≤ 2 m), senza niente a cui attaccarsi: un avanzo
 //   casetta      una casetta piccola (≤ 36 m²) senza nome né bottega, libera in mezzo al selciato o incastrata fra due tratti di carreggiata
-//                (la regola di casette() in world_cittanuova.js, che le toglie: W.casetteTolte)
+//                (la regola di casette() in world_cittanuova.js, che le toglie: W.casetteTolte; quelle appoggiate a un'altra casa
+//                restano, sono tetti dei giri sui tetti)
 //   marciapiede_stretto  una casa col fronte a meno di 1,5 m dal bordo della carreggiata: il marciapiede ne resta una striscia
 //   casa_in_carreggiata  una casa che entra nella carreggiata
 // (il muro del posto di blocco attraversa la Vittoria apposta: è un varco, non si conta) e la cortina dei portici lunga in tutto (per il conto per km). Stampa i conti (città e isola intera), i casi con le coordinate e salva
@@ -59,7 +60,7 @@ MURI.forEach((m, i) => { const L = Math.hypot(m[2] - m[0], m[3] - m[1]), mx = (m
   B.forEach(b => { if (dietroPortico(b)) return; if (!b.house || b.pezzo || b.shack || b.name || b.shop || b.shopFront || b.sign || b.military || b.kiosk || b.vittoria || b.sottoPortico || b.portico || b.lighthouse || b.isola || luogo.has(b.id) || (b.use && b.use !== 'casa') || b.w * b.h > 9) return;
     if (W.zone[b.y * GW + b.x] !== W.Z.CITTA) return; const R = []; for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) if (tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h) R.push(G[ty * GW + tx]);
     const q = R.filter(v => OPEN.has(v)).length / R.length, l = R.filter(v => LARGO.has(v)).length / R.length, inc = (lato(b, 1, 0) && lato(b, -1, 0)) || (lato(b, 0, 1) && lato(b, 0, -1));
-    if (q >= .75 || l >= .6 || inc) P.casetta.push([Math.round((b.x + b.w / 2) * TS), Math.round((b.y + b.h / 2) * TS), b.id, b.w * TS + 'x' + b.h * TS, inc ? 'incastrata' : 'libera ' + Math.round(q * 100) + '%']); }); }
+    if ((q >= .75 || l >= .6 || inc) && !(b.w * b.h > 2 && R.includes(T.BLD))) P.casetta.push([Math.round((b.x + b.w / 2) * TS), Math.round((b.y + b.h / 2) * TS), b.id, b.w * TS + 'x' + b.h * TS, inc ? 'incastrata' : 'libera ' + Math.round(q * 100) + '%']); }); }
 // 4) le case sul marciapiede: il fronte (spigoli compresi) a meno di 1,5 m dal bordo della carreggiata di una via di città (il marciapiede
 // è la fascia di 2,1 m oltre il bordo: ne resta una striscia), o dentro la carreggiata. Le arretra arretra() in world_cittanuova.js; dove non
 // si può (case di due caselle, botteghe girate dall'altra parte) render.js chiude lì il marciapiede (swField, [nitida])

@@ -4390,6 +4390,7 @@ var World = (function () {
       if (W.zone[b.y * GWx + b.x] !== Z.CITTA || (b.use && b.use !== 'casa')) return; const n = b.w * b.h; if (n > 9) return;
       const R = giro(b), quota = R.filter(i => OPEN.has(g[i])).length / R.length, largo = R.filter(i => LARGO.has(g[i])).length / R.length;
       if (!(quota >= .75 || largo >= .6 || via2(b))) return;
+      if (n > 2 && R.some(i => g[i] === T.BLD)) return;   // appoggiata a un'altra casa (più grande di un annesso): è un tetto dei giri sui tetti, resta
       b.__via = { R, quota, largo }; tolte.push(b); });
     if (!tolte.length) return W;
     const togli = new Set(tolte);
