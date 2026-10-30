@@ -22988,7 +22988,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '83ab3c2640d8519c';</script>
-<script>window.PV_IMPRONTA_TASS = 'f59db311e4441642';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '1a17b2584d2e2e5c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -62769,7 +62769,7 @@ var Writing = (function () {
   function tavClear() { if (TAV.frame) { if (TAV.frame.parent) TAV.frame.parent.remove(TAV.frame); TAV.frame.geometry.dispose(); TAV.frame.material.dispose(); TAV.frame = null; } TAV.a = null; TAV.b = null; }
   function tavTick(st, nx, ny, tool, col) {
     const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R || TAV.pad) return true;
-    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
+    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); }   /* [ad] il rigonfiamento del passo finale */ rc.near = 0; rc.far = 1e4;
     if (!TAV.a) {
       const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));   // [writer] anche le fiancate del treno
       const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
@@ -62950,7 +62950,7 @@ var Writing = (function () {
     let w = W.cur && !W.cur.done ? W.cur : null;
     if (!w) {
       // il primo colpo: dove punta il mouse
-      const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
+      const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); }   /* [ad] il rigonfiamento del passo finale */ rc.near = 0; rc.far = 1e4;
       const list = cands(p.x, p.y); if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));
       const feet = TT() ? TT().feetH(st) : R.groundH(p.x, p.y);
       const h = rc.intersectObjects(list, false).find(h => { if (!h.face || hyp(h.point.x - p.x, h.point.z - p.y) > 12) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
@@ -63011,7 +63011,7 @@ var Writing = (function () {
     const g = GFX.works[w.id]; if (!g) { W.cur = null; return false; }
     if (w.surf === 'treno') { const tr = trainAt(st.t); if (tr && tr.v) { W.cur = null; return { msg: 'Il treno parte! Via dalla calata.' } } }
     const T = g.tgt, A = g.art; if (!T || !A) return false;
-    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), cam); rc.near = 0; rc.far = 1e4;
+    const cam = R.getCamera(), rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); }   /* [ad] il rigonfiamento del passo finale */ rc.near = 0; rc.far = 1e4;
     const target = w.surf === 'treno' ? GFX.train.cars[w.car].sides[w.side].mesh : T.mesh; if (!target) return false;
     const hh = rc.intersectObject(target, false)[0];
     if (!hh || !hh.uv) { if (dist2(w, p) > 4.5) { W.cur = null; return { msg: 'Troppo lontano dal lavoro: torna lì e clicca sopra per riprendere.' }; } return true; }
@@ -76357,7 +76357,7 @@ var Render = (function () {
   // mettersi per arrivarci ({ go: x, y }): main.js ci fa camminare il giocatore, poi spruzza
   const BMB_REACH = 1.2;
   function sprayAt(st, nx, ny, col) {
-    const rc = BMB.rc, p = st.player; rc.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), camera); rc.near = 0; rc.far = 1e4;
+    const rc = BMB.rc, p = st.player; { const u = gonfia(nx, ny); rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), camera); }   /* [ad] il rigonfiamento */ rc.near = 0; rc.far = 1e4;
     // la prima superficie a portata di braccio (i tetti e i muri fra la camera e il giocatore il gioco li toglie di mezzo)
     const h = rc.intersectObjects(bmbCands(p.x, p.y), false).find(h => { const ft = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; if (Math.hypot(h.point.x - p.x, h.point.z - p.y) > 9 || h.point.y > (ft !== null ? ft : groundH(p.x, p.y)) + 2.6 || (ft !== null && h.point.y < ft - 1.2)) return false; /* [writer] la mano arriva a 2,6 m sopra i piedi (anche sul tetto) */ let m = h.object.material; if (Array.isArray(m)) m = m[h.face && h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); });
     if (!h) return false;
@@ -85142,7 +85142,24 @@ var Render = (function () {
     Object.assign(SGU.pro, { vivo: .35, celle: .6 });
     Object.assign(NIT, { tetti: .35, spalla: .12, ombraBordo: .06, quinta: .05, aria: .22, luce: .1, sagome: .5 });   // i tetti tengono il loro colore; niente bordi che fanno notte
   }
-  if (typeof window !== 'undefined') window.__PELL = PELL;
+  // ================= [ad] L'ART DIRECTOR: la pellicola di strada portata alla cura (HANDOFF_ad.md, il secondo panel) =================
+  // Meno Grande Fratello, più strada; i colori hip hop come accenti nelle cose (non nel filtro); uno shader proprio. Qui il passo:
+  // le luci crema (non ocra), i neri pieni di giorno, l'ombra chiara e colorata (di giorno era un buco blu notte a L .19: si leggeva notte),
+  // la sera a due colori (arancio sui muri, cobalto nelle ombre), la notte al sodio, la pozza sul personaggio appena (era un occhio di bue),
+  // la grana d'emulsione a 12 al secondo nei medi, il tratto che prende il colore della cosa (un pennarello, non il viola fisso).
+  // ?noad torna alla pellicola di prima; window.__AD dal vivo.
+  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .09 };
+  if (AD.on) {
+    PELL.gonfio = .045;   // il centro meno ingrandito (era .055: 5,8% e un centro più morbido dei bordi)
+    const M = SGU.momenti;
+    Object.assign(M.mattino, { luce: [1.02, 1, .985], proNeri: .045, proTinta: '#4a5cc8', proTintaK: .27 });   // l'ombra oltremare (fra l'illustratore e il tecnico luci)
+    Object.assign(M.pomeriggio, { luce: [1.02, 1, .985], proNeri: .045, proTinta: '#4a5cc8', proTintaK: .27 });
+    Object.assign(M.sera, { sole: '#ffb47a', soleK: 1, sat: .98, ombra: [.86, .9, 1.18], proNeri: .05, proTinta: '#7a46a8', proTintaK: .26 });   // Do the Right Thing: arancio sui muri, magenta-viola nelle ombre
+    Object.assign(M.notte, { cielo: '#2a3360', proTintaK: .18, contrasto: 1.16 });
+    PROF.soleLato = [-68, -112]; PROF.soleAlto = [22, 40];   // il sole sempre in diagonale alle vie: prima correva quasi parallelo ai caruggi e li riempiva d'ombra
+    Object.assign(NIT, { luce: .06, avanti: .25 });
+  }
+  if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; }
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
@@ -85274,6 +85291,13 @@ ${OM}
 { vec3 sgNw = inverseTransformDirection( geometry.normal, viewMatrix ); float frS = 1. - saturate( dot( geometry.normal, geometry.viewDir ) );
 #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
   reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * ( 1. - sgOmbra ) * sgP2.x;   // l'ombra presa dal cielo dell'ora: colorata, mai nera
+  if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 14 cm sul piano della superficie (ancorati al muro, non allo
+    // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
+    vec3 sgAn = abs( sgNw ); vec2 sgHp = sgAn.y > max( sgAn.x, sgAn.z ) ? vSgW.xz : ( sgAn.x > sgAn.z ? vSgW.zy : vSgW.xy );
+    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .14 ); vec2 sgFw = fwidth( sgHp );
+    float sgOn = 1. - smoothstep( .2, .34, max( sgFw.x, sgFw.y ) ), sgR = sqrt( 1. - sgOmbra ) * .42, sgDt = length( fract( sgHp ) - .5 );
+    float sgDot = 1. - smoothstep( sgR - .07, sgR + .07, sgDt );
+    reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( 1. ), sgP3.rgb * 2.2, .5 ) * ( sgDot - .45 ) * sgP5.w * sgOn * ( 1. - sgOmbra ); }
 #endif
 #if NUM_DIR_LIGHTS > 0 && defined( SG_FOGLIA )
   if ( sgP1.w > 0. ) {   // il verde delle chiome (solo i materiali delle foglie: un muro o una persiana verde non si accendono): la luce che passa dal lato in ombra, il bordo, il cappello di luce in cima
@@ -85322,7 +85346,7 @@ vec3 hemisphereLightColor( vec3 nW ) { vec3 c = vec3( 0. );
     u1.x = k * P.pittura; u1.y = k * P.grana; u1.z = k * P.varia; u1.w = k * P.chiome;
     u2.x = k * P.ombre; u2.y = k * P.acqua; u2.z = (performance.now() / 1000) % 600; u2.w = cam.h || 0;
     { const ric = !!(k && PRO.attivo && P.chiomeRicche); if (PRO.ricOn !== ric) { PRO.ricOn = ric; PRO.ricche.forEach(m => { m.visible = ric; }); PRO.semplici.forEach(m => { m.visible = !ric; }); } }
-    PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0);
+    PRO.u3.w = k * (P.vento || 0); PRO.u5.x = k * (P.finestre || 0); PRO.u5.w = k && AD.on ? AD.retino : 0;   // [ad] il retino nelle ombre
     PRO.u4.x = k * P.celle; PRO.u4.y = k * P.suolo; PRO.u4.z = k * P.polvere; PRO.u4.w = k * P.buchi;
     PRO.u5.z = k && S && S.proSuolo ? (S.proSuolo - 1) * (P.grading || 0) : 0;   // [scorcio] il riempimento di cielo sul suolo dell'ora (0 di giorno)
     if (k && S && S.proEsp) renderer.toneMappingExposure *= 1 + (S.proEsp - 1) * (P.grading || 0);   // l'esposizione dell'ora nella proposta (la notte meno chiusa)
@@ -85384,7 +85408,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
         gS: { value: new THREE.Vector4() },   // [strada]
         aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS;   // gS: [strada] rigonfiamento, pellicola
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -85418,6 +85442,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             vUv = .5 + q0 * (1. - gS.x * (1. - r2)); }
 #endif
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
+#if defined(SG_STR) && defined(SG_AD)
+          { vec2 qa = (vUv0 - .5) * vec2(src.x / src.y, 1.); shp *= 1. + gS.w * gS.x * (1. - dot(qa, qa) / (.25 * src.x * src.x / (src.y * src.y) + .25)); }   // [ad] il centro ingrandito dal rigonfiamento: un filo più nitido
+#endif
 #if defined(SG_AAA) && defined(SG_PROD)
           float aD0 = 1. / sgI(vUv), aDF = 1. / sgI(vec2(.5, .48)), aCoc = aA.w * smoothstep(aF.w * .12, aF.w, abs(aD0 - aDF));   // [look-aaa] la profondità qui e al centro (il fuoco): il tilt-shift per profondità
 #else
@@ -85451,7 +85478,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
               c = max(c + dl * nB.w * nF, 0.); }   // solo il valore (sommato, non moltiplicato: la croma non sale col valore)
             if (nA.w > 0.) { float dn = max(max(1. / sgI(vUv + vec2(e.x, 0.)), 1. / sgI(vUv - vec2(e.x, 0.))), max(1. / sgI(vUv + vec2(0., e.y)), 1. / sgI(vUv - vec2(0., e.y))));
               float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
+#ifdef SG_AD
+              c = mix(c, c * c * .85 + vec3(.035, .02, .05), sil * nA.w); }   // [ad] il pennarello: il colore della cosa, più scuro e più pieno
+#else
               c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
+#endif
             c *= 1. - nA.z * smoothstep(.25, .6, -nRel);                                   // la quinta
             if (nG.x + nG.y + nG.z > 0.) {   // i volumi e le divisioni, dalla quota vera (con la camera quasi dall'alto la profondità relativa dice poco)
               float q0 = nQ(vUv), dr = 0.;
@@ -85459,16 +85490,27 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
               float rp = clamp(nG.w / (pa * nD0), 2., 28.), oc = 0., un = 0.;
               for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; float hn = nQ(vUv + vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .6 : 1.)) - q0;
                 oc += smoothstep(.6, 2.5, hn); un += step(abs(hn), .08); }
-              c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
+#ifdef SG_AD
+              c = mix(c, c * c * .85 + vec3(.035, .02, .05), smoothstep(1.2, 2.5, dr) * nG.x);   // [ad] il ciglio col pennarello
+#else
+              c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);
+#endif                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
               c *= mix(vec3(1.), vec3(.62, .6, .72), min(1., oc * .22) * nG.y);                  // il piede dei muri: l'ombra di contatto (il suolo si separa dalla casa)
-              float pl = smoothstep(6., 8., un) * (1. - smoothstep(.1, .6, dr)) * mix(1., 1.3, nTet) * nG.z;   // anche i tetti (l'illustratore): il micro-dettaglio dei coppi è il rumore più grande   // la calma: le superfici piane, lontano dagli spigoli
+              float pl = smoothstep(6., 8., un) * (1. - smoothstep(.1, .6, dr)) * mix(1., 1.3, nTet) * nG.z;
+#ifdef SG_AD
+              pl *= mix(1., 1. / 1.3, nTet);   // [ad] la calma non spiana i tetti
+#endif   // anche i tetti (l'illustratore): il micro-dettaglio dei coppi è il rumore più grande   // la calma: le superfici piane, lontano dagli spigoli
               if (pl > .01) { vec3 m = (texture2D(t, vUv + vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv + vec2(e.x, -e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, -e.y) * 1.5).rgb) * .25;
                 float dl = abs(dot(m - c, vec3(.299, .587, .114)));
                 c = mix(c, m, pl * (1. - smoothstep(.06, .16, dl))); }   // il rumore fine del lastricato si spiana; i segni netti (strisce, ombre) restano
             }
             float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
             c = mix(c, nH + (c - nH) * .55, hz);
+#ifdef SG_AD
+            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .95 + .03) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .6, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno   // [ad] i tetti tengono trama e colore
+#else
             { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .9 + .08) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .38, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
+#endif
           }
 #endif
 #if defined(SG_AAA) && defined(SG_PROD)
@@ -85556,7 +85598,12 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             c *= mix(vec3(1.), vec3(1.035, 1.0, .95), gri * mid);                                   // i grigi (asfalto, cemento, intonaci spenti) caldi di sole
             c = mix(c, c * vec3(.98, .94, 1.06) + vec3(.0, .0, .012), (1. - smoothstep(.02, .22, lp)) * gri);   // nel fondo un filo di cobalto: l'ombra ha un colore
             c = mix(vec3(lp), c, 1. + .14 * mid * smoothstep(.12, .4, ch2));                        // il colore pieno dove c'è già colore (i muri, le saracinesche, i vestiti, le auto)
+#ifdef SG_AD
+            c *= mix(vec3(1.), vec3(1.015, 1.0, .98), smoothstep(.6, .95, lp));                    // [ad] le luci crema (B/R ≥ .84), non ocra
+            c += (1. - smoothstep(.12, .32, lp)) * step(c.r, c.b) * vec3(.03, .035, .06);           // [ad] l'ombra fredda di giorno più chiara: colore, non buco
+#else
             c *= mix(vec3(1.), vec3(1.02, 1.0, .95), smoothstep(.6, .95, lp));                     // le luci crema, non bianche
+#endif
             float mx3 = max(c.r, max(c.g, c.b)), mn3 = min(c.r, min(c.g, c.b)); if (mx3 > .92 && mx3 - mn3 > .5) c = mix(vec3(dot(c, vec3(.299, .587, .114))), c, .85);   // il rosso pieno al sole non brucia
             c = mix(c0, max(c, 0.), gS.y); }
 #endif
@@ -85567,7 +85614,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
           c = max(c - gN.x, 0.) / (1. - gN.x);                                         // neri profondi e puliti
 #ifdef SG_STR
           c += gS.y * (1. - smoothstep(.0, .12, dot(c, vec3(.299, .587, .114)))) * vec3(.012, .005, 0.);   // [strada] il nero della pellicola: pieno ma caldo
-#endif
+#ifdef SG_AD
+          { vec2 gp = floor(gl_FragCoord.xy / max(1., src.y / 720.)); float gh = fract(sin(dot(gp + floor(tm * 12.) * vec2(7., 13.), vec2(12.9898, 78.233))) * 43758.5453) - .5;   // [ad] la grana d'emulsione: ferma alla risoluzione, 12 al secondo
+            float lg = dot(c, vec3(.299, .587, .114)); c += gS.z * 4. * lg * (1. - lg) * gh * vec3(1.06, 1., .92); }   // solo nei medi
+#endif#endif
 #ifdef SG_AAA
           if (aB.x > 0.) { vec3 bl = texture2D(tB, vUv).rgb; c = 1. - (1. - c) * (1. - bl * aB.x); }   // [look-aaa] il bagliore, a schermo (non brucia)
           c = pow(max(c * aS + aO, 0.), aP);                                            // [look-aaa] il grading dell'ora: pendenza, spostamento, potenza per canale
@@ -85576,7 +85626,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
 #ifdef SG_NIT
           { float lh = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lh) * vec3(1.03, 1., .95), smoothstep(.52, .95, lh) * nS); }   // [nitida] la spalla della pellicola: le luci piene perdono colore (la luce si legge come luce, non come vernice arancio)
 #endif
-          vec2 q = vUv - .5; c *= 1. - dot(q, q) * gK.z;                                // la vignetta
+          vec2 q = vUv0 - .5; c *= 1. - dot(q, q) * gK.z;                               // la vignetta (sullo schermo vero, non piegata dal rigonfiamento)
 #ifdef SG_NIT
           { float rr = length((vUv - nB.xy) * vec2(src.x / src.y, 1.)) / max(nC.z, .05);   // [nitida] la luce sul personaggio: si apre attorno a lui, scende verso i bordi
             c *= (1. + nC.x * (1. - smoothstep(0., .7, rr))) * (1. - nC.y * smoothstep(.55, 1.5, rr)); }
@@ -85584,7 +85634,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
           c = mix(c, vec3(.55, .02, .05), smoothstep(.18, .5, length(q * vec2(1., 1.2))) * fx.x * .75);
           c = mix(c, vec3(dot(c, vec3(.3, .59, .11))), fx.w);
           c += fx.y * vec3(.9, .2, .3);
-          float asp = src.x / src.y, bw = max(0., (1. - (4. / 3.) / asp) * .5) * lb.y, b = step(vUv.y, lb.x * .11) + step(1. - lb.x * .11, vUv.y) + step(vUv.x, bw) + step(1. - bw, vUv.x);
+          float asp = src.x / src.y, bw = max(0., (1. - (4. / 3.) / asp) * .5) * lb.y, b = step(vUv0.y, lb.x * .11) + step(1. - lb.x * .11, vUv0.y) + step(vUv0.x, bw) + step(1. - bw, vUv0.x);   // [ad] le bande sullo schermo vero: dritte
           c = mix(c, vec3(0.), clamp(b, 0., 1.)) * (1. - fx.z);
           c += (fract(sin(dot(gl_FragCoord.xy + fract(tm) * 61., vec2(12.9898, 78.233))) * 43758.5453) - .5) / 255.;   // contro le bande degli 8 bit
           gl_FragColor = vec4(c, 1.); }`,
@@ -85640,7 +85690,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido * (RES < .99 ? .4 : 1));   /* [nitore] con la scena ingrandita la nitidezza segnava i gradini: un filo solo */ U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
-    U.gS.value.set(PELL.on ? PELL.gonfio : 0, PELL.on ? PELL.pellicola : 0, 0, 0);   // [strada]
+    U.gS.value.set(PELL.on ? PELL.gonfio : 0, PELL.on ? PELL.pellicola : 0, AD.on ? AD.grana : 0, AD.on ? AD.centro : 0);   // [strada] [ad] la grana, il centro
     if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
       U.tD.value = rt.depthTexture || null; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
@@ -90292,10 +90342,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
 
   const pv3 = new THREE.Vector3();
   // y è l'altezza sopra il terreno
-  function project(x, y, z) { pv3.set(x, y + groundH(x, z), z).project(camera); return { x: (pv3.x + 1) / 2, y: (1 - pv3.y) / 2, behind: pv3.z > 1 }; }
+  // [ad] il rigonfiamento del passo finale (PELL.gonfio, SG_STR) anche per la mira e per le etichette: lo schermo s mostra la scena in gonfia(s);
+  // project fa l'inversa (due passi bastano: lo scarto resta sotto il decimo di pixel). Senza, la mira sbagliava fino a 13 px a 1024 di larghezza
+  function gonfiaK(sx, sy) { const g = PELL.on ? PELL.gonfio : 0; if (!g) return 1; const a = W / Math.max(1, H), qx = sx - .5, qy = sy - .5; return 1 - g * (1 - (qx * qx * a * a + qy * qy) / (.25 * a * a + .25)); }
+  function gonfia(sx, sy) { const k = gonfiaK(sx, sy); return [.5 + (sx - .5) * k, .5 + (sy - .5) * k]; }
+  function sgonfia(ux, uy) { let sx = ux, sy = uy; for (let i = 0; i < 2; i++) { const k = gonfiaK(sx, sy); sx = .5 + (ux - .5) / k; sy = .5 + (uy - .5) / k; } return [sx, sy]; }
+  function project(x, y, z) { pv3.set(x, y + groundH(x, z), z).project(camera); const s = sgonfia((pv3.x + 1) / 2, (1 - pv3.y) / 2); return { x: s[0], y: s[1], behind: pv3.z > 1 }; }
   const ray3 = new THREE.Raycaster(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1.1), hit3 = new THREE.Vector3();
   // il cursore punta all'altezza del busto (rispetto al terreno sotto il giocatore)
-  function screenToGround(nx, ny) { ground.constant = -((window.InterniArte && InterniArte.floorY() != null ? 0 : 1.1) + playerH);   /* [interni] dentro si clicca sul pavimento */ ray3.setFromCamera(new THREE.Vector2(nx * 2 - 1, 1 - ny * 2), camera); return ray3.ray.intersectPlane(ground, hit3) ? { x: hit3.x, y: hit3.z } : null; }
+  function screenToGround(nx, ny) { ground.constant = -((window.InterniArte && InterniArte.floorY() != null ? 0 : 1.1) + playerH);   /* [interni] dentro si clicca sul pavimento */ { const u = gonfia(nx, ny); ray3.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), camera); } return ray3.ray.intersectPlane(ground, hit3) ? { x: hit3.x, y: hit3.z } : null; }
   // [visuale5] la levetta segue la visuale di adesso (in su è sempre in su sullo schermo), anche quando la giri a mano; solo il ricentro
   // automatico fatto mentre la tieni non la gira (cam.lock: la direzione nel mondo resta quella data, niente giri in tondo) finché non la lasci
   function camBasis() { if (cam.yawIn !== undefined && isFinite(cam.yawIn)) { const fx = -Math.sin(cam.yawIn), fz = -Math.cos(cam.yawIn); return { fx, fz, rx: -fz, rz: fx }; }
@@ -90326,7 +90381,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
