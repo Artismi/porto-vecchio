@@ -13396,7 +13396,11 @@ if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sg
 #ifdef SG_TAGLIO2
   if ( sgP9.y > 0. && sgRr < 1. ) discard;   // la prova (window.__AD.prova): tutto quello che non è STANDARD nell'ellisse
 #endif
+#ifdef STANDARD
   if ( sgRr < 1. && SG_WP.y > SG_CY + 2.2 && distance( SG_WP, cameraPosition ) < sgP7.w - 1.5 ) {
+#else
+  if ( sgRr < 1. && ( SG_WP.y > SG_CY + 2.2 || sgP9.z > 0. ) && distance( SG_WP, cameraPosition ) < sgP7.w - sgP9.w ) {   // la prova2: solo la distanza
+#endif
     vec2 sgB = mod( floor( gl_FragCoord.xy ), 4. ), sgH = floor( sgB * .5 ); vec2 sgL = sgB - 2. * sgH;
     float sgBy = fract( sgL.x * .5 + sgL.y * sgL.y * .75 ) + fract( sgH.x * .5 + sgH.y * sgH.y * .75 ) * .25 + .03;   // Bayer 4×4
     if ( sgBy < .92 * ( 1. - smoothstep( .55, 1., sgRr ) ) ) discard; } }
@@ -18555,7 +18559,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !(p.indoor);   // (non dyn.people.__player.visible: con le persone fuse di peso_gente.js l'originale è nascosto)
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
-        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; }
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
