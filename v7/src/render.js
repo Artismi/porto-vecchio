@@ -13629,7 +13629,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             c = mix(vec3(lp), c, 1. + .14 * mid * smoothstep(.12, .4, ch2));                        // il colore pieno dove c'è già colore (i muri, le saracinesche, i vestiti, le auto)
 #ifdef SG_AD
             c *= mix(vec3(1.), vec3(1.015, 1.0, .98), smoothstep(.6, .95, lp));                    // [ad] le luci crema (B/R ≥ .84), non ocra
-            c += (1. - smoothstep(.12, .32, lp)) * step(c.r, c.b) * vec3(.03, .035, .06);           // [ad] l'ombra fredda di giorno più chiara: colore, non buco
+            c += (1. - smoothstep(.12, .32, lp)) * step(c.r, c.b) * vec3(.03, .035, .06) * gN.z;    // [ad] l'ombra fredda di giorno più chiara: colore, non buco (solo di giorno: di notte azzurrava tutto)
 #else
             c *= mix(vec3(1.), vec3(1.02, 1.0, .95), smoothstep(.6, .95, lp));                     // le luci crema, non bianche
 #endif
@@ -13686,6 +13686,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
     if (lastSize) resize(...lastSize); return k; }
   // le luci del momento (dopo quelle di prima: le sostituisce; tiene il tempo, la zona e la notte della regia luci)
   function sguLuci(st, night, dusk, WXc, WXfog, dt, SZ) {
+    SGT.notte = Math.max(night || 0, (dusk || 0) * .6);   // [ad] per il passo: l'ombra che si apre è solo del giorno
     const hh = ((st.t / 60) % 24 + 24) % 24, S = sguMomento(hh), dk = 1 - night;
     // il sole: la direzione salta fra giorno e notte (sole/luna) quando la luce è al minimo: lì la sua forza scende e lo scatto non si vede
     const salto = .2 + .8 * Math.min(1, Math.abs(night - .5) * 5);
@@ -13717,7 +13718,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
     SGT.letter += ((ui.letterbox ? 1 : 0) - SGT.letter) * Math.min(1, dt * 5);
     const hurtK = Math.max(0, 1 - (st.clock - p.hurtT) * 1.5);
     U.t.value = rt.texture; U.sh.value.fromArray(K.ombra); U.hi.value.fromArray(K.luce);
-    U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido * (RES < .99 ? .4 : 1));   /* [nitore] con la scena ingrandita la nitidezza segnava i gradini: un filo solo */ U.gN.value.set(SGU.neri, SGU.pieno, 0, 0);
+    U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido * (RES < .99 ? .4 : 1));   /* [nitore] con la scena ingrandita la nitidezza segnava i gradini: un filo solo */ U.gN.value.set(SGU.neri, SGU.pieno, AD.on ? 1 - (SGT.notte || 0) : 0, 0);   /* [ad] gN.z: il giorno (l'ombra che si apre) */
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
     U.gS.value.set(PELL.on ? PELL.gonfio : 0, PELL.on ? PELL.pellicola : 0, AD.on ? AD.grana : 0, AD.on ? AD.centro : 0);   // [strada] [ad] la grana, il centro
