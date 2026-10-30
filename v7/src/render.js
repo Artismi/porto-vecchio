@@ -13009,7 +13009,7 @@ var Render = (function () {
   const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
   const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
-    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, u7: { x: 0, y: 0, z: 1, w: 0 }, u8: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   /* [ad] u7, u8: il taglio del primo piano */   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
+    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, u7: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   /* [ad] u7, u8: il taglio del primo piano */   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
   // ================= [nitida] LA LEGGIBILITÀ NEL PASSO UNICO: dove guardare, cosa sta davanti e cosa sta dietro =================
   // Il committente: «si vede in bassa qualità; uno shader leggero che ridia leggibilità, oltre all'effetto cinematografico; non sai dove
@@ -13186,7 +13186,7 @@ var Render = (function () {
   // la sera a due colori (arancio sui muri, cobalto nelle ombre), la notte al sodio, la pozza sul personaggio appena (era un occhio di bue),
   // la grana d'emulsione a 12 al secondo nei medi, il tratto che prende il colore della cosa (un pennarello, non il viola fisso).
   // ?noad torna alla pellicola di prima; window.__AD dal vivo.
-  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: .92, tagliaH: 2.2, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
+  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   if (AD.on) {
     PELL.gonfio = .045;   // il centro meno ingrandito (era .055: 5,8% e un centro più morbido dei bordi)
     const M = SGU.momenti;
@@ -13201,17 +13201,17 @@ var Render = (function () {
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
     // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
     C.clipping_planes_fragment += `
 #if defined( STANDARD ) && !defined( USE_SKINNING )
-if ( sgP7.w > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sgRr = length( sgD * vec2( 1., 1.3 ) );
-  if ( sgRr < 1. && vSgW.y > sgP8.y + sgP8.z && distance( vSgW, cameraPosition ) < sgP8.x - 1.5 ) {
+if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sgRr = length( sgD * vec2( 1., 1.3 ) );
+  if ( sgRr < 1. && vSgW.y > sgP2.w + 2.2 && distance( vSgW, cameraPosition ) < sgP7.w - 1.5 ) {
     vec2 sgB = mod( floor( gl_FragCoord.xy ), 4. ), sgH = floor( sgB * .5 ); vec2 sgL = sgB - 2. * sgH;
     float sgBy = fract( sgL.x * .5 + sgL.y * sgL.y * .75 ) + fract( sgH.x * .5 + sgH.y * sgH.y * .75 ) * .25 + .03;   // Bayer 4×4
-    if ( sgBy < sgP7.w * ( 1. - smoothstep( .55, 1., sgRr ) ) ) discard; } }
+    if ( sgBy < .92 * ( 1. - smoothstep( .55, 1., sgRr ) ) ) discard; } }
 #endif`;
     C.common += `
 #ifdef STANDARD
@@ -13220,7 +13220,7 @@ float sgVetroK = -1.;
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
-uniform vec4 sgP7; uniform vec4 sgP8;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px), forza · la sua distanza dalla camera, la sua quota, l'altezza del taglio
+uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px; 0 spento), la sua distanza dalla camera (la sua quota è sgP2.w): un vec4 solo, i registri dei materiali sono pochi
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5;   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
@@ -18353,11 +18353,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota
-      const u7 = PRO.u7, u8 = PRO.u8, on = LOOKV.nuovo && rt && !ui.studio && !ui.intro && !(p.indoor) && dyn.people.__player && dyn.people.__player.visible;
+      const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !ui.intro && !(p.indoor) && dyn.people.__player && dyn.people.__player.visible;
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
-        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.tagliaR * rt.height; u7.w = AD.taglio; u8.x = dc; u8.y = playerH; u8.z = AD.tagliaH; }
-      else u7.w = 0; }
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; }
+      else u7.z = 0; }
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
     if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); return; }   // [sguardo] un passo solo
