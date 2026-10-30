@@ -13646,7 +13646,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
 #ifdef SG_AD
           { vec2 gp = floor(gl_FragCoord.xy / max(1., src.y / 720.)); float gh = fract(sin(dot(gp + floor(tm * 12.) * vec2(7., 13.), vec2(12.9898, 78.233))) * 43758.5453) - .5;   // [ad] la grana d'emulsione: ferma alla risoluzione, 12 al secondo
             float lg = dot(c, vec3(.299, .587, .114)); c += gS.z * 4. * lg * (1. - lg) * gh * vec3(1.06, 1., .92); }   // solo nei medi
-#endif#endif
+#endif
+#endif
 #ifdef SG_AAA
           if (aB.x > 0.) { vec3 bl = texture2D(tB, vUv).rgb; c = 1. - (1. - c) * (1. - bl * aB.x); }   // [look-aaa] il bagliore, a schermo (non brucia)
           c = pow(max(c * aS + aO, 0.), aP);                                            // [look-aaa] il grading dell'ora: pendenza, spostamento, potenza per canale
