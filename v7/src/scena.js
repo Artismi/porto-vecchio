@@ -59,6 +59,12 @@ var Scena = (function () {
     adunata: { tipo: 'piazzetta', set: 'adunata', dom: 'dehors', sec: ['panchina', 'edicola_giornali', 'cabina_sip'], acc: ['gesso'] },   // [cucitura] la Piazza Grande (l'ex adunata): il caffè, non il palco
   };
   for (const k in CATALOGO) CATALOGO[k].nome = k;
+  // [segni] i segni di mano più fitti (scenografo): la tag entra negli accenti delle case del borgo e della marina, delle botteghe del
+  // borgo e del boom (accanto alle saracinesche), degli angoli e degli sbocchi (render.js la mette sul muro accanto, stretta allo
+  // spigolo). Le liste si tagliano a 3 secondari e 2 accenti: la tag prende il posto del vaso e dell'adesivo. ?nosegni: il catalogo di prima
+  const SEGNI = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));
+  if (SEGNI) [['casa_del_borgo', 'vaso'], ['bottega_del_borgo', 'vaso'], ['serranda_e_neon', 'sticker'], ['casa_del_pescatore'], ['angolo_nudo'], ['angolo_della_marina'], ['angolo_murattiano'], ['sbocco_sul_mare'], ['sbocco_sulla_via']]
+    .forEach(([k, via]) => { const A = CATALOGO[k].acc, i = via ? A.indexOf(via) : -1; if (i >= 0) A[i] = 'tag'; else if (A.length < 2) A.push('tag'); });
   // le famiglie dei dominanti (mai due della stessa famiglia a meno di 15 m)
   // il raggio entro cui due dominanti della stessa famiglia non stanno insieme (i ritratti e i cantieri sono rari per definizione)
   const RAGGIO = { insegna: 15, ritratto: 40, carta: 15, cantiere: 60, filo: 10, arredo: 10, nicchia: 12, palo: 10, portone: 0 };

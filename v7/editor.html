@@ -22586,7 +22586,8 @@ var Arredo3D = (function () {
     [1.95, 2.48].forEach(y => slab(p, .05, .05, .05, ZS, 0, y, .04, 0)); if (F()) [1.8, 2.3].forEach(y => fascetta(p, y, .035));   // paletta, orario, le staffette
     asta(g, [1.64, 2.24, .3], [1.4, 2.24, .3], .016, ZS); return g; };   // la staffa che stringe il palo alla trave
   T.edicola = () => {   // edicola dei giornali: chiosco in lamiera verde sullo zoccolo, tetto a padiglione col colmo, bancone sulle mensole, rastrelliera inclinata con le riviste, serranda arrotolata, insegna accesa, porta di servizio
-    const g = new THREE.Group(), W = 2.4, D = 1.6, H = 2.4, vd = mat('#3a6a4a', 'vernice'), vdS = mat('#2a4a3a', 'vernice');
+    const SG = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));   // [segni] il verde hip hop pieno (?nosegni: il verde spento di prima)
+    const g = new THREE.Group(), W = 2.4, D = 1.6, H = 2.4, vd = mat(SG ? '#1E8A4A' : '#3a6a4a', 'vernice'), vdS = mat(SG ? '#16683a' : '#2a4a3a', 'vernice');
     slab(g, W + .1, .18, D + .1, CS, 0, .09, 0, .02); slab(g, W, H - .18, D, vd, 0, .18 + (H - .18) / 2, 0, .04); [-1, 1].forEach(s => [-1, 1].forEach(t => slab(g, .08, H - .2, .08, vdS, s * (W / 2 - .02), .18 + (H - .18) / 2, t * (D / 2 - .02), .01)));
     ext(g, 'pad', shape([[-D / 2 - .25, 0], [D / 2 + .25, 0], [D / 2 + .22, .08], [0, .42], [-D / 2 - .22, .08]]), W + .5, .015, vdS, 0, H, 0, 0, PI / 2, 0); put(g, cylG(.05, .05, W + .5, 8), ZS, 0, H + .42, 0, 0, 0, PI / 2);   // il tetto e il colmo
     slab(g, W + .1, .08, .5, LGG, 0, .95, D / 2 + .22, .01); [-1, 1].forEach(s => { asta(g, [s * 1.1, .91, D / 2 + .42], [s * 1.1, .91, D / 2 - .02], .02, GH, 4); asta(g, [s * 1.1, .91, D / 2 + .4], [s * 1.1, .4, D / 2 - .02], .02, GH, 4); });   // il bancone sulle mensole
@@ -22603,7 +22604,8 @@ var Arredo3D = (function () {
     [-.7, .55].forEach((x, i) => { slab(g, .34, .1 + i * .04, .24, mat('#ece6d4', 'carta'), x, .99 + (.1 + i * .04) / 2, D / 2 + .2, .004); if (F()) asta(g, [x - .17, 1.02, D / 2 + .2], [x + .17, 1.02, D / 2 + .2], .004, mat('#c8a050', 'tela'), 4); });   // i quotidiani in pila, legati
     return g; };
   T.chiosco = () => {   // chiosco del lungomare: pianta ottagonale bianca e azzurra, bancone tutto intorno, tetto a cono con la punta, frigo delle bibite, insegna
-    const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat('#e6e4da', 'vernice'), az = mat('#5a92b0', 'vernice');
+    const SG = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));   // [segni] il blu reale al posto dell'azzurro (?nosegni: come prima)
+    const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat(SG ? '#F2EFE8' : '#e6e4da', 'vernice'), az = mat(SG ? '#1E4FB4' : '#5a92b0', 'vernice');
     lathe(g, [[R + .1, 0], [R + .1, .12], [R, .14], [R, 1.0], [R + .18, 1.0], [R + .18, 1.08], [R, 1.1], [R - .02, H - .3], [R, H - .25]], 8, bi, 0, 0, 0, PI / 8); lathe(g, [[R + .005, .14], [R + .005, .55]], 8, az, 0, 0, 0, PI / 8);
     for (let i = 0; i < 8; i++) { const a = i / 8 * PI * 2; asta(g, [Math.cos(a) * (R - .02), 1.1, Math.sin(a) * (R - .02)], [Math.cos(a) * (R - .02), H - .2, Math.sin(a) * (R - .02)], .03, az); if (i !== 4) put(g, slabG(.9, .9, .012, 0), VT, Math.cos(a + PI / 8) * (R - .02) * .99, 1.6, Math.sin(a + PI / 8) * (R - .02) * .99, 0, -a - PI / 8 + PI / 2, 0); }   // montanti e vetrate (una lasciata aperta: il passaggio)
     lathe(g, [[R + .35, H - .3], [R + .35, H - .25], [.3, H + .35], [.05, H + .45], [.05, H + .6], [.001, H + .62]], 8, az, 0, 0, 0, PI / 8); put(g, sphG(.06, 6), bi, 0, H + .64, 0);
@@ -22988,7 +22990,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '83ab3c2640d8519c';</script>
-<script>window.PV_IMPRONTA_TASS = '9351b7d706cfc82c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '1bcfdd25d00ddbc7';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -65851,6 +65853,12 @@ var Scena = (function () {
     adunata: { tipo: 'piazzetta', set: 'adunata', dom: 'dehors', sec: ['panchina', 'edicola_giornali', 'cabina_sip'], acc: ['gesso'] },   // [cucitura] la Piazza Grande (l'ex adunata): il caffè, non il palco
   };
   for (const k in CATALOGO) CATALOGO[k].nome = k;
+  // [segni] i segni di mano più fitti (scenografo): la tag entra negli accenti delle case del borgo e della marina, delle botteghe del
+  // borgo e del boom (accanto alle saracinesche), degli angoli e degli sbocchi (render.js la mette sul muro accanto, stretta allo
+  // spigolo). Le liste si tagliano a 3 secondari e 2 accenti: la tag prende il posto del vaso e dell'adesivo. ?nosegni: il catalogo di prima
+  const SEGNI = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));
+  if (SEGNI) [['casa_del_borgo', 'vaso'], ['bottega_del_borgo', 'vaso'], ['serranda_e_neon', 'sticker'], ['casa_del_pescatore'], ['angolo_nudo'], ['angolo_della_marina'], ['angolo_murattiano'], ['sbocco_sul_mare'], ['sbocco_sulla_via']]
+    .forEach(([k, via]) => { const A = CATALOGO[k].acc, i = via ? A.indexOf(via) : -1; if (i >= 0) A[i] = 'tag'; else if (A.length < 2) A.push('tag'); });
   // le famiglie dei dominanti (mai due della stessa famiglia a meno di 15 m)
   // il raggio entro cui due dominanti della stessa famiglia non stanno insieme (i ritratti e i cantieri sono rari per definizione)
   const RAGGIO = { insegna: 15, ritratto: 40, carta: 15, cantiere: 60, filo: 10, arredo: 10, nicchia: 12, palo: 10, portone: 0 };
@@ -74743,6 +74751,140 @@ var Render = (function () {
     if (!AIR2.puffy) { AIR2.puffy = true; const st = smokeTexture(); VX.steam.forEach(s => { s.sp.material.map = st; s.sp.material.needsUpdate = true; }); }
     VX.steam.forEach(s => { if (!s.lc) return; s.sp.material.color.setRGB(.85, .86, .89).lerp(s.lc, night * .55); });
   }
+  // ================= [segni] I SEGNI DI MANO: la strada scritta da chi ci vive, il regime solo nei suoi luoghi =================
+  // L'art director: «meno Grande Fratello, più street», «colori più hip hop». Una bottega su tre o quattro ha la saracinesca abbassata,
+  // e il telo porta tag, throw-up e pezzi; i manifesti e i murales della strada parlano di jam, rap, block party, skate e discoteca; i
+  // manifesti del regime, la bandiera con l'occhio e le telecamere restano nei suoi luoghi (zoneAt 'regime') e lungo i suoi palazzi
+  // (governo, militari); dove il regime tocca la strada le tag ci sono state ma le ha cancellate col buff (rettangoli grigi #8c8a84).
+  // La tavolozza hip hop va nei materiali come accento (saracinesche, porte, insegne, tende; la gente giovane in vestiario.js), il fluo
+  // solo dentro i writing. Gli intonaci liguri restano. ?nosegni: la città com'era.
+  const SEGNI = { on: !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search)), gov: null, cnt: { abbassate: 0, tag: 0, buff: 0 } };
+  const HH = { rosso: '#D7262E', giallo: '#F5C518', blu: '#1E4FB4', verde: '#1E8A4A', nero: '#141414', bianco: '#F2EFE8', oro: '#C9A13A', argento: '#c9ccd0', mag: '#FF2E88', acido: '#9BEA2A', arancio: '#FF7A1A' };
+  // un luogo del regime: la sua zona, o entro m metri (6) da un palazzo del governo o militare
+  function regAt(x, z, m) {
+    if (zoneAt(x, z) === 'regime') return true;
+    if (!SEGNI.gov) SEGNI.gov = (G.BUILDINGS || []).filter(b => b.gov || b.military).map(b => [b.x * TS, b.y * TS, (b.x + b.w) * TS, (b.y + b.h) * TS]);
+    const q = m === undefined ? 6 : m; return SEGNI.gov.some(R => x > R[0] - q && x < R[2] + q && z > R[1] - q && z < R[3] + q);
+  }
+  const CREW_S = ['OGS', 'KMT', 'FLM', 'RSC', 'SPK'];   // le crew vecchie di writer_vita.js
+  // la scritta coi tratti dell'alfabeto di graffiti.js, a strati [spessore, colore, dx, dy]: dal 3D al contorno al riempimento, con la
+  // stessa mano tremolante in ogni strato (senza graffiti.js: le lettere di sistema). Torna la larghezza
+  function sgaTratti(x, txt, cx, cy, h, r, o, strati) {
+    const F = typeof Graffiti !== 'undefined' && Graffiti.F, s = String(txt).toUpperCase(), adv = h * (o.adv || .78), sl = o.slant || 0, jt = o.jit || .1;
+    const J = [...s].map(() => [(r() - .5) * h * jt, 1 + (r() - .5) * jt]), x0 = cx - (s.length * adv - adv + .6 * h + h * sl) / 2;
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    strati.forEach(([lw, col, dx, dy]) => { x.strokeStyle = col; x.lineWidth = lw;
+      if (!F) { x.font = `bold ${Math.round(h)}px Impact, "Arial Black", sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.strokeText(s, cx + (dx || 0), cy + (dy || 0)); return; }
+      x.beginPath();
+      [...s].forEach((ch, i) => { const g = F[ch]; if (!g) return; const [jy, js] = J[i];
+        g.forEach(tr => tr.forEach(([gx, gy], k) => { const yy = gy * h * js, px = x0 + i * adv + gx * h + yy * sl + (dx || 0), py = cy + h / 2 - yy + jy + (dy || 0); if (k) x.lineTo(px, py); else x.moveTo(px, py); })); });
+      x.stroke(); });
+    return s.length * adv;
+  }
+  // LA TELA DEI SEGNI: una sola, 1024×512 (512×256 sul telefono), un solo materiale per le saracinesche e le tag sui muri: si fonde nei
+  // secchi delle botteghe e delle case come gli altri pezzi (nessuna chiamata di disegno in più). In alto quattro teli stretti (128×256,
+  // le vetrine da un modulo) e due larghi (256×256, le vetrine doppie); sotto a sinistra altri due stretti; sotto a destra 16 caselle
+  // da 192×64 a fondo trasparente per le tag (alphaTest), le ultime due col buff del regime.
+  const SGA = { W: 1024, H: 512, k: PHONE ? .5 : 1, mat: null, cella: {} };
+  (() => { const C = SGA.cella; for (let i = 0; i < 4; i++) C['n' + i] = [i * 128, 0, 128, 256]; C.n4 = [0, 256, 128, 256]; C.n5 = [128, 256, 128, 256]; C.w0 = [512, 0, 256, 256]; C.w1 = [768, 0, 256, 256];
+    for (let i = 0; i < 16; i++) C['t' + i] = [256 + (i % 4) * 192, 256 + Math.floor(i / 4) * 64, 192, 64]; })();
+  function sgaUV(g, key) {   // la casella nella tela (2 px di margine: le mipmap non pescano nella vicina)
+    const [cx, cy, cw, ch] = SGA.cella[key], p = 2, uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (cx + p + uv.getX(i) * (cw - 2 * p)) / SGA.W, 1 - (cy + p + (1 - uv.getY(i)) * (ch - 2 * p)) / SGA.H);
+    return g;
+  }
+  const sgaMesh = (w, h, key) => new THREE.Mesh(sgaUV(new THREE.PlaneGeometry(w, h), key), sgaMat());
+  function sgaMat() {
+    if (SGA.mat) return SGA.mat;
+    const c = mk(SGA.W * SGA.k, SGA.H * SGA.k), x = c.getContext('2d'); x.scale(SGA.k, SGA.k);
+    const cella = (key, fn) => { const [cx, cy, cw, ch] = SGA.cella[key]; x.save(); x.beginPath(); x.rect(cx, cy, cw, ch); x.clip(); x.translate(cx, cy); fn(cw, ch, rng(cx * 7 + cy * 131 + 1986)); x.restore(); };
+    // la lamiera ondulata: una doga ogni 9 px (8 cm), lo sporco che sale da terra, la bandella in basso con le maniglie e i lucchetti
+    const telo = (w, h, col) => { x.fillStyle = col; x.fillRect(0, 0, w, h);
+      for (let y = 4; y < h - 14; y += 9) { x.fillStyle = 'rgba(0,0,0,.2)'; x.fillRect(0, y, w, 2); x.fillStyle = 'rgba(255,255,255,.13)'; x.fillRect(0, y + 2, w, 1); }
+      const g = x.createLinearGradient(0, h * .6, 0, h); g.addColorStop(0, 'rgba(60,44,30,0)'); g.addColorStop(1, 'rgba(60,44,30,.3)'); x.fillStyle = g; x.fillRect(0, h * .6, w, h * .4);
+      x.fillStyle = 'rgba(0,0,0,.32)'; x.fillRect(0, h - 14, w, 14); x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(0, h - 14, w, 2);
+      x.fillStyle = '#2a2a2c'; [w * .22, w * .78].forEach(u => x.fillRect(u - 5, h - 10, 10, 6)); };
+    const doghe = (w, h) => { x.globalCompositeOperation = 'multiply'; for (let y = 4; y < h - 14; y += 9) { x.fillStyle = 'rgba(150,150,150,.55)'; x.fillRect(0, y, w, 2); } x.globalCompositeOperation = 'source-over'; };   // la vernice segue l'onda
+    const scuro = c0 => [HH.nero, HH.blu, HH.rosso, HH.verde].includes(c0);
+    // la tag: la firma a pennarello grosso o a spruzzo, inclinata, la sottolineatura, le colature; le chiare col filo nero intorno
+    const tag = (txt, cx, cy, h, col, r, crew) => { const lw = Math.max(1.6, h * .12), st = scuro(col) ? [[lw, col]] : [[lw + 2.4, HH.nero], [lw, col]];
+      const w = sgaTratti(x, txt, cx, cy, h, r, { adv: .72, slant: .28, jit: .16 }, st);
+      x.strokeStyle = col; x.lineWidth = Math.max(1.2, h * .07);
+      if (r() < .6) { x.beginPath(); x.moveTo(cx - w * .5, cy + h * .66); x.quadraticCurveTo(cx, cy + h * .82, cx + w * .62, cy + h * .48); x.stroke(); }
+      for (let i = 0, n = 1 + Math.floor(r() * 3); i < n; i++) { const dx = cx - w * .45 + r() * w * .9; x.lineWidth = 1.2; x.beginPath(); x.moveTo(dx, cy + h * .45); x.lineTo(dx, cy + h * .5 + 3 + r() * h * .5); x.stroke(); }
+      if (crew) sgaTratti(x, crew, cx + w * .62, cy + h * .52, h * .42, r, { adv: .72, slant: .2, jit: .1 }, [[Math.max(1.2, h * .06), col]]); };
+    // il throw-up: lettere a bolla, contorno e riempimento in due colori, fatte in fretta (a volte il filo fluo fuori)
+    const throwUp = (txt, cx, cy, h, fill, line, r, key) => { const lw = h * .62; sgaTratti(x, txt, cx, cy, h, r, { adv: 1.05, slant: .08, jit: .12 }, (key ? [[lw + 10, key]] : []).concat([[lw + 6, line], [lw, fill]])); };
+    // il pezzo: lettere a blocchi col 3D, il contorno nero di 3 px, il riempimento sfumato e le luci
+    const pezzo = (txt, cx, cy, h, f1, f2, d3, r, key) => { const lw = h * .5, g = x.createLinearGradient(0, cy - h / 2, 0, cy + h / 2); g.addColorStop(0, f1); g.addColorStop(1, f2);
+      sgaTratti(x, txt, cx, cy, h, r, { adv: 1.12, slant: .12, jit: .08 }, [[lw + 6, d3, h * .13, h * .11]].concat(key ? [[lw + 10, key]] : [], [[lw + 6, HH.nero], [lw, g], [Math.max(1.5, h * .05), 'rgba(242,239,232,.85)', -h * .06, -h * .08]])); };
+    const stella = (cx, cy, s, col) => { x.fillStyle = col; x.beginPath(); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4, rr = i % 2 ? s * .25 : s; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.fill(); };
+    const corona = (cx, cy, s, col) => { x.strokeStyle = col; x.lineWidth = 1.6; x.beginPath(); x.moveTo(cx - s, cy); x.lineTo(cx - s, cy - s * .8); x.lineTo(cx - s * .4, cy - s * .3); x.lineTo(cx, cy - s); x.lineTo(cx + s * .4, cy - s * .3); x.lineTo(cx + s, cy - s * .8); x.lineTo(cx + s, cy); x.closePath(); x.stroke(); };
+    // ---- i teli: più della metà tag e throw-up, un quinto pezzi, il resto quasi nudi o dipinti dal bottegaio (verde, blu reale, rosso) ----
+    cella('n0', (w, h, r) => { telo(w, h, '#9a9890'); throwUp('KA', 64, 66, 40, HH.bianco, HH.nero, r); throwUp('OS', 64, 128, 40, HH.bianco, HH.nero, r); tag('PIX', 60, 192, 22, HH.nero, r); tag('FLM', 84, 224, 13, HH.rosso, r); doghe(w, h); });
+    cella('n1', (w, h, r) => { telo(w, h, '#3c6a4a'); tag('RUGA', 62, 46, 26, HH.bianco, r); corona(58, 26, 9, HH.mag); tag('DUKA', 56, 100, 24, HH.nero, r, 'KMT'); tag('TOKE', 64, 150, 24, HH.argento, r); tag('NAPO', 58, 198, 20, HH.giallo, r); doghe(w, h); });
+    cella('n2', (w, h, r) => { telo(w, h, '#a29f96'); pezzo('ZU', 62, 78, 42, HH.giallo, HH.rosso, HH.blu, r); pezzo('LU', 64, 146, 42, HH.giallo, HH.rosso, HH.blu, r); stella(22, 40, 9, HH.bianco); stella(108, 186, 7, HH.bianco); tag('OGS', 60, 214, 16, HH.nero, r); doghe(w, h); });
+    cella('n3', (w, h, r) => { telo(w, h, HH.blu); tag('MOLO', 56, 82, 30, HH.bianco, r, 'RSC'); tag('NEMO', 60, 150, 22, HH.nero, r); tag('VERA', 66, 200, 16, HH.giallo, r); doghe(w, h); });
+    cella('n4', (w, h, r) => { telo(w, h, '#a4a29a'); tag('TUFO', 44, 150, 16, HH.nero, r); x.fillStyle = HH.bianco; x.fillRect(86, 116, 18, 12); x.fillStyle = HH.rosso; x.fillRect(88, 118, 14, 4); doghe(w, h); });
+    cella('n5', (w, h, r) => { telo(w, h, HH.rosso); tag('NEVA', 62, 74, 28, HH.bianco, r); tag('SPK', 62, 136, 26, HH.nero, r); tag('LUPO', 60, 194, 18, HH.giallo, r); doghe(w, h); });
+    cella('w0', (w, h, r) => { telo(w, h, '#9c9a92'); x.fillStyle = HH.blu; for (let i = 0; i < 16; i++) { x.beginPath(); x.arc(34 + r() * 188, 76 + r() * 80, 18 + r() * 20, 0, 7); x.fill(); }   // la nuvola dietro il pezzo
+      pezzo('RENZ', 128, 116, 44, HH.giallo, HH.rosso, HH.verde, r, HH.mag); stella(40, 58, 11, HH.bianco); stella(222, 160, 8, HH.bianco); tag('MASK', 64, 206, 18, HH.nero, r); tag('OGS', 196, 206, 18, HH.bianco, r); doghe(w, h); });
+    cella('w1', (w, h, r) => { telo(w, h, '#8e8c86'); throwUp('TREK', 128, 84, 34, HH.argento, HH.nero, r); throwUp('SUBA', 124, 160, 30, HH.giallo, HH.nero, r, HH.acido); tag('KILO', 52, 218, 16, HH.rosso, r); tag('ZULU', 196, 222, 16, HH.nero, r); doghe(w, h); });
+    // ---- le tag sui muri (fondo trasparente): quasi tutte scure, che si leggono sugli intonaci chiari ----
+    const TG = [['RENZ', HH.nero, 'OGS'], ['MOLO', HH.bianco], ['KAOS', HH.rosso, 'FLM'], ['DUKA', HH.nero], ['NEVA', HH.blu, 'SPK'], ['PIX', HH.nero], ['TOKE', HH.argento, 'KMT'], ['ZULU', HH.verde],
+      ['RUGA', HH.nero, 'SPK'], ['BLUE', HH.blu], ['GEKO', HH.rosso], ['SUBA', HH.nero, 'RSC']];
+    TG.forEach(([t, c0, cr], i) => cella('t' + i, (w, h, r) => tag(t, 80, 28, 30, c0, r, cr)));
+    cella('t12', (w, h, r) => { throwUp('OGS', 88, 32, 26, HH.argento, HH.nero, r); tag('MASK', 160, 50, 10, HH.rosso, r); });
+    cella('t13', (w, h, r) => { throwUp('KMT', 92, 32, 26, HH.giallo, HH.nero, r, HH.mag); });
+    // il buff: la tag c'era, il regime l'ha coperta col grigio piatto; ne spuntano i bordi
+    cella('t14', (w, h, r) => { tag('KAOS', 92, 30, 30, HH.nero, r, 'FLM'); x.fillStyle = '#8c8a84'; x.fillRect(18, 7, 152, 46); });
+    cella('t15', (w, h, r) => { throwUp('ZULU', 96, 32, 22, HH.bianco, HH.nero, r); x.fillStyle = '#8c8a84'; x.fillRect(8, 10, 112, 42); x.fillRect(96, 4, 90, 50); });
+    SGA.mat = std({ map: canvasTex(c), roughness: .72, metalness: .1, alphaTest: .5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    return SGA.mat;
+  }
+  // la tag (o il buff) su un muro: centro (x, y, z) sul filo, yaw della facciata, staccata di off; nel merge statico
+  function sgaMuro(key, w, x, y, z, yaw, off, rz) {
+    const m = sgaMesh(w, w / 3, key), N = [Math.sin(yaw), Math.cos(yaw)]; m.position.set(x + N[0] * off, y, z + N[1] * off); m.rotation.y = yaw; m.rotation.z = rz || 0; addStatic(m, true);
+    SEGNI.cnt[/^t1[45]$/.test(key) ? 'buff' : 'tag']++; return m;
+  }
+  // i manifesti di strada (mvPoster da 100): jam, rap, block party, skate, discoteca, break dance. Nomi inventati, il 1986 italiano
+  function mvPosterStrada(x, W, H, r, kind) {
+    const t = (s, cx, cy, fs, col, st) => { x.fillStyle = col; mvFit(x, s, W - 6, fs, MV_FONT); if (st) { x.strokeStyle = st; x.lineWidth = 2; x.strokeText(s, cx, cy); } x.fillText(s, cx, cy); };
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    if (kind === 0) { x.fillStyle = HH.nero; x.fillRect(0, 0, W, H); x.fillStyle = HH.giallo; x.fillRect(0, 0, W, 6); x.fillRect(0, H - 6, W, 6); t('JAM', W / 2, 26, 30, HH.giallo); t(pick(r, ['AI MAGAZZINI', 'ALLA CALATA', 'SOTTO IL PONTE']), W / 2, 50, 9, HH.bianco); t(pick(r, ['SAB · 22.00', 'VEN · 21.30']), W / 2, 64, 9, HH.giallo); t('DJ ' + pick(r, ['TONNARA', 'SCIROCCO', 'GRECALE']), W / 2, 77, 8, HH.bianco); }
+    else if (kind === 1) { x.fillStyle = HH.bianco; x.fillRect(0, 0, W, H); x.fillStyle = HH.rosso; x.fillRect(0, 0, W, 30); t('RAP', W / 2, 16, 26, HH.bianco); t('MC ' + pick(r, ['SCIROCCO', 'LIBECCIO', 'MAESTRALE']), W / 2, 42, 9, HH.nero); t(pick(r, ['POSSE DEL MOLO', 'ISOLA POSSE', 'CREW SALSEDINE']), W / 2, 56, 8, HH.rosso); t('INGR. L.3000', W / 2, 72, 8, HH.nero); x.fillStyle = HH.rosso; x.fillRect(6, 82, W - 12, 3); }
+    else if (kind === 2) { x.fillStyle = HH.blu; x.fillRect(0, 0, W, H); t('BLOCK', W / 2, 13, 18, HH.giallo, HH.nero); t('PARTY', W / 2, 30, 18, HH.bianco, HH.nero);
+      x.fillStyle = HH.nero; x.fillRect(14, 42, 36, 20); x.fillRect(24, 38, 16, 3); x.fillStyle = HH.bianco; [22, 42].forEach(cx => { x.beginPath(); x.arc(cx, 53, 6, 0, 7); x.fill(); }); x.fillStyle = HH.nero; [22, 42].forEach(cx => { x.beginPath(); x.arc(cx, 53, 2.5, 0, 7); x.fill(); });   // lo stereo
+      t(pick(r, ['VICO DRITTO', 'PIAZZETTA', 'RUA BASSA']), W / 2, 72, 9, HH.giallo); t('DOM · 1986', W / 2, 83, 8, HH.bianco); }
+    else if (kind === 3) { x.fillStyle = HH.giallo; x.fillRect(0, 0, W, H); t('SKATE', W / 2, 15, 20, HH.blu); x.save(); x.translate(W / 2, 40); x.rotate(-.35); x.fillStyle = HH.nero; x.fillRect(-22, -4, 44, 8); x.fillStyle = HH.rosso; [-14, 14].forEach(u => { x.beginPath(); x.arc(u, 7, 3.5, 0, 7); x.fill(); }); x.restore();   // la tavola
+      t(pick(r, ['DISCESA DEL FARO', 'GARA AL MOLO', 'RAMPA DEL MERCATO']), W / 2, 62, 8, HH.nero); t('ISCRIZ. L.2000', W / 2, 76, 8, HH.blu); }
+    else if (kind === 4) { x.fillStyle = HH.nero; x.fillRect(0, 0, W, H); x.fillStyle = HH.oro; x.beginPath(); x.arc(W / 2, 26, 15, 0, 7); x.fill(); x.strokeStyle = HH.nero; x.lineWidth = 1;   // la palla a specchi
+      for (let i = -2; i <= 2; i++) { x.beginPath(); x.moveTo(W / 2 - 15, 26 + i * 6); x.lineTo(W / 2 + 15, 26 + i * 6); x.stroke(); x.beginPath(); x.moveTo(W / 2 + i * 6, 11); x.lineTo(W / 2 + i * 6, 41); x.stroke(); }
+      t('DISCO', W / 2, 54, 18, HH.bianco); t(pick(r, ['LAMPARA', 'FARO', 'ALTAMAREA']), W / 2, 70, 11, HH.oro); t('VEN · SAB', W / 2, 82, 8, HH.bianco); }
+    else { x.fillStyle = HH.rosso; x.fillRect(0, 0, W, H); t('BREAK', W / 2, 13, 18, HH.bianco); t('DANCE', W / 2, 29, 14, HH.giallo); x.fillStyle = HH.nero; x.beginPath(); x.arc(W / 2, 62, 5, 0, 7); x.fill(); x.save(); x.translate(W / 2, 52); x.rotate(.5); x.fillRect(-3, -14, 6, 14); x.fillRect(-14, -16, 28, 4); x.restore();   // il b-boy sulla testa
+      t(pick(r, ['SFIDA DELLE CREW', 'GARA DI BREAK']), W / 2, 76, 8, HH.bianco); t('PIAZZETTA · 16.00', W / 2, 85, 7, HH.nero); }
+  }
+  // il murale della strada (mvMural sotto i segni): fondo pieno, lettere a blocchi col 3D e il contorno nero, il b-boy con lo stereo
+  function mvMuraleStrada(x, W, H, r, tall) {
+    const P = pick(r, [[HH.blu, HH.giallo, HH.rosso], [HH.giallo, HH.rosso, HH.blu], [HH.verde, HH.giallo, HH.rosso], [HH.bianco, HH.rosso, HH.blu], [HH.rosso, HH.giallo, HH.nero]]);
+    x.fillStyle = P[0]; x.fillRect(0, 0, W, H);
+    x.fillStyle = 'rgba(255,255,255,.18)'; for (let i = 0; i < (tall ? 40 : 60); i++) { x.beginPath(); x.arc(r() * W, r() * H, 1 + r() * 2, 0, 7); x.fill(); }   // gli spruzzi
+    const bboy = (cx, by, s) => { x.fillStyle = HH.nero; x.strokeStyle = HH.bianco; x.lineWidth = 1.5;
+      x.beginPath(); x.arc(cx, by - 26 * s, 5 * s, 0, 7); x.fill(); x.stroke(); x.fillRect(cx - 6 * s, by - 32 * s, 12 * s, 3 * s); x.fillRect(cx + 4 * s, by - 31 * s, 6 * s, 2 * s);   // la testa col cappellino girato
+      x.fillRect(cx - 6 * s, by - 20 * s, 12 * s, 12 * s); x.fillRect(cx - 6 * s, by - 8 * s, 4.5 * s, 8 * s); x.fillRect(cx + 1.5 * s, by - 8 * s, 4.5 * s, 8 * s);
+      x.fillStyle = HH.bianco; x.fillRect(cx - 7 * s, by - 1.5 * s, 6 * s, 2 * s); x.fillRect(cx + 1 * s, by - 1.5 * s, 6 * s, 2 * s);   // le scarpe bianche
+      x.fillStyle = P[2]; x.fillRect(cx + 7 * s, by - 18 * s, 13 * s, 8 * s); x.fillStyle = HH.nero; [10, 17].forEach(u => { x.beginPath(); x.arc(cx + u * s, by - 14 * s, 2.4 * s, 0, 7); x.fill(); }); };   // lo stereo
+    const parola = (s, cx, cy, fs) => { mvFit(x, s, (tall ? W : W * .68) - 10, fs, MV_FONT); for (let k = 3; k > 0; k--) { x.fillStyle = P[2]; x.fillText(s, cx + k, cy + k); }
+      x.strokeStyle = HH.nero; x.lineWidth = 3; x.strokeText(s, cx, cy); x.fillStyle = P[1]; x.fillText(s, cx, cy); };
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    const T = pick(r, ['HIP HOP', 'JAM', 'BREAK', 'FRESH', 'B-BOY', 'POSSE', 'DISGELO', 'BLOCK PARTY', 'MOLO CREW', 'RAP DAL MOLO']);
+    if (tall) { parola(T, W / 2, 26, 26); bboy(W / 2 - 8, H - 12, 2.4); } else { parola(T, W * .6, H * .46, 30); bboy(24, H - 6, 1.55); }
+    const firma = pick(r, CREW_S) + ' · ' + pick(r, CREW_S) + ' · 1986'; x.fillStyle = HH.nero; mvFit(x, firma, W * .5, 8, MV_FONT); x.fillText(firma, tall ? W / 2 : W * .6, H - 5);
+    x.globalCompositeOperation = 'destination-out';   // poca scrostatura: è fresco
+    for (let i = 0; i < 14; i++) { x.beginPath(); x.ellipse(r() * W, r() * H, 1 + r() * 4, 1 + r() * 2, r() * 3, 0, 7); x.fillStyle = 'rgba(0,0,0,' + (.3 + r() * .5) + ')'; x.fill(); }
+    x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(200,192,176,.08)'; x.fillRect(0, 0, W, H);   // il sale, appena (era .18)
+    x.globalCompositeOperation = 'source-over';
+  }
   // [regia2] l'equilibrio degli stendardi del Garante: al massimo uno ogni `passo` metri sullo stesso fronte, alto una parte dei piani
   const STENDARDI = { passo: 16, altezza: .55, largo: 1.4, fatti: [] };
   // ================= [muri1] MURI VIVI: manifesti, stendardi, bandiere, murales =================
@@ -74769,7 +74911,8 @@ var Render = (function () {
     const r = rng(k * 613 + 7), kind = k % 6, red = '#8e2a22', ink = '#1a1512', paper = '#d9cfba';
     return MV.tex[key] = mvCanvas(64, 90, (x, W, H) => {
       x.textAlign = 'center'; x.textBaseline = 'middle';
-      if (kind === 0) {   // bando della Tutela
+      if (k >= 100) mvPosterStrada(x, W, H, r, (k - 100) % 6);   // [segni] i manifesti della strada
+      else if (kind === 0) {   // bando della Tutela
         x.fillStyle = paper; x.fillRect(0, 0, W, H); x.fillStyle = red; x.fillRect(0, 0, W, 16); x.fillStyle = paper; mvFit(x, 'BANDO', W - 8, 13, MV_FONT); x.fillText('BANDO', W / 2, 8.5);
         x.fillStyle = ink; x.beginPath(); x.ellipse(W / 2, 30, 10, 6, 0, 0, 7); x.fill(); x.fillStyle = paper; x.beginPath(); x.arc(W / 2, 30, 3, 0, 7); x.fill();
         x.fillStyle = 'rgba(26,21,18,.75)'; for (let i = 0; i < 10; i++) x.fillRect(6, 42 + i * 4, W - 12 - Math.floor(r() * 18), 1.5);
@@ -74804,6 +74947,7 @@ var Render = (function () {
   function mvMural(k, tall) {   /* [unione3] tall: il murale alto al posto di un ritratto */
     const key = 'm' + k + (tall ? 't' : ''); if (MV.tex[key]) return MV.tex[key];
     const r = rng(k * 271 + 3);
+    if (SEGNI.on) return MV.tex[key] = mvCanvas(tall ? 96 : 192, tall ? 136 : 64, (x, W, H) => mvMuraleStrada(x, W, H, r, tall));   // [segni] la jam, non il memoriale
     return MV.tex[key] = mvCanvas(tall ? 96 : 192, tall ? 136 : 64, (x, W, H) => {
       const P = pick(r, [['#b8643a', '#2f4a3a', '#d9c49a', '#7a2a24', '#1c1a18'], ['#c99a3c', '#5a2a2a', '#e0d3b4', '#2a3a4a', '#1a1816'], ['#8a4a3a', '#c8a050', '#d8ccb0', '#3a4a30', '#161412']]);
       const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, P[2]); g.addColorStop(1, P[0]); x.fillStyle = g; x.fillRect(0, 0, W, H);
@@ -74876,7 +75020,7 @@ var Render = (function () {
         { f: 'E', n: b.h, len: d, at: u => [x0 + w, z0 + d - u], yaw: Math.PI / 2, ok: open(b.x + b.w + 1, b.y + Math.floor(b.h / 2)) },
       ].filter(s2 => s2.ok);
       if (!sides.length) return;
-      const r = rng(bi * 4111 + 17), reg = typeof zoneAt === 'function' && zoneAt(x0 + w / 2, z0 + d / 2) === 'regime', PP = b.__prop;
+      const r = rng(bi * 4111 + 17), reg = typeof zoneAt === 'function' && (zoneAt(x0 + w / 2, z0 + d / 2) === 'regime' || (SEGNI.on && regAt(x0 + w / 2, z0 + d / 2, 2))), PP = b.__prop;   // [segni] anche i palazzi del governo e militari
       const freeK = (sd, k) => !(PP && PP.f === sd.f && k >= PP.k0 - 1 && k <= PP.k1);   // non sopra il ritratto del Garante
       sides.forEach(sd => {
         const wallK = (b.__gwall[sd.f] || []).filter(k => freeK(sd, k)).sort((a, c) => a - c);
@@ -74893,14 +75037,14 @@ var Render = (function () {
           if (!okMan || r() > (reg ? .25 : .55) || (SEG1.ok && wallK.__uno++)) return;   // [segni] una composizione per parete
           const n = 2 + Math.floor(r() * 5), u0 = k * TS + .35 + r() * (TS - 1.2);
           for (let j = 0; j < n; j++) {
-            const kk = reg ? (r() < .7 ? 0 : 5) : Math.floor(r() * 12), pw = .52 + r() * .2, ph = pw * 1.4;
-            const m = new THREE.Mesh(mvSheet(pw, ph, r, 1), P(kk % 12));
+            const kk = reg ? (r() < .7 ? 0 : 5) : SEGNI.on ? (r() < .1 ? 1 : r() < .1 ? 3 : 100 + Math.floor(r() * 12)) : Math.floor(r() * 12), pw = .52 + r() * .2, ph = pw * 1.4;   // [segni] in strada jam, rap, skate, discoteca (e la Risacca, la cantina)
+            const m = new THREE.Mesh(mvSheet(pw, ph, r, 1), P(kk >= 100 ? kk : kk % 12));
             place(m, sd, Math.min(sd.len - .4, u0 + (j % 3) * .42 + (r() - .5) * .2), base + .95 + Math.floor(j / 3) * .62 + (r() - .5) * .25, .05 + j * .006);
             m.rotateZ((r() - .5) * .14); addStatic(m, true); cnt.manifesti++;
           }
         });
         // 3) stendardo: dal cornicione, su un'asta con due staffe; il regime ne mette di più
-        if (fl >= 2 && r() < (reg ? .8 : .18) && sd.len >= 4 && (!SEG1.ok || (pagS1(b, sd.f) && pagS1(b, sd.f).era === 'E4'))) {   // [segni] gli stendardi solo sulla Vittoria
+        if (fl >= 2 && r() < (reg ? .8 : .18) && sd.len >= 4 && (!SEG1.ok || (pagS1(b, sd.f) && pagS1(b, sd.f).era === 'E4')) && (!SEGNI.on || reg)) {   // [segni] lo stendardo del Garante solo nei luoghi del regime   // [segni] gli stendardi solo sulla Vittoria
           // [regia2] uno per facciata: sulla cortina continua ogni lotto è una casa e ne metteva uno a testa (tre in pochi metri). Lo stendardo
           // sta a STENDARDI.passo metri dagli altri sullo stesso fronte, e la sua altezza è una parte dei piani, non tutta la facciata
           const bw = Math.min(STENDARDI.largo, sd.len * .22), bh = Math.min((hgt - MG) * STENDARDI.altezza + .4, bw * 2.6), u = TS * (1 + Math.floor(r() * Math.max(1, sd.n - 2))) , ytop = b.__top - .5;
@@ -74922,7 +75066,7 @@ var Render = (function () {
           pole.position.set(0, Math.sin(a) * L / 2, Math.cos(a) * L / 2); pole.rotation.x = Math.PI / 2 - a; g.add(pole);
           const plate = new THREE.Mesh(new THREE.BoxGeometry(.2, .3, .05), iron); plate.position.set(0, 0, .03); g.add(plate);
           const fw = 1.5, fh = 1, geo = new THREE.PlaneGeometry(fw, fh, 10, 6); geo.translate(fw / 2, -fh / 2, 0); geo.rotateY(-Math.PI / 2); geo.rotateX(-a);
-          const fk = reg ? 0 : (r() < .7 ? 1 : 0), fl0 = new THREE.Mesh(geo, C('fl' + fk, mvFlag(fk), 1)); fl0.position.set(0, Math.sin(a) * .6, Math.cos(a) * .6); g.add(fl0);
+          const fk = reg ? 0 : (r() < .7 || SEGNI.on ? 1 : 0), fl0 = new THREE.Mesh(geo, C('fl' + fk, mvFlag(fk), 1)); fl0.position.set(0, Math.sin(a) * .6, Math.cos(a) * .6); g.add(fl0);   // [segni] fuori dal regime solo l'onda della Risacca, mai l'occhio
           scene.add(g); g.updateMatrixWorld(true); addStatic(g, true); scene.remove(g); cnt.bandiere++;
         }
       });
@@ -77468,7 +77612,7 @@ var Render = (function () {
   const PORTA2 = { mat: {}, lamp: null, stone: null };
   const lum2 = hex => { const c = new THREE.Color(hex); return .2126 * c.r + .7152 * c.g + .0722 * c.b; };
   function portaMat2(wall, era) {
-    const chiaro = lum2(wall) < .3, hex = chiaro ? '#d8ccb0' : LOOKV.nuovo ? ({ E0: '#6e1a1c', E2: '#0f4a66', E3: '#1f4f2a', E4: '#1a2456', E6: '#8a3410', E7: '#5a1838' }[era] || '#6e1a1c')   /* [sguardo] le porte vere in colori pieni e profondi (sangue di bue, petrolio, verde bottiglia, blu notte, ruggine, prugna): si trovano a colpo d'occhio */
+    const chiaro = lum2(wall) < .3, hex = chiaro ? '#d8ccb0' : LOOKV.nuovo ? ({ E0: '#6e1a1c', E2: '#0f4a66', E3: '#1f4f2a', E4: '#1a2456', E6: SEGNI.on ? HH.rosso : '#8a3410', E7: SEGNI.on ? HH.verde : '#5a1838' }[era] || '#6e1a1c')   /* [segni] il boom e le baracche con la porta hip hop */   /* [sguardo] le porte vere in colori pieni e profondi (sangue di bue, petrolio, verde bottiglia, blu notte, ruggine, prugna): si trovano a colpo d'occhio */
       : ({ E0: '#4a2c1a', E2: '#24484f', E3: '#3a2216', E4: '#2a2622', E6: '#5a3a22', E7: '#4a3a2c' }[era] || '#3e2a1c');
     return PORTA2.mat[hex] || (PORTA2.mat[hex] = std({ color: hex, roughness: .55 }));
   }
@@ -77841,7 +77985,7 @@ var Render = (function () {
     if (P) for (let u = -bw / 2; u <= bw / 2 + .01; u += 1) P.occ.push([cx + (along ? u : -.3), cz + (along ? -.3 : u), .9]);
     for (let k = 0; k <= 3; k++) { const u = -bw / 2 + k * bw / 3; add(g, box(.1, legH + bh, .1, iron), u, (legH + bh) / 2, 0); add(g, box(.08, legH * 1.2, .08, iron), u, legH * .5, -.6, .5, 0, 0); }
     add(g, box(bw, .08, .08, iron), 0, legH, 0); add(g, box(bw, .08, .08, iron), 0, legH + bh, 0);
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), r() < .3 && typeof eyeMat === 'function' ? eyeMat('screen') : adMat(bi)); pl.position.set(0, legH + bh / 2, .07); g.add(pl);
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), r() < .3 && typeof eyeMat === 'function' && (!SEGNI.on || regAt(cx, cz)) ? eyeMat('screen') : adMat(bi));   // [segni] il Garante sui tetti solo nei suoi luoghi pl.position.set(0, legH + bh / 2, .07); g.add(pl);
     const back = box(bw, bh, .04, sm('#3a3632', { roughness: 1 })); back.position.set(0, legH + bh / 2, .02); g.add(back);
     // [ordine1] traliccio vero: crociere fra le gambe, passerella col parapetto, tre lampade sui bracci
     for (let k = 0; k < 3; k++) { const u0 = -bw / 2 + k * bw / 3, u1 = u0 + bw / 3, L = Math.hypot(bw / 3, legH), a = Math.atan2(legH, bw / 3); [1, -1].forEach(sg => add(g, box(L, .05, .05, iron), (u0 + u1) / 2, legH / 2, -.03, 0, 0, sg * a)); }
@@ -79233,6 +79377,7 @@ var Render = (function () {
       addStatic(gr); rec.__imp = true; ni++; n++; }
     // 3) telecamere del regime: palo, braccio, telecamera che gira piano, il led rosso e il cartello della videosorveglianza
     const camPts = []; ['piazza', 'piazza_gov', 'varco', 'muro', 'governo', 'garante', 'ministero', 'caserma'].forEach(id => { const p = G.PLACES[id]; if (p) camPts.push([p.x, p.y]); }); junc1().filter(J => J.signal).forEach(J => camPts.push([J.x, J.y]));
+    if (SEGNI.on) for (let i = camPts.length - 1; i >= 0; i--) if (!regAt(camPts[i][0], camPts[i][1], 10)) camPts.splice(i, 1);   // [segni] l'occhio che guarda solo nei luoghi del regime e lungo i suoi palazzi: non più a ogni semaforo
     S1.cams = S1.cams || [];
     camPts.forEach(([cx0, cz0], ci) => { for (let t = 0; t < 10; t++) { const a = ci * 1.7 + t * .9, d = 6 + t * .8, x = cx0 + Math.cos(a) * d, z = cz0 + Math.sin(a) * d; if (!okSpot1(x, z, .3)) continue;
         const gg = G0(); MD1.pole(gg, 4.2, .07, '#7a7c7e'); fRod(gg, [0, 4.05, 0], [.88, 4.05, 0], .03, '#7a7c7e', 'galv'); fRod(gg, [0, 3.6, 0], [.5, 4.03, 0], .02, '#7a7c7e', 'galv'); MD1.clamp(gg, 4.05, .07);   // palo, braccio e il saettone
@@ -82100,6 +82245,22 @@ var Render = (function () {
     Scena.pagine().filter(p => p.nome === 'testata_del_regime').forEach(p => { const [y0] = quoteS1(p.bi), st = Scena.chiedi(p.x, p.z, 'stencil', { pagina: p, lato: 1 }), bf = Scena.chiedi(p.x, p.z, 'buff', { pagina: p, lato: -1 });
       if (st) wallPlaneS1(texS1('stencil|' + settoreS1(p.x, p.z), 128, 40, (x, W, H) => { x.clearRect(0, 0, W, H); x.fillStyle = 'rgba(236,230,218,.92)'; x.fillRect(0, 0, W, H); x.fillStyle = '#a8201c'; x.font = 'bold 20px Impact, "Arial Black", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(settoreS1(p.x, p.z), W / 2, H / 2 + 1); x.globalCompositeOperation = 'destination-out'; x.fillStyle = '#000'; for (let i = 1; i < 9; i++) x.fillRect(i * 14, 0, 2, H); x.globalCompositeOperation = 'source-over'; usuraS1(x, W, H, 5, 80); }), 1.1, .34, st.x, y0 + 1.2, st.z, p.yaw, .06), cnt.stencil++;
       if (bf) wallPlaneS1(texS1('buff', 64, 40, (x, W, H) => { const r2 = rng(9); for (let i = 0; i < 30; i++) { x.fillStyle = `rgba(${130 + r2() * 14},${128 + r2() * 12},${122 + r2() * 10},.9)`; x.fillRect(r2() * W - 8, r2() * H - 6, 14 + r2() * 20, 10 + r2() * 12); } x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; x.fillRect(3, 3, W - 6, H - 6); }), 1.5, .9, bf.x, y0 + 1.5, bf.z, p.yaw, .055); });
+    // ---- 6) [segni] i segni di mano dove la pagina li vuole: le tag sul modulo cieco della parete; agli sbocchi, alle piazzette e agli
+    // angoli sul muro più vicino, strette allo spigolo; più fitte accanto alle botteghe. Dove il regime tocca la strada il buff le copre ----
+    if (SEGNI.on) { const rt = rng(1986 * 7), PG = Scena.pagine(), par = PG.filter(p => p.tipo === 'parete' && p.ciechi && p.ciechi.length && p.nome !== 'testata_del_regime');
+      const mano = (p, k, n, verso) => {   // n tag sul modulo cieco k della parete p; verso -1 / 1: stretta allo spigolo di qua o di là, 0 dove capita
+        const [y0] = quoteS1(p.bi), reg = regAt(p.x, p.z, 4), vic = !reg && regAt(p.x, p.z, 16);
+        for (let q = 0; q < n; q++) { const w = .75 + rt() * .5, lo = k * TS + .15 + w / 2, hi = (k + 1) * TS - .15 - w / 2; if (hi < lo) return;
+          const u = verso < 0 ? lo + rt() * .3 : verso > 0 ? hi - rt() * .3 : lo + rt() * (hi - lo), buff = reg || (vic && rt() < .45);
+          if (reg && rt() < .4) continue;
+          const e = p.at(Math.min(p.len - .4, Math.max(.4, u))); sgaMuro(buff ? 't' + (14 + (q & 1)) : 't' + Math.floor(rt() * 14), w, e[0], y0 + .7 + q * .42 + rt() * .3, e[1], p.yaw, .07 + q * .004, (rt() - .5) * .1); } };
+      par.forEach(p => { const s = Scena.chiedi(p.x, p.z, 'tag', { pagina: p, max: 2 }); if (!s) return; const k = p.ciechi.includes(s.colonna) ? s.colonna : p.ciechi[0];
+        mano(p, k, 1 + (rt() < .5 ? 1 : 0) + (B[p.bi] && B[p.bi].__bot ? 1 : 0), 0); });
+      PG.forEach(q => { if (q.tipo === 'parete' || !Scena.chiedi(q.x, q.z, 'tag', { pagina: q })) return;
+        let best = null, bd = 10; par.forEach(p => [0, p.len].forEach(u => { const e = p.at(u), d = Math.hypot(e[0] - q.x, e[1] - q.z); if (d < bd) { bd = d; best = [p, u]; } })); if (!best) return;
+        const [p, u] = best, k = u ? Math.max(...p.ciechi) : Math.min(...p.ciechi); if (Math.abs((k + .5) * TS - u) > TS * 1.5) return;
+        mano(p, k, 1 + (rt() < .6 ? 1 : 0), u ? 1 : -1); });
+      cnt.tag = SEGNI.cnt.tag; cnt.buff = SEGNI.cnt.buff; cnt.abbassate = SEGNI.cnt.abbassate; }
     scene.add(shadowed(mergeGroup(g), false, false));
     const C = Scena.conteggio(), via = Scena.pulisci();
     if (window.__dbg35) console.log('[dbg] segni disegnati', JSON.stringify(cnt), 'pagine', JSON.stringify({ presi: C.presi, negati: C.negati, sforano: C.sforano, quiete: C.quietePct }), 'da pulire', via.length);
@@ -82418,8 +82579,8 @@ var Render = (function () {
     text = String(text).toUpperCase(); const W = 512, H = Math.max(64, Math.round(W / aspect)), c = mk(W, H);
     const dipingi = () => { const x = c.getContext('2d'), r = rng(text.length * 131 + stile.length);   // [telefono] tela pigra: stesso seme, stessi font di sistema
     const SERIF = '"Times New Roman", "Liberation Serif", Georgia, serif';
-    const P = { dipinta: ['#e2d4b4', '#7a2a1e', `bold ${'italic'} `, SERIF], tavola: ['#2e4a58', '#efe4c8', 'bold ', SERIF], marmo: ['#ece8e0', '#1e1c1a', 'bold ', SERIF], lapidaria: [null, '#6a4a22', 'bold ', SERIF],
-      plexi: ['#f4f0e6', nq(col || '#c03a2a'), '900 ', SIGN_FONT], latta: ['#8a8e86', '#f0ece0', '900 ', SIGN_FONT] }[stile];
+    const P = { dipinta: ['#e2d4b4', '#7a2a1e', `bold ${'italic'} `, SERIF], tavola: SEGNI.on ? [HH.nero, HH.oro, 'bold ', SERIF] : ['#2e4a58', '#efe4c8', 'bold ', SERIF], marmo: ['#ece8e0', '#1e1c1a', 'bold ', SERIF], lapidaria: [null, '#6a4a22', 'bold ', SERIF],
+      plexi: ['#f4f0e6', nq(col || '#c03a2a'), '900 ', SIGN_FONT], latta: ['#8a8e86', '#f0ece0', '900 ', SIGN_FONT] }[stile];   // [segni] la tavola nera con le lettere d'oro, come le insegne dei bar
     if (P[0]) { x.fillStyle = P[0]; x.fillRect(0, 0, W, H); }
     if (stile === 'dipinta') { x.globalAlpha = .18; for (let q = 0; q < 60; q++) { x.fillStyle = r() < .5 ? '#ffffff' : '#a89070'; x.fillRect(r() * W, r() * H, 6 + r() * 30, 2 + r() * 5); } x.globalAlpha = 1; }
     if (stile === 'tavola') { for (let y = 0; y < H; y += Math.round(H / 4)) { x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(0, y, W, 2); } x.strokeStyle = '#efe4c8'; x.lineWidth = 4; x.strokeRect(10, 8, W - 20, H - 16); }
@@ -82437,7 +82598,7 @@ var Render = (function () {
   }
   function tendaMat(era) {
     if (BOT.tenda[era]) return BOT.tenda[era];
-    const [a, c2] = { E0: ['#b8703a', '#e4d4b0'], E2: ['#2f5a6a', '#e9e0cf'], E3: ['#2f5a3e', '#e9e0cf'], E6: ['#d86a2a', '#f0e8d8'], E7: ['#7a6a5a', '#a89a86'] }[era] || ['#8a3a2e', '#e9e0cf'];
+    const [a, c2] = { E0: ['#b8703a', '#e4d4b0'], E2: ['#2f5a6a', '#e9e0cf'], E3: ['#2f5a3e', '#e9e0cf'], E6: SEGNI.on ? [HH.rosso, HH.bianco] : ['#d86a2a', '#f0e8d8'], E7: ['#7a6a5a', '#a89a86'] }[era] || ['#8a3a2e', '#e9e0cf'];   // [segni] la tenda del boom rossa e bianca
     const c = mk(64, 8), x = c.getContext('2d'); for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? c2 : a; x.fillRect(k * 8, 0, 8, 8); }
     return BOT.tenda[era] = std({ map: canvasTex(c), roughness: 1, side: THREE.DoubleSide });
   }
@@ -82479,6 +82640,13 @@ var Render = (function () {
     else if (stile === 'marmo' || stile === 'lapidaria') { [-1, 1].forEach(s2 => { at(box(.04, .04, .32, metal), um + s2 * iw * .32, iy + ih / 2 + .1, .16); at(box(.16, .06, .1, metal), um + s2 * iw * .32, iy + ih / 2 + .06, .33); }); }   // i faretti sopra la lastra
     // ---- serrande: il cassonetto sopra ogni apertura della bottega, le guide ai lati ----
     K2 = 'serranda'; ents.forEach(e => { const cs = cyl(.105, .105, e.w + .1, 10, metal); cs.rotation.z = Math.PI / 2; at(cs, e.u, base + 2.48, .1); at(box(e.w + .1, .21, .03, metal), e.u, base + 2.48, .015); [-1, 1].forEach(s2 => at(box(.035, 2.37, .04, metal), e.u + s2 * (e.w / 2 + .02), base + 1.185, .03)); });   // [pulizia] il rullo tondo della serranda sulla piastra (era una scatola)
+    // [segni] le saracinesche abbassate: una bottega su tre o quattro ha giù quelle delle vetrine (la porta resta aperta: si entra), qualche
+    // vetrina sola nelle altre. Il telo è una casella della tela dei segni (tag, throw-up, pezzi, i teli verdi, blu e rossi del bottegaio),
+    // un solo materiale fuso nel secchio della bottega con le guide; nei luoghi del regime il telo resta nudo. ?nosegni: solo rullo e guide
+    if (SEGNI.on) { const rs = rng(b.x * 7919 + b.y * 104729 + 17), chiusa = rs() < .3, reg = regAt(F[0], F[1], 3);
+      ents.forEach(e => { const giu = rs() < .12; if (e.role !== 'vetrina' || !(chiusa || giu)) return;
+        const key = reg ? 'n4' : e.w > 2 ? pick(rs, ['w0', 'w1', 'w0', 'n4']) : pick(rs, ['n0', 'n1', 'n2', 'n3', 'n4', 'n5']);
+        at(sgaMesh(e.w + .03, 2.36, key), e.u, base + 1.2, .045); SEGNI.cnt.abbassate++; }); }
     // ---- la tenda sulle vetrine (sotto i portici no) ----
     const vet = ents.filter(e => e.role === 'vetrina'); K2 = 'tenda';
     if (vet.length && era !== 'E4' && !b.portico && r() < .75) { const v0 = Math.min(...vet.map(e => e.u - e.w / 2)) - .1, v1 = Math.max(...vet.map(e => e.u + e.w / 2)) + .1, tw = v1 - v0, tm = tendaMat(era);
@@ -87660,7 +87828,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (let i = 0; i < C * R; i++) {
       const ox = (i % C) * W, oy = Math.floor(i / C) * H, kind = i % 10;
       x.save(); x.beginPath(); x.rect(ox, oy, W, H); x.clip(); x.translate(ox, oy);
-      if (kind === 0) {   // il Garante: raggi rossi, il volto a stampo, la didascalia
+      if (SEGNI.on && (kind === 2 || kind === 7)) { x.save(); mvPosterStrada(x, W, H, r, (Math.floor(i / 10) + (kind === 7 ? 3 : 0)) % 6); x.restore(); }   // [segni] il volantino della jam al posto del ballo e dei lavoratori
+      else if (kind === 0) {   // il Garante: raggi rossi, il volto a stampo, la didascalia
         x.fillStyle = paper; x.fillRect(0, 0, W, H); x.fillStyle = red; for (let a = 0; a < 16; a += 2) { const a0 = a / 16 * 6.283, a1 = (a + 1) / 16 * 6.283; x.beginPath(); x.moveTo(32, 36); x.lineTo(32 + Math.cos(a0) * 90, 36 + Math.sin(a0) * 90); x.lineTo(32 + Math.cos(a1) * 90, 36 + Math.sin(a1) * 90); x.fill(); }
         garanteFace(x, W, H, 8, 6, 1.5, ink, paper, red, r() < .2); x.fillStyle = red; x.fillRect(0, H - 22, W, 22); txt(pick(r, ['IL GARANTE', 'TI ASCOLTA', 'VEGLIA', 'ORDINE']), 32, H - 11, 14, paper);
       } else if (kind === 1) {   // slogan: rosso, una parola, l'occhio dentro la stella
@@ -87808,6 +87977,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const { b, rec, r, FACES, at, fr, inMural, showF, face0, base, top, fl, kitHouse, wins, doorsU, borgo, g } = C;
     posterAtlas(); decal2();
     const IRON = '#26262c', WOODD = '#4a3626';
+    // [segni] nei luoghi del regime i suoi manifesti (Garante, slogan, scomparsi, ordinanze); in strada i volantini, la Risacca, la pubblicità
+    const regH = SEGNI.on && regAt((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS, 3), KREG = [0, 1, 3, 5], KSTR = [2, 7, 4, 6];
+    const vaBene = (k, no) => SEGNI.on ? (regH ? KREG : KSTR).includes(k % 10) : !no.includes(k % 10);
     const dU = f => { const d = doorsU.find(q => q[0] === f); return d ? d[1] : -9; };
     // 1) manifesti a strati sui muri pieni del piano terra (sulle case del kit: gli spigoli, che sono sempre ciechi)
     showF.forEach(f => {
@@ -87816,7 +87988,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const spots = (kitHouse ? [1, F.L - 1].filter(u => u > .5 && u < F.L - .5) : ((b.__gwall && b.__gwall[f]) || []).map(k => k * TS + 1)).filter(u0 => !inMural(f, u0) && Math.abs(u0 - dU(f)) >= 1.3);
       if (spots.length && r() < pq && (!SEG1.ok || vuoleS1(b, f, 'manifesti'))) {   // [segni] la pagina decide
         const u0 = spots.reduce((a, c) => Math.min(c, F.L - c) < Math.min(a, F.L - a) ? c : a), n = 2 + Math.floor(r() * 2), w = .52, h = .78, yc = base + 1.5;
-        for (let q = 0; q < n; q++) { const i = (() => { let k; do k = Math.floor(r() * 80); while (k % 10 === 8 || k % 10 === 9); return k; })();
+        for (let q = 0; q < n; q++) { const i = (() => { let k; do k = Math.floor(r() * 80); while (!vaBene(k, [8, 9])); return k; })();
           const p = poster(w, h, i); p.rotation.z = (r() - .5) * .05; at(f, p, u0 - (n - 1) * (w + .05) / 2 + q * (w + .05), yc + (r() - .5) * .05, .074 + q * .003); }
       }
       // tabellone delle affissioni del Comune: telaio di ferro, manifesti in fila, quelli vecchi sotto
@@ -87824,9 +87996,16 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         at(f, fB(1.9, 1.3, .05, '#3a3c40', 'paint', .01), u, y, .1); at(f, fB(2.02, .07, .09, '#2a2a2e', 'rust', .01), u, y + .68, .11); at(f, fB(2.02, .06, .09, '#2a2a2e', 'rust', .01), u, y - .68, .11);
         [-1, 1].forEach(s2 => { at(f, fB(.06, 1.8, .06, '#2a2a2e', 'rust', .01), u + s2 * .98, base + .9, .12); });
         const hdr = poster(1.8, .18, 5 * 10 + 5); hdr.scale.y = .5; at(f, hdr, u, y + .55, .135);
-        for (let q = 0; q < 6; q++) { const p = poster(.56, .8, (() => { let k; do k = Math.floor(r() * 80); while (k % 10 === 8 || k % 10 === 4); return k; })()); p.rotation.z = (r() - .5) * .05; at(f, p, u - .62 + (q % 3) * .62, y + (q < 3 ? .05 : -.05) - (q >= 3 ? 0 : 0), .13 + q * .002); if (q >= 3) p.position.y = y - .2; else p.position.y = y + .12; } } }
+        for (let q = 0; q < 6; q++) { const p = poster(.56, .8, (() => { let k; do k = Math.floor(r() * 80); while (!vaBene(k, [8, 4])); return k; })()); p.rotation.z = (r() - .5) * .05; at(f, p, u - .62 + (q % 3) * .62, y + (q < 3 ? .05 : -.05) - (q >= 3 ? 0 : 0), .13 + q * .002); if (q >= 3) p.position.y = y - .2; else p.position.y = y + .12; } } }
       P2.kc = null;   // tag a spray, bassi, anche sulle serrande
-      for (let q = 0, nt = F.open && r() < .25 ? 1 : 0; q < nt; q++) { const u = .6 + r() * (F.L - 1.2); if (inMural(f, u)) continue; const p = poster(1 + r() * .6, 1.1 + r() * .4, Math.floor(r() * 8) * 10 + 8); at(f, p, u, base + .75 + r() * .5, .085 + q * .002); }
+      if (!SEGNI.on) for (let q = 0, nt = F.open && r() < .25 ? 1 : 0; q < nt; q++) { const u = .6 + r() * (F.L - 1.2); if (inMural(f, u)) continue; const p = poster(1 + r() * .6, 1.1 + r() * .4, Math.floor(r() * 8) * 10 + 8); at(f, p, u, base + .75 + r() * .5, .085 + q * .002); }
+      else {   // [segni] le tag di mano dalla tela dei segni, più fitte: soprattutto agli spigoli (dove la strada gira) e nel borgo, mai sulle porte
+        // e sulle vetrine; nei luoghi del regime la tag c'era ma è coperta dal buff grigio
+        const nt = F.open ? (r() < (borgo ? .7 : .55) ? 1 + (r() < .45 ? 1 : 0) + (r() < .2 ? 1 : 0) : 0) : 0;
+        for (let q = 0; q < nt; q++) { const w = .8 + r() * .45, u = r() < .65 ? (r() < .5 ? .5 + w / 2 + r() * .7 : F.L - .5 - w / 2 - r() * .7) : .6 + w / 2 + r() * Math.max(0, F.L - 1.2 - w), key = regH ? (r() < .6 ? 't' + (14 + (q & 1)) : null) : 't' + Math.floor(r() * 14);
+          if (!key || u < .5 || u > F.L - .5 || inMural(f, u) || doorsU.some(([df, du]) => df === f && Math.abs(du - u) < 1.1) || (b.__bot && b.__bot.face === f && b.__bot.ents.some(e => Math.abs(e.u - u) < e.w / 2 + w / 2 + .1))) continue;
+          const p = sgaMesh(w, w / 3, key); p.rotation.z = (r() - .5) * .1; at(f, p, u, base + .5 + q * .34 + r() * .3, .088 + q * .003); SEGNI.cnt[regH ? 'buff' : 'tag']++; }
+      }
     });
     // 2) la storia dei muri: rappezzi, fuliggine sopra qualche finestra, ruggine sotto i davanzali, muffa negli angoli bassi
     if (!kitHouse) showF.forEach(f => { const F = FACES[f];
@@ -87965,7 +88144,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           dyn.signs.push({ m: mt, gl, flick: r() < .3 });
           if (k === 0 && r() < .5) addLight(a.position.x + Math.sin(sd.yaw) * 1.6, y - H / 2 + 1.4, a.position.z + Math.cos(sd.yaw) * 1.6, col, 2.4, 9, .08);
         }
-        if (r() < .18) { const sd = pick(r, sides), u = 1.2 + r() * Math.max(.1, sd.len - 3.6), a = mkA(gs, sd, u + 1.6), reg = r() < .3 && (!NUOVA4() || b.gov || b.era === 'E4'), mt = reg ? eyeMat('screen') : adMat(bi), tall = r() < .5, sw = tall ? 1.8 : 3.2, sh = tall ? 3.2 : 1.8;
+        if (r() < .18) { const sd = pick(r, sides), u = 1.2 + r() * Math.max(.1, sd.len - 3.6), a = mkA(gs, sd, u + 1.6), reg = r() < .3 && (!NUOVA4() || b.gov || b.era === 'E4') && (!SEGNI.on || regAt((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS)), mt = reg ? eyeMat('screen') : adMat(bi), tall = r() < .5, sw = tall ? 1.8 : 3.2, sh = tall ? 3.2 : 1.8;
           // [chiarezza] lo schermo del Garante solo sui palazzi del regime, sopra il piano terra (mai accanto al portone), dentro una cassa
           // di lamiera spessa con la mensola: si legge come un televisore appeso, non come un anello azzurro sul muro
           const CHn = NUOVA4(), sy = CHn ? Math.max(base + MG + .5 + sh / 2, top - sh / 2 - 1.2) : Math.max(base + 3, top - sh / 2 - 1.2), sz = CHn ? .36 : .1;
@@ -88093,7 +88272,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       bx(gg, 13, .12, 3.6, tin, 0, 3.25, -.5, .06); bx(gg, 12, .05, .14, L.cold, 0, 3.15, .6); bx(gg, 12, .05, .14, L.cold, 0, 3.15, -1.6);
       for (let c = 0; c < 4; c++) { bx(gg, 2.2, .07, .45, wood, -4.5 + c * 3, .5, -1.1); }
       bx(gg, 12.6, .03, .3, L.amber, 0, .02, 1.5); bx(gg, 2.6, 2.2, 1.6, iron, 5.2, 1.1, -1.9); bx(gg, 1.8, .9, .05, L.cyan, 5.2, 1.5, -1.07);
-      const bd = bx(gg, 3.6, 1.1, .1, iron, -2, 2.5, -2.2); const bp = new THREE.Mesh(new THREE.PlaneGeometry(3.4, .9), eyeMat('screen')); bp.position.set(-2, 2.5, -2.14); gg.add(bp);
+      const bd = bx(gg, 3.6, 1.1, .1, iron, -2, 2.5, -2.2); const bp = new THREE.Mesh(new THREE.PlaneGeometry(3.4, .9), SEGNI.on && !regAt(px, pz) ? adMat(ns) : eyeMat('screen')); bp.position.set(-2, 2.5, -2.14); gg.add(bp);   // [segni] alla fermata la pubblicità, il Garante solo nei suoi luoghi
       lamp(gg, -3, 3, -.5, '#8fe0d4', 3, 11, 3); lamp(gg, 3, 3, -.5, '#8fe0d4', 3, 11, 3);
     }
     // ---- vicoli: un cavo con una lampadina e un po' di roba ----
@@ -88117,7 +88296,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const px = (tx + .5) * TS, pz = (ty + .5) * TS, gg = mk2(A(px, pz, r() * 6.28), 'arredo', null, null, ++P2.g), kk = nk % 3; nk++;   // [pulizia2]
       if (kk === 0) { barrel(gg, 0, 0, true); [0, 2.1, 4.2].forEach(a => bx(gg, 1.4, .1, .35, wood, Math.cos(a) * 1.5, .42, Math.sin(a) * 1.5, 0, -a + 1.57, 0)); }
       else if (kk === 1) { for (let c = 0; c < 3; c++) { bx(gg, .85, 1.9, .7, iron, -1.1 + c * 1.1, .95, 0); bx(gg, .6, .9, .04, [L.cyan, L.mag, L.amber][c], -1.1 + c * 1.1, 1.3, .37); } lamp(gg, 0, 2.2, .8, '#38e8ff', 1.8, 6, 2); }
-      else { bx(gg, 2.4, 1.7, .1, iron, 0, 1.3, 0); const bp = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.5), eyeMat('banner')); bp.position.set(0, 1.3, .06); gg.add(bp); [-1, 1].forEach(s => cy(gg, .04, .04, 2.2, iron, s * 1.1, 1.1, 0, 5)); for (let c = 0; c < 4; c++) cy(gg, .025, .025, 1.1, iron, -1.2 + c * .8, .55, 1.6, 4); bx(gg, 3, .03, .03, L.amber, 0, 1.05, 1.6); }
+      else { bx(gg, 2.4, 1.7, .1, iron, 0, 1.3, 0); const bp = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.5), SEGNI.on && !regAt(px, pz) ? mvPaperMat(mvPoster(100 + nk % 6)) : eyeMat('banner')); bp.position.set(0, 1.3, .06); gg.add(bp);   /* [segni] in strada il manifesto della jam */ [-1, 1].forEach(s => cy(gg, .04, .04, 2.2, iron, s * 1.1, 1.1, 0, 5)); for (let c = 0; c < 4; c++) cy(gg, .025, .025, 1.1, iron, -1.2 + c * .8, .55, 1.6, 4); bx(gg, 3, .03, .03, L.amber, 0, 1.05, 1.6); }
     }
     const gm = shadowed(mergeGroup(g), true, true); scene.add(gm);
     return nc + nb + ns + na + nk;
@@ -97865,6 +98044,20 @@ var Vesti3D = (function () {
     piedi: /^(Foot[LR]|PT[LR])$/, mani: /^(Wrist[LR]|Index\d[LR]|Middle\d[LR]|Ring\d[LR]|Pinky\d[LR]|Thumb\d[LR])$/, collo: /^Neck$/ };
   const KEEP = /^(Skin.*|Eye.*|Eyebrows|Hair.*|Moustache)$/i;   // i materiali del corpo che restano (pelle, occhi, sopracciglia, capelli, baffi). [vestiti] Prima era /…|Brow/: prendeva anche LightBrown e Brown (camicie e pantaloni del kit), che restavano addosso
   const players = new Set();
+  // [segni] la gente giovane di strada nella tavolozza hip hop (art director, fotografo): tute, cappellini, giacche e magliette di strada
+  // vanno sul primario più vicino (rosso, giallo, blu reale, verde, nero, bianco), le loro scarpe bianche o nere, l'oro resta sulle catene.
+  // Solo chi porta i capi di strada (hip hop, skater, maranza): gli altri, i vecchi e le divise come prima. ?nosegni: come prima
+  const SEGNI = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));
+  const HHV = ['#D7262E', '#F5C518', '#1E4FB4', '#1E8A4A', '#141414', '#F2EFE8'].map(h => [h, parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  const STRADA = /^(scarpe_(chunky|air|skate)|cappellino(_dritto)?|visiera|durag|berretto_corto|track_retro|giacca_tuta|tuta_nylon|pantaloni_tuta|maglia_basket|canotta_basket|varsity|coach_jacket|anorak|smanicato|puffer_corto|piumino_oca|felpa_(skate|college|blocchi|cappuccio_zip)|maglietta_(box|college|oversize|ringer|boombox))$/;
+  function hipHop(of, n) {
+    if (!SEGNI || !Array.isArray(of) || (n && (n.cop || n.military)) || !of.some(c => c && STRADA.test(c.id))) return of;
+    const rgb = h => /^#[0-9a-f]{6}$/i.test(h || '') ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : null;
+    const vicino = h => { const c = rgb(h); if (!c) return h; let best = h, bd = 1e9; HHV.forEach(([k, r, g, b]) => { const d = (r - c[0]) ** 2 * .3 + (g - c[1]) ** 2 * .59 + (b - c[2]) ** 2 * .11; if (d < bd) { bd = d; best = k; } }); return best; };
+    of.forEach(c => { if (!c || !STRADA.test(c.id)) return;
+      if (/^scarpe/.test(c.id)) { const q = rgb(c.col || '#f4f2ee'); c.col = q && q[0] + q[1] + q[2] < 300 ? '#141414' : '#F2EFE8'; } else c.col = vicino(c.col); });
+    return of;
+  }
   const AN = new Map();   // analisi della geometria, per uuid
   const GC = ['getX', 'getY', 'getZ', 'getW'], comp = (a, i, k) => a[GC[k]](i);   // three r149: niente getComponent
 
@@ -99076,6 +99269,7 @@ var Vesti3D = (function () {
   const wsig = st => { const p = st.player, W = p.worn || {}; return JSON.stringify([Guardaroba.ZORD.map(z => W[z]), W.sx]); };
   function hook() {
     if (!window.Models || !Models.person || Models.person.__vesti || typeof Guardaroba === 'undefined') return false;
+    if (!Guardaroba.outfitOf.__segni) { const o0 = Guardaroba.outfitOf; Guardaroba.outfitOf = function (n, fem) { return hipHop(o0.call(this, n, fem), n); }; Guardaroba.outfitOf.__segni = true; }   // [segni] la tavolozza hip hop sui capi di strada (anche personaggi.js passa di qui)
     const p0 = Models.person;
     Models.person = function (look, who) {
       const g = p0.apply(this, arguments); if (!g) return g;
