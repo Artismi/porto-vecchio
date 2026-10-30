@@ -10280,10 +10280,10 @@ var Render = (function () {
     if (SEGNI.on) { const rt = rng(1986 * 7), PG = Scena.pagine(), par = PG.filter(p => p.tipo === 'parete' && p.ciechi && p.ciechi.length && p.nome !== 'testata_del_regime');
       const mano = (p, k, n, verso) => {   // n tag sul modulo cieco k della parete p; verso -1 / 1: stretta allo spigolo di qua o di là, 0 dove capita
         const [y0] = quoteS1(p.bi), reg = regAt(p.x, p.z, 4), vic = !reg && regAt(p.x, p.z, 16);
-        for (let q = 0; q < n; q++) { const w = .75 + rt() * .5, lo = k * TS + .15 + w / 2, hi = (k + 1) * TS - .15 - w / 2; if (hi < lo) return;
+        for (let q = 0; q < n; q++) { const w = 1.5 + rt() * .9, lo = k * TS + .15 + w / 2, hi = (k + 1) * TS - .15 - w / 2; if (hi < lo) return;
           const u = verso < 0 ? lo + rt() * .3 : verso > 0 ? hi - rt() * .3 : lo + rt() * (hi - lo), buff = reg || (vic && rt() < .45);
           if (reg && rt() < .4) continue;
-          const e = p.at(Math.min(p.len - .4, Math.max(.4, u))); sgaMuro(buff ? 't' + (14 + (q & 1)) : 't' + Math.floor(rt() * 14), w, e[0], y0 + .7 + q * .42 + rt() * .3, e[1], p.yaw, .07 + q * .004, (rt() - .5) * .1); } };
+          const e = p.at(Math.min(p.len - .4, Math.max(.4, u))); sgaMuro(buff ? 't' + (14 + (q & 1)) : 't' + Math.floor(rt() * 14), w, e[0], y0 + 2.2 + q * .75 + rt() * .4, e[1], p.yaw, .07 + q * .004, (rt() - .5) * .1); } };
       par.forEach(p => { const s = Scena.chiedi(p.x, p.z, 'tag', { pagina: p, max: 2 }); if (!s) return; const k = p.ciechi.includes(s.colonna) ? s.colonna : p.ciechi[0];
         mano(p, k, 1 + (rt() < .5 ? 1 : 0) + (B[p.bi] && B[p.bi].__bot ? 1 : 0), 0); });
       PG.forEach(q => { if (q.tipo === 'parete' || !Scena.chiedi(q.x, q.z, 'tag', { pagina: q })) return;
@@ -10673,8 +10673,8 @@ var Render = (function () {
     // [segni] le saracinesche abbassate: una bottega su tre o quattro ha giù quelle delle vetrine (la porta resta aperta: si entra), qualche
     // vetrina sola nelle altre. Il telo è una casella della tela dei segni (tag, throw-up, pezzi, i teli verdi, blu e rossi del bottegaio),
     // un solo materiale fuso nel secchio della bottega con le guide; nei luoghi del regime il telo resta nudo. ?nosegni: solo rullo e guide
-    if (SEGNI.on) { const rs = rng(b.x * 7919 + b.y * 104729 + 17), chiusa = rs() < .3, reg = regAt(F[0], F[1], 3);
-      ents.forEach(e => { const giu = rs() < .12; if (e.role !== 'vetrina' || !(chiusa || giu)) return;
+    if (SEGNI.on) { const rs = rng(b.x * 7919 + b.y * 104729 + 17), chiusa = rs() < .45,   /* [ad] più saracinesche giù (erano .3 e .12) */ reg = regAt(F[0], F[1], 3);
+      ents.forEach(e => { const giu = rs() < .22; if (e.role !== 'vetrina' || !(chiusa || giu)) return;
         const key = reg ? 'n4' : e.w > 2 ? pick(rs, ['w0', 'w1', 'w0', 'n4']) : pick(rs, ['n0', 'n1', 'n2', 'n3', 'n4', 'n5']);
         at(sgaMesh(e.w + .03, 2.36, key), e.u, base + 1.2, .045); SEGNI.cnt.abbassate++; }); }
     // ---- la tenda sulle vetrine (sotto i portici no) ----
@@ -16053,9 +16053,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       else {   // [segni] le tag di mano dalla tela dei segni, più fitte: soprattutto agli spigoli (dove la strada gira) e nel borgo, mai sulle porte
         // e sulle vetrine; nei luoghi del regime la tag c'era ma è coperta dal buff grigio
         const nt = F.open ? (r() < (borgo ? .7 : .55) ? 1 + (r() < .45 ? 1 : 0) + (r() < .2 ? 1 : 0) : 0) : 0;
-        for (let q = 0; q < nt; q++) { const w = .8 + r() * .45, u = r() < .65 ? (r() < .5 ? .5 + w / 2 + r() * .7 : F.L - .5 - w / 2 - r() * .7) : .6 + w / 2 + r() * Math.max(0, F.L - 1.2 - w), key = regH ? (r() < .6 ? 't' + (14 + (q & 1)) : null) : 't' + Math.floor(r() * 14);
-          if (!key || u < .5 || u > F.L - .5 || inMural(f, u) || doorsU.some(([df, du]) => df === f && Math.abs(du - u) < 1.1) || (b.__bot && b.__bot.face === f && b.__bot.ents.some(e => Math.abs(e.u - u) < e.w / 2 + w / 2 + .1))) continue;
-          const p = sgaMesh(w, w / 3, key); p.rotation.z = (r() - .5) * .1; at(f, p, u, base + .5 + q * .34 + r() * .3, .088 + q * .003); SEGNI.cnt[regH ? 'buff' : 'tag']++; }
+        for (let q = 0; q < nt; q++) { const w = 1.4 + r() * .8, u = r() < .65 ? (r() < .5 ? .5 + w / 2 + r() * .7 : F.L - .5 - w / 2 - r() * .7) : .6 + w / 2 + r() * Math.max(0, F.L - 1.2 - w), key = regH ? (r() < .6 ? 't' + (14 + (q & 1)) : null) : 't' + Math.floor(r() * 14);
+          if (!key || u < .5 || u > F.L - .5 || inMural(f, u) || doorsU.some(([df, du]) => df === f && Math.abs(du - u) < w / 2 + .6) || (b.__bot && b.__bot.face === f && b.__bot.ents.some(e => Math.abs(e.u - u) < e.w / 2 + w / 2 + .1))) continue;
+          const p = sgaMesh(w, w / 3, key); p.rotation.z = (r() - .5) * .1; at(f, p, u, base + 2.1 + q * .6 + r() * .35, .088 + q * .003);   /* [ad] le tag grandi e alte sul muro: dalla camera di gioco si leggono (erano 0,8-1,25 m a mezzo metro da terra) */ SEGNI.cnt[regH ? 'buff' : 'tag']++; }
       }
     });
     // 2) la storia dei muri: rappezzi, fuliggine sopra qualche finestra, ruggine sotto i davanzali, muffa negli angoli bassi
