@@ -149,11 +149,11 @@ var World = (function () {
   function SouthY(x) { let v = SYM.get(x); if (v === undefined) { v = SouthY0(x); if (SYM.size > 200000) SYM.clear(); SYM.set(x, v); } return v; }
   // [isola-ridotta] a ovest del Monte la forma (la testa, il collo, le calette, la Punta) si legge nel disegno in Pxi(x) e si porta sulla
   // mappa con Py; i capi e i golfi con nome (C2N, C2S, già sulla mappa) e i rumori della riva si fanno sulla mappa, alla loro scala
-  // ================= [mappa_nuova] LA MAPPA NUOVA (?mappa=nuova, in Node PV_MAPPA=nuova; piano in mappa_nuova/piano.md e revisione.md) =================
+  // ================= [mappa_nuova] LA MAPPA NUOVA (di serie; ?mappa=prima, in Node PV_MAPPA=prima, per la mappa di prima; piano in mappa_nuova/piano.md e revisione.md) =================
   // Si taglia l'isola a ovest di x 702 (finale 1022): resta un capo di scogli arrotondato (la Punta del Faro) che esce 28 m oltre il taglio.
   // A tramontana, sotto il colle, la riva entra di 10-33 m fin dove passavano la ferrovia e la Costiera Nord (correzione 1): una falesia
-  // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Senza ?mappa=nuova niente cambia.
-  const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA === 'nuova'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=nuova\b/.test(location.search)) return true; if (typeof process !== 'undefined' && process.env && process.env.PV_MAPPA === 'nuova') return true; } catch (e) { } return false; })();
+  // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Con ?mappa=prima niente di questo: la mappa di prima.
+  const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA !== 'prima'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=(prima|vecchia)\b/.test(location.search)) return false; if (typeof process !== 'undefined' && process.env && /^(prima|vecchia)$/.test(process.env.PV_MAPPA || '')) return false; } catch (e) { } return true; })();
   const MNX = 702, MNW = 674, MNL = 120, MNY = 146;   // il taglio, la punta del capo, quanto è lungo il capo che si stringe, la sua mezzeria
   const MNN = [[688, 0], [698, 22], [710, 27], [720, 27], [730, 17], [740, 10], [750, 7], [760, 7], [770, 10], [780, 25], [790, 31], [800, 30], [810, 23], [820, 18], [830, 16], [840, 15], [850, 21], [860, 18], [870, 15], [880, 11], [890, 9], [902, 0]];
   const mnShift = m => { if (m <= MNN[0][0] || m >= MNN[MNN.length - 1][0]) return 0; for (let k = 0; k < MNN.length - 1; k++) { const [a, ha] = MNN[k], [b, hb] = MNN[k + 1]; if (m >= a && m < b) { const t = (m - a) / (b - a), e = t * t * (3 - 2 * t); return ha + (hb - ha) * e; } } return 0; };

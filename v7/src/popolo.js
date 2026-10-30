@@ -724,8 +724,10 @@ var Popolo = (function () {
     for (const n of st.npcs) {
       if (!n.pop || n.dead) continue;
       const d = dist(n.x, n.y, p.x, p.y), P = n.pop;
-      const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < CFG.far);
-      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : d) : 1e9]);   // [ordine] chi è in piazza o in fila resta vivo anche lontano
+      // [sparizioni] chi è già vivo e si vede resta vivo fino al bordo della vista (st.viewR, main.js; al più 140 m): prima a 66 m dal
+      // giocatore tornava «dentro» sotto gli occhi (con la visuale bassa e la camera libera si vede molto più in là)
+      const want = mustBeNear(st, n) || d < CFG.near || (P.near && d < Math.max(CFG.far, Math.min(st.viewR || 0, 140)));
+      list.push([n, want ? (n.__ev || (n.ord && (n.ord.protester || n.ord.coda || n.ord.fermato)) ? 0 : P.near ? Math.max(.001, d - 15) : d) : 1e9]);   // [sparizioni] chi è già vivo vince di 15 m al tetto (maxNear): niente scambi continui fra due quasi alla stessa distanza   // [ordine] chi è in piazza o in fila resta vivo anche lontano
       // [eventi] e chi recita una scena passa davanti a tutti: con la città compatta piena i vicini arrivano al tetto (maxNear) e l'attore
       // un po' più lontano degli altri veniva addormentato (snapFar lo mette «dentro» casa) a metà scena: la scena si rompeva con «entrato»
     }
@@ -2196,7 +2198,7 @@ var Popolo = (function () {
   // di notte il traffico della città si dirada (sparisce e torna con l'alba); nel pomeriggio tutte le auto in giro
   function trafficHour(st) {
     const hr = minOfDay(st.t) / 60; let k = 0;
-    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > 60) v.hidden = !want; }
+    for (const v of st.vehicles) { if (!v.cityTr || v.rider || v.wreck || v.stalled) continue; const keep = hr >= 6.5 && hr < 22 ? 1 : hr >= 22 || hr < 1 ? .5 : .2; const want = (k++ % 10) / 10 < keep; if (v.hidden !== !want && dist(v.x, v.y, st.player.x, st.player.y) > Math.max(60, Math.min(st.viewR || 0, 170))) v.hidden = !want; }   // [sparizioni] fuori dalla vista, non a 60 m: con la visuale bassa si vede più in là
   }
   // per le prove: quanti stanno in ogni tipo di posto adesso
   function fillReport(st) { const c = {}; st.npcs.forEach(n => { if (n.__posto) c[n.__posto.p.k] = (c[n.__posto.p.k] || 0) + 1; }); return c; }

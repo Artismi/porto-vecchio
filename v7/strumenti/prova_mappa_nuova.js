@@ -1,4 +1,4 @@
-// [mappa_nuova] LA PROVA D'AVVIO DELLA MAPPA NUOVA: il gioco vero in Chromium senza testa (SwiftShader) con ?mappa=nuova, gli errori
+// [mappa_nuova] LA PROVA D'AVVIO DELLA MAPPA NUOVA: il gioco vero in Chromium senza testa (SwiftShader) con la mappa nuova (di serie; --vecchia: ?mappa=prima), gli errori
 // della pagina, qualche foto dall'alto e, con --metro, il viaggio in metropolitana da una stazione all'altra.
 //   node strumenti/prova_mappa_nuova.js [--query=&altro] [--foto=cartella] [--vecchia] [--metro]
 // Esce con 1 se la pagina ha dato errori.
@@ -7,7 +7,7 @@ const { chromium } = require(process.env.PW || '/opt/node-tools/node_modules/pla
 const root = path.resolve(__dirname, '..');
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith('--' + k + '=')); return a ? a.slice(k.length + 3) : d; };
 const has = k => process.argv.includes('--' + k);
-const Q = '?cittanuova' + (has('vecchia') ? '' : '&mappa=nuova') + arg('query', ''), FOTO = arg('foto', null);
+const Q = '?cittanuova' + (has('vecchia') ? '&mappa=prima' : '') + arg('query', ''), FOTO = arg('foto', null);
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.webp': 'image/webp', '.gz': 'application/gzip' };
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';

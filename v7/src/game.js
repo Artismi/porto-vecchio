@@ -2116,7 +2116,8 @@ var Game = (function () {
       const hm = v.home || { x: 0, y: 0 }; if (!v.path || !v.path.length) v.path = findPath(v.x, v.y, hm.x, hm.y, 1, true);
       const w = v.path[0]; if (w && dist(v.x, v.y, w.x, w.y) < 2.5) v.path.shift();
       vehicleMotion(st, v, dt, w ? Math.atan2(w.y - v.y, w.x - v.x) : v.ang, 1, false, false, false);
-      if (dist(v.x, v.y, st.player.x, st.player.y) > 110 || !w || v.stuck > 4) v.hidden = true;
+      // [sparizioni] se ne va solo fuori dalla vista (st.viewR, main.js): senza strada o incastrata sotto gli occhi resta lì (prima spariva)
+      { const d = dist(v.x, v.y, st.player.x, st.player.y); if (d > Math.max(60, Math.min(st.viewR || 0, 170)) && (d > 110 || !w || v.stuck > 4)) v.hidden = true; }
       if (dist(v.x, v.y, v.x - Math.cos(v.ang) * v.speed * dt, v.y) < .005) v.stuck += dt;
       return;
     }
