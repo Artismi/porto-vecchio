@@ -472,14 +472,14 @@ var Ordine = (function () {
     if (esito === 'ok' && k.ris && k.ris.ideo > .6 && Math.random() < .12) { esito = 'fermo'; why = 'sospetto della Risacca'; }
     if (esito === 'ok' && (O.sorvegliati[k.id] || 0) >= 2 && Math.random() < .3) { esito = 'fermo'; why = 'segnalato dall\'Ufficio Rettifiche'; }
     k.ord.stopped = null;
-    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
+    if (esito === 'ok') { G.say(st, n, pick(Math.random, ['Va bene. Circolare.', 'In regola. Vada pure.', 'Può andare.', 'Per stavolta la sua Calma è sufficiente.', 'Sereno. Abbastanza. Circolare.']), 2); if (PL) PL.note(st, k, `fermat${k.pop && k.pop.sex === 'f' ? 'a' : 'o'} dai Grigi per un controllo, tutto in regola`, 'info', { w: .25, tag: 'controllo' }); if (P.need) P.need.paura = clamp((P.need.paura || 0) + .05, 0, 1); }
     else if (esito === 'multa') {
       const m = 2 + Math.floor(Math.random() * 4); if (P.money !== undefined) P.money -= m; O.stats.multe++;
-      G.say(st, n, `Multa: ${why}. ${m}.000 lire.`, 2.6);
+      G.say(st, n, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why}. ${m}.000 lire. Lunga Calma.` : `Multa: ${why}. ${m}.000 lire.`, 3);   // [culto]
       if (PL) { PL.note(st, k, `multa dai Grigi (${why}): ${m}.000 lire`, 'bad', { w: .45, tag: 'multa' }); if (P.need) P.need.rabbia = clamp((P.need.rabbia || 0) + .12, 0, 1); }
     } else {
-      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.']), 2.6);
-      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?']), 2.6);
+      G.say(st, n, pick(Math.random, ['Lei viene con noi.', 'In caserma. Subito.', 'Si giri. Mani dietro la schiena.', 'Ai sensi del comma antani, con scappellamento, lei viene con noi.', 'Lei è stato selezionato per un colloquio di Calma.']), 2.6);
+      G.say(st, k, pick(Math.random, ['Ma io non ho fatto niente!', 'Lasciatemi, ho famiglia!', 'Per cosa?', 'Ma io sono calmissimo!', 'Lunga Calma! Ho detto Lunga Calma!']), 2.6);
       n.ord.chk = null; fermo(st, n, k, why); return true;
     }
     done(); return true;
@@ -536,7 +536,7 @@ var Ordine = (function () {
     if (d > 1.4) { seek(st, cop, p.x, p.y, dt, 1.9, 1.2); } else { stand(cop, undefined, dt); faceTo(cop, p.x, p.y, dt); }
     const moving = Math.abs(p.speed || 0) > 1.2 || p.vehicle && Math.hypot(...(() => { const v = st.vehicles.find(k => k.id === p.vehicle); return v ? [v.vx || 0, v.vy || 0] : [0, 0]; })()) > 2;
     if (C.phase === 'alt') {
-      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.']), 2.5); }
+      if (d < 2.2 && !moving) { C.phase = 'verifica'; C.t1 = st.clock; G.say(st, cop, pick(Math.random, ['Vediamo…', 'Carta d\'identità… tessera…', 'Fermo così.', 'Documenti, tessera e la faccia serena.']), 2.5); }
       else if (d > 16 || (st.clock - C.t0 > 9 && moving)) return flee(st, cop, C);
       else if (st.clock - C.t0 > 20) end();
       return;
@@ -586,7 +586,7 @@ var Ordine = (function () {
     }
     if (bad <= 2) {
       const m = 5 + bad * 5; p.money -= m; O.stats.multe++;
-      G.say(st, cop, `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3);
+      G.say(st, cop, typeof Culto !== 'undefined' && Math.random() < .5 ? `${Culto.supercazzola()}: ${why.join(', ')}. ${m}.000 lire.` : `Multa: ${why.join(', ')}. ${m}.000 lire.`, 3.4);   // [culto]
       G.feed(st, `Multa di ${m}.000 lire (${why.join(', ')})${seized.length ? '. Sequestrati: ' + seized.map(nomeOgg).join(', ') : ''}.`, 'bad');
       G.addLog(st, `${G.clockStr(st.t)} · Controllo dei Grigi: multa di ${m}.000 lire (${why.join(', ')}).`, 'bad');
       if (C.why === 'base' || C.why === 'varco') { const v = PLACES.varco; if (v) { p.x = v.x - 10; p.y = v.y; } G.feed(st, 'Ti riaccompagnano fuori dal Varco.', 'info'); }
@@ -894,9 +894,9 @@ var Ordine = (function () {
 
   // ================= PROTESTE =================
   const SLOGAN = {
-    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!'],
+    pane: ['Pane! Pane!', 'Abbiamo fame!', 'Gli scaffali sono vuoti!', 'Dov\'è la nave?', 'La tessera non si mangia!', 'Il miracolo non si mangia!'],
     arresto: ['Liberatelo!', 'Assassini!', 'Ridateci {nome}!', 'Vergogna!', 'Non ha fatto niente!'],
-    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!'],
+    rabbia: ['Basta!', 'Ce ne avete prese abbastanza!', 'Via i Grigi!', 'L\'isola è nostra!', 'Non abbiamo paura!', 'Meno Calma, più pane!', 'Il Garante è calvo!'],
     risacca: ['La Risacca non si ferma!', 'Libertà!', 'Abbasso il Garante!', 'Ridateci i nostri!', 'L\'onda torna sempre!'],
   };
   const BANNER = { pane: ['PANE', 'ABBIAMO FAME', 'LA NAVE È NOSTRA'], arresto: ['LIBERATELI', 'RIDATECI {NOME}', 'BASTA FERMI'], rabbia: ['BASTA', 'VIA I GRIGI', 'NON ABBIAMO PAURA'], risacca: ['LIBERTÀ', 'LA RISACCA', 'ABBASSO IL GARANTE', 'L\'ONDA TORNA'] };

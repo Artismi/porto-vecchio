@@ -41,6 +41,8 @@ Regole che non si discutono:
 
 **La comicità** (fondamentale, vedi `src/HANDOFF_matti.md`): chi gioca deve spesso stupirsi e ridere. Il meccanismo è quello di quando, per strada, finisci per caso dentro la vita di uno sconosciuto: pezzi di storie altrui sentiti a metà, dettagli precisi e assurdi detti con serietà totale, sconosciuti che ti tirano dentro le loro faccende, i matti di quartiere. Cattiveria e sfottò al regime sì, crudeltà no. Mai spiegare la battuta, niente barzellette. Ogni missione dovrebbe avere almeno un personaggio o un momento così.
 
+**La voce del regime** (vedi `src/HANDOFF_culto.md`): la Tutela resta violenta, ma è grottesca. Il Garante parla come un tribuno pieno di sé (superlativi, folle record, nemici coi soprannomi) ed è venerato da una religione inventata, la Calma: il saluto «Lunga Calma», i Sette Doveri che nessuno sa tutti, reliquie e miracoli ridicoli, niente riferimenti cristiani. Uffici e Grigi parlano per supercazzole burocratiche. La gente ripete le formule e ci crede a metà.
+
 ---
 
 ## 2. Estetica: le regole visive del gioco
