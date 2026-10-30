@@ -13205,7 +13205,7 @@ var Render = (function () {
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
     // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
-    C.clipping_planes_fragment += `
+    if (!(typeof location !== 'undefined' && /[?&]notaglio\b/.test(location.search))) C.clipping_planes_fragment += `
 #if defined( STANDARD ) && !defined( USE_SKINNING )
 if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sgRr = length( sgD * vec2( 1., 1.3 ) );
   if ( sgRr < 1. && vSgW.y > sgP2.w + 2.2 && distance( vSgW, cameraPosition ) < sgP7.w - 1.5 ) {
@@ -13344,7 +13344,7 @@ ${OM}
   if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 32 cm sul piano della superficie (ancorati al muro, non allo
     // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
     vec3 sgAn = abs( sgNw ); vec2 sgHp = sgAn.y > max( sgAn.x, sgAn.z ) ? vSgW.xz : ( sgAn.x > sgAn.z ? vSgW.zy : vSgW.xy );
-    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .32 );   // [ad] 32 cm: si legge dalla camera di gioco (a 14 cm si spegneva) vec2 sgFw = fwidth( sgHp );
+    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .32 ); vec2 sgFw = fwidth( sgHp );   // [ad] 32 cm: si legge dalla camera di gioco (a 14 cm si spegneva)
     float sgOn = 1. - smoothstep( .25, .4, max( sgFw.x, sgFw.y ) ), sgR = sqrt( 1. - sgOmbra ) * .42, sgDt = length( fract( sgHp ) - .5 );
     float sgDot = 1. - smoothstep( sgR - .07, sgR + .07, sgDt );
     reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( 1. ), sgP3.rgb * 2.2, .5 ) * ( sgDot - .45 ) * sgP5.w * sgOn * ( 1. - sgOmbra ); }
