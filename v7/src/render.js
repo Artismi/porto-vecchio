@@ -13802,8 +13802,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             vec3 c0 = c; float lp = dot(c, vec3(.299, .587, .114));
             float m2 = max(c.r, max(c.g, c.b)), n2 = min(c.r, min(c.g, c.b)), ch2 = (m2 - n2) / max(m2, 1e-4);
             float gri = 1. - smoothstep(.05, .2, ch2), mid = smoothstep(.04, .25, lp) * (1. - smoothstep(.75, .98, lp));
-            { float sole = smoothstep(.3, .6, lp) * gN.z, ombra = 1. - smoothstep(.12, .38, lp);   // [firma] IL GRIGIO NON È UNA SOLUZIONE: i neutri (asfalto, lastrico, cemento, intonaci spenti) prendono la luce
-              c *= mix(vec3(1.), mix(vec3(1.035, 1.0, .95), vec3(1.085, 1.015, .87), sole), gri * mid);   // al sole: crema calda (il sole generoso della foto di strada)
+            { float sole = smoothstep(.2, .42, lp) * gN.z, ombra = 1. - smoothstep(.1, .26, lp);   // [firma] IL GRIGIO NON È UNA SOLUZIONE: i neutri (asfalto, lastrico, cemento, intonaci spenti) prendono la luce
+              c *= mix(vec3(1.), mix(vec3(1.035, 1.0, .95), vec3(1.1, 1.02, .85), sole), gri * mid);   // al sole: crema calda (il sole generoso della foto di strada)
               c *= mix(vec3(1.), vec3(.95, .94, 1.1), gri * ombra * mid * gN.z); }                       // in ombra: oltremare e lilla, di giorno (la notte ha il suo blu)
             c = mix(c, c * vec3(.98, .94, 1.06) + vec3(.0, .0, .012), (1. - smoothstep(.02, .22, lp)) * gri);   // nel fondo un filo di cobalto: l'ombra ha un colore
             c = mix(vec3(lp), c, 1. + .14 * mid * smoothstep(.12, .4, ch2));                        // il colore pieno dove c'è già colore (i muri, le saracinesche, i vestiti, le auto)
