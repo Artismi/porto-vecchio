@@ -36,6 +36,9 @@ const srv = http.createServer((req, res) => {
     });
     out.kb = Math.round(out.kb); for (const t in out.per) out.per[t].kb = Math.round(out.per[t].kb);
     return out; });
+  // le luci in scena: ogni luce entra in ogni programma (e ogni ombra di luce è una mappa letta da ogni pixel)
+  const luci = await pg.evaluate(() => { const out = []; window.__pv.R.__models.scene.traverse(o => { if (o.isLight && !o.isAmbientLight && !o.isHemisphereLight) out.push([o.type, o.name || '', o.parent && o.parent !== o.parent.parent ? (o.parent.name || o.parent.type) : '', +o.intensity.toFixed(2), !!o.castShadow, o.shadow && o.shadow.map ? o.shadow.mapSize.x : 0]); }); return out; });
+  console.log('luci in scena', luci.length, 'con ombra', luci.filter(l => l[4]).length); luci.filter(l => l[4] || l[0] === 'PointLight').forEach(l => console.log('  ', JSON.stringify(l)));
   console.log('programmi', prog.n, prog.kb, 'KB');
   console.log(Object.entries(prog.per).sort((a, b) => b[1].n - a[1].n).map(([k, v]) => `${k}: ${v.n} (${v.kb} KB)`).join('\n'));
   console.log('define più variabili:', JSON.stringify(Object.entries(prog.chiavi).filter(([k, v]) => v > 0 && v < prog.n).sort((a, b) => b[1] - a[1]).slice(0, 40)));
