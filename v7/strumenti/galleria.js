@@ -38,7 +38,7 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
-  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
+  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`, { timeout: 300000 });   // [nitida] con la macchina carica il caricamento passa i 30 s
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: +(process.env.GALLERIA_CARICO || process.env.GALLERIA_ATTESA || 300000) });   // GALLERIA_CARICO (o GALLERIA_ATTESA): ms per caricare (sotto carico 300 s non bastano)
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
@@ -79,7 +79,7 @@ const srv = http.createServer((req, res) => {
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
         window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
@@ -89,6 +89,12 @@ const srv = http.createServer((req, res) => {
       if (v.manopole.VISUALE || v.manopole.PENDENZA || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
+      if (process.env.GALLERIA_RAGGIO) console.log('[raggio]', JSON.stringify(await pg.evaluate(() => {   // [ad] cosa sta fra la camera e il personaggio (per il taglio del primo piano)
+        const R = window.__pv.R, cam = R.getCamera(), sc = R.__ed.scene, P = window.__pv.st.player, T = window.THREE, rc = new T.Raycaster(), tgt = new T.Vector3(P.x, R.__ed.groundH(P.x, P.y) + 1, P.y);
+        const dir = tgt.clone().sub(cam.position), L = dir.length(); rc.set(cam.position, dir.normalize()); rc.far = L; const all = [];
+        sc.traverse(o => { if (!o.isMesh || !o.visible) return; try { rc.intersectObject(o, false, all); } catch (e) { } }); all.sort((a, b) => a.distance - b.distance);
+        const m = o => (Array.isArray(o.material) ? o.material[0] : o.material) || {};
+        return { L: +L.toFixed(1), gy: +R.__ed.groundH(P.x, P.y).toFixed(2), u7: window.__AD && window.__AD.u7, hits: all.slice(0, 5).map(h => ({ d: +h.distance.toFixed(1), y: +h.point.y.toFixed(2), n: h.object.name, t: m(h.object).type, dw: m(h.object).depthWrite, tr: m(h.object).transparent, ro: h.object.renderOrder })) }; })));
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
       // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
       // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)

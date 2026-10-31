@@ -1,0 +1,2 @@
+{ "nota": "[ad] prova del taglio sulle coperture non STANDARD: la quota, o solo la distanza (prova2)",
+  "largo": { "AD": { "tagliaR": 0.3 } }, "prova2": { "AD": { "tagliaR": 0.3, "prova2": 1 } } }

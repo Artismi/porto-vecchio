@@ -242,7 +242,8 @@ var Arredo3D = (function () {
     [1.95, 2.48].forEach(y => slab(p, .05, .05, .05, ZS, 0, y, .04, 0)); if (F()) [1.8, 2.3].forEach(y => fascetta(p, y, .035));   // paletta, orario, le staffette
     asta(g, [1.64, 2.24, .3], [1.4, 2.24, .3], .016, ZS); return g; };   // la staffa che stringe il palo alla trave
   T.edicola = () => {   // edicola dei giornali: chiosco in lamiera verde sullo zoccolo, tetto a padiglione col colmo, bancone sulle mensole, rastrelliera inclinata con le riviste, serranda arrotolata, insegna accesa, porta di servizio
-    const g = new THREE.Group(), W = 2.4, D = 1.6, H = 2.4, vd = mat('#3a6a4a', 'vernice'), vdS = mat('#2a4a3a', 'vernice');
+    const SG = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));   // [segni] il verde hip hop pieno (?nosegni: il verde spento di prima)
+    const g = new THREE.Group(), W = 2.4, D = 1.6, H = 2.4, vd = mat(SG ? '#1E8A4A' : '#3a6a4a', 'vernice'), vdS = mat(SG ? '#16683a' : '#2a4a3a', 'vernice');
     slab(g, W + .1, .18, D + .1, CS, 0, .09, 0, .02); slab(g, W, H - .18, D, vd, 0, .18 + (H - .18) / 2, 0, .04); [-1, 1].forEach(s => [-1, 1].forEach(t => slab(g, .08, H - .2, .08, vdS, s * (W / 2 - .02), .18 + (H - .18) / 2, t * (D / 2 - .02), .01)));
     ext(g, 'pad', shape([[-D / 2 - .25, 0], [D / 2 + .25, 0], [D / 2 + .22, .08], [0, .42], [-D / 2 - .22, .08]]), W + .5, .015, vdS, 0, H, 0, 0, PI / 2, 0); put(g, cylG(.05, .05, W + .5, 8), ZS, 0, H + .42, 0, 0, 0, PI / 2);   // il tetto e il colmo
     slab(g, W + .1, .08, .5, LGG, 0, .95, D / 2 + .22, .01); [-1, 1].forEach(s => { asta(g, [s * 1.1, .91, D / 2 + .42], [s * 1.1, .91, D / 2 - .02], .02, GH, 4); asta(g, [s * 1.1, .91, D / 2 + .4], [s * 1.1, .4, D / 2 - .02], .02, GH, 4); });   // il bancone sulle mensole
@@ -259,7 +260,8 @@ var Arredo3D = (function () {
     [-.7, .55].forEach((x, i) => { slab(g, .34, .1 + i * .04, .24, mat('#ece6d4', 'carta'), x, .99 + (.1 + i * .04) / 2, D / 2 + .2, .004); if (F()) asta(g, [x - .17, 1.02, D / 2 + .2], [x + .17, 1.02, D / 2 + .2], .004, mat('#c8a050', 'tela'), 4); });   // i quotidiani in pila, legati
     return g; };
   T.chiosco = () => {   // chiosco del lungomare: pianta ottagonale bianca e azzurra, bancone tutto intorno, tetto a cono con la punta, frigo delle bibite, insegna
-    const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat('#e6e4da', 'vernice'), az = mat('#5a92b0', 'vernice');
+    const SG = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));   // [segni] il blu reale al posto dell'azzurro (?nosegni: come prima)
+    const g = new THREE.Group(), R = 1.3, H = 2.3, bi = mat(SG ? '#F2EFE8' : '#e6e4da', 'vernice'), az = mat(SG ? '#1E4FB4' : '#5a92b0', 'vernice');
     lathe(g, [[R + .1, 0], [R + .1, .12], [R, .14], [R, 1.0], [R + .18, 1.0], [R + .18, 1.08], [R, 1.1], [R - .02, H - .3], [R, H - .25]], 8, bi, 0, 0, 0, PI / 8); lathe(g, [[R + .005, .14], [R + .005, .55]], 8, az, 0, 0, 0, PI / 8);
     for (let i = 0; i < 8; i++) { const a = i / 8 * PI * 2; asta(g, [Math.cos(a) * (R - .02), 1.1, Math.sin(a) * (R - .02)], [Math.cos(a) * (R - .02), H - .2, Math.sin(a) * (R - .02)], .03, az); if (i !== 4) put(g, slabG(.9, .9, .012, 0), VT, Math.cos(a + PI / 8) * (R - .02) * .99, 1.6, Math.sin(a + PI / 8) * (R - .02) * .99, 0, -a - PI / 8 + PI / 2, 0); }   // montanti e vetrate (una lasciata aperta: il passaggio)
     lathe(g, [[R + .35, H - .3], [R + .35, H - .25], [.3, H + .35], [.05, H + .45], [.05, H + .6], [.001, H + .62]], 8, az, 0, 0, 0, PI / 8); put(g, sphG(.06, 6), bi, 0, H + .64, 0);

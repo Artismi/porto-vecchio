@@ -11,6 +11,20 @@ var Vesti3D = (function () {
     piedi: /^(Foot[LR]|PT[LR])$/, mani: /^(Wrist[LR]|Index\d[LR]|Middle\d[LR]|Ring\d[LR]|Pinky\d[LR]|Thumb\d[LR])$/, collo: /^Neck$/ };
   const KEEP = /^(Skin.*|Eye.*|Eyebrows|Hair.*|Moustache)$/i;   // i materiali del corpo che restano (pelle, occhi, sopracciglia, capelli, baffi). [vestiti] Prima era /…|Brow/: prendeva anche LightBrown e Brown (camicie e pantaloni del kit), che restavano addosso
   const players = new Set();
+  // [segni] la gente giovane di strada nella tavolozza hip hop (art director, fotografo): tute, cappellini, giacche e magliette di strada
+  // vanno sul primario più vicino (rosso, giallo, blu reale, verde, nero, bianco), le loro scarpe bianche o nere, l'oro resta sulle catene.
+  // Solo chi porta i capi di strada (hip hop, skater, maranza): gli altri, i vecchi e le divise come prima. ?nosegni: come prima
+  const SEGNI = !(typeof location !== 'undefined' && /[?&]nosegni\b/.test(location.search));
+  const HHV = ['#D7262E', '#F5C518', '#1E4FB4', '#1E8A4A', '#141414', '#F2EFE8'].map(h => [h, parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]);
+  const STRADA = /^(scarpe_(chunky|air|skate)|cappellino(_dritto)?|visiera|durag|berretto_corto|track_retro|giacca_tuta|tuta_nylon|pantaloni_tuta|maglia_basket|canotta_basket|varsity|coach_jacket|anorak|smanicato|puffer_corto|piumino_oca|felpa_(skate|college|blocchi|cappuccio_zip)|maglietta_(box|college|oversize|ringer|boombox))$/;
+  function hipHop(of, n) {
+    if (!SEGNI || !Array.isArray(of) || (n && (n.cop || n.military)) || !of.some(c => c && STRADA.test(c.id))) return of;
+    const rgb = h => /^#[0-9a-f]{6}$/i.test(h || '') ? [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)) : null;
+    const vicino = h => { const c = rgb(h); if (!c) return h; let best = h, bd = 1e9; HHV.forEach(([k, r, g, b]) => { const d = (r - c[0]) ** 2 * .3 + (g - c[1]) ** 2 * .59 + (b - c[2]) ** 2 * .11; if (d < bd) { bd = d; best = k; } }); return best; };
+    of.forEach(c => { if (!c || !STRADA.test(c.id)) return;
+      if (/^scarpe/.test(c.id)) { const q = rgb(c.col || '#f4f2ee'); c.col = q && q[0] + q[1] + q[2] < 300 ? '#141414' : '#F2EFE8'; } else c.col = vicino(c.col); });
+    return of;
+  }
   const AN = new Map();   // analisi della geometria, per uuid
   const GC = ['getX', 'getY', 'getZ', 'getW'], comp = (a, i, k) => a[GC[k]](i);   // three r149: niente getComponent
 
@@ -1222,6 +1236,7 @@ var Vesti3D = (function () {
   const wsig = st => { const p = st.player, W = p.worn || {}; return JSON.stringify([Guardaroba.ZORD.map(z => W[z]), W.sx]); };
   function hook() {
     if (!window.Models || !Models.person || Models.person.__vesti || typeof Guardaroba === 'undefined') return false;
+    if (!Guardaroba.outfitOf.__segni) { const o0 = Guardaroba.outfitOf; Guardaroba.outfitOf = function (n, fem) { return hipHop(o0.call(this, n, fem), n); }; Guardaroba.outfitOf.__segni = true; }   // [segni] la tavolozza hip hop sui capi di strada (anche personaggi.js passa di qui)
     const p0 = Models.person;
     Models.person = function (look, who) {
       const g = p0.apply(this, arguments); if (!g) return g;

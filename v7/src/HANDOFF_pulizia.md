@@ -60,3 +60,38 @@ finivano su 256 celle e dalla 256ª tutti i modelli prendevano il colore dell'ul
 ## Per chi posa
 Una cosa fatta di più pezzi va registrata come composizione (`mk2(o, k, b, f, g)` con lo stesso `g`, o un gruppo solo): senza,
 il censimento vede pezzi separati (prima i tasti del citofono della bottega erano «doppioni»).
+
+## [nitida] Meno ma leggibilissimo (arredo di strada, casette, marciapiedi, muri)
+Il committente: «la mappa è pienissima ma piena di imperfezioni: muri che continuano fuori dalle case, cestini, cabine e panchine che
+affollano le strade un po' a caso; la strada non è un percorso invitante, è rumorosa in modo uniforme. Meglio un po' meno ma ultra
+leggibile». Poi: «questa casa coi coppi è di troppo, sta in mezzo alla strada» e «il marciapiede è una striscia e la casa ci sta sopra».
+`?vecchiapulizia` rimette tutto com'era (anche il mondo: cotto.js lo ricalcola invece di leggerlo cotto).
+
+Le regole, dove stanno:
+- `pulizia_rumore.js`, `nitida()` dopo il rumore, sull'arredo di strada del registro (`e.arr`: il tipo del modello `pm3`, lo scrive
+  render.js): la panchina sta a un posto delle persone, su una piazza o sul lungomare; la cabina solo sulle piazze, una ogni 80 m; la
+  buca delle lettere solo sulle piazze; il cestino accanto a panchine, fermate, edicole, dehors o all'angolo (uno ogni 25 m); i
+  cassonetti in una piazzola sola (al più 3) ogni 90 m; via i distributori dei giornali; liberi la carreggiata, il cuore degli incroci
+  e le teste delle strisce; su ogni marciapiede la corsia di 0,9 m (chi ci sta in mezzo va contro il muro, o via); lungo le vie una cosa
+  minuta ogni 10 m di casa per lato; i pannelli appesi che salgono oltre la gronda scendono sotto o se ne vanno. Densità: una cosa a terra
+  ogni 6 m di marciapiede (era 3), una appesa ogni 5 m di facciata (era 3,2), nei vicoli 2,4 m liberi (o il vicolo meno 60 cm).
+  `window.__nitida`: il censimento prima e dopo, le azioni.
+- `render.js` (solo la posa): niente panchine, paletti, cabine e buche a caso lungo le vie (buildStrade31), niente paletti a ogni braccio
+  degli incroci né distributori dei giornali, parchimetri ogni ~60 m (buildUrbano1); la canaletta quasi pulita, niente cartacce, sacchi e
+  copertoni a tappeto (buildVita1, oggetti35), alle porte di casa al più due vasi simmetrici; lo zoccolo e i gradini girano con la casa;
+  il marciapiede finisce contro la casa dove ne resterebbe una striscia sotto 1,5 m (swField).
+- `world_cittanuova.js`: `casette()` toglie le casette piccole (≤ 36 m²) senza nome né bottega libere in mezzo al selciato o incastrate
+  fra due carreggiate (quelle appoggiate a un'altra casa restano: sono tetti dei giri sui tetti); l'ultima casa della lista prende il
+  loro indice, così i semi della città non cambiano. `arretra()` arretra di una casella le case col fronte a meno di 1,5 m dal cordolo
+  (la bottega col suo fronte, la porta e il luogo con lei). La cortina dei portici non scavalca più i varchi fra le case (1 m, era 4,2).
+- `scena.js` un bidone ogni 60 m di vicolo, una piazzola di cassonetti ogni ~130 m; `rete.js` i lampioni del borgo ogni 18 m (da un
+  lato solo); `tetti_vissuti.js` il coppo rotto è un coppo più scuro, non un buco nero.
+
+Gli strumenti: `strumenti/muri_vaganti.js` (dati del mondo, pochi secondi: la cortina senza casa dietro, i muri in carreggiata o dentro
+le case, i monconi, le casette, i marciapiedi stretti, le case in carreggiata; `PV_MONDO=` per il prima) e `strumenti/nitida.js` (il
+gioco vero: l'arredo per tipo e per km, gli ostacoli, la roba minuta fuori dal registro; `NITIDA_SOLO=dopo|prima`).
+
+I numeri (città, sulla mappa di claude/compassionate-knuth-l81uc8): cortina dei portici senza casa dietro 7,5 m (4 tratti) → 0;
+casette in mezzo al selciato 13 → 0 (16 tolte, con quelle rimaste sole dopo); case col marciapiede sotto 1,5 m 28 → 23 (4 arretrate,
+per le altre il marciapiede si chiude contro il muro); case in carreggiata 2 → 1 (gli Uffici del Garante, nel Recinto). Da guardare: il
+Gradone del Mercato, 6,5 m dentro la carreggiata della Vittoria al piede (un pezzo di [posa]).
