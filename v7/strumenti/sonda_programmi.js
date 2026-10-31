@@ -50,6 +50,26 @@ const srv = http.createServer((req, res) => {
     (rd.info.programs || []).forEach(p => { if (!/^physical/.test(p.cacheKey || '')) return; try { const sh = gl.getAttachedShaders(p.program); const src = sh.map(s => gl.getShaderSource(s) || ''); const l = src[0].length + src[1].length; if (l > bl) { bl = l; best = { key: p.cacheKey, vs: src[0], fs: src[1] }; } } catch (e) { } });
     return best; });
   if (grosso) { fs.writeFileSync('/tmp/prog_phys.vert', grosso.vs); fs.writeFileSync('/tmp/prog_phys.frag', grosso.fs); console.log('programma physical più grosso', Math.round(grosso.vs.length / 1024), '+', Math.round(grosso.fs.length / 1024), 'KB', grosso.key.slice(0, 120)); }
+  // [avvio3] GLI SCATTI: i programmi che nascono mentre si gioca. Il personaggio salta in otto posti della città (uno ogni 6 s), si contano
+  // i programmi nuovi (con la chiave) e il tempo passato ad aspettarne la compilazione (gl.getProgramParameter, LINK_STATUS e uniform)
+  if (!ARG.nocammino) {
+    const cam = await pg.evaluate(() => new Promise(res => {
+      const pv = window.__pv, R = pv.R, rd = R.__models.renderer, gl = rd.getContext(), st = pv.st;
+      const k0 = new Set((rd.info.programs || []).map(p => p.cacheKey)), gpp = gl.getProgramParameter; let att = 0, n = 0;
+      gl.getProgramParameter = function () { const a = performance.now(); const r = gpp.apply(this, arguments); att += performance.now() - a; n++; return r; };
+      const posti = [[1400, 312], [1380, 343], [1272, 343], [1306, 312], [1268, 390], [1540, 338], [1286, 272], [1428, 324]]; let i = 0, fr = [], lt = performance.now();
+      const salta = () => { const [x, y] = posti[i]; const p = st.player; p.x = x; p.y = y; p.path = []; p.vehicle = null; p.indoor = null; if (R.cam) { R.cam.x = x; R.cam.y = y; } };
+      salta(); const t0 = performance.now();
+      (function tick() { const now = performance.now(); fr.push(now - lt); lt = now;
+        if (now - t0 > (i + 1) * 6000) { i++; if (i < posti.length) salta(); }
+        if (i < posti.length) requestAnimationFrame(tick); else { gl.getProgramParameter = gpp;
+          const nuovi = (rd.info.programs || []).map(p => p.cacheKey).filter(k => !k0.has(k));
+          fr.sort((a, b) => a - b);
+          res({ nuovi: nuovi.length, attesaMs: Math.round(att), chiamate: n, fotogrammi: fr.length, mediana: Math.round(fr[fr.length >> 1]), p95: Math.round(fr[Math.floor(fr.length * .95)]), max: Math.round(fr[fr.length - 1]),
+            chiavi: nuovi.map(k => { const f = k.split(','); return f[0] + ' … ' + f.slice(-3).join(',').slice(0, 140); }) }); } })(); }));
+    console.log('cammino', JSON.stringify(Object.assign({}, cam, { chiavi: undefined })));
+    cam.chiavi.forEach(k => console.log('   nuovo:', k));
+  }
   // a regime: i disegni e i ms del processore (disegni a vuoto)
   const mis = await pg.evaluate(SEC => new Promise(res => {
     const pv = window.__pv, R = pv.R, rd = R.__models.renderer, gl = rd.getContext(), G = pv.G, st = pv.st;
