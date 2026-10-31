@@ -987,7 +987,7 @@ var Render = (function () {
       sd.data[o] = sea ? Math.round(Math.sqrt(Math.min(1, dp / 16)) * 255) : 0;   /* [riva] la radice: più precisione nell'acqua bassa */ sd.data[o + 1] = sea && bt === 1 ? 255 : sea && bt === 3 ? 110 : sea ? 0 : 255; /* G: 255 roccia, 110 fango */ sd.data[o + 2] = bt === 2 ? 255 : 0; sd.data[o + 3] = 255;
     }
     sx.putImageData(sd, 0, 0); mx.putImageData(md, 0, 0);   /* [carico] */
-    const PB = DIETA.on('acqua') ? 2 : 4, big = mk(G.GW * PB, G.GH * PB), bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(' + 1.5 * PB + 'px)' : 'blur(' + .75 * PB + 'px)';   /* [dieta] sul telefono la profondità a 1 px per metro (era 2: 27 MB di tela e altrettanti sulla scheda video; è sfocata di una casella e mezza) */   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
+    const PB = 2, big = mk(G.GW * PB, G.GH * PB)   /* [avvio3] 1 px per metro anche sul computer (era 2: una tela da 2600×800 sfocata col filtro 2D, 4,9 s di avvio in software; la sfocatura è comunque di una casella e mezza, la risoluzione in più non si vedeva) */, bgx = big.getContext('2d'); bgx.imageSmoothingEnabled = true; bgx.filter = R9 ? 'blur(' + 1.5 * PB + 'px)' : 'blur(' + .75 * PB + 'px)';   /* [dieta] sul telefono la profondità a 1 px per metro (era 2: 27 MB di tela e altrettanti sulla scheda video; è sfocata di una casella e mezza) */   /* [riva] una casella e mezza: la profondità a caselle non fa più gli scalini nel colore dell'acqua bassa */ bgx.drawImage(sc, 0, 0, big.width, big.height); bgx.filter = 'none';
     // [riva] nella fascia della riva fine la profondità e la terra vengono dalla quota vera (a 50 cm): l'acqua bassa e la schiuma
     // seguono la battigia con le sue cuspidi, gli scogli, le pozze, non più le caselle
     const stx = new THREE.CanvasTexture(big); stx.minFilter = stx.magFilter = THREE.LinearFilter;
@@ -13193,7 +13193,7 @@ var Render = (function () {
     luce: .14, ombraBordo: .26, cerchio: .5, avanti: .45,   // [look] avanti: la pozza di luce un passo davanti al personaggio, nella direzione di marcia (frazione del cerchio) // la luce sul personaggio: quanto si apre al centro, quanto scende ai bordi, il raggio (frazione dell'altezza)
     sagome: .4, chiarezza: .2,
     tetti: .85, tettiDa: 2, tettiPer: 3,   // i tetti (m sopra il piano del personaggio): calmi, il piano dove si cammina resta pieno
-    ciglio: .7, piede: .6, calma: .5, piedeR: 1.4,   // i volumi: la linea sul ciglio, l'ombra al piede dei muri, il suolo spianato, il raggio del piede (m)
+    ciglio: .7, piede: .6, piedeR: 1.4,    // i volumi: la linea sul ciglio, l'ombra al piede dei muri, il raggio del piede (m)   // [firma] via la calma (la sfocatura del suolo)
     spalla: .4,                            // le luci piene meno sature
     acceso: true };
   if (typeof window !== 'undefined') window.__NIT = NIT;
@@ -13312,54 +13312,38 @@ var Render = (function () {
   // [look] IL GRADING UNICO del panel (HANDOFF_look.md): il caldo vive solo nel colore del sole, non in cinque moltiplicatori in fila
   // (luce × proLuce × vivo × pieno × proPieno); il giorno neutro e luminoso, il rosa alla sera, la notte col bordo ciano e i neon.
   // I pro* restano neutri (un solo set), il bordo freddo (i muri lo prendono, il suolo visto dall'alto no: il suolo si stacca).
+  // ================= [firma] LA PELLICOLA DI STRADA, UNA SOLA (HANDOFF_look.md «Lo shader di Porto Vecchio») =================
+  // Prima erano quattro strati uno sopra l'altro, ognuno che correggeva il precedente con Object.assign e #ifdef: il grading del panel
+  // ([look]: grigio), la pellicola ([strada], PELL: il mood torna), l'art director ([ad], AD: la cura) e sopra le manopole di [nitida].
+  // Qui c'è UNA tabella sola per i quattro momenti e un set di manopole, coi valori finali di quel percorso rivisti sulla bibbia del
+  // committente: un video di skate in VX1000 dentro una rivoluzione. La lente larga che respira col ritmo (gonfio), la pellicola calda
+  // della foto di strada anni '80 (sole caldo e di sbieco, luci crema, neri pieni e caldi), l'ombra colorata e mai grigia (oltremare e
+  // lilla di giorno, magenta-viola la sera, blu profondo la notte), il retino nelle ombre e il pennarello sui bordi (la firma), la grana
+  // viva solo nei medi; il regime grigio, dritto e stampato a macchina (la maschera dei suoi luoghi). Niente desaturazioni a tappeto,
+  // niente spalla che sbianca, niente sfocature (si leggono come bassa qualità). ?vecchiolook torna al grading di prima del panel;
+  // dal vivo window.__SGU (momenti, pieno, pro), window.__NIT, window.__PELL (la lente), window.__AD (la firma).
   if (LOOK.on) {
-    const N1 = { proOmbra: [1, 1, 1], proLuce: [1, 1, 1], proSat: 1, proContrasto: 1 };
-    Object.assign(SGU.momenti.mattino, { sole: '#fff1de', soleK: 1.15, cielo: '#a9c6ec', terra: '#8f8a80', cieloK: .64, bordo: '#cfe0f4', bordoK: .22, nebbia: '#d4dde6', esp: .92, ombra: [.95, .98, 1.06], luce: [1.03, 1, .97], sat: 1, contrasto: 1.07, vign: .16 }, N1, { proPieno: .2, proNeri: .02, proTinta: '#7a8cb8', proTintaK: .16 });
-    Object.assign(SGU.momenti.pomeriggio, { sole: '#fff6ea', soleK: 1.18, cielo: '#b6cdea', terra: '#948c80', cieloK: .6, bordo: '#d8e6f6', bordoK: .22, nebbia: '#d8e0e8', esp: .9, ombra: [.96, .98, 1.05], luce: [1.02, 1, .97], sat: 1, contrasto: 1.08, vign: .14 }, N1, { proPieno: .2, proNeri: .018, proTinta: '#7e8cb4', proTintaK: .14 });
-    Object.assign(SGU.momenti.sera, { sole: '#ffa070', soleK: 1, cielo: '#8c8cc8', terra: '#a07a70', cieloK: .62, bordo: '#ff9ec0', bordoK: .24, nebbia: '#c8909c', esp: 1, ombra: [.9, .92, 1.12], luce: [1.08, .99, .88], sat: 1.06, contrasto: 1.1, vign: .24 }, N1, { proPieno: .3, proNeri: .03, proTinta: '#5e5490', proTintaK: .22 });
-    Object.assign(SGU.momenti.notte, { sole: '#9ab0f0', soleK: .3, cielo: '#26346a', terra: '#1a1a2e', cieloK: .34, bordo: '#5ec8e8', bordoK: .22, nebbia: '#0e1630', esp: 1, ombra: [.88, .94, 1.16], luce: [1.08, 1, .86], sat: 1, contrasto: 1.1, vign: .3 }, N1, { proPieno: .3, proNeri: .025, proTinta: '#44488e', proTintaK: .32, proEsp: 1.2 });
-    SGU.ore = [[0, 'notte'], [4.6, 'notte'], [7.4, 'mattino'], [10.6, 'mattino'], [12.6, 'pomeriggio'], [17.2, 'pomeriggio'], [18.6, 'sera'], [19.8, 'sera'], [21.4, 'notte'], [24, 'notte']];   // il caldo arriva all'ora giusta
-    SGU.pieno = .15; SGU.nitido = .45; SGU.nuvole = .1;
-    Object.assign(SGU.pro, { vivo: .2, grana: PHONE ? 0 : .12, celle: .5, ombre: .85 });   // la micro-normale in movimento sfarfallava; il riempimento delle ombre: cielo, non buco
-    AMB.film = .018;
-    PROF.soleAlto = [22, 42];   // ombre più corte: non coprono metà via
-  }
-  // ================= [strada] LA PELLICOLA DI PELL (art director, ott. 2026): il mood torna =================
-  // Il committente: «troppo notturno e grigio», «hai ammazzato il mood», «più hip hop, più colorito e street, un intervento leggero ma
-  // uniformatore; manca lo sbieco, il fish-eye, il rigonfiamento». Una sola pellicola da foto di strada anni '80 (Martha Cooper, Jamel
-  // Shabazz, Do the Right Thing): il sole caldo e direzionale, le ombre colorate (mai grigie), i neri pieni e caldi, il colore pieno
-  // sulle cose di strada, le luci color crema (non sbiancate); la stessa emulsione a ogni ora. Via le desaturazioni per tinta, i tetti di
-  // saturazione, il velo dei tetti, la spalla bianca e lo scurimento ai bordi. Il rigonfiamento: un barile leggero su tutto il quadro
-  // (il centro si gonfia verso chi guarda, gli angoli restano fermi). ?grigio torna al grading del panel precedente; window.__SGU.pellicola.
-  const PELL = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]grigio\b/.test(location.search)), gonfio: .055, pellicola: 1 };
-  SGU.pellicola = PELL;
-  if (PELL.on) {
-    Object.assign(SGU.momenti.mattino, { sole: '#fff0da', soleK: 1.24, cielo: '#a6c8ee', terra: '#a49884', cieloK: .62, bordo: '#fff0dc', bordoK: .12, nebbia: '#e2dfd8', esp: .98, ombra: [.95, .97, 1.08], luce: [1.03, 1.0, .96], sat: 1.06, contrasto: 1.12, vign: .1 }, { proPieno: .35, proNeri: .03, proTinta: '#3c62b8', proTintaK: .2 });
-    Object.assign(SGU.momenti.pomeriggio, { sole: '#fff2dc', soleK: 1.26, cielo: '#a8caee', terra: '#a89a84', cieloK: .6, bordo: '#fff0dc', bordoK: .12, nebbia: '#e4e0d8', esp: .98, ombra: [.95, .97, 1.08], luce: [1.03, 1.0, .96], sat: 1.07, contrasto: 1.12, vign: .1 }, { proPieno: .35, proNeri: .03, proTinta: '#3a5cb4', proTintaK: .2 });
-    Object.assign(SGU.momenti.sera, { sole: '#ffa868', soleK: 1.08, cielo: '#8c92c0', terra: '#a8826a', cieloK: .6, bordo: '#ffbc88', bordoK: .2, nebbia: '#d0a28a', esp: 1.02, ombra: [.92, .93, 1.1], luce: [1.07, 1.0, .9], sat: 1.06, contrasto: 1.12, vign: .16 }, { proPieno: .35, proNeri: .035, proTinta: '#4a4a9a', proTintaK: .22 });
-    Object.assign(SGU.momenti.notte, { sole: '#9ab0e0', soleK: .34, cielo: '#2c3a62', terra: '#2a2230', cieloK: .4, bordo: '#6a8ac0', bordoK: .16, nebbia: '#141a2c', esp: 1.12, ombra: [.92, .94, 1.1], luce: [1.1, 1.0, .86], sat: 1.04, contrasto: 1.1, vign: .2 }, { proPieno: .35, proNeri: .03, proTinta: '#3a3a78', proTintaK: .26, proEsp: 1.3 });
+    const N1 = { proOmbra: [1, 1, 1], proLuce: [1, 1, 1], proSat: 1, proContrasto: 1 };   // i pro* neutri: il caldo vive solo nel sole e nel viraggio, non in cinque moltiplicatori in fila
+    // sole e cielo (la luce), bordo (il controluce dei materiali), nebbia; esposizione; il viraggio (ombra ×, luce ×), saturazione, contrasto, vignetta;
+    // il colore pieno (proPieno), i neri (proNeri), la tinta dell'ombra del sole (proTinta, proTintaK: il cielo che riempie l'ombra)
+    Object.assign(SGU.momenti.mattino,    { sole: '#fff0da', soleK: 1.24, cielo: '#a6c8ee', terra: '#a49884', cieloK: .62, bordo: '#fff0dc', bordoK: .12, nebbia: '#e2dfd8', esp: .98, ombra: [.93, .94, 1.12], luce: [1.02, 1, .985], sat: 1.08, contrasto: 1.12, vign: .1 },  N1, { proPieno: .38, proNeri: .045, proTinta: '#5060cc', proTintaK: .32 });   // luce crema, ombra oltremare chiaro e lilla (mai grigia)
+    Object.assign(SGU.momenti.pomeriggio, { sole: '#fff2dc', soleK: 1.26, cielo: '#a8caee', terra: '#a89a84', cieloK: .6,  bordo: '#fff0dc', bordoK: .12, nebbia: '#e4e0d8', esp: .98, ombra: [.93, .94, 1.12], luce: [1.02, 1, .985], sat: 1.09, contrasto: 1.12, vign: .1 },  N1, { proPieno: .38, proNeri: .045, proTinta: '#5858c8', proTintaK: .32 });   // sole pieno, ombre oltremare col lilla
+    Object.assign(SGU.momenti.sera,       { sole: '#ffb47a', soleK: 1,    cielo: '#9a88c8', terra: '#a8826a', cieloK: .6,  bordo: '#ff9ec0', bordoK: .22, nebbia: '#d8a0ac', esp: 1.02, ombra: [.86, .88, 1.2],  luce: [1.08, .99, .88], sat: 1.06, contrasto: 1.12, vign: .16 }, N1, { proPieno: .42, proNeri: .05, proTinta: '#7a46a8', proTintaK: .26 });   // il tramonto rosa-magenta-arancio: arancio sui muri, magenta-viola nelle ombre, il bordo rosa
+    Object.assign(SGU.momenti.notte,      { sole: '#9ab0e0', soleK: .34,  cielo: '#2a3360', terra: '#2a2230', cieloK: .4,  bordo: '#5ec8e8', bordoK: .18, nebbia: '#141a2c', esp: 1.12, ombra: [.9, .93, 1.14], luce: [1.1, 1, .86],   sat: 1.06, contrasto: 1.16, vign: .2 },  N1, { proPieno: .4, proNeri: .03, proTinta: '#3a3a78', proTintaK: .18, proEsp: 1.3 });   // blu profondo, il bordo ciano dei neon, le pozze al sodio restano calde
     SGU.ore = [[0, 'notte'], [5, 'notte'], [6.8, 'mattino'], [10.6, 'mattino'], [12.4, 'pomeriggio'], [17.8, 'pomeriggio'], [19, 'sera'], [20.4, 'sera'], [22, 'notte'], [24, 'notte']];   // le giornate lunghe d'inizio autunno: il giorno è il giorno
-    SGU.pieno = .25; SGU.nuvole = .08;
-    Object.assign(SGU.pro, { vivo: .35, celle: .6 });
-    Object.assign(NIT, { tetti: .35, spalla: .12, ombraBordo: .06, quinta: .05, aria: .22, luce: .1, sagome: .5 });   // i tetti tengono il loro colore; niente bordi che fanno notte
+    SGU.pieno = .25; SGU.nitido = .45; SGU.nuvole = .08;
+    Object.assign(SGU.pro, { vivo: .35, grana: PHONE ? 0 : .12, celle: .6, ombre: .85 });   // la tavolozza viva nei medi; la micro-normale appena (in movimento sfarfallava); la luce a bande (celle) col confine che trema (sguProPezzi); l'ombra riempita dal cielo dell'ora
+    Object.assign(NIT, { tetti: .35, spalla: .12, ombraBordo: .06, quinta: .05, aria: .22, luce: .06, avanti: .25, sagome: .5, fuoco: .3, vicino: .14 });   // i tetti tengono il loro colore; niente bordi che fanno notte; la pozza sul personaggio appena (era un occhio di bue); il fuoco per profondità un filo (la sfocatura si legge come bassa qualità)
+    AMB.film = .018;
+    PROF.soleLato = [-68, -112]; PROF.soleAlto = [22, 40];   // il sole sempre in diagonale alle vie (prima correva lungo i caruggi e li riempiva d'ombra), ombre non troppo lunghe
   }
-  // ================= [ad] L'ART DIRECTOR: la pellicola di strada portata alla cura (HANDOFF_ad.md, il secondo panel) =================
-  // Meno Grande Fratello, più strada; i colori hip hop come accenti nelle cose (non nel filtro); uno shader proprio. Qui il passo:
-  // le luci crema (non ocra), i neri pieni di giorno, l'ombra chiara e colorata (di giorno era un buco blu notte a L .19: si leggeva notte),
-  // la sera a due colori (arancio sui muri, cobalto nelle ombre), la notte al sodio, la pozza sul personaggio appena (era un occhio di bue),
-  // la grana d'emulsione a 12 al secondo nei medi, il tratto che prende il colore della cosa (un pennarello, non il viola fisso).
-  // ?noad torna alla pellicola di prima; window.__AD dal vivo.
-  const AD = { on: PELL.on && !(typeof location !== 'undefined' && /[?&]noad\b/.test(location.search)), grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .1, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
-  if (AD.on) {
-    PELL.gonfio = .045;   // il centro meno ingrandito (era .055: 5,8% e un centro più morbido dei bordi)
-    const M = SGU.momenti;
-    Object.assign(M.mattino, { luce: [1.02, 1, .985], proNeri: .045, proTinta: '#4a5cc8', proTintaK: .27 });   // l'ombra oltremare (fra l'illustratore e il tecnico luci)
-    Object.assign(M.pomeriggio, { luce: [1.02, 1, .985], proNeri: .045, proTinta: '#4a5cc8', proTintaK: .27 });
-    Object.assign(M.sera, { sole: '#ffb47a', soleK: 1, sat: .98, ombra: [.86, .9, 1.18], proNeri: .05, proTinta: '#7a46a8', proTintaK: .26 });   // Do the Right Thing: arancio sui muri, magenta-viola nelle ombre
-    Object.assign(M.notte, { cielo: '#2a3360', proTintaK: .18, contrasto: 1.16 });
-    PROF.soleLato = [-68, -112]; PROF.soleAlto = [22, 40];   // il sole sempre in diagonale alle vie: prima correva quasi parallelo ai caruggi e li riempiva d'ombra
-    Object.assign(NIT, { luce: .06, avanti: .25 });
-  }
+  // La lente (PELL) e la firma (AD). gonfio: il rigonfiamento di base; la lente RESPIRA col ritmo (gonfioOra, in sguPasso): da fermi si calma,
+  // a piedi è piena, di corsa e sui mezzi spinge (fino a gonfioMezzi), nel regime quasi sparisce (gonfioRegime: la sua immagine è dritta).
+  // grana: l'emulsione nei medi; centro: il centro ingrandito un filo più nitido; retino: l'ombra stampata (nei materiali); taglio: il primo
+  // piano a retino Bayer davanti al personaggio; rollio: lo sbieco della camera (gradi, a piedi e sui mezzi).
+  const PELL = { on: LOOK.on, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
+  SGU.pellicola = PELL;
+  const AD = { on: LOOK.on, grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .14, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
@@ -13519,7 +13503,8 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
-	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3, .4, dotNL ), sgP4.x );   // [scorcio] le celle
+	{ float sgTr = ( sgN3( vSgW * 2.3 + 11.1 ) - .5 ) * .14;   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
+	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
     const OM = 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
@@ -13728,42 +13713,21 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
               c = max(c + dl * nB.w * nF, 0.); }   // solo il valore (sommato, non moltiplicato: la croma non sale col valore)
             if (nA.w > 0.) { float dn = max(max(1. / sgI(vUv + vec2(e.x, 0.)), 1. / sgI(vUv - vec2(e.x, 0.))), max(1. / sgI(vUv + vec2(0., e.y)), 1. / sgI(vUv - vec2(0., e.y))));
               float sil = smoothstep(.035, .09, (dn - nD0) / nD0) * (1. - smoothstep(.15, .8, nRel));   // il bordo della cosa davanti; svanisce dietro il fuoco
-#ifdef SG_AD
-              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), sil * nA.w * mix(1., .7, nRg)); }   // il regime: linea tecnica uniforme #4a4e58   // [ad] il pennarello: il colore della cosa, più scuro e più pieno
-#else
-              c = mix(c, c * vec3(.34, .27, .36), sil * nA.w); }
-#endif
+              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), sil * nA.w * mix(1., .7, nRg)); }   // [firma] il pennarello: il colore della cosa, più scuro e più pieno; nel regime la linea tecnica uniforme #4a4e58
             c *= 1. - nA.z * smoothstep(.25, .6, -nRel);                                   // la quinta
             if (nG.x + nG.y + nG.z > 0.) {   // i volumi e le divisioni, dalla quota vera (con la camera quasi dall'alto la profondità relativa dice poco)
               float q0 = nQ(vUv), dr = 0.;
               for (int k = 0; k < 4; k++) { float a = float(k) * 1.5708; dr = max(dr, q0 - nQ(vUv + vec2(cos(a), sin(a)) * e * 1.5)); }   // il ciglio: un vicino molto più basso
-              float rp = clamp(nG.w / (pa * nD0), 2., 28.), oc = 0., un = 0.;
+              float rp = clamp(nG.w / (pa * nD0), 2., 28.), oc = 0.;
               for (int k = 0; k < 8; k++) { float a = float(k) * .7854 + .2; float hn = nQ(vUv + vec2(cos(a), sin(a)) * e * rp * (mod(float(k), 2.) > .5 ? .6 : 1.)) - q0;
-                oc += smoothstep(.6, 2.5, hn); un += step(abs(hn), .08); }
-#ifdef SG_AD
-              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), smoothstep(1.2, 2.5, dr) * nG.x);   // [ad] il ciglio col pennarello
-#else
-              c = mix(c, c * vec3(.3, .25, .34), smoothstep(1.2, 2.5, dr) * nG.x);
-#endif                 // la linea sul ciglio dei tetti e dei muri: il volume si stacca dal suolo
+                oc += smoothstep(.6, 2.5, hn); }
+              c = mix(c, mix(c * c * .85 + vec3(.035, .02, .05), vec3(.29, .306, .345), nRg), smoothstep(1.2, 2.5, dr) * nG.x);   // [firma] il ciglio col pennarello: la linea sul ciglio dei tetti e dei muri, il volume si stacca dal suolo
               c *= mix(vec3(1.), vec3(.62, .6, .72), min(1., oc * .22) * nG.y);                  // il piede dei muri: l'ombra di contatto (il suolo si separa dalla casa)
-              float pl = smoothstep(6., 8., un) * (1. - smoothstep(.1, .6, dr)) * mix(1., 1.3, nTet) * nG.z;
-#ifdef SG_AD
-              pl *= mix(1., 1. / 1.3, nTet);   // [ad] la calma non spiana i tetti
-#endif   // anche i tetti (l'illustratore): il micro-dettaglio dei coppi è il rumore più grande   // la calma: le superfici piane, lontano dagli spigoli
-              if (pl > .01) { vec3 m = (texture2D(t, vUv + vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, e.y) * 1.5).rgb + texture2D(t, vUv + vec2(e.x, -e.y) * 1.5).rgb + texture2D(t, vUv - vec2(e.x, -e.y) * 1.5).rgb) * .25;
-                float dl = abs(dot(m - c, vec3(.299, .587, .114)));
-                c = mix(c, m, pl * (1. - smoothstep(.06, .16, dl))); }   // il rumore fine del lastricato si spiana; i segni netti (strisce, ombre) restano
-            }
+            }   // [firma] via la «calma» (4 letture e una sfocatura delle superfici piane: a schermo si leggeva come bassa qualità)
             float hz = smoothstep(nD.x, nD.x + nD.y, nRel) * nA.x;                          // l'aria: il lontano verso il colore dell'ora, meno contrasto
-            c = mix(c, nH + (c - nH) * .55, hz);
-#ifdef SG_AD
+            c = mix(c, nH + (c - nH) * .66, hz);                                              // [firma] il contrasto del lontano ai due terzi (era 55%): aria, non nebbia
             if (nRg > .01) { float lr = dot(c, vec3(.299, .587, .114)); c = mix(c, mix(vec3(lr), c, .25) * vec3(.99, 1., 1.02), nRg); }   // [ad] il regime stampato a macchina: quasi senza colore (S ≤ .12), freddo
-#endif
-#ifdef SG_AD
-            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .95 + .03) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .6, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno   // [ad] i tetti tengono trama e colore
-#else
-            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .9 + .08) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .38, nTet); c = mix(c, nH, nTet * .12); }   // i tetti: un terzo del colore, valore più chiaro e stretto (i tetti diventano un piano calmo)   // i tetti: meno colore e un filo d'aria, il piano dove si cammina resta pieno
-#endif
+            { float lt = dot(c, vec3(.299, .587, .114)); c = mix(c, vec3(lt * .95 + .03) * vec3(1.03, 1., .96) + (c - vec3(lt)) * .7, nTet); c = mix(c, nH, nTet * .08); }   // i tetti: un piano calmo che tiene trama e colore (il 70%), il valore appena stretto, un filo d'aria
           }
 #endif
 #if defined(SG_AAA) && defined(SG_PROD)
@@ -13831,18 +13795,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
           c *= mix(sh, vec3(1.), smoothstep(.06, .55, l)); c *= mix(vec3(1.), hi, smoothstep(.45, .92, l));   // ombre fredde, luci calde
           float mx = max(c.r, max(c.g, c.b)), ch = (mx - min(c.r, min(c.g, c.b))) / max(mx, .04);
           float sv = gK.x * (1. + gN.y * smoothstep(.12, .45, ch) * (1. - smoothstep(.6, .95, ch)));   // il colore pieno dove c'è già colore; i grigi restano grigi, i saturi non diventano acidi
-#if defined(SG_LOOK) && !defined(SG_STR)
-          {   // [look] la saturazione per tinta (il fotografo): l'arancio e il giallo calano, i verdi un poco, il blu resta, il rosa e il viola (neon, tramonto) salgono
-            float mn = min(c.r, min(c.g, c.b)), dd = max(mx - mn, 1e-4);
-            float hh = mx == c.r ? mod((c.g - c.b) / dd, 6.) : mx == c.g ? (c.b - c.r) / dd + 2. : (c.r - c.g) / dd + 4.; hh *= 60.;   // gradi
-            float f = .95;
-            f = mix(f, .78, smoothstep(9., 21., hh) * (1. - smoothstep(39., 51., hh)));    // arancio e cotto
-            f = mix(f, .82, smoothstep(39., 51., hh) * (1. - smoothstep(59., 71., hh)));   // giallo e ocra
-            f = mix(f, .85, smoothstep(59., 71., hh) * (1. - smoothstep(164., 176., hh))); // verdi
-            f = mix(f, 1.08, smoothstep(244., 256., hh) * (1. - smoothstep(339., 351., hh)));   // viola e rosa
-            sv *= f; }
-#endif
-          c = max(mix(vec3(l), c, mix(1., sv, smoothstep(.04, .14, ch))), 0.);
+          c = max(mix(vec3(l), c, mix(1., sv, smoothstep(.04, .14, ch))), 0.);   // [firma] (via la saturazione per tinta del panel: era la desaturazione a tappeto di aranci, gialli e verdi)
 #ifdef SG_STR
           if (gS.y > 0.) {   // [strada] la pellicola: neri pieni e caldi, i grigi presi dal sole (mai cemento), luci crema, colore pieno nei medi, un tetto solo al rosso che brucia
             vec3 c0 = c; float lp = dot(c, vec3(.299, .587, .114));
@@ -13851,26 +13804,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             c *= mix(vec3(1.), vec3(1.035, 1.0, .95), gri * mid);                                   // i grigi (asfalto, cemento, intonaci spenti) caldi di sole
             c = mix(c, c * vec3(.98, .94, 1.06) + vec3(.0, .0, .012), (1. - smoothstep(.02, .22, lp)) * gri);   // nel fondo un filo di cobalto: l'ombra ha un colore
             c = mix(vec3(lp), c, 1. + .14 * mid * smoothstep(.12, .4, ch2));                        // il colore pieno dove c'è già colore (i muri, le saracinesche, i vestiti, le auto)
-#ifdef SG_AD
             c *= mix(vec3(1.), vec3(1.015, 1.0, .98), smoothstep(.6, .95, lp));                    // [ad] le luci crema (B/R ≥ .84), non ocra
             c += (1. - smoothstep(.12, .32, lp)) * step(c.r, c.b) * vec3(.03, .035, .06) * gN.z;    // [ad] l'ombra fredda di giorno più chiara: colore, non buco (solo di giorno: di notte azzurrava tutto)
-#else
-            c *= mix(vec3(1.), vec3(1.02, 1.0, .95), smoothstep(.6, .95, lp));                     // le luci crema, non bianche
-#endif
             float mx3 = max(c.r, max(c.g, c.b)), mn3 = min(c.r, min(c.g, c.b)); if (mx3 > .92 && mx3 - mn3 > .5) c = mix(vec3(dot(c, vec3(.299, .587, .114))), c, .85);   // il rosso pieno al sole non brucia
             c = mix(c0, max(c, 0.), gS.y); }
-#endif
-#if defined(SG_LOOK) && !defined(SG_STR)
-          { float m2 = max(c.r, max(c.g, c.b)), n2 = min(c.r, min(c.g, c.b)), s2 = (m2 - n2) / max(m2, 1e-4), cap = mix(1., .55, smoothstep(.5, .7, l)) * (c.r >= c.b ? 1. : mix(.35, 1., smoothstep(.25, .4, l)));   // i tetti di saturazione: l'arancio nelle luci ≤ .55, il blu nelle ombre ≤ .35
-            if (s2 > cap) c = mix(vec3(l), c, cap / s2); }
 #endif
           c = max(c - gN.x, 0.) / (1. - gN.x);                                         // neri profondi e puliti
 #ifdef SG_STR
           c += gS.y * (1. - smoothstep(.0, .12, dot(c, vec3(.299, .587, .114)))) * vec3(.012, .005, 0.);   // [strada] il nero della pellicola: pieno ma caldo
-#ifdef SG_AD
           { vec2 gp = floor(gl_FragCoord.xy / max(1., src.y / 720.)); float gh = fract(sin(dot(gp + floor(tm * 12.) * vec2(7., 13.), vec2(12.9898, 78.233))) * 43758.5453) - .5;   // [ad] la grana d'emulsione: ferma alla risoluzione, 12 al secondo
             float lg = dot(c, vec3(.299, .587, .114)); c += gS.z * 4. * lg * (1. - lg) * gh * vec3(1.06, 1., .92); }   // solo nei medi
-#endif
 #endif
 #ifdef SG_AAA
           if (aB.x > 0.) { vec3 bl = texture2D(tB, vUv).rgb; c = 1. - (1. - c) * (1. - bl * aB.x); }   // [look-aaa] il bagliore, a schermo (non brucia)
@@ -13945,7 +13888,13 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
     U.gK.value.set(K.sat * (ui.desat ? .45 : 1), K.contrasto, K.vign * SGU.vignetta, SGU.nitido * (RES < .99 ? .4 : 1));   /* [nitore] con la scena ingrandita la nitidezza segnava i gradini: un filo solo */ U.gN.value.set(SGU.neri, SGU.pieno, AD.on ? 1 - (SGT.notte || 0) : 0, 0);   /* [ad] gN.z: il giorno (l'ombra che si apre) */
     U.fx.value.set(Math.max(hurtK, p.hp < 35 ? (.35 + Math.sin(performance.now() / 1000 * 5) * .1) * (1 - p.hp / 35) : 0), ui.flash || 0, ui.fade || 0, 0);
     U.lb.value.set(SGT.letter, ease || 0); U.tm.value = performance.now() / 1000;
-    U.gS.value.set(PELL.on ? PELL.gonfio : 0, PELL.on ? PELL.pellicola : 0, AD.on ? AD.grana : 0, AD.on ? AD.centro : 0);   // [strada] [ad] la grana, il centro
+    if (PELL.on) {   // [firma] LA LENTE RESPIRA: da fermi si calma, a piedi è piena, di corsa e sui mezzi spinge, nel regime quasi sparisce (dritta come una telecamera)
+      const veh = p.vehicle ? st.vehicles.find(v => v.id === p.vehicle) : null, vp = Math.hypot(cam.pvx || 0, cam.pvy || 0);
+      let want = ui.studio ? PELL.gonfio : veh ? PELL.gonfio + (PELL.gonfioMezzi - PELL.gonfio) * Math.min(1, Math.abs(veh.speed || 0) / 14)
+        : PELL.gonfioFermo + (PELL.gonfio - PELL.gonfioFermo) * Math.min(1, vp / .8) + (PELL.gonfioCorsa - PELL.gonfio) * Math.min(1, Math.max(0, (vp - 2.4) / 2.5));
+      if (!ui.studio && !ui.intro && zoneAt(cam.x, cam.y) === 'regime') want = PELL.gonfioRegime;
+      PELL.gonfioOra += (want - PELL.gonfioOra) * Math.min(1, (dt || .016) * 1.5); }
+    U.gS.value.set(PELL.on ? PELL.gonfioOra : 0, PELL.on ? PELL.pellicola : 0, AD.on ? AD.grana : 0, AD.on ? AD.centro : 0);   // [strada] [ad] la lente, la pellicola, la grana, il centro
     if (PRO.look) {   // [scorcio] la proposta nel passo: spenta, il passo di oggi (le manopole a zero)
       const P = SGU.pro, k = P.on ? 1 : 0, h = rt.height || 540, g = k * (P.grading || 0);
       U.tD.value = rt.depthTexture || null; U.nf.value.set(camera.near, camera.far); U.pa.value = 2 * Math.tan(camera.fov * Math.PI / 360) / h;
@@ -13973,7 +13922,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
       U.nH.value.set(fc.r, fc.g, fc.b); U.nS.value = N.spalla;
       { const m = camera.matrixWorld.elements; U.nY.value.set(m[1], m[5], m[9], m[13]); U.nY2.value.copy(U.nY.value); U.nXr.value.set(m[0], m[4], m[8], m[12]); U.nZr.value.set(m[2], m[6], m[10], m[14]); }
       if (AD.on && !U.nRm.value) { const R = regimeMaschera(); U.nRm.value = R.t; U.nRs.value.set(R.w, R.h); }   // [ad]
-      U.nG.value.set(dep ? N.ciglio : 0, dep ? N.piede : 0, dep ? N.calma : 0, N.piedeR);   // la riga della quota: dal punto in vista al mondo
+      U.nG.value.set(dep ? N.ciglio : 0, dep ? N.piede : 0, 0, N.piedeR);   // la riga della quota: dal punto in vista al mondo   // [firma] nG.z (la calma) non c'è più
       U.nE.value.set(dep ? N.tetti : 0, N.tettiDa, N.tettiPer, fh0);
       U.gK.value.z *= .45;   // la vignetta fissa al centro cede il posto a quella che segue il personaggio
       if (dep) { U.pT.value.x = 0; U.pT.value.w = N.raggio * (rt.height || 540) / 540; } }   // la fascia fissa della miniatura cede il posto al fuoco per profondità
@@ -18694,7 +18643,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // y è l'altezza sopra il terreno
   // [ad] il rigonfiamento del passo finale (PELL.gonfio, SG_STR) anche per la mira e per le etichette: lo schermo s mostra la scena in gonfia(s);
   // project fa l'inversa (due passi bastano: lo scarto resta sotto il decimo di pixel). Senza, la mira sbagliava fino a 13 px a 1024 di larghezza
-  function gonfiaK(sx, sy) { const g = PELL.on ? PELL.gonfio : 0; if (!g) return 1; const a = W / Math.max(1, H), qx = sx - .5, qy = sy - .5; return 1 - g * (1 - (qx * qx * a * a + qy * qy) / (.25 * a * a + .25)); }
+  function gonfiaK(sx, sy) { const g = PELL.on ? PELL.gonfioOra : 0; if (!g) return 1;   /* [firma] la lente di questo fotogramma (respira col ritmo) */ const a = W / Math.max(1, H), qx = sx - .5, qy = sy - .5; return 1 - g * (1 - (qx * qx * a * a + qy * qy) / (.25 * a * a + .25)); }
   function gonfia(sx, sy) { const k = gonfiaK(sx, sy); return [.5 + (sx - .5) * k, .5 + (sy - .5) * k]; }
   function sgonfia(ux, uy) { let sx = ux, sy = uy; for (let i = 0; i < 2; i++) { const k = gonfiaK(sx, sy); sx = .5 + (ux - .5) / k; sy = .5 + (uy - .5) / k; } return [sx, sy]; }
   function project(x, y, z) { pv3.set(x, y + groundH(x, z), z).project(camera); const s = sgonfia((pv3.x + 1) / 2, (1 - pv3.y) / 2); return { x: s[0], y: s[1], behind: pv3.z > 1 }; }

@@ -77,18 +77,25 @@ var PezziCitta = (function () {
     persiana: { g: 'lamelle' }, coppi: { g: 'coppi' }, tegole: { g: 'coppi' }, legno: { g: 'legno' }, legnoScuro: { g: 'legno' }, vetro: { g: 'vetro' }, terra: { g: 'terra' }, erba: { g: 'terra' }
   };
   const GEN = { conci: 1, pietra: 2, liscia: 3, intonaco: 4, cemento: 5, metallo: 6, lamiera: 7, coppi: 8, legno: 9, vetro: 10, terra: 11, lamelle: 12 };
-  const f3 = x => (+x).toFixed(4);
-  function vesteGLSL(v) {
-    const G = GEN[v.g], U = f3(v.u || 0), RH = f3(v.rh || .35), RL = f3(v.rl || .62), GI = f3(v.gi || .02), TO = f3(v.tono || .15), MA = f3(v.manca || 0), LA = f3(v.la || .6);
-    return `{ vec3 nW = normalize(vPzN), aN = abs(nW); float ver = 1. - step(.6, aN.y);
+  // [programmi] UN PROGRAMMA SOLO PER TUTTE LE VESTI. Prima i parametri della veste (genere, usura, corso, giunto, tono, mancanti, lastra) erano
+  // costanti scritte nel GLSL e la chiave del programma portava il JSON della veste: 23 programmi da ~100 KB solo per i pezzi della città,
+  // compilati nel caricamento e a scatti durante il gioco. Ora entrano come due uniform (pzA: genere, usura, corso, giunto; pzB: giunto
+  // minimo, tono, mancanti, lastra) e il genere sceglie il ramo con un if su uniform (coerente: la scheda video non paga la divergenza):
+  // lo stesso testo per tutti, la stessa chiave ('pz2'), un programma. La città a tasselli ne eredita il testo unico (tassella_pagina.js)
+  const vesteUni = v => [GEN[v.g], v.u || 0, v.rh || .35, v.rl || .62, v.gi || .02, v.tono || .15, v.manca || 0, v.la || .6];
+  let VESTE_GLSL = null;
+  function vesteGLSL() {
+    if (VESTE_GLSL) return VESTE_GLSL;
+    const G = 'pzA.x', U = 'pzA.y', RH = 'pzA.z', RL = 'pzA.w', GI = 'pzB.x', TO = 'pzB.y', MA = 'pzB.z', LA = 'pzB.w';
+    return VESTE_GLSL = `{ vec3 nW = normalize(vPzN), aN = abs(nW); float ver = 1. - step(.6, aN.y);
   vec2 p = ver > .5 ? vec2(aN.x > aN.z ? vPzW.z : vPzW.x, vPzW.y) : vPzW.xz;
   vec2 nh = length(nW.xz) > .05 ? normalize(nW.xz) : vec2(0., 1.); vec2 pf = vec2(dot(vPzW.xz, vec2(-nh.y, nh.x)), dot(vPzW.xz, nh));   // in falda: lungo e attraverso
   float hB = vPzU.x, dT = vPzU.y, px = length(fwidth(vPzW)) + 1e-4;
   vec3 c = diffuseColor.rgb; float H = 1.;
   float gr = pzN(p * 23.) - .5, fn = pzF(p * .7);
-#if ${G} == 1 || ${G} == 2
+  if (${G} < 2.5) {
   { float rh = ${RH}, rl = ${RL}, gi = ${GI};
-    vec2 q = p; if (${G} == 2 && ver < .5) { rh = ${LA}; rl = ${LA}; }
+    vec2 q = p; if (${G} > 1.5 && ver < .5) { rh = ${LA}; rl = ${LA}; }
     float row = floor(q.y / rh), bx = q.x / rl + mod(row, 2.) * .5 + (pzH1(vec2(row, 3.7)) - .5) * .3, ci = floor(bx), tn = pzH1(vec2(ci, row));
     float fd = 1. - smoothstep(rh * .2, rh * .45, px);   // il giunto resta almeno di un pixel finché il corso è alto cinque pixel, poi svanisce
     float jx = min(fract(bx), 1. - fract(bx)) * rl, jy = min(fract(q.y / rh), 1. - fract(q.y / rh)) * rh, jm = smoothstep(0., max(gi, px * .85), min(jx, jy));
@@ -96,10 +103,9 @@ var PezziCitta = (function () {
     c *= (1. - ${TO} * .5 + tn * ${TO}) * (1. + gr * .1) * mix(.68, 1., jm) * mix(1., .92, 1. - fd) * (.88 + pzN(p * .3 + 4.) * .24);   // (le zone di pietra di cava diversa: si leggono a ogni distanza)
     c *= 1. - step(.94, pzH1(floor(q * 11.) + 3.1)) * .16;   // i pori
     float ma = step(tn, ${MA}) * ver; c = mix(c, c * .45, ma);   // la pietra mancante
-    H = jm * .7 + gr * .12 - ma; }
-#elif ${G} == 3
-  c *= (1. - ${TO} * .5 + fn * ${TO}) * (1. + gr * .09); H = gr * .1;
-#elif ${G} == 4
+    H = jm * .7 + gr * .12 - ma; } }
+  else if (${G} < 3.5) { c *= (1. - ${TO} * .5 + fn * ${TO}) * (1. + gr * .09); H = gr * .1; }
+  else if (${G} < 4.5)
   { float m2 = pzF(p * 1.9 + 5.), sc = smoothstep(.72, .74, pzF(p * .45 + 11.)) * ver, rp = smoothstep(.66, .68, pzF(p * .32 + 23.)) * (1. - sc);
     c *= (.9 + fn * .2) * (1. + (m2 - .5) * .09) * (1. + gr * .05);
     c = mix(c, c * vec3(1.06, 1.05, 1.0) + .03, rp * .7);   // il rappezzo di calce nuova
@@ -107,38 +113,35 @@ var PezziCitta = (function () {
     vec3 tf = vec3(.62, .55, .42) * (.85 + pzH1(vec2(floor(bx), row)) * .25) * mix(.6, 1., smoothstep(0., max(.02, px * .85), jt));
     c = mix(c, tf, sc); c *= 1. - smoothstep(.72, .735, pzF(p * .45 + 11.)) * (1. - smoothstep(.735, .75, pzF(p * .45 + 11.))) * .35 * ver;   // il bordo della scrostatura
     H = gr * .06 - sc * .8; }
-#elif ${G} == 5
+  else if (${G} < 5.5)
   { float tv = floor(p.y / .17), fd = 1. - smoothstep(.02, .045, px);
     c *= (.92 + pzH1(vec2(tv, floor(p.x / 2.4))) * .1) * (1. + gr * .08) * (.9 + fn * .14);
     c *= 1. - fd * (1. - smoothstep(0., max(.008, px * .85), min(fract(p.y / .17), 1. - fract(p.y / .17)) * .17)) * .12 * ver;   // le tavole
     vec2 fo = abs(fract(p / vec2(.6, .51)) - .5) * vec2(.6, .51); c *= 1. - fd * (1. - smoothstep(.012, .02, length(fo))) * .5 * ver;   // i fori
     H = gr * .1; }
-#elif ${G} == 6
+  else if (${G} < 6.5)
   { float ch = smoothstep(.7, .74, pzF(p * 5. + 3.)), st = smoothstep(.55, .8, pzN(vec2(p.x * 14., p.y * .7))) * .5;
     c = mix(c * (1. + gr * .1), vec3(.24, .15, .1), ch * .8); c = mix(c, vec3(.3, .18, .11), st * .35 * ver); H = -ch * .6; }
-#elif ${G} == 7
+  else if (${G} < 7.5)
   { float u = ver > .5 ? p.x : pf.x, on = sin(u * 82.), fd = 1. - smoothstep(.015, .05, px);
     c *= (1. + on * .09 * fd) * (.86 + fn * .22) * (1. + gr * .06); c = mix(c, vec3(.42, .3, .22), smoothstep(.7, .8, pzF(p * .9 + 7.)) * .45); c *= 1. - smoothstep(.55, .75, pzF(vec2(p.x * 1.5, p.y * .3) + 2.)) * .12; H = on * .5 * fd; }   // la ruggine a chiazze larghe, le colate scure
-#elif ${G} == 8
+  else if (${G} < 8.5)
   { float u = pf.x / .23, v = pf.y / .42, cu = floor(u), cv = floor(v + mod(cu, 2.) * .5), t = pzH1(vec2(cu, cv)), fu = fract(u) * 2. - 1., fd = 1. - smoothstep(.02, .08, px);
     float sh = mix(1., .72 + .34 * sqrt(max(0., 1. - fu * fu)), fd);
     c *= sh * (.86 + t * .24) * mix(1., .82, fd * (1. - smoothstep(0., .1, fract(v + mod(cu, 2.) * .5))));
     c = mix(c, vec3(.7, .42, .28), step(.975, t) * .6);   // i coppi nuovi
     c = mix(c, vec3(.55, .54, .44), smoothstep(.7, .74, pzF(p * 1.6 + 4.)) * .55);   // i licheni
     H = sh; }
-#elif ${G} == 9
+  else if (${G} < 9.5)
   { float pl = floor((ver > .5 ? p.x : pf.x) / .14); c *= (.86 + pzH1(vec2(pl, 2.)) * .22) * (1. + (pzN(vec2((ver > .5 ? p.x : pf.x) * 60., (ver > .5 ? p.y : pf.y) * 2.)) - .5) * .16);
     H = smoothstep(0., .01, min(fract((ver > .5 ? p.x : pf.x) / .14), 1. - fract((ver > .5 ? p.x : pf.x) / .14)) * .14); c *= mix(.7, 1., H); }
-#elif ${G} == 10
+  else if (${G} < 10.5)
   { vec2 q = ver > .5 ? p : pf; vec2 f = abs(fract(q / vec2(.62, .9)) - .5) * vec2(.62, .9); float mu = smoothstep(.27, .29, max(f.x / .62 * .62, 0.)) + smoothstep(.41, .43, f.y);
     c = mix(c * (.9 + pzN(q * .8) * .25), vec3(.16, .2, .18), min(1., mu) * (1. - smoothstep(.02, .06, px))); }
-#elif ${G} == 11
-  c *= (.8 + fn * .32) * (1. + gr * .14);
-#elif ${G} == 12
+  else if (${G} < 11.5) { c *= (.8 + fn * .32) * (1. + gr * .14); }
+  else if (${G} < 12.5)
   { float fd = 1. - smoothstep(.01, .04, px), sl = fract(vPzW.y / .065); c *= mix(1., .72 + .4 * smoothstep(0., .8, sl), fd) * (.85 + fn * .25); c = mix(c, vec3(.5, .52, .44), smoothstep(.68, .72, pzF(p * 4.)) * .5); H = sl * fd; }
-#endif
-#if ${G} <= 5
-  { float uz = ${U}, nb = pzN(p * vec2(1.3, .5) + 1.7), n2 = pzF(p * 2.2 + 9.);   // (due rumori soli per tutta l'usura)
+  if (${G} < 5.5) { float uz = ${U}, nb = pzN(p * vec2(1.3, .5) + 1.7), n2 = pzF(p * 2.2 + 9.);   // (due rumori soli per tutta l'usura)
     float um = (1. - smoothstep(.1, .9 + nb * 1.1, hB)) * ver; c = mix(c, c * vec3(.6, .63, .58), um * .8 * uz);   // l'umido che sale da terra
     c = mix(c, vec3(.24, .29, .17), um * smoothstep(.5, .75, n2) * .6 * uz);   // il muschio
     float cl = floor(p.x * 2.4), lc = .5 + pzH1(vec2(cl, 7.)) * 3.2, sk = step(.5, pzH1(vec2(cl, 1.3))) * (1. - smoothstep(0., lc, dT)) * smoothstep(.2, .7, pzN(vec2(p.x * 6., dT * .7)));
@@ -146,7 +149,6 @@ var PezziCitta = (function () {
     float cr = (1. - smoothstep(.04, .3 + nb * .45, dT)) * smoothstep(.25, .6, n2) * ver; c = mix(c, c * vec3(.36, .35, .34), cr * .7 * uz);   // la crosta nera dove la pioggia non lava
     float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.68, .74, n2) * .5 * uz);   // sopra: sporco e licheni
     c *= 1. - step(.6, -nW.y) * .2; }
-#endif
 #ifdef TONE_MAPPING
   { float l0 = dot(diffuseColor.rgb, vec3(.3, .59, .11)), l1 = dot(c, vec3(.3, .59, .11)); c *= mix(1., l0 / max(l1, 1e-3), .5) * .97; H *= .6; }   // [sguardo] meno rumore: la trama e l'usura a metà ampiezza, la massa si legge prima
 #endif
@@ -154,13 +156,14 @@ var PezziCitta = (function () {
   }
   function veste(m, nome) {
     const v = VESTI[nome]; if (!v) return; m.userData.veste = v.g;
-    const frag = vesteGLSL(v), key = 'pz2|' + JSON.stringify(v);
-    m.customProgramCacheKey = () => key;
+    const frag = vesteGLSL(), uni = vesteUni(v);
+    m.customProgramCacheKey = () => 'pz2';   // [programmi] la stessa chiave per tutte le vesti: un programma
     m.onBeforeCompile = sh => {
+      sh.uniforms.pzA = { value: new THREE.Vector4(uni[0], uni[1], uni[2], uni[3]) }; sh.uniforms.pzB = { value: new THREE.Vector4(uni[4], uni[5], uni[6], uni[7]) };   // [programmi] la veste come uniform
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU;')
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 w4 = vec4(transformed, 1.);\n#ifdef USE_INSTANCING\n w4 = instanceMatrix * w4;\n#endif\n vPzW = (modelMatrix * w4).xyz; vPzN = normalize(mat3(modelMatrix) * objectNormal); vPzU = uv; }');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.;
+varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.; uniform vec4 pzA; uniform vec4 pzB;
 float pzH1(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }   // senza seno: costa poco anche sui processori grafici deboli
 float pzN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(pzH1(i), pzH1(i + vec2(1., 0.)), f.x), mix(pzH1(i + vec2(0., 1.)), pzH1(i + vec2(1., 1.)), f.x), f.y); }
 float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)

@@ -59,3 +59,49 @@ shader della leggibilità (vedi sotto); dal vivo `window.__NIT`, `window.__SGU`,
 ## Come si prova
 `GALLERIA_VARIANTI=strumenti/manopole_nitida.json node strumenti/galleria.js <cartella> strumenti/pulizia_scene.json` (lo shader
 acceso e spento sulla stessa scena); il prima intero con `PV_QUERY='?cittanuova&vecchiolook&nonitida'`.
+
+## [firma] Lo shader di Porto Vecchio: una pellicola sola, la lente che respira, meno programmi (31 ottobre)
+
+Il committente (la bibbia «Lo shader di Porto Vecchio»): un video di skate in VX1000 dentro una rivoluzione; la pellicola calda della foto
+di strada anni '80 ridisegnata a pennarello, spray e retino da fanzine; il regime grigio e stampato a macchina, la strada colorata, storta,
+verde e viva. E: «deve girare fluido, ci mette ancora molto ad aprirsi, lagga in gioco (12 fps), è smorto e stinto; lo shader ha buoni
+presupposti ma è pasticciato, troppe cose lo rendono piatto». Si riparte dal ramo `claude/compassionate-knuth-l81uc8` ([strada], [ad],
+[segni]), unito qui.
+
+**Gli strati piegati in uno.** Prima il look era quattro strati in fila, ognuno che correggeva il precedente con `Object.assign` e
+`#ifdef` ([look] del panel → [strada] PELL → [ad] AD, più le manopole di [nitida] riassegnate tre volte). Ora in `render.js`:
+- `if (LOOK.on)`: UNA tabella dei quattro momenti (sole, cielo, bordo, nebbia, esposizione, viraggio ombra/luce, saturazione, contrasto,
+  vignetta, colore pieno, neri, la tinta che riempie l'ombra del sole) coi valori finali rivisti sulla bibbia, e un set solo di manopole
+  `NIT`. `PELL.on` e `AD.on` valgono `LOOK.on`: `?grigio` e `?noad` non esistono più (`?vecchiolook` resta l'unico «prima»).
+- Nel passo unico (`SGP`, `SG_STR` e `SG_AD` sempre definiti col look) sono spariti i rami morti: la saturazione per tinta del panel (era la
+  desaturazione a tappeto di aranci, gialli e verdi), i tetti di saturazione, la «calma» (4 letture e una sfocatura delle superfici piane:
+  a schermo era bassa qualità), i `#else` del pennarello, del ciglio, dei tetti e delle luci crema.
+- Le dosi: ombra di giorno oltremare chiaro e lilla (`proTinta #5060cc` a .32, `ombra [.93, .94, 1.12]`), mai grigia; sera rosa-magenta-arancio
+  (cielo `#9a88c8`, nebbia `#d8a0ac`, bordo rosa `#ff9ec0`, ombre `#7a46a8`); notte blu profondo col bordo ciano dei neon; saturazione 1.08-1.09
+  di giorno (era 1.06-1.07), colore pieno `proPieno` .38-.42; l'aria del lontano ai due terzi di contrasto (era 55%); i tetti tengono il 70%
+  del loro colore (era 60%); il retino nelle ombre `AD.retino` .14 (era .1: non si leggeva).
+- **La lente respira** (`PELL.gonfioOra`, in `sguPasso`): da fermi .035, a piedi .045, di corsa .058, sui mezzi fino a .075 con la velocità,
+  nel regime .03 (la sua immagine è dritta come una telecamera). `gonfiaK` (la mira, le etichette) legge lo stesso valore del fotogramma.
+- **Il confine delle bande trema** (`sguProPezzi`, le celle): le soglie della luce a bande si spostano con un rumore largo nel mondo (±.07),
+  come una campitura a pennarello, non una retta.
+
+**I programmi della scheda video (l'avvio e gli scatti).** Misurato con `strumenti/sonda_programmi.js` (nuovo: elenca i programmi per tipo e
+per chiave, il sorgente del più grosso, e a regime disegni, ms e profilo con i disegni a vuoto): 194 programmi, 13,8 MB di GLSL, i
+`physical` 92 da ~100 KB l'uno; nel caricamento l'attesa della compilazione (`gl.getProgramParameter`) era l'84% del processore senza
+tasselli e il 68% coi tasselli, e **a regime ancora il 26%**: programmi compilati mentre si gioca, cioè gli scatti. La causa più grossa: le
+vesti dei pezzi della città (`pezzi_citta.js`, `veste`) scrivevano i parametri (genere, usura, corso, giunto, tono…) come costanti nel GLSL e
+nella chiave del programma (`pz2|{json}`): 23 programmi diversi per lo stesso shader. Ora i parametri sono due uniform (`pzA`, `pzB`), il
+genere sceglie il ramo con un `if` su uniform, la chiave è `pz2` per tutti: un programma. I tasselli ereditano il testo unico quando si
+ricuociono (il workflow `tasselli` al push su `main`); finché la cottura nuova non c'è, la città a tasselli porta ancora i 23 di prima.
+
+**L'avvio** (`strumenti/analisi_avvio.js`, SwiftShader; coi tasselli il gioco partiva a 35,8 s, senza a 152 s):
+- `buildWater`: la profondità del mare a 1 px per metro anche sul computer (era 2: una tela 2600×800 sfocata col filtro 2D, 4,9 s).
+- `c2Dist` (`world_cittanuova.js`, la distanza vera dalla riva): 2,2 s all'avvio e a ogni blocco costruito camminando. Ora una griglia di
+  2 m tiene la distanza del centro della cella e la ricerca copre solo quella finestra (la distanza è 1-Lipschitz): il minimo esatto sui
+  tratti, pochi tratti invece di 129. Cambia l'impronta del mondo cotto e dei tasselli (si ricuociono).
+- `?tassellivecchi` (solo per le sonde in locale): i tasselli di un'altra impronta vanno bene lo stesso.
+
+**Da fare ancora** (dalla bibbia e dalle misure): il bagliore caldo dei neon (il passo unico non ha bagliore); fotocopia e serigrafia
+fuori registro sui segni; i 32 `physical` e 23 `lambert` «puri» (le combinazioni di parametri di three: mappa, colore ai vertici,
+istanze, doppia faccia…) si riducono solo uniformando i materiali; il campo dei marciapiedi (`swField`, 1,2 s anche coi tasselli) andrebbe
+nei dati dei tasselli; le forme (case che pendono, pali storti, personaggi chunky) sono geometria, non shader.

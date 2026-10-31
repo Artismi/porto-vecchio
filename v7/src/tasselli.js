@@ -63,10 +63,14 @@ var Tasselli = (function () {
   // l'indice e i dati, prima di R.init (main.js aspetta questa promessa con i kit). Qualunque cosa vada storta: la città come prima
   const pronto = !CHIESTO ? Promise.resolve(false) : fetch(url('indice.json')).then(r => r.ok ? r.json() : null).then(async j => {
     if (!j) { ST.motivo = 'indice mancante'; return false; }
-    if (j.versione !== 1 || !IMP || j.impronta !== IMP) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
+    // [misure] ?tassellivecchi: i tasselli di un'altra build vanno bene lo stesso (le sonde e le gallerie in locale, dove la cottura nuova non
+    // c'è ancora: la città è quella di prima, i tempi e la luce si misurano uguali). Nel gioco pubblicato non si usa mai
+    const VECCHI = /[?&]tassellivecchi\b/.test(Q), imp = x => VECCHI ? x === x : x === IMP;
+    if (j.versione !== 1 || !IMP || !imp(j.impronta)) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
     if (!j.dati) { ST.motivo = 'senza dati del gioco'; console.warn('[tasselli] tasselli senza i dati del gioco (cottura vecchia): la città si costruisce come prima'); return false; }
     const d = await fetch(url(j.dati.file)).then(r => r.ok ? r.json() : null);
-    if (!d || d.impronta !== IMP) { ST.motivo = 'dati mancanti'; console.warn('[tasselli] dati.json mancante o di un\'altra build: la città si costruisce come prima'); return false; }
+    if (!d || !imp(d.impronta)) { ST.motivo = 'dati mancanti'; console.warn('[tasselli] dati.json mancante o di un\'altra build: la città si costruisce come prima'); return false; }
+    if (VECCHI && j.impronta !== IMP) console.warn('[tasselli] ?tassellivecchi: tasselli della build', j.impronta, 'su questa', IMP);
     IND = j; DATI = d;
     if (d.viviBin) VIVB = chiedi({ op: 'tassello', url: url(d.viviBin.file) });   // le geometrie dei vivi: servono in monta()
     if (VIVB) await VIVB.then(m => { VIVB = m; });

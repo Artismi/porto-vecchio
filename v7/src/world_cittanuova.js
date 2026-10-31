@@ -181,18 +181,33 @@ var World = (function () {
   const C2T = { x0: -40, x1: 1000, N: null, S: null };
   function c2Tab() { if (C2T.N) return; const n = C2T.x1 - C2T.x0 + 1; C2T.N = new Float32Array(n); C2T.S = new Float32Array(n);
     for (let i = 0; i < n; i++) { const x = C2T.x0 + i; C2T.N[i] = NorthY(x); C2T.S[i] = SouthY(x); } }
-  function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
-    c2Tab(); let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
-    // [telefono] gli stessi conti, nello stesso ordine (stesso risultato al bit), ma senza il vettore allocato a ogni segmento e senza
-    // chiamate: era il primo peso del processore all'avvio (9 s su 110 nel container)
+  // [avvio3] LA FINESTRA STRETTA. La distanza vera dalla riva si chiedeva per ogni punto con una ricerca su ±64 m di riva (129 tratti per
+  // due rive): all'avvio 2,2 s di processore (terreno a blocchi, verde, riva), e ogni blocco costruito camminando la ripagava. Ora una
+  // griglia di 2 m tiene la distanza del centro della cella (calcolata una volta, con la ricerca piena); per un punto nella cella la riva
+  // più vicina non può stare oltre quella distanza più la mezza diagonale (la distanza è 1-Lipschitz), quindi la ricerca copre solo
+  // quella finestra: vicino alla riva pochi tratti invece di 129. Il risultato è il minimo esatto sui tratti (la potatura dei tratti
+  // guarda la loro estremità più vicina, prima guardava l'inizio e poteva saltare il tratto migliore a meno di un metro dal tetto).
+  const C2C = { g: 2, W: 0, H: 0, y0: 0, d: null };
+  function c2Raw(x, y, cap) {
+    let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
     for (let i = i0; i <= i1; i++) {
-      const xa = C2T.x0 + i, dx = x - xa; if (dx * dx >= best && xa < x) continue;
+      const xa = C2T.x0 + i, dx = x - xa;
+      if (xa > x) { if (dx * dx >= best) break; } else if (dx > 1 && (dx - 1) * (dx - 1) >= best) continue;   // il tratto va da xa a xa+1: l'estremità più vicina
       let ya = N[i], yb = N[i + 1];
       if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
       ya = S[i]; yb = S[i + 1];
       if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
     }
     return Math.sqrt(best);
+  }
+  function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
+    c2Tab();
+    if (!C2C.d) { let lo = 1e9, hi = -1e9; for (let i = 0; i < C2T.N.length; i++) { const a = C2T.N[i], b = C2T.S[i]; if (a > -5e3 && a < 5e3) { if (a < lo) lo = a; if (a > hi) hi = a; } if (b > -5e3 && b < 5e3) { if (b < lo) lo = b; if (b > hi) hi = b; } }
+      C2C.y0 = Math.floor(lo - 70); C2C.W = Math.ceil((C2T.x1 - C2T.x0) / C2C.g) + 2; C2C.H = Math.ceil((hi + 70 - C2C.y0) / C2C.g) + 2; C2C.d = new Float32Array(C2C.W * C2C.H).fill(-1); }
+    const i = Math.floor((x - C2T.x0) / C2C.g), j = Math.floor((y - C2C.y0) / C2C.g);
+    if (i < 0 || j < 0 || i >= C2C.W || j >= C2C.H) return c2Raw(x, y, cap);
+    const k = j * C2C.W + i; let dc = C2C.d[k]; if (dc < 0) dc = C2C.d[k] = c2Raw(C2T.x0 + (i + .5) * C2C.g, C2C.y0 + (j + .5) * C2C.g, 64);
+    return c2Raw(x, y, Math.min(cap, dc + C2C.g * .7072 + .01));   // la finestra: la distanza del centro più la mezza diagonale (il tetto resta cap)
   }
   // ================= [arcipelago] L'ARCIPELAGO TUTTO ATTORNO =================
   // Le isole stanno in coordinate «di progetto» (quelle dell'isola grande) e possono avere x e y negative: la mappa grande le
