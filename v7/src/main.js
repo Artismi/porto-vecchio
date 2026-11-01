@@ -1095,6 +1095,7 @@
   function boot() {
   let glOk = true;
   if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
+  try { if (window.Tasselli && Tasselli.anticipa && Tasselli.attivo()) Tasselli.anticipa(st.player.x, st.player.y); } catch (e) { console.warn('[tasselli] anticipa', e); }   // [ottimizza-car] l'anello vicino si scarica e si apre mentre si fa R.init
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
@@ -1134,6 +1135,10 @@
   function vivoTick(raw) {
     if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
     if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
+    // [ottimizza-car] «Gioca» dopo la città vicina: i tasselli dell'impronta in scena (si montano dietro lo schermo di carico, col tetto largo
+    // dell'anello vicino), al più 15 s in più (era 45: l'apertura non deve allungarsi). ?nofixvicino come prima
+    if (window.Tasselli && Tasselli.attivo && Tasselli.attivo() && !/[?&]nofixvicino\b/.test(location.search)) { const T = Tasselli.stato();
+      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } return; } }
     VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
     start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare

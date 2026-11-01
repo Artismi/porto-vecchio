@@ -508,11 +508,17 @@ var LeggeraMem = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const TEL = (() => { try { if (/[?&]alta\b/.test(Q)) return false; return /[?&](leggera|bassa)\b/.test(Q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
-  const ALL = (TEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
+  // [ottimizza-car] i tagli di memoria del telefono solo dove la memoria manca: col tocco, con navigator.deviceMemory ≤ 4, con ?bassa o
+  // ?memoria. Il portatile con la scheda integrata (profilo.js gli dà ?leggera per il costo della scheda video) ha la RAM: niente mappe a
+  // metà, terreno a metà, atlanti a metà (qualità persa senza fotogrammi guadagnati). Restano sul leggero i tagli che alleggeriscono la
+  // scheda video (COSTO: la mappa del sole più piccola, il verde lontano a riquadri, le tessiture «tel» dei tasselli). ?nofixmemoria come prima
+  const POCA = (() => { try { return matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]bassa\b/.test(Q); } catch (e) { return true; } })();
+  const MEMTEL = TEL && (POCA || /[?&]nofixmemoria\b/.test(Q)), COSTO = new Set(['ombre', 'verde', 'verdelontano', 'tessiture']);   // tessiture: le «tel» dei tasselli (le piene arrivano a 32-36 MB l'una: un invio da 30-80 ms e +300 MB sulla scheda; serve una variante di mezzo nella cottura)
+  const ALL = (MEMTEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
   // i tagli che non cambiano un pixel valgono anche sul computer: la compilazione solo del visibile, le firme e le geometrie modello buttate
   // dopo il caricamento, i pezzi rifatti che si ributtano, le armi condivise
   const LIBERI = new Set(['compila', 'firme', 'cache', 'pigri', 'roba']), OFF = /[?&]nomemoria\b/.test(Q);
-  const on = k => (ALL || (LIBERI.has(k) && !OFF)) && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
+  const on = k => (ALL || (LIBERI.has(k) && !OFF) || (TEL && COSTO.has(k) && !OFF)) && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
@@ -23566,7 +23572,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '019f15571687b2e8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '34e6de062fa33917';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -70113,7 +70119,8 @@ var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
-  const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
+  const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);
+  const TIENIMAPPA = !/[?&]nofixombrecache\b/.test(Q);   // [ottimizza-car] la mappa del sole si tiene (sole())   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
   const P = { alto: 70, M: 8, ang: .0026, ferma: 90, fermaLunga: 1800, nuovoMs: 4000, giro: 8, lotto: 250, fine: 1.4, fineTel: typeof LeggeraMem !== 'undefined' && LeggeraMem.on('ombre') ? .8 : 1.25 };   // [leggera] sul telefono la mappa del sole più piccola (leggera_memoria.js)   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, aggiunte: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
@@ -70206,7 +70213,12 @@ var PesoOmbre = (function () {
     if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? P.fineTel : P.fine)), mt - 512); A.maxT = mt; }
     if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
     let tex = 2 * A.half / A.base; const lim = (A.maxT || 4096) - 64; if (Math.ceil(2 * (A.half + P.M) / tex) > lim) tex = 2 * (A.half + P.M) / lim;   // mai oltre la tessitura più grande
-    const ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
+    let ms = Math.ceil(2 * (A.half + P.M) / tex);
+    // [ottimizza-car] la mappa non si rialloca a ogni ritocco del riquadro: se quella che c'è è grande abbastanza (al più 128 texel in più)
+    // si tiene, col texel un filo più fine (stesso riquadro, ombra non meno nitida). Prima ogni cambio di mezzo metro dello zoom buttava e
+    // rifaceva la mappa (≈4,6 MB) e la cottura: 103 riallocazioni in 12 minuti di prova. ?nofixombrecache come prima
+    const cur = m.shadow.mapSize.x; if (TIENIMAPPA && m.shadow.map && cur >= ms && cur - ms <= 128 && cur <= lim) { ms = cur; tex = 2 * (A.half + P.M) / ms; }
+    const halfE = ms * tex / 2;
     // [peso] il texel più fine (P.fine: le aste e i pali sottili facevano ombre a dentini, a tratti, nelle piazze col sole basso): lo scarto
     // dell'ombra in proporzione al texel nuovo, con le manopole di render.js (PROF.ombraBias, come profSole)
     const PR = window.__PROF; if (PR && PR.ombraVisuale > 0 && PR.ombraBias) { m.shadow.bias = -(PR.ombraBias[0] + PR.ombraBias[1] * tex) / (sc.far - sc.near); m.shadow.normalBias = .015 + tex * .9; }
@@ -70343,7 +70355,10 @@ var PesoOmbre = (function () {
   function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, sottofondo: ST.sottofondo, lotti: ST.lotti, riprese: ST.riprese, aggiunte: ST.aggiunte, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
   function azzera() { for (const k in ST) ST[k] = 0; for (const k in MOT) MOT[k] = 0; DIAG.mob.clear(); DIAG.firma.clear(); }
   function diag(on) { DIAG.on = on !== false; return { motivi: Object.assign({}, MOT), mobili: [...DIAG.mob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25), firma: [...DIAG.firma.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25) }; }
-  return { ON, P, prima, dopo, conto, azzera, diag, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
+  // [ottimizza-car] chi aggiunge o toglie cose ferme che fanno ombra (i tasselli): l'elenco si rifà al prossimo fotogramma, e la cottura
+  // segue la sua strada (le aggiunte sopra la mappa cotta, le tolte con la ricottura in sottofondo), senza spegnere e ricuocere tutto
+  function rivedi() { A.rifai = true; }
+  return { ON, P, prima, dopo, conto, azzera, diag, rivedi, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
 })();
 if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; if (PesoOmbre.ON) window.__pesoAB.stretta = v => { window.__nostretta = !v; }; }
 </script>   <!-- [peso] le ombre in cache -->
@@ -72171,6 +72186,7 @@ var Tasselli = (function () {
     butta: (TEL ? 200 : 320) * KR,  // oltre questo il tassello si butta
     volo: TEL ? 3 : 5,             // quanti tasselli in volo (scarico + decodifica) insieme
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
+    byte: /[?&]nofixinvii\b/.test(Q) ? Infinity : (TEL ? 3 : 8) * 1048576,   // [ottimizza-car] e quanti byte (buffer nuovi + tessiture), dopo l'anello vicino
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
     raggiR: TEL ? 6 : Infinity,    // [leggera] i dati dei raggi (graffiti, spruzzi) nel tassello del giocatore (entro 6 m) e in quelli che un raggio
@@ -72184,6 +72200,12 @@ var Tasselli = (function () {
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
   let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
+  // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
+  // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
+  // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
+  // tessitura lasciata da tutti resta sulla scheda video per GRAZIA ms prima di andarsene. ?nofixscarico come prima
+  const TOCCO = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  const CALMA = !TOCCO && !/[?&]nofixscarico\b/.test(Q), FUORI = 8000, GRAZIA = 45000, VMAX = 14e6;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -72217,7 +72239,7 @@ var Tasselli = (function () {
   function lavoratori() {
     if (LAV) return LAV;
     const el = document.getElementById('tasselli-lavoratore'), src = el ? el.textContent : '', u = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
-    const n = Math.max(1, Math.min(TEL ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));
+    const n = Math.max(1, Math.min(TEL && !CALMA ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));   // [ottimizza-car] il portatile: tre (l'anello vicino si apre prima)
     LAV = []; for (let i = 0; i < n; i++) { const w = new Worker(u); w.coda = 0;
       w.onmessage = e => { const m = e.data, p = ATTESE.get(m.id); w.coda--; if (!p) return; ATTESE.delete(m.id); if (m.err) p[1](new Error(m.err)); else p[0](m); };
       w.onerror = e => console.warn('[tasselli] lavoratore:', e.message || e); LAV.push(w); }
@@ -72253,7 +72275,7 @@ var Tasselli = (function () {
   function carica(i) {
     let p = TEXP.get(i); if (p) return p;
     const t = tessitura(i), r = texRec(i); if (!r) return Promise.resolve();
-    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
+    const tel = TEL && r.tel && (typeof LeggeraMem === 'undefined' || LeggeraMem.on('tessiture')), file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
     const vivo = x => { if (TEXG.get(i) === g && TEXP.has(i)) return true; if (x && x.close) x.close(); return false; };   // liberata nel frattempo
     if (!file) p = Promise.resolve();
     else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
@@ -72271,11 +72293,16 @@ var Tasselli = (function () {
   // tasselli (le uniform di modulo come FD1 e la tavolozza, gli aloni, l'acqua delle fontane): restano sempre.
   const TEXU = new Map(), FISSE = new Set(), MATU = new Map();
   const fissa = i => { FISSE.add(i); return carica(i); };
-  function texPrendi(ids) { ids.forEach(i => TEXU.set(i, (TEXU.get(i) || 0) + 1)); }
+  const TEXA = new Map();   // [ottimizza-car] le tessiture lasciate da tutti, in attesa (id → quando)
+  function texPrendi(ids) { ids.forEach(i => { TEXA.delete(i); TEXU.set(i, (TEXU.get(i) || 0) + 1); }); }
+  function texSpazza(now) { if (TEXA.size) TEXA.forEach((t0, i) => { if (now - t0 > GRAZIA) { TEXA.delete(i); if (!TEXU.get(i)) texVia(i); } }); }
   function texLascia(ids) {
     ids.forEach(i => { const n = (TEXU.get(i) || 0) - 1; if (n > 0) { TEXU.set(i, n); return; } TEXU.delete(i);
-      if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
-      if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; } });
+      if (CALMA && !FISSE.has(i) && TEXP.has(i)) { TEXA.set(i, performance.now()); return; } texVia(i); });
+  }
+  function texVia(i) {
+    if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
+    if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; }
   }
   function matPrendi(S, m) { if (!m || S.mats.has(m)) return; S.mats.add(m); MATU.set(m, (MATU.get(m) || 0) + 1); }
   function matLascia(S) {
@@ -72455,8 +72482,11 @@ var Tasselli = (function () {
   async function apri(ti) {
     const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
-      const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
-      const m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); ST.decodMs += m.ms[1];
+      let m = S.preM; S.preM = null;   // [ottimizza-car] già aperto prima di R.init (anticipa)
+      if (m) { if (CFG.leggero && !CALMA) S.zip = null; }
+      else { const via = CFG.leggero && !CALMA, buf = via ? S.zip : S.zip.slice(0); if (via) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna (sul telefono)
+        m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); }
+      ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
       const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids));
       const vivi = new Set(); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => { ids.add(q); vivi.add(q); }));
@@ -72497,7 +72527,15 @@ var Tasselli = (function () {
     S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
     S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
   }
-  function monta1(ti, tetto, quota) {
+  // [ottimizza-car] le tessiture di una mesh mandate alla scheda video adesso (dentro la quota), non al primo disegno: torna i byte
+  function texSu(r) {
+    const rd = CTX.renderer; if (!rd || !rd.initTexture || CFG.byte === Infinity) return 0; const ids = new Set(); texMesh(r, ids); let b = 0;
+    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit) return;
+      rd.initTexture(t); b += (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4 * (t.generateMipmaps ? 1.33 : 1); });
+    return b;
+  }
+  function monta1(ti, tetto, quota, quotaB) {
+    if (quotaB === undefined) quotaB = Infinity;
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
     if (!S.tieni) {
       S.tieni = new Set(); S.q16ok = new Set();
@@ -72520,10 +72558,11 @@ var Tasselli = (function () {
       if (CFG.leggero) { if (S.tieni.has(i)) raggiA(a, d, v, q); a.onUpload(libera); }   // [leggera] i dati dei raggi a parte: l'attributo si svuota sempre
       else { if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
         if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); }
-      S.attr.set(i, a); return a; };
-    let vf = 0;
+      bf += (a.array && a.array.byteLength) || 0; S.attr.set(i, a); return a; };   // [ottimizza-car] i byte dei buffer nuovi
+    let vf = 0, bf = 0;
     while (S.k < S.lista.length) {
-      if (performance.now() > tetto || vf > quota) return false;
+      if (performance.now() > tetto || vf > quota || bf > quotaB) return false;
+      if (quotaB !== Infinity) bf += texSu(T.mesh[S.lista[S.k]]);
       const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
@@ -72575,8 +72614,9 @@ var Tasselli = (function () {
   async function riapri(ti, vista, raggi) {
     const S = STATO[ti], gen = S.rgen = (S.rgen || 0) + 1, t = IND.tasselli[ti]; S.rvolo = true; RIAPRI++;
     try {
-      const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status);
-      const buf = await r.arrayBuffer(); if (S.rgen !== gen || S.st !== 5) return;
+      let buf; if (S.zip) buf = S.zip.slice(0);   // [ottimizza-car] il compresso tenuto: niente richiesta
+      else { const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status); buf = await r.arrayBuffer(); }
+      if (S.rgen !== gen || S.st !== 5) return;
       const m = await chiedi({ op: 'tassello', buf, tel: true }, [buf]); if (S.rgen !== gen || S.st !== 5) return;
       ST.riaperti = (ST.riaperti || 0) + 1;
       if (raggi && S.attrs && !S.rdati) {   // i dati dei raggi sugli attributi che ci sono già (e le mesh rimandate li prendono da sé)
@@ -72601,7 +72641,10 @@ var Tasselli = (function () {
   }
   // [peso] le ombre in cache (peso_ombre.js) si ricuociono quando cambia chi fa ombra sul livello della camera: le sagome d'ombra delle
   // case fuse stanno sul livello 1 e non le vede. Un tassello che arriva o se ne va la fa ricuocere (spegnere e riaccendere: firma rifatta)
-  function ombre() { if (typeof PesoOmbre !== 'undefined' && PesoOmbre.attivo) { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
+  // [ottimizza-car] non più spegnere e riaccendere (ricottura intera e mappa riallocata a ogni tassello): PesoOmbre rifà l'elenco e vede da
+  // sé le aggiunte (disegnate sopra la mappa cotta) e le tolte (ricottura in sottofondo). ?nofixombrecache come prima
+  const OMBRE0 = /[?&]nofixombrecache\b/.test(Q);
+  function ombre() { if (typeof PesoOmbre === 'undefined' || !PesoOmbre.attivo) return; if (!OMBRE0 && PesoOmbre.rivedi) PesoOmbre.rivedi(); else { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
   // via dalla scheda video (resta il compresso, se c'è)
   function smonta(ti) {
     const S = STATO[ti]; if (S.st === 5) { ST.inScena--; viviDentro(IND.tasselli[ti].k, false); }
@@ -72614,7 +72657,24 @@ var Tasselli = (function () {
     ombre();
     const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
   }
-  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.st = 0; ST.buttati++; }
+  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.preM = null; S.st = 0; ST.buttati++; }
+  // [ottimizza-car] L'ANELLO VICINO PRIMA DI R.init. main.js lo chiama appena l'indice è pronto, col punto di partenza: i tasselli attorno si
+  // scaricano subito (tutti insieme, non tre per fotogramma) e i più vicini si aprono nei lavoratori mentre il filo della pagina fa R.init e
+  // la compilazione; le loro tessiture si scaricano e si aprono anche loro. Quando tick() li vede nell'impronta li monta senza aspettare.
+  // ?nofixvicino come prima
+  let ANT = false;
+  function anticipa(x, z) {
+    if (!ON || !IND || ANT || /[?&]nofixvicino\b/.test(Q)) return 0; ANT = true;
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    const RZ = (CFG.lontano || 150) + CFG.margine, RA = CFG.lontano ? 75 : 110; let n = 0;
+    IND.tasselli.map((t, ti) => [dist(t, x, z), ti]).filter(a => a[0] < RZ * KR).sort((a, b) => a[0] - b[0]).forEach(([d, ti]) => {
+      const S = STATO[ti]; if (S.st) return; n++; S.vicino = true;
+      scarica(ti).then(() => { if (S.st !== 2 || !S.zip || d > RA * KR || S.preM) return; const buf = S.zip.slice(0);
+        return chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]).then(m => { if (S.st !== 2) return; S.preM = m;
+          const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids)); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q))); ids.forEach(i => carica(i)); }); })
+        .catch(e => console.warn('[tasselli] anticipa', e)); });
+    ST.anticipati = n; return n;
+  }
 
   // ---------------- [tasselli2] i dati del gioco ----------------
   // le case: i record di dyn.buildings senza mesh (B.tas: render.js casaVisibile e il tetto sbiadito sanno che la casa è nel tassello);
@@ -72749,7 +72809,7 @@ var Tasselli = (function () {
   }
 
   // ---------------- a ogni fotogramma ----------------
-  let lastX = null, lastZ = null, fx = 0, fz = 0;
+  let lastX = null, lastZ = null, fx = 0, fz = 0, RT2 = 0;
   // l'impronta della camera a terra: i raggi degli angoli e del centro dello schermo fino al suolo (o fino alla nebbia, se guardano
   // sopra l'orizzonte), più la camera stessa; la scatola, allargata del margine
   const IMV = new THREE.Vector3(), IMF = { x0: 0, z0: 0, x1: 0, z1: 0 }, IMF2 = { x0: 0, z0: 0, x1: 0, z1: 0 };
@@ -72760,6 +72820,7 @@ var Tasselli = (function () {
       IMV.set(nx, ny, .5).unproject(cam).sub(P).normalize(); let t = IMV.y < -1e-3 ? (gy - P.y) / IMV.y : ff; t = Math.max(0, Math.min(t, ff));
       let px = P.x + IMV.x * t, pz = P.z + IMV.z * t;
       if (CFG.lontano) { const cx = CTX.cam.x, cz = CTX.cam.y, h = Math.hypot(px - cx, pz - cz); if (h > CFG.lontano) { px = cx + (px - cx) * CFG.lontano / h; pz = cz + (pz - cz) * CFG.lontano / h; } } if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+    { const cx = CTX.cam.x, cz = CTX.cam.y; IMF.r = Math.max(Math.hypot(x0 - cx, z0 - cz), Math.hypot(x1 - cx, z0 - cz), Math.hypot(x0 - cx, z1 - cz), Math.hypot(x1 - cx, z1 - cz)); }   // [ottimizza-car] il cerchio che l'impronta copre girando
     const m = CFG.margine; IMF.x0 = x0 - m; IMF.x1 = x1 + m; IMF.z0 = z0 - m; IMF.z1 = z1 + m;
     const m2 = CFG.oltre ? m + CFG.oltre : 2 * m + 8; IMF2.x0 = x0 - m2; IMF2.x1 = x1 + m2; IMF2.z0 = z0 - m2; IMF2.z1 = z1 + m2; return IMF;
   }
@@ -72778,21 +72839,28 @@ var Tasselli = (function () {
     if (CFG.leggero) visteAgg();
     // la vista: si apre quello che entra nell'impronta, si smonta quello che esce dall'impronta larga; la rete: per distanza (il bordo del
     // settore) meno un premio per quello davanti a dove si va, prima quello della vista
-    const L = [];
+    const L = []; let lontano = null;
     IND.tasselli.forEach((t, ti) => { const S = STATO[ti], d = dist(t, x, z), vede = inImpronta(t, F);
-      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) smonta(ti);
+      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) {
+        if (!CALMA) smonta(ti);
+        else { if (!S.fuori) S.fuori = t0; const m2 = CFG.oltre ? CFG.margine + CFG.oltre : 2 * CFG.margine + 8;   // [ottimizza-car] lo scarico con calma
+          if (d > IMF.r + m2 && t0 - S.fuori > FUORI) smonta(ti); else if (ST.vertici > VMAX && (!lontano || d > lontano[0])) lontano = [d, ti]; } }
+      else if (S.fuori) S.fuori = 0;
       if (d > CFG.butta && !vede && S.st && !TIENI.has(ti)) { butta(ti); return; }
-      if (vede && S.st === 2 && ST.inApertura < CFG.volo) apri(ti);
+      if (vede && S.st === 2 && (ST.inApertura < CFG.volo || (S.preM && !vicinoFatto))) apri(ti);   // [ottimizza-car] gli anticipati tutti insieme
       if (S.st || (d > CFG.carica && !vede) || (S.errori || 0) > 3) return;
       const [cx, cz] = centro(t), ax = cx - x, az = cz - z, l = Math.hypot(ax, az) || 1, dot = (ax * fx + az * fz) / l;
       L.push([(vede ? -1e4 : 0) + d - CFG.sguardo * Math.max(0, dot), ti, vede]); });
+    if (lontano && STATO[lontano[1]].st >= 3) smonta(lontano[1]);   // [ottimizza-car] oltre il tetto di vertici: il più lontano fuori vista
+    if (CALMA && !(++RT2 % 30)) texSpazza(t0);
     L.sort((a, b) => a[0] - b[0]);
     for (const [, ti, vede] of L) { if (ST.inVolo >= CFG.volo) break; STATO[ti].vicino = !vicinoFatto && vede; scarica(ti); }
     // montare: il più vicino prima, dentro i tetti (larghi finché manca l'anello vicino)
     if (PRONTI.length) {
       PRONTI.sort((a, b) => dist(IND.tasselli[a], x, z) - dist(IND.tasselli[b], x, z));
-      const tetto = t0 + (vicinoFatto ? CFG.ms : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
-      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
+      const carico = !vicinoFatto && !(window.__tl && window.__tl.gioco) && !/[?&]nofixvicino\b/.test(Q);   // [ottimizza-car] dietro lo schermo di carico si monta più in fretta
+      const tetto = t0 + (vicinoFatto ? CFG.ms : carico ? 150 : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
+      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota, vicinoFatto ? CFG.byte : Infinity)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
@@ -72803,7 +72871,7 @@ var Tasselli = (function () {
   }
   function monta(ctx) {
     CTX = ctx; ST.t0 = Math.round(performance.now());
-    IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));   // [ottimizza-car] (anticipa li ha già)
     const R = ctx.R;
     // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
     for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
@@ -72838,7 +72906,7 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
@@ -76708,7 +76776,8 @@ var Render = (function () {
     const RL = PHONE && scene.fog ? Math.max(70, Math.min(135, scene.fog.far + 8)) : 135, RB = PHONE ? RL + 20 : 190;   // [scarico] sul telefono i blocchi fino alla nebbia (oltre c'è solo il suo colore), e fuori 20 m dopo
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
-      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on || PHONE ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on || PHONE ? 26 : 44); }   // [verde]
+      if (ch && ch.vd) { const R0 = LOWQ.on || PHONE ? 36 : 62, R1 = LOWQ.on || PHONE ? 26 : 44, A = VDF.on ? 24 : 0; ch.vd.visible = d < R0 + A; if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < R1 + A;   // [ottimizza-car] il blocco si accende prima, i pixel in dissolvenza (vdMatF)
+        if (VDF.on) { VDF.u[0].value.set(cx, cz, R0 + A); VDF.u[1].value.set(cx, cz, R1 + A); } }   // [verde]
       if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on || PHONE ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
       if (d < RL) { if (!ch || ch.rev !== ISO.rev) { if (d < bd) { bd = d; best = [ci, cj, key]; } if (POMPA.on && (!ISO.job || ISO.job.key !== key)) CO.push([d, ci, cj, key]); } }   // [arrivo] la coda della pompa, per distanza
       else if (ch && d > RB) { dropChunk(ch); ISO.chunks.delete(key); }
@@ -82766,6 +82835,21 @@ var Render = (function () {
     m.emissive = new THREE.Color(CHIOMA5.luce); return (VD.mat5 = m);
   }
   const CHIOMA5 = { luce: '#121810' };
+  // [ottimizza-car] IL VERDE DEI BLOCCHI IN DISSOLVENZA: prima l'erba e i fiori di un blocco (64 m) si accendevano tutti insieme quando il bordo
+  // del blocco entrava a 36 m (62 sul computer): una striscia intera in un fotogramma. Ora il blocco si accende prima (VDF.r) e ogni pixel
+  // oltre il raggio attorno al punto guardato si scarta a retino negli ultimi VDF.f metri: il prato cresce in cerchio, senza strisce. Un
+  // materiale a parte (la copia di vdMat, che serve anche ai modelli), un programma solo per le due copie. ?nofixverde come prima
+  const VDF = { on: typeof location !== 'undefined' && !/[?&]nofixverde\b/.test(location.search), f: 14, u: [{ value: new THREE.Vector3(0, 0, 1e4) }, { value: new THREE.Vector3(0, 0, 1e4) }], m: [] };
+  function vdMatF(k) {
+    if (!VDF.on) return vdMat(); if (VDF.m[k]) return VDF.m[k];
+    const b = vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];
+    m.onBeforeCompile = (sh, rd) => { ob.call(m, sh, rd); sh.uniforms.uVdC = U;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uVdC;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        { float kV = clamp((uVdC.z - length(vWP.xz - uVdC.xy)) / ${VDF.f.toFixed(1)}, 0., 1.);
+          if (kV < 1. && kV <= fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`); };
+    m.customProgramCacheKey = () => 'natMatB|vdF'; return (VDF.m[k] = m);
+  }
   function vdMat() {
     if (VD.mat) return VD.mat;
     const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
@@ -83183,7 +83267,7 @@ var Render = (function () {
       const [sp, vi] = key.split('|'), geo = Gm[sp][+vi]; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, y0 = 1e9, y1 = -1e9;
       arr.forEach(o => { o.y = groundH(o.x, o.z) - .03; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + 2); });
       const g2 = geo.clone(); g2.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 3);
-      const im = new THREE.InstancedMesh(g2, vdMat(), arr.length);
+      const im = new THREE.InstancedMesh(g2, vdMatF(sp[0] === 't' && sp[1] === sp[1].toUpperCase() ? 1 : 0), arr.length);   // [ottimizza-car] in dissolvenza
       arr.forEach((o, k) => { vE.set(o.rx, o.ry, o.rz, 'YXZ'); vQ.setFromEuler(vE); vV.set(o.x, o.y, o.z); vS.set(o.s, o.s * o.sy, o.s); vM4.compose(vV, vQ, vS); im.setMatrixAt(k, vM4); im.setColorAt(k, vC.set(o.col || '#ffffff')); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
       im.castShadow = !!VDSHADOW[sp] && !low; im.receiveShadow = !low; (sp[0] === 't' && sp[1] === sp[1].toUpperCase() ? tapG : grp).add(im);
@@ -86310,11 +86394,11 @@ var Render = (function () {
       moon.position.set(tg.x + Math.sin(az) * Math.cos(e) * D, tg.y + Math.sin(e) * D, tg.z + Math.cos(az) * Math.cos(e) * D); }
     let half = 46, far = 160, bias = -.0015, nb = .03;
     if (P.ombraVisuale > 0) {
-      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
+      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* [ottimizza-car] tolleranza: lo zoom che scorre di poco (una persona vicina, il dialogo) non cambia il riquadro né il lontano: prima far cambiava di un nulla a ogni fotogramma (confronto esatto) e la cache delle ombre (peso_ombre.js) ricuoceva tutto a ogni fotogramma */ if (PSH.half && Math.abs(half - PSH.half) <= .5 && !/[?&]nofixombrecache\b/.test(location.search)) half = PSH.half;   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
       moon.position.sub(tg).multiplyScalar(D2 / D).add(tg); far = 2 * D2 + 30;
       bias = -(P.ombraBias[0] + P.ombraBias[1] * tex) / (far - sc.near); nb = .015 + tex * .9; }
     moon.shadow.bias = bias; moon.shadow.normalBias = nb;
-    if (Math.abs(half - PSH.half) > .5 || far !== PSH.far) { PSH.half = half; PSH.far = far; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.far = far; sc.updateProjectionMatrix(); }
+    if (half !== PSH.half || far !== PSH.far) { PSH.half = half; PSH.far = far; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.far = far; sc.updateProjectionMatrix(); }
     { // [ombre2] IL RIQUADRO DELL'OMBRA A PASSO DI TEXEL: seguiva la camera di continuo, così a ogni passo i texel dell'ombra cadevano altrove e i
       // bordi strisciavano e tremolavano (le ombre «che si generano in modo strano»). Ora il bersaglio e il sole si spostano a multipli interi del
       // texel sul piano dell'ombra: camminando l'ombra resta ferma sul mondo
@@ -94868,87 +94952,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = Mente;
 }
 </script>
-<script data-m="regia">/* Porto Vecchio — [regia] LA CAMERA CHE TENDE ALLO SCORCIO MIGLIORE (le regole, senza grafica: le usa render.js, le prova test_regia.js).
-   Il committente (29 ottobre): due levette, una per camminare e una per la visuale (gira attorno al personaggio e fa lo zoom); la camera
-   resta dove la metti, ma quando non la tocchi tende all'inquadratura che mostra lo scorcio migliore e combacia con la direzione del
-   personaggio, senza correggere in continuazione, in modo equilibrato, favorendo le inquadrature cinematografiche.
-   Come:
-   - SI ASPETTA: niente regia mentre il giocatore tocca la visuale e per K.mano secondi dopo, da fermi, e finché la direzione di marcia non
-     è stabile da K.stabile secondi (una svolta breve non sposta la camera).
-   - SI SCEGLIE di rado (ogni K.ogni s): poche inquadrature attorno al «dietro» della marcia (dritto, tre quarti a destra e a sinistra, più
-     di lato), ognuna col suo voto: quanto si vede del personaggio e della strada davanti (raggi verso la camera che non devono passare
-     dentro le case), quanto si allontana dal dietro, un premio al tre quarti (più cinematografico del dritto alle spalle) e la continuità
-     con la scelta di adesso. Il bersaglio cambia solo se il nuovo è oltre K.banda dal vecchio (niente ritocchi piccoli).
-   - SI VA PIANO: verso il bersaglio con un tempo lungo (K.tau) e una velocità massima (K.vmax), così non si sente la mano della regia.
-   Gli angoli sono nello stesso spazio di cam.uy in render.js (la visuale meno YAW). ?noregia: la camera resta sempre dove la metti.  */
-var Regia = (function () {
-  'use strict';
-  const K = {
-    mano: 3,          // s: dopo che il giocatore ha toccato la visuale, la regia aspetta tanto
-    vel: .5,          // m/s: sotto questa velocità si è fermi (niente regia)
-    stabile: .7,      // s: la direzione di marcia deve restare dentro K.svolta per tanto prima di scegliere
-    svolta: .35,      // rad
-    ogni: .6,         // s: una scelta ogni tanto, non a ogni fotogramma
-    banda: .3,        // rad: un bersaglio nuovo solo se diverso di tanto dal vecchio
-    tau: 1.4,         // s: il tempo con cui la camera va verso il bersaglio
-    vmax: .8,         // rad/s
-    vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
-    piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
-    mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
-    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
-  };
-  const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
-  // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
-  const dietro = (hd, YAW) => ang(Math.atan2(-Math.cos(hd), -Math.sin(hd)) - YAW);
-  // il voto di un'inquadratura (più basso è meglio). copre(o, q): il numero di raggi bloccati fra il punto o (in metri, {x, y, z} con y in
-  // alto) e la camera q. q.cam(yaw): la posizione della camera per quella visuale
-  function voto(off, base, cur, q) {
-    const P = K.pesi, yaw = base + off, C = q.cam(yaw), a = q.avanti, f = q.fy;
-    let v = 0;
-    v += P.copreMe * (q.copre({ x: q.x, y: f + .4, z: q.z }, C) + q.copre({ x: q.x, y: f + 1.6, z: q.z }, C));
-    v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
-    v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
-    v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
-    return v;
-  }
-  // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
-  // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
-  function passo(S, q, dt) {
-    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
-    S.t += dt; S.tSc += dt;
-    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
-    S.tMano += dt;
-    if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
-    if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
-    if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
-    S.tHd += dt;
-    if (S.tHd >= K.stabile && S.tSc >= K.ogni) {
-      S.tSc = 0; const base = dietro(S.hd0, q.YAW), cur = S.tgt === null ? q.uy : S.tgt;
-      q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
-      let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, cur, q); if (v < bv) { bv = v; best = base + off; } }
-      if (best !== null && (S.tgt === null || Math.abs(ang(best - S.tgt)) > K.banda)) { S.tgt = ang(best); S.n++; S.perche = 'scelta'; }
-    }
-    if (S.tgt === null) return q.uy;
-    const d = ang(S.tgt - q.uy); if (Math.abs(d) < .005) return q.uy;
-    // morbida all'inizio (il tempo K.tau), ma con una velocità minima (K.vmin): arriva e si ferma, senza la coda lunga dei millimetri
-    const m = K.vmax * dt, mn = K.vmin * dt; let step = d * (1 - Math.exp(-dt / K.tau));
-    if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
-    return q.uy + step;
-  }
-  // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
-  function taglia(o, c, b) {
-    let t0 = 0, t1 = 1;
-    for (const k of ['x', 'y', 'z']) { const d = c[k] - o[k], lo = b.min[k], hi = b.max[k];
-      if (Math.abs(d) < 1e-9) { if (o[k] < lo || o[k] > hi) return false; continue; }
-      let a = (lo - o[k]) / d, e = (hi - o[k]) / d; if (a > e) { const t = a; a = e; e = t; }
-      if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
-    return true;
-  }
-  return { K, passo, voto, dietro, taglia, ang };
-})();
-if (typeof window !== 'undefined') window.__REGIA = Regia.K;
-if (typeof module !== 'undefined') module.exports = Regia;
-</script>
 <script data-m="main">
 (function () {
   'use strict';
@@ -96046,6 +96049,7 @@ if (typeof module !== 'undefined') module.exports = Regia;
   function boot() {
   let glOk = true;
   if (R.scorcio && R.scorcio.on) try { const c = R.scoCentro(); if (c) { st.player.x = c.px; st.player.y = c.pz; } } catch (e) { console.warn('[scorcio]', e); }   // [scorcio] si parte nello scorcio
+  try { if (window.Tasselli && Tasselli.anticipa && Tasselli.attivo()) Tasselli.anticipa(st.player.x, st.player.y); } catch (e) { console.warn('[tasselli] anticipa', e); }   // [ottimizza-car] l'anello vicino si scarica e si apre mentre si fa R.init
   try { R.init(cv, st); } catch (err) { glOk = false; console.error(err); }
   if (!glOk) {
     $('screen').innerHTML = `<div class="in"><div class="logo" style="font-size:clamp(34px,6vw,64px)">Porto Vecchio</div><div class="story"><p>Il gioco usa la grafica 3D del browser (WebGL) e qui non è riuscito ad avviarla.</p><p>Prova ad aprire la pagina in Chrome, Edge o Firefox aggiornati, con l'accelerazione hardware attiva nelle impostazioni del browser.</p></div></div>`;
@@ -96085,6 +96089,10 @@ if (typeof module !== 'undefined') module.exports = Regia;
   function vivoTick(raw) {
     if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
     if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
+    // [ottimizza-car] «Gioca» dopo la città vicina: i tasselli dell'impronta in scena (si montano dietro lo schermo di carico, col tetto largo
+    // dell'anello vicino), al più 15 s in più (era 45: l'apertura non deve allungarsi). ?nofixvicino come prima
+    if (window.Tasselli && Tasselli.attivo && Tasselli.attivo() && !/[?&]nofixvicino\b/.test(location.search)) { const T = Tasselli.stato();
+      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } return; } }
     VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
     start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
