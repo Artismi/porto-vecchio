@@ -653,9 +653,13 @@ var Arredo3D = (function () {
   function vTri(B, a, b, c, ua, ub, uc, alza, verso) {
     _ta.subVectors(b, a); _tb.subVectors(c, a); _tn.crossVectors(_ta, _tb); const l = _tn.length(); if (l < 1e-10) return;
     _tn.divideScalar(l); if (verso && _tn.dot(verso) < 0) { const t = b; b = c; c = t; const tu = ub; ub = uc; uc = tu; _tn.negate(); }
-    if (alza) { _tn.y += alza; _tn.normalize(); }
-    B.p.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); for (let i = 0; i < 3; i++) B.n.push(_tn.x, _tn.y, _tn.z); B.u.push(ua[0], ua[1], ub[0], ub[1], uc[0], uc[1]);
+    B.p.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z); B.u.push(ua[0], ua[1], ub[0], ub[1], uc[0], uc[1]);
+    if (PIEGA) for (const q of [a, b, c]) { _bn.subVectors(q, PIEGA.c); if (PIEGA.s) _bn.divide(PIEGA.s); _bn.normalize(); _bn.y += PIEGA.up || 0; _bn.normalize(); B.n.push(_bn.x, _bn.y, _bn.z); }   // [vasi2] la normale dal centro: il fogliame tondo e dipinto, senza faccette
+    else { if (alza) { _tn.y += alza; _tn.normalize(); } for (let i = 0; i < 3; i++) B.n.push(_tn.x, _tn.y, _tn.z); }
   }
+  // PIEGA = { c, s, up }: mentre c'è, le normali escono dal centro c (diviso per s, l'ellissoide) e salgono un po' (up): il trucco del fogliame stilizzato
+  let PIEGA = null; const _bn = new THREE.Vector3();
+  const piega = (c, up, f, sc) => { const p0 = PIEGA; PIEGA = { c, up, s: sc }; try { f(); } finally { PIEGA = p0; } };
   function vbGeo(B) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(B.p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(B.n, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.u, 2)); g.computeBoundingSphere(); g.computeBoundingBox(); return g; }
   // la sagoma della foglia: mezza larghezza (0..1) lungo la lunghezza t (0 il picciolo, 1 la punta)
   const FORME = {
@@ -692,7 +696,7 @@ var Arredo3D = (function () {
     const s = new THREE.SphereGeometry(1, ws, hs).toNonIndexed(), P = s.attributes.position, c = V3(x, y, z), vv = [], uu = [];
     for (let i = 0; i < P.count; i++) { const X = P.getX(i), Y = P.getY(i), Z = P.getZ(i), k = 1 + (bozzi === undefined ? .2 : bozzi) * (hh3(X + x * 7, Y + y * 3, Z + z * 5) - .5) * 2;
       vv.push(V3(X * rx * k + x, Math.max(Y, piatta === undefined ? -1 : piatta) * ry * k + y, Z * rz * k + z)); uu.push([(X + 1) / 2, (Y + 1) / 2]); }
-    for (let i = 0; i < vv.length; i += 3) vTri(B, vv[i], vv[i + 1], vv[i + 2], uu[i], uu[i + 1], uu[i + 2], alza || 0, vv[i].clone().add(vv[i + 1]).add(vv[i + 2]).divideScalar(3).sub(c));
+    piega(c, alza || 0, () => { for (let i = 0; i < vv.length; i += 3) vTri(B, vv[i], vv[i + 1], vv[i + 2], uu[i], uu[i + 1], uu[i + 2], 0, vv[i].clone().add(vv[i + 1]).add(vv[i + 2]).divideScalar(3).sub(c)); }, V3(rx, ry, rz));   // liscia: le normali dell'ellissoide
     s.dispose();
   }
   // la pennellata di colore: un rombo appena a coppa che guarda verso nrm (fiorellini, brattee)
@@ -703,9 +707,9 @@ var Arredo3D = (function () {
     vTri(B, p0, p1, p2, [0, .5], [.5, 0], [1, .5], .3, nn); vTri(B, p0, p2, p3, [0, .5], [1, .5], [.5, 1], .3, nn);
   }
   // il mazzetto a cupola (l'ombrella del geranio, il grappolo della buganvillea): una pennellata in cima e k attorno
-  function ombrella(B, x, y, z, r, k, rn) {
-    const c = V3(x, y, z); petalo(B, c.clone().add(V3(0, r * .35, 0)), V3(0, 1, 0), r * .55, rn() * 3);
-    for (let i = 0; i < k; i++) { const ph = i / k * 2 * PI + rn() * .5, th = .95 + rn() * .3, d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)); petalo(B, c.clone().addScaledVector(d, r * .6), d, r * .5, rn() * 3); }
+  function ombrella(B, x, y, z, r, k, rn) {   // i petali attorno a una pallina: le normali dal centro, il mazzetto è tondo
+    const c = V3(x, y, z); piega(c.clone().add(V3(0, -r * .3, 0)), .25, () => { petalo(B, c.clone().add(V3(0, r * .35, 0)), V3(0, 1, 0), r * .55, rn() * 3);
+      for (let i = 0; i < k; i++) { const ph = i / k * 2 * PI + rn() * .5, th = .8 + rn() * .5, d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)); petalo(B, c.clone().addScaledVector(d, r * .6), d, r * .5, rn() * 3); } });
   }
   // il fusto a coste del cactus: anelli di 2·coste punti (costa e solco) lungo l'asse dir, prof = [[t, k del raggio], ...], la punta tonda
   function colonna(B, base, dir, R, H, coste, prof) {
@@ -720,10 +724,11 @@ var Arredo3D = (function () {
   // V: R il raggio della terra, Rr quello dell'orlo, Hs l'altezza della terra sul fondo del vaso, rimY l'orlo sopra la terra, giu quanto ricade, arco i versi dei tralci
   const PIANTE = {
     geranio: { c: ['#5a9a40', '#3f7c34', '#2c5a28'], fiori: ['#d8283a', '#e8507a', '#f2eee4', '#c81e30', '#f07a9a', '#e0344a'], f(P, V, rn, lv) {
-      const k = kR(V.R), nL = lv ? 9 : 6, nF = (lv ? 3 : 2) + Math.floor(rn() * 2);
-      palla(P.T2, 0, .035 * k, 0, V.R * .86, .08 * k, V.R * .86, lv ? 7 : 5, 4, .32, -.6, .35);   // il cespo sotto le foglie
-      for (let i = 0; i < nL; i++) { const a = i * 2.4 + rn() * .6, d = V.R * (.3 + .6 * rn()), Lf = (.1 + rn() * .04) * k; foglia(i % 3 ? P.T : P.T2, P.S, Math.cos(a) * d * .6, (.05 + rn() * .06) * k, Math.sin(a) * d * .6, a, .2 + rn() * .4, Lf, Lf * 1.05, { f: 'tondo', cade: .3, coppa: .2 }); }
-      for (let i = 0; i < nF; i++) { const a = i * 2.1 + rn(), d = V.R * (.1 + .45 * rn()), x = Math.cos(a) * d, z = Math.sin(a) * d, y = (.2 + rn() * .08) * k; stelo(P.S, [x * .4, .05 * k, z * .4], [x, y + .012, z], .006, .004); ombrella(P.F, x, y, z, .07 * k, 4, rn); }
+      const k = kR(V.R), nL = lv ? 6 : 5, nF = 3 + Math.floor(rn() * (lv ? 2 : 1));
+      palla(P.T2, 0, .03 * k, 0, V.R * .8, .07 * k, V.R * .8, 6, 3, .15, -.6, .35);   // il cuore liscio della rosetta
+      piega(V3(0, -.03 * k, 0), .5, () => { for (let i = 0; i < nL; i++) { const a = (i + rn() * .5) / nL * 2 * PI, d = V.R * (.15 + .35 * rn()), Lf = (.115 + rn() * .04) * k;   // le foglie tonde smerlate, basse, a raggiera
+        foglia(i % 2 ? P.T : P.T2, P.S, Math.cos(a) * d, (.05 + rn() * .04) * k, Math.sin(a) * d, a, .12 + rn() * .3, Lf, Lf * 1.1, { f: 'tondo', n: lv ? 3 : 2, lobi: .78, cade: .3, coppa: .15 }); } });
+      for (let i = 0; i < nF; i++) { const a = i * 2.1 + rn(), d = V.R * (.1 + .45 * rn()), x = Math.cos(a) * d, z = Math.sin(a) * d, y = (.22 + rn() * .08) * k; stelo(P.S, [x * .4, .05 * k, z * .4], [x, y + .012, z], .005, .0035); ombrella(P.F, x, y, z, .06 * k, lv ? 5 : 4, rn); }
     } },
     pothos: { c: ['#64a844', '#4a9036', '#336a2c'], f(P, V, rn, lv, sv) {
       const k = kR(V.R), ns = lv ? 3 + sv % 2 : 2, giu = V.giu || V.Hs * (.55 + rn() * .35), fondo = V.giu ? 9 : V.Hs - .05, rim = V.rimY || .02;
@@ -767,10 +772,10 @@ var Arredo3D = (function () {
     limone: { c: ['#4f8f3c', '#2f6a30', '#24502a', '#6a5038'], fiori: ['#f0c828'], f(P, V, rn, lv) {
       const k = kR(V.R) * .9, h = .58 * k; stelo(P.L, [0, -.01, 0], [.02 * k, h * .55, .01], .024 * k, .018 * k); stelo(P.L, [.02 * k, h * .55, .01], [-.01, h, 0], .018 * k, .012 * k);
       const C = [[0, h + .14 * k, 0, .24 * k, .19 * k], [.13 * k, h + .05 * k, .09 * k, .15 * k, .12 * k], [-.13 * k, h + .08 * k, -.07 * k, .15 * k, .12 * k]];
-      C.forEach(([x, y, z, rr, ry], i) => { if (lv || !i) palla(P.T2, x, y, z, rr, ry, rr, lv ? 7 : 6, lv ? 5 : 4, .3, undefined, .35); });
-      for (let i = 0, nl = lv ? 26 : 10; i < nl; i++) { const ph = rn() * 2 * PI, th = .2 + rn() * 1.6, [x, y, z, rr, ry] = C[i % C.length], d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)), b = V3(x + d.x * rr * .85, y + d.y * ry * .85, z + d.z * rr * .85);
-        foglia(P.T, P.S, b.x, b.y, b.z, ph, .6 - th * .5, .1 * k, .048 * k, { cade: .3, coppa: .25 }); }
-      for (let i = 0, nf = lv ? 7 : 4; i < nf; i++) { const ph = i * 2.3 + rn(), th = 1.3 + rn() * .5, [x, y, z, rr, ry] = C[i % 2 ? 0 : (i % 3)]; palla(P.F, x + Math.cos(ph) * Math.sin(th) * rr * .98, y + Math.cos(th) * ry * .98, z + Math.sin(ph) * Math.sin(th) * rr * .98, .03 * k, .038 * k, .03 * k, 5, 3, .05); }
+      C.forEach(([x, y, z, rr, ry], i) => { if (lv || !i) palla(P.T2, x, y, z, rr, ry, rr, lv ? 7 : 6, lv ? 5 : 4, .14, undefined, .35); });
+      for (let i = 0, nl = lv ? 22 : 10; i < nl; i++) { const ph = rn() * 2 * PI, th = .2 + rn() * 1.6, [x, y, z, rr, ry] = C[i % C.length], d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)), b = V3(x + d.x * rr * .85, y + d.y * ry * .85, z + d.z * rr * .85);
+        piega(V3(x, y, z), .3, () => foglia(P.T, P.S, b.x, b.y, b.z, ph, .6 - th * .5, .1 * k, .048 * k, { cade: .3, coppa: .25 })); }
+      for (let i = 0, nf = lv ? 5 : 4; i < nf; i++) { const ph = i * 2.3 + rn(), th = 1.3 + rn() * .5, [x, y, z, rr, ry] = C[i % 2 ? 0 : (i % 3)]; palla(P.F, x + Math.cos(ph) * Math.sin(th) * rr * .98, y + Math.cos(th) * ry * .98, z + Math.sin(ph) * Math.sin(th) * rr * .98, .03 * k, .038 * k, .03 * k, lv ? 6 : 5, lv ? 4 : 3, .03, undefined, .2); }
     } },
     erbe: { c: ['#6e9a5a', '#58805a', '#46644a'], fiori: ['#9a88d0', '#b0a0e0', '#e8e4f0', '#8a78c8'], f(P, V, rn, lv) {
       const k = kR(V.R); palla(P.S, 0, .01, 0, V.R * .9, .11 * k, V.R * .9, lv ? 7 : 5, 4, .32, -.1, .35);
@@ -779,18 +784,18 @@ var Arredo3D = (function () {
     } },
     basilico: { c: ['#6abd40', '#55a536', '#3c7a2c'], f(P, V, rn, lv) {
       const k = kR(V.R); palla(P.T2, 0, .03 * k, 0, V.R * .88, .12 * k, V.R * .88, lv ? 7 : 5, 4, .3, -.2, .4);
-      for (let i = 0, n = lv ? 12 : 6; i < n; i++) { const a = i * 2.4 + rn(), d = V.R * (.2 + .5 * rn()), Lf = (.075 + rn() * .025) * k; foglia(P.T, P.S, Math.cos(a) * d, (.08 + rn() * .06) * k, Math.sin(a) * d, a, .35 + rn() * .45, Lf, Lf * .7, { coppa: .45, cade: .25 }); }
+      piega(V3(0, 0, 0), .4, () => { for (let i = 0, n = lv ? 12 : 6; i < n; i++) { const a = i * 2.4 + rn(), d = V.R * (.2 + .5 * rn()), Lf = (.075 + rn() * .025) * k; foglia(P.T, P.S, Math.cos(a) * d, (.08 + rn() * .06) * k, Math.sin(a) * d, a, .35 + rn() * .45, Lf, Lf * .7, { coppa: .45, cade: .25 }); } });
     } },
     ortensia: { c: ['#4f8f3c', '#3e7a36', '#2c5a2c'], fiori: ['#6a8ad8', '#e08ab8', '#a88ad8', '#e8e8f2', '#7ab0e0', '#d070a0'], f(P, V, rn, lv) {
-      const k = kR(V.R); palla(P.T2, 0, .04 * k, 0, V.R * .9, .09 * k, V.R * .9, lv ? 7 : 5, 4, .3, -.6, .35);
-      for (let i = 0, n = lv ? 8 : 5; i < n; i++) { const a = i * 2.4 + rn(), d = V.R * .55, Lf = (.14 + rn() * .04) * k; foglia(i % 2 ? P.T : P.T2, P.S, Math.cos(a) * d, (.06 + rn() * .05) * k, Math.sin(a) * d, a, .15 + rn() * .3, Lf, Lf * .62, { cade: .3, coppa: .25 }); }
+      const k = kR(V.R); palla(P.T2, 0, .04 * k, 0, V.R * .9, .09 * k, V.R * .9, lv ? 7 : 5, 4, .15, -.6, .35);
+      piega(V3(0, 0, 0), .4, () => { for (let i = 0, n = lv ? 8 : 5; i < n; i++) { const a = i * 2.4 + rn(), d = V.R * .55, Lf = (.14 + rn() * .04) * k; foglia(i % 2 ? P.T : P.T2, P.S, Math.cos(a) * d, (.06 + rn() * .05) * k, Math.sin(a) * d, a, .15 + rn() * .3, Lf, Lf * .62, { cade: .3, coppa: .25 }); } });
       for (let i = 0, n = (lv ? 3 : 2) + (V.R > .2 ? 1 : 0); i < n; i++) { const a = i * 2.1 + rn() * .8, d = V.R * (.15 + .35 * rn()), x = Math.cos(a) * d, z = Math.sin(a) * d, y = (.17 + rn() * .07) * k;
-        stelo(P.S, [x * .3, .04, z * .3], [x, y - .03 * k, z], .007 * k); palla(P.F, x, y, z, .095 * k, .08 * k, .095 * k, lv ? 7 : 5, lv ? 5 : 3, .42, -.45, .3); }
+        stelo(P.S, [x * .3, .04, z * .3], [x, y - .03 * k, z], .007 * k); palla(P.F, x, y, z, .095 * k, .08 * k, .095 * k, lv ? 7 : 5, lv ? 5 : 4, .14, -.45, .3); }
     } },
     buganvillea: { c: ['#4f8f3c', '#3c7834', '#2c5a28'], fiori: ['#d0307a', '#e04a9a', '#c82a6a', '#e86aa8'], f(P, V, rn, lv) {
-      const k = kR(V.R); palla(P.T2, 0, .065 * k, 0, V.R * .98, .17 * k, V.R * .98, lv ? 7 : 5, 4, .32, -.45, .35);
+      const k = kR(V.R), cz = V3(0, .065 * k, 0); palla(P.T2, 0, .065 * k, 0, V.R * .98, .17 * k, V.R * .98, lv ? 7 : 5, 4, .15, -.45, .35);
       for (let i = 0, n = lv ? 8 : 4; i < n; i++) { const ph = i * 2.4 + rn(), th = .3 + rn() * 1.0, d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)); ombrella(P.F, d.x * V.R * .9, .08 * k + d.y * .17 * k, d.z * V.R * .9, .058 * k, lv ? 4 : 3, rn); }
-      for (let i = 0, n = lv ? 7 : 3; i < n; i++) { const ph = i * 2.4 + 1 + rn(), th = .5 + rn() * .9, d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)); foglia(P.T, P.S, d.x * V.R * .9, .08 * k + d.y * .17 * k, d.z * V.R * .9, ph, .3, .085 * k, .05 * k, { cade: .3 }); }
+      piega(cz, .35, () => { for (let i = 0, n = lv ? 12 : 5; i < n; i++) { const ph = i * 2.4 + 1 + rn(), th = .3 + rn() * 1.1, d = V3(Math.cos(ph) * Math.sin(th), Math.cos(th), Math.sin(ph) * Math.sin(th)); foglia(i % 2 ? P.T : P.T2, P.S, d.x * V.R * .85, .065 * k + d.y * .15 * k, d.z * V.R * .85, ph, .55 - th * .4, .085 * k, .05 * k, { cade: .3 }); } });   // le foglie che escono dalla zolla
       for (let s = 0, ns = lv ? 2 : 1; s < ns; s++) { const a = V.arco ? (V.arco[0] + V.arco[1]) / 2 + (s - .5) * .8 : s * PI + rn() * 2, giu = Math.min(V.giu ? 9 : V.Hs - .06, (V.giu || V.Hs) * (.4 + rn() * .4));   // il ramo che ricade dal bordo
         const p0 = [Math.cos(a) * V.R * .7, .08 * k, Math.sin(a) * V.R * .7], p1 = [Math.cos(a) * (V.Rr + .04), (V.rimY || .02) - .02, Math.sin(a) * (V.Rr + .04)], p2 = [Math.cos(a) * (V.Rr + .08), -giu, Math.sin(a) * (V.Rr + .08)];
         stelo(P.L, p0, p1, .006); stelo(P.L, p1, p2, .005); ombrella(P.F, p1[0], p1[1] - .02, p1[2], .045 * k, lv ? 4 : 3, rn); ombrella(P.F, p2[0], p2[1], p2[2], .045 * k, lv ? 4 : 3, rn); foglia(P.T, P.S, (p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, (p1[2] + p2[2]) / 2, a, 0, .07 * k, .042 * k, { cade: .3 }); }
@@ -836,7 +841,7 @@ var Arredo3D = (function () {
     terracotta(g, y0, o, rn) {   // il cotto tornito: piede, pancia, il bordo grosso arrotondato, il sottovaso
       const F = FT[o.forma] || FT[pkV(rn, ['classico', 'classico', 'basso', 'alto', 'pancia'])], c0 = o.col || pkV(rn, COTTO), col = rn() < .2 ? mixC(c0, '#d8ccb8', .35) : c0, dy = o.senzaPiatto ? -.012 : 0;   // uno su cinque col bianco del calcare
       lathe(g, sposta(F.p, dy), 16, mat(col, 'cotto'), 0, y0, 0);
-      if (!o.senzaPiatto) { const [rf, rr] = F.sc; lathe(g, [[rr * .96, 0], [rr, .034], [rf, .012]], 14, mat(shade(col, .9), 'cotto'), 0, y0, 0); }
+      if (!o.senzaPiatto) { const [rf, rr] = F.sc; lathe(g, [[rr * .96, 0], [rr, .034], [rf, .012]], 12, mat(shade(col, .9), 'cotto'), 0, y0, 0); }
       terraV(g, F.R, y0 + F.Hs + dy); return { R: F.R, Rr: F.Rr, Hs: F.Hs + dy, rimY: F.top - F.Hs, H: F.top + dy }; },
     smaltato(g, y0, o, rn) {   // la ceramica smaltata a pancia tonda, il piede di cotto nudo
       const col = o.col || pkV(rn, ['#2f5f9e', '#2a8a88', '#c8962e', '#3f7a4a', '#e6dcc4', '#8a3a3a', '#4a78b8', '#d8b048', '#2e6e6a']), m = mat(col, 'smalto');
