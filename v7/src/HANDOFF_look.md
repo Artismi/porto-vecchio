@@ -120,3 +120,36 @@ cotto, a turno due volte; SwiftShader, quindi contano i rapporti):
 fuori registro sui segni; i 32 `physical` e 23 `lambert` «puri» (le combinazioni di parametri di three: mappa, colore ai vertici,
 istanze, doppia faccia…) si riducono solo uniformando i materiali; il campo dei marciapiedi (`swField`, 1,2 s anche coi tasselli) andrebbe
 nei dati dei tasselli; le forme (case che pendono, pali storti, personaggi chunky) sono geometria, non shader.
+
+## [cat] [riv] La gerarchia per categoria e lo stato della rivoluzione (1 novembre)
+
+Il piano è `ANALISI_STILE.md` (la diagnosi misurata, il piano di valori per categoria, i passi). Fatto in questo giro:
+
+- **La categoria nell'alfa** (`render.js`, `sguProPezzi`, `C.output_fragment`): ogni materiale opaco scrive nell'alfa del bersaglio della
+  scena che cosa è: .2 suolo, .4 muro, .6 tetto, .8 persona (chi ha lo scheletro), 1 il resto. Suolo, muro e tetto dal punto nel mondo e
+  dalla normale (in piano e basso: suolo; in piano e alto: tetto; in piedi: muro), anche per lambert, phong, toon e basic (`SG_TAGLIO2`).
+  Niente profondità da leggere: vale nel profilo leggero delle schede integrate. `#define SG_NOCAT` in un materiale lo esclude.
+  **I tasselli cotti prima non la portano** (210 shader su 315 erano cotti col testo già espanso): vanno ricotti (il workflow lo fa al
+  push su `main`; in locale `PW=playwright python3 build.py --tasselli`, 4 minuti).
+- **Il passo per categoria** (`SG_CAT`, `window.__CAT`, `?nocat` spegne): muri pastello (un tetto di saturazione, più basso in luce; gli
+  accenti già saturi, scritte e saracinesche, restano), tetti col valore stretto e sempre sotto i muri, il cotto caldo fino a .46, suolo
+  un filo più scuro al sole, persone con più colore e contrasto. **Le linee dove la categoria cambia**, del colore della cosa: attorno
+  alle persone, sul ciglio fra tetto e muro, al piede fra muro e suolo (4 letture dell'alfa, anche nel profilo leggero).
+- **Il bordo di luce delle persone** (nel materiale, `STANDARD` con `USE_SKINNING`): la luce di bordo nel colore dell'ora (l'ambiente:
+  crema, rosa, ciano), a radente; la forza è `CAT.bordoPersone` (uniform `sgP8`). Attenzione: un commento `//` a metà di una riga del
+  GLSL scritto su una riga sola chiude il resto della riga e il programma non compila (schermo nero, «program not valid»): i commenti
+  dentro il testo degli shader vanno in fondo alla riga o fra `/* */`.
+- **Lo stato della rivoluzione** (`RIV`, `window.__RIV`, `?noriv`): 1 la strada che resiste, 0 il regime. Base `RIV.base` più la scena dei
+  graffiti (`Writing.sceneLevel`: lavori vivi, fama, crescita), più i lavori vivi entro 40 m dalla camera; zero nei luoghi del regime.
+  Guida la lente (`gonfioRegime` → la lente del momento), la saturazione e il colore pieno, il retino delle ombre e il tratto (nel regime
+  la linea tecnica grigia `#4a4e58`), in tutti e due i profili. La tabella del regime per quartiere (`REGD`: centro .8, porto .85) non si
+  usa qui: spegnerebbe la città intera.
+- **La luce del giorno**: sole più caldo (`#ffe2b8`, `#ffe6c0`) e più forte, meno cielo (`cieloK` .38-.4), meno riempimento dell'ombra
+  (`proTintaK` .26, `pro.ombre` .7), il sole più basso (`soleAlto` [18, 33]); la saturazione del passo di nuovo vicina a 1 (`sat` 1.1,
+  `pieno` .28): il colore lo portano le categorie e i materiali. La sera rosa-magenta (`sat` 1.0, `proPieno` .3).
+- **La camera** (`visuale.js` `CAMERA4`): nelle strette sale meno (`stretta` .88, `max` .98 invece di .98 e 1.08), il quadro è più vicino
+  (`VIEW` 35 invece di 38). Col taglio in ogni visuale non serve più salire tanto. **Da provare giocando.**
+- **La misura** (`strumenti/galleria.js`): per ogni foto la categoria di ogni pixel (riportata sullo schermo con la piega della lente),
+  la quota del quadro, luminanza e saturazione per categoria, luce/ombra del suolo, persone/suolo; `<scena>_cat.json` e la mappa a colori
+  `<scena>_cat.png` (suolo grigio, muri sabbia, tetti rosso, persone ciano, altro magenta). Si fa **anche con `?leggera`** (il profilo del
+  committente: lì il passo non legge la profondità).
