@@ -3002,13 +3002,13 @@ var Render = (function () {
   const CEDE1 = () => performance.now() - ISO.t1 > 4;
   function* buildChunkGen(ci, cj) {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
-    let c = mk(n * TP, m * TP), x = c.getContext('2d');
+    let c = mk(n * TP, m * TP), x = c.getContext('2d'); ARR.fase = 'pittura';   // [arrivo]
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
     yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; const PZ1 = typeof Suolo !== 'undefined' ? Suolo.R.pedonale : 99, sp1 = f => sottoPiazze1(x, tx0, ty0, n, m, PZ1, () => f(x, tx0, ty0, n, m));   /* [suolo] i segni delle vie non entrano nelle piazze pedonali e nelle opere */ sp1(svolte1); yield; sp1(usura1); yield; sp1(surf1); yield; sp1(roadMarks); yield; sp1(strisce35); yield; sp1(raccordi1); yield; sp1(holes1); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) { if (Vegetazione.dipingiSuoloG) yield* Vegetazione.dipingiSuoloG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); } else if (Vegetazione.suoloErbosoG) yield* Vegetazione.suoloErbosoG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [fluido] a righe */   /* [vegetazione] */
     yield;
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */
-    let rtex = null;
+    let rtex = null; ARR.fase = 'ruvido';   // [arrivo]
     // [calcolo] la scabrosità dalla luminosità dei pixel: il conto (CalcoloF.ruvido, lo stesso di prima) nel lavoratore, qui la lettura e la tela
     let RU = null; try { const W = c.width, H = c.height; RU = { W, H, d: x.getImageData(0, 0, W, H).data }; } catch (e) { RU = null; }
     if (RU) { let o = null; try { o = yield* Calcolo.G('ruvido', RU); } catch (e) { o = null; }
@@ -3016,7 +3016,7 @@ var Render = (function () {
         rxx.putImageData(od, 0, 0); rtex = freeAfterUpload(canvasTex(rc)); rtex.magFilter = THREE.LinearFilter; rtex.minFilter = THREE.LinearFilter; rtex.generateMipmaps = false; } catch (e) { rtex = null; } }
     freeAfterUpload(tex);   // [leggera] il terreno dipinto non si ritocca: dopo l'invio basta la copia della scheda video
     yield;
-    const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [], RV9 = RIVA9();
+    ARR.fase = 'geometria'; const pos = new Float32Array((n + 1) * (m + 1) * 3), uv = new Float32Array((n + 1) * (m + 1) * 2), idx = [], RV9 = RIVA9();   // [arrivo]
     for (let j = 0; j <= m; j++) for (let i = 0; i <= n; i++) {
       const k = j * (n + 1) + i, tx = tx0 + i, ty = ty0 + j;
       let h = hv(tx, ty);
@@ -3037,22 +3037,22 @@ var Render = (function () {
     }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
     yield;
-    const btex = yield* bakeLightG(tx0, ty0, n, m);   // [inverno30]   [calcolo] i conti nel lavoratore
+    ARR.fase = 'luce'; const btex = yield* bakeLightG(tx0, ty0, n, m);   // [inverno30]   [calcolo] i conti nel lavoratore
     yield;
     const mat = prato9(new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0, roughnessMap: rtex, envMap: wetEnv(), envMapIntensity: .12,   /* [isola38] */ emissive: '#ffffff', emissiveMap: btex, emissiveIntensity: 0 }));   /* [prato1] */
-    if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
+    ARR.fase = 'pavimenti'; if (window.Pavimenti) try { if (Pavimenti.suoloG) yield* Pavimenti.suoloG(mat, tx0, ty0, n, m, CEDE1); else Pavimenti.suolo(mat, tx0, ty0, n, m); } catch (e) { console.error('[pavimenti]', e && e.stack); }   // [pavimenti] il disegno delle pietre al pixel vero   [fluido] a pezzi
     yield;   // [anelli] un passo per pezzo: il suolo, la riva, il suo mare
     const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true;
     const grp = new THREE.Group(); grp.add(mesh);
-    const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
+    ARR.fase = 'riva'; const riva = RV9 ? Riva.costruisci(tx0, ty0, n, m, mat, prato9) : null; if (riva) grp.add(riva.grp);   // [riva] la fascia della riva: suolo fine, scogli, ciottoli
     if (riva) yield;
     if (riva) yield* acquaFine9G(tx0, ty0, n, m);   // [riva] e il suo pezzo di mare   [fluido] a righe
     yield;
-    const veg = yield* buildVegG(tx0, ty0, n, m); grp.add(veg);
+    ARR.fase = 'piante'; const veg = yield* buildVegG(tx0, ty0, n, m); grp.add(veg);
     yield;
-    const nat = yield* buildNatG(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
+    ARR.fase = 'bosco'; const nat = yield* buildNatG(tx0, ty0, n, m); grp.add(nat); const lt = veg.getObjectByName('loTrees');
     yield;
-    const vd = yield* verde38G(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
+    ARR.fase = 'verde'; const vd = yield* verde38G(tx0, ty0, n, m); vd.visible = false; grp.add(vd);   // [verde]
     scene.add(grp);
     if (window.Officina) Officina.onChunk(grp, groundH);   // [studio] alberi e cespugli ritoccati
     return { grp, geo, mat, tex, btex, rtex, veg, nat, lt, vd, riva, rev: ISO.rev };
@@ -3091,29 +3091,89 @@ var Render = (function () {
       const mesh = new THREE.Mesh(geo, mat); mesh.receiveShadow = true; grp.add(mesh); ISO.baseMesh = mesh; ISO.basePiece = PIECE; ISO.baseSig = -1; }
     scene.add(grp); ISO.base = grp;
   }
+  // [arrivo] la cronaca dei blocchi (strumenti/sonda_arrivo.js): quando nasce e finisce ognuno, i ms di lavoro, i fotogrammi, le attese del lavoratore, il tempo per fase
+  const ARR = { fase: '', fasi: {}, blocchi: [] };
+  function arrivoFatto(J) { ARR.blocchi.push({ k: J.key, vicino: J.near, t0: Math.round(J.t0), t1: Math.round(performance.now()), ms: Math.round(J.ms), fr: J.fr, att: J.att }); if (ARR.blocchi.length > 300) ARR.blocchi.shift(); }
+  ISO.arrivo = ARR;
+  // [arrivo] UN PASSO DEL BLOCCO IN COSTRUZIONE (dal fotogramma o dalla pompa qui sotto): 'fatto' (il blocco è in scena), 'attesa' (aspetta il lavoratore), '' (va avanti)
+  function passoBlocco(J) {
+    const tA = ISO.t1 = performance.now(), r = J.it.next(); J.n1 = (J.n1 || 0) + 1; const dA = performance.now() - tA; J.ms += dA; ARR.fasi[ARR.fase] = (ARR.fasi[ARR.fase] || 0) + dA; if (typeof Anelli !== 'undefined') { if (dA > 20) Anelli.picchi('blocco:' + J.n1 + (J.near ? ':vicino' : ''), dA); }   // [anelli] i passi lunghi dei blocchi   // [arrivo] il tempo per fase
+    if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); if (ISO.job === J) ISO.job = null; arrivoFatto(J); return 'fatto'; }   // cambiata la mappa a metà: si rifà
+    if (r.value === Calcolo.ATTESA) { J.att++; return 'attesa'; }   // [calcolo] il blocco aspetta il lavoratore
+    return '';
+  }
+  const nuovoBlocco = (ci, cj, key, d) => ({ key, it: buildChunkGen(ci, cj), near: d < 70, t0: performance.now(), ms: 0, fr: 0, att: 0 });
+  // [arrivo] LA POMPA DEI BLOCCHI. Prima un blocco vicino avanzava di un passo (o di pochi, dentro 3-4 ms) a fotogramma: un blocco sono
+  // ~200 passi (i pittori, le righe dei pavimenti, le attese del lavoratore), e sull'Iris Xe a 12 fotogrammi al secondo i 9 blocchi attorno
+  // alla camera arrivavano in minuti: piazze e vie piatte, senza pavimenti e senza piante (il verde nasce col blocco). Quando la scheda video
+  // è il collo di bottiglia il filo della pagina resta fermo per gran parte del fotogramma: la pompa costruisce in quel tempo libero
+  // (requestIdleCallback: il navigatore dice quanto ce n'è prima del fotogramma dopo), e quando il lavoratore risponde riparte subito,
+  // non al fotogramma dopo. Lavora solo finché c'è un blocco da fare entro il raggio (in pari: niente). ?nopompa: come prima
+  const POMPA = { on: typeof window !== 'undefined' && !/[?&]nopompa\b/.test(location.search), chiesta: false, coda: [], passi: 0, giri: 0, scaduti: 0, ms: 0, t: 0, fms: 16 };
+  const RIC = typeof requestIdleCallback === 'function';
+  const vicinoManca = () => (ISO.job && ISO.job.near) || (POMPA.coda.length > 0 && POMPA.coda[0][0] < 70);
+  function chiediPompa() {
+    if (!POMPA.on || POMPA.chiesta || (!ISO.job && !POMPA.coda.length)) return; POMPA.chiesta = true;
+    if (RIC) requestIdleCallback(pompa, { timeout: vicinoManca() ? 100 : 400 }); else setTimeout(() => pompa(null), 16);   // senza requestIdleCallback (Safari): un giro corto ogni 16 ms
+  }
+  function pompa(dl) {
+    POMPA.chiesta = false; POMPA.giri++; if (dl && dl.didTimeout) POMPA.scaduti++; const t0 = performance.now();
+    // quanto tempo resta: il tempo libero che dice il navigatore (al più 12 ms, 2 di margine); a scadenza (il navigatore non è mai fermo)
+    // 4 ms solo se manca un blocco vicino, se no niente; senza requestIdleCallback 5 ms
+    const resta = J => { const el = performance.now() - t0; return !dl ? 5 - el : dl.didTimeout ? (J.near ? 4 : 0) - el : Math.min(12 - el, dl.timeRemaining() - 2); };
+    let n = 0, att = false;
+    while (true) {
+      let J = ISO.job;
+      if (!J) { const c = POMPA.coda.shift(); if (!c) break; const ch = ISO.chunks.get(c[3]); if (ch && ch.rev === ISO.rev) continue; J = ISO.job = nuovoBlocco(c[1], c[2], c[3], c[0]); }
+      if (resta(J) <= 0) break;
+      const r = passoBlocco(J); n++;
+      if (r === 'attesa') { att = true; break; }
+    }
+    POMPA.passi += n; POMPA.ms += performance.now() - t0;
+    if (att) Calcolo.quando(chiediPompa); else chiediPompa();   // [calcolo] aspetta il lavoratore: riparte quando risponde
+  }
+  ISO.pompa = POMPA;
+  function vegMonta() { if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} }; return VEGR; }   // [vegetazione] il verde attorno alla camera
+  // [arrivo] NEL CARICAMENTO, prima che main.js compili i programmi della scena: il blocco del terreno sotto la camera (tutto d'un fiato:
+  // dipinto, luce, pavimenti, piante, bosco, verde) e il verde nuovo (vegetazione.js) entrano in scena. Così i loro programmi (il suolo coi
+  // pavimenti, il più lungo di tutti; le chiome, il prato, la luce) si compilano col resto, dietro la schermata di caricamento: prima
+  // nascevano col primo blocco a gioco iniziato, e con PesoPronti.vivo il suolo e le piante restavano fuori finché la scheda video non li
+  // aveva compilati (sull'Iris Xe, con Direct3D, secondi). Gli altri blocchi vicini li fa la pompa mentre arrivano i tasselli. ?noarrivo: come prima
+  function preparaArrivo() {
+    if (typeof location !== 'undefined' && /[?&]noarrivo\b/.test(location.search)) return; const t0 = performance.now();
+    if (ISO.base && G && M.world) try { const W = ISO.CH * TS, ci = Math.floor(cam.x / W), cj = Math.floor(cam.y / W), key = ci + ',' + cj;
+      if (ci >= 0 && cj >= 0 && ci < Math.ceil(G.GW / ISO.CH) && cj < Math.ceil(G.GH / ISO.CH) && !ISO.chunks.has(key)) { const J = { key, near: true, t0, ms: 0, fr: 0, att: 0 }; ISO.chunks.set(key, buildChunk(ci, cj)); J.ms = performance.now() - t0; arrivoFatto(J); } } catch (e) { console.warn('[arrivo] blocco', e); }
+    try { if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { vegMonta(); VEGR.aggiorna(cam.x, cam.y, 0); } } catch (e) { console.warn('[arrivo] verde', e); }
+    ARR.prepara = Math.round(performance.now() - t0);
+  }
   // carica i blocchi vicini alla camera (uno per fotogramma, il più vicino prima) e scarica quelli lontani
   function updateChunks(cx, cz) {
     const W = ISO.CH * TS, NCX = Math.ceil(G.GW / ISO.CH), NCY = Math.ceil(G.GH / ISO.CH);
-    let best = null, bd = 1e9;
+    let best = null, bd = 1e9; const CO = POMPA.coda; CO.length = 0;
     const RL = PHONE && scene.fog ? Math.max(70, Math.min(135, scene.fog.far + 8)) : 135, RB = PHONE ? RL + 20 : 190;   // [scarico] sul telefono i blocchi fino alla nebbia (oltre c'è solo il suo colore), e fuori 20 m dopo
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
       if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on || PHONE ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on || PHONE ? 26 : 44); }   // [verde]
       if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on || PHONE ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
-      if (d < RL) { if ((!ch || ch.rev !== ISO.rev) && d < bd) { bd = d; best = [ci, cj, key]; } }
+      if (d < RL) { if (!ch || ch.rev !== ISO.rev) { if (d < bd) { bd = d; best = [ci, cj, key]; } if (POMPA.on && (!ISO.job || ISO.job.key !== key)) CO.push([d, ci, cj, key]); } }   // [arrivo] la coda della pompa, per distanza
       else if (ch && d > RB) { dropChunk(ch); ISO.chunks.delete(key); }
     }
+    if (CO.length > 1) CO.sort((a, b) => a[0] - b[0]);
     // [fluido] un blocco alla volta, a fasi: lontano (si vede da 62 m) una fase quando c'è tempo; vicino almeno una per
     // fotogramma e, se il budget lo concede, di più. Il blocco vecchio resta finché il nuovo non è finito.
-    if (!ISO.job && best) ISO.job = { key: best[2], it: buildChunkGen(best[0], best[1]), near: bd < 70 };
-    const J = ISO.job;
-    if (J) { const t0 = performance.now(); let steps = 0;
-      while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && BUD.ok() && performance.now() - t0 < 4)) {
-        const tA = ISO.t1 = performance.now(), r = J.it.next(); steps++; J.n1 = (J.n1 || 0) + 1; if (typeof Anelli !== 'undefined') { const dA = performance.now() - tA; if (dA > 20) Anelli.picchi('blocco:' + J.n1 + (J.near ? ':vicino' : ''), dA); }   // [anelli] i passi lunghi dei blocchi
-        if (r.done) { const old = ISO.chunks.get(J.key); if (old) dropChunk(old); if (J.dirty) r.value.rev = -1; ISO.chunks.set(J.key, r.value); ISO.job = null; break; }   // cambiata la mappa a metà: si rifà
-        if (r.value === Calcolo.ATTESA) break;   // [calcolo] il blocco aspetta il lavoratore: si riprende al fotogramma dopo
+    // [arrivo] vicino (entro 70 m: si vede) fino a tettoV a fotogramma anche col tetto delle costruzioni pieno: succede solo finché manca un
+    // blocco attorno alla camera (in pari non costa niente); il resto lo fa la pompa nel tempo libero
+    if (!ISO.job && best) { ISO.job = nuovoBlocco(best[0], best[1], best[2], bd); if (CO.length && CO[0][3] === best[2]) CO.shift(); }
+    const J = ISO.job, tn = performance.now(); if (POMPA.t) POMPA.fms += (Math.min(250, tn - POMPA.t) - POMPA.fms) * .1; POMPA.t = tn;   // [arrivo] la durata media del fotogramma
+    // [arrivo] il tetto del blocco vicino: un quinto del fotogramma (6-16 ms). A 12 fotogrammi al secondo la scheda video è il collo di bottiglia e il processore aspetta: lì costa niente
+    const tettoV = POMPA.on ? Math.min(16, Math.max(6, POMPA.fms * .2)) : BUD.ok() ? 4 : 0;
+    if (J) { const t0 = performance.now(); let steps = 0; J.fr++;
+      while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && performance.now() - t0 < tettoV)) {
+        const r = ISO.rush ? Calcolo.tutto(() => passoBlocco(J)) : passoBlocco(J); steps++;   // [arrivo] nella schermata di caricamento i conti si fanno qui, d'un fiato: niente fotogrammi persi ad aspettare il lavoratore
+        if (r) break;   // fatto, o aspetta il lavoratore: si riprende al fotogramma dopo (o prima, con la pompa)
       }
       if (steps) BUD.add(performance.now() - t0, 'piante'); }
+    chiediPompa();
     if (ISO.baseMesh) {   // [inverno17] l'isola lontana si nasconde dove il blocco vero è caricato   // [fluido] ricomponendo l'indice della mesh sola
       const P = ISO.basePiece; let sig = 7, i = 0; for (const k in P) { i++; if (!ISO.chunks.has(k)) sig = (sig * 31 + i) % 2147483647; }   // un numero, non una stringa nuova a ogni fotogramma
       if (sig !== ISO.baseSig) { ISO.baseSig = sig; let n = 0; for (const k in P) if (!ISO.chunks.has(k)) n += P[k].length; const ix = new Uint32Array(n); let o = 0; for (const k in P) if (!ISO.chunks.has(k)) { ix.set(P[k], o); o += P[k].length; }
@@ -17818,7 +17878,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     ISO.rush = !!(ui && ui.intro) || PAVR1; ISO.menu = ISO.rush && !PAVR1 && ANL1();   // [anelli] nel menu i blocchi corrono, ma il menu resta vivo: 40 ms di blocchi per fotogramma, non un blocco intero   // [pavimenti] ?pavrush: gli strumenti senza scheda video vogliono il suolo vero subito   // [fluido] nella schermata iniziale i blocchi si fanno subito interi
     updateChunks(cam.x, cam.y);
     if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) {   // [vegetazione] il verde attorno alla camera
-      if (!VEGR) VEGR = Vegetazione.monta(scene, { W: M.world, groundH, telefono: PHONE || (LOWQ && LOWQ.on) }) || { aggiorna() {} };
+      vegMonta();
       VEGR.aggiorna(cam.x, cam.y, (st && st.t || 0) * 2.5); }
     horizonColor(night, dusk, tmpC);
     tmpC.lerp(FOGTEAL, (.22 - night * .16) * METEO.reg).multiplyScalar(1 - night * .45 * (1 - WXfog * .4)); /* [amb1] */ /* [luci5] il fondo di notte è nero */ scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
@@ -18371,5 +18431,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
