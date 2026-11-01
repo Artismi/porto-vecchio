@@ -247,7 +247,7 @@ var Scena = (function () {
     us.forEach(u => { const [x, z] = pos(u, o); if (ok(x, z) && profU(u) >= PMIN) out.tavoli.push({ x, z, u }); });   // [sporcherie] anche davanti a ogni tavolino 3 m liberi (il vicolo si stringe)
     if (out.tavoli.length) { const umin = Math.min(...out.tavoli.map(t => t.u)), umax = Math.max(...out.tavoli.map(t => t.u)); [umin - .75, umax + .75].forEach(u => { if (u < .3 || u > L - .3) return; const [x, z] = pos(u, o); if (ok(x, z) && profU(u) >= PMIN) out.fioriere.push({ x, z }); });
       if (prof >= 3) out.tavoli.filter((t, i) => i % 2 === 0).slice(0, 2).forEach(t => out.ombrelloni.push({ x: t.x, z: t.z })); }   // gli ombrelloni solo se c'è spazio (non sbattono sulla tenda)
-    { const [x, z] = pos(du + (du + 1 < L ? .75 : -.75), .35); out.lavagna = { x, z }; }
+    { const [x, z] = pos(du + (du + 1.5 < L ? 1.2 : -1.2), .35); out.lavagna = { x, z }; }   // [disposizione] la lavagna accanto al portone, fuori dal vano (a 75 cm stava davanti alla porta)
     if (out.use === 'gelateria' || out.use === 'bar') { const u = du + (du > L / 2 ? -1.1 : 1.1); if (u > .4 && u < L - .4) { const [x, z] = pos(u, .45); if (ok(x, z) && !out.tavoli.some(t => Math.hypot(t.x - x, t.z - z) < 1)) out.frigo = { x, z }; } }
     return out;
   }

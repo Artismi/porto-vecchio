@@ -69,9 +69,9 @@ var TettiVissuti = (function () {
     ombrellone: [{ k: 'sdraio', dx: -.7, dy: .2, ry: 0 }, { k: 'sdraio', dx: .7, dy: .2, ry: 0 }, { k: 'tavolino', dx: 0, dy: .48 }, { k: 'asta', dx: 0, dy: -.32 }, { k: 'telo', dx: 0, dy: -.32, cielo: 1 }],
     ombra: [{ k: 'sdraio', dx: -.36, dy: .3, ry: 0 }, { k: 'asta', dx: .5, dy: -.2 }, { k: 'telo', dx: .1, dy: -.2, cielo: 1 }, { k: 'vaso', dx: .62, dy: .52, v: 'geranio', opt: 1 }],   // una sdraio sola sotto l'ombrellone
     canniccio: [{ k: 'palo', dx: -1.15, dy: -.95 }, { k: 'palo', dx: 1.15, dy: -.95 }, { k: 'palo', dx: -1.15, dy: .95 }, { k: 'palo', dx: 1.15, dy: .95 }, { k: 'stuoia', dx: 0, dy: 0, cielo: 1 },
-      { k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.62, dy: 0, ry: -PI / 2 }, { k: 'sedia', dx: .62, dy: 0, ry: PI / 2, opt: 1 }],
+      { k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.62, dy: 0, ry: PI / 2 }, { k: 'sedia', dx: .62, dy: 0, ry: -PI / 2, opt: 1 }],   // [disposizione] il davanti della sedia è +z: girata di +90° guarda +x, verso il tavolino
     limone: [{ k: 'limone', dx: 0, dy: 0 }, { k: 'vaso', dx: .78, dy: .2, v: 'geranio' }, { k: 'vaso', dx: -.76, dy: .22, v: 'basilico', opt: 1 }],
-    pranzo: [{ k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.6, dy: 0, ry: -PI / 2 }, { k: 'sedia', dx: .6, dy: 0, ry: PI / 2 }, { k: 'vaso', dx: 0, dy: -.62, v: 'basilico', opt: 1 }],
+    pranzo: [{ k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.6, dy: 0, ry: PI / 2 }, { k: 'sedia', dx: .6, dy: 0, ry: -PI / 2 }, { k: 'vaso', dx: 0, dy: -.62, v: 'basilico', opt: 1 }],
     cisterna: [{ k: 'cisterna', dx: 0, dy: 0 }, { k: 'secchio', dx: .72, dy: .2, opt: 1 }],
   };
   // per quartiere: le scenette dei terrazzi abitati e di quelli calmi (pesate), i dettagli del tempo (quanti, con che probabilità)
@@ -170,6 +170,7 @@ var TettiVissuti = (function () {
     if (!CAT[it.k].piatto) for (const [A, Bq] of C.segs) if (segD(it, A, Bq) < CORR) return false;   // la pozza e il sale non sbarrano la strada: ci si passa sopra (ma non alle porte)
     return true;
   }
+  const SEDUTE = { sedia: 1, impagliata: 1, sdraio: 1 };   // [disposizione] il davanti è +z (la girata ry): lì ci vuole spazio
   const cosa = (C, k, x, y, ry, extra) => { const [hx, hy] = impronta(k, ry, extra && extra.s); return Object.assign({ k, x, y, ry: ry || 0, hx, hy, qz: C.tipo === 'piano' ? .08 : 0, bi: C.bi }, extra || {}); };
   function metti(C, it, o) { if (!libero(C, it, o)) return false; C.cose.push(it); return true; }
   // una scenetta: l'ancora su una griglia del terrazzo, quattro versi; le basse verso la camera (sud, est), le alte dietro (nord, ovest)
@@ -185,8 +186,10 @@ var TettiVissuti = (function () {
       const c = Math.cos(th), s = Math.sin(th), messi = [];
       let ok = true;
       for (const m of membri) {
-        const X = ax + m.dx * c + m.dy * s, Y = ay - m.dx * s + m.dy * c, it = cosa(C, m.k, X, Y, (m.ry || 0) + th, { scena: id, v: m.v, sopra: m.sopra, cielo: m.cielo ? CAT[m.k].cielo : undefined });
+        const X = ax + m.dx * c + m.dy * s, Y = ay - m.dx * s + m.dy * c, it = cosa(C, m.k, X, Y, (m.ry || 0) + th, { scena: id, sn: nome, v: m.v, sopra: m.sopra, cielo: m.cielo ? CAT[m.k].cielo : undefined });
         if (m.sopra) { const base = messi.find(q => q.k === m.sopra); if (!base) { ok = !!m.opt; continue; } it.qz = base.qz + CAT[base.k].h; }
+        if (SEDUTE[m.k]) { const dd = CAT[m.k].hy + .6, fx = X + Math.sin(it.ry) * dd, fy = Y + Math.cos(it.ry) * dd;   // [disposizione] chi si siede ha davanti il terrazzo, non il parapetto a mezzo metro
+          if (fx < R.x0 || fx > R.x1 || fy < R.y0 || fy > R.y1) { if (m.opt) continue; ok = false; break; } }
         const prima = C.cose.length; C.cose.push(...messi); const lib = libero(C, it, { scena: id, sopra: m.sopra }); C.cose.length = prima;
         if (lib) messi.push(it); else if (!m.opt) { ok = false; break; }
       }
@@ -430,6 +433,7 @@ var TettiVissuti = (function () {
       if (o.s && o.k !== 'colatura' && o.k !== 'sale') m.scale.setScalar(o.s); if (o.k === 'colatura') m.scale.set(1, o.s, 1);
       if (o.falda) { const ax = o.falda === 'S' || o.falda === 'N' ? 'x' : 'z', sg = o.falda === 'S' || o.falda === 'E' ? 1 : -1, P = TT.PIANO[T0.bi]; m.rotation.set(0, 0, 0); m.rotation[ax] = (ax === 'x' ? 1 : -1) * sg * P.pitch * .6; }   // il ciuffo segue un po' la falda
       m.position.set(o.x, top + (o.qz || 0), o.y); g.add(m);
+      if (K.sd) { m.userData.sdT = o.gronda ? 'gronda:' + o.k : o.falda || o.colmo ? 'falda:' + o.k : o.ciglio ? 'ciglio:' + o.k : FUORI[o.k] ? 'fuori:' + o.k : o.k; m.userData.sdChi = 'TettiVissuti:' + (o.sn || 'dettagli'); if (o.scena) m.userData.sdG = 'tv' + o.scena; }   // [disposizione] il tipo e la scenetta per la sonda
       if (o.k !== 'malta' && o.k !== 'colatura' && !o.falda && !o.colmo) { m.updateMatrixWorld(true); bx.setFromObject(m); SCATOLE.push({ bi: T0.bi, k: o.k, scena: o.scena, sopra: o.sopra, ciglio: o.ciglio, cielo: c.cielo, B: bx.clone(), top }); }
     });
     FATTI.add(T0.bi);
