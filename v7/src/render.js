@@ -11312,7 +11312,7 @@ var Render = (function () {
   // --- casse, barili, fusti ---
   function crate(x, z, rot, goods, y) {
     if (ARR3()) {   // [roba3d] la cassa a doghe di Arredo3D, aperta con la merce (pesce sul ghiaccio, bottiglie, frutta del colore dato) o inchiodata
-      const g = pm3('cassa', { merce: goods === 'fish' ? 'pesce' : goods === 'bottles' ? 'bottiglie' : goods || null });
+      const g = pm3('cassa', { merce: goods === 'fish' ? 'pesce' : goods === 'bottles' ? 'bottiglie' : goods === 'fruit' ? ['#d8402a', '#e8a030', '#d8c840', '#7aa83a'][Math.abs(Math.round(x * 3 + z * 7)) % 4] : goods && goods !== 'none' ? goods : null });   /* [dettaglio] 'fruit' e 'none' non sono colori (THREE.Color: Unknown color) */
       g.rotation.y = rot || 0; g.position.set(x, (y || 0) + groundH(x, z), z); const tag = newTag(); curTag = tag; addStatic(g); curTag = null; regProp(g, tag); return g; }
     // [pulizia] la cassa a doghe: dentro l'ombra, fuori tre doghe per lato con la luce fra l'una e l'altra, il coperchio a tre assi (si vede
     // dall'alto), i cantonali; prima era un cubo pieno con le stecche mezze sepolte dentro

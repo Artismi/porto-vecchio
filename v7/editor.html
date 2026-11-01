@@ -23487,7 +23487,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '8ad5bbe4831e5da1';</script>
-<script>window.PV_IMPRONTA_TASS = '76066f245860fe3a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '44814db9e7e62e5f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -84329,7 +84329,7 @@ var Render = (function () {
   // --- casse, barili, fusti ---
   function crate(x, z, rot, goods, y) {
     if (ARR3()) {   // [roba3d] la cassa a doghe di Arredo3D, aperta con la merce (pesce sul ghiaccio, bottiglie, frutta del colore dato) o inchiodata
-      const g = pm3('cassa', { merce: goods === 'fish' ? 'pesce' : goods === 'bottles' ? 'bottiglie' : goods || null });
+      const g = pm3('cassa', { merce: goods === 'fish' ? 'pesce' : goods === 'bottles' ? 'bottiglie' : goods === 'fruit' ? ['#d8402a', '#e8a030', '#d8c840', '#7aa83a'][Math.abs(Math.round(x * 3 + z * 7)) % 4] : goods && goods !== 'none' ? goods : null });   /* [dettaglio] 'fruit' e 'none' non sono colori (THREE.Color: Unknown color) */
       g.rotation.y = rot || 0; g.position.set(x, (y || 0) + groundH(x, z), z); const tag = newTag(); curTag = tag; addStatic(g); curTag = null; regProp(g, tag); return g; }
     // [pulizia] la cassa a doghe: dentro l'ombra, fuori tre doghe per lato con la luce fra l'una e l'altra, il coperchio a tre assi (si vede
     // dall'alto), i cantonali; prima era un cubo pieno con le stecche mezze sepolte dentro
