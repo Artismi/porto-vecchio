@@ -23049,7 +23049,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f368ebc0bbb03a54';</script>
-<script>window.PV_IMPRONTA_TASS = '7e7cac4a2300b9e4';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '3600a40f2713fac3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -70263,8 +70263,8 @@ var Pavimenti = (function () {
     // si leggono a 6-10 px allo zoom del gioco (≥ 25 cm), i giunti a un terzo di forza, niente grana sotto i 10 cm; il valore medio resta
     #ifdef TONE_MAPPING
     #define PV_CALMO
-    #define PV_JT .22
-    #define PV_BV .11
+    #define PV_JT .32   /* [calma] era .22: le pietre si leggono (il committente: «mancano le texture») */
+    #define PV_BV .15   /* era .11 */
     #else
     #define PV_JT .34
     #define PV_BV .16
@@ -85848,13 +85848,13 @@ var Render = (function () {
     const N1 = { proOmbra: [1, 1, 1], proLuce: [1, 1, 1], proSat: 1, proContrasto: 1 };   // i pro* neutri: il caldo vive solo nel sole e nel viraggio, non in cinque moltiplicatori in fila
     // sole e cielo (la luce), bordo (il controluce dei materiali), nebbia; esposizione; il viraggio (ombra ×, luce ×), saturazione, contrasto, vignetta;
     // il colore pieno (proPieno), i neri (proNeri), la tinta dell'ombra del sole (proTinta, proTintaK: il cielo che riempie l'ombra)
-    Object.assign(SGU.momenti.mattino,    { sole: '#ffe2b8', soleK: 1.36, cielo: '#9cc4f2', terra: '#b89a74', cieloK: .4, bordo: '#fff0dc', bordoK: .12, nebbia: '#e2dfd8', esp: 1.06, ombra: [.93, .94, 1.12], luce: [1.03, 1, .98], sat: 1.1, contrasto: 1.14, vign: .1 },  N1, { proPieno: .32, proNeri: .045, proTinta: '#5060cc', proTintaK: .26 });   // luce crema, ombra oltremare chiaro e lilla (mai grigia)
-    Object.assign(SGU.momenti.pomeriggio, { sole: '#ffe6c0', soleK: 1.38, cielo: '#9ec6f2', terra: '#bc9c74', cieloK: .38, bordo: '#fff0dc', bordoK: .12, nebbia: '#e4e0d8', esp: 1.06, ombra: [.93, .94, 1.12], luce: [1.03, 1, .98], sat: 1.1, contrasto: 1.14, vign: .1 },  N1, { proPieno: .32, proNeri: .045, proTinta: '#5858c8', proTintaK: .26 });   // sole pieno, ombre oltremare col lilla
+    Object.assign(SGU.momenti.mattino,    { sole: '#ffe2b8', soleK: 1.36, cielo: '#9cc4f2', terra: '#b89a74', cieloK: .4, bordo: '#fff0dc', bordoK: .12, nebbia: '#e2dfd8', esp: 1.06, ombra: [.93, .94, 1.12], luce: [1.03, 1, .98], sat: 1.1, contrasto: 1.14, vign: .1 },  N1, { proPieno: .32, proNeri: .04, proTinta: '#6e72b4', proTintaK: .24 });   // luce crema, ombra oltremare chiaro e lilla (mai grigia)
+    Object.assign(SGU.momenti.pomeriggio, { sole: '#ffe6c0', soleK: 1.38, cielo: '#9ec6f2', terra: '#bc9c74', cieloK: .38, bordo: '#fff0dc', bordoK: .12, nebbia: '#e4e0d8', esp: 1.06, ombra: [.93, .94, 1.12], luce: [1.03, 1, .98], sat: 1.1, contrasto: 1.14, vign: .1 },  N1, { proPieno: .32, proNeri: .04, proTinta: '#7270b4', proTintaK: .24 });   // sole pieno, ombre oltremare col lilla
     Object.assign(SGU.momenti.sera,       { sole: '#ffb47a', soleK: 1,    cielo: '#9a88c8', terra: '#a8826a', cieloK: .6,  bordo: '#ff9ec0', bordoK: .22, nebbia: '#d8a0ac', esp: 1.02, ombra: [.86, .88, 1.2],  luce: [1.05, .99, .93], sat: 1.0, contrasto: 1.12, vign: .16 }, N1, { proPieno: .3, proNeri: .05, proTinta: '#7a46a8', proTintaK: .26 });   // il tramonto rosa-magenta-arancio: arancio sui muri, magenta-viola nelle ombre, il bordo rosa
     Object.assign(SGU.momenti.notte,      { sole: '#9ab0e0', soleK: .34,  cielo: '#2a3360', terra: '#2a2230', cieloK: .4,  bordo: '#5ec8e8', bordoK: .18, nebbia: '#141a2c', esp: 1.12, ombra: [.9, .93, 1.14], luce: [1.1, 1, .86],   sat: 1.1, contrasto: 1.16, vign: .2 },  N1, { proPieno: .42, proNeri: .03, proTinta: '#3a3a78', proTintaK: .18, proEsp: 1.3 });   // blu profondo, il bordo ciano dei neon, le pozze al sodio restano calde
     SGU.ore = [[0, 'notte'], [5, 'notte'], [6.8, 'mattino'], [10.6, 'mattino'], [12.4, 'pomeriggio'], [17.8, 'pomeriggio'], [19, 'sera'], [20.4, 'sera'], [22, 'notte'], [24, 'notte']];   // le giornate lunghe d'inizio autunno: il giorno è il giorno
     SGU.pieno = .28; SGU.nitido = .45; SGU.nuvole = .08;   // [firma] il colore pieno sui toni già colorati (era .25)
-    Object.assign(SGU.pro, { vivo: .5, grana: PHONE ? 0 : .12, celle: .85, ombre: .7, suolo: .3, polvere: .55, pittura: .7 });   // [tratto] la luce a bande decisa (tre toni per faccia: il volume si legge), i muri più scuri al piede e più chiari in alto (poggiano a terra)   // [firma] la tavolozza viva più decisa; il suolo meno spento (era .55: −13% e macchie grigie) e meno polvere al piede (era .6): il grigio non è una soluzione   // la tavolozza viva nei medi; la micro-normale appena (in movimento sfarfallava); la luce a bande (celle) col confine che trema (sguProPezzi); l'ombra riempita dal cielo dell'ora
+    Object.assign(SGU.pro, { vivo: .5, grana: PHONE ? 0 : .12, celle: .8, ombre: .82, suolo: .3, polvere: .55, pittura: .7 });   /* [calma] l'ombra più ariosa (era .7: buchi blu scuri) */   // [tratto] la luce a bande decisa (tre toni per faccia: il volume si legge), i muri più scuri al piede e più chiari in alto (poggiano a terra)   // [firma] la tavolozza viva più decisa; il suolo meno spento (era .55: −13% e macchie grigie) e meno polvere al piede (era .6): il grigio non è una soluzione   // la tavolozza viva nei medi; la micro-normale appena (in movimento sfarfallava); la luce a bande (celle) col confine che trema (sguProPezzi); l'ombra riempita dal cielo dell'ora
     Object.assign(NIT, { tetti: .3, spalla: .05, ombraBordo: .06, quinta: .05, aria: .15, luce: .06, avanti: .25, sagome: .3, fuoco: .3, vicino: .14, ciglio: .45 });   // [tratto] la sagoma e il ciglio dalla profondità più leggeri: il pennarello per faccia e per categoria fa già le linee   // [firma] la spalla quasi via (sbiancava le luci), meno aria   // i tetti tengono il loro colore; niente bordi che fanno notte; la pozza sul personaggio appena (era un occhio di bue); il fuoco per profondità un filo (la sfocatura si legge come bassa qualità)
     AMB.film = .018;
     PROF.soleLato = [-68, -112]; PROF.soleAlto = [18, 33];   // [cat] il sole più basso: ombre lunghe che disegnano la via, sole/ombra ≥ 2,2:1   // il sole sempre in diagonale alle vie (prima correva lungo i caruggi e li riempiva d'ombra), ombre non troppo lunghe
@@ -85865,12 +85865,12 @@ var Render = (function () {
   // piano a retino Bayer davanti al personaggio; rollio: lo sbieco della camera (gradi, a piedi e sui mezzi).
   const PELL = { on: LOOK.on, gonfio: .045, gonfioFermo: .035, gonfioCorsa: .058, gonfioMezzi: .075, gonfioRegime: .03, gonfioOra: .045, pellicola: 1 };
   SGU.pellicola = PELL;
-  const AD = { on: LOOK.on, grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .22, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
+  const AD = { on: LOOK.on, grana: PHONE ? .014 : .022, tratto: 1, centro: 2.5, retino: .12, taglio: 1, tagliaR: .16, rollio: .9, rollioMezzi: 1.5 };   // il taglio: forza, altezza (m), raggio (frazione dell'altezza dello schermo); il rollio della camera (gradi)
   // [cat] la gerarchia per categoria (i materiali scrivono suolo, muro, tetto, persona nell'alfa; il passo grada e disegna le linee): forza su
   // muri (il tetto di saturazione), tetti (valore e colore stretti), suolo (più scuro al sole), persone (colore e contrasto); le linee
   // (persone, ciglio tetto-muro, piede muro-suolo) e il loro spessore in pixel della scena. ?nocat spegne; window.__CAT dal vivo
   const RIV = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]noriv\b/.test(location.search)), base: .78, v: .9, want: .9, t: 0 };   // [riv] lo stato della rivoluzione (vedi sguPasso); base: la strada quando la scena dei graffiti è ancora vuota
-  const CAT = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nocat\b/.test(location.search)), muri: 1, tetti: 1, suolo: 1, persone: 1, bordoPersone: .55, lineaPersone: .95, ciglio: .85, piede: .7, spessore: 1, trama: .7 };   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
+  const CAT = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nocat\b/.test(location.search)), muri: 1, tetti: 1, suolo: 1, persone: 1, bordoPersone: .55, lineaPersone: .95, ciglio: .85, piede: .7, spessore: 1, trama: .35 };   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; window.__CAT = CAT; window.__RIV = RIV; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
@@ -86082,10 +86082,10 @@ ${OM}
   if ( sgP5.w > 0. && sgOmbra < .98 ) {   // [ad] IL RETINO: l'ombra stampata. Puntini a 45° di 32 cm sul piano della superficie (ancorati al muro, non allo
     // schermo), più grandi dove l'ombra è piena, nel colore del cielo dell'ora; sotto i 3 px di cella si spengono (niente moiré)
     vec3 sgAn = abs( sgNw ); vec2 sgHp = sgAn.y > max( sgAn.x, sgAn.z ) ? vSgW.xz : ( sgAn.x > sgAn.z ? vSgW.zy : vSgW.xy );
-    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .32 ); vec2 sgFw = fwidth( sgHp );   // [ad] 32 cm: si legge dalla camera di gioco (a 14 cm si spegneva)
+    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .22 );   /* [calma] 22 cm (era 32: i pois) */ vec2 sgFw = fwidth( sgHp );   // [ad] 32 cm: si legge dalla camera di gioco (a 14 cm si spegneva)
     float sgOn = 1. - smoothstep( .25, .4, max( sgFw.x, sgFw.y ) ), sgR = sqrt( 1. - sgOmbra ) * .42, sgDt = length( fract( sgHp ) - .5 );
     float sgDot = 1. - smoothstep( sgR - .07, sgR + .07, sgDt );
-    reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( 1. ), sgP3.rgb * 2.2, .5 ) * ( sgDot - .45 ) * sgP5.w * sgOn * ( 1. - sgOmbra ); }
+    reflectedLight.indirectDiffuse += diffuseColor.rgb * mix( vec3( 1. ), sgP3.rgb * 1.6, .25 ) * ( sgDot - .45 ) * sgP5.w * sgOn * smoothstep( .35, .9, 1. - sgOmbra ); }   /* [calma] quasi tono su tono, solo nell'ombra piena */
 #endif
 #if NUM_DIR_LIGHTS > 0 && defined( SG_FOGLIA )
   if ( sgP1.w > 0. ) {   // il verde delle chiome (solo i materiali delle foglie: un muro o una persiana verde non si accendono): la luce che passa dal lato in ombra, il bordo, il cappello di luce in cima
@@ -86375,7 +86375,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             float gri = 1. - smoothstep(.05, .2, ch2), mid = smoothstep(.04, .25, lp) * (1. - smoothstep(.75, .98, lp));
             { float sole = smoothstep(.2, .42, lp) * gN.z, ombra = 1. - smoothstep(.1, .26, lp);   // [firma] IL GRIGIO NON È UNA SOLUZIONE: i neutri (asfalto, lastrico, cemento, intonaci spenti) prendono la luce
               c *= mix(vec3(1.), mix(vec3(1.035, 1.0, .95), vec3(1.1, 1.02, .85), sole), gri * mid);   // al sole: crema calda (il sole generoso della foto di strada)
-              c *= mix(vec3(1.), vec3(.95, .94, 1.1), gri * ombra * mid * gN.z); }                       // in ombra: oltremare e lilla, di giorno (la notte ha il suo blu)
+              c *= mix(vec3(1.), vec3(.975, .965, 1.05), gri * ombra * mid * gN.z); }   /* [calma] meno blu */                       // in ombra: oltremare e lilla, di giorno (la notte ha il suo blu)
             c = mix(c, c * vec3(.98, .94, 1.06) + vec3(.0, .0, .012), (1. - smoothstep(.02, .22, lp)) * gri);   // nel fondo un filo di cobalto: l'ombra ha un colore
             c = mix(vec3(lp), c, 1. + .14 * mid * smoothstep(.12, .4, ch2));                        // il colore pieno dove c'è già colore (i muri, le saracinesche, i vestiti, le auto)
             c *= mix(vec3(1.), vec3(1.015, 1.0, .98), smoothstep(.6, .95, lp));                    // [ad] le luci crema (B/R ≥ .84), non ocra
@@ -86403,8 +86403,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             { float k = wP * cK.w; vec3 c2 = max(mix(vec3(lq), c, 1.25), 0.); c2 = max((c2 - .42) * 1.15 + .42, 0.); c = mix(c, c2, k); }   // persone: più colore e più contrasto
             if (cL.x + cL.y + cL.z > 0. && eV > 0.) {   // [tratto] [vettore] IL PENNARELLO: dove cambia la categoria o la faccia, del colore della cosa, liscio
               float cMx = floor(floor(aMx + .5) / 6. + .001), cMn = floor(floor(aMn + .5) / 6. + .001);   /* le due cose che si toccano: la più «alta» e la più «bassa» */
-              float w = (cMx > 4.5 || cMn > 4.5) ? 0. : (cMx > 3.5 ? cL.x : (cMx > cMn + .5 ? (cMx > 2.5 ? cL.y : cL.z) : (cMx < 1.5 ? 0. : cL.y * .75)));   /* persone; ciglio; piede; spigolo fra due facce della stessa cosa (mai sul suolo) */
+              float w = (cMx > 4.5 || cMn > 4.5) ? 0. : (cMx > 3.5 ? cL.x : (cMx > cMn + .5 ? (cMx > 2.5 ? cL.y : cL.z) : (cMx < 1.5 ? 0. : cL.y * .3)));   /* persone; ciglio; piede; spigolo fra due facce della stessa cosa (mai sul suolo) */
               float ln = clamp(eV * w, 0., 1.);
+#ifdef SG_NIT
+              ln *= mix(1., .45, smoothstep(.22, .65, length((vUv - nB.xy) * vec2(src.x / src.y, 1.))));   /* [calma] lontano dal personaggio la linea si alleggerisce: l'occhio ha un centro */
+#endif
               c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), ln * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
           }
 #endif

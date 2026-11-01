@@ -188,8 +188,8 @@ var Pavimenti = (function () {
     // si leggono a 6-10 px allo zoom del gioco (≥ 25 cm), i giunti a un terzo di forza, niente grana sotto i 10 cm; il valore medio resta
     #ifdef TONE_MAPPING
     #define PV_CALMO
-    #define PV_JT .22
-    #define PV_BV .11
+    #define PV_JT .32   /* [calma] era .22: le pietre si leggono (il committente: «mancano le texture») */
+    #define PV_BV .15   /* era .11 */
     #else
     #define PV_JT .34
     #define PV_BV .16
