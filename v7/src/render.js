@@ -13712,9 +13712,14 @@ uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggi
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
-float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+${abGL(`float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
-              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }
+              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }`,
+`float sgH3c( float x, float y, float z ) { return fract( x * y * z * ( x + y + z ) ); }   // [ottimizza-gpu] l'hash di un vertice dai pezzi per asse già fatti
+float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+  vec3 a = fract( i * .3183099 + .1 ) * 17., b = fract( ( i + 1. ) * .3183099 + .1 ) * 17.;   // i pezzi per asse: 2 per asse invece di 8 (stesse operazioni per componente, stesso risultato)
+  return mix( mix( mix( sgH3c( a.x, a.y, a.z ), sgH3c( b.x, a.y, a.z ), f.x ), mix( sgH3c( a.x, b.y, a.z ), sgH3c( b.x, b.y, a.z ), f.x ), f.y ),
+              mix( mix( sgH3c( a.x, a.y, b.z ), sgH3c( b.x, a.y, b.z ), f.x ), mix( sgH3c( a.x, b.y, b.z ), sgH3c( b.x, b.y, b.z ), f.x ), f.y ), f.z ); }`)}
 #endif`;
     C.begin_vertex += `
 #if defined( STANDARD ) && defined( SG_FOGLIA )
@@ -13780,13 +13785,22 @@ if ( sgP1.x + sgP1.z > 0. ) {
   diffuseColor.rgb *= 1. + sgP1.z * ( sgT - .5 ) * vec3( .1, .02, -.08 );   // caldo e freddo, a macchie larghe
   if ( sgP8.z > 0. ) {   // [diorama] IL VISSUTO (era solo nella variante aaa): i tetti a chiazze di coppi nuovi e vecchi col muschio, le facciate con lo
     // sporco che sale dal piede a colature e la luce più pulita in alto. Pennellate larghe nel mondo, ferme: la mano del pittore, non un rumore
-    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
+${abGL(`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
     float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
     diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 );   // il muschio: verde spento, a chiazze
     float foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH ), sgW = sgV * sgP8.z;
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
-    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;   // le colature sotto le finestre
+    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;`,
+`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;   // [ottimizza-gpu] ogni rumore solo dove il suo peso non è zero (sul suolo nessuno dei due, sui muri solo st)
+    float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
+    if ( sgR > 0. ) { float n2 = sgN3( vSgW * 1.3 + 2.2 );
+      diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 ); }
+    float sgW = sgV * sgP8.z;
+    if ( sgW > 0. ) { float st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 ), foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
+      diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1; }`)}   // le colature sotto le finestre
   }
 }
 if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
@@ -13794,14 +13808,22 @@ if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
   // [scorcio] il riempimento di cielo sul suolo dell'ora (proSuolo del set, sera e notte): il lastricato in piano alla quota della camera
   // o sotto prende più luce, appena fredda (il cielo); i muri (le facce in piedi) e i tetti no, così non bruciano
   diffuseColor.rgb *= 1. + smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP5.z * vec3( .9, 1., 1.14 );
-  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
-  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+${abGL(`  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
   float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
   diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
   diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
-  // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
   float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
-  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );`,
+`  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+  float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
+  // [ottimizza-gpu] i due rumori solo dove servono: il suolo (sgSu) o il piede di un muro (la polvere è zero sopra 1,6 m, in piano, sotto -3,5 m)
+  if ( sgSu > 0. || ( sgP4.z > 0. && sgUp < .8 && sgH > -3.5 && sgH < 1.6 ) ) {
+    float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
+    diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
+    diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
+    // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
+    float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
+    diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) ); }`)}
 }
 ${AAA.on ? `if ( sgP6.x + sgP6.y > 0. ) {   // [look-aaa] la mano della variante
   vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, sgV = 1. - smoothstep( .45, .8, abs( sgUp ) );
