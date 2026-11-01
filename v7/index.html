@@ -23534,7 +23534,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '9ffefcbbeed09c25';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '76aa0755338ede02';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -62604,13 +62604,29 @@ var Writing = (function () {
   // scatto vicino ai muri dipinti). Qui una volta per riquadro: si tiene la mesh se almeno un triangolo tocca la scatola (con l'indice dei
   // raggi, three-mesh-bvh, se c'è e torna; se no triangolo per triangolo, nello spazio della mesh). Un raggio dentro la scatola può colpire
   // solo quei triangoli: stessi punti, stesso primo colpo, stesso risultato.
-  function nearTris(list, c, E) {
+  // [ottimizza] SOLO LE FOGLIE, A DOSI. nearTris serve solo a sfoltire la lista per i raggi: tenere una mesh in più non cambia nessun
+  // colpo (i raggi provano comunque i triangoli veri). Prima, con l'indice, la prova era triangolo per triangolo (MeshBVH.intersectsBox,
+  // la separazione degli assi per ogni triangolo delle foglie toccate): era il 91% del tempo dei graffiti, 100-1.500 ms in un passo solo
+  // (sull'Iris Xe l'«altro:ciclo» da 390-470 ms). Ora: la scatola d'ingombro prima di tutto; con l'indice basta che una FOGLIA tocchi la
+  // scatola (l'insieme tenuto è un po' più largo, i punti trovati sono gli stessi); le mesh che hanno svuotato le posizioni dopo l'invio
+  // (i tasselli leggeri: i raggi li fa rayTas coi suoi dati) restano in lista, come le mesh che non si possono provare. E il conto si
+  // ferma (yield) ogni 8 mesh e prima di costruire un indice: il tetto di tempo di scanNear tiene davvero. ?nofixgraffiti: come prima
+  const NTFIX = typeof location === 'undefined' || !/[?&]nofixgraffiti\b/.test(location.search);
+  function nearTris(list, c, E) { return finisci(nearTrisG(list, c, E)); }
+  const mancanti = () => typeof Tasselli !== 'undefined' && Tasselli.raggiMancanti ? Tasselli.raggiMancanti() : 0;
+  function* nearTrisG(list, c, E) {
     const THREE = T3(), out = [], B = GFX.ntB || (GFX.ntB = new THREE.Box3()), Bl = GFX.ntBl || (GFX.ntBl = new THREE.Box3()), M = GFX.ntM || (GFX.ntM = new THREE.Matrix4());
+    const OB = NTFIX && typeof MeshBVHLib !== 'undefined' && MeshBVHLib.OrientedBox ? (GFX.ntOB || (GFX.ntOB = new MeshBVHLib.OrientedBox())) : null;
+    const foglia = { intersectsBounds: box => OB.intersectsBox(box), intersectsRange: () => true };
     B.min.set(c.x - E, c.y - E, c.z - E); B.max.set(c.x + E, c.y + E, c.z + E);
+    let k = 0;
     for (const m of list) {
+      if (NTFIX && ++k % 8 === 0) yield;
       const g = m.geometry, pa = g && g.attributes && g.attributes.position;
       if (!pa || (m.userData && typeof m.userData.lazy1 === 'function') || m.isInstancedMesh || m.isSkinnedMesh || (g.morphAttributes && g.morphAttributes.position)) { out.push(m); continue; }
+      if (NTFIX && !(pa.array && pa.array.length)) { out.push(m); continue; }   // posizioni svuotate (tasselli leggeri): i raggi li fa la mesh stessa
       M.copy(m.matrixWorld).invert();
+      if (NTFIX && g.boundingBox && !g.boundingBox.intersectsBox(Bl.copy(B).applyMatrix4(M))) continue;   // fuori dalla scatola d'ingombro: nessun triangolo dentro
       const bt = g.boundsTree, vv = pa.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // l'indice vale se la geometria non è cambiata da quando è fatto (lo stesso numero di render.js, raggi veloci)
       // [momenti] cambiata (una cosa calciata via dalla mesh fusa, il pulitore): stessi triangoli in posti nuovi, l'indice si riadatta come
       // fanno i raggi veloci di render.js. Prima si provava triangolo per triangolo tutta la mesh fusa (decine di migliaia, centinaia di MB di numeri)
@@ -62621,9 +62637,13 @@ var Writing = (function () {
       if (!bt2 && nT >= 2700 && !g.__bvhNo && !(g.boundingBox && !g.boundingBox.intersectsBox(Bl.copy(B).applyMatrix4(M))) && !pa.isInterleavedBufferAttribute && !(dr.start > 0) && !(dr.count !== Infinity && dr.count < nT) && typeof MeshBVHLib !== 'undefined') {
         // [compenetra] l'indice della fusa compattata (leggera_memoria.js, lmFisso) è la mappa dei pezzi delle case (lmDec): MeshBVH lo
         // riordinava sul posto e le case rifatte prendevano i triangoli delle vicine (come render.js bvhCopia1: l'indice spaziale su una copia)
+        if (NTFIX) { yield; M.copy(m.matrixWorld).invert(); }   // [ottimizza] l'indice nuovo in un passo suo
         const gB = g.index && g.index.lmFisso ? (() => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]); c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; })() : g;
-        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(gB); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
-      if (bt2 && g.__bvhVer === vv) { const bt = bt2; try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(gB); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; }
+        if (NTFIX) yield; }
+      if (bt2 && g.__bvhVer === vv) { const bt = bt2;
+        if (OB) { try { OB.set(B.min, B.max, M); OB.needsUpdate = true; if (bt.shapecast(foglia)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
+        try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
       Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
       const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
       if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
@@ -62659,7 +62679,7 @@ var Writing = (function () {
   function fitWall(c, n, W, H, list, opt) { return finisci(fitWallG(c, n, W, H, list, opt)); }
   function* fitWallG(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
-    const L = nearTris(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
+    const L = yield* nearTrisG(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);
@@ -62678,16 +62698,20 @@ var Writing = (function () {
     // i bordi: mezzo passo più in là, se anche lì è tutto muro (la griglia è rada)
     const colOk = u => vs.filter(v => v >= v0 - 1e-6 && v <= v1 + 1e-6).every(v => onPlane(P(u, v), n, L, O, foot)), rowOk = v => us.filter(u => u >= u0 - 1e-6 && u <= u1 + 1e-6).every(u => onPlane(P(u, v), n, L, O, foot));
     const su = W / (NX - 1) / 2, sv = H / (NY - 1) / 2;
-    yield; if (best.i0 > 0 && colOk(u0 - su)) u0 -= su; if (best.i1 < NX - 1 && colOk(u1 + su)) u1 += su;
-    if (best.j0 > 0 && rowOk(v0 - sv)) v0 -= sv; if (best.j1 < NY - 1 && rowOk(v1 + sv)) v1 += sv;
+    yield; if (best.i0 > 0 && colOk(u0 - su)) u0 -= su; if (NTFIX) yield; if (best.i1 < NX - 1 && colOk(u1 + su)) u1 += su;
+    if (NTFIX) yield; if (best.j0 > 0 && rowOk(v0 - sv)) v0 -= sv; if (NTFIX) yield; if (best.j1 < NY - 1 && rowOk(v1 + sv)) v1 += sv;   // [ottimizza] un bordo per passo
     // le proporzioni: un lavoro non si stira; si tiene la misura voluta dentro il buono, centrata dove c'è più muro
     let w = Math.min(u1 - u0, W), h = Math.min(v1 - v0, H); if (Math.min(w / W, h / H) < minK) return null;
     if (!o2.free) { const kw = w / W, kh = h / H; if (kw > kh * 1.6) w = W * kh * 1.6; else if (kh > kw * 1.6) h = H * kw * 1.6; }   // non si stira oltre 1,6
     const cu = clamp(0, u0 + w / 2, u1 - w / 2), cvv = clamp(0, v0 + h / 2, v1 - h / 2);
     let out = { c: P(cu, cvv), r, W: w, H: h };
     // la prova finale: i bordi e il dentro punto per punto (5 × 4, come la sonda); se qualcosa non torna si stringe
-    for (let t = 0; t < 4; t++) { yield; if (rectOnWall(out.c, n, r, out.W, out.H, L, O, foot)) return out; out = { c: out.c, r, W: out.W * .88, H: out.H * .88 }; if (Math.min(out.W / W, out.H / H) < minK) return null; }
+    for (let t = 0; t < 4; t++) { yield; if (NTFIX ? yield* rectOnWallG(out.c, n, r, out.W, out.H, L, O, foot) : rectOnWall(out.c, n, r, out.W, out.H, L, O, foot)) return out; out = { c: out.c, r, W: out.W * .88, H: out.H * .88 }; if (Math.min(out.W / W, out.H / H) < minK) return null; }
     return null;
+  }
+  function* rectOnWallG(c, n, r, W, H, list, O, foot) {   // [ottimizza] la stessa prova, una colonna (4 raggi) per passo
+    const THREE = T3(); for (let i = 0; i < 5; i++) { if (i) yield; for (let j = 0; j < 4; j++) { const u = (i / 4 - .5) * W, v = (j / 3 - .5) * H; if (!onPlane(new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), n, list, O, foot)) return false; } }
+    return true;
   }
   function rectOnWall(c, n, r, W, H, list, O, foot) {
     const THREE = T3(); for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) { const u = (i / 4 - .5) * W, v = (j / 3 - .5) * H; if (!onPlane(new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), n, list, O, foot)) return false; }
@@ -62878,7 +62902,7 @@ var Writing = (function () {
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
-      ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
+      ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; ARTW.morto = performance.now(); const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
       return (ARTW.ok = true);
     } catch (e) { return (ARTW.ok = false); }
   }
@@ -62888,7 +62912,12 @@ var Writing = (function () {
     const k = artKey(w), C = ARTW.cache.get(k);
     if (C) { ARTW.cache.delete(k); ARTW.cache.set(k, C); cb(Object.assign({}, C, { stages: C.stages.slice() })); return; }
     const sync = () => cb(art(w));
-    if (!artWorker()) { sync(); return; }
+    // [ottimizza] il disegno sul filo della pagina costa 50-200 ms (700 in SwiftShader): mai subito, mai in fila stretta. Se il disegnatore
+    // a parte è caduto si riaccende (al più due volte, 20 s dopo); se non c'è (navigatore senza Worker/OffscreenCanvas) o non ce la fa,
+    // il lavoro va in coda (ARTW.q) e scanNear ne fa al più uno ogni 2 s. Lo stesso disegno, solo più tardi. ?nofixgraffiti: come prima
+    const coda = () => ARTW.q.push(() => { try { sync(); } catch (e) { cb(null); } });
+    if (NTFIX && ARTW.ok === false && ARTW.morto && performance.now() - ARTW.morto > 20000 && (ARTW.rinasce || 0) < 2) { ARTW.rinasce = (ARTW.rinasce || 0) + 1; ARTW.ok = null; ARTW.morto = 0; try { ARTW.w && ARTW.w.terminate(); } catch (e) { } ARTW.w = null; }
+    if (!artWorker()) { if (NTFIX) coda(); else sync(); return; }
     const WM = typeof WriterMano !== 'undefined' ? WriterMano : { RECORDED: {}, MIA: null };
     const sig = Object.keys(WM.RECORDED).length + ':' + (WM.MIA || ''), msg = { id: ++ARTW.seq, w: {} };
     for (const key in w) if (key !== 'gfxRect') msg.w[key] = w[key];
@@ -62896,7 +62925,7 @@ var Writing = (function () {
     let fired = false;
     ARTW.wait.set(msg.id, (A, err) => {
       if (fired) return; fired = true; if (A) ARTW.lastOk = performance.now();
-      if (!A) { sync(); return; }   // non è riuscito di là: si fa qui
+      if (!A) { if (NTFIX) coda(); else sync(); return; }   // non è riuscito di là: si fa qui ([ottimizza] in coda, a rate)
       if (w.done) { ARTW.cache.set(k, A); while (ARTW.cache.size > 48) ARTW.cache.delete(ARTW.cache.keys().next().value); }
       cb(Object.assign({}, A, { stages: A.stages.slice() }));
     });
@@ -62910,7 +62939,7 @@ var Writing = (function () {
     const tmo = () => setTimeout(() => { if (fired || !ARTW.wait.has(msg.id)) return; const nw = performance.now();
       if (ARTW.ok && nw - (ARTW.vivo || ARTW.t0) < 30000) { tmo(); return; }
       ARTW.wait.delete(msg.id); fired = true; ARTW.late = (ARTW.late || 0) + 1;
-      if (!ARTW.lastOk && ARTW.late >= 3 && ARTW.ok) { ARTW.ok = false; try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non risponde: i graffiti si disegnano nel gioco'); }
+      if (!ARTW.lastOk && ARTW.late >= 3 && ARTW.ok) { ARTW.ok = false; ARTW.morto = performance.now(); try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non risponde: i graffiti si disegnano nel gioco'); }
       ARTW.q.push(() => { try { sync(); } catch (e) { cb(null); } }); }, 4000);   // in coda: uno alla volta dentro il tempo dei graffiti
     tmo();
   }
@@ -64001,11 +64030,11 @@ var Writing = (function () {
   // fotogrammi: 1 ms a fotogramma di regola, 5 di corsa (prima 6 e 30 ms tutti in un fotogramma ogni 150 ms: uno scatto ogni 9
   // fotogrammi, e sul telefono «di corsa» durava finché attorno c'erano meno di 12 lavori disegnati, cioè quasi sempre fuori città)
   function scanList(st, W, cx, cy, now, force) {
-    if (RUSH.cx == null || hyp(cx - RUSH.cx, cy - RUSH.cy) > 60) { RUSH.until = now + 12000; W.works.forEach(w => { if (w.gfxFail > 3 && !w.gfxRect) w.gfxFail = 2; }); }   // partita nuova o salto: si riempie di corsa ([graffiti] e chi non aveva trovato il muro riprova: il settore magari non c'era)
+    if (RUSH.cx == null || hyp(cx - RUSH.cx, cy - RUSH.cy) > 60) { RUSH.until = now + 12000; GFX.ko = 0; W.works.forEach(w => { if (w.gfxFail > 3 && !w.gfxRect) w.gfxFail = 2; }); }   // partita nuova o salto: si riempie di corsa ([graffiti] e chi non aveva trovato il muro riprova: il settore magari non c'era)
     RUSH.cx = cx; RUSH.cy = cy;
     const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } if (w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); return [w, v && !v.hidden ? hyp(v.x - cx, v.y - cy) : 1e9]; }   /* [graffiti] il mezzo: dov'è adesso */ return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
     let shown = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.mesh && hyp(g.tgt.mesh.position.x - cx, g.tgt.mesh.position.z - cy) < 40) shown++; }
-    return { near, rush: force || now < RUSH.until || (shown < 12 && near.length > 0) };
+    return { near, rush: force || ((now < RUSH.until || (shown < 12 && near.length > 0)) && !(NTFIX && (GFX.ko || 0) >= 4)) };   // [ottimizza] di corsa solo se i piazzamenti riescono
   }
   function scanNear(st, cx, cy, opt) {
     const W = S(st), now = performance.now(), force = !!(opt && opt.force);
@@ -64015,11 +64044,13 @@ var Writing = (function () {
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
     let n = 0; const t0 = performance.now();
-    for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
+    if (NTFIX && !force) { if (ARTW.q.length && now - (ARTW.qT || 0) > 2000) { ARTW.qT = now; ARTW.q.shift()(); } }   // [ottimizza] i disegni rimasti indietro: al più uno ogni 2 s
+    else for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
     for (; GFX.scanI < near.length; GFX.scanI++) { const w = near[GFX.scanI];
       if (performance.now() - t0 > cap) break;   /* [fluido] al massimo 1 ms di graffiti nuovi a fotogramma (di corsa 5) */
       const CB = typeof window !== 'undefined' && window.Costruzioni; if (!rush && CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
       if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
+      if (NTFIX && w.__gfxWait > now && !force) continue;   // [ottimizza] fallito da poco, o i dati dei raggi del tassello non ancora arrivati: si riprova dopo
       if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
       if (ARTW.pend.size >= (rush ? 24 : 8)) break;   // [graffiti2] non più di tanti in coda al disegnatore
       if ((GFX.mem.vivi || 0) + ARTW.pend.size >= VEIL_MAX() && w.surf !== 'treno') break;   // [graffiti] il tetto dei veli: i più vicini hanno già il loro
@@ -64029,10 +64060,17 @@ var Writing = (function () {
       if (w.surf === 'vagone') { if (!w.gfxRect) { const rc2 = wagRect(w); if (!rc2) continue; w.gfxRect = rc2; } w.pos = { x: w.gfxRect.c.x, y: w.gfxRect.c.y, z: w.gfxRect.c.z }; ready(A => { const g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; }); n++; continue; }   // [ferrovia] sui carri fermi
       const sp = w.surf === 'auto' ? (st.vehicles.find(x => x.id === w.veh) || null) : w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (!sp || hyp(sp.x - cx, sp.y - cy) > 80) continue;
       if (!w.gfxRect) {   // [audit] a dosi: il lavoro in corso si riprende al fotogramma dopo (vedi fitWallG)
-        if (!GFX.pw || GFX.pw.w !== w) GFX.pw = { w, it: placeWallG(w) };
+        if (!GFX.pw || GFX.pw.w !== w) GFX.pw = { w, it: placeWallG(w), m0: mancanti() };
         const tp = performance.now(); let r; do r = GFX.pw.it.next(); while (!r.done && performance.now() - t0 < cap); if (CB) CB.add(performance.now() - tp, 'graffiti');
         if (!r.done) break;
-        GFX.pw = null; if (!r.value) { w.gfxFail = (w.gfxFail || 0) + 1; continue; } }
+        const m0 = GFX.pw.m0; GFX.pw = null;
+        if (!r.value) {
+          // [ottimizza] un raggio ha toccato un tassello leggero senza i suoi dati (arrivano al volo, tasselli.js rayTas): non è un muro che
+          // manca, è un muro che non si vede ancora; si riprova fra 1,5 s senza contarlo fallito. Un fallimento vero si riprova più tardi
+          // a ogni volta (1, 2, 3 s), non al giro dopo; e quattro fallimenti di fila spengono la corsa (scanList)
+          if (NTFIX && mancanti() !== m0) { w.__gfxWait = performance.now() + 1500; GFX.attese = (GFX.attese || 0) + 1; continue; }
+          w.gfxFail = (w.gfxFail || 0) + 1; if (NTFIX) { w.__gfxWait = performance.now() + 1000 * w.gfxFail; GFX.ko = (GFX.ko || 0) + 1; } continue; }
+        GFX.ko = 0; }
       ready(A => { const tv = performance.now(), g = { art: A, drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; drawUpTo(w, g); if (CB) CB.add(performance.now() - tv, 'graffiti'); }); n++;
     }
     return n;
@@ -72100,7 +72138,7 @@ var Tasselli = (function () {
   // Le mesh opache tengono le posizioni (e l'indice) dopo l'invio alla scheda video: i graffiti cercano il muro coi raggi (writing.js
   // rayWall, render.js bmbCands). Una mesh di tassello è grande (tutto un materiale di 48 m): la prima volta che un raggio la tocca si fa
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
-  const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
+  const RG = { manca: 0, cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
   function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
@@ -72123,7 +72161,7 @@ var Tasselli = (function () {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
-    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; return; } } }   // [leggera] i dati dei raggi arrivano al volo
+    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; RG.manca++; return; } } }   /* [ottimizza] RG.manca: chi tira raggi (writing.js) sa che il «niente» è solo «non ancora» */   // [leggera] i dati dei raggi arrivano al volo
     if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
@@ -72558,7 +72596,7 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->

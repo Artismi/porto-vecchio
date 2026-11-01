@@ -244,7 +244,7 @@ var Tasselli = (function () {
   // Le mesh opache tengono le posizioni (e l'indice) dopo l'invio alla scheda video: i graffiti cercano il muro coi raggi (writing.js
   // rayWall, render.js bmbCands). Una mesh di tassello è grande (tutto un materiale di 48 m): la prima volta che un raggio la tocca si fa
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
-  const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
+  const RG = { manca: 0, cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
   function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
@@ -267,7 +267,7 @@ var Tasselli = (function () {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
-    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; return; } } }   // [leggera] i dati dei raggi arrivano al volo
+    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; RG.manca++; return; } } }   /* [ottimizza] RG.manca: chi tira raggi (writing.js) sa che il «niente» è solo «non ancora» */   // [leggera] i dati dei raggi arrivano al volo
     if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
@@ -702,6 +702,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
