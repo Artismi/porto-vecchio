@@ -260,3 +260,31 @@ Con 1-4 il processore sull'Iris Xe torna al suo ciclo (32-48 ms, poi meno con 6-
 **Per verificare sull'Iris Xe dopo ogni passo**: `?leggera&perf`, F3; la riga `altro[frame@…]:ciclo` (dopo C4: `writing:ciclo`)
 deve sparire dalla classifica e l'«attesa» scendere al tempo della scheda video meno quello del gioco.
 Qui: `node strumenti/sonda_cicli.js --fasi=fermo:30,cammina:45,fermo2:25` (con `--nodraw` per i tempi del solo processore).
+
+---
+
+## 3. Fatto (1 novembre, notte) — prima e dopo
+
+Misure con `strumenti/sonda_cicli.js --nodraw` (solo processore, macchina condivisa con altre sonde: contano i rapporti).
+
+| passo | commit | prima | dopo |
+| --- | --- | --- | --- |
+| C1 graffiti a runtime: prova delle foglie in `nearTris`, yield veri, niente disegno sul filo, attese dei dati dei raggi dei tasselli, niente corsa se si fallisce | `[ottimizza] Graffiti: …` | `writing frame` fermo **410 ms**/fotogramma (max 2,2 s), a piedi **782 ms** | fermo **18 ms** (max 333), a piedi **19 ms** (max 208, poi 73 con la prova finale a passi); fotogrammi nella stessa finestra 48 → 113 e 43 → 180 |
+| C1 graffiti piazzati: in gioco coi tasselli leggeri | idem | 0-1 lavori sul muro dopo 75 s (il primo raggio non trovava i dati dei raggi: «niente») | 6 lavori sul muro in 30 s; i dati dei raggi arrivano (riaperture) e il tentativo si ripete invece di fallire |
+| C1 i graffiti di partenza cotti coi tasselli | `[ottimizza] I graffiti di partenza cotti …` | ~1.500 lavori vecchi nati a caso e piazzati coi raggi a gioco iniziato | piazzati nella cottura (`tasselli/graffiti.json`), in gioco solo i vettori; i lavori nuovi restano a runtime |
+| C2 bottino a campioni | `[ottimizza] Bottino: …` | a piedi picco **33,6 ms**, media 0,62; un cestino 78-267 ms a modello | picco **3,2 ms**, media 0,31 (le copie dividono geometrie e materiali) |
+| graffiti per terra (segnalazione: galleggiano) | `[graffiti] Per terra sul suolo vero` | piano orizzontale +1,2 cm: angoli fino a +7,7 cm sospesi | piano adattato al suolo vero (5 raggi), angoli a 0,1-0,3 cm (peggio 2,5) |
+| C3 ombre compilate nel caricamento | `[ottimizza] Le ombre nel caricamento` | 8 programmi di profondità nati a gioco iniziato (ognuno uno scatto: sull'Iris Xe 0,1-0,5 s); `getProgramParameter` 11,5 s di attesa nel primo minuto (SwiftShader) | 0 programmi d'ombra nuovi (resta `pesoBagliori1`, di notte); 7,1 s |
+| C4 cicli dei moduli col tetto a 30, neve dei blocchi a passi | `[ottimizza] I cicli dei moduli rispettano il tetto a 30` | col tetto a 30 i cicli dei moduli giravano a 60; `pompa` con picchi di 424 ms (un `snowPass` intero) | i giri saltati da main.js li saltano anche loro (non misurabile in SwiftShader: qui i fotogrammi superano sempre i 33 ms); `pompa` picco ~210 ms (resta la sfocatura, una chiamata) |
+| C7 pose | `[ottimizza] Pose: …` | `animPerson` a piedi 26 ms/fotogramma; sentinelle sempre posate (8,5-9,5 ms); dita 3,2-4,5 ms | 18,5 ms; sentinelle 0,7-1,1 ms; dita 1,8-2,5 ms |
+
+| **tutto insieme** (con i tasselli cotti stanotte coi graffiti di partenza e le ottimizzazioni GPU unite) | fino a `64d2e89` | `writing frame` fermo 410 ms, a piedi 782; fotogrammi in finestra 48 (35 s) e 43 (46 s); `main` 215 / 191 ms | `writing frame` fermo **1,5 ms**, a piedi **5,2 ms**; 744 lavori già sul muro all'avvio, zero raggi; fotogrammi 144 (33 s) e 257 (41 s); `main` 168 / 112 ms |
+
+Sull'Iris Xe questo vuol dire che l'«attesa» da 397-476 ms (il ciclo dei graffiti) sparisce: il fotogramma torna a gioco + scheda video.
+I tasselli con `graffiti.json` li cuoce il workflow (`tassella.js` → `tasselli/graffiti.json`, nell'archivio della release come il resto;
+`prendi_tasselli.sh` non cambia). Con tasselli di una cottura vecchia (senza `graffiti`) la storia dei muri si fa come prima, con i
+piazzamenti a runtime protetti da C1.
+
+I controlli (`?nofix…`) rimettono ogni passo com'era: `nofixgraffiti`, `nofixbottino`, `nofixsuolo`, `nofixombre`, `nofixgiri`,
+`nofixdita`, `nofixsentinelle`. Restano da fare (§2): C5 etichette, C6 visitatori, C8 passi lunghi dei blocchi (la sfocatura della
+neve), C9, C10-C13. La sonda gira con `node strumenti/sonda_cicli.js --nodraw`.
