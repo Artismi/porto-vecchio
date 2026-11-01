@@ -5419,6 +5419,9 @@ var Render = (function () {
     [-1, 1].forEach(s => epAt(fr, fB(.14, .24, deep - .2, shade(stone, .9), 'concrete', .015), u + s * (L / 2 - .2), y - .18, (deep - .2) / 2 - .02));
     epRinghiera(fr, u, y + .06, L - .04, h, iron, deep - .05);
     [-1, 1].forEach(s => { const g = new THREE.Group(); g.position.set(u + s * (L / 2 - .02), 0, (deep - .07) / 2); g.rotation.y = Math.PI / 2; fr.add(g); epRinghiera(g, 0, y + .06, deep - .1, h, iron, 0); });
+    if (ARR3()) { const P0 = fr.parent ? fr.parent.position : fr.position, r = rng((Math.round(P0.x * 13 + P0.z * 7 + u * 31 + y * 17) >>> 0) + 13);   // [vasi2] la vita del balcone: i vasi raccolti in un angolo (non sempre), sotto qualche balcone il vaso appeso; il seme dal posto del balcone
+      if (r() < .35) { const c = gruppoVasi2(r, { n: 1 + Math.floor(r() * 2), L: Math.min(1.1, L * .45), D: deep - .2, smax: .95, su: false, niente: ['urna', 'mosaico'] }), sd = r() < .5 ? -1 : 1; epAt(fr, c, u + sd * (L / 2 - .1 - c.userData.w / 2), y + .06, (deep - .1) / 2); }
+      if (r() < .22) { const h2 = pm3('vaso_appeso', { seed: Math.floor(r() * 1e5), L: .45 + r() * .2 }); epAt(fr, h2, u + (r() - .5) * (L - .8), y - .11, deep * .6); } }
   }
   // arco coi conci attorno a un vano: i piedritti e la ghiera di n conci, ognuno girato col suo angolo
   function epArco(fr, u, ySpr, R, dep, hex, n, yBase, zc) {
@@ -8784,12 +8787,15 @@ var Render = (function () {
       } else if (off) {   // officina o ferramenta: pila di gomme, fusto dell'olio, taniche
         const [x, z] = at(side * 1.7, .6); const g = G0(); for (let k = 0; k < 4; k++) B35.gomma(g, 0, 0, k * .22); B35.gomma(g, .75, .1, 0, .3); B35.fusto(g, -.8, 0, '#2a3a5a'); put(g, x, z, ry, 1.2, .45);
       } else if (b.shop) {   // un'altra bottega: la cassetta della frutta per le piante, la sedia del padrone
-        const [x, z] = at(side * 1.4, .5); const g = G0(); B35.sedia(g, 0, 0, 0, pick(rb, ['#5a4a3a', '#e8e4dc', '#2a4a6a'])); if (rb() < .6) B35.vaso(g, .6, 0, .3); put(g, x, z, ry, .6, .35);
+        const [x, z] = at(side * 1.4, .5); const g = G0(); B35.sedia(g, 0, 0, 0, pick(rb, ['#5a4a3a', '#e8e4dc', '#2a4a6a'])); if (rb() < .6) { if (ARR3()) { const v = vaso2(rb, .8 + rb() * .3); v.position.set(.6, 0, 0); g.add(v); } else B35.vaso(g, .6, 0, .3); } put(g, x, z, ry, .6, .35);   // [vasi2]
       } else {   // casa: i vasi ai lati della porta, la bici appoggiata, la bombola, la sedia di chi si siede al sole
         const k = rb();
-        if (NIT1()) {   // [nitida] nella città nuova la porta di casa ha al più i due vasi, uguali e simmetrici (una casa su tre): niente bici, bombole e sedie sparse a ogni portone
+        if (NIT1() && !ARR3()) {   // [nitida] nella città nuova la porta di casa ha al più i due vasi (una casa su tre): niente bici, bombole e sedie sparse a ogni portone
           if (k < .33) { const h = .3 + rb() * .1, col = pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a']); [-1, 1].forEach(s => { const [x, z] = at(s * 1.0, .3); const g = G0(); B35.vaso(g, 0, 0, h, col); put(g, x, z, ry, .22, .22); }); }
-        } else if (k < .55) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
+        } else if ((NIT1() ? k < .33 : k < .55) && ARR3() && rb() < .8) {   // [vasi2] non più due vasi uguali ai lati della porta: un gruppo raccolto da una parte, dall'altra a volte un vaso grande solo (nella città nuova una casa su tre)
+          const s2 = rb() < .5 ? -1 : 1, D2 = .56, grp = gruppoVasi2(rb, { n: 2 + Math.floor(rb() * 2), L: 1.25, D: D2 }), hw = grp.userData.w / 2; const [x, z] = at(s2 * (.72 + hw + rb() * .25), D2 / 2 + .04); put(grp, x, z, ry, hw, D2 / 2);
+          if (rb() < .2) { const v = vaso2(rb, 1.2 + rb() * .3), g = G0(); g.add(v); const [x2, z2] = at(-s2 * (.95 + rb() * .2), .32); put(g, x2, z2, ry, .3, .3); } }
+        else if (!NIT1() && k < .55 && !ARR3()) { [-1, 1].forEach(s => { if (rb() < .25) return; const [x, z] = at(s * (.95 + rb() * .2), .3); const g = G0(); B35.vaso(g, 0, 0, .26 + rb() * .16, pick(rb, ['#3f6a35', '#4f7e3a', '#5a7a3a', '#6a5a3a'])); put(g, x, z, ry, .22, .22); }); }
         if (k > .3 && rb() < .4) { const [x, z] = at(side * (1.6 + rb()), .32); const g = G0(); B35.bici(g, 0, 0, 0); put(g, x, z, ry, .65, .2);   /* [leggera] appoggiata lungo il muro: girata di 90° entrava per metà nella casa */ }
         else if (rb() < .25) { const [x, z] = at(side * 1.3, .3); const g = G0(); B35.bombola(g, 0, 0, pick(rb, ['#c84a2a', '#4a6a8a', '#a8a8a0'])); put(g, x, z, ry, .2, .2); }
         else if (rb() < .2) { const [x, z] = at(side * 1.3, .45); const g = G0(); B35.sedia(g, 0, 0, Math.PI, pick(rb, ['#5a4a3a', '#7a6a50'])); put(g, x, z, ry, .3, .3); }
@@ -10930,7 +10936,8 @@ var Render = (function () {
   // [modelli1] l'arredo di strada viene da Arredo3D (src/arredo3d.js): i modelli rifiniti (collegati, a terra, con viti, staffe e
   // cerniere), vestiti con l'atlante delle materie di [case] FORME (vernice scheggiata, zinco, legno, cemento...: un materiale solo
   // che si fonde con il resto della geometria statica). Restano a parte i vetri, le luci, i teli a due facce e le targhe scritte.
-  const KIND3 = { ghisa: 'paint', zinco: 'galv', vernice: 'paint', ottone: 'copper', legno: 'wood', cemento: 'concrete', pietra: 'concrete', plastica: 'plastic', gomma: 'rubber', tela: 'cloth', carta: 'paper', porcellana: 'plastic' };
+  const KIND3 = { ghisa: 'paint', zinco: 'galv', vernice: 'paint', ottone: 'copper', legno: 'wood', cemento: 'concrete', pietra: 'concrete', plastica: 'plastic', gomma: 'rubber', tela: 'cloth', carta: 'paper', porcellana: 'plastic',
+    cotto: 'clay', smalto: 'plastic', vimini: 'wood', foglia: 'foglia', fiore: 'solid' };   // [vasi2] il cotto, lo smalto, il vimini, le foglie e i fiori dei vasi
   function vesti3(g) {
     g.traverse(o => { if (!o.isMesh) return; const m = o.material, kind = m && KIND3[m.name]; if (!kind || m.map || m.transparent || m.side === THREE.DoubleSide) return;
       const hex = '#' + m.color.getHexString(), mode = /Extrude|Box|Icosahedron|Polyhedron|Plane|Circle/.test(o.geometry.type) ? 'box' : undefined;
@@ -11270,6 +11277,12 @@ var Render = (function () {
 
   // --- vasi e fioriere ---
   function pot(x, z, r, kind) {
+    if (ARR3()) {   // [vasi2] il limone nell'urna o nel cotto a pancia, la pianta grande, la fioriera col verde vero, il secchio e la latta coi fiori
+      if (kind === 'planter') return place(pm3('fioriera', { w: 1.6, seed: Math.floor(r() * 1e5) }), x, z, r() * 6);
+      const o = kind === 'lemon' ? { s: 1.8 + r() * .3, pianta: 'limone', vaso: pick(r, ['terracotta', 'urna', 'terracotta', 'smaltato']), forma: 'pancia' }
+        : kind === 'palm' ? { s: 1.45 + r() * .3, pianta: pick(r, ['monstera', 'agave', 'sansevieria', 'buganvillea']), vaso: pick(r, ['terracotta', 'smaltato', 'urna', 'dipinto']) }
+        : kind === 'bucket' ? { s: .9 + r() * .3, vaso: pick(r, ['secchio', 'latta', 'secchio']), pianta: pick(r, ['geranio', 'ortensia', 'erbe']) } : { s: 1.15 + r() * .35 };
+      return place(pm3('vaso', Arredo3D.vasoCaso(r, o)), x, z, r() * 6); }
     const g = G0(), terra = PM.terra();
     if (kind === 'lemon') { const pt = oPot(r, 2.1, false); g.add(pt); const tr = oTree(r, 1.25, '#4a6a38'); tr.position.y = .7; g.add(tr); for (let k = 0; k < 7; k++) add(g, new THREE.Mesh(new THREE.SphereGeometry(.06, 5, 4), sl('#e8c020')), Math.cos(k * 2.3) * .32, 1.25 + (k % 3) * .16, Math.sin(k * 2.3) * .32); }   // [ordine1] limone vero nel vaso tornito
     else if (kind === 'palm') { const pt = oPot(r, 1.6, 'cespo'); g.add(pt); }   // [pulizia-verde] non più la cassetta a scatola con le foglie a listelli verdi: il vaso tornito col cespo
@@ -15110,11 +15123,17 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const pw = G0.hx * 2 - .2, pd = G0.hy * 2 - .2, px = G0.x, pz = G0.y;
         [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const p = fB(.1, 2.3, .1, WOOD3, 'wood', .01); p.position.set(px + sx * pw / 2, y + 1.15, pz + sz * pd / 2); g.add(p); });
         for (let q = 0; q < 5; q++) { const bm = fB(pw + .1, .08, .08, WOOD3, 'wood', 0); bm.position.set(px, y + 2.32, pz - pd / 2 + q * pd / 4); g.add(bm); }
+        if (ARR3() && r() < .6) for (let q = 0, nh = 1 + (r() < .4 ? 1 : 0); q < nh; q++) { const h2 = pm3('vaso_appeso', { seed: Math.floor(r() * 1e5), L: .4 + r() * .15 }); h2.position.set(px + (q ? -1 : 1) * pw * (.28 + r() * .1), y + 2.28, pz - pd / 2 + (q ? 3 : 1) * pd / 4); g.add(h2); }   // [vasi2] i vasi appesi alle travi
         for (let q = 0; q < 5; q++) { const sh = oShrub(r, 1.0, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); sh.scale.set(.9, .45, .9); sh.position.set(px + (r() - .5) * (pw - .6), y + 2.32, pz + (r() - .5) * (pd - .6)); g.add(sh); }
         [[-1, -1], [1, 1]].forEach(([sx, sz]) => { const sh = oShrub(r, .7); sh.scale.set(.5, 3.0, .5); sh.position.set(px + sx * pw / 2, y, pz + sz * pd / 2); sh.updateMatrixWorld(true); const bb3 = new THREE.Box3().setFromObject(sh); sh.position.y += y - bb3.min.y; g.add(sh); });   // il rampicante parte dal lastrico, non da sotto
         P.cnt++;
         const tb = new THREE.Group(); fAt(tb, fC(.35, .35, .04, 12, '#e8e2d6', 'paint'), 0, .74, 0); fAt(tb, fC(.03, .03, .72, 6, IRON3, 'paint'), 0, .37, 0); fAt(tb, fC(.18, .2, .03, 10, IRON3, 'paint'), 0, .015, 0); at(tb, px, pz);
         [-1, 1].forEach(s2 => { const ch = new THREE.Group(), col = '#8a3a2e'; fAt(ch, fB(.42, .05, .42, col, 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, col, 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON3)); at(ch, px + s2 * .7, pz, s2 > 0 ? -Math.PI / 2 : Math.PI / 2); });
+      } else if (G0.k === 'vasi' && ARR3()) {   // [vasi2] contro il parapetto un gruppo raccolto, oppure il giardino: la fioriera lunga e due vasi in fondo
+        const Lr = 2 * (G0.ry ? G0.hy : G0.hx) - .06, a2 = new THREE.Group(); a2.position.set(G0.x, y, G0.y); a2.rotation.y = G0.lato === 'S' ? Math.PI : G0.lato === 'E' ? -Math.PI / 2 : G0.lato === 'W' ? Math.PI / 2 : 0; g.add(a2); P.cnt++;   // lo z negativo del gruppo verso il parapetto
+        if (Lr >= 1.5 && r() < .4) { const Lf = Math.min(2.4, Lr * (.55 + r() * .2)), fi = pm3('fioriera_tetto', { L: Lf, mat: r() < .65 ? 'mattoni' : 'legno', seed: Math.floor(r() * 1e5) }), sx = r() < .5 ? -1 : 1; fi.position.set(sx * (Lr - Lf) / 2, 0, -.32 + .22); a2.add(fi);
+          const Lv = Lr - Lf - .08; if (Lv > .36) { const c = gruppoVasi2(r, { n: 1 + Math.floor(r() * 2), L: Lv, D: .6, smax: 1.25, su: false }); c.position.x = -sx * (Lr - Lv) / 2; a2.add(c); } }
+        else a2.add(gruppoVasi2(r, { n: Math.min(5, 2 + Math.floor(r() * (G0.n || 3))), L: Lr, D: .6, smax: 1.3 }));
       } else if (G0.k === 'vasi') {   // i vasi di cotto in fila contro il parapetto, piante diverse (gerani, fico, ciuffi)
         const n = G0.n, step = .55, L = (n - 1) * step;
         for (let q = 0; q < n; q++) { const u = -L / 2 + q * step, pot = oPot(r, .85 + r() * .3, pick(r, ['geranio', 'ciuffo', 'cespo', 'geranio', 'fico'])); at(pot, G0.x + (G0.ry ? 0 : u), G0.y + (G0.ry ? u : 0)); }
@@ -15209,7 +15228,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             const ln = box(L, .015, .015, dark); ln.position.set(0, 1.6, 0); a2.add(ln);
             for (let q = -L / 2 + .3; q < L / 2 - .2; q += .42 + r() * .2) { const c2 = box(.3 + r() * .2, .45 + r() * .3, .03, cloth[Math.floor(r() * cloth.length)]); c2.position.set(q, 1.32 - r() * .08, 0); a2.add(c2); } } }
         const cx3 = x0 + w - 1.0, cz3 = z0 + d - 1.0, np = 3 + Math.floor(r() * 3);
-        for (let k = 0; k < np; k++) { const alongS = k % 2 === 0, off = .15 + Math.floor(k / 2) * .75, px2 = alongS ? cx3 - off : cx3 + .05, pz2 = alongS ? cz3 + .05 : cz3 - off; if (rpTake(P, 'vaso', px2, pz2, .3)) put(oPot(r, .85 + r() * .5), px2, 0, pz2); }
+        if (ARR3()) { if (r() < .85 && rpTake(P, 'vaso', cx3 - .45, cz3 + .1, .85)) put(gruppoVasi2(r, { n: np - 1, L: 1.7, D: .62 }), cx3 - .45, 0, cz3 + .1); }   // [vasi2] un gruppo raccolto, non la L a passo fisso (a volte niente)
+        else for (let k = 0; k < np; k++) { const alongS = k % 2 === 0, off = .15 + Math.floor(k / 2) * .75, px2 = alongS ? cx3 - off : cx3 + .05, pz2 = alongS ? cz3 + .05 : cz3 - off; if (rpTake(P, 'vaso', px2, pz2, .3)) put(oPot(r, .85 + r() * .5), px2, 0, pz2); }
         const ch = rpNear(P, 'sedia', cx3 - 1.8, cz3 - 1.2, .4); if (ch) { const c2 = new THREE.Group(), col = pick(r, ['#e8e4dc', '#3a6a4a', '#a83a2e']); fAt(c2, fB(.44, .05, .42, col, 'plastic', .015), 0, .44, 0); fAt(c2, fB(.44, .42, .05, col, 'plastic', .015), 0, .66, -.2); [[-.19, -.18], [.19, -.18], [-.19, .18], [.19, .18]].forEach(([a3, c3]) => fRod(c2, [a3, 0, c3], [a3 * .9, .44, c3 * .9], .02, col, 'plastic')); put(c2, ch[0], 0, ch[1], .6 + r()); }
         const tq = rpNear(P, 'telo', near[0] + 1.9, near[1] + .9, .9); if (tq) { put(oCrate(.8, .6, .8, rng(bi * 41)), tq[0] - .25, 0, tq[1]); const t2 = box(1.5, .5, 1.1, tarps[Math.floor(r() * tarps.length)]); put(t2, tq[0], .3, tq[1], .2); }
       } else if (prog === 'insegna' && P.ins === 'neon') {   // insegna al neon sul parapetto verso la strada, spesso con una lettera spenta
@@ -15301,6 +15321,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     else if (kind === 'copper') { grad(1.1, .85); specks(40, .8, 1.2); for (let k = 0; k < 10; k++) px(Math.floor(r() * 30), Math.floor(r() * 30), 2, 2, 'rgba(90,150,120,.6)'); }
     else if (kind === 'glass') { px(0, 0, 32, 32, hex); for (let k = 0; k < 32; k++) { px(k, 31 - k, 2, 1, 'rgba(220,230,240,.25)'); } px(0, 0, 32, 1, '#1a1a1e'); px(0, 0, 1, 32, '#1a1a1e'); dirt(6, .4); }
     else if (kind === 'leaf') { px(0, 0, 32, 32, shade(hex, .7)); for (let k = 0; k < 140; k++) px(Math.floor(r() * 31), Math.floor(r() * 31), 2, 2, shade(hex, .6 + r() * .8)); }
+    else if (kind === 'foglia') {   // [vasi2] la foglia dipinta: chiara in punta e scura al picciolo, la nervatura appena più chiara, due pennellate di tono
+      for (let y = 0; y < 32; y++) px(0, y, 32, 1, shade(hex, 1.1 - .28 * y / 31)); for (let y = 2; y < 30; y++) px(15, y, 2, 1, shade(hex, 1.16 - .2 * y / 31));
+      for (let k = 0; k < 26; k++) px(Math.floor(r() * 30), Math.floor(r() * 31), 3, 1, shade(hex, .88 + r() * .26)); }
     else if (kind === 'paper') { grad(1.1, .9); for (let y = 3; y < 30; y += 4) px(0, y, 32, 1, shade(hex, .62)); px(0, 0, 32, 1, 'rgba(255,240,200,.4)'); }
     else if (kind === 'cloth') { grad(1.05, .88); for (let q = 0; q < 32; q += 3) px(q, 0, 1, 32, shade(hex, .82)); dirt(6, .3); }
     else if (kind === 'slat') { px(0, 0, 32, 32, shade(hex, .6)); for (let y = 2; y < 30; y += 4) { px(2, y, 28, 2, shade(hex, 1.05)); px(2, y, 28, 1, shade(hex, 1.25)); } px(0, 0, 32, 2, hex); px(0, 30, 32, 2, hex); px(0, 0, 2, 32, hex); px(30, 0, 2, 32, hex); for (let k = 0; k < 6; k++) px(Math.floor(r() * 28), Math.floor(r() * 28), 2, 1, '#3a2a22'); dirt(8, .35); }
@@ -15433,8 +15456,34 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     [-1, 1].forEach(s => fAt(g, fB(.025, .05, .14, '#141414', 'solid', 0), s * (W / 2 + .003), H - .08, 0));
     return g;
   }
+  // [vasi2] il vaso viene dalla famiglia di Arredo3D (vasi torniti, smaltati, dipinti, riusati; piante con le foglie vere): genere, colore,
+  // pianta e misura dal seme r (Arredo3D.vasoCaso: metà cotto). Le piante chieste col vecchio nome restano un desiderio: ciuffo = erbe,
+  // basilico, sansevieria, agave o cactus; cespo = ortensia, monstera, buganvillea, pothos, fico o geranio; false = senza pianta
+  const PIANTA2 = { ciuffo: ['erbe', 'basilico', 'sansevieria', 'agave', 'cactus'], cespo: ['ortensia', 'monstera', 'buganvillea', 'pothos', 'fico', 'geranio'], fico: ['fico', 'monstera'] };
+  function vaso2(r, s, plant, o) { const pi = plant === false ? 'nessuna' : plant && PIANTA2[plant] ? pick(r, PIANTA2[plant]) : plant || undefined; return pm3('vaso', Arredo3D.vasoCaso(r, Object.assign({ s, pianta: pi }, o || {}))); }
+  // [vasi2] il gruppo di vasi raccolto a una soglia (porta, angolo del balcone, piede della scala, parapetto): uno grande, gli altri piccoli e
+  // diversi, a volte uno rialzato su una cassetta capovolta, uno sgabello o due mattoni; uno piccolo che si infila davanti al vicino.
+  // In fila lungo x, centrato; in z dentro ±D/2 (il muro dietro a z = -D/2). o.n (2-5), o.L la lunghezza che c'è, o.D, o.smax, o.su = false: niente rialzi
+  function gruppoVasi2(r, o) {
+    o = o || {}; const g = G0(), L = o.L || 1.6, D = o.D || .6, n = o.n || 2 + Math.floor(r() * 3), smax = o.smax || 1.5, big = Math.floor(r() * n), out = [];
+    let x = 0, prev = 0, zPrev = 0;
+    for (let i = 0; i < n; i++) {
+      const s = i === big ? Math.min(smax, 1.1 + r() * .45) : Math.min(smax, .55 + r() * .45), su = o.su !== false && i !== big && s < .85 && r() < .22 ? pick(r, ['cassa', 'sgabello', 'mattoni', 'cassa']) : undefined;
+      const opz = Arredo3D.vasoCaso(r, { s, su, pianta: o.pianta && r() < .5 ? o.pianta : undefined, niente: o.niente });
+      const rr = Math.min(D / 2, Math.max(opz.vaso === 'cassetta' ? .28 * s : opz.vaso === 'mosaico' ? .3 * s : .23 * s, su === 'cassa' ? .26 : su === 'sgabello' ? .18 : 0));
+      const infila = i > 0 && r() < .3 && D > 2 * (rr + prev);   // il piccolo davanti, a cavallo del vicino
+      if (i) x += infila ? prev * .4 : prev + rr + .02 + r() * .07;
+      const z = infila ? (zPrev < 0 ? D / 2 - rr : -D / 2 + rr) : -D / 2 + rr + (r() < .4 ? r() * Math.max(0, D - 2 * rr) : 0);
+      out.push([pm3('vaso', opz), x, z, rr]); prev = rr; zPrev = z;
+    }
+    while (out.length > 1 && out[out.length - 1][1] + out[out.length - 1][3] - (out[0][1] - out[0][3]) > L) out.pop();   // tutto dentro L
+    const x0 = Math.min(...out.map(q => q[1] - q[3])), x1 = Math.max(...out.map(q => q[1] + q[3])), c = (x0 + x1) / 2;
+    out.forEach(([v, x, z]) => { v.position.set(x - c, 0, z); v.rotation.y = r() * 6.28; g.add(v); });
+    g.userData.w = x1 - x0; g.userData.n = out.length; return g;
+  }
   // vaso di cotto tornito (orlo, spalla, piede) col sottovaso, e la pianta vera: fusti e ciuffi di foglie
   function oPot(r, s, plant) {
+    if (ARR3()) return vaso2(r, (s || 1) * .95, plant);   // [vasi2]
     const g = new THREE.Group(); s = s || 1; const col = pick(r, ['#a8583a', '#9a5236', '#b8683e', '#8a4a32', '#6a6a64']), R = .2 * s, H = .34 * s;
     fAt(g, fL([[0, 0], [R + .05 * s, 0], [R + .055 * s, .03 * s], [R + .02 * s, .03 * s]], 12, shade(col, .85), 'clay'), 0, 0, 0);
     fAt(g, fL([[0, .03 * s], [R * .72, .03 * s], [R * .78, .06 * s], [R, H - .05 * s], [R + .035 * s, H - .045 * s], [R + .035 * s, H], [R - .01, H], [R - .02, H - .02 * s], [0, H - .03 * s]], 12, col, 'clay'), 0, 0, 0);
@@ -15714,7 +15763,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       V.forEach(v => {
         if (v === 'gerani') {   // una o due finestre dello stesso piano coi vasi sul davanzale
           const W0 = take(free()); if (!W0) return; const L = [W0], nb = free().find(o => Math.abs(o.y - W0.y) < .01 && Math.abs(o.u - W0.u) < 2.2); if (nb && r() < .5) { used.add(nb); L.push(nb); }
-          L.forEach(W1 => { const q = geo(W1), n = Math.max(2, Math.round(q.ww / .3)); for (let k = 0; k < n; k++) { const g = new THREE.Group(); f2Geranio(g, r, 0, 0, 0); at(f, g, q.u - q.ww / 2 + (k + .5) * q.ww / n, q.yb - .015, .24); } });
+          L.forEach(W1 => { const q = geo(W1);
+            if (ARR3()) { const end = q.u + q.ww / 2 - .04; let uu = q.u - q.ww / 2 + .04 + r() * .1;   // [vasi2] vasetti diversi a passo libero, al livello lontano (sono piccoli e in alto)
+              while (uu < end - .16) { const s = .38 + r() * .14, rad = .23 * s; if (uu + 2 * rad > end) break; if (r() < .25) { uu += 2 * rad; continue; }   /* un buco nella fila */ const v = pm3('vaso', Arredo3D.vasoCaso(r, { s, liv: 0, niente: ['urna', 'mosaico', 'cassetta', 'cesto', 'secchio'], pianta: r() < .55 ? 'geranio' : undefined })); v.rotation.y = r() * 6.28; at(f, v, uu + rad, q.yb - .015, .24); uu += 2 * rad + (r() < .45 ? .12 + r() * .3 : .02); } }
+            else { const n = Math.max(2, Math.round(q.ww / .3)); for (let k = 0; k < n; k++) { const g = new THREE.Group(); f2Geranio(g, r, 0, 0, 0); at(f, g, q.u - q.ww / 2 + (k + .5) * q.ww / n, q.yb - .015, .24); } } });
         } else if (v === 'bucato') {   // il filo fra due finestre dello stesso piano, coi capi stesi
           if (!F.open) return; const rows = {}; free().forEach(W0 => (rows[W0.y.toFixed(1)] = rows[W0.y.toFixed(1)] || []).push(W0)); const R2 = Object.values(rows).filter(a => a.length >= 2); if (!R2.length) return;
           const row = pick(r, R2).sort((a, c2) => a.u - c2.u), j = Math.floor(r() * (row.length - 1)), A = row[j], B = row[j + 1]; used.add(A); used.add(B);
@@ -15910,7 +15962,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         }
       }
       // ---- sul tetto UN gruppo solo, raccolto nell'angolo che si vede: il giardino in vasi oppure il pergolato ----
-      if (roofTheme === 'giardino') {
+      if (roofTheme === 'giardino' && ARR3()) {   // [vasi2] il giardino sul tetto come nei disegni: la fioriera lunga contro il parapetto che si vede, nell'angolo un vaso grande (il limone, a volte), lungo l'altro parapetto i vasi raccolti
+        const cx2 = x0 + w - 1.2, cz2 = z0 + d - 1.2, Lf = Math.min(w - 2.8, 1.6 + r() * .6);
+        if (Lf > 1) { const fi = pm3('fioriera_tetto', { L: Lf, mat: r() < .7 ? 'mattoni' : 'legno', seed: Math.floor(r() * 1e5) }); fi.position.set(x0 + w - 1.35 - Lf / 2, top, z0 + d - .53); g.add(fi); }
+        const big = pm3('vaso', Arredo3D.vasoCaso(r, r() < .5 ? { s: 1.8, pianta: 'limone', vaso: pick(r, ['terracotta', 'urna']), forma: 'pancia' } : { s: 1.5 + r() * .2, pianta: pick(r, ['buganvillea', 'agave', 'monstera', 'ortensia']) })); big.position.set(x0 + w - .78, top, z0 + d - .78); big.rotation.y = r() * 6; g.add(big);
+        const c = gruppoVasi2(r, { n: 2 + Math.floor(r() * 3), L: Math.min(2, d - 2.4), D: .62 }); c.position.set(x0 + w - .62, top, z0 + d - 1.35 - c.userData.w / 2); c.rotation.y = Math.PI / 2; g.add(c);
+        const bench = new THREE.Group(); fAt(bench, fB(1.2, .05, .36, '#8a6a46', 'wood', .01), 0, .44, 0); [-.5, .5].forEach(o2 => fAt(bench, fB(.05, .44, .32, '#3a2a20', 'paint', .01), o2, .22, 0)); bench.position.set(cx2 - 1.8, top, cz2 - 1.2); bench.rotation.y = Math.PI / 2; g.add(bench);
+      } else if (roofTheme === 'giardino') {
         const cx2 = x0 + w - 1.2, cz2 = z0 + d - 1.2, np = 3 + Math.floor(r() * 3);
         for (let q = 0; q < np; q++) {
           const along = q % 2 === 0, off = .2 + Math.floor(q / 2) * 1.05, px = along ? cx2 - off : cx2 + .3, pz = along ? cz2 + .3 : cz2 - off, s2 = .9 + r() * .6, t = r();
@@ -15922,6 +15980,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const pw = 2.6, pd = 2.2, px = x0 + w - pw / 2 - .7, pz = z0 + d - pd / 2 - .7;
         [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const p = fB(.1, 2.3, .1, WOODD, 'wood', .01); p.position.set(px + sx * pw / 2, top + 1.15, pz + sz * pd / 2); g.add(p); });
         for (let q = 0; q < 5; q++) { const bm = fB(pw + .3, .08, .08, WOODD, 'wood', 0); bm.position.set(px, top + 2.32, pz - pd / 2 + q * pd / 4); g.add(bm); }
+        if (ARR3() && r() < .6) { const h2 = pm3('vaso_appeso', { seed: Math.floor(r() * 1e5), L: .4 + r() * .15 }); h2.position.set(px + pw * .3, top + 2.28, pz - pd / 4); g.add(h2); }   // [vasi2] il vaso appeso alla trave
         for (let q = 0; q < 6; q++) { const sh = oShrub(r, 1.1, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); sh.scale.y = .5; sh.position.set(px + (r() - .5) * pw, top + 2.32, pz + (r() - .5) * pd); g.add(sh); }
         [[-1, -1], [1, 1]].forEach(([sx, sz]) => { const sh = oShrub(r, .8); sh.scale.set(.6, 3.2, .6); sh.position.set(px + sx * pw / 2, top, pz + sz * pd / 2); g.add(sh); });   // il rampicante sui pali
         const ch = new THREE.Group(); fAt(ch, fB(.42, .05, .42, '#8a3a2e', 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, '#8a3a2e', 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON)); ch.position.set(px - .3, top, pz); g.add(ch);
@@ -15970,6 +16029,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (!doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 3.3) || r() > .45) continue;   // [pulizia] la roba sta vicino alle porte, non lungo tutto il muro
           const u = u0 + (r() - .5) * .8, t = r(), z = .38; nRoba++;
           if (t < .16) { const cc = pick(r, ['#a83a32', '#3a5a8a', '#c8a03a', '#4a7a4a', '#2a2a2e']); for (let q = 0, nq = 1 + Math.floor(r() * 4); q < nq; q++) { const cr = oPCrate(r, q % 2 && r() < .5 ? null : cc); cr.rotation.y = (r() - .5) * .25; at(f, cr, u + (q > 2 ? .6 : 0) + (r() - .5) * .05, base + (q % 3) * .3, z); } }   // casse di plastica impilate
+          else if (t < .34 && ARR3()) { if (r() < .55) at(f, gruppoVasi2(r, { L: 1.9, D: .62 }), u, base, .4); }   // [vasi2] i vasi raccolti in gruppo, non in fila a passo fisso; quasi un posto su due resta vuoto
           else if (t < .34) { for (let q = 0, nq = 2 + Math.floor(r() * 3); q < nq; q++) at(f, oPot(r, .8 + r() * .7), u + (q - nq / 2) * .42, base, z + (r() - .5) * .15); }   // vasi di cotto con le piante
           else if (t < .46) { for (let q = 0; q < 2 + Math.floor(r() * 3); q++) { const bl = cblob(.26 + r() * .1, pick(r, ['#1c1c20', '#26262a', '#3a3a30']), 'cloth'); bl.scale.set(1, .85, .9); at(f, bl, u + (r() - .5) * .8, base + .22, z + (r() - .5) * .2); } }   // sacchi della spazzatura
           else if (t < .6) { const L2 = .9 + r() * .7; for (let row = 0; row < 3; row++) for (let q = 0; q < 5 - row; q++) { const lg = ccyl(.08, .08, L2, 6, pick(r, ['#6a4a30', '#7a5a3a', '#5a3e28'])); lg.rotation.z = Math.PI / 2; at(f, lg, u, base + .08 + row * .15, .14 + (q + row * .5) * .17); } at(f, cbox(L2 + .2, .05, .9, '#3a3a40'), u, base + .62, .5); }   // legna sotto il telo
