@@ -132,7 +132,7 @@ var Tasselli = (function () {
   function carica(i) {
     let p = TEXP.get(i); if (p) return p;
     const t = tessitura(i), r = texRec(i); if (!r) return Promise.resolve();
-    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
+    const tel = TEL && r.tel && (typeof LeggeraMem === 'undefined' || LeggeraMem.on('tessiture')), file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
     const vivo = x => { if (TEXG.get(i) === g && TEXP.has(i)) return true; if (x && x.close) x.close(); return false; };   // liberata nel frattempo
     if (!file) p = Promise.resolve();
     else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
