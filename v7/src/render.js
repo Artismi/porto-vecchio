@@ -1776,11 +1776,11 @@ var Render = (function () {
       if (T.fuori !== on) { T.fuori = on; FD1.data[i * 4] = on ? 255 : 0; FD1.dirty = true; B.mv1.forEach(o => { if (on && o.userData.lazy1) o.userData.lazy1(); o.visible = on; }); } }
     T.tetto.forEach(q => { if (!on) { q.o.material = q.m0; return; }
       let c = T4M.get(q.m0); if (!c) { c = q.m0.clone(); if (q.m0.userData.plaster) plasterize(c); else if (q.m0.userData.mondo) animMat(c, q.m0.userData.mondo); c.transparent = true; c.depthWrite = false; T4M.set(q.m0, c); }
-      c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; q.o.material = c; });
+      c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; c.clippingPlanes = q.m0.clippingPlanes; q.o.material = c; });   // [compenetra] la copia trasparente segue il taglio della casa (vis3Tick lo mette sui materiali suoi, B.mats): prima il tetto restava intero sopra la casa tagliata
     const cose = a > .5; if (cose !== T.cose) { T.cose = cose; vis3Cose(B, false); if (cose) vis3Cose(B, true, T.gr + .15); }
     // sotto il tetto sbiadito non il buio della casa (il nucleo scuro): la copertina alla gronda nel tono del muro, col filo chiaro,
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
-    const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
+    if (!B.__cl3) { const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); } }   // [compenetra] la casa tagliata tiene la copertina del taglio (vis3Tick), più bassa
     if (!on) B.__t4 = null;
   }
   // [tasselli] il tetto che sbiadisce di una casa che sta in un tassello: i pezzi della casa non ci sono (la mesh è del tassello), il tetto si
