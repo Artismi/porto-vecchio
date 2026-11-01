@@ -58,6 +58,19 @@ lavoro diventa (tag, throw-up, pezzo; col pennarello tag a marker), quante bombo
 tasti 1-8), spessore, «Annulla tratto» (Ctrl+Z), «Pulisci», «Salva sul muro» (Invio), «Esci» (Esc). Senza bombolette (o
 pennarello) non si salva. Salvato, il disegno va **subito** sul muro (`saveOnWall`, non aspetta il giro dei graffiti).
 
+**[tavola2] Il pannello rifatto (`src/tavola_ui.js`, `TavolaUI.open(ctl)`).** La tela riempie lo schermo (il riquadro giallo
+il più grande possibile, il contesto scurito attorno); un dito spruzza, due dita spostano e ingrandiscono (rotella e tasto
+destro/centrale sul computer; «0» o l'icona agli angoli rimette il riquadro intero). Una barra sola a icone: in verticale in
+basso, in orizzontale e sul computer a destra. Esci, annulla, **la bomboletta grande** (colore e tappo di adesso, il numero di
+bombolette, lo spessore; toccala per il tappo: standard, fat, skinny, rullo, pennarello, e lo spessore), otto barattoli e «+»
+per altri sedici colori, «⋯» per la misura del riquadro (tag, throw-up, pezzo, burner: rifà la foto), flusso, colature,
+pulisci e le scorciatoie; la spunta salva. **Ogni tratto ha la sua bomboletta**: `rec.st[i] = { c, p, w }` (colore, pennello,
+spessore in px), letto da `Pennelli.drawStrokes` (senza `rec.st` i disegni vecchi escono come prima); `w.col` è il colore che
+copre di più, `w.tool` è `pennarello` solo se tutti i tratti sono a pennarello, la vernice si conta tratto per tratto
+(`tavSave` in writing.js). L'ultima bomboletta scelta resta (`localStorage` `pv_tavola`). Il tratto in corso si disegna su una
+tela sopra alla risoluzione dello schermo, una volta per fotogramma; la resa del pennello si aggiunge solo al tratto finito.
+Tasti: 1-8 colori, [ ] spessore, Ctrl+Z, Invio, Esc; il Game Boy usa sempre `TAV.api` (apply, close, undo, col, size).
+
 **La città reagisce** (`cityReact`, da `finish` per ogni lavoro tuo, bomboletta o tavoletta): i nomi di chi ti ha visto
 (`G.seesPlayer`, entro 24 m); un agente che ti vede ti ferma a voce, +5 al calore e `vandalismo` (i Grigi ti cercano); un
 writer o un toy approva (+fama); un passante commenta, e a volte va a chiamare i Grigi. Vicino ai palazzi del regime
