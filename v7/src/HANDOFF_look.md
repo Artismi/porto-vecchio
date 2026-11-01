@@ -101,14 +101,16 @@ cotto, a turno due volte; SwiftShader, quindi contano i rapporti):
 |---|---:|---:|
 | `buildWater` | 9,3-11,1 s | 7,2-8,0 s |
 | costruzione finita (`__tl.compilato`) | 20,7-23,3 s | 18,3-20,2 s |
-| attesa degli shader fino ai primi fotogrammi | 30-31 s | 38 s |
+| programmi della scheda video (coi tasselli di ognuna) | 194-195 | 177 |
+| si gioca (`__tl.vivo`, coi tasselli di ognuna) | 63,8-64,5 s | 49,4-50,3 s (un giro su quattro 96 s) |
 
 - `buildWater`: la profondità del mare a 1 px per metro anche sul computer (era 2: una tela 2600×800 sfocata col filtro 2D).
 - `c2Dist` (`world_cittanuova.js`): la finestra stretta da una griglia di 2 m ha reso poco (2,2 → 2,0 s): quasi tutti i punti chiesti
   stanno lontani dalla riva e la finestra resta larga. La potatura dei tratti ora guarda l'estremità più vicina (prima poteva saltare il
   tratto migliore): cambia l'impronta del mondo cotto e dei tasselli.
-- L'attesa degli shader sale perché i tasselli in locale sono ancora quelli cotti prima: portano le 23 vesti vecchie, e il programma
-  unico nuovo si aggiunge. Coi tasselli ricotti (il workflow `tasselli` al push su `main`) le 23 diventano una.
+- Le ultime due righe sono coi tasselli cotti per ogni build (`python3 build.py --tasselli`, 4 minuti qui). Coi tasselli vecchi la pagina
+  nuova è più lenta ai primi fotogrammi (le 23 vesti vecchie restano e il programma unico si aggiunge): in produzione il workflow
+  `tasselli` li ricuoce al push su `main`, e finché la release nuova non c'è il gioco costruisce la città nel browser come prima.
 - `?tassellivecchi` (solo per le sonde in locale): i tasselli di un'altra impronta vanno bene lo stesso.
 - Gli scatti mentre si gioca: `sonda_programmi.js` fa camminare il personaggio in otto posti; nascono 4 programmi in tutto (66 ms di
   attesa). La compilazione non è più la causa degli scatti. Negli shader entrano 9 luci puntiformi, 4 faretti con ombra e il sole; le
