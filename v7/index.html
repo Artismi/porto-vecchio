@@ -23049,7 +23049,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f368ebc0bbb03a54';</script>
-<script>window.PV_IMPRONTA_TASS = '9c33caa3b5274b56';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '43cc10715e2ea361';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -70282,7 +70282,7 @@ var Pavimenti = (function () {
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
-      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   // leggera: si spegne prima, niente grana fine
+      float lod = 1. - smoothstep(.12, .28, mpp), fin = 0., aa = mpp * 1.2;   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
       #else
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;
@@ -85875,7 +85875,7 @@ var Render = (function () {
   // che si posa (l'occlusione a schermo dove un muro, un oggetto, una persona tocca il suolo; sotto la gronda), lo spigolo in alto preso dalla
   // luce come una pennellata chiara (non una riga scura), i tetti e le facciate vissuti (muschio, coppi nuovi e vecchi, colature).
   // ?nodiorama: spento (il prima/dopo)
-  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .3, vissuto: 1, piede: .2, gronda: .16, luceSpigolo: .55 };
+  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .38, vissuto: 1, piede: .32, gronda: .24, luceSpigolo: .45 };
   if (typeof window !== 'undefined') window.__DIOR = DIOR;   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; window.__CAT = CAT; window.__RIV = RIV; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
@@ -86097,8 +86097,8 @@ ${OM}
   if ( sgP8.y > 0. ) {   // [diorama] L'ARIA CHE PASSA: l'ombra delle nuvole, larga e lenta, proiettata lungo il sole (sui muri e sui tetti cade dove cadrebbe davvero);
     // morbida, senza retino, con un filo di cielo dentro: il diorama respira, la luce non è mai uguale in tutto il quadro
     vec3 sgLw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 sgCp = vSgW.xz - sgLw.xz / max( sgLw.y, .25 ) * vSgW.y;
-    float sgCl = sgN3( vec3( sgCp * .03 + sgP2.z * vec2( .011, .005 ), sgP2.z * .006 ) ) * .7 + sgN3( vec3( sgCp * .085, 7.3 ) ) * .3;
-    sgCl = smoothstep( .52, .74, sgCl ) * sgP8.y;
+    float sgCl = sgN3( vec3( sgCp * .045 + sgP2.z * vec2( .016, .007 ), sgP2.z * .006 ) ) * .7 + sgN3( vec3( sgCp * .12, 7.3 ) ) * .3;   /* nuvole di ~20 m: nel quadro di gioco sempre un po' di sole e un po' d'ombra */
+    sgCl = smoothstep( .5, .68, sgCl ) * sgP8.y;
     reflectedLight.directDiffuse *= 1. - sgCl; reflectedLight.directSpecular *= 1. - sgCl;
     reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * sgCl * .6; }
 #endif

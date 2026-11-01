@@ -13353,7 +13353,7 @@ var Render = (function () {
   // che si posa (l'occlusione a schermo dove un muro, un oggetto, una persona tocca il suolo; sotto la gronda), lo spigolo in alto preso dalla
   // luce come una pennellata chiara (non una riga scura), i tetti e le facciate vissuti (muschio, coppi nuovi e vecchi, colature).
   // ?nodiorama: spento (il prima/dopo)
-  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .3, vissuto: 1, piede: .2, gronda: .16, luceSpigolo: .55 };
+  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .38, vissuto: 1, piede: .32, gronda: .24, luceSpigolo: .45 };
   if (typeof window !== 'undefined') window.__DIOR = DIOR;   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; window.__CAT = CAT; window.__RIV = RIV; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
@@ -13575,8 +13575,8 @@ ${OM}
   if ( sgP8.y > 0. ) {   // [diorama] L'ARIA CHE PASSA: l'ombra delle nuvole, larga e lenta, proiettata lungo il sole (sui muri e sui tetti cade dove cadrebbe davvero);
     // morbida, senza retino, con un filo di cielo dentro: il diorama respira, la luce non è mai uguale in tutto il quadro
     vec3 sgLw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 sgCp = vSgW.xz - sgLw.xz / max( sgLw.y, .25 ) * vSgW.y;
-    float sgCl = sgN3( vec3( sgCp * .03 + sgP2.z * vec2( .011, .005 ), sgP2.z * .006 ) ) * .7 + sgN3( vec3( sgCp * .085, 7.3 ) ) * .3;
-    sgCl = smoothstep( .52, .74, sgCl ) * sgP8.y;
+    float sgCl = sgN3( vec3( sgCp * .045 + sgP2.z * vec2( .016, .007 ), sgP2.z * .006 ) ) * .7 + sgN3( vec3( sgCp * .12, 7.3 ) ) * .3;   /* nuvole di ~20 m: nel quadro di gioco sempre un po' di sole e un po' d'ombra */
+    sgCl = smoothstep( .5, .68, sgCl ) * sgP8.y;
     reflectedLight.directDiffuse *= 1. - sgCl; reflectedLight.directSpecular *= 1. - sgCl;
     reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * sgCl * .6; }
 #endif
