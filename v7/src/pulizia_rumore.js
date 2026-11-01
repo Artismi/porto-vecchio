@@ -445,8 +445,8 @@ var PuliziaRumore = (function () {
   function modelli(A, E) {
     const M = new Map();
     const CORNICE = [1202, 230, 1630, 472];   // la città che si gioca (segnaletica.js CORNICE, con 20 m di margine): fuori si vede poco
-    E.forEach(e => { if (e.gone || !e.B || e.k === 'grande') return; const [cx, cz] = A.ctr(e.B); if (cx < CORNICE[0] || cx > CORNICE[2] || cz < CORNICE[1] || cz > CORNICE[3]) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0 });
-      q.n++; q.k[e.k] = (q.k[e.k] || 0) + 1; q.schermo += A.schermo(e); q.tri += A.triangoli(e); q.mesh += e.nm || 0; q.scatole += e.nb || 0; });
+    E.forEach(e => { if (e.gone || !e.B || e.k === 'grande') return; const [cx, cz] = A.ctr(e.B); if (cx < CORNICE[0] || cx > CORNICE[2] || cz < CORNICE[1] || cz > CORNICE[3]) return; const chi = e.chi || (e.tipo ? (e.k === 'grande' ? 'pezzo:' : 'scorcio:') + e.tipo : 'casa:' + e.k); let q = M.get(chi); if (!q) M.set(chi, q = { chi, k: {}, n: 0, schermo: 0, tri: 0, mesh: 0, scatole: 0, poliedri: 0, cilGrossi: 0 });
+      q.n++; q.k[e.k] = (q.k[e.k] || 0) + 1; q.schermo += A.schermo(e); q.tri += A.triangoli(e); q.mesh += e.nm || 0; q.scatole += e.nb || 0; q.poliedri += e.ni || 0; q.cilGrossi += e.nc || 0; });
     return [...M.values()].map(q => Object.assign(q, { schermo: +q.schermo.toFixed(1), triPer: Math.round(q.tri / q.n), meshPer: +(q.mesh / q.n).toFixed(1), quotaScatole: q.mesh ? +(q.scatole / q.mesh).toFixed(2) : null, triPerM2: q.schermo ? Math.round(q.tri / q.schermo) : 0 })).sort((a, b) => b.schermo - a.schermo);
   }
 
