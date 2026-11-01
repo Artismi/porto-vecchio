@@ -1067,6 +1067,54 @@ var Arredo3D = (function () {
     put(g, cylG(.2, .26, .6, 10), mS, 0, 5.3, 0); tor(g, .22, .03, 12, ZS, 0, 5.58, 0);   // il perno su cui gira la parabola
     [-.14, .14].forEach(x => asta(g, [x, .25, .74], [x, 5.0, .7], .016, ZS, 4)); for (let y = .55; y < 5; y += .32) asta(g, [-.14, y, .74 - (y / 5) * .04], [.14, y, .74 - (y / 5) * .04], .011, ZS, 4);   // la scaletta
     return g; };
+  // ================= [dettaglio2] LA PORTA E LE INSEGNE =================
+  // la pulsantiera del citofono: la placca smussata sulla cornice, la griglia del microfono a feritoie, i tasti (o.n) coi cartellini, le
+  // quattro viti; o.col il metallo (ottone, alluminio). Origine sul muro al centro della placca (userData.aMuro)
+  T.citofono = (o) => {
+    const g = new THREE.Group(); g.userData.aMuro = true; const n = Math.max(1, Math.min(8, (o && o.n) || 4)), H = .1 + n * .04, m = mat((o && o.col) || '#b8984a', 'ottone'), mS = mat(shade((o && o.col) || '#b8984a', .6), 'ottone');
+    slab(g, .16, H + .03, .008, mS, 0, 0, .004, 0); slab(g, .14, H, .016, m, 0, 0, .012, .004);
+    for (let k = 0; k < 4; k++) slab(g, .07, .006, .006, NR, 0, H / 2 - .025 - k * .011, .023, 0);   // le feritoie del microfono
+    for (let k = 0; k < n; k++) { const y = H / 2 - .085 - k * .04; put(g, cylG(.009, .009, .008, 8), NR, .04, y, .024, PI / 2, 0, 0); slab(g, .06, .02, .004, mat('#e8e4d8', 'carta'), -.02, y, .022, 0); }
+    if (F()) [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([a, b]) => bullone(g, a * .056, b * (H / 2 - .012), .021, 'z', .004, mS));
+    return g; };
+  // la cassetta delle lettere del portone: il corpo smussato, il coperchio a tettuccio sulla cerniera, la buca col labbro, il cartellino, la
+  // serratura; o.col la vernice. Origine sul muro al centro del corpo (userData.aMuro)
+  T.buca_lettere = (o) => {
+    const g = new THREE.Group(); g.userData.aMuro = true; const c = (o && o.col) || '#2f4a38', m = mat(c, 'vernice'), mS = mat(shade(c, .75), 'vernice');
+    slab(g, .28, .2, .085, m, 0, 0, .0425, .012);
+    const lid = slab(g, .3, .03, .11, mS, 0, .112, .055, .008); lid.rotation.x = .14; cerniera(g, 0, .105, .004, .26, 'x');
+    slab(g, .2, .016, .012, NR, 0, .06, .087, 0); slab(g, .22, .008, .02, mS, 0, .072, .09, 0);   // la buca e il labbro
+    slab(g, .1, .035, .004, mat('#e8e4d8', 'carta'), -.06, -.04, .087, 0); put(g, cylG(.011, .011, .012, 8), OT, .085, -.04, .09, PI / 2, 0, 0);
+    return g; };
+  // la tavola dell'insegna: il fondo smussato a muro, la cornice rilevata attorno alla scritta (la scritta la mette chi la posa, 6 cm davanti
+  // al muro, dentro la cornice), le due staffe coi bulloni. o.w, o.h le misure della tavola, o.col il fondo, o.cornice. Origine sul muro al
+  // centro (userData.aMuro). Con o.bandiera è l'insegna a bandiera: il braccio di ferro che sporge (o.L) con la piastra, il saettone e il
+  // ricciolo, la cornice appesa a due tiranti sotto il braccio, aperta in mezzo (la scritta è a due facce); origine sul muro all'altezza del braccio
+  T.insegna_tavola = (o) => {
+    const g = new THREE.Group(); g.userData.aMuro = true; const w = (o && o.w) || 3.5, h = (o && o.h) || 1, mB = mat((o && o.col) || '#2a2a30', 'vernice'), mC = mat((o && o.cornice) || '#3a3428', 'legno');
+    if (o && o.bandiera) { const L = o.L || 2.4, a = .15, gap = .14;
+      slab(g, .12, .26, .02, GH, 0, -.06, .01, .005); if (F()) [-.15, .03].forEach(y => bullone(g, 0, y, .024, 'z', .01, GH));
+      asta(g, [0, 0, .02], [0, 0, L], .022, GH, 8); put(g, sphG(.03, 6), GH, 0, 0, L + .02); asta(g, [0, -.4, .02], [0, -.01, L * .5], .016, GH, 6);
+      if (F()) cavo(g, [[0, -.3, .03], [0, -.22, .2], [0, -.1, .34], [0, -.02, .42]], .01, GH, 8);
+      const zc = a + w / 2, yc = -gap - h / 2;
+      slab(g, .045, .05, w, mC, 0, yc + h / 2 - .025, zc, .01); slab(g, .045, .05, w, mC, 0, yc - h / 2 + .025, zc, .01);
+      [a + .025, a + w - .025].forEach(z => slab(g, .045, h - .1, .05, mC, 0, yc, z, .01));
+      [a + .12, a + w - .12].forEach(z => { asta(g, [0, -.01, z], [0, yc + h / 2, z], .007, GH, 4); tor(g, .018, .005, 6, GH, 0, -.01, z, 0, PI / 2, 0); });
+      return g; }
+    slab(g, w, h, .04, mB, 0, 0, .02, .012);
+    slab(g, w, .05, .025, mC, 0, h / 2 - .025, .0525, .008); slab(g, w, .05, .025, mC, 0, -h / 2 + .025, .0525, .008);
+    [-1, 1].forEach(s => slab(g, .05, h - .1, .025, mC, s * (w / 2 - .025), 0, .0525, .008));
+    [-1, 1].forEach(s => { const x = s * w * .36; slab(g, .05, .12, .03, GH, x, h / 2 + .04, .015, .006); if (F()) bullone(g, x, h / 2 + .07, .034, 'z', .008, GH); });
+    return g; };
+  // il pannello del cantiere a strisce bianche e rosse: il telaio di tubo zincato coi due montanti nei piedi di cemento, la traversa, le
+  // fascette. Origine a terra al centro, il pannello nel piano xy; o.L la lunghezza, o.mt il materiale delle strisce (la tela di chi lo posa)
+  T.pannello_cantiere = (o) => {
+    const g = new THREE.Group(), L = (o && o.L) || 2, mt = (o && o.mt) || mat('#e8e4dc', 'vernice'), y0 = .14, y1 = 1.18;
+    put(g, slabG(L - .1, y1 - y0 - .1, .03, 0), mt, 0, (y0 + y1) / 2, 0);
+    [-1, 1].forEach(s => { const x = s * (L / 2 - .02); asta(g, [x, .02, 0], [x, y1 + .04, 0], .022, ZN, 8); put(g, sphG(.025, 6), ZN, x, y1 + .05, 0);
+      ext(g, 'piedeC', shape([[-.32, 0], [.32, 0], [.22, .12], [-.22, .12]]), .3, .01, CM, x, 0, 0, 0, PI / 2, 0); if (F()) [y0 + .15, y1 - .15].forEach(y => fascetta(g, y, .022, ZS, x, 0)); });
+    asta(g, [-L / 2, y1, 0], [L / 2, y1, 0], .018, ZN, 6); asta(g, [-L / 2, y0, 0], [L / 2, y0, 0], .018, ZN, 6);
+    return g; };
   const TIPI = Object.keys(T);
   function make(tipo, o) { if (!T[tipo]) return null; const lv0 = LV; LV = o && o.liv !== undefined ? o.liv : 1; try { const g = T[tipo](o || {}); g.userData.tipo = tipo; g.userData.liv = LV; return g; } finally { LV = lv0; } }
   return { make, TIPI, T, mat, C, vasoCaso, PIANTE_V: Object.keys(PIANTE), GENERI_V: Object.keys(VG),   // [vasi2]
