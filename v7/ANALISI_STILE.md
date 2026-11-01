@@ -91,3 +91,39 @@ Il 7 cambia il gioco e va provato giocando.
 - Correggere ancora tutto il quadro con la saturazione o il contrasto del passo finale: è quello che ha prodotto il problema.
 - Desaturare per «calmare» (il giro del panel): la guida lo vieta. Si calma il **fondo**, nei materiali, e si accendono gli accenti.
 - Aggiungere effetti prima che la gerarchia regga: un effetto su un'immagine senza gerarchia resta un effetto.
+
+## 6. Riletto il piano: cosa mancava
+
+Confrontato con la bibbia del committente, con i suoi messaggi e con i lavori rimandati (`src/HANDOFF_look.md` «Rimandati»,
+`src/HANDOFF_ad.md` «Il resto del panel»).
+
+**La lacuna più grossa: il committente non vede quello che fotografiamo.** Sul suo portatile (Intel Iris Xe) `profilo.js` accende da solo
+il profilo leggero (`?leggera`, `PHONE` in `render.js`). Lì il passo finale **non legge la profondità** (`PRO.prof` resta spento): niente
+pennarello sulle sagome, niente ciglio e piede dei volumi, niente aria, niente tetti calmi, niente maschera del regime; e niente
+micro-normale dipinta. Tutte le foto della galleria invece girano col profilo pieno (nei browser automatici il profilo non cambia). Quindi:
+- **passo 0**: la galleria e la misura per categoria si fanno anche con `?leggera` (le due colonne, pieno e leggero, a ogni giro);
+- il passo 2 non può contare sulla profondità nel profilo leggero: la categoria va scritta dai materiali (l'alfa del bersaglio) in tutti
+  e due i profili, e la profondità resta un di più del profilo pieno;
+- le cose che danno carattere vanno messe dove costano poco anche sulle schede integrate: nei materiali (bordo di luce, retino, colore,
+  zoccolo scuro) più che nel passo con letture di profondità.
+
+**Le altre cose emerse e non ancora nel piano:**
+
+| da dove | cosa | passo |
+| --- | --- | --- |
+| bibbia, «il conflitto» | **lo shader come stato della rivoluzione**: dove la strada resiste l'immagine si scalda, fiorisce e si curva; il grigio del regime arretra. Oggi c'è solo la maschera fissa dei luoghi del regime: serve una variabile di gioco per quartiere (quanto è della strada) che guidi colore, lente e verde | nuovo, dopo il 4 |
+| bibbia, «le ore» | **la notte non è mai stata misurata**: sodio arancio, neon rosa, turchese e verde acido, glitter e specchietti dei club. Le misure del §1 sono solo giorno e mattino | 0 e 8 |
+| bibbia, «luce» | la luce che rimbalza a terra a macchie di colore da lamiere dipinte e vetri colorati | 3 |
+| [ad] punto 8 | il filo di cobalto sul bordo dell'ombra portata, il rimbalzo del sole dentro l'ombra, le ore della sera allineate all'accensione dei lampioni | 3 |
+| bibbia, «forme»; [ad] punti 2-3 | **l'attitudine e il rigonfiamento**: case che pendono di ±0,6-0,9° (da un rumore lento, le facciate attaccate non si aprono), pali ±1,5°, cartelli girati; zoccolo di 40 cm più scuro, base degli oggetti +8%, schiacciamento all'atterraggio | nuovo, geometria |
+| bibbia, «tratto»; [ad] punto 7 | il tratto che pesa: più spesso col salto e al piede, la pressione da un rumore nel mondo, la penna che ogni tanto salta; le scritte col contorno nero spesso e le gocciolature | 8 |
+| bibbia, «trame» | fotocopia e serigrafia fuori registro su manifesti, volantini e stencil | 4 (nella tela dei segni) |
+| bibbia, «colore» | il verde solarpunk che avanza: rampicanti, buganvillee, orti sui tetti, fichi dai muri (non solo l'erba nelle crepe) | 6 |
+| [ad] «da fare» | la sera tutte le saracinesche giù e dipinte; lo heaven spot a rullo sui tetti piani (rompe anche il bianco dei terrazzi) | 4 |
+| [look] rimandati | un **solo colore per le cose con cui si interagisce** (`#ff4f9a` o `#E8A8BF`, da scegliere) e uno per il personaggio | 5 |
+| [look] rimandati | le regole del set (arredo a isole, niente cose sparse): la leggibilità degli oggetti passa anche dal togliere | 6 |
+| [look] rimandati, cineasta e animatore | il cinema oltre la camera: lo sguardo avanti più lento, le bande solo nelle scene e nei dialoghi, la profondità a strati (primo piano scuro, piano del personaggio pieno, fondo nell'aria) | 7 |
+| messaggio «deve girare fluido» | **un tetto di costo per ogni passo**: niente letture di profondità in più nel profilo leggero, la misura dei millisecondi della scheda (`?perf`, F3) sul portatile del committente prima e dopo | tutti |
+
+**L'ordine rivisto**: 0 (misurare pieno e leggero, giorno e notte) → 1 → 2 (categoria dai materiali) → 3 → 4 → 5 → stato della rivoluzione
+→ 6 → 7 → forme → 8.
