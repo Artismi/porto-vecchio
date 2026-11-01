@@ -6079,7 +6079,54 @@ var Render = (function () {
     pesce: { sign: 'PESCE FRESCO', heap: ['#8a9094', '#6a7074', '#9aa0a2'], tarp: '#3e4e58', ice: true },
     forno: { sign: 'PANE', heap: ['#8a6a3a', '#9a7444', '#6a4a2a'], tarp: '#6e5040' },
   };
+  // [dettaglio2] il banco del mercato coi pezzi veri: il bancone di casse a doghe, le cassette basse con la merce tonda, i pali tondi con le
+  // traverse che reggono il telo (prima i teli galleggiavano sui pali), l'ombrellone a otto spicchi con le stecche e la balza, le cassette
+  // vuote a terra. Stessi numeri a caso del banco di prima, nello stesso ordine
+  const BANCO3 = {};
+  function banco3(it, r) {
+    const G2 = MERCE[it.goods] || MERCE.verdura, g = G0(), wood = PM.wood(), woodD = PM.woodD();
+    const cassa = (x, y, z, sx, sy, sz, ry) => { const q = pm3('cassa', { liv: 0 });   /* il bancone si vede di fronte: senza bulloni e stampino, metà triangoli */ q.scale.set(sx, sy, sz); q.position.set(x, y, z); q.rotation.y = ry || 0; g.add(q); return q; };
+    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; cassa(cxk, 0, 0, .91, .57, .85, (r() - .5) * .12); cassa(cxk + (r() - .5) * .08, .42, (r() - .5) * .06, .91, .57, .85, (r() - .5) * .14); }
+    add(g, box(3.7, .05, .5, wood), 0, .87, -.2, 0, 0, (r() - .5) * .03); add(g, box(3.6, .05, .45, woodD), .05, .88, .25, 0, .02, 0);
+    const ice = G2.ice ? sm('#c8d0d2', { roughness: .4 }) : null, tondo = BANCO3.t || (BANCO3.t = new THREE.SphereGeometry(1, 7, 5)), pesce = BANCO3.p || (BANCO3.p = new THREE.SphereGeometry(1, 6, 4));
+    for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9, cr = pm3('cassetta'); cr.scale.set(1.6, .875, 1.3); cr.position.set(cxk, .905, 0); g.add(cr); if (ice) add(g, box(.74, .03, .44, ice), cxk, 1.04, 0);
+      const hc = pick(r, G2.heap); for (let q = 0; q < 7; q++) { const s = .07 + r() * .05, o = new THREE.Mesh(G2.ice ? pesce : tondo, sm(q % 3 ? hc : pick(r, G2.heap), { roughness: .8 })); o.scale.set(G2.ice ? s * 2.2 : s, s * (G2.ice ? .6 : .92), s); o.position.set(cxk + (r() - .5) * .6, 1.08 + r() * .05, (r() - .5) * .34); o.rotation.y = r() * 6; g.add(o); } }
+    const vr = rng((Math.round(it.x * 7) * 31 + Math.round(it.y * 13)) >>> 0), cano = ['falde', 'falda', 'ombrellone', 'righe'][Math.floor(vr() * 4)], hh = .85 + vr() * .25;
+    const tcol = mute(pick(vr, [G2.tarp, '#5a6a74', '#6a6448', '#7a4a3c', '#4a6a5a', '#8a7a5a', '#5a4e6a', '#3e5a6e']), .9);
+    const iron = PM.iron(), tarpM = sm(tcol, { roughness: 1, side: THREE.DoubleSide }), patchM = sm(mute(pick(r, ['#6a6448', '#5a4a40', '#4a5a6a']), .9), { roughness: 1 });
+    const trave = (x0, x1, y, z, m, rr) => { const c = cyl(rr || .03, rr || .03, x1 - x0, 6, m); c.rotation.z = Math.PI / 2; c.position.set((x0 + x1) / 2, y, z); g.add(c); };
+    if (cano === 'ombrellone') {
+      add(g, cyl(.04, .04, 2.7 * hh, 6, iron), 0, 1.35 * hh, .9); add(g, cyl(.25, .3, .14, 10, sm('#7a766e', { roughness: 1 })), 0, .07, .9);
+      const yt = 2.6 * hh, cone = new THREE.Mesh(new THREE.ConeGeometry(2.4, .6, 8, 1, true), tarpM); cone.position.set(0, yt + .3, .2); cone.rotation.y = Math.PI / 8; g.add(cone);
+      const balza = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, .2, 8, 1, true), tarpM); balza.position.set(0, yt - .1, .2); balza.rotation.y = Math.PI / 8; g.add(balza);
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + Math.PI / 8, ex = Math.cos(a) * 2.3, ez = .2 + Math.sin(a) * 2.3, d = new THREE.Vector3(ex, -.55, ez - .2), L = d.length(), st = cyl(.012, .012, L, 4, iron); st.position.set(ex / 2, yt + .58 - .55 / 2, .2 + (ez - .2) / 2); st.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(st); }
+      add(g, cyl(.05, .03, .12, 6, iron), 0, yt + .66, .2);
+    } else {
+      add(g, cyl(.045, .05, 2.5 * hh, 7, woodD), -1.9, 1.25 * hh, -.5, 0, 0, .04); add(g, cyl(.04, .04, 2.6 * hh, 6, iron), 1.9, 1.3 * hh, -.5, 0, 0, -.05);
+      add(g, cyl(.045, .05, 2.1 * hh, 7, woodD), -1.9, 1.05 * hh, .7, 0, 0, -.06); add(g, cyl(.04, .04, 2.2 * hh, 6, iron), 1.85, 1.1 * hh, .7, 0, 0, .05);
+      trave(-2.0, 2.0, 2.3 * hh + .02, -.5, woodD, .035); trave(-2.0, 2.0, 2.3 * hh - .28, .7, woodD, .035);   // le traverse sui pali, appena sotto il telo inclinato (dietro alto, davanti basso)
+      if (cano === 'falde') {
+        [[-1.3, .1], [0, -.08], [1.3, .1]].forEach(([ox, dy], k) => add(g, box(1.36, .03, 1.5, tarpM), ox, 2.32 * hh + dy, .1, .25, 0, (k - 1) * -.06));
+        add(g, box(.6, .035, .5, patchM), .7, 2.3 * hh, .2, .25, 0, 0);
+      } else if (cano === 'falda') {
+        add(g, box(4.2, .03, 1.9, tarpM), 0, 2.3 * hh, .25, .32, 0, (vr() - .5) * .05); add(g, box(.7, .035, .6, patchM), -.9, 2.31 * hh, .35, .32, 0, 0);
+      } else {
+        const stM = stripeMat(pick(vr, ['#b0283c', '#2f5a3e', '#3a4a7a', '#8a6a2a']), '#e9e0cf');
+        add(g, box(4.1, .04, 1.7, stM), 0, 2.3 * hh, .2, .3, 0, 0);
+        for (let k = 0; k < 9; k++) add(g, box(.42, .2, .02, stM), -1.85 + k * .46, 2.0 * hh, 1.0);
+      }
+    }
+    for (let k = 0; k < 3; k++) { const L = .5 + r() * .3, c = cyl(.008, .008, L, 4, sm('#c8c0a8')); c.position.set(-1.9 + k * 1.9, 2.1 * hh, .9 + r() * .2); c.rotation.x = Math.PI / 2 + .6; g.add(c); }   // le corde
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .45), new THREE.MeshStandardMaterial({ map: handTex(G2.sign, '#b8a07a', '#2a1a12'), roughness: 1 })); sg.position.set((r() - .5) * 1.4, 1.95, .86); sg.rotation.z = (r() - .5) * .12; g.add(sg);
+    add(g, box(.3, .1, .25, sm('#5a6066', { metalness: .4, roughness: .5 })), 1.45, .95, .3); add(g, cyl(.13, .13, .02, 10, sm('#8a9094', { metalness: .5 })), 1.45, 1.06, .3); add(g, cyl(.015, .015, .06, 6, sm('#5a6066')), 1.45, 1.02, .3);   // la bilancia col piatto sul perno
+    for (let k = 0; k < 3; k++) { const cr = pm3('cassetta'); cr.scale.set(1.2, 1.875, 1.18); cr.position.set(-1.2 + k * .55 + (r() - .5) * .2, k === 1 ? .3 : 0, -1.05); cr.rotation.y = r() * .4; g.add(cr); }
+    const bulb = add(g, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), sb('#ffd8a0')), -.2, 2.0, .2); bulb.userData.keep = true; add(g, cyl(.006, .006, .3, 4, sl('#1a1a1a')), -.2, 2.17, .2);
+    const o = place(g, it.x, it.y, it.rot); const c = Math.cos(it.rot || 0), s = Math.sin(it.rot || 0), lx = it.x - .2 * c + .2 * s, lz = it.y + .2 * s * 0 + .2 * c;
+    addLight(lx, groundH(it.x, it.y) + 1.9, lz, '#ffc080', 1.2, 5, .15); glow(lx, groundH(it.x, it.y) + 2, lz, '#ffc080', .9);
+    return o;
+  }
   function banco(it, r) {
+    if (ARR3()) return banco3(it, r);   // [dettaglio2]
     const G2 = MERCE[it.goods] || MERCE.verdura, g = G0(), wood = PM.wood(), woodD = PM.woodD(), crateM = sm('#8a6a48', { roughness: 1 }), crateD = sm('#6a5038', { roughness: 1 });
     // il bancone: cassette impilate e due assi sopra, mai dritte
     for (let k = 0; k < 4; k++) { const cxk = -1.35 + k * .9; add(g, box(.82, .42, .78, k % 2 ? crateM : crateD), cxk, .21, 0, 0, (r() - .5) * .12, 0); add(g, box(.82, .42, .78, k % 3 ? crateD : crateM), cxk + (r() - .5) * .08, .63, (r() - .5) * .06, 0, (r() - .5) * .14, 0); }
@@ -8766,7 +8813,13 @@ var Render = (function () {
       [-1, 1].forEach(q => { [.07, .2].forEach(y => add(c, box(.55, .075, .02, w), 0, y, q * .18)); add(c, box(.02, .26, .34, w), q * .265, .13, 0); [-1, 1].forEach(p => add(c, box(.035, .26, .035, d), q * .255, .13, p * .17)); });
       if (full) { const qq = rng(Math.round(x * 31 + z * 17) >>> 0); for (let k = 0; k < 6; k++) add(c, new THREE.Mesh(new THREE.IcosahedronGeometry(.07, 0), sm(full)), (qq() - .5) * .4, .26, (qq() - .5) * .25); }
       c.position.set(x, 0, z); c.rotation.y = ry || 0; g.add(c); },
-    cartone(g, x, z, ry, s, open) { s = s || 1; const m = std({ map: cardTex35('cartone'), roughness: 1 }); add(g, box(.5 * s, .36 * s, .4 * s, m), x, .18 * s, z, 0, ry, 0); if (open) { add(g, box(.5 * s, .02, .2 * s, m), x + Math.sin(ry) * .28 * s, .4 * s, z + Math.cos(ry) * .28 * s, -.9, ry, 0); } },
+    cartone(g, x, z, ry, s, open) { s = s || 1; const m = std({ map: cardTex35('cartone'), roughness: 1 }); if (!ARR3()) { add(g, box(.5 * s, .36 * s, .4 * s, m), x, .18 * s, z, 0, ry, 0); if (open) { add(g, box(.5 * s, .02, .2 * s, m), x + Math.sin(ry) * .28 * s, .4 * s, z + Math.cos(ry) * .28 * s, -.9, ry, 0); } return; }
+      // [dettaglio2] il cartone: la scatola un po' afflosciata, le quattro alette (aperte, o chiuse col nastro marrone che scende sui fianchi)
+      const c = G0(), W = .5 * s, H = .36 * s, D = .4 * s; add(c, box(W, H, D, m), 0, H / 2, 0, 0, 0, .015); const tape = sm('#a87a44', { roughness: .5 });
+      if (open) { [[0, D / 2, W, .12 * s, -1.9], [0, -D / 2, W, .12 * s, 1.9]].forEach(([ax, az, aw, ad, rx]) => { const f = add(c, box(aw, .006, ad, m), ax, H, az + Math.sign(az) * ad / 2 * .2, rx * .5, 0, 0); f.position.z = az + Math.sign(az) * ad * .29; f.position.y = H + ad * .405; });
+        [[W / 2, 1], [-W / 2, -1]].forEach(([ax, sg2]) => { const f = add(c, box(.1 * s, .006, D * .96, m), ax + sg2 * .042 * s, H + .028 * s, 0, 0, 0, sg2 * .6); }); }
+      else { add(c, box(.06 * s, .004, D + .004, tape), 0, H + .002, 0); [-1, 1].forEach(q => add(c, box(.06 * s, .1 * s, .004, tape), 0, H - .05 * s, q * (D / 2 + .002))); add(c, box(W * .98, .004, .004, sm(shade('#b8946a', .7))), 0, H + .003, 0); }
+      c.position.set(x, 0, z); c.rotation.y = ry || 0; g.add(c); },
     sacco(g, x, z, ry, col) { const geo = new THREE.IcosahedronGeometry(.32, 1); geo.scale(1, .78, .9); const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setY(i, Math.max(y, -.18)); if (y > .15) { p.setX(i, p.getX(i) * .5); p.setZ(i, p.getZ(i) * .5); } } geo.computeVertexNormals(); const m = new THREE.Mesh(geo, sm(col || '#1a1a1e', { roughness: .45, metalness: .1 })); m.scale.setScalar(.9 + (x * 7 % 1) * .3); add(g, m, x, .2, z, 0, ry, 0); add(g, box(.06, .08, .06, sm('#e8e2d0')), x, .44, z); },
     bidone(g, x, z, ry, col) { const m = sm(col || '#3a5a3e', { roughness: .7, metalness: .3 }); add(g, cyl(.32, .28, .9, 10, m), x, .45, z); add(g, cyl(.35, .35, .07, 10, m), x + .05, .93, z, .12, 0, 0); },
     pallet(g, x, z, ry, n) { const w = sm('#9a7a50'); for (let q = 0; q < (n || 1); q++) { const y = q * .14; [-.5, 0, .5].forEach(o => add(g, box(.1, .1, 1.2, w), x + Math.cos(ry) * o, y + .05, z - Math.sin(ry) * o, 0, ry, 0)); for (let k = 0; k < 5; k++) add(g, box(1.2, .025, .14, w), x + Math.sin(ry) * (k - 2) * .26, y + .115, z + Math.cos(ry) * (k - 2) * .26, 0, ry, 0); } },
@@ -8806,7 +8859,7 @@ var Render = (function () {
     sacchiCemento(g, x, z, ry) { B35.pallet(g, x, z, ry, 1); const m = std({ map: cardTex35('cemento'), roughness: 1 }); for (let k = 0; k < 7; k++) add(g, box(.55, .13, .38, m), x + Math.cos(ry) * ((k % 2) - .5) * .58 + Math.sin(ry) * (Math.floor(k / 2) % 3 - 1) * .38, .2 + Math.floor(k / 6) * .13, z - Math.sin(ry) * ((k % 2) - .5) * .58 + Math.cos(ry) * (Math.floor(k / 2) % 3 - 1) * .38, 0, ry + (k * .13 % .2), 0); },
     rete(g, x, z, ry, L) { const fm = new THREE.MeshStandardMaterial({ map: cardTex35('rete'), transparent: true, alphaTest: .4, side: THREE.DoubleSide, roughness: .6, metalness: .4 }); cardTex35('rete').repeat && 0;
       const p = new THREE.Mesh(new THREE.PlaneGeometry(L, 1.9), fm); add(g, p, x, 1.05, z, 0, ry, 0); const ft = sm('#8a8c88', { metalness: .5, roughness: .5 }); [-1, 1].forEach(s => { add(g, box(.04, 1.95, .04, ft), x + Math.cos(ry) * s * L / 2, 1.05, z - Math.sin(ry) * s * L / 2); add(g, new THREE.Mesh(PIEDE35(), sm('#6a6864', { roughness: 1 })), x + Math.cos(ry) * s * L / 2, 0, z - Math.sin(ry) * s * L / 2, 0, ry, 0); }); },   // [pulizia] il piede di cemento a tronco di piramide (era una scatola)
-    pannello(g, x, z, ry, L) { const m = std({ map: cardTex35('righe'), roughness: .8 }); add(g, box(L, 1.1, .05, m), x, .62, z, 0, ry, 0); [-1, 1].forEach(s => add(g, new THREE.Mesh(PIEDE35(), sm('#2a2a2c')), x + Math.cos(ry) * s * L * .4, 0, z - Math.sin(ry) * s * L * .4, 0, ry, 0)); },
+    pannello(g, x, z, ry, L) { const m = std({ map: cardTex35('righe'), roughness: .8 }); if (ARR3()) { const q = pm3('pannello_cantiere', { L, mt: m }); q.position.set(x, 0, z); q.rotation.y = ry; g.add(q); return; }   /* [dettaglio2] il telaio di tubo zincato, i montanti nei piedi di cemento, le fascette (era una lastra a strisce) */ add(g, box(L, 1.1, .05, m), x, .62, z, 0, ry, 0); [-1, 1].forEach(s => add(g, new THREE.Mesh(PIEDE35(), sm('#2a2a2c')), x + Math.cos(ry) * s * L * .4, 0, z - Math.sin(ry) * s * L * .4, 0, ry, 0)); },
     cesso(g, x, z, ry) { const s = G0(), m = sm('#2a5aa0', { roughness: .5 }); add(s, box(1.1, 2.2, 1.1, m), 0, 1.1, 0); add(s, box(1.16, .1, 1.16, sm('#e8e8e4')), 0, 2.25, 0); add(s, box(.7, 1.8, .02, sm('#24508a')), 0, 1, .56); s.position.set(x, 0, z); s.rotation.y = ry; g.add(s); },
     torre(g, x, z, ry) { const y = sm('#d0a028', { roughness: .6 }), d = sm('#2a2a2c'); add(g, box(1.4, .9, .9, y), x, .5, z, 0, ry, 0); add(g, cyl(.05, .07, 4.4, 6, d), x, 2.6, z); add(g, box(1.2, .1, .1, d), x, 4.8, z, 0, ry, 0); [-1, 1].forEach(s => add(g, box(.4, .3, .2, sm('#e8e4d4', { emissive: '#3a3020' })), x + Math.cos(ry) * s * .4, 4.7, z - Math.sin(ry) * s * .4, 0, ry, 0)); },
   };
@@ -10707,9 +10760,10 @@ var Render = (function () {
     if (era === 'E3' || era === 'E4') { [-1, 1].forEach(s2 => at(box(.2, 2.45, .08, stone), pu + s2 * .66, base + 1.22, .04)); at(box(1.52, .24, .1, stone), pu, base + 2.5, .05); if (era === 'E3') at(box(.34, .2, .12, stone), pu, base + 2.5, .06); }
     else if (era === 'E6') { [-1, 1].forEach(s2 => at(box(.06, 2.3, .05, metal), pu + s2 * .6, base + 1.15, .03)); at(box(1.26, .06, .05, metal), pu, base + 2.3, .03); }
     K2 = 'citofono'; { const cu = pu - sid * .78 >= .3 && pu - sid * .78 <= L - .3 ? pu - sid * .78 : pu + sid * .78;
+      if (ARR3()) { at(pm3('citofono', { n: Math.min(6, Math.max(2, b.fl || 2)), col: era === 'E6' ? '#a8acb0' : '#b8984a' }), cu, base + 1.42, 0); at(pm3('buca_lettere', { col: era === 'E6' ? '#a8a49a' : '#2f4a38' }), cu, base + 1.0, 0); } else {   // [dettaglio2] la placca coi tasti e i cartellini, la cassetta col coperchio a cerniera (erano scatole)
       at(box(.13, .3, .03, sm(era === 'E6' ? '#a8acb0' : '#b8984a', { roughness: .4, metalness: .6 })), cu, base + 1.42, .02);   // pulsantiera del citofono
       for (let q = 0; q < Math.min(6, Math.max(2, b.fl || 2)); q++) at(box(.05, .025, .02, sm('#2a2a2a')), cu, base + 1.53 - q * .04, .04);
-      at(box(.28, .2, .09, sm(era === 'E6' ? '#a8a49a' : '#2f4a38', { roughness: .7 })), cu, base + 1.0, .045); at(box(.2, .015, .02, sm('#1a1a1a')), cu, base + 1.06, .095); }   // la cassetta delle lettere
+      at(box(.28, .2, .09, sm(era === 'E6' ? '#a8a49a' : '#2f4a38', { roughness: .7 })), cu, base + 1.0, .045); at(box(.2, .015, .02, sm('#1a1a1a')), cu, base + 1.06, .095); } }   // la cassetta delle lettere
     K2 = 'insegna'; if (S.piano === 1 || !ents.length) {   // la bottega al primo piano: la targa d'ottone accanto al portone
       const tu = pu + sid * .9 <= L - .3 && pu + sid * .9 >= .3 ? pu + sid * .9 : pu - sid * .9, tx = insegnaTex(S.name || '', 'marmo', null, 1.8), pl = new THREE.Mesh(new THREE.PlaneGeometry(.5, .28), std({ map: tx.t, roughness: .5, color: '#e8d098' }));
       at(pl, tu, base + 1.62, .025); scene.add(botTag1(mergeGroup(g), b)); return;
@@ -10785,9 +10839,14 @@ var Render = (function () {
       sm1.side = THREE.DoubleSide; sg.scale.set(.85, .85, 1);   // [insegne1] stessa scala sui due assi: le lettere restano dritte
       if (face === 'N') { sg.position.set(dx + 1.5, sy + .2, z0 - .9); sg.rotation.y = Math.PI / 2; lz = z0 - 1.4; lx = dx + 1.5; }
       else { sg.position.set(x0 - .9, sy + .2, dz + 1.5); lx = x0 - 1.4; lz = dz + 1.5; }
-      const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm);
+      if (!ARR3()) { const arm = box(.06, .06, 1.8, sl('#1b1820')); arm.position.copy(sg.position); arm.position.y += .62; if (face === 'W') arm.rotation.y = Math.PI / 2; scene.add(arm); }
     }
     if (b.deco && b.fl >= 4 && face === 'S') { sg.position.y = base + 3.35; sg.scale.set(1.2, 1, 1); }
+    if (ARR3()) {   // [dettaglio2] la scritta su una tavola vera (fondo, cornice, staffe: era un foglio sul muro); a bandiera il braccio di ferro e la cornice appesa, e la scritta sta fuori dal muro (entrava per mezzo metro nella casa)
+      if (face === 'S' || face === 'E') { const q = pm3('insegna_tavola', { w: 3.4 * sg.scale.x + .14, h: .85 * sg.scale.y + .14 }); if (face === 'S') q.position.set(sg.position.x, sg.position.y, z0 + d); else { q.position.set(x0 + w, sg.position.y, dz); q.rotation.y = Math.PI / 2; } mk2(q, 'insegna', b, face); addStatic(q); }
+      else { const s2 = .6, wf = 3.4 * s2 + .1, hf = .85 * s2 + .1, ya = sy + .82, out = .15 + wf / 2, yc = ya - .14 - hf / 2, q = pm3('insegna_tavola', { bandiera: true, w: wf, h: hf, L: .15 + wf + .12 }); sg.scale.set(s2, s2, 1);
+        if (face === 'N') { sg.position.set(dx + 1.5, yc, z0 - out); q.position.set(dx + 1.5, ya, z0); q.rotation.y = Math.PI; } else { sg.position.set(x0 - out, yc, dz + 1.5); q.position.set(x0, ya, dz + 1.5); q.rotation.y = -Math.PI / 2; }
+        mk2(q, 'insegna', b, face); addStatic(q); } }
     scene.add(sg); p2Obj(sg, 'insegna', b, face);   // [pulizia2]
     const lr = addLight(lx, sy - .3, lz, b.sign.c, 2.2, 8, b.id === 'flipper' || b.id === 'disco' ? .5 : .08); lr.always = true;
     const gl = glow(sg.position.x, sy, sg.position.z, b.sign.c, 5.5); gl.material.opacity = .45;
@@ -15218,6 +15277,12 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const T = tetto1({ x0: G0.x - pw / 2, z0: G0.y - pd / 2, w: pw, d: pd, y: y + sh, kind: 'lamiera', shape: 'falda', pitch: .12, ov: .12, wallHex: col, r, kindV: Math.floor(r() * 3), gutter: false }); g.add(T.grp);
         const dr = fB(.8, 1.85, .06, pick(r, ['#4a3a2a', '#3a4a5a', '#5a3a2e']), 'wood', .01); dr.position.set(G0.x - pw * .2, y + .93, G0.y + pd / 2 + .03); g.add(dr);
         const wn = fB(.5, .42, .05, '#1e2a34', 'glass', .01); wn.position.set(G0.x + pw * .25, y + 1.4, G0.y + pd / 2 + .03); g.add(wn);
+        if (ARR3()) { const tc = shade(col, .78), zf = G0.y + pd / 2;   // [dettaglio2] gli angolari, il cordolo di cemento, il telaio della porta con la maniglia, la finestrella col telaio e il davanzale (era una scatola con due lastre)
+          [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const a2 = fB(.07, sh, .07, tc, 'paint', .01); a2.position.set(G0.x + sx * pw / 2, y + sh / 2, G0.y + sz * pd / 2); g.add(a2); });
+          const k0 = fB(pw + .08, .1, pd + .08, '#8a8680', 'concrete', .02); k0.position.set(G0.x, y + .05, G0.y); g.add(k0);
+          const xd = G0.x - pw * .2; [-1, 1].forEach(q => { const j = fB(.06, 1.97, .07, tc, 'paint', .01); j.position.set(xd + q * .43, y + .985, zf + .03); g.add(j); }); const ar = fB(.92, .07, .07, tc, 'paint', .01); ar.position.set(xd, y + 1.94, zf + .03); g.add(ar);
+          const mn = fC(.016, .016, .12, 6, '#c8c4b8', 'galv'); mn.rotation.z = Math.PI / 2; mn.position.set(xd + .26, y + 1.0, zf + .08); g.add(mn);
+          const xw = G0.x + pw * .25; [[0, .245, .62, .06], [0, -.245, .68, .06]].forEach(([ox, oy, ww, hh], q) => { const f = fB(ww, hh, q ? .12 : .07, tc, 'paint', .01); f.position.set(xw, y + 1.4 + oy, zf + (q ? .06 : .04)); g.add(f); }); [-1, 1].forEach(q => { const f = fB(.06, .43, .07, tc, 'paint', .01); f.position.set(xw + q * .28, y + 1.4, zf + .04); g.add(f); }); }
       } else if (G0.k === 'altana') {   // [tetti4] l'altana: quattro pilastrini di legno su plinti di pietra, la ringhiera bassa su tre lati, il tettuccio a padiglione di coppi
         const pw = G0.hx * 2 - .1, pd = G0.hy * 2 - .1, px = G0.x, pz = G0.y, H = 2.25;
         [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => { const pl = fB(.24, .18, .24, '#b8b0a0', 'concrete', .01); pl.position.set(px + sx * (pw / 2 - .12), y + .09, pz + sz * (pd / 2 - .12)); g.add(pl);
