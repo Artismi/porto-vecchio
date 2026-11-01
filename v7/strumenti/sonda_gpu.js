@@ -24,7 +24,7 @@ const srv = http.createServer((req, res) => {
 }).listen(0, async () => {
   const T0 = Date.now(), log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)} s]`, ...a);
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--js-flags=--max-old-space-size=4096'] });
-  const pg = await b.newPage({ viewport: { width: 1414, height: 640 }, deviceScaleFactor: 1 });
+  const pg = await b.newPage({ viewport: { width: 480, height: 218 }, deviceScaleFactor: 1 });   // piccola mentre carica (i fotogrammi in software sono lenti: i tasselli e i blocchi salgono a fotogrammi), 1414×640 per misurare
   pg.on('pageerror', e => console.log('[errore]', e.message));
   await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { waitUntil: 'domcontentloaded', timeout: 0 });
   await pg.waitForFunction(() => window.__tl && window.__tl.gioco, null, { timeout: 1800000, polling: 1000 });
@@ -35,7 +35,9 @@ const srv = http.createServer((req, res) => {
   for (const P of PUNTI) {
     const [x0, y0, z] = P;
     await pg.evaluate(([x0, y0, z]) => { const pv = window.__pv, st = pv.st, p = st.player, R = pv.R; p.vehicle = null; p.indoor = null; p.lv = null; p.path = []; p.x = x0; p.y = y0; st.t = (Math.floor(st.t / 1440) + 1) * 1440 + 660; window.__meteo = 'sereno'; pv.ui.zoom = z; R.cam.x = R.cam.tx = x0; R.cam.y = R.cam.ty = y0; }, P);
-    await pg.waitForTimeout(40000);   // i tasselli e i blocchi vicini entrano
+    await pg.setViewportSize({ width: 480, height: 218 }); await pg.waitForTimeout(+arg('attesa', 90) * 1000);   // i tasselli e i blocchi vicini entrano
+    await pg.waitForFunction(() => !window.__tasselli || !window.__tasselli.inVolo, null, { timeout: 60000, polling: 1000 }).catch(() => log('tasselli ancora in volo'));
+    await pg.setViewportSize({ width: 1414, height: 640 }); await pg.waitForTimeout(20000);
     const r = await pg.evaluate(() => new Promise(done => {
       const pv = window.__pv, R = pv.R, rd = R.__models.renderer, scene = R.__models.scene, cam = R.getCamera(), gl = rd.getContext(), T3 = window.THREE;
       const PT = new Map();   // programma → il pezzo di shader che lo distingue (dal sorgente compilato: vale anche per i tasselli, che portano il testo già trasformato)
@@ -116,7 +118,7 @@ const srv = http.createServer((req, res) => {
         frame: { disegni: D.length, programmi: progs, passi, perFamiglia: agg(d => d.p === 'scena').slice(0, 30), ombra: agg(d => d.p === 'ombra').slice(0, 12), post: agg(d => d.p === 'post' || d.p === 'scena-schermo') },
         copertura: { pixel: W * H, vuoti: vuoto, famiglie: [...cop].map(([k, e]) => [k, e.disegni, +(e.px / (W * H) * 100).toFixed(1) + '%', e.tri, e.triVis, e.px ? +(e.triVis / e.px).toFixed(2) : null]).sort((a, b) => b[4] - a[4]) },
         sovrapposizione: { colonne: 'gruppo, frammenti, frammenti col suolo per ultimo, pixel visibili', gruppi: top7.concat(['resto']).map((k, i) => [k, od1.fr[i], od2.fr[i], k === 'resto' ? [...cop].filter(e => !top7.includes(e[0])).reduce((a, e) => a + e[1].px, 0) : cop.get(k).px]), istogramma: Array.from(od1.hist), istogrammaSuoloUltimo: Array.from(od2.hist) },
-        tempiSwiftShader: { fotogramma: Math.round(msFrame), veri: tVeri, piatti: tPiatti, soloSuolo: tSuolo }, luci: window.__luci, gpu: R.gpuTimes });
+        tempiSwiftShader: { fotogramma: Math.round(msFrame), veri: tVeri, piatti: tPiatti, soloSuolo: tSuolo }, luci: window.__luci, tasselli: window.__tasselli ? { inScena: window.__tasselli.inScena, inVolo: window.__tasselli.inVolo, motivo: window.__tasselli.motivo } : null, gpu: R.gpuTimes });
       } }));
     out.punti[P.join(',')] = r; log('punto', P.join(','), JSON.stringify(r).slice(0, 4000));
   }

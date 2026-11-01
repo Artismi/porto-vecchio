@@ -19,7 +19,7 @@ const { chromium } = require(process.env.PW || 'playwright');
 const ARG = {}; for (const a of process.argv.slice(2)) { const m = /^--([a-z-]+)(?:=(.*))?$/.exec(a); if (m) ARG[m[1]] = m[2] === undefined ? true : m[2]; }
 const root = path.join(__dirname, '..'), NOME = ARG.nome || 'streaming', VISTA = (ARG.vista || '640x360').split('x').map(Number);
 const QUERY = 'cittanuova' + (ARG.query === undefined ? '&leggera&perf&tassellivecchi' : ARG.query);
-const PASSO = +(ARG.passo || 1), TRATTO = +(ARG.tratto || 120), ATTESA = +(ARG.attesa || 90) * 1000;
+const PASSO = +(ARG.passo || 1), TRATTO = +(ARG.tratto || 120), SALTA = String(ARG.salta || '').split(','), ATTESA = +(ARG.attesa || 90) * 1000;
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.webp': 'image/webp', '.glb': 'model/gltf-binary', '.bin': 'application/octet-stream', '.gz': 'application/gzip' };
 
 // la pagina con i mark: prima di ogni <script data-m="x"> e della richiesta sincrona del mondo cotto, e in fondo
@@ -130,6 +130,7 @@ srv.listen(0, async () => {
   process.stderr.write = (c, ...a) => { const s = String(c); if (/pw:browser/.test(s)) { const m = /(\d+) ms: (Scavenge|Mark-Compact|Minor Mark-Compact|Mark-sweep)[^,]*?([\d.]+) \(([\d.]+)\) -> ([\d.]+) \(([\d.]+)\) MB, (?:pooled: [\d.]+ MB, )?([\d.]+) \/ ([\d.]+) ms(.*)$/m.exec(s); if (m) gcRighe.push({ t: +m[1], tipo: m[2], prima: +m[3], dopo: +m[5], ms: +m[7], perche: (/\((average|testing|.*?)\)/.exec(m[9] || '') || [])[0] || '', fase: FASE.v }); return true; } return ld(c, ...a); };
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--js-flags=--trace-gc --expose-gc'] });
   const out = { nome: NOME, query: QUERY, vista: VISTA, passo: PASSO, tratto: TRATTO, cpu: os.cpus().length, carico: os.loadavg() };
+  const FOUT = path.join(os.tmpdir(), 'streaming_' + NOME + '.json'), salva = tappa => { out.tappa = tappa; out.gcRighe = gcRighe.length; try { fs.writeFileSync(FOUT, JSON.stringify(out, null, 1)); } catch (e) { } console.log('[sonda]', tappa, Math.round(process.uptime()) + ' s'); };
   try {
     const ctx = await b.newContext({ viewport: { width: VISTA[0], height: VISTA[1] } });
     const pg = await ctx.newPage(), errori = [];
@@ -152,13 +153,13 @@ srv.listen(0, async () => {
         arrivoPrepara: window.__pv.R.ISO.arrivo.prepara, tasselli: window.Tasselli ? Tasselli.stato() : null };
     });
     out.avvio.contatori = await pg.evaluate(contatori);
-    out.avvio.stato = await pg.evaluate(stato);
+    out.avvio.stato = await pg.evaluate(stato); salva('avvio');
     // 2. l'arrivo: ogni 500 ms finché i blocchi vicini e i tasselli dell'anello sono in scena e la coda è vuota (o ATTESA)
     await pg.evaluate(() => { window.__S.fase = 'arrivo'; });
     const AR = []; const tg = Date.now(); let pari = 0;
     while (Date.now() - tg < ATTESA) { const s = await pg.evaluate(stato); AR.push(s); const ok = s.vicini && s.vicini[0] === s.vicini[1] && !s.job && !s.coda && s.tas && s.tas.inVolo === 0 && s.tas.inApertura === 0 && s.tas.pronti === 0 && s.tas.vicinoT; pari = ok ? pari + 1 : 0; if (pari >= 4) break; await new Promise(r => setTimeout(r, 500)); }
     out.arrivo = { s: (Date.now() - tg) / 1000, campioni: AR.filter((x, i) => i % 4 === 0 || i === AR.length - 1), contatori: await pg.evaluate(contatori) };
-    out.memoria = { stato: await pg.evaluate(stato), doppioni: await pg.evaluate(doppioni).catch(e => String(e)) };
+    out.memoria = { stato: await pg.evaluate(stato), doppioni: await pg.evaluate(doppioni).catch(e => String(e)) }; salva('arrivo');
     if (!ARG['solo-avvio']) {
       // 3. il cammino: il giocatore spostato di PASSO m a ogni fotogramma lungo x (la camera lo segue da sé), poi indietro, poi avanti
       const fasi = [['andata', 1], ['ritorno', -1], ['andata2', 1]];
@@ -167,13 +168,13 @@ srv.listen(0, async () => {
         out[nome] = { prima: await pg.evaluate(contatori), fr0: await pg.evaluate(() => window.__S.fr) };
         await pg.evaluate(([nome, dir, PASSO, N]) => { const S = window.__S, st = window.__pv.st; S.fase = nome; let k = 0; S.passo = () => { if (k++ >= N) { S.passo = null; S.fatto = true; return; } st.player.x += dir * PASSO; }; S.fatto = false; }, [nome, dir, PASSO, Math.round(TRATTO / PASSO)]);
         await pg.waitForFunction(() => window.__S.fatto, null, { timeout: 1800000, polling: 500 });
-        out[nome].dopo = await pg.evaluate(contatori); out[nome].stato = await pg.evaluate(stato);
+        out[nome].dopo = await pg.evaluate(contatori); out[nome].stato = await pg.evaluate(stato); salva(nome);
       }
       // la camera che gira su sé stessa (un giro intero), poi lo zoom indietro e avanti (cambia la nebbia: il raggio dei blocchi e l'impronta)
       FASE.v = 'giro'; out.giro = { prima: await pg.evaluate(contatori) };
       await pg.evaluate(() => { const S = window.__S, ui = window.__pv.ui; S.fase = 'giro'; let k = 0; S.passo = () => { if (k++ >= 120) { ui.drag = 0; S.passo = null; S.fatto = true; return; } ui.drag = (ui.drag || 0) + 2 * Math.PI / 120; }; S.fatto = false; });
       await pg.waitForFunction(() => window.__S.fatto, null, { timeout: 1800000, polling: 500 });
-      out.giro.dopo = await pg.evaluate(contatori);
+      out.giro.dopo = await pg.evaluate(contatori); salva('giro');
       FASE.v = 'zoom'; out.zoom = { prima: await pg.evaluate(contatori) };
       await pg.evaluate(() => { const S = window.__S, ui = window.__pv.ui; S.fase = 'zoom'; let k = 0; const z0 = ui.zoom || 1; S.passo = () => { k++; if (k > 180) { ui.zoom = z0; S.passo = null; S.fatto = true; return; } ui.zoom = k <= 60 ? z0 + (2 - z0) * k / 60 : k <= 120 ? 2 - (2 - .5) * (k - 60) / 60 : .5 + (z0 - .5) * (k - 120) / 60; }; S.fatto = false; });
       await pg.waitForFunction(() => window.__S.fatto, null, { timeout: 1800000, polling: 500 });
