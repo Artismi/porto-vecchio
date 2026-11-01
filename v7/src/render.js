@@ -13998,7 +13998,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     scene.fog.color.lerp(S.nebbia, .7 * (1 - WXfog * .5)); scene.background.copy(scene.fog.color);
     renderer.toneMappingExposure = S.esp * (1 + dk * (scenaK('esposizione') - 1) * .5);
     // l'ombra delle nuvole che scorre sul suolo (pavimenti.js): solo col sole, meno col coperto pieno (le nuvole sono tutto il cielo)
-    SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = SGU.nuvole * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);
+    SGT.t += (dt || .016); const V = SGU.nuvoleVento, k = (DIOR.on && PRO.look ? 0 : SGU.nuvole) * dk * (1 - WXc * .6) * Math.min(1, moon.intensity);   /* [ombre2] col diorama le nuvole le fa il materiale, su tutto (qui erano solo sul suolo, con un altro disegno: due trame di ombre senza causa) */
     ((typeof Pavimenti !== 'undefined' && Pavimenti.CIELO) || SGT.cielo).value.set(SGT.t * V[0], SGT.t * V[1], k);
     if (PRO.look) { PRO.u5.y = Math.max(dusk || 0, night || 0); sguProTick(S); }   // [scorcio] le manopole della proposta
     if (AAA.on) { SGT.aaa = aaaLuci(S, WXc, dk); aaaTick(SGT.aaa); }   // [look-aaa] la luce e i materiali della variante (spenta: niente)
