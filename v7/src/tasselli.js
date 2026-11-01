@@ -57,6 +57,12 @@ var Tasselli = (function () {
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
   let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF;
+  // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
+  // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
+  // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
+  // tessitura lasciata da tutti resta sulla scheda video per GRAZIA ms prima di andarsene. ?nofixscarico come prima
+  const TOCCO = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  const CALMA = !TOCCO && !/[?&]nofixscarico\b/.test(Q), FUORI = 8000, GRAZIA = 45000, VMAX = 14e6;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -143,11 +149,16 @@ var Tasselli = (function () {
   // tasselli (le uniform di modulo come FD1 e la tavolozza, gli aloni, l'acqua delle fontane): restano sempre.
   const TEXU = new Map(), FISSE = new Set(), MATU = new Map();
   const fissa = i => { FISSE.add(i); return carica(i); };
-  function texPrendi(ids) { ids.forEach(i => TEXU.set(i, (TEXU.get(i) || 0) + 1)); }
+  const TEXA = new Map();   // [ottimizza-car] le tessiture lasciate da tutti, in attesa (id → quando)
+  function texPrendi(ids) { ids.forEach(i => { TEXA.delete(i); TEXU.set(i, (TEXU.get(i) || 0) + 1); }); }
+  function texSpazza(now) { if (TEXA.size) TEXA.forEach((t0, i) => { if (now - t0 > GRAZIA) { TEXA.delete(i); if (!TEXU.get(i)) texVia(i); } }); }
   function texLascia(ids) {
     ids.forEach(i => { const n = (TEXU.get(i) || 0) - 1; if (n > 0) { TEXU.set(i, n); return; } TEXU.delete(i);
-      if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
-      if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; } });
+      if (CALMA && !FISSE.has(i) && TEXP.has(i)) { TEXA.set(i, performance.now()); return; } texVia(i); });
+  }
+  function texVia(i) {
+    if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
+    if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; }
   }
   function matPrendi(S, m) { if (!m || S.mats.has(m)) return; S.mats.add(m); MATU.set(m, (MATU.get(m) || 0) + 1); }
   function matLascia(S) {
@@ -328,8 +339,8 @@ var Tasselli = (function () {
     const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
       let m = S.preM; S.preM = null;   // [ottimizza-car] già aperto prima di R.init (anticipa)
-      if (m) { if (CFG.leggero) S.zip = null; }
-      else { const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
+      if (m) { if (CFG.leggero && !CALMA) S.zip = null; }
+      else { const via = CFG.leggero && !CALMA, buf = via ? S.zip : S.zip.slice(0); if (via) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna (sul telefono)
         m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); }
       ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
@@ -450,8 +461,9 @@ var Tasselli = (function () {
   async function riapri(ti, vista, raggi) {
     const S = STATO[ti], gen = S.rgen = (S.rgen || 0) + 1, t = IND.tasselli[ti]; S.rvolo = true; RIAPRI++;
     try {
-      const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status);
-      const buf = await r.arrayBuffer(); if (S.rgen !== gen || S.st !== 5) return;
+      let buf; if (S.zip) buf = S.zip.slice(0);   // [ottimizza-car] il compresso tenuto: niente richiesta
+      else { const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status); buf = await r.arrayBuffer(); }
+      if (S.rgen !== gen || S.st !== 5) return;
       const m = await chiedi({ op: 'tassello', buf, tel: true }, [buf]); if (S.rgen !== gen || S.st !== 5) return;
       ST.riaperti = (ST.riaperti || 0) + 1;
       if (raggi && S.attrs && !S.rdati) {   // i dati dei raggi sugli attributi che ci sono già (e le mesh rimandate li prendono da sé)
@@ -644,7 +656,7 @@ var Tasselli = (function () {
   }
 
   // ---------------- a ogni fotogramma ----------------
-  let lastX = null, lastZ = null, fx = 0, fz = 0;
+  let lastX = null, lastZ = null, fx = 0, fz = 0, RT2 = 0;
   // l'impronta della camera a terra: i raggi degli angoli e del centro dello schermo fino al suolo (o fino alla nebbia, se guardano
   // sopra l'orizzonte), più la camera stessa; la scatola, allargata del margine
   const IMV = new THREE.Vector3(), IMF = { x0: 0, z0: 0, x1: 0, z1: 0 }, IMF2 = { x0: 0, z0: 0, x1: 0, z1: 0 };
@@ -655,6 +667,7 @@ var Tasselli = (function () {
       IMV.set(nx, ny, .5).unproject(cam).sub(P).normalize(); let t = IMV.y < -1e-3 ? (gy - P.y) / IMV.y : ff; t = Math.max(0, Math.min(t, ff));
       let px = P.x + IMV.x * t, pz = P.z + IMV.z * t;
       if (CFG.lontano) { const cx = CTX.cam.x, cz = CTX.cam.y, h = Math.hypot(px - cx, pz - cz); if (h > CFG.lontano) { px = cx + (px - cx) * CFG.lontano / h; pz = cz + (pz - cz) * CFG.lontano / h; } } if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+    { const cx = CTX.cam.x, cz = CTX.cam.y; IMF.r = Math.max(Math.hypot(x0 - cx, z0 - cz), Math.hypot(x1 - cx, z0 - cz), Math.hypot(x0 - cx, z1 - cz), Math.hypot(x1 - cx, z1 - cz)); }   // [ottimizza-car] il cerchio che l'impronta copre girando
     const m = CFG.margine; IMF.x0 = x0 - m; IMF.x1 = x1 + m; IMF.z0 = z0 - m; IMF.z1 = z1 + m;
     const m2 = CFG.oltre ? m + CFG.oltre : 2 * m + 8; IMF2.x0 = x0 - m2; IMF2.x1 = x1 + m2; IMF2.z0 = z0 - m2; IMF2.z1 = z1 + m2; return IMF;
   }
@@ -673,14 +686,20 @@ var Tasselli = (function () {
     if (CFG.leggero) visteAgg();
     // la vista: si apre quello che entra nell'impronta, si smonta quello che esce dall'impronta larga; la rete: per distanza (il bordo del
     // settore) meno un premio per quello davanti a dove si va, prima quello della vista
-    const L = [];
+    const L = []; let lontano = null;
     IND.tasselli.forEach((t, ti) => { const S = STATO[ti], d = dist(t, x, z), vede = inImpronta(t, F);
-      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) smonta(ti);
+      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) {
+        if (!CALMA) smonta(ti);
+        else { if (!S.fuori) S.fuori = t0; const m2 = CFG.oltre ? CFG.margine + CFG.oltre : 2 * CFG.margine + 8;   // [ottimizza-car] lo scarico con calma
+          if (d > IMF.r + m2 && t0 - S.fuori > FUORI) smonta(ti); else if (ST.vertici > VMAX && (!lontano || d > lontano[0])) lontano = [d, ti]; } }
+      else if (S.fuori) S.fuori = 0;
       if (d > CFG.butta && !vede && S.st && !TIENI.has(ti)) { butta(ti); return; }
       if (vede && S.st === 2 && (ST.inApertura < CFG.volo || (S.preM && !vicinoFatto))) apri(ti);   // [ottimizza-car] gli anticipati tutti insieme
       if (S.st || (d > CFG.carica && !vede) || (S.errori || 0) > 3) return;
       const [cx, cz] = centro(t), ax = cx - x, az = cz - z, l = Math.hypot(ax, az) || 1, dot = (ax * fx + az * fz) / l;
       L.push([(vede ? -1e4 : 0) + d - CFG.sguardo * Math.max(0, dot), ti, vede]); });
+    if (lontano && STATO[lontano[1]].st >= 3) smonta(lontano[1]);   // [ottimizza-car] oltre il tetto di vertici: il più lontano fuori vista
+    if (CALMA && !(++RT2 % 30)) texSpazza(t0);
     L.sort((a, b) => a[0] - b[0]);
     for (const [, ti, vede] of L) { if (ST.inVolo >= CFG.volo) break; STATO[ti].vicino = !vicinoFatto && vede; scarica(ti); }
     // montare: il più vicino prima, dentro i tetti (larghi finché manca l'anello vicino)
