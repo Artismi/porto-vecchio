@@ -60,8 +60,8 @@ var Visuale = (function () {
   // le manopole (window.__CAMERA4 per le prove dal vivo)
   const CAMERA4 = {
     base: .78,            // rad: la pendenza a piedi di sempre (render.js la riscrive con quella vera, anche ?pendenza=)
-    stretta: .98,         // rad: la pendenza più bassa quando si è nella stretta   // [look] era 1.08: il panel (cineasta, animatore) vuole facciate e un asse di fuga, non la pianta
-    max: 1.08,            // rad: la più alta (era 1.22, 70°: dall'alto era una pianta e il personaggio spariva)
+    stretta: .88,         // rad: la pendenza più bassa quando si è nella stretta   // [cat] era .98: col taglio in ogni visuale ([sempre]) la camera non deve più salire tanto per vedere il personaggio; i tetti erano il 40-53% del quadro (ANALISI_STILE.md passo 7)   // [look] era 1.08: il panel (cineasta, animatore) vuole facciate e un asse di fuga, non la pianta
+    max: .98,             // rad: la più alta   // [cat] era 1.08 (era 1.22, 70°: dall'alto era una pianta e il personaggio spariva)
     margine: .08,         // rad sopra la pendenza che libera il busto dal muro sul lato camera
     larga: 5.6,           // m: da questa larghezza libera in su la strada è larga (niente stretta)
     strettaL: 3.2,        // m: da qui in giù è stretta piena (vicolo, corte, sottoportico)
