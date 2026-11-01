@@ -13867,8 +13867,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                la linea si disegna alla risoluzione dello schermo con un bordo sfumato, come un tratto vettoriale */
             vec2 oV = e * cL.w; float aC = texture2D(t, vUv).a * 35.;
             float aR = texture2D(t, vUv + vec2(oV.x, 0.)).a * 35., aL = texture2D(t, vUv - vec2(oV.x, 0.)).a * 35., aU = texture2D(t, vUv + vec2(0., oV.y)).a * 35., aD = texture2D(t, vUv - vec2(0., oV.y)).a * 35.;
-            float gV = length(vec2(aR - aL, aU - aD)), aMx = max(max(aR, aL), max(aU, aD)), aMn = min(min(aR, aL), min(aU, aD));
-            float eV = smoothstep(.35, 1.1, gV);   /* quanto questo pixel sta su uno spigolo (0-1, morbido) */
+            vec2 oD = oV * .7071; float aRU = texture2D(t, vUv + oD).a * 35., aLD = texture2D(t, vUv - oD).a * 35., aRD = texture2D(t, vUv + vec2(oD.x, -oD.y)).a * 35., aLU = texture2D(t, vUv + vec2(-oD.x, oD.y)).a * 35.;
+            float gV = length(vec2((aR - aL) + .5 * ((aRU - aLU) + (aRD - aLD)), (aU - aD) + .5 * ((aRU - aRD) + (aLU - aLD))) * .5);   /* [calma] il gradiente su otto letture (Sobel): una scala di pixel nella scena non diventa una linea seghettata */
+            float aMx = max(max(max(aR, aL), max(aU, aD)), max(max(aRU, aLD), max(aRD, aLU))), aMn = min(min(min(aR, aL), min(aU, aD)), min(min(aRU, aLD), min(aRD, aLU)));
+            float eV = smoothstep(.45, 1.2, gV);   /* quanto questo pixel sta su uno spigolo (0-1, morbido) */
+            {   /* [calma] LA DENSITÀ: sui cornicioni, le modanature, le ringhiere gli spigoli sono fitti; contati a 2,5 texel in otto direzioni, dove
+                   cambiano in tanti la linea quasi si spegne (restano le sagome grandi, non un groviglio di righe) */
+              vec2 oB = e * 2.5, oE = oB * .7071; float nDn = 0.;
+              nDn += step(.5, abs(texture2D(t, vUv + vec2(oB.x, 0.)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - vec2(oB.x, 0.)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(0., oB.y)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - vec2(0., oB.y)).a * 35. - aC));
+              nDn += step(.5, abs(texture2D(t, vUv + oE).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - oE).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(oE.x, -oE.y)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(-oE.x, oE.y)).a * 35. - aC));
+              eV *= mix(1., .15, smoothstep(3.5, 6., nDn)); }
             if (cT > 0.) { vec2 o2 = e * 2.;   // [tratto] LE TRAME: il contrasto locale sul valore (4 letture a 2 px), così intonaco, lastrico e coppi si leggono; mai sulle persone né sugli spigoli
               float lb = dot((texture2D(t, vUv + vec2(o2.x, o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, o2.y)).rgb + texture2D(t, vUv + vec2(o2.x, -o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, -o2.y)).rgb) * .25, vec3(.299, .587, .114));
               float l0 = dot(c, vec3(.299, .587, .114)); c = max(c + clamp(l0 - lb, -.08, .08) * cT * (1. - smoothstep(.75, .85, texture2D(t, vUv).a)) * (1. - eV), 0.); }

@@ -23049,7 +23049,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f368ebc0bbb03a54';</script>
-<script>window.PV_IMPRONTA_TASS = '3600a40f2713fac3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '8fec1047b56c1472';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -86389,8 +86389,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                la linea si disegna alla risoluzione dello schermo con un bordo sfumato, come un tratto vettoriale */
             vec2 oV = e * cL.w; float aC = texture2D(t, vUv).a * 35.;
             float aR = texture2D(t, vUv + vec2(oV.x, 0.)).a * 35., aL = texture2D(t, vUv - vec2(oV.x, 0.)).a * 35., aU = texture2D(t, vUv + vec2(0., oV.y)).a * 35., aD = texture2D(t, vUv - vec2(0., oV.y)).a * 35.;
-            float gV = length(vec2(aR - aL, aU - aD)), aMx = max(max(aR, aL), max(aU, aD)), aMn = min(min(aR, aL), min(aU, aD));
-            float eV = smoothstep(.35, 1.1, gV);   /* quanto questo pixel sta su uno spigolo (0-1, morbido) */
+            vec2 oD = oV * .7071; float aRU = texture2D(t, vUv + oD).a * 35., aLD = texture2D(t, vUv - oD).a * 35., aRD = texture2D(t, vUv + vec2(oD.x, -oD.y)).a * 35., aLU = texture2D(t, vUv + vec2(-oD.x, oD.y)).a * 35.;
+            float gV = length(vec2((aR - aL) + .5 * ((aRU - aLU) + (aRD - aLD)), (aU - aD) + .5 * ((aRU - aRD) + (aLU - aLD))) * .5);   /* [calma] il gradiente su otto letture (Sobel): una scala di pixel nella scena non diventa una linea seghettata */
+            float aMx = max(max(max(aR, aL), max(aU, aD)), max(max(aRU, aLD), max(aRD, aLU))), aMn = min(min(min(aR, aL), min(aU, aD)), min(min(aRU, aLD), min(aRD, aLU)));
+            float eV = smoothstep(.45, 1.2, gV);   /* quanto questo pixel sta su uno spigolo (0-1, morbido) */
+            {   /* [calma] LA DENSITÀ: sui cornicioni, le modanature, le ringhiere gli spigoli sono fitti; contati a 2,5 texel in otto direzioni, dove
+                   cambiano in tanti la linea quasi si spegne (restano le sagome grandi, non un groviglio di righe) */
+              vec2 oB = e * 2.5, oE = oB * .7071; float nDn = 0.;
+              nDn += step(.5, abs(texture2D(t, vUv + vec2(oB.x, 0.)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - vec2(oB.x, 0.)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(0., oB.y)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - vec2(0., oB.y)).a * 35. - aC));
+              nDn += step(.5, abs(texture2D(t, vUv + oE).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv - oE).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(oE.x, -oE.y)).a * 35. - aC)) + step(.5, abs(texture2D(t, vUv + vec2(-oE.x, oE.y)).a * 35. - aC));
+              eV *= mix(1., .15, smoothstep(3.5, 6., nDn)); }
             if (cT > 0.) { vec2 o2 = e * 2.;   // [tratto] LE TRAME: il contrasto locale sul valore (4 letture a 2 px), così intonaco, lastrico e coppi si leggono; mai sulle persone né sugli spigoli
               float lb = dot((texture2D(t, vUv + vec2(o2.x, o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, o2.y)).rgb + texture2D(t, vUv + vec2(o2.x, -o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, -o2.y)).rgb) * .25, vec3(.299, .587, .114));
               float l0 = dot(c, vec3(.299, .587, .114)); c = max(c + clamp(l0 - lb, -.08, .08) * cT * (1. - smoothstep(.75, .85, texture2D(t, vUv).a)) * (1. - eV), 0.); }
