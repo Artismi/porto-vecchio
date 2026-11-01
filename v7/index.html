@@ -23049,7 +23049,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'f368ebc0bbb03a54';</script>
-<script>window.PV_IMPRONTA_TASS = '43cc10715e2ea361';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'a3d2eea4cb803732';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -85165,6 +85165,13 @@ var Render = (function () {
       bias = -(P.ombraBias[0] + P.ombraBias[1] * tex) / (far - sc.near); nb = .015 + tex * .9; }
     moon.shadow.bias = bias; moon.shadow.normalBias = nb;
     if (Math.abs(half - PSH.half) > .5 || far !== PSH.far) { PSH.half = half; PSH.far = far; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.far = far; sc.updateProjectionMatrix(); }
+    { // [ombre2] IL RIQUADRO DELL'OMBRA A PASSO DI TEXEL: seguiva la camera di continuo, così a ogni passo i texel dell'ombra cadevano altrove e i
+      // bordi strisciavano e tremolavano (le ombre «che si generano in modo strano»). Ora il bersaglio e il sole si spostano a multipli interi del
+      // texel sul piano dell'ombra: camminando l'ombra resta ferma sul mondo
+      const hs = PSH.half || half, tex = 2 * hs / moon.shadow.mapSize.x, z = PSH.z || (PSH.z = new THREE.Vector3()), x = PSH.x || (PSH.x = new THREE.Vector3()), y = PSH.y || (PSH.y = new THREE.Vector3());
+      z.subVectors(moon.position, tg).normalize(); x.set(0, 1, 0).cross(z); if (x.lengthSq() < 1e-6) x.set(1, 0, 0); x.normalize(); y.crossVectors(z, x);
+      const px = tg.dot(x), py = tg.dot(y), dx = Math.round(px / tex) * tex - px, dy = Math.round(py / tex) * tex - py;
+      tg.addScaledVector(x, dx).addScaledVector(y, dy); moon.position.addScaledVector(x, dx).addScaledVector(y, dy); moon.target.updateMatrixWorld(); }
   }
   const OCC = { rt: null, scene: null, cam: null, mat: null };
   function occInit() {
@@ -85875,7 +85882,7 @@ var Render = (function () {
   // che si posa (l'occlusione a schermo dove un muro, un oggetto, una persona tocca il suolo; sotto la gronda), lo spigolo in alto preso dalla
   // luce come una pennellata chiara (non una riga scura), i tetti e le facciate vissuti (muschio, coppi nuovi e vecchi, colature).
   // ?nodiorama: spento (il prima/dopo)
-  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .38, vissuto: 1, piede: .32, gronda: .24, luceSpigolo: .45 };
+  const DIOR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nodiorama\b/.test(location.search)), nuvole: .22, vissuto: 1, piede: .3, gronda: .24, luceSpigolo: .45 };
   if (typeof window !== 'undefined') window.__DIOR = DIOR;   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; window.__CAT = CAT; window.__RIV = RIV; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
@@ -86069,7 +86076,7 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
-	{ float sgTr = ( sgN3( vSgW * 2.3 + 11.1 ) - .5 ) * .14;   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
+	{ float sgTr = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
 	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
@@ -86077,7 +86084,7 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
 { float sgS = ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;
-  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .35, .65, sgS ), sgP4.x ); sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
+  sgS = mix( sgS, smoothstep( .05, .95, sgS ), sgP2.x ); sgS = mix( sgS, smoothstep( .2, .8, sgS ), sgP4.x * .6 );   /* [ombre2] era .35-.65 pieno: induriva il filtro e ridisegnava gli scalini dei texel (a macchie nel profilo leggero) */ sgOmbra = min( sgOmbra, sgS ); directLight.color *= sgS; }
 #else
 ${OM}
 #endif`).replace('GeometricContext geometry;', 'GeometricContext geometry;\n#ifdef STANDARD\nfloat sgOmbra = 1.;\n#endif');
@@ -86098,7 +86105,7 @@ ${OM}
     // morbida, senza retino, con un filo di cielo dentro: il diorama respira, la luce non è mai uguale in tutto il quadro
     vec3 sgLw = inverseTransformDirection( directionalLights[ 0 ].direction, viewMatrix ); vec2 sgCp = vSgW.xz - sgLw.xz / max( sgLw.y, .25 ) * vSgW.y;
     float sgCl = sgN3( vec3( sgCp * .045 + sgP2.z * vec2( .016, .007 ), sgP2.z * .006 ) ) * .7 + sgN3( vec3( sgCp * .12, 7.3 ) ) * .3;   /* nuvole di ~20 m: nel quadro di gioco sempre un po' di sole e un po' d'ombra */
-    sgCl = smoothstep( .5, .68, sgCl ) * sgP8.y;
+    sgCl = smoothstep( .44, .76, sgCl ) * sgP8.y;   /* [ombre2] bordo largo: una velatura che passa, non una macchia d'ombra senza causa */
     reflectedLight.directDiffuse *= 1. - sgCl; reflectedLight.directSpecular *= 1. - sgCl;
     reflectedLight.indirectDiffuse += diffuseColor.rgb * sgP3.rgb * sgCl * .6; }
 #endif
@@ -86436,9 +86443,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             { float k = wP * cK.w; vec3 c2 = max(mix(vec3(lq), c, 1.25), 0.); c2 = max((c2 - .42) * 1.15 + .42, 0.); c = mix(c, c2, k); }   // persone: più colore e più contrasto
             if (dI.x + dI.y > 0. && (wS + wM) > .5) {   // [diorama] IL PIEDE E LA GRONDA: le cose si posano. Il suolo appena sotto (a schermo) un muro, un oggetto
               // o una persona si scurisce verso il freddo; il muro appena sotto un tetto prende l'ombra della gronda. Due letture, una fascia morbida
-              float h1 = floor(floor(texture2D(t, vUv + vec2(0., .011)).a * 35. + .5) / 6. + .001), h2 = floor(floor(texture2D(t, vUv + vec2(0., .024)).a * 35. + .5) / 6. + .001);
-              float vS = .6 * (step(1.5, h1) - step(abs(h1 - 3.), .1)) + .4 * (step(1.5, h2) - step(abs(h2 - 3.), .1));   /* muro, persona, altro: sì; tetto: no */
-              float vG = .6 * step(abs(h1 - 3.), .1) + .4 * step(abs(h2 - 3.), .1);
+              float vS = 0., vG = 0.;   /* [ombre2] quattro letture a distanze crescenti e pesi calanti (con due si vedevano due fasce nette): muro, persona, altro sì; tetto no */
+              for (int k = 0; k < 4; k++) { float d = .005 + float(k) * .0065, hk = floor(floor(texture2D(t, vUv + vec2(0., d)).a * 35. + .5) / 6. + .001), wk = .4 - float(k) * .09;
+                vS += wk * (step(1.5, hk) - step(abs(hk - 3.), .1)); vG += wk * step(abs(hk - 3.), .1); }
               float ao = wS * dI.x * vS + wM * dI.y * vG;
               c *= 1. - ao * vec3(1., .94, .74); }
             if (cL.x + cL.y + cL.z > 0. && eV > 0.) {   // [tratto] [vettore] IL PENNARELLO: dove cambia la categoria o la faccia, del colore della cosa, liscio
