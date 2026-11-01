@@ -207,7 +207,7 @@ var Pavimenti = (function () {
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
-      float lod = 1. - smoothstep(.12, .28, mpp), fin = 0., aa = mpp * 1.2;   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
+      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   /* [fluido2] torna com'era: i pavimenti «piatti» erano i blocchi in ritardo ([arrivo]), non questa soglia; aperta costava 30-40 ms di scheda video sulle piazze dell'Iris Xe */   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
       #else
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;

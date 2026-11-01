@@ -23535,7 +23535,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '850683b769587897';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'e2bd510d5b3deafd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -70859,7 +70859,7 @@ var Pavimenti = (function () {
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
-      float lod = 1. - smoothstep(.12, .28, mpp), fin = 0., aa = mpp * 1.2;   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
+      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   /* [fluido2] torna com'era: i pavimenti «piatti» erano i blocchi in ritardo ([arrivo]), non questa soglia; aperta costava 30-40 ms di scheda video sulle piazze dell'Iris Xe */   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
       #else
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;
@@ -76389,18 +76389,18 @@ var Render = (function () {
   const RIC = typeof requestIdleCallback === 'function';
   const vicinoManca = () => (ISO.job && ISO.job.near) || (POMPA.coda.length > 0 && POMPA.coda[0][0] < 70);
   function chiediPompa() {
-    if (!POMPA.on || POMPA.chiesta || (!ISO.job && !POMPA.coda.length)) return; POMPA.chiesta = true;
+    if (!POMPA.on || POMPA.chiesta || !vicinoManca() || POMPA.fr === ISO.frN) return; POMPA.chiesta = true; POMPA.fr = ISO.frN;   // [fluido2] solo se manca un blocco VICINO, e un giro per fotogramma (sull'Iris Xe a 4 fps la pompa si mangiava l'attesa: 170-190 ms fuori dal fotogramma)
     if (RIC) requestIdleCallback(pompa, { timeout: vicinoManca() ? 100 : 400 }); else setTimeout(() => pompa(null), 16);   // senza requestIdleCallback (Safari): un giro corto ogni 16 ms
   }
   function pompa(dl) {
     POMPA.chiesta = false; POMPA.giri++; if (dl && dl.didTimeout) POMPA.scaduti++; const t0 = performance.now();
     // quanto tempo resta: il tempo libero che dice il navigatore (al più 12 ms, 2 di margine); a scadenza (il navigatore non è mai fermo)
     // 4 ms solo se manca un blocco vicino, se no niente; senza requestIdleCallback 5 ms
-    const resta = J => { const el = performance.now() - t0; return !dl ? 5 - el : dl.didTimeout ? (J.near ? 4 : 0) - el : Math.min(12 - el, dl.timeRemaining() - 2); };
+    const resta = J => { const el = performance.now() - t0; return !J.near ? -1 : !dl ? 4 - el : dl.didTimeout ? 3 - el : Math.min(6 - el, dl.timeRemaining() - 3); };   /* [fluido2] solo i vicini, al più 6 ms (era 12, e anche i lontani) */
     let n = 0, att = false;
     while (true) {
       let J = ISO.job;
-      if (!J) { const c = POMPA.coda.shift(); if (!c) break; const ch = ISO.chunks.get(c[3]); if (ch && ch.rev === ISO.rev) continue; J = ISO.job = nuovoBlocco(c[1], c[2], c[3], c[0]); }
+      if (!J) { const c = POMPA.coda[0]; if (!c || c[0] >= 70) break; POMPA.coda.shift(); const ch = ISO.chunks.get(c[3]); if (ch && ch.rev === ISO.rev) continue; J = ISO.job = nuovoBlocco(c[1], c[2], c[3], c[0]); }   /* [fluido2] i lontani li fa il fotogramma col suo budget, come prima */
       if (resta(J) <= 0) break;
       const r = passoBlocco(J); n++;
       if (r === 'attesa') { att = true; break; }
@@ -76440,9 +76440,10 @@ var Render = (function () {
     // [arrivo] vicino (entro 70 m: si vede) fino a tettoV a fotogramma anche col tetto delle costruzioni pieno: succede solo finché manca un
     // blocco attorno alla camera (in pari non costa niente); il resto lo fa la pompa nel tempo libero
     if (!ISO.job && best) { ISO.job = nuovoBlocco(best[0], best[1], best[2], bd); if (CO.length && CO[0][3] === best[2]) CO.shift(); }
+    ISO.frN = (ISO.frN || 0) + 1;
     const J = ISO.job, tn = performance.now(); if (POMPA.t) POMPA.fms += (Math.min(250, tn - POMPA.t) - POMPA.fms) * .1; POMPA.t = tn;   // [arrivo] la durata media del fotogramma
     // [arrivo] il tetto del blocco vicino: un quinto del fotogramma (6-16 ms). A 12 fotogrammi al secondo la scheda video è il collo di bottiglia e il processore aspetta: lì costa niente
-    const tettoV = POMPA.on ? Math.min(16, Math.max(6, POMPA.fms * .2)) : BUD.ok() ? 4 : 0;
+    const tettoV = POMPA.on ? 6 : BUD.ok() ? 4 : 0;   /* [fluido2] 6 ms fissi: col quinto del fotogramma più il fotogramma era lento, più il blocco prendeva (fino a 16) */
     if (J) { const t0 = performance.now(); let steps = 0; J.fr++;
       while ((ISO.rush && !(ISO.menu && steps > 0 && performance.now() - t0 > 40)) || (steps === 0 && (J.near || BUD.ok(undefined, 'piante'))) || (steps > 0 && J.near && performance.now() - t0 < tettoV)) {
         const r = ISO.rush ? Calcolo.tutto(() => passoBlocco(J)) : passoBlocco(J); steps++;   // [arrivo] nella schermata di caricamento i conti si fanno qui, d'un fiato: niente fotogrammi persi ad aspettare il lavoratore
