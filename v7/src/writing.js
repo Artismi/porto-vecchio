@@ -1758,143 +1758,65 @@ var Writing = (function () {
     } catch (e) { console.warn('[Writing] tavoletta', e); return false; }
   }
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
-  // [tavoletta] Rifatto: la foto ha il contesto attorno (scurito) e il riquadro dove si dipinge in giallo; la misura si sceglie con un
-  // tocco (tag, throw-up, pezzo, burner: la foto si rifà attorno al punto toccato); il tratto si vede subito com'è nel gioco
-  // (spessore minimo a schermo, la resa del pennello mentre disegni); «Salva sul muro» è sempre in vista, in basso, e se non può
-  // salvare dice perché. Le stesse regole di prima per la vernice, la fama, i crossaggi.
+  // [tavola2] Il pannello vero sta in tavola_ui.js (la tela grande, una barra a icone, ogni tratto con la sua bomboletta); qui le
+  // regole: la foto e il riquadro, la misura che rifà la foto (tag, throw-up, pezzo, burner attorno al punto toccato), il nome
+  // del lavoro, la vernice, il salvataggio sul muro (tavSave). Le stesse regole di prima per la vernice, la fama, i crossaggi.
   const TAV_SIZES = [['tag', 'Tag', 1.5, .75], ['throw', 'Throw-up', 2.7, 1.3], ['pezzo', 'Pezzo', 4.8, 2.05], ['burner', 'Burner', 6.6, 2.5]];
   function tavPad(st, shot, Rc, A) {
-    if (typeof document === 'undefined') return;
-    const TOUCH = matchMedia('(pointer: coarse)').matches, SMALL_UI = innerWidth < 560 || innerHeight < 480;   // [graffiti3] sul telefono (e nel Game Boy piccolo): tutto da dito
-    let In = shot.inner || { x: 0, y: 0, w: shot.width, h: shot.height }, pw = In.w, ph = In.h;
-    const strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
-    // [graffiti] i pennelli regolabili (pennelli.js): la bomboletta col suo tappo (standard, fat, skinny), il rullo, il pennarello; il flusso e le colature
-    const PNs = PN ? [['spray', 'Bomboletta'], ['fat', 'Fat cap'], ['skinny', 'Skinny cap'], ['roller', 'Rullo'], ['marker', 'Pennarello']] : null;
-    let pen = tool === 'pennarello' ? 'marker' : 'spray', flow = PN ? PN.PENNELLI[pen].flow : 1, dripK = PN ? PN.PENNELLI[pen].drip : 0;
-    const el = (t, css, par) => { const e = document.createElement(t); if (css) e.style.cssText = css; if (par) par.appendChild(e); return e; };
-    const box = el('div', 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.96);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:' + (SMALL_UI ? 4 : 8) + 'px;font:' + (SMALL_UI ? 13 : 14) + 'px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:max(6px,env(safe-area-inset-top,0)) 6px max(6px,env(safe-area-inset-bottom,0));box-sizing:border-box');
-    const head = el('div', 'text-align:center;line-height:1.35;flex:none', box);
-    const stage = el('div', 'flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center', box);
-    const wrap = el('div', 'position:relative;touch-action:none', stage);
-    const bg = el('canvas', 'display:block;width:100%;height:100%', wrap);
-    const pane = el('div', 'position:absolute;box-shadow:0 0 0 2px #ffe14a,0 0 0 4px rgba(0,0,0,.6);touch-action:none', wrap);   // il riquadro dove si dipinge
-    const ink = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%', pane), live = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%;cursor:crosshair', pane);
-    const rowT = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box);
-    const rowA = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box), rowS = el('span', 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-right:10px', rowA);   // la misura e le azioni sulla stessa riga
-    const info = el('div', 'min-height:1.3em;color:#ffcf6a;text-align:center;flex:none', box);
-    const btn = (t, f, hot, par, big) => { const b = el('button', 'padding:' + (TOUCH || SMALL_UI ? '10px 14px;font-size:15px;' : '7px 14px;') + 'border-radius:6px;border:1px solid ' + (hot ? '#ff7a5c' : '#555') + ';cursor:pointer;color:#fff;font-weight:' + (big ? 700 : 400) + ';background:' + (hot ? '#d8402a' : '#34312c'), par || rowA); b.textContent = t; b.onclick = e => { e.preventDefault(); f(); }; return b; };
-    // la foto e il riquadro
-    function setShot(sh) {
-      In = sh.inner || { x: 0, y: 0, w: sh.width, h: sh.height }; pw = In.w; ph = In.h;
-      bg.width = sh.width; bg.height = sh.height; const x = bg.getContext('2d'); x.drawImage(sh, 0, 0);
-      x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, 0, sh.width, In.y); x.fillRect(0, In.y + In.h, sh.width, sh.height - In.y - In.h); x.fillRect(0, In.y, In.x, In.h); x.fillRect(In.x + In.w, In.y, sh.width - In.x - In.w, In.h);   // fuori dal riquadro: scurito
-      pane.style.left = In.x / sh.width * 100 + '%'; pane.style.top = In.y / sh.height * 100 + '%'; pane.style.width = In.w / sh.width * 100 + '%'; pane.style.height = In.h / sh.height * 100 + '%';
-      [ink, live].forEach(c => { c.width = pw; c.height = ph; });
-      fit();
-    }
-    const fit = () => { const r = stage.getBoundingClientRect(), Wv = Math.max(80, r.width || innerWidth - 12), Hv = Math.max(80, r.height || innerHeight * .6), k = Math.min(Wv / bg.width, Hv / bg.height); wrap.style.width = bg.width * k + 'px'; wrap.style.height = bg.height * k + 'px'; };
-    addEventListener('resize', fit);
-    // la misura: si rifà la foto attorno al punto toccato (il disegno fatto si perde: lo dice)
-    let sizeK = A.size || null; const sizeB = [];
-    function reshoot(k) {
-      const S0 = TAV_SIZES.find(q => q[0] === k); if (!S0) return;
-      if (strokes.length && !reshoot.ok) { reshoot.ok = true; info.textContent = 'Cambiando misura il disegno si cancella: tocca di nuovo per confermare.'; setTimeout(() => { reshoot.ok = false; }, 2500); return; }
-      reshoot.ok = false;
-      const R0 = { W: S0[2], H: S0[3], c: { x: A.pt.x, y: A.pt.y, z: A.pt.z } }, R1 = tavFit(R0, A), sh = tavShot(R1, A.n, A.r); if (!sh) return;
-      Rc = R1; strokes.length = 0; cur = null; sizeK = k; setShot(sh); upd(); drawLive(); render();
-      info.textContent = R1.W < S0[2] - .05 || R1.H < S0[3] - .05 ? `Qui c'è posto per ${R1.W.toFixed(1)} × ${R1.H.toFixed(1)} m (il muro finisce o c'è un'apertura).` : '';
-    }
-    el('span', 'color:#aaa', rowS).textContent = 'Misura';
-    TAV_SIZES.forEach(([k, t]) => { const b = btn(t, () => reshoot(k), false, rowS); b.dataset.k = k; sizeB.push(b); });
-    // gli strumenti: il pennello, i colori (tutti in vista: un clic o i tasti 1-8), lo spessore
-    let ps = null, fl = null, dr = null;
-    if (PNs) {
-      ps = el('select', 'padding:6px;border-radius:5px;background:#34312c;color:#fff;border:1px solid #555' + (TOUCH || SMALL_UI ? ';font-size:15px' : ''), rowT); PNs.forEach(([k, t]) => { const o = el('option', '', ps); o.value = k; o.textContent = t; }); ps.value = pen;
-      ps.onchange = () => { const nt = ps.value === 'marker' ? 'pennarello' : 'bomboletta'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; ps.value = pen; return; } pen = ps.value; tool = nt; flow = PN.PENNELLI[pen].flow; dripK = PN.PENNELLI[pen].drip; if (fl) fl.value = Math.round(flow * 100); if (dr) dr.value = Math.round(dripK * 100);
-        sl.max = pen === 'roller' ? 60 : 30; if (pen === 'roller' && cm < 12) cm = 20; if (pen === 'skinny' && cm > 4) cm = 2; if (pen === 'fat' && cm < 6) cm = 8; sl.value = cm; upd(); render(); };
-    } else { const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; pen = nt === 'pennarello' ? 'marker' : 'spray'; upd(); render(); }, false, rowT); tb.dataset.tool = 1; }
-    const pal = el('span', 'display:inline-flex;gap:' + (TOUCH || SMALL_UI ? 6 : 4) + 'px', rowT);
-    const sw = TAV_COLS.map((c, i) => { const b = el('button', (TOUCH || SMALL_UI ? 'width:34px;height:34px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;padding:0;background:' + c[0], pal); b.title = c[1] + ' (' + (i + 1) + ')'; b.onclick = () => { colI = i; upd(); render(); }; return b; });
-    const sl = el('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.style.width = SMALL_UI ? '90px' : '120px'; sl.oninput = () => { cm = +sl.value; upd(); render(); };
-    const lab = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); lab.append('spessore ', sl); const cmT = el('span', 'color:#fff;min-width:3.2em', lab);
-    if (PNs && !SMALL_UI) {   // [graffiti] le manopole del pennello (sul piccolo restano quelle del pennello scelto)
-      const mk = (t, v, f) => { const r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(v * 100); r.style.width = '90px'; r.oninput = () => { f(+r.value / 100); render(); }; const l = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); l.append(t + ' ', r); return r; };
-      fl = mk('flusso', flow, v => { flow = v; }); dr = mk('colature', dripK, v => { dripK = v; });
-    }
-    btn('↶ Annulla', () => { strokes.pop(); drawLive(); render(); upd(); });
-    btn('Pulisci', () => { strokes.length = 0; drawLive(); render(); upd(); });
-    btn('Esci', () => close());
-    const save = btn('Salva sul muro', () => apply(), true, rowA, true);
-    // in cima: dove sei, quanto è grande, che lavoro diventa, quante bombolette
-    const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
+    if (typeof document === 'undefined' || typeof TavolaUI === 'undefined') { tavClear(); return; }
+    const inv0 = () => (OG() ? OG().inv(st) : {}) || {}, W0 = S(st);
     let place = ''; try { const q = G.nearestPlace ? G.nearestPlace(Rc.c.x, Rc.c.z) : null; place = q && q.name || ''; } catch (e) { }
-    const inv0 = () => (OG() ? OG().inv(st) : {}) || {};
-    const upd = () => {
-      const tb = rowT.querySelector('button[data-tool]'); if (tb) tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta';
-      sw.forEach((b, i) => { b.style.borderColor = i === colI ? '#ffe14a' : '#222'; b.style.transform = i === colI ? 'scale(1.18)' : ''; });
-      sizeB.forEach(b => { const on = b.dataset.k === sizeK; b.style.background = on ? '#5a4a1a' : '#34312c'; b.style.borderColor = on ? '#ffe14a' : '#555'; });
-      const sty = STYLES[styleOf()], inv = inv0(), have = tool === 'pennarello' ? inv.pennarello || 0 : inv.bomboletta || 0;
-      head.innerHTML = '';
-      const t1 = el('div', 'font-size:' + (SMALL_UI ? 14 : 16) + 'px;color:#ffe14a', head); t1.textContent = `${sty ? sty.nome[0].toUpperCase() + sty.nome.slice(1) : 'Tavoletta'} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''} · ${Rc.W.toFixed(1)} × ${Rc.H.toFixed(1)} m${place && !SMALL_UI ? ' · ' + place : ''}`;
-      const t2 = el('div', 'color:#aaa;font-size:12px', head); t2.textContent = `${TOUCH ? 'Disegna col dito dentro il riquadro giallo.' : 'Disegna dentro il riquadro giallo (la pressione della penna conta). 1-8 colori · Ctrl+Z annulla · Invio salva · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli' : 'Bombolette'}: ${have}`;
-      cmT.textContent = cm + ' cm';
-      save.style.opacity = strokes.length && have > 0 ? '1' : '.55';
-    };
-    box.appendChild(info);
-    document.body.appendChild(box); setShot(shot); upd(); requestAnimationFrame(fit);
-    const pxm = () => pw / Rc.W, wpx = () => cm / 100 * pxm();
-    const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
-    live.addEventListener('pointerdown', e => { e.preventDefault(); live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); info.textContent = ''; drawLive(); });
-    live.addEventListener('pointermove', e => { if (!cur) return; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; (evs.length ? evs : [e]).forEach(ev => { const [x, y] = pos(ev), l = cur[cur.length - 1]; if (hyp(x - l[0], y - l[1]) < 1.5) return; cur.push([x, y, ev.timeStamp, ev.pressure || .5]); }); drawLive(); });
-    const end = () => { if (!cur) return; cur = null; drawLive(); render(); upd(); }; live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
-    // mentre si disegna: il tratto pieno, mai più sottile di 3 px a schermo (prima su un riquadro grande era un filo da 1 px, e
-    // col nero su un muro scuro non si vedeva); appena staccato: la resa del gioco
-    function drawLive() {
-      const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return;
-      const k = live.getBoundingClientRect().width / pw || 1, lw = Math.max(wpx(), 3 / k), col = TAV_COLS[colI][0];
-      x.lineCap = x.lineJoin = 'round'; x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]));
-      const lum = parseInt(col.slice(1, 3), 16) * .3 + parseInt(col.slice(3, 5), 16) * .59 + parseInt(col.slice(5, 7), 16) * .11;
-      x.strokeStyle = lum < 90 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.45)'; x.lineWidth = lw + 2 / k; x.stroke();   // il bordo che lo stacca dal muro
-      x.strokeStyle = col; x.lineWidth = lw; x.stroke();
-    }
-    const rec = () => Object.assign({ strokes: strokes.map(s => s.map(q => [q[0], q[1], q[2] - strokes[0][0][2], q[3]])), wpx: wpx(), frame: { w: pw, h: ph } }, PNs ? { pen, cfg: { flow, drip: dripK } } : {});
-    function render() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!strokes.length) return; try { if (PNs) PN.drawStrokes(x, rec(), pw, ph, TAV_COLS[colI][0], mulberry(11)); else WriterMano.drawRecorded(x, rec(), { seed: 7 }, pw, ph, mulberry(11), TAV_COLS[colI][0], tool === 'pennarello' ? 'mtag' : 'tag'); } catch (e) { console.error(e); } }
-    const keys = e => { e.stopPropagation(); if (e.type !== 'keydown') return;
-      if (e.key === 'Escape') close(); else if (e.key === 'Enter') { e.preventDefault(); apply(); }
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); strokes.pop(); drawLive(); render(); upd(); }
-      else if (/^[1-8]$/.test(e.key)) { colI = +e.key - 1; upd(); render(); } }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
-    function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; }
-    function apply() {
-      if (!strokes.length) { info.textContent = 'Prima disegna qualcosa dentro il riquadro giallo (Esci per uscire).'; return; }
-      if (OG() && !(inv0()[tool] > 0)) { info.textContent = tool === 'bomboletta' ? 'Senza bombolette non si salva: comprane in ferramenta (o scegli il pennarello).' : 'Senza pennarello non si salva.'; return; }
-      try {
-        const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec(), pxM = pxm();
-        let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxM, cmM = cm / 100;
-        // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
-        if (inv && tool === 'bomboletta') { W.canUse = (W.canUse || 0) + lenM * cmM / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
-        if (inv && tool === 'pennarello') { W.mkUse = (W.mkUse || 0) + lenM / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
-        const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
-        let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }   // [tavoletta] lontano da tutto nearestPlace non trova niente: prima qui il salvataggio si fermava
-        const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
-        nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
-        nw.gfxRect.u = A.u.clone();
-        const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
-        if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
-          const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
-          Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
-        else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
-        else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
-        addWork(st, nw); let m = null; try { m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
-        try { finish(st, nw); } catch (e) { console.warn('[Writing] tavoletta, fine', e); nw.done = true; nw.prog = 1; }   // [tavoletta] la città che reagisce non deve fermare il salvataggio
-        try { G.emit(st, 'graffito'); } catch (e) { }
-        if (!saveOnWall(nw)) { nw.gfxFail = 0; W.__dirty = true; }   // il giro dei graffiti lo rimette al suo posto
-        close();
-        try { G.feed(st, `${STYLES[nw.style].nome[0].toUpperCase() + STYLES[nw.style].nome.slice(1)} salvato sul muro.`, 'good'); } catch (e) { }
-      } catch (e) { console.warn('[Writing] tavoletta', e); info.textContent = 'Non sono riuscito a salvarlo: riprova (o Esci).'; }
-    }
-    // [tavoletta] i tasti del Game Boy (main.js conMap): A salva, B esce, la croce cambia colore (◄ ►) e spessore (▲ ▼), annulla col tasto bomboletta
-    TAV.api = { apply, close, undo: () => { strokes.pop(); drawLive(); render(); upd(); }, col: d => { colI = (colI + d + TAV_COLS.length) % TAV_COLS.length; upd(); render(); info.textContent = 'Colore: ' + TAV_COLS[colI][1]; }, size: d => { cm = clamp(cm + d, 1, +sl.max); sl.value = cm; upd(); render(); } };
-    TAV.pad = box; GFX.held = false;
+    const api = TavolaUI.open({
+      shot, W: Rc.W, H: Rc.H, cols: TAV_COLS, col: A.col, tool: A.tool, pens: !!PN, PN, WM: typeof WriterMano !== 'undefined' ? WriterMano : null, mulberry,
+      sizes: TAV_SIZES, sizeK: A.size || null, luogo: place, chi: `${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`,
+      has: t => !OG() || inv0()[t] > 0,
+      conta: () => { if (!OG()) return null; const i = inv0(); return { bomboletta: i.bomboletta || 0, pennarello: i.pennarello || 0 }; },
+      titolo: mk => { const sty = STYLES[mk ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag']; return sty ? sty.nome : 'tavoletta'; },
+      // la misura: si rifà la foto attorno al punto toccato (il pannello avvisa che il disegno si perde)
+      reshoot: k => {
+        const S0 = TAV_SIZES.find(q => q[0] === k); if (!S0) return null;
+        const R0 = { W: S0[2], H: S0[3], c: { x: A.pt.x, y: A.pt.y, z: A.pt.z } }, R1 = tavFit(R0, A), sh = tavShot(R1, A.n, A.r); if (!sh) return null;
+        Rc = R1; return { shot: sh, W: R1.W, H: R1.H, nota: R1.W < S0[2] - .05 || R1.H < S0[3] - .05 ? `Qui c'è posto per ${R1.W.toFixed(1)} × ${R1.H.toFixed(1)} m (il muro finisce o c'è un'apertura).` : '' };
+      },
+      save: r => tavSave(st, Rc, A, r),
+      close: () => { TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; },
+    });
+    TAV.api = api; TAV.pad = api.box; GFX.held = false;
+  }
+  // [tavola2] il salvataggio: r è il disegno (rec: i tratti nel riquadro di r.frame.w × r.frame.h px; r.st, per ogni tratto il colore c,
+  // il tappo p, lo spessore w in px). La vernice: la bomboletta (ogni tappo e il rullo) copre un po' meno di un metro quadro di
+  // tratto, il pennarello una ventina di metri di linea. Il lavoro prende il colore che copre di più. Ritorna { ok } o { msg }
+  function tavSave(st, Rc, A, r) {
+    if (!r || !r.strokes || !r.strokes.length) return { msg: 'Prima disegna qualcosa dentro il riquadro giallo.' };
+    const inv = OG() ? OG().inv(st) : null, pxM = (r.frame && r.frame.w || 1) / Rc.W, SK = r.st || [], peso = {};
+    let cop = 0, linea = 0, spray = false, mk = false;
+    r.strokes.forEach((s, i) => { const q = SK[i] || {}; let l = 0; for (let j = 1; j < s.length; j++) l += hyp(s[j][0] - s[j - 1][0], s[j][1] - s[j - 1][1]); const lenM = l / pxM, cmM = (q.w || r.wpx || 8) / pxM;
+      if ((q.p || r.pen) === 'marker') { mk = true; linea += lenM; } else { spray = true; cop += lenM * cmM; }
+      const c = q.c || TAV_COLS[0][0]; peso[c] = (peso[c] || 0) + Math.max(lenM, .01) * cmM; });
+    if (inv && spray && !(inv.bomboletta > 0)) return { msg: 'Senza bombolette non si salva: comprane in ferramenta (o usa il pennarello).' };
+    if (inv && mk && !(inv.pennarello > 0)) return { msg: 'Senza pennarello non si salva.' };
+    try {
+      const W = S(st), tool = spray ? 'bomboletta' : 'pennarello', col = Object.keys(peso).sort((a, b) => peso[b] - peso[a])[0] || TAV_COLS[0][0];
+      if (inv && spray) { W.canUse = (W.canUse || 0) + cop / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
+      if (inv && mk) { W.mkUse = (W.mkUse || 0) + linea / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
+      const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
+      let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }   // [tavoletta] lontano da tutto nearestPlace non trova niente: prima qui il salvataggio si fermava
+      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col, rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
+      nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
+      nw.gfxRect.u = A.u.clone();
+      const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
+      if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
+        const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
+        Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
+      else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
+      else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
+      addWork(st, nw); let m = null; try { m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+      try { finish(st, nw); } catch (e) { console.warn('[Writing] tavoletta, fine', e); nw.done = true; nw.prog = 1; }   // [tavoletta] la città che reagisce non deve fermare il salvataggio
+      try { G.emit(st, 'graffito'); } catch (e) { }
+      if (!saveOnWall(nw)) { nw.gfxFail = 0; W.__dirty = true; }   // il giro dei graffiti lo rimette al suo posto
+      try { G.feed(st, `${STYLES[nw.style].nome[0].toUpperCase() + STYLES[nw.style].nome.slice(1)} salvato sul muro.`, 'good'); } catch (e) { }
+      return { ok: true };
+    } catch (e) { console.warn('[Writing] tavoletta', e); return { msg: 'Non sono riuscito a salvarlo: riprova (o esci).' }; }
   }
 
   // ---------------- IL GIOCATORE: il colpo, il lavoro sotto il puntatore ----------------
