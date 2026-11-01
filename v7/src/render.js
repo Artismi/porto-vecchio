@@ -159,8 +159,8 @@ var Render = (function () {
       for (const c of o.children) walk(c, r); };
     walk(root, nuovo(root)); return out.filter(r => isFinite(r.b[0]));
   }
-  function sdNota(obj, e2) { const chi = chi2(/^(sdNota|crate|bench|chair|table|sedieTavolo|lifebuoy|bin|drum|cone|nets|transenna|sunbed|bitta|parasol|cafe|placeYS1|putG)$/) || (e2 && e2.chi);   // chi ha chiamato il costruttore (non il costruttore della cassa o della panchina)   // una cosa che va nella geometria statica (addStatic): la posizione è già quella del mondo
-    sdScatole(obj).forEach(r => SD1.L.push({ t: sdTipo(r.n) || (r.n === obj ? 'arredo' : 'pezzo'), chi: r.n.userData.sdChi || chi, k2: e2 ? e2.k : P2.k, M: r.n.matrixWorld.clone(), lb: r.b, muro: !!r.n.userData.aMuro, e2, reg: !!e2, g: e2 ? 'e' + e2.id : obj.uuid })); }
+  function sdNota(obj, e2) { const chi = chi2(/^(sdNota|crate|crateStack|bench|chair|table|sedieTavolo|lifebuoy|bin|drum|cone|nets|transenna|sunbed|bitta|parasol|cafe|placeYS1|putG)$/) || (e2 && e2.chi);   // chi ha chiamato il costruttore (non il costruttore della cassa o della panchina)   // una cosa che va nella geometria statica (addStatic): la posizione è già quella del mondo
+    sdScatole(obj).forEach(r => SD1.L.push({ t: sdTipo(r.n) || (r.n === obj ? 'arredo' : 'pezzo'), chi: r.n.userData.sdChi || chi, k2: e2 ? e2.k : P2.k, M: r.n.matrixWorld.clone(), lb: r.b, muro: !!r.n.userData.aMuro, palo: !!r.n.userData.aPalo, e2, reg: !!e2, g: e2 ? 'e' + e2.id : obj.uuid })); }
   function addStatic(obj, noShadow) {
     if (SCO.on) { obj.updateMatrixWorld(true); const e = obj.matrixWorld.elements; if (scoFuori(e[12], e[14], 12)) return; }   // [scorcio] le cose di strada fuori dallo scorcio non entrano
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
@@ -5931,7 +5931,7 @@ var Render = (function () {
       taglioGronde4(T, b, { x0, z0, w, d, top, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, pitch: EPT ? EPT.pitch : pitch, shape: EPT ? EPT.shape : shape, swap: EPT && EPT.swap !== undefined ? EPT.swap : d > w });   // [compenetra] la gronda si ferma sul vicino attaccato
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims;
       { const n = r2() < .45 && !PF3 ? 1 + Math.floor(r2() * 4) : 0, A = T.ridge[0], B = T.ridge[1];   /* [tetti3] niente piccioni sparsi sul colmo del piano */ b.__p3 = (b.__p3 || 0) + n; for (let k = 0; k < n; k++) { const t = .1 + r2() * .8, pg = oPiccione1(r2); pg.position.set(A.x + (B.x - A.x) * t, A.y + .14, A.z + (B.z - A.z) * t); pg.rotation.y = r2() * 6; grp.add(pg); } }   // [ordine1] i piccioni sul colmo
-      if (rk !== 'lamiera' && r2() < (X ? 0 : .55)) {   /* [facciate2] sulle case con l'epoca le antenne le mette la rete: niente doppioni sul colmo */ const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2); an.position.set(s0.x, s0.y + .05, s0.z); grp.add(an); }   // un'antenna sola, sul colmo
+      if (rk !== 'lamiera' && r2() < (X ? 0 : .55)) {   /* [facciate2] sulle case con l'epoca le antenne le mette la rete: niente doppioni sul colmo */ const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2), yA = quotaPiedi1([T.grp], s0.x, s0.z, s0.y); an.position.set(s0.x, yA !== null ? yA : s0.y + .05, s0.z); grp.add(an); }   /* [disposizione] sui coppi del colmo, non 5 cm sopra */   // un'antenna sola, sul colmo
     }
     // balconi ai piani alti, sui lati che si vedono, allineati alle finestre
     if (kind === 'borgo' && !X) {   // [epoche] le case con l'epoca hanno i balconi loro (epDecora)
@@ -8561,6 +8561,10 @@ var Render = (function () {
         I.near(I.E, B, o => { if (o !== e && !o.gone && Math.abs(o.B.y1 - B.y0) < .12 && sat2(B, o.B) > .02) { su = true; return false; } });
         if (!su) I.near(I.H, B, h => { if (vicino2(B, h.B, .1)) { su = true; return false; } }, .2);
         if (!su) out.push({ t: 'sospeso', dy: gmax - B.y0 }); }
+      // [disposizione] sull'orlo: appoggiata col centro, ma uno spigolo dà sul vuoto (il ciglio della banchina, del muraglione, di un salto
+      // della piazza: oltre 30 cm sotto). Il regista la scosta dall'orlo o la toglie; anche i suoi tentativi di spostamento
+      // passano di qui, così non la fa scivolare oltre il ciglio
+      else if (B.y1 - B.y0 < 2.2 && B.y0 < gy + .15 && gmin < B.y0 - .3) out.push({ t: 'orlo' });
     }
     // 6) davanti a un praticabile, vista dalla camera: copre più del 12% del suo contorno
     if (!PRAT2.has(e.k) && e.k !== 'gradino') { e.dep = dep2(cx, (B.y0 + B.y1) / 2, cz); let cbE = null; I.near(I.P, B, p => { if (e.dep <= p.dep + .05) return;   // [veloce] la profondità subito, il contorno (hull2) solo se le scatole sullo schermo si toccano
@@ -8831,7 +8835,7 @@ var Render = (function () {
     SD1.L.concat(SD1.G).forEach(q => { const e = q.e2; if (e && e.gone) return;
       if (q.out) { q.out.updateMatrixWorld(true); W.multiplyMatrices(q.out.matrixWorld, q.Mrel); } else W.copy(q.M);
       if (e && e.sd0 && e.B) { const [cx, cz] = ctr2(e.B), c0 = e.sd0.c; T.makeTranslation(cx, e.B.y0 - e.sd0.y0, cz).multiply(Ry.makeRotationY((e.yaw || 0) - (e.sd0.yaw || 0))).multiply(new THREE.Matrix4().makeTranslation(-c0[0], 0, -c0[1])); W.premultiply(T); }
-      voci.push({ t: q.t, chi: q.chi, k2: q.k2 || null, reg: !!q.reg, g: q.g, muro: q.muro || undefined, m: Array.from(W.elements, r3), lb: q.lb.map(r3), b: e && e.b ? BI.get(e.b) : undefined, F: e && e.F ? { p: e.F.p.map(r3), n: e.F.n.map(r3) } : undefined }); });
+      voci.push({ t: q.t, chi: q.chi, k2: q.k2 || null, reg: !!q.reg, g: q.g, muro: q.muro || undefined, palo: q.palo || undefined, m: Array.from(W.elements, r3), lb: q.lb.map(r3), b: e && e.b ? BI.get(e.b) : undefined, F: e && e.F ? { p: e.F.p.map(r3), n: e.F.n.map(r3) } : undefined }); });
     const R = SD1.R || { H: [], Z: [], P: [] };
     return { voci, kit: P2.kit || 0, case: R.H.map(h => Object.assign(bx(h.B), { bi: BI.get(h.b) })), zone: R.Z.map(z => Object.assign(bx(z.B), { t: z.t })), prat: R.P.map(p => Object.assign(bx(p.B), { k: p.k })) };
   };
@@ -10335,6 +10339,16 @@ var Render = (function () {
   // sulle caselle, ma la casa vera (rec.geo: il lotto di [pianta] più stretto della casella, o girato) sta spesso più dentro, e il modulo
   // del kit sporge dal filo: la mensola restava staccata dal muro da 10 cm a quasi un metro. Qui il punto (x, z) va sulla faccia della casa
   // vera che guarda verso (nx, nz) (girata con la casa, arretrata sotto il portico), con la sua normale; null se la faccia è lontana (> 1,5 m)
+  // [disposizione] LA QUOTA VERA sotto un punto: la mesh più alta di objs (la casa fusa, il tetto in costruzione) fra y0 e y1. Le antenne
+  // stavano alla quota scritta (il colmo + 4 cm, il lastrico + 8 cm) e sul colmo vero o sul piano vero restavano sospese 5-14 cm
+  const RQ1 = { rc: new THREE.Raycaster(), dn: new THREE.Vector3(0, -1, 0), o: new THREE.Vector3(), hs: [] };
+  function quotaSu1(objs, x, z, y0, y1) {
+    RQ1.o.set(x, y1, z); RQ1.rc.set(RQ1.o, RQ1.dn); RQ1.rc.near = 0; RQ1.rc.far = y1 - y0; let best = null;
+    objs.forEach(r => { if (!r) return; r.updateMatrixWorld(true); r.traverse(m => { if (!m.isMesh || m.isInstancedMesh || m.isSkinnedMesh || m.visible === false || !m.geometry) return; RQ1.hs.length = 0; try { m.raycast(RQ1.rc, RQ1.hs); } catch (e) { return; } for (const h of RQ1.hs) if (best === null || h.point.y > best) best = h.point.y; }); });
+    return best;
+  }
+  const PIEDI1 = [[0, 0], [.35, 0], [-.175, .303], [-.175, -.303]];   // il centro e i tre piedi del treppiede dell'antenna
+  const quotaPiedi1 = (objs, x, z, y) => { let best = null; PIEDI1.forEach(([a, b]) => { const q = quotaSu1(objs, x + a, z + b, y - .5, y + .8); if (q !== null && (best === null || q > best)) best = q; }); return best; };
   let KITX1 = null;
   function kitX1() { if (KITX1 === null) { try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); KITX1 = clamp(new THREE.Box3().setFromObject(kp).max.x, 0, .3); } catch (e) { KITX1 = 0; } } return KITX1; }
   function muroVero1(bi, x, z, nx, nz) {
@@ -10410,7 +10424,7 @@ var Render = (function () {
       else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = pm3('cabina_enel');   // [modelli1] la cabina vera
         place(mk2(q, 'rete'), x0, z0, yaw); cnt.cabine++; }
       else if (n.k === 'moncone') { const p = nodoXYZ1(n), q = new THREE.Group(); if (ARR3()) { const k = pm3('isolatore'); k.rotation.x = Math.PI / 2; k.position.z = -.02; q.add(k); } else add(q, box(.05, .05, .05, sm('#141416')), 0, 0, 0); putG(q, p, yaw); }   // [dettaglio] dove il filo è stato tagliato resta l'isolatore sul suo perno
-      else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], y1 = n.falda && b.__ridge ? b.__ridge[0].y + .04 : quoteS1(n.bi)[1] + (window.Tetti && Tetti.PIANO && Tetti.PIANO[n.bi] ? .08 : 0) /* [tetti3] sul colmo, non dentro la falda; sul lastrico, non dentro */, hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)); an.position.set(n.x, y1, n.z); an.userData.v3 = n.bi; /* [visuale3] l'antenna è della casa: si taglia con lei */ g.add(an); cnt.antenne++; }
+      else if (n.k === 'antenna' && n.bi !== null) { const b = B[n.bi], y1 = n.falda && b.__ridge ? b.__ridge[0].y + .04 : quoteS1(n.bi)[1] + (window.Tetti && Tetti.PIANO && Tetti.PIANO[n.bi] ? .08 : 0) /* [tetti3] sul colmo, non dentro la falda; sul lastrico, non dentro */, hh = Math.max(1.8, n.y - (Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF)), an = oAntenna(hh, (n.bi * .37) % 6.28, rng(n.bi * 53 + 1)), recA = DZ.bRec[n.bi], yA = recA && recA.grp ? quotaPiedi1([recA.grp], n.x, n.z, y1) : null; an.position.set(n.x, yA !== null ? yA : y1, n.z);   /* [disposizione] sul tetto vero: il punto più alto sotto i piedi */ an.userData.v3 = n.bi; /* [visuale3] l'antenna è della casa: si taglia con lei */ g.add(an); cnt.antenne++; }
       else if (n.k === 'finestra' && R.segmenti.some(s => s.b === n.id && s.k === 'abusivo') && B[n.bi] && B[n.bi].shack) { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.3, .05, .06, sm('#e8e4dc')), 0, -.2, .05); putG(q, p, yaw); }   // la ciabatta sul davanzale
     });
     // ---- 3) i lampioni per epoca, a interasse fisso; i cartelli stradali anni '80 sui pali (mai pali nuovi) ----
@@ -11158,11 +11172,17 @@ var Render = (function () {
 
   // [leggera] sul pendio la cosa si appoggia sullo spigolo più basso (a monte affonda di qualche centimetro, a valle non resta
   // sospesa): fino a 60 cm, oltre resta com'era (le cose grandi su un pendio forte vanno sistemate da chi le posa)
-  const SETTLE_B = new THREE.Box3();
+  const SETTLE_B = new THREE.Box3(), SETTLE_L = new THREE.Box3();
   function settle(o) {
     o.updateMatrixWorld(true); SETTLE_B.setFromObject(o); if (!isFinite(SETTLE_B.min.x)) return;
     const { min, max } = SETTLE_B, y0 = o.position.y; if (max.x - min.x > 14 || max.z - min.z > 14) return;
-    let lo = y0; [[min.x, min.z], [min.x, max.z], [max.x, min.z], [max.x, max.z]].forEach(([qx, qz]) => { lo = Math.min(lo, groundH(qx, qz)); });
+    // [disposizione] gli spigoli veri del piede: la scatola nel riferimento della cosa, girata. Quelli della scatola del mondo, per una cosa
+    // lunga e girata (una recinzione, una panchina in diagonale), stanno fino a mezzo metro fuori dal piede: sul pendio trovavano un suolo
+    // più basso e la cosa affondava (le recinzioni dell'inverno, 10-30 cm)
+    let P = [[min.x, min.z], [min.x, max.z], [max.x, min.z], [max.x, max.z]];
+    if (!o.parent && Math.abs(Math.sin(2 * o.rotation.y)) > .02) { const pp = o.position.clone(), qq = o.quaternion.clone(); o.position.set(0, 0, 0); o.quaternion.identity(); o.updateMatrixWorld(true); SETTLE_L.setFromObject(o); o.position.copy(pp); o.quaternion.copy(qq); o.updateMatrixWorld(true);
+      if (isFinite(SETTLE_L.min.x)) { const c = Math.cos(o.rotation.y), sn = Math.sin(o.rotation.y), L = SETTLE_L; P = [[L.min.x, L.min.z], [L.min.x, L.max.z], [L.max.x, L.min.z], [L.max.x, L.max.z]].map(([a, b]) => [pp.x + a * c + b * sn, pp.z - a * sn + b * c]); } }
+    let lo = y0; P.forEach(([qx, qz]) => { lo = Math.min(lo, groundH(qx, qz)); });
     const d = y0 - lo; if (d > .04 && d < .6) o.position.y = y0 - d;
   }
   // --- lampioni ---
@@ -15060,6 +15080,13 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       const ad = (a, o, x, y, z) => { o.position.set(x, y, z); a.add(o); return o; };
       const lightAt = (a, x, y, z, col, I, D) => { const q = new THREE.Vector3(x, y, z); a.updateMatrixWorld(true); q.applyMatrix4(a.matrixWorld); addLight(q.x, q.y, q.z, col, I, D, .05); };
       // --- manifesti, volantini, scritte: sul piano terra, sui lati che danno sulla strada ---
+      // [disposizione] la cosa a terra (casse, bancali, fusti, cassette) sul suolo vero sotto di lei, non alla quota del piano terra della casa
+      // (sul pendio affondava fino a 70 cm o restava sospesa); niente se uno spigolo dà su un salto di oltre 30 cm (il ciglio della banchina)
+      const PORTE_D = [b.door, b.shopFront && b.shopFront.door].filter(Boolean).map(dt => [(dt[0] + .5) * TS, (dt[1] + .5) * TS]);
+      const terra = (a, o, hr) => { a.updateMatrixWorld(true); const W = (x, z) => new THREE.Vector3(o.position.x + x, 0, o.position.z + z).applyMatrix4(a.matrixWorld), c = W(0, 0), g0 = groundH(c.x, c.z);
+        if ([[-hr, -hr], [hr, -hr], [hr, hr], [-hr, hr]].some(([x, z]) => { const q = W(x, z); return groundH(q.x, q.z) < g0 - .3; }) || PORTE_D.some(([px, pz]) => Math.hypot(c.x - px, c.z - pz) < 1.4 + hr)) { a.remove(o); return null; }   // né davanti a una porta (il portone, la porta della bottega)
+        o.position.y += g0 - (base - .1); return o; };
+      // --- manifesti, volantini, scritte: sul piano terra, sui lati che danno sulla strada ---
       sides.forEach(sd => {
         const n = 2 + Math.floor(r() * 4);
         for (let k = 0; k < n; k++) {
@@ -15094,10 +15121,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         const a = mkA(S0, u0 + .3), use = b.use || (b.warehouse ? 'magazzino' : b.church ? 'chiesa' : '');
         const table = (x, z) => { ad(a, cyl(.4, .4, .05, 8, wood), x, .78, z); ad(a, cyl(.05, .05, .75, 5, metal), x, .4, z); [[-.5, 0], [.5, 0]].forEach(([dx]) => { ad(a, cyl(.17, .17, .04, 6, red), x + dx, .48, z); ad(a, cyl(.03, .03, .46, 4, metal), x + dx, .24, z); }); };
         if (use === 'bar' || use === 'trattoria' || use === 'osteria') { table(-1.6, 1.8); table(1.8, 2.0); ad(a, box(.5, .8, .06, dark), 0, .4, 1.4); for (let k = 0; k < 6; k++) { const q = ad(a, new THREE.Mesh(new THREE.SphereGeometry(.07, 6, 5), bulb), -2.2 + k * .85, 2.6 - Math.sin(k / 5 * Math.PI) * .25, 2.4); } ad(a, box(4.4, .02, .02, dark), 0, 2.55, 2.4); lightAt(a, 0, 2.4, 2.2, '#ffb35c', 1.8, 9); }
-        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { ad(a, pm3('cassetta'), x, 0, 1.1); ad(a, pm3('cassetta'), x, .16, 1.1); ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1); }); ad(a, pm3('lavagna'), 1.9, 0, 1.6); }   // [dettaglio] le cassette impilate col pane, la lavagna
-        else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1); ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1); } }   // [dettaglio] le cassette del pesce
-        else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => ad(a, pm3('fusto', { col: c }), x, 0, z)); ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
-        else if (ARR3() && use === 'magazzino') { for (let k = 0; k < 6; k++) ad(a, pm3('cassa'), -1.6 + (k % 3) * 1.0, Math.floor(k / 3) * .74, 1.3).rotation.y = (k - 2) * .1; ad(a, pm3('bancale'), 2.4, 0, 1.4); }   // [dettaglio] le casse di legno a doghe e il bancale
+        else if (ARR3() && (use === 'panetteria' || use === 'forno')) { [-1.1, 1.3].forEach(x => { terra(a, ad(a, pm3('cassetta'), x, 0, 1.1), .25); terra(a, ad(a, pm3('cassetta'), x, .16, 1.1), .25); terra(a, ad(a, pm3('cassetta', { col: '#c8923c' }), x, .32, 1.1), .25); }); ad(a, pm3('lavagna'), 1.9, 0, 1.6); }   // [dettaglio] le cassette impilate col pane, la lavagna
+        else if (ARR3() && use === 'pescheria') { for (let k = 0; k < 3; k++) { terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, 0, 1.1), .28); terra(a, ad(a, pm3('cassetta_pesce'), -1.2 + k * 1.0, .17, 1.1), .28); } }   // [dettaglio] le cassette del pesce
+        else if (ARR3() && (use === 'ferramenta' || use === 'officina' || use === 'garage')) { [['#2a3a2a', -1.4, 1.2], ['#3a3a40', -.75, 1.45]].forEach(([c, x, z]) => terra(a, ad(a, pm3('fusto', { col: c }), x, 0, z), .3)); terra(a, ad(a, pm3('fusto', { col: '#7a4a34', ruggine: true }), 1.6, 0, 1.2), .3); [2.4, 2.8].forEach(x => { ad(a, fC(.035, .035, 2.2, 8, '#6e7174', 'galv'), x, 1.1, .5).rotation.z = .12; }); }   // [dettaglio] i fusti veri e i tubi appoggiati al muro
+        else if (ARR3() && use === 'magazzino') { for (let k = 0; k < 6; k++) { const o = ad(a, pm3('cassa'), -1.6 + (k % 3) * 1.0, Math.floor(k / 3) * .74, 1.3); o.rotation.y = (k - 2) * .1; terra(a, o, .45); } terra(a, ad(a, pm3('bancale'), 2.4, 0, 1.4), .6); }   // [dettaglio] le casse di legno a doghe e il bancale
         else if (use === 'panetteria' || use === 'forno') { [-1.1, 1.3].forEach(x => { ad(a, box(.7, .4, .5, wood), x, .2, 1.1); ad(a, box(.6, .12, .4, sm('#c8923c', { roughness: 1 })), x, .46, 1.1); }); ad(a, box(.5, .9, .05, dark), 1.9, .45, 1.6); }
         else if (use === 'pescheria') { for (let k = 0; k < 3; k++) { ad(a, box(.8, .35, .5, sm('#8ab0c4', { roughness: .8 })), -1.2 + k * 1.0, .18, 1.1); ad(a, box(.7, .08, .4, sm('#c8d8e0', { roughness: .5 })), -1.2 + k * 1.0, .38, 1.1); } }
         else if (use === 'ferramenta' || use === 'officina' || use === 'garage') { for (let k = 0; k < 3; k++) { ad(a, cyl(.3, .3, .4, 10, dark), -1.4 + k * .35, .2 + k * .0, 1.2 + (k % 2) * .4); } ad(a, cyl(.3, .3, .9, 10, rust0()), 1.6, .45, 1.2); ad(a, box(.1, 2.2, .1, metal), 2.4, 1.1, .5).rotation.z = .12; ad(a, box(.1, 2.2, .1, metal), 2.8, 1.1, .5).rotation.z = .12; }

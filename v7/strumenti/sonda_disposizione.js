@@ -52,7 +52,7 @@ function misura() {
   const r2 = v => Math.round(v * 100) / 100;
   // ---- le voci: assi, scatola nel mondo, impronta orientata ----
   const V = [];
-  const VASI = /^(vaso|latta|gruppo:vasi|fioriera)$|^(pot|oPot)/;   // i vasi li rifà un altro filone: fuori dal conto
+  const VASI = /vas[oi]|^latta$|fioriera|^(pot|oPot)/;   // i vasi (vaso, vaso_appeso, fioriera_tetto, gruppo:vasi...)   // i vasi li rifà un altro filone: fuori dal conto
   const ARCH = new Set(['gradino', 'porta', 'scala', 'tombino', 'passerella', 'vetrina', 'grande', 'portale', 'serranda', 'scorcio', 'scorcio_muro', 'scorcio_filo', 'balcone', 'tettoia']);   // architettura del registro: non è arredo
   let nVasi = 0, nArch = 0;
   D.voci.forEach((q, i) => { const m = q.m, lb = q.lb; if (!(lb[3] - lb[0] >= 0)) return;
@@ -64,7 +64,7 @@ function misura() {
     const cx = o[0] + ex[0] * mx + ey[0] * my + ez[0] * mz, cz = o[2] + ex[2] * mx + ey[2] * my + ez[2] * mz;
     const u = [ex[0] / lx, ex[2] / lx], v = [ez[0] / lz, ez[2] / lz], hu = (lb[3] - lb[0]) / 2 * lx, hv = (lb[5] - lb[2]) / 2 * lz;
     if (!isFinite(cx + cz + y0 + y1)) return;
-    const e = { i, t: q.t, chi: q.chi || '?', fn: String(q.chi || '?').replace(/:\d+$/, ''), k2: q.k2, g: q.g, muro: !!q.muro, F: q.F, o, cx, cz, u, v, hu, hv, y0, y1, f: v, h: y1 - y0 };
+    const e = { i, t: q.t, chi: q.chi || '?', fn: String(q.chi || '?').replace(/:\d+$/, ''), k2: q.k2, g: q.g, muro: !!q.muro, palo: !!q.palo, F: q.F, o, cx, cz, u, v, hu, hv, y0, y1, f: v, h: y1 - y0 };
     e.cs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, c]) => [cx + u[0] * hu * a + v[0] * hv * c, cz + u[1] * hu * a + v[1] * hv * c]);
     V.push(e); });
   // griglia a 2 m
@@ -91,8 +91,9 @@ function misura() {
   let nIst = 0; MI.forEach(im => { if (im.count > 50000) return; const g = im.geometry; if (!g.boundingBox) g.computeBoundingBox(); for (let i = 0; i < im.count; i++) { im.getMatrixAt(i, IM4); const W = new T3.Matrix4().multiplyMatrices(im.matrixWorld, IM4); BB.copy(g.boundingBox).applyMatrix4(W); if (!isFinite(BB.min.x)) continue; nIst++; metti({ ist: im, W }, BB.clone()); } });   // le istanze (la pila di [leggero], il kit): una per una
   const RC = new T3.Raycaster(), DN = new T3.Vector3(0, -1, 0), P0 = new T3.Vector3(); RC.firstHitOnly = true;
   let nRaggi = 0; const sotto = (x, y, z, far) => { nRaggi++; far = far || 30; const L = (MG.get(k2g(Math.floor(x / 8), Math.floor(z / 8))) || []).concat(GRANDI).filter(o => { const b = o.__bb; return x >= b.min.x && x <= b.max.x && z >= b.min.z && z <= b.max.z && b.min.y <= y && b.max.y >= y - far; });
-    if (!L.length) return null; P0.set(x, y, z); RC.set(P0, DN); RC.near = 0; RC.far = far; let best = null;
-    for (const o of L) { const a = []; if (o.ist) { TMP.geometry = o.ist.geometry; TMP.material = o.ist.material; TMP.matrixWorld.copy(o.W); TMP.raycast(RC, a); } else o.raycast(RC, a); for (const h of a) if (h.distance <= far && (best === null || h.point.y > best)) best = h.point.y; } return best; };
+    const gq0 = gH(x, z), gt = gq0 >= y - far ? Math.min(gq0, y) : null;   // un suolo più alto del raggio (lo spigolo a monte) regge lì   // il suolo lo disegna lo shader (i vertici spostati sulla scheda): i raggi non lo vedono, vale groundH
+    if (!L.length) return gt; P0.set(x, y, z); RC.set(P0, DN); RC.near = 0; RC.far = far; let best = null;
+    for (const o of L) { const a = []; if (o.ist) { TMP.geometry = o.ist.geometry; TMP.material = o.ist.material; TMP.matrixWorld.copy(o.W); TMP.raycast(RC, a); } else o.raycast(RC, a); for (const h of a) if (h.distance <= far && (best === null || h.point.y > best)) best = h.point.y; } return gt !== null && (best === null || gt > best) ? gt : best; };
   const out = { voci: V.length, vasi: nVasi, architettura: nArch, istanze: nIst, case: H.length, mesh: MS.length, difetti: [], per: {}, perFn: {}, perTipo: {} };
   const segna = (cat, e, det) => { out.difetti.push([cat, e.t, e.chi, r2(e.cx), r2(e.cz), r2(e.y0), det === undefined ? '' : det]); out.per[cat] = (out.per[cat] || 0) + 1; const kf = cat + '|' + e.fn, kt = cat + '|' + e.t; out.perFn[kf] = (out.perFn[kf] || 0) + 1; out.perTipo[kt] = (out.perTipo[kt] || 0) + 1; };
   const sedia = e => SEDIE.test(e.t), panca = e => PANCHE.test(e.t), tavolo = e => TAVOLI.test(e.t);
@@ -128,24 +129,25 @@ function misura() {
   const piatto = e => e.h < .06;
   const PIANTE = /(^|:)(erba|valeriana|cappero)$/;   // i ciuffi nascono dalle fughe: un po' dentro è giusto
   V.forEach(e => { if (appeso(e) || piatto(e) || VUOTI.test(e.t) || e.t === 'pezzo' || PIANTE.test(e.t) || e.hu * e.hv * 4 > 30) return;
-    const inset = e.cs.map(([x, z]) => [e.cx + (x - e.cx) * .6, e.cz + (z - e.cz) * .6]);
+    const inset = PALI.test(e.t) || e.h > 2.2 ? [] : e.cs.map(([x, z]) => [e.cx + (x - e.cx) * .6, e.cz + (z - e.cz) * .6]), c0 = PALI.test(e.t) || e.h > 2.2 ? [e.o[0], e.o[2]] : [e.cx, e.cz];   // le cose alte e sottili: sotto il piede (l'origine), non sotto la testa larga
     if (!e.alto) {   // a terra: la quota del suolo; poi i raggi decidono (scalini, pedane, marciapiedi, una cosa sotto)
-      if (e.y0 > e.gmax + .04) { const gs = [[e.cx, e.cz]].concat(inset).map(([x, z]) => sotto(x, e.y0 + .015, z, 3)); const gap = Math.min(...gs.map(g => g === null ? 9 : e.y0 - g));
+      if (e.y0 > e.gmax + .04) { const gs = [c0].concat(inset).map(([x, z]) => sotto(x, e.y0 + .015, z, 3)); const gap = Math.min(...gs.map(g => g === null ? 9 : e.y0 - g));
         if (gap > .04) segna('d_sospeso', e, r2(gap) + ' m'); }
       else if (e.y0 < e.gmin - .1 && !PALI.test(e.t)) segna('d_affondato', e, r2(e.gmin - e.y0) + ' m');
     } else {   // in alto: sui tetti, sui balconi, su un'altra cosa
-      const gs = [[e.cx, e.cz]].concat(inset).map(([x, z]) => sotto(x, e.y0 + .015, z, 40)), gap = Math.min(...gs.map(g => g === null ? 99 : e.y0 - g));
+      const gs = [c0].concat(inset).map(([x, z]) => sotto(x, e.y0 + .015, z, 40)), gap = Math.min(...gs.map(g => g === null ? 99 : e.y0 - g));
       if (gap > .04) { segna(gap > 30 ? 'd_nel_vuoto' : 'd_sospeso', e, r2(gap) + ' m'); return; }
       const fuori = e.cs.map(([x, z]) => { const g = sotto(x + (x - e.cx) * .02, e.y0 + .6, z + (z - e.cz) * .02, 40); return g === null ? -99 : g; }), su = Math.min(...fuori);
       if (su > e.y0 + .1) segna('d_affondato', e, r2(su - e.y0) + ' m');
       // il tetto: la casa sotto il centro, alla quota giusta; il piede fuori dal suo rettangolo
       const hs = caseIn(e.cx, e.cz, 0).filter(h => e.y0 > h.y1 - 3 && e.y0 < h.y1 + 3);
-      if (hs.length) { const h = hs[0], fuoriM = Math.max(...e.cs.map(([x, z]) => faccia(h, x, z).d)), tol = /^falda:/.test(e.t) ? .6 : .02;
+      if (hs.length && !(PALI.test(e.t) || e.h > 2.2)) { const h = hs[0], fuoriM = Math.max(...e.cs.map(([x, z]) => faccia(h, x, z).d)), tol = /^falda:/.test(e.t) ? .6 : .02;
         if (fuoriM > tol) segna('e_fuori_tetto', e, r2(fuoriM) + ' m'); }
     }
     // lo spigolo sul vuoto: il centro appoggiato, uno spigolo con più di 30 cm sotto
     if (e.hu * e.hv * 4 > .04 && e.h < 2.2 && !PALI.test(e.t)) { const yc = sotto(e.cx, e.y0 + .05, e.cz, 40); if (yc !== null && e.y0 - yc < .1) { const gc = e.cs.map(([x, z]) => sotto(x, e.y0 + .05, z, 40)), peggio = Math.max(...gc.map(g => g === null ? 99 : e.y0 - g));
-      if (peggio > .3) segna('e_sbalzo', e, r2(peggio) + ' m sotto uno spigolo'); } }
+      if (peggio > .3) { const GG = window.__pv.G, gc0 = gH(e.cx, e.cz), dg = Math.max(...e.cs.map(([x, z]) => gc0 - gH(x, z))), acqua = e.cs.some(([x, z]) => GG.tileAt && GG.tileAt(Math.floor(x / GG.TS), Math.floor(z / GG.TS)) === GG.T.WATER);
+        segna('e_sbalzo', e, r2(peggio) + ' m sotto uno spigolo · groundH ' + r2(dg) + (acqua ? ' · acqua' : '')); } } }
   });
   // ---- f) porte e scale ----
   const ZN = D.zone.filter(z => z.t === 'porta' || z.t === 'scala').map(z => Object.assign({}, z));
@@ -165,15 +167,16 @@ function misura() {
       const uu = (a.x - e.cx) * e.u[0] + (a.z - e.cz) * e.u[1], vv = (a.x - e.cx) * e.v[0] + (a.z - e.cz) * e.v[1], d = Math.hypot(Math.max(0, Math.abs(uu) - e.hu), Math.max(0, Math.abs(vv) - e.hv));
       if (d < .5) { segna('f_' + a.k, e, r2(d) + ' m'); return; } } });
   // ---- g) urti e h) doppioni ----
-  const cielo = e => VUOTI.test(e.t) || /^(gruppo:|tetto$|casa$)/.test(e.t) && e.h > 1.8;
+  const cielo = e => VUOTI.test(e.t) || /malta$/.test(e.t) || /^(gruppo:|tetto$|casa$)/.test(e.t) && e.h > 1.8;
   V.forEach(e => { if (piatto(e) || cielo(e) || e.t === 'pezzo' || e.muro) return; const r = Math.max(e.hu, e.hv) + 3;
     vicini(e.cx, e.cz, r, o => { if (o.i <= e.i || o.g === e.g || piatto(o) || cielo(o) || o.t === 'pezzo' || o.muro) return;
       if ((sedia(e) || panca(e)) && tavolo(o) || (sedia(o) || panca(o)) && tavolo(e)) return;   // la sedia sotto il tavolino
+      if (e.palo || o.palo) return;   // la staffa stretta al palo che c'è già (aPalo): il contatto è voluto
       if (o.t === e.t && Math.hypot(o.cx - e.cx, o.cz - e.cz) < .2 && Math.abs(o.y0 - e.y0) < .1 && Math.abs(o.h - e.h) < .1) { segna('h_doppione', e, 'con ' + o.chi); return; }
       const yo = Math.min(e.y1, o.y1) - Math.max(e.y0, o.y0); if (yo <= .05) return; const p = satR(e.cs, o.cs); if (p > .05) segna('g_urto', e, o.t + ' (' + o.chi + ') ' + r2(p) + ' m'); }); });
   // la diagnosi dei sospesi sui tetti: cosa c'è davvero sotto (tutte le mesh, anche quelle che i raggi saltano)
-  try { out.diag = out.difetti.filter(d => d[0] === 'd_sospeso' && d[5] > 3 && /TettiVissuti|buildRoofs/.test(d[2])).slice(0, 4).map(d => { const RC2 = new T3.Raycaster(new T3.Vector3(d[3], d[5] + .5, d[4]), DN, 0, 3), hs = []; scene.traverse(o => { if (!o.isMesh) return; try { o.raycast(RC2, hs); } catch (e) { } }); hs.sort((p, q) => p.distance - q.distance);
-    return [d[1], d[5]].concat(hs.slice(0, 6).map(h => { let vis = true; for (let p = h.object; p; p = p.parent) if (p.visible === false) vis = false; const mt = h.object.material || {}; const gb = h.object.geometry; if (gb && !gb.boundingBox) gb.computeBoundingBox(); return [r2(h.point.y), h.object.type, h.object.name || '', mt.name || '', mt.color ? '#' + mt.color.getHexString() : '', gb ? r2(gb.boundingBox.max.y - gb.boundingBox.min.y) + 'h' : '', h.object.parent ? h.object.parent.type + ':' + (h.object.parent.name || '') : '', vis ? 'v' : 'INV', mt.transparent ? 'T' + r2(mt.opacity) : '', mt.side, mt.colorWrite === false ? 'NOCW' : '', mt.visible === false ? 'MATINV' : ''].join(' '); })); }); } catch (e) { out.diag = [String(e)]; }
+  try { out.diag = out.difetti.filter(d => d[0] === 'd_sospeso' && parseFloat(d[6]) > 1).slice(0, 4).map(d => { const RC2 = new T3.Raycaster(new T3.Vector3(d[3], d[5] + .5, d[4]), DN, 0, 10), hs = []; scene.traverse(o => { if (!o.isMesh) return; try { o.raycast(RC2, hs); } catch (e) { } }); hs.sort((p, q) => p.distance - q.distance);
+    return [d[1], d[5]].concat(hs.slice(0, 8).map(h => { let vis = true; for (let p = h.object; p; p = p.parent) if (p.visible === false) vis = false; const mt = h.object.material || {}; const gb = h.object.geometry; if (gb && !gb.boundingBox) gb.computeBoundingBox(); return [r2(h.point.y), h.object.type, h.object.name || '', mt.name || '', mt.color ? '#' + mt.color.getHexString() : '', gb ? r2(gb.boundingBox.max.y - gb.boundingBox.min.y) + 'h' : '', h.object.parent ? h.object.parent.type + ':' + (h.object.parent.name || '') : '', vis ? 'v' : 'INV', mt.transparent ? 'T' + r2(mt.opacity) : '', mt.side, mt.colorWrite === false ? 'NOCW' : '', mt.visible === false ? 'MATINV' : '', h.object.isInstancedMesh ? 'IST' + h.object.count : '', MS.includes(h.object) ? 'inMS' : 'fuoriMS', mt.type || ''].join(' '); })); }); } catch (e) { out.diag = [String(e)]; }
   out.raggi = nRaggi;
   out.tipi = {}; V.forEach(e => { out.tipi[e.t] = (out.tipi[e.t] || 0) + 1; });
   return out;
