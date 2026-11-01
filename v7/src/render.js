@@ -17590,25 +17590,6 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     renderer.setPixelRatio(1);
     if (LOOKV.nuovo) { sguPezzi(); renderer.toneMapping = THREE.CustomToneMapping; }   // [sguardo] il look nuovo: la curva nei materiali
     luciSpente(renderer.getContext());   // [ottimizza-gpu] dopo i pezzi del look
-    // [ottimizza-gpu] GLI OPACHI A FASCE DI DISTANZA (ANALISI_OTTIMIZZAZIONE_GPU.md §1). three r149 ordina gli opachi per materiale e solo dopo per
-    // distanza (dall'origine dell'oggetto, che nei tasselli è spesso lontana dalla geometria): una casa lontana disegnata prima di una vicina
-    // si ombreggia tutta e poi viene coperta (2,7-3,1 frammenti a pixel). Qui, dopo gruppo e renderOrder, la fascia di 25 m della distanza dal
-    // centro della sfera della geometria, poi materiale e distanza come three: i frammenti scendono senza moltiplicare i cambi di programma.
-    // Opachi con la prova di profondità: l'immagine non cambia. window.__gpuOrdine = false (o ?noordine) torna all'ordine di three
-    { const OB = { f: 0, cam: null, x: 0, y: 0, z: 0, pf: -1 }, BANDA = 25, v3 = new THREE.Vector3();
-      if (typeof window !== 'undefined') window.__gpuOrdine = !(typeof location !== 'undefined' && /[?&]noordine\b/.test(location.search));
-      const fascia = it => { if (it.__gf === OB.f && it.__go === it.object) return it.__gb;
-        if (OB.pf !== OB.f) { OB.pf = OB.f; v3.setFromMatrixPosition(OB.cam.matrixWorld); OB.x = v3.x; OB.y = v3.y; OB.z = v3.z; }
-        const o = it.object, g = it.geometry, bs = g && g.boundingSphere; if (bs) v3.copy(bs.center).applyMatrix4(o.matrixWorld); else v3.setFromMatrixPosition(o.matrixWorld);
-        const dx = v3.x - OB.x, dy = v3.y - OB.y, dz = v3.z - OB.z; it.__gf = OB.f; it.__go = o; return (it.__gb = Math.floor(Math.sqrt(dx * dx + dy * dy + dz * dz) / BANDA)); };
-      renderer.setOpaqueSort((a, b) => {
-        if (a.groupOrder !== b.groupOrder) return a.groupOrder - b.groupOrder;
-        if (a.renderOrder !== b.renderOrder) return a.renderOrder - b.renderOrder;
-        if (window.__gpuOrdine && OB.cam) { const fa = fascia(a), fb = fascia(b); if (fa !== fb) return fa - fb; }
-        if (a.material.id !== b.material.id) return a.material.id - b.material.id;
-        if (a.z !== b.z) return a.z - b.z;
-        return a.id - b.id; });
-      const r0 = renderer.render; renderer.render = function (sc, c) { OB.f++; OB.cam = c; return r0.apply(this, arguments); }; }
     // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
     // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
     // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
