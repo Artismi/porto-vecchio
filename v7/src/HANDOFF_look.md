@@ -94,12 +94,25 @@ nella chiave del programma (`pz2|{json}`): 23 programmi diversi per lo stesso sh
 genere sceglie il ramo con un `if` su uniform, la chiave è `pz2` per tutti: un programma. I tasselli ereditano il testo unico quando si
 ricuociono (il workflow `tasselli` al push su `main`); finché la cottura nuova non c'è, la città a tasselli porta ancora i 23 di prima.
 
-**L'avvio** (`strumenti/analisi_avvio.js`, SwiftShader; coi tasselli il gioco partiva a 35,8 s, senza a 152 s):
-- `buildWater`: la profondità del mare a 1 px per metro anche sul computer (era 2: una tela 2600×800 sfocata col filtro 2D, 4,9 s).
-- `c2Dist` (`world_cittanuova.js`, la distanza vera dalla riva): 2,2 s all'avvio e a ogni blocco costruito camminando. Ora una griglia di
-  2 m tiene la distanza del centro della cella e la ricerca copre solo quella finestra (la distanza è 1-Lipschitz): il minimo esatto sui
-  tratti, pochi tratti invece di 129. Cambia l'impronta del mondo cotto e dei tasselli (si ricuociono).
+**L'avvio**, misurato alla pari (`strumenti/analisi_avvio.js` su due cartelle con la pagina di prima e quella nuova, ognuna col suo mondo
+cotto, a turno due volte; SwiftShader, quindi contano i rapporti):
+
+| | prima | dopo |
+|---|---:|---:|
+| `buildWater` | 9,3-11,1 s | 7,2-8,0 s |
+| costruzione finita (`__tl.compilato`) | 20,7-23,3 s | 18,3-20,2 s |
+| attesa degli shader fino ai primi fotogrammi | 30-31 s | 38 s |
+
+- `buildWater`: la profondità del mare a 1 px per metro anche sul computer (era 2: una tela 2600×800 sfocata col filtro 2D).
+- `c2Dist` (`world_cittanuova.js`): la finestra stretta da una griglia di 2 m ha reso poco (2,2 → 2,0 s): quasi tutti i punti chiesti
+  stanno lontani dalla riva e la finestra resta larga. La potatura dei tratti ora guarda l'estremità più vicina (prima poteva saltare il
+  tratto migliore): cambia l'impronta del mondo cotto e dei tasselli.
+- L'attesa degli shader sale perché i tasselli in locale sono ancora quelli cotti prima: portano le 23 vesti vecchie, e il programma
+  unico nuovo si aggiunge. Coi tasselli ricotti (il workflow `tasselli` al push su `main`) le 23 diventano una.
 - `?tassellivecchi` (solo per le sonde in locale): i tasselli di un'altra impronta vanno bene lo stesso.
+- Gli scatti mentre si gioca: `sonda_programmi.js` fa camminare il personaggio in otto posti; nascono 4 programmi in tutto (66 ms di
+  attesa). La compilazione non è più la causa degli scatti. Negli shader entrano 9 luci puntiformi, 4 faretti con ombra e il sole; le
+  luci del cantiere e del sottosuolo escono già con `visible = false` quando non servono.
 
 **Da fare ancora** (dalla bibbia e dalle misure): il bagliore caldo dei neon (il passo unico non ha bagliore); fotocopia e serigrafia
 fuori registro sui segni; i 32 `physical` e 23 `lambert` «puri» (le combinazioni di parametri di three: mappa, colore ai vertici,
