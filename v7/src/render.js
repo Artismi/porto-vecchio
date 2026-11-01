@@ -130,9 +130,27 @@ var Render = (function () {
   }
   // [pulizia] il nome di chi posa (la prima funzione della pila che non è un attrezzo di posa), col numero di riga di index.html
   const CHI_SALTA2 = /^(addStatic|place|placeYS1|put|settle|snapRot2|regProp|at|add|mk2|vesti3|pm3|G0|Array\.forEach|forEach|map|Map\.forEach|Set\.forEach|<anonymous>)$/;
-  function chi2() { const L = (new Error().stack || '').split('\n'); let riga = null;   // la riga più interna che non è un attrezzo (anche dentro una funzione senza nome), col nome della prima funzione che ce l'ha
+  function chi2(sk) { const L = (new Error().stack || '').split('\n'); let riga = null;   // la riga più interna che non è un attrezzo (anche dentro una funzione senza nome), col nome della prima funzione che ce l'ha
     for (let i = 2; i < L.length; i++) { const m = /at (?:new )?(?:Object\.)?([\w$.<>]+) \(.*:(\d+):\d+\)/.exec(L[i]), a = m ? null : /at .*:(\d+):\d+\)?$/.exec(L[i]);
-      if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1])) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
+      if (a) { if (!riga) riga = a[1]; continue; } if (!m || CHI_SALTA2.test(m[1]) || (sk && sk.test(m[1]))) continue; return m[1] + ':' + (riga || m[2]); } return '?'; }
+  // [disposizione] la sonda della disposizione (strumenti/sonda_disposizione.js): con ?sondadisp ogni cosa posata lascia il tipo, chi
+  // l'ha posata e la scatola nel suo riferimento (il davanti è +z) prima di sparire nelle mesh fuse; la pulizia2 aggiunge dove l'ha spostata
+  const SD1 = { on: typeof location !== 'undefined' && /[?&]sondadisp\b/.test(location.search), L: [], G: [], R: null };
+  if (SD1.on) window.__rumoreChi = true;
+  const _sdM = new THREE.Matrix4(), _sdV = new THREE.Vector3();
+  const sdTipo = o => o.userData.sdT || (o.userData.liv !== undefined && typeof o.userData.tipo === 'string' ? o.userData.tipo : null);   // il tipo scritto per la sonda, o quello di Arredo3D.make
+  function sdScatole(root) {   // la scatola di root e quelle dei pezzi col tipo (userData.sdT), ognuna nel riferimento suo, senza i pezzi col tipo che ha dentro
+    root.updateMatrixWorld(true); const out = [];
+    const nuovo = n => { const r = { n, inv: new THREE.Matrix4().copy(n.matrixWorld).invert(), b: [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity] }; out.push(r); return r; };
+    const walk = (o, r) => { if (o !== root && sdTipo(o)) r = nuovo(o);
+      if (o.isMesh && !o.isInstancedMesh && o.geometry && o.geometry.attributes.position && o.visible !== false) { const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox(); const bb = g.boundingBox;
+        if (isFinite(bb.min.x)) { _sdM.multiplyMatrices(r.inv, o.matrixWorld); for (let i = 0; i < 8; i++) { _sdV.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(_sdM);
+          r.b[0] = Math.min(r.b[0], _sdV.x); r.b[1] = Math.min(r.b[1], _sdV.y); r.b[2] = Math.min(r.b[2], _sdV.z); r.b[3] = Math.max(r.b[3], _sdV.x); r.b[4] = Math.max(r.b[4], _sdV.y); r.b[5] = Math.max(r.b[5], _sdV.z); } } }
+      for (const c of o.children) walk(c, r); };
+    walk(root, nuovo(root)); return out.filter(r => isFinite(r.b[0]));
+  }
+  function sdNota(obj, e2) { const chi = chi2(/^(sdNota|crate|bench|chair|table|sedieTavolo|lifebuoy|bin|drum|cone|nets|transenna|sunbed|bitta|parasol|cafe|placeYS1|putG)$/) || (e2 && e2.chi);   // chi ha chiamato il costruttore (non il costruttore della cassa o della panchina)   // una cosa che va nella geometria statica (addStatic): la posizione è già quella del mondo
+    sdScatole(obj).forEach(r => SD1.L.push({ t: sdTipo(r.n) || (r.n === obj ? 'arredo' : 'pezzo'), chi: r.n.userData.sdChi || chi, k2: e2 ? e2.k : P2.k, M: r.n.matrixWorld.clone(), lb: r.b, muro: !!r.n.userData.aMuro, e2, reg: !!e2, g: e2 ? 'e' + e2.id : obj.uuid })); }
   function addStatic(obj, noShadow) {
     if (SCO.on) { obj.updateMatrixWorld(true); const e = obj.matrixWorld.elements; if (scoFuori(e[12], e[14], 12)) return; }   // [scorcio] le cose di strada fuori dallo scorcio non entrano
     if (window.Officina) Officina.onStatic(obj);   // [studio] modifiche ai modelli di strada
@@ -142,6 +160,7 @@ var Render = (function () {
     if (window.__probeAt) { const bx = new THREE.Box3().setFromObject(obj), sz = bx.getSize(new THREE.Vector3()), cc = bx.getCenter(new THREE.Vector3()); for (const q of window.__probeAt) if (Math.hypot(cc.x - q[0], cc.z - q[1]) < q[2]) { (window.__probe = window.__probe || []).push([q[3], Math.round(cc.x), Math.round(cc.z), sz.x.toFixed(1), sz.y.toFixed(1), sz.z.toFixed(1), (new Error().stack.split('\n').slice(2, 6).map(l => l.trim().split(' ')[1]).join('<'))]); break; } }   // [ordine1] strumento: chi ha messo cosa
     const m2 = obj.userData.p2, e2 = P2.on && (curTag || P2.k || m2 || noShadow === 'lamp') && cn1() ? p2New(m2 || { k: P2.k || (noShadow === 'lamp' ? 'lampione' : 'arredo'), b: P2.b, f: P2.f }) : null;   // [pulizia2] il registro
     if (e2) { e2.tag = curTag; e2.yaw0 = yawM2(obj.matrixWorld); if (window.__rumoreChi) { e2.chi = chi2(); e2.nm = 0; e2.nb = 0; } }   // [pulizia] chi l'ha fatto (solo per il censimento dei modelli)
+    if (SD1.on) sdNota(obj, e2);   // [disposizione]
     obj.traverse(o => {
       if (!o.isMesh || Array.isArray(o.material)) return;
       o.getWorldPosition(_wp);
@@ -675,6 +694,7 @@ var Render = (function () {
   function mergeGroup(grp) {
     grp.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), keep = [], E2 = [], V3 = [];
+    const sdR = SD1.on ? sdScatole(grp).filter(q => q.n !== grp) : null, sdC = sdR ? chi2(/^(mergeGroup|shadowed)$/) : '';   // [disposizione] i pezzi col tipo, nel riferimento del gruppo
     const walk = (o, e2, v3) => {
       for (const c of o.children) {
         const vv = c.userData.v3 !== undefined ? c.userData.v3 : v3;   // [visuale3] la casa a cui appartiene la parte (le antenne della rete): il taglio la ritrova nella mesh fusa
@@ -690,6 +710,9 @@ var Render = (function () {
     by.forEach((geos, mat) => { if (E2.length || V3.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
     E2.forEach(e => { e.parts = e.mp.map(([b, i, n]) => ({ M: b.__M, s: b.__offs[i], n })); e.mp = null; });   // [pulizia2]
     V3.forEach(([bi, b, i, n]) => { const L = VIS3.parti.get(bi) || VIS3.parti.set(bi, []).get(bi); L.push({ M: b.__M, s: b.__offs[i], n }); });   // [visuale3]
+    if (sdR) { const den = o => { for (let p = o; p; p = p.parent) if (p === grp) return true; return false; };   // [disposizione] quello che era già fuso dentro questo gruppo segue il gruppo nuovo
+      SD1.G.forEach(q => { if (q.out !== out && den(q.out)) { q.out.updateMatrixWorld(true); q.Mrel = new THREE.Matrix4().multiplyMatrices(inv, q.out.matrixWorld).multiply(q.Mrel); q.out = out; } });
+      sdR.forEach(q => SD1.G.push({ t: sdTipo(q.n), chi: q.n.userData.sdChi || sdC, k2: 'casa', Mrel: new THREE.Matrix4().multiplyMatrices(inv, q.n.matrixWorld), out, lb: q.b, muro: !!q.n.userData.aMuro, g: q.n.userData.sdG || out.uuid })); }
     return out;
   }
 
@@ -3631,7 +3654,7 @@ var Render = (function () {
     // in fondo: la scaletta per scendere in barca, il salvagente, i copertoni sulla testata
     const e = st.head ? st.head[1] : st.pts[st.pts.length - 1], q = st.head ? st.head[0] : st.pts[st.pts.length - 2], L2 = Math.hypot(e[0] - q[0], e[1] - q[1]), ux = (e[0] - q[0]) / L2, uz = (e[1] - q[1]) / L2;
     { const g = G0(), dn = h - WL + .9; [-.22, .22].forEach(o => add(g, box(.05, dn + .8, .05, iron), o, -dn / 2 + .4, 0)); for (let y = .1; y < dn; y += .3) add(g, box(.48, .035, .035, iron), 0, -y, 0); g.position.set(e[0] + ux * .1, h, e[1] + uz * .1); g.rotation.y = Math.atan2(ux, uz); addStatic(g); }
-    lifebuoy(e[0] - ux * .8 - uz * (st.w / 2 - .2), e[1] - uz * .8 + ux * (st.w / 2 - .2), 0, Math.atan2(ux, uz));
+    lifebuoy(e[0] - ux * .8 - uz * (st.w / 2 - .2), e[1] - uz * .8 + ux * (st.w / 2 - .2), 0, Math.atan2(uz, -ux), true);   // [disposizione] il davanti verso l'asse del pontile: l'anello (80 cm) lungo il bordo, non a sbalzo sull'acqua
     if (st.head) for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.32, .11, 5, 10), sl('#141416')), s = .8 + k * (L2 - 1.6) / 3; t.position.set(q[0] + ux * s + uz * (st.w / 2 + .08), h - .45, q[1] + uz * s - ux * (st.w / 2 + .08)); t.rotation.y = Math.atan2(ux, uz); addStatic(t); }
   }
 
@@ -3976,7 +3999,7 @@ var Render = (function () {
     (S.camps || []).forEach(C => {
       const [bx, bz, bdx, bdz] = C.bp || [C.x, C.y, 1, 0], toSea = Math.atan2(bdz, bdx);
       if (C.type === 'villaggio') {
-        const fc = spot(C.x, C.y, 0, 3, 1); if (fc) { fuoco(fc[0], fc[1], .6); for (let k = 0; k < 3; k++) { const a = k * 2.1 + r(), x = fc[0] + Math.cos(a) * 2, z = fc[1] + Math.sin(a) * 2; bench(x, z, -a + Math.PI / 2, 'wood'); } }
+        const fc = spot(C.x, C.y, 0, 3, 1); if (fc) { fuoco(fc[0], fc[1], .6); for (let k = 0; k < 3; k++) { const a = k * 2.1 + r(), x = fc[0] + Math.cos(a) * 2, z = fc[1] + Math.sin(a) * 2; bench(x, z, -a - Math.PI / 2, 'wood');   /* [disposizione] verso il fuoco, non di spalle */ } }
         for (let k = 0; k < 2; k++) { const p = spot(bx - bdx * 4, bz - bdz * 4, 0, 6, 1); if (p) rack(p[0], p[1], toSea + Math.PI / 2, k ? 'rete' : 'pesci'); }
         for (let k = 0; k < 2; k++) { const p = spot(bx - bdx * 2, bz - bdz * 2, 0, 7, 0); if (p) nets(p[0], p[1], r); }
         { const p = spot(C.x, C.y, 4, 8, 1); if (p) rack(p[0], p[1], r() * 3, 'polpi'); }
@@ -4162,7 +4185,7 @@ var Render = (function () {
     });
     // piazza San Rocco: fontana, panchine, alberi, edicola, cabina
     const pz = P.fontana; if (pz && !po1Has('pozzo', pz.x, pz.y, 10)) {   /* [posa] in città nuova lì c'è il pozzo (pezzo) */ let fx = 0, fz = 0, c = 0; for (let ty = pz.ty - 8; ty < pz.ty + 8; ty++) for (let tx = pz.tx - 8; tx < pz.tx + 8; tx++) if (G.tileAt(tx, ty) === T.FOUNT) { fx += tx * TS + 1; fz += ty * TS + 1; c++; } if (c) buildFountain1(fx / c, fz / c);   /* [strade1] */ }
-    if (P.piazza) { const q = P.piazza; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, x = q.x + Math.cos(a) * 11, z = q.y + Math.sin(a) * 8; if (free(x, z) && free(x, z - 2.5) && free(x, z + 2.5) && free(x - 2.5, z) && free(x + 2.5, z)) { if (k % 2) bench(x, z, -a + Math.PI / 2, 'iron'); else leafyTree(x, z, r, k === 0); } } if (free(q.x + 6, q.y - 6)) newsstand(q.x + 6, q.y - 6, 0, r); if (free(q.x - 7, q.y + 5)) phoneBooth(q.x - 7, q.y + 5, 0); }
+    if (P.piazza) { const q = P.piazza; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, x = q.x + Math.cos(a) * 11, z = q.y + Math.sin(a) * 8; if (free(x, z) && free(x, z - 2.5) && free(x, z + 2.5) && free(x - 2.5, z) && free(x + 2.5, z)) { if (k % 2) bench(x, z, -a - Math.PI / 2, 'iron');   /* [disposizione] verso il centro della piazza */ else leafyTree(x, z, r, k === 0); } } if (free(q.x + 6, q.y - 6)) newsstand(q.x + 6, q.y - 6, 0, r); if (free(q.x - 7, q.y + 5)) phoneBooth(q.x - 7, q.y + 5, 0); }
     // tavolini fuori da bar e osterie
     ['bar', 'osteria', 'sirena', 'gelateria', 'osteria_sg', 'car_2'].forEach((id, k) => { const q = P[id]; if (!q) return; for (let t = 0; t < 4; t++) { const x = q.x + (t - 1.5) * 1.8, z = q.y + 1.6; if (free(x, z)) table(x, z, 'cafe', ['caffe', 'birra'], r, 2); } });
     // porto: bitte, casse, reti sulla Calata ([costa] le barche hanno il loro posto: vedi buildCosta)
@@ -8016,7 +8039,9 @@ var Render = (function () {
   function lanterna1(x, z, lit, iron, geo) {
     const T = G.T; let best = null;
     for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let d = .4; d <= 3; d += .2) { const tx = Math.floor((x + dx * d) / TS), tz = Math.floor((z + dz * d) / TS); if (gT(tx, tz) !== T.BLD) continue;
-      const fx = dx > 0 ? tx * TS : dx < 0 ? (tx + 1) * TS : x, fz = dz > 0 ? tz * TS : dz < 0 ? (tz + 1) * TS : z; if (!best || d < best.d) best = { d, dx, dz, fx, fz }; break; }
+      let fx = dx > 0 ? tx * TS : dx < 0 ? (tx + 1) * TS : x, fz = dz > 0 ? tz * TS : dz < 0 ? (tz + 1) * TS : z;
+      const bi = G.bIndex ? G.bIndex[tz * G.GW + tx] : -1, Wm = bi >= 0 ? muroVero1(bi, fx, fz, -dx, -dz) : null; if (Wm && Wm.n[0] * -dx + Wm.n[1] * -dz > .98) { fx = Wm.x; fz = Wm.z; }   // [disposizione] la piastra sul muro vero, non sul filo della casella
+      if (!best || d < best.d) best = { d, dx, dz, fx, fz }; break; }
     const g = new THREE.Group(), M3 = (gg, m, sx, sy, sz, px, py, pz) => { const o = new THREE.Mesh(gg, m); o.scale.set(sx, sy, sz); o.position.set(px, py, pz); g.add(o); return o; };
     let lx, lz, y;
     if (best) { lx = best.fx - best.dx * .34; lz = best.fz - best.dz * .34; y = groundH(lx, lz) + 2.75;
@@ -8515,6 +8540,7 @@ var Render = (function () {
     try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(kp); P2.kit = Math.max(0, bb.max.x); } catch (e) { P2.kit = 0; }   // quanto sporge il modulo di muro dal filo
     P2.dirty = new Set();
     const R = p2Raccogli(), prima = p2Misura(R), off = /[?&]nopulizia2\b/.test(location.search);
+    if (SD1.on) { SD1.R = R; R.E.forEach(e => { e.sd0 = { c: ctr2(e.B), y0: e.B.y0, yaw: e.yaw }; }); }   // [disposizione] dov'era prima del regista e del rumore
     P2.pend = pendOk2(R) ? new Map() : null;   // [veloce] i vertici delle parti si spostano quando servono (vai2)
     const az = off ? { spento: true } : p2Regista(R);
     let RU = null; if (typeof PuliziaRumore !== 'undefined') try { RU = PuliziaRumore.passa(rumore2(R)); } catch (e) { console.error('[rumore]', e); }   // [pulizia] il rumore (pulizia_rumore.js): dopo il regista, sulle stesse voci
@@ -8526,6 +8552,18 @@ var Render = (function () {
     VIS3.reg = R.E.filter(e => !e.gone && e.B);   // [visuale3] il registro resta al taglio: le cose sui tetti e sulle facciate che non stanno nei gruppi della casa (antenne e mensole della rete, insegne, pluviali)
     P2.list = []; P2.on = false; return dopo.rep.tot;
   }
+  // [disposizione] quello che la sonda legge: ogni pezzo col tipo e chi l'ha posato, la matrice vera nel mondo (con lo spostamento del
+  // regista e del rumore), la scatola nel suo riferimento; le case, le zone libere e i praticabili del regista
+  window.__sondaDisp = () => {
+    if (!SD1.on) return null; const r3 = v => Math.round(v * 1000) / 1000, BI = new Map(), T = new THREE.Matrix4(), Ry = new THREE.Matrix4(), W = new THREE.Matrix4(); BLD().forEach((b, i) => BI.set(b, i));
+    const bx = B => ({ c: r3(B.c), s: r3(B.s), u0: r3(B.u0), u1: r3(B.u1), v0: r3(B.v0), v1: r3(B.v1), y0: r3(B.y0), y1: r3(B.y1) }), voci = [];
+    SD1.L.concat(SD1.G).forEach(q => { const e = q.e2; if (e && e.gone) return;
+      if (q.out) { q.out.updateMatrixWorld(true); W.multiplyMatrices(q.out.matrixWorld, q.Mrel); } else W.copy(q.M);
+      if (e && e.sd0 && e.B) { const [cx, cz] = ctr2(e.B), c0 = e.sd0.c; T.makeTranslation(cx, e.B.y0 - e.sd0.y0, cz).multiply(Ry.makeRotationY((e.yaw || 0) - (e.sd0.yaw || 0))).multiply(new THREE.Matrix4().makeTranslation(-c0[0], 0, -c0[1])); W.premultiply(T); }
+      voci.push({ t: q.t, chi: q.chi, k2: q.k2 || null, reg: !!q.reg, g: q.g, muro: q.muro || undefined, m: Array.from(W.elements, r3), lb: q.lb.map(r3), b: e && e.b ? BI.get(e.b) : undefined, F: e && e.F ? { p: e.F.p.map(r3), n: e.F.n.map(r3) } : undefined }); });
+    const R = SD1.R || { H: [], Z: [], P: [] };
+    return { voci, kit: P2.kit || 0, case: R.H.map(h => Object.assign(bx(h.B), { bi: BI.get(h.b) })), zone: R.Z.map(z => Object.assign(bx(z.B), { t: z.t })), prat: R.P.map(p => Object.assign(bx(p.B), { k: p.k })) };
+  };
   // occupazione a mezzo metro per gli oggetti nuovi: niente sopra gli arredi tenuti, le case, la carreggiata
   const OCC35 = { g: new Map(), seed(list) { list.forEach(rec => this.mark(rec.c.x, rec.c.z, rec.he.x + .2, rec.he.z + .2)); },
     key: (i, j) => i * 8192 + j,
@@ -10014,11 +10052,30 @@ var Render = (function () {
   const NRM1 = { S: [0, 1], E: [1, 0], N: [0, -1], W: [-1, 0] };
   function quoteS1(bi) { const rec = DZ.bRec[bi], b = BLD()[bi]; if (rec && rec.geo) return [rec.geo.y0, rec.geo.y0 + rec.geo.H]; const y0 = groundH((b.x + b.w / 2) * TS, (b.y + b.h / 2) * TS); return [y0, y0 + Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF]; }
   const TETTO1 = { antenna: 1, gronda: 1, tetto: 1 }, SPORGE1 = { mensola: .32, spigolo: .32, moncone: .32, contatore: .08, finestra: .14, balcone: .75, gronda: .12, lampione: .7, tetto: .1 };
+  // [disposizione] IL MURO VERO di una casa. rete.js (mensole, contatori, bracci dei lampioni) e le lanterne dei percorsi cercano il muro
+  // sulle caselle, ma la casa vera (rec.geo: il lotto di [pianta] più stretto della casella, o girato) sta spesso più dentro, e il modulo
+  // del kit sporge dal filo: la mensola restava staccata dal muro da 10 cm a quasi un metro. Qui il punto (x, z) va sulla faccia della casa
+  // vera che guarda verso (nx, nz) (girata con la casa, arretrata sotto il portico), con la sua normale; null se la faccia è lontana (> 1,5 m)
+  let KITX1 = null;
+  function kitX1() { if (KITX1 === null) { try { const kp = Kit.get('bkit/wall'); kp.updateMatrixWorld(true); KITX1 = clamp(new THREE.Box3().setFromObject(kp).max.x, 0, .3); } catch (e) { KITX1 = 0; } } return KITX1; }
+  function muroVero1(bi, x, z, nx, nz) {
+    const b = BLD()[bi], rec = DZ.bRec[bi], g = rec && rec.geo; if (!b || !g || b.pezzo) return null;
+    const a = rec.tier ? 0 : rotOf(b), cx0 = a ? (b.x + b.w / 2) * TS : g.x0 + g.w / 2, cz0 = a ? (b.y + b.h / 2) * TS : g.z0 + g.d / 2, q0 = g.x0 + g.w / 2 - cx0, q1 = g.z0 + g.d / 2 - cz0, c = Math.cos(a), s = Math.sin(a);
+    const hx = cx0 + q0 * c - q1 * s, hz = cz0 + q0 * s + q1 * c, W = kitX1(), U = [c, s], V = [-s, c];   // gli assi della casa: u verso est, v verso sud (girati col lotto)
+    const F = [['E', U, g.w / 2], ['W', [-c, -s], g.w / 2], ['S', V, g.d / 2], ['N', [s, -c], g.d / 2]].sort((p, q) => (q[1][0] * nx + q[1][1] * nz) - (p[1][0] * nx + p[1][1] * nz))[0];
+    if (F[1][0] * nx + F[1][1] * nz < .7) return null;
+    const N = F[1], T = [-N[1], N[0]], h = F[2] + W - (b.__ep && b.__ep.portico === F[0] ? TS : 0), lat = F[0] === 'E' || F[0] === 'W' ? g.d / 2 : g.w / 2;
+    const lt = clamp((x - hx) * T[0] + (z - hz) * T[1], -lat + .15, lat - .15), px = hx + N[0] * h + T[0] * lt, pz = hz + N[1] * h + T[1] * lt;
+    if (Math.hypot(px - x, pz - z) > 1.5) return null;
+    return { x: px, z: pz, n: N, yaw: Math.atan2(N[0], N[1]), f: F[0] };
+  }
+  const nodoMuro1 = n => n.bi === null || n.bi === undefined || n.bi < 0 || !n.f || !NRM1[n.f] || n.k === 'spigolo' || TETTO1[n.k] ? null : muroVero1(n.bi, n.x, n.z, NRM1[n.f][0], NRM1[n.f][1]);
   function nodoXYZ1(n) {
     if (n.bi === null || n.bi === undefined || n.bi < 0) return [n.x, groundH(n.x, n.z) + n.y, n.z];
     const b = BLD()[n.bi], [y0, y1] = quoteS1(n.bi), rel = Rete.MG + (Math.max(1, b.fl || 1) - 1) * Rete.MF;
     const y = TETTO1[n.k] ? (n.k === 'antenna' ? y1 + .6 : y1 + (n.y - rel)) : y0 + Math.min(n.y, y1 - y0 - .25), o = n.f && NRM1[n.f] ? SPORGE1[n.k] || 0 : 0, N = n.f ? NRM1[n.f] || [0, 0] : [0, 0];
     if (n.k === 'spigolo') return [n.x + .32, y, n.z + .32];
+    const Wm = nodoMuro1(n); if (Wm) return [Wm.x + Wm.n[0] * o, y, Wm.z + Wm.n[1] * o];   // [disposizione] sul muro vero
     return [n.x + N[0] * o, y, n.z + N[1] * o];
   }
   // le tavole dei segni: cartelli stradali anni '80, targhe delle vie per epoca, civici
@@ -10066,9 +10123,9 @@ var Render = (function () {
     // ---- 2) le cose della rete: mensole a isolatori, contatori col sigillo, cabine ENEL, monconi, antenne, la ciabatta della baracca ----
     const g = new THREE.Group(), iron = sm('#2a2a2e', { roughness: .7, metalness: .3 }), cer = sm('#e8e4d8', { roughness: .35 }), grey = sm('#8e8c84', { roughness: .6, metalness: .2 }), conc = sm('#b4ab9a', { roughness: 1 }), door = sm('#56665a', { roughness: .6, metalness: .3 });
     const putG = (o, p, yaw) => { o.position.set(p[0], p[1], p[2]); o.rotation.y = yaw || 0; g.add(o); return o; };
-    N.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
-      if (n.k === 'mensola') { const p = nodoXYZ1(n), N0 = NRM1[n.f] || [0, 0], q = mk2(pm3('mensola', { n: 2 }), 'rete'), a = q.userData.attacco || [0, 0, 0]; putG(q, [p[0] - N0[0] * a[2], p[1] - a[1], p[2] - N0[1] * a[2]], yaw); cnt.mensole++; }   // [modelli1] la mensola vera: le teste degli isolatori dove arrivano i fili
-      else if (n.k === 'contatore') { const p = nodoXYZ1(n), N0 = NRM1[n.f] || [0, 0], q = mk2(pm3('contatore'), 'rete'); putG(q, [p[0] - N0[0] * .08, p[1], p[2] - N0[1] * .08], yaw); cnt.contatori++; }   // [modelli1] il contatore vero, col retro al muro
+    N.forEach(n => { const Wm = nodoMuro1(n), yaw = Wm ? Wm.yaw : n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);   // [disposizione] il verso del muro vero (la casa girata)
+      if (n.k === 'mensola') { const p = nodoXYZ1(n), N0 = Wm ? Wm.n : NRM1[n.f] || [0, 0], q = mk2(pm3('mensola', { n: 2 }), 'rete'), a = q.userData.attacco || [0, 0, 0]; putG(q, [p[0] - N0[0] * a[2], p[1] - a[1], p[2] - N0[1] * a[2]], yaw); cnt.mensole++; }   // [modelli1] la mensola vera: le teste degli isolatori dove arrivano i fili
+      else if (n.k === 'contatore') { const p = nodoXYZ1(n), N0 = Wm ? Wm.n : NRM1[n.f] || [0, 0], q = mk2(pm3('contatore'), 'rete'); putG(q, [p[0] - N0[0] * .08, p[1], p[2] - N0[1] * .08], yaw); cnt.contatori++; }   // [modelli1] il contatore vero, col retro al muro
       else if (n.k === 'palo') { const q = new THREE.Group(), legno = sm('#5a4634', { roughness: 1 }); add(q, cyl(.09, .12, 6.4, 7, legno), 0, 3.2, 0); add(q, box(1.1, .1, .1, legno), 0, 6.0, 0); [-.45, .45].forEach(o => add(q, cyl(.03, .045, .09, 7, cer), o, 6.1, 0)); add(q, box(.04, 1.4, .04, legno), .3, 5.4, 0).rotation.z = .6; placeYS1(q, n.x, groundH(n.x, n.z), n.z, n.yaw || 0); cnt.pali = (cnt.pali || 0) + 1; }   // [borgo] il palo di legno della corrente rubata, con la traversa e gli isolatori
       else if (n.k === 'cabina') { const x0 = n.x, z0 = n.z, q = pm3('cabina_enel');   // [modelli1] la cabina vera
         place(mk2(q, 'rete'), x0, z0, yaw); cnt.cabine++; }
@@ -10077,8 +10134,8 @@ var Render = (function () {
       else if (n.k === 'finestra' && R.segmenti.some(s => s.b === n.id && s.k === 'abusivo') && B[n.bi] && B[n.bi].shack) { const p = nodoXYZ1(n), q = new THREE.Group(); add(q, box(.3, .05, .06, sm('#e8e4dc')), 0, -.2, .05); putG(q, p, yaw); }   // la ciabatta sul davanzale
     });
     // ---- 3) i lampioni per epoca, a interasse fisso; i cartelli stradali anni '80 sui pali (mai pali nuovi) ----
-    let li = 0; R.lampioni.forEach(n => { const yaw = n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
-      if (n.modello === 'braccio') { const p = nodoXYZ1(n); streetLamp(n.x, n.z, 'wall', yaw); cnt.lampioni++; return; }
+    let li = 0; R.lampioni.forEach(n => { const Wm = n.modello === 'braccio' ? nodoMuro1(n) : null, yaw = Wm ? Wm.yaw : n.f && NRM1[n.f] ? Math.atan2(NRM1[n.f][0], NRM1[n.f][1]) : (n.yaw || 0);
+      if (n.modello === 'braccio') { streetLamp(Wm ? Wm.x : n.x, Wm ? Wm.z : n.z, 'wall', yaw); cnt.lampioni++; return; }   // [disposizione] la piastra sul muro vero (prima sul filo della casella)
       if (!okSpot1(n.x, n.z, .3)) return; streetLamp(n.x, n.z, n.modello === 'ghisa' ? 'genovese' : n.modello === 'regime' ? 'regime' : 'sodium', yaw); cnt.lampioni++; li++;
       if (li % 2) return; const vit = (M.roads || []).find(q => q.id === 'vittoria'), nearV = vit && vit.pts.some(p => Math.hypot(p[0] - n.x, p[1] - n.z) < 50);
       const k = nearV ? 'settore' : n.era === 'E6' ? (li % 6 === 0 ? 'P' : li % 4 === 0 ? 'fermata' : 'divieto') : (li % 4 === 0 ? 'sensounico' : 'divieto');
@@ -10093,11 +10150,17 @@ var Render = (function () {
     P2.k = 'dehors';   // [pulizia2] tavolini, sedie, fioriere, ombrelloni, pedana: una composizione per dehors
     PA.dehors.forEach(d => { P2.g++; const b = B[d.bi], hs = d.tavoli.map(t => groundH(t.x, t.z)), hmin = Math.min(...hs, 99), hmax = Math.max(...hs, -99), pedana = hmax - hmin > .12, top = hmax + (pedana ? .12 : 0), era = b.shack ? 'E7' : b.era;
       const kind = era === 'E3' || era === 'E4' ? 'marmo' : era === 'E6' ? 'plastica' : 'ferro', topM = kind === 'marmo' ? PM.marble() : kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm('#c8c2b6'), legM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : PM.iron(), seatM = kind === 'plastica' ? sm('#f0eee8', { roughness: .5 }) : sm(pick(r, ['#8a3a2e', '#3a4a5a', '#2f5a44']));
-      if (pedana && d.tavoli.length) { const us = d.tavoli.map(t => t.u), u0 = Math.min(...us) - .8, u1 = Math.max(...us) + .8, P0 = Scena.paginaMuro(d.bi, d.f), a = P0.at((u0 + u1) / 2), Nn = NRM1[d.f], pd = G0(); add(pd, box(u1 - u0, top - hmin + .05, 1.9, PM.woodD()), 0, -(top - hmin) / 2 + .02, 0); for (let k = -3; k <= 3; k++) add(pd, box(.04, .04, 1.9, PM.wood()), k * (u1 - u0) / 7, .03, 0);
-        placeYS1(pd, a[0] + Nn[0] * 1.1, top, a[1] + Nn[1] * 1.1, d.yaw); }   // la pedana di legno sul vicolo in pendenza
+      if (pedana && d.tavoli.length) { const us = d.tavoli.map(t => t.u), u0 = Math.min(...us) - .8, u1 = Math.max(...us) + .8, P0 = Scena.paginaMuro(d.bi, d.f), a = P0.at((u0 + u1) / 2), Nn = NRM1[d.f], pd = G0(); add(pd, box(u1 - u0, top - hmin + .05, 1.9, PM.woodD()), 0, -(top - hmin + .05) / 2, 0); for (let k = -3; k <= 3; k++) add(pd, box(.04, .02, 1.9, PM.wood()), k * (u1 - u0) / 7, .005, 0);   /* [disposizione] il piano della pedana alla quota dei tavolini (stava 4,5 cm sopra: i piedi affondati nelle assi) */
+        placeYS1(mk2(pd, 'gradino', b, d.f), a[0] + Nn[0] * 1.1, top, a[1] + Nn[1] * 1.1, d.yaw); }   // la pedana di legno sul vicolo in pendenza   [disposizione] si calpesta come un gradino: il regista non la sposta né la toglie (davanti alla porta), e i tavolini non restano sospesi
       d.tavoli.forEach((t, i) => { const y = pedana ? top : groundH(t.x, t.z), o = pm3('tavolino', { tipo: kind === 'marmo' ? 'marmo' : kind === 'plastica' ? 'plastica' : 'ferro' });   // [modelli1] tavolino e sedie veri
         tableItems(o, .755, pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra'], ['caffe', 'giornale'], ['boccale', 'posacenere']]), r);
-        [-1, 1].forEach(s => { const c = pm3('sedia', { tipo: kind === 'plastica' ? 'plastica' : 'bistrot' }); c.position.set(s * .62, 0, 0); c.rotation.y = s * Math.PI / 2 + (r() - .5) * .3; o.add(c); if (window.Anim && Anim.sedileObj) Anim.sedileObj(c, 0); });   // [seduti]
+        // [disposizione] le sedie: ai due lati lungo il muro, rivolte al tavolino (il davanti è +z: a sinistra girata di +90°, a destra di -90°);
+        // i tavolini stanno a 1,25 m: la sedia fra due tavolini è una sola, a metà, del tavolino di sinistra (prima due sedie nello stesso
+        // punto, una per tavolino); a chi resta con una sedia sola se ne dà una dal lato della strada, rivolta al muro
+        const ax = [Math.cos(d.yaw), -Math.sin(d.yaw)], vic = s2 => d.tavoli.filter(q => q !== t).map(q => (q.x - t.x) * ax[0] + (q.z - t.z) * ax[1]).filter(l => l * s2 > 0 && Math.abs(l) < 1.9).sort((a2, b2) => Math.abs(a2) - Math.abs(b2))[0];
+        const posti = []; [-1, 1].forEach(s2 => { const l = vic(s2); if (l === undefined) posti.push([s2 * .62, 0, -s2 * Math.PI / 2]); else if (s2 > 0) posti.push([l / 2, 0, -Math.PI / 2]); });
+        if (posti.length < 2) posti.push([0, .62, Math.PI]);
+        posti.forEach(([px, pz, ry]) => { const c = pm3('sedia', { tipo: kind === 'plastica' ? 'plastica' : 'bistrot' }); c.position.set(px, 0, pz); c.rotation.y = ry + (r() - .5) * .3; o.add(c); if (window.Anim && Anim.sedileObj) Anim.sedileObj(c, 0); });   // [seduti]
         placeYS1(o, t.x, y, t.z, d.yaw); cnt.tavolini++; });
       d.fioriere.forEach(f => { const o = pm3('fioriera', { w: .95, cotto: true });   // [modelli1] la fioriera di cotto vera
         placeYS1(o, f.x, pedana ? top : groundH(f.x, f.z), f.z, d.yaw + Math.PI / 2 * (d.f === 'E' ? 1 : 0)); });
@@ -10751,7 +10814,7 @@ var Render = (function () {
       else { const src = o.geometry; o.geometry = fGeo('A3' + src.uuid, () => src.clone(), hex, kind, mode); }
       o.material = FA.mat; });
     return g; }
-  function pm3(tipo, o) { const g = typeof Arredo3D !== 'undefined' && Arredo3D ? Arredo3D.make(tipo, o) : null; return g ? vesti3(g) : G0(); }
+  function pm3(tipo, o) { const g = typeof Arredo3D !== 'undefined' && Arredo3D ? Arredo3D.make(tipo, o) : null, q = g ? vesti3(g) : G0(); if (SD1.on) q.userData.sdT = tipo; return q; }   // [disposizione] il tipo per la sonda
   const ARR3 = () => typeof Arredo3D !== 'undefined' && !!Arredo3D;
   // piazza un oggetto sul terreno e lo manda alla geometria statica
   // [pulitore2] il verso delle cose: allineate alla strada vicina o alla griglia, mai a un angolo a caso
@@ -10868,8 +10931,9 @@ var Render = (function () {
 
   // --- panchine ---
   function bench(x, z, rot, kind) {
+    const o3 = ARR3() ? pm3(kind === 'marble' ? 'panchina_marmo' : kind === 'deco' ? 'panchina_cemento' : 'panchina_ghisa') : null; if (o3) rot = snapRot2(o3, x, z, rot);   // [disposizione] il verso vero (dopo la squadra di snapRot2) anche per chi ci si siede
     bancaAdd(x, z, rot, .55, kind === 'marble' ? .57 : .48);   // [animazioni2] per sedercisi
-    if (ARR3()) return place(pm3(kind === 'marble' ? 'panchina_marmo' : kind === 'deco' ? 'panchina_cemento' : 'panchina_ghisa'), x, z, rot);   // [modelli1]
+    if (o3) return place(o3, x, z, rot);   // [modelli1]
     const g = G0(), slat = kind === 'marble' ? PM.marble() : kind === 'deco' ? sm('#f2eee6') : PM.woodL(), leg = kind === 'deco' ? sm('#f4a6c0') : PM.ironG();
     if (kind === 'marble') { add(g, box(2, .14, .6, slat), 0, .5, 0); [-.7, .7].forEach(o => add(g, box(.2, .45, .5, slat), o, .22, 0)); return place(g, x, z, rot); }
     for (let k = 0; k < 3; k++) add(g, box(2, .06, .16, slat), 0, .48, -.2 + k * .19);
@@ -10944,7 +11008,7 @@ var Render = (function () {
         // la piazzetta: i tavolini del bar o le cassette del forno, una panchina, il gatto, i vasi
         if (q.bar && !SEG1.ok) cafe(q.x - 2.5, q.y + q.r * .45, r, 'marble', 3, ['#b0283c', '#e9e0cf']);   // [segni] il dehors lo compone il piano
         if (q.forno) { const fo = po1Has('fontana', q.x, q.y, 3) ? 1.75 : 1;   // [posa] con la fontana in mezzo le cassette e la panchina vanno al bordo
-          if (ok(q.x - q.r * .5 * fo, q.y)) crateStack(q.x - q.r * .5 * fo, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4 * fo, q.y - 1)) bench(q.x + q.r * .4 * fo, q.y - 1, Math.PI / 2, 'wood'); }
+          if (ok(q.x - q.r * .5 * fo, q.y)) crateStack(q.x - q.r * .5 * fo, q.y, 3, r, '#c8a060'); if (ok(q.x + q.r * .4 * fo, q.y - 1)) bench(q.x + q.r * .4 * fo, q.y - 1, -Math.PI / 2, 'wood'); }   /* [disposizione] verso la fontana in mezzo, non verso il bordo */
         for (let k = 0; k < 4; k++) { const a = r() * 6.28, x = q.x + Math.cos(a) * (q.r - .6), z = q.y + Math.sin(a) * (q.r - .6); if (ok(x, z, .4)) pot(x, z, r, pick(r, ['lemon', 'geranio', 'palm'])); }
         cat(q.x + 1, q.y - 1, r); n += 4;
       } else if (q.k === 'marina') {
@@ -11035,9 +11099,10 @@ var Render = (function () {
   function drumGroup(x, z, r, cols) { const c = cols || ['#c8302a', '#2a5ab8', '#e8b820', '#2f6a3a', '#5a5a60']; drum(x, z, pick(r, c), r); drum(x + .66, z + .1, pick(r, c), r); drum(x + .3, z + .62, pick(r, c), r); if (r() < .6) drum(x + 1.3, z + .4, pick(r, c), r, true); }
 
   // --- tavolini e sedie ---
-  function chair(x, z, rot, kind) {
+  function chair(x, z, rot, kind, libera) {   // [disposizione] libera: il verso lo decide il tavolino (niente squadra di snapRot2)
+    const o3 = ARR3() ? pm3('sedia', { tipo: kind === 'plastic' || kind === 'deco' ? 'plastica' : 'bistrot' }) : null; if (o3) { if (libera) o3.userData.free2 = true; rot = snapRot2(o3, x, z, rot); }
     if (window.Anim && Anim.sedileAdd) Anim.sedileAdd(x, z, rot, 0);   // [seduti]
-    if (ARR3()) return place(pm3('sedia', { tipo: kind === 'plastic' || kind === 'deco' ? 'plastica' : 'bistrot' }), x, z, rot);   // [modelli1]
+    if (o3) return place(o3, x, z, rot);   // [modelli1]
     const g = G0();
     if (kind === 'plastic') { const m = sm('#f4f2ee', { roughness: .5 }); add(g, box(.46, .06, .44, m), 0, .44, 0); add(g, box(.46, .46, .05, m), 0, .7, -.22, -.12, 0, 0); [[-.2, .19], [.2, .19], [-.2, -.19], [.2, -.19]].forEach(([a, b]) => add(g, box(.05, .44, .05, m), a, .22, b)); [-.23, .23].forEach(a => add(g, box(.04, .05, .38, m), a, .6, 0)); }
     else if (kind === 'deco') { const m = sm('#7fe0e0'), c = sm('#f4a6c0'); add(g, cyl(.22, .22, .08, 10, c), 0, .46, 0); add(g, box(.42, .36, .05, m), 0, .72, -.2); [[-.16, .16], [.16, .16], [-.16, -.16], [.16, -.16]].forEach(([a, b]) => add(g, cyl(.02, .02, .45, 4, m), a, .22, b)); }
@@ -11068,15 +11133,23 @@ var Render = (function () {
   }
   function table(x, z, kind, items, r, seats) {
     if (ARR3() && kind !== 'wood') { const g = pm3('tavolino', { tipo: kind === 'marble' ? 'marmo' : kind === 'plastic' || kind === 'deco' ? 'plastica' : 'ferro' }); tableItems(g, .755, items || [], r); place(g, x, z, r ? r() * 6 : 0);   // [modelli1]
-      const n = seats === undefined ? 2 : seats; for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2 + .4; chair(x + Math.cos(a) * .72, z + Math.sin(a) * .72, -a - Math.PI / 2, kind === 'plastic' || kind === 'deco' ? 'plastic' : 'bistro'); } return g; }
+      sedieTavolo(g, x, z, seats, kind === 'plastic' || kind === 'deco' ? 'plastic' : 'bistro', false); return g; }
     const g = G0(), topM = kind === 'marble' ? PM.marble() : kind === 'plastic' ? sm('#f4f2ee', { roughness: .5 }) : kind === 'deco' ? sm('#f7c6d4') : kind === 'wood' ? PM.woodL() : sm('#dcd4c4');
+    if (SD1.on) g.userData.sdT = 'tavolo';   // [disposizione] il tipo per la sonda
     if (kind === 'wood') { add(g, box(1.3, .06, .8, topM), 0, .75, 0); [[-.55, -.3], [.55, -.3], [-.55, .3], [.55, .3]].forEach(([a, b]) => add(g, box(.06, .74, .06, PM.woodD()), a, .37, b)); add(g, box(1.32, .02, .82, stripeMat('#e8e2d4', '#c83a3a')), 0, .79, 0); }
     else { add(g, cyl(.42, .42, .05, 12, topM), 0, .75, 0); add(g, cyl(.04, .04, .72, 6, PM.iron()), 0, .38, 0); add(g, cyl(.25, .28, .04, 10, PM.iron()), 0, .02, 0); }
     tableItems(g, kind === 'wood' ? .8 : .78, items || [], r);
     place(g, x, z, r ? r() * 6 : 0);
-    const n = seats === undefined ? 2 : seats, ck = kind === 'plastic' ? 'plastic' : kind === 'deco' ? 'deco' : 'bistro';
-    for (let k = 0; k < n; k++) { const a = k / n * Math.PI * 2 + .4; chair(x + Math.cos(a) * .72, z + Math.sin(a) * .72, -a - Math.PI / 2, ck); }
+    sedieTavolo(g, x, z, seats, kind === 'plastic' ? 'plastic' : kind === 'deco' ? 'deco' : 'bistro', kind === 'wood');
     return g;
+  }
+  // [disposizione] le sedie attorno al tavolino già posato: nel suo riferimento (il verso vero, dopo snapRot2), ognuna rivolta al centro;
+  // il tavolo di legno (1,3 × 0,8) le ha sui lati lunghi, non sugli spigoli (prima stavano a 72 cm in tondo: dentro il piano)
+  function sedieTavolo(g, x, z, seats, ck, lungo) {
+    const n = seats === undefined ? 2 : seats, t = g.rotation.y, c = Math.cos(t), s = Math.sin(t);
+    const P = lungo ? [[-.32, .68], [.32, -.68], [.32, .68], [-.32, -.68]] : null;
+    for (let k = 0; k < n; k++) { let lx, lz; if (P) [lx, lz] = P[k % 4]; else { const a = k / n * Math.PI * 2 + Math.PI / 2; lx = Math.cos(a) * .72; lz = Math.sin(a) * .72; }
+      const wx = x + lx * c + lz * s, wz = z - lx * s + lz * c; chair(wx, wz, Math.atan2(x - wx, z - wz), ck, true); }
   }
   function parasol(x, z, ca, cb, h) { if (ARR3()) return place(pm3('ombrellone', { col: ca, col2: cb, h: h || 2.3 }), x, z, Math.random() * 6);   /* [modelli1] */ const g = G0(), hh = h || 2.3; add(g, cyl(.03, .03, hh, 5, PM.iron()), 0, hh / 2, 0); const t = add(g, new THREE.Mesh(new THREE.ConeGeometry(1.4, .5, 8), stripeMat(ca, cb)), 0, hh, 0); add(g, cyl(.15, .2, .1, 6, PM.iron()), 0, .05, 0); return place(g, x, z, Math.random() * 6); }
   function cafe(x, z, r, kind, n, pal) { for (let k = 0; k < n; k++) { const items = pick(r, [['caffe', 'caffe', 'posacenere'], ['birra', 'birra', 'boccale'], ['caffe', 'giornale'], ['boccale', 'boccale', 'posacenere'], ['vino', 'vino', 'fiasco', 'pane'], ['caffe', 'caffe', 'birra'], ['fiori', 'caffe']]); const px = x + k * 1.9, pz = z + (k % 2) * .3; table(px, pz, kind, kind === 'deco' ? pick(r, [['gelato', 'gelato'], ['birra', 'gelato'], ['caffe', 'gelato', 'giornale']]) : items, r, 2); if (pal) parasol(px, pz, pal[0], pal[1]); } }
@@ -11164,7 +11237,7 @@ var Render = (function () {
   function tireStack(x, z, n) { if (ARR3()) return place(pm3('pila_gomme', { n }), x, z);   /* [roba3d] */ const g = G0(); for (let k = 0; k < n; k++) add(g, new THREE.Mesh(new THREE.TorusGeometry(.32, .12, 5, 10), sl('#18181c')), 0, .12 + k * .24, 0, Math.PI / 2, 0, 0); return place(g, x, z); }
   function pallet(x, z, r, load) { if (ARR3()) { const col = load ? pick(r, ['#c8b898', '#a8c0d0', '#d8d0c0']) : null; return place(pm3('bancale', { carico: load ? 'scatole' : null, col }), x, z, r() * .4); }   /* [roba3d] */ const g = G0(), w = PM.woodL(); for (let k = 0; k < 5; k++) add(g, box(1.2, .03, .16, w), 0, .14, -.4 + k * .2); [-.5, 0, .5].forEach(o => add(g, box(.12, .12, 1, PM.woodD()), o, .06, 0)); if (load) add(g, box(1.1, .9, .9, sm(pick(r, ['#c8b898', '#a8c0d0', '#d8d0c0']))), 0, .6, 0); return place(g, x, z, r() * .4); }
   function nets(x, z, r) { if (ARR3()) return place(pm3('reti'), x, z, r() * 6);   /* [modelli1] */ const g = G0(); add(g, box(2.2, .25, 1.4, sl('#2f4a3a')), 0, .12, 0); add(g, box(1.4, .3, 1, sl('#3a5a4a')), .2, .3, .1); for (let k = 0; k < 5; k++) add(g, box(.22, .22, .22, sl('#f06a2a')), -.8 + k * .4, .32, (r() - .5) * .8); add(g, new THREE.Mesh(new THREE.TorusGeometry(.3, .07, 5, 10), sl('#c8a868')), -.9, .08, .4, Math.PI / 2, 0, 0); return place(g, x, z, r() * 6); }
-  function lifebuoy(x, z, y, rot) { if (ARR3()) return place(pm3('salvagente'), x, z, rot);   /* [roba3d] */ const g = G0(); add(g, box(.08, 1.4, .08, sm('#d8d0c0')), 0, .7, 0); add(g, new THREE.Mesh(new THREE.TorusGeometry(.32, .09, 6, 12), stripeMat('#e8302a', '#f4f0e6')), 0, 1.2, .08); return place(g, x, z, rot); }
+  function lifebuoy(x, z, y, rot, libero) { if (ARR3()) { const o = pm3('salvagente'); if (libero) o.userData.free2 = true; return place(o, x, z, rot); }   /* [roba3d] */ const g = G0(); add(g, box(.08, 1.4, .08, sm('#d8d0c0')), 0, .7, 0); add(g, new THREE.Mesh(new THREE.TorusGeometry(.32, .09, 6, 12), stripeMat('#e8302a', '#f4f0e6')), 0, 1.2, .08); return place(g, x, z, rot); }
 
   // --- spiaggia ---
   function beachUmbrella(x, z, r, ca, cb) { if (ARR3()) { const incl = (r() - .5) * .3; r(); return place(pm3('ombrellone_mare', { col: ca, col2: cb, incl }), x, z, r() * 6); }   /* [roba3d] */ const g = G0(); add(g, cyl(.03, .03, 2.4, 5, PM.white()), 0, 1.2, 0, (r() - .5) * .15, 0, (r() - .5) * .15); add(g, new THREE.Mesh(new THREE.ConeGeometry(1.5, .55, 10), stripeMat(ca, cb)), 0, 2.35, 0); add(g, new THREE.Mesh(new THREE.SphereGeometry(.07, 5, 4), PM.white()), 0, 2.65, 0); return place(g, x, z, r() * 6); }
@@ -14671,7 +14744,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
     const PL = P.plan, y = top + .08, b = P.b, wallHex = (b && b.__wallHex) || '#c8c4ba', IRON3 = '#26262c', WOOD3 = '#4a3626', scatole = [];
     PL.gruppi.forEach(G0 => {
       const g = new THREE.Group(); g0.add(g);   // un gruppo, una scatola: la misura delle compenetrazioni si fa sul modello vero
-      const at = (o, x, z, ry) => { o.position.set(x, y, z); if (ry) o.rotation.y = ry; g.add(o); P.cnt++; return o; };
+      if (SD1.on) { g.userData.sdT = 'gruppo:' + G0.k; g.userData.sdChi = 'tetti3Gruppi:' + G0.k; }   // [disposizione]
+      const at = (o, x, z, ry) => { o.position.set(x, y, z); if (ry) o.rotation.y = ry; g.add(o); P.cnt++; if (SD1.on && !o.userData.sdT) { o.userData.sdT = 'gruppo:' + G0.k; o.userData.sdChi = 'tetti3Gruppi:' + G0.k; } return o; };   // [disposizione] il tipo per la sonda
       const ry = G0.ry ? Math.PI / 2 : 0;
       if (G0.k === 'bucato') {   // due paletti col piede di cemento, il filo, 3-6 panni chiari; la bacinella ai piedi del primo paletto
         const L = G0.L, a2 = new THREE.Group(); a2.position.set(G0.x, y, G0.y); a2.rotation.y = -ry; g.add(a2); P.cnt++;
@@ -14686,8 +14760,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
         for (let q = 0; q < 5; q++) { const sh = oShrub(r, 1.0, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); sh.scale.set(.9, .45, .9); sh.position.set(px + (r() - .5) * (pw - .6), y + 2.32, pz + (r() - .5) * (pd - .6)); g.add(sh); }
         [[-1, -1], [1, 1]].forEach(([sx, sz]) => { const sh = oShrub(r, .7); sh.scale.set(.5, 3.0, .5); sh.position.set(px + sx * pw / 2, y, pz + sz * pd / 2); sh.updateMatrixWorld(true); const bb3 = new THREE.Box3().setFromObject(sh); sh.position.y += y - bb3.min.y; g.add(sh); });   // il rampicante parte dal lastrico, non da sotto
         P.cnt++;
-        const tb = new THREE.Group(); fAt(tb, fC(.35, .35, .04, 12, '#e8e2d6', 'paint'), 0, .74, 0); fAt(tb, fC(.03, .03, .72, 6, IRON3, 'paint'), 0, .37, 0); fAt(tb, fC(.18, .2, .03, 10, IRON3, 'paint'), 0, .015, 0); at(tb, px, pz);
-        [-1, 1].forEach(s2 => { const ch = new THREE.Group(), col = '#8a3a2e'; fAt(ch, fB(.42, .05, .42, col, 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, col, 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON3)); at(ch, px + s2 * .7, pz, s2 > 0 ? -Math.PI / 2 : Math.PI / 2); });
+        const tb = new THREE.Group(); if (SD1.on) tb.userData.sdT = 'tavolino'; fAt(tb, fC(.35, .35, .04, 12, '#e8e2d6', 'paint'), 0, .74, 0); fAt(tb, fC(.03, .03, .72, 6, IRON3, 'paint'), 0, .37, 0); fAt(tb, fC(.18, .2, .03, 10, IRON3, 'paint'), 0, .015, 0); at(tb, px, pz);
+        [-1, 1].forEach(s2 => { const ch = new THREE.Group(), col = '#8a3a2e'; if (SD1.on) ch.userData.sdT = 'sedia'; fAt(ch, fB(.42, .05, .42, col, 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, col, 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON3)); at(ch, px + s2 * .7, pz, s2 > 0 ? -Math.PI / 2 : Math.PI / 2); });
       } else if (G0.k === 'vasi') {   // i vasi di cotto in fila contro il parapetto, piante diverse (gerani, fico, ciuffi)
         const n = G0.n, step = .55, L = (n - 1) * step;
         for (let q = 0; q < n; q++) { const u = -L / 2 + q * step, pot = oPot(r, .85 + r() * .3, pick(r, ['geranio', 'ciuffo', 'cespo', 'geranio', 'fico'])); at(pot, G0.x + (G0.ry ? 0 : u), G0.y + (G0.ry ? u : 0)); }
@@ -14738,7 +14812,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
   }
   // [vissuti] il kit per tetti_vissuti.js: i pezzi dell'atlante, la fusione del gruppo della casa, la scena
   let KTV1 = null;
-  function kitTV1() { return KTV1 || (KTV1 = { THREE, scene, fB, fC, fL, fI, fT, fAt, fRod, shade, std, sm, mergeGroup, shadowed, rotRec, ownMats, rotOf, bRec: DZ.bRec, phone: PHONE, get atlas() { return FA.n; }, get vis3() { return VIS3; } }); }
+  function kitTV1() { return KTV1 || (KTV1 = { sd: SD1.on, THREE, scene, fB, fC, fL, fI, fT, fAt, fRod, shade, std, sm, mergeGroup, shadowed, rotRec, ownMats, rotOf, bRec: DZ.bRec, phone: PHONE, get atlas() { return FA.n; }, get vis3() { return VIS3; } }); }
   function buildRoofs() {   // [ordine1] un programma per tetto (rp1), ogni cosa chiede il suo posto (rpTake): niente roba sparsa a caso
     const metal = sm('#5a5e66', { roughness: .6, metalness: .4 }), dark = sm('#1c1c22', { roughness: 1 });
     const tarps = ['#3e6272', '#7a3c3c', '#4c6a4c', '#8a7438', '#5a4a6a'].map(c => sm(c, { roughness: 1 }));
@@ -14750,7 +14824,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
       const P = rp1(rec); if (!P) return;
       const top = rec.box3.max.y - 2.5, x0 = P.x0, z0 = P.z0, w = P.w, d = P.d, prog = P.prog;
       if (w < 3.6 || d < 3.6) return;
-      const r = rng(bi * 131 + 7), g = new THREE.Group(), put = (o, x, y, z, ry) => { o.position.set(x, top + y, z); if (ry) o.rotation.y = ry; g.add(o); return o; };
+      const r = rng(bi * 131 + 7), g = new THREE.Group(), put = (o, x, y, z, ry) => { o.position.set(x, top + y, z); if (ry) o.rotation.y = ry; g.add(o); if (SD1.on && !o.userData.sdT) { o.userData.sdT = 'tetto'; o.userData.sdChi = chi2(); } return o; };   // [disposizione] il tipo per la sonda
       const wallHex = b.__wallHex || '#c8c4ba', low = rec.geo ? rec.geo.y0 : top - 6;
       // bocchettoni sui parapetti che si vedono, con la colatura sul muro
       if (r() < .75) bocchettone1(g, x0 + w * (.2 + r() * .6), top + .12, z0 + d + .04, 0, 1, top - low);
@@ -14783,7 +14857,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .55, 0.), mm = min(m
             for (let q = -L / 2 + .3; q < L / 2 - .2; q += .42 + r() * .2) { const c2 = box(.3 + r() * .2, .45 + r() * .3, .03, cloth[Math.floor(r() * cloth.length)]); c2.position.set(q, 1.32 - r() * .08, 0); a2.add(c2); } } }
         const cx3 = x0 + w - 1.0, cz3 = z0 + d - 1.0, np = 3 + Math.floor(r() * 3);
         for (let k = 0; k < np; k++) { const alongS = k % 2 === 0, off = .15 + Math.floor(k / 2) * .75, px2 = alongS ? cx3 - off : cx3 + .05, pz2 = alongS ? cz3 + .05 : cz3 - off; if (rpTake(P, 'vaso', px2, pz2, .3)) put(oPot(r, .85 + r() * .5), px2, 0, pz2); }
-        const ch = rpNear(P, 'sedia', cx3 - 1.8, cz3 - 1.2, .4); if (ch) { const c2 = new THREE.Group(), col = pick(r, ['#e8e4dc', '#3a6a4a', '#a83a2e']); fAt(c2, fB(.44, .05, .42, col, 'plastic', .015), 0, .44, 0); fAt(c2, fB(.44, .42, .05, col, 'plastic', .015), 0, .66, -.2); [[-.19, -.18], [.19, -.18], [-.19, .18], [.19, .18]].forEach(([a3, c3]) => fRod(c2, [a3, 0, c3], [a3 * .9, .44, c3 * .9], .02, col, 'plastic')); put(c2, ch[0], 0, ch[1], .6 + r()); }
+        const ch = rpNear(P, 'sedia', cx3 - 1.8, cz3 - 1.2, .4); if (ch) { const c2 = new THREE.Group(), col = pick(r, ['#e8e4dc', '#3a6a4a', '#a83a2e']); if (SD1.on) c2.userData.sdT = 'sedia'; fAt(c2, fB(.44, .05, .42, col, 'plastic', .015), 0, .44, 0); fAt(c2, fB(.44, .42, .05, col, 'plastic', .015), 0, .66, -.2); [[-.19, -.18], [.19, -.18], [-.19, .18], [.19, .18]].forEach(([a3, c3]) => fRod(c2, [a3, 0, c3], [a3 * .9, .44, c3 * .9], .02, col, 'plastic')); put(c2, ch[0], 0, ch[1], .6 + r()); }
         const tq = rpNear(P, 'telo', near[0] + 1.9, near[1] + .9, .9); if (tq) { put(oCrate(.8, .6, .8, rng(bi * 41)), tq[0] - .25, 0, tq[1]); const t2 = box(1.5, .5, 1.1, tarps[Math.floor(r() * tarps.length)]); put(t2, tq[0], .3, tq[1], .2); }
       } else if (prog === 'insegna' && P.ins === 'neon') {   // insegna al neon sul parapetto verso la strada, spesso con una lettera spenta
         const L = Math.min(w - 2, 2.4 + r() * 1.6), sx = x0 + w / 2 + (r() - .5) * (w - L - 2), sz = z0 + d - .55;
@@ -15497,7 +15571,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         for (let q = 0; q < 5; q++) { const bm = fB(pw + .3, .08, .08, WOODD, 'wood', 0); bm.position.set(px, top + 2.32, pz - pd / 2 + q * pd / 4); g.add(bm); }
         for (let q = 0; q < 6; q++) { const sh = oShrub(r, 1.1, pick(r, ['#5a6a3a', '#6a6a40', '#4a5a34'])); sh.scale.y = .5; sh.position.set(px + (r() - .5) * pw, top + 2.32, pz + (r() - .5) * pd); g.add(sh); }
         [[-1, -1], [1, 1]].forEach(([sx, sz]) => { const sh = oShrub(r, .8); sh.scale.set(.6, 3.2, .6); sh.position.set(px + sx * pw / 2, top, pz + sz * pd / 2); g.add(sh); });   // il rampicante sui pali
-        const ch = new THREE.Group(); fAt(ch, fB(.42, .05, .42, '#8a3a2e', 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, '#8a3a2e', 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON)); ch.position.set(px - .3, top, pz); g.add(ch);
+        const ch = new THREE.Group(); fAt(ch, fB(.42, .05, .42, '#8a3a2e', 'paint', .01), 0, .45, 0); fAt(ch, fB(.42, .5, .05, '#8a3a2e', 'paint', .01), 0, .72, -.19); [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a2, c2]) => fRod(ch, [a2, 0, c2], [a2, .45, c2], .012, IRON)); ch.position.set(px - .2, top, pz); ch.rotation.y = Math.PI / 2; g.add(ch);   /* [disposizione] verso il tavolino (era di fianco) */
         const tb = new THREE.Group(); fAt(tb, fC(.35, .35, .04, 12, '#c8c0b0', 'paint'), 0, .74, 0); fAt(tb, fC(.03, .03, .72, 6, IRON, 'paint'), 0, .37, 0); fAt(tb, fC(.18, .2, .03, 10, IRON, 'paint'), 0, .015, 0); tb.position.set(px + .5, top, pz); g.add(tb);
       }
       // ---- bucato steso tra due finestre ----
@@ -17304,8 +17378,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     freezer() { const g = G0(); FB.box(g, 2.2, .9, .8, '#e8f4f8'); FB.box(g, 2.1, .04, .7, '#c8e8f8', 0, .9, 0, true); for (let k = 0; k < 7; k++) FB.box(g, .24, .06, .3, pick(Math.random, ['#f4e8c8', '#ff9ab8', '#8a4a2a', '#9ae07a', '#fff4a0', '#f4f4f4']), -.9 + k * .3, .93); FB.box(g, 2.2, .5, .04, '#c8e8f8', 0, .95, .38); return g; },
     vhs(w) { const g = G0(); FB.box(g, w, 1.9, .4, '#1a1a24'); for (let s = 0; s < 5; s++) for (let k = 0; k < Math.floor(w * 7); k++) FB.box(g, .1, .3, .28, pick(Math.random, ['#e02a4a', '#2a8ae0', '#f0c020', '#1a1a1a', '#e0e0e0', '#8a2ae0']), -w / 2 + .1 + k * .14, .1 + s * .36, .06); return g; },
     mirrorball() { const g = G0(); const s = new THREE.Mesh(new THREE.IcosahedronGeometry(.3, 1), sm('#d8d8e8', { metalness: .9, roughness: .15 })); s.position.y = 2.4; g.add(s); FB.box(g, .02, .4, .02, '#888', 0, 2.7); return g; },
-    dining(col) { const g = G0(); g.add(FB.table(1.4, .9, col || '#6a4228', null)); [[-.45, .7, 0], [.45, .7, 0], [-.45, -.7, Math.PI], [.45, -.7, Math.PI]].forEach(([x, z, r]) => { const c = FB.chair(col || '#6a4228'); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); }); return g; },
-    cafeTable(cloth) { const g = G0(); g.add(FB.table(.8, .8, '#2a2a2e', cloth)); [[0, .6, 0], [0, -.6, Math.PI]].forEach(([x, z, r]) => { const c = FB.chair('#8a5a36'); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); }); FB.box(g, .08, .25, .08, '#3a6a2a', .1, .78); FB.box(g, .1, .1, .1, '#f4f0e8', -.15, .78); return g; },
+    dining(col) { const g = G0(); g.add(FB.table(1.4, .9, col || '#6a4228', null)); [[-.45, .7, Math.PI], [.45, .7, Math.PI], [-.45, -.7, 0], [.45, -.7, 0]].forEach(([x, z, r]) => { const c = FB.chair(col || '#6a4228'); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); }); return g; },
+    cafeTable(cloth) { const g = G0(); g.add(FB.table(.8, .8, '#2a2a2e', cloth)); [[0, .6, Math.PI], [0, -.6, 0]].forEach(([x, z, r]) => { const c = FB.chair('#8a5a36'); c.position.set(x, 0, z); c.rotation.y = r; g.add(c); }); FB.box(g, .08, .25, .08, '#3a6a2a', .1, .78); FB.box(g, .1, .1, .1, '#f4f0e8', -.15, .78); return g; },
   };
   // disposizione per tipo: [pezzo, u (0..1 in larghezza), v (0..1 in profondità), rotazione]. v=0 è la facciata.
   const LAYOUT = {
