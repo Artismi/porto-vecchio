@@ -275,7 +275,14 @@ var WriterVita = (function () {
   // la distanza minima fra due lavori grandi, per stile (nelle zone calde si stringe)
   const MIND = { pezzo: 4.2, burner: 5.5, mostro: 3.5, murale: 7, rullo: 7, calli: 4, verticale: 2.4, estintore: 3, wholecar: 9 };
   function history(st) {
-    const v = V(st); if (v.hist) return; v.hist = true;
+    const v = V(st); if (v.hist) return;
+    // [ottimizza] coi tasselli la storia dei muri è cotta (strumenti/tassella_pagina.js): i lavori arrivano già sul loro muro (writing.js
+    // cotti), niente caso e niente raggi a gioco iniziato. Finché il file non è arrivato si aspetta (al più 20 s), poi come prima
+    const TS0 = typeof Tasselli !== 'undefined' && Tasselli.attivo && Tasselli.attivo() ? Tasselli : null;
+    if (TS0) { const L = TS0.graffiti;
+      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 20000) return;
+      if (Array.isArray(L) && WR._.cotti) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
+    v.hist = true;
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
     // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
     const pool = SITES.filter(s => (s.kind !== 'heaven' && s.kind !== 'facciata') || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);

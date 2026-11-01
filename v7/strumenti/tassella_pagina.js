@@ -278,4 +278,34 @@
     await up('grezzi/tavole.json', JSON.stringify(tavole));
     return tavole.info;
   };
+
+  // [ottimizza] I GRAFFITI DI PARTENZA, COTTI. La storia dei muri (writer_vita.js history: ~1.500 lavori vecchi) nel gioco nasceva a caso e
+  // ogni lavoro cercava il suo muro coi raggi mentre si giocava (writing.js placeWallG: il «altro:ciclo» da 390-470 ms dell'Iris Xe). Qui,
+  // sulla città intera (la stessa che diventa tasselli), la storia si fa una volta col seme fisso della cottura e ogni lavoro si piazza
+  // (Writing._.placeWall, gli stessi raggi del gioco): esce grezzi/graffiti.json, e il gioco coi tasselli prende i lavori già sul loro
+  // muro (writing.js cotti): niente scanNear che piazza, niente raggi. Restano a runtime solo i lavori nuovi (writer, giocatore).
+  window.__tassellaGraffiti = async function () {
+    const st = window.__pv && window.__pv.st, WR = window.Writing, WV = window.WriterVita;
+    if (!st || !WR || !WV || !WR._ || !WR._.placeWall) return { n: 0, motivo: 'moduli mancanti' };
+    const W = WR.S(st), T0 = performance.now();
+    if (!W.writers.length && WR.initWriters) WR.initWriters(st);
+    if (!WV.V(st).hist) WV.history(st);
+    if (!WR.GFX.st) WR.GFX.st = st;
+    const L = W.works.filter(w => w.old && w.surf === 'muro' && w.spot && !w.erased);
+    let ok = 0, ko = 0;
+    for (let i = 0; i < L.length; i++) {
+      const w = L[i]; if (!w.gfxRect) { let r = false; try { r = WR._.placeWall(w); } catch (e) { r = false; } if (r && w.gfxRect) ok++; else { w.gfxRect = null; ko++; } } else ok++;
+      if (i % 25 === 24) await pausa(0);
+    }
+    const now = st.t, r3 = v => Math.round(v * 1000) / 1000, v3 = v => v ? [r3(v.x), r3(v.y || 0), r3(v.z)] : undefined;
+    const tieni = L.filter(w => w.gfxRect), idx = new Map(tieni.map((w, k) => [w.id, k]));
+    const VIA = new Set(['id', 'live', 'gfxFail', 'cur', 'gfxRect', 'pos', 'over', 'covered', 't0', 'tDone', 'crossed']);
+    const out = tieni.map(w => { const o = {}; for (const k in w) { if (VIA.has(k) || k.startsWith('__')) continue; const v = w[k]; if (v == null || typeof v === 'function' || (typeof v === 'object' && (v.isVector3 || v.isObject3D))) continue; o[k] = typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v; }
+      o.by = 'old'; const R = w.gfxRect; o.r = { c: v3(R.c), n: v3(R.n), r: v3(R.r), u: v3(R.u), W: r3(R.W), H: r3(R.H), foot: R.foot == null ? null : r3(R.foot) };
+      o.eta0 = Math.round(now - (w.t0 || now)); if (w.crossed) o.crossed = Object.assign({}, w.crossed, { t: Math.round((w.crossed.t || w.t0 || now) - (w.t0 || now)) });
+      if (w.over && w.over.length) o.over = w.over.map(id => idx.get(id)).filter(k => k !== undefined); if (w.covered) o.covered = true; return o; });
+    const js = JSON.stringify({ versione: 1, lavori: out });
+    await up('grezzi/graffiti.json', js);
+    return { n: out.length, piazzati: ok, falliti: ko, kb: Math.round(js.length / 1024), ms: Math.round(performance.now() - T0) };
+  };
 })();

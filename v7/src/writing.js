@@ -367,6 +367,20 @@ var Writing = (function () {
     else if (style === 'murale' && rnd() < .3) w.words = pick(WA.SLOGANS);
     return Object.assign(w, extra || {});
   }
+  // [ottimizza] I LAVORI DI PARTENZA COTTI (strumenti/tassella_pagina.js): ogni lavoro vecchio col suo riquadro sul muro già trovato nella
+  // cottura (gli stessi raggi di placeWall, sulla stessa città dei tasselli). Qui solo i vettori: niente scanNear che piazza, niente
+  // raggi; il disegno lo fa il disegnatore a parte, dal più vicino, quando la camera arriva. Gli anni dei lavori contano da adesso.
+  function cotti(st, L) {
+    const W = S(st), THREE = T3(), now = st.t, base = W.nextId, V3 = a => a ? new THREE.Vector3(a[0], a[1], a[2]) : undefined;
+    L.forEach((o, k) => { const w = Object.assign({}, o), R = o.r; delete w.r; delete w.eta0;
+      w.id = base + k; w.t0 = w.tDone = now - (o.eta0 || 0);
+      if (o.crossed) w.crossed = Object.assign({}, o.crossed, { t: w.t0 + (o.crossed.t || 0) });
+      if (o.over) w.over = o.over.map(i => base + i);
+      w.gfxRect = { c: V3(R.c), n: V3(R.n), r: V3(R.r), W: R.W, H: R.H, foot: R.foot }; if (R.u) w.gfxRect.u = V3(R.u);
+      w.pos = { x: R.c[0], y: R.c[1], z: R.c[2] }; w.cotto = true;
+      W.works.push(w); });
+    W.nextId = base + L.length; return L.length;
+  }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w); if (w.by === 'player') W.__dirty = true;
     if (W.works.length > 3500) {   // [ordine1] più spazio: la città parte già piena di storia ([atlante] 3500: le tag delle vie)
@@ -2157,6 +2171,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;

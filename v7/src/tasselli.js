@@ -56,7 +56,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null;
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -75,7 +75,12 @@ var Tasselli = (function () {
     if (d.viviBin) VIVB = chiedi({ op: 'tassello', url: url(d.viviBin.file) });   // le geometrie dei vivi: servono in monta()
     if (VIVB) await VIVB.then(m => { VIVB = m; });
     try { bmut(); } catch (e) { }   // prima di R.init: chi legge b.__* durante il caricamento lo trova (e di nuovo in monta)
-    ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
+    ON = true; ST.on = true; ST.tasselli = j.tasselli.length;
+    // [ottimizza] i graffiti di partenza cotti (strumenti/tassella_pagina.js): writer_vita.js li aspetta (GRAF undefined), poi li prende
+    // già piazzati (writing.js cotti). Senza (cottura vecchia, o non arrivano): null, e la storia dei muri si fa come prima
+    if (j.graffiti && j.graffiti.file && !/[?&]nofixgraffiti\b/.test(Q)) fetch(url(j.graffiti.file)).then(r => r.ok ? r.json() : null).then(g => { GRAF = g && Array.isArray(g.lavori) ? g.lavori : null; }, () => { GRAF = null; });
+    else GRAF = null;
+    return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
 
   // ---------------- il lavoratore ----------------
@@ -702,6 +707,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;

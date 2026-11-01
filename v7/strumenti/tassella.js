@@ -45,6 +45,8 @@ async function cuoci(GREZZI, imp) {
     await pg.addScriptTag({ content: fs.readFileSync(path.join(__dirname, 'tassella_pagina.js'), 'utf8') });
     const info = await pg.evaluate(() => window.__tassella({}));
     log('esportata', JSON.stringify(info));
+    try { const gi = await pg.evaluate(() => window.__tassellaGraffiti ? window.__tassellaGraffiti() : null); log('graffiti di partenza', JSON.stringify(gi)); }   // [ottimizza] i lavori vecchi già sul loro muro
+    catch (e) { log('graffiti di partenza non cotti:', e.message); }
   } finally { await b.close(); srv.close(); }
 }
 
@@ -293,8 +295,12 @@ async function comprimi(GREZZI, imp) {
     dati = { file: 'dati.json', byte: js.length, gz: z.length, vivi: vivi ? vivi.byte : 0 };
     console.log(`[tasselli] dati: ${D.case.length} case, ${D.props.length} oggetti colpibili, ${D.vivi.length} vivi, ${D.aloni.length} aloni, ${D.heads.length} semafori; ${(js.length / 1024).toFixed(0)} KB (${(z.length / 1024).toFixed(0)} KB in gzip), vivi.bin ${vivi ? (vivi.byte / 1024).toFixed(0) : 0} KB`);
   }
+  // [ottimizza] i graffiti di partenza (tassella_pagina.js __tassellaGraffiti): li legge src/tasselli.js, li mette in scena writing.js cotti
+  let graffiti = null; const fg = path.join(GREZZI, 'grezzi', 'graffiti.json');
+  if (fs.existsSync(fg)) { const js = fs.readFileSync(fg); fs.writeFileSync(path.join(OUT, 'graffiti.json'), js); let n = 0; try { n = JSON.parse(js).lavori.length; } catch (e) { }
+    graffiti = { file: 'graffiti.json', byte: js.length, n }; console.log(`[tasselli] graffiti di partenza: ${n} lavori, ${(js.length / 1024).toFixed(0)} KB`); }
   const programmi = [...PROG].map(q => q.split(',').map(Number));
-  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, dati, programmi, info: tav.info };
+  const indice = { versione: 1, impronta: imp, cella: tav.cella, quando: new Date().toISOString(), tasselli, sagoma: sag, materiali: mats, stringhe: tav.stringhe, tessiture: tex, luci: tav.luci, pozze: tav.pozze, uni, dati, graffiti, programmi, info: tav.info };
   fs.writeFileSync(path.join(OUT, 'indice.json'), JSON.stringify(indice));
   const texB = tex.reduce((a, t) => a + (t.byte || 0), 0), texT = tex.reduce((a, t) => a + (t.tel ? t.tel.byte : t.byte || 0), 0);
   console.log(`[tasselli] ${tasselli.length} tasselli, ${(tot / 1048576).toFixed(1)} MB (${(vt / 1e6).toFixed(2)} M vertici; zuppe indicizzate ${(ip / 1e6).toFixed(2)} → ${(id / 1e6).toFixed(2)} M; mesh unite ${up} → ${ud} (in tavolozza ${PAL ? PAL.n : 0}), ${tasselli.reduce((a, t) => a + t.mesh, 0)} mesh in tutto); sagoma ${sag ? (sag.byte / 1024).toFixed(0) + ' KB' : 'no'}; ${mats.length} materiali (da ${tav.materiali.length}); ${tex.length} tessiture ${(texB / 1048576).toFixed(1)} MB, telefono ${(texT / 1048576).toFixed(1)} MB; indice ${(fs.statSync(path.join(OUT, 'indice.json')).size / 1024).toFixed(0)} KB`);

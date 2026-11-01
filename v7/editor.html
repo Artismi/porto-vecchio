@@ -23535,7 +23535,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '76aa0755338ede02';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '1caba32fed291f12';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -62344,6 +62344,20 @@ var Writing = (function () {
     else if (style === 'murale' && rnd() < .3) w.words = pick(WA.SLOGANS);
     return Object.assign(w, extra || {});
   }
+  // [ottimizza] I LAVORI DI PARTENZA COTTI (strumenti/tassella_pagina.js): ogni lavoro vecchio col suo riquadro sul muro già trovato nella
+  // cottura (gli stessi raggi di placeWall, sulla stessa città dei tasselli). Qui solo i vettori: niente scanNear che piazza, niente
+  // raggi; il disegno lo fa il disegnatore a parte, dal più vicino, quando la camera arriva. Gli anni dei lavori contano da adesso.
+  function cotti(st, L) {
+    const W = S(st), THREE = T3(), now = st.t, base = W.nextId, V3 = a => a ? new THREE.Vector3(a[0], a[1], a[2]) : undefined;
+    L.forEach((o, k) => { const w = Object.assign({}, o), R = o.r; delete w.r; delete w.eta0;
+      w.id = base + k; w.t0 = w.tDone = now - (o.eta0 || 0);
+      if (o.crossed) w.crossed = Object.assign({}, o.crossed, { t: w.t0 + (o.crossed.t || 0) });
+      if (o.over) w.over = o.over.map(i => base + i);
+      w.gfxRect = { c: V3(R.c), n: V3(R.n), r: V3(R.r), W: R.W, H: R.H, foot: R.foot }; if (R.u) w.gfxRect.u = V3(R.u);
+      w.pos = { x: R.c[0], y: R.c[1], z: R.c[2] }; w.cotto = true;
+      W.works.push(w); });
+    W.nextId = base + L.length; return L.length;
+  }
   function addWork(st, w) {
     const W = S(st); w.id = W.nextId++; w.t0 = w.t0 || st.t; W.works.push(w); if (w.by === 'player') W.__dirty = true;
     if (W.works.length > 3500) {   // [ordine1] più spazio: la città parte già piena di storia ([atlante] 3500: le tag delle vie)
@@ -64134,7 +64148,7 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
 </script>
@@ -64415,7 +64429,14 @@ var WriterVita = (function () {
   // la distanza minima fra due lavori grandi, per stile (nelle zone calde si stringe)
   const MIND = { pezzo: 4.2, burner: 5.5, mostro: 3.5, murale: 7, rullo: 7, calli: 4, verticale: 2.4, estintore: 3, wholecar: 9 };
   function history(st) {
-    const v = V(st); if (v.hist) return; v.hist = true;
+    const v = V(st); if (v.hist) return;
+    // [ottimizza] coi tasselli la storia dei muri è cotta (strumenti/tassella_pagina.js): i lavori arrivano già sul loro muro (writing.js
+    // cotti), niente caso e niente raggi a gioco iniziato. Finché il file non è arrivato si aspetta (al più 20 s), poi come prima
+    const TS0 = typeof Tasselli !== 'undefined' && Tasselli.attivo && Tasselli.attivo() ? Tasselli : null;
+    if (TS0) { const L = TS0.graffiti;
+      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 20000) return;
+      if (Array.isArray(L) && WR._.cotti) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
+    v.hist = true;
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
     // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
     const pool = SITES.filter(s => (s.kind !== 'heaven' && s.kind !== 'facciata') || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);
@@ -71951,7 +71972,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null;
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -71970,7 +71991,12 @@ var Tasselli = (function () {
     if (d.viviBin) VIVB = chiedi({ op: 'tassello', url: url(d.viviBin.file) });   // le geometrie dei vivi: servono in monta()
     if (VIVB) await VIVB.then(m => { VIVB = m; });
     try { bmut(); } catch (e) { }   // prima di R.init: chi legge b.__* durante il caricamento lo trova (e di nuovo in monta)
-    ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
+    ON = true; ST.on = true; ST.tasselli = j.tasselli.length;
+    // [ottimizza] i graffiti di partenza cotti (strumenti/tassella_pagina.js): writer_vita.js li aspetta (GRAF undefined), poi li prende
+    // già piazzati (writing.js cotti). Senza (cottura vecchia, o non arrivano): null, e la storia dei muri si fa come prima
+    if (j.graffiti && j.graffiti.file && !/[?&]nofixgraffiti\b/.test(Q)) fetch(url(j.graffiti.file)).then(r => r.ok ? r.json() : null).then(g => { GRAF = g && Array.isArray(g.lavori) ? g.lavori : null; }, () => { GRAF = null; });
+    else GRAF = null;
+    return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
 
   // ---------------- il lavoratore ----------------
@@ -72597,7 +72623,7 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
