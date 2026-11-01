@@ -153,3 +153,21 @@ Il piano è `ANALISI_STILE.md` (la diagnosi misurata, il piano di valori per cat
   la quota del quadro, luminanza e saturazione per categoria, luce/ombra del suolo, persone/suolo; `<scena>_cat.json` e la mappa a colori
   `<scena>_cat.png` (suolo grigio, muri sabbia, tetti rosso, persone ciano, altro magenta). Si fa **anche con `?leggera`** (il profilo del
   committente: lì il passo non legge la profondità).
+
+## [tratto] [vettore] [calma] Struttura, linee lisce, calma (1 novembre, seguito)
+
+- **La faccia nell'alfa**: il codice è (categoria × 6 + faccia) / 35 (faccia: 0 sopra, 1-4 i quattro lati nel mondo, 5 sotto). Il passo
+  disegna il pennarello dove cambia la categoria o la faccia: sagome, ciglio, piede, spigoli (le facce della stessa cosa più leggere).
+- **Linee lisce**: il bordo è un campo continuo (l'alfa letta interpolata su otto punti, Sobel), disegnato alla risoluzione dello schermo
+  col bordo sfumato: niente scaletta anche col profilo leggero a metà risoluzione. Dove gli spigoli sono fitti (cornicioni, modanature,
+  ringhiere: otto letture a 2,5 texel) la linea quasi si spegne. Lontano dal personaggio la linea si alleggerisce (l'occhio ha un centro).
+- **FXAA** nel passo quando non c'è multicampionamento (profilo leggero, grafica ridotta); la nitidezza e il contrasto locale (`CAT.trama`)
+  non toccano gli spigoli.
+- **Le ombre e il retino**: ombre del giorno più chiare e meno sature (più cielo, meno viraggio blu); il retino fine (22 cm) e quasi tono su
+  tono solo nell'ombra piena, quasi niente sul suolo (sulla piazza faceva i pois).
+- **I pavimenti** con le pietre leggibili (`pavimenti.js`: giunti .32, variazione .15; erano .22 e .11).
+
+**L'anteprima di un ramo e i tasselli.** L'anteprima di Vercel scarica i tasselli solo se esiste la release `tasselli-<impronta>` della sua
+pagina; ogni cambio a un modulo del gioco cambia l'impronta, e senza release la città si costruisce nel browser (lentissimo, i pavimenti
+arrivano a pezzi). Per un ramo: lanciare a mano il workflow `tasselli` sul ramo (workflow_dispatch, ~5 minuti), poi un push qualunque
+(rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-dcaa09c090d42127`.
