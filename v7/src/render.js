@@ -4999,6 +4999,42 @@ var Render = (function () {
     return { grp, h, ridge: ridge.map(toW), slots: slots.map(toW), chims: chims.map(toW) };
   }
 
+  // [compenetra] LE GRONDE CONTRO IL VICINO: lo sbalzo del tetto a falde (32-55 cm, la gronda, il canale, la testa della falda sul
+  // timpano) entrava nel muro, nel parapetto o nella falda della casa accanto. Dove un vicino attaccato (entro lo sbalzo) è alto quanto la
+  // gronda, la falda si ferma sul filo del muro: i vertici oltre il filo tornano sul filo (sui lati di gronda risalgono lungo la falda,
+  // così il piano resta quello), e quello che sta tutto oltre (il canale, i travicelli) si toglie. Solo le case dritte. T: tetto1; o: { x0, z0, w, d, top, ov, pitch, shape, swap }
+  function taglioGronde4(T, b, o) {
+    if (rotOf(b)) return 0; const L = BLD(), x1 = o.x0 + o.w, z1 = o.z0 + o.d, tp = Math.tan(o.pitch), sotto = o.top - o.ov * tp - .25, M = Math.max(o.ov, .2) + .12;
+    const gronda = f => o.shape === 'padiglione' || (o.shape === 'falda' ? f === (o.swap ? 'E' : 'S') : (o.swap ? f === 'E' || f === 'W' : f === 'N' || f === 'S'));
+    const tagli = { N: [], S: [], E: [], W: [] };
+    const TT4 = window.Tetti && Tetti.solido4 && cn1() ? Tetti : null;
+    L.forEach((c, j) => { if (!c || c === b || c.__tierOf || rotOf(c) || c.lighthouse) return; const cx0 = c.x * TS, cz0 = c.y * TS, cx1 = cx0 + c.w * TS, cz1 = cz0 + c.h * TS;
+      if (cx1 < o.x0 - M || cx0 > x1 + M || cz1 < o.z0 - M || cz0 > z1 + M) return;
+      // quanto sale il vicino lungo il lato in comune: il solido del suo tetto (Tetti.solido4: parapetto e copertina, falde, colmo), o la regola dei piani
+      const alto = (f, a, e) => { let h = (c.__top !== undefined ? c.__top : (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF) + .9; if (!TT4) return h; h = -Infinity;
+        for (let u = a + .1; u <= e - .1 + 1e-6; u += .5) for (let dd = .05; dd <= M; dd += .2) { const x = f === 'E' ? cx0 + dd : f === 'W' ? cx1 - dd : u, z = f === 'S' ? cz0 + dd : f === 'N' ? cz1 - dd : u; try { h = Math.max(h, TT4.solido4(j, x, z)); } catch (e2) { } }
+        return Number.isFinite(h) ? h : (c.__top !== undefined ? c.__top : (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF) + .9; };
+      const ox = Math.min(x1, cx1) - Math.max(o.x0, cx0), oz = Math.min(z1, cz1) - Math.max(o.z0, cz0), za = Math.max(o.z0, cz0), ze = Math.min(z1, cz1), xa = Math.max(o.x0, cx0), xe = Math.min(x1, cx1);
+      if (oz > .2 && cx0 >= x1 - .05 && cx0 <= x1 + M && alto('E', za, ze) >= sotto) tagli.E.push([za, ze, cx0]);   // il vicino basso passa sotto la gronda
+      if (oz > .2 && cx1 <= o.x0 + .05 && cx1 >= o.x0 - M && alto('W', za, ze) >= sotto) tagli.W.push([za, ze, cx1]);
+      if (ox > .2 && cz0 >= z1 - .05 && cz0 <= z1 + M && alto('S', xa, xe) >= sotto) tagli.S.push([xa, xe, cz0]);
+      if (ox > .2 && cz1 <= o.z0 + .05 && cz1 >= o.z0 - M && alto('N', xa, xe) >= sotto) tagli.N.push([xa, xe, cz1]); });
+    if (!Object.values(tagli).some(q => q.length)) return 0;
+    T.grp.updateMatrixWorld(true); const v = new THREE.Vector3(), via = []; let n = 0;
+    T.grp.traverse(m => { if (!m.isMesh || !m.geometry || !m.geometry.attributes.position) return; const P0 = m.geometry.attributes.position, Mw = m.matrixWorld, Mi = Mw.clone().invert();
+      let g = null, fuori = 0;
+      for (let k = 0; k < P0.count; k++) { v.fromBufferAttribute(P0, k).applyMatrix4(Mw); let dx = 0, dz = 0, e = 0, fr = null;
+        for (const [f, L2] of Object.entries(tagli)) for (const [a, c, w0] of L2) { const u = f === 'E' || f === 'W' ? v.z : v.x; if (u < a - .06 || u > c + .06) continue;
+          const lim = f === 'E' ? Math.min(w0, x1) : f === 'W' ? Math.max(w0, o.x0) : f === 'S' ? Math.min(w0, z1) : Math.max(w0, o.z0);
+          const ex = f === 'E' ? v.x - lim : f === 'W' ? lim - v.x : f === 'S' ? v.z - lim : lim - v.z; if (ex <= .005 || ex <= e) continue;
+          e = ex; fr = f; dx = f === 'E' ? -ex : f === 'W' ? ex : 0; dz = f === 'S' ? -ex : f === 'N' ? ex : 0; }
+        if (!fr) continue; fuori++;
+        if (!g) { g = m.geometry.clone(); m.geometry = g; }   // le geometrie possono essere condivise: si taglia una copia
+        v.x += dx; v.z += dz; if (gronda(fr)) v.y += e * tp; v.applyMatrix4(Mi); g.attributes.position.setXYZ(k, v.x, v.y, v.z); }
+      if (g) { g.attributes.position.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); n++; if (fuori === P0.count) via.push(m); } });
+    via.forEach(m => m.parent && m.parent.remove(m));   // tutto oltre il filo: il canale, i travicelli, il pluviale di quel lato
+    return n;
+  }
   // ---------------- tetti piani: lastrico, copertina, bocchettoni, torrino ----------------
   function deckMat1(kind, w, d, tint) { const t = roofTex1(kind, 0).clone(); t.needsUpdate = true; t.repeat.set(w / RSPAN, d / RSPAN); return tv1(std({ map: t, roughness: .95, color: tint || '#ffffff' }), kind); }   // [vissuti]
   // [profondita] il lastrico prende una tinta per livello (tre sole, per non spezzare la fusione): i bassi più spenti e freddi, gli alti più caldi
@@ -5597,16 +5633,22 @@ var Render = (function () {
       row('border', sd, base + MG - .02);
       // piani superiori: lo stesso modulo su tutta la colonna
       const wide = upper.includes('wide');
+      // [compenetra] la finestra dietro il tetto del vicino attaccato: il davanzale, le persiane, il balcone entravano nel suo parapetto o
+      // nella sua falda. Se il tetto della casa davanti al modulo (Tetti.solido4, o la regola dei piani) sale sopra il davanzale, muro pieno
+      const BI4 = M.world && M.world.bIndex, TT4 = window.Tetti && Tetti.solido4 && cn1() ? Tetti : null;
+      const cieca4 = (k, y) => { if (!BI4) return false; const [tx, ty] = sd.tile(k); if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return false; const o = BI4[ty * G.GW + tx]; if (o < 0 || o === i) return false; const c = G.BUILDINGS[o]; if (!c || c.__tierOf || c === b) return false;
+        let h = (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF + .5; if (TT4) { const [px, pz] = sd.at(k), N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[sd.f]; h = -Infinity; for (const dd of [.1, .35, .6]) for (const t of [-.6, 0, .6]) { const x = px + N[0] * dd + N[1] * t, z = pz + N[1] * dd + N[0] * t; try { h = Math.max(h, TT4.solido4(o, x, z)); } catch (e) { } } if (!Number.isFinite(h)) return false; }
+        return h > y + .6; };
       for (let f = 1; f < fl; f++) {
         const y = base + MG + (f - 1) * MF;
         if (wide) {
           let k = 0;
           if (sd.n % 2 === 1) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(0), y), sd.rot); k = 1; }
-          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
+          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y) || cieca4(k, y) || cieca4(k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
-          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) || cieca4(k, y) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
@@ -5654,6 +5696,7 @@ var Render = (function () {
       const mk3 = PF3 ? (LOOK.on && PF3.manto === 'coppi' && th(Math.floor(x0 * 2), Math.floor(z0 * 2), 1209) < .3 ? 'ardesia' : PF3.manto) : rk;   // [look] l'ardesia ligure su un tetto a falde su tre
       const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: mk3, shape: EPT ? EPT.shape : shape, pitch: EPT ? EPT.pitch : pitch, swap: EPT ? EPT.swap : undefined, chimTesta: CG3 ? CG3.tipo4 : undefined, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, wallHex: pal[0], r: r2, chim: PF3 ? (CG3 ? CG3.n || 1 : 0) : rk === 'lamiera' ? 0 : 1 + Math.floor(r2() * 2), chimT: CG3 ? CG3.t : undefined, kindV: EPT ? EPT.kindV : rk === 'lamiera' ? (kind === 'port' ? 0 : Math.floor(r2() * 3)) : r2() < .3 ? 1 : 0,
         tint: rk === 'lamiera' && kind === 'mil' ? '#a4aa90' : null, gutter: kind === 'farm' ? 'rame' : true, rafters: rk === 'coppi', sky: EPT ? EPT.sky : rk !== 'lamiera' && r2() < .22, dormer: EPT ? EPT.dormer : rk !== 'lamiera' && kind !== 'farm' && r2() < .4 });
+      taglioGronde4(T, b, { x0, z0, w, d, top, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, pitch: EPT ? EPT.pitch : pitch, shape: EPT ? EPT.shape : shape, swap: EPT && EPT.swap !== undefined ? EPT.swap : d > w });   // [compenetra] la gronda si ferma sul vicino attaccato
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims;
       { const n = r2() < .45 && !PF3 ? 1 + Math.floor(r2() * 4) : 0, A = T.ridge[0], B = T.ridge[1];   /* [tetti3] niente piccioni sparsi sul colmo del piano */ b.__p3 = (b.__p3 || 0) + n; for (let k = 0; k < n; k++) { const t = .1 + r2() * .8, pg = oPiccione1(r2); pg.position.set(A.x + (B.x - A.x) * t, A.y + .14, A.z + (B.z - A.z) * t); pg.rotation.y = r2() * 6; grp.add(pg); } }   // [ordine1] i piccioni sul colmo
       if (rk !== 'lamiera' && r2() < (X ? 0 : .55)) {   /* [facciate2] sulle case con l'epoca le antenne le mette la rete: niente doppioni sul colmo */ const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2); an.position.set(s0.x, s0.y + .05, s0.z); grp.add(an); }   // un'antenna sola, sul colmo
@@ -6406,6 +6449,7 @@ var Render = (function () {
       copertina1(grp, x0 + .02, z0 + .02, w - .04, d - .04, top + kitH1('urbano/wall-a-low') * FH * .7, .26, '#b8b2a6'); }   // la copertina sul muretto
     else if (rq < .82) { flat = false; const r2 = rng(i * 577 + 3), et = r2() < .4, pitch = et ? .2 : .24, shape = Math.min(w, d) <= 6 && r2() < .5 ? 'falda' : 'capanna';   // [ordine1] lamiera grecata o ondulato, capanna o falda unica, con la gronda
       const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: et ? 'eternit' : 'lamiera', shape, pitch, ov: .4, wallHex: '#8a8278', r: r2, chim: et ? 0 : r2() < .5 ? 1 : 0, kindV: Math.floor(r2() * 3), gutter: !et });
+      taglioGronde4(T, b, { x0, z0, w, d, top, ov: .4, pitch, shape, swap: d > w });   // [compenetra]
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims; }
     else {   // [ordine1] il telaio di ferro sul tetto: una pergola sola, ordinata, nell'angolo che si vede, col telo e il bucato (prima: tralicci sparsi a caso)
       const pw = Math.min(w - 1.2, 3 + Math.floor(r() * 2) * 1.5), pd = Math.min(d - 1.2, 2.6 + r() * 1.2), px0 = x0 + w - .6 - pw, pz0 = z0 + d - .6 - pd, H2 = 2.2, iron = sm('#3a3c40', { roughness: .7, metalness: .45 });
@@ -16568,6 +16612,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     // [momenti] window.__rlOn: i raggi col metodo lento, per motivo (quante volte, quanti triangoli): per strumenti/banco_momenti.js
     const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position; q[1] += g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; };
+    // [compenetra] MeshBVH riordina sul posto i triangoli dell'indice. L'indice della fusa compattata (leggera_memoria.js compatta,
+    // lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice i della fetta [start, start+count) è idx[i]): riordinato, i
+    // pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa tagliata, i raggi delle passerelle e dei graffiti)
+    // prendevano i triangoli di altre case dello stesso secchio, fino a 30 m più in là. L'indice spaziale si fa su una copia
+    // dell'indice con gli stessi attributi (in più solo l'indice, che non va alla scheda video: niente copie dei vertici); i colpi
+    // tornano gli stessi (a, b, c sono gli stessi numeri di vertice)
+    const bvhCopia1 = g => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
+      c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; };
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) { if (window.__rlOn) lento(!g ? 'senza' : g.__bvhNo ? 'mai' : this.isSkinnedMesh ? 'scheletro' : 'altro', g); return orig.call(this, rc, out); }
@@ -16581,7 +16633,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
-      try { g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      try { g.boundsTree = new MeshBVHLib.MeshBVH(g.index && g.index.lmFisso ? bvhCopia1(g) : g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
       return acc.call(this, rc, out);
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
