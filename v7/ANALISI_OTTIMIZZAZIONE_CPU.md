@@ -25,10 +25,21 @@ Sull'Iris Xe (F3, `?leggera&perf`): 2 fps, fotogramma 444-508 ms = gioco 32-48 +
 | a piedi, 45 s | **339 ms** | 1.210 ms | 139 ms |
 | fermo dopo, 25 s | **714 ms** (più del ciclo del gioco) | 1.504 ms | 661 ms |
 
-Gli altri cicli «altro» pesano poco: `risacca_ui` 3-4 ms, `tasselli tick` 0,4-4 ms (picco 25), `bottino` 0,5-1,4 ms
-(ma 355 ms nel primo secondo, §2), `tetti` 0,4-0,7, gli altri sotto 0,2.
+Con i disegni a vuoto (`--nodraw`: niente rasterizzazione, i tempi sono del solo processore, che qui è condiviso con altre
+due sonde) il quadro è lo stesso, più netto:
 
-Dove va il tempo (profilo, solo i campioni sotto `writing frame`, fase «fermo dopo», 5,5 s):
+| fase (`--nodraw`) | `writing frame` media | massimo | `main` (gioco+grafica) | quota di writing sul filo della pagina |
+| --- | --- | --- | --- | --- |
+| fermo, 35 s, 48 fotogrammi | **410 ms** | 2.235 ms | 215 ms | 64% |
+| a piedi, 46 s, 43 fotogrammi | **782 ms** | 1.949 ms | 191 ms | **79%** |
+
+Il rapporto writing/gioco qui è 2-4; sull'Iris Xe (altro 390-469 contro gioco 32-48) è ~10: stessa cosa, con più lavori attorno.
+
+Gli altri cicli «altro» pesano poco: `risacca_ui` 3-4 ms, `tasselli tick` 0,4-4 ms (picco 25), `bottino` 0,5-1,4 ms
+(ma 355 ms nel primo secondo, C2), `tetti` 0,4-0,7, gli altri sotto 0,2.
+
+Dove va il tempo (profilo, solo i campioni sotto `writing frame`; con `--nodraw`, fermo: 17,1 s di 17,1 s, di cui **15,5 s
+(91%) in `MeshBVH.intersectsBox`** chiamato da `nearTris`). In SwiftShader, fase «fermo dopo», 5,5 s:
 
 ```
 5454 scanNear → 3906 placeWallG → 3830 fitWallG → 3800 nearTris → 3775 MeshBVH.intersectsBox
@@ -41,16 +52,17 @@ Perché costa centinaia di ms a fotogramma:
    passo e l'altro del generatore `placeWallG`/`fitWallG` (r. 2057). Il primo passo di `fitWallG` (r. 686) chiama `nearTris`
    (r. 631) su tutte le mesh candidate *prima* del primo `yield`: per ognuna la prova della scatola con l'indice dei raggi
    (`bt.intersectsBox`, r. 650), e se manca l'indice lo costruisce lì (`new MeshBVH`, r. 649). Un passo solo = 100-1.500 ms.
-2. **È sempre «di corsa».** `rush` (r. 2030) resta vero finché entro 40 m ci sono meno di 12 graffiti mostrati: nella città a
+2. **È sempre «di corsa».** `rush` (r. 2032) resta vero finché entro 40 m ci sono meno di 12 graffiti mostrati: nella città a
    tasselli dopo 45 s ce n'era **1** piazzato su 1.593 lavori (sonda: `gfx 0`, `rect 0→1`, `gfxFail` 4→9), quindi corre sempre.
 3. **Quasi tutti falliscono e si riprovano.** Un lavoro che non trova il muro torna in coda fino a 4 volte (`gfxFail > 3`), e
-   `scanList` riporta a 2 i falliti ogni volta che la camera salta di 60 m (r. 2028): lo stesso conto, rifatto. Ogni tentativo
-   costa 0,5-1 s di processore qui. Prova diretta sui 12 lavori più vicini (a 13-14 m): **in 12 casi su 12 il primo raggio
+   `scanList` riporta a 2 i falliti ogni volta che la camera salta di 60 m (r. 2028): lo stesso conto, rifatto. Un tentativo che
+   arriva a `fitWallG` costa (stima dal profilo) 0,5-1 s di processore qui. Prova diretta sui 12 lavori più vicini (a 13-14 m): **in 12 casi su 12 il primo raggio
    verso il muro non trova niente** (`rayWall` su 50-184 mesh candidate, 3-24 ms solo lui), `placeWall` → `false`. Quando il primo
    raggio colpisce qualcosa (un palo, un'insegna) parte `fitWallG` con `nearTris` e la griglia di raggi: lì vanno i secondi.
    (I graffiti che non compaiono sui muri della città a tasselli sono anche un difetto visivo: vedi C1, punto d.)
-4. **Il disegno fatto qui.** Quando il disegnatore a parte non risponde (o non è ancora nato: `ARTW.ok` era `null` per i primi
-   30 s) `artFor` disegna sul filo della pagina (`sync`, r. 914 e 923): 50-200 ms sull'Iris Xe a lavoro, 700 qui.
+4. **Il disegno fatto qui.** Quando il disegnatore a parte risponde con un errore o scade, `artFor` disegna sul filo della
+   pagina (`sync`, r. 914 e 923): nel profilo 1,5 s di `art()` (pennelli/writer_arte) in 25 s, cioè ~700 ms a lavoro qui;
+   il commento del codice stesso dice 50-200 ms per lavoro sulle macchine vere.
 
 Perché sull'Iris Xe diventa **l'attesa**: è un ciclo `requestAnimationFrame` separato, fuori da `main:ciclo`, quindi il riquadro
 F3 lo conta come «attesa» (fotogramma − gioco). Il suo peso dipende da quanti lavori ci sono attorno (entro 80 m) e da quante
@@ -61,8 +73,25 @@ mesh candidate hanno: per questo l'utente ha visto 390-469 ms in un punto, 66 in
 ## 1. I risultati, uno per uno
 
 Ogni voce: **evidenza** · **guadagno stimato sull'Iris Xe** · **rischio per l'immagine** · **lavoro**.
-Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'utente (il suo ciclo del gioco è 32-48 ms contro i
-~136 di questa macchina a disegni veri: circa un terzo).
+Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'utente: il suo ciclo del gioco è 32-48 ms contro i
+~136 ms di qui a disegni veri e i ~200 ms a disegni vuoti (macchina condivisa con altre sonde): dividere i ms di qui per 3-5.
+
+Per orientarsi, dove va il ciclo del gioco (`main:ciclo`) a disegni vuoti, fermo, 49 fotogrammi, ~200 ms ciascuno su questa
+macchina (sull'Iris Xe lo stesso ciclo è 32-48 ms: dividere per ~5):
+
+| voce | ms/fotogramma | quota |
+| --- | --- | --- |
+| `renderer.render` (three: liste, inquadratura, uniform, chiamate) | 93 | 47% |
+| di cui ombre (`PesoOmbre`) | 30 | 15% |
+| pose delle persone (`animPerson` → `Anim.apply`) | 25,6 | 13% |
+| matrici (`umw`, `scene.updateMatrixWorld`, `getWorldPosition`) | ~25 | 12% |
+| blocchi (`updateChunks`) | 13 | 6% |
+| logica (`G.step` e agganci) | 12,4 | 6% |
+| persone che nascono/si vestono (`vesteGen`, `Models.person`) | 11-19 | 6-9% |
+| giri della scena (`sliceWalk`, `frzTick`, `raccogli`) | 17 | 8% |
+| inquadratura sostituita (`Frustum.intersectsObject`) | 5,6 | 3% |
+
+(Le voci si sovrappongono in parte: le matrici e l'inquadratura stanno anche dentro `renderer.render`.)
 
 ### C1. Graffiti: un tetto di tempo vero dentro `placeWallG` (il colpevole, §0)
 - **Evidenza**: §0. `nearTris` e `new MeshBVH` girano interi dentro un passo del generatore; `onPlane` fa 50-130 raggi
@@ -70,6 +99,11 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 - **Cosa fare** (stessi raggi, stesso ordine, stesso risultato, solo spezzato meglio):
   a. `nearTris` diventa generatore: `yield` dopo ogni mesh (e prima di una `new MeshBVH`, che va a sua volta a un fotogramma suo);
      `scanNear` guarda il tempo dentro il ciclo `do … while` anche fra le mesh. Il tetto di 1/5 ms diventa vero.
+  b0. **La prova giusta, a costo quasi zero.** `nearTris` serve solo a sfoltire la lista delle mesh per i raggi: tenerne una in
+     più non cambia nessun colpo (i raggi provano comunque i triangoli veri). Basta quindi la prova delle **foglie** dell'indice
+     contro la scatola (`shapecast` con il solo `intersectsBounds`, o `intersectsTriangle` che risponde `true` senza la prova SAT
+     per triangolo): l'insieme tenuto diventa un po' più largo, i punti trovati sono gli stessi. Via fino a ~90% del costo di writing
+     (`iterateOverTriangles` è 13,8 s dei 15,5 s di `intersectsBox`).
   b. Prima del `bt.intersectsBox` la prova della scatola d'ingombro (`g.boundingBox` contro `Bl`, oggi fatta solo nel ramo
      senza indice, r. 652): scarta la maggior parte delle mesh grandi senza toccare l'albero.
   c. La memoria del risultato: `nearTris(list, c, E)` per lavoro si calcola una volta (chiave: id del lavoro + versione delle
@@ -85,10 +119,10 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
   f. A lungo termine: il piazzamento dei lavori NPC è deterministico (stesso seme, stesso muro) → si può **cuocere** con i
      tasselli (`w.anc` come per i lavori salvati, `placeAnchor`, r. 1054) o farlo nel lavoratore `Calcolo`.
 - **Guadagno**: tutta l'«attesa» misurata, **~350-450 ms a fotogramma** nei punti con muri dipinti → da 2 fps al limite della
-  scheda video (40-46 ms) e del gioco (32-48 ms): **~15-20 fps** senza toccare altro. a+b+e da soli portano il ciclo sotto i
-  5 ms a fotogramma (resta lo stesso lavoro totale, a rate).
+  scheda video (40-46 ms) e del gioco (32-48 ms): **~15-20 fps** senza toccare altro. b0 da solo toglie ~90% del lavoro; con a+e il ciclo resta
+  sotto i 5 ms a fotogramma anche quando un lavoro si piazza.
 - **Rischio**: nessuno (stessi riquadri; i graffiti compaiono qualche fotogramma dopo, come già succede col disegnatore).
-- **Lavoro**: a+b+e piccolo (mezza giornata); c+d medio; f grande.
+- **Lavoro**: b0 piccolissimo (un'ora); a+b+e piccolo (mezza giornata); c+d medio; f grande.
 
 ### C2. Bottino: modelli rifatti da zero e tutti nello stesso fotogramma
 - **Evidenza**: `bottino.js sync` (r. 223-241) costruisce ogni oggetto con `build()` (Modella + `Superfici.vesti` + `unisci`), senza
@@ -113,12 +147,12 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 - **Guadagno**: sull'Iris Xe (Direct3D, compilazione lenta) 8-9 scatti da 0,1-0,5 s nel primo minuto. Fronte condiviso con la
   scheda video. **Rischio**: nessuno. **Lavoro**: piccolo.
 
-### C4. 18 cicli `requestAnimationFrame` che non sanno del tetto a 30
-- **Evidenza**: oltre a `main.js` girano 18 cicli propri (writing ×2, bottino, risacca_ui, tasselli, tetti, sottosuolo, cantiere,
-  skate, writer_vita, vestiario, personaggi, menu_ui ×2, studio, risacca, …). Con `PesoRitmo` a 30 (`main.js` r. 1144: il giro
+### C4. I cicli `requestAnimationFrame` dei moduli non sanno del tetto a 30
+- **Evidenza**: oltre a `main.js` la sonda vede 12 cicli propri sempre accesi (writing ×2, bottino, risacca_ui, tasselli, tetti,
+  sottosuolo, cantiere, vestiario, personaggi, menu_ui ×2), più skate, studio, writer_vita quando servono. Con `PesoRitmo` a 30 (`main.js` r. 1144: il giro
   si salta) loro continuano a 60: il lavoro di writing, tasselli, risacca_ui e bottino si fa **due volte per fotogramma
   disegnato**. Inoltre misura.js li attribuisce male (nascono in `DOMContentLoaded`/promesse) e `requestIdleCallback` non è
-  misurato (la pompa: 7 ms di media, 41 di picco, finisce nell'«attesa»).
+  misurato (la pompa: 7-32 ms di media, picco 424, finisce nell'«attesa», vedi C8).
 - **Cosa fare**: un registro unico (`Ciclo.aggiungi(nome, fn)`): main.js chiama i moduli dopo `FRAME`, solo nei giri disegnati,
   e misura.js li vede per nome. I moduli che devono restare vivi col gioco in pausa (menu) si registrano «sempre».
 - **Guadagno**: col tetto a 30, metà del costo di tutti questi cicli (oggi 10-15 ms a giro sull'Iris Xe, dopo C1); misure giuste.
@@ -133,8 +167,8 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 - **Guadagno**: 2-4 ms a fotogramma. **Rischio**: nessuno. **Lavoro**: piccolo.
 
 ### C6. I giri della scena a rate: quattro visitatori invece di uno
-- **Evidenza** (profilo a piedi, per fotogramma): `sliceWalk` 6 ms, `frzTick` 5 ms (4.000 oggetti a fotogramma, sempre),
-  `scene.updateMatrixWorld` 5 ms. Girano in parallelo `frzTick` (render.js r. 17479), `instCull` (r. 17352, 3.000/fotogramma ogni
+- **Evidenza** (profilo `--nodraw`, per fotogramma): `umw` (matrici) 11,7 ms, `sliceWalk` 7 ms, `scene.updateMatrixWorld` 6 ms,
+  `getWorldPosition` 6,9 ms, `frzTick` 5 ms (4.000 oggetti a fotogramma, sempre), `PesoOmbre raccogli` 5 ms. Girano in parallelo `frzTick` (render.js r. 17479), `instCull` (r. 17352, 3.000/fotogramma ogni
   secondo), la plastica `SM2W` (r. 18622, 2.000 ogni 3 s), `bmbTick` (r. 4502, 4.000 quando servono i graffiti), il giro di
   `PesoOmbre raccogli` e quello di `peso_bagliori`, `rilascioTick` (4 ms).
 - **Cosa fare**: un visitatore solo per fotogramma che chiama tutti i clienti sullo stesso nodo; meglio ancora la registrazione
@@ -142,7 +176,7 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 - **Guadagno**: 5-8 ms → sull'Iris Xe 2-4 ms. **Rischio**: nessuno. **Lavoro**: medio.
 
 ### C7. Le pose delle persone: dita e polsi anche a 40 m
-- **Evidenza**: `animPerson` 17 ms a fotogramma a piedi (`Anim.apply` → `hand`, `fingers`, `limits`, `applyWorld`). `apply`
+- **Evidenza**: `animPerson` 25,6 ms a fotogramma (`--nodraw`, fermo: il 13% del ciclo del gioco; 17 ms a piedi in SwiftShader) (`Anim.apply` → `hand`, `fingers`, `limits`, `applyWorld`). `apply`
   (`animazioni.js` r. 372) fa `g.updateMatrixWorld(true)` sull'intero scheletro e ogni `applyWorld` (r. 289) rifà la matrice
   del sotto-albero; poi three la rifà ancora nel render. Il diradamento esiste solo oltre 28 m (un fotogramma su 2) e 45 m (su 3).
 - **Cosa fare**: dita e polsi solo entro ~12 m dalla camera (oltre sono 1-2 pixel); oltre 15 m le pose leggere (`vita`,
@@ -151,16 +185,20 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
   **Lavoro**: piccolo-medio.
 
 ### C8. I passi lunghi dei blocchi e della pompa
-- **Evidenza**: `updateChunks`/`passoBlocco` 14 ms a fotogramma a piedi con un tetto di 6 ms (`tettoV`, render.js r. 3339): un passo del
-  generatore `buildChunkGen` arriva a 20-40 ms; `suoloErbosoG` (vegetazione) 139 ms di tempo proprio nel profilo fermo;
-  `pompa` (requestIdleCallback) 7 ms di media e **41 di picco** con un tetto di 6.
+- **Evidenza**: `updateChunks`/`passoBlocco` 13-14 ms a fotogramma con un tetto di 6 ms (`tettoV`, render.js r. 3339): un passo del
+  generatore `buildChunkGen` arriva a 20-40 ms; `suoloErbosoG` (vegetazione) 5 ms a fotogramma. La `pompa`
+  (`requestIdleCallback`, tetto 6 ms) a piedi: **32 ms di media, picco 424 ms** (`--nodraw`); dentro, un passo solo:
+  `snowPass` (render.js r. 1285, la tela della neve del blocco, 420 ms nel profilo con 202 ms di `drawImage`), `riva costruisci`
+  180 ms, `Material.clone` → `JSON.stringify(userData)` 156 ms (three copia lo `userData` per JSON; `tetti_vissuti.js` r. 601
+  avvolge anche `copy`). misura.js non avvolge `requestIdleCallback`: sull'Iris Xe questo finisce nell'«attesa».
 - **Cosa fare**: spezzare i passi lunghi (`suoloErbosoG`, `mappeG` dei pavimenti, `riva costruisci`) con `yield` più fitti; i conti
   puri (il prato, le mappe dei pavimenti) nel lavoratore `Calcolo`, che già esiste.
 - **Guadagno**: niente fotogrammi oltre il tetto mentre arrivano i blocchi (scatti da 20-40 ms → 6). **Rischio**: nessuno.
   **Lavoro**: medio.
 
 ### C9. Persone e mezzi che nascono a metà gioco
-- **Evidenza**: a piedi `vesteGen`/`figura`/`costruisci`/`testaKit` (personaggi) 25-30 ms in un fotogramma, `veicolo3d` 35 ms;
+- **Evidenza**: `vesteGen` 10,9 ms a fotogramma di media (`--nodraw`, fermo), `Models.person`/`figura`/`costruisci`/`testaKit`
+  (personaggi) 25-30 ms nei fotogrammi in cui arriva qualcuno, `veicolo3d` 35 ms;
   il budget `BUD` c'è ma un passo solo lo supera.
 - **Cosa fare**: geometrie dei vestiti in cache per firma del look (molti passanti condividono pezzi); le parti grosse nel
   caricamento o nel tempo libero; `yield` più fitti in `vesteGen`.
@@ -168,8 +206,9 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 
 ### C10. Il costo di three nel disegno (grafica, processore: 26-41 ms sull'Iris Xe)
 - **Evidenza**: 564-804 disegni (F3 dell'utente); scena 8.000-9.000 oggetti, 4.600-5.300 visibili, 21 luci, 1 ombra attiva
-  (sonda dei programmi). Profilo: `Js.render` 53 ms/fotogramma qui, di cui l'ombra (`sm.render` → `PesoOmbre`) 18 ms; i due
-  `Frustum.intersectsObject` sostituiti (peso_lontano r. 69299 di index.html, render.js r. 17310) 4,5 ms.
+  (sonda dei programmi). Profilo `--nodraw`: `renderer.render` 93 ms/fotogramma su 200 (47% del ciclo), di cui l'ombra
+  (`sm.render` → `PesoOmbre`) 30 ms e il caricamento delle uniform (`upload`/`setValue`) 17 ms; i due
+  `Frustum.intersectsObject` sostituiti (`peso_lontano.js` r. 20, render.js r. 17310) 5,6 ms.
 - **Cosa fare**: per gli oggetti congelati (FRZ) la sfera nel mondo calcolata una volta e riusata dal controllo d'inquadratura;
   le cose piccole fuori dalla camera dell'ombra con i livelli (le liste ci sono già in PesoOmbre); fondere ancora quello che
   resta sciolto (cfr. ANALISI_FLUIDITA §3). È il fronte della scheda video/disegni: qui solo la parte di processore.
@@ -204,7 +243,7 @@ Il guadagno è stimato riportando i rapporti misurati qui sui tempi F3 dell'uten
 
 | # | Cosa | Guadagno Iris Xe | Rischio | Lavoro |
 | --- | --- | --- | --- | --- |
-| 1 | **C1 a+b+e**: tetto vero nei graffiti (yield in `nearTris`, prova della scatola, niente disegno sul filo) | **−350-450 ms** nei punti con muri dipinti (2 → ~15-20 fps) | nessuno | piccolo |
+| 1 | **C1 b0+a+b+e**: in `nearTris` la prova delle foglie invece di quella per triangolo, tetto vero nei graffiti (yield fra le mesh), niente disegno sul filo | **−350-450 ms** nei punti con muri dipinti (2 → ~15-20 fps) | nessuno | piccolo |
 | 2 | **C2**: bottino a campioni clonati, un modello per fotogramma | scatto d'avvio −300 ms, −30-100 ms camminando | nessuno | piccolo |
 | 3 | **C3**: le ombre compilate nel caricamento | 8-9 scatti da 0,1-0,5 s nel primo minuto | nessuno | piccolo |
 | 4 | **C5** etichette risacca, **C11** timer, **C12** allocazioni | 3-6 ms | nessuno | piccolo |
