@@ -327,8 +327,11 @@ var Tasselli = (function () {
   async function apri(ti) {
     const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
-      const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
-      const m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); ST.decodMs += m.ms[1];
+      let m = S.preM; S.preM = null;   // [ottimizza-car] già aperto prima di R.init (anticipa)
+      if (m) { if (CFG.leggero) S.zip = null; }
+      else { const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
+        m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); }
+      ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
       const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids));
       const vivi = new Set(); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => { ids.add(q); vivi.add(q); }));
@@ -489,7 +492,24 @@ var Tasselli = (function () {
     ombre();
     const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
   }
-  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.st = 0; ST.buttati++; }
+  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.preM = null; S.st = 0; ST.buttati++; }
+  // [ottimizza-car] L'ANELLO VICINO PRIMA DI R.init. main.js lo chiama appena l'indice è pronto, col punto di partenza: i tasselli attorno si
+  // scaricano subito (tutti insieme, non tre per fotogramma) e i più vicini si aprono nei lavoratori mentre il filo della pagina fa R.init e
+  // la compilazione; le loro tessiture si scaricano e si aprono anche loro. Quando tick() li vede nell'impronta li monta senza aspettare.
+  // ?nofixvicino come prima
+  let ANT = false;
+  function anticipa(x, z) {
+    if (!ON || !IND || ANT || /[?&]nofixvicino\b/.test(Q)) return 0; ANT = true;
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    const RZ = (CFG.lontano || 150) + CFG.margine, RA = CFG.lontano ? 75 : 110; let n = 0;
+    IND.tasselli.map((t, ti) => [dist(t, x, z), ti]).filter(a => a[0] < RZ * KR).sort((a, b) => a[0] - b[0]).forEach(([d, ti]) => {
+      const S = STATO[ti]; if (S.st) return; n++; S.vicino = true;
+      scarica(ti).then(() => { if (S.st !== 2 || !S.zip || d > RA * KR || S.preM) return; const buf = S.zip.slice(0);
+        return chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]).then(m => { if (S.st !== 2) return; S.preM = m;
+          const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids)); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q))); ids.forEach(i => carica(i)); }); })
+        .catch(e => console.warn('[tasselli] anticipa', e)); });
+    ST.anticipati = n; return n;
+  }
 
   // ---------------- [tasselli2] i dati del gioco ----------------
   // le case: i record di dyn.buildings senza mesh (B.tas: render.js casaVisibile e il tetto sbiadito sanno che la casa è nel tassello);
@@ -657,7 +677,7 @@ var Tasselli = (function () {
     IND.tasselli.forEach((t, ti) => { const S = STATO[ti], d = dist(t, x, z), vede = inImpronta(t, F);
       if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) smonta(ti);
       if (d > CFG.butta && !vede && S.st && !TIENI.has(ti)) { butta(ti); return; }
-      if (vede && S.st === 2 && ST.inApertura < CFG.volo) apri(ti);
+      if (vede && S.st === 2 && (ST.inApertura < CFG.volo || (S.preM && !vicinoFatto))) apri(ti);   // [ottimizza-car] gli anticipati tutti insieme
       if (S.st || (d > CFG.carica && !vede) || (S.errori || 0) > 3) return;
       const [cx, cz] = centro(t), ax = cx - x, az = cz - z, l = Math.hypot(ax, az) || 1, dot = (ax * fx + az * fz) / l;
       L.push([(vede ? -1e4 : 0) + d - CFG.sguardo * Math.max(0, dot), ti, vede]); });
@@ -666,7 +686,8 @@ var Tasselli = (function () {
     // montare: il più vicino prima, dentro i tetti (larghi finché manca l'anello vicino)
     if (PRONTI.length) {
       PRONTI.sort((a, b) => dist(IND.tasselli[a], x, z) - dist(IND.tasselli[b], x, z));
-      const tetto = t0 + (vicinoFatto ? CFG.ms : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
+      const carico = !vicinoFatto && !(window.__tl && window.__tl.gioco) && !/[?&]nofixvicino\b/.test(Q);   // [ottimizza-car] dietro lo schermo di carico si monta più in fretta
+      const tetto = t0 + (vicinoFatto ? CFG.ms : carico ? 150 : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
       while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
@@ -678,7 +699,7 @@ var Tasselli = (function () {
   }
   function monta(ctx) {
     CTX = ctx; ST.t0 = Math.round(performance.now());
-    IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));   // [ottimizza-car] (anticipa li ha già)
     const R = ctx.R;
     // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
     for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
@@ -713,6 +734,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
+  return { anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
