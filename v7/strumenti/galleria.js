@@ -79,7 +79,7 @@ const srv = http.createServer((req, res) => {
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD', 'CAT'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
         window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
@@ -98,8 +98,29 @@ const srv = http.createServer((req, res) => {
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
       // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
       // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)
-      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); const url = cv.toDataURL("image/png"); try { window.__quote = window.__pv.R.profQuote ? window.__pv.R.profQuote(cv.width, cv.height) : null; } catch (e) { window.__quote = null; } res({ url, ms: Math.round(performance.now() - t0) }); }); }));   // [profondita] con la foto, la quota di ogni pixel dello stesso fotogramma
-      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
+      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); const url = cv.toDataURL("image/png"); try { window.__quote = window.__pv.R.profQuote ? window.__pv.R.profQuote(cv.width, cv.height) : null; } catch (e) { window.__quote = null; } try { window.__cat = window.__pv.R.catAlfa ? window.__pv.R.catAlfa() : null; } catch (e) { window.__cat = null; } res({ url, ms: Math.round(performance.now() - t0) }); }); }));   // [profondita] con la foto, la quota di ogni pixel dello stesso fotogramma
+      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf);
+      // [cat] LA MISURA PER CATEGORIA (ANALISI_STILE.md §3): la categoria di ogni pixel dall'alfa della scena (render.js catAlfa), riportata sullo
+      // schermo con la stessa piega della lente (R.gonfia); per categoria: quota del quadro, luminanza e saturazione medie, e per il suolo
+      // il rapporto fra luce e ombra (80° / 20° percentile); il contrasto fra persone e suolo
+      const catm = await pg.evaluate(async b64 => {
+        const C = window.__cat, R = window.__pv.R; if (!C || !R.gonfia) return null;
+        const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        const D = x.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, NOMI = ['', 'suolo', 'muri', 'tetti', 'persone', 'altro'], acc = {};
+        for (let y = 0; y < H; y += 2) for (let xx = 0; xx < W; xx += 2) {
+          const g = R.gonfia((xx + .5) / W, (y + .5) / H), px = Math.min(C.w - 1, Math.max(0, Math.floor(g[0] * C.w))), py = Math.min(C.h - 1, Math.max(0, Math.floor((1 - g[1]) * C.h)));
+          const k = NOMI[Math.round(C.a[py * C.w + px] / 255 * 5)] || 'altro', j = (y * W + xx) * 4, r = D[j] / 255, gg = D[j + 1] / 255, bb = D[j + 2] / 255;
+          const L = .2126 * r + .7152 * gg + .0722 * bb, mx = Math.max(r, gg, bb), sa = mx > 0 ? (mx - Math.min(r, gg, bb)) / mx : 0;
+          const A = acc[k] || (acc[k] = { n: 0, L: 0, s: 0, Ls: [] }); A.n++; A.L += L; A.s += sa; if (A.Ls.length < 60000) A.Ls.push(L); }
+        let tot = 0; for (const k in acc) tot += acc[k].n; const out = {};
+        for (const k in acc) { const A = acc[k], q = A.Ls.sort((a, b) => a - b), p = f => q[Math.min(q.length - 1, Math.floor(q.length * f))];
+          out[k] = { quota: +(A.n / tot * 100).toFixed(1), L: +(A.L / A.n).toFixed(2), sat: +(A.s / A.n).toFixed(2), L20: +p(.2).toFixed(2), L80: +p(.8).toFixed(2) }; }
+        if (out.suolo) out.suolo.luceOmbra = +(out.suolo.L80 / Math.max(.02, out.suolo.L20)).toFixed(2);
+        if (out.suolo && out.persone) out.personeSuolo = +(Math.max(out.suolo.L, out.persone.L) / Math.max(.02, Math.min(out.suolo.L, out.persone.L))).toFixed(2);
+        return out; }, buf.toString('base64'));
+      if (catm) console.log('   [cat] ' + s.nome + ' ' + Object.entries(catm).map(([k, v]) => typeof v === 'object' ? `${k} ${v.quota}% L ${v.L} sat ${v.sat}${v.luceOmbra ? ' luce/ombra ' + v.luceOmbra : ''}` : `${k} ${v}`).join(' · '));
+      if (catm) fs.writeFileSync(file.replace(/\.png$/, '_cat.json'), JSON.stringify(catm)); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
       const m = await pg.evaluate(async ({ b64, MIS }) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
         const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
