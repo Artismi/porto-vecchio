@@ -156,3 +156,24 @@ Da fare, in ordine: 6 (la strada), 5 (il colore riservato al personaggio e alle 
 committente; la scala), 4 (gli intonaci: al più tre tinte per quartiere, nelle tavolozze), 8 (il tratto che pesa, il bagliore dei neon),
 le forme (case e pali storti, zoccolo), il verde, la fotocopia sui segni. E la misura dei millisecondi sul portatile del committente
 (`?perf`, F3) prima e dopo questo giro: le 4 letture dell'alfa e il bordo delle persone costano poco, ma va visto sulla Iris Xe.
+
+## 8. Il diorama curato (riferimento: la casetta isometrica dipinta, 1 novembre)
+
+La sensazione da dare a chi gioca è quella di **un diorama fatto a mano**: un mondo piccolo, visto dall'alto, dove ogni angolo è stato curato.
+Il riferimento è un'illustrazione isometrica dipinta, con la casa nel bosco, l'orto e il ruscello. Ecco cosa fa, livello per livello, e dove il gioco è lontano.
+
+| Livello | Il riferimento | Il gioco adesso | Cosa si fa |
+|---|---|---|---|
+| **Modelli** | Volumi semplici ma con bordi consumati, cornici spesse, mattoni a vista a chiazze. | Le case sono buone; gli oggetti piccoli sono pochi e spigolosi (vasi low poly). | [vasi2]: vasi torniti con bordo e sottovaso, vasi smaltati, ceste, cassette, latte e appesi; piante con foglie vere. |
+| **Oggetti e disposizione** | Le cose stanno a grappoli sulle soglie: porta, balcone, parapetto del tetto, scala. Vasi di misure diverse vicini; spazi vuoti lasciati respirare. | Le cose sono in file regolari a passo fisso (vasi sui parapetti), negli stessi punti in ogni casa. | [vasi2]: grappoli di 2-5 vasi a seme, soglie, giardino sul tetto piano, posti lasciati vuoti. |
+| **Verde** | Il verde è più della metà del quadro, in molti valori (giallo-verde in luce, blu-verde in ombra). Le piante rompono gli spigoli fra muro e suolo. | Il verde è raro; il quadro è cotto e arancio. Gli spigoli muro e suolo sono puliti, da plastico. | Più piante a grappolo ([vasi2]); da fare: rampicanti ed erbacce al piede dei muri. |
+| **Luce** | Sole caldo e morbido; la luce cambia nel quadro (chiazze di luce fra le chiome). | La luce è uguale ovunque: un piano illuminato tutto allo stesso modo. | [diorama] L'aria che passa: ombre di nuvole lente, proiettate lungo il sole, senza retino. |
+| **Ombre e occlusione** | Ogni cosa si posa: scuro morbido dove il muro tocca la terra, sotto la gronda e sotto i vasi. Le ombre sono fredde e verdi-blu, mai nere. | Ombre colorate sì, ma niente occlusione (nel profilo leggero non c'è profondità); le cose galleggiano. | [diorama] Il piede e la gronda: il suolo sotto un muro, un oggetto o una persona si scurisce verso il freddo; il muro sotto il tetto prende l'ombra della gronda (dalla categoria, a schermo, due letture). |
+| **Spigoli e linee** | Quasi nessun contorno nero: gli spigoli in alto **prendono la luce** (una pennellata chiara), lo scuro sta solo nelle fessure. | La riga scura di pennarello su tutti gli spigoli. | [diorama] Lo spigolo di luce: dalla parte in alto (faccia verso il cielo di muro o tetto) lo spigolo schiarisce; la riga scura resta dalla parte in piedi. Nel regime si spegne (resta la linea tecnica). |
+| **Pennellate e superfici** | Intonaco a chiazze, colature sotto le finestre, tetti con coppi nuovi e vecchi e muschio. | C'erano già scala, macchie e polvere al piede; tetti e colature solo nella variante aaa (spenta). | [diorama] Il vissuto: tetti a chiazze col muschio, sporco che sale dal piede a colature, sempre acceso. |
+| **Colore** | Pochi toni dominanti: verde, cotto, crema, con un accento turchese (acqua) e pochi fiori saturi. | L'arancio dei tetti domina, specie la sera. | I fiori e i vasi smaltati portano gli accenti; il verde abbassa l'arancio. Da tarare dopo le foto. |
+| **Aria e profondità** | Il fondo (bosco) è scuro e incornicia il soggetto chiaro: la gerarchia è data dal contenuto. | La vignetta e la luce attorno al personaggio fanno il lavoro. | Resta così; le nuvole aggiungono variazione larga. |
+
+**Le manopole** sono in `DIOR` (render.js, sotto `CAT`, anche `window.__DIOR`): `nuvole`, `vissuto`, `piede`, `gronda` e `luceSpigolo`; `?nodiorama` spegne tutto.
+
+**Costo:** due letture in più nel passo finale; un rumore per le nuvole e due per il vissuto nei materiali. Non ci sono passate nuove.
