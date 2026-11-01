@@ -3322,7 +3322,8 @@ var Render = (function () {
     const RL = PHONE && scene.fog ? Math.max(70, Math.min(135, scene.fog.far + 8)) : 135, RB = PHONE ? RL + 20 : 190;   // [scarico] sul telefono i blocchi fino alla nebbia (oltre c'è solo il suo colore), e fuori 20 m dopo
     for (let cj = 0; cj < NCY; cj++) for (let ci = 0; ci < NCX; ci++) {
       const mx = Math.max(ci * W, Math.min(cx, (ci + 1) * W)), mz = Math.max(cj * W, Math.min(cz, (cj + 1) * W)), d = Math.hypot(mx - cx, mz - cz), key = ci + ',' + cj, ch = ISO.chunks.get(key);
-      if (ch && ch.vd) { ch.vd.visible = d < (LOWQ.on || PHONE ? 36 : 62); if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < (LOWQ.on || PHONE ? 26 : 44); }   // [verde]
+      if (ch && ch.vd) { const R0 = LOWQ.on || PHONE ? 36 : 62, R1 = LOWQ.on || PHONE ? 26 : 44, A = VDF.on ? 24 : 0; ch.vd.visible = d < R0 + A; if (ch.vd.userData.tap) ch.vd.userData.tap.visible = d < R1 + A;   // [ottimizza-car] il blocco si accende prima, i pixel in dissolvenza (vdMatF)
+        if (VDF.on) { VDF.u[0].value.set(cx, cz, R0 + A); VDF.u[1].value.set(cx, cz, R1 + A); } }   // [verde]
       if (ch && ch.nat) { const hi = ch.nat.children.length > 0 && d < (LOWQ.on || PHONE ? 34 : 58); ch.nat.visible = hi; if (ch.lt) ch.lt.visible = !hi; }   // [monte] bosco vero vicino
       if (d < RL) { if (!ch || ch.rev !== ISO.rev) { if (d < bd) { bd = d; best = [ci, cj, key]; } if (POMPA.on && (!ISO.job || ISO.job.key !== key)) CO.push([d, ci, cj, key]); } }   // [arrivo] la coda della pompa, per distanza
       else if (ch && d > RB) { dropChunk(ch); ISO.chunks.delete(key); }
@@ -9380,6 +9381,21 @@ var Render = (function () {
     m.emissive = new THREE.Color(CHIOMA5.luce); return (VD.mat5 = m);
   }
   const CHIOMA5 = { luce: '#121810' };
+  // [ottimizza-car] IL VERDE DEI BLOCCHI IN DISSOLVENZA: prima l'erba e i fiori di un blocco (64 m) si accendevano tutti insieme quando il bordo
+  // del blocco entrava a 36 m (62 sul computer): una striscia intera in un fotogramma. Ora il blocco si accende prima (VDF.r) e ogni pixel
+  // oltre il raggio attorno al punto guardato si scarta a retino negli ultimi VDF.f metri: il prato cresce in cerchio, senza strisce. Un
+  // materiale a parte (la copia di vdMat, che serve anche ai modelli), un programma solo per le due copie. ?nofixverde come prima
+  const VDF = { on: typeof location !== 'undefined' && !/[?&]nofixverde\b/.test(location.search), f: 14, u: [{ value: new THREE.Vector3(0, 0, 1e4) }, { value: new THREE.Vector3(0, 0, 1e4) }], m: [] };
+  function vdMatF(k) {
+    if (!VDF.on) return vdMat(); if (VDF.m[k]) return VDF.m[k];
+    const b = vdMat(), m = b.clone(), ob = b.onBeforeCompile, U = VDF.u[k];
+    m.onBeforeCompile = (sh, rd) => { ob.call(m, sh, rd); sh.uniforms.uVdC = U;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uVdC;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+        { float kV = clamp((uVdC.z - length(vWP.xz - uVdC.xy)) / ${VDF.f.toFixed(1)}, 0., 1.);
+          if (kV < 1. && kV <= fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))))) discard; }`); };
+    m.customProgramCacheKey = () => 'natMatB|vdF'; return (VDF.m[k] = m);
+  }
   function vdMat() {
     if (VD.mat) return VD.mat;
     const m = natMat(vdAtlas(), false); m.vertexColors = true; m.alphaTest = .45; m.side = THREE.DoubleSide; m.color.setRGB(1.3, 1.3, 1.25);
@@ -9797,7 +9813,7 @@ var Render = (function () {
       const [sp, vi] = key.split('|'), geo = Gm[sp][+vi]; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, y0 = 1e9, y1 = -1e9;
       arr.forEach(o => { o.y = groundH(o.x, o.z) - .03; x0 = Math.min(x0, o.x); x1 = Math.max(x1, o.x); z0 = Math.min(z0, o.z); z1 = Math.max(z1, o.z); y0 = Math.min(y0, o.y); y1 = Math.max(y1, o.y + 2); });
       const g2 = geo.clone(); g2.boundingSphere = new THREE.Sphere(new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), Math.hypot(x1 - x0, y1 - y0, z1 - z0) / 2 + 3);
-      const im = new THREE.InstancedMesh(g2, vdMat(), arr.length);
+      const im = new THREE.InstancedMesh(g2, vdMatF(sp[0] === 't' && sp[1] === sp[1].toUpperCase() ? 1 : 0), arr.length);   // [ottimizza-car] in dissolvenza
       arr.forEach((o, k) => { vE.set(o.rx, o.ry, o.rz, 'YXZ'); vQ.setFromEuler(vE); vV.set(o.x, o.y, o.z); vS.set(o.s, o.s * o.sy, o.s); vM4.compose(vV, vQ, vS); im.setMatrixAt(k, vM4); im.setColorAt(k, vC.set(o.col || '#ffffff')); });
       im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true;
       im.castShadow = !!VDSHADOW[sp] && !low; im.receiveShadow = !low; (sp[0] === 't' && sp[1] === sp[1].toUpperCase() ? tapG : grp).add(im);
