@@ -23571,7 +23571,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '34e6de062fa33917';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '0e6f7367a8b87c75';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -58541,15 +58541,18 @@ var Pennelli = (function () {
     return { stages: [snapC(c)], paths: [path.length ? path.filter((q, i) => i % 3 === 0).map(q => [q[0] + Wp * .1, q[1] + Hp * .3]) : [[Wp / 2, Hp / 2]]], radii: [Math.max(4, Hp * .3)], Wp, Hp, C: { q: .5 }, ppm };
   }
   // i tratti della tavoletta coi pennelli (rec.pen: il pennello scelto, rec.cfg: le manopole): nel riquadro Wp × Hp
+  // [tavola2] rec.st (se c'è): per ogni tratto la sua bomboletta, { c: colore, p: pennello, w: spessore in px }; senza, tutti col
+  // colore col, col pennello rec.pen e lo spessore rec.wpx (i disegni di prima)
   function drawStrokes(x, rec, Wp, Hp, col, r) {
-    const k = rec.frame ? Wp / rec.frame.w : 1, pen = rec.pen || 'spray', P = tune(pen, rec.cfg), wpx = (rec.wpx || 8) * k, heavy = [], path = [];
-    rec.strokes.forEach(s0 => { const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q));
-      if (pen === 'roller') heavy.push(...roller(x, pts, col, wpx, P, r));
-      else if (pen === 'marker') heavy.push(...marker(x, pts, col, wpx, P, r));
-      else heavy.push(...spray(x, pts, col, wpx, P, r)); });
-    const nd = Math.round(heavy.length * P.drip); heavy.sort((a, b) => b[3] - a[3]);
-    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (pen === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P.drip) * (pen === 'roller' ? 1.6 : 1)), col, r); }
-    return { path, W: wpx };
+    const k = rec.frame ? Wp / rec.frame.w : 1, pen0 = rec.pen || 'spray', P0 = tune(pen0, rec.cfg), SK = rec.st, heavy = [], path = [];
+    let wmax = (rec.wpx || 8) * k;
+    rec.strokes.forEach((s0, i) => { const q = SK && SK[i] || {}, c = q.c || col, pen = q.p || pen0, P = pen === pen0 ? P0 : tune(pen, rec.cfg), wpx = (q.w || rec.wpx || 8) * k;
+      const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q)); if (q.w) wmax = Math.max(wmax, wpx);
+      const h = pen === 'roller' ? roller(x, pts, c, wpx, P, r) : pen === 'marker' ? marker(x, pts, c, wpx, P, r) : spray(x, pts, c, wpx, P, r);
+      for (const e of h) { e[4] = c; e[5] = pen; heavy.push(e); } });
+    const nd = Math.round(heavy.length * P0.drip); heavy.sort((a, b) => b[3] - a[3]);
+    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (h[5] === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P0.drip) * (h[5] === 'roller' ? 1.6 : 1)), h[4] || col, r); }
+    return { path, W: wmax };
   }
   // IL LAVORO COI PENNELLI: il disegno di writer_arte.js (o il roller, l'adesivo, i tratti della tavoletta coi pennelli), poi
   // ogni tappa passa dal pennello del lavoro (polvere, colature, grana del muro, età). Lo chiamano il disegnatore a parte e writing.js
@@ -61974,15 +61977,18 @@ var Pennelli = (function () {
     return { stages: [snapC(c)], paths: [path.length ? path.filter((q, i) => i % 3 === 0).map(q => [q[0] + Wp * .1, q[1] + Hp * .3]) : [[Wp / 2, Hp / 2]]], radii: [Math.max(4, Hp * .3)], Wp, Hp, C: { q: .5 }, ppm };
   }
   // i tratti della tavoletta coi pennelli (rec.pen: il pennello scelto, rec.cfg: le manopole): nel riquadro Wp × Hp
+  // [tavola2] rec.st (se c'è): per ogni tratto la sua bomboletta, { c: colore, p: pennello, w: spessore in px }; senza, tutti col
+  // colore col, col pennello rec.pen e lo spessore rec.wpx (i disegni di prima)
   function drawStrokes(x, rec, Wp, Hp, col, r) {
-    const k = rec.frame ? Wp / rec.frame.w : 1, pen = rec.pen || 'spray', P = tune(pen, rec.cfg), wpx = (rec.wpx || 8) * k, heavy = [], path = [];
-    rec.strokes.forEach(s0 => { const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q));
-      if (pen === 'roller') heavy.push(...roller(x, pts, col, wpx, P, r));
-      else if (pen === 'marker') heavy.push(...marker(x, pts, col, wpx, P, r));
-      else heavy.push(...spray(x, pts, col, wpx, P, r)); });
-    const nd = Math.round(heavy.length * P.drip); heavy.sort((a, b) => b[3] - a[3]);
-    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (pen === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P.drip) * (pen === 'roller' ? 1.6 : 1)), col, r); }
-    return { path, W: wpx };
+    const k = rec.frame ? Wp / rec.frame.w : 1, pen0 = rec.pen || 'spray', P0 = tune(pen0, rec.cfg), SK = rec.st, heavy = [], path = [];
+    let wmax = (rec.wpx || 8) * k;
+    rec.strokes.forEach((s0, i) => { const q = SK && SK[i] || {}, c = q.c || col, pen = q.p || pen0, P = pen === pen0 ? P0 : tune(pen, rec.cfg), wpx = (q.w || rec.wpx || 8) * k;
+      const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q)); if (q.w) wmax = Math.max(wmax, wpx);
+      const h = pen === 'roller' ? roller(x, pts, c, wpx, P, r) : pen === 'marker' ? marker(x, pts, c, wpx, P, r) : spray(x, pts, c, wpx, P, r);
+      for (const e of h) { e[4] = c; e[5] = pen; heavy.push(e); } });
+    const nd = Math.round(heavy.length * P0.drip); heavy.sort((a, b) => b[3] - a[3]);
+    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (h[5] === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P0.drip) * (h[5] === 'roller' ? 1.6 : 1)), h[4] || col, r); }
+    return { path, W: wmax };
   }
   // IL LAVORO COI PENNELLI: il disegno di writer_arte.js (o il roller, l'adesivo, i tratti della tavoletta coi pennelli), poi
   // ogni tappa passa dal pennello del lavoro (polvere, colature, grana del muro, età). Lo chiamano il disegnatore a parte e writing.js
@@ -63771,143 +63777,65 @@ var Writing = (function () {
     } catch (e) { console.warn('[Writing] tavoletta', e); return false; }
   }
   // il pannello: la foto a tutto schermo, il disegno sopra, gli strumenti
-  // [tavoletta] Rifatto: la foto ha il contesto attorno (scurito) e il riquadro dove si dipinge in giallo; la misura si sceglie con un
-  // tocco (tag, throw-up, pezzo, burner: la foto si rifà attorno al punto toccato); il tratto si vede subito com'è nel gioco
-  // (spessore minimo a schermo, la resa del pennello mentre disegni); «Salva sul muro» è sempre in vista, in basso, e se non può
-  // salvare dice perché. Le stesse regole di prima per la vernice, la fama, i crossaggi.
+  // [tavola2] Il pannello vero sta in tavola_ui.js (la tela grande, una barra a icone, ogni tratto con la sua bomboletta); qui le
+  // regole: la foto e il riquadro, la misura che rifà la foto (tag, throw-up, pezzo, burner attorno al punto toccato), il nome
+  // del lavoro, la vernice, il salvataggio sul muro (tavSave). Le stesse regole di prima per la vernice, la fama, i crossaggi.
   const TAV_SIZES = [['tag', 'Tag', 1.5, .75], ['throw', 'Throw-up', 2.7, 1.3], ['pezzo', 'Pezzo', 4.8, 2.05], ['burner', 'Burner', 6.6, 2.5]];
   function tavPad(st, shot, Rc, A) {
-    if (typeof document === 'undefined') return;
-    const TOUCH = matchMedia('(pointer: coarse)').matches, SMALL_UI = innerWidth < 560 || innerHeight < 480;   // [graffiti3] sul telefono (e nel Game Boy piccolo): tutto da dito
-    let In = shot.inner || { x: 0, y: 0, w: shot.width, h: shot.height }, pw = In.w, ph = In.h;
-    const strokes = []; let cur = null, tool = A.tool, colI = Math.max(0, TAV_COLS.findIndex(c => c[0] === A.col)), cm = tool === 'pennarello' ? 2.5 : 4;
-    // [graffiti] i pennelli regolabili (pennelli.js): la bomboletta col suo tappo (standard, fat, skinny), il rullo, il pennarello; il flusso e le colature
-    const PNs = PN ? [['spray', 'Bomboletta'], ['fat', 'Fat cap'], ['skinny', 'Skinny cap'], ['roller', 'Rullo'], ['marker', 'Pennarello']] : null;
-    let pen = tool === 'pennarello' ? 'marker' : 'spray', flow = PN ? PN.PENNELLI[pen].flow : 1, dripK = PN ? PN.PENNELLI[pen].drip : 0;
-    const el = (t, css, par) => { const e = document.createElement(t); if (css) e.style.cssText = css; if (par) par.appendChild(e); return e; };
-    const box = el('div', 'position:fixed;inset:0;z-index:9999;background:rgba(10,9,8,.96);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:' + (SMALL_UI ? 4 : 8) + 'px;font:' + (SMALL_UI ? 13 : 14) + 'px system-ui,sans-serif;color:#eee;user-select:none;-webkit-user-select:none;touch-action:none;padding:max(6px,env(safe-area-inset-top,0)) 6px max(6px,env(safe-area-inset-bottom,0));box-sizing:border-box');
-    const head = el('div', 'text-align:center;line-height:1.35;flex:none', box);
-    const stage = el('div', 'flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center', box);
-    const wrap = el('div', 'position:relative;touch-action:none', stage);
-    const bg = el('canvas', 'display:block;width:100%;height:100%', wrap);
-    const pane = el('div', 'position:absolute;box-shadow:0 0 0 2px #ffe14a,0 0 0 4px rgba(0,0,0,.6);touch-action:none', wrap);   // il riquadro dove si dipinge
-    const ink = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%', pane), live = el('canvas', 'position:absolute;left:0;top:0;width:100%;height:100%;cursor:crosshair', pane);
-    const rowT = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box);
-    const rowA = el('div', 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;flex:none', box), rowS = el('span', 'display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center;margin-right:10px', rowA);   // la misura e le azioni sulla stessa riga
-    const info = el('div', 'min-height:1.3em;color:#ffcf6a;text-align:center;flex:none', box);
-    const btn = (t, f, hot, par, big) => { const b = el('button', 'padding:' + (TOUCH || SMALL_UI ? '10px 14px;font-size:15px;' : '7px 14px;') + 'border-radius:6px;border:1px solid ' + (hot ? '#ff7a5c' : '#555') + ';cursor:pointer;color:#fff;font-weight:' + (big ? 700 : 400) + ';background:' + (hot ? '#d8402a' : '#34312c'), par || rowA); b.textContent = t; b.onclick = e => { e.preventDefault(); f(); }; return b; };
-    // la foto e il riquadro
-    function setShot(sh) {
-      In = sh.inner || { x: 0, y: 0, w: sh.width, h: sh.height }; pw = In.w; ph = In.h;
-      bg.width = sh.width; bg.height = sh.height; const x = bg.getContext('2d'); x.drawImage(sh, 0, 0);
-      x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, 0, sh.width, In.y); x.fillRect(0, In.y + In.h, sh.width, sh.height - In.y - In.h); x.fillRect(0, In.y, In.x, In.h); x.fillRect(In.x + In.w, In.y, sh.width - In.x - In.w, In.h);   // fuori dal riquadro: scurito
-      pane.style.left = In.x / sh.width * 100 + '%'; pane.style.top = In.y / sh.height * 100 + '%'; pane.style.width = In.w / sh.width * 100 + '%'; pane.style.height = In.h / sh.height * 100 + '%';
-      [ink, live].forEach(c => { c.width = pw; c.height = ph; });
-      fit();
-    }
-    const fit = () => { const r = stage.getBoundingClientRect(), Wv = Math.max(80, r.width || innerWidth - 12), Hv = Math.max(80, r.height || innerHeight * .6), k = Math.min(Wv / bg.width, Hv / bg.height); wrap.style.width = bg.width * k + 'px'; wrap.style.height = bg.height * k + 'px'; };
-    addEventListener('resize', fit);
-    // la misura: si rifà la foto attorno al punto toccato (il disegno fatto si perde: lo dice)
-    let sizeK = A.size || null; const sizeB = [];
-    function reshoot(k) {
-      const S0 = TAV_SIZES.find(q => q[0] === k); if (!S0) return;
-      if (strokes.length && !reshoot.ok) { reshoot.ok = true; info.textContent = 'Cambiando misura il disegno si cancella: tocca di nuovo per confermare.'; setTimeout(() => { reshoot.ok = false; }, 2500); return; }
-      reshoot.ok = false;
-      const R0 = { W: S0[2], H: S0[3], c: { x: A.pt.x, y: A.pt.y, z: A.pt.z } }, R1 = tavFit(R0, A), sh = tavShot(R1, A.n, A.r); if (!sh) return;
-      Rc = R1; strokes.length = 0; cur = null; sizeK = k; setShot(sh); upd(); drawLive(); render();
-      info.textContent = R1.W < S0[2] - .05 || R1.H < S0[3] - .05 ? `Qui c'è posto per ${R1.W.toFixed(1)} × ${R1.H.toFixed(1)} m (il muro finisce o c'è un'apertura).` : '';
-    }
-    el('span', 'color:#aaa', rowS).textContent = 'Misura';
-    TAV_SIZES.forEach(([k, t]) => { const b = btn(t, () => reshoot(k), false, rowS); b.dataset.k = k; sizeB.push(b); });
-    // gli strumenti: il pennello, i colori (tutti in vista: un clic o i tasti 1-8), lo spessore
-    let ps = null, fl = null, dr = null;
-    if (PNs) {
-      ps = el('select', 'padding:6px;border-radius:5px;background:#34312c;color:#fff;border:1px solid #555' + (TOUCH || SMALL_UI ? ';font-size:15px' : ''), rowT); PNs.forEach(([k, t]) => { const o = el('option', '', ps); o.value = k; o.textContent = t; }); ps.value = pen;
-      ps.onchange = () => { const nt = ps.value === 'marker' ? 'pennarello' : 'bomboletta'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; ps.value = pen; return; } pen = ps.value; tool = nt; flow = PN.PENNELLI[pen].flow; dripK = PN.PENNELLI[pen].drip; if (fl) fl.value = Math.round(flow * 100); if (dr) dr.value = Math.round(dripK * 100);
-        sl.max = pen === 'roller' ? 60 : 30; if (pen === 'roller' && cm < 12) cm = 20; if (pen === 'skinny' && cm > 4) cm = 2; if (pen === 'fat' && cm < 6) cm = 8; sl.value = cm; upd(); render(); };
-    } else { const tb = btn('', () => { const nt = tool === 'pennarello' ? 'bomboletta' : 'pennarello'; if (OG() && !(inv0()[nt] > 0)) { info.textContent = nt === 'bomboletta' ? 'Non hai bombolette.' : 'Non hai pennarelli.'; return; } tool = nt; pen = nt === 'pennarello' ? 'marker' : 'spray'; upd(); render(); }, false, rowT); tb.dataset.tool = 1; }
-    const pal = el('span', 'display:inline-flex;gap:' + (TOUCH || SMALL_UI ? 6 : 4) + 'px', rowT);
-    const sw = TAV_COLS.map((c, i) => { const b = el('button', (TOUCH || SMALL_UI ? 'width:34px;height:34px;' : 'width:26px;height:26px;') + 'border-radius:50%;cursor:pointer;border:2px solid #222;padding:0;background:' + c[0], pal); b.title = c[1] + ' (' + (i + 1) + ')'; b.onclick = () => { colI = i; upd(); render(); }; return b; });
-    const sl = el('input'); sl.type = 'range'; sl.min = 1; sl.max = 30; sl.value = cm; sl.style.width = SMALL_UI ? '90px' : '120px'; sl.oninput = () => { cm = +sl.value; upd(); render(); };
-    const lab = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); lab.append('spessore ', sl); const cmT = el('span', 'color:#fff;min-width:3.2em', lab);
-    if (PNs && !SMALL_UI) {   // [graffiti] le manopole del pennello (sul piccolo restano quelle del pennello scelto)
-      const mk = (t, v, f) => { const r = el('input'); r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(v * 100); r.style.width = '90px'; r.oninput = () => { f(+r.value / 100); render(); }; const l = el('label', 'color:#bbb;display:inline-flex;align-items:center;gap:4px', rowT); l.append(t + ' ', r); return r; };
-      fl = mk('flusso', flow, v => { flow = v; }); dr = mk('colature', dripK, v => { dripK = v; });
-    }
-    btn('↶ Annulla', () => { strokes.pop(); drawLive(); render(); upd(); });
-    btn('Pulisci', () => { strokes.length = 0; drawLive(); render(); upd(); });
-    btn('Esci', () => close());
-    const save = btn('Salva sul muro', () => apply(), true, rowA, true);
-    // in cima: dove sei, quanto è grande, che lavoro diventa, quante bombolette
-    const W0 = S(st), styleOf = () => tool === 'pennarello' ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag';
+    if (typeof document === 'undefined' || typeof TavolaUI === 'undefined') { tavClear(); return; }
+    const inv0 = () => (OG() ? OG().inv(st) : {}) || {}, W0 = S(st);
     let place = ''; try { const q = G.nearestPlace ? G.nearestPlace(Rc.c.x, Rc.c.z) : null; place = q && q.name || ''; } catch (e) { }
-    const inv0 = () => (OG() ? OG().inv(st) : {}) || {};
-    const upd = () => {
-      const tb = rowT.querySelector('button[data-tool]'); if (tb) tb.textContent = tool === 'pennarello' ? 'Pennarello' : 'Bomboletta';
-      sw.forEach((b, i) => { b.style.borderColor = i === colI ? '#ffe14a' : '#222'; b.style.transform = i === colI ? 'scale(1.18)' : ''; });
-      sizeB.forEach(b => { const on = b.dataset.k === sizeK; b.style.background = on ? '#5a4a1a' : '#34312c'; b.style.borderColor = on ? '#ffe14a' : '#555'; });
-      const sty = STYLES[styleOf()], inv = inv0(), have = tool === 'pennarello' ? inv.pennarello || 0 : inv.bomboletta || 0;
-      head.innerHTML = '';
-      const t1 = el('div', 'font-size:' + (SMALL_UI ? 14 : 16) + 'px;color:#ffe14a', head); t1.textContent = `${sty ? sty.nome[0].toUpperCase() + sty.nome.slice(1) : 'Tavoletta'} di ${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''} · ${Rc.W.toFixed(1)} × ${Rc.H.toFixed(1)} m${place && !SMALL_UI ? ' · ' + place : ''}`;
-      const t2 = el('div', 'color:#aaa;font-size:12px', head); t2.textContent = `${TOUCH ? 'Disegna col dito dentro il riquadro giallo.' : 'Disegna dentro il riquadro giallo (la pressione della penna conta). 1-8 colori · Ctrl+Z annulla · Invio salva · Esc esce.'} ${tool === 'pennarello' ? 'Pennarelli' : 'Bombolette'}: ${have}`;
-      cmT.textContent = cm + ' cm';
-      save.style.opacity = strokes.length && have > 0 ? '1' : '.55';
-    };
-    box.appendChild(info);
-    document.body.appendChild(box); setShot(shot); upd(); requestAnimationFrame(fit);
-    const pxm = () => pw / Rc.W, wpx = () => cm / 100 * pxm();
-    const pos = e => { const b = live.getBoundingClientRect(); return [(e.clientX - b.left) / b.width * pw, (e.clientY - b.top) / b.height * ph]; };
-    live.addEventListener('pointerdown', e => { e.preventDefault(); live.setPointerCapture(e.pointerId); const [x, y] = pos(e); cur = [[x, y, e.timeStamp, e.pressure || .5]]; strokes.push(cur); info.textContent = ''; drawLive(); });
-    live.addEventListener('pointermove', e => { if (!cur) return; const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e]; (evs.length ? evs : [e]).forEach(ev => { const [x, y] = pos(ev), l = cur[cur.length - 1]; if (hyp(x - l[0], y - l[1]) < 1.5) return; cur.push([x, y, ev.timeStamp, ev.pressure || .5]); }); drawLive(); });
-    const end = () => { if (!cur) return; cur = null; drawLive(); render(); upd(); }; live.addEventListener('pointerup', end); live.addEventListener('pointercancel', end);
-    // mentre si disegna: il tratto pieno, mai più sottile di 3 px a schermo (prima su un riquadro grande era un filo da 1 px, e
-    // col nero su un muro scuro non si vedeva); appena staccato: la resa del gioco
-    function drawLive() {
-      const x = live.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!cur) return;
-      const k = live.getBoundingClientRect().width / pw || 1, lw = Math.max(wpx(), 3 / k), col = TAV_COLS[colI][0];
-      x.lineCap = x.lineJoin = 'round'; x.beginPath(); cur.forEach((q, i) => i ? x.lineTo(q[0], q[1]) : x.moveTo(q[0], q[1]));
-      const lum = parseInt(col.slice(1, 3), 16) * .3 + parseInt(col.slice(3, 5), 16) * .59 + parseInt(col.slice(5, 7), 16) * .11;
-      x.strokeStyle = lum < 90 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.45)'; x.lineWidth = lw + 2 / k; x.stroke();   // il bordo che lo stacca dal muro
-      x.strokeStyle = col; x.lineWidth = lw; x.stroke();
-    }
-    const rec = () => Object.assign({ strokes: strokes.map(s => s.map(q => [q[0], q[1], q[2] - strokes[0][0][2], q[3]])), wpx: wpx(), frame: { w: pw, h: ph } }, PNs ? { pen, cfg: { flow, drip: dripK } } : {});
-    function render() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!strokes.length) return; try { if (PNs) PN.drawStrokes(x, rec(), pw, ph, TAV_COLS[colI][0], mulberry(11)); else WriterMano.drawRecorded(x, rec(), { seed: 7 }, pw, ph, mulberry(11), TAV_COLS[colI][0], tool === 'pennarello' ? 'mtag' : 'tag'); } catch (e) { console.error(e); } }
-    const keys = e => { e.stopPropagation(); if (e.type !== 'keydown') return;
-      if (e.key === 'Escape') close(); else if (e.key === 'Enter') { e.preventDefault(); apply(); }
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); strokes.pop(); drawLive(); render(); upd(); }
-      else if (/^[1-8]$/.test(e.key)) { colI = +e.key - 1; upd(); render(); } }; addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
-    function close() { removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true); removeEventListener('resize', fit); box.remove(); TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; }
-    function apply() {
-      if (!strokes.length) { info.textContent = 'Prima disegna qualcosa dentro il riquadro giallo (Esci per uscire).'; return; }
-      if (OG() && !(inv0()[tool] > 0)) { info.textContent = tool === 'bomboletta' ? 'Senza bombolette non si salva: comprane in ferramenta (o scegli il pennarello).' : 'Senza pennarello non si salva.'; return; }
-      try {
-        const W = S(st), inv = OG() ? OG().inv(st) : null, r = rec(), pxM = pxm();
-        let len = 0; r.strokes.forEach(s => s.forEach((q, i) => { if (i) len += hyp(q[0] - s[i - 1][0], q[1] - s[i - 1][1]); })); const lenM = len / pxM, cmM = cm / 100;
-        // la vernice: la bomboletta copre un po' meno di un metro quadro di tratto, il pennarello una ventina di metri di linea
-        if (inv && tool === 'bomboletta') { W.canUse = (W.canUse || 0) + lenM * cmM / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
-        if (inv && tool === 'pennarello') { W.mkUse = (W.mkUse || 0) + lenM / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
-        const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
-        let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }   // [tavoletta] lontano da tutto nearestPlace non trova niente: prima qui il salvataggio si fermava
-        const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col: TAV_COLS[colI][0], rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
-        nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
-        nw.gfxRect.u = A.u.clone();
-        const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
-        if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
-          const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
-          Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
-        else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
-        else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
-        addWork(st, nw); let m = null; try { m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
-        try { finish(st, nw); } catch (e) { console.warn('[Writing] tavoletta, fine', e); nw.done = true; nw.prog = 1; }   // [tavoletta] la città che reagisce non deve fermare il salvataggio
-        try { G.emit(st, 'graffito'); } catch (e) { }
-        if (!saveOnWall(nw)) { nw.gfxFail = 0; W.__dirty = true; }   // il giro dei graffiti lo rimette al suo posto
-        close();
-        try { G.feed(st, `${STYLES[nw.style].nome[0].toUpperCase() + STYLES[nw.style].nome.slice(1)} salvato sul muro.`, 'good'); } catch (e) { }
-      } catch (e) { console.warn('[Writing] tavoletta', e); info.textContent = 'Non sono riuscito a salvarlo: riprova (o Esci).'; }
-    }
-    // [tavoletta] i tasti del Game Boy (main.js conMap): A salva, B esce, la croce cambia colore (◄ ►) e spessore (▲ ▼), annulla col tasto bomboletta
-    TAV.api = { apply, close, undo: () => { strokes.pop(); drawLive(); render(); upd(); }, col: d => { colI = (colI + d + TAV_COLS.length) % TAV_COLS.length; upd(); render(); info.textContent = 'Colore: ' + TAV_COLS[colI][1]; }, size: d => { cm = clamp(cm + d, 1, +sl.max); sl.value = cm; upd(); render(); } };
-    TAV.pad = box; GFX.held = false;
+    const api = TavolaUI.open({
+      shot, W: Rc.W, H: Rc.H, cols: TAV_COLS, col: A.col, tool: A.tool, pens: !!PN, PN, WM: typeof WriterMano !== 'undefined' ? WriterMano : null, mulberry,
+      sizes: TAV_SIZES, sizeK: A.size || null, luogo: place, chi: `${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`,
+      has: t => !OG() || inv0()[t] > 0,
+      conta: () => { if (!OG()) return null; const i = inv0(); return { bomboletta: i.bomboletta || 0, pennarello: i.pennarello || 0 }; },
+      titolo: mk => { const sty = STYLES[mk ? 'mtag' : Rc.W * Rc.H > 3.5 ? 'pezzo' : Rc.W * Rc.H > 1.2 ? 'throw' : 'tag']; return sty ? sty.nome : 'tavoletta'; },
+      // la misura: si rifà la foto attorno al punto toccato (il pannello avvisa che il disegno si perde)
+      reshoot: k => {
+        const S0 = TAV_SIZES.find(q => q[0] === k); if (!S0) return null;
+        const R0 = { W: S0[2], H: S0[3], c: { x: A.pt.x, y: A.pt.y, z: A.pt.z } }, R1 = tavFit(R0, A), sh = tavShot(R1, A.n, A.r); if (!sh) return null;
+        Rc = R1; return { shot: sh, W: R1.W, H: R1.H, nota: R1.W < S0[2] - .05 || R1.H < S0[3] - .05 ? `Qui c'è posto per ${R1.W.toFixed(1)} × ${R1.H.toFixed(1)} m (il muro finisce o c'è un'apertura).` : '' };
+      },
+      save: r => tavSave(st, Rc, A, r),
+      close: () => { TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; },
+    });
+    TAV.api = api; TAV.pad = api.box; GFX.held = false;
+  }
+  // [tavola2] il salvataggio: r è il disegno (rec: i tratti nel riquadro di r.frame.w × r.frame.h px; r.st, per ogni tratto il colore c,
+  // il tappo p, lo spessore w in px). La vernice: la bomboletta (ogni tappo e il rullo) copre un po' meno di un metro quadro di
+  // tratto, il pennarello una ventina di metri di linea. Il lavoro prende il colore che copre di più. Ritorna { ok } o { msg }
+  function tavSave(st, Rc, A, r) {
+    if (!r || !r.strokes || !r.strokes.length) return { msg: 'Prima disegna qualcosa dentro il riquadro giallo.' };
+    const inv = OG() ? OG().inv(st) : null, pxM = (r.frame && r.frame.w || 1) / Rc.W, SK = r.st || [], peso = {};
+    let cop = 0, linea = 0, spray = false, mk = false;
+    r.strokes.forEach((s, i) => { const q = SK[i] || {}; let l = 0; for (let j = 1; j < s.length; j++) l += hyp(s[j][0] - s[j - 1][0], s[j][1] - s[j - 1][1]); const lenM = l / pxM, cmM = (q.w || r.wpx || 8) / pxM;
+      if ((q.p || r.pen) === 'marker') { mk = true; linea += lenM; } else { spray = true; cop += lenM * cmM; }
+      const c = q.c || TAV_COLS[0][0]; peso[c] = (peso[c] || 0) + Math.max(lenM, .01) * cmM; });
+    if (inv && spray && !(inv.bomboletta > 0)) return { msg: 'Senza bombolette non si salva: comprane in ferramenta (o usa il pennarello).' };
+    if (inv && mk && !(inv.pennarello > 0)) return { msg: 'Senza pennarello non si salva.' };
+    try {
+      const W = S(st), tool = spray ? 'bomboletta' : 'pennarello', col = Object.keys(peso).sort((a, b) => peso[b] - peso[a])[0] || TAV_COLS[0][0];
+      if (inv && spray) { W.canUse = (W.canUse || 0) + cop / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
+      if (inv && mk) { W.mkUse = (W.mkUse || 0) + linea / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
+      const area = Rc.W * Rc.H, style = tool === 'pennarello' ? 'mtag' : area > 3.5 ? 'pezzo' : area > 1.2 ? 'throw' : 'tag', THREE = T3();
+      let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }   // [tavoletta] lontano da tutto nearestPlace non trova niente: prima qui il salvataggio si fermava
+      const nw = { by: 'player', aka: playerAka(st), crew: W.crew, style, tool, col, rec: r, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) };
+      nw.gfxRect = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
+      nw.gfxRect.u = A.u.clone();
+      const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
+      if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };   // [writer] sul treno fermo: il disegno diventa un lavoro della fiancata
+        const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
+        Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
+      else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }   // il carro fermo: il velo parte con lui
+      else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
+      addWork(st, nw); let m = null; try { m = nw.surf === 'treno' ? judgeTrain(st, nw) : judge(st, nw); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+      try { finish(st, nw); } catch (e) { console.warn('[Writing] tavoletta, fine', e); nw.done = true; nw.prog = 1; }   // [tavoletta] la città che reagisce non deve fermare il salvataggio
+      try { G.emit(st, 'graffito'); } catch (e) { }
+      if (!saveOnWall(nw)) { nw.gfxFail = 0; W.__dirty = true; }   // il giro dei graffiti lo rimette al suo posto
+      try { G.feed(st, `${STYLES[nw.style].nome[0].toUpperCase() + STYLES[nw.style].nome.slice(1)} salvato sul muro.`, 'good'); } catch (e) { }
+      return { ok: true };
+    } catch (e) { console.warn('[Writing] tavoletta', e); return { msg: 'Non sono riuscito a salvarlo: riprova (o esci).' }; }
   }
 
   // ---------------- IL GIOCATORE: il colpo, il lavoro sotto il puntatore ----------------
@@ -64218,6 +64146,435 @@ var Writing = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = Writing;
 </script>
+<script data-m="tavola_ui">/* Porto Vecchio — la tavoletta dei graffiti, il pannello (v7, [tavola2]).
+   Rifatto da capo per il telefono: prima era un muro di pulsanti, menu a tendina e cursori, il riquadro dove si disegna restava
+   piccolo e cambiare bomboletta ricolorava tutto il disegno. Ora:
+   - LA TELA È TUTTO. Il riquadro giallo riempie lo schermo (il contesto della foto attorno si vede scurito ai bordi); due dita
+     spostano e ingrandiscono (la rotella sul computer), un dito spruzza. Niente scorrimento della pagina (touch-action: none).
+   - UNA BARRA SOLA, A ICONE. In verticale in basso, in orizzontale (e sul computer) sul lato destro. Esci, annulla, LA
+     BOMBOLETTA GRANDE (del colore e col tappo di adesso: toccala per il tappo e lo spessore), otto barattoli di colore e «+»
+     per gli altri, «⋯» per il resto (la misura del riquadro, il flusso, le colature, pulisci), la spunta che salva.
+   - OGNI TRATTO HA LA SUA BOMBOLETTA: colore, tappo e spessore restano sul tratto (rec.st, pennelli.js drawStrokes); si sceglie
+     una bomboletta, si spruzza, si cambia, si spruzza. L'ultima scelta resta anche alla prossima apertura.
+   - LEGGERA: una manciata di nodi, le icone SVG in linea, lo stile una volta sola. Il tratto in corso si disegna su una tela
+     sopra (alla risoluzione dello schermo × devicePixelRatio, una volta per fotogramma con tutti i punti raccolti, anche quelli
+     coalescenti); la resa vera del pennello si aggiunge solo al tratto finito (non si ridisegna tutto a ogni tratto); la vista
+     si sposta con transform (niente layout), le misure dello schermo arrivano dal ResizeObserver.
+   writing.js (tavPad) dà la foto, il riquadro e le regole (la vernice, il salvataggio, la misura che rifà la foto); qui c'è
+   solo il pannello. TavolaUI.open(ctl) ritorna l'api che usano i tasti del Game Boy (main.js conMap): apply, close, undo,
+   col(±1), size(±1). */
+var TavolaUI = (function () {
+  'use strict';
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v)), hyp = Math.hypot;
+  // i colori oltre gli otto della fila: anni '80, la strada, i fluo e il cromo
+  const PIU = [['#ff4fa3', 'rosa fluo'], ['#35e6ff', 'ciano'], ['#7a3ac8', 'viola'], ['#9ad83a', 'lime'], ['#ffe94a', 'giallo fluo'], ['#ff6a2a', 'arancio fluo'],
+    ['#b8bcc4', 'cromo'], ['#c8a040', 'oro'], ['#7ab8e8', 'azzurro'], ['#1a5a3a', 'verde scuro'], ['#7a1e22', 'bordeaux'], ['#6a4a2a', 'marrone'],
+    ['#6e6a72', 'grigio'], ['#f0b8a0', 'pesca'], ['#1a8a8a', 'petrolio'], ['#2a2a6a', 'blu notte']];
+  // i tappi (pennelli.js PENNELLI): lo spessore di partenza, il massimo, chi consuma
+  const TAPPI = { spray: { n: 'cap standard', b: 'standard', cm: 4, max: 30 }, fat: { n: 'fat cap', b: 'fat', cm: 8, max: 30 }, skinny: { n: 'skinny cap', b: 'skinny', cm: 2, max: 12 }, roller: { n: 'rullo', b: 'rullo', cm: 20, max: 60 }, marker: { n: 'pennarello', b: 'marker', cm: 2.5, max: 12 } };
+  const ATTR = k => TAPPI[k] || TAPPI.spray;
+  // l'ultima bomboletta scelta: resta per la prossima volta (anche dopo un ricarico, se il browser lo permette)
+  const MEM = { col: null, pen: null, cm: {}, gesti: false };
+  try { const m = JSON.parse(localStorage.getItem('pv_tavola') || 'null'); if (m && typeof m === 'object') Object.assign(MEM, m); } catch (e) { }
+  const ricorda = () => { try { localStorage.setItem('pv_tavola', JSON.stringify(MEM)); } catch (e) { } };
+
+  // ---------------- le icone (SVG in linea, 24 × 24, tratto spesso: si leggono anche piccole) ----------------
+  const S = (d, vb) => `<svg viewBox="${vb || '0 0 24 24'}" aria-hidden="true">${d}</svg>`;
+  const L = 'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
+  const IC = {
+    esci: S(`<path ${L} d="M6 6l12 12M18 6L6 18"/>`),
+    annulla: S(`<path ${L} d="M9 5L4 10l5 5"/><path ${L} d="M4 10h10a6 6 0 0 1 0 12h-4"/>`),
+    ok: S(`<path fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.5l5 5L19.5 6.5"/>`),
+    altro: S('<circle cx="5" cy="12" r="2.4" fill="currentColor"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><circle cx="19" cy="12" r="2.4" fill="currentColor"/>'),
+    piu: S(`<path ${L} d="M12 5v14M5 12h14"/>`),
+    adatta: S(`<path ${L} d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>`),
+    cestino: S(`<path ${L} d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>`),
+    flusso: S('<circle cx="12" cy="12" r="3.2" fill="currentColor"/><g fill="currentColor"><circle cx="5" cy="9" r="1.2"/><circle cx="7" cy="16" r="1.4"/><circle cx="18" cy="7" r="1.3"/><circle cx="19.5" cy="14" r="1.1"/><circle cx="13" cy="19.5" r="1.2"/><circle cx="11" cy="4.5" r="1"/></g>'),
+    colature: S('<path fill="currentColor" d="M3 4h18v3c0 1-1 1.5-1.6 1.5-.7 0-1.2.6-1.2 1.3v7a1.7 1.7 0 0 1-3.4 0V10c0-.9-.6-1.5-1.3-1.5s-1.3.6-1.3 1.5v3.5a1.6 1.6 0 0 1-3.2 0V10c0-.9-.5-1.5-1.2-1.5S6.6 9.1 6.6 10v4.5a1.6 1.6 0 0 1-3.2 0V8c0-.5-.4-1-.4-1z"/>'),
+    gira: S(`<rect ${L} x="7" y="3" width="10" height="18" rx="2" transform="rotate(-90 12 12)"/><path ${L} d="M5 6a8 8 0 0 1 6-3M9 1.5L11 3 9 4.5"/>`),
+  };
+  // un barattolo (la fila dei colori): il tappo, la spalla, il corpo del colore, il riflesso
+  const barattolo = (col, w, h) => `<svg viewBox="0 0 24 34" width="${w}" height="${h}" aria-hidden="true"><rect x="9" y="1.5" width="6" height="4" rx="1" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="1.5"/><path d="M6 10.5c0-3 2.5-4.5 6-4.5s6 1.5 6 4.5z" fill="#d8d0c0" stroke="#0d0b1a" stroke-width="1.5"/><rect x="5" y="10" width="14" height="22" rx="2.5" fill="${col}" stroke="#0d0b1a" stroke-width="2"/><rect x="8" y="13.5" width="2.4" height="14" rx="1.2" fill="#fff" opacity=".45"/></svg>`;
+  // la bomboletta grande: il corpo del colore, il beccuccio del tappo scelto (largo il fat, sottile lo skinny); il rullo e il pennarello hanno la loro forma
+  function grande(col, pen) {
+    if (pen === 'roller') return `<svg viewBox="0 0 34 44" aria-hidden="true"><rect x="3" y="4" width="28" height="11" rx="3" fill="${col}" stroke="#0d0b1a" stroke-width="2.2"/><path d="M31 9.5h1.5v8H17v6" fill="none" stroke="#0d0b1a" stroke-width="2.4"/><rect x="14" y="23" width="6" height="18" rx="2" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="2"/><rect x="6" y="6.5" width="14" height="2.4" rx="1.2" fill="#fff" opacity=".45"/></svg>`;
+    if (pen === 'marker') return `<svg viewBox="0 0 34 44" aria-hidden="true"><path d="M13 2h8l1.5 7h-11z" fill="${col}" stroke="#0d0b1a" stroke-width="2"/><rect x="9" y="9" width="16" height="32" rx="3" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="2.2"/><rect x="9" y="17" width="16" height="10" fill="${col}" stroke="#0d0b1a" stroke-width="2"/></svg>`;
+    const nz = pen === 'fat' ? '<rect x="11" y="1.5" width="12" height="5" rx="1.5" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="1.8"/>' : pen === 'skinny' ? '<rect x="15" y=".8" width="4" height="6.5" rx="1" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="1.8"/>' : '<rect x="13.5" y="1.5" width="7" height="5" rx="1.2" fill="#f0e6d0" stroke="#0d0b1a" stroke-width="1.8"/>';
+    return `<svg viewBox="0 0 34 44" aria-hidden="true">${nz}<path d="M8 13c0-4 4-6 9-6s9 2 9 6z" fill="#d8d0c0" stroke="#0d0b1a" stroke-width="2"/><rect x="7" y="12.5" width="20" height="30" rx="3.5" fill="${col}" stroke="#0d0b1a" stroke-width="2.4"/><rect x="11" y="17" width="3" height="20" rx="1.5" fill="#fff" opacity=".45"/></svg>`;
+  }
+  // il getto di ogni tappo (il vassoio dei tappi)
+  function getto(pen) {
+    if (pen === 'roller' || pen === 'marker') return grande('currentColor', pen).replace(/fill="#f0e6d0"/g, 'fill="none"').replace(/stroke="#0d0b1a"/g, 'stroke="currentColor"').replace(/fill="#fff" opacity=".45"/g, 'fill="none"').replace(/fill="currentColor"/g, 'fill="currentColor" fill-opacity=".35"');
+    const r = pen === 'fat' ? 9 : pen === 'skinny' ? 3 : 6, sp = pen === 'fat' ? 11 : pen === 'skinny' ? 5.5 : 9;
+    let dots = ''; for (let i = 0; i < 9; i++) { const a = i * 2.4, d = r + 1.6 + (i % 3) * (sp - r) / 3; dots += `<circle cx="${(12 + Math.cos(a) * d).toFixed(1)}" cy="${(12 + Math.sin(a) * d).toFixed(1)}" r="${pen === 'fat' ? 1.1 : .8}" fill="currentColor"/>`; }
+    return S(`<circle cx="12" cy="12" r="${r}" fill="currentColor"/>${dots}`);
+  }
+  // la misura del riquadro (tag, throw-up, pezzo, burner): un rettangolo sempre più largo
+  const misura = (i) => { const w = [8, 12, 17, 22][i], h = [5, 7, 9, 10][i]; return S(`<rect x="${12 - w / 2}" y="${12 - h / 2}" width="${w}" height="${h}" rx="1" fill="none" stroke="currentColor" stroke-width="2.2"/>`); };
+
+  // ---------------- lo stile, una volta sola ----------------
+  const CSS = `
+.tv{position:fixed;inset:0;z-index:100000;display:grid;grid-template-rows:minmax(0,1fr) auto;grid-template-columns:100%;background:#07060e;color:#f0e6d0;font:15px var(--f-pix,"Pixelify Sans",system-ui,sans-serif);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+.tv *{box-sizing:border-box}
+.tv svg{display:block;width:100%;height:100%}
+.tv-stage{position:relative;overflow:hidden;min-width:0;min-height:0;touch-action:none;cursor:crosshair;contain:strict}
+.tv-wrap{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.tv-wrap canvas,.tv-over{position:absolute;left:0;top:0;display:block;pointer-events:none}
+.tv-chip{position:absolute;left:max(8px,env(safe-area-inset-left));top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;gap:6px;padding:4px 8px;background:#0d0b1a;border:2px solid #3b3252;font:10px var(--f-label,"Silkscreen",monospace);letter-spacing:.05em;text-transform:uppercase;pointer-events:none;max-width:calc(100% - 80px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-chip b{color:#ffe14a;font-weight:400}
+.tv-toast{position:absolute;left:50%;top:max(44px,calc(env(safe-area-inset-top) + 40px));transform:translateX(-50%);max-width:min(92%,460px);padding:8px 12px;background:#0d0b1a;border:2px solid #ffe14a;box-shadow:3px 3px 0 #000;color:#f0e6d0;text-align:center;line-height:1.3;pointer-events:none;opacity:0;transition:opacity .18s}
+.tv-toast.on{opacity:1}
+.tv-toast svg{display:inline-block;width:20px;height:20px;vertical-align:-5px;margin-right:6px}
+.tv-b{appearance:none;-webkit-appearance:none;border:2px solid #3b3252;background:#15112a;color:#f0e6d0;border-radius:8px;padding:10px;width:100%;height:44px;min-width:0;cursor:pointer;touch-action:manipulation;display:flex;align-items:center;justify-content:center}
+.tv-b:active{transform:translate(1px,1px)}
+.tv-b[disabled]{opacity:.35;cursor:default}
+.tv-b.tv-fit{position:absolute;right:max(8px,env(safe-area-inset-right));top:max(8px,env(safe-area-inset-top));width:44px;height:44px;padding:9px;display:none}
+.tv-b.tv-fit.on{display:flex}
+.tv-b.weak{opacity:.5}
+.tv-ok{background:#ffe14a;border-color:#0d0b1a;color:#0d0b1a;box-shadow:3px 3px 0 #000;padding:8px}
+.tv-bar{display:grid;gap:6px;align-items:center;background:#15112a;border-top:2px solid #3b3252;
+  padding:6px max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  grid-template-columns:44px 44px minmax(0,1fr) 44px 64px;grid-template-areas:"sw sw sw sw sw" "x u can m ok"}
+.tv-x{grid-area:x}.tv-u{grid-area:u}.tv-m{grid-area:m}.tv-okc{grid-area:ok}.tv-fitc{display:none}
+.tv-can{grid-area:can;justify-self:center;position:relative;width:64px;height:56px;padding:2px;border:2px solid #ffe14a;background:#0d0b1a;border-radius:10px;cursor:pointer;touch-action:manipulation;color:#f0e6d0}
+.tv-can>svg{width:40px;height:48px;margin:0 auto}
+.tv-can i{position:absolute;right:-7px;bottom:-7px;min-width:22px;height:22px;padding:0 4px;border-radius:11px;background:#0d0b1a;border:2px solid #ffe14a;font:10px/18px var(--f-label,monospace);font-style:normal;text-align:center;color:#ffe14a}
+.tv-can u{position:absolute;left:-6px;bottom:-6px;width:22px;height:22px;border-radius:50%;background:#0d0b1a;border:2px solid #3b3252;display:flex;align-items:center;justify-content:center}
+.tv-can u span{display:block;border-radius:50%;background:#f0e6d0}
+.tv-sw{grid-area:sw;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:2px}
+.tv-c{appearance:none;-webkit-appearance:none;border:0;background:none;height:44px;padding:3px 0 0;cursor:pointer;touch-action:manipulation;display:flex;align-items:flex-start;justify-content:center;border-radius:6px;transition:transform .08s}
+.tv-c.on{background:#ffe14a33;box-shadow:inset 0 -4px 0 #ffe14a;transform:translateY(-2px)}
+.tv-c.piu{color:#f0e6d0}
+.tv-c.piu span{width:28px;height:28px;margin-top:4px;border:2px dashed #a89fbd;border-radius:50%;padding:4px}
+.tv-c.piu.on span{border-style:solid;border-color:#0d0b1a}
+.tv-sheet{position:absolute;left:0;right:0;bottom:0;max-height:70%;overflow:auto;padding:12px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left));background:#15112a;border-top:2px solid #ffe14a;display:none;touch-action:pan-y}
+.tv-sheet.on{display:block}
+.tv-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.tv-row:last-child{margin-bottom:0}
+.tv-lab{font:10px var(--f-label,monospace);letter-spacing:.06em;text-transform:uppercase;color:#a89fbd;width:100%;margin:0 0 -2px}
+.tv-t{appearance:none;-webkit-appearance:none;border:2px solid #3b3252;background:#0d0b1a;color:#f0e6d0;border-radius:8px;flex:1 1 0;min-width:52px;max-width:76px;height:58px;padding:6px 6px 16px;position:relative;cursor:pointer;touch-action:manipulation}
+.tv-t small{position:absolute;left:0;right:0;bottom:3px;font:8px var(--f-label,monospace);letter-spacing:.02em;text-transform:uppercase;color:#a89fbd;white-space:nowrap}
+.tv-t.on{border-color:#ffe14a;background:#2b2440}
+.tv-t.on small{color:#ffe14a}
+.tv-t.no{opacity:.35}
+.tv-sl{display:flex;align-items:center;gap:10px;width:100%}
+.tv-sl>span{flex:none;width:28px;height:28px;color:#a89fbd}
+.tv-sl input{flex:1;min-width:0;height:44px;accent-color:#ffe14a;touch-action:pan-x}
+.tv-sl output{flex:none;min-width:4.2em;text-align:right;font:11px var(--f-label,monospace)}
+.tv-pal{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;width:100%}
+.tv-pal .tv-c{height:48px}
+.tv-info{font-size:13px;color:#a89fbd;line-height:1.4}
+.tv-info b{color:#f0e6d0;font-weight:500}
+@media (orientation:landscape){
+  .tv{grid-template-rows:100%;grid-template-columns:minmax(0,1fr) auto}
+  .tv-bar{border-top:0;border-left:2px solid #3b3252;align-content:stretch;gap:8px;
+    padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) 8px;
+    grid-template-columns:repeat(3,44px);grid-template-rows:auto auto auto minmax(0,1fr) auto;grid-template-areas:"x u fit" "can can can" "sw sw sw" ". . ." "m ok ok"}
+  .tv-fitc{display:flex;grid-area:fit;visibility:hidden}
+  .tv-fitc.on{visibility:visible}
+  .tv-fit{display:none!important}
+  .tv-sw{grid-template-columns:repeat(3,44px);gap:2px 0}
+  .tv-c{height:40px}
+  .tv-can{width:100%;height:60px}
+  .tv-sheet{left:auto;top:0;bottom:0;width:min(340px,86%);max-height:none;border-top:0;border-left:2px solid #ffe14a}
+  .tv-pal{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (orientation:landscape) and (min-height:640px){ .tv-bar{grid-template-columns:repeat(3,54px);gap:10px} .tv-sw{grid-template-columns:repeat(3,54px);gap:6px 0} .tv-c{height:54px} .tv-c:not(.piu) svg{width:30px;height:42px} .tv-c.piu span{width:34px;height:34px} .tv-b{height:54px} .tv-can{height:84px} .tv-can>svg{width:52px;height:64px} }
+@media (orientation:landscape) and (max-height:340px){ .tv-c{height:34px} .tv-c:not(.piu) svg{width:20px;height:28px} .tv-can{height:50px} .tv-b{height:40px} }
+`;
+  let cssOk = false;
+  const css = () => { if (cssOk) return; cssOk = true; const s = document.createElement('style'); s.id = 'tv-css'; s.textContent = CSS; document.head.appendChild(s); };
+  const mk = (tag, cls, par, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; if (par) par.appendChild(e); return e; };
+  const lum = c => { const v = parseInt(c.slice(1), 16); return ((v >> 16) & 255) * .3 + ((v >> 8) & 255) * .59 + (v & 255) * .11; };
+
+  // ---------------- il pannello ----------------
+  // ctl (da writing.js): shot (la foto: canvas con .inner), W, H (il riquadro in m), cols (gli otto colori [hex, nome]), col (il colore
+  // della bomboletta in mano), tool ('bomboletta' | 'pennarello'), pens (true se ci sono i pennelli), sizes ([k, nome, W, H]),
+  // sizeK, has(tool), conta() ({bomboletta, pennarello} o null), titolo(soloPennarello), luogo, chi, PN, WM, mulberry,
+  // reshoot(k) → { shot, W, H, nota } | null, save(rec) → { ok } | { msg }, close()
+  function open(ctl) {
+    css();
+    const TOUCH = matchMedia('(pointer: coarse)').matches;
+    const COLS = ctl.cols.concat(PIU), PNs = !!(ctl.pens && ctl.PN);
+    let shot = ctl.shot, In = shot.inner || { x: 0, y: 0, w: shot.width, h: shot.height }, pw = In.w, ph = In.h, Wm = ctl.W, Hm = ctl.H, sizeK = ctl.sizeK || null;
+    // la bomboletta di adesso: l'ultima scelta (se hai ancora quell'attrezzo), se no quella in mano
+    const toolOf = p => p === 'marker' ? 'pennarello' : 'bomboletta';
+    let pen = MEM.pen && TAPPI[MEM.pen] && (PNs || MEM.pen === 'spray' || MEM.pen === 'marker') && ctl.has(toolOf(MEM.pen)) ? MEM.pen : ctl.tool === 'pennarello' ? 'marker' : 'spray';
+    if (!ctl.has(toolOf(pen)) && ctl.has(toolOf(pen === 'marker' ? 'spray' : 'marker'))) pen = pen === 'marker' ? 'spray' : 'marker';
+    let col = MEM.col && /^#[0-9a-f]{6}$/i.test(MEM.col) ? MEM.col : (ctl.col && COLS.some(c => c[0] === ctl.col) ? ctl.col : COLS[0][0]);
+    let cm = +MEM.cm[pen] || ATTR(pen).cm;
+    let cfg = null;   // le manopole (flusso, colature) se toccate; se no ogni tappo ha le sue
+    const strokes = []; let cur = null;   // ogni tratto: { pts: [[x, y, t, pressione]], c, p, w (px della foto) }
+
+    // la struttura: la tela (la foto, l'inchiostro, il tratto in corso), la barra
+    const box = mk('div', 'tv'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Tavoletta dei graffiti');
+    const stage = mk('div', 'tv-stage', box), wrap = mk('div', 'tv-wrap', stage);
+    const bg = mk('canvas', '', wrap), ink = mk('canvas', '', wrap); ink.dataset.tv = 'ink';
+    const over = mk('canvas', 'tv-over', stage); over.dataset.tv = 'pane';
+    const chip = mk('div', 'tv-chip', stage), toast = mk('div', 'tv-toast', stage);
+    const fitB = mk('button', 'tv-b tv-fit', stage, IC.adatta); fitB.title = 'Riquadro intero'; fitB.dataset.tv = 'adatta';
+    const sheet = mk('div', 'tv-sheet', stage);
+    const bar = mk('div', 'tv-bar', box);
+    const B = (cls, ic, title, f, k) => { const b = mk('button', 'tv-b ' + cls, bar, ic); b.title = title; b.setAttribute('aria-label', title); b.dataset.tv = k; b.onclick = e => { e.preventDefault(); f(); }; return b; };
+    const bX = B('tv-x', IC.esci, 'Esci (Esc)', () => close(), 'esci');
+    const bU = B('tv-u', IC.annulla, 'Annulla tratto (Ctrl+Z)', () => undo(), 'annulla');
+    const bFit = B('tv-fitc', IC.adatta, 'Riquadro intero', () => fitView(), 'adatta2');
+    const can = mk('button', 'tv-can', bar); can.dataset.tv = 'can'; can.title = 'Tappo e spessore'; can.setAttribute('aria-label', 'Bomboletta: tappo e spessore'); can.onclick = e => { e.preventDefault(); toggle('can'); };
+    const swRow = mk('div', 'tv-sw', bar);
+    const sw = ctl.cols.map((c, i) => { const b = mk('button', 'tv-c', swRow, barattolo(c[0], 24, 34)); b.title = c[1] + ' (' + (i + 1) + ')'; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'sw'; b.onclick = e => { e.preventDefault(); setCol(c[0]); }; return b; });
+    const piuB = mk('button', 'tv-c piu', swRow, '<span>' + IC.piu + '</span>'); piuB.title = 'Altri colori'; piuB.setAttribute('aria-label', 'Altri colori'); piuB.dataset.tv = 'piu'; piuB.onclick = e => { e.preventDefault(); toggle('piu'); };
+    const bM = B('tv-m', IC.altro, 'Altro: misura, flusso, colature, pulisci', () => toggle('altro'), 'altro');
+    const bOk = B('tv-okc tv-ok', IC.ok, 'Salva sul muro (Invio)', () => apply(), 'ok');
+
+    // ---------------- la vista: il riquadro grande, due dita (o la rotella) per spostare e ingrandire ----------------
+    let sw0 = 0, sh0 = 0, dpr = 1, k0 = 1;
+    const V = { k: 1, tx: 0, ty: 0 };
+    function setShot(sh) {
+      shot = sh; In = sh.inner || { x: 0, y: 0, w: sh.width, h: sh.height }; pw = In.w; ph = In.h;
+      bg.width = sh.width; bg.height = sh.height; const x = bg.getContext('2d'); x.drawImage(sh, 0, 0);
+      x.fillStyle = 'rgba(0,0,0,.6)'; x.fillRect(0, 0, sh.width, In.y); x.fillRect(0, In.y + In.h, sh.width, sh.height - In.y - In.h); x.fillRect(0, In.y, In.x, In.h); x.fillRect(In.x + In.w, In.y, sh.width - In.x - In.w, In.h);   // fuori dal riquadro: scurito
+      ink.width = pw; ink.height = ph; ink.style.left = In.x + 'px'; ink.style.top = In.y + 'px';
+      wrap.style.width = sh.width + 'px'; wrap.style.height = sh.height + 'px';
+      fitView();
+    }
+    function fitView() {
+      if (!sw0 || !sh0) return;
+      const m = Math.min(14, Math.max(6, Math.min(sw0, sh0) * .025)), top = Math.min(34, sh0 * .08);   // un filo di margine (il bordo giallo si vede) e lo spazio per l'etichetta in alto
+      k0 = Math.min((sw0 - 2 * m) / pw, (sh0 - m - Math.max(m, top)) / ph);
+      V.k = k0; V.tx = sw0 / 2 - (In.x + pw / 2) * k0; V.ty = (sh0 + Math.max(m, top) - m) / 2 - (In.y + ph / 2) * k0;
+      view();
+    }
+    let vReq = 0;
+    function view() {
+      wrap.style.transform = `translate(${V.tx}px,${V.ty}px) scale(${V.k})`;
+      const z = V.k > k0 * 1.04 || V.k < k0 * .96; fitB.classList.toggle('on', z); bFit.classList.toggle('on', z);
+      paintOver();
+    }
+    const zoomAt = (sx, sy, f) => { const k = clamp(V.k * f, k0 * .6, Math.max(k0 * 10, 2)); V.tx = sx - (sx - V.tx) * k / V.k; V.ty = sy - (sy - V.ty) * k / V.k; V.k = k; };
+    function sized(w, h) {
+      if (!w || !h) return; const first = !sw0; sw0 = w; sh0 = h; dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      over.width = Math.round(w * dpr); over.height = Math.round(h * dpr); over.style.width = w + 'px'; over.style.height = h + 'px';
+      fitView(); if (first) suggerisci();
+    }
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => { const r = es[es.length - 1].contentRect; sized(r.width, r.height); }) : null;
+    const onResize = () => { const r = stage.getBoundingClientRect(); sized(r.width, r.height); };
+    if (ro) ro.observe(stage); else addEventListener('resize', onResize);
+
+    // la tela di sopra (risoluzione dello schermo): il bordo giallo del riquadro e il tratto in corso, pieno e mai più sottile di 3 px
+    function paintOver() {
+      const x = over.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, sw0, sh0);
+      const X0 = V.tx + In.x * V.k, Y0 = V.ty + In.y * V.k, Wd = pw * V.k, Hd = ph * V.k;
+      x.lineWidth = 4; x.strokeStyle = 'rgba(0,0,0,.65)'; x.strokeRect(X0 - 2, Y0 - 2, Wd + 4, Hd + 4);
+      x.lineWidth = 2; x.strokeStyle = '#ffe14a'; x.strokeRect(X0 - 1, Y0 - 1, Wd + 2, Hd + 2);
+      if (!cur || cur.pts.length < 1) return;
+      x.save(); x.beginPath(); x.rect(X0, Y0, Wd, Hd); x.clip();
+      const P0 = PNs && ctl.PN.PENNELLI[cur.p], lw = Math.max(cur.w * V.k * (P0 && P0.size || 1) * .9, 3);   // lo spessore del getto (pennelli.js: fat 1,9, skinny 0,5)
+      x.lineCap = x.lineJoin = 'round'; x.beginPath();
+      cur.pts.forEach((q, i) => { const px = X0 + q[0] * V.k, py = Y0 + q[1] * V.k; i ? x.lineTo(px, py) : x.moveTo(px, py); });
+      if (cur.pts.length === 1) x.lineTo(X0 + cur.pts[0][0] * V.k + .01, Y0 + cur.pts[0][1] * V.k);
+      x.strokeStyle = lum(cur.c) < 90 ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.45)'; x.lineWidth = lw + 2; x.stroke();   // il bordo che lo stacca dal muro
+      x.strokeStyle = cur.c; x.lineWidth = lw; x.stroke(); x.restore();
+    }
+    const frame = () => { if (vReq) return; vReq = requestAnimationFrame(() => { vReq = 0; paintOver(); }); };
+
+    // ---------------- l'inchiostro: la resa vera del pennello, tratto per tratto ----------------
+    const meta = s => ({ c: s.c, p: s.p, w: +s.w.toFixed(2) });
+    const recOf = (L, t0) => ({ strokes: L.map(s => s.pts.map(q => [q[0], q[1], q[2] - t0, q[3]])), st: L.map(meta), frame: { w: pw, h: ph } });
+    function rec() {   // quello che si salva: i tratti, la bomboletta di ognuno, il tappo che conta di più (pennelli.js art lo usa per la grana)
+      const t0 = strokes.length ? strokes[0].pts[0][2] : 0, r = recOf(strokes, t0), n = {};
+      strokes.forEach(s => { n[s.p] = (n[s.p] || 0) + s.pts.length; });
+      r.pen = Object.keys(n).sort((a, b) => n[b] - n[a])[0] || pen; r.wpx = strokes.length ? strokes[strokes.length - 1].w : wpx();
+      if (!PNs) delete r.pen; else if (cfg) r.cfg = Object.assign({}, cfg);
+      return r;
+    }
+    const rng = () => ctl.mulberry(11 + strokes.length);
+    function inkStroke(s, x) {
+      try {
+        if (PNs) { const r = recOf([s], s.pts[0][2]); r.pen = s.p; if (cfg) r.cfg = cfg; ctl.PN.drawStrokes(x, r, pw, ph, s.c, rng()); }
+        else if (ctl.WM) { const r = recOf([s], s.pts[0][2]); r.wpx = s.w; ctl.WM.drawRecorded(x, r, { seed: 7 }, pw, ph, rng(), s.c, s.p === 'marker' ? 'mtag' : 'tag'); }
+      } catch (e) { console.warn('[tavola2] il pennello', e); }
+    }
+    let inkReq = 0, inkAll = false;
+    const inkQ = [];
+    function inkLater(s) { if (s) inkQ.push(s); else { inkAll = true; inkQ.length = 0; } if (inkReq) return; inkReq = requestAnimationFrame(inkNow); }
+    function inkNow() {
+      inkReq = 0; const x = ink.getContext('2d');
+      if (inkAll) { inkAll = false; x.clearRect(0, 0, pw, ph); strokes.forEach(s => inkStroke(s, x)); }
+      else while (inkQ.length) { const s = inkQ.shift(); if (strokes.includes(s)) inkStroke(s, x); }
+      paintOver();
+    }
+
+    // ---------------- i gesti: un dito spruzza, due spostano e ingrandiscono ----------------
+    const P = new Map(); let pinch = null, rect0 = null, startT = 0, held = false;
+    const pxm = () => pw / Wm, wpx = () => cm / 100 * pxm();
+    const local = e => [((e.clientX - rect0.left) - V.tx) / V.k - In.x, ((e.clientY - rect0.top) - V.ty) / V.k - In.y];
+    const pinchInfo = () => { const [a, b] = [...P.values()]; return { x: (a.x + b.x) / 2 - rect0.left, y: (a.y + b.y) / 2 - rect0.top, d: Math.max(10, hyp(a.x - b.x, a.y - b.y)) }; };
+    function down(e) {
+      if (e.target.closest && e.target.closest('.tv-sheet,.tv-fit')) return;   // i pannelli e i pulsanti sopra la tela fanno da sé
+      if (e.button === 1 || e.button === 2) { e.preventDefault(); rect0 = stage.getBoundingClientRect(); pinch = { pan: true, x: e.clientX, y: e.clientY }; stage.setPointerCapture(e.pointerId); P.set(e.pointerId, { x: e.clientX, y: e.clientY }); return; }
+      if (e.button > 0) return;
+      e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch (er) { }
+      if (sheetK) { toggle(null); held = true; P.set(e.pointerId, { x: e.clientX, y: e.clientY }); return; }   // il primo tocco fuori chiude il pannello, non spruzza
+      if (!P.size) rect0 = stage.getBoundingClientRect();   // una lettura sola per gesto
+      P.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (P.size === 2) {   // il secondo dito: il tratto appena cominciato era l'inizio del gesto, non un tratto
+        if (cur) { if (e.timeStamp - startT < 350 || cur.pts.length < 8) strokes.pop(); else inkLater(cur); cur = null; }
+        held = false; const q = pinchInfo(); pinch = { x: q.x, y: q.y, d: q.d }; if (!MEM.gesti) { MEM.gesti = true; ricorda(); } frame(); return;
+      }
+      if (P.size > 2 || pinch || held) return;
+      if (!ctl.has(toolOf(pen))) { dire(pen === 'marker' ? 'Non hai pennarelli: scegli la bomboletta (tocca la bomboletta grande).' : 'Non hai bombolette: comprane in ferramenta, o scegli il pennarello (tocca la bomboletta grande).'); held = true; return; }
+      const [x, y] = local(e); startT = e.timeStamp;
+      cur = { pts: [[x, y, e.timeStamp, e.pressure || .5]], c: col, p: pen, w: wpx() }; strokes.push(cur); toastOff(); frame(); upd();
+    }
+    function move(e) {
+      const p = P.get(e.pointerId); if (!p) return;
+      if (pinch && pinch.pan) { V.tx += e.clientX - pinch.x; V.ty += e.clientY - pinch.y; pinch.x = e.clientX; pinch.y = e.clientY; view(); return; }
+      p.x = e.clientX; p.y = e.clientY;
+      if (pinch && P.size >= 2) { const q = pinchInfo(); V.tx += q.x - pinch.x; V.ty += q.y - pinch.y; zoomAt(q.x, q.y, q.d / pinch.d); pinch.x = q.x; pinch.y = q.y; pinch.d = q.d; if (!vReq) vReq = requestAnimationFrame(() => { vReq = 0; view(); }); return; }
+      if (!cur) return;
+      const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null, L = evs && evs.length ? evs : [e], m = 1.2 / Math.max(.05, V.k);
+      for (const ev of L) { const [x, y] = local(ev), l = cur.pts[cur.pts.length - 1]; if (hyp(x - l[0], y - l[1]) < m) continue; cur.pts.push([x, y, ev.timeStamp, ev.pressure || .5]); }
+      frame();
+    }
+    function up(e) {
+      if (!P.has(e.pointerId)) return; P.delete(e.pointerId);
+      if (pinch && pinch.pan) { pinch = null; P.clear(); return; }
+      if (cur && !P.size) { const s = cur; cur = null; inkLater(s); upd(); }
+      if (!P.size) { pinch = null; held = false; }
+      else if (pinch && P.size === 1) pinch = { wait: true };   // resta un dito: niente tratto finché non si staccano tutti
+    }
+    stage.addEventListener('pointerdown', down); stage.addEventListener('pointermove', move); stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+    stage.addEventListener('contextmenu', e => e.preventDefault());
+    const wheel = e => { if (e.target.closest && e.target.closest('.tv-sheet')) return; e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-clamp(e.deltaY, -120, 120) * .0022)); view(); };
+    stage.addEventListener('wheel', wheel, { passive: false });
+    fitB.onclick = e => { e.preventDefault(); fitView(); };
+
+    // ---------------- i pannelli: il tappo, gli altri colori, «altro» (uno alla volta, sopra la tela) ----------------
+    let sheetK = null;
+    function toggle(k) {
+      sheetK = sheetK === k ? null : k; sheet.innerHTML = ''; sheet.classList.toggle('on', !!sheetK);
+      can.style.borderColor = sheetK === 'can' ? '#f0e6d0' : ''; piuB.classList.toggle('aperto', sheetK === 'piu'); bM.style.borderColor = sheetK === 'altro' ? '#ffe14a' : '';
+      if (sheetK === 'can') sheetCan(); else if (sheetK === 'piu') sheetPiu(); else if (sheetK === 'altro') sheetAltro();
+    }
+    const tasto = (par, ic, label, on, f, k) => { const b = mk('button', 'tv-t' + (on ? ' on' : ''), par, ic + '<small>' + label + '</small>'); b.title = label; b.setAttribute('aria-label', label); if (k) b.dataset.tv = k; b.onclick = e => { e.preventDefault(); f(b); }; return b; };
+    function cursore(par, ic, title, min, max, step, v, txt, f) {
+      const r = mk('label', 'tv-sl', par); mk('span', '', r, ic); r.title = title;
+      const i = mk('input', '', r); i.type = 'range'; i.min = min; i.max = max; i.step = step; i.value = v; i.setAttribute('aria-label', title);
+      const o = mk('output', '', r); o.textContent = txt(v);
+      i.oninput = () => { o.textContent = txt(+i.value); f(+i.value); }; return i;
+    }
+    function sheetCan() {
+      const r1 = mk('div', 'tv-row', sheet); mk('div', 'tv-lab', r1).textContent = 'Tappo';
+      const L = PNs ? ['spray', 'fat', 'skinny', 'roller', 'marker'] : ['spray', 'marker'];
+      L.forEach(k => { const b = tasto(r1, getto(k), ATTR(k).b, k === pen, () => setPen(k), 'tappo'); b.dataset.k = k; if (!ctl.has(toolOf(k))) b.classList.add('no'); });
+      const r2 = mk('div', 'tv-row', sheet); mk('div', 'tv-lab', r2).textContent = 'Spessore';
+      cursore(r2, `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="${clamp(cm / ATTR(pen).max * 10, 3.5, 10)}" fill="${col}" stroke="#f0e6d0" stroke-width="1.5"/></svg>`, 'Spessore', 1, ATTR(pen).max, .5, cm, v => v + ' cm', v => { cm = v; MEM.cm[pen] = v; ricorda(); upd(); const c = sheet.querySelector('.tv-sl circle'); if (c) c.setAttribute('r', clamp(v / ATTR(pen).max * 10, 3.5, 10)); });
+    }
+    function sheetPiu() {
+      const r = mk('div', 'tv-row', sheet); mk('div', 'tv-lab', r).textContent = 'Altri colori';
+      const g = mk('div', 'tv-pal', r);
+      PIU.forEach(c => { const b = mk('button', 'tv-c' + (c[0] === col ? ' on' : ''), g, barattolo(c[0], 24, 34)); b.title = c[1]; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'swp'; b.onclick = e => { e.preventDefault(); setCol(c[0]); toggle(null); }; });
+    }
+    function sheetAltro() {
+      if (ctl.sizes && ctl.reshoot) {
+        const r1 = mk('div', 'tv-row', sheet); mk('div', 'tv-lab', r1).textContent = `Misura del riquadro · ${Wm.toFixed(1)} × ${Hm.toFixed(1)} m`;
+        ctl.sizes.forEach((s, i) => tasto(r1, misura(i), s[1], s[0] === sizeK, b => reshoot(s[0], b), 'misura'));
+      }
+      if (PNs) {
+        const r2 = mk('div', 'tv-row', sheet); mk('div', 'tv-lab', r2).textContent = 'Il getto';
+        const P0 = ctl.PN.PENNELLI[pen] || {}, f0 = cfg ? cfg.flow : P0.flow, d0 = cfg ? cfg.drip : P0.drip;
+        const set = () => { inkLater(null); };
+        cursore(r2, IC.flusso, 'Flusso', 5, 100, 1, Math.round(f0 * 100), v => v + '%', v => { cfg = cfg || { flow: f0, drip: d0 }; cfg.flow = v / 100; set(); });
+        cursore(r2, IC.colature, 'Colature', 0, 100, 1, Math.round(d0 * 100), v => v + '%', v => { cfg = cfg || { flow: f0, drip: d0 }; cfg.drip = v / 100; set(); });
+      }
+      const r3 = mk('div', 'tv-row', sheet);
+      tasto(r3, IC.cestino, 'pulisci', false, b => {
+        if (!strokes.length) return;
+        if (!b.dataset.sicuro) { b.dataset.sicuro = 1; b.querySelector('small').textContent = 'sicuro?'; b.classList.add('on'); setTimeout(() => { if (b.isConnected) { delete b.dataset.sicuro; b.querySelector('small').textContent = 'pulisci'; b.classList.remove('on'); } }, 2500); return; }
+        strokes.length = 0; cur = null; inkLater(null); upd(); toggle(null);
+      }, 'pulisci');
+      const n = ctl.conta(), inf = mk('div', 'tv-info', r3); inf.style.flex = '1';
+      inf.innerHTML = `<b>${esc(ctl.chi)}</b>${ctl.luogo ? ' · ' + esc(ctl.luogo) : ''}<br>${n ? `Bombolette <b>${n.bomboletta}</b> · pennarelli <b>${n.pennarello}</b>` : ''}` +
+        (TOUCH ? '<br>Un dito spruzza · due dita spostano e ingrandiscono' : '<br>1-8 colori · [ ] spessore · Ctrl+Z annulla · rotella ingrandisce · Invio salva · Esc esce');
+    }
+    const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    function reshoot(k, b) {
+      if (strokes.length && !(b && b.dataset.sicuro)) { if (b) { b.dataset.sicuro = 1; b.classList.add('on'); } dire('Cambiando misura il disegno si cancella: tocca di nuovo per confermare.'); return; }
+      const r = ctl.reshoot(k); if (!r) return;
+      Wm = r.W; Hm = r.H; sizeK = k; strokes.length = 0; cur = null; setShot(r.shot); inkLater(null); upd(); toggle(null);
+      if (r.nota) dire(r.nota);
+    }
+
+    // ---------------- la bomboletta: colore, tappo, spessore ----------------
+    function setCol(c) { col = c; MEM.col = c; ricorda(); upd(); }
+    function setPen(k) {
+      if (!ctl.has(toolOf(k))) { dire(k === 'marker' ? 'Non hai pennarelli.' : 'Non hai bombolette.'); return; }
+      pen = k; cm = +MEM.cm[k] || ATTR(k).cm; MEM.pen = k; ricorda(); upd(); if (sheetK === 'can') { sheetK = null; toggle('can'); }
+    }
+    function upd() {
+      can.innerHTML = grande(col, pen); const n = ctl.conta();
+      if (n) { const i = mk('i', '', can); i.textContent = toolOf(pen) === 'pennarello' ? n.pennarello : n.bomboletta; }
+      const u = mk('u', '', can), d = clamp(Math.round(cm / ATTR(pen).max * 14), 4, 14), s = mk('span', '', u); s.style.width = s.style.height = d + 'px';
+      can.title = `${ATTR(pen).n}, ${cm} cm`;
+      sw.forEach((b, i) => b.classList.toggle('on', ctl.cols[i][0] === col));
+      const extra = PIU.find(c => c[0] === col); piuB.classList.toggle('on', !!extra); piuB.firstChild.style.background = extra ? extra[0] : '';
+      bU.disabled = !strokes.length;
+      const have = !n || strokes.every(s => n[toolOf(s.p)] > 0);
+      bOk.classList.toggle('weak', !strokes.length || !have);
+      chip.innerHTML = `<b>${esc(ctl.titolo(strokes.length && strokes.every(s => s.p === 'marker')))}</b> ${Wm.toFixed(1).replace('.', ',')}×${Hm.toFixed(1).replace('.', ',')} m`;
+    }
+    // i messaggi: in alto, pochi secondi
+    let toastT = 0;
+    function dire(t, ic) { toast.innerHTML = (ic || '') + esc(t); toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(toastOff, 2800); }
+    function toastOff() { toast.classList.remove('on'); }
+    function suggerisci() {   // all'apertura: cosa fare (una volta), e sul telefono dritto con un riquadro largo, girarlo
+      const portrait = sh0 > sw0, Wd = pw * k0;
+      if (portrait && TOUCH && pw / ph > 1.7 && Wd * ph * k0 < sw0 * sh0 * .3) dire('Gira il telefono: il riquadro viene più grande.', IC.gira);
+      else if (!MEM.gesti) dire(TOUCH ? 'Spruzza col dito nel riquadro giallo. Due dita: sposta e ingrandisci.' : 'Spruzza nel riquadro giallo. La rotella ingrandisce.');
+    }
+
+    // ---------------- annulla, salva, esci ----------------
+    function undo() { if (cur) { cur = null; } if (!strokes.length) return; strokes.pop(); inkLater(null); upd(); }
+    function apply() {
+      if (!strokes.length) { dire('Prima disegna qualcosa dentro il riquadro giallo.'); return; }
+      const r = ctl.save(rec());
+      if (r && r.ok) close(true); else if (r && r.msg) dire(r.msg);
+    }
+    let closed = false;
+    function close() {
+      if (closed) return; closed = true;
+      removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true);
+      if (ro) ro.disconnect(); else removeEventListener('resize', onResize);
+      if (vReq) cancelAnimationFrame(vReq); if (inkReq) cancelAnimationFrame(inkReq); clearTimeout(toastT);
+      box.remove(); ctl.close();
+    }
+    const keys = e => {
+      e.stopPropagation(); if (e.type !== 'keydown') return;
+      if (e.target && e.target.tagName === 'INPUT' && /Arrow/.test(e.key)) return;
+      if (e.key === 'Escape') { if (sheetK) toggle(null); else close(); }
+      else if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      else if (/^[1-8]$/.test(e.key) && ctl.cols[+e.key - 1]) setCol(ctl.cols[+e.key - 1][0]);
+      else if (e.key === '[' || e.key === ']') api.size(e.key === ']' ? 1 : -1);
+      else if (e.key === '0') fitView();
+    };
+    addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
+
+    document.body.appendChild(box); setShot(shot); upd();
+    if (!ro) onResize();
+    // [tavoletta] i tasti del Game Boy (main.js conMap): A salva, B esce, la croce colore (◄ ►) e spessore (▲ ▼), annulla col tasto bomboletta
+    const api = {
+      box, apply, close, undo,
+      col: d => { const i = COLS.findIndex(c => c[0] === col), j = ((i < 0 ? 0 : i) + d + COLS.length) % COLS.length; setCol(COLS[j][0]); dire('Colore: ' + COLS[j][1]); },
+      size: d => { cm = clamp(cm + d, 1, ATTR(pen).max); MEM.cm[pen] = cm; ricorda(); upd(); dire('Spessore: ' + cm + ' cm'); },
+      stato: () => ({ col, pen, cm, tratti: strokes.length, vista: Object.assign({ k0 }, V) }),   // per le prove
+    };
+    return api;
+  }
+  return { open, PIU, TAPPI, MEM };
+})();
+if (typeof module !== 'undefined') module.exports = TavolaUI;
+</script>   <!-- [tavola2] il pannello della tavoletta dei graffiti: la tela grande, una barra a icone -->
 <script>/* Porto Vecchio — la vita dei writer (v7, «Writer»). I ragazzi della controcultura dipingono davvero, sotto i tuoi occhi.
    - I MURI DELLA CITTÀ (SITES): ogni facciata con la strada davanti offre muri da bombare; le facciate lunghe sono le
      hall of fame (le crew ci fanno le produzioni, un pezzo accanto all'altro); in cima ai palazzi con la scala di ferro
