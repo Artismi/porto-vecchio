@@ -380,7 +380,7 @@ const Misura = (() => {
   if (ON && typeof window !== 'undefined') {
     const raf = window.requestAnimationFrame.bind(window), si = window.setInterval.bind(window), stO = window.setTimeout.bind(window);
     const tag = new WeakMap(), wrapped = new WeakMap();
-    const wrap = (fn, kind) => { if (typeof fn !== 'function') return fn; let w = wrapped.get(fn); if (w) return w; const lab = (tag.get(fn) || here()) + ':' + kind; tag.set(fn, lab.split(':')[0]); w = timed(fn, lab); wrapped.set(fn, w); return w; };
+    const wrap = (fn, kind) => { if (typeof fn !== 'function') return fn; let w = wrapped.get(fn); if (w) return w; let m0 = tag.get(fn) || here(); if (m0 === 'altro') { const L = (new Error().stack || '').split('\n')[3] || '', r = /:(\d+):\d+\)?\s*$/.exec(L); m0 = 'altro[' + (fn.name || '?') + (r ? '@' + r[1] : '') + ']'; }   /* [fluido2] chi è «altro»: il nome della funzione e la riga di chi l'ha chiesta */ const lab = m0 + ':' + kind; tag.set(fn, lab.split(':')[0]); w = timed(fn, lab); wrapped.set(fn, w); return w; };
     window.requestAnimationFrame = fn => raf(wrap(fn, 'ciclo'));
     window.setInterval = (fn, ms, ...a) => si(wrap(fn, 'timer'), ms, ...a);
     window.setTimeout = (fn, ms, ...a) => stO(wrap(fn, 'timer'), ms, ...a);
@@ -23535,7 +23535,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = 'e2bd510d5b3deafd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '9ffefcbbeed09c25';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
