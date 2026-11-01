@@ -96,7 +96,7 @@ var Tasselli = (function () {
   function lavoratori() {
     if (LAV) return LAV;
     const el = document.getElementById('tasselli-lavoratore'), src = el ? el.textContent : '', u = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
-    const n = Math.max(1, Math.min(TEL ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));
+    const n = Math.max(1, Math.min(TEL && !CALMA ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));   // [ottimizza-car] il portatile: tre (l'anello vicino si apre prima)
     LAV = []; for (let i = 0; i < n; i++) { const w = new Worker(u); w.coda = 0;
       w.onmessage = e => { const m = e.data, p = ATTESE.get(m.id); w.coda--; if (!p) return; ATTESE.delete(m.id); if (m.err) p[1](new Error(m.err)); else p[0](m); };
       w.onerror = e => console.warn('[tasselli] lavoratore:', e.message || e); LAV.push(w); }
