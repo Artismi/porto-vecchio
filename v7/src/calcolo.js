@@ -13,13 +13,15 @@ var Calcolo = (function () {
   const ATTESA = { attesa: true };
   const ST = { fuori: 0, qui: 0, guasti: 0, msFuori: 0, inVolo: 0 };
   let W = null, guasto = !SI, NID = 0; const ATT = new Map();
+  const DOPO = [];   // [arrivo] da chiamare alla prossima risposta del lavoratore (la pompa dei blocchi, render.js)
+  function quando(f) { if (!W || !ST.inVolo) { f(); return; } if (DOPO.indexOf(f) < 0) DOPO.push(f); }
   function lavoratore() {
     if (W || guasto) return W;
     try {
       const el = document.getElementById('calcolo-lavoratore'); if (!el || !el.textContent) { guasto = true; return null; }
       W = new Worker(URL.createObjectURL(new Blob([el.textContent], { type: 'text/javascript' })));
-      W.onmessage = e => { const m = e.data, h = ATT.get(m.id); if (!h) return; ATT.delete(m.id); ST.inVolo--; if (m.err) h.err = m.err; else { h.val = m.val; ST.msFuori += m.ms || 0; } h.fatto = true; };
-      W.onerror = e => { console.warn('[calcolo] lavoratore:', e && e.message || e); guasto = true; ST.guasti++; ATT.forEach(h => { h.err = 'lavoratore guasto'; h.fatto = true; }); ATT.clear(); ST.inVolo = 0; try { W.terminate(); } catch (x) { } W = null; };
+      W.onmessage = e => { const m = e.data, h = ATT.get(m.id); if (!h) return; ATT.delete(m.id); ST.inVolo--; if (m.err) h.err = m.err; else { h.val = m.val; ST.msFuori += m.ms || 0; } h.fatto = true; if (DOPO.length) DOPO.splice(0).forEach(f => { try { f(); } catch (x) { } }); };   // [arrivo] chi aspettava una risposta riparte subito
+      W.onerror = e => { console.warn('[calcolo] lavoratore:', e && e.message || e); guasto = true; ST.guasti++; ATT.forEach(h => { h.err = 'lavoratore guasto'; h.fatto = true; }); ATT.clear(); ST.inVolo = 0; DOPO.splice(0).forEach(f => { try { f(); } catch (x) { } }); try { W.terminate(); } catch (x) { } W = null; };
     } catch (e) { console.warn('[calcolo] niente lavoratore:', e); guasto = true; W = null; }
     return W;
   }
@@ -43,5 +45,5 @@ var Calcolo = (function () {
   }
   const stato = () => Object.assign({ lavoratore: !!W, guasto }, ST, { msFuori: Math.round(ST.msFuori) });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__calcolo', { get: stato, configurable: true });
-  return { ATTESA, G, qui, tutto, metti, ha, stato, get attivo() { return !guasto; } };
+  return { ATTESA, G, qui, tutto, metti, ha, stato, quando, get attivo() { return !guasto; } };
 })();
