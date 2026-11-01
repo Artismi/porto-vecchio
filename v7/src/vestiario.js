@@ -1252,7 +1252,7 @@ var Vesti3D = (function () {
     return true;
   }
   // quando Nino si cambia, si ricambia anche il modello (in strada e nei ritratti)
-  function loop() {
+  function loop(ts) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(loop); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     try {
       const st = ST();
       if (st && players.size) { const s = wsig(st); players.forEach(g => { if (!g.parent && !g.userData.keep) { players.delete(g); return; } if (g.userData.wsig !== s) { g.userData.wsig = s; dress(g, Guardaroba.outfitOfPlayer(st), null, st.player.worn && st.player.worn.sx); } }); }

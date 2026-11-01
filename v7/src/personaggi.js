@@ -1704,7 +1704,7 @@ var Personaggi = (function () {
         return p1.apply(this, arguments);
       };
       Models.person.__vesti = true; Models.person.__personaggi = true;
-      const loop = () => { try { const st = ST(); if (st && players.size) { const sg = wsig(st); players.forEach(g => { if (!g.parent && !g.userData.keep) { players.delete(g); return; } if (g.userData.wsig !== sg) { g.userData.wsig = sg; veste(g, perGioco(g.userData.look0, 'player')); } }); } } catch (e) { console.error('[Personaggi] rivestire', e); } requestAnimationFrame(loop); };
+      const loop = (ts) => { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(loop); return; }   /* [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui */ try { const st = ST(); if (st && players.size) { const sg = wsig(st); players.forEach(g => { if (!g.parent && !g.userData.keep) { players.delete(g); return; } if (g.userData.wsig !== sg) { g.userData.wsig = sg; veste(g, perGioco(g.userData.look0, 'player')); } }); } } catch (e) { console.error('[Personaggi] rivestire', e); } requestAnimationFrame(loop); };
       requestAnimationFrame(loop);
     }, 50);
   }

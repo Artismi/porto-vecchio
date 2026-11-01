@@ -503,7 +503,7 @@ var WriterVita = (function () {
       MIST.pts.geometry.attributes.position.needsUpdate = true; MIST.pts.geometry.attributes.color.needsUpdate = true;
     }
     let last = 0;
-    function frame(ts) {
+    function frame(ts) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(frame); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
       try {
         installAnim();
         const pv = window.__pv, R = pv && pv.R, st = pv && pv.st, sc = R && R.__models && R.__models.scene;

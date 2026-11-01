@@ -701,7 +701,7 @@ var Skate = (function () {
     else { const sp = !s.owned && PLACED.find(q => q.board && hyp(q.board.x - p.x, q.board.y - p.y) < 3); if (sp) html = `<span style="font-size:13px;color:#f2f2ea;text-shadow:1px 1px 0 #000">X · prendi la tavola (${sp.name})</span>`; else if (s.owned && !p.vehicle && !p.indoor && spotAt(p.x, p.y, 3)) html = `<span style="font-size:12px;color:#f2f2ea;text-shadow:1px 1px 0 #000">X · in tavola</span>`; }
     if (d.__h !== html) { d.innerHTML = html; d.__h = html; } d.style.opacity = html ? 1 : 0;
   }
-  function frame() {
+  function frame(ts) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(frame); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     const pv = window.__pv, st = pv && pv.st, R = pv && pv.R;
     if (st && R && R.__models && R.__models.scene && R.groundH) {
       try {

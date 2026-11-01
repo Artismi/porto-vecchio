@@ -2144,7 +2144,7 @@ var Writing = (function () {
     return n;
   }
   // ---------------- OGNI FOTOGRAMMA ----------------
-  function frame(once) {
+  function frame(once) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(typeof once === 'number' ? once : undefined)) { requestAnimationFrame(frame); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     try {
       const pv = window.__pv, R = pv && pv.R, st = pv && pv.st;
       if (R && R.__models && R.__models.scene && st && window.THREE && R.__bmb) {

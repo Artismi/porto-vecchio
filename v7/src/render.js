@@ -1282,7 +1282,7 @@ var Render = (function () {
   // Fuliggine di carbone al porto cargo e alla Base. Nella prateria dei beduini la neve non c'è: erba secca e brina.
   // I bordi sono curvi: la quantità di neve si calcola per casella su una tela piccola, si allarga sfumata
   // e una soglia rumorosa la ritaglia in chiazze dal contorno morbido. Agli incroci, i solchi curvi delle gomme.
-  function snowPass(x, tx0, ty0, n, m) {
+  function* snowPass(x, tx0, ty0, n, m) {
     const T = G.T, P = TP, WD = M.world && M.world.districtAt, B = 2, NW = n + B * 2, NH = m + B * 2;
     const isRoad = (tx, ty) => { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return false; const i = ty * G.GW + tx; return RW[i] > 0 || gT(tx, ty) === T.VIA; };
     const blot = (px, py, w, h, col) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
@@ -1319,7 +1319,7 @@ var Render = (function () {
       const c = hex(col); img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = Math.round(a * 255);
       if (i >= B && j >= B && i < NW - B && j < NH - B) info.push({ tx, ty, px: (i - B) * P, py: (j - B) * P, road, paved, natural, virgin, sooty, prairie: d === 'prateria' && natural });
     }
-    sx.putImageData(img, 0, 0);
+    sx.putImageData(img, 0, 0);   yield;   // [ottimizza] la tela della neve a passi (la pompa dei blocchi ha un tetto di 6 ms: prima questo era un passo solo da 400 ms)
     // 2) sotto: terra fradicia scura (il verde d'estate non spunta), erba secca in prateria
     info.forEach(q => { if (!q.natural || VD.PRD[q.ty * G.GW + q.tx] || zoneT(q.tx, q.ty) === ZN.CITTA || (M.world && M.world.XG && q.tx * TS < M.world.XG)) return;   /* [isola36] */ const r = rng((q.tx * 4561 + q.ty * 9203) >>> 0);
       if (q.prairie) { const wx = q.tx * TS, wy = q.ty * TS, k = vnz(wx / 40, wy / 40) + vnz(wx / 9, wy / 9) * .4; blot(q.px, q.py, P, P, `rgb(${Math.round(122 + k * 30)},${Math.round(108 + k * 26)},${Math.round(74 + k * 16)})`); }   // erba secca color paglia, a macchie larghe
@@ -1330,19 +1330,19 @@ var Render = (function () {
     const BP = B * P, big = mk(NW * P, NH * P), bx = big.getContext('2d'); bx.imageSmoothingEnabled = true;
     try { bx.filter = 'blur(' + Math.round(P * .6) + 'px)'; } catch (e) {}
     bx.drawImage(sc, 0, 0, NW, NH, 0, 0, NW * P, NH * P); try { bx.filter = 'none'; } catch (e) {}
-    x.globalAlpha = .5; x.drawImage(big, BP, BP, n * P, m * P, 0, 0, n * P, m * P); x.globalAlpha = 1;
+    x.globalAlpha = .5; x.drawImage(big, BP, BP, n * P, m * P, 0, 0, n * P, m * P); x.globalAlpha = 1; yield;
     const id = bx.getImageData(BP, BP, n * P, m * P), D = id.data, X0 = tx0 * P, Y0 = ty0 * P;
-    for (let py = 0; py < m * P; py++) for (let px = 0; px < n * P; px++) {
+    for (let py = 0; py < m * P; py++) { if (py && !(py & 31)) yield; for (let px = 0; px < n * P; px++) {
       const o = (py * n * P + px) * 4, a = D[o + 3] / 255; if (!a) continue;
       const wx = X0 + px, wy = Y0 + py, urban = a < .75;
       // in città il bordo della neve è morbido e a macchie larghe: niente rumore fine, niente scalini
       const nz = urban ? vnz(wx / 30, wy / 30) : vnz(wx / 22, wy / 22) * .65 + vnz(wx / 5, wy / 5) * .35;
       const k = urban ? Math.max(0, Math.min(1, (a + (nz - .5) * .3 - .4) * 4)) : Math.max(0, Math.min(1, (a + nz * .5 - .58) * 6));
       D[o + 3] = Math.round(k * 255 * .88);
-    }
+    } }
     const outc = mk(n * P, m * P); outc.getContext('2d').putImageData(id, 0, 0); x.drawImage(outc, 0, 0);
     outc.width = outc.height = 1; big.width = big.height = 1;   // [telefono] le tele di lavoro (2 MB a blocco) restavano in memoria
-    x.restore();
+    x.restore(); yield;
     // 4) dettagli: fanghiglia, impronte, pozzanghere, fuliggine, erba secca
     info.forEach(q => {
       const r = rng((q.tx * 7717 + q.ty * 3301) >>> 0), px = q.px, py = q.py;
@@ -3173,7 +3173,7 @@ var Render = (function () {
     const CH = ISO.CH, tx0 = ci * CH, ty0 = cj * CH, n = Math.min(CH, G.GW - tx0), m = Math.min(CH, G.GH - ty0), T = G.T;
     let c = mk(n * TP, m * TP), x = c.getContext('2d'); ARR.fase = 'pittura';   // [arrivo]
     VD.EDG.fill(-1); VD.RDN.fill(-1);   // [verde]
-    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; const PZ1 = typeof Suolo !== 'undefined' ? Suolo.R.pedonale : 99, sp1 = f => sottoPiazze1(x, tx0, ty0, n, m, PZ1, () => f(x, tx0, ty0, n, m));   /* [suolo] i segni delle vie non entrano nelle piazze pedonali e nelle opere */ sp1(svolte1); yield; sp1(usura1); yield; sp1(surf1); yield; sp1(roadMarks); yield; sp1(strisce35); yield; sp1(raccordi1); yield; sp1(holes1); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) { if (Vegetazione.dipingiSuoloG) yield* Vegetazione.dipingiSuoloG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); } else if (Vegetazione.suoloErbosoG) yield* Vegetazione.suoloErbosoG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [fluido] a righe */   /* [vegetazione] */
+    yield* paintTilesG(x, tx0, ty0, n, m); yield; blobs1(x, tx0, ty0, n, m); yield; blobTex1(x, tx0, ty0, n, m); yield; sabbiaBagnata2(x, tx0, ty0, n, m); yield; /* [costa2] */ terrapieni9(x, tx0, ty0, n, m); /* [costa] */ yield;   /* [anelli] un passo per pittore: gli stessi, nello stesso ordine */ paintOpere(x, tx0, ty0, n, m); yield; smoothRoads(x, tx0, ty0, n, m); yield; railGround(x, tx0, ty0, n, m); yield; const PZ1 = typeof Suolo !== 'undefined' ? Suolo.R.pedonale : 99, sp1 = f => sottoPiazze1(x, tx0, ty0, n, m, PZ1, () => f(x, tx0, ty0, n, m));   /* [suolo] i segni delle vie non entrano nelle piazze pedonali e nelle opere */ sp1(svolte1); yield; sp1(usura1); yield; sp1(surf1); yield; sp1(roadMarks); yield; sp1(strisce35); yield; sp1(raccordi1); yield; sp1(holes1); yield; segniSuolo1(x, tx0, ty0, n, m); yield; percorsiSuolo1(x, tx0, ty0, n, m); yield; /* [percorsi] */ sporco35(x, tx0, ty0, n, m); yield; macro1(x, tx0, ty0, n, m); yield; yield* snowPass(x, tx0, ty0, n, m); yield; if (typeof Vegetazione !== 'undefined' && Vegetazione.attivo && M.world && M.world.vegetazione) { if (Vegetazione.SUOLO) { if (Vegetazione.dipingiSuoloG) yield* Vegetazione.dipingiSuoloG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.dipingiSuolo(x, tx0, ty0, n, m, TP); } else if (Vegetazione.suoloErbosoG) yield* Vegetazione.suoloErbosoG(x, tx0, ty0, n, m, TP, CEDE1); else Vegetazione.suoloErboso(x, tx0, ty0, n, m, TP); }   /* [fluido] a righe */   /* [vegetazione] */
     yield;
     if (window.LeggeraMem && LeggeraMem.on('terreno')) { c = LeggeraMem.meta(c); x = c.getContext('2d'); }   // [leggera] sul telefono il terreno dipinto a metà lato
     const tex = canvasTex(c); tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true; tex.anisotropy = 4;   /* [unione11] */

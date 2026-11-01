@@ -259,7 +259,7 @@ var Bottino = (function () {
       const s = k === hot ? 1.12 + Math.sin(t * 8) * .03 : 1; m.scale.set(s, s, s); m.position.y += k === hot ? .05 : 0;
     }
   }
-  function loop() {
+  function loop(ts) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(loop); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     try { const st = ST(); if (st && st.player && typeof Oggetti !== 'undefined' && Oggetti.lootables) sync(st); }
     catch (e) { if (!U.err) { U.err = true; console.error('[Bottino]', e); } }
     requestAnimationFrame(loop);

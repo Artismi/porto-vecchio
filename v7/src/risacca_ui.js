@@ -524,7 +524,7 @@ var RisaccaUI = (function () {
 
   // ---------------- CICLO ----------------
   let lastHud = 0, lastPanel = 0;
-  function loop(t) {
+  function loop(t) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(t)) { requestAnimationFrame(loop); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     try {
       const st = ST();
       if (st && st.ris) {
