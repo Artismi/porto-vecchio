@@ -629,6 +629,113 @@ var Arredo3D = (function () {
     g.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(g, true); g.children.forEach(c => { c.position.y -= bb.min.y; });   // il mucchio poggia a terra
     return g; };
 
+  // ================= [dettaglio] I PEZZI CHE ERANO SCATOLE =================
+  // il traliccio radio del comando: tre montanti a fasce bianche e rosse (segnalazione aerea) che si stringono salendo, la crociera a zig-zag
+  // su ogni faccia e le traverse, le piastre dei piedi sul plinto, il ballatoio col parapetto, la parabola a tamburo, lo stilo in cima.
+  // o.h: l'altezza del fusto sopra il plinto (22 m); la luce rossa e i tiranti li mette chi lo posa
+  T.traliccio = (o) => {
+    const g = new THREE.Group(), H = (o && o.h) || 22, nb = Math.max(6, Math.round(H / 1.6)), mR = mat('#a82a20', 'vernice'), mW = mat('#e4e0d6', 'vernice'), mA = mat('#3a3a3e', 'ghisa'), y0 = .5;
+    slab(g, 1.5, .5, 1.5, CM, 0, .25, 0, .05);   // il plinto
+    const R0 = .46, R1 = .24, leg = (k, y) => { const t = (y - y0) / H, R = R0 + (R1 - R0) * t, a = k * 2 * PI / 3 + PI / 6; return [Math.cos(a) * R, y, Math.sin(a) * R]; };
+    for (let k = 0; k < 3; k++) { const p = leg(k, y0); slab(g, .18, .04, .18, ZS, p[0], y0 + .02, p[2], .008); if (F()) [[-1, -1], [1, 1]].forEach(([a, b]) => bullone(g, p[0] + a * .06, y0 + .05, p[2] + b * .06, 'y', .012, ZS)); }
+    for (let i = 0; i < nb; i++) { const ya = y0 + H * i / nb, yb = y0 + H * (i + 1) / nb, m = i % 2 ? mW : mR;
+      for (let k = 0; k < 3; k++) { const k2 = (k + 1) % 3, A = leg(k, ya), B = leg(k, yb), C = leg(k2, ya), D = leg(k2, yb);
+        asta(g, A, B, .038, m, 6);   // il montante (un tratto per fascia)
+        if (i % 2) asta(g, A, D, .013, m, 4); else asta(g, C, B, .013, m, 4);   // la diagonale, a zig-zag
+        if (F() || i % 2) asta(g, B, D, .015, m, 4); } }   // la traversa
+    const yp = y0 + H * .66, Rp = R0 + (R1 - R0) * .66;   // il ballatoio: il grigliato, i montantini, il corrimano
+    slab(g, 1.3, .06, 1.3, mA, 0, yp, 0, .012); for (let k = -2; k <= 2; k++) slab(g, .02, .02, 1.26, ZS, k * .26, yp + .04, 0, 0);
+    [[.62, .62], [-.62, .62], [-.62, -.62], [.62, -.62]].forEach(([a, c], k, L) => { asta(g, [a, yp + .03, c], [a, yp + .55, c], .016, mA, 6); const n2 = L[(k + 1) % 4]; asta(g, [a, yp + .55, c], [n2[0], yp + .55, n2[1]], .014, mA, 6); if (F()) asta(g, [a, yp + .3, c], [n2[0], yp + .3, n2[1]], .01, mA, 4); });
+    [0, 1, 2].forEach(k => { const p = leg(k, yp); asta(g, [p[0], yp - .02, p[2]], [p[0] * 2.2, yp - .02, p[2] * 2.2], .02, mA, 4); });   // le mensole del grigliato sui montanti
+    // la parabola a tamburo sul suo braccio, verso il mare
+    const yd = y0 + H * .8, pd = leg(0, yd); asta(g, pd, [pd[0] + .42, yd, pd[2]], .03, mA, 6); put(g, cylG(.32, .34, .2, 14), mat('#d8d4ca', 'vernice'), pd[0] + .52, yd, pd[2], 0, 0, PI / 2); put(g, cylG(.3, .3, .01, 14), mat('#c8c4ba', 'tela'), pd[0] + .625, yd, pd[2], 0, 0, PI / 2);
+    lathe(g, [[.06, 0], [.06, .1], [.03, .16], [.022, 2.0], [.01, 2.2], [.001, 2.22]], 6, mA, 0, y0 + H, 0);   // lo stilo
+    slab(g, .5, .04, .5, mA, 0, y0 + H + .02, 0, .01);
+    return g; };
+  // la cabina degli apparati al piede del traliccio: il blocco intonacato sullo zoccolo, il tetto piano che sporge col gocciolatoio, la porta di
+  // lamiera nel telaio con la griglia e la maniglia, la lampada sopra la porta, la canalina dei cavi che esce dal fianco
+  T.cabina_apparati = () => {
+    const g = new THREE.Group(), W = 2.2, H = 2.1, D = 1.7, mI = mat('#6e7468', 'cemento'), mZ = mat('#56594f', 'cemento'), mP = mat('#3a3e3a', 'vernice');
+    slab(g, W + .08, .22, D + .08, mZ, 0, .11, 0, .03);
+    slab(g, W, H - .22, D, mI, 0, .22 + (H - .22) / 2, 0, .05);
+    slab(g, W + .22, .1, D + .22, mat('#4a4c4e', 'cemento'), 0, H + .05, 0, .025); slab(g, W + .26, .03, D + .26, mZ, 0, H + .115, 0, .01);   // il tetto e la scossalina
+    slab(g, .94, 1.84, .05, ZS, -.4, .22 + .92, D / 2 + .012, .012); slab(g, .8, 1.72, .04, mP, -.4, .22 + .89, D / 2 + .035, .012);   // il telaio e l'anta
+    for (let k = 0; k < 5; k++) slab(g, .5, .025, .035, ZS, -.4, .42 + k * .055, D / 2 + .06, 0, -.6, 0, 0);   // la griglia
+    maniglia(g, -.1, 1.15, D / 2 + .055, .12, ZS, true); [.5, 1.6].forEach(y => cerniera(g, -.82, y, D / 2 + .05, .12));
+    put(g, latheG([[.11, 0], [.1, .02], [.05, .07], [.012, .08]], 10), GH, .55, 1.85, D / 2 + .2, 0, 0, PI); put(g, sphG(.045, 8), LU, .55, 1.81, D / 2 + .2).name = 'luce'; asta(g, [.55, 1.88, D / 2], [.55, 1.88, D / 2 + .2], .012, GH, 4); luci(g, .55, 1.8, D / 2 + .2);
+    slab(g, .2, .06, .9, ZS, W / 2 + .1, 1.7, 0, .01); [-.35, .35].forEach(z => asta(g, [W / 2, 1.66, z], [W / 2 + .1, 1.66, z], .012, ZS, 4));   // la canalina e le sue staffe
+    if (F()) { slab(g, .32, .22, .06, mat('#d8d4ca', 'vernice'), .55, 1.3, D / 2 + .03, .01); targa(g, 'PERICOLO', .24, .14, .55, 1.3, D / 2 + .065, 0, '#e8c040', '#1c1c1e', 0); }
+    return g; };
+  // il pennone: il basamento di pietra a due gradini, il fusto tornito che si rastrema, il collare, il pomo d'ottone, la galloccia con la drizza,
+  // la bandiera che si piega al vento (o.col, l'emblema quadrato o.col2, o.h l'altezza)
+  const ondaG = (k, w, h, x0, z0) => geo('o' + k + [w, h, x0].map(q3), () => { const p = new THREE.PlaneGeometry(w, h, 10, 2), a = p.attributes.position;
+    for (let i = 0; i < a.count; i++) { const x = a.getX(i) + x0, t = Math.max(0, x / 2.2); a.setZ(i, z0 + Math.sin(x * 2.6) * .13 * t); a.setX(i, x); } p.computeVertexNormals(); return p; });
+  T.pennone = (o) => {
+    const g = new THREE.Group(), H = (o && o.h) || 9, mP = mat('#3a3a40', 'ghisa'), FW = 2.2, FH = 1.3, yf = H - .3 - FH / 2;
+    slab(g, .72, .14, .72, mat('#b8b0a0', 'pietra'), 0, .07, 0, .025); slab(g, .46, .16, .46, mat('#c8c0b0', 'pietra'), 0, .22, 0, .025);
+    lathe(g, [[.1, .3], [.1, .4], [.07, .48], [.058, 1.6], [.05, H - .2], [.065, H - .12], [.065, H - .06], [.02, H]], 10, mP);
+    put(g, sphG(.085, 10), OT, 0, H + .07, 0); tor(g, .066, .014, 10, mP, 0, 1.55, 0);
+    slab(g, .03, .16, .03, OT, .075, 1.35, 0, 0); asta(g, [.075, 1.42, 0], [.065, H - .1, 0], .004, GH, 3);   // la galloccia e la drizza
+    put(g, ondaG('band', FW, FH, FW / 2 + .06, 0), mat((o && o.col) || '#a81818', 'tela'), 0, yf, 0);
+    if (o && o.col2) [.009, -.009].forEach(dz => put(g, ondaG('emb' + (dz > 0 ? 1 : 0), .5, .5, FW / 2 + .06, dz), mat(o.col2, 'tela'), 0, yf, 0));
+    return g; };
+  // la lanterna a braccio dei vicoli: la piastra coi tasselli, il braccio col ricciolo che lo regge, la lanterna appesa (gabbia di ghisa, vetri
+  // accesi, tettuccio col pomolo). Origine sul muro all'altezza della lanterna (userData.aMuro); con o.palo sul palo di ferro scuro tornito
+  T.lanterna_braccio = (o) => {
+    const g = new THREE.Group(), s = .55;
+    if (o && o.palo) { palo(g, 2.4, .045, GH); lathe(g, [[.06, 2.38], [.09, 2.44], [.05, 2.5], [.03, 2.53]], 8, GH); lanterna(g, 0, 2.58, 0, s, LU); return g; }
+    g.userData.aMuro = true;
+    slab(g, .09, .3, .02, GH, 0, .02, .01, .005); if (F()) [-.1, .14].forEach(y => bullone(g, 0, y, .024, 'z', .009, GH));
+    asta(g, [0, .16, .02], [0, .16, .4], .016, GH, 6); put(g, sphG(.022, 6), GH, 0, .16, .41);
+    cavo(g, [[0, -.1, .02], [0, -.02, .14], [0, .08, .26], [0, .14, .32]], .011, GH, 10);   // la voluta sotto il braccio
+    tor(g, .022, .006, 8, GH, 0, .16, .34, 0); lanterna(g, 0, .16 - .81 * s - .02, .34, s, LU);
+    return g; };
+  // la tenda da sole della bottega: il cassonetto col rullo, il telo che si incurva fra il rullo e la barra, la mantovana smerlata, i due bracci
+  // snodati coi gomiti, le staffe a muro. Origine sul muro all'altezza del cassonetto, verso +z; o.w la larghezza, o.mt il materiale del telo
+  // (le righe della bottega), o.dep la sporgenza
+  const telaG = (w, L) => geo('tl' + [w, L].map(q3), () => { const p = new THREE.PlaneGeometry(w, L, 1, 5), a = p.attributes.position; for (let i = 0; i < a.count; i++) { const t = .5 - a.getY(i) / L; a.setZ(i, -Math.sin(t * PI) * .045); } p.computeVertexNormals(); return p; });
+  const smerloG = (w) => geo('sm' + q3(w), () => { const n = Math.max(3, Math.round(w / .32)), sw = w / n, h = .13, pts = [[-w / 2, 0], [w / 2, 0], [w / 2, -h]];
+    for (let k = n - 1; k >= 0; k--) { const xa = -w / 2 + (k + 1) * sw, xb = xa - sw; for (let j = 1; j < 4; j++) { const a = j / 4 * PI; pts.push([xa - sw / 2 + Math.cos(a) * sw / 2, -h - Math.sin(a) * .07]); } pts.push([xb, -h]); }
+    pts.pop(); pts.push([-w / 2, -h]);
+    const ge = new THREE.ExtrudeGeometry(shape(pts), { depth: .008, bevelEnabled: false, curveSegments: 1 }), uv = ge.attributes.uv, ps = ge.attributes.position;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, (ps.getX(i) + w / 2) / w, 1 + ps.getY(i) / .2); ge.computeVertexNormals(); return ge; });
+  T.tenda_bottega = (o) => {
+    const g = new THREE.Group(); g.userData.aMuro = true; const w = (o && o.w) || 3, dep = (o && o.dep) || 1, mt = (o && o.mt) || mat(C.tela, 'tela'), mK = mat('#5a5e60', 'zinco');
+    const zf = dep * .95, yf = -dep * .34, L = Math.hypot(zf - .14, yf + .04);
+    slab(g, w + .1, .14, .16, mK, 0, 0, .08, .025); [-1, 1].forEach(sx => slab(g, .03, .16, .18, mK, sx * (w / 2 + .065), 0, .08, .008));   // il cassonetto e i tappi
+    const t = put(g, telaG(w, L), mt, 0, (yf - .04) / 2, (zf + .14) / 2); t.rotation.x = -PI / 2 + Math.atan2(-(yf + .04), zf - .14);
+    asta(g, [-w / 2, yf, zf], [w / 2, yf, zf], .022, mK, 8);   // la barra di carico
+    put(g, smerloG(w), mt, 0, yf - .01, zf + .01);
+    [-1, 1].forEach(sx => { const x = sx * (w / 2 - .12), sp = [x, -.62, .03], gm = [x, (yf - .62) / 2 + .05, zf * .5];   // i bracci snodati: la spalla a muro, il gomito, la barra
+      slab(g, .06, .14, .04, mK, x, -.62, .02, .008); asta(g, sp, gm, .016, mK, 6); asta(g, gm, [x, yf, zf], .016, mK, 6); put(g, sphG(.028, 6), mK, gm[0], gm[1], gm[2]); });
+    return g; };
+  // la cassetta della frutta: le sponde a doghe con la fessura, i cantonali, il fondo, la merce a mucchio (o.col; o.merce false: vuota)
+  T.cassetta = (o) => {
+    const g = new THREE.Group(), W = .5, H = .16, D = .38, mL = mat((o && o.legno) || '#9a7a52', 'legno'), mS = mat('#6e5434', 'legno');
+    [.04, .12].forEach(y => { [-1, 1].forEach(s => slab(g, W, .05, .012, mL, 0, y, s * (D / 2 - .006), .003)); [-1, 1].forEach(s => slab(g, .012, .05, D - .02, mL, s * (W / 2 - .006), y, 0, .003)); });
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => slab(g, .03, H, .03, mS, a * (W / 2 - .018), H / 2, b * (D / 2 - .018), .004));
+    slab(g, W - .03, .01, D - .03, mS, 0, .012, 0, 0);
+    if (o && o.col) { const m1 = mat(o.col, 'plastica'), m2 = mat(shade(o.col, .82), 'vernice'); let q = 0; for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) put(g, sphG(.055, LV > 0 ? 7 : 5), (q++ % 3) ? m1 : m2, -.17 + i * .113, H - .02 + ((i + j) % 2) * .02, -.11 + j * .11); }
+    return g; };
+  // il palo della luce di legno: il fusto tornito catramato al piede, la traversa smussata coi due isolatori sui perni, il saettone, il cappello
+  // di lamiera, i ramponi per salire
+  T.palo_legno = () => {
+    const g = new THREE.Group(), mL = mat('#5a4634', 'legno'), mT = mat('#2a2420', 'legno');
+    lathe(g, [[.13, 0], [.125, .9], [.12, .92], [.09, 6.3], [.07, 6.42], [.001, 6.45]], 9, mL); lathe(g, [[.135, 0], [.13, .9], [.124, .92]], 9, mT);   // il fusto e la catramatura
+    lathe(g, [[.11, 6.38], [.12, 6.42], [.04, 6.5], [.001, 6.51]], 9, ZS);
+    slab(g, 1.1, .1, .1, mL, 0, 5.85, 0, .02); [-1, 1].forEach(s => { const k = T.isolatore(); k.position.set(s * .45, 5.9, 0); g.add(k); });   // le teste degli isolatori a 6,14 m, dove arrivano i fili
+    asta(g, [.05, 5.3, .06], [.38, 5.82, .06], .022, mL, 6); if (F()) [5.3, 5.82].forEach(y => bullone(g, y < 5.6 ? .05 : .38, y, .1, 'z', .012, ZS));
+    if (F()) for (let k = 0; k < 6; k++) { const y = 2.2 + k * .5, a = k % 2 ? PI / 2 : -PI / 2, r = .1 - (y / 6.3) * .03; asta(g, [Math.cos(a) * r * .5, y, Math.sin(a) * r * .5], [Math.cos(a) * (r + .1), y, Math.sin(a) * (r + .1)], .01, ZS, 4); }
+    return g; };
+  // il piedistallo del radar: la torretta di cemento ottagonale rastremata col cordolo, il ballatoio col parapetto tubolare, la scaletta alla marinara
+  T.radar_base = () => {
+    const g = new THREE.Group(), m = mat('#6a6e66', 'cemento'), mS = mat('#7a7e76', 'cemento');
+    slab(g, 2.1, .25, 2.1, mS, 0, .125, 0, .04);
+    lathe(g, [[.95, .25], [.92, .4], [.75, .5], [.66, 4.7], [.8, 4.8], [.8, 5.0], [.001, 5.0]], 8, m, 0, 0, 0, PI / 8);
+    const rP = .72; for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2 + PI / 8, b = a + PI / 4; asta(g, [Math.cos(a) * rP, 4.99, Math.sin(a) * rP], [Math.cos(a) * rP, 5.55, Math.sin(a) * rP], .018, ZS, 4); asta(g, [Math.cos(a) * rP, 5.55, Math.sin(a) * rP], [Math.cos(b) * rP, 5.55, Math.sin(b) * rP], .016, ZS, 4); }
+    put(g, cylG(.2, .26, .6, 10), mS, 0, 5.3, 0); tor(g, .22, .03, 12, ZS, 0, 5.58, 0);   // il perno su cui gira la parabola
+    [-.14, .14].forEach(x => asta(g, [x, .25, .74], [x, 5.0, .7], .016, ZS, 4)); for (let y = .55; y < 5; y += .32) asta(g, [-.14, y, .74 - (y / 5) * .04], [.14, y, .74 - (y / 5) * .04], .011, ZS, 4);   // la scaletta
+    return g; };
   const TIPI = Object.keys(T);
   function make(tipo, o) { if (!T[tipo]) return null; const lv0 = LV; LV = o && o.liv !== undefined ? o.liv : 1; try { const g = T[tipo](o || {}); g.userData.tipo = tipo; g.userData.liv = LV; return g; } finally { LV = lv0; } }
   return { make, TIPI, T, mat, C, asta, tubo, cavo, bullone, fascetta, slab, lathe, cyl, targa, mensola: o => make('mensola', o), contatore: o => make('contatore', o), isolatore: o => make('isolatore', o) };

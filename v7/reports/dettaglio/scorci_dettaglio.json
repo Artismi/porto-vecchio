@@ -1,0 +1,10 @@
+{
+  "nota": "[dettaglio] scorci da vicino (zoom 0,35) per giudicare la cura dei modelli di strada e dei tetti",
+  "pulita": true,
+  "scorci": [
+    { "nome": "d1_rua", "titolo": "Rua Maestra da vicino", "x": 1400, "y": 312, "zoom": 0.35, "ora": 630, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "d2_bar", "titolo": "La piazzetta col bar da vicino", "x": 1428, "y": 324, "zoom": 0.35, "ora": 660, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "d3_tetti", "titolo": "I tetti della Vittoria", "x": 1440, "y": 329, "zoom": 0.35, "ora": 730, "meteo": "sereno", "luce": "metropoli" },
+    { "nome": "d4_mercato", "titolo": "Il Mercato da vicino", "x": 1274, "y": 343, "zoom": 0.35, "ora": 600, "meteo": "sereno", "luce": "metropoli" }
+  ]
+}
