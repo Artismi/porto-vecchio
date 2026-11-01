@@ -768,6 +768,34 @@ var Writing = (function () {
   function poolGet(w, h) { const k = w + 'x' + h, L = POOL.get(k); if (L && L.length) { const c = L.pop(); c.getContext('2d').clearRect(0, 0, w, h); GFX.mem.riuso++; return c; } GFX.mem.nuove++; return cv(w, h); }
   function poolPut(c) { if (!c || !c.width) return; const k = c.width + 'x' + c.height, L = POOL.get(k) || []; if (L.length < 6) { L.push(c); POOL.set(k, L); } }
   // il velo di un lavoro: un piano appoggiato al muro col suo canvas (sulle auto: la decalcomania sulla carrozzeria)
+  // [graffiti] PER TERRA, SUL SUOLO VERO. Il velo per terra era un piano orizzontale all'altezza del punto toccato, alzato di 1,2 cm: su
+  // una strada in pendenza, sul dosso della carreggiata, su un marciapiede che scende, metà lavoro restava sospeso (fino ai 25 cm che
+  // la finestra della tavoletta accetta sotto il piano) e si vedeva galleggiare. Ora cinque raggi dall'alto (il centro e i quattro
+  // angoli) sulle mesh vere sotto il riquadro: il piano che passa meglio per i punti trovati (pendenza compresa) e il velo a 3 mm da
+  // lui, come sui muri; il resto lo fa il polygonOffset del materiale. Senza colpi resta com'era. ?nofixsuolo: come prima
+  const SUOLOFIX = typeof location === 'undefined' || !/[?&]nofixsuolo\b/.test(location.search);
+  function suoloSotto(R) {
+    const THREE = T3(); if (!THREE || !R || !R.c || !R.r) return null;
+    const h = new THREE.Vector3(0, Math.sign(R.n.y || 1), 0), r = new THREE.Vector3(R.r.x, 0, R.r.z).normalize(), u = new THREE.Vector3().crossVectors(h, r).normalize();
+    const C = new THREE.Vector3(R.c.x, R.c.y, R.c.z), list = cands(C.x, C.z).filter(m => !m.userData.velo); if (!list.length) return null;
+    const near = nearList(list, C, Math.hypot(R.W, R.H) / 2 + 1), rc = GFX.rcS || (GFX.rcS = new THREE.Raycaster()), pts = [];
+    for (const [a, b] of [[0, 0], [-.45, -.45], [.45, -.45], [.45, .45], [-.45, .45]]) {
+      const q = C.clone().addScaledVector(r, a * R.W).addScaledVector(u, b * R.H), o = q.clone().addScaledVector(h, .25);   // nella fascia di ±25 cm attorno al punto toccato (come la finestra della tavoletta)
+      rc.set(o, h.clone().negate()); rc.near = 0; rc.far = .5;
+      const hit = rc.intersectObjects(near, false).find(x => { if (!x.face || x.object.userData.velo) return false; let m = x.object.material; if (Array.isArray(m)) m = m[x.face.materialIndex]; if (!m || m.visible === false || (m.transparent && m.opacity < .3)) return false; const fn = x.face.normal.clone().transformDirection(x.object.matrixWorld); return fn.dot(h) > .5; });
+      if (hit) { const d = hit.point.clone().sub(C); pts.push([d.dot(r), d.dot(u), d.dot(h)]); }
+    }
+    if (!pts.length) return null;
+    let A0 = 0, B = 0, Cc = 0;   // dh = A0 + B du + Cc dv (minimi quadrati); con meno di tre punti, solo l'altezza media
+    if (pts.length >= 3) { let s1 = 0, su = 0, sv = 0, suu = 0, svv = 0, suv = 0, sh = 0, suh = 0, svh = 0; for (const [a, b, c] of pts) { s1++; su += a; sv += b; suu += a * a; svv += b * b; suv += a * b; sh += c; suh += a * c; svh += b * c; }
+      const M = [[s1, su, sv], [su, suu, suv], [sv, suv, svv]], y = [sh, suh, svh], det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]), D = det(M);
+      if (Math.abs(D) > 1e-9) { const col = (k) => M.map((row, i) => row.map((v, j) => j === k ? y[i] : v)); A0 = det(col(0)) / D; B = det(col(1)) / D; Cc = det(col(2)) / D; }
+      else A0 = sh / s1;
+      if (Math.abs(B) > .6 || Math.abs(Cc) > .6) { B = 0; Cc = 0; A0 = sh / s1; } }   // più ripido di 30°: non è un pavimento, solo l'altezza
+    else A0 = pts.reduce((t, q) => t + q[2], 0) / pts.length;
+    const n = h.clone().addScaledVector(r, -B).addScaledVector(u, -Cc).normalize();
+    return { c: C.addScaledVector(h, A0), n };
+  }
   function makeVeil(w, g) {
     const THREE = T3(), R = w.gfxRect, kq = w.surf === 'treno' ? 1 : PHONE_K(), c = poolGet(Math.max(1, Math.ceil(g.Wp * kq)), Math.max(1, Math.ceil(g.Hp * kq))), tex = canvasTexture(c);
     const layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
@@ -776,7 +804,9 @@ var Writing = (function () {
     const mesh = new THREE.Mesh(dg || new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
     if (dg) { R.obj.add(mesh); mesh.updateMatrixWorld(true); mesh.receiveShadow = true; GFX.mem.veli++; return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, decal: true, layer }; }   // [graffiti] la decalcomania: già nello spazio del mezzo, si muove con lui
     const ny = R.n.y || 0, off = Math.abs(ny) > .5 ? .012 : GAP + layer * .001;; mesh.position.set(R.c.x + R.n.x * off, R.c.y + ny * off, R.c.z + R.n.z * off);   // [graffiti] per terra un filo di più: l'asfalto non è mai piano
-    if (Math.abs(ny) > .5) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x, mesh.position.y + ny, mesh.position.z); }   // [writer] per terra, su un tetto: il velo si stende, con l'alto del disegno dove guardavi
+    const SU = Math.abs(ny) > .5 && SUOLOFIX ? suoloSotto(R) : null;
+    if (SU) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r), o2 = GAP + layer * .001; mesh.position.copy(SU.c).addScaledVector(SU.n, o2); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x + SU.n.x, mesh.position.y + SU.n.y, mesh.position.z + SU.n.z); }   // [graffiti] steso sul suolo vero
+    else if (Math.abs(ny) > .5) { const up = R.u || new THREE.Vector3().crossVectors(R.n, R.r); mesh.up.set(up.x, up.y, up.z); mesh.lookAt(mesh.position.x, mesh.position.y + ny, mesh.position.z); }   // [writer] per terra, su un tetto: il velo si stende, con l'alto del disegno dove guardavi
     else mesh.lookAt(mesh.position.x + R.n.x, mesh.position.y, mesh.position.z + R.n.z);
     mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
     if (R.obj && R.veh) R.obj.attach(mesh);   // sulle auto il velo segue il mezzo
