@@ -127,3 +127,32 @@ micro-normale dipinta. Tutte le foto della galleria invece girano col profilo pi
 
 **L'ordine rivisto**: 0 (misurare pieno e leggero, giorno e notte) → 1 → 2 (categoria dai materiali) → 3 → 4 → 5 → stato della rivoluzione
 → 6 → 7 → forme → 8.
+
+## 7. Stato dopo il primo giro ([cat] e [riv], 1 novembre)
+
+Misure nel **profilo leggero** (quello del committente), con la categoria scritta dai materiali e i tasselli ricotti:
+
+| scena | tetti nel quadro | muri L / sat | tetti L / sat | suolo L, luce/ombra | persone/suolo |
+| --- | --- | --- | --- | --- | --- |
+| mattino, Rua Maestra | 39% → 36% | .44/.51 → .41/.52 | .49/.44 → .44/.53 | .38, 2,0 → 2,2 | 2,1 → 1,8 |
+| mezzogiorno, Vittoria | 24% → 17% | .43/.50 → .47/.50 | .49/.47 → .44/.56 | .36, 1,5 → 1,5 | 1,8 → 1,7 |
+| sera, il bar | 52% → 52% | .33/.60 → .33/.59 | .46/.56 → .43/.72 | .34, 2,9 → 2,4 | 1,1 → 1,3 |
+| notte, Vittoria | 42% → 38% | .21/.70 → .20/.69 | .27/.51 → .25/.63 | .15, 4,6 → 4,6 | 2,0 → 2,0 |
+
+(prima: la build [firma] coi tasselli vecchi, categorie spente; il foglio `_immagini/firma/leggero_prima_dopo.png`).
+
+Fatto: passi 0, 1, 2 (la categoria dai materiali, valida nei due profili), 3 (la luce del giorno, in parte), lo stato della rivoluzione, il
+bordo delle persone (parte del 5), la camera (parte del 7). Cosa dicono i numeri e le foto:
+- i tetti ora sono sotto i muri di valore e restano cotto (il primo tentativo, più duro, li faceva marroni: tornato indietro);
+- la camera più bassa toglie tetti dove la via è larga (mezzogiorno: 24% → 17%), non nei vicoli del borgo (sera, 52%: lì la zoom della scena è
+  stretta e la camera sopra i tetti); i muri restano scuri di media perché ora se ne vedono più facce in ombra;
+- **la strada è il punto debole che resta**: grandi superfici grigie piatte (a mezzogiorno il 53% del quadro). Il passo 6 (il materiale della
+  strada: usura, lastrico, cordoli, segni) è il prossimo per peso;
+- persone/suolo resta sotto 2: le persone sono l'1% del quadro; il bordo di luce aiuta di notte, di giorno serve il colore riservato al
+  personaggio (da scegliere) e la scala;
+- luce/ombra a mezzogiorno resta 1,5: a mezzogiorno nelle vie larghe di ombra ce n'è poca (il sole alto); la sera e la notte tengono.
+
+Da fare, in ordine: 6 (la strada), 5 (il colore riservato al personaggio e alle cose interattive: `#ff4f9a` o `#E8A8BF`, scelta del
+committente; la scala), 4 (gli intonaci: al più tre tinte per quartiere, nelle tavolozze), 8 (il tratto che pesa, il bagliore dei neon),
+le forme (case e pali storti, zoccolo), il verde, la fotocopia sui segni. E la misura dei millisecondi sul portatile del committente
+(`?perf`, F3) prima e dopo questo giro: le 4 letture dell'alfa e il bordo delle persone costano poco, ma va visto sulla Iris Xe.
