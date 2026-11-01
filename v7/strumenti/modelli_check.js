@@ -15,7 +15,8 @@ const args = process.argv.slice(2), DETT = args.includes('--dett'), SOLO = args.
 const TOL = .02;
 // tetto dei triangoli al livello pieno: poche centinaia (800) per ogni oggetto, di più solo per le cose grandi e composte
 const GRANDI = { edicola: 1100, cabina_enel: 1600, carretto: 1400, lampione_corso: 1300, bancarella: 1300, semaforo: 1200, fermata: 1200, paletti_catena: 1200, reti: 1000, cassonetto: 1000, impalcatura: 1000, cabina_sip: 900, cassone: 900,
-  container: 1900, gru: 1800, muletto: 1450, invasatura: 1500, pila_gomme: 1200 };   // [roba3d] le cose grandi del porto e del magazzino
+  container: 1900, gru: 1800, muletto: 1450, invasatura: 1500, pila_gomme: 1200,
+  fioriera_tetto: 2000, fioriera: 1100 };   // [vasi2] la fioriera lunga del tetto (2 m di piante); il vaso piccolo sta sotto i 400 (vedi --vasi)   // [roba3d] le cose grandi del porto e del magazzino
 const TETTO = t => GRANDI[t] || 800;
 
 const V = THREE.Vector3, tri = new THREE.Triangle(), _p = new V(), _q = new V(), ray = new THREE.Ray(), _hit = new V();
@@ -65,17 +66,35 @@ function tocca(a, b) {
   if (!a.bb.clone().expandByScalar(TOL).intersectsBox(b.bb)) return false;
   return vicino(a, b) || vicino(b, a) || attraversa(a, b) || attraversa(b, a) || dentro(a, b) || dentro(b, a);
 }
-function controlla(tipo, liv) {
-  const g = A.make(tipo, { liv }), ps = pezzi(g), n = ps.length, par = ps.map((_, i) => i), f = i => par[i] === i ? i : (par[i] = f(par[i]));
+function controlla(tipo, liv, opz) {
+  const g = A.make(tipo, Object.assign({}, opz || {}, { liv })), ps = pezzi(g), n = ps.length, par = ps.map((_, i) => i), f = i => par[i] === i ? i : (par[i] = f(par[i]));
   for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { if (f(i) === f(j)) continue; if (tocca(ps[i], ps[j])) par[f(i)] = f(j); }
   const comp = new Map(); ps.forEach((p, i) => { const r = f(i); if (!comp.has(r)) comp.set(r, []); comp.get(r).push(p); });
   const gruppi = [...comp.values()].sort((a, b) => b.length - a.length), tris = ps.reduce((s, p) => s + p.n, 0);
   const bb = new THREE.Box3(); ps.forEach(p => bb.union(p.bb)); const aMuro = !!g.userData.aMuro;
   let base;
-  if (g.userData.aPalo) base = true;   // si stringe a un palo che c'è già: basta che stia insieme
+  if (g.userData.aPalo) base = true;
+  else if (g.userData.appeso) base = Math.abs(bb.max.y) <= .011 && ps.some(p => Math.abs(p.bb.max.y) <= .011);   // [vasi2] appeso al gancio: tocca y = 0 dall'alto   // si stringe a un palo che c'è già: basta che stia insieme
   else if (aMuro) base = Math.abs(bb.min.z) <= .011 && ps.some(p => Math.abs(p.bb.min.z) <= .011);
   else base = Math.abs(bb.min.y) <= .011 && ps.some(p => Math.abs(p.bb.min.y) <= .011);
   return { tipo, liv, n, gruppi, tris, bb, base, aMuro, mat: new Set(ps.map(p => p.o.material)).size };
+}
+// [vasi2] --vasi: ogni vaso con ogni pianta (e il seme che cambia la variante): collegati, a terra, e i triangoli del vaso piccolo (tetto 400, 900 per i grandi)
+if (args.includes('--vasi')) {
+  let ko2 = 0; const somma = {}; const t1 = Date.now();
+  for (const vaso of A.GENERI_V) for (const pianta of A.PIANTE_V.concat(['nessuna'])) for (const seed of [3, 18]) { if (pianta === 'limone' && !['terracotta', 'smaltato', 'urna'].includes(vaso)) continue;   // il limone solo nei vasi grandi
+    const grande = ['limone', 'monstera'].includes(pianta) || vaso === 'urna' || vaso === 'mosaico', cap = grande ? 950 : vaso === 'cassetta' ? 860 : 560;
+    const r1 = controlla('vaso', 1, { vaso, pianta, seed }), r0 = controlla('vaso', 0, { vaso, pianta, seed });
+    const ok = r1.gruppi.length === 1 && r0.gruppi.length === 1 && r1.base && r0.base && r1.tris <= cap && r0.tris <= r1.tris; if (!ok) ko2++;
+    (somma[pianta] = somma[pianta] || []).push(r1.tris);
+    if (!ok || DETT) { console.log(`${ok ? 'ok ' : 'NO '} ${vaso.padEnd(10)} ${pianta.padEnd(12)} seme ${seed}  ${r1.tris}/${cap} tri (lontano ${r0.tris})` + (r1.gruppi.length === 1 && r0.gruppi.length === 1 ? '' : `  STACCATI ${r1.gruppi.length - 1}+${r0.gruppi.length - 1}`) + (r1.base && r0.base ? '' : '  BASE'));
+      if (DETT && r1.gruppi.length > 1) r1.gruppi.slice(1).forEach(gr => console.log('      staccati: ' + gr.map(p => p.nome).join(' | '))); }
+  }
+  { const r = controlla('vaso', 1, { vaso: 'terracotta', pianta: 'geranio', forma: 'classico', seed: 9 }); console.log(`${r.tris <= 400 ? 'ok ' : 'NO '} il vaso tipico (cotto classico col geranio): ${r.tris} tri (tetto 400)`); if (r.tris > 400) ko2++; }
+  for (const vaso of A.GENERI_V) { const r = controlla('vaso', 1, { vaso, pianta: 'nessuna' }); console.log(`   vaso ${vaso.padEnd(10)} ${String(r.tris).padStart(4)} tri da solo`); }
+  Object.keys(somma).forEach(k => console.log(`   pianta ${k.padEnd(12)} media ${Math.round(somma[k].reduce((a, b) => a + b, 0) / somma[k].length)} tri col vaso`));
+  ['su:cassa', 'su:sgabello', 'su:mattoni', 'appeso:pothos', 'appeso:geranio', 'appeso:buganvillea'].forEach(q => { const [k2, v2] = q.split(':'), su = k2 === 'su' ? v2 : undefined, r = k2 === 'su' ? controlla('vaso', 1, { su, seed: 5 }) : controlla('vaso_appeso', 1, { pianta: v2, seed: 5 }); console.log(`${r.gruppi.length === 1 && r.base ? 'ok ' : 'NO '} ${q} ${r.tris} tri`); if (!(r.gruppi.length === 1 && r.base)) ko2++; });
+  console.log(`${ko2 ? ko2 + ' combinazioni NON passano' : 'tutte le combinazioni passano'} (${Date.now() - t1} ms)`); process.exit(ko2 ? 1 : 0);
 }
 const tipi = SOLO.length ? SOLO : A.TIPI; let ko = 0; const t0 = Date.now(), righe = [];
 for (const t of tipi) {
