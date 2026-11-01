@@ -13348,7 +13348,7 @@ var Render = (function () {
   // muri (il tetto di saturazione), tetti (valore e colore stretti), suolo (più scuro al sole), persone (colore e contrasto); le linee
   // (persone, ciglio tetto-muro, piede muro-suolo) e il loro spessore in pixel della scena. ?nocat spegne; window.__CAT dal vivo
   const RIV = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]noriv\b/.test(location.search)), base: .78, v: .9, want: .9, t: 0 };   // [riv] lo stato della rivoluzione (vedi sguPasso); base: la strada quando la scena dei graffiti è ancora vuota
-  const CAT = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nocat\b/.test(location.search)), muri: 1, tetti: 1, suolo: 1, persone: 1, bordoPersone: .55, lineaPersone: .95, ciglio: .85, piede: .7, spessore: 1.8, trama: .7 };   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
+  const CAT = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]nocat\b/.test(location.search)), muri: 1, tetti: 1, suolo: 1, persone: 1, bordoPersone: .55, lineaPersone: .95, ciglio: .85, piede: .7, spessore: 1, trama: .7 };   // [vettore] spessore: la distanza di lettura ai due lati, in texel della scena (la linea è larga circa il doppio, col bordo sfumato)   // [tratto] il pennarello su spigoli e sagome; trama: il contrasto locale (intonaco, lastrico, coppi)
   if (typeof window !== 'undefined') { window.__PELL = PELL; window.__AD = AD; window.__CAT = CAT; window.__RIV = RIV; AD.u7 = PRO.u7; }   // u7: il taglio dal vivo (le prove)
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
@@ -13674,7 +13674,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         gS: { value: new THREE.Vector4() },   // [strada]
         rv: { value: 1 }, cT: { value: 0 }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + (PHONE || LOWQ.on ? '\n#define SG_FXAA' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform float rv; uniform float cT;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -13709,6 +13709,19 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             vUv = .5 + q0 * (1. - gS.x * (1. - r2)); }
 #endif
           vec2 e = 1. / src; vec3 c = texture2D(t, vUv).rgb; float shp = gK.w;
+#ifdef SG_FXAA
+          {   /* [vettore] FXAA (Lottes): nel profilo leggero la scena è senza multicampionamento e ingrandita, gli spigoli facevano la scaletta */
+            vec3 cNW = texture2D(t, vUv + vec2(-1., -1.) * e).rgb, cNE = texture2D(t, vUv + vec2(1., -1.) * e).rgb, cSW = texture2D(t, vUv + vec2(-1., 1.) * e).rgb, cSE = texture2D(t, vUv + vec2(1., 1.) * e).rgb;
+            vec3 LW = vec3(.299, .587, .114); float lNW = dot(cNW, LW), lNE = dot(cNE, LW), lSW = dot(cSW, LW), lSE = dot(cSE, LW), lM = dot(c, LW);
+            float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE))), lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+            vec2 dr = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
+            float rd = max((lNW + lNE + lSW + lSE) * .03125, .0078125), rm = 1. / (min(abs(dr.x), abs(dr.y)) + rd);
+            dr = clamp(dr * rm, vec2(-8.), vec2(8.)) * e;
+            vec3 cA = .5 * (texture2D(t, vUv + dr * (1. / 3. - .5)).rgb + texture2D(t, vUv + dr * (2. / 3. - .5)).rgb);
+            vec3 cB = cA * .5 + .25 * (texture2D(t, vUv - dr * .5).rgb + texture2D(t, vUv + dr * .5).rgb);
+            float lB = dot(cB, LW); c = (lB < lMin || lB > lMax) ? cA : cB;
+            shp *= .35; }   /* la nitidezza dopo l'antialiasing rifarebbe la scaletta: un filo solo */
+#endif
 #if defined(SG_STR) && defined(SG_AD)
           { vec2 qa = (vUv0 - .5) * vec2(src.x / src.y, 1.); shp *= 1. + gS.w * gS.x * (1. - dot(qa, qa) / (.25 * src.x * src.x / (src.y * src.y) + .25)); }   // [ad] il centro ingrandito dal rigonfiamento: un filo più nitido
 #endif
@@ -13850,9 +13863,15 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
 #endif
 #ifdef SG_CAT
           {   // [cat] LA GERARCHIA PER CATEGORIA (ANALISI_STILE.md §3): il fondo respira, la cornice tace, il palco regge, le persone e gli accenti si accendono
-            if (cT > 0.) { vec2 o2 = e * 2.;   // [tratto] LE TRAME: il contrasto locale sul valore (4 letture a 2 px), così intonaco, lastrico e coppi si leggono; mai sulle persone
+            /* [vettore] IL BORDO COME CAMPO CONTINUO: l'alfa letta interpolata ai due lati (a cL.w texel) dà un gradiente liscio, non una scaletta:
+               la linea si disegna alla risoluzione dello schermo con un bordo sfumato, come un tratto vettoriale */
+            vec2 oV = e * cL.w; float aC = texture2D(t, vUv).a * 35.;
+            float aR = texture2D(t, vUv + vec2(oV.x, 0.)).a * 35., aL = texture2D(t, vUv - vec2(oV.x, 0.)).a * 35., aU = texture2D(t, vUv + vec2(0., oV.y)).a * 35., aD = texture2D(t, vUv - vec2(0., oV.y)).a * 35.;
+            float gV = length(vec2(aR - aL, aU - aD)), aMx = max(max(aR, aL), max(aU, aD)), aMn = min(min(aR, aL), min(aU, aD));
+            float eV = smoothstep(.35, 1.1, gV);   /* quanto questo pixel sta su uno spigolo (0-1, morbido) */
+            if (cT > 0.) { vec2 o2 = e * 2.;   // [tratto] LE TRAME: il contrasto locale sul valore (4 letture a 2 px), così intonaco, lastrico e coppi si leggono; mai sulle persone né sugli spigoli
               float lb = dot((texture2D(t, vUv + vec2(o2.x, o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, o2.y)).rgb + texture2D(t, vUv + vec2(o2.x, -o2.y)).rgb + texture2D(t, vUv - vec2(o2.x, -o2.y)).rgb) * .25, vec3(.299, .587, .114));
-              float l0 = dot(c, vec3(.299, .587, .114)); c = max(c + clamp(l0 - lb, -.08, .08) * cT * (1. - smoothstep(.75, .85, texture2D(t, vUv).a)), 0.); }
+              float l0 = dot(c, vec3(.299, .587, .114)); c = max(c + clamp(l0 - lb, -.08, .08) * cT * (1. - smoothstep(.75, .85, texture2D(t, vUv).a)) * (1. - eV), 0.); }
             float ka = floor(texture2D(t, vUv).a * 35. + .5), kc = floor(ka / 6. + .001);
             float wS = step(abs(kc - 1.), .1), wM = step(abs(kc - 2.), .1), wT = step(abs(kc - 3.), .1), wP = step(abs(kc - 4.), .1);
             float lq = dot(c, vec3(.299, .587, .114)), mq = max(c.r, max(c.g, c.b)), sq = (mq - min(c.r, min(c.g, c.b))) / max(mq, 1e-4);
@@ -13860,16 +13879,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             { float k = wT * cK.y, l2 = min(.5 + (lq - .5) * .78, .6), cpT = mix(.72, .56, gN.z); vec3 c2 = c * (l2 / max(lq, 1e-3)); float m2 = max(c2.r, max(c2.g, c2.b)), s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4); if (s2 > cpT) c2 = mix(vec3(l2), c2, cpT / s2); c = mix(c, c2, k); }   /* tetti: il cotto resta cotto, il valore stretto appena e mai sopra .6 */
             c *= 1. - wS * cK.z * smoothstep(.38, .62, lq) * .14;                         // suolo: il palco un filo più scuro al sole, sotto i muri chiari
             { float k = wP * cK.w; vec3 c2 = max(mix(vec3(lq), c, 1.25), 0.); c2 = max((c2 - .42) * 1.15 + .42, 0.); c = mix(c, c2, k); }   // persone: più colore e più contrasto
-            if (cL.x + cL.y + cL.z > 0.) {   // [tratto] IL PENNARELLO: dove cambia la categoria o la faccia (gli spigoli, i colmi, gli angoli, il piede, il ciglio, le sagome), del colore della cosa
-              vec2 o = e * cL.w; float ln = 0.;
-              for (int q = 0; q < 4; q++) { vec2 d = q == 0 ? vec2(o.x, 0.) : q == 1 ? vec2(-o.x, 0.) : q == 2 ? vec2(0., o.y) : vec2(0., -o.y);
-                float kb = floor(texture2D(t, vUv + d).a * 35. + .5), cb = floor(kb / 6. + .001);
-                if (kb == ka || ka < kb) continue;   // la linea sta su un lato solo (quello col codice più alto: il muro sul suolo, il tetto sul muro, la persona su tutto)
-                float sil = step(.5, abs(kc - cb)), w = kc > 4.5 || cb > 4.5 ? 0. : (kc > 3.5 ? cL.x : sil > .5 ? (kc > 2.5 ? cL.y : cL.z) : (kc < 1.5 ? 0. : cL.y * .75));   // persone; ciglio; piede; spigoli fra due facce della stessa cosa (non sul suolo)
-                ln = max(ln, w); }
-              if (wP > .5) { for (int q = 0; q < 4; q++) { vec2 d = q == 0 ? vec2(o.x, 0.) : q == 1 ? vec2(-o.x, 0.) : q == 2 ? vec2(0., o.y) : vec2(0., -o.y);   // la persona: la sagoma anche dal suo lato (spessa)
-                float cb = floor(floor(texture2D(t, vUv + d).a * 35. + .5) / 6. + .001); if (abs(cb - 4.) > .1 && cb < 4.5) ln = max(ln, cL.x); } }
-              c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), clamp(ln, 0., 1.) * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
+            if (cL.x + cL.y + cL.z > 0. && eV > 0.) {   // [tratto] [vettore] IL PENNARELLO: dove cambia la categoria o la faccia, del colore della cosa, liscio
+              float cMx = floor(floor(aMx + .5) / 6. + .001), cMn = floor(floor(aMn + .5) / 6. + .001);   /* le due cose che si toccano: la più «alta» e la più «bassa» */
+              float w = (cMx > 4.5 || cMn > 4.5) ? 0. : (cMx > 3.5 ? cL.x : (cMx > cMn + .5 ? (cMx > 2.5 ? cL.y : cL.z) : (cMx < 1.5 ? 0. : cL.y * .75)));   /* persone; ciglio; piede; spigolo fra due facce della stessa cosa (mai sul suolo) */
+              float ln = clamp(eV * w, 0., 1.);
+              c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), ln * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
           }
 #endif
           c = max(c - gN.x, 0.) / (1. - gN.x);                                         // neri profondi e puliti
