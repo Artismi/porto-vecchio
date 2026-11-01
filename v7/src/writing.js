@@ -643,7 +643,10 @@ var Writing = (function () {
       // provare ogni triangolo a ogni riquadro; correndo verso muri dipinti nuovi era il grosso della spazzatura e degli scatti
       let bt2 = bt; const nT = g.index ? g.index.count : pa.count, dr = g.drawRange;
       if (!bt2 && nT >= 2700 && !g.__bvhNo && !(g.boundingBox && !g.boundingBox.intersectsBox(Bl.copy(B).applyMatrix4(M))) && !pa.isInterleavedBufferAttribute && !(dr.start > 0) && !(dr.count !== Infinity && dr.count < nT) && typeof MeshBVHLib !== 'undefined') {
-        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
+        // [compenetra] l'indice della fusa compattata (leggera_memoria.js, lmFisso) è la mappa dei pezzi delle case (lmDec): MeshBVH lo
+        // riordinava sul posto e le case rifatte prendevano i triangoli delle vicine (come render.js bvhCopia1: l'indice spaziale su una copia)
+        const gB = g.index && g.index.lmFisso ? (() => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]); c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; })() : g;
+        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(gB); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
       if (bt2 && g.__bvhVer === vv) { const bt = bt2; try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
       Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
       const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
