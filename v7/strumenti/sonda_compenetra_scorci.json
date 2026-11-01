@@ -1,0 +1,9 @@
+{
+  "nota": "[compenetra] tre posti della sonda delle compenetrazioni (strumenti/sonda_compenetra.js) per il prima e il dopo: x, y il punto in strada dove sta il personaggio, dx, dy fin dove guarda la camera (metri di gioco); zoom come ui.zoom, ora in minuti. PV_QUERY='?cittanuova&leggera' node strumenti/galleria.js <cartella> strumenti/sonda_compenetra_scorci.json (il prima: PV_PAGINA con la build vecchia)",
+  "pulita": true,
+  "scorci": [
+    { "nome": "c1_gronde_vicino", "titolo": "La gronda di casa_106 sul vicino casa_107", "x": 1274.5, "y": 414.6, "dx": -2.0, "dy": -2.0, "zoom": 0.4, "ora": 630, "meteo": "sereno" },
+    { "nome": "c2_arco_case", "titolo": "L'arco 19 fra casa_133 e casa_139, le case accostate casa_134/161", "x": 1410, "y": 283, "dx": 2.0, "dy": -2.0, "zoom": 0.4, "ora": 630, "meteo": "sereno" },
+    { "nome": "c3_scala_ferri", "titolo": "La scala 35 su casa_36: i ferri sul parapetto", "x": 1359.5, "y": 350.8, "dx": -2.0, "dy": -2.0, "zoom": 0.4, "ora": 630, "meteo": "sereno" }
+  ]
+}

@@ -23379,8 +23379,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'f368ebc0bbb03a54';</script>
-<script>window.PV_IMPRONTA_TASS = 'c237e471a062903a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'd0067e8efd734891';</script>
+<script>window.PV_IMPRONTA_TASS = '1195a4e9d373e96c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -30320,7 +30320,7 @@ var World = (function () {
         CASE.forEach(b => { const q = BX.get(b), i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32); const k = kk(i, j); let A = IX.get(k); if (!A) IX.set(k, A = []); A.push(b); });
         const vicine = (b, q) => { const i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32), R = []; for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const o of IX.get(kk(i + a, j + c)) || []) if (o !== b) R.push(o); return R; };
         const rel = (a, c) => { const ox = Math.min(a[2], c[2]) - Math.max(a[0], c[0]), oy = Math.min(a[3], c[3]) - Math.max(a[1], c[1]); return ox > 0 && oy > 0 ? { pe: Math.min(ox, oy), ox, oy } : { gap: Math.hypot(Math.max(0, -ox), Math.max(0, -oy)), ox, oy }; };
-        const pesa = (a, c) => { const r = rel(a, c); if (r.pe !== undefined) return r.pe > .35 ? 30 : 0; if (r.gap <= .05) return 0; if (r.gap < 1.2) return 10; if (r.gap < 2.6 && Math.min(Math.max(a[2] - a[0], a[3] - a[1]), Math.max(c[2] - c[0], c[3] - c[1])) > 3) return 1; return 0; };
+        const pesa = (a, c) => { const r = rel(a, c); if (r.pe !== undefined) return r.pe > .02 ? 30 : 0;   /* [compenetra] prima 35 cm: la casa accostata entrava 20 cm nella vicina di fianco (muri dentro muri, gronde nei tetti) */ if (r.gap <= .05) return 0; if (r.gap < 1.2) return 10; if (r.gap < 2.6 && Math.min(Math.max(a[2] - a[0], a[3] - a[1]), Math.max(c[2] - c[0], c[3] - c[1])) > 3) return 1; return 0; };
         const voto = (b, q) => vicine(b, q).reduce((s, o) => rotT(o) === 0 ? s + pesa(q, BX.get(o)) : s, 0);
         // (fuori dalle sue caselle il muro può uscire di meno di mezza casella: non copre il centro di nessuna casella d'altri)
         const lecita = (b, q) => { if (q[2] - q[0] < 1.2 || q[3] - q[1] < 1.2) return false; const T0 = [b.x * TS - TS / 2 + .01, b.y * TS - TS / 2 + .01, (b.x + b.w) * TS + TS / 2 - .01, (b.y + b.h) * TS + TS / 2 - .01]; if (q[0] < T0[0] || q[1] < T0[1] || q[2] > T0[2] || q[3] > T0[3]) return false;
@@ -53629,6 +53629,24 @@ var Tetti = (function () {
     const lastrico = new T3.MeshStandardMaterial({ color: '#d9cdb2', roughness: .95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia, fondo, pietra, terra, verde, lastrico };
   }
+  // [compenetra] IL CIELO DELLA SCALA: la gronda, il cornicione, la copertina che sporgono sopra la scala, letti sul modello vero delle case
+  // (un raggio in su dal tratto alto, 70 cm sotto il filo del tetto: le fasce e i davanzali più in basso non contano, alle distanze dal muro delle staffe e dei montanti, al centro e ai due fianchi).
+  // Prima le staffe alte, la fascia di calce e i montanti di ferro passavano dentro lo sbalzo. c02, c16, c20: la quota del primo sbalzo a 2,
+  // 16 e 20 cm dal muro (Infinity: niente); fuori: la distanza dal muro dove lo sbalzo è finito (la scala di ferro si scosta fin lì, i ferri
+  // scavalcagronda delle staffe stanno lì). Una volta per scala, quando la casa c'è.
+  function cielo4(R, L, y0, y1) {
+    if (L.__cielo4 !== undefined) return L.__cielo4;
+    const T3 = THREE, rs = recsOf(R, B[L.bi]); if (!rs.length) return null;   // la casa non c'è ancora: si riprova al prossimo rifacimento
+    const parti = [], viste = new Set([L.bi]); caseSotto4(L.x + L.ox * .4, L.y + L.oy * .4).forEach(bi => viste.add(bi));
+    viste.forEach(bi => recsOf(R, B[bi]).forEach(r => [r.grp, r.roofGrp, r.cityGrp, r.detGrp, r.caseGrp].forEach(g => { if (g && g.traverse) { g.updateMatrixWorld(true); parti.push(g); } })));
+    const rc = new T3.Raycaster(), up = new T3.Vector3(0, 1, 0), o = new T3.Vector3(), sx = -L.oy, sz = L.ox, ya = Math.max(y0 + .3, y1 - 1.65);
+    const su = d => { let c = Infinity; for (const t of [-.26, 0, .26]) { o.set(L.x + L.ox * d + sx * t, ya, L.y + L.oy * d + sz * t); rc.set(o, up); rc.far = y1 + .4 - ya;
+      const h = rc.intersectObjects(parti, true).find(q => q.object.isMesh && !q.object.isInstancedMesh && !q.object.userData.velo); if (h && h.point.y < c) c = h.point.y; } return c; };
+    const C = { c02: su(.02), c16: su(.16), c20: su(.2), fuori: .2 };
+    if (Math.min(C.c02, C.c16, C.c20) < y1 + .2) { C.fuori = .95; for (const d of [.3, .42, .54, .66, .78, .9]) if (su(d + .03) === Infinity && su(d - .03) === Infinity) { C.fuori = d; break; } }
+    if (L.footB >= 0) C.fuori = Math.min(C.fuori, .5);   // il piede sul tetto basso: non oltre il suo bordo
+    return (L.__cielo4 = C);
+  }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
@@ -53640,24 +53658,34 @@ var Tetti = (function () {
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
-      const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
-      const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
-      const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
+      let y0 = footH(L); const y1 = topH(L) + .95;
+      if (L.footB < 0 && !L.camm && !L.rampa && R.groundH) { const g = R.groundH(L.x + L.ox * .4, L.y + L.oy * .4); if (Number.isFinite(g) && Math.abs(g - y0) > .08 && Math.abs(g - y0) < 3) y0 = g; }   // [compenetra] il piede sul terreno disegnato (la quota della casella restava sospesa o sepolta sui pendii e sui gradoni)
+      const Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
+      const CI = L.rampa ? null : cielo4(R, L, y0, y1);   // [compenetra] la gronda o il cornicione sopra la scala
+      const off = !old && CI && CI.c20 < y1 + .2 ? CI.fuori : .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro; [compenetra] sotto una gronda, fuori quanto sporge
+      const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
       if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
-      put(fondo, L.x + L.ox * .38, y0 + .015, L.y + L.oy * .38, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
-      put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
+      const pf = off + .18;   // [compenetra] il piede segue la scala scostata
+      put(fondo, L.x + L.ox * pf, y0 + .015, L.y + L.oy * pf, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
+      put(crema, L.x + L.ox * pf, y0 + .06, L.y + L.oy * pf, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       // [tetti3] dove si arriva: la lastra crema sul lastrico (il pianerottolo che si vede da lontano), solo sui terrazzi
       const PA3 = PIANO[L.bi]; if (CN3 && (!PA3 || PA3.tipo === 'piano') && L.footB < 0) put(crema, L.tx + L.ox * .1, topH(L) + .1, L.ty + L.oy * .1, .9, .04, 1.0, yaw);
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
-        if (CN3) put(crema, L.x + L.ox * .012, y0 + (y1 - .4 - y0) / 2, L.y + L.oy * .012, .02, y1 - .4 - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
-        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
-        for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
+        // [compenetra] le staffe e la fascia si fermano sotto la gronda o il cornicione (prima i pioli alti passavano dentro lo sbalzo)
+        const cS = CI ? Math.min(CI.c16, CI.c02) : Infinity, yF = Math.min(y1 - .4, cS - .06), yS = Math.min(y1 - .85, cS - .14);
+        if (CN3 && yF - y0 > .5) put(crema, L.x + L.ox * .012, y0 + (yF - y0) / 2, L.y + L.oy * .012, .02, yF - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
+        for (let y = y0 + .35; y < yS; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        if (cS < y1 - .85) {   // [compenetra] lo sbalzo sopra: i due ferri scavalcagronda, fuori dal filo dello sbalzo, dalle ultime staffe fin sopra il bordo, con le staffe lunghe al muro
+          const dF = CI.fuori, ya = Math.max(y0 + .3, cS - .75); for (const s of [-1, 1]) { put(rails, L.x + L.ox * dF + sx * s, (ya + y1) / 2, L.y + L.oy * dF + sz * s, .04, y1 - ya, .04, yaw); put(rails, L.x + L.ox * dF / 2 + sx * s, ya + .05, L.y + L.oy * dF / 2 + sz * s, dF, .04, .04, yaw); } }
+        else for (const s of [-1, 1]) { const fx = cx - L.ox * .3 + sx * s, fz = cz - L.oy * .3 + sz * s; let yp = -Infinity; try { yp = solido4(L.bi, fx, fz); } catch (e2) { }   // [compenetra] i ferri partono dalla copertina, non dentro il parapetto
+          const ya = Number.isFinite(yp) && yp < y1 - .15 ? Math.max(y1 - .6, yp) : y1 - .6; put(rails, fx, (ya + y1) / 2, fz, .04, y1 - ya, .04, yaw); }   // i due ferri che aiutano a scavalcare il parapetto
         put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [scale3] in cima niente lanterna gialla   // [pulizia2] e una lucina all'attacco, a 2,3 m
       }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
+      if (off > .21) { const yb = Math.min(y1 - 1.2, CI.c20 - .15); for (let y = y0 + 1.6; y < yb + .01; y += Math.max(.5, (yb - y0 - 1.6) / Math.max(1, Math.round((yb - y0 - 1.6) / 2.5)))) for (const s of [-1, 1]) put(rails, L.x + L.ox * off / 2 + sx * s, y, L.y + L.oy * off / 2 + sz * s, off, .04, .04, yaw); }   // [compenetra] scostata dal muro: le staffe lunghe che la tengono
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto
       for (const s of [-1, 1]) put(rails, cx - L.ox * .35 + sx * s, y1 - .02, cz - L.oy * .35 + sz * s, .7, .05, .05, yaw);
       // la gabbia: anelli a U ogni 70 cm sopra i 2,5 m (le scale lunghe)
@@ -53683,7 +53711,7 @@ var Tetti = (function () {
       if (P.arco) {   // [tetti4] l'arco di contrasto: il dorso di pietra calpestabile fra i due muri, l'intradosso ad arco ribassato sotto, le teste crema
         const [xa, za] = pt(S[1]), [xb, zb] = pt(S[2]), w2 = P.hw * 2;
         for (let k = 0; k < 3; k++) { const [x1, z1] = pt(S[k]), [x2, z2] = pt(S[k + 1]); if (k !== 1) continue; seg(pietra, x1, h[k] - .14, z1, x2, h[k + 1] - .14, z2, w2, .28, yaw); }
-        const n = 7, rise = Math.min(.9, P.gap * .3), yb = Math.min(h[1], h[2]) - .28;
+        const n = 7, yb = Math.min(h[1], h[2]) - .28, rise = Math.max(.15, Math.min(.9, P.gap * .3, yb - Math.max(roofRule(B[P.a]), roofRule(B[P.b])) - .03));   // [compenetra] sopra la cornice dei due muri
         for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, a0 = Math.sin(Math.PI * t0) * rise, a1 = Math.sin(Math.PI * t1) * rise;
           seg(pietra, xa + (xb - xa) * t0, yb - rise + a0, za + (zb - za) * t0, xa + (xb - xa) * t1, yb - rise + a1, za + (zb - za) * t1, w2 - .06, .22, yaw);
           const xm = xa + (xb - xa) * (t0 + t1) / 2, zm = za + (zb - za) * (t0 + t1) / 2, am = Math.sin(Math.PI * (t0 + t1) / 2) * rise, top = yb - .1, bot = yb - rise + am; if (top - bot > .1) { e.set(0, yaw, 0); q.setFromEuler(e); pietra.push(m4.compose(p3.set(xm, (top + bot) / 2, zm), q, s3.set(P.gap / n + .02, top - bot, w2 - .1)).clone()); } }
@@ -53716,7 +53744,9 @@ var Tetti = (function () {
         const passo = ferro ? .12 : .26, larga = ferro ? .05 : .22;
         for (let u = u0 + passo / 2; u < u1; u += passo) box4(ferro ? rungs : boards, u, 0, plankH(P, u) - .02, larga, .04, w2 - .06); }
       if (P.arco) {   // l'intradosso ribassato sopra il vicolo
-        const [xa, za] = pt(P.s1), [xb, zb] = pt(P.s2), n = 7, rise = Math.min(.8, P.gap * .25);
+        // [compenetra] l'intradosso nasce sopra la fascia di gronda e il cornicione dei due muri (prima la ghiera scendeva 80 cm sotto il dorso e
+        // tagliava la cornice sul ciglio): la freccia al più fin lì, 3 cm sopra il filo del tetto di ognuna delle due case
+        const [xa, za] = pt(P.s1), [xb, zb] = pt(P.s2), n = 7, rise = Math.max(.15, Math.min(.8, P.gap * .25, plankH(P, P.s1) - .28 - roofRule(B[P.a]) - .03, plankH(P, P.s2) - .28 - roofRule(B[P.b]) - .03));
         for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, sa = P.s1 + (P.s2 - P.s1) * t0, sb = P.s1 + (P.s2 - P.s1) * t1, ya = plankH(P, sa) - .28, yb = plankH(P, sb) - .28, a0r = Math.sin(Math.PI * t0) * rise, a1r = Math.sin(Math.PI * t1) * rise;
           seg(pietra, xa + (xb - xa) * t0, ya - rise + a0r, za + (zb - za) * t0, xa + (xb - xa) * t1, yb - rise + a1r, za + (zb - za) * t1, w2 - .06, .2, yaw);
           const sm = (sa + sb) / 2, tm = (t0 + t1) / 2, topm = plankH(P, sm) - .28, bot = topm - rise + Math.sin(Math.PI * tm) * rise; if (topm - bot > .08) box4(pietra, sm, 0, (topm + bot) / 2, (P.s2 - P.s1) / n + .02, topm - bot, w2 - .1); } }
@@ -77998,6 +78028,42 @@ var Render = (function () {
     return { grp, h, ridge: ridge.map(toW), slots: slots.map(toW), chims: chims.map(toW) };
   }
 
+  // [compenetra] LE GRONDE CONTRO IL VICINO: lo sbalzo del tetto a falde (32-55 cm, la gronda, il canale, la testa della falda sul
+  // timpano) entrava nel muro, nel parapetto o nella falda della casa accanto. Dove un vicino attaccato (entro lo sbalzo) è alto quanto la
+  // gronda, la falda si ferma sul filo del muro: i vertici oltre il filo tornano sul filo (sui lati di gronda risalgono lungo la falda,
+  // così il piano resta quello), e quello che sta tutto oltre (il canale, i travicelli) si toglie. Solo le case dritte. T: tetto1; o: { x0, z0, w, d, top, ov, pitch, shape, swap }
+  function taglioGronde4(T, b, o) {
+    if (rotOf(b)) return 0; const L = BLD(), x1 = o.x0 + o.w, z1 = o.z0 + o.d, tp = Math.tan(o.pitch), sotto = o.top - o.ov * tp - .25, M = Math.max(o.ov, .2) + .12;
+    const gronda = f => o.shape === 'padiglione' || (o.shape === 'falda' ? f === (o.swap ? 'E' : 'S') : (o.swap ? f === 'E' || f === 'W' : f === 'N' || f === 'S'));
+    const tagli = { N: [], S: [], E: [], W: [] };
+    const TT4 = window.Tetti && Tetti.solido4 && cn1() ? Tetti : null;
+    L.forEach((c, j) => { if (!c || c === b || c.__tierOf || rotOf(c) || c.lighthouse) return; const cx0 = c.x * TS, cz0 = c.y * TS, cx1 = cx0 + c.w * TS, cz1 = cz0 + c.h * TS;
+      if (cx1 < o.x0 - M || cx0 > x1 + M || cz1 < o.z0 - M || cz0 > z1 + M) return;
+      // quanto sale il vicino lungo il lato in comune: il solido del suo tetto (Tetti.solido4: parapetto e copertina, falde, colmo), o la regola dei piani
+      const alto = (f, a, e) => { let h = (c.__top !== undefined ? c.__top : (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF) + .9; if (!TT4) return h; h = -Infinity;
+        for (let u = a + .1; u <= e - .1 + 1e-6; u += .5) for (let dd = .05; dd <= M; dd += .2) { const x = f === 'E' ? cx0 + dd : f === 'W' ? cx1 - dd : u, z = f === 'S' ? cz0 + dd : f === 'N' ? cz1 - dd : u; try { h = Math.max(h, TT4.solido4(j, x, z)); } catch (e2) { } }
+        return Number.isFinite(h) ? h : (c.__top !== undefined ? c.__top : (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF) + .9; };
+      const ox = Math.min(x1, cx1) - Math.max(o.x0, cx0), oz = Math.min(z1, cz1) - Math.max(o.z0, cz0), za = Math.max(o.z0, cz0), ze = Math.min(z1, cz1), xa = Math.max(o.x0, cx0), xe = Math.min(x1, cx1);
+      if (oz > .2 && cx0 >= x1 - .05 && cx0 <= x1 + M && alto('E', za, ze) >= sotto) tagli.E.push([za, ze, cx0]);   // il vicino basso passa sotto la gronda
+      if (oz > .2 && cx1 <= o.x0 + .05 && cx1 >= o.x0 - M && alto('W', za, ze) >= sotto) tagli.W.push([za, ze, cx1]);
+      if (ox > .2 && cz0 >= z1 - .05 && cz0 <= z1 + M && alto('S', xa, xe) >= sotto) tagli.S.push([xa, xe, cz0]);
+      if (ox > .2 && cz1 <= o.z0 + .05 && cz1 >= o.z0 - M && alto('N', xa, xe) >= sotto) tagli.N.push([xa, xe, cz1]); });
+    if (!Object.values(tagli).some(q => q.length)) return 0;
+    T.grp.updateMatrixWorld(true); const v = new THREE.Vector3(), via = []; let n = 0;
+    T.grp.traverse(m => { if (!m.isMesh || !m.geometry || !m.geometry.attributes.position) return; const P0 = m.geometry.attributes.position, Mw = m.matrixWorld, Mi = Mw.clone().invert();
+      let g = null, fuori = 0;
+      for (let k = 0; k < P0.count; k++) { v.fromBufferAttribute(P0, k).applyMatrix4(Mw); let dx = 0, dz = 0, e = 0, fr = null;
+        for (const [f, L2] of Object.entries(tagli)) for (const [a, c, w0] of L2) { const u = f === 'E' || f === 'W' ? v.z : v.x; if (u < a - .06 || u > c + .06) continue;
+          const lim = f === 'E' ? Math.min(w0, x1) : f === 'W' ? Math.max(w0, o.x0) : f === 'S' ? Math.min(w0, z1) : Math.max(w0, o.z0);
+          const ex = f === 'E' ? v.x - lim : f === 'W' ? lim - v.x : f === 'S' ? v.z - lim : lim - v.z; if (ex <= .005 || ex <= e) continue;
+          e = ex; fr = f; dx = f === 'E' ? -ex : f === 'W' ? ex : 0; dz = f === 'S' ? -ex : f === 'N' ? ex : 0; }
+        if (!fr) continue; fuori++;
+        if (!g) { g = m.geometry.clone(); m.geometry = g; }   // le geometrie possono essere condivise: si taglia una copia
+        v.x += dx; v.z += dz; if (gronda(fr)) v.y += e * tp; v.applyMatrix4(Mi); g.attributes.position.setXYZ(k, v.x, v.y, v.z); }
+      if (g) { g.attributes.position.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); n++; if (fuori === P0.count) via.push(m); } });
+    via.forEach(m => m.parent && m.parent.remove(m));   // tutto oltre il filo: il canale, i travicelli, il pluviale di quel lato
+    return n;
+  }
   // ---------------- tetti piani: lastrico, copertina, bocchettoni, torrino ----------------
   function deckMat1(kind, w, d, tint) { const t = roofTex1(kind, 0).clone(); t.needsUpdate = true; t.repeat.set(w / RSPAN, d / RSPAN); return tv1(std({ map: t, roughness: .95, color: tint || '#ffffff' }), kind); }   // [vissuti]
   // [profondita] il lastrico prende una tinta per livello (tre sole, per non spezzare la fusione): i bassi più spenti e freddi, gli alti più caldi
@@ -78599,16 +78665,22 @@ var Render = (function () {
       row('border', sd, base + MG - .02);
       // piani superiori: lo stesso modulo su tutta la colonna
       const wide = upper.includes('wide');
+      // [compenetra] la finestra dietro il tetto del vicino attaccato: il davanzale, le persiane, il balcone entravano nel suo parapetto o
+      // nella sua falda. Se il tetto della casa davanti al modulo (Tetti.solido4, o la regola dei piani) sale sopra il davanzale, muro pieno
+      const BI4 = M.world && M.world.bIndex, TT4 = window.Tetti && Tetti.solido4 && cn1() ? Tetti : null;
+      const cieca4 = (k, y) => { if (!BI4) return false; const [tx, ty] = sd.tile(k); if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return false; const o = BI4[ty * G.GW + tx]; if (o < 0 || o === i) return false; const c = G.BUILDINGS[o]; if (!c || c.__tierOf || c === b) return false;
+        let h = (c.base || 0) + MG + (Math.max(1, c.fl || 1) - 1) * MF + .5; if (TT4) { const [px, pz] = sd.at(k), N = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[sd.f]; h = -Infinity; for (const dd of [.1, .35, .6]) for (const t of [-.6, 0, .6]) { const x = px + N[0] * dd + N[1] * t, z = pz + N[1] * dd + N[0] * t; try { h = Math.max(h, TT4.solido4(o, x, z)); } catch (e) { } } if (!Number.isFinite(h)) return false; }
+        return h > y + .6; };
       for (let f = 1; f < fl; f++) {
         const y = base + MG + (f - 1) * MF;
         if (wide) {
           let k = 0;
           if (sd.n % 2 === 1) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(0), y), sd.rot); k = 1; }
-          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
+          for (; k + 1 < sd.n; k += 2) { if (inMural(sd, k, y) || inMural(sd, k + 1, y) || cieca4(k, y) || cieca4(k + 1, y)) { modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k), y), sd.rot); modPiece(grp, 'wall', matF(f), ...xyz(sd.at(k + 1), y), sd.rot); continue; } modPiece(grp, upper, matF(f), ...xyz(sd.at(k + .5), y), sd.rot, LW = r() < .35 ? lit : null); b.__win.push({ f: sd.f, k, u: (k + .5) * TS + 1, y, name: upper, lit: !!LW }); }
         } else for (let k = 0; k < sd.n; k++) {
           // sul retro (nord e ovest, visti solo quando la camera gira) una finestra semplice ogni due moduli
           const back = sd.f === 'N' || sd.f === 'W', stD = X && X.scala && X.scala.ok && sd.f === X.scala.f && f === 1 && Math.abs(k * TS + 1 - X.scala.u) < .1;   // [epoche] la porta del pianerottolo della scala esterna
-          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
+          const nm = inMural(sd, k, y) ? 'wall' : stD ? 'wall-doorway-round' : !winHere(sd, k, f) || cieca4(k, y) ? 'wall' : back ? (k % 2 ? 'wall' : 'wall-window-square') : upper;
           const pc = modPiece(grp, nm, matF(f), ...xyz(sd.at(k), y), sd.rot, LW = r() < .3 ? lit : null); b.__win.push({ f: sd.f, k, u: k * TS + 1, y, name: nm, lit: !!LW });   // [case]
           if (stD) portaFinta2(pc, nm, pal[0]);   // [pulizia2] la porta del pianerottolo non si apre: chiusa, del colore del muro
           if (nm !== 'wall' && shutM && !back) shutters(pc, shutM);
@@ -78656,6 +78728,7 @@ var Render = (function () {
       const mk3 = PF3 ? (LOOK.on && PF3.manto === 'coppi' && th(Math.floor(x0 * 2), Math.floor(z0 * 2), 1209) < .3 ? 'ardesia' : PF3.manto) : rk;   // [look] l'ardesia ligure su un tetto a falde su tre
       const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: mk3, shape: EPT ? EPT.shape : shape, pitch: EPT ? EPT.pitch : pitch, swap: EPT ? EPT.swap : undefined, chimTesta: CG3 ? CG3.tipo4 : undefined, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, wallHex: pal[0], r: r2, chim: PF3 ? (CG3 ? CG3.n || 1 : 0) : rk === 'lamiera' ? 0 : 1 + Math.floor(r2() * 2), chimT: CG3 ? CG3.t : undefined, kindV: EPT ? EPT.kindV : rk === 'lamiera' ? (kind === 'port' ? 0 : Math.floor(r2() * 3)) : r2() < .3 ? 1 : 0,
         tint: rk === 'lamiera' && kind === 'mil' ? '#a4aa90' : null, gutter: kind === 'farm' ? 'rame' : true, rafters: rk === 'coppi', sky: EPT ? EPT.sky : rk !== 'lamiera' && r2() < .22, dormer: EPT ? EPT.dormer : rk !== 'lamiera' && kind !== 'farm' && r2() < .4 });
+      taglioGronde4(T, b, { x0, z0, w, d, top, ov: EPT ? EPT.ov : rk === 'lamiera' ? .35 : .5, pitch: EPT ? EPT.pitch : pitch, shape: EPT ? EPT.shape : shape, swap: EPT && EPT.swap !== undefined ? EPT.swap : d > w });   // [compenetra] la gronda si ferma sul vicino attaccato
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims;
       { const n = r2() < .45 && !PF3 ? 1 + Math.floor(r2() * 4) : 0, A = T.ridge[0], B = T.ridge[1];   /* [tetti3] niente piccioni sparsi sul colmo del piano */ b.__p3 = (b.__p3 || 0) + n; for (let k = 0; k < n; k++) { const t = .1 + r2() * .8, pg = oPiccione1(r2); pg.position.set(A.x + (B.x - A.x) * t, A.y + .14, A.z + (B.z - A.z) * t); pg.rotation.y = r2() * 6; grp.add(pg); } }   // [ordine1] i piccioni sul colmo
       if (rk !== 'lamiera' && r2() < (X ? 0 : .55)) {   /* [facciate2] sulle case con l'epoca le antenne le mette la rete: niente doppioni sul colmo */ const s0 = T.slots[Math.floor(r2() * T.slots.length)], an = oAntenna(2.2 + r2() * 1.2, r2() * 6, r2); an.position.set(s0.x, s0.y + .05, s0.z); grp.add(an); }   // un'antenna sola, sul colmo
@@ -79408,6 +79481,7 @@ var Render = (function () {
       copertina1(grp, x0 + .02, z0 + .02, w - .04, d - .04, top + kitH1('urbano/wall-a-low') * FH * .7, .26, '#b8b2a6'); }   // la copertina sul muretto
     else if (rq < .82) { flat = false; const r2 = rng(i * 577 + 3), et = r2() < .4, pitch = et ? .2 : .24, shape = Math.min(w, d) <= 6 && r2() < .5 ? 'falda' : 'capanna';   // [ordine1] lamiera grecata o ondulato, capanna o falda unica, con la gronda
       const T = tetto1({ x0, z0, w, d, y: top, base: low, kind: et ? 'eternit' : 'lamiera', shape, pitch, ov: .4, wallHex: '#8a8278', r: r2, chim: et ? 0 : r2() < .5 ? 1 : 0, kindV: Math.floor(r2() * 3), gutter: !et });
+      taglioGronde4(T, b, { x0, z0, w, d, top, ov: .4, pitch, shape, swap: d > w });   // [compenetra]
       grp.add(T.grp); b.__ridge = T.ridge; b.__chims = T.chims; }
     else {   // [ordine1] il telaio di ferro sul tetto: una pergola sola, ordinata, nell'angolo che si vede, col telo e il bucato (prima: tralicci sparsi a caso)
       const pw = Math.min(w - 1.2, 3 + Math.floor(r() * 2) * 1.5), pd = Math.min(d - 1.2, 2.6 + r() * 1.2), px0 = x0 + w - .6 - pw, pz0 = z0 + d - .6 - pd, H2 = 2.2, iron = sm('#3a3c40', { roughness: .7, metalness: .45 });
