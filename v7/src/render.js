@@ -17849,8 +17849,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const solidAt = (x, z) => { const t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return t === G.T.BLD || t === G.T.FOUNT; };
   const waterAt = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === G.T.WATER;
   function tickDebris(dt) {
-    const D = DZ.debris; if (!D) return; let upd = D.dirty; D.dirty = false;
+    const D = DZ.debris; if (!D) return; let upd = D.dirty, hi = -1; D.dirty = false;
     for (let i = 0; i < D.N; i++) {
+      if (D.live[i]) hi = i;   // [ottimizza-gpu] l'ultima copia viva (le altre sono a scala zero)
       if (D.live[i] !== 1) continue; const j = i * 3; upd = true;
       D.V[j + 1] -= 22 * dt;
       let nx = D.P[j] + D.V[j] * dt, nz = D.P[j + 2] + D.V[j + 2] * dt; const ny = D.P[j + 1] + D.V[j + 1] * dt;
@@ -17870,6 +17871,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       D.m.setMatrixAt(i, _m4.compose(_p, _q, _s));
     }
     if (upd) D.m.instanceMatrix.needsUpdate = true;
+    // [ottimizza-gpu] si disegnano solo le copie fino all'ultima viva (le 1400 scatole a scala zero passavano dalla scena e dall'ombra a ogni
+    // fotogramma: 16.800 triangoli); niente detriti, niente disegno. window.__gpuScatole = false: tutte, come prima
+    const tutte = typeof window !== 'undefined' && window.__gpuScatole === false; D.m.count = tutte ? D.N : hi + 1; D.m.visible = tutte || hi >= 0;
   }
   // un veicolo in corsa sparpaglia le macerie a terra
   function sweepDebris(x, z, c, s, hl, hw, vx, vz, sp) {
@@ -19152,7 +19156,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota
