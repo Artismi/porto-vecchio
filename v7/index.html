@@ -23534,7 +23534,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '1caba32fed291f12';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'de2d03f61be4c429';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -97520,11 +97520,27 @@ var Bottino = (function () {
       if (L && L.locked) { add(g, B(.1, .12, .05), '#b88a2a', -.6, .55, .52); add(g, new (T().TorusGeometry)(.035, .01, 5, 10, Math.PI), '#9a9ea2', -.6, .61, .52); }
     },
   };
-  function build(L) {
+  // [ottimizza] UN CAMPIONE PER TIPO. Prima ogni oggetto si rifaceva da zero (Modella + Superfici.vesti: un cestino 78-104 ms) e tutti
+  // nello stesso fotogramma: 355 ms al primo secondo di gioco, uno scatto per ogni cestino che entra nei 45 m, e tutti rifatti a ogni
+  // modello scaricato in più. Ora il modello di un tipo (chiuso o no, con i modelli scaricati di adesso) si fa una volta e gli oggetti
+  // sono copie (clone: stesse geometrie, stessi materiali); la rotazione per riferimento va sul gruppo dopo, come prima (vesti lavora
+  // nello spazio del gruppo: girarlo prima o dopo dà gli stessi colori). Al più un campione nuovo per fotogramma. ?nofixbottino: come prima
+  const BFIX = typeof location === 'undefined' || !/[?&]nofixbottino\b/.test(location.search);
+  const TPL = new Map();
+  const dlvOra = () => typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
+  const tplKey = L => (MODEL[L.kind] ? L.kind : 'vicolo') + '|' + (L.locked ? 1 : 0) + '|' + dlvOra();
+  function rot(L) { let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0; return (h % 628) / 100; }
+  function build0(L) {
     const g = new (T().Group)(), f = MODEL[L.kind] || MODEL.vicolo; f(g, L);
-    let h = 0; for (const ch of (L.ref || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
-    g.rotation.y = (h % 628) / 100; g.userData.kind = L.kind;
+    g.rotation.y = rot(L); g.userData.kind = L.kind;
     return typeof Superfici !== 'undefined' ? Superfici.vesti(g) : g;
+  }
+  function build(L) {
+    if (!BFIX) return build0(L);
+    const k = tplKey(L); let t = TPL.get(k);
+    if (!t) { const d = '|' + dlvOra(); for (const q of [...TPL.keys()]) if (!q.endsWith(d)) TPL.delete(q);   // i campioni dei modelli scaricati di prima
+      const L0 = Object.assign({}, L, { ref: '' }); t = new (T().Group)(); (MODEL[L.kind] || MODEL.vicolo)(t, L0); t.userData.kind = L.kind; if (typeof Superfici !== 'undefined') t = Superfici.vesti(t); TPL.set(k, t); }
+    const g = t.clone(true); g.rotation.y = rot(L); g.userData.kind = L.kind; return g;
   }
 
   // ---------------- L'ELENCO ----------------
@@ -97606,9 +97622,12 @@ var Bottino = (function () {
     if (on) refresh(st).forEach(L => { if (MODEL[L.kind]) want[L.ref] = L; });
     for (const k in U.meshes) if (!want[k]) { via(U.meshes[k]); delete U.meshes[k]; }
     const hot = performance.now() - U.hotT < 150 ? U.hot : null, t = performance.now() / 1000, dlv = typeof Scaricati !== 'undefined' ? Scaricati.ver : 0;
+    let nuovi = 0;
     for (const [k, L] of Object.entries(want)) {
       let m = U.meshes[k];
-      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) { if (m) via(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; }
+      if (!m || m.userData.locked !== !!L.locked || m.userData.dlv !== dlv) {
+        if (BFIX && !TPL.has(tplKey(L)) && nuovi++ > 0) { if (!m) continue; }   // [ottimizza] un campione nuovo per fotogramma: questo al prossimo (il vecchio resta intanto)
+        else { if (m) via(m); m = build(L); m.userData.locked = !!L.locked; m.userData.dlv = dlv; U.grp.add(m); U.meshes[k] = m; } }
       const y = L.kind === 'tetto' && R.groundH ? (PV().st.player.lv && typeof Livelli !== 'undefined' && Livelli.heightOf ? Livelli.heightOf(st, p) : R.groundH(L.x, L.y)) : R.groundH(L.x, L.y);
       m.position.set(L.x, y, L.y);
       // sotto il puntatore si solleva appena e respira: si capisce che si prende
