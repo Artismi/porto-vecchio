@@ -79,7 +79,7 @@ const srv = http.createServer((req, res) => {
       rd.renderBufferDirect = function (c, s, g, m, o, grp) {
         const om = Array.isArray(o.material) ? o.material[grp ? grp.materialIndex : 0] : o.material; if (!om || om.transparent || om.isSpriteMaterial || o.isSprite || om.visible === false) return;
         const f = fam(o, om), k = fi(f);
-        if (mode === 'id') { const n = drawIds.length + 1; drawIds.push({ f, t: tri(g, o, grp) }); m.uniforms.id.value.set((n & 255) / 255, ((n >> 8) & 255) / 255, ((n >> 16) & 255) / 255); m.uniformsNeedUpdate = true; }
+        if (mode === 'id') { const n = drawIds.length + 1; if (!g.boundingSphere) g.computeBoundingSphere(); const sp = g.boundingSphere.clone().applyMatrix4(o.matrixWorld); drawIds.push({ f, t: tri(g, o, grp), d: sp.center.distanceTo(c.position), r: sp.radius, nm: (o.name || '') + '|' + (om.name || '') + '|' + (g.name || '') + '|' + om.type.replace('Mesh', '').replace('Material', '') + (om.map ? '+map' : '') + '|y' + sp.center.y.toFixed(0) + '|' + (() => { const a = []; let q = o.parent; while (q && q !== scene && a.length < 3) { a.push(q.name || q.type); q = q.parent; } return a.join('<'); })() + '|' + Object.keys(o.userData || {}).slice(0, 4).join(',') }); m.uniforms.id.value.set((n & 255) / 255, ((n >> 8) & 255) / 255, ((n >> 16) & 255) / 255); m.uniformsNeedUpdate = true; }
         else { const gk = gruppo(f), ch = gk % 4, gi = gk >> 2; const v = m.uniforms.id.value; v.set(0, 0, 0, 0); if (gi === grpSel) v.setComponent(ch, 1 / 255); m.uniformsNeedUpdate = true; }
         m.side = om.side; return rbd(c, s, g, m, o, grp); };
       const read = () => { const b = new Uint8Array(W * H * 4); rd.readRenderTargetPixels(RT, 0, 0, W, H, b); return b; };
@@ -88,17 +88,19 @@ const srv = http.createServer((req, res) => {
       const bi = read(), vis = new Float64Array(drawIds.length + 1); for (let i = 0; i < W * H; i++) { const n = bi[i * 4] | (bi[i * 4 + 1] << 8) | (bi[i * 4 + 2] << 16); vis[n]++; }
       const cop = new Map(); drawIds.forEach((d, i) => { const e = cop.get(d.f) || { px: 0, tri: 0, disegni: 0, triVis: 0 }; e.px += vis[i + 1]; e.tri += d.t; e.disegni++; if (vis[i + 1] > 0) e.triVis += d.t; cop.set(d.f, e); });
       const vuoto = vis[0];
+      const fasce = {}; drawIds.forEach((d, i) => { const b = d.d < 60 ? '<60' : d.d < 80 ? '60-80' : d.d < 100 ? '80-100' : d.d < 130 ? '100-130' : '>130'; const e = fasce[b] || (fasce[b] = { disegni: 0, tri: 0, px: 0 }); e.disegni++; e.tri += d.t; e.px += vis[i + 1]; });
+      const peggiori = drawIds.map((d, i) => [d.f, d.nm.slice(0, 140), d.t, vis[i + 1], +d.d.toFixed(0), +d.r.toFixed(1)]).sort((a, b) => (b[2] / (b[3] + 50)) - (a[2] / (a[3] + 50))).slice(0, 25);
       const top7 = [...cop].sort((a, b) => b[1].px - a[1].px).slice(0, 7).map(e => e[0]), gruppo = f => { const i = top7.indexOf(f); return i < 0 ? 7 : i; };
       // sovrapposizione (frammenti che passano la profondità, nell'ordine di three), due passate da 4 famiglie
       let gruppo0 = null; const nf = 8, overd = (ultimo) => { const fr = new Float64Array(nf), hist = new Float64Array(9);
-        const sOR = new Map(); if (ultimo) scene.traverse(o => { if (o.isMesh && o.material && !Array.isArray(o.material) && /pavimento/.test(fam(o, o.material))) { sOR.set(o, o.renderOrder); o.renderOrder = 1; } });
+        const sOR = new Map(); if (ultimo === 'z') rd.setOpaqueSort((a, b) => a.groupOrder - b.groupOrder || a.renderOrder - b.renderOrder || a.z - b.z || a.id - b.id); if (ultimo === true) scene.traverse(o => { if (o.isMesh && o.material && !Array.isArray(o.material) && /pavimento/.test(fam(o, o.material))) { sOR.set(o, o.renderOrder); o.renderOrder = 1; } });
         const tot = new Float64Array(W * H);
         for (let gsel = 0; gsel < 2; gsel++) { grpSel = gsel; mode = 'cnt'; scene.overrideMaterial = cnM; rd.setRenderTarget(RT); rd.clear(); rd.render(scene, cam); const bb = read();
           for (let i = 0; i < W * H; i++) for (let ch = 0; ch < 4; ch++) { const k = gsel * 4 + ch; if (k < nf) { fr[k] += bb[i * 4 + ch]; tot[i] += bb[i * 4 + ch]; } } }
         for (let i = 0; i < W * H; i++) hist[Math.min(8, tot[i])]++;
-        sOR.forEach((v, o) => { o.renderOrder = v; });
+        sOR.forEach((v, o) => { o.renderOrder = v; }); if (ultimo === 'z') rd.setOpaqueSort(null);
         return { fr, hist }; };
-      const od1 = overd(false), od2 = overd(true);
+      const od1 = overd(false), od2 = overd(true), od3 = overd('z');
       // 4. il peso relativo degli shader (SwiftShader: proporzionale alle istruzioni per frammento), gl.finish
       const px1 = new Uint8Array(4), sync = () => { rd.readRenderTargetPixels(RT, 0, 0, 1, 1, px1); };
       rd.renderBufferDirect = rbd; scene.overrideMaterial = null; scene.background = bg;
@@ -117,7 +119,8 @@ const srv = http.createServer((req, res) => {
       done({ W, H, res: R.res, camera: { fov: cam.fov, dist: +dC.toFixed(1), mpp_centro: +mpp.toFixed(3), pitch: +(Math.asin((cam.position.y - (R.groundH ? R.groundH(R.cam.x, R.cam.y) : 0)) / dC) * 180 / Math.PI).toFixed(1) },
         frame: { disegni: D.length, programmi: progs, passi, perFamiglia: agg(d => d.p === 'scena').slice(0, 30), ombra: agg(d => d.p === 'ombra').slice(0, 12), post: agg(d => d.p === 'post' || d.p === 'scena-schermo') },
         copertura: { pixel: W * H, vuoti: vuoto, famiglie: [...cop].map(([k, e]) => [k, e.disegni, +(e.px / (W * H) * 100).toFixed(1) + '%', e.tri, e.triVis, e.px ? +(e.triVis / e.px).toFixed(2) : null]).sort((a, b) => b[4] - a[4]) },
-        sovrapposizione: { colonne: 'gruppo, frammenti, frammenti col suolo per ultimo, pixel visibili', gruppi: top7.concat(['resto']).map((k, i) => [k, od1.fr[i], od2.fr[i], k === 'resto' ? [...cop].filter(e => !top7.includes(e[0])).reduce((a, e) => a + e[1].px, 0) : cop.get(k).px]), istogramma: Array.from(od1.hist), istogrammaSuoloUltimo: Array.from(od2.hist) },
+        sovrapposizione: { colonne: 'gruppo, frammenti (ordine di three), col suolo per ultimo, coi disegni opachi dal più vicino, pixel visibili (il cielo è nel resto: un frammento per pixel)', gruppi: top7.concat(['resto']).map((k, i) => [k, od1.fr[i], od2.fr[i], od3.fr[i], k === 'resto' ? [...cop].filter(e => !top7.includes(e[0])).reduce((a, e) => a + e[1].px, 0) : cop.get(k).px]), istogramma: Array.from(od1.hist), istogrammaSuoloUltimo: Array.from(od2.hist), istogrammaDavantiPrima: Array.from(od3.hist) },
+        perDistanza: fasce, peggioriTriPerPixel: peggiori,
         tempiSwiftShader: { fotogramma: Math.round(msFrame), veri: tVeri, piatti: tPiatti, soloSuolo: tSuolo }, luci: window.__luci, tasselli: window.__tasselli ? { inScena: window.__tasselli.inScena, inVolo: window.__tasselli.inVolo, motivo: window.__tasselli.motivo } : null, gpu: R.gpuTimes });
       } }));
     out.punti[P.join(',')] = r; log('punto', P.join(','), JSON.stringify(r).slice(0, 4000));
