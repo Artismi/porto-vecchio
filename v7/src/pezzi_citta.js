@@ -150,7 +150,7 @@ var PezziCitta = (function () {
     float up = step(.6, nW.y); c *= 1. - up * (1. - fn) * .22 * uz; c = mix(c, vec3(.56, .55, .43), up * smoothstep(.68, .74, n2) * .5 * uz);   // sopra: sporco e licheni
     c *= 1. - step(.6, -nW.y) * .2; }
 #ifdef TONE_MAPPING
-  { float l0 = dot(diffuseColor.rgb, vec3(.3, .59, .11)), l1 = dot(c, vec3(.3, .59, .11)); c *= mix(1., l0 / max(l1, 1e-3), .5) * .97; H *= .6; }   // [sguardo] meno rumore: la trama e l'usura a metà ampiezza, la massa si legge prima
+  { float l0 = dot(diffuseColor.rgb, vec3(.3, .59, .11)), l1 = dot(c, vec3(.3, .59, .11)); c *= mix(1., l0 / max(l1, 1e-3), .15) * .985; H *= .9; }   // [sguardo] meno rumore   // [tratto] la trama e l'usura quasi piene (erano a metà: la pietra, i conci, i coppi sembravano lisci)
 #endif
   diffuseColor.rgb = c; pzH = H; }`;
   }

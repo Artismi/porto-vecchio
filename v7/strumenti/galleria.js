@@ -110,7 +110,7 @@ const srv = http.createServer((req, res) => {
         const D = x.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, NOMI = ['', 'suolo', 'muri', 'tetti', 'persone', 'altro'], acc = {};
         for (let y = 0; y < H; y += 2) for (let xx = 0; xx < W; xx += 2) {
           const g = R.gonfia((xx + .5) / W, (y + .5) / H), px = Math.min(C.w - 1, Math.max(0, Math.floor(g[0] * C.w))), py = Math.min(C.h - 1, Math.max(0, Math.floor((1 - g[1]) * C.h)));
-          const k = NOMI[Math.round(C.a[py * C.w + px] / 255 * 5)] || 'altro', j = (y * W + xx) * 4, r = D[j] / 255, gg = D[j + 1] / 255, bb = D[j + 2] / 255;
+          const k = NOMI[Math.floor(Math.round(C.a[py * C.w + px] / 255 * 35) / 6 + .001)] || 'altro',   /* [tratto] il codice: (categoria × 6 + faccia) / 35 */ j = (y * W + xx) * 4, r = D[j] / 255, gg = D[j + 1] / 255, bb = D[j + 2] / 255;
           const L = .2126 * r + .7152 * gg + .0722 * bb, mx = Math.max(r, gg, bb), sa = mx > 0 ? (mx - Math.min(r, gg, bb)) / mx : 0;
           const A = acc[k] || (acc[k] = { n: 0, L: 0, s: 0, Ls: [] }); A.n++; A.L += L; A.s += sa; if (A.Ls.length < 60000) A.Ls.push(L); }
         let tot = 0; for (const k in acc) tot += acc[k].n; const out = {};
@@ -118,7 +118,7 @@ const srv = http.createServer((req, res) => {
           out[k] = { quota: +(A.n / tot * 100).toFixed(1), L: +(A.L / A.n).toFixed(2), sat: +(A.s / A.n).toFixed(2), L20: +p(.2).toFixed(2), L80: +p(.8).toFixed(2) }; }
         if (out.suolo) out.suolo.luceOmbra = +(out.suolo.L80 / Math.max(.02, out.suolo.L20)).toFixed(2);
         { const m = document.createElement('canvas'); m.width = C.w; m.height = C.h; const mx = m.getContext('2d'), id = mx.createImageData(C.w, C.h), PAL = [[0, 0, 0], [90, 90, 90], [230, 200, 120], [200, 80, 60], [40, 220, 255], [255, 0, 255]];   // la mappa: suolo grigio, muri sabbia, tetti rosso, persone ciano, altro magenta
-          for (let y = 0; y < C.h; y++) for (let x2 = 0; x2 < C.w; x2++) { const k = Math.round(C.a[(C.h - 1 - y) * C.w + x2] / 255 * 5), q = PAL[k] || PAL[5], j = (y * C.w + x2) * 4; id.data[j] = q[0]; id.data[j + 1] = q[1]; id.data[j + 2] = q[2]; id.data[j + 3] = 255; }
+          for (let y = 0; y < C.h; y++) for (let x2 = 0; x2 < C.w; x2++) { const k = Math.floor(Math.round(C.a[(C.h - 1 - y) * C.w + x2] / 255 * 35) / 6 + .001), q = PAL[k] || PAL[5], j = (y * C.w + x2) * 4; id.data[j] = q[0]; id.data[j + 1] = q[1]; id.data[j + 2] = q[2]; id.data[j + 3] = 255; }
           mx.putImageData(id, 0, 0); out.mappa = m.toDataURL('image/png'); }
         if (out.suolo && out.persone) out.personeSuolo = +(Math.max(out.suolo.L, out.persone.L) / Math.max(.02, Math.min(out.suolo.L, out.persone.L))).toFixed(2);
         return out; }, buf.toString('base64'));
