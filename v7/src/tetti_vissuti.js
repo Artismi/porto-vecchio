@@ -397,7 +397,7 @@ var TettiVissuti = (function () {
         const doghe = h => { [.25, .7].forEach(f => { [.185, -.185].forEach(z => fAt(o, fB(.6, h * .32, .02, '#9a7a52'), 0, h * f, z)); [-.29, .29].forEach(x => fAt(o, fB(.02, h * .32, .37, '#9a7a52'), x, h * f, 0)); });
           [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => fAt(o, fB(.03, h, .03, '#7a5e40'), a * .28, h / 2, b * .17)); fAt(o, fB(.56, .015, .36, '#6a5238'), 0, .01, 0); };
         if (v === 'pesce') { poli('#b8c4c8'); [[-.14, .02], [.06, -.06], [.16, .07]].forEach(([x, z], k) => { const f = fI(.05, 1, k % 2 ? '#9aa4a8' : '#b8c0c4', 'paint'); f.scale.set(2.4, .5, .9); f.position.set(x, .19, z); f.rotation.y = k * .5 - .3; o.add(f); }); }
-        else if (v === 'legno') doghe(.26);
+        else if (v === 'legno') { doghe(.26); [-.18, 0, .18].forEach(x => fAt(o, fB(.17, .02, .4, '#8a6a46'), x, .25, 0)); }   // [disposizione] il coperchio a tre assi: il gatto ci dorme sopra (sulla cassa aperta restava sospeso sul vuoto)
         else { doghe(.2); fAt(o, fB(.54, .02, .34, '#3a2e24'), 0, .18, 0); [-.17, 0, .17].forEach((x, k) => { const f = fI(.075, 1, k % 2 ? COL.foglia2 : COL.foglia, 'leaf'); f.scale.set(1, .7, 1); f.position.set(x, .23, (k - 1) * .04); o.add(f); }); }
         return o; },
       annaffiatoio: () => { const o = g(); fAt(o, fL([[.001, 0], [.11, 0], [.11, .2], [.08, .22], [.001, .22]], 8, COL.verde, 'paint'), 0, 0, 0); fRod(o, [.08, .1, 0], [.22, .24, 0], .012, COL.verde, 'paint'); return o; },
