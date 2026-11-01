@@ -12924,11 +12924,11 @@ var Render = (function () {
       moon.position.set(tg.x + Math.sin(az) * Math.cos(e) * D, tg.y + Math.sin(e) * D, tg.z + Math.cos(az) * Math.cos(e) * D); }
     let half = 46, far = 160, bias = -.0015, nb = .03;
     if (P.ombraVisuale > 0) {
-      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
+      half = Math.min(PHONE ? 52 : 64, Math.max(28, VIEW * zoom * 1.15));   /* [ottimizza-car] tolleranza: lo zoom che scorre di poco (una persona vicina, il dialogo) non cambia il riquadro né il lontano: prima far cambiava di un nulla a ogni fotogramma (confronto esatto) e la cache delle ombre (peso_ombre.js) ricuoceva tutto a ogni fotogramma */ if (PSH.half && Math.abs(half - PSH.half) <= .5 && !/[?&]nofixombrecache\b/.test(location.search)) half = PSH.half;   /* il tetto: più largo, la passata d'ombra disegna troppi pezzi (dall'alto un fotogramma non finiva più) */ const tex = 2 * half / (PSH.base || (PSH.base = moon.shadow.mapSize.x)), D2 = half * 1.1 + 30;   /* [peso] il texel della mappa di partenza (peso_ombre.js la allarga) */
       moon.position.sub(tg).multiplyScalar(D2 / D).add(tg); far = 2 * D2 + 30;
       bias = -(P.ombraBias[0] + P.ombraBias[1] * tex) / (far - sc.near); nb = .015 + tex * .9; }
     moon.shadow.bias = bias; moon.shadow.normalBias = nb;
-    if (Math.abs(half - PSH.half) > .5 || far !== PSH.far) { PSH.half = half; PSH.far = far; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.far = far; sc.updateProjectionMatrix(); }
+    if (half !== PSH.half || far !== PSH.far) { PSH.half = half; PSH.far = far; sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half; sc.far = far; sc.updateProjectionMatrix(); }
     { // [ombre2] IL RIQUADRO DELL'OMBRA A PASSO DI TEXEL: seguiva la camera di continuo, così a ogni passo i texel dell'ombra cadevano altrove e i
       // bordi strisciavano e tremolavano (le ombre «che si generano in modo strano»). Ora il bersaglio e il sole si spostano a multipli interi del
       // texel sul piano dell'ombra: camminando l'ombra resta ferma sul mondo

@@ -473,7 +473,10 @@ var Tasselli = (function () {
   }
   // [peso] le ombre in cache (peso_ombre.js) si ricuociono quando cambia chi fa ombra sul livello della camera: le sagome d'ombra delle
   // case fuse stanno sul livello 1 e non le vede. Un tassello che arriva o se ne va la fa ricuocere (spegnere e riaccendere: firma rifatta)
-  function ombre() { if (typeof PesoOmbre !== 'undefined' && PesoOmbre.attivo) { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
+  // [ottimizza-car] non più spegnere e riaccendere (ricottura intera e mappa riallocata a ogni tassello): PesoOmbre rifà l'elenco e vede da
+  // sé le aggiunte (disegnate sopra la mappa cotta) e le tolte (ricottura in sottofondo). ?nofixombrecache come prima
+  const OMBRE0 = /[?&]nofixombrecache\b/.test(Q);
+  function ombre() { if (typeof PesoOmbre === 'undefined' || !PesoOmbre.attivo) return; if (!OMBRE0 && PesoOmbre.rivedi) PesoOmbre.rivedi(); else { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
   // via dalla scheda video (resta il compresso, se c'è)
   function smonta(ti) {
     const S = STATO[ti]; if (S.st === 5) { ST.inScena--; viviDentro(IND.tasselli[ti].k, false); }
