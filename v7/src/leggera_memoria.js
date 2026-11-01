@@ -105,13 +105,25 @@ var LeggeraMem = (function () {
     const ng = {}; ng.position = new THREE.BufferAttribute(prendi(q, 3, first, m), 3, true);
     for (const nm in A) { if (nm === 'position') continue; const a = A[nm]; ng[nm] = nm === 'uv' && uvH ? new THREE.Float16BufferAttribute(prendi(uvH, 2, first, m), 2) : new THREE.BufferAttribute(prendi(a.array, a.itemSize, first, m), a.itemSize, a.normalized); }
     const idx = m < 65536 ? new Uint16Array(n) : new Uint32Array(n); idx.set(sd.remap);
-    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (render.js, l'indice spaziale dei raggi) lavora su una copia
+    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (l'indice spaziale dei raggi) lavora su una copia (bvh)
     mesh.position.copy(c); mesh.scale.setScalar(h); mesh.updateMatrix(); mesh.updateMatrixWorld(true); geo.userData.lmXf = { c: c.clone(), h };
     geo.computeBoundingBox(); geo.computeBoundingSphere();
     geo.userData.lmDec = decodifica(geo, c.clone(), h, !!uvH);
     for (const nm in geo.attributes) if (nm !== 'position' && nm !== 'normal' && nm !== 'uv') { const at = geo.attributes[nm], E = new at.array.constructor(0); at.onUpload(function () { this.array = E; }); }   // casa, colore, strato, vetro: servono solo alla scheda video
     const after = Object.values(geo.attributes).reduce((x, a) => x + a.array.byteLength, 0) + idx.byteLength;
     ST2.secchi++; ST2.prima += before; ST2.dopo += after; ST2.ms += performance.now() - t0; return true;
+  }
+  // --- [compenetra] l'indice spaziale dei raggi (three-mesh-bvh: render.js raggi veloci, writing.js nearTris): MeshBVH riordina sul
+  //   posto i triangoli dell'indice. L'indice della fusa compattata (lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice
+  //   i della fetta [start, start+count) è idx[i]): riordinato, i pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa
+  //   tagliata, i raggi delle passerelle e dei graffiti) prendevano i triangoli di altre case dello stesso secchio, fino a 40 m più in
+  //   là. Lì l'indice spaziale si fa su una copia dell'indice con gli stessi attributi (in più solo l'indice, che non va alla scheda
+  //   video); i colpi sono gli stessi (a, b, c sono gli stessi numeri di vertice). Chi fa un indice spaziale passa da qui
+  function bvh(g) {
+    if (!g.index || !g.index.lmFisso) return new MeshBVHLib.MeshBVH(g);
+    const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
+    c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere;
+    return new MeshBVHLib.MeshBVH(c);
   }
   // --- verde: la geometria delle piante lontane (vegetazione.js monta) con attributi compatti, e dopo l'invio alla scheda video la copia
   //   in memoria si svuota (non si ritocca: la geometria è fatta una volta, la mostra lo shader dentro i suoi raggi)
@@ -185,6 +197,6 @@ var LeggeraMem = (function () {
     const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
   }
   function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
-  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, bvh, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;

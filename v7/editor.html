@@ -590,13 +590,25 @@ var LeggeraMem = (function () {
     const ng = {}; ng.position = new THREE.BufferAttribute(prendi(q, 3, first, m), 3, true);
     for (const nm in A) { if (nm === 'position') continue; const a = A[nm]; ng[nm] = nm === 'uv' && uvH ? new THREE.Float16BufferAttribute(prendi(uvH, 2, first, m), 2) : new THREE.BufferAttribute(prendi(a.array, a.itemSize, first, m), a.itemSize, a.normalized); }
     const idx = m < 65536 ? new Uint16Array(n) : new Uint32Array(n); idx.set(sd.remap);
-    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (render.js, l'indice spaziale dei raggi) lavora su una copia
+    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (l'indice spaziale dei raggi) lavora su una copia (bvh)
     mesh.position.copy(c); mesh.scale.setScalar(h); mesh.updateMatrix(); mesh.updateMatrixWorld(true); geo.userData.lmXf = { c: c.clone(), h };
     geo.computeBoundingBox(); geo.computeBoundingSphere();
     geo.userData.lmDec = decodifica(geo, c.clone(), h, !!uvH);
     for (const nm in geo.attributes) if (nm !== 'position' && nm !== 'normal' && nm !== 'uv') { const at = geo.attributes[nm], E = new at.array.constructor(0); at.onUpload(function () { this.array = E; }); }   // casa, colore, strato, vetro: servono solo alla scheda video
     const after = Object.values(geo.attributes).reduce((x, a) => x + a.array.byteLength, 0) + idx.byteLength;
     ST2.secchi++; ST2.prima += before; ST2.dopo += after; ST2.ms += performance.now() - t0; return true;
+  }
+  // --- [compenetra] l'indice spaziale dei raggi (three-mesh-bvh: render.js raggi veloci, writing.js nearTris): MeshBVH riordina sul
+  //   posto i triangoli dell'indice. L'indice della fusa compattata (lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice
+  //   i della fetta [start, start+count) è idx[i]): riordinato, i pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa
+  //   tagliata, i raggi delle passerelle e dei graffiti) prendevano i triangoli di altre case dello stesso secchio, fino a 40 m più in
+  //   là. Lì l'indice spaziale si fa su una copia dell'indice con gli stessi attributi (in più solo l'indice, che non va alla scheda
+  //   video); i colpi sono gli stessi (a, b, c sono gli stessi numeri di vertice). Chi fa un indice spaziale passa da qui
+  function bvh(g) {
+    if (!g.index || !g.index.lmFisso) return new MeshBVHLib.MeshBVH(g);
+    const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
+    c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere;
+    return new MeshBVHLib.MeshBVH(c);
   }
   // --- verde: la geometria delle piante lontane (vegetazione.js monta) con attributi compatti, e dopo l'invio alla scheda video la copia
   //   in memoria si svuota (non si ritocca: la geometria è fatta una volta, la mostra lo shader dentro i suoi raggi)
@@ -670,7 +682,7 @@ var LeggeraMem = (function () {
     const si = A.skinIndex; if (si && nOssa <= 256 && !(si.array instanceof Uint8Array)) g.setAttribute('skinIndex', new THREE.BufferAttribute(Uint8Array.from(si.array), 4));
   }
   function meta(c) { const s = scratch(Math.max(1, c.width >> 1), Math.max(1, c.height >> 1)), x = s.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, s.width, s.height); c.width = c.height = 1; return s; }
-  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
+  return { tel: TEL, on, dieta, pila, meta, meta2, fissa, verde, compila, statica, lontano, figura, libera, mezza, datiLiberi, pixel, dopoPila, pigro, tick, compatta, bvh, conto2: () => ({ secchi: ST2.secchi, primaMB: +(ST2.prima / 1048576).toFixed(1), dopoMB: +(ST2.dopo / 1048576).toFixed(1), ms: Math.round(ST2.ms) }), conto: () => Object.assign({ on: ALL, tel: TEL, attesa: PIGRI.size }, ST), ST };
 })();
 if (typeof window !== 'undefined') window.LeggeraMem = LeggeraMem;
 </script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
@@ -23045,7 +23057,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '52d5ef3630540881';</script>
-<script>window.PV_IMPRONTA_TASS = '56970af8eca2232e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '73ee82b74486e04c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -61960,7 +61972,7 @@ var Writing = (function () {
       // provare ogni triangolo a ogni riquadro; correndo verso muri dipinti nuovi era il grosso della spazzatura e degli scatti
       let bt2 = bt; const nT = g.index ? g.index.count : pa.count, dr = g.drawRange;
       if (!bt2 && nT >= 2700 && !g.__bvhNo && !(g.boundingBox && !g.boundingBox.intersectsBox(Bl.copy(B).applyMatrix4(M))) && !pa.isInterleavedBufferAttribute && !(dr.start > 0) && !(dr.count !== Infinity && dr.count < nT) && typeof MeshBVHLib !== 'undefined') {
-        try { bt2 = g.boundsTree = new MeshBVHLib.MeshBVH(g); g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
+        try { bt2 = g.boundsTree = LeggeraMem.bvh(g);   /* [compenetra] (sulla copia dell'indice, se è la mappa dei pezzi) */ g.__bvhVer = vv; g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { bt2 = null; } }
       if (bt2 && g.__bvhVer === vv) { const bt = bt2; try { if (bt.intersectsBox(B, M)) out.push(m); continue; } catch (e) { out.push(m); continue; } }
       Bl.copy(B).applyMatrix4(M);   // la scatola nello spazio della mesh (più larga, mai più stretta)
       const x0 = Bl.min.x - 1e-4, y0 = Bl.min.y - 1e-4, z0 = Bl.min.z - 1e-4, x1 = Bl.max.x + 1e-4, y1 = Bl.max.y + 1e-4, z1 = Bl.max.z + 1e-4;
@@ -88860,14 +88872,6 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const verOf = g => g.attributes.position.version * 4194304 + (g.index ? g.index.version + 2 : 1);   // [scatti] un numero, non una stringa nuova per ogni mesh a ogni raggio (MB di spazzatura a fotogramma coi graffiti)
     // [momenti] window.__rlOn: i raggi col metodo lento, per motivo (quante volte, quanti triangoli): per strumenti/banco_momenti.js
     const lento = (k, g) => { const L = window.__rl || (window.__rl = {}), q = L[k] || (L[k] = [0, 0]); q[0]++; const p = g && g.attributes && g.attributes.position; q[1] += g ? (g.index ? g.index.count / 3 : p ? p.count / 3 : 0) : 0; };
-    // [compenetra] MeshBVH riordina sul posto i triangoli dell'indice. L'indice della fusa compattata (leggera_memoria.js compatta,
-    // lmFisso) è anche la mappa dei pezzi originali (lmDec: il vertice i della fetta [start, start+count) è idx[i]): riordinato, i
-    // pezzi rifatti dopo il primo raggio (la casa che si dissolve, la casa tagliata, i raggi delle passerelle e dei graffiti)
-    // prendevano i triangoli di altre case dello stesso secchio, fino a 30 m più in là. L'indice spaziale si fa su una copia
-    // dell'indice con gli stessi attributi (in più solo l'indice, che non va alla scheda video: niente copie dei vertici); i colpi
-    // tornano gli stessi (a, b, c sono gli stessi numeri di vertice)
-    const bvhCopia1 = g => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
-      c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; };
     const fast = function (rc, out) {
       const g = this.geometry;
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) { if (window.__rlOn) lento(!g ? 'senza' : g.__bvhNo ? 'mai' : this.isSkinnedMesh ? 'scheletro' : 'altro', g); return orig.call(this, rc, out); }
@@ -88881,7 +88885,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (!pos || pos.isInterleavedBufferAttribute || (g.morphAttributes && g.morphAttributes.position) || dr.start > 0 || (dr.count !== Infinity && dr.count < n) || n < 900) { g.__bvhNo = n >= 900 ? true : g.__bvhNo; if (window.__rlOn) lento(n < 900 ? 'piccola' : 'forma', g); return orig.call(this, rc, out); }
       if (!g.__bvhSeen && n < 30000) { g.__bvhSeen = verOf(g); if (window.__rlOn) lento('primo', g); return orig.call(this, rc, out); }   // [momenti] le mesh fuse grandi (10.000 triangoli e più) l'indice subito: il primo raggio provava tutto, e allocava per ogni triangolo   // il primo raggio come prima; dal secondo, l'indice
       if (g.__bvhSeen && g.__bvhSeen !== verOf(g)) { g.__bvhSeen = verOf(g); g.__bvhMiss = (g.__bvhMiss || 0) + 1; if (g.__bvhMiss > 6) g.__bvhNo = true; if (window.__rlOn) lento('cambiata', g); return orig.call(this, rc, out); }   // [leggera] cambiata fra due raggi: si riprova quando sta ferma (prima: mai più)
-      try { g.boundsTree = new MeshBVHLib.MeshBVH(g.index && g.index.lmFisso ? bvhCopia1(g) : g); g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
+      try { g.boundsTree = LeggeraMem.bvh(g);   /* [compenetra] (sulla copia dell'indice, se è la mappa dei pezzi) */ g.__bvhVer = verOf(g); g.__bvhIdx = g.index ? g.index.version : -1; g.__bvhN = g.index ? g.index.count : 0; } catch (e) { g.__bvhNo = true; return orig.call(this, rc, out); }
       return acc.call(this, rc, out);
     };
     fast.__bvh = true; THREE.Mesh.prototype.raycast = fast;
