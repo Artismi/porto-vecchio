@@ -23534,7 +23534,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '1a12b65fb0923797';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '850683b769587897';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -74882,11 +74882,11 @@ var Render = (function () {
       if (T.fuori !== on) { T.fuori = on; FD1.data[i * 4] = on ? 255 : 0; FD1.dirty = true; B.mv1.forEach(o => { if (on && o.userData.lazy1) o.userData.lazy1(); o.visible = on; }); } }
     T.tetto.forEach(q => { if (!on) { q.o.material = q.m0; return; }
       let c = T4M.get(q.m0); if (!c) { c = q.m0.clone(); if (q.m0.userData.plaster) plasterize(c); else if (q.m0.userData.mondo) animMat(c, q.m0.userData.mondo); c.transparent = true; c.depthWrite = false; T4M.set(q.m0, c); }
-      c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; q.o.material = c; });
+      c.opacity = op; if (c.emissiveMap) c.emissiveIntensity = (dyn.__ne || 0) * op; c.clippingPlanes = q.m0.clippingPlanes; q.o.material = c; });   // [compenetra] la copia trasparente segue il taglio della casa (vis3Tick lo mette sui materiali suoi, B.mats): prima il tetto restava intero sopra la casa tagliata
     const cose = a > .5; if (cose !== T.cose) { T.cose = cose; vis3Cose(B, false); if (cose) vis3Cose(B, true, T.gr + .15); }
     // sotto il tetto sbiadito non il buio della casa (il nucleo scuro): la copertina alla gronda nel tono del muro, col filo chiaro,
     // come un lastrico pulito; compare quando il tetto è sbiadito oltre un quarto
-    const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); }
+    if (!B.__cl3) { const cap = vis3Cap(B); cap.visible = on && a > .25 && !(opz && opz.nodisc); if (cap.visible) { cap.position.y = T.gr + .03; cap.material = capMat4(B, K.copertina); } }   // [compenetra] la casa tagliata tiene la copertina del taglio (vis3Tick), più bassa
     if (!on) B.__t4 = null;
   }
   // [tasselli] il tetto che sbiadisce di una casa che sta in un tassello: i pezzi della casa non ci sono (la mesh è del tassello), il tetto si
