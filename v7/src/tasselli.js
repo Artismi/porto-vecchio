@@ -44,6 +44,7 @@ var Tasselli = (function () {
     butta: (TEL ? 200 : 320) * KR,  // oltre questo il tassello si butta
     volo: TEL ? 3 : 5,             // quanti tasselli in volo (scarico + decodifica) insieme
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
+    byte: /[?&]nofixinvii\b/.test(Q) ? Infinity : (TEL ? 3 : 8) * 1048576,   // [ottimizza-car] e quanti byte (buffer nuovi + tessiture), dopo l'anello vicino
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
     raggiR: TEL ? 6 : Infinity,    // [leggera] i dati dei raggi (graffiti, spruzzi) nel tassello del giocatore (entro 6 m) e in quelli che un raggio
@@ -383,7 +384,15 @@ var Tasselli = (function () {
     S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
     S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
   }
-  function monta1(ti, tetto, quota) {
+  // [ottimizza-car] le tessiture di una mesh mandate alla scheda video adesso (dentro la quota), non al primo disegno: torna i byte
+  function texSu(r) {
+    const rd = CTX.renderer; if (!rd || !rd.initTexture || CFG.byte === Infinity) return 0; const ids = new Set(); texMesh(r, ids); let b = 0;
+    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit) return;
+      rd.initTexture(t); b += (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4 * (t.generateMipmaps ? 1.33 : 1); });
+    return b;
+  }
+  function monta1(ti, tetto, quota, quotaB) {
+    if (quotaB === undefined) quotaB = Infinity;
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
     if (!S.tieni) {
       S.tieni = new Set(); S.q16ok = new Set();
@@ -406,10 +415,11 @@ var Tasselli = (function () {
       if (CFG.leggero) { if (S.tieni.has(i)) raggiA(a, d, v, q); a.onUpload(libera); }   // [leggera] i dati dei raggi a parte: l'attributo si svuota sempre
       else { if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
         if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); }
-      S.attr.set(i, a); return a; };
-    let vf = 0;
+      bf += (a.array && a.array.byteLength) || 0; S.attr.set(i, a); return a; };   // [ottimizza-car] i byte dei buffer nuovi
+    let vf = 0, bf = 0;
     while (S.k < S.lista.length) {
-      if (performance.now() > tetto || vf > quota) return false;
+      if (performance.now() > tetto || vf > quota || bf > quotaB) return false;
+      if (quotaB !== Infinity) bf += texSu(T.mesh[S.lista[S.k]]);
       const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
@@ -707,7 +717,7 @@ var Tasselli = (function () {
       PRONTI.sort((a, b) => dist(IND.tasselli[a], x, z) - dist(IND.tasselli[b], x, z));
       const carico = !vicinoFatto && !(window.__tl && window.__tl.gioco) && !/[?&]nofixvicino\b/.test(Q);   // [ottimizza-car] dietro lo schermo di carico si monta più in fretta
       const tetto = t0 + (vicinoFatto ? CFG.ms : carico ? 150 : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
-      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
+      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota, vicinoFatto ? CFG.byte : Infinity)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
