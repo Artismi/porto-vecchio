@@ -18897,7 +18897,26 @@ var Anim = (function () {
   }
   // angolo di ogni osso col pugno chiuso: 1 = palmo (dal polso, quasi fermo), 2 = nocca, 3 e 4 = falangi
   const CURL = [.08, 1.45, 1.35, .9];
+  // [ottimizza] LE DITA SOLO DA VICINO. Ogni dito sono 4 falangi, ognuna con due getWorldPosition e un applyWorld (che rifà le matrici
+  // del sotto-albero): ~17% del tempo delle pose. Oltre una volta e mezza la distanza fra la camera e il punto guardato (mai sotto
+  // 12 m), o più lontano del protagonista dalla camera e a più di 12 m da lui, una persona è più piccola del protagonista sullo schermo
+  // e le sue dita sono al più un pixel: lì non si piegano. Solo per
+  // chi sta nella scena del gioco (le figure del menu e dello studio hanno la loro camera). ?nofixdita: come prima
+  const DITA = typeof location === 'undefined' || !/[?&]nofixdita\b/.test(location.search);
+  const VISTA = { t: -1, p: V(), f: V(), lim2: Infinity, foc2: Infinity, sc: null }, _vl = V();
+  function lontano(g) {
+    if (!DITA) return false;
+    const now = performance.now();
+    if (now - VISTA.t > 8) { VISTA.t = now; VISTA.lim2 = Infinity; const R = typeof window !== 'undefined' && window.__pv && window.__pv.R, cam = R && R.getCamera && R.getCamera(), c = R && R.cam;
+      VISTA.sc = R && R.__models && R.__models.scene;
+      if (cam && c && c.x !== undefined) { VISTA.p.copy(cam.position); VISTA.f.set(c.x, (c.h || 0) + 1, c.y); const foc = VISTA.p.distanceTo(VISTA.f), lim = Math.max(12, foc * 1.5); VISTA.lim2 = lim * lim; VISTA.foc2 = foc * foc; } }
+    if (VISTA.lim2 === Infinity || !VISTA.sc) return false;
+    let r = g; while (r.parent) r = r.parent; if (r !== VISTA.sc) return false;
+    const d2 = _vl.setFromMatrixPosition(g.matrixWorld).distanceToSquared(VISTA.p);
+    return d2 > VISTA.lim2 || (d2 > VISTA.foc2 && _vl.distanceToSquared(VISTA.f) > 144);   // o più lontano del protagonista dalla camera e a più di 12 m da lui (più piccolo di lui sullo schermo, fuori dall'azione)
+  }
   function hand(P, side, curl, thumb, ww) {
+    if (P.lontano) return;
     const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
     const sg = curlSign(R, sd);
     for (let f = 0; f < 4; f++) {
@@ -19108,6 +19127,7 @@ var Anim = (function () {
     // le ossa nel mondo servono aggiornate per puntare
     g.updateMatrixWorld(true);
     const P = R.P || (R.P = makeP(g, R)); g.getWorldQuaternion(P._gq);
+    P.lontano = lontano(g);   // [ottimizza] le dita solo da vicino
     P.o = o; P.time = time || 0; P._body = null;
     R.__frame = (R.__frame || 0) + 1;
     // quanto sono spessi i vestiti su busto e braccia (vestiario.js): le pose tengono le braccia più larghe
@@ -21806,6 +21826,14 @@ var Models = (function () {
   }
   let ready = false;
   // ---------------- OGNI FOTOGRAMMA ----------------
+  const GFIX = typeof location === 'undefined' || !/[?&]nofixsentinelle\b/.test(location.search);
+  let VGc = null;
+  function vistaG() {
+    const R0 = typeof window !== 'undefined' && window.__pv && window.__pv.R, cam = R0 && R0.getCamera && R0.getCamera(); if (!cam || !scene) return null;
+    const V = VGc || (VGc = { fr: new THREE.Frustum(), m: new THREE.Matrix4(), s: new THREE.Sphere(), p: new THREE.Vector3(), far: Infinity, cam: null });
+    V.m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); V.fr.setFromProjectionMatrix(V.m); V.cam = cam.position; V.far = scene.fog && scene.fog.far ? scene.fog.far + 5 : Infinity; return V;
+  }
+  function fuoriG(V, g) { V.p.setFromMatrixPosition(g.matrixWorld); if (V.p.distanceTo(V.cam) > V.far + 4) return true; V.s.center.copy(V.p); V.s.center.y += 1; V.s.radius = 5; return !V.fr.intersectsSphere(V.s); }
   function tick(st, time, night) {
     if (!ready) return;
     const gdt = Math.min(.1, Math.max(0, time - (dyn.lastT || time))); dyn.lastT = time;
@@ -21819,7 +21847,10 @@ var Models = (function () {
         if (h.fuse > 0) { const k = 1 + Math.sin(time * 40) * .04; o.scale.set(k, 1 / k, k); } else o.scale.set(1, 1, 1);
       });
     }
-    dyn.guards.forEach(q => animPerson(q.g, { speed: 0, gun: q.gun, weapon: 'guardia' }, gdt));
+    // [ottimizza] le sentinelle fuori dall'inquadratura (con 4 m di margine, per l'ombra) o oltre la nebbia non si posano: il tempo si
+    // recupera al rientro, come fanno le persone in render.js (off1). Prima tutte, a ogni fotogramma, ovunque: ~8 ms. ?nofixsentinelle
+    const VG = GFIX && dyn.guards.length ? vistaG() : null;
+    dyn.guards.forEach(q => { if (VG && fuoriG(VG, q.g)) { q.dt1 = Math.min(1, (q.dt1 || 0) + gdt); return; } animPerson(q.g, { speed: 0, gun: q.gun, weapon: 'guardia' }, gdt + (q.dt1 || 0)); q.dt1 = 0; });
     dyn.boats.forEach(b => { b.o.position.y = -.35 + Math.sin(time * (b.slow ? .5 : 1.2) + b.ph) * (b.slow ? .08 : .12); b.o.rotation.z = Math.sin(time * .9 + b.ph) * (b.slow ? .01 : .04); b.o.rotation.x = Math.sin(time * .67 + b.ph * 1.9) * (b.slow ? .006 : .025); });   // [animazioni-mondo] anche il beccheggio
     // elicottero: di notte gira sull'isola, più basso e più vicino quando c'è allarme
     if (dyn.heli) {
@@ -23534,7 +23565,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '2b84d0d7eebab5f1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '97dfbffce245e345';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
