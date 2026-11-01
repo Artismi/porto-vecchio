@@ -23565,7 +23565,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '97dfbffce245e345';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '019f15571687b2e8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -64492,9 +64492,11 @@ var WriterVita = (function () {
     const v = V(st); if (v.hist) return;
     // [ottimizza] coi tasselli la storia dei muri è cotta (strumenti/tassella_pagina.js): i lavori arrivano già sul loro muro (writing.js
     // cotti), niente caso e niente raggi a gioco iniziato. Finché il file non è arrivato si aspetta (al più 20 s), poi come prima
+    // (la partita può fare i primi passi prima che si sappia se ci sono i tasselli: anche allora si aspetta, al più 60 s)
+    if (typeof Tasselli !== 'undefined' && Tasselli.chiesto && Tasselli.deciso === false && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 60000) return;
     const TS0 = typeof Tasselli !== 'undefined' && Tasselli.attivo && Tasselli.attivo() ? Tasselli : null;
     if (TS0) { const L = TS0.graffiti;
-      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 20000) return;
+      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 60000) return;
       if (Array.isArray(L) && WR._.cotti) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
     v.hist = true;
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
@@ -69422,7 +69424,7 @@ var PesoLontano = (function () {
       if (g.boundingSphere === null) g.computeBoundingSphere();
       s.copy(g.boundingSphere).applyMatrix4(o.matrixWorld);
       if (s.radius < P.rMax) { ST.provati++; const dx = s.center.x - cx, dy = s.center.y - cy, dz = s.center.z - cz, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (s.radius * kpx < P.px * d) { ST.tagliati++; return false; } }
-      return this.intersectsSphere(s); };
+      return this.intersectsSphere(s) && (typeof PesoScatole === 'undefined' || PesoScatole.prova(this, o)); };   // [ottimizza-gpu] e la scatola (peso_scatole.js) per chi è grande
     pronto = true;
   }
   // prima del disegno: la scala dei pixel (alla risoluzione interna) e la posizione della camera
@@ -69702,6 +69704,110 @@ var PesoFusi = (function () {
 })();
 if (typeof window !== 'undefined') { window.PesoFusi = PesoFusi; (window.__pesoAB = window.__pesoAB || {}).fusi = v => { PesoFusi.attivo = v; }; }
 </script>   <!-- [fusi] i settori (culling per cella) e le ombre fuse dei gruppi rigidi -->
+<script data-m="peso_scatole">/* Porto Vecchio — [ottimizza-gpu] il frustum a scatole e i pezzi troppo lunghi (ANALISI_OTTIMIZZAZIONE_GPU.md §2) (v7).
+   Due lavori, tutti e due a parità d'immagine (si scarta solo quello che non ha pixel):
+
+   1. LE SCATOLE. three r149 prova il frustum con la sfera della geometria. La camera di gioco è alta e inclinata: oltre ~80 m il bordo alto
+      dello schermo è già sopra le case, ma la sfera di un settore di tasselli di 48 m sporge 35 m in alto e passa. In tre punti della città
+      0,3-0,6 M triangoli a fotogramma erano disegnati senza un pixel (strumenti/sonda_gpu.js). Qui, a chi passa la prova della sfera e ha un
+      raggio di almeno P.rMin metri, si fa anche quella della scatola di mondo (la scatola della geometria portata nel mondo, allargata di P.pad
+      per i vertici che lo shader muove: vento, stoffe). Per le istanze la scatola si fa dalle matrici delle istanze (se la pagina le ha ancora).
+      La scatola contiene tutti i triangoli: se è fuori, nessun triangolo è dentro. Vale anche per le camere delle ombre.
+   2. LA FERROVIA intera (writing.js track: due mesh da 39.200 triangoli col raggio di 339 m, sempre «in vista», anche nell'ombra) si taglia in
+      settori di P.cella metri: un pezzo per settore con lo stesso materiale, gli stessi attributi (condivisi: niente memoria in più sulla
+      scheda video) e un indice suo. L'originale resta per i raggi (visible = false: non si disegna, i raggi lo vedono lo stesso).
+   window.__gpuScatole = false (o ?noscatole) spegne tutti e due dal vivo (le sonde: strumenti/sonda_uguale_gpu.js).                     */
+var PesoScatole = (function () {
+  'use strict';
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const ON = !/[?&]noscatole\b/.test(Q);
+  const P = { rMin: 6, pad: .5, cella: 48, lungo: 120, nomi: ['ferrovia'] };
+  const ST = { prove: 0, scartate: 0, tagliati: 0, pezzi: 0 };
+  if (typeof window !== 'undefined') window.__gpuScatole = ON;
+  let T3 = null, pronto = false, B = null, V = null, M = null;
+  function installa() {
+    T3 = window.THREE; B = new T3.Box3(); V = new T3.Vector3(); M = new T3.Matrix4();
+    const io = T3.Frustum.prototype.intersectsObject;
+    T3.Frustum.prototype.intersectsObject = function (o) { return io.call(this, o) && prova(this, o); };   // (peso_lontano, che fa la sua sfera senza chiamare questa, chiama prova)
+    pronto = true;
+  }
+  // la prova della scatola dopo quella della sfera (true: dentro, o niente scatola)
+  function prova(fr, o) {
+    if (!window.__gpuScatole || !pronto) return true;
+    const wb = scatola(o); if (!wb) return true;
+    ST.prove++; if (fr.intersectsBox(wb)) return true; ST.scartate++; return false; }
+  const uguale = (a, b) => { for (let i = 0; i < 16; i++) if (a[i] !== b[i]) return false; return true; };
+  // la scatola di mondo di un oggetto (in cache finché non cambiano matrice, geometria, istanze); null: niente prova (resta la sfera)
+  function scatola(o) {
+    const g = o.geometry; if (!g || o.isSkinnedMesh || o.isSprite || (g.morphAttributes && g.morphAttributes.position)) return null;
+    const bs = g.boundingSphere; if (!bs || bs.radius < P.rMin) return null;
+    const C = o.__gsC, me = o.matrixWorld.elements, im = o.isInstancedMesh ? o.instanceMatrix : null;
+    if (C && C.g === g && C.bb === g.boundingBox && (!im || (C.iv === im.version && C.n === o.count)) && uguale(C.m, me)) return C.box;
+    let lb = null;
+    if (im) {   // le istanze: i centri delle copie ± il raggio della forma per la scala più grande della copia
+      const a = im.array, n = o.count; if (!a || a.length < n * 16 || !n) return null;
+      if (!g.boundingSphere) return null; const r0 = (o.__gsR0 !== undefined && o.__gsG0 === g) ? o.__gsR0 : null;
+      // il raggio della forma: dalla scatola della geometria se c'è (la sfera di queste geometrie è spesso quella di tutto il gruppo)
+      let rf = r0; if (rf === null) { const gb = g.boundingBox || (posOk(g) ? (g.computeBoundingBox(), g.boundingBox) : null); if (!gb || gb.isEmpty()) return null; rf = Math.max(gb.min.length(), gb.max.length()); o.__gsR0 = rf; o.__gsG0 = g; }
+      lb = new T3.Box3();
+      for (let k = 0; k < n; k++) { const j = k * 16, sx = Math.hypot(a[j], a[j + 1], a[j + 2]), sy = Math.hypot(a[j + 4], a[j + 5], a[j + 6]), sz = Math.hypot(a[j + 8], a[j + 9], a[j + 10]), r = rf * Math.max(sx, sy, sz);
+        if (!(r > 0)) continue; lb.expandByPoint(V.set(a[j + 12] - r, a[j + 13] - r, a[j + 14] - r)); lb.expandByPoint(V.set(a[j + 12] + r, a[j + 13] + r, a[j + 14] + r)); }
+      if (lb.isEmpty()) { lb.set(V.set(0, 0, 0), V.clone()); }   // nessuna copia visibile: un punto (la sfera dirà il resto)
+    } else {
+      lb = g.boundingBox; if (!lb) { if (!posOk(g)) return null; g.computeBoundingBox(); lb = g.boundingBox; }
+      if (!lb || lb.isEmpty()) return null;
+    }
+    const box = (C && C.box) || new T3.Box3(); box.copy(lb).applyMatrix4(o.matrixWorld).expandByScalar(P.pad);
+    o.__gsC = { g, bb: g.boundingBox, iv: im ? im.version : 0, n: o.count, m: Float64Array.from(me), box };
+    return box;
+  }
+  // la posizione è ancora tutta in memoria (dopo l'invio alcune geometrie la svuotano: la scatola verrebbe vuota)
+  function posOk(g) { const p = g.attributes && g.attributes.position; return !!(p && p.count && p.array && p.array.length >= p.count * p.itemSize); }
+
+  // 2. i pezzi troppo lunghi, tagliati a settori
+  function taglia(o) {
+    const g = o.geometry, pos = g.attributes.position; if (!posOk(g)) return 0;
+    const idx = g.index ? g.index.array : null, nt = Math.floor((idx ? idx.length : pos.count) / 3); if (nt < 64) return 0;
+    o.updateWorldMatrix(true, false); const mw = o.matrixWorld, celle = new Map();
+    const vi = k => idx ? idx[k] : k;
+    for (let t = 0; t < nt; t++) { let x = 0, z = 0;
+      for (let c = 0; c < 3; c++) { V.fromBufferAttribute(pos, vi(t * 3 + c)).applyMatrix4(mw); x += V.x; z += V.z; }
+      const key = Math.floor(x / 3 / P.cella) + ',' + Math.floor(z / 3 / P.cella); let L = celle.get(key); if (!L) celle.set(key, L = []); L.push(t); }
+    if (celle.size < 2) return 0;
+    const par = o.parent; let n = 0;
+    celle.forEach(L => {
+      const ng = new T3.BufferGeometry(); for (const k in g.attributes) ng.setAttribute(k, g.attributes[k]);   // gli stessi attributi: la scheda video li carica una volta
+      const big = pos.count > 65535, I = big ? new Uint32Array(L.length * 3) : new Uint16Array(L.length * 3);
+      const bb = new T3.Box3(); L.forEach((t, j) => { for (let c = 0; c < 3; c++) { const v = vi(t * 3 + c); I[j * 3 + c] = v; bb.expandByPoint(V.fromBufferAttribute(pos, v)); } });
+      ng.setIndex(new T3.BufferAttribute(I, 1)); ng.boundingBox = bb; ng.boundingSphere = bb.getBoundingSphere(new T3.Sphere());
+      const m = new T3.Mesh(ng, o.material); m.name = (o.name || 'pezzo') + '_settore'; m.position.copy(o.position); m.quaternion.copy(o.quaternion); m.scale.copy(o.scale);
+      m.castShadow = o.castShadow; m.receiveShadow = o.receiveShadow; m.renderOrder = o.renderOrder; m.layers.mask = o.layers.mask; m.frustumCulled = true;
+      m.raycast = () => { }; m.userData.pesoScatole = true; m.matrixAutoUpdate = o.matrixAutoUpdate; m.updateMatrix(); par.add(m); n++; });
+    o.userData.pesoScatoleSettori = par.children.slice(-n); o.visible = false; ST.tagliati++; ST.pezzi += n; return n;
+  }
+  function tagliaLunghi(scene) {
+    for (const top of scene.children) { if (!P.nomi.includes(top.name) || top.userData.pesoScatoleFatto) continue; top.userData.pesoScatoleFatto = true;
+      const cand = []; top.traverse(o => { if (o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.visible && o.frustumCulled && !o.userData.pesoScatole && o.geometry && !(o.geometry.morphAttributes && o.geometry.morphAttributes.position)) { const g = o.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); if (g.boundingSphere && g.boundingSphere.radius > P.lungo) cand.push(o); } });
+      cand.forEach(taglia); }
+  }
+  // dal vivo: spenta, la ferrovia torna intera (e i settori si nascondono)
+  let statoTaglio = true;
+  function seguiInterruttore(scene) {
+    const on = !!window.__gpuScatole; if (on === statoTaglio) return; statoTaglio = on;
+    scene.traverse(o => { const S = o.userData && o.userData.pesoScatoleSettori; if (!S) return; o.visible = !on; S.forEach(m => { m.visible = on; }); });
+  }
+  let fr = 0;
+  function prima(K) {
+    if (!ON || !K || !K.scene) return; if (!pronto) installa();
+    seguiInterruttore(K.scene);
+    if ((fr++ % 60) === 0 && window.__gpuScatole) tagliaLunghi(K.scene);   // la ferrovia arriva quando writing.js la costruisce
+  }
+  if (ON && typeof window !== 'undefined' && window.THREE) installa();
+  const conto = () => Object.assign({ on: ON, attivo: typeof window !== 'undefined' && !!window.__gpuScatole }, ST);
+  if (typeof window !== 'undefined') window.__pesoScatole = conto;
+  return { prima, prova, conto, P, interruttore: seguiInterruttore };
+})();
+</script>   <!-- [ottimizza-gpu] il frustum a scatole, la ferrovia a settori -->
 <script data-m="peso_schermo">/* Porto Vecchio — [peso] lo schermo si adatta al telefono (v7).
    1. Il livello della scheda video, deciso da solo all'avvio (nessun menu): dal nome della scheda (WEBGL_debug_renderer_info) si sceglie
       'bassa' (Mali vecchi e di fascia bassa, Adreno 3xx-5xx e 60x-61x, PowerVR, i disegnatori in software), 'media' (Adreno 616-650,
@@ -72076,7 +72182,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF;
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -72102,6 +72208,7 @@ var Tasselli = (function () {
     else GRAF = null;
     return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
+  pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
 
   // ---------------- il lavoratore ----------------
   // più lavoratori (2 sul telefono, 3 sul computer): ogni richiesta va a quello con meno lavori in coda
@@ -72730,7 +72837,7 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
@@ -86707,6 +86814,10 @@ var Render = (function () {
   // window.__SGU per le prove dal vivo; R.look('vecchio'|'nuovo') cambia catena dal vivo (per le misure).
   const LOOKV = { nuovo: !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search)), pezzi: false };
   if (typeof window !== 'undefined') window.PV_LOOK = LOOKV.nuovo ? 'nuovo' : 'vecchio';
+  // [ottimizza-gpu] I PEZZI DI SHADER PIÙ LEGGERI A PARITÀ D'IMMAGINE (ANALISI_OTTIMIZZAZIONE_GPU.md §3-4). Ogni pezzo nuovo porta accanto il
+  // vecchio: col define SG_GPUVECCHIO in un materiale (le sonde: la stessa scena, stessa pagina, prima e dopo) o con ?gpuvecchio (tutto com'era)
+  const GPUV = typeof location !== 'undefined' && /[?&]gpuvecchio\b/.test(location.search);
+  const abGL = (vecchio, nuovo) => GPUV ? vecchio : '\n#ifdef SG_GPUVECCHIO\n' + vecchio + '\n#else\n' + nuovo + '\n#endif\n';
   const SGU = {
     nitido: .32, vignetta: 1, nuvole: .16, nuvoleVento: [.55, .22], bordo: 2.4, pieno: .35,   // nitidezza dell'ingrandimento; scala della vignetta; ombra delle nuvole; m/s; luce di bordo; il colore pieno sui toni già colorati
     neri: .018,                     // i neri puliti: quanto si toglie in fondo (poi si riallarga)
@@ -86978,6 +87089,7 @@ if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sg
 #ifdef STANDARD
 varying vec3 vSgW;
 float sgVetroK = -1.;
+float sgTrG;   // [ottimizza-gpu] il tremolio del confine delle celle, calcolato una volta prima delle luci
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
@@ -86985,9 +87097,14 @@ uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggi
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
-float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+${abGL(`float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
-              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }
+              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }`,
+`float sgH3c( float x, float y, float z ) { return fract( x * y * z * ( x + y + z ) ); }   // [ottimizza-gpu] l'hash di un vertice dai pezzi per asse già fatti
+float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+  vec3 a = fract( i * .3183099 + .1 ) * 17., b = fract( ( i + 1. ) * .3183099 + .1 ) * 17.;   // i pezzi per asse: 2 per asse invece di 8 (stesse operazioni per componente, stesso risultato)
+  return mix( mix( mix( sgH3c( a.x, a.y, a.z ), sgH3c( b.x, a.y, a.z ), f.x ), mix( sgH3c( a.x, b.y, a.z ), sgH3c( b.x, b.y, a.z ), f.x ), f.y ),
+              mix( mix( sgH3c( a.x, a.y, b.z ), sgH3c( b.x, a.y, b.z ), f.x ), mix( sgH3c( a.x, b.y, b.z ), sgH3c( b.x, b.y, b.z ), f.x ), f.y ), f.z ); }`)}
 #endif`;
     C.begin_vertex += `
 #if defined( STANDARD ) && defined( SG_FOGLIA )
@@ -87053,13 +87170,22 @@ if ( sgP1.x + sgP1.z > 0. ) {
   diffuseColor.rgb *= 1. + sgP1.z * ( sgT - .5 ) * vec3( .1, .02, -.08 );   // caldo e freddo, a macchie larghe
   if ( sgP8.z > 0. ) {   // [diorama] IL VISSUTO (era solo nella variante aaa): i tetti a chiazze di coppi nuovi e vecchi col muschio, le facciate con lo
     // sporco che sale dal piede a colature e la luce più pulita in alto. Pennellate larghe nel mondo, ferme: la mano del pittore, non un rumore
-    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
+${abGL(`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
     float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
     diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 );   // il muschio: verde spento, a chiazze
     float foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH ), sgW = sgV * sgP8.z;
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
-    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;   // le colature sotto le finestre
+    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;`,
+`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;   // [ottimizza-gpu] ogni rumore solo dove il suo peso non è zero (sul suolo nessuno dei due, sui muri solo st)
+    float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
+    if ( sgR > 0. ) { float n2 = sgN3( vSgW * 1.3 + 2.2 );
+      diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 ); }
+    float sgW = sgV * sgP8.z;
+    if ( sgW > 0. ) { float st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 ), foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
+      diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1; }`)}   // le colature sotto le finestre
   }
 }
 if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
@@ -87067,14 +87193,22 @@ if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
   // [scorcio] il riempimento di cielo sul suolo dell'ora (proSuolo del set, sera e notte): il lastricato in piano alla quota della camera
   // o sotto prende più luce, appena fredda (il cielo); i muri (le facce in piedi) e i tetti no, così non bruciano
   diffuseColor.rgb *= 1. + smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP5.z * vec3( .9, 1., 1.14 );
-  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
-  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+${abGL(`  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
   float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
   diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
   diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
-  // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
   float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
-  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );`,
+`  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+  float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
+  // [ottimizza-gpu] i due rumori solo dove servono: il suolo (sgSu) o il piede di un muro (la polvere è zero sopra 1,6 m, in piano, sotto -3,5 m)
+  if ( sgSu > 0. || ( sgP4.z > 0. && sgUp < .8 && sgH > -3.5 && sgH < 1.6 ) ) {
+    float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
+    diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
+    diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
+    // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
+    float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
+    diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) ); }`)}
 }
 ${AAA.on ? `if ( sgP6.x + sgP6.y > 0. ) {   // [look-aaa] la mano della variante
   vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, sgV = 1. - smoothstep( .45, .8, abs( sgUp ) );
@@ -87118,10 +87252,15 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
-	{ float sgTr = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
+	{ float sgTr = ${abGL('( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06', 'sgTrG')};   /* [ottimizza-gpu] il rumore delle celle non dipende dalla luce: una volta per pixel (sgTrG), non una per luce */   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
 	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
+    if (!GPUV) C.lights_fragment_begin = `
+#if defined( STANDARD ) && !defined( SG_GPUVECCHIO )
+sgTrG = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;
+#endif
+` + C.lights_fragment_begin;
     const OM = 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
@@ -90812,8 +90951,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.fov = C.fov || 24; camera.near = Math.max(.5, C.dist * .3); camera.far = C.dist + 200; camera.updateProjectionMatrix();
     camera.position.set(C.x + Math.sin(C.yaw) * cp * C.dist, y + Math.sin(C.pitch) * C.dist, C.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.x, y, C.z); }
 
-  function luciSpente() {
-    if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
+  // [ottimizza-gpu] acceso per difetto (era solo con ?lucispente): stessa immagine al bit (sonda_uguale.js), su una scheda vera salta il
+  // calcolo di faretti e punti spenti (di giorno tutti) o lontani dal pixel. In software (SwiftShader) i rami costano più del calcolo:
+  // lì resta spento, salvo ?lucispente. ?nolucispente lo spegne ovunque. Chiamato dopo sguPezzi: i due pezzi (vecchio e nuovo) portano
+  // tutti e due l'ombra del sole della proposta
+  function luciSpente(gl) {
+    if (typeof location === 'undefined') return; const q = location.search;
+    if (/[?&]nolucispente\b/.test(q)) return;
+    if (!/[?&]lucispente\b/.test(q)) { let nome = ''; try { const e = gl && gl.getExtension('WEBGL_debug_renderer_info'); nome = String(gl ? gl.getParameter(e ? e.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : ''); } catch (x) { } if (/swiftshader|llvmpipe|softpipe|software/i.test(nome)) return; }
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
     const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
     const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
@@ -90821,15 +90966,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       return seg.slice(0, a) + `if ( ${u}.color != vec3( 0.0 ) ) { ${info} if ( directLight.visible ) {` + seg.slice(a + info.length, b) + RE + ' } }' + seg.slice(b + RE.length); };
     const P = wrap(s.slice(0, iS), 'getPointLightInfo( pointLight, geometry, directLight );', 'pointLight'), Sp = wrap(s.slice(iS, iD), 'getSpotLightInfo( spotLight, geometry, directLight );', 'spotLight');
     if (!P || !Sp) { console.warn('[leggera] luci spente: il ciclo delle luci di three non è quello atteso, lasciato com\'era'); return; }
-    s = P + Sp + s.slice(iD); C.lights_fragment_begin = s; C.__luciSpente = s0 !== s;
+    s = P + Sp + s.slice(iD); C.lights_fragment_begin = abGL(s0, s); C.__luciSpente = s0 !== s;
   }
   function init(canvas, st) {
     if (typeof window !== 'undefined') (window.__tl = window.__tl || {}).init0 = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
-    luciSpente();
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     if (LOOKV.nuovo) { sguPezzi(); renderer.toneMapping = THREE.CustomToneMapping; }   // [sguardo] il look nuovo: la curva nei materiali
+    luciSpente(renderer.getContext());   // [ottimizza-gpu] dopo i pezzi del look
     // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
     // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
     // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
@@ -91070,8 +91215,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const solidAt = (x, z) => { const t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return t === G.T.BLD || t === G.T.FOUNT; };
   const waterAt = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === G.T.WATER;
   function tickDebris(dt) {
-    const D = DZ.debris; if (!D) return; let upd = D.dirty; D.dirty = false;
+    const D = DZ.debris; if (!D) return; let upd = D.dirty, hi = -1; D.dirty = false;
     for (let i = 0; i < D.N; i++) {
+      if (D.live[i]) hi = i;   // [ottimizza-gpu] l'ultima copia viva (le altre sono a scala zero)
       if (D.live[i] !== 1) continue; const j = i * 3; upd = true;
       D.V[j + 1] -= 22 * dt;
       let nx = D.P[j] + D.V[j] * dt, nz = D.P[j + 2] + D.V[j + 2] * dt; const ny = D.P[j + 1] + D.V[j + 1] * dt;
@@ -91091,6 +91237,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       D.m.setMatrixAt(i, _m4.compose(_p, _q, _s));
     }
     if (upd) D.m.instanceMatrix.needsUpdate = true;
+    // [ottimizza-gpu] si disegnano solo le copie fino all'ultima viva (le 1400 scatole a scala zero passavano dalla scena e dall'ombra a ogni
+    // fotogramma: 16.800 triangoli); niente detriti, niente disegno. window.__gpuScatole = false: tutte, come prima
+    const tutte = typeof window !== 'undefined' && window.__gpuScatole === false; D.m.count = tutte ? D.N : hi + 1; D.m.visible = tutte || hi >= 0;
   }
   // un veicolo in corsa sparpaglia le macerie a terra
   function sweepDebris(x, z, c, s, hl, hw, vx, vz, sp) {
@@ -92373,7 +92522,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota

@@ -56,7 +56,7 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF;
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
@@ -82,6 +82,7 @@ var Tasselli = (function () {
     else GRAF = null;
     return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
+  pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
 
   // ---------------- il lavoratore ----------------
   // più lavoratori (2 sul telefono, 3 sul computer): ogni richiesta va a quello con meno lavori in coda
@@ -710,6 +711,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; } };
+  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
