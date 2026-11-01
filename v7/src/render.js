@@ -13429,6 +13429,10 @@ var Render = (function () {
   // window.__SGU per le prove dal vivo; R.look('vecchio'|'nuovo') cambia catena dal vivo (per le misure).
   const LOOKV = { nuovo: !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search)), pezzi: false };
   if (typeof window !== 'undefined') window.PV_LOOK = LOOKV.nuovo ? 'nuovo' : 'vecchio';
+  // [ottimizza-gpu] I PEZZI DI SHADER PIÙ LEGGERI A PARITÀ D'IMMAGINE (ANALISI_OTTIMIZZAZIONE_GPU.md §3-4). Ogni pezzo nuovo porta accanto il
+  // vecchio: col define SG_GPUVECCHIO in un materiale (le sonde: la stessa scena, stessa pagina, prima e dopo) o con ?gpuvecchio (tutto com'era)
+  const GPUV = typeof location !== 'undefined' && /[?&]gpuvecchio\b/.test(location.search);
+  const abGL = (vecchio, nuovo) => GPUV ? vecchio : '\n#ifdef SG_GPUVECCHIO\n' + vecchio + '\n#else\n' + nuovo + '\n#endif\n';
   const SGU = {
     nitido: .32, vignetta: 1, nuvole: .16, nuvoleVento: [.55, .22], bordo: 2.4, pieno: .35,   // nitidezza dell'ingrandimento; scala della vignetta; ombra delle nuvole; m/s; luce di bordo; il colore pieno sui toni già colorati
     neri: .018,                     // i neri puliti: quanto si toglie in fondo (poi si riallarga)
@@ -13700,6 +13704,7 @@ if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sg
 #ifdef STANDARD
 varying vec3 vSgW;
 float sgVetroK = -1.;
+float sgTrG;   // [ottimizza-gpu] il tremolio del confine delle celle, calcolato una volta prima delle luci
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
@@ -13840,10 +13845,15 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
-	{ float sgTr = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
+	{ float sgTr = ${abGL('( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06', 'sgTrG')};   /* [ottimizza-gpu] il rumore delle celle non dipende dalla luce: una volta per pixel (sgTrG), non una per luce */   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
 	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
+    if (!GPUV) C.lights_fragment_begin = `
+#if defined( STANDARD ) && !defined( SG_GPUVECCHIO )
+sgTrG = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;
+#endif
+` + C.lights_fragment_begin;
     const OM = 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
@@ -17534,8 +17544,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.fov = C.fov || 24; camera.near = Math.max(.5, C.dist * .3); camera.far = C.dist + 200; camera.updateProjectionMatrix();
     camera.position.set(C.x + Math.sin(C.yaw) * cp * C.dist, y + Math.sin(C.pitch) * C.dist, C.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.x, y, C.z); }
 
-  function luciSpente() {
-    if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
+  // [ottimizza-gpu] acceso per difetto (era solo con ?lucispente): stessa immagine al bit (sonda_uguale.js), su una scheda vera salta il
+  // calcolo di faretti e punti spenti (di giorno tutti) o lontani dal pixel. In software (SwiftShader) i rami costano più del calcolo:
+  // lì resta spento, salvo ?lucispente. ?nolucispente lo spegne ovunque. Chiamato dopo sguPezzi: i due pezzi (vecchio e nuovo) portano
+  // tutti e due l'ombra del sole della proposta
+  function luciSpente(gl) {
+    if (typeof location === 'undefined') return; const q = location.search;
+    if (/[?&]nolucispente\b/.test(q)) return;
+    if (!/[?&]lucispente\b/.test(q)) { let nome = ''; try { const e = gl && gl.getExtension('WEBGL_debug_renderer_info'); nome = String(gl ? gl.getParameter(e ? e.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : ''); } catch (x) { } if (/swiftshader|llvmpipe|softpipe|software/i.test(nome)) return; }
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
     const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
     const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
@@ -17543,15 +17559,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       return seg.slice(0, a) + `if ( ${u}.color != vec3( 0.0 ) ) { ${info} if ( directLight.visible ) {` + seg.slice(a + info.length, b) + RE + ' } }' + seg.slice(b + RE.length); };
     const P = wrap(s.slice(0, iS), 'getPointLightInfo( pointLight, geometry, directLight );', 'pointLight'), Sp = wrap(s.slice(iS, iD), 'getSpotLightInfo( spotLight, geometry, directLight );', 'spotLight');
     if (!P || !Sp) { console.warn('[leggera] luci spente: il ciclo delle luci di three non è quello atteso, lasciato com\'era'); return; }
-    s = P + Sp + s.slice(iD); C.lights_fragment_begin = s; C.__luciSpente = s0 !== s;
+    s = P + Sp + s.slice(iD); C.lights_fragment_begin = abGL(s0, s); C.__luciSpente = s0 !== s;
   }
   function init(canvas, st) {
     if (typeof window !== 'undefined') (window.__tl = window.__tl || {}).init0 = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
-    luciSpente();
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     if (LOOKV.nuovo) { sguPezzi(); renderer.toneMapping = THREE.CustomToneMapping; }   // [sguardo] il look nuovo: la curva nei materiali
+    luciSpente(renderer.getContext());   // [ottimizza-gpu] dopo i pezzi del look
     // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
     // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
     // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
