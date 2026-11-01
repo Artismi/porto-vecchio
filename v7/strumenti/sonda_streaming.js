@@ -26,13 +26,13 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 
 // la pagina con i mark: prima di ogni <script data-m="x"> e della richiesta sincrona del mondo cotto, e in fondo
 const HTML = (() => {
   let h = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  h = h.replace(/<script data-m="([^"]+)">/g, (s, n) => `<script>performance.mark('pv>${n}')</script>${s}`);
+  h = h.replace(/^<script data-m="([^"]+)">/gm, (s, n) => `<script>performance.mark('pv>${n}')</script>${s}`);
   const i = h.indexOf("x.open('GET', 'mondo_cotto.js', false)"); if (i > 0) { const j = h.lastIndexOf('<script>', i); h = h.slice(0, j) + "<script>performance.mark('pv>mondo_cotto(xhr)')</script>" + h.slice(j); }
   const k = h.lastIndexOf('</body>'); h = h.slice(0, k) + "<script>performance.mark('pv>fine')</script>" + h.slice(k);
   return h;
 })();
 // le righe della pagina → il modulo (<script data-m>): chi ha chiesto un invio alla scheda video
-const RIGHE = (() => { const L = []; HTML.split('\n').forEach((l, i) => { const re = /<script data-m="([^"]+)">/g; let m; while ((m = re.exec(l))) L.push([i + 1, m[1]]); }); return L; })();
+const RIGHE = (() => { const L = []; HTML.split('\n').forEach((l, i) => { const re = /^(?:<script>performance\.mark\([^)]*\)<\/script>)?<script data-m="([^"]+)">/g; let m; while ((m = re.exec(l))) L.push([i + 1, m[1]]); }); return L; })();
 const servito = [];
 const srv = http.createServer((req, res) => {
   let u = decodeURIComponent(req.url.split('?')[0]); if (u === '/') u = '/index.html';
