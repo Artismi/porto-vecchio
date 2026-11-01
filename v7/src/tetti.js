@@ -848,6 +848,9 @@ var Tetti = (function () {
           if (ro > h0 + .3 && ro - .6 < h1 && dentro4(B[o], x, y, -.55)) { urta = true; break; } }
         if (urta) break; } if (urta) break; }
       if (urta) { via.add(L); POTA4.compenetrata++; } });
+    // [compenetra] niente scale sulle case a gradoni (b.tiers): la regola dei piani dà la quota del primo corpo, i gradoni sopra salgono
+    // ancora (casa_390: l'arrivo a 15,6 m, il tetto vero a 17,4); la scala e la scaletta arrivavano dentro il gradone
+    LADDERS.forEach(L => { const gr = b => !!(b && b.tiers && b.tiers.length); if (!L.camm && !via.has(L) && (gr(B[L.bi]) || (L.footB >= 0 && gr(B[L.footB])))) { via.add(L); POTA4.gradoni = (POTA4.gradoni || 0) + 1; } });
     const rango = L => L.corte !== undefined ? 0 : L.tipo4 === 'salita' ? 1 : L.tipo4 === 'scaletta' ? 2 : L.vis ? 3 : 4;
     const perTetto = new Map(); LADDERS.forEach(L => { if (L.camm || via.has(L)) return; (perTetto.get(L.bi) || perTetto.set(L.bi, []).get(L.bi)).push(L); });
     perTetto.forEach(A => { if (A.length <= SCALE3_MAX4) return; A.slice().sort((p, q) => rango(p) - rango(q) || p.i - q.i).slice(SCALE3_MAX4).forEach(L => { if (rango(L) <= 2) return; via.add(L); POTA4.troppe++; }); });

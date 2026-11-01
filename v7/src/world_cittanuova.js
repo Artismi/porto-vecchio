@@ -3238,11 +3238,32 @@ var World = (function () {
     // carreggiata (e nel marciapiede delle vie di città) di 30-70 cm. Ogni casa si arretra: a passi di 5 cm, dal lato che libera di più
     // (il fronte, o il fianco sull'incrocio), finché carreggiata e 1,25 m di marciapiede (le vie di città) restano liberi (5 cm di aria), al più 2,4 m e mai sotto
     // 1,8 m di lato. La casa prende la sua scatola (cx, cy, lw, ld) e le caselle che restano fuori tornano selciato
+    // [compenetra] LE CASE FUORI DAI PEZZI GRANDI: la facciata e la navata della chiesa, i sottopassi, il posto di blocco del Garante,
+    // la caserma, le fontane, la torre dell'acqua si posano dopo le case e prendevano solo le caselle libere (pzRis non tocca bIndex): la
+    // casa che c'era restava dentro il pezzo (la navata 3,75 m dentro casa_150, il sottopasso 2,7 m dentro casa_475). Qui, con la pianta
+    // vera di ogni pezzo (misurata sul modello di pezzi_citta.js, nel suo riferimento), la casa che ci entra arretra dal lato del pezzo
+    // (al più fino a 1,8 m di lato); se non ci sta e non ha nome si leva (le sue caselle tornano selciato, come le case sulla via).
+    const PZDEM = new Set();
+    { const FP = { facciata_chiesa: o => [-.6, (o.w || 9.6) + .6, -(o.corpo || 10) - 4.3, 1.8], arco_sottopasso: () => [-.15, 7.55, -5.5, 5.5], caserma: o => [-.2, (o.L || 28) + .2, -(o.p || 7) / 2 - .2, (o.p || 7) / 2 + .7],
+        muro_garante: o => [0, o.L || 24, o.posto_blocco ? -4.5 : o.camminamento ? -1.6 : -.5, o.posto_blocco || o.riflettore ? 5.8 : .5], fontana: o => { const r = (o.r || 1.8) + .4; return [-r, r, -r, r]; }, torre_acqua: o => { const r = o.r || 3.2; return [-r, r, -r, r + .1]; } };
+      const box = b => b.cx !== undefined ? [b.cx - b.lw / 2, b.cy - b.ld / 2, b.cx + b.lw / 2, b.cy + b.ld / 2] : [b.x * TS, b.y * TS, (b.x + b.w) * TS, (b.y + b.h) * TS];
+      const pen = (q, P) => { const A = [[q[0], q[1]], [q[2], q[1]], [q[2], q[3]], [q[0], q[3]]]; let m = Infinity;   // quanto si compenetrano la scatola dritta q e il poligono P (0 se separati)
+        for (const [ax, ay] of [[1, 0], [0, 1], [P[1][0] - P[0][0], P[1][1] - P[0][1]], [P[2][0] - P[1][0], P[2][1] - P[1][1]]]) { const l = Math.hypot(ax, ay) || 1, ux = ax / l, uy = ay / l;
+          const pa = A.map(([x, y]) => x * ux + y * uy), pb = P.map(([x, y]) => x * ux + y * uy), o = Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)); if (o <= 0) return 0; m = Math.min(m, o); } return m; };
+      let nArr = 0;
+      PEZZI.forEach(p => { const f = FP[p.tipo]; if (!f) return; const [a0, a1, c0, c1] = f(p.opz || {}), P = [[a0, c0], [a1, c0], [a1, c1], [a0, c1]].map(([u, v]) => pzW(p, u, v));
+        const X0 = Math.min(...P.map(q => q[0])), X1 = Math.max(...P.map(q => q[0])), Y0 = Math.min(...P.map(q => q[1])), Y1 = Math.max(...P.map(q => q[1]));
+        B.forEach(b => { if (b.pezzo || b.__tierOf || b.lighthouse || b.lotto || b.i === p.b || PZDEM.has(b) || (b.rot && !b.sign && !b.shop)) return; const q0 = box(b); if (q0[2] <= X0 || q0[0] >= X1 || q0[3] <= Y0 || q0[1] >= Y1 || pen(q0, P) <= .05) return;
+          let best = null; for (let s = 0; s < 4; s++) for (let d = .1; d <= 4.01; d += .1) { const q = q0.slice(); if (s === 0) q[0] += d; else if (s === 1) q[2] -= d; else if (s === 2) q[1] += d; else q[3] -= d; if (q[2] - q[0] < 1.8 || q[3] - q[1] < 1.8) break; if (pen(q, P) <= .02) { if (!best || d < best.d) best = { q, d }; break; } }
+          if (!best) { if ((!b.name || b.shop) && !b.gov && b.house) PZDEM.add(b); return; }
+          const q = best.q.map(v => +v.toFixed(3)); Object.assign(b, { cx: +((q[0] + q[2]) / 2).toFixed(3), cy: +((q[1] + q[3]) / 2).toFixed(3), lw: +(q[2] - q[0]).toFixed(3), ld: +(q[3] - q[1]).toFixed(3), arretrata: +(b.arretrata || 0).toFixed(2) }); nArr++;
+          for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, px = (tx + .5) * TS, py = (ty + .5) * TS; if (bIndex[i] === b.i && (px < q[0] || px > q[2] || py < q[1] || py > q[3])) { grid[i] = T.COB; bIndex[i] = -1; } } }); });
+      CITY.caseFuoriPezzi = nArr; CITY.caseLevatePezzi = PZDEM.size; }
     { const MARC = 1.25; const VIE = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'litoranea').map(rd => ({ rd, hw: rd.w / 2 + (rd.kind === 'citta' || rd.kind === 'litoranea' ? MARC : 0) + .05, Q: rd.pts, bb: rd.pts.reduce((m, [x, y]) => [Math.min(m[0], x), Math.min(m[1], y), Math.max(m[2], x), Math.max(m[3], y)], [1e9, 1e9, -1e9, -1e9]) }));
       const aria = (x, y, V) => { let m = 1e9; for (const v of V) { const Q = v.Q; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1); m = Math.min(m, dist(x, y, ax + dx * t, ay + dy * t) - v.hw); } } return m; };
       const ariaBox = (x0, y0, x1, y1, V) => { let m = 1e9; const nx = Math.max(2, Math.ceil((x1 - x0) / .25)), ny = Math.max(2, Math.ceil((y1 - y0) / .25)); for (let k = 0; k <= nx; k++) { const x = x0 + (x1 - x0) * k / nx; m = Math.min(m, aria(x, y0, V), aria(x, y1, V)); } for (let k = 0; k <= ny; k++) { const y = y0 + (y1 - y0) * k / ny; m = Math.min(m, aria(x0, y, V), aria(x1, y, V)); }
         for (const v of V) for (const [x, y] of v.Q) if (x > x0 && x < x1 && y > y0 && y < y1) m = Math.min(m, -v.hw); return m; };   // l'asse che passa dentro la scatola
-      let nA = 0, nNo = 0, nGr = 0; const NO = [], DEM = new Set();
+      let nA = 0, nNo = 0, nGr = 0; const NO = [], DEM = new Set(PZDEM);   /* [compenetra] anche le case levate dai pezzi grandi */
       B.forEach(b => { if (b.pezzo || b.military || b.__tierOf || b.lotto || b.lighthouse) return; let x0 = b.cx !== undefined ? b.cx - b.lw / 2 : b.x * TS, y0 = b.cy !== undefined ? b.cy - b.ld / 2 : b.y * TS, x1 = x0 + (b.lw !== undefined ? b.lw : b.w * TS), y1 = y0 + (b.ld !== undefined ? b.ld : b.h * TS);
         const V = VIE.filter(v => v.bb[0] - v.hw - 4 < x1 && v.bb[2] + v.hw + 4 > x0 && v.bb[1] - v.hw - 4 < y0 + (y1 - y0) && v.bb[3] + v.hw + 4 > y0); if (!V.length || ariaBox(x0, y0, x1, y1, V) >= 0) return;
         if (b.tiers) { delete b.tiers; nGr++; }   // il palazzo a gradoni sulla via torna un corpo solo: i gradoni stanno sulle caselle, la scatola arretrata no
