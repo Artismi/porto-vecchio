@@ -117,10 +117,14 @@ const srv = http.createServer((req, res) => {
         for (const k in acc) { const A = acc[k], q = A.Ls.sort((a, b) => a - b), p = f => q[Math.min(q.length - 1, Math.floor(q.length * f))];
           out[k] = { quota: +(A.n / tot * 100).toFixed(1), L: +(A.L / A.n).toFixed(2), sat: +(A.s / A.n).toFixed(2), L20: +p(.2).toFixed(2), L80: +p(.8).toFixed(2) }; }
         if (out.suolo) out.suolo.luceOmbra = +(out.suolo.L80 / Math.max(.02, out.suolo.L20)).toFixed(2);
+        { const m = document.createElement('canvas'); m.width = C.w; m.height = C.h; const mx = m.getContext('2d'), id = mx.createImageData(C.w, C.h), PAL = [[0, 0, 0], [90, 90, 90], [230, 200, 120], [200, 80, 60], [40, 220, 255], [255, 0, 255]];   // la mappa: suolo grigio, muri sabbia, tetti rosso, persone ciano, altro magenta
+          for (let y = 0; y < C.h; y++) for (let x2 = 0; x2 < C.w; x2++) { const k = Math.round(C.a[(C.h - 1 - y) * C.w + x2] / 255 * 5), q = PAL[k] || PAL[5], j = (y * C.w + x2) * 4; id.data[j] = q[0]; id.data[j + 1] = q[1]; id.data[j + 2] = q[2]; id.data[j + 3] = 255; }
+          mx.putImageData(id, 0, 0); out.mappa = m.toDataURL('image/png'); }
         if (out.suolo && out.persone) out.personeSuolo = +(Math.max(out.suolo.L, out.persone.L) / Math.max(.02, Math.min(out.suolo.L, out.persone.L))).toFixed(2);
         return out; }, buf.toString('base64'));
-      if (catm) console.log('   [cat] ' + s.nome + ' ' + Object.entries(catm).map(([k, v]) => typeof v === 'object' ? `${k} ${v.quota}% L ${v.L} sat ${v.sat}${v.luceOmbra ? ' luce/ombra ' + v.luceOmbra : ''}` : `${k} ${v}`).join(' · '));
-      if (catm) fs.writeFileSync(file.replace(/\.png$/, '_cat.json'), JSON.stringify(catm)); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
+      if (catm && catm.mappa) { fs.writeFileSync(file.replace(/\.png$/, '_cat.png'), Buffer.from(catm.mappa.split(',')[1], 'base64')); delete catm.mappa; }
+      if (catm) fs.writeFileSync(file.replace(/\.png$/, '_cat.json'), JSON.stringify(catm));       if (catm) console.log('   [cat] ' + s.nome + ' ' + Object.entries(catm).map(([k, v]) => typeof v === 'object' ? `${k} ${v.quota}% L ${v.L} sat ${v.sat}${v.luceOmbra ? ' luce/ombra ' + v.luceOmbra : ''}` : `${k} ${v}`).join(' · '));
+log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
       const m = await pg.evaluate(async ({ b64, MIS }) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
         const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
