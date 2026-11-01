@@ -106,7 +106,46 @@ var PesoPronti = (function () {
     extra.forEach(ms => S.remove(ms));
     ST.programmi = (rd.info.programs ? rd.info.programs.length : 0) - n0; ST.ms = +(performance.now() - t0).toFixed(1);
     ST.rilasciati = rilascia(rd, S);
+    if (!/[?&]nofixombre\b/.test(Q)) try { ST.ombre = ombre(rd, S, cam); } catch (e) { ST.errori++; console.warn('[peso] ombre', e); }
     vivo(R);
+  }
+  // [ottimizza] LE OMBRE NEL CARICAMENTO. renderer.compile prepara i programmi del disegno della scena, non quelli della mappa d'ombra:
+  // la prima volta che un tipo di cosa faceva ombra, three ne compilava la variante di profondità (WebGLShadowMap getDepthMaterial) dentro
+  // la passata dell'ombra, e lì aspettava la scheda video (SwiftShader: 11 s su 31 nel primo mezzo minuto; sull'Iris Xe, con Direct3D,
+  // 0,1-0,5 s l'una). Qui, per ogni cosa che fa ombra (e per i programmi che i tasselli chiederanno, tasselli.js compila: anche le loro
+  // profondità col pid), si rifà quello che fa three: la profondità di base (o quella dell'oggetto), con il lato, la mappa e l'alphaTest
+  // del materiale; una per firma, compilata col bersaglio dell'ombra (un bersaglio vero: niente tonemapping, codifica lineare) e con le
+  // stesse luci, senza nebbia (la scena dell'ombra è nulla): stessa chiave, lo stesso programma che three sceglierà. ?nofixombre: come prima
+  const OMBRE = [];
+  // come compilaLista, ma senza nebbia: nella passata dell'ombra three disegna con la scena nulla (fog è nella chiave del programma)
+  function compilaOmbra(rd, S, cam, q) { const T = TG.ext && !NOTAGLIO ? TG : null, F = finta(S, f => f(q)); F.fog = null; if (T) T.on = true; try { rd.compile(F, cam); } finally { if (T) T.on = false; } }
+  function ombre(rd, S, cam) {
+    const T = window.THREE; if (!rd.shadowMap || !rd.shadowMap.enabled) return 0;
+    const vsm = rd.shadowMap.type === T.VSMShadowMap, SS = { 0: 1, 1: 0, 2: 2 }, base = new T.MeshDepthMaterial({ depthPacking: T.RGBADepthPacking });
+    const g0 = new T.BufferGeometry(); g0.setAttribute('position', new T.Float32BufferAttribute([0, -500, 0, .01, -500, 0, 0, -500, .01], 3)); g0.setAttribute('normal', new T.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3)); g0.setAttribute('uv', new T.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+    const lavori = [], visti = new Set();
+    // una variante: il materiale di profondità d (quello dell'oggetto, o la base clonata) messo come lo mette three per il materiale m
+    const variante = (o, m, custom) => {
+      if (!m || m.visible === false) return;
+      const d = custom || base.clone(), st = { side: vsm ? (m.shadowSide !== null && m.shadowSide !== undefined ? m.shadowSide : m.side) : (m.shadowSide !== null && m.shadowSide !== undefined ? m.shadowSide : SS[m.side]), alphaMap: m.alphaMap || null, alphaTest: m.alphaTest || 0, map: m.map || null,
+        displacementMap: m.displacementMap || null, displacementScale: m.displacementScale, displacementBias: m.displacementBias, clipShadows: m.clipShadows, clippingPlanes: m.clippingPlanes, clipIntersection: m.clipIntersection, wireframe: m.wireframe };
+      const inst = !!o.isInstancedMesh, ic = inst && !!o.instanceColor;
+      Object.assign(d, st); const k = firma(inst ? { isInstancedMesh: true, instanceColor: ic ? 1 : null, geometry: g0 } : { geometry: g0 }, d) + '|' + (custom ? custom.uuid : 'base');
+      if (visti.has(k)) return; visti.add(k); lavori.push({ d, st, inst, ic });
+    };
+    S.traverse(o => {
+      if (!o.isMesh || o.isSkinnedMesh || (o.geometry && o.geometry.morphAttributes && o.geometry.morphAttributes.position)) return;
+      const tas = o.parent && o.parent.name === 'tasselli_compila', ms = Array.isArray(o.material) ? o.material : [o.material];
+      if (o.userData.ombra) { for (const m of [{ side: T.FrontSide, shadowSide: null, visible: true }, { side: T.DoubleSide, shadowSide: null, visible: true }]) variante(o, Object.assign({}, o.userData.ombraBase || {}, m), o.userData.ombra); return; }   // le profondità dei tasselli: il materiale vero non si sa ancora, i due lati soliti
+      if (!o.castShadow && !tas) return;
+      ms.forEach(m => variante(o, m, o.customDepthMaterial));
+    });
+    const rt = new T.WebGLRenderTarget(4, 4), prima = rd.getRenderTarget();
+    let n0 = rd.info.programs ? rd.info.programs.length : 0;
+    try { rd.setRenderTarget(rt);
+      for (const L of lavori) { Object.assign(L.d, L.st); const q = L.inst ? new T.InstancedMesh(g0, L.d, 1) : new T.Mesh(g0, L.d); if (L.ic) q.instanceColor = new T.InstancedBufferAttribute(new Float32Array(3).fill(1), 3); q.frustumCulled = false; OMBRE.push(q); compilaOmbra(rd, S, cam, q); }
+    } finally { rd.setRenderTarget(prima); rt.dispose(); }
+    return { varianti: lavori.length, nuovi: (rd.info.programs ? rd.info.programs.length : 0) - n0 };
   }
   // [fluido] I PROGRAMMI CHE NASCONO A METÀ GIOCO. Un materiale mai disegnato prima (un mezzo, una persona vestita, un velo dei graffiti,
   // i pezzi di una casa che arriva, il primo bosco) chiede un programma nuovo: three lo compila e poi, nello stesso disegno, ne legge le

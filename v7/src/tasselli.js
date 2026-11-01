@@ -612,7 +612,10 @@ var Tasselli = (function () {
     const grp = new THREE.Group(); grp.name = 'tasselli_compila';
     (IND.programmi || []).forEach(([mi, inst, ic, c4, rs, pid]) => { if (!IND.materiali[mi]) return; const mat = materiale(mi, !!pid), g = c4 ? g4 : g0;
       let o; if (inst) { o = new THREE.InstancedMesh(g, mat, 1); o.setMatrixAt(0, new THREE.Matrix4()); if (ic) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3).fill(1), 3); } else o = new THREE.Mesh(g, mat);
-      o.frustumCulled = false; o.castShadow = false; o.receiveShadow = !!rs; o.raycast = noRay; grp.add(o); });
+      o.frustumCulled = false; o.castShadow = false; o.receiveShadow = !!rs; o.raycast = noRay; grp.add(o);
+      if (pid && !Array.isArray(mat)) { const q = inst ? new THREE.InstancedMesh(g, mat, 1) : new THREE.Mesh(g, mat); if (inst) q.setMatrixAt(0, new THREE.Matrix4()); q.userData.ombra = profonditaPid(mat); q.userData.ombraBase = { map: mat.map, alphaTest: mat.alphaTest }; q.visible = false; q.castShadow = false; q.raycast = noRay; grp.add(q); } });   // [ottimizza] la profondità col pid (monta1): peso_pronti.js la compila nel caricamento
+    // [ottimizza] le profondità dei tasselli (r.cdm: materiali MeshDepthMaterial dell'indice), istanziate e no: anche loro nel caricamento
+    IND.materiali.forEach((r, i) => { if (!r || r.type !== 'MeshDepthMaterial') return; const dm = materiale(i); for (const inst of [false, true]) { const q = inst ? new THREE.InstancedMesh(g0, dm, 1) : new THREE.Mesh(g0, dm); if (inst) q.setMatrixAt(0, new THREE.Matrix4()); q.userData.ombra = dm; q.visible = false; q.castShadow = false; q.raycast = noRay; grp.add(q); } });
     VIVT.forEach(L => L.forEach(top => top.traverse(o => { if (!o.material) return; const q = o.isSprite ? new THREE.Sprite(o.material) : o.isMesh ? new THREE.Mesh(g0, o.material) : null; if (!q) return; q.position.y = -500; q.frustumCulled = false; q.raycast = noRay; grp.add(q); })));
     CTX.scene.add(grp); COMP = grp; ST.programmi = grp.children.length;
   }
