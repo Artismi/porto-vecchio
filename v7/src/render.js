@@ -13429,6 +13429,10 @@ var Render = (function () {
   // window.__SGU per le prove dal vivo; R.look('vecchio'|'nuovo') cambia catena dal vivo (per le misure).
   const LOOKV = { nuovo: !(typeof location !== 'undefined' && /[?&]look=vecchio\b/.test(location.search)), pezzi: false };
   if (typeof window !== 'undefined') window.PV_LOOK = LOOKV.nuovo ? 'nuovo' : 'vecchio';
+  // [ottimizza-gpu] I PEZZI DI SHADER PIÙ LEGGERI A PARITÀ D'IMMAGINE (ANALISI_OTTIMIZZAZIONE_GPU.md §3-4). Ogni pezzo nuovo porta accanto il
+  // vecchio: col define SG_GPUVECCHIO in un materiale (le sonde: la stessa scena, stessa pagina, prima e dopo) o con ?gpuvecchio (tutto com'era)
+  const GPUV = typeof location !== 'undefined' && /[?&]gpuvecchio\b/.test(location.search);
+  const abGL = (vecchio, nuovo) => GPUV ? vecchio : '\n#ifdef SG_GPUVECCHIO\n' + vecchio + '\n#else\n' + nuovo + '\n#endif\n';
   const SGU = {
     nitido: .32, vignetta: 1, nuvole: .16, nuvoleVento: [.55, .22], bordo: 2.4, pieno: .35,   // nitidezza dell'ingrandimento; scala della vignetta; ombra delle nuvole; m/s; luce di bordo; il colore pieno sui toni già colorati
     neri: .018,                     // i neri puliti: quanto si toglie in fondo (poi si riallarga)
@@ -13700,6 +13704,7 @@ if ( sgP7.z > 0. ) { vec2 sgD = ( gl_FragCoord.xy - sgP7.xy ) / sgP7.z; float sg
 #ifdef STANDARD
 varying vec3 vSgW;
 float sgVetroK = -1.;
+float sgTrG;   // [ottimizza-gpu] il tremolio del confine delle celle, calcolato una volta prima delle luci
 #ifdef SG_FOGLIA
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
@@ -13707,9 +13712,14 @@ uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggi
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
-float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+${abGL(`float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
   return mix( mix( mix( sgH3( i ), sgH3( i + vec3( 1., 0., 0. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 0. ) ), sgH3( i + vec3( 1., 1., 0. ) ), f.x ), f.y ),
-              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }
+              mix( mix( sgH3( i + vec3( 0., 0., 1. ) ), sgH3( i + vec3( 1., 0., 1. ) ), f.x ), mix( sgH3( i + vec3( 0., 1., 1. ) ), sgH3( i + vec3( 1., 1., 1. ) ), f.x ), f.y ), f.z ); }`,
+`float sgH3c( float x, float y, float z ) { return fract( x * y * z * ( x + y + z ) ); }   // [ottimizza-gpu] l'hash di un vertice dai pezzi per asse già fatti
+float sgN3( vec3 x ) { vec3 i = floor( x ), f = fract( x ); f = f * f * ( 3. - 2. * f );
+  vec3 a = fract( i * .3183099 + .1 ) * 17., b = fract( ( i + 1. ) * .3183099 + .1 ) * 17.;   // i pezzi per asse: 2 per asse invece di 8 (stesse operazioni per componente, stesso risultato)
+  return mix( mix( mix( sgH3c( a.x, a.y, a.z ), sgH3c( b.x, a.y, a.z ), f.x ), mix( sgH3c( a.x, b.y, a.z ), sgH3c( b.x, b.y, a.z ), f.x ), f.y ),
+              mix( mix( sgH3c( a.x, a.y, b.z ), sgH3c( b.x, a.y, b.z ), f.x ), mix( sgH3c( a.x, b.y, b.z ), sgH3c( b.x, b.y, b.z ), f.x ), f.y ), f.z ); }`)}
 #endif`;
     C.begin_vertex += `
 #if defined( STANDARD ) && defined( SG_FOGLIA )
@@ -13775,13 +13785,22 @@ if ( sgP1.x + sgP1.z > 0. ) {
   diffuseColor.rgb *= 1. + sgP1.z * ( sgT - .5 ) * vec3( .1, .02, -.08 );   // caldo e freddo, a macchie larghe
   if ( sgP8.z > 0. ) {   // [diorama] IL VISSUTO (era solo nella variante aaa): i tetti a chiazze di coppi nuovi e vecchi col muschio, le facciate con lo
     // sporco che sale dal piede a colature e la luce più pulita in alto. Pennellate larghe nel mondo, ferme: la mano del pittore, non un rumore
-    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
+${abGL(`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, n2 = sgN3( vSgW * 1.3 + 2.2 ), st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 );
     float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
     diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 );   // il muschio: verde spento, a chiazze
     float foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH ), sgW = sgV * sgP8.z;
     diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
-    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;   // le colature sotto le finestre
+    diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1;`,
+`    float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;   // [ottimizza-gpu] ogni rumore solo dove il suo peso non è zero (sul suolo nessuno dei due, sui muri solo st)
+    float sgR = smoothstep( .3, .5, sgUp ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * smoothstep( 1.5, 3.5, sgH ) * sgP8.z;
+    if ( sgR > 0. ) { float n2 = sgN3( vSgW * 1.3 + 2.2 );
+      diffuseColor.rgb *= 1. + sgR * ( ( sgL - .5 ) * .3 + ( n2 - .5 ) * .12 + clamp( ( sgH - 7. ) / 14., -.3, .5 ) * .16 );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .74, .82, .6 ), sgR * smoothstep( .6, .82, sgT ) * .5 ); }
+    float sgW = sgV * sgP8.z;
+    if ( sgW > 0. ) { float st = sgN3( vSgW * vec3( 2.4, .16, 2.4 ) + 4.4 ), foot = ( 1. - smoothstep( .2, 3.2 + 1.6 * st, sgH ) ) * smoothstep( -3.5, -2., sgH );
+      diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .8, .76, .72 ), sgW * foot * ( .35 + .35 * st ) );
+      diffuseColor.rgb *= 1. - sgW * smoothstep( .64, .86, st ) * ( 1. - smoothstep( 2., 12., sgH ) ) * .1; }`)}   // le colature sotto le finestre
   }
 }
 if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
@@ -13789,14 +13808,22 @@ if ( sgP4.y + sgP4.z + abs( sgP5.z ) > 0. ) {
   // [scorcio] il riempimento di cielo sul suolo dell'ora (proSuolo del set, sera e notte): il lastricato in piano alla quota della camera
   // o sotto prende più luce, appena fredda (il cielo); i muri (le facce in piedi) e i tetti no, così non bruciano
   diffuseColor.rgb *= 1. + smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP5.z * vec3( .9, 1., 1.14 );
-  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
-  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+${abGL(`  float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
   float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
   diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
   diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
-  // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
   float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
-  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );
+  diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) );`,
+`  // il suolo (in piano, alla quota della camera o sotto, non i tetti): meno bianco, macchie larghe di vissuto
+  float sgSu = smoothstep( .85, .97, sgUp ) * ( 1. - smoothstep( 1.5, 3.5, sgH ) ) * sgP4.y;
+  // [ottimizza-gpu] i due rumori solo dove servono: il suolo (sgSu) o il piede di un muro (la polvere è zero sopra 1,6 m, in piano, sotto -3,5 m)
+  if ( sgSu > 0. || ( sgP4.z > 0. && sgUp < .8 && sgH > -3.5 && sgH < 1.6 ) ) {
+    float sgL = sgN3( vSgW * vec3( .09, 0., .09 ) + 5.1 ), sgM = sgN3( vSgW * vec3( .35, 0., .35 ) );
+    diffuseColor.rgb *= 1. - sgSu * ( .13 + ( sgL - .5 ) * .22 + ( sgM - .5 ) * .08 );
+    diffuseColor.rgb *= 1. + sgSu * ( sgL - .5 ) * vec3( .06, .0, -.06 );
+    // la polvere al piede dei muri: una fascia calda e spenta sul primo metro (sopra il suolo della camera), sfrangiata dal rumore
+    float sgPo = ( 1. - smoothstep( .45, .8, sgUp ) ) * ( 1. - smoothstep( .2, 1.1 + .5 * sgM, sgH ) ) * smoothstep( -3.5, -2., sgH ) * sgP4.z;
+    diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .7, .6 ) + vec3( .04, .03, .015 ), sgPo * ( .55 + .45 * sgL ) ); }`)}
 }
 ${AAA.on ? `if ( sgP6.x + sgP6.y > 0. ) {   // [look-aaa] la mano della variante
   vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w, sgV = 1. - smoothstep( .45, .8, abs( sgUp ) );
@@ -13840,10 +13867,15 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     const DNL = 'float dotNL = saturate( dot( geometry.normal, directLight.direction ) );';
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
-	{ float sgTr = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
+	{ float sgTr = ${abGL('( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06', 'sgTrG')};   /* [ottimizza-gpu] il rumore delle celle non dipende dalla luce: una volta per pixel (sgTrG), non una per luce */   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
 	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
+    if (!GPUV) C.lights_fragment_begin = `
+#if defined( STANDARD ) && !defined( SG_GPUVECCHIO )
+sgTrG = ( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06;
+#endif
+` + C.lights_fragment_begin;
     const OM = 'directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
     if (C.lights_fragment_begin.includes(OM)) C.lights_fragment_begin = C.lights_fragment_begin.replace(OM, `
 #ifdef STANDARD
@@ -17534,8 +17566,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.fov = C.fov || 24; camera.near = Math.max(.5, C.dist * .3); camera.far = C.dist + 200; camera.updateProjectionMatrix();
     camera.position.set(C.x + Math.sin(C.yaw) * cp * C.dist, y + Math.sin(C.pitch) * C.dist, C.z + Math.cos(C.yaw) * cp * C.dist); camera.lookAt(C.x, y, C.z); }
 
-  function luciSpente() {
-    if (typeof location === 'undefined' || !/[?&]lucispente\b/.test(location.search)) return;
+  // [ottimizza-gpu] acceso per difetto (era solo con ?lucispente): stessa immagine al bit (sonda_uguale.js), su una scheda vera salta il
+  // calcolo di faretti e punti spenti (di giorno tutti) o lontani dal pixel. In software (SwiftShader) i rami costano più del calcolo:
+  // lì resta spento, salvo ?lucispente. ?nolucispente lo spegne ovunque. Chiamato dopo sguPezzi: i due pezzi (vecchio e nuovo) portano
+  // tutti e due l'ombra del sole della proposta
+  function luciSpente(gl) {
+    if (typeof location === 'undefined') return; const q = location.search;
+    if (/[?&]nolucispente\b/.test(q)) return;
+    if (!/[?&]lucispente\b/.test(q)) { let nome = ''; try { const e = gl && gl.getExtension('WEBGL_debug_renderer_info'); nome = String(gl ? gl.getParameter(e ? e.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : ''); } catch (x) { } if (/swiftshader|llvmpipe|softpipe|software/i.test(nome)) return; }
     const C = THREE.ShaderChunk; if (!C || C.__luciSpente) return; let s = C.lights_fragment_begin; const s0 = s;
     const iS = s.indexOf('#if ( NUM_SPOT_LIGHTS > 0 )'), iD = s.indexOf('#if ( NUM_DIR_LIGHTS > 0 )'); if (iS < 0 || iD < iS) return;
     const RE = 'RE_Direct( directLight, geometry, material, reflectedLight );';
@@ -17543,15 +17581,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       return seg.slice(0, a) + `if ( ${u}.color != vec3( 0.0 ) ) { ${info} if ( directLight.visible ) {` + seg.slice(a + info.length, b) + RE + ' } }' + seg.slice(b + RE.length); };
     const P = wrap(s.slice(0, iS), 'getPointLightInfo( pointLight, geometry, directLight );', 'pointLight'), Sp = wrap(s.slice(iS, iD), 'getSpotLightInfo( spotLight, geometry, directLight );', 'spotLight');
     if (!P || !Sp) { console.warn('[leggera] luci spente: il ciclo delle luci di three non è quello atteso, lasciato com\'era'); return; }
-    s = P + Sp + s.slice(iD); C.lights_fragment_begin = s; C.__luciSpente = s0 !== s;
+    s = P + Sp + s.slice(iD); C.lights_fragment_begin = abGL(s0, s); C.__luciSpente = s0 !== s;
   }
   function init(canvas, st) {
     if (typeof window !== 'undefined') (window.__tl = window.__tl || {}).init0 = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
-    luciSpente();
     renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     if (LOOKV.nuovo) { sguPezzi(); renderer.toneMapping = THREE.CustomToneMapping; }   // [sguardo] il look nuovo: la curva nei materiali
+    luciSpente(renderer.getContext());   // [ottimizza-gpu] dopo i pezzi del look
     // [carico] three controlla ogni programma della scheda video subito dopo averlo avviato, e così li aspetta uno alla volta
     // (190 nella città nuova: era il grosso dell'attesa all'avvio). Senza il controllo il browser li prepara insieme, su più
     // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
@@ -17792,8 +17830,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const solidAt = (x, z) => { const t = G.tileAt(Math.floor(x / TS), Math.floor(z / TS)); return t === G.T.BLD || t === G.T.FOUNT; };
   const waterAt = (x, z) => G.tileAt(Math.floor(x / TS), Math.floor(z / TS)) === G.T.WATER;
   function tickDebris(dt) {
-    const D = DZ.debris; if (!D) return; let upd = D.dirty; D.dirty = false;
+    const D = DZ.debris; if (!D) return; let upd = D.dirty, hi = -1; D.dirty = false;
     for (let i = 0; i < D.N; i++) {
+      if (D.live[i]) hi = i;   // [ottimizza-gpu] l'ultima copia viva (le altre sono a scala zero)
       if (D.live[i] !== 1) continue; const j = i * 3; upd = true;
       D.V[j + 1] -= 22 * dt;
       let nx = D.P[j] + D.V[j] * dt, nz = D.P[j + 2] + D.V[j + 2] * dt; const ny = D.P[j + 1] + D.V[j + 1] * dt;
@@ -17813,6 +17852,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       D.m.setMatrixAt(i, _m4.compose(_p, _q, _s));
     }
     if (upd) D.m.instanceMatrix.needsUpdate = true;
+    // [ottimizza-gpu] si disegnano solo le copie fino all'ultima viva (le 1400 scatole a scala zero passavano dalla scena e dall'ombra a ogni
+    // fotogramma: 16.800 triangoli); niente detriti, niente disegno. window.__gpuScatole = false: tutte, come prima
+    const tutte = typeof window !== 'undefined' && window.__gpuScatole === false; D.m.count = tutte ? D.N : hi + 1; D.m.visible = tutte || hi >= 0;
   }
   // un veicolo in corsa sparpaglia le macerie a terra
   function sweepDebris(x, z, c, s, hl, hw, vx, vz, sp) {
@@ -19095,7 +19137,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
-    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO);   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota

@@ -334,3 +334,31 @@ Con i punti 6 e 7 si tolgono altri 5-13 ms: lo spazio per avvicinarsi ai 60 senz
 Se invece la **forbice** dice che i pixel non comandano, l'ordine diventa 2, 6 (vertici e triangoli), meno disegni, poi il resto.
 
 Ogni passo si misura prima e dopo con `bancoGPU()` sul portatile e si verifica con l'uguaglianza dei pixel prima di passare al successivo.
+
+---
+
+## Stato dopo il ramo `ottimizza-gpu` (piano 1-4)
+
+Misurato con `strumenti/sonda_uguale_gpu.js`. È la stessa scena nella stessa pagina, ferma, disegnata a 1414×640 prima e dopo; i pixel si
+confrontano solo dove la scena è uguale a se stessa (alcuni shader leggono l'orologio). I punti sono il borgo alle 11 e alle 22 e il
+Mercato alle 11.
+
+| | immagine | disegni / triangoli della scena | frammenti |
+|---|---|---|---|
+| §3 luci spente fuori dal calcolo + rumore delle celle una volta | uguale (alle 22 un canale su 3,6 M a 1/255) | invariati | invariati, ma più leggeri: di giorno 5 luci su 6 saltate per frammento |
+| §4 rumori sotto i loro pesi + hash condiviso | come sopra; al Mercato 9 canali su 3,6 M, scarto massimo 3/255 | invariati | rumori 3D per frammento da 10-15 a 7-8, ognuno da ~145 a ~99 operazioni |
+| §2 scatole, ferrovia a settori, detriti | uguale (0 canali) | −18 / −37 mila (borgo, giorno), −16 / −112 mila (borgo, notte), −23 / −117 mila (Mercato) | invariati |
+| §1 opachi a fasce di distanza | **diversa**: coppie complanari si scambiano, scarto fino a 167 | invariati, ma +33% di cambi di programma | solo −8% di giorno, +2% di notte: **tolto** (commit di ritorno) |
+
+**Cosa correggere nell'analisi.**
+
+- I triangoli «senza pixel» del §2 sono quasi tutti dentro il frustum anche a scatola. Sono settori dei tasselli coperti da quelli davanti,
+  oppure toccati solo per una striscia sul bordo alto dello schermo. La scatola toglie l'1-8% dei triangoli; per il resto servono settori
+  più piccoli alla cottura o la prova di occlusione.
+- Il −26-38% di frammenti del §1 si ottiene solo ordinando per distanza **senza** raggruppare i materiali, quindi con molti più cambi di
+  programma (troppo per un processore già al limite), e cambia lo stesso i pixel complanari.
+- L'ordine dei triangoli dall'alto alla cottura non è stato fatto. L'indice delle mesh fuse è anche la mappa dei pezzi (`lmDec`, le maschere
+  del bottino dei tasselli), quindi riordinarlo tocca `tassella_pagina.js` e `tasselli.js` insieme.
+
+**Da misurare sul portatile.** `bancoGPU()` e F3 prima e dopo. `?gpuvecchio` riporta i pezzi di shader di prima, `?noscatole` le sfere,
+`?nolucispente` le luci di prima.
