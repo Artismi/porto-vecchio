@@ -105,7 +105,7 @@ var LeggeraMem = (function () {
     const ng = {}; ng.position = new THREE.BufferAttribute(prendi(q, 3, first, m), 3, true);
     for (const nm in A) { if (nm === 'position') continue; const a = A[nm]; ng[nm] = nm === 'uv' && uvH ? new THREE.Float16BufferAttribute(prendi(uvH, 2, first, m), 2) : new THREE.BufferAttribute(prendi(a.array, a.itemSize, first, m), a.itemSize, a.normalized); }
     const idx = m < 65536 ? new Uint16Array(n) : new Uint32Array(n); idx.set(sd.remap);
-    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (render.js, l'indice spaziale dei raggi) lavora su una copia
     mesh.position.copy(c); mesh.scale.setScalar(h); mesh.updateMatrix(); mesh.updateMatrixWorld(true); geo.userData.lmXf = { c: c.clone(), h };
     geo.computeBoundingBox(); geo.computeBoundingSphere();
     geo.userData.lmDec = decodifica(geo, c.clone(), h, !!uvH);
