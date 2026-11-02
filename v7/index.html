@@ -23571,7 +23571,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = 'a4d37afc65c533fd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'e3f1450ad6282a0b';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -68878,6 +68878,76 @@ var Visuale = (function () {
     S.g += (g - S.g) * k;
     return S;
   }
+  // ================= [camera4] LA GERARCHIA DELL'INQUADRATURA =================
+  // Il committente: «il taglio delle case solo quando è inevitabile; meglio inquadrature dall'alto, o abbastanza vicine da anticipare gli
+  // ostacoli, ma senza correzioni continue, innaturali o contro quello che il giocatore vuole». L'ordine:
+  //   1. anticipare, non reagire: il bisogno si legge sulla mappa (Visuale.mappa: l'altezza del pieno sul lato camera, le volte), nel punto
+  //      dove si è e dove si sarà fra 0,6-1,8 s, in una cache per cella di 1 m e per ottavo di giro della visuale;
+  //   2. prima scelta, la pendenza più alta (più dall'alto) quanto basta perché il busto si veda sopra il pieno sul lato camera;
+  //   3. se non basta neanche la pendenza più alta: un poco più vicini;
+  //   4. il taglio delle case (render.js, vis3Tick) solo se, con la camera dove sta andando, il personaggio resta coperto;
+  //   5. lo yaw non si tocca mai; lo zoom e la pendenza del giocatore vincono: per K.mano s dopo il suo ultimo tocco l'automatica cede;
+  //   6. al più un cambio ogni K.restaSale s salendo e ogni K.resta s scendendo, con l'isteresi; tutto su Visuale.molla.
+  // Sotto le volte (archi, sottopassi, portici) la pendenza non serve: si resta come si è (ci pensano il taglio morbido [ad] e la sagoma).
+  const INQUADRA4 = {
+    base: .78,            // rad: la pendenza di sempre (render.js la riscrive con quella vera)
+    max: 1.1,             // rad (63°): la più alta che la gerarchia chiede prima di avvicinarsi
+    passo: .06,           // rad: la pendenza chiesta si arrotonda in su a passi di tanto (niente ritocchi piccoli)
+    margine: .06,         // rad sopra il bisogno
+    zoom: .86,            // il secondo gradino: un poco più vicini
+    avanti: [.6, 1.2, 1.8], // s: dove sarà il personaggio, con la sua marcia (anticipare)
+    avantiMax: 7,         // m: non più avanti di tanto
+    raggio: 14,           // m: fin dove si cerca il pieno sul lato camera
+    lato: .7,             // m: i raggi a destra e a sinistra del busto
+    busto: 1.1,           // m sopra i piedi: il punto che deve vedersi
+    sale: .2,             // s di bisogno più alto prima di salire
+    scende: 3,            // s di bisogno più basso prima di scendere
+    banda: .1,            // rad: si scende solo se il bisogno è più basso di tanto (l'isteresi)
+    restaSale: 2.5,       // s: dopo un cambio, il prossimo in su non prima di tanto
+    resta: 6,             // s: e in giù non prima di tanto
+    molla: 1,             // s: la pendenza e lo zoom vanno al bersaglio in circa tanto
+    mano: 6,              // s: dopo che il giocatore ha toccato lo zoom o la pendenza l'automatica cede tanto
+    cede: .6,             // s: il cedere e il riprendere, con la molla
+  };
+  // il bisogno nel punto (x, z), coi piedi a fy, per la visuale yaw (la camera sta in (sin yaw, cos yaw)): la pendenza che libera il busto
+  // dal pieno sul lato camera (rad) e se si sta sotto una volta. cache: Map (la mappa non cambia)
+  function bisogno4(M, x, z, fy, yaw, K, cache) {
+    K = K || INQUADRA4; const ox = Math.round(yaw * 8 / Math.PI), key = Math.floor(x) * 65536 + Math.floor(z) + ox * 4294967296;
+    if (cache) { const c = cache.get(key); if (c && Math.abs(c.fy - fy) < .5) return c; }
+    const y8 = ox * Math.PI / 8, ux = Math.sin(y8), uz = Math.cos(y8), lx = -uz, lz = ux, cx = Math.floor(x) + .5, cz = Math.floor(z) + .5, f = fy + K.busto;
+    let p = 0; for (const o of [-K.lato, 0, K.lato]) for (let s = .4; s <= K.raggio; s += .3) { const h = M.alto(cx + ux * s + lx * o, cz + uz * s + lz * o); if (h > f) { const a = Math.atan2(h - f, s); if (a > p) p = a; } }
+    const r = { p, volta: !!(M.volta && M.volta(cx, cz, fy)), fy };
+    if (cache) { if (cache.size > 30000) cache.clear(); cache.set(key, r); }
+    return r;
+  }
+  // un passo. S dura fra i fotogrammi; q: { M, x, z, fy, gh(x, z) (la quota del suolo), vx, vz (la marcia, m/s), yaw, base, ok (in strada,
+  // a piedi), mano (il giocatore ha toccato lo zoom o la pendenza in questo fotogramma), cache }. Ritorna S: p, z (pendenza e zoom di
+  // adesso), pT, zT (il gradino scelto), liv (0 di sempre, 1 più dall'alto, 2 più vicini), w (quanto conta l'automatica), cambi, bis
+  function inquadra4(S, q, dt, K) {
+    K = K || INQUADRA4; const base = q.base !== undefined ? q.base : K.base;
+    if (S.pT === undefined) Object.assign(S, { pT: base, zT: 1, liv: 0, tC: 99, tSu: 0, tGiu: 0, tMano: 99, cambi: 0, bis: 0, volta: false, sp: { x: base, v: 0 }, sz: { x: 1, v: 0 }, sw: { x: 1, v: 0 } });
+    S.tC += dt; S.tMano += dt; if (q.mano) S.tMano = 0;
+    let pD = base, zD = 1, liv = 0, tieni = false;
+    if (q.ok) {
+      const pts = [[q.x, q.z, q.fy]], v = Math.hypot(q.vx || 0, q.vz || 0);
+      if (v > .4) for (const t of K.avanti) { const k = Math.min(t, K.avantiMax / v), x = q.x + q.vx * k, z = q.z + q.vz * k; pts.push([x, z, q.gh ? q.gh(x, z) : q.fy]); }
+      let need = 0, volta = false; pts.forEach(([x, z, fy], i) => { const b = bisogno4(q.M, x, z, fy, q.yaw, K, q.cache); if (i === 0) volta = b.volta; else if (b.volta) return; if (b.p > need) need = b.p; });
+      S.bis = need; S.volta = volta;
+      if (volta) tieni = true;   // sotto la volta la pendenza non serve: si resta come si è
+      else { const pn = need + K.margine;
+        if (pn <= base) { pD = base; liv = 0; }
+        else if (pn <= K.max) { pD = Math.min(K.max, base + Math.ceil((pn - base) / K.passo - 1e-6) * K.passo); liv = 1; }
+        else { pD = K.max; zD = K.zoom; liv = 2; } } }
+    if (!tieni) {
+      const sev = (S.pT - base) + (1 - S.zT) * 2, sevD = (pD - base) + (1 - zD) * 2;
+      if (sevD > sev + 1e-4) S.tSu += dt; else S.tSu = 0;
+      if (sevD < sev - K.banda || (!q.ok && sevD < sev - 1e-4)) S.tGiu += dt; else S.tGiu = 0;
+      const su = S.tSu >= K.sale && S.tC >= K.restaSale, giu = S.tGiu >= (q.ok ? K.scende : 0) && S.tC >= (q.ok ? K.resta : 0);
+      if (su || giu) { S.pT = pD; S.zT = zD; S.liv = liv; S.tC = 0; S.tSu = S.tGiu = 0; S.cambi++; } }
+    const w = molla(S.sw, S.tMano < K.mano ? 0 : 1, K.cede, dt);   // il giocatore vince
+    S.p = molla(S.sp, base + (S.pT - base) * w, K.molla, dt); S.z = molla(S.sz, 1 + (S.zT - 1) * w, K.molla, dt); S.w = w;
+    return S;
+  }
   // ================= [visuale4] IL TETTO CHE SBIADISCE (A) =================
   const TETTO4 = {
     resta: .3,            // l'opacità che resta al tetto sbiadito del tutto: si legge ancora la sua forma, mai un buco
@@ -68997,8 +69067,8 @@ var Visuale = (function () {
     if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
     return S;
   }
-  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2 };   // [visuale4] [visuale5] [camera2]
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; }   // [visuale4] [visuale5] [camera2]
+  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2, INQUADRA4, bisogno4, inquadra4 };   // [visuale4] [visuale5] [camera2]
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; window.__INQUADRA4 = INQUADRA4; }   // [visuale4] [visuale5] [camera2]
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;
@@ -71100,11 +71170,11 @@ var Inquadratura = (function () {
   // (K.terra: resta la pianta). I punti dentro la pianta di una casa non contano per quella casa (non sono pavimento)
   function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv, opz) {
     out = out || new Map(); out.clear(); if (!on) return out;
-    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
-    for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
-    if (opz && opz.avanti) { const ax = opz.avanti.x, az = opz.avanti.z;
+    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD, corpo = !!(opz && opz.corpo);   // [camera4] corpo: conta solo il personaggio (il busto e la testa), non il suolo attorno
+    if (!corpo) for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
+    if (opz && opz.avanti && !corpo) { const ax = opz.avanti.x, az = opz.avanti.z;
       for (let t = -K.striscia[0]; t <= K.striscia[1] + 1e-6; t += 1.5) for (const l of [-K.strisciaL, 0, K.strisciaL]) { const x = px + ax * t - az * l, z = pz + az * t + ax * l; P.push({ x, y: (opz.gh ? opz.gh(x, z) : fy) + .1, z }); } }
-    P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
+    if (corpo) P.push({ x: px, y: fy + 1.1, z: pz }, { x: px, y: fy + 1.65, z: pz }); else P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
     const D = P.map(p => { const ex = cam.x - p.x, ey = cam.y - p.y, ez = cam.z - p.z, ll = Math.hypot(ex, ey, ez) || 1; return { x: ex / ll, y: ey / ll, z: ez / ll }; });
     const o0 = { x: px, y: fy + .1, z: pz }, l0 = Math.hypot(cam.x - px, cam.y - o0.y, cam.z - pz) || 1, d0 = { x: (cam.x - px) / l0, y: (cam.y - o0.y) / l0, z: (cam.z - pz) / l0 }, E = R + 2, bb = { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } };
@@ -71190,6 +71260,7 @@ var Regia = (function () {
     v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
     v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
     v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    if (q.bisogno && P.bisogno) v += P.bisogno * q.bisogno(yaw);   // [camera4] quanto deve salire la pendenza con quella visuale (la mappa, anche più avanti)
     return v;
   }
   // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
@@ -75535,7 +75606,10 @@ var Render = (function () {
   function vis3Tick(px, pz, fy, on, dt, pitch) {
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (SEMPRE.on || !IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0, SEMPRE.on ? SEMPRE.opz : undefined)) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, (INQ4.on && !(BASSA.k > .25) ? Inquadratura.tagli(px, pz, fy, INQ4.camT || camera.position, dyn.buildings, Visuale, on, vv, IQ5.v.uniforme, 0, INQ4.opz) : Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (SEMPRE.on || !IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0, SEMPRE.on ? SEMPRE.opz : undefined))) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto   // [camera4] col taglio solo le case che coprono davvero il personaggio
+    if (iq && INQ4.on && INQ4.camT && vuole.size) {   // [camera4] si taglia solo quello che copre il personaggio con la camera dove sta andando E con quella di adesso (mentre la camera si muove niente case che si aprono in anticipo)
+      const cp = camera.position, O = [{ x: px, y: fy + 1.1, z: pz }, { x: px, y: fy + 1.65, z: pz }].map(o => { const dx = cp.x - o.x, dy = cp.y - o.y, dz = cp.z - o.z, l = Math.hypot(dx, dy, dz) || 1; return { o, d: { x: dx / l, y: dy / l, z: dz / l } }; });
+      vuole.forEach((v, B) => { if (S.get(B) && S.get(B).on) return; if (!B.box3 || !O.some(q => Visuale.entra(q.o, q.d, B.box3) !== null)) vuole.delete(B); }); }
     VIS3.cambi += Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const prima = VIS3.vivi; VIS3.vivi = new Set();
     S.forEach((s, B) => { const y = Visuale.quota(s); VIS3.vivi.add(B);
@@ -75676,7 +75750,7 @@ var Render = (function () {
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
   function vis4Tetti(px, pz, fy, on, dt) {
-    const K = Visuale.TETTO4, S = VIS4.T, vuole = Visuale.tetti(px, pz, fy, camera.position, dyn.buildings, K, !on, VIS4.tv || (VIS4.tv = new Map()));
+    const K = Visuale.TETTO4, S = VIS4.T, vuole = Visuale.tetti(px, pz, fy, (INQ4.on && INQ4.camT) || camera.position, dyn.buildings, K, !on, VIS4.tv || (VIS4.tv = new Map()));   // [camera4] con la camera dove sta andando
     Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const vivi = new Set(); S.forEach((s, B) => { vivi.add(B); casaVisibile(B, 'tetto', Visuale.sbiadito(s), s); });
     VIS4.tvivi.forEach(B => { if (!vivi.has(B)) casaVisibile(B, 'tetto', 0); }); VIS4.tvivi = vivi;
@@ -75741,9 +75815,13 @@ var Render = (function () {
     const K = Visuale.CAMERA4; K.base = PEND3.v; if (VIS4.fermo) return;   // VIS4.fermo: gli strumenti tengono lo stato che hanno messo (la striscia del movimento)
     const ok = !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !(p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala' || p.lv.k === 'ug'));
     const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), yw = YAW + (cam.uy || 0) + (cam.mano && cam.mano.yaw || 0);   // [visuale5] anche girata a mano
-    if (IQ5.v) { iq5Camera(p, fy, ok, M, K, dt, ui); return; }   // [inquadratura] la pendenza la fa Inquadratura.camera, con l'asse
-    const m = ok ? Visuale.misura(M, p.x, p.y, fy, Math.sin(yw), Math.cos(yw), K) : null;
-    Visuale.camPasso(VIS4.C, m, VIS3.subito ? 10 : Math.min(.1, dt || .016), K, yw); VIS4.m = m;
+    if (IQ5.v) iq5Camera(p, fy, ok, M, K, dt, ui);   // [inquadratura] la pendenza la fa Inquadratura.camera, con l'asse
+    else { const m = ok ? Visuale.misura(M, p.x, p.y, fy, Math.sin(yw), Math.cos(yw), K) : null;
+      Visuale.camPasso(VIS4.C, m, VIS3.subito ? 10 : Math.min(.1, dt || .016), K, yw); VIS4.m = m; }
+    if (INQ4.on) {   // [camera4] la gerarchia prende il posto della stretta: la pendenza e lo zoom, anticipati sulla mappa
+      const zq = ui.zoom || 1, tq = ui.tilt || 0, mano = INQ4.zq !== null && (Math.abs(zq - INQ4.zq) > 1e-4 || Math.abs(tq - INQ4.tq) > 1e-4); INQ4.zq = zq; INQ4.tq = tq;   // lo zoom e la pendenza del giocatore vincono
+      const S = Visuale.inquadra4(INQ4.S, { M, x: p.x, z: p.y, fy, gh: groundH, vx: cam.mvx || 0, vz: cam.mvy || 0, yaw: cam.yaw === undefined ? YAW : cam.yaw, base: PEND3.v, ok: ok && !(BASSA.k > .05), mano, cache: INQ4.cache }, VIS3.subito || AVVIO.scatta ? 10 : Math.min(.25, dt || .016));   // [camera4] all'avvio e dopo un salto il gradino giusto subito
+      if (IQ5.v) { IQ5.p = S.p; IQ5.z = S.z; } else { VIS4.C.p = S.p; VIS4.C.z = S.z; } }
   }
   // [inquadratura] la visuale lungo la via e il ricentro dietro al personaggio: IQ5.dy si somma all'automatica (cam.uy) e alla parte a mano;
   // IQ5.p e IQ5.z prendono il posto di VIS4.C.p e .z (la pendenza della camera che si adatta, più bassa e più vicina lungo la via)
@@ -92389,7 +92467,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (now - REG.vicT > 500) { REG.vicT = now; REG.vic = (dyn.buildings || []).filter(B => { const b3 = B.box3; if (!b3) return false; const cx = (b3.min.x + b3.max.x) / 2 - x, cz = (b3.min.z + b3.max.z) / 2 - z; return cx * cx + cz * cz < 45 * 45 && b3.max.y > fy + 1.2; }); }
       let n = 0; for (const B of REG.vic) { const b = B.box3; if (x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z) continue; if (Regia.taglia(o, c, b)) n++; } return n; };
     const camDi = uy => { const y = YAW + uy, cp = Math.cos(REG.lp); return { x: x + Math.sin(y) * cp * REG.ld, y: fy + 1 + Math.sin(REG.lp) * REG.ld, z: z + Math.cos(y) * cp * REG.ld }; };
-    cam.uy = Regia.passo(REG.S, { uy: cam.uy || 0, YAW, hd, vel: pveh ? sp : sp * 1.2, mano: !!REG.mano, mezzo: !!pveh, x, z, fy, copre, cam: camDi }, dt);
+    const bisogno = INQ4.on && !pveh ? uy => inq4Bisogno(x, z, fy, cam.mvx, cam.mvy, YAW + uy) : null;   // [camera4]
+    cam.uy = Regia.passo(REG.S, { uy: cam.uy || 0, YAW, hd, vel: pveh ? sp : sp * 1.2, mano: !!REG.mano, mezzo: !!pveh, x, z, fy, copre, cam: camDi, bisogno }, dt);
   }
 
   // [bassa] LA VISUALE BASSA: k da 0 (la visuale di sempre, dall'alto) a 1 (bassa dietro al personaggio, si guarda avanti e lontano).
@@ -92434,8 +92513,48 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const L = CALMA2.L, K = CALMA2.K; if (on) { L.tL = 0; L.lx = lx; L.ly = ly; } else { L.tL += dt; L.d = null; }
     const tieni = !on && L.tL < K.sguardoTieni, mx = on || tieni ? L.lx : 0, my = on || tieni ? L.ly : 0, t = on || tieni ? K.sguardoMolla : K.sguardoTorna;
     cam.lx = molla2(L.x, cam.lx || 0, mx, t, dt, K.sguardoVmax); cam.ly = molla2(L.y, cam.ly || 0, my, t, dt, K.sguardoVmax); }
+  // [camera4] LA GERARCHIA DELL'INQUADRATURA (Visuale.inquadra4; ANALISI_CAMERA.md §8): prima più dall'alto (e, se la regia sceglie, una
+  // visuale dietro la marcia che chiede meno), poi un poco più vicini, il taglio delle case solo se il personaggio resta coperto con la
+  // camera dove sta andando. ?nofixinquadra: com'era (il taglio di [sempre]: le case che coprono il personaggio o il suolo attorno)
+  const INQ4 = { on: !(typeof location !== 'undefined' && /[?&]nofixinquadra\b/.test(location.search)) && typeof Visuale !== 'undefined' && !!Visuale.inquadra4,
+    S: {}, cache: new Map(), zq: null, tq: null, camT: null, opz: { corpo: true, terra: true } };
+  if (INQ4.on && typeof Regia !== 'undefined') { Regia.K.piedi = [0, .35, -.35, .6, -.6]; Regia.K.pesi.bisogno = 6; }   // [camera4] la regia resta nel cono dietro la marcia (mai di fronte né di lato) e sente il bisogno della mappa
+  if (typeof window !== 'undefined') window.__INQ4 = INQ4;
+  // [camera4] il bisogno della visuale yaw (rad sopra la pendenza di sempre) dove sei e dove sarai fra 1,2 s
+  function inq4Bisogno(x, z, fy, vx, vz, yaw) {
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), K = Visuale.INQUADRA4; let need = Visuale.bisogno4(M, x, z, fy, yaw, K, INQ4.cache).p;
+    const v = Math.hypot(vx || 0, vz || 0); if (v > .4) { const k = Math.min(1.2, K.avantiMax / v), ax = x + vx * k, az = z + vz * k, b = Visuale.bisogno4(M, ax, az, groundH(ax, az), yaw, K, INQ4.cache); if (!b.volta && b.p > need) need = b.p; }
+    return Math.max(0, need + K.margine - PEND3.v);
+  }
+  // [camera4] L'AVVIO (il committente: «entrando sono tutte le case tagliate, il personaggio guarda un muro, sembra rotto; poi lento ti giri e
+  // la visuale segue a scatti, si allunga piano»). Misurato (strumenti/sonda_avvio_camera.js): sei case tagliate per tutti i primi 20 s e
+  // nessuna copriva il personaggio (era il suolo attorno, [sempre]); lo zoom partiva da quello dell'intro e si allungava per 1,35 s di gioco,
+  // che coi fotogrammi lenti dopo il caricamento (dt tagliato a 50 ms, fotogrammi da 0,1-5 s) erano decine di secondi veri. Ora:
+  //   - all'inizio, dopo un salto (> 8 m in un fotogramma) e entrando o uscendo da una casa le molle SCATTANO al bersaglio (valore e
+  //     velocità), la regia, la mano e la gerarchia ripartono da capo, il taglio si apre o si chiude subito;
+  //   - la camera va col tempo vero del fotogramma (ui.reale), al più 250 ms: coi fotogrammi lenti non resta indietro al rallentatore, e un
+  //     fotogramma lunghissimo non la scaglia;
+  //   - la prima visuale guarda verso lo spazio aperto (la via, la piazza: la mappa), il personaggio girato di là, il lato camera libero.
+  // ?nofixavvio: com'era
+  const AVVIO = { on: !(typeof location !== 'undefined' && /[?&]nofixavvio\b/.test(location.search)) && typeof Visuale !== 'undefined' && !!Visuale.bisogno4, orientato: false, intro: false, px: undefined, py: 0, ind: false, salti: 0, scatta: false, yaw: null };
+  if (typeof window !== 'undefined') window.__AVVIO = AVVIO;
+  // la prima visuale: fra gli otto orientamenti attorno a quello dell'isola, quello che davanti ha più strada libera e dietro (il lato
+  // camera) chiede meno pendenza; a parità, il più vicino all'isola. Il personaggio guarda avanti
+  function avvioVisuale(p) {
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Visuale.INQUADRA4; let best = null;
+    for (let k = -3; k <= 4; k++) { const yaw = YAW + k * Math.PI / 4, fx = -Math.sin(yaw), fz = -Math.cos(yaw), lx = -fz, lz = fx;
+      let libero = 30; for (const o of [-1.5, 0, 1.5]) for (let s = 1; s < libero; s += .5) if (M.alto(p.x + fx * s + lx * o, p.y + fz * s + lz * o) > fy + 2.2) { libero = s; break; }
+      const pn = Visuale.bisogno4(M, p.x, p.y, fy, yaw, K, INQ4.cache).p + K.margine, taglio = Math.max(0, pn - K.max), sale = Math.max(0, pn - PEND3.v);
+      const v = -25 * taglio - 6 * sale + .4 * Math.min(libero, 20) - .6 * Math.abs(k);   // prima niente taglio, poi poca pendenza, poi lo spazio davanti, poi l'isola
+      if (!best || v > best.v) best = { v, k, yaw, fx, fz, libero, need: pn }; }
+    // il personaggio guarda la via più libera fra quelle davanti alla camera (entro 100° dal suo davanti: mai la faccia, mai la schiena di lato)
+    const a0 = Math.atan2(best.fz, best.fx); let fa = a0, fl = -1;
+    for (let j = -9; j <= 9; j++) { const a = a0 + j * Math.PI / 18, fx = Math.cos(a), fz = Math.sin(a); if (Math.abs(j) > 10) continue; let l = 30; for (let s = 1; s < l; s += .5) if (M.alto(p.x + fx * s, p.y + fz * s) > fy + 2.2) { l = s; break; }
+      const v = Math.min(l, 25) - .05 * Math.abs(j); if (v > fl) { fl = v; fa = a; } }
+    cam.uy = best.k * Math.PI / 4; p.face = fa; AVVIO.yaw = Object.assign(best, { face: fa, faceLibero: fl }); return best;
+  }
   function camReset() {   // [camera2] le sonde: la camera da capo (la visuale automatica, la mano, la regia, le molle)
-    cam.uy = 0; cam.mano = {}; cam.lock = 0; REG.S = {}; CALMA2.L.d = null; CALMA2.L.tL = 99; CALMA2.L.lx = CALMA2.L.ly = 0;
+    cam.uy = 0; cam.mano = {}; cam.lock = 0; REG.S = {}; INQ4.S = {}; INQ4.zq = INQ4.tq = null; CALMA2.L.d = null; CALMA2.L.tL = 99; CALMA2.L.lx = CALMA2.L.ly = 0;
     [CALMA2.L.x, CALMA2.L.y, CALMA2.ax, CALMA2.ay, CALMA2.h, CALMA2.vel, CALMA2.roll, CALMA2.vf, CALMA2.cd].forEach(q => { q.v = 0; }); CALMA2.zA.x = 1; CALMA2.zA.v = 0; CALMA2.zU = null; CALMA2.mom.clear(); }
   // [zoom2] il tetto dello zoom indietro (main.js zoomBy usa lo stesso): a 4,2 la camera stava a 345 m, la nebbia a 765 m e la scheda
   // video caricava mezza isola fino a perdere il contesto (schermo bianco, «la grafica non regge»). A 2 si vede il quartiere
@@ -92860,6 +92979,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     Mo.m.geometry.attributes.position.needsUpdate = true; Mo.m.material.opacity = (.15 + night * .5) * .35;
 
     // ---------- camera cinematografica ----------
+    const dtG = dt; AVVIO.scatta = false;   // [camera4] l'avvio: la prima visuale, le molle che scattano, il tempo vero
+    if (AVVIO.on) {
+      if (ui.intro && ui.focus && !AVVIO.orientato) { AVVIO.orientato = true; try { avvioVisuale(p); } catch (e) { console.warn('[camera4]', e); } }
+      const ind = !!p.indoor, salto = (AVVIO.intro && !ui.intro) || (AVVIO.px !== undefined && Math.hypot(p.x - AVVIO.px, p.y - AVVIO.py) > 8) || ind !== AVVIO.ind;
+      AVVIO.intro = !!ui.intro; AVVIO.px = p.x; AVVIO.py = p.y; AVVIO.ind = ind;
+      if (salto && !ui.intro) { AVVIO.scatta = true; AVVIO.salti++; REG.S = {}; cam.mano = {}; cam.lock = 0; CALMA2.L.d = null; CALMA2.L.tL = 99; INQ4.S = {}; cam.ppx = undefined; }
+      dt = AVVIO.scatta ? 10 : Math.min(.25, Math.max(dt, ui.reale > 0 ? ui.reale : dt)); }   // la camera col tempo vero (al più 250 ms); quando scatta, un passo lunghissimo: le molle arrivano e si fermano
     const driving = !!pveh && !ui.intro && !ui.dialogNpc;
     cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * 1.6);
     const D = cam.drive, ease = D * D * (3 - 2 * D);
@@ -92867,7 +92993,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!pveh && ui.aimPoint && !ui.intro && !ui.dialogNpc && !(CALMA2.on && p.cur === 'pugni')) { const la = p.cur !== 'pugni' ? .28 : .12; const dx = ui.aimPoint.x - p.x, dy = ui.aimPoint.y - p.y, l = Math.hypot(dx, dy), m = Math.min(l * la, p.cur !== 'pugni' ? 5 : 2.5); if (l > .1) { tx += dx / l * m; ty += dy / l * m; } tz *= p.cur !== 'pugni' ? 1.12 : 1; }   // [camera2] a mani nude il puntatore non trascina la camera
     {   // [telefono] la visuale guarda dove vai (a piedi) e si trascina col dito per guardarsi attorno
       const vw = VIEW * (ui.zoom || 1), fresh = cam.ppx === undefined || Math.hypot(p.x - cam.ppx, p.y - cam.ppy) > 6;
-      const ivx = fresh || !(dt > 0) ? 0 : (p.x - cam.ppx) / dt, ivy = fresh || !(dt > 0) ? 0 : (p.y - cam.ppy) / dt; cam.ppx = p.x; cam.ppy = p.y;
+      const ivx = fresh || !(dtG > 0) || AVVIO.scatta ? 0 : (p.x - cam.ppx) / dtG, ivy = fresh || !(dtG > 0) || AVVIO.scatta ? 0 : (p.y - cam.ppy) / dtG; cam.ppx = p.x; cam.ppy = p.y;   // [camera4] la marcia col tempo del gioco (la camera va col tempo vero)
       const kv = Math.min(1, dt * 2.2); cam.pvx = (cam.pvx || 0) + (ivx - (cam.pvx || 0)) * kv; cam.pvy = (cam.pvy || 0) + (ivy - (cam.pvy || 0)) * kv;
       const spd = Math.hypot(cam.pvx, cam.pvy), leadOn = !!ui.lead && !pveh;   // [camera3] niente sguardo avanti dalla velocità: il personaggio è il perno   // [fluido] ma con la levetta (controller o schermo) la visuale guarda subito dove la spingi
       // lo sguardo avanti è una parte dello schermo, non dei metri: in verticale di lato c'è poco posto, in alto e in basso tanto.
@@ -93002,6 +93128,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     camera.position.set(cx + ox, cy + oy, cz + oz);
     if (KB > .01) { const gc = groundH(camera.position.x, camera.position.z) + .7; if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
     camera.lookAt(cx, cy, cz);
+    INQ4.camT = null; if (INQ4.on && ease < .02 && KB < .02 && !(cam.lift > .02) && INQ4.S.pT !== undefined) {   // [camera4] la camera dove sta andando: il taglio decide su quella (niente case che si aprono e si richiudono mentre la pendenza sale)
+      const S = INQ4.S, b = PEND3.v, pt = b + (S.pT - b) * (S.w === undefined ? 1 : S.w), zt = 1 + (S.zT - 1) * (S.w === undefined ? 1 : S.w), dT = dist * zt / Math.max(.2, S.z || 1);
+      const yT = LIBERA && REG.S && REG.S.tgt !== null && REG.S.tgt !== undefined ? cam.yaw + Math.atan2(Math.sin(REG.S.tgt - cam.uy), Math.cos(REG.S.tgt - cam.uy)) : cam.yaw;
+      INQ4.camT = { x: cx + Math.sin(yT) * Math.cos(pt) * dT, y: cy + Math.sin(pt) * dT, z: cz + Math.cos(yT) * Math.cos(pt) * dT }; }
     if (AD.on && AD.rollio > 0 && !ui.studio) {   // [ad] LO SBIECO: la camera appena inclinata, che deriva lenta (25 e 41 s) solo in marcia; nel regime e da fermi torna dritta
       const vr = CALMA2.on ? CALMA2.vel.x : pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);   // [camera2] la velocità smussata (la lente, sguPasso): fermarsi un attimo non lo raddrizza
       const reg = zoneAt(cx, cz) === 'regime', mv = pveh ? Math.min(1, vr / 6) : Math.min(1, vr / 1.5);
@@ -93037,6 +93167,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     else if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
     if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
 
+    dt = dtG;   // [camera4] da qui il tempo del gioco
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
     // [visuale5] via la casa che sbiadiva (fuori dai due modi rimasti era già spenta) e i raggi che la cercavano; ci pensano il tetto che
     // sbiadisce (camera), il muretto e la sagoma
@@ -93067,13 +93198,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       { const v = Math.hypot(cam.pvx || 0, cam.pvy || 0), hd = pveh ? pveh.ang : v > .3 ? Math.atan2(cam.pvy, cam.pvx) : p.face;   // [sempre] la direzione della striscia
         if (hd !== undefined && isFinite(hd)) { SEMPRE.opz.avanti.x = Math.cos(hd); SEMPRE.opz.avanti.z = Math.sin(hd); } if (!SEMPRE.opz.gh) SEMPRE.opz.gh = groundH; }
       const iqT = !!(IQ5.v && IQ5.v.taglio) || SEMPRE.on, iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
-      if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
+      if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, AVVIO.scatta ? 10 : dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);
       try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && (SEMPRE.on || BASSA.k > .25) && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
       if (LOOKV.nuovo || SGT.blob) sguPersonaggio(p.x, playerH + (p.jz || 0) * 0, p.y, LOOKV.nuovo && !!dyn.people.__player && dyn.people.__player.visible && !pveh && !ui.studio && !ui.intro);   // [sguardo] l'ombra di contatto del personaggio   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
-      if (VIS4.camera || VIS4.T.size) try { vis4Tetti(focus[0][0], focus[0][1], fy, VIS4.camera && fuori && iqS, dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
+      if (VIS4.camera || VIS4.T.size) try { vis4Tetti(focus[0][0], focus[0][1], fy, VIS4.camera && fuori && iqS, AVVIO.scatta ? 10 : dt); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
       if (VIS4.on) try { vis4Sagome(ui.intro || ui.studio ? null : { pveh, ids: focus.length > 1 ? (mo && mo.npcs || []).concat(ui.dialogNpc ? [ui.dialogNpc] : []) : [] }); } catch (e) { if (!VIS4.err) { VIS4.err = 1; console.warn('[visuale4]', e); } }
     }
     if (ui.studio) { if (dyn.people.__player) dyn.people.__player.visible = false; if (dyn.ghosts) dyn.ghosts.forEach(g => g.visible = false); }   // [studio] la camera non ha corpo
@@ -93190,7 +93321,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
@@ -96624,7 +96755,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, puntatore: !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, puntatore: !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
