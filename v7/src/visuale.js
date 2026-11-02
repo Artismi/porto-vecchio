@@ -177,6 +177,76 @@ var Visuale = (function () {
     S.g += (g - S.g) * k;
     return S;
   }
+  // ================= [camera4] LA GERARCHIA DELL'INQUADRATURA =================
+  // Il committente: «il taglio delle case solo quando è inevitabile; meglio inquadrature dall'alto, o abbastanza vicine da anticipare gli
+  // ostacoli, ma senza correzioni continue, innaturali o contro quello che il giocatore vuole». L'ordine:
+  //   1. anticipare, non reagire: il bisogno si legge sulla mappa (Visuale.mappa: l'altezza del pieno sul lato camera, le volte), nel punto
+  //      dove si è e dove si sarà fra 0,6-1,8 s, in una cache per cella di 1 m e per ottavo di giro della visuale;
+  //   2. prima scelta, la pendenza più alta (più dall'alto) quanto basta perché il busto si veda sopra il pieno sul lato camera;
+  //   3. se non basta neanche la pendenza più alta: un poco più vicini;
+  //   4. il taglio delle case (render.js, vis3Tick) solo se, con la camera dove sta andando, il personaggio resta coperto;
+  //   5. lo yaw non si tocca mai; lo zoom e la pendenza del giocatore vincono: per K.mano s dopo il suo ultimo tocco l'automatica cede;
+  //   6. al più un cambio ogni K.restaSale s salendo e ogni K.resta s scendendo, con l'isteresi; tutto su Visuale.molla.
+  // Sotto le volte (archi, sottopassi, portici) la pendenza non serve: si resta come si è (ci pensano il taglio morbido [ad] e la sagoma).
+  const INQUADRA4 = {
+    base: .78,            // rad: la pendenza di sempre (render.js la riscrive con quella vera)
+    max: 1.1,             // rad (63°): la più alta che la gerarchia chiede prima di avvicinarsi
+    passo: .06,           // rad: la pendenza chiesta si arrotonda in su a passi di tanto (niente ritocchi piccoli)
+    margine: .06,         // rad sopra il bisogno
+    zoom: .86,            // il secondo gradino: un poco più vicini
+    avanti: [.6, 1.2, 1.8], // s: dove sarà il personaggio, con la sua marcia (anticipare)
+    avantiMax: 7,         // m: non più avanti di tanto
+    raggio: 14,           // m: fin dove si cerca il pieno sul lato camera
+    lato: .7,             // m: i raggi a destra e a sinistra del busto
+    busto: 1.1,           // m sopra i piedi: il punto che deve vedersi
+    sale: .2,             // s di bisogno più alto prima di salire
+    scende: 3,            // s di bisogno più basso prima di scendere
+    banda: .1,            // rad: si scende solo se il bisogno è più basso di tanto (l'isteresi)
+    restaSale: 2.5,       // s: dopo un cambio, il prossimo in su non prima di tanto
+    resta: 6,             // s: e in giù non prima di tanto
+    molla: 1,             // s: la pendenza e lo zoom vanno al bersaglio in circa tanto
+    mano: 6,              // s: dopo che il giocatore ha toccato lo zoom o la pendenza l'automatica cede tanto
+    cede: .6,             // s: il cedere e il riprendere, con la molla
+  };
+  // il bisogno nel punto (x, z), coi piedi a fy, per la visuale yaw (la camera sta in (sin yaw, cos yaw)): la pendenza che libera il busto
+  // dal pieno sul lato camera (rad) e se si sta sotto una volta. cache: Map (la mappa non cambia)
+  function bisogno4(M, x, z, fy, yaw, K, cache) {
+    K = K || INQUADRA4; const ox = Math.round(yaw * 8 / Math.PI), key = Math.floor(x) * 65536 + Math.floor(z) + ox * 4294967296;
+    if (cache) { const c = cache.get(key); if (c && Math.abs(c.fy - fy) < .5) return c; }
+    const y8 = ox * Math.PI / 8, ux = Math.sin(y8), uz = Math.cos(y8), lx = -uz, lz = ux, cx = Math.floor(x) + .5, cz = Math.floor(z) + .5, f = fy + K.busto;
+    let p = 0; for (const o of [-K.lato, 0, K.lato]) for (let s = .4; s <= K.raggio; s += .3) { const h = M.alto(cx + ux * s + lx * o, cz + uz * s + lz * o); if (h > f) { const a = Math.atan2(h - f, s); if (a > p) p = a; } }
+    const r = { p, volta: !!(M.volta && M.volta(cx, cz, fy)), fy };
+    if (cache) { if (cache.size > 30000) cache.clear(); cache.set(key, r); }
+    return r;
+  }
+  // un passo. S dura fra i fotogrammi; q: { M, x, z, fy, gh(x, z) (la quota del suolo), vx, vz (la marcia, m/s), yaw, base, ok (in strada,
+  // a piedi), mano (il giocatore ha toccato lo zoom o la pendenza in questo fotogramma), cache }. Ritorna S: p, z (pendenza e zoom di
+  // adesso), pT, zT (il gradino scelto), liv (0 di sempre, 1 più dall'alto, 2 più vicini), w (quanto conta l'automatica), cambi, bis
+  function inquadra4(S, q, dt, K) {
+    K = K || INQUADRA4; const base = q.base !== undefined ? q.base : K.base;
+    if (S.pT === undefined) Object.assign(S, { pT: base, zT: 1, liv: 0, tC: 99, tSu: 0, tGiu: 0, tMano: 99, cambi: 0, bis: 0, volta: false, sp: { x: base, v: 0 }, sz: { x: 1, v: 0 }, sw: { x: 1, v: 0 } });
+    S.tC += dt; S.tMano += dt; if (q.mano) S.tMano = 0;
+    let pD = base, zD = 1, liv = 0, tieni = false;
+    if (q.ok) {
+      const pts = [[q.x, q.z, q.fy]], v = Math.hypot(q.vx || 0, q.vz || 0);
+      if (v > .4) for (const t of K.avanti) { const k = Math.min(t, K.avantiMax / v), x = q.x + q.vx * k, z = q.z + q.vz * k; pts.push([x, z, q.gh ? q.gh(x, z) : q.fy]); }
+      let need = 0, volta = false; pts.forEach(([x, z, fy], i) => { const b = bisogno4(q.M, x, z, fy, q.yaw, K, q.cache); if (i === 0) volta = b.volta; else if (b.volta) return; if (b.p > need) need = b.p; });
+      S.bis = need; S.volta = volta;
+      if (volta) tieni = true;   // sotto la volta la pendenza non serve: si resta come si è
+      else { const pn = need + K.margine;
+        if (pn <= base) { pD = base; liv = 0; }
+        else if (pn <= K.max) { pD = Math.min(K.max, base + Math.ceil((pn - base) / K.passo - 1e-6) * K.passo); liv = 1; }
+        else { pD = K.max; zD = K.zoom; liv = 2; } } }
+    if (!tieni) {
+      const sev = (S.pT - base) + (1 - S.zT) * 2, sevD = (pD - base) + (1 - zD) * 2;
+      if (sevD > sev + 1e-4) S.tSu += dt; else S.tSu = 0;
+      if (sevD < sev - K.banda || (!q.ok && sevD < sev - 1e-4)) S.tGiu += dt; else S.tGiu = 0;
+      const su = S.tSu >= K.sale && S.tC >= K.restaSale, giu = S.tGiu >= (q.ok ? K.scende : 0) && S.tC >= (q.ok ? K.resta : 0);
+      if (su || giu) { S.pT = pD; S.zT = zD; S.liv = liv; S.tC = 0; S.tSu = S.tGiu = 0; S.cambi++; } }
+    const w = molla(S.sw, S.tMano < K.mano ? 0 : 1, K.cede, dt);   // il giocatore vince
+    S.p = molla(S.sp, base + (S.pT - base) * w, K.molla, dt); S.z = molla(S.sz, 1 + (S.zT - 1) * w, K.molla, dt); S.w = w;
+    return S;
+  }
   // ================= [visuale4] IL TETTO CHE SBIADISCE (A) =================
   const TETTO4 = {
     resta: .3,            // l'opacità che resta al tetto sbiadito del tutto: si legge ancora la sua forma, mai un buco
@@ -296,8 +366,8 @@ var Visuale = (function () {
     if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
     return S;
   }
-  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2 };   // [visuale4] [visuale5] [camera2]
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; }   // [visuale4] [visuale5] [camera2]
+  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2, INQUADRA4, bisogno4, inquadra4 };   // [visuale4] [visuale5] [camera2]
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; window.__INQUADRA4 = INQUADRA4; }   // [visuale4] [visuale5] [camera2]
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;

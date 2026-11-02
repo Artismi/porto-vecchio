@@ -39,6 +39,7 @@ var Regia = (function () {
     v += P.copreAvanti * q.copre({ x: q.x + a.x * 6, y: f + 1, z: q.z + a.z * 6 }, C);
     v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
     v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
+    if (q.bisogno && P.bisogno) v += P.bisogno * q.bisogno(yaw);   // [camera4] quanto deve salire la pendenza con quella visuale (la mappa, anche più avanti)
     return v;
   }
   // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
