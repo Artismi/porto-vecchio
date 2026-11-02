@@ -79,6 +79,45 @@ var Visuale = (function () {
     passo: .3,            // m: il passo dei raggi in pianta
   };
   const cl4 = (v, a, b) => Math.max(a, Math.min(b, v));
+  // ================= [camera2] LA MOLLA =================
+  // Lo smorzamento al punto critico (SmoothDamp, Game Programming Gems 4, 1.10): S = { x, v } dura fra i fotogrammi; va verso `meta` in
+  // circa `tempo` secondi, senza oltrepassarla, con la velocità che parte e arriva a zero (niente strappi), uguale a ogni dt (anche 250 ms).
+  // vmax (facoltativa): la velocità più alta, in unità al secondo
+  function molla(S, meta, tempo, dt, vmax) {
+    if (!(dt > 0)) return S.x; if (!isFinite(S.x)) { S.x = meta; S.v = 0; return S.x; } if (!isFinite(S.v)) S.v = 0;
+    const om = 2 / Math.max(1e-4, tempo), x = om * dt, ex = 1 / (1 + x + .48 * x * x + .235 * x * x * x), m0 = meta;
+    let ch = S.x - meta; if (vmax) { const lim = vmax * tempo; ch = cl4(ch, -lim, lim); } meta = S.x - ch;
+    const t = (S.v + om * ch) * dt; S.v = (S.v - om * t) * ex; let o = meta + (ch + t) * ex;
+    if ((m0 - S.x > 0) === (o > m0)) { o = m0; S.v = 0; }   // non oltrepassa
+    if (vmax) S.v = cl4(S.v, -vmax, vmax);
+    return S.x = o;
+  }
+  // la stessa per un angolo (rad): per la via più corta
+  const mollaAng = (S, meta, tempo, dt, vmax) => molla(S, S.x + Math.atan2(Math.sin(meta - S.x), Math.cos(meta - S.x)), tempo, dt, vmax);
+  // [camera2] LA CAMERA CALMA (il committente: «la visuale si riallinea e si riaggiusta in continuazione, a scatti, senza focalizzare bene»).
+  // Le manopole (window.__CAMERA2 per le prove dal vivo); render.js le usa tutte insieme, ?camvecchia torna a com'era
+  const CAMERA2 = {
+    // la pendenza che si adatta (sopra CAMERA4): entra e esce con più calma, cambia di rado, la molla al posto dell'esponenziale
+    stretta: { tEntra: .5, tEsce: 1.4, resta: 4, banda: .12, zoom: .95, molla: .75 },
+    // la regia (sopra Regia.K): sceglie quando la marcia è stabile da tanto, si muove solo se lo scorcio è lontano (zona morta), una mossa
+    // decisa e intera (la molla), poi riposa; a piedi solo con la levetta (col puntatore la visuale non gira mai da sola)
+    regia: { mano: 4, vel: .8, stabile: 2, svolta: .3, ogni: 1, soglia: .5, resta: 5, molla: .8, vmax: .65 },
+    sguardo: .22,         // lo sguardo avanti della levetta: la parte della mezza inquadratura (era .3)
+    sguardoBanda: .3,     // rad: la direzione dello sguardo cambia solo oltre tanto (il pollice che trema non sposta la visuale)
+    sguardoMolla: .55,    // s: lo sguardo va dove spingi in circa tanto
+    sguardoTieni: .6,     // s: lasciata la levetta lo sguardo resta tanto...
+    sguardoTorna: 1.1,    // s: ...poi torna al centro in circa tanto
+    sguardoVmax: 9,       // m/s: la velocità più alta dello sguardo (l'inversione non è un salto)
+    scarto: .45, scartoMezzo: .35,   // s: lo scarto voluto (mira, dialogo, momenti; sui mezzi lo sguardo avanti) con la molla
+    momentoEntra: 16, momentoEsce: 21,   // m: chi conta nella scena entra nell'inquadratura sotto tanto ed esce oltre tanto (l'isteresi)
+    zoomAuto: .7,         // s: lo zoom che decide il gioco (mira, dialogo, momenti, al chiuso); quello del giocatore resta pronto
+    quota: .3,            // s: la quota del punto guardato (scalini, scalinate)
+    lenteVel: 1.2,        // s: la velocità che fa respirare la lente, smussata tanto (il passo incerto non la tocca)
+    lente: 2.5,           // s: la lente cambia in circa tanto
+    lenteAmpia: .5,       // la lente respira la metà di prima attorno al gonfio di sempre
+    rollio: 2, rollioAmpio: .65,   // s, e quanto del rollio di prima
+    campo: .8, distanza: .6,       // s: il campo e la distanza sui mezzi (non scattano con la velocità)
+  };
   // la città in pianta per le misure: l'altezza del pieno in ogni punto (le case fino al colmo, come tetti.js), i vicoli della rete
   // (W.roads da ≤ 3,6 m e i vic_), le volte (archi sopra i vicoli, sottopassi, portici: si passa sotto, coprono sopra i 3-4 m).
   // W è il mondo (world_cittanuova.js): lo stesso dato in Node e nel gioco
@@ -129,7 +168,10 @@ var Visuale = (function () {
     else if (!S.on) { S.t = m.s >= K.entra ? S.t + dt : 0; if (S.t >= K.tEntra && pronto) { S.on = true; S.t = 0; S.cambi++; S.dw = 0; S.pT = bersaglio(); } }
     else { S.t = m.s <= K.esce ? S.t + dt : 0; if (S.t >= K.tEsce && pronto) { S.on = false; S.t = 0; S.cambi++; S.dw = 0; } else { const b = bersaglio(); if (Math.abs(b - S.pT) > K.banda) S.pT = b; } }
     const k = 1 - Math.exp(-dt / K.tau);
-    S.p += ((S.on ? S.pT : K.base) - S.p) * k; S.z += ((S.on ? K.zoom : 1) - S.z) * k;
+    if (K.molla) {   // [camera2] la molla smorzata al punto critico: parte e arriva senza strappi (l'esponenziale parte di colpo), uguale a ogni dt
+      const P = S.mp || (S.mp = { x: S.p, v: 0 }), Z = S.mz || (S.mz = { x: S.z, v: 0 }); P.x = S.p; Z.x = S.z;
+      S.p = molla(P, S.on ? S.pT : K.base, K.molla, dt); S.z = molla(Z, S.on ? K.zoom : 1, K.molla, dt); }
+    else { S.p += ((S.on ? S.pT : K.base) - S.p) * k; S.z += ((S.on ? K.zoom : 1) - S.z) * k; }
     let g = 0; if (S.on && K.giro > 0 && m && yaw !== undefined) {   // la visuale guarda lungo l'asse del vicolo (in un verso o nell'altro), solo se basta girare poco
       const vista = Math.atan2(-Math.cos(yaw), -Math.sin(yaw)); let d = m.asse - vista; d = Math.atan2(Math.sin(2 * d), Math.cos(2 * d)) / 2; if (Math.abs(d) <= Math.min(K.giro, .44)) g = -d; }
     S.g += (g - S.g) * k;
@@ -254,8 +296,8 @@ var Visuale = (function () {
     if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
     return S;
   }
-  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita };   // [visuale4] [visuale5]
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; }   // [visuale4] [visuale5]
+  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2 };   // [visuale4] [visuale5] [camera2]
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; }   // [visuale4] [visuale5] [camera2]
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;

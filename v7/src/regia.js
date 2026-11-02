@@ -43,10 +43,15 @@ var Regia = (function () {
   }
   // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
   // null), vel, mano (true se il giocatore tocca la visuale), mezzo, x, z, fy, copre, cam } . Ritorna la nuova uy.
+  // [camera2] K.molla (s): la mossa è una molla smorzata al punto critico (parte e arriva piano, mai uno strappo) e, scelto un bersaglio,
+  // si va fino in fondo anche se ci si ferma (prima la camera si bloccava di colpo a metà giro); K.soglia (rad): la zona morta, ci si
+  // muove solo se lo scorcio migliore è lontano almeno tanto dalla visuale di adesso; K.resta (s): dopo una mossa si riposa tanto.
+  // Senza queste chiavi (di difetto) la regia è quella di prima
   function passo(S, q, dt) {
-    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '' });
-    S.t += dt; S.tSc += dt;
-    if (q.mano) { S.tMano = 0; S.tgt = null; S.perche = 'mano'; return q.uy; }
+    if (S.t === undefined) Object.assign(S, { t: 0, tMano: 99, hd0: null, tHd: 0, tSc: 99, tgt: null, n: 0, perche: '', v: 0, riposo: 99 });
+    S.t += dt; S.tSc += dt; S.riposo += dt;
+    if (q.mano) { S.tMano = 0; S.tgt = null; S.v = 0; S.perche = 'mano'; return q.uy; }
+    if (K.molla) return passoCalmo(S, q, dt);
     S.tMano += dt;
     if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
     if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
@@ -65,6 +70,31 @@ var Regia = (function () {
     if (Math.abs(step) < mn) step = Math.sign(d) * Math.min(mn, Math.abs(d)); if (step > m) step = m; if (step < -m) step = -m;
     return q.uy + step;
   }
+  // [camera2] la regia calma: una scelta solo a marcia stabile e a riposo, solo oltre la zona morta, poi la mossa intera
+  function passoCalmo(S, q, dt) {
+    S.tMano += dt;
+    const muove = S.tgt !== null;
+    if (!muove) {
+      if (S.tMano < K.mano) { S.perche = 'aspetta'; return q.uy; }
+      if (q.hd === null || q.hd === undefined || q.vel < K.vel) { S.hd0 = null; S.tHd = 0; S.perche = 'fermo'; return q.uy; }
+      if (S.hd0 === null || Math.abs(ang(q.hd - S.hd0)) > K.svolta) { S.hd0 = q.hd; S.tHd = 0; }
+      S.tHd += dt;
+      if (S.tHd >= K.stabile && S.tSc >= K.ogni && S.riposo >= (K.resta || 0)) {
+        S.tSc = 0; const base = dietro(S.hd0, q.YAW); q.avanti = { x: Math.cos(S.hd0), z: Math.sin(S.hd0) };
+        let best = null, bv = Infinity; for (const off of (q.mezzo ? K.mezzo : K.piedi)) { const v = voto(off, base, q.uy, q); if (v < bv) { bv = v; best = base + off; } }
+        if (best !== null && Math.abs(ang(best - q.uy)) > (K.soglia || 0)) { S.tgt = ang(best); S.v = 0; S.n++; S.perche = 'scelta'; }
+        else S.perche = 'resta';
+      }
+      if (S.tgt === null) return q.uy;
+    }
+    // la mossa: la molla sull'angolo (la via più corta), con la velocità più alta K.vmax
+    const om = 2 / K.molla, x = om * dt, ex = 1 / (1 + x + .48 * x * x + .235 * x * x * x), d0 = ang(q.uy - S.tgt), lim = K.vmax * K.molla, ch = Math.max(-lim, Math.min(lim, d0));
+    const t = (S.v + om * ch) * dt; S.v = Math.max(-K.vmax, Math.min(K.vmax, (S.v - om * t) * ex)); let r = d0 - ch + (ch + t) * ex;   // r: quanto manca dopo il passo
+    if ((d0 > 0) !== (r > 0) || Math.abs(r) < .002) { r = 0; S.v = 0; }
+    const uy = q.uy + (r - d0);
+    if (r === 0) { S.tgt = null; S.riposo = 0; S.hd0 = null; S.tHd = 0; S.perche = 'arrivata'; }
+    return uy;
+  }
   // il raggio dal punto o alla camera c passa dentro la scatola b ({min, max})? (il tratto, non la semiretta)
   function taglia(o, c, b) {
     let t0 = 0, t1 = 1;
@@ -74,7 +104,7 @@ var Regia = (function () {
       if (a > t0) t0 = a; if (e < t1) t1 = e; if (t0 > t1) return false; }
     return true;
   }
-  return { K, passo, voto, dietro, taglia, ang };
+  return { K, passo, voto, dietro, taglia, ang };   // [camera2] K.molla, K.soglia, K.resta: la regia calma
 })();
 if (typeof window !== 'undefined') window.__REGIA = Regia.K;
 if (typeof module !== 'undefined') module.exports = Regia;
