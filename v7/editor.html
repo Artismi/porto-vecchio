@@ -23572,7 +23572,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '02111772502bc1fb';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'a4d37afc65c533fd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -92403,6 +92403,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // registrate spente (bassaCose). Le collisioni restano. ?vecchiotaglio: come prima (solo nella stretta e con la visuale bassa)
   const SEMPRE = { on: !(typeof location !== 'undefined' && /[?&]vecchiotaglio\b/.test(location.search)), opz: { avanti: { x: 1, z: 0 }, gh: null, terra: true }, hd: 0 };
   const BASSA = { cose: new Map(), coseT: -9, k: 0, on: !(typeof location !== 'undefined' && /[?&]nobassa\b/.test(location.search)) };
+  // [camera3] LA VISUALE BASSA CHE NON PESA (il committente: «oltre un certo zoom, quando la camera scende verso l'orizzonte, va molto a
+  // scatti»). Era la frequenza dei fotogrammi, non la risposta della camera: guardando avanti la nebbia si apriva a 120-160 m (prima chiudeva a
+  // 90-120 m sopra la testa, dove la vista dall'alto ne mostra poca) e con lei si allargavano tutti i raggi che la seguono: l'impronta dei
+  // tasselli, il cerchio dello streaming (nebbia - distanza della camera + 40: la camera bassa sta a 5 m, non a 40), gli anelli delle case, e
+  // i mezzi entro 62/zoom (516 m a zoom .12). Nella visuale bassa la nebbia ora chiude a `nebbia` m (davanti è tutta città: la nebbia calda
+  // nasconde il taglio), il piano lontano subito dietro, il cielo rimpicciolito dentro il piano lontano (è una direzione: non cambia), i mezzi
+  // fino alla nebbia. Tutti gli altri raggi si stringono da soli. ?nofixbassa: com'era (window.__BASSA2 per le prove dal vivo)
+  const BASSA2 = { on: !(typeof location !== 'undefined' && /[?&]nofixbassa\b/.test(location.search)), nebbia: PHONE ? 70 : 95, vicina: .3, oltre: 6, mezzi: 15 };
+  if (typeof window !== 'undefined') window.__BASSA2 = BASSA2;
   // [regia] LA CAMERA LIBERA: la visuale la gira il giocatore (levetta destra, tasto destro del mouse, , e .) e resta dove la mette: niente
   // ricentro (Visuale.mano gira solo lo spostamento), niente giro lungo i vicoli ([inquadratura] IQ5.dy) né della camera che si adatta
   // (VIS4.C.g). Quando non la tocchi la regia (src/regia.js) la porta piano allo scorcio migliore dietro la marcia. ?camauto: com'era
@@ -92722,7 +92731,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     swimPose(pg, p, !!pveh, time);   // [costa] a nuoto: dentro l'acqua fino alle spalle, coricato in avanti quando va, coi cerchi sull'acqua
     for (const k in pg.userData.guns) { const fl = pg.userData.guns[k].userData.model.userData.flame; if (fl) { fl.material.opacity = .7 + Math.random() * .3; fl.scale.set(.2 + Math.random() * .06, .28 + Math.random() * .1, 1); } }
     // veicoli
-    const VIEW_R = Math.max(75, 62 / Math.max(.12, ui.zoom || 1)); const VFAR = PHONE ? 25 : 60;   // [scarico]
+    BASSA2.lodK = Math.min(1, Math.tan(15 * Math.PI / 180) / Math.tan(camera.fov * Math.PI / 360));   // [camera3] nella visuale bassa (campo 52° invece di 30°) un'auto a 38 m è grande come a 70 m dall'alto: lì passa al livello basso
+    const VIEW_R = Math.max(75, BASSA2.on ? Math.min(62 / Math.max(.12, ui.zoom || 1), (scene.fog ? scene.fog.far : 150) + BASSA2.mezzi) : 62 / Math.max(.12, ui.zoom || 1)); const VFAR = PHONE ? 25 : 60;   // [scarico]   // [camera3] i mezzi fino alla nebbia (a zoom .12 erano 516 m)
     st.vehicles.forEach(v => {
       if (G.VK[v.kind] && G.VK[v.kind].boat) { boatVehicle(v, dt, time); return; }   // [costa] le barche vanno per conto loro
       // [fluido] fuori dalla vista (raggio secondo lo zoom) il mezzo non si crea, non si anima e non si disegna
@@ -92730,6 +92740,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       let g = dyn.vehicles[v.id]; if (far) { if (g) { if (Math.abs(v.x - cam.x) > VIEW_R + VFAR || Math.abs(v.y - cam.y) > VIEW_R + VFAR) { scene.remove(g); delete dyn.vehicles[v.id]; } else g.visible = false; } return; }   // [scarico] ben oltre la vista il mezzo esce dalla scena (il rilascio ne libera le geometrie), si rifà quando torna
       if (g && ((g.userData.rev || 0) !== (v.rev || 0) || (g.userData.glbWait && Models.has(G.VK[v.kind].glb)))) { scene.remove(g); g = null; } if (!g) { if (!v.hidden && !BUD.ok(Math.hypot(v.x - p.x, v.y - p.y) - 10, 'mezzi')) return; const t0 = performance.now(); g = vehicleMesh(v); BUD.add(performance.now() - t0, 'mezzi'); g.userData.rev = v.rev || 0; scene.add(g); dyn.vehicles[v.id] = g; }   // [fluido] nasce quando c'è tempo
       g.visible = !v.hidden; if (!g.visible) return;
+      if (BASSA2.on && g.isLOD && g.levels.length > 1) g.levels[1].distance = V3LOD * BASSA2.lodK;   // [camera3] il dettaglio secondo la misura sullo schermo, non i metri
       const u = g.userData, K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), hl = K.len / 2 - .3;
       const hF = groundH(v.x + ca * hl, v.y + sa * hl), hR = groundH(v.x - ca * hl, v.y - sa * hl);
       // [blindato] la scocca poggia su quello che ha sotto: con muso e coda più bassi del centro (un mezzo fermo su un rilevato, su un
@@ -93022,8 +93033,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const wd1 = walkDist / Math.max(1, cam.zoom), wdX = walkDist - wd1;
     scene.fog.near = lerp(wd1 * 1.05 + 10 - WXfog * (wd1 * .25 + 12) + wdX, 40 - WXfog * 30, ease); scene.fog.far = lerp(wd1 * 1.9 + 110 - WXfog * (wd1 * .45 + 50) + wdX, 160 - WXfog * 85, ease);   /* [nebbia_zoom1] la stessa aria a ogni zoom */
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); camera.updateProjectionMatrix(); }
-    if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
-    if (dyn.sky) dyn.sky.position.copy(camera.position);
+    if (KB > .01 && BASSA2.on) { const nf = Math.min(scene.fog.far, BASSA2.nebbia);   // [camera3] guardando avanti la nebbia chiude prima (non si apre più a 120-160 m) e il piano lontano la segue
+      scene.fog.far = lerp(scene.fog.far, nf, KB); scene.fog.near = lerp(scene.fog.near, Math.min(scene.fog.near, nf * BASSA2.vicina), KB); camera.far = lerp(camera.far, Math.min(camera.far, scene.fog.far + BASSA2.oltre), KB); camera.updateProjectionMatrix(); }
+    else if (KB > .01) { scene.fog.near = lerp(scene.fog.near, Math.max(scene.fog.near, PHONE ? 30 : 40), KB); scene.fog.far = lerp(scene.fog.far, Math.max(scene.fog.far, PHONE ? 120 : 160), KB); camera.far = Math.max(camera.far, scene.fog.far + 8); camera.updateProjectionMatrix(); }   // [bassa] guardando avanti l'aria va più lontano   /* [fluido] sul telefono si disegna fino alla nebbia, non oltre (il cielo è una sfera di 160 m) */
+    if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }   // [camera3] il cielo (una sfera di 160 m: conta la direzione) sta dentro il piano lontano
 
     // le case vicine alla linea fra te e la camera: i loro materiali restano pieni (le finestre accese col loro tono). Nessuna sparisce più:
     // [visuale5] via la casa che sbiadiva (fuori dai due modi rimasti era già spenta) e i raggi che la cercavano; ci pensano il tetto che
