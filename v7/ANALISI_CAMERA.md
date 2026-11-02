@@ -120,3 +120,52 @@ che resta a 125-250 ms è quello dei campioni stessi (4-8 posizioni al secondo).
 - Portatile: W col puntatore. La visuale non gira mai da sola: si gira con `,` `.`, col bordo dello schermo o trascinando.
 - Le manopole da toccare se serve: `__CAMERA2.regia.soglia` (più alta: gira ancora meno), `.stabile`, `.resta`; `__CAMERA2.sguardo`;
   `__CAMERA2.lenteAmpia`.
+
+## 7. [camera3] La visuale bassa che va a scatti (`?nofixbassa`: com'era)
+
+Il committente: «oltre un certo zoom, quando la camera comincia a scendere verso l'orizzonte, va molto a scatti». Misura con
+`node strumenti/sonda_discesa.js` (profilo leggero, piazza; zoom da 2 a .12, 3 s per gradino; i disegni non vanno a SwiftShader ma three
+li conta: disegni e triangoli sono quelli veri, sommati su tutte le passate, ombre comprese).
+
+**È la frequenza dei fotogrammi, non la risposta della camera.** La pendenza arriva al 90% 0,6 s prima che finisca una discesa di 3 s,
+senza salti, prima e dopo: le molle (`BASSA.k`, τ 0,2 s) sono pronte. Quello che cambia scendendo è quanto si disegna:
+
+- **I mezzi passano al dettaglio pieno.** Il livello alto di un'auto (`V3LOD`, 70 m dalla *camera*) dall'alto non scatta quasi mai. Nella
+  visuale bassa la camera sta a 5 m dal personaggio e guarda avanti, quindi ogni auto entro 70 m è al dettaglio pieno, ognuna con molti
+  pezzi, nella passata principale e in quella delle ombre. Le ombre dei mezzi passavano da 10 a 101 disegni.
+- **I mezzi entro `62/zoom`** (`render.js`, `VIEW_R`): a zoom .12 vuol dire 516 m, quindi 117 mezzi in scena invece di 73-83.
+- **La nebbia si apriva** a 120 m (telefono) o 160 m (computer), invece dei 90-120 m di prima, e il piano lontano restava a 170 m.
+  Con lei si allargano l'impronta dei tasselli, il cerchio dello streaming (`nebbia - distanza della camera + 40`: la camera bassa sta a
+  5 m, non a 40) e gli anelli delle case.
+
+Cosa cambia:
+
+- **Nebbia e piano lontano.** Nella visuale bassa la nebbia chiude a 70 m (telefono) o 95 m (computer), e il piano lontano la segue a +6 m:
+  la nebbia nasconde il taglio. Il cielo (una sfera di 160 m: conta solo la direzione) si rimpicciolisce per stare dentro il piano lontano.
+- **Mezzi fino alla nebbia** (+15 m).
+- **Dettaglio dei mezzi secondo la misura sullo schermo.** La soglia del livello basso si scala col campo: a 52° un'auto a 38 m è grande
+  come a 70 m con 30°.
+
+Si regolano dal vivo con `window.__BASSA2`. L'impronta dei tasselli, lo streaming e gli anelli si stringono da soli, perché seguono la
+nebbia. Il riquadro delle ombre era già limitato (28 m di mezzo lato a quello zoom).
+
+| zoom .12-.16, fermi | prima | dopo |
+|---|---|---|
+| disegni per fotogramma | 1177-1196 | 755-775 |
+| triangoli | 1,82-1,83 M | 1,70-1,72 M |
+| mezzi in scena | 113-117 | 73 |
+| nebbia, piano lontano | 120 m, 170 m | 70 m, 76 m |
+| tasselli in scena | 15 | 15 |
+
+| 5 s di corsa nella visuale bassa | prima | dopo |
+|---|---|---|
+| disegni | 1091 | 709 |
+| triangoli | 1,36 M | 1,24 M |
+| mezzi | 117 | 66 |
+| tasselli montati | 2 | 0 |
+| caricamento verso la scheda video | 0,53 MB a fotogramma | 0,47 MB a fotogramma |
+
+Dall'alto (zoom .4) i disegni sono 475-490, prima e dopo: scendendo i disegni salivano di 2,4 volte, ora di 1,6.
+
+I ms del processore (SwiftShader) sono simili prima e dopo (mediana 105-130 ms): il guadagno è nella scheda video. Nelle foto a zoom .12,
+prima e dopo, la scena vicina è la stessa e il cielo è intero; il lontano è appena più velato.
