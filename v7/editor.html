@@ -23572,7 +23572,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = '769bcd0e77dd148a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'e9060c754df6c5f5';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -96621,6 +96621,9 @@ if (typeof module !== 'undefined' && module.exports) {
   // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, croce, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, mano, n,
   // audio} (la scritta di ogni tasto, null = ora non fa niente; acceso o spento; quello che hai in mano; le cose da fare qui) e
   // {pv:'stato', giorno, ora, soldi, debito, scade, ricercato}, per il display della console.
+  // [gameboy-menu] I tasti di sistema stanno nel menu (lo zaino), solo nel Game Boy: «Schermo intero» manda {pv:'schermo'} (la console mette
+  // a tutto schermo se stessa, pulsantiera compresa), «Esci» manda {pv:'esci'} (la console si chiude), l'audio si accende e si spegne qui
+  // e lo si dice alla console con {pv:'audio', on} (oltre che con 'tasti'). Vedi conSys.
   //   levetta     cammina e guida, come quella a schermo (inclinata poco è il passo, a fondo la corsa)
   //   croce       a piedi e in auto la visuale: ◄ ► la gira, ▲ ▼ avvicina e allontana; in BMX i trick, come le frecce
   //               della tastiera: ▼ impenna, ◄ ► un piede sulla pedalina (k: sx dx su giu, si tengono premuti)
@@ -96632,7 +96635,7 @@ if (typeof module !== 'undefined' && module.exports) {
   //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
-  //   rotella     l'audio
+  //   rotella     l'audio (una console vecchia; ora sta nel menu)
   const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, lev2: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
   const conBmx = () => !!(st.player.vehicle && jumpMode());   // in BMX la croce fa i trick
   const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
@@ -96681,6 +96684,12 @@ if (typeof module !== 'undefined' && module.exports) {
     if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
     else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
+  }
+  // [gameboy-menu] i tasti di sistema del menu: 'schermo', 'audio', 'esci'. Rende lo stato dell'audio
+  function conSys(k) {
+    if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
+    if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
+    return A.on;
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
   // [morbida] LA LEVETTA DELLA VISUALE, UNA SOLA: il controller (levetta destra), il Game Boy e lo schermo (vstick), le frecce. Prima ognuna
@@ -96737,7 +96746,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
       if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
-      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 3 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 4 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale; [gameboy-menu] v4: schermo intero, audio ed esci stanno nel menu
     }
     if (!CON.on) return;
     if (d.pvc === 'levetta2') {   // [levette] la levetta della visuale del Game Boy (al posto della croce)
@@ -96943,7 +96952,7 @@ if (typeof module !== 'undefined' && module.exports) {
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
 </script>
@@ -106039,6 +106048,10 @@ var MenuUI = (function () {
 #mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
 #mu footer .tm { color: var(--ott); }
 #mu .again { grid-column: 1 / -1; } #mu .again .row { margin-top: 8px; }   /* [console] */
+#mu header .sys { margin-left: auto; align-self: center; display: flex; gap: 6px; } #mu header .sys + .x { margin-left: 0; }   /* [gameboy-menu] */
+#mu header .sys button { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(233,220,188,.25); background: none; color: var(--crema); cursor: pointer; }
+#mu header .sys button:hover { border-color: var(--ott); } #mu header .sys svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#mu header .sys button.off { color: rgba(233,220,188,.5); }
 #mu footer .stato { color: rgba(233,220,188,.75); } #mu footer .stato b { color: var(--crema); font-weight: 700; }   /* [console] */
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
@@ -106203,6 +106216,7 @@ var MenuUI = (function () {
   #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
   #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
   #mu header .x { width: 44px; height: 44px; font-size: 20px; }
+  #mu header .sys { gap: 2px; } #mu header .sys button { width: 44px; height: 44px; border-color: transparent; } #mu header .sys svg { width: 19px; height: 19px; }   /* [gameboy-menu] */
   #mu main { padding: 6px 14px 14px; }
   #mu footer { padding: 8px 14px; gap: 4px 10px; font-size: 10.5px; flex-wrap: wrap; } #mu footer > :not(.r):not(.stato) { display: none; }
   #mu footer .r { gap: 12px; }
@@ -106309,7 +106323,7 @@ var MenuUI = (function () {
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
-      <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
+      <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span>${con ? sysKeys() : ''}<button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
       <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
@@ -106317,6 +106331,18 @@ var MenuUI = (function () {
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
     m.innerHTML = html; paintAll(m); const mm = m.querySelector('main'); if (mm) mm.scrollTop = sc;
+  }
+
+  // [gameboy-menu] nel Game Boy i tasti di sistema stanno qui, accanto alla ×: schermo intero, l'audio, esci (la console non li ha più)
+  const SYS_IC = {
+    schermo: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+    audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+    muto: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
+  };
+  function sysKeys() {
+    const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
@@ -106578,6 +106604,7 @@ var MenuUI = (function () {
       case 'close': close(); return;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
+      case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
       case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
