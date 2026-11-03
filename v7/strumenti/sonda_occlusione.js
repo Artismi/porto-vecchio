@@ -46,12 +46,12 @@ async function corsa(pg, dt, zoom, gira) {
     const misura = () => {
       const V3 = R.__vis3, cp = camera.position, fy = R.groundH(p.x, p.y), C = { x: cp.x, y: cp.y, z: cp.z }, O = [{ x: p.x, y: fy + 1.1, z: p.y }, { x: p.x, y: fy + 1.65, z: p.y }];
       let tagliate = 0, vere = 0, coperto = 0;
-      if (V3 && V3.S) V3.S.forEach((s, B) => { if (s.a > .5) { tagliate++; if (B.box3 && O.some(o => taglia(o, C, B.box3))) vere++; } });
+      let tenuta = 0, falsi = 0; if (V3 && V3.S) V3.S.forEach((s, B) => { if (s.a > .5) { tagliate++; if (B.box3 && O.some(o => taglia(o, C, B.box3))) vere++; else if (s.lost > 0 || !s.on) tenuta++; else falsi++; } });   // [camera6] la casa che non copre: nella tenuta (non la si vuole più giù) o un taglio falso (la si vuole giù)
       for (const B of R.__buildings || []) { const b3 = B.box3; if (!b3 || b3.max.y < fy + 1) continue; const s = V3 && V3.S && V3.S.get(B); if (s && s.a > .5) continue; if (p.x > b3.min.x && p.x < b3.max.x && p.y > b3.min.z && p.y < b3.max.z) continue;
         const cx = (b3.min.x + b3.max.x) / 2 - p.x, cz = (b3.min.z + b3.max.z) / 2 - p.y; if (cx * cx + cz * cz > 3600) continue; if (taglia(O[0], C, b3) && taglia(O[1], C, b3)) { coperto = 1; break; } }
       let tetti = 0, tettiVeri = 0; const V4 = R.__vis4; if (V4 && V4.T) V4.T.forEach((q, B) => { if (q.on && q.a > .5) { tetti++; if (B.box3 && O.some(o => taglia(o, C, B.box3))) tettiVeri++; } });
       camera.getWorldDirection(dir); scr.set(p.x, fy + 1, p.y).project(camera);
-      return { ...conta(), tetti, tettiVeri, tagliate, vere, coperto, pitch: -Math.asin(Math.max(-1, Math.min(1, dir.y))), dist: Math.hypot(cp.x - cam.x, cp.y - cam.h, cp.z - cam.y), yaw: cam.yaw, sx: scr.x, sy: scr.y, liv: R.__cam4 && R.__cam4.S ? R.__cam4.S.liv : -1, c4: R.__cam4 && R.__cam4.S ? R.__cam4.S.cambi || 0 : 0, bis: R.__cam4 && R.__cam4.S ? +(R.__cam4.S.bis || 0).toFixed(2) : 0, reg: R.__cam2 && R.__cam2.REG.S ? R.__cam2.REG.S.n || 0 : 0, lift: +(cam.lift || 0).toFixed(2) };
+      return { ...conta(), tetti, tettiVeri, tenuta, falsi, tagliate, vere, coperto, pitch: -Math.asin(Math.max(-1, Math.min(1, dir.y))), dist: Math.hypot(cp.x - cam.x, cp.y - cam.h, cp.z - cam.y), yaw: cam.yaw, sx: scr.x, sy: scr.y, liv: R.__cam4 && R.__cam4.S ? R.__cam4.S.liv : -1, c4: R.__cam4 && R.__cam4.S ? R.__cam4.S.cambi || 0 : 0, bis: R.__cam4 && R.__cam4.S ? +(R.__cam4.S.bis || 0).toFixed(2) : 0, reg: R.__cam2 && R.__cam2.REG.S ? R.__cam2.REG.S.n || 0 : 0, lift: +(cam.lift || 0).toFixed(2) };
     };
     const righe = [], info = [];
     for (const T of tratti) {
@@ -77,7 +77,7 @@ function riassunto(R) {
     rr.forEach((r, i) => { r.yawU = i ? rr[i - 1].yawU + Math.atan2(Math.sin(r.yaw - rr[i - 1].yaw), Math.cos(r.yaw - rr[i - 1].yaw)) : r.yaw; });
     const pi = ricampiona(rr, 'pitch', HZ), di = ricampiona(rr, 'dist', HZ), yw = ricampiona(rr, 'yawU', HZ), sx = ricampiona(rr, 'sx', HZ), sy = ricampiona(rr, 'sy', HZ);
     const cp = partenze(pi, HZ, .03), cd = partenze(di, HZ, .5), cy = partenze(yw, HZ, .05), cambi = cp + cd + cy, mn = x => +(x / T * 60).toFixed(1);
-    return { s: +T.toFixed(1), taglio: pct(r => r.tagliate > 0), tagliInutili: pct(r => r.tagliate > r.vere), copertoSenzaTaglio: pct(r => r.coperto), accensioniMin: +(rr.reduce((q, r) => q + (r.accensioni || 0), 0) / T * 60).toFixed(1), coseNascostePct: pct(r => r.cose > 0), coseNascosteEventi: rr.reduce((q, r) => q + (r.coseNuove || 0), 0), tettiInutili: pct(r => r.tetti > r.tettiVeri), cambiMin: mn(cambi), pendMin: mn(cp), distMin: mn(cd), yawMin: mn(cy),
+    return { s: +T.toFixed(1), taglio: pct(r => r.tagliate > 0), tagliInutili: pct(r => r.tagliate > r.vere), copertoSenzaTaglio: pct(r => r.coperto), accensioniMin: +(rr.reduce((q, r) => q + (r.accensioni || 0), 0) / T * 60).toFixed(1), coseNascostePct: pct(r => r.cose > 0), coseNascosteEventi: rr.reduce((q, r) => q + (r.coseNuove || 0), 0), tettiInutili: pct(r => r.tetti > r.tettiVeri), tagliTenuta: pct(r => r.tenuta > 0 && !r.falsi), tagliFalsi: pct(r => r.falsi > 0), cambiMin: mn(cambi), pendMin: mn(cp), distMin: mn(cd), yawMin: mn(cy),
       strappoPend: +strappo(pi, HZ).toFixed(2), strappoDist: +strappo(di, HZ).toFixed(1), strappoSchermo: +Math.hypot(strappo(sx, HZ), strappo(sy, HZ)).toFixed(2), pendMedia: +(rr.reduce((s, r) => s + r.pitch, 0) / n).toFixed(2) }; };
   const out = { tutto: null }; for (const k in per) out[k] = una(per[k]);
   // l'insieme: la media dei tratti pesata sul tempo (i salti fra un tratto e l'altro non contano)

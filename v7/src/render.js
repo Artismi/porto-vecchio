@@ -18751,7 +18751,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     else {
       RG5.tieni += dt;
       const dP = dp - RG5.p, dZ = dz - RG5.z, dY = ang(duy - RG5.uy), T = K.soglie, serve = Math.abs(dP) > T.p || Math.abs(dZ) > T.z || Math.abs(dY) > T.y;
-      const urgente = dP > T.p && (S.bis || 0) + Visuale.INQUADRA4.margine > RG5.p + .01;   // un ostacolo arriva: la pendenza di adesso non basta più
+      const urgente = (dP > T.p && (S.bis || 0) + Visuale.INQUADRA4.margine > RG5.p + .01) || (!!RS.asse6 && Math.abs(dY) > T.y && !!CAM6.urto);   // [camera6] girarsi lungo il vicolo prima di salire o avvicinarsi   // un ostacolo arriva: la pendenza di adesso non basta più
       const fermo = RG5.fermoT > K.fermo, scende = dP < 0 && Math.abs(dY) <= T.y && dZ >= -T.z;   // scendere soltanto (lo spazio si apre): si fa di rado, e solo se il passo è grande
       const tieniOra = urgente ? K.tieniUrgente : scende ? K.tieniScende : K.tieni;
       if (serve && RG5.tieni >= tieniOra && !(scende && -dP < K.scendeMin) && (urgente || (!fermo && RG5.camminaT >= K.passo))) {   // senza urgenza solo in cammino deciso (non mentre ci si ferma)
@@ -18775,7 +18775,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       pr: { a: [.6, 1.22], m: [.73, 1.17], v: [.12, .48] }, mira: { av: { a: 2.2, m: 1.2, v: 2.2 }, lat: { a: 0, m: .5, v: .75 }, z: .86 },
       regia: { soglia: { a: .5, m: .3, v: .2 }, stabile: { a: 2, m: 1.5, v: 1.2 }, tieni: { a: 6, m: 4, v: 3 } }, inseg: { p: .56, pBici: .5, d: 18, dVespa: 14, dBici: 11, fov: 46, ritorno: 1.5 } },
     w: { a: 0, m: 1, v: 0 }, kv: 1, coll: { x: null, v: 0 }, mz: { x: 1, v: 0 }, cb: { x: 0, v: 0 }, orb: { x: 0, v: 0 }, tOrb: 99, dyaw: 0, inV: false,
-    occ: { k: { x: 0, v: 0 }, on: false, t: 99, n: 0, cambi: 0, coperto: false }, tetti: null };
+    occ: { k: { x: 0, v: 0 }, on: false, t: 99, n: 0, cambi: 0, coperto: false }, tetti: null, via: null, tVia: 0, asse: null, spalla: { s: 1, k: { x: 1, v: 0 }, t: 99, cambi: 0 }, guardia: 0 };
   if (CAM6.on) { CAM6.tetti = Object.assign({}, Visuale.TETTO4, { corpo: true, tieni: 1.5 }); if (typeof Inquadratura !== 'undefined') Inquadratura.K.tieni = 1.5; }   // [camera6] i tetti solo per il corpo; la casa tagliata resta giù almeno 1,5 s
   if (typeof window !== 'undefined') window.__CAM6 = CAM6;
   const liscio6 = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
@@ -18796,8 +18796,29 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // piena ferma il braccio (come GTA: la camera si avvicina invece di tagliare la casa)
   function libero6(x, y, z, yaw, pitch, d) {
     const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), cp = Math.cos(pitch), ux = Math.sin(yaw) * cp, uy = Math.sin(pitch), uz = Math.cos(yaw) * cp;
+    if (!(d > 0)) return 1.4; d = Math.min(d, 80);   // [camera6] mai un braccio senza fine
     for (let s = .8; s <= d; s += .35) { const h = M.alto(x + ux * s, z + uz * s); if (h > y + uy * s - .25) return Math.max(CAM6.dMin || 2.2, s - .45); }
     return d;
+  }
+  // [camera6] L'ASSE DEL VICOLO (le viste basse): in una via stretta (fino a 6,5 m, la rete stradale) la visuale si gira lungo l'asse, nel
+  // verso più vicino a dietro la marcia, PRIMA di salire o di avvicinarsi; la via cambia solo dopo 0,45 s (lo sbocco di un vicolo di lato non
+  // la fa girare). Ritorna lo yaw della visuale (nello spazio di cam.uy) o null
+  function asse6(p, dt) {
+    if (typeof Inquadratura === 'undefined') return null; const rete = IQ5.rete || (IQ5.rete = Inquadratura.rete(G.MAP.world)), a = rete.asse(p.x, p.y, CAM6.via), via = a && a.w <= 6.5 ? a.id : null;
+    if (via !== CAM6.via) { CAM6.tVia += dt; if (CAM6.tVia >= .45) { CAM6.via = via; CAM6.tVia = 0; } } else CAM6.tVia = 0;
+    if (!CAM6.via || !a || a.id !== CAM6.via) return null;
+    const v = Math.hypot(cam.mvx || 0, cam.mvy || 0), rif = v > .6 ? Math.atan2(-Math.cos(Math.atan2(cam.mvy, cam.mvx)), -Math.sin(Math.atan2(cam.mvy, cam.mvx))) : cam.yaw, ang = q => Math.atan2(Math.sin(q), Math.cos(q));
+    let best = null; for (const d of [a.a, a.a + Math.PI]) { const y = Math.atan2(-Math.cos(d), -Math.sin(d)), q = Math.abs(ang(y - rif)); if (!best || q < best.q) best = { y, q }; }
+    return best.q <= 1.75 ? ang(best.y - YAW) : null;   // mai più di 100° da dietro la marcia
+  }
+  // [camera6] LA SPALLA (la vista vicina): la camera sta un poco a destra del personaggio, come GTA; se da quel lato c'è il muro a meno di
+  // 1,2 m e dall'altro c'è più aria, passa all'altra spalla (al più ogni 2 s; il passaggio con la molla)
+  function spalla6(p, fy, dt) {
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), yw = cam.yaw === undefined ? YAW : cam.yaw, rx = Math.cos(yw), rz = -Math.sin(yw), y = fy + 1.3;
+    const aria = sg => { for (let s = .3; s <= 3; s += .3) if (M.alto(p.x + rx * s * sg, p.y + rz * s * sg) > y) return s; return 3; };
+    const S = CAM6.spalla; S.t += dt; const qui = aria(S.s), la = aria(-S.s);
+    if (qui < 1.2 && la > qui + .8 && S.t > 2) { S.s = -S.s; S.t = 0; S.cambi++; }
+    Visuale.molla(S.k, S.s, .6, dt); return S.k.x;
   }
   // [camera6] il personaggio è coperto davvero? (il busto e la testa verso la camera, nelle scatole delle case non tagliate)
   function coperto6(p, fy) {
@@ -19321,7 +19342,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (CALMA2.on && !(mo && mo.npcs && !pveh)) CALMA2.mom.clear();
     if (CAM6.on) { const M6 = ui.mira && !pveh && !ui.intro && !ui.focus ? ui.mira : null, KM = CAM6.K.mira, w = CAM6.w;   // [camera6] la mira, da ogni vista: un poco avanti, di lato, più vicini
       if (M6) { const yw = cam.yaw === undefined ? YAW : cam.yaw, av = mix6(KM.av, w), lat = mix6(KM.lat, w); tx += Math.cos(M6.a) * av + Math.cos(yw) * lat; ty += Math.sin(M6.a) * av - Math.sin(yw) * lat; }
-      Visuale.molla(CAM6.mz, M6 ? KM.z : 1, .5, dt); }
+      Visuale.molla(CAM6.mz, M6 ? KM.z : 1, .5, dt);
+      if (w.v > .05 && !pveh && !ui.intro && !ui.focus && !M6) { const sp = spalla6(p, groundH(p.x, p.y), dt) * .55 * w.v, yw = cam.yaw === undefined ? YAW : cam.yaw; tx += Math.cos(yw) * sp; ty -= Math.sin(yw) * sp; }   // [camera6] sopra la spalla aperta
+      if (pveh) { const vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), hd = vs > 2 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang, L = Math.min(2.5, .8 + vs * .2); tx = pveh.x + Math.cos(hd) * L; ty = pveh.y + Math.sin(hd) * L; } }   // [camera6] sui mezzi: poco avanti e il mezzo sempre al centro (niente sguardo lontano che lo porta in un angolo)
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
     // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
     // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
@@ -19330,7 +19353,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const anc = ui.intro || ui.focus ? null : (pveh || p);
     if (anc) {
       if (cam.anc !== anc || cam.ax === undefined || !isFinite(cam.ax)) { cam.anc = anc; cam.ax = cam.x - (cam.addX || 0) - anc.x; cam.ay = cam.y - (cam.addY || 0) - anc.y; if (Math.hypot(cam.ax, cam.ay) > 40) cam.ax = cam.ay = 0; CALMA2.ax.v = CALMA2.ay.v = 0; }
-      if (CALMA2.on) { const t2 = pveh ? CALMA2.K.scartoMezzo : CALMA2.K.scarto; cam.ax = molla2(CALMA2.ax, cam.ax, tx - anc.x, t2, dt); cam.ay = molla2(CALMA2.ay, cam.ay, ty - anc.y, t2, dt); }   // [camera2] la molla
+      if (CALMA2.on) { const t2 = pveh ? (CAM6.on && CAM6.guardia > 0 ? .06 : CALMA2.K.scartoMezzo) : CALMA2.K.scarto; cam.ax = molla2(CALMA2.ax, cam.ax, tx - anc.x, t2, dt); cam.ay = molla2(CALMA2.ay, cam.ay, ty - anc.y, t2, dt); }   // [camera2] la molla   // [camera6] il mezzo lontano dal centro: si rincorre subito
       else { cam.ax += (tx - anc.x - cam.ax) * kf; cam.ay += (ty - anc.y - cam.ay) * kf; }
       cam.x = anc.x + cam.ax + (cam.addX || 0); cam.y = anc.y + cam.ay + (cam.addY || 0);
     } else { cam.anc = null; cam.x += (tx - cam.x) * kf; cam.y += (ty - cam.y) * kf; }
@@ -19352,9 +19375,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const KB = BASSA.k * BASSA.k * (3 - 2 * BASSA.k);   // [bassa] liscia agli estremi
     if (CAM6.on) { const KR = CAM6.K.regia, w = CAM6.w; if (typeof Regia !== 'undefined' && Regia.K.molla) { Regia.K.soglia = mix6(KR.soglia, w); Regia.K.stabile = mix6(KR.stabile, w); Regia.K.mano = 1.8; } RG5.K.tieni = mix6(KR.tieni, w);   // [camera6] il ricentro: più pronto nelle viste basse (come GTA), calmo dall'alto
       if (!pveh) CAM6.inV = false; }
+    if (CAM6.on) { CAM6.tGira = (REG.mano || CAM6.dyaw) ? 0 : (CAM6.tGira || 0) + dt; if (typeof Inquadratura !== 'undefined') Inquadratura.K.tieni = CAM6.tGira < 1 ? .4 : 1.5; }   // [camera6] mentre il giocatore gira la camera la casa tagliata torna su dopo 0,4 s (non 1,5): non resta giù per niente
+    CAM6.asse = null; if (CAM6.on && LIBERA && !pveh && CAM6.w.a < .5 && !ui.intro && !ui.focus && !p.indoor) { try { CAM6.asse = asse6(p, dt); } catch (e) { CAM6.asse = null; } }   // [camera6] l'asse del vicolo
     if (LIBERA && CAM6.on && pveh && !ui.intro && !ui.focus) { try { insegui6(pveh, ui, dt); } catch (e) { if (!CAM6.err) { CAM6.err = 1; console.warn('[camera6]', e); } } }   // [camera6] sui mezzi: dietro, guarda avanti
     else if (LIBERA) { const uy0 = cam.uy || 0; if (REG.on && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !ui.studio && !(CALMA2.on && ui.puntatore)) try { regiaTick(p, pveh, dt, st); } catch (e) { if (!REG.err) { REG.err = 1; console.warn('[regia]', e); } }   // [regia]   // [camera2] col puntatore la visuale non gira da sola (W va verso il puntatore: girando la camera ti faceva girare in tondo)
-      if (CALMA2.on && (ui.lead || ui.stick)) cam.lock = (cam.lock || 0) - Math.atan2(Math.sin(cam.uy - uy0), Math.cos(cam.uy - uy0)); }   // [camera2] la levetta tenuta resta nella base di quando l'hai presa
+      if (CALMA2.on && (ui.lead || ui.stick)) cam.lock = (cam.lock || 0) - Math.atan2(Math.sin(cam.uy - uy0), Math.cos(cam.uy - uy0));   // [camera2] la levetta tenuta resta nella base di quando l'hai presa
+      if (REG.S && CAM6.asse === null) REG.S.asse6 = false;
+      if (CAM6.asse !== null && REG.S && !REG.mano && (REG.S.tMano === undefined || REG.S.tMano >= 1.8)) { const cur = REG.S.tgt !== null && REG.S.tgt !== undefined ? REG.S.tgt : cam.uy; if (Math.abs(Math.atan2(Math.sin(CAM6.asse - cur), Math.cos(CAM6.asse - cur))) > .12) { REG.S.tgt = CAM6.asse; REG.S.asse6 = true; } } }   // [camera6] nel vicolo la regia guarda lungo l'asse
     else if ((PHONE || KB > .45) && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [bassa] bassa: la visuale sta dietro alla marcia anche sul computer   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
       const hd = pveh ? (vs > .8 && (pveh.speed || 0) > 0 ? pveh.ang : null) : (vs > .4 && ui.stick ? p.face : null);
@@ -19398,12 +19425,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       CAM6.dMin = 3 * R6.m + 2.2 * R6.v + 3 * R6.a;   // [camera6] il braccio più corto: mai addosso al personaggio
       if (R6.a < .5 && !pveh) {   // [camera6] davanti a una facciata: nella vista media prima più ripida (fino a +0,24 rad, come da una finestra più alta), poi il braccio si accorcia
         const hL = cam.h + mix6(K.h, R6), C = CAM6.coll, B = CAM6.pb || (CAM6.pb = { x: 0, v: 0, t: 0, want: 0 }); let want = 0;
-        if (R6.m > .3 && libero6(cam.x, hL, cam.y, cam.yaw, pitch, df) < df * .9) { want = .24; for (const dp of [.08, .16]) if (libero6(cam.x, hL, cam.y, cam.yaw, Math.min(1.3, pitch + dp), df) >= df * .9) { want = dp; break; } }
+        const MV = RG5.attivo && RG5.mov && RG5.mov.dy ? RG5.mov : null, yC = MV ? cam.yaw + Math.atan2(Math.sin(MV.y0 + MV.dy - cam.uy), Math.cos(MV.y0 + MV.dy - cam.uy)) : CAM6.asse !== null ? YAW + CAM6.asse : cam.yaw;   // [camera6] la visuale dove si sta girando (lungo il vicolo): se lì c'è aria non si sale e non ci si avvicina
+        CAM6.urto = libero6(cam.x, hL, cam.y, cam.yaw, pitch, df) < df * .9;
+        if (R6.m > .3 && libero6(cam.x, hL, cam.y, yC, pitch, df) < df * .9) { want = .24; for (const dp of [.08, .16]) if (libero6(cam.x, hL, cam.y, yC, Math.min(1.3, pitch + dp), df) >= df * .9) { want = dp; break; } }
         if (want >= B.want) { B.want = want; B.t = 0; } else { B.t += dt; if (B.t > 2) B.want = want; }   // si sale subito, si torna giù dopo 2 s libero
         Visuale.molla(B, B.want, .9, dt); pitch = Math.min(1.3, pitch + B.x * R6.m);
-        const lf = libero6(cam.x, hL, cam.y, cam.yaw, pitch, df); if (C.x === null) { C.x = lf; C.v = 0; C.t = 0; C.tgt = lf; }
+        const lf = Math.max(libero6(cam.x, hL, cam.y, cam.yaw, pitch, df), MV || CAM6.asse !== null ? Math.min(df, libero6(cam.x, hL, cam.y, yC, pitch, df)) * .85 : 0); if (C.x === null) { C.x = lf; C.v = 0; C.t = 0; C.tgt = lf; }
         if (lf < C.x - .05) { C.tgt = lf; C.t = 0; } else if (lf > C.x + .5) { C.t += dt; if (C.t > 1.5) C.tgt = lf; } else C.t = 0;   // si accorcia subito, si allunga dopo 1,5 s libero
-        Visuale.molla(C, C.tgt, C.tgt < C.x ? .35 : 1.8, dt); df = Math.min(df, C.x); } else if (!pveh) { CAM6.coll.x = null; if (CAM6.pb) { CAM6.pb.x = CAM6.pb.want = 0; } }
+        if (!isFinite(C.tgt)) C.tgt = lf; Visuale.molla(C, C.tgt, C.tgt < C.x ? .7 : 2, dt, 4); df = Math.min(df, C.x); } else if (!pveh) { CAM6.coll.x = null; if (CAM6.pb) { CAM6.pb.x = CAM6.pb.want = 0; } }   // [camera6] al più 4 m/s: il braccio scivola, non scatta (il piano vicino copre l'attesa)
       dist = lerp(df, cam.cd, ease); }
     if (CAM6.on && pveh && ease > .5 && !ui.intro) { const lf = libero6(cam.x, cam.h + 1.2, cam.y, cam.yaw, pitch, dist), C = CAM6.coll; if (C.x === null) { C.x = lf; C.v = 0; } Visuale.molla(C, lf, lf < C.x ? .1 : .7, dt); dist = Math.min(dist, Math.max(3, C.x)); }   // [camera6] la camera da inseguimento non entra nei muri
     camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .3, KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
@@ -19412,6 +19441,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(R6 ? mix6(CAM6.K.h, R6) : lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [camera6] il punto guardato della vista   // [bassa] si guarda all'altezza del petto
     camera.position.set(cx + ox, cy + oy, cz + oz);
+    if (CAM6.on && pveh) { const q = (SGT.tq || (SGT.tq = new THREE.Vector3())).set(pveh.x, groundH(pveh.x, pveh.y) + 1, pveh.y); camera.updateMatrixWorld(); q.project(camera); CAM6.guardia = Math.hypot(q.x, q.y) > .3 || q.z > 1 ? 1 : Math.max(0, CAM6.guardia - dt); }   // [camera6] il mezzo esce dal centro (un urto, un angolo): lo scarto si rincorre subito
     if (CAM6.on && !pveh) CAM6.kv = Math.max(.15, Math.min(1, 2 * dist * Math.tan(fov * Math.PI / 360) / Math.max(1, VIEW * (ui.zoom || 1))));   // [camera6] l'inquadratura vera rispetto a quella dall'alto
     else CAM6.kv = 1;
     if (KB > .01 || (R6 && R6.a < .9)) { const gc = groundH(camera.position.x, camera.position.z) + .7;   /* [camera6] anche la vista media */ if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)

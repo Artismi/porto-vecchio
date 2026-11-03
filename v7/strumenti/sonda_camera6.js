@@ -35,7 +35,7 @@ async function scena(pg, S) {
     for (let i = 0; i < 45; i++) { passo(); if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); }
     conta();
     const fotos = [], N = { acc: 0, coseMax: 0, coseFot: 0, tagliFot: 0, tettiFot: 0, n: 0 }; let k = 1, t = 0, prossima = 0;
-    const fine = () => S.sec ? t >= S.sec : k >= S.pts.length;
+    const fine = () => t >= 30 || (S.sec ? t >= S.sec : k >= S.pts.length);   // al più 30 s di gioco per scena
     while (!fine()) {
       let inp = { x: 0, y: 0 };
       if (S.bici) { const v = st.vehicles.find(q => q.id === p.vehicle); const b = S.pts[Math.min(k, S.pts.length - 1)], want = Math.atan2(b[1] - p.y, b[0] - p.x); if (Math.hypot(b[0] - p.x, b[1] - p.y) < 3) k++;
@@ -47,12 +47,13 @@ async function scena(pg, S) {
       const scatta = t >= prossima - 1e-6; if (scatta) draws(true);
       passo(inp);
       if (scatta) { fotos.push([+t.toFixed(1), rd.domElement.toDataURL('image/jpeg', .82)]); draws(false); prossima += .5; }
+      if (S.bici && p.vehicle) { const v = st.vehicles.find(q => q.id === p.vehicle); if (v) { const q = new THREE.Vector3(v.x, R.groundH(v.x, v.y) + 1, v.y).project(camera); N.rMax = Math.max(N.rMax || 0, Math.hypot(q.x, q.y)); const d = camera.position.distanceTo(new THREE.Vector3(v.x, R.groundH(v.x, v.y) + 1, v.y)); N.dMin = Math.min(N.dMin || 99, d); N.dMax = Math.max(N.dMax || 0, d); N.wh = Math.max(N.wh || 0, v.wheelie || 0); } }
       const c = conta(); N.acc += c.acc; N.coseMax = Math.max(N.coseMax, c.cose); N.coseFot += c.cose > 0 ? 1 : 0; N.tagliFot += c.tagli > 0 ? 1 : 0; N.tettiFot += c.tetti > 0 ? 1 : 0; N.n++;
       t += DT; if (N.n % 15 === 0) await new Promise(r => setTimeout(r, 0));
     }
     const d = new THREE.Vector3(); camera.getWorldDirection(d);
     return { fotos, conti: { s: +t.toFixed(1), accensioniMin: +(N.acc / t * 60).toFixed(1), coseNascosteMax: N.coseMax, coseNascostePct: +(N.coseFot / N.n * 100).toFixed(1), taglioPct: +(N.tagliFot / N.n * 100).toFixed(1), tettiPct: +(N.tettiFot / N.n * 100).toFixed(1),
-      pendenza: +(-Math.asin(d.y)).toFixed(2), distanza: +camera.position.distanceTo(new THREE.Vector3(cam.x, cam.h, cam.y)).toFixed(1), pesi: R.__cam6 ? Object.assign({}, R.__cam6.CAM6.w) : null } };
+      pendenza: +(-Math.asin(d.y)).toFixed(2), distanza: +camera.position.distanceTo(new THREE.Vector3(cam.x, cam.h, cam.y)).toFixed(1), pesi: R.__cam6 ? Object.assign({}, R.__cam6.CAM6.w) : null, mezzoRaggioMax: N.rMax !== undefined ? +N.rMax.toFixed(2) : null, mezzoDist: N.dMax ? [+N.dMin.toFixed(1), +N.dMax.toFixed(1)] : null, impennata: N.wh !== undefined ? +N.wh.toFixed(2) : null, spallaCambi: R.__cam6 ? R.__cam6.CAM6.spalla.cambi : null } };
   }, S);
 }
 function provino(dir, nome, titolo) {
@@ -97,14 +98,18 @@ const srv = http.createServer((req, res) => {
         // le cose registrate alte 1,8-3,4 m e larghe 1,2-3,6 m (ombrelloni, tende, gazebo): il gruppo più fitto entro 80 m dalla piazza
         let om = null; try { const PR = window.__pv.R.__dz.props || [], c = PR.filter(r => r && r.c && r.he && r.he.y * 2 > 1.8 && r.he.y * 2 < 3.4 && Math.max(r.he.x, r.he.z) * 2 > 1.2 && Math.max(r.he.x, r.he.z) * 2 < 3.6 && Math.hypot(r.c.x - P0.x, r.c.z - P0.y) < 80);
           let best = null; for (const r of c) { const n = c.filter(q => Math.hypot(q.c.x - r.c.x, q.c.z - r.c.z) < 8).length; if (!best || n > best[2]) best = [r.c.x, r.c.z, n]; } om = best; } catch (e) { }
-        return { vicolo: al, nome: vic.r.id, piazza: [[P0.x - 12, P0.y], [P0.x + 12, P0.y]], om }; });
-      log('vicolo', L.nome, 'ombrelloni', JSON.stringify(L.om));
+        // un rettilineo aperto per la bici: dal lungomare (o dalla calata, dal molo, dalla piazza) la direzione con più strada percorribile per 40 m
+        const PL = G.PLACES, nomeR = Object.keys(PL).find(k => /lungomare/i.test(k)) || Object.keys(PL).find(k => /calata|molo|marina|porto/i.test(k)) || 'piazza', q0 = PL[nomeR];
+        let rett = null; for (let a = 0; a < 6.28; a += .3927) { let n = 0; for (let d = 0; d <= 40; d += 2) if (G.walkM(q0.x + Math.cos(a) * d, q0.y + Math.sin(a) * d)) n++; else break; if (!rett || n > rett.n) rett = { n, a }; }
+        const bici = [[q0.x, q0.y], [q0.x + Math.cos(rett.a) * rett.n * 2, q0.y + Math.sin(rett.a) * rett.n * 2]];
+        return { vicolo: al, nome: vic.r.id, piazza: [[P0.x - 12, P0.y], [P0.x + 12, P0.y]], om, bici, nomeR, rettM: rett.n * 2 }; });
+      log('vicolo', L.nome, 'ombrelloni', JSON.stringify(L.om), 'bici', L.nomeR, L.rettM, 'm');
       const om = L.om ? [[L.om[0] - 10, L.om[1] + 3], [L.om[0] + 10, L.om[1] + 3]] : L.piazza;
       const scene = [];
       if (SCENE.includes('viste')) for (const [z, n] of [[.25, 'vicina'], [.5, 'media'], [.85, 'alta']]) { scene.push({ nome: `vicolo_${n}`, titolo: `${modo} - vicolo ${L.nome}, vista ${n} (zoom ${z})`, pts: L.vicolo, zoom: z }); scene.push({ nome: `piazza_${n}`, titolo: `${modo} - piazza, vista ${n} (zoom ${z})`, pts: L.piazza, zoom: z }); }
       if (SCENE.includes('giro')) scene.push({ nome: 'giro_media', titolo: `${modo} - cammino in piazza con la camera che gira (0,6 rad/s), vista media`, pts: L.piazza, zoom: .5, gira: .6 });
       if (SCENE.includes('mira')) scene.push({ nome: 'mira_media', titolo: `${modo} - la mira: il personaggio guarda dove guarda la camera, la camera gira (vista media)`, pts: [L.piazza[0]], zoom: .5, gira: .5, mira: true, sec: 8 });
-      if (SCENE.includes('bici')) scene.push({ nome: 'bici', titolo: `${modo} - la bici: la camera da inseguimento, impennata a 3-5 s`, pts: [L.piazza[0], L.piazza[1], [L.piazza[1][0], L.piazza[1][1] - 14]], zoom: .5, bici: true, impenna: true, sec: 9 });
+      if (SCENE.includes('bici')) scene.push({ nome: 'bici', titolo: `${modo} - la bici sul rettilineo (${L.nomeR}, ${L.rettM} m): la camera da inseguimento, impennata a 3-5 s`, pts: L.bici, zoom: .5, bici: true, impenna: true, sec: 8 });
       if (SCENE.includes('ombrelloni')) for (const [z, n] of [[.5, 'media'], [.85, 'alta']]) scene.push({ nome: `ombrelloni_${n}`, titolo: `${modo} - i tavolini e gli ombrelloni, vista ${n}`, pts: om, zoom: z, gira: .4 });
       out[modo] = {};
       for (const S of scene) {
