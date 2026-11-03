@@ -421,6 +421,10 @@ var MenuUI = (function () {
 #mu footer .r { margin-left: auto; display: flex; gap: 20px; align-items: center; } #mu footer .r b { color: var(--crema); font-weight: 700; } #mu footer .over { color: var(--neon); }
 #mu footer .tm { color: var(--ott); }
 #mu .again { grid-column: 1 / -1; } #mu .again .row { margin-top: 8px; }   /* [console] */
+#mu header .sys { margin-left: auto; align-self: center; display: flex; gap: 6px; } #mu header .sys + .x { margin-left: 0; }   /* [gameboy-menu] */
+#mu header .sys button { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(233,220,188,.25); background: none; color: var(--crema); cursor: pointer; }
+#mu header .sys button:hover { border-color: var(--ott); } #mu header .sys svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+#mu header .sys button.off { color: rgba(233,220,188,.5); }
 #mu footer .stato { color: rgba(233,220,188,.75); } #mu footer .stato b { color: var(--crema); font-weight: 700; }   /* [console] */
 #mu .msg { position: absolute; left: 50%; bottom: 50px; transform: translateX(-50%); background: var(--mad2); border: 1px solid var(--ott); color: var(--crema); padding: 8px 16px; border-radius: 18px; font-size: 14px; max-width: 70%; text-align: center; pointer-events: none; } #mu .msg.no { border-color: var(--neon); }
 #mu h4 { margin: 0 0 10px; font: 600 12px var(--fl); letter-spacing: .2em; text-transform: uppercase; color: rgba(233,220,188,.5); }
@@ -585,6 +589,7 @@ var MenuUI = (function () {
   #mu header span { order: 3; flex-basis: 100%; white-space: normal; font-size: 14px; }
   #mu header .tabs { order: 4; flex-basis: 100%; margin-left: 0; }
   #mu header .x { width: 44px; height: 44px; font-size: 20px; }
+  #mu header .sys { gap: 2px; } #mu header .sys button { width: 44px; height: 44px; border-color: transparent; } #mu header .sys svg { width: 19px; height: 19px; }   /* [gameboy-menu] */
   #mu main { padding: 6px 14px 14px; }
   #mu footer { padding: 8px 14px; gap: 4px 10px; font-size: 10.5px; flex-wrap: wrap; } #mu footer > :not(.r):not(.stato) { display: none; }
   #mu footer .r { gap: 12px; }
@@ -691,7 +696,7 @@ var MenuUI = (function () {
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
-      <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span><button class="x" data-a="close" aria-label="Chiudi">×</button></header>
+      <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span>${con ? sysKeys() : ''}<button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
       <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
@@ -699,6 +704,18 @@ var MenuUI = (function () {
     if (!force && html === U.sig) return; U.sig = html;
     const m = $('mu'), sc = m.querySelector('main') ? m.querySelector('main').scrollTop : 0;
     m.innerHTML = html; paintAll(m); const mm = m.querySelector('main'); if (mm) mm.scrollTop = sc;
+  }
+
+  // [gameboy-menu] nel Game Boy i tasti di sistema stanno qui, accanto alla ×: schermo intero, l'audio, esci (la console non li ha più)
+  const SYS_IC = {
+    schermo: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+    audio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+    muto: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    esci: '<path d="M12 3.5v8"/><path d="M7 6.5a7.5 7.5 0 1 0 10 0"/>',
+  };
+  function sysKeys() {
+    const on = PV().audio, b = (k, ic, l, cls) => `<button class="${cls || ''}" data-a="sys" data-x='"${k}"' aria-label="${l}" title="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${SYS_IC[ic]}</svg></button>`;
+    return `<div class="sys">${b('schermo', 'schermo', 'Schermo intero')}${b('audio', on ? 'audio' : 'muto', on ? 'Audio acceso: spegni' : 'Audio spento: accendi', on ? '' : 'off')}${b('esci', 'esci', 'Esci dal gioco')}</div>`;
   }
 
   // [console] nel Game Boy l'ora, la scadenza e il debito stanno qui (sullo schermo non c'è più il riquadro dei soldi)
@@ -960,6 +977,7 @@ var MenuUI = (function () {
       case 'close': close(); return;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
+      case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
       case 'ricomincia': if (x === 'chiedi') U.again = Date.now(); else { U.again = 0; if (x === true && PV() && PV().restart) { close(); PV().restart(); return; } } break;   // [console]
       case 'sel': U.sel = x; break;
       case 'filt': U.filt = x; U.sel = null; break;
