@@ -1292,7 +1292,7 @@ body.cn-on #rs-here, body.cn-on #me-box, body.cn-on #ts-hint { display: none !im
     if (typeof MenuUI !== 'undefined') MenuUI.open('lavora', { st: b.st, st2: b.st2, titolo: b.nome, armi: b.menu === 'armi', auto: b.menu === 'auto', uid: o.uid });
   }
 
-  function loop() {
+  function loop(ts) { if (typeof PesoRitmo !== 'undefined' && PesoRitmo.giroSaltato && PesoRitmo.giroSaltato(ts)) { requestAnimationFrame(loop); return; }   // [ottimizza] col tetto a 30 il giro che main.js non disegna si salta anche qui
     try { const st = ST(); if (st) { if (st.covo || U.on) sceneSync(st); ghostSync(st); const t = performance.now(); if (t - (U.rt || 0) > (U.on ? 150 : 500)) { U.rt = t; render(st); } } } catch (e) { if (!U.err) { U.err = 1; console.error('[Cantiere]', e); } }
     requestAnimationFrame(loop);
   }

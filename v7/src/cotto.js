@@ -155,7 +155,7 @@ var Cotto = (function () {
 
   // ---------------- quando si usa il mondo cotto ----------------
   const QS = typeof location !== 'undefined' && location.search ? location.search : '';
-  const VIETA = /[?&](cuoci=0|vivo\b|lotti=|isolati=|vecchioverde\b|novissuti\b|vecchia\b)/.test(QS);
+  const VIETA = /[?&](cuoci=0|vivo\b|lotti=|isolati=|vecchioverde\b|novissuti\b|vecchia\b|vecchiapulizia\b)/.test(QS);   // [nitida] ?vecchiapulizia: il mondo di prima (le casette, le case sul marciapiede, i portici) si ricalcola
   const CUOCI = !!G.PV_CUOCI;   // la cottura (strumenti/cuoci.js)
   let DATI = null, PERCHE = '';
   const STATO = { usato: {}, calcolato: {}, ms: {}, perche: '' };

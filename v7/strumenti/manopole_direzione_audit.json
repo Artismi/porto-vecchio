@@ -1,0 +1,7 @@
+{ "nota": "[direzione] l'audit degli strati: lo stesso scorcio con uno strato alla volta spento (sul look di prima, le manopole dal vivo)",
+  "a_tutto": {},
+  "b_senza_linee": { "CAT": { "lineaPersone": 0, "ciglio": 0, "piede": 0 } },
+  "c_senza_trame_materiali": { "PRO": { "celle": 0, "varia": 0, "suolo": 0, "polvere": 0 }, "AD": { "retino": 0 }, "DIOR": { "nuvole": 0, "vissuto": 0 } },
+  "d_senza_pellicola_tavolozza": { "PELL": { "pellicola": 0 }, "PRO": { "vivo": 0, "acido": 0 } },
+  "e_tutto_spento": { "CAT": { "lineaPersone": 0, "ciglio": 0, "piede": 0, "trama": 0 }, "PRO": { "celle": 0, "varia": 0, "suolo": 0, "polvere": 0, "vivo": 0, "acido": 0, "pittura": 0 }, "AD": { "retino": 0, "grana": 0 }, "DIOR": { "nuvole": 0, "vissuto": 0, "piede": 0, "gronda": 0 }, "PELL": { "pellicola": 0 } }
+}

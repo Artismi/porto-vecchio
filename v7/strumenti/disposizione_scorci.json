@@ -1,0 +1,9 @@
+{
+  "nota": "[disposizione] gli scorci della prova della disposizione (strumenti/sonda_disposizione.js): il dehors del bar (le sedie e il tavolino), il terrazzo col canniccio (tetti_vissuti), le mensole della rete e la lanterna a braccio sul muro vero. x, y in metri di gioco; sui tetti il punto è spostato verso nord di quanto la quota alza la cosa nel quadro.",
+  "pulita": true,
+  "scorci": [
+    { "nome": "d1_dehors", "titolo": "Il dehors del bar", "x": 1359, "y": 350, "zoom": 0.4, "ora": 630, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "d2_canniccio", "titolo": "Il terrazzo col canniccio", "x": 1424, "y": 322, "zoom": 0.4, "ora": 630, "meteo": "sereno", "luce": "borgo" },
+    { "nome": "d3_rete", "titolo": "Le mensole della rete e la lanterna a braccio", "x": 1437, "y": 308, "zoom": 0.4, "ora": 630, "meteo": "sereno", "luce": "borgo" }
+  ]
+}

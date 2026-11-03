@@ -69,9 +69,9 @@ var TettiVissuti = (function () {
     ombrellone: [{ k: 'sdraio', dx: -.7, dy: .2, ry: 0 }, { k: 'sdraio', dx: .7, dy: .2, ry: 0 }, { k: 'tavolino', dx: 0, dy: .48 }, { k: 'asta', dx: 0, dy: -.32 }, { k: 'telo', dx: 0, dy: -.32, cielo: 1 }],
     ombra: [{ k: 'sdraio', dx: -.36, dy: .3, ry: 0 }, { k: 'asta', dx: .5, dy: -.2 }, { k: 'telo', dx: .1, dy: -.2, cielo: 1 }, { k: 'vaso', dx: .62, dy: .52, v: 'geranio', opt: 1 }],   // una sdraio sola sotto l'ombrellone
     canniccio: [{ k: 'palo', dx: -1.15, dy: -.95 }, { k: 'palo', dx: 1.15, dy: -.95 }, { k: 'palo', dx: -1.15, dy: .95 }, { k: 'palo', dx: 1.15, dy: .95 }, { k: 'stuoia', dx: 0, dy: 0, cielo: 1 },
-      { k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.62, dy: 0, ry: -PI / 2 }, { k: 'sedia', dx: .62, dy: 0, ry: PI / 2, opt: 1 }],
+      { k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.62, dy: 0, ry: PI / 2 }, { k: 'sedia', dx: .62, dy: 0, ry: -PI / 2, opt: 1 }],   // [disposizione] il davanti della sedia è +z: girata di +90° guarda +x, verso il tavolino
     limone: [{ k: 'limone', dx: 0, dy: 0 }, { k: 'vaso', dx: .78, dy: .2, v: 'geranio' }, { k: 'vaso', dx: -.76, dy: .22, v: 'basilico', opt: 1 }],
-    pranzo: [{ k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.6, dy: 0, ry: -PI / 2 }, { k: 'sedia', dx: .6, dy: 0, ry: PI / 2 }, { k: 'vaso', dx: 0, dy: -.62, v: 'basilico', opt: 1 }],
+    pranzo: [{ k: 'tavolino', dx: 0, dy: 0 }, { k: 'sedia', dx: -.6, dy: 0, ry: PI / 2 }, { k: 'sedia', dx: .6, dy: 0, ry: -PI / 2 }, { k: 'vaso', dx: 0, dy: -.62, v: 'basilico', opt: 1 }],
     cisterna: [{ k: 'cisterna', dx: 0, dy: 0 }, { k: 'secchio', dx: .72, dy: .2, opt: 1 }],
   };
   // per quartiere: le scenette dei terrazzi abitati e di quelli calmi (pesate), i dettagli del tempo (quanti, con che probabilità)
@@ -170,6 +170,7 @@ var TettiVissuti = (function () {
     if (!CAT[it.k].piatto) for (const [A, Bq] of C.segs) if (segD(it, A, Bq) < CORR) return false;   // la pozza e il sale non sbarrano la strada: ci si passa sopra (ma non alle porte)
     return true;
   }
+  const SEDUTE = { sedia: 1, impagliata: 1, sdraio: 1 };   // [disposizione] il davanti è +z (la girata ry): lì ci vuole spazio
   const cosa = (C, k, x, y, ry, extra) => { const [hx, hy] = impronta(k, ry, extra && extra.s); return Object.assign({ k, x, y, ry: ry || 0, hx, hy, qz: C.tipo === 'piano' ? .08 : 0, bi: C.bi }, extra || {}); };
   function metti(C, it, o) { if (!libero(C, it, o)) return false; C.cose.push(it); return true; }
   // una scenetta: l'ancora su una griglia del terrazzo, quattro versi; le basse verso la camera (sud, est), le alte dietro (nord, ovest)
@@ -185,8 +186,10 @@ var TettiVissuti = (function () {
       const c = Math.cos(th), s = Math.sin(th), messi = [];
       let ok = true;
       for (const m of membri) {
-        const X = ax + m.dx * c + m.dy * s, Y = ay - m.dx * s + m.dy * c, it = cosa(C, m.k, X, Y, (m.ry || 0) + th, { scena: id, v: m.v, sopra: m.sopra, cielo: m.cielo ? CAT[m.k].cielo : undefined });
+        const X = ax + m.dx * c + m.dy * s, Y = ay - m.dx * s + m.dy * c, it = cosa(C, m.k, X, Y, (m.ry || 0) + th, { scena: id, sn: nome, v: m.v, sopra: m.sopra, cielo: m.cielo ? CAT[m.k].cielo : undefined });
         if (m.sopra) { const base = messi.find(q => q.k === m.sopra); if (!base) { ok = !!m.opt; continue; } it.qz = base.qz + CAT[base.k].h; }
+        if (SEDUTE[m.k]) { const dd = CAT[m.k].hy + .6, fx = X + Math.sin(it.ry) * dd, fy = Y + Math.cos(it.ry) * dd;   // [disposizione] chi si siede ha davanti il terrazzo, non il parapetto a mezzo metro
+          if (fx < R.x0 || fx > R.x1 || fy < R.y0 || fy > R.y1) { if (m.opt) continue; ok = false; break; } }
         const prima = C.cose.length; C.cose.push(...messi); const lib = libero(C, it, { scena: id, sopra: m.sopra }); C.cose.length = prima;
         if (lib) messi.push(it); else if (!m.opt) { ok = false; break; }
       }
@@ -321,7 +324,11 @@ var TettiVissuti = (function () {
     // di [leggero] vanno in un secchio solo per settore col colore nella tavolozza. Non le celle dell'atlante (FA): l'atlante ha 256 celle e
     // quando la città arriva ai tetti sono già finite (oltre la 255 tutto finisce nell'ultima cella, con l'ultimo colore disegnato).
     const T3 = K.THREE, mat = hex => K.sm(hex, { roughness: .82, userData: { vissuti: 1 } }),   /* il marchio: la misura li ritrova nella mesh fusa */ GEO = new Map(), geo = (k, f) => GEO.get(k) || GEO.set(k, f()).get(k);
-    const fB = (w, h, d, hex) => new T3.Mesh(geo('B' + w + ',' + h + ',' + d, () => new T3.BoxGeometry(w, h, d)), mat(hex));
+    // [dettaglio] la lastra smussata: gli spigoli prendono la luce (sotto i 6 cm resta la scatola: lo smusso non si vedrebbe)
+    const bevG = (w, h, d) => { const b = Math.min(.018, w / 4, h / 4, d / 4); if (Math.min(w, h, d) < .06) return new T3.BoxGeometry(w, h, d);
+      const sh = new T3.Shape(); sh.moveTo(-w / 2 + b, -h / 2 + b); sh.lineTo(w / 2 - b, -h / 2 + b); sh.lineTo(w / 2 - b, h / 2 - b); sh.lineTo(-w / 2 + b, h / 2 - b); sh.closePath();
+      const g0 = new T3.ExtrudeGeometry(sh, { depth: d - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 1, curveSegments: 1 }); g0.translate(0, 0, -(d - 2 * b) / 2); g0.computeVertexNormals(); return g0; };
+    const fB = (w, h, d, hex) => new T3.Mesh(geo('B' + w + ',' + h + ',' + d, () => bevG(w, h, d)), mat(hex));
     const fC = (rt, rb, h, seg, hex) => new T3.Mesh(geo('C' + [rt, rb, h, seg], () => new T3.CylinderGeometry(rt, rb, h, seg || 8)), mat(hex));
     const fL = (prof, seg, hex) => new T3.Mesh(geo('L' + prof.join(';') + seg, () => new T3.LatheGeometry(prof.map(([a, b]) => new T3.Vector2(Math.max(.001, a), b)), seg || 8)), mat(hex));
     const fI = (r, det, hex) => new T3.Mesh(geo('I' + r + ',' + det, () => new T3.IcosahedronGeometry(r, det)), mat(hex));
@@ -338,50 +345,71 @@ var TettiVissuti = (function () {
       else if (v === 'secco') { for (let k = 0; k < 4; k++) { const a = k * 1.6; fRod(o, [0, y - .02, 0], [Math.cos(a) * .12, y + .3, Math.sin(a) * .12], .008, COL.legno2, 'wood'); } }
       else { foglie(o, 4, y + .06, R * .55, COL.foglia, .09); for (let k = 0; k < 4; k++) { const a = k * 1.7 + .5; fAt(o, fB(.06, .05, .06, COL.fiore, 'solid', 0), Math.cos(a) * R * .6, y + .2, Math.sin(a) * R * .6); } }   // il geranio
     };
-    const sediaFerro = (col, paglia) => { const o = g(); fAt(o, fB(.42, .05, .42, paglia ? COL.paglia : col, paglia ? 'cloth' : 'paint', 0), 0, .45, 0);
-      fAt(o, fB(.42, .36, .04, paglia ? COL.legno2 : col, paglia ? 'wood' : 'paint', 0), 0, .68, -.19);
-      [[-.18, -.18], [.18, -.18], [-.18, .18], [.18, .18]].forEach(([a, c]) => fAt(o, fB(.035, c < 0 ? .86 : .45, .035, paglia ? COL.legno2 : COL.ferro, paglia ? 'wood' : 'paint', 0), a, (c < 0 ? .86 : .45) / 2, c)); return o; };
+    // [dettaglio] la sedia: quattro gambe tonde con le traverse, la seduta col suo telaio, le gambe di dietro che salgono a fare lo schienale
+    // (ferro: due fasce e le bacchette; impagliata: tre pioli e la paglia intrecciata col bordo)
+    const sediaFerro = (col, paglia) => { const o = g(), fc = paglia ? COL.legno2 : col, gc = paglia ? COL.legno2 : COL.ferro, rL = paglia ? .018 : .012;
+      [[-.18, .18], [.18, .18]].forEach(([a, c]) => fRod(o, [a, 0, c], [a * 1.02, .44, c * .98], rL, gc));
+      [-.18, .18].forEach(a => { fRod(o, [a, 0, -.18], [a, .44, -.19], rL, gc); fRod(o, [a, .44, -.19], [a * .96, .88, -.22], rL, gc); });
+      [-.18, .18].forEach(a => fRod(o, [a, .18, -.18], [a, .18, .18], rL * .7, gc));
+      if (paglia) { fAt(o, fB(.4, .045, .38, COL.paglia), 0, .455, .005); [.19, -.18].forEach(z => fRod(o, [-.22, .46, z], [.22, .46, z], .016, fc)); [-.2, .2].forEach(x => fRod(o, [x, .46, -.18], [x, .46, .19], .016, fc));
+        [.58, .7, .82].forEach((y, k) => fRod(o, [-.18 * (1 - k * .02), y, -.2 - k * .007], [.18 * (1 - k * .02), y, -.2 - k * .007], k === 2 ? .02 : .013, fc)); }
+      else { fAt(o, fB(.4, .03, .4, col), 0, .455, 0); fRod(o, [-.2, .47, .2], [.2, .47, .2], .012, col);
+        [.64, .84].forEach(y => fAt(o, fB(.38, .055, .018, col), 0, y, -.2 - (y - .44) * .05)); [-.09, 0, .09].forEach(x => fRod(o, [x, .66, -.212], [x, .82, -.222], .007, gc)); }
+      return o; };
     return {
       sdraio: v => { const o = g(), col = pk(COL.panno, v);   // il telo inclinato fra due telai di legno, i piedi sul lastrico
-        const t = fB(.5, .02, 1.3, col, 'cloth', 0); t.position.set(0, .48, .02); t.rotation.x = -.42; o.add(t);
+        [[.34, .32, .52, .12], [.42, .48, .14, -.36], [.36, .7, -.3, -.78]].forEach(([L, y, z, rx]) => { const t = fB(.5, .02, L, col); t.position.set(0, y, z); t.rotation.x = rx; o.add(t); });   // [dettaglio] il telo che si incurva sotto il peso: seduta, curva e schienale
+        fRod(o, [-.27, .36, .5], [.27, .36, .5], .016, COL.legno2);
         [-.27, .27].forEach(x => { fRod(o, [x, 0, .62], [x, .36, .5], .018, COL.legno2, 'wood'); fRod(o, [x, 0, -.5], [x, .82, -.56], .018, COL.legno2, 'wood'); fRod(o, [x, .3, .55], [x, .78, -.58], .018, COL.legno2, 'wood'); });
         fAt(o, fB(.56, .03, .03, COL.legno2, 'wood', 0), 0, .8, -.56); return o; },
-      tavolino: () => { const o = g(); fAt(o, fC(.3, .3, .03, 10, '#e8e2d6', 'paint'), 0, .74, 0); fAt(o, fC(.025, .025, .72, 5, COL.ferro, 'paint'), 0, .37, 0); fAt(o, fC(.16, .19, .03, 8, COL.ferro, 'paint'), 0, .015, 0); return o; },
+      tavolino: () => { const o = g(); fAt(o, fC(.3, .3, .03, 14, '#e8e2d6', 'paint'), 0, .74, 0); fAt(o, fT(.3, .012, 14, '#d8d0c2'), 0, .742, 0); fAt(o, fC(.06, .04, .05, 8, COL.ferro), 0, .7, 0);   /* [dettaglio] il bordo arrotondato e il collare sotto il piano */ fAt(o, fC(.025, .025, .72, 5, COL.ferro, 'paint'), 0, .37, 0); fAt(o, fC(.16, .19, .03, 8, COL.ferro, 'paint'), 0, .015, 0); return o; },
       sedia: v => sediaFerro(pk(['#8a3a2e', '#2f5f4f', '#e8e2d6'], v), false),
       impagliata: () => sediaFerro(null, true),
       asta: () => { const o = g(); fAt(o, fC(.13, .14, .08, 8, '#5a5a5e', 'concrete'), 0, .04, 0); fAt(o, fC(.018, .018, 2.12, 5, COL.bianco, 'plastic'), 0, 1.1, 0); return o; },
-      telo: v => { const o = g(), col = pk(COL.tela, v); fAt(o, fL([[.84, 0], [.82, .04], [.42, .19], [.001, .28]], 8, col, 'cloth'), 0, 1.9, 0); fAt(o, fC(.84, .84, .1, 8, col, 'cloth'), 0, 1.88, 0); return o; },
-      palo: () => { const o = g(); fAt(o, fB(.07, 2.08, .07, COL.legno, 'wood', 0), 0, 1.04, 0); return o; },
+      telo: v => { const o = g(), col = pk(COL.tela, v); fAt(o, fL([[.84, 0], [.82, .04], [.42, .19], [.001, .28]], 8, col, 'cloth'), 0, 1.9, 0); fAt(o, fC(.84, .84, .1, 8, col, 'cloth'), 0, 1.88, 0); fAt(o, fC(.025, .02, .04, 6, COL.legno2), 0, 2.18, 0);   // [dettaglio] il puntale
+        for (let k = 0; k < 8; k++) { const a = k * PI / 4 + PI / 8; fRod(o, [0, 2.12, 0], [Math.cos(a) * .76, 1.93, Math.sin(a) * .76], .008, '#d8d0c0'); } return o; },   // le stecche sotto la tela
+      palo: () => { const o = g(); fAt(o, fC(.032, .04, 2.08, 7, COL.legno), 0, 1.04, 0); fAt(o, fC(.075, .085, .1, 8, '#8a8680'), 0, .05, 0); fAt(o, fC(.042, .042, .04, 7, COL.ferro), 0, 2.02, 0); return o; },   // [dettaglio] la pertica tonda nel piede di cemento, la fascetta in cima
       stuoia: v => { const o = g(); fAt(o, fB(2.5, .05, .07, COL.legno, 'wood', 0), 0, 2.11, -.95); fAt(o, fB(2.5, .05, .07, COL.legno, 'wood', 0), 0, 2.11, .95);
         fAt(o, fB(2.42, .03, 2.04, COL.canna, 'slat', 0), 0, 2.15, 0);
-        if (v === 'vite') for (let k = 0; k < 5; k++) { const f = fI(.32, 0, k % 2 ? COL.foglia : COL.foglia3, 'leaf'); f.scale.set(1.1, .35, 1); f.position.set(-.9 + k * .45, 2.22, (k % 3 - 1) * .5); o.add(f); }
+        [-.7, 0, .7].forEach(x => fRod(o, [x, 2.17, -1.02], [x, 2.17, 1.02], .012, '#8a7a50')); [-1.2, 1.2].forEach(x => fRod(o, [x, 2.15, -1.02], [x, 2.15, 1.02], .02, '#a89060'));   // [dettaglio] le legature di spago e le canne grosse dei bordi
+        if (v === 'vite') { for (let k = 0; k < 8; k++) { const f = fI(.24 + (k % 3) * .04, 1, k % 2 ? COL.foglia : COL.foglia3, 'leaf'); f.scale.set(1.1, .38, 1); f.position.set(-.9 + (k % 4) * .55 + (k > 3 ? .25 : 0), 2.21, k > 3 ? .4 : -.38); o.add(f); }
+          [[-.5, .5], [.4, -.3], [.8, .45]].forEach(([x, z]) => { const gr = fI(.07, 1, '#4a2a4a', 'leaf'); gr.scale.set(1, 1.5, 1); gr.position.set(x, 2.06, z); o.add(gr); }); }   // la pergola e i grappoli che pendono
         return o; },
       stendino: v => { const o = g();   // lo stendino pieghevole: due gambe a X per parte, quattro fili, i panni
         [-.44, .44].forEach(x => { fRod(o, [x, 0, -.3], [x, .98, .26], .012, COL.zinco, 'galv'); fRod(o, [x, 0, .3], [x, .98, -.26], .012, COL.zinco, 'galv'); });
         [-.24, -.08, .08, .24].forEach(z => fAt(o, fB(.92, .012, .012, COL.zinco, 'galv', 0), 0, .98, z));
         for (let k = 0; k < 5; k++) { const w = .2 + ((k * 7 + Math.round(v * 9)) % 3) * .06, h = .26 + ((k * 5) % 3) * .07; fAt(o, fB(w, h, .012, pk(['#d8d0b8', '#b04a4a', '#4a6aa0', '#caa83a', '#e8e4dc'], (k * .23 + v) % 1), 'cloth', 0), -.32 + k * .16, .97 - h / 2, [-.24, -.08, .08, .24][k % 4]); }
         return o; },
-      cesta: () => { const o = g(); fAt(o, fL([[.001, 0], [.17, 0], [.2, .22], [.18, .22], [.15, .03], [.001, .03]], 8, COL.vimini, 'wood'), 0, 0, 0); o.children[0].scale.set(1.2, 1, .85); fAt(o, fB(.3, .06, .2, '#e8e4dc', 'cloth', 0), 0, .2, 0); return o; },
+      cesta: () => { const o = g(); fAt(o, fL([[.001, 0], [.17, 0], [.2, .22], [.18, .22], [.15, .03], [.001, .03]], 8, COL.vimini, 'wood'), 0, 0, 0); o.children[0].scale.set(1.2, 1, .85); [[-.06, '#e8e4dc'], [.07, '#b04a4a'], [0, '#4a6aa0']].forEach(([x, c], k) => { const p = fI(.09, 1, c, 'cloth'); p.scale.set(1.3, .4, 1); p.position.set(x, .2 + k * .012, (k - 1) * .04); o.add(p); }); return o; },   // [dettaglio] i panni ammucchiati
       secchio: v => { const o = g(); fAt(o, fL([[.001, 0], [.11, 0], [.15, .28], [.135, .28], [.1, .03], [.001, .03]], 8, pk([COL.blu, COL.rosso, COL.zinco], v), v < .66 ? 'plastic' : 'galv'), 0, 0, 0); return o; },
-      cisterna: v => { const o = g(), col = v < .5 ? COL.blu : '#9a968c'; fAt(o, fB(.92, .12, .92, '#9a968c', 'concrete', 0), 0, .06, 0); fAt(o, fC(.42, .42, .94, 10, col, v < .5 ? 'plastic' : 'concrete'), 0, .59, 0); fAt(o, fC(.2, .22, .06, 8, col, 'plastic'), 0, 1.09, 0); return o; },
+      cisterna: v => { const o = g(), col = v < .5 ? COL.blu : '#9a968c', cs = v < .5 ? '#2e5a86' : '#86827a'; fAt(o, fB(.92, .12, .92, '#9a968c', 'concrete', 0), 0, .06, 0);
+        fAt(o, fL([[.001, 0], [.38, 0], [.42, .04], [.42, .86], [.39, .92], [.22, .96], [.001, .96]], 14, col), 0, .12, 0);   // [dettaglio] il fusto tornito con la spalla
+        fAt(o, fT(.425, .016, 12, cs), 0, .5, 0); fAt(o, fC(.2, .22, .06, 12, cs), 0, 1.1, 0); fAt(o, fC(.06, .06, .03, 8, cs), 0, 1.145, 0);   // le nervature, il coperchio col tappo
+        fRod(o, [.4, .22, 0], [.46, .22, 0], .022, '#c8c4b8'); fRod(o, [.46, .22, 0], [.46, .13, 0], .022, '#c8c4b8'); fAt(o, fC(.03, .03, .04, 6, '#b08a40'), .46, .12, 0); return o; },   // il tubo di scarico col rubinetto d'ottone
       limone: () => { const o = g(); vaso(o, .3, .46, COL.cotto2); fAt(o, fC(.03, .045, .78, 5, COL.legno2, 'wood'), 0, .84, 0);
         [[0, 1.36, 0, .34], [.2, 1.22, .1, .26], [-.18, 1.24, -.08, .27]].forEach(([x, y, z, r]) => { const f = fI(r, 0, COL.foglia3, 'leaf'); f.position.set(x, y, z); o.add(f); });
         [[.26, 1.3, .1], [-.2, 1.42, .14], [.08, 1.18, -.26], [-.28, 1.16, -.06], [.14, 1.5, .02]].forEach(([x, y, z]) => fAt(o, fI(.045, 0, COL.limone, 'paint'), x, y, z)); return o; },
       vaso: v => { const o = g(), big = v === 'geranio' ? .2 : .17; vaso(o, big, .32, v === 'secco' ? COL.cotto3 : COL.cotto); pianta(o, v, .3, big); return o; },
       latta: v => { const o = g(); fAt(o, fC(.07, .07, .16, 8, v === 'cactus' ? COL.rosso : COL.latta, v === 'cactus' ? 'paint' : 'galv'), 0, .08, 0); pianta(o, v === 'geranio' ? 'basilico' : v, .15, .1); return o; },
       cassetta: v => { const o = g();
-        if (v === 'pesce') { fAt(o, fB(.6, .2, .4, COL.poli, 'plastic', 0), 0, .1, 0); fAt(o, fB(.54, .02, .34, '#a8b4b8', 'solid', 0), 0, .19, 0); }
-        else if (v === 'legno') { fAt(o, fB(.6, .26, .4, '#9a7a52', 'slat', 0), 0, .13, 0); }
-        else { fAt(o, fB(.6, .2, .4, COL.poli, 'plastic', 0), 0, .1, 0); fAt(o, fB(.54, .02, .34, '#3a2e24', 'solid', 0), 0, .19, 0); [-.16, 0, .16].forEach((x, k) => { const f = fI(.08, 0, k % 2 ? COL.foglia2 : COL.foglia, 'leaf'); f.position.set(x, .25, 0); o.add(f); }); }
+        // [dettaglio] il polistirolo ha le sponde spesse e il ghiaccio col pesce; il legno è a doghe con le fessure e i cantonali
+        const poli = fondo => { fAt(o, fB(.6, .04, .4, COL.poli), 0, .02, 0); [.185, -.185].forEach(z => fAt(o, fB(.6, .18, .03, COL.poli), 0, .11, z)); [-.285, .285].forEach(x => fAt(o, fB(.03, .18, .34, COL.poli), x, .11, 0)); fAt(o, fB(.54, .02, .34, fondo), 0, .17, 0); };
+        const doghe = h => { [.25, .7].forEach(f => { [.185, -.185].forEach(z => fAt(o, fB(.6, h * .32, .02, '#9a7a52'), 0, h * f, z)); [-.29, .29].forEach(x => fAt(o, fB(.02, h * .32, .37, '#9a7a52'), x, h * f, 0)); });
+          [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => fAt(o, fB(.03, h, .03, '#7a5e40'), a * .28, h / 2, b * .17)); fAt(o, fB(.56, .015, .36, '#6a5238'), 0, .01, 0); };
+        if (v === 'pesce') { poli('#b8c4c8'); [[-.14, .02], [.06, -.06], [.16, .07]].forEach(([x, z], k) => { const f = fI(.05, 1, k % 2 ? '#9aa4a8' : '#b8c0c4', 'paint'); f.scale.set(2.4, .5, .9); f.position.set(x, .19, z); f.rotation.y = k * .5 - .3; o.add(f); }); }
+        else if (v === 'legno') { doghe(.26); [-.18, 0, .18].forEach(x => fAt(o, fB(.17, .02, .4, '#8a6a46'), x, .25, 0)); }   // [disposizione] il coperchio a tre assi: il gatto ci dorme sopra (sulla cassa aperta restava sospeso sul vuoto)
+        else { doghe(.2); fAt(o, fB(.54, .02, .34, '#3a2e24'), 0, .18, 0); [-.17, 0, .17].forEach((x, k) => { const f = fI(.075, 1, k % 2 ? COL.foglia2 : COL.foglia, 'leaf'); f.scale.set(1, .7, 1); f.position.set(x, .23, (k - 1) * .04); o.add(f); }); }
         return o; },
       annaffiatoio: () => { const o = g(); fAt(o, fL([[.001, 0], [.11, 0], [.11, .2], [.08, .22], [.001, .22]], 8, COL.verde, 'paint'), 0, 0, 0); fRod(o, [.08, .1, 0], [.22, .24, 0], .012, COL.verde, 'paint'); return o; },
       rete: v => { const o = g(); [[0, 0, .42, .3], [.2, .08, .3, .24], [-.2, -.05, .3, .22]].forEach(([x, z, r, s], k) => { const f = fI(r, 1, pk(COL.rete, (v + k * .3) % 1), 'cloth'); f.scale.set(1, s * .5 / r, .85); f.position.set(x, s * .5 + .005, z); o.add(f); });
         [[.3, .2, -.15], [-.25, .15, .2], [.05, .24, .12]].forEach(([x, y, z]) => fAt(o, fI(.05, 0, COL.boa, 'plastic'), x, y, z)); return o; },
       boe: () => { const o = g(); [[-.12, .11, 0, COL.boa], [.12, .11, .04, COL.boa], [0, .09, -.12, COL.bianco]].forEach(([x, y, z, c]) => fAt(o, fI(y, 1, c, 'plastic'), x, y, z)); return o; },
       cima: () => { const o = g(); const t = fT(.17, .035, 10, COL.corda, 'cloth'); t.position.y = .035; o.add(t); const t2 = fT(.1, .03, 8, COL.corda, 'cloth'); t2.position.y = .07; o.add(t2); return o; },
-      remi: () => { const o = g(); [-.06, .07].forEach((z, k) => { const r = fB(2.0, .035, .07, COL.legno2, 'wood', 0); r.position.set(k * .05, .02 + k * .035, z); r.rotation.y = k ? .04 : 0; o.add(r); const p = fB(.42, .02, .15, COL.legno2, 'wood', 0); p.position.set(.8 + k * .05, .015 + k * .035, z); o.add(p); }); return o; },
+      remi: () => { const o = g(); [-.06, .07].forEach((z, k) => { const y = .024, x0 = k * .05; fRod(o, [x0 - 1.0, y, z], [x0 + .62, y, z], .022, COL.legno2); fRod(o, [x0 - 1.0, y, z], [x0 - .82, y, z], .027, '#5a4030');   // [dettaglio] il girone tondo con l'impugnatura scura
+        const p = fB(.42, .02, .15, COL.legno2); p.position.set(x0 + .8, y - .005, z); o.add(p); fAt(o, fB(.1, .05, .05, '#c8473a'), x0 + .58, y, z); }); return o; },   // la pala e la fascia dipinta
       gatto: v => { const o = g(), col = pk(COL.gatto, v), b = fI(.12, 1, col, 'cloth'); b.scale.set(1.5, .75, 1); b.position.y = .09; o.add(b);   // il gatto che dorme acciambellato
-        fAt(o, fI(.065, 1, col, 'cloth'), .15, .1, .05); fRod(o, [-.15, .04, 0], [-.05, .03, .12], .02, col, 'cloth'); return o; },
+        fAt(o, fI(.065, 1, col, 'cloth'), .15, .1, .05); fRod(o, [-.15, .04, 0], [-.05, .03, .12], .02, col, 'cloth'); fRod(o, [-.05, .03, .12], [.06, .025, .13], .018, col);
+        [-.03, .03].forEach(dz => fAt(o, fC(.001, .022, .045, 4, col), .16, .175, .05 + dz)); return o; },   // [dettaglio] le orecchie a punta e la coda che gira attorno
       erba: v => { const o = g(), col = v < .5 ? COL.erba : COL.erba2;   // i fili: lame sottili aperte a ventaglio
         for (let k = 0; k < 5; k++) { const a = k * 1.26 + v * 3, l = fB(.03, .22 + (k % 3) * .04, .012, col, 'leaf', 0); l.position.set(Math.cos(a) * .03, .165, Math.sin(a) * .03); l.rotation.set(Math.sin(a) * .3, a, Math.cos(a) * .3); o.add(l); }
         return o; },
@@ -405,6 +433,7 @@ var TettiVissuti = (function () {
       if (o.s && o.k !== 'colatura' && o.k !== 'sale') m.scale.setScalar(o.s); if (o.k === 'colatura') m.scale.set(1, o.s, 1);
       if (o.falda) { const ax = o.falda === 'S' || o.falda === 'N' ? 'x' : 'z', sg = o.falda === 'S' || o.falda === 'E' ? 1 : -1, P = TT.PIANO[T0.bi]; m.rotation.set(0, 0, 0); m.rotation[ax] = (ax === 'x' ? 1 : -1) * sg * P.pitch * .6; }   // il ciuffo segue un po' la falda
       m.position.set(o.x, top + (o.qz || 0), o.y); g.add(m);
+      if (K.sd) { m.userData.sdT = o.gronda ? 'gronda:' + o.k : o.falda || o.colmo ? 'falda:' + o.k : o.ciglio ? 'ciglio:' + o.k : FUORI[o.k] ? 'fuori:' + o.k : o.k; m.userData.sdChi = 'TettiVissuti:' + (o.sn || 'dettagli'); if (o.scena) m.userData.sdG = 'tv' + o.scena; }   // [disposizione] il tipo e la scenetta per la sonda
       if (o.k !== 'malta' && o.k !== 'colatura' && !o.falda && !o.colmo) { m.updateMatrixWorld(true); bx.setFromObject(m); SCATOLE.push({ bi: T0.bi, k: o.k, scena: o.scena, sopra: o.sopra, ciglio: o.ciglio, cielo: c.cielo, B: bx.clone(), top }); }
     });
     FATTI.add(T0.bi);
@@ -531,6 +560,9 @@ var TettiVissuti = (function () {
   // distanza dalla gronda: 16 m per unità), i licheni a macchiette, il coppo rotto o mancante (la cella del manto: si vede il sotto).
   // lastrici: le chiazze d'umido scure, le crepe (la cresta di un rumore), i rappezzi di cemento fra le pianelle, il muschio, la pianella rotta.
   // Niente commenti nel GLSL (gli accenti non passano ovunque); niente `diffuse` né `map` (la tavolozza e la pila di [leggero] lo provano a vuoto).
+  // [nitida] il coppo mancante era una cella quasi nera (il sotto, all'85%): dall'alto si leggeva come un buco nel tetto. Ora un coppo rotto
+  // è solo un poco più scuro dei vicini; ?vecchiapulizia lo rimette com'era
+  const BUCO_TV = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? .85 : .22;
   function applica(m) {
     const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole', f = v => v.toFixed(4);
     m.customProgramCacheKey = () => 'tv1-' + kind;
@@ -552,13 +584,13 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
   c = mix(c, vec3(.27, .31, .16), mu * .72);
   float li = step(.9, tvH(floor(w * 6.3))) * smoothstep(.35, .6, a) * (.6 + nord * .4); c = mix(c, vec3(.8, .78, .64), li * .5);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})); float ro = step(.9955, tvH(ce + floor(w * .07) * 17.));
-  c = mix(c, vec3(.15, .11, .09), ro * .85);` : `float umido = smoothstep(.6, .8, a);
+  c = mix(c, vec3(.15, .11, .09), ro * ${BUCO_TV});` : `float umido = smoothstep(.6, .8, a);
   c = mix(c, c * vec3(.74, .76, .78), umido * .75);
   float cr = 1. - smoothstep(.0, .018, abs(tvN(w * 1.1 + 11.) - .5)); c = mix(c, c * .55, cr * smoothstep(.45, .7, mo) * .8);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})), bl = floor(w * .7); float rp = step(.93, tvH(bl + 3.1));
   c = mix(c, vec3(lum * .8 + .06), rp * ${kind === 'pianelle' ? '.4' : '.18'});
   float mu = smoothstep(.62, .8, mo) * smoothstep(.45, .2, a); c = mix(c, vec3(.3, .34, .19), mu * .45);
-  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * .62, ro);`}
+  float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * ${BUCO_TV > .5 ? '.62' : '.86'}, ro);`}
   diffuseColor.rgb = c; }
 #endif`);
     };

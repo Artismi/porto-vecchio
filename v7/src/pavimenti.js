@@ -188,8 +188,8 @@ var Pavimenti = (function () {
     // si leggono a 6-10 px allo zoom del gioco (≥ 25 cm), i giunti a un terzo di forza, niente grana sotto i 10 cm; il valore medio resta
     #ifdef TONE_MAPPING
     #define PV_CALMO
-    #define PV_JT .22
-    #define PV_BV .11
+    #define PV_JT .32   /* [calma] era .22: le pietre si leggono (il committente: «mancano le texture») */
+    #define PV_BV .15   /* era .11 */
     #else
     #define PV_JT .34
     #define PV_BV .16
@@ -207,7 +207,7 @@ var Pavimenti = (function () {
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
-      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   // leggera: si spegne prima, niente grana fine
+      float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   /* [fluido2] torna com'era: i pavimenti «piatti» erano i blocchi in ritardo ([arrivo]), non questa soglia; aperta costava 30-40 ms di scheda video sulle piazze dell'Iris Xe */   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
       #else
       float lod = 1. - smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp),   // pieno fino allo zoom del gioco (5-6 cm a pixel), sfuma solo dalla città intera in su
             aa = mpp * 1.2;
@@ -543,7 +543,13 @@ var Pavimenti = (function () {
     const cx = (_b.min.x + _b.max.x) / 2, cz = (_b.min.z + _b.max.z) / 2, gh = A.groundH(cx, cz), dy = _b.min.y - gh;
     if (_s.y < .25 || _s.x * _s.z < .06 || Math.max(_s.x, _s.z) > 9 || dy > .35 || dy < -.5) return 0;
     // il suolo sotto l'impronta: il punto più basso e il più alto (al centro e ai quattro angoli, appena dentro)
-    let g0 = gh, g1 = gh; [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => { const h = A.groundH(cx + a * _s.x * .45, cz + c * _s.z * .45); if (h < g0) g0 = h; if (h > g1) g1 = h; });
+    // [disposizione] per una cosa girata (non a squadra) gli angoli veri del piede, dalla scatola nel suo riferimento: quelli della scatola del
+    // mondo stanno fuori dal piede (fino a mezzo metro per una recinzione in diagonale) e sul pendio trovavano un suolo più basso: la cosa affondava
+    let P = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, c]) => [cx + a * _s.x * .45, cz + c * _s.z * .45]);
+    if (!obj.parent && Math.abs(Math.sin(2 * obj.rotation.y)) > .02 && typeof THREE !== 'undefined') { const pp = obj.position.clone(), qq = obj.quaternion.clone(), L = new THREE.Box3(); obj.position.set(0, 0, 0); obj.quaternion.identity(); obj.updateMatrixWorld(true); L.setFromObject(obj); obj.position.copy(pp); obj.quaternion.copy(qq); obj.updateMatrixWorld(true);
+      if (!L.isEmpty()) { const co = Math.cos(obj.rotation.y), sn = Math.sin(obj.rotation.y), mx = (L.min.x + L.max.x) / 2, mz = (L.min.z + L.max.z) / 2, hx = (L.max.x - L.min.x) * .45, hz = (L.max.z - L.min.z) * .45;
+        P = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, c]) => { const lx = mx + a * hx, lz = mz + c * hz; return [pp.x + lx * co + lz * sn, pp.z - lx * sn + lz * co]; }); } }
+    let g0 = gh, g1 = gh; P.forEach(([x, z]) => { const h = A.groundH(x, z); if (h < g0) g0 = h; if (h > g1) g1 = h; });
     let su = _b.min.y - g0;   // > 3 cm: c'è luce sotto anche nel punto più basso; < -10 cm: sepolto anche lì
     let mv = 0; if (posa && Math.max(_s.x, _s.z) < 3.5) { if (su > .025 && su <= .12) { mv = su - .005; POSA.giu++; } else if (su < -.1 && su > -.35) { mv = su + .02; POSA.su++; } }
     if (MIS.length < 60000) { const flag = su > .03 || su < -.1; MIS.push([nome || obj.name || (flag ? chi() : ''), +cx.toFixed(2), +cz.toFixed(2), +(su - mv).toFixed(3), +_s.y.toFixed(2), +(g1 - g0).toFixed(3), +su.toFixed(3)]); }   // [.., dopo la posa, altezza, pendenza sotto, prima della posa]

@@ -44,6 +44,7 @@ var Tasselli = (function () {
     butta: (TEL ? 200 : 320) * KR,  // oltre questo il tassello si butta
     volo: TEL ? 3 : 5,             // quanti tasselli in volo (scarico + decodifica) insieme
     vertici: TEL ? 90000 : 250000, // quanti vertici nuovi per fotogramma alla scheda video
+    byte: /[?&]nofixinvii\b/.test(Q) ? Infinity : (TEL ? 3 : 8) * 1048576,   // [ottimizza-car] e quanti byte (buffer nuovi + tessiture), dopo l'anello vicino
     ms: TEL ? 4 : 6,               // il tetto di tempo per fotogramma per creare le mesh
     sguardo: 60,
     raggiR: TEL ? 6 : Infinity,    // [leggera] i dati dei raggi (graffiti, spruzzi) nel tassello del giocatore (entro 6 m) e in quelli che un raggio
@@ -56,23 +57,39 @@ var Tasselli = (function () {
     // appena il tassello si apre (se torna si riscarica: è nella cache del navigatore)
     leggero: TEL && !/[?&]nomemoria(tasselli)?\b/.test(Q),
   };
-  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null;
+  let IND = null, DATI = null, VIVB = null, ON = false, CTX = null, GRAF, DECISO = false;   // [ottimizza] DECISO: la promessa dell'indice si è chiusa (si sa se ci sono i tasselli)
+  // [ottimizza-car] LO SCARICO CON CALMA (sul computer, anche col profilo leggero; il telefono resta com'era): un tassello in scena si smonta
+  // solo se è fuori dall'impronta larga da più di FUORI ms E oltre il cerchio che l'impronta copre girando la camera (così girare non
+  // smonta niente), o se si supera il tetto di vertici in scena; il compresso resta nella pagina (tutta la città sono ~25 MB) e una
+  // tessitura lasciata da tutti resta sulla scheda video per GRAZIA ms prima di andarsene. ?nofixscarico come prima
+  const TOCCO = (() => { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  const CALMA = !TOCCO && !/[?&]nofixscarico\b/.test(Q), FUORI = 8000, GRAZIA = 45000, VMAX = 14e6;
   const ST = { on: false, motivo: CHIESTO ? '' : 'spento', tasselli: 0, inScena: 0, inVolo: 0, inApertura: 0, buttati: 0, smontati: 0, byte: 0, byteVicino: 0, vertici: 0, mesh: 0, t0: 0, vicinoT: null, vicinoN: 0, decodMs: 0, scaricoMs: 0, creaMs: 0, picco: 0,
     case: 0, oggetti: 0, vivi: 0, aloni: 0, programmi: 0, raggiV: 0, texLiberate: 0, matLiberati: 0 };
   const url = f => new URL(BASE + f + V, location.href).href;
   // l'indice e i dati, prima di R.init (main.js aspetta questa promessa con i kit). Qualunque cosa vada storta: la città come prima
   const pronto = !CHIESTO ? Promise.resolve(false) : fetch(url('indice.json')).then(r => r.ok ? r.json() : null).then(async j => {
     if (!j) { ST.motivo = 'indice mancante'; return false; }
-    if (j.versione !== 1 || !IMP || j.impronta !== IMP) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
+    // [misure] ?tassellivecchi: i tasselli di un'altra build vanno bene lo stesso (le sonde e le gallerie in locale, dove la cottura nuova non
+    // c'è ancora: la città è quella di prima, i tempi e la luce si misurano uguali). Nel gioco pubblicato non si usa mai
+    const VECCHI = /[?&]tassellivecchi\b/.test(Q), imp = x => VECCHI ? x === x : x === IMP;
+    if (j.versione !== 1 || !IMP || !imp(j.impronta)) { ST.motivo = 'impronta ' + j.impronta + ' ≠ ' + IMP; console.warn('[tasselli] i tasselli sono di un\'altra build: la città si costruisce come prima'); return false; }
     if (!j.dati) { ST.motivo = 'senza dati del gioco'; console.warn('[tasselli] tasselli senza i dati del gioco (cottura vecchia): la città si costruisce come prima'); return false; }
     const d = await fetch(url(j.dati.file)).then(r => r.ok ? r.json() : null);
-    if (!d || d.impronta !== IMP) { ST.motivo = 'dati mancanti'; console.warn('[tasselli] dati.json mancante o di un\'altra build: la città si costruisce come prima'); return false; }
+    if (!d || !imp(d.impronta)) { ST.motivo = 'dati mancanti'; console.warn('[tasselli] dati.json mancante o di un\'altra build: la città si costruisce come prima'); return false; }
+    if (VECCHI && j.impronta !== IMP) console.warn('[tasselli] ?tassellivecchi: tasselli della build', j.impronta, 'su questa', IMP);
     IND = j; DATI = d;
     if (d.viviBin) VIVB = chiedi({ op: 'tassello', url: url(d.viviBin.file) });   // le geometrie dei vivi: servono in monta()
     if (VIVB) await VIVB.then(m => { VIVB = m; });
     try { bmut(); } catch (e) { }   // prima di R.init: chi legge b.__* durante il caricamento lo trova (e di nuovo in monta)
-    ON = true; ST.on = true; ST.tasselli = j.tasselli.length; return true;
+    ON = true; ST.on = true; ST.tasselli = j.tasselli.length;
+    // [ottimizza] i graffiti di partenza cotti (strumenti/tassella_pagina.js): writer_vita.js li aspetta (GRAF undefined), poi li prende
+    // già piazzati (writing.js cotti). Senza (cottura vecchia, o non arrivano): null, e la storia dei muri si fa come prima
+    if (j.graffiti && j.graffiti.file && !/[?&]nofixgraffiti\b/.test(Q)) fetch(url(j.graffiti.file)).then(r => r.ok ? r.json() : null).then(g => { GRAF = g && Array.isArray(g.lavori) ? g.lavori : null; }, () => { GRAF = null; });
+    else GRAF = null;
+    return true;
   }).catch(e => { ST.motivo = String(e); console.warn('[tasselli]', e); IND = DATI = null; ON = false; ST.on = false; return false; });
+  pronto.then(() => { DECISO = true; }, () => { DECISO = true; });
 
   // ---------------- il lavoratore ----------------
   // più lavoratori (2 sul telefono, 3 sul computer): ogni richiesta va a quello con meno lavori in coda
@@ -80,7 +97,7 @@ var Tasselli = (function () {
   function lavoratori() {
     if (LAV) return LAV;
     const el = document.getElementById('tasselli-lavoratore'), src = el ? el.textContent : '', u = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
-    const n = Math.max(1, Math.min(TEL ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));
+    const n = Math.max(1, Math.min(TEL && !CALMA ? 2 : 3, (navigator.hardwareConcurrency || 2) - 1));   // [ottimizza-car] il portatile: tre (l'anello vicino si apre prima)
     LAV = []; for (let i = 0; i < n; i++) { const w = new Worker(u); w.coda = 0;
       w.onmessage = e => { const m = e.data, p = ATTESE.get(m.id); w.coda--; if (!p) return; ATTESE.delete(m.id); if (m.err) p[1](new Error(m.err)); else p[0](m); };
       w.onerror = e => console.warn('[tasselli] lavoratore:', e.message || e); LAV.push(w); }
@@ -116,7 +133,7 @@ var Tasselli = (function () {
   function carica(i) {
     let p = TEXP.get(i); if (p) return p;
     const t = tessitura(i), r = texRec(i); if (!r) return Promise.resolve();
-    const tel = TEL && r.tel, file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
+    const tel = TEL && r.tel && (typeof LeggeraMem === 'undefined' || LeggeraMem.on('tessiture')), file = tel ? r.tel.file : r.file, g = (TEXG.get(i) || 0) + 1; TEXG.set(i, g);
     const vivo = x => { if (TEXG.get(i) === g && TEXP.has(i)) return true; if (x && x.close) x.close(); return false; };   // liberata nel frattempo
     if (!file) p = Promise.resolve();
     else if (r.k === 'array' && /\.webp$/.test(file)) p = chiedi({ op: 'img', url: url('tex/' + file), griglia: r.griglia || [1, 1], w: tel ? r.tel.w : r.w, h: tel ? r.tel.h : r.h, d: r.d }).then(m => { if (!vivo()) return;
@@ -134,11 +151,16 @@ var Tasselli = (function () {
   // tasselli (le uniform di modulo come FD1 e la tavolozza, gli aloni, l'acqua delle fontane): restano sempre.
   const TEXU = new Map(), FISSE = new Set(), MATU = new Map();
   const fissa = i => { FISSE.add(i); return carica(i); };
-  function texPrendi(ids) { ids.forEach(i => TEXU.set(i, (TEXU.get(i) || 0) + 1)); }
+  const TEXA = new Map();   // [ottimizza-car] le tessiture lasciate da tutti, in attesa (id → quando)
+  function texPrendi(ids) { ids.forEach(i => { TEXA.delete(i); TEXU.set(i, (TEXU.get(i) || 0) + 1); }); }
+  function texSpazza(now) { if (TEXA.size) TEXA.forEach((t0, i) => { if (now - t0 > GRAZIA) { TEXA.delete(i); if (!TEXU.get(i)) texVia(i); } }); }
   function texLascia(ids) {
     ids.forEach(i => { const n = (TEXU.get(i) || 0) - 1; if (n > 0) { TEXU.set(i, n); return; } TEXU.delete(i);
-      if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
-      if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; } });
+      if (CALMA && !FISSE.has(i) && TEXP.has(i)) { TEXA.set(i, performance.now()); return; } texVia(i); });
+  }
+  function texVia(i) {
+    if (FISSE.has(i) || !TEXP.has(i)) return; const t = TEX.get(i); TEXP.delete(i); ST.texLiberate++;
+    if (t) { t.dispose(); const b = t.image; if (b && b.close) b.close(); if (b && (b.data || b.close)) t.image = { width: b.width, height: b.height, depth: b.depth }; }
   }
   function matPrendi(S, m) { if (!m || S.mats.has(m)) return; S.mats.add(m); MATU.set(m, (MATU.get(m) || 0) + 1); }
   function matLascia(S) {
@@ -240,7 +262,7 @@ var Tasselli = (function () {
   // Le mesh opache tengono le posizioni (e l'indice) dopo l'invio alla scheda video: i graffiti cercano il muro coi raggi (writing.js
   // rayWall, render.js bmbCands). Una mesh di tassello è grande (tutto un materiale di 48 m): la prima volta che un raggio la tocca si fa
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
-  const RG = { cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
+  const RG = { manca: 0, cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
   function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
@@ -263,7 +285,7 @@ var Tasselli = (function () {
     const g = this.geometry, P = g.attributes.position; if (!P || !P.array) return;
     const mats = this.material, MW = this.userData.qs ? IDM : this.matrixWorld; if (!g.boundingSphere) g.computeBoundingSphere();   // [leggera] in 16 bit: i raggi lavorano nel mondo
     RG.sph.copy(g.__bsW || g.boundingSphere).applyMatrix4(MW); if (!rc.ray.intersectsSphere(RG.sph)) return;
-    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; return; } } }   // [leggera] i dati dei raggi arrivano al volo
+    if (CFG.leggero) { const S = STATO[this.userData.tassello]; if (S) { S.rusa = performance.now(); if (!S.rdati) { S.rvuole = true; RG.manca++; return; } } }   /* [ottimizza] RG.manca: chi tira raggi (writing.js) sa che il «niente» è solo «non ancora» */   // [leggera] i dati dei raggi arrivano al volo
     if ((P.__q ? P.__q.u.length : (P.__pf || P.array).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
     RG.inv.copy(MW).invert(); const ray = RG.ray.copy(rc.ray).applyMatrix4(RG.inv);
     const G = g.__griglia || (g.__griglia = griglia(g)), c = RG.cella, bb = g.__bbW || g.boundingBox;   // (griglia() fa la scatola se manca)
@@ -318,8 +340,11 @@ var Tasselli = (function () {
   async function apri(ti) {
     const S = STATO[ti], gen = S.gen = (S.gen || 0) + 1; S.st = 3; ST.inApertura++;
     try {
-      const buf = CFG.leggero ? S.zip : S.zip.slice(0); if (CFG.leggero) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna
-      const m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); ST.decodMs += m.ms[1];
+      let m = S.preM; S.preM = null;   // [ottimizza-car] già aperto prima di R.init (anticipa)
+      if (m) { if (CFG.leggero && !CALMA) S.zip = null; }
+      else { const via = CFG.leggero && !CALMA, buf = via ? S.zip : S.zip.slice(0); if (via) S.zip = null;   // [leggera] il compresso va al lavoratore e non torna (sul telefono)
+        m = await chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]); }
+      ST.decodMs += m.ms[1];
       if (S.st !== 3 || S.gen !== gen) return;   // uscito dalla vista nel frattempo
       const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids));
       const vivi = new Set(); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => { ids.add(q); vivi.add(q); }));
@@ -360,7 +385,15 @@ var Tasselli = (function () {
     S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
     S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
   }
-  function monta1(ti, tetto, quota) {
+  // [ottimizza-car] le tessiture di una mesh mandate alla scheda video adesso (dentro la quota), non al primo disegno: torna i byte
+  function texSu(r) {
+    const rd = CTX.renderer; if (!rd || !rd.initTexture || CFG.byte === Infinity) return 0; const ids = new Set(); texMesh(r, ids); let b = 0;
+    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit) return;
+      rd.initTexture(t); b += (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4 * (t.generateMipmaps ? 1.33 : 1); });
+    return b;
+  }
+  function monta1(ti, tetto, quota, quotaB) {
+    if (quotaB === undefined) quotaB = Infinity;
     const S = STATO[ti], m = S.dati, T = m.testa, sc = CTX.scene;
     if (!S.tieni) {
       S.tieni = new Set(); S.q16ok = new Set();
@@ -383,10 +416,11 @@ var Tasselli = (function () {
       if (CFG.leggero) { if (S.tieni.has(i)) raggiA(a, d, v, q); a.onUpload(libera); }   // [leggera] i dati dei raggi a parte: l'attributo si svuota sempre
       else { if (q && S.tieni.has(i)) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k };
         if (!S.tieni.has(i) || (q && !a.__qs)) a.onUpload(libera); }
-      S.attr.set(i, a); return a; };
-    let vf = 0;
+      bf += (a.array && a.array.byteLength) || 0; S.attr.set(i, a); return a; };   // [ottimizza-car] i byte dei buffer nuovi
+    let vf = 0, bf = 0;
     while (S.k < S.lista.length) {
-      if (performance.now() > tetto || vf > quota) return false;
+      if (performance.now() > tetto || vf > quota || bf > quotaB) return false;
+      if (quotaB !== Infinity) bf += texSu(T.mesh[S.lista[S.k]]);
       const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
@@ -438,8 +472,9 @@ var Tasselli = (function () {
   async function riapri(ti, vista, raggi) {
     const S = STATO[ti], gen = S.rgen = (S.rgen || 0) + 1, t = IND.tasselli[ti]; S.rvolo = true; RIAPRI++;
     try {
-      const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status);
-      const buf = await r.arrayBuffer(); if (S.rgen !== gen || S.st !== 5) return;
+      let buf; if (S.zip) buf = S.zip.slice(0);   // [ottimizza-car] il compresso tenuto: niente richiesta
+      else { const r = await fetch(url(t.file)); if (!r.ok) throw new Error(t.file + ' ' + r.status); buf = await r.arrayBuffer(); }
+      if (S.rgen !== gen || S.st !== 5) return;
       const m = await chiedi({ op: 'tassello', buf, tel: true }, [buf]); if (S.rgen !== gen || S.st !== 5) return;
       ST.riaperti = (ST.riaperti || 0) + 1;
       if (raggi && S.attrs && !S.rdati) {   // i dati dei raggi sugli attributi che ci sono già (e le mesh rimandate li prendono da sé)
@@ -464,7 +499,10 @@ var Tasselli = (function () {
   }
   // [peso] le ombre in cache (peso_ombre.js) si ricuociono quando cambia chi fa ombra sul livello della camera: le sagome d'ombra delle
   // case fuse stanno sul livello 1 e non le vede. Un tassello che arriva o se ne va la fa ricuocere (spegnere e riaccendere: firma rifatta)
-  function ombre() { if (typeof PesoOmbre !== 'undefined' && PesoOmbre.attivo) { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
+  // [ottimizza-car] non più spegnere e riaccendere (ricottura intera e mappa riallocata a ogni tassello): PesoOmbre rifà l'elenco e vede da
+  // sé le aggiunte (disegnate sopra la mappa cotta) e le tolte (ricottura in sottofondo). ?nofixombrecache come prima
+  const OMBRE0 = /[?&]nofixombrecache\b/.test(Q);
+  function ombre() { if (typeof PesoOmbre === 'undefined' || !PesoOmbre.attivo) return; if (!OMBRE0 && PesoOmbre.rivedi) PesoOmbre.rivedi(); else { PesoOmbre.attivo = false; PesoOmbre.attivo = true; } }
   // via dalla scheda video (resta il compresso, se c'è)
   function smonta(ti) {
     const S = STATO[ti]; if (S.st === 5) { ST.inScena--; viviDentro(IND.tasselli[ti].k, false); }
@@ -477,7 +515,24 @@ var Tasselli = (function () {
     ombre();
     const i = PRONTI.indexOf(ti); if (i >= 0) PRONTI.splice(i, 1);
   }
-  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.st = 0; ST.buttati++; }
+  function butta(ti) { const S = STATO[ti]; if (S.st >= 3) smonta(ti); S.zip = null; S.preM = null; S.st = 0; ST.buttati++; }
+  // [ottimizza-car] L'ANELLO VICINO PRIMA DI R.init. main.js lo chiama appena l'indice è pronto, col punto di partenza: i tasselli attorno si
+  // scaricano subito (tutti insieme, non tre per fotogramma) e i più vicini si aprono nei lavoratori mentre il filo della pagina fa R.init e
+  // la compilazione; le loro tessiture si scaricano e si aprono anche loro. Quando tick() li vede nell'impronta li monta senza aspettare.
+  // ?nofixvicino come prima
+  let ANT = false;
+  function anticipa(x, z) {
+    if (!ON || !IND || ANT || /[?&]nofixvicino\b/.test(Q)) return 0; ANT = true;
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    const RZ = (CFG.lontano || 150) + CFG.margine, RA = CFG.lontano ? 75 : 110; let n = 0;
+    IND.tasselli.map((t, ti) => [dist(t, x, z), ti]).filter(a => a[0] < RZ * KR).sort((a, b) => a[0] - b[0]).forEach(([d, ti]) => {
+      const S = STATO[ti]; if (S.st) return; n++; S.vicino = true;
+      scarica(ti).then(() => { if (S.st !== 2 || !S.zip || d > RA * KR || S.preM) return; const buf = S.zip.slice(0);
+        return chiedi({ op: 'tassello', buf, tel: CFG.leggero }, [buf]).then(m => { if (S.st !== 2) return; S.preM = m;
+          const ids = new Set(); m.testa.mesh.forEach(r => texMesh(r, ids)); (VIVT.get(IND.tasselli[ti].k) || []).forEach(o => o.__tex.forEach(q => ids.add(q))); ids.forEach(i => carica(i)); }); })
+        .catch(e => console.warn('[tasselli] anticipa', e)); });
+    ST.anticipati = n; return n;
+  }
 
   // ---------------- [tasselli2] i dati del gioco ----------------
   // le case: i record di dyn.buildings senza mesh (B.tas: render.js casaVisibile e il tetto sbiadito sanno che la casa è nel tassello);
@@ -603,13 +658,16 @@ var Tasselli = (function () {
     const grp = new THREE.Group(); grp.name = 'tasselli_compila';
     (IND.programmi || []).forEach(([mi, inst, ic, c4, rs, pid]) => { if (!IND.materiali[mi]) return; const mat = materiale(mi, !!pid), g = c4 ? g4 : g0;
       let o; if (inst) { o = new THREE.InstancedMesh(g, mat, 1); o.setMatrixAt(0, new THREE.Matrix4()); if (ic) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3).fill(1), 3); } else o = new THREE.Mesh(g, mat);
-      o.frustumCulled = false; o.castShadow = false; o.receiveShadow = !!rs; o.raycast = noRay; grp.add(o); });
+      o.frustumCulled = false; o.castShadow = false; o.receiveShadow = !!rs; o.raycast = noRay; grp.add(o);
+      if (pid && !Array.isArray(mat)) { const q = inst ? new THREE.InstancedMesh(g, mat, 1) : new THREE.Mesh(g, mat); if (inst) q.setMatrixAt(0, new THREE.Matrix4()); q.userData.ombra = profonditaPid(mat); q.userData.ombraBase = { map: mat.map, alphaTest: mat.alphaTest }; q.visible = false; q.castShadow = false; q.raycast = noRay; grp.add(q); } });   // [ottimizza] la profondità col pid (monta1): peso_pronti.js la compila nel caricamento
+    // [ottimizza] le profondità dei tasselli (r.cdm: materiali MeshDepthMaterial dell'indice), istanziate e no: anche loro nel caricamento
+    IND.materiali.forEach((r, i) => { if (!r || r.type !== 'MeshDepthMaterial') return; const dm = materiale(i); for (const inst of [false, true]) { const q = inst ? new THREE.InstancedMesh(g0, dm, 1) : new THREE.Mesh(g0, dm); if (inst) q.setMatrixAt(0, new THREE.Matrix4()); q.userData.ombra = dm; q.visible = false; q.castShadow = false; q.raycast = noRay; grp.add(q); } });
     VIVT.forEach(L => L.forEach(top => top.traverse(o => { if (!o.material) return; const q = o.isSprite ? new THREE.Sprite(o.material) : o.isMesh ? new THREE.Mesh(g0, o.material) : null; if (!q) return; q.position.y = -500; q.frustumCulled = false; q.raycast = noRay; grp.add(q); })));
     CTX.scene.add(grp); COMP = grp; ST.programmi = grp.children.length;
   }
 
   // ---------------- a ogni fotogramma ----------------
-  let lastX = null, lastZ = null, fx = 0, fz = 0;
+  let lastX = null, lastZ = null, fx = 0, fz = 0, RT2 = 0;
   // l'impronta della camera a terra: i raggi degli angoli e del centro dello schermo fino al suolo (o fino alla nebbia, se guardano
   // sopra l'orizzonte), più la camera stessa; la scatola, allargata del margine
   const IMV = new THREE.Vector3(), IMF = { x0: 0, z0: 0, x1: 0, z1: 0 }, IMF2 = { x0: 0, z0: 0, x1: 0, z1: 0 };
@@ -620,6 +678,7 @@ var Tasselli = (function () {
       IMV.set(nx, ny, .5).unproject(cam).sub(P).normalize(); let t = IMV.y < -1e-3 ? (gy - P.y) / IMV.y : ff; t = Math.max(0, Math.min(t, ff));
       let px = P.x + IMV.x * t, pz = P.z + IMV.z * t;
       if (CFG.lontano) { const cx = CTX.cam.x, cz = CTX.cam.y, h = Math.hypot(px - cx, pz - cz); if (h > CFG.lontano) { px = cx + (px - cx) * CFG.lontano / h; pz = cz + (pz - cz) * CFG.lontano / h; } } if (px < x0) x0 = px; if (px > x1) x1 = px; if (pz < z0) z0 = pz; if (pz > z1) z1 = pz; }
+    { const cx = CTX.cam.x, cz = CTX.cam.y; IMF.r = Math.max(Math.hypot(x0 - cx, z0 - cz), Math.hypot(x1 - cx, z0 - cz), Math.hypot(x0 - cx, z1 - cz), Math.hypot(x1 - cx, z1 - cz)); }   // [ottimizza-car] il cerchio che l'impronta copre girando
     const m = CFG.margine; IMF.x0 = x0 - m; IMF.x1 = x1 + m; IMF.z0 = z0 - m; IMF.z1 = z1 + m;
     const m2 = CFG.oltre ? m + CFG.oltre : 2 * m + 8; IMF2.x0 = x0 - m2; IMF2.x1 = x1 + m2; IMF2.z0 = z0 - m2; IMF2.z1 = z1 + m2; return IMF;
   }
@@ -638,21 +697,28 @@ var Tasselli = (function () {
     if (CFG.leggero) visteAgg();
     // la vista: si apre quello che entra nell'impronta, si smonta quello che esce dall'impronta larga; la rete: per distanza (il bordo del
     // settore) meno un premio per quello davanti a dove si va, prima quello della vista
-    const L = [];
+    const L = []; let lontano = null;
     IND.tasselli.forEach((t, ti) => { const S = STATO[ti], d = dist(t, x, z), vede = inImpronta(t, F);
-      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) smonta(ti);
+      if (S.st >= 3 && !inImpronta(t, IMF2) && !TIENI.has(ti)) {
+        if (!CALMA) smonta(ti);
+        else { if (!S.fuori) S.fuori = t0; const m2 = CFG.oltre ? CFG.margine + CFG.oltre : 2 * CFG.margine + 8;   // [ottimizza-car] lo scarico con calma
+          if (d > IMF.r + m2 && t0 - S.fuori > FUORI) smonta(ti); else if (ST.vertici > VMAX && (!lontano || d > lontano[0])) lontano = [d, ti]; } }
+      else if (S.fuori) S.fuori = 0;
       if (d > CFG.butta && !vede && S.st && !TIENI.has(ti)) { butta(ti); return; }
-      if (vede && S.st === 2 && ST.inApertura < CFG.volo) apri(ti);
+      if (vede && S.st === 2 && (ST.inApertura < CFG.volo || (S.preM && !vicinoFatto))) apri(ti);   // [ottimizza-car] gli anticipati tutti insieme
       if (S.st || (d > CFG.carica && !vede) || (S.errori || 0) > 3) return;
       const [cx, cz] = centro(t), ax = cx - x, az = cz - z, l = Math.hypot(ax, az) || 1, dot = (ax * fx + az * fz) / l;
       L.push([(vede ? -1e4 : 0) + d - CFG.sguardo * Math.max(0, dot), ti, vede]); });
+    if (lontano && STATO[lontano[1]].st >= 3) smonta(lontano[1]);   // [ottimizza-car] oltre il tetto di vertici: il più lontano fuori vista
+    if (CALMA && !(++RT2 % 30)) texSpazza(t0);
     L.sort((a, b) => a[0] - b[0]);
     for (const [, ti, vede] of L) { if (ST.inVolo >= CFG.volo) break; STATO[ti].vicino = !vicinoFatto && vede; scarica(ti); }
     // montare: il più vicino prima, dentro i tetti (larghi finché manca l'anello vicino)
     if (PRONTI.length) {
       PRONTI.sort((a, b) => dist(IND.tasselli[a], x, z) - dist(IND.tasselli[b], x, z));
-      const tetto = t0 + (vicinoFatto ? CFG.ms : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
-      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota)) PRONTI.shift(); else break; }
+      const carico = !vicinoFatto && !(window.__tl && window.__tl.gioco) && !/[?&]nofixvicino\b/.test(Q);   // [ottimizza-car] dietro lo schermo di carico si monta più in fretta
+      const tetto = t0 + (vicinoFatto ? CFG.ms : carico ? 150 : 40), quota = vicinoFatto ? CFG.vertici : 4e6;
+      while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota, vicinoFatto ? CFG.byte : Infinity)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
@@ -663,7 +729,7 @@ var Tasselli = (function () {
   }
   function monta(ctx) {
     CTX = ctx; ST.t0 = Math.round(performance.now());
-    IND.tasselli.forEach(() => STATO.push({ st: 0 }));
+    if (!STATO.length) IND.tasselli.forEach(() => STATO.push({ st: 0 }));   // [ottimizza-car] (anticipa li ha già)
     const R = ctx.R;
     // le uniform di modulo: i valori della build (FD1: le case, nessuna tagliata; la tavolozza)
     for (const k in IND.uni) { if (k.startsWith('__')) continue; const u = R.uni[k], v = IND.uni[k]; if (!u) continue;
@@ -698,6 +764,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM };
+  return { anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;

@@ -23,7 +23,7 @@ var PesoLontano = (function () {
       if (g.boundingSphere === null) g.computeBoundingSphere();
       s.copy(g.boundingSphere).applyMatrix4(o.matrixWorld);
       if (s.radius < P.rMax) { ST.provati++; const dx = s.center.x - cx, dy = s.center.y - cy, dz = s.center.z - cz, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (s.radius * kpx < P.px * d) { ST.tagliati++; return false; } }
-      return this.intersectsSphere(s); };
+      return this.intersectsSphere(s) && (typeof PesoScatole === 'undefined' || PesoScatole.prova(this, o)); };   // [ottimizza-gpu] e la scatola (peso_scatole.js) per chi è grande
     pronto = true;
   }
   // prima del disegno: la scala dei pixel (alla risoluzione interna) e la posizione della camera

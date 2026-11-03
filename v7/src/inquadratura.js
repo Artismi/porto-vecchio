@@ -114,11 +114,11 @@ var Inquadratura = (function () {
   // (K.terra: resta la pianta). I punti dentro la pianta di una casa non contano per quella casa (non sono pavimento)
   function tagli(px, pz, fy, cam, case_, V, on, out, uniforme, Rv, opz) {
     out = out || new Map(); out.clear(); if (!on) return out;
-    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD;
-    for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
-    if (opz && opz.avanti) { const ax = opz.avanti.x, az = opz.avanti.z;
+    const P = [], R = Rv || K.raggio, st = Rv ? Math.min(K.passoD, Rv / 2) : K.passoD, corpo = !!(opz && opz.corpo);   // [camera4] corpo: conta solo il personaggio (il busto e la testa), non il suolo attorno
+    if (!corpo) for (let a = -R; a <= R + 1e-6; a += st) for (let b = -R; b <= R + 1e-6; b += st) if (a * a + b * b <= R * R) P.push({ x: px + a, y: fy + .1, z: pz + b });
+    if (opz && opz.avanti && !corpo) { const ax = opz.avanti.x, az = opz.avanti.z;
       for (let t = -K.striscia[0]; t <= K.striscia[1] + 1e-6; t += 1.5) for (const l of [-K.strisciaL, 0, K.strisciaL]) { const x = px + ax * t - az * l, z = pz + az * t + ax * l; P.push({ x, y: (opz.gh ? opz.gh(x, z) : fy) + .1, z }); } }
-    P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
+    if (corpo) P.push({ x: px, y: fy + 1.1, z: pz }, { x: px, y: fy + 1.65, z: pz }); else P.push({ x: px, y: fy + .9, z: pz }, { x: px, y: fy + 1.7, z: pz });
     const dx = cam.x - px, dz = cam.z - pz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l;
     const D = P.map(p => { const ex = cam.x - p.x, ey = cam.y - p.y, ez = cam.z - p.z, ll = Math.hypot(ex, ey, ez) || 1; return { x: ex / ll, y: ey / ll, z: ez / ll }; });
     const o0 = { x: px, y: fy + .1, z: pz }, l0 = Math.hypot(cam.x - px, cam.y - o0.y, cam.z - pz) || 1, d0 = { x: (cam.x - px) / l0, y: (cam.y - o0.y) / l0, z: (cam.z - pz) / l0 }, E = R + 2, bb = { min: { x: 0, y: 0, z: 0 }, max: { x: 0, y: 0, z: 0 } };

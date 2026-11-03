@@ -38,7 +38,7 @@ const srv = http.createServer((req, res) => {
   pg.on('pageerror', e => console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')));
   pg.on('console', m => { if (m.type() === 'error') console.log('[console]', m.text().slice(0, 240)); });
   if (PULITA) await pg.addInitScript(() => { window.__pulita = true; });   // render.js e main.js: niente etichette dei luoghi
-  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`);
+  await pg.goto(`http://localhost:${port}/${process.env.PV_PAGINA || 'index.html'}${process.env.PV_QUERY !== undefined ? process.env.PV_QUERY : '?cittanuova'}`, { timeout: 600000 });   // [compenetra] sotto carico la pagina da 12 MB non si carica in 30 s
   await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: +(process.env.GALLERIA_CARICO || process.env.GALLERIA_ATTESA || 300000) });   // GALLERIA_CARICO (o GALLERIA_ATTESA): ms per caricare (sotto carico 300 s non bastano)
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(1500);
   if (PULITA) await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } #bubbles, #hover, #moment, #xhair, #ring, #touch { display: none !important; }' });
@@ -75,25 +75,65 @@ const srv = http.createServer((req, res) => {
     // i blocchi della città attorno (render.js ISO.job: uno alla volta) finiti per due controlli di fila
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 40000 && quiet < 2; k++) {   // al massimo 40 s (sotto carico ogni domanda alla pagina aspetta un fotogramma)
       await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
-    log('blocchi'); await pg.waitForTimeout(s.attesa || 4500);
+    log('blocchi');
+    // [direzione] i tasselli della città attorno arrivati e aperti, e il loro numero fermo per tre controlli (con fotogrammi veloci la foto
+    // partiva prima: case a scatole bianche), al più 120 s
+    { let quiet = 0, n0 = -1; const tb = Date.now();
+      while (Date.now() - tb < 120000 && quiet < 3) { await pg.waitForTimeout(1500);
+        const T = await pg.evaluate(() => { const t = window.__tasselli; return t ? { on: t.on, v: t.inVolo + t.inApertura, n: t.inScena, m: t.motivo } : null; });
+        if (!T || !T.on) { log('tasselli spenti: ' + (T && T.m)); break; }
+        quiet = T.v === 0 && T.n > 0 && T.n === n0 ? quiet + 1 : 0; n0 = T.n; } }
+    log('tasselli'); await pg.waitForTimeout(+(process.env.GALLERIA_SOSTA || 0) || s.attesa || 4500);
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
+        if (window.__SGU && window.__SGU.pro) window.__PRO = window.__SGU.pro;   // [direzione] le manopole dei materiali (SGU.pro) come variante: "PRO"
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD', 'CAT', 'DIOR', 'PELL', 'RIV', 'PRO', 'DIR'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
         window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
-        const R = window.__pv.R; if (R.setPendenza) R.setPendenza(o.PENDENZA || window.__pend0 || (window.__pend0 = R.setPendenza()));   // [visuale3] "PENDENZA": la pendenza della visuale a piedi (radianti)
-        if (R.setVisuale) R.setVisuale(o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": il modo sulla stessa scena (subito: niente transizioni)   // [visuale5] solo "camera" o "muretto": gli altri nomi non cambiano niente
+        const R = window.__pv.R; if (R.setPendenza && o.PENDENZA) R.setPendenza(o.PENDENZA || window.__pend0 || (window.__pend0 = R.setPendenza()));   // [visuale3] "PENDENZA": la pendenza della visuale a piedi (radianti)
+        if (R.setVisuale && o.VISUALE) R.setVisuale(   /* [direzione] solo se la variante lo chiede: rimettere il modo cambiava la camera e la città */o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": il modo sulla stessa scena (subito: niente transizioni)   // [visuale5] solo "camera" o "muretto": gli altri nomi non cambiano niente
       }, v.manopole);
       if (v.manopole.VISUALE || v.manopole.PENDENZA || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, s.nome + '.png');
+      if (process.env.GALLERIA_RAGGIO) console.log('[raggio]', JSON.stringify(await pg.evaluate(() => {   // [ad] cosa sta fra la camera e il personaggio (per il taglio del primo piano)
+        const R = window.__pv.R, cam = R.getCamera(), sc = R.__ed.scene, P = window.__pv.st.player, T = window.THREE, rc = new T.Raycaster(), tgt = new T.Vector3(P.x, R.__ed.groundH(P.x, P.y) + 1, P.y);
+        const dir = tgt.clone().sub(cam.position), L = dir.length(); rc.set(cam.position, dir.normalize()); rc.far = L; const all = [];
+        sc.traverse(o => { if (!o.isMesh || !o.visible) return; try { rc.intersectObject(o, false, all); } catch (e) { } }); all.sort((a, b) => a.distance - b.distance);
+        const m = o => (Array.isArray(o.material) ? o.material[0] : o.material) || {};
+        return { L: +L.toFixed(1), gy: +R.__ed.groundH(P.x, P.y).toFixed(2), u7: window.__AD && window.__AD.u7, hits: all.slice(0, 5).map(h => ({ d: +h.distance.toFixed(1), y: +h.point.y.toFixed(2), n: h.object.name, t: m(h.object).type, dw: m(h.object).depthWrite, tr: m(h.object).transparent, ro: h.object.renderOrder })) }; })));
       // la foto si prende dalla tela del gioco subito dopo il suo fotogramma (requestAnimationFrame registrato dopo quello del gioco):
       // con SwiftShader sotto carico un fotogramma può durare decine di secondi e lo screenshot della pagina scadeva. Un fotogramma:
       // le manopole nuove entrano nel fotogramma che segue (anche le finestre, che si riaccendono quando cambia il loro valore)
-      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); const url = cv.toDataURL("image/png"); try { window.__quote = window.__pv.R.profQuote ? window.__pv.R.profQuote(cv.width, cv.height) : null; } catch (e) { window.__quote = null; } res({ url, ms: Math.round(performance.now() - t0) }); }); }));   // [profondita] con la foto, la quota di ogni pixel dello stesso fotogramma
-      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf); log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
+      const shot = await pg.evaluate(() => new Promise(res => { const t0 = performance.now(); requestAnimationFrame(() => { const cv = document.getElementById("cv"); const url = cv.toDataURL("image/png"); try { window.__quote = window.__pv.R.profQuote ? window.__pv.R.profQuote(cv.width, cv.height) : null; } catch (e) { window.__quote = null; } try { window.__cat = window.__pv.R.catAlfa ? window.__pv.R.catAlfa() : null; } catch (e) { window.__cat = null; } res({ url, ms: Math.round(performance.now() - t0) }); }); }));   // [profondita] con la foto, la quota di ogni pixel dello stesso fotogramma
+      const buf = Buffer.from(shot.url.split(',')[1], 'base64'); fs.writeFileSync(file, buf);
+      // [cat] LA MISURA PER CATEGORIA (ANALISI_STILE.md §3): la categoria di ogni pixel dall'alfa della scena (render.js catAlfa), riportata sullo
+      // schermo con la stessa piega della lente (R.gonfia); per categoria: quota del quadro, luminanza e saturazione medie, e per il suolo
+      // il rapporto fra luce e ombra (80° / 20° percentile); il contrasto fra persone e suolo
+      const catm = await pg.evaluate(async b64 => {
+        const C = window.__cat, R = window.__pv.R; if (!C || !R.gonfia) return null;
+        const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
+        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+        const D = x.getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height, NOMI = ['', 'suolo', 'muri', 'tetti', 'persone', 'altro'], acc = {};
+        for (let y = 0; y < H; y += 2) for (let xx = 0; xx < W; xx += 2) {
+          const g = R.gonfia((xx + .5) / W, (y + .5) / H), px = Math.min(C.w - 1, Math.max(0, Math.floor(g[0] * C.w))), py = Math.min(C.h - 1, Math.max(0, Math.floor((1 - g[1]) * C.h)));
+          const k = NOMI[Math.floor(Math.round(C.a[py * C.w + px] / 255 * 35) / 6 + .001)] || 'altro',   /* [tratto] il codice: (categoria × 6 + faccia) / 35 */ j = (y * W + xx) * 4, r = D[j] / 255, gg = D[j + 1] / 255, bb = D[j + 2] / 255;
+          const L = .2126 * r + .7152 * gg + .0722 * bb, mx = Math.max(r, gg, bb), sa = mx > 0 ? (mx - Math.min(r, gg, bb)) / mx : 0;
+          const A = acc[k] || (acc[k] = { n: 0, L: 0, s: 0, Ls: [] }); A.n++; A.L += L; A.s += sa; if (A.Ls.length < 60000) A.Ls.push(L); }
+        let tot = 0; for (const k in acc) tot += acc[k].n; const out = {};
+        for (const k in acc) { const A = acc[k], q = A.Ls.sort((a, b) => a - b), p = f => q[Math.min(q.length - 1, Math.floor(q.length * f))];
+          out[k] = { quota: +(A.n / tot * 100).toFixed(1), L: +(A.L / A.n).toFixed(2), sat: +(A.s / A.n).toFixed(2), L20: +p(.2).toFixed(2), L80: +p(.8).toFixed(2) }; }
+        if (out.suolo) out.suolo.luceOmbra = +(out.suolo.L80 / Math.max(.02, out.suolo.L20)).toFixed(2);
+        { const m = document.createElement('canvas'); m.width = C.w; m.height = C.h; const mx = m.getContext('2d'), id = mx.createImageData(C.w, C.h), PAL = [[0, 0, 0], [90, 90, 90], [230, 200, 120], [200, 80, 60], [40, 220, 255], [255, 0, 255]];   // la mappa: suolo grigio, muri sabbia, tetti rosso, persone ciano, altro magenta
+          for (let y = 0; y < C.h; y++) for (let x2 = 0; x2 < C.w; x2++) { const k = Math.floor(Math.round(C.a[(C.h - 1 - y) * C.w + x2] / 255 * 35) / 6 + .001), q = PAL[k] || PAL[5], j = (y * C.w + x2) * 4; id.data[j] = q[0]; id.data[j + 1] = q[1]; id.data[j + 2] = q[2]; id.data[j + 3] = 255; }
+          mx.putImageData(id, 0, 0); out.mappa = m.toDataURL('image/png'); }
+        if (out.suolo && out.persone) out.personeSuolo = +(Math.max(out.suolo.L, out.persone.L) / Math.max(.02, Math.min(out.suolo.L, out.persone.L))).toFixed(2);
+        return out; }, buf.toString('base64'));
+      if (catm && catm.mappa) { fs.writeFileSync(file.replace(/\.png$/, '_cat.png'), Buffer.from(catm.mappa.split(',')[1], 'base64')); delete catm.mappa; }
+      if (catm) fs.writeFileSync(file.replace(/\.png$/, '_cat.json'), JSON.stringify(catm));       if (catm) console.log('   [cat] ' + s.nome + ' ' + Object.entries(catm).map(([k, v]) => typeof v === 'object' ? `${k} ${v.quota}% L ${v.L} sat ${v.sat}${v.luceOmbra ? ' luce/ombra ' + v.luceOmbra : ''}` : `${k} ${v}`).join(' · '));
+log('foto ' + (v.nome || '') + ' (fotogramma ' + shot.ms + ' ms)');
       const m = await pg.evaluate(async ({ b64, MIS }) => {
         const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
         const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0);

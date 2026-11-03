@@ -181,18 +181,33 @@ var World = (function () {
   const C2T = { x0: -40, x1: 1000, N: null, S: null };
   function c2Tab() { if (C2T.N) return; const n = C2T.x1 - C2T.x0 + 1; C2T.N = new Float32Array(n); C2T.S = new Float32Array(n);
     for (let i = 0; i < n; i++) { const x = C2T.x0 + i; C2T.N[i] = NorthY(x); C2T.S[i] = SouthY(x); } }
-  function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
-    c2Tab(); let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
-    // [telefono] gli stessi conti, nello stesso ordine (stesso risultato al bit), ma senza il vettore allocato a ogni segmento e senza
-    // chiamate: era il primo peso del processore all'avvio (9 s su 110 nel container)
+  // [avvio3] LA FINESTRA STRETTA. La distanza vera dalla riva si chiedeva per ogni punto con una ricerca su ±64 m di riva (129 tratti per
+  // due rive): all'avvio 2,2 s di processore (terreno a blocchi, verde, riva), e ogni blocco costruito camminando la ripagava. Ora una
+  // griglia di 2 m tiene la distanza del centro della cella (calcolata una volta, con la ricerca piena); per un punto nella cella la riva
+  // più vicina non può stare oltre quella distanza più la mezza diagonale (la distanza è 1-Lipschitz), quindi la ricerca copre solo
+  // quella finestra: vicino alla riva pochi tratti invece di 129. Il risultato è il minimo esatto sui tratti (la potatura dei tratti
+  // guarda la loro estremità più vicina, prima guardava l'inizio e poteva saltare il tratto migliore a meno di un metro dal tetto).
+  const C2C = { g: 2, W: 0, H: 0, y0: 0, d: null };
+  function c2Raw(x, y, cap) {
+    let best = cap * cap; const N = C2T.N, S = C2T.S, i0 = Math.max(0, Math.floor(x - cap - C2T.x0)), i1 = Math.min(N.length - 2, Math.ceil(x + cap - C2T.x0));
     for (let i = i0; i <= i1; i++) {
-      const xa = C2T.x0 + i, dx = x - xa; if (dx * dx >= best && xa < x) continue;
+      const xa = C2T.x0 + i, dx = x - xa;
+      if (xa > x) { if (dx * dx >= best) break; } else if (dx > 1 && (dx - 1) * (dx - 1) >= best) continue;   // il tratto va da xa a xa+1: l'estremità più vicina
       let ya = N[i], yb = N[i + 1];
       if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
       ya = S[i]; yb = S[i + 1];
       if (!(ya > 5e3 || yb > 5e3 || ya < -5e3 || yb < -5e3)) { const ey = yb - ya, L2 = 1 + ey * ey, t = Math.max(0, Math.min(1, (dx * 1 + (y - ya) * ey) / L2)), qx = dx - t, qy = y - ya - ey * t, d2 = qx * qx + qy * qy; if (d2 < best) best = d2; }
     }
     return Math.sqrt(best);
+  }
+  function c2Dist(x, y, cap) {   // distanza (positiva) dalla riva più vicina, fino a cap
+    c2Tab();
+    if (!C2C.d) { let lo = 1e9, hi = -1e9; for (let i = 0; i < C2T.N.length; i++) { const a = C2T.N[i], b = C2T.S[i]; if (a > -5e3 && a < 5e3) { if (a < lo) lo = a; if (a > hi) hi = a; } if (b > -5e3 && b < 5e3) { if (b < lo) lo = b; if (b > hi) hi = b; } }
+      C2C.y0 = Math.floor(lo - 70); C2C.W = Math.ceil((C2T.x1 - C2T.x0) / C2C.g) + 2; C2C.H = Math.ceil((hi + 70 - C2C.y0) / C2C.g) + 2; C2C.d = new Float32Array(C2C.W * C2C.H).fill(-1); }
+    const i = Math.floor((x - C2T.x0) / C2C.g), j = Math.floor((y - C2C.y0) / C2C.g);
+    if (i < 0 || j < 0 || i >= C2C.W || j >= C2C.H) return c2Raw(x, y, cap);
+    const k = j * C2C.W + i; let dc = C2C.d[k]; if (dc < 0) dc = C2C.d[k] = c2Raw(C2T.x0 + (i + .5) * C2C.g, C2C.y0 + (j + .5) * C2C.g, 64);
+    return c2Raw(x, y, Math.min(cap, dc + C2C.g * .7072 + .01));   // la finestra: la distanza del centro più la mezza diagonale (il tetto resta cap)
   }
   // ================= [arcipelago] L'ARCIPELAGO TUTTO ATTORNO =================
   // Le isole stanno in coordinate «di progetto» (quelle dell'isola grande) e possono avere x e y negative: la mappa grande le
@@ -3223,11 +3238,32 @@ var World = (function () {
     // carreggiata (e nel marciapiede delle vie di città) di 30-70 cm. Ogni casa si arretra: a passi di 5 cm, dal lato che libera di più
     // (il fronte, o il fianco sull'incrocio), finché carreggiata e 1,25 m di marciapiede (le vie di città) restano liberi (5 cm di aria), al più 2,4 m e mai sotto
     // 1,8 m di lato. La casa prende la sua scatola (cx, cy, lw, ld) e le caselle che restano fuori tornano selciato
+    // [compenetra] LE CASE FUORI DAI PEZZI GRANDI: la facciata e la navata della chiesa, i sottopassi, il posto di blocco del Garante,
+    // la caserma, le fontane, la torre dell'acqua si posano dopo le case e prendevano solo le caselle libere (pzRis non tocca bIndex): la
+    // casa che c'era restava dentro il pezzo (la navata 3,75 m dentro casa_150, il sottopasso 2,7 m dentro casa_475). Qui, con la pianta
+    // vera di ogni pezzo (misurata sul modello di pezzi_citta.js, nel suo riferimento), la casa che ci entra arretra dal lato del pezzo
+    // (al più fino a 1,8 m di lato); se non ci sta e non ha nome si leva (le sue caselle tornano selciato, come le case sulla via).
+    const PZDEM = new Set();
+    { const FP = { facciata_chiesa: o => [-.6, (o.w || 9.6) + .6, -(o.corpo || 10) - 4.3, 1.8], arco_sottopasso: () => [-.15, 7.55, -5.5, 5.5], caserma: o => [-.2, (o.L || 28) + .2, -(o.p || 7) / 2 - .2, (o.p || 7) / 2 + .7],
+        muro_garante: o => [0, o.L || 24, o.posto_blocco ? -4.5 : o.camminamento ? -1.6 : -.5, o.posto_blocco || o.riflettore ? 5.8 : .5], fontana: o => { const r = (o.r || 1.8) + .4; return [-r, r, -r, r]; }, torre_acqua: o => { const r = o.r || 3.2; return [-r, r, -r, r + .1]; } };
+      const box = b => b.cx !== undefined ? [b.cx - b.lw / 2, b.cy - b.ld / 2, b.cx + b.lw / 2, b.cy + b.ld / 2] : [b.x * TS, b.y * TS, (b.x + b.w) * TS, (b.y + b.h) * TS];
+      const pen = (q, P) => { const A = [[q[0], q[1]], [q[2], q[1]], [q[2], q[3]], [q[0], q[3]]]; let m = Infinity;   // quanto si compenetrano la scatola dritta q e il poligono P (0 se separati)
+        for (const [ax, ay] of [[1, 0], [0, 1], [P[1][0] - P[0][0], P[1][1] - P[0][1]], [P[2][0] - P[1][0], P[2][1] - P[1][1]]]) { const l = Math.hypot(ax, ay) || 1, ux = ax / l, uy = ay / l;
+          const pa = A.map(([x, y]) => x * ux + y * uy), pb = P.map(([x, y]) => x * ux + y * uy), o = Math.min(Math.max(...pa), Math.max(...pb)) - Math.max(Math.min(...pa), Math.min(...pb)); if (o <= 0) return 0; m = Math.min(m, o); } return m; };
+      let nArr = 0;
+      PEZZI.forEach(p => { const f = FP[p.tipo]; if (!f) return; const [a0, a1, c0, c1] = f(p.opz || {}), P = [[a0, c0], [a1, c0], [a1, c1], [a0, c1]].map(([u, v]) => pzW(p, u, v));
+        const X0 = Math.min(...P.map(q => q[0])), X1 = Math.max(...P.map(q => q[0])), Y0 = Math.min(...P.map(q => q[1])), Y1 = Math.max(...P.map(q => q[1]));
+        B.forEach(b => { if (b.pezzo || b.__tierOf || b.lighthouse || b.lotto || b.i === p.b || PZDEM.has(b) || (b.rot && !b.sign && !b.shop)) return; const q0 = box(b); if (q0[2] <= X0 || q0[0] >= X1 || q0[3] <= Y0 || q0[1] >= Y1 || pen(q0, P) <= .05) return;
+          let best = null; for (let s = 0; s < 4; s++) for (let d = .1; d <= 4.01; d += .1) { const q = q0.slice(); if (s === 0) q[0] += d; else if (s === 1) q[2] -= d; else if (s === 2) q[1] += d; else q[3] -= d; if (q[2] - q[0] < 1.8 || q[3] - q[1] < 1.8) break; if (pen(q, P) <= .02) { if (!best || d < best.d) best = { q, d }; break; } }
+          if (!best) { if ((!b.name || b.shop) && !b.gov && b.house) PZDEM.add(b); return; }
+          const q = best.q.map(v => +v.toFixed(3)); Object.assign(b, { cx: +((q[0] + q[2]) / 2).toFixed(3), cy: +((q[1] + q[3]) / 2).toFixed(3), lw: +(q[2] - q[0]).toFixed(3), ld: +(q[3] - q[1]).toFixed(3), arretrata: +(b.arretrata || 0).toFixed(2) }); nArr++;
+          for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, px = (tx + .5) * TS, py = (ty + .5) * TS; if (bIndex[i] === b.i && (px < q[0] || px > q[2] || py < q[1] || py > q[3])) { grid[i] = T.COB; bIndex[i] = -1; } } }); });
+      CITY.caseFuoriPezzi = nArr; CITY.caseLevatePezzi = PZDEM.size; }
     { const MARC = 1.25; const VIE = CITY.roads.filter(rd => rd.kind === 'citta' || rd.kind === 'vicolo' || rd.kind === 'litoranea').map(rd => ({ rd, hw: rd.w / 2 + (rd.kind === 'citta' || rd.kind === 'litoranea' ? MARC : 0) + .05, Q: rd.pts, bb: rd.pts.reduce((m, [x, y]) => [Math.min(m[0], x), Math.min(m[1], y), Math.max(m[2], x), Math.max(m[3], y)], [1e9, 1e9, -1e9, -1e9]) }));
       const aria = (x, y, V) => { let m = 1e9; for (const v of V) { const Q = v.Q; for (let k = 0; k < Q.length - 1; k++) { const [ax, ay] = Q[k], [bx, by] = Q[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = clamp(((x - ax) * dx + (y - ay) * dy) / L2, 0, 1); m = Math.min(m, dist(x, y, ax + dx * t, ay + dy * t) - v.hw); } } return m; };
       const ariaBox = (x0, y0, x1, y1, V) => { let m = 1e9; const nx = Math.max(2, Math.ceil((x1 - x0) / .25)), ny = Math.max(2, Math.ceil((y1 - y0) / .25)); for (let k = 0; k <= nx; k++) { const x = x0 + (x1 - x0) * k / nx; m = Math.min(m, aria(x, y0, V), aria(x, y1, V)); } for (let k = 0; k <= ny; k++) { const y = y0 + (y1 - y0) * k / ny; m = Math.min(m, aria(x0, y, V), aria(x1, y, V)); }
         for (const v of V) for (const [x, y] of v.Q) if (x > x0 && x < x1 && y > y0 && y < y1) m = Math.min(m, -v.hw); return m; };   // l'asse che passa dentro la scatola
-      let nA = 0, nNo = 0, nGr = 0; const NO = [], DEM = new Set();
+      let nA = 0, nNo = 0, nGr = 0; const NO = [], DEM = new Set(PZDEM);   /* [compenetra] anche le case levate dai pezzi grandi */
       B.forEach(b => { if (b.pezzo || b.military || b.__tierOf || b.lotto || b.lighthouse) return; let x0 = b.cx !== undefined ? b.cx - b.lw / 2 : b.x * TS, y0 = b.cy !== undefined ? b.cy - b.ld / 2 : b.y * TS, x1 = x0 + (b.lw !== undefined ? b.lw : b.w * TS), y1 = y0 + (b.ld !== undefined ? b.ld : b.h * TS);
         const V = VIE.filter(v => v.bb[0] - v.hw - 4 < x1 && v.bb[2] + v.hw + 4 > x0 && v.bb[1] - v.hw - 4 < y0 + (y1 - y0) && v.bb[3] + v.hw + 4 > y0); if (!V.length || ariaBox(x0, y0, x1, y1, V) >= 0) return;
         if (b.tiers) { delete b.tiers; nGr++; }   // il palazzo a gradoni sulla via torna un corpo solo: i gradoni stanno sulle caselle, la scatola arretrata no
@@ -3254,7 +3290,7 @@ var World = (function () {
         CASE.forEach(b => { const q = BX.get(b), i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32); const k = kk(i, j); let A = IX.get(k); if (!A) IX.set(k, A = []); A.push(b); });
         const vicine = (b, q) => { const i = Math.floor((q[0] + q[2]) / 32), j = Math.floor((q[1] + q[3]) / 32), R = []; for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (const o of IX.get(kk(i + a, j + c)) || []) if (o !== b) R.push(o); return R; };
         const rel = (a, c) => { const ox = Math.min(a[2], c[2]) - Math.max(a[0], c[0]), oy = Math.min(a[3], c[3]) - Math.max(a[1], c[1]); return ox > 0 && oy > 0 ? { pe: Math.min(ox, oy), ox, oy } : { gap: Math.hypot(Math.max(0, -ox), Math.max(0, -oy)), ox, oy }; };
-        const pesa = (a, c) => { const r = rel(a, c); if (r.pe !== undefined) return r.pe > .35 ? 30 : 0; if (r.gap <= .05) return 0; if (r.gap < 1.2) return 10; if (r.gap < 2.6 && Math.min(Math.max(a[2] - a[0], a[3] - a[1]), Math.max(c[2] - c[0], c[3] - c[1])) > 3) return 1; return 0; };
+        const pesa = (a, c) => { const r = rel(a, c); if (r.pe !== undefined) return r.pe > .02 ? 30 : 0;   /* [compenetra] prima 35 cm: la casa accostata entrava 20 cm nella vicina di fianco (muri dentro muri, gronde nei tetti) */ if (r.gap <= .05) return 0; if (r.gap < 1.2) return 10; if (r.gap < 2.6 && Math.min(Math.max(a[2] - a[0], a[3] - a[1]), Math.max(c[2] - c[0], c[3] - c[1])) > 3) return 1; return 0; };
         const voto = (b, q) => vicine(b, q).reduce((s, o) => rotT(o) === 0 ? s + pesa(q, BX.get(o)) : s, 0);
         // (fuori dalle sue caselle il muro può uscire di meno di mezza casella: non copre il centro di nessuna casella d'altri)
         const lecita = (b, q) => { if (q[2] - q[0] < 1.2 || q[3] - q[1] < 1.2) return false; const T0 = [b.x * TS - TS / 2 + .01, b.y * TS - TS / 2 + .01, (b.x + b.w) * TS + TS / 2 - .01, (b.y + b.h) * TS + TS / 2 - .01]; if (q[0] < T0[0] || q[1] < T0[1] || q[2] > T0[2] || q[3] > T0[3]) return false;
@@ -3320,8 +3356,11 @@ var World = (function () {
         for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx, d = Math.abs(ty * TS + 1 - VY); if (grid[i] === T.WALK && d > P.d0 && d < P.d1) nW++; }
         if (nW * 2 >= b.w && b.w >= 2) { b.vittoria = true; b.fl = Math.min(b.fl, 3); } });
       B.forEach(b => { if (b.vittoria) sides[b.y * TS < VY ? 0 : 1].push(b); });
+      // [nitida] la cortina scavalca solo le fessure fra due case (1 m), non i varchi: sopra un varco di 2-4 m i piani sopra le arcate
+      // restavano un muro ritto nel vuoto, senza casa dietro (strumenti/muri_vaganti.js, fuori_casa). ?vecchiapulizia: 4,2 m come prima
+      const PONTE_PORT = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? 4.2 : 1;
       sides.forEach((L, sd) => { if (P.lati && !P.lati.includes(sd)) return; L.sort((a, b) => a.x - b.x); const runs = []; let cur = null;
-        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= 4.2) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
+        L.forEach(b => { const xa = b.x * TS, xb = (b.x + b.w) * TS; if (cur && xa - cur.xb <= PONTE_PORT) { cur.xb = Math.max(cur.xb, xb); cur.bs.push(b); } else runs.push(cur = { xa, xb, bs: [b] }); });
         // [volumi2] non più un blocco unico: il tratto si divide in corpi di 2-3 campate (8-12 m), ognuno col suo cornicione e la sua quota,
         // arcate + 1 o 2 piani (al più tre piani in tutto) che si alternano; sul lato sud (verso la camera) prevalgono i corpi bassi, così
         // la strada si vede; il corpo più lungo del tratto porta le lettere. La torre littoria resta l'unica cosa alta.
@@ -4367,6 +4406,72 @@ var World = (function () {
         lati.push({ x: (tx + ex) * TS, y: (ty + ey) * TS, ux, uy, L: TS, nx: a, ny: c, citta: tx >= CITTA_X }); } }   // il lato: da (x, y) lungo (ux, uy) per L metri; (nx, ny) verso la sabbia
     W.SEA.terrapieni = lati; W.SEA.terrapieniM = fatti; return W;
   }
+  // [nitida] LE CASETTE DI TROPPO. Il committente: «questa casa coi coppi forse è di troppo, sta in mezzo alla strada». Una casetta piccola
+  // (al più 9 caselle, 36 m²) senza nome, senza bottega e senza luogo, che sta quasi tutta libera in mezzo al selciato (tre quarti del giro
+  // attorno è suolo libero: via, marciapiede, piazza, ciottolato, banchina; o il 60% via, marciapiede, piazza o banchina) o incastrata fra due tratti di carreggiata, rompe la
+  // continuità della strada e si legge come un errore: se ne va, e il suo posto torna al suolo che ha attorno (il marciapiede, la piazza, il
+  // ciottolato) alla quota dei vicini. Le case grandi, i portici, le baracche dei quartieri poveri a schiera restano. ?vecchiapulizia: com'era.
+  // W.casetteTolte: quante e dove (strumenti/muri_vaganti.js le conta).
+  function casette(W, passo) {   // passo: tolte le prime, una vicina può restare sola in mezzo al selciato; si rifà finché ce ne sono (al più tre volte)
+    passo = passo || 0; if (!passo) W.casetteTolte = [];
+    if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, GHx = W.GH, B = W.BUILDINGS, PL = W.PLACES || {}, OPEN = new Set([T.VIA, T.WALK, T.PIAZZA, T.COB]), LARGO = new Set([T.VIA, T.WALK, T.PIAZZA]), tolte = [];
+    const luogo = new Set(Object.values(PL).map(p => p && p.id));
+    const giro = b => { const L = []; for (let ty = b.y - 1; ty <= b.y + b.h; ty++) for (let tx = b.x - 1; tx <= b.x + b.w; tx++) { const e = tx === b.x - 1 || tx === b.x + b.w || ty === b.y - 1 || ty === b.y + b.h; if (!e || tx < 0 || ty < 0 || tx >= GWx || ty >= GHx) continue; L.push(ty * GWx + tx); } return L; };
+    const via = (b, side) => { let n = 0, t = 0; const [a, c] = side; if (a) { const tx = a > 0 ? b.x + b.w : b.x - 1; for (let ty = b.y; ty < b.y + b.h; ty++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } else { const ty = c > 0 ? b.y + b.h : b.y - 1; for (let tx = b.x; tx < b.x + b.w; tx++) { t++; if (W.roadW[ty * GWx + tx] > 0) n++; } } return t && n * 2 >= t; };
+    const via2 = b => (via(b, [1, 0]) && via(b, [-1, 0])) || (via(b, [0, 1]) && via(b, [0, -1]));
+    const PORT = (W.pezzi || []).filter(p => p.tipo === 'portico').map(p => { const L = p.opz.campate * p.opz.campata, x0 = Math.cos(p.rot || 0) < 0 ? p.x - L : p.x; return [x0, x0 + L, p.y]; });
+    const dietroPortico = b => { const cx = (b.x + b.w / 2) * TS, cy = (b.y + b.h / 2) * TS; return PORT.some(([x0, x1, y]) => cx > x0 - 2 && cx < x1 + 2 && Math.abs(cy - y) < 4 + b.h * TS / 2); };   // regge la cortina dei portici
+    B.forEach(b => { if (!b.house || b.pezzo || b.shack || b.name || b.shop || b.shopFront || b.sign || b.military || b.kiosk || b.vittoria || b.sottoPortico || b.portico || b.lighthouse || b.isola || luogo.has(b.id) || dietroPortico(b)) return;   // le baracche a schiera del quartiere povero restano
+      if (W.zone[b.y * GWx + b.x] !== Z.CITTA || (b.use && b.use !== 'casa')) return; const n = b.w * b.h; if (n > 9) return;
+      const R = giro(b), quota = R.filter(i => OPEN.has(g[i])).length / R.length, largo = R.filter(i => LARGO.has(g[i])).length / R.length;
+      if (!(quota >= .75 || largo >= .6 || via2(b))) return;
+      if (n > 2 && R.some(i => g[i] === T.BLD)) return;   // appoggiata a un'altra casa (più grande di un annesso): è un tetto dei giri sui tetti, resta
+      b.__via = { R, quota, largo }; tolte.push(b); });
+    if (!tolte.length) return W;
+    const togli = new Set(tolte);
+    tolte.forEach(b => { const R = b.__via.R, cnt = new Map(); let h = 0, nh = 0, rc = 0;
+      R.forEach(i => { const v = g[i]; if (OPEN.has(v) && v !== T.VIA) cnt.set(v, (cnt.get(v) || 0) + 1); if (OPEN.has(v)) { h += W.elev[i]; nh++; rc = Math.max(rc, W.reach[i]); } });
+      let v = T.COB, best = 0; cnt.forEach((c, k) => { if (c > best) { best = c; v = k; } }); if (!cnt.size && R.some(i => g[i] === T.VIA)) v = T.WALK;
+      for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GWx + tx; g[i] = v; W.bIndex[i] = -1; if (nh) W.elev[i] = h / nh; W.reach[i] = rc; }
+      delete b.__via; });
+    // gli indici: al posto della casetta tolta va l'ultima della lista (una casa delle isole, lontana), così le case della città tengono il
+    // loro indice e con lui tutto quello che ne discende (i semi delle insegne, degli allacci, delle facciate): la città resta com'era
+    const sposta = new Map(); tolte.map(b => B.indexOf(b)).sort((a, c) => c - a).forEach(j => { const ult = B.pop(); if (j < B.length) { B[j] = ult; sposta.set(ult.i, j); ult.i = j; } });
+    for (let i = 0; i < W.bIndex.length; i++) { const j = W.bIndex[i]; if (j >= 0 && sposta.has(j)) W.bIndex[i] = sposta.get(j); }
+    B.forEach((b, j) => { b.i = j; });
+    W.casetteTolte = W.casetteTolte.concat(tolte.map(b => ({ id: b.id, x: Math.round((b.x + b.w / 2) * TS), y: Math.round((b.y + b.h / 2) * TS), w: b.w * TS, h: b.h * TS, passo })));
+    return passo < 2 ? casette(W, passo + 1) : W;
+  }
+  // [nitida] LE CASE SUL MARCIAPIEDE. Il committente: «dove il marciapiede è una striscia sottile e la casa ci sta sopra a metà». Il
+  // marciapiede delle vie di città è la fascia di 2,1 m oltre il bordo della carreggiata (render.js, swField): una casa col fronte a meno di
+  // 1,5 m dal bordo (il minimo per camminare in due) lo copre a metà e lascia una striscia. Se la casa è profonda almeno tre caselle si arretra di una casella (due se serve e
+  // ne restano tre): il fronte torna sul filo del lotto, la casella liberata diventa marciapiede, la porta e il luogo arretrano con lei. La bottega
+  // arretra col suo fronte (porta e vetrine). Le case basse di fondo (due caselle) restano: lì render.js chiude il marciapiede contro il muro
+  // (niente lastre sotto la casa). ?vecchiapulizia: com'era. W.caseArretrate: quali.
+  function arretra(W) {
+    W.caseArretrate = []; if (typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search)) return W;
+    const g = W.grid, GWx = W.GW, B = W.BUILDINGS, MIN = 1.5, R = (W.roads || []).filter(rd => rd && rd.pts && rd.pts.length > 1 && (rd.kind === 'citta' || rd.kind === 'litoranea'));
+    const bordo = (x, y) => { let d = 1e9; R.forEach(rd => { for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, ay] = rd.pts[k], [bx, by] = rd.pts[k + 1], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); d = Math.min(d, Math.hypot(ax + dx * t - x, ay + dy * t - y) - (rd.w || 6) / 2); } }); return d; };
+    B.forEach(b => { if (b.pezzo || b.military || b.kiosk || b.lighthouse || b.isola || b.rot || b.tiers || b.sottoPortico || b.vittoria) return;   // solo lungo le vie di città (anche la casa sul lungomare fuori dalla zona)
+      // i quattro lati: [verso, profondità in caselle, i punti del filo]
+      const lati = [['S', b.h, k => [(b.x + k) * TS, (b.y + b.h) * TS], b.w], ['N', b.h, k => [(b.x + k) * TS, b.y * TS], b.w], ['E', b.w, k => [(b.x + b.w) * TS, (b.y + k) * TS], b.h], ['W', b.w, k => [b.x * TS, (b.y + k) * TS], b.h]];   // gli spigoli compresi
+      let best = null; lati.forEach(([f, prof, at, n]) => { let d = 1e9; for (let k = 0; k <= n * 2; k++) d = Math.min(d, bordo(...at(k / 2))); if (d < MIN && d > -1.5 && (!best || d < best.d)) best = { f, prof, d }; });
+      if (!best) return; const serve = Math.ceil((MIN + .4 - best.d) / TS), SF = b.shopFront; if (best.prof - serve < 3 || (SF && SF.face && SF.face !== best.f)) return;   // la bottega arretra solo col suo fronte
+      const NV = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[best.f];
+      for (let s = 0; s < serve; s++) { const f = best.f, cells = [];
+        if (f === 'S') { const ty = b.y + b.h - 1; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.h--; }
+        else if (f === 'N') { const ty = b.y; for (let tx = b.x; tx < b.x + b.w; tx++) cells.push(ty * GWx + tx); b.y++; b.h--; }
+        else if (f === 'E') { const tx = b.x + b.w - 1; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.w--; }
+        else { const tx = b.x; for (let ty = b.y; ty < b.y + b.h; ty++) cells.push(ty * GWx + tx); b.x++; b.w--; }
+        cells.forEach(i => { g[i] = T.WALK; W.bIndex[i] = -1; W.reach[i] = W.reach[i - NV[1] * GWx - NV[0]] || W.reach[i]; });
+        if (SF && SF.door) { SF.door = [SF.door[0] + NV[0], SF.door[1] + NV[1]]; if (SF.span) SF.span = SF.span.map(([x, y]) => [x + NV[0], y + NV[1]]); }
+        if (b.door) { const [dx, dy] = b.door; if (f === 'S' && dy === b.y + b.h + 1) b.door = [dx, dy - 1]; else if (f === 'N' && dy === b.y - 2) b.door = [dx, dy + 1]; else if (f === 'E' && dx === b.x + b.w + 1) b.door = [dx - 1, dy]; else if (f === 'W' && dx === b.x - 2) b.door = [dx + 1, dy]; } }
+      if (b.door) { let [dx, dy] = b.door; if (dx >= b.x - 1 && dx <= b.x + b.w && (dx === b.x - 1 || dx === b.x + b.w)) dy = Math.max(b.y, Math.min(b.y + b.h - 1, dy)); else dx = Math.max(b.x, Math.min(b.x + b.w - 1, dx)); b.door = [dx, dy]; }   // la porta su un fianco resta sul fianco
+      const P = W.PLACES && W.PLACES[b.id], pd = (SF && SF.door) || b.door; if (P && pd) { P.tx = pd[0]; P.ty = pd[1]; P.x = P.tx * TS + TS / 2; P.y = P.ty * TS + TS / 2; }
+      W.caseArretrate.push({ id: b.id, f: best.f, prima: +best.d.toFixed(2), caselle: serve }); });
+    return W;
+  }
   // [costa] GLI SCOGLI FUORI DALLE STRADE: gli scogli grandi sotto le mura (scoglio_mura_*) erano messi sulla riva vecchia (NorthY):
   // nella città nuova lì passano il Lungomare di Tramontana, la passeggiata e le banchine (la segnalazione della pulizia: fino a 9,8 m
   // dentro la carreggiata). Ogni scoglio che tocca una strada (la carreggiata più 2,6 m di marciapiede) o una casella della città
@@ -4402,7 +4507,7 @@ var World = (function () {
   const daCotto = () => { const L = COT && CT.chiudi('mondo', { W: null }, COT, p => p === 'W.vegetazione.fitto' ? rifare : FUNZ[p.slice(2)]), W = L && L.W; if (!W) return null;
     ISLES_ON = true; const RF = rivaFunzioni(W, W.grid, W.elev, W.vh, W.velev, W.__isl); W.__vfix = RF.__vfix; W.__ix = RF.__ix; W.__toD = RF.__toD; W.quotaRiva = RF.quotaRiva; return W; };
   const W0c = daCotto(), COTTO = !!W0c;   // COTTO: il mondo viene dal file cotto
-  const W = W0c || scogliFuori(costa2Arredo(terrapieni(mnTaglia(expand(generate())))));
+  const W = W0c || scogliFuori(costa2Arredo(terrapieni(casette(arretra(mnTaglia(expand(generate())))))));   // [nitida] prima le case arretrano, poi le casette sole se ne vanno
   W.preview = s => preview(W, s);
   // [botteghe] una bottega aperta a partita iniziata (economia, ordine, fazioni) sta anch'essa sotto casa se il fronte lo permette;
   // il portone resta dov'è. Torna true se la bottega ha il suo fronte.

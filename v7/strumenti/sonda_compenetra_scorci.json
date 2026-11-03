@@ -1,0 +1,9 @@
+{
+  "nota": "[compenetra] i posti della sonda delle compenetrazioni (strumenti/sonda_compenetra.js) per il prima e il dopo, inquadrati dall'alto: x, y il punto in strada dove sta il personaggio (lontano, perché il taglio della casa non tocchi l'incrocio), dx, dy fin dove guarda la camera (metri di gioco); zoom come ui.zoom, ora in minuti. PV_QUERY='?cittanuova&leggera' node strumenti/galleria.js <cartella> strumenti/sonda_compenetra_scorci.json (il prima: PV_PAGINA con la build vecchia)",
+  "pulita": true,
+  "scorci": [
+    { "nome": "c1_chiesa_casa150", "titolo": "La navata della Chiesa Madre e casa_150", "x": 1396, "y": 291, "dx": -12, "dy": -7, "zoom": 0.3, "ora": 630, "meteo": "sereno" },
+    { "nome": "c2_sottopasso_casa475", "titolo": "Il sottopasso di Vico del Glacis e casa_475", "x": 1497, "y": 305, "dx": -10, "dy": -12, "zoom": 0.3, "ora": 630, "meteo": "sereno" },
+    { "nome": "c3_caserma_ministero", "titolo": "La caserma e il Ministero dell'Ordine", "x": 1495, "y": 389, "dx": -10, "dy": -12, "zoom": 0.3, "ora": 630, "meteo": "sereno" }
+  ]
+}

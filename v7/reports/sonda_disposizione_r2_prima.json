@@ -1,0 +1,2600 @@
+{
+ "voci": 2761,
+ "vasi": 830,
+ "architettura": 7140,
+ "istanze": 31148,
+ "case": 547,
+ "mesh": 6352,
+ "difetti": [
+  [
+   "c_muro_staccato",
+   "contatore",
+   "buildDetails:88135",
+   1286.29,
+   444.02,
+   1.62,
+   "0.34 m"
+  ],
+  [
+   "e_sbalzo",
+   "lettino",
+   "buildPropsIsland:77420",
+   1460.65,
+   410.38,
+   2.2,
+   "0.71 m sotto uno spigolo · groundH 0.69"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildSets:84305",
+   1473.16,
+   327.05,
+   7.04,
+   "0.72 m sotto uno spigolo · groundH 0"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildSets:84305",
+   1474.11,
+   327.2,
+   7.05,
+   "0.72 m sotto uno spigolo · groundH 0"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildSets:84305",
+   1479.5,
+   319.32,
+   7.05,
+   "0.72 m sotto uno spigolo · groundH 0"
+  ],
+  [
+   "d_sospeso",
+   "cassa",
+   "buildSets:84305",
+   1483.67,
+   320.81,
+   7.03,
+   "0.68 m"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildSets:84351",
+   1387.9,
+   383.6,
+   1.5,
+   "0.72 m sotto uno spigolo · groundH 0.04"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildSets:84351",
+   1386.94,
+   383.3,
+   1.52,
+   "0.75 m sotto uno spigolo · groundH 0.03"
+  ],
+  [
+   "e_sbalzo",
+   "bitta",
+   "buildQuayWalls:76805",
+   1503.3,
+   317,
+   1.74,
+   "0.98 m sotto uno spigolo · groundH 0.98"
+  ],
+  [
+   "e_sbalzo",
+   "bitta",
+   "buildQuayWalls:76805",
+   1503.3,
+   337,
+   1.96,
+   "1.06 m sotto uno spigolo · groundH 1.06"
+  ],
+  [
+   "e_sbalzo",
+   "bitta",
+   "buildQuayWalls:76805",
+   1503.3,
+   363,
+   1.59,
+   "0.91 m sotto uno spigolo · groundH 0.91"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildStrade31:79327",
+   640.37,
+   395.24,
+   6.3,
+   "0.34 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildStrade31:79327",
+   848.49,
+   382.54,
+   3.9,
+   "0.42 m sotto uno spigolo · groundH 1.19"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildStrade31:79327",
+   1447.03,
+   396.84,
+   2.04,
+   "0.14 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildStrade31:79327",
+   777.43,
+   350.76,
+   7.21,
+   "0.3 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "banco:79224",
+   1374.58,
+   303.67,
+   1.93,
+   "0.16 m"
+  ],
+  [
+   "d_sospeso",
+   "arredo",
+   "buildWinter:87565",
+   1563.62,
+   332.78,
+   3.76,
+   "3.11 m"
+  ],
+  [
+   "d_sospeso",
+   "container",
+   "container:84604",
+   1572.89,
+   393.77,
+   3.97,
+   "2.6 m"
+  ],
+  [
+   "d_sospeso",
+   "container",
+   "container:84604",
+   1575.19,
+   394.83,
+   3.99,
+   "2.6 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   855.59,
+   355.93,
+   6.04,
+   "0.1 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   859.79,
+   362.71,
+   7.19,
+   "0.12 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   858.17,
+   370.63,
+   7.2,
+   "0.15 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   853.07,
+   373.44,
+   7.28,
+   "0.14 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   851.6,
+   373.81,
+   7.21,
+   "0.18 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   849.11,
+   374.71,
+   6.9,
+   "0.14 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   828.86,
+   380.52,
+   7.02,
+   "0.14 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   817.67,
+   381.46,
+   7.48,
+   "0.12 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   815.49,
+   381.25,
+   8.79,
+   "0.65 m sotto uno spigolo · groundH 0.63"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   796.83,
+   379.22,
+   10.12,
+   "0.1 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   790.78,
+   377.91,
+   9.07,
+   "0.32 m sotto uno spigolo · groundH 0.34"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   787.92,
+   377.22,
+   9.21,
+   "0.31 m sotto uno spigolo · groundH 0.31"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   784.75,
+   376.36,
+   10.1,
+   "0.66 m sotto uno spigolo · groundH 0.64"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   784.04,
+   374.71,
+   8.95,
+   "0.6 m sotto uno spigolo · groundH 0.63"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   785.16,
+   372.23,
+   8.52,
+   "0.42 m sotto uno spigolo · groundH 0.41"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   785.23,
+   369.75,
+   8.33,
+   "0.91 m sotto uno spigolo · groundH 0.93"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   788.32,
+   359.81,
+   7.05,
+   "0.14 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   786.75,
+   421.92,
+   12.95,
+   "0.16 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   769.51,
+   460.9,
+   13.22,
+   "0.11 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87625",
+   772.14,
+   461.89,
+   13.09,
+   "0.19 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   774.3,
+   462.36,
+   13.41,
+   "1.09 m sotto uno spigolo · groundH 1.11"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "buildWinter:87625",
+   776.68,
+   463.1,
+   11.73,
+   "2.96 m sotto uno spigolo · groundH 3.02"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87672",
+   1106.19,
+   346.08,
+   11.85,
+   "0.25 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "hut:87352",
+   662.5,
+   360.53,
+   7.45,
+   "0.13 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   1194.04,
+   289.6,
+   2.75,
+   "0.11 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   1125.32,
+   279.43,
+   6.46,
+   "0.22 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   960.33,
+   254.47,
+   7.65,
+   "0.23 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   811.17,
+   339.91,
+   6.61,
+   "0.18 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   672.1,
+   487.63,
+   3.01,
+   "0.26 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   692.43,
+   503.29,
+   1.27,
+   "0.13 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   745.16,
+   493.92,
+   3.22,
+   "0.21 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   777.14,
+   479.56,
+   4.14,
+   "0.25 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   849.02,
+   401.33,
+   2.25,
+   "0.3 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   913.19,
+   387.38,
+   1.48,
+   "0.21 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   933.63,
+   401.36,
+   1.55,
+   "0.27 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   959.17,
+   427.88,
+   2.83,
+   "0.44 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildWinter:87749",
+   1064.93,
+   415.89,
+   -0.38,
+   "0.34 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "oggetti35:81966",
+   1458.77,
+   398.32,
+   2.54,
+   "0.27 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "oggetti35:81955",
+   1286.72,
+   349.89,
+   2.77,
+   "0.67 m sotto uno spigolo · groundH 0.95"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "oggetti35:81966",
+   1440.5,
+   383.74,
+   4.9,
+   "0.11 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "oggetti35:81966",
+   1473.68,
+   282.74,
+   5.28,
+   "0.27 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "oggetti35:81966",
+   1496.32,
+   312.71,
+   5.18,
+   "0.27 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "one:82011",
+   1524.4,
+   338.5,
+   2.28,
+   "0.39 m"
+  ],
+  [
+   "e_sbalzo",
+   "arredo",
+   "one:82011",
+   1526.82,
+   342.19,
+   2.86,
+   "0.79 m sotto uno spigolo · groundH 0.79"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildStrade1:80175",
+   1276.97,
+   384.05,
+   0.3,
+   "0.1 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildStrade1:80175",
+   1288.96,
+   259.38,
+   1.3,
+   "0.1 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildSegnavia1:80485",
+   711.85,
+   396.82,
+   36.34,
+   "0.15 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildSegnavia1:80485",
+   1031.92,
+   335.5,
+   6.83,
+   "0.12 m"
+  ],
+  [
+   "d_affondato",
+   "arredo",
+   "buildSegnavia1:80485",
+   1170.76,
+   344.92,
+   9.67,
+   "0.12 m"
+  ],
+  [
+   "d_affondato",
+   "sedia",
+   "buildSegni1:83464",
+   1359.74,
+   349.9,
+   1.5,
+   "0.15 m"
+  ],
+  [
+   "e_sbalzo",
+   "sedia",
+   "buildSegni1:83464",
+   1447.1,
+   274.01,
+   3.74,
+   "0.5 m sotto uno spigolo · groundH 0.02"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   1423.86,
+   369.78,
+   12.09,
+   "0.05 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   1016.01,
+   401.75,
+   10.89,
+   "0.11 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   1092.23,
+   425.17,
+   9.95,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   992.84,
+   377.13,
+   9.47,
+   "0.05 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   992,
+   387.75,
+   9.26,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "fronteBottega:83903",
+   1460.5,
+   279.3,
+   5.19,
+   "0.54 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "fronteBottega:83903",
+   1460.5,
+   278.7,
+   5.19,
+   "0.67 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "fronteBottega:83903",
+   1423.3,
+   315.5,
+   5.87,
+   "0.75 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "fronteBottega:83903",
+   1422.7,
+   315.5,
+   5.87,
+   "0.87 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta_pesce",
+   "fronteBottega:83903",
+   1384.52,
+   379.3,
+   2,
+   "1.02 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta_pesce",
+   "fronteBottega:83903",
+   1384.52,
+   378.7,
+   2,
+   "0.85 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   966.91,
+   318.2,
+   8.75,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   991.86,
+   409.84,
+   8.61,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   781.06,
+   396.17,
+   17.55,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   985.38,
+   424.12,
+   8.14,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildModular:78967",
+   804.04,
+   389.73,
+   17.22,
+   "0.09 m"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildDetails:88135",
+   1324.3,
+   370.7,
+   1.14,
+   "0.62 m sotto uno spigolo · groundH 0.02"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildDetails:88135",
+   1323.3,
+   370.7,
+   1.14,
+   "0.62 m sotto uno spigolo · groundH 0.02"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildDetails:88135",
+   1322.3,
+   370.7,
+   1.14,
+   "0.62 m sotto uno spigolo · groundH 0.02"
+  ],
+  [
+   "d_affondato",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   364.3,
+   1.17,
+   "0.38 m"
+  ],
+  [
+   "d_affondato",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   363.3,
+   1.17,
+   "0.53 m"
+  ],
+  [
+   "d_affondato",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   362.3,
+   1.17,
+   "0.67 m"
+  ],
+  [
+   "d_affondato",
+   "bancale",
+   "buildDetails:88135",
+   1251.4,
+   360.3,
+   1.17,
+   "0.77 m"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildDetails:88135",
+   1435.7,
+   395.3,
+   2.65,
+   "0.76 m sotto uno spigolo · groundH 0.22"
+  ],
+  [
+   "e_sbalzo",
+   "cassa",
+   "buildDetails:88135",
+   1437.7,
+   395.3,
+   2.65,
+   "0.53 m sotto uno spigolo · groundH 0.27"
+  ],
+  [
+   "d_affondato",
+   "bancale",
+   "buildDetails:88135",
+   1439.7,
+   395.4,
+   1.91,
+   "0.3 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1290.1,
+   348.8,
+   1.05,
+   "0.28 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1289.45,
+   348.55,
+   1.05,
+   "0.2 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1287.1,
+   348.8,
+   1.05,
+   "1.02 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   375.8,
+   0.73,
+   "0.07 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   373.4,
+   0.41,
+   "0.17 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   373.4,
+   0.73,
+   "0.07 m"
+  ],
+  [
+   "d_affondato",
+   "lavagna",
+   "buildDetails:88135",
+   1301.4,
+   372.8,
+   0.41,
+   "0.19 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1441.2,
+   309.05,
+   5.54,
+   "0.26 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1441.45,
+   308.4,
+   5.54,
+   "0.27 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1441.2,
+   306.05,
+   5.54,
+   "0.25 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta",
+   "buildDetails:88135",
+   1451,
+   312.9,
+   5.94,
+   "0.13 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "buildDetails:88135",
+   1451,
+   312.9,
+   6.26,
+   "0.14 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta",
+   "buildDetails:88135",
+   1448.6,
+   312.9,
+   6.26,
+   "0.14 m"
+  ],
+  [
+   "d_sospeso",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1398.4,
+   372.97,
+   2.62,
+   "0.07 m"
+  ],
+  [
+   "e_sbalzo",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1398.4,
+   372.97,
+   2.79,
+   "0.34 m sotto uno spigolo · groundH 0.06"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   375.9,
+   0.83,
+   "0.4 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   375.9,
+   1,
+   "0.23 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   374.9,
+   0.83,
+   "0.52 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   374.9,
+   1,
+   "0.35 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   373.9,
+   0.83,
+   "0.66 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   373.9,
+   1,
+   "0.49 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1404.8,
+   375.9,
+   1.61,
+   "1.1 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1404.55,
+   376.55,
+   1.61,
+   "0.96 m"
+  ],
+  [
+   "d_affondato",
+   "fusto",
+   "buildDetails:88135",
+   1404.8,
+   378.9,
+   1.61,
+   "0.61 m"
+  ],
+  [
+   "d_affondato",
+   "ciglio:latta",
+   "TettiVissuti:dettagli",
+   1310.88,
+   327.86,
+   7.11,
+   "0.39 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1440.91,
+   275.88,
+   12.41,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1449.6,
+   281.2,
+   13.6,
+   "0.6 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1420.88,
+   289.19,
+   11.09,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1429.08,
+   288.29,
+   11.63,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1343.2,
+   287.2,
+   6.72,
+   "6.22 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1429.08,
+   296.19,
+   11.59,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1413.2,
+   299.2,
+   10.7,
+   "10.2 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1319.2,
+   309.45,
+   6.49,
+   "5.99 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1331.08,
+   308.69,
+   6.83,
+   "0.24 m"
+  ],
+  [
+   "d_affondato",
+   "ciglio:latta",
+   "TettiVissuti:dettagli",
+   1332.14,
+   309.43,
+   7.14,
+   "0.36 m"
+  ],
+  [
+   "d_affondato",
+   "stendino",
+   "TettiVissuti:panni",
+   1352.51,
+   311,
+   7.2,
+   "0.3 m"
+  ],
+  [
+   "d_affondato",
+   "cesta",
+   "TettiVissuti:panni",
+   1353.32,
+   311.12,
+   7.21,
+   "0.29 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1443.2,
+   315.2,
+   12.01,
+   "11.51 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta",
+   "TettiVissuti:orto",
+   1346.7,
+   317.38,
+   7.04,
+   "0.46 m"
+  ],
+  [
+   "d_affondato",
+   "cassetta",
+   "TettiVissuti:orto",
+   1346.7,
+   316.7,
+   7.04,
+   "0.46 m"
+  ],
+  [
+   "d_affondato",
+   "annaffiatoio",
+   "TettiVissuti:orto",
+   1347.18,
+   316.54,
+   7.04,
+   "0.46 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1390.72,
+   321.21,
+   11.97,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1423.2,
+   317.2,
+   11.2,
+   "10.7 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1361.2,
+   323.2,
+   7.64,
+   "7.14 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1437.28,
+   324.79,
+   16.83,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1364.82,
+   360.71,
+   7.86,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1375.08,
+   365.99,
+   8.27,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1387.28,
+   364.79,
+   8.89,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1416.99,
+   366.82,
+   13.54,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1409.08,
+   369.09,
+   10.48,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1335.98,
+   372.69,
+   6.84,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1461.21,
+   377.18,
+   12.63,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1417.2,
+   379.2,
+   10.44,
+   "9.94 m"
+  ],
+  [
+   "d_sospeso",
+   "gruppo:torretta",
+   "tetti3Gruppi:torretta",
+   1357.2,
+   445.2,
+   9.18,
+   "8.68 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1488.48,
+   295.99,
+   12.69,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1475.28,
+   306.29,
+   12.74,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1325.31,
+   271.28,
+   7.04,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1319.29,
+   287.22,
+   6.74,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1407.28,
+   293.29,
+   8.05,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1435.31,
+   359.28,
+   9.51,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "gatto",
+   "TettiVissuti:gatti",
+   1346.52,
+   373.31,
+   7.04,
+   "0.24 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildCity:89620",
+   1498.86,
+   335.33,
+   12.28,
+   "0.05 m"
+  ],
+  [
+   "d_sospeso",
+   "bombola",
+   "buildCase:89273",
+   1382.22,
+   365.17,
+   2.26,
+   "0.05 m"
+  ],
+  [
+   "d_sospeso",
+   "bombola",
+   "buildCase:89273",
+   1441.65,
+   396.07,
+   2.87,
+   "0.47 m"
+  ],
+  [
+   "d_sospeso",
+   "bombola",
+   "buildCase:89273",
+   1442.05,
+   396.07,
+   2.87,
+   "0.45 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1310.86,
+   329.01,
+   6.95,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1287.18,
+   356.8,
+   10.98,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1290.46,
+   368.26,
+   9.99,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1277.65,
+   369.77,
+   10.74,
+   "1.25 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1313.13,
+   376.29,
+   6.78,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1298.81,
+   378.99,
+   9.34,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1252.01,
+   395,
+   6.79,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1273.23,
+   402.58,
+   9.64,
+   "0.05 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1273.05,
+   417.97,
+   9.56,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1444.39,
+   287.26,
+   11.96,
+   "0.07 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1327.2,
+   289.42,
+   6.71,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1341.25,
+   294.23,
+   6.96,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1395.26,
+   295.13,
+   9.77,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1419.49,
+   294.88,
+   11.45,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1341.26,
+   299.13,
+   7.11,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1399.06,
+   301.98,
+   9.92,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1454.01,
+   303.13,
+   12.7,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1427.33,
+   309.25,
+   11.7,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1402.01,
+   312.45,
+   10.39,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1420.7,
+   316.57,
+   11.45,
+   "0.09 m"
+  ],
+  [
+   "d_affondato",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1347.31,
+   317.57,
+   7.04,
+   "0.46 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1370.7,
+   319.99,
+   8.76,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1384.76,
+   323.16,
+   9.11,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1386.55,
+   356.73,
+   9.64,
+   "0.06 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1412.72,
+   359.07,
+   10.8,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1343.06,
+   363.06,
+   9.42,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1360.92,
+   362.66,
+   7.79,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1367.95,
+   372.49,
+   7.93,
+   "0.09 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1371.02,
+   373.45,
+   7.76,
+   "0.06 m"
+  ],
+  [
+   "d_affondato",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1342.77,
+   372.79,
+   7.01,
+   "0.49 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1428.36,
+   376.81,
+   11.5,
+   "0.04 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1420.93,
+   379.94,
+   11.27,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1224.93,
+   546.12,
+   4.09,
+   "0.18 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1491.98,
+   294.68,
+   12.3,
+   "0.08 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1231.35,
+   269.88,
+   3.41,
+   "0.25 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1312.74,
+   272.02,
+   3.58,
+   "0.16 m"
+  ],
+  [
+   "d_sospeso",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1227.84,
+   274.47,
+   3.41,
+   "0.07 m"
+  ],
+  [
+   "f_porta",
+   "arredo",
+   "oggetti35:81966",
+   1259.2,
+   367.68,
+   1.17,
+   "0.46 m"
+  ],
+  [
+   "f_scala",
+   "tavolino",
+   "buildSegni1:83464",
+   1359.1,
+   349.9,
+   1.5,
+   "0.06 m"
+  ],
+  [
+   "f_porta",
+   "lavagna",
+   "buildSegni1:83468",
+   1358.35,
+   351.8,
+   1.34,
+   "0.22 m"
+  ],
+  [
+   "f_porta",
+   "tavolino",
+   "buildSegni1:83464",
+   1447.1,
+   275.9,
+   3.74,
+   "0.16 m"
+  ],
+  [
+   "f_porta",
+   "sedia",
+   "buildSegni1:83464",
+   1447.1,
+   275.26,
+   3.74,
+   "0.2 m"
+  ],
+  [
+   "f_porta",
+   "tavolino",
+   "buildSegni1:83464",
+   1447.1,
+   274.66,
+   3.74,
+   "0.36 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1323.3,
+   370.7,
+   0.4,
+   "0.3 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1322.3,
+   370.7,
+   0.4,
+   "0.25 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1323.3,
+   370.7,
+   1.14,
+   "0.34 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1322.3,
+   370.7,
+   1.14,
+   "0.37 m"
+  ],
+  [
+   "f_porta",
+   "bancale",
+   "buildDetails:88135",
+   1320.3,
+   370.6,
+   0.4,
+   "0.1 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   363.3,
+   1.17,
+   "0.3 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   362.3,
+   1.17,
+   "0.25 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   363.3,
+   1.91,
+   "0.34 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1251.3,
+   362.3,
+   1.91,
+   "0.37 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1436.7,
+   395.3,
+   1.91,
+   "0.3 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1437.7,
+   395.3,
+   1.91,
+   "0.25 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1436.7,
+   395.3,
+   2.65,
+   "0.34 m"
+  ],
+  [
+   "f_porta",
+   "cassa",
+   "buildDetails:88135",
+   1437.7,
+   395.3,
+   2.65,
+   "0.37 m"
+  ],
+  [
+   "f_porta",
+   "fusto",
+   "buildDetails:88135",
+   1290.1,
+   348.8,
+   1.05,
+   "0.11 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   375.8,
+   0.41,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   375.8,
+   0.57,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1300.9,
+   375.8,
+   0.73,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "fusto",
+   "buildDetails:88135",
+   1441.2,
+   309.05,
+   5.54,
+   "0.31 m"
+  ],
+  [
+   "f_porta",
+   "fusto",
+   "buildDetails:88135",
+   1441.45,
+   308.4,
+   5.54,
+   "0.55 m"
+  ],
+  [
+   "f_porta",
+   "fusto",
+   "buildDetails:88135",
+   1441.2,
+   306.05,
+   5.54,
+   "0.2 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1451,
+   312.9,
+   5.94,
+   "0.15 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1451,
+   312.9,
+   6.1,
+   "0.15 m"
+  ],
+  [
+   "f_porta",
+   "cassetta",
+   "buildDetails:88135",
+   1451,
+   312.9,
+   6.26,
+   "0.15 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1398.4,
+   372.97,
+   2.62,
+   "0.08 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1398.4,
+   372.97,
+   2.79,
+   "0.08 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1399.4,
+   372.97,
+   2.62,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1399.4,
+   372.97,
+   2.79,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   375.9,
+   1,
+   "0.07 m"
+  ],
+  [
+   "f_porta",
+   "cassetta_pesce",
+   "buildDetails:88135",
+   1385.12,
+   374.9,
+   1,
+   "0.19 m"
+  ],
+  [
+   "f_porta",
+   "bombola",
+   "buildCase:89273",
+   1432.86,
+   354.22,
+   5.58,
+   "0.07 m"
+  ],
+  [
+   "f_scala_tetto",
+   "antenna_tv",
+   "buildSegni1:83493",
+   1227.84,
+   274.47,
+   3.41,
+   "0.42 m"
+  ],
+  [
+   "g_urto",
+   "reti",
+   "buildPropsIsland:77418",
+   1575.05,
+   418.84,
+   1.4,
+   "bitta (buildQuayWalls:76805) 0.53 m"
+  ],
+  [
+   "g_urto",
+   "cassa",
+   "buildSets:84305",
+   1484.86,
+   320.56,
+   6.3,
+   "cassonetto (buildSets:84306) 0.9 m"
+  ],
+  [
+   "g_urto",
+   "bitta",
+   "buildQuayWalls:76805",
+   1566.7,
+   393,
+   1.39,
+   "gru (crane:84605) 0.57 m"
+  ],
+  [
+   "g_urto",
+   "lampione_boom",
+   "streetLamp3:84199",
+   1569.09,
+   390.08,
+   1.36,
+   "gru (crane:84605) 0.38 m"
+  ],
+  [
+   "g_urto",
+   "bitta",
+   "buildMolo:76840",
+   1576,
+   384.08,
+   1.09,
+   "container (container:84604) 0.43 m"
+  ],
+  [
+   "g_urto",
+   "bitta",
+   "buildMolo:76840",
+   1568,
+   384.08,
+   1.17,
+   "gru (crane:84605) 0.68 m"
+  ],
+  [
+   "g_urto",
+   "bitta",
+   "buildMolo:76840",
+   1576,
+   395.08,
+   1.39,
+   "container (container:84604) 0.21 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "canoe:77217",
+   1343.52,
+   808.97,
+   -0.61,
+   "arredo (buildIsoleDettagli:77263) 0.33 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "canoe:77217",
+   1340.81,
+   807.27,
+   -0.23,
+   "arredo (buildIsoleDettagli:77263) 0.37 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "canoe:77217",
+   1338.16,
+   805.47,
+   -0.23,
+   "arredo (buildIsoleDettagli:77263) 0.77 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "canoe:77217",
+   1338.16,
+   805.47,
+   -0.23,
+   "arredo (buildIsoleDettagli:77263) 0.33 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "buildStrade31:79364",
+   660.23,
+   471.18,
+   4.8,
+   "arredo (buildStrade31:79365) 0.07 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "buildStrade31:79364",
+   1197.22,
+   406.51,
+   1.75,
+   "arredo (buildStrade31:79365) 0.06 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "buildStrade31:79364",
+   1115.53,
+   279.88,
+   7.14,
+   "arredo (buildStrade31:79365) 0.06 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "banco:79224",
+   1374.58,
+   303.67,
+   1.93,
+   "arredo (banco:79224) 1.43 m"
+  ],
+  [
+   "g_urto",
+   "pennone",
+   "buildWinter:87586",
+   1579.95,
+   318,
+   0.46,
+   "arredo (one:82011) 0.72 m"
+  ],
+  [
+   "g_urto",
+   "pennone",
+   "buildWinter:87586",
+   1585.95,
+   318,
+   0.43,
+   "arredo (one:82011) 0.22 m"
+  ],
+  [
+   "g_urto",
+   "container",
+   "container:84604",
+   1572.89,
+   393.77,
+   3.97,
+   "container (container:84604) 1.95 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "buildWinter:87661",
+   1194.25,
+   371.57,
+   2.16,
+   "arredo (one:82011) 0.16 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "buildWinter:87661",
+   1194.25,
+   371.57,
+   2.16,
+   "arredo (one:82011) 0.22 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "oggetti35:81950",
+   1446.79,
+   277.33,
+   3.51,
+   "tavolino (buildSegni1:83464) 0.59 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "oggetti35:81950",
+   1446.79,
+   277.33,
+   3.51,
+   "sedia (buildSegni1:83464) 0.37 m"
+  ],
+  [
+   "g_urto",
+   "arredo",
+   "oggetti35:81957",
+   1418.4,
+   374.49,
+   4.59,
+   "lavagna (buildSegni1:83468) 0.3 m"
+  ],
+  [
+   "g_urto",
+   "paletto",
+   "bollard:84560",
+   1301.24,
+   372.6,
+   0.61,
+   "lavagna (buildDetails:88135) 0.14 m"
+  ],
+  [
+   "g_urto",
+   "cartello",
+   "signPost1:80053",
+   1463.43,
+   298.33,
+   5.84,
+   "cabina_enel (buildSegni1:83431) 0.22 m"
+  ],
+  [
+   "g_urto",
+   "lavagna",
+   "buildSegni1:83468",
+   1428.35,
+   316.8,
+   5.22,
+   "frigo_gelati (buildSegni1:83469) 0.43 m"
+  ],
+  [
+   "g_urto",
+   "cassetta",
+   "TettiVissuti:orto",
+   1346.7,
+   317.38,
+   7.04,
+   "antenna_tv (buildSegni1:83493) 0.27 m"
+  ]
+ ],
+ "per": {
+  "c_muro_staccato": 1,
+  "e_sbalzo": 28,
+  "d_sospeso": 94,
+  "d_affondato": 75,
+  "f_porta": 35,
+  "f_scala": 1,
+  "f_scala_tetto": 1,
+  "g_urto": 27
+ },
+ "perFn": {
+  "c_muro_staccato|buildDetails": 1,
+  "e_sbalzo|buildPropsIsland": 1,
+  "e_sbalzo|buildSets": 5,
+  "d_sospeso|buildSets": 1,
+  "e_sbalzo|buildQuayWalls": 3,
+  "d_affondato|buildStrade31": 3,
+  "e_sbalzo|buildStrade31": 1,
+  "d_affondato|banco": 1,
+  "d_sospeso|buildWinter": 1,
+  "d_sospeso|container": 2,
+  "d_affondato|buildWinter": 27,
+  "e_sbalzo|buildWinter": 9,
+  "d_affondato|hut": 1,
+  "d_affondato|oggetti35": 4,
+  "e_sbalzo|oggetti35": 1,
+  "d_affondato|one": 1,
+  "e_sbalzo|one": 1,
+  "d_affondato|buildStrade1": 2,
+  "d_affondato|buildSegnavia1": 3,
+  "d_affondato|buildSegni1": 3,
+  "e_sbalzo|buildSegni1": 1,
+  "d_sospeso|buildModular": 10,
+  "d_sospeso|fronteBottega": 6,
+  "e_sbalzo|buildDetails": 6,
+  "d_affondato|buildDetails": 23,
+  "d_sospeso|buildDetails": 5,
+  "d_affondato|TettiVissuti:dettagli": 2,
+  "d_sospeso|TettiVissuti:gatti": 21,
+  "d_sospeso|tetti3Gruppi:torretta": 9,
+  "d_affondato|TettiVissuti:panni": 2,
+  "d_affondato|TettiVissuti:orto": 3,
+  "d_sospeso|buildCity": 1,
+  "d_sospeso|buildCase": 3,
+  "d_sospeso|buildSegni1": 35,
+  "f_porta|oggetti35": 1,
+  "f_scala|buildSegni1": 1,
+  "f_porta|buildSegni1": 4,
+  "f_porta|buildDetails": 29,
+  "f_porta|buildCase": 1,
+  "f_scala_tetto|buildSegni1": 1,
+  "g_urto|buildPropsIsland": 1,
+  "g_urto|buildSets": 1,
+  "g_urto|buildQuayWalls": 1,
+  "g_urto|streetLamp3": 1,
+  "g_urto|buildMolo": 3,
+  "g_urto|canoe": 4,
+  "g_urto|buildStrade31": 3,
+  "g_urto|banco": 1,
+  "g_urto|buildWinter": 4,
+  "g_urto|container": 1,
+  "g_urto|oggetti35": 3,
+  "g_urto|bollard": 1,
+  "g_urto|signPost1": 1,
+  "g_urto|buildSegni1": 1,
+  "g_urto|TettiVissuti:orto": 1
+ },
+ "perTipo": {
+  "c_muro_staccato|contatore": 1,
+  "e_sbalzo|lettino": 1,
+  "e_sbalzo|cassa": 10,
+  "d_sospeso|cassa": 1,
+  "e_sbalzo|bitta": 3,
+  "d_affondato|arredo": 42,
+  "e_sbalzo|arredo": 12,
+  "d_sospeso|arredo": 1,
+  "d_sospeso|container": 2,
+  "d_affondato|sedia": 1,
+  "e_sbalzo|sedia": 1,
+  "d_sospeso|antenna_tv": 46,
+  "d_sospeso|cassetta": 8,
+  "d_sospeso|cassetta_pesce": 3,
+  "d_affondato|cassa": 3,
+  "d_affondato|bancale": 2,
+  "d_affondato|fusto": 9,
+  "d_affondato|cassetta": 4,
+  "d_affondato|lavagna": 1,
+  "e_sbalzo|cassetta_pesce": 1,
+  "d_affondato|cassetta_pesce": 6,
+  "d_affondato|ciglio:latta": 2,
+  "d_sospeso|gatto": 21,
+  "d_sospeso|gruppo:torretta": 9,
+  "d_affondato|stendino": 1,
+  "d_affondato|cesta": 1,
+  "d_affondato|annaffiatoio": 1,
+  "d_sospeso|bombola": 3,
+  "d_affondato|antenna_tv": 2,
+  "f_porta|arredo": 1,
+  "f_scala|tavolino": 1,
+  "f_porta|lavagna": 1,
+  "f_porta|tavolino": 2,
+  "f_porta|sedia": 1,
+  "f_porta|cassa": 12,
+  "f_porta|bancale": 1,
+  "f_porta|fusto": 4,
+  "f_porta|cassetta": 6,
+  "f_porta|cassetta_pesce": 6,
+  "f_porta|bombola": 1,
+  "f_scala_tetto|antenna_tv": 1,
+  "g_urto|reti": 1,
+  "g_urto|cassa": 1,
+  "g_urto|bitta": 4,
+  "g_urto|lampione_boom": 1,
+  "g_urto|arredo": 13,
+  "g_urto|pennone": 2,
+  "g_urto|container": 1,
+  "g_urto|paletto": 1,
+  "g_urto|cartello": 1,
+  "g_urto|lavagna": 1,
+  "g_urto|cassetta": 1
+ },
+ "arrivi": 227,
+ "diag": [
+  [
+   "arredo",
+   3.76,
+   "-0.45 Mesh    0h Scene: v T1 0    inMS ShaderMaterial"
+  ],
+  [
+   "container",
+   3.97,
+   "4.11 Mesh   #ffffff 20.73h Scene: v  0    inMS MeshStandardMaterial",
+   "-0.45 Mesh    0h Scene: v T1 0    inMS ShaderMaterial"
+  ],
+  [
+   "container",
+   3.99,
+   "4.13 Mesh   #ffffff 20.73h Scene: v  0    inMS MeshStandardMaterial",
+   "4.11 Mesh   #ffffff 20.73h Scene: v  0    inMS MeshStandardMaterial",
+   "-0.45 Mesh    0h Scene: v T1 0    inMS ShaderMaterial"
+  ],
+  [
+   "cassetta_pesce",
+   2,
+   "-0.45 Mesh    0h Scene: v T1 0    inMS ShaderMaterial"
+  ]
+ ],
+ "raggi": 6597,
+ "tipi": {
+  "lampione_boom": 47,
+  "lampione_deco": 2,
+  "cabina_sip": 2,
+  "cassa": 40,
+  "bitta": 88,
+  "reti": 3,
+  "ombrellone_mare": 8,
+  "lettino": 8,
+  "arredo": 561,
+  "container": 8,
+  "fusto": 15,
+  "rottami": 1,
+  "bancarella": 22,
+  "cestino": 2,
+  "cassonetto": 7,
+  "panchina_ghisa": 4,
+  "edicola": 1,
+  "tavolo": 2,
+  "sedia": 38,
+  "ombrellone": 5,
+  "barile": 1,
+  "salvagente": 8,
+  "radar_base": 1,
+  "traliccio": 1,
+  "cabina_apparati": 1,
+  "pennone": 2,
+  "gru": 3,
+  "paletto": 11,
+  "cartello": 21,
+  "semaforo": 2,
+  "jersey": 20,
+  "cabina_enel": 3,
+  "palo_legno": 3,
+  "lampione_corso": 7,
+  "staffa_cartello": 8,
+  "lampione_muro": 40,
+  "bidone": 1,
+  "tavolino": 19,
+  "lavagna": 5,
+  "frigo_gelati": 1,
+  "lanterna_braccio": 18,
+  "antenna_tv": 67,
+  "tenda_bottega": 13,
+  "cassetta": 69,
+  "cassetta_pesce": 14,
+  "contatore": 276,
+  "bancale": 3,
+  "gruppo:bucato": 32,
+  "sdraio": 5,
+  "asta": 2,
+  "telo": 2,
+  "erba": 222,
+  "gruppo:pergola": 7,
+  "ciglio:cappero": 41,
+  "ciglio:valeriana": 37,
+  "fuori:colatura": 117,
+  "palo": 12,
+  "stuoia": 3,
+  "stendino": 12,
+  "cesta": 12,
+  "impagliata": 25,
+  "gruppo:altana": 19,
+  "annaffiatoio": 12,
+  "ciglio:latta": 18,
+  "limone": 1,
+  "gatto": 23,
+  "gruppo:comignoli": 4,
+  "secchio": 12,
+  "gruppo:torretta": 9,
+  "cima": 6,
+  "boe": 6,
+  "rete": 5,
+  "sale": 7,
+  "remi": 1,
+  "fuori:malta": 378,
+  "falda:erba": 82,
+  "falda:valeriana": 22,
+  "cisterna": 1,
+  "bombola": 12,
+  "mensola": 132
+ },
+ "tempo": 319,
+ "url": "/index_r2_prima.html?cittanuova&leggera&tasselli=0&tutto&nolibera1&nopigre&sondadisp"
+}

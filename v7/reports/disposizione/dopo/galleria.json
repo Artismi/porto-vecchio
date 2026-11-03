@@ -1,0 +1,82 @@
+{
+ "quando": "2026-11-01T17:38:27.389Z",
+ "variante": null,
+ "manopole": {},
+ "larghezza": 960,
+ "altezza": 640,
+ "soglie": {
+  "nero": 12,
+  "bianco": 245
+ },
+ "sintesi": {
+  "foto": 3,
+  "giorno": 3,
+  "lumMediaGiorno": 0.389,
+  "contrastoMedio": 0.186,
+  "saturazioneMedia": 0.22,
+  "neriOltre4Giorno": [],
+  "sovraesposte": [],
+  "drawCallMedie": 541.333,
+  "separazioneMedia": null,
+  "percorsoMedio": null
+ },
+ "foto": [
+  {
+   "nome": "d1_dehors",
+   "titolo": "Il dehors del bar",
+   "luce": "borgo",
+   "meteo": "sereno",
+   "nelPosto": 56,
+   "luminosita": 0.295,
+   "contrasto": 0.176,
+   "quasiNeri": 3.2,
+   "quasiBianchi": 0.4,
+   "saturazione": 0.314,
+   "drawCall": 503,
+   "triangoli": 1546598,
+   "ora": 630,
+   "notte": 0,
+   "gente": 18,
+   "separazione": null,
+   "percorso": null
+  },
+  {
+   "nome": "d2_canniccio",
+   "titolo": "Il terrazzo col canniccio",
+   "luce": "borgo",
+   "meteo": "sereno",
+   "nelPosto": 56,
+   "luminosita": 0.411,
+   "contrasto": 0.194,
+   "quasiNeri": 0.81,
+   "quasiBianchi": 0.27,
+   "saturazione": 0.169,
+   "drawCall": 604,
+   "triangoli": 2001770,
+   "ora": 630,
+   "notte": 0,
+   "gente": 35,
+   "separazione": null,
+   "percorso": null
+  },
+  {
+   "nome": "d3_rete",
+   "titolo": "Le mensole della rete e la lanterna a braccio",
+   "luce": "borgo",
+   "meteo": "sereno",
+   "nelPosto": 56,
+   "luminosita": 0.461,
+   "contrasto": 0.188,
+   "quasiNeri": 1,
+   "quasiBianchi": 0.41,
+   "saturazione": 0.177,
+   "drawCall": 517,
+   "triangoli": 1781978,
+   "ora": 632,
+   "notte": 0,
+   "gente": 34,
+   "separazione": null,
+   "percorso": null
+  }
+ ]
+}

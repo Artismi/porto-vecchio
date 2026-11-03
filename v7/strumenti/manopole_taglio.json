@@ -1,0 +1,5 @@
+{
+  "nota": "[ad] Il taglio del primo piano spento e acceso (largo) sulla stessa scena: GALLERIA_VARIANTI=strumenti/manopole_taglio.json",
+  "spento": { "AD": { "taglio": 0 } },
+  "largo": { "AD": { "tagliaR": 0.45 } }
+}

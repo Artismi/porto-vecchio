@@ -23,11 +23,17 @@ var LeggeraMem = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const TEL = (() => { try { if (/[?&]alta\b/.test(Q)) return false; return /[?&](leggera|bassa)\b/.test(Q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
-  const ALL = (TEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
+  // [ottimizza-car] i tagli di memoria del telefono solo dove la memoria manca: col tocco, con navigator.deviceMemory ≤ 4, con ?bassa o
+  // ?memoria. Il portatile con la scheda integrata (profilo.js gli dà ?leggera per il costo della scheda video) ha la RAM: niente mappe a
+  // metà, terreno a metà, atlanti a metà (qualità persa senza fotogrammi guadagnati). Restano sul leggero i tagli che alleggeriscono la
+  // scheda video (COSTO: la mappa del sole più piccola, il verde lontano a riquadri, le tessiture «tel» dei tasselli). ?nofixmemoria come prima
+  const POCA = (() => { try { return matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]bassa\b/.test(Q); } catch (e) { return true; } })();
+  const MEMTEL = TEL && (POCA || /[?&]nofixmemoria\b/.test(Q)), COSTO = new Set(['ombre', 'verde', 'verdelontano', 'tessiture']);   // tessiture: le «tel» dei tasselli (le piene arrivano a 32-36 MB l'una: un invio da 30-80 ms e +300 MB sulla scheda; serve una variante di mezzo nella cottura)
+  const ALL = (MEMTEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
   // i tagli che non cambiano un pixel valgono anche sul computer: la compilazione solo del visibile, le firme e le geometrie modello buttate
   // dopo il caricamento, i pezzi rifatti che si ributtano, le armi condivise
   const LIBERI = new Set(['compila', 'firme', 'cache', 'pigri', 'roba']), OFF = /[?&]nomemoria\b/.test(Q);
-  const on = k => (ALL || (LIBERI.has(k) && !OFF)) && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
+  const on = k => (ALL || (LIBERI.has(k) && !OFF) || (TEL && COSTO.has(k) && !OFF)) && !new RegExp('[?&]nomemoria' + k + '\\b').test(Q);
   const ST = { pile: 0, pileMB: 0, tele: 0, teleMB: 0, pigri: 0, verde: 0 };
   const scratch = (W, H) => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
   // --- pile: la misura dello strato
@@ -105,7 +111,7 @@ var LeggeraMem = (function () {
     const ng = {}; ng.position = new THREE.BufferAttribute(prendi(q, 3, first, m), 3, true);
     for (const nm in A) { if (nm === 'position') continue; const a = A[nm]; ng[nm] = nm === 'uv' && uvH ? new THREE.Float16BufferAttribute(prendi(uvH, 2, first, m), 2) : new THREE.BufferAttribute(prendi(a.array, a.itemSize, first, m), a.itemSize, a.normalized); }
     const idx = m < 65536 ? new Uint16Array(n) : new Uint32Array(n); idx.set(sd.remap);
-    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1));
+    for (const nm in ng) geo.deleteAttribute(nm); for (const nm in ng) geo.setAttribute(nm, ng[nm]); geo.setIndex(new THREE.BufferAttribute(idx, 1)); geo.index.lmFisso = true;   // [compenetra] l'ordine dell'indice è la mappa dei pezzi (lmDec): chi riordina i triangoli (render.js, l'indice spaziale dei raggi) lavora su una copia
     mesh.position.copy(c); mesh.scale.setScalar(h); mesh.updateMatrix(); mesh.updateMatrixWorld(true); geo.userData.lmXf = { c: c.clone(), h };
     geo.computeBoundingBox(); geo.computeBoundingSphere();
     geo.userData.lmDec = decodifica(geo, c.clone(), h, !!uvH);

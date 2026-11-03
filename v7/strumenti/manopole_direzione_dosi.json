@@ -1,0 +1,5 @@
+{ "nota": "[direzione] le dosi del dettaglio e il piano dei valori sullo stesso scorcio (DIREZIONE_ARTISTICA.md §3 e §6): zero dettaglio, la dose scelta, il doppio",
+  "dose": {},
+  "zero": { "DIR": { "pittura": 0, "varia": 0, "vissuto": 0, "tremolio": 0, "microNormale": 0, "retino": 0, "nuvole": 0 } },
+  "doppia": { "DIR": { "pittura": 0.9, "varia": 1, "vissuto": 1, "tremolio": 0.05, "microNormale": 0.7, "retino": 0.12, "nuvole": 0.2 } }
+}

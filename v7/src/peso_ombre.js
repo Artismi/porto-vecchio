@@ -17,7 +17,8 @@ var PesoOmbre = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
   const ON = !/[?&]nopeso(ombre)?\b/.test(Q);
-  const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
+  const STRETTA = ON && !/[?&]nopesostretta\b/.test(Q);
+  const TIENIMAPPA = !/[?&]nofixombrecache\b/.test(Q);   // [ottimizza-car] la mappa del sole si tiene (sole())   // il riquadro del sole stretto sulla visuale lungo la direzione del sole (?nopesostretta: quadrato)
   const P = { alto: 70, M: 8, ang: .0026, ferma: 90, fermaLunga: 1800, nuovoMs: 4000, giro: 8, lotto: 250, fine: 1.4, fineTel: typeof LeggeraMem !== 'undefined' && LeggeraMem.on('ombre') ? .8 : 1.25 };   // [leggera] sul telefono la mappa del sole più piccola (leggera_memoria.js)   // fine: il texel del sole più piccolo (computer 2048 → ~2870 di base; la mappa con il margine ~3500)
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, aggiunte: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
@@ -110,7 +111,12 @@ var PesoOmbre = (function () {
     if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? P.fineTel : P.fine)), mt - 512); A.maxT = mt; }
     if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
     let tex = 2 * A.half / A.base; const lim = (A.maxT || 4096) - 64; if (Math.ceil(2 * (A.half + P.M) / tex) > lim) tex = 2 * (A.half + P.M) / lim;   // mai oltre la tessitura più grande
-    const ms = Math.ceil(2 * (A.half + P.M) / tex), halfE = ms * tex / 2;
+    let ms = Math.ceil(2 * (A.half + P.M) / tex);
+    // [ottimizza-car] la mappa non si rialloca a ogni ritocco del riquadro: se quella che c'è è grande abbastanza (al più 128 texel in più)
+    // si tiene, col texel un filo più fine (stesso riquadro, ombra non meno nitida). Prima ogni cambio di mezzo metro dello zoom buttava e
+    // rifaceva la mappa (≈4,6 MB) e la cottura: 103 riallocazioni in 12 minuti di prova. ?nofixombrecache come prima
+    const cur = m.shadow.mapSize.x; if (TIENIMAPPA && m.shadow.map && cur >= ms && cur - ms <= 128 && cur <= lim) { ms = cur; tex = 2 * (A.half + P.M) / ms; }
+    const halfE = ms * tex / 2;
     // [peso] il texel più fine (P.fine: le aste e i pali sottili facevano ombre a dentini, a tratti, nelle piazze col sole basso): lo scarto
     // dell'ombra in proporzione al texel nuovo, con le manopole di render.js (PROF.ombraBias, come profSole)
     const PR = window.__PROF; if (PR && PR.ombraVisuale > 0 && PR.ombraBias) { m.shadow.bias = -(PR.ombraBias[0] + PR.ombraBias[1] * tex) / (sc.far - sc.near); m.shadow.normalBias = .015 + tex * .9; }
@@ -247,6 +253,9 @@ var PesoOmbre = (function () {
   function conto() { const n = ST.fotogrammi || 1; return { on: ON, cotture: ST.cotture, sottofondo: ST.sottofondo, lotti: ST.lotti, riprese: ST.riprese, aggiunte: ST.aggiunte, fotogrammi: ST.fotogrammi, dinamici_fot: +(ST.dinamici / n).toFixed(1), fermi_fot: +(ST.fermi / n).toFixed(0), lanciatori: ST.lanciatori, ms_fot: +(ST.ms / n).toFixed(2), mappa_sole: K && K.moon ? K.moon.shadow.mapSize.x : 0 }; }
   function azzera() { for (const k in ST) ST[k] = 0; for (const k in MOT) MOT[k] = 0; DIAG.mob.clear(); DIAG.firma.clear(); }
   function diag(on) { DIAG.on = on !== false; return { motivi: Object.assign({}, MOT), mobili: [...DIAG.mob.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25), firma: [...DIAG.firma.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25) }; }
-  return { ON, P, prima, dopo, conto, azzera, diag, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
+  // [ottimizza-car] chi aggiunge o toglie cose ferme che fanno ombra (i tasselli): l'elenco si rifà al prossimo fotogramma, e la cottura
+  // segue la sua strada (le aggiunte sopra la mappa cotta, le tolte con la ricottura in sottofondo), senza spegnere e ricuocere tutto
+  function rivedi() { A.rifai = true; }
+  return { ON, P, prima, dopo, conto, azzera, diag, rivedi, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
 })();
 if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; if (PesoOmbre.ON) window.__pesoAB.stretta = v => { window.__nostretta = !v; }; }

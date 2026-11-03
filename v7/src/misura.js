@@ -32,7 +32,7 @@ const Misura = (() => {
   if (ON && typeof window !== 'undefined') {
     const raf = window.requestAnimationFrame.bind(window), si = window.setInterval.bind(window), stO = window.setTimeout.bind(window);
     const tag = new WeakMap(), wrapped = new WeakMap();
-    const wrap = (fn, kind) => { if (typeof fn !== 'function') return fn; let w = wrapped.get(fn); if (w) return w; const lab = (tag.get(fn) || here()) + ':' + kind; tag.set(fn, lab.split(':')[0]); w = timed(fn, lab); wrapped.set(fn, w); return w; };
+    const wrap = (fn, kind) => { if (typeof fn !== 'function') return fn; let w = wrapped.get(fn); if (w) return w; let m0 = tag.get(fn) || here(); if (m0 === 'altro') { const L = (new Error().stack || '').split('\n')[3] || '', r = /:(\d+):\d+\)?\s*$/.exec(L); m0 = 'altro[' + (fn.name || '?') + (r ? '@' + r[1] : '') + ']'; }   /* [fluido2] chi è «altro»: il nome della funzione e la riga di chi l'ha chiesta */ const lab = m0 + ':' + kind; tag.set(fn, lab.split(':')[0]); w = timed(fn, lab); wrapped.set(fn, w); return w; };
     window.requestAnimationFrame = fn => raf(wrap(fn, 'ciclo'));
     window.setInterval = (fn, ms, ...a) => si(wrap(fn, 'timer'), ms, ...a);
     window.setTimeout = (fn, ms, ...a) => stO(wrap(fn, 'timer'), ms, ...a);

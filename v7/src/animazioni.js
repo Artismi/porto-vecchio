@@ -197,7 +197,26 @@ var Anim = (function () {
   }
   // angolo di ogni osso col pugno chiuso: 1 = palmo (dal polso, quasi fermo), 2 = nocca, 3 e 4 = falangi
   const CURL = [.08, 1.45, 1.35, .9];
+  // [ottimizza] LE DITA SOLO DA VICINO. Ogni dito sono 4 falangi, ognuna con due getWorldPosition e un applyWorld (che rifà le matrici
+  // del sotto-albero): ~17% del tempo delle pose. Oltre una volta e mezza la distanza fra la camera e il punto guardato (mai sotto
+  // 12 m), o più lontano del protagonista dalla camera e a più di 12 m da lui, una persona è più piccola del protagonista sullo schermo
+  // e le sue dita sono al più un pixel: lì non si piegano. Solo per
+  // chi sta nella scena del gioco (le figure del menu e dello studio hanno la loro camera). ?nofixdita: come prima
+  const DITA = typeof location === 'undefined' || !/[?&]nofixdita\b/.test(location.search);
+  const VISTA = { t: -1, p: V(), f: V(), lim2: Infinity, foc2: Infinity, sc: null }, _vl = V();
+  function lontano(g) {
+    if (!DITA) return false;
+    const now = performance.now();
+    if (now - VISTA.t > 8) { VISTA.t = now; VISTA.lim2 = Infinity; const R = typeof window !== 'undefined' && window.__pv && window.__pv.R, cam = R && R.getCamera && R.getCamera(), c = R && R.cam;
+      VISTA.sc = R && R.__models && R.__models.scene;
+      if (cam && c && c.x !== undefined) { VISTA.p.copy(cam.position); VISTA.f.set(c.x, (c.h || 0) + 1, c.y); const foc = VISTA.p.distanceTo(VISTA.f), lim = Math.max(12, foc * 1.5); VISTA.lim2 = lim * lim; VISTA.foc2 = foc * foc; } }
+    if (VISTA.lim2 === Infinity || !VISTA.sc) return false;
+    let r = g; while (r.parent) r = r.parent; if (r !== VISTA.sc) return false;
+    const d2 = _vl.setFromMatrixPosition(g.matrixWorld).distanceToSquared(VISTA.p);
+    return d2 > VISTA.lim2 || (d2 > VISTA.foc2 && _vl.distanceToSquared(VISTA.f) > 144);   // o più lontano del protagonista dalla camera e a più di 12 m da lui (più piccolo di lui sullo schermo, fuori dall'azione)
+  }
   function hand(P, side, curl, thumb, ww) {
+    if (P.lontano) return;
     const R = P.R, sd = side === 'L' ? 'L' : 'R', i2 = R.b['Index2' + sd], p2 = R.b['Pinky2' + sd]; if (!i2 || !p2 || ww <= 0) return;
     const sg = curlSign(R, sd);
     for (let f = 0; f < 4; f++) {
@@ -408,6 +427,7 @@ var Anim = (function () {
     // le ossa nel mondo servono aggiornate per puntare
     g.updateMatrixWorld(true);
     const P = R.P || (R.P = makeP(g, R)); g.getWorldQuaternion(P._gq);
+    P.lontano = lontano(g);   // [ottimizza] le dita solo da vicino
     P.o = o; P.time = time || 0; P._body = null;
     R.__frame = (R.__frame || 0) + 1;
     // quanto sono spessi i vestiti su busto e braccia (vestiario.js): le pose tengono le braccia più larghe

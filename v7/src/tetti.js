@@ -848,6 +848,9 @@ var Tetti = (function () {
           if (ro > h0 + .3 && ro - .6 < h1 && dentro4(B[o], x, y, -.55)) { urta = true; break; } }
         if (urta) break; } if (urta) break; }
       if (urta) { via.add(L); POTA4.compenetrata++; } });
+    // [compenetra] niente scale sulle case a gradoni (b.tiers): la regola dei piani dà la quota del primo corpo, i gradoni sopra salgono
+    // ancora (casa_390: l'arrivo a 15,6 m, il tetto vero a 17,4); la scala e la scaletta arrivavano dentro il gradone
+    LADDERS.forEach(L => { const gr = b => !!(b && b.tiers && b.tiers.length); if (!L.camm && !via.has(L) && (gr(B[L.bi]) || (L.footB >= 0 && gr(B[L.footB])))) { via.add(L); POTA4.gradoni = (POTA4.gradoni || 0) + 1; } });
     const rango = L => L.corte !== undefined ? 0 : L.tipo4 === 'salita' ? 1 : L.tipo4 === 'scaletta' ? 2 : L.vis ? 3 : 4;
     const perTetto = new Map(); LADDERS.forEach(L => { if (L.camm || via.has(L)) return; (perTetto.get(L.bi) || perTetto.set(L.bi, []).get(L.bi)).push(L); });
     perTetto.forEach(A => { if (A.length <= SCALE3_MAX4) return; A.slice().sort((p, q) => rango(p) - rango(q) || p.i - q.i).slice(SCALE3_MAX4).forEach(L => { if (rango(L) <= 2) return; via.add(L); POTA4.troppe++; }); });
@@ -1175,6 +1178,24 @@ var Tetti = (function () {
     const lastrico = new T3.MeshStandardMaterial({ color: '#d9cdb2', roughness: .95, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
     return { box, iron, rust, yell, lamp, wood, rope, flag, crema, traccia, fondo, pietra, terra, verde, lastrico };
   }
+  // [compenetra] IL CIELO DELLA SCALA: la gronda, il cornicione, la copertina che sporgono sopra la scala, letti sul modello vero delle case
+  // (un raggio in su dal tratto alto, 70 cm sotto il filo del tetto: le fasce e i davanzali più in basso non contano, alle distanze dal muro delle staffe e dei montanti, al centro e ai due fianchi).
+  // Prima le staffe alte, la fascia di calce e i montanti di ferro passavano dentro lo sbalzo. c02, c16, c20: la quota del primo sbalzo a 2,
+  // 16 e 20 cm dal muro (Infinity: niente); fuori: la distanza dal muro dove lo sbalzo è finito (la scala di ferro si scosta fin lì, i ferri
+  // scavalcagronda delle staffe stanno lì). Una volta per scala, quando la casa c'è.
+  function cielo4(R, L, y0, y1) {
+    if (L.__cielo4 !== undefined) return L.__cielo4;
+    const T3 = THREE, rs = recsOf(R, B[L.bi]); if (!rs.length) return null;   // la casa non c'è ancora: si riprova al prossimo rifacimento
+    const parti = [], viste = new Set([L.bi]); caseSotto4(L.x + L.ox * .4, L.y + L.oy * .4).forEach(bi => viste.add(bi));
+    viste.forEach(bi => recsOf(R, B[bi]).forEach(r => [r.grp, r.roofGrp, r.cityGrp, r.detGrp, r.caseGrp].forEach(g => { if (g && g.traverse) { g.updateMatrixWorld(true); parti.push(g); } })));
+    const rc = new T3.Raycaster(), up = new T3.Vector3(0, 1, 0), o = new T3.Vector3(), sx = -L.oy, sz = L.ox, ya = Math.max(y0 + .3, y1 - 1.65);
+    const su = d => { let c = Infinity; for (const t of [-.26, 0, .26]) { o.set(L.x + L.ox * d + sx * t, ya, L.y + L.oy * d + sz * t); rc.set(o, up); rc.far = y1 + .4 - ya;
+      const h = rc.intersectObjects(parti, true).find(q => q.object.isMesh && !q.object.isInstancedMesh && !q.object.userData.velo); if (h && h.point.y < c) c = h.point.y; } return c; };
+    const C = { c02: su(.02), c16: su(.16), c20: su(.2), fuori: .2 };
+    if (Math.min(C.c02, C.c16, C.c20) < y1 + .2) { C.fuori = .95; for (const d of [.3, .42, .54, .66, .78, .9]) if (su(d + .03) === Infinity && su(d - .03) === Infinity) { C.fuori = d; break; } }
+    if (L.footB >= 0) C.fuori = Math.min(C.fuori, .5);   // il piede sul tetto basso: non oltre il suo bordo
+    return (L.__cielo4 = C);
+  }
   // le scale: due montanti, i pioli ogni 30 cm, la gabbia sopra i 2,5 m, il corrimano che scavalca il bordo del tetto
   function buildLaddersGfx(R) {
     const T3 = THREE, scene = R.__models.scene; if (!scene) return;
@@ -1186,24 +1207,34 @@ var Tetti = (function () {
     const m4 = new T3.Matrix4(), q = new T3.Quaternion(), e = new T3.Euler(), s3 = new T3.Vector3(), p3 = new T3.Vector3();
     const put = (arr, x, y, z, sx, sy, sz, yaw) => { e.set(0, yaw, 0); q.setFromEuler(e); arr.push(m4.compose(p3.set(x, y, z), q, s3.set(sx, sy, sz)).clone()); };
     LADDERS.forEach(L => {
-      const y0 = footH(L), y1 = topH(L) + .95, Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
-      const off = .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro
-      const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
+      let y0 = footH(L); const y1 = topH(L) + .95;
+      if (L.footB < 0 && !L.camm && !L.rampa && R.groundH) { const g = R.groundH(L.x + L.ox * .4, L.y + L.oy * .4); if (Number.isFinite(g) && Math.abs(g - y0) > .08 && Math.abs(g - y0) < 3) y0 = g; }   // [compenetra] il piede sul terreno disegnato (la quota della casella restava sospesa o sepolta sui pendii e sui gradoni)
+      const Hh = y1 - y0; if (Hh < .5 || Hh > 40) return;
       const bb = B[L.bi], old = !L.camm && bb && (bb.era === 'E0' || bb.era === 'E2' || bb.era === 'E3' || bb.era === 'E4');   // [percorsi] sui camminamenti la scala di ferro
+      const CI = L.rampa ? null : cielo4(R, L, y0, y1);   // [compenetra] la gronda o il cornicione sopra la scala
+      const off = !old && CI && CI.c20 < y1 + .2 ? CI.fuori : .2, cx = L.x + L.ox * off, cz = L.y + L.oy * off, yaw = -L.ang;   // 20 cm fuori dal muro; [compenetra] sotto una gronda, fuori quanto sporge
+      const sx = -L.oy * .22, sz = L.ox * .22;   // i due montanti, 44 cm l'uno dall'altro
       if (L.rampa) { put(crema, L.fx, y0 + .06, L.fy, .5, .12, .9, yaw); return; }   // [percorsi] la scala di ronda è di pietra (il pezzo): solo il primo gradino chiaro
-      put(fondo, L.x + L.ox * .38, y0 + .015, L.y + L.oy * .38, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
-      put(crema, L.x + L.ox * .38, y0 + .06, L.y + L.oy * .38, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
+      const pf = off + .18;   // [compenetra] il piede segue la scala scostata
+      put(fondo, L.x + L.ox * pf, y0 + .015, L.y + L.oy * pf, .74, .03, 1.0, yaw);   // [percorsi2] la base scura, più larga del gradino
+      put(crema, L.x + L.ox * pf, y0 + .06, L.y + L.oy * pf, .5, .12, .78, yaw);   // [pulizia2] il primo gradino, chiaro, ai piedi della scala
       // [tetti3] dove si arriva: la lastra crema sul lastrico (il pianerottolo che si vede da lontano), solo sui terrazzi
       const PA3 = PIANO[L.bi]; if (CN3 && (!PA3 || PA3.tipo === 'piano') && L.footB < 0) put(crema, L.tx + L.ox * .1, topH(L) + .1, L.ty + L.oy * .1, .9, .04, 1.0, yaw);
       if (old) {   // [epoche] nel borgo, sull'Ottocento e sul regime niente scala di ferro: le staffe alla marinara murate nella parete (pioli a U, ruggine)
         const wx = L.x + L.ox * .02, wz = L.y + L.oy * .02;
-        if (CN3) put(crema, L.x + L.ox * .012, y0 + (y1 - .4 - y0) / 2, L.y + L.oy * .012, .02, y1 - .4 - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
-        for (let y = y0 + .35; y < y1 - .85; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
-        for (const s of [-1, 1]) put(rails, cx - L.ox * .3 + sx * s, y1 - .3, cz - L.oy * .3 + sz * s, .04, .6, .04, yaw);   // i due ferri che aiutano a scavalcare il parapetto
+        // [compenetra] le staffe e la fascia si fermano sotto la gronda o il cornicione (prima i pioli alti passavano dentro lo sbalzo)
+        const cS = CI ? Math.min(CI.c16, CI.c02) : Infinity, yF = Math.min(y1 - .4, cS - .06), yS = Math.min(y1 - .85, cS - .14);
+        if (CN3 && yF - y0 > .5) put(crema, L.x + L.ox * .012, y0 + (yF - y0) / 2, L.y + L.oy * .012, .02, yF - y0, .72, yaw);   // [tetti3] dietro le staffe la fascia di calce chiara: il minio stacca su ogni intonaco e la salita si legge
+        for (let y = y0 + .35; y < yS; y += .32) { put(rungs, wx + L.ox * .16, y, wz + L.oy * .16, .03, .03, .4, yaw); for (const s of [-1, 1]) put(rungs, wx + L.ox * .08 + sx * s * .9, y, wz + L.oy * .08 + sz * s * .9, .16, .03, .03, yaw); }
+        if (cS < y1 - .85) {   // [compenetra] lo sbalzo sopra: i due ferri scavalcagronda, fuori dal filo dello sbalzo, dalle ultime staffe fin sopra il bordo, con le staffe lunghe al muro
+          const dF = CI.fuori, ya = Math.max(y0 + .3, cS - .75); for (const s of [-1, 1]) { put(rails, L.x + L.ox * dF + sx * s, (ya + y1) / 2, L.y + L.oy * dF + sz * s, .04, y1 - ya, .04, yaw); put(rails, L.x + L.ox * dF / 2 + sx * s, ya + .05, L.y + L.oy * dF / 2 + sz * s, dF, .04, .04, yaw); } }
+        else for (const s of [-1, 1]) { const fx = cx - L.ox * .3 + sx * s, fz = cz - L.oy * .3 + sz * s; let yp = -Infinity; try { yp = solido4(L.bi, fx, fz); } catch (e2) { }   // [compenetra] i ferri partono dalla copertina, non dentro il parapetto
+          const ya = Number.isFinite(yp) && yp < y1 - .15 ? Math.max(y1 - .6, yp) : y1 - .6; put(rails, fx, (ya + y1) / 2, fz, .04, y1 - ya, .04, yaw); }   // i due ferri che aiutano a scavalcare il parapetto
         put(lamps, wx + L.ox * .1, y0 + 2.3, wz + L.oy * .1, .08, .1, .08, yaw); return;   // [scale3] in cima niente lanterna gialla   // [pulizia2] e una lucina all'attacco, a 2,3 m
       }
       for (const s of [-1, 1]) put(rails, cx + sx * s, y0 + Hh / 2, cz + sz * s, .05, Hh, .05, yaw);
       for (let y = y0 + .3; y < y1 - .9; y += .3) put(rungs, cx, y, cz, .03, .03, .44, yaw);
+      if (off > .21) { const yb = Math.min(y1 - 1.2, CI.c20 - .15); for (let y = y0 + 1.6; y < yb + .01; y += Math.max(.5, (yb - y0 - 1.6) / Math.max(1, Math.round((yb - y0 - 1.6) / 2.5)))) for (const s of [-1, 1]) put(rails, L.x + L.ox * off / 2 + sx * s, y, L.y + L.oy * off / 2 + sz * s, off, .04, .04, yaw); }   // [compenetra] scostata dal muro: le staffe lunghe che la tengono
       // il corrimano ad arco sopra il bordo: due montanti che piegano verso il tetto
       for (const s of [-1, 1]) put(rails, cx - L.ox * .35 + sx * s, y1 - .02, cz - L.oy * .35 + sz * s, .7, .05, .05, yaw);
       // la gabbia: anelli a U ogni 70 cm sopra i 2,5 m (le scale lunghe)
@@ -1229,7 +1260,7 @@ var Tetti = (function () {
       if (P.arco) {   // [tetti4] l'arco di contrasto: il dorso di pietra calpestabile fra i due muri, l'intradosso ad arco ribassato sotto, le teste crema
         const [xa, za] = pt(S[1]), [xb, zb] = pt(S[2]), w2 = P.hw * 2;
         for (let k = 0; k < 3; k++) { const [x1, z1] = pt(S[k]), [x2, z2] = pt(S[k + 1]); if (k !== 1) continue; seg(pietra, x1, h[k] - .14, z1, x2, h[k + 1] - .14, z2, w2, .28, yaw); }
-        const n = 7, rise = Math.min(.9, P.gap * .3), yb = Math.min(h[1], h[2]) - .28;
+        const n = 7, yb = Math.min(h[1], h[2]) - .28, rise = Math.max(.15, Math.min(.9, P.gap * .3, yb - Math.max(roofRule(B[P.a]), roofRule(B[P.b])) - .03));   // [compenetra] sopra la cornice dei due muri
         for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, a0 = Math.sin(Math.PI * t0) * rise, a1 = Math.sin(Math.PI * t1) * rise;
           seg(pietra, xa + (xb - xa) * t0, yb - rise + a0, za + (zb - za) * t0, xa + (xb - xa) * t1, yb - rise + a1, za + (zb - za) * t1, w2 - .06, .22, yaw);
           const xm = xa + (xb - xa) * (t0 + t1) / 2, zm = za + (zb - za) * (t0 + t1) / 2, am = Math.sin(Math.PI * (t0 + t1) / 2) * rise, top = yb - .1, bot = yb - rise + am; if (top - bot > .1) { e.set(0, yaw, 0); q.setFromEuler(e); pietra.push(m4.compose(p3.set(xm, (top + bot) / 2, zm), q, s3.set(P.gap / n + .02, top - bot, w2 - .1)).clone()); } }
@@ -1262,7 +1293,9 @@ var Tetti = (function () {
         const passo = ferro ? .12 : .26, larga = ferro ? .05 : .22;
         for (let u = u0 + passo / 2; u < u1; u += passo) box4(ferro ? rungs : boards, u, 0, plankH(P, u) - .02, larga, .04, w2 - .06); }
       if (P.arco) {   // l'intradosso ribassato sopra il vicolo
-        const [xa, za] = pt(P.s1), [xb, zb] = pt(P.s2), n = 7, rise = Math.min(.8, P.gap * .25);
+        // [compenetra] l'intradosso nasce sopra la fascia di gronda e il cornicione dei due muri (prima la ghiera scendeva 80 cm sotto il dorso e
+        // tagliava la cornice sul ciglio): la freccia al più fin lì, 3 cm sopra il filo del tetto di ognuna delle due case
+        const [xa, za] = pt(P.s1), [xb, zb] = pt(P.s2), n = 7, rise = Math.max(.15, Math.min(.8, P.gap * .25, plankH(P, P.s1) - .28 - roofRule(B[P.a]) - .03, plankH(P, P.s2) - .28 - roofRule(B[P.b]) - .03));
         for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n, sa = P.s1 + (P.s2 - P.s1) * t0, sb = P.s1 + (P.s2 - P.s1) * t1, ya = plankH(P, sa) - .28, yb = plankH(P, sb) - .28, a0r = Math.sin(Math.PI * t0) * rise, a1r = Math.sin(Math.PI * t1) * rise;
           seg(pietra, xa + (xb - xa) * t0, ya - rise + a0r, za + (zb - za) * t0, xa + (xb - xa) * t1, yb - rise + a1r, za + (zb - za) * t1, w2 - .06, .2, yaw);
           const sm = (sa + sb) / 2, tm = (t0 + t1) / 2, topm = plankH(P, sm) - .28, bot = topm - rise + Math.sin(Math.PI * tm) * rise; if (topm - bot > .08) box4(pietra, sm, 0, (topm + bot) / 2, (P.s2 - P.s1) / n + .02, topm - bot, w2 - .1); } }

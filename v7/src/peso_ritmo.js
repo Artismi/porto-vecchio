@@ -43,6 +43,11 @@ var PesoRitmo = (function () {
     if (!S.tetto || !S.ultimo) return false;
     return now - S.ultimo < (passi() - .5) * S.periodo;
   }
+  // [ottimizza] i cicli dei moduli (writing, bottino, risacca_ui, tetti, …: ognuno col suo requestAnimationFrame) col tetto a 30 giravano
+  // a 60: metà del loro lavoro su giri che non si disegnano. giroSaltato(ts), col tempo del giro (lo stesso che riceve main.js): vero
+  // se questo giro main.js lo salta. Non cambia niente: decide lui (salta), qui si guarda soltanto. ?nofixgiri: sempre falso
+  const GIRI = !/[?&]nofixgiri\b/.test(Q);
+  function giroSaltato(ts) { return GIRI && ON && !!S.tetto && !!S.ultimo && ts !== S.ultimo && ts - S.ultimo < (passi() - .5) * S.periodo; }
   function lavoro(ms) { S.cpu += (ms - S.cpu) * .1; }
   function scala(i, now) { i = Math.max(0, Math.min(S.scala.length - 1, i)); if (i === S.i) return false; const su = i < S.i; S.i = i; S.R.setRes(S.scala[i]); dopo(now); S.cambi++; su ? S.su++ : S.giu++; return true; }
   function tetto(v, now) { if (FISSO || v === S.tetto) return false; S.tetto = v; dopo(now); S.cambi++; S.tetti++; return true; }
@@ -100,6 +105,6 @@ var PesoRitmo = (function () {
   const stato = () => ({ on: ON, tel: S.tel, scala: S.scala[S.i], gradino: S.i, scalaTutta: S.scala.slice(), tetto: S.tetto, periodo: +S.periodo.toFixed(2), passi: passi(),
     gpu: S.gpu, gpuMs: +gpuMs().toFixed(2), cpuMs: +S.cpu.toFixed(2), attesa: S.attesa, attesaT: S.attesaT, prova: S.prova && S.prova.tipo, cambi: S.cambi, giu: S.giu, su: S.su, prove: S.prove, fallite: S.fallite, tetti: S.tetti });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__ritmo', { get: stato, configurable: true });
-  return { ON, salta, misura, lavoro, inFondo, stato, get tetto() { return S.tetto; } };
+  return { ON, salta, giroSaltato, misura, lavoro, inFondo, stato, get tetto() { return S.tetto; } };
 })();
 if (typeof window !== 'undefined') window.PesoRitmo = PesoRitmo;

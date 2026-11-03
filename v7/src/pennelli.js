@@ -318,15 +318,18 @@ var Pennelli = (function () {
     return { stages: [snapC(c)], paths: [path.length ? path.filter((q, i) => i % 3 === 0).map(q => [q[0] + Wp * .1, q[1] + Hp * .3]) : [[Wp / 2, Hp / 2]]], radii: [Math.max(4, Hp * .3)], Wp, Hp, C: { q: .5 }, ppm };
   }
   // i tratti della tavoletta coi pennelli (rec.pen: il pennello scelto, rec.cfg: le manopole): nel riquadro Wp × Hp
+  // [tavola2] rec.st (se c'è): per ogni tratto la sua bomboletta, { c: colore, p: pennello, w: spessore in px }; senza, tutti col
+  // colore col, col pennello rec.pen e lo spessore rec.wpx (i disegni di prima)
   function drawStrokes(x, rec, Wp, Hp, col, r) {
-    const k = rec.frame ? Wp / rec.frame.w : 1, pen = rec.pen || 'spray', P = tune(pen, rec.cfg), wpx = (rec.wpx || 8) * k, heavy = [], path = [];
-    rec.strokes.forEach(s0 => { const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q));
-      if (pen === 'roller') heavy.push(...roller(x, pts, col, wpx, P, r));
-      else if (pen === 'marker') heavy.push(...marker(x, pts, col, wpx, P, r));
-      else heavy.push(...spray(x, pts, col, wpx, P, r)); });
-    const nd = Math.round(heavy.length * P.drip); heavy.sort((a, b) => b[3] - a[3]);
-    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (pen === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P.drip) * (pen === 'roller' ? 1.6 : 1)), col, r); }
-    return { path, W: wpx };
+    const k = rec.frame ? Wp / rec.frame.w : 1, pen0 = rec.pen || 'spray', P0 = tune(pen0, rec.cfg), SK = rec.st, heavy = [], path = [];
+    let wmax = (rec.wpx || 8) * k;
+    rec.strokes.forEach((s0, i) => { const q = SK && SK[i] || {}, c = q.c || col, pen = q.p || pen0, P = pen === pen0 ? P0 : tune(pen, rec.cfg), wpx = (q.w || rec.wpx || 8) * k;
+      const pts = s0.map(q => [q[0] * k, q[1] * k, q[2], q[3]]); pts.forEach(q => path.push(q)); if (q.w) wmax = Math.max(wmax, wpx);
+      const h = pen === 'roller' ? roller(x, pts, c, wpx, P, r) : pen === 'marker' ? marker(x, pts, c, wpx, P, r) : spray(x, pts, c, wpx, P, r);
+      for (const e of h) { e[4] = c; e[5] = pen; heavy.push(e); } });
+    const nd = Math.round(heavy.length * P0.drip); heavy.sort((a, b) => b[3] - a[3]);
+    for (let i = 0; i < Math.min(nd, heavy.length); i++) { const h = heavy[i]; drip(x, h[0], h[1], Math.max(.8, h[2] * (h[5] === 'marker' ? .2 : .14)), Math.min(Hp - h[1] - 2, Hp * (.04 + r() * .25) * (.4 + P0.drip) * (h[5] === 'roller' ? 1.6 : 1)), h[4] || col, r); }
+    return { path, W: wmax };
   }
   // IL LAVORO COI PENNELLI: il disegno di writer_arte.js (o il roller, l'adesivo, i tratti della tavoletta coi pennelli), poi
   // ogni tappa passa dal pennello del lavoro (polvere, colature, grana del muro, età). Lo chiamano il disegnatore a parte e writing.js

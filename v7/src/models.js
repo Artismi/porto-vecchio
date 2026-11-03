@@ -494,6 +494,14 @@ var Models = (function () {
   }
   let ready = false;
   // ---------------- OGNI FOTOGRAMMA ----------------
+  const GFIX = typeof location === 'undefined' || !/[?&]nofixsentinelle\b/.test(location.search);
+  let VGc = null;
+  function vistaG() {
+    const R0 = typeof window !== 'undefined' && window.__pv && window.__pv.R, cam = R0 && R0.getCamera && R0.getCamera(); if (!cam || !scene) return null;
+    const V = VGc || (VGc = { fr: new THREE.Frustum(), m: new THREE.Matrix4(), s: new THREE.Sphere(), p: new THREE.Vector3(), far: Infinity, cam: null });
+    V.m.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); V.fr.setFromProjectionMatrix(V.m); V.cam = cam.position; V.far = scene.fog && scene.fog.far ? scene.fog.far + 5 : Infinity; return V;
+  }
+  function fuoriG(V, g) { V.p.setFromMatrixPosition(g.matrixWorld); if (V.p.distanceTo(V.cam) > V.far + 4) return true; V.s.center.copy(V.p); V.s.center.y += 1; V.s.radius = 5; return !V.fr.intersectsSphere(V.s); }
   function tick(st, time, night) {
     if (!ready) return;
     const gdt = Math.min(.1, Math.max(0, time - (dyn.lastT || time))); dyn.lastT = time;
@@ -507,7 +515,10 @@ var Models = (function () {
         if (h.fuse > 0) { const k = 1 + Math.sin(time * 40) * .04; o.scale.set(k, 1 / k, k); } else o.scale.set(1, 1, 1);
       });
     }
-    dyn.guards.forEach(q => animPerson(q.g, { speed: 0, gun: q.gun, weapon: 'guardia' }, gdt));
+    // [ottimizza] le sentinelle fuori dall'inquadratura (con 4 m di margine, per l'ombra) o oltre la nebbia non si posano: il tempo si
+    // recupera al rientro, come fanno le persone in render.js (off1). Prima tutte, a ogni fotogramma, ovunque: ~8 ms. ?nofixsentinelle
+    const VG = GFIX && dyn.guards.length ? vistaG() : null;
+    dyn.guards.forEach(q => { if (VG && fuoriG(VG, q.g)) { q.dt1 = Math.min(1, (q.dt1 || 0) + gdt); return; } animPerson(q.g, { speed: 0, gun: q.gun, weapon: 'guardia' }, gdt + (q.dt1 || 0)); q.dt1 = 0; });
     dyn.boats.forEach(b => { b.o.position.y = -.35 + Math.sin(time * (b.slow ? .5 : 1.2) + b.ph) * (b.slow ? .08 : .12); b.o.rotation.z = Math.sin(time * .9 + b.ph) * (b.slow ? .01 : .04); b.o.rotation.x = Math.sin(time * .67 + b.ph * 1.9) * (b.slow ? .006 : .025); });   // [animazioni-mondo] anche il beccheggio
     // elicottero: di notte gira sull'isola, più basso e più vicino quando c'è allarme
     if (dyn.heli) {
