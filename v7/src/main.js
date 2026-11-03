@@ -889,6 +889,9 @@
   // Alla console, solo quando cambiano: {pv:'tasti', t:{a, b, croce, bomboletta, bici, zaino}, on:{bomboletta, bici, zaino}, mano, n,
   // audio} (la scritta di ogni tasto, null = ora non fa niente; acceso o spento; quello che hai in mano; le cose da fare qui) e
   // {pv:'stato', giorno, ora, soldi, debito, scade, ricercato}, per il display della console.
+  // [gameboy-menu] I tasti di sistema stanno nel menu (lo zaino), solo nel Game Boy: «Schermo intero» manda {pv:'schermo'} (la console mette
+  // a tutto schermo se stessa, pulsantiera compresa), «Esci» manda {pv:'esci'} (la console si chiude), l'audio si accende e si spegne qui
+  // e lo si dice alla console con {pv:'audio', on} (oltre che con 'tasti'). Vedi conSys.
   //   levetta     cammina e guida, come quella a schermo (inclinata poco è il passo, a fondo la corsa)
   //   croce       a piedi e in auto la visuale: ◄ ► la gira, ▲ ▼ avvicina e allontana; in BMX i trick, come le frecce
   //               della tastiera: ▼ impenna, ◄ ► un piede sulla pedalina (k: sx dx su giu, si tengono premuti)
@@ -900,7 +903,7 @@
   //   bomboletta  la tavoletta dei graffiti (accesa quando ce l'hai in mano)
   //   bici        a piedi → BMX → skate → a piedi (accesa quando pedali; al chiuso niente)
   //   zaino       il menu, col numero delle cose da fare qui; col menu aperto lo chiude
-  //   rotella     l'audio
+  //   rotella     l'audio (una console vecchia; ora sta nel menu)
   const CON = { on: false, run: false, fire: false, rot: 0, zoom: 0, dir: {}, lev2: {}, trick: { wheelie: false, peg: 0 }, held: {}, sent: '', stato: '' };
   const conBmx = () => !!(st.player.vehicle && jumpMode());   // in BMX la croce fa i trick
   const conSend = m => { try { window.parent.postMessage(m, '*'); } catch (e) { } };
@@ -949,6 +952,12 @@
     if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
     else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
+  }
+  // [gameboy-menu] i tasti di sistema del menu: 'schermo', 'audio', 'esci'. Rende lo stato dell'audio
+  function conSys(k) {
+    if (k === 'audio') { A.init(); const on = A.toggle(); CON.sent = ''; conSend({ pv: 'audio', on }); conLabels(); return on; }
+    if (k === 'schermo' || k === 'esci') { conLetGo(); conSend({ pv: k }); }
+    return A.on;
   }
   function conLetGo() { Object.keys(CON.held).forEach(k => conKey(k, false)); CON.dir = {}; CON.trick = { wheelie: false, peg: 0 }; CON.rot = CON.zoom = 0; CON.run = CON.fire = false; stick.x = stick.y = 0; vstick.x = vstick.y = 0; CON.lev2 = {}; }
   // [morbida] LA LEVETTA DELLA VISUALE, UNA SOLA: il controller (levetta destra), il Game Boy e lo schermo (vstick), le frecce. Prima ognuna
@@ -1005,7 +1014,7 @@
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
       if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
-      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 3 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 4 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale; [gameboy-menu] v4: schermo intero, audio ed esci stanno nel menu
     }
     if (!CON.on) return;
     if (d.pvc === 'levetta2') {   // [levette] la levetta della visuale del Game Boy (al posto della croce)
@@ -1211,6 +1220,6 @@
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
