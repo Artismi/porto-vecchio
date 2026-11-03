@@ -50,7 +50,8 @@ Il principio della cura: poche decisioni forti, le stesse ovunque, e il dettagli
    contrasto, viraggio ombre/luci) e la gerarchia per categoria. Niente correzioni per tinta, niente pellicola che sposta i grigi, niente
    «colore pieno» su tutto.
 3. **L'ombra è colorata, mai nera né grigia.** La riempie il cielo dell'ora: oltremare e lilla di giorno, magenta-viola al tramonto,
-   blu profondo di notte con le pozze calde del sodio. Il bordo dell'ombra è netto e morbido, senza retino né tremolio.
+   blu profondo di notte con le pozze calde del sodio. Il bordo dell'ombra è netto e morbido, senza retino. Una temperatura per luce:
+   sole caldo, ombra fredda; nessuna tinta senza una luce che la porti.
 4. **Il fondo respira, gli accenti esplodono.** Muri pastello (saturazione ≤ .40 in luce), suolo calmo (≤ .20 al sole), tetti cotto
    spento (≤ .46). La saturazione piena (.75-.95) solo a writing, insegne, saracinesche dipinte, neon, vestiti, cose con cui si
    interagisce: al più il 10-12% del quadro, il fluo sotto l'1%.
@@ -58,9 +59,11 @@ Il principio della cura: poche decisioni forti, le stesse ovunque, e il dettagli
    contorno su case, tetti e suolo: il volume lo dà la luce a tre toni (sole, mezzo, ombra) di ogni faccia, la separazione lo dà il valore.
 6. **Le superfici sostengono la forma, e il dettaglio è dosato.** La scala del muro (chiaro in alto, scuro al piede), una velatura e una
    pennellata larghe, le chiazze e il muschio dei tetti, il piede delle cose a terra, l'ombra della gronda: alla distanza di gioco si
-   leggono come mano di pittore. Niente rumore sotto il metro (la micro-normale vive solo da vicino), niente retino fuori dall'ombra piena,
-   le nuvole rare. Il dettaglio fine è disegno e geometria (finestre, persiane, insegne, writing, piante). Le dosi in `DIR` (§6).
-7. **Il passo finale ha un budget fisso** (§6). Ogni effetto è al servizio di una lettura, non si vede come effetto.
+   leggono come mano di pittore. **Ogni segno ha una causa che si capisce** (il muschio dove è umido, lo sporco dove si tocca, l'ombra dove
+   c'è una luce): senza causa, esce. Niente rumore sotto il metro (la micro-normale vive solo da vicino). Il dettaglio fine è disegno e geometria (finestre, persiane, insegne, writing, piante). Le dosi in `DIR` (§6).
+7. **Una gerarchia per inquadratura**: prima il personaggio, poi la via davanti, poi il set. Il contrasto e la saturazione più alti stanno
+   dove deve andare l'occhio (la luce sul personaggio un passo avanti, il fondo appena più quieto: `DIR.fuoco`).
+   **Il passo finale ha un budget fisso** (§6). Ogni effetto è al servizio di una lettura, non si vede come effetto.
 8. **Il regime è dritto e grigio**: lente ferma, colore a un terzo, la linea tecnica uniforme. La strada è calda, curva e colorata: lo
    stato della rivoluzione (`RIV`) sposta l'immagine fra i due, e solo lui.
 9. **L'identità hip hop sta nelle cose, non nel filtro** (§7): writing, lettering dipinto a mano, saracinesche, vestiti, neon, gente.
@@ -74,7 +77,7 @@ Luminanza (0-1, Rec. 709) e saturazione (HSV, 0-1) misurate dalla galleria (`<sc
 | categoria | luminanza | saturazione | come |
 | --- | --- | --- | --- |
 | **suolo** (il palco) | .36-.50 al sole, valore stretto attorno a .43 | ≤ .20 al sole, scaldato dal sole (mai grigio), ≤ .42 in ombra (oltremare-lilla) | `SG_DIR` nel passo |
-| **muri** (il fondo che respira) | .62-.74 al sole, ≥ .38 in ombra (mai buco) | ≤ .40 in luce, ≤ .50 in ombra; gli accenti già saturi restano | il valore verso .68 al 60% del contrasto |
+| **muri** (il fondo che respira) | .62-.74 al sole, ≥ .38 in ombra (mai buco) | ≤ .40 in luce, ≤ .50 in ombra; gli accenti già saturi restano | il valore verso .68 al 66% del contrasto |
 | **tetti** (la cornice) | .36-.50, mai sopra i muri | ≤ .46 (cotto spento, ardesia, lastrico) | il valore a .42 ± 70%, tetto .50 |
 | **persone** | contrasto col suolo ≥ 2:1 | accenti .8-.95 | +30% colore, +20% contrasto, la linea |
 | **accenti** | — | .75-.95 | nei materiali e nei segni |
@@ -88,8 +91,8 @@ a .62 così le pozze calde e i neon tengono il colore.
 
 | ora | sole | cielo (riempie l'ombra) | ombra (tinta) | nebbia, aria | bordo | grading |
 | --- | --- | --- | --- | --- | --- | --- |
-| mattino | `#ffe2b8` × 1.36 | `#9cc4f2` × .50, terra `#a89c88` | `#5c62c8` × .36 (oltremare-lilla) | `#e2dfd8` | `#fff0dc` | sat 1.03, contrasto 1.14, ombre ×[.93 .95 1.12] |
-| pomeriggio | `#ffe6c0` × 1.38 | `#9ec6f2` × .48, terra `#ab9c86` | `#6260c8` × .36 | `#e4e0d8` | `#fff0dc` | sat 1.03, contrasto 1.14, ombre ×[.93 .95 1.12] |
+| mattino | `#ffe2b8` × 1.36 | `#9cc4f2` × .50, terra `#a89c88` | `#5c62c8` × .36 (oltremare-lilla) | `#e2dfd8` | `#fff0dc` | sat 1.10, contrasto 1.14, ombre ×[.93 .95 1.12] |
+| pomeriggio | `#ffe6c0` × 1.38 | `#9ec6f2` × .48, terra `#ab9c86` | `#6260c8` × .36 | `#e4e0d8` | `#fff0dc` | sat 1.10, contrasto 1.14, ombre ×[.93 .95 1.12] |
 | sera | `#ffb47a` × 1.0 | `#9a88c8` × .60, terra `#a8826a` | `#7a46a8` × .32 (magenta-viola) | `#d8a0ac` (rosa) | `#ff9ec0` | sat 1.00, contrasto 1.10 |
 | notte | `#9ab0e0` × .34 | `#2a3360` × .40, terra `#2a2230` | `#3a3a78` × .18 (blu profondo) | `#141a2c` | `#5ec8e8` (ciano) | sat 1.04, contrasto 1.12 |
 
@@ -131,18 +134,29 @@ saturazione):
 o sporco: niente rumore sotto il metro, tranne la micro-normale che vive solo da vicino. Le dosi stanno in `DIR` (render.js, anche
 `window.__DIR`; tutte a 0 è «zero dettaglio», il foglio `_immagini/direzione/dosi_*.jpg` le confronta):
 
-| manopola | cosa fa | dose | prima |
-| --- | --- | --- | --- |
-| `pittura` | la scala del muro: chiaro in alto, scuro al piede (poggia a terra) | .6 | .7 |
-| `varia` | velatura (~14 m) e pennellata larga (~5 m) di valore, un filo di caldo e freddo, su muri e suolo | .5 | .6, tre rumori (uno a 60 cm) |
-| `vissuto` | sui tetti: chiazze di coppi nuovi e vecchi (~1 m) e il muschio raro; i terrazzi a metà; niente colature sui muri | .5 | 1, muri compresi |
-| `tremolio` | il confine delle bande di luce appena irregolare | .025 | .06 |
-| `microNormale` | la luce che trema sulla superficie, solo entro 10-22 m dalla camera; mai nel profilo leggero | .35 | .12 ovunque |
-| `retino` | il retino solo nell'ombra piena dei muri (mai sul suolo) | .06 | .14, ogni ombra |
-| `nuvole` | ombre di nuvole rare e morbide | .1 | .22 |
+| manopola | cosa fa | dose | prima | la causa, e perché aiuta l'inquadratura |
+| --- | --- | --- | --- | --- |
+| `pittura` | la scala del muro: chiaro in alto, scuro al piede | .7 | .7 | il cielo illumina il muro in alto, la via stretta toglie luce al piede: la casa poggia a terra |
+| `varia` | macchie di valore di 5-14 m su muri e suolo, solo di valore | .85 | .6, tre rumori (uno a 60 cm) e tinte calde/fredde a caso | le riprese d'intonaco e del lastrico fatte in anni diversi: ogni facciata è una mano, non un tono di catalogo |
+| `vissuto` | sui tetti: coppi nuovi e vecchi a chiazze (~1 m); il muschio solo sulle falde a nord, basse; niente sui terrazzi né sui muri | .9 | 1, muschio e colature ovunque | i coppi si cambiano a pezzi; il muschio cresce dove resta umido e in ombra: la cornice dei tetti si legge vissuta, non sporca |
+| `tremolio` | il confine delle bande di luce appena irregolare (±2,5%) | .025 | .06 | la mano del pittore: il bordo della campitura non è tirato col righello |
+| `microNormale` | la luce radente che trema sulla superficie, solo entro 10-22 m; mai nel profilo leggero | .35 | .12 ovunque | l'intonaco e la pietra sono ruvidi: si vede solo da vicino, da lontano era grana |
+| `fuoco` | il fondo lontano dal personaggio perde fino al 10% di colore | .10 | — | la gerarchia: prima il personaggio, poi la via davanti (la luce sta un passo avanti, `NIT.avanti`), poi il set |
+| `retino` | — | 0 | .14, ogni ombra | fuori: nella scena non ha una causa (non è luce né materia) |
+| `nuvole` | — | 0 | .22 | fuori: la camera guarda in basso, la nuvola non si vede mai e l'ombra restava senza causa |
 
-Restano anche il piede dei muri liscio e freddo (`polvere` .7), il cielo dell'ora sul suolo la sera, il bordo di luce delle persone, le
-finestre accese la sera, l'acqua. Fuori: il rumore del suolo e della polvere, le colature sui muri.
+Le altre manopole che restano, con la loro causa: il piede dei muri liscio e freddo (`polvere` .7: gli schizzi della pioggia e i passi
+sporcano il primo metro); il piede e la gronda nel passo (`DIOR.piede` .3, `gronda` .24: la luce del cielo arriva meno dove una cosa
+tocca terra e sotto lo sporto); il cielo dell'ora sul suolo la sera (il cielo è ancora chiaro quando il sole è giù); il bordo di luce delle
+persone (`CAT.bordoPersone` .2: il controluce del cielo sulle spalle, stacca la figura); la lente che respira (`PELL`: il fish-eye della
+VX1000, più largo quando si corre); la grana (`AD.grana` .01: l'emulsione); la vignetta (la lente). La temperatura è una per luce: il sole
+caldo (`#ffe2b8`), l'ombra fredda dal cielo (`#5c62c8`); il suolo al sole è scaldato dal sole, mai una tinta a caso.
+
+**Il filtro.** Ogni effetto deve avere una causa che chi guarda capisce: un'ombra ha una luce, il muschio sta dove è umido, lo sporco dove
+si tocca. Se la causa non si nomina, l'effetto esce o si lega a una causa. Il foglio `_immagini/direzione/dosi/` mette a confronto zero
+dettaglio e la dose scelta (la prima dose, .5, alla distanza di gioco non si distingueva da zero: alzata al giro 4).
+
+Fuori anche: il rumore del suolo e della polvere, le colature sui muri.
 
 **Nel passo finale** (`sguInit`, `#define SG_DIR`), in quest'ordine e nient'altro:
 
@@ -155,11 +169,19 @@ finestre accese la sera, l'acqua. Fuori: il rumore del suolo e della polvere, le
 | il piede e la gronda | 4 | .3, .24 |
 | la sagoma delle persone | 8 | .9 |
 | neri puliti, grana | 0 | grana .01 (si sente, non si vede) |
-| la luce sul personaggio, la vignetta | 0 | vignetta ≤ .16 di notte, .08 di giorno |
+| la luce sul personaggio un passo avanti, il fuoco, la vignetta | 0 | `NIT.luce` .06, `DIR.fuoco` .10, vignetta ≤ .16 di notte, .08 di giorno |
 
 **Fuori dal passo**: la nitidezza, il contrasto locale, la soppressione della densità delle linee, il pennarello su ogni faccia, la
-pellicola che correggeva i grigi, la tavolozza «viva» per tinta, il verde acido. Nel profilo leggero il passo è sceso da ~34 a ~23
-letture per pixel; nei materiali di un muro da fino a 9 rumori a 1.
+pellicola che correggeva i grigi, la tavolozza «viva» per tinta, il verde acido.
+
+**Il costo.** Nel profilo leggero (la Iris Xe del committente) il passo finale è sceso da 35 a 23 letture della tessitura per pixel (via la
+nitidezza, 4, e la densità delle linee, 8) e ha perso i rami della pellicola e della tavolozza. Nei materiali i rumori per frammento (ogni
+rumore sono 8 hash): un muro da 7-9 a 3, il suolo da 8 a 3, un tetto da 7 a 4; via il retino (le derivate e un ramo per luce) e le nuvole.
+I programmi non aumentano (gli stessi `#define`, nessuna variante nuova).
+
+**I tasselli.** Gli shader dei materiali delle case nei tasselli cotti sono scritti già espansi (10 programmi su 56 stringhe): i cambi ai
+materiali si vedono sulle case solo coi tasselli ricotti per questa impronta (il workflow `tasselli` al push su `main`, o in locale
+`node strumenti/tassella.js --impronta=<impronta>`, ~15 min). Le foto del giro finale sono coi tasselli ricotti.
 
 ## 7. L'identità hip hop: dove sta
 

@@ -19,7 +19,7 @@ def misura(d, nome):
         if k in c: parti.append(f"{k} L{c[k]['L']:.2f} s{c[k]['sat']:.2f}")
     if 'suolo' in c and 'luceOmbra' in c['suolo']: parti.append(f"luce/ombra {c['suolo']['luceOmbra']:.1f}")
     return '  '.join(parti)
-nomi = sorted(f[:-4] for f in os.listdir(cols[0][1]) if f.endswith('.png') and not f.endswith('_cat.png') and f != 'galleria.png')
+nomi = sorted(f[:-4] for f in os.listdir(cols[0][1]) if f.endswith('.png') and not f.endswith('_cat.png') and f != 'galleria.png' and not f.startswith('00_'))   # 00_avvio: lo scorcio di riscaldamento
 fogli = []
 for nome in nomi:
     ims = []
