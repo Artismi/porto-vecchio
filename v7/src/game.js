@@ -94,6 +94,102 @@ var Game = (function () {
       if (lx >= s.x0 - .1 && lx <= s.x2 && lz >= s.z0 - .05 && lz <= s.z1 + .1) return s.q + s.h * clamp((lx - s.x0) / ((s.x1 - s.x0) || 1), 0, 1); }
     return null;
   }
+  // [suolo2] I PIANI RIALZATI DELLE OPERE NELLA QUOTA DEL SUOLO. Il committente, sulla Piazza dell'Ottagono: «se cammino verso le scale
+  // sprofondo nel pavimento: il pavimento vero è sotto, sopra c'è la pedana rialzata della piazza». La quota di chi cammina (render.js
+  // groundH) era il terreno (i vertici ogni 2 m) più il marciapiede e la rampa delle scale dei gradoni: le opere che pezzi_citta.js
+  // disegna sopra il terreno non c'erano. Sul ciglio dei gradoni il terreno scende in un metro e mezzo dal piano della piazza alla via di
+  // sotto, mentre si vede il camminamento in piano fino al muro: fino a 1,3 m di piedi dentro la pedana (strumenti/sonda_suolo.js).
+  // Qui, dagli stessi numeri con cui pezzi_citta.js costruisce i pezzi (W0.pezzi: tipo, posto, quota, opzioni), le facce in su che si
+  // calpestano, ognuna nel riferimento del suo pezzo (lx lungo X, lz lungo Z, girati con rot):
+  //   gradone        il camminamento in cima (h + 5 cm) e la copertina sul ciglio (h + 16 cm), dal muro fino a P dietro; la scala
+  //                  addossata a GRADINI VERI (la pedata alla sua alzata, non più la rampa), lo zoccolo al piede, il pianerottolo;
+  //                  la cordonata a rampe brevi fra i cordoni
+  //   scalinata      gradini e pianerottoli come il profilo (la quota sale a scatti)
+  //   facciata_chiesa  i tre gradini del sagrato davanti al portale
+  //   fontana, pozzo   il gradino attorno alla vasca, la piattaforma del pozzo (il poligono vero, non un cerchio)
+  //   lavatoio       il selciato
+  //   passaggio_livello  il riempimento fra le rotaie, le rampe e la strada (anche girati, se il passaggio è obliquo), le banchine
+  //   molo_vecchio, darsena, scalo_alaggio  il piano delle banchine e del molo, la testata, i cigli; la rampa dello scalo e le spallette
+  //   portico        il pavimento sotto le arcate
+  //   binari, sottopasso, muro_garante  la massicciata e il rilevato; la strada sotto il fornice; la platea e il varco del posto di blocco
+  // quotaSuolo(x, y, g): con g la quota del terreno sotto, la quota del piano più alto fra terreno e opere (le scale e le scalinate
+  // comandano: la pedata è il suolo anche dove il terreno resta più alto di qualche centimetro); null fuori dalle opere. Un indice per
+  // casella (SUPC), fatto una volta: a ogni chiamata solo i pezzi della casella. ?nofixsuolo2: com'era (nessuna faccia, la rampa).
+  const FIX_SUOLO2 = !(typeof location !== 'undefined' && /[?&]nofixsuolo2\b/.test(location.search));
+  const SUPC = new Map(), SUP = [];
+  const inPoliReg = (lx, lz, R, n, ry) => { if (lx * lx + lz * lz > R * R) return false; const st = 2 * Math.PI / n; let a = Math.atan2(lx, lz) - ry; a = ((a % st) + st) % st; return Math.hypot(lx, lz) * Math.cos(a - st / 2) <= R * Math.cos(st / 2); };   // il poligono regolare di CylinderGeometry (raggio ai vertici R, il primo vertice su +Z, girato di ry)
+  function supAdd(p, F, ext) {   // F: le facce [lx0, lx1, lz0, lz1, f(lx, lz) → quota sopra p.q, scala?]; ext: il riquadro locale [lx0, lx1, lz0, lz1]
+    const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0), q = p.q || 0, S = { x: p.x, y: p.y, c, s, q, F, tipo: p.tipo }, k = SUP.push(S) - 1;
+    const C = [[ext[0], ext[2]], [ext[1], ext[2]], [ext[1], ext[3]], [ext[0], ext[3]]].map(([a, b]) => [p.x + a * c + b * s, p.y - a * s + b * c]), xs = C.map(v => v[0]), ys = C.map(v => v[1]);
+    for (let ty = Math.max(0, Math.floor(Math.min(...ys) / TS)); ty <= Math.min(GH - 1, Math.floor(Math.max(...ys) / TS)); ty++) for (let tx = Math.max(0, Math.floor(Math.min(...xs) / TS)); tx <= Math.min(GW - 1, Math.floor(Math.max(...xs) / TS)); tx++) { const i = ty * GW + tx; (SUPC.get(i) || SUPC.set(i, []).get(i)).push(k); }
+  }
+  const DEF2 = (o, d) => Object.assign({}, d, o || {});
+  if (FIX_SUOLO2) (W0.pezzi || []).forEach(p => { try {
+    if (p.tipo === 'gradone') { const o = DEF2(p.opz, { L: 12, h: 2.4, P: 4, rampa: true, scala: false }), L = o.L, h = o.h, P = o.P, k = .12, F = [];
+      F.push([0, L, -P, -.5, () => h + .05, false], [0, L, -.5, .1, () => h + .16, false]);   // il camminamento e la copertina
+      if (o.scala || o.rampa) { const W = 1.8, za = h * k * .5, cord = !o.scala, SX = o.scala && o.scalaX ? o.scalaX : null, SC = !cord && SX;
+        const a0 = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a0), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), yb = SC ? o.yb : 0, hs = SC ? o.hs : h, aa = hs / n;
+        const xi = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xt = xi + n * pd, xe = SC ? SX[2] : Math.min(L, xt + 1.4);
+        F.push([xi, xe, za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
+          : (lx => lx >= xt ? h : yb + aa * Math.min(n, Math.floor((lx - xi) / pd + 1e-6) + 1)), true]);   // i gradini: la pedata i alla sua alzata
+        if (SC) F.push([xi - .15, xi, za - .08, za + W + .08, () => yb + .06, true]); }   // lo zoccolo al piede
+      supAdd(p, F, [-.2, L + .2, -P, h * k * .5 + 2]); }
+    else if (p.tipo === 'scalinata') { const o = DEF2(p.opz, { w: 4, dislivello: 8, pianerottoli: 1, pedata: .36 }), H = o.dislivello, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata, nf = Math.max(1, o.pianerottoli + 1), W = o.w, T0 = [];
+      let x = 0, y = 0; for (let f = 0; f < nf; f++) { const kk = Math.round(n * (f + 1) / nf) - Math.round(n * f / nf); for (let i = 0; i < kk; i++) { y += a; T0.push([x, y]); x += pd; } const lx = f < nf - 1 ? 1.6 - pd : 1.2; x += lx; }
+      const X = x; supAdd(p, [[0, X, -W / 2, W / 2, lx => { let r = 0; for (const t of T0) { if (lx >= t[0] - 1e-6) r = t[1]; else break; } return r; }, true]], [0, X, -W / 2, W / 2]); }
+    else if (p.tipo === 'facciata_chiesa') { const o = DEF2(p.opz, { w: 14, spessore: 1.2, gradini: 3 }), n = o.gradini; if (n > 0) { const W = o.w, z1 = o.spessore / 2 + n * .4;
+      supAdd(p, [[-.6, W + .6, z1 - n * .4, z1, (lx, lz) => .17 * Math.min(n, Math.floor((z1 - lz) / .4 + 1e-6) + 1), false]], [-.6, W + .6, z1 - n * .4, z1]); } }
+    else if (p.tipo === 'fontana') { const o = DEF2(p.opz, { r: 2.2, lati: 8 }), R = o.r + .5, n = Math.max(4, o.lati), ry = Math.PI / n;
+      supAdd(p, [[-R, R, -R, R, (lx, lz) => inPoliReg(lx, lz, R, n, ry) ? .18 : null, false]], [-R, R, -R, R]); }
+    else if (p.tipo === 'pozzo') { const o = DEF2(p.opz, { r: .8 }), R = o.r + .8;
+      supAdd(p, [[-R, R, -R, R, (lx, lz) => inPoliReg(lx, lz, R, 16, 0) ? .15 : null, false]], [-R, R, -R, R]); }
+    else if (p.tipo === 'lavatoio') { const o = DEF2(p.opz, { L: 6 }), L = o.L, xc = L / 2 + .6, hw = (L + 3.2) / 2, hd = (1.6 + 3.4) / 2;
+      supAdd(p, [[xc - hw, xc + hw, -hd, hd, () => .08, false]], [xc - hw, xc + hw, -hd, hd]); }
+    else if (p.tipo === 'passaggio_livello') {   // il riempimento fra le rotaie (44 cm), le rampe, la strada, le banchine (la massicciata e le rotaie le toglie render.js po1Strip: il binario vero è quello di writing.js)
+      const o = DEF2(p.opz, { w: 8 }), HP = Math.PI / 2, ob = Math.max(.6, Math.min(Math.PI - .6, o.obliquo || HP)), sq = Math.abs(ob - HP) < .001, w = o.w, wx = sq ? w : w / Math.sin(ob), Lt = wx + 14, xc = Lt / 2, sk = sq ? 1 : 1 / Math.sin(ob);
+      const c0 = Math.cos(p.rot || 0), s0 = Math.sin(p.rot || 0), Z1 = 4.7 * sk + 5, F = [];
+      F.push([-w / 2, w / 2, -1.7 * sk, 1.7 * sk, () => .44, false], [-w / 2, w / 2, -Z1, Z1, (lx, lz) => { const a = Math.abs(lz); return a <= 1.7 * sk ? .44 : a <= 4.7 * sk ? .44 + (.06 - .44) * (a - 1.7 * sk) / (3 * sk) : .06; }, false]);
+      for (const sx of [-1, 1]) F.push([sx * (w / 2 + .7) - .7, sx * (w / 2 + .7) + .7, -5.75 * sk - 3.95, 5.75 * sk + 3.95, (lx, lz) => Math.abs(Math.abs(lz) - 5.75 * sk) <= 3.95 ? .12 : null, false]);
+      supAdd({ x: p.x + xc * c0, y: p.y - xc * s0, q: p.q, rot: (p.rot || 0) + (sq ? 0 : HP - ob), tipo: p.tipo }, F, [-w / 2 - 1.4, w / 2 + 1.4, -Z1 - 1, Z1 + 1]); }
+    else if (p.tipo === 'molo_vecchio') {   // il piano del molo (a quota 0 del pezzo), il secondo braccio, la testata tonda, il ciglio sul lato del porto
+      const o = DEF2(p.opz, { L1: 50, L2: 30, w: 7 }), L1 = o.L1, L2 = o.L2, w = o.w, hx = L2 > 0 ? L1 - w / 2 : L1, hz = L2 > 0 ? w / 2 + L2 : 0, rt = w / 2 + .6, F = [];
+      F.push([0, L1, -w / 2, w / 2, () => 0, false], [0, L1 - (L2 > 0 ? w : 0), w / 2 - .5, w / 2, () => .15, false]);
+      if (L2 > 0) F.push([L1 - w, L1, w / 2, w / 2 + L2, () => 0, false], [L1 - w, L1 - w + .5, w / 2, w / 2 + L2, () => .15, false]);
+      F.push([hx - rt, hx + rt, hz - rt, hz + rt, (lx, lz) => Math.hypot(lx - hx, lz - hz) <= rt ? 0 : null, false]);
+      supAdd(p, F, [-.5, L1 + rt, -w / 2, Math.max(w / 2, hz + rt)]); }
+    else if (p.tipo === 'darsena') {   // le banchine di fondo e dei fianchi (a quota 0), le testate, il ciglio (15 cm)
+      const o = DEF2(p.opz, { L: 40, W: 30, banchina: 6 }), L = o.L, W = o.W, B = o.banchina, Lt = L + 2 * B, xc = Lt / 2, F = [[0, Lt, -W / 2 - B, -W / 2, () => 0, false], [xc - (L + .6) / 2, xc + (L + .6) / 2, -W / 2 - .6, -W / 2, () => .15, false]];
+      for (const s of [-1, 1]) { const xb = xc + s * (L / 2 + B / 2), xk = xc + s * (L / 2 + .3); F.push([xb - B / 2, xb + B / 2, -W / 2, W / 2, () => 0, false], [xb - B / 2, xb + B / 2, W / 2, W / 2 + B / 2, (lx, lz) => Math.hypot(lx - xb, lz - W / 2) <= B / 2 ? 0 : null, false], [xk - .3, xk + .3, -W / 2, W / 2, () => .15, false]); }
+      supAdd(p, F, [0, Lt, -W / 2 - B, W / 2 + B / 2]); }
+    else if (p.tipo === 'scalo_alaggio') {   // la rampa di cemento (in piano 3 m, poi giù verso +Z), le spallette con la copertina (15 cm)
+      const o = DEF2(p.opz, { L: 12, w: 6, hq: 1.4 }), L = o.L, w = o.w, yE = -o.hq - .8;
+      supAdd(p, [[0, w, -3, L, (lx, lz) => lz <= 0 ? 0 : yE * lz / L, false], [-1.25, .05, -3, L, () => .15, false], [w - .05, w + 1.25, -3, L, () => .15, false]], [-1.25, w + 1.25, -3, L]); }
+    else if (p.tipo === 'binari') {   // la massicciata a trapezio (30 cm, le scarpe a 45°) e, sul rilevato, il suo piano e la copertina del muro
+      const o = DEF2(p.opz, { L: 25, binari: 2, rilevato: true, hRilevato: 2.5 }), L = o.L, n = Math.max(1, o.binari), h = o.rilevato ? o.hRilevato : 0, wb = (n - 1) * 4 + 3.6, Wt = wb + 3.2, F = [];
+      F.push([0, L, -wb / 2 - .3, wb / 2 + .3, (lx, lz) => h + .3 - Math.max(0, Math.abs(lz) - wb / 2), false]);
+      if (o.rilevato && h > .8) F.push([0, L, -Wt / 2, Wt / 2, () => h, false], [0, L, -Wt / 2 - 1.5 * h, -Wt / 2, (lx, lz) => h * (lz + Wt / 2 + 1.5 * h) / (1.5 * h), false], [0, L, Wt / 2 - .575, Wt / 2 + .175, () => h + .25, false]);
+      supAdd(p, F, [0, L, -Wt / 2 - 1.5 * h - .3, Wt / 2 + .3]); }
+    else if (p.tipo === 'sottopasso') {   // la strada sotto il fornice (6 cm)
+      const o = DEF2(p.opz, { L: 16, w: 5 }), w = o.w, L = Math.max(o.L, w + 6), xc = L / 2;
+      supAdd(p, [[xc - (w + .6) / 2, xc + (w + .6) / 2, -7.5, 7.5, () => .06, false]], [xc - (w + .6) / 2, xc + (w + .6) / 2, -7.5, 7.5]); }
+    else if (p.tipo === 'muro_garante') {   // la platea davanti al muro, la piazzola e la strada del posto di blocco (5-6 cm)
+      const o = DEF2(p.opz, { L: 24, posto_blocco: true }), L = o.L, wv = o.posto_blocco ? 6 : 0, xv = L / 2, F = [[0, L, -1.7, .5, () => .05, false]];
+      if (wv) F.push([xv - (wv + 7) / 2, xv + (wv + 7) / 2, -.2, 5.8, () => .05, false], [xv - wv / 2, xv + wv / 2, -4.5, 4.5, () => .06, false]);
+      supAdd(p, F, [0, L, -4.5, 5.8]); }
+    else if (p.tipo === 'portico') {   // il pavimento del portico (15 cm; lo stesso nel portico d'Ottocento)
+      const o = DEF2(p.opz, { campate: 6, campata: 4, profondita: 4 }), L = o.campate * o.campata, P = o.profondita;
+      supAdd(p, [[0, L, -.25 - (P + .5) / 2, -.25 + (P + .5) / 2, () => .15, false]], [0, L, -.25 - (P + .5) / 2, -.25 + (P + .5) / 2]); }
+  } catch (e) { if (typeof console !== 'undefined') console.warn('[suolo2]', p.tipo, e); } });
+  function quotaSuolo(x, y, g) {
+    const L = SUPC.size ? SUPC.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null; if (!L) return null;
+    let best = null, scala = null;
+    for (let i = 0; i < L.length; i++) { const S = SUP[L[i]], dx = x - S.x, dy = y - S.y, lx = dx * S.c - dy * S.s, lz = dx * S.s + dy * S.c;
+      for (const f of S.F) { if (lx < f[0] || lx > f[1] || lz < f[2] || lz > f[3]) continue; const h = f[4](lx, lz); if (h === null) continue; const v = S.q + h;
+        if (f[5]) { if (scala === null || v > scala) scala = v; } else if (best === null || v > best) best = v; } }
+    if (scala !== null) return best !== null ? Math.max(scala, best) : scala;
+    if (best === null) return null;
+    return g === undefined || g === null || !(g > best) ? best : g;
+  }
   const walkM = BAR.length ? (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS)) && !muroM(x, y) : (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
   // [pedonale] DOVE I MEZZI NON VANNO (NOV, una casella per cella): 2 = le scale e i gradini (le caselle STAIRS, le scale dei gradoni, le
   // scalinate, i muraglioni), mai; 1 = le piazze pedonali, la piazza alta, le fontane, i sottopassi pedonali e le vie pedonali (rd.pedonale),
@@ -2695,7 +2791,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]

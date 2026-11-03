@@ -110,7 +110,35 @@ var Render = (function () {
   function rampH(R, x, z) { const k = R.axis === 'x' ? (x / TS - R.x) / R.w : (z / TS - R.y) / R.h; return R.h0 + (R.h1 - R.h0) * clamp(k, 0, 1); }
   function tileElev(tx, ty) { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return M.elev[(ty | 0) * G.GW + (tx | 0)]; }   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const VH = (i, j) => M.vh[Math.max(0, Math.min(G.GH, j)) * M.VW + Math.max(0, Math.min(G.GW, i))];
+  // [suolo2] LA QUOTA DI CHI CAMMINA È IL PIANO CHE SI VEDE (strumenti/sonda_suolo.js). Prima: il terreno interpolato a quattro vertici
+  // (VH, la quota del mondo) più il marciapiede e la rampa delle scale. Il blocco del suolo invece si disegna coi due triangoli della
+  // casella e con la quota della riva (W.quotaRiva: quotaTri1, la stessa delle decalcomanie a terra): sulle caselle storte e lungo la costa
+  // i piedi stavano fino a 25 cm dentro o sopra il terreno. E le opere rialzate (il camminamento dei gradoni sul ciglio della piazza alta,
+  // i gradini delle scale e delle scalinate, il sagrato, il gradino delle fontane, i passaggi a livello, il molo: game.js quotaSuolo; la
+  // massicciata della ferrovia: writing.js __ferrovia2) non c'erano. Ora groundH (il giocatore, la gente, i mezzi, le cose posate, la
+  // camera) = il terreno dei triangoli del blocco + il marciapiede, la massicciata, e sopra le opere il loro piano. Le quote dei vertici si leggono una volta (QV2, pigra, come riva.js). ?nofixsuolo2: com'era
+  const SUOLO2 = typeof location === 'undefined' || !/[?&]nofixsuolo2\b/.test(location.search);
+  let QV2 = null, QV2W = null;
+  function qv2(i, j) {
+    if (QV2W !== M.world || !QV2) { QV2W = M.world; QV2 = new Float32Array((G.GW + 1) * (G.GH + 1)).fill(NaN); }
+    i = Math.max(0, Math.min(G.GW, i)); j = Math.max(0, Math.min(G.GH, j)); const k = j * (G.GW + 1) + i; let v = QV2[k];
+    if (v !== v) v = QV2[k] = M.world && M.world.quotaRiva ? M.world.quotaRiva(i, j) : VH(i, j);
+    return v;
+  }
+  function terraVista2(fx, fz) {   // i due triangoli della casella del blocco (la diagonale da (i, j) a (i + 1, j + 1)), come quotaTri1
+    const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = qv2(i, j), h11 = qv2(i + 1, j + 1);
+    return v >= u ? h00 + (h11 - qv2(i, j + 1)) * u + (qv2(i, j + 1) - h00) * v : h00 + (qv2(i + 1, j) - h00) * u + (h11 - qv2(i + 1, j)) * v;
+  }
   function groundH(x, z) { // quota del terreno: interpolata fra i quattro vertici della casella
+    if (!SUOLO2) return groundH0(x, z);
+    const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
+    if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
+    let g = terraVista2(fx, fz) + swH(x, z); const F2 = window.__ferrovia2; if (F2) { const f = F2(x, z); if (f !== null && f > g) g = f; }   // [suolo2] il terreno come lo disegna il blocco, la massicciata della ferrovia (writing.js)
+    const q = G.quotaSuolo ? G.quotaSuolo(x, z, g) : null; return q !== null ? q : g;   // e le opere rialzate (game.js quotaSuolo)
+  }
+  // [suolo2] la quota di prima (i quattro vertici del mondo, il marciapiede, la rampa delle scale): con ?nofixsuolo2, e per chi costruisce
+  // sul terreno nudo e non deve salire sulle opere (il binario e la sua massicciata in writing.js)
+  function groundH0(x, z) {
     const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
     if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
     if (G.quotaScala) { const qs = G.quotaScala(x, z); if (qs !== null) return qs; }   // [pedonale] sui gradini delle scale dei gradoni
@@ -18580,6 +18608,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  const PASSO2 = { y: null, x: 0, z: 0 };   // [suolo2] la quota mostrata del corpo sui gradini
+  function passo2(g, x, z, h, dt) {   // [suolo2] lo stesso per la gente: i salti piccoli del suolo (una pedata) in un ventesimo di secondo
+    if (!SUOLO2) return h; const u = g.userData, d = h - (u.su2y === undefined ? h : u.su2y);
+    if (u.su2y !== undefined && Math.abs(d) > .002 && Math.abs(d) < .45 && Math.hypot(x - u.su2x, z - u.su2z) < 1) h = u.su2y + d * (1 - Math.exp(-Math.min(dt, .1) * 22));
+    u.su2y = h; u.su2x = x; u.su2z = z; return h;
+  }
   // [bassa] LE COSE FRA LA CAMERA E TE: con la visuale bassa ogni cosa registrata (DZ.props: ringhiere, cartelli, tavolini, lampioni, fusi
   // nelle mesh statiche o nei tasselli) che taglia il tratto dalla camera al personaggio si spegne (hideTag, come quando si rompe) e torna
   // quando non è più in mezzo da BASSA_TIENI s. Non si toccano le cose vive o rotte (state) né quelle spente da altri (t.hidden prima).
@@ -19013,7 +19047,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : passo2(g, n.x, n.y, groundH(n.x, n.y), dt) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */   /* [suolo2] sui gradini il passo, non lo scatto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
@@ -19036,7 +19070,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta' || pveh.kind === 'ciao');   // [animazioni] anche sul Ciao (prima in sella non si vedeva nessuno)   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
-    { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
+    { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); 
+      // [suolo2] IL PASSO SUI GRADINI: la quota del suolo ora sale a scatti (la pedata, non la rampa); il corpo ci arriva in un attimo
+      // (un ventesimo di secondo), non di colpo. Solo per i salti piccoli (fino a 45 cm) e camminando: il resto (cadute, porte, salti) com'era
+      if (SUOLO2 && lh === null && !p.indoor) { const S2 = PASSO2, d = playerH - S2.y; if (S2.y !== null && Math.hypot(p.x - S2.x, p.y - S2.z) < 1 && Math.abs(d) < .45 && Math.abs(d) > .002 && !(p.jz > 0)) playerH = S2.y + d * (1 - Math.exp(-Math.min(dt, .1) * 22)); S2.y = playerH; S2.x = p.x; S2.z = p.y; } else PASSO2.y = null; }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     // [animazioni2] in auto il giocatore si vede, seduto al volante (prima nascosto, al suo posto il pupazzo a scatole); salendo e
     // scendendo (CARIN) va alla portiera, si siede, chiude: la posa si fa nel giro dei mezzi (serve il mezzo già messo a posto)
     const pvg = pveh ? dyn.vehicles[pveh.id] : null, inCar = !!(pveh && !onVespa && !(G.VK[pveh.kind] || {}).boat && pg.userData.model && pvg && pvg.userData.seat && !pvg.userData.two && !pveh.wreck);
@@ -19534,5 +19571,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
