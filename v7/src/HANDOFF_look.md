@@ -171,3 +171,17 @@ Il piano è `ANALISI_STILE.md` (la diagnosi misurata, il piano di valori per cat
 pagina; ogni cambio a un modulo del gioco cambia l'impronta, e senza release la città si costruisce nel browser (lentissimo, i pavimenti
 arrivano a pezzi). Per un ramo: lanciare a mano il workflow `tasselli` sul ramo (workflow_dispatch, ~5 minuti), poi un push qualunque
 (rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-e3f1450ad6282a0b` ([camera4], 622bdc9).
+
+## [direzione] La direzione artistica: si toglie, si dosa, ogni segno ha una causa (2-3 novembre)
+
+La regola è `DIREZIONE_ARTISTICA.md` (diagnosi, dieci regole, piano dei valori, tavolozze per ora e quartiere, bordi, dosi, budget del
+passo, identità hip hop, misure). In `render.js` tutto sta dietro `DIR` (`window.__DIR`); `?lookvecchio` riporta il look di prima,
+identico. Il passo finale col `#define SG_DIR` (via nitidezza, pellicola, tavolozza per tinta, densità e contrasto locale, linee fra le
+facce: resta solo la sagoma delle persone; il piano dei valori per categoria nelle uniform `dV`, `dW`; il fuoco `dF`). I materiali: via
+retino, nuvole, rumore del suolo, colature; il dettaglio dosato (`DIR.pittura`, `varia`, `vissuto`, `tremolio`, `microNormale`), il
+muschio solo sulle falde a nord. Corretto: `gN.z` (il giorno) era azzerato dalle manopole dell'ora. Il varco del primo piano pulito.
+**I tasselli vanno ricotti** perché i cambi ai materiali arrivino sulle case (gli shader delle case sono scritti espansi nei tasselli).
+
+**Il giro del colore** (3 novembre): il sole dorato, l'ombra blu-viola piena, il pastello pieno dei muri e il cotto chiaro dei tetti, i neri
+delle finestre veri (il velo latte era il sollevamento dei muri sui neri), gli accenti +16%, le persone di notte col controluce; misure e
+fogli a tre in `DIREZIONE_ARTISTICA.md` §10 e `_immagini/direzione/colore/`.

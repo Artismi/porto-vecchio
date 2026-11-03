@@ -75,16 +75,25 @@ const srv = http.createServer((req, res) => {
     // i blocchi della città attorno (render.js ISO.job: uno alla volta) finiti per due controlli di fila
     for (let k = 0, quiet = 0, tb = Date.now(); Date.now() - tb < 40000 && quiet < 2; k++) {   // al massimo 40 s (sotto carico ogni domanda alla pagina aspetta un fotogramma)
       await pg.waitForTimeout(1000); quiet = (await pg.evaluate(() => !(window.__pv.R.ISO && window.__pv.R.ISO.job))) ? quiet + 1 : 0; }
-    log('blocchi'); await pg.waitForTimeout(s.attesa || 4500);
+    log('blocchi');
+    // [direzione] i tasselli della città attorno arrivati e aperti, e il loro numero fermo per tre controlli (con fotogrammi veloci la foto
+    // partiva prima: case a scatole bianche), al più 120 s
+    { let quiet = 0, n0 = -1; const tb = Date.now();
+      while (Date.now() - tb < 120000 && quiet < 3) { await pg.waitForTimeout(1500);
+        const T = await pg.evaluate(() => { const t = window.__tasselli; return t ? { on: t.on, v: t.inVolo + t.inApertura, n: t.inScena, m: t.motivo } : null; });
+        if (!T || !T.on) { log('tasselli spenti: ' + (T && T.m)); break; }
+        quiet = T.v === 0 && T.n > 0 && T.n === n0 ? quiet + 1 : 0; n0 = T.n; } }
+    log('tasselli'); await pg.waitForTimeout(+(process.env.GALLERIA_SOSTA || 0) || s.attesa || 4500);
     // 3) le foto e le misure, una per variante delle manopole (stessa scena, stessa gente, stesso istante)
     for (const v of VARIANTI) {
       await pg.evaluate(o => {   // ogni variante parte dalle manopole del codice e cambia solo le sue
-        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD', 'CAT', 'DIOR'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
+        if (window.__SGU && window.__SGU.pro) window.__PRO = window.__SGU.pro;   // [direzione] le manopole dei materiali (SGU.pro) come variante: "PRO"
+        const cp = x => JSON.parse(JSON.stringify(x)), K = ['QUADRO', 'SCENA', 'OCCL', 'PROF', 'TAGLIO', 'ALONE3', 'STRADA', 'NIT', 'AD', 'CAT', 'DIOR', 'PELL', 'RIV', 'PRO', 'DIR'];   /* [nitida] */   /* [personaggi] il tono di strada */   // [visuale3] il taglio, l'alone
         window.__M0 = window.__M0 || Object.fromEntries(K.map(k => [k, cp(window['__' + k] || {})]));
         const put = (dst, src) => { for (const k in src) { if (src[k] && typeof src[k] === 'object' && !Array.isArray(src[k]) && dst[k]) put(dst[k], src[k]); else dst[k] = cp(src[k]); } };
         K.forEach(k => { const w = window['__' + k]; if (!w) return; put(w, window.__M0[k]); put(w, o[k] || {}); });   // QUADRO e SCENA (luce e colore), OCCL (l'ombra degli angoli), PROF (la separazione dei livelli)
-        const R = window.__pv.R; if (R.setPendenza) R.setPendenza(o.PENDENZA || window.__pend0 || (window.__pend0 = R.setPendenza()));   // [visuale3] "PENDENZA": la pendenza della visuale a piedi (radianti)
-        if (R.setVisuale) R.setVisuale(o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": il modo sulla stessa scena (subito: niente transizioni)   // [visuale5] solo "camera" o "muretto": gli altri nomi non cambiano niente
+        const R = window.__pv.R; if (R.setPendenza && o.PENDENZA) R.setPendenza(o.PENDENZA || window.__pend0 || (window.__pend0 = R.setPendenza()));   // [visuale3] "PENDENZA": la pendenza della visuale a piedi (radianti)
+        if (R.setVisuale && o.VISUALE) R.setVisuale(   /* [direzione] solo se la variante lo chiede: rimettere il modo cambiava la camera e la città */o.VISUALE || window.__vis0 || (window.__vis0 = R.setVisuale()), true);   // [visuale3] "VISUALE": il modo sulla stessa scena (subito: niente transizioni)   // [visuale5] solo "camera" o "muretto": gli altri nomi non cambiano niente
       }, v.manopole);
       if (v.manopole.VISUALE || v.manopole.PENDENZA || process.env.GALLERIA_DUE) await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));   // [visuale3] due fotogrammi: il modo nuovo entra (programmi, taglio, sagoma)
       const dir = v.nome ? path.join(outDir, v.nome) : outDir; fs.mkdirSync(dir, { recursive: true });
