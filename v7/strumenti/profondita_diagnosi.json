@@ -1,0 +1,59 @@
+{
+ "nota": "[profondita2] La diagnosi: lo stesso istante con un sospetto alla volta spento (sonda_profondita.js --varianti=strumenti/profondita_diagnosi.json). 'nasc' nasconde le mesh col colore del materiale dato e le rimette dopo.",
+ "base": {
+  "su": "",
+  "giu": ""
+ },
+ "anello": {
+  "su": "window.__nasc = []; R.__ed.scene.traverse(o => { const m = o.material; if (o.visible && m && m.color && m.color.getHexString() === 'ffb35c') { m.visible = false; __nasc.push(m); } }); return __nasc.length;",
+  "giu": "__nasc.forEach(o => o.visible = true);"
+ },
+ "macchia": {
+  "su": "window.__nasc = []; R.__ed.scene.traverse(o => { const m = o.material; if (o.visible && m && m.color && m.color.getHexString() === '1a1020') { m.visible = false; __nasc.push(m); } }); return __nasc.length;",
+  "giu": "__nasc.forEach(o => o.visible = true);"
+ },
+ "ombra4": {
+  "su": "window.__nasc = []; R.__ed.scene.traverse(o => { const m = o.material; if (o.visible && m && m.color && m.color.getHexString() === '1a1814') { m.visible = false; __nasc.push(m); } }); return __nasc.length;",
+  "giu": "__nasc.forEach(o => o.visible = true);"
+ },
+ "alfa": {
+  "su": "window.__bl = []; const T = THREE; R.__ed.scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (m.transparent && m.blending === T.NormalBlending) { __bl.push(m); m.blending = T.CustomBlending; m.blendSrc = T.SrcAlphaFactor; m.blendDst = T.OneMinusSrcAlphaFactor; m.blendSrcAlpha = T.ZeroFactor; m.blendDstAlpha = T.OneFactor; } }); });",
+  "giu": "__bl.forEach(m => { m.blending = THREE.NormalBlending; });"
+ },
+ "piede": {
+  "su": "window.__d0 = [__DIOR.piede, __DIOR.gronda]; __DIOR.piede = 0; __DIOR.gronda = 0;",
+  "giu": "__DIOR.piede = __d0[0]; __DIOR.gronda = __d0[1];"
+ },
+ "luce": {
+  "su": "window.__d0 = [__NIT.luce, __NIT.ombraBordo]; __NIT.luce = 0; __NIT.ombraBordo = 0;",
+  "giu": "__NIT.luce = __d0[0]; __NIT.ombraBordo = __d0[1];"
+ },
+ "persone": {
+  "su": "window.__d0 = [__CAT.bordoPersone, __CAT.lineaPersone]; __CAT.bordoPersone = 0; __CAT.lineaPersone = 0;",
+  "giu": "__CAT.bordoPersone = __d0[0]; __CAT.lineaPersone = __d0[1];"
+ },
+ "taglio": {
+  "su": "window.__d0 = __AD.taglio; __AD.taglio = 0;",
+  "giu": "__AD.taglio = __d0;"
+ },
+ "categorie": {
+  "su": "window.__d0 = [__CAT.muri, __CAT.tetti, __CAT.suolo, __CAT.persone]; __CAT.muri = __CAT.tetti = __CAT.suolo = __CAT.persone = 0;",
+  "giu": "[__CAT.muri, __CAT.tetti, __CAT.suolo, __CAT.persone] = __d0;"
+ },
+ "grana": {
+  "su": "window.__d0 = __AD.grana; __AD.grana = 0;",
+  "giu": "__AD.grana = __d0;"
+ },
+ "elenco": {
+  "su": "const T = THREE, M = new Map(); R.__ed.scene.traverse(o => { if (!o.visible) return; const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (!m.transparent) return; const k = [m.type, m.color ? m.color.getHexString() : '-', +(m.opacity || 0).toFixed(2), m.depthWrite ? 'dw' : 'nodw', m.blending, o.name || (o.parent && o.parent.name) || ''].join('|'); M.set(k, (M.get(k) || 0) + 1); }); }); return [...M.entries()].sort((a, b) => b[1] - a[1]).slice(0, 60);",
+  "giu": ""
+ },
+ "alfa2": {
+  "su": "window.__bl = []; const T = THREE; R.__ed.scene.traverse(o => { const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : []; ms.forEach(m => { if (m.transparent && !m.depthWrite && m.blending === T.NormalBlending) { __bl.push(m); m.blending = T.CustomBlending; m.blendSrc = T.SrcAlphaFactor; m.blendDst = T.OneMinusSrcAlphaFactor; m.blendSrcAlpha = T.ZeroFactor; m.blendDstAlpha = T.OneFactor; } }); }); return __bl.length;",
+  "giu": "__bl.forEach(m => { m.blending = THREE.NormalBlending; });"
+ },
+ "verde": {
+  "su": "window.__nasc = []; R.__ed.scene.traverse(o => { const m = o.material; if (o.visible && m && m.customProgramCacheKey && /vdF/.test(m.customProgramCacheKey())) { m.visible = false; __nasc.push(m); } }); return __nasc.length;",
+  "giu": "__nasc.forEach(o => o.visible = true);"
+ }
+}

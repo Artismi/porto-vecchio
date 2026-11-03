@@ -53,6 +53,11 @@
   // [monte] tenendo premuta la rotella del mouse e trascinando, la visuale gira attorno al giocatore
   // [visuale5] e la sposta: di lato gira, in su e in giù sposta la visuale (il mondo segue il mouse); con Maiusc sposta anche di lato.
   // ui.pan si somma fino al fotogramma (frazioni dello schermo); render.js (Visuale.mano) decide quando la camera torna da sola
+  // [camera6] I COMANDI COME LA TERZA PERSONA DI GTA V (src/visuale.js COMANDI6; ANALISI_CAMERA.md §11). La levetta della visuale gira e
+  // inclina, lo zoom sta a parte (pizzico, rotella, croce ▲▼) e le tre viste (alta, media, vicina) si cambiano con V, R3 o «vista» del Game
+  // Boy; si cammina rispetto alla camera e il personaggio guarda dove va; mirando guarda dove guarda la camera. ?nofixcamera6: com'era
+  const CAM6 = !/[?&]nofixcamera6\b/.test(location.search) && typeof Visuale !== 'undefined' && !!Visuale.levetta6;
+  if (CAM6) ui.zoom = Visuale.COMANDI6.viste[1];   // [camera6] si parte dalla vista media: la strada si legge senza tagliare le case
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
@@ -71,7 +76,7 @@
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { const r = cv.getBoundingClientRect(), dx = e.clientX - camDrag.x, dy = e.clientY - camDrag.y;
-    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
+    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; if (CAM6) { tiltBy(-dy * .004); CAMS.tTocco = 0; } else zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [camera6] in su e in giù inclina (lo zoom è la rotella)   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
@@ -166,6 +171,7 @@
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && k === 'v' && CAM6 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
@@ -175,7 +181,8 @@
     else if (k >= '1' && k <= '5') { const id = Object.keys(G.WEAPONS).find(w => G.WEAPONS[w].slot === +k); if (!G.switchWeapon(st, id)) toast(`Non hai ${G.WEAPONS[id].name.toLowerCase()}.`, 'bad'); }
   });
   // zoom: rotella, tasti + e −, pulsanti a schermo
-  function zoomBy(f) { ui.zoom = Math.max(.12, Math.min(2, (ui.zoom || 1) * f)); }   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
+  function zoomBy(f) { ui.zoom = Math.max(CAM6 ? .2 : .12, Math.min(2, (ui.zoom || 1) * f)); }
+  function vistaDopo() { if (!CAM6) return; ui.zoom = Visuale.vista6(ui.zoom); const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); toast('Vista ' + ['vicina', 'media', 'alta'][i] + '.'); CON.sent = ''; }   // [camera6] le tre viste, in giro   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
@@ -216,8 +223,20 @@
       return Object.assign({}, r, { x: 0, y: 0, aim: aim !== undefined ? aim : aimAngle() });
     }
     if (!p.vehicle || !jumpMode()) return r;
-    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie || CON.trick.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg || CON.trick.peg };   // [console] e la croce del Game Boy
+    const CT = CAMS.trick || {};   // [camera6] la levetta della visuale in bici: indietro impenna
+    r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie || CON.trick.wheelie || !!CT.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg || CON.trick.peg || CT.peg || 0 };   // [console] e la croce del Game Boy
     return r;
+  }
+  // [camera6] si mira? (L2 del controller, B tenuto con l'arma nel Game Boy, il dito che spara, il tasto destro col puntatore, la bomboletta
+  // che spruzza). La direzione: col puntatore il punto sotto il puntatore, se no il davanti della camera (si mira girando la visuale)
+  const camDavanti = () => { const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };
+  function mira6() {
+    if (!CAM6 || st.player.vehicle || ui.intro || ui.dialog || ui.menu) return null; const p = st.player;
+    if (ui.spray && ui.spray.on) { const g = R.screenToGround(mouse.nx, mouse.ny); return g ? { a: Math.atan2(g.y - p.y, g.x - p.x), punto: true } : null; }
+    if (tp.mode === 'fire' && tp.aim) return { a: Math.atan2(tp.aim.y - p.y, tp.aim.x - p.x), punto: true };
+    if (mouse.down && mouse.active && ui.aimPoint) return { a: Math.atan2(ui.aimPoint.y - p.y, ui.aimPoint.x - p.x), punto: true };
+    if (PAD.mira || (CON.on && CON.fire)) return { a: camDavanti(), punto: false };
+    return null;
   }
   function input0() {
     const sprint = !!keys.shift || touchRun || touchBoost || CON.run, brakeKey = !!keys[' '] || touchBrake;   // [console] B tenuto: corri
@@ -226,8 +245,9 @@
     if (PAD.on && !st.player.vehicle && PAD.m > 0) {
       ui.faceIdle = undefined; if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null;
       const B = R.camBasis(), x = B.rx * PAD.x - B.fx * PAD.y, y = B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;
-      return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: Math.atan2(y, x), mag: PAD.m };
+      return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: PAD.mira ? camDavanti() : Math.atan2(y, x), mag: PAD.m };   // [camera6] mirando si va di lato: il personaggio guarda dove guarda la camera
     }
+    if (PAD.on && PAD.mira && !st.player.vehicle) return { x: 0, y: 0, sprint, aim: camDavanti() };   // [camera6] fermi, mirando: si gira con la visuale
     if (PAD.on && st.player.vehicle && (PAD.m > 0 || PAD.gas > .05 || PAD.brk > .05)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: PAD.gas - PAD.brk, steer: PAD.m > 0 ? PAD.x * Math.min(1, Math.abs(PAD.x) * 1.4) : 0, hb: brakeKey, boost: sprint, assist: !(PAD.m > 0 && Math.abs(PAD.x) > .1) } };
     if (st.player.vehicle && (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo   // [console] anche quella del Game Boy
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));
@@ -239,7 +259,7 @@
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
-      return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : touchMode || (CON.on && !mouse.active) ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
+      const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
     const ar = FRECCE_PASSI && !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
@@ -264,6 +284,10 @@
       }
       return { x: 0, y: 0, aim: a, drive: { thr: f, steer, hb: brakeKey, boost: sprint, assist: !mouseSteer && !s } };
     }
+    if (CAM6) {   // [camera6] i tasti camminano rispetto alla camera (W in su sullo schermo), il personaggio guarda dove va; mirando, dove mira
+      const M6 = mira6(); if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : touchMode ? a : undefined };
+      const B = R.camBasis(), d = Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;
+      return { x: d.x / l, y: d.y / l, sprint, aim: M6 ? M6.a : Math.atan2(d.y, d.x), mag: 1 }; }   // mag: lo sguardo avanti e la base ferma mentre tieni i tasti (render.js cam.lock)
     if (touchMode) return { x: 0, y: 0, sprint, aim: a };
     if (!f && !s) return { x: 0, y: 0, sprint, aim: armedGun() ? a : undefined };
     let x = Math.cos(a) * f + Math.cos(a + Math.PI / 2) * s, y = Math.sin(a) * f + Math.sin(a + Math.PI / 2) * s;
@@ -872,8 +896,9 @@
       const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
       if (PAD_KEYS[i]) padKey(i, d);
       else if (d && i === 12) zoomBy(1 / 1.12); else if (d && i === 13) zoomBy(1.12);
+      else if (d && i === 11) vistaDopo();   // [camera6] R3 (clic della levetta destra): la vista dopo
     }
-    PAD.gas = bv(7); PAD.brk = bv(6);
+    PAD.gas = bv(7); PAD.brk = bv(6); PAD.mira = CAM6 && !st.player.vehicle && PAD.brk > .4;   // [camera6] a piedi L2 tenuto: si mira (il personaggio guarda dove guarda la camera)
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
     // [morbida] la levetta destra del controller va nella levetta della visuale (conTick, camStick): curva e inerzia come le altre
     if (any) { PAD.on = true; mouse.active = false; mouse.down = false; lastAim = null; ui.aimPoint = null; }
@@ -934,7 +959,8 @@
       else if (p.hand) { const m = typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null; M.b = { l: (m && m.verbo) || 'Usa', dn: conCmd('usaMano') }; }
       else M.b = { l: 'Corri', dn: () => { CON.run = true; }, up: () => { CON.run = false; } };
     }
-    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };   // [levette] la stessa scritta sotto la levetta della visuale
+    M.croce = { l: conBmx() ? '▼ impenna · ◄► piede' : '◄► gira · ▲▼ zoom' };
+    if (CAM6) { M.levetta2 = { l: conBmx() ? 'gira · ▼ impenna' : 'gira · guarda' }; M.croce = M.levetta2;   /* il Game Boy (v ≥ 3) scrive t.croce sotto la levetta2 */ const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); M.vista = { l: 'Vista ' + (i >= 0 ? ['vicina', 'media', 'alta'][i] : 'libera'), dn: vistaDopo }; }   // [camera6] le scritte della levetta2 e del suo tocco   // [levette] la stessa scritta sotto la levetta della visuale
     if (!p.indoor && (!veh || bmx || sk)) M.bici = { l: sk ? 'A piedi' : bmx ? (window.Skate && Skate.S(st).owned ? 'Skate' : 'A piedi') : 'BMX', dn: conCmd('ruote') };
     if (!veh) M.bomboletta = { l: conSpray(p) ? 'Posa' : 'Graffiti', dn: conCmd('graffiti') };
     M.zaino = { l: 'Zaino', dn: conCmd('zaino') };
@@ -949,6 +975,7 @@
       CON.rot = bx ? 0 : (D.dx ? 1 : 0) - (D.sx ? 1 : 0); CON.zoom = bx ? 0 : (D.giu ? 1 : 0) - (D.su ? 1 : 0); return;
     }
     if (k === 'audio') { if (down) { A.init(); A.toggle(); } CON.sent = ''; return; }
+    if (k === 'vista') { if (down) vistaDopo(); return; }   // [camera6] il tocco sulla levetta2 del Game Boy: la vista dopo
     if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
     else { const s = CON.held[k]; delete CON.held[k]; if (s && s.up) try { s.up(); } catch (e) { console.warn('[console]', e); } }
     CON.sent = '';   // le scritte cambiano subito, non al prossimo giro dell'HUD
@@ -974,6 +1001,16 @@
       if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
       const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
     const k = 1 - Math.exp(-dt / CAMS.tau);
+    if (CAM6) {   // [camera6] gira e inclina, niente zoom; in bici indietro è l'impennata (e impennando, di lato il piede), se no di lato gira
+      const bici = !!(st.player.vehicle && jumpMode()), L = Visuale.levetta6(x, y, bici);
+      CAMS.trick = { wheelie: L.impenna, peg: L.piede };
+      CAMS.vy += (L.giro - CAMS.vy) * k; CAMS.vp = (CAMS.vp || 0) + (L.pend - (CAMS.vp || 0)) * k; CAMS.vz = 0;
+      if (Math.abs(CAMS.vy) < 1e-3) CAMS.vy = 0; if (Math.abs(CAMS.vp) < 1e-3) CAMS.vp = 0;
+      if (CAMS.vy) ui.drag = (ui.drag || 0) + CAMS.vy * dt; if (CAMS.vp) tiltBy(CAMS.vp * dt);
+      if (CAMS.vy || CAMS.vp || ui.drag || camDrag || (keys[','] || keys['.']) || (keys.pageup || keys.pagedown)) CAMS.tTocco = 0; else CAMS.tTocco = (CAMS.tTocco || 0) + dt;
+      // come GTA: camminando senza toccare la visuale da 2 s, l'inclinazione torna piano a quella della vista (da fermi resta)
+      const p = st.player, va = p.vehicle ? 0 : Math.abs(p.speed || 0); if (CAMS.tTocco > 2 && va > .5 && ui.tilt) { ui.tilt += (0 - ui.tilt) * (1 - Math.exp(-dt / 1.5)); if (Math.abs(ui.tilt) < .01) ui.tilt = 0; }
+      ui.camStickOn = !!(CAMS.vy || CAMS.vp); return; }
     CAMS.vy += (-camCurva(x) * CAMS.giro - CAMS.vy) * k; CAMS.vz += (camCurva(y) * CAMS.zoom - CAMS.vz) * k;
     if (Math.abs(CAMS.vy) < 1e-3) CAMS.vy = 0; if (Math.abs(CAMS.vz) < 1e-3) CAMS.vz = 0;
     if (CAMS.vy) ui.drag = (ui.drag || 0) + CAMS.vy * dt;
@@ -1002,7 +1039,7 @@
   // ogni decimo di secondo, con l'HUD: le scritte dei tasti e il display della console, solo se sono cambiati
   function conLabels() {
     if (!CON.on) return;
-    const p = st.player, M = conMap(), t = {}; ['a', 'b', 'croce', 'bomboletta', 'bici', 'zaino'].forEach(k => { t[k] = M[k] ? M[k].l : null; });
+    const p = st.player, M = conMap(), t = {}; ['a', 'b', 'croce', 'bomboletta', 'bici', 'zaino', 'levetta2', 'vista'].forEach(k => { t[k] = M[k] ? M[k].l : null; });   // [camera6] anche levetta2 e vista
     const m = !ui.intro && typeof Comandi !== 'undefined' && Comandi.mano ? Comandi.mano() : null, mano = m ? m.nome : null;
     const veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), on = { bomboletta: conSpray(p), bici: !!(veh && veh.kind === 'bmx') || !!(window.Skate && Skate.on(st)), zaino: !!ui.menu };
     const n = !ui.intro && typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0, key = JSON.stringify(t) + JSON.stringify(on) + mano + n + A.on;
@@ -1014,13 +1051,13 @@
     const d = e.data; if (window.parent === window || e.source !== window.parent || !d || typeof d.pvc !== 'string') return;
     if (d.pvc === 'ciao') {
       if (!CON.on) { CON.on = true; app.classList.add('console'); document.body.classList.add('pv-console'); }   // body: per quello che sta fuori da #app (il DEV)
-      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: 4 }); conLabels(); return;   // [levette] v3: capisce anche la levetta della visuale; [gameboy-menu] v4: schermo intero, audio ed esci stanno nel menu
+      CON.sent = CON.stato = ''; conSend({ pv: 'console', v: CAM6 ? 5 : 4 }); conLabels(); return;   /* [camera6] v5: la levetta2 gira e inclina, il suo tocco manda {pvc:'tasto', k:'vista'} */   // [levette] v3: capisce anche la levetta della visuale; [gameboy-menu] v4: schermo intero, audio ed esci stanno nel menu
     }
     if (!CON.on) return;
     if (d.pvc === 'levetta2') {   // [levette] la levetta della visuale del Game Boy (al posto della croce)
       const c = v => Math.max(-1, Math.min(1, +v || 0)); let x = c(d.x), y = c(d.y); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
       const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;
-      if (conBmx() || TV) {   // in BMX (i trick) e nella tavoletta (colore, spessore) vale come la croce: le quattro direzioni, come le leggeva il Game Boy
+      if ((conBmx() && !CAM6) || TV) {   // [camera6] in bici la levetta2 resta la levetta della visuale (indietro impenna: Visuale.levetta6)   // in BMX (i trick) e nella tavoletta (colore, spessore) vale come la croce: le quattro direzioni, come le leggeva il Game Boy
         vstick.x = vstick.y = 0; const ax = Math.abs(x), ay = Math.abs(y), nx = {};
         if (Math.max(ax, ay) > .35) { if (ax >= ay * .45) nx[x < 0 ? 'sx' : 'dx'] = true; if (ay >= ax * .45) nx[y < 0 ? 'su' : 'giu'] = true; }
         ['sx', 'dx', 'su', 'giu'].forEach(k => { if (!!nx[k] !== !!CON.lev2[k]) conKey(k, !!nx[k]); }); CON.lev2 = nx; return; }
@@ -1201,7 +1238,7 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, puntatore: !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();

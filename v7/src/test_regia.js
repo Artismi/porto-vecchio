@@ -41,5 +41,11 @@ const base = { YAW, vel: 1.4, mano: false, mezzo: false, x: 0, z: 0, fy: 0 };
 { const q = Object.assign({}, base, { uy: 0, hd: 0, vel: 6, mezzo: true, copre: copreDi([]), cam: camDi(0, 0, 0) });
   const r = corri(q, 10, 1 / 60), off = Math.abs(R.ang(r.uy - R.dietro(0, YAW)));
   ok(off <= .25, `alla guida la camera sta quasi dietro (scarto ${off.toFixed(2)})`); }
+// 7. [camera6] la vista alta (obliquo): mai d'infilata lungo la strada, di sbieco fra 15° e 25°; senza, dritta alle spalle resta
+{ const q = Object.assign({}, base, { uy: R.dietro(0, YAW), hd: 0, obliquo: 1, copre: copreDi([]), cam: camDi(0, 0, 0) });
+  const r = corri(q, 12, 1 / 60), off = Math.abs(R.ang(r.uy - R.dietro(0, YAW)));
+  ok(off >= .26 && off <= .44, `dall'alto la camera va di sbieco alla marcia (scarto ${(off * 180 / Math.PI).toFixed(0)}°)`);
+  const r0 = corri(Object.assign({}, q, { obliquo: 0 }), 12, 1 / 60), off0 = Math.abs(R.ang(r0.uy - R.dietro(0, YAW)));
+  ok(off0 < .05, `senza obliquo resta dritta alle spalle (scarto ${(off0 * 180 / Math.PI).toFixed(0)}°)`); }
 console.log(fail ? `\n${fail} prove non passano` : '\ntutto a posto');
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,6 @@
+{
+  "nota": "[profondita3] Il ritocco: il sistema com'è, e il varco col raggio dalla camera (AD.apertura 0 = niente buco e niente filo; .5 = a metà).",
+  "dopo": { "su": "", "giu": "" },
+  "apertura0": { "su": "window.__d0 = __AD.apertura; __AD.apertura = 0;", "giu": "__AD.apertura = __d0;" },
+  "apertura_meta": { "su": "window.__d0 = __AD.apertura; __AD.apertura = .5;", "giu": "__AD.apertura = __d0;" }
+}

@@ -241,7 +241,7 @@ var Models = (function () {
     else if (!Object.keys(guns).length && GUNTPL) { const bone = m.getObjectByName('Index1R'); if (bone) { const f = GUNTPL.boneScale / boneScaleOf(CM, 'Index1R'); for (const k in GUNTPL.guns) { const t = GUNTPL.guns[k], gn = t.clone(true); gn.position.copy(t.position).multiplyScalar(f); gn.quaternion.copy(t.quaternion); gn.scale.copy(t.scale).multiplyScalar(f); gn.visible = false; gn.traverse(o => { if (o.isMesh) o.castShadow = true; }); bone.add(gn); guns[k] = gn; } trueSize(g, guns); armiVere(g, m, guns); } }
     const mixer = new THREE.AnimationMixer(m), acts = {};
     for (const k in CM.clips) acts[k] = mixer.clipAction(CM.clips[k]);
-    const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
+    const sh = new THREE.Mesh(new THREE.CircleGeometry(.42, 12), (window.PV_OMBRA_PERSONA && window.PV_OMBRA_PERSONA()) || new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false }));   // [profondita3] col sistema della profondità il disco è un'ombra di contatto morbida (render.js PV_OMBRA_PERSONA) sh.rotation.x = -Math.PI / 2; sh.position.y = .02; g.add(sh);
     const dummy = () => new THREE.Object3D();
     g.userData = { model: file, mixer, acts, cur: null, body, armL: dummy(), armR: dummy(), legL: dummy(), legR: dummy(), shadowC: sh, guns: {}, mguns: guns, gunsByWeapon: { pistola: 'Pistol', mitra: 'SMG', lupara: 'Shotgun', fucile: 'AK', coltello: 'Knife_1', pala: 'Shovel' } };
     dressUp(g, m, look, who, file);
