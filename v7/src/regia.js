@@ -40,6 +40,7 @@ var Regia = (function () {
     v += P.copreLontano * q.copre({ x: q.x + a.x * 13, y: f + 1.5, z: q.z + a.z * 13 }, C);
     v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
     if (q.bisogno && P.bisogno) v += P.bisogno * q.bisogno(yaw);   // [camera4] quanto deve salire la pendenza con quella visuale (la mappa, anche più avanti)
+    if (q.mare && P.mare) v -= P.mare * q.mare(yaw);   // [camera5] il mare (l'orizzonte) davanti incornicia l'inquadratura
     return v;
   }
   // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
@@ -88,6 +89,7 @@ var Regia = (function () {
       }
       if (S.tgt === null) return q.uy;
     }
+    if (q.propone) return q.uy;   // [camera5] il bersaglio è scelto: la mossa la fa il regista (render.js), insieme alla pendenza e alla distanza, e quando ha finito azzera S.tgt
     // la mossa: la molla sull'angolo (la via più corta), con la velocità più alta K.vmax
     const om = 2 / K.molla, x = om * dt, ex = 1 / (1 + x + .48 * x * x + .235 * x * x * x), d0 = ang(q.uy - S.tgt), lim = K.vmax * K.molla, ch = Math.max(-lim, Math.min(lim, d0));
     const t = (S.v + om * ch) * dt; S.v = Math.max(-K.vmax, Math.min(K.vmax, (S.v - om * t) * ex)); let r = d0 - ch + (ch + t) * ex;   // r: quanto manca dopo il passo
