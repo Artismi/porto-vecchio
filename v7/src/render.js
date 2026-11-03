@@ -18714,7 +18714,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // non perdere il personaggio. In cammino il personaggio sta un poco dietro il centro (l'aria davanti, anche senza levetta); niente rollio,
   // la lente non respira (le verticali stanno ferme). Il giocatore vince sempre: se gira la camera, la mossa si ferma lì. ?nofixcamera5: com'era
   const RG5 = { on: !(typeof location !== 'undefined' && /[?&]nofixcamera5\b/.test(location.search)) && CALMA2.on && INQ4.on,
-    K: { tieni: 6, tieniUrgente: 1.5, tieniScende: 10, scendeMin: .1, durata: [1.3, 3], soglie: { p: .05, z: .015, y: .04 }, fermo: .6, passo: 1, aria: .16, ariaDopo: .8, ariaVel: .8, ariaMolla: 1.1, ariaGira: 1, ariaTorna: 2.4, mare: 2.5 },
+    K: { tieni: 6, tieniUrgente: 1.5, tieniScende: 10, scendeMin: .1, durata: [1.3, 3], soglie: { p: .05, z: .015, y: .04 }, fermo: .6, passo: 1, aria: .12, ariaDopo: 1.2, ariaVel: .8, ariaMolla: 1.8, ariaGira: 1, ariaTorna: 2.4, mare: 2.5 },
     attivo: false, mov: null, tieni: 99, p: null, z: 1, uy: 0, mosse: 0, fermoT: 0, camminaT: 0 };
   if (RG5.on && typeof Regia !== 'undefined') Regia.K.pesi.mare = RG5.K.mare;
   if (RG5.on) Object.assign(Visuale.INQUADRA4, { avanti: [.8, 1.6, 2.4], avantiMax: 9 });   // [camera5] si guarda un poco più avanti: un gradino solo invece di due in fila
