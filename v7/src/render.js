@@ -86,6 +86,8 @@ var Render = (function () {
   function blobT2() { if (BLOB2) return BLOB2; const c = mk(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.45, 'rgba(255,255,255,.7)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); BLOB2 = new THREE.CanvasTexture(c); return BLOB2; }
   let BLOBP = null;   // [profondita2] il piede del fusto: scuro al centro, sparito al 42% del raggio (morbido, senza anello)
   function blobPiede() { if (BLOBP) return BLOBP; const c = mk(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.14, 'rgba(255,255,255,.8)'); g.addColorStop(.28, 'rgba(255,255,255,.3)'); g.addColorStop(.42, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); BLOBP = new THREE.CanvasTexture(c); return BLOBP; }
+  let BLOBC = null;   // [profondita3] l'ombra di contatto del personaggio: piena solo al centro (i piedi), sparita al 62% del raggio, senza bordo
+  function blobContatto() { if (BLOBC) return BLOBC; const c = mk(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.2, 'rgba(255,255,255,.72)'); g.addColorStop(.42, 'rgba(255,255,255,.25)'); g.addColorStop(.62, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); BLOBC = new THREE.CanvasTexture(c); return BLOBC; }
   function mk(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .9, metalness: 0 }, o));
   const lam = (c) => new THREE.MeshLambertMaterial({ color: c });
@@ -12024,7 +12026,7 @@ var Render = (function () {
     if (ex.includes('moustache')) { const m = box(.2, .05, .02, hair.color ? M('#2a1a12') : dark); m.position.set(0, -.08, .21); headG.add(m); }
     if (ex.includes('glasses')) { const gl = box(.34, .06, .02, M('#1a1a1a')); gl.position.set(0, .03, .215); headG.add(gl); }
     if (ex.includes('shades')) { const gl = box(.38, .09, .02, M('#050508')); gl.position.set(0, .03, .215); headG.add(gl); }
-    const shadowC = new THREE.Mesh(new THREE.CircleGeometry(.38, 8), new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false })); shadowC.rotation.x = -Math.PI / 2; shadowC.position.y = .02; g.add(shadowC);
+    const shadowC = new THREE.Mesh(new THREE.CircleGeometry(.38, 8), (PFD.on && window.PV_OMBRA_PERSONA()) || new THREE.MeshBasicMaterial({ color: '#000', transparent: true, opacity: .35, depthWrite: false }));   /* [profondita3] l'ombra di contatto morbida */ shadowC.rotation.x = -Math.PI / 2; shadowC.position.y = .02; g.add(shadowC);
     const carry = new THREE.Group(); carry.position.set(0, hipY + .35, .35); carry.visible = false; body.add(carry);
     const cbox = box(.45, .35, .35, lam('#8a6440')); carry.add(cbox);
     // le armi si creano solo quando servono (vedi gunFor in animPerson)
@@ -13734,9 +13736,13 @@ var Render = (function () {
     piede: .34, piedeQ: 3.5, piedeD: 1.1,        // il piede fisico: forza, quota massima della cosa sopra (m), distanza massima nel mondo (m)
     quota: .2, quotaH: 10,                       // [giro 2] .14: il passo fra il fondo della via e i tetti ancora timido; la luce del cielo per quota: il fondo della via (la quota del personaggio) un filo più scuro, i piani alti più chiari (la scala del muro estesa alla città); su quanti metri
     muriK: .92, tettiK: 1, suoloK: .95, tettiL: .48,   // la gerarchia meno stretta: il contrasto dentro muri, tetti, suolo; il valore dei tetti   // [giro 2] .86/.9/.88: le facce al sole e in ombra ancora troppo vicine
-    anello: false, alone: 0, grana: PHONE ? 0 : .006 };   // l'alone chiaro (scafo) attorno al personaggio. Il varco (la logica è della camera): nei materiali il bordo netto al posto del retino    // l'anello a terra del personaggio; la grana (nel leggero sfarfallava a blocchi)
+    anello: false, alone: 0, grana: PHONE ? 0 : .006,
+    ombraPers: .38, spicca: .85, filoSottile: .22 };   // [profondita3] l'ombra di contatto del personaggio (opacità); quanto il personaggio sale di valore; il filo sulle cose sottili (pali)   // l'alone chiaro (scafo) attorno al personaggio. Il varco (la logica è della camera): nei materiali il bordo netto al posto del retino    // l'anello a terra del personaggio; la grana (nel leggero sfarfallava a blocchi)
   if (PFD.on) { Object.assign(DIR, { muriK: PFD.muriK, suoloK: PFD.suoloK, tettiL: PFD.tettiL }); AD.grana = PFD.grana; }
   if (typeof window !== 'undefined') window.__PFD = PFD;
+  // [profondita3] il disco sotto ogni persona (models.js, il pupazzo): col sistema acceso un'ombra di contatto morbida (il disco a bordo netto al
+  // 35% era una pozza scura), un materiale per persona perché le ombre finte al sole (ombre1) ne cambiano l'opacità una per una
+  if (typeof window !== 'undefined') window.PV_OMBRA_PERSONA = PFD.on ? () => new THREE.MeshBasicMaterial({ color: '#241a22', alphaMap: blobContatto(), transparent: true, opacity: .35, depthWrite: false }) : null;
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
@@ -14131,7 +14137,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         aA: { value: new THREE.Vector4() }, aF: { value: new THREE.Vector4() }, aB: { value: new THREE.Vector4() }, aT: { value: new THREE.Vector4(1, 0, 0, 0) }, tB: { value: null },   // [look-aaa] ombra di contatto/raggio/foschia/tilt-shift · -/foschia da/foschia per/fuoco per · bagliore · saturazione
         nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nXr: { value: new THREE.Vector4(1, 0, 0, 0) }, nZr: { value: new THREE.Vector4(0, 0, 1, 0) }, nRm: { value: null }, nRs: { value: new THREE.Vector2(1, 1) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         gS: { value: new THREE.Vector4() },   // [strada]
-        fT: { value: null }, fQ: { value: new THREE.Vector2() }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
+        fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + (PHONE || LOWQ.on ? '\n#define SG_FXAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
@@ -14166,7 +14172,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         /* [profondita2] la profondità anche nel profilo leggero: l'aria, il filo fra le cose, il piede fisico. fA: aria (forza, metri, freddo, distanza
            del personaggio); fB: filo (forza, soglia, px che il fondo dura, metri dove è a metà); fC: piede (forza, quota max, distanza max, -);
            fH: il colore dell'aria; fXr, fYr, fZr: le righe della camera (vista → mondo) */
-        uniform highp sampler2D fT; uniform highp vec4 fN; uniform vec2 fQ; uniform vec4 fA; uniform vec4 fB; uniform vec4 fC; uniform vec3 fH; uniform highp vec4 fXr; uniform highp vec4 fYr; uniform highp vec4 fZr;
+        uniform highp sampler2D fT; uniform highp vec4 fN; uniform vec2 fQ; uniform vec4 fP; uniform vec2 fE; uniform vec4 fA; uniform vec4 fB; uniform vec4 fC; uniform vec3 fH; uniform highp vec4 fXr; uniform highp vec4 fYr; uniform highp vec4 fZr;
         highp float fD(vec2 q){ highp float z = texture2D(fT, q).r * 2. - 1.; return 2. * fN.x * fN.y / (fN.y + fN.x - z * (fN.y - fN.x)); }   /* la distanza lungo l'asse (m) */
         highp vec3 fW(vec2 q, highp float d){ highp vec3 v = vec3((q * 2. - 1.) * fN.zw * d, -d); return vec3(dot(fXr.xyz, v) + fXr.w, dot(fYr.xyz, v) + fYr.w, dot(fZr.xyz, v) + fZr.w); }   /* il punto nel mondo */
 #define fAcc vec2(.7, .85)   /* [profondita2] sui muri gli accenti (writing, insegne, persiane piene) restano pieni da .7-.85 di saturazione (giro 3: da .62 passavano anche gli intonaci gialli più carichi): con l'alfa pulito il writing è muro, e il tetto del pastello lo spegneva */
@@ -14195,7 +14201,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
 #endif
 #ifdef SG_PFD
           highp float fd0 = fD(vUv); highp vec3 fp0 = fW(vUv, fd0);   /* [profondita2] la distanza e il punto nel mondo di questo pixel (una lettura) */
-          float fSky = step(fN.y * .985, fd0), fPers = 0.;   /* il cielo e il mare oltre il lontano: niente filo né piede */
+          float fSky = step(fN.y * .985, fd0), fPers = 0., fPk = 0.;   /* il cielo e il mare oltre il lontano: niente filo né piede */
 #endif
 #if defined(SG_STR) && defined(SG_AD)
           { vec2 qa = (vUv0 - .5) * vec2(src.x / src.y, 1.); shp *= 1. + gS.w * gS.x * (1. - dot(qa, qa) / (.25 * src.x * src.x / (src.y * src.y) + .25)); }   // [ad] il centro ingrandito dal rigonfiamento: un filo più nitido
@@ -14398,6 +14404,12 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               cap = mix(.6, dW.w, lt); if (s2 > cap) c2 = mix(vec3(l2), c2, cap / s2); c = mix(c, c2, wT * cK.y);
               /* persone: il contrasto e il colore più alti del quadro */
               c2 = max(mix(vec3(lq), c, 1.3), 0.); c2 = max((c2 - .42) * 1.2 + .42, 0.) * (1. + .45 * smoothstep(.3, .05, lt)); c = mix(c, c2, wP * cK.w);   /* solo a notte piena: al tramonto il suolo è chiaro e la figura si stacca scura */
+#ifdef SG_PFD
+              {   /* [profondita3] IL PERSONAGGIO SI LEGGE PER PRIMO: solo i pixel di persona dentro la sua sagoma sullo schermo (fP: centro, raggio, forza) un
+                     gradino di valore e di colore in più. Niente scafo né alone: il suolo attorno non cambia */
+                float pk = wP * (1. - smoothstep(fP.z * .7, fP.z, length((vUv - fP.xy) * vec2(src.x / src.y, 1.)))) * fP.w;
+                float lp = dot(c, vec3(.299, .587, .114)); fPk = pk; c = mix(c, max(mix(vec3(lp), c, 1.2), 0.) * 1.18 + .05, pk); }
+#endif
               /* gli accenti: persiane, tende, insegne (le cose già sature) un filo più piene del set, così l'occhio va lì */
               { float mA = max(c.r, max(c.g, c.b)), sA = (mA - min(c.r, min(c.g, c.b))) / max(mA, 1e-4), lA = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(lA), c, 1. + .16 * smoothstep(.42, .65, sA) * (1. - wS)), 0.); }
               lq = dot(c, vec3(.299, .587, .114)); }
@@ -14417,7 +14429,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                 for (int k = 0; k < 4; k++) { float d = .005 + float(k) * .0065, wk = .4 - float(k) * .09; vec2 q = vUv + vec2(0., d); highp vec3 pq = fW(q, fD(q));
                   float dh = pq.y - fp0.y, dx = length(pq.xz - fp0.xz);
                   vS += wk * smoothstep(.06, .3, dh) * (1. - smoothstep(fC.y * .6, fC.y, dh)) * (1. - smoothstep(fC.z * .55, fC.z, dx)); }
-                vS *= fC.x * (1. - fSky) / max(dI.x, 1e-3); }
+                float kp = floor(floor(texture2D(t, vUv + vec2(0., .011)).a * 35. + .5) / 6. + .001);   /* [profondita3] sotto una persona niente fascia: la sua ombra di contatto basta (la fascia allungava l'ombra in una pozza) */
+                vS *= fC.x * (1. - fSky) * (1. - step(abs(kp - 4.), .1)) / max(dI.x, 1e-3); }
               else
 #endif
               for (int k = 0; k < 4; k++) { float d = .005 + float(k) * .0065, hk = floor(floor(texture2D(t, vUv + vec2(0., d)).a * 35. + .5) / 6. + .001), wk = .4 - float(k) * .09;
@@ -14432,6 +14445,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               float w = (cMx > 4.5 || cMn > 4.5) ? 0. : (cMx > 3.5 ? cL.x : (cMx > cMn + .5 ? (cMx > 2.5 ? cL.y : cL.z) : (cMx < 1.5 ? 0. : cL.y * .3)));
 #endif   /* persone; ciglio; piede; spigolo fra due facce della stessa cosa (mai sul suolo) */
               float ln = clamp(eV * w, 0., 1.);
+#ifdef SG_PFD
+              ln *= 1. - fPk; c = mix(c, c * 1.22 + .07, clamp(eV, 0., 1.) * fPk * .75);   /* [profondita3] sul personaggio, dalla parte di dentro, il bordo di luce al posto della riga scura (la riga resta fuori, sul suolo): si stacca per primo */
+#endif
 #ifdef SG_NIT
               ln *= mix(1., .45, smoothstep(.22, .65, length((vUv - nB.xy) * vec2(src.x / src.y, 1.))));   /* [calma] lontano dal personaggio la linea si alleggerisce: l'occhio ha un centro */
 #endif
@@ -14449,9 +14465,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             highp float dR = fD(vUv + vec2(e.x, 0.)), dL = fD(vUv - vec2(e.x, 0.)), dU = fD(vUv + vec2(0., e.y)), dB = fD(vUv - vec2(0., e.y));
             float jm = (dR - fd0) / fd0; vec2 od = vec2(1., 0.); float j2 = (dL - fd0) / fd0;
             if (j2 > jm) { jm = j2; od = vec2(-1., 0.); } j2 = (dU - fd0) / fd0; if (j2 > jm) { jm = j2; od = vec2(0., 1.); } j2 = (dB - fd0) / fd0; if (j2 > jm) { jm = j2; od = vec2(0., -1.); }
-            float jg = jm; if (jm > fB.y) jg = min(jm, (fD(vUv + od * e * fB.z) - fd0) / fd0);   /* la sesta lettura solo sui bordi (pochi pixel) */
-            float lin = smoothstep(fB.y, fB.y * 2., jg) * fB.x * (1. - fSky) / (1. + max(fd0 - fA.w, 0.) / fB.w);
-            c = mix(c, mix(vec3(.29, .306, .345), c * c * .62 + vec3(.018, .014, .036), rv), lin); }   /* il colore della cosa, più scuro e un filo freddo; nel regime il grigio tecnico */
+            float jg = jm, th = 1.; vec3 bg = c;
+            if (jm > fB.y) {   /* le letture in più solo sui bordi (pochi pixel) */
+              vec2 qg = vUv + od * e * fB.z; jg = min(jm, (fD(qg) - fd0) / fd0); bg = texture2D(t, qg).rgb;
+              /* [profondita3] LO SPESSORE DELLA COSA DAVANTI, attraverso il bordo: se 2 px più in là dall'altra parte c'è già il fondo è un palo, un
+                 lampione, un cavo (il filo quasi sparisce: era una barra nera); a 5 px una cosa sottile (metà); oltre, una cosa vera (pieno) */
+              float t2 = (fD(vUv - od * e * 2.) - fd0) / fd0, t5 = (fD(vUv - od * e * 5.) - fd0) / fd0;
+              th = t2 > fB.y ? fE.y : t5 > fB.y ? mix(fE.y, 1., .5) : 1.; }
+            float lin = smoothstep(fB.y, fB.y * 2., jg) * fB.x * fE.x * th * (1. - fSky) / (1. + max(fd0 - fA.w, 0.) / fB.w);
+            vec3 ink = min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c);   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
+            c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin); }   /* nel regime il grigio tecnico */
           {   /* LA LUCE DEL CIELO PER QUOTA: il fondo della via (alla quota del personaggio) vede meno cielo, i piani alti di più. La scala del muro
                  (chiaro in alto, scuro al piede) estesa alla città: i livelli si staccano anche dall'alto, dove la prospettiva quasi non c'è. Le persone no */
             float hq = smoothstep(0., fQ.y, fp0.y - fC.w), qa = fQ.x * (hq - .55) * (1. - fPers) * (1. - fSky);
@@ -14535,7 +14558,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
   }
   // il personaggio: l'ombra di contatto sotto i piedi (il bordo chiaro e la luce propria li dà vis3Personaggio)
   function sguPersonaggio(px, py, pz, on) {
-    if (!SGT.blob) { const m = new THREE.MeshBasicMaterial({ map: blobT2(), color: '#1a1020', transparent: true, opacity: .55, depthWrite: false, fog: false });
+    if (!SGT.blob) { const m = new THREE.MeshBasicMaterial({ map: PFD.on ? blobContatto() : blobT2(), color: PFD.on ? '#2a1e26' : '#1a1020', transparent: true, opacity: PFD.on ? PFD.ombraPers : .55, depthWrite: false, fog: false });   /* [profondita3] l'ombra di contatto, non una pozza: stretta sotto i piedi (sparisce a ~40 cm), più chiara e un filo calda */
       const g = new THREE.PlaneGeometry(1.3, 1.3); g.rotateX(-Math.PI / 2); SGT.blob = new THREE.Mesh(g, m); SGT.blob.renderOrder = 1; SGT.blob.userData.keep = true; SGT.blob.castShadow = SGT.blob.receiveShadow = false; scene.add(SGT.blob); }
     SGT.blob.visible = !!on; if (on) SGT.blob.position.set(px, py + .04, pz); }
   // il passo unico, dopo la scena
@@ -14618,7 +14641,14 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       U.fXr.value.set(m[0], m[4], m[8], m[12]); U.fYr.value.set(m[1], m[5], m[9], m[13]); U.fZr.value.set(m[2], m[6], m[10], m[14]);
       const fc = scene.fog.color, fl = .299 * fc.r + .587 * fc.g + .114 * fc.b;   // di notte l'aria è buia: meno aria (non spegne le finestre lontane)
       U.fA.value.set(F.aria * inK * (.35 + .65 * Math.min(1, fl / .5)), F.ariaL, F.ariaFreddo, Math.max(2, -d3.z));
-      U.fB.value.set(F.linea * inK, F.lineaSoglia, F.lineaPersiste, F.lineaLontano); U.fC.value.set(F.piede, F.piedeQ, F.piedeD, f ? groundH(f.x, f.y) : playerH); U.fQ.value.set(F.quota * inK, F.quotaH); U.fH.value.set(fc.r, fc.g, fc.b);
+      U.fB.value.set(F.linea * inK, F.lineaSoglia, F.lineaPersiste, F.lineaLontano); U.fC.value.set(F.piede, F.piedeQ, F.piedeD, f ? groundH(f.x, f.y) : playerH); U.fQ.value.set(F.quota * inK, F.quotaH);
+      {   // [profondita3] il personaggio sullo schermo (il centro del corpo, il raggio della sagoma: mezza altezza più un margine) e il peso di un px
+        const v = SGT.fpv || (SGT.fpv = new THREE.Vector3()), gy = f ? groundH(f.x, f.y) : playerH, px = f ? f.x : p.x, pz = f ? f.y : p.y;
+        v.set(px, gy + .9, pz).project(camera); const cx = v.x * .5 + .5, cy = v.y * .5 + .5, inv = v.z < 1; v.set(px, gy + 1.85, pz).project(camera);
+        const hh = Math.hypot((v.x * .5 + .5 - cx) * camera.aspect, v.y * .5 + .5 - cy);
+        U.fP.value.set(cx, cy, Math.max(.01, hh * 1.25), inv && !f ? F.spicca : 0);
+        const k = (typeof innerHeight !== 'undefined' ? innerHeight * (devicePixelRatio || 1) : rt.height) / Math.max(1, rt.height);   // quanto il browser ingrandisce la tela
+        U.fE.value.set(Math.max(.55, Math.min(1, 1.1 / Math.max(1, k))), F.filoSottile); }   // il filo largo un px della tela pesa come un px dello schermo U.fH.value.set(fc.r, fc.g, fc.b);
       if (NIT.on && PRO.look && NIT.acceso) { U.nA.value.x = 0; U.nA.value.w = 0; } }   // nel profilo pieno l'aria e la sagoma della profondità di prima lasciano il posto a queste
     renderer.setRenderTarget(null); renderer.render(SGP.scene, SGP.cam);
   }
@@ -19156,7 +19186,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const CA = carInOut(st, p, pveh, inCar, pg, dt);
     pg.visible = !pveh || onVespa || inCar;
     if (pg.userData.ring5) pg.userData.ring5.visible = !inCar && !CA && !PL2.sit && (!PFD.on || PFD.anello);   // [animazioni2] l'anello ai piedi non entra nell'abitacolo
-    if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid; } }
+    if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid && !PFD.on; }   /* [profondita3] il personaggio ha la sua ombra di contatto (sguPersonaggio): niente secondo disco */ }
     pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
@@ -19549,7 +19579,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !(p.indoor);   // (non dyn.people.__player.visible: con le persone fuse di peso_gente.js l'originale è nascosto)
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
-        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height * (AD.apertura === undefined ? 1 : AD.apertura) : 0; if (u7.z < 1) u7.z = 0;   /* [profondita3] AD.apertura (0-1, di chi decide il varco: la camera): il raggio cresce da 0; sotto un px niente buco (lo shader apre solo se sgP7.z > 0) e quindi nemmeno il filo */ u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
     renderer.setRenderTarget(rt); if (PFA.sync) { PFA.on = true; PFA.sync(); } renderer.render(scene, camera); if (PFA.sync) { PFA.on = false; PFA.sync(); } if (window.PesoOmbre) PesoOmbre.dopo();   // [profondita2] l'alfa pulito solo nel passaggio della scena
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
