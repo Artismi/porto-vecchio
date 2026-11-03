@@ -1295,16 +1295,34 @@ var Writing = (function () {
     g.computeVertexNormals(); return g;
   }
   // [ferrovia] la quota vera del binario: sulla terra resa dal gioco (R.groundH), su una massicciata bassa che segue il terreno
+  // [suolo2] il terreno di prima (R.groundH0): la quota di chi cammina ora sale sulle opere (il riempimento dei passaggi a livello, la
+  // massicciata dei binari), e il binario non deve salirci sopra
   // (pendenza al massimo 3%), sul ponte in terra a 5 m sopra la valle, sul mare il viadotto; TR.el = i tratti su piloni
   function railFit(R) {
     if (TR.fit || !RAIL.ok) return; TR.fit = true;
     // [campagna] la stessa funzione della logica (game.js railProfile): in campagna la quota del mondo, altrove il terreno reso (R.groundH)
-    const P = TR.P, n = P.length, rf = G.railProfile(P, (x, y) => R.groundH(x, y), { bridge: RAIL.bridge, cross: RAIL.cross, xMerge: G.MAP.world && G.MAP.world.cityW0 });
+    const P = TR.P, n = P.length, rf = G.railProfile(P, (x, y) => (R.groundH0 || R.groundH)(x, y), { bridge: RAIL.bridge, cross: RAIL.cross, xMerge: G.MAP.world && G.MAP.world.cityW0 });
     TR.el = rf.el; TR.g = rf.g;
     // gli scali: il binario secondario non affonda nel pendio (si alza col terreno, raccordato ai deviatoi)
-    RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max(R.groundH(q.x, q.y), R.groundH(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), R.groundH(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
+    RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max((R.groundH0 || R.groundH)(q.x, q.y), (R.groundH0 || R.groundH)(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), (R.groundH0 || R.groundH)(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
       let lf = L0.map((_, u) => { let m = 0; L0.forEach((v, j) => { m = Math.max(m, v - .015 * Math.abs(u - j)); }); return m * ramp(u, Y.len); });   // l'inviluppo con pendenza massima 1,5%: un piano dritto, niente onde
       for (let it = 0; it < 12; it++) { const o = lf.slice(); for (let u = 2; u < lf.length - 2; u++) lf[u] = (o[u - 2] + o[u - 1] + o[u] + o[u + 1] + o[u + 2]) / 5; } Y._lf = lf; });
+  }
+  // [suolo2] LA MASSICCIATA NELLA QUOTA DEL SUOLO (strumenti/sonda_suolo.js: attraversando il binario i piedi stavano fino a 1,3 m dentro il
+  // rilevato). Le sezioni del letto di ghiaia che track() disegna (il profilo trasversale: piede, spalla, centro, spalla, piede) in una
+  // griglia di 4 m; window.__ferrovia2(x, z) dà la quota del letto fra le due sezioni vicine (null fuori). Sui viadotti e sui ponti solo
+  // se l'impalcato sta a meno di 1,3 m dal terreno (sotto si passa). render.js groundH la prende col massimo. ?nofixsuolo2: niente
+  const SUOLO2W = typeof location === 'undefined' || !/[?&]nofixsuolo2\b/.test(location.search);
+  function ferrovia2(S, gH) {
+    if (!SUOLO2W || typeof window === 'undefined' || S.length < 2) return; const H = new Map(), C = 4, key = (a, b) => a * 100003 + b;
+    for (let j = 0; j < S.length - 1; j++) { const A = S[j], B = S[j + 1], r = Math.max(Math.abs(A.o[0]), Math.abs(A.o[A.o.length - 1]), Math.abs(B.o[0]), Math.abs(B.o[B.o.length - 1])) + 1;
+      for (let a = Math.floor((Math.min(A.x, B.x) - r) / C); a <= Math.floor((Math.max(A.x, B.x) + r) / C); a++) for (let b = Math.floor((Math.min(A.z, B.z) - r) / C); b <= Math.floor((Math.max(A.z, B.z) + r) / C); b++) { const k = key(a, b); (H.get(k) || H.set(k, []).get(k)).push(j); } }
+    const prof = (Q, o) => { const O = Q.o, Hh = Q.h; let best = null; for (let k = 0; k < O.length - 1; k++) { const o0 = O[k], o1 = O[k + 1]; if (Math.abs(o1 - o0) < 1e-4) continue; const lo = Math.min(o0, o1), hi = Math.max(o0, o1); if (o < lo || o > hi) continue; const v = Hh[k] + (Hh[k + 1] - Hh[k]) * (o - o0) / (o1 - o0); if (best === null || v > best) best = v; } return best; };
+    window.__ferrovia2 = (x, z) => { const L = H.get(key(Math.floor(x / C), Math.floor(z / C))); if (!L) return null; let best = null;
+      for (const j of L) { const A = S[j], B = S[j + 1], dx = B.x - A.x, dz = B.z - A.z, l2 = dx * dx + dz * dz || 1e-9, u = ((x - A.x) * dx + (z - A.z) * dz) / l2; if (u < -.05 || u > 1.05) continue;
+        const hA = prof(A, (x - A.x) * A.nx + (z - A.z) * A.nz), hB = prof(B, (x - B.x) * B.nx + (z - B.z) * B.nz); if (hA === null || hB === null) continue; const t = Math.max(0, Math.min(1, u)), v = hA + (hB - hA) * t;
+        if ((A.el || B.el) && v - gH(x, z) > 1.3) continue; if (best === null || v > best) best = v; }
+      return best; };
   }
   const tex64 = (w, h, f) => { const c = cv(w, h), x = c.getContext('2d'); f(x, w, h); const t = canvasTexture(c); return t; };
   // la ferrovia: la massicciata (o il ponte e il viadotto), le traversine e le rotaie, i piloni fino a terra; gli scali coi loro
@@ -1313,7 +1331,7 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), P = TR.P, g = new THREE.Group(); g.name = 'ferrovia';
     railFit(R);
     const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
-    const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
+    const gH = (x, y) => (R.groundH0 || R.groundH)(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
     // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
     const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], idxW = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
     const cG = new THREE.Color('#e2dcd2'), cG2 = new THREE.Color('#c4bdb1'), cO = new THREE.Color('#9c8c7c'), cC = new THREE.Color('#d6d2ca'), cC2 = new THREE.Color('#aaa69e');
@@ -1334,13 +1352,16 @@ var Writing = (function () {
       const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
       return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
     };
+    const SEZ2 = [];   // [suolo2] le sezioni della massicciata (ogni 2 m): il profilo trasversale che si vede, per la quota di chi ci cammina
+    const sez2 = (q, k, i) => { const nx = -Math.sin(q.ang), nz = Math.cos(q.ang); SEZ2.push({ x: q.x, z: q.y, nx, nz, el: !!(EL(i) || SEA(i)), o: k.map(v => (pos[v * 3] - q.x) * nx + (pos[v * 3 + 2] - q.y) * nz), h: k.map(v => pos[v * 3 + 1]) }); };
     for (let i = 0; i < P.length; i += 2) {
-      const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
+      const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0; sez2(q, k, i);
       const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 ? (A.wl || B.wl ? idxW : idxE) : a === 5 ? (A.wr || B.wr ? idxW : idxE) : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
       if (prev && kind === prevK) strip(prev, k, kind);
       else if (prev) { const k2 = bed(railAt(i - 1), i - 1); strip(prev, k2, prevK); }
       prev = k; prevK = kind;
     }
+    ferrovia2(SEZ2, gH);
     // gli scali: la loro massicciata accanto, e i binari secondari
     RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) (a === 0 || a === 5 ? idxE : idxG).push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
     const PA = new THREE.Float32BufferAttribute(pos, 3), CA = new THREE.Float32BufferAttribute(col, 3), UA = new THREE.Float32BufferAttribute(uvs, 2);

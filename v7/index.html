@@ -23570,8 +23570,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '5e57cf63ba1c919c';</script>
-<script>window.PV_IMPRONTA_TASS = 'a6d1cf9a63b5dadd';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = '4c3742e73c474aea';</script>
+<script>window.PV_IMPRONTA_TASS = '1a4415d708ae44f1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -33689,6 +33689,102 @@ var Game = (function () {
       if (lx >= s.x0 - .1 && lx <= s.x2 && lz >= s.z0 - .05 && lz <= s.z1 + .1) return s.q + s.h * clamp((lx - s.x0) / ((s.x1 - s.x0) || 1), 0, 1); }
     return null;
   }
+  // [suolo2] I PIANI RIALZATI DELLE OPERE NELLA QUOTA DEL SUOLO. Il committente, sulla Piazza dell'Ottagono: «se cammino verso le scale
+  // sprofondo nel pavimento: il pavimento vero è sotto, sopra c'è la pedana rialzata della piazza». La quota di chi cammina (render.js
+  // groundH) era il terreno (i vertici ogni 2 m) più il marciapiede e la rampa delle scale dei gradoni: le opere che pezzi_citta.js
+  // disegna sopra il terreno non c'erano. Sul ciglio dei gradoni il terreno scende in un metro e mezzo dal piano della piazza alla via di
+  // sotto, mentre si vede il camminamento in piano fino al muro: fino a 1,3 m di piedi dentro la pedana (strumenti/sonda_suolo.js).
+  // Qui, dagli stessi numeri con cui pezzi_citta.js costruisce i pezzi (W0.pezzi: tipo, posto, quota, opzioni), le facce in su che si
+  // calpestano, ognuna nel riferimento del suo pezzo (lx lungo X, lz lungo Z, girati con rot):
+  //   gradone        il camminamento in cima (h + 5 cm) e la copertina sul ciglio (h + 16 cm), dal muro fino a P dietro; la scala
+  //                  addossata a GRADINI VERI (la pedata alla sua alzata, non più la rampa), lo zoccolo al piede, il pianerottolo;
+  //                  la cordonata a rampe brevi fra i cordoni
+  //   scalinata      gradini e pianerottoli come il profilo (la quota sale a scatti)
+  //   facciata_chiesa  i tre gradini del sagrato davanti al portale
+  //   fontana, pozzo   il gradino attorno alla vasca, la piattaforma del pozzo (il poligono vero, non un cerchio)
+  //   lavatoio       il selciato
+  //   passaggio_livello  il riempimento fra le rotaie, le rampe e la strada (anche girati, se il passaggio è obliquo), le banchine
+  //   molo_vecchio, darsena, scalo_alaggio  il piano delle banchine e del molo, la testata, i cigli; la rampa dello scalo e le spallette
+  //   portico        il pavimento sotto le arcate
+  //   binari, sottopasso, muro_garante  la massicciata e il rilevato; la strada sotto il fornice; la platea e il varco del posto di blocco
+  // quotaSuolo(x, y, g): con g la quota del terreno sotto, la quota del piano più alto fra terreno e opere (le scale e le scalinate
+  // comandano: la pedata è il suolo anche dove il terreno resta più alto di qualche centimetro); null fuori dalle opere. Un indice per
+  // casella (SUPC), fatto una volta: a ogni chiamata solo i pezzi della casella. ?nofixsuolo2: com'era (nessuna faccia, la rampa).
+  const FIX_SUOLO2 = !(typeof location !== 'undefined' && /[?&]nofixsuolo2\b/.test(location.search));
+  const SUPC = new Map(), SUP = [];
+  const inPoliReg = (lx, lz, R, n, ry) => { if (lx * lx + lz * lz > R * R) return false; const st = 2 * Math.PI / n; let a = Math.atan2(lx, lz) - ry; a = ((a % st) + st) % st; return Math.hypot(lx, lz) * Math.cos(a - st / 2) <= R * Math.cos(st / 2); };   // il poligono regolare di CylinderGeometry (raggio ai vertici R, il primo vertice su +Z, girato di ry)
+  function supAdd(p, F, ext) {   // F: le facce [lx0, lx1, lz0, lz1, f(lx, lz) → quota sopra p.q, scala?]; ext: il riquadro locale [lx0, lx1, lz0, lz1]
+    const c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0), q = p.q || 0, S = { x: p.x, y: p.y, c, s, q, F, tipo: p.tipo }, k = SUP.push(S) - 1;
+    const C = [[ext[0], ext[2]], [ext[1], ext[2]], [ext[1], ext[3]], [ext[0], ext[3]]].map(([a, b]) => [p.x + a * c + b * s, p.y - a * s + b * c]), xs = C.map(v => v[0]), ys = C.map(v => v[1]);
+    for (let ty = Math.max(0, Math.floor(Math.min(...ys) / TS)); ty <= Math.min(GH - 1, Math.floor(Math.max(...ys) / TS)); ty++) for (let tx = Math.max(0, Math.floor(Math.min(...xs) / TS)); tx <= Math.min(GW - 1, Math.floor(Math.max(...xs) / TS)); tx++) { const i = ty * GW + tx; (SUPC.get(i) || SUPC.set(i, []).get(i)).push(k); }
+  }
+  const DEF2 = (o, d) => Object.assign({}, d, o || {});
+  if (FIX_SUOLO2) (W0.pezzi || []).forEach(p => { try {
+    if (p.tipo === 'gradone') { const o = DEF2(p.opz, { L: 12, h: 2.4, P: 4, rampa: true, scala: false }), L = o.L, h = o.h, P = o.P, k = .12, F = [];
+      F.push([0, L, -P, -.5, () => h + .05, false], [0, L, -.5, .1, () => h + .16, false]);   // il camminamento e la copertina
+      if (o.scala || o.rampa) { const W = 1.8, za = h * k * .5, cord = !o.scala, SX = o.scala && o.scalaX ? o.scalaX : null, SC = !cord && SX;
+        const a0 = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a0), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), yb = SC ? o.yb : 0, hs = SC ? o.hs : h, aa = hs / n;
+        const xi = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xt = xi + n * pd, xe = SC ? SX[2] : Math.min(L, xt + 1.4);
+        F.push([xi, xe, za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
+          : (lx => lx >= xt ? h : yb + aa * Math.min(n, Math.floor((lx - xi) / pd + 1e-6) + 1)), true]);   // i gradini: la pedata i alla sua alzata
+        if (SC) F.push([xi - .15, xi, za - .08, za + W + .08, () => yb + .06, true]); }   // lo zoccolo al piede
+      supAdd(p, F, [-.2, L + .2, -P, h * k * .5 + 2]); }
+    else if (p.tipo === 'scalinata') { const o = DEF2(p.opz, { w: 4, dislivello: 8, pianerottoli: 1, pedata: .36 }), H = o.dislivello, n = Math.max(1, Math.ceil(H / .17)), a = H / n, pd = o.pedata, nf = Math.max(1, o.pianerottoli + 1), W = o.w, T0 = [];
+      let x = 0, y = 0; for (let f = 0; f < nf; f++) { const kk = Math.round(n * (f + 1) / nf) - Math.round(n * f / nf); for (let i = 0; i < kk; i++) { y += a; T0.push([x, y]); x += pd; } const lx = f < nf - 1 ? 1.6 - pd : 1.2; x += lx; }
+      const X = x; supAdd(p, [[0, X, -W / 2, W / 2, lx => { let r = 0; for (const t of T0) { if (lx >= t[0] - 1e-6) r = t[1]; else break; } return r; }, true]], [0, X, -W / 2, W / 2]); }
+    else if (p.tipo === 'facciata_chiesa') { const o = DEF2(p.opz, { w: 14, spessore: 1.2, gradini: 3 }), n = o.gradini; if (n > 0) { const W = o.w, z1 = o.spessore / 2 + n * .4;
+      supAdd(p, [[-.6, W + .6, z1 - n * .4, z1, (lx, lz) => .17 * Math.min(n, Math.floor((z1 - lz) / .4 + 1e-6) + 1), false]], [-.6, W + .6, z1 - n * .4, z1]); } }
+    else if (p.tipo === 'fontana') { const o = DEF2(p.opz, { r: 2.2, lati: 8 }), R = o.r + .5, n = Math.max(4, o.lati), ry = Math.PI / n;
+      supAdd(p, [[-R, R, -R, R, (lx, lz) => inPoliReg(lx, lz, R, n, ry) ? .18 : null, false]], [-R, R, -R, R]); }
+    else if (p.tipo === 'pozzo') { const o = DEF2(p.opz, { r: .8 }), R = o.r + .8;
+      supAdd(p, [[-R, R, -R, R, (lx, lz) => inPoliReg(lx, lz, R, 16, 0) ? .15 : null, false]], [-R, R, -R, R]); }
+    else if (p.tipo === 'lavatoio') { const o = DEF2(p.opz, { L: 6 }), L = o.L, xc = L / 2 + .6, hw = (L + 3.2) / 2, hd = (1.6 + 3.4) / 2;
+      supAdd(p, [[xc - hw, xc + hw, -hd, hd, () => .08, false]], [xc - hw, xc + hw, -hd, hd]); }
+    else if (p.tipo === 'passaggio_livello') {   // il riempimento fra le rotaie (44 cm), le rampe, la strada, le banchine (la massicciata e le rotaie le toglie render.js po1Strip: il binario vero è quello di writing.js)
+      const o = DEF2(p.opz, { w: 8 }), HP = Math.PI / 2, ob = Math.max(.6, Math.min(Math.PI - .6, o.obliquo || HP)), sq = Math.abs(ob - HP) < .001, w = o.w, wx = sq ? w : w / Math.sin(ob), Lt = wx + 14, xc = Lt / 2, sk = sq ? 1 : 1 / Math.sin(ob);
+      const c0 = Math.cos(p.rot || 0), s0 = Math.sin(p.rot || 0), Z1 = 4.7 * sk + 5, F = [];
+      F.push([-w / 2, w / 2, -1.7 * sk, 1.7 * sk, () => .44, false], [-w / 2, w / 2, -Z1, Z1, (lx, lz) => { const a = Math.abs(lz); return a <= 1.7 * sk ? .44 : a <= 4.7 * sk ? .44 + (.06 - .44) * (a - 1.7 * sk) / (3 * sk) : .06; }, false]);
+      for (const sx of [-1, 1]) F.push([sx * (w / 2 + .7) - .7, sx * (w / 2 + .7) + .7, -5.75 * sk - 3.95, 5.75 * sk + 3.95, (lx, lz) => Math.abs(Math.abs(lz) - 5.75 * sk) <= 3.95 ? .12 : null, false]);
+      supAdd({ x: p.x + xc * c0, y: p.y - xc * s0, q: p.q, rot: (p.rot || 0) + (sq ? 0 : HP - ob), tipo: p.tipo }, F, [-w / 2 - 1.4, w / 2 + 1.4, -Z1 - 1, Z1 + 1]); }
+    else if (p.tipo === 'molo_vecchio') {   // il piano del molo (a quota 0 del pezzo), il secondo braccio, la testata tonda, il ciglio sul lato del porto
+      const o = DEF2(p.opz, { L1: 50, L2: 30, w: 7 }), L1 = o.L1, L2 = o.L2, w = o.w, hx = L2 > 0 ? L1 - w / 2 : L1, hz = L2 > 0 ? w / 2 + L2 : 0, rt = w / 2 + .6, F = [];
+      F.push([0, L1, -w / 2, w / 2, () => 0, false], [0, L1 - (L2 > 0 ? w : 0), w / 2 - .5, w / 2, () => .15, false]);
+      if (L2 > 0) F.push([L1 - w, L1, w / 2, w / 2 + L2, () => 0, false], [L1 - w, L1 - w + .5, w / 2, w / 2 + L2, () => .15, false]);
+      F.push([hx - rt, hx + rt, hz - rt, hz + rt, (lx, lz) => Math.hypot(lx - hx, lz - hz) <= rt ? 0 : null, false]);
+      supAdd(p, F, [-.5, L1 + rt, -w / 2, Math.max(w / 2, hz + rt)]); }
+    else if (p.tipo === 'darsena') {   // le banchine di fondo e dei fianchi (a quota 0), le testate, il ciglio (15 cm)
+      const o = DEF2(p.opz, { L: 40, W: 30, banchina: 6 }), L = o.L, W = o.W, B = o.banchina, Lt = L + 2 * B, xc = Lt / 2, F = [[0, Lt, -W / 2 - B, -W / 2, () => 0, false], [xc - (L + .6) / 2, xc + (L + .6) / 2, -W / 2 - .6, -W / 2, () => .15, false]];
+      for (const s of [-1, 1]) { const xb = xc + s * (L / 2 + B / 2), xk = xc + s * (L / 2 + .3); F.push([xb - B / 2, xb + B / 2, -W / 2, W / 2, () => 0, false], [xb - B / 2, xb + B / 2, W / 2, W / 2 + B / 2, (lx, lz) => Math.hypot(lx - xb, lz - W / 2) <= B / 2 ? 0 : null, false], [xk - .3, xk + .3, -W / 2, W / 2, () => .15, false]); }
+      supAdd(p, F, [0, Lt, -W / 2 - B, W / 2 + B / 2]); }
+    else if (p.tipo === 'scalo_alaggio') {   // la rampa di cemento (in piano 3 m, poi giù verso +Z), le spallette con la copertina (15 cm)
+      const o = DEF2(p.opz, { L: 12, w: 6, hq: 1.4 }), L = o.L, w = o.w, yE = -o.hq - .8;
+      supAdd(p, [[0, w, -3, L, (lx, lz) => lz <= 0 ? 0 : yE * lz / L, false], [-1.25, .05, -3, L, () => .15, false], [w - .05, w + 1.25, -3, L, () => .15, false]], [-1.25, w + 1.25, -3, L]); }
+    else if (p.tipo === 'binari') {   // la massicciata a trapezio (30 cm, le scarpe a 45°) e, sul rilevato, il suo piano e la copertina del muro
+      const o = DEF2(p.opz, { L: 25, binari: 2, rilevato: true, hRilevato: 2.5 }), L = o.L, n = Math.max(1, o.binari), h = o.rilevato ? o.hRilevato : 0, wb = (n - 1) * 4 + 3.6, Wt = wb + 3.2, F = [];
+      F.push([0, L, -wb / 2 - .3, wb / 2 + .3, (lx, lz) => h + .3 - Math.max(0, Math.abs(lz) - wb / 2), false]);
+      if (o.rilevato && h > .8) F.push([0, L, -Wt / 2, Wt / 2, () => h, false], [0, L, -Wt / 2 - 1.5 * h, -Wt / 2, (lx, lz) => h * (lz + Wt / 2 + 1.5 * h) / (1.5 * h), false], [0, L, Wt / 2 - .575, Wt / 2 + .175, () => h + .25, false]);
+      supAdd(p, F, [0, L, -Wt / 2 - 1.5 * h - .3, Wt / 2 + .3]); }
+    else if (p.tipo === 'sottopasso') {   // la strada sotto il fornice (6 cm)
+      const o = DEF2(p.opz, { L: 16, w: 5 }), w = o.w, L = Math.max(o.L, w + 6), xc = L / 2;
+      supAdd(p, [[xc - (w + .6) / 2, xc + (w + .6) / 2, -7.5, 7.5, () => .06, false]], [xc - (w + .6) / 2, xc + (w + .6) / 2, -7.5, 7.5]); }
+    else if (p.tipo === 'muro_garante') {   // la platea davanti al muro, la piazzola e la strada del posto di blocco (5-6 cm)
+      const o = DEF2(p.opz, { L: 24, posto_blocco: true }), L = o.L, wv = o.posto_blocco ? 6 : 0, xv = L / 2, F = [[0, L, -1.7, .5, () => .05, false]];
+      if (wv) F.push([xv - (wv + 7) / 2, xv + (wv + 7) / 2, -.2, 5.8, () => .05, false], [xv - wv / 2, xv + wv / 2, -4.5, 4.5, () => .06, false]);
+      supAdd(p, F, [0, L, -4.5, 5.8]); }
+    else if (p.tipo === 'portico') {   // il pavimento del portico (15 cm; lo stesso nel portico d'Ottocento)
+      const o = DEF2(p.opz, { campate: 6, campata: 4, profondita: 4 }), L = o.campate * o.campata, P = o.profondita;
+      supAdd(p, [[0, L, -.25 - (P + .5) / 2, -.25 + (P + .5) / 2, () => .15, false]], [0, L, -.25 - (P + .5) / 2, -.25 + (P + .5) / 2]); }
+  } catch (e) { if (typeof console !== 'undefined') console.warn('[suolo2]', p.tipo, e); } });
+  function quotaSuolo(x, y, g) {
+    const L = SUPC.size ? SUPC.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null; if (!L) return null;
+    let best = null, scala = null;
+    for (let i = 0; i < L.length; i++) { const S = SUP[L[i]], dx = x - S.x, dy = y - S.y, lx = dx * S.c - dy * S.s, lz = dx * S.s + dy * S.c;
+      for (const f of S.F) { if (lx < f[0] || lx > f[1] || lz < f[2] || lz > f[3]) continue; const h = f[4](lx, lz); if (h === null) continue; const v = S.q + h;
+        if (f[5]) { if (scala === null || v > scala) scala = v; } else if (best === null || v > best) best = v; } }
+    if (scala !== null) return best !== null ? Math.max(scala, best) : scala;
+    if (best === null) return null;
+    return g === undefined || g === null || !(g > best) ? best : g;
+  }
   const walkM = BAR.length ? (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS)) && !muroM(x, y) : (x, y) => walkT(Math.floor(x / TS), Math.floor(y / TS));
   // [pedonale] DOVE I MEZZI NON VANNO (NOV, una casella per cella): 2 = le scale e i gradini (le caselle STAIRS, le scale dei gradoni, le
   // scalinate, i muraglioni), mai; 1 = le piazze pedonali, la piazza alta, le fontane, i sottopassi pedonali e le vie pedonali (rd.pedonale),
@@ -36290,7 +36386,7 @@ var Game = (function () {
 
   return {
     TS, GW, GH, WW, WH, T, OX, MAP, BUILDINGS, propHit, glassFront, npcThrow, PLACES, LABEL, NEG, SEV, JOBS, WEAPONS, VK, PICKUP_LABEL, DEBT, START_T, END_T, PLAYER_NAME,
-    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
+    tileAt, walkT, walkM, driveM, novAt, NOV, taglia, muroM, quotaScala, quotaSuolo, SUP, FIX_SUOLO2, BLK, LINK, tryMove, seaM, boatM, bIndex, create, step, act, bmx, jumpHold, fire, reload, switchWeapon, context, talk, talkChoice, jobTarget, knowers, reputation, opinions, hostile, pickupVisible,
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     shoot, damage, kill, emit,   // [azioni]
@@ -63314,16 +63410,34 @@ var Writing = (function () {
     g.computeVertexNormals(); return g;
   }
   // [ferrovia] la quota vera del binario: sulla terra resa dal gioco (R.groundH), su una massicciata bassa che segue il terreno
+  // [suolo2] il terreno di prima (R.groundH0): la quota di chi cammina ora sale sulle opere (il riempimento dei passaggi a livello, la
+  // massicciata dei binari), e il binario non deve salirci sopra
   // (pendenza al massimo 3%), sul ponte in terra a 5 m sopra la valle, sul mare il viadotto; TR.el = i tratti su piloni
   function railFit(R) {
     if (TR.fit || !RAIL.ok) return; TR.fit = true;
     // [campagna] la stessa funzione della logica (game.js railProfile): in campagna la quota del mondo, altrove il terreno reso (R.groundH)
-    const P = TR.P, n = P.length, rf = G.railProfile(P, (x, y) => R.groundH(x, y), { bridge: RAIL.bridge, cross: RAIL.cross, xMerge: G.MAP.world && G.MAP.world.cityW0 });
+    const P = TR.P, n = P.length, rf = G.railProfile(P, (x, y) => (R.groundH0 || R.groundH)(x, y), { bridge: RAIL.bridge, cross: RAIL.cross, xMerge: G.MAP.world && G.MAP.world.cityW0 });
     TR.el = rf.el; TR.g = rf.g;
     // gli scali: il binario secondario non affonda nel pendio (si alza col terreno, raccordato ai deviatoi)
-    RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max(R.groundH(q.x, q.y), R.groundH(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), R.groundH(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
+    RAIL.yards.forEach(Y => { Y._lf = null; const L0 = []; for (let u = 0; u <= Y.len; u++) { const q = yardAt(Y, u); L0.push(Math.max(0, Math.max((R.groundH0 || R.groundH)(q.x, q.y), (R.groundH0 || R.groundH)(q.x - Math.sin(q.ang) * 1.6, q.y + Math.cos(q.ang) * 1.6), (R.groundH0 || R.groundH)(q.x + Math.sin(q.ang) * 1.6, q.y - Math.cos(q.ang) * 1.6)) + .42 - q.h) * ramp(u, Y.len)); }
       let lf = L0.map((_, u) => { let m = 0; L0.forEach((v, j) => { m = Math.max(m, v - .015 * Math.abs(u - j)); }); return m * ramp(u, Y.len); });   // l'inviluppo con pendenza massima 1,5%: un piano dritto, niente onde
       for (let it = 0; it < 12; it++) { const o = lf.slice(); for (let u = 2; u < lf.length - 2; u++) lf[u] = (o[u - 2] + o[u - 1] + o[u] + o[u + 1] + o[u + 2]) / 5; } Y._lf = lf; });
+  }
+  // [suolo2] LA MASSICCIATA NELLA QUOTA DEL SUOLO (strumenti/sonda_suolo.js: attraversando il binario i piedi stavano fino a 1,3 m dentro il
+  // rilevato). Le sezioni del letto di ghiaia che track() disegna (il profilo trasversale: piede, spalla, centro, spalla, piede) in una
+  // griglia di 4 m; window.__ferrovia2(x, z) dà la quota del letto fra le due sezioni vicine (null fuori). Sui viadotti e sui ponti solo
+  // se l'impalcato sta a meno di 1,3 m dal terreno (sotto si passa). render.js groundH la prende col massimo. ?nofixsuolo2: niente
+  const SUOLO2W = typeof location === 'undefined' || !/[?&]nofixsuolo2\b/.test(location.search);
+  function ferrovia2(S, gH) {
+    if (!SUOLO2W || typeof window === 'undefined' || S.length < 2) return; const H = new Map(), C = 4, key = (a, b) => a * 100003 + b;
+    for (let j = 0; j < S.length - 1; j++) { const A = S[j], B = S[j + 1], r = Math.max(Math.abs(A.o[0]), Math.abs(A.o[A.o.length - 1]), Math.abs(B.o[0]), Math.abs(B.o[B.o.length - 1])) + 1;
+      for (let a = Math.floor((Math.min(A.x, B.x) - r) / C); a <= Math.floor((Math.max(A.x, B.x) + r) / C); a++) for (let b = Math.floor((Math.min(A.z, B.z) - r) / C); b <= Math.floor((Math.max(A.z, B.z) + r) / C); b++) { const k = key(a, b); (H.get(k) || H.set(k, []).get(k)).push(j); } }
+    const prof = (Q, o) => { const O = Q.o, Hh = Q.h; let best = null; for (let k = 0; k < O.length - 1; k++) { const o0 = O[k], o1 = O[k + 1]; if (Math.abs(o1 - o0) < 1e-4) continue; const lo = Math.min(o0, o1), hi = Math.max(o0, o1); if (o < lo || o > hi) continue; const v = Hh[k] + (Hh[k + 1] - Hh[k]) * (o - o0) / (o1 - o0); if (best === null || v > best) best = v; } return best; };
+    window.__ferrovia2 = (x, z) => { const L = H.get(key(Math.floor(x / C), Math.floor(z / C))); if (!L) return null; let best = null;
+      for (const j of L) { const A = S[j], B = S[j + 1], dx = B.x - A.x, dz = B.z - A.z, l2 = dx * dx + dz * dz || 1e-9, u = ((x - A.x) * dx + (z - A.z) * dz) / l2; if (u < -.05 || u > 1.05) continue;
+        const hA = prof(A, (x - A.x) * A.nx + (z - A.z) * A.nz), hB = prof(B, (x - B.x) * B.nx + (z - B.z) * B.nz); if (hA === null || hB === null) continue; const t = Math.max(0, Math.min(1, u)), v = hA + (hB - hA) * t;
+        if ((A.el || B.el) && v - gH(x, z) > 1.3) continue; if (best === null || v > best) best = v; }
+      return best; };
   }
   const tex64 = (w, h, f) => { const c = cv(w, h), x = c.getContext('2d'); f(x, w, h); const t = canvasTexture(c); return t; };
   // la ferrovia: la massicciata (o il ponte e il viadotto), le traversine e le rotaie, i piloni fino a terra; gli scali coi loro
@@ -63332,7 +63446,7 @@ var Writing = (function () {
     const THREE = T3(), R = R_(), P = TR.P, g = new THREE.Group(); g.name = 'ferrovia';
     railFit(R);
     const EL = i => TR.el ? TR.el[Math.max(0, Math.min(P.length - 1, Math.round(i)))] : 0, SEA = i => !!P[Math.max(0, Math.min(P.length - 1, Math.round(i)))][3];
-    const gH = (x, y) => R.groundH(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
+    const gH = (x, y) => (R.groundH0 || R.groundH)(x, y), jit = (c, k) => { const v = (Math.sin(k * 12.9898) * 43758.5453) % 1, d = (v - Math.floor(v) - .5) * .12; return new THREE.Color(Math.min(1, c.r + d), Math.min(1, c.g + d), Math.min(1, c.b + d)); };
     // ---- la massicciata (in terra) e l'impalcato (ponte e viadotto) ----
     const RT = railTex(), pos = [], col = [], uvs = [], idxG = [], idxE = [], idxD = [], idxW = [], push = (x, y, z, c) => { pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(x / 2.2 + y * .15, z / 2.2 - y * .15); return pos.length / 3 - 1; };   // la texture proiettata dall'alto (più la quota: le scarpate non si stirano)
     const cG = new THREE.Color('#e2dcd2'), cG2 = new THREE.Color('#c4bdb1'), cO = new THREE.Color('#9c8c7c'), cC = new THREE.Color('#d6d2ca'), cC2 = new THREE.Color('#aaa69e');
@@ -63353,13 +63467,16 @@ var Writing = (function () {
       const eL = Math.min(top, gL + .1) - Math.min(.35, top - gL), eR = Math.min(top, gR + .1) - Math.min(.35, top - gR);   // dove finisce la ghiaia comincia la terra
       return [push(q.x + nx * fL, gL, q.y + nz * fL, jit(cE, i)), push(q.x + nx * 2.6, top - Math.min(.35, top - gL), q.y + nz * 2.6, jit(fL > 4.5 ? cE : cG2, i + 5)), push(q.x + nx * 1.9, top, q.y + nz * 1.9, jit(cG, i + 1)), push(q.x, top + .02, q.y, jit(cO, i + 2)), push(q.x - nx * 1.9, top, q.y - nz * 1.9, jit(cG, i + 3)), push(q.x - nx * 2.6, top - Math.min(.35, top - gR), q.y - nz * 2.6, jit(fR > 4.5 ? cE : cG2, i + 6)), push(q.x - nx * fR, gR, q.y - nz * fR, jit(cE, i + 4))];
     };
+    const SEZ2 = [];   // [suolo2] le sezioni della massicciata (ogni 2 m): il profilo trasversale che si vede, per la quota di chi ci cammina
+    const sez2 = (q, k, i) => { const nx = -Math.sin(q.ang), nz = Math.cos(q.ang); SEZ2.push({ x: q.x, z: q.y, nx, nz, el: !!(EL(i) || SEA(i)), o: k.map(v => (pos[v * 3] - q.x) * nx + (pos[v * 3 + 2] - q.y) * nz), h: k.map(v => pos[v * 3 + 1]) }); };
     for (let i = 0; i < P.length; i += 2) {
-      const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0;
+      const q = railAt(i), k = bed(q, i), kind = EL(i) || SEA(i) ? 1 : 0; sez2(q, k, i);
       const strip = (A, B, kd) => { for (let a = 0; a < 6; a++) (kd ? (a === 2 || a === 3 ? idxG : idxD) : a === 0 ? (A.wl || B.wl ? idxW : idxE) : a === 5 ? (A.wr || B.wr ? idxW : idxE) : idxG).push(A[a], B[a], A[a + 1], A[a + 1], B[a], B[a + 1]); };
       if (prev && kind === prevK) strip(prev, k, kind);
       else if (prev) { const k2 = bed(railAt(i - 1), i - 1); strip(prev, k2, prevK); }
       prev = k; prevK = kind;
     }
+    ferrovia2(SEZ2, gH);
     // gli scali: la loro massicciata accanto, e i binari secondari
     RAIL.yards.forEach(Y => { let pv = null; for (let u = 0; u <= Y.len; u += 2) { const q = yardAt(Y, u); const k = bed(q, Y.s0 + u, 1); if (pv) for (let a = 0; a < 6; a++) (a === 0 || a === 5 ? idxE : idxG).push(pv[a], k[a], pv[a + 1], pv[a + 1], k[a], k[a + 1]); pv = k; } });
     const PA = new THREE.Float32BufferAttribute(pos, 3), CA = new THREE.Float32BufferAttribute(col, 3), UA = new THREE.Float32BufferAttribute(uvs, 2);
@@ -74099,7 +74216,35 @@ var Render = (function () {
   function rampH(R, x, z) { const k = R.axis === 'x' ? (x / TS - R.x) / R.w : (z / TS - R.y) / R.h; return R.h0 + (R.h1 - R.h0) * clamp(k, 0, 1); }
   function tileElev(tx, ty) { if (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) return 0; return M.elev[(ty | 0) * G.GW + (tx | 0)]; }   // [pianta] anche con le caselle frazionarie dei lotti orientati
   const VH = (i, j) => M.vh[Math.max(0, Math.min(G.GH, j)) * M.VW + Math.max(0, Math.min(G.GW, i))];
+  // [suolo2] LA QUOTA DI CHI CAMMINA È IL PIANO CHE SI VEDE (strumenti/sonda_suolo.js). Prima: il terreno interpolato a quattro vertici
+  // (VH, la quota del mondo) più il marciapiede e la rampa delle scale. Il blocco del suolo invece si disegna coi due triangoli della
+  // casella e con la quota della riva (W.quotaRiva: quotaTri1, la stessa delle decalcomanie a terra): sulle caselle storte e lungo la costa
+  // i piedi stavano fino a 25 cm dentro o sopra il terreno. E le opere rialzate (il camminamento dei gradoni sul ciglio della piazza alta,
+  // i gradini delle scale e delle scalinate, il sagrato, il gradino delle fontane, i passaggi a livello, il molo: game.js quotaSuolo; la
+  // massicciata della ferrovia: writing.js __ferrovia2) non c'erano. Ora groundH (il giocatore, la gente, i mezzi, le cose posate, la
+  // camera) = il terreno dei triangoli del blocco + il marciapiede, la massicciata, e sopra le opere il loro piano. Le quote dei vertici si leggono una volta (QV2, pigra, come riva.js). ?nofixsuolo2: com'era
+  const SUOLO2 = typeof location === 'undefined' || !/[?&]nofixsuolo2\b/.test(location.search);
+  let QV2 = null, QV2W = null;
+  function qv2(i, j) {
+    if (QV2W !== M.world || !QV2) { QV2W = M.world; QV2 = new Float32Array((G.GW + 1) * (G.GH + 1)).fill(NaN); }
+    i = Math.max(0, Math.min(G.GW, i)); j = Math.max(0, Math.min(G.GH, j)); const k = j * (G.GW + 1) + i; let v = QV2[k];
+    if (v !== v) v = QV2[k] = M.world && M.world.quotaRiva ? M.world.quotaRiva(i, j) : VH(i, j);
+    return v;
+  }
+  function terraVista2(fx, fz) {   // i due triangoli della casella del blocco (la diagonale da (i, j) a (i + 1, j + 1)), come quotaTri1
+    const i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j, h00 = qv2(i, j), h11 = qv2(i + 1, j + 1);
+    return v >= u ? h00 + (h11 - qv2(i, j + 1)) * u + (qv2(i, j + 1) - h00) * v : h00 + (qv2(i + 1, j) - h00) * u + (h11 - qv2(i + 1, j)) * v;
+  }
   function groundH(x, z) { // quota del terreno: interpolata fra i quattro vertici della casella
+    if (!SUOLO2) return groundH0(x, z);
+    const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
+    if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
+    let g = terraVista2(fx, fz) + swH(x, z); const F2 = window.__ferrovia2; if (F2) { const f = F2(x, z); if (f !== null && f > g) g = f; }   // [suolo2] il terreno come lo disegna il blocco, la massicciata della ferrovia (writing.js)
+    const q = G.quotaSuolo ? G.quotaSuolo(x, z, g) : null; return q !== null ? q : g;   // e le opere rialzate (game.js quotaSuolo)
+  }
+  // [suolo2] la quota di prima (i quattro vertici del mondo, il marciapiede, la rampa delle scale): con ?nofixsuolo2, e per chi costruisce
+  // sul terreno nudo e non deve salire sulle opere (il binario e la sua massicciata in writing.js)
+  function groundH0(x, z) {
     const fx = x / TS, fz = z / TS; if (fx < 0 || fz < 0 || fx >= G.GW || fz >= G.GH) return -2;
     if (RIVA9()) { const q = Riva.quota(x, z); if (q !== null) return q; }   // [riva] nella fascia della riva naturale la quota fine (quella che si vede)
     if (G.quotaScala) { const qs = G.quotaScala(x, z); if (qs !== null) return qs; }   // [pedonale] sui gradini delle scale dei gradoni
@@ -92710,6 +92855,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const lerp = (a, b, k) => a + (b - a) * k;
   const angLerp = (a, b, k) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
   let frameN = 0, playerH = 0;
+  const PASSO2 = { y: null, x: 0, z: 0 };   // [suolo2] la quota mostrata del corpo sui gradini
+  function passo2(g, x, z, h, dt) {   // [suolo2] lo stesso per la gente: i salti piccoli del suolo (una pedata) in un ventesimo di secondo
+    if (!SUOLO2) return h; const u = g.userData, d = h - (u.su2y === undefined ? h : u.su2y);
+    if (u.su2y !== undefined && Math.abs(d) > .002 && Math.abs(d) < .45 && Math.hypot(x - u.su2x, z - u.su2z) < 1) h = u.su2y + d * (1 - Math.exp(-Math.min(dt, .1) * 22));
+    u.su2y = h; u.su2x = x; u.su2z = z; return h;
+  }
   // [bassa] LE COSE FRA LA CAMERA E TE: con la visuale bassa ogni cosa registrata (DZ.props: ringhiere, cartelli, tavolini, lampioni, fusi
   // nelle mesh statiche o nei tasselli) che taglia il tratto dalla camera al personaggio si spegne (hideTag, come quando si rompe) e torna
   // quando non è più in mezzo da BASSA_TIENI s. Non si toccano le cose vive o rotte (state) né quelle spente da altri (t.hidden prima).
@@ -93209,7 +93360,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       }
       g.visible = !n.inside || inRoom; g.userData.inRoom = inRoom;
       if (!g.visible) return;
-      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : groundH(n.x, n.y) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
+      g.position.set(n.x, inRoom && window.InterniArte && InterniArte.floorY() != null ? InterniArte.floorY() : passo2(g, n.x, n.y, groundH(n.x, n.y), dt) + (n.wrH || 0), n.y);   /* [writer] n.wrH: sulla scala, sul tetto */   /* [suolo2] sui gradini il passo, non lo scatto */ g.rotation.y = turnTo(g, Math.PI / 2 - n.face, dt, 10) + (n.rotelle && g.userData.sediaR && g.userData.sediaR.visible && window.Anim && Anim.rotelleYaw ? Anim.rotelleYaw(st, n) : 0);   // [anim] si gira, non scatta   // [rotelle] all'indietro, le piroette
       const armed = n.weapon && !n.dead && (n.action.name === 'combatte' || (n.cop && G.hostile(st, n)));
       if (g.userData.off1) { g.userData.dt1 = Math.min(1, (g.userData.dt1 || 0) + dt); g.userData.shadowC.visible = !n.dead; flight(g, n, st); return; }   /* [ombre1] fuori inquadratura: niente animazione, si recupera il tempo dopo */
       { const dd = Math.abs(n.x - cam.x) + Math.abs(n.y - cam.y), every = dd > 45 ? 3 : dd > 28 ? 2 : 1;   /* [fluido] lontano dalla camera l'animazione si aggiorna a fotogrammi alterni, col tempo recuperato */
@@ -93232,7 +93383,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     }
     VIS5.sagoma(pg);   // [visuale] la sagoma sul modello vero   // [visuale5] in tutti e due i modi
     const onVespa = pveh && (pveh.kind === 'vespa' || pveh.kind === 'bmx' || pveh.kind === 'chiatta' || pveh.kind === 'ciao');   // [animazioni] anche sul Ciao (prima in sella non si vedeva nessuno)   // [bmx] in sella come sulla Vespa   // [chiatta] e sulla bici della chiatta (la mette in sella boatVehicle)
-    { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); }   // [interni] al chiuso si cammina sul pavimento   // [monte]
+    { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; playerH = lh !== null ? lh : groundH(p.x, p.y); if (p.indoor && window.InterniArte && InterniArte.floorY() != null) playerH = InterniArte.floorY(); 
+      // [suolo2] IL PASSO SUI GRADINI: la quota del suolo ora sale a scatti (la pedata, non la rampa); il corpo ci arriva in un attimo
+      // (un ventesimo di secondo), non di colpo. Solo per i salti piccoli (fino a 45 cm) e camminando: il resto (cadute, porte, salti) com'era
+      if (SUOLO2 && lh === null && !p.indoor) { const S2 = PASSO2, d = playerH - S2.y; if (S2.y !== null && Math.hypot(p.x - S2.x, p.y - S2.z) < 1 && Math.abs(d) < .45 && Math.abs(d) > .002 && !(p.jz > 0)) playerH = S2.y + d * (1 - Math.exp(-Math.min(dt, .1) * 22)); S2.y = playerH; S2.x = p.x; S2.z = p.y; } else PASSO2.y = null; }   // [interni] al chiuso si cammina sul pavimento   // [monte]
     // [animazioni2] in auto il giocatore si vede, seduto al volante (prima nascosto, al suo posto il pupazzo a scatole); salendo e
     // scendendo (CARIN) va alla portiera, si siede, chiude: la posa si fa nel giro dei mezzi (serve il mezzo già messo a posto)
     const pvg = pveh ? dyn.vehicles[pveh.id] : null, inCar = !!(pveh && !onVespa && !(G.VK[pveh.kind] || {}).boat && pg.userData.model && pvg && pvg.userData.seat && !pvg.userData.two && !pveh.wreck);
@@ -93771,7 +93925,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
 </script>
 <script data-m="ordine_arte">/* Porto Vecchio — L'Ordine e gli animali: la grafica (legge st.ord e st.ani, non cambia mai lo stato del gioco).
