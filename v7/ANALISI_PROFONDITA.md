@@ -197,3 +197,31 @@ Non toccata (la camera, la regia e la logica del taglio sono dell'altro agente).
   scrittura in memoria per fotogramma sulle schede a tasselli.
 - **I tetti a falda** al sole, col contrasto non più stretto, tornano un poco più accesi: dentro il tetto di saturazione (.5), da guardare col
   committente.
+
+## 9. Il ritocco ([profondita3], dopo la revisione di `personaggio.jpg` e `vicolo.jpg`)
+
+1. **Il filo sulle cose sottili** era una barra nera di ~4 px sullo schermo: un palo largo 2 px della tela aveva il filo su tutti e due i
+   lati, cioè tutto nero, e la tela è ingrandita 1,69×. Ora:
+   - lo spessore della cosa davanti si legge attraverso il bordo (2 e 5 px dall'altra parte): sotto 2 px il filo pesa il 22%
+     (`PFD.filoSottile`), sotto 5 px il 61%, oltre pieno;
+   - il colore non è più il nero della cosa ma **il bruno scuro e caldo del fondo** (il colore del pixel dietro × [.52 .45 .38]), mai più
+     chiaro della cosa;
+   - il peso si divide per l'ingrandimento del browser (portatile e telefono ~.6, pieno 1): il filo di 1 px della tela pesa come 1 px dello
+     schermo. Un passo a piena risoluzione costerebbe 2,8× il passo: non nel leggero.
+
+   Letture in più: 2 della profondità e 1 del colore, solo sui pixel di bordo.
+2. **L'ombra del personaggio**: erano due dischi sovrapposti, la macchia del passo (1,3 m al 55%) e il disco del modello (`models.js`, un
+   cerchio a bordo netto di 42 cm al 35%), più la fascia del piede che lo allungava.
+   - Il personaggio ha una sola ombra di contatto: piena sotto i piedi, sparita a ~40 cm, al 38%, un filo calda (`PFD.ombraPers`).
+   - Il disco del suo modello è spento.
+   - Sotto una persona la fascia del piede non c'è più (una lettura della categoria in più sul suolo).
+   - Le altre persone tengono il loro disco, morbido (`PV_OMBRA_PERSONA`).
+3. **Il personaggio si legge per primo**: solo i suoi pixel di persona (dentro la sua sagoma sullo schermo) salgono di un gradino di valore e
+   di colore (×1,18 +.05, +20% di colore, `PFD.spicca` .85: a .55 non si vedeva), e sul suo bordo, dalla parte di dentro, la riga scura
+   delle persone lascia il posto a un filo di luce (la riga scura resta fuori, sul suolo). Il suolo attorno non cambia: niente scafo,
+   niente alone, niente anello.
+4. **Il varco col raggio dalla camera**: `AD.apertura` (0-1, di difetto 1, cioè com'era) moltiplica il raggio `sgP7.z`; sotto 1 px è 0, e
+   lo shader apre solo se `sgP7.z > 0`. A 0 non c'è buco né filo, a .5 il buco è a metà
+   (`_immagini/profondita/ritocco/varco_raggio.jpg`). La logica (quando aprire) resta della camera.
+
+I fogli: `_immagini/profondita/ritocco/` (c768b12 contro il ritocco, stessa scena).
