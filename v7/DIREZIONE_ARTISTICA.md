@@ -76,9 +76,9 @@ Luminanza (0-1, Rec. 709) e saturazione (HSV, 0-1) misurate dalla galleria (`<sc
 
 | categoria | luminanza | saturazione | come |
 | --- | --- | --- | --- |
-| **suolo** (il palco) | .36-.50 al sole, valore stretto attorno a .43 | ≤ .20 al sole, scaldato dal sole (mai grigio), ≤ .42 in ombra (oltremare-lilla) | `SG_DIR` nel passo |
-| **muri** (il fondo che respira) | .62-.74 al sole, ≥ .38 in ombra (mai buco) | ≤ .40 in luce, ≤ .50 in ombra; gli accenti già saturi restano | il valore verso .68 al 66% del contrasto |
-| **tetti** (la cornice) | .36-.50, mai sopra i muri | ≤ .46 (cotto spento, ardesia, lastrico) | il valore a .42 ± 70%, tetto .50 |
+| **suolo** (il palco) | .40-.66 al sole, valore stretto attorno a .41 (74%), i neri veri restano | ≤ .28 al sole, scaldato dal sole (mai grigio), ≤ .50 in ombra (blu-viola) | `SG_DIR` nel passo |
+| **muri** (il fondo che respira) | .62-.74 al sole (la cosa chiara del quadro), l'ombra leggibile; finestre e vani restano scuri | .38-.45 in luce (pastello pieno: ocra, rosa, salmone), ≤ .54 in ombra; gli accenti già saturi restano | il valore verso .68 al 70% del contrasto, +12% di colore |
+| **tetti** (la cornice) | .36-.50, mai sopra i muri | ≈ .50 (cotto chiaro, non bruno) | il valore a .42 ± 70%, tetto .50, +15% di colore |
 | **persone** | contrasto col suolo ≥ 2:1 | accenti .8-.95 | +30% colore, +20% contrasto, la linea |
 | **accenti** | — | .75-.95 | nei materiali e nei segni |
 
@@ -91,10 +91,10 @@ a .62 così le pozze calde e i neon tengono il colore.
 
 | ora | sole | cielo (riempie l'ombra) | ombra (tinta) | nebbia, aria | bordo | grading |
 | --- | --- | --- | --- | --- | --- | --- |
-| mattino | `#ffe2b8` × 1.36 | `#9cc4f2` × .50, terra `#a89c88` | `#5c62c8` × .36 (oltremare-lilla) | `#e2dfd8` | `#fff0dc` | sat 1.10, contrasto 1.14, ombre ×[.93 .95 1.12] |
-| pomeriggio | `#ffe6c0` × 1.38 | `#9ec6f2` × .48, terra `#ab9c86` | `#6260c8` × .36 | `#e4e0d8` | `#fff0dc` | sat 1.10, contrasto 1.14, ombre ×[.93 .95 1.12] |
-| sera | `#ffb47a` × 1.0 | `#9a88c8` × .60, terra `#a8826a` | `#7a46a8` × .32 (magenta-viola) | `#d8a0ac` (rosa) | `#ff9ec0` | sat 1.00, contrasto 1.10 |
-| notte | `#9ab0e0` × .34 | `#2a3360` × .40, terra `#2a2230` | `#3a3a78` × .18 (blu profondo) | `#141a2c` | `#5ec8e8` (ciano) | sat 1.04, contrasto 1.12 |
+| mattino | `#ffd9a2` × 1.36 (dorato) | `#9cc4f2` × .50, terra `#ad9c84` | `#5a58cc` × .38 (blu-viola pieno) | `#e2dfd8` | `#fff0dc` | sat 1.10, contrasto 1.15, luci ×[1.06 1 .91], ombre ×[.90 .92 1.17], colore pieno .30, neri .06 |
+| pomeriggio | `#ffdca8` × 1.38 (dorato) | `#9ec6f2` × .48, terra `#b09c82` | `#6056cc` × .38 | `#e4e0d8` | `#fff0dc` | come il mattino |
+| sera | `#ffb47a` × 1.0 | `#9a88c8` × .60, terra `#a8826a` | `#7a46a8` × .34 (magenta-viola) | `#d8a0ac` (rosa) | `#ff9ec0` | sat 1.00, contrasto 1.12, colore pieno .20 |
+| notte | `#9ab0e0` × .34 | `#2a3360` × .40, terra `#2a2230` | `#3a3a78` × .18 (blu profondo) | `#141a2c` | `#5ec8e8` (ciano) | sat 1.06, contrasto 1.14, colore pieno .34 |
 
 Le luci della notte: sodio `#ffb060`, neon rosa `#ff4f9a`, turchese `#3fd6d0`, verde acido `#b6ff3c` (solo sulle insegne).
 
@@ -141,7 +141,7 @@ o sporco: niente rumore sotto il metro, tranne la micro-normale che vive solo da
 | `vissuto` | sui tetti: coppi nuovi e vecchi a chiazze (~1 m); il muschio solo sulle falde a nord, basse; niente sui terrazzi né sui muri | .9 | 1, muschio e colature ovunque | i coppi si cambiano a pezzi; il muschio cresce dove resta umido e in ombra: la cornice dei tetti si legge vissuta, non sporca |
 | `tremolio` | il confine delle bande di luce appena irregolare (±2,5%) | .025 | .06 | la mano del pittore: il bordo della campitura non è tirato col righello |
 | `microNormale` | la luce radente che trema sulla superficie, solo entro 10-22 m; mai nel profilo leggero | .35 | .12 ovunque | l'intonaco e la pietra sono ruvidi: si vede solo da vicino, da lontano era grana |
-| `fuoco` | il fondo lontano dal personaggio perde fino al 10% di colore | .10 | — | la gerarchia: prima il personaggio, poi la via davanti (la luce sta un passo avanti, `NIT.avanti`), poi il set |
+| `fuoco` | il fondo lontano dal personaggio perde fino al 5% di colore | .05 | — | la gerarchia: prima il personaggio, poi la via davanti (la luce sta un passo avanti, `NIT.avanti`), poi il set |
 | `retino` | — | 0 | .14, ogni ombra | fuori: nella scena non ha una causa (non è luce né materia) |
 | `nuvole` | — | 0 | .22 | fuori: la camera guarda in basso, la nuvola non si vede mai e l'ombra restava senza causa |
 
@@ -169,7 +169,7 @@ Fuori anche: il rumore del suolo e della polvere, le colature sui muri.
 | il piede e la gronda | 4 | .3, .24 |
 | la sagoma delle persone | 8 | .9 |
 | neri puliti, grana | 0 | grana .01 (si sente, non si vede) |
-| la luce sul personaggio un passo avanti, il fuoco, la vignetta | 0 | `NIT.luce` .06, `DIR.fuoco` .10, vignetta ≤ .16 di notte, .08 di giorno |
+| la luce sul personaggio un passo avanti, il fuoco, la vignetta | 0 | `NIT.luce` .06, `DIR.fuoco` .05, vignetta ≤ .16 di notte, .08 di giorno |
 
 **Fuori dal passo**: la nitidezza, il contrasto locale, la soppressione della densità delle linee, il pennarello su ogni faccia, la
 pellicola che correggeva i grigi, la tavolozza «viva» per tinta, il verde acido.
@@ -234,4 +234,37 @@ I fogli (`_immagini/direzione/`):
 - `varco_vicolo.jpg`: il varco del primo piano, a puntini contro pulito;
 - `giri_rua.jpg`: la stessa scena giro per giro;
 - `lookvecchio_identico_vicolo.jpg`: la build di prima e la nuova con `?lookvecchio`, uguali (a meno della gente e dello streaming).
+
+## 10. Il giro del colore (3 novembre)
+
+Il committente, sul giro finale: pulito e leggibile, ma «ha perso l'identità di colore»: tutto grigio-lilla e slavato, i tetti bruno-grigi,
+la via grigia fredda, i muri latte, il sole non scalda. Il vecchio era sporco ma vivo. Si tiene tutto il guadagnato (linee, ordine dei
+valori, cause, costo) e si rimette il colore dove ha una causa:
+
+- **il sole dorato** (`#ffd9a2`, le luci ×[1,06 1 ,91]): il lato al sole è caldo, il bilanciamento appena caldo; il suolo al sole lo
+  scalda il sole (mai grigio), tetto di saturazione del suolo .28;
+- **l'ombra blu-viola piena** (`#5a58cc` × .38, il viraggio delle ombre ×[,90 ,92 1,17], il tetto dell'ombra del suolo .50): colorata, non grigia;
+- **il pastello pieno** dei muri (+12% di colore, tetto .44 in luce) e **il cotto chiaro** dei tetti (+15%, tetto .50), col valore sempre sotto i muri;
+- **il velo latte tolto**: il sollevamento del valore dei muri e del suolo non tocca più i neri (finestre, vani, porte: erano loro il latte),
+  il colore pieno sulle cose già colorate torna (.30 di giorno), i neri .06, il fuoco a .05;
+- **gli accenti** (persiane, tende, insegne: le cose già sature, non il suolo) +16% di colore sul set; le persone come prima;
+- **la notte**: il controluce delle persone (vetrine, neon alle spalle) quasi triplo e un filo di valore in più, solo a notte piena
+  (al tramonto il suolo è chiaro e la figura si stacca scura).
+
+Misure (luminanza/saturazione medie; fra parentesi L80, il valore delle superfici al sole: le medie dei muri contano anche finestre e
+facce in ombra) — vecchio · giro finale · giro del colore:
+
+| scena | suolo | muri | tetti | persone/suolo |
+| --- | --- | --- | --- | --- |
+| Rua Maestra | .43/.47 (.54) · .50/.24 (.71) · .47/.34 (.66) | .42/.51 (.73) · .49/.30 (.70) · .45/.41 (.69) | .47/.49 (.56) · .40/.35 (.47) · .38/.51 (.46) | 1,26 · 1,67 · 1,62 |
+| vicolo | .34/.45 (.42) · .37/.26 (.45) · .35/.36 (.42) | .40/.48 (.77) · .49/.26 (.72) · .45/.34 (.73) | .49/.38 (.56) · .42/.26 (.47) · .40/.47 (.45) | 1,09 · 1,42 · 1,40 |
+| Vittoria | .44/.43 (.56) · .42/.17 (.50) · .48/.28 (.64) | .42/.54 (.70) · .50/.30 (.69) · .46/.43 (.68) | .50/.59 (.56) · .43/.39 (.47) · .42/.58 (.45) | 1,39 · 1,29 · 1,10 |
+| sera, il bar | .40/.58 (.53) · .50/.45 (.65) · .53/.51 (.65) | .29/.61 (.47) · .36/.49 (.52) · .37/.58 (.52) | .45/.71 (.52) · .39/.53 (.44) · .39/.65 (.43) | 1,29 · 2,63 · 2,21 |
+| notte, Vittoria | .13/.77 (.20) · .17/.63 (.28) · .16/.64 (.26) | .19/.66 (.28) · .21/.57 (.30) · .20/.67 (.29) | .25/.58 (.33) · .21/.45 (.29) · .21/.54 (.29) | 2,54 · 1,71 · 2,56 |
+
+L'ordine dei valori al sole regge (muri .68-.73 sopra il suolo, tetti .45-.46 sotto tutti e due); la saturazione torna nella forchetta
+della bibbia (muri .34-.43, tetti .47-.58, suolo .28-.36); i neri delle finestre restano neri. Resta da guardare: a Vittoria il personaggio
+vestito chiaro su un lastrico chiaro si stacca col colore e con la linea, non col valore (1,1:1).
+
+I fogli a tre (vecchio · giro finale · giro del colore): `_immagini/direzione/colore/<scena>.jpg` e `colore/mosaico.jpg`.
 

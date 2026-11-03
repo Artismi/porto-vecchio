@@ -13687,12 +13687,12 @@ var Render = (function () {
   // muri, tetti, persone), UNA linea sola (la sagoma delle persone), la lente che respira appena, un grading per ora, la grana appena.
   // I pezzi tolti escono dai programmi (non solo a zero: costano meno). ?lookvecchio: il look di prima, identico (tutti gli strati).
   const DIR = { on: LOOK.on && !(typeof location !== 'undefined' && /[?&]lookvecchio\b/.test(location.search)),
-    suoloL: .43, suoloK: .82, suoloSat: .2, muriL: .68, muriK: .66, muriSat: .4, tettiL: .42, tettiSat: .46,   // il piano dei valori (§3): centro e contrasto del valore, tetto di saturazione in luce
+    suoloL: .41, suoloK: .74, suoloSat: .28, muriL: .68, muriK: .7, muriSat: .44, tettiL: .42, tettiSat: .5,   // [colore] il giro del colore: pastello pieno, cotto chiaro, il suolo caldo   // il piano dei valori (§3): centro e contrasto del valore, tetto di saturazione in luce
     // LE DOSI DEL DETTAGLIO (§6): il dettaglio serve, dosato. pittura: la scala del muro; varia: velatura e pennellata larga di muri e suolo;
     // vissuto: le chiazze e il muschio dei tetti; tremolio: il confine delle bande appena irregolare; microNormale: la luce che trema sulla
     // superficie, solo da vicino (mai nel profilo leggero); retino: solo nell'ombra piena dei muri; nuvole: rare e morbide. Tutte a 0: zero dettaglio
     pittura: .7, varia: .85, vissuto: .9, tremolio: .025, microNormale: .35, retino: 0, nuvole: 0,   // [direzione] giro 4: a .5 alla distanza di gioco non si leggeva (zero e dose uguali)
-    fuoco: .1 };   // fuoco: quanto colore perde il fondo lontano dal personaggio (la gerarchia: il personaggio, la via davanti, il set)
+    fuoco: .05 };   // fuoco: quanto colore perde il fondo lontano dal personaggio (la gerarchia: il personaggio, la via davanti, il set)
   if (DIR.on) {
     // nei materiali: la luce a tre toni col confine netto, la scala del muro, una velatura larghissima, il piede dei muri liscio; il resto a zero
     Object.assign(SGU.pro, { grana: 0, celle: .8, pittura: DIR.pittura, varia: DIR.varia, suolo: 0, polvere: .7, vivo: 0, acido: 0, pastello: 0 });
@@ -13704,10 +13704,10 @@ var Render = (function () {
     SGU.nitido = 0;
     // il grading dell'ora: la saturazione del passo vicina a 1 e il «colore pieno» basso (il colore lo portano la luce, i materiali e la
     // gerarchia per categoria, non un moltiplicatore su tutto); la terra che rimbalza meno arancio (era lei a scaldare ogni ombra dal basso)
-    Object.assign(SGU.momenti.mattino,    { terra: '#a89c88', sat: 1.1, contrasto: 1.14, vign: .08, proPieno: .12, ombra: [.93, .95, 1.12], proTinta: '#5c62c8', proTintaK: .36 });   // proTintaK: l'ombra più piena del cielo (oltremare-lilla, non grigio scuro)
-    Object.assign(SGU.momenti.pomeriggio, { terra: '#ab9c86', sat: 1.1, contrasto: 1.14, vign: .08, proPieno: .12, ombra: [.93, .95, 1.12], proTinta: '#6260c8', proTintaK: .36 });
-    Object.assign(SGU.momenti.sera,       { sat: 1.0, contrasto: 1.1, vign: .12, proPieno: .18, proTintaK: .32 });
-    Object.assign(SGU.momenti.notte,      { sat: 1.04, contrasto: 1.12, vign: .16, proPieno: .26 });
+    Object.assign(SGU.momenti.mattino,    { sole: '#ffd9a2', terra: '#ad9c84', sat: 1.1, contrasto: 1.15, vign: .08, luce: [1.06, 1.0, .91], ombra: [.9, .92, 1.17], proPieno: .3, proNeri: .06, proTinta: '#5a58cc', proTintaK: .38 });   // proTintaK: l'ombra più piena del cielo (oltremare-lilla, non grigio scuro)
+    Object.assign(SGU.momenti.pomeriggio, { sole: '#ffdca8', terra: '#b09c82', sat: 1.1, contrasto: 1.15, vign: .08, luce: [1.06, 1.0, .91], ombra: [.9, .92, 1.17], proPieno: .3, proNeri: .06, proTinta: '#6056cc', proTintaK: .38 });
+    Object.assign(SGU.momenti.sera,       { sat: 1.0, contrasto: 1.12, vign: .12, proPieno: .2, proNeri: .06, proTintaK: .34 });
+    Object.assign(SGU.momenti.notte,      { sat: 1.06, contrasto: 1.14, vign: .16, proPieno: .34 });
   }
   if (typeof window !== 'undefined') window.__DIR = DIR;
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
@@ -14330,19 +14330,21 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               float lt = clamp(gN.z, 0., 1.);   /* il giorno (1) o la notte (0): di notte i valori li fanno le luci, la gerarchia si allenta */
               vec3 c2; float l2, m2, s2, cap;
               /* suolo: il palco. Valore stretto attorno a .43, al sole quasi neutro e caldo (≤ .2), l'ombra colorata dal cielo resta (≤ .42) */
-              l2 = mix(lq, dV.x + (lq - dV.x) * dV.y, lt); c2 = c * (l2 / max(lq, 1e-3)); m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);
-              cap = mix(.62, mix(.42, dV.z, smoothstep(.22, .42, l2)), lt); if (s2 > cap) c2 = mix(vec3(l2), c2, cap / s2);
-              c2 *= mix(vec3(1.), vec3(1.05, 1.01, .91), lt * smoothstep(.36, .56, l2) * (1. - smoothstep(.06, .2, s2)));   /* il sole scalda il palco: il lastrico e l'asfalto al sole mai grigi */
+              l2 = mix(lq, dV.x + (lq - dV.x) * dV.y, lt * smoothstep(.04, .16, lq)); c2 = c * (l2 / max(lq, 1e-3));   /* [colore] i neri veri (vani, porte) restano neri */ m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);
+              cap = mix(.62, mix(.5, dV.z, smoothstep(.22, .42, l2)), lt); if (s2 > cap) c2 = mix(vec3(l2), c2, cap / s2);
+              c2 *= mix(vec3(1.), vec3(1.08, 1.02, .87), lt * smoothstep(.34, .56, l2) * (1. - smoothstep(.1, .3, s2)));   /* il sole scalda il palco: il lastrico e l'asfalto al sole mai grigi */
               c = mix(c, c2, wS * cK.z);
               /* muri: il fondo chiaro che respira. Valore verso .66 (la facciata in ombra resta un colore, mai un buco), pastello (≤ .4 in luce, ≤ .5 in ombra);
                  gli accenti già saturi (scritte, saracinesche, insegne) restano */
-              l2 = mix(lq, dV.w + (lq - dV.w) * dW.x, lt); c2 = c * (l2 / max(lq, 1e-3)); m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);
+              l2 = mix(lq, dV.w + (lq - dV.w) * dW.x, lt * smoothstep(.05, .2, lq)); c2 = max(mix(vec3(l2), c * (l2 / max(lq, 1e-3)), 1.12), 0.); m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);   /* [colore] le finestre e i vani restano scuri; il pastello pieno, non latte */
               cap = mix(.62, mix(dW.y + .1, dW.y, smoothstep(.4, .7, l2)), lt); if (s2 > cap) c2 = mix(vec3(l2), c2, cap / s2); c = mix(c, c2, wM * cK.x * (1. - smoothstep(.8, .9, sq)));
               /* tetti: la cornice. Medio-scuri (mai sopra .5, sotto i muri e appena sotto il suolo), il cotto spento (≤ .46) */
-              l2 = min(dW.z + (lq - .5) * .7, dW.z + .08); c2 = c * (l2 / max(lq, 1e-3)); m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);
+              l2 = min(dW.z + (lq - .5) * .7, dW.z + .08); c2 = max(mix(vec3(l2), c * (l2 / max(lq, 1e-3)), 1.15), 0.);   /* [colore] il cotto chiaro e pieno */ m2 = max(c2.r, max(c2.g, c2.b)); s2 = (m2 - min(c2.r, min(c2.g, c2.b))) / max(m2, 1e-4);
               cap = mix(.6, dW.w, lt); if (s2 > cap) c2 = mix(vec3(l2), c2, cap / s2); c = mix(c, c2, wT * cK.y);
               /* persone: il contrasto e il colore più alti del quadro */
-              c2 = max(mix(vec3(lq), c, 1.3), 0.); c2 = max((c2 - .42) * 1.2 + .42, 0.); c = mix(c, c2, wP * cK.w);
+              c2 = max(mix(vec3(lq), c, 1.3), 0.); c2 = max((c2 - .42) * 1.2 + .42, 0.) * (1. + .45 * smoothstep(.3, .05, lt)); c = mix(c, c2, wP * cK.w);   /* solo a notte piena: al tramonto il suolo è chiaro e la figura si stacca scura */
+              /* gli accenti: persiane, tende, insegne (le cose già sature) un filo più piene del set, così l'occhio va lì */
+              { float mA = max(c.r, max(c.g, c.b)), sA = (mA - min(c.r, min(c.g, c.b))) / max(mA, 1e-4), lA = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(lA), c, 1. + .16 * smoothstep(.42, .65, sA) * (1. - wS)), 0.); }
               lq = dot(c, vec3(.299, .587, .114)); }
 #else
             { float cap = mix(.56, .44, smoothstep(.35, .75, lq)), k = wM * cK.x * (1. - smoothstep(.8, .9, sq)); if (sq > cap) c = mix(c, mix(vec3(lq), c, cap / sq), k); }   // muri: pastello (gli accenti saturi, scritte e saracinesche, restano)
@@ -14476,7 +14478,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       if (!ui.studio && !ui.intro) want = PELL.gonfioRegime + (want - PELL.gonfioRegime) * (RIV.on ? RIV.v : 1);   // [riv] nel regime la lente si raddrizza, dove la strada resiste si gonfia
       if (CALMA2.on) PELL.gonfioOra = molla2(CALMA2.lente, PELL.gonfioOra, PELL.gonfio + (want - PELL.gonfio) * CALMA2.K.lenteAmpia, CALMA2.K.lente, dt || .016);   // [camera2] respira piano e poco
       else PELL.gonfioOra += (want - PELL.gonfioOra) * Math.min(1, (dt || .016) * 1.5); }
-    PRO.u8.x = CAT.on ? CAT.bordoPersone : 0;   // [cat] il bordo di luce delle persone
+    PRO.u8.x = CAT.on ? CAT.bordoPersone * (DIR.on ? 1 + 1.8 * Math.max(0, Math.min(1, ((SGT.notte || 0) - .65) / .3)) : 1) : 0;   // [colore] di notte il controluce delle vetrine e dei neon stacca le persone   // [cat] il bordo di luce delle persone
     { const k = DIOR.on && PRO.look ? 1 : 0, r = RIV.on ? RIV.v : 1; PRO.u8.y = k * DIOR.nuvole; PRO.u8.z = k * DIOR.vissuto; U.dI.value.set(k * DIOR.piede, k * DIOR.gronda, k * DIOR.luceSpigolo * r, 0); }   // [diorama] (lo spigolo di luce è della strada: nel regime si spegne)
     U.cT.value = CAT.on ? CAT.trama : 0;   // [tratto]
     if (DIR.on) { U.dV.value.set(DIR.suoloL, DIR.suoloK, DIR.suoloSat, DIR.muriL); U.dW.value.set(DIR.muriK, DIR.muriSat, DIR.tettiL, DIR.tettiSat); U.dF.value.x = DIR.fuoco; }   // [direzione] il piano dei valori

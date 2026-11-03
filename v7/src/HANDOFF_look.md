@@ -181,3 +181,7 @@ facce: resta solo la sagoma delle persone; il piano dei valori per categoria nel
 retino, nuvole, rumore del suolo, colature; il dettaglio dosato (`DIR.pittura`, `varia`, `vissuto`, `tremolio`, `microNormale`), il
 muschio solo sulle falde a nord. Corretto: `gN.z` (il giorno) era azzerato dalle manopole dell'ora. Il varco del primo piano pulito.
 **I tasselli vanno ricotti** perché i cambi ai materiali arrivino sulle case (gli shader delle case sono scritti espansi nei tasselli).
+
+**Il giro del colore** (3 novembre): il sole dorato, l'ombra blu-viola piena, il pastello pieno dei muri e il cotto chiaro dei tetti, i neri
+delle finestre veri (il velo latte era il sollevamento dei muri sui neri), gli accenti +16%, le persone di notte col controluce; misure e
+fogli a tre in `DIREZIONE_ARTISTICA.md` §10 e `_immagini/direzione/colore/`.
