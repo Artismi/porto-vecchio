@@ -202,3 +202,36 @@ materiali si vedono sulle case solo coi tasselli ricotti per questa impronta (il
 - `GALLERIA_VARIANTI=strumenti/manopole_direzione_audit.json`: lo stesso scorcio con uno strato alla volta spento (le manopole dal vivo,
   anche `PRO` = `SGU.pro`, `PELL`, `RIV`).
 - I fogli di questo giro: `_immagini/direzione/`.
+
+## 9. Il giro del 2-3 novembre: misure e fogli
+
+Stessa build, stessa camera, stesse scene; prima = `&lookvecchio` coi tasselli di prima (`a4d37afc`), dopo = il look nuovo coi tasselli
+ricotti; profilo leggero, 960×600. Luminanza / saturazione per categoria (`<scena>_cat.json`):
+
+| scena | suolo prima → dopo | muri prima → dopo | tetti prima → dopo | persone/suolo |
+| --- | --- | --- | --- | --- |
+| mattino, Rua Maestra | .43/.47 → .50/.24 | .42/.51 → .49/.30 | .47/.49 → .40/.35 | 1,26 → 1,67 |
+| mezzogiorno, vicolo | .34/.45 → .37/.26 | .40/.48 → .49/.26 | .49/.38 → .42/.26 | 1,09 → 1,42 |
+| mezzogiorno, Vittoria | .44/.43 → .42/.17 | .42/.54 → .50/.30 | .50/.59 → .43/.39 | 1,39 → 1,29 |
+| sera, il bar | .40/.58 → .50/.45 | .29/.61 → .36/.49 | .45/.71 → .39/.53 | 1,29 → 2,63 |
+| notte, Vittoria | .13/.77 → .17/.63 | .19/.66 → .21/.57 | .25/.58 → .21/.45 | 2,54 → 1,71 |
+
+Cosa dicono: di giorno l'ordine dei valori ora c'è (muri sopra il suolo, tetti sotto i muri: prima i tetti erano la cosa più chiara e i
+muri la più scura), il fondo non grida più (saturazione da ~.5 a ~.25-.3), la sera le persone si staccano (2,6:1). Le medie dei muri
+restano sotto il .62 del piano perché contano anche le facce in ombra. Da guardare al prossimo giro: a mezzogiorno il suolo della via
+larga tende al grigio-lilla (saturazione .17: il tetto di saturazione del suolo al sole, .20, si può alzare a .26 e il sole scaldarlo di
+più); di notte le persone si staccano meno di prima (1,7:1, prima 2,5:1: il passo non le spinge più col «colore pieno» su tutto).
+
+I giri: 1 (via gli strati; la gerarchia di giorno non partiva per l'errore di `gN.z`), 2 (il giorno corretto: ombre grigio-scure, muri
+ancora scuri), 3 (muri a .68, l'ombra piena del cielo oltremare-lilla, il suolo scaldato dal sole, contrasto 1,14), 4 (le cause: muschio
+a nord, via nuvole e retino, il fuoco sul personaggio; la merge di [camera4]; i tasselli ricotti), finale (le dosi alzate: a .5 non si
+distinguevano da zero; saturazione del giorno 1,10, muri al 66% del contrasto, fuoco .10).
+
+I fogli (`_immagini/direzione/`):
+- `prima_dopo/<scena>.jpg` e `prima_dopo/mosaico.jpg`: le cinque scene, prima e dopo, con le misure;
+- `dosi/<scena>.jpg`, `dosi/dettaglio_rua.jpg`, `dosi/dettaglio_vittoria_tetti.jpg`: zero dettaglio contro la dose scelta;
+- `facciata_linee_rua.jpg`: le facciate con finestre e cornici, il pennarello su ogni faccia contro nessuna linea sugli spigoli interni;
+- `varco_vicolo.jpg`: il varco del primo piano, a puntini contro pulito;
+- `giri_rua.jpg`: la stessa scena giro per giro;
+- `lookvecchio_identico_vicolo.jpg`: la build di prima e la nuova con `?lookvecchio`, uguali (a meno della gente e dello streaming).
+
