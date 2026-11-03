@@ -185,3 +185,17 @@ muschio solo sulle falde a nord. Corretto: `gN.z` (il giorno) era azzerato dalle
 **Il giro del colore** (3 novembre): il sole dorato, l'ombra blu-viola piena, il pastello pieno dei muri e il cotto chiaro dei tetti, i neri
 delle finestre veri (il velo latte era il sollevamento dei muri sui neri), gli accenti +16%, le persone di notte col controluce; misure e
 fogli a tre in `DIREZIONE_ARTISTICA.md` §10 e `_immagini/direzione/colore/`.
+
+## [profondita2] La profondità e la pulizia (3 novembre)
+
+La diagnosi e l'intervento sono in `ANALISI_PROFONDITA.md`; in `render.js` tutto sta dietro `PFD` (`window.__PFD`), `?noprofondita` riporta
+il look di prima, identico. Le cause delle «corruzioni»: i trasparenti senza profondità (ombre a disco, anelli, aloni, segni a terra)
+mescolavano il loro alfa nell'alfa della scena, dove i materiali scrivono la categoria; il passo gradava e disegnava su codici inventati
+(gli anelli attorno al personaggio e alle persone, i cerchi ai piedi degli alberi, le chiazze sul lastrico). Ora `pfdAlfa` (sui comandi di
+blend, solo nel passaggio della scena) lascia l'alfa com'è sotto i trasparenti che non scrivono la profondità. La profondità entra nel passo
+anche nel profilo leggero: l'aria oltre il personaggio, il filo dove una cosa passa davanti a un'altra (il fondo deve durare 4 px), il piede
+fisico (dalla quota e dalla distanza nel mondo), la luce del cielo per quota. La gerarchia non stringe più il valore dentro le categorie.
+Fuori: l'anello del personaggio, l'alone (scafo), la grana nel leggero; il disco `Ombra4` diventa il piede del fusto. Il varco nei materiali
+ha il bordo netto (la logica è della camera). Le prove: `strumenti/sonda_profondita.js` (la camera di gioco vera, varianti nello stesso
+istante), `strumenti/profondita_scene.json`, `profondita_diagnosi.json`, `profondita_giri.json`, `fogli_profondita.py`, `misura_profondita.py`;
+i fogli in `_immagini/profondita/`. **I tasselli vanno ricotti** (il testo del varco nei materiali, e l'impronta cambia comunque).
