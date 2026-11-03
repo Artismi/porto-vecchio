@@ -1651,9 +1651,10 @@ var Render = (function () {
   // un fotogramma del muretto: px, pz, fy il personaggio e la quota dei suoi piedi; on: le case possono scendere (fuori, non sui tetti né
   // sulle scale; spento fuori dal muretto: le case giù risalgono)
   function vis3Tick(px, pz, fy, on, dt, pitch) {
+    if (CAM6.on && CAM6.w.a < .5) on = false;   // [camera6] nelle viste basse niente case tagliate: la camera si avvicina (le scatole delle case, dritte, in un vicolo coprono anche dove non c'è muro)
     const iq = !!(IQ5.v && IQ5.v.taglio), K = iq ? Inquadratura.K : Visuale.MURETTO,   // [inquadratura] la scelta del taglio mirato si rifà ogni tre fotogrammi (i raggi del disco)
       S = VIS3.S, vv = VIS3.vuole || (VIS3.vuole = new Map());   // [visuale4] il muretto usa la macchina del taglio, con la sua scelta   // [visuale5] solo lui   // [inquadratura] o il taglio mirato
-    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, (INQ4.on && !(BASSA.k > .25) ? Inquadratura.tagli(px, pz, fy, INQ4.camT || camera.position, dyn.buildings, Visuale, on, vv, IQ5.v.uniforme, 0, INQ4.opz) : Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (SEMPRE.on || !IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0, SEMPRE.on ? SEMPRE.opz : undefined))) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto   // [camera4] col taglio solo le case che coprono davvero il personaggio
+    const vuole = iq ? (VIS3.subito || !on || !VIS3.iqN || ++VIS3.iqN > 3 ? (VIS3.iqN = 1, (INQ4.on && (CAM6.on || !(BASSA.k > .25)) ? Inquadratura.tagli(px, pz, fy, INQ4.camT || camera.position, dyn.buildings, Visuale, on, vv, IQ5.v.uniforme, 0, INQ4.opz) : Inquadratura.tagli(px, pz, fy, camera.position, dyn.buildings, Visuale, on && (SEMPRE.on || !IQ5.v.soloStretta || !!VIS4.C.on || BASSA.k > .25), vv, IQ5.v.uniforme, BASSA.k > .25 ? 1.2 : 0, SEMPRE.on ? SEMPRE.opz : undefined))) : vv) : Visuale.muretto(px, pz, fy, camera.position, pitch, dyn.buildings, K, !on, S, vv);   // [bassa] con la visuale bassa il taglio mirato è sempre acceso, col disco stretto   // [camera4] col taglio solo le case che coprono davvero il personaggio
     if (iq && INQ4.on && INQ4.camT && vuole.size) {   // [camera4] si taglia solo quello che copre il personaggio con la camera dove sta andando E con quella di adesso (mentre la camera si muove niente case che si aprono in anticipo)
       const cp = camera.position, O = [{ x: px, y: fy + 1.1, z: pz }, { x: px, y: fy + 1.65, z: pz }].map(o => { const dx = cp.x - o.x, dy = cp.y - o.y, dz = cp.z - o.z, l = Math.hypot(dx, dy, dz) || 1; return { o, d: { x: dx / l, y: dy / l, z: dz / l } }; });
       vuole.forEach((v, B) => { if (S.get(B) && S.get(B).on) return; if (!B.box3 || !O.some(q => Visuale.entra(q.o, q.d, B.box3) !== null)) vuole.delete(B); }); }
@@ -1797,7 +1798,8 @@ var Render = (function () {
   }
   // un fotogramma del tetto che sbiadisce: le case che coprono adesso (Visuale.tetti), l'isteresi e lo sbiadire (Visuale.passo)
   function vis4Tetti(px, pz, fy, on, dt) {
-    const K = Visuale.TETTO4, S = VIS4.T, vuole = Visuale.tetti(px, pz, fy, (INQ4.on && INQ4.camT) || camera.position, dyn.buildings, K, !on, VIS4.tv || (VIS4.tv = new Map()));   // [camera4] con la camera dove sta andando
+    if (CAM6.on && CAM6.w.a < .5) on = false;   // [camera6] e niente tetti sbiaditi: da lì i tetti stanno sopra
+    const K = CAM6.on && CAM6.tetti ? CAM6.tetti : Visuale.TETTO4, S = VIS4.T, vuole = Visuale.tetti(px, pz, fy, (INQ4.on && INQ4.camT) || camera.position, dyn.buildings, K, !on, VIS4.tv || (VIS4.tv = new Map()));   // [camera4] con la camera dove sta andando
     Visuale.passo(S, vuole, VIS3.subito ? 10 : dt, K);
     const vivi = new Set(); S.forEach((s, B) => { vivi.add(B); casaVisibile(B, 'tetto', Visuale.sbiadito(s), s); });
     VIS4.tvivi.forEach(B => { if (!vivi.has(B)) casaVisibile(B, 'tetto', 0); }); VIS4.tvivi = vivi;
@@ -18730,7 +18732,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function regista5(p, pveh, ui, dt, KB) {
     const K = RG5.K, v = Math.hypot(cam.mvx || 0, cam.mvy || 0);
     if (v < .3) { RG5.fermoT += dt; RG5.camminaT = 0; } else { RG5.fermoT = 0; if (v > K.ariaVel) RG5.camminaT += dt; }
-    const S = INQ4.S, puo = LIBERA && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.dialogNpc && !(KB > .05) && S.pT !== undefined;
+    const S = INQ4.S, puo = LIBERA && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.dialogNpc && !(KB > .05 && !CAM6.on) && S.pT !== undefined;   // [camera6] anche nella vista vicina il ricentro passa dal regista
     const cp = () => IQ5.v ? IQ5.p : VIS4.C.p, cz = () => IQ5.v ? IQ5.z : VIS4.C.z;
     if (!puo || RG5.p === null || AVVIO.scatta) {   // fuori dal regista (o appena scattato): si prende quello che c'è, senza mossa
       RG5.attivo = false; RG5.mov = null; RG5.p = cp() || PEND3.v; RG5.z = cz() || 1; RG5.uy = cam.uy || 0; if (AVVIO.scatta) RG5.tieni = 99; return; }
@@ -18759,8 +18761,53 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (IQ5.v) { IQ5.p = RG5.p; IQ5.z = RG5.z; } else { VIS4.C.p = RG5.p; VIS4.C.z = RG5.z; }
     const du = ang(RG5.uy - (cam.uy || 0)); cam.uy = RG5.uy; if (du && (ui.lead || ui.stick)) cam.lock = (cam.lock || 0) - du;   // la levetta tenuta resta nella base di quando l'hai presa
   }
+  // [camera6] LE TRE VISTE E LA CAMERA DA INSEGUIMENTO (ANALISI_CAMERA.md §11; i comandi in main.js e Visuale.levetta6). Lo zoom del
+  // giocatore (CALMA2.zU) è un braccio di gru continuo fra tre altezze: VICINA (z .25: dietro le spalle, bassa e stretta, come la terza persona
+  // di GTA), MEDIA (z .5, la vista di partenza: dalla finestra di un primo o secondo piano, 5-7 m sopra la strada, ripida e corta, così fra
+  // la camera e il personaggio non ci sono case; se ci sono, la camera si avvicina come in GTA invece di tagliarle) e ALTA (z .85 e oltre: la
+  // vista dall'alto di sempre, con la gerarchia di [camera4]). Ogni vista ha la sua pendenza (la levetta la inclina dentro il suo intervallo),
+  // la sua distanza, il suo campo, il suo punto guardato, il suo ricentro e la sua mira. Sui mezzi la camera sta dietro, più bassa,
+  // guarda avanti lungo la velocità; la levetta di lato gira e dopo 1,5 s torna dietro. Le cose piccole (ombrelloni, cartelli, tavolini,
+  // lampioni) non spariscono mai; il retino [ad] davanti al personaggio si accende solo se il personaggio è coperto davvero, sfuma e tiene
+  // almeno 1 s. ?nofixcamera6: com'era
+  const CAM6 = { on: !(typeof location !== 'undefined' && /[?&]nofixcamera6\b/.test(location.search)) && RG5.on,
+    K: { z: { v: .25, m: .5, a: .85 }, p: { v: .30, m: .95 }, d: { v: 4.5, m: 8 }, fov: { a: 30, m: 44, v: 52 }, h: { a: 0, m: .9, v: 1.45 }, giu: { a: .3, m: .22, v: .18 },
+      pr: { a: [.6, 1.22], m: [.73, 1.17], v: [.12, .48] }, mira: { av: { a: 2.2, m: 1.2, v: 2.2 }, lat: { a: 0, m: .5, v: .75 }, z: .86 },
+      regia: { soglia: { a: .5, m: .3, v: .2 }, stabile: { a: 2, m: 1.5, v: 1.2 }, tieni: { a: 6, m: 4, v: 3 } }, inseg: { p: .56, pBici: .5, d: 18, dVespa: 14, dBici: 11, fov: 46, ritorno: 1.5 } },
+    w: { a: 0, m: 1, v: 0 }, kv: 1, coll: { x: null, v: 0 }, mz: { x: 1, v: 0 }, cb: { x: 0, v: 0 }, orb: { x: 0, v: 0 }, tOrb: 99, dyaw: 0, inV: false,
+    occ: { k: { x: 0, v: 0 }, on: false, t: 99, n: 0, cambi: 0, coperto: false }, tetti: null };
+  if (CAM6.on) { CAM6.tetti = Object.assign({}, Visuale.TETTO4, { corpo: true, tieni: 1.5 }); if (typeof Inquadratura !== 'undefined') Inquadratura.K.tieni = 1.5; }   // [camera6] i tetti solo per il corpo; la casa tagliata resta giù almeno 1,5 s
+  if (typeof window !== 'undefined') window.__CAM6 = CAM6;
+  const liscio6 = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+  // [camera6] i pesi delle tre viste dallo zoom del giocatore (non da quello del gioco: un dialogo non cambia vista)
+  function pesi6(z) { const K = CAM6.K.z, a = liscio6((z - K.m) / (K.a - K.m)), v = liscio6((K.m - z) / (K.m - K.v)); CAM6.w.a = a; CAM6.w.v = v; CAM6.w.m = Math.max(0, 1 - a - v); return CAM6.w; }
+  const mix6 = (q, w) => q.a * w.a + q.m * w.m + q.v * w.v;
+  // [camera6] la camera da inseguimento: dietro la velocità, la levetta di lato gira (CAM6.orb) e dopo 1,5 s torna dietro
+  function insegui6(pveh, ui, dt) {
+    const vsp = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), head = vsp > 2 && (pveh.speed || 0) > -1 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang;
+    if (!CAM6.inV) { CAM6.inV = true; CAM6.cb.x = (cam.uy || 0) - CAM6.dyaw; CAM6.cb.v = 0; CAM6.orb.x = 0; CAM6.orb.v = 0; CAM6.tOrb = 99; }
+    if (CAM6.dyaw) { CAM6.orb.x += CAM6.dyaw; CAM6.orb.v = 0; CAM6.tOrb = 0; } else CAM6.tOrb += dt;
+    if (CAM6.tOrb > CAM6.K.inseg.ritorno) Visuale.molla(CAM6.orb, 0, 1, dt);
+    const b0 = CAM6.cb.x; if (vsp > 1.5 && (pveh.speed || 0) > -1) Visuale.mollaAng(CAM6.cb, Math.atan2(-Math.cos(head), -Math.sin(head)) - YAW, .8, dt);
+    cam.uy = CAM6.cb.x + CAM6.orb.x;
+    if (ui.lead || ui.stick) cam.lock = (cam.lock || 0) - (CAM6.cb.x - b0);   // la levetta tenuta (sterzare verso dove spingi) resta nella base di quando l'hai presa
+  }
+  // [camera6] la camera bassa non entra nei muri: dal punto guardato verso la camera, sulla mappa (le case fino al colmo), la prima casella
+  // piena ferma il braccio (come GTA: la camera si avvicina invece di tagliare la casa)
+  function libero6(x, y, z, yaw, pitch, d) {
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), cp = Math.cos(pitch), ux = Math.sin(yaw) * cp, uy = Math.sin(pitch), uz = Math.cos(yaw) * cp;
+    for (let s = .8; s <= d; s += .35) { const h = M.alto(x + ux * s, z + uz * s); if (h > y + uy * s - .25) return Math.max(CAM6.dMin || 2.2, s - .45); }
+    return d;
+  }
+  // [camera6] il personaggio è coperto davvero? (il busto e la testa verso la camera, nelle scatole delle case non tagliate)
+  function coperto6(p, fy) {
+    const cp = camera.position, C = { x: cp.x, y: cp.y, z: cp.z }, O = [{ x: p.x, y: fy + 1.1, z: p.y }, { x: p.x, y: fy + 1.65, z: p.y }];
+    for (const B of dyn.buildings) { const b3 = B.box3; if (!b3 || b3.max.y < fy + 1) continue; const s3 = VIS3.S && VIS3.S.get(B); if (s3 && s3.a > .5) continue; if (p.x > b3.min.x && p.x < b3.max.x && p.y > b3.min.z && p.y < b3.max.z) continue;
+      const cx = (b3.min.x + b3.max.x) / 2 - p.x, cz = (b3.min.z + b3.max.z) / 2 - p.y; if (cx * cx + cz * cz > 2500) continue; if (O.some(o => Regia.taglia(o, C, b3))) return true; }
+    return false;
+  }
   function camReset() {   // [camera2] le sonde: la camera da capo (la visuale automatica, la mano, la regia, le molle)
-    cam.uy = 0; cam.mano = {}; cam.lock = 0; REG.S = {}; INQ4.S = {}; INQ4.zq = INQ4.tq = null; RG5.p = null; RG5.mov = null; RG5.tieni = 99; CALMA2.L.d = null; CALMA2.L.tL = 99; CALMA2.L.lx = CALMA2.L.ly = 0;
+    cam.uy = 0; cam.mano = {}; cam.lock = 0; REG.S = {}; INQ4.S = {}; INQ4.zq = INQ4.tq = null; RG5.p = null; RG5.mov = null; RG5.tieni = 99; CAM6.coll.x = null; CAM6.inV = false; CALMA2.L.d = null; CALMA2.L.tL = 99; CALMA2.L.lx = CALMA2.L.ly = 0;
     [CALMA2.L.x, CALMA2.L.y, CALMA2.ax, CALMA2.ay, CALMA2.h, CALMA2.vel, CALMA2.roll, CALMA2.vf, CALMA2.cd].forEach(q => { q.v = 0; }); CALMA2.zA.x = 1; CALMA2.zA.v = 0; CALMA2.zU = null; CALMA2.mom.clear(); }
   // [zoom2] il tetto dello zoom indietro (main.js zoomBy usa lo stesso): a 4,2 la camera stava a 345 m, la nebbia a 765 m e la scheda
   // video caricava mezza isola fino a perdere il contesto (schermo bianco, «la grafica non regge»). A 2 si vede il quartiere
@@ -19193,6 +19240,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       if (salto && !ui.intro) { AVVIO.scatta = true; AVVIO.salti++; REG.S = {}; cam.mano = {}; cam.lock = 0; CALMA2.L.d = null; CALMA2.L.tL = 99; INQ4.S = {}; cam.ppx = undefined; }
       dt = AVVIO.scatta ? 10 : Math.min(.25, Math.max(dt, ui.reale > 0 ? ui.reale : dt)); }   // la camera col tempo vero (al più 250 ms); quando scatta, un passo lunghissimo: le molle arrivano e si fermano
     const driving = !!pveh && !ui.intro && !ui.dialogNpc;
+    if (CAM6.on) pesi6(CALMA2.zU !== null && isFinite(CALMA2.zU) ? CALMA2.zU : (ui.zoom || .5));   // [camera6] le tre viste
     cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * 1.6);
     const D = cam.drive, ease = D * D * (3 - 2 * D);
     let tx = p.x, ty = p.y, tz = ui.studio ? ui.zoom || 1 : Math.min(ZOOM_MAX, ui.zoom || 1);   // [zoom2] lo zoom indietro ha un tetto (anche per chi lo scrive da fuori: sviluppo.js, le prove)
@@ -19220,6 +19268,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         const vh = pveh ? 2 * (cam.cd || 30) * Math.tan(camera.fov * Math.PI / 360) : vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
         const k = .42 * Math.min(1, spd / (pveh ? 10 : 5)), sx = ux * rx + uy * rz, sy = ux * fx + uy * fz;
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
+      if (CAM6.on && CAM6.kv < 1) { lx *= CAM6.kv; ly *= CAM6.kv; }   // [camera6] nelle viste basse l'inquadratura è più piccola: lo sguardo avanti in proporzione
       if (CALMA2.on) { CALMA2.L.leva = leadOn; cam2Sguardo(lx, ly, leadOn || leadOn5, dt); }   // [camera2] la molla (era dietro alla levetta in 0,06 s: ogni tremito del pollice spostava la visuale)
       else { const kl = 1 - Math.exp(-dt * (leadOn ? 16 : pveh ? 1.2 : 5)); cam.lx = (cam.lx || 0) + (lx - (cam.lx || 0)) * kl; cam.ly = (cam.ly || 0) + (ly - (cam.ly || 0)) * kl; }   // [fluido] 1 - e^-k·dt: dietro alla levetta in ~0,06 s
       // [visuale5] LA CAMERA A MANO (src/visuale.js, mano): il giocatore gira la visuale (levetta destra di lato, tasti , . , il bordo dello
@@ -19238,7 +19287,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const km = 1 - Math.exp(-dt / .1); cam.mvx = (cam.mvx || 0) + (ivx - (cam.mvx || 0)) * km; cam.mvy = (cam.mvy || 0) + (ivy - (cam.mvy || 0)) * km;   // la marcia, appena smorzata
       const inV = !!pveh, forza = !!(ui.intro || ui.focus || ui.dialogNpc || (inV && !cam.inV)); cam.inV = inV;   // sali su un mezzo, un dialogo, l'intro: si ricentra
       const yA = MN.yaw || 0;
-      if (LIBERA) { cam.uy = (cam.uy || 0) + dyaw; REG.mano = !!(ui.camMano || dyaw); dyaw = 0; }   // [regia] la visuale girata a mano resta dov'è
+      if (LIBERA) { cam.uy = (cam.uy || 0) + dyaw; CAM6.dyaw = dyaw; REG.mano = !!(ui.camMano || dyaw); dyaw = 0; }   // [camera6] CAM6.dyaw: per la camera da inseguimento   // [regia] la visuale girata a mano resta dov'è
       Visuale.mano(MN, { dyaw, dpx, dpz, attivo: !!(ui.camMano || dyaw || dpx || dpz), vel: Math.hypot(cam.mvx, cam.mvy), dir: Math.atan2(cam.mvy, cam.mvx), avanti: Math.atan2(fz0, fx0), segue: PHONE && !p.indoor, forza }, dt, KM);
       if (CALMA2.on && LIBERA) { if (!(ui.lead || ui.stick)) cam.lock = 0; }   // [camera2] tenuta la levetta, la regia non ne gira la base (sotto)
       else if (!ui.lead || pveh || LIBERA) cam.lock = 0; else cam.lock = (cam.lock || 0) - (MN.yaw - yA - dyaw);   // [visuale5] la levetta tenuta non gira col ricentro (sotto, camBasis)
@@ -19270,6 +19319,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (ui.intro) { tx = G.PLACES.piazza.x + Math.sin(time * .08) * 30; ty = G.PLACES.piazza.y - 6 + Math.cos(time * .06) * 8; tz = 1.25; }
     if (ui.focus) { tx = ui.focus.x; ty = ui.focus.y; tz = (ui.zoom || 1) * (p.indoor ? .5 : 1); focus[0] = [tx, ty]; }   // [editor] la camera segue il punto dell'editor
     if (CALMA2.on && !(mo && mo.npcs && !pveh)) CALMA2.mom.clear();
+    if (CAM6.on) { const M6 = ui.mira && !pveh && !ui.intro && !ui.focus ? ui.mira : null, KM = CAM6.K.mira, w = CAM6.w;   // [camera6] la mira, da ogni vista: un poco avanti, di lato, più vicini
+      if (M6) { const yw = cam.yaw === undefined ? YAW : cam.yaw, av = mix6(KM.av, w), lat = mix6(KM.lat, w); tx += Math.cos(M6.a) * av + Math.cos(yw) * lat; ty += Math.sin(M6.a) * av - Math.sin(yw) * lat; }
+      Visuale.molla(CAM6.mz, M6 ? KM.z : 1, .5, dt); }
     const kf = 1 - Math.pow(pveh ? .004 : PHONE ? .0004 : .02, dt);   // [camera3] sul telefono la visuale sta addosso al personaggio (prima ~0,25 s di ritardo)
     // [fluido] la camera è legata al personaggio (o al mezzo) nella sua posizione di questo stesso fotogramma: prima lo inseguiva con
     // ~0,25 s di ritardo (sul computer), così camminando il personaggio scivolava nell'inquadratura e, coi fotogrammi irregolari,
@@ -19295,10 +19347,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [visuale5] cam.uy è la sola visuale automatica (gli strumenti, la visuale che segue la marcia sul telefono): quello che il giocatore
     // gira a mano sta in cam.mano.yaw (sopra) e torna da sé
     cam.uy = cam.uy || 0; const MNy = cam.mano ? cam.mano.yaw : 0, MNtieni = !!(cam.mano && cam.mano.off && !cam.mano.ric), MNgiro = !!(cam.mano && cam.mano.giro < Visuale.MANO.giro);
-    { const zq = ui.zoom || 1, zk = Math.max(0, Math.min(1, (.42 - zq) / .27)), want = BASSA.on && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.top ? Math.max(0, Math.min(1, zk + (ui.tilt || 0))) : 0;   // [bassa]
+    { const zq = ui.zoom || 1, zk = Math.max(0, Math.min(1, (.42 - zq) / .27)), want = BASSA.on && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !ui.top ? (CAM6.on ? CAM6.w.v : Math.max(0, Math.min(1, zk + (ui.tilt || 0)))) : 0;   // [bassa]   // [camera6] la vista vicina
       BASSA.k += (want - BASSA.k) * (1 - Math.exp(-dt * 5)); if (BASSA.k < .002) BASSA.k = 0; }
     const KB = BASSA.k * BASSA.k * (3 - 2 * BASSA.k);   // [bassa] liscia agli estremi
-    if (LIBERA) { const uy0 = cam.uy || 0; if (REG.on && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !ui.studio && !(CALMA2.on && ui.puntatore)) try { regiaTick(p, pveh, dt, st); } catch (e) { if (!REG.err) { REG.err = 1; console.warn('[regia]', e); } }   // [regia]   // [camera2] col puntatore la visuale non gira da sola (W va verso il puntatore: girando la camera ti faceva girare in tondo)
+    if (CAM6.on) { const KR = CAM6.K.regia, w = CAM6.w; if (typeof Regia !== 'undefined' && Regia.K.molla) { Regia.K.soglia = mix6(KR.soglia, w); Regia.K.stabile = mix6(KR.stabile, w); Regia.K.mano = 1.8; } RG5.K.tieni = mix6(KR.tieni, w);   // [camera6] il ricentro: più pronto nelle viste basse (come GTA), calmo dall'alto
+      if (!pveh) CAM6.inV = false; }
+    if (LIBERA && CAM6.on && pveh && !ui.intro && !ui.focus) { try { insegui6(pveh, ui, dt); } catch (e) { if (!CAM6.err) { CAM6.err = 1; console.warn('[camera6]', e); } } }   // [camera6] sui mezzi: dietro, guarda avanti
+    else if (LIBERA) { const uy0 = cam.uy || 0; if (REG.on && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !ui.studio && !(CALMA2.on && ui.puntatore)) try { regiaTick(p, pveh, dt, st); } catch (e) { if (!REG.err) { REG.err = 1; console.warn('[regia]', e); } }   // [regia]   // [camera2] col puntatore la visuale non gira da sola (W va verso il puntatore: girando la camera ti faceva girare in tondo)
       if (CALMA2.on && (ui.lead || ui.stick)) cam.lock = (cam.lock || 0) - Math.atan2(Math.sin(cam.uy - uy0), Math.cos(cam.uy - uy0)); }   // [camera2] la levetta tenuta resta nella base di quando l'hai presa
     else if ((PHONE || KB > .45) && !ui.intro && !ui.focus && !p.indoor && !ui.dialogNpc && !MNtieni && !IQ5.via) {   // [bassa] bassa: la visuale sta dietro alla marcia anche sul computer   // [inquadratura] lungo la via la visuale sta sull'asse   // [camera3] la visuale gira attorno al personaggio, dietro alla direzione di marcia   // [visuale5] non mentre la tieni spostata a mano
       const vs = pveh ? Math.abs(pveh.speed || 0) : Math.hypot(cam.pvx || 0, cam.pvy || 0);
@@ -19312,7 +19367,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (RG5.on && VIS4.camera) try { regista5(p, pveh, ui, dt, KB); } catch (e) { if (!RG5.err) { RG5.err = 1; console.warn('[camera5]', e); } }   // [camera5] una mossa sola, motivata, poi si tiene   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
     cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    let pitch = lerp(c4p(), onVespa ? .78 : .82, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
+    const pit6 = CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
+    let pitch = lerp(c4p(), pit6, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
     if (!pveh && !ui.intro) {
       const ph0 = (p.lv && typeof Livelli !== 'undefined' ? Livelli.heightOf(st, p) : null), py0 = (ph0 !== null ? ph0 : groundH(p.x, p.y)) + 1.5, ux = Math.sin(cam.yaw), uz = Math.cos(cam.yaw);
@@ -19320,27 +19376,47 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       cam.lift = (cam.lift || 0) + (((cover || ui.top) ? 1 : 0) - (cam.lift || 0)) * Math.min(1, dt * (cover ? 1.2 : .8));
       pitch = lerp(pitch, 1.15, cam.lift * (1 - KB));   // [bassa] bassa: non si sale sopra la collina, la camera ci sta sopra (sotto)
     }
-    pitch = lerp(pitch, .17, KB);   // [bassa] ~10°: si guarda avanti
+    const R6 = CAM6.on && !ui.intro && !ui.focus && !ui.studio && !p.indoor ? CAM6.w : null;
+    if (R6) {   // [camera6] la pendenza: ogni vista la sua, la levetta la inclina dentro il suo intervallo (ui.tilt: + verso l'orizzonte)
+      const tl = ui.tilt || 0, K = CAM6.K, cl = (v, r) => Math.max(r[0], Math.min(r[1], v)), pA0 = pveh ? c4p() : lerp(c4p(), 1.15, cam.lift || 0);
+      const pf = cl(pA0 - tl * K.giu.a, K.pr.a) * R6.a + cl(K.p.m - tl * K.giu.m, K.pr.m) * R6.m + cl(K.p.v - tl * K.giu.v, K.pr.v) * R6.v; pitch = lerp(pf, pit6, ease); }
+    else pitch = lerp(pitch, .17, KB);   // [bassa] ~10°: si guarda avanti
     const vfov = pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0, vfov2 = CALMA2.on ? Math.max(0, molla2(CALMA2.vf, CALMA2.vf.x, vfov, CALMA2.K.campo, dt)) : vfov;   // [camera2] il campo non scatta con la velocità (gli urti)
-    const fov = lerp(lerp(30, 52, KB), onVespa ? 40 : 40, ease) * (1 + vfov2 / 18 * .16 * ease);
+    const fov = lerp(R6 ? mix6(CAM6.K.fov, R6) : lerp(30, 52, KB), CAM6.on ? CAM6.K.inseg.fov : 40, ease) * (1 + vfov2 / 18 * .16 * ease);   // [camera6] il campo della vista
     const viewH = VIEW * cam.zoom * c4z() * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
-    let driveDist = ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
+    let driveDist = CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.dBici : onVespa ? CAM6.K.inseg.dVespa : CAM6.K.inseg.d) * Math.max(.7, Math.min(1.8, (ui.zoom || .5) / .5)) + (pveh ? Math.min(10, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .45) : 0) : ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [camera6] l'inseguimento: vicino, la velocità allontana */   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
     if (false) {
       const hx = Math.sin(cam.yaw), hz = Math.cos(cam.yaw), cp = Math.cos(onVespa ? .44 : .42);
       for (let s = 1.5; s < driveDist; s += .4) { const x = cam.x + hx * cp * s, z = cam.y + hz * cp * s; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD && !isWall(Math.floor(x / G.TS), Math.floor(z / G.TS))) { driveDist = Math.max(5, s - 1); break; } }
     }
     cam.cd = cam.cd === undefined ? driveDist : CALMA2.on ? molla2(CALMA2.cd, cam.cd, driveDist, CALMA2.K.distanza, dt) : cam.cd + (driveDist - cam.cd) * Math.min(1, dt * (driveDist < cam.cd ? 14 : 2.5));   // [camera2] la distanza con la molla (avvicinarsi era uno scatto: 14/s)
-    const dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
+    let dist = lerp(lerp(walkDist, Math.max(3.4, Math.min(11, walkDist * .5 + 2.2)), KB), cam.cd, ease);   // [bassa] vicina, dietro le spalle
+    if (R6) {   // [camera6] la distanza della vista (in scala logaritmica fra le tre), la mira un poco più vicina, e il braccio che non entra nei muri
+      const K = CAM6.K, zU = CALMA2.zU || .5, za = cam.zoom / Math.max(.05, zU), dM = K.d.m * Math.max(.75, Math.min(1.35, zU / K.z.m)) * za, dV = K.d.v * Math.max(.8, Math.min(1.4, zU / K.z.v)) * za;
+      let df = Math.exp(Math.log(Math.max(1, walkDist)) * R6.a + Math.log(dM) * R6.m + Math.log(dV) * R6.v) * CAM6.mz.x;
+      CAM6.dMin = 3 * R6.m + 2.2 * R6.v + 3 * R6.a;   // [camera6] il braccio più corto: mai addosso al personaggio
+      if (R6.a < .5 && !pveh) {   // [camera6] davanti a una facciata: nella vista media prima più ripida (fino a +0,24 rad, come da una finestra più alta), poi il braccio si accorcia
+        const hL = cam.h + mix6(K.h, R6), C = CAM6.coll, B = CAM6.pb || (CAM6.pb = { x: 0, v: 0, t: 0, want: 0 }); let want = 0;
+        if (R6.m > .3 && libero6(cam.x, hL, cam.y, cam.yaw, pitch, df) < df * .9) { want = .24; for (const dp of [.08, .16]) if (libero6(cam.x, hL, cam.y, cam.yaw, Math.min(1.3, pitch + dp), df) >= df * .9) { want = dp; break; } }
+        if (want >= B.want) { B.want = want; B.t = 0; } else { B.t += dt; if (B.t > 2) B.want = want; }   // si sale subito, si torna giù dopo 2 s libero
+        Visuale.molla(B, B.want, .9, dt); pitch = Math.min(1.3, pitch + B.x * R6.m);
+        const lf = libero6(cam.x, hL, cam.y, cam.yaw, pitch, df); if (C.x === null) { C.x = lf; C.v = 0; C.t = 0; C.tgt = lf; }
+        if (lf < C.x - .05) { C.tgt = lf; C.t = 0; } else if (lf > C.x + .5) { C.t += dt; if (C.t > 1.5) C.tgt = lf; } else C.t = 0;   // si accorcia subito, si allunga dopo 1,5 s libero
+        Visuale.molla(C, C.tgt, C.tgt < C.x ? .35 : 1.8, dt); df = Math.min(df, C.x); } else if (!pveh) { CAM6.coll.x = null; if (CAM6.pb) { CAM6.pb.x = CAM6.pb.want = 0; } }
+      dist = lerp(df, cam.cd, ease); }
+    if (CAM6.on && pveh && ease > .5 && !ui.intro) { const lf = libero6(cam.x, cam.h + 1.2, cam.y, cam.yaw, pitch, dist), C = CAM6.coll; if (C.x === null) { C.x = lf; C.v = 0; } Visuale.molla(C, lf, lf < C.x ? .1 : .7, dt); dist = Math.min(dist, Math.max(3, C.x)); }   // [camera6] la camera da inseguimento non entra nei muri
     camera.fov = fov; camera.near = lerp(lerp(Math.min(8, Math.max(.6, dist * .35)), .3, KB), 2, ease);   /* [bassa] il taglio vicino: quello che sta fra la camera e ~1,5 m prima di te sparisce (muri, pilastri, balconi a ridosso della camera); il suolo entra nel quadro oltre i 3 m */ camera.far = Math.max(300, dist + 160); camera.updateProjectionMatrix();   /* [zoom1] */
     REG.lp = pitch; REG.ld = dist;   // [regia] la camera di questo fotogramma, per le candidate della prossima scelta
     const ox = Math.sin(cam.yaw) * Math.cos(pitch) * dist, oy = Math.sin(pitch) * dist, oz = Math.cos(cam.yaw) * Math.cos(pitch) * dist;
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
-    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [bassa] si guarda all'altezza del petto
+    const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(R6 ? mix6(CAM6.K.h, R6) : lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [camera6] il punto guardato della vista   // [bassa] si guarda all'altezza del petto
     camera.position.set(cx + ox, cy + oy, cz + oz);
-    if (KB > .01) { const gc = groundH(camera.position.x, camera.position.z) + .7; if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
+    if (CAM6.on && !pveh) CAM6.kv = Math.max(.15, Math.min(1, 2 * dist * Math.tan(fov * Math.PI / 360) / Math.max(1, VIEW * (ui.zoom || 1))));   // [camera6] l'inquadratura vera rispetto a quella dall'alto
+    else CAM6.kv = 1;
+    if (KB > .01 || (R6 && R6.a < .9)) { const gc = groundH(camera.position.x, camera.position.z) + .7;   /* [camera6] anche la vista media */ if (camera.position.y < gc) camera.position.y = gc; }   // [bassa] mai sotto il suolo (in salita, sulle scalinate)
     camera.lookAt(cx, cy, cz);
-    INQ4.camT = null; if (INQ4.on && ease < .02 && KB < .02 && !(cam.lift > .02) && INQ4.S.pT !== undefined) {   // [camera4] la camera dove sta andando: il taglio decide su quella (niente case che si aprono e si richiudono mentre la pendenza sale)
+    INQ4.camT = null; if (INQ4.on && ease < .02 && KB < .02 && !(cam.lift > .02) && INQ4.S.pT !== undefined && !(R6 && R6.a < .5)) {   // [camera6] nelle viste basse decide la camera vera   // [camera4] la camera dove sta andando: il taglio decide su quella (niente case che si aprono e si richiudono mentre la pendenza sale)
       const S = INQ4.S, b = PEND3.v, M5 = RG5.attivo ? RG5.mov : null; let pt = b + (S.pT - b) * (S.w === undefined ? 1 : S.w), zt = 1 + (S.zT - 1) * (S.w === undefined ? 1 : S.w), dT = dist * zt / Math.max(.2, S.z || 1);
       let yT = LIBERA && REG.S && REG.S.tgt !== null && REG.S.tgt !== undefined ? cam.yaw + Math.atan2(Math.sin(REG.S.tgt - cam.uy), Math.cos(REG.S.tgt - cam.uy)) : cam.yaw;
       if (RG5.attivo) { pt = M5 ? M5.p1 : RG5.p; zt = M5 ? M5.z1 : RG5.z; dT = dist * zt / Math.max(.2, RG5.z || 1); yT = M5 ? cam.yaw + Math.atan2(Math.sin(M5.y0 + M5.dy - cam.uy), Math.cos(M5.y0 + M5.dy - cam.uy)) : cam.yaw; }   // [camera5] la camera che il regista userà davvero: finché tiene, quella di adesso (il taglio copre l'attesa)
@@ -19350,11 +19426,12 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const reg = zoneAt(cx, cz) === 'regime', mv = pveh ? Math.min(1, vr / 6) : Math.min(1, vr / 1.5);
       const want = reg ? 0 : (Math.sin(time * Math.PI * 2 / 25) * .7 + Math.sin(time * Math.PI * 2 / 41 + 1.7) * .3) * (pveh ? AD.rollioMezzi : AD.rollio) * Math.PI / 180 * mv * (CALMA2.on ? CALMA2.K.rollioAmpio : 1);
       if (CALMA2.on) cam.roll = molla2(CALMA2.roll, cam.roll || 0, RG5.on ? 0 : want, CALMA2.K.rollio, dt); else cam.roll = (cam.roll || 0) + (want - (cam.roll || 0)) * Math.min(1, dt * .8); if (Math.abs(cam.roll) > 1e-5) camera.rotateZ(cam.roll); }   // [camera5] niente rollio: le verticali delle case stanno dritte
-    if (KB > .01) {   // [bassa] IL TAGLIO: niente fra la camera e te. Il piano vicino arriva a 1,2 m prima del personaggio; si ferma solo dove il suolo
+    const KN = R6 && !pveh ? Math.max(KB, 1 - R6.a) : CAM6.on && pveh ? Math.max(KB, ease) : KB;   // [camera6] il taglio vicino anche nella vista media (le edicole, i banchi, le chiome e i muretti che la mappa delle case non conosce)
+    if (KN > .01) {   // [bassa] IL TAGLIO: niente fra la camera e te. Il piano vicino arriva a 1,2 m prima del personaggio; si ferma solo dove il suolo
       // entra nel quadro (il raggio più basso dell'inquadratura tocca terra a hg/sin(pendenza + mezzo campo): oltre, il taglio aprirebbe un buco nel suolo)
       const dd = Math.hypot(camera.position.x - cx, camera.position.y - cy, camera.position.z - cz), hg = Math.max(.3, camera.position.y - groundH(camera.position.x, camera.position.z)), hf = camera.fov * Math.PI / 360;
       const suolo = hg / Math.sin(Math.min(1.5, pitch + hf)) * Math.cos(hf) - .1, nv = Math.max(.3, Math.min(dd - 1.2, suolo));
-      camera.near = lerp(camera.near, Math.max(camera.near, nv), KB); camera.updateProjectionMatrix(); }
+      camera.near = lerp(camera.near, Math.max(camera.near, nv), KN); camera.updateProjectionMatrix(); }
     if (SCO.cam) scoCamera();   // [scorcio] la camera fissa dello strumento
     posaTick1(cx, cz);   // [posa] il livello pieno dei pezzi vicino al punto guardato
     { const lh = typeof Livelli !== 'undefined' && p.lv ? Livelli.heightOf(st, p) : null; NATU.pl.value.set(p.x, (lh !== null ? lh : groundH(p.x, p.y)) + .2, p.y); NATU.cm.value.copy(camera.position); }   // [monte] varco nelle chiome
@@ -19362,7 +19439,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // [cadenza] e nemmeno mentre la camera trasla: camminando la camera agganciata avanzava di 1 o 2 texel per fotogramma (a 1080 righe
     // un passo è ~1,5 texel) e il personaggio, che non si aggancia, tremava di mezzo texel attorno al centro. Da ferma si riaggancia
     { const cp = camera.position; if (cam.__cpx === undefined || Math.abs(cp.x - cam.__cpx) + Math.abs(cp.y - cam.__cpy) + Math.abs(cp.z - cam.__cpz) > 1e-4) cam.movN = frameN; cam.__cpx = cp.x; cam.__cpy = cp.y; cam.__cpz = cp.z; }
-    if (ease < .02 && KB < .02 && !PHONE && !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
+    if (ease < .02 && KB < .02 && !PHONE && !(R6 && R6.a < .98) &&   /* [camera6] nelle viste basse niente aggancio ai pixel (il passo dei pixel è un altro) */ !(time - (cam.rotT || -9) < .25) && !(frameN - (cam.movN === undefined ? -99 : cam.movN) < 15)) {   // [camera2] sul telefono niente aggancio ai pixel: con la visuale che gira faceva scatti   // [fluido] nemmeno sul computer mentre gira (levetta destra, tasti)
       const texel = viewH / H; camera.updateMatrixWorld(); const SV = cam.__sv || (cam.__sv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]);
       const right = SV[0].setFromMatrixColumn(camera.matrixWorld, 0), up = SV[1].setFromMatrixColumn(camera.matrixWorld, 1);
       const pos = SV[2].copy(camera.position), a = pos.dot(right), b = pos.dot(up);
@@ -19413,7 +19490,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const iqT = !!(IQ5.v && IQ5.v.taglio) || SEMPRE.on, iqS = !IQ5.v || IQ5.v.tetti;   // [inquadratura] il taglio mirato usa la macchina del muretto; i tetti sbiaditi solo se la variante li vuole
       if (VIS4.muretto || iqT || VIS3.vivi.size) try { vis3Tick(focus[0][0], focus[0][1], fy, (VIS4.muretto || iqT) && fuori, AVVIO.scatta ? 10 : dt, pitch); } catch (e) { if (!VIS3.err) { VIS3.err = 1; console.warn('[visuale3]', e); } }   // un errore del muretto non ferma mai il fotogramma
       vis3Personaggio(dyn.people.__player, p.x, playerH, p.y, night, dt);
-      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, fuori && (SEMPRE.on || BASSA.k > .25) && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te
+      try { bassaCose(focus[0][0], focus[0][1], fy, camera.position, !CAM6.on && fuori && (SEMPRE.on || BASSA.k > .25) && typeof Regia !== 'undefined'); } catch (e) { if (!BASSA.err) { BASSA.err = 1; console.warn('[bassa]', e); } }   // [bassa] le cose fra la camera e te   // [camera6] le cose piccole (ombrelloni, cartelli, tavolini) non spariscono mai
+      if (CAM6.on) { const O = CAM6.occ; if (!(frameN % 3)) O.coperto = fuori && !pveh && ((CAM6.w.a >= .5 ? coperto6(p, fy) : libero6(cam.x, cam.h + 1.3, cam.y, cam.yaw, Math.asin(Math.max(-1, Math.min(1, (camera.position.y - cam.h - 1.3) / Math.max(.1, camera.position.distanceTo(new THREE.Vector3(cam.x, cam.h + 1.3, cam.y)))))), camera.position.distanceTo(new THREE.Vector3(cam.x, cam.h + 1.3, cam.y))) < camera.position.distanceTo(new THREE.Vector3(cam.x, cam.h + 1.3, cam.y)) - .3) || !!(INQ4.S && INQ4.S.volta));   // [camera6] il retino [ad] solo se il personaggio è coperto davvero: si accende subito, si spegne dopo 1 s, sfuma
+        if (O.coperto) O.t = 0; else O.t += dt; const on = O.t < 1; if (on !== O.on) { O.on = on; O.cambi++; } Visuale.molla(O.k, on ? 1 : 0, .3, dt); }
       if (LOOKV.nuovo || SGT.blob) sguPersonaggio(p.x, playerH + (p.jz || 0) * 0, p.y, LOOKV.nuovo && !!dyn.people.__player && dyn.people.__player.visible && !pveh && !ui.studio && !ui.intro);   // [sguardo] l'ombra di contatto del personaggio   // [visuale3] il personaggio si stacca in ombra (in ogni visuale)
       if (window.TettiVissuti) try { TettiVissuti.vicino(focus[0][0], focus[0][1], frameN, night); } catch (e) { }   // [vissuti] le cartacce e le pozze vicine
       // [visuale4] A: il tetto della casa che copre sbiadisce (alle stesse condizioni del muretto); in tutti e due la sagoma di chi conta
@@ -19436,7 +19515,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const u7 = PRO.u7, on = LOOKV.nuovo && rt && !ui.studio && !(p.indoor);   // (non dyn.people.__player.visible: con le persone fuse di peso_gente.js l'originale è nascosto)
       if (on) { camera.updateMatrixWorld(); const v = SGT.tv || (SGT.tv = new THREE.Vector3()); v.set(p.x, playerH + 1, p.y);
         const dc = v.distanceTo(camera.position); v.project(camera);
-        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height : 0; u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
+        u7.x = (v.x * .5 + .5) * rt.width; u7.y = (v.y * .5 + .5) * rt.height; u7.z = AD.taglio > 0 ? AD.tagliaR * rt.height * (CAM6.on ? Math.max(0, Math.min(1, CAM6.occ.k.x)) * .8 : 1) : 0;   /* [camera6] solo se coperto, sfumato, un poco più stretto */ u7.w = dc; PRO.u9.x = cam.h || 0; PRO.u9.y = AD.prova ? 1 : 0; PRO.u9.z = AD.prova2 ? 1 : 0; PRO.u9.w = AD.prova2 ? 3 : 1.5; }
       else u7.z = 0; }
     renderer.setRenderTarget(rt); renderer.render(scene, camera); if (window.PesoOmbre) PesoOmbre.dopo();
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
@@ -19534,5 +19613,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

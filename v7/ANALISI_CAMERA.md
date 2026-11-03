@@ -368,3 +368,136 @@ stabile più la tenuta. Un regista potrebbe volerla prima; è una manopola (`__R
   torna al centro quando si ferma. Entra con due molle in fila, ma resta un movimento sullo schermo che prima non c'era. Se il regista la
   vuole più quieta: `__RG5.K.aria` (meno aria) o `.ariaMolla` (più lenta).
 - Le prove sono col disegno vero solo per le foto; i numeri vengono dai fotogrammi senza disegno (SwiftShader).
+
+## 11. [camera6] I comandi come la terza persona di GTA V, e tre viste (`?nofixcamera6`: com'era)
+
+Il committente:
+- «Una levetta fa zoom E rotazione, ma non controlla davvero dove guarda il personaggio; camminata e camera devono essere separate, lo
+  zoom a parte».
+- «Ruotando sparisce qualche casa che non copre; ombrelloni e cose piccole spariscono e ricompaiono in continuazione».
+- «In bici la camera non si controlla, e quella fissa dall'alto non fa capire dove vai».
+- Poi le tre viste: alta, media («come da una finestra di un primo o secondo piano») e vicina.
+
+**Come fa GTA V.**
+- La levetta destra orbita: di lato lo yaw, in su e in giù la pendenza. Lo zoom no: si cambia vista con un tasto (tre distanze).
+- Si cammina rispetto alla camera e il personaggio guarda dove va.
+- Dopo un poco senza toccare la levetta, camminando, la camera torna piano dietro; da fermi resta.
+- Mirando (L2) il personaggio guarda dove guarda la camera, sopra la spalla, un poco più vicino: la levetta destra mira, quella
+  sinistra va di lato.
+- Sui mezzi la camera insegue dietro e un poco sopra, guarda avanti; la levetta di lato gira e lasciata torna dietro.
+- Davanti a un muro la camera si avvicina invece di attraversarlo.
+
+### Le tre viste: un braccio di gru solo
+
+Lo zoom del giocatore è un braccio continuo fra tre altezze, e il tasto delle viste porta a una delle tre. Il pizzico e la rotella vanno
+continui *attraverso* le viste: dall'alto si scende alla finestra e poi dietro le spalle, come una gru. Si legge meglio dei salti a gradino,
+e chi ha solo il pizzico (il telefono) arriva lo stesso a tutte e tre.
+
+| | vicina (zoom .25) | media (zoom .5, di partenza) | alta (zoom .85 e oltre) |
+|---|---|---|---|
+| dove sta la camera | dietro le spalle, 4,5 m | come da una finestra: 8 m, ~6,5 m sopra la strada | dall'alto, 30-60 m |
+| pendenza (la levetta la inclina dentro) | 0,30 rad (0,12-0,48) | 0,95 rad (0,73-1,17) | quella della gerarchia di §8, 0,78-1,1 (0,6-1,22) |
+| campo | 52° | 44° | 30° |
+| punto guardato | il petto (1,45 m) | 0,9 m | i piedi |
+| ostacoli | la camera si avvicina (braccio fino a 2,2 m), il piano vicino taglia | la camera si avvicina (fino a 3 m) | la gerarchia: più dall'alto, più vicini, il taglio per ultimo |
+| ricentro dietro la marcia | pronto (zona morta 0,2 rad, marcia stabile 1,2 s) | 0,3 rad, 1,5 s | calmo: 0,5 rad, 2 s, tenuta 6 s |
+| mira | 2,2 m avanti e 0,75 m a destra (sopra la spalla) | 1,2 m avanti e 0,5 m a destra | 2,2 m avanti |
+
+- **Perché si parte dalla media.** Nei vicoli, cioè quasi tutta la città, si vede la strada senza case tagliate e senza tetti davanti;
+  è ancora dall'alto, quindi si capisce dove si va e dove si è. L'alta resta per orientarsi, la vicina per guardarsi attorno.
+- **Nelle viste basse niente case tagliate né tetti sbiaditi.** Le scatole delle case sono dritte e in un vicolo coprono anche dove non
+  c'è muro. Fa la camera che si avvicina, letta sulla mappa delle case fino al colmo: si avvicina subito (0,08 s) e torna piano (0,6 s).
+- **Pendenza e distanza** passano dall'una all'altra vista in modo continuo (la distanza in scala logaritmica).
+
+### I comandi
+
+| | controller | tastiera e mouse | telefono | Game Boy |
+|---|---|---|---|---|
+| camminare | levetta sinistra, rispetto alla camera | WASD rispetto alla camera (W = in su sullo schermo) | levetta a schermo | levetta |
+| girare la camera | levetta destra ◄► | frecce ◄►, `,` `.`, tasto centrale trascinato, bordo dello schermo | un dito trascinato, due dita che ruotano, levetta della visuale ◄► | levetta2 ◄► |
+| inclinare | levetta destra ▲▼ | frecce ▲▼, PagSu/PagGiù, tasto centrale su e giù | levetta della visuale ▲▼ | levetta2 ▲▼ |
+| zoom (continuo) | croce ▲▼ | rotella | pizzico | (croce ▲▼ con la console vecchia) |
+| le tre viste | R3 (clic della levetta destra) | V | (pizzico fino in fondo) | tocco sulla levetta2 (`{pvc:'tasto', k:'vista'}`) |
+| mirare | L2 tenuto (R2 spara) | tasto destro tenuto (mira al puntatore e spara) | il dito che spara | B tenuto con l'arma |
+| bici | levetta destra: ▼ impenna; impennando ◄► il piede; se no ◄► gira la camera | frecce: trucchi, come prima (girare con `,` `.` o col mouse) | levetta della visuale come il controller | levetta2 come il controller |
+
+- **In bici** la pendenza non si tocca: la camera da inseguimento ha la sua, 0,5 rad in bici e 0,56 sugli altri mezzi. La distanza è
+  11 m in bici, 14 in Vespa e 18 in auto, più la velocità × 0,45 (al più 10 m). Il campo è 46°.
+  La regola che scioglie il conflitto è una sola: in bici «indietro» è sempre l'impennata.
+- **Il ricentro come GTA.**
+  - Camminando, la regia rimette la camera dietro la marcia dopo 1,8 s senza toccare la visuale, con le mosse e le tenute di [camera5].
+  - L'inclinazione torna piano a quella della vista dopo 2 s senza toccarla (τ 1,5 s); da fermi resta.
+  - Mentre tieni la levetta (o i tasti) la sua base non gira col ricentro: niente giro in tondo.
+  - Col puntatore la regia ora può girare: i tasti non vanno più verso il puntatore.
+
+### Le coperture, rifatte
+
+- **Le cose piccole non spariscono mai** (ombrelloni, tende, cartelli, tavolini, lampioni: `bassaCose` spento).
+- **Il retino [ad]** davanti al personaggio si accende solo se il personaggio è coperto davvero:
+  - dall'alto, il busto o la testa nella scatola di una casa non tagliata;
+  - nelle viste basse, lo stesso tratto sulla mappa;
+  - oppure sotto una volta.
+  Si accende subito, si spegne dopo 1 s, sfuma in 0,3 s ed è un poco più stretto.
+- **I tetti** sbiadiscono solo per il busto e la testa (non per i piedi) e restano almeno 1,5 s. La casa tagliata resta giù almeno 1,5 s.
+- **Dall'alto** il taglio resta quello di §8 (solo per il corpo, con la camera di adesso e quella dove va).
+
+### Il Game Boy (repository aertismione, `src/components/ui/GameBoyPad.tsx`)
+
+Il gioco ora risponde `{pv:'console', v:5}`. Da v3 la console scrive `t.croce` sotto la levetta2: il gioco ci mette già la scritta
+nuova («gira · guarda», in bici «gira · ▼ impenna»). Nella console serve una cosa sola: in `Levetta` con `msg="levetta2"`, un tocco
+breve (giù e su entro 250 ms, spostamento sotto 0,25) manda `{pvc:'tasto', k:'vista', giu:true}` e subito `{pvc:'tasto', k:'vista',
+giu:false}`. Il gioco manda anche `t.vista` («Vista media») e `t.levetta2` per chi li vuole mostrare.
+
+### Le prove
+
+**I comandi** (`node strumenti/sonda_comandi6.js`: il gioco vero col suo giro, un controller finto, i tasti e la rotella di Playwright,
+due dita finte per il pizzico):
+
+| prova | risultato |
+|---|---|
+| partenza | vista media: zoom 0,5, pendenza 0,95 rad, camera a 8,7 m |
+| levetta destra ◄► per 1,2 s | gira di 142°; lo zoom resta 0,5 |
+| levetta destra ▲ per 1 s | inclina (ui.tilt 0 → 0,9, pendenza 0,95 → 0,75); lo zoom resta 0,5 |
+| rotella / pizzico | zoom 0,5 → 0,56 / → 0,2 |
+| V, R3, V | 0,25 → 0,5 (media) → 0,85 (alta) → 0,25 (vicina) |
+| levetta sinistra in su, camera girata | direzione di marcia −0,7° dal davanti della camera; il personaggio guarda dove va (0,9°) |
+| W, camera girata | −5,3° dal davanti della camera; guarda dove va (5,3°) |
+| mira (L2) e levetta sinistra a destra | il personaggio guarda il davanti della camera (0°) e va di lato (104°); girando la camera mirando (−92°) la segue (−0,1°); la camera si avvicina e torna (8,7 m dopo) |
+| bici, levetta destra ▼ | impennata 0 → 1 |
+| bici, levetta destra ◄► | la camera gira di 77°; lasciata la levetta, in 3,5 s torna dove stava |
+| bici, camera da inseguimento | pendenza 0,50 rad, distanza 11,6 m |
+
+**Le coperture** (`node strumenti/sonda_occlusione.js --vecchia=nofixcamera6 --gira=0.6`: due vicoli, la piazza, il portico, 69 s; nella
+piazza la camera gira a 0,6 rad/s come chi orbita). Prima la vista di difetto (zoom 0,72), dopo la vista media e la vista alta:
+
+| | prima (`?nofixcamera6`, zoom 0,72) | dopo, vista media | dopo, vista alta (0,85) |
+|---|---|---|---|
+| accensioni e spegnimenti al minuto (case, tetti, cose piccole, retino) | 77,9 (nella piazza mentre gira: 177) | 9,5 | 21,6 |
+| cose piccole nascoste (% del tempo / volte) | 15,7% / 10,9 | 0 / 0 | 0 / 0 |
+| case tagliate | 18,4% | 0% | 22,4% |
+| case tagliate che non coprivano | 5,5% | 0% | 11,3% |
+| tetti sbiaditi che non coprivano | 2,5% | 0% | 3,8% |
+| personaggio coperto senza taglio | 2,0% | 1,8% | 1,2% |
+| strappo della distanza | 3,8 | 48,8 | 4,4 |
+| cambi d'inquadratura al minuto | 8,7 | 20,8 | 8,7 |
+
+- **Le cose piccole non spariscono più.** Erano gli ombrelloni e i tavolini che lampeggiavano: 26 volte nella piazza in 21 s.
+- **Gli accesi e spenti calano di 8 volte nella vista media.** Quelli che restano (~1 ogni 6 s) sono il retino [ad] che si accende quando
+  il personaggio passa dietro qualcosa.
+- **Nella vista alta i tagli restano**, come in §8. Le «case che non coprivano» sono per lo più la tenuta di 1,5 s mentre la camera gira:
+  la casa resta giù un poco dopo aver smesso di coprire, invece di lampeggiare.
+- **La vista media paga altro.** La camera si avvicina e si alza davanti alle facciate: lo strappo della distanza sale e i cambi
+  d'inquadratura pure, soprattutto nel vicolo dei Gatti, stretto e storto. Prima si avvicinava subito (strappo 537); con la pendenza che
+  sale prima e le isteresi (si alza subito, torna giù dopo 2 s; il braccio si accorcia in 0,35 s e si allunga dopo 1,5 s libero) si
+  arriva a 48,8.
+- **Da fare.** Nei vicoli stretti la vista media potrebbe girarsi lungo l'asse del vicolo (la regia, §8) invece di avvicinarsi.
+
+**I provini** (`node strumenti/sonda_camera6.js --foto=…`, `v7/_immagini/camera6/`):
+- le tre viste nello stesso vicolo (`camera6_viste_vicolo.jpg`) e nella stessa piazza (`camera6_viste_piazza.jpg`);
+- il cammino con la camera che gira (`camera6_giro_media.jpg`): il banco del mercato copre per un attimo e resta, si vede la sagoma;
+  il chiosco vicino alla camera è tagliato dal piano vicino;
+- la mira (`camera6_mira_media.jpg`): il personaggio gira con la camera;
+- la bici (`camera6_bici.jpg`): la camera dietro e più bassa; la strada scelta dalla sonda finisce contro un muro;
+- la piazza con gli ombrelloni (`camera6_ombrelloni_media.jpg`, `_alta.jpg`): gli ombrelloni restano.
+- **Le chiome degli alberi sopra il personaggio** coprono ancora per qualche istante nella vista media (si vede la sagoma). La mappa
+  delle case non le conosce; il piano vicino le taglia solo quando sono vicine alla camera.

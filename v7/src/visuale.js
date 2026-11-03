@@ -247,6 +247,35 @@ var Visuale = (function () {
     S.p = molla(S.sp, base + (S.pT - base) * w, K.molla, dt); S.z = molla(S.sz, 1 + (S.zT - 1) * w, K.molla, dt); S.w = w;
     return S;
   }
+  // ================= [camera6] I COMANDI DELLA CAMERA (come la terza persona di GTA V, adattata alla nostra visuale alta) =================
+  // Il committente: «una levetta fa zoom E rotazione, ma non controlla davvero dove guarda il personaggio; camminata e camera devono essere
+  // separate, lo zoom a parte; in bici la camera non si controlla». Le regole, senza grafica (main.js le usa, test_comandi6.js le prova):
+  //   la levetta della visuale (destra del controller, quella a schermo, la levetta2 del Game Boy, le frecce) GIRA (x) e INCLINA (y):
+  //   niente zoom. Lo zoom sta a parte: pizzico, rotella, croce ▲▼, il tasto delle tre viste (V, R3, «vista» del Game Boy).
+  //   In bici la stessa levetta: indietro (y > K.impenna) è l'impennata, e mentre impenni di lato è il piede sulla pedalina; se no di lato
+  //   gira la camera. La pendenza in bici non si tocca (la camera da inseguimento ha la sua).
+  const COMANDI6 = {
+    zona: .12,            // la zona morta della levetta
+    esp: 1.8,             // la curva (poco inclinata: piano e preciso)
+    giro: 1.9,            // rad/s a fondo corsa
+    pend: .9,             // l'inclinazione (ui.tilt) al secondo a fondo corsa
+    impenna: .5,          // in bici: indietro oltre tanto si impenna
+    piede: .45,           // in bici, impennando: di lato oltre tanto il piede sulla pedalina
+    viste: [.25, .5, .85], // le tre viste: vicina, media, alta (ui.zoom; render.js CAM6.K.z)
+  };
+  const curva6 = (v, K) => { const a = Math.abs(v); if (a <= K.zona) return 0; return Math.sign(v) * Math.pow(Math.min(1, (a - K.zona) / (1 - K.zona)), K.esp); };
+  // la levetta della visuale (x, y in -1..1, y in giù positivo). Ritorna { giro (rad/s, + a sinistra come ui.drag), pend (ui.tilt al
+  // secondo, + verso l'orizzonte), zoom: 0 (mai), impenna, piede (-1, 0, 1) }
+  function levetta6(x, y, bici, K) {
+    K = K || COMANDI6; const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    if (bici) { const imp = y > K.impenna; return { giro: imp ? 0 : -curva6(x, K) * K.giro, pend: 0, zoom: 0, impenna: imp, piede: imp && Math.abs(x) > K.piede ? (x < 0 ? 1 : -1) : 0 }; }
+    return { giro: -curva6(x, K) * K.giro, pend: -curva6(y, K) * K.pend, zoom: 0, impenna: false, piede: 0 };
+  }
+  // la vista dopo: dalla vista più vicina a quella di adesso, la prossima (in giro)
+  function vista6(z, K) { K = K || COMANDI6; const V = K.viste; let i = 0, d = Infinity; V.forEach((v, j) => { const q = Math.abs(Math.log(v / (z || 1))); if (q < d) { d = q; i = j; } }); return V[(i + 1) % V.length]; }
+  // la camminata relativa alla camera: B = camBasis() ({fx, fz, rx, rz}: davanti e destra in pianta), (sx, sy) la levetta o i tasti
+  // (y in su negativo). Ritorna la direzione nel mondo (x, y del gioco) non normalizzata, o null se ferma
+  function relativa6(B, sx, sy) { if (!sx && !sy) return null; return { x: B.rx * sx - B.fx * sy, y: B.rz * sx - B.fz * sy }; }
   // ================= [visuale4] IL TETTO CHE SBIADISCE (A) =================
   const TETTO4 = {
     resta: .3,            // l'opacità che resta al tetto sbiadito del tutto: si legge ancora la sua forma, mai un buco
@@ -257,11 +286,11 @@ var Visuale = (function () {
     apri: .35, chiudi: .55,  // s: quanto dura lo sbiadire e il tornare
   };
   // i raggi del corpo (piedi, busto, testa) verso la camera
-  function raggi4(px, pz, fy, cam) { return [.15, .95, 1.75].map(h => { const x = px, y = fy + h, z = pz, dx = cam.x - x, dy = cam.y - y, dz = cam.z - z, l = Math.hypot(dx, dy, dz) || 1; return { o: { x, y, z }, d: { x: dx / l, y: dy / l, z: dz / l } }; }); }
+  function raggi4(px, pz, fy, cam, corpo) { return (corpo ? [1.1, 1.65] : [.15, .95, 1.75]).map(h => { const x = px, y = fy + h, z = pz, dx = cam.x - x, dy = cam.y - y, dz = cam.z - z, l = Math.hypot(dx, dy, dz) || 1; return { o: { x, y, z }, d: { x: dx / l, y: dy / l, z: dz / l } }; }); }   // [camera6] corpo: solo il busto e la testa (i piedi dietro un muretto non fanno sbiadire un tetto)
   // quali case coprono il personaggio (i raggi del corpo entrano nella loro scatola): solo il loro tetto sbiadisce. Map(casa -> { y, top })
   function tetti(px, pz, fy, cam, case_, K, tetto, out) {
     K = K || TETTO4; out = out || new Map(); out.clear(); if (tetto) return out;
-    const R = raggi4(px, pz, fy, cam), A = K.allarga, sdx = cam.x - px, sdz = cam.z - pz, sl2 = sdx * sdx + sdz * sdz || 1;
+    const R = raggi4(px, pz, fy, cam, K.corpo), A = K.allarga, sdx = cam.x - px, sdz = cam.z - pz, sl2 = sdx * sdx + sdz * sdz || 1;
     for (const B of case_) { const b3 = B.box3; if (!b3 || b3.max.y < fy + .5 || B.flat) continue;   // il tetto piano (terrazzo, parapetto basso) non copre: resta com'è
       const bx = (b3.min.x + b3.max.x) / 2, bz = (b3.min.z + b3.max.z) / 2, br = Math.hypot(b3.max.x - b3.min.x, b3.max.z - b3.min.z) / 2 + 3;
       const t = cl4(((bx - px) * sdx + (bz - pz) * sdz) / sl2, 0, 1), ex = px + sdx * t - bx, ez = pz + sdz * t - bz; if (ex * ex + ez * ez > br * br) continue;
@@ -366,8 +395,8 @@ var Visuale = (function () {
     if (cr !== sr || cf !== sf) { S.px += (cr - sr) * rx + (cf - sf) * fx; S.pz += (cr - sr) * rz + (cf - sf) * fz; }
     return S;
   }
-  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2, INQUADRA4, bisogno4, inquadra4 };   // [visuale4] [visuale5] [camera2]
-  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; window.__INQUADRA4 = INQUADRA4; }   // [visuale4] [visuale5] [camera2]
+  const api = { MODI, modo, TAGLIO, passo, quota, liscio, entra, CAMERA4, mappa, misura, camPasso, TETTO4, tetti, sbiadito, MURETTO, muretto, MANO, mano, limita, molla, mollaAng, CAMERA2, INQUADRA4, bisogno4, inquadra4, COMANDI6, levetta6, vista6, relativa6 };   // [visuale4] [visuale5] [camera2]
+  if (typeof window !== 'undefined') { window.__TAGLIO = TAGLIO; window.__CAMERA4 = CAMERA4; window.__TETTO4 = TETTO4; window.__MURETTO = MURETTO; window.__MANO = MANO; window.__CAMERA2 = CAMERA2; window.__INQUADRA4 = INQUADRA4; window.__COMANDI6 = COMANDI6; }   // [visuale4] [visuale5] [camera2]
   return api;
 })();
 if (typeof module !== 'undefined') module.exports = Visuale;
