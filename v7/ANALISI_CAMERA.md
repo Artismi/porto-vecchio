@@ -261,3 +261,110 @@ Misura con `node strumenti/sonda_avvio_camera.js`: il gioco vero col suo giro e 
 | distanza della camera: corsa totale | 9,8 m (57 → 47 m) | 0 m |
 | pendenza: corsa totale | 0 | 0 (0,90 rad dal primo fotogramma: gradino 1) |
 | visuale e sguardo | isola (0,79 rad), guarda a nord (−1,57) contro un muro | 2,36 rad, lato camera libero; guarda verso la strada (0,79) |
+
+## 10. [camera5] Il regista: ogni mossa ha un motivo, poche mosse, una per volta
+
+Il committente: «la camera deve sempre avere un senso e un'estetica». La camera giudicata come la giudicherebbero un regista (perché si
+muove?), un operatore (quante mosse, come partono e arrivano) e un attore (si capisce dove vado?).
+
+**Il metodo.** `node strumenti/sonda_regista.js --foto=…`: gli stessi tratti di `sonda_occlusione.js` (due vicoli, la piazza, il portico)
+più una svolta stretta a 90°. Il personaggio si ferma 3 s a metà di ogni tratto, e la camera parte già dietro la marcia, come nel gioco dove
+ci arriva camminando. Una foto ogni 0,5 s di gioco va in un provino per tratto (`v7/_immagini/camera5/`). Le misure:
+- **mosse al minuto:** pendenza, distanza e yaw insieme; un gesto solo se si toccano entro 0,4 s;
+- **tenuta:** il tempo fra una mossa e l'altra;
+- **aria davanti:** quanto il personaggio sta dietro il centro rispetto a dove va;
+- **testa o piedi tagliati:** dal quadro o da una casa non tagliata.
+
+### Le note di regia, prima (`?nofixcamera5`)
+
+- **Vicolo dei Lanternini.**
+  - All'inizio: un gradino di pendenza.
+  - A 12-14 s, alla ripartenza dopo la sosta: un giro di yaw di ~45° che dura 2,5 s. La strada non ha svoltato: il motivo non si legge.
+  - A 17 s: un altro gradino, separato dal giro, a 3 s di distanza. Sono due gesti dove ne bastava uno.
+- **Vicolo dei Gatti.**
+  - Il giro all'inizio è dolce ma lungo.
+  - A 13-15 s: lo zoom e la pendenza cambiano a scalino. La distanza ha lo strappo più forte del percorso (75), e l'immagine «salta» più vicina.
+- **Piazza.**
+  - A 2-7 s: la visuale gira per 4 s attraversando una piazza aperta. Ha un motivo (mettersi dietro la marcia) ma è lenta e lunga, e la si vede pensare.
+  - Due mosse a 14 e 18 s, a 1,4 s l'una dall'altra.
+- **Svolta stretta.**
+  - A 1,6-4,2 s una mossa di pendenza.
+  - Poi, dopo la svolta e la sosta, una deriva di 5 s (11-16 s): yaw, pendenza e distanza insieme ma ognuna col suo tempo. L'occhio la legge come la camera che «cerca».
+- **Dappertutto.**
+  - Il personaggio sta un filo *davanti* al centro (aria −0,03): guarda il bordo dello schermo.
+  - Lo sbieco ondeggia di mezzo grado e la lente respira con la velocità: le verticali delle case non stanno mai ferme.
+
+### Cosa cambia ([camera5], `window.__RG5`)
+
+- **Una mossa sola.** La gerarchia e la regia *propongono* (`Regia.passo` con `propone`); il regista muove pendenza, distanza e yaw in
+  un gesto unico. Il gesto è uno smootherstep, con velocità e accelerazione nulle ai due capi e niente oltre il bersaglio. Dura 1,3-3 s
+  secondo l'ampiezza. Il passo dello zoom diventa una carrellata.
+- **Il motivo.** Ogni mossa porta il suo perché nella sonda (`ostacolo`, `svolta`, `si apre`):
+  - **ostacolo:** la pendenza di adesso non basta più per la strada fino a 2,4 s avanti. È l'unica mossa permessa dopo appena 1,5 s di
+    tenuta e anche da fermi;
+  - **svolta:** la regia ha scelto una visuale dietro la nuova marcia. Si fa dopo 6 s di tenuta e solo in cammino deciso (almeno 1 s), mai
+    mentre ci si ferma;
+  - **si apre:** lo spazio si apre e la pendenza può scendere. È la più rara: dopo 10 s di tenuta e solo se il passo è di almeno 0,1 rad.
+- **Il bersaglio guarda avanti.** Il bersaglio è il gradino della gerarchia, ma almeno quanto chiede già la strada davanti (il bisogno
+  fino a 2,4 s, `avanti` portato a 0,8/1,6/2,4 s). Così la svolta e l'ostacolo che arriva stanno nella stessa mossa.
+- **La quiete.**
+  - Da fermi il regista non muove niente, se non per non perdere il personaggio.
+  - L'aria davanti resta 1 s e poi torna al centro con due molle in fila (~2,4 s).
+- **La composizione.**
+  - In cammino il personaggio sta dietro il centro: il 16% della mezza inquadratura verso dove va, anche senza levetta. La direzione gira
+    con una molla e l'aria entra con due molle in fila: niente gradini.
+  - Niente rollio, e la lente non respira: le verticali stanno dritte.
+  - Il mare davanti pesa nella scelta della regia (`mare5`, fino a 90 m), dentro il cono dietro la marcia.
+- **L'attore.** La regia resta nel cono dietro la marcia (§8): mai la faccia, mai la schiena di lato. Se il giocatore gira la camera, la
+  mossa si ferma lì e la regia aspetta.
+- **Il taglio.** Il taglio decide sulla camera che il regista userà davvero: finché tiene, quella di adesso. Durante l'attesa il
+  personaggio non resta coperto.
+
+### Le note di regia, dopo
+
+Provini in `v7/_immagini/camera5/`: a sinistra prima, a destra dopo.
+
+- **Vicolo dei Gatti.**
+  - L'inquadratura tiene per 13 s, attraverso il cammino e la sosta.
+  - A 13-15 s, allo sbocco sulla via: una mossa sola, yaw e pendenza insieme (`svolta`, 1,8 s), che parte e arriva piano. Poi tiene fino
+    alla fine. Prima, nello stesso punto, la distanza saltava.
+- **Vicolo dei Lanternini.**
+  - A 10 s il vicolo si stringe e la camera sale una volta (`ostacolo`, 2,1 s).
+  - A 19 s, allo sbocco, la visuale si mette dietro la marcia.
+  - Non c'è più il giro senza motivo alla ripartenza.
+- **Svolta stretta.**
+  - La svolta a 90° non fa girare la camera subito: la nuova strada resta leggibile (sale nello schermo) e l'attore sa dove va.
+  - Dopo la sosta lo spazio davanti si apre e la pendenza scende di un gradino (`si apre`).
+  - Davanti alla chiesa la camera sale e si avvicina in un gesto (`ostacolo`, 2,5 s). Prima era una deriva di 5 s.
+- **In tutti.** Il personaggio sta dietro il centro e guarda dentro l'inquadratura (aria 0,13). Le verticali delle case stanno ferme.
+
+**Ancora da giudicare a occhio.** La svolta di 90° non viene «raccontata» con un giro della camera: la regia aspetta 2 s di marcia
+stabile più la tenuta. Un regista potrebbe volerla prima; è una manopola (`__REGIA.stabile`, `__RG5.K.tieni`).
+
+### Misure (`node strumenti/sonda_regista.js`, profilo leggero, cinque tratti, 87 s misurati; i primi 3 s di ogni tratto non contano)
+
+| | prima (`?nofixcamera5`) | dopo |
+|---|---|---|
+| mosse al minuto (pendenza + distanza + yaw insieme) | 7,6 | 6,9 |
+| — senza le mosse dei primi 4 s dopo il salto al tratto | 5,5 | 5,5 |
+| durata media di una mossa | 2,5 s | 1,5 s |
+| tenuta minima / mediana | 1,4 / 8,2 s | 1,9 / 8,4 s |
+| mosse da fermi | 0 | 0 |
+| aria davanti (media; % dei fotogrammi in cammino con almeno 0,04) | −0,03; 0% | 0,13; 84% |
+| testa o piedi fuori dal quadro | 0% | 0% |
+| testa o piedi dietro una casa non tagliata | 0,42% | 0,27% |
+| tempo col taglio | 5,2% | 3,0% |
+| strappo della pendenza | 1,10 | 0,43 |
+| strappo della distanza | 44,2 | 23,2 |
+| strappo del personaggio sullo schermo | 0,20 | 1,33 |
+| rollio massimo | 0,5° | 0° |
+
+- **Le mosse sono quasi le stesse in numero:** 7,6 → 6,9 al minuto. Contando come il committente, cioè senza le mosse subito dopo il salto
+  da un tratto all'altro, sono 5,5 al minuto prima e dopo.
+- **Cambia come sono fatte.** Prima erano più lunghe (2,5 s in media, derive fino a 5 s) e a strappi: la distanza a scalino e la
+  pendenza con l'esponenziale. Ora sono gesti di 1,5 s che partono e arrivano piano; lo strappo della pendenza e della distanza si
+  dimezza, e la tenuta minima sale.
+- **Lo strappo del personaggio sullo schermo sale.** È l'aria davanti, voluta: il personaggio si sposta dietro il centro quando parte e
+  torna al centro quando si ferma. Entra con due molle in fila, ma resta un movimento sullo schermo che prima non c'era. Se il regista la
+  vuole più quieta: `__RG5.K.aria` (meno aria) o `.ariaMolla` (più lenta).
+- Le prove sono col disegno vero solo per le foto; i numeri vengono dai fotogrammi senza disegno (SwiftShader).

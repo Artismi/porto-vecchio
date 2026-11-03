@@ -18611,7 +18611,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // non perdere il personaggio. In cammino il personaggio sta un poco dietro il centro (l'aria davanti, anche senza levetta); niente rollio,
   // la lente non respira (le verticali stanno ferme). Il giocatore vince sempre: se gira la camera, la mossa si ferma lì. ?nofixcamera5: com'era
   const RG5 = { on: !(typeof location !== 'undefined' && /[?&]nofixcamera5\b/.test(location.search)) && CALMA2.on && INQ4.on,
-    K: { tieni: 6, tieniUrgente: 1, durata: [1.3, 3], soglie: { p: .025, z: .015, y: .04 }, fermo: .6, passo: 1, aria: .16, ariaDopo: .8, ariaVel: .8, ariaMolla: .9, ariaTorna: 2, mare: 2.5 },
+    K: { tieni: 6, tieniUrgente: 1.5, tieniScende: 10, scendeMin: .1, durata: [1.3, 3], soglie: { p: .05, z: .015, y: .04 }, fermo: .6, passo: 1, aria: .16, ariaDopo: .8, ariaVel: .8, ariaMolla: 1.1, ariaGira: 1, ariaTorna: 2.4, mare: 2.5 },
     attivo: false, mov: null, tieni: 99, p: null, z: 1, uy: 0, mosse: 0, fermoT: 0, camminaT: 0 };
   if (RG5.on && typeof Regia !== 'undefined') Regia.K.pesi.mare = RG5.K.mare;
   if (RG5.on) Object.assign(Visuale.INQUADRA4, { avanti: [.8, 1.6, 2.4], avantiMax: 9 });   // [camera5] si guarda un poco più avanti: un gradino solo invece di due in fila
@@ -18632,7 +18632,11 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!puo || RG5.p === null || AVVIO.scatta) {   // fuori dal regista (o appena scattato): si prende quello che c'è, senza mossa
       RG5.attivo = false; RG5.mov = null; RG5.p = cp() || PEND3.v; RG5.z = cz() || 1; RG5.uy = cam.uy || 0; if (AVVIO.scatta) RG5.tieni = 99; return; }
     RG5.attivo = true;
-    const b = PEND3.v, w = S.w === undefined ? 1 : S.w, dp = b + (S.pT - b) * w, dz = 1 + (S.zT - 1) * w, RS = REG.S || {}, ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+    const b = PEND3.v, w = S.w === undefined ? 1 : S.w, KQ = Visuale.INQUADRA4, RS = REG.S || {}, ang = a => Math.atan2(Math.sin(a), Math.cos(a));
+    // il bersaglio: il gradino della gerarchia, ma almeno quanto chiede già la strada davanti (il bisogno, anche fra 2,4 s): così la svolta e
+    // l'ostacolo che arriva stanno in una mossa sola, e scendere vuol dire che davanti si apre davvero
+    const nb = (S.bis || 0) + KQ.margine, pn = Math.min(KQ.max, b + Math.max(0, Math.ceil((nb - b) / KQ.passo - 1e-6)) * KQ.passo);
+    const dp = b + (Math.max(S.pT, pn) - b) * w, dz = 1 + ((nb > KQ.max ? Math.min(S.zT, KQ.zoom) : S.zT) - 1) * w;
     const duy = RS.tgt !== null && RS.tgt !== undefined ? RS.tgt : RG5.uy;
     if (REG.mano || Math.abs(ang((cam.uy || 0) - RG5.uy)) > 1e-4) {   // il giocatore ha girato la camera: vince lui, la mossa si ferma dove si è
       RG5.uy = cam.uy || 0; if (RG5.mov) { RG5.mov = null; } RG5.tieni = 0; if (RS.tgt !== null && RS.tgt !== undefined) { RS.tgt = null; RS.riposo = 0; } }
@@ -18643,8 +18647,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       RG5.tieni += dt;
       const dP = dp - RG5.p, dZ = dz - RG5.z, dY = ang(duy - RG5.uy), T = K.soglie, serve = Math.abs(dP) > T.p || Math.abs(dZ) > T.z || Math.abs(dY) > T.y;
       const urgente = dP > T.p && (S.bis || 0) + Visuale.INQUADRA4.margine > RG5.p + .01;   // un ostacolo arriva: la pendenza di adesso non basta più
-      const fermo = RG5.fermoT > K.fermo;
-      if (serve && RG5.tieni >= (urgente ? K.tieniUrgente : K.tieni) && (urgente || (!fermo && RG5.camminaT >= K.passo))) {   // senza urgenza solo in cammino deciso (non mentre ci si ferma)
+      const fermo = RG5.fermoT > K.fermo, scende = dP < 0 && Math.abs(dY) <= T.y && dZ >= -T.z;   // scendere soltanto (lo spazio si apre): si fa di rado, e solo se il passo è grande
+      const tieniOra = urgente ? K.tieniUrgente : scende ? K.tieniScende : K.tieni;
+      if (serve && RG5.tieni >= tieniOra && !(scende && -dP < K.scendeMin) && (urgente || (!fermo && RG5.camminaT >= K.passo))) {   // senza urgenza solo in cammino deciso (non mentre ci si ferma)
         const d = Math.max(K.durata[0], Math.min(K.durata[1], 1.1 + 1.4 * Math.max(Math.abs(dP) / .3, Math.abs(dZ) / .14, Math.abs(dY) / .9)));
         RG5.mov = { t: 0, d, p0: RG5.p, p1: dp, z0: RG5.z, z1: dz, y0: RG5.uy, dy: Math.abs(dY) > T.y ? dY : 0, perche: urgente ? 'ostacolo' : Math.abs(dY) > T.y ? 'svolta' : dP < 0 ? 'si apre' : 'stretta' }; RG5.mosse++; RG5.perche = RG5.mov.perche;
         if (!RG5.mov.dy && RS.tgt !== null && RS.tgt !== undefined && Math.abs(dY) <= T.y) { RS.tgt = null; RS.riposo = 0; } } }
@@ -19104,7 +19109,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; }
       else if (RG5.on && !pveh && !ui.intro && !ui.focus && RG5.camminaT > RG5.K.ariaDopo && spd > RG5.K.ariaVel) {   // [camera5] l'aria davanti: in cammino il personaggio sta un poco dietro il centro, verso dove va (la direzione con la zona morta)
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, asp = W / Math.max(1, H), vh = vw * (H > W * 1.05 ? .78 : 1), hv = vh / 2 / Math.sin(PITCH), hu = vh / 2 * asp;
-        const LD = cam2Dir({ x: cam.pvx / spd, y: cam.pvy / spd, m: 1 }), sx = LD.x * rx + LD.y * rz, sy = LD.x * fx + LD.y * fz, k = RG5.K.aria;
+        const D5 = RG5.dir || (RG5.dir = { x: Math.atan2(cam.pvy, cam.pvx), v: 0 }), a5 = Visuale.mollaAng(D5, Math.atan2(cam.pvy, cam.pvx), RG5.K.ariaGira, dt), LD = { x: Math.cos(a5), y: Math.sin(a5) };   // la direzione gira con la molla: niente gradini
+        const sx = LD.x * rx + LD.y * rz, sy = LD.x * fx + LD.y * fz, k = RG5.K.aria;
         lx = rx * sx * hu * k + fx * sy * hv * k; ly = rz * sx * hu * k + fz * sy * hv * k; leadOn5 = true; }
       else if (leadOn && spd > .3) {
         const yw = cam.yaw || YAW, fx = -Math.sin(yw), fz = -Math.cos(yw), rx = -fz, rz = fx, ux = cam.pvx / spd, uy = cam.pvy / spd, asp = W / Math.max(1, H);

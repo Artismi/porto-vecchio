@@ -61,6 +61,7 @@ async function corsa(pg, foto, salva) {
         const R5 = R.__cam5; return { mv: R5 && R5.mov ? R5.mov.perche : '', tagliate, vere, coperto, testaQ: qd(h) ? 1 : 0, piediQ: qd(f) ? 1 : 0, testaG, piediG, aria, sx: c0[0], sy: c0[1], pitch: -Math.asin(Math.max(-1, Math.min(1, dir.y))), dist: Math.hypot(cp.x - cam.x, cp.y - cam.h, cp.z - cam.y), yaw: cam.yaw, roll, v: vv };
       };
       const a = T.pts[0]; p.x = a[0]; p.y = a[1]; p.path = []; p.vehicle = null; p.indoor = null; p.lv = null; if (R.camReset) R.camReset(); R.snap(st); cam.ppx = undefined;
+      { const b = T.pts[1], h = Math.atan2(b[1] - a[1], b[0] - a[0]); cam.uy = Math.atan2(-Math.cos(h), -Math.sin(h)) - R.YAW; p.face = h; }   // la camera parte già dietro la marcia (come nel gioco, dove ci arriva camminando): niente allineamento dopo il salto
       for (let i = 0; i < 45; i++) { G.step(st, DT, { x: 0, y: 0 }); ui.time += DT; R.frame(st, DT, ui); if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); }
       const L = T.pts.slice(1).reduce((s, q, i) => s + Math.hypot(q[0] - T.pts[i][0], q[1] - T.pts[i][1]), 0), sosta = L / 2;   // a metà strada, 3 s fermi
       const righe = [], fotos = []; let k = 1, t = 0, fatto = 0, ferma = 0, px0 = p.x, py0 = p.y, prossima = 0;
