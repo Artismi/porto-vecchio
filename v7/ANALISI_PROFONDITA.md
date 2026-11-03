@@ -161,7 +161,10 @@ La categoria per pixel è pulita (`categorie_dopo.jpg`: niente più giallo, il c
 
 **?noprofondita, identico.** Fra due caricamenti della pagina la camera non è identica al bit (la sonda la porta a passo, ma il tempo del
 fotogramma e la gente cambiano): la build di prima e la nuova con `?noprofondita` coincidono sulle superfici (entro il dither di 1/255) e
-differiscono di un pixel sugli spigoli, come due caricamenti della build di prima fra loro (§6, `identico_noprofondita_*.jpg`). Nel codice
+differiscono di un pixel sugli spigoli, come due caricamenti della build di prima fra loro (§6, `identico_noprofondita_*.jpg`). Misurato
+sul vicolo (scarto massimo per canale, 0-255): due caricamenti della build di prima fra loro: 76,7% dei pixel entro 2, 7,1% oltre 16, media
+4,7; la build di prima contro la nuova con `?noprofondita`: 74,1% entro 2, 7,0% oltre 16, media 4,9 (lo stesso rumore di caricamento); la
+build di prima contro la nuova accesa: 1,7% entro 2, 66% oltre 16, media 26. Nel codice
 ogni cambio sta dietro `PFD.on` (il `#define SG_PFD`, il blend, la profondità come tessitura, l'anello, l'alone, il disco, la grana, i valori
 della gerarchia, il varco): spento, il testo degli shader e le uniform di prima.
 
