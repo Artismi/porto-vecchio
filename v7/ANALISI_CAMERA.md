@@ -490,7 +490,7 @@ piazza la camera gira a 0,6 rad/s come chi orbita). Prima la vista di difetto (z
   d'inquadratura pure, soprattutto nel vicolo dei Gatti, stretto e storto. Prima si avvicinava subito (strappo 537); con la pendenza che
   sale prima e le isteresi (si alza subito, torna giù dopo 2 s; il braccio si accorcia in 0,35 s e si allunga dopo 1,5 s libero) si
   arriva a 48,8.
-- **Da fare.** Nei vicoli stretti la vista media potrebbe girarsi lungo l'asse del vicolo (la regia, §8) invece di avvicinarsi.
+- Nei vicoli stretti la vista media ora si gira lungo l'asse del vicolo: vedi «Il secondo giro» qui sotto.
 
 **I provini** (`node strumenti/sonda_camera6.js --foto=…`, `v7/_immagini/camera6/`):
 - le tre viste nello stesso vicolo (`camera6_viste_vicolo.jpg`) e nella stessa piazza (`camera6_viste_piazza.jpg`);
@@ -501,3 +501,68 @@ piazza la camera gira a 0,6 rad/s come chi orbita). Prima la vista di difetto (z
 - la piazza con gli ombrelloni (`camera6_ombrelloni_media.jpg`, `_alta.jpg`): gli ombrelloni restano.
 - **Le chiome degli alberi sopra il personaggio** coprono ancora per qualche istante nella vista media (si vede la sagoma). La mappa
   delle case non le conosce; il piano vicino le taglia solo quando sono vicine alla camera.
+
+### Il secondo giro (le prove del committente)
+
+Il committente, dopo le prime prove:
+- vista media nei vicoli: «la camera sbatte, finisce quasi a piombo e vicina, e una fascia blu scura copre il quadro a 13-13,5 s e a 16 s»;
+- vista vicina: «a 9-13 s una facciata riempie mezzo quadro, la camera abbraccia il muro»;
+- bici: «dopo l'urto contro il muro a 3 s il ciclista resta piccolo in un angolo e la camera non lo riprende più»;
+- vista alta: «separa l'11,3% di tagli che non coprivano fra la tenuta e i tagli falsi».
+
+**Cosa cambia.**
+- **L'asse del vicolo, prima di salire o di avvicinarsi** (viste basse, `asse6`):
+  - in una via larga fino a 6,5 m (la rete stradale, `Inquadratura.rete().asse`) la regia gira la visuale lungo l'asse, nel verso più
+    vicino a dietro la marcia (mai oltre 100°);
+  - la via nuova vale solo dopo 0,8 s (lo sbocco di un vicolo laterale non la fa girare), e una piega sotto 11° non muove la camera;
+  - se la camera sbatte già contro una facciata, la mossa del regista verso l'asse è urgente;
+  - l'urto (pendenza più ripida, braccio più corto) si misura anche sulla visuale *dove si sta girando*: se lungo l'asse c'è aria, non si
+    sale e non ci si avvicina.
+- **Il braccio con due molle in fila.** La mappa delle case dà il punto libero a gradini di 0,35 m: ogni gradino era un salto
+  dell'accelerazione, cioè lo strappo. Ora il bersaglio passa prima da una molla di 0,3 s e poi dal braccio (0,5 s per accorciarsi,
+  1,7 s per allungarsi dopo 1,5 s libero, al più 4 m/s). Lo strappo della distanza scende da 48,8 a 5,2.
+- **La fascia blu.** È l'ombra portata della casa alle spalle della camera, nel colore viola-blu delle ombre: la camera, accorciata e
+  quasi a piombo in un vicolo in ombra, inquadrava solo quella (più il retino [ad] su un muro vicino). Girandosi lungo l'asse la camera
+  resta a 8,7 m e la fascia non c'è più (`camera6_viste_vicolo.jpg`, 13 s). Torna solo se il giocatore stesso gira la camera contro un
+  muro alto (`camera6_ombrelloni_media.jpg`, 11-12,5 s): lì decide lui.
+- **La spalla** (vista vicina, `spalla6`). La camera sta 0,55 m a destra del personaggio; se da quel lato il muro è a meno di 1,2 m
+  (la mappa, all'altezza del petto) e dall'altro c'è almeno 0,8 m d'aria in più, passa all'altra spalla, al più ogni 2 s, con una molla
+  di 0,6 s. Nei provini non scatta: la facciata di 9-12 s è un arco (un pezzo), che la mappa delle case non conosce.
+- **La bici sempre al centro.** La camera guarda poco avanti al mezzo (0,8 m + 0,2 × la velocità, al più 2,5 m, invece dello sguardo
+  lontano che lo spingeva in un angolo). Se il mezzo esce dal centro dello schermo (oltre 0,3) o finisce dietro la camera, lo scarto si
+  rincorre in 0,06 s invece di 0,35. Contro un muro il braccio si accorcia fino a 3 m, mai meno. La sonda ora va sul lungomare (42 m
+  dritti), dove l'impennata si vede.
+- **La tenuta dei tagli.** Mentre il giocatore gira la camera la casa tagliata torna su dopo 0,4 s invece di 1,5.
+- **Dall'alto mai d'infilata.** Su indicazione della direzione della profondità (il teleobiettivo di 30° a 45 m schiaccia la profondità
+  lungo la strada): la regia della vista alta preferisce lo sbieco di 20° alla visuale dritta lungo la marcia (`Regia.K.pesi.obliquo`,
+  pesato con la vista alta; `test_regia.js` prova 7). La regia non si muove per meno di 0,5 rad, quindi lo sbieco arriva con la
+  prossima mossa, non con un ritocco.
+
+**Le misure** (`sonda_occlusione.js --gira=0.6`, gli stessi quattro tratti, 69 s):
+
+| | prima (`?nofixcamera6`, zoom 0,72) | camera6, primo giro | camera6, secondo giro |
+|---|---|---|---|
+| **vista media**: strappo della distanza | 3,8 | 48,8 | **5,2** (vicolo dei Lanternini 0, dei Gatti 4,9, piazza girando 12,4) |
+| vista media: cambi d'inquadratura al minuto | 8,7 | 20,8 | **12,1** (Lanternini 9,2, Gatti 15,2, piazza girando 14,1) |
+| vista media: accensioni al minuto | 77,9 | 9,5 | 8,6 |
+| vista media: personaggio coperto senza taglio | 2,0% | 1,8% | 4,0% (il vicolo dei Gatti: 8,4%, si vede la sagoma) |
+| **vista alta**: case tagliate che non coprivano | 5,5% | 11,3% | 8,5% = **tenuta 8,4% + tagli falsi 0,15%** |
+| vista alta: lo stesso nella piazza mentre la camera gira | | | 3,3% (tenuta 3,1%, falsi 0,2%) |
+| **bici**: il ciclista dal centro dello schermo (al più) | | in un angolo, perso dopo l'urto | **0,24** (il bordo è 1) |
+| bici: distanza della camera | | | 10-14,1 m, impennata piena a 3-5 s |
+| **vista vicina**: cambi di spalla nei provini | | | 0 (nessun muro della mappa a meno di 1,2 m) |
+
+- **La tenuta, non i tagli falsi.** Quasi tutti i «tagli che non coprivano» (8,4 su 8,5%) sono case che hanno appena smesso di coprire
+  e restano giù 1,5 s (più la dissolvenza), per non lampeggiare. Mentre si gira la camera la tenuta è già corta (0,4 s): nella piazza
+  girando la tenuta è il 3,1%. Il resto (8,9% Lanternini, 15,8% Gatti) è camminando, con la camera ferma: lì la tenuta lunga è voluta.
+  I tagli falsi veri (la casa giù e voluta giù, ma che non copre) sono lo 0,15%.
+- **I cambi d'inquadratura** scendono da 20,8 a 12,1 al minuto. Restano le mosse lungo il vicolo che piega (9 al minuto nei vicoli) e,
+  nella piazza, l'avvicinarsi e l'allontanarsi del braccio mentre il giocatore gira la camera contro le case.
+- **Le prove dei comandi** (`sonda_comandi6.js`) restano come sopra. Cambiano due righe:
+  - W con la camera girata: 13,7° dal davanti della camera, perché nel vicolo la camera si gira lungo l'asse mentre cammini e i tasti la
+    seguono;
+  - mira: dopo 1,4 s mirando la camera è a 3,9 m (era 2,2: il braccio ora scivola invece di scattare); 0,6 s dopo aver lasciato L2 è
+    già a 5,5 m e torna alla vista media.
+
+**I provini** rifatti: tutti e sette in `v7/_immagini/camera6/`.
+

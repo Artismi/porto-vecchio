@@ -25,7 +25,7 @@ var Regia = (function () {
     vmin: .08,        // rad/s: la velocità minima nell'ultimo tratto
     piedi: [0, .4, -.4, .75, -.75],   // rad: le inquadrature candidate a piedi, attorno al dietro (tre quarti, poi più di lato)
     mezzo: [0, .22, -.22],            // e su un mezzo: quasi dietro (si guida)
-    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7 },
+    pesi: { copreMe: 3, copreAvanti: 2, copreLontano: 1, lato: 1.1, dritto: .45, salto: .7, obliquo: 1.2 },   // [camera6] obliquo: la vista alta (q.obliquo = il suo peso, 0-1)
   };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   // il «dietro» della direzione hd (angolo del gioco: x = cos, y = sin) nello spazio della visuale: la camera sta dalla parte opposta
@@ -41,6 +41,7 @@ var Regia = (function () {
     v += P.lato * Math.abs(off) + (Math.abs(off) < .2 ? P.dritto : 0) + P.salto * Math.abs(ang(yaw - cur));
     if (q.bisogno && P.bisogno) v += P.bisogno * q.bisogno(yaw);   // [camera4] quanto deve salire la pendenza con quella visuale (la mappa, anche più avanti)
     if (q.mare && P.mare) v -= P.mare * q.mare(yaw);   // [camera5] il mare (l'orizzonte) davanti incornicia l'inquadratura
+    if (q.obliquo && P.obliquo) v += P.obliquo * q.obliquo * Math.max(0, .26 - Math.abs(off)) / .26;   // [camera6] dall'alto mai d'infilata lungo la strada: il teleobiettivo schiaccia la profondità, di sbieco (15-25°) si legge
     return v;
   }
   // un passo. S: lo stato (dura fra un fotogramma e l'altro). q: { uy (la visuale automatica di adesso), YAW, hd (direzione di marcia o
