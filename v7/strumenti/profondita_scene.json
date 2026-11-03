@@ -1,0 +1,11 @@
+{
+  "nota": "[profondita2] Le scene della sonda della profondità (strumenti/sonda_profondita.js): un punto (x, y in metri di gioco), la via della rete più vicina (o 'via': il suo id), quanti metri a passo d'uomo (metri), il verso lungo la via (verso 1 / -1), l'ora in minuti, lo zoom di gioco (.72 di difetto, quello di main.js). La foto si prende mentre cammina, alla camera di gioco vera (camera5).",
+  "scene": [
+    { "nome": "vicolo", "x": 1420, "y": 365, "ora": 760, "metri": 12 },
+    { "nome": "piazza", "x": 1383, "y": 306, "ora": 630, "metri": 12 },
+    { "nome": "strada_lunga", "x": 1335, "y": 343, "via": "vittoria", "verso": 1, "ora": 720, "metri": 16 },
+    { "nome": "vicolo_lungo", "x": 1318, "y": 371, "via": "mezzo", "verso": 1, "ora": 660, "metri": 14 },
+    { "nome": "alberi", "x": 1278, "y": 345, "ora": 660, "metri": 10 },
+    { "nome": "lontano", "x": 1395, "y": 343, "via": "vittoria", "verso": -1, "ora": 960, "metri": 12, "zoom": 1.4 }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "nota": "[profondita2] I giri di taratura sulla build nuova, lo stesso istante (sonda_profondita.js --varianti=strumenti/profondita_giri.json): il sistema intero, e ogni pezzo spento uno alla volta per vederne il contributo.",
+  "dopo": { "su": "", "giu": "" },
+  "senza_alfa": { "su": "window.__d0 = __PFD.alfa; __PFD.alfa = false;", "giu": "__PFD.alfa = __d0;" },
+  "senza_aria": { "su": "window.__d0 = __PFD.aria; __PFD.aria = 0;", "giu": "__PFD.aria = __d0;" },
+  "senza_filo": { "su": "window.__d0 = __PFD.linea; __PFD.linea = 0;", "giu": "__PFD.linea = __d0;" },
+  "senza_piede": { "su": "window.__d0 = __PFD.piede; __PFD.piede = 0;", "giu": "__PFD.piede = __d0;" }
+}
