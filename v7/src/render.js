@@ -13509,10 +13509,15 @@ var Render = (function () {
     const PXi = NL / L; W = Math.max(64, Math.floor(NW / PXi)); H = Math.max(64, Math.floor(NH / PXi)); PX = PXi;
     HDR.L = PHONE ? Math.min(W, H) : H; HDR.k = HDR.L / HDR.ref; HDK.value = HD.regola ? HDR.k : 1;
     GPUT.px = W + '×' + H;
-    const UP = HD.upscale && !UPS.ripiego && (W !== NW || H !== NH), firma = [W, H, NW, NH, UP, msaa(), !!(PRO.prof || PFD.on)].join(',');
+    // [hd] sugli schermi oltre dpr 2 (i telefoni a dpr 3) la tela resta a dpr 2 e il browser la stende ancora: ingrandire due volte (qui e
+    // nel browser) ammorbidiva più del solo browser (telefono, vicolo: laplaciano 34 contro 41). Lì la tela resta alla risoluzione interna e la
+    // stende il browser, una volta sola; l'ingrandimento solo dove la tela è lo schermo vero (portatile, computer, telefoni a dpr ≤ 2)
+    const DV = typeof devicePixelRatio !== 'undefined' ? devicePixelRatio || 1 : 1; UPS.oltre = DV > dpr + .01;
+    const UPT = HD.upscale && !UPS.ripiego && !UPS.oltre;
+    const UP = UPT && (W !== NW || H !== NH), firma = [W, H, NW, NH, UP, msaa(), !!(PRO.prof || PFD.on)].join(',');
     if (rt && firma === HDR.firma) return; HDR.firma = firma;   // niente di nuovo: i bersagli restano (rifarli svuota e rialloca)
     if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose(); DEV.rt = null;
-    const FW = UP || (HD.upscale && !UPS.ripiego) ? NW : W, FH = UP || (HD.upscale && !UPS.ripiego) ? NH : H;
+    const FW = UPT ? NW : W, FH = UPT ? NH : H;
     { const sz = renderer.getSize(V2T); if (sz.x !== FW || sz.y !== FH) renderer.setSize(FW, FH, false); else renderer.setViewport(0, 0, FW, FH); }
     if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
     rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType, samples: msaa() });
@@ -13563,7 +13568,7 @@ var Render = (function () {
   // [hd] lo stato per il riquadro F3 (main.js) e le sonde
   function hdStato() {
     const R0 = typeof window !== 'undefined' && window.__ritmo, sc = HDV() && HD.risdin ? RES : RES;
-    return `hd ${HD.regola ? '' : 'regola0 '}· scala ${sc.toFixed(2)} · righe ${HDR.L || H}${HDR.hi ? '/' + HDR.hi : ''} (${W}×${H}) · tela ${renderer ? renderer.domElement.width + '×' + renderer.domElement.height : '?'}${UPS.rt ? ' · ingrandisce ' + (UPS.ms ? UPS.ms.toFixed(2) + ' ms' : 'sì') : UPS.ripiego ? ' · CSS (ripiego)' : ''}` +
+    return `hd ${HD.regola ? '' : 'regola0 '}· scala ${sc.toFixed(2)} · righe ${HDR.L || H}${HDR.hi ? '/' + HDR.hi : ''} (${W}×${H}) · tela ${renderer ? renderer.domElement.width + '×' + renderer.domElement.height : '?'}${UPS.rt ? ' · ingrandisce ' + (UPS.ms ? UPS.ms.toFixed(2) + ' ms' : 'sì') : UPS.ripiego ? ' · CSS (ripiego)' : UPS.oltre && W !== HDR.NW ? ' · CSS (dpr oltre 2)' : ''}` +
       ` · tetto ${R0 && R0.tetto ? R0.tetto : 'no'} · LOWQ ${LOWQ.on ? 'vecchio' : LOWQ.grado ? 'gradino ' + LOWQ.grado : 'no'} · tel ${PHONE ? 'sì' : 'no'} · aa ${rt && rt.samples ? rt.samples + '×' : 'fxaa/no'}${HDR.tetto ? ' · sessione ridotta' : ''}`;
   }
   function resize(cw, ch, dpr) {
