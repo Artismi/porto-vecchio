@@ -102,7 +102,7 @@ var Camera7 = (function () {
     const ka = snap ? (S.aim.x = q.mira ? 1 : 0) : clamp(molla(S.aim, q.mira ? 1 : 0, k.aimT, dt), 0, 1);
     // 5. il punto guardato: il petto, più lo sguardo avanti, più la spalla; la quota con la molla
     const fy = snap ? (S.h.x = q.fy, S.h.v = 0, q.fy) : molla(S.h, q.fy, k.heightT, dt);
-    const av = k.ahead * Math.min(1, sv / k.aheadV) * (1 - ka), ax = sv > 1e-3 ? S.vx.x / sv * av : 0, ay = sv > 1e-3 ? S.vy.x / sv * av : 0;
+    const av = k.ahead * Math.min(1, sv / k.aheadV) * (1 - ka) * clamp((S.arm.x - k.armMin) / (k.close[0] - k.armMin), 0, 1), ax = sv > 1e-3 ? S.vx.x / sv * av : 0, ay = sv > 1e-3 ? S.vy.x / sv * av : 0;   // col braccio corto niente sguardo avanti: il personaggio resta nel quadro
     const rx = Math.cos(yaw), rz = -Math.sin(yaw), side = k.aimSide * ka;   // la destra dello schermo nel piano x-z
     const look = { x: q.px + ax + rx * side, y: fy + k.chest, z: q.py + ay + rz * side };
     // 6. il braccio voluto e il raggio a sfera dal petto verso la camera voluta. Prima si prova a SALIRE (K.lifts: la camera più alta

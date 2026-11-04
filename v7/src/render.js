@@ -1584,6 +1584,7 @@ var Render = (function () {
           { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
             diffuseColor.rgb *= (.9 + .2 * cl) * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
+      if (CAM7ON) fade7(sh, 'vWP2');   // [camera7] anche gli alberi semplici
     };
     return m;
   }
@@ -1624,10 +1625,11 @@ var Render = (function () {
   float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
   float n7 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (k7 < .999 && max(k7, .3) < n7) discard; } }
 `;
-  function fade7(sh) {
-    const F = sh.fragmentShader; if (!F || F.indexOf('uR7') >= 0 || F.indexOf('varying vec3 vWP;') < 0 || F.indexOf('uniform vec3 uCm;') < 0 || F.indexOf('#include <clipping_planes_fragment>') < 0) return false;
-    sh.uniforms.uR7 = NATU.r7; if (!sh.uniforms.uCm) sh.uniforms.uCm = NATU.cm; if (!sh.uniforms.uPl) sh.uniforms.uPl = NATU.pl;
-    sh.fragmentShader = F.replace('uniform vec3 uCm;', 'uniform vec3 uCm; uniform float uR7;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + FADE7); return true;
+  function fade7(sh, wp) {   // wp: il nome della posizione nel mondo nello shader (vWP; vWP2 per gli alberi semplici)
+    wp = wp || 'vWP'; const F = sh.fragmentShader; if (!F || F.indexOf('uR7') >= 0 || F.indexOf('varying vec3 ' + wp + ';') < 0 || F.indexOf('#include <clipping_planes_fragment>') < 0 || F.indexOf('#include <common>') < 0) return false;
+    sh.uniforms.uR7 = NATU.r7; sh.uniforms.uCm = NATU.cm; sh.uniforms.uPl = NATU.pl;
+    const dich = 'uniform float uR7;' + (F.indexOf('uniform vec3 uCm;') < 0 ? ' uniform vec3 uCm;' : '') + (F.indexOf('uniform vec3 uPl;') < 0 ? ' uniform vec3 uPl;' : '');
+    sh.fragmentShader = F.replace('#include <common>', '#include <common>\n' + dich).replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + FADE7.replace(/vWP/g, wp)); return true;
   }
   // [visuale5] IL MODO DELLA VISUALE, scelto all'avvio dall'indirizzo: 'camera' (di difetto: la camera che si adatta, il tetto che
   // sbiadisce) o 'muretto' (?visuale=muretto: le case davanti scendono a un muretto); src/visuale.js per le regole. Via l'ellisse ([varco2]:
@@ -2009,7 +2011,7 @@ var Render = (function () {
             lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
             diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
-      if (leafy && CAM7ON) fade7(sh);   // [camera7] il retino delle chiome fra la camera e te
+      if (CAM7ON) fade7(sh);   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)
     };
     m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
