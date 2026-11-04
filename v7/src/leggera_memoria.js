@@ -28,7 +28,8 @@ var LeggeraMem = (function () {
   // metà, terreno a metà, atlanti a metà (qualità persa senza fotogrammi guadagnati). Restano sul leggero i tagli che alleggeriscono la
   // scheda video (COSTO: la mappa del sole più piccola, il verde lontano a riquadri, le tessiture «tel» dei tasselli). ?nofixmemoria come prima
   const POCA = (() => { try { return matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory && navigator.deviceMemory <= 4) || /[?&]bassa\b/.test(Q); } catch (e) { return true; } })();
-  const MEMTEL = TEL && (POCA || /[?&]nofixmemoria\b/.test(Q)), COSTO = new Set(['ombre', 'verde', 'verdelontano', 'tessiture']);   // tessiture: le «tel» dei tasselli (le piene arrivano a 32-36 MB l'una: un invio da 30-80 ms e +300 MB sulla scheda; serve una variante di mezzo nella cottura)
+  const HDTEX = typeof window !== 'undefined' && !!window.PV_HD && window.PV_HD.on('pulito') && !POCA;   // [hd] pulito: le tessiture piene dei tasselli sul portatile (la RAM c'è; le «tel» a ½-¼ facevano il fango dei muri e del suolo); col tocco o poca memoria restano le «tel»
+  const MEMTEL = TEL && (POCA || /[?&]nofixmemoria\b/.test(Q)), COSTO = new Set(HDTEX ? ['ombre', 'verde', 'verdelontano'] : ['ombre', 'verde', 'verdelontano', 'tessiture']);   // tessiture: le «tel» dei tasselli (le piene arrivano a 32-36 MB l'una: un invio da 30-80 ms e +300 MB sulla scheda; serve una variante di mezzo nella cottura)
   const ALL = (MEMTEL || /[?&]memoria\b/.test(Q)) && !/[?&]nomemoria\b/.test(Q);
   // i tagli che non cambiano un pixel valgono anche sul computer: la compilazione solo del visibile, le firme e le geometrie modello buttate
   // dopo il caricamento, i pezzi rifatti che si ributtano, le armi condivise

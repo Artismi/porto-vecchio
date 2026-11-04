@@ -10,6 +10,7 @@
    Restano oggetti veri solo le cose che sporgono davvero: cappelli, falde di gonne e cappotti, scarpe, accessori. */
 var Pittura = (function () {
   'use strict';
+  const HDPIT = typeof window !== 'undefined' && !!window.PV_HD && window.PV_HD.on('pulito');   // [hd] (v7/ANALISI_HD.md)
   const S = () => window.Sartoria;
   const cl = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t, sm = t => t * t * (3 - 2 * t);
   const rgb = c => { const C = new THREE.Color(c); return [C.r, C.g, C.b]; };
@@ -640,7 +641,7 @@ var Pittura = (function () {
     if (MCACHE.has(sig)) return MCACHE.get(sig);
     const M = REG.map(R => {
       const { W, H, col, hh } = P.out[R], mk = (data) => { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d'), id = x.createImageData(W, H); id.data.set(data); x.putImageData(id, 0, 0);
-        const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = THREE.NearestMipmapLinearFilter; T.anisotropy = 4; return T; };
+        const T = new THREE.CanvasTexture(cv); T.flipY = false; T.wrapS = THREE.RepeatWrapping; T.wrapT = THREE.ClampToEdgeWrapping; T.magFilter = THREE.NearestFilter; T.minFilter = HDPIT ? THREE.LinearMipmapLinearFilter : THREE.NearestMipmapLinearFilter; T.anisotropy = 4; return T; };   /* [hd] pulito: rimpicciolita la tela del vestito si media (col texel più vicino friggeva camminando); ingrandita resta netta */
       // [pulizia] la luce propria come il resto del personaggio (models.js: emissive = colore × 0,3), texel per texel: la pelle dipinta è identica a quella di viso e mani (prima un grigio fisso: il busto nudo pareva una maglietta color carne)
       const bh = mk(hh), cm = mk(col), m = new THREE.MeshStandardMaterial({ map: cm, bumpMap: bh, bumpScale: .0015, roughnessMap: bh, roughness: 1, metalness: 0, emissiveMap: cm }); m.emissive = new THREE.Color(.3, .3, .3); m.userData.pittura = true; return m;
     });

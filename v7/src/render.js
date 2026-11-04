@@ -5029,7 +5029,8 @@ var Render = (function () {
   // ---------------- texture dei manti ----------------
   function roofTex1(kind, v) {
     const key = kind + (v || 0); if (RT1.tex[key]) return RT1.tex[key];
-    const S = RSPAN * RPX, c = mk(S, S), x = c.getContext('2d'), r = rng(kind.length * 977 + (v || 0) * 131 + 7);
+    const S = RSPAN * RPX, RX = HD.pulito && !PHONE ? 2 : 1, PUL = HD.pulito, c = mk(S * RX, S * RX), x = c.getContext('2d'), r = rng(kind.length * 977 + (v || 0) * 131 + 7);   // [hd] pulito: la tela a 32 px/m (lo stesso disegno, ogni texel in 2×2: gli orli restano netti ingranditi alla zoom di gioco) e niente puntini né colature al texel
+    if (RX > 1) x.scale(RX, RX);
     const px = (a, b, w, h, col) => { x.fillStyle = col; x.fillRect(a, b, w, h); };
     if (kind === 'coppi') {   // colonne da 6 px (37,5 cm): coperta chiara al centro, canale scuro; file da 8 px con l'ombra del sormonto
       const tones = LOOK.on ? (v === 1 ? ['#ae6e52', '#b67858', '#a66a4e', '#bc8060'] : ['#b8785a', '#c08462', '#b07256', '#c88e6a'])   /* [firma] terracotta calda, non sbiadita */ : v === 1 ? ['#8a4e3a', '#94583e', '#7e4634', '#9c6046', '#86503c', '#a2684c'] : ['#a0603f', '#ac6c4a', '#94563a', '#b47852', '#9a5c44', '#a86448', '#8c5240'];   // [look] coppi sbiaditi dal sole (scenografo: saturazione ≤ 35%)
@@ -5044,22 +5045,22 @@ var Render = (function () {
         px(col * 6, row * 8 + 7, 6, 1, shade(base, LOOK.on ? .86 : .62));            // labbro della tegola sopra: ombra   // [look] più morbido (illustratore)
         px(col * 6 + 1, row * 8, 4, 1, shade(base, LOOK.on ? 1.06 : 1.18));           // testa al sole
       }
-      for (let k = 0; k < (LOOK.on ? 60 : 340); k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S), s = 1 + Math.floor(r() * 2); px(a, b, s, s, r() < .6 ? 'rgba(204,198,160,.55)' : 'rgba(92,104,60,.55)'); }   // licheni e muschio
-      for (let k = 0; k < (LOOK.on ? 10 : 40); k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S), L = 6 + Math.floor(r() * 26); px(a, b, 1, L, 'rgba(40,28,22,.18)'); }   // colature
+      if (!PUL) for (let k = 0; k < (LOOK.on ? 60 : 340); k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S), s = 1 + Math.floor(r() * 2); px(a, b, s, s, r() < .6 ? 'rgba(204,198,160,.55)' : 'rgba(92,104,60,.55)'); }   // licheni e muschio
+      if (!PUL) for (let k = 0; k < (LOOK.on ? 10 : 40); k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S), L = 6 + Math.floor(r() * 26); px(a, b, 1, L, 'rgba(40,28,22,.18)'); }   // colature
     } else if (kind === 'tegole') {   // [tetti3] le marsigliesi dell'Ottocento: tegole piane da 4 × 7 px (25 × 44 cm) col doppio canaletto, più rosse e più regolari dei coppi
       const tones = LOOK.on ? ['#b4604a', '#bc6a54', '#aa5a44', '#b86a50'] : ['#b65a3e', '#bc6044', '#b05438', '#c06846', '#b85c40'];   // [look] le marsigliesi meno accese
       for (let row = 0; row < S / 7; row++) for (let col = 0; col < S / 4; col++) {
         let base = tones[Math.floor(hx1(col, row, 31) * tones.length)]; if (hx1(col, row, 32) < .025) base = pick(r, ['#8a4a36', '#cc7650']);
         px(col * 4, row * 7, 4, 7, base); px(col * 4, row * 7 + 6, 4, 1, shade(base, .55)); px(col * 4 + 1, row * 7, 1, 6, shade(base, 1.14)); px(col * 4 + 3, row * 7, 1, 6, shade(base, .8));
       }
-      for (let k = 0; k < 120; k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S); px(a, b, 1 + Math.floor(r() * 2), 1, r() < .6 ? 'rgba(70,40,30,.25)' : 'rgba(200,190,150,.3)'); }
+      if (!PUL) for (let k = 0; k < 120; k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S); px(a, b, 1 + Math.floor(r() * 2), 1, r() < .6 ? 'rgba(70,40,30,.25)' : 'rgba(200,190,150,.3)'); }
     } else if (kind === 'ardesia') {   // lastre da 6 × 5 px (37 × 31 cm) sfalsate di mezza: bordo basso scuro, spigolo alto chiaro
       const tones = ['#4a5260', '#535c6a', '#454c58', '#5a6270', '#4e5664', '#3f4652'];
       for (let row = 0; row < S / 5; row++) for (let col = -1; col < S / 6 + 1; col++) {
         const o = (row % 2) * 3, q = hx1(col, row, 21); let base = tones[Math.floor(q * tones.length)]; if (hx1(col, row, 22) < .03) base = '#6a7280';
         px(col * 6 + o, row * 5, 6, 5, base); px(col * 6 + o, row * 5 + 4, 6, 1, shade(base, .6)); px(col * 6 + o, row * 5, 6, 1, shade(base, 1.22)); px(col * 6 + o + 5, row * 5, 1, 5, shade(base, .78));
       }
-      for (let k = 0; k < 160; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1, r() < .5 ? 'rgba(150,170,120,.35)' : 'rgba(210,214,206,.25)');
+      if (!PUL) for (let k = 0; k < 160; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1, r() < .5 ? 'rgba(150,170,120,.35)' : 'rgba(210,214,206,.25)');
     } else if (kind === 'lamiera') {   // grecata: costole ogni 5 px, lastre da 15 px con la giunta, file di viti ogni 40, ruggine che cola
       const paints = v === 1 ? ['#7a5244', '#6e4a3e', '#845a48'] : v === 2 ? ['#5a6a5a', '#526252', '#62705e'] : ['#8a8c88', '#7e827e', '#949690'];
       for (let sh = 0; sh < S / 15; sh++) {
@@ -5067,31 +5068,31 @@ var Render = (function () {
         for (let i = 0; i < 15; i++) { const ph = Math.cos(2 * Math.PI * (i + .5) / 5); px(sh * 15 + i, 0, 1, S, shade(p, .92 + .1 * ph)); }
         px(sh * 15 + 14, 0, 1, S, shade(p, .55));
       }
-      for (let y = 0; y < S; y += 40) { px(0, y, S, 1, 'rgba(20,18,16,.45)'); for (let k = 2; k < S; k += 5) { px(k, y + 2, 1, 1, '#2a2622'); if (r() < .22) px(k, y + 3, 1, 4 + Math.floor(r() * 18), 'rgba(122,62,30,.5)'); } }
+      for (let y = 0; y < S; y += 40) { px(0, y, S, 1, 'rgba(20,18,16,.45)'); for (let k = 2; k < S; k += 5) { px(k, y + 2, 1, 1, '#2a2622'); if (!PUL && r() < .22) px(k, y + 3, 1, 4 + Math.floor(r() * 18), 'rgba(122,62,30,.5)'); } }
       for (let k = 0; k < 26; k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S); px(a, b, 3 + Math.floor(r() * 8), 2 + Math.floor(r() * 6), 'rgba(110,58,30,.35)'); }
     } else if (kind === 'eternit') {   // ondulato grigio: onde da 5 px, lastre da 20 px sormontate, licheni neri e arancio
       for (let i = 0; i < S; i++) { const ph = Math.cos(2 * Math.PI * (i + .5) / 5); px(i, 0, 1, S, shade('#8e8a80', .92 + .1 * ph)); }
       for (let y = 0; y < S; y += 32) px(0, y, S, 2, 'rgba(30,28,24,.4)');
       for (let k = 0; k < 18; k++) px(Math.floor(r() * (S / 20)) * 20, 0, 1, S, 'rgba(40,36,30,.3)');
-      for (let k = 0; k < 520; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1 + Math.floor(r() * 2), pick(r, ['rgba(30,30,28,.5)', 'rgba(170,110,50,.45)', 'rgba(200,196,170,.4)']));
+      if (!PUL) for (let k = 0; k < 520; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1 + Math.floor(r() * 2), 1 + Math.floor(r() * 2), pick(r, ['rgba(30,30,28,.5)', 'rgba(170,110,50,.45)', 'rgba(200,196,170,.4)']));
     } else if (kind === 'guaina') {   // guaina bituminosa a teli da 1 m sormontati, toppe, vernice d'alluminio sbiadita
       px(0, 0, S, S, v === 1 ? '#6a6a68' : '#47454a');
       for (let k = 0; k < S; k += 16) { px(k, 0, 1, S, 'rgba(255,255,255,.12)'); px(k + 1, 0, 1, S, 'rgba(0,0,0,.25)'); }
       for (let k = 0; k < 10; k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S), sw = 6 + Math.floor(r() * 14), sh = 4 + Math.floor(r() * 10), col = r() < .6 ? 'rgba(20,18,22,.16)' : 'rgba(170,170,166,.1)';   // toppe e ripassate d'alluminio: macchie irregolari, non quadrati
         for (let q = 0; q < 7; q++) px(a + Math.floor((r() - .5) * sw), b + Math.floor((r() - .5) * sh), Math.ceil(sw * (.4 + r() * .4)), Math.ceil(sh * (.4 + r() * .4)), col); }
-      for (let k = 0; k < 900; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, r() < .5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.08)');
+      if (!PUL) for (let k = 0; k < 900; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, r() < .5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.08)');
     } else if (kind === 'pianelle') {   // pianelle di cotto da 30 cm con la fuga, consumate, qualche rotta
       px(0, 0, S, S, '#5e4a40');
       for (let y = 0; y < S; y += 5) for (let k = 0; k < S; k += 5) { const base = pick(r, LOOK.on ? ['#9c8272', '#a28a7a', '#968070', '#a48c7c'] : ['#86584a', '#8e604e', '#7a5446', '#946652', '#80584a', '#6e5246', '#8a6a5a']);   /* [look] il cotto del terrazzo spento */ px(k, y, 4, 4, hx1(k, y, 41) < .05 ? '#6e5244' : base); px(k, y, 4, 1, shade(base, 1.08)); }
       for (let k = 0; k < 40; k++) { const a = Math.floor(r() * S), b = Math.floor(r() * S); for (let q = 0; q < 5; q++) px(a + Math.floor((r() - .5) * 16), b + Math.floor((r() - .5) * 12), 5 + Math.floor(r() * 10), 3 + Math.floor(r() * 7), 'rgba(40,30,24,.1)'); }   // acqua ferma e sporco a macchie
-      for (let k = 0; k < 120; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, 'rgba(74,92,48,.5)');   // muschio nelle fughe
+      if (!PUL) for (let k = 0; k < 120; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, 'rgba(74,92,48,.5)');   // muschio nelle fughe
     } else {   // cemento: quadrotti da 50 cm con le fughe di catrame
       px(0, 0, S, S, LOOK.on ? '#a8a296' : '#6a6660');   // fughe appena più scure: da lontano il tetto è una superficie, non una griglia
       for (let y = 0; y < S; y += 8) for (let k = 0; k < S; k += 8) { const base = pick(r, LOOK.on ? ['#d6cfc2', '#cbc4b6', '#c2bbae', '#cfc8ba'] : ['#8a8680', '#827e78', '#868278', '#7e7a74']); px(k, y, 7, 7, base);   /* [look] i lastrici chiari */ if (r() < .06) px(k + 1, y + 2, 5, 1, '#5a5652'); }
-      for (let k = 0; k < 1400; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, r() < .5 ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.06)');
+      if (!PUL) for (let k = 0; k < 1400; k++) px(Math.floor(r() * S), Math.floor(r() * S), 1, 1, r() < .5 ? 'rgba(0,0,0,.1)' : 'rgba(255,255,255,.06)');
       for (let k = 0; k < 24; k++) px(Math.floor(r() * S), Math.floor(r() * S), 8 + Math.floor(r() * 20), 6 + Math.floor(r() * 14), 'rgba(30,34,30,.2)');
     }
-    const t = canvasTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return (RT1.tex[key] = t);
+    const t = canvasTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; if (PUL) t.anisotropy = 8; return (RT1.tex[key] = t);   // [hd] anisotropia 8: le falde viste di taglio (la camera bassa) restano leggibili
   }
   const tv1 = (m, kind) => window.TettiVissuti ? TettiVissuti.manto(m, kind) : m;   // [vissuti] il tempo sul manto (tetti_vissuti.js: il muschio, i rappezzi, i coppi rotti, l'umido)
   const roofMat1 = (kind, v, tint) => { const k = kind + (v || 0) + (tint || ''); return RT1.mat[k] || (RT1.mat[k] = tv1(std({ map: roofTex1(kind, v), color: tint || '#ffffff', roughness: kind === 'lamiera' ? .62 : .92, metalness: kind === 'lamiera' ? .3 : 0 }), kind)); };
@@ -13843,6 +13844,7 @@ var Render = (function () {
     // superficie, solo da vicino (mai nel profilo leggero); retino: solo nell'ombra piena dei muri; nuvole: rare e morbide. Tutte a 0: zero dettaglio
     pittura: .7, varia: .85, vissuto: .9, tremolio: .025, microNormale: .35, retino: 0, nuvole: 0,   // [direzione] giro 4: a .5 alla distanza di gioco non si leggeva (zero e dose uguali)
     fuoco: .05 };   // fuoco: quanto colore perde il fondo lontano dal personaggio (la gerarchia: il personaggio, la via davanti, il set)
+  if (HD.pulito) DIR.vissuto = .5;   // [hd] pulito: il vissuto dei tetti a metà dose (le chiazze facevano fango alla distanza di gioco)
   if (DIR.on) {
     // nei materiali: la luce a tre toni col confine netto, la scala del muro, una velatura larghissima, il piede dei muri liscio; il resto a zero
     Object.assign(SGU.pro, { grana: 0, celle: .8, pittura: DIR.pittura, varia: DIR.varia, suolo: 0, polvere: .7, vivo: 0, acido: 0, pastello: 0 });
@@ -14021,8 +14023,8 @@ ${DIR.on ? `if ( sgP1.x + sgP1.z + sgP8.z > 0. ) {   // [direzione] LA MANO DI C
   diffuseColor.rgb *= 1. + sgP1.x * sgV * ( sgQ * .17 - .06 ) + sgP1.z * ( ( sgL - .5 ) * .12 + ( sgM - .5 ) * .1 );
   if ( sgP8.z > 0. ) { float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;
     float sgR = smoothstep( .3, .5, sgUp ) * smoothstep( 1.5, 3.5, sgH ) * mix( 1., .5, smoothstep( .95, .99, sgUp ) ) * sgP8.z;   // i tetti (i terrazzi a metà)
-    if ( sgR > 0. ) { float n2 = sgN3( vSgW * .9 + 2.2 );
-      diffuseColor.rgb *= 1. + sgR * ( n2 - .5 ) * .22;
+    if ( sgR > 0. ) {${HD.pulito ? '   // [hd] pulito: niente chiazze di un metro (n2) sui tetti, restano il muschio a nord e le riprese larghe' : ` float n2 = sgN3( vSgW * .9 + 2.2 );
+      diffuseColor.rgb *= 1. + sgR * ( n2 - .5 ) * .22;`}
       float sgNord = smoothstep( .1, .55, -sgNw.z / max( length( sgNw.xz ), .05 ) ) * ( 1. - smoothstep( .95, .99, sgUp ) ) * ( 1. - smoothstep( 4., 12., sgH ) );   // il muschio: falde a nord (−z nel mondo), basse, mai sui terrazzi
       diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * vec3( .78, .86, .66 ), sgR * sgNord * smoothstep( .45, .7, sgM ) * .5 ); } }
 }
@@ -14286,7 +14288,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -14619,6 +14621,17 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               float t2 = (fD(vUv - od * e * 2.) - fd0) / fd0, t5 = (fD(vUv - od * e * 5.) - fd0) / fd0;
               th = t2 > fB.y ? fE.y : t5 > fB.y ? mix(fE.y, 1., .5) : 1.; }
             float lin = smoothstep(fB.y, fB.y * 2., jg) * fB.x * fE.x * th * (1. - fSky) / (1. + max(fd0 - fA.w, 0.) / fB.w);
+#ifdef SG_HDAA
+            /* [hd] IL FILO CON IL PESO DI COPERTURA: col MSAA il colore del pixel di bordo dice quanta parte è della cosa davanti (fra il colore di
+               dentro e quello del fondo); il filo pesa per quella parte, e dalla parte del fondo il pixel misto prende la sua quota. Il filo scivola
+               col bordo invece di saltare di un pixel intero (il tremolio camminando). Due letture in più, solo sui bordi */
+            if (lin > 0.) { vec3 fgI = texture2D(t, vUv - od * e).rgb, dI0 = fgI - bg; lin *= clamp(dot(c - bg, dI0) / max(dot(dI0, dI0), 1e-4), 0., 1.) * .5 + .5; }
+            { float jn = 0., q2; vec2 on2 = vec2(0.); q2 = (fd0 - dR) / dR; if (q2 > jn) { jn = q2; on2 = vec2(1., 0.); } q2 = (fd0 - dL) / dL; if (q2 > jn) { jn = q2; on2 = vec2(-1., 0.); }
+              q2 = (fd0 - dU) / dU; if (q2 > jn) { jn = q2; on2 = vec2(0., 1.); } q2 = (fd0 - dB) / dB; if (q2 > jn) { jn = q2; on2 = vec2(0., -1.); }
+              if (jn > fB.y) { vec3 fgN = texture2D(t, vUv + on2 * e).rgb, bgB = texture2D(t, vUv - on2 * e).rgb, dN0 = fgN - bgB; float cv = clamp(dot(c - bgB, dN0) / max(dot(dN0, dN0), 1e-4), 0., 1.);
+                float lb = smoothstep(fB.y, fB.y * 2., jn) * fB.x * fE.x * (1. - fSky) / (1. + max(fd0 / (1. + jn) - fA.w, 0.) / fB.w) * cv;
+                c = mix(c, mix(vec3(.29, .306, .345), min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), rv), lb); } }
+#endif
             vec3 ink = min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c);   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
             c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin); }   /* nel regime il grigio tecnico */
           {   /* LA LUCE DEL CIELO PER QUOTA: il fondo della via (alla quota del personaggio) vede meno cielo, i piani alti di più. La scala del muro
@@ -18003,7 +18016,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   function init(canvas, st) {
     if (typeof window !== 'undefined') (window.__tl = window.__tl || {}).init0 = Math.round(performance.now());   // [anelli] la linea del tempo del caricamento (sonde)
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    // [hd] la tela senza alfa (alpha:false): il passo finale la scrive già opaca e il compositore del browser non deve fonderla con la pagina.
+    // three chiede sempre alpha:true, quindi il contesto si crea qui (WebGL2; se non c'è, come prima)
+    let ctxHD = null; if (HD.upscale) try { ctxHD = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: true, stencil: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false }); } catch (e) { ctxHD = null; }
+    renderer = new THREE.WebGLRenderer(Object.assign({ canvas, antialias: false, powerPreference: 'high-performance' }, ctxHD ? { context: ctxHD } : {}));
     renderer.debug.checkShaderErrors = typeof location !== 'undefined' && /[?&]shaderdebug/.test(location.search);   // [fluido] dal ramo wonderful-davinci: leggere subito il registro di ogni shader compilato costringe ad aspettarne la compilazione (centinaia di ms per materiale nuovo, camminando); solo con ?shaderdebug
     renderer.setPixelRatio(1);
     if (LOOKV.nuovo) { sguPezzi(); renderer.toneMapping = THREE.CustomToneMapping; }   // [sguardo] il look nuovo: la curva nei materiali
