@@ -10,6 +10,8 @@
 const Sviluppo = (() => {
   'use strict';
   if (typeof document === 'undefined') return {};
+  // [orienta] il pannello solo con ?dev nell'indirizzo (o nello Studio): un giocatore nuovo non deve trovarsi «DEV» sullo schermo. ?nofixorienta com'era
+  if (!/[?&]dev\b/.test(location.search) && !window.PV_STUDIO && !/[?&]nofixorienta\b/.test(location.search)) return {};
   const PV = () => window.__pv, ST = () => PV() && PV().st, G = () => PV() && PV().G;
   const say = (m, k) => { const pv = PV(); if (pv && pv.toast) pv.toast(m, k); else if (pv && pv.G && pv.st) pv.G.feed(pv.st, m, k); else console.log('[sviluppo]', m); };
   const KEY = 'pv-sviluppo';

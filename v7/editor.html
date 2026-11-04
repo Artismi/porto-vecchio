@@ -23600,8 +23600,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = '4c3742e73c474aea';</script>
-<script>window.PV_IMPRONTA_TASS = 'dcb74ce72c3228c3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'dab9bd3a0d966f61';</script>
+<script>window.PV_IMPRONTA_TASS = '04c93b35e380e877';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -34796,7 +34796,7 @@ var Game = (function () {
     const w = worstAboutPlayer(st, n);
     if (hostile(st, n)) lines.push(n.cop ? 'Getta l\'arma! Mani in alto!' : 'Tu sei morto, Nino.');
     else if (n.framedAngry) lines.push('Vai in giro a dire che sono stato io? Hai una bella faccia tosta.');
-    else if (n.id === 'sandro') lines.push(st.player.money >= st.debt ? `Allora, ${PLAYER_NAME}? Sento odore di soldi.` : `${PLAYER_NAME}. Ti restano ${hoursLeft(st)} ore. Io non aspetto.`);
+    else if (n.id === 'sandro') lines.push(st.player.money >= st.debt && st.deadline < 1e8 ? `Allora, ${PLAYER_NAME}? Sento odore di soldi.` : st.deadline > 1e8 && !(typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search)) ? `${PLAYER_NAME}. Con me i conti restano aperti. Non dimenticarlo.` : `${PLAYER_NAME}. Ti restano ${hoursLeft(st)} ore. Io non aspetto.`);   // [orienta] con la Risacca non c'è scadenza: niente più «Infinity ore»
     else if (n.faction === 'squalo') lines.push(['Lo Squalo è di là. Non farlo aspettare.', 'Hai i soldi? No? Allora sparisci.'][Math.floor(st.rng() * 2)]);
     else if (n.faction === 'marsiglia') lines.push(['Dégage. Ici c\'est pas pour toi.', 'Casse-toi, petit. Vai via.'][Math.floor(st.rng() * 2)]);
     else if (n.op.fear > .5) lines.push('Stammi lontano. Non ho fatto niente.');
@@ -37057,6 +37057,8 @@ var Risacca = (function () {
       if (n.cop) { n.role = 'Guardia Insulare («i Grigi»)'; n.look.top = '#5c6672'; n.look.bottom = '#3c444e'; n.name = n.name.replace('Agente ', 'Guardia '); }
     });
     NEW_CAST.forEach(c => { if (!byId(st, c.id)) { const n = G.makeNpc(st, JSON.parse(JSON.stringify(c))); n.first = c.first; st.npcs.push(n); } });
+    // [orienta] Lupo lo chiamano tutti Lupo: il nome sopra la testa, «Parla con…» e la chat dicono come l'obiettivo (prima «Ettore»). ?nofixorienta com'era
+    { const l = byId(st, 'lupo'); if (l && !(typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search))) l.first = 'Lupo'; }
     st.npcs.forEach(n => initNpc(st, n));
     G.addLog(st, 'Porto Vecchio, sotto la Tutela. Hai tre gessetti in tasca e nessuno con cui usarli. Trova la Risacca: Lupo, in biblioteca, sa da dove cominciare.', 'info');
     G.feed(st, 'Obiettivo: recluta due membri della Risacca.', 'job');
@@ -46002,7 +46004,9 @@ var Protagonista = (function () {
       st.me.friends.push(n.id);
       setCard(st, n);
     });
-    say(st, `Casa tua è ${home.label}, in periferia ovest. Gli amici del quartiere: ${chosen.map(n => n.first).join(', ') || 'nessuno'}.`, 'info');
+    // [orienta] dove sta casa, detto dalla posizione vera (il quartiere si chiama ancora «periferia ovest», ma con la città nuova sta in punta a est); ?nofixorienta com'era
+    const dove = typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search) ? 'in periferia ovest' : (() => { const fx = home.x / (G.GW * TS), fy = home.y / (G.GH * TS), ew = fx > .66 ? 'est' : fx < .34 ? 'ovest' : '', ns = fy < .34 ? 'nord' : fy > .66 ? 'sud' : ''; return ew || ns ? `all'estremità ${ns && ew ? ns + '-' + ew : ns || ew} dell'isola` : 'nel mezzo dell\'isola'; })();
+    say(st, `Casa tua è ${home.label}, ${dove}. Gli amici del quartiere: ${chosen.map(n => n.first).join(', ') || 'nessuno'}.`, 'info');
   }
   function setCard(st, n) {
     const C = RS && RS.CARDS; if (!C) return; const c = C[n.id] || (C[n.id] = {});
@@ -96362,6 +96366,430 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = Mente;
 }
 </script>
+<script data-m="orienta">// Porto Vecchio — [orienta] ORIENTARSI: chi sei, cosa fare, dove andare.
+// Un giocatore nuovo deve capire in mezzo minuto chi è, cosa deve fare e dove andare, e ritrovare sempre comandi e obiettivo:
+//  - l'OBIETTIVO di adesso, sempre in vista (una riga nell'HUD con distanza e direzione), preso dall'Atto I della Risacca
+//    (Risacca.goals) e, quando non c'è ancora un posto dove andare, da Lupo in biblioteca: G.jobTarget ripiega qui, così la freccia
+//    a bordo schermo, il segnaposto sulla mappa e sulla minimappa e il diamante nel mondo ci sono da subito;
+//  - le TRE SCHEDE d'avvio (chi sei, la premessa, il primo passo) mentre carica, la prima volta (poi solo la premessa);
+//    il caricamento per fasi e «Premi per entrare» quando è pronto (quel tocco sblocca anche l'audio);
+//  - la PAUSA vera (Esc, Start, ❚❚ sul telefono): il mondo si ferma; Riprendi, Obiettivi, Comandi, Mappa, Audio;
+//  - i COMANDI da UNA tabella sola (COMANDI qui sotto): la leggono la pausa, l'aiuto (H, F1) e le schede.
+// Il resto sta dove già stava: main.js (tasti, HUD, minimappa, caricamento), menu_ui.js (la scheda Obiettivi, la mappa),
+// risacca_ui.js (Parla = la chat), comandi.js (il telefono), index.src.html (l'HUD).
+// ?nofixorienta: tutto com'era (ON = false: niente di qui si accende e gli altri moduli tornano al codice di prima).
+var Orienta = (function () {
+  'use strict';
+  const DOM = typeof document !== 'undefined';   // in Node (le prove) ci sono l'obiettivo e la tabella, non l'interfaccia
+  const ON = DOM && typeof location !== 'undefined' && !/[?&]nofixorienta\b/.test(location.search);
+  const PV = () => typeof window !== 'undefined' ? window.__pv : null, ST = () => PV() && PV().st, $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const TOCCO = () => DOM && matchMedia('(pointer: coarse)').matches;
+  const CONSOLE = () => !!(PV() && PV().console);
+  const glob = typeof window !== 'undefined' ? window : global;
+  const Gm = () => glob.Game, RSm = () => glob.Risacca;
+  const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } } };
+  const VISTE = 'pv-orienta-schede';   // localStorage: le tre schede d'avvio già viste
+
+  // =====================================================================================================================
+  // LA TABELLA DEI COMANDI — UNA SOLA. La leggono «Comandi» (pausa, H, F1), le schede d'avvio e i suggerimenti.
+  // k: tastiera e mouse · p: controller · t: tocco (telefono) · c: Game Boy (la console del sito).
+  // >>> DA ALLINEARE AL MERGE <<< le righe con m:'camera7' descrivono i comandi a piedi che porta il blocco A (ramo camera7:
+  // visuale col destro trascinato, sinistro spara e destro mira con l'arma, frecce che camminano, Maiusc corre); quelle con
+  // m:'guida2' la guida del blocco E (ramo guida2: le frecce guidano). Se lì cambiano, si cambiano QUI e basta.
+  // I tasti di questo blocco (E, T, Esc, H/F1, M, Start, Back) sono quelli di main.js: keydown, PAD_KEYS.
+  // =====================================================================================================================
+  const COMANDI = [
+    { g: 'A piedi', a: 'Camminare', k: 'W A S D · frecce', p: 'levetta sinistra', t: 'levetta a sinistra', c: 'levetta', m: 'camera7' },
+    { g: 'A piedi', a: 'Correre', k: 'Maiusc (tieni)', p: 'levetta a fondo', t: 'levetta a fondo', c: 'B a mani libere (tieni)', m: 'camera7' },
+    { g: 'A piedi', a: 'Saltare', k: 'Spazio', p: 'A', t: 'Salta', c: 'A' },
+    { g: 'A piedi', a: 'Girare la visuale', k: 'tasto destro + trascina', p: 'levetta destra', t: 'trascina un dito', c: 'levetta destra', m: 'camera7' },
+    { g: 'A piedi', a: 'Zoom · le tre viste', k: 'rotella · V', p: 'croce ▲▼ · R3', t: 'due dita', c: 'tocca la levetta destra' },
+    { g: 'A piedi', a: 'Andare in un punto', k: 'clic sinistro a terra (a mani libere)', p: '—', t: 'tocca a terra', c: 'tocca a terra', m: 'camera7' },
+    { g: 'Azioni', a: 'Azione: parla, entra, usa', k: 'E', p: 'X', t: 'tocca il suggerimento', c: 'A (Entra)' },
+    { g: 'Azioni', a: 'Parlare', k: 'T · clic sulla persona', p: 'Y', t: 'tocca la persona', c: 'tocca la persona' },
+    { g: 'Azioni', a: 'Crimine: scippo, rapina', k: 'tieni E (0,8 s)', p: 'tieni X', t: 'tieni premuto il suggerimento rosso', c: 'tocca la persona → Ruba' },
+    { g: 'Azioni', a: 'Salire e scendere dai mezzi', k: 'F', p: 'B', t: 'tocca il mezzo · Scendi', c: 'tocca il mezzo · A' },
+    { g: 'Armi', a: 'Mirare', k: 'tasto destro (tieni)', p: 'LT (tieni)', t: '—', c: 'B con l\'arma', m: 'camera7' },
+    { g: 'Armi', a: 'Sparare', k: 'clic sinistro', p: 'RT', t: 'tocca il bersaglio', c: 'B con l\'arma', m: 'camera7' },
+    { g: 'Armi', a: 'Cambiare arma · ricaricare', k: 'Q · 1-5 · R', p: 'RB · LB', t: 'Arma', c: 'Zaino' },
+    { g: 'Alla guida', a: 'Gas, freno, sterzo', k: 'W S · A D · frecce', p: 'RT · LT · levetta', t: 'levetta · Freno', c: 'levetta', m: 'guida2' },
+    { g: 'Alla guida', a: 'Freno a mano', k: 'Spazio', p: 'A', t: 'Freno', c: 'A', m: 'guida2' },
+    { g: 'Menu', a: 'Pausa', k: 'Esc', p: 'Start', t: '❚❚ in alto a destra', c: 'Zaino' },
+    { g: 'Menu', a: 'Aiuto: questa tabella', k: 'H · F1', p: 'Start → Comandi', t: '❚❚ → Comandi', c: 'Zaino → Obiettivi' },
+    { g: 'Menu', a: 'Mappa', k: 'M', p: 'Back', t: 'Zaino → Mappa', c: 'Zaino → Mappa' },
+    { g: 'Menu', a: 'Obiettivi · zaino', k: 'I', p: 'Start → Obiettivi', t: 'Zaino · tocca l\'obiettivo', c: 'Zaino' },
+    { g: 'Menu', a: 'La Risacca: squadra e basi', k: 'B', p: '—', t: 'Zaino → Obiettivi → Risacca', c: 'Zaino → Obiettivi' },
+    { g: 'Menu', a: 'Taccuino: chi sa cosa', k: 'Tab', p: 'Start → Taccuino', t: 'tocca l\'ora', c: 'Zaino → Taccuino' },
+    { g: 'Menu', a: 'Portafoglio', k: 'L', p: '—', t: 'tocca la cassa comune', c: 'Zaino' },
+  ];
+  // in che colonna guardare: il telefono non mostra tasti, il Game Boy i suoi
+  const colonne = () => CONSOLE() ? [['c', 'Game Boy']] : TOCCO() ? [['t', 'Tocco']] : [['k', 'Tastiera e mouse'], ['p', 'Controller']];
+  const tasto = (azione, col) => { const r = COMANDI.find(x => x.a === azione); return r ? r[col || (CONSOLE() ? 'c' : TOCCO() ? 't' : 'k')] : ''; };
+
+  // =====================================================================================================================
+  // L'OBIETTIVO DI ADESSO (Atto I della Risacca come filo della prima partita)
+  // { testo (corto, per l'HUD), lungo (per la pausa e la scheda), x, y (dove andare, se c'è), chi (l'id della persona), dove }
+  // =====================================================================================================================
+  let cache = { key: '', st: null, v: null };
+  function placeName(id) { const P = Gm().PLACES[id]; return P ? P.name : ''; }
+  function personTarget(st, n) {   // dove sta una persona: lei se è in strada, se no il posto dove la trovi (la porta del posto)
+    const G = Gm();
+    if (!n.inside) return { x: n.x, y: n.y, dove: (G.nearestPlace(n.x, n.y) || {}).name || '' };
+    const pid = G.placeFor ? G.placeFor(st, n) : null, P = pid && G.PLACES[pid];
+    return P ? { x: P.x, y: P.y, dove: P.name } : { x: n.x, y: n.y, dove: '' };
+  }
+  function obiettivo(st) {
+    if (!st) return null;
+    const R = st.ris, l = Gm().byId(st, 'lupo'), key = st.clock + '|' + (R ? (R.mission ? R.mission.giver + R.mission.stage : '') + '|' + R.bases.length + '|' + R.goals.onde + '|' + R.goals.trasmissioni + '|' + st.npcs.reduce((a, n) => a + (n.ris && n.ris.member ? 1 : 0), 0) : '') + '|' + (l && l.ris ? +!!l.ris.missionDone : '');
+    if (cache.st === st && cache.key === key) return cache.v;
+    let v = null;
+    try { v = calcola(st); } catch (e) { v = null; }
+    cache = { key, st, v }; return v;
+  }
+  function calcola(st) {
+    const G = Gm(), RS = RSm();
+    if (st.over) return null;
+    const M = RS && st.ris && st.ris.mission && RS.missionTarget(st);
+    if (M) return { testo: M.label, lungo: `Un favore per ${G.nameOf(st, st.ris.mission.giver)}: ${M.label}.`, x: M.x, y: M.y, kind: 'missione' };
+    if (!RS || !st.ris) return null;
+    const goals = RS.goals(st), g = goals.find(x => !x.done);
+    if (!g) return { testo: 'Atto I compiuto: continua la Risacca (B)', lungo: 'L\'isola ha sentito un\'altra voce. Dai ordini alla squadra (B) e tieni alto il morale.', kind: 'fine' };
+    const members = RS.members(st), lupo = G.byId(st, 'lupo');
+    if (members.length < 2) {
+      if (lupo && !lupo.dead && !(lupo.ris && lupo.ris.member) && !(lupo.jailedUntil > st.t)) {
+        const T = personTarget(st, lupo);
+        if (lupo.ris && lupo.ris.missionDone) return { testo: `Lupo si fida: chiedigli di entrare nella Risacca`, lungo: 'Hai fatto il favore a Lupo. Parlagli e chiedigli di unirsi alla Risacca.', x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
+        return { testo: `Trova Lupo${T.dove ? ' · ' + T.dove : ''} e parlagli`, lungo: `Lupo (Ettore Ganz), il bibliotecario, sa da dove cominciare. ${T.dove ? 'Lo trovi qui: ' + T.dove : 'È in giro'}. Segui la freccia gialla e parlagli (${tasto('Parlare')}). Recluta due membri della Risacca (${g.n}).`, x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
+      }
+      // il secondo membro: chi è più vicino alla Risacca tra quelli che si possono reclutare
+      const S = RS.summary(st), best = (S.contacts || []).filter(c => { const n = G.byId(st, c.id); return n && !n.dead && !(n.jailedUntil > st.t); }).map(c => { const n = G.byId(st, c.id), C = RS.CARDS[c.id] || {}; return { c, sc: (c.will || 0) - (C.brigante || n.nocturnal ? 1 : 0) - Math.hypot(n.x - st.player.x, n.y - st.player.y) / 2000 }; }).sort((a, b) => b.sc - a.sc).map(q => q.c)[0];   // chi è vicino e ci sta; i briganti dell'interno per ultimi
+      if (best) { const n = G.byId(st, best.id), T = personTarget(st, n);
+        return { testo: `Recluta un altro membro (${g.n}): prova con ${n.first}`, lungo: `Ti serve un altro membro della Risacca (${g.n}). ${n.first}, ${String(n.role || '').toLowerCase()}, potrebbe starci: parlagli e chiedigli una mano o di unirsi.`, x: T.x, y: T.y, chi: n.id, dove: T.dove, kind: 'recluta' }; }
+      return { testo: `Recluta due membri della Risacca (${g.n})`, lungo: 'Parla con la gente: chi odia la Tutela può unirsi.', kind: 'recluta' };
+    }
+    if (/base/i.test(g.label)) {
+      const R = st.ris, sp = Object.values(R.spaces || {}).filter(s => s.found && !s.base).sort((a, b) => Math.hypot(a.x - st.player.x, a.y - st.player.y) - Math.hypot(b.x - st.player.x, b.y - st.player.y))[0];
+      if (sp) { const S0 = RS.SPACES.find(s => s.id === sp.id); return { testo: `Apri una base: ${S0 ? S0.name : 'il posto che conosci'}`, lungo: 'Un posto vuoto che conosci: vai alla porta e occupalo (E: cose da fare qui).', x: sp.x, y: sp.y, kind: 'base' }; }
+      return { testo: 'Apri una base: chiedi un posto sicuro', lungo: 'Chiedi ai membri o ai contatti «Conosci un posto sicuro dove nasconderci?»: poi vai lì e occupalo.', kind: 'base' };
+    }
+    if (/onda/i.test(g.label)) return { testo: `Scrivi l'onda col gesso sui muri (${g.n})`, lungo: 'Col gesso in tasca, vicino a un muro: «Scrivi l\'onda» tra le cose da fare (E). Meglio se non ti vede nessuno.', kind: 'onda' };
+    if (/radio/i.test(g.label)) return { testo: 'Metti in onda Radio Scirocco', lungo: 'Serve una base con la radio (modulo). Poi una trasmissione dal pannello della Risacca (B).', kind: 'radio' };
+    if (/ripetitore/i.test(g.label)) { const T = RS.TARGETS && RS.TARGETS.ripetitore, P = T && RS.targetPos ? RS.targetPos(T) : null;
+      return { testo: 'Sabota il ripetitore alle 20, durante il discorso', lungo: 'Il ripetitore della Tutela sta in vetta. Alle 20 parla il Garante: è il momento.', x: P ? P.x : undefined, y: P ? P.y : undefined, kind: 'sabota' }; }
+    return { testo: g.label, lungo: g.label, kind: 'atto' };
+  }
+  // G.jobTarget ripiega sull'obiettivo: la freccia a bordo schermo, la minimappa, la mappa e il diamante nel mondo
+  function installa(forza) {
+    const G = Gm(); if (!(ON || forza) || !G || !G.jobTarget || G.jobTarget.__or) return;
+    const jt = G.jobTarget;
+    G.jobTarget = st => { const a = jt(st); if (a) return a; const o = obiettivo(st); return o && o.x !== undefined && isFinite(o.x) ? { x: o.x, y: o.y, label: o.testo, or: true } : null; };
+    G.jobTarget.__or = true;
+  }
+  installa();
+
+  // =====================================================================================================================
+  // CSS
+  // =====================================================================================================================
+  const CSS = `
+#or-obj { left: 12px; top: 120px; max-width: min(340px, calc(100vw - 150px)); padding: 6px 10px 7px 10px; background: rgba(13, 11, 26, .82); border-left: 3px solid var(--amber); pointer-events: auto; cursor: pointer; text-shadow: none; display: grid; gap: 1px; }
+#or-obj .lb { font: 600 13px var(--f-pix); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); display: flex; gap: 8px; align-items: center; }
+#or-obj .lb i { font-style: normal; display: inline-block; width: 18px; height: 18px; line-height: 18px; font-size: 16px; text-align: center; color: #ffd24a; transform-origin: 50% 50%; }
+#or-obj b { font-weight: 600; font-size: 14.5px; line-height: 1.25; color: var(--fg); }
+#or-obj small { font-size: 13px; color: var(--muted); }
+#or-obj:hover { border-left-color: #ffd24a; }
+#app.console #or-obj { left: 50% !important; top: 6px !important; transform: translateX(-50%); max-width: 92%; padding: 3px 10px; border-left: 0; border-radius: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app.console #or-obj .lb, #app.console #or-obj small { display: none; } #app.console #or-obj b { font-size: 13px; }
+/* la pausa */
+#or-pausa { position: absolute; inset: 0; z-index: 40; display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 0; background: rgba(8, 6, 16, .78); pointer-events: auto; backdrop-filter: blur(2px); color: var(--fg); font-family: var(--f-pix); }
+#or-pausa[hidden] { display: none; }
+#or-pausa .col { display: flex; flex-direction: column; gap: 8px; padding: max(28px, env(safe-area-inset-top)) 22px 22px; background: rgba(13, 11, 26, .9); border-right: 2px solid var(--line); overflow-y: auto; }
+#or-pausa .col h2 { margin: 0 0 4px; font-size: 30px; line-height: 1; color: #ffe8f2; text-shadow: 0 0 8px var(--neon); letter-spacing: .04em; }
+#or-pausa .col .ferma { font-family: var(--f-label); font-size: 10px; letter-spacing: .14em; color: var(--muted); margin-bottom: 10px; }
+#or-pausa .pb { text-align: left; font: 600 18px var(--f-pix); color: var(--fg); background: transparent; border: 2px solid transparent; border-left: 4px solid var(--line); padding: 9px 12px; cursor: pointer; min-height: 44px; }
+#or-pausa .pb:hover, #or-pausa .pb:focus-visible, #or-pausa .pb.on { background: rgba(255,255,255,.06); border-left-color: var(--amber); outline: none; color: #fff; }
+#or-pausa .pb small { display: block; font: 400 12.5px var(--f-pix); color: var(--muted); }
+#or-pausa .pb kbd { float: right; font-family: var(--f-label); font-size: 10px; color: var(--amber); margin-top: 4px; }
+#or-pausa .pan { overflow-y: auto; padding: max(28px, env(safe-area-inset-top)) 28px 28px; }
+#or-pausa .pan h3 { margin: 0 0 10px; font-size: 22px; } #or-pausa .pan h4 { margin: 18px 0 6px; font-family: var(--f-label); font-size: 11px; letter-spacing: .14em; color: var(--muted); font-weight: 400; }
+.or-ob .now { background: rgba(255, 179, 92, .1); border-left: 4px solid var(--amber); padding: 10px 14px; font-size: 17px; line-height: 1.35; max-width: 62ch; }
+.or-ob .now b { display: block; font-family: var(--f-label); font-size: 10px; letter-spacing: .14em; color: var(--amber); font-weight: 400; margin-bottom: 4px; }
+.or-ob .goal { font-size: 15.5px; display: flex; gap: 10px; align-items: baseline; padding: 4px 0; } .or-ob .goal i { font-style: normal; font-family: var(--f-label); font-size: 11px; color: var(--muted); min-width: 26px; }
+.or-ob .goal.done { color: var(--good); } .or-ob .goal.done i { color: var(--good); } .or-ob .goal.cur { color: #fff; font-weight: 600; } .or-ob .goal span.n { color: var(--muted); font-size: 13px; }
+.or-ob .chi { font-size: 14.5px; line-height: 1.45; color: var(--muted); max-width: 64ch; } .or-ob .chi p { margin: 0 0 6px; }
+.or-ob .bt { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.or-ob .bt button { font: 600 14px var(--f-pix); color: var(--fg); background: rgba(255,255,255,.05); border: 2px solid var(--line); padding: 7px 12px; cursor: pointer; min-height: 40px; } .or-ob .bt button:hover { border-color: var(--amber); }
+.or-cmd { border-collapse: collapse; width: 100%; max-width: 860px; font-size: 14.5px; }
+.or-cmd th { text-align: left; font-family: var(--f-label); font-size: 10px; letter-spacing: .12em; color: var(--muted); font-weight: 400; padding: 12px 8px 4px; border-bottom: 1px solid var(--line); }
+.or-cmd td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: top; } .or-cmd td:first-child { color: var(--muted); }
+.or-cmd td.k { color: #fff; font-weight: 600; } .or-cmd tr.g td { font-family: var(--f-label); font-size: 10px; letter-spacing: .14em; color: var(--amber); padding-top: 14px; border-bottom: 0; }
+@media (max-width: 720px) { #or-pausa { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } #or-pausa .col { border-right: 0; border-bottom: 2px solid var(--line); padding: max(14px, env(safe-area-inset-top)) 14px 10px; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  #or-pausa .col h2 { font-size: 22px; width: 100%; margin: 0; } #or-pausa .col .ferma { width: 100%; margin: 0 0 2px; } #or-pausa .pb { font-size: 15px; padding: 6px 10px; border: 2px solid var(--line); flex: 1 1 auto; } #or-pausa .pb small, #or-pausa .pb kbd { display: none; } #or-pausa .pan { padding: 14px; } }
+@media (max-height: 480px) and (min-width: 600px) { #or-pausa .col { gap: 4px; padding-top: 12px; } #or-pausa .col h2 { font-size: 22px; } #or-pausa .pb { min-height: 36px; padding: 5px 10px; font-size: 15px; } #or-pausa .pb small { display: none; } #or-pausa .pan { padding-top: 14px; } }
+/* il pulsante di pausa sul telefono */
+#or-pbtn { right: 10px; top: 32px; width: 40px; height: 40px; border-radius: 50%; display: none; place-items: center; pointer-events: auto; cursor: pointer; font: 700 15px var(--f-pix); color: var(--fg); background: rgba(13, 11, 26, .72); border: 2px solid rgba(240,230,208,.35); }
+@media (pointer: coarse) { #or-pbtn { display: grid; } }
+#app.console #or-pbtn { display: none !important; }
+/* tenere premuto E per un crimine: l'anello che si riempie */
+#or-ring { position: absolute; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; pointer-events: none; z-index: 8; background: conic-gradient(var(--blood) calc(var(--h, 0) * 360deg), rgba(255,255,255,.12) 0); -webkit-mask: radial-gradient(circle, transparent 15px, #000 16px); mask: radial-gradient(circle, transparent 15px, #000 16px); }
+#or-ring[hidden] { display: none; }
+/* le schede d'avvio e il caricamento */
+.or-load { position: fixed; inset: 0; display: grid; grid-template-rows: 1fr auto auto auto 1fr; justify-items: center; align-content: center; gap: 16px; padding: max(18px, env(safe-area-inset-top)) 16px max(34px, calc(env(safe-area-inset-bottom) + 30px)); text-align: center; background: radial-gradient(ellipse at 50% 40%, rgba(13,11,26,.55), rgba(13,11,26,.92) 75%); pointer-events: auto; overflow-y: auto; }
+.or-load .tt { grid-row: 2; } .or-load .logo { font-size: clamp(36px, 8vw, 78px); text-transform: uppercase; }
+.or-load .tagline { margin-top: 6px; }
+.or-cards { grid-row: 3; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 920px; width: 100%; text-align: left; }
+.or-card { background: rgba(13, 11, 26, .86); border: 2px solid var(--line); border-top: 3px solid var(--amber); padding: 12px 14px; font-size: 15px; line-height: 1.4; }
+.or-card b { display: block; font-family: var(--f-label); font-size: 10px; letter-spacing: .16em; color: var(--amber); font-weight: 400; margin-bottom: 6px; }
+.or-card em { font-style: normal; color: #ffd24a; }
+.or-cards.una { grid-template-columns: minmax(0, 560px); justify-content: center; }
+.or-load .fondo { grid-row: 4; display: grid; justify-items: center; gap: 8px; width: min(520px, 92vw); }
+.or-fasi { display: flex; gap: 6px 14px; flex-wrap: wrap; justify-content: center; font-family: var(--f-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.or-fasi span.ok { color: var(--good); } .or-fasi span.on { color: var(--fg); } .or-fasi span.ok::before { content: '✓ '; } .or-fasi span.on::before { content: '› '; }
+.or-load .bar { width: 100%; height: 4px; background: rgba(255,255,255,.14); } .or-load .bar i { display: block; height: 100%; width: 3%; background: var(--amber); transition: width .5s; }
+.or-go { font: 700 22px var(--f-pix); color: #1a0a14; background: var(--neon); border: 0; padding: 12px 30px; cursor: pointer; box-shadow: 4px 4px 0 #07060e; animation: orgo 1.4s ease-in-out infinite; }
+.or-go[hidden] { display: none; } @keyframes orgo { 50% { box-shadow: 4px 4px 0 #07060e, 0 0 22px var(--neon); } }
+.or-load .credits { grid-row: 5; align-self: end; font-size: 11px; opacity: .6; } .or-load .credits a { color: inherit; }
+@media (max-width: 760px) { .or-cards { grid-template-columns: 1fr; gap: 8px; } .or-card { padding: 9px 12px; font-size: 14px; } .or-load { gap: 12px; } }
+@media (max-height: 520px) { .or-load { gap: 8px; padding-top: 10px; padding-bottom: 26px; } .or-load .logo { font-size: 34px; } .or-load .tagline { display: none; } .or-card { padding: 7px 10px; font-size: 13px; line-height: 1.3; } .or-card b { margin-bottom: 2px; } .or-go { font-size: 18px; padding: 8px 22px; } }
+@media (prefers-reduced-motion: reduce) { .or-go { animation: none; } }
+/* [orienta] svelare piano: il cantiere dopo la prima base, i bisogni quando uno si fa sentire, la Risacca col primo membro */
+body.or-on:not(.or-base) #cnBtn { display: none !important; }
+body.or-on:not(.or-bisogni) #me-box { display: none !important; }
+body.or-on:not(.or-squadra) #rs-hud .m, body.or-on:not(.or-squadra) #rs-sneak { display: none !important; }
+body.or-on #bookBtn, body.or-on #sound { display: none !important; }   /* taccuino e audio stanno nella pausa (Tab resta) */
+body.or-on #wanted:not(:has(.star.on)) { display: none !important; }   /* le stelle quando la polizia ti cerca */
+body.or-on #wanted .lbl { display: inline; font: 600 13px var(--f-pix); color: var(--fg); }
+/* [orienta] L'HUD SI LEGGE: le etichette tornano, un fondo scuro sotto soldi, cronaca e suggerimenti, almeno 13 px */
+body.or-on #debt { background: rgba(13, 11, 26, .74); padding: 6px 10px 7px; width: 212px; text-shadow: none; gap: 2px; }
+body.or-on #debt > .lbl, body.or-on #debt .row2 .lbl { display: block; font: 600 13px var(--f-pix); letter-spacing: .06em; color: var(--muted); }
+body.or-on #debt .row2 { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: center; }
+body.or-on #debt .money { font-size: 18px; line-height: 1.15; }
+body.or-on #clock { font-size: 13.5px; display: flex; gap: 4px 8px; flex-wrap: wrap; justify-content: flex-start; }
+body.or-on #sd-hud { font-size: 13px; }
+body.or-on #feed { gap: 3px; width: min(330px, calc(100vw - 150px)); }
+body.or-on #feed .fi { font-size: 13.5px; line-height: 1.3; background: rgba(13, 11, 26, .8); padding: 4px 9px; border-left-width: 3px; text-shadow: none; }
+body.or-on #ctx { gap: 6px 8px; }
+body.or-on #ctx .chip { pointer-events: auto; cursor: pointer; font: 500 14px var(--f-pix); color: var(--fg); background: rgba(13, 11, 26, .86); border: 2px solid var(--line); padding: 5px 11px; gap: 8px; box-shadow: 2px 2px 0 #07060e; text-shadow: none; min-height: 34px; touch-action: none; -webkit-user-select: none; user-select: none; }
+body.or-on #ctx .chip:hover { border-color: var(--amber); } body.or-on #ctx .chip.bad { border-color: #8a2a4a; color: #ffc8d4; }
+body.or-on #ctx .chip kbd { font-size: 11px; padding: 1px 6px; display: inline-block; }
+body.or-on .rs-lab { font-size: 13px; } body.or-on .rs-lab.door { font-size: 13px; } body.or-on #dock button kbd { font-size: 11px; }
+body.or-on #rs-hud .lbl { font-size: 12px; } body.or-on #rs-hud button { font-size: 13px; } body.or-on #rs-hud kbd, body.or-on #ctx .chip kbd { font-size: 12px; }
+body.or-on #mini { width: 128px; height: 128px; right: 12px; bottom: 12px; }
+body.or-on #mini canvas { width: 128px; height: 128px; transform: none; border: 0; border-radius: 50%; opacity: 1; box-shadow: 0 0 0 2px #07060e; image-rendering: auto; background: transparent; }
+body.or-on #cnBtn { right: 152px !important; bottom: 18px !important; top: auto !important; left: auto !important; }
+@media (pointer: coarse) {
+  body.or-on #mini { top: 80px; bottom: auto; right: 8px; transform: none; width: 96px; height: 96px; } body.or-on #mini canvas { width: 96px; height: 96px; }
+  body.or-on #ctx { top: auto !important; bottom: 176px !important; max-width: calc(100vw - 24px); }
+  body.or-on #ctx .chip { min-height: 44px; font-size: 15px; padding: 6px 13px; } body.or-on #ctx .chip.bad kbd { display: inline-block !important; font-family: var(--f-pix); }
+  body.or-on #app kbd { display: none !important; } body.or-on #mu footer .k { display: none !important; }   /* niente tasti della tastiera sul telefono */
+  body.or-on #cnBtn { right: auto !important; left: 50% !important; transform: translateX(-50%); top: auto !important; bottom: 236px !important; }
+  body.or-on #debt { width: 186px; padding: 5px 8px 6px; } body.or-on #debt .money { font-size: 16px; }
+  body.or-on #or-obj { max-width: calc(100vw - 130px); } body.or-on #feed { width: min(300px, calc(100vw - 130px)); }
+}
+@media (pointer: coarse) and (max-height: 500px) { body.or-on #ctx { bottom: auto !important; top: 40px !important; max-width: calc(100vw - 420px); } body.or-on #mini { top: 56px; } body.or-on #stick2 { right: 250px; bottom: 14px; } }   /* in orizzontale la levetta della visuale copriva la minimappa: va accanto ai pulsanti */
+#app.console #ctx { display: none !important; }
+@media (pointer: coarse) { body.or-on:not(.or-squadra) #rs-hud { display: none !important; } }   /* sul telefono il riquadro della Risacca era vuoto (i pulsanti stanno nello zaino)*/
+body.or-on #app.console #rs-indoor { top: 34px !important; }
+`;
+  // il foglio di stile e la classe sul body subito (prima del caricamento): main.js la legge per l'HUD
+  if (ON) { const css = document.createElement('style'); css.textContent = CSS; (document.head || document.documentElement).appendChild(css); const on = () => document.body && document.body.classList.add('or-on'); if (document.body) on(); else addEventListener('DOMContentLoaded', on); }
+  // =====================================================================================================================
+  // IL CARICAMENTO: titolo, schede, fasi, «Premi per entrare»
+  // =====================================================================================================================
+  const FASI = [['modelli', 'Modelli', .45], ['grafica', 'Grafica', .25], ['disegno', 'Primo disegno', .2], ['quartiere', 'Quartiere', .1]];
+  const F = { at: {}, cur: 'modelli', t0: 0, pronto: false, entra: null };
+  function schedeHtml(prima) {
+    const t = TOCCO(), con = CONSOLE();
+    const parla = con || t ? 'tocca la persona' : 'premi T (o cliccala)';
+    const cards = [
+      ['Chi sei', 'Sei <em>Nino</em>, di Porto Vecchio. L\'isola è sotto la Tutela: i Grigi in strada, gli Orecchi che ascoltano, il Garante sugli schermi alle 20.'],
+      ['La premessa', 'Hai tre gessetti in tasca e nessuno con cui usarli. <em>Trova la Risacca</em>, la resistenza: cellule, nomi di battaglia, un\'onda col gesso sui muri.'],
+      ['Il primo passo', `<em>Lupo</em>, il bibliotecario, sa da dove cominciare. Segui la freccia gialla fino a lui e ${parla}. L'obiettivo resta sempre in alto a sinistra.`],
+    ];
+    if (!prima) return `<div class="or-cards una"><div class="or-card"><b>Porto Vecchio, sotto la Tutela</b>Hai tre gessetti in tasca e nessuno con cui usarli. <em>Trova la Risacca</em>: Lupo, in biblioteca, sa da dove cominciare.</div></div>`;
+    return `<div class="or-cards">${cards.map(([h, x]) => `<div class="or-card"><b>${h}</b>${x}</div>`).join('')}</div>`;
+  }
+  const primaVolta = () => store.get(VISTE) !== '1';
+  function introHtml(credits) {
+    return `<div class="or-load" id="or-load"><div class="tt"><div class="logo">Porto Vecchio</div><div class="tagline">un'isola sotto la Tutela</div></div>
+      ${schedeHtml(primaVolta())}
+      <div class="fondo"><div class="or-fasi" id="or-fasi"></div><div class="bar"><i id="caricoBar" style="width:3%"></i></div><div class="lbl" id="caricoTxt" style="font-size:12px;color:var(--muted)">Carico il porto…</div>
+        <button class="or-go" id="or-go" hidden>${TOCCO() || CONSOLE() ? 'Tocca per entrare' : 'Premi per entrare'}</button></div>
+      <div class="credits">${credits || ''}</div></div>`;
+  }
+  // fase(id, frazione): a che punto è il caricamento; la barra è la somma pesata delle fasi (niente più 85% fermo)
+  function fase(id, f) {
+    if (!F.t0) F.t0 = performance.now();
+    const i = FASI.findIndex(x => x[0] === id); if (i < 0) return;
+    for (let j = 0; j < i; j++) F.at[FASI[j][0]] = 1;
+    F.at[id] = Math.max(F.at[id] || 0, Math.min(1, f)); F.cur = id; disegnaFasi();
+  }
+  function totale() { return FASI.reduce((a, [k, , w]) => a + w * (F.at[k] || 0), 0); }
+  function disegnaFasi() {
+    const el = $('or-fasi'); if (el) { const h = FASI.map(([k, l]) => { const v = F.at[k] || 0, cls = v >= 1 ? 'ok' : k === F.cur ? 'on' : ''; return `<span class="${cls}">${l}${cls === 'on' && v > 0 && v < 1 ? ' ' + Math.round(v * 100) + '%' : ''}</span>`; }).join(''); if (el.__h !== h) { el.__h = h; el.innerHTML = h; } }
+    const b = $('caricoBar'); if (b) b.style.width = Math.round(Math.max(.03, F.pronto ? 1 : totale()) * 100) + '%';
+  }
+  // pronto: il gioco risponde. entra = la funzione che fa partire la partita (main.js start)
+  function pronto(entra) {
+    F.pronto = true; F.entra = entra; FASI.forEach(([k]) => { F.at[k] = 1; }); disegnaFasi();
+    const t = $('caricoTxt'); if (t) t.textContent = 'Pronto.';
+    const b = $('or-go'); if (b) { b.hidden = false; b.onclick = e => { e.preventDefault(); entraOra(); }; try { b.focus({ preventScroll: true }); } catch (x) { } }
+    const L = $('or-load'); if (L) L.addEventListener('pointerdown', e => { if (e.target.closest('a')) return; e.preventDefault(); entraOra(); });
+  }
+  function entraOra() { if (!F.entra) return false; const f = F.entra; F.entra = null; store.set(VISTE, '1'); f(); return true; }
+
+  // =====================================================================================================================
+  // L'HUD: la riga dell'obiettivo e il flusso della colonna di sinistra (soldi → obiettivo → cronaca)
+  // =====================================================================================================================
+  const H = { el: null, t: '', d: '', ang: null };
+  function mount() {
+    if (!ON || H.el || !$('app')) return !!H.el;
+    document.body.classList.add('or-on');
+    const lay = document.querySelector('#app > .layer:not(#bubbles)') || $('app');
+    const o = document.createElement('div'); o.id = 'or-obj'; o.className = 'hud'; o.title = 'Obiettivi';
+    o.innerHTML = '<span class="lb">Obiettivo <i id="or-oba"></i></span><b id="or-obt"></b><small id="or-obd"></small>';
+    o.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); apriObiettivi(); });
+    lay.appendChild(o); H.el = o;
+    const pb = document.createElement('button'); pb.id = 'or-pbtn'; pb.className = 'hud'; pb.textContent = '❚❚'; pb.setAttribute('aria-label', 'Pausa');
+    pb.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); pausa(true); }); lay.appendChild(pb);
+    const rg = document.createElement('div'); rg.id = 'or-ring'; rg.hidden = true; $('app').appendChild(rg);
+    const P = document.createElement('div'); P.id = 'or-pausa'; P.hidden = true; P.setAttribute('role', 'dialog'); P.setAttribute('aria-label', 'Pausa'); $('app').appendChild(P);
+    P.addEventListener('click', onPausaClick);
+    return true;
+  }
+  const setT = (el, t) => { if (el && el.__t !== t) { el.__t = t; el.textContent = t; } };
+  function hud(st, R) {
+    if (!ON || !mount() || !st) return;
+    const ui = PV().ui, o = obiettivo(st), el = H.el;
+    const show = !!o && !ui.intro && !ui.over;
+    if (el.hidden !== !show) el.hidden = !show;
+    const pb = $('or-pbtn'); if (pb && pb.hidden !== !!(ui.intro || ui.over)) pb.hidden = !!(ui.intro || ui.over);
+    if (show) {
+      setT($('or-obt'), o.testo);
+      const p = st.player, has = o.x !== undefined && isFinite(o.x);
+      const d = has ? Math.hypot(o.x - p.x, o.y - p.y) : 0;
+      setT($('or-obd'), has ? (d < 4 ? 'sei arrivato' : Math.round(d) + ' m') : '');
+      const a = $('or-oba');
+      if (has && d >= 4 && R && R.camBasis) { const B = R.camBasis(), phi = -Math.PI / 2 - Math.atan2(B.fz, B.fx), ang = Math.atan2(o.y - p.y, o.x - p.x) + phi + Math.PI / 2, deg = Math.round(ang * 180 / Math.PI / 5) * 5;
+        if (a.__d !== deg) { a.__d = deg; a.textContent = '▲'; a.style.transform = `rotate(${deg}deg)`; } }
+      else if (a.__d !== null) { a.__d = null; a.textContent = ''; }
+    }
+    // la colonna di sinistra in fila: l'obiettivo sotto i soldi, la cronaca sotto l'obiettivo (niente più righe una sull'altra)
+    if (!CONSOLE()) {
+      const debt = $('debt'), feed = $('feed'), lay = el.parentElement;
+      if (debt && lay) { const top0 = lay.getBoundingClientRect().top, r = debt.getBoundingClientRect(), y1 = Math.round((r.height ? r.bottom : r.top + 60) - top0 + 8);
+        if (el.__y !== y1) { el.__y = y1; el.style.top = y1 + 'px'; }
+        const y2 = Math.round((show ? el.getBoundingClientRect().bottom : r.bottom) - top0 + 8);
+        if (feed && feed.__y !== y2) { feed.__y = y2; feed.style.top = y2 + 'px'; } }
+    }
+    svela(st);
+  }
+  // svelare piano (CSS sopra): il cantiere dopo la prima base vera, i bisogni dopo una soglia, la Risacca col primo membro
+  function svela(st) {
+    const B = document.body, RS = RSm();
+    if (!B.classList.contains('or-base') && st.ris && st.ris.bases && st.ris.bases.length) B.classList.add('or-base');
+    if (!B.classList.contains('or-bisogni') && st.me && st.me.need && Object.values(st.me.need).some(v => v > .65)) B.classList.add('or-bisogni');
+    if (!B.classList.contains('or-squadra') && RS && st.ris && (RS.members(st).length || st.ris.morale > 14)) B.classList.add('or-squadra');
+  }
+
+  // =====================================================================================================================
+  // GLI OBIETTIVI (la pausa e la prima scheda del menu)
+  // =====================================================================================================================
+  function obiettiviHtml(st) {
+    const RS = RSm(), o = obiettivo(st);
+    let h = `<div class="or-ob">`;
+    h += `<div class="now"><b>Adesso</b>${esc(o ? o.lungo || o.testo : 'Gira per l\'isola: la gente ha qualcosa da dirti.')}</div>`;
+    if (o && o.x !== undefined) h += `<div class="bt"><button data-or="vai">Vai lì</button><button data-or="mappa">Sulla mappa</button></div>`;
+    if (RS && st.ris) {
+      const goals = RS.goals(st), cur = goals.findIndex(g => !g.done);
+      h += `<h4>${st.ris.goals.act > 1 ? 'Atto I compiuto — «Bassa marea»' : 'Atto I — «Bassa marea»'}</h4>` + goals.map((g, i) => `<div class="goal ${g.done ? 'done' : i === cur ? 'cur' : ''}"><i>${g.done ? '✓' : i === cur ? '▸' : '·'}</i><span>${esc(g.label)} ${g.n ? `<span class="n">${esc(g.n)}</span>` : ''}</span></div>`).join('');
+      h += `<div class="bt"><button data-or="risacca">La Risacca: squadra e basi</button></div>`;
+    }
+    h += `<h4>Chi sei</h4><div class="chi"><p>Sei Nino, di Porto Vecchio. L'isola è sotto la Tutela: la Guardia Insulare («i Grigi») in strada, gli Orecchi che ascoltano, il Garante sugli schermi ogni sera alle 20.</p><p>Hai tre gessetti in tasca. La Risacca è la resistenza: trovala, fai crescere la squadra, fatti sentire senza farti prendere.</p></div>`;
+    return h + `</div>`;
+  }
+  function comandiHtml() {
+    const C = colonne(); let g = '';
+    const rows = COMANDI.map(r => { const hd = r.g !== g ? (g = r.g, `<tr class="g"><td colspan="${C.length + 1}">${esc(r.g)}</td></tr>`) : ''; return hd + `<tr><td>${esc(r.a)}</td>${C.map(([k]) => `<td class="k">${esc(r[k] || '—')}</td>`).join('')}</tr>`; }).join('');
+    return `<table class="or-cmd"><tr><th>Cosa</th>${C.map(([, l]) => `<th>${esc(l)}</th>`).join('')}</tr>${rows}</table>`;
+  }
+  function onObClick(e) {
+    const b = e.target.closest('[data-or]'); if (!b) return false; const st = ST(), o = obiettivo(st), a = b.dataset.or;
+    if (a === 'vai' && o && o.x !== undefined) { pausa(false); if (typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open) MenuUI.close(); if (PV().goTo) PV().goTo(o.x, o.y); }
+    else if (a === 'mappa') { apriMappa(); }
+    else if (a === 'risacca') { pausa(false); if (typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open) MenuUI.close(); if (typeof RisaccaUI !== 'undefined') RisaccaUI.togglePanel(true); }
+    return true;
+  }
+
+  // =====================================================================================================================
+  // LA PAUSA
+  // =====================================================================================================================
+  const P = { open: false, tab: 'obiettivi', daPausa: false };
+  function pausa(on, tab) {
+    if (!ON || !mount()) return; const pv = PV(); if (!pv || !pv.ui) return; const ui = pv.ui;
+    if (on && (ui.intro || ui.over)) return;
+    P.open = !!on; ui.pausa = P.open || P.daPausa; if (tab) P.tab = tab; else if (on) P.tab = 'obiettivi';
+    const el = $('or-pausa'); el.hidden = !P.open;
+    if (P.open) { if (pv.closeRing) pv.closeRing(); renderPausa(); const f = el.querySelector('.pb'); if (f) try { f.focus({ preventScroll: true }); } catch (e) { } }
+    else { const cv = $('cv'); if (cv) cv.focus(); }
+  }
+  function renderPausa() {
+    const el = $('or-pausa'), st = ST(); if (!el || !st) return;
+    const pv = PV(), au = pv.audio, kb = !TOCCO() && !CONSOLE();
+    const b = (id, l, s, k) => `<button class="pb ${P.tab === id ? 'on' : ''}" data-p="${id}">${kb && k ? `<kbd>${k}</kbd>` : ''}${l}${s ? `<small>${s}</small>` : ''}</button>`;
+    el.innerHTML = `<div class="col"><h2>Pausa</h2><div class="ferma">il mondo è fermo</div>
+      ${b('riprendi', 'Riprendi', '', 'Esc')}${b('obiettivi', 'Obiettivi', 'cosa fare adesso')}${b('comandi', 'Comandi', 'tastiera, controller, tocco', 'H')}${b('mappa', 'Mappa', 'dove sei, dove andare', 'M')}${b('audio', 'Audio: ' + (au ? 'sì' : 'no'), '')}${b('taccuino', 'Taccuino', 'chi sa cosa', 'Tab')}${b('zaino', 'Zaino', 'roba, crafting, lavori', 'I')}</div>
+      <div class="pan">${P.tab === 'comandi' ? `<h3>Comandi</h3>${comandiHtml()}` : `<h3>Obiettivi</h3>${obiettiviHtml(st)}`}</div>`;
+  }
+  function onPausaClick(e) {
+    if (onObClick(e)) return;
+    const b = e.target.closest('[data-p]'); if (!b) return; const k = b.dataset.p, pv = PV();
+    if (k === 'riprendi') pausa(false);
+    else if (k === 'obiettivi' || k === 'comandi') { P.tab = k; renderPausa(); const f = $('or-pausa').querySelector(`[data-p="${k}"]`); if (f) f.focus({ preventScroll: true }); }
+    else if (k === 'mappa') apriMappa();
+    else if (k === 'audio') { if (pv.sys) pv.sys('audio'); renderPausa(); const f = $('or-pausa').querySelector('[data-p="audio"]'); if (f) f.focus({ preventScroll: true }); }
+    else if (k === 'taccuino') { pausa(false); if (pv.book) pv.book(true); }
+    else if (k === 'zaino') { daPausa('zaino'); }
+  }
+  // dalla pausa al menu (mappa, zaino): il mondo resta fermo finché il menu non si chiude
+  function daPausa(tab) {
+    if (typeof MenuUI === 'undefined') return; const ui = PV().ui;
+    P.daPausa = !!P.open; pausa(false); ui.pausa = P.daPausa; MenuUI.open(tab);
+  }
+  function apriMappa() { if (P.open) daPausa('mappa'); else if (typeof MenuUI !== 'undefined') { if (MenuUI.state && MenuUI.state.open && MenuUI.state.tab === 'mappa') MenuUI.close(); else MenuUI.open('mappa'); } }
+  function apriObiettivi() { if (typeof MenuUI !== 'undefined') { if (MenuUI.state && MenuUI.state.open && MenuUI.state.tab === 'obiettivi') MenuUI.close(); else MenuUI.open('obiettivi'); } else pausa(true, 'obiettivi'); }
+  // il menu si chiude: se era stato aperto dalla pausa, il mondo riparte
+  function menuChiuso() { if (P.daPausa) { P.daPausa = false; if (PV() && PV().ui) PV().ui.pausa = P.open; } }
+
+  // =====================================================================================================================
+  // I TASTI: prima di tutti (orienta.js sta prima di main.js), per la pausa e le schede
+  // =====================================================================================================================
+  const typing = () => { const a = document.activeElement; return a && (/INPUT|TEXTAREA|SELECT/.test(a.tagName) || a.isContentEditable); };
+  if (ON) addEventListener('keydown', e => {
+    const pv = PV(); if (!pv || !pv.ui) return; const ui = pv.ui, k = (e.key || '').toLowerCase();
+    if (ui.intro) { if (F.entra && !e.repeat && !['shift', 'control', 'alt', 'meta', 'tab', 'f5', 'f12'].includes(k)) { e.preventDefault(); e.stopImmediatePropagation(); entraOra(); } return; }
+    if (P.open) {
+      e.stopImmediatePropagation(); if (k !== 'f5' && k !== 'f12') e.preventDefault(); if (e.repeat && !/arrow/.test(k)) return;
+      const bs = Array.from($('or-pausa').querySelectorAll('.pb')), i = bs.indexOf(document.activeElement);
+      if (k === 'escape' || k === 'f') pausa(false);
+      else if (k === 'arrowdown' || k === 'arrowright' || (k === 'tab' && !e.shiftKey)) (bs[(i + 1) % bs.length] || bs[0]).focus();
+      else if (k === 'arrowup' || k === 'arrowleft' || (k === 'tab' && e.shiftKey)) (bs[(i - 1 + bs.length) % bs.length] || bs[0]).focus();
+      else if (k === 'enter' || k === ' ') { if (bs[i]) bs[i].click(); }
+      else if (k === 'h' || k === 'f1') { P.tab = P.tab === 'comandi' ? 'obiettivi' : 'comandi'; renderPausa(); }
+      else if (k === 'm') apriMappa();
+      return;
+    }
+    if (typing() || e.repeat) return;
+    if (ui.dialog || ui.book || ui.over) return;
+    if (k === 'f1' || (k === 'h' && !ui.menu)) { e.preventDefault(); e.stopImmediatePropagation(); pausa(true, 'comandi'); return; }
+    if (k === 'm' && typeof MenuUI !== 'undefined') { e.preventDefault(); e.stopImmediatePropagation(); if (ui.menu && MenuUI.state && MenuUI.state.tab !== 'mappa') MenuUI.open('mappa'); else apriMappa(); return; }
+  }, true);
+
+  return { ON, COMANDI, tasto, obiettivo, installa, mount, hud, obiettiviHtml, comandiHtml, onObClick, pausa, get pausaAperta() { return P.open; }, apriMappa, apriObiettivi, menuChiuso,
+    introHtml, fase, pronto, entraOra, get pronta() { return !!F.entra; }, primaVolta, totale };
+})();
+if (typeof module !== 'undefined') module.exports = Orienta;
+</script>   <!-- [orienta] orientarsi: obiettivo, pausa, comandi, schede d'avvio (prima di main.js: i suoi tasti passano per primi) -->
 <script data-m="main">
 (function () {
   'use strict';
@@ -96370,6 +96798,8 @@ if (typeof module !== 'undefined' && module.exports) {
   let st = G.create((Math.random() * 1e9) | 0);
   const ui = { intro: true, dialog: null, book: false, bookTab: 'people', letterbox: true, flash: 0, fade: 0, desat: false, time: 0, over: false, lastMoment: null, momentUntil: 0, aimPoint: null, zoom: .72 };
   const keys = {};
+  // [orienta] orientarsi (src/orienta.js): obiettivo sempre in vista, pausa vera, E azione, T parla, H aiuto, M mappa, schede d'avvio. ?nofixorienta: com'era
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;
   const fmt = n => Math.round(n).toLocaleString('it-IT') + '.000';
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const HUDSEL = '.hud:not(#dialog):not(#book):not(#screen)';
@@ -96526,18 +96956,20 @@ if (typeof module !== 'undefined' && module.exports) {
     if (ui.intro) return;   // [diretto] si entra da soli, quando il gioco risponde
     if (ui.over) { if (k === 'enter') { e.preventDefault(); restart(); } return; }
     if (k === 'tab') { e.preventDefault(); toggleBook(); return; }
-    if (k === 'm') { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }
-    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa
+    if (k === 'm' && !OR) { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }   // [orienta] M è la mappa (orienta.js); l'audio sta nella pausa
+    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (OR && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open)) Orienta.pausa(true); }, 0); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa   // [orienta] la pausa vera: il mondo si ferma
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
-    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && window.Livelli && (OR ? ['j', 'k', 'n', 'v'] : ['h', 'j', 'k', 'n', 'v']).includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }   // [orienta] H è l'aiuto: si scava con E (azione), sul posto
     if (!e.repeat && k === 'v' && CAM6 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
     if (e.repeat) return;
-    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
+    if (k === 'e' && OR) eDown();   // [orienta] E: l'azione del posto (parla, entra, usa); tenuto 0,8 s il crimine (scippo, rapina)
+    else if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra
+    else if (k === 't' && OR) talkNear();   // [orienta] T parla (era dentro il commento qui sopra: non faceva niente)
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
@@ -96548,7 +96980,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function zoomBy(f) { ui.zoom = Math.max(CAM6 ? .2 : .12, Math.min(2, (ui.zoom || 1) * f)); }
   function vistaDopo() { if (!CAM6) return; ui.zoom = Visuale.vista6(ui.zoom); const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); toast('Vista ' + ['vicina', 'media', 'alta'][i] + '.'); CON.sent = ''; }   // [camera6] le tre viste, in giro   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
-  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
+  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); if (k === 'e' && OR) eUp(); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 }; let stickB = null;
   const vstick = { x: 0, y: 0 };
@@ -96659,6 +97091,62 @@ if (typeof module !== 'undefined' && module.exports) {
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  // ---------- [orienta] E: l'azione del posto (parla, entra, usa); tenuta 0,8 s, il crimine. T: parla ----------
+  // Prima E era lo scippo (o la rapina) a un tasto: un nuovo giocatore lo premeva per «usare» e derubava il primo che passava.
+  // Ora il crimine vuole la mano ferma: si tiene premuto (tastiera, X del controller, il suggerimento rosso sul telefono) e un anello
+  // si riempie sopra la persona; lasciando prima si fa l'azione del posto. Parla (T, E, Y) apre la chat della Risacca: una cosa sola.
+  const EHOLD = 800, EH = { on: false, t0: 0, done: false, tocco: false };
+  const crimeHere = () => st.player.vehicle ? null : G.context(st).find(c => c.key === 'E') || null;
+  const fakeKey = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  function talkTo(n) { if (!n) return; if (window.RisaccaUI && RisaccaUI.openChat) { closeRing(); RisaccaUI.openChat(n.id); } else openTalk(n); }
+  function talkNear() { if (st.player.vehicle) return; const n = G.nearestNpc(st, 2.3) || G.nearestNpc(st, 4); if (n) talkTo(n); else toast('Non c\'è nessuno con cui parlare qui. Avvicinati a una persona.', 'bad'); }
+  function ctxE() {
+    const p = st.player; if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || ui.pausa) return null;
+    const cx = G.context(st);
+    if (p.vehicle) return null;   // alla guida i tasti sono del blocco E (guida2): F scende, come prima
+    const door = G.actionKey && G.actionKey(st) === 'porta' ? cx.find(c => c.key === 'F') : null;
+    if (door) return { label: door.label, run: () => { click.t = null; ui.mark = null; doAct('porta'); }, dup: 'F' };
+    const n = G.nearestNpc(st, 2.2);
+    if (n) return { label: 'Parla con ' + n.first, run: () => talkTo(n), dup: 'T' };
+    const v = cx.find(c => c.key === 'F' && !c.bad);
+    if (v) return { label: v.label, run: () => doAct('veicolo'), dup: 'F' };
+    const V = cx.find(c => c.key === 'V');
+    if (V) return { label: V.label, run: () => fakeKey('v'), dup: 'V' };
+    if (window.Livelli && Livelli.actions) {   // si scava sul posto: nella parete davanti, o avanti sotto terra (era H)
+      const cun = (Livelli.actions(st) || []).find(a => a.id === 'cunicolo'); if (cun) return { label: cun.label.replace(/\s*\(H\)/, ''), run: () => { const m = cun.run(); if (m) toast(m); } };
+      if (p.lv && p.lv.k === 'ug') return { label: 'Scava avanti', run: () => { const m = Livelli.key(st, 'h'); if (m) toast(m); } };
+    }
+    const q = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0;
+    if (q) return { label: `Cose da fare qui (${q})`, run: () => MenuUI.open('qui') };
+    return null;
+  }
+  function eDown() {
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || ui.pausa) return;
+    if (!crimeHere()) { const a = ctxE(); if (a) a.run(); else toast('Qui non c\'è niente da fare.', 'bad'); return; }
+    EH.on = true; EH.t0 = performance.now(); EH.done = false; EH.tocco = false;
+  }
+  function eUp() { if (!EH.on || EH.tocco) return; EH.on = false; ringE(-1); if (EH.done) return; const a = ctxE(); if (a) a.run(); }
+  function ringE(h) {
+    const el = $('or-ring'); if (!el) return; if (h < 0) { if (!el.hidden) el.hidden = true; return; }
+    const n = G.nearestNpc(st, 1.8), q = n || st.player, pr = R.project(q.x, 1.3, q.y), o = cvOff();
+    el.hidden = false; el.style.left = (o.x + pr.x * o.w) + 'px'; el.style.top = (o.y + pr.y * o.h) + 'px'; el.style.setProperty('--h', Math.min(1, h).toFixed(3));
+  }
+  function eTick() {
+    if (!EH.on) return;
+    if (ui.dialog || ui.book || ui.menu || ui.pausa || ui.over || !crimeHere()) { EH.on = false; ringE(-1); return; }
+    const h = (performance.now() - EH.t0) / EHOLD; ringE(h);
+    if (h >= 1 && !EH.done) { EH.done = true; EH.on = false; ringE(-1); doAct('scippo'); }
+  }
+  // i suggerimenti sono pulsanti veri: si toccano (telefono) o si cliccano; il rosso si tiene premuto
+  if (OR) {
+    const cxEl = $('ctx');
+    cxEl.addEventListener('pointerdown', e => { const b = e.target.closest('[data-c]'); if (!b || !b.dataset.c) return; e.preventDefault(); e.stopPropagation(); A.init(); const c = b.dataset.c;
+      if (c === 'e') { const a = ctxE(); if (a) a.run(); }
+      else if (c === 'x') { if (!crimeHere()) return; EH.on = true; EH.t0 = performance.now(); EH.done = false; EH.tocco = true; try { b.setPointerCapture(e.pointerId); } catch (x) { } }
+      else if (c.startsWith('k:')) fakeKey(c.slice(2).toLowerCase()); });
+    const xUp = () => { if (EH.on && EH.tocco) { EH.on = false; EH.tocco = false; ringE(-1); } };
+    cxEl.addEventListener('pointerup', xUp); cxEl.addEventListener('pointercancel', xUp); cxEl.addEventListener('lostpointercapture', xUp);
+  }
   // [salto] Spazio salta a piedi e in BMX; nelle altre auto resta il freno a mano
   function jumpMode() { const p = st.player; if (!p.vehicle) return true; const v = st.vehicles.find(q => q.id === p.vehicle); return !!(v && G.VK[v.kind].pocket); }
   // [andatura] più clicchi svelto verso un punto, più vai forte: a piedi cammini, corri, scatti; in BMX pedali piano, forte, a tutta.
@@ -96823,8 +97311,9 @@ if (typeof module !== 'undefined' && module.exports) {
   // --- menu attorno all'omino ---
   function ringOptions(n) {
     const p = st.player, o = [];
-    o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
-    if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); // RISACCA: chat libera
+    if (OR) o.push({ label: 'Parla', run: () => { closeRing(); talkTo(n); } });   // [orienta] Parla e Chatta erano due: ora una (la chat; dentro, «Altre domande» apre il dialogo di prima)
+    else { o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
+    if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); } // RISACCA: chat libera
     if (inRoom(n)) { o.push({ label: '✕', run: closeRing }); return o; }   // [scopo] dentro casa d'altri: si parla e basta
     const ctx = G.context(st).find(c => c.key === 'E');
     if (ctx) o.push({ label: ctx.label.startsWith('Rapina') ? 'Rapina' : 'Ruba', bad: true, run: () => { closeRing(); doAct('scippo'); } });
@@ -96939,7 +97428,7 @@ if (typeof module !== 'undefined' && module.exports) {
           <div class="dots">${k.filter(x => !x.npc.dead).map(x => `<span class="${x.mem.actor !== 'player' && x.mem.actor !== 'ignoto' ? 'alt' : x.mem.source}" title="${esc(x.npc.name)}">${esc(x.npc.first)}${x.mem.actor !== 'player' && x.mem.actor !== 'ignoto' ? ' → ' + esc(G.nameOf(st, x.mem.actor)) : ''}</span>`).join('')}</div></div>`;
       }).join('') : '<p class="hint">Non hai ancora fatto niente di cui si possa parlare.</p>') + '</div>';
     } else body = `<div class="logl">${st.log.map(l => `<p class="${l.kind}">${esc(l.text)}</p>`).join('')}</div>`;
-    b.innerHTML = `<header><h2>Taccuino di Nino</h2><button class="x" id="bookX">Chiudi · Tab</button></header>
+    b.innerHTML = `<header><h2>Taccuino di Nino</h2><button class="x" id="bookX">${OR && touchMode ? 'Chiudi' : 'Chiudi · Tab'}</button></header>
       <nav role="tablist"><button role="tab" data-t="people" aria-selected="${tab === 'people'}">Chi sa cosa</button><button role="tab" data-t="facts" aria-selected="${tab === 'facts'}">Cosa hai fatto</button><button role="tab" data-t="log" aria-selected="${tab === 'log'}">Registro</button></nav>
       <div class="body">${body}</div>`;
     b.querySelectorAll('[data-pt]').forEach(s => { const n = G.byId(st, s.dataset.pt); s.replaceWith(portrait(Object.assign({}, n.look, { dead: n.dead }))); });
@@ -96953,11 +97442,22 @@ if (typeof module !== 'undefined' && module.exports) {
   // dove si gioca, non la piazza del vecchio menu). I crediti restano qui, durante il caricamento.
   function introScreen() {
     $('screen').style.pointerEvents = 'none';
+    if (OR) { $('screen').innerHTML = Orienta.introHtml(`Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza`); return; }   // [orienta] il titolo, le tre schede (la prima volta), le fasi
     $('screen').innerHTML = `<div class="in carico0"><div class="lbl" id="caricoTxt">Carico il porto…</div><div class="bar"><i id="caricoBar" style="width:5%"></i></div>
       <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
   }
-  function carico(txt, p) { const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
-  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
+  function carico(txt, p) {
+    if (OR) {   // [orienta] la barra per fasi (modelli, grafica, primo disegno, quartiere): prima restava ferma all'85% per minuti
+      const t = $('caricoTxt'); if (t && txt) t.textContent = txt.replace(/\s*\d+%$/, '');
+      if (p !== undefined) { if (p < .85) Orienta.fase('modelli', Math.max(0, (p - .15) / .7)); else if (p < .95) Orienta.fase('grafica', (p - .85) / .1); else if (p < .97) Orienta.fase('disegno', 0); else Orienta.fase('quartiere', .2); }
+      return; }
+    const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
+  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.pronto = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus();
+    if (OR) {   // [orienta] le righe della cronaca nate dietro il caricamento ripartono adesso (prima scadevano prima di entrare); un aiuto corto sui tasti
+      st.feed.forEach(f => { f.until = Math.max(f.until, st.clock + 9); });
+      try { softwareCheck(); } catch (e) { }
+      toast(CON.on ? 'Tocca una persona per parlarle. Zaino: obiettivi, mappa, comandi.' : touchMode ? 'Tocca una persona per parlarle. ❚❚ in alto: pausa, obiettivi, comandi.' : 'T parla · E azione · Esc pausa · H comandi · M mappa', 'job'); st.feed[0].until = st.clock + 12; return; }
+    toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
   function endScreen() {
     const o = st.over; ui.over = true; ui.letterbox = true; showHud(false); $('bubbles').style.visibility = 'hidden'; $('xhair').hidden = true;
     const named = st.npcs.filter(n => !n.passante && !n.cop).concat(st.npcs.filter(n => n.cop && !n.reinforcement));
@@ -97001,7 +97501,37 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     x.putImageData(img, 0, 0);
   }
+  // [orienta] la minimappa gira con la camera (in su è dove guardi), tonda, nitida (misura vera × DPR); la freccia è dove guarda Nino,
+  // la N il nord, e una freccia sul bordo punta l'obiettivo quando è fuori. Prima era ferma a 45°: girata la visuale non tornava più niente
+  function drawMinimapOr() {
+    const c = $('minic'), cs = c.clientWidth || 128, dpr = Math.min(2, devicePixelRatio || 1), S = Math.round(cs * dpr);
+    if (c.width !== S) { c.width = S; c.height = S; }
+    const x = c.getContext('2d'), p = st.player, z = S / 88, sc = 2 / G.TS * z, r0 = S / 2;
+    const B = R.camBasis ? R.camBasis() : null, phi = B ? -Math.PI / 2 - Math.atan2(B.fz, B.fx) : Math.PI / 4;
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, S, S);
+    x.save(); x.beginPath(); x.arc(r0, r0, r0 - 1, 0, Math.PI * 2); x.clip(); x.fillStyle = '#0a0816'; x.fillRect(0, 0, S, S);
+    x.translate(r0, r0); x.rotate(phi); x.translate(-p.x * sc, -p.y * sc);
+    x.imageSmoothingEnabled = false; x.drawImage(miniBase, 0, 0, G.GW * 2 * z, G.GH * 2 * z); x.imageSmoothingEnabled = true;
+    const R46 = 46 * 1.42, dot = (X, Y, w, h, col) => { x.fillStyle = col; x.fillRect(X * sc - w * z / 2, Y * sc - h * z / 2, w * z, h * z); };
+    if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c0 = p.lv ? P.u : P.s, X = (c0[0] + .5) * G.TS, Y = (c0[1] + .5) * G.TS; if (Math.abs(X - p.x) > R46 || Math.abs(Y - p.y) > R46) return; if (P.metro) dot(X, Y, 6, 6, '#d0202a'); else dot(X, Y, 2, 2, '#9a9aa8'); });
+    st.pickups.forEach(k => { if (!G.pickupVisible(st, k) || Math.abs(k.x - p.x) > R46 || Math.abs(k.y - p.y) > R46) return; dot(k.x, k.y, 2, 2, k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'); });
+    st.vehicles.forEach(v => { if (v.hidden || Math.abs(v.x - p.x) > R46 || Math.abs(v.y - p.y) > R46) return; dot(v.x, v.y, 3, 2, v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'); });
+    st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > R46 || Math.abs(n.y - p.y) > R46) return; const a = G.attitude(st, n); dot(n.x, n.y, 2.4, 2.4, n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'); });
+    const jt = G.jobTarget(st), jd = jt ? Math.hypot(jt.x - p.x, jt.y - p.y) * sc : 0;
+    if (jt && jd < r0 - 8 * dpr) { x.save(); x.translate(jt.x * sc, jt.y * sc); x.rotate(-phi); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; x.beginPath(); x.arc(0, -6 * dpr, 4.5 * dpr, Math.PI * .85, Math.PI * 2.15); x.lineTo(0, 0); x.closePath(); x.fill(); x.stroke(); x.restore(); }
+    // Nino: la freccia è dove guarda; il ventaglio chiaro è quello che inquadra la camera (sempre in su)
+    x.translate(p.x * sc, p.y * sc);
+    x.save(); x.rotate(-phi); x.fillStyle = 'rgba(255,255,255,.10)'; x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, r0 * .8, -Math.PI / 2 - .55, -Math.PI / 2 + .55); x.closePath(); x.fill(); x.restore();
+    x.rotate(p.face || 0); x.fillStyle = '#fff'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; const u = dpr; x.beginPath(); x.moveTo(7 * u, 0); x.lineTo(-5 * u, 4.5 * u); x.lineTo(-2.5 * u, 0); x.lineTo(-5 * u, -4.5 * u); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    const edge = (ang, rr) => [r0 + Math.cos(ang) * rr, r0 + Math.sin(ang) * rr];
+    if (jt && jd >= r0 - 8 * dpr) { const a = Math.atan2(jt.y - p.y, jt.x - p.x) + phi, [ex, ey] = edge(a, r0 - 7 * dpr); x.save(); x.translate(ex, ey); x.rotate(a); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; x.beginPath(); x.moveTo(6 * dpr, 0); x.lineTo(-5 * dpr, 5.5 * dpr); x.lineTo(-5 * dpr, -5.5 * dpr); x.closePath(); x.fill(); x.stroke(); x.restore(); }
+    { const a = -Math.PI / 2 + phi, [nx, ny] = edge(a, r0 - 9 * dpr); x.font = `700 ${Math.round(11 * dpr)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = 'rgba(10,8,22,.8)'; x.beginPath(); x.arc(nx, ny, 7.5 * dpr, 0, Math.PI * 2); x.fill(); x.fillStyle = '#f0e6d0'; x.fillText('N', nx, ny + .5 * dpr); }
+    x.strokeStyle = 'rgba(240,230,208,.45)'; x.lineWidth = 2 * dpr; x.beginPath(); x.arc(r0, r0, r0 - 1 * dpr, 0, Math.PI * 2); x.stroke();
+  }
   function drawMinimap() {
+    if (OR) return drawMinimapOr();
     const c = $('minic'), x = c.getContext('2d'); c.width = 88; c.height = 88;
     const p = st.player, sc = 2 / G.TS;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
@@ -97101,12 +97631,18 @@ if (typeof module !== 'undefined' && module.exports) {
     setS($('debtbar'), 'width', Math.min(100, p.money / st.debt * 100) + '%');
     setS($('hp'), 'width', Math.max(0, Math.min(100, p.hp)) + '%'); const hpb = $('hpbar'); if (hpb.classList.contains('low') !== (p.hp < 35)) hpb.classList.toggle('low', p.hp < 35);
     setT($('day'), G.dayName(st.t)); setT($('time'), G.clockStr(st.t));
-    const hl = G.hoursLeft(st); setT($('left'), st.deadline > 1e8 ? 'nessuna scadenza' : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`); setCls($('left'), hl <= 6 && st.deadline < 1e8 ? 'urgent' : '');
-    const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label);
+    const hl = G.hoursLeft(st); setT($('left'), st.deadline > 1e8 ? (OR ? '' : 'nessuna scadenza') : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`); setCls($('left'), hl <= 6 && st.deadline < 1e8 ? 'urgent' : '');
+    if (OR) { setHid($('job'), true); Orienta.hud(st, R); }   // [orienta] l'obiettivo ha la sua riga (orienta.js), anche senza un posto dove andare
+    else { const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label); }
     const w = G.wanted(st), wEl = $('wanted'); if (wEl.__w !== w) { wEl.__w = w; wEl.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < w)); } if (wEl.classList.contains('chase') !== !!st.chase) wEl.classList.toggle('chase', !!st.chase);
     feedDom();
     const cx = (ui.dialog || ui.book || ui.intro) ? [] : G.context(st);
-    if (p.money >= st.debt && !ui.intro) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }
+    if (p.money >= st.debt && !ui.intro && !(OR && st.deadline > 1e8)) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }   // [orienta] con la Risacca non c'è debito da saldare
+    if (OR) {   // [orienta] E in testa (l'azione del posto), il crimine in coda e rosso (tieni E); T ed F non si ripetono se E fa già la stessa cosa
+      const a = (ui.dialog || ui.book || ui.intro || ui.pausa) ? null : ctxE(), cr = ui.pausa ? null : cx.find(c => c.key === 'E'), kb = !touchMode;
+      const list = (a && !(touchMode && a.dup === 'F' && touchSet().includes('entra')) ? [{ key: 'E', label: a.label, c: 'e' }] : [])   /* sul telefono «Entra» c'è già tra i pulsanti */.concat(cx.filter(c => c.key !== 'E' && !(a && a.dup === c.key)).map(c => Object.assign({ c: /^[A-Z]$/.test(c.key) ? 'k:' + c.key : '' }, c)), cr ? [{ key: touchMode ? 'tieni' : 'tieni E', label: cr.label, bad: true, c: 'x' }] : []);
+      setH($('ctx'), list.map(c => `<button class="chip ${c.bad ? 'bad' : ''}" data-c="${c.c}">${kb || c.c === 'x' ? `<kbd>${esc(c.key)}</kbd>` : ''}${esc(c.label)}</button>`).join(''));
+    } else
     setH($('ctx'), cx.map(c => `<span class="chip ${c.bad ? 'bad' : ''}"><kbd>${c.key}</kbd>${esc(c.label)}</span>`).join(''));
     // arma
     const W = G.WEAPONS[p.cur], a = p.arms[p.cur] || {};
@@ -97214,7 +97750,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
-    $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
+    $('debt').addEventListener('click', e => { if (OR && e.target.closest('#sd-hud')) return; if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora   // [orienta] la cassa comune apre il portafoglio, non tutti e due
     const sEl = $('stick'), kn = $('knob'); let sid = null;
     sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });   // [camera3] la levetta è sempre relativa a quello che vedi: in su dritto, di lato curvi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
@@ -97237,7 +97773,7 @@ if (typeof module !== 'undefined' && module.exports) {
   // B monta o scende, X agisce, Y parla, LB ricarica, RB cambia arma, Back esce, Start il taccuino; il grilletto destro spara dove
   // guardi (alla guida: destro gas, sinistro freno e retro); la croce su e giù fa lo zoom.
   const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, pan: 0, fire: false, gas: 0, brk: 0, down: [] };
-  const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };
+  const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = OR ? { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'm', 9: 'Escape' } : { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };   // [orienta] Start la pausa, Back la mappa (il taccuino sta nella pausa)
   // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
   const axis1 = v => { const a = Math.abs(v); return a < PAD_DZ ? 0 : Math.sign(v) * Math.pow((a - PAD_DZ) / (1 - PAD_DZ), 1.6); };
@@ -97259,6 +97795,7 @@ if (typeof module !== 'undefined' && module.exports) {
     for (let i = 0; i < B.length && i < 16; i++) {
       const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
       if (PAD_KEYS[i]) padKey(i, d);
+      else if (d && (i === 12 || i === 13) && OR && ui.pausa) document.dispatchEvent(new KeyboardEvent('keydown', { key: i === 12 ? 'ArrowUp' : 'ArrowDown', bubbles: true, cancelable: true }));   // [orienta] la croce scorre la pausa
       else if (d && i === 12) zoomBy(1 / 1.12); else if (d && i === 13) zoomBy(1.12);
       else if (d && i === 11) vistaDopo();   // [camera6] R3 (clic della levetta destra): la vista dopo
     }
@@ -97306,7 +97843,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
     if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
-    if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
+    if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active()) || (OR && ui.pausa)) {   // [orienta] anche dalla pausa
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
       if (ui.menu) M.zaino = { l: 'Chiudi', dn: conCmd('zaino') };
@@ -97338,6 +97875,7 @@ if (typeof module !== 'undefined' && module.exports) {
       CON.trick.wheelie = bx && !!D.giu; CON.trick.peg = bx ? (D.sx && !D.dx ? 1 : D.dx && !D.sx ? -1 : 0) : 0;
       CON.rot = bx ? 0 : (D.dx ? 1 : 0) - (D.sx ? 1 : 0); CON.zoom = bx ? 0 : (D.giu ? 1 : 0) - (D.su ? 1 : 0); return;
     }
+    if (OR && ui.intro && down && Orienta.pronta) { Orienta.entraOra(); return; }   // [orienta] al cancello, qualunque tasto della console entra
     if (k === 'audio') { if (down) { A.init(); A.toggle(); } CON.sent = ''; return; }
     if (k === 'vista') { if (down) vistaDopo(); return; }   // [camera6] il tocco sulla levetta2 del Game Boy: la vista dopo
     if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
@@ -97455,6 +97993,7 @@ if (typeof module !== 'undefined' && module.exports) {
   const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
   function softwareCheck() {
     const n = gpuName(); if (!n || !SOFT_GPU.test(n)) return;
+    if (OR) { toast('La grafica gira senza scheda video: andrà a scatti. Attiva l\'accelerazione hardware del browser (Impostazioni → Sistema).', 'bad'); st.feed[0].until = st.clock + 12; return; }   // [orienta] più corta: prima 5 righe per 30 s sopra l'obiettivo
     toast('Il browser sta disegnando SENZA scheda video (' + (n.match(/swiftshader|llvmpipe|softpipe|basic render[^,)]*|microsoft basic[^,)]*|software[^,)]*|mesa offscreen/i) || [n])[0] + '): per questo va a scatti. Attiva l\'accelerazione hardware: Chrome o Edge → Impostazioni → Sistema → «Usa accelerazione grafica quando disponibile», poi riavvia il browser.', 'bad');
     st.feed[0].until = st.clock + 30;
   }
@@ -97513,7 +98052,7 @@ if (typeof module !== 'undefined' && module.exports) {
     host(1, true);   // [ospite] che si legga l'avviso
     return;
   }
-  setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
+  if (!OR) setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [orienta] l'avviso si dà entrando (dietro il caricamento scadeva prima)   // [prestazioni] avvisa se si disegna senza scheda video
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
@@ -97545,12 +98084,19 @@ if (typeof module !== 'undefined' && module.exports) {
   const VIVO = { on: true, n: 0, t0: 0 };
   function vivoTick(raw) {
     if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
+    if (OR) Orienta.fase('disegno', Math.min(.95, VIVO.n / 3 * .7 + (1 - Math.exp(-(performance.now() - VIVO.t0) / 30000)) * .3));   // [orienta] la fase si muove anche quando i fotogrammi sono lenti
     if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
     // [ottimizza-car] «Gioca» dopo la città vicina: i tasselli dell'impronta in scena (si montano dietro lo schermo di carico, col tetto largo
     // dell'anello vicino), al più 15 s in più (era 45: l'apertura non deve allungarsi). ?nofixvicino come prima
     if (window.Tasselli && Tasselli.attivo && Tasselli.attivo() && !/[?&]nofixvicino\b/.test(location.search)) { const T = Tasselli.stato();
-      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } return; } }
+      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } if (OR) Orienta.fase('quartiere', (performance.now() - VIVO.t0) / 15000); return; } }
     VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
+    // [orienta] pronto: «Premi per entrare» (il tasto, il tocco o il pulsante del controller sblocca anche l'audio). Con un browser
+    // pilotato (navigator.webdriver: le prove degli altri blocchi aspettano __tl.gioco) si entra da soli, se non c'è ?premi
+    if (OR && !(navigator.webdriver && !/[?&]premi\b/.test(location.search))) {
+      ui.pronto = true; window.__tl.pronto = Math.round(performance.now());
+      Orienta.pronto(() => { start(); window.__tl.gioco = Math.round(performance.now()); });
+      requestAnimationFrame(() => requestAnimationFrame(() => host(1, true))); return; }
     start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
@@ -97584,9 +98130,9 @@ if (typeof module !== 'undefined' && module.exports) {
     padPoll(dt);   // [fluido] il controller si legge prima di tutto: il comando di questo fotogramma muove già questo fotogramma
     conTick(dt);   // [console]
     let inpF = null;
-    const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
+    const slow = ui.menu && ui.menuSlow && !(OR && ui.pausa);   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma   // [orienta] aperto dalla pausa, resta fermo
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
-    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
+    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn || (OR && (ui.pausa || (ui.intro && ui.pronto)));   // [azioni]   // [orienta] la pausa vera; e il mondo aspetta «Premi per entrare»
     if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input(); inpF = inp;   // [fluido] lo stesso comando va al motore e alla camera, nello stesso fotogramma
@@ -97607,6 +98153,7 @@ if (typeof module !== 'undefined' && module.exports) {
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
+    if (OR) eTick();   // [orienta] E tenuto: l'anello del crimine
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); conLabels(); }
     if (RIT) PesoRitmo.lavoro(performance.now() - tL0);   // [ritmo] il lavoro del processore in questo fotogramma
     requestAnimationFrame(loop);
@@ -97622,7 +98169,8 @@ if (typeof module !== 'undefined' && module.exports) {
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
+    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear() };   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
 </script>
@@ -97638,6 +98186,8 @@ var RisaccaUI = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const PV = () => window.__pv;
   const ST = () => PV() && PV().st;
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;   // [orienta] Parla = la chat (una cosa sola); niente tasti scritti sul telefono; ?nofixorienta com'era
+  const COARSE = () => matchMedia('(pointer: coarse)').matches;
   const U = { chat: null, busy: false, ctl: null, panel: false, tab: 'squadra', sample: null, model: 'attesa', paused: false, pop: null, lastHere: '', notes: {}, scene: null, meshes: {}, stRef: null };
 
   // ---------------- STILE ----------------
@@ -97658,7 +98208,7 @@ var RisaccaUI = (function () {
 #rs-hud kbd, .rs-k { font-family: var(--f-label); font-size: 10px; color: var(--amber); }
 #rs-hud #rs-sneak { font-size: 11.5px; padding: 1px 6px; }
 #rs-hud .alarm { font-size: 11.5px; color: var(--blood); }
-@media (max-width: 820px) { #rs-hud { top: 4px; gap: 6px; } #rs-hud .lbl, #rs-hud .t { display: none; } }
+@media (max-width: 820px) { #rs-hud { top: 4px; gap: 6px; } #rs-hud .lbl, #rs-hud .t { display: none; } body.or-on #rs-hud .lbl { display: inline; } }
 #rs-panel table { color: inherit; font: inherit; font-size: 13.5px; }
 #rs-here { left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 340px); pointer-events: auto; }
 #rs-here button { font-family: var(--f-pix); font-size: 13.5px; padding: 5px 10px; background: var(--panel); color: var(--fg); border: 2px solid #1f6f7c; box-shadow: 3px 3px 0 #07060e; cursor: pointer; }
@@ -97731,7 +98281,7 @@ var RisaccaUI = (function () {
         <div class="m"><span class="lbl">Morale</span><div class="bar"><i class="mo" id="rs-mo" style="width:10%"></i></div></div>
         <div class="m"><span class="lbl">Repressione</span><div class="pips" id="rs-rp"><i></i><i></i><i></i><i></i><i></i></div></div>
         <span class="cash" id="rs-cash" hidden>0</span>
-        <button id="rs-open">Risacca <kbd>B</kbd> · Chatta <kbd>C</kbd></button>
+        <button id="rs-open">${OR ? 'Risacca <kbd>B</kbd>' : 'Risacca <kbd>B</kbd> · Chatta <kbd>C</kbd>'}</button>
         <button id="rs-sneak">Cammina <kbd>X</kbd></button>
         <div class="alarm" id="rs-alarm" hidden></div></div>
       <div class="hud" id="rs-here"></div>
@@ -97855,7 +98405,7 @@ var RisaccaUI = (function () {
     U.chat = id; U.paused = true;
     const el = $('rs-chat'); el.hidden = false;
     const att = G.attitude(st, n), b = RS.battle(n), far = Math.hypot(n.x - st.player.x, n.y - st.player.y) > 5;
-    el.innerHTML = `<header><canvas></canvas><div><span class="nm">${esc(n.name)}</span> ${b && n.ris && n.ris.member ? `<span class="bt">«${esc(b)}»</span>` : ''}<div class="rl">${esc(n.role)}${far ? ' · via radio' : ''}</div><div class="at" id="rs-att">${esc(att.label)}${n.ris && n.ris.member ? ' · della Risacca' : ''}</div></div><button class="x" aria-label="Chiudi">ESC</button></header>
+    el.innerHTML = `<header><canvas></canvas><div><span class="nm">${esc(n.name)}</span> ${b && n.ris && n.ris.member ? `<span class="bt">«${esc(b)}»</span>` : ''}<div class="rl">${esc(n.role)}${far ? ' · via radio' : ''}</div><div class="at" id="rs-att">${esc(att.label)}${n.ris && n.ris.member ? ' · della Risacca' : ''}</div></div><button class="x" aria-label="Chiudi">${OR && COARSE() ? '✕' : 'ESC'}</button></header>
       <div class="msgs" id="rs-msgs" aria-live="polite"></div><div class="sugg" id="rs-sugg"></div>
       <form id="rs-form"><textarea id="rs-in" rows="2" placeholder="Scrivi a ${esc(n.first)}… (Invio per mandare)" aria-label="Messaggio"></textarea><button id="rs-send" type="submit">Invia</button></form>
       <div class="foot" id="rs-foot"></div>`;
@@ -97897,8 +98447,8 @@ var RisaccaUI = (function () {
       return `<div class="sys ${m.ok === false ? 'bad' : m.ok ? 'ok' : ''}">${esc(m.text)}</div>`;
     }).join('') + (pending ? `<div class="msg me">${esc(pending)}</div><div class="msg npc wait" id="rs-wait">…</div>` : '');
     box.scrollTop = box.scrollHeight;
-    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('');
-    sg.querySelectorAll('button').forEach(b => b.onclick = () => send(b.textContent));
+    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
+    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; } send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
     const att = G.attitude(st, n); const a = $('rs-att'); if (a) a.textContent = att.label + (n.ris && n.ris.member ? ' · della Risacca' : '');
   }
   function footer(extra) {
@@ -98036,7 +98586,7 @@ var RisaccaUI = (function () {
         `<h4>Morale ${S.morale}/100 · Repressione livello ${S.level}/5</h4><p class="hint">Il morale sale con scritte, volantini, trasmissioni e sabotaggi senza vittime; fa rendere le collette e convince la gente. La Repressione sale quando qualcuno vede le azioni e parla; al livello 3 cominciano le perquisizioni.</p>` +
         `<h4>Rapporti dalla squadra</h4><div class="inbox">${st.ris.inbox.slice(0, 14).map(m => `<p><b>${G.clockStr(m.t)} ${esc(RS.battle(G.byId(st, m.npc)) || G.nameOf(st, m.npc))}:</b> ${esc(m.text)}</p>`).join('') || '<p class="hint">Ancora niente.</p>'}</div>`;
     }
-    el.innerHTML = `<header><h2>La Risacca <span>Cassa ${Math.floor(st.ris.cassa)}.000 · Morale ${S.morale} · Repressione ${S.level}/5 · Con te: ${esc(invText(S.inv)) || 'niente'}</span></h2><button class="x">Chiudi · B</button></header>
+    el.innerHTML = `<header><h2>La Risacca <span>Cassa ${Math.floor(st.ris.cassa)}.000 · Morale ${S.morale} · Repressione ${S.level}/5 · Con te: ${esc(invText(S.inv)) || 'niente'}</span></h2><button class="x">${OR && COARSE() ? 'Chiudi' : 'Chiudi · B'}</button></header>
       <nav role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${U.tab === k}">${esc(l)}</button>`).join('')}</nav><div class="body">${body}</div>`;
     el.querySelector('.body').scrollTop = keepScroll;
     el.querySelector('.x').onclick = () => togglePanel(false);
@@ -106607,7 +107157,7 @@ var MenuUI = (function () {
     const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
     const q = cv.width / 128; if (wide) x.drawImage(cv, 0, 24 * q, 128 * q, 80 * q, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, 96, 96);
   }
-  function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
+  function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => OR ? drawMap2(c) : drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
   // =====================================================================================================================
   // IL PROTAGONISTA E IL COMMERCIANTE, in pixel
@@ -106707,6 +107257,7 @@ var MenuUI = (function () {
 #mu .rail button.on { box-shadow: inset 0 2px 6px rgba(0,0,0,.5), 0 0 0 2px var(--ott); border-color: transparent; }
 #mu .rail button .dot { position: absolute; right: 2px; top: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--neon); color: var(--notte); font: 700 11px/18px var(--fl); text-align: center; padding: 0 4px; letter-spacing: 0; }
 #mu .rail .sp { flex: 1; }
+#mu .rail.molte { overflow-y: auto; gap: 6px; scrollbar-width: none; } @media (max-height: 820px) and (min-width: 901px) { #mu .rail.molte button { width: 62px; height: 62px; } #mu .rail.molte button canvas { width: 24px; height: 24px; } }   /* [orienta] con gli Obiettivi le schede sono 8-9: stanno in colonna */
 #mu .in { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; border-radius: 14px; background: var(--vetro); box-shadow: inset 0 0 0 1px rgba(58,90,80,.6), inset 0 10px 30px rgba(0,0,0,.45); }
 #mu header { display: flex; align-items: baseline; gap: 16px; padding: 16px 26px 10px; }
 #mu header b { font: 400 34px/1 var(--fs); color: var(--crema); white-space: nowrap; }
@@ -106819,6 +107370,8 @@ var MenuUI = (function () {
 #mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-raro .q, #mu .loot .tile.t-prezioso em { color: var(--ott); } #mu .loot .tile.shop em { color: var(--neon); }
 #mu .inv { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
 #mu .inv .bag { --c: 62px; }
+#mu .or-map { position: relative; } #mu .mappa canvas.v2 { height: clamp(240px, calc(100vh - 250px), 820px); image-rendering: auto; cursor: grab; touch-action: none; }
+#mu .or-map .mz { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; } #mu .or-map .mz button { min-width: 44px; height: 40px; border-radius: 20px; border: 1px solid rgba(233,220,188,.45); background: rgba(13,16,21,.94); color: #E9DCBC; font: 700 17px 'Saira Condensed', sans-serif; letter-spacing: .06em; cursor: pointer; padding: 0 10px; } #mu .or-map .mz button:hover { border-color: #B08D57; }
 #mu .mappa canvas { width: 100%; height: auto; border-radius: 12px; box-shadow: inset 0 0 0 1px #3A5A50, 0 0 0 1px #3A5A50; cursor: pointer; display: block; image-rendering: pixelated; }
 #mu .mlegenda { display: flex; gap: 18px; margin-top: 10px; font: 600 11px var(--fl); letter-spacing: .14em; text-transform: uppercase; color: rgba(233,220,188,.6); } #mu .mlegenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 /* il pulsante ZAINO */
@@ -106923,7 +107476,8 @@ var MenuUI = (function () {
   // SCHEDE
   // =====================================================================================================================
   const SHORT = { zaino: 'Zaino', lavora: 'Crea' };   // [console] i nomi delle schede sul telefono
-  const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;   // [orienta] gli Obiettivi sono la prima scheda; la mappa si legge (zoom, nomi a 13 px, l'obiettivo); ?nofixorienta com'era
+  const TABS = (OR ? [['obiettivi', 'Obiettivi', 'gesso']] : []).concat([['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']]);
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
     if ($('mu')) return true;
@@ -106958,12 +107512,13 @@ var MenuUI = (function () {
     if (typeof OggettiUI !== 'undefined' && OggettiUI.state && OggettiUI.state.open) try { OggettiUI.close(); } catch (e) { }
     if (typeof SoldiUI !== 'undefined' && SoldiUI.state && SoldiUI.state.open) try { SoldiUI.close(); } catch (e) { }
     if (U.tab !== tab || U.arg !== arg) U.sel = null;
+    if (OR && tab === 'mappa' && (U.tab !== 'mappa' || !U.open)) MV.s = null;   // [orienta] la mappa si apre sul giocatore
     U.open = true; U.tab = tab || 'zaino'; U.arg = arg === undefined ? null : arg; U.msg = ''; U.sig = ''; if (tab === 'bottega') U.shopTab = 'compra';
     if (PV().ui) { PV().ui.menu = true; PV().ui.menuSlow = !inCovo(ST()); }   // in strada il mondo rallenta, nel covo si ferma
     $('mu').classList.add('on'); render(true); thumb('zaino');   // [avvio] l'anteprima 3D del pulsante si fa adesso, col contesto già aperto per il menu
   }
   const inCovo = st => { if (!st) return false; const p = st.player; return !!O().pocketsView(st).base || !!(p.indoor && G().BUILDINGS[p.indoor.b] && G().BUILDINGS[p.indoor.b].playerHome); };
-  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } const cv = $('cv'); if (cv) cv.focus(); }
+  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } if (OR) Orienta.menuChiuso(); const cv = $('cv'); if (cv) cv.focus(); }
   function toggle(tab) { if (U.open && (!tab || U.tab === tab)) close(); else open(tab || 'zaino'); }
   function say(r) { if (!r) return r; const m = typeof r === 'string' ? r : r.msg; if (m) { U.msg = m; U.ok = typeof r === 'string' ? true : r.ok !== false; U.msgT = Date.now(); } return r; }
   const act = (id, arg, ex) => say(O().act(ST(), id, arg, ex));
@@ -106973,9 +107528,10 @@ var MenuUI = (function () {
     const st = ST(); if (!st || !U.open || (U.drag && !force)) return;
     let body = '', title = '', sub = '', tabs = '';
     try {
-      if (U.tab === 'zaino') [title, sub, body] = ['Inventario', inCovo(st) ? 'la roba sul tavolo del covo' : 'la roba rovesciata sul marciapiede', pZaino(st, 'inv')];
+      if (U.tab === 'obiettivi') [title, sub, body] = ['Obiettivi', 'cosa fare adesso, e chi sei', Orienta.obiettiviHtml(st)];   // [orienta]
+      else if (U.tab === 'zaino') [title, sub, body] = ['Inventario', inCovo(st) ? 'la roba sul tavolo del covo' : 'la roba rovesciata sul marciapiede', pZaino(st, 'inv')];
       else if (U.tab === 'equip') [title, sub, body] = ['Equipaggiamento', 'quello che hai addosso e in mano', pZaino(st, 'equip')];
-      else if (U.tab === 'mappa') [title, sub, body] = ['Mappa', 'clicca un posto: ci vai a piedi', pMappa(st)];
+      else if (U.tab === 'mappa') [title, sub, body] = ['Mappa', OR ? (matchMedia('(pointer: coarse)').matches ? 'due dita: zoom · trascina · tocca un posto: ci vai' : 'rotella: zoom · trascina · clic su un posto: ci vai') : 'clicca un posto: ci vai a piedi', OR ? pMappa2(st) : pMappa(st)];
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
       else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Crafting'; sub = v.stations.length ? `a mano, e qui: ${v.stations.join(', ')}` : 'a mano: per il resto serve una postazione'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
@@ -106993,10 +107549,10 @@ var MenuUI = (function () {
     const rail = tabsNow.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="${k === 'taccuino' ? 'book' : 'tab'}" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}<span class="lb">${narrow && SHORT[k] || l}</span>${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
-    const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
+    const html = `<div class="case"><nav class="rail${OR && tabsNow.length > 7 ? ' molte' : ''}">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span>${con ? sysKeys() : ''}<button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${OR && PV().ui && PV().ui.pausa ? 'pausa: il mondo è fermo' : inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-${Math.min(9, TABS.length)}</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
@@ -107191,6 +107747,90 @@ var MenuUI = (function () {
     const jt = G0.jobTarget && G0.jobTarget(st); if (jt) { x.fillStyle = '#FF5FA2'; x.beginPath(); x.arc(jt.x * k, jt.y * k, 5, 0, Math.PI * 2); x.fill(); }
     const p = st.player, a = p.face || 0; x.save(); x.translate(p.x * k, p.y * k); x.rotate(a); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(9, 0); x.lineTo(-6, 6); x.lineTo(-3, 0); x.lineTo(-6, -6); x.closePath(); x.stroke(); x.fill(); x.restore();
   }
+  // [orienta] LA MAPPA CHE SI LEGGE: il canvas grande quanto si vede × DPR (prima 2610 px schiacciati a 1058: nomi a 5,7 px), i nomi
+  // disegnati sullo schermo a 13-15 px, ritagliata sull'isola, aperta sul giocatore e già vicina; l'obiettivo col suo segnaposto
+  // (e una freccia sul bordo se è fuori); rotella, trascinamento e due dita per lo zoom; pulsanti + − Tu Obiettivo
+  const MV = { s: null, cx: 0, cy: 0, fit: 1, moved: false, ptr: new Map(), d0: 0, m0: null, x0: 0, y0: 0, cx0: 0, cy0: 0 };
+  let ISLE = null;
+  function island() {
+    if (ISLE) return ISLE; const G0 = G(), T0 = G0.T; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (let ty = 0; ty < G0.GH; ty += 2) for (let tx = 0; tx < G0.GW; tx += 2) if (G0.tileAt(tx, ty) !== T0.WATER) { if (tx < x0) x0 = tx; if (tx > x1) x1 = tx; if (ty < y0) y0 = ty; if (ty > y1) y1 = ty; }
+    if (x1 < x0) { x0 = 0; y0 = 0; x1 = G0.GW; y1 = G0.GH; }
+    const m = 6; return (ISLE = { x0: (x0 - m) * G0.TS, y0: (y0 - m) * G0.TS, x1: (x1 + m) * G0.TS, y1: (y1 + m) * G0.TS });
+  }
+  function pMappa2(st) {
+    return `<div class="mappa or-map"><canvas data-map="1" class="v2" width="10" height="10"></canvas><div class="mz"><button data-a="mz" data-x="1.6" aria-label="Più vicino">+</button><button data-a="mz" data-x="0.625" aria-label="Più lontano">−</button><button data-a="mme">Tu</button><button data-a="mob">Obiettivo</button></div>
+      <div class="mlegenda"><span><i style="background:#f2ead8"></i>tu</span><span><i style="background:#ffd24a"></i>obiettivo</span><span><i style="background:#B08D57"></i>covi</span><span><i style="background:#35e6ff"></i>basi della Risacca</span></div></div>`;
+  }
+  function mapView(cw, ch) {
+    const I = island(), fit = Math.min(cw / (I.x1 - I.x0), ch / (I.y1 - I.y0)), p = ST().player; MV.fit = fit;
+    if (!MV.s) { MV.s = Math.min(9, Math.max(fit, fit * 3.4, 1.6)); MV.cx = p.x; MV.cy = p.y; }
+    MV.s = Math.min(14, Math.max(fit * .95, MV.s));
+    const hw = cw / 2 / MV.s, hh = ch / 2 / MV.s;   // il centro resta dentro l'isola (con mezzo schermo di margine quando si vede tutta)
+    MV.cx = (I.x1 - I.x0) < hw * 2 ? (I.x0 + I.x1) / 2 : Math.min(I.x1 - hw, Math.max(I.x0 + hw, MV.cx));
+    MV.cy = (I.y1 - I.y0) < hh * 2 ? (I.y0 + I.y1) / 2 : Math.min(I.y1 - hh, Math.max(I.y0 + hh, MV.cy));
+  }
+  function drawMap2(c) {
+    const st = ST(), G0 = G(), r = c.getBoundingClientRect(); if (!st || !r.width || !r.height) return;
+    const dpr = Math.min(2, devicePixelRatio || 1), W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), cw = r.width, ch = r.height;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    mapView(cw, ch);
+    const x = c.getContext('2d'), k = MK / G0.TS, S = (wx, wy) => [(wx - MV.cx) * MV.s + cw / 2, (wy - MV.cy) * MV.s + ch / 2];
+    x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#13262a'; x.fillRect(0, 0, W, H);
+    x.setTransform(dpr * MV.s / k, 0, 0, dpr * MV.s / k, dpr * (cw / 2 - MV.cx * MV.s), dpr * (ch / 2 - MV.cy * MV.s));
+    x.imageSmoothingEnabled = MV.s / k < 1.2; x.drawImage(mapBase(), 0, 0); x.imageSmoothingEnabled = true;
+    if (typeof Cantiere !== 'undefined') Cantiere.covi(st).forEach(C0 => { x.strokeStyle = '#B08D57'; x.lineWidth = 2 * k / MV.s; x.beginPath(); x.arc(C0.x * k, C0.y * k, C0.r * k, 0, Math.PI * 2); x.stroke(); });
+    if (window.WriterVita) WriterVita.drawMap(x, k, st);   // [writer] la città che si colora
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { const [sx, sy] = S(b.cx || b.x, b.cy || b.y); x.fillStyle = '#35e6ff'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.fillRect(sx - 5, sy - 5, 10, 10); x.strokeRect(sx - 5, sy - 5, 10, 10); });
+    // i nomi: sullo schermo, mai sotto i 13 px; uno solo dove si accavallano (prima i più vicini al centro della vista)
+    const fs = MV.s > 5 ? 15 : MV.s > 2.5 ? 14 : 13, boxes = [];
+    // l'obiettivo prima di tutto: il suo nome si legge sempre (gli altri nomi gli lasciano il posto)
+    const jt = G0.jobTarget && G0.jobTarget(st), ob = typeof Orienta !== 'undefined' ? Orienta.obiettivo(st) : null, jq = jt ? S(jt.x, jt.y) : null, jin = jq && jq[0] > 22 && jq[0] < cw - 22 && jq[1] > 22 && jq[1] < ch - 22;
+    const jlab = jin ? '★ ' + ((ob && ob.dove) || (jt.label || 'Obiettivo').split(':')[0]) : '';
+    x.font = `700 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`;
+    const jw = jin ? x.measureText(jlab).width + 12 : 0; if (jin) boxes.push([jq[0] - jw / 2, jq[1] + 6, jw, fs + 8], [jq[0] - 12, jq[1] - 30, 24, 30]);
+    x.font = `600 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    Object.values(G0.PLACES).filter(P0 => P0.name).map(P0 => { const q = S(P0.x, P0.y); return { P0, sx: q[0], sy: q[1], d: Math.hypot(q[0] - cw / 2, q[1] - ch / 2) }; })
+      .filter(o => o.sx > -40 && o.sx < cw + 40 && o.sy > -20 && o.sy < ch + 30).sort((a, b) => a.d - b.d).forEach(({ P0, sx, sy }) => {
+        x.fillStyle = 'rgba(233,220,188,.85)'; x.fillRect(sx - 2, sy - 2, 4, 4);
+        const w = x.measureText(P0.name).width + 10, bx = [sx - w / 2, sy - fs - 10, w, fs + 6];
+        if (boxes.some(b => bx[0] < b[0] + b[2] && b[0] < bx[0] + bx[2] && bx[1] < b[1] + b[3] && b[1] < bx[1] + bx[3])) return; boxes.push(bx);
+        x.fillStyle = 'rgba(13,16,21,.72)'; x.fillRect(bx[0], bx[1], bx[2], bx[3]); x.fillStyle = '#f2ead8'; x.fillText(P0.name, sx, sy - 9); });
+    // l'obiettivo: il segnaposto, o la freccia sul bordo verso di lui
+    if (jin) { x.font = `700 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`; x.fillStyle = 'rgba(13,16,21,.85)'; x.fillRect(jq[0] - jw / 2, jq[1] + 6, jw, fs + 8); x.fillStyle = '#ffd24a'; x.fillText(jlab, jq[0], jq[1] + fs + 9); }
+    if (jt) { const [sx, sy] = S(jt.x, jt.y), m = 22;
+      if (sx > m && sx < cw - m && sy > m && sy < ch - m) { x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy - 16, 9, Math.PI * .8, Math.PI * 2.2); x.lineTo(sx, sy); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#0D1015'; x.beginPath(); x.arc(sx, sy - 16, 3.5, 0, Math.PI * 2); x.fill(); }
+      else { const a = Math.atan2(sy - ch / 2, sx - cw / 2), ex = Math.min(cw - m, Math.max(m, sx)), ey = Math.min(ch - m, Math.max(m, sy)); x.save(); x.translate(ex, ey); x.rotate(a); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(12, 0); x.lineTo(-8, 9); x.lineTo(-8, -9); x.closePath(); x.fill(); x.stroke(); x.restore(); } }
+    const p = st.player, [px, py] = S(p.x, p.y); x.save(); x.translate(px, py); x.rotate(p.face || 0); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(12, 0); x.lineTo(-8, 8); x.lineTo(-4, 0); x.lineTo(-8, -8); x.closePath(); x.stroke(); x.fill(); x.restore();
+  }
+  function mapRedraw() { const c = document.querySelector('#mu canvas[data-map]'); if (c) drawMap2(c); }
+  function mapZoom(f, mx, my) {   // lo zoom attorno a un punto dello schermo (il centro, se non c'è)
+    const c = document.querySelector('#mu canvas[data-map]'); if (!c || !MV.s) return; const r = c.getBoundingClientRect(), ox = (mx === undefined ? r.width / 2 : mx) - r.width / 2, oy = (my === undefined ? r.height / 2 : my) - r.height / 2;
+    const wx = MV.cx + ox / MV.s, wy = MV.cy + oy / MV.s; MV.s = Math.min(14, Math.max(MV.fit * .95, MV.s * f)); MV.cx = wx - ox / MV.s; MV.cy = wy - oy / MV.s; drawMap2(c);
+  }
+  function mapClick2(e, c) {
+    const r = c.getBoundingClientRect(), G0 = G(), mx = MV.cx + (e.clientX - r.left - r.width / 2) / MV.s, my = MV.cy + (e.clientY - r.top - r.height / 2) / MV.s;
+    let best = null, bd = 18 / MV.s; Object.values(G0.PLACES).forEach(P0 => { if (!P0.name) return; const d = Math.hypot(P0.x - mx, P0.y - my); if (d < bd) { bd = d; best = P0; } });
+    const to = best || { x: mx, y: my }; say(`Vai ${best ? 'a ' + best.name : 'lì'}.`); goTo(to.x, to.y);
+  }
+  if (OR) {   // trascinare, due dita, rotella: delegati sul menu (il canvas rinasce quando il menu si ridisegna)
+    const onMap = e => e.target && e.target.dataset && e.target.dataset.map;
+    const hook = () => { const m = $('mu'); if (!m) return false;
+      m.addEventListener('wheel', e => { if (!onMap(e)) return; e.preventDefault(); const r = e.target.getBoundingClientRect(); mapZoom(e.deltaY > 0 ? 1 / 1.18 : 1.18, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+      m.addEventListener('pointerdown', e => { if (!onMap(e)) return; MV.ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { e.target.setPointerCapture(e.pointerId); } catch (x) { }
+        if (MV.ptr.size === 1) { MV.moved = false; MV.x0 = e.clientX; MV.y0 = e.clientY; MV.cx0 = MV.cx; MV.cy0 = MV.cy; } else { const [a, b] = [...MV.ptr.values()]; MV.d0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; MV.m0 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; MV.moved = true; } });
+      m.addEventListener('pointermove', e => { const q = MV.ptr.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY; const c = e.target.closest ? document.querySelector('#mu canvas[data-map]') : null; if (!c) return;
+        if (MV.ptr.size >= 2) { const [a, b] = [...MV.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, r = c.getBoundingClientRect();
+          MV.cx -= (mid.x - MV.m0.x) / MV.s; MV.cy -= (mid.y - MV.m0.y) / MV.s; mapZoom(d / MV.d0, mid.x - r.left, mid.y - r.top); MV.d0 = d; MV.m0 = mid; return; }
+        if (Math.hypot(e.clientX - MV.x0, e.clientY - MV.y0) > 6) MV.moved = true;
+        if (MV.moved) { MV.cx = MV.cx0 - (e.clientX - MV.x0) / MV.s; MV.cy = MV.cy0 - (e.clientY - MV.y0) / MV.s; drawMap2(c); } });
+      const up = e => { MV.ptr.delete(e.pointerId); if (MV.ptr.size === 1) { const [a] = [...MV.ptr.values()]; MV.x0 = a.x; MV.y0 = a.y; MV.cx0 = MV.cx; MV.cy0 = MV.cy; } };
+      m.addEventListener('pointerup', up); m.addEventListener('pointercancel', up);
+      return true; };
+    const iv = setInterval(() => { if (hook()) clearInterval(iv); }, 500);
+    setInterval(() => { try { if (U.open && U.tab === 'mappa' && !MV.ptr.size) mapRedraw(); } catch (e) { } }, 250);   // Nino si muove anche a menu aperto (il mondo va piano)
+  }
   function mapClick(e, c) {
     const r = c.getBoundingClientRect(), G0 = G(), k = MK / G0.TS, mx = (e.clientX - r.left) / r.width * c.width / k, my = (e.clientY - r.top) / r.height * c.height / k;
     let best = null, bd = 14 / k * (c.width / r.width); Object.values(G0.PLACES).forEach(P0 => { if (!P0.name) return; const d = Math.hypot(P0.x - mx, P0.y - my); if (d < bd) { bd = d; best = P0; } });
@@ -107245,7 +107885,7 @@ var MenuUI = (function () {
   const quiIcon = l => /mangia|cena|pranzo|spesa|pane/i.test(l) ? 'pane' : /bev|vino|caff|birra/i.test(l) ? 'vino' : /dorm|letto|riposa/i.test(l) ? 'coperta' : /lava|doccia|sapone/i.test(l) ? 'sapone' : /lavor|turno/i.test(l) ? 'martello' : /fum|sigarett/i.test(l) ? 'sigarette' : /banco|compra|negozio|bottega/i.test(l) ? 'valuta' : /onda|muro|scrivi|manifest|murale/i.test(l) ? 'bomboletta' : /telecamera|sasso|sabota/i.test(l) ? 'pietre' : /pesca/i.test(l) ? 'rete_pesca' : /bancomat|soldi|prestito|restituisci|banca/i.test(l) ? 'valuta' : /albero|legna|abbatti/i.test(l) ? 'ascia' : /scava|fossa/i.test(l) ? 'pala' : /base|lotto|costru/i.test(l) ? 'assi' : /scambia/i.test(l) ? 'casse' : /lotto|carte|bisca|gioca/i.test(l) ? 'carte' : 'mappa';
   function pQui(st) {
     const l = quiList(st); U.qui = l;
-    return l.length ? `<div class="acts">${l.map((a, k) => `<button class="act ${a.bad ? 'bad' : ''}" data-a="qui" data-x="${k}" ${a.run ? '' : 'disabled'}>${ic(quiIcon(a.label))}<span>${esc(a.label)}${a.off ? `<small>${esc(a.off)}</small>` : ''}</span></button>`).join('')}</div>`
+    return l.length ? `<div class="acts">${l.map((a, k) => `<button class="act ${a.bad ? 'bad' : ''}" data-a="qui" data-x="${k}" ${a.run ? '' : 'disabled'}>${ic(quiIcon(a.label))}<span>${esc(OR ? a.label.replace(/\s*\(H\)/, '') : a.label)}${a.off ? `<small>${esc(a.off)}</small>` : ''}</span></button>`).join('')}</div>`
       : '<div class="dim">Qui non c\'è niente da fare. La roba da frugare è in giro: cestini, scatole, casse. Cliccale.</div>';
   }
 
@@ -107268,11 +107908,16 @@ var MenuUI = (function () {
     pv.click.t = { kind: 'move', x, y, path, run: true, best: 1e9, bestT: pv.ui.time, fl: '' }; pv.ui.mark = { x, y, t: pv.ui.time, k: 'move' }; close();
   }
   function onClick(e) {
+    if (OR && e.target.dataset && e.target.dataset.map) { if (MV.moved) { MV.moved = false; return; } mapClick2(e, e.target); return; }
+    if (OR && U.tab === 'obiettivi' && Orienta.onObClick(e)) return;
     if (e.target.dataset && e.target.dataset.map) { mapClick(e, e.target); return; }
     const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
     const a = b.dataset.a, x = b.dataset.x ? JSON.parse(b.dataset.x) : undefined, st = ST();
     switch (a) {
       case 'close': close(); return;
+      case 'mz': if (OR) { mapZoom(x); return; } break;   // [orienta] i pulsanti della mappa
+      case 'mme': if (OR) { const p0 = ST().player; MV.cx = p0.x; MV.cy = p0.y; mapRedraw(); return; } break;
+      case 'mob': if (OR) { const jt = G().jobTarget && G().jobTarget(ST()); if (jt) { MV.cx = jt.x; MV.cy = jt.y; mapRedraw(); } return; } break;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
       case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
@@ -107346,7 +107991,7 @@ var MenuUI = (function () {
     const k = e.key.toLowerCase();
     if (U.open) {
       if (k === 'escape') { close(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= '7' ? TABS[+k - 1][0] : null;
+      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= String(Math.min(9, TABS.length)) ? TABS[+k - 1][0] : null;
       if (t) { if (U.tab === t) close(); else open(t); e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (k !== 'tab') e.stopImmediatePropagation();
       return;
@@ -109447,6 +110092,8 @@ body > *:not(#app):not(#edp):not(#edov):not([id^=st-]):not(script):not(style){di
 const Sviluppo = (() => {
   'use strict';
   if (typeof document === 'undefined') return {};
+  // [orienta] il pannello solo con ?dev nell'indirizzo (o nello Studio): un giocatore nuovo non deve trovarsi «DEV» sullo schermo. ?nofixorienta com'era
+  if (!/[?&]dev\b/.test(location.search) && !window.PV_STUDIO && !/[?&]nofixorienta\b/.test(location.search)) return {};
   const PV = () => window.__pv, ST = () => PV() && PV().st, G = () => PV() && PV().G;
   const say = (m, k) => { const pv = PV(); if (pv && pv.toast) pv.toast(m, k); else if (pv && pv.G && pv.st) pv.G.feed(pv.st, m, k); else console.log('[sviluppo]', m); };
   const KEY = 'pv-sviluppo';

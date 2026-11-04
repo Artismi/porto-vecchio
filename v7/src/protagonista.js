@@ -77,7 +77,9 @@ var Protagonista = (function () {
       st.me.friends.push(n.id);
       setCard(st, n);
     });
-    say(st, `Casa tua è ${home.label}, in periferia ovest. Gli amici del quartiere: ${chosen.map(n => n.first).join(', ') || 'nessuno'}.`, 'info');
+    // [orienta] dove sta casa, detto dalla posizione vera (il quartiere si chiama ancora «periferia ovest», ma con la città nuova sta in punta a est); ?nofixorienta com'era
+    const dove = typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search) ? 'in periferia ovest' : (() => { const fx = home.x / (G.GW * TS), fy = home.y / (G.GH * TS), ew = fx > .66 ? 'est' : fx < .34 ? 'ovest' : '', ns = fy < .34 ? 'nord' : fy > .66 ? 'sud' : ''; return ew || ns ? `all'estremità ${ns && ew ? ns + '-' + ew : ns || ew} dell'isola` : 'nel mezzo dell\'isola'; })();
+    say(st, `Casa tua è ${home.label}, ${dove}. Gli amici del quartiere: ${chosen.map(n => n.first).join(', ') || 'nessuno'}.`, 'info');
   }
   function setCard(st, n) {
     const C = RS && RS.CARDS; if (!C) return; const c = C[n.id] || (C[n.id] = {});

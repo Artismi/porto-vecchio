@@ -6,6 +6,8 @@
   let st = G.create((Math.random() * 1e9) | 0);
   const ui = { intro: true, dialog: null, book: false, bookTab: 'people', letterbox: true, flash: 0, fade: 0, desat: false, time: 0, over: false, lastMoment: null, momentUntil: 0, aimPoint: null, zoom: .72 };
   const keys = {};
+  // [orienta] orientarsi (src/orienta.js): obiettivo sempre in vista, pausa vera, E azione, T parla, H aiuto, M mappa, schede d'avvio. ?nofixorienta: com'era
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;
   const fmt = n => Math.round(n).toLocaleString('it-IT') + '.000';
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const HUDSEL = '.hud:not(#dialog):not(#book):not(#screen)';
@@ -162,18 +164,20 @@
     if (ui.intro) return;   // [diretto] si entra da soli, quando il gioco risponde
     if (ui.over) { if (k === 'enter') { e.preventDefault(); restart(); } return; }
     if (k === 'tab') { e.preventDefault(); toggleBook(); return; }
-    if (k === 'm') { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }
-    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa
+    if (k === 'm' && !OR) { const on = A.toggle(); $('sound').textContent = 'Audio: ' + (on ? 'sì' : 'no') + ' · M'; return; }   // [orienta] M è la mappa (orienta.js); l'audio sta nella pausa
+    if (k === 'escape') { if (ring.n) { closeRing(); return; } if (ui.dialog) closeDialog(); else if (ui.book) toggleBook(false); else if (OR && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(typeof MenuUI !== 'undefined' && MenuUI.state && MenuUI.state.open)) Orienta.pausa(true); }, 0); else if (typeof MenuUI !== 'undefined' && MenuUI.open && !ui.menu) setTimeout(() => { if (!e.cancelBubble && !e.defaultPrevented && !ui.dialog && !ui.book && !(MenuUI.state && MenuUI.state.open)) MenuUI.open('zaino'); }, 0); return; }   // [diretto] Esc a vuoto (nessun pannello l'ha preso): il menu, cioè la pausa   // [orienta] la pausa vera: il mondo si ferma
     if (ui.dialog) { const n = parseInt(k, 10); if (n >= 1 && n <= 9) { const b = $('dialog').querySelectorAll('.opt')[n - 1]; if (b) b.click(); } if (k === 'enter' || k === ' ') { const bs = $('dialog').querySelectorAll('.opt'); if (bs.length === 1) { e.preventDefault(); bs[0].click(); } } return; }
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
-    if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
+    if (!e.repeat && window.Livelli && (OR ? ['j', 'k', 'n', 'v'] : ['h', 'j', 'k', 'n', 'v']).includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }   // [orienta] H è l'aiuto: si scava con E (azione), sul posto
     if (!e.repeat && k === 'v' && CAM6 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
     if (e.repeat) return;
-    if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
+    if (k === 'e' && OR) eDown();   // [orienta] E: l'azione del posto (parla, entra, usa); tenuto 0,8 s il crimine (scippo, rapina)
+    else if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra
+    else if (k === 't' && OR) talkNear();   // [orienta] T parla (era dentro il commento qui sopra: non faceva niente)
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
     else if (k === 'q') G.switchWeapon(st, 1);
@@ -184,7 +188,7 @@
   function zoomBy(f) { ui.zoom = Math.max(CAM6 ? .2 : .12, Math.min(2, (ui.zoom || 1) * f)); }
   function vistaDopo() { if (!CAM6) return; ui.zoom = Visuale.vista6(ui.zoom); const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); toast('Vista ' + ['vicina', 'media', 'alta'][i] + '.'); CON.sent = ''; }   // [camera6] le tre viste, in giro   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
-  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
+  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); if (k === 'e' && OR) eUp(); });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 }; let stickB = null;
   const vstick = { x: 0, y: 0 };
@@ -295,6 +299,62 @@
     return { x, y, sprint, aim: a };
   }
   function doAct(t) { const r = G.act(st, t); if (r && r.msg) toast(r.msg, r.ok ? 'info' : 'bad'); }
+  // ---------- [orienta] E: l'azione del posto (parla, entra, usa); tenuta 0,8 s, il crimine. T: parla ----------
+  // Prima E era lo scippo (o la rapina) a un tasto: un nuovo giocatore lo premeva per «usare» e derubava il primo che passava.
+  // Ora il crimine vuole la mano ferma: si tiene premuto (tastiera, X del controller, il suggerimento rosso sul telefono) e un anello
+  // si riempie sopra la persona; lasciando prima si fa l'azione del posto. Parla (T, E, Y) apre la chat della Risacca: una cosa sola.
+  const EHOLD = 800, EH = { on: false, t0: 0, done: false, tocco: false };
+  const crimeHere = () => st.player.vehicle ? null : G.context(st).find(c => c.key === 'E') || null;
+  const fakeKey = k => document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  function talkTo(n) { if (!n) return; if (window.RisaccaUI && RisaccaUI.openChat) { closeRing(); RisaccaUI.openChat(n.id); } else openTalk(n); }
+  function talkNear() { if (st.player.vehicle) return; const n = G.nearestNpc(st, 2.3) || G.nearestNpc(st, 4); if (n) talkTo(n); else toast('Non c\'è nessuno con cui parlare qui. Avvicinati a una persona.', 'bad'); }
+  function ctxE() {
+    const p = st.player; if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || ui.pausa) return null;
+    const cx = G.context(st);
+    if (p.vehicle) return null;   // alla guida i tasti sono del blocco E (guida2): F scende, come prima
+    const door = G.actionKey && G.actionKey(st) === 'porta' ? cx.find(c => c.key === 'F') : null;
+    if (door) return { label: door.label, run: () => { click.t = null; ui.mark = null; doAct('porta'); }, dup: 'F' };
+    const n = G.nearestNpc(st, 2.2);
+    if (n) return { label: 'Parla con ' + n.first, run: () => talkTo(n), dup: 'T' };
+    const v = cx.find(c => c.key === 'F' && !c.bad);
+    if (v) return { label: v.label, run: () => doAct('veicolo'), dup: 'F' };
+    const V = cx.find(c => c.key === 'V');
+    if (V) return { label: V.label, run: () => fakeKey('v'), dup: 'V' };
+    if (window.Livelli && Livelli.actions) {   // si scava sul posto: nella parete davanti, o avanti sotto terra (era H)
+      const cun = (Livelli.actions(st) || []).find(a => a.id === 'cunicolo'); if (cun) return { label: cun.label.replace(/\s*\(H\)/, ''), run: () => { const m = cun.run(); if (m) toast(m); } };
+      if (p.lv && p.lv.k === 'ug') return { label: 'Scava avanti', run: () => { const m = Livelli.key(st, 'h'); if (m) toast(m); } };
+    }
+    const q = typeof MenuUI !== 'undefined' && MenuUI.quiCount ? MenuUI.quiCount(st) : 0;
+    if (q) return { label: `Cose da fare qui (${q})`, run: () => MenuUI.open('qui') };
+    return null;
+  }
+  function eDown() {
+    if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || ui.pausa) return;
+    if (!crimeHere()) { const a = ctxE(); if (a) a.run(); else toast('Qui non c\'è niente da fare.', 'bad'); return; }
+    EH.on = true; EH.t0 = performance.now(); EH.done = false; EH.tocco = false;
+  }
+  function eUp() { if (!EH.on || EH.tocco) return; EH.on = false; ringE(-1); if (EH.done) return; const a = ctxE(); if (a) a.run(); }
+  function ringE(h) {
+    const el = $('or-ring'); if (!el) return; if (h < 0) { if (!el.hidden) el.hidden = true; return; }
+    const n = G.nearestNpc(st, 1.8), q = n || st.player, pr = R.project(q.x, 1.3, q.y), o = cvOff();
+    el.hidden = false; el.style.left = (o.x + pr.x * o.w) + 'px'; el.style.top = (o.y + pr.y * o.h) + 'px'; el.style.setProperty('--h', Math.min(1, h).toFixed(3));
+  }
+  function eTick() {
+    if (!EH.on) return;
+    if (ui.dialog || ui.book || ui.menu || ui.pausa || ui.over || !crimeHere()) { EH.on = false; ringE(-1); return; }
+    const h = (performance.now() - EH.t0) / EHOLD; ringE(h);
+    if (h >= 1 && !EH.done) { EH.done = true; EH.on = false; ringE(-1); doAct('scippo'); }
+  }
+  // i suggerimenti sono pulsanti veri: si toccano (telefono) o si cliccano; il rosso si tiene premuto
+  if (OR) {
+    const cxEl = $('ctx');
+    cxEl.addEventListener('pointerdown', e => { const b = e.target.closest('[data-c]'); if (!b || !b.dataset.c) return; e.preventDefault(); e.stopPropagation(); A.init(); const c = b.dataset.c;
+      if (c === 'e') { const a = ctxE(); if (a) a.run(); }
+      else if (c === 'x') { if (!crimeHere()) return; EH.on = true; EH.t0 = performance.now(); EH.done = false; EH.tocco = true; try { b.setPointerCapture(e.pointerId); } catch (x) { } }
+      else if (c.startsWith('k:')) fakeKey(c.slice(2).toLowerCase()); });
+    const xUp = () => { if (EH.on && EH.tocco) { EH.on = false; EH.tocco = false; ringE(-1); } };
+    cxEl.addEventListener('pointerup', xUp); cxEl.addEventListener('pointercancel', xUp); cxEl.addEventListener('lostpointercapture', xUp);
+  }
   // [salto] Spazio salta a piedi e in BMX; nelle altre auto resta il freno a mano
   function jumpMode() { const p = st.player; if (!p.vehicle) return true; const v = st.vehicles.find(q => q.id === p.vehicle); return !!(v && G.VK[v.kind].pocket); }
   // [andatura] più clicchi svelto verso un punto, più vai forte: a piedi cammini, corri, scatti; in BMX pedali piano, forte, a tutta.
@@ -459,8 +519,9 @@
   // --- menu attorno all'omino ---
   function ringOptions(n) {
     const p = st.player, o = [];
-    o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
-    if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); // RISACCA: chat libera
+    if (OR) o.push({ label: 'Parla', run: () => { closeRing(); talkTo(n); } });   // [orienta] Parla e Chatta erano due: ora una (la chat; dentro, «Altre domande» apre il dialogo di prima)
+    else { o.push({ label: 'Parla', run: () => { closeRing(); openTalk(n); } });
+    if (window.RisaccaUI) o.push(...RisaccaUI.ringOptions(n, closeRing)); } // RISACCA: chat libera
     if (inRoom(n)) { o.push({ label: '✕', run: closeRing }); return o; }   // [scopo] dentro casa d'altri: si parla e basta
     const ctx = G.context(st).find(c => c.key === 'E');
     if (ctx) o.push({ label: ctx.label.startsWith('Rapina') ? 'Rapina' : 'Ruba', bad: true, run: () => { closeRing(); doAct('scippo'); } });
@@ -575,7 +636,7 @@
           <div class="dots">${k.filter(x => !x.npc.dead).map(x => `<span class="${x.mem.actor !== 'player' && x.mem.actor !== 'ignoto' ? 'alt' : x.mem.source}" title="${esc(x.npc.name)}">${esc(x.npc.first)}${x.mem.actor !== 'player' && x.mem.actor !== 'ignoto' ? ' → ' + esc(G.nameOf(st, x.mem.actor)) : ''}</span>`).join('')}</div></div>`;
       }).join('') : '<p class="hint">Non hai ancora fatto niente di cui si possa parlare.</p>') + '</div>';
     } else body = `<div class="logl">${st.log.map(l => `<p class="${l.kind}">${esc(l.text)}</p>`).join('')}</div>`;
-    b.innerHTML = `<header><h2>Taccuino di Nino</h2><button class="x" id="bookX">Chiudi · Tab</button></header>
+    b.innerHTML = `<header><h2>Taccuino di Nino</h2><button class="x" id="bookX">${OR && touchMode ? 'Chiudi' : 'Chiudi · Tab'}</button></header>
       <nav role="tablist"><button role="tab" data-t="people" aria-selected="${tab === 'people'}">Chi sa cosa</button><button role="tab" data-t="facts" aria-selected="${tab === 'facts'}">Cosa hai fatto</button><button role="tab" data-t="log" aria-selected="${tab === 'log'}">Registro</button></nav>
       <div class="body">${body}</div>`;
     b.querySelectorAll('[data-pt]').forEach(s => { const n = G.byId(st, s.dataset.pt); s.replaceWith(portrait(Object.assign({}, n.look, { dead: n.dead }))); });
@@ -589,11 +650,22 @@
   // dove si gioca, non la piazza del vecchio menu). I crediti restano qui, durante il caricamento.
   function introScreen() {
     $('screen').style.pointerEvents = 'none';
+    if (OR) { $('screen').innerHTML = Orienta.introHtml(`Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza`); return; }   // [orienta] il titolo, le tre schede (la prima volta), le fasi
     $('screen').innerHTML = `<div class="in carico0"><div class="lbl" id="caricoTxt">Carico il porto…</div><div class="bar"><i id="caricoBar" style="width:5%"></i></div>
       <div class="credits">Modelli: <a href="https://kenney.nl" target="_blank" rel="noopener">Kenney</a> (CC0) · <a href="https://quaternius.com" target="_blank" rel="noopener">Quaternius</a> (CC0) · <a href="https://poly.pizza/bundle/Race-kit-LcWNxpyXuL" target="_blank" rel="noopener">Race kit</a> di Player11132 [<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC-BY</a>] via Poly Pizza</div></div>`;
   }
-  function carico(txt, p) { const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
-  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus(); toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
+  function carico(txt, p) {
+    if (OR) {   // [orienta] la barra per fasi (modelli, grafica, primo disegno, quartiere): prima restava ferma all'85% per minuti
+      const t = $('caricoTxt'); if (t && txt) t.textContent = txt.replace(/\s*\d+%$/, '');
+      if (p !== undefined) { if (p < .85) Orienta.fase('modelli', Math.max(0, (p - .15) / .7)); else if (p < .95) Orienta.fase('grafica', (p - .85) / .1); else if (p < .97) Orienta.fase('disegno', 0); else Orienta.fase('quartiere', .2); }
+      return; }
+    const t = $('caricoTxt'), b = $('caricoBar'); if (t && txt) t.textContent = txt; if (b && p !== undefined) b.style.width = Math.round(Math.max(.05, Math.min(1, p)) * 100) + '%'; }
+  function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.pronto = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus();
+    if (OR) {   // [orienta] le righe della cronaca nate dietro il caricamento ripartono adesso (prima scadevano prima di entrare); un aiuto corto sui tasti
+      st.feed.forEach(f => { f.until = Math.max(f.until, st.clock + 9); });
+      try { softwareCheck(); } catch (e) { }
+      toast(CON.on ? 'Tocca una persona per parlarle. Zaino: obiettivi, mappa, comandi.' : touchMode ? 'Tocca una persona per parlarle. ❚❚ in alto: pausa, obiettivi, comandi.' : 'T parla · E azione · Esc pausa · H comandi · M mappa', 'job'); st.feed[0].until = st.clock + 12; return; }
+    toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
   function endScreen() {
     const o = st.over; ui.over = true; ui.letterbox = true; showHud(false); $('bubbles').style.visibility = 'hidden'; $('xhair').hidden = true;
     const named = st.npcs.filter(n => !n.passante && !n.cop).concat(st.npcs.filter(n => n.cop && !n.reinforcement));
@@ -637,7 +709,37 @@
     }
     x.putImageData(img, 0, 0);
   }
+  // [orienta] la minimappa gira con la camera (in su è dove guardi), tonda, nitida (misura vera × DPR); la freccia è dove guarda Nino,
+  // la N il nord, e una freccia sul bordo punta l'obiettivo quando è fuori. Prima era ferma a 45°: girata la visuale non tornava più niente
+  function drawMinimapOr() {
+    const c = $('minic'), cs = c.clientWidth || 128, dpr = Math.min(2, devicePixelRatio || 1), S = Math.round(cs * dpr);
+    if (c.width !== S) { c.width = S; c.height = S; }
+    const x = c.getContext('2d'), p = st.player, z = S / 88, sc = 2 / G.TS * z, r0 = S / 2;
+    const B = R.camBasis ? R.camBasis() : null, phi = B ? -Math.PI / 2 - Math.atan2(B.fz, B.fx) : Math.PI / 4;
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, S, S);
+    x.save(); x.beginPath(); x.arc(r0, r0, r0 - 1, 0, Math.PI * 2); x.clip(); x.fillStyle = '#0a0816'; x.fillRect(0, 0, S, S);
+    x.translate(r0, r0); x.rotate(phi); x.translate(-p.x * sc, -p.y * sc);
+    x.imageSmoothingEnabled = false; x.drawImage(miniBase, 0, 0, G.GW * 2 * z, G.GH * 2 * z); x.imageSmoothingEnabled = true;
+    const R46 = 46 * 1.42, dot = (X, Y, w, h, col) => { x.fillStyle = col; x.fillRect(X * sc - w * z / 2, Y * sc - h * z / 2, w * z, h * z); };
+    if (window.Livelli && !p.indoor) Livelli.S(st).portals.forEach(P => { if (!Livelli.CLIMB.has(P.kind) || P.kind === 'interno') return; const c0 = p.lv ? P.u : P.s, X = (c0[0] + .5) * G.TS, Y = (c0[1] + .5) * G.TS; if (Math.abs(X - p.x) > R46 || Math.abs(Y - p.y) > R46) return; if (P.metro) dot(X, Y, 6, 6, '#d0202a'); else dot(X, Y, 2, 2, '#9a9aa8'); });
+    st.pickups.forEach(k => { if (!G.pickupVisible(st, k) || Math.abs(k.x - p.x) > R46 || Math.abs(k.y - p.y) > R46) return; dot(k.x, k.y, 2, 2, k.kind === 'valigetta' ? '#ff4fa3' : k.kind === 'salute' || k.kind === 'soldi' ? '#7ee0a0' : '#ffd24a'); });
+    st.vehicles.forEach(v => { if (v.hidden || Math.abs(v.x - p.x) > R46 || Math.abs(v.y - p.y) > R46) return; dot(v.x, v.y, 3, 2, v.police ? (Math.sin(st.clock * 12) > 0 ? '#3a7aff' : '#fff') : v.wreck ? '#222' : '#8a8a9a'); });
+    st.npcs.forEach(n => { if (n.inside || n.dead || Math.abs(n.x - p.x) > R46 || Math.abs(n.y - p.y) > R46) return; const a = G.attitude(st, n); dot(n.x, n.y, 2.4, 2.4, n.cop ? '#4a8aff' : a.tone === 'bad' ? '#ff5a5a' : a.tone === 'good' ? '#7ee0a0' : a.tone === 'warn' ? '#ffb35c' : '#8a82a0'); });
+    const jt = G.jobTarget(st), jd = jt ? Math.hypot(jt.x - p.x, jt.y - p.y) * sc : 0;
+    if (jt && jd < r0 - 8 * dpr) { x.save(); x.translate(jt.x * sc, jt.y * sc); x.rotate(-phi); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; x.beginPath(); x.arc(0, -6 * dpr, 4.5 * dpr, Math.PI * .85, Math.PI * 2.15); x.lineTo(0, 0); x.closePath(); x.fill(); x.stroke(); x.restore(); }
+    // Nino: la freccia è dove guarda; il ventaglio chiaro è quello che inquadra la camera (sempre in su)
+    x.translate(p.x * sc, p.y * sc);
+    x.save(); x.rotate(-phi); x.fillStyle = 'rgba(255,255,255,.10)'; x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, r0 * .8, -Math.PI / 2 - .55, -Math.PI / 2 + .55); x.closePath(); x.fill(); x.restore();
+    x.rotate(p.face || 0); x.fillStyle = '#fff'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; const u = dpr; x.beginPath(); x.moveTo(7 * u, 0); x.lineTo(-5 * u, 4.5 * u); x.lineTo(-2.5 * u, 0); x.lineTo(-5 * u, -4.5 * u); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+    x.setTransform(1, 0, 0, 1, 0, 0);
+    const edge = (ang, rr) => [r0 + Math.cos(ang) * rr, r0 + Math.sin(ang) * rr];
+    if (jt && jd >= r0 - 8 * dpr) { const a = Math.atan2(jt.y - p.y, jt.x - p.x) + phi, [ex, ey] = edge(a, r0 - 7 * dpr); x.save(); x.translate(ex, ey); x.rotate(a); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0a0816'; x.lineWidth = 1.5 * dpr; x.beginPath(); x.moveTo(6 * dpr, 0); x.lineTo(-5 * dpr, 5.5 * dpr); x.lineTo(-5 * dpr, -5.5 * dpr); x.closePath(); x.fill(); x.stroke(); x.restore(); }
+    { const a = -Math.PI / 2 + phi, [nx, ny] = edge(a, r0 - 9 * dpr); x.font = `700 ${Math.round(11 * dpr)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = 'rgba(10,8,22,.8)'; x.beginPath(); x.arc(nx, ny, 7.5 * dpr, 0, Math.PI * 2); x.fill(); x.fillStyle = '#f0e6d0'; x.fillText('N', nx, ny + .5 * dpr); }
+    x.strokeStyle = 'rgba(240,230,208,.45)'; x.lineWidth = 2 * dpr; x.beginPath(); x.arc(r0, r0, r0 - 1 * dpr, 0, Math.PI * 2); x.stroke();
+  }
   function drawMinimap() {
+    if (OR) return drawMinimapOr();
     const c = $('minic'), x = c.getContext('2d'); c.width = 88; c.height = 88;
     const p = st.player, sc = 2 / G.TS;
     x.fillStyle = '#0a0816'; x.fillRect(0, 0, 88, 88);
@@ -737,12 +839,18 @@
     setS($('debtbar'), 'width', Math.min(100, p.money / st.debt * 100) + '%');
     setS($('hp'), 'width', Math.max(0, Math.min(100, p.hp)) + '%'); const hpb = $('hpbar'); if (hpb.classList.contains('low') !== (p.hp < 35)) hpb.classList.toggle('low', p.hp < 35);
     setT($('day'), G.dayName(st.t)); setT($('time'), G.clockStr(st.t));
-    const hl = G.hoursLeft(st); setT($('left'), st.deadline > 1e8 ? 'nessuna scadenza' : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`); setCls($('left'), hl <= 6 && st.deadline < 1e8 ? 'urgent' : '');
-    const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label);
+    const hl = G.hoursLeft(st); setT($('left'), st.deadline > 1e8 ? (OR ? '' : 'nessuna scadenza') : hl <= 1 ? 'meno di un\'ora' : `${hl}h all'alba`); setCls($('left'), hl <= 6 && st.deadline < 1e8 ? 'urgent' : '');
+    if (OR) { setHid($('job'), true); Orienta.hud(st, R); }   // [orienta] l'obiettivo ha la sua riga (orienta.js), anche senza un posto dove andare
+    else { const jt = G.jobTarget(st); setHid($('job'), !jt); if (jt) setT($('job'), jt.label); }
     const w = G.wanted(st), wEl = $('wanted'); if (wEl.__w !== w) { wEl.__w = w; wEl.querySelectorAll('.star').forEach((s, i) => s.classList.toggle('on', i < w)); } if (wEl.classList.contains('chase') !== !!st.chase) wEl.classList.toggle('chase', !!st.chase);
     feedDom();
     const cx = (ui.dialog || ui.book || ui.intro) ? [] : G.context(st);
-    if (p.money >= st.debt && !ui.intro) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }
+    if (p.money >= st.debt && !ui.intro && !(OR && st.deadline > 1e8)) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }   // [orienta] con la Risacca non c'è debito da saldare
+    if (OR) {   // [orienta] E in testa (l'azione del posto), il crimine in coda e rosso (tieni E); T ed F non si ripetono se E fa già la stessa cosa
+      const a = (ui.dialog || ui.book || ui.intro || ui.pausa) ? null : ctxE(), cr = ui.pausa ? null : cx.find(c => c.key === 'E'), kb = !touchMode;
+      const list = (a && !(touchMode && a.dup === 'F' && touchSet().includes('entra')) ? [{ key: 'E', label: a.label, c: 'e' }] : [])   /* sul telefono «Entra» c'è già tra i pulsanti */.concat(cx.filter(c => c.key !== 'E' && !(a && a.dup === c.key)).map(c => Object.assign({ c: /^[A-Z]$/.test(c.key) ? 'k:' + c.key : '' }, c)), cr ? [{ key: touchMode ? 'tieni' : 'tieni E', label: cr.label, bad: true, c: 'x' }] : []);
+      setH($('ctx'), list.map(c => `<button class="chip ${c.bad ? 'bad' : ''}" data-c="${c.c}">${kb || c.c === 'x' ? `<kbd>${esc(c.key)}</kbd>` : ''}${esc(c.label)}</button>`).join(''));
+    } else
     setH($('ctx'), cx.map(c => `<span class="chip ${c.bad ? 'bad' : ''}"><kbd>${c.key}</kbd>${esc(c.label)}</span>`).join(''));
     // arma
     const W = G.WEAPONS[p.cur], a = p.arms[p.cur] || {};
@@ -850,7 +958,7 @@
   }
   if (touchMode) {
     $('touch').hidden = false; $('bookBtn').style.display = 'none';
-    $('debt').addEventListener('click', () => { if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora
+    $('debt').addEventListener('click', e => { if (OR && e.target.closest('#sd-hud')) return; if (!ui.intro && !ui.over) toggleBook(); });   // il taccuino: tocca i soldi e l'ora   // [orienta] la cassa comune apre il portafoglio, non tutti e due
     const sEl = $('stick'), kn = $('knob'); let sid = null;
     sEl.addEventListener('pointerdown', e => { A.init(); sid = e.pointerId; sEl.setPointerCapture(sid); mv(e); });   // [camera3] la levetta è sempre relativa a quello che vedi: in su dritto, di lato curvi
     sEl.addEventListener('pointermove', e => { if (e.pointerId === sid) mv(e); });
@@ -873,7 +981,7 @@
   // B monta o scende, X agisce, Y parla, LB ricarica, RB cambia arma, Back esce, Start il taccuino; il grilletto destro spara dove
   // guardi (alla guida: destro gas, sinistro freno e retro); la croce su e giù fa lo zoom.
   const PAD = { on: false, x: 0, y: 0, m: 0, rot: 0, pan: 0, fire: false, gas: 0, brk: 0, down: [] };
-  const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };
+  const PAD_DZ = .15, PAD_RUN = .85, PAD_KEYS = OR ? { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'm', 9: 'Escape' } : { 0: ' ', 1: 'f', 2: 'e', 3: 't', 4: 'r', 5: 'q', 8: 'Escape', 9: 'Tab' };   // [orienta] Start la pausa, Back la mappa (il taccuino sta nella pausa)
   // la stessa risposta per il controller e per la levetta a schermo: 0 nella zona morta, 1 (la corsa) da PAD_RUN in su
   function stickResp(l) { const d = Math.max(0, Math.min(1, (l - PAD_DZ) / (PAD_RUN - PAD_DZ))); return d > 0 ? Math.pow(d, 1.4) : 0; }
   const axis1 = v => { const a = Math.abs(v); return a < PAD_DZ ? 0 : Math.sign(v) * Math.pow((a - PAD_DZ) / (1 - PAD_DZ), 1.6); };
@@ -895,6 +1003,7 @@
     for (let i = 0; i < B.length && i < 16; i++) {
       const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
       if (PAD_KEYS[i]) padKey(i, d);
+      else if (d && (i === 12 || i === 13) && OR && ui.pausa) document.dispatchEvent(new KeyboardEvent('keydown', { key: i === 12 ? 'ArrowUp' : 'ArrowDown', bubbles: true, cancelable: true }));   // [orienta] la croce scorre la pausa
       else if (d && i === 12) zoomBy(1 / 1.12); else if (d && i === 13) zoomBy(1.12);
       else if (d && i === 11) vistaDopo();   // [camera6] R3 (clic della levetta destra): la vista dopo
     }
@@ -942,7 +1051,7 @@
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
     if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
-    if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
+    if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active()) || (OR && ui.pausa)) {   // [orienta] anche dalla pausa
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
       if (ui.menu) M.zaino = { l: 'Chiudi', dn: conCmd('zaino') };
@@ -974,6 +1083,7 @@
       CON.trick.wheelie = bx && !!D.giu; CON.trick.peg = bx ? (D.sx && !D.dx ? 1 : D.dx && !D.sx ? -1 : 0) : 0;
       CON.rot = bx ? 0 : (D.dx ? 1 : 0) - (D.sx ? 1 : 0); CON.zoom = bx ? 0 : (D.giu ? 1 : 0) - (D.su ? 1 : 0); return;
     }
+    if (OR && ui.intro && down && Orienta.pronta) { Orienta.entraOra(); return; }   // [orienta] al cancello, qualunque tasto della console entra
     if (k === 'audio') { if (down) { A.init(); A.toggle(); } CON.sent = ''; return; }
     if (k === 'vista') { if (down) vistaDopo(); return; }   // [camera6] il tocco sulla levetta2 del Game Boy: la vista dopo
     if (down) { const s = conMap()[k]; if (!s) return; CON.held[k] = s; try { s.dn(); } catch (e) { console.warn('[console]', e); } }
@@ -1091,6 +1201,7 @@
   const SOFT_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic|mesa offscreen/i;
   function softwareCheck() {
     const n = gpuName(); if (!n || !SOFT_GPU.test(n)) return;
+    if (OR) { toast('La grafica gira senza scheda video: andrà a scatti. Attiva l\'accelerazione hardware del browser (Impostazioni → Sistema).', 'bad'); st.feed[0].until = st.clock + 12; return; }   // [orienta] più corta: prima 5 righe per 30 s sopra l'obiettivo
     toast('Il browser sta disegnando SENZA scheda video (' + (n.match(/swiftshader|llvmpipe|softpipe|basic render[^,)]*|microsoft basic[^,)]*|software[^,)]*|mesa offscreen/i) || [n])[0] + '): per questo va a scatti. Attiva l\'accelerazione hardware: Chrome o Edge → Impostazioni → Sistema → «Usa accelerazione grafica quando disponibile», poi riavvia il browser.', 'bad');
     st.feed[0].until = st.clock + 30;
   }
@@ -1149,7 +1260,7 @@
     host(1, true);   // [ospite] che si legga l'avviso
     return;
   }
-  setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
+  if (!OR) setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [orienta] l'avviso si dà entrando (dietro il caricamento scadeva prima)   // [prestazioni] avvisa se si disegna senza scheda video
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
@@ -1181,12 +1292,19 @@
   const VIVO = { on: true, n: 0, t0: 0 };
   function vivoTick(raw) {
     if (!VIVO.t0) VIVO.t0 = performance.now(); VIVO.n++;
+    if (OR) Orienta.fase('disegno', Math.min(.95, VIVO.n / 3 * .7 + (1 - Math.exp(-(performance.now() - VIVO.t0) / 30000)) * .3));   // [orienta] la fase si muove anche quando i fotogrammi sono lenti
     if (!(VIVO.n >= 3 && raw < .1) && !(VIVO.n >= 12 && raw < 1) && performance.now() - VIVO.t0 < 90000) return;
     // [ottimizza-car] «Gioca» dopo la città vicina: i tasselli dell'impronta in scena (si montano dietro lo schermo di carico, col tetto largo
     // dell'anello vicino), al più 15 s in più (era 45: l'apertura non deve allungarsi). ?nofixvicino come prima
     if (window.Tasselli && Tasselli.attivo && Tasselli.attivo() && !/[?&]nofixvicino\b/.test(location.search)) { const T = Tasselli.stato();
-      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } return; } }
+      if (T.vicinoT === null && performance.now() - VIVO.t0 < 15000) { if (!VIVO.citta) { VIVO.citta = true; carico('Monto la città…', .97); } if (OR) Orienta.fase('quartiere', (performance.now() - VIVO.t0) / 15000); return; } }
     VIVO.on = false; (window.__tl = window.__tl || {}).vivo = Math.round(performance.now()); window.__tl.vivoN = VIVO.n;
+    // [orienta] pronto: «Premi per entrare» (il tasto, il tocco o il pulsante del controller sblocca anche l'audio). Con un browser
+    // pilotato (navigator.webdriver: le prove degli altri blocchi aspettano __tl.gioco) si entra da soli, se non c'è ?premi
+    if (OR && !(navigator.webdriver && !/[?&]premi\b/.test(location.search))) {
+      ui.pronto = true; window.__tl.pronto = Math.round(performance.now());
+      Orienta.pronto(() => { start(); window.__tl.gioco = Math.round(performance.now()); });
+      requestAnimationFrame(() => requestAnimationFrame(() => host(1, true))); return; }
     start(); (window.__tl = window.__tl || {}).gioco = Math.round(performance.now());   // [diretto] si gioca
     requestAnimationFrame(() => requestAnimationFrame(() => host(1, true)));   // [ospite] il gioco è disegnato e risponde: si può mostrare
   }
@@ -1220,9 +1338,9 @@
     padPoll(dt);   // [fluido] il controller si legge prima di tutto: il comando di questo fotogramma muove già questo fotogramma
     conTick(dt);   // [console]
     let inpF = null;
-    const slow = ui.menu && ui.menuSlow;   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma
+    const slow = ui.menu && ui.menuSlow && !(OR && ui.pausa);   // [menu] in strada col menu aperto il mondo rallenta, non si ferma; nel covo si ferma   // [orienta] aperto dalla pausa, resta fermo
     const edOn = window.Editor && Editor.active(), ed = edOn ? Editor.view(dt) : null;   // [editor] il mondo si ferma, la camera va dove dice l'editor
-    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn;   // [azioni]
+    const paused = ui.dialog || ui.book || (ui.menu && !slow) || ui.over || edOn || (OR && (ui.pausa || (ui.intro && ui.pronto)));   // [azioni]   // [orienta] la pausa vera; e il mondo aspetta «Premi per entrare»
     if (slow && !paused && !edOn) G.step(st, dt * .25, { x: 0, y: 0 });
     else if (!paused) {
       const inp = ui.intro ? { x: 0, y: 0, freeze: true } : input(); inpF = inp;   // [fluido] lo stesso comando va al motore e alla camera, nello stesso fotogramma
@@ -1243,6 +1361,7 @@
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
+    if (OR) eTick();   // [orienta] E tenuto: l'anello del crimine
     hudT -= dt; if (hudT <= 0) { hudT = .1; hud(); drawMinimap(); touchButtons(); conLabels(); }
     if (RIT) PesoRitmo.lavoro(performance.now() - tL0);   // [ritmo] il lavoro del processore in questo fotogramma
     requestAnimationFrame(loop);
@@ -1258,6 +1377,7 @@
     (window.__tl = window.__tl || {}).shader = Math.round(performance.now());
     last = performance.now(); requestAnimationFrame(loop);
   })();
-  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; } };   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+  window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
+    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear() };   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
