@@ -41,7 +41,7 @@ var Orienta = (function () {
     { g: 'Azioni', a: 'Azione: parla, entra, usa', k: 'E', p: 'X', t: 'tocca il suggerimento', c: 'A (Entra)' },
     { g: 'Azioni', a: 'Parlare', k: 'T · clic sulla persona', p: 'Y', t: 'tocca la persona', c: 'tocca la persona' },
     { g: 'Azioni', a: 'Crimine: scippo, rapina', k: 'tieni E (0,8 s)', p: 'tieni X', t: 'tieni premuto il suggerimento rosso', c: 'tocca la persona → Ruba' },
-    { g: 'Azioni', a: 'Salire e scendere dai mezzi', k: 'F', p: 'B', t: 'tocca il mezzo · Scendi', c: 'tocca il mezzo · A' },
+    { g: 'Azioni', a: 'Salire e scendere dai mezzi', k: 'F (tieni per rubare)', p: 'B', t: 'tocca il mezzo · Scendi', c: 'tocca il mezzo · A' },
     { g: 'Armi', a: 'Mirare', k: 'tasto destro (tieni)', p: 'LT (tieni)', t: '—', c: 'B con l\'arma', m: 'camera7' },
     { g: 'Armi', a: 'Sparare', k: 'clic sinistro', p: 'RT', t: 'tocca il bersaglio', c: 'B con l\'arma', m: 'camera7' },
     { g: 'Armi', a: 'Cambiare arma · ricaricare', k: 'Q · 1-5 · R', p: 'RB · LB', t: 'Arma', c: 'Zaino' },
@@ -49,8 +49,10 @@ var Orienta = (function () {
     { g: 'Graffiti', a: 'Misura: tag, throw-up, pezzo, burner', k: 'rotella · [ ]', p: 'la barra sopra la tasca', t: 'la barra sopra la tasca', c: 'la barra sopra la tasca' },
     { g: 'Alla guida', a: 'Gas, freno, sterzo', k: 'W S · A D · frecce', p: 'RT · LT · levetta', t: 'levetta · Freno', c: 'levetta', m: 'guida2' },
     { g: 'Alla guida', a: 'Freno a mano', k: 'Spazio', p: 'A', t: 'Freno', c: 'A', m: 'guida2' },
+    { g: 'Alla guida', a: 'Clacson · radio', k: 'H · R', p: '—', t: '—', c: '—', m: 'guida2' },
+    { g: 'Alla guida', a: 'BMX: impennata · trick', k: 'C · Q E · Maiusc + frecce', p: '—', t: '—', c: '—', m: 'guida2' },
     { g: 'Menu', a: 'Pausa', k: 'Esc', p: 'Start', t: '❚❚ in alto a destra', c: 'Zaino' },
-    { g: 'Menu', a: 'Aiuto: questa tabella', k: 'H · F1', p: 'Start → Comandi', t: '❚❚ → Comandi', c: 'Zaino → Obiettivi' },
+    { g: 'Menu', a: 'Aiuto: questa tabella', k: 'H (a piedi) · F1', p: 'Start → Comandi', t: '❚❚ → Comandi', c: 'Zaino → Obiettivi' },
     { g: 'Menu', a: 'Mappa', k: 'M', p: 'Back', t: 'Zaino → Mappa', c: 'Zaino → Mappa' },
     { g: 'Menu', a: 'Obiettivi · zaino', k: 'I', p: 'Start → Obiettivi', t: 'Zaino · tocca l\'obiettivo', c: 'Zaino' },
     { g: 'Menu', a: 'La Risacca: squadra e basi', k: 'B', p: '—', t: 'Zaino → Obiettivi → Risacca', c: 'Zaino → Obiettivi' },
@@ -415,7 +417,8 @@ body.or-on #app.console #rs-indoor { top: 34px !important; }
     }
     if (typing() || e.repeat) return;
     if (ui.dialog || ui.book || ui.over) return;
-    if (k === 'f1' || (k === 'h' && !ui.menu)) { e.preventDefault(); e.stopImmediatePropagation(); pausa(true, 'comandi'); return; }
+    const inSella = () => { const s = ST(); return !!(s && s.player && s.player.vehicle && !/[?&]nofixguida2\b/.test(location.search)); };   // [guida2] in sella H è il clacson (main.js): l'aiuto resta su F1
+    if (k === 'f1' || (k === 'h' && !ui.menu && !inSella())) { e.preventDefault(); e.stopImmediatePropagation(); pausa(true, 'comandi'); return; }
     if (k === 'm' && typeof MenuUI !== 'undefined') { e.preventDefault(); e.stopImmediatePropagation(); if (ui.menu && MenuUI.state && MenuUI.state.tab !== 'mappa') MenuUI.open('mappa'); else apriMappa(); return; }
   }, true);
 
