@@ -2596,6 +2596,10 @@ var Render = (function () {
   // [fluido] il profilo telefono, deciso all'avvio (il numero di luci entra nei programmi della scheda video): touch o ?leggera; ?alta lo spegne
   const PHONE = (() => { try { const q = location.search; if (/[?&]alta\b/.test(q)) return false; return /[?&](leggera|bassa)\b/.test(q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
   if (typeof window !== 'undefined') window.PV_TELEFONO = PHONE;   // [memoria] lo leggono i moduli (pittura.js: la cache delle tele)
+  // [hd] gli interruttori dell'immagine HD (profilo.js: window.PV_HD; ?hd=0 tutto com'era, ?<nome>=0 uno solo)
+  const HDk = k => typeof window !== 'undefined' && !!window.PV_HD && window.PV_HD.on(k);
+  const HD = { foschia: HDk('foschia'), regola: HDk('regola'), upscale: HDk('upscale'), aa: HDk('hdaa'), pulito: HDk('pulito'), risdin: HDk('regola') && HDk('risdin'), ombre: HDk('hdombre') };
+  if (typeof window !== 'undefined') window.__HD = HD;
   // [dieta] i tagli della memoria del telefono (il telefono chiudeva la scheda appena si entrava in gioco): ?nodieta li spegne tutti,
   // ?nodieta<nome> uno solo. fondi: i settori lontani delle case fusi nel caricamento (fus1Ora)
   const DIETA = (() => { const q = typeof location !== 'undefined' ? location.search : '', off = /[?&]nodieta\b/.test(q), on = k => PHONE && !off && !new RegExp('[?&]nodieta' + k + '\\b').test(q);
@@ -13448,11 +13452,123 @@ var Render = (function () {
   // [nitore] l'antialiasing della scena: MSAA 4× nel bersaglio del look nuovo sul computer (WebGL2), mai sul telefono né in grafica ridotta
   // (lì costa memoria e banda che non ci sono). ?noaa lo spegne, ?aa=2|4|8 lo sceglie.
   const AA_Q = typeof location !== 'undefined' ? location.search : '', AA_N = /[?&]noaa\b/.test(AA_Q) ? 0 : +((AA_Q.match(/[?&]aa=(2|4|8)\b/) || [])[1] || 4);
-  const msaa = () => (!PHONE && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2) ? Math.min(AA_N, renderer.capabilities.maxSamples || 4) : 0;
-  function setRes(k) { k = Math.max(PHONE ? .6 : .8, Math.min(1, k));   /* [nitore] sul computer mai sotto l'80%: a .6 i pixel si vedevano su ogni linea */   /* [colore1] non sotto il 70% (a metà era pastoso) */   /* [ritmo] .6 l'ultimo gradino (peso_ritmo.js): la tela del look resta piena, scende solo la scena */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
-  function lowQuality() { if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  const msaa0 = () => (!PHONE && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2) ? Math.min(AA_N, renderer.capabilities.maxSamples || 4) : 0;
+  // [hd] nel profilo leggero (portatile con la scheda integrata, telefono) MSAA 2× nel bersaglio della scena al posto dell'FXAA nel passo unico:
+  // alla risoluzione interna (640-1080 righe) costa poca banda (un risolvere per fotogramma) e gli spigoli escono puliti prima dell'ingrandimento.
+  // ?hdaa=0 (o ?noaa) com'era. Con la grafica ridotta vecchia (LOWQ.on) niente
+  const msaaHD = () => HD.aa && PHONE && !LOWQ.on && AA_N && renderer.capabilities.isWebGL2 ? Math.min(2, renderer.capabilities.maxSamples || 4) : 0;
+  const msaa = () => msaa0() || msaaHD();
+  // [hd] LA RISOLUZIONE A QUALITÀ STABILE (v7/ANALISI_HD.md). HDR: le righe interne di adesso (L), quelle di riferimento del profilo (ref:
+  // 640 leggero, 1080 pieno: dove si misuravano i dettagli), la soglia (lo: mai sotto 640 righe) e il massimo (hi: fino a 1080, mai oltre lo
+  // schermo). Con «risdin» RES va da lo/hi a 1 (la scala che muove peso_ritmo.js a passi del 5%); «tetto» la ferma alla soglia (il contesto
+  // perso in questa sessione). k = L / ref: i moduli che misuravano i dettagli in pixel della risoluzione interna li misurano in pixel stabili
+  const HDR = { L: 0, ref: 0, lo: 0, hi: 0, kmin: 1, k: 1, tetto: false, iniz: false, NW: 0, NH: 0 };
+  const HDK = { value: 1 };   // [hd] per gli shader (pavimenti.js, pezzi_citta.js): L / ref, la scala che riporta i metri per pixel a quelli di riferimento
+  if (typeof window !== 'undefined') { window.__HDR = HDR; window.__HDK = HDK; }
+  const HDV = () => LOOKV.nuovo && (HD.upscale || HD.risdin);
+  function setRes(k) {
+    if (HDV() && HD.risdin) { k = Math.max(HDR.kmin, Math.min(1, k)); if (Math.abs(k - RES) < .004) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }   // [hd] passi fini: la soglia la decide HDR (640 righe)
+    k = Math.max(PHONE ? .6 : .8, Math.min(1, k));   /* [nitore] sul computer mai sotto l'80%: a .6 i pixel si vedevano su ogni linea */   /* [colore1] non sotto il 70% (a metà era pastoso) */   /* [ritmo] .6 l'ultimo gradino (peso_ritmo.js): la tela del look resta piena, scende solo la scena */ if (Math.abs(k - RES) < .02) return RES; RES = k; if (lastSize) resize(...lastSize); return RES; }
+  function hdScala() { return HDV() && HD.risdin && HDR.iniz ? { kmin: HDR.kmin, lo: HDR.lo, hi: HDR.hi, tetto: HDR.tetto, L: HDR.L, k: RES, leggero: PHONE } : null; }
+  // [hd] LA GRAFICA RIDOTTA A GRADINI (con «regola»): mai la risoluzione, mai le ombre spente, mai tutti i materiali ricompilati.
+  //   1: le ombre dei lampioni non si ridisegnano di giorno (sono spenti) e quella del sole a fotogrammi alterni;
+  //   2: la mappa del sole più piccola (×.75, peso_ombre.js);
+  //   3: il sole ogni tre fotogrammi, la proposta senza miniatura né micro-normale.
+  // Ritorna vero se è scesa di un gradino. qualitaPiena() torna su tutto (il bottone «Qualità piena»)
+  LOWQ.grado = 0;
+  function hdGrado() { const g = LOWQ.grado;
+    if (SGU && SGU.pro) { if (LOWQ.pro0 === undefined) LOWQ.pro0 = [SGU.pro.miniatura, SGU.pro.grana]; SGU.pro.miniatura = g >= 3 ? 0 : LOWQ.pro0[0]; SGU.pro.grana = g >= 3 ? 0 : LOWQ.pro0[1]; }
+    hdOmbre(true); hdBottone(); }
+  function hdOmbre(forza) {   // la misura della mappa del sole: il gradino 2 la stringe, «hdombre» la allarga sopra le 900 righe (fineTel .8 → 1.1)
+    if (typeof window === 'undefined' || !window.PesoOmbre || !PesoOmbre.mappa) return;
+    const fine = HD.ombre && PHONE && HDR.L > 0 ? (HDR.fine900 ? HDR.L >= 860 : HDR.L >= 900) : false; HDR.fine900 = fine;
+    const k = LOWQ.grado >= 2 ? .75 : 1; if (forza || k !== HDR.kOmbre || fine !== HDR.fOmbre) { HDR.kOmbre = k; HDR.fOmbre = fine; PesoOmbre.mappa(k, fine); } }
+  function hdBottone() {
+    if (typeof document === 'undefined') return; const on = LOWQ.grado > 0 || HDR.tetto;
+    if (!HDR.btn && on) { const b = document.createElement('button'); b.id = 'qualita-piena'; b.textContent = 'Qualità piena';
+      b.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:70;padding:6px 10px;font:12px/1.2 monospace;color:#e8e0d0;background:rgba(8,8,14,.78);border:1px solid #666;border-radius:4px;cursor:pointer;pointer-events:auto';
+      b.title = 'La grafica si era ridotta (o la scheda video si era fermata in questa sessione): torna alla qualità piena';
+      b.addEventListener('click', e => { e.stopPropagation(); qualitaPiena(); }); (document.getElementById('app') || document.body).appendChild(b); HDR.btn = b; }
+    if (HDR.btn) HDR.btn.hidden = !on; }
+  function qualitaPiena() { LOWQ.grado = 0; HDR.tetto = false; try { sessionStorage.removeItem('pvLow'); localStorage.removeItem('pvLow'); } catch (e) { } hdGrado(); if (lastSize) resize(...lastSize); return true; }
+  function lowQuality() { if (HD.regola) { if (LOWQ.grado >= 3) return false; LOWQ.grado++; hdGrado(); return true; }
+    if (TARGET < 420) return; TARGET = 330; LOWQ.on = true; if (SGU && SGU.pro) { SGU.pro.miniatura = 0; SGU.pro.grana = 0; }   /* [look-ovunque] leggeri: la proposta senza la sfocatura della miniatura né la micro-normale */ if (window.Pavimenti) Pavimenti.qualita('leggera');   /* [pavimenti] */ moon.castShadow = false; SPOOL.forEach(l => { l.castShadow = false; }); renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.needsUpdate = true); } }); if (lastSize) resize(...lastSize); }
+  // [hd] LA TELA VERA E LA SCENA ALLA SUA RISOLUZIONE INTERNA. La tela è sempre quella dello schermo (dpr fino a 2: main.js), mai più la mezza
+  // tela stesa dal browser (bilineare, impastata) né il doppio ricampionamento della scala; la scena e il passo unico restano alla risoluzione
+  // interna (W×H, le righe di HDR.L), poi upscalePasso() ingrandisce una volta sola fino alla tela, nitido. ?upscale=0 (o il ripiego, se il
+  // passo costa troppo): la tela torna alla risoluzione interna e la stende il browser, come prima (ma senza il secondo ricampionamento)
+  function resizeHD(cw, ch, dpr) {
+    const NW = Math.max(64, Math.floor(cw * dpr)), NH = Math.max(64, Math.floor(ch * dpr)), NL = PHONE ? Math.min(NW, NH) : NH;
+    HDR.NW = NW; HDR.NH = NH; HDR.ref = Math.min(NL, PHONE ? 640 : 1080); HDR.lo = Math.min(NL, 640); HDR.hi = Math.min(NL, 1080); HDR.kmin = HDR.lo / HDR.hi;
+    if (!HDR.iniz) { HDR.iniz = true; if (HD.risdin && PHONE) RES = HDR.kmin; }   // il profilo leggero parte dalla soglia e sale se c'è margine (peso_ritmo.js)
+    let L;
+    if (LOWQ.on) L = NL / Math.max(1.5, dpr * 1.25);   // la grafica ridotta vecchia (?regola=0)
+    else if (HD.risdin) { RES = Math.max(HDR.kmin, Math.min(1, RES)); L = HDR.tetto ? HDR.lo : Math.max(HDR.lo, Math.min(HDR.hi, Math.round(HDR.hi * RES))); }
+    else L = HDR.ref * RES;
+    const PXi = NL / L; W = Math.max(64, Math.floor(NW / PXi)); H = Math.max(64, Math.floor(NH / PXi)); PX = PXi;
+    HDR.L = PHONE ? Math.min(W, H) : H; HDR.k = HDR.L / HDR.ref; HDK.value = HD.regola ? HDR.k : 1;
+    GPUT.px = W + '×' + H;
+    const UP = HD.upscale && !UPS.ripiego && (W !== NW || H !== NH), firma = [W, H, NW, NH, UP, msaa(), !!(PRO.prof || PFD.on)].join(',');
+    if (rt && firma === HDR.firma) return; HDR.firma = firma;   // niente di nuovo: i bersagli restano (rifarli svuota e rialloca)
+    if (!DEV.mat) devInit(); if (DEV.rt) DEV.rt.dispose(); DEV.rt = null;
+    const FW = UP || (HD.upscale && !UPS.ripiego) ? NW : W, FH = UP || (HD.upscale && !UPS.ripiego) ? NH : H;
+    { const sz = renderer.getSize(V2T); if (sz.x !== FW || sz.y !== FH) renderer.setSize(FW, FH, false); else renderer.setViewport(0, 0, FW, FH); }
+    if (rt) { if (rt.depthTexture) rt.depthTexture.dispose(); rt.dispose(); }
+    rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType, samples: msaa() });
+    if (PRO.prof || PFD.on) { rt.depthTexture = new THREE.DepthTexture(W, H); rt.depthTexture.type = renderer.capabilities.isWebGL2 ? THREE.FloatType : THREE.UnsignedIntType; }
+    if (UPS.rt) { UPS.rt.dispose(); UPS.rt = null; }
+    if (UP) { UPS.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, type: THREE.UnsignedByteType, depthBuffer: false, generateMipmaps: false }); upsInit(); UPS.mat.uniforms.src.value.set(W, H); UPS.mat.uniforms.dst.value.set(NW, NH); }
+    sguLibera(); sguResize(W, H); if (postMat) postMat.uniforms.res.value.set(W, H); camera.aspect = W / H; camera.updateProjectionMatrix();
+    hdOmbre(false);
+  }
+  // [hd] L'INGRANDIMENTO NITIDO: dalla risoluzione interna alla tela vera in un passo solo. Catmull-Rom in 5 letture bilineari (la croce: gli
+  // angoli pesano quasi niente), una pinza ai 4 texel vicini (niente aloni né anelli), un filo di nitidezza in più sul solo valore rispetto
+  // al bilineare (dentro la pinza), il retino contro le bande al pixel vero. 10 letture per pixel della tela.
+  const UPS = { rt: null, scene: null, cam: null, mat: null, ripiego: /[?&]upscale=0\b/.test(typeof location !== 'undefined' ? location.search : ''), q: null, ext: null, ms: 0, lento: 0, t: 0, n: 0, nitido: .35 };
+  if (typeof window !== 'undefined') window.__UPS = UPS;
+  function upsInit() {
+    if (UPS.mat) return; UPS.scene = new THREE.Scene(); UPS.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    UPS.mat = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, src: { value: new THREE.Vector2(1, 1) }, dst: { value: new THREE.Vector2(1, 1) }, k: { value: UPS.nitido }, tm: { value: 0 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }',
+      fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 src; uniform vec2 dst; uniform float k; uniform float tm; varying vec2 vUv;
+        vec3 T(vec2 q){ return texture2D(t, q).rgb; }
+        void main(){
+          vec2 sp = vUv * src, tc = floor(sp - .5) + .5, f = sp - tc, e = 1. / src;
+          vec2 w0 = f * (-.5 + f * (1. - .5 * f)), w1 = 1. + f * f * (-2.5 + 1.5 * f), w2 = f * (.5 + f * (2. - 1.5 * f)), w3 = f * f * (-.5 + .5 * f);
+          vec2 w12 = w1 + w2, t0 = (tc - 1.) * e, t3 = (tc + 2.) * e, t12 = (tc + w2 / w12) * e;
+          float a = w12.x * w0.y, b = w0.x * w12.y, c0 = w12.x * w12.y, d = w3.x * w12.y, g = w12.x * w3.y;
+          vec3 c = (T(vec2(t12.x, t0.y)) * a + T(vec2(t0.x, t12.y)) * b + T(t12) * c0 + T(vec2(t3.x, t12.y)) * d + T(vec2(t12.x, t3.y)) * g) / (a + b + c0 + d + g);
+          vec2 q0 = tc * e; vec3 p00 = T(q0), p10 = T(q0 + vec2(e.x, 0.)), p01 = T(q0 + vec2(0., e.y)), p11 = T(q0 + e);
+          vec3 mn = min(min(p00, p10), min(p01, p11)), mx = max(max(p00, p10), max(p01, p11));
+          vec3 bl = T(vUv); float dl = dot(c - bl, vec3(.299, .587, .114));
+          c = clamp(c + dl * k, mn, mx);
+          vec2 fp = floor(vUv * dst); c += (fract(sin(dot(fp + fract(tm) * 61., vec2(12.9898, 78.233))) * 43758.5453) - .5) / 255.;
+          gl_FragColor = vec4(c, 1.); }`,
+      depthTest: false, depthWrite: false, toneMapped: false });
+    UPS.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), UPS.mat));
+  }
+  // il passo dopo il passo unico: la misura del tempo con il timer della scheda video (se c'è) e il ripiego dopo 2 s oltre i 4 ms
+  function upscalePasso() {
+    if (!UPS.rt) return; const U = UPS.mat.uniforms; U.t.value = UPS.rt.texture; U.k.value = UPS.nitido; U.tm.value = performance.now() / 1000;
+    const gl = renderer.getContext(); if (UPS.ext === null) { try { UPS.ext = (GPUT.ext) || (gl.getExtension && gl.getExtension('EXT_disjoint_timer_query_webgl2')) || false; } catch (e) { UPS.ext = false; } }
+    let q = null; if (GPUT.on && GPUT.ext) gpuB('upscale'); else if (UPS.ext && !UPS.q && gl.createQuery) { q = gl.createQuery(); gl.beginQuery(UPS.ext.TIME_ELAPSED_EXT, q); }
+    renderer.setRenderTarget(null); renderer.render(UPS.scene, UPS.cam);
+    if (GPUT.on && GPUT.ext) gpuE(); else if (q) { gl.endQuery(UPS.ext.TIME_ELAPSED_EXT); UPS.q = q; }
+    const now = performance.now(); let ms = null;
+    if (GPUT.on && GPUT.res.upscale !== undefined) ms = GPUT.res.upscale;
+    else if (UPS.q && gl.getQueryParameter(UPS.q, gl.QUERY_RESULT_AVAILABLE)) { if (!gl.getParameter(UPS.ext.GPU_DISJOINT_EXT)) ms = gl.getQueryParameter(UPS.q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(UPS.q); UPS.q = null; }
+    if (ms !== null) { UPS.ms += (ms - UPS.ms) * .2; if (UPS.ms > 4) { if (!UPS.lento) UPS.lento = now; else if (now - UPS.lento > 2000) { UPS.ripiego = true; console.warn('[hd] l\'ingrandimento costa', UPS.ms.toFixed(1), 'ms: la tela torna alla risoluzione interna'); if (lastSize) resize(...lastSize); } } else UPS.lento = 0; }
+  }
+  // [hd] lo stato per il riquadro F3 (main.js) e le sonde
+  function hdStato() {
+    const R0 = typeof window !== 'undefined' && window.__ritmo, sc = HDV() && HD.risdin ? RES : RES;
+    return `hd ${HD.regola ? '' : 'regola0 '}· scala ${sc.toFixed(2)} · righe ${HDR.L || H}${HDR.hi ? '/' + HDR.hi : ''} (${W}×${H}) · tela ${renderer ? renderer.domElement.width + '×' + renderer.domElement.height : '?'}${UPS.rt ? ' · ingrandisce ' + (UPS.ms ? UPS.ms.toFixed(2) + ' ms' : 'sì') : UPS.ripiego ? ' · CSS (ripiego)' : ''}` +
+      ` · tetto ${R0 && R0.tetto ? R0.tetto : 'no'} · LOWQ ${LOWQ.on ? 'vecchio' : LOWQ.grado ? 'gradino ' + LOWQ.grado : 'no'} · tel ${PHONE ? 'sì' : 'no'} · aa ${rt && rt.samples ? rt.samples + '×' : 'fxaa/no'}${HDR.tetto ? ' · sessione ridotta' : ''}`;
+  }
   function resize(cw, ch, dpr) {
     lastSize = [cw, ch, dpr];
+    if (HDV()) return resizeHD(cw, ch, dpr);   // [hd]
+    HDR.firma = null;
     PX = LOWQ.on ? Math.max(1.5, dpr * 1.25) /* [colore1] era 2×dpr: quadrettoni */ : Math.max(1, (PHONE ? Math.min(cw, ch) : ch) * dpr / (PHONE ? 640 : 1080));   /* [grafica3] telefono 720 sul lato corto (era 540: impastato); la risoluzione dinamica scende se serve */   /* [telefono] in verticale conta il lato corto: era 540 righe per 265 colonne */   /* [colore1] fino a 1080 righe (prima 720: su uno schermo grande era sfocato), telefono 540 */   /* [unione8] al massimo 720 righe */   /* [fluido] sul telefono 480 */   /* [amb3] risoluzione piena */
     const W1 = Math.max(64, Math.floor(cw * dpr / PX)), H1 = Math.max(64, Math.floor(ch * dpr / PX));   /* [ritmo] la misura a scala piena: è quella della tela */
     PX /= RES;   /* [fluido] */
@@ -14170,7 +14286,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
         rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + (PHONE || LOWQ.on ? '\n#define SG_FXAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -14679,8 +14795,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         U.fP.value.set(cx, cy, Math.max(.01, hh * 1.25), inv && !f ? F.spicca : 0);
         const k = (typeof innerHeight !== 'undefined' ? innerHeight * (devicePixelRatio || 1) : rt.height) / Math.max(1, rt.height);   // quanto il browser ingrandisce la tela
         U.fE.value.set(Math.max(.55, Math.min(1, 1.1 / Math.max(1, k))), F.filoSottile); }   // il filo largo un px della tela pesa come un px dello schermo U.fH.value.set(fc.r, fc.g, fc.b);
+      if (HD.foschia) U.fH.value.set(fc.r, fc.g, fc.b);   // [hd] il colore dell'aria era rimasto nel commento qui sopra: l'aria restava grigia (.8) a ogni ora
       if (NIT.on && PRO.look && NIT.acceso) { U.nA.value.x = 0; U.nA.value.w = 0; } }   // nel profilo pieno l'aria e la sagoma della profondità di prima lasciano il posto a queste
-    renderer.setRenderTarget(null); renderer.render(SGP.scene, SGP.cam);
+    renderer.setRenderTarget(UPS.rt || null); renderer.render(SGP.scene, SGP.cam);   // [hd] con l'ingrandimento il passo unico resta alla risoluzione interna
   }
 
   // ================= [inverno] PAESAGGIO: il Muro, la Base, il porto cargo, le stazioni, i beduini, i bivacchi, i fuochi =================
@@ -17897,7 +18014,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // processori, mentre il menu resta vivo (KHR_parallel_shader_compile). Gli errori degli shader si vedono con ?debug
     renderer.debug.checkShaderErrors = /[?&]debug\b/.test(location.search);
     try { PSC = renderer.getContext().getExtension('KHR_parallel_shader_compile'); } catch (e) { PSC = null; }
-    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { localStorage.setItem('pvLow', '1'); } catch (x) {} console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); let n = 0; try { n = +(sessionStorage.getItem('pvRic') || 0); sessionStorage.setItem('pvRic', n + 1); } catch (x) {} if (n < 1) setTimeout(() => location.reload(), 400); else { const d = document.createElement('div'); d.textContent = 'La grafica di questo dispositivo non regge il gioco: ricarica la pagina per riprovare.'; d.style.cssText = 'position:fixed;inset:auto 16px 40% 16px;padding:16px;background:#111c;color:#fff;font:16px sans-serif;text-align:center;z-index:99;border-radius:8px'; document.body.appendChild(d); } });   /* [unione10] */ /* [regge] una ricarica sola, non un giro di ricariche */
+    canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); try { (HD.regola ? sessionStorage : localStorage).setItem('pvLow', '1'); } catch (x) {}   /* [hd] il contesto perso vale per questa sessione, non per sempre */ console.warn('[grafica] contesto perso: ricarico in qualità ridotta'); let n = 0; try { n = +(sessionStorage.getItem('pvRic') || 0); sessionStorage.setItem('pvRic', n + 1); } catch (x) {} if (n < 1) setTimeout(() => location.reload(), 400); else { const d = document.createElement('div'); d.textContent = 'La grafica di questo dispositivo non regge il gioco: ricarica la pagina per riprovare.'; d.style.cssText = 'position:fixed;inset:auto 16px 40% 16px;padding:16px;background:#111c;color:#fff;font:16px sans-serif;text-align:center;z-index:99;border-radius:8px'; document.body.appendChild(d); } });   /* [unione10] */ /* [regge] una ricarica sola, non un giro di ricariche */
     renderer.localClippingEnabled = true;   // [visuale3] il piano di taglio sui pezzi della casa fuori dalla fusione (solo mentre è tagliata)
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;   /* [plastica2] ombre morbide da plastico: le dure a punti di 4,5 cm facevano trine e scalini */
     scene = new THREE.Scene(); scene.background = new THREE.Color('#0d0b1a');
@@ -17953,7 +18070,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     TT('morbide2', () => smooth2(scene));   /* [plastica2] */
     TT('pigre', () => { (window.__rt = window.__rt || {}).pigre_n = pigreSvuota(); FD1.sigs.clear(); });   /* [telefono] le tavolozze delle case lasciano la memoria; le firme dei materiali (stringhe, ~20 MB) sono servite alla fusione: chi le richiede le rifà */
     swLibera();   // [scarico] dopo la costruzione (anche quando i marciapiedi vengono dai tasselli)
-    try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
+    if (HD.regola) { try { localStorage.removeItem('pvLow'); if (/[?&]alta\b/.test(location.search)) sessionStorage.removeItem('pvLow'); else if (sessionStorage.getItem('pvLow') === '1') { HDR.tetto = true; LOWQ.grado = 2; hdGrado(); } } catch (e) {} }   /* [hd] il ricordo vecchio (localStorage, per sempre) si cancella; dopo un contesto perso in questa sessione: la soglia di 640 righe e il gradino 2, col bottone «Qualità piena» */
+    else try { if (/[?&]alta\b/.test(location.search)) localStorage.removeItem('pvLow'); else if (localStorage.getItem('pvLow') === '1') lowQuality(); } catch (e) {}   /* [unione10] la scheda video non reggeva: si parte leggeri */
     if (window.Models) try { Models.attach({ scene, G, groundH }); } catch (e) { console.warn(e); }
     if (window.OrdineArte) try { OrdineArte.attach({ scene, G, groundH }); } catch (e) { console.warn('[ordine_arte]', e); }   /* [ordine] */
     const mk2 = new THREE.Group();
@@ -19715,8 +19833,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     rilascioTick(performance.now());   /* [regge] le geometrie uscite dalla scena si liberano */
     bmbTick();   /* [scatti] chi si può dipingere, a rate */
     instCull(); gpuPoll(); gpuB('scena');   /* [prestazioni] */
-    if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
-    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return H; }, phone: PHONE, frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
+    if (HD.regola || HD.ombre) {   // [hd] l'ombra del sole: a ogni fotogramma (chi si muove non scatta: «hdombre», anche sul telefono), più rada solo coi gradini della grafica ridotta
+      const ogni = LOWQ.grado >= 3 ? 3 : LOWQ.grado >= 1 ? 2 : PHONE && !HD.ombre ? 2 : 1;
+      if (ogni > 1) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = frameN % ogni === 0 || !!dyn.shNow; } else renderer.shadowMap.autoUpdate = true; dyn.shNow = false;
+      if (LOWQ.grado >= 1 && night < .15) SPOOL.forEach(l => { if (l.castShadow) l.shadow.needsUpdate = false; });   // gradino 1: di giorno i lampioni sono spenti, la loro ombra non si ridisegna
+      hdOmbre(false); }
+    else if (PHONE) { renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = (frameN & 1) === 0 || !!dyn.shNow; dyn.shNow = false; }   // [fluido4] sul telefono l'ombra del sole a fotogrammi alterni: era quasi metà dei disegni di ogni fotogramma
+    if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return HD.regola && HDR.k > 0 && HDV() ? H / HDR.k : H; }, phone: PHONE,   /* [hd] l'altezza di riferimento: le persone lontane e le cose piccole (peso_gente.js, peso_lontano.js) non cambiano con la scala */ frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
     streamTick();   /* [memoria] */
@@ -19729,7 +19852,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       else u7.z = 0; }
     renderer.setRenderTarget(rt); if (PFA.sync) { PFA.on = true; PFA.sync(); } renderer.render(scene, camera); if (PFA.sync) { PFA.on = false; PFA.sync(); } if (window.PesoOmbre) PesoOmbre.dopo();   // [profondita2] l'alfa pulito solo nel passaggio della scena
     gpuE(); if (GPUT.on) { const ri = renderer.info.render; GPUT.info = { calls: ri.calls, tris: ri.triangles, progs: renderer.info.programs ? renderer.info.programs.length : 0, px: GPUT.px }; }
-    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); return; }   // [sguardo] un passo solo
+    if (LOOKV.nuovo) { PRATO9.k.value = AMB.prato === undefined ? 1 : AMB.prato; gpuB('post'); sguPasso(ui, st, p, dt, SGS, ease); gpuE(); upscalePasso(); return; }   // [sguardo] un passo solo
     gpuB('bagliore'); renderer.setRenderTarget(null); ambPasses(); gpuE();   /* [amb2] */
     const U = postMat.uniforms;
     gpuB('occlusione'); U.tOcc.value = occPass(cam.h); gpuE(); if (OCC.rt) U.occRes.value.set(OCC.rt.width, OCC.rt.height);   /* [regia2] l'ombra degli angoli */
@@ -19823,5 +19946,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

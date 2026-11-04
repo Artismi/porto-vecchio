@@ -25,9 +25,22 @@ var PesoRitmo = (function () {
   const FISSO = +((Q.match(/[?&]ritmo=(30|60)\b/) || [])[1] || 0);
   const S = { R: null, tel: false, scala: [1], i: 0, iTetto: 0, tetto: FISSO, periodo: 1000 / 60, giri: [], gn: 0, int: [], ultimo: 0,
     pres: 0, calma: 0, cambio: 0, prova: null, attesa: 5000, attesaT: 10000, gpu: false, cpu: 0, cambi: 0, giu: 0, su: 0, prove: 0, fallite: 0, tetti: 0, pronto: false };
+  // [hd] LA SCALA FINE (v7/ANALISI_HD.md, «regola» e «risdin»): render.js hdScala() dà la soglia (640 righe) e il massimo (fino a 1080); qui la
+  // scala va a passi del 5% (in righe) fra le due, al più un cambio ogni 2 s, con l'isteresi di prima (giù dopo 1 s di pressione, su solo col
+  // margine misurato dalla scheda video sotto l'80% per 2 s, o con la prova se il browser non dà i tempi). Mai sotto la soglia: lì c'è il
+  // tetto a 30, poi la grafica ridotta a gradini di main.js. Il profilo leggero parte dalla soglia e sale. I tempi della scheda video si
+  // chiedono anche al portatile col profilo leggero (prima solo al profilo pieno); il telefono quasi mai li ha.
+  const HDQ = typeof window !== 'undefined' && !!window.PV_HD && window.PV_HD.on('regola');
+  let HDS = null;
   function avvia(R) {
     S.R = R; S.pronto = true; S.tel = !!R.phone || (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches);
     const liv = (window.__pesoLivello && window.__pesoLivello.livello) || 'media';
+    HDS = HDQ && R.hdScala ? R.hdScala() : null;
+    if (HDS) { const L = []; for (let k = 1; k > HDS.kmin * 1.0001; k /= 1.05) L.push(+k.toFixed(4)); L.push(HDS.kmin); S.scala = L; S.iTetto = L.length - 1;
+      S.i = HDS.leggero ? L.length - 1 : 0; if (R.setRes) R.setRes(S.scala[S.i]);
+      const tocco = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+      if (!tocco && R.gpuTiming && !/[?&]noritmogpu\b/.test(Q)) try { S.gpu = !!R.gpuTiming(true); } catch (e) { S.gpu = false; }
+      return; }
     if (S.tel) { S.scala = liv === 'bassa' ? [.9, .8, .7] : [1, .9, .8]; S.iTetto = liv === 'bassa' ? 1 : S.scala.length - 1; }
     else { S.scala = [1, .9, .8]; S.iTetto = S.scala.length - 1; }   // [nitore] sul computer mai sotto l'80% (a .7 e .6 si vedevano i pixel su ogni linea): poi il tetto a 30
     S.i = 0; if (R.setRes) R.setRes(S.scala[0]);
@@ -75,7 +88,7 @@ var PesoRitmo = (function () {
     const pressione = m > B * 1.08 || qf > .2, calmo = !pressione && m < B * 1.02 && qf < .03;
     if (pressione || lento) { S.pres += dd; S.calma = 0; } else if (calmo) { S.calma += dd; S.pres = 0; } else { S.pres = Math.max(0, S.pres - dd); S.calma = 0; }
     if (S.prova && now - S.prova.t > 6000) { if (S.prova.tipo === 'scala') S.attesa = 5000; else S.attesaT = 10000; S.prova = null; }   // ha retto
-    if (now - S.cambio < 1000) return;   // al più un cambio al secondo
+    if (now - S.cambio < (HDS ? 2000 : 1000)) return;   // al più un cambio al secondo   // [hd] ogni 2 s con la scala fine
     if (S.prova && S.pres > 400 && now - S.prova.t < 2500) { fallita(now); return; }
     if (S.pres > 1000) {
       if (lento && !pressione) { tetto(60, now); return; }
@@ -102,7 +115,7 @@ var PesoRitmo = (function () {
   }
   // per main.js: la grafica ridotta solo quando il regolatore è in fondo (scala minima e tetto a 30)
   const inFondo = () => !ON || (S.i >= S.scala.length - 1 && S.tetto === 30);
-  const stato = () => ({ on: ON, tel: S.tel, scala: S.scala[S.i], gradino: S.i, scalaTutta: S.scala.slice(), tetto: S.tetto, periodo: +S.periodo.toFixed(2), passi: passi(),
+  const stato = () => ({ hd: !!HDS, righe: HDS && S.R && S.R.hdScala ? (S.R.hdScala() || {}).L : undefined, on: ON, tel: S.tel, scala: S.scala[S.i], gradino: S.i, scalaTutta: S.scala.slice(), tetto: S.tetto, periodo: +S.periodo.toFixed(2), passi: passi(),
     gpu: S.gpu, gpuMs: +gpuMs().toFixed(2), cpuMs: +S.cpu.toFixed(2), attesa: S.attesa, attesaT: S.attesaT, prova: S.prova && S.prova.tipo, cambi: S.cambi, giu: S.giu, su: S.su, prove: S.prove, fallite: S.fallite, tetti: S.tetti });
   if (typeof window !== 'undefined') Object.defineProperty(window, '__ritmo', { get: stato, configurable: true });
   return { ON, salta, giroSaltato, misura, lavoro, inFondo, stato, get tetto() { return S.tetto; } };

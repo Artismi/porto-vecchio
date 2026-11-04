@@ -1108,13 +1108,14 @@
     if (!PERF.el) { const d = document.createElement('div'); d.id = 'perf'; d.style.cssText = 'position:absolute;left:50%;top:34px;transform:translateX(-50%);z-index:60;pointer-events:none;background:rgba(8,8,14,.82);color:#e8e0d0;font:11px/1.45 monospace;padding:6px 10px;border:1px solid #444;white-space:pre'; app.appendChild(d); PERF.el = d; if (R.gpuTiming) R.gpuTiming(true); }
     if (now - PERF.t0 < 1000 || !PERF.frames) return;
     const n = PERF.frames, sec = (now - PERF.t0) / 1000, g = R.gpuTimes || { ok: false, ms: {}, info: {} }, ms = g.ms, I = g.info || {};
-    const gt = ['scena', 'bagliore', 'pittura', 'post'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
+    const gt = ['scena', 'bagliore', 'pittura', 'post', 'upscale'].map(k => ms[k] !== undefined ? `${k} ${ms[k].toFixed(1)}` : '').filter(Boolean);
     const gsum = Object.values(ms).reduce((a, b) => a + b, 0);
     const frameMs = sec * 1000 / n, gameMs = (PERF.step + PERF.frame) / n, gn = gpuName();
     PERF.el.textContent = `${(n / sec).toFixed(0)} fps · peggiore ${PERF.worst.toFixed(0)} ms\n` +
       `fotogramma ${frameMs.toFixed(0)} ms = gioco ${gameMs.toFixed(0)} ms + attesa ${Math.max(0, frameMs - gameMs).toFixed(0)} ms (scheda video, altri moduli, browser)\n` +
       `scheda: ${gn || 'sconosciuta'}${SOFT_GPU.test(gn) ? '  ⚠ IN SOFTWARE: accelerazione hardware spenta' : ''}\n` +
       (window.PV_PROFILO ? `profilo: ${PV_PROFILO.profilo} (${PV_PROFILO.motivo})${PV_PROFILO.profilo === 'leggera' ? ' · ?alta per il pieno' : ''}\n` : '') +   // [profilo]
+      (R.hdStato ? R.hdStato() + '\n' : '') +   // [hd] i regolatori: scala, righe, tela, tetto, grafica ridotta, profilo, antialiasing
      
       `logica ${(PERF.step / n).toFixed(1)} ms · grafica (processore) ${(PERF.frame / n).toFixed(1)} ms\n` +
       (g.ok ? `scheda video ${gsum.toFixed(1)} ms: ${gt.join(' · ')}` : 'scheda video: il browser non dà i tempi') + '\n' +
@@ -1208,7 +1209,7 @@
     const dt = Math.min(.05, Math.max(0, dtv)); ui.time += dt;
     if (!RIT && touchMode && !FC.on && !ui.intro && ui.time > 8 && raw < .25) { FC.t += raw; FC.n++; if (FC.t > 3) { if (FC.t / FC.n > 1 / 52) FC.on = true; FC.t = 0; FC.n = 0; } }
     if (window.Studio && Studio.hidesGame()) { requestAnimationFrame(loop); return; }   // [studio] nell'hangar il mondo dorme
-    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (RIT ? PesoRitmo.inFondo() : touchMode || R.res <= .72)) { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } else { perfT = 0; perfN = 0; } } }   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
+    if (!perfDone && ui.time > 10) { perfT += raw; perfN++; if (perfN >= 180) { if (perfT / perfN > 1 / 22 && (RIT ? PesoRitmo.inFondo() : touchMode || R.res <= .72)) { if (R.__hd && R.__hd.HD.regola) { const giu = R.lowQuality(); perfDone = !giu; perfT = 0; perfN = 0; if (giu) toast('Grafica alleggerita (ombre più rade): la risoluzione resta piena. «Qualità piena» in basso a destra per tornare.'); } else { perfDone = true; R.lowQuality(); toast('Grafica ridotta: questo computer fatica. Per la qualità piena aggiungi ?alta all\'indirizzo.'); } } else { perfT = 0; perfN = 0; } } }   /* [hd] con «regola» la grafica ridotta è a gradini (render.js lowQuality: mai la risoluzione né le ombre spente), uno ogni 3 s di fatica, fino al terzo */   /* [colore1] prima scattava dopo 2 s (i primi secondi sono sempre lenti: shader, blocchi) e lasciava tutto a quadrettoni; ora prima la risoluzione dinamica, e solo se al 70% non regge */
     // [fluido] risoluzione dinamica: media mobile del fotogramma; sopra i 22 ms si scende di un gradino, sotto i 14 ms per 4 s si risale (al massimo un cambio ogni 1,5 s)
     if (!RIT && R.setRes && !touchMode && !ui.intro && raw < .25) { resAvg += (raw - resAvg) * .05; resT += raw;
       // [fluido2] tre gradini soli (100, 85, 72%) e con calma: ogni cambio rifà tutte le immagini intermedie della grafica

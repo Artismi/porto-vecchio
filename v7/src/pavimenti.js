@@ -488,6 +488,12 @@ var Pavimenti = (function () {
       pvTilt = tw * pvForza;
       return mix(base, col, pvForza);
     }`;
+  // [hd] i dettagli del lastrico misurati in pixel stabili (v7/ANALISI_HD.md, «regola»): pvHk = righe interne / righe di riferimento (render.js
+  // HDK), così quando la scala dinamica sale o scende la grana e i giunti non compaiono né spariscono; la sfumatura dei giunti (aa) resta al pixel vero
+  const HDPV = typeof window !== 'undefined' && !!window.PV_HD && window.PV_HD.on('regola');
+  const GLSL_HD = !HDPV ? GLSL : GLSL.replace('uniform float pvSmo;', 'uniform float pvSmo; uniform float pvHk;')
+    .replace('smoothstep(.04, .12, mpp), fin = 0.', 'smoothstep(.04, .12, mpp * pvHk), fin = 0.')
+    .replace('smoothstep(.07, .2, mpp), fin = 1. - smoothstep(.01, .035, mpp)', 'smoothstep(.07, .2, mpp * pvHk), fin = 1. - smoothstep(.01, .035, mpp * pvHk)');
   // aggiunge il disegno a un materiale (suolo: MeshStandardMaterial; marciapiede: MeshLambertMaterial)
   const DUMMY = { id: null, mk: null };
   const CIELO = { value: new THREE.Vector3() };   // [sguardo] x, z: lo scorrimento delle nuvole (m); forza
@@ -498,7 +504,7 @@ var Pavimenti = (function () {
       if (prev) prev.call(this, sh, r); STAT.comp++; STAT.ok = sh.fragmentShader.includes('#include <map_fragment>');
       Object.assign(sh.uniforms, U); if (QUAL.v === 'leggera') sh.fragmentShader = '#define PV_LITE\n' + sh.fragmentShader;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvPw = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_HD)
         .replace('#include <map_fragment>', '#include <map_fragment>\n #ifdef USE_MAP\n diffuseColor.rgb = pvDett(diffuseColor.rgb, vPw.xz, diffuse * texture2D(map, vUv, 4.).rgb);\n #else\n diffuseColor.rgb = pvDett(diffuseColor.rgb, vPw.xz, diffuseColor.rgb);\n #endif')
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .32, pvWet * pvForza); roughnessFactor = mix(roughnessFactor, roughnessFactor * .75, pvPol * pvForza);')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n #ifndef PV_LITE\n normal = normalize(normal + (viewMatrix * vec4(pvTilt.x, 0., pvTilt.y, 0.)).xyz);\n #endif');
@@ -514,7 +520,7 @@ var Pavimenti = (function () {
   let NZ = null;   // la tessitura di rumore della variante leggera: valori a caso per cella, filtrata, ripetuta
   function nz() { if (NZ) return NZ; const N = 256, a = new Uint8Array(N * N * 4); let sd = 7; for (let i = 0; i < a.length; i++) { sd = (sd * 16807) % 2147483647; a[i] = sd & 255; }
     NZ = new THREE.DataTexture(a, N, N, THREE.RGBAFormat); NZ.wrapS = NZ.wrapT = THREE.RepeatWrapping; NZ.magFilter = NZ.minFilter = THREE.LinearFilter; NZ.generateMipmaps = false; NZ.needsUpdate = true; return NZ; }
-  function uniforms(b, force) { const d = dummy(); return { pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvSmo: SMO, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 }, pvCl: CIELO }; }
+  function uniforms(b, force) { const d = dummy(); return { ...(HDPV ? { pvHk: window.__HDK || { value: 1 } } : {}), pvNz: { value: nz() }, pvAsf: ASF, pvStr: STRU, pvDbg: DBG, pvSmo: SMO, pvId: { value: b ? b.id : d.id }, pvId2: { value: b ? b.id2 : d.id }, pvFi: { value: b ? b.fi : d.id }, pvMk: { value: b ? b.mk : d.mk }, pvBox: { value: b ? b.box : new THREE.Vector4(0, 0, 1, 1) }, pvRes: { value: b ? b.res : new THREE.Vector2(1, 1) }, pvHas: { value: b ? 1 : 0 }, pvForza: FORZA, pvForce: { value: force || 0 }, pvCl: CIELO }; }
 
   // il suolo di un blocco: le mappe e il materiale (chiamato da buildChunkGen)
   function suolo(mat, tx0, ty0, n, m) { const it = suoloG(mat, tx0, ty0, n, m, null); let r; do r = it.next(); while (!r.done); return r.value; }

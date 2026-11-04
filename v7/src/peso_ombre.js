@@ -23,6 +23,7 @@ var PesoOmbre = (function () {
   const MOT = { chiave: 0, firma: 0, misura: 0, aggancio: 0 }, DIAG = { on: false, mob: new Map(), firma: new Map() };
   const ST = { cotture: 0, sottofondo: 0, lotti: 0, riprese: 0, aggiunte: 0, dinamici: 0, fermi: 0, lanciatori: 0, luci: 0, ms: 0, fotogrammi: 0 };
   const REC = new Map();
+  const HDM = { k: 1, fine: false };   // [hd]
   const EMPTY = [], A = { half: 0, halfSet: NaN, base: 0, G: null, next: null };
   let K = null, frame = 0, root = null, T3 = null, sfera = null, vtmp = null, pm = null, noop = () => { };
   const CAST = [], TOPS = []; let ORA = 0;
@@ -108,7 +109,7 @@ var PesoOmbre = (function () {
     m.target.position.copy(G.T); m.position.copy(G.T).addScaledVector(G.d, -G.D); m.updateMatrixWorld(); m.target.updateMatrixWorld(); }
   function sole() {
     const m = K.moon, sc = m.shadow.camera, T = m.target.position, Pp = m.position;
-    if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? P.fineTel : P.fine)), mt - 512); A.maxT = mt; }
+    if (!A.base) { const mt = (K.renderer.capabilities && K.renderer.capabilities.maxTextureSize) || 4096; A.base0 = A.base0 || m.shadow.mapSize.x; A.base = Math.min(Math.floor(A.base0 * (K.phone ? (HDM.fine ? Math.max(P.fineTel, 1.1) : P.fineTel) : P.fine) * HDM.k), mt - 512);   /* [hd] HDM: il gradino della grafica ridotta e la mappa più fine sopra le 900 righe (render.js hdOmbre) */ A.maxT = mt; }
     if (sc.right !== A.halfSet) A.half = sc.right;   // il gioco ha cambiato il riquadro (profSole lo tocca solo quando cambia)
     let tex = 2 * A.half / A.base; const lim = (A.maxT || 4096) - 64; if (Math.ceil(2 * (A.half + P.M) / tex) > lim) tex = 2 * (A.half + P.M) / lim;   // mai oltre la tessitura più grande
     let ms = Math.ceil(2 * (A.half + P.M) / tex);
@@ -256,6 +257,9 @@ var PesoOmbre = (function () {
   // [ottimizza-car] chi aggiunge o toglie cose ferme che fanno ombra (i tasselli): l'elenco si rifà al prossimo fotogramma, e la cottura
   // segue la sua strada (le aggiunte sopra la mappa cotta, le tolte con la ricottura in sottofondo), senza spegnere e ricuocere tutto
   function rivedi() { A.rifai = true; }
-  return { ON, P, prima, dopo, conto, azzera, diag, rivedi, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
+  // [hd] la misura della mappa del sole decisa da render.js (v7/ANALISI_HD.md): k moltiplica il texel di base (il gradino 2 della grafica
+  // ridotta: .75), fine porta il profilo leggero da .8 a 1.1 quando la scena ha almeno 900 righe. Si rifà alla prossima cottura del sole
+  function mappa(k, fine) { k = +k || 1; fine = !!fine; if (k === HDM.k && fine === HDM.fine) return; HDM.k = k; HDM.fine = fine; A.base = 0; A.G = null; A.next = null; }
+  return { ON, P, prima, dopo, conto, azzera, diag, rivedi, mappa, get hd() { return Object.assign({ base: A.base }, HDM); }, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; if (!attivo) spegni(); } };
 })();
 if (typeof window !== 'undefined') { window.PesoOmbre = PesoOmbre; (window.__pesoAB = window.__pesoAB || {}).ombre = v => { PesoOmbre.attivo = v; }; if (PesoOmbre.ON) window.__pesoAB.stretta = v => { window.__nostretta = !v; }; }
