@@ -170,7 +170,7 @@ Il piano è `ANALISI_STILE.md` (la diagnosi misurata, il piano di valori per cat
 **L'anteprima di un ramo e i tasselli.** L'anteprima di Vercel scarica i tasselli solo se esiste la release `tasselli-<impronta>` della sua
 pagina; ogni cambio a un modulo del gioco cambia l'impronta, e senza release la città si costruisce nel browser (lentissimo, i pavimenti
 arrivano a pezzi). Per un ramo: lanciare a mano il workflow `tasselli` sul ramo (workflow_dispatch, ~5 minuti), poi un push qualunque
-(rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-aa3516d60276071e` ([guida2], 1bd5c15).
+(rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-713e86db9725eac5` ([camera7], e454c3c).
 
 ## [direzione] La direzione artistica: si toglie, si dosa, ogni segno ha una causa (2-3 novembre)
 

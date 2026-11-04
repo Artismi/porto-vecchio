@@ -1,4 +1,5 @@
 // [visuale4] prova dei due modi della visuale (visuale.js), sulla città compatta in pianta (case come scatole fino alla gronda più il
+// [camera7] queste regole ora valgono solo con ?nofixcamera7 (la camera di prima, a piedi); nel gioco di difetto la camera a piedi è la vista unica: la prova test_camera7.js
 // tetto, la camera del gioco a piedi):
 //   1. [visuale5] restano solo 'camera' (di difetto) e 'muretto'; ellisse, taglio e sezione non si scelgono più;
 //   2. A, la camera: nei vicoli del borgo la pendenza sale, nelle vie larghe e nelle piazze no;

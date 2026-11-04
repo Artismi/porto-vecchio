@@ -1,4 +1,5 @@
 // [regia] le prove della camera che tende allo scorcio migliore (src/regia.js): node test_regia.js
+// [camera7] queste regole ora valgono solo con ?nofixcamera7 (la camera di prima, a piedi); nel gioco di difetto la camera a piedi è la vista unica: la prova test_camera7.js
 const R = require('./regia.js');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 const YAW = Math.PI / 4, DIST = 9, PITCH = .5;

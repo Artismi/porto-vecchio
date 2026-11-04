@@ -120,6 +120,14 @@ var Game = (function () {
   // comandano: la pedata è il suolo anche dove il terreno resta più alto di qualche centimetro); null fuori dalle opere. Un indice per
   // casella (SUPC), fatto una volta: a ogni chiamata solo i pezzi della casella. ?nofixsuolo2: com'era (nessuna faccia, la rampa).
   const FIX_SUOLO2 = !(typeof location !== 'undefined' && /[?&]nofixsuolo2\b/.test(location.search));
+  // [camera7] A PIEDI COME LA TERZA PERSONA DI GTA (movePlayer, muovi7): di difetto si cammina (3,6 m/s), Maiusc corre (6,4); la levetta e il
+  // dito: quanto sono lontani dal centro; si accelera a 20 m/s² e si frena a 30, la svolta ha un tetto di accelerazione laterale (correndo si
+  // curva più largo); il corpo è un cerchio che scivola lungo i muri (le caselle piene e le barriere, scivola7); la velocità (e il passo
+  // delle gambe, p.speed) è lo spostamento vero (contro il muro niente corsa sul posto); il salto parte quando premi, mezzo metro (sui
+  // tetti resta il salto caricato da un tetto all'altro: i giri dei tetti sono misurati su quello).
+  // ?nofixcamera7: com'era
+  const FIX_CAM7 = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search));
+  const MOV7 = { cammina: 3.6, corre: 6.4, acc: 20, frena: 30, lat: 22, r: .35, salto: .5 };
   const SUPC = new Map(), SUP = [];
   const inPoliReg = (lx, lz, R, n, ry) => { if (lx * lx + lz * lz > R * R) return false; const st = 2 * Math.PI / n; let a = Math.atan2(lx, lz) - ry; a = ((a % st) + st) % st; return Math.hypot(lx, lz) * Math.cos(a - st / 2) <= R * Math.cos(st / 2); };   // il poligono regolare di CylinderGeometry (raggio ai vertici R, il primo vertice su +Z, girato di ry)
   function supAdd(p, F, ext) {   // F: le facce [lx0, lx1, lz0, lz1, f(lx, lz) → quota sopra p.q, scala?]; ext: il riquadro locale [lx0, lx1, lz0, lz1]
@@ -1807,6 +1815,7 @@ var Game = (function () {
   function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
   function jumpHold(st, on) {
     const p = st.player;
+    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
     if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
     if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
     if (!canJump(st)) return;
@@ -1819,7 +1828,8 @@ var Game = (function () {
     const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     if (p.jcharge != null) { if (!canJump(st)) p.jcharge = null; else p.jcharge = Math.min(JUMP.maxCharge, p.jcharge + dt); }
     if (p.jz > 0) {
-      p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt;
+      if (FIX_CAM7) { p.jz += p.jvz * dt - .5 * JUMP.g * dt * dt; p.jvz -= JUMP.g * dt; }   // [camera7] il volo esatto: la stessa altezza a ogni frequenza
+      else { p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt; }
       if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); if (GUIDA2 && v && VK[v.kind].pocket) { v.jz = 0; bmxLand(st, v); } }
     }
     if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; if (GUIDA2 && VK[v.kind].pocket) bmxLine(st, v, dt); }
@@ -1853,12 +1863,13 @@ var Game = (function () {
     if (st.clock - p.hurtT > 7 && p.hp < 100) p.hp = Math.min(100, p.hp + dt * 3);
     if (!p.vehicle) knockback(st, p, dt);
     jumpStep(st, dt);   // [salto]
-    if (p.stun > 0) { p.stun -= dt; p.speed = 0; return; }
-    if (p.vehicle) return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp);
+    if (p.stun > 0) { p.stun -= dt; p.speed = 0; p.vx = p.vy = 0; return; }
+    if (p.vehicle) { p.vx = p.vy = 0; return driveVehicle(st, st.vehicles.find(v => v.id === p.vehicle), dt, inp); }
     if (p.sk && p.sk.on && typeof Skate !== 'undefined' && Skate.move(st, dt, inp)) return;   // [skate] in tavola si muove lo skate
     const ix = inp.x, iy = inp.y;
     p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);   // [costa] in acqua si nuota
-    if (ix || iy) {
+    if (FIX_CAM7 && !p.indoor && !p.lv) muovi7(st, p, dt, inp);   // [camera7] fuori, a terra
+    else if (ix || iy) { if (FIX_CAM7) p.vx = p.vy = 0;
       const l = Math.hypot(ix, iy); let sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : (p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? 6.4 : (p.cur !== 'pugni' && p.cur !== 'molotov' ? 3.8 : 4.2)) * (p.loadK || 1);   // [oggetti] col carico addosso si va piano
       if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = (1.3 + 5.1 * Math.min(1, inp.mag)) * (p.loadK || 1);   // [levetta] più il dito è lontano dal centro, più si va svelti (dal passo alla corsa)
       p.__st = st;   // [monte] i livelli (sotto terra, sul ponte) sanno dove si cammina
@@ -1885,6 +1896,47 @@ var Game = (function () {
     } else { p.speed = 0; if (inp.aim !== undefined) p.face += angDiff(inp.aim, p.face) * (1 - Math.exp(-dt * 14)); }   // [fluido]
     p.anim += dt * (p.speed ? Math.abs(p.speed) * 3 : 1);
     if ((!p.lv || (p.lv.k !== 'ug' && p.lv.k !== 'tetto' && p.lv.k !== 'scala')) && !p.indoor) pushOutOfVehicles(st, p, .35);   // [monte] sotto terra le auto sono sopra la testa; [tetti4] sui tetti e sulle scale sono sotto i piedi; [regia] dentro le case sono fuori
+  }
+  // [camera7] il passo a piedi fuori: la velocità con l'accelerazione e la frenata, la svolta col tetto laterale, lo scivolare lungo i muri
+  function muovi7(st, p, dt, inp) {
+    const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = MOV7;
+    let sp = 0;
+    if (l > 0) { sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? K.corre : K.cammina;
+      if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = 1.3 + 5.1 * Math.min(1, inp.mag);   // la levetta e il dito: dal passo alla corsa
+      sp *= p.loadK || 1; }
+    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0, dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
+    if (v > .05) { const ux = vx / v, uy = vy / v, a = dx * ux + dy * uy, qx = dx - a * ux, qy = dy - a * uy, ql = Math.hypot(qx, qy), a2 = clamp(a, -K.frena * dt, K.acc * dt), qk = ql > K.lat * dt ? K.lat * dt / ql : 1;
+      dx = a2 * ux + qx * qk; dy = a2 * uy + qy * qk; }
+    else { const dl = Math.hypot(dx, dy), m = K.acc * dt; if (dl > m) { dx *= m / dl; dy *= m / dl; } }
+    vx += dx; vy += dy;
+    const ox = p.x, oy = p.y; p.__st = st;
+    const hitWall = (vx || vy) ? scivola7(p, vx * dt, vy * dt, K.r, !p.carrying) : false;   // [costa] in mare sì, con un peso in braccio no
+    if (dt > 0) { vx = (p.x - ox) / dt; vy = (p.y - oy) / dt; }   // la velocità è quella vera: contro il muro resta solo lo scivolare
+    p.vx = vx; p.vy = vy; p.swim = !p.indoor && !p.lv && seaM(p.x, p.y);
+    if (l > 0) { const LVm = typeof Livelli !== 'undefined' ? Livelli : null; if (LVm) LVm.moved(st, ix / l, iy / l, hitWall);   // [monte] le scale a pioli, i tetti: i livelli sanno dove si sale
+      if (inp.door !== undefined && inp.door !== null && !p.lv) { const D = doorFront(st, [ix, iy], inp.door, .35); if (D) enterBuilding(st, D.bi, D.shop); } }   // [porte] solo dalla porta cliccata
+    const sn = Math.hypot(vx, vy), vd = Math.atan2(vy, vx);
+    const ta = inp.aim !== undefined ? inp.aim : l > 0 ? Math.atan2(iy, ix) : sn > .3 ? vd : null;
+    if (ta !== null) { const d = angDiff(ta, p.face), w = Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità
+    p.speed = sn < .05 ? 0 : Math.abs(angDiff(vd, p.face)) > 2.2 ? -sn : sn;   // all'indietro (mirando) le gambe al contrario
+  }
+  // [camera7] il cerchio (raggio r) che scivola: il passo intero, poi fuori dalle caselle piene (il punto più vicino della casella) e dalle
+  // barriere (il punto più vicino del segmento), fino a quattro volte. Se il punto d'arrivo non va (un ciglio, una barriera scavalcata), il passo di prima
+  function scivola7(o, dx, dy, r, swim) {
+    if (SCELL.size && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini l'ingombro di una persona
+    const x0 = o.x, y0 = o.y, solido = (tx, ty) => !walkT(tx, ty) && !(swim && seaT(tx, ty)), RB = r + BR * .5;
+    let x = x0 + dx, y = y0 + dy, hit = false;
+    for (let it = 0; it < 4; it++) { let mosso = false;
+      for (let ty = Math.floor((y - r) / TS); ty <= Math.floor((y + r) / TS); ty++) for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) { if (!solido(tx, ty)) continue;
+        const cx = clamp(x, tx * TS, tx * TS + TS), cy = clamp(y, ty * TS, ty * TS + TS), ex = x - cx, ey = y - cy, d = Math.hypot(ex, ey); if (d >= r) continue;
+        hit = mosso = true; if (d > 1e-6) { x += ex / d * (r - d); y += ey / d * (r - d); } else { x = x0; y = y0; } }
+      const L = BAR.length ? BCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null;
+      if (L) for (let i = 0; i < L.length; i++) { const b = BAR[L[i]], bx = b[2] - b[0], by = b[3] - b[1], L2 = bx * bx + by * by || 1e-9, t = clamp(((x - b[0]) * bx + (y - b[1]) * by) / L2, 0, 1), qx = b[0] + bx * t, qy = b[1] + by * t, ex = x - qx, ey = y - qy, d = Math.hypot(ex, ey);
+        if (d >= RB) continue; hit = mosso = true; if (d > 1e-6) { x = qx + ex / d * RB; y = qy + ey / d * RB; } else { x = x0; y = y0; } }
+      if (!mosso) break; }
+    const okP = swim ? (walkM(x, y) || seaM(x, y)) : walkM(x, y);
+    if (!okP || taglia(x0, y0, x, y)) return tryMove(o, dx, dy, r, swim);
+    o.x = x; o.y = y; return hit;
   }
   function tryMove(o, dx, dy, r, swim) {
     if (SCELL.size && !o.lv && !o.indoor && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini e al loro piede (larghi 1,8 m, di sbieco) l'ingombro è quello di una persona, non il riquadro largo

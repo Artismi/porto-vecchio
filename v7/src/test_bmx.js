@@ -26,9 +26,10 @@ r = G.bmx(st); check(r.ok, 'si può tirare fuori di nuovo, tutte le volte che vu
 // [salto] a piedi: tieni premuto e rilascia; più carichi, più in alto
 const peak = (hold, bike) => { if (bike && !p.vehicle) G.bmx(st); if (!bike && p.vehicle) G.bmx(st); p.stun = 0; G.jumpHold(st, true); for (let t = 0; t < hold; t += 1 / 30) G.step(st, 1 / 30, { x: 0, y: 0 }); G.jumpHold(st, false); let h = 0, n = 0; while ((p.jz > 0 || n === 0) && n < 200) { G.step(st, 1 / 30, { x: 0, y: 0 }); h = Math.max(h, p.jz); n++; } return h; };
 const f0 = peak(0, false), f1 = peak(.8, false);
-check(f0 > .15 && f1 > f0 * 1.8 && p.jz === 0, `salto a piedi: tocco ${f0.toFixed(2)} m, carico pieno ${f1.toFixed(2)} m, poi atterra`);
+// [camera7] a piedi il salto parte quando premi (mezzo metro, niente carica): la prova della carica vale solo in BMX
+check(f0 > .4 && f0 < .6 && p.jz === 0, `salto a piedi (parte quando premi): ${f0.toFixed(2)} m, poi atterra`);
 const b0 = peak(0, true), b1 = peak(.8, true), bk = st.vehicles.find(k => k.kind === 'bmx');
-check(p.vehicle && b1 > f1 && b1 > b0 * 1.8, `bunny hop in BMX: ${b0.toFixed(2)} → ${b1.toFixed(2)} m, la bici sale col giocatore`);
+check(p.vehicle && b1 > f0 && b1 > b0 * 1.8, `bunny hop in BMX: ${b0.toFixed(2)} → ${b1.toFixed(2)} m, la bici sale col giocatore`);
 G.jumpHold(st, true); G.step(st, 1 / 30, { x: 0, y: 0 }); G.step(st, 1 / 30, { x: 0, y: 0 }); G.jumpHold(st, false); G.step(st, 1 / 30, { x: 0, y: 0 });
 check(bk.jz > 0 && Math.abs(bk.jz - p.jz) < 1e-9, 'in aria la BMX ha la stessa altezza del giocatore');
 for (let i = 0; i < 60; i++) G.step(st, 1 / 30, { x: 0, y: 0 });
@@ -42,7 +43,7 @@ check(s1 < s2 && s2 < s3, `BMX: pedalata piano ${s1.toFixed(1)}, forte ${s2.toFi
 // a piedi: ogni prova parte dallo stesso punto, in una direzione libera per 8 m (la mappa cambia: un muro a est fermava la prova)
 G.bmx(st); const start = [p.x, p.y]; let wd = [1, 0];
 const run = pace => { [p.x, p.y] = start; p.vx = p.vy = 0; const x0 = p.x, y0 = p.y; for (let i = 0; i < 30; i++) st.npcs.forEach(n => { if (!n.inside) { n.inside = true; hidden.push(n); } }), G.step(st, 1 / 30, { x: wd[0], y: wd[1], pace, sprint: pace >= 2 }); return Math.hypot(p.x - x0, p.y - y0); };
-for (const d of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { wd = d; if (run(3) > 7) break; }
+{ let best = -1, bd = wd; for (const d of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { wd = d; const q = run(3); if (q > best) { best = q; bd = d; } } wd = bd; }   // la direzione più libera (con [camera7] a piedi in un secondo non si arriva a 7 m: la soglia sceglieva l'ultima, anche se c'era un muro)
 const w1 = run(1), w2 = run(2), w3 = run(3); [p.x, p.y] = start;
 check(w1 < w2 && w2 < w3, `a piedi: cammini ${w1.toFixed(1)}, corri ${w2.toFixed(1)}, scatti ${w3.toFixed(1)} m in un secondo`);
 hidden.forEach(n => n.inside = false);

@@ -981,7 +981,7 @@ var Vegetazione = (function () {
   const U = typeof THREE === 'undefined' ? null : { uT: { value: 0 }, uCam: { value: new THREE.Vector3() }, uWind: { value: .06 },
     uPittura: { value: .55 },   /* [tavolo] la gamma comanda la chioma (era .15, quando col tappeto lime il teal stonava; ora il tappeto è spento): la luce del gioco passa per tinta (uTintaLuce) */ uRamp: { value: new THREE.Vector3(.5, .92, .12) }, uOmbra: { value: new THREE.Vector3(.5, .7, .92) }, uOmbraAdd: { value: new THREE.Vector3(0, .03, .06) },
     uMezzo: { value: new THREE.Vector3(1, 1.04, .98) }, uLuce: { value: new THREE.Vector3(1.24, 1.21, .94) }, uLuceAdd: { value: new THREE.Vector3(.05, .05, .01) },
-    uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.45 }, uOff: { value: .13 }, uTintaSpecie: { value: .45 } };
+    uR7: { value: 0 }, uA7: { value: new THREE.Vector3() }, uB7: { value: new THREE.Vector3() },   /* [camera7] il retino fra la camera (uA7) e il busto (uB7), raggio uR7 (0 spento): lo accende render.js */ uOcc: { value: .62 }, uTrasl: { value: 1.1 }, uTintaLuce: { value: .2 }, uGamma: { value: null }, uGain: { value: 1.45 }, uOff: { value: .13 }, uTintaSpecie: { value: .45 } };
   function materiale(band, opz) {
     opz = opz || {};
     // le carte hanno già le due facce: il materiale guarda solo il davanti (niente rovescio con la luce girata)
@@ -991,7 +991,7 @@ var Vegetazione = (function () {
     m.onBeforeCompile = sh => {
       if (!U.uGamma.value) U.uGamma.value = gammaTex(); for (const k in U) sh.uniforms[k] = U[k]; sh.uniforms.uBand = uBand;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc;
+uniform float uT; uniform vec3 uCam; uniform vec4 uBand; uniform float uWind; attribute float flex; attribute float occ; varying float vK; varying float vOcc; varying vec3 vW7;
 #ifdef VEG_CENTRO
 attribute vec3 centro;
 #endif`).replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -1012,11 +1012,18 @@ transformed.z += cos(uT * 1.3 + vgP * 1.3) * flex * uWind * .6;
 if (vK < .003) transformed = centro;
 #else
 if (vK < .003) transformed = vec3(0.0);
+#endif
+#ifdef USE_INSTANCING
+vW7 = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+#else
+vW7 = (modelMatrix * vec4(transformed, 1.0)).xyz;
 #endif`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying float vK; varying float vOcc; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie;`)
+varying float vK; varying float vOcc; varying vec3 vW7; uniform float uR7; uniform vec3 uA7; uniform vec3 uB7; uniform float uPittura; uniform vec3 uRamp; uniform vec3 uOmbra; uniform vec3 uOmbraAdd; uniform vec3 uMezzo; uniform vec3 uLuce; uniform vec3 uLuceAdd; uniform float uOcc; uniform float uTrasl; uniform float uTintaLuce; uniform sampler2D uGamma; uniform float uGain; uniform float uOff; uniform float uTintaSpecie;`)
         .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }`)
+if (vK < .999) { float vgN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (vK < vgN) discard; }
+if (uR7 > 0.) { vec3 ab7 = uB7 - uA7; float t7 = clamp(dot(vW7 - uA7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.); float k7 = max(smoothstep(uR7 * .55, uR7, distance(vW7, uA7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vW7, uA7)));
+  float n7 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (k7 < .999 && max(k7, .3) < n7) discard; }   // [camera7] il retino fra la camera e il personaggio`)
         .replace('#include <envmap_fragment>', `#include <envmap_fragment>
 { // [vegetazione] la pittura: la luce che la foglia prende (con l'occlusione dipinta) scelta sulla GAMMA del riferimento; la specie la
   // tinge appena; la tinta della luce del gioco passa per metà (sera, notte); il controluce accende i bordi

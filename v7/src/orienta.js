@@ -36,7 +36,6 @@ var Orienta = (function () {
     { g: 'A piedi', a: 'Correre', k: 'Maiusc (tieni)', p: 'levetta a fondo', t: 'levetta a fondo', c: 'B a mani libere (tieni)', m: 'camera7' },
     { g: 'A piedi', a: 'Saltare', k: 'Spazio', p: 'A', t: 'Salta', c: 'A' },
     { g: 'A piedi', a: 'Girare la visuale', k: 'tasto destro + trascina', p: 'levetta destra', t: 'trascina un dito', c: 'levetta destra', m: 'camera7' },
-    { g: 'A piedi', a: 'Zoom · le tre viste', k: 'rotella · V', p: 'croce ▲▼ · R3', t: 'due dita', c: 'tocca la levetta destra' },
     { g: 'A piedi', a: 'Andare in un punto', k: 'clic sinistro a terra (a mani libere)', p: '—', t: 'tocca a terra', c: 'tocca a terra', m: 'camera7' },
     { g: 'Azioni', a: 'Azione: parla, entra, usa', k: 'E', p: 'X', t: 'tocca il suggerimento', c: 'A (Entra)' },
     { g: 'Azioni', a: 'Parlare', k: 'T · clic sulla persona', p: 'Y', t: 'tocca la persona', c: 'tocca la persona' },
