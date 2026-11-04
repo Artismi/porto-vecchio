@@ -23,7 +23,7 @@ const srv = http.createServer((req, res) => {
     const pg = await b.newPage({ viewport: { width: 960, height: 600 } });
     const errori = []; pg.on('pageerror', e => { errori.push(e.message); console.log('[errore]', e.message, (e.stack || '').split('\n').slice(0, 3).join(' | ')); });
     pg.on('console', m => { if (/\[Writing\]|\[graffiti\]|tavoletta/i.test(m.text())) console.log('[console]', m.text().slice(0, 240)); });
-    await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`);
+    await pg.goto(`http://localhost:${srv.address().port}/index.html${Q}`, { timeout: 0, waitUntil: 'commit' });   // [graffiti2] la macchina carica: niente limite di 30 s al caricamento
     await pg.waitForFunction(() => window.__pv && window.__pv.st, null, { timeout: 900000, polling: 500 });
     console.log('pronto in', sec());
     await pg.keyboard.press('Enter'); await pg.waitForTimeout(500);
@@ -46,7 +46,7 @@ const srv = http.createServer((req, res) => {
     for (let k = 0; k < T.length; k++) {
       const t = T[k];
       // apri: tick (il primo colpo), trascina di qualche punto, lascia
-      const a = await pg.evaluate(t => { const st = window.__pv.st; const r1 = Writing.tick(st, t.nx, t.ny, .016, '#c42a22', 0, 'bomboletta'); const r2 = Writing.tick(st, t.nx + .08, t.ny + .06, .016, '#c42a22', 0, 'bomboletta'); Writing.release(st); return { r1, r2, pad: !!Writing._.TAV.pad }; }, t);
+      const a = await pg.evaluate(t => { const st = window.__pv.st; st.player.hand = 'bomboletta'; Writing.setMode(st, 'tavoletta');   /* [graffiti2] dopo ✓ si torna a mani libere: la bomboletta si riprende */ const r1 = Writing.tick(st, t.nx, t.ny, .016, '#c42a22', 0, 'bomboletta'); const r2 = Writing.tick(st, t.nx + .08, t.ny + .06, .016, '#c42a22', 0, 'bomboletta'); Writing.release(st); return { r1, r2, pad: !!Writing._.TAV.pad }; }, t);
       if (!a.pad) { ok(false, `${t.k} ${k}: la tavoletta non si apre (${JSON.stringify(a)})`); continue; }
       // la foto di sfondo: quanto è piatta, quanta parte è il colore di pulizia o il cielo
       const s = await pg.evaluate(() => { const box = Writing._.TAV.pad, cs = box.querySelectorAll('canvas'), bg = cs[0], x = bg.getContext('2d'), ik = box.querySelector('[data-tv=ink]'), X0 = Math.round(parseFloat(ik.style.left) || 0), Y0 = Math.round(parseFloat(ik.style.top) || 0), W = Math.max(1, ik.width), H = Math.max(1, ik.height), d = x.getImageData(X0, Y0, W, H).data;   // solo il riquadro (fuori è il contesto scurito)
@@ -58,8 +58,11 @@ const srv = http.createServer((req, res) => {
       // un tratto col mouse vero sul pannello
       const bx = await pg.evaluate(() => { const c = Writing._.TAV.pad.querySelector('[data-tv=ink]').getBoundingClientRect(); return { x: c.left, y: c.top, w: c.width, h: c.height }; });
       await pg.mouse.move(bx.x + bx.w * .2, bx.y + bx.h * .5); await pg.mouse.down();
-      for (let i = 1; i <= 12; i++) await pg.mouse.move(bx.x + bx.w * (.2 + .6 * i / 12), bx.y + bx.h * (.5 + .2 * Math.sin(i)));
+      let vivo = null;
+      for (let i = 1; i <= 12; i++) { await pg.mouse.move(bx.x + bx.w * (.2 + .6 * i / 12), bx.y + bx.h * (.5 + .2 * Math.sin(i)));
+        if (i === 7) vivo = await pg.evaluate(() => new Promise(r => requestAnimationFrame(() => { const c = Writing._.TAV.pad.querySelector('[data-tv=vivo]'); if (!c) { r(null); return; } const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let on = 0, n = 0; for (let k = 3; k < d.length; k += 4 * 11) { n++; if (d[k] > 40) on++; } r(on / n); }))); }   // [graffiti2] a metà tratto: il pennello vero sulla tela dal vivo
       await pg.mouse.up();
+      if (vivo !== null) ok(vivo > .001, `${t.k} ${k}: il tratto si vede MENTRE dipingi, col pennello vero (${(vivo * 100).toFixed(2)}% della tela)`);
       const ink = await pg.evaluate(() => { const c = Writing._.TAV.pad.querySelector('[data-tv=ink]'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let on = 0, n = 0; for (let i = 3; i < d.length; i += 4 * 11) { n++; if (d[i] > 40) on++; } return { frac: on / n, wDisp: c.getBoundingClientRect().width, W: c.width }; });
       ok(ink.frac > .002, `${t.k} ${k}: il tratto si vede (${(ink.frac * 100).toFixed(2)}% della tela, mostrata a ${Math.round(ink.wDisp)} px su ${ink.W})`);
       const nw0 = await pg.evaluate(() => Writing.S(window.__pv.st).works.length);
@@ -67,7 +70,7 @@ const srv = http.createServer((req, res) => {
       await pg.waitForTimeout(300);
       const sv = await pg.evaluate(n0 => { const W = Writing.S(window.__pv.st), w = W.works[W.works.length - 1], pad = Writing._.TAV.pad; return { aperto: !!pad, info: pad ? (pad.querySelector('.tv-toast') || {}).textContent || '' : '', nuovi: W.works.length - n0, gfx: !!(w && Writing.GFX.works[w.id]), style: w && w.style }; }, nw0);
       ok(!sv.aperto && sv.nuovi === 1 && sv.gfx, `${t.k} ${k}: «Salva sul muro» pubblica (${JSON.stringify(sv)})`);
-      if (sv.aperto) await pg.evaluate(() => { const s = Writing._.TAV.pad.querySelector('[data-tv=esci]'); s && s.click(); });
+      if (sv.aperto) await pg.evaluate(() => { const s = Writing._.TAV.pad.querySelector('[data-tv=esci]'); s && s.click(); if (Writing._.TAV.pad) s && s.click(); });   // [graffiti2] con un disegno ✕ chiede conferma
       await fot();
     }
     if (errori.length) { console.log('ERRORI DI PAGINA:', errori.length); fail++; }
