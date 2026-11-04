@@ -474,8 +474,8 @@ var TavolaUI = (function () {
 .tv2-ok.weak{opacity:.55}
 .tv2-bar{grid-area:bar;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;background:#15112a;border-top:2px solid #3b3252;padding:8px max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
 .tv2-tools{display:grid;grid-template-columns:repeat(4,minmax(64px,84px));gap:6px;flex:0 1 auto}
-.tv2-t{appearance:none;-webkit-appearance:none;position:relative;border:2px solid #3b3252;background:#0d0b1a;color:#f0e6d0;border-radius:10px;height:58px;padding:4px 2px 3px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px}
-.tv2-t>span{display:block;width:26px;height:26px}
+.tv2-t{appearance:none;-webkit-appearance:none;position:relative;border:2px solid #3b3252;background:#0d0b1a;color:#f0e6d0;border-radius:10px;height:62px;padding:4px 2px 4px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px}
+.tv2-t>span{display:block;width:24px;height:24px;flex:none}
 .tv2-t b{font:10px var(--f-label,"Silkscreen",monospace);font-weight:400;letter-spacing:.03em;text-transform:uppercase}
 .tv2-t small{font:8px var(--f-label,monospace);color:#a89fbd;text-transform:uppercase;letter-spacing:.02em;line-height:1}
 .tv2-t.on{border-color:#ffe14a;background:#2b2440;box-shadow:inset 0 -4px 0 #ffe14a}
@@ -848,7 +848,7 @@ var TavolaUI = (function () {
   function festa(o) {
     if (typeof document === 'undefined' || !o) return;
     if (!festaEl) { const s = document.createElement('style'); s.textContent = CSS4; document.head.appendChild(s); festaEl = mk('div', '', document.body); festaEl.id = 'tvFesta'; }
-    festaT.forEach(clearTimeout); festaT = [];
+    festaT.forEach(clearTimeout); festaT = []; festa.ultima = { titolo: o.titolo, riga: o.riga, parti: o.parti, foto: !!o.foto, t: Date.now() };   // (per le prove)
     const P = o.parti || {}, li = (k, v) => `<li>${k}<i>${v}</i></li>`;
     festaEl.className = ''; festaEl.innerHTML = `<div class="ph">${o.foto ? `<img alt="" src="${o.foto}">` : ''}<div class="sc"><b>${esc0(o.titolo || 'Fatto!')}</b>${esc0(o.riga || '')}<ul>${li('copre', P.copre != null ? P.copre : '–')}${li('colori', P.colori != null ? P.colori : '–')}${li('misura', P.misura != null ? P.misura : '–')}${li('vista', P.vista != null ? P.vista : '–')}${li('testimoni', P.testimoni != null ? P.testimoni : '–')}</ul></div></div>`;
     const sc = festaEl.querySelector('.sc'); sc.onclick = () => { festaT.forEach(clearTimeout); festaEl.className = ''; festaEl.innerHTML = ''; };
@@ -857,6 +857,6 @@ var TavolaUI = (function () {
   }
   const esc0 = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const FIX2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
-  return { open: FIX2 ? open2 : open1, open1, open2, misura: misuraBar, festa, FIX2, COLS12, ALTRI, PIU, TAPPI, MEM };
+  return { open: FIX2 ? open2 : open1, open1, open2, misura: misuraBar, festa, get ultimaFesta() { return festa.ultima; }, FIX2, COLS12, ALTRI, PIU, TAPPI, MEM };
 })();
 if (typeof module !== 'undefined') module.exports = TavolaUI;

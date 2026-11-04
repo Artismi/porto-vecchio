@@ -1983,9 +1983,11 @@ var Writing = (function () {
     let [W0, H0] = MISURE[TAV.size]; if (veh) { W0 = Math.min(W0, 3.2); H0 = Math.min(H0, Math.abs(nn.y) > .5 ? 2 : 1.1); }
     const c = { x: h.point.x, y: h.point.y, z: h.point.z };
     if (Math.abs(nn.y) < .5 && !veh && !h.object.userData.car) { const ft = footAt(new THREE.Vector3(c.x, c.y, c.z), nn, W0, rr); if (ft != null) c.y = Math.max(c.y, ft + .12 + H0 / 2); }   // mai sotto terra
-    const m0 = mancanti(), Rc = tavFit2({ W: W0, H: H0, c }, A);
+    const m0 = mancanti(); let Rc = tavFit2({ W: W0, H: H0, c }, A), giu = false;
+    // [graffiti2] la misura scelta qui non ci sta: la più grande che ci sta (lo dice la nota), invece di niente
+    for (let i = MIS_K.indexOf(TAV.size) - 1; !Rc && i >= 0 && !veh; i--) { const [w1, h1] = MISURE[MIS_K[i]], c1 = { x: h.point.x, y: h.point.y, z: h.point.z }; if (Math.abs(nn.y) < .5) { const ft = footAt(new THREE.Vector3(c1.x, c1.y, c1.z), nn, w1, rr); if (ft != null) c1.y = Math.max(c1.y, ft + .12 + h1 / 2); } Rc = tavFit2({ W: w1, H: h1, c: c1 }, A); if (Rc) giu = MIS_K[i]; }
     if (!Rc) return mancanti() !== m0 || P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…', A } : { no: true, near: true, A, msg: `Qui non ci sta un ${MIS_NOME[TAV.size]}: prova una misura più piccola, o un'altra parete.` };
-    return { ok: true, A, Rc, small: Rc.W < W0 - .05 || Rc.H < H0 - .05 };
+    return { ok: true, A, Rc, small: !!giu || Rc.W < W0 - .05 || Rc.H < H0 - .05, giu };
   }
   // la cornice nel mondo: il bordo giallo sopra a tutto e un velo giallo che pulsa (il muro «si accende» dove dipingeresti)
   function tavDraw(H) {
@@ -2259,6 +2261,7 @@ var Writing = (function () {
       let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }
       const rect = () => { const R0 = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; R0.u = A.u.clone(); return R0; };
       const base = (o) => { const nw = Object.assign({ by: 'player', aka: playerAka(st), crew: W.crew, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) }, o);
+        nw.by = 'player'; nw.aka = nw.aka || playerAka(st); nw.prog = 1; nw.done = false; if (W.crew) nw.crew = W.crew;   // (il bozzetto di writer_arte porta i suoi campi: chi l'ha fatto resti tu)
         nw.gfxRect = rect(); nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
         const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
         if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };

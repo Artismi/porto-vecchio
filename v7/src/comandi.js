@@ -37,7 +37,7 @@ const Comandi = (() => {
     if (!tool) { say('Per la tavoletta ti serve una bomboletta o un pennarello.', 'bad'); return; }
     if (w.mode(st) !== 'tavoletta') lastMode = w.mode(st);
     equip(tool); w.setMode(st, 'tavoletta');
-    if (GRAF2) { say(PV().touchMode ? 'Graffiti: la cornice gialla sul muro davanti è la misura (sopra le icone la cambi). Tocca il muro e dipingi.' : 'Graffiti: la cornice gialla segue il puntatore sul muro. Clic e dipingi. La rotella cambia la misura.'); return; }
+    if (GRAF2) return;   // [graffiti2] il messaggio lo dà main.js (sprayTick), uno solo
     say(PV().touchMode ? 'Tavoletta: trascina il dito sul muro (o su un mezzo) per la finestra, poi ci disegni sopra.' : 'Tavoletta: trascina sul muro (o su un mezzo) la finestra, poi ci disegni sopra.');
   }
   function bmx() {
