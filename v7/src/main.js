@@ -58,6 +58,14 @@
   // Boy; si cammina rispetto alla camera e il personaggio guarda dove va; mirando guarda dove guarda la camera. ?nofixcamera6: com'era
   const CAM6 = !/[?&]nofixcamera6\b/.test(location.search) && typeof Visuale !== 'undefined' && !!Visuale.levetta6;
   if (CAM6) ui.zoom = Visuale.COMANDI6.viste[1];   // [camera6] si parte dalla vista media: la strada si legge senza tagliare le case
+  // [camera7] LA VISTA UNICA E I COMANDI DELLA TERZA PERSONA (src/camera7.js, render.js camera7Frame). A piedi: il tasto destro tenuto mira
+  // (con l'arma: sopra la spalla, il puntatore bloccato, il mouse gira la camera) e trascinato gira la camera; il sinistro con l'arma spara,
+  // senza arma va dove clicchi; le frecce camminano come WASD; Maiusc corre (di difetto si cammina); niente zoom (rotella, pizzico, V, R3,
+  // croce), niente vista dall'alto (O), niente bordo dello schermo che gira. La levetta destra gira fino a 3,5 rad/s (curva 1,4); mirando un
+  // mirino a terra a 10 m e l'aggancio morbido (un cono di 10°). Sui mezzi i comandi di prima. ?nofixcamera7: com'era
+  const CAM7 = !/[?&]nofixcamera7\b/.test(location.search) && typeof Camera7 !== 'undefined';
+  const aPiedi7 = () => CAM7 && !st.player.vehicle;
+  const armato7 = () => { const p = st.player; return !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur]; };
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
@@ -70,18 +78,22 @@
     if (pin.size === 2) { pinD = pinDist(); pinA = pinAng(); pinM = pinMid(); tg = null; if (tp.id !== null) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } mouse.pressed = false; click.t = null; ui.mark = null; }
     if (pin.size >= 2) e.stopImmediatePropagation(); });
   cv.addEventListener('pointermove', e => { const q = pin.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
-    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; ui.rotUser = true; pinD = d; pinA = a;
-      const m = pinMid(), r = cv.getBoundingClientRect(); if (pinM) addPan((m.x - pinM.x) / r.width, (m.y - pinM.y) / r.height); pinM = m; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira   // [visuale5] scorrere = la visuale si sposta
+    if (pin.size === 2) { const d = pinDist(), a = pinAng(); let da = a - pinA; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI; if (!aPiedi7()) zoomBy(pinD / d); ui.drag = (ui.drag || 0) + da; ui.rotUser = true; pinD = d; pinA = a;
+      const m = pinMid(), r = cv.getBoundingClientRect(); if (pinM && !aPiedi7()) addPan((m.x - pinM.x) / r.width, (m.y - pinM.y) / r.height); pinM = m; e.stopImmediatePropagation(); } });   // due dita: pizzico = zoom, torsione = la visuale gira   // [visuale5] scorrere = la visuale si sposta
   const pinUp = e => { pin.delete(e.pointerId); pinM = null; };
   addEventListener('pointerup', pinUp); addEventListener('pointercancel', pinUp);
   cv.addEventListener('pointerdown', e => { if (e.button === 1) { camDrag = { x: e.clientX, y: e.clientY }; e.preventDefault(); } });
   addEventListener('pointermove', e => { if (camDrag !== null) { const r = cv.getBoundingClientRect(), dx = e.clientX - camDrag.x, dy = e.clientY - camDrag.y;
-    if (e.shiftKey) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; if (CAM6) { tiltBy(-dy * .004); CAMS.tTocco = 0; } else zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [camera6] in su e in giù inclina (lo zoom è la rotella)   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
+    if (e.shiftKey && !CAM7) addPan(dx / r.width, dy / r.height); else { ui.drag += dx * .008; if (CAM6 || CAM7) { tiltBy(-dy * .004); CAMS.tTocco = 0; } else zoomBy(1 + dy * .004); } camDrag = { x: e.clientX, y: e.clientY }; } });   // [camera6] in su e in giù inclina (lo zoom è la rotella)   // [levette] come la levetta destra: di lato gira, in su e in giù lo zoom (lo spostamento resta con Maiusc)   // [visuale5]
   addEventListener('pointerup', e => { if (e.button === 1) camDrag = null; });
+  addEventListener('pointermove', e => { if (!mouse.aim || e.pointerType !== 'mouse') return; const mx = e.movementX || 0, my = e.movementY || 0; if (!mx && !my) return;   // [camera7] il destro trascinato (o il puntatore bloccato) gira la camera
+    ui.drag = (ui.drag || 0) + mx * .0045; tiltBy(-my * .003); CAMS.tTocco = 0; ui.camTocco7 = .15; });
   cv.addEventListener('pointerdown', e => { cv.focus(); A.init(); const r = cv.getBoundingClientRect(), nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height;
     if (window.Cantiere && Cantiere.active() && e.button !== 1) { Cantiere.down(e.button, nx, ny); return; }   // [cantiere] si costruisce, non si cammina
+    if (e.button === 2 && aPiedi7()) { mouse.aim = true; CAMS.tTocco = 0; if (armato7() && cv.requestPointerLock && e.pointerType === 'mouse') try { const q = cv.requestPointerLock(); if (q && q.catch) q.catch(() => { }); } catch (x) { } return; }   // [camera7] il destro mira (e trascinato gira la camera)
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
     const busy = ui.intro || ui.over || ui.dialog || ui.book || ui.menu;
+    if (e.button === 0 && aPiedi7() && !busy && e.pointerType === 'mouse' && !ui.spray && (armato7() || mouse.aim)) { mouse.down = true; mouse.pressed = true; return; }   // [camera7] il sinistro con l'arma (o mirando) spara
     if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
     if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
@@ -106,7 +118,7 @@
   // con un'arma da fuoco (o la molotov) in mano, sul telefono il tocco spara   // [console] nel Game Boy no: si spara con B, il tocco resta per andare e parlare
   function tapShoots() { const p = st.player; return touchMode && !CON.on && !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur] && !(window.Cantiere && Cantiere.active()); }
   function touchAimAt(nx, ny) { const h = pickAt(nx, ny); tp.aim = h && h.kind === 'npc' ? { x: h.n.x, y: h.n.y, id: h.n.id } : h && h.kind === 'car' ? { x: h.v.x, y: h.v.y } : R.screenToGround(nx, ny) || tp.aim; }
-  addEventListener('pointerup', e => { if (e.button === 2) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
+  addEventListener('pointerup', e => { if (e.button === 2 && mouse.aim) { mouse.aim = false; try { if (document.pointerLockElement === cv) document.exitPointerLock(); } catch (x) { } } else if (e.button === 2 || (CAM7 && e.button === 0)) mouse.down = false; if (window.Cantiere && Cantiere.up) Cantiere.up(); if (e.button === 0 && ui.spray) sprayEnd(); if (e.pointerId === tp.id) tpEnd(); });
   addEventListener('pointercancel', e => { if (e.pointerId === tp.id) { if (tp.mode === 'spray' && ui.spray) sprayEnd(); tpEnd(); } });
   // [cantiere] tenendo premuto il sinistro e trascinando si posa una fila (muri, recinti, solchi dell'orto…)
   cv.addEventListener('pointermove', e => { if (!(e.buttons & 1) || !window.Cantiere || !Cantiere.active() || !Cantiere.drag) return; const r = cv.getBoundingClientRect(); Cantiere.drag((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height); });
@@ -155,7 +167,7 @@
   const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
-    if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
+    if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; if (aPiedi7()) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });   // [camera7] a piedi la rotella non fa niente
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     A.init();
@@ -169,9 +181,9 @@
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
-    if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
+    if (!e.repeat && k === 'o' && !CAM7) { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && ['h', 'j', 'k', 'n', 'v'].includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }
-    if (!e.repeat && k === 'v' && CAM6 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
+    if (!e.repeat && k === 'v' && CAM6 && !CAM7 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
     if (e.repeat) return;
     if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra else if (k === 't') openTalk();
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
@@ -185,10 +197,10 @@
   function vistaDopo() { if (!CAM6) return; ui.zoom = Visuale.vista6(ui.zoom); const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); toast('Vista ' + ['vicina', 'media', 'alta'][i] + '.'); CON.sent = ''; }   // [camera6] le tre viste, in giro   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
   addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); });   // [salto] rilasci: salta
-  addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
+  addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; mouse.aim = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 }; let stickB = null;
   const vstick = { x: 0, y: 0 };
-  const FRECCE_PASSI = /[?&]frecce\b/.test(location.search);   // [levette] sul computer WASD è la levetta sinistra, le frecce la destra (gira e zoom)
+  const FRECCE_PASSI = CAM7 || /[?&]frecce\b/.test(location.search);   // [camera7] le frecce camminano   // [levette] sul computer WASD è la levetta sinistra, le frecce la destra (gira e zoom)
   const frecceVisuale = () => !FRECCE_PASSI && !(st && st.player.vehicle && jumpMode()) && !ui.intro && !ui.dialog && !ui.book && !ui.menu;   // [levette] la levetta della visuale a schermo (a destra): di lato gira attorno al personaggio, in su e in giù lo zoom   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
@@ -230,7 +242,22 @@
   // [camera6] si mira? (L2 del controller, B tenuto con l'arma nel Game Boy, il dito che spara, il tasto destro col puntatore, la bomboletta
   // che spruzza). La direzione: col puntatore il punto sotto il puntatore, se no il davanti della camera (si mira girando la visuale)
   const camDavanti = () => { const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };
+  // [camera7] l'aggancio morbido: chi sta nel cono di ~10° davanti alla camera, entro la portata dell'arma, prende la mira (il più dritto,
+  // a parità il più vicino); se no il mirino a terra a 10 m davanti. ui.aimPoint lo disegna render.js (dyn.aim)
+  const AGG7 = { cono: 10 * Math.PI / 180, mirino: 10 };
+  function aggancio7(a0) {
+    const p = st.player, W = G.WEAPONS[p.cur] || {}, R0 = Math.min(W.range || 16, 24); let best = null, bv = 1e9;
+    st.npcs.forEach(n => { if (n.dead || n.inside) return; const dx = n.x - p.x, dy = n.y - p.y, d = Math.hypot(dx, dy); if (d < .5 || d > R0) return;
+      const da = Math.abs(Math.atan2(Math.sin(Math.atan2(dy, dx) - a0), Math.cos(Math.atan2(dy, dx) - a0))); if (da > AGG7.cono) return; const v = da + d * .004; if (v < bv) { bv = v; best = n; } });
+    if (best) { ui.aimPoint = { x: best.x, y: best.y }; ui.lock7 = best.id; return Math.atan2(best.y - p.y, best.x - p.x); }
+    ui.lock7 = null; ui.aimPoint = { x: p.x + Math.cos(a0) * AGG7.mirino, y: p.y + Math.sin(a0) * AGG7.mirino }; return a0;
+  }
   function mira6() {
+    if (CAM7 && !st.player.vehicle && !ui.intro && !ui.dialog && !ui.menu) { const p = st.player;   // [camera7] il destro (con l'arma) o L2: sopra la spalla, dove guarda la camera, con l'aggancio
+      if (ui.spray && ui.spray.on) { const g = R.screenToGround(mouse.nx, mouse.ny); return g ? { a: Math.atan2(g.y - p.y, g.x - p.x), punto: true } : null; }
+      if (tp.mode === 'fire' && tp.aim) return { a: Math.atan2(tp.aim.y - p.y, tp.aim.x - p.x), punto: true };
+      if ((mouse.aim && armato7()) || PAD.mira || (CON.on && CON.fire)) return { a: aggancio7(camDavanti()), punto: false, spalla: !(CON.on && CON.fire && !PAD.mira && !mouse.aim) };
+      return null; }
     if (!CAM6 || st.player.vehicle || ui.intro || ui.dialog || ui.menu) return null; const p = st.player;
     if (ui.spray && ui.spray.on) { const g = R.screenToGround(mouse.nx, mouse.ny); return g ? { a: Math.atan2(g.y - p.y, g.x - p.x), punto: true } : null; }
     if (tp.mode === 'fire' && tp.aim) return { a: Math.atan2(tp.aim.y - p.y, tp.aim.x - p.x), punto: true };
@@ -284,6 +311,11 @@
       }
       return { x: 0, y: 0, aim: a, drive: { thr: f, steer, hb: brakeKey, boost: sprint, assist: !mouseSteer && !s } };
     }
+    if (CAM7) {   // [camera7] i tasti (e le frecce) camminano rispetto alla camera; di difetto si cammina, Maiusc corre (niente mag: la velocità la decide sprint)
+      const M6 = mira6(), hip = !M6 && mouse.down && mouse.active && armato7() && document.pointerLockElement !== cv ? aimAngle() : undefined;   // sparando dal fianco col sinistro: guarda il puntatore
+      if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : touchMode ? a : undefined };
+      const B = R.camBasis(), d = Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;
+      return { x: d.x / l, y: d.y / l, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : Math.atan2(d.y, d.x), tasti: true }; }
     if (CAM6) {   // [camera6] i tasti camminano rispetto alla camera (W in su sullo schermo), il personaggio guarda dove va; mirando, dove mira
       const M6 = mira6(); if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : touchMode ? a : undefined };
       const B = R.camBasis(), d = Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;
@@ -771,6 +803,7 @@
     const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
     setHid(x, !show); setS(cv, 'cursor', show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
     if (!show) return;
+    if (CAM7 && document.pointerLockElement === cv && ui.aimPoint) { const q = R.project(ui.aimPoint.x, 1.25, ui.aimPoint.y), o = cvOff(); if (!q.behind) { mouse.cx = o.x + q.x * o.w; mouse.cy = o.y + q.y * o.h; } }   // [camera7] col puntatore bloccato il mirino sta dove va il colpo
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
     const dist = ui.aimPoint ? Math.hypot(ui.aimPoint.x - p.x, ui.aimPoint.y - p.y) : 8;
@@ -890,13 +923,14 @@
     const ax = g.axes[0] || 0, ay = g.axes[1] || 0, l = Math.hypot(ax, ay), m = stickResp(l);
     PAD.m = m; PAD.x = m > 0 ? ax / l : 0; PAD.y = m > 0 ? ay / l : 0;
     PAD.rot = -axis1(g.axes[2] || 0) * 1.6; PAD.pan = -axis1(g.axes[3] || 0);   // [visuale5] in su la visuale va avanti
+    PAD.rx = g.axes[2] || 0; PAD.ry = g.axes[3] || 0;   // [camera7] la levetta destra cruda: la curva è una sola (camStick)
     const B = g.buttons || [], bv = i => { const b = B[i]; return !b ? 0 : typeof b === 'object' ? (b.pressed ? Math.max(.6, b.value || 0) : b.value || 0) : +b; };
     let any = m > 0 || PAD.rot !== 0 || PAD.pan !== 0;
     for (let i = 0; i < B.length && i < 16; i++) {
       const d = bv(i) > .5; if (d) any = true; if (d === !!PAD.down[i]) continue; PAD.down[i] = d;
       if (PAD_KEYS[i]) padKey(i, d);
-      else if (d && i === 12) zoomBy(1 / 1.12); else if (d && i === 13) zoomBy(1.12);
-      else if (d && i === 11) vistaDopo();   // [camera6] R3 (clic della levetta destra): la vista dopo
+      else if (d && i === 12 && !aPiedi7()) zoomBy(1 / 1.12); else if (d && i === 13 && !aPiedi7()) zoomBy(1.12);   // [camera7] a piedi niente zoom
+      else if (d && i === 11 && !CAM7) vistaDopo();   // [camera6] R3 (clic della levetta destra): la vista dopo
     }
     PAD.gas = bv(7); PAD.brk = bv(6); PAD.mira = CAM6 && !st.player.vehicle && PAD.brk > .4;   // [camera6] a piedi L2 tenuto: si mira (il personaggio guarda dove guarda la camera)
     const fire = PAD.gas > .5 && !st.player.vehicle && !ui.dialog && !ui.book && !ui.menu; if (fire && !PAD.fire) mouse.pressed = true; PAD.fire = fire;
@@ -992,6 +1026,7 @@
   // scatti. Qui: zona morta, curva (poco inclinata gira piano e preciso, a fondo veloce) e inerzia (la velocità sale e scende in ~0,12 s,
   // niente partenze e fermate secche). La rotazione va a ui.drag (render.js la somma alla visuale), lo zoom a zoomBy.
   const CAMS = { vy: 0, vz: 0, giro: 1.9, zoom: 1.1, dz: .12, esp: 1.8, tau: .12 };
+  const CAM7K = { giro: 3.5, esp: 1.4, dz: .12, pend: 1.2 };   // [camera7] la levetta della visuale a piedi: rad/s a fondo, la curva, la zona morta, l'inclinazione (unità di ui.tilt al secondo)
   const camCurva = v => { const a = Math.abs(v); if (a <= CAMS.dz) return 0; return Math.sign(v) * Math.pow(Math.min(1, (a - CAMS.dz) / (1 - CAMS.dz)), CAMS.esp); };
   function camStick(dt) {
     let x = 0, y = 0; const libero = !ui.intro && !ui.dialog && !ui.book && !ui.menu;
@@ -1001,6 +1036,15 @@
       if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
       const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
     const k = 1 - Math.exp(-dt / CAMS.tau);
+    if (CAM7 && !(st.player.vehicle && jumpMode())) {   // [camera7] gira fino a 3,5 rad/s, curva 1,4 (la levetta del controller cruda, le altre come prima); in su e in giù inclina
+      if (PAD.on && libero) { x += PAD.rx - (-PAD.rot / 1.6); y += PAD.ry - (-PAD.pan); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
+      const cv7 = v => { const a = Math.abs(v); return a <= CAM7K.dz ? 0 : Math.sign(v) * Math.pow(Math.min(1, (a - CAM7K.dz) / (1 - CAM7K.dz)), CAM7K.esp); };
+      CAMS.vy += (-cv7(x) * CAM7K.giro - CAMS.vy) * k; CAMS.vp = (CAMS.vp || 0) + (-cv7(y) * CAM7K.pend - (CAMS.vp || 0)) * k; CAMS.vz = 0; CAMS.trick = {};
+      if (Math.abs(CAMS.vy) < 1e-3) CAMS.vy = 0; if (Math.abs(CAMS.vp) < 1e-3) CAMS.vp = 0;
+      if (CAMS.vy) ui.drag = (ui.drag || 0) + CAMS.vy * dt; if (CAMS.vp) tiltBy(CAMS.vp * dt);
+      if (CAMS.vy || CAMS.vp || ui.drag || camDrag || mouse.aim || (keys[','] || keys['.']) || (keys.pageup || keys.pagedown)) CAMS.tTocco = 0; else CAMS.tTocco = (CAMS.tTocco || 0) + dt;
+      const p = st.player, va = p.vehicle ? 0 : Math.abs(p.speed || 0); if (CAMS.tTocco > 2 && va > .5 && ui.tilt) { ui.tilt += (0 - ui.tilt) * (1 - Math.exp(-dt / 1.5)); if (Math.abs(ui.tilt) < .01) ui.tilt = 0; }
+      ui.camStickOn = !!(CAMS.vy || CAMS.vp); return; }
     if (CAM6) {   // [camera6] gira e inclina, niente zoom; in bici indietro è l'impennata (e impennando, di lato il piede), se no di lato gira
       const bici = !!(st.player.vehicle && jumpMode()), L = Visuale.levetta6(x, y, bici);
       CAMS.trick = { wheelie: L.impenna, peg: L.piede };
@@ -1018,7 +1062,7 @@
     ui.camStickOn = !!(CAMS.vy || CAMS.vz);
   }
   function conTick(dt) {
-    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu) zoomBy(1 + CON.zoom * dt);
+    if (CON.zoom && !ui.intro && !ui.dialog && !ui.book && !ui.menu && !aPiedi7()) zoomBy(1 + CON.zoom * dt);   // [camera7] a piedi niente zoom
     camStick(dt);   // [morbida] la levetta della visuale: controller, Game Boy, schermo, frecce
     if ((keys.pagedown || keys.pageup) && !ui.intro && !ui.dialog && !ui.book && !ui.menu) tiltBy(((keys.pagedown ? 1 : 0) - (keys.pageup ? 1 : 0)) * dt * .9);   // [bassa]   // la croce tenuta: lo zoom
     if (CON.rot) ui.rotUser = true;   // la visuale girata con la croce gira anche il personaggio, da fermo (come col dito)
@@ -1238,7 +1282,7 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','],   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0 });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)) });
     PERF.frame += performance.now() - tF;
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
