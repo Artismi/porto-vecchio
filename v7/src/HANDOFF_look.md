@@ -199,3 +199,11 @@ Fuori: l'anello del personaggio, l'alone (scafo), la grana nel leggero; il disco
 ha il bordo netto (la logica è della camera). Le prove: `strumenti/sonda_profondita.js` (la camera di gioco vera, varianti nello stesso
 istante), `strumenti/profondita_scene.json`, `profondita_diagnosi.json`, `profondita_giri.json`, `fogli_profondita.py`, `misura_profondita.py`;
 i fogli in `_immagini/profondita/`. **I tasselli vanno ricotti** (il testo del varco nei materiali, e l'impronta cambia comunque).
+
+## [stile] Tre stili da scegliere guardando (4 novembre)
+
+`ANALISI_STILE2.md`: la diagnosi con la camera7, le varianti, il costo, le misure. `?stile=A` (oggi, identico anche senza parametro),
+`?stile=B` «illustrato pulito» (campiture piatte, manto dei coppi e delle marsigliesi disegnato nello shader con i giunti in `fwidth`,
+piano di fondo, inchiostro blu-viola), `?stile=C` «pittorico caldo» (pennellata larga nel mondo, luce dorata, aria calda). Dal vivo
+`__pv.R.stile('B')` con la pagina aperta con `?stile=`; le dosi in `window.__STILE.V`. Nei materiali i rami stanno dietro `sgP10` (a zero
+senza `?stile`): arrivano sulle case dei tasselli dopo la prossima cottura. Il foglio: `_immagini/stile/confronto_5x3.jpg`.
