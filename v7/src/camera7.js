@@ -32,6 +32,8 @@ var Camera7 = (function () {
     r: .35,              // m: il raggio della sfera del braccio
     armIn: .1, armOut: .6,   // s: il braccio si accorcia, il braccio torna fuori
     armSlip: .1,         // m: il braccio non sta mai oltre il colpo più di tanto (mentre si accorcia)
+    lifts: [6 * D, 12 * D, 16 * D],   // prima di accorciare il braccio si prova a salire di tanto (al più fino a K.close[2])
+    liftT: .45, liftBack: 1.5,  // s: la molla della salita; libero da tanto, si torna giù
     close: [6.5, 3.5, 50 * D],   // sotto 6,5 m di braccio la pendenza sale, lineare, fino a 50° a 3,5 m (si sale invece di entrare addosso)
     yawT: .12,           // s: la molla dello yaw (il ricentro; il giocatore gira subito)
     recentAfter: 2,      // s senza toccare la camera
@@ -43,6 +45,7 @@ var Camera7 = (function () {
     pitchBack: 1.5,      // s: camminando senza toccare, l'inclinazione del giocatore torna a zero (la molla)
     aimSide: .75, aimArm: 6.8, aimT: .22,  // la mira sopra la spalla destra (il braccio resta sopra K.close[0]: mirando non si sale)
     clearUp: .45,        // m: la camera mai più bassa di tanto sopra il suolo sotto di lei
+    avvioPassi: 10,      // m: all'avvio, quanto il personaggio può spostarsi per avere la via davanti e il braccio libero dietro
   };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -65,7 +68,7 @@ var Camera7 = (function () {
     return base + (Math.max(base, c[2]) - base) * f;
   }
   function create() { return { on: false, yaw: { x: 0, v: 0 }, yawT: 0, arm: { x: K.arm, v: 0 }, aim: { x: 0, v: 0 }, vx: { x: 0, v: 0 }, vy: { x: 0, v: 0 }, h: { x: 0, v: 0 },
-    pu: 0, quiet: 99, recent: 0, mosse: 0, colpo: null, armT: K.arm }; }
+    pu: 0, quiet: 99, recent: 0, mosse: 0, colpo: null, armT: K.arm, lift: { x: 0, v: 0 }, liftW: 0, liftT: 0 }; }
   // il ricentro: lo yaw che mette la camera dietro la velocità (vx, vy nel piano del gioco)
   const dietro = (vx, vy) => { const h = Math.atan2(vy, vx); return Math.atan2(-Math.cos(h), -Math.sin(h)); };
   /* un passo. q: { px, py, fy (la quota dei piedi), vx, vy (la velocità vera, m/s), dyaw, dpitch (il giocatore, rad, in questo passo),
@@ -75,7 +78,7 @@ var Camera7 = (function () {
   function passo(S, q, dt, k) {
     k = k || K; dt = Math.max(0, dt || 0);
     const snap = !!q.snap || !S.on || dt > 1;
-    if (!S.on) { S.on = true; const y0 = q.init && isFinite(q.init.yaw) ? q.init.yaw : 0; S.yaw.x = S.yawT = y0; S.yaw.v = 0; S.pu = 0; S.quiet = 0; S.recent = 0;
+    if (!S.on) { S.on = true; const y0 = q.init && isFinite(q.init.yaw) ? q.init.yaw : 0; S.yaw.x = S.yawT = y0; S.yaw.v = 0; S.lift.x = S.lift.v = 0; S.liftW = 0; S.liftT = 0; S.pu = 0; S.quiet = 0; S.recent = 0;
       S.arm.x = q.init && q.init.dist > 0 ? clamp(q.init.dist, k.armMin, 30) : k.arm; S.arm.v = 0; S.vx.x = S.vy.x = 0; S.vx.v = S.vy.v = 0; S.h.x = q.fy; S.h.v = 0; S.aim.x = q.mira ? 1 : 0; S.aim.v = 0; }
     // 1. il giocatore: lo yaw subito (anche il bersaglio, così la molla non lo trattiene), l'inclinazione dentro ±K.orbit
     const dy = q.dyaw || 0; S.yaw.x += dy; S.yawT += dy;
@@ -102,28 +105,38 @@ var Camera7 = (function () {
     const av = k.ahead * Math.min(1, sv / k.aheadV) * (1 - ka), ax = sv > 1e-3 ? S.vx.x / sv * av : 0, ay = sv > 1e-3 ? S.vy.x / sv * av : 0;
     const rx = Math.cos(yaw), rz = -Math.sin(yaw), side = k.aimSide * ka;   // la destra dello schermo nel piano x-z
     const look = { x: q.px + ax + rx * side, y: fy + k.chest, z: q.py + ay + rz * side };
-    // 6. il braccio voluto, il raggio a sfera dal petto verso la camera voluta, il braccio che si ferma prima
-    const want = k.arm + (k.aimArm - k.arm) * ka, pW = pitchFor(want, S.pu, k), cpW = Math.cos(pW);
-    const cw = { x: look.x + Math.sin(yaw) * cpW * want, y: look.y + Math.sin(pW) * want, z: look.z + Math.cos(yaw) * cpW * want };
-    const o = { x: q.px + rx * side, y: fy + k.chest, z: q.py + rz * side }, dx = cw.x - o.x, dyy = cw.y - o.y, dz = cw.z - o.z, L = Math.hypot(dx, dyy, dz) || 1;
-    let hit = q.cast ? q.cast(o, { x: dx / L, y: dyy / L, z: dz / L }, L, k.r) : null;
-    S.colpo = hit; const armT = clamp(hit !== null && hit !== undefined && hit < L ? want * hit / L : want, k.armMin, want); S.armT = armT;
+    // 6. il braccio voluto e il raggio a sfera dal petto verso la camera voluta. Prima si prova a SALIRE (K.lifts: la camera più alta
+    // passa sopra le tende, le insegne, gli archi bassi) a braccio pieno; se nessuna altezza è libera il braccio si ferma prima del colpo
+    const want = k.arm + (k.aimArm - k.arm) * ka, o = { x: q.px + rx * side, y: fy + k.chest, z: q.py + rz * side };
+    const prova = (pp, d) => { const c = Math.cos(pp), cw = { x: look.x + Math.sin(yaw) * c * d, y: look.y + Math.sin(pp) * d, z: look.z + Math.cos(yaw) * c * d },
+      dx = cw.x - o.x, dyy = cw.y - o.y, dz = cw.z - o.z, L = Math.hypot(dx, dyy, dz) || 1, h = q.cast ? q.cast(o, { x: dx / L, y: dyy / L, z: dz / L }, L, k.r) : null;
+      return h === null || h === undefined || h >= L ? 1 : Math.max(0, h / L); };
+    const pB = pitchFor(want, S.pu, k), cap = Math.max(pB, k.close[2]); let lw = 0;
+    if (q.cast && prova(pB, want) < .92) { lw = -1; for (const dp of k.lifts) { if (pB + dp > cap + 1e-6) break; if (prova(pB + dp, want) >= .92) { lw = dp; break; } } }
+    if (lw >= 0) { if (lw >= S.liftW) { S.liftW = lw; S.liftT = 0; } else { S.liftT += dt; if (S.liftT > k.liftBack) S.liftW = lw; } }   // si sale subito, si torna giù dopo K.liftBack s libero
+    const lift = snap ? (S.lift.x = S.liftW, S.lift.v = 0, S.liftW) : molla(S.lift, S.liftW, k.liftT, dt);
+    const f6 = prova(Math.min(cap, pB + lift), want); S.colpo = f6;
+    const armT = clamp(want * f6, k.armMin, want); S.armT = armT;
     if (snap) { S.arm.x = armT; S.arm.v = 0; }
     else if (armT < S.arm.x) { const e = 1 - Math.exp(-dt * 3 / k.armIn); S.arm.x += (armT - S.arm.x) * e; S.arm.v = 0; if (S.arm.x > armT + k.armSlip) S.arm.x = armT + k.armSlip; }
     else molla(S.arm, armT, k.armOut, dt);
-    const arm = clamp(S.arm.x, k.armMin, 40), pitch = pitchFor(arm, S.pu, k), cp = Math.cos(pitch);
+    const arm = clamp(S.arm.x, k.armMin, 40), pitch = Math.min(Math.max(cap, pitchFor(arm, S.pu, k)), pitchFor(arm, S.pu, k) + lift), cp = Math.cos(pitch);
     const pos = { x: look.x + Math.sin(yaw) * cp * arm, y: look.y + Math.sin(pitch) * arm, z: look.z + Math.cos(yaw) * cp * arm };
     if (q.suolo) { const g = q.suolo(pos.x, pos.z) + k.clearUp; if (isFinite(g) && pos.y < g) pos.y = g; }
     return { pos, look, yaw, pitch, arm, fov: vfov(q.aspect, k), near: k.near, side, dyRic, yawGiro: yaw - y0, ka };
   }
-  // L'AVVIO: fra sedici direzioni quella con più strada libera davanti al personaggio e almeno K.arm m liberi dietro (il lato camera).
-  // libero(x, y, ux, uy, max) → metri liberi lungo (ux, uy) dal punto (la mappa delle case o i raggi veri). Rende { face, yaw, avanti, dietro }
-  function avvio(x, y, libero, k) {
-    k = k || K; let best = null;
-    for (let i = 0; i < 16; i++) { const f = i * Math.PI / 8, ux = Math.cos(f), uy = Math.sin(f);
-      const av = libero(x, y, ux, uy, 40), di = libero(x, y, -ux, -uy, k.arm * Math.cos(k.pitch) + 1), lat = Math.min(libero(x, y, -uy, ux, 6), libero(x, y, uy, -ux, 6));
-      const v = (di >= k.arm * Math.cos(k.pitch) ? 100 : di * 8) + Math.min(av, 40) + Math.min(lat, 6) * .5;
-      if (!best || v > best.v) best = { v, face: f, avanti: av, dietro: di }; }
+  // L'AVVIO: fra sedici direzioni quella con più strada libera davanti al personaggio e il braccio libero dietro (il lato camera). Se dal
+  // punto di partenza nessuna direzione ha l'una e l'altro (la porta di casa in un angolo), il personaggio fa qualche passo (al più
+  // K.avvioPassi m, raggiungibili a piedi: va(x0, y0, x1, y1)) verso dove ce l'hanno. libero(x, y, ux, uy, max, dietro) → metri liberi
+  // lungo (ux, uy) (dietro: lungo il braccio che sale). Rende { x, y, face, yaw, avanti, dietro, passi }
+  function avvio(x, y, libero, k, va) {
+    k = k || K; let best = null; const need = k.arm * Math.cos(k.pitch), P = [[x, y]];
+    if (va) for (const r of [2, 4, 6, 8, 10].filter(q => q <= k.avvioPassi)) for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, qx = x + Math.cos(a) * r, qy = y + Math.sin(a) * r; if (va(x, y, qx, qy)) P.push([qx, qy]); }
+    for (const [px, py] of P) { const passi = Math.hypot(px - x, py - y);
+      for (let i = 0; i < 16; i++) { const f = i * Math.PI / 8, ux = Math.cos(f), uy = Math.sin(f);
+        const av = libero(px, py, ux, uy, 40, false), di = libero(px, py, -ux, -uy, need + 1, true), lat = Math.min(libero(px, py, -uy, ux, 6, false), libero(px, py, uy, -ux, 6, false));
+        const v = (di >= need ? 100 : di * 8) + Math.min(av, 30) + Math.min(lat, 6) * .5 - passi * 2.5;
+        if (!best || v > best.v) best = { v, x: px, y: py, passi, face: f, avanti: av, dietro: di }; } }
     best.yaw = dietro(Math.cos(best.face), Math.sin(best.face)); return best;
   }
   return { K, passo, create, vfov, pitchFor, molla, avvio, dietro, ang };

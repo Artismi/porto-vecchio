@@ -272,9 +272,10 @@
     if (PAD.on && !st.player.vehicle && PAD.m > 0) {
       ui.faceIdle = undefined; if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null;
       const B = R.camBasis(), x = B.rx * PAD.x - B.fx * PAD.y, y = B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;
-      return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: PAD.mira ? camDavanti() : Math.atan2(y, x), mag: PAD.m };   // [camera6] mirando si va di lato: il personaggio guarda dove guarda la camera
+      const M7 = CAM7 && PAD.mira ? mira6() : null;   // [camera7] mirando: la direzione con l'aggancio
+      return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: M7 ? M7.a : PAD.mira ? camDavanti() : Math.atan2(y, x), mag: PAD.m };   // [camera6] mirando si va di lato: il personaggio guarda dove guarda la camera
     }
-    if (PAD.on && PAD.mira && !st.player.vehicle) return { x: 0, y: 0, sprint, aim: camDavanti() };   // [camera6] fermi, mirando: si gira con la visuale
+    if (PAD.on && PAD.mira && !st.player.vehicle) { const M7 = CAM7 ? mira6() : null; return { x: 0, y: 0, sprint, aim: M7 ? M7.a : camDavanti() }; }   // [camera7] con l'aggancio   // [camera6] fermi, mirando: si gira con la visuale
     if (PAD.on && st.player.vehicle && (PAD.m > 0 || PAD.gas > .05 || PAD.brk > .05)) return { x: 0, y: 0, aim: st.player.face, drive: { thr: PAD.gas - PAD.brk, steer: PAD.m > 0 ? PAD.x * Math.min(1, Math.abs(PAD.x) * 1.4) : 0, hb: brakeKey, boost: sprint, assist: !(PAD.m > 0 && Math.abs(PAD.x) > .1) } };
     if (st.player.vehicle && (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .2) {   // [telefono] guida «verso dove spingi»: la levetta è una direzione dello schermo, non gas e sterzo   // [console] anche quella del Game Boy
       const v = st.vehicles.find(q => q.id === st.player.vehicle), B = stickB || R.camBasis(), wx = B.rx * stick.x - B.fx * stick.y, wy = B.rz * stick.x - B.fz * stick.y, m = Math.min(1, Math.hypot(stick.x, stick.y));

@@ -10,6 +10,7 @@ var Render = (function () {
   const FOGTEAL = new THREE.Color('#2c5a62');
   const dyn = { people: {}, vespas: {}, lights: [], flicker: [], signs: [], buildings: [], water: null, rain: null, motes: null, laundry: [], markers: null, boats: [], gulls: [], beams: [], chasers: [], spin: [], sky: null };
   let PX = 3, W = 0, H = 0, VIEW = 44;
+  const CAM7ON = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search)) && typeof Camera7 !== 'undefined';   // [camera7] il flag, per chi compila prima (le chiome)
   if (!(typeof location !== 'undefined' && /[?&]vecchiolook\b/.test(location.search))) VIEW = 35;   // [cat] era 38: il personaggio e la strada più grandi nel quadro, meno tetti   // [look] il personaggio più grande nel quadro (era 44 m: 15-18 px di omino, non si trovava)
   const cam = { x: 0, y: 0, zoom: 1, tx: 0, ty: 0, tz: 1, shake: 0, h: 0 };
   const YAW = Math.PI / 4, PITCH = 0.78;
@@ -1614,7 +1615,20 @@ var Render = (function () {
   // Ogni albero sta su una casella TREE: si abbatte e resta il ceppo.
   const NAT = { ok: false, models: {}, mats: {} };
   // le chiome tra la camera e il giocatore si aprono (retinatura): il giocatore nel bosco si vede sempre
-  const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) } };
+  const NATU = { pl: { value: new THREE.Vector3(0, -999, 0) }, cm: { value: new THREE.Vector3(0, 100, 0) }, r7: { value: 0 } };
+  // [camera7] IL RETINO DELLE CHIOME (la vista unica): i frammenti delle chiome dentro un cilindro di raggio uR7 dalla camera (uCm) al busto
+  // (uPl + ,95 m), o a meno di 1,5 m dalla camera, si diradano a retino fino al 30%: il personaggio si vede attraverso l'albero, la casa resta
+  // intera. Per gli shader che hanno vWP (la posizione nel mondo), uCm e uPl: le chiome del kit Natura, anche cotte nei tasselli. uR7 = 0: spento
+  const FADE7 = `
+{ if (uR7 > 0.) { vec3 a7 = uCm, ab7 = uPl + vec3(0., .95, 0.) - a7; float t7 = clamp(dot(vWP - a7, ab7) / max(dot(ab7, ab7), 1e-4), 0., 1.);
+  float k7 = max(smoothstep(uR7 * .55, uR7, distance(vWP, a7 + ab7 * t7)), smoothstep(.9, .97, t7)); k7 = min(k7, smoothstep(.9, 1.5, distance(vWP, a7)));
+  float n7 = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715)))); if (k7 < .999 && max(k7, .3) < n7) discard; } }
+`;
+  function fade7(sh) {
+    const F = sh.fragmentShader; if (!F || F.indexOf('uR7') >= 0 || F.indexOf('varying vec3 vWP;') < 0 || F.indexOf('uniform vec3 uCm;') < 0 || F.indexOf('#include <clipping_planes_fragment>') < 0) return false;
+    sh.uniforms.uR7 = NATU.r7; if (!sh.uniforms.uCm) sh.uniforms.uCm = NATU.cm; if (!sh.uniforms.uPl) sh.uniforms.uPl = NATU.pl;
+    sh.fragmentShader = F.replace('uniform vec3 uCm;', 'uniform vec3 uCm; uniform float uR7;').replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>' + FADE7); return true;
+  }
   // [visuale5] IL MODO DELLA VISUALE, scelto all'avvio dall'indirizzo: 'camera' (di difetto: la camera che si adatta, il tetto che
   // sbiadisce) o 'muretto' (?visuale=muretto: le case davanti scendono a un muretto); src/visuale.js per le regole. Via l'ellisse ([varco2]:
   // il varco in ogni materiale, un programma in più per ognuno), il taglio ([visuale3]) e la sezione ([visuale]): il committente ha scelto
@@ -1995,6 +2009,7 @@ var Render = (function () {
             lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
             diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
+      if (leafy && CAM7ON) fade7(sh);   // [camera7] il retino delle chiome fra la camera e te
     };
     m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
@@ -18962,7 +18977,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // pixel, taglio vicino, case tagliate, tetti sbiaditi, retino [ad]); le cose piccole fra la camera e te (o a 1,5 m dalla camera) si
   // spengono finché coprono (cose7), il personaggio coperto si vede in sagoma (VIS5). Sui mezzi, al chiuso, sotto terra, nell'intro e
   // nell'editor resta la camera di prima. ?nofixcamera7: com'era
-  const CAM7 = { on: !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search)) && typeof Camera7 !== 'undefined',
+  const CAM7 = { on: CAM7ON,
     S: null, attivo: false, yaw0: null, ppx: undefined, ppy: 0, cose: new Map(), coseT: -9, ultimo: null, colpi: 0, err: 0 };
   if (typeof window !== 'undefined') window.__CAM7 = CAM7;
   const C7R = { rc: new THREE.Raycaster(), o: new THREE.Vector3(), d: new THREE.Vector3(), roots: new Set(), list: [], t: -9, cx: 1e9, cz: 1e9 };
@@ -18978,7 +18993,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       C7R.t = now; C7R.cx = o.x; C7R.cz = o.z; const R0 = C7R.roots; R0.clear();
       for (const k in dyn.people) if (dyn.people[k]) R0.add(dyn.people[k]); for (const k in dyn.vehicles) if (dyn.vehicles[k]) R0.add(dyn.vehicles[k]);
       C7R.list = bmbCands(o.x, o.z).filter(m => { if (m.userData.ghost5 || m.userData.velo || m.isPoints || m.isLine) return false; let q = m; for (let i = 0; i < 10 && q; i++) { if (R0.has(q)) return false; q = q.parent; }
-        const bs = m.geometry.boundingSphere, e = m.matrixWorld.elements; return !bs || bs.radius * Math.hypot(e[0], e[1], e[2]) >= 1.2; }); }   // una mesh piccola (un lampione, un cartello) non ferma il braccio
+        const bs = m.geometry.boundingSphere, e = m.matrixWorld.elements; return !bs || bs.radius * Math.hypot(e[0], e[1], e[2]) >= 1.6; }); }   // una mesh piccola (un lampione, un cartello) non ferma il braccio
     if (!C7R.list.length) { const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)); for (let s = .6; s <= len; s += .3) { const x = o.x + dir.x * s, y = o.y + dir.y * s, z = o.z + dir.z * s; if (M.alto(x, z) > y - r) { CAM7.colpi++; return Math.max(0, s - r); } } return null; }
     const D = C7R.d.set(dir.x, dir.y, dir.z), rl = Math.hypot(dir.z, dir.x) || 1, rx = dir.z / rl, rz = -dir.x / rl, ux = dir.y * rz, uy = dir.z * rx - dir.x * rz, uz = -dir.y * rx, rc = C7R.rc;
     let best = Infinity;
@@ -19009,12 +19024,14 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       M.set(rec.tag, now); }
     M.forEach((t, tag) => { if (now - t > .4) { showTag(tag); M.delete(tag); } });
   }
-  // [camera7] L'AVVIO: il personaggio guarda la via più libera, la camera dietro col braccio libero (sulla mappa delle case: il braccio sale a
+  // [camera7] L'AVVIO: il personaggio guarda la via più libera, la camera dietro col braccio libero (se serve qualche passo fuori dall'angolo
+  // della porta di casa); sulla mappa delle case: il braccio sale a
   // K.pitch, quindi dietro conta l'altezza lungo il braccio; davanti e di lato quello che passa i 2,2 m)
   function avvio7(p) {
     const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.K, tp = Math.tan(K.pitch);
-    const libero = (x, y, ux, uy, max) => { const dietro = max < 15; for (let s = .5; s < max; s += .5) { const h = dietro ? K.chest + s * tp - K.r : 2.2; if (M.alto(x + ux * s, y + uy * s) > fy + h || (!dietro && !G.walkM(x + ux * s, y + uy * s))) return s; } return max; };
-    const b = Camera7.avvio(p.x, p.y, libero); p.face = b.face; CAM7.yaw0 = b.yaw; cam.uy = b.yaw - YAW; CAM7.S = null; CAM7.avvio = b; return b;
+    const libero = (x, y, ux, uy, max, dietro) => { for (let s = .5; s < max; s += .5) { const h = dietro ? K.chest + s * tp - K.r : 2.2; if (M.alto(x + ux * s, y + uy * s) > fy + h || (!dietro && !G.walkM(x + ux * s, y + uy * s))) return s; } return max; };
+    const va = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / .4); for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; if (!G.walkM(x, y) || M.alto(x, y) > fy + 1.2) return false; } return !G.taglia(x0, y0, x1, y1) && G.walkM(x1 + .4, y1) && G.walkM(x1 - .4, y1) && G.walkM(x1, y1 + .4) && G.walkM(x1, y1 - .4); };
+    const b = Camera7.avvio(p.x, p.y, libero, K, va); if (b.passi > 0) { p.x = b.x; p.y = b.y; p.path = []; } p.face = b.face;   // qualche passo fuori dall'angolo CAM7.yaw0 = b.yaw; cam.uy = b.yaw - YAW; CAM7.S = null; CAM7.avvio = b; return b;
   }
   // [camera7] la camera di un fotogramma a piedi. Rende la pendenza e il braccio (per chi li legge dopo: la nebbia sotto terra, il muretto)
   function camera7Frame(st, p, ui, dt, dtG) {
@@ -19043,7 +19060,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     REG.lp = R7.pitch; REG.ld = R7.arm;
     if (SCO.cam) scoCamera();
     posaTick1(cam.x, cam.y);
-    NATU.pl.value.set(p.x, playerH + .2, p.y); NATU.cm.value.copy(camera.position);
+    NATU.pl.value.set(p.x, playerH + .2, p.y); NATU.cm.value.copy(camera.position); NATU.r7.value = 1.6;   // il retino delle chiome acceso
+    if (typeof Vegetazione !== 'undefined' && Vegetazione.U && Vegetazione.U.uR7) { const U = Vegetazione.U; U.uR7.value = 1.6; U.uA7.value.copy(camera.position); U.uB7.value.set(p.x, playerH + 1.15, p.y); }
     if (cam.uyS !== cam.yaw) { cam.uyS = cam.yaw; cam.rotT = ui.time || 0; }
     camera.updateMatrixWorld();
     return { pitch: R7.pitch, dist: R7.arm };
@@ -19535,15 +19553,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       dt = AVVIO.scatta ? 10 : Math.min(.25, Math.max(dt, ui.reale > 0 ? ui.reale : dt)); }   // la camera col tempo vero (al più 250 ms); quando scatta, un passo lunghissimo: le molle arrivano e si fermano
     // [camera7] LA VISTA UNICA: a piedi, fuori, in gioco la camera è solo camera7Frame; il resto (sotto, fino a dt = dtG) è la camera di prima
     const C7 = CAM7.on && !pveh && !ui.intro && !ui.focus && !ui.studio && !p.indoor && !(p.lv && p.lv.k === 'ug');
-    let pitch, dist, mo, focus;
-    if (!C7) CAM7.attivo = false;
+    let pitch, dist, mo, focus, ease = 0;   // ease: la guida (0 a piedi), letta anche dopo (sguPasso, il post)
+    if (!C7) { CAM7.attivo = false; NATU.r7.value = 0; if (typeof Vegetazione !== 'undefined' && Vegetazione.U && Vegetazione.U.uR7) Vegetazione.U.uR7.value = 0; }   // fuori dalla vista unica niente retino
     if (C7) { let r7 = null; try { r7 = camera7Frame(st, p, ui, dt, dtG); } catch (e) { if (!CAM7.err) { CAM7.err = 1; console.warn('[camera7]', e); } r7 = { pitch: Camera7.K.pitch, dist: Camera7.K.arm }; }
       pitch = r7.pitch; dist = r7.dist; mo = st.moments[0]; focus = [[p.x, p.y]]; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) focus.push([n.x, n.y]); } }
     else {
     const driving = !!pveh && !ui.intro && !ui.dialogNpc;
     if (CAM6.on) pesi6(CALMA2.zU !== null && isFinite(CALMA2.zU) ? CALMA2.zU : (ui.zoom || .5));   // [camera6] le tre viste
     cam.drive += ((driving ? 1 : 0) - cam.drive) * Math.min(1, dt * 1.6);
-    const D = cam.drive, ease = D * D * (3 - 2 * D);
+    const D = cam.drive; ease = D * D * (3 - 2 * D);   // [camera7] dichiarata sopra
     let tx = p.x, ty = p.y, tz = ui.studio ? ui.zoom || 1 : Math.min(ZOOM_MAX, ui.zoom || 1);   // [zoom2] lo zoom indietro ha un tetto (anche per chi lo scrive da fuori: sviluppo.js, le prove)
     if (!pveh && ui.aimPoint && !ui.intro && !ui.dialogNpc && !(CALMA2.on && p.cur === 'pugni')) { const la = p.cur !== 'pugni' ? .28 : .12; const dx = ui.aimPoint.x - p.x, dy = ui.aimPoint.y - p.y, l = Math.hypot(dx, dy), m = Math.min(l * la, p.cur !== 'pugni' ? 5 : 2.5); if (l > .1) { tx += dx / l * m; ty += dy / l * m; } tz *= p.cur !== 'pugni' ? 1.12 : 1; }   // [camera2] a mani nude il puntatore non trascina la camera
     {   // [telefono] la visuale guarda dove vai (a piedi) e si trascina col dito per guardarsi attorno
@@ -19904,7 +19922,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
     'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
     ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
-    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile };   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
+    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile, fade7: sh => CAM7ON && fade7(sh) };   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },
@@ -19925,5 +19943,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();

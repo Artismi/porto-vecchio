@@ -26,6 +26,9 @@ const schermoY = (r, x, y, z) => { const f = [r.look.x - r.pos.x, r.look.y - r.p
   muro = false; let tOut = null; for (let i = 1; i <= 120; i++) { r = C.passo(S, { px: 0, py: 0, fy: 0, aspect: 16 / 9, cast }, 1 / 60); if (tOut === null && K.arm - r.arm < (K.arm - corto) * .05) tOut = i / 60; }
   ok(tOut !== null && tOut > .4 && tOut <= .65, `libero, il braccio torna fuori in ${tOut && tOut.toFixed(2)} s (0,6)`);
   ok(Math.abs(C.pitchFor(3.5, 0) / D - 50) < .01 && Math.abs(C.pitchFor(6.5, 0) - K.pitch) < 1e-9 && C.pitchFor(5, 0) > K.pitch, `la pendenza dal braccio: 10 m ${(C.pitchFor(10, 0) / D).toFixed(0)}°, 6,5 m ${(C.pitchFor(6.5, 0) / D).toFixed(0)}°, 5 m ${(C.pitchFor(5, 0) / D).toFixed(0)}°, 3,5 m ${(C.pitchFor(3.5, 0) / D).toFixed(0)}°`); }
+// 3b. un'insegna bassa dietro (colpisce solo i raggi che salgono meno di 40°): la camera sale a braccio pieno invece di accorciarlo
+{ const cast = (o, d, L) => d.y < Math.sin(39 * D) ? 3 : null; const A = corri(2, { cast }, 1 / 60);
+  ok(A.r.arm > 9.9 && A.r.pitch > 39 * D && A.r.pitch <= 50 * D + 1e-9, `un ostacolo basso dietro: la camera sale a ${(A.r.pitch / D).toFixed(0)}°, il braccio resta ${A.r.arm.toFixed(1)} m`); }
 // 4. il ricentro: solo in cammino, solo dopo 2 s senza toccare, al più 90°/s, mai andando verso la camera; il giocatore lo azzera
 { const y0 = C.dietro(1, 0) + 1.2;   // la camera girata di ~70° rispetto al dietro della marcia (lungo +x)
   const A = corri(6, { vx: 3.6, init: { yaw: y0 } }, 1 / 30); const tr = A.tr, at = t => tr.find(q => q[0] >= t - 1e-9)[1].yaw;
@@ -46,7 +49,9 @@ const schermoY = (r, x, y, z) => { const f = [r.look.x - r.pos.x, r.look.y - r.p
 { const A = corri(1, { mira: true }, 1 / 30); ok(A.r.side > .6 && Math.abs(A.r.arm - K.aimArm) < .05 && Math.abs(A.r.pitch - K.pitch) < 1e-6, `mirando la camera va ${A.r.side.toFixed(2)} m a destra, il braccio a ${A.r.arm.toFixed(1)} m, la pendenza resta ${(A.r.pitch / D).toFixed(0)}°`); }
 // 7. l'avvio: la via libera davanti, il braccio libero dietro
 { const muro = (x, y, ux, uy, max) => ux < -.5 ? 3 : max;   // a ovest (dietro, se guardi a est) un muro a 3 m
-  const b = C.avvio(0, 0, muro); ok(Math.abs(C.ang(b.face - Math.PI)) > 1.2 && b.dietro >= K.arm * Math.cos(K.pitch), `all'avvio il personaggio non dà le spalle al muro alla camera (guarda ${(b.face / D).toFixed(0)}°, dietro ${b.dietro} m liberi)`); }
+  const b = C.avvio(0, 0, muro);
+  const c = C.avvio(0, 0, (x, y, ux, uy, max) => { if (ux < -.5) return Math.min(max, 1.5 + x); if (Math.abs(uy) > .5) return x < 5 ? 1 : max; return max; }, K, () => true);
+  ok(c.passi > 0 && c.passi <= K.avvioPassi && c.dietro >= K.arm * Math.cos(K.pitch) && c.avanti >= 20, `nell'angolo il personaggio fa ${c.passi.toFixed(0)} m verso la via, il braccio dietro libero (${c.dietro.toFixed(1)} m), davanti ${c.avanti} m`); ok(Math.abs(C.ang(b.face - Math.PI)) > 1.2 && b.dietro >= K.arm * Math.cos(K.pitch), `all'avvio il personaggio non dà le spalle al muro alla camera (guarda ${(b.face / D).toFixed(0)}°, dietro ${b.dietro} m liberi)`); }
 // 8. il passo a piedi (game.js): cammina, corre, accelera e frena, scivola lungo il muro, niente corsa sul posto, il salto quando premi
 { global.World = require('./world.js'); global.Interior = require('./interiors.js'); const G = require('./game.js'), st = G.create(7), p = st.player, T = G.T, TS = G.TS;
   const passo = (sec, inp, dt = 1 / 30) => { const L = []; for (let t = 0; t < sec - 1e-9; t += dt) { const x0 = p.x, y0 = p.y; G.step(st, dt, typeof inp === 'function' ? inp(t) : inp); L.push({ d: Math.hypot(p.x - x0, p.y - y0) / dt, s: Math.abs(p.speed || 0) }); } return L; };

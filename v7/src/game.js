@@ -119,7 +119,8 @@ var Game = (function () {
   // [camera7] A PIEDI COME LA TERZA PERSONA DI GTA (movePlayer, muovi7): di difetto si cammina (3,6 m/s), Maiusc corre (6,4); la levetta e il
   // dito: quanto sono lontani dal centro; si accelera a 20 m/s² e si frena a 30, la svolta ha un tetto di accelerazione laterale (correndo si
   // curva più largo); il corpo è un cerchio che scivola lungo i muri (le caselle piene e le barriere, scivola7); la velocità (e il passo
-  // delle gambe, p.speed) è lo spostamento vero (contro il muro niente corsa sul posto); il salto parte quando premi, mezzo metro.
+  // delle gambe, p.speed) è lo spostamento vero (contro il muro niente corsa sul posto); il salto parte quando premi, mezzo metro (sui
+  // tetti resta il salto caricato da un tetto all'altro: i giri dei tetti sono misurati su quello).
   // ?nofixcamera7: com'era
   const FIX_CAM7 = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search));
   const MOV7 = { cammina: 3.6, corre: 6.4, acc: 20, frena: 30, lat: 22, r: .35, salto: .5 };
@@ -1776,7 +1777,7 @@ var Game = (function () {
   function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
   function jumpHold(st, on) {
     const p = st.player;
-    if (on && FIX_CAM7 && !p.vehicle) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto) + .15; p.jz = .001;   /* +.15: il passo a 60 fps perde mezzo passo di colmo */ p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
+    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto) + .15; p.jz = .001;   /* +.15: il passo a 60 fps perde mezzo passo di colmo */ p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
     if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
     if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
     if (!canJump(st)) return;
