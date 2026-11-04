@@ -101,5 +101,20 @@ var Audio8 = (function () {
     rainN.gain.setTargetAtTime(on && R.isRaining(st.t) ? .05 : 0, t, .5);
     sea.gain.setTargetAtTime(on ? .045 : 0, t, .5);
   }
-  return { init, play, update, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  // [graffiti2] LA BOMBOLETTA: il soffio mentre dipingi nella tavoletta (rumore filtrato acuto, più largo col fat cap, sordo col rullo,
+  // il pennarello quasi muto) e, salvando, la pallina che sbatte due volte e un «psssht» lungo
+  let hiss = null;
+  function bomboletta(k, pen) {
+    if (!ctx || !on) return; const t = now();
+    if (k === 'via') {
+      if (!hiss) { const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = .7; const h = ctx.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = 2200; const g = ctx.createGain(); g.gain.value = 0; s.connect(h); h.connect(f); f.connect(g); g.connect(master); s.start(); hiss = { s, f, g }; }
+      const fr = pen === 'roller' ? 900 : pen === 'marker' ? 3000 : pen === 'skinny' ? 7200 : 5200, v = pen === 'marker' ? .015 : pen === 'roller' ? .05 : pen === 'skinny' ? .07 : .1;
+      hiss.f.frequency.setTargetAtTime(fr, t, .02); hiss.g.gain.cancelScheduledValues(t); hiss.g.gain.setTargetAtTime(v, t, .03);
+    } else if (k === 'stop') { if (hiss) { hiss.g.gain.cancelScheduledValues(t); hiss.g.gain.setTargetAtTime(0, t, .06); } }
+    else if (k === 'fatto') {
+      for (let i = 0; i < 2; i++) { nz(t + i * .16, .07, 'bandpass', 2600, .45, 0, 6); tone(t + i * .16, .05, 'triangle', 1900, 1500, .12); }
+      nz(t + .38, 1.2, 'highpass', 4200, .32, 0); nz(t + .38, 1.1, 'bandpass', 6500, .2, 0, 1.2);
+    }
+  }
+  return { init, play, update, bomboletta, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
 })();

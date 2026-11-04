@@ -74,6 +74,9 @@ var Writing = (function () {
   // le tavolozze e il disegno stanno in writer_arte.js
   const WA = typeof WriterArte !== 'undefined' ? WriterArte : require('./writer_arte.js');
   const PAL = WA.PAL, COL2PAL = WA.COL2PAL;
+  // [graffiti2] il blocco graffiti2 (la tavoletta nuova, la misura prima di aprire, l'aderenza sui triangoli veri, la città piena, la
+  // ricompensa): ?nofixgraffiti2 torna com'era
+  const FIX2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
   const PN = typeof Pennelli !== 'undefined' ? Pennelli : (typeof require !== 'undefined' ? (() => { try { return require('./pennelli.js'); } catch (e) { return null; } })() : null);   // [graffiti] i pennelli
 
   // ---------------- STATO ----------------
@@ -504,7 +507,8 @@ var Writing = (function () {
     else if (p.lv && p.lv.k === 'tetto') { mult *= 1.5; why.push('dal tetto'); }
     if (w.surf === 'treno') { mult *= 2; why.push('sul treno'); }
     if (w.surf === 'auto') { mult *= w.cop ? 3 : 1.3; why.push(w.cop ? 'sulla volante dei Grigi' : 'su un\'auto'); if (w.cop) W.heat = (W.heat || 0) + 6; }
-    const eyes = st.npcs.filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 28).length; if (eyes >= 3) { mult *= 1 + Math.min(5, eyes) * .08; why.push('davanti alla gente'); }
+    // [graffiti2] i testimoni sono gli stessi di cityReact (entro 24 m E con la vista libera); prima qui 28 m attraverso i muri
+    const eyes = FIX2 && w.by === 'player' ? witnesses(st, w).length : st.npcs.filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 28).length; if (eyes >= 3) { mult *= 1 + Math.min(5, eyes) * .08; why.push('davanti alla gente'); }
     if (w.over && w.over.length) { const r0 = Math.max(...w.over.map(id => { const o = W.works.find(x => x.id === id); return o ? STYLES[o.style].rank : 0; })); if (sty.rank > r0) { mult *= 1.2; why.push('sopra a un toy'); } }
     const f = Math.max(1, Math.round(sty.fame * mult)), before = rankOf(W.fame); W.fame += f; W.done[w.style] = (W.done[w.style] || 0) + 1;
     const after = rankOf(W.fame);
@@ -522,11 +526,21 @@ var Writing = (function () {
   // chiama i Grigi, l'agente che ti vede (vandalismo: ti cerca); sui muri del regime il lavoro si cancella la mattina dopo.
   const REGIME = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'chiesa', 'santuario', 'cultura'];
   const isCop = n => !!(n.cop || /agente|poliz|guardia|tutela|soldat|carabin|commissar/i.test(n.role || ''));
+  // [graffiti2] chi ti ha visto: entro 24 m e con la vista libera (G.seesPlayer); una volta sola per lavoro (finish e cityReact contano gli stessi)
+  function witnesses(st, w) {
+    if (w && w.__eyes) return w.__eyes; const p = st.player;
+    const L = (st.npcs || []).filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 24 && (!G.seesPlayer || G.seesPlayer(st, n)));
+    if (w) w.__eyes = L; return L;
+  }
+  // [graffiti2] il muro del regime: solo la facciata del palazzo (entro 12 m dal suo punto, prima 30: mezzo quartiere), e mai il primo lavoro
+  // (si impara a dipingere: che sia cancellato la mattina dopo, alla prima prova, toglie la voglia)
+  const regimeAt = (st, q) => { const P = G.PLACES || {}, W = S(st); if (FIX2 && !Object.values(W.done || {}).some(v => v > 0)) return false; return REGIME.some(id => P[id] && hyp(P[id].x - q.x, P[id].y - q.y) < (FIX2 ? 12 : 30)); };
   function cityReact(st, w) {
     const W = S(st), p = st.player, q = w.pos ? { x: w.pos.x, y: w.pos.z } : { x: p.x, y: p.y }, P = G.PLACES || {};
-    const eyes = (st.npcs || []).filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 24 && (!G.seesPlayer || G.seesPlayer(st, n)));
+    const eyes = FIX2 ? witnesses(st, w) : (st.npcs || []).filter(n => !n.dead && !n.inside && hyp(n.x - p.x, n.y - p.y) < 24 && (!G.seesPlayer || G.seesPlayer(st, n)));
     const cops = eyes.filter(isCop), crew = eyes.filter(n => !isCop(n) && n.pop && (n.pop.writer || n.pop.toy)), folk = eyes.filter(n => !isCop(n) && !crew.includes(n));
-    w.seen = eyes.length; w.regime = REGIME.some(id => P[id] && hyp(P[id].x - q.x, P[id].y - q.y) < 30);
+    w.seen = eyes.length; w.regime = FIX2 ? w.__regime0 != null ? w.__regime0 : regimeAt(st, q) : REGIME.some(id => P[id] && hyp(P[id].x - q.x, P[id].y - q.y) < 30);
+    if (FIX2) eyes.forEach(n => { const a = Math.atan2(q.y - n.y, q.x - n.x); n.face = a; n.wait = Math.max(n.wait || 0, 2.5); n.speedNow = 0; });   // [graffiti2] chi ti ha visto si gira a guardare
     const nm = n => n.name || n.first || 'qualcuno', say = (n, t) => { try { G.say(st, n, t, 3.5); } catch (e) { } };
     if (cops.length) {
       W.heat = (W.heat || 0) + 5; w.copSeen = true;
@@ -576,7 +590,7 @@ var Writing = (function () {
   if (AZ && AZ.playerActions) { const prev = AZ.playerActions; AZ.playerActions = st => { const out = (prev(st) || []).slice(), W = S(st), p = st.player;
     if (p.hand === 'bomboletta' || p.hand === 'pennarello' || W.fame > 0) {
       out.push({ id: 'writer', label: `Writer: ${playerAka(st)}${W.crew ? ' ' + W.crew : ''} · ${rankOf(W.fame)} · fama ${W.fame}`, run: () => renameTag(st), off: 'cambia la tua tag' });
-      if (p.hand === 'bomboletta') out.push({ id: 'writer_m', label: `Bomboletta: ${MODE_TXT[W.mode]} (B per cambiare)`, run: () => `Bomboletta: ${MODE_TXT[cycleMode(st)]}.`, off: '' });
+      if (p.hand === 'bomboletta' && !FIX2) out.push({ id: 'writer_m', label: `Bomboletta: ${MODE_TXT[W.mode]} (B per cambiare)`, run: () => `Bomboletta: ${MODE_TXT[cycleMode(st)]}.`, off: '' });
     }
     if (W.offer && !W.crew) { const n = G.byId(st, W.offer.by); if (n && hyp(n.x - p.x, n.y - p.y) < 6) out.push({ id: 'crew', label: `Entra nei ${W.offer.crew}`, run: () => { W.crew = W.offer.crew; W.offer = null; W.beef[W.crew] = 0; return `Sei dei ${W.crew}. Da adesso firmi anche per loro.`; }, off: '' }); }
     return out; }; }
@@ -764,7 +778,7 @@ var Writing = (function () {
   // sul telefono (LeggeraMem.meta2 = .5, i tagli [dieta]) la tela è a metà lato (T.k): un quarto della memoria. Al massimo
   // VEIL_MAX veli vivi (i più lontani dalla camera si liberano per primi; tornando vicino si rifanno).
   const POOL = new Map(), PHONE_K = () => { try { return typeof LeggeraMem !== 'undefined' && LeggeraMem.meta2 ? LeggeraMem.meta2() : 1; } catch (e) { return 1; } };
-  const VEIL_MAX = () => PHONE_K() < 1 ? 70 : 170;
+  const VEIL_MAX = () => FIX2 ? (PHONE_K() < 1 ? 120 : 240) : PHONE_K() < 1 ? 70 : 170;   // [graffiti2] di più: i finiti vanno nell'atlante, i veli vivi sono quelli in attesa del disegno
   function poolGet(w, h) { const k = w + 'x' + h, L = POOL.get(k); if (L && L.length) { const c = L.pop(); c.getContext('2d').clearRect(0, 0, w, h); GFX.mem.riuso++; return c; } GFX.mem.nuove++; return cv(w, h); }
   function poolPut(c) { if (!c || !c.width) return; const k = c.width + 'x' + c.height, L = POOL.get(k) || []; if (L.length < 6) { L.push(c); POOL.set(k, L); } }
   // il velo di un lavoro: un piano appoggiato al muro col suo canvas (sulle auto: la decalcomania sulla carrozzeria)
@@ -813,13 +827,30 @@ var Writing = (function () {
     GFX.mem.veli++;
     return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: kq, layer };
   }
+  // [graffiti2] il velo sui triangoli veri (decalG): la tela della misura giusta (dims: { Wp, Hp } del disegno, o previsto da telaDi)
+  function makeVeil2(w, dims, geo, layer) {
+    const THREE = T3(), R = w.gfxRect, kq = PHONE_K(), c = poolGet(Math.max(1, Math.ceil(dims.Wp * kq)), Math.max(1, Math.ceil(dims.Hp * kq))), tex = canvasTexture(c);
+    const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - layer, polygonOffsetUnits: -2 - layer * 2 });
+    const mesh = new THREE.Mesh(geo, mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
+    posaVelo(mesh, R); mesh.receiveShadow = true; scene().add(mesh); mesh.updateMatrixWorld(true);
+    GFX.mem.veli++;
+    return { mesh, c, ctx: c.getContext('2d'), tex, x0: 0, y0: 0, k: c.width / dims.Wp, layer, decal2: true, geo };
+  }
+  // [graffiti2] il disegno vero è arrivato: prende il posto della prima stesura sulla stessa geometria (la tela della sua misura)
+  function upgradeVeil(w, g, A) {
+    const T = g.tgt; if (!T || !T.mesh || T.atl || !A || !A.stages) return;
+    const kq = PHONE_K(), cw = Math.max(1, Math.ceil(A.Wp * kq)), ch = Math.max(1, Math.ceil(A.Hp * kq));
+    if (T.c.width !== cw || T.c.height !== ch) { const c2 = poolGet(cw, ch), t2 = canvasTexture(c2); T.mesh.material.map = t2; T.mesh.material.needsUpdate = true; T.tex.dispose(); poolPut(T.c); T.c = c2; T.ctx = c2.getContext('2d'); T.tex = t2; }
+    else T.ctx.clearRect(0, 0, cw, ch);
+    T.k = T.c.width / A.Wp; g.art = A; g.drawn = 0; g.flat = false; g.ts = null; drawUpTo(w, g);
+  }
   // ---------------- [atlante] I LAVORI FINITI IN UNA TELA SOLA ----------------
   // Un velo è un disegno a sé (una mesh, un materiale, una texture): con 150 veli vivi sono 150 disegni trasparenti a fotogramma,
   // e per questo i lavori in giro erano pochi. Un lavoro finito non cambia più: la sua tela va in un atlante (una texture grande,
   // 4096² sul computer, 2048² sul telefono, sulla scheda video) e il suo piano diventa un'istanza di una InstancedMesh sola, che
   // legge il suo riquadro dall'atlante. Tutti i lavori finiti sui muri e per terra costano un disegno. Restano veli i lavori in
   // corso, sui mezzi, sul treno e sui carri (quelli sopra un altro vanno nella seconda InstancedMesh, disegnata dopo). Senza WebGL2 o con ?noatlante: i veli di prima.
-  const ATL = { pages: [], pend: [], pc: null, off: typeof location !== 'undefined' && /[?&]noatlante\b/.test(location.search), ok: null, PAD: 3, CAP: 2048 };
+  const ATL = { pages: [], pend: [], mk: 0, mrgVeli: [], pc: null, off: typeof location !== 'undefined' && /[?&]noatlante\b/.test(location.search), ok: null, PAD: 3, CAP: 2048 };
   function atlOk() {
     if (ATL.ok !== null) return ATL.ok; const R = R_(), rd = R && R.__models && R.__models.renderer; if (!rd || typeof document === 'undefined') return false;
     return (ATL.ok = !ATL.off && !!rd.capabilities.isWebGL2);
@@ -838,7 +869,12 @@ var Writing = (function () {
       const mesh = new THREE.InstancedMesh(g, mat, ATL.CAP); mesh.count = 0; mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.renderOrder = 3 + L * 2; mesh.userData.velo = true; mesh.userData.atlante = true;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); for (let i = 0; i < ATL.CAP; i++) mesh.setMatrixAt(i, z); scene().add(mesh);
       return { mesh, rect: rc, freeI: [], n: 0 }; });
-    const P = { S, rt, L: meshes, shelves: [], top: 0, fresh: true }; ATL.pages.push(P); return P;
+    // [graffiti2] i lavori sui triangoli veri (decalG) non sono rettangoli: nella pagina una mesh per strato con le loro geometrie fuse
+    // (le coordinate della tela già nel loro scaffale), rifatta quando cambia; costa un disegno per strato come le istanze
+    const MG = FIX2 ? [0, 1].map(L => { const mat = new THREE.MeshLambertMaterial({ map: rt.texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 - L * 2, polygonOffsetUnits: -2 - L * 4 });
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat); mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.renderOrder = 3 + L * 2; mesh.userData.velo = true; mesh.userData.atlante = true; mesh.visible = false; scene().add(mesh);
+      return { mesh, parts: new Map(), dirty: false, mrg: true }; }) : null;
+    const P = { S, rt, L: meshes, MG, shelves: [], top: 0, fresh: true }; ATL.pages.push(P); return P;
   }
   // lo scaffale: righe alte a gradini di 16 px; in ogni riga i tratti liberi [x, larghezza]
   function atlAlloc(P, w, h) {
@@ -862,7 +898,16 @@ var Writing = (function () {
     if (!sl && !ATL.pages.length) { P = atlPage(); sl = atlAlloc(P, c.width, c.height); }
     if (!sl) { P = ATL.pages[0]; if (atlEvict(P, cx, cy, c.width * c.height)) sl = atlAlloc(P, c.width, c.height); }   // piena: via i più lontani
     if (!sl) return false;
-    const THREE = T3(), Ly = P.L[T.layer > 0 ? 1 : 0], i = Ly.freeI.length ? Ly.freeI.pop() : Ly.n++; if (i >= ATL.CAP) { Ly.n--; atlRelease(P, sl); return false; }
+    const THREE = T3();
+    if (T.decal2 && P.MG) {   // [graffiti2] sui triangoli veri: la geometria nel mondo, le coordinate della tela nel suo scaffale
+      m.updateMatrixWorld(true); const My = P.MG[T.layer > 0 ? 1 : 0], S = P.S, ix = sl.x + ATL.PAD, iy = sl.y + ATL.PAD, iw = c.width, ih = c.height, gp = T.geo.attributes.position, gu = T.geo.attributes.uv, gn = T.geo.attributes.normal;
+      const pos = new Float32Array(gp.count * 3), uv = new Float32Array(gp.count * 2), nor = new Float32Array(gp.count * 3), v = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(m.matrixWorld);
+      for (let k = 0; k < gp.count; k++) { v.fromBufferAttribute(gp, k).applyMatrix4(m.matrixWorld); pos[k * 3] = v.x; pos[k * 3 + 1] = v.y; pos[k * 3 + 2] = v.z; uv[k * 2] = (ix + gu.getX(k) * iw) / S; uv[k * 2 + 1] = (iy + gu.getY(k) * ih) / S; v.fromBufferAttribute(gn, k).applyMatrix3(nm).normalize(); nor[k * 3] = v.x; nor[k * 3 + 1] = v.y; nor[k * 3 + 2] = v.z; }
+      const key = ++ATL.mk, px = new THREE.Object3D(); px.position.copy(m.position); px.quaternion.copy(m.quaternion); px.updateMatrixWorld(true);
+      ATL.pend.push({ P, My, key, part: { pos, uv, nor }, sl, c, ix, iy, iw, ih, veil: { mesh: m, tex: T.tex } });
+      g.tgt = { atl: true, mrg: true, P, My, key, sl, mesh: px, geo: T.geo, c: null, k: T.k }; const A = g.art; g.art = { stages: [0], paths: null, radii: null, Wp: A.Wp, Hp: A.Hp, ppm: A.ppm }; g.drawn = 1; return true;
+    }
+    const Ly = P.L[T.layer > 0 ? 1 : 0], i = Ly.freeI.length ? Ly.freeI.pop() : Ly.n++; if (i >= ATL.CAP) { Ly.n--; atlRelease(P, sl); return false; }
     m.updateMatrixWorld(true);
     const M = new THREE.Matrix4().copy(m.matrixWorld).multiply(new THREE.Matrix4().makeScale(w.gfxRect.W, w.gfxRect.H, 1));
     const S = P.S, pad = ATL.PAD, ix = sl.x + pad, iy = sl.y + pad, iw = c.width, ih = c.height;
@@ -874,6 +919,7 @@ var Writing = (function () {
   }
   function atlFree(g) {
     const T = g.tgt, P = T.P; if (!P) return; const THREE = T3();
+    if (T.mrg) { T.My.parts.delete(T.key); T.My.dirty = true; atlRelease(P, T.sl); const q = ATL.pend.findIndex(o => o.key === T.key); if (q >= 0) { const o = ATL.pend[q]; ATL.pend.splice(q, 1); veilGone(o.veil); poolPut(o.c); } if (T.geo) T.geo.dispose(); T.P = null; return; }
     T.Ly.mesh.setMatrixAt(T.i, new THREE.Matrix4().makeScale(0, 0, 0)); T.Ly.mesh.instanceMatrix.needsUpdate = true; T.Ly.freeI.push(T.i); atlRelease(P, T.sl);
     const q = ATL.pend.findIndex(o => o.Ly === T.Ly && o.i === T.i); if (q >= 0) { const o = ATL.pend[q]; ATL.pend.splice(q, 1); veilGone(o.veil); poolPut(o.c); }
     T.P = null;
@@ -888,7 +934,20 @@ var Writing = (function () {
   // le copie in attesa: ogni tela va dritta nel suo scaffale (texSubImage2D sulla texture dell'atlante, il margine trasparente
   // compreso), poi le mipmap si rifanno una volta. Prima la tela si ridisegnava nell'atlante con uno shader: nel gioco la leggeva
   // vuota e l'atlante si riempiva di nero
+  // [graffiti2] le mesh fuse dei lavori sui triangoli veri: rifatte quando un lavoro entra o esce (poche centinaia di triangoli)
+  function atlMerge() {
+    const THREE = T3();
+    for (const P of ATL.pages) if (P.MG) for (const My of P.MG) {
+      if (!My.dirty) continue; My.dirty = false; let n = 0; My.parts.forEach(q => { n += q.pos.length / 3; });
+      const pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), nor = new Float32Array(n * 3); let o = 0;
+      My.parts.forEach(q => { pos.set(q.pos, o * 3); uv.set(q.uv, o * 2); nor.set(q.nor, o * 3); o += q.pos.length / 3; });
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+      My.mesh.geometry.dispose(); My.mesh.geometry = g; My.mesh.visible = n > 0;
+    }
+    ATL.mrgVeli.forEach(o => veilGone(o.veil)); ATL.mrgVeli.length = 0;
+  }
   function atlFlush() {
+    if (FIX2 && !ATL.pend.length) { if (ATL.pages.some(P => P.MG && P.MG.some(M => M.dirty))) atlMerge(); return; }
     if (!ATL.pend.length) return; const THREE = T3(), rd = R_().__models.renderer, gl = rd.getContext();
     const byP = new Map(); ATL.pend.splice(0, 8).forEach(o => { (byP.get(o.P) || byP.set(o.P, []).get(o.P)).push(o); });
     byP.forEach((L, P) => {
@@ -900,16 +959,18 @@ var Writing = (function () {
       L.forEach(o => {
         pc.width = o.sl.w; pc.height = o.sl.h; px.clearRect(0, 0, o.sl.w, o.sl.h); px.drawImage(o.c, ATL.PAD, o.sl.h - ATL.PAD - o.ih);   // girata in su: il fondo della tela a PAD dal fondo dello scaffale
         gl.texSubImage2D(gl.TEXTURE_2D, 0, o.sl.x, o.sl.y, gl.RGBA, gl.UNSIGNED_BYTE, pc);
+        if (o.My) { o.My.parts.set(o.key, o.part); o.My.dirty = true; ATL.mrgVeli.push(o); poolPut(o.c); return; }   // [graffiti2] il velo si spegne quando la mesh fusa è rifatta (qui sotto)
         const M3 = o.Ly.mesh; M3.setMatrixAt(o.i, o.M); M3.count = Math.max(M3.count, o.i + 1); M3.instanceMatrix.needsUpdate = true;
         veilGone(o.veil); poolPut(o.c);
       });
       gl.generateMipmap(gl.TEXTURE_2D); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       pc.width = pc.height = 1;
     });
+    if (FIX2) atlMerge();
   }
-  function atlReset() { ATL.pages.forEach(P => { P.L.forEach(Ly => { if (Ly.mesh.parent) Ly.mesh.parent.remove(Ly.mesh); Ly.mesh.geometry.dispose(); Ly.mesh.material.dispose(); }); P.rt.dispose(); }); ATL.pages = []; ATL.pend = []; }
+  function atlReset() { ATL.pages.forEach(P => { (P.MG || []).forEach(My => { if (My.mesh.parent) My.mesh.parent.remove(My.mesh); My.mesh.geometry.dispose(); My.mesh.material.dispose(); }); P.L.forEach(Ly => { if (Ly.mesh.parent) Ly.mesh.parent.remove(Ly.mesh); Ly.mesh.geometry.dispose(); Ly.mesh.material.dispose(); }); P.rt.dispose(); }); ATL.pages = []; ATL.pend = []; }
   // si può mettere nell'atlante? un lavoro finito, fermo sulla scena (non su un mezzo né sul treno)
-  const atlFits = (w, g, W) => w.done && w !== W.cur && !w.trace && g.tgt && g.tgt.mesh && !g.tgt.atl && !g.tgt.decal && w.surf !== 'auto' && w.surf !== 'vagone' && w.surf !== 'treno' && w.gfxRect && !w.gfxRect.veh && !(w.crossed && !g.crossDrawn) && g.drawn >= (g.art && g.art.stages ? g.art.stages.length : 1) - 1e-6 && g.tgt.mesh.parent === scene();
+  const atlFits = (w, g, W) => !g.flat && w.done && w !== W.cur && !w.trace && g.tgt && g.tgt.mesh && !g.tgt.atl && !g.tgt.decal && w.surf !== 'auto' && w.surf !== 'vagone' && w.surf !== 'treno' && w.gfxRect && !w.gfxRect.veh && !(w.crossed && !g.crossDrawn) && g.drawn >= (g.art && g.art.stages ? g.art.stages.length : 1) - 1e-6 && g.tgt.mesh.parent === scene();
   // libera la grafica di un lavoro (la tela torna nella pila)
   function freeVeil(g) { if (g && g.tgt && g.tgt.atl) { atlFree(g); return; } if (!g || !g.tgt || !g.tgt.mesh) return; const m = g.tgt.mesh; if (m.parent) m.parent.remove(m); m.geometry.dispose(); m.material.dispose(); if (g.tgt.tex) g.tgt.tex.dispose(); poolPut(g.tgt.c); GFX.mem.veli = Math.max(0, GFX.mem.veli - 1); }
   // [graffiti] LA DECALCOMANIA SUL MEZZO: i triangoli della carrozzeria dentro il riquadro (proiettato lungo la normale del
@@ -940,6 +1001,101 @@ var Writing = (function () {
     if (pos.length < 9) return null;
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.computeVertexNormals(); return g;
   }
+  // [graffiti2] L'ADERENZA SUI TRIANGOLI VERI. Ogni velo era un piano (PlaneGeometry) messo davanti al muro o steso per terra: un pezzo
+  // salvato restava a 4,7 cm dal muro in tutti i suoi venti punti, per terra fino a 61 cm (il piano per cinque punti, il ripiego +1,2 cm,
+  // la tolleranza di 25 cm della finestra). Ora il lavoro si proietta sui triangoli che stanno davvero sotto il riquadro, come la
+  // decalcomania dei mezzi (decalGeo): le facce che guardano dalla parte del lavoro (entro una fascia di spessore attorno al piano),
+  // tagliate ai bordi, ognuna spostata di 2 mm lungo la SUA normale. La geometria sta nel sistema del velo (x a destra, y in alto sul
+  // lavoro, z la normale: lo stesso del piano di prima), così il resto (l'atlante, il ricalco coi raggi, la misura) non cambia.
+  // È un generatore (si ferma ogni mesh e ogni 20.000 triangoli): scanNear lo porta avanti nel tempo dei graffiti.
+  // Ritorna { geo, cop } (cop: la parte del riquadro coperta) o { manca: true } se un tassello leggero non ha ancora i dati dei raggi.
+  const GAP2 = .002;
+  function frameOf(R) {
+    const THREE = T3(), n = new THREE.Vector3(R.n.x, R.n.y || 0, R.n.z);
+    if (Math.abs(n.y) > .5) { n.normalize(); const up = R.u ? new THREE.Vector3(R.u.x, R.u.y || 0, R.u.z) : new THREE.Vector3().crossVectors(n, R.r); up.addScaledVector(n, -up.dot(n)).normalize(); return { n, up, r: new THREE.Vector3().crossVectors(up, n).normalize() }; }
+    n.y = 0; n.normalize(); const up = new THREE.Vector3(0, 1, 0); return { n, up, r: new THREE.Vector3().crossVectors(up, n).normalize() };
+  }
+  // i vertici di una mesh per i raggi: il vettore delle posizioni, o quello che i tasselli tengono al suo posto (16 bit, o a parte)
+  function posOf(m) {
+    const g = m.geometry, PA = g && g.attributes && g.attributes.position; if (!PA) return null;
+    const Q = PA.__q; if (Q) { const u = Q.u, mn = Q.mn, k = Q.k; return { n: u.length / 3, x: i => mn[0] + u[i * 3] * k[0], y: i => mn[1] + u[i * 3 + 1] * k[1], z: i => mn[2] + u[i * 3 + 2] * k[2] }; }
+    const A = PA.__pf || (PA.isInterleavedBufferAttribute ? null : PA.array);
+    if (A && A.length >= 9 && PA.itemSize === 3) return { n: A.length / 3, x: i => A[i * 3], y: i => A[i * 3 + 1], z: i => A[i * 3 + 2] };
+    if (PA.isInterleavedBufferAttribute && PA.count) return { n: PA.count, x: i => PA.getX(i), y: i => PA.getY(i), z: i => PA.getZ(i) };
+    return null;
+  }
+  function* decalG(R, layer) {
+    const THREE = T3(), F = frameOf(R), n = F.n, up = F.up, r = F.r, C = new THREE.Vector3(R.c.x, R.c.y, R.c.z), flat = Math.abs(n.y) > .5;
+    const hw = R.W / 2, hh = R.H / 2, D0 = flat ? .05 : .10, D1 = flat ? .05 : .06, minDot = flat ? .7 : .5, gap = GAP2 + Math.min(4, layer || 0) * .0005;   // la fascia: per terra ±5 cm, sul muro da 10 cm dietro a 6 davanti
+    const list = cands(C.x, C.z).filter(m => !m.userData.velo && !m.userData.wr && !m.isInstancedMesh && !m.isSkinnedMesh && m.visible !== false);
+    const L = nearList(list, C, Math.hypot(R.W, R.H) / 2 + .5);
+    // la scatola del riquadro nel mondo (con la fascia)
+    const B = new THREE.Box3(); for (const a of [-hw, hw]) for (const b of [-hh, hh]) for (const d of [-D0, D1]) B.expandByPoint(C.clone().addScaledVector(r, a).addScaledVector(up, b).addScaledVector(n, d));
+    const pos = [], uv = [], nor = [], Bl = new THREE.Box3(), M = new THREE.Matrix4(), IDM = new THREE.Matrix4();
+    const A = new THREE.Vector3(), Bv = new THREE.Vector3(), Cv = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), fn = new THREE.Vector3();
+    const loc = p => { const dx = p.x - C.x, dy = p.y - C.y, dz = p.z - C.z; return [dx * r.x + dy * r.y + dz * r.z, dx * up.x + dy * up.y + dz * up.z, dx * n.x + dy * n.y + dz * n.z]; };
+    const clip = (poly, k, sg, lim) => { const out = []; for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length], da = sg * a[k] - lim, db = sg * b[k] - lim; if (da <= 0) out.push(a); if ((da <= 0) !== (db <= 0)) { const t = da / (da - db); out.push(a.map((v, j) => v + (b[j] - v) * t)); } } return out; };
+    let manca = false, area = 0, work = 0;
+    for (const m of L) {
+      yield;
+      const g = m.geometry; if (!g) continue;
+      let mt = m.material; if (Array.isArray(mt)) { if (mt.every(q => !q || q.visible === false || (q.transparent && q.opacity < .3))) continue; mt = null; } else if (!mt || mt.visible === false || (mt.transparent && mt.opacity < .3)) continue;
+      const P = posOf(m);
+      if (!P) { if (m.raycast !== THREE.Mesh.prototype.raycast) manca = true; continue; }   // un tassello leggero senza i dati: si riprova quando arrivano
+      const MW = m.userData && m.userData.qs ? IDM : m.matrixWorld; M.copy(MW).invert();
+      Bl.copy(B).applyMatrix4(M); if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
+      const x0 = Bl.min.x, y0 = Bl.min.y, z0 = Bl.min.z, x1 = Bl.max.x, y1 = Bl.max.y, z1 = Bl.max.z;
+      const ix = g.index ? (g.index.__ix || g.index.array) : null, nT = ((ix ? ix.length : P.n) / 3) | 0, dr = g.drawRange, t0 = Math.max(0, Math.floor((dr && dr.start || 0) / 3)), t1 = dr && dr.count !== Infinity ? Math.min(nT, t0 + Math.floor(dr.count / 3)) : nT;
+      const groups = Array.isArray(m.material) && g.groups && g.groups.length ? g.groups : null;
+      for (let t = t0; t < t1; t++) {
+        if (++work % 20000 === 0) yield;
+        const a = ix ? ix[t * 3] : t * 3, b = ix ? ix[t * 3 + 1] : t * 3 + 1, c = ix ? ix[t * 3 + 2] : t * 3 + 2;
+        const ax = P.x(a), bx = P.x(b), cx = P.x(c); if ((ax < x0 && bx < x0 && cx < x0) || (ax > x1 && bx > x1 && cx > x1)) continue;
+        const az = P.z(a), bz = P.z(b), cz = P.z(c); if ((az < z0 && bz < z0 && cz < z0) || (az > z1 && bz > z1 && cz > z1)) continue;
+        const ay = P.y(a), by = P.y(b), cy = P.y(c); if ((ay < y0 && by < y0 && cy < y0) || (ay > y1 && by > y1 && cy > y1)) continue;
+        if (groups) { let mi = -1; for (const gg of groups) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } const q = m.material[mi]; if (!q || q.visible === false || (q.transparent && q.opacity < .3)) continue; }
+        A.set(ax, ay, az); Bv.set(bx, by, bz); Cv.set(cx, cy, cz); if (MW !== IDM) { A.applyMatrix4(MW); Bv.applyMatrix4(MW); Cv.applyMatrix4(MW); }
+        fn.crossVectors(e1.subVectors(Bv, A), e2.subVectors(Cv, A)); const l = fn.length(); if (l < 1e-10) continue; fn.multiplyScalar(1 / l);
+        let dn = fn.dot(n); if (dn < 0 && mt && mt.side === THREE.DoubleSide) { fn.negate(); dn = -dn; }
+        if (dn < minDot) continue;   // solo le facce che guardano dalla parte del lavoro
+        let poly = [loc(A), loc(Bv), loc(Cv)];
+        poly = clip(poly, 0, 1, hw); if (poly.length) poly = clip(poly, 0, -1, hw); if (poly.length) poly = clip(poly, 1, 1, hh); if (poly.length) poly = clip(poly, 1, -1, hh); if (poly.length) poly = clip(poly, 2, 1, D1); if (poly.length) poly = clip(poly, 2, -1, D0); if (poly.length < 3) continue;
+        const fl = [fn.dot(r), fn.dot(up), dn];   // la normale del triangolo nel sistema del velo: lo spostamento di 2 mm va lungo lei
+        for (let k = 1; k + 1 < poly.length; k++) {
+          const p0 = poly[0], p1 = poly[k], p2 = poly[k + 1]; area += Math.abs((p1[0] - p0[0]) * (p2[1] - p0[1]) - (p2[0] - p0[0]) * (p1[1] - p0[1])) / 2;
+          for (const q of [p0, p1, p2]) { pos.push(q[0] + fl[0] * gap, q[1] + fl[1] * gap, q[2] + fl[2] * gap); uv.push(q[0] / R.W + .5, q[1] / R.H + .5); nor.push(fl[0], fl[1], fl[2]); }
+        }
+      }
+    }
+    if (pos.length < 9) return manca ? { manca: true } : null;
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    geo.computeBoundingSphere(); geo.computeBoundingBox();
+    return { geo, cop: Math.min(1.5, area / Math.max(1e-6, R.W * R.H)), manca };
+  }
+  // la posa del velo (la stessa del piano di prima): al centro del riquadro, x = r, y = l'alto del lavoro, z = la normale
+  function posaVelo(mesh, R) { const F = frameOf(R), THREE = T3(); mesh.position.set(R.c.x, R.c.y, R.c.z); mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(F.r, F.up, F.n)); }
+  // la misura della tela di un lavoro prima che arrivi il disegno (writer_arte.js: W × PPM × TK, i lavori fini a risoluzione più alta)
+  const TKS2 = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };
+  const telaDi = w => { const TK = w.surf === 'treno' ? 1 : w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS2[w.style] || 1; return { Wp: Math.max(4, Math.round(w.W * PPM * TK)), Hp: Math.max(4, Math.round(w.H * PPM * TK)) }; };
+  // [graffiti2] LA PRIMA STESURA: finché il disegno vero non arriva (dal disegnatore a parte, in coda) il lavoro si vede subito in una
+  // versione piatta fatta in un attimo: la sagoma delle lettere col contorno, i colori della sua tavolozza. Poi si sostituisce.
+  function stesura(w, T) { try { stesura0(w, T); } catch (e) { } T.tex.needsUpdate = true; }
+  function stesura0(w, T) {
+    const c = T.c, x = T.ctx, Wc = c.width, Hc = c.height, P = PAL[(w.pal || 0) % PAL.length] || PAL[0], rr = mulberry((w.seed || 1) ^ 0x2f1);
+    const f = P.f || ['#e8e0d0'], o = P.o || '#121216', big = /^(pezzo|burner|murale|rullo|mostro|calli|wholecar|verticale)$/.test(w.style);
+    x.save(); x.clearRect(0, 0, Wc, Hc);
+    if (w.style === 'manifesto' || w.style === 'adesivi' || w.sticker) { x.fillStyle = '#e8e0cc'; x.globalAlpha = .9; const m = Math.min(Wc, Hc) * .08; x.fillRect(m, m, Wc - 2 * m, Hc - 2 * m); x.globalAlpha = 1; }
+    if (big && P.bg && rr() < .7) { x.globalAlpha = .55; x.fillStyle = P.bg; x.beginPath(); x.ellipse(Wc / 2, Hc / 2, Wc * .5, Hc * .46, 0, 0, 7); x.fill(); x.globalAlpha = 1; }
+    const txt = String(w.words || w.aka || 'NINO').slice(0, 12), fz = Math.min(Hc * (big ? .62 : .7), Wc / Math.max(2, txt.length) * 1.55);
+    x.font = `900 ${Math.round(fz)}px "Bangers","Impact","Arial Black",sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.lineJoin = 'round';
+    x.translate(Wc / 2, Hc / 2); x.rotate((rr() - .5) * (big ? .08 : .25));
+    const col = w.col || f[0];
+    x.lineWidth = Math.max(2, fz * (big ? .16 : .1)); x.strokeStyle = o; x.strokeText(txt, 0, 0, Wc * .94);
+    if (big && f.length > 1) { const gr = x.createLinearGradient(0, -fz / 2, 0, fz / 2); f.forEach((q, i) => gr.addColorStop(i / Math.max(1, f.length - 1), q)); x.fillStyle = gr; } else x.fillStyle = col;
+    x.fillText(txt, 0, 0, Wc * .94);
+    if (big && P.hi) { x.globalAlpha = .6; x.lineWidth = Math.max(1, fz * .03); x.strokeStyle = P.hi; x.strokeText(txt, -fz * .02, -fz * .03, Wc * .94); }
+    x.restore(); T.tex.needsUpdate = true;
+  }
   // disegna il lavoro fino a prog (le tappe in ordine, ognuna da sinistra a destra)
   // LA SVELATURA. I lavori degli NPC crescono lungo il percorso della mano (art.paths: i tratti delle lettere, le passate dello
   // sfondo): la bomboletta «gratta via» il muro e scopre la tappa in corso. Il giocatore invece ricalca a mano (traceAt).
@@ -956,7 +1112,7 @@ var Writing = (function () {
   // writer_arte.js, copiati nella pagina in <script id="pv-artworker" type="text/plain">) e gli stessi semi: il disegno
   // è identico, arriva qualche fotogramma dopo, e intanto il gioco va avanti. I lavori finiti si tengono (gli ultimi 48),
   // così tornando in una zona non si rifanno. Senza Worker o OffscreenCanvas: come prima, qui.
-  const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set(), q: [] };
+  const ARTW = { w: null, ok: null, seq: 0, wait: new Map(), cache: new Map(), recSig: '', pend: new Set(), q: [], wq: [], volo: new Map(), fly: 0 };
   const ARTW_MAIN = `onmessage = async e => { const m = e.data; if (m.fonts) self.GraffitiFonts = { D: m.fonts }; if (m.rec) WriterMano.setRecorded(m.rec); if (!m.w) return; let A; try { await WriterArte.fontsReady(); } catch (er) { }
     try { A = typeof Pennelli !== 'undefined' ? Pennelli.art(m.w) : WriterArte.art(m.w); } catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); return; }
     const tr = [], bm = c => { if (c && typeof c.transferToImageBitmap === 'function') { const b = c.transferToImageBitmap(); tr.push(b); return b; } return c; };
@@ -970,13 +1126,56 @@ var Writing = (function () {
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
-      ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; ARTW.morto = performance.now(); const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker')); };
+      ARTW.w.onerror = e => { console.warn('[Writing] disegnatore a parte spento:', e.message); ARTW.ok = false; ARTW.morto = performance.now(); const cbs = [...ARTW.wait.values()]; ARTW.wait.clear(); cbs.forEach(cb => cb(null, 'worker'));
+        if (FIX2) { const L = ARTW.wq.splice(0); L.forEach(it => ARTW.q.push(Object.assign(() => { try { it.cb(art(it.w)); } catch (er) { it.cb(null); } }, { w: it.w }))); } };
       return (ARTW.ok = true);
     } catch (e) { return (ARTW.ok = false); }
   }
   const artKey = w => [w.id, w.seed, w.style, w.pal || 0, w.col || '', w.W || '', w.H || '', w.surf, w.flat ? 1 : 0, w.sup || '', w.eta || 0, w.sticker ? 1 : 0, w.rec && w.rec.pen || ''].join(':');   // [graffiti] anche il muro, l'età, il pennello
   // il disegno di w: subito (dalla memoria, o qui se il worker non c'è) o appena il worker l'ha fatto. cb(A) con A pronto da usare
-  function artFor(w, cb) {
+  // [graffiti2] IL DISEGNATORE A PARTE, IN ORDINE. Prima: tutte le richieste partivano subito (in fila nel worker, la prima chiesta la
+  // prima fatta, anche se ormai alle spalle), dopo tre ritardi di 4 s il worker veniva spento e da lì un disegno ogni 2 s sul filo della
+  // pagina. Ora: al più tre disegni alla volta nel worker, e il prossimo è il più vicino fra quelli in vista (dietro la camera conta più
+  // del doppio); il worker lento si aspetta (intanto si vede la prima stesura); si spegne solo se non ha mai risposto in 60 s (o se si
+  // rompe), e allora si disegna qui, sempre il più importante per primo.
+  const prioArt = w => { const st = GFX.st, R = R_(); if (!st || !R) return 0; if (w.surf === 'treno') return 0; const q = w.pos || (w.gfxRect && w.gfxRect.c), cam = R.cam || {}, cx = cam.x !== undefined ? cam.x : st.player.x, cy = cam.y !== undefined ? cam.y : st.player.y; if (!q) return 1e6;
+    const d = hyp(q.x - cx, q.z - cy); let inV = true; try { const F = GFX.fru; if (F) inV = F.containsPoint(GFX.fv.set(q.x, q.y, q.z)); } catch (e) { } return d * (inV ? 1 : 2.2); };
+  function artPump() {
+    while ((ARTW.fly || 0) < 3 && ARTW.wq.length && ARTW.ok) {
+      let bi = 0, bs = Infinity; for (let i = 0; i < ARTW.wq.length; i++) { const s0 = prioArt(ARTW.wq[i].w); if (s0 < bs) { bs = s0; bi = i; } }
+      const it = ARTW.wq.splice(bi, 1)[0];
+      if (it.drop && (it.w.erased || !it.alive())) { it.cb(null); continue; }   // non serve più (la camera è andata via)
+      artPost(it);
+    }
+  }
+  function artPost(it) {
+    const w = it.w, WM = typeof WriterMano !== 'undefined' ? WriterMano : { RECORDED: {}, MIA: null };
+    const sig = Object.keys(WM.RECORDED).length + ':' + (WM.MIA || ''), msg = { id: ++ARTW.seq, w: {} };
+    for (const key in w) if (key !== 'gfxRect' && !key.startsWith('__')) msg.w[key] = w[key];
+    if (sig !== ARTW.recSig) { ARTW.recSig = sig; msg.rec = Object.assign({}, WM.RECORDED, WM.MIA ? { _mia: WM.MIA } : {}); }
+    ARTW.fly = (ARTW.fly || 0) + 1; it.t = performance.now(); ARTW.volo.set(msg.id, it);
+    ARTW.wait.set(msg.id, (A, err) => { ARTW.volo.delete(msg.id); ARTW.fly = Math.max(0, ARTW.fly - 1); if (A) ARTW.lastOk = performance.now();
+      if (!A) { ARTW.q.push(Object.assign(() => { try { it.cb(art(w)); } catch (e) { it.cb(null); } }, { w })); }   // non è riuscito di là: qui, a turno
+      else { if (w.done) { ARTW.cache.set(it.k, A); while (ARTW.cache.size > 48) ARTW.cache.delete(ARTW.cache.keys().next().value); } it.cb(Object.assign({}, A, { stages: A.stages.slice() })); }
+      artPump(); });
+    if (!ARTW.t0) ARTW.t0 = performance.now();
+    try { ARTW.w.postMessage(msg); } catch (e) { ARTW.wait.delete(msg.id); ARTW.volo.delete(msg.id); ARTW.fly--; try { it.cb(art(w)); } catch (e2) { it.cb(null); } }
+  }
+  function artCheck() {   // il worker non ha MAI risposto in 60 s (o è morto): si spegne, quello che aspettava si fa qui
+    if (!ARTW.ok || ARTW.lastOk || !ARTW.t0 || performance.now() - ARTW.t0 < 60000) return;
+    ARTW.ok = false; ARTW.morto = performance.now(); try { ARTW.w.terminate(); } catch (e) { } console.warn('[Writing] il disegnatore a parte non ha mai risposto: i graffiti si disegnano nel gioco');
+    const L = [...ARTW.volo.values()].concat(ARTW.wq); ARTW.volo.clear(); ARTW.wait.clear(); ARTW.wq.length = 0; ARTW.fly = 0;
+    L.forEach(it => ARTW.q.push(Object.assign(() => { try { it.cb(art(it.w)); } catch (e) { it.cb(null); } }, { w: it.w })));
+  }
+  function artFor2(w, cb, opt) {
+    const k = artKey(w), C = ARTW.cache.get(k);
+    if (C) { ARTW.cache.delete(k); ARTW.cache.set(k, C); cb(Object.assign({}, C, { stages: C.stages.slice() })); return; }
+    if (ARTW.ok === false && ARTW.morto && performance.now() - ARTW.morto > 20000 && (ARTW.rinasce || 0) < 2 && ARTW.lastOk) { ARTW.rinasce = (ARTW.rinasce || 0) + 1; ARTW.ok = null; ARTW.morto = 0; try { ARTW.w && ARTW.w.terminate(); } catch (e) { } ARTW.w = null; }
+    if (!artWorker()) { ARTW.q.push(Object.assign(() => { try { cb(art(w)); } catch (e) { cb(null); } }, { w })); return; }
+    ARTW.wq.push({ w, k, cb, drop: !!(opt && opt.alive), alive: opt && opt.alive }); artPump();
+  }
+  function artFor(w, cb, opt) {
+    if (FIX2) return artFor2(w, cb, opt);
     const k = artKey(w), C = ARTW.cache.get(k);
     if (C) { ARTW.cache.delete(k); ARTW.cache.set(k, C); cb(Object.assign({}, C, { stages: C.stages.slice() })); return; }
     const sync = () => cb(art(w));
@@ -1018,7 +1217,8 @@ var Writing = (function () {
       return;
     }
     const want = (w.done ? 1 : clamp(w.prog, 0, 1)) * nS;
-    if (w.done && !g.drawn) { fullStage(T, A.stages[nS - 1], A); g.drawn = nS; if (!w.crossed) { A.stages = [A.stages[nS - 1]]; A.paths = A.need = null; g.drawn = 1; T.tex.needsUpdate = true; return; } }   // finito: basta l'immagine finale
+    const fin = w.stageK ? clamp(w.stageK, 1, nS) - 1 : nS - 1;   // [graffiti2] Traccia: il lavoro salvato a metà resta alla tappa a cui eri arrivato
+    if (w.done && !g.drawn) { fullStage(T, A.stages[fin], A); g.drawn = nS; if (!w.crossed) { A.stages = [A.stages[fin]]; A.paths = A.need = null; g.drawn = 1; T.tex.needsUpdate = true; return; } }   // finito: basta l'immagine finale
     let guard = 0;
     while (g.drawn < want - 1e-6 && guard++ < nS + 2) {
       const sI = Math.min(nS - 1, Math.floor(g.drawn)), a = g.drawn - sI, b = Math.min(1, want - sI), P = A.paths[sI] || [], R = A.radii[sI] || 8, img = A.stages[sI];
@@ -1707,6 +1907,172 @@ var Writing = (function () {
     const q = new THREE.Vector3(); if (rc.ray.intersectPlane(TAV.plane, q)) { TAV.b = q; tavFrame(); }
     return true;
   }
+  // =====================================================================================================================
+  // [graffiti2] LA CORNICE SUL MURO, PRIMA DI APRIRE. Il giro di prima: tieni premuto, trascina una finestra, lascia; la finestra
+  // usciva minuscola (0,6 × 0,4, senza riprovare) o su un gradino (qualunque faccia verticale entro 0,9 m dietro il colpo), e il tick
+  // girava un fotogramma dopo il tocco (sul telefono lento un tocco svelto non faceva niente). Ora:
+  //   1. con la bomboletta in mano una cornice gialla segue il puntatore sul muro (sul telefono: il muro davanti, al centro dello
+  //      schermo), già della misura scelta (tag, throw-up, pezzo, burner: la fila sopra le icone, o la rotella, o [ ]); dove non ci
+  //      sta è grigia e lo dice;
+  //   2. un tocco sulla cornice (al pointerdown) apre la tavoletta; un tocco altrove cammina, come sempre;
+  //   3. ✓ salva: lo stacco sul pezzo, il soffio della bomboletta, chi c'era si gira, il punteggio; e si torna a mani libere.
+  // Il muro dietro (oltre l'erba, il bordo del marciapiede) vale solo se è alto almeno un metro (un gradino non è un muro); se un
+  // tassello non ha ancora i dati dei raggi la cornice dice «sto inquadrando il muro…» e si riprova da sola.
+  const MISURE = { tag: [1.5, .75], throw: [2.7, 1.3], pezzo: [4.8, 2.05], burner: [6.6, 2.5] }, MIS_K = ['tag', 'throw', 'pezzo', 'burner'];
+  const MIS_NOME = { tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner' };
+  TAV.size = (() => { try { const k = localStorage.getItem('pv_tavola_misura'); return MISURE[k] ? k : 'throw'; } catch (e) { return 'throw'; } })();
+  function tavSize(d, k) {
+    const i = MIS_K.indexOf(TAV.size), j = k && MISURE[k] ? MIS_K.indexOf(k) : clamp(i + (d || 0), 0, MIS_K.length - 1); TAV.size = MIS_K[j];
+    try { localStorage.setItem('pv_tavola_misura', TAV.size); } catch (e) { }
+    if (TAV.hov) TAV.hov.t = 0;   // la cornice si rifà subito
+    return TAV.size;
+  }
+  // la superficie sotto il puntatore: il primo colpo entro 14 m; se è terra (o un gradino) e poco dietro c'è un muro alto almeno un metro, il muro
+  function tavPick(st, nx, ny) {
+    const THREE = T3(), R = R_(), p = st.player, cam = R.getCamera(), rc = GFX.rc2 || (GFX.rc2 = new THREE.Raycaster());
+    { const u = R.gonfia ? R.gonfia(nx, ny) : [nx, ny]; rc.setFromCamera(new THREE.Vector2(u[0] * 2 - 1, 1 - u[1] * 2), cam); } rc.near = 0; rc.far = 1e4;
+    const list = cands(p.x, p.y).slice(); let g0 = null; try { g0 = R.screenToGround ? R.screenToGround(nx, ny) : null; } catch (e) { }
+    if (g0 && hyp(g0.x - p.x, g0.y - p.y) > 6) { const seen = new Set(list); cands(g0.x, g0.y).forEach(o => { if (!seen.has(o)) list.push(o); }); }   // [graffiti2] anche le mesh vicino al punto guardato (le candidate stanno entro 10 m dalla loro sfera)
+    if (GFX.train) GFX.train.cars.forEach(c => c.sides.forEach(s => list.push(s.mesh)));
+    const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
+    const m0 = mancanti(), hits = rc.intersectObjects(list, false).filter(vis), near14 = h => hyp(h.point.x - p.x, h.point.z - p.y) <= 14;
+    const nrm = h => { const n = h.face.normal.clone().transformDirection(h.object.matrixWorld); if (n.dot(rc.ray.direction) > 0) n.negate(); return n; };
+    const upright = h => Math.abs(nrm(h).y) < .5;
+    const h0 = hits[0]; if (!h0) return { manca: mancanti() !== m0 };
+    if (!near14(h0)) return { lontano: true, d: hyp(h0.point.x - p.x, h0.point.z - p.y) };
+    const special = h => !!(h.object.userData.car || h.object.userData.wag || vehOf(h.object));
+    // alto almeno un metro: il piano del muro c'è (i raggi dal davanti) per un metro continuo attorno al punto
+    const tall = (h, base) => { if (special(h)) return true; const n = nrm(h), nn = new THREE.Vector3(n.x, 0, n.z).normalize(), L = nearList(cands(h.point.x, h.point.z), h.point, 2.5), q = new THREE.Vector3(); let run = 0, best = 0;
+      const y0 = base != null ? base + .05 : h.point.y - 1, y1 = base != null ? base + 1.25 : h.point.y + 1; for (let y = y0; y <= y1 + 1e-6; y += .2) { q.set(h.point.x, y, h.point.z); if (onPlane(q, nn, L, null, null)) { run += .2; best = Math.max(best, run); } else run = 0; } return best >= .99; };
+    let h = null;
+    if (upright(h0) && tall(h0)) h = h0;
+    else { const w2 = hits.find(q => q !== h0 && near14(q) && upright(q) && q.distance - h0.distance < .9 && q.point.y > h0.point.y - .05 && tall(q, upright(h0) ? null : h0.point.y)); h = w2 || (upright(h0) ? hits.find(q => q.distance - h0.distance < .9 && !upright(q)) || null : h0); }
+    if (!h) return { manca: mancanti() !== m0, basso: true };
+    return { h, n: nrm(h), ray: rc.ray, manca: mancanti() !== m0 };
+  }
+  // la cornice per terra (e sui mezzi): la griglia dei raggi; per terra ogni punto entro 3 cm dal piano (prima 25: metà lavoro sospesa)
+  function tavFit2(Rc, A) {
+    const THREE = T3(), n = A.n, flat = Math.abs(n.y || 0) > .5, list = A.veh ? [vehGroup(A.veh)].filter(Boolean) : cands(Rc.c.x, Rc.c.z); if (!list.length) return null;
+    const c = new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z);
+    if (!flat && !A.veh && !(A.obj && (A.obj.userData.car || A.obj.userData.wag))) { const f = fitWall(c, n, Rc.W, Rc.H, list, { minK: .3, noOpen: true, foot: footAt(c, n, Rc.W, A.r) }); return f ? { W: f.W, H: f.H, c: { x: f.c.x, y: f.c.y, z: f.c.z } } : null; }
+    if (A.obj && A.obj.userData.car) return Rc;   // il treno: la fiancata la ritaglia il salvataggio
+    const rx = A.r, up = A.u, NX = 9, NY = 7, ok = [], rc = GFX.rc || (GFX.rc = new THREE.Raycaster()), tolD = flat && !A.veh ? .03 : .45;   // sui mezzi la carrozzeria è curva: la decalcomania la segue
+    const at = (i, j) => new THREE.Vector3(c.x + rx.x * (i / (NX - 1) - .5) * Rc.W + up.x * (j / (NY - 1) - .5) * Rc.H, c.y + (rx.y || 0) * (i / (NX - 1) - .5) * Rc.W + up.y * (j / (NY - 1) - .5) * Rc.H, c.z + rx.z * (i / (NX - 1) - .5) * Rc.W + up.z * (j / (NY - 1) - .5) * Rc.H);
+    const Ln = A.veh ? null : nearList(list, c, Math.hypot(Rc.W, Rc.H) / 2 + 1);
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const q = at(i, j), o = q.clone().addScaledVector(n, 1.5); rc.set(o, n.clone().negate()); rc.far = 1.5 + Math.max(tolD, .3); rc.near = 0; const h = (A.veh ? rc.intersectObject(list[0], true) : rc.intersectObjects(Ln, false)).find(h => h.face && !h.object.userData.velo); ok.push(h && Math.abs(h.distance - 1.5) < tolD ? 1 : 0); }
+    let best = null; for (let i0 = 0; i0 < NX; i0++) for (let i1 = i0; i1 < NX; i1++) for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0; j1 < NY; j1++) { let all = true; for (let j = j0; j <= j1 && all; j++) for (let i = i0; i <= i1; i++) if (!ok[j * NX + i]) { all = false; break; } if (!all) continue; const a = (i1 - i0 + 1) * (j1 - j0 + 1) * 100 - Math.hypot((i0 + i1) / 2 - (NX - 1) / 2, (j0 + j1) / 2 - (NY - 1) / 2); if (!best || a > best.a) best = { a, i0, i1, j0, j1 }; }
+    if (!best || (best.i1 - best.i0) < 2 || (best.j1 - best.j0) < 2) return null;
+    if (best.i0 === 0 && best.j0 === 0 && best.i1 === NX - 1 && best.j1 === NY - 1) return Rc;
+    const W2 = (best.i1 - best.i0) / (NX - 1) * Rc.W, H2 = (best.j1 - best.j0) / (NY - 1) * Rc.H, q0 = at(best.i0, best.j0), q1 = at(best.i1, best.j1);
+    return { W: W2, H: H2, c: { x: (q0.x + q1.x) / 2, y: (q0.y + q1.y) / 2, z: (q0.z + q1.z) / 2 } };
+  }
+  // la cornice della misura scelta sotto (nx, ny): { ok, A, Rc } o { msg, wait, lontano }
+  function tavHov(st, nx, ny) {
+    const THREE = T3(), R = R_(), p = st.player; if (!THREE || !R) return { no: true };
+    const P0 = tavPick(st, nx, ny);
+    if (!P0.h) return P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…' } : P0.lontano ? { lontano: true, msg: 'Troppo lontano: avvicinati al muro.' } : { no: true, msg: P0.basso ? 'Un gradino non è un muro: cerca una parete.' : '' };
+    const h = P0.h, n = P0.n, cam = R.getCamera();
+    if (h.object.userData.car) { const tr = trainAt(st.t); if (tr && tr.v) return { no: true, msg: 'Il treno si muove!' }; }
+    let nn, rr, uu; const vid = vehOf(h.object), veh = vid && st.vehicles.find(x => x.id === vid);
+    if (veh && Math.abs(n.y) <= .6) { const fx = Math.cos(veh.ang), fz = Math.sin(veh.ang), side = -fz * n.x + fx * n.z, fwd = fx * n.x + fz * n.z;
+      nn = Math.abs(side) >= Math.abs(fwd) ? new THREE.Vector3(-fz * Math.sign(side), 0, fx * Math.sign(side)) : new THREE.Vector3(fx * Math.sign(fwd), 0, fz * Math.sign(fwd)); rr = new THREE.Vector3(nn.z, 0, -nn.x); uu = new THREE.Vector3(0, 1, 0); }
+    else if (veh) { nn = new THREE.Vector3(0, 1, 0); uu = new THREE.Vector3(Math.cos(veh.ang), 0, Math.sin(veh.ang)); rr = new THREE.Vector3().crossVectors(uu, nn).normalize(); }
+    else if (Math.abs(n.y) > .6) { const f = new THREE.Vector3(); cam.getWorldDirection(f); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, -1); f.normalize(); nn = new THREE.Vector3(0, Math.sign(n.y), 0); uu = f.clone(); rr = new THREE.Vector3().crossVectors(uu, nn).normalize(); }
+    else { nn = new THREE.Vector3(n.x, 0, n.z).normalize(); rr = new THREE.Vector3(nn.z, 0, -nn.x); uu = new THREE.Vector3(0, 1, 0); }
+    const A = { pt: h.point.clone(), n: nn, r: rr, u: uu, obj: h.object, tool: null, col: null, veh: vid || null, size: TAV.size };
+    let [W0, H0] = MISURE[TAV.size]; if (veh) { W0 = Math.min(W0, 3.2); H0 = Math.min(H0, Math.abs(nn.y) > .5 ? 2 : 1.1); }
+    const c = { x: h.point.x, y: h.point.y, z: h.point.z };
+    if (Math.abs(nn.y) < .5 && !veh && !h.object.userData.car) { const ft = footAt(new THREE.Vector3(c.x, c.y, c.z), nn, W0, rr); if (ft != null) c.y = Math.max(c.y, ft + .12 + H0 / 2); }   // mai sotto terra
+    const m0 = mancanti(), Rc = tavFit2({ W: W0, H: H0, c }, A);
+    if (!Rc) return mancanti() !== m0 || P0.manca ? { wait: true, msg: 'Sto inquadrando il muro…', A } : { no: true, near: true, A, msg: `Qui non ci sta un ${MIS_NOME[TAV.size]}: prova una misura più piccola, o un'altra parete.` };
+    return { ok: true, A, Rc, small: Rc.W < W0 - .05 || Rc.H < H0 - .05 };
+  }
+  // la cornice nel mondo: il bordo giallo sopra a tutto e un velo giallo che pulsa (il muro «si accende» dove dipingeresti)
+  function tavDraw(H) {
+    const THREE = T3(), sc = scene(); if (!sc) return;
+    if (!H || !H.A || !(H.ok || H.near)) { if (TAV.f2) TAV.f2.visible = false; return; }
+    const A = H.A, Rc = H.Rc || { W: MISURE[TAV.size][0], H: MISURE[TAV.size][1], c: A.pt }, n = A.n, rx = A.r, up = A.u;
+    const P = (u, v) => new THREE.Vector3(Rc.c.x + rx.x * u + up.x * v + n.x * .02, Rc.c.y + (rx.y || 0) * u + up.y * v + n.y * .02, Rc.c.z + rx.z * u + up.z * v + n.z * .02);
+    const pts = [P(-Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, -Rc.H / 2), P(Rc.W / 2, Rc.H / 2), P(-Rc.W / 2, Rc.H / 2)];
+    if (!TAV.f2) { const g = new THREE.Group(); g.renderOrder = 9;
+      const ln = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffe14a, depthTest: false, transparent: true })); ln.renderOrder = 10;
+      const fill = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: 0xffe14a, transparent: true, opacity: .2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -6, side: THREE.DoubleSide })); fill.renderOrder = 9;
+      ln.userData.velo = fill.userData.velo = true; ln.raycast = fill.raycast = () => { }; g.add(fill, ln); g.userData.velo = true; TAV.f2 = g; TAV.f2l = ln; TAV.f2f = fill; sc.add(g); }
+    TAV.f2l.geometry.setFromPoints(pts);
+    const fg = TAV.f2f.geometry; fg.setFromPoints([pts[0], pts[1], pts[2], pts[0], pts[2], pts[3]]); fg.computeBoundingSphere();
+    const col = H.ok ? 0xffe14a : 0x9a8f86; TAV.f2l.material.color.setHex(col); TAV.f2f.material.color.setHex(col);
+    TAV.f2.visible = true;
+  }
+  // ogni fotogramma (dal giro dei graffiti): la cornice segue il puntatore (al più 5 volte al secondo, o se si sposta), il pulsare,
+  // il tocco in attesa dei dati dei raggi, la fila delle misure, il primo invito
+  function tavFrameTick(st) {
+    const pv = window.__pv, ui = pv && pv.ui, p = st.player, now = performance.now();
+    const tav = !TAV.pad && (p.hand === 'bomboletta' || p.hand === 'pennarello') && mode(st) === 'tavoletta' && !p.vehicle && !p.indoor && !(ui && (ui.dialog || ui.menu || ui.book || ui.intro));
+    if (typeof TavolaUI !== 'undefined' && TavolaUI.misura) { const on = tav && !(TAV.festa > now); if (on !== TAV.misOn || TAV.size !== TAV.misK || (on && TAV.misNota !== TAV.nota)) { TAV.misOn = on; TAV.misK = TAV.size; TAV.misNota = TAV.nota; TavolaUI.misura(on, TAV.size, k => { tavSize(0, k); }, TAV.nota); } }
+    if (!tav) { if (TAV.f2) TAV.f2.visible = false; TAV.hov = null; TAV.pend = null; invito(st, now); return; }
+    // il tocco che aspetta i dati dei raggi
+    if (TAV.pend) { const q = TAV.pend; if (now - q.t > 300) { q.t = now; const H = tavHov(st, q.nx, q.ny); if (H.ok) { TAV.pend = null; tavOpen(st, H); return; } if (!H.wait || now - q.t0 > 4500) { TAV.pend = null; toast(H.wait ? 'Il muro non si vede ancora bene: riprova fra un attimo.' : H.msg || 'Qui non si dipinge.'); } } }
+    // la cornice: sotto il puntatore (col mouse) o al centro dello schermo (col dito)
+    const touch = !!(pv && pv.touchMode) || !(pv && pv.mouse && pv.mouse.active), mnx = touch ? .5 : pv.mouse.nx, mny = touch ? .5 : pv.mouse.ny;
+    const o = TAV.hov, moved = !o || Math.hypot(o.nx - mnx, o.ny - mny) > .006;
+    if (!o || (moved && now - o.t > 120) || now - o.t > (touch ? 600 : 1000)) { let H; try { H = tavHov(st, mnx, mny); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
+    if (TAV.f2 && TAV.f2.visible) TAV.f2f.material.opacity = (TAV.hov && TAV.hov.ok ? .14 : .08) + .1 * (.5 + .5 * Math.sin(now / 260));
+  }
+  // il tocco (pointerdown, main.js): sulla cornice apre subito; ritorna true se l'ha preso (se no il tocco cammina)
+  function tavDown(st, nx, ny) {
+    if (TAV.pad) return true;
+    const p = st.player; if (!(p.hand === 'bomboletta' || p.hand === 'pennarello') || mode(st) !== 'tavoletta') return false;
+    let H = TAV.hov && Math.hypot(TAV.hov.nx - nx, TAV.hov.ny - ny) < .004 && performance.now() - TAV.hov.t < 400 ? TAV.hov : null;
+    if (!H) { try { H = tavHov(st, nx, ny); } catch (e) { console.warn('[Writing] cornice', e); H = { no: true }; } H.nx = nx; H.ny = ny; H.t = performance.now(); }
+    if (H.ok) { tavOpen(st, H); return true; }
+    if (H.wait) { TAV.pend = { nx, ny, t: performance.now(), t0: performance.now() }; toast('Sto inquadrando il muro…'); return true; }
+    if (H.near && H.msg) toast(H.msg);
+    return false;
+  }
+  function tavOpen(st, H) {
+    TAV.a = Object.assign(H.A, { tool: st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta' }); TAV.b = H.A.pt.clone(); TAV.hov = null;
+    if (TAV.f2) TAV.f2.visible = false;
+    const shot = tavShot(H.Rc, H.A.n, H.A.r); if (!shot) { tavClear(); return; }
+    tavPad(st, shot, H.Rc, TAV.a);
+  }
+  const toast = m => { try { const pv = window.__pv; if (pv && pv.toast) pv.toast(m); } catch (e) { } };
+  // [graffiti2] GLI ALTRI MODI DI DIPINGERE passano dalla tavoletta: «Dipingi il muro» del menu Qui (azioni.js) e il murale della Risacca
+  // (risacca.js). Apre la cornice sul muro davanti (al centro dello schermo) della misura chiesta; opt.fatto() dopo ✓; opt.gratis: la vernice
+  // la mette chi chiede (la Risacca), non le tue bombolette. Ritorna false se davanti non c'è un muro (chi chiede fa come prima)
+  function apri(st, opt) {
+    if (!FIX2 || TAV.pad || typeof TavolaUI === 'undefined') return false; const o = opt || {}, k0 = TAV.size;
+    if (o.misura && MISURE[o.misura]) TAV.size = o.misura;
+    let H = null; try { H = tavHov(st, .5, .5); if (!H.ok) H = tavHov(st, .5, .62); } catch (e) { H = null; }
+    TAV.size = k0; if (!H || !H.ok) return false;
+    if (st.player.hand !== 'bomboletta' && st.player.hand !== 'pennarello') { TAV.ripresa = st.player.hand || null; }
+    TAV.dopo = o.fatto || null; TAV.gratis = !!o.gratis; tavOpen(st, H); return true;
+  }
+  // [graffiti2] il primo invito: hai le bombolette, non hai mai dipinto, e sei vicino a un muro
+  function invito(st, now) {
+    if (TAV.invitato || now - (TAV.invT || 0) < 2500) return; TAV.invT = now;
+    const p = st.player, inv = OG() ? OG().inv(st) : null; if (!inv || !(inv.bomboletta > 0 || inv.pennarello > 0) || p.hand || p.vehicle || p.indoor) return;
+    const W = S(st); if (Object.values(W.done || {}).some(v => v > 0) || W.works.some(w => w.by === 'player')) { TAV.invitato = true; return; }
+    try { if (localStorage.getItem('pv_invito_graffiti')) { TAV.invitato = true; return; } } catch (e) { }
+    const THREE = T3(), list = cands(p.x, p.y); if (!THREE || !list.length) return; const rc = GFX.rc || (GFX.rc = new THREE.Raycaster()); let vicino = false;
+    for (let k = 0; k < 8 && !vicino; k++) { const a = k * Math.PI / 4; rc.set(new THREE.Vector3(p.x, (TT() ? TT().feetH(st) : 0) + 1.3, p.y), new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); rc.near = 0; rc.far = 4; const h = rc.intersectObjects(list, false).find(h => h.face); if (h && Math.abs(h.face.normal.y) < .5) vicino = true; }
+    if (!vicino) return;
+    TAV.invitato = true; try { localStorage.setItem('pv_invito_graffiti', '1'); } catch (e) { }
+    const pv = window.__pv, tch = pv && pv.touchMode;
+    toast(tch ? 'Hai le bombolette: tocca l\'icona Graffiti, poi un muro per dipingere.' : 'Hai le bombolette: premi 6 (Graffiti), poi tocca un muro per dipingere.');
+  }
+  // [graffiti2] IL PUNTEGGIO del lavoro: quanto copre, quanti colori, la misura, quanto si vede il posto, i testimoni. 0-100, e fama in più
+  function punteggio(st, w, r) {
+    const p = st.player, q = w.pos ? { x: w.pos.x, y: w.pos.z } : { x: p.x, y: p.y }, area = (w.W || 1) * (w.H || 1);
+    const copre = r && r.copre != null ? r.copre : .3, colori = (r && r.colori || 1) + (r && r.traccia ? 2 : 0);
+    const feetG = (() => { const tx = Math.floor(q.x / TS), ty = Math.floor(q.y / TS); return G.MAP.elev[ty * G.GW + tx] || 0; })(), alto = w.pos && w.pos.y - feetG > 3.2;
+    let vista = 0; (st.npcs || []).forEach(n => { if (!n.dead && !n.inside && hyp(n.x - q.x, n.y - q.y) < 40 && (!G.los || G.los(n.x, n.y, q.x, q.y))) vista++; });
+    const testi = witnesses(st, w).length;
+    const P = { copre: Math.round(30 * Math.min(1, copre / .35)), colori: Math.round(15 * Math.min(1, colori / 3)), misura: Math.round(20 * Math.min(1, area / 8)), vista: Math.round(20 * Math.min(1, vista / 10 + (alto ? .35 : 0))), testimoni: Math.round(15 * Math.min(1, testi / 4)) };
+    const tot = P.copre + P.colori + P.misura + P.vista + P.testimoni;
+    return { tot, P, txt: { copre: Math.round(copre * 100) + '%', colori, misura: area.toFixed(1).replace('.', ',') + ' m²', vista: vista + (alto ? ' ↑' : ''), testimoni: testi } };
+  }
+  // il soffio della bomboletta (audio.js), se c'è
+  const suono = (k, on) => { try { if (typeof Audio8 !== 'undefined' && Audio8.bomboletta) Audio8.bomboletta(k, on); } catch (e) { } };
   // [graffiti] LA FINESTRA STRETTA ALLA SUPERFICIE: il riquadro trascinato non esce dalla superficie toccata (sopra il tetto
   // c'è il cielo, oltre lo spigolo il vuoto, sotto il muro la terra): sul muro il rettangolo più grande tutto muro attorno al
   // punto toccato; per terra (strade, piazze, tetti) i punti devono stare sul piano entro 25 cm; sui mezzi il riquadro sta
@@ -1743,12 +2109,13 @@ var Writing = (function () {
     const FW = Rc.W * mg + .2, FH = Rc.H * mg + .2, MAX = PHONE_K() < 1 ? 1400 : 2048, pw = FW >= FH ? MAX : Math.round(MAX * FW / FH), ph = FW >= FH ? Math.round(MAX * FH / FW) : MAX;
     const K = tavCam(Rc, TAV.a || { n, u: new THREE.Vector3(0, 1, 0) }), cam = new THREE.OrthographicCamera(-FW / 2, FW / 2, FH / 2, -FH / 2, K.near, K.far);
     cam.position.set(K.pos.x, K.pos.y, K.pos.z); cam.up.set(K.up.x, K.up.y, K.up.z); cam.lookAt(K.target.x, K.target.y, K.target.z); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
-    const rt = new THREE.WebGLRenderTarget(pw, ph), prev = rend.getRenderTarget(), fr = TAV.frame; if (fr) fr.visible = false;
+    const rt = new THREE.WebGLRenderTarget(pw, ph), prev = rend.getRenderTarget(), fr = TAV.frame, f2v = TAV.f2 && TAV.f2.visible; if (fr) fr.visible = false; if (TAV.f2) TAV.f2.visible = false;
     const ar = rend.info.autoReset; rend.info.autoReset = false;
-    rend.setRenderTarget(rt); rend.clear(); rend.render(sc, cam); const buf = new Uint8Array(pw * ph * 4); rend.readRenderTargetPixels(rt, 0, 0, pw, ph, buf); rend.setRenderTarget(prev); rt.dispose(); if (fr) fr.visible = true;
+    rend.setRenderTarget(rt); rend.clear(); rend.render(sc, cam); const buf = new Uint8Array(pw * ph * 4); rend.readRenderTargetPixels(rt, 0, 0, pw, ph, buf); rend.setRenderTarget(prev); rt.dispose(); if (fr) fr.visible = true; if (TAV.f2 && f2v) TAV.f2.visible = true;
     rend.info.autoReset = ar;
     const c = cv(pw, ph), x = c.getContext('2d'), im = x.createImageData(pw, ph);
     for (let y = 0; y < ph; y++) im.data.set(buf.subarray((ph - 1 - y) * pw * 4, (ph - y) * pw * 4), y * pw * 4);   // la riga di sotto va su
+    if (FIX2) for (let i = 3; i < im.data.length; i += 4) im.data[i] = 255;   // [graffiti2] la foto è opaca: la tela di prima teneva l'alfa della scena (in media 109) e il muro usciva scuro
     const iw = Math.round(pw * Rc.W / FW), ih = Math.round(ph * Rc.H / FH), inner = { x: Math.round((pw - iw) / 2), y: Math.round((ph - ih) / 2), w: iw, h: ih };
     tavLevels(im.data, pw, inner);
     x.putImageData(im, 0, 0); c.inner = inner; return c;
@@ -1759,7 +2126,7 @@ var Writing = (function () {
     const H = new Uint32Array(256); let n = 0;
     for (let y = In.y; y < In.y + In.h; y += 3) for (let x = In.x; x < In.x + In.w; x += 3) { const i = (y * pw + x) * 4, l = (d[i] * 54 + d[i + 1] * 183 + d[i + 2] * 19) >> 8; H[l]++; n++; }
     if (!n) return; let a = 0, b = 255, acc = 0; for (let i = 0; i < 256; i++) { acc += H[i]; if (acc >= n * .02) { a = i; break; } } acc = 0; for (let i = 255; i >= 0; i--) { acc += H[i]; if (acc >= n * .02) { b = i; break; } }
-    const span = Math.max(1, b - a), k = span < 150 ? Math.min(2.2, 150 / span) : 1, mid = (a + b) / 2, to = clamp(mid, 120, 205), g = mid < 70 ? .8 : 1, L = new Uint8ClampedArray(256);   // il tono del muro resta (il colore che scegli si confronta con quello), il buio si schiarisce
+    const span = Math.max(1, b - a), k = span < 150 ? Math.min(FIX2 ? 1.25 : 2.2, 150 / span) : 1, mid = (a + b) / 2, to = FIX2 ? clamp(mid, 95, 230) : clamp(mid, 120, 205), g = mid < 70 ? (FIX2 ? .9 : .8) : 1, L = new Uint8ClampedArray(256);   // [graffiti2] un filo appena (×1,25), solo il buio si schiarisce: prima ×2,2 e il muro sembrava un altro   // il tono del muro resta (il colore che scegli si confronta con quello), il buio si schiarisce
     for (let i = 0; i < 256; i++) { const v = clamp((i - mid) * k + to, 0, 255) / 255; L[i] = Math.round(Math.pow(v, g) * 255); }
     if (k < 1.05 && g === 1 && Math.abs(to - mid) < 4) return; for (let i = 0; i < d.length; i += 4) { d[i] = L[d[i]]; d[i + 1] = L[d[i + 1]]; d[i + 2] = L[d[i + 2]]; }
   }
@@ -1770,11 +2137,17 @@ var Writing = (function () {
     tavPad(st, shot, Rc, A);
   }
   // [graffiti2] il disegno salvato va sul muro subito (non aspetta il giro dei graffiti né il disegnatore a parte)
-  function saveOnWall(w) {
+  function saveOnWall(w, A0) {
     try {
       if (GFX.works[w.id]) return true;
       if (w.surf === 'treno') { const tgt = trainTarget(w); if (!tgt) return false; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; drawUpTo(w, GFX.works[w.id]); return true; }
       if (!w.gfxRect) return false;
+      if (FIX2 && w.surf !== 'auto' && w.surf !== 'vagone') {   // [graffiti2] sui triangoli veri, subito (il disegno di Traccia è già pronto: non si rifà)
+        const THREE = T3(), A = A0 && A0.stages ? Object.assign({}, A0, { stages: A0.stages.slice() }) : art(w), layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+        let d = null; try { d = finisci(decalG(w.gfxRect, layer)); } catch (e) { console.warn('[Writing] decalcomania', e); }
+        let geo = d && d.geo; if (!geo) { geo = new THREE.PlaneGeometry(w.gfxRect.W, w.gfxRect.H); geo.translate(0, 0, GAP + layer * .001); }
+        const g = { art: A, drawn: 0 }; g.tgt = makeVeil2(w, A, geo, layer); GFX.works[w.id] = g; drawUpTo(w, g); return true;
+      }
       const g = { art: art(w), drawn: 0 }; g.tgt = makeVeil(w, g.art); GFX.works[w.id] = g; drawUpTo(w, g); return true;
     } catch (e) { console.warn('[Writing] tavoletta', e); return false; }
   }
@@ -1784,6 +2157,7 @@ var Writing = (function () {
   // del lavoro, la vernice, il salvataggio sul muro (tavSave). Le stesse regole di prima per la vernice, la fama, i crossaggi.
   const TAV_SIZES = [['tag', 'Tag', 1.5, .75], ['throw', 'Throw-up', 2.7, 1.3], ['pezzo', 'Pezzo', 4.8, 2.05], ['burner', 'Burner', 6.6, 2.5]];
   function tavPad(st, shot, Rc, A) {
+    if (FIX2) return tavPad2(st, shot, Rc, A);
     if (typeof document === 'undefined' || typeof TavolaUI === 'undefined') { tavClear(); return; }
     const inv0 = () => (OG() ? OG().inv(st) : {}) || {}, W0 = S(st);
     let place = ''; try { const q = G.nearestPlace ? G.nearestPlace(Rc.c.x, Rc.c.z) : null; place = q && q.name || ''; } catch (e) { }
@@ -1840,11 +2214,92 @@ var Writing = (function () {
     } catch (e) { console.warn('[Writing] tavoletta', e); return { msg: 'Non sono riuscito a salvarlo: riprova (o esci).' }; }
   }
 
+  // [graffiti2] il pannello nuovo (tavola_ui.js open2): la misura è già decisa (la cornice), dentro c'è Traccia (il bozzetto guidato) e il soffio
+  const stileDi = (Wm, Hm) => { const a = Wm * Hm; return a <= 1.3 ? 'tag' : a <= 4.2 ? 'throw' : a <= 11 ? 'pezzo' : 'burner'; };
+  function tavPad2(st, shot, Rc, A) {
+    if (typeof document === 'undefined' || typeof TavolaUI === 'undefined') { tavClear(); return; }
+    const inv0 = () => (OG() ? OG().inv(st) : {}) || {}, W0 = S(st);
+    let place = ''; try { const q = G.nearestPlace ? G.nearestPlace(Rc.c.x, Rc.c.z) : null; place = q && q.name || ''; } catch (e) { }
+    TAV.trA = null;
+    const api = TavolaUI.open({
+      shot, W: Rc.W, H: Rc.H, cols: TAV_COLS, col: A.col, tool: A.tool, pens: !!PN, PN, WM: typeof WriterMano !== 'undefined' ? WriterMano : null, mulberry,
+      luogo: place, chi: `${playerAka(st)}${W0.crew ? ' ' + W0.crew : ''}`,
+      has: t => TAV.gratis || !OG() || inv0()[t] > 0,
+      conta: () => { if (!OG() || TAV.gratis) return null; const i = inv0(); return { bomboletta: i.bomboletta || 0, pennarello: i.pennarello || 0 }; },
+      titolo: mk => { const sty = STYLES[mk ? 'mtag' : stileDi(Rc.W, Rc.H)]; return sty ? sty.nome : 'tavoletta'; },
+      // Traccia: il lavoro che faresti con questa misura (la tua mano, la tua tag), disegnato da writer_arte.js (dal disegnatore a parte)
+      traccia: cb => {
+        const style = stileDi(Rc.W, Rc.H), seed = Math.floor(rnd() * 1e9);
+        const imp = WA.conceive({ aka: playerAka(st), crew: W0.crew, style, dna: Object.assign({}, playerDna(st), { skill: playerDna(st).skill - .08 }), seed });
+        const w = Object.assign({ by: 'player', aka: playerAka(st), crew: W0.crew, style, tool: 'bomboletta', seed, pal: COL2PAL[Math.floor(rnd() * COL2PAL.length)], prog: 1, done: false, surf: 'muro', hand: W0.hand || (W0.hand = Math.floor(rnd() * 1e9)) }, imp || {}, { style, W: Rc.W, H: Rc.H, seed });
+        if (A.obj) w.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3);
+        artFor(w, Ar => { TAV.trA = Ar; cb(Ar ? { A: Ar, nome: un(style), w } : null); });
+      },
+      hiss: (on, pen) => suono(on ? 'via' : 'stop', pen),
+      save: r => tavSave2(st, Rc, A, r),
+      close: () => { TAV.pad = null; TAV.api = null; tavClear(); GFX.held = false; TAV.gratis = false; TAV.dopo = null; if (TAV.libera) { TAV.libera = false; try { if (typeof Azioni !== 'undefined' && Azioni.playerEquip) Azioni.playerEquip(st, null); else st.player.hand = null; } catch (e) { st.player.hand = null; } } },   // dopo ✓: mani libere (la bomboletta non si ruba più i clic)
+    });
+    TAV.api = api; TAV.pad = api.box; GFX.held = false;
+  }
+  // [graffiti2] il salvataggio: le regole di prima (la vernice, il giudizio, la fama) più il lavoro di Traccia, il punteggio e la ricompensa
+  function tavSave2(st, Rc, A, r) {
+    if (!r || !((r.strokes && r.strokes.length) || r.traccia)) return { msg: 'Prima dipingi qualcosa dentro il riquadro giallo.' };
+    const inv = OG() && !TAV.gratis ? OG().inv(st) : null, pxM = (r.frame && r.frame.w || 1) / Rc.W, SK = r.st || [], peso = {};
+    let cop = 0, linea = 0, spray = !!r.traccia, mk = false;
+    (r.strokes || []).forEach((s0, i) => { const q = SK[i] || {}; let l = 0; for (let j = 1; j < s0.length; j++) l += hyp(s0[j][0] - s0[j - 1][0], s0[j][1] - s0[j - 1][1]); const lenM = l / pxM, cmM = (q.w || r.wpx || 8) / pxM;
+      if ((q.p || r.pen) === 'marker') { mk = true; linea += lenM; } else { spray = true; cop += lenM * cmM; }
+      const c = q.c || TAV_COLS[0][0]; peso[c] = (peso[c] || 0) + Math.max(lenM, .01) * cmM; });
+    if (r.traccia) cop += Rc.W * Rc.H * .35 * r.traccia.stage / Math.max(1, r.traccia.di);
+    if (inv && spray && !(inv.bomboletta > 0)) return { msg: 'Senza bombolette non si salva: comprane in ferramenta (o usa il Marker).' };
+    if (inv && mk && !(inv.pennarello > 0)) return { msg: 'Senza pennarello non si salva.' };
+    try {
+      const W = S(st), THREE = T3(), fame0 = W.fame, rank0 = rankOf(W.fame);
+      if (inv && spray) { W.canUse = (W.canUse || 0) + cop / .8; while (W.canUse >= 1 && inv.bomboletta > 0) { inv.bomboletta--; W.canUse -= 1; } if (!inv.bomboletta) delete inv.bomboletta; }
+      if (inv && mk) { W.mkUse = (W.mkUse || 0) + linea / 20; if (W.mkUse >= 1 && inv.pennarello > 0) { W.mkUse -= 1; inv.pennarello--; if (!inv.pennarello) delete inv.pennarello; } }
+      let where = ''; try { const q = G.nearestPlace ? G.nearestPlace(st.player.x, st.player.y) : null; where = q && q.name ? 'a ' + q.name : ''; } catch (e) { }
+      const rect = () => { const R0 = { c: new THREE.Vector3(Rc.c.x, Rc.c.y, Rc.c.z), n: A.n.clone(), r: A.r.clone(), W: Rc.W, H: Rc.H, obj: A.obj }; R0.u = A.u.clone(); return R0; };
+      const base = (o) => { const nw = Object.assign({ by: 'player', aka: playerAka(st), crew: W.crew, pal: 0, seed: Math.floor(rnd() * 1e9), prog: 1, done: false, surf: 'muro', place: where, W: Rc.W, H: Rc.H, hand: W.hand || (W.hand = Math.floor(rnd() * 1e9)) }, o);
+        nw.gfxRect = rect(); nw.pos = { x: Rc.c.x, y: Rc.c.y, z: Rc.c.z };
+        const ud = A.obj && A.obj.userData || {}, car = ud.car, wag = ud.wag;
+        if (car) { const tr = trainAt(st.t), q = carPose(tr, car.i), c = Math.cos(q.ang), sn = Math.sin(q.ang), uOf = (x, z) => { const al = (x - q.x) * c + (z - q.y) * sn; return car.side ? al + q.L / 2 : q.L / 2 - al; };
+          const uL = uOf(Rc.c.x - A.r.x * Rc.W / 2, Rc.c.z - A.r.z * Rc.W / 2), uR = uOf(Rc.c.x + A.r.x * Rc.W / 2, Rc.c.z + A.r.z * Rc.W / 2), Wc = Math.min(Rc.W, q.L - .2);
+          Object.assign(nw, { surf: 'treno', car: car.i, side: car.side, u0: clamp(Math.min(uL, uR), .1, q.L - Wc - .1), vb: clamp(Rc.c.y - Rc.H / 2 - q.h - BODY_Y, 0, SIDE_H - .2), W: Wc, H: Math.min(Rc.H, SIDE_H - .1), style: Rc.W * Rc.H > 20 ? 'wholecar' : nw.style }); nw.gfxRect = null; }
+        else if (wag && GFX.yard && GFX.yard[wag.key + ':' + wag.k]) { nw.surf = 'vagone'; nw.cons = wag.key; nw.wk = wag.k; nw.gfxRect.obj = GFX.yard[wag.key + ':' + wag.k].g; nw.gfxRect.veh = true; }
+        else { const vid = vehOf(A.obj); if (vid) { const v = st.vehicles.find(x => x.id === vid); nw.surf = 'auto'; nw.veh = vid; nw.gfxRect.obj = vehGroup(vid); nw.gfxRect.veh = true; if (v) vehAnchor(nw, v, nw.gfxRect.c); if (v && v.police) nw.cop = true; } else nw.sup = surfOf({ obj: A.obj }, Rc.c.x - A.n.x * .3, Rc.c.z - A.n.z * .3); }
+        return nw; };
+      const tool = spray ? 'bomboletta' : 'pennarello', col = Object.keys(peso).sort((a, b) => peso[b] - peso[a])[0] || TAV_COLS[0][0];
+      const regime0 = regimeAt(st, { x: Rc.c.x, y: Rc.c.z });
+      // il lavoro principale: il bozzetto di Traccia (se l'hai usato), se no il disegno a mano; il disegno a mano sopra il bozzetto è un secondo lavoro
+      let main = null, sopra = null;
+      if (r.traccia && r.traccia.w) { const tw = Object.assign({}, r.traccia.w); delete tw.gfxRect; main = base(Object.assign(tw, { tool: 'bomboletta', stageK: r.traccia.stage < r.traccia.di ? r.traccia.stage : undefined, traced: true })); }
+      const hasRec = r.strokes && r.strokes.length;
+      if (hasRec) { const rr = Object.assign({}, r); delete rr.traccia; const o = base({ style: tool === 'pennarello' ? 'mtag' : stileDi(Rc.W, Rc.H), tool, col, rec: rr }); if (main) sopra = o; else main = o; }
+      main.__regime0 = regime0;
+      addWork(st, main); let m = null; try { m = main.surf === 'treno' ? judgeTrain(st, main) : judge(st, main); } catch (e) { console.warn('[Writing] tavoletta, giudizio', e); } if (m) G.feed(st, m, /crossato/.test(m) ? 'bad' : 'info');
+      const sc = punteggio(st, main, r);
+      try { finish(st, main); } catch (e) { console.warn('[Writing] tavoletta, fine', e); main.done = true; main.prog = 1; }
+      if (sopra) { addWork(st, sopra); sopra.done = true; sopra.tDone = st.t; sopra.regime = main.regime; }
+      const bonus = Math.round(sc.tot / 10); W.fame += bonus; main.punti = sc.tot;
+      try { G.emit(st, 'graffito'); } catch (e) { }
+      [main, sopra].filter(Boolean).forEach((w, i) => { if (!saveOnWall(w, i === 0 && main.traced ? TAV.trA : null)) { w.gfxFail = 0; W.__dirty = true; } });
+      W.__dirty = true;
+      const gain = W.fame - fame0, nome = STYLES[main.style].nome, rank1 = rankOf(W.fame);
+      try { G.feed(st, `${nome[0].toUpperCase() + nome.slice(1)} salvato sul muro: ${sc.tot} punti, +${gain} fama.`, 'good'); } catch (e) { }
+      // la ricompensa: lo stacco sul pezzo (la foto del muro col lavoro sopra), il soffio, il punteggio
+      suono('fatto');
+      let foto = null; try { const sh = tavShot({ W: Rc.W, H: Rc.H, c: Rc.c }, A.n, A.r, 1.9); if (sh) { const c2 = cv(Math.min(900, sh.width), Math.round(Math.min(900, sh.width) * sh.height / sh.width)); c2.getContext('2d').drawImage(sh, 0, 0, c2.width, c2.height); foto = c2.toDataURL('image/jpeg', .82); } } catch (e) { }
+      TAV.festa = performance.now() + 2000;
+      try { if (TavolaUI.festa) TavolaUI.festa({ foto, titolo: `${sc.tot} punti · +${gain} fama`, riga: rank1 !== rank0 ? `Adesso sei un ${rank1}.` : `${nome[0].toUpperCase() + nome.slice(1)} di ${main.aka}${main.place ? ' ' + main.place : ''}`, parti: sc.txt }); } catch (e) { }
+      TAV.libera = !TAV.dopo || st.player.hand === 'bomboletta' || st.player.hand === 'pennarello';
+      if (TAV.dopo) { const f = TAV.dopo; TAV.dopo = null; try { const m2 = f(main); if (typeof m2 === 'string') G.feed(st, m2, 'job'); } catch (e) { console.warn('[Writing] dopo la tavoletta', e); } }
+      return { ok: true, punti: sc.tot, fama: gain };
+    } catch (e) { console.warn('[Writing] tavoletta', e); return { msg: 'Non sono riuscito a salvarlo: riprova (o esci).' }; }
+  }
   // ---------------- IL GIOCATORE: il colpo, il lavoro sotto il puntatore ----------------
   // ritorna: true (si dipinge), { go } (avvicinati), { msg } (non si può), false (niente sotto)
   const REACH = 1.7;
   function tick(st, nx, ny, dt, col, colIdx, tool) {
-    if (mode(st) === 'tavoletta') return tavTick(st, nx, ny, tool, col);   // [writer] la finestra per la tavoletta
+    if (mode(st) === 'tavoletta') { if (FIX2) { if (!TAV.pad) tavDown(st, nx, ny); return true; } return tavTick(st, nx, ny, tool, col); }   // [writer] la finestra per la tavoletta   // [graffiti2] la cornice: un tocco apre
     const W = S(st), p = st.player, THREE = T3(), R = R_(); if (!THREE || !R) return false;
     let w = W.cur && !W.cur.done ? W.cur : null;
     if (!w) {
@@ -1900,7 +2355,11 @@ var Writing = (function () {
       if (Math.abs(nn.y) > .5) { // per terra (le tag): il velo steso, l'alto del disegno lontano da te ([graffiti] col suo verso nel riquadro: si rifà uguale)
         const u = new THREE.Vector3(c.x - p.x, 0, c.z - p.y); if (u.lengthSq() < 1e-4) u.set(Math.cos(p.face || 0), 0, Math.sin(p.face || 0)); u.normalize(); nw.gfxRect.u = u; nw.gfxRect.r = new THREE.Vector3().crossVectors(u, nn).normalize();
       }
-      g.tgt = makeVeil(nw, g.art);
+      if (FIX2 && nw.surf !== 'auto' && nw.surf !== 'vagone') {   // [graffiti2] anche il lavoro guidato di prima sta sui triangoli veri
+        const layer = Math.min(4, overlapCheck(st, nw).filter(o => o.gfxRect).length); let d = null; try { d = finisci(decalG(nw.gfxRect, layer)); } catch (e) { }
+        let geo = d && d.geo; if (!geo) { geo = new THREE.PlaneGeometry(nw.gfxRect.W, nw.gfxRect.H); geo.translate(0, 0, GAP + layer * .001); }
+        g.tgt = makeVeil2(nw, g.art, geo, layer);
+      } else g.tgt = makeVeil(nw, g.art);
       GFX.works[nw.id] = g;
       const m2 = judge(st, nw); if (m2) G.feed(st, m2, /crossato/.test(m2) ? 'bad' : 'info');
       GFX.held = true; return true;
@@ -2017,8 +2476,38 @@ var Writing = (function () {
   }
   // [graffiti] LA MISURA: quanti lavori sui muri galleggiano (come strumenti/graffiti_sonda.js e la prova): un punto del velo
   // (griglia 5 × 4) a più di 2 cm dal muro sotto, o niente muro sotto (oltre uno spigolo, nel vuoto), o sopra un'apertura vera
+  // [graffiti2] LA MISURA NUOVA: muri E pavimenti, con un raggio tutto suo (un elenco delle mesh fatto qui, dalla scena, non le
+  // candidate dei graffiti): per ogni punto di una griglia 5 × 4 sul riquadro, la distanza fra la vernice (il velo, o la geometria
+  // fusa dell'atlante) e la superficie vera sotto. Un punto dove la vernice non c'è (un buco, oltre uno spigolo) non conta: lì non
+  // c'è niente che galleggi. Ritorna { n, gall (oltre 5 mm), peggio, muri: {n, peggio}, terra: {n, peggio}, lista }
+  function galleggia2(opt) {
+    const THREE = T3(), st = GFX.st, sc = scene(); if (!THREE || !st || !sc) return null; const W = S(st), o2 = opt || {}, lim = o2.lim || .005;
+    const all = [], sph = new THREE.Sphere(); sc.traverseVisible(o => { if (!o.isMesh || o.userData.velo || o.userData.wr || !o.geometry) return; if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld); all.push([o, sph.center.clone(), sph.radius]); });
+    const rc = new THREE.Raycaster(), out = { n: 0, gall: 0, peggio: 0, muri: { n: 0, peggio: 0 }, terra: { n: 0, peggio: 0 }, lista: [] }, tmp = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
+    for (const id in GFX.works) {
+      const g = GFX.works[id], w = W.works.find(q => q.id === +id); if (!w || !g.tgt || !g.tgt.mesh || g.tgt.decal || !w.gfxRect || w.surf === 'treno' || w.surf === 'auto' || w.surf === 'vagone') continue;
+      const T = g.tgt, m = T.mesh; m.updateMatrixWorld(true); const R = w.gfxRect, F = frameOf(R), flat = Math.abs(F.n.y) > .5, c0 = new THREE.Vector3().setFromMatrixPosition(m.matrixWorld);
+      // la vernice: la geometria del velo (o quella tenuta per l'atlante); un piano per i veli di prima
+      let paint = null; if (T.geo) { tmp.geometry = T.geo; tmp.matrixWorld.copy(m.matrixWorld); paint = tmp; } else if (m.isMesh && m.geometry) paint = m;
+      else { tmp.geometry = GFX.pl1 || (GFX.pl1 = new THREE.PlaneGeometry(1, 1)); tmp.matrixWorld.copy(m.matrixWorld).multiply(new THREE.Matrix4().makeScale(R.W, R.H, 1)); paint = tmp; }
+      const near = all.filter(a => a[1].distanceTo(c0) <= a[2] + Math.hypot(R.W, R.H) / 2 + 1).map(a => a[0]);
+      let worst = 0, pts = 0;
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 4; j++) {
+        const u = (i / 4 - .5) * .9 * R.W, v = (j / 3 - .5) * .9 * R.H, o = c0.clone().addScaledVector(F.r, u).addScaledVector(F.up, v).addScaledVector(F.n, .5), d = F.n.clone().negate();
+        rc.set(o, d); rc.near = 0; rc.far = 1.5;
+        const hp = paint.raycast ? (() => { const L = []; paint.raycast(rc, L); L.sort((a, b) => a.distance - b.distance); return L[0]; })() : null; if (!hp) continue;   // qui la vernice non c'è
+        const hr = rc.intersectObjects(near, false).find(vis), gap = hr ? hr.distance - hp.distance : 9;
+        pts++; worst = Math.max(worst, Math.abs(gap));
+      }
+      if (!pts) continue;
+      out.n++; const k = flat ? out.terra : out.muri; k.n++; k.peggio = Math.max(k.peggio, +worst.toFixed(4)); out.peggio = Math.max(out.peggio, +worst.toFixed(4));
+      if (worst > lim) { out.gall++; out.lista.push({ id: w.id, style: w.style, by: w.by, terra: flat, peggio: +worst.toFixed(3), punti: pts, velo2: !!(T.decal2 || T.mrg) }); }
+    }
+    out.lista.sort((a, b) => b.peggio - a.peggio); return out;
+  }
   function galleggia() {
-    const THREE = T3(), st = GFX.st; if (!THREE || !st) return null; const W = S(st), out = { n: 0, gall: 0, aperture: 0, lista: [] };
+    const THREE = T3(), st = GFX.st; if (!THREE || !st) return null; if (FIX2) return galleggia2(); const W = S(st), out = { n: 0, gall: 0, aperture: 0, lista: [] };
     for (const id in GFX.works) {
       const g = GFX.works[id], w = W.works.find(o => o.id === +id); if (!w || !g.tgt || !g.tgt.mesh || g.tgt.decal || w.surf !== 'muro' || !w.gfxRect || Math.abs(w.gfxRect.n.y || 0) > .5) continue;
       const m = g.tgt.mesh; m.updateMatrixWorld(true); const n = new THREE.Vector3(0, 0, 1).transformDirection(m.matrixWorld), list = cands(m.position.x, m.position.z), O = w.rec ? [] : openingsAt(m.position, n);
@@ -2037,13 +2526,33 @@ var Writing = (function () {
   // della camera o quando attorno non c'è ancora niente di dipinto si va di corsa (RUSH: 30 ms e senza aspettare il turno),
   // così la città ha subito i suoi muri dipinti invece di riempirsi a uno a uno in mezzo minuto.
   const RUSH = { until: 0, cx: null, cy: null };
+  // [graffiti2] il posto e la geometria di un lavoro: il muro (placeWall, se non è già cotto o salvato), lo strato, i triangoli veri.
+  // Sul muro senza triangoli leggibili resta il piano (il riquadro l'hanno già verificato i raggi); per terra no: si riprova.
+  function* piazzaG(w) {
+    if (!w.gfxRect) { const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; }
+    const R = w.gfxRect, layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+    let d = yield* decalG(R, layer);
+    if (d && d.geo) return { geo: d.geo, layer, cop: d.cop };
+    if (d && d.manca) return { manca: true };
+    // un lavoro cotto il cui muro non c'è (la cottura è di un'altra città): si piazza da capo, coi raggi, dal suo sito (come senza cottura)
+    if (FIX2 && w.cotto && w.spot && !w.__ripiazza) { w.__ripiazza = true; w.gfxRect = null; const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; d = yield* decalG(w.gfxRect, layer); if (d && d.geo) return { geo: d.geo, layer, cop: d.cop }; if (d && d.manca) return { manca: true }; }
+    const R2 = w.gfxRect; if (!R2 || Math.abs(R2.n.y || 0) > .5) return false;
+    const THREE = T3(), geo = new THREE.PlaneGeometry(R2.W, R2.H); geo.translate(0, 0, GAP + layer * .001); return { geo, layer, piano: true };
+  }
+  // [graffiti2] chiede il disegno vero per un lavoro che ha la prima stesura; se non serve più (velo liberato) la richiesta cade
+  function chiedi(w, g) {
+    if (ARTW.pend.has(w.id)) return; ARTW.pend.add(w.id); g.askT = performance.now();
+    artFor(w, A => { ARTW.pend.delete(w.id); if (GFX.works[w.id] !== g || w.erased || !A) return; try { upgradeVeil(w, g, A); } catch (e) { console.warn('[Writing] disegno', e); w.gfxFail = (w.gfxFail || 0) + 1; } }, { alive: () => GFX.works[w.id] === g });
+  }
   // [fluido] la lista dei vicini si rifà ogni 150 ms come prima, ma il lavoro (i raggi di placeWall, i veli) si spalma su tutti i
   // fotogrammi: 1 ms a fotogramma di regola, 5 di corsa (prima 6 e 30 ms tutti in un fotogramma ogni 150 ms: uno scatto ogni 9
   // fotogrammi, e sul telefono «di corsa» durava finché attorno c'erano meno di 12 lavori disegnati, cioè quasi sempre fuori città)
   function scanList(st, W, cx, cy, now, force) {
     if (RUSH.cx == null || hyp(cx - RUSH.cx, cy - RUSH.cy) > 60) { RUSH.until = now + 12000; GFX.ko = 0; W.works.forEach(w => { if (w.gfxFail > 3 && !w.gfxRect) w.gfxFail = 2; }); }   // partita nuova o salto: si riempie di corsa ([graffiti] e chi non aveva trovato il muro riprova: il settore magari non c'era)
     RUSH.cx = cx; RUSH.cy = cy;
-    const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } if (w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); return [w, v && !v.hidden ? hyp(v.x - cx, v.y - cy) : 1e9]; }   /* [graffiti] il mezzo: dov'è adesso */ return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80).sort((a, b) => a[1] - b[1]).map(a => a[0]);
+    const near = W.works.filter(w => !GFX.works[w.id] && !w.erased && !(w.gfxFail > 3)).map(w => { const sp = w.spot || (w.pos && { x: w.pos.x, y: w.pos.z }); if (w.surf === 'vagone') { const c = consOf(st, w.cons), q = c && wagPose(st, c, w.wk); return [w, q ? hyp(q.x - cx, q.y - cy) : 1e9]; } if (w.surf === 'auto') { const v = st.vehicles.find(x => x.id === w.veh); return [w, v && !v.hidden ? hyp(v.x - cx, v.y - cy) : 1e9]; }   /* [graffiti] il mezzo: dov'è adesso */ return [w, w.surf === 'treno' ? 0 : sp ? hyp(sp.x - cx, sp.y - cy) : 1e9]; }).filter(a => a[1] < 80);
+    if (FIX2) { const F = GFX.fru; near.forEach(a => { const w = a[0], q = w.pos; if (F && q && w.surf !== 'treno' && !F.containsPoint(GFX.fv.set(q.x, q.y, q.z))) a[1] *= 2.2; }); }   // [graffiti2] prima quelli in vista
+    near.sort((a, b) => a[1] - b[1]); for (let i = 0; i < near.length; i++) near[i] = near[i][0];
     let shown = 0; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.mesh && hyp(g.tgt.mesh.position.x - cx, g.tgt.mesh.position.z - cy) < 40) shown++; }
     return { near, rush: force || ((now < RUSH.until || (shown < 12 && near.length > 0)) && !(NTFIX && (GFX.ko || 0) >= 4)) };   // [ottimizza] di corsa solo se i piazzamenti riescono
   }
@@ -2055,16 +2564,31 @@ var Writing = (function () {
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
     let n = 0; const t0 = performance.now();
-    if (NTFIX && !force) { if (ARTW.q.length && now - (ARTW.qT || 0) > 2000) { ARTW.qT = now; ARTW.q.shift()(); } }   // [ottimizza] i disegni rimasti indietro: al più uno ogni 2 s
+    if (FIX2 && force) { artCheck(); for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()(); }
+    else if (FIX2) { artCheck(); if (ARTW.q.length && now - (ARTW.qT || 0) > 1200) { ARTW.qT = now; let bi = 0, bs = Infinity; ARTW.q.forEach((f, i) => { const s0 = f.w ? prioArt(f.w) : 0; if (s0 < bs) { bs = s0; bi = i; } }); ARTW.q.splice(bi, 1)[0](); } }   // [graffiti2] sul filo della pagina: il più importante, uno ogni 1,2 s (intanto c'è la prima stesura)
+    else if (NTFIX && !force) { if (ARTW.q.length && now - (ARTW.qT || 0) > 2000) { ARTW.qT = now; ARTW.q.shift()(); } }   // [ottimizza] i disegni rimasti indietro: al più uno ogni 2 s
     else for (let first = true; ARTW.q.length && (first || performance.now() - t0 < cap); first = false) ARTW.q.shift()();   // i disegni rimasti indietro dal worker (almeno uno per giro)
     for (; GFX.scanI < near.length; GFX.scanI++) { const w = near[GFX.scanI];
       if (performance.now() - t0 > cap) break;   /* [fluido] al massimo 1 ms di graffiti nuovi a fotogramma (di corsa 5) */
-      const CB = typeof window !== 'undefined' && window.Costruzioni; if (!rush && CB && !CB.ok(undefined, 'graffiti')) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire
+      const CB = typeof window !== 'undefined' && window.Costruzioni; if (!rush && CB && !CB.ok(undefined, 'graffiti') && !(FIX2 && now - (GFX.passoT || 0) > 250)) break;   // [fluido] e solo se nel fotogramma c'è ancora tempo per costruire   // [graffiti2] ma un passo almeno ogni 250 ms: sulla macchina lenta il tempo non c'era mai e i muri restavano spogli
+      if (FIX2) GFX.passoT = now;
       if (GFX.works[w.id] || w.erased || w.gfxFail > 3) continue;
       if (NTFIX && w.__gfxWait > now && !force) continue;   // [ottimizza] fallito da poco, o i dati dei raggi del tassello non ancora arrivati: si riprova dopo
       if (ARTW.pend.has(w.id)) continue;   // [fluido] il disegno è in preparazione
-      if (ARTW.pend.size >= (rush ? 24 : 8)) break;   // [graffiti2] non più di tanti in coda al disegnatore
-      if ((GFX.mem.vivi || 0) + ARTW.pend.size >= VEIL_MAX() && w.surf !== 'treno') break;   // [graffiti] il tetto dei veli: i più vicini hanno già il loro
+      if (!FIX2 && ARTW.pend.size >= (rush ? 24 : 8)) break;   // [graffiti2] non più di tanti in coda al disegnatore
+      if (FIX2 ? (GFX.mem.vivi || 0) >= VEIL_MAX() && w.surf !== 'treno' : (GFX.mem.vivi || 0) + ARTW.pend.size >= VEIL_MAX() && w.surf !== 'treno') break;   // [graffiti] il tetto dei veli: i più vicini hanno già il loro
+      if (FIX2 && w.surf !== 'treno' && w.surf !== 'vagone' && w.surf !== 'auto') {   // [graffiti2] il muro (o la terra), i triangoli veri, la prima stesura subito; il disegno vero dopo
+        if (!GFX.pw || GFX.pw.w !== w) GFX.pw = { w, it: piazzaG(w), m0: mancanti() };
+        const tp = performance.now(); let r; do r = GFX.pw.it.next(); while (!r.done && performance.now() - t0 < cap); if (CB) CB.add(performance.now() - tp, 'graffiti');
+        if (!r.done) break;
+        const m0 = GFX.pw.m0; GFX.pw = null;
+        if (!r.value || r.value.manca) {
+          if (r.value && r.value.manca || mancanti() !== m0) { w.__gfxWait = performance.now() + 1500; GFX.attese = (GFX.attese || 0) + 1; continue; }   // i dati dei raggi non ancora arrivati: si riprova
+          w.gfxFail = (w.gfxFail || 0) + 1; w.__gfxWait = performance.now() + 1000 * w.gfxFail; GFX.ko = (GFX.ko || 0) + 1; continue; }
+        GFX.ko = 0;
+        const tv = performance.now(), g = { art: null, drawn: 0, flat: true }; g.tgt = makeVeil2(w, telaDi(w), r.value.geo, r.value.layer); GFX.works[w.id] = g; stesura(w, g.tgt); GFX.mem.stese = (GFX.mem.stese || 0) + 1;
+        chiedi(w, g); if (CB) CB.add(performance.now() - tv, 'graffiti'); n++; continue;
+      }
       // [fluido] il disegno arriva da artFor (memoria, worker o qui); il velo si fa quando c'è, se il lavoro serve ancora
       const ready = fn => { ARTW.pend.add(w.id); artFor(w, A => { ARTW.pend.delete(w.id); if (GFX.st !== st || GFX.works[w.id] || w.erased) return; try { fn(A); } catch (e) { w.gfxFail = (w.gfxFail || 0) + 1; } }); };
       if (w.surf === 'treno') { if (!GFX.train) continue; const tgt = trainTarget(w); if (!tgt) continue; ready(A => { GFX.works[w.id] = { tgt, art: A, drawn: 0 }; }); n++; continue; }
@@ -2107,6 +2631,8 @@ var Writing = (function () {
         }
         if (GFX.train && !GFX.noRail) yardFrame(st, sc, cx, cy);   // [ferrovia] i carri fermi negli scali (e quelli che partono)
         // i lavori: quelli che non hanno ancora la grafica (della notte, o di prima) vicino alla camera
+        if (FIX2) { try { const c3 = R.getCamera(); c3.updateMatrixWorld(); GFX.fv = GFX.fv || new THREE.Vector3(); const F = GFX.fru || (GFX.fru = new THREE.Frustum()); F.setFromProjectionMatrix((GFX.fm || (GFX.fm = new THREE.Matrix4())).multiplyMatrices(c3.projectionMatrix, c3.matrixWorldInverse)); } catch (e) { GFX.fru = null; } }   // [graffiti2] cosa si vede (la priorità dei lavori)
+        if (FIX2) tavFrameTick(st);
         scanNear(st, cx, cy);
         if (W.__dirty && performance.now() - (GFX.saveT || 0) > 4000) { GFX.saveT = performance.now(); salva(st); }   // [graffiti] quello che hai dipinto resta (anche ricaricando)
         // disegno: i lavori finiti in un colpo, quelli in corso fin dove sono arrivati; i cancellati via; i lontani si liberano
@@ -2124,6 +2650,7 @@ var Writing = (function () {
             if (w && w.surf === 'treno' && w.washed && !g.washed) { g.washed = true; washSide(w.car, w.side); W.works.filter(o => o.surf === 'treno' && o.car === w.car && o.side === w.side && !o.erased).forEach(o => { delete GFX.works[o.id]; }); }
             delete GFX.works[id]; continue;
           }
+          if (FIX2 && g.flat) { if (!ARTW.pend.has(w.id) && performance.now() - (g.askT || 0) > 8000) chiedi(w, g); continue; }   // [graffiti2] la prima stesura aspetta il disegno vero
           if (g.tgt && g.tgt.atl && w.crossed && !g.crossDrawn) { freeVeil(g); delete GFX.works[id]; continue; }   // [atlante] crossato dopo: si rifà col velo (la X sopra), poi torna qui
           if (w.trace && !w.done) { if (g.ts == null) drawUpTo(w, g); } else if (g.drawn < (w.done ? 1 : w.prog) * g.art.stages.length - 1e-6 || (w.crossed && !g.crossDrawn)) drawUpTo(w, g);
           if (nMove < 8 && atlOk() && atlFits(w, g, W) && atlMove(w, g, cx, cy)) nMove++;   // [atlante] finito: nella tela comune
@@ -2136,7 +2663,10 @@ var Writing = (function () {
   if (typeof window !== 'undefined') {
     addEventListener('keydown', e => {
       const pv = window.__pv, st = pv && pv.st, ui = pv && pv.ui; if (!st || (ui && (ui.book || ui.menu || ui.dialog || ui.intro || ui.over))) return;
-      const k = e.key.toLowerCase(); if (k !== 'b' || e.repeat) return;
+      const k = e.key.toLowerCase();
+      if (FIX2 && (k === '[' || k === ']') && !e.repeat && !TAV.pad && (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello') && mode(st) === 'tavoletta') { const m = tavSize(k === ']' ? 1 : -1); G.feed(st, `Misura: ${MIS_NOME[m]}.`); e.preventDefault(); return; }   // [graffiti2] la misura della cornice
+      if (FIX2) return;   // [graffiti2] B non cambia più niente: la tavoletta è l'unico modo (Traccia dentro fa i lavori guidati)
+      if (k !== 'b' || e.repeat) return;
       if (st.player.hand !== 'bomboletta') return;
       const m = cycleMode(st); G.feed(st, `Bomboletta: ${MODE_TXT[m]}${m === 'libero' ? '' : ' — tieni premuto il sinistro sul muro'}.`); e.preventDefault();
     });
@@ -2144,6 +2674,6 @@ var Writing = (function () {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else setTimeout(go, 0);
   }
 
-  return { __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
+  return { tavDown, tavSize, apri, get tavMisura() { return TAV.size; }, __ray: { rayWall, segList, cands },   /* [leggera] per la prova dei raggi (strumenti/sonda_uguale.js) */ RAIL, spotPlan, yardAt, yardState, wagPose, sidePt, S, STYLES, MODES, CREWS, PAL, RANKS, rankOf, TR, trainAt, carX, carPose, railAt, sidePoint, mode, setMode, cycleMode, wants, tick, release, finish, progress, judge, art, night, morning, initWriters, renameTag, GFX, sceneLevel, grow, recruit, npcWork, styleFor, sketchFor, playerDna, pathPoint, workPoint, _: { cotti, ATL, atlOk, ARTW, placeWall, artFor, scanNear, galleggia, salva, carica, placeAnchor, fitWall, onPlane, openingsAt, tavRect, tavFit, tavCam, TAV, decalGeo, decalG, galleggia2, tavHov, tavDown, tavSize, tavPick, punteggio, witnesses, FIX2, MISURE, capVeils, makeVeil, freeVeil, POOL, SAVE_KEY, VEIL_MAX, vehAnchor, frame: () => frame(true), cityReact, saveOnWall, track, wagMesh, yardFrame, yardPaint, railFit, addWork, overlapCheck, nightSpot, livery, washSide, trainTarget } };
 })();
 if (typeof module !== 'undefined') module.exports = Writing;

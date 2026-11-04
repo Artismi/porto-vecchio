@@ -57,6 +57,10 @@
   // inclina, lo zoom sta a parte (pizzico, rotella, croce ▲▼) e le tre viste (alta, media, vicina) si cambiano con V, R3 o «vista» del Game
   // Boy; si cammina rispetto alla camera e il personaggio guarda dove va; mirando guarda dove guarda la camera. ?nofixcamera6: com'era
   const CAM6 = !/[?&]nofixcamera6\b/.test(location.search) && typeof Visuale !== 'undefined' && !!Visuale.levetta6;
+  // [graffiti2] la bomboletta in mano: un tocco sulla cornice gialla apre la tavoletta (al pointerdown), un tocco altrove cammina; la rotella
+  // cambia la misura della cornice (non più il colore: il colore si sceglie solo nel pannello). ?nofixgraffiti2: com'era
+  const GRAF2 = !/[?&]nofixgraffiti2\b/.test(location.search);
+  const tav2 = () => GRAF2 && window.Writing && Writing.tavDown && Writing.mode(st) === 'tavoletta' && (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello');
   if (CAM6) ui.zoom = Visuale.COMANDI6.viste[1];   // [camera6] si parte dalla vista media: la strada si legge senza tagliare le case
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
@@ -83,7 +87,8 @@
     if (e.button === 2) { mouse.down = true; mouse.pressed = true; return; }
     const busy = ui.intro || ui.over || ui.dialog || ui.book || ui.menu;
     if (e.button === 0 && !busy && window.Skate && Skate.on(st)) { tpGrab(e, 'skate', nx, ny); mouse.nx = nx; mouse.ny = ny; return; }   // [mobile] in tavola: tieni premuto e spingi verso quel punto
-    if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
+    if (e.button === 0 && ui.spray && tav2() && !busy) { mouse.nx = nx; mouse.ny = ny; if (Writing.tavDown(st, nx, ny)) return; }   // [graffiti2] sulla cornice: si apre adesso; se no il tocco va avanti (cammina)
+    else if (e.button === 0 && ui.spray) { mouse.nx = nx; mouse.ny = ny; ui.spray.on = true; tpGrab(e, 'spray', nx, ny); return; }   // [graffiti] con la bomboletta si spruzza, non si cammina
     if (e.button === 0 && !busy && e.pointerType !== 'mouse' && tapShoots()) { tpGrab(e, 'fire', nx, ny); touchAimAt(nx, ny); touchFire = true; mouse.pressed = true; return; }   // [mobile] arma in mano: spari dove tocchi
     if (e.button === 0 && e.pointerType === 'touch' && !busy) { tg = { id: e.pointerId, x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, nx, ny, drag: false }; try { cv.setPointerCapture(e.pointerId); } catch (x) { } return; }   // [telefono] il tocco decide al rilascio: tocco = vai lì, trascinamento = guardati attorno
     if (e.button === 0) { mouse.nx = nx; mouse.ny = ny; onClick(nx, ny, e.detail >= 2); } });
@@ -125,6 +130,7 @@
     const tool = st.player.hand === 'pennarello' ? 'pennarello' : 'bomboletta';
     const inHand = (st.player.hand === 'bomboletta' || st.player.hand === 'pennarello') && sprayHave(tool) && !st.player.vehicle;
     if (ui.spray && ui.spray.tool !== tool) { sprayEnd(); ui.spray = null; }
+    if (inHand && !ui.spray && tav2()) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(touchMode ? 'Graffiti: tocca un muro dove c\'è la cornice gialla, e dipingi.' : 'Graffiti: clic sul muro dove c\'è la cornice gialla, e dipingi. La rotella cambia la misura.'); }   // [graffiti2] niente più B né rotella dei colori
     if (inHand && !ui.spray) { ui.spray = { col: 0, on: false, dabs: 0, t: 0, tool }; toast(tool === 'pennarello' ? 'Pennarello in mano: tieni premuto su un muro e fai la tua tag (con le colature).' : 'Bomboletta in mano: tieni premuto il tasto sinistro su un muro vicino; la rotella cambia colore (' + SPRAY_COLS[0][1] + '). B: tag, throw-up, pezzo, burner.'); }
     if (!inHand && ui.spray) { sprayEnd(); ui.spray = null; }
     const S = ui.spray; if (!S || !S.on || !R.spray) return;
@@ -155,6 +161,7 @@
   const DOPO = [];   // [audit] il lavoro chiesto dai gestori degli eventi, fatto all'inizio del fotogramma dopo
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('wheel', e => { if (ui.intro || ui.dialog || ui.book) return; e.preventDefault();
+    if (ui.spray && tav2()) { const t = performance.now(); if (t - (cv.__misT || 0) > 180) { cv.__misT = t; const m = Writing.tavSize(e.deltaY > 0 ? -1 : 1); toast('Misura: ' + { tag: 'tag', throw: 'throw-up', pezzo: 'pezzo', burner: 'burner' }[m] + '.'); } return; }   // [graffiti2] la rotella: la misura della cornice
     if (ui.spray) { ui.spray.col = (ui.spray.col + (e.deltaY > 0 ? 1 : SPRAY_COLS.length - 1)) % SPRAY_COLS.length; toast('Colore: ' + SPRAY_COLS[ui.spray.col][1] + '.'); return; } if (window.Cantiere && Cantiere.wheel(e.deltaY)) return; zoomBy(e.deltaY > 0 ? 1.12 : 1 / 1.12); }, { passive: false });
   addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
@@ -941,7 +948,7 @@
     if (ui.over) return M;   // a partita finita c'è il suo pulsante sullo schermo
     if (ui.intro) return M;   // [diretto] mentre carica non c'è niente da premere
     const TV = window.Writing && Writing._ && Writing._.TAV.pad && Writing._.TAV.api;   // [tavoletta] col pannello aperto: A salva, B esce, la croce colore e spessore
-    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
+    if (TV) { M.a = { l: 'Salva', dn: () => TV.apply() }; M.b = { l: 'Esci', dn: () => TV.close() }; M.croce = { l: GRAF2 ? '◄► colore · ▲▼ attrezzo' : '◄► colore · ▲▼ spessore' }; M.bomboletta = { l: 'Annulla', dn: () => TV.undo() }; return M; }
     if (ui.dialog || ui.book || ui.menu || ring.n || (window.Cantiere && Cantiere.active())) {
       M.b = { l: 'Indietro', dn: () => conFake('Escape') };
       if (ui.dialog && $('dialog').querySelectorAll('.opt').length === 1) M.a = { l: 'Ok', dn: () => conFake('Enter') };
@@ -951,6 +958,7 @@
     const set = touchSet(), tb = k => ({ l: lab(TB[k]), dn: TB[k].dn, up: TB[k].up });
     const sk = window.Skate && Skate.on(st), veh = p.vehicle && st.vehicles.find(q => q.id === p.vehicle), bmx = veh && veh.kind === 'bmx';
     if (set[0]) M.a = tb(set[0]);
+    if (tav2() && !p.vehicle) M.a = { l: 'Dipingi', dn: () => { if (!Writing.tavDown(st, .5, .5)) toast('Davanti non c\'è un muro per la cornice: girati verso una parete.'); } };   // [graffiti2] col Game Boy: la cornice è al centro dello schermo
     if (set[1]) M.b = tb(set[1]);
     else if (!veh && !sk) {
       const Wp = !p.hand && p.cur !== 'pugni' && G.WEAPONS[p.cur], a = Wp && p.arms[p.cur];

@@ -144,7 +144,7 @@ var TavolaUI = (function () {
   // della bomboletta in mano), tool ('bomboletta' | 'pennarello'), pens (true se ci sono i pennelli), sizes ([k, nome, W, H]),
   // sizeK, has(tool), conta() ({bomboletta, pennarello} o null), titolo(soloPennarello), luogo, chi, PN, WM, mulberry,
   // reshoot(k) → { shot, W, H, nota } | null, save(rec) → { ok } | { msg }, close()
-  function open(ctl) {
+  function open1(ctl) {
     css();
     const TOUCH = matchMedia('(pointer: coarse)').matches;
     const COLS = ctl.cols.concat(PIU), PNs = !!(ctl.pens && ctl.PN);
@@ -423,6 +423,440 @@ var TavolaUI = (function () {
     };
     return api;
   }
-  return { open, PIU, TAPPI, MEM };
+
+  // =====================================================================================================================
+  // [graffiti2] LA TAVOLETTA NUOVA. L'autore: «applicare e scegliere non funzionano bene, i tratti di prima sono spariti, voglio UN
+  // selettore di colore e un menu chiaro». Prima: il tratto in corso era una riga piatta (la resa vera arrivava solo staccando il dito),
+  // il colore si sceglieva in cinque posti, la barra aveva 23 comandi, i tappi stavano dietro la bomboletta grande, la misura sotto «⋯»
+  // (e cancellava il disegno), ✕ ed Esc buttavano via tutto senza chiedere. Ora:
+  //   - LA FOTO A TUTTO SCHERMO, opaca (la tela grande, il contesto attorno appena scurito); due dita o la rotella per avvicinarsi.
+  //   - A SINISTRA tre comandi: ✕ (se hai disegnato chiede conferma), ↶ annulla, ✓ Salva.
+  //   - IN BASSO quattro attrezzi col nome: Spray (toccalo ancora: fat ↔ skinny), Marker, Rullo, Traccia (il bozzetto guidato di
+  //     writer_arte.js: tag, throw-up, pezzo o burner secondo la misura; dove passi il getto scopre gli strati, uno dopo l'altro);
+  //     e UNA fila di dodici colori, con «altri» per il resto.
+  //   - LA MISURA NON STA QUI: si sceglie prima di aprire, come cornice gialla sul muro (writing.js, misura()).
+  //   - IL TRATTO VERO MENTRE DIPINGI: il pennello di pennelli.js disegna a pezzi, a ogni fotogramma, su una tela sopra l'inchiostro
+  //     (le colature a parte); staccando il dito il tratto intero passa all'inchiostro, subito (non al fotogramma dopo).
+  // ?nofixgraffiti2: il pannello di prima (open1).
+  const COLS12 = [['#c42a22', 'rosso'], ['#e8a020', 'arancio'], ['#ffe94a', 'giallo'], ['#9ad83a', 'lime'], ['#3a9a5a', 'verde'], ['#35e6ff', 'ciano'],
+    ['#2a6ac8', 'blu'], ['#7a3ac8', 'viola'], ['#ff4fa3', 'rosa'], ['#e8e0d0', 'bianco'], ['#1e1e24', 'nero'], ['#b8bcc4', 'cromo']];
+  const ALTRI = [['#e8c040', 'ocra'], ['#ff6a2a', 'arancio fluo'], ['#c84a9a', 'magenta'], ['#c8a040', 'oro'], ['#7ab8e8', 'azzurro'], ['#1a8a8a', 'petrolio'],
+    ['#1a5a3a', 'verde scuro'], ['#2a2a6a', 'blu notte'], ['#7a1e22', 'bordeaux'], ['#6a4a2a', 'marrone'], ['#6e6a72', 'grigio'], ['#f0b8a0', 'pesca']];
+  const ATTREZZI = [['spray', 'Spray'], ['marker', 'Marker'], ['roller', 'Rullo'], ['traccia', 'Traccia']];
+  const IC2 = {
+    traccia: S(`<path ${L} d="M4 18c3-9 5-12 7-12s1 8 4 8 3-5 5-7"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2.6" d="M3 21h18"/>`),
+    rullo: S(`<rect ${L} x="3" y="3.5" width="15" height="6" rx="1.6"/><path ${L} d="M18 6.5h2.5v5H11v3.5"/><path ${L} d="M11 15v6"/>`),
+    marker: S(`<path ${L} d="M14.5 3.5l6 6L10 20H4v-6z"/><path ${L} d="M12 6l6 6"/>`),
+  };
+  const CSS2 = `
+.tv2{position:fixed;inset:0;z-index:100000;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"rail stage" "bar bar";background:#07060e;color:#f0e6d0;font:15px var(--f-pix,"Pixelify Sans",system-ui,sans-serif);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+.tv2 *{box-sizing:border-box}
+.tv2 svg{display:block;width:100%;height:100%}
+.tv2 .tv-stage{grid-area:stage;position:relative;overflow:hidden;min-width:0;min-height:0;touch-action:none;cursor:crosshair;contain:strict;background:#1a1726}
+.tv2 .tv-wrap{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.tv2 .tv-wrap canvas,.tv2 .tv-over{position:absolute;left:0;top:0;display:block;pointer-events:none}
+.tv2 .tv-chip{position:absolute;left:8px;top:max(8px,env(safe-area-inset-top));display:flex;align-items:center;gap:6px;padding:4px 8px;background:#0d0b1a;border:2px solid #3b3252;font:10px var(--f-label,"Silkscreen",monospace);letter-spacing:.05em;text-transform:uppercase;pointer-events:none;max-width:calc(100% - 70px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv2 .tv-chip b{color:#ffe14a;font-weight:400}
+.tv2 .tv-toast{position:absolute;left:50%;top:max(44px,calc(env(safe-area-inset-top) + 40px));transform:translateX(-50%);max-width:min(92%,460px);padding:8px 12px;background:#0d0b1a;border:2px solid #ffe14a;box-shadow:3px 3px 0 #000;color:#f0e6d0;text-align:center;line-height:1.3;pointer-events:none;opacity:0;transition:opacity .18s}
+.tv2 .tv-toast.on{opacity:1}
+.tv2 .tv-toast svg{display:inline-block;width:20px;height:20px;vertical-align:-5px;margin-right:6px}
+.tv2-fit{position:absolute;right:8px;top:max(8px,env(safe-area-inset-top));width:44px;height:44px;padding:9px;display:none;border:2px solid #3b3252;background:#15112a;color:#f0e6d0;border-radius:8px;cursor:pointer}
+.tv2-fit.on{display:flex}
+.tv2-rail{grid-area:rail;display:flex;flex-direction:column;gap:8px;padding:max(8px,env(safe-area-inset-top)) 8px 8px max(8px,env(safe-area-inset-left));background:#15112a;border-right:2px solid #3b3252;width:72px}
+.tv2-rail .sp{flex:1}
+.tv2-b{appearance:none;-webkit-appearance:none;border:2px solid #3b3252;background:#0d0b1a;color:#f0e6d0;border-radius:10px;width:100%;height:52px;padding:0;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:9px var(--f-label,"Silkscreen",monospace);letter-spacing:.04em;text-transform:uppercase}
+.tv2-b svg{width:22px;height:22px;flex:none}
+.tv2-b:active{transform:translate(1px,1px)}
+.tv2-b[disabled]{opacity:.35;cursor:default}
+.tv2-b.sicuro{background:#c42a22;border-color:#ffb0a0;color:#fff}
+.tv2-ok{background:#ffe14a;border-color:#0d0b1a;color:#0d0b1a;box-shadow:3px 3px 0 #000;height:76px;font-size:11px}
+.tv2-ok svg{width:30px;height:30px}
+.tv2-ok.weak{opacity:.55}
+.tv2-bar{grid-area:bar;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:center;background:#15112a;border-top:2px solid #3b3252;padding:8px max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left))}
+.tv2-tools{display:grid;grid-template-columns:repeat(4,minmax(64px,84px));gap:6px;flex:0 1 auto}
+.tv2-t{appearance:none;-webkit-appearance:none;position:relative;border:2px solid #3b3252;background:#0d0b1a;color:#f0e6d0;border-radius:10px;height:58px;padding:4px 2px 3px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px}
+.tv2-t>span{display:block;width:26px;height:26px}
+.tv2-t b{font:10px var(--f-label,"Silkscreen",monospace);font-weight:400;letter-spacing:.03em;text-transform:uppercase}
+.tv2-t small{font:8px var(--f-label,monospace);color:#a89fbd;text-transform:uppercase;letter-spacing:.02em;line-height:1}
+.tv2-t.on{border-color:#ffe14a;background:#2b2440;box-shadow:inset 0 -4px 0 #ffe14a}
+.tv2-t.on small{color:#ffe14a}
+.tv2-t.no{opacity:.4}
+.tv2-cols{display:grid;grid-template-columns:repeat(13,34px);gap:4px;align-items:center;flex:0 1 auto}
+.tv2-c{appearance:none;-webkit-appearance:none;width:34px;height:34px;border-radius:50%;border:3px solid #0d0b1a;box-shadow:0 0 0 2px #3b3252;cursor:pointer;touch-action:manipulation;padding:0}
+.tv2-c.on{box-shadow:0 0 0 3px #ffe14a;transform:scale(1.08)}
+.tv2-altri{appearance:none;-webkit-appearance:none;width:34px;height:34px;border-radius:50%;border:2px dashed #a89fbd;background:#0d0b1a;color:#f0e6d0;cursor:pointer;padding:0;font:8px var(--f-label,monospace);text-transform:uppercase;line-height:1}
+.tv2-altri.on{border-style:solid;border-color:#ffe14a}
+.tv2-pop{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;grid-template-columns:repeat(6,40px);gap:8px;padding:12px;background:#15112a;border:2px solid #ffe14a;box-shadow:3px 3px 0 #000;z-index:2;touch-action:manipulation}
+.tv2-pop.on{display:grid}
+.tv2-pop .tv2-c{width:40px;height:40px}
+.tv2-pop i{grid-column:1/-1;font:10px var(--f-label,monospace);font-style:normal;letter-spacing:.06em;text-transform:uppercase;color:#a89fbd}
+@media (max-width:760px){ .tv2-cols{grid-template-columns:repeat(13,minmax(22px,1fr));width:100%;gap:3px} .tv2-c,.tv2-altri{width:100%;height:auto;aspect-ratio:1/1} .tv2-tools{width:100%;grid-template-columns:repeat(4,minmax(0,1fr))} }
+@media (orientation:landscape) and (max-height:520px){
+  .tv2{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:100%;grid-template-areas:"rail stage bar"}
+  .tv2-rail{width:64px}.tv2-b{height:44px}.tv2-ok{height:64px}
+  .tv2-bar{flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;border-top:0;border-left:2px solid #3b3252;width:200px;overflow:auto;padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 6px 8px}
+  .tv2-tools{grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.tv2-t{height:50px}
+  .tv2-cols{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}.tv2-c,.tv2-altri{width:100%;height:auto;aspect-ratio:1/1}
+}
+`;
+  let css2Ok = false;
+  const css2 = () => { if (css2Ok) return; css2Ok = true; const s = document.createElement('style'); s.id = 'tv2-css'; s.textContent = CSS2; document.head.appendChild(s); };
+  // ctl in più rispetto a open1: traccia(cb) → cb({ A, nome } | null) il bozzetto guidato per la misura del riquadro (writing.js), hiss(on)
+  function open2(ctl) {
+    css2();
+    const TOUCH = matchMedia('(pointer: coarse)').matches;
+    const COLS = COLS12.concat(ALTRI), PNs = !!(ctl.pens && ctl.PN);
+    let shot = ctl.shot, In = shot.inner || { x: 0, y: 0, w: shot.width, h: shot.height }, pw = In.w, ph = In.h;
+    const Wm = ctl.W, Hm = ctl.H;
+    const toolOf = p => p === 'marker' ? 'pennarello' : 'bomboletta';
+    // l'attrezzo: spray (col tappo fat o skinny), marker, rullo, traccia; l'ultimo scelto resta
+    let cap = MEM.cap === 'skinny' ? 'skinny' : 'fat';
+    let tool = ['spray', 'marker', 'roller', 'traccia'].includes(MEM.tool) ? MEM.tool : ctl.tool === 'pennarello' ? 'marker' : 'spray';
+    if (!PNs && tool === 'roller') tool = 'spray';
+    const penOf = t => t === 'spray' ? cap : t === 'marker' ? 'marker' : t === 'roller' ? 'roller' : 'traccia';
+    if (!ctl.has(toolOf(penOf(tool))) && ctl.has('pennarello')) tool = 'marker';
+    let col = MEM.col && /^#[0-9a-f]{6}$/i.test(MEM.col) ? MEM.col : (ctl.col && COLS.some(c => c[0] === ctl.col) ? ctl.col : COLS[0][0]);
+    const cmOf = p => +MEM.cm[p] || ATTR(p === 'traccia' ? 'fat' : p).cm;
+    const strokes = []; let cur = null;   // ogni tratto: { pts: [[x, y, t, pressione]], c, p, w (px della foto), n (punti già disegnati dal vivo) }
+    const box = mk('div', 'tv2'); box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Tavoletta dei graffiti');
+    const rail = mk('div', 'tv2-rail', box);
+    const stage = mk('div', 'tv-stage', box), wrap = mk('div', 'tv-wrap', stage);
+    const bg = mk('canvas', '', wrap), ghost = mk('canvas', '', wrap), ink = mk('canvas', '', wrap), live = mk('canvas', '', wrap); ink.dataset.tv = 'ink'; live.dataset.tv = 'vivo'; ghost.dataset.tv = 'bozzetto';
+    const over = mk('canvas', 'tv-over', stage); over.dataset.tv = 'pane';
+    const chip = mk('div', 'tv-chip', stage), toast = mk('div', 'tv-toast', stage);
+    const fitB = mk('button', 'tv2-fit', stage, IC.adatta); fitB.title = 'Riquadro intero'; fitB.dataset.tv = 'adatta';
+    const pop = mk('div', 'tv2-pop', stage); pop.dataset.tv = 'altri-pop';
+    const RB = (cls, ic, label, title, f, k) => { const b = mk('button', 'tv2-b ' + cls, rail, ic + '<span>' + label + '</span>'); b.title = title; b.setAttribute('aria-label', title); b.dataset.tv = k; b.onclick = e => { e.preventDefault(); f(); }; return b; };
+    const bX = RB('', IC.esci, 'Esci', 'Esci (Esc)', () => esci(), 'esci');
+    const bU = RB('', IC.annulla, 'Annulla', 'Annulla tratto (Ctrl+Z)', () => undo(), 'annulla');
+    mk('div', 'sp', rail);
+    const bOk = RB('tv2-ok', IC.ok, 'Salva', 'Salva sul muro (Invio)', () => apply(), 'ok');
+    const bar = mk('div', 'tv2-bar', box), tools = mk('div', 'tv2-tools', bar), cols = mk('div', 'tv2-cols', bar);
+    const tb = {};
+    ATTREZZI.forEach(([k, nome]) => {
+      if (k === 'roller' && !PNs) return;
+      const b = mk('button', 'tv2-t', tools); b.dataset.tv = 'attrezzo'; b.dataset.k = k; b.title = nome; b.setAttribute('aria-label', nome);
+      b.onclick = e => { e.preventDefault(); scegli(k); }; tb[k] = b;
+    });
+    const sw = COLS12.map(c => { const b = mk('button', 'tv2-c', cols); b.style.background = c[0]; b.title = c[1]; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'sw'; b.onclick = e => { e.preventDefault(); setCol(c[0]); }; return b; });
+    const altriB = mk('button', 'tv2-altri', cols, 'altri'); altriB.dataset.tv = 'altri'; altriB.title = 'Altri colori'; altriB.onclick = e => { e.preventDefault(); popT(); };
+    mk('i', '', pop).textContent = 'Altri colori';
+    const swA = ALTRI.map(c => { const b = mk('button', 'tv2-c', pop); b.style.background = c[0]; b.title = c[1]; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'swp'; b.onclick = e => { e.preventDefault(); setCol(c[0]); popT(false); }; return b; });
+    function popT(on) { const v = on == null ? !pop.classList.contains('on') : on; pop.classList.toggle('on', v); altriB.classList.toggle('on', v || ALTRI.some(c => c[0] === col)); }
+
+    // ---------------- la vista ----------------
+    let sw0 = 0, sh0 = 0, dpr = 1, k0 = 1;
+    const V = { k: 1, tx: 0, ty: 0 };
+    function setShot(sh) {
+      shot = sh; In = sh.inner || { x: 0, y: 0, w: sh.width, h: sh.height }; pw = In.w; ph = In.h;
+      bg.width = sh.width; bg.height = sh.height; const x = bg.getContext('2d'); x.drawImage(sh, 0, 0);
+      x.fillStyle = 'rgba(7,6,14,.38)'; x.fillRect(0, 0, sh.width, In.y); x.fillRect(0, In.y + In.h, sh.width, sh.height - In.y - In.h); x.fillRect(0, In.y, In.x, In.h); x.fillRect(In.x + In.w, In.y, sh.width - In.x - In.w, In.h);   // fuori dal riquadro: appena scurito (la foto resta foto)
+      for (const c of [ghost, ink, live]) { c.width = pw; c.height = ph; c.style.left = In.x + 'px'; c.style.top = In.y + 'px'; }
+      wrap.style.width = sh.width + 'px'; wrap.style.height = sh.height + 'px';
+      fitView();
+    }
+    function fitView() {
+      if (!sw0 || !sh0) return;
+      const m = Math.min(14, Math.max(6, Math.min(sw0, sh0) * .025)), top = Math.min(34, sh0 * .08);
+      k0 = Math.min((sw0 - 2 * m) / pw, (sh0 - m - Math.max(m, top)) / ph);
+      V.k = k0; V.tx = sw0 / 2 - (In.x + pw / 2) * k0; V.ty = (sh0 + Math.max(m, top) - m) / 2 - (In.y + ph / 2) * k0;
+      view();
+    }
+    let vReq = 0;
+    function view() { wrap.style.transform = `translate(${V.tx}px,${V.ty}px) scale(${V.k})`; fitB.classList.toggle('on', V.k > k0 * 1.04 || V.k < k0 * .96); paintOver(); }
+    const zoomAt = (sx, sy, f) => { const k = clamp(V.k * f, k0 * .6, Math.max(k0 * 10, 2)); V.tx = sx - (sx - V.tx) * k / V.k; V.ty = sy - (sy - V.ty) * k / V.k; V.k = k; };
+    function sized(w, h) {
+      if (!w || !h) return; const first = !sw0; sw0 = w; sh0 = h; dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      over.width = Math.round(w * dpr); over.height = Math.round(h * dpr); over.style.width = w + 'px'; over.style.height = h + 'px';
+      fitView(); if (first) suggerisci();
+    }
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(es => { const r = es[es.length - 1].contentRect; sized(r.width, r.height); }) : null;
+    const onResize = () => { const r = stage.getBoundingClientRect(); sized(r.width, r.height); };
+    if (ro) ro.observe(stage); else addEventListener('resize', onResize);
+    // la tela di sopra (risoluzione dello schermo): solo il bordo giallo del riquadro e, piccolo, dove sta il getto
+    function paintOver() {
+      const x = over.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, sw0, sh0);
+      const X0 = V.tx + In.x * V.k, Y0 = V.ty + In.y * V.k, Wd = pw * V.k, Hd = ph * V.k;
+      x.lineWidth = 4; x.strokeStyle = 'rgba(0,0,0,.65)'; x.strokeRect(X0 - 2, Y0 - 2, Wd + 4, Hd + 4);
+      x.lineWidth = 2; x.strokeStyle = '#ffe14a'; x.strokeRect(X0 - 1, Y0 - 1, Wd + 2, Hd + 2);
+    }
+
+    // ---------------- il pennello vero, dal vivo ----------------
+    const meta = s => ({ c: s.c, p: s.p, w: +s.w.toFixed(2) });
+    const recOf = (L, t0) => ({ strokes: L.map(s => s.pts.map(q => [q[0], q[1], q[2] - t0, q[3]])), st: L.map(meta), frame: { w: pw, h: ph } });
+    const rng = s => ctl.mulberry(11 + strokes.indexOf(s));
+    // un pezzo di tratto (dal punto i0 alla fine) col pennello vero, senza colature (quelle vengono staccando, col tratto intero)
+    function brush(x, s, pts, noDrip) {
+      try {
+        if (PNs) { const r = { strokes: [pts], st: [meta(s)], frame: { w: pw, h: ph }, pen: s.p }; if (noDrip) r.cfg = { drip: 0 }; ctl.PN.drawStrokes(x, r, pw, ph, s.c, ctl.mulberry(7 + pts.length + s.n)); }
+        else if (ctl.WM) { const r = { strokes: [pts], frame: { w: pw, h: ph }, wpx: s.w }; ctl.WM.drawRecorded(x, r, { seed: 7 }, pw, ph, ctl.mulberry(7), s.c, s.p === 'marker' ? 'mtag' : 'tag'); }
+      } catch (e) { console.warn('[graffiti2] il pennello', e); }
+    }
+    function liveStep() {   // i punti nuovi del tratto in corso (con quello prima, perché il getto sia continuo)
+      if (!cur || cur.p === 'traccia') return; const n = cur.pts.length; if (cur.n >= n) return;
+      const i0 = Math.max(0, cur.n - 1); brush(live.getContext('2d'), cur, cur.pts.slice(i0), true); cur.n = n;
+    }
+    function inkStroke(s, x) {
+      if (s.p === 'traccia') return;
+      if (PNs) { const r = recOf([s], s.pts[0][2]); r.pen = s.p; try { ctl.PN.drawStrokes(x, r, pw, ph, s.c, rng(s)); } catch (e) { console.warn('[graffiti2] il pennello', e); } }
+      else brush(x, s, s.pts, false);
+    }
+    function settle(s) {   // il tratto finito: dall'anteprima all'inchiostro, subito
+      live.getContext('2d').clearRect(0, 0, pw, ph);
+      if (s && s.p !== 'traccia') inkStroke(s, ink.getContext('2d'));
+    }
+    function inkAll() { const x = ink.getContext('2d'); x.clearRect(0, 0, pw, ph); live.getContext('2d').clearRect(0, 0, pw, ph); strokes.forEach(s => inkStroke(s, x)); traceAll(); }
+    let fReq = 0;
+    const frame = () => { if (fReq) return; fReq = requestAnimationFrame(() => { fReq = 0; liveStep(); traceStep(); }); };
+
+    // ---------------- Traccia: il bozzetto guidato (writer_arte.js) ----------------
+    // TR.A: il disegno (le tappe, dalla prima all'ultima); dove passa il getto la tappa in corso si scopre (come il ricalco di writing.js);
+    // una tappa è fatta quando è coperto il 90% di quello che cambia. Si salva la tappa a cui sei arrivato (più di metà della tappa in corso: anche quella)
+    const TR = { A: null, chiesto: false, ts: 0, need: null, nome: '' };
+    const CELL2 = 9;
+    function needOf(sI) {
+      TR.need = TR.need || []; if (TR.need[sI]) return TR.need[sI];
+      const A = TR.A, gw = Math.ceil(A.Wp / CELL2), gh = Math.ceil(A.Hp / CELL2), sm = document.createElement('canvas'); sm.width = gw; sm.height = gh; const sx = sm.getContext('2d');
+      const read = img => { sx.clearRect(0, 0, gw, gh); if (img) sx.drawImage(img, 0, 0, gw, gh); return sx.getImageData(0, 0, gw, gh).data; };
+      const a = read(A.stages[sI]), b = read(sI ? A.stages[sI - 1] : null), need = new Uint8Array(gw * gh); let n = 0;
+      for (let i = 0; i < gw * gh; i++) { const d = Math.abs(a[i * 4] - b[i * 4]) + Math.abs(a[i * 4 + 1] - b[i * 4 + 1]) + Math.abs(a[i * 4 + 2] - b[i * 4 + 2]) + Math.abs(a[i * 4 + 3] - b[i * 4 + 3]) * 2; if (d > 60) { need[i] = 1; n++; } }
+      return (TR.need[sI] = { need, n: Math.max(1, n), gw, gh, got: new Uint8Array(gw * gh), cov: 0 });
+    }
+    function tracciaPronta(cb) {
+      if (TR.A) { cb(true); return; } if (TR.chiesto) return; TR.chiesto = true;
+      if (!ctl.traccia) { dire('Il bozzetto guidato qui non c\'è.'); return; }
+      dire('Preparo il bozzetto…');
+      ctl.traccia(r => { if (closed) return; if (!r || !r.A || !r.A.stages || !r.A.stages.length) { TR.chiesto = false; dire('Il bozzetto non è venuto: riprova.'); return; }
+        TR.A = r.A; TR.nome = r.nome || ''; TR.w = r.w || null; drawGhost(); upd(); toastOff(); dire(`Traccia: ricalca ${TR.nome || 'il bozzetto'}. Dove passi, lo strato si scopre.`); cb(true); });
+    }
+    function drawGhost() { const x = ghost.getContext('2d'); x.clearRect(0, 0, pw, ph); if (!TR.A) return; const A = TR.A; x.globalAlpha = .28; x.drawImage(A.stages[A.stages.length - 1], 0, 0, A.Wp, A.Hp, 0, 0, pw, ph); x.globalAlpha = 1; }
+    const kx = () => TR.A ? pw / TR.A.Wp : 1;
+    function stampT(x, img, px, py, R) {   // px, py nella tela; R in px della tela
+      const k = kx(), ax = px / k, ay = py / k, Ra = R / k, sx = Math.max(0, Math.floor(ax - Ra)), sy = Math.max(0, Math.floor(ay - Ra)), sw2 = Math.min(img.width - sx, Math.ceil(2 * Ra) + 1), sh2 = Math.min(img.height - sy, Math.ceil(2 * Ra) + 1); if (sw2 <= 0 || sh2 <= 0) return;
+      x.save(); x.beginPath(); x.arc(px, py, R, 0, 7); x.clip(); x.drawImage(img, sx, sy, sw2, sh2, sx * k, sy * k, sw2 * k, sh2 * k); x.restore();
+    }
+    const traceR = s => Math.max(6, (s.w || 20) * 1.1);
+    function tracePts(s, i0) {   // scopre lungo i punti del tratto (da i0), tappa dopo tappa
+      const A = TR.A; if (!A) return; const x = ghost.getContext('2d'), nS = A.stages.length, k = kx();
+      for (let i = i0; i < s.pts.length; i++) {
+        if (TR.ts >= nS) return; const q = s.pts[i], R = traceR(s), N = needOf(TR.ts), img = A.stages[TR.ts];
+        stampT(x, img, q[0], q[1], R);
+        const lx = q[0] / k, ly = q[1] / k, Ra = R / k, c0 = Math.floor((lx - Ra) / CELL2), c1 = Math.floor((lx + Ra) / CELL2), r0 = Math.floor((ly - Ra) / CELL2), r1 = Math.floor((ly + Ra) / CELL2);
+        for (let cy = Math.max(0, r0); cy <= Math.min(N.gh - 1, r1); cy++) for (let cx = Math.max(0, c0); cx <= Math.min(N.gw - 1, c1); cx++) { const j = cy * N.gw + cx; if (!N.need[j] || N.got[j]) continue; if (hyp((cx + .5) * CELL2 - lx, (cy + .5) * CELL2 - ly) > Ra + CELL2 * .5) continue; N.got[j] = 1; N.cov++; }
+        if (N.cov / N.n >= .9) { x.drawImage(img, 0, 0, A.Wp, A.Hp, 0, 0, pw, ph); TR.ts++; if (TR.ts < nS) dire(`Strato ${TR.ts} fatto: ora lo strato ${TR.ts + 1} di ${nS}.`); else dire('Bozzetto finito: salvalo (✓).'); upd(); }
+      }
+    }
+    function traceStep() { if (!cur || cur.p !== 'traccia' || !TR.A) return; const n = cur.pts.length; if (cur.n >= n) return; tracePts(cur, cur.n); cur.n = n; }
+    function traceAll() {   // da capo (dopo un annulla): il bozzetto, poi tutti i tratti di Traccia in ordine
+      if (!TR.A) return; TR.ts = 0; TR.need = null; drawGhost(); strokes.forEach(s => { if (s.p === 'traccia') tracePts(s, 0); });
+    }
+    const tStage = () => { if (!TR.A) return 0; const nS = TR.A.stages.length; if (TR.ts >= nS) return nS; const N = TR.need && TR.need[TR.ts]; return TR.ts + (N && N.cov / N.n >= .5 ? 1 : 0); };
+
+    // ---------------- i gesti: un dito dipinge, due spostano e ingrandiscono ----------------
+    const P = new Map(); let pinch = null, rect0 = null, startT = 0, held = false;
+    const pxm = () => pw / Wm, wpx = p => cmOf(p) / 100 * pxm();
+    const local = e => [((e.clientX - rect0.left) - V.tx) / V.k - In.x, ((e.clientY - rect0.top) - V.ty) / V.k - In.y];
+    const pinchInfo = () => { const [a, b] = [...P.values()]; return { x: (a.x + b.x) / 2 - rect0.left, y: (a.y + b.y) / 2 - rect0.top, d: Math.max(10, hyp(a.x - b.x, a.y - b.y)) }; };
+    function down(e) {
+      if (e.target.closest && e.target.closest('.tv2-pop,.tv2-fit')) return;
+      if (e.button === 1 || e.button === 2) { e.preventDefault(); rect0 = stage.getBoundingClientRect(); pinch = { pan: true, x: e.clientX, y: e.clientY }; stage.setPointerCapture(e.pointerId); P.set(e.pointerId, { x: e.clientX, y: e.clientY }); return; }
+      if (e.button > 0) return;
+      e.preventDefault(); try { stage.setPointerCapture(e.pointerId); } catch (er) { }
+      if (pop.classList.contains('on')) { popT(false); held = true; P.set(e.pointerId, { x: e.clientX, y: e.clientY }); return; }   // il primo tocco fuori chiude «altri», non dipinge
+      if (!P.size) rect0 = stage.getBoundingClientRect();
+      P.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (P.size === 2) {
+        if (cur) { if (e.timeStamp - startT < 350 || cur.pts.length < 8) { strokes.pop(); live.getContext('2d').clearRect(0, 0, pw, ph); if (cur.p === 'traccia') traceAll(); } else settle(cur); cur = null; hiss(false); }
+        held = false; const q = pinchInfo(); pinch = { x: q.x, y: q.y, d: q.d }; if (!MEM.gesti) { MEM.gesti = true; ricorda(); } return;
+      }
+      if (P.size > 2 || pinch || held) return;
+      const pen = penOf(tool);
+      if (pen === 'traccia' && !TR.A) { tracciaPronta(() => { }); held = true; return; }
+      if (pen !== 'traccia' && !ctl.has(toolOf(pen))) { dire(pen === 'marker' ? 'Non hai pennarelli: scegli lo Spray.' : 'Non hai bombolette: comprane in ferramenta, o usa il Marker.'); held = true; return; }
+      const [x, y] = local(e); startT = e.timeStamp;
+      cur = { pts: [[x, y, e.timeStamp, e.pressure || .5]], c: col, p: pen, w: wpx(pen), n: 0 }; strokes.push(cur); toastOff(); hiss(true); frame(); upd();
+    }
+    function move(e) {
+      const p = P.get(e.pointerId); if (!p) return;
+      if (pinch && pinch.pan) { V.tx += e.clientX - pinch.x; V.ty += e.clientY - pinch.y; pinch.x = e.clientX; pinch.y = e.clientY; view(); return; }
+      p.x = e.clientX; p.y = e.clientY;
+      if (pinch && P.size >= 2) { const q = pinchInfo(); V.tx += q.x - pinch.x; V.ty += q.y - pinch.y; zoomAt(q.x, q.y, q.d / pinch.d); pinch.x = q.x; pinch.y = q.y; pinch.d = q.d; if (!vReq) vReq = requestAnimationFrame(() => { vReq = 0; view(); }); return; }
+      if (!cur) return;
+      const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null, Lv = evs && evs.length ? evs : [e], m = 1.2 / Math.max(.05, V.k);
+      for (const ev of Lv) { const [x, y] = local(ev), l = cur.pts[cur.pts.length - 1]; if (hyp(x - l[0], y - l[1]) < m) continue; cur.pts.push([x, y, ev.timeStamp, ev.pressure || .5]); }
+      frame();
+    }
+    function up(e) {
+      if (!P.has(e.pointerId)) return; P.delete(e.pointerId);
+      if (pinch && pinch.pan) { pinch = null; P.clear(); return; }
+      if (cur && !P.size) { const s = cur; if (s.p === 'traccia') { traceStep(); } cur = null; settle(s); hiss(false); upd(); }
+      if (!P.size) { pinch = null; held = false; }
+      else if (pinch && P.size === 1) pinch = { wait: true };
+    }
+    stage.addEventListener('pointerdown', down); stage.addEventListener('pointermove', move); stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+    stage.addEventListener('contextmenu', e => e.preventDefault());
+    const wheel = e => { if (e.target.closest && e.target.closest('.tv2-pop')) return; e.preventDefault(); const r = stage.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-clamp(e.deltaY, -120, 120) * .0022)); view(); };
+    stage.addEventListener('wheel', wheel, { passive: false });
+    fitB.onclick = e => { e.preventDefault(); fitView(); };
+    let hissOn = false; function hiss(on) { if (on === hissOn) return; hissOn = on; try { ctl.hiss && ctl.hiss(on, penOf(tool)); } catch (e) { } }
+
+    // ---------------- attrezzi e colore ----------------
+    function scegli(k) {
+      if (k === 'spray' && tool === 'spray') { cap = cap === 'fat' ? 'skinny' : 'fat'; MEM.cap = cap; ricorda(); dire(cap === 'fat' ? 'Spray: fat cap, il getto largo.' : 'Spray: skinny cap, il getto sottile.'); }
+      else if (k !== 'traccia' && !ctl.has(toolOf(penOf(k)))) { dire(k === 'marker' ? 'Non hai pennarelli.' : 'Non hai bombolette.'); return; }
+      tool = k; MEM.tool = k; ricorda(); upd();
+      if (k === 'traccia') tracciaPronta(() => { });
+    }
+    function setCol(c) { col = c; MEM.col = c; ricorda(); upd(); }
+    function upd() {
+      const n = ctl.conta();
+      for (const k in tb) {
+        const b = tb[k], pen = penOf(k), ic = k === 'spray' ? getto(cap) : k === 'marker' ? IC2.marker : k === 'roller' ? IC2.rullo : IC2.traccia;
+        const sub = k === 'spray' ? (cap === 'fat' ? 'fat ⇄' : 'skinny ⇄') : k === 'traccia' ? (TR.A ? `strato ${Math.min(TR.ts + 1, TR.A.stages.length)}/${TR.A.stages.length}` : 'guidato') : k === 'marker' && n ? `${n.pennarello} pz` : k === 'roller' ? 'largo' : '';
+        b.innerHTML = `<span>${ic}</span><b>${ATTREZZI.find(a => a[0] === k)[1]}</b><small>${sub}</small>`;
+        b.classList.toggle('on', k === tool); b.classList.toggle('no', k !== 'traccia' && !ctl.has(toolOf(pen)));
+        b.style.color = k === tool && k !== 'traccia' ? (lum(col) < 60 ? '#f0e6d0' : col) : '';
+      }
+      sw.forEach((b, i) => b.classList.toggle('on', COLS12[i][0] === col)); swA.forEach((b, i) => b.classList.toggle('on', ALTRI[i][0] === col));
+      const extra = ALTRI.find(c => c[0] === col); altriB.classList.toggle('on', !!extra || pop.classList.contains('on')); altriB.style.background = extra ? extra[0] : '';
+      bU.disabled = !strokes.length;
+      const have = !n || strokes.every(s => s.p === 'traccia' || n[toolOf(s.p)] > 0);
+      bOk.classList.toggle('weak', !strokes.length || !have);
+      const tr = TR.A && strokes.some(s => s.p === 'traccia') ? ` · traccia ${tStage()}/${TR.A.stages.length}` : '';
+      chip.innerHTML = `<b>${esc(ctl.titolo(strokes.length && strokes.every(s => s.p === 'marker')))}</b> ${Wm.toFixed(1).replace('.', ',')}×${Hm.toFixed(1).replace('.', ',')} m${tr}`;
+      if (sicuro && !strokes.length) sicuroOff();
+    }
+    const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let toastT = 0;
+    function dire(t, ic) { toast.innerHTML = (ic || '') + esc(t); toast.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(toastOff, 2800); }
+    function toastOff() { toast.classList.remove('on'); }
+    function suggerisci() {
+      const portrait = sh0 > sw0, Wd = pw * k0;
+      if (portrait && TOUCH && pw / ph > 1.7 && Wd * ph * k0 < sw0 * sh0 * .3) dire('Gira il telefono: il riquadro viene più grande.', IC.gira);
+      else if (!MEM.gesti2) { MEM.gesti2 = true; ricorda(); dire(TOUCH ? 'Dipingi col dito nel riquadro giallo. Sotto: attrezzo e colore. ✓ salva.' : 'Dipingi nel riquadro giallo. Sotto: attrezzo e colore. ✓ salva (Invio).'); }
+    }
+
+    // ---------------- annulla, salva, esci ----------------
+    function undo() { if (cur) { cur = null; live.getContext('2d').clearRect(0, 0, pw, ph); hiss(false); } if (!strokes.length) return; const s = strokes.pop(); if (s.p === 'traccia') traceAll(); else inkAll(); upd(); }
+    function rec() {
+      const L = strokes.filter(s => s.p !== 'traccia'), t0 = L.length ? L[0].pts[0][2] : 0, r = recOf(L, t0), n = {};
+      L.forEach(s => { n[s.p] = (n[s.p] || 0) + s.pts.length; });
+      r.pen = Object.keys(n).sort((a, b) => n[b] - n[a])[0] || 'fat'; r.wpx = L.length ? L[L.length - 1].w : wpx('fat');
+      if (!PNs) delete r.pen;
+      if (TR.A && strokes.some(s => s.p === 'traccia')) r.traccia = { stage: Math.max(1, tStage()), di: TR.A.stages.length, w: TR.w };
+      r.copre = coverage(); r.colori = [...new Set(L.map(s => s.c))].length;
+      return r;
+    }
+    function coverage() {   // quanto del riquadro è dipinto (inchiostro e bozzetto scoperto), su una griglia rada
+      let on = 0, n = 0; try {
+        const x1 = ink.getContext('2d').getImageData(0, 0, pw, ph).data, x2 = TR.A && TR.ts + (TR.need && TR.need[TR.ts] ? 1 : 0) > 0 ? ghost.getContext('2d').getImageData(0, 0, pw, ph).data : null, st = Math.max(4, Math.round(Math.sqrt(pw * ph / 4000)));
+        for (let y = 0; y < ph; y += st) for (let x = 0; x < pw; x += st) { const i = (y * pw + x) * 4 + 3; n++; if (x1[i] > 60 || (x2 && x2[i] > 160)) on++; }
+      } catch (e) { return null; } return n ? +(on / n).toFixed(3) : 0;
+    }
+    function apply() {
+      if (cur) { const s = cur; cur = null; settle(s); hiss(false); }
+      if (!strokes.length) { dire('Prima dipingi qualcosa dentro il riquadro giallo.'); return; }
+      const r = ctl.save(rec());
+      if (r && r.ok) close(true); else if (r && r.msg) dire(r.msg);
+    }
+    let sicuro = 0;
+    function sicuroOff() { sicuro = 0; bX.classList.remove('sicuro'); bX.querySelector('span').textContent = 'Esci'; }
+    function esci() {
+      if (pop.classList.contains('on')) { popT(false); return; }
+      if (!strokes.length || sicuro) { close(); return; }
+      sicuro = setTimeout(sicuroOff, 3000); bX.classList.add('sicuro'); bX.querySelector('span').textContent = 'Sicuro?';
+      dire('Hai dipinto: uscendo il disegno si perde. Tocca ancora ✕ per uscire, ✓ per salvarlo.');
+    }
+    let closed = false;
+    function close() {
+      if (closed) return; closed = true; hiss(false);
+      removeEventListener('keydown', keys, true); removeEventListener('keyup', keys, true);
+      if (ro) ro.disconnect(); else removeEventListener('resize', onResize);
+      if (vReq) cancelAnimationFrame(vReq); if (fReq) cancelAnimationFrame(fReq); clearTimeout(toastT); clearTimeout(sicuro);
+      box.remove(); ctl.close();
+    }
+    const keys = e => {
+      e.stopPropagation(); if (e.type !== 'keydown') return;
+      if (e.key === 'Escape') esci();
+      else if (e.key === 'Enter') { e.preventDefault(); apply(); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      else if (/^[1-9]$/.test(e.key) && COLS12[+e.key - 1]) setCol(COLS12[+e.key - 1][0]);
+      else if (e.key === '[' || e.key === ']') api.size(e.key === ']' ? 1 : -1);
+      else if (e.key === '0') fitView();
+    };
+    addEventListener('keydown', keys, true); addEventListener('keyup', keys, true);
+    document.body.appendChild(box); setShot(shot); upd();
+    if (!ro) onResize();
+    if (tool === 'traccia') tracciaPronta(() => { });
+    // i tasti del Game Boy (main.js conMap): A salva, B esce, la croce colore (◄ ►) e attrezzo (▲ ▼)
+    const api = {
+      box, apply, close: esci, undo,
+      col: d => { const i = COLS.findIndex(c => c[0] === col), j = ((i < 0 ? 0 : i) + d + COLS.length) % COLS.length; setCol(COLS[j][0]); dire('Colore: ' + COLS[j][1]); },
+      size: d => { const ks = Object.keys(tb), i = ks.indexOf(tool), k = ks[(i + (d > 0 ? 1 : ks.length - 1)) % ks.length]; scegli(k); dire('Attrezzo: ' + ATTREZZI.find(a => a[0] === k)[1]); },
+      stato: () => ({ col, pen: penOf(tool), tool, cap, tratti: strokes.length, traccia: TR.A ? { ts: TR.ts, di: TR.A.stages.length } : null, vista: Object.assign({ k0 }, V) }),
+      scegli,
+    };
+    return api;
+  }
+
+  // ---------------- [graffiti2] LA MISURA, PRIMA DI APRIRE ----------------
+  // Con la bomboletta in mano: quattro misure (tag, throw-up, pezzo, burner) in una fila sopra le icone; la cornice gialla sul muro
+  // sotto il puntatore è di quella misura (writing.js). La rotella o [ ] la cambiano sul computer.
+  const MIS = [['tag', 'Tag'], ['throw', 'Throw-up'], ['pezzo', 'Pezzo'], ['burner', 'Burner']];
+  const CSS3 = `
+#tvMis{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:32;display:none;align-items:center;gap:4px;padding:4px;background:#0d0b1acc;border:2px solid #3b3252;border-radius:12px;font:10px var(--f-label,"Silkscreen",monospace);letter-spacing:.04em;text-transform:uppercase;color:#f0e6d0;pointer-events:auto;user-select:none;-webkit-user-select:none}
+#tvMis.on{display:flex}
+#tvMis button{appearance:none;-webkit-appearance:none;border:2px solid transparent;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;border-radius:8px;padding:4px 6px 3px;min-width:56px;height:44px;cursor:pointer;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px}
+#tvMis button svg{width:24px;height:18px;display:block}
+#tvMis button.on{border-color:#ffe14a;background:#2b2440;color:#ffe14a}
+#tvMis small{display:block;padding:0 6px;color:#a89fbd;font-size:9px;max-width:120px;white-space:normal;line-height:1.2;text-transform:none;letter-spacing:0}
+@media (pointer:coarse){ #tvMis small{display:none} }
+`;
+  let misEl = null, misCb = null;
+  function misuraBar(on, k, cb, nota) {
+    if (typeof document === 'undefined') return;
+    if (!misEl) {
+      const s = document.createElement('style'); s.textContent = CSS3; document.head.appendChild(s);
+      misEl = mk('div', '', document.body); misEl.id = 'tvMis'; misEl.setAttribute('role', 'toolbar'); misEl.setAttribute('aria-label', 'Misura del graffito');
+      MIS.forEach(([q, nome], i) => { const b = mk('button', '', misEl, misura_ic(i) + nome); b.dataset.k = q; b.title = 'Misura: ' + nome; b.onpointerdown = e => e.stopPropagation(); b.onclick = e => { e.preventDefault(); e.stopPropagation(); if (misCb) misCb(q); }; });
+      mk('small', '', misEl);
+    }
+    misCb = cb; misEl.classList.toggle('on', !!on);
+    if (!on) return;
+    misEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    const sm = misEl.querySelector('small'); if (sm) sm.textContent = nota || 'rotella o [ ] per cambiare';
+  }
+  const misura_ic = i => { const w = [8, 12, 17, 22][i], h = [5, 7, 9, 10][i]; return `<svg viewBox="0 0 24 14" aria-hidden="true"><rect x="${12 - w / 2}" y="${7 - h / 2}" width="${w}" height="${h}" rx="1" fill="none" stroke="currentColor" stroke-width="2"/></svg>`; };
+
+  // ---------------- [graffiti2] LA RICOMPENSA ----------------
+  // Dopo ✓: lo stacco di un secondo e mezzo sul pezzo (la foto del muro col lavoro sopra, fatta dritta davanti), il punteggio e la
+  // fama guadagnata; poi resta un biglietto piccolo per qualche secondo (un tocco lo chiude).
+  const CSS4 = `
+#tvFesta{position:fixed;inset:0;z-index:99990;pointer-events:none;display:flex;align-items:center;justify-content:center}
+#tvFesta .ph{position:relative;max-width:min(86vw,760px);max-height:62vh;border:6px solid #f0e6d0;box-shadow:6px 6px 0 #000;background:#000;transform:scale(.6) rotate(-2deg);opacity:0;transition:transform .35s cubic-bezier(.2,1.4,.4,1),opacity .2s}
+#tvFesta .ph img{display:block;max-width:100%;max-height:calc(62vh - 12px)}
+#tvFesta.on .ph{transform:scale(1) rotate(-1deg);opacity:1}
+#tvFesta .sc{position:absolute;left:50%;bottom:-18px;transform:translate(-50%,100%);min-width:260px;padding:10px 14px;background:#0d0b1a;border:2px solid #ffe14a;box-shadow:3px 3px 0 #000;color:#f0e6d0;font:13px var(--f-pix,"Pixelify Sans",system-ui,sans-serif);text-align:center;pointer-events:auto}
+#tvFesta .sc b{display:block;font:22px var(--f-label,"Silkscreen",monospace);color:#ffe14a}
+#tvFesta .sc ul{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(5,auto);gap:2px 10px;font:10px var(--f-label,monospace);text-transform:uppercase;color:#a89fbd}
+#tvFesta .sc li i{display:block;font-style:normal;color:#f0e6d0;font-size:13px}
+#tvFesta.piccolo{align-items:flex-end;justify-content:flex-end;padding:0 12px 140px 0}
+#tvFesta.piccolo .ph{max-width:220px;transform:scale(1) rotate(-2deg)}
+#tvFesta.piccolo .sc{min-width:200px;font-size:11px}#tvFesta.piccolo .sc ul{display:none}
+`;
+  let festaEl = null, festaT = [];
+  function festa(o) {
+    if (typeof document === 'undefined' || !o) return;
+    if (!festaEl) { const s = document.createElement('style'); s.textContent = CSS4; document.head.appendChild(s); festaEl = mk('div', '', document.body); festaEl.id = 'tvFesta'; }
+    festaT.forEach(clearTimeout); festaT = [];
+    const P = o.parti || {}, li = (k, v) => `<li>${k}<i>${v}</i></li>`;
+    festaEl.className = ''; festaEl.innerHTML = `<div class="ph">${o.foto ? `<img alt="" src="${o.foto}">` : ''}<div class="sc"><b>${esc0(o.titolo || 'Fatto!')}</b>${esc0(o.riga || '')}<ul>${li('copre', P.copre != null ? P.copre : '–')}${li('colori', P.colori != null ? P.colori : '–')}${li('misura', P.misura != null ? P.misura : '–')}${li('vista', P.vista != null ? P.vista : '–')}${li('testimoni', P.testimoni != null ? P.testimoni : '–')}</ul></div></div>`;
+    const sc = festaEl.querySelector('.sc'); sc.onclick = () => { festaT.forEach(clearTimeout); festaEl.className = ''; festaEl.innerHTML = ''; };
+    requestAnimationFrame(() => festaEl.classList.add('on'));
+    festaT.push(setTimeout(() => festaEl.classList.add('piccolo'), 1500), setTimeout(() => { festaEl.className = ''; festaEl.innerHTML = ''; }, 6500));
+  }
+  const esc0 = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const FIX2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
+  return { open: FIX2 ? open2 : open1, open1, open2, misura: misuraBar, festa, FIX2, COLS12, ALTRI, PIU, TAPPI, MEM };
 })();
 if (typeof module !== 'undefined') module.exports = TavolaUI;

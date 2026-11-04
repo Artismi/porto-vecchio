@@ -2,6 +2,8 @@
 // finestre, insegna, spigolo), la decalcomania sui mezzi (sulla carrozzeria, si muove col mezzo), la persistenza (scrivi su un
 // muro e su un'auto, allontanati oltre l'anello e torna, rifai i modelli, ricarica: c'è ancora, allineato), il tetto della
 // memoria, la tavoletta (il centro e gli angoli dell'anteprima cadono sulla superficie: mai il cielo).
+// [graffiti2] la cornice della misura scelta (Writing._.tavHov) al posto della finestra trascinata; un gradino non è un muro; per terra
+// su una strada a schiena d'asino la vernice segue i triangoli veri (Writing._.galleggia, pavimenti compresi: peggio sotto 5 mm).
 //   node test_graffiti.js [--seme=12345] [--file=writing.js]   (--file: un'altra versione di writing.js, per contare il «prima»)
 const ARG = Object.fromEntries(process.argv.slice(2).map(a => /^--([a-z]+)=(.*)$/.exec(a)).filter(Boolean).map(m => [m[1], m[2]]));
 const SEME = +(ARG.seme || 12345);
@@ -47,6 +49,10 @@ parts.push(box(4, .5, .04, 2, .25, .02), box(7.5, .5, .04, 10.25, .25, .02));   
 scene.remove(parts[1]); parts.splice(1, 1);
 parts.push(box(2.1, 3.6, 1, 7.55, 1.8, -.5), box(4.4, 3.6, 1, 11.8, 1.8, -.5), box(1, 1.2, 1, 9.1, .6, -.5), box(1, 1.1, 1, 9.1, 3.05, -.5), box(1, 1.3, .6, 9.1, 1.85, -.7));
 parts.push(box(2.4, .6, .12, 2.2, 2.9, .06));   // l'insegna
+// [graffiti2] LA STRADA A SCHIENA D'ASINO (da x = 40 a 50, la cresta a z = 5, l'1,5% per parte) e IL GRADINO (alto 15 cm, a x = 25)
+const crown = (() => { const g = new T.BufferGeometry(), y = q => .1 - Math.abs(q - 5) * .015, P = []; for (let i = 0; i < 10; i++) { const z0 = i, z1 = i + 1; P.push(40, y(z0), z0, 40, y(z1), z1, 50, y(z1), z1, 40, y(z0), z0, 50, y(z1), z1, 50, y(z0), z0); }
+  g.setAttribute('position', new T.Float32BufferAttribute(P.map((v, k) => k % 3 === 0 ? v + X0 : k % 3 === 2 ? v + Z0 : v), 3)); g.computeVertexNormals(); const m = new T.Mesh(g, mat); scene.add(m); m.updateMatrixWorld(true); return m; })();
+const step = box(3, .15, .5, 25, .075, 6);
 const APER = [{ x: X0 + 9.1, z: Z0, ux: 1, uz: 0, nx: 0, nz: 1, hw: .5, y0: 1.2, y1: 2.5, tipo: 'finestra' }, { x: X0 + 2.2, z: Z0, ux: 1, uz: 0, nx: 0, nz: 1, hw: 1.2, y0: 2.6, y1: 3.2, tipo: 'insegna' }];
 // IL MEZZO: un'auto (scatola col tetto e i parafanghi smussati) parcheggiata davanti, girata di 0,3
 const car = new T.Group(); car.name = 'auto';
@@ -76,6 +82,7 @@ function floating(w, g) {
   return { bad, worst };
 }
 const onBody = g => { const P = g.tgt.mesh.geometry.attributes.position, v = new T.Vector3(); g.tgt.mesh.updateMatrixWorld(true); let worst = 0; for (let i = 0; i < P.count; i++) { v.fromBufferAttribute(P, i).applyMatrix4(g.tgt.mesh.matrixWorld); const L = car.worldToLocal(v.clone()); const bl = body.worldToLocal(car.localToWorld(L.clone())); const dB = Math.max(Math.abs(bl.x) - 2.1, Math.abs(bl.y) - .4, Math.abs(bl.z) - .85), cl = cab.worldToLocal(car.localToWorld(L.clone())), dC = Math.abs(Math.hypot(cl.x, cl.z) - .8); worst = Math.max(worst, Math.min(Math.abs(dB), dC)); } return worst; };
+const crownY = (x, z) => .1 - Math.abs(z - Z0 - 5) * .015;
 const wallVeils = () => Object.keys(WR.GFX.works).map(id => [WR.S(st).works.find(o => o.id === +id), WR.GFX.works[id]]).filter(([w, g]) => w && g.tgt && g.tgt.mesh && w.surf === 'muro' && w.gfxRect && Math.abs(w.gfxRect.n.y || 0) < .5);
 
 (async () => {
@@ -129,34 +136,48 @@ const wallVeils = () => Object.keys(WR.GFX.works).map(id => [WR.S(st).works.find
   { const before = WR.GFX.mem.nuove; for (let k = 0; k < 3; k++) { R.cam.x = X0 + 400; tick(2); R.cam.x = X0 + 7; for (let j = 0; j < 4; j++) { WR._.scanNear(st, R.cam.x, R.cam.y, { force: true, ms: 1e4 }); tick(); } }
     ok(WR.GFX.mem.riuso > 0, `le tele dei veli si riusano (${WR.GFX.mem.riuso} riusi, ${WR.GFX.mem.nuove - before} nuove in tre giri)`);
     ok(Object.keys(WR.GFX.works).length <= WR._.VEIL_MAX(), `i veli vivi restano sotto il tetto (${Object.keys(WR.GFX.works).length} ≤ ${WR._.VEIL_MAX()})`); }
-  // 7. LA TAVOLETTA: per un campione di superfici, il centro e gli angoli dell'anteprima cadono sulla superficie toccata
+  // 7. LA TAVOLETTA: per un campione di superfici, la cornice della misura scelta (tavHov: quello che si apre al tocco), e il centro e gli
+  // angoli dell'anteprima cadono sulla superficie toccata
   WR.setMode(st, 'tavoletta');
   const samples = [
-    { nome: 'muro, al centro', eye: [X0 + 11.5, 1.7, Z0 + 4], at: [X0 + 11.5, 1.6, Z0], drag: [.62, .4] },
-    { nome: 'muro, trascinato sopra il tetto e oltre lo spigolo', eye: [X0 + 12.5, 1.7, Z0 + 5], at: [X0 + 13, 2.6, Z0], drag: [.98, .02] },
-    { nome: 'muro, sotto con la terra davanti', eye: [X0 + 10.5, 1.6, Z0 + 3], at: [X0 + 10.5, .7, Z0], drag: [.6, .75] },
-    { nome: 'pavimento (la strada)', eye: [X0 + 3, 2.5, Z0 + 9], at: [X0 + 3, 0, Z0 + 6], drag: [.6, .7], flat: true },
-    { nome: 'auto, fianco', eye: null, car: 'side', drag: [.56, .55] },
-    { nome: 'auto, tetto', eye: null, car: 'top', drag: [.55, .5] },
+    { nome: 'muro, al centro (throw-up)', eye: [X0 + 11.5, 1.7, Z0 + 4], at: [X0 + 11.5, 1.6, Z0], mis: 'throw' },
+    { nome: 'muro, un burner vicino allo spigolo', eye: [X0 + 12.5, 1.7, Z0 + 5], at: [X0 + 13, 2.6, Z0], mis: 'burner' },
+    { nome: 'muro, sotto con la terra davanti', eye: [X0 + 10.5, 1.6, Z0 + 3], at: [X0 + 10.5, .7, Z0], mis: 'tag' },
+    { nome: 'pavimento (la strada)', eye: [X0 + 3, 2.5, Z0 + 9], at: [X0 + 3, 0, Z0 + 6], flat: true, mis: 'tag' },
+    { nome: 'auto, fianco', eye: null, car: 'side', mis: 'tag' },
+    { nome: 'auto, tetto', eye: null, car: 'top', mis: 'tag' },
   ];
   for (const S0 of samples) {
-    WR._.TAV.a = null; WR._.TAV.b = null; p.lv = null;
+    WR._.TAV.a = null; WR._.TAV.b = null; p.lv = null; WR._.tavSize(0, S0.mis);
     const cg = R.__vehicles.pv_prova, c = Math.cos(carA), s = Math.sin(carA);
     if (S0.car === 'side') { cam.position.set(carX - s * 4, 1.4, carZ + c * 4); cam.lookAt(carX, .7, carZ); p.x = carX - s * 2.5; p.y = carZ + c * 2.5; }
     else if (S0.car === 'top') { cam.position.set(carX - s * 2.5, 4.2, carZ + c * 2.5); cam.lookAt(carX, 1.2, carZ); p.x = carX - s * 2.5; p.y = carZ + c * 2.5; }
     else { cam.position.set(...S0.eye); cam.lookAt(...S0.at); p.x = S0.eye[0]; p.y = S0.eye[2] - 1; }
     cam.updateMatrixWorld(true);
-    WR.tick(st, .5, .5, 1 / 30, '#d8201a', 0, 'bomboletta'); WR.tick(st, S0.drag[0], S0.drag[1], 1 / 30, '#d8201a', 0, 'bomboletta');
-    const A = WR._.TAV.a; if (!A) { ok(false, `tavoletta, ${S0.nome}: niente superficie`); continue; }
-    if (process.env.DBG) { const r0 = WR._.tavRect(); console.log('RAW', JSON.stringify(r0), 'fit', JSON.stringify(WR._.fitWall(new T.Vector3(r0.c.x, r0.c.y, r0.c.z), A.n, r0.W, r0.H, visMeshes(), { minK: .05, free: true, noOpen: true, foot: 0 }))); }
-    const Rc = WR._.tavFit(WR._.tavRect(), A), K = WR._.tavCam(Rc, A), oc = new T.OrthographicCamera(-K.halfW, K.halfW, K.halfH, -K.halfH, K.near, K.far);
+    const H = WR._.tavHov(st, .5, .5); if (!H || !H.ok) { ok(false, `tavoletta, ${S0.nome}: niente cornice (${H && H.msg})`); continue; }
+    const A = H.A, Rc = H.Rc, K = WR._.tavCam(Rc, A), oc = new T.OrthographicCamera(-K.halfW, K.halfW, K.halfH, -K.halfH, K.near, K.far);
     oc.position.set(K.pos.x, K.pos.y, K.pos.z); oc.up.set(K.up.x, K.up.y, K.up.z); oc.lookAt(K.target.x, K.target.y, K.target.z); oc.updateMatrixWorld(true); oc.updateProjectionMatrix();
     const L = visMeshes(), shoot = (u, v) => { rc.setFromCamera(new T.Vector2(u, v), oc); rc.near = K.near; rc.far = K.far; return rc.intersectObjects(L, true)[0]; };
     const h0 = shoot(0, 0), sameObj = h => { if (!h) return false; let o = h.object; while (o) { if (o === A.obj || (A.veh && o === cg)) return true; o = o.parent; } return S0.flat ? h.object === ground : !A.veh && parts.some(q => q.geometry === h.object.geometry); };
-    if (process.env.DBG) console.log(S0.nome, h0 && h0.distance, h0 && h0.object.type, h0 && sameObj(h0), JSON.stringify(K), JSON.stringify(A.n));
     const corners = [[-.92, -.92], [.92, -.92], [-.92, .92], [.92, .92]].map(([u, v]) => shoot(u, v));
     ok(h0 && sameObj(h0) && h0.point.distanceTo(new T.Vector3(K.target.x, K.target.y, K.target.z)) < (A.veh ? .2 : .03), `tavoletta, ${S0.nome}: il centro dell'anteprima è sulla superficie (${Rc.W.toFixed(2)} × ${Rc.H.toFixed(2)} m)`);
     ok(corners.every(h => h && (S0.flat || A.veh ? true : sameObj(h))), `tavoletta, ${S0.nome}: gli angoli non guardano il cielo`);
+  }
+  // [graffiti2] il gradino: guardandolo dritto la cornice va per terra (o su un muro vero), mai sulla sua alzata di 15 cm
+  { WR._.tavSize(0, 'tag'); p.x = X0 + 25; p.y = Z0 + 9; cam.position.set(X0 + 25, .9, Z0 + 10); cam.lookAt(X0 + 25, .09, Z0 + 6.25); cam.updateMatrixWorld(true);
+    const H = WR._.tavHov(st, .5, .5), A = H && H.A; ok(!A || Math.abs(A.n.y) > .5, `tavoletta, il gradino non è un muro (${A ? 'normale ' + A.n.y.toFixed(2) : H && H.msg})`); }
+  // [graffiti2] per terra, sulla strada a schiena d'asino: un throw-up a cavallo della cresta, salvato dalla tavoletta; la vernice segue i triangoli
+  { WR._.tavSize(0, 'throw'); p.x = X0 + 45; p.y = Z0 + 8; cam.position.set(X0 + 45, 3.2, Z0 + 9); cam.lookAt(X0 + 45, .1, Z0 + 5); cam.updateMatrixWorld(true);
+    const H = WR._.tavHov(st, .5, .5); ok(H && H.ok && Math.abs(H.A.n.y) > .5, `tavoletta, la strada: la cornice per terra (${H && H.Rc ? H.Rc.W.toFixed(2) + ' × ' + H.Rc.H.toFixed(2) : H && H.msg})`);
+    if (H && H.ok) { WR._.TAV.a = H.A; const before = W.works.length; let res = null;
+      try { res = WR._.tavSave2 ? null : null; } catch (e) { }
+      const nw = { by: 'player', aka: 'PROVA', style: 'throw', tool: 'bomboletta', col: '#c42a22', seed: 7, prog: 1, done: true, surf: 'muro', W: H.Rc.W, H: H.Rc.H, rec: { strokes: [[[1, 1, 0, .5], [50, 30, 10, .5]]], st: [{ c: '#c42a22', p: 'fat', w: 20 }], frame: { w: 100, h: 50 }, pen: 'fat' } };
+      nw.gfxRect = { c: new T.Vector3(H.Rc.c.x, H.Rc.c.y, H.Rc.c.z), n: H.A.n.clone(), r: H.A.r.clone(), u: H.A.u.clone(), W: H.Rc.W, H: H.Rc.H }; nw.pos = { x: H.Rc.c.x, y: H.Rc.c.y, z: H.Rc.c.z };
+      WR._.addWork(st, nw); ok(WR._.saveOnWall(nw), 'tavoletta, la strada: il lavoro va per terra');
+      const g = WR.GFX.works[nw.id]; ok(g && g.tgt && g.tgt.decal2, 'per terra è sui triangoli veri (non un piano)');
+      const gm = WR._.galleggia(); ok(gm && gm.terra && gm.terra.n >= 1 && gm.terra.peggio < .005, `per terra non galleggia: peggio ${gm && gm.terra ? (gm.terra.peggio * 1000).toFixed(1) : '-'} mm (Writing._.galleggia, pavimenti compresi)`);
+      ok(gm && gm.muri && gm.muri.peggio < .005, `e sui muri: peggio ${gm && gm.muri ? (gm.muri.peggio * 1000).toFixed(1) : '-'} mm`);
+      WR._.TAV.a = null; }
   }
   WR._.TAV.a = null; WR.setMode(st, 'libero');
   ok(!WR.GFX.err, 'nessun errore nel giro dei graffiti' + (WR.GFX.err ? ': ' + WR.GFX.err.message : ''));
