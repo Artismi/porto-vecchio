@@ -1,0 +1,21 @@
+{
+ "orOn": false,
+ "orObj": false,
+ "dev": true,
+ "jt": null,
+ "feed": [
+  "Il browser sta disegnando SENZA scheda video (SwiftShader): per questo va a scatti. Attiva l'accelerazione hardware: Chrome o Edge → Impostazioni → Sistema → «Usa accelerazione grafica quando disponibile», poi riavvia il browser.",
+  "Clic su una persona → Chatta. Lupo è in biblioteca.",
+  "Casa tua è Casa Rizzo, in periferia ovest. Gli amici del quartiere: Teresa, Piero, Mirella.",
+  "Obiettivo: recluta due membri della Risacca."
+ ],
+ "lupo": "Ettore",
+ "sound": "Audio: no · M",
+ "esc": {
+  "menu": true,
+  "tab": "zaino",
+  "slow": true,
+  "pausa": false,
+  "primaScheda": "Mappa"
+ }
+}

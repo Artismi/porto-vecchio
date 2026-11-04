@@ -10,6 +10,8 @@ var RisaccaUI = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const PV = () => window.__pv;
   const ST = () => PV() && PV().st;
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;   // [orienta] Parla = la chat (una cosa sola); niente tasti scritti sul telefono; ?nofixorienta com'era
+  const COARSE = () => matchMedia('(pointer: coarse)').matches;
   const U = { chat: null, busy: false, ctl: null, panel: false, tab: 'squadra', sample: null, model: 'attesa', paused: false, pop: null, lastHere: '', notes: {}, scene: null, meshes: {}, stRef: null };
 
   // ---------------- STILE ----------------
@@ -30,7 +32,7 @@ var RisaccaUI = (function () {
 #rs-hud kbd, .rs-k { font-family: var(--f-label); font-size: 10px; color: var(--amber); }
 #rs-hud #rs-sneak { font-size: 11.5px; padding: 1px 6px; }
 #rs-hud .alarm { font-size: 11.5px; color: var(--blood); }
-@media (max-width: 820px) { #rs-hud { top: 4px; gap: 6px; } #rs-hud .lbl, #rs-hud .t { display: none; } }
+@media (max-width: 820px) { #rs-hud { top: 4px; gap: 6px; } #rs-hud .lbl, #rs-hud .t { display: none; } body.or-on #rs-hud .lbl { display: inline; } }
 #rs-panel table { color: inherit; font: inherit; font-size: 13.5px; }
 #rs-here { left: 50%; bottom: 58px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 340px); pointer-events: auto; }
 #rs-here button { font-family: var(--f-pix); font-size: 13.5px; padding: 5px 10px; background: var(--panel); color: var(--fg); border: 2px solid #1f6f7c; box-shadow: 3px 3px 0 #07060e; cursor: pointer; }
@@ -103,7 +105,7 @@ var RisaccaUI = (function () {
         <div class="m"><span class="lbl">Morale</span><div class="bar"><i class="mo" id="rs-mo" style="width:10%"></i></div></div>
         <div class="m"><span class="lbl">Repressione</span><div class="pips" id="rs-rp"><i></i><i></i><i></i><i></i><i></i></div></div>
         <span class="cash" id="rs-cash" hidden>0</span>
-        <button id="rs-open">Risacca <kbd>B</kbd> · Chatta <kbd>C</kbd></button>
+        <button id="rs-open">${OR ? 'Risacca <kbd>B</kbd>' : 'Risacca <kbd>B</kbd> · Chatta <kbd>C</kbd>'}</button>
         <button id="rs-sneak">Cammina <kbd>X</kbd></button>
         <div class="alarm" id="rs-alarm" hidden></div></div>
       <div class="hud" id="rs-here"></div>
@@ -227,7 +229,7 @@ var RisaccaUI = (function () {
     U.chat = id; U.paused = true;
     const el = $('rs-chat'); el.hidden = false;
     const att = G.attitude(st, n), b = RS.battle(n), far = Math.hypot(n.x - st.player.x, n.y - st.player.y) > 5;
-    el.innerHTML = `<header><canvas></canvas><div><span class="nm">${esc(n.name)}</span> ${b && n.ris && n.ris.member ? `<span class="bt">«${esc(b)}»</span>` : ''}<div class="rl">${esc(n.role)}${far ? ' · via radio' : ''}</div><div class="at" id="rs-att">${esc(att.label)}${n.ris && n.ris.member ? ' · della Risacca' : ''}</div></div><button class="x" aria-label="Chiudi">ESC</button></header>
+    el.innerHTML = `<header><canvas></canvas><div><span class="nm">${esc(n.name)}</span> ${b && n.ris && n.ris.member ? `<span class="bt">«${esc(b)}»</span>` : ''}<div class="rl">${esc(n.role)}${far ? ' · via radio' : ''}</div><div class="at" id="rs-att">${esc(att.label)}${n.ris && n.ris.member ? ' · della Risacca' : ''}</div></div><button class="x" aria-label="Chiudi">${OR && COARSE() ? '✕' : 'ESC'}</button></header>
       <div class="msgs" id="rs-msgs" aria-live="polite"></div><div class="sugg" id="rs-sugg"></div>
       <form id="rs-form"><textarea id="rs-in" rows="2" placeholder="Scrivi a ${esc(n.first)}… (Invio per mandare)" aria-label="Messaggio"></textarea><button id="rs-send" type="submit">Invia</button></form>
       <div class="foot" id="rs-foot"></div>`;
@@ -269,8 +271,8 @@ var RisaccaUI = (function () {
       return `<div class="sys ${m.ok === false ? 'bad' : m.ok ? 'ok' : ''}">${esc(m.text)}</div>`;
     }).join('') + (pending ? `<div class="msg me">${esc(pending)}</div><div class="msg npc wait" id="rs-wait">…</div>` : '');
     box.scrollTop = box.scrollHeight;
-    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('');
-    sg.querySelectorAll('button').forEach(b => b.onclick = () => send(b.textContent));
+    const sg = $('rs-sugg'); sg.innerHTML = U.busy ? '' : suggestions(st, n).map(s => `<button type="button">${esc(s)}</button>`).join('') + (OR && PV().talkClassic ? '<button type="button" data-cl="1">Altre domande ▸</button>' : '');
+    sg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.cl) { const id = n.id; closeChat(); PV().talkClassic(id); return; } send(b.textContent); });   // [orienta] il dialogo di prima (lavori, voci, mance) da dentro la chat
     const att = G.attitude(st, n); const a = $('rs-att'); if (a) a.textContent = att.label + (n.ris && n.ris.member ? ' · della Risacca' : '');
   }
   function footer(extra) {
@@ -408,7 +410,7 @@ var RisaccaUI = (function () {
         `<h4>Morale ${S.morale}/100 · Repressione livello ${S.level}/5</h4><p class="hint">Il morale sale con scritte, volantini, trasmissioni e sabotaggi senza vittime; fa rendere le collette e convince la gente. La Repressione sale quando qualcuno vede le azioni e parla; al livello 3 cominciano le perquisizioni.</p>` +
         `<h4>Rapporti dalla squadra</h4><div class="inbox">${st.ris.inbox.slice(0, 14).map(m => `<p><b>${G.clockStr(m.t)} ${esc(RS.battle(G.byId(st, m.npc)) || G.nameOf(st, m.npc))}:</b> ${esc(m.text)}</p>`).join('') || '<p class="hint">Ancora niente.</p>'}</div>`;
     }
-    el.innerHTML = `<header><h2>La Risacca <span>Cassa ${Math.floor(st.ris.cassa)}.000 · Morale ${S.morale} · Repressione ${S.level}/5 · Con te: ${esc(invText(S.inv)) || 'niente'}</span></h2><button class="x">Chiudi · B</button></header>
+    el.innerHTML = `<header><h2>La Risacca <span>Cassa ${Math.floor(st.ris.cassa)}.000 · Morale ${S.morale} · Repressione ${S.level}/5 · Con te: ${esc(invText(S.inv)) || 'niente'}</span></h2><button class="x">${OR && COARSE() ? 'Chiudi' : 'Chiudi · B'}</button></header>
       <nav role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${U.tab === k}">${esc(l)}</button>`).join('')}</nav><div class="body">${body}</div>`;
     el.querySelector('.body').scrollTop = keepScroll;
     el.querySelector('.x').onclick = () => togglePanel(false);

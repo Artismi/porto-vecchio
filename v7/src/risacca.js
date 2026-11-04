@@ -266,6 +266,8 @@ var Risacca = (function () {
       if (n.cop) { n.role = 'Guardia Insulare («i Grigi»)'; n.look.top = '#5c6672'; n.look.bottom = '#3c444e'; n.name = n.name.replace('Agente ', 'Guardia '); }
     });
     NEW_CAST.forEach(c => { if (!byId(st, c.id)) { const n = G.makeNpc(st, JSON.parse(JSON.stringify(c))); n.first = c.first; st.npcs.push(n); } });
+    // [orienta] Lupo lo chiamano tutti Lupo: il nome sopra la testa, «Parla con…» e la chat dicono come l'obiettivo (prima «Ettore»). ?nofixorienta com'era
+    { const l = byId(st, 'lupo'); if (l && !(typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search))) l.first = 'Lupo'; }
     st.npcs.forEach(n => initNpc(st, n));
     G.addLog(st, 'Porto Vecchio, sotto la Tutela. Hai tre gessetti in tasca e nessuno con cui usarli. Trova la Risacca: Lupo, in biblioteca, sa da dove cominciare.', 'info');
     G.feed(st, 'Obiettivo: recluta due membri della Risacca.', 'job');
