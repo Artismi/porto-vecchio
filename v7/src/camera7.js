@@ -115,12 +115,13 @@ var Camera7 = (function () {
     if (q.cast && prova(pB, want) < .92) { lw = -1; for (const dp of k.lifts) { if (pB + dp > cap + 1e-6) break; if (prova(pB + dp, want) >= .92) { lw = dp; break; } } }
     if (lw >= 0) { if (lw >= S.liftW) { S.liftW = lw; S.liftT = 0; } else { S.liftT += dt; if (S.liftT > k.liftBack) S.liftW = lw; } }   // si sale subito, si torna giù dopo K.liftBack s libero
     const lift = snap ? (S.lift.x = S.liftW, S.lift.v = 0, S.liftW) : molla(S.lift, S.liftW, k.liftT, dt);
-    const f6 = prova(Math.min(cap, pB + lift), want); S.colpo = f6;
+    const f6 = prova(Math.min(Math.max(cap, pitchFor(S.arm.x, S.pu, k)), pitchFor(S.arm.x, S.pu, k) + lift), want); S.colpo = f6;   // nella direzione dove la camera sarà davvero (col braccio corto la pendenza sale)
     const armT = clamp(want * f6, k.armMin, want); S.armT = armT;
     if (snap) { S.arm.x = armT; S.arm.v = 0; }
     else if (armT < S.arm.x) { const e = 1 - Math.exp(-dt * 3 / k.armIn); S.arm.x += (armT - S.arm.x) * e; S.arm.v = 0; if (S.arm.x > armT + k.armSlip) S.arm.x = armT + k.armSlip; }
     else molla(S.arm, armT, k.armOut, dt);
-    const arm = clamp(S.arm.x, k.armMin, 40), pitch = Math.min(Math.max(cap, pitchFor(arm, S.pu, k)), pitchFor(arm, S.pu, k) + lift), cp = Math.cos(pitch);
+    let arm = clamp(S.arm.x, k.armMin, 40); const pitch = Math.min(Math.max(cap, pitchFor(arm, S.pu, k)), pitchFor(arm, S.pu, k) + lift), cp = Math.cos(pitch);
+    if (q.cast && !snap) { const fa = prova(pitch, arm); if (fa < 1) { arm = Math.max(k.armMin, arm * fa); S.arm.x = Math.min(S.arm.x, arm + k.armSlip); } }   // la camera vera, l'ultima prova: mai dentro un muro
     const pos = { x: look.x + Math.sin(yaw) * cp * arm, y: look.y + Math.sin(pitch) * arm, z: look.z + Math.cos(yaw) * cp * arm };
     if (q.suolo) { const g = q.suolo(pos.x, pos.z) + k.clearUp; if (isFinite(g) && pos.y < g) pos.y = g; }
     return { pos, look, yaw, pitch, arm, fov: vfov(q.aspect, k), near: k.near, side, dyRic, yawGiro: yaw - y0, ka };

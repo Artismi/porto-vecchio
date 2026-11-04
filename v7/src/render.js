@@ -18992,15 +18992,15 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (now - C7R.t > 300 || Math.abs(o.x - C7R.cx) + Math.abs(o.z - C7R.cz) > 3) {
       C7R.t = now; C7R.cx = o.x; C7R.cz = o.z; const R0 = C7R.roots; R0.clear();
       for (const k in dyn.people) if (dyn.people[k]) R0.add(dyn.people[k]); for (const k in dyn.vehicles) if (dyn.vehicles[k]) R0.add(dyn.vehicles[k]);
-      C7R.list = bmbCands(o.x, o.z).filter(m => { if (m.userData.ghost5 || m.userData.velo || m.isPoints || m.isLine) return false; let q = m; for (let i = 0; i < 10 && q; i++) { if (R0.has(q)) return false; q = q.parent; }
-        const bs = m.geometry.boundingSphere, e = m.matrixWorld.elements; return !bs || bs.radius * Math.hypot(e[0], e[1], e[2]) >= 1.6; }); }   // una mesh piccola (un lampione, un cartello) non ferma il braccio
+      C7R.list = bmbCands(o.x, o.z).filter(m => { if (m.userData.ghost5 || m.userData.velo || m.userData.vievive || m.isPoints || m.isLine) return false;   // l'arredo delle vie vive (pensiline, edicole, plance: fuso in mesh grandi) è roba piccola let q = m; for (let i = 0; i < 10 && q; i++) { if (R0.has(q)) return false; q = q.parent; }
+        const bs = m.geometry.boundingSphere, e = m.matrixWorld.elements; return !bs || bs.radius * Math.hypot(e[0], e[1], e[2]) >= 3.5; }); }   // una mesh piccola (un lampione, un cartello) non ferma il braccio
     if (!C7R.list.length) { const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)); for (let s = .6; s <= len; s += .3) { const x = o.x + dir.x * s, y = o.y + dir.y * s, z = o.z + dir.z * s; if (M.alto(x, z) > y - r) { CAM7.colpi++; return Math.max(0, s - r); } } return null; }
     const D = C7R.d.set(dir.x, dir.y, dir.z), rl = Math.hypot(dir.z, dir.x) || 1, rx = dir.z / rl, rz = -dir.x / rl, ux = dir.y * rz, uy = dir.z * rx - dir.x * rz, uz = -dir.y * rx, rc = C7R.rc;
     let best = Infinity;
     for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = 0; rc.far = Math.min(best, len + r);
       for (const h of rc.intersectObjects(C7R.list, false)) { if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
-        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) best = t; break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
+        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
   }
   // [camera7] le cose piccole registrate fra la camera e te (il petto, i piedi) o a meno di 1,5 m dalla camera si spengono (hideTag) e
