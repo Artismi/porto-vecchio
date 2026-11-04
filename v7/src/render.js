@@ -13923,15 +13923,17 @@ var Render = (function () {
   const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([abcABC])\b/) || [])[1] || '').toUpperCase() : '';
   const STILE = { on: PFD.on, url: PFD.on && !!STILE_Q, v: 'A', base: null, sV: [0, 0, 0, 1], sW: [0, 0, 0, 0],
     V: {
-      B: { DIR: { varia: .3, pittura: .55, tremolio: 0, microNormale: 0, fuoco: .08 }, PRO: { celle: 1 },
-        PFD: { linea: 1.3, lineaSoglia: .04, lineaLontano: 120, aria: .45, ariaL: 50, quota: .26, spicca: 1 }, CAT: { lineaPersone: 1, bordoPersone: .26 },
-        mom: { mattino: { proTintaK: .46, ombra: [.88, .9, 1.22], contrasto: 1.18 }, pomeriggio: { proTintaK: .46, ombra: [.88, .9, 1.22], contrasto: 1.18 }, sera: { proTintaK: .4, contrasto: 1.15 } },
-        u10: [1, 0, 0, 0], sV: [.8, 9, 7, .7], sW: [1, .14, 0, 0] },
-      C: { DIR: { varia: .55, pittura: 1, tremolio: .035, microNormale: 0, fuoco: .06 }, PRO: { celle: .45 },
-        PFD: { linea: .55, lineaPersiste: 6, aria: .92, ariaL: 26, ariaFreddo: .15, quota: .14 }, CAT: { lineaPersone: .75, bordoPersone: .3 },
-        mom: { mattino: { sole: '#ffcf90', soleK: 1.42, terra: '#bc9a70', nebbia: '#eadcc6', luce: [1.08, 1, .86], ombra: [.92, .9, 1.12], proTinta: '#6a5cc0', proTintaK: .36 },
-          pomeriggio: { sole: '#ffc884', soleK: 1.42, terra: '#c09a6c', nebbia: '#ecd8bf', luce: [1.09, 1, .85], ombra: [.92, .9, 1.12], proTinta: '#6e5ac0', proTintaK: .36 },
-          sera: { sole: '#ff9250', soleK: 1.08, cielo: '#8c74c4', terra: '#b07a5c', nebbia: '#e49a9a', bordo: '#ffa0a8', ombra: [.84, .84, 1.22], luce: [1.12, .98, .84], sat: 1.06, proTinta: '#6e3c9c', proTintaK: .38 } },
+      B: { DIR: { varia: .25, pittura: .45, tremolio: 0, microNormale: 0, fuoco: .08, suoloSat: .24, muriSat: .46 }, PRO: { celle: 1 },
+        PFD: { linea: 1.5, lineaSoglia: .04, lineaPersiste: 3, lineaLontano: 150, aria: .4, ariaL: 55, ariaFreddo: .8, quota: .28, spicca: 1, suoloK: .85, tettiL: .44 }, CAT: { lineaPersone: 1, bordoPersone: .28 },
+        mom: { mattino: { luce: [1.03, 1, .95], ombra: [.86, .9, 1.26], sat: 1.12, contrasto: 1.12, esp: 1.13, proNeri: .03, nebbia: '#dde6ee', proTinta: '#5060d0', proTintaK: .5, vign: .04 },
+          pomeriggio: { luce: [1.03, 1, .95], ombra: [.86, .9, 1.26], sat: 1.12, contrasto: 1.12, esp: 1.13, proNeri: .03, nebbia: '#dfe6ec', proTinta: '#5860d0', proTintaK: .5, vign: .04 },
+          sera: { contrasto: 1.12, esp: 1.06, proTintaK: .42, vign: .08 } },
+        u10: [1, 0, 0, 0], sV: [1, 6, 6, .55], sW: [1, .2, 0, 0] },
+      C: { DIR: { varia: .6, pittura: 1, tremolio: .035, microNormale: 0, fuoco: .12 }, PRO: { celle: .35 },
+        PFD: { linea: .45, lineaPersiste: 6, aria: 1, ariaL: 22, ariaFreddo: .1, quota: .12 }, CAT: { lineaPersone: .7, bordoPersone: .34 },
+        mom: { mattino: { sole: '#ffd09a', soleK: 1.42, terra: '#c49c70', nebbia: '#eed6ba', luce: [1.07, 1, .88], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6650b4', proTintaK: .36, vign: .16 },
+          pomeriggio: { sole: '#ffca90', soleK: 1.42, terra: '#c89a6a', nebbia: '#f0d2b2', luce: [1.07, 1, .87], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6a4eb2', proTintaK: .36, vign: .16 },
+          sera: { sole: '#ff8a48', soleK: 1.12, cielo: '#8c70c4', terra: '#b8785a', nebbia: '#e8949a', bordo: '#ffa0a8', ombra: [.86, .82, 1.2], luce: [1.14, .98, .82], sat: 1.06, contrasto: 1.08, proTinta: '#7a3a9c', proTintaK: .4, vign: .2 } },
         u10: [0, 1, 0, 0], sV: [0, 0, 0, 1], sW: [0, .06, 1, 0] } } };
   function stile(v) {
     v = String(v || 'A').toUpperCase(); if (!STILE.on || !/^[ABC]$/.test(v)) return STILE.v;
@@ -14082,7 +14084,7 @@ ${DIR.on ? `if ( sgP1.x + sgP1.z + sgP8.z > 0. ) {   // [direzione] LA MANO DI C
   diffuseColor.rgb *= 1. + sgP1.x * sgV * ( sgQ * .17 - .06 ) + sgP1.z * ( ( sgL - .5 ) * .12 + ( sgM - .5 ) * .1 );
   if ( sgP10.y > 0. ) {   /* [stile] C «pittorico caldo»: la pennellata larga, a due toni col bordo antialiasato (fwidth), solo dove copre molti pixel (oltre ~60 m svanisce: mai grana); la ripresa calda e fredda a 14 m */
     float sgBw = max( fwidth( sgM ) * 1.5, .06 ), sgBr = smoothstep( .5 - sgBw, .5 + sgBw, sgM ) - .5, sgVk = sgP10.y * ( 1. - smoothstep( .05, .14, length( fwidth( vSgW ) ) ) );
-    diffuseColor.rgb *= 1. + sgVk * sgBr * .1 * vec3( 1.02, 1., .95 ) + sgP10.y * ( sgL - .5 ) * vec3( .07, .015, -.05 ); }
+    diffuseColor.rgb *= 1. + sgVk * sgBr * vec3( .15, .13, .1 ) + sgP10.y * ( sgL - .5 ) * vec3( .08, .015, -.06 ); }
   if ( sgP8.z > 0. ) { float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;
     float sgR = smoothstep( .3, .5, sgUp ) * smoothstep( 1.5, 3.5, sgH ) * mix( 1., .5, smoothstep( .95, .99, sgUp ) ) * sgP8.z;   // i tetti (i terrazzi a metà)
     if ( sgR > 0. ) {${HD.pulito ? '   // [hd] pulito: niente chiazze di un metro (n2) sui tetti, restano il muschio a nord e le riprese larghe' : ` float n2 = sgN3( vSgW * .9 + 2.2 );
