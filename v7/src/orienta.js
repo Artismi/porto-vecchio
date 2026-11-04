@@ -12,13 +12,14 @@
 // ?nofixorienta: tutto com'era (ON = false: niente di qui si accende e gli altri moduli tornano al codice di prima).
 var Orienta = (function () {
   'use strict';
-  const ON = typeof location !== 'undefined' && !/[?&]nofixorienta\b/.test(location.search);
-  if (typeof document === 'undefined') return { ON: false };
-  const PV = () => window.__pv, ST = () => PV() && PV().st, $ = id => document.getElementById(id);
+  const DOM = typeof document !== 'undefined';   // in Node (le prove) ci sono l'obiettivo e la tabella, non l'interfaccia
+  const ON = DOM && typeof location !== 'undefined' && !/[?&]nofixorienta\b/.test(location.search);
+  const PV = () => typeof window !== 'undefined' ? window.__pv : null, ST = () => PV() && PV().st, $ = id => document.getElementById(id);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  const TOCCO = () => matchMedia('(pointer: coarse)').matches;
+  const TOCCO = () => DOM && matchMedia('(pointer: coarse)').matches;
   const CONSOLE = () => !!(PV() && PV().console);
-  const Gm = () => window.Game, RSm = () => window.Risacca;
+  const glob = typeof window !== 'undefined' ? window : global;
+  const Gm = () => glob.Game, RSm = () => glob.Risacca;
   const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } } };
   const VISTE = 'pv-orienta-schede';   // localStorage: le tre schede d'avvio già viste
 
@@ -62,7 +63,7 @@ var Orienta = (function () {
   // L'OBIETTIVO DI ADESSO (Atto I della Risacca come filo della prima partita)
   // { testo (corto, per l'HUD), lungo (per la pausa e la scheda), x, y (dove andare, se c'è), chi (l'id della persona), dove }
   // =====================================================================================================================
-  let cache = { clock: -1, st: null, v: null };
+  let cache = { key: '', st: null, v: null };
   function placeName(id) { const P = Gm().PLACES[id]; return P ? P.name : ''; }
   function personTarget(st, n) {   // dove sta una persona: lei se è in strada, se no il posto dove la trovi (la porta del posto)
     const G = Gm();
@@ -72,10 +73,11 @@ var Orienta = (function () {
   }
   function obiettivo(st) {
     if (!st) return null;
-    if (cache.st === st && cache.clock === st.clock) return cache.v;
+    const R = st.ris, l = Gm().byId(st, 'lupo'), key = st.clock + '|' + (R ? (R.mission ? R.mission.giver + R.mission.stage : '') + '|' + R.bases.length + '|' + R.goals.onde + '|' + R.goals.trasmissioni + '|' + st.npcs.reduce((a, n) => a + (n.ris && n.ris.member ? 1 : 0), 0) : '') + '|' + (l && l.ris ? +!!l.ris.missionDone : '');
+    if (cache.st === st && cache.key === key) return cache.v;
     let v = null;
     try { v = calcola(st); } catch (e) { v = null; }
-    cache = { clock: st.clock, st, v }; return v;
+    cache = { key, st, v }; return v;
   }
   function calcola(st) {
     const G = Gm(), RS = RSm();
@@ -93,7 +95,7 @@ var Orienta = (function () {
         return { testo: `Trova Lupo${T.dove ? ' · ' + T.dove : ''} e parlagli`, lungo: `Lupo (Ettore Ganz), il bibliotecario, sa da dove cominciare. È ${T.dove ? 'a ' + T.dove : 'in giro'}: segui la freccia e parlagli (${tasto('Parlare')}). Recluta due membri della Risacca (${g.n}).`, x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
       }
       // il secondo membro: chi è più vicino alla Risacca tra quelli che si possono reclutare
-      const S = RS.summary(st), best = (S.contacts || []).filter(c => { const n = G.byId(st, c.id); return n && !n.dead && !(n.jailedUntil > st.t); }).sort((a, b) => (b.will || 0) - (a.will || 0))[0];
+      const S = RS.summary(st), best = (S.contacts || []).filter(c => { const n = G.byId(st, c.id); return n && !n.dead && !(n.jailedUntil > st.t); }).map(c => { const n = G.byId(st, c.id), C = RS.CARDS[c.id] || {}; return { c, sc: (c.will || 0) - (C.brigante || n.nocturnal ? 1 : 0) - Math.hypot(n.x - st.player.x, n.y - st.player.y) / 2000 }; }).sort((a, b) => b.sc - a.sc).map(q => q.c)[0];   // chi è vicino e ci sta; i briganti dell'interno per ultimi
       if (best) { const n = G.byId(st, best.id), T = personTarget(st, n);
         return { testo: `Recluta un altro membro (${g.n}): prova con ${n.first}`, lungo: `Ti serve un altro membro della Risacca (${g.n}). ${n.first}, ${String(n.role || '').toLowerCase()}, potrebbe starci: parlagli e chiedigli una mano o di unirsi.`, x: T.x, y: T.y, chi: n.id, dove: T.dove, kind: 'recluta' }; }
       return { testo: `Recluta due membri della Risacca (${g.n})`, lungo: 'Parla con la gente: chi odia la Tutela può unirsi.', kind: 'recluta' };
@@ -110,8 +112,8 @@ var Orienta = (function () {
     return { testo: g.label, lungo: g.label, kind: 'atto' };
   }
   // G.jobTarget ripiega sull'obiettivo: la freccia a bordo schermo, la minimappa, la mappa e il diamante nel mondo
-  function installa() {
-    const G = Gm(); if (!ON || !G || !G.jobTarget || G.jobTarget.__or) return;
+  function installa(forza) {
+    const G = Gm(); if (!(ON || forza) || !G || !G.jobTarget || G.jobTarget.__or) return;
     const jt = G.jobTarget;
     G.jobTarget = st => { const a = jt(st); if (a) return a; const o = obiettivo(st); return o && o.x !== undefined && isFinite(o.x) ? { x: o.x, y: o.y, label: o.testo, or: true } : null; };
     G.jobTarget.__or = true;
@@ -217,6 +219,7 @@ body.or-on #cnBtn { right: 152px !important; bottom: 18px !important; top: auto 
 }
 @media (pointer: coarse) and (max-height: 500px) { body.or-on #ctx { bottom: auto !important; top: 40px !important; max-width: calc(100vw - 420px); } body.or-on #mini { top: 56px; } }
 #app.console #ctx { display: none !important; }
+body.or-on #app.console #rs-indoor { top: 34px !important; }
 `;
   // il foglio di stile e la classe sul body subito (prima del caricamento): main.js la legge per l'HUD
   if (ON) { const css = document.createElement('style'); css.textContent = CSS; (document.head || document.documentElement).appendChild(css); const on = () => document.body && document.body.classList.add('or-on'); if (document.body) on(); else addEventListener('DOMContentLoaded', on); }

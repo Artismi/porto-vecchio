@@ -311,7 +311,7 @@
   function ctxE() {
     const p = st.player; if (ui.intro || ui.over || ui.dialog || ui.book || ui.menu || ui.pausa) return null;
     const cx = G.context(st);
-    if (p.vehicle) { const f = cx.find(c => c.key === 'F'); return f ? { label: f.label, run: () => doAct('veicolo'), dup: 'F' } : null; }
+    if (p.vehicle) return null;   // alla guida i tasti sono del blocco E (guida2): F scende, come prima
     const door = G.actionKey && G.actionKey(st) === 'porta' ? cx.find(c => c.key === 'F') : null;
     if (door) return { label: door.label, run: () => { click.t = null; ui.mark = null; doAct('porta'); }, dup: 'F' };
     const n = G.nearestNpc(st, 2.2);
@@ -663,6 +663,7 @@
   function start() { if (!ui.intro) return; A.init(); showHud(true); ui.intro = false; ui.pronto = false; ui.letterbox = false; $('screen').innerHTML = ''; $('screen').style.pointerEvents = 'none'; cv.focus();
     if (OR) {   // [orienta] le righe della cronaca nate dietro il caricamento ripartono adesso (prima scadevano prima di entrare); un aiuto corto sui tasti
       st.feed.forEach(f => { f.until = Math.max(f.until, st.clock + 9); });
+      try { softwareCheck(); } catch (e) { }
       toast(CON.on ? 'Tocca una persona per parlarle. Zaino: obiettivi, mappa, comandi.' : touchMode ? 'Tocca una persona per parlarle. ❚❚ in alto: pausa, obiettivi, comandi.' : 'T parla · E azione · Esc pausa · H comandi · M mappa', 'job'); st.feed[0].until = st.clock + 12; return; }
     toast(window.Risacca ? 'Clic su una persona → Chatta. Lupo è in biblioteca.' : 'Parla con la gente (T): qualcuno ha un lavoro per te.', 'job'); }
   function endScreen() {
@@ -1258,7 +1259,7 @@
     host(1, true);   // [ospite] che si legga l'avviso
     return;
   }
-  setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [prestazioni] avvisa se si disegna senza scheda video
+  if (!OR) setTimeout(() => { try { softwareCheck(); } catch (e) { } }, 4000);   // [orienta] l'avviso si dà entrando (dietro il caricamento scadeva prima)   // [prestazioni] avvisa se si disegna senza scheda video
   if (window.Editor) Editor.attach({ get st() { return st; }, ui, G, R, cv, app, toast });   // [editor] F2
   function size() { const w = app.clientWidth || innerWidth, h = app.clientHeight || innerHeight; R.resize(w, h, Math.min(2, devicePixelRatio || 1)); }
   new ResizeObserver(size).observe(app); size();
