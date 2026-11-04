@@ -1,0 +1,36 @@
+{
+ "vecchio": {
+  "fov": 44,
+  "aspect": 0.5617977528089888,
+  "hfov": 25.57674536998229
+ },
+ "vecchio_vicolo": {
+  "fov": 44,
+  "pitch": 63.2,
+  "davanti": 4.9,
+  "hfov": 25.57674536998229
+ },
+ "vecchio_lungomare": {
+  "fov": 44,
+  "pitch": 54.4,
+  "davanti": 7.4,
+  "hfov": 25.57674536998229
+ },
+ "nuovo": {
+  "fov": 80,
+  "aspect": 0.5625,
+  "hfov": 50.53401584672457
+ },
+ "nuovo_vicolo": {
+  "fov": 80,
+  "pitch": 50,
+  "davanti": 45.4,
+  "hfov": 50.53401584672457
+ },
+ "nuovo_lungomare": {
+  "fov": 80,
+  "pitch": 34.7,
+  "davanti": 999,
+  "hfov": 50.53401584672457
+ }
+}

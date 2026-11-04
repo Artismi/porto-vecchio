@@ -197,7 +197,7 @@ const Comandi = (() => {
     if (hb.hidden !== !id) hb.hidden = !id; if (!id) { handKey = ''; return; }
     const ammo = Wp && p.arms[p.cur] ? (Wp.throw ? '×' + ((p.arms[p.cur].mag || 0) + (p.arms[p.cur].reserve || 0)) : (p.arms[p.cur].mag || 0) + '/' + (p.arms[p.cur].reserve || 0)) : '';
     const name = Wp ? Wp.name : (typeof Oggetti !== 'undefined' && Oggetti.nm ? Oggetti.nm(id) : id);
-    const hint = Wp ? (pv.touchMode ? (Wp.throw ? 'tocca dove lanciarla' : 'tocca dove sparare · qui: ricarica') : (Wp.throw ? 'destro: lancia' : 'destro: spara · clic qui: ricarica'))
+    const hint = Wp ? (pv.touchMode ? (Wp.throw ? 'tocca dove lanciarla' : 'tocca dove sparare · qui: ricarica') : (/[?&]nofixcamera7\b/.test(location.search) ? (Wp.throw ? 'destro: lancia' : 'destro: spara · clic qui: ricarica') : (Wp.throw ? 'destro mira, sinistro lancia' : 'destro mira, sinistro spara · clic qui: ricarica')))
       : 'tocca qui per usarlo';
     const key = id + '|' + ammo;
     if (key !== handKey || now) {

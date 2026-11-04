@@ -1,4 +1,5 @@
 // [camera4] le prove della gerarchia dell'inquadratura (src/visuale.js inquadra4): node src/test_inquadra4.js
+// [camera7] queste regole ora valgono solo con ?nofixcamera7 (la camera di prima, a piedi); nel gioco di difetto la camera a piedi è la vista unica: la prova test_camera7.js
 const V = require('./visuale.js');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 const K = V.INQUADRA4, YAW = 0;   // la camera sta verso +z dal personaggio

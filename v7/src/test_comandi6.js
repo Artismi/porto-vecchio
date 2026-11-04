@@ -1,4 +1,5 @@
 // [camera6] le prove dei comandi della camera (src/visuale.js levetta6, vista6, relativa6): node src/test_comandi6.js
+// [camera7] queste regole ora valgono solo con ?nofixcamera7 (la camera di prima, a piedi); nel gioco di difetto la camera a piedi è la vista unica: la prova test_camera7.js
 const V = require('./visuale.js');
 let fail = 0; const ok = (c, m) => { console.log((c ? 'ok   ' : 'NO   ') + m); if (!c) fail++; };
 const K = V.COMANDI6;
