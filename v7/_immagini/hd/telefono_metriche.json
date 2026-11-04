@@ -1,0 +1,150 @@
+{
+ "piazza": {
+  "vecchio": {
+   "tela": [
+    640,
+    1385
+   ],
+   "grad": 3.16,
+   "lapvar": 38.2,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 1385 (640\u00d71385) \u00b7 tela 640\u00d71385 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 17,
+     "prims": 42448
+    },
+    "fb:640x1385": {
+     "draws": 314,
+     "prims": 1389337
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 296,
+   "tremolio_medio": 2.15,
+   "tremolio_px_oltre24": 2.06
+  },
+  "nuovo_min": {
+   "tela": [
+    640,
+    1385
+   ],
+   "grad": 3.14,
+   "lapvar": 35.8,
+   "stato": "hd \u00b7 scala 0.82 \u00b7 righe 640/780 (640\u00d71385) \u00b7 tela 640\u00d71385 \u00b7 CSS (dpr oltre 2) \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 17,
+     "prims": 40992
+    },
+    "fb:640x1385": {
+     "draws": 315,
+     "prims": 1389907
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 297,
+   "tremolio_medio": 1.93,
+   "tremolio_px_oltre24": 1.54
+  },
+  "nuovo_1": {
+   "tela": [
+    780,
+    1688
+   ],
+   "grad": 3.31,
+   "lapvar": 52.0,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 780/780 (780\u00d71688) \u00b7 tela 780\u00d71688 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 17,
+     "prims": 40992
+    },
+    "fb:780x1688": {
+     "draws": 315,
+     "prims": 1389909
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 297,
+   "tremolio_medio": 1.69,
+   "tremolio_px_oltre24": 1.34
+  }
+ },
+ "vicolo": {
+  "vecchio": {
+   "tela": [
+    640,
+    1385
+   ],
+   "grad": 3.05,
+   "lapvar": 41.2,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 1385 (640\u00d71385) \u00b7 tela 640\u00d71385 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 26,
+     "prims": 42016
+    },
+    "fb:640x1385": {
+     "draws": 261,
+     "prims": 862283
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 200,
+   "tremolio_medio": 2.65,
+   "tremolio_px_oltre24": 2.36
+  },
+  "nuovo_min": {
+   "tela": [
+    640,
+    1385
+   ],
+   "grad": 3.09,
+   "lapvar": 41.1,
+   "stato": "hd \u00b7 scala 0.82 \u00b7 righe 640/780 (640\u00d71385) \u00b7 tela 640\u00d71385 \u00b7 CSS (dpr oltre 2) \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 25,
+     "prims": 34212
+    },
+    "fb:640x1385": {
+     "draws": 260,
+     "prims": 854341
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 195,
+   "tremolio_medio": 2.39,
+   "tremolio_px_oltre24": 1.72
+  },
+  "nuovo_1": {
+   "tela": [
+    780,
+    1688
+   ],
+   "grad": 3.25,
+   "lapvar": 58.2,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 780/780 (780\u00d71688) \u00b7 tela 780\u00d71688 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 25,
+     "prims": 34212
+    },
+    "fb:780x1688": {
+     "draws": 260,
+     "prims": 854343
+    }
+   },
+   "calls": 1,
+   "progs": 195,
+   "tex": 195,
+   "tremolio_medio": 2.08,
+   "tremolio_px_oltre24": 1.51
+  }
+ }
+}

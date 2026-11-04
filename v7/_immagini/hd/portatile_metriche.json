@@ -1,0 +1,314 @@
+{
+ "lontano": {
+  "vecchio": {
+   "tela": [
+    1137,
+    640
+   ],
+   "grad": 9.11,
+   "lapvar": 205.1,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 640 (1137\u00d7640) \u00b7 tela 1137\u00d7640 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 121,
+     "prims": 144548
+    },
+    "fb:1137x640": {
+     "draws": 1648,
+     "prims": 3375288
+    }
+   },
+   "calls": 1,
+   "progs": 198,
+   "tex": 570,
+   "tremolio_medio": 9.79,
+   "tremolio_px_oltre24": 13.58
+  },
+  "nuovo_min": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 11.56,
+   "lapvar": 322.9,
+   "stato": "hd \u00b7 scala 0.59 \u00b7 righe 640/1080 (1137\u00d7640) \u00b7 tela 1920\u00d71080 \u00b7 ingrandisce 84.30 ms \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:945x945": {
+     "draws": 125,
+     "prims": 164108
+    },
+    "fb:1137x640": {
+     "draws": 1616,
+     "prims": 3395773
+    },
+    "canvas:1920x1080": {
+     "draws": 1,
+     "prims": 2
+    }
+   },
+   "calls": 1,
+   "progs": 199,
+   "tex": 565,
+   "tremolio_medio": 6.36,
+   "tremolio_px_oltre24": 4.71
+  },
+  "nuovo_1": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 15.13,
+   "lapvar": 1242.0,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 1080/1080 (1920\u00d71080) \u00b7 tela 1920\u00d71080 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1300x1300": {
+     "draws": 125,
+     "prims": 164108
+    },
+    "fb:1920x1080": {
+     "draws": 1618,
+     "prims": 3396089
+    }
+   },
+   "calls": 1,
+   "progs": 199,
+   "tex": 564,
+   "tremolio_medio": 5.85,
+   "tremolio_px_oltre24": 4.62
+  }
+ },
+ "piazza": {
+  "vecchio": {
+   "tela": [
+    1137,
+    640
+   ],
+   "grad": 6.01,
+   "lapvar": 104.8,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 640 (1137\u00d7640) \u00b7 tela 1137\u00d7640 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 27,
+     "prims": 70194
+    },
+    "fb:1137x640": {
+     "draws": 582,
+     "prims": 1994481
+    }
+   },
+   "calls": 1,
+   "progs": 196,
+   "tex": 384,
+   "tremolio_medio": 4.73,
+   "tremolio_px_oltre24": 4.71
+  },
+  "nuovo_min": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 7.48,
+   "lapvar": 169.2,
+   "stato": "hd \u00b7 scala 0.59 \u00b7 righe 640/1080 (1137\u00d7640) \u00b7 tela 1920\u00d71080 \u00b7 ingrandisce 53.41 ms \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1046x1046": {
+     "draws": 24,
+     "prims": 64160
+    },
+    "fb:1137x640": {
+     "draws": 561,
+     "prims": 2001587
+    },
+    "canvas:1920x1080": {
+     "draws": 1,
+     "prims": 2
+    }
+   },
+   "calls": 1,
+   "progs": 198,
+   "tex": 379,
+   "tremolio_medio": 3.96,
+   "tremolio_px_oltre24": 2.82
+  },
+  "nuovo_1": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 8.9,
+   "lapvar": 672.9,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 1080/1080 (1920\u00d71080) \u00b7 tela 1920\u00d71080 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1438x1438": {
+     "draws": 24,
+     "prims": 64160
+    },
+    "fb:1920x1080": {
+     "draws": 561,
+     "prims": 2001587
+    }
+   },
+   "calls": 1,
+   "progs": 198,
+   "tex": 378,
+   "tremolio_medio": 3.16,
+   "tremolio_px_oltre24": 2.36
+  }
+ },
+ "strada_lunga": {
+  "vecchio": {
+   "tela": [
+    1137,
+    640
+   ],
+   "grad": 4.34,
+   "lapvar": 66.3,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 640 (1137\u00d7640) \u00b7 tela 1137\u00d7640 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 80,
+     "prims": 79190
+    },
+    "fb:1137x640": {
+     "draws": 619,
+     "prims": 2414342
+    }
+   },
+   "calls": 1,
+   "progs": 197,
+   "tex": 457,
+   "tremolio_medio": 3.14,
+   "tremolio_px_oltre24": 2.31
+  },
+  "nuovo_min": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 5.32,
+   "lapvar": 105.1,
+   "stato": "hd \u00b7 scala 0.59 \u00b7 righe 640/1080 (1137\u00d7640) \u00b7 tela 1920\u00d71080 \u00b7 ingrandisce 81.34 ms \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1046x1046": {
+     "draws": 35,
+     "prims": 63584
+    },
+    "fb:1137x640": {
+     "draws": 624,
+     "prims": 2292376
+    },
+    "canvas:1920x1080": {
+     "draws": 1,
+     "prims": 2
+    }
+   },
+   "calls": 1,
+   "progs": 198,
+   "tex": 455,
+   "tremolio_medio": 3.46,
+   "tremolio_px_oltre24": 2.33
+  },
+  "nuovo_1": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 6.44,
+   "lapvar": 387.2,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 1080/1080 (1920\u00d71080) \u00b7 tela 1920\u00d71080 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1438x1438": {
+     "draws": 36,
+     "prims": 63764
+    },
+    "fb:1920x1080": {
+     "draws": 625,
+     "prims": 2292378
+    }
+   },
+   "calls": 1,
+   "progs": 198,
+   "tex": 455,
+   "tremolio_medio": 2.74,
+   "tremolio_px_oltre24": 1.81
+  }
+ },
+ "vicolo": {
+  "vecchio": {
+   "tela": [
+    1137,
+    640
+   ],
+   "grad": 5.04,
+   "lapvar": 75.1,
+   "stato": "hd regola0 \u00b7 scala 1.00 \u00b7 righe 640 (1137\u00d7640) \u00b7 tela 1137\u00d7640 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa fxaa/no",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 38,
+     "prims": 41488
+    },
+    "fb:1137x640": {
+     "draws": 376,
+     "prims": 1221762
+    }
+   },
+   "calls": 1,
+   "progs": 196,
+   "tex": 219,
+   "tremolio_medio": 3.67,
+   "tremolio_px_oltre24": 3.49
+  },
+  "nuovo_min": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 7.18,
+   "lapvar": 135.7,
+   "stato": "hd \u00b7 scala 0.59 \u00b7 righe 640/1080 (1137\u00d7640) \u00b7 tela 1920\u00d71080 \u00b7 ingrandisce 0.84 ms \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1053x1053": {
+     "draws": 38,
+     "prims": 59900
+    },
+    "fb:1137x640": {
+     "draws": 375,
+     "prims": 1220814
+    },
+    "canvas:1920x1080": {
+     "draws": 1,
+     "prims": 2
+    }
+   },
+   "calls": 1,
+   "progs": 197,
+   "tex": 222,
+   "tremolio_medio": 3.52,
+   "tremolio_px_oltre24": 2.03
+  },
+  "nuovo_1": {
+   "tela": [
+    1920,
+    1080
+   ],
+   "grad": 8.42,
+   "lapvar": 513.9,
+   "stato": "hd \u00b7 scala 1.00 \u00b7 righe 1080/1080 (1920\u00d71080) \u00b7 tela 1920\u00d71080 \u00b7 tetto no \u00b7 LOWQ no \u00b7 tel s\u00ec \u00b7 aa 2\u00d7",
+   "passes": {
+    "fb:1438x1438": {
+     "draws": 39,
+     "prims": 60172
+    },
+    "fb:1920x1080": {
+     "draws": 375,
+     "prims": 1220816
+    }
+   },
+   "calls": 1,
+   "progs": 197,
+   "tex": 221,
+   "tremolio_medio": 2.46,
+   "tremolio_px_oltre24": 1.68
+  }
+ }
+}

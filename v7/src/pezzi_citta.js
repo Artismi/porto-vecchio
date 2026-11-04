@@ -154,16 +154,27 @@ var PezziCitta = (function () {
 #endif
   diffuseColor.rgb = c; pzH = H; }`;
   }
+  // [hd] (v7/ANALISI_HD.md) «regola»: la misura del pixel (px) in pixel stabili (render.js HDK: righe interne / di riferimento), così i giunti
+  // e le trame non cambiano quando la scala dinamica si muove; «pulito»: la grana a 23 per metro e i pori (sotto il pixel alla zoom di gioco:
+  // rumore che frigge) svaniscono sotto i due pixel. ?hd=0 la stessa veste di prima
+  const HDPZ = typeof window !== 'undefined' && !!window.PV_HD, HDPZr = HDPZ && window.PV_HD.on('regola'), HDPZp = HDPZ && window.PV_HD.on('pulito');
+  function vesteHD(f) {
+    if (HDPZr) f = f.replace('px = length(fwidth(vPzW)) + 1e-4;', 'px = length(fwidth(vPzW)) * pzHk + 1e-4;');
+    if (HDPZp) f = f.replace('float gr = pzN(p * 23.) - .5,', 'float gr = (pzN(p * 23.) - .5) * (1. - smoothstep(.011, .022, px)),')
+      .replace('c *= 1. - step(.94, pzH1(floor(q * 11.) + 3.1)) * .16;', 'c *= 1. - step(.94, pzH1(floor(q * 11.) + 3.1)) * .16 * (1. - smoothstep(.02, .045, px));');
+    return f;
+  }
   function veste(m, nome) {
     const v = VESTI[nome]; if (!v) return; m.userData.veste = v.g;
-    const frag = vesteGLSL(), uni = vesteUni(v);
+    const frag = vesteHD(vesteGLSL()), uni = vesteUni(v);
     m.customProgramCacheKey = () => 'pz2';   // [programmi] la stessa chiave per tutte le vesti: un programma
     m.onBeforeCompile = sh => {
+      if (HDPZr) sh.uniforms.pzHk = window.__HDK || { value: 1 };   // [hd]
       sh.uniforms.pzA = { value: new THREE.Vector4(uni[0], uni[1], uni[2], uni[3]) }; sh.uniforms.pzB = { value: new THREE.Vector4(uni[4], uni[5], uni[6], uni[7]) };   // [programmi] la veste come uniform
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU;')
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 w4 = vec4(transformed, 1.);\n#ifdef USE_INSTANCING\n w4 = instanceMatrix * w4;\n#endif\n vPzW = (modelMatrix * w4).xyz; vPzN = normalize(mat3(modelMatrix) * objectNormal); vPzU = uv; }');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.; uniform vec4 pzA; uniform vec4 pzB;
+varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.; uniform vec4 pzA; uniform vec4 pzB;${HDPZr ? ' uniform float pzHk;' : ''}
 float pzH1(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }   // senza seno: costa poco anche sui processori grafici deboli
 float pzN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(pzH1(i), pzH1(i + vec2(1., 0.)), f.x), mix(pzH1(i + vec2(0., 1.)), pzH1(i + vec2(1., 1.)), f.x), f.y); }
 float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)

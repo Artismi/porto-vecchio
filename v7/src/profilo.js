@@ -6,6 +6,23 @@
    scheda; se è integrata o in software si aggiunge «leggera» all'indirizzo (history.replaceState, la pagina non si ricarica) e ogni modulo
    sceglie il profilo leggero come sul telefono. I comandi restano quelli del computer (li decide il puntatore, non ?leggera).
    ?alta (o ?piena) tiene il profilo pieno; ?leggera lo forza. window.PV_PROFILO dice cosa si è scelto e perché.                          */
+/* [hd] GLI INTERRUTTORI DELL'IMMAGINE HD, decisi qui prima di tutti i moduli (v7/ANALISI_HD.md). window.PV_HD.on(nome): vero se il passo
+   è acceso. ?hd=0 li spegne tutti (il gioco di prima, identico); ?<nome>=0 uno solo:
+     foschia  il colore dell'aria del passo unico (era sempre grigio .8: il lontano lattiginoso di sera e di notte)
+     regola   i regolatori a qualità stabile (la grafica ridotta a gradini senza toccare la risoluzione né spegnere le ombre, il contesto
+              perso vale per la sessione, la scala fine a passi del 5% con la soglia delle 640 righe, i dettagli misurati in pixel stabili)
+     upscale  la tela alla risoluzione vera dello schermo e un passo che ingrandisce nitido (Catmull-Rom con la pinza dei vicini)
+     hdaa     MSAA 2× nel profilo leggero al posto dell'FXAA, i fili dalla profondità con il peso di copertura
+     pulito   le trame pulite: niente puntini al texel, le mappe dei tetti a 32 px/m, anisotropia 8, i vestiti filtrati
+     risdin   la risoluzione interna dinamica fra 640 e 1080 righe (dentro «regola»)
+     hdombre  l'ombra del sole più fine sopra le 900 righe, chi si muove aggiornato a ogni fotogramma                                  */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined') return;
+  let q = ''; try { q = location.search || ''; } catch (e) { q = ''; }
+  const tutto = !/[?&]hd=0\b/.test(q);
+  window.PV_HD = { on: k => tutto && (!k || !new RegExp('[?&]' + k + '=0\\b').test(q)), tutto };
+})();
 (function () {
   'use strict';
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
