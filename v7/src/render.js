@@ -13525,7 +13525,7 @@ var Render = (function () {
   // [hd] L'INGRANDIMENTO NITIDO: dalla risoluzione interna alla tela vera in un passo solo. Catmull-Rom in 5 letture bilineari (la croce: gli
   // angoli pesano quasi niente), una pinza ai 4 texel vicini (niente aloni né anelli), un filo di nitidezza in più sul solo valore rispetto
   // al bilineare (dentro la pinza), il retino contro le bande al pixel vero. 10 letture per pixel della tela.
-  const UPS = { rt: null, scene: null, cam: null, mat: null, ripiego: /[?&]upscale=0\b/.test(typeof location !== 'undefined' ? location.search : ''), fisso: /[?&]ripiego=0\b/.test(typeof location !== 'undefined' ? location.search : ''),   /* ?ripiego=0: mai il ripiego (le sonde in SwiftShader, dove ogni passo costa decine di ms) */ q: null, ext: null, ms: 0, lento: 0, t: 0, n: 0, nitido: .35 };
+  const UPS = { rt: null, scene: null, cam: null, mat: null, ripiego: /[?&]upscale=0\b/.test(typeof location !== 'undefined' ? location.search : ''), fisso: /[?&]ripiego=0\b/.test(typeof location !== 'undefined' ? location.search : ''),   /* ?ripiego=0: mai il ripiego (le sonde in SwiftShader, dove ogni passo costa decine di ms) */ q: null, ext: null, ms: 0, lento: 0, t: 0, n: 0, nitido: .6 };   // nitido: la spinta oltre il bilineare (window.__UPS.nitido dal vivo; .6 scelto sul vicolo: niente aloni, la pinza li tiene)
   if (typeof window !== 'undefined') window.__UPS = UPS;
   function upsInit() {
     if (UPS.mat) return; UPS.scene = new THREE.Scene(); UPS.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
