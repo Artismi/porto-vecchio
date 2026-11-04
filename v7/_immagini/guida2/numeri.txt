@@ -1,0 +1,29 @@
+[guida2] simulazioni Node (scratchpad 50motivi/veicoli, copiate in guida2/sim). prima = NOFIXGUIDA2=1, dopo = guida2. 6 semi × 300 s per sim4b/sim4d
+
+sim4d giulia [prima] runs=6 stuck%=24.8 wallHits/5min=64.1 hard/5min=26.3 reached/5min=7.7 givenUp/5min=16.4 km/h=14.3 wrecks/falls=2 secs=1606
+sim4d giulia [dopo] runs=6 stuck%=27.2 wallHits/5min=79.8 hard/5min=46.0 reached/5min=11.2 givenUp/5min=12.7 km/h=22.2 wrecks/falls=2 secs=1467
+sim4b giulia [prima] runs=6 stuck%=37.8 wallHits/5min=55.2 hard/5min=25.8 reached/5min=3.7 givenUp/5min=22.9 km/h=10.5 wrecks/falls=2 secs=1521
+sim4b giulia [dopo] runs=6 stuck%=42.0 wallHits/5min=63.0 hard/5min=38.8 reached/5min=4.9 givenUp/5min=19.2 km/h=14.7 wrecks/falls=1 secs=1639
+sim4d vespa [prima] runs=6 stuck%=17.6 wallHits/5min=45.7 hard/5min=31.3 reached/5min=18.9 givenUp/5min=5.9 km/h=23.8 wrecks/falls=1 secs=1621
+sim4d vespa [dopo] runs=6 stuck%=12.8 wallHits/5min=73.7 hard/5min=30.3 reached/5min=18.4 givenUp/5min=7.7 km/h=29.1 wrecks/falls=2 secs=1645
+sim4b vespa [prima] runs=6 stuck%=21.1 wallHits/5min=60.8 hard/5min=38.9 reached/5min=11.0 givenUp/5min=11.5 km/h=19.8 wrecks/falls=3 secs=1204
+sim4b vespa [dopo] runs=6 stuck%=15.8 wallHits/5min=105.4 hard/5min=49.9 reached/5min=12.0 givenUp/5min=12.1 km/h=25.9 wrecks/falls=2 secs=1606
+sim4d bmx [prima] runs=6 stuck%=17.8 wallHits/5min=25.7 hard/5min=7.2 reached/5min=15.5 givenUp/5min=7.2 km/h=18.8 wrecks/falls=9 secs=1800
+sim4d bmx [dopo] runs=6 stuck%=17.4 wallHits/5min=37.3 hard/5min=10.7 reached/5min=18.2 givenUp/5min=6.8 km/h=20.6 wrecks/falls=4 secs=1800
+sim4b bmx [prima] runs=6 stuck%=20.5 wallHits/5min=35.2 hard/5min=15.3 reached/5min=13.7 givenUp/5min=8.0 km/h=18.0 wrecks/falls=3 secs=1800
+sim4b bmx [dopo] runs=6 stuck%=18.0 wallHits/5min=42.7 hard/5min=18.0 reached/5min=15.0 givenUp/5min=6.8 km/h=20.9 wrecks/falls=11 secs=1800
+sim4d giulia [dopo-finale] runs=6 stuck%=26.9 wallHits/5min=88.1 hard/5min=52.4 reached/5min=9.9 givenUp/5min=15.0 km/h=22.5 wrecks/falls=2 secs=1420
+sim4d vespa [dopo-finale] runs=6 stuck%=15.9 wallHits/5min=81.5 hard/5min=34.5 reached/5min=17.3 givenUp/5min=8.9 km/h=26.9 wrecks/falls=4 secs=1321
+
+BMX al clic (sim8, 30 mete):
+bmx pace 2 guida2 ok 28 gaveUp 2 noPath 0 avg s 11.3 end dis
+bmx pace 1 prima ok 0 gaveUp 30 noPath 0 avg s 0.0 end dista
+bmx pace 2 prima ok 0 gaveUp 30 noPath 0 avg s 0.0 end dista
+
+auto al clic (sim12, nuovo: replica di main.js guidaClic; prima il clic in auto non faceva niente):
+auto al clic giulia arrivi 15 di 30 senza percorso 0 tempo medio 18.6 s urti col muro 87 lento (<0,8 m/s) 35.5%
+auto al clic giulia arrivi 26 di 30 senza percorso 0 tempo medio 12.0 s urti col muro 46 lento (<0,8 m/s) 9.5%
+auto al clic giulia arrivi 28 di 30 senza percorso 0 tempo medio 10.6 s urti col muro 18 lento (<0,8 m/s) 9.7%
+auto al clic vespa arrivi 30 di 30 senza percorso 0 tempo medio 10.3 s urti col muro 23 lento (<0,8 m/s) 8.6%
+auto al clic cinquecento arrivi 14 di 30 senza percorso 0 tempo medio 17.6 s urti col muro 67 lento (<0,8 m/s) 38.9%
+auto al clic ritmo arrivi 24 di 30 senza percorso 0 tempo medio 13.9 s urti col muro 68 lento (<0,8 m/s) 13.1%
