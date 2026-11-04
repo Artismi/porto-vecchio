@@ -1026,7 +1026,7 @@ var Writing = (function () {
   }
   function* decalG(R, layer) {
     const THREE = T3(), F = frameOf(R), n = F.n, up = F.up, r = F.r, C = new THREE.Vector3(R.c.x, R.c.y, R.c.z), flat = Math.abs(n.y) > .5;
-    const hw = R.W / 2, hh = R.H / 2, D0 = flat ? .05 : .10, D1 = flat ? .05 : .06, minDot = flat ? .7 : .5, gap = GAP2 + Math.min(4, layer || 0) * .0005;   // la fascia: per terra ±5 cm, sul muro da 10 cm dietro a 6 davanti
+    const hw = R.W / 2, hh = R.H / 2, D0 = flat ? .3 : .10, D1 = flat ? .3 : .06, minDot = flat ? .7 : .5, gap = GAP2 + Math.min(4, layer || 0) * .0005;   // la fascia: per terra ±30 cm (la strada in salita: la cornice ha già verificato che sotto non ci sono gradini), sul muro da 10 cm dietro a 6 davanti
     const list = cands(C.x, C.z).filter(m => !m.userData.velo && !m.userData.wr && !m.isInstancedMesh && !m.isSkinnedMesh && m.visible !== false);
     const L = nearList(list, C, Math.hypot(R.W, R.H) / 2 + .5);
     // la scatola del riquadro nel mondo (con la fascia)
@@ -1959,7 +1959,15 @@ var Writing = (function () {
     const rx = A.r, up = A.u, NX = 9, NY = 7, ok = [], rc = GFX.rc || (GFX.rc = new THREE.Raycaster()), tolD = flat && !A.veh ? .03 : .45;   // sui mezzi la carrozzeria è curva: la decalcomania la segue
     const at = (i, j) => new THREE.Vector3(c.x + rx.x * (i / (NX - 1) - .5) * Rc.W + up.x * (j / (NY - 1) - .5) * Rc.H, c.y + (rx.y || 0) * (i / (NX - 1) - .5) * Rc.W + up.y * (j / (NY - 1) - .5) * Rc.H, c.z + rx.z * (i / (NX - 1) - .5) * Rc.W + up.z * (j / (NY - 1) - .5) * Rc.H);
     const Ln = A.veh ? null : nearList(list, c, Math.hypot(Rc.W, Rc.H) / 2 + 1);
-    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const q = at(i, j), o = q.clone().addScaledVector(n, 1.5); rc.set(o, n.clone().negate()); rc.far = 1.5 + Math.max(tolD, .3); rc.near = 0; const h = (A.veh ? rc.intersectObject(list[0], true) : rc.intersectObjects(Ln, false)).find(h => h.face && !h.object.userData.velo); ok.push(h && Math.abs(h.distance - 1.5) < tolD ? 1 : 0); }
+    const dd = [];
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const q = at(i, j), o = q.clone().addScaledVector(n, 1.5); rc.set(o, n.clone().negate()); rc.far = 1.5 + Math.max(tolD, flat && !A.veh ? .6 : .3); rc.near = 0; const h = (A.veh ? rc.intersectObject(list[0], true) : rc.intersectObjects(Ln, false)).find(h => h.face && !h.object.userData.velo); dd.push(h ? h.distance - 1.5 : null); ok.push(h && Math.abs(h.distance - 1.5) < tolD ? 1 : 0); }
+    // per terra la tolleranza di 3 cm è dal piano che passa meglio per i punti (una strada in salita, la schiena d'asino), non dall'orizzontale:
+    // la vernice segue i triangoli, basta che sotto il riquadro non ci siano gradini o buchi
+    if (flat && !A.veh) { let s1 = 0, su = 0, sv = 0, suu = 0, svv = 0, suv = 0, sd = 0, sud = 0, svd = 0;
+      for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const d0 = dd[j * NX + i]; if (d0 == null || Math.abs(d0) > .6) continue; const u = i / (NX - 1) - .5, v = j / (NY - 1) - .5; s1++; su += u; sv += v; suu += u * u; svv += v * v; suv += u * v; sd += d0; sud += u * d0; svd += v * d0; }
+      if (s1 >= 6) { const M = [[s1, su, sv], [su, suu, suv], [sv, suv, svv]], y = [sd, sud, svd], det = m => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]), D = det(M);
+        if (Math.abs(D) > 1e-9) { const cc = k => det(M.map((row, i) => row.map((q, j) => j === k ? y[i] : q))), a0 = cc(0) / D, b0 = cc(1) / D, c0 = cc(2) / D;
+          if (Math.abs(b0) / Rc.W < .3 && Math.abs(c0) / Rc.H < .3) for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) { const d0 = dd[j * NX + i]; ok[j * NX + i] = d0 != null && Math.abs(d0 - (a0 + b0 * (i / (NX - 1) - .5) + c0 * (j / (NY - 1) - .5))) < tolD ? 1 : 0; } } } }
     let best = null; for (let i0 = 0; i0 < NX; i0++) for (let i1 = i0; i1 < NX; i1++) for (let j0 = 0; j0 < NY; j0++) for (let j1 = j0; j1 < NY; j1++) { let all = true; for (let j = j0; j <= j1 && all; j++) for (let i = i0; i <= i1; i++) if (!ok[j * NX + i]) { all = false; break; } if (!all) continue; const a = (i1 - i0 + 1) * (j1 - j0 + 1) * 100 - Math.hypot((i0 + i1) / 2 - (NX - 1) / 2, (j0 + j1) / 2 - (NY - 1) / 2); if (!best || a > best.a) best = { a, i0, i1, j0, j1 }; }
     if (!best || (best.i1 - best.i0) < 2 || (best.j1 - best.j0) < 2) return null;
     if (best.i0 === 0 && best.j0 === 0 && best.i1 === NX - 1 && best.j1 === NY - 1) return Rc;
@@ -2017,7 +2025,9 @@ var Writing = (function () {
     // la cornice: sotto il puntatore (col mouse) o al centro dello schermo (col dito)
     const touch = !!(pv && pv.touchMode) || !(pv && pv.mouse && pv.mouse.active), mnx = touch ? .5 : pv.mouse.nx, mny = touch ? .5 : pv.mouse.ny;
     const o = TAV.hov, moved = !o || Math.hypot(o.nx - mnx, o.ny - mny) > .006;
-    if (!o || (moved && now - o.t > 120) || now - o.t > (touch ? 600 : 1000)) { let H; try { H = tavHov(st, mnx, mny); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
+    let ck = ''; try { const e = window.__pv.R.getCamera().matrixWorld.elements; ck = [e[12], e[13], e[14], e[8], e[10]].map(v => v.toFixed(2)).join(','); } catch (e) { }   // la camera ferma: la cornice non si rifà (sul telefono è al centro)
+    const camMossa = !o || o.ck !== ck;
+    if (!o || (moved && now - o.t > 120) || (camMossa && now - o.t > (touch ? 700 : 400)) || now - o.t > 3000) { let H; try { H = tavHov(st, mnx, mny); } catch (e) { H = { no: true }; } H.nx = mnx; H.ny = mny; H.t = now; H.ck = ck; TAV.hov = H; tavDraw(H); TAV.nota = H.ok ? (H.small ? `qui ci sta ${H.Rc.W.toFixed(1).replace('.', ',')} × ${H.Rc.H.toFixed(1).replace('.', ',')} m` : touch ? 'tocca la cornice per dipingere' : 'clic sulla cornice · rotella o [ ] per la misura') : H.msg || (touch ? 'tocca un muro' : 'punta un muro vicino'); }
     if (TAV.f2 && TAV.f2.visible) TAV.f2f.material.opacity = (TAV.hov && TAV.hov.ok ? .14 : .08) + .1 * (.5 + .5 * Math.sin(now / 260));
   }
   // il tocco (pointerdown, main.js): sulla cornice apre subito; ritorna true se l'ha preso (se no il tocco cammina)
