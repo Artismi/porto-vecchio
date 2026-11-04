@@ -562,6 +562,13 @@ var TettiVissuti = (function () {
   // Niente commenti nel GLSL (gli accenti non passano ovunque); niente `diffuse` né `map` (la tavolozza e la pila di [leggero] lo provano a vuoto).
   // [nitida] il coppo mancante era una cella quasi nera (il sotto, all'85%): dall'alto si leggeva come un buco nel tetto. Ora un coppo rotto
   // è solo un poco più scuro dei vicini; ?vecchiapulizia lo rimette com'era
+  // [stile] B «illustrato pulito» (?stile=B, sgP10.x): il manto DISEGNATO nello shader al posto della tela da vicino (l'aperto di [hd]): la cella
+  // della tela (coppo 6 × 8 px, marsigliese 4 × 7) a 3-4 toni piatti, i giunti antialiasati con fwidth; il colore è la media della tela (la
+  // mipmap), così la tavolozza resta quella; dove la cella scende sotto 2-5 pixel torna la tela filtrata (niente moiré). Senza ?stile: spento
+  const DISEGNO = {
+    coppi: `(1.07 - .09 * smoothstep(.38 - ax, .38 + ax, abs(q.x - .5) * 2.) - .13 * smoothstep(.78 - ax, .78 + ax, abs(q.x - .5) * 2.)) * (1. - .2 * (1. - smoothstep(.125 - ay, .125 + ay, q.y))) * (1. + .05 * smoothstep(.875 - ay, .875 + ay, q.y) * (1. - smoothstep(.62 - ax, .62 + ax, abs(q.x - .5) * 2.))) / .95`,
+    tegole: `(1. + .14 * smoothstep(.25 - ax, .25 + ax, q.x) * (1. - smoothstep(.5 - ax, .5 + ax, q.x)) - .2 * smoothstep(.75 - ax, .75 + ax, q.x)) * (1. - .42 * (1. - smoothstep(.143 - ay, .143 + ay, q.y))) / .93`,
+  };
   const BUCO_TV = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? .85 : .22;
   function applica(m) {
     const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole', f = v => v.toFixed(4);
@@ -575,14 +582,28 @@ float tvH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); 
 float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); return mix(mix(tvH(i), tvH(i + vec2(1., 0.)), q.x), mix(tvH(i + vec2(0., 1.)), tvH(i + vec2(1., 1.)), q.x), q.y); }`)
         .replace('#include <map_fragment>', `#include <map_fragment>
 #ifdef USE_UV
-{ vec2 w = vTvP.xz; float a = tvN(w * .23) * .65 + tvN(w * .71 + 7.) * .35, mo = tvN(w * 1.9 + 3.) * .6 + tvN(w * 5.3) * .4;
+${DISEGNO[kind] ? `#if defined(SG_P10) && defined(USE_MAP)
+if (sgP10.x > 0.) { vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])}), fw = fwidth(g), ce = floor(g), q = fract(g);
+  float lon = smoothstep(.16, .42, max(fw.x, fw.y)) , ax = fw.x * 1.5 + .01, ay = fw.y * 1.5 + .01;
+  if (lon < 1.) { vec3 avg = diffuse * texture2D(map, vUv, 4.5).rgb; float k = (.95 + .035 * floor(tvH(ce + 3.7) * 4.)) * ${DISEGNO[kind]};
+    diffuseColor.rgb = mix(avg * k, diffuseColor.rgb, max(lon, 1. - sgP10.x)); } }
+#endif
+` : ''}{ vec2 w = vTvP.xz; float a = tvN(w * .23) * .65 + tvN(w * .71 + 7.) * .35, mo;
+#ifdef SG_P10
+  if (sgP10.x > 0.) mo = tvN(w * .55 + 3.); else
+#endif
+  mo = tvN(w * 1.9 + 3.) * .6 + tvN(w * 5.3) * .4;
   vec3 c = diffuseColor.rgb; float lum = dot(c, vec3(.3, .5, .2));
   ${falda ? `float nuovo = smoothstep(.68, .8, a), vecchio = smoothstep(.36, .2, a);
   c = mix(c, c * vec3(1.18, 1.0, .84), nuovo * .8); c = mix(c, vec3(lum) * vec3(.84, .82, .78), vecchio * .5);
   float nord = clamp(-vTvN.z * 1.6, 0., 1.), gronda = 1. - smoothstep(.0, 1.1, vUv.y * 16.);
   float mu = clamp(nord * .75 + gronda * .55 + vecchio * .35, 0., 1.) * smoothstep(.48, .74, mo);
   c = mix(c, vec3(.27, .31, .16), mu * .72);
-  float li = step(.9, tvH(floor(w * 6.3))) * smoothstep(.35, .6, a) * (.6 + nord * .4); c = mix(c, vec3(.8, .78, .64), li * .5);
+  float li = step(.9, tvH(floor(w * 6.3))) * smoothstep(.35, .6, a) * (.6 + nord * .4);
+#ifdef SG_P10
+  li *= 1. - sgP10.x;
+#endif
+  c = mix(c, vec3(.8, .78, .64), li * .5);
   vec2 ce = floor(vUv * vec2(${f(cel[0])}, ${f(cel[1])})); float ro = step(.9955, tvH(ce + floor(w * .07) * 17.));
   c = mix(c, vec3(.15, .11, .09), ro * ${BUCO_TV});` : `float umido = smoothstep(.6, .8, a);
   c = mix(c, c * vec3(.74, .76, .78), umido * .75);

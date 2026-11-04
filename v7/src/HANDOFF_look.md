@@ -170,7 +170,7 @@ Il piano è `ANALISI_STILE.md` (la diagnosi misurata, il piano di valori per cat
 **L'anteprima di un ramo e i tasselli.** L'anteprima di Vercel scarica i tasselli solo se esiste la release `tasselli-<impronta>` della sua
 pagina; ogni cambio a un modulo del gioco cambia l'impronta, e senza release la città si costruisce nel browser (lentissimo, i pavimenti
 arrivano a pezzi). Per un ramo: lanciare a mano il workflow `tasselli` sul ramo (workflow_dispatch, ~5 minuti), poi un push qualunque
-(rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-713e86db9725eac5` ([camera7], e454c3c).
+(rifà l'anteprima, che scarica la release). Ultima cotta per questo ramo: `tasselli-5696d62f5d443e8a` ([stile], c5ccd02).
 
 ## [direzione] La direzione artistica: si toglie, si dosa, ogni segno ha una causa (2-3 novembre)
 
@@ -199,3 +199,11 @@ Fuori: l'anello del personaggio, l'alone (scafo), la grana nel leggero; il disco
 ha il bordo netto (la logica è della camera). Le prove: `strumenti/sonda_profondita.js` (la camera di gioco vera, varianti nello stesso
 istante), `strumenti/profondita_scene.json`, `profondita_diagnosi.json`, `profondita_giri.json`, `fogli_profondita.py`, `misura_profondita.py`;
 i fogli in `_immagini/profondita/`. **I tasselli vanno ricotti** (il testo del varco nei materiali, e l'impronta cambia comunque).
+
+## [stile] Tre stili da scegliere guardando (4 novembre)
+
+`ANALISI_STILE2.md`: la diagnosi con la camera7, le varianti, il costo, le misure. `?stile=A` (oggi, identico anche senza parametro),
+`?stile=B` «illustrato pulito» (campiture piatte, manto dei coppi e delle marsigliesi disegnato nello shader con i giunti in `fwidth`,
+piano di fondo, inchiostro blu-viola), `?stile=C` «pittorico caldo» (pennellata larga nel mondo, luce dorata, aria calda). Dal vivo
+`__pv.R.stile('B')` con la pagina aperta con `?stile=`; le dosi in `window.__STILE.V`. Nei materiali i rami stanno dietro `sgP10` (a zero
+senza `?stile`): arrivano sulle case dei tasselli dopo la prossima cottura. Il foglio: `_immagini/stile/confronto_5x3.jpg`.

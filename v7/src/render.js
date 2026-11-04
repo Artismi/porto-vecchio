@@ -13666,7 +13666,7 @@ var Render = (function () {
   const PRO_Q = typeof location !== 'undefined' ? location.search : '', PRO_NO = /[?&]proposta=(0|no|off|false)\b/.test(PRO_Q);
   const PRO = { look: !PRO_NO || /[?&]scorcio=/.test(PRO_Q), attivo: /[?&]scorcio=/.test(PRO_Q) || (/[?&]proposta\b/.test(PRO_Q) && !PRO_NO), pezzi: false,
     prof: false,   // il passo legge la profondità (solo nel laboratorio, sotto)
-    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u8: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, u7: { x: 0, y: 0, z: 0, w: 0 }, u9: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   /* [ad] u7, u8: il taglio del primo piano */   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
+    u1: { x: 0, y: 0, z: 0, w: 0 }, u2: { x: 0, y: 0, z: 0, w: 0 }, u3: { x: 0, y: 0, z: 0, w: 0 }, u4: { x: 0, y: 0, z: 0, w: 0 }, u8: { x: 0, y: 0, z: 0, w: 0 }, u5: { x: 0, y: 0, z: 0, w: 0 }, u7: { x: 0, y: 0, z: 0, w: 0 }, u9: { x: 0, y: 0, z: 0, w: 0 }, u10: { x: 0, y: 0, z: 0, w: 0 }, ricche: [], semplici: [] };   /* [stile] u10: il manto disegnato (B), la pennellata larga (C) */   /* [ad] u7, u8: il taglio del primo piano */   // oggetti semplici: three li passa per riferimento a tutti i materiali (UniformsUtils.clone non copia)
   PRO.prof = PRO.look && PRO.attivo;
   // ================= [nitida] LA LEGGIBILITÀ NEL PASSO UNICO: dove guardare, cosa sta davanti e cosa sta dietro =================
   // Il committente: «si vede in bassa qualità; uno shader leggero che ridia leggibilità, oltre all'effetto cinematografico; non sai dove
@@ -13910,13 +13910,50 @@ var Render = (function () {
     ombraPers: .38, spicca: .85, filoSottile: .22 };   // [profondita3] l'ombra di contatto del personaggio (opacità); quanto il personaggio sale di valore; il filo sulle cose sottili (pali)   // l'alone chiaro (scafo) attorno al personaggio. Il varco (la logica è della camera): nei materiali il bordo netto al posto del retino    // l'anello a terra del personaggio; la grana (nel leggero sfarfallava a blocchi)
   if (PFD.on) { Object.assign(DIR, { muriK: PFD.muriK, suoloK: PFD.suoloK, tettiL: PFD.tettiL }); AD.grana = PFD.grana; }
   if (typeof window !== 'undefined') window.__PFD = PFD;
+  // ================= [stile] TRE STILI DA SCEGLIERE GUARDANDO (ANALISI_STILE2.md): ?stile=A|B|C =================
+  // Il committente: «e la grafica, lo stile?»: chiarezza assoluta, pulito e definito, niente impasto né rumore, col carattere dipinto, ligure e
+  // hip hop. Tre varianti dello stesso mondo, sulle stesse manopole (nessuno strato nuovo, nessuna passata nuova):
+  //   A (senza ?stile, o ?stile=A): il look di oggi, identico.
+  //   B «illustrato pulito»: campiture piatte (la luce a tre toni col bordo netto, l'intonaco quasi senza velature), il manto dei coppi e delle
+  //     marsigliesi disegnato nello shader (3-4 toni, giunti antialiasati), le ombre più colorate, il piano di fondo (un gradino di valore fra
+  //     la via del personaggio e il fondale), il filo d'inchiostro blu-viola più deciso sulle sagome e sulle persone, gli accenti più pieni.
+  //   C «pittorico caldo»: la pennellata solo larga (2 × 0,6 m, nel mondo, svanisce prima di diventare grana), l'intonaco a gradiente morbido,
+  //     la luce ligure calda e dorata, l'aria più forte e calda verso il mare e l'orizzonte, il filo leggero, la sera più rosa e arancio.
+  // Dal vivo (le sonde): R.stile('A'|'B'|'C') o window.__STILE. Con ?stile nell'indirizzo il passo unico porta i rami (a zero in A).
+  const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([abcABC])\b/) || [])[1] || '').toUpperCase() : '';
+  const STILE = { on: PFD.on, url: PFD.on && !!STILE_Q, v: 'A', base: null, sV: [0, 0, 0, 1], sW: [0, 0, 0, 0],
+    V: {
+      B: { DIR: { varia: .25, pittura: .45, tremolio: 0, microNormale: 0, fuoco: .08, suoloSat: .24, muriSat: .46 }, PRO: { celle: 1 },
+        PFD: { linea: 1.5, lineaSoglia: .04, lineaPersiste: 3, lineaLontano: 150, aria: .4, ariaL: 55, ariaFreddo: .8, quota: .28, spicca: 1, suoloK: .85, tettiL: .44 }, CAT: { lineaPersone: 1, bordoPersone: .28 },
+        mom: { mattino: { luce: [1.03, 1, .95], ombra: [.86, .9, 1.26], sat: 1.12, contrasto: 1.12, esp: 1.13, proNeri: .03, nebbia: '#dde6ee', proTinta: '#5060d0', proTintaK: .5, vign: .04 },
+          pomeriggio: { luce: [1.03, 1, .95], ombra: [.86, .9, 1.26], sat: 1.12, contrasto: 1.12, esp: 1.13, proNeri: .03, nebbia: '#dfe6ec', proTinta: '#5860d0', proTintaK: .5, vign: .04 },
+          sera: { contrasto: 1.12, esp: 1.06, proTintaK: .42, vign: .08 } },
+        u10: [1, 0, 0, 0], sV: [1, 6, 6, .55], sW: [1, .2, 0, 0] },
+      C: { DIR: { varia: .6, pittura: 1, tremolio: .035, microNormale: 0, fuoco: .12 }, PRO: { celle: .35 },
+        PFD: { linea: .45, lineaPersiste: 6, aria: 1, ariaL: 22, ariaFreddo: .1, quota: .12 }, CAT: { lineaPersone: .7, bordoPersone: .34 },
+        mom: { mattino: { sole: '#ffd09a', soleK: 1.42, terra: '#c49c70', nebbia: '#eed6ba', luce: [1.07, 1, .88], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6650b4', proTintaK: .36, vign: .16 },
+          pomeriggio: { sole: '#ffca90', soleK: 1.42, terra: '#c89a6a', nebbia: '#f0d2b2', luce: [1.07, 1, .87], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6a4eb2', proTintaK: .36, vign: .16 },
+          sera: { sole: '#ff8a48', soleK: 1.12, cielo: '#8c70c4', terra: '#b8785a', nebbia: '#e8949a', bordo: '#ffa0a8', ombra: [.86, .82, 1.2], luce: [1.14, .98, .82], sat: 1.06, contrasto: 1.08, proTinta: '#7a3a9c', proTintaK: .4, vign: .2 } },
+        u10: [0, 1, 0, 0], sV: [0, 0, 0, 1], sW: [0, .06, 1, 0] } } };
+  function stile(v) {
+    v = String(v || 'A').toUpperCase(); if (!STILE.on || !/^[ABC]$/.test(v)) return STILE.v;
+    if (!STILE.base) STILE.base = { DIR: Object.assign({}, DIR), PRO: Object.assign({}, SGU.pro), PFD: Object.assign({}, PFD), CAT: Object.assign({}, CAT), mom: JSON.parse(JSON.stringify(SGU.momenti)) };
+    const B = STILE.base; Object.assign(DIR, B.DIR); Object.assign(SGU.pro, B.PRO); Object.assign(PFD, B.PFD); Object.assign(CAT, B.CAT); for (const k in B.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(B.mom[k])));
+    const S = STILE.V[v]; STILE.v = v; STILE.sV = S ? S.sV : [0, 0, 0, 1]; STILE.sW = S ? S.sW : [0, 0, 0, 0];
+    const u = S ? S.u10 : [0, 0, 0, 0]; PRO.u10.x = u[0]; PRO.u10.y = u[1]; PRO.u10.z = u[2]; PRO.u10.w = u[3];
+    if (S) { Object.assign(DIR, S.DIR); Object.assign(SGU.pro, S.PRO); Object.assign(PFD, S.PFD); Object.assign(CAT, S.CAT); for (const k in S.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(S.mom[k]))); }
+    if (PFD.on) Object.assign(DIR, { muriK: PFD.muriK, suoloK: PFD.suoloK, tettiL: PFD.tettiL });
+    if (typeof window !== 'undefined') window.PV_STILE = v;
+    return v; }
+  if (STILE.on && STILE_Q && STILE_Q !== 'A') stile(STILE_Q);
+  if (typeof window !== 'undefined') { window.__STILE = STILE; window.PV_STILE = STILE.v; }
   // [profondita3] il disco sotto ogni persona (models.js, il pupazzo): col sistema acceso un'ombra di contatto morbida (il disco a bordo netto al
   // 35% era una pozza scura), un materiale per persona perché le ombre finte al sole (ombre1) ne cambiano l'opacità una per una
   if (typeof window !== 'undefined') window.PV_OMBRA_PERSONA = PFD.on ? () => new THREE.MeshBasicMaterial({ color: '#241a22', alphaMap: blobContatto(), transparent: true, opacity: .35, depthWrite: false }) : null;
   // i pezzi di shader (dentro sguPezzi, solo coi materiali STANDARD: i personaggi con lo scheletro restano tinte piene)
   function sguProPezzi(C) {
     if (PRO.pezzi) return; PRO.pezzi = true;
-    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
+    ['standard', 'physical'].forEach(k => Object.assign(THREE.ShaderLib[k].uniforms, { sgP1: { value: PRO.u1 }, sgP2: { value: PRO.u2 }, sgP3: { value: PRO.u3 }, sgP4: { value: PRO.u4 }, sgP5: { value: PRO.u5 }, sgP7: { value: PRO.u7 }, sgP8: { value: PRO.u8 }, sgP10: { value: PRO.u10 } }, AAA.on ? { sgP6: { value: AAA.u6 } } : {}));   // [look-aaa] sgP6: tetti, sporco, volumi delle chiome
     // [ad] IL TAGLIO DEL PRIMO PIANO (il cineasta): quello che sta fra la camera e il personaggio, sopra 2,2 m dal suo piano e dentro un'ellisse
     // attorno a lui sullo schermo, si apre a retino Bayer 4×4 (più aperto al centro): il personaggio si vede vero, non come sagoma arancio in
     // trasparenza (faceva telecamera termica). Solo il colore: l'ombra resta (la passata d'ombra ha il suo materiale).
@@ -13969,6 +14006,8 @@ float sgTrG;   // [ottimizza-gpu] il tremolio del confine delle celle, calcolato
 varying vec3 vSgO;   // il piede dell'albero (l'origine della copia)
 #endif
 uniform vec4 sgP7;   // [ad] il taglio: il personaggio sullo schermo (px), raggio (px; 0 spento), la sua distanza dalla camera (la sua quota è sgP2.w): un vec4 solo, i registri dei materiali sono pochi
+uniform vec4 sgP10;
+#define SG_P10
 uniform vec4 sgP1; uniform vec4 sgP2; uniform vec4 sgP3; uniform vec4 sgP4; uniform vec4 sgP5; uniform vec4 sgP8;   // sgP8: [cat] il bordo di luce delle persone   // sgP5: finestre, sera (0 giorno, 1 notte), il cielo sul suolo (proSuolo - 1), -   // [scorcio] pittura, grana, varia, chiome · ombre, acqua, tempo, quota della camera · la tinta dell'ombra (rgb), libero · celle, suolo, polvere, -
 ${AAA.on ? 'uniform vec4 sgP6;   // [look-aaa] tetti a macchie, facciate sporche in basso, chiome a volumi di colore' : ''}
 float sgH3( vec3 p ) { p = fract( p * .3183099 + .1 ); p *= 17.; return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) ); }
@@ -14041,8 +14080,11 @@ ${DIR.on ? `if ( sgP1.x + sgP1.z + sgP8.z > 0. ) {   // [direzione] LA MANO DI C
   // illumina il muro in alto, la via stretta toglie luce al piede); le riprese d'intonaco (a macchie di 5-14 m, solo di valore: niente tinte a
   // caso); sui tetti i coppi cambiati in anni diversi (~1 m) e il muschio dove resta umido (le falde a nord, basse). Niente rumore sotto il metro
   vec3 sgNw = normalize( cross( dFdx( vSgW ), dFdy( vSgW ) ) ); float sgV = 1. - smoothstep( .45, .8, abs( sgNw.y ) );
-  float sgQ = clamp( ( vSgW.y - sgP2.w ) / 9., -.4, 1.2 ), sgL = sgN3( vSgW * .07 + 3.7 ), sgM = sgN3( vSgW * .21 );
+  float sgQ = clamp( ( vSgW.y - sgP2.w ) / 9., -.4, 1.2 ), sgL = sgN3( vSgW * .07 + 3.7 ), sgM = sgN3( sgP10.y > 0. ? vSgW * vec3( .55, 1.6, .55 ) + 9.1 : vSgW * .21 );   /* [stile] C: lo stesso rumore, allungato in pennellate di ~2 × 0,6 m (nessun rumore in più) */
   diffuseColor.rgb *= 1. + sgP1.x * sgV * ( sgQ * .17 - .06 ) + sgP1.z * ( ( sgL - .5 ) * .12 + ( sgM - .5 ) * .1 );
+  if ( sgP10.y > 0. ) {   /* [stile] C «pittorico caldo»: la pennellata larga, a due toni col bordo antialiasato (fwidth), solo dove copre molti pixel (oltre ~60 m svanisce: mai grana); la ripresa calda e fredda a 14 m */
+    float sgBw = max( fwidth( sgM ) * 1.5, .06 ), sgBr = smoothstep( .5 - sgBw, .5 + sgBw, sgM ) - .5, sgVk = sgP10.y * ( 1. - smoothstep( .05, .14, length( fwidth( vSgW ) ) ) );
+    diffuseColor.rgb *= 1. + sgVk * sgBr * vec3( .15, .13, .1 ) + sgP10.y * ( sgL - .5 ) * vec3( .08, .015, -.06 ); }
   if ( sgP8.z > 0. ) { float sgUp = sgNw.y, sgH = vSgW.y - sgP2.w;
     float sgR = smoothstep( .3, .5, sgUp ) * smoothstep( 1.5, 3.5, sgH ) * mix( 1., .5, smoothstep( .95, .99, sgUp ) ) * sgP8.z;   // i tetti (i terrazzi a metà)
     if ( sgR > 0. ) {${HD.pulito ? '   // [hd] pulito: niente chiazze di un metro (n2) sui tetti, restano il muschio a nord e le riprese larghe' : ` float n2 = sgN3( vSgW * .9 + 2.2 );
@@ -14308,9 +14350,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nXr: { value: new THREE.Vector4(1, 0, 0, 0) }, nZr: { value: new THREE.Vector4(0, 0, 1, 0) }, nRm: { value: null }, nRs: { value: new THREE.Vector2(1, 1) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         gS: { value: new THREE.Vector4() },   // [strada]
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
-        rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) } },   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() } },   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
-      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + `
+      fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
         // gK: saturazione, contrasto, vignetta, nitidezza; gN: neri, colore pieno; fx: ferita, lampo, buio, grigio; lb: bande, colonne
 #ifdef SG_PRO
@@ -14345,6 +14387,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         uniform highp sampler2D fT; uniform highp vec4 fN; uniform vec2 fQ; uniform vec4 fP; uniform vec2 fE; uniform vec4 fA; uniform vec4 fB; uniform vec4 fC; uniform vec3 fH; uniform highp vec4 fXr; uniform highp vec4 fYr; uniform highp vec4 fZr;
         highp float fD(vec2 q){ highp float z = texture2D(fT, q).r * 2. - 1.; return 2. * fN.x * fN.y / (fN.y + fN.x - z * (fN.y - fN.x)); }   /* la distanza lungo l'asse (m) */
         highp vec3 fW(vec2 q, highp float d){ highp vec3 v = vec3((q * 2. - 1.) * fN.zw * d, -d); return vec3(dot(fXr.xyz, v) + fXr.w, dot(fYr.xyz, v) + fYr.w, dot(fZr.xyz, v) + fZr.w); }   /* il punto nel mondo */
+#ifdef SG_STILE
+        uniform vec4 sV; uniform vec4 sW;   /* [stile] le varianti B e C (ANALISI_STILE2.md); a zero il passo di A, identico */
+#endif
 #define fAcc vec2(.7, .85)   /* [profondita2] sui muri gli accenti (writing, insegne, persiane piene) restano pieni da .7-.85 di saturazione (giro 3: da .62 passavano anche gli intonaci gialli più carichi): con l'alfa pulito il writing è muro, e il tetto del pastello lo spegneva */
 #else
 #define fAcc vec2(.8, .9)
@@ -14581,7 +14626,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                 float lp = dot(c, vec3(.299, .587, .114)); fPk = pk; c = mix(c, max(mix(vec3(lp), c, 1.2), 0.) * 1.18 + .05, pk); }
 #endif
               /* gli accenti: persiane, tende, insegne (le cose già sature) un filo più piene del set, così l'occhio va lì */
-              { float mA = max(c.r, max(c.g, c.b)), sA = (mA - min(c.r, min(c.g, c.b))) / max(mA, 1e-4), lA = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(lA), c, 1. + .16 * smoothstep(.42, .65, sA) * (1. - wS)), 0.); }
+              { float mA = max(c.r, max(c.g, c.b)), sA = (mA - min(c.r, min(c.g, c.b))) / max(mA, 1e-4), lA = dot(c, vec3(.299, .587, .114)); c = max(mix(vec3(lA), c, 1. + (.16
+#ifdef SG_STILE
+                + sW.y
+#endif
+                ) * smoothstep(.42, .65, sA) * (1. - wS)), 0.); }
               lq = dot(c, vec3(.299, .587, .114)); }
 #else
             { float cap = mix(.56, .44, smoothstep(.35, .75, lq)), k = wM * cK.x * (1. - smoothstep(.8, .9, sq)); if (sq > cap) c = mix(c, mix(vec3(lq), c, cap / sq), k); }   // muri: pastello (gli accenti saturi, scritte e saracinesche, restano)
@@ -14655,6 +14704,9 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                 c = mix(c, mix(vec3(.29, .306, .345), min(c * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c), rv), lb); } }
 #endif
             vec3 ink = min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c);   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
+#ifdef SG_STILE
+            ink = mix(ink, min(bg * vec3(.3, .3, .4) + vec3(.025, .02, .05), c), sW.x);   /* [stile] B: l'inchiostro blu-viola scuro, più deciso (l'illustrazione) */
+#endif
             c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin); }   /* nel regime il grigio tecnico */
           {   /* LA LUCE DEL CIELO PER QUOTA: il fondo della via (alla quota del personaggio) vede meno cielo, i piani alti di più. La scala del muro
                  (chiaro in alto, scuro al piede) estesa alla città: i livelli si staccano anche dall'alto, dove la prospettiva quasi non c'è. Le persone no */
@@ -14664,7 +14716,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
                  primo piano resta il più ricco). Fisica: 1 - e^(-metri / fA.y) */
             float hz = fA.x * (1. - exp(-max(fd0 - fA.w, 0.) / fA.y)), la = dot(c, vec3(.299, .587, .114));
             vec3 air = fH * mix(vec3(1.), vec3(.93, .98, 1.08), fA.z);
+#ifdef SG_STILE
+            air = mix(air, air * vec3(1.05, 1., .88) + vec3(.035, .02, 0.), sW.z);   /* [stile] C: l'aria calda della costa (la foschia dorata verso il mare) */
+#endif
             c = mix(c, air + (mix(vec3(la), c, .6) - air) * .5, hz); }
+#ifdef SG_STILE
+          if (sV.x > 0.) {   /* [stile] B: IL PIANO DI FONDO. Oltre il personaggio di sV.y metri (su sV.z) il fondo diventa un fondale: un gradino di valore verso
+                                l'aria (più chiaro), il contrasto e il colore a sV.w; il piano del personaggio e la via davanti restano pieni. Zero letture in più */
+            float bk = sV.x * smoothstep(sV.y, sV.y + sV.z, fd0 - fA.w) * (1. - fPers), lk = dot(c, vec3(.299, .587, .114));
+            c = mix(c, fH * .22 + (vec3(lk) + (c - vec3(lk)) * sV.w) * .78 + (lk - .45) * (sV.w - 1.) * .5, bk); }
+#endif
 #endif
           c = max(c - gN.x, 0.) / (1. - gN.x);                                         // neri profondi e puliti
 #ifdef SG_STR
@@ -14814,7 +14875,8 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
       else { U.aA.value.set(0, 1, 0, 0); U.aB.value.x = 0; U.aS.value.set(1, 1, 1); U.aO.value.set(0, 0, 0); U.aP.value.set(1, 1, 1); U.aT.value.x = 1; U.aSh.value.set(1, 1, 1); U.aHi.value.set(1, 1, 1); } }
     if (DIR.on) U.gN.value.z = AD.on ? 1 - (SGT.notte || 0) : 0;   // [direzione] il giorno (le manopole dell'ora lo azzeravano: la gerarchia di giorno non partiva)
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
-    if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
+    if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
+    if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); }   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
     if (PFD.on) {   // [profondita2] la profondità nel passo: la camera, il personaggio, le forze
       const F = PFD, ty = Math.tan(camera.fov * Math.PI / 360), m = camera.matrixWorld.elements, inK = p.indoor ? 0 : 1, f = ui.focus;
       const d3 = SGT.fv3 || (SGT.fv3 = new THREE.Vector3()); d3.set(f ? f.x : p.x, (f ? groundH(f.x, f.y) : playerH) + 1, f ? f.y : p.y).applyMatrix4(camera.matrixWorldInverse);
@@ -20109,5 +20171,5 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const P = renderer && renderer.info.programs; if (!PSC || !P || !P.length) return 1;
     const gl = renderer.getContext(); let n = 0; for (const p of P) if (gl.getProgramParameter(p.program, PSC.COMPLETION_STATUS_KHR)) n++; return n / P.length;
   }
-  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
+  return { gonfia, catAlfa,   /* [ad] lo schermo → la scena col rigonfiamento (writing.js) */ look, scorcio: SCO, scoCentro,   /* [scorcio] il laboratorio del look */ __tass: TASSR,   /* [sguardo] R.look('vecchio'|'nuovo'): la catena dal vivo */ rilascia,   /* [regge] chi toglie un modello da un suo gruppo in scena (bottino.js) lo mette nella coda del rilascio */ __pronti5: () => [capCavo5({}), iq5PavM()], __esempi5: esempi5,   /* [ritmo] i modelli d'esempio per tipo */   /* [peso] i due programmi della casa tagliata, per prepararli nel caricamento */ get __lazy1() { return LAZY1; }, __leggero: { PAL1, ARR1 },   /* [leggero] */ get __ic() { return IC; }, gpuTiming, get gpuTimes() { return { ok: !!GPUT.ext, ms: GPUT.res, info: GPUT.info }; }, profQuote,   /* [profondita] */ get __buildings() { return dyn.buildings; }, setVisuale, get __vis3() { return VIS3; }, get __vis4() { return VIS4; }, get __iq5() { return IQ5; }, setInquadratura,   /* [inquadratura] */ camReset, stile, get __stile() { return STILE; },   /* [stile] le varianti dal vivo (le sonde) */ get __cam7() { return CAM7; }, cast7: (o, d, l, r) => cast7(o, d, l, r), avvio7: p => avvio7(p),   /* [camera7] */ get __cam2() { return { CALMA2, REG }; }, get __cam4() { return INQ4; }, get __cam5() { return RG5; }, get __cam6() { return { CAM6, BASSA, VIS3 }; },   /* [camera2] le sonde */ casaVisibile,   /* [visuale4] lo stato dei prototipi; la visibilità di una casa (taglio, muretto, tetto) */ setPendenza: v => { if (v > .3 && v < 1.3) PEND3.v = v; return PEND3.v; },   /* [visuale3] gli strumenti: il modo dal vivo, lo stato del taglio */ get __vehicles() { return dyn.vehicles; }, get __anim2() { return { PL2, carIO: dyn.carIO, BANCHE }; },   /* [writer] i modelli dei mezzi (i graffiti sulle auto li seguono) */ __ed, spray: (st, nx, ny, col) => sprayAt(st, nx, ny, col), aperture: apertureMondo,   /* [graffiti] */ __bmb: { BMB, bmbHit, bmbCands, bmbWallDab }, dirtyAt, updateChunks, preparaArrivo,   /* [arrivo] */ ISO, __mondo, sfx: DZ.sfx, hits: DZ.hits, __dz: DZ, __models: { weaponModel, carMesh, vespaMesh, pickupMesh, applyDamage, get scene() { return scene; }, get renderer() { return renderer; } }, cam, getCamera: () => camera, screenToGround, camBasis, lowQuality, setRes, get res() { return RES; }, hdScala, hdStato, qualitaPiena, get __hd() { return { HD, HDR, UPS, LOWQ }; },   /* [hd] */ __frz: FRZ, phone: PHONE, snap, init, frame, project, nightLevel, isRaining, groundH, groundH0, resize: (cw, ch, dpr) => resize(cw, ch, dpr), YAW, shadersPronti };
 })();
