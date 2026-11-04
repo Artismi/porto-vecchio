@@ -8,6 +8,7 @@
   const keys = {};
   // [orienta] orientarsi (src/orienta.js): obiettivo sempre in vista, pausa vera, E azione, T parla, H aiuto, M mappa, schede d'avvio. ?nofixorienta: com'era
   const OR = typeof Orienta !== 'undefined' && Orienta.ON;
+  const GUIDA2 = !!G.GUIDA2;   // [guida2] la guida che si capisce (game.js; ?nofixguida2: com'era)
   const fmt = n => Math.round(n).toLocaleString('it-IT') + '.000';
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const HUDSEL = '.hud:not(#dialog):not(#book):not(#screen)';
@@ -177,13 +178,19 @@
     if (ui.book || ui.menu) return;   // [azioni] ui.menu: le Tasche
     if (k === ' ' && jumpMode()) { e.preventDefault(); if (!e.repeat) G.jumpHold(st, true); return; }   // [salto] tieni premuto: carica
     if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' ', ',', '.', 'pageup', 'pagedown'].includes(k)) { keys[k] = true; e.preventDefault(); }   // [bassa] PagGiù abbassa la visuale, PagSu la rialza
+    if (GUIDA2 && ['c', 'q', 'e', 'f'].includes(k)) keys[k] = true;   // [guida2] C, Q, E: i trick della BMX; F tenuto: rubare
+    if (GUIDA2 && st.player.vehicle && !e.repeat) {   // [guida2] in sella: i trick non cambiano arma né scippano; H clacson (in BMX il campanello), R la radio
+      if (jumpMode() && ['c', 'q', 'e'].includes(k)) return;
+      if (k === 'h') { st.sfx.push({ k: jumpMode() ? 'trillo' : 'clacson' }); return; }
+      if (k === 'r' && !jumpMode() && A.radio) { const r = A.radio(st, 1); if (r) toast(r); return; }
+    }
     // [monte] O: visuale dall'alto; H scava, J in discesa, K in salita, N stanza, V sali/scendi (botole e pozzi)
     if (!e.repeat && k === 'o') { ui.top = !ui.top; toast(ui.top ? 'Visuale dall\'alto.' : 'Visuale normale.'); return; }
     if (!e.repeat && window.Livelli && (OR ? ['j', 'k', 'n', 'v'] : ['h', 'j', 'k', 'n', 'v']).includes(k)) { const m = Livelli.key(st, k, e.shiftKey); if (m) { toast(m); e.preventDefault(); return; } }   // [orienta] H è l'aiuto: si scava con E (azione), sul posto
     if (!e.repeat && k === 'v' && CAM6 && !st.player.indoor) { vistaDopo(); e.preventDefault(); return; }   // [camera6] V: la vista dopo (come GTA), se non c'è una scala da salire
     if (e.repeat) return;
     if (k === 'e' && OR) eDown();   // [orienta] E: l'azione del posto (parla, entra, usa); tenuto 0,8 s il crimine (scippo, rapina)
-    else if (k === 'e') doAct('scippo'); else if (k === 'f') doAct(G.actionKey ? G.actionKey(st) : 'veicolo');   // [porte] F davanti a una porta: entra
+    else if (k === 'e') doAct('scippo'); else if (k === 'f') { if (GUIDA2) fPremi(); else doAct(G.actionKey ? G.actionKey(st) : 'veicolo'); }   // [porte] F davanti a una porta: entra; [guida2] F: il mezzo che guardi, rubare tenendo
     else if (k === 't' && OR) talkNear();   // [orienta] T parla (era dentro il commento qui sopra: non faceva niente)
     else if (k === 'p') doBmx();   // [bmx] la bici tascabile
     else if (k === 'r') G.reload(st);
@@ -195,12 +202,12 @@
   function zoomBy(f) { ui.zoom = Math.max(CAM6 ? .2 : .12, Math.min(2, (ui.zoom || 1) * f)); }
   function vistaDopo() { if (!CAM6) return; ui.zoom = Visuale.vista6(ui.zoom); const i = Visuale.COMANDI6.viste.indexOf(ui.zoom); toast('Vista ' + ['vicina', 'media', 'alta'][i] + '.'); CON.sent = ''; }   // [camera6] le tre viste, in giro   // [zoom2] indietro fino a 2 (era 4,2: la scheda video perdeva il contesto; vedi render.js ZOOM_MAX)  // [inverno] al massimo indietro si vedono le due coste; [zoom1] da vicino a misura di personaggio
 
-  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); if (k === 'e' && OR) eUp(); });   // [salto] rilasci: salta
+  addEventListener('keyup', e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === ' ') G.jumpHold(st, false); if (k === 'e' && OR) eUp(); if (k === 'f') RUBA.hold = 0; });   // [salto] rilasci: salta
   addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.down = false; if (st) st.player.jcharge = null; });   // [salto] fuori dalla finestra la carica si annulla
   const stick = { x: 0, y: 0 }; let stickB = null;
   const vstick = { x: 0, y: 0 };
   const FRECCE_PASSI = /[?&]frecce\b/.test(location.search);   // [levette] sul computer WASD è la levetta sinistra, le frecce la destra (gira e zoom)
-  const frecceVisuale = () => !FRECCE_PASSI && !(st && st.player.vehicle && jumpMode()) && !ui.intro && !ui.dialog && !ui.book && !ui.menu;   // [levette] la levetta della visuale a schermo (a destra): di lato gira attorno al personaggio, in su e in giù lo zoom   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
+  const frecceVisuale = () => !FRECCE_PASSI && !(st && st.player.vehicle && (jumpMode() || GUIDA2)) && !ui.intro && !ui.dialog && !ui.book && !ui.menu;   // [levette] la levetta della visuale a schermo (a destra): di lato gira attorno al personaggio, in su e in giù lo zoom   // [camera2] la visuale gira dietro al personaggio: mentre tieni la levetta il suo «su» non cambia (se no si gira in tondo)
   let lastAim = null, touchFire = false, touchRun = false, touchBoost = false; const touchTrick = { wheelie: false, peg: 0 };
   function aimAngle() {
     const p = st.player;
@@ -225,6 +232,7 @@
   function input() {
     while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
     if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
+    if (GUIDA2) fTenuto();   // [guida2]
     const r = input0(); if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
@@ -235,6 +243,11 @@
     }
     if (!p.vehicle || !jumpMode()) return r;
     const CT = CAMS.trick || {};   // [camera6] la levetta della visuale in bici: indietro impenna
+    if (GUIDA2) {   // [guida2] le frecce pedalano e sterzano come WASD: i trick vanno su C (impennata, W/S l'equilibrio), Q/E (il piede fuori) o Shift+frecce
+      const sh = !!keys.shift, kw = !!keys.c || (sh && !!keys.arrowdown), pl = (keys.q || (sh && keys.arrowleft)) ? 1 : 0, pr = (keys.e || (sh && keys.arrowright)) ? 1 : 0;
+      r.trick = { wheelie: kw || touchTrick.wheelie || CON.trick.wheelie || !!CT.wheelie, peg: pl && !pr ? 1 : pr && !pl ? -1 : touchTrick.peg || CON.trick.peg || CT.peg || 0 };
+      if (kw) r.trick.lean = (keys.s || (!sh && keys.arrowdown) ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+      return r; }
     r.trick = { wheelie: !!keys.arrowdown || touchTrick.wheelie || CON.trick.wheelie || !!CT.wheelie, peg: keys.arrowleft && !keys.arrowright ? 1 : keys.arrowright && !keys.arrowleft ? -1 : touchTrick.peg || CON.trick.peg || CT.peg || 0 };   // [console] e la croce del Game Boy
     return r;
   }
@@ -267,13 +280,13 @@
         if (Math.abs(d) < 2.7 || (two && !(spd > 2 && (v.speed || 0) > 0))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: Math.min(1, Math.max(0, (m - .2) / .7)), steer: Math.max(-1, Math.min(1, d * 1.8)), hb: brakeKey, boost: sprint } };   // avanti verso lì, sterzando
         if (spd > 2 && (v.speed || 0) > 0) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: 0, hb: brakeKey, boost: false } };   // dalla parte opposta: prima frena
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
-    if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && jumpMode())))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
+    if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
       const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
       const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
-    const ar = FRECCE_PASSI && !(st.player.vehicle && jumpMode());   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
+    const ar = (FRECCE_PASSI && !(st.player.vehicle && jumpMode())) || (GUIDA2 && !!st.player.vehicle && !(jumpMode() && keys.shift));   // [guida2] in auto, in Vespa e in BMX le frecce guidano   // [bmx] in BMX le frecce sono i trick   // [levette] le frecce ora sono la levetta della visuale (?frecce: tornano a camminare)
     if (keys.w || (ar && keys.arrowup)) f += 1; if (keys.s || (ar && keys.arrowdown)) f -= 1;
     if (keys.d || (ar && keys.arrowright)) s += 1; if (keys.a || (ar && keys.arrowleft)) s -= 1;
     const a = touchMode ? (ui.faceIdle !== undefined ? ui.faceIdle : st.player.face) : aimAngle();   // [camera4] sul telefono, da fermo: guarda dove l'hai girato con la visuale (o resta com'è)
@@ -285,7 +298,7 @@
       // a bassa velocità gira deciso, a velocità alta più dolce, e non oscilla. In retro e con A/D si guida a mano.
       let steer = s, mouseSteer = false;
       const v = st.vehicles.find(q => q.id === st.player.vehicle);
-      if (v && f > 0 && !s && mouse.active && ui.aimPoint) {
+      if (v && f > 0 && !s && mouse.active && ui.aimPoint && !GUIDA2) {   // [guida2] niente più: la camera gira con l'auto e W da solo faceva girare in tondo fino al muro
         const dx = ui.aimPoint.x - v.x, dy = ui.aimPoint.y - v.y;
         if (Math.hypot(dx, dy) > 3) {
           let d = Math.atan2(dy, dx) - v.ang; d = Math.atan2(Math.sin(d), Math.cos(d));
@@ -437,7 +450,8 @@
   function goalPath(x, y) { const p = st.player; if (p.indoor && G.INT.findPath) { const L0 = G.INT.layout(G.BUILDINGS[p.indoor.b]), pp = G.INT.findPath(L0, p.indoor.f, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [interni] percorso dentro casa
     if (p.lv && (p.lv.k === 'tetto' || p.lv.k === 'scala')) return [{ x, y }];   // [writer] sui tetti: in linea retta (il bordo ferma, Spazio salta)
     if (p.lv && window.Sottosuolo) { const pp = Sottosuolo.findPath(st, p.x, p.y, x, y); return pp.length ? pp : [{ x, y }]; }   // [sottosuolo] percorso nei cunicoli
-    let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4, !!p.vehicle);   // [pedonale] in macchina niente scale né zone pedonali
+    const pv = GUIDA2 && p.vehicle ? st.vehicles.find(q => q.id === p.vehicle) : null;   // [guida2] l'auto cerca strade dove ci sta (findPath clr)
+    let path = G.findPath(p.x, p.y, x, y, p.vehicle ? .6 : 1.4, !!p.vehicle, pv ? G.pathR(pv) : 0);   // [pedonale] in macchina niente scale né zone pedonali
     // [pedonale] la meta dentro un muro (una porta, un pezzo): il percorso fino alla casella libera accanto, poi l'ultimo passo. Senza percorso
     // non si parte: niente ripiego in linea retta (prima si andava dritti attraverso i muraglioni invece di prendere la scala)
     if (!path.length && !G.walkM(x, y)) { const f = freeSpot(x, y); if (G.walkM(f.x, f.y)) { path = G.findPath(p.x, p.y, f.x, f.y, p.vehicle ? .6 : 1.4); if (path.length) path.push({ x, y }); } }
@@ -460,10 +474,16 @@
     const p = st.player, h = pickAt(nx, ny); if (!h) return;
     closeRing(); if (st.lv && st.lv.route) st.lv.route = null;
     const onBmx = p.vehicle && jumpMode();   // [bmx] in BMX si clicca per andare, come a piedi
+    if (p.vehicle && GUIDA2) {   // [guida2] alla guida il clic non ti butta più giù dal mezzo: in auto (come in BMX) si va lì
+      if (h.kind === 'car' && h.v.id === p.vehicle) return;
+      if (!onBmx) { const o = h.v || h.n || h; if (o.x === undefined) return; const f = driveSpot(o.x, o.y), pa = goalPath(f.x, f.y); if (!pa.length) { toast('Lì in macchina non ci arrivi.', 'bad'); return; }
+        click.t = { kind: 'drive', x: f.x, y: f.y, path: pa, best: 1e9, bestT: ui.time, pt: ui.time, fl: '' }; ui.mark = { x: f.x, y: f.y, t: ui.time, k: 'move' }; return; }
+    }
     if (p.vehicle) {
       if (h.kind === 'car' && h.v.id === p.vehicle) { click.t = null; ui.mark = null; doAct('veicolo'); return; }
       if (!onBmx) return;
     }
+    if (GUIDA2 && !p.vehicle && h.kind === 'car' && RUBA.id === h.v.id && ui.time - RUBA.ask < 4 && G.nearestVehicle(st, 1.8) === h.v) { rubaOk(h.v); return; }   // [guida2] il secondo clic sull'auto: la rubi
     bumpPace();   // [andatura]
     if (onBmx) { const o = h.v || h.n || h; if (o.x === undefined) return; const f = freeSpot(o.x, o.y);
       click.t = { kind: 'move', x: f.x, y: f.y, path: goalPath(f.x, f.y), run: false, best: 1e9, bestT: ui.time, fl: '' }; ui.mark = { x: f.x, y: f.y, t: ui.time, k: 'move' }; return; }
@@ -477,7 +497,8 @@
   }
   function clickInput(sprint) {
     const p = st.player, c = click.t; if (!c) return null;
-    if (p.vehicle && !jumpMode()) { click.t = null; ui.mark = null; return null; }
+    if (p.vehicle && !jumpMode() && !(GUIDA2 && c.kind === 'drive')) { click.t = null; ui.mark = null; return null; }
+    if (c.kind === 'drive') return guidaClic(c);   // [guida2]
     const stop = () => { click.t = null; ui.mark = null; ui.pace = 1; return p.vehicle ? { x: 0, y: 0, sprint, brake: true } : { x: 0, y: 0, sprint }; };
     let gx = c.x, gy = c.y;
     if (c.fl !== undefined && c.fl !== (p.indoor ? p.indoor.b + ':' + p.indoor.f : '')) return stop();   // [interni] cambiato piano: il clic di prima non vale più
@@ -506,22 +527,68 @@
       gx = v.x; gy = v.y; if (ui.mark) { ui.mark.x = v.x; ui.mark.y = v.y; }
       const K = G.VK[v.kind], ca = Math.cos(v.ang), sa = Math.sin(v.ang), dx = p.x - v.x, dy = p.y - v.y;
       const d = Math.hypot(Math.max(0, Math.abs(dx * ca + dy * sa) - K.len / 2), Math.max(0, Math.abs(-dx * sa + dy * ca) - K.wid / 2));
-      if (d < 1.3) { stop(); doAct('veicolo'); return { x: 0, y: 0, sprint }; }
+      if (d < 1.3) { stop(); if (GUIDA2 && G.isTheft(v)) { p.face = Math.atan2(v.y - p.y, v.x - p.x); chiediRuba(v, true); } else doAct('veicolo'); return { x: 0, y: 0, sprint }; }   // [guida2] arrivato a un'auto non tua: chiede prima di rubarla
     }
     if (c.kind !== 'move' && ui.time - c.pt > .5) { c.path = goalPath(gx, gy); c.pt = ui.time; }
     const bike = p.vehicle && jumpMode(), reach = bike ? 1.2 : p.vehicle ? 2.4 : .4;
     while (c.path.length > 1 && Math.hypot(c.path[0].x - p.x, c.path[0].y - p.y) < reach) c.path.shift();
     const left = Math.hypot(gx - p.x, gy - p.y);
     if (c.kind === 'move') {
-      if (left < (bike ? 1.2 : p.vehicle ? 3 : .35)) return stop();
+      if (left < (bike ? (GUIDA2 ? 1.9 : 1.2) : p.vehicle ? 3 : .35)) return stop();   // [guida2] in BMX si arriva col manubrio, non col perno della ruota dietro
       // bloccato da più di un secondo e mezzo senza avvicinarsi: lascia perdere
-      if (left < c.best - .2) { c.best = left; c.bestT = ui.time; } else if (ui.time - c.bestT > 1.5) return stop();
+      const prog = GUIDA2 && bike ? strada2(p, c.path) : left;   // [guida2] in BMX l'avanzare si misura lungo il percorso (un giro largo attorno all'isolato non è «fermo»)
+      if (prog < c.best - .2) { c.best = prog; c.bestT = ui.time; } else if (ui.time - c.bestT > (GUIDA2 && bike ? 3 : 1.5)) return stop();   // [guida2] la BMX ha tempo di girarsi sul posto
     }
     if (!c.path.length && !p.indoor && !p.lv) return stop();   // [pedonale] nessun percorso: ci si ferma (non si va dritti contro il muro)
     const w = c.path[0] || { x: gx, y: gy }, a = Math.atan2(w.y - p.y, w.x - p.x);
-    const pace = Math.max(c.run ? 2 : 1, ui.pace || 1);   // [andatura]
+    const pace = Math.max(c.run ? 2 : 1, ui.pace || 1, GUIDA2 && bike ? 2 : 1);   // [andatura]   // [guida2] in BMX si parte pedalando forte
     // [porte] noDoor: andando a un punto (non a una porta) si può sfiorare la facciata accanto a una porta senza entrarci
-    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, noDoor: c.kind !== 'door', door: c.kind === 'door' ? c.bi : undefined };   // [porte] door: si entra solo nell'edificio cliccato
+    return { x: Math.cos(a), y: Math.sin(a), sprint: sprint || (bike ? pace >= 3 && left > 6 : pace >= 2) || (p.vehicle && !bike && left > 25), aim: a, pace, left: GUIDA2 && bike ? left : undefined, noDoor: c.kind !== 'door', door: c.kind === 'door' ? c.bi : undefined };   // [porte] door: si entra solo nell'edificio cliccato
+  }
+  // [guida2] IL CLIC IN AUTO: il pilota di game.js (G.pilota) porta l'auto lungo il percorso (fatto per la sua larghezza), rallenta prima delle
+  // curve e della meta, se serve fa retromarcia. W/S/A/D o le frecce lo interrompono e riprendi tu
+  function driveSpot(x, y) {
+    if (G.driveM(x, y)) return { x, y }; let best = null, bd = 1e9; const p = st.player;
+    for (let r = 1; r <= 5 && !best; r++) for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) { const cx = (Math.floor(x / G.TS) + i) * G.TS + G.TS / 2, cy = (Math.floor(y / G.TS) + j) * G.TS + G.TS / 2; if (!G.driveM(cx, cy)) continue; const d = Math.hypot(cx - x, cy - y) + Math.hypot(cx - p.x, cy - p.y) * .2; if (d < bd) { bd = d; best = { x: cx, y: cy }; } }
+    return best || { x, y };
+  }
+  const strada2 = (p, P) => { if (!P.length) return 0; let L = Math.hypot(P[0].x - p.x, P[0].y - p.y); for (let i = 1; i < P.length; i++) L += Math.hypot(P[i].x - P[i - 1].x, P[i].y - P[i - 1].y); return L; };
+  function guidaClic(c) {
+    const p = st.player, v = st.vehicles.find(q => q.id === p.vehicle);
+    const fine = () => { click.t = null; ui.mark = null; return { x: 0, y: 0, aim: p.face, drive: { thr: 0, steer: 0, brake: true } }; };
+    if (!v || G.VK[v.kind].pocket) return fine();
+    while (c.path.length > 1 && Math.hypot(c.path[0].x - v.x, c.path[0].y - v.y) < 3) c.path.shift();
+    const left = Math.hypot(c.x - v.x, c.y - v.y);
+    if (left < 3.2 || !c.path.length) return fine();
+    const prog = strada2(v, c.path);
+    if (prog < c.best - .3) { c.best = prog; c.bestT = ui.time; }
+    else if (ui.time - c.bestT > 3 && ui.time - c.pt > 3) { c.pt = ui.time; const pa = goalPath(c.x, c.y); if (pa.length) c.path = pa; }   // fermo da 3 s: rifà il percorso da qui
+    if (ui.time - c.bestT > 12) return fine();   // non ci si arriva: lascia perdere
+    const d = G.pilota(st, v, c.path[0], left, c.path[1], 1 / 30);
+    return { x: 0, y: 0, aim: p.face, drive: { thr: d.thr, steer: d.steer, brake: d.brake, hb: false, boost: false } };
+  }
+  // [guida2] RUBARE CHIEDE CONFERMA: F tenuto 0,6 s, o premuto di nuovo (sul telefono e sul Game Boy, toccata di nuovo l'auto). La volante
+  // chiede ancora una volta: la polizia ti darà la caccia
+  const RUBA = { id: null, ask: -9, hold: 0, pol: false };
+  function chiediRuba(v, clic) {
+    RUBA.id = v.id; RUBA.ask = ui.time; RUBA.hold = clic ? 0 : ui.time; RUBA.pol = false;
+    const nm = v.traffic ? 'Tirare giù l\'automobilista' : 'Rubare ' + G.vehicleName(st, v);
+    toast(`${nm}? ${clic ? 'Clicca di nuovo sull\'auto' : 'Tieni premuto F'} (o premi F di nuovo).${v.police ? ' È una volante.' : ''}`, 'bad');
+  }
+  function rubaOk(v) {
+    if (v.police && !RUBA.pol) { RUBA.pol = true; RUBA.ask = ui.time; RUBA.hold = 0; toast('Rubi la volante? La polizia ti darà la caccia. Premi F (o tocca l\'auto) un\'altra volta per farlo.', 'bad'); return; }
+    RUBA.id = null; RUBA.hold = 0; const p = st.player; p.face = Math.atan2(v.y - p.y, v.x - p.x); click.t = null; ui.mark = null; doAct('veicolo');
+  }
+  function fPremi() {
+    const k = G.actionKey ? G.actionKey(st) : 'veicolo';
+    if (k !== 'veicolo' || st.player.vehicle) { doAct(k); return; }
+    const v = G.nearestVehicle(st, 1.8); if (!v || !G.isTheft(v)) { doAct('veicolo'); return; }
+    if (RUBA.id === v.id && ui.time - RUBA.ask < 4) { rubaOk(v); return; }
+    chiediRuba(v, false);
+  }
+  function fTenuto() {   // ogni fotogramma: F tenuto 0,6 s sull'auto chiesta
+    if (!RUBA.hold || !keys.f || !RUBA.id || st.player.vehicle) return; if (ui.time - RUBA.hold < .6) return;
+    RUBA.hold = 0; const v = st.vehicles.find(q => q.id === RUBA.id); if (v && G.nearestVehicle(st, 1.8) === v) rubaOk(v);
   }
   // --- menu attorno all'omino ---
   function ringOptions(n) {
@@ -880,6 +947,66 @@
       m.hidden = false;
     }
     if (ui.time > ui.momentUntil) setHid($('moment'), true);   // [fluido] solo se cambia
+    if (GUIDA2) guidaHud();   // [guida2]
+  }
+  // [guida2] LA BARRA DEL MEZZO, LA SCHEDA DEI COMANDI, I TRICK. Alla guida: il nome, la velocità e lo stato del mezzo (rossa e pulsante
+  // quando brucia, col conto alla rovescia). Alla prima salita su ogni tipo di mezzo (auto, Vespa e motorini, BMX, barca) una scheda dei
+  // comandi per tastiera, tocco o Game Boy, una volta sola (localStorage). In BMX la linea dei trick col moltiplicatore
+  const GH2 = { el: null, card: null, tr: null, tipo: null, cardT: 0 };
+  const tipo2 = v => { const K = G.VK[v.kind]; return K.pocket ? 'bmx' : K.boat ? 'barca' : K.two ? 'moto' : 'auto'; };
+  const visto2 = k => { try { return localStorage.getItem('pv_scheda_' + k) === '1'; } catch (e) { return false; } };
+  const segna2 = k => { try { localStorage.setItem('pv_scheda_' + k, '1'); } catch (e) { } };
+  function scheda2(t) {
+    const m = CON.on ? 'gb' : touchMode ? 'tocco' : PAD.on ? 'pad' : 'tasti';
+    const T = {
+      tasti: { auto: ['W/S gas e freno', 'A/D (o ←/→) sterzo', 'Spazio freno a mano', 'Shift spinta', 'Clic sulla strada: ci guida da sola', 'H clacson · R radio', 'F scendi'],
+        moto: ['W/S gas e freno', 'A/D (o ←/→) sterzo', 'Spazio freno', 'Shift spinta', 'Clic: ci va da sola', 'H clacson', 'F scendi'],
+        bmx: ['WASD, frecce o clic: pedali', 'tieni Spazio: salto (in aria A/D: giri)', 'C impennata (W/S equilibrio)', 'Q/E piede fuori', 'H campanello', 'F o P scendi'],
+        barca: ['W/S motore', 'A/D timone', 'F scendi'] },
+      tocco: { auto: ['Levetta: guida verso dove la spingi', 'Tocca la strada: ci va da sola', 'Freno', 'Scendi'], moto: ['Levetta: guida verso dove la spingi', 'Tocca la strada: ci va da sola', 'Freno', 'Scendi'],
+        bmx: ['Levetta o tocca dove andare', 'tieni Salta: salto', 'Impenna'], barca: ['Levetta: timone e motore', 'Scendi'] },
+      gb: { auto: ['Levetta: guida verso dove la spingi', 'A freno', 'B scendi'], moto: ['Levetta: guida verso dove la spingi', 'A freno', 'B scendi'],
+        bmx: ['Levetta o tocca dove andare', 'tieni A: salto', 'B impenna', 'croce ◄► piede fuori'], barca: ['Levetta: timone e motore', 'B scendi'] },
+      pad: { auto: ['Grilletto destro gas, sinistro freno', 'Levetta sinistra sterzo', 'F scendi'], moto: ['Grilletto destro gas, sinistro freno', 'Levetta sinistra sterzo', 'F scendi'],
+        bmx: ['Levetta sinistra: pedali e sterzi', 'Salto: tieni il tasto del salto'], barca: ['Grilletti motore', 'Levetta timone'] } };
+    const nm = { auto: 'Al volante', moto: 'In sella', bmx: 'In BMX', barca: 'Al timone' }[t];
+    return `<b>${nm}</b>` + (T[m][t] || T.tasti[t]).map(x => `<span>${esc(x)}</span>`).join('');
+  }
+  function guidaHud() {
+    if (!GH2.el) {
+      const css = document.createElement('style'); css.textContent = `
+#veh2{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);min-width:220px;padding:6px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px;pointer-events:none}
+#veh2 .bar{height:7px} #veh2 .bar i{background:linear-gradient(90deg,#3fae5a,#9be07a)} #veh2.mid .bar i{background:linear-gradient(90deg,#d8a032,#f2d26a)} #veh2.low .bar i{background:linear-gradient(90deg,#d8323c,#ff7a6a)}
+#veh2.fuoco{background:rgba(120,16,10,.82)} #veh2.fuoco .nm{animation:pulse .5s steps(2) infinite} #veh2 .kmh{font-variant-numeric:tabular-nums;font-weight:700} #veh2 .msg{grid-column:1/-1;text-align:center;font-weight:700;color:#ffd0c0}
+#card2{position:absolute;left:50%;top:22%;transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;font-size:14px;transition:opacity .5s;z-index:5}
+#card2 b{width:100%;text-align:center;font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75} #card2 span{background:rgba(255,255,255,.1);border-radius:6px;padding:3px 8px;white-space:nowrap}
+#card2 .x{position:absolute;right:6px;top:2px;cursor:pointer;opacity:.6;background:none;padding:0}
+#trick2{position:absolute;left:50%;top:15%;transform:translateX(-50%);text-align:center;pointer-events:none;font:700 15px/1.25 monospace;color:#ffd23a;text-shadow:2px 2px 0 #ff3d8b,0 0 6px rgba(0,0,0,.6);transition:opacity .25s}
+#app.console #veh2{bottom:auto;top:8px;font-size:11px;min-width:170px} #app.console #card2{top:30%;font-size:12px}
+@media (pointer:coarse){#veh2{bottom:auto;top:110px} #card2{top:30%}}`; document.head.appendChild(css);
+      const L = document.querySelector('#app .layer:not(#bubbles):not(#touch)') || app;
+      GH2.el = document.createElement('div'); GH2.el.id = 'veh2'; GH2.el.className = 'hud card'; GH2.el.hidden = true; L.appendChild(GH2.el);
+      GH2.card = document.createElement('div'); GH2.card.id = 'card2'; GH2.card.className = 'hud card'; GH2.card.hidden = true; L.appendChild(GH2.card);
+      GH2.card.addEventListener('pointerdown', e => { e.stopPropagation(); GH2.cardT = 0; });
+      GH2.tr = document.createElement('div'); GH2.tr.id = 'trick2'; L.appendChild(GH2.tr);
+    }
+    const p = st.player, v = p.vehicle && !ui.intro ? st.vehicles.find(q => q.id === p.vehicle) : null;
+    setHid(GH2.el, !v);
+    if (v) {
+      const K = G.VK[v.kind], hp = Math.max(0, v.hp / K.hp), kmh = Math.round(Math.hypot(v.vx || 0, v.vy || 0) * 3.6), fuoco = v.burning > 0;
+      const html = `<span class="nm">${esc(K.label)}</span><div class="bar"><i style="width:${(K.pocket ? 1 : hp) * 100}%"></i></div><span class="kmh">${kmh} km/h</span>` + (fuoco ? `<span class="msg">Brucia! F per scendere · ${Math.max(0, v.burning).toFixed(1)} s</span>` : '');
+      setH(GH2.el, html); const cls = 'hud card' + (fuoco ? ' fuoco' : hp < .3 && !K.pocket ? ' low' : hp < .6 && !K.pocket ? ' mid' : ''); if (GH2.el.className !== cls) GH2.el.className = cls;
+      const t = tipo2(v); if (t !== GH2.tipo) { GH2.tipo = t; if (!visto2(t)) { segna2(t); setH(GH2.card, scheda2(t) + '<span class="x">✕</span>'); GH2.cardT = 11; } }
+    } else GH2.tipo = null;
+    GH2.cardT = Math.max(0, GH2.cardT - .1); setHid(GH2.card, GH2.cardT <= 0); GH2.card.style.opacity = Math.min(1, GH2.cardT / .6);
+    // la linea dei trick (BMX)
+    const T0 = st.bmxT; let tr = '';
+    if (T0 && v && G.VK[v.kind].pocket) {
+      if (T0.line) { const m = Math.min(10, T0.line.tricks.length); tr = `${esc(T0.line.tricks.slice(-4).join(' + '))}<br><span style="font-size:20px">${T0.line.pts} × ${m}</span>`; }
+      else if (T0.last && st.clock - T0.last.t < 2.5) tr = T0.last.ok ? `<span style="font-size:22px">+${T0.last.tot}</span>${T0.last.visti ? `<br><span style="font-size:12px;color:#f2f2ea">ti hanno visto in ${T0.last.visti}</span>` : ''}` : `<span style="color:#ff6a5a;text-shadow:2px 2px 0 #3a0d0d">${esc(T0.last.why || 'Caduto!')}</span>`;
+      if (v.man) { const b = Math.max(-1, Math.min(1, v.man.b)); tr += `<br><span style="font-size:12px;color:#f2f2ea">giù ${'─'.repeat(Math.round((b + 1) * 5))}●${'─'.repeat(10 - Math.round((b + 1) * 5))} su</span>`; }
+    }
+    if (GH2.tr.__h !== tr) { GH2.tr.innerHTML = tr; GH2.tr.__h = tr; } GH2.tr.style.opacity = tr ? 1 : 0;
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;

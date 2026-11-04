@@ -2,6 +2,15 @@
 // ---------- Suoni sintetizzati: nessun file esterno ----------
 var Audio8 = (function () {
   let ctx = null, master = null, noise = null, on = true, engine = null, siren = null, sea = null, rainN = null, screech = null;
+  // [guida2] i suoni dei mezzi: il motore a due strati (il rombo e l'aspirazione che sale coi giri e col gas), la BMX (il cricchetto della
+  // ruota libera, il rotolare delle gomme), l'avviamento (o i fili collegati), il clacson e il campanello, il grido di chi si scansa e la
+  // radio dell'auto: tre stazioni di basi hip hop strumentali fatte qui (cassa, rullante, charleston, basso, accordi), R cambia. ?nofixguida2: com'era
+  const GUIDA2 = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
+  let eng2 = null, bici = null, radioBus = null, lastVeh = null, tickT = 0;
+  const RADIO = { st: 0, next: 0, step: 0, nomi: ['Radio spenta', 'Radio Porto Beat', 'Onda Cassa 92', 'Notturno Lento'], bpm: [0, 90, 96, 78],
+    basso: [null, [43, 0, 0, 43, 0, 0, 46, 0, 41, 0, 0, 41, 0, 38, 0, 0], [36, 0, 36, 0, 0, 0, 39, 0, 34, 0, 0, 34, 0, 0, 31, 0], [40, 0, 0, 0, 43, 0, 0, 0, 38, 0, 0, 0, 36, 0, 0, 0]],
+    cassa: [null, [1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0], [1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0], [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0]],
+    acc: [null, [[55, 58, 62], [53, 57, 60]], [[48, 51, 55], [46, 50, 53]], [[52, 55, 59], [50, 53, 57]]] };
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
@@ -12,6 +21,14 @@ var Audio8 = (function () {
     // motore
     const eo = ctx.createOscillator(); eo.type = 'sawtooth'; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 500; const eg = ctx.createGain(); eg.gain.value = 0;
     eo.connect(ef); ef.connect(eg); eg.connect(master); eo.start(); engine = { o: eo, f: ef, g: eg };
+    if (GUIDA2) {   // [guida2] il secondo strato (aspirazione: un'onda quadra a 2× filtrata a banda, sale col gas) e lo scarico (rumore basso)
+      const o2 = ctx.createOscillator(); o2.type = 'square'; const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 2.5; f2.frequency.value = 600; const g2 = ctx.createGain(); g2.gain.value = 0; o2.connect(f2); f2.connect(g2); g2.connect(master); o2.start();
+      const sx = ctx.createBufferSource(); sx.buffer = noise; sx.loop = true; const fx = ctx.createBiquadFilter(); fx.type = 'lowpass'; fx.frequency.value = 180; const gx = ctx.createGain(); gx.gain.value = 0; sx.connect(fx); fx.connect(gx); gx.connect(master); sx.start();
+      eng2 = { o: o2, f: f2, g: g2, nf: fx, ng: gx };
+      const sr = ctx.createBufferSource(); sr.buffer = noise; sr.loop = true; const fr = ctx.createBiquadFilter(); fr.type = 'bandpass'; fr.frequency.value = 420; fr.Q.value = .7; const gr = ctx.createGain(); gr.gain.value = 0; sr.connect(fr); fr.connect(gr); gr.connect(master); sr.start();
+      bici = { f: fr, g: gr };
+      radioBus = ctx.createGain(); radioBus.gain.value = .16; const rb = ctx.createBiquadFilter(); rb.type = 'bandpass'; rb.frequency.value = 1100; rb.Q.value = .35; radioBus.connect(rb); rb.connect(master);   // l'altoparlante del cruscotto
+    }
     // sirena bitonale
     const so = ctx.createOscillator(); so.type = 'square'; const sf = ctx.createBiquadFilter(); sf.type = 'lowpass'; sf.frequency.value = 1800; const sg = ctx.createGain(); sg.gain.value = 0;
     so.connect(sf); sf.connect(sg); sg.connect(master); so.start(); siren = { o: so, g: sg };
@@ -76,6 +93,13 @@ var Audio8 = (function () {
       case 'death': tone(t, .3, 'sawtooth', 120, 60, .12 * v, pan); break;
       case 'jump': tone(t, .12, 'square', 220, 440, .1 * v, pan); break;   // [salto]
       case 'land': tone(t, .08, 'triangle', 110, 70, .2 * v, pan); break;
+      case 'clacson': tone(t, .42, 'square', 415, 415, .07, 0); tone(t, .42, 'square', 523, 523, .055, 0); nz(t, .42, 'bandpass', 900, .03, 0, 2); break;   // [guida2]
+      case 'trillo': [0, .16].forEach(d => { tone(t + d, .5, 'sine', 2350, 2300, .09, 0); tone(t + d, .35, 'sine', 3340, 3300, .05, 0); }); break;   // [guida2] il campanello della BMX
+      case 'avvio': { for (let k = 0; k < 5; k++) tone(t + k * .11, .1, 'sawtooth', 70, 55, .08, 0); tone(t + .58, .35, 'sawtooth', 48, 70, .12, 0); nz(t + .58, .3, 'lowpass', 300, .2, 0); break; }   // [guida2] il motorino d'avviamento e il motore che prende
+      case 'fili': { for (let k = 0; k < 6; k++) nz(t + k * .07 + Math.random() * .04, .04, 'highpass', 3500, .25, 0); for (let k = 0; k < 4; k++) tone(t + .5 + k * .11, .1, 'sawtooth', 70, 55, .08, 0); tone(t + .95, .35, 'sawtooth', 48, 70, .12, 0); break; }   // [guida2] i fili che fanno scintille, poi parte
+      case 'grido': { const f0 = e.f ? 380 : 230; const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f0 * 1.45, t + .09); o.frequency.linearRampToValueAtTime(f0 * 1.1, t + .3);
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = e.f ? 1100 : 800; bp.Q.value = 4; const g = ctx.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.22 * v, t + .03); g.gain.exponentialRampToValueAtTime(.0008, t + .34);
+        const p = ctx.createStereoPanner ? ctx.createStereoPanner() : null; o.connect(bp); bp.connect(g); if (p) { p.pan.value = pan || 0; g.connect(p); p.connect(master); } else g.connect(master); o.start(t); o.stop(t + .4); break; }   // [guida2] «Attento!»
     }
   }
   function update(st, R) {
@@ -88,8 +112,18 @@ var Audio8 = (function () {
       let gi = 0; while (sp > G4[gi + 1]) gi++; const rpm = (sp - G4[gi]) / ((G4[gi + 1] === 99 ? G4[gi] + 6 : G4[gi + 1]) - G4[gi]);
       const spin = v.skid > .5 ? .35 : 0, f0 = vespa ? 75 + gi * 8 + (rpm + spin) * 70 : 36 + gi * 5 + (rpm + spin) * 46;
       engine.o.type = vespa ? 'square' : 'sawtooth'; engine.o.frequency.setTargetAtTime(f0, t, .05); engine.f.frequency.setTargetAtTime(vespa ? 900 : 380 + (rpm + gi * .3) * 520, t, .08); engine.g.gain.setTargetAtTime(vespa ? .06 : .085 + rpm * .03, t, .1);
+      if (eng2) { const gas = Math.max(0, Math.min(1, (v.longA || 0) / 4)), two = !!v.kind && (vespa || v.kind === 'ciao'); engine.g.gain.setTargetAtTime((vespa ? .045 : .065) + rpm * .025, t, .1);
+        eng2.o.frequency.setTargetAtTime(f0 * 2, t, .05); eng2.f.frequency.setTargetAtTime((two ? 1400 : 700) + rpm * 900 + gas * 400, t, .08); eng2.g.gain.setTargetAtTime((two ? .02 : .014) + gas * .035 + rpm * .01, t, .08);
+        eng2.nf.frequency.setTargetAtTime(140 + sp * 9, t, .1); eng2.ng.gain.setTargetAtTime(.03 + gas * .05, t, .1); }
     }
-    else engine.g.gain.setTargetAtTime(0, t, .15);
+    else { engine.g.gain.setTargetAtTime(0, t, .15); if (eng2) { eng2.g.gain.setTargetAtTime(0, t, .15); eng2.ng.gain.setTargetAtTime(0, t, .15); } }
+    if (GUIDA2 && ctx) {
+      const vid = v ? v.id : null; if (vid !== lastVeh) { if (v && on && v.kind !== 'bmx' && !(v.kind in { gozzo: 1, lancia: 1, chiatta: 1 })) play({ k: v.stolen && !v.lent ? 'fili' : 'avvio' }, 1, 0); if (vid === null) RADIO.st = 0; lastVeh = vid; }   // salendo: l'avviamento
+      const bk = v && v.kind === 'bmx' && on, bs = bk ? Math.hypot(v.vx || 0, v.vy || 0) : 0;   // la BMX: gomme e cricchetto della ruota libera quando non pedali
+      bici.g.gain.setTargetAtTime(bk && !(v.jz > .02) ? Math.min(.06, bs * .008) : 0, t, .08); bici.f.frequency.setTargetAtTime(300 + bs * 40, t, .1);
+      if (bk && !v.pedal && bs > 1 && !(v.jz > .02)) { tickT -= 1 / 60; if (tickT <= 0) { tickT = 1 / Math.min(28, bs * 3.2); nz(t, .012, 'highpass', 5200, .07, 0); } }
+      radioTick(t);
+    }
     // gomme che stridono: il mezzo più vicino che slitta
     let sk = 0, skSlip = 0;
     if (on) st.vehicles.forEach(k => { if (k.hidden || k.wreck || !(k.skid > .25)) return; const d = Math.hypot(k.x - p.x, k.y - p.y), sp = Math.hypot(k.vx || 0, k.vy || 0); if (sp < 2) return; const a = (k.skid - .2) * Math.min(1, sp / 8) / (1 + d * .08); if (a > sk) { sk = a; skSlip = Math.abs(k.slip || 0); } });
@@ -116,5 +150,28 @@ var Audio8 = (function () {
       nz(t + .38, 1.2, 'highpass', 4200, .32, 0); nz(t + .38, 1.1, 'bandpass', 6500, .2, 0, 1.2);
     }
   }
-  return { init, play, update, bomboletta, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
+  // [guida2] la radio: un sequenziatore a sedicesimi con mezzo secondo d'anticipo (le note si programmano sull'orologio dell'audio)
+  function radioTick(t) {
+    const S = RADIO.st; if (!S || !on || !radioBus) return; const dur = 60 / RADIO.bpm[S] / 4;
+    if (RADIO.next < t) RADIO.next = t + .05;
+    while (RADIO.next < t + .5) {
+      const q = RADIO.next, k = RADIO.step % 16, bar = Math.floor(RADIO.step / 16) % 2, sw = k % 2 ? dur * .16 : 0, tq = q + sw;   // un po' di swing
+      const T = (t0, d, ty, f0, f1, vol) => { const o = ctx.createOscillator(); o.type = ty; o.frequency.setValueAtTime(f0, t0); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t0 + d); const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + d); o.connect(g); g.connect(radioBus); o.start(t0); o.stop(t0 + d + .05); };
+      const N = (t0, d, ty, fr, vol) => { const s = ctx.createBufferSource(); s.buffer = noise; const f = ctx.createBiquadFilter(); f.type = ty; f.frequency.value = fr; const g = ctx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0008, t0 + d); s.connect(f); f.connect(g); g.connect(radioBus); s.start(t0, Math.random()); s.stop(t0 + d + .05); };
+      const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+      if (RADIO.cassa[S][k]) T(tq, .32, 'sine', 125, 42, .9);
+      if (k === 4 || k === 12) { N(tq, .2, 'bandpass', 1900, .55); T(tq, .1, 'triangle', 210, 160, .25); }
+      if (k % 2 === 0 || S === 2) N(tq, k % 4 === 2 ? .09 : .04, 'highpass', 7000, k % 4 === 2 ? .2 : .12);
+      const b = RADIO.basso[S][k]; if (b) T(tq, dur * 2.6, 'triangle', mf(b), 0, .38);
+      if (k === 0 || (S !== 3 && k === 10)) RADIO.acc[S][bar].forEach(n => T(tq, dur * (S === 3 ? 7 : 3), 'square', mf(n + 12), 0, .028));
+      RADIO.next += dur; RADIO.step++;
+    }
+  }
+  function radio(st, dir) {
+    if (!GUIDA2) return null; init(); const p = st.player, v = p.vehicle && st.vehicles.find(k => k.id === p.vehicle); if (!v || v.kind === 'bmx') return null;
+    RADIO.st = (RADIO.st + (dir || 1) + RADIO.nomi.length) % RADIO.nomi.length; RADIO.step = 0; RADIO.next = 0;
+    if (ctx) nz(now(), .25, 'bandpass', 2500, .08, 0, 1);   // il fruscio fra le stazioni
+    return RADIO.nomi[RADIO.st] + (RADIO.st ? ' · R cambia' : '');
+  }
+  return { init, play, update, bomboletta, radio, toggle() { on = !on; if (ctx && on && ctx.state === 'suspended') ctx.resume(); return on; }, get on() { return on; } };
 })();

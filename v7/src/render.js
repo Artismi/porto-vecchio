@@ -18741,6 +18741,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       hashNear(v.x, v.y, K.len / 2 + 2.5, rec => {
         if (rec.state === 2) return; const pp = recPos(rec);
         if (pp.y - rec.he.y > vh + 1.4 || pp.y + rec.he.y < vh - .3) return; // sopra un muro o sotto un ponte
+        if (GUIDA2R && K.pocket && (v.jz || 0) > .05 && pp.y + rec.he.y < vh + v.jz + .05) { if (v.rider === 'player' && rec.state === 0 && rec.he.y > .12) v.sopra = typeof rec.tag === 'string' && /^[a-zà-ù ]{3,18}$/i.test(rec.tag) ? rec.tag : 'un ostacolo'; return; }   // [guida2] in bunny hop la BMX passa sopra le cose basse (e vale un trick)
         const dx = pp.x - v.x, dz = pp.z - v.y, lx = dx * c + dz * s, ly = -dx * s + dz * c, r = Math.min(rec.he.x, rec.he.z) * .8;
         if (Math.abs(lx) > K.len / 2 + r || Math.abs(ly) > K.wid / 2 + r) return;
         if (rec.state === 1 && rec.body && !rec.body.sleep && DZ.time - rec.body.hitT < .3) return;
@@ -19098,6 +19099,22 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [camera6] i pesi delle tre viste dallo zoom del giocatore (non da quello del gioco: un dialogo non cambia vista)
   function pesi6(z) { const K = CAM6.K.z, a = liscio6((z - K.m) / (K.a - K.m)), v = liscio6((K.m - z) / (K.m - K.v)); CAM6.w.a = a; CAM6.w.v = v; CAM6.w.m = Math.max(0, 1 - a - v); return CAM6.w; }
   const mix6 = (q, w) => q.a * w.a + q.m * w.m + q.v * w.v;
+  // [guida2] LA CAMERA DA INSEGUIMENTO NUOVA (solo sui mezzi; a piedi decide un'altra camera): bassa, dietro, guarda lontano, come la vista
+  // a piedi di camera7 (25°, 8 m, 50°). Ferma sta a ~9 m (Vespa 7,5, BMX 6) a ~21°; andando forte si avvicina e si abbassa (~15°) e il campo
+  // si allarga fino a +28% alla velocità massima: la strada scorre. Sul selciato un tremolio leggero. Prima: 18 m (14, 11) a 32° che si
+  // allontanava con la velocità (+0,45 m per m/s): in auto sembrava di andare a piedi. ?nofixguida2: com'era
+  const GUIDA2R = !(typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search));
+  const INS7 = { sv: 0, t: 0 };
+  function insegui7(pveh, ui, dt) {
+    const K = G.VK[pveh.kind] || {}, bici = !!K.pocket, two = !!K.two && !bici, vs = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0);
+    INS7.sv += (vs - INS7.sv) * Math.min(1, dt * 2.2); INS7.t += dt;   // la velocità smussata: un urto non fa sobbalzare la camera
+    const k = Math.max(0, Math.min(1, INS7.sv / Math.max(6, K.max || 17))), z = Math.max(.8, Math.min(1.4, (ui.zoom || .5) / .5));
+    const d0 = bici ? 6 : two ? 7.5 : 9, p0 = bici ? .42 : .37;
+    const d = d0 * z * (1 - .24 * k), p = p0 - .11 * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
+    let jy = 0; const T = G.tileAt(Math.floor(pveh.x / G.TS), Math.floor(pveh.y / G.TS));
+    if (G.T.COB !== undefined && T === G.T.COB && vs > 2) jy = (Math.sin(INS7.t * 61) * .6 + Math.sin(INS7.t * 97 + 1) * .4) * .035 * Math.min(1, vs / 12);   // il selciato
+    return { d, p, fov, jy };
+  }
   // [camera6] la camera da inseguimento: dietro la velocità, la levetta di lato gira (CAM6.orb) e dopo 1,5 s torna dietro
   function insegui6(pveh, ui, dt) {
     const vsp = Math.hypot(pveh.vx || pveh.speed || 0, pveh.vy || 0), head = vsp > 2 && (pveh.speed || 0) > -1 && pveh.vx !== undefined ? Math.atan2(pveh.vy, pveh.vx) : pveh.ang;
@@ -19461,7 +19478,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const pendB = cresta ? (hF >= hR ? (hF - hC) / hl : (hC - hR) / hl) : (hF - hR) / (hl * 2);
       // sospensioni: una molla smorzata porta la scocca verso il carico (curva → rollio, gas e freno → beccheggio)
       const sd = Math.min(dt, 1 / 20), latA = v.latA || 0, longA = v.longA || 0;
-      const rollT = u.two ? (v.rider ? clamp(latA * .045, -.5, .5) : 0) : clamp(-latA * .011, -.1, .1), pitchT = u.two ? 0 : clamp(-longA * .0055, -.06, .07);
+      const rollT = u.two ? (v.rider ? clamp(latA * .045, -.5, .5) : 0) : GUIDA2R && v.rider === 'player' ? clamp(-latA * .016, -.13, .13) : clamp(-latA * .011, -.1, .1), pitchT = u.two ? 0 : clamp(-longA * .0055, -.06, .07);
       u.roll = u.roll || 0; u.pitch = u.pitch || 0; u.hop = u.hop || 0; u.rv = u.rv || 0; u.pv = u.pv || 0; u.hv = u.hv || 0;
       u.rv += ((rollT - u.roll) * (u.two ? 40 : 70) - u.rv * 8) * sd; u.roll += u.rv * sd;
       u.pv += ((pitchT - u.pitch) * 80 - u.pv * 9) * sd; u.pitch += u.pv * sd;
@@ -19713,7 +19730,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (RG5.on && VIS4.camera) try { regista5(p, pveh, ui, dt, KB); } catch (e) { if (!RG5.err) { RG5.err = 1; console.warn('[camera5]', e); } }   // [camera5] una mossa sola, motivata, poi si tiene   // [visuale4] A: la camera che si adatta (la misura, l'isteresi, lo smorzamento)
     cam.yaw = YAW + cam.uy + (cam.mano ? cam.mano.yaw : 0) + (!LIBERA && VIS4.camera && VIS4.C.g ? VIS4.C.g : 0) + (!LIBERA && IQ5.v ? IQ5.dy : 0);   // [regia] libera: niente giri automatici   // [inquadratura] più il giro lungo la via (la parte a mano riletta: il ricentro può averla passata al giro) // [inverno] la vista NON gira con l'auto: guida precisa, retro compresa   // [visuale4] il giro lungo il vicolo (spento per difetto)   // [visuale5] più la parte a mano
     cam.yawIn = cam.yaw + (cam.lock || 0);   // [visuale5] la base della levetta (camBasis): la visuale di adesso, meno il ricentro fatto mentre la tieni
-    const pit6 = CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
+    const I7 = GUIDA2R && CAM6.on && pveh ? insegui7(pveh, ui, dt) : null;   // [guida2] la camera da inseguimento nuova
+    const pit6 = I7 ? I7.p : CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.pBici : CAM6.K.inseg.p) : (onVespa ? .78 : .82);   // [camera6] l'inseguimento sta più basso
     let pitch = lerp(c4p(), pit6, ease);   // [visuale4] a piedi la pendenza della camera che si adatta   // [visuale3] a piedi la pendenza di ?pendenza= (prova, non attiva per difetto)
     // [monte] quando la montagna copre il giocatore la visuale sale sopra (e torna giù quando non serve); O: visuale dall'alto
     if (!pveh && !ui.intro) {
@@ -19728,10 +19746,10 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
       const pf = cl(pA0 - tl * K.giu.a, K.pr.a) * R6.a + cl(K.p.m - tl * K.giu.m, K.pr.m) * R6.m + cl(K.p.v - tl * K.giu.v, K.pr.v) * R6.v; pitch = lerp(pf, pit6, ease); }
     else pitch = lerp(pitch, .17, KB);   // [bassa] ~10°: si guarda avanti
     const vfov = pveh ? Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) : 0, vfov2 = CALMA2.on ? Math.max(0, molla2(CALMA2.vf, CALMA2.vf.x, vfov, CALMA2.K.campo, dt)) : vfov;   // [camera2] il campo non scatta con la velocità (gli urti)
-    const fov = lerp(R6 ? mix6(CAM6.K.fov, R6) : lerp(30, 52, KB), CAM6.on ? CAM6.K.inseg.fov : 40, ease) * (1 + vfov2 / 18 * .16 * ease);   // [camera6] il campo della vista
+    const fov = I7 ? lerp(R6 ? mix6(CAM6.K.fov, R6) : lerp(30, 52, KB), I7.fov, ease) : lerp(R6 ? mix6(CAM6.K.fov, R6) : lerp(30, 52, KB), CAM6.on ? CAM6.K.inseg.fov : 40, ease) * (1 + vfov2 / 18 * .16 * ease);   // [camera6] il campo della vista   // [guida2] col campo che si allarga con la velocità
     const viewH = VIEW * cam.zoom * c4z() * (H > W * 1.05 ? .78 : 1);   // [visuale4] nella stretta la visuale si stringe un poco   // [telefono] in verticale la visuale si stringe: il personaggio non è un puntino
     const walkDist = (viewH / 2) / Math.tan(30 * Math.PI / 360);
-    let driveDist = CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.dBici : onVespa ? CAM6.K.inseg.dVespa : CAM6.K.inseg.d) * Math.max(.7, Math.min(1.8, (ui.zoom || .5) / .5)) + (pveh ? Math.min(10, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .45) : 0) : ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [camera6] l'inseguimento: vicino, la velocità allontana */   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
+    let driveDist = I7 ? I7.d : CAM6.on ? (pveh && G.VK[pveh.kind] && G.VK[pveh.kind].pocket ? CAM6.K.inseg.dBici : onVespa ? CAM6.K.inseg.dVespa : CAM6.K.inseg.d) * Math.max(.7, Math.min(1.8, (ui.zoom || .5) / .5)) + (pveh ? Math.min(10, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .45) : 0) : ((onVespa ? 26 : 32) * (ui.zoom || 1) * (PHONE && H > W * 1.05 ? 1.3 : 1))   /* [camera6] l'inseguimento: vicino, la velocità allontana */   /* [telefono] in verticale un po' più indietro: di lato si vedeva pochissimo */ + (pveh ? Math.min(14, Math.hypot(pveh.vx || pveh.speed, pveh.vy || 0) * .5) : 0);
     if (false) {
       const hx = Math.sin(cam.yaw), hz = Math.cos(cam.yaw), cp = Math.cos(onVespa ? .44 : .42);
       for (let s = 1.5; s < driveDist; s += .4) { const x = cam.x + hx * cp * s, z = cam.y + hz * cp * s; if (G.tileAt(Math.floor(x / G.TS), Math.floor(z / G.TS)) === G.T.BLD && !isWall(Math.floor(x / G.TS), Math.floor(z / G.TS))) { driveDist = Math.max(5, s - 1); break; } }
@@ -19760,6 +19778,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     cam.jz = (cam.jz || 0) + ((p.jz || 0) * .6 - (cam.jz || 0)) * Math.min(1, dt * 6);   // [salto] la visuale sale un po' col salto
     const cx = cam.x + kx + sx, cz = cam.y + ky + sy, cy = cam.h + lerp(R6 ? mix6(CAM6.K.h, R6) : lerp(0, 1.45, KB), 1, ease) + cam.jz;   // [camera6] il punto guardato della vista   // [bassa] si guarda all'altezza del petto
     camera.position.set(cx + ox, cy + oy, cz + oz);
+    if (I7 && I7.jy) camera.position.y += I7.jy * ease;   // [guida2] il tremolio del selciato
     if (CAM6.on && pveh) { const q = (SGT.tq || (SGT.tq = new THREE.Vector3())).set(pveh.x, groundH(pveh.x, pveh.y) + 1, pveh.y); camera.updateMatrixWorld(); q.project(camera); CAM6.guardia = Math.hypot(q.x, q.y) > .3 || q.z > 1 ? 1 : Math.max(0, CAM6.guardia - dt); }   // [camera6] il mezzo esce dal centro (un urto, un angolo): lo scarto si rincorre subito
     if (CAM6.on && !pveh) CAM6.kv = Math.max(.15, Math.min(1, 2 * dist * Math.tan(fov * Math.PI / 360) / Math.max(1, VIEW * (ui.zoom || 1))));   // [camera6] l'inquadratura vera rispetto a quella dall'alto
     else CAM6.kv = 1;
