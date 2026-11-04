@@ -15,7 +15,6 @@ var Game = (function () {
   // [guida2] LA GUIDA CHE SI CAPISCE: W va dritto, le frecce guidano, il clic porta l'auto lungo il percorso, i mezzi escono da soli dagli
   // incastri (spigoli tondi, retromarcia automatica), urti meno cari e barra del mezzo, sterzo che entra morbido e raggio minimo da auto vera,
   // F sceglie il mezzo che guardi e rubare chiede conferma, la BMX coi trick che contano. ?nofixguida2: com'era (in Node: NOFIXGUIDA2=1)
-  const OFF = k => typeof process !== 'undefined' && process.env && process.env.G2OFF && process.env.G2OFF.includes(k);   // TEMP
   const GUIDA2 = !((typeof location !== 'undefined' && /[?&]nofixguida2\b/.test(location.search)) || (typeof process !== 'undefined' && process.env && process.env.NOFIXGUIDA2));
 
   // ---------------- MAPPA ----------------
@@ -321,13 +320,16 @@ var Game = (function () {
   const PF = { gen: 0, cap: 70000 };
   // [guida2] la larghezza libera di una casella per i mezzi (LARG, a richiesta): la sezione più stretta fra quattro assi dal centro (dritta,
   // di traverso) e la distanza dal muro più vicino (FRM). Un'auto evita i vicoli più stretti di lei e i centri di casella a ridosso del muro
-  const LARG = new Float32Array(GW * GH).fill(-1), FRM = new Float32Array(GW * GH);
+  const LARG = new Float32Array(GW * GH).fill(-1), FRM = new Float32Array(GW * GH), W4 = new Float32Array(GW * GH);
   function larg(c) {
     if (LARG[c] >= 0) return LARG[c]; const x = (c % GW) * TS + TS / 2, y = ((c / GW) | 0) * TS + TS / 2, ok = (px, py) => walkM(px, py) && novAt(px, py) !== 2;
     const run = (dx, dy) => { let n = 0; for (let k = .5; k <= 4; k += .5) { if (!ok(x + dx * k, y + dy * k)) break; n = k; } return n; };
-    let w = 99, f = 99; for (const [dx, dy] of [[1, 0], [0, 1], [.7071, .7071], [.7071, -.7071]]) { const a = run(dx, dy), b = run(-dx, -dy); w = Math.min(w, a + b); f = Math.min(f, a, b); }
-    FRM[c] = f; return (LARG[c] = w);
+    let w = 99, f = 99, w4 = 99; for (const [dx, dy] of [[1, 0], [0, 1], [.7071, .7071], [.7071, -.7071]]) { const a = run(dx, dy), b = run(-dx, -dy); w = Math.min(w, a + b); f = Math.min(f, a, b); if (!dy || !dx) w4 = Math.min(w4, a + b); }
+    FRM[c] = f; W4[c] = w4; return (LARG[c] = w);
   }
+  // [guida2] i passaggi di una casella (2 m: vicoli pedonali, varchi fra due case) per l'auto del giocatore sono muri: ci si incastrava di
+  // traverso senza poter più girare né uscire. La Vespa e la BMX ci passano
+  const stretto = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); if (tx < 0 || ty < 0 || tx >= GW || ty >= GH) return false; const c = ty * GW + tx; larg(c); return W4[c] < 2.4; };
   function clearLineV(x0, y0, x1, y1, r, dn) {   // [guida2] la linea dritta con i due fianchi del mezzo (r) liberi
     const d = dist(x0, y0, x1, y1), n = Math.ceil(d / .5), l = d || 1, ox = -(y1 - y0) / l * r, oy = (x1 - x0) / l * r;
     for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; if (!driveM(x, y, dn) || !driveM(x + ox, y + oy, dn) || !driveM(x - ox, y - oy, dn)) return false; }
@@ -471,7 +473,7 @@ var Game = (function () {
   for (const k in VK) VK[k].I = (VK[k].len * VK[k].len + VK[k].wid * VK[k].wid) / 12; // inerzia / massa
   // [guida2] più senso di velocità: le auto e i motorini corrono un terzo di più (e spingono un po' di più), la BMX appena; le barche no.
   // rmin: il raggio di sterzata più stretto (un'auto vera ~4,5 m; prima a passo d'uomo girava su 1,7 m, come un giocattolo)
-  if (GUIDA2) for (const k in VK) { const K = VK[k]; K.rmin = (K.pocket ? 1.6 : K.two ? 2.4 : clamp(K.len * 1.1, 3.6, 7.5)) * (typeof process !== "undefined" && process.env && process.env.RMK ? +process.env.RMK : 1); if (K.boat || OFF('spd')) continue; if (K.pocket) { K.max *= 1.1; continue; } K.max *= 1.3; K.accel *= 1.18; }
+  if (GUIDA2) for (const k in VK) { const K = VK[k]; K.rmin = (K.pocket ? 1.6 : K.two ? 2.4 : clamp(K.len * 1.1, 3.6, 7.5)); if (K.boat) continue; if (K.pocket) { K.max *= 1.1; continue; } K.max *= 1.3; K.accel *= 1.18; }
   const PICKUP_LABEL = { pistola: 'Beretta 92', lupara: 'Lupara', mitra: 'Skorpion', molotov: 'Molotov', munizioni: 'Munizioni', salute: 'Cassetta del pronto soccorso', soldi: 'Soldi', valigetta: 'Valigetta dei Marsigliesi' };
 
   // ---------------- PERSONAGGI ----------------
@@ -1898,8 +1900,8 @@ var Game = (function () {
   function vLocal(v, x, y) { const c = Math.cos(v.ang), s = Math.sin(v.ang), dx = x - v.x, dy = y - v.y; return { lx: dx * c + dy * s, ly: -dx * s + dy * c }; }
   function insideVehicle(v, x, y, r) { const K = VK[v.kind], q = vLocal(v, x, y); return Math.abs(q.lx) < K.len / 2 + r && Math.abs(q.ly) < K.wid / 2 + r; }
   function vehicleFree(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : (px, py) => driveM(px, py, dn);   // [costa]   // [pedonale] i mezzi non salgono le scale né entrano nelle zone pedonali
-    for (const [a, b] of GUIDA2 && !OFF('hull') ? hullOf(K) : HULL8(hl, hw)) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : GUIDA2 && v.rider === 'player' ? (px, py) => driveM(px, py, dn) && !stretto(px, py) : (px, py) => driveM(px, py, dn);   // [costa]   // [pedonale] i mezzi non salgono le scale né entrano nelle zone pedonali
+    for (const [a, b] of GUIDA2 ? hullOf(K) : HULL8(hl, hw)) if (!pass(x + a * c - b * s, y + a * s + b * c)) return false;
     return true;
   }
   const HULL8 = (hl, hw) => [[hl, hw], [hl, -hw], [-hl, hw], [-hl, -hw], [hl, 0], [-hl, 0], [0, hw], [0, -hw]];
@@ -1946,9 +1948,9 @@ var Game = (function () {
   function loosen(st, v, secs) { if (v.traffic || (v.police && v.rider === 'npc')) v.looseUntil = Math.max(v.looseUntil || 0, st.clock + secs); }
   // primo punto del telaio che finisce dentro qualcosa di solido
   function vehicleHitPoint(v, x, y, ang) {
-    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : (px, py) => driveM(px, py, dn);   // [costa] [pedonale]
+    const K = VK[v.kind], c = Math.cos(ang), s = Math.sin(ang), hl = K.len / 2 - .05, hw = K.wid / 2 - .05, dn = novAt(v.x, v.y) === 1, pass = K.boat ? boatM : K.pocket ? walkM : GUIDA2 && v.rider === 'player' ? (px, py) => driveM(px, py, dn) && !stretto(px, py) : (px, py) => driveM(px, py, dn);   // [costa] [pedonale]
     let bx = 0, by = 0, n = 0;
-    for (const [a, b] of GUIDA2 && !OFF('hull') ? hullOf(K) : HULL8(hl, hw)) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!pass(px, py)) { bx += px; by += py; n++; } }
+    for (const [a, b] of GUIDA2 ? hullOf(K) : HULL8(hl, hw)) { const px = x + a * c - b * s, py = y + a * s + b * c; if (!pass(px, py)) { bx += px; by += py; n++; } }
     return n ? { x: bx / n, y: by / n } : null;
   }
   function moveVehicleBody(v, dx, dy, oldAng) { // compatibilità: spostamento secco, senza fisica
@@ -1966,7 +1968,7 @@ var Game = (function () {
     v.ang += v.w * dt;
     if (!vehicleFree(v, v.x, v.y, v.ang)) {
       // [guida2] la rotazione contro il muro: prima si prova a girare scostandosi di un dito (il muso o la coda si staccano dal muro), poi si rinuncia
-      let ok = false; if (GUIDA2 && !OFF('nudge') && v.rider === 'player') { const c0 = Math.cos(v.ang), s0 = Math.sin(v.ang); for (const [a, b] of [[0, .09], [0, -.09], [-.09, 0], [.09, 0], [-.07, .07], [-.07, -.07], [.07, .07], [.07, -.07]]) { const x = v.x + a * c0 - b * s0, y = v.y + a * s0 + b * c0; if (vehicleFree(v, x, y, v.ang)) { v.x = x; v.y = y; ok = true; break; } } }
+      let ok = false; if (GUIDA2 && v.rider === 'player') { const c0 = Math.cos(v.ang), s0 = Math.sin(v.ang); for (const [a, b] of [[0, .09], [0, -.09], [-.09, 0], [.09, 0], [-.07, .07], [-.07, -.07], [.07, .07], [.07, -.07]]) { const x = v.x + a * c0 - b * s0, y = v.y + a * s0 + b * c0; if (vehicleFree(v, x, y, v.ang)) { v.x = x; v.y = y; ok = true; break; } } }
       if (!ok) { v.ang = oldAng; v.w *= -.35; } }
     const steps = Math.max(1, Math.ceil(Math.hypot(v.vx, v.vy) * dt / .35)), h = dt / steps;
     for (let k = 0; k < steps; k++) {
@@ -1978,14 +1980,14 @@ var Game = (function () {
       const vnx = hx ? v.vx : 0, vny = hy ? v.vy : 0, vn = Math.hypot(vnx, vny);
       if (!hx) v.x += dx; if (!hy) v.y += dy;
       // urto: la componente contro il muro rimbalza, quella lungo il muro striscia
-      const G2 = GUIDA2 && !OFF('bounce') && v.rider === 'player', e = G2 ? .12 : .28, dvx = hx ? -(1 + e) * v.vx : 0, dvy = hy ? -(1 + e) * v.vy : 0;   // [guida2] il mezzo del giocatore rimbalza meno e striscia di più lungo il muro
+      const G2 = GUIDA2 && v.rider === 'player', e = G2 ? .12 : .28, dvx = hx ? -(1 + e) * v.vx : 0, dvy = hy ? -(1 + e) * v.vy : 0;   // [guida2] il mezzo del giocatore rimbalza meno e striscia di più lungo il muro
       const sp0 = Math.hypot(v.vx, v.vy);
       v.vx += dvx; v.vy += dvy;
       if (hx) v.vy *= G2 ? .93 : .82; if (hy) v.vx *= G2 ? .93 : .82;
       // il colpo fuori asse fa girare il mezzo
       const rx = cp.x - v.x, ry = cp.y - v.y;
       v.w = clamp(v.w + (rx * dvy - ry * dvx) / K.I * (G2 ? .3 : .9), -7, 7);
-      if (G2 && !OFF('slide') && vn < sp0 * .6 && sp0 > 2) { const ta = hx ? (v.vy >= 0 ? Math.PI / 2 : -Math.PI / 2) : (v.vx >= 0 ? 0 : Math.PI), fw = Math.cos(angDiff(ta, v.ang)) > 0 ? ta : ta + Math.PI; v.w += clamp(angDiff(fw, v.ang) * 3, -2, 2); }   // [guida2] di striscio: il muso si allinea al muro e si va avanti
+      if (G2 && vn < sp0 * .6 && sp0 > 2) { const ta = hx ? (v.vy >= 0 ? Math.PI / 2 : -Math.PI / 2) : (v.vx >= 0 ? 0 : Math.PI), fw = Math.cos(angDiff(ta, v.ang)) > 0 ? ta : ta + Math.PI; v.w += clamp(angDiff(fw, v.ang) * 3, -2, 2); }   // [guida2] di striscio: il muso si allinea al muro e si va avanti
       if (vn > 1) onWallHit(st, v, vn, cp, Math.atan2(vny, vnx));
       break;
     }
@@ -2019,7 +2021,7 @@ var Game = (function () {
     let steer = 0;
     if (steerIn !== undefined) steer = clamp(steerIn, -1, 1);
     else if (want !== null) steer = clamp(angDiff(want, v.ang) * 1.7, -1, 1) * (vf < -.3 ? -1 : 1);
-    if (PL && !OFF('ramp') && steerIn !== undefined && (Math.abs(steer) > Math.abs(v.steer) || steer * v.steer < 0) && Math.abs(steer) > .02) { const r = dt / (K.pocket ? .15 : .25); v.steer += clamp(steer - v.steer, -r, r); }   // [guida2] lo sterzo dei tasti entra in 0,25 s (prima in un decimo: a interruttore); torna al centro svelto
+    if (PL && steerIn !== undefined && (Math.abs(steer) > Math.abs(v.steer) || steer * v.steer < 0) && Math.abs(steer) > .02) { const r = dt / (K.pocket ? .15 : .25); v.steer += clamp(steer - v.steer, -r, r); }   // [guida2] lo sterzo dei tasti entra in 0,25 s (prima in un decimo: a interruttore); torna al centro svelto
     else v.steer += (steer - v.steer) * Math.min(1, dt * (steerIn !== undefined && Math.abs(steer) < Math.abs(v.steer) ? 11 : 9));
     // longitudinale
     const max = (sprint ? K.max * (1.15 + .06 * ((v.up && v.up.nitro) | 0)) : K.max) * (v.boost || 1) * (v.pace || 1);   // [bmx] v.pace: quanto forte pedali
@@ -2029,7 +2031,7 @@ var Game = (function () {
       if (vf < 0) a += 10;
       const tmax = max * Math.min(1, throttle);   // [levetta] gas a metà: velocità a metà
       if (vf < tmax) vf = Math.min(tmax, vf + a * dt); else vf -= Math.min(vf - tmax, (throttle < 1 ? 3 : 4) * dt);
-    } else if (throttle < 0) { if (vf > .6) vf -= (PL && !OFF('brake') ? 9.5 : 16) * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }   // [guida2] la frenata di un'auto vera, ~9,5 m/s² (era 16: si inchiodava)
+    } else if (throttle < 0) { if (vf > .6) vf -= (PL ? 9.5 : 16) * dt; else vf = Math.max(-5, vf - K.accel * .7 * dt); }   // [guida2] la frenata di un'auto vera, ~9,5 m/s² (era 16: si inchiodava)
     else vf -= Math.sign(vf) * Math.min(Math.abs(vf), (K.boat ? .8 + Math.abs(vf) * .07 : 2.6) * dt);   // [costa] in mare si va avanti per abbrivio
     if (brake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), (PL ? 10 : 19) * dt);
     if (hand) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 3.5 * dt);
@@ -2046,7 +2048,7 @@ var Game = (function () {
     if (!hand && spd > 2 && !K.boat) { const lim = (slideOn ? grip * 1.25 : K.grip * 1.12) / spd; wT = clamp(wT, -lim, lim); }
     if (!hand) wT = clamp(wT, -2.6, 2.6);   // niente trottole a bassa velocità
     if (hand && spd > 4) wT *= 1.55;
-    if (PL && !OFF('rmin') && !K.boat && K.rmin) { const lim = spd / (hand ? K.rmin * .55 : K.rmin); wT = clamp(wT, -lim, lim); }   // [guida2] il raggio minimo: da ferma l'auto non gira su se stessa, a passo d'uomo curva su ~4,5 m
+    if (PL && !K.boat && K.rmin) { const rm = K.rmin * (.55 + .45 * clamp((spd - 1) / 3, 0, 1)), lim = spd / (hand ? rm * .55 : rm); wT = clamp(wT, -lim, lim); }   // [guida2] il raggio minimo: da ferma l'auto non gira su se stessa, in marcia curva su ~4,5 m; a passo d'uomo (manovra) un po' più stretto, per uscire dai vicoli
     v.w += (wT - v.w) * Math.min(1, dt * (hand ? 3.2 : slideOn ? 3.6 : 8.5));
     v.vx = vf * c - vl * s; v.vy = vf * s + vl * c;
     v.longA = (vf - vf0) / Math.max(dt, 1e-3); v.latA = v.w * vf; v.slip = vl;
@@ -2092,8 +2094,8 @@ var Game = (function () {
     if (inp.drive) { const d = inp.drive, spd0 = Math.abs(v.speed || 0); let sIn = d.steer || 0, thr = d.thr || 0;
       sIn *= 1 - .3 * clamp((spd0 - 12) / 14, 0, 1);                       // a velocità alta lo sterzo è meno nervoso
       if (d.assist && d.thr > 0 && !d.hb && spd0 > 6 && Math.abs(sIn) < .05) sIn += roadMagnet(v);   // calamita leggera: la strada tira l'auto dritta
-      if (GUIDA2 && !OFF('ev') && thr > 0 && !d.hb) sIn = clamp(sIn + evita(v) * (1 - Math.min(1, Math.abs(d.steer || 0)) * .6), -1, 1);   // [guida2] lo scanso dei muri
-      if (GUIDA2 && !OFF('sb') && !(VK[v.kind].pocket && p.jz > 0)) { const U = sblocca(st, v, dt, thr, sIn); if (U) { thr = U.thr; sIn = U.steer; } }   // [guida2] incastrato col gas giù: retromarcia da solo verso il lato libero
+      if (GUIDA2 && thr > 0 && !d.hb) sIn = clamp(sIn + evita(v) * (1 - Math.min(1, Math.abs(d.steer || 0)) * .6), -1, 1);   // [guida2] lo scanso dei muri
+      if (GUIDA2 && !(VK[v.kind].pocket && p.jz > 0)) { const U = sblocca(st, v, dt, thr, sIn); if (U) { thr = U.thr; sIn = U.steer; } }   // [guida2] incastrato col gas giù: retromarcia da solo verso il lato libero
       if (VK[v.kind].pocket) { bmxTricks(v, inp.trick, dt, st); v.pace = 1; if (GUIDA2 && v.man) thr = Math.max(thr, .55); v.pedal = thr > 0 && !p.jz && Math.abs(v.peg) <= .5; }   // [bmx]   // [guida2] in impennata si pedala da soli (W/S tengono l'equilibrio)
       vehicleMotion(st, v, dt, null, thr, !!(GUIDA2 && d.brake), !!d.boost, !!d.hb, sIn); p.x = v.x; p.y = v.y; p.face = v.ang; p.speed = v.speed; runOver(st, v, 'player'); return; }
     const want = (inp.x || inp.y) ? Math.atan2(inp.y, inp.x) : null;
@@ -2118,12 +2120,12 @@ var Game = (function () {
   }
   // [guida2] L'USCITA DAGLI INCASTRI: gas (o retro) tenuto e il mezzo sotto mezzo metro al secondo per un secondo: fa da solo 0,9 s di manovra
   // nel verso opposto, girando il muso verso il lato dove c'è più spazio. Poi il comando torna al giocatore
-  function raggio(v, a, max) { let d = 0; const hl = VK[v.kind].len / 2, pass = VK[v.kind].pocket ? walkM : (x, y) => driveM(x, y, novAt(v.x, v.y) === 1); for (d = .5; d < max; d += .5) if (!pass(v.x + Math.cos(a) * (hl + d), v.y + Math.sin(a) * (hl + d))) break; return d; }
+  function raggio(v, a, max) { let d = 0; const hl = VK[v.kind].len / 2, dn = novAt(v.x, v.y) === 1, pass = VK[v.kind].pocket ? walkM : GUIDA2 && v.rider === 'player' ? (x, y) => driveM(x, y, dn) && !stretto(x, y) : (x, y) => driveM(x, y, dn); for (d = .5; d < max; d += .5) if (!pass(v.x + Math.cos(a) * (hl + d), v.y + Math.sin(a) * (hl + d))) break; return d; }
   // [guida2] incastrato di traverso fra due spigoli (né avanti né indietro né girare): cerca la posa libera più vicina, entro mezzo metro e
-  // un decimo di giro, da cui un passo nel verso voluto è libero, e ci mette il mezzo (uno scarto che non si vede)
+  // trenta gradi, da cui un passo nel verso voluto è libero, e ci mette il mezzo (uno scarto che non si vede)
   function svincola(v, dir) {
     const c0 = Math.cos(v.ang), s0 = Math.sin(v.ang);
-    for (const r of [.08, .16, .25, .35, .5]) for (let k = 0; k < 8; k++) for (const da of [0, .06, -.06, .12, -.12, .2, -.2]) {
+    for (const r of [0, .08, .16, .25, .35, .5, .7]) for (let k = 0; k < (r ? 8 : 1); k++) for (const da of [0, .06, -.06, .12, -.12, .2, -.2, .35, -.35, .5, -.5]) {
       const a = k * Math.PI / 4, x = v.x + Math.cos(a) * r, y = v.y + Math.sin(a) * r, an = v.ang + da, st = .3 * dir;
       if (vehicleFree(v, x, y, an) && vehicleFree(v, x + Math.cos(an) * st, y + Math.sin(an) * st, an)) { v.x = x; v.y = y; v.ang = an; v.w = 0; return true; } }
     return false;
@@ -2147,6 +2149,7 @@ var Game = (function () {
     let side = steer > .25 ? 1 : steer < -.25 ? -1 : 0;
     if (!side) { const base = A.thr < 0 ? v.ang : v.ang + Math.PI, L = raggio(v, base + .7, 8) + raggio(v, base + 1.3, 8) * .5, R = raggio(v, base - .7, 8) + raggio(v, base - 1.3, 8) * .5; side = L >= R ? 1 : -1; }
     A.dir = A.thr < 0 ? -side : side;
+    if (raggio(v, v.ang, 2) < .6 && raggio(v, v.ang + Math.PI, 2) < .6) { svincola(v, A.thr); A.sv = true; }   // incastrato davanti e dietro: subito lo scarto
     if (v.rider === 'player' && !st.sbDetto) { st.sbDetto = true; feed(st, 'Incastrato: il mezzo fa manovra da solo verso lo spazio libero.', 'info'); }
     return { thr: A.thr, steer: A.dir, auto: true };
   }
@@ -2155,7 +2158,7 @@ var Game = (function () {
   // verso il lato con più spazio. Mai più di metà sterzo: chi sterza davvero comanda
   function evita(v) {
     const K = VK[v.kind], spd = fwd(v); if (spd < .3) return 0;
-    const L = clamp(spd * .55, 1.6, 6), c = Math.cos(v.ang), s = Math.sin(v.ang), hl = K.len / 2, hw = K.wid / 2 + .15, dn = novAt(v.x, v.y) === 1, pass = K.pocket ? walkM : (x, y) => driveM(x, y, dn);
+    const L = clamp(spd * .55, 1.6, 6), c = Math.cos(v.ang), s = Math.sin(v.ang), hl = K.len / 2, hw = K.wid / 2 + .15, dn = novAt(v.x, v.y) === 1, pass = K.pocket ? walkM : GUIDA2 && v.rider === 'player' ? (x, y) => driveM(x, y, dn) && !stretto(x, y) : (x, y) => driveM(x, y, dn);
     const ray = side => { const ox = v.x + c * hl - s * hw * side, oy = v.y + s * hl + c * hw * side; for (let d = .3; d <= L; d += .3) if (!pass(ox + c * d, oy + s * d)) return d; return L + 1; };
     const dl = ray(1), dr = ray(-1);
     if (dl > L && dr > L) return 0;
@@ -2165,16 +2168,26 @@ var Game = (function () {
   // [guida2] IL PILOTA DEL CLIC IN AUTO: segue il percorso (w il punto dopo, nx quello ancora dopo), rallenta prima delle curve e della meta,
   // se la meta è dietro e vicina fa retromarcia. Restituisce i comandi come la tastiera (thr, steer, brake)
   function pilota(st, v, w, left, nx, dt) {
-    const K = tuned(v), c = Math.cos(v.ang), s = Math.sin(v.ang), vf = v.vx * c + v.vy * s, spd = Math.abs(vf), A = v.pil || (v.pil = { rev: 0 });
-    const want = Math.atan2(w.y - v.y, w.x - v.x), d = angDiff(want, v.ang), dw = Math.hypot(w.x - v.x, w.y - v.y);
-    if (A.rev > 0 || (Math.abs(d) > 2.1 && left < 14 && spd < 6)) {
-      if (A.rev <= 0) A.rev = 1.6; A.rev -= dt || 1 / 30; const dr = angDiff(want, v.ang + Math.PI); if (Math.abs(dr) < .5) A.rev = 0;
-      return { thr: vf > 1 ? 0 : -1, steer: clamp(-dr * 1.8, -1, 1), brake: vf > 1 }; }
+    const K = tuned(v), c = Math.cos(v.ang), s = Math.sin(v.ang), vf = v.vx * c + v.vy * s, spd = Math.abs(vf), A = v.pil || (v.pil = { m: 0, f: 1, t: 0 });
+    const want = Math.atan2(w.y - v.y, w.x - v.x), d = angDiff(want, v.ang), dw = Math.hypot(w.x - v.x, w.y - v.y), sg = d >= 0 ? 1 : -1; dt = dt || 1 / 30;
+    if (!A.m && Math.abs(d) > 1.5 && spd < 3.5 && raggio(v, v.ang + sg * .9, 8) < (K.rmin || 4) * 1.4) { const lw = raggio(v, v.ang + Math.PI / 2, 6) + raggio(v, v.ang - Math.PI / 2, 6) + K.len - K.wid; A.m = lw < (K.rmin || 4) * 1.6 ? 2 : 1; A.f = raggio(v, v.ang, 3) < 1.2 ? -1 : 1; A.t = 0; A.n = 0; A.d0 = Math.abs(d); }   // dietro e niente spazio (fra due muri vicini: dritto in retro) per girare: in tre tempi
+    if (A.m && raggio(v, v.ang, 2) < 1 && raggio(v, v.ang + Math.PI, 2) < .8 && st.clock - (A.sv || -9) > .5) { A.sv = st.clock; svincola(v, A.m === 2 ? -1 : A.f); }   // di traverso fra due muri: lo scarto
+    if (A.m === 2) {   // in retro lungo il percorso (un molo, un vicolo dove non si gira): finché il muso non torna verso la meta o la coda tocca
+      const dr = angDiff(want, v.ang + Math.PI), lw = raggio(v, v.ang + Math.PI / 2, 6) + raggio(v, v.ang - Math.PI / 2, 6) + K.len - K.wid;
+      if (Math.abs(d) < 1.2 || raggio(v, v.ang + Math.PI, 3) < .6 || (lw > (K.rmin || 4) * 2.6 && raggio(v, v.ang + sg * .9, 8) > 5 && raggio(v, v.ang + sg * 1.6, 8) > 4)) { A.m = Math.abs(d) < 1.2 ? 0 : 1; A.f = 1; A.t = 0; A.n = 0; A.d0 = Math.abs(d); }   // uscito dallo stretto: ora si gira
+      else return { thr: vf > 1 ? 0 : -.8, steer: clamp(-dr * 1.8, -1, 1), brake: vf > 1 }; }
+    if (A.m) {
+      A.t += dt; if (Math.abs(d) < .8 || A.t > 12) { A.m = 0; A.n = 0; return { thr: 0, steer: 0, brake: true }; }
+      if (A.n >= 3 && Math.abs(d) > A.d0 - .3) { A.m = 2; return { thr: 0, steer: 0, brake: true }; }   // tre manovre e non gira: non c'è spazio, si va in retro
+      if (A.f > 0 && (raggio(v, v.ang, 3) < 1 || A.t > 2.5)) { A.f = -1; A.t = 0; A.n = (A.n || 0) + 1; } else if (A.f < 0 && (raggio(v, v.ang + Math.PI, 3) < .8 || A.t > 1.6)) { A.f = 1; A.t = 0; A.n = (A.n || 0) + 1; }
+      if (A.f * vf < -.8) return { thr: 0, steer: 0, brake: true };   // prima si ferma, poi cambia verso
+      return A.f > 0 ? { thr: .45, steer: sg, brake: false } : { thr: -.7, steer: -sg, brake: false }; }
+    if (Math.abs(d) > 2.2 && left < 12 && spd < 5) { const dr = angDiff(want, v.ang + Math.PI); return { thr: vf > 1 ? 0 : -.8, steer: clamp(-dr * 1.8, -1, 1), brake: vf > 1 }; }   // la meta dietro e vicina: in retro
     let vT = Math.min(K.max * .8, Math.sqrt(2 * 4.5 * Math.max(0, left - 2.5)) + 1.2);   // si ferma in tempo sulla meta
-    vT = Math.min(vT, Math.max(2.2, 10 - Math.abs(d) * 7));   // girato verso il punto: piano
+    vT = Math.min(vT, Math.max(2.5, 10 - Math.abs(d) * 7));   // girato verso il punto: piano
     if (nx) { const t = Math.abs(angDiff(Math.atan2(nx.y - w.y, nx.x - w.x), want)); if (t > .4) vT = Math.min(vT, clamp(11 - t * 6, 3, 12) + dw * .7); }   // la curva che arriva
     const steer = clamp(d * 2.2 - (v.w || 0) * .3, -1, 1);
-    return { thr: spd < vT ? clamp(vT / K.max + .2, .25, 1) : 0, steer, brake: spd > vT + 1.5 };
+    return { thr: clamp(vT / K.max, .25, 1), steer, brake: spd > vT + 1.5 };
   }
   // [guida2] il raggio del mezzo per i percorsi (findPath clr): mezza larghezza più un margine
   const pathR = v => { const K = VK[v.kind]; return K.pocket ? 0 : Math.min(1.05, K.wid / 2 + .25); };
@@ -2891,7 +2904,7 @@ var Game = (function () {
     st.clock += dt; if (!(inp && inp.freeze)) st.t += dt * MIN_PER_SEC * (st.timeK || 1);   // [azioni] timeK: il tempo di scena rallenta l'orologio
     if (st.shake > 0) st.shake = Math.max(0, st.shake - dtReal * 1.6);
     movePlayer(st, dt, inp || { x: 0, y: 0 });
-    if (GUIDA2 && !OFF('sg')) { scansano(st); sgombera(st, dt); }   // [guida2] i pedoni si scansano; i relitti del traffico lontani spariscono
+    if (GUIDA2) { scansano(st); sgombera(st, dt); }   // [guida2] i pedoni si scansano; i relitti del traffico lontani spariscono
     st.timers = st.timers.filter(tm => {
       if (tm.kind === 'glance' && st.clock >= tm.atClock) {
         const n = byId(st, tm.npc), ev = st.events.find(e => e.id === tm.ev);
