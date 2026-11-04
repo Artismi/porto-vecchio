@@ -848,7 +848,7 @@
     if (p.money >= st.debt && !ui.intro && !(OR && st.deadline > 1e8)) { const s = G.byId(st, 'sandro'); if (s && !s.dead && Math.hypot(s.x - p.x, s.y - p.y) > 3) cx.unshift({ key: '★', label: 'Hai i soldi: vai dallo Squalo (Magazzino Neri o sala giochi)' }); }   // [orienta] con la Risacca non c'è debito da saldare
     if (OR) {   // [orienta] E in testa (l'azione del posto), il crimine in coda e rosso (tieni E); T ed F non si ripetono se E fa già la stessa cosa
       const a = (ui.dialog || ui.book || ui.intro || ui.pausa) ? null : ctxE(), cr = ui.pausa ? null : cx.find(c => c.key === 'E'), kb = !touchMode;
-      const list = (a ? [{ key: 'E', label: a.label, c: 'e' }] : []).concat(cx.filter(c => c.key !== 'E' && !(a && a.dup === c.key)).map(c => Object.assign({ c: /^[A-Z]$/.test(c.key) ? 'k:' + c.key : '' }, c)), cr ? [{ key: touchMode ? 'tieni' : 'tieni E', label: cr.label, bad: true, c: 'x' }] : []);
+      const list = (a && !(touchMode && a.dup === 'F' && touchSet().includes('entra')) ? [{ key: 'E', label: a.label, c: 'e' }] : [])   /* sul telefono «Entra» c'è già tra i pulsanti */.concat(cx.filter(c => c.key !== 'E' && !(a && a.dup === c.key)).map(c => Object.assign({ c: /^[A-Z]$/.test(c.key) ? 'k:' + c.key : '' }, c)), cr ? [{ key: touchMode ? 'tieni' : 'tieni E', label: cr.label, bad: true, c: 'x' }] : []);
       setH($('ctx'), list.map(c => `<button class="chip ${c.bad ? 'bad' : ''}" data-c="${c.c}">${kb || c.c === 'x' ? `<kbd>${esc(c.key)}</kbd>` : ''}${esc(c.label)}</button>`).join(''));
     } else
     setH($('ctx'), cx.map(c => `<span class="chip ${c.bad ? 'bad' : ''}"><kbd>${c.key}</kbd>${esc(c.label)}</span>`).join(''));

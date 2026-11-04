@@ -205,7 +205,7 @@ body.or-on #ctx .chip { pointer-events: auto; cursor: pointer; font: 500 14px va
 body.or-on #ctx .chip:hover { border-color: var(--amber); } body.or-on #ctx .chip.bad { border-color: #8a2a4a; color: #ffc8d4; }
 body.or-on #ctx .chip kbd { font-size: 11px; padding: 1px 6px; display: inline-block; }
 body.or-on .rs-lab { font-size: 13px; } body.or-on .rs-lab.door { font-size: 13px; } body.or-on #dock button kbd { font-size: 11px; }
-body.or-on #rs-hud .lbl { font-size: 12px; } body.or-on #rs-hud button { font-size: 13px; }
+body.or-on #rs-hud .lbl { font-size: 12px; } body.or-on #rs-hud button { font-size: 13px; } body.or-on #rs-hud kbd, body.or-on #ctx .chip kbd { font-size: 12px; }
 body.or-on #mini { width: 128px; height: 128px; right: 12px; bottom: 12px; }
 body.or-on #mini canvas { width: 128px; height: 128px; transform: none; border: 0; border-radius: 50%; opacity: 1; box-shadow: 0 0 0 2px #07060e; image-rendering: auto; background: transparent; }
 body.or-on #cnBtn { right: 152px !important; bottom: 18px !important; top: auto !important; left: auto !important; }
@@ -220,6 +220,7 @@ body.or-on #cnBtn { right: 152px !important; bottom: 18px !important; top: auto 
 }
 @media (pointer: coarse) and (max-height: 500px) { body.or-on #ctx { bottom: auto !important; top: 40px !important; max-width: calc(100vw - 420px); } body.or-on #mini { top: 56px; } body.or-on #stick2 { right: 250px; bottom: 14px; } }   /* in orizzontale la levetta della visuale copriva la minimappa: va accanto ai pulsanti */
 #app.console #ctx { display: none !important; }
+@media (pointer: coarse) { body.or-on:not(.or-squadra) #rs-hud { display: none !important; } }   /* sul telefono il riquadro della Risacca era vuoto (i pulsanti stanno nello zaino)*/
 body.or-on #app.console #rs-indoor { top: 34px !important; }
 `;
   // il foglio di stile e la classe sul body subito (prima del caricamento): main.js la legge per l'HUD
