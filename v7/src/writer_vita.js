@@ -282,10 +282,10 @@ var WriterVita = (function () {
     if (typeof Tasselli !== 'undefined' && Tasselli.chiesto && Tasselli.deciso === false && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 60000) return;
     const TS0 = typeof Tasselli !== 'undefined' && Tasselli.attivo && Tasselli.attivo() ? Tasselli : null;
     if (TS0) { const L = TS0.graffiti;
-      // [graffiti2] il file cotto si aspetta al più 20 s (il commento lo diceva, il codice ne aspettava 60); un elenco vuoto (la cottura non ha
-      // trovato i muri: tasselli di un'altra build) non è «nessun graffito»: si fa la storia come senza tasselli. ?nofixgraffiti2 com'era
+      // [graffiti2] un elenco vuoto (la cottura non ha trovato i muri: tasselli di un'altra build) non è «nessun graffito»: si fa la storia
+      // come senza tasselli. ?nofixgraffiti2 com'era
       const F2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
-      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < (F2 ? 20000 : 60000)) return;
+      if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - v.histT < 60000) return;
       if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
     v.hist = true;
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde

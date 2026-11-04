@@ -46,7 +46,7 @@ const srv = http.createServer((req, res) => {
     for (let k = 0; k < T.length; k++) {
       const t = T[k];
       // apri: tick (il primo colpo), trascina di qualche punto, lascia
-      const a = await pg.evaluate(t => { const st = window.__pv.st; const r1 = Writing.tick(st, t.nx, t.ny, .016, '#c42a22', 0, 'bomboletta'); const r2 = Writing.tick(st, t.nx + .08, t.ny + .06, .016, '#c42a22', 0, 'bomboletta'); Writing.release(st); return { r1, r2, pad: !!Writing._.TAV.pad }; }, t);
+      const a = await pg.evaluate(t => { const st = window.__pv.st; st.player.hand = 'bomboletta'; Writing.setMode(st, 'tavoletta');   /* [graffiti2] dopo ✓ si torna a mani libere: la bomboletta si riprende */ const r1 = Writing.tick(st, t.nx, t.ny, .016, '#c42a22', 0, 'bomboletta'); const r2 = Writing.tick(st, t.nx + .08, t.ny + .06, .016, '#c42a22', 0, 'bomboletta'); Writing.release(st); return { r1, r2, pad: !!Writing._.TAV.pad }; }, t);
       if (!a.pad) { ok(false, `${t.k} ${k}: la tavoletta non si apre (${JSON.stringify(a)})`); continue; }
       // la foto di sfondo: quanto è piatta, quanta parte è il colore di pulizia o il cielo
       const s = await pg.evaluate(() => { const box = Writing._.TAV.pad, cs = box.querySelectorAll('canvas'), bg = cs[0], x = bg.getContext('2d'), ik = box.querySelector('[data-tv=ink]'), X0 = Math.round(parseFloat(ik.style.left) || 0), Y0 = Math.round(parseFloat(ik.style.top) || 0), W = Math.max(1, ik.width), H = Math.max(1, ik.height), d = x.getImageData(X0, Y0, W, H).data;   // solo il riquadro (fuori è il contesto scurito)

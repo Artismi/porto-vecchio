@@ -2572,7 +2572,10 @@ var Writing = (function () {
   function scanNear(st, cx, cy, opt) {
     const W = S(st), now = performance.now(), force = !!(opt && opt.force);
     if (force || now - (GFX.scanT || 0) > 150 || !GFX.scanL) { GFX.scanT = now; GFX.scanL = scanList(st, W, cx, cy, now, force); GFX.scanI = 0; }
-    const L = GFX.scanL, rush = L.rush, cap = opt && opt.ms ? opt.ms : force ? 30 : rush ? 5 : 1;
+    const L = GFX.scanL, rush = L.rush;
+    // [graffiti2] il tempo dei graffiti in proporzione al fotogramma: 1 ms su 16 (5 di corsa) come prima, ma su una macchina che fa pochi
+    // fotogrammi al secondo il 6% del fotogramma (al più 25 ms): prima 1 ms ogni secondo voleva dire un muro ogni minuto
+    const dtF = GFX.dtF || 16, cap = opt && opt.ms ? opt.ms : force ? 30 : FIX2 ? Math.max(rush ? 5 : 1, Math.min(25, dtF * (rush ? .12 : .06))) : rush ? 5 : 1;
     // [audit] il lavoro piazzato a metà passa davanti (la lista si rifà ogni 150 ms e lui potrebbe scivolare indietro: si butterebbe il fatto)
     if (GFX.pw && (GFX.works[GFX.pw.w.id] || GFX.pw.w.erased || GFX.pw.w.gfxRect)) GFX.pw = null;
     let near = L.near; if (GFX.pw) { const k = near.indexOf(GFX.pw.w); if (k > GFX.scanI) { near = near.slice(); near.splice(k, 1); near.splice(GFX.scanI, 0, GFX.pw.w); L.near = near; } }
@@ -2644,6 +2647,7 @@ var Writing = (function () {
         }
         if (GFX.train && !GFX.noRail) yardFrame(st, sc, cx, cy);   // [ferrovia] i carri fermi negli scali (e quelli che partono)
         // i lavori: quelli che non hanno ancora la grafica (della notte, o di prima) vicino alla camera
+        if (FIX2) { const tn = performance.now(); if (GFX.tF) GFX.dtF = GFX.dtF ? GFX.dtF * .8 + Math.min(1000, tn - GFX.tF) * .2 : Math.min(1000, tn - GFX.tF); GFX.tF = tn; }   // [graffiti2] quanto dura un fotogramma (media mobile)
         if (FIX2) { try { const c3 = R.getCamera(); c3.updateMatrixWorld(); GFX.fv = GFX.fv || new THREE.Vector3(); const F = GFX.fru || (GFX.fru = new THREE.Frustum()); F.setFromProjectionMatrix((GFX.fm || (GFX.fm = new THREE.Matrix4())).multiplyMatrices(c3.projectionMatrix, c3.matrixWorldInverse)); } catch (e) { GFX.fru = null; } }   // [graffiti2] cosa si vede (la priorità dei lavori)
         if (FIX2) tavFrameTick(st);
         scanNear(st, cx, cy);
