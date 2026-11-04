@@ -19031,7 +19031,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.K, tp = Math.tan(K.pitch);
     const libero = (x, y, ux, uy, max, dietro) => { for (let s = .5; s < max; s += .5) { const h = dietro ? K.chest + s * tp - K.r : 2.2; if (M.alto(x + ux * s, y + uy * s) > fy + h || (!dietro && !G.walkM(x + ux * s, y + uy * s))) return s; } return max; };
     const va = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / .4); for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; if (!G.walkM(x, y) || M.alto(x, y) > fy + 1.2) return false; } return !G.taglia(x0, y0, x1, y1) && G.walkM(x1 + .4, y1) && G.walkM(x1 - .4, y1) && G.walkM(x1, y1 + .4) && G.walkM(x1, y1 - .4); };
-    const b = Camera7.avvio(p.x, p.y, libero, K, va); if (b.passi > 0) { p.x = b.x; p.y = b.y; p.path = []; } p.face = b.face;   // qualche passo fuori dall'angolo CAM7.yaw0 = b.yaw; cam.uy = b.yaw - YAW; CAM7.S = null; CAM7.avvio = b; return b;
+    const b = Camera7.avvio(p.x, p.y, libero, K, va); if (b.passi > 0) { p.x = b.x; p.y = b.y; p.path = []; } p.face = b.face;   // qualche passo fuori dall'angolo
+    CAM7.yaw0 = b.yaw; cam.uy = b.yaw - YAW; CAM7.S = null; CAM7.avvio = b; return b;
   }
   // [camera7] la camera di un fotogramma a piedi. Rende la pendenza e il braccio (per chi li legge dopo: la nebbia sotto terra, il muretto)
   function camera7Frame(st, p, ui, dt, dtG) {
