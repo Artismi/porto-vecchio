@@ -860,7 +860,7 @@
   function guidaHud() {
     if (!GH2.el) {
       const css = document.createElement('style'); css.textContent = `
-#veh2{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);min-width:220px;padding:6px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px;pointer-events:none}
+#veh2{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);min-width:220px;padding:6px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:13px;pointer-events:none}
 #veh2 .bar{height:7px} #veh2 .bar i{background:linear-gradient(90deg,#3fae5a,#9be07a)} #veh2.mid .bar i{background:linear-gradient(90deg,#d8a032,#f2d26a)} #veh2.low .bar i{background:linear-gradient(90deg,#d8323c,#ff7a6a)}
 #veh2.fuoco{background:rgba(120,16,10,.82)} #veh2.fuoco .nm{animation:pulse .5s steps(2) infinite} #veh2 .kmh{font-variant-numeric:tabular-nums;font-weight:700} #veh2 .msg{grid-column:1/-1;text-align:center;font-weight:700;color:#ffd0c0}
 #card2{position:absolute;left:50%;top:22%;transform:translateX(-50%);max-width:min(92vw,520px);padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 8px;justify-content:center;align-items:center;font-size:14px;transition:opacity .5s;z-index:5}
