@@ -36,7 +36,7 @@ Con «regola» (per difetto) nessun regolatore cambia più la risoluzione di col
 | ripiego dell'ingrandimento (nuovo) | — | se il passo costa **più di 4 ms per 2 s** (timer della scheda video) la tela torna alla risoluzione interna e la stende il browser, per la sessione (`?ripiego=0`: mai) | `render.js` upscalePasso |
 
 Lo stato di tutti nel riquadro **F3**, una riga:
-`hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1920×1080 · ingrandisce 0.62 ms · tetto no · LOWQ no · tel sì · aa 2×`
+`hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1920×1080 · ingrandisce 0.62 ms · tetto no · LOWQ no · tel sì · aa 2×` (esempio)
 (scala; righe interne / massimo e la misura della scena; la tela vera; il costo dell'ingrandimento o «CSS (ripiego)»; il tetto
 dei fotogrammi; la grafica ridotta: no / gradino N / vecchio; il profilo leggero; MSAA). Nella riga «scheda video» c'è anche `upscale`.
 
@@ -49,6 +49,9 @@ dei fotogrammi; la grafica ridotta: no / gradino N / vecchio; il profilo leggero
    Catmull-Rom in 5 letture bilineari, la pinza ai 4 texel vicini (niente aloni, niente anelli), +.6 di nitidezza sul valore rispetto al
    bilineare (dentro la pinza), il retino contro le bande al pixel vero. 10 letture per pixel della tela. Tela senza alfa (`alpha:false`,
    contesto WebGL2 creato da `render.js`). Se la scena è già alla misura della tela (1080 righe su 1080p) l'ingrandimento non c'è.
+   **Sugli schermi oltre dpr 2** (i telefoni a dpr 3: la tela resta a dpr 2 e il browser la stende ancora ×1,5) l'ingrandimento **non c'è**:
+   misurato, ingrandire due volte (640 → 780 qui, 780 → 1170 nel browser) ammorbidiva più del solo browser (vicolo: laplaciano 33,8 contro
+   41,2; piazza 30,7 contro 38,2). Lì la tela resta alla risoluzione interna e il browser la stende **una volta**; F3 dice `CSS (dpr oltre 2)`.
 4. **Antialiasing e linee**: nel profilo leggero **MSAA 2×** nel bersaglio della scena (WebGL2) e **niente FXAA** (l'FXAA a 4+2 letture a
    mezza risoluzione impastava e friggeva). Scelto MSAA: l'antialiasing va fatto **prima** dell'ingrandimento (un FXAA dopo lavora su scale
    già ammorbidite a 1,7 px). Il **filo dalla profondità** ha il **peso di copertura**: col MSAA il colore del pixel di bordo dice quanta parte
@@ -89,7 +92,7 @@ Gli indirizzi A/B (lo stesso posto, una scheda per indirizzo, la stessa finestra
 - A, com'era: `https://<host>/porto-vecchio/?hd=0`
 - B, l'HD: `https://<host>/porto-vecchio/`
 - un passo alla volta: `?upscale=0` · `?hdaa=0` · `?pulito=0` · `?risdin=0` · `?regola=0` · `?hdombre=0` · `?foschia=0` · `?tessiturepiene=0`
-- la risoluzione ferma per confrontare i tempi: aggiungere `&noritmo` (B resta a 640 righe; `__pv.R.setRes(1)` dalla console per 1080)
+- la risoluzione ferma per confrontare i tempi: `&noritmo` spegne peso_ritmo.js (resta il regolatore vecchio di main.js, a gradini .72/.85/1); per una misura a righe fisse usare le prove `hd640`/`hd1080` di bancoGPU, o `__pv.R.setRes(0.593)` (640) / `__pv.R.setRes(1)` (1080) dalla console
 
 Sul portatile:
 1. Aprire B, entrare in strada, fermarsi in un vicolo e poi in una piazza. **F3**: la riga `hd ·` dice scala, righe, tela, quanto costa
@@ -103,7 +106,7 @@ Sul portatile:
    (l'ingrandimento). Rifare con `A&perf&noritmo` per il confronto (lì `hd640`/`hd1080` non ci sono).
 4. Ripetere 1-3 di sera (`ora` alle 19-20): la foschia ora ha il colore dell'ora (A: grigia).
 
-Sul telefono: aprire B, F3 non c'è; `?perf` mostra lo stesso riquadro. La riga `hd ·` deve dire `tela 780×1688` (dpr 2) e `righe 640/780`.
+Sul telefono: aprire B, F3 non c'è; `?perf` mostra lo stesso riquadro. A dpr 3 la riga `hd ·` dice `righe 640/780 (640×1385) · tela 640×1385 · CSS (dpr oltre 2)`; a dpr 2 `tela 780×1688 · ingrandisce`.
 
 ## 4. Le misure (SwiftShader, Chromium senza scheda video)
 
@@ -135,9 +138,23 @@ scheda video ha margine. I millisecondi di SwiftShader non valgono: i costi sono
 
 | Scena | | tela → schermo | laplaciano | tremolio medio | tremolio > 24 |
 | --- | --- | --- | ---: | ---: | ---: |
-__TEL__
+| piazza | prima (`?hd=0`) | 640×1385 → 1170×2532 | 38.2 | 2.15 | 2.06% |
+| piazza | ora, 640 righe | 640×1385 → 1170×2532 | 35.8 | 1.93 | 1.54% |
+| piazza | ora, 1080 righe | 780×1688 → 1170×2532 | 52.0 | 1.69 | 1.34% |
+| vicolo | prima (`?hd=0`) | 640×1385 → 1170×2532 | 41.2 | 2.65 | 2.36% |
+| vicolo | ora, 640 righe | 640×1385 → 1170×2532 | 41.1 | 2.39 | 1.72% |
+| vicolo | ora, 1080 righe | 780×1688 → 1170×2532 | 58.2 | 2.08 | 1.51% |
 
-__VIVO__
+Sul telefono a 640 righe l'immagine è **netta come prima** (la tela resta interna e la stende il browser, una volta) con **meno
+tremolio** (pixel oltre 24: vicolo 2,36 → 1,72%, piazza 2,06 → 1,54%: MSAA al posto dell'FXAA); a 780 righe (dove la scala sale se c'è
+margine) **+41% di nitidezza**. Il primo tentativo (ingrandire a dpr 2 e poi il browser a dpr 3) era più morbido: 33,8 e 30,7 — da qui la
+regola «niente ingrandimento oltre dpr 2».
+
+**Pulito, con la città costruita dal vivo** (senza `?tassellivecchi`, i tetti e i pezzi dipinti da questa build; portatile, 1080 righe,
+scena «lontano»): `?pulito=0` 1296 · `pulito` 1297 di laplaciano su tutto lo schermo, 1104 → 1114 sul riquadro dei tetti. **A questa
+distanza la differenza quasi non si misura**: le trame tolte sono sotto il pixel. Il guadagno è da vicino e di taglio (la camera bassa
+di `camera7`), dove i tetti a 32 px/m restano netti e i puntini non friggono; da verificare a occhio dopo la cottura (foto
+`_immagini/hd/portatile_vivo_lontano_pulito0_vs_pulito.png`).
 
 Passaggi e disegni (vicolo, portatile): prima `ombra 1053² 37-40 disegni · scena 1137×640 ~375 disegni` e la tela a 1137×640; ora gli
 stessi disegni nella scena (375 a 640 righe e 375 a 1080: **i dettagli non cambiano con la scala**, G5-G8), **un disegno in più**
