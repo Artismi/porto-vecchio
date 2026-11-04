@@ -40,6 +40,10 @@
       () => { nascosti.splice(0).forEach(m => { m.visible = true; }); }],
     piatto: [() => { scene.overrideMaterial = piatto; }, () => { scene.overrideMaterial = null; }],
   };
+  // [hd] (ANALISI_HD.md) con l'immagine HD: la scena a 640 righe (la soglia) e a 1080 (il massimo), lo stesso posto; la colonna gpuIngr
+  // è il passo che ingrandisce fino alla tela vera. Con ?hd=0 queste due prove non ci sono
+  const HDS = R.hdScala && R.hdScala();
+  if (HDS) { MODI.hd640 = [() => { ST.res0 = R.res; R.setRes(HDS.kmin); }, () => { R.setRes(ST.res0); }]; MODI.hd1080 = [() => { ST.res0 = R.res; R.setRes(1); }, () => { R.setRes(ST.res0); }]; }
   const aspetta = ms => new Promise(r => setTimeout(r, ms));
   window.bancoGPU = async function (secondi) {
     const S = (secondi || 4) * 1000; if (R.gpuTiming && !R.gpuTiming(true)) console.warn('bancoGPU: niente EXT_disjoint_timer_query: solo processore e fps');
@@ -47,10 +51,10 @@
     for (const k of Object.keys(MODI)) {
       ST.modo = k; MODI[k][0](); await aspetta(1800);   // si assesta (i contatori di F3 fanno la media su 30 fotogrammi)
       ST.cpu = 0; ST.n = 0; ST.fr = []; const g = []; const t0 = performance.now();
-      while (performance.now() - t0 < S) { await aspetta(250); const m = R.gpuTimes && R.gpuTimes.ms; if (m && m.scena !== undefined) g.push([m.scena, m.post || 0]); }
+      while (performance.now() - t0 < S) { await aspetta(250); const m = R.gpuTimes && R.gpuTimes.ms; if (m && m.scena !== undefined) g.push([m.scena, m.post || 0, m.upscale || 0]); }
       const fr = ST.fr.slice().sort((a, b) => a - b), med = fr[fr.length >> 1] || 0, gl = g.slice(Math.floor(g.length / 2));
       const avg = i => gl.length ? gl.reduce((a, b) => a + b[i], 0) / gl.length : NaN, info = R.gpuTimes && R.gpuTimes.info || {};
-      out.push({ prova: k, gpuScena: +avg(0).toFixed(1), gpuPost: +avg(1).toFixed(1), cpuRenderScena: +(ST.cpu / Math.max(1, ST.n)).toFixed(1), fps: +(1000 / Math.max(1, med)).toFixed(1), disegni: info.calls, triangoli: info.tris, px: info.px });
+      out.push({ prova: k, gpuScena: +avg(0).toFixed(1), gpuPost: +avg(1).toFixed(1), gpuIngr: +avg(2).toFixed(2), cpuRenderScena: +(ST.cpu / Math.max(1, ST.n)).toFixed(1), fps: +(1000 / Math.max(1, med)).toFixed(1), disegni: info.calls, triangoli: info.tris, px: info.px });
       MODI[k][1](); ST.modo = 'base'; await aspetta(600);
     }
     console.table(out); return out;

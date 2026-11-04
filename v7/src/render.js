@@ -13525,7 +13525,7 @@ var Render = (function () {
   // [hd] L'INGRANDIMENTO NITIDO: dalla risoluzione interna alla tela vera in un passo solo. Catmull-Rom in 5 letture bilineari (la croce: gli
   // angoli pesano quasi niente), una pinza ai 4 texel vicini (niente aloni né anelli), un filo di nitidezza in più sul solo valore rispetto
   // al bilineare (dentro la pinza), il retino contro le bande al pixel vero. 10 letture per pixel della tela.
-  const UPS = { rt: null, scene: null, cam: null, mat: null, ripiego: /[?&]upscale=0\b/.test(typeof location !== 'undefined' ? location.search : ''), q: null, ext: null, ms: 0, lento: 0, t: 0, n: 0, nitido: .35 };
+  const UPS = { rt: null, scene: null, cam: null, mat: null, ripiego: /[?&]upscale=0\b/.test(typeof location !== 'undefined' ? location.search : ''), fisso: /[?&]ripiego=0\b/.test(typeof location !== 'undefined' ? location.search : ''),   /* ?ripiego=0: mai il ripiego (le sonde in SwiftShader, dove ogni passo costa decine di ms) */ q: null, ext: null, ms: 0, lento: 0, t: 0, n: 0, nitido: .35 };
   if (typeof window !== 'undefined') window.__UPS = UPS;
   function upsInit() {
     if (UPS.mat) return; UPS.scene = new THREE.Scene(); UPS.cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -13558,7 +13558,7 @@ var Render = (function () {
     const now = performance.now(); let ms = null;
     if (GPUT.on && GPUT.res.upscale !== undefined) ms = GPUT.res.upscale;
     else if (UPS.q && gl.getQueryParameter(UPS.q, gl.QUERY_RESULT_AVAILABLE)) { if (!gl.getParameter(UPS.ext.GPU_DISJOINT_EXT)) ms = gl.getQueryParameter(UPS.q, gl.QUERY_RESULT) / 1e6; gl.deleteQuery(UPS.q); UPS.q = null; }
-    if (ms !== null) { UPS.ms += (ms - UPS.ms) * .2; if (UPS.ms > 4) { if (!UPS.lento) UPS.lento = now; else if (now - UPS.lento > 2000) { UPS.ripiego = true; console.warn('[hd] l\'ingrandimento costa', UPS.ms.toFixed(1), 'ms: la tela torna alla risoluzione interna'); if (lastSize) resize(...lastSize); } } else UPS.lento = 0; }
+    if (ms !== null) { UPS.ms += (ms - UPS.ms) * .2; if (UPS.ms > 4 && !UPS.fisso) { if (!UPS.lento) UPS.lento = now; else if (now - UPS.lento > 2000) { UPS.ripiego = true; console.warn('[hd] l\'ingrandimento costa', UPS.ms.toFixed(1), 'ms: la tela torna alla risoluzione interna'); if (lastSize) resize(...lastSize); } } else UPS.lento = 0; }
   }
   // [hd] lo stato per il riquadro F3 (main.js) e le sonde
   function hdStato() {
