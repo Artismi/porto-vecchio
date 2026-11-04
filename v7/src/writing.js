@@ -2492,10 +2492,12 @@ var Writing = (function () {
   // [graffiti2] LA MISURA NUOVA: muri E pavimenti, con un raggio tutto suo (un elenco delle mesh fatto qui, dalla scena, non le
   // candidate dei graffiti): per ogni punto di una griglia 5 × 4 sul riquadro, la distanza fra la vernice (il velo, o la geometria
   // fusa dell'atlante) e la superficie vera sotto. Un punto dove la vernice non c'è (un buco, oltre uno spigolo) non conta: lì non
-  // c'è niente che galleggi. Ritorna { n, gall (oltre 5 mm), peggio, muri: {n, peggio}, terra: {n, peggio}, lista }
+  // c'è niente che galleggi; dove qualcosa sta davanti alla vernice (un tubo, un'insegna) è coperta, non sospesa (coperti); dove il raggio non trova
+  // niente (un tassello leggero senza dati) non si sa (ignoti). Ritorna { n, gall (oltre 5 mm), peggio, muri: {n, peggio}, terra: {n, peggio}, lista, coperti, ignoti }
   function galleggia2(opt) {
     const THREE = T3(), st = GFX.st, sc = scene(); if (!THREE || !st || !sc) return null; const W = S(st), o2 = opt || {}, lim = o2.lim || .005;
     const all = [], sph = new THREE.Sphere(); sc.traverseVisible(o => { if (!o.isMesh || o.userData.velo || o.userData.wr || !o.geometry) return; if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); sph.copy(o.geometry.boundingSphere).applyMatrix4(o.matrixWorld); all.push([o, sph.center.clone(), sph.radius]); });
+    let ignoti = 0, coperti = 0;
     const rc = new THREE.Raycaster(), out = { n: 0, gall: 0, peggio: 0, muri: { n: 0, peggio: 0 }, terra: { n: 0, peggio: 0 }, lista: [] }, tmp = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
     const vis = h => { if (!h.face) return false; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex]; return m && m.visible !== false && !(m.transparent && m.opacity < .3); };
     for (const id in GFX.works) {
@@ -2510,14 +2512,17 @@ var Writing = (function () {
         const u = (i / 4 - .5) * .9 * R.W, v = (j / 3 - .5) * .9 * R.H, o = c0.clone().addScaledVector(F.r, u).addScaledVector(F.up, v).addScaledVector(F.n, .5), d = F.n.clone().negate();
         rc.set(o, d); rc.near = 0; rc.far = 1.5;
         const hp = paint.raycast ? (() => { const L = []; paint.raycast(rc, L); L.sort((a, b) => a.distance - b.distance); return L[0]; })() : null; if (!hp) continue;   // qui la vernice non c'è
-        const hr = rc.intersectObjects(near, false).find(vis), gap = hr ? hr.distance - hp.distance : 9;
+        const hr = rc.intersectObjects(near, false).find(vis);
+        if (!hr) { ignoti++; continue; }   // niente superficie vera sotto: un tassello leggero senza i dati dei raggi (il telefono), non si sa
+        const gap = hr.distance - hp.distance;   // > 0: la vernice sta davanti alla superficie (galleggia); < 0: qualcosa le sta davanti (un tubo, un'insegna: è coperta, non galleggia)
+        if (gap < -.01) { coperti++; continue; }
         pts++; worst = Math.max(worst, Math.abs(gap));
       }
       if (!pts) continue;
       out.n++; const k = flat ? out.terra : out.muri; k.n++; k.peggio = Math.max(k.peggio, +worst.toFixed(4)); out.peggio = Math.max(out.peggio, +worst.toFixed(4));
       if (worst > lim) { out.gall++; out.lista.push({ id: w.id, style: w.style, by: w.by, terra: flat, peggio: +worst.toFixed(3), punti: pts, velo2: !!(T.decal2 || T.mrg) }); }
     }
-    out.lista.sort((a, b) => b.peggio - a.peggio); return out;
+    out.ignoti = ignoti; out.coperti = coperti; out.lista.sort((a, b) => b.peggio - a.peggio); return out;
   }
   function galleggia() {
     const THREE = T3(), st = GFX.st; if (!THREE || !st) return null; if (FIX2) return galleggia2(); const W = S(st), out = { n: 0, gall: 0, aperture: 0, lista: [] };

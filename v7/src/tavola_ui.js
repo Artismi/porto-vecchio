@@ -486,6 +486,7 @@ var TavolaUI = (function () {
 .tv2-c.on{box-shadow:0 0 0 3px #ffe14a;transform:scale(1.08)}
 .tv2-altri{appearance:none;-webkit-appearance:none;width:34px;height:34px;border-radius:50%;border:2px dashed #a89fbd;background:#0d0b1a;color:#f0e6d0;cursor:pointer;padding:0;font:8px var(--f-label,monospace);text-transform:uppercase;line-height:1}
 .tv2-altri.on{border-style:solid;border-color:#ffe14a}
+.tv2-altri{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}.tv2-altri b{font:16px/1 var(--f-label,monospace)}.tv2-altri span{font-size:6px;letter-spacing:0}
 .tv2-pop{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);display:none;grid-template-columns:repeat(6,40px);gap:8px;padding:12px;background:#15112a;border:2px solid #ffe14a;box-shadow:3px 3px 0 #000;z-index:2;touch-action:manipulation}
 .tv2-pop.on{display:grid}
 .tv2-pop .tv2-c{width:40px;height:40px}
@@ -539,7 +540,7 @@ var TavolaUI = (function () {
       b.onclick = e => { e.preventDefault(); scegli(k); }; tb[k] = b;
     });
     const sw = COLS12.map(c => { const b = mk('button', 'tv2-c', cols); b.style.background = c[0]; b.title = c[1]; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'sw'; b.onclick = e => { e.preventDefault(); setCol(c[0]); }; return b; });
-    const altriB = mk('button', 'tv2-altri', cols, 'altri'); altriB.dataset.tv = 'altri'; altriB.title = 'Altri colori'; altriB.onclick = e => { e.preventDefault(); popT(); };
+    const altriB = mk('button', 'tv2-altri', cols, '<b>+</b><span>altri</span>'); altriB.dataset.tv = 'altri'; altriB.title = 'Altri colori'; altriB.onclick = e => { e.preventDefault(); popT(); };
     mk('i', '', pop).textContent = 'Altri colori';
     const swA = ALTRI.map(c => { const b = mk('button', 'tv2-c', pop); b.style.background = c[0]; b.title = c[1]; b.setAttribute('aria-label', c[1]); b.dataset.tv = 'swp'; b.onclick = e => { e.preventDefault(); setCol(c[0]); popT(false); }; return b; });
     function popT(on) { const v = on == null ? !pop.classList.contains('on') : on; pop.classList.toggle('on', v); altriB.classList.toggle('on', v || ALTRI.some(c => c[0] === col)); }
