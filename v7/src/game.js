@@ -1777,7 +1777,7 @@ var Game = (function () {
   function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
   function jumpHold(st, on) {
     const p = st.player;
-    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto) + .15; p.jz = .001;   /* +.15: il passo a 60 fps perde mezzo passo di colmo */ p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
+    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
     if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
     if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
     if (!canJump(st)) return;
@@ -1789,7 +1789,8 @@ var Game = (function () {
     const p = st.player, v = p.vehicle ? st.vehicles.find(k => k.id === p.vehicle) : null;
     if (p.jcharge != null) { if (!canJump(st)) p.jcharge = null; else p.jcharge = Math.min(JUMP.maxCharge, p.jcharge + dt); }
     if (p.jz > 0) {
-      p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt;
+      if (FIX_CAM7) { p.jz += p.jvz * dt - .5 * JUMP.g * dt * dt; p.jvz -= JUMP.g * dt; }   // [camera7] il volo esatto: la stessa altezza a ogni frequenza
+      else { p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt; }
       if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); }
     }
     if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; }

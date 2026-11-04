@@ -19000,7 +19000,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = 0; rc.far = Math.min(best, len + r);
       for (const h of rc.intersectObjects(C7R.list, false)) { if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
-        if (!m || m.visible === false || (m.transparent && m.opacity < .3) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) best = t; break; } }
+        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) best = t; break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
   }
   // [camera7] le cose piccole registrate fra la camera e te (il petto, i piedi) o a meno di 1,5 m dalla camera si spengono (hideTag) e
