@@ -523,7 +523,7 @@ var MenuUI = (function () {
 #mu .inv { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
 #mu .inv .bag { --c: 62px; }
 #mu .or-map { position: relative; } #mu .mappa canvas.v2 { height: clamp(240px, calc(100vh - 250px), 820px); image-rendering: auto; cursor: grab; touch-action: none; }
-#mu .or-map .mz { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; } #mu .or-map .mz button { min-width: 44px; height: 40px; border-radius: 20px; border: 1px solid rgba(233,220,188,.35); background: rgba(13,16,21,.82); color: #E9DCBC; font: 600 15px 'Saira Condensed', sans-serif; letter-spacing: .06em; cursor: pointer; padding: 0 10px; } #mu .or-map .mz button:hover { border-color: #B08D57; }
+#mu .or-map .mz { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; } #mu .or-map .mz button { min-width: 44px; height: 40px; border-radius: 20px; border: 1px solid rgba(233,220,188,.45); background: rgba(13,16,21,.94); color: #E9DCBC; font: 700 17px 'Saira Condensed', sans-serif; letter-spacing: .06em; cursor: pointer; padding: 0 10px; } #mu .or-map .mz button:hover { border-color: #B08D57; }
 #mu .mappa canvas { width: 100%; height: auto; border-radius: 12px; box-shadow: inset 0 0 0 1px #3A5A50, 0 0 0 1px #3A5A50; cursor: pointer; display: block; image-rendering: pixelated; }
 #mu .mlegenda { display: flex; gap: 18px; margin-top: 10px; font: 600 11px var(--fl); letter-spacing: .14em; text-transform: uppercase; color: rgba(233,220,188,.6); } #mu .mlegenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 /* il pulsante ZAINO */
@@ -937,6 +937,11 @@ var MenuUI = (function () {
     (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { const [sx, sy] = S(b.cx || b.x, b.cy || b.y); x.fillStyle = '#35e6ff'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.fillRect(sx - 5, sy - 5, 10, 10); x.strokeRect(sx - 5, sy - 5, 10, 10); });
     // i nomi: sullo schermo, mai sotto i 13 px; uno solo dove si accavallano (prima i più vicini al centro della vista)
     const fs = MV.s > 5 ? 15 : MV.s > 2.5 ? 14 : 13, boxes = [];
+    // l'obiettivo prima di tutto: il suo nome si legge sempre (gli altri nomi gli lasciano il posto)
+    const jt = G0.jobTarget && G0.jobTarget(st), ob = typeof Orienta !== 'undefined' ? Orienta.obiettivo(st) : null, jq = jt ? S(jt.x, jt.y) : null, jin = jq && jq[0] > 22 && jq[0] < cw - 22 && jq[1] > 22 && jq[1] < ch - 22;
+    const jlab = jin ? '★ ' + ((ob && ob.dove) || (jt.label || 'Obiettivo').split(':')[0]) : '';
+    x.font = `700 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`;
+    const jw = jin ? x.measureText(jlab).width + 12 : 0; if (jin) boxes.push([jq[0] - jw / 2, jq[1] + 6, jw, fs + 8], [jq[0] - 12, jq[1] - 30, 24, 30]);
     x.font = `600 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
     Object.values(G0.PLACES).filter(P0 => P0.name).map(P0 => { const q = S(P0.x, P0.y); return { P0, sx: q[0], sy: q[1], d: Math.hypot(q[0] - cw / 2, q[1] - ch / 2) }; })
       .filter(o => o.sx > -40 && o.sx < cw + 40 && o.sy > -20 && o.sy < ch + 30).sort((a, b) => a.d - b.d).forEach(({ P0, sx, sy }) => {
@@ -945,7 +950,7 @@ var MenuUI = (function () {
         if (boxes.some(b => bx[0] < b[0] + b[2] && b[0] < bx[0] + bx[2] && bx[1] < b[1] + b[3] && b[1] < bx[1] + bx[3])) return; boxes.push(bx);
         x.fillStyle = 'rgba(13,16,21,.72)'; x.fillRect(bx[0], bx[1], bx[2], bx[3]); x.fillStyle = '#f2ead8'; x.fillText(P0.name, sx, sy - 9); });
     // l'obiettivo: il segnaposto, o la freccia sul bordo verso di lui
-    const jt = G0.jobTarget && G0.jobTarget(st);
+    if (jin) { x.font = `700 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`; x.fillStyle = 'rgba(13,16,21,.85)'; x.fillRect(jq[0] - jw / 2, jq[1] + 6, jw, fs + 8); x.fillStyle = '#ffd24a'; x.fillText(jlab, jq[0], jq[1] + fs + 9); }
     if (jt) { const [sx, sy] = S(jt.x, jt.y), m = 22;
       if (sx > m && sx < cw - m && sy > m && sy < ch - m) { x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy - 16, 9, Math.PI * .8, Math.PI * 2.2); x.lineTo(sx, sy); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#0D1015'; x.beginPath(); x.arc(sx, sy - 16, 3.5, 0, Math.PI * 2); x.fill(); }
       else { const a = Math.atan2(sy - ch / 2, sx - cw / 2), ex = Math.min(cw - m, Math.max(m, sx)), ey = Math.min(ch - m, Math.max(m, sy)); x.save(); x.translate(ex, ey); x.rotate(a); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(12, 0); x.lineTo(-8, 9); x.lineTo(-8, -9); x.closePath(); x.fill(); x.stroke(); x.restore(); } }

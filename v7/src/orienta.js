@@ -92,7 +92,7 @@ var Orienta = (function () {
       if (lupo && !lupo.dead && !(lupo.ris && lupo.ris.member) && !(lupo.jailedUntil > st.t)) {
         const T = personTarget(st, lupo);
         if (lupo.ris && lupo.ris.missionDone) return { testo: `Lupo si fida: chiedigli di entrare nella Risacca`, lungo: 'Hai fatto il favore a Lupo. Parlagli e chiedigli di unirsi alla Risacca.', x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
-        return { testo: `Trova Lupo${T.dove ? ' · ' + T.dove : ''} e parlagli`, lungo: `Lupo (Ettore Ganz), il bibliotecario, sa da dove cominciare. È ${T.dove ? 'a ' + T.dove : 'in giro'}: segui la freccia e parlagli (${tasto('Parlare')}). Recluta due membri della Risacca (${g.n}).`, x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
+        return { testo: `Trova Lupo${T.dove ? ' · ' + T.dove : ''} e parlagli`, lungo: `Lupo (Ettore Ganz), il bibliotecario, sa da dove cominciare. ${T.dove ? 'Lo trovi qui: ' + T.dove : 'È in giro'}. Segui la freccia gialla e parlagli (${tasto('Parlare')}). Recluta due membri della Risacca (${g.n}).`, x: T.x, y: T.y, chi: 'lupo', dove: T.dove, kind: 'recluta' };
       }
       // il secondo membro: chi è più vicino alla Risacca tra quelli che si possono reclutare
       const S = RS.summary(st), best = (S.contacts || []).filter(c => { const n = G.byId(st, c.id); return n && !n.dead && !(n.jailedUntil > st.t); }).map(c => { const n = G.byId(st, c.id), C = RS.CARDS[c.id] || {}; return { c, sc: (c.will || 0) - (C.brigante || n.nocturnal ? 1 : 0) - Math.hypot(n.x - st.player.x, n.y - st.player.y) / 2000 }; }).sort((a, b) => b.sc - a.sc).map(q => q.c)[0];   // chi è vicino e ci sta; i briganti dell'interno per ultimi
@@ -125,8 +125,8 @@ var Orienta = (function () {
   // =====================================================================================================================
   const CSS = `
 #or-obj { left: 12px; top: 120px; max-width: min(340px, calc(100vw - 150px)); padding: 6px 10px 7px 10px; background: rgba(13, 11, 26, .82); border-left: 3px solid var(--amber); pointer-events: auto; cursor: pointer; text-shadow: none; display: grid; gap: 1px; }
-#or-obj .lb { font-family: var(--f-label); font-size: 10px; letter-spacing: .14em; color: var(--amber); display: flex; gap: 8px; align-items: center; }
-#or-obj .lb i { font-style: normal; display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; color: #ffd24a; transform-origin: 50% 50%; }
+#or-obj .lb { font: 600 13px var(--f-pix); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); display: flex; gap: 8px; align-items: center; }
+#or-obj .lb i { font-style: normal; display: inline-block; width: 18px; height: 18px; line-height: 18px; font-size: 16px; text-align: center; color: #ffd24a; transform-origin: 50% 50%; }
 #or-obj b { font-weight: 600; font-size: 14.5px; line-height: 1.25; color: var(--fg); }
 #or-obj small { font-size: 13px; color: var(--muted); }
 #or-obj:hover { border-left-color: #ffd24a; }
@@ -204,6 +204,7 @@ body.or-on #ctx { gap: 6px 8px; }
 body.or-on #ctx .chip { pointer-events: auto; cursor: pointer; font: 500 14px var(--f-pix); color: var(--fg); background: rgba(13, 11, 26, .86); border: 2px solid var(--line); padding: 5px 11px; gap: 8px; box-shadow: 2px 2px 0 #07060e; text-shadow: none; min-height: 34px; touch-action: none; -webkit-user-select: none; user-select: none; }
 body.or-on #ctx .chip:hover { border-color: var(--amber); } body.or-on #ctx .chip.bad { border-color: #8a2a4a; color: #ffc8d4; }
 body.or-on #ctx .chip kbd { font-size: 11px; padding: 1px 6px; display: inline-block; }
+body.or-on .rs-lab { font-size: 13px; } body.or-on .rs-lab.door { font-size: 13px; } body.or-on #dock button kbd { font-size: 11px; }
 body.or-on #rs-hud .lbl { font-size: 12px; } body.or-on #rs-hud button { font-size: 13px; }
 body.or-on #mini { width: 128px; height: 128px; right: 12px; bottom: 12px; }
 body.or-on #mini canvas { width: 128px; height: 128px; transform: none; border: 0; border-radius: 50%; opacity: 1; box-shadow: 0 0 0 2px #07060e; image-rendering: auto; background: transparent; }
@@ -217,7 +218,7 @@ body.or-on #cnBtn { right: 152px !important; bottom: 18px !important; top: auto 
   body.or-on #debt { width: 186px; padding: 5px 8px 6px; } body.or-on #debt .money { font-size: 16px; }
   body.or-on #or-obj { max-width: calc(100vw - 130px); } body.or-on #feed { width: min(300px, calc(100vw - 130px)); }
 }
-@media (pointer: coarse) and (max-height: 500px) { body.or-on #ctx { bottom: auto !important; top: 40px !important; max-width: calc(100vw - 420px); } body.or-on #mini { top: 56px; } }
+@media (pointer: coarse) and (max-height: 500px) { body.or-on #ctx { bottom: auto !important; top: 40px !important; max-width: calc(100vw - 420px); } body.or-on #mini { top: 56px; } body.or-on #stick2 { right: 250px; bottom: 14px; } }   /* in orizzontale la levetta della visuale copriva la minimappa: va accanto ai pulsanti */
 #app.console #ctx { display: none !important; }
 body.or-on #app.console #rs-indoor { top: 34px !important; }
 `;
