@@ -45,6 +45,8 @@ var Orienta = (function () {
     { g: 'Armi', a: 'Mirare', k: 'tasto destro (tieni)', p: 'LT (tieni)', t: '—', c: 'B con l\'arma', m: 'camera7' },
     { g: 'Armi', a: 'Sparare', k: 'clic sinistro', p: 'RT', t: 'tocca il bersaglio', c: 'B con l\'arma', m: 'camera7' },
     { g: 'Armi', a: 'Cambiare arma · ricaricare', k: 'Q · 1-5 · R', p: 'RB · LB', t: 'Arma', c: 'Zaino' },
+    { g: 'Graffiti', a: 'Dipingere un muro', k: 'bomboletta in mano · clic sulla cornice gialla', p: 'bomboletta in mano · A', t: 'bomboletta in mano · tocca la cornice gialla', c: 'bomboletta in mano · A' },
+    { g: 'Graffiti', a: 'Misura: tag, throw-up, pezzo, burner', k: 'rotella · [ ]', p: 'la barra sopra la tasca', t: 'la barra sopra la tasca', c: 'la barra sopra la tasca' },
     { g: 'Alla guida', a: 'Gas, freno, sterzo', k: 'W S · A D · frecce', p: 'RT · LT · levetta', t: 'levetta · Freno', c: 'levetta', m: 'guida2' },
     { g: 'Alla guida', a: 'Freno a mano', k: 'Spazio', p: 'A', t: 'Freno', c: 'A', m: 'guida2' },
     { g: 'Menu', a: 'Pausa', k: 'Esc', p: 'Start', t: '❚❚ in alto a destra', c: 'Zaino' },

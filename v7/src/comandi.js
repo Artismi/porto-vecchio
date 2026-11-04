@@ -19,6 +19,7 @@ const Comandi = (() => {
   const onBmx = st => { const p = st.player, v = p.vehicle && st.vehicles.find(q => q.id === p.vehicle); return !!(v && v.kind === 'bmx'); };
   const onSk = st => typeof Skate !== 'undefined' && Skate.on(st);
   let lastMode = 'libero';
+  const GRAF2 = !/[?&]nofixgraffiti2\b/.test(location.search);   // [graffiti2] la cornice sul muro, poi la tavoletta; ?nofixgraffiti2 com'era
 
   // ---------------- le azioni delle icone ----------------
   function bomboletta() {
@@ -36,6 +37,7 @@ const Comandi = (() => {
     if (!tool) { say('Per la tavoletta ti serve una bomboletta o un pennarello.', 'bad'); return; }
     if (w.mode(st) !== 'tavoletta') lastMode = w.mode(st);
     equip(tool); w.setMode(st, 'tavoletta');
+    if (GRAF2) return;   // [graffiti2] il messaggio lo dà main.js (sprayTick), uno solo
     say(PV().touchMode ? 'Tavoletta: trascina il dito sul muro (o su un mezzo) per la finestra, poi ci disegni sopra.' : 'Tavoletta: trascina sul muro (o su un mezzo) la finestra, poi ci disegni sopra.');
   }
   function bmx() {
@@ -72,6 +74,7 @@ const Comandi = (() => {
       if (Wp.throw) { say(pv.touchMode ? 'Tocca dove lanciarla.' : 'Col destro la lanci verso il puntatore.'); return; }
       pv.G.reload(st); return;
     }
+    if (h === 'bomboletta' && GRAF2) { if (!tavOn(st)) tavoletta(); else say(pv.touchMode ? 'Tocca il muro dove c\'è la cornice gialla.' : 'Clic sul muro dove c\'è la cornice gialla.'); return; }   // [graffiti2] la mano con la bomboletta: la tavoletta (non più il giro dei modi)
     if (h === 'bomboletta') { pv.sprayMode(); return; }
     if (h === 'pennarello') { say(pv.touchMode ? 'Tieni il dito su un muro vicino: la tua tag.' : 'Tieni premuto il sinistro su un muro vicino: la tua tag.'); return; }
     const C = typeof Oggetti !== 'undefined' && Oggetti.CAT[h];
