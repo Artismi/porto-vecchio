@@ -18971,7 +18971,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     INS7.sv += (vs - INS7.sv) * Math.min(1, dt * 2.2); INS7.t += dt;   // la velocità smussata: un urto non fa sobbalzare la camera
     const k = Math.max(0, Math.min(1, INS7.sv / Math.max(6, K.max || 17))), z = Math.max(.8, Math.min(1.4, (ui.zoom || .5) / .5));
     const d0 = bici ? 6 : two ? 7.5 : 9, p0 = bici ? .42 : .37;
-    const d = d0 * z * (1 - .24 * k), p = p0 - .11 * k, fov = 50 * (1 + .28 * k * k * (3 - 2 * k));
+    const d = d0 * z * (1 - .24 * k), p = p0 - .11 * k, fov = 50 * (1 + (bici ? .14 : .28) * k * k * (3 - 2 * k));   // in BMX il campo si allarga la metà (va piano e la camera è già vicina)
     let jy = 0; const T = G.tileAt(Math.floor(pveh.x / G.TS), Math.floor(pveh.y / G.TS));
     if (G.T.COB !== undefined && T === G.T.COB && vs > 2) jy = (Math.sin(INS7.t * 61) * .6 + Math.sin(INS7.t * 97 + 1) * .4) * .035 * Math.min(1, vs / 12);   // il selciato
     return { d, p, fov, jy };
