@@ -309,7 +309,7 @@ var MenuUI = (function () {
     const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.imageSmoothingEnabled = true;
     const q = cv.width / 128; if (wide) x.drawImage(cv, 0, 24 * q, 128 * q, 80 * q, 0, 0, 160, 80); else x.drawImage(cv, 0, 0, cv.width, cv.height, 0, 0, 96, 96);
   }
-  function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
+  function paintAll(root) { root.querySelectorAll('canvas[data-map]').forEach(c => OR ? drawMap2(c) : drawMap(c)); root.querySelectorAll('canvas[data-ic]').forEach(c => { const id = c.dataset.ic, t = c.dataset.nt ? null : thumb(id); if (t) drawThumb(c, t); else icon(c, id); }); root.querySelectorAll('canvas[data-fig]').forEach(c => figure(c)); root.querySelectorAll('canvas[data-shop]').forEach(c => shopScene(c, c.dataset.shop, c.dataset.who)); }
 
   // =====================================================================================================================
   // IL PROTAGONISTA E IL COMMERCIANTE, in pixel
@@ -521,6 +521,8 @@ var MenuUI = (function () {
 #mu .loot .tile .q { top: 3px; bottom: auto; } #mu .loot .tile.t-raro .q, #mu .loot .tile.t-prezioso em { color: var(--ott); } #mu .loot .tile.shop em { color: var(--neon); }
 #mu .inv { display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
 #mu .inv .bag { --c: 62px; }
+#mu .or-map { position: relative; } #mu .mappa canvas.v2 { height: clamp(240px, calc(100vh - 250px), 820px); image-rendering: auto; cursor: grab; touch-action: none; }
+#mu .or-map .mz { position: absolute; right: 10px; top: 10px; display: grid; gap: 6px; } #mu .or-map .mz button { min-width: 44px; height: 40px; border-radius: 20px; border: 1px solid rgba(233,220,188,.35); background: rgba(13,16,21,.82); color: #E9DCBC; font: 600 15px 'Saira Condensed', sans-serif; letter-spacing: .06em; cursor: pointer; padding: 0 10px; } #mu .or-map .mz button:hover { border-color: #B08D57; }
 #mu .mappa canvas { width: 100%; height: auto; border-radius: 12px; box-shadow: inset 0 0 0 1px #3A5A50, 0 0 0 1px #3A5A50; cursor: pointer; display: block; image-rendering: pixelated; }
 #mu .mlegenda { display: flex; gap: 18px; margin-top: 10px; font: 600 11px var(--fl); letter-spacing: .14em; text-transform: uppercase; color: rgba(233,220,188,.6); } #mu .mlegenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 /* il pulsante ZAINO */
@@ -625,7 +627,8 @@ var MenuUI = (function () {
   // SCHEDE
   // =====================================================================================================================
   const SHORT = { zaino: 'Zaino', lavora: 'Crea' };   // [console] i nomi delle schede sul telefono
-  const TABS = [['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']];
+  const OR = typeof Orienta !== 'undefined' && Orienta.ON;   // [orienta] gli Obiettivi sono la prima scheda; la mappa si legge (zoom, nomi a 13 px, l'obiettivo); ?nofixorienta com'era
+  const TABS = (OR ? [['obiettivi', 'Obiettivi', 'gesso']] : []).concat([['mappa', 'Mappa', 'mappa'], ['zaino', 'Inventario', 'zaino'], ['equip', 'Equip.', 'maglione'], ['lavora', 'Crafting', 'martello'], ['pg', 'Chi è', 'cappello'], ['lavori', 'Lavori', 'chiave_inglese'], ['qui', 'Qui', 'giornale']]);
   const CTX = { bottega: ['Bottega', 'moneta_shop'], fruga: ['Frugare', 'casse'] };
   function mount() {
     if ($('mu')) return true;
@@ -660,12 +663,13 @@ var MenuUI = (function () {
     if (typeof OggettiUI !== 'undefined' && OggettiUI.state && OggettiUI.state.open) try { OggettiUI.close(); } catch (e) { }
     if (typeof SoldiUI !== 'undefined' && SoldiUI.state && SoldiUI.state.open) try { SoldiUI.close(); } catch (e) { }
     if (U.tab !== tab || U.arg !== arg) U.sel = null;
+    if (OR && tab === 'mappa' && (U.tab !== 'mappa' || !U.open)) MV.s = null;   // [orienta] la mappa si apre sul giocatore
     U.open = true; U.tab = tab || 'zaino'; U.arg = arg === undefined ? null : arg; U.msg = ''; U.sig = ''; if (tab === 'bottega') U.shopTab = 'compra';
     if (PV().ui) { PV().ui.menu = true; PV().ui.menuSlow = !inCovo(ST()); }   // in strada il mondo rallenta, nel covo si ferma
     $('mu').classList.add('on'); render(true); thumb('zaino');   // [avvio] l'anteprima 3D del pulsante si fa adesso, col contesto già aperto per il menu
   }
   const inCovo = st => { if (!st) return false; const p = st.player; return !!O().pocketsView(st).base || !!(p.indoor && G().BUILDINGS[p.indoor.b] && G().BUILDINGS[p.indoor.b].playerHome); };
-  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } const cv = $('cv'); if (cv) cv.focus(); }
+  function close() { U.open = false; const m = $('mu'); if (m) m.classList.remove('on'); if (PV() && PV().ui) { PV().ui.menu = false; PV().ui.menuSlow = false; } if (OR) Orienta.menuChiuso(); const cv = $('cv'); if (cv) cv.focus(); }
   function toggle(tab) { if (U.open && (!tab || U.tab === tab)) close(); else open(tab || 'zaino'); }
   function say(r) { if (!r) return r; const m = typeof r === 'string' ? r : r.msg; if (m) { U.msg = m; U.ok = typeof r === 'string' ? true : r.ok !== false; U.msgT = Date.now(); } return r; }
   const act = (id, arg, ex) => say(O().act(ST(), id, arg, ex));
@@ -675,9 +679,10 @@ var MenuUI = (function () {
     const st = ST(); if (!st || !U.open || (U.drag && !force)) return;
     let body = '', title = '', sub = '', tabs = '';
     try {
-      if (U.tab === 'zaino') [title, sub, body] = ['Inventario', inCovo(st) ? 'la roba sul tavolo del covo' : 'la roba rovesciata sul marciapiede', pZaino(st, 'inv')];
+      if (U.tab === 'obiettivi') [title, sub, body] = ['Obiettivi', 'cosa fare adesso, e chi sei', Orienta.obiettiviHtml(st)];   // [orienta]
+      else if (U.tab === 'zaino') [title, sub, body] = ['Inventario', inCovo(st) ? 'la roba sul tavolo del covo' : 'la roba rovesciata sul marciapiede', pZaino(st, 'inv')];
       else if (U.tab === 'equip') [title, sub, body] = ['Equipaggiamento', 'quello che hai addosso e in mano', pZaino(st, 'equip')];
-      else if (U.tab === 'mappa') [title, sub, body] = ['Mappa', 'clicca un posto: ci vai a piedi', pMappa(st)];
+      else if (U.tab === 'mappa') [title, sub, body] = ['Mappa', OR ? (matchMedia('(pointer: coarse)').matches ? 'due dita: zoom · trascina · tocca un posto: ci vai' : 'rotella: zoom · trascina · clic su un posto: ci vai') : 'clicca un posto: ci vai a piedi', OR ? pMappa2(st) : pMappa(st)];
       else if (U.tab === 'pg') [title, sub, body] = ['Chi è', 'Nino', pPg(st)];
       else if (U.tab === 'lavora') { const v = O().recipesView(st); title = U.arg && U.arg.titolo ? U.arg.titolo : 'Crafting'; sub = v.stations.length ? `a mano, e qui: ${v.stations.join(', ')}` : 'a mano: per il resto serve una postazione'; tabs = KINDS.map(([k, l]) => `<button class="pill ${U.filt === k ? 'on' : ''}" data-a="filt" data-x='"${k}"'>${l} ${v.list.filter(r => (k === 'tutto' || r.kind === k) && r.ok).length}</button>`).join(''); body = pLavora(st, v); }
       else if (U.tab === 'lavori') [title, sub, body] = ['Lavori', '', pLavori(st)];
@@ -698,7 +703,7 @@ var MenuUI = (function () {
     const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span>${con ? sysKeys() : ''}<button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
-      <footer><span class="tm">${inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-7</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
+      <footer><span class="tm">${OR && PV().ui && PV().ui.pausa ? 'pausa: il mondo è fermo' : inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-${Math.min(9, TABS.length)}</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
         <span class="r"><span class="${over ? 'over' : ''}">${pv.peso}/${pv.cap} kg${over ? ' · troppo peso' : ''}</span><span>in tasca <b>${L(pv.money)}</b> lire</span></span></footer>
       ${showMsg ? `<div class="msg ${U.ok ? '' : 'no'}">${esc(U.msg)}</div>` : ''}</div></div>`;
     if (!force && html === U.sig) return; U.sig = html;
@@ -893,6 +898,85 @@ var MenuUI = (function () {
     const jt = G0.jobTarget && G0.jobTarget(st); if (jt) { x.fillStyle = '#FF5FA2'; x.beginPath(); x.arc(jt.x * k, jt.y * k, 5, 0, Math.PI * 2); x.fill(); }
     const p = st.player, a = p.face || 0; x.save(); x.translate(p.x * k, p.y * k); x.rotate(a); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(9, 0); x.lineTo(-6, 6); x.lineTo(-3, 0); x.lineTo(-6, -6); x.closePath(); x.stroke(); x.fill(); x.restore();
   }
+  // [orienta] LA MAPPA CHE SI LEGGE: il canvas grande quanto si vede × DPR (prima 2610 px schiacciati a 1058: nomi a 5,7 px), i nomi
+  // disegnati sullo schermo a 13-15 px, ritagliata sull'isola, aperta sul giocatore e già vicina; l'obiettivo col suo segnaposto
+  // (e una freccia sul bordo se è fuori); rotella, trascinamento e due dita per lo zoom; pulsanti + − Tu Obiettivo
+  const MV = { s: null, cx: 0, cy: 0, fit: 1, moved: false, ptr: new Map(), d0: 0, m0: null, x0: 0, y0: 0, cx0: 0, cy0: 0 };
+  let ISLE = null;
+  function island() {
+    if (ISLE) return ISLE; const G0 = G(), T0 = G0.T; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (let ty = 0; ty < G0.GH; ty += 2) for (let tx = 0; tx < G0.GW; tx += 2) if (G0.tileAt(tx, ty) !== T0.WATER) { if (tx < x0) x0 = tx; if (tx > x1) x1 = tx; if (ty < y0) y0 = ty; if (ty > y1) y1 = ty; }
+    if (x1 < x0) { x0 = 0; y0 = 0; x1 = G0.GW; y1 = G0.GH; }
+    const m = 6; return (ISLE = { x0: (x0 - m) * G0.TS, y0: (y0 - m) * G0.TS, x1: (x1 + m) * G0.TS, y1: (y1 + m) * G0.TS });
+  }
+  function pMappa2(st) {
+    return `<div class="mappa or-map"><canvas data-map="1" class="v2" width="10" height="10"></canvas><div class="mz"><button data-a="mz" data-x="1.6" aria-label="Più vicino">+</button><button data-a="mz" data-x="0.625" aria-label="Più lontano">−</button><button data-a="mme">Tu</button><button data-a="mob">Obiettivo</button></div>
+      <div class="mlegenda"><span><i style="background:#f2ead8"></i>tu</span><span><i style="background:#ffd24a"></i>obiettivo</span><span><i style="background:#B08D57"></i>covi</span><span><i style="background:#35e6ff"></i>basi della Risacca</span></div></div>`;
+  }
+  function mapView(cw, ch) {
+    const I = island(), fit = Math.min(cw / (I.x1 - I.x0), ch / (I.y1 - I.y0)), p = ST().player; MV.fit = fit;
+    if (!MV.s) { MV.s = Math.min(9, Math.max(fit, fit * 3.4, 1.6)); MV.cx = p.x; MV.cy = p.y; }
+    MV.s = Math.min(14, Math.max(fit * .95, MV.s));
+    const hw = cw / 2 / MV.s, hh = ch / 2 / MV.s;   // il centro resta dentro l'isola (con mezzo schermo di margine quando si vede tutta)
+    MV.cx = (I.x1 - I.x0) < hw * 2 ? (I.x0 + I.x1) / 2 : Math.min(I.x1 - hw, Math.max(I.x0 + hw, MV.cx));
+    MV.cy = (I.y1 - I.y0) < hh * 2 ? (I.y0 + I.y1) / 2 : Math.min(I.y1 - hh, Math.max(I.y0 + hh, MV.cy));
+  }
+  function drawMap2(c) {
+    const st = ST(), G0 = G(), r = c.getBoundingClientRect(); if (!st || !r.width || !r.height) return;
+    const dpr = Math.min(2, devicePixelRatio || 1), W = Math.round(r.width * dpr), H = Math.round(r.height * dpr), cw = r.width, ch = r.height;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    mapView(cw, ch);
+    const x = c.getContext('2d'), k = MK / G0.TS, S = (wx, wy) => [(wx - MV.cx) * MV.s + cw / 2, (wy - MV.cy) * MV.s + ch / 2];
+    x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#13262a'; x.fillRect(0, 0, W, H);
+    x.setTransform(dpr * MV.s / k, 0, 0, dpr * MV.s / k, dpr * (cw / 2 - MV.cx * MV.s), dpr * (ch / 2 - MV.cy * MV.s));
+    x.imageSmoothingEnabled = MV.s / k < 1.2; x.drawImage(mapBase(), 0, 0); x.imageSmoothingEnabled = true;
+    if (typeof Cantiere !== 'undefined') Cantiere.covi(st).forEach(C0 => { x.strokeStyle = '#B08D57'; x.lineWidth = 2 * k / MV.s; x.beginPath(); x.arc(C0.x * k, C0.y * k, C0.r * k, 0, Math.PI * 2); x.stroke(); });
+    if (window.WriterVita) WriterVita.drawMap(x, k, st);   // [writer] la città che si colora
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    (st.ris && st.ris.bases || []).filter(b => b.alive).forEach(b => { const [sx, sy] = S(b.cx || b.x, b.cy || b.y); x.fillStyle = '#35e6ff'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.fillRect(sx - 5, sy - 5, 10, 10); x.strokeRect(sx - 5, sy - 5, 10, 10); });
+    // i nomi: sullo schermo, mai sotto i 13 px; uno solo dove si accavallano (prima i più vicini al centro della vista)
+    const fs = MV.s > 5 ? 15 : MV.s > 2.5 ? 14 : 13, boxes = [];
+    x.font = `600 ${fs}px "Instrument Sans", "Helvetica Neue", Arial, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+    Object.values(G0.PLACES).filter(P0 => P0.name).map(P0 => { const q = S(P0.x, P0.y); return { P0, sx: q[0], sy: q[1], d: Math.hypot(q[0] - cw / 2, q[1] - ch / 2) }; })
+      .filter(o => o.sx > -40 && o.sx < cw + 40 && o.sy > -20 && o.sy < ch + 30).sort((a, b) => a.d - b.d).forEach(({ P0, sx, sy }) => {
+        x.fillStyle = 'rgba(233,220,188,.85)'; x.fillRect(sx - 2, sy - 2, 4, 4);
+        const w = x.measureText(P0.name).width + 10, bx = [sx - w / 2, sy - fs - 10, w, fs + 6];
+        if (boxes.some(b => bx[0] < b[0] + b[2] && b[0] < bx[0] + bx[2] && bx[1] < b[1] + b[3] && b[1] < bx[1] + bx[3])) return; boxes.push(bx);
+        x.fillStyle = 'rgba(13,16,21,.72)'; x.fillRect(bx[0], bx[1], bx[2], bx[3]); x.fillStyle = '#f2ead8'; x.fillText(P0.name, sx, sy - 9); });
+    // l'obiettivo: il segnaposto, o la freccia sul bordo verso di lui
+    const jt = G0.jobTarget && G0.jobTarget(st);
+    if (jt) { const [sx, sy] = S(jt.x, jt.y), m = 22;
+      if (sx > m && sx < cw - m && sy > m && sy < ch - m) { x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy - 16, 9, Math.PI * .8, Math.PI * 2.2); x.lineTo(sx, sy); x.closePath(); x.fill(); x.stroke(); x.fillStyle = '#0D1015'; x.beginPath(); x.arc(sx, sy - 16, 3.5, 0, Math.PI * 2); x.fill(); }
+      else { const a = Math.atan2(sy - ch / 2, sx - cw / 2), ex = Math.min(cw - m, Math.max(m, sx)), ey = Math.min(ch - m, Math.max(m, sy)); x.save(); x.translate(ex, ey); x.rotate(a); x.fillStyle = '#ffd24a'; x.strokeStyle = '#0D1015'; x.lineWidth = 2; x.beginPath(); x.moveTo(12, 0); x.lineTo(-8, 9); x.lineTo(-8, -9); x.closePath(); x.fill(); x.stroke(); x.restore(); } }
+    const p = st.player, [px, py] = S(p.x, p.y); x.save(); x.translate(px, py); x.rotate(p.face || 0); x.fillStyle = '#f2ead8'; x.strokeStyle = '#0D1015'; x.lineWidth = 2.5; x.beginPath(); x.moveTo(12, 0); x.lineTo(-8, 8); x.lineTo(-4, 0); x.lineTo(-8, -8); x.closePath(); x.stroke(); x.fill(); x.restore();
+  }
+  function mapRedraw() { const c = document.querySelector('#mu canvas[data-map]'); if (c) drawMap2(c); }
+  function mapZoom(f, mx, my) {   // lo zoom attorno a un punto dello schermo (il centro, se non c'è)
+    const c = document.querySelector('#mu canvas[data-map]'); if (!c || !MV.s) return; const r = c.getBoundingClientRect(), ox = (mx === undefined ? r.width / 2 : mx) - r.width / 2, oy = (my === undefined ? r.height / 2 : my) - r.height / 2;
+    const wx = MV.cx + ox / MV.s, wy = MV.cy + oy / MV.s; MV.s = Math.min(14, Math.max(MV.fit * .95, MV.s * f)); MV.cx = wx - ox / MV.s; MV.cy = wy - oy / MV.s; drawMap2(c);
+  }
+  function mapClick2(e, c) {
+    const r = c.getBoundingClientRect(), G0 = G(), mx = MV.cx + (e.clientX - r.left - r.width / 2) / MV.s, my = MV.cy + (e.clientY - r.top - r.height / 2) / MV.s;
+    let best = null, bd = 18 / MV.s; Object.values(G0.PLACES).forEach(P0 => { if (!P0.name) return; const d = Math.hypot(P0.x - mx, P0.y - my); if (d < bd) { bd = d; best = P0; } });
+    const to = best || { x: mx, y: my }; say(`Vai ${best ? 'a ' + best.name : 'lì'}.`); goTo(to.x, to.y);
+  }
+  if (OR) {   // trascinare, due dita, rotella: delegati sul menu (il canvas rinasce quando il menu si ridisegna)
+    const onMap = e => e.target && e.target.dataset && e.target.dataset.map;
+    const hook = () => { const m = $('mu'); if (!m) return false;
+      m.addEventListener('wheel', e => { if (!onMap(e)) return; e.preventDefault(); const r = e.target.getBoundingClientRect(); mapZoom(e.deltaY > 0 ? 1 / 1.18 : 1.18, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+      m.addEventListener('pointerdown', e => { if (!onMap(e)) return; MV.ptr.set(e.pointerId, { x: e.clientX, y: e.clientY }); try { e.target.setPointerCapture(e.pointerId); } catch (x) { }
+        if (MV.ptr.size === 1) { MV.moved = false; MV.x0 = e.clientX; MV.y0 = e.clientY; MV.cx0 = MV.cx; MV.cy0 = MV.cy; } else { const [a, b] = [...MV.ptr.values()]; MV.d0 = Math.hypot(a.x - b.x, a.y - b.y) || 1; MV.m0 = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; MV.moved = true; } });
+      m.addEventListener('pointermove', e => { const q = MV.ptr.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY; const c = e.target.closest ? document.querySelector('#mu canvas[data-map]') : null; if (!c) return;
+        if (MV.ptr.size >= 2) { const [a, b] = [...MV.ptr.values()], d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, r = c.getBoundingClientRect();
+          MV.cx -= (mid.x - MV.m0.x) / MV.s; MV.cy -= (mid.y - MV.m0.y) / MV.s; mapZoom(d / MV.d0, mid.x - r.left, mid.y - r.top); MV.d0 = d; MV.m0 = mid; return; }
+        if (Math.hypot(e.clientX - MV.x0, e.clientY - MV.y0) > 6) MV.moved = true;
+        if (MV.moved) { MV.cx = MV.cx0 - (e.clientX - MV.x0) / MV.s; MV.cy = MV.cy0 - (e.clientY - MV.y0) / MV.s; drawMap2(c); } });
+      const up = e => { MV.ptr.delete(e.pointerId); if (MV.ptr.size === 1) { const [a] = [...MV.ptr.values()]; MV.x0 = a.x; MV.y0 = a.y; MV.cx0 = MV.cx; MV.cy0 = MV.cy; } };
+      m.addEventListener('pointerup', up); m.addEventListener('pointercancel', up);
+      return true; };
+    const iv = setInterval(() => { if (hook()) clearInterval(iv); }, 500);
+    setInterval(() => { try { if (U.open && U.tab === 'mappa' && !MV.ptr.size) mapRedraw(); } catch (e) { } }, 250);   // Nino si muove anche a menu aperto (il mondo va piano)
+  }
   function mapClick(e, c) {
     const r = c.getBoundingClientRect(), G0 = G(), k = MK / G0.TS, mx = (e.clientX - r.left) / r.width * c.width / k, my = (e.clientY - r.top) / r.height * c.height / k;
     let best = null, bd = 14 / k * (c.width / r.width); Object.values(G0.PLACES).forEach(P0 => { if (!P0.name) return; const d = Math.hypot(P0.x - mx, P0.y - my); if (d < bd) { bd = d; best = P0; } });
@@ -947,7 +1031,7 @@ var MenuUI = (function () {
   const quiIcon = l => /mangia|cena|pranzo|spesa|pane/i.test(l) ? 'pane' : /bev|vino|caff|birra/i.test(l) ? 'vino' : /dorm|letto|riposa/i.test(l) ? 'coperta' : /lava|doccia|sapone/i.test(l) ? 'sapone' : /lavor|turno/i.test(l) ? 'martello' : /fum|sigarett/i.test(l) ? 'sigarette' : /banco|compra|negozio|bottega/i.test(l) ? 'valuta' : /onda|muro|scrivi|manifest|murale/i.test(l) ? 'bomboletta' : /telecamera|sasso|sabota/i.test(l) ? 'pietre' : /pesca/i.test(l) ? 'rete_pesca' : /bancomat|soldi|prestito|restituisci|banca/i.test(l) ? 'valuta' : /albero|legna|abbatti/i.test(l) ? 'ascia' : /scava|fossa/i.test(l) ? 'pala' : /base|lotto|costru/i.test(l) ? 'assi' : /scambia/i.test(l) ? 'casse' : /lotto|carte|bisca|gioca/i.test(l) ? 'carte' : 'mappa';
   function pQui(st) {
     const l = quiList(st); U.qui = l;
-    return l.length ? `<div class="acts">${l.map((a, k) => `<button class="act ${a.bad ? 'bad' : ''}" data-a="qui" data-x="${k}" ${a.run ? '' : 'disabled'}>${ic(quiIcon(a.label))}<span>${esc(a.label)}${a.off ? `<small>${esc(a.off)}</small>` : ''}</span></button>`).join('')}</div>`
+    return l.length ? `<div class="acts">${l.map((a, k) => `<button class="act ${a.bad ? 'bad' : ''}" data-a="qui" data-x="${k}" ${a.run ? '' : 'disabled'}>${ic(quiIcon(a.label))}<span>${esc(OR ? a.label.replace(/\s*\(H\)/, '') : a.label)}${a.off ? `<small>${esc(a.off)}</small>` : ''}</span></button>`).join('')}</div>`
       : '<div class="dim">Qui non c\'è niente da fare. La roba da frugare è in giro: cestini, scatole, casse. Cliccale.</div>';
   }
 
@@ -970,11 +1054,16 @@ var MenuUI = (function () {
     pv.click.t = { kind: 'move', x, y, path, run: true, best: 1e9, bestT: pv.ui.time, fl: '' }; pv.ui.mark = { x, y, t: pv.ui.time, k: 'move' }; close();
   }
   function onClick(e) {
+    if (OR && e.target.dataset && e.target.dataset.map) { if (MV.moved) { MV.moved = false; return; } mapClick2(e, e.target); return; }
+    if (OR && U.tab === 'obiettivi' && Orienta.onObClick(e)) return;
     if (e.target.dataset && e.target.dataset.map) { mapClick(e, e.target); return; }
     const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
     const a = b.dataset.a, x = b.dataset.x ? JSON.parse(b.dataset.x) : undefined, st = ST();
     switch (a) {
       case 'close': close(); return;
+      case 'mz': if (OR) { mapZoom(x); return; } break;   // [orienta] i pulsanti della mappa
+      case 'mme': if (OR) { const p0 = ST().player; MV.cx = p0.x; MV.cy = p0.y; mapRedraw(); return; } break;
+      case 'mob': if (OR) { const jt = G().jobTarget && G().jobTarget(ST()); if (jt) { MV.cx = jt.x; MV.cy = jt.y; mapRedraw(); } return; } break;
       case 'tab': U.tab = x; U.sel = null; U.arg = null; break;
       case 'book': close(); if (PV() && PV().book) PV().book(true); return;   // [console] il taccuino, dal menu
       case 'sys': if (!PV() || !PV().sys) return; if (x !== 'audio') close(); PV().sys(x); if (x !== 'audio') return; break;   // [gameboy-menu] schermo intero, audio, esci: li fa la console
@@ -1048,7 +1137,7 @@ var MenuUI = (function () {
     const k = e.key.toLowerCase();
     if (U.open) {
       if (k === 'escape') { close(); e.preventDefault(); e.stopImmediatePropagation(); return; }
-      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= '7' ? TABS[+k - 1][0] : null;
+      const t = k === 'i' || k === 'z' ? 'zaino' : k === 'k' ? 'lavora' : k >= '1' && k <= String(Math.min(9, TABS.length)) ? TABS[+k - 1][0] : null;
       if (t) { if (U.tab === t) close(); else open(t); e.preventDefault(); e.stopImmediatePropagation(); return; }
       if (k !== 'tab') e.stopImmediatePropagation();
       return;

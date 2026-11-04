@@ -1171,7 +1171,7 @@ var Game = (function () {
     const w = worstAboutPlayer(st, n);
     if (hostile(st, n)) lines.push(n.cop ? 'Getta l\'arma! Mani in alto!' : 'Tu sei morto, Nino.');
     else if (n.framedAngry) lines.push('Vai in giro a dire che sono stato io? Hai una bella faccia tosta.');
-    else if (n.id === 'sandro') lines.push(st.player.money >= st.debt ? `Allora, ${PLAYER_NAME}? Sento odore di soldi.` : `${PLAYER_NAME}. Ti restano ${hoursLeft(st)} ore. Io non aspetto.`);
+    else if (n.id === 'sandro') lines.push(st.player.money >= st.debt && st.deadline < 1e8 ? `Allora, ${PLAYER_NAME}? Sento odore di soldi.` : st.deadline > 1e8 && !(typeof location !== 'undefined' && /[?&]nofixorienta\b/.test(location.search)) ? `${PLAYER_NAME}. Con me i conti restano aperti. Non dimenticarlo.` : `${PLAYER_NAME}. Ti restano ${hoursLeft(st)} ore. Io non aspetto.`);   // [orienta] con la Risacca non c'è scadenza: niente più «Infinity ore»
     else if (n.faction === 'squalo') lines.push(['Lo Squalo è di là. Non farlo aspettare.', 'Hai i soldi? No? Allora sparisci.'][Math.floor(st.rng() * 2)]);
     else if (n.faction === 'marsiglia') lines.push(['Dégage. Ici c\'est pas pour toi.', 'Casse-toi, petit. Vai via.'][Math.floor(st.rng() * 2)]);
     else if (n.op.fear > .5) lines.push('Stammi lontano. Non ho fatto niente.');
