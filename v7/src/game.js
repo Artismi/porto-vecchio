@@ -2196,7 +2196,7 @@ var Game = (function () {
   function scansano(st) {
     for (const v of st.vehicles) {
       if (v.hidden || v.wreck || v.traffic || VK[v.kind].boat) continue; const sp = Math.hypot(v.vx || 0, v.vy || 0); if (sp < 4) continue;
-      if (v.rider !== 'player' && !(v.police && v.siren) && v.rider) continue;
+      if (v.rider && v.rider !== 'player') continue;   // il mezzo del giocatore e quelli lasciati andare (non chi guida: la volante, la celere)
       const ux = v.vx / sp, uy = v.vy / sp, K = VK[v.kind], R0 = sp * 1.5 + K.len;
       for (const n of st.npcs) {
         if (n.inside || n.dead || n.stun > 0 || n.jailedUntil > st.t || n.seated || Math.abs(n.x - v.x) > R0 || Math.abs(n.y - v.y) > R0) continue;
