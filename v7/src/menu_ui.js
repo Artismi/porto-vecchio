@@ -409,6 +409,7 @@ var MenuUI = (function () {
 #mu .rail button.on { box-shadow: inset 0 2px 6px rgba(0,0,0,.5), 0 0 0 2px var(--ott); border-color: transparent; }
 #mu .rail button .dot { position: absolute; right: 2px; top: 2px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--neon); color: var(--notte); font: 700 11px/18px var(--fl); text-align: center; padding: 0 4px; letter-spacing: 0; }
 #mu .rail .sp { flex: 1; }
+#mu .rail.molte { overflow-y: auto; gap: 6px; scrollbar-width: none; } @media (max-height: 820px) and (min-width: 901px) { #mu .rail.molte button { width: 62px; height: 62px; } #mu .rail.molte button canvas { width: 24px; height: 24px; } }   /* [orienta] con gli Obiettivi le schede sono 8-9: stanno in colonna */
 #mu .in { position: relative; display: grid; grid-template-rows: auto 1fr auto; min-height: 0; border-radius: 14px; background: var(--vetro); box-shadow: inset 0 0 0 1px rgba(58,90,80,.6), inset 0 10px 30px rgba(0,0,0,.45); }
 #mu header { display: flex; align-items: baseline; gap: 16px; padding: 16px 26px 10px; }
 #mu header b { font: 400 34px/1 var(--fs); color: var(--crema); white-space: nowrap; }
@@ -700,7 +701,7 @@ var MenuUI = (function () {
     const rail = tabsNow.map(([k, l, ico]) => `<button class="${U.tab === k ? 'on' : ''}" data-a="${k === 'taccuino' ? 'book' : 'tab'}" data-x='"${k}"'>${ic(ico).replace('<canvas', '<canvas data-nt="1"')}<span class="lb">${narrow && SHORT[k] || l}</span>${k === 'qui' && quiCount(st) ? `<span class="dot">${quiCount(st)}</span>` : ''}</button>`).join('')
       + (U.tab === 'bottega' || U.tab === 'fruga' ? `<span class="sp"></span><button class="on">${ic(U.tab === 'bottega' ? 'valuta' : 'casse')}${CTX[U.tab][0]}</button>` : '');
     const showMsg = U.msg && Date.now() - (U.msgT || 0) < 6000;
-    const html = `<div class="case"><nav class="rail">${rail}</nav><div class="in">
+    const html = `<div class="case"><nav class="rail${OR && tabsNow.length > 7 ? ' molte' : ''}">${rail}</nav><div class="in">
       <header><b>${esc(title)}</b><span>${esc(sub)}</span><span class="tabs">${tabs}</span>${con ? sysKeys() : ''}<button class="x" data-a="close" aria-label="Chiudi">×</button></header>
       <main>${body}</main>
       <footer><span class="tm">${OR && PV().ui && PV().ui.pausa ? 'pausa: il mondo è fermo' : inCovo(st) ? 'nel covo il tempo aspetta' : 'il mondo va avanti, piano'}</span>${con ? stato(st) : ''}<span class="k"><kbd>I</kbd>zaino</span><span class="k"><kbd>K</kbd>crafting</span><span class="k"><kbd>1-${Math.min(9, TABS.length)}</kbd>schede</span><span class="k"><kbd>Esc</kbd>gioco</span>
