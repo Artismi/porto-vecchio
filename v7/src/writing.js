@@ -1041,7 +1041,7 @@ var Writing = (function () {
       const g = m.geometry; if (!g) continue;
       let mt = m.material; if (Array.isArray(mt)) { if (mt.every(q => !q || q.visible === false || (q.transparent && q.opacity < .3))) continue; mt = null; } else if (!mt || mt.visible === false || (mt.transparent && mt.opacity < .3)) continue;
       const P = posOf(m);
-      if (!P) { if (m.raycast !== THREE.Mesh.prototype.raycast) manca = true; continue; }   // un tassello leggero senza i dati: si riprova quando arrivano
+      if (!P) { if (m.raycast !== THREE.Mesh.prototype.raycast) { manca = true; try { const rq = GFX.rcM || (GFX.rcM = new THREE.Raycaster()); rq.set(C.clone().addScaledVector(n, .5), n.clone().negate()); rq.near = 0; rq.far = 1; m.raycast(rq, []); } catch (e) { } } continue; }   // un tassello leggero senza i dati: un raggio li chiede (rayTas), si riprova quando arrivano
       const MW = m.userData && m.userData.qs ? IDM : m.matrixWorld; M.copy(MW).invert();
       Bl.copy(B).applyMatrix4(M); if (g.boundingBox && !g.boundingBox.intersectsBox(Bl)) continue;
       const x0 = Bl.min.x, y0 = Bl.min.y, z0 = Bl.min.z, x1 = Bl.max.x, y1 = Bl.max.y, z1 = Bl.max.z;
@@ -2546,7 +2546,9 @@ var Writing = (function () {
     const R = w.gfxRect, layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
     let d = yield* decalG(R, layer);
     if (d && d.geo) return { geo: d.geo, layer, cop: d.cop };
-    if (d && d.manca) return { manca: true };
+    // i dati dei raggi del tassello non arrivano (il telefono li tiene solo vicino): dopo quattro tentativi il piano verificato (la cottura o i raggi)
+    if (d && d.manca && (w.__manche = (w.__manche || 0) + 1) < 4) return { manca: true };
+    if (d && d.manca) { const THREE = T3(), geo = new THREE.PlaneGeometry(R.W, R.H); geo.translate(0, 0, GAP + layer * .001); return { geo, layer, piano: true }; }
     // un lavoro cotto il cui muro non c'è (la cottura è di un'altra città): si piazza da capo, coi raggi, dal suo sito (come senza cottura)
     if (FIX2 && w.cotto && w.spot && !w.__ripiazza) { w.__ripiazza = true; w.gfxRect = null; const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; d = yield* decalG(w.gfxRect, layer); if (d && d.geo) return { geo: d.geo, layer, cop: d.cop }; if (d && d.manca) return { manca: true }; }
     const R2 = w.gfxRect; if (!R2 || Math.abs(R2.n.y || 0) > .5) return false;
@@ -2599,7 +2601,7 @@ var Writing = (function () {
         if (!r.done) break;
         const m0 = GFX.pw.m0; GFX.pw = null;
         if (!r.value || r.value.manca) {
-          if (r.value && r.value.manca || mancanti() !== m0) { w.__gfxWait = performance.now() + 1500; GFX.attese = (GFX.attese || 0) + 1; continue; }   // i dati dei raggi non ancora arrivati: si riprova
+          if (r.value && r.value.manca || (!r.value && mancanti() !== m0)) { w.__gfxWait = performance.now() + 1500; GFX.attese = (GFX.attese || 0) + 1; continue; }   // i dati dei raggi non ancora arrivati: si riprova
           w.gfxFail = (w.gfxFail || 0) + 1; w.__gfxWait = performance.now() + 1000 * w.gfxFail; GFX.ko = (GFX.ko || 0) + 1; continue; }
         GFX.ko = 0;
         const tv = performance.now(), g = { art: null, drawn: 0, flat: true }; g.tgt = makeVeil2(w, telaDi(w), r.value.geo, r.value.layer); GFX.works[w.id] = g; stesura(w, g.tgt); GFX.mem.stese = (GFX.mem.stese || 0) + 1;
