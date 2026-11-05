@@ -25,9 +25,9 @@
 })();
 /* [ritmo8] GLI INTERRUTTORI DEL RITMO (v7/ANALISI_RITMO8.md): window.PV_R8.on(nome) vero se la correzione è accesa. ?noritmo8 le spegne
    tutte (il gioco di prima, identico); ?noritmo8<nome> una sola:
-     raggi    il braccio di camera7: i raggi uguali nello stesso fotogramma una volta sola, il primo colpo per mesh, le mesh senza posizioni saltate
+     raggi    il braccio di camera7: i raggi uguali nello stesso fotogramma una volta sola; le mesh senza posizioni (il verde lontano) saltate
      arte     il disegnatore dei graffiti a parte (worker) con le tele lette dal processore (willReadFrequently): non muore più per lentezza
-     griglie  le griglie dei raggi dei tasselli preparate a fette prima che il braccio le tocchi, e i colpi scartati senza allocare
+     griglie  le griglie dei raggi dei tasselli preparate a fette prima che il braccio le tocchi; i colpi fuori portata scartati senza allocare
      pile     le tessiture a strati grandi dei tasselli mandate alla scheda video a fette (pochi strati per fotogramma)                    */
 (function () {
   'use strict';

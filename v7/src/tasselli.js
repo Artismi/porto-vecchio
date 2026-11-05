@@ -336,7 +336,6 @@ var Tasselli = (function () {
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
     const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
-    const FH = R8G && rc.firstHitOnly === true; if (FH) R8T.d = Infinity;   // [ritmo8]
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
       const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
@@ -348,9 +347,8 @@ var Tasselli = (function () {
         if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
         else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
-        if (R8G) {   // [ritmo8] la distanza prima di allocare (il colpo fuori near-far si buttava dopo averlo copiato); col primo colpo solo il più vicino
+        if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)
           const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
-          if (FH) { if (d < R8T.d) { R8T.d = d; R8T.p.copy(q); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, R8T.n); R8T.f = { a, b, c: cc, mi, t }; } continue; }
           const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
           out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
@@ -358,9 +356,8 @@ var Tasselli = (function () {
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
-    if (FH && R8T.d < Infinity) { const f = R8T.f; out.push({ distance: R8T.d, point: R8T.p.clone(), object: this, face: { a: f.a, b: f.b, c: f.c, normal: R8T.n.clone(), materialIndex: f.mi }, faceIndex: f.t }); }   // [ritmo8]
   }
-  const R8T = { q: new THREE.Vector3(), p: new THREE.Vector3(), n: new THREE.Vector3(), d: Infinity, f: null };
+  const R8T = { q: new THREE.Vector3() };
 
   // ---------------- i tasselli ----------------
   // Due anelli. Il tassello compresso (in gzip, ~100-300 KB) si scarica fino a «carica» dal punto guardato e resta nella pagina finché
