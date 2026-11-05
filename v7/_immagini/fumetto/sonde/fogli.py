@@ -55,6 +55,7 @@ for i, (p, plab) in enumerate(POSTI):
         m = misura(f, ST.get(v)); m['ms'] = (ST.get(v) or {}).get('ms'); M.setdefault(p, {})[v] = m
         f2 = os.path.join(F, f'{PRE}_{p}_{v}_mezzopx.png')
         if os.path.exists(f2): T.setdefault(p, {})[v] = tremolio(f, f2)
+        os.makedirs(os.path.join(OUTD, 'scatti'), exist_ok=True); Image.open(f).convert('RGB').save(os.path.join(OUTD, 'scatti', f'{p}_{v}.jpg'), quality=93)
         im = Image.open(f).convert('RGB').resize((CW, CH), Image.LANCZOS); S.paste(im, (LW + j * CW, y))
         d.rectangle((LW + j * CW, y, LW + j * CW + 84, y + 34), fill=(0, 0, 0)); d.text((LW + j * CW + 10, y + 2), v, font=FB, fill=(255, 214, 120))
 S.save(os.path.join(OUTD, 'confronto_5x3.jpg'), quality=88)
