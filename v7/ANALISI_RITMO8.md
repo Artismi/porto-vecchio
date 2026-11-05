@@ -58,8 +58,9 @@ Le sonde hanno trovato perché:
 di volte per pezzo (`getImageData`) su tele OffscreenCanvas messe sulla scheda video: ogni lettura aspetta la scheda. Misurato: **un pezzo
 87,8 s nel worker** (contro 0,8 s sul filo della pagina). Oltre i 60 s senza risposta il gioco lo dà per morto (`ARTW.ok = false`) e da lì
 **ogni graffito si disegna sul filo della pagina, uno ogni 1,2 s, 100-130 ms l'uno** (handify, inkRender): 4-31 ms per fotogramma di media,
-e un long task ogni 1,2 s finché ci sono graffiti da disegnare (sempre, camminando). Nei long task del percorso: 19,5 s su 13 minuti. Sul
-portatile vero la lettura costa meno che in SwiftShader, ma è la stessa attesa della scheda, nel mezzo del disegno del gioco.
+e un long task ogni 1,2 s finché ci sono graffiti da disegnare (sempre, camminando). Nei long task del percorso: 19,5 s su 13 minuti. Il
+disegnatore moriva anche con gli interruttori di ieri spenti (lì un pezzo ogni 2 s): la causa è più vecchia, graffiti2 ne ha alzato il ritmo.
+Sul portatile vero la lettura costa meno che in SwiftShader, ma è la stessa attesa della scheda, nel mezzo del disegno del gioco.
 
 **3. Le tessiture a strati piene dei tasselli (hd, G11).** Sul portatile una pila arriva a 32 MB (512×512×32): mandata in un colpo
 (`texSubImage3D` da `texSu`) era **un caricamento da 96 ms fino a 1,16 s** in SwiftShader (30-80 ms stimati sull'Iris Xe): uno scatto a ogni
@@ -79,6 +80,11 @@ il disegno di three costa uguale. **guida2**: l'audio sintetizzato crea i nodi d
 fissi: niente nel profilo. **hd**: lato processore l'MSAA aggiunge un `blitFramebuffer` per fotogramma (≤ 0,6 ms qui di solito); il resto di
 hd è scheda video (§5).
 
+Gli altri sospetti, controllati e non colpevoli qui: le scritture nel DOM (camminando circa un'impaginazione per fotogramma: 0,2-0,6 ms di
+impaginazione e 0,2-0,3 di stili per giro in SwiftShader, poco anche qui); i decal dei graffiti (piazzaG/decalG restano dentro il loro tetto, il 6% del fotogramma, 25 ms al più); i
+cambi di materiale di stile (nessun programma nuovo quando si cambia: si cambia un'uniform); le ombre (4-8 ms lato processore, già a
+gradini da hd).
+
 ## 3. Le correzioni
 
 1. **Il braccio di camera7** (`render.js` cast7, `?noritmo8raggi`):
@@ -91,7 +97,7 @@ hd è scheda video (§5).
    **Provato uguale**: 8 posti × 40 raggi (nascita, vicolo, piazza, lungomare), il cast7 nuovo contro l'algoritmo di prima ricopiato: 320 su 320
    identici (`_immagini/ritmo8/sonda_eq.json`).
 2. **Il disegnatore dei graffiti** (`writing.js`, `?noritmo8arte`): nel worker le tele 2D si aprono con `willReadFrequently: true` (lette dal
-   processore). Lo stesso disegno: **3,5 s invece di 87,8 s** per lo stesso pezzo; il worker non muore più (`ok: true`, 343 pezzi nel percorso,
+   processore). Le stesse operazioni di disegno, rasterizzate dal processore invece che dalla scheda: **3,5 s invece di 87,8 s** per lo stesso pezzo; il worker non muore più (`ok: true`, 343 pezzi nel percorso,
    coda sul filo della pagina vuota) e i 100-130 ms ogni 1,2 s spariscono (arte sul filo: 0 ms in tutti i tratti).
 3. **Le griglie dei raggi a fette** (`tasselli.js`, `?noritmo8griglie`): la griglia di una mesh è un generatore (una pausa ogni 4.096
    triangoli); `griglieTick`, nel giro dei tasselli, prepara quelle delle mesh entro 20 m dalla camera con al più 1,5 ms per fotogramma
