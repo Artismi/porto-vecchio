@@ -17,8 +17,8 @@ per raggio, §3), cambia solo quando e quanto lavora il processore.
 
 ## 1. Come si è misurato
 
-SwiftShader (Chromium senza scheda video) non dà tempi di scheda credibili, ma il processore sì. Tre strumenti, tutti in
-`/tmp/.../scratchpad/ritmo8/` (copiati in `_immagini/ritmo8/strumenti/`):
+SwiftShader (Chromium senza scheda video) non dà tempi di scheda credibili, ma il processore sì. Tre strumenti (copiati in
+`_immagini/ritmo8/strumenti/`; i percorsi dei file vanno adattati, i posti sono in `strumenti/luoghi.json`):
 
 - **Il percorso** (`percorso.js`): il gioco vero a tempo vero, profilo del portatile (`?leggera`, 1536×864 a dpr 1,25: tela 1920×1080),
   i disegni spenti nella scheda (il processore fa tutto: scena, three, uniform, caricamenti; SwiftShader non riempie pixel). Nascita →
@@ -99,8 +99,8 @@ hd è scheda video (§5).
    scarta prima di copiarlo, le posizioni a 16 bit si leggono senza nove chiamate per triangolo. Risultato identico.
 4. **Le pile a fette** (`tasselli.js`, `?noritmo8pile`): una tessitura a strati oltre 4 MB (2 sul telefono) si alloca come fa three
    (`texStorage3D`, i parametri) e si riempie a fette di strati, al più 4 MB per fotogramma, poi le mipmap; la mesh che la usa entra in scena a
-   pila piena (`monta1` aspetta il fotogramma dopo): mai mezza. Il caricamento più lungo passa da 96 ms (1,16 s in un'altra corsa) a ≤ 53 ms in
-   SwiftShader; sul portatile vero ~4 MB per fotogramma.
+   pila piena (`monta1` aspetta il fotogramma dopo): mai mezza. Il caricamento a strati più lungo (dopo l'avvio) passa da 96 ms (1,16 s in un'altra
+   corsa) a 56 ms in SwiftShader; sul portatile vero ~4 MB per fotogramma. Provato uguale strato per strato (§7).
 
 ## 4. Prima e dopo (i numeri)
 
@@ -115,11 +115,62 @@ R.frame + G.step, 45 passi camminando, mediana di tre (`_immagini/ritmo8/banco_*
 | piazza | 64,5 → 59 (−9%) | 113 → 84 | 277 → 188 | 17.109 → 2.267 | 9,9 → 9,3 ms |
 | lungomare | 46,6 → 43,9 (−6%) | 76 → 51 | 120 → 81 | 4.771 → 317 | 7,9 → 2,0 ms |
 
-TABELLA_TELEFONO
+### Il banco a passi, telefono (390×844 a dpr 3, tocco, profilo leggero)
+
+| Posto | ms di processore per fotogramma, prima → dopo | ms d'orologio | p95 d'orologio | triangoli provati per fotogramma | GC per fotogramma |
+| --- | --- | --- | --- | --- | --- |
+| nascita | **158,8 → 51,6 (−67%)** | 204 → 148 | 365 → 426 | 544.021 → 127.651 | 31,4 → 6,0 ms |
+| vicolo | **82,0 → 50,2 (−39%)** | 122 → 104 | 220 → 248 | 108.427 → 56.993 | 13,9 → 5,8 ms |
+| piazza | **52,9 → 46,6 (−12%)** | 80 → 73 | 142 → 116 | 2.589 → 2.320 | 11,2 → 7,7 ms |
+| lungomare | **44,6 → 34,4 (−23%)** | 61 → 56 | 164 → 163 | 4.810 → 199 | 3,9 → 5,2 ms |
+
+Il telefono qui è il profilo del telefono (tocco, dpr 3, tela a dpr 2, i dati dei raggi dei tasselli solo entro 6 m) sul processore di questa
+macchina: conta il rapporto. I ms d'orologio della seconda corsa sono saliti con la contesa (alla nascita 45 passi in 14,9 s d'orologio
+contro 2,8 s di processore): per gli scatti fa fede il tempo del filo.
 
 ### Il percorso (tempo vero; i ms assoluti dipendono dalla contesa del momento)
 
-TABELLA_PERCORSO
+Le tre corse una dopo l'altra, la stessa strada. **Attenzione**: il carico della macchina (altri agenti) è salito da ~8 a ~14 fra la
+prima e l'ultima: i ms per giro d'orologio non sono confrontabili fra corse (lo stesso disegno di three, codice non toccato, in auto passa da 90 a
+211 ms per giro). Contano le quote dentro la stessa corsa (il braccio sul giro), le allocazioni, il GC, i graffiti sul filo e i long task per colpevole.
+
+| Tratto | Corsa | JS per giro media / p95 / p99 (ms) | braccio camera7 % del giro | graffiti sul filo (ms/giro) | allocazioni (kB/giro) | GC (ms/giro) | disegni |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| fermi alla nascita | main | 380 / 730 / 1378 | 68% | 30,9 | 92180 | 16,8 | 377 |
+| fermi alla nascita | main, ieri spento | 136 / 371 / 871 | 0% | 16,2 | 15496 | 10,9 | 311 |
+| fermi alla nascita | ritmo8 | 194 / 482 / 790 | 23% | 0,0 | 15151 | 7,6 | 374 |
+| vicolo | main | 221 / 494 / 784 | 33% | 16,4 | 28020 | 10,5 | 665 |
+| vicolo | main, ieri spento | 132 / 337 / 486 | 0% | 11,2 | 8838 | 7,0 | 379 |
+| vicolo | ritmo8 | 224 / 554 / 1120 | 6% | 0,0 | 9252 | 1,3 | 675 |
+| piazza | main | 125 / 214 / 404 | 19% | 4,9 | 16759 | 3,8 | 544 |
+| piazza | main, ieri spento | 166 / 445 / 824 | 0% | 10,7 | 8776 | 8,3 | 435 |
+| piazza | ritmo8 | 171 / 409 / 630 | 6% | 0,0 | 9650 | 6,1 | 555 |
+| lungomare | main | 126 / 196 / 373 | 21% | 4,2 | 18181 | 3,5 | 551 |
+| lungomare | main, ieri spento | 436 / 1220 / 2037 | 0% | 17,4 | 80605 | 19,4 | 358 |
+| lungomare | ritmo8 | 149 / 293 / 527 | 6% | 0,0 | 9986 | 4,8 | 585 |
+| in auto | main | 202 / 503 / 1139 | 0% | 22,7 | 11877 | 11,8 | 1250 |
+| in auto | main, ieri spento | 174 / 451 / 987 | 0% | 10,7 | 6853 | 11,6 | 1076 |
+| in auto | ritmo8 | 320 / 1220 / 2303 | 0% | 0,0 | 10567 | 11,1 | 1367 |
+| fermi in piazza | main | 149 / 272 / 382 | 8% | 11,2 | 14800 | 2,7 | 671 |
+| fermi in piazza | main, ieri spento | 154 / 410 / 588 | 0% | 12,4 | 8414 | 11,8 | 421 |
+| fermi in piazza | ritmo8 | 216 / 559 / 972 | 4% | 0,0 | 16801 | 5,2 | 742 |
+
+| Long task: chi c'era dentro (ms sommati sul percorso) | main | main, ieri spento | ritmo8 |
+| --- | ---: | ---: | ---: |
+| graffiti disegnati sul filo (writer_arte) | 19543 | 13931 | 0 |
+| braccio di camera7 (cast7) | 8451 | 0 | 5914 |
+| griglia dei raggi al primo raggio | 653 | 655 | 646 |
+| pila dei tasselli (texSubImage3D) | 230 | 24 | 57 |
+| compilazioni (getProgramParameter) | 1206 | 133 | 2866 |
+| foto della tavoletta (readPixels) | 5530 | 0 | 8048 |
+
+Alla fine del percorso (ritmo8): il braccio 411 raggi, 274 dal ricordo (fermi in piazza); 1.725 griglie preparate a fette (4,4 s in 20 minuti,
+mai più di 1,5 ms per fotogramma), 5 pile a fette tutte finite; il disegnatore dei graffiti vivo (354 pezzi, coda sul filo vuota).
+Il caricamento a strati più lungo dopo l'avvio: 96 ms (main) → 56 ms (ritmo8) in SwiftShader. Nei primi secondi dopo l'avvio (prima dell'anello
+vicino: lì le pile non sono a fette, come prima) SwiftShader ha fermi da decine di secondi su un caricamento qualunque: sono dell'avvio in
+software, in tutte e tre le corse. Le compilazioni (`getProgramParameter`) e la foto della tavoletta (`readPixels`) cambiano solo con la contesa.
+Con gli interruttori di ieri spenti (`kill`) i graffiti si disegnavano già sul filo (uno ogni 2 s): il disegnatore a parte moriva anche prima
+di graffiti2 (stessa causa); sul lungomare il vecchio spruzzo delle bombolette (`bmbPass`, raggi senza indice spaziale) costava 283 ms per giro.
 
 ## 5. Il portatile vero (Iris Xe): cosa mandare
 
@@ -172,4 +223,23 @@ Senza i numeri della scheda vera non cambio né l'MSAA né la partenza: con MSAA
 
 ## 7. Le prove
 
-TEST_ESITO
+`node src/test_ritmo8.js` (nuovo): **12/12** — gli interruttori; la griglia a fette identica a quella di prima su 24 geometrie a caso (32 e 16
+bit, con e senza indice) e la quota delle celle; il codice del worker con `willReadFrequently` (e quello di prima con `?noritmo8arte`).
+
+| Prova | Esito | Note |
+| --- | --- | --- |
+| `test_ritmo8.js` | 12 ok | nuovo |
+| `test_camera7.js` | 32 ok | il braccio (Camera7.passo) non è cambiato |
+| `test_hd_ritmo.js` | 9 ok | il regolatore di hd |
+| `test_graffiti.js` | 38 ok | |
+| `test_writing.js` | 41 ok, 1 NO | «nel menu: Writer: ZETA» fallisce **uguale su main 85a0971** (provato sui sorgenti di main) |
+| `test_tasselli.js` | 20 ok, 1 NO | «l'impronta della pagina è quella dei sorgenti» fallisce **uguale su main 85a0971** |
+
+Nel browser (SwiftShader, `_immagini/ritmo8/`):
+- `sonda_eq.json`: il braccio nuovo contro l'algoritmo di prima, 8 posti × 40 raggi: **320/320 identici**; triangoli provati per 40 prove:
+  nascita 971.642 → 906.432, vicolo 260.401 → 123.615, piazza 151.887 → 47.052, lungomare 61.000 → 3.012 (oltre ai 65.650 per prova del verde
+  lontano, ora saltati in tutte e due);
+- `sonda_pila.json`: la pila a fette contro la stessa pila mandata da three in un colpo (512×512×10 e 256×128×40 con le mipmap, 512×281×12
+  senza): **0 pixel diversi** in ogni strato, 0 nel primo livello delle mipmap, nessun errore WebGL, la copia in memoria liberata;
+- `sonda_worker*.log`: lo stesso pezzo nel worker, 87,8 s con le tele sulla scheda, 3,5 s con `willReadFrequently`;
+- `sonda_cast_*.json`, `sonda2.json`: le mesh dei raggi una per una (il verde lontano con la foglia sola di 13.130 triangoli e le posizioni vuote).

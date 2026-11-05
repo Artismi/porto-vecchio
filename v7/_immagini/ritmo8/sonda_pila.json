@@ -1,0 +1,50 @@
+[
+ {
+  "W": 512,
+  "H": 512,
+  "D": 10,
+  "mip": true,
+  "pilaOk": true,
+  "chiamate": 6,
+  "fatta": true,
+  "datiLiberati": true,
+  "pixelDiversi": 0,
+  "pixelDiversiDaiDati": 0,
+  "mipDiversi": 0,
+  "msPila": 7.2,
+  "msTutta": 7310.9,
+  "err": 0
+ },
+ {
+  "W": 256,
+  "H": 128,
+  "D": 40,
+  "mip": true,
+  "pilaOk": true,
+  "chiamate": 4,
+  "fatta": true,
+  "datiLiberati": true,
+  "pixelDiversi": 0,
+  "pixelDiversiDaiDati": 0,
+  "mipDiversi": 0,
+  "msPila": 19.9,
+  "msTutta": 12.3,
+  "err": 0
+ },
+ {
+  "W": 512,
+  "H": 281,
+  "D": 12,
+  "mip": false,
+  "pilaOk": true,
+  "chiamate": 5,
+  "fatta": true,
+  "datiLiberati": true,
+  "pixelDiversi": 0,
+  "pixelDiversiDaiDati": 0,
+  "mipDiversi": 0,
+  "msPila": 3.1,
+  "msTutta": 2.2,
+  "err": 0
+ }
+]
