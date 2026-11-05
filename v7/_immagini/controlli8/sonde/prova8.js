@@ -31,8 +31,8 @@ const SU = GIU.slice().reverse();
         if (fin[i].arm !== null) armMin = Math.min(armMin, fin[i].arm); sxMin = Math.min(sxMin, fin[i].sx); sxMax = Math.max(sxMax, fin[i].sx); syMin = Math.min(syMin, fin[i].sy); syMax = Math.max(syMax, fin[i].sy); }
       R['scala_' + nome] = { s: k, intoppi: snag, salitaFot: +dz.toFixed(3), giroCameraMax: +dyaw.toFixed(0), bracciomin: armMin, schermoX: [sxMin, sxMax], schermoY: [syMin, syMax], fine: [L[L.length - 1].x, L[L.length - 1].y] };
       log('scala', nome, JSON.stringify(R['scala_' + nome]));
-      const files = o.fotos.map(([t, url, s]) => { const f = path.join(TMP, `scala_${nome}_${t.toFixed(1)}.jpg`); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); return [f, `${modo} ${t.toFixed(1)}s braccio ${s.arm} schermo ${s.sx},${s.sy}`]; });
-      provino(files, path.join(OUT, `filmstrip_scala_${modo}_${nome}.jpg`), `[controlli8] Scala del Mercato ${nome === 'giu' ? 'giù dalla Piazza dell\'Ottagono' : 'su verso la piazza'} — ${modo === 'prima' ? '?nofixcontrolli8 (com\'era)' : 'dopo'} · tasti, pilota umano, ${k ? k.toFixed(2) + ' s' : 'non arriva'} · intoppi ${snag}`, 6, 320, 180);
+      const files = o.fotos.filter(([t]) => !k || t <= k + .8).map(([t, url, s]) => { const f = path.join(TMP, `scala_${nome}_${t.toFixed(1)}.jpg`); fs.writeFileSync(f, Buffer.from(url.split(',')[1], 'base64')); return [f, `${modo} ${t.toFixed(1)}s braccio ${s.arm} schermo ${s.sx},${s.sy}`]; });
+      provino(files, path.join(OUT, `filmstrip_scala_${modo}_${nome}.jpg`), `[controlli8] Scala del Mercato ${nome === 'giu' ? 'giu dalla Piazza dell\'Ottagono' : 'su verso la piazza'} - ${modo === 'prima' ? '?nofixcontrolli8 (com\'era)' : 'dopo'} - tasti, pilota umano, ${k ? k.toFixed(2) + ' s' : 'non arriva'} - intoppi ${snag}`, 6, 320, 180);
       R['scala_' + nome].log = L.filter((q, i) => i % 3 === 0);
     }
   } catch (e) { log('ERRORE', e.message); R.errore = e.message; }
