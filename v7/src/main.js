@@ -1571,6 +1571,6 @@
     last = performance.now(); requestAnimationFrame(loop);
   })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
-    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear() };   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
