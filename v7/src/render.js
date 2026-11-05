@@ -19194,6 +19194,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // la distanza alla quale la sfera tocca, o null. Senza mesh (ancora da caricare) la mappa delle case, come prima
   // [controlli8] le chiome col retino (m.userData.r7, i materiali di Vegetazione con uR7) non fermano il braccio: si diradano già. Sulla
   // Scala del Mercato l'albero della Piazza dell'Ottagono accorciava il braccio a 1,9 m (la camera addosso alla schiena) a metà scala
+  // I quattro raggi di lato della sfera partono a 0,9 m dal petto (il centro da 0): la ringhiera o il corrimano a fianco del personaggio
+  // (sulla scala, a mezzo metro) li toccava subito e il braccio si accorciava a 1,3 m anche con la via della camera libera
   function cast7(o, dir, len, r) {
     const now = performance.now();
     if (now - C7R.t > 300 || Math.abs(o.x - C7R.cx) + Math.abs(o.z - C7R.cz) > 3) {
@@ -19205,7 +19207,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     const D = C7R.d.set(dir.x, dir.y, dir.z), rl = Math.hypot(dir.z, dir.x) || 1, rx = dir.z / rl, rz = -dir.x / rl, ux = dir.y * rz, uy = dir.z * rx - dir.x * rz, uz = -dir.y * rx, rc = C7R.rc;
     let best = Infinity;
     for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = 0; rc.far = Math.min(best, len + r);
+      rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = C8R && (a || b) ? Math.min(.9, len * .25) : 0; rc.far = Math.min(best, len + r);
       for (const h of rc.intersectObjects(C7R.list, false)) { if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
         if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || (C8R && (m.userData.r7 || (m.uniforms && m.uniforms.uR7))) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
