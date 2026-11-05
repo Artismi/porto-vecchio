@@ -11,6 +11,7 @@ var Render = (function () {
   const dyn = { people: {}, vespas: {}, lights: [], flicker: [], signs: [], buildings: [], water: null, rain: null, motes: null, laundry: [], markers: null, boats: [], gulls: [], beams: [], chasers: [], spin: [], sky: null };
   let PX = 3, W = 0, H = 0, VIEW = 44;
   const CAM7ON = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search)) && typeof Camera7 !== 'undefined';   // [camera7] il flag, per chi compila prima (le chiome)
+  const C8R = CAM7ON && !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) && !!Camera7.comandi8;   // [controlli8] la base dei comandi la tiene main.js (Camera7.comandi8): qui niente cam.lock; il corpo si gira più svelto
   if (!(typeof location !== 'undefined' && /[?&]vecchiolook\b/.test(location.search))) VIEW = 35;   // [cat] era 38: il personaggio e la strada più grandi nel quadro, meno tetti   // [look] il personaggio più grande nel quadro (era 44 m: 15-18 px di omino, non si trovava)
   const cam = { x: 0, y: 0, zoom: 1, tx: 0, ty: 0, tz: 1, shake: 0, h: 0 };
   const YAW = Math.PI / 4, PITCH = 0.78;
@@ -1584,7 +1585,7 @@ var Render = (function () {
           { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
             diffuseColor.rgb *= (.9 + .2 * cl) * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
-      if (CAM7ON) fade7(sh, 'vWP2');   // [camera7] anche gli alberi semplici
+      if (CAM7ON && fade7(sh, 'vWP2')) m.userData.r7 = true;   // [camera7] anche gli alberi semplici   // [controlli8] r7: col retino, il braccio ci passa
     };
     return m;
   }
@@ -2011,7 +2012,7 @@ var Render = (function () {
             lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
             diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
-      if (CAM7ON) fade7(sh);   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)
+      if (CAM7ON && fade7(sh)) m.userData.r7 = true;   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)   // [controlli8] r7: il braccio ci passa
     };
     m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
@@ -19295,6 +19296,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const C7M = { f: -1, n: 0, k: [], v: [], giro: 0 };
   C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
   if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
+  // [controlli8] le chiome col retino (m.userData.r7, i materiali di Vegetazione con uR7) non fermano il braccio: si diradano già. Sulla
+  // Scala del Mercato l'albero della Piazza dell'Ottagono accorciava il braccio a 1,9 m (la camera addosso alla schiena) a metà scala
   function cast7(o, dir, len, r) {
     if (R8RAGGI && !CAM7.spia) {
       if (C7M.f !== C7M.giro) { C7M.f = C7M.giro; C7M.n = 0; }
@@ -19319,7 +19322,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = 0; rc.far = Math.min(best, len + r);
       for (const h of rc.intersectObjects(C7R.list, false)) { if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
-        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
+        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || (C8R && (m.userData.r7 || (m.uniforms && m.uniforms.uR7))) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
   }
   // [camera7] le cose piccole registrate fra la camera e te (il petto, i piedi) o a meno di 1,5 m dalla camera si spengono (hideTag) e
@@ -19363,9 +19366,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
     const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
-    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH }, dt);
+    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
     CAM7.yaw0 = null; CAM7.ultimo = R7;
-    cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base
+    cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
     CAM6.inV = false; CAM6.coll.x = null; CAM6.occ.k.x = 0; CAM6.occ.on = false; BASSA.k = 0; INQ4.camT = null; RG5.p = null; RG5.mov = null;   // i vecchi strati ripartono da capo se tornano (sui mezzi)
     let kx = 0, ky = 0; if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
@@ -19740,7 +19743,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     pg.visible = !pveh || onVespa || inCar;
     if (pg.userData.ring5) pg.userData.ring5.visible = !inCar && !CA && !PL2.sit && (!PFD.on || PFD.anello);   // [animazioni2] l'anello ai piedi non entra nell'abitacolo
     if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid && !PFD.on; }   /* [profondita3] il personaggio ha la sua ombra di contatto (sguPersonaggio): niente secondo disco */ }
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, C8R && G.C8 && G.C8.on ? G.C8.K.vista : 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [controlli8] più svelto (34)   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     let pgDefer = pg.userData.model && (inCar || (CA && CA.out)) ? (inCar ? pveh.id : CA.vid) : null;   // [animazioni2] al volante (o scendendo): la posa dopo, col mezzo

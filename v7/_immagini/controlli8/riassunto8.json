@@ -1,0 +1,214 @@
+{
+ "node": {
+  "prima": {
+   "fps60": {
+    "primaMossaFot": 3,
+    "passo90Fot": 10,
+    "giro180VistaS": 0.2833333333333333,
+    "giro180MotoreS": 0.21666666666666667,
+    "marciaInvertitaS": 0.2833333333333333,
+    "frenataCorsaS": 0.21666666666666667,
+    "frenataCorsaM": 0.63
+   },
+   "fps30": {
+    "primaMossaFot": 1,
+    "passo90Fot": 5,
+    "giro180VistaS": 0.26666666666666666,
+    "giro180MotoreS": 0.2,
+    "marciaInvertitaS": 0.3,
+    "frenataCorsaS": 0.23333333333333334,
+    "frenataCorsaM": 0.58
+   },
+   "dopo4sDiD": {
+    "ricentroGradi": -83,
+    "wDiLatoGradi": -84
+   },
+   "derivaSchermoWSADW": 21.9,
+   "scala": [
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "levetta",
+     "s": 2.57,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "tasti8",
+     "s": 4.87,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "tasti8 corsa",
+     "s": 2.7,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "levetta",
+     "s": 2.57,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "tasti8",
+     "s": 4.53,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "tasti8 corsa",
+     "s": 3,
+     "intoppi": 0
+    }
+   ],
+   "tratti": {
+    "tratti": 36,
+    "nonArrivano": 9,
+    "intoppi": 34
+   }
+  },
+  "dopo": {
+   "fps60": {
+    "primaMossaFot": 1,
+    "passo90Fot": 3,
+    "giro180VistaS": 0.2,
+    "giro180MotoreS": 0.15,
+    "marciaInvertitaS": 0.11666666666666667,
+    "frenataCorsaS": 0.13333333333333333,
+    "frenataCorsaM": 0.36
+   },
+   "fps30": {
+    "primaMossaFot": 1,
+    "passo90Fot": 2,
+    "giro180VistaS": 0.2,
+    "giro180MotoreS": 0.16666666666666666,
+    "marciaInvertitaS": 0.13333333333333333,
+    "frenataCorsaS": 0.13333333333333333,
+    "frenataCorsaM": 0.31
+   },
+   "dopo4sDiD": {
+    "ricentroGradi": -84.1,
+    "wDiLatoGradi": -0.3
+   },
+   "derivaSchermoWSADW": 12,
+   "scala": [
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "levetta",
+     "s": 2.37,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "tasti8",
+     "s": 4.27,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato giù",
+     "modo": "tasti8 corsa",
+     "s": 2.47,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "levetta",
+     "s": 2.37,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "tasti8",
+     "s": 4.13,
+     "intoppi": 0
+    },
+    {
+     "tratto": "scala del Mercato su",
+     "modo": "tasti8 corsa",
+     "s": 2.43,
+     "intoppi": 0
+    }
+   ],
+   "tratti": {
+    "tratti": 36,
+    "nonArrivano": 1,
+    "intoppi": 2
+   }
+  }
+ },
+ "gioco": {
+  "prima": {
+   "primaMossaFot30": 1,
+   "passo90Fot30": 5,
+   "dietrofrontFacciaS": 0.2,
+   "dietrofrontMarciaS": 0.3,
+   "ricentroGradi": -87.8,
+   "wDiLatoGradi": -87.1,
+   "scala_giu": {
+    "s": 5.033,
+    "intoppi": 0,
+    "arrivato": true,
+    "bracciominM": 1.69,
+    "braccioSotto5mS": 0.2,
+    "braccioSotto5mDopo1sS": 0.2,
+    "saltoQuotaFotM": 2.371,
+    "giroCameraMaxGradiS": 90,
+    "personaggioSchermoX": [
+     -0.12,
+     0.58
+    ]
+   },
+   "scala_su": {
+    "s": null,
+    "intoppi": 2,
+    "arrivato": false,
+    "bracciominM": 1.2,
+    "braccioSotto5mS": 1.8,
+    "braccioSotto5mDopo1sS": 0.7,
+    "saltoQuotaFotM": 0.237,
+    "giroCameraMaxGradiS": 44,
+    "personaggioSchermoX": [
+     0.38,
+     0.52
+    ]
+   }
+  },
+  "dopo": {
+   "primaMossaFot30": 1,
+   "passo90Fot30": 2,
+   "dietrofrontFacciaS": 0.16666666666666666,
+   "dietrofrontMarciaS": 0.13333333333333333,
+   "ricentroGradi": -89,
+   "wDiLatoGradi": 0,
+   "scala_giu": {
+    "s": 4.2,
+    "intoppi": 0,
+    "arrivato": true,
+    "bracciominM": 1.23,
+    "braccioSotto5mS": 0.3,
+    "braccioSotto5mDopo1sS": 0.3,
+    "saltoQuotaFotM": 0.255,
+    "giroCameraMaxGradiS": 150,
+    "personaggioSchermoX": [
+     0.34,
+     0.52
+    ]
+   },
+   "scala_su": {
+    "s": 4.367,
+    "intoppi": 0,
+    "arrivato": true,
+    "bracciominM": 1.2,
+    "braccioSotto5mS": 1.4,
+    "braccioSotto5mDopo1sS": 0.3,
+    "saltoQuotaFotM": 0.244,
+    "giroCameraMaxGradiS": 59,
+    "personaggioSchermoX": [
+     0.47,
+     0.52
+    ]
+   }
+  }
+ }
+}

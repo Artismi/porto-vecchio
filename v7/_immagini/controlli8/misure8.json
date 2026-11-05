@@ -1,0 +1,1199 @@
+{
+ "prima": {
+  "fps60": {
+   "primaMossaFot": 3,
+   "passo90Fot": 10,
+   "giro180VistaS": 0.2833333333333333,
+   "giro180MotoreS": 0.21666666666666667,
+   "marciaInvertitaS": 0.2833333333333333,
+   "frenataCorsaS": 0.21666666666666667,
+   "frenataCorsaM": 0.63
+  },
+  "fps30": {
+   "primaMossaFot": 1,
+   "passo90Fot": 5,
+   "giro180VistaS": 0.26666666666666666,
+   "giro180MotoreS": 0.2,
+   "marciaInvertitaS": 0.3,
+   "frenataCorsaS": 0.23333333333333334,
+   "frenataCorsaM": 0.58
+  },
+  "dopo4sDiD": {
+   "ricentroGradi": -83,
+   "wDiLatoGradi": -84
+  },
+  "derivaSchermoWSADW": 21.9,
+  "tratti30": {
+   "ev": 34,
+   "t": 197.4666666666667,
+   "nonArriva": 9,
+   "lungo": 1679.818874017415
+  },
+  "tratti": [
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "levetta",
+    "s": 2.57,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8",
+    "s": 4.87,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8 corsa",
+    "s": 2.7,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "levetta",
+    "s": 2.57,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8",
+    "s": 4.53,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8 corsa",
+    "s": 3,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "levetta",
+    "s": 5.4,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "tasti8",
+    "s": 9.63,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "tasti8 corsa",
+    "s": 5.43,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "levetta",
+    "s": null,
+    "m": 28.8,
+    "intoppi": 1,
+    "fotIntoppo": 2365,
+    "dove": [
+     [
+      1372.2,
+      304.4
+     ]
+    ],
+    "fine": [
+     1372.1,
+     304.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "tasti8",
+    "s": null,
+    "m": 28.8,
+    "intoppi": 4,
+    "fotIntoppo": 2315,
+    "dove": [
+     [
+      1371.8,
+      304.4
+     ],
+     [
+      1372.2,
+      304.4
+     ],
+     [
+      1371.9,
+      304.4
+     ],
+     [
+      1371.6,
+      304.4
+     ]
+    ],
+    "fine": [
+     1370.3,
+     304.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "tasti8 corsa",
+    "s": null,
+    "m": 28.8,
+    "intoppi": 9,
+    "fotIntoppo": 2304,
+    "dove": [
+     [
+      1371.7,
+      304.4
+     ],
+     [
+      1372.3,
+      304.4
+     ],
+     [
+      1372.4,
+      304.4
+     ],
+     [
+      1372.6,
+      304.4
+     ],
+     [
+      1372.7,
+      304.4
+     ],
+     [
+      1372.8,
+      304.4
+     ],
+     [
+      1373.1,
+      304.4
+     ],
+     [
+      1373.5,
+      304.4
+     ],
+     [
+      1373.7,
+      304.4
+     ]
+    ],
+    "fine": [
+     1373.7,
+     304.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "levetta",
+    "s": 5.3,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "tasti8",
+    "s": 9.37,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "tasti8 corsa",
+    "s": 5.4,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "levetta",
+    "s": 6.1,
+    "m": 39.3,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "tasti8",
+    "s": 11.13,
+    "m": 39.3,
+    "intoppi": 1,
+    "fotIntoppo": 13,
+    "dove": [
+     [
+      1422,
+      298.4
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "tasti8 corsa",
+    "s": 6.43,
+    "m": 39.3,
+    "intoppi": 1,
+    "fotIntoppo": 9,
+    "dove": [
+     [
+      1422,
+      298.3
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "levetta",
+    "s": 3.67,
+    "m": 23.8,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "tasti8",
+    "s": 6.73,
+    "m": 23.8,
+    "intoppi": 1,
+    "fotIntoppo": 8,
+    "dove": [
+     [
+      1350,
+      363.7
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "tasti8 corsa",
+    "s": 3.93,
+    "m": 23.8,
+    "intoppi": 1,
+    "fotIntoppo": 8,
+    "dove": [
+     [
+      1349.9,
+      363.7
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "levetta",
+    "s": 6.83,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "tasti8",
+    "s": 12.13,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "tasti8 corsa",
+    "s": 6.93,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "levetta",
+    "s": 2.73,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "tasti8",
+    "s": 5,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "tasti8 corsa",
+    "s": 2.93,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "levetta",
+    "s": null,
+    "m": 39.2,
+    "intoppi": 1,
+    "fotIntoppo": 2052,
+    "dove": [
+     [
+      1297.7,
+      380.4
+     ]
+    ],
+    "fine": [
+     1297.7,
+     380.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "tasti8",
+    "s": null,
+    "m": 39.2,
+    "intoppi": 3,
+    "fotIntoppo": 1206,
+    "dove": [
+     [
+      1271.3,
+      373.6
+     ],
+     [
+      1311.7,
+      373.8
+     ],
+     [
+      1351.7,
+      366.4
+     ]
+    ],
+    "fine": [
+     1351.7,
+     366.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "tasti8 corsa",
+    "s": null,
+    "m": 39.2,
+    "intoppi": 1,
+    "fotIntoppo": 1972,
+    "dove": [
+     [
+      1313.7,
+      364.4
+     ]
+    ],
+    "fine": [
+     1313.7,
+     364.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "levetta",
+    "s": null,
+    "m": 162,
+    "intoppi": 2,
+    "fotIntoppo": 1844,
+    "dove": [
+     [
+      1413.9,
+      374.6
+     ],
+     [
+      1419.7,
+      376
+     ]
+    ],
+    "fine": [
+     1419.7,
+     375.9
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "tasti8",
+    "s": null,
+    "m": 162,
+    "intoppi": 2,
+    "fotIntoppo": 1394,
+    "dove": [
+     [
+      1413.9,
+      374.7
+     ],
+     [
+      1419.7,
+      375.9
+     ]
+    ],
+    "fine": [
+     1419.7,
+     374.4
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "tasti8 corsa",
+    "s": null,
+    "m": 162,
+    "intoppi": 5,
+    "fotIntoppo": 229,
+    "dove": [
+     [
+      1397.7,
+      372.1
+     ],
+     [
+      1413.9,
+      374.7
+     ],
+     [
+      1419.7,
+      375.8
+     ],
+     [
+      1443.7,
+      387.7
+     ],
+     [
+      1274.3,
+      401.5
+     ]
+    ],
+    "fine": [
+     1274.3,
+     401.9
+    ]
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "levetta",
+    "s": 15.93,
+    "m": 101,
+    "intoppi": 0,
+    "fotIntoppo": 1,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "tasti8",
+    "s": 29.5,
+    "m": 101,
+    "intoppi": 1,
+    "fotIntoppo": 27,
+    "dove": [
+     [
+      1395.7,
+      278.3
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "prima",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "tasti8 corsa",
+    "s": 16.7,
+    "m": 101,
+    "intoppi": 1,
+    "fotIntoppo": 14,
+    "dove": [
+     [
+      1395.7,
+      278.1
+     ]
+    ],
+    "fine": null
+   }
+  ],
+  "scala": [
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "levetta",
+    "s": 2.57,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8",
+    "s": 4.87,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8 corsa",
+    "s": 2.7,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "levetta",
+    "s": 2.57,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8",
+    "s": 4.53,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8 corsa",
+    "s": 3,
+    "intoppi": 0
+   }
+  ]
+ },
+ "dopo": {
+  "fps60": {
+   "primaMossaFot": 1,
+   "passo90Fot": 3,
+   "giro180VistaS": 0.2,
+   "giro180MotoreS": 0.15,
+   "marciaInvertitaS": 0.11666666666666667,
+   "frenataCorsaS": 0.13333333333333333,
+   "frenataCorsaM": 0.36
+  },
+  "fps30": {
+   "primaMossaFot": 1,
+   "passo90Fot": 2,
+   "giro180VistaS": 0.2,
+   "giro180MotoreS": 0.16666666666666666,
+   "marciaInvertitaS": 0.13333333333333333,
+   "frenataCorsaS": 0.13333333333333333,
+   "frenataCorsaM": 0.31
+  },
+  "dopo4sDiD": {
+   "ricentroGradi": -84.1,
+   "wDiLatoGradi": -0.3
+  },
+  "derivaSchermoWSADW": 12,
+  "tratti30": {
+   "ev": 2,
+   "t": 302.6666666666667,
+   "nonArriva": 1,
+   "lungo": 1679.818874017415
+  },
+  "tratti": [
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "levetta",
+    "s": 2.37,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8",
+    "s": 4.27,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8 corsa",
+    "s": 2.47,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "levetta",
+    "s": 2.37,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8",
+    "s": 4.13,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8 corsa",
+    "s": 2.43,
+    "m": 17.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "levetta",
+    "s": 5.27,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "tasti8",
+    "s": 9.37,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "cavour_sotto (scalinata Stazione)",
+    "modo": "tasti8 corsa",
+    "s": 5.3,
+    "m": 34.9,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "levetta",
+    "s": 4.33,
+    "m": 28.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "tasti8",
+    "s": 8.1,
+    "m": 28.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lanternini",
+    "modo": "tasti8 corsa",
+    "s": 4.6,
+    "m": 28.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "levetta",
+    "s": 5.17,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "tasti8",
+    "s": 9.3,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_arco",
+    "modo": "tasti8 corsa",
+    "s": 5.27,
+    "m": 34.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "levetta",
+    "s": 5.97,
+    "m": 39.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "tasti8",
+    "s": 10.73,
+    "m": 39.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_monache",
+    "modo": "tasti8 corsa",
+    "s": 6.03,
+    "m": 39.3,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "levetta",
+    "s": 3.53,
+    "m": 23.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "tasti8",
+    "s": 6.43,
+    "m": 23.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_storto",
+    "modo": "tasti8 corsa",
+    "s": 3.63,
+    "m": 23.8,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "levetta",
+    "s": 6.7,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "tasti8",
+    "s": 12.03,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_lungo (scalinata)",
+    "modo": "tasti8 corsa",
+    "s": 6.8,
+    "m": 44.1,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "levetta",
+    "s": 2.63,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "tasti8",
+    "s": 4.87,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_forno (scalinata)",
+    "modo": "tasti8 corsa",
+    "s": 2.77,
+    "m": 18,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "levetta",
+    "s": 5.73,
+    "m": 39.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "tasti8",
+    "s": 10.47,
+    "m": 39.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "carceri (dalla scala 17)",
+    "modo": "tasti8 corsa",
+    "s": 5.9,
+    "m": 39.2,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "levetta",
+    "s": null,
+    "m": 162,
+    "intoppi": 1,
+    "fotIntoppo": 1882,
+    "dove": [
+     [
+      1413.9,
+      374.9
+     ]
+    ],
+    "fine": [
+     1413.9,
+     375
+    ]
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "tasti8",
+    "s": 46.5,
+    "m": 162,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "mezzo",
+    "modo": "tasti8 corsa",
+    "s": 26.5,
+    "m": 162,
+    "intoppi": 0,
+    "fotIntoppo": 3,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "levetta",
+    "s": 15.63,
+    "m": 101,
+    "intoppi": 0,
+    "fotIntoppo": 0,
+    "dove": [],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "tasti8",
+    "s": 28.83,
+    "m": 101,
+    "intoppi": 1,
+    "fotIntoppo": 9,
+    "dove": [
+     [
+      1395.7,
+      278.4
+     ]
+    ],
+    "fine": null
+   },
+   {
+    "colla": "dopo",
+    "fps": 30,
+    "tratto": "vic_mura",
+    "modo": "tasti8 corsa",
+    "s": 16.23,
+    "m": 101,
+    "intoppi": 0,
+    "fotIntoppo": 2,
+    "dove": [],
+    "fine": null
+   }
+  ],
+  "scala": [
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "levetta",
+    "s": 2.37,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8",
+    "s": 4.27,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato giù",
+    "modo": "tasti8 corsa",
+    "s": 2.47,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "levetta",
+    "s": 2.37,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8",
+    "s": 4.13,
+    "intoppi": 0
+   },
+   {
+    "tratto": "scala del Mercato su",
+    "modo": "tasti8 corsa",
+    "s": 2.43,
+    "intoppi": 0
+   }
+  ]
+ }
+}
