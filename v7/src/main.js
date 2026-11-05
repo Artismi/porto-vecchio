@@ -81,7 +81,9 @@
   const C8 = CAM7 && !/[?&]nofixcontrolli8\b/.test(location.search) && !!Camera7.comandi8;
   const B8 = C8 ? Camera7.comandi8.crea() : null; let B8dt = 1 / 60, B8r = null;
   const yaw8 = () => (R.cam.yaw || 0) + (ui.drag || 0);   // la camera di adesso: render.js somma ui.drag allo yaw in questo fotogramma
-  const dir8 = (sx, sy, tasti) => { B8.usato = true; return Camera7.comandi8.dir(B8, sx, sy, yaw8(), tasti, B8dt); };   // (sx destra, sy avanti) → la direzione nel mondo
+  const vista7 = () => !!(R.__cam7 && R.__cam7.attivo);   // la camera7 c'è (fuori, a piedi); al chiuso e sotto terra la camera di prima e la sua base
+  const dir8 = (sx, sy, tasti) => { B8.usato = true; if (!vista7()) { Camera7.comandi8.dir(B8, 0, 0); const B = R.camBasis(); return { x: B.rx * sx + B.fx * sy, y: B.rz * sx + B.fz * sy }; }
+    return Camera7.comandi8.dir(B8, sx, sy, yaw8(), tasti, B8dt); };   // (sx destra, sy avanti) → la direzione nel mondo
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
@@ -276,7 +278,7 @@
   }
   // [camera6] si mira? (L2 del controller, B tenuto con l'arma nel Game Boy, il dito che spara, il tasto destro col puntatore, la bomboletta
   // che spruzza). La direzione: col puntatore il punto sotto il puntatore, se no il davanti della camera (si mira girando la visuale)
-  const camDavanti = () => { if (C8 && !st.player.vehicle) { const y = yaw8(); return Math.atan2(-Math.cos(y), -Math.sin(y)); } const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };   // [controlli8] il davanti della camera vera
+  const camDavanti = () => { if (C8 && !st.player.vehicle && vista7()) { const y = yaw8(); return Math.atan2(-Math.cos(y), -Math.sin(y)); } const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };   // [controlli8] il davanti della camera vera
   // [camera7] l'aggancio morbido: chi sta nel cono di ~10° davanti alla camera, entro la portata dell'arma, prende la mira (il più dritto,
   // a parità il più vicino); se no il mirino a terra a 10 m davanti. ui.aimPoint lo disegna render.js (dyn.aim)
   const AGG7 = { cono: 10 * Math.PI / 180, mirino: 10 };
