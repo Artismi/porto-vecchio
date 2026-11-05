@@ -13942,18 +13942,18 @@ var Render = (function () {
         u10: [0, 1, 0, 0], sV: [0, 0, 0, 1], sW: [0, .06, 1, 0] },
       // [fumetto] le due dosi. Le campiture: niente velature né micro-normale, la scala del muro appena; la luce a celle piena (il bordo a fwidth nel
       // materiale, sgP10.z); l'ombra presa dal cielo più piena e più blu-viola; il filo della profondità più deciso e più lungo
-      D1: { DIR: { varia: .18, pittura: .3, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .26, muriSat: .48, vissuto: .35 }, PRO: { celle: 1 },
+      D1: { DIR: { varia: .18, pittura: .3, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .26, muriSat: .44, vissuto: .35 }, PRO: { celle: 1 },
         PFD: { linea: 1.5, lineaSoglia: .035, lineaPersiste: 3, lineaLontano: 140, filoSottile: .5, aria: .45, ariaL: 50, ariaFreddo: .7, quota: .22, spicca: 1.05, suoloK: .88, tettiL: .45 }, CAT: { lineaPersone: 1, bordoPersone: .24, spessore: 1.5 },
         mom: { mattino: { sole: '#ffd49c', soleK: 1.4, luce: [1.05, 1, .93], ombra: [.86, .9, 1.26], sat: 1.14, contrasto: 1.12, esp: 1.1, proNeri: .03, nebbia: '#dfe4ea', proTinta: '#4c54d4', proTintaK: .5, vign: .05 },
           pomeriggio: { sole: '#ffd29a', soleK: 1.4, luce: [1.05, 1, .93], ombra: [.86, .9, 1.26], sat: 1.14, contrasto: 1.12, esp: 1.1, proNeri: .03, nebbia: '#e1e4e8', proTinta: '#5254d2', proTintaK: .5, vign: .05 },
           sera: { sat: 1.14, contrasto: 1.12, esp: 1.06, proTintaK: .44, vign: .08 } },
         u10: [0, 0, 1, 0], sV: [.7, 8, 6, .6], sW: [0, .22, 0, 0], sF: [1, .5, .7, 0], sG: [45, 30, 0, 30] },
-      D2: { DIR: { varia: .12, pittura: .25, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .3, muriSat: .47, vissuto: .3 }, PRO: { celle: 1 },
+      D2: { DIR: { varia: .12, pittura: .25, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .3, muriSat: .44, vissuto: .3 }, PRO: { celle: 1 },
         PFD: { linea: 1.8, lineaSoglia: .032, lineaPersiste: 3, lineaLontano: 150, filoSottile: .6, aria: .5, ariaL: 45, ariaFreddo: .75, quota: .22, spicca: 1.1, suoloK: .9, tettiL: .45 }, CAT: { lineaPersone: 1, bordoPersone: .22, spessore: 1.9 },
         mom: { mattino: { sole: '#ffd296', soleK: 1.44, luce: [1.06, 1, .91], ombra: [.84, .88, 1.3], sat: 1.2, contrasto: 1.16, esp: 1.1, proNeri: .035, nebbia: '#dde3ec', proTinta: '#4a4ed8', proTintaK: .58, vign: .05 },
           pomeriggio: { sole: '#ffcf92', soleK: 1.44, luce: [1.06, 1, .91], ombra: [.84, .88, 1.3], sat: 1.2, contrasto: 1.16, esp: 1.1, proNeri: .035, nebbia: '#e0e3ea', proTinta: '#504ed6', proTintaK: .58, vign: .05 },
           sera: { sat: 1.22, contrasto: 1.15, esp: 1.06, proTintaK: .5, vign: .08 } },
-        u10: [0, 0, 1, 1], sV: [.8, 7, 5, .5], sW: [0, .4, 0, 0], sF: [1, .62, 1, .3], sG: [40, 30, 3, 30] } } };
+        u10: [0, 0, 1, 1], sV: [.8, 7, 5, .5], sW: [0, .28, 0, 0], sF: [1, .62, 1, .3], sG: [40, 30, 3, 30] } } };
   function stile(v) {
     v = String(v || 'A').toUpperCase(); if (v === 'D') v = 'D2'; if (!STILE.on || !/^([ABC]|D[12])$/.test(v)) return STILE.v;   // [fumetto] D = D2
     if (!STILE.base) STILE.base = { DIR: Object.assign({}, DIR), PRO: Object.assign({}, SGU.pro), PFD: Object.assign({}, PFD), CAT: Object.assign({}, CAT), mom: JSON.parse(JSON.stringify(SGU.momenti)) };
@@ -14307,7 +14307,7 @@ if ( sgP10.w > 0. ) { vec3 sgL0 = directionalLights[ 0 ].direction; float sgNl =
     float sgFm = max( sgFw.x, sgFw.y ), sgOn = ( 1. - smoothstep( .22, .33, sgFm ) ) * mix( .25, 1., smoothstep( .036, .0625, sgFm ) ), sgSh = 1. - sgLit, sgDt = length( fract( sgHp ) - .5 );
     float sgR = .3 * sqrt( smoothstep( .4, 1., sgSh ) ) * ( 1. - smoothstep( .8, 2., sgCv ) ), sgAa = max( sgFw.x, sgFw.y ) * .7 + .01, sgDot = ( 1. - smoothstep( sgR - sgAa, sgR + sgAa, sgDt ) ) * step( .01, sgR );
     vec3 sgTn = sgP3.rgb / max( max( sgP3.r, max( sgP3.g, sgP3.b ) ), 1e-3 );   /* il tono dell'ombra (il cielo dell'ora) */
-    reflectedLight.indirectDiffuse *= mix( vec3( 1. ), mix( vec3( .72 ), sgTn * .72, .45 ), sgDot * sgOn * sgP10.w * ( 1. - .5 * sgP5.y ) ); }
+    reflectedLight.indirectDiffuse *= mix( vec3( 1. ), mix( vec3( .76 ), sgTn * .76, .45 ), sgDot * sgOn * sgP10.w * ( 1. - .5 * sgP5.y ) ); }
 #endif
 }
 #endif`;
@@ -14680,7 +14680,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
 #endif
                 ) * smoothstep(.42, .65, sA) * (1. - wS)), 0.);
 #ifdef SG_STILE
-                c = max(c + (lA - .42) * sF.w * smoothstep(.45, .7, sA) * (1. - wS), 0.);   /* [fumetto] D2: il writing e le insegne staccano anche di valore dal muro (il giallo più chiaro, il blu più scuro): lo spray si legge */
+                c = max(c + (lA - .42) * sF.w * smoothstep(.55, .8, sA) * (1. - wS), 0.);   /* [fumetto] D2: il writing e le insegne staccano anche di valore dal muro (il giallo più chiaro, il blu più scuro): lo spray si legge */
 #endif
               }
               lq = dot(c, vec3(.299, .587, .114)); }
@@ -14776,11 +14776,16 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               highp float i0 = 1. / fd0, pxA = 2. * fN.w / src.y;
               float kx = (i0 - .5 * (1. / dR + 1. / dL)) / (i0 * pxA), ky = (i0 - .5 * (1. / dU + 1. / dB)) / (i0 * pxA);
               float kv = max(abs(kx) * (1. - smoothstep(2.5, 5., abs(kx))), abs(ky) * (1. - smoothstep(2.5, 5., abs(ky))));
-              lnP = sF.y * smoothstep(.3, .85, kv) * (1. - smoothstep(sG.w * .5, sG.w, fd0 - fA.w)) * (1. - fSky) * (1. - fPers) * (1. - lin);
+              /* IL RETINO DELLE COSE CHE SI APRONO (le chiome davanti alla camera, il varco: buchi di 1-2 px) non deve diventare un groviglio nero: un pixel
+                 col fondo da due parti opposte (a destra E a sinistra, o sopra E sotto) è un buco del retino o un filo di 1 px, non una sagoma */
+              float fR = step(fB.y, dR / fd0 - 1.), fL = step(fB.y, dL / fd0 - 1.), fU = step(fB.y, dU / fd0 - 1.), fB0 = step(fB.y, dB / fd0 - 1.), op1 = max(fR * fL, fU * fB0);
+              lin *= 1. - op1 * sF.x;
+              lnP = sF.y * smoothstep(.3, .85, kv) * (1. - smoothstep(sG.w * .5, sG.w, fd0 - fA.w)) * (1. - fSky) * (1. - fPers) * (1. - lin) * (1. - op1);
               if (sF.z > 0. && fd0 < fA.w + sG.y) { vec2 e2 = e * 2.;
                 highp float r1 = fD(vUv + vec2(e2.x, 0.)), r2 = fD(vUv - vec2(e2.x, 0.)), r3 = fD(vUv + vec2(0., e2.y)), r4 = fD(vUv - vec2(0., e2.y));
                 float jr = max(max(r1, r2), max(r3, r4)) / fd0 - 1.;
-                lin = max(lin, smoothstep(fB.y, fB.y * 2., jr) * sF.z * (1. - fSky) * fE.x * (1. - smoothstep(sG.y * .5, sG.y, fd0 - fA.w))); } }
+                float op2 = max(step(fB.y, r1 / fd0 - 1.) * step(fB.y, r2 / fd0 - 1.), step(fB.y, r3 / fd0 - 1.) * step(fB.y, r4 / fd0 - 1.));   /* il fondo a 2 px da due parti: retino o cosa sottile (un palo resta col suo filo di 1 px) */
+                lin = max(lin, smoothstep(fB.y, fB.y * 2., jr) * sF.z * (1. - fSky) * fE.x * (1. - smoothstep(sG.y * .5, sG.y, fd0 - fA.w)) * (1. - max(op1, op2))); } }
 #endif
             c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin);   /* nel regime il grigio tecnico */
 #ifdef SG_STILE

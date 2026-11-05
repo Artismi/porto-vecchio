@@ -9,7 +9,7 @@ POSTI = [('vicolo', 'vicolo, ore 11'), ('sbocco', 'sbocco, sulla piazza, ore 16'
 VAR = [('A', 'A  oggi'), ('D1', 'D1  fumetto pulito'), ('D2', 'D2  graffiti a fumetto')]
 FB = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 26)
 FS = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 18)
-FT = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 34)
+FT = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 26)
 def lum(a): return a[..., 0] * .2126 + a[..., 1] * .7152 + a[..., 2] * .0722
 def misura(path, st):
     a = np.asarray(Image.open(path).convert('RGB')).astype(np.float32) / 255.; L = lum(a)
@@ -28,18 +28,15 @@ def misura(path, st):
     return r
 def tremolio(f1, f2):
     # la camera spostata di mezzo pixel (setViewOffset .5, .5). grezzo: come _immagini/stile/tremolio.json (differenza media RGB, % di pixel oltre 24
-    # livelli): conta anche il bordo netto che si sposta, quindi un'immagine con più inchiostro paga di più. residuo: la prima foto spostata di
-    # mezzo pixel (la media dei 4 vicini, nella direzione che spiega meglio) contro la seconda: resta solo quello che cambia DAVVERO (scalette,
-    # retino che sfarfalla, righe che saltano), non il bordo che scivola. Più basso, più fermo
+    # livelli): conta anche il bordo netto che si sposta, quindi un'immagine con più inchiostro paga di più.     # interno: lo stesso, ma solo DENTRO le superfici (fuori i bordi forti, salto di valore oltre .22 in 2 px, e 2 px attorno): quello che sfarfalla davvero (retino, celle, trame,
+    # righe che saltano), non il bordo che scivola di mezzo pixel. [differenza media, % oltre 24, % del quadro misurato]. Più basso, più fermo
     a = np.asarray(Image.open(f1).convert('RGB')).astype(np.float32); b = np.asarray(Image.open(f2).convert('RGB')).astype(np.float32)
     d = np.abs(a - b); g = [float(d.mean()), float((d.max(2) > 24).mean() * 100)]
-    best = None
-    for sy in (-1, 1):
-        for sx in (-1, 1):
-            s = (a + np.roll(a, sy, 0) + np.roll(a, sx, 1) + np.roll(np.roll(a, sy, 0), sx, 1)) * .25
-            r = np.abs(s - b)[4:-4, 4:-4]; v = [float(r.mean()), float((r.max(2) > 24).mean() * 100)]
-            if best is None or v[0] < best[0]: best = v
-    return {'grezzo': [round(x, 2) for x in g], 'residuo': [round(x, 2) for x in best]}
+    L = lum(a / 255.); gx = np.abs(np.roll(L, 1, 1) - np.roll(L, -1, 1)); gy = np.abs(np.roll(L, 1, 0) - np.roll(L, -1, 0))
+    m = (np.maximum(gx, gy) > .22).astype(np.uint8)   # solo i bordi forti (sagome, inchiostro): il retino (contrasto basso) resta dentro e si misura
+    m = np.asarray(Image.fromarray(m * 255).filter(ImageFilter.MaxFilter(5))) > 0   # i bordi netti (e 2 px attorno) fuori: resta l'interno delle superfici
+    di = d.max(2)[~m]; best = [float(d.mean(2)[~m].mean()), float((di > 24).mean() * 100), float((~m).mean() * 100)]
+    return {'grezzo': [round(x, 2) for x in g], 'interno': [round(x, 2) for x in best]}
 def stato(posto):
     try: return {v: s for v, s in json.load(open(os.path.join(HERE, f'log_{PRE}_{posto}.json')))['stato']}
     except Exception: return {}
