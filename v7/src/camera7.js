@@ -61,7 +61,9 @@ var Camera7 = (function () {
   // il ricentro aspetta anche K8.recentHold s di marcia nella stessa direzione (un tasto nuovo, la levetta girata di più di K8.giroLev):
   // nelle mosse svelte (scansarsi, girare un angolo) la vista sta ferma e i tasti restano di lato; tenendo la via la camera ti viene dietro
   // (se il braccio è sotto K8.coperto del pieno, un muro o una ringhiera fra te e la camera, il ricentro non aspetta: si gira dietro la marcia)
-  const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D, coperto: .6 };
+  // (e si gira fino a K8.recentCop rad/s, senza la partenza piano: scendendo la Scala del Mercato con la camera sopra la piazza il muro del
+  // gradone e la ringhiera stanno fra voi, e la camera restava a 1,2 m dalla schiena per quasi un secondo)
+  const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D, coperto: .6, recentCop: 150 * D };
   const C8 = { on: !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -108,8 +110,9 @@ var Camera7 = (function () {
     let dyRic = 0;
     if (!q.mira && sv > k.recentVel && S.quiet > k.recentAfter && !(C8.on && q.tenuto !== undefined && q.tenuto < K8.recentHold && S.arm.x > k.arm * K8.coperto)) {   // [controlli8] e la stessa via da un secondo (subito se il braccio è accorciato: dietro la marcia c'è aria)
       const d = ang(dietro(S.vx.x, S.vy.x) - S.yawT);
-      if (Math.abs(d) < k.recentAng) { S.recent = Math.min(1, S.recent + dt / k.recentRamp);
-        const w = Math.min(k.recentMax, k.recentK * Math.abs(d)) * S.recent, st = Math.sign(d) * Math.min(Math.abs(d), w * dt); S.yawT += st; dyRic = st; if (Math.abs(st) > 1e-4) S.mosse++; }
+      const cop = C8.on && S.arm.x < k.arm * K8.coperto;   // [controlli8] la camera addosso (un muro, la ringhiera della scala fra te e lei): si gira fuori svelta
+      if (Math.abs(d) < k.recentAng) { S.recent = cop ? 1 : Math.min(1, S.recent + dt / k.recentRamp);
+        const w = Math.min(cop ? K8.recentCop : k.recentMax, k.recentK * (cop ? 2 : 1) * Math.abs(d)) * S.recent, st = Math.sign(d) * Math.min(Math.abs(d), w * dt); S.yawT += st; dyRic = st; if (Math.abs(st) > 1e-4) S.mosse++; }
       else S.recent = 0;
       if (q.pu === undefined) { S.pu += (0 - S.pu) * (1 - Math.exp(-dt * 3 / k.pitchBack)); if (Math.abs(S.pu) < 1e-4) S.pu = 0; }
     } else S.recent = 0;
