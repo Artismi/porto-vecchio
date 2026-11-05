@@ -1,0 +1,7515 @@
+{
+"nome": "base_b",
+"q": "",
+"disp": "portatile",
+"quando": "2026-11-05T10:14:32.760Z",
+"tratti": {
+"0_fermo": {
+"esito": {
+"giocoS": 12
+},
+"wall": 94.5,
+"giri": 248,
+"fps": 2.5,
+"jsMs": {
+"media": 379.79,
+"p50": 311.7,
+"p95": 730.5,
+"p99": 1377.5,
+"max": 1698.7
+},
+"mainMs": {
+"media": 342.36,
+"p95": 601.5,
+"p99": 1009.2
+},
+"intervallo": {
+"media": 401.67,
+"p95": 750,
+"p99": 1466.6,
+"max": 3517,
+"oltre50": 247,
+"oltre100": 247
+},
+"disegni": {
+"media": 377,
+"max": 722,
+"triangoli": 1024232
+},
+"longtask": [
+{
+"t": 153292,
+"ms": 1701,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+245.1
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+194.4
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+115.8
+],
+[
+"(garbage collector) < (root)",
+110
+]
+]
+},
+{
+"t": 223422,
+"ms": 1472,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+321.2
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+231.1
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+115.5
+],
+[
+"taglia@peso_fusi:71481 < S.onBeforeRender@peso_fusi:71634 < Js.render@three.min:500 < rd.render@peso_lontano:71369",
+52.8
+]
+]
+},
+{
+"t": 214613,
+"ms": 1380,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+307.9
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+159.5
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+140.3
+],
+[
+"raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206 < acceleratedRaycast@mesh_bvh:5433 < fast@render:93516",
+118.5
+]
+]
+},
+{
+"t": 142433,
+"ms": 1227,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+203.3
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+146.9
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+123.8
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+68.6
+]
+]
+},
+{
+"t": 137689,
+"ms": 1179,
+"chi": [
+[
+"sub@personaggi:105380 < ray@personaggi:105918 < testaKit@personaggi:105879 < testa@personaggi:105924",
+223.4
+],
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+134.1
+],
+[
+"(garbage collector) < (root)",
+116.2
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+84.1
+]
+]
+},
+{
+"t": 230737,
+"ms": 1032,
+"chi": []
+},
+{
+"t": 222419,
+"ms": 1002,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+155.9
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+146.8
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+115.9
+],
+[
+"c2Raw@world_cittanuova:27469 < c2Dist@world_cittanuova:27481 < Inland0@world_cittanuova:27614 < InlandK@world_cittanuova:27622",
+71.3
+]
+]
+},
+{
+"t": 180990,
+"ms": 974,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+145.9
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < calliFont@writer_arte:61751",
+128
+],
+[
+"(garbage collector) < (root)",
+83
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < calliFont@writer_arte:61751 < art@writer_arte:61893",
+61.3
+]
+]
+},
+{
+"t": 190588,
+"ms": 923,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+322.4
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+100.7
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+74.9
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+45.9
+]
+]
+},
+{
+"t": 134087,
+"ms": 818,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+69
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+57.4
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+50.5
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178 < art@writer_arte:61893",
+46.8
+]
+]
+},
+{
+"t": 181975,
+"ms": 753,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+145.2
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+94.2
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+79.4
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+36.2
+]
+]
+},
+{
+"t": 136521,
+"ms": 748,
+"chi": [
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+189.4
+],
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+90.2
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+75.3
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+74.7
+]
+]
+},
+{
+"t": 152285,
+"ms": 736,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+121.3
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+61
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+44.8
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+42.2
+]
+]
+},
+{
+"t": 193247,
+"ms": 710,
+"chi": [
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+85.6
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+73.9
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+67.4
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+46.4
+]
+]
+},
+{
+"t": 135844,
+"ms": 670,
+"chi": [
+[
+"animPerson@models:21728 < (anon)@render:95242 < frame@render:95098 < (anon)@main:99909",
+168
+],
+[
+"intersectTriangle@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351",
+66.6
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTris@mesh_bvh:3071 < raycast@mesh_bvh:3351 < raycast@mesh_bvh:4206",
+49.1
+],
+[
+"cl@personaggi:105318 < geomG@personaggi:105678 < catenaStrati.zona@personaggi:105693 < ring@personaggi:105451",
+47.3
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 252,
+"msGiro": 354.071,
+"max": 2531.4
+},
+{
+"k": "frame@?",
+"n": 756,
+"msGiro": 38.021,
+"max": 1141.3
+},
+{
+"k": "loop@?",
+"n": 1260,
+"msGiro": 3.236,
+"max": 47.4
+},
+{
+"k": "tick@?",
+"n": 252,
+"msGiro": 0.26,
+"max": 5.6
+},
+{
+"k": "thumbPump@?",
+"n": 252,
+"msGiro": 0.127,
+"max": 9.6
+},
+{
+"k": "gfxLoop@?",
+"n": 252,
+"msGiro": 0.057,
+"max": 2.6
+},
+{
+"k": "draw3@?",
+"n": 252,
+"msGiro": 0.02,
+"max": 1.7
+}
+],
+"gl": [
+{
+"k": "getProgramParameter",
+"n": 9,
+"ms": 2004,
+"max": 1984.5,
+"MB": 0
+},
+{
+"k": "drawImage",
+"n": 2555,
+"ms": 1387.3,
+"max": 27.8,
+"MB": 0
+},
+{
+"k": "getImageData",
+"n": 920,
+"ms": 1152.8,
+"max": 22,
+"MB": 0
+},
+{
+"k": "putImageData",
+"n": 615,
+"ms": 94.8,
+"max": 16.3,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 10919,
+"ms": 86.2,
+"max": 6.6,
+"MB": 103.2
+},
+{
+"k": "texSubImage2D",
+"n": 474,
+"ms": 60.8,
+"max": 6.9,
+"MB": 562
+},
+{
+"k": "bufferData",
+"n": 2085,
+"ms": 21,
+"max": 4,
+"MB": 16.5
+},
+{
+"k": "fillText",
+"n": 698,
+"ms": 12.7,
+"max": 2,
+"MB": 0
+},
+{
+"k": "getQueryParameter",
+"n": 1310,
+"ms": 7.6,
+"max": 0.7,
+"MB": 0
+},
+{
+"k": "texImage2D",
+"n": 1,
+"ms": 5.1,
+"max": 5.1,
+"MB": 2.8
+},
+{
+"k": "texSubImage3D",
+"n": 4,
+"ms": 4.4,
+"max": 3.3,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 252,
+"ms": 3.6,
+"max": 0.2,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 514,
+"ms": 2.8,
+"max": 0.4,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 73,
+"ms": 0.2,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 21,
+"ms": 0.2,
+"max": 0.1,
+"MB": 831.2
+},
+{
+"k": "compileShader",
+"n": 6,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 181.38,
+"ScriptDuration": 176.74,
+"LayoutDuration": 0.011,
+"RecalcStyleDuration": 0.005,
+"LayoutCount": 31,
+"RecalcStyleCount": 45,
+"JSHeapUsedMB": 202.5,
+"Nodes": 1253,
+"taskMsGiro": 731.37
+},
+"info": {
+"progs": 197,
+"tex": 166,
+"geo": 1115
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto no · LOWQ no · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 0,
+"tetto": 0
+},
+"mem": {
+"used": 678647343,
+"tot": 779530099
+},
+"prof": {
+"totMs": 95730,
+"giri": 248,
+"self": [
+[
+"intersectTriangle@three.min:500",
+99.711
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010",
+41.463
+],
+[
+"rayTas@tasselli:74574",
+19.925
+],
+[
+"(garbage collector)",
+16.784
+],
+[
+"intersectTris@mesh_bvh:3071",
+15.199
+],
+[
+"(anon)@writer_arte:60643",
+13.216
+],
+[
+"set@three.min:500",
+13.066
+],
+[
+"get@tasselli:74557",
+9.178
+],
+[
+"drawImage",
+5.374
+],
+[
+"umwSelf@render:93557",
+5.341
+],
+[
+"c2Raw@world_cittanuova:27469",
+4.896
+],
+[
+"getImageData",
+4.848
+],
+[
+"(program)",
+4.806
+],
+[
+"handify@writer_arte:60645",
+3.915
+],
+[
+"gh@three.min:500",
+3.544
+],
+[
+"umw@render:93575",
+3.144
+],
+[
+"raycast@mesh_bvh:3351",
+2.73
+],
+[
+"Dt@three.min:500",
+2.492
+],
+[
+"c2Dist@world_cittanuova:27481",
+1.886
+],
+[
+"multiplyMatrices@three.min:500",
+1.837
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+1.808
+],
+[
+"Ki@three.min:500",
+1.716
+],
+[
+"sub@personaggi:105380",
+1.656
+],
+[
+"Builder.v@personaggi:105342",
+1.487
+],
+[
+"applyMatrix4@three.min:500",
+1.397
+],
+[
+"(anon)@three.min:500",
+1.387
+],
+[
+"step@game:36582",
+1.354
+],
+[
+"frame@render:95098",
+1.324
+],
+[
+"updateWorldMatrix@three.min:500",
+1.299
+],
+[
+"frzSnap@render:93586",
+1.268
+]
+],
+"incl": [
+[
+"(root)",
+386.01
+],
+[
+"(anon)",
+356.141
+],
+[
+"loop0@main:100006",
+315.801
+],
+[
+"(anon)@main:99909",
+302.298
+],
+[
+"frame@render:95098",
+302.062
+],
+[
+"camera7Frame@render:94844",
+215.269
+],
+[
+"passo@camera7:72907",
+215.163
+],
+[
+"prova@camera7:72940",
+215.094
+],
+[
+"cast7@render:94796",
+214.957
+],
+[
+"intersectObjects@three.min:500",
+213.75
+],
+[
+"gh@three.min:500",
+213.621
+],
+[
+"f@render:93534",
+131.522
+],
+[
+"fast@render:93516",
+131.37
+],
+[
+"acceleratedRaycast@mesh_bvh:5433",
+126.084
+],
+[
+"raycast@mesh_bvh:4206",
+125.761
+],
+[
+"raycast@mesh_bvh:3351",
+125.475
+],
+[
+"intersectTris@mesh_bvh:3071",
+121.536
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010",
+105.97
+],
+[
+"intersectTriangle@three.min:500",
+99.786
+],
+[
+"rayTas@tasselli:74574",
+77.811
+],
+[
+"frame@writing:65086",
+36.484
+],
+[
+"scanNear@writing:65028",
+35.676
+],
+[
+"art@pennelli:62425",
+32.721
+],
+[
+"art@writing:63055",
+32.721
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+31.734
+],
+[
+"art@writer_arte:61893",
+30.872
+],
+[
+"rd.render@peso_lontano:71369",
+30.635
+],
+[
+"Js.render@three.min:500",
+30.604
+],
+[
+"snap@writer_arte:61896",
+22.017
+],
+[
+"handify@writer_arte:60645",
+21.586
+],
+[
+"passoBlocco@render:78933",
+19.754
+],
+[
+"buildChunkGen@render:78837",
+19.716
+],
+[
+"inkRender@writer_arte:60981",
+16.79
+],
+[
+"(garbage collector)",
+16.784
+],
+[
+"updateChunks@render:78984",
+15.35
+],
+[
+"pieceInk@writer_arte:61304",
+15.006
+],
+[
+"set@three.min:500",
+13.373
+],
+[
+"(anon)@writer_arte:60643",
+13.216
+],
+[
+"(anon)@render:95177",
+12.499
+],
+[
+"(anon)@main:99908",
+11.899
+],
+[
+"G.step@protagonista:46561",
+11.893
+],
+[
+"G.step@risacca_ui:100206",
+11.893
+],
+[
+"proto.<computed>",
+11.796
+],
+[
+"step@game:36582",
+11.76
+],
+[
+"st@writer_arte:61017",
+11.397
+]
+],
+"moduli": [
+[
+"three.min",
+148.898
+],
+[
+"mesh_bvh",
+60.637
+],
+[
+"tasselli",
+30.779
+],
+[
+"render",
+28.755
+],
+[
+"writer_arte",
+19.255
+],
+[
+"nativo",
+18.678
+],
+[
+"(garbage collector)",
+16.784
+],
+[
+"personaggi",
+9.106
+],
+[
+"world_cittanuova",
+7.816
+],
+[
+"game",
+7.73
+],
+[
+"(program)",
+4.806
+],
+[
+"writing",
+3.152
+],
+[
+"vegetazione",
+2.865
+],
+[
+"peso_fusi",
+2.484
+],
+[
+"peso_ombre",
+2.249
+],
+[
+"oggetti",
+2.238
+],
+[
+"peso_lontano",
+1.841
+],
+[
+"popolo",
+1.631
+],
+[
+"peso_bagliori",
+1.427
+],
+[
+"pennelli",
+1.254
+],
+[
+"models",
+1.17
+],
+[
+"pavimenti",
+1.067
+],
+[
+"(idle)",
+0.903
+],
+[
+"main",
+0.805
+],
+[
+"animali",
+0.786
+],
+[
+"azioni",
+0.668
+],
+[
+"vievive",
+0.596
+],
+[
+"riva",
+0.557
+],
+[
+"risacca_ui",
+0.489
+],
+[
+"writer_mano",
+0.485
+]
+],
+"gcMsGiro": 16.784
+},
+"alloc": {
+"totMB": 22324.8,
+"kbGiro": 92179.8,
+"top": [
+[
+"intersectTriangle@three.min:500",
+56747.45
+],
+[
+"rayTas@tasselli:74574",
+15529.71
+],
+[
+"c2Raw@world_cittanuova:27469",
+2647.49
+],
+[
+"ray@personaggi:105918",
+1855.59
+],
+[
+"handify@writer_arte:60645",
+1690.3
+],
+[
+"push",
+1207.43
+],
+[
+"(anon)@writer_arte:60643",
+881.73
+],
+[
+"geometria@personaggi:106809",
+372.3
+],
+[
+"setFromBufferAttribute@three.min:500",
+371.3
+],
+[
+"hypot",
+362.79
+],
+[
+"next",
+340.28
+],
+[
+"suoloErbosoG@vegetazione:27083",
+302.06
+],
+[
+"(anon)@personaggi:105361",
+299.38
+],
+[
+"x@writing:63472",
+293.3
+],
+[
+"applyMatrix4@three.min:500",
+288.36
+],
+[
+"getVertexPosition@three.min:500",
+231.31
+],
+[
+"(anon)@personaggi:105890",
+225.71
+],
+[
+"Ki@three.min:500",
+214.85
+],
+[
+"computeBoundingSphere@three.min:500",
+186.39
+],
+[
+"pushOutOfVehicles@game:35598",
+183.23
+],
+[
+"step@game:36582",
+162.71
+],
+[
+"terraAt@vegetazione:27062",
+161.14
+],
+[
+"li@three.min:500",
+152.28
+],
+[
+"gritMask@pennelli:62292",
+146.89
+],
+[
+"runOver@game:36022",
+132.05
+]
+]
+},
+"longtaskTot": {
+"n": 250,
+"ms": 94880
+}
+},
+"1_vicolo": {
+"esito": {
+"x": 1340.9,
+"y": 337.6,
+"giocoS": 24,
+"ms": 146619,
+"tappe": 4
+},
+"wall": 147,
+"giri": 492,
+"fps": 3.2,
+"jsMs": {
+"media": 220.54,
+"p50": 177.8,
+"p95": 494.5,
+"p99": 784,
+"max": 1306.6
+},
+"mainMs": {
+"media": 194.05,
+"p95": 393.8,
+"p99": 649.3
+},
+"intervallo": {
+"media": 307.42,
+"p95": 933.3,
+"p99": 1333.2,
+"max": 1817,
+"oltre50": 490,
+"oltre100": 448
+},
+"disegni": {
+"media": 665,
+"max": 1185,
+"triangoli": 1548338
+},
+"longtask": [
+{
+"t": 373049,
+"ms": 1313,
+"chi": [
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+124.5
+],
+[
+"angDiff@game:33645 < updateTraffic@game:36068 < step@game:36582 < G.step@protagonista:46561",
+108.8
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+79.3
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+72.6
+]
+]
+},
+{
+"t": 338078,
+"ms": 1111,
+"chi": [
+[
+"(idle) < (root)",
+726.7
+],
+[
+"(anon)@render:95278 < (anon)@render:95242 < frame@render:95098 < (anon)@main:99909",
+104.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+20.2
+],
+[
+"multiplyMatrices@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500",
+12.4
+]
+]
+},
+{
+"t": 284574,
+"ms": 974,
+"chi": [
+[
+"(idle) < (root)",
+273.3
+],
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+69.2
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+39.7
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+34.1
+]
+]
+},
+{
+"t": 388225,
+"ms": 848,
+"chi": []
+},
+{
+"t": 298544,
+"ms": 785,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+58.3
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+45.9
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+32.3
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+21.4
+]
+]
+},
+{
+"t": 289823,
+"ms": 731,
+"chi": [
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+101.7
+],
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+98
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+55.6
+],
+[
+"getY@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+37.1
+]
+]
+},
+{
+"t": 243315,
+"ms": 687,
+"chi": [
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+119.1
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+59
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+52
+],
+[
+"getY@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+40.6
+]
+]
+},
+{
+"t": 242641,
+"ms": 664,
+"chi": [
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+134.8
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+74.1
+],
+[
+"getY@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+52.5
+],
+[
+"getX@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+39.1
+]
+]
+},
+{
+"t": 273340,
+"ms": 651,
+"chi": [
+[
+"(idle) < (root)",
+633.4
+],
+[
+"dist@game:33644 < step@game:36582 < G.step@protagonista:46561 < G.step@risacca_ui:100206",
+60.1
+],
+[
+"step@game:36582 < G.step@protagonista:46561 < G.step@risacca_ui:100206 < (anon)@main:99908",
+4.9
+],
+[
+"(anon)@tavola_ui:66453 < AZ.playerActions@tavola_ui:66450 < quiList@menu_ui:109776 < quiCount@menu_ui:109787",
+2.1
+]
+]
+},
+{
+"t": 256117,
+"ms": 647,
+"chi": [
+[
+"(idle) < (root)",
+151.2
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+49.2
+],
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+40.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+19.1
+]
+]
+},
+{
+"t": 333729,
+"ms": 640,
+"chi": [
+[
+"(idle) < (root)",
+199.1
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < goticoFont@writer_arte:61765",
+195.2
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < goticoFont@writer_arte:61765 < art@writer_arte:61893",
+38.4
+],
+[
+"drawImage < proto.<computed> < handify@writer_arte:60645 < snap@writer_arte:61896",
+25.2
+]
+]
+},
+{
+"t": 305821,
+"ms": 616,
+"chi": [
+[
+"(program) < (root)",
+92.3
+],
+[
+"strokeText < stesura0@writing:63532 < stesura@writing:63531 < scanNear@writing:65028",
+51
+],
+[
+"uniform3f < gr@three.min:500 < setValue@three.min:500 < setValue@three.min:500",
+41.2
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+28.1
+]
+]
+},
+{
+"t": 308179,
+"ms": 608,
+"chi": [
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+37.8
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+29.8
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017 < inkRender@writer_arte:60981",
+20.2
+],
+[
+"sliceWalk@render:75676 < frame@render:95098 < (anon)@main:99909 < loop0@main:100006",
+16.4
+]
+]
+},
+{
+"t": 257793,
+"ms": 565,
+"chi": [
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+79.6
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+77.2
+],
+[
+"getY@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+30
+],
+[
+"getX@three.min:500 < fromBufferAttribute@three.min:500 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050",
+29
+]
+]
+},
+{
+"t": 264318,
+"ms": 564,
+"chi": [
+[
+"checkIntersection@mesh_bvh:2984 < checkBufferGeometryIntersection@mesh_bvh:3010 < intersectTri@mesh_bvh:3050 < intersectTris@mesh_bvh:3071",
+74.1
+],
+[
+"(idle) < (root)",
+56
+],
+[
+"loop0@main:100006 < (root)",
+53.9
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+30.5
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 496,
+"msGiro": 193.18,
+"max": 1262.8
+},
+{
+"k": "frame@?",
+"n": 1488,
+"msGiro": 25.524,
+"max": 495.4
+},
+{
+"k": "loop@?",
+"n": 2480,
+"msGiro": 3.299,
+"max": 59.7
+},
+{
+"k": "tick@?",
+"n": 496,
+"msGiro": 1.135,
+"max": 96.8
+},
+{
+"k": "thumbPump@?",
+"n": 496,
+"msGiro": 0.058,
+"max": 8.1
+},
+{
+"k": "gfxLoop@?",
+"n": 496,
+"msGiro": 0.052,
+"max": 1.3
+},
+{
+"k": "draw3@?",
+"n": 496,
+"msGiro": 0.023,
+"max": 2.5
+}
+],
+"gl": [
+{
+"k": "getImageData",
+"n": 1392,
+"ms": 1415.2,
+"max": 114.7,
+"MB": 0
+},
+{
+"k": "drawImage",
+"n": 3684,
+"ms": 1243,
+"max": 86.3,
+"MB": 0
+},
+{
+"k": "getProgramParameter",
+"n": 44,
+"ms": 1055.7,
+"max": 1008.3,
+"MB": 0
+},
+{
+"k": "bufferData",
+"n": 10289,
+"ms": 338.8,
+"max": 111.7,
+"MB": 172.6
+},
+{
+"k": "texSubImage2D",
+"n": 4439,
+"ms": 274.2,
+"max": 30,
+"MB": 2953.6
+},
+{
+"k": "texSubImage3D",
+"n": 47,
+"ms": 259.9,
+"max": 96,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 23278,
+"ms": 216.5,
+"max": 10.8,
+"MB": 194.8
+},
+{
+"k": "putImageData",
+"n": 985,
+"ms": 129.5,
+"max": 11,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 1057,
+"ms": 56.9,
+"max": 28.5,
+"MB": 0
+},
+{
+"k": "getQueryParameter",
+"n": 2396,
+"ms": 19.6,
+"max": 2.2,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 496,
+"ms": 9.4,
+"max": 2,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 1042,
+"ms": 4.7,
+"max": 0.5,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 353,
+"ms": 1.8,
+"max": 0.5,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 341,
+"ms": 0.4,
+"max": 0.1,
+"MB": 8651.3
+},
+{
+"k": "linkProgram",
+"n": 5,
+"ms": 0.3,
+"max": 0.2,
+"MB": 0
+},
+{
+"k": "compileShader",
+"n": 10,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 117.82,
+"ScriptDuration": 111.28,
+"LayoutDuration": 0.139,
+"RecalcStyleDuration": 0.14,
+"LayoutCount": 588,
+"RecalcStyleCount": 880,
+"JSHeapUsedMB": 227,
+"Nodes": 1379,
+"taskMsGiro": 239.47
+},
+"info": {
+"progs": 202,
+"tex": 511,
+"geo": 3035
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto no · LOWQ no · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 0,
+"tetto": 0
+},
+"mem": {
+"used": 729878581,
+"tot": 794998349
+},
+"prof": {
+"totMs": 147805,
+"giri": 492,
+"self": [
+[
+"(idle)",
+72.567
+],
+[
+"checkIntersection@mesh_bvh:2984",
+15.768
+],
+[
+"umwSelf@render:93557",
+12.811
+],
+[
+"(garbage collector)",
+10.483
+],
+[
+"umw@render:93575",
+8.832
+],
+[
+"intersectTriangle@three.min:500",
+8.726
+],
+[
+"(anon)@writer_arte:60643",
+7.175
+],
+[
+"rayTas@tasselli:74574",
+6.252
+],
+[
+"(program)",
+6.107
+],
+[
+"getY@three.min:500",
+5.241
+],
+[
+"multiplyMatrices@three.min:500",
+4.785
+],
+[
+"intersectTri@mesh_bvh:3050",
+3.978
+],
+[
+"getX@three.min:500",
+3.878
+],
+[
+"Dt@three.min:500",
+3.231
+],
+[
+"set@three.min:500",
+3.221
+],
+[
+"updateWorldMatrix@three.min:500",
+2.99
+],
+[
+"(anon)@three.min:500",
+2.856
+],
+[
+"getImageData",
+2.829
+],
+[
+"drawImage",
+2.389
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010",
+2.352
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+2.351
+],
+[
+"getProgramParameter",
+2.169
+],
+[
+"frame@render:95098",
+2.098
+],
+[
+"get@tasselli:74557",
+2.069
+],
+[
+"handify@writer_arte:60645",
+1.83
+],
+[
+"applyMatrix4@three.min:500",
+1.606
+],
+[
+"gh@three.min:500",
+1.517
+],
+[
+"step@game:36582",
+1.481
+],
+[
+"sliceWalk@render:75676",
+1.28
+],
+[
+"test@three.min:500",
+1.273
+]
+],
+"incl": [
+[
+"(root)",
+300.416
+],
+[
+"(anon)",
+208.402
+],
+[
+"loop0@main:100006",
+179.436
+],
+[
+"(anon)@main:99909",
+163.513
+],
+[
+"frame@render:95098",
+163.1
+],
+[
+"(idle)",
+72.567
+],
+[
+"intersectObjects@three.min:500",
+59.766
+],
+[
+"gh@three.min:500",
+59.721
+],
+[
+"camera7Frame@render:94844",
+59.294
+],
+[
+"passo@camera7:72907",
+59.199
+],
+[
+"prova@camera7:72940",
+59.128
+],
+[
+"cast7@render:94796",
+59.061
+],
+[
+"rd.render@peso_lontano:71369",
+54.775
+],
+[
+"Js.render@three.min:500",
+54.749
+],
+[
+"f@render:93534",
+35.316
+],
+[
+"fast@render:93516",
+35.223
+],
+[
+"acceleratedRaycast@mesh_bvh:5433",
+32.947
+],
+[
+"raycast@mesh_bvh:4206",
+32.727
+],
+[
+"raycast@mesh_bvh:3351",
+32.569
+],
+[
+"intersectTris@mesh_bvh:3071",
+31.337
+],
+[
+"intersectTri@mesh_bvh:3050",
+31.306
+],
+[
+"checkBufferGeometryIntersection@mesh_bvh:3010",
+27.136
+],
+[
+"umw@render:93575",
+25.34
+],
+[
+"frame@writing:65086",
+23.778
+],
+[
+"scanNear@writing:65028",
+22.895
+],
+[
+"rayTas@tasselli:74574",
+22.573
+],
+[
+"(anon)@render:95177",
+19.567
+],
+[
+"Js.renderBufferDirect@three.min:500",
+18.75
+],
+[
+"scene.updateMatrixWorld@render:93601",
+18.412
+],
+[
+"Nt@three.min:500",
+18.356
+],
+[
+"Ot@three.min:500",
+18.262
+],
+[
+"zt@three.min:500",
+17.892
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+17.62
+],
+[
+"art@pennelli:62425",
+17.616
+],
+[
+"art@writing:63055",
+17.616
+],
+[
+"(anon)@three.min:500",
+17.493
+],
+[
+"umwSelf@render:93557",
+16.46
+],
+[
+"art@writer_arte:61893",
+16.414
+],
+[
+"checkIntersection@mesh_bvh:2984",
+15.964
+],
+[
+"animPerson@models:21728",
+15.06
+],
+[
+"apply@animazioni:19126",
+13.417
+],
+[
+"(anon)@main:99908",
+13.04
+],
+[
+"G.step@risacca_ui:100206",
+13.038
+],
+[
+"G.step@protagonista:46561",
+13.029
+],
+[
+"step@game:36582",
+12.705
+]
+],
+"moduli": [
+[
+"(idle)",
+72.567
+],
+[
+"three.min",
+62.193
+],
+[
+"render",
+38.335
+],
+[
+"mesh_bvh",
+23.569
+],
+[
+"nativo",
+19.267
+],
+[
+"(garbage collector)",
+10.483
+],
+[
+"tasselli",
+10.466
+],
+[
+"writer_arte",
+10.186
+],
+[
+"game",
+7.757
+],
+[
+"(program)",
+6.107
+],
+[
+"personaggi",
+4.577
+],
+[
+"writing",
+3.795
+],
+[
+"peso_ombre",
+3.438
+],
+[
+"peso_fusi",
+2.835
+],
+[
+"popolo",
+2.552
+],
+[
+"peso_lontano",
+2.372
+],
+[
+"oggetti",
+2.247
+],
+[
+"animazioni",
+2.077
+],
+[
+"peso_bagliori",
+1.575
+],
+[
+"main",
+1.246
+],
+[
+"azioni",
+0.989
+],
+[
+"world_cittanuova",
+0.888
+],
+[
+"pennelli",
+0.84
+],
+[
+"pavimenti",
+0.762
+],
+[
+"vievive",
+0.676
+],
+[
+"protagonista",
+0.673
+],
+[
+"tavola_ui",
+0.499
+],
+[
+"risacca_ui",
+0.487
+],
+[
+"risacca",
+0.483
+],
+[
+"animali",
+0.462
+]
+],
+"gcMsGiro": 10.483
+},
+"alloc": {
+"totMB": 13462.6,
+"kbGiro": 28019.7,
+"top": [
+[
+"checkIntersection@mesh_bvh:2984",
+9519.18
+],
+[
+"intersectTriangle@three.min:500",
+3715.03
+],
+[
+"rayTas@tasselli:74574",
+3608.42
+],
+[
+"push",
+765.55
+],
+[
+"handify@writer_arte:60645",
+706.82
+],
+[
+"x@writing:63472",
+474.68
+],
+[
+"(anon)@writer_arte:60643",
+426.42
+],
+[
+"hypot",
+346.06
+],
+[
+"pushOutOfVehicles@game:35598",
+292.92
+],
+[
+"geometria@personaggi:106809",
+267.47
+],
+[
+"frame@render:95098",
+252.21
+],
+[
+"ray@personaggi:105918",
+247.79
+],
+[
+"applyMatrix4@three.min:500",
+239.72
+],
+[
+"c2Raw@world_cittanuova:27469",
+228.41
+],
+[
+"nearPlace@oggetti:44851",
+212.11
+],
+[
+"(anon)@personaggi:105361",
+211.02
+],
+[
+"next",
+201.25
+],
+[
+"runOver@game:36022",
+185.34
+],
+[
+"step@game:36582",
+166.34
+],
+[
+"distanceSqToPoint@three.min:500",
+155.67
+],
+[
+"setFromBufferAttribute@three.min:500",
+152.35
+],
+[
+"updateTraffic@game:36068",
+139.81
+],
+[
+"(anon)@personaggi:105890",
+136.13
+],
+[
+"(anon)@writer_arte:59839",
+135.41
+],
+[
+"griglia@tasselli:74559",
+130.87
+]
+]
+},
+"longtaskTot": {
+"n": 498,
+"ms": 110713
+}
+},
+"2_piazza": {
+"esito": {
+"x": 1381.5,
+"y": 304.8,
+"giocoS": 10.4,
+"ms": 27286,
+"tappe": 1
+},
+"wall": 34.9,
+"giri": 273,
+"fps": 7.5,
+"jsMs": {
+"media": 124.93,
+"p50": 109.7,
+"p95": 213.7,
+"p99": 403.9,
+"max": 733.3
+},
+"mainMs": {
+"media": 112.67,
+"p95": 186.3,
+"p99": 312.5
+},
+"intervallo": {
+"media": 133.21,
+"p95": 233.3,
+"p99": 583.3,
+"max": 900,
+"oltre50": 272,
+"oltre100": 179
+},
+"disegni": {
+"media": 544,
+"max": 958,
+"triangoli": 1818769
+},
+"longtask": [
+{
+"t": 429954,
+"ms": 734,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+65.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+46
+],
+[
+"(program) < (root)",
+27
+],
+[
+"updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500",
+20.7
+]
+]
+},
+{
+"t": 420205,
+"ms": 568,
+"chi": [
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < stencilArt@writer_arte:61558",
+52.4
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+36.1
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+27.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+24.5
+]
+]
+},
+{
+"t": 422181,
+"ms": 410,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+36.5
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+27.3
+],
+[
+"(program) < (root)",
+18.9
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+17.8
+]
+]
+},
+{
+"t": 419116,
+"ms": 399,
+"chi": [
+[
+"get@tasselli:74557 < pget@tasselli:74558 < span@tasselli:74563 < griglia@tasselli:74559",
+45.6
+],
+[
+"span@tasselli:74563 < griglia@tasselli:74559 < rayTas@tasselli:74574 < gh@three.min:500",
+32.7
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+27.8
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+20.8
+]
+]
+},
+{
+"t": 418748,
+"ms": 363,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+35
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+22.8
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+15
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+13.5
+]
+]
+},
+{
+"t": 432494,
+"ms": 289,
+"chi": []
+},
+{
+"t": 418268,
+"ms": 287,
+"chi": [
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+17.3
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+14
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+13.2
+],
+[
+"Builder.v@personaggi:105342 < (anon)@personaggi:105890 < testaKit@personaggi:105879 < testa@personaggi:105924",
+12.8
+]
+]
+},
+{
+"t": 414369,
+"ms": 236,
+"chi": [
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+29.8
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+18.5
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+14.2
+],
+[
+"set@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+9.6
+]
+]
+},
+{
+"t": 431368,
+"ms": 232,
+"chi": [
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814",
+59.4
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814 < art@writer_arte:61893",
+37
+],
+[
+"grana@pennelli:62315 < finisci@pennelli:62374 < (anon)@pennelli:62443 < art@pennelli:62425",
+15.7
+],
+[
+"drawImage < proto.<computed> < handify@writer_arte:60645 < snap@writer_arte:61896",
+11.5
+]
+]
+},
+{
+"t": 423830,
+"ms": 230,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+16.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+11.9
+],
+[
+"(garbage collector) < (root)",
+8.6
+],
+[
+"frame@render:95098 < (anon)@main:99909 < loop0@main:100006 < (root)",
+8.3
+]
+]
+},
+{
+"t": 404817,
+"ms": 228,
+"chi": [
+[
+"bmxTilt@render:87918 < frame@render:95098 < (anon)@main:99909 < loop0@main:100006",
+19.5
+],
+[
+"(anon)@trame:48563 < scassoSteps@trame:48554 < (anon)@trame:48727 < run@trame:48725",
+17.8
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+16.2
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+14.4
+]
+]
+},
+{
+"t": 428681,
+"ms": 220,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+26.3
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+17.4
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+7.6
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+7.6
+]
+]
+},
+{
+"t": 427299,
+"ms": 215,
+"chi": [
+[
+"(idle) < (root)",
+164.2
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+6.7
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+3.9
+],
+[
+"step@game:36582 < G.step@protagonista:46561 < G.step@risacca_ui:100206 < (anon)@main:99908",
+3.8
+]
+]
+},
+{
+"t": 407846,
+"ms": 214,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+12.2
+],
+[
+"(garbage collector) < (root)",
+11.8
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+9
+],
+[
+"get@tasselli:74557 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+8.2
+]
+]
+},
+{
+"t": 419516,
+"ms": 209,
+"chi": [
+[
+"(garbage collector) < (root)",
+36
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+22.5
+],
+[
+"stringi@personaggi:105911 < testaKit@personaggi:105879 < testa@personaggi:105924 < costruisci@personaggi:105618",
+17.7
+],
+[
+"sub@personaggi:105380 < ray@personaggi:105918 < testaKit@personaggi:105879 < testa@personaggi:105924",
+12.2
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 277,
+"msGiro": 111.739,
+"max": 499.8
+},
+{
+"k": "frame@?",
+"n": 831,
+"msGiro": 11.919,
+"max": 653.1
+},
+{
+"k": "loop@?",
+"n": 1385,
+"msGiro": 2.103,
+"max": 11.2
+},
+{
+"k": "tick@?",
+"n": 277,
+"msGiro": 0.456,
+"max": 10.5
+},
+{
+"k": "gfxLoop@?",
+"n": 277,
+"msGiro": 0.043,
+"max": 0.9
+},
+{
+"k": "thumbPump@?",
+"n": 277,
+"msGiro": 0.017,
+"max": 0.7
+},
+{
+"k": "draw3@?",
+"n": 277,
+"msGiro": 0.008,
+"max": 0.3
+}
+],
+"gl": [
+{
+"k": "drawImage",
+"n": 351,
+"ms": 191.4,
+"max": 21.2,
+"MB": 0
+},
+{
+"k": "getImageData",
+"n": 128,
+"ms": 110.6,
+"max": 5.6,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 14846,
+"ms": 101.2,
+"max": 9,
+"MB": 114.1
+},
+{
+"k": "texSubImage2D",
+"n": 2573,
+"ms": 61.7,
+"max": 2.8,
+"MB": 319.6
+},
+{
+"k": "getProgramParameter",
+"n": 5,
+"ms": 41.9,
+"max": 21.1,
+"MB": 0
+},
+{
+"k": "bufferData",
+"n": 3404,
+"ms": 36.2,
+"max": 2.1,
+"MB": 62.8
+},
+{
+"k": "putImageData",
+"n": 98,
+"ms": 23.1,
+"max": 3.9,
+"MB": 0
+},
+{
+"k": "getQueryParameter",
+"n": 1313,
+"ms": 6,
+"max": 0.5,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 244,
+"ms": 5.3,
+"max": 1.8,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 277,
+"ms": 3.7,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 578,
+"ms": 2.6,
+"max": 0.3,
+"MB": 0
+},
+{
+"k": "texSubImage3D",
+"n": 5,
+"ms": 0.8,
+"max": 0.4,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 62,
+"ms": 0.2,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "linkProgram",
+"n": 2,
+"ms": 0.2,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 104,
+"ms": 0,
+"max": 0,
+"MB": 3113.2
+},
+{
+"k": "compileShader",
+"n": 4,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 37.07,
+"ScriptDuration": 34.75,
+"LayoutDuration": 0.062,
+"RecalcStyleDuration": 0.052,
+"LayoutCount": 334,
+"RecalcStyleCount": 510,
+"JSHeapUsedMB": 216.8,
+"Nodes": 1394,
+"taskMsGiro": 135.79
+},
+"info": {
+"progs": 204,
+"tex": 610,
+"geo": 2974
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto no · LOWQ no · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 0,
+"tetto": 0
+},
+"mem": {
+"used": 701404044,
+"tot": 792908880
+},
+"prof": {
+"totMs": 35329,
+"giri": 273,
+"self": [
+[
+"umwSelf@render:93557",
+11.514
+],
+[
+"umw@render:93575",
+8.03
+],
+[
+"intersectTriangle@three.min:500",
+5.441
+],
+[
+"rayTas@tasselli:74574",
+4.854
+],
+[
+"(program)",
+3.788
+],
+[
+"multiplyMatrices@three.min:500",
+3.786
+],
+[
+"(garbage collector)",
+3.782
+],
+[
+"Dt@three.min:500",
+2.924
+],
+[
+"(anon)@writer_arte:60643",
+2.616
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+2.333
+],
+[
+"updateWorldMatrix@three.min:500",
+2.3
+],
+[
+"(idle)",
+2.133
+],
+[
+"set@three.min:500",
+2.073
+],
+[
+"(anon)@three.min:500",
+1.895
+],
+[
+"x@writing:63472",
+1.834
+],
+[
+"frame@render:95098",
+1.691
+],
+[
+"get@tasselli:74557",
+1.659
+],
+[
+"gh@three.min:500",
+1.19
+],
+[
+"test@three.min:500",
+1.077
+],
+[
+"applyMatrix4@three.min:500",
+1.04
+],
+[
+"handify@writer_arte:60645",
+1.029
+],
+[
+"update@three.min:500",
+0.995
+],
+[
+"frzSnap@render:93586",
+0.883
+],
+[
+"guarda@peso_ombre:72100",
+0.862
+],
+[
+"copy@three.min:500",
+0.847
+],
+[
+"setValue@three.min:500",
+0.842
+],
+[
+"bindVertexArray",
+0.802
+],
+[
+"step@game:36582",
+0.799
+],
+[
+"Js.renderBufferDirect@three.min:500",
+0.791
+],
+[
+"decalG@writing:63476",
+0.77
+]
+],
+"incl": [
+[
+"(root)",
+129.409
+],
+[
+"(anon)",
+118.485
+],
+[
+"loop0@main:100006",
+104.672
+],
+[
+"(anon)@main:99909",
+95.354
+],
+[
+"frame@render:95098",
+94.771
+],
+[
+"rd.render@peso_lontano:71369",
+42.886
+],
+[
+"Js.render@three.min:500",
+42.881
+],
+[
+"umw@render:93575",
+22.343
+],
+[
+"camera7Frame@render:94844",
+20.142
+],
+[
+"passo@camera7:72907",
+20.071
+],
+[
+"prova@camera7:72940",
+20.041
+],
+[
+"cast7@render:94796",
+20.007
+],
+[
+"intersectObjects@three.min:500",
+19.986
+],
+[
+"gh@three.min:500",
+19.957
+],
+[
+"scene.updateMatrixWorld@render:93601",
+17.682
+],
+[
+"rayTas@tasselli:74574",
+15.477
+],
+[
+"umwSelf@render:93557",
+14.236
+],
+[
+"(anon)@render:95177",
+12.114
+],
+[
+"Js.renderBufferDirect@three.min:500",
+11.158
+],
+[
+"Nt@three.min:500",
+11.031
+],
+[
+"Ot@three.min:500",
+10.975
+],
+[
+"frame@writing:65086",
+10.658
+],
+[
+"zt@three.min:500",
+10.643
+],
+[
+"animPerson@models:21728",
+10.419
+],
+[
+"(anon)@three.min:500",
+10.137
+],
+[
+"scanNear@writing:65028",
+10.118
+],
+[
+"apply@animazioni:19126",
+9.312
+],
+[
+"Dt@three.min:500",
+8.481
+],
+[
+"(anon)@main:99908",
+7.679
+],
+[
+"G.step@protagonista:46561",
+7.674
+],
+[
+"G.step@risacca_ui:100206",
+7.674
+],
+[
+"step@game:36582",
+7.513
+],
+[
+"intersectTriangle@three.min:500",
+5.452
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+5.336
+],
+[
+"art@pennelli:62425",
+5.334
+],
+[
+"art@writing:63055",
+5.334
+],
+[
+"art@writer_arte:61893",
+4.901
+],
+[
+"snap@writer_arte:61896",
+4.441
+],
+[
+"handify@writer_arte:60645",
+4.368
+],
+[
+"sm.render@peso_lontano:71370",
+4.231
+],
+[
+"sm.render@peso_ombre:72287",
+4.229
+],
+[
+"upload@three.min:500",
+4.149
+],
+[
+"piazzaG@writing:64998",
+4.14
+],
+[
+"passata@peso_ombre:72290",
+4.111
+],
+[
+"(anon)@render:95242",
+3.912
+]
+],
+"moduli": [
+[
+"three.min",
+38.52
+],
+[
+"render",
+30.435
+],
+[
+"tasselli",
+8.247
+],
+[
+"nativo",
+6.67
+],
+[
+"game",
+4.813
+],
+[
+"writing",
+4.485
+],
+[
+"writer_arte",
+4.05
+],
+[
+"(program)",
+3.788
+],
+[
+"(garbage collector)",
+3.782
+],
+[
+"peso_fusi",
+2.529
+],
+[
+"peso_lontano",
+2.34
+],
+[
+"peso_ombre",
+2.315
+],
+[
+"(idle)",
+2.133
+],
+[
+"personaggi",
+1.74
+],
+[
+"peso_bagliori",
+1.359
+],
+[
+"oggetti",
+1.261
+],
+[
+"animazioni",
+1.236
+],
+[
+"main",
+1.044
+],
+[
+"popolo",
+0.995
+],
+[
+"mesh_bvh",
+0.767
+],
+[
+"animali",
+0.564
+],
+[
+"pavimenti",
+0.47
+],
+[
+"riva",
+0.414
+],
+[
+"azioni",
+0.401
+],
+[
+"pennelli",
+0.387
+],
+[
+"risacca_ui",
+0.328
+],
+[
+"protagonista",
+0.274
+],
+[
+"models",
+0.268
+],
+[
+"vievive",
+0.245
+],
+[
+"convivenza",
+0.237
+]
+],
+"gcMsGiro": 3.782
+},
+"alloc": {
+"totMB": 4468,
+"kbGiro": 16759.2,
+"top": [
+[
+"intersectTriangle@three.min:500",
+2975.37
+],
+[
+"rayTas@tasselli:74574",
+2899.65
+],
+[
+"x@writing:63472",
+1161.94
+],
+[
+"frame@render:95098",
+1073.34
+],
+[
+"push",
+410.19
+],
+[
+"handify@writer_arte:60645",
+389.29
+],
+[
+"applyMatrix4@three.min:500",
+383.38
+],
+[
+"pushOutOfVehicles@game:35598",
+337.71
+],
+[
+"distanceSqToPoint@three.min:500",
+243.14
+],
+[
+"hypot",
+239.88
+],
+[
+"geometria@personaggi:106809",
+237.43
+],
+[
+"(anon)@writer_arte:60643",
+231.36
+],
+[
+"runOver@game:36022",
+207.61
+],
+[
+"ray@personaggi:105918",
+183.92
+],
+[
+"next",
+179.63
+],
+[
+"step@game:36582",
+166.75
+],
+[
+"getVertexPosition@three.min:500",
+157.07
+],
+[
+"griglia@tasselli:74559",
+154.59
+],
+[
+"nearPlace@oggetti:44851",
+143.36
+],
+[
+"updateTraffic@game:36068",
+141.21
+],
+[
+"Ki@three.min:500",
+137.82
+],
+[
+"(anon)@writer_arte:59839",
+124.65
+],
+[
+"tickOne@animali:52958",
+122.66
+],
+[
+"(anon)@personaggi:105361",
+109.67
+],
+[
+"raycast@mesh_bvh:3351",
+108.93
+]
+]
+},
+"longtaskTot": {
+"n": 273,
+"ms": 34345
+}
+},
+"3_lungomare": {
+"esito": {
+"x": 1459.9,
+"y": 399,
+"giocoS": 24.9,
+"ms": 72766,
+"tappe": 3
+},
+"wall": 72.9,
+"giri": 499,
+"fps": 6.6,
+"jsMs": {
+"media": 125.52,
+"p50": 114,
+"p95": 196,
+"p99": 373.3,
+"max": 915.2
+},
+"mainMs": {
+"media": 106.84,
+"p95": 163.1,
+"p99": 236.4
+},
+"intervallo": {
+"media": 148.09,
+"p95": 300.1,
+"p99": 683.4,
+"max": 1083,
+"oltre50": 498,
+"oltre100": 345
+},
+"disegni": {
+"media": 551,
+"max": 1171,
+"triangoli": 1435265
+},
+"longtask": [
+{
+"t": 501377,
+"ms": 593,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+42.9
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+36
+],
+[
+"(program) < (root)",
+32.7
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+23.7
+]
+]
+},
+{
+"t": 454550,
+"ms": 528,
+"chi": [
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+72.9
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+58
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+48.3
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+17.5
+]
+]
+},
+{
+"t": 508362,
+"ms": 448,
+"chi": [
+[
+"(idle) < (root)",
+92.3
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+21.3
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+20.5
+],
+[
+"(program) < (root)",
+20
+]
+]
+},
+{
+"t": 444993,
+"ms": 374,
+"chi": [
+[
+"(idle) < (root)",
+147.9
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+22.3
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+18.5
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+11.1
+]
+]
+},
+{
+"t": 503269,
+"ms": 355,
+"chi": [
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+31.2
+],
+[
+"(program) < (root)",
+17.4
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+16.6
+],
+[
+"(garbage collector) < (root)",
+16.3
+]
+]
+},
+{
+"t": 438918,
+"ms": 303,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+31.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13.5
+],
+[
+"updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500",
+11.6
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+9.5
+]
+]
+},
+{
+"t": 438623,
+"ms": 291,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+35.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+21.6
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+18.7
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+11.3
+]
+]
+},
+{
+"t": 499275,
+"ms": 261,
+"chi": [
+[
+"blockNow@popolo:39364 < nearMove@popolo:40345 < hookMove@popolo:40330 < H.move@popolo:40913",
+27
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+19.7
+],
+[
+"sceneTime@azioni:42120 < H.step@azioni:42146 < H.step@economia:42477 < H.step@fazioni:43105",
+17
+],
+[
+"prima@peso_fusi:71639 < frame@render:95098 < (anon)@main:99909 < loop0@main:100006",
+14.1
+]
+]
+},
+{
+"t": 507041,
+"ms": 258,
+"chi": [
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+17.9
+],
+[
+"decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028 < frame@writing:65086",
+16.7
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+16.5
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+14.2
+]
+]
+},
+{
+"t": 440836,
+"ms": 245,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+25.3
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+21.1
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+16.2
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13
+]
+]
+},
+{
+"t": 447080,
+"ms": 243,
+"chi": [
+[
+"(idle) < (root)",
+44.8
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+32.6
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+31
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+11.3
+]
+]
+},
+{
+"t": 468041,
+"ms": 242,
+"chi": [
+[
+"(idle) < (root)",
+136.7
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13.6
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+7.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+5.8
+]
+]
+},
+{
+"t": 440041,
+"ms": 234,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+29
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+17.8
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+10.6
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+10.5
+]
+]
+},
+{
+"t": 498372,
+"ms": 234,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+26.6
+],
+[
+"(program) < (root)",
+14.9
+],
+[
+"drawImage < proto.<computed> < snowPass@render:76920 < buildChunkGen@render:78837",
+12.7
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+10.1
+]
+]
+},
+{
+"t": 442487,
+"ms": 226,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+28.6
+],
+[
+"rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500 < cast7@render:94796",
+22.1
+],
+[
+"intersectTriangle@three.min:500 < rayTas@tasselli:74574 < gh@three.min:500 < intersectObjects@three.min:500",
+17.4
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+10.3
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 503,
+"msGiro": 105.519,
+"max": 546.4
+},
+{
+"k": "frame@?",
+"n": 1509,
+"msGiro": 18.307,
+"max": 823.7
+},
+{
+"k": "loop@?",
+"n": 2515,
+"msGiro": 2.332,
+"max": 22.2
+},
+{
+"k": "tick@?",
+"n": 503,
+"msGiro": 0.367,
+"max": 8.5
+},
+{
+"k": "thumbPump@?",
+"n": 503,
+"msGiro": 0.062,
+"max": 11.2
+},
+{
+"k": "gfxLoop@?",
+"n": 503,
+"msGiro": 0.039,
+"max": 0.6
+},
+{
+"k": "draw3@?",
+"n": 503,
+"msGiro": 0.007,
+"max": 0.1
+}
+],
+"gl": [
+{
+"k": "drawImage",
+"n": 1041,
+"ms": 417.9,
+"max": 30.7,
+"MB": 0
+},
+{
+"k": "getImageData",
+"n": 401,
+"ms": 387.1,
+"max": 17.4,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 27073,
+"ms": 153.5,
+"max": 7.3,
+"MB": 213
+},
+{
+"k": "texSubImage2D",
+"n": 2826,
+"ms": 88.8,
+"max": 3.6,
+"MB": 997.8
+},
+{
+"k": "bufferData",
+"n": 5253,
+"ms": 51.3,
+"max": 1.4,
+"MB": 70.1
+},
+{
+"k": "putImageData",
+"n": 274,
+"ms": 46.7,
+"max": 6.5,
+"MB": 0
+},
+{
+"k": "getQueryParameter",
+"n": 2344,
+"ms": 11.7,
+"max": 0.8,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 503,
+"ms": 7.9,
+"max": 1.1,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 623,
+"ms": 5.6,
+"max": 0.2,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 1044,
+"ms": 4.1,
+"max": 0.5,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 88,
+"ms": 0.5,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 109,
+"ms": 0.3,
+"max": 0.1,
+"MB": 3478.7
+},
+{
+"k": "texSubImage3D",
+"n": 3,
+"ms": 0.2,
+"max": 0.1,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 67.65,
+"ScriptDuration": 63.77,
+"LayoutDuration": 0.138,
+"RecalcStyleDuration": 0.086,
+"LayoutCount": 645,
+"RecalcStyleCount": 937,
+"JSHeapUsedMB": 227.6,
+"Nodes": 1691,
+"taskMsGiro": 135.57
+},
+"info": {
+"progs": 204,
+"tex": 614,
+"geo": 2837
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto 30 · LOWQ gradino 1 · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 1,
+"tetto": 30
+},
+"mem": {
+"used": 748807868,
+"tot": 857539352
+},
+"prof": {
+"totMs": 73225,
+"giri": 499,
+"self": [
+[
+"(idle)",
+17.982
+],
+[
+"umwSelf@render:93557",
+11.465
+],
+[
+"rayTas@tasselli:74574",
+8.695
+],
+[
+"umw@render:93575",
+7.172
+],
+[
+"intersectTriangle@three.min:500",
+6.783
+],
+[
+"x@writing:63472",
+5.856
+],
+[
+"(program)",
+4.047
+],
+[
+"(garbage collector)",
+3.531
+],
+[
+"Dt@three.min:500",
+3.016
+],
+[
+"multiplyMatrices@three.min:500",
+2.88
+],
+[
+"handify@writer_arte:60645",
+2.441
+],
+[
+"decalG@writing:63476",
+2.264
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+2.092
+],
+[
+"(anon)@three.min:500",
+1.984
+],
+[
+"updateWorldMatrix@three.min:500",
+1.68
+],
+[
+"frame@render:95098",
+1.459
+],
+[
+"gh@three.min:500",
+1.281
+],
+[
+"frzSnap@render:93586",
+1.057
+],
+[
+"applyMatrix4@three.min:500",
+1.018
+],
+[
+"test@three.min:500",
+0.982
+],
+[
+"update@three.min:500",
+0.98
+],
+[
+"bindVertexArray",
+0.979
+],
+[
+"guarda@peso_ombre:72100",
+0.938
+],
+[
+"Js.renderBufferDirect@three.min:500",
+0.865
+],
+[
+"setValue@three.min:500",
+0.829
+],
+[
+"sliceWalk@render:75676",
+0.794
+],
+[
+"step@game:36582",
+0.791
+],
+[
+"(anon)@render:95242",
+0.732
+],
+[
+"piazzaG@writing:64998",
+0.712
+],
+[
+"copy@three.min:500",
+0.63
+]
+],
+"incl": [
+[
+"(root)",
+146.743
+],
+[
+"(anon)",
+120.235
+],
+[
+"loop0@main:100006",
+101.167
+],
+[
+"(anon)@main:99909",
+92.126
+],
+[
+"frame@render:95098",
+91.892
+],
+[
+"rd.render@peso_lontano:71369",
+43.608
+],
+[
+"Js.render@three.min:500",
+43.595
+],
+[
+"camera7Frame@render:94844",
+21.842
+],
+[
+"passo@camera7:72907",
+21.796
+],
+[
+"cast7@render:94796",
+21.745
+],
+[
+"intersectObjects@three.min:500",
+21.626
+],
+[
+"gh@three.min:500",
+21.599
+],
+[
+"umw@render:93575",
+20.816
+],
+[
+"(idle)",
+17.982
+],
+[
+"scene.updateMatrixWorld@render:93601",
+17.733
+],
+[
+"rayTas@tasselli:74574",
+16.528
+],
+[
+"frame@writing:65086",
+15.886
+],
+[
+"scanNear@writing:65028",
+15.352
+],
+[
+"umwSelf@render:93557",
+13.553
+],
+[
+"Js.renderBufferDirect@three.min:500",
+11.68
+],
+[
+"Nt@three.min:500",
+11.278
+],
+[
+"Ot@three.min:500",
+11.205
+],
+[
+"zt@three.min:500",
+10.935
+],
+[
+"piazzaG@writing:64998",
+10.147
+],
+[
+"(anon)@three.min:500",
+10.075
+],
+[
+"decalG@writing:63476",
+8.815
+],
+[
+"Dt@three.min:500",
+8.118
+],
+[
+"G.step@risacca_ui:100206",
+7.332
+],
+[
+"(anon)@main:99908",
+7.332
+],
+[
+"G.step@protagonista:46561",
+7.331
+],
+[
+"(anon)@render:95177",
+7.3
+],
+[
+"animPerson@models:21728",
+7.267
+],
+[
+"step@game:36582",
+7.183
+],
+[
+"intersectTriangle@three.min:500",
+6.801
+],
+[
+"apply@animazioni:19126",
+6.57
+],
+[
+"x@writing:63472",
+5.856
+],
+[
+"sm.render@peso_lontano:71370",
+4.948
+],
+[
+"sm.render@peso_ombre:72287",
+4.946
+],
+[
+"passata@peso_ombre:72290",
+4.81
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+4.58
+],
+[
+"art@writing:63055",
+4.577
+],
+[
+"art@pennelli:62425",
+4.576
+],
+[
+"upload@three.min:500",
+4.175
+],
+[
+"art@writer_arte:61893",
+4.174
+],
+[
+"(program)",
+4.047
+]
+],
+"moduli": [
+[
+"three.min",
+36.112
+],
+[
+"render",
+29.213
+],
+[
+"(idle)",
+17.982
+],
+[
+"writing",
+10.491
+],
+[
+"tasselli",
+9.552
+],
+[
+"nativo",
+7.057
+],
+[
+"game",
+4.559
+],
+[
+"(program)",
+4.047
+],
+[
+"(garbage collector)",
+3.531
+],
+[
+"writer_arte",
+3.045
+],
+[
+"peso_fusi",
+2.7
+],
+[
+"peso_ombre",
+2.466
+],
+[
+"peso_lontano",
+2.1
+],
+[
+"peso_bagliori",
+1.353
+],
+[
+"oggetti",
+1.296
+],
+[
+"mesh_bvh",
+1.014
+],
+[
+"personaggi",
+1.014
+],
+[
+"popolo",
+0.972
+],
+[
+"animazioni",
+0.795
+],
+[
+"main",
+0.677
+],
+[
+"azioni",
+0.477
+],
+[
+"animali",
+0.447
+],
+[
+"risacca_ui",
+0.396
+],
+[
+"peso_scatole",
+0.35
+],
+[
+"riva",
+0.327
+],
+[
+"pennelli",
+0.31
+],
+[
+"convivenza",
+0.302
+],
+[
+"protagonista",
+0.293
+],
+[
+"risacca",
+0.267
+],
+[
+"fazioni",
+0.254
+]
+],
+"gcMsGiro": 3.531
+},
+"alloc": {
+"totMB": 8859.8,
+"kbGiro": 18181.3,
+"top": [
+[
+"intersectTriangle@three.min:500",
+3837.13
+],
+[
+"rayTas@tasselli:74574",
+3605.39
+],
+[
+"x@writing:63472",
+3480.08
+],
+[
+"frame@render:95098",
+397.86
+],
+[
+"applyMatrix4@three.min:500",
+326.53
+],
+[
+"pushOutOfVehicles@game:35598",
+304.11
+],
+[
+"handify@writer_arte:60645",
+269.28
+],
+[
+"push",
+251.1
+],
+[
+"distanceSqToPoint@three.min:500",
+211.38
+],
+[
+"hypot",
+199.38
+],
+[
+"runOver@game:36022",
+198.29
+],
+[
+"step@game:36582",
+167.99
+],
+[
+"(anon)@writer_arte:60643",
+147
+],
+[
+"getVertexPosition@three.min:500",
+143.89
+],
+[
+"geometria@personaggi:106809",
+139.44
+],
+[
+"Ki@three.min:500",
+136.84
+],
+[
+"(anon)@oggetti:45645",
+129.37
+],
+[
+"updateTraffic@game:36068",
+111.58
+],
+[
+"next",
+108.55
+],
+[
+"raycast@mesh_bvh:3351",
+103.35
+],
+[
+"ray@personaggi:105918",
+97.93
+],
+[
+"gr@three.min:500",
+94.48
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+87.19
+],
+[
+"tickOne@animali:52958",
+87.12
+],
+[
+"setFromPoints@three.min:500",
+77.66
+]
+]
+},
+"longtaskTot": {
+"n": 499,
+"ms": 62920
+}
+},
+"4_auto": {
+"esito": {
+"kind": "ritmo",
+"x": 1475,
+"y": 353,
+"segno": -1,
+"giri": 4,
+"urti": 0,
+"via": "passeggiata_sud",
+"giocoS": 30
+},
+"wall": 172.1,
+"giri": 606,
+"fps": 3.4,
+"jsMs": {
+"media": 201.93,
+"p50": 146.1,
+"p95": 503.2,
+"p99": 1138.7,
+"max": 2151.1
+},
+"mainMs": {
+"media": 159.82,
+"p95": 343.6,
+"p99": 1000
+},
+"intervallo": {
+"media": 290.18,
+"p95": 983.2,
+"p99": 1216.6,
+"max": 2167,
+"oltre50": 605,
+"oltre100": 502
+},
+"disegni": {
+"media": 1250,
+"max": 3237,
+"triangoli": 1845093
+},
+"longtask": [
+{
+"t": 650816,
+"ms": 2156,
+"chi": [
+[
+"uniformMatrix3fv < _r@three.min:500 < upload@three.min:500 < (anon)@three.min:500",
+959.7
+],
+[
+"(idle) < (root)",
+459.7
+],
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+384.9
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+28.4
+]
+]
+},
+{
+"t": 673100,
+"ms": 1609,
+"chi": [
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814 < art@writer_arte:61893",
+480
+],
+[
+"(garbage collector) < (root)",
+383.7
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814",
+185.4
+],
+[
+"drawImage < proto.<computed> < handify@writer_arte:60645 < snap@writer_arte:61896",
+54.7
+]
+]
+},
+{
+"t": 644718,
+"ms": 1505,
+"chi": [
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+691.2
+],
+[
+"bindVertexArray < u@three.min:500 < setup@three.min:500 < Js.renderBufferDirect@three.min:500",
+509.9
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < stencilArt@writer_arte:61558 < art@writer_arte:61893",
+36.9
+],
+[
+"uniformMatrix3fv < _r@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+32
+]
+]
+},
+{
+"t": 563854,
+"ms": 1414,
+"chi": [
+[
+"uniform3fv < Or@three.min:500 < upload@three.min:500 < (anon)@three.min:500",
+584.1
+],
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+152.9
+],
+[
+"copy@three.min:500 < i@three.min:500 < refreshMaterialUniforms@three.min:500 < (anon)@three.min:500",
+54.7
+],
+[
+"uniformMatrix4fv < Fr@three.min:500 < upload@three.min:500 < (anon)@three.min:500",
+51.2
+]
+]
+},
+{
+"t": 557850,
+"ms": 1329,
+"chi": [
+[
+"uniform3fv < Or@three.min:500 < upload@three.min:500 < (anon)@three.min:500",
+350.5
+],
+[
+"Js.renderBufferDirect@three.min:500 < zt@three.min:500 < Ot@three.min:500 < Nt@three.min:500",
+117.7
+],
+[
+"(garbage collector) < (root)",
+112.7
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < calliFont@writer_arte:61751 < art@writer_arte:61893",
+98.4
+]
+]
+},
+{
+"t": 631231,
+"ms": 1166,
+"chi": [
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+354.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+60.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+43.2
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+28.2
+]
+]
+},
+{
+"t": 608080,
+"ms": 1139,
+"chi": [
+[
+"(idle) < (root)",
+513
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017 < inkRender@writer_arte:60981",
+72.6
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+54.4
+],
+[
+"getImageData < now < proto.<computed> < blurThresh@writer_arte:60771",
+45.6
+]
+]
+},
+{
+"t": 643593,
+"ms": 1124,
+"chi": [
+[
+"(idle) < (root)",
+306.8
+],
+[
+"bindVertexArray < u@three.min:500 < setup@three.min:500 < Js.renderBufferDirect@three.min:500",
+263.4
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017 < inkRender@writer_arte:60981",
+78.8
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+49.7
+]
+]
+},
+{
+"t": 636230,
+"ms": 1055,
+"chi": [
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < calliFont@writer_arte:61751 < art@writer_arte:61893",
+66
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+60.3
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+52.1
+],
+[
+"bindVertexArray < u@three.min:500 < setup@three.min:500 < Js.renderBufferDirect@three.min:500",
+51.1
+]
+]
+},
+{
+"t": 685212,
+"ms": 1032,
+"chi": [
+[
+"uniform3fv < Or@three.min:500 < upload@three.min:500 < (anon)@three.min:500",
+100.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+91.9
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+61.4
+],
+[
+"bindVertexArray < u@three.min:500 < setup@three.min:500 < Js.renderBufferDirect@three.min:500",
+30.5
+]
+]
+},
+{
+"t": 653393,
+"ms": 1010,
+"chi": [
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+280.7
+],
+[
+"(idle) < (root)",
+63.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+44.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+33.8
+]
+]
+},
+{
+"t": 671837,
+"ms": 951,
+"chi": [
+[
+"(idle) < (root)",
+543.6
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814 < art@writer_arte:61893",
+70.2
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < muralModern@writer_arte:61814",
+43.4
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+38.5
+]
+]
+},
+{
+"t": 687053,
+"ms": 950,
+"chi": [
+[
+"uniformMatrix4fv < yr@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+173.5
+],
+[
+"uniformMatrix3fv < _r@three.min:500 < setValue@three.min:500 < (anon)@three.min:500",
+144.5
+],
+[
+"(idle) < (root)",
+82.5
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+50
+]
+]
+},
+{
+"t": 637566,
+"ms": 811,
+"chi": [
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < calliFont@writer_arte:61751 < art@writer_arte:61893",
+307.8
+],
+[
+"(garbage collector) < (root)",
+184.9
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+63.5
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+28.5
+]
+]
+},
+{
+"t": 641558,
+"ms": 791,
+"chi": [
+[
+"(garbage collector) < (root)",
+328.3
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+202.8
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+28.3
+],
+[
+"summary@risacca:38643 < RS.summary@fazioni:43061 < hud@risacca_ui:100223 < loop@risacca_ui:100608",
+17.7
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 607,
+"msGiro": 158.272,
+"max": 2058.6
+},
+{
+"k": "frame@?",
+"n": 1821,
+"msGiro": 41.354,
+"max": 1518.2
+},
+{
+"k": "loop@?",
+"n": 3035,
+"msGiro": 1.661,
+"max": 101.4
+},
+{
+"k": "tick@?",
+"n": 607,
+"msGiro": 0.666,
+"max": 12.4
+},
+{
+"k": "gfxLoop@?",
+"n": 607,
+"msGiro": 0.07,
+"max": 4.6
+},
+{
+"k": "thumbPump@?",
+"n": 607,
+"msGiro": 0.032,
+"max": 2.9
+},
+{
+"k": "draw3@?",
+"n": 607,
+"msGiro": 0.013,
+"max": 1.1
+}
+],
+"gl": [
+{
+"k": "drawImage",
+"n": 3741,
+"ms": 1699.2,
+"max": 41.8,
+"MB": 0
+},
+{
+"k": "getImageData",
+"n": 1492,
+"ms": 1142.2,
+"max": 18.9,
+"MB": 0
+},
+{
+"k": "texSubImage2D",
+"n": 11947,
+"ms": 399.1,
+"max": 92.6,
+"MB": 2554.9
+},
+{
+"k": "bufferSubData",
+"n": 30127,
+"ms": 231.8,
+"max": 8.2,
+"MB": 293.6
+},
+{
+"k": "bufferData",
+"n": 21658,
+"ms": 205.7,
+"max": 44.5,
+"MB": 158.4
+},
+{
+"k": "putImageData",
+"n": 996,
+"ms": 135.3,
+"max": 30.6,
+"MB": 0
+},
+{
+"k": "getProgramParameter",
+"n": 5,
+"ms": 48.4,
+"max": 48.4,
+"MB": 0
+},
+{
+"k": "getQueryParameter",
+"n": 2995,
+"ms": 29.1,
+"max": 5.4,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 1217,
+"ms": 21.6,
+"max": 6.8,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 607,
+"ms": 7.6,
+"max": 0.6,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 1240,
+"ms": 5.2,
+"max": 0.3,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 325,
+"ms": 0.9,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 315,
+"ms": 0.7,
+"max": 0.1,
+"MB": 10910.1
+},
+{
+"k": "texSubImage3D",
+"n": 2,
+"ms": 0.1,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "compileShader",
+"n": 2,
+"ms": 0,
+"max": 0,
+"MB": 0
+},
+{
+"k": "linkProgram",
+"n": 1,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 132.57,
+"ScriptDuration": 123.07,
+"LayoutDuration": 0.35,
+"RecalcStyleDuration": 0.178,
+"LayoutCount": 702,
+"RecalcStyleCount": 1023,
+"JSHeapUsedMB": 246.2,
+"Nodes": 1518,
+"taskMsGiro": 218.76
+},
+"info": {
+"progs": 205,
+"tex": 747,
+"geo": 4215
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto 30 · LOWQ gradino 3 · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 1,
+"tetto": 30
+},
+"mem": {
+"used": 714480013,
+"tot": 823808197
+},
+"prof": {
+"totMs": 172289,
+"giri": 606,
+"self": [
+[
+"(idle)",
+73.375
+],
+[
+"umwSelf@render:93557",
+14.881
+],
+[
+"(garbage collector)",
+11.84
+],
+[
+"umw@render:93575",
+10.043
+],
+[
+"handify@writer_arte:60645",
+9.692
+],
+[
+"uniformMatrix4fv",
+9.434
+],
+[
+"(anon)@writer_arte:60643",
+6.208
+],
+[
+"(program)",
+5.749
+],
+[
+"x@writing:63472",
+5.469
+],
+[
+"(anon)@three.min:500",
+5.218
+],
+[
+"multiplyMatrices@three.min:500",
+5.167
+],
+[
+"Dt@three.min:500",
+4.616
+],
+[
+"uniform3fv",
+4.479
+],
+[
+"uniformMatrix3fv",
+4.309
+],
+[
+"bindVertexArray",
+4.164
+],
+[
+"frame@render:95098",
+3.184
+],
+[
+"updateWorldMatrix@three.min:500",
+3.037
+],
+[
+"drawImage",
+2.889
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+2.367
+],
+[
+"decalG@writing:63476",
+2.231
+],
+[
+"Js.renderBufferDirect@three.min:500",
+2.075
+],
+[
+"update@three.min:500",
+1.997
+],
+[
+"getImageData",
+1.841
+],
+[
+"step@game:36582",
+1.804
+],
+[
+"setValue@three.min:500",
+1.691
+],
+[
+"test@three.min:500",
+1.403
+],
+[
+"frzSnap@render:93586",
+1.384
+],
+[
+"guarda@peso_ombre:72100",
+1.226
+],
+[
+"uniform3f",
+1.174
+],
+[
+"gr@three.min:500",
+1.156
+]
+],
+"incl": [
+[
+"(root)",
+284.305
+],
+[
+"(anon)",
+191.846
+],
+[
+"loop0@main:100006",
+151.761
+],
+[
+"(anon)@main:99909",
+136.141
+],
+[
+"frame@render:95098",
+135.058
+],
+[
+"rd.render@peso_lontano:71369",
+89.633
+],
+[
+"Js.render@three.min:500",
+89.616
+],
+[
+"(idle)",
+73.375
+],
+[
+"Nt@three.min:500",
+46.877
+],
+[
+"Ot@three.min:500",
+46.619
+],
+[
+"Js.renderBufferDirect@three.min:500",
+46.061
+],
+[
+"zt@three.min:500",
+45.609
+],
+[
+"(anon)@three.min:500",
+39.772
+],
+[
+"frame@writing:65086",
+37.04
+],
+[
+"scanNear@writing:65028",
+36.061
+],
+[
+"umw@render:93575",
+28.562
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+24.173
+],
+[
+"art@writing:63055",
+24.158
+],
+[
+"art@pennelli:62425",
+24.156
+],
+[
+"art@writer_arte:61893",
+22.745
+],
+[
+"scene.updateMatrixWorld@render:93601",
+21.234
+],
+[
+"snap@writer_arte:61896",
+19.219
+],
+[
+"handify@writer_arte:60645",
+18.955
+],
+[
+"umwSelf@render:93557",
+18.421
+],
+[
+"setValue@three.min:500",
+16.974
+],
+[
+"upload@three.min:500",
+15.423
+],
+[
+"animPerson@models:21728",
+14.475
+],
+[
+"apply@animazioni:19126",
+13.004
+],
+[
+"G.step@risacca_ui:100206",
+12.92
+],
+[
+"(anon)@main:99908",
+12.92
+],
+[
+"G.step@protagonista:46561",
+12.907
+],
+[
+"Dt@three.min:500",
+12.797
+],
+[
+"step@game:36582",
+12.687
+],
+[
+"(anon)@render:95177",
+12.269
+],
+[
+"(garbage collector)",
+11.84
+],
+[
+"piazzaG@writing:64998",
+10.434
+],
+[
+"uniformMatrix4fv",
+9.434
+],
+[
+"yr@three.min:500",
+9.005
+],
+[
+"decalG@writing:63476",
+8.387
+],
+[
+"setup@three.min:500",
+7.991
+],
+[
+"(anon)@render:95242",
+7.969
+],
+[
+"proto.<computed>",
+7.12
+],
+[
+"sm.render@peso_lontano:71370",
+6.342
+],
+[
+"sm.render@peso_ombre:72287",
+6.336
+],
+[
+"(anon)@writer_arte:60643",
+6.208
+]
+],
+"moduli": [
+[
+"(idle)",
+73.375
+],
+[
+"three.min",
+48.324
+],
+[
+"render",
+43.333
+],
+[
+"nativo",
+36.691
+],
+[
+"writer_arte",
+17.095
+],
+[
+"(garbage collector)",
+11.84
+],
+[
+"writing",
+10.968
+],
+[
+"game",
+7.697
+],
+[
+"(program)",
+5.749
+],
+[
+"peso_ombre",
+3.155
+],
+[
+"peso_fusi",
+2.863
+],
+[
+"peso_lontano",
+2.379
+],
+[
+"main",
+2.093
+],
+[
+"peso_bagliori",
+1.747
+],
+[
+"popolo",
+1.644
+],
+[
+"animazioni",
+1.537
+],
+[
+"tasselli",
+1.5
+],
+[
+"pennelli",
+1.035
+],
+[
+"personaggi",
+0.729
+],
+[
+"vievive",
+0.639
+],
+[
+"animali",
+0.587
+],
+[
+"azioni",
+0.483
+],
+[
+"writer_mano",
+0.452
+],
+[
+"convivenza",
+0.444
+],
+[
+"peso_scatole",
+0.432
+],
+[
+"oggetti",
+0.423
+],
+[
+"tetti",
+0.422
+],
+[
+"risacca_ui",
+0.387
+],
+[
+"fazioni",
+0.385
+],
+[
+"risacca",
+0.383
+]
+],
+"gcMsGiro": 11.84
+},
+"alloc": {
+"totMB": 7028.5,
+"kbGiro": 11876.6,
+"top": [
+[
+"x@writing:63472",
+2827.75
+],
+[
+"handify@writer_arte:60645",
+1232.33
+],
+[
+"frame@render:95098",
+1142.94
+],
+[
+"(anon)@writer_arte:60643",
+736.86
+],
+[
+"(anon)@writer_arte:59839",
+344.75
+],
+[
+"pushOutOfVehicles@game:35598",
+338.21
+],
+[
+"gr@three.min:500",
+203.83
+],
+[
+"runOver@game:36022",
+190.38
+],
+[
+"step@game:36582",
+181.22
+],
+[
+"next",
+167.53
+],
+[
+"push",
+132.45
+],
+[
+"hypot",
+120.14
+],
+[
+"decompose@three.min:500",
+111.49
+],
+[
+"setup@three.min:500",
+102.27
+],
+[
+"updateTraffic@game:36068",
+100.12
+],
+[
+"noiseField@writer_arte:60766",
+96.09
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+81
+],
+[
+"Dt@three.min:500",
+79.51
+],
+[
+"mr@three.min:500",
+77.95
+],
+[
+"griglia@tasselli:74559",
+77.05
+],
+[
+"from",
+76.77
+],
+[
+"setFromBufferAttribute@three.min:500",
+72.4
+],
+[
+"(anon)@game:36086",
+68.5
+],
+[
+"applyMatrix4@three.min:500",
+66.43
+],
+[
+"liberoPercorso@vievive:68424",
+57.22
+]
+]
+},
+"longtaskTot": {
+"n": 610,
+"ms": 124304
+}
+},
+"5_tavoletta": {
+"esito": {
+"ok": true,
+"tentativi": 1,
+"apriMs": 6476.9,
+"pad": true,
+"chiuso": true
+},
+"wall": 19.2,
+"giri": 425,
+"fps": 21,
+"jsMs": {
+"media": 13.75,
+"p50": 1.2,
+"p95": 93.4,
+"p99": 234.5,
+"max": 693.4
+},
+"mainMs": {
+"media": 7.13,
+"p95": 82.1,
+"p99": 133.1
+},
+"intervallo": {
+"media": 45.79,
+"p95": 83.4,
+"p99": 633.3,
+"max": 5800,
+"oltre50": 26,
+"oltre100": 21
+},
+"disegni": {
+"media": 37,
+"max": 1137,
+"triangoli": 129262
+},
+"longtask": [
+{
+"t": 715203,
+"ms": 6477,
+"chi": [
+[
+"readPixels < proto.<computed> < Js.readRenderTargetPixels@three.min:500 < tavShot@writing:64567",
+4720.4
+],
+[
+"(idle) < (root)",
+837.4
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+48.3
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178 < art@writer_arte:61893",
+47.5
+]
+]
+},
+{
+"t": 712683,
+"ms": 696,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+20.1
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+16.5
+],
+[
+"getImageData < now < proto.<computed> < bboxC@writer_arte:60933",
+13.4
+],
+[
+"mobile@peso_ombre:72112 < passata@peso_ombre:72290 < sm.render@peso_ombre:72287 < sm.render@peso_lontano:71370",
+8.2
+]
+]
+},
+{
+"t": 722894,
+"ms": 649,
+"chi": [
+[
+"readPixels < proto.<computed> < Js.readRenderTargetPixels@three.min:500 < tavShot@writing:64567",
+294.1
+],
+[
+"(garbage collector) < (root)",
+172.8
+],
+[
+"getImageData < now < proto.<computed> < bboxC@writer_arte:60933",
+28.7
+],
+[
+"noiseField@writer_arte:60766 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+22.9
+]
+]
+},
+{
+"t": 721680,
+"ms": 511,
+"chi": [
+[
+"readPixels < proto.<computed> < Js.readRenderTargetPixels@three.min:500 < tavShot@writing:64567",
+515.2
+]
+]
+},
+{
+"t": 712296,
+"ms": 324,
+"chi": []
+},
+{
+"t": 714419,
+"ms": 237,
+"chi": [
+[
+"getProgramParameter < proto.<computed> < gl.getProgramParameter@peso_pronti:72351 < rs@three.min:500",
+59.1
+],
+[
+"render@three.min:500 < Js.render@three.min:500 < rd.render@peso_lontano:71369 < sguPasso@render:90409",
+21.9
+],
+[
+"getImageData < now < proto.<computed> < bboxC@writer_arte:60933",
+20.5
+],
+[
+"save < fontDraw@writer_arte:61161 < (anon)@writer_arte:61158 < fontLayout@writer_arte:61152",
+13.8
+]
+]
+},
+{
+"t": 729730,
+"ms": 217,
+"chi": [
+[
+"(idle) < (root)",
+198.6
+],
+[
+"bmbVisit@render:80155 < (anon)@render:80177 < traverseVisible@three.min:500 < traverseVisible@three.min:500",
+2.9
+],
+[
+"(program) < (root)",
+2.9
+],
+[
+"traverseVisible@three.min:500 < traverseVisible@three.min:500 < traverseVisible@three.min:500 < traverseVisible@three.min:500",
+2
+]
+]
+},
+{
+"t": 714707,
+"ms": 213,
+"chi": [
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017 < inkRender@writer_arte:60981",
+129.2
+],
+[
+"getImageData < now < proto.<computed> < blurThresh@writer_arte:60771",
+7.5
+],
+[
+"(anon)@writer_arte:59839 < handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017",
+6.9
+],
+[
+"drawImage < proto.<computed> < handify@writer_arte:60645 < snap@writer_arte:61896",
+5.9
+]
+]
+},
+{
+"t": 730044,
+"ms": 193,
+"chi": [
+[
+"(idle) < (root)",
+177.3
+],
+[
+"(program) < (root)",
+2.9
+],
+[
+"capVeils@writing:64934 < frame@writing:65086 < (root)",
+1.9
+],
+[
+"(garbage collector) < (root)",
+1.9
+]
+]
+},
+{
+"t": 715057,
+"ms": 144,
+"chi": [
+[
+"(idle) < (root)",
+113.3
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+12.3
+],
+[
+"decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028 < frame@writing:65086",
+3.5
+],
+[
+"buildChunkGen@render:78837 < passoBlocco@render:78933 < pompa@render:78953 < (root)",
+2
+]
+]
+},
+{
+"t": 731266,
+"ms": 140,
+"chi": [
+[
+"(idle) < (root)",
+34.4
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+7.5
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+4.6
+],
+[
+"frame@render:95098 < (anon)@main:99909 < loop0@main:100006 < (root)",
+4.1
+]
+]
+},
+{
+"t": 730237,
+"ms": 137,
+"chi": [
+[
+"(idle) < (root)",
+131.7
+],
+[
+"(program) < (root)",
+3.1
+],
+[
+"capVeils@writing:64934 < frame@writing:65086 < (root)",
+1
+],
+[
+"nearPlace@oggetti:44851 < placeOk@oggetti:45004 < (anon)@oggetti:45645 < here@oggetti:45640",
+0.9
+]
+]
+},
+{
+"t": 730384,
+"ms": 137,
+"chi": [
+[
+"(idle) < (root)",
+105.6
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178 < art@writer_arte:61893",
+8.1
+],
+[
+"getImageData < now < proto.<computed> < bboxC@writer_arte:60933",
+7.9
+],
+[
+"save < fontDraw@writer_arte:61161 < (anon)@writer_arte:61158 < fontLayout@writer_arte:61152",
+2
+]
+]
+},
+{
+"t": 714923,
+"ms": 128,
+"chi": [
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < st@writer_arte:61017 < inkRender@writer_arte:60981",
+16.5
+],
+[
+"(program) < (root)",
+11.8
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+6.3
+],
+[
+"(anon)@peso_fusi:71444 < giro@peso_fusi:71456 < prima@peso_fusi:71639 < frame@render:95098",
+6.2
+]
+]
+},
+{
+"t": 730522,
+"ms": 127,
+"chi": [
+[
+"(idle) < (root)",
+113
+],
+[
+"loop@bottino:101813 < (root)",
+2.6
+],
+[
+"(anon)@risacca_ui:100534 < labels@risacca_ui:100515 < loop@risacca_ui:100608 < (root)",
+1.4
+],
+[
+"(program) < (root)",
+1.3
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 428,
+"msGiro": 7.318,
+"max": 345.7
+},
+{
+"k": "frame@?",
+"n": 1284,
+"msGiro": 6.839,
+"max": 647.3
+},
+{
+"k": "loop@?",
+"n": 2140,
+"msGiro": 0.803,
+"max": 9.8
+},
+{
+"k": "tick@?",
+"n": 428,
+"msGiro": 0.123,
+"max": 2.6
+},
+{
+"k": "gfxLoop@?",
+"n": 428,
+"msGiro": 0.067,
+"max": 12.4
+},
+{
+"k": "thumbPump@?",
+"n": 428,
+"msGiro": 0.055,
+"max": 10
+},
+{
+"k": "draw3@?",
+"n": 428,
+"msGiro": 0.01,
+"max": 0.4
+}
+],
+"gl": [
+{
+"k": "readPixels",
+"n": 1,
+"ms": 6225.1,
+"max": 6225.1,
+"MB": 0
+},
+{
+"k": "getImageData",
+"n": 215,
+"ms": 199.5,
+"max": 20,
+"MB": 0
+},
+{
+"k": "drawImage",
+"n": 511,
+"ms": 160.3,
+"max": 9.3,
+"MB": 0
+},
+{
+"k": "getProgramParameter",
+"n": 2,
+"ms": 58.7,
+"max": 58.7,
+"MB": 0
+},
+{
+"k": "putImageData",
+"n": 152,
+"ms": 20.9,
+"max": 9.2,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 95,
+"ms": 14.9,
+"max": 12.8,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 1345,
+"ms": 10.5,
+"max": 1.3,
+"MB": 12.3
+},
+{
+"k": "texSubImage2D",
+"n": 215,
+"ms": 10.4,
+"max": 2.3,
+"MB": 345
+},
+{
+"k": "bufferData",
+"n": 144,
+"ms": 1.6,
+"max": 0.3,
+"MB": 2.7
+},
+{
+"k": "getQueryParameter",
+"n": 137,
+"ms": 0.5,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 55,
+"ms": 0.3,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "renderbufferStorage",
+"n": 1,
+"ms": 0.2,
+"max": 0.2,
+"MB": 11.1
+},
+{
+"k": "getParameter",
+"n": 26,
+"ms": 0.1,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "generateMipmap",
+"n": 12,
+"ms": 0,
+"max": 0,
+"MB": 0
+},
+{
+"k": "compileShader",
+"n": 2,
+"ms": 0,
+"max": 0,
+"MB": 0
+},
+{
+"k": "linkProgram",
+"n": 1,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 15.09,
+"ScriptDuration": 6.57,
+"LayoutDuration": 0.01,
+"RecalcStyleDuration": 0.008,
+"LayoutCount": 14,
+"RecalcStyleCount": 35,
+"JSHeapUsedMB": 203.4,
+"Nodes": 1846,
+"taskMsGiro": 35.51
+},
+"info": {
+"progs": 206,
+"tex": 739,
+"geo": 3811
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto 30 · LOWQ gradino 3 · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 1,
+"tetto": 30
+},
+"mem": {
+"used": 714997466,
+"tot": 818326978
+},
+"prof": {
+"totMs": 19911,
+"giri": 425,
+"self": [
+[
+"(idle)",
+15.828
+],
+[
+"readPixels",
+14.648
+],
+[
+"handify@writer_arte:60645",
+2.65
+],
+[
+"(program)",
+0.923
+],
+[
+"(garbage collector)",
+0.835
+],
+[
+"umwSelf@render:93557",
+0.663
+],
+[
+"umw@render:93575",
+0.425
+],
+[
+"getImageData",
+0.425
+],
+[
+"drawImage",
+0.367
+],
+[
+"intersectTriangle@three.min:500",
+0.3
+],
+[
+"multiplyMatrices@three.min:500",
+0.269
+],
+[
+"rayTas@tasselli:74574",
+0.235
+],
+[
+"Dt@three.min:500",
+0.232
+],
+[
+"x@writing:63472",
+0.207
+],
+[
+"getVertexPosition@three.min:500",
+0.182
+],
+[
+"(anon)@three.min:500",
+0.181
+],
+[
+"updateWorldMatrix@three.min:500",
+0.17
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+0.154
+],
+[
+"getContext",
+0.145
+],
+[
+"frame@render:95098",
+0.14
+],
+[
+"getProgramParameter",
+0.139
+],
+[
+"sliceWalk@render:75676",
+0.139
+],
+[
+"(anon)@risacca_ui:100534",
+0.131
+],
+[
+"Qt@three.min:500",
+0.126
+],
+[
+"(anon)@writer_arte:59839",
+0.119
+],
+[
+"decalG@writing:63476",
+0.104
+],
+[
+"applyMatrix4@three.min:500",
+0.1
+],
+[
+"frame@writing:65086",
+0.098
+],
+[
+"Ki@three.min:500",
+0.095
+],
+[
+"step@game:36582",
+0.094
+]
+],
+"incl": [
+[
+"(root)",
+46.849
+],
+[
+"(anon)",
+28.926
+],
+[
+"(idle)",
+15.828
+],
+[
+"proto.<computed>",
+15.753
+],
+[
+"apri@writing:64503",
+15.221
+],
+[
+"tavOpen@writing:64493",
+14.906
+],
+[
+"tavShot@writing:64567",
+14.869
+],
+[
+"readPixels",
+14.648
+],
+[
+"Js.readRenderTargetPixels@three.min:500",
+14.648
+],
+[
+"loop0@main:100006",
+6.69
+],
+[
+"(anon)@main:99909",
+6.073
+],
+[
+"frame@render:95098",
+6.051
+],
+[
+"frame@writing:65086",
+5.832
+],
+[
+"scanNear@writing:65028",
+4.878
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+4.24
+],
+[
+"art@writing:63055",
+4.237
+],
+[
+"art@pennelli:62425",
+4.236
+],
+[
+"art@writer_arte:61893",
+4.027
+],
+[
+"snap@writer_arte:61896",
+3.268
+],
+[
+"handify@writer_arte:60645",
+3.237
+],
+[
+"Js.render@three.min:500",
+3.022
+],
+[
+"rd.render@peso_lontano:71369",
+3.022
+],
+[
+"fontTagArt@writer_arte:61178",
+1.613
+],
+[
+"muralModern@writer_arte:61814",
+1.398
+],
+[
+"intersectObjects@three.min:500",
+1.381
+],
+[
+"gh@three.min:500",
+1.378
+],
+[
+"umw@render:93575",
+1.303
+],
+[
+"(anon)@three.min:500",
+1.07
+],
+[
+"scene.updateMatrixWorld@render:93601",
+1.02
+],
+[
+"bubbleInk@writer_arte:61201",
+0.996
+],
+[
+"Nt@three.min:500",
+0.972
+],
+[
+"Ot@three.min:500",
+0.964
+],
+[
+"zt@three.min:500",
+0.936
+],
+[
+"Js.renderBufferDirect@three.min:500",
+0.934
+],
+[
+"(program)",
+0.923
+],
+[
+"tavHov@writing:64427",
+0.912
+],
+[
+"f@render:93534",
+0.906
+],
+[
+"fast@render:93516",
+0.903
+],
+[
+"umwSelf@render:93557",
+0.873
+],
+[
+"tavFit2@writing:64403",
+0.842
+],
+[
+"(garbage collector)",
+0.835
+],
+[
+"inkRender@writer_arte:60981",
+0.817
+],
+[
+"raycast@three.min:500",
+0.734
+],
+[
+"animPerson@models:21728",
+0.654
+],
+[
+"loop@risacca_ui:100608",
+0.639
+]
+],
+"moduli": [
+[
+"nativo",
+16.572
+],
+[
+"(idle)",
+15.828
+],
+[
+"three.min",
+3.363
+],
+[
+"writer_arte",
+2.967
+],
+[
+"render",
+2.137
+],
+[
+"writing",
+1.036
+],
+[
+"(program)",
+0.923
+],
+[
+"(garbage collector)",
+0.835
+],
+[
+"tasselli",
+0.338
+],
+[
+"game",
+0.304
+],
+[
+"risacca_ui",
+0.291
+],
+[
+"oggetti",
+0.235
+],
+[
+"peso_ombre",
+0.172
+],
+[
+"pennelli",
+0.155
+],
+[
+"peso_lontano",
+0.154
+],
+[
+"peso_fusi",
+0.123
+],
+[
+"tavola_ui",
+0.113
+],
+[
+"mesh_bvh",
+0.077
+],
+[
+"animazioni",
+0.076
+],
+[
+"peso_bagliori",
+0.074
+],
+[
+"personaggi",
+0.072
+],
+[
+"tetti",
+0.072
+],
+[
+"main",
+0.063
+],
+[
+"fazioni",
+0.062
+],
+[
+"writer_mano",
+0.057
+],
+[
+"protagonista",
+0.054
+],
+[
+"sottosuolo",
+0.053
+],
+[
+"azioni",
+0.049
+],
+[
+"popolo",
+0.049
+],
+[
+"risacca",
+0.048
+]
+],
+"gcMsGiro": 0.835
+},
+"alloc": {
+"totMB": 686.3,
+"kbGiro": 1653.5,
+"top": [
+[
+"handify@writer_arte:60645",
+200.61
+],
+[
+"intersectTriangle@three.min:500",
+110.13
+],
+[
+"(anon)@writer_arte:60643",
+109.2
+],
+[
+"x@writing:63472",
+108.5
+],
+[
+"(anon)@writer_arte:59839",
+83.53
+],
+[
+"getVertexPosition@three.min:500",
+77.77
+],
+[
+"Ki@three.min:500",
+70.67
+],
+[
+"next",
+68.07
+],
+[
+"frame@render:95098",
+46.41
+],
+[
+"from",
+43.65
+],
+[
+"hypot",
+36.61
+],
+[
+"set",
+30.1
+],
+[
+"applyMatrix4@three.min:500",
+26.14
+],
+[
+"(anon)@writing:65112",
+24.65
+],
+[
+"push",
+20.88
+],
+[
+"gritMask@pennelli:62292",
+17.21
+],
+[
+"rayTas@tasselli:74574",
+16.95
+],
+[
+"noiseField@writer_arte:60766",
+15.89
+],
+[
+"atlEvict@writing:63376",
+15.05
+],
+[
+"distanceSqToPoint@three.min:500",
+14.95
+],
+[
+"pushOutOfVehicles@game:35598",
+12.32
+],
+[
+"setFromBufferAttribute@three.min:500",
+12.24
+],
+[
+"step@game:36582",
+12.2
+],
+[
+"nearPlace@oggetti:44851",
+11.7
+],
+[
+"fromBufferAttribute@three.min:500",
+9.68
+]
+]
+},
+"longtaskTot": {
+"n": 28,
+"ms": 11606
+}
+},
+"6_dopo": {
+"esito": {
+"giocoS": 6.1
+},
+"wall": 31.3,
+"giri": 124,
+"fps": 3.8,
+"jsMs": {
+"media": 148.67,
+"p50": 125.5,
+"p95": 272.3,
+"p99": 382.4,
+"max": 405.1
+},
+"mainMs": {
+"media": 116.18,
+"p95": 186.4,
+"p99": 247
+},
+"intervallo": {
+"media": 252.43,
+"p95": 716.6,
+"p99": 900,
+"max": 2350,
+"oltre50": 123,
+"oltre100": 102
+},
+"disegni": {
+"media": 671,
+"max": 919,
+"triangoli": 2400045
+},
+"longtask": [
+{
+"t": 759505,
+"ms": 406,
+"chi": [
+[
+"(idle) < (root)",
+171.9
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+22.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+11.4
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+8.7
+]
+]
+},
+{
+"t": 752280,
+"ms": 384,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+32.2
+],
+[
+"(idle) < (root)",
+19.4
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+19.1
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+14.9
+]
+]
+},
+{
+"t": 746785,
+"ms": 323,
+"chi": [
+[
+"(idle) < (root)",
+38.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+23.3
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+21.7
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+20.5
+]
+]
+},
+{
+"t": 756398,
+"ms": 314,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+34.3
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+15.3
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13.8
+],
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+8.8
+]
+]
+},
+{
+"t": 749871,
+"ms": 310,
+"chi": [
+[
+"(idle) < (root)",
+312.9
+],
+[
+"(program) < (root)",
+0.5
+],
+[
+"L@soldi_ui:100891 < hud@soldi_ui:100963 < (root)",
+0.5
+],
+[
+"draw@protagonista_ui:111526 < (root)",
+0.5
+]
+]
+},
+{
+"t": 759199,
+"ms": 301,
+"chi": [
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+24.3
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+24.2
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+22
+],
+[
+"(program) < (root)",
+14.5
+]
+]
+},
+{
+"t": 734042,
+"ms": 288,
+"chi": []
+},
+{
+"t": 738167,
+"ms": 273,
+"chi": [
+[
+"(idle) < (root)",
+275.6
+],
+[
+"hud@soldi_ui:100963 < (root)",
+0.6
+],
+[
+"setProperty < (anon)@comandi:110103 < upd@comandi:110097 < (anon)@comandi:110130",
+0.5
+],
+[
+"upd@comandi:110097 < (anon)@comandi:110130 < (root)",
+0.5
+]
+]
+},
+{
+"t": 763387,
+"ms": 268,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+21.7
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+16.3
+],
+[
+"updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500",
+12.4
+],
+[
+"Js.renderBufferDirect@three.min:500 < zt@three.min:500 < Ot@three.min:500 < Nt@three.min:500",
+10.8
+]
+]
+},
+{
+"t": 757877,
+"ms": 265,
+"chi": [
+[
+"test@three.min:500 < Dt@three.min:500 < Dt@three.min:500 < Js.render@three.min:500",
+48.9
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+18.2
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+15.9
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < scene.updateMatrixWorld@render:93601",
+13.3
+]
+]
+},
+{
+"t": 743095,
+"ms": 262,
+"chi": [
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13.6
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+13.1
+],
+[
+"(anon)@writer_arte:60643 < handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178",
+10.4
+],
+[
+"updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500 < updateWorldMatrix@three.min:500",
+10.1
+]
+]
+},
+{
+"t": 748008,
+"ms": 255,
+"chi": [
+[
+"getVertexPosition@three.min:500 < Ki@three.min:500 < raycast@three.min:500 < fast@render:93516",
+15.2
+],
+[
+"intersectTriangle@three.min:500 < (anon)@three.min:500 < Ki@three.min:500 < raycast@three.min:500",
+10.1
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+9.9
+],
+[
+"handify@writer_arte:60645 < snap@writer_arte:61896 < fontTagArt@writer_arte:61178 < art@writer_arte:61893",
+8.5
+]
+]
+},
+{
+"t": 739614,
+"ms": 254,
+"chi": [
+[
+"(anon)@render:95077 < sliceWalk@render:75676 < rilascioTick@render:95068 < frame@render:95098",
+48.4
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+25.3
+],
+[
+"umw@render:93575 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+22.7
+],
+[
+"x@writing:63472 < decalG@writing:63476 < piazzaG@writing:64998 < scanNear@writing:65028",
+15.9
+]
+]
+},
+{
+"t": 754784,
+"ms": 244,
+"chi": [
+[
+"multiplyMatrices@three.min:500 < umwSelf@render:93557 < umw@render:93575 < umw@render:93575",
+35
+],
+[
+"umwSelf@render:93557 < umw@render:93575 < umw@render:93575 < umw@render:93575",
+12.8
+],
+[
+"Dt@three.min:500 < Dt@three.min:500 < Js.render@three.min:500 < rd.render@peso_lontano:71369",
+10.7
+],
+[
+"multiplyMatrices@three.min:500 < zt@three.min:500 < Ot@three.min:500 < Nt@three.min:500",
+8.4
+]
+]
+},
+{
+"t": 736686,
+"ms": 240,
+"chi": [
+[
+"(idle) < (root)",
+243.8
+],
+[
+"(program) < (root)",
+0.5
+]
+]
+}
+],
+"cicli": [
+{
+"k": "loop0@?",
+"n": 128,
+"msGiro": 118.536,
+"max": 260.2
+},
+{
+"k": "frame@?",
+"n": 384,
+"msGiro": 33.99,
+"max": 277.2
+},
+{
+"k": "loop@?",
+"n": 640,
+"msGiro": 2.213,
+"max": 6
+},
+{
+"k": "tick@?",
+"n": 128,
+"msGiro": 0.216,
+"max": 6.1
+},
+{
+"k": "thumbPump@?",
+"n": 128,
+"msGiro": 0.109,
+"max": 10
+},
+{
+"k": "gfxLoop@?",
+"n": 128,
+"msGiro": 0.042,
+"max": 0.2
+},
+{
+"k": "draw3@?",
+"n": 128,
+"msGiro": 0.011,
+"max": 0.1
+}
+],
+"gl": [
+{
+"k": "getImageData",
+"n": 240,
+"ms": 167.2,
+"max": 8.1,
+"MB": 0
+},
+{
+"k": "drawImage",
+"n": 544,
+"ms": 165,
+"max": 16.4,
+"MB": 0
+},
+{
+"k": "bufferSubData",
+"n": 6648,
+"ms": 40.5,
+"max": 1.9,
+"MB": 55.7
+},
+{
+"k": "texSubImage2D",
+"n": 1514,
+"ms": 35.8,
+"max": 11.8,
+"MB": 467.4
+},
+{
+"k": "putImageData",
+"n": 147,
+"ms": 14.2,
+"max": 2.6,
+"MB": 0
+},
+{
+"k": "fillText",
+"n": 299,
+"ms": 4,
+"max": 0.3,
+"MB": 0
+},
+{
+"k": "bufferData",
+"n": 261,
+"ms": 4,
+"max": 0.6,
+"MB": 6
+},
+{
+"k": "getQueryParameter",
+"n": 380,
+"ms": 3.8,
+"max": 0.8,
+"MB": 0
+},
+{
+"k": "blitFramebuffer",
+"n": 258,
+"ms": 2.3,
+"max": 1.1,
+"MB": 0
+},
+{
+"k": "getParameter",
+"n": 128,
+"ms": 2.1,
+"max": 0.1,
+"MB": 0
+},
+{
+"k": "texStorage2D",
+"n": 6,
+"ms": 0.1,
+"max": 0.1,
+"MB": 12.8
+},
+{
+"k": "generateMipmap",
+"n": 21,
+"ms": 0,
+"max": 0,
+"MB": 0
+}
+],
+"metriche": {
+"TaskDuration": 21.2,
+"ScriptDuration": 19.52,
+"LayoutDuration": 0.009,
+"RecalcStyleDuration": 0.001,
+"LayoutCount": 15,
+"RecalcStyleCount": 16,
+"JSHeapUsedMB": 205.9,
+"Nodes": 1483,
+"taskMsGiro": 170.97
+},
+"info": {
+"progs": 206,
+"tex": 727,
+"geo": 3831
+},
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1137×640 · CSS (ripiego) · tetto 30 · LOWQ gradino 3 · tel sì · aa 2×",
+"ritmo": {
+"scala": 0.5925925925925926,
+"cambi": 1,
+"tetto": 30
+},
+"mem": {
+"used": 835480225,
+"tot": 953403677
+},
+"prof": {
+"totMs": 31792,
+"giri": 124,
+"self": [
+[
+"(idle)",
+99.148
+],
+[
+"umwSelf@render:93557",
+13.345
+],
+[
+"umw@render:93575",
+9.941
+],
+[
+"multiplyMatrices@three.min:500",
+4.93
+],
+[
+"x@writing:63472",
+4.464
+],
+[
+"Dt@three.min:500",
+4.278
+],
+[
+"handify@writer_arte:60645",
+3.731
+],
+[
+"rayTas@tasselli:74574",
+3.485
+],
+[
+"updateWorldMatrix@three.min:500",
+3.482
+],
+[
+"(program)",
+3.187
+],
+[
+"(anon)@three.min:500",
+2.978
+],
+[
+"frame@render:95098",
+2.938
+],
+[
+"intersectTriangle@three.min:500",
+2.756
+],
+[
+"(garbage collector)",
+2.722
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+2.704
+],
+[
+"getVertexPosition@three.min:500",
+2.555
+],
+[
+"(anon)@writer_arte:60643",
+2.529
+],
+[
+"decalG@writing:63476",
+1.935
+],
+[
+"test@three.min:500",
+1.718
+],
+[
+"frzSnap@render:93586",
+1.458
+],
+[
+"Js.renderBufferDirect@three.min:500",
+1.395
+],
+[
+"drawImage",
+1.386
+],
+[
+"getImageData",
+1.295
+],
+[
+"(anon)@render:95077",
+1.237
+],
+[
+"raycast@three.min:500",
+1.184
+],
+[
+"Ki@three.min:500",
+1.103
+],
+[
+"update@three.min:500",
+1.1
+],
+[
+"bindVertexArray",
+1.092
+],
+[
+"frzTick@render:93612",
+1.063
+],
+[
+"applyMatrix4@three.min:500",
+1.06
+]
+],
+"incl": [
+[
+"(root)",
+256.388
+],
+[
+"(anon)",
+149.759
+],
+[
+"loop0@main:100006",
+115.154
+],
+[
+"(anon)@main:99909",
+105.051
+],
+[
+"frame@render:95098",
+104.363
+],
+[
+"(idle)",
+99.148
+],
+[
+"rd.render@peso_lontano:71369",
+53.073
+],
+[
+"Js.render@three.min:500",
+53.063
+],
+[
+"frame@writing:65086",
+31.468
+],
+[
+"umw@render:93575",
+26.76
+],
+[
+"scanNear@writing:65028",
+20.89
+],
+[
+"scene.updateMatrixWorld@render:93601",
+19.979
+],
+[
+"intersectObjects@three.min:500",
+18.097
+],
+[
+"gh@three.min:500",
+18.073
+],
+[
+"umwSelf@render:93557",
+16.727
+],
+[
+"animPerson@models:21728",
+15.388
+],
+[
+"Nt@three.min:500",
+14.869
+],
+[
+"Ot@three.min:500",
+14.787
+],
+[
+"Js.renderBufferDirect@three.min:500",
+14.537
+],
+[
+"zt@three.min:500",
+14.354
+],
+[
+"apply@animazioni:19126",
+13.776
+],
+[
+"(anon)@three.min:500",
+13.543
+],
+[
+"ARTW.q.push.Object.assign.w.w@writing:63623",
+12.146
+],
+[
+"art@pennelli:62425",
+12.076
+],
+[
+"art@writing:63055",
+12.076
+],
+[
+"Dt@three.min:500",
+11.521
+],
+[
+"f@render:93534",
+11.384
+],
+[
+"fast@render:93516",
+11.198
+],
+[
+"art@writer_arte:61893",
+11.169
+],
+[
+"tavFrameTick@writing:64467",
+9.626
+],
+[
+"tavHov@writing:64427",
+9.594
+],
+[
+"tavFit2@writing:64403",
+9.227
+],
+[
+"camera7Frame@render:94844",
+9.171
+],
+[
+"passo@camera7:72907",
+9.122
+],
+[
+"prova@camera7:72940",
+9.083
+],
+[
+"cast7@render:94796",
+9.055
+],
+[
+"raycast@three.min:500",
+8.641
+],
+[
+"snap@writer_arte:61896",
+8.578
+],
+[
+"G.step@risacca_ui:100206",
+8.007
+],
+[
+"(anon)@main:99908",
+8.007
+],
+[
+"G.step@protagonista:46561",
+8.004
+],
+[
+"piazzaG@writing:64998",
+7.931
+],
+[
+"step@game:36582",
+7.874
+],
+[
+"handify@writer_arte:60645",
+7.51
+],
+[
+"Ki@three.min:500",
+7.166
+]
+],
+"moduli": [
+[
+"(idle)",
+99.148
+],
+[
+"three.min",
+48.363
+],
+[
+"render",
+39.971
+],
+[
+"nativo",
+9.739
+],
+[
+"writing",
+9.139
+],
+[
+"writer_arte",
+7.72
+],
+[
+"game",
+4.81
+],
+[
+"tasselli",
+3.795
+],
+[
+"(program)",
+3.187
+],
+[
+"peso_fusi",
+3.156
+],
+[
+"(garbage collector)",
+2.722
+],
+[
+"peso_ombre",
+2.715
+],
+[
+"peso_lontano",
+2.704
+],
+[
+"oggetti",
+1.6
+],
+[
+"peso_bagliori",
+1.579
+],
+[
+"animazioni",
+1.53
+],
+[
+"popolo",
+1.24
+],
+[
+"main",
+1.12
+],
+[
+"mesh_bvh",
+1.115
+],
+[
+"personaggi",
+1.101
+],
+[
+"vegetazione",
+0.931
+],
+[
+"pennelli",
+0.713
+],
+[
+"peso_scatole",
+0.668
+],
+[
+"tavola_ui",
+0.56
+],
+[
+"azioni",
+0.548
+],
+[
+"animali",
+0.437
+],
+[
+"risacca_ui",
+0.393
+],
+[
+"models",
+0.364
+],
+[
+"vievive",
+0.361
+],
+[
+"protagonista",
+0.356
+]
+],
+"gcMsGiro": 2.722
+},
+"alloc": {
+"totMB": 1792.2,
+"kbGiro": 14800.3,
+"top": [
+[
+"x@writing:63472",
+2768.92
+],
+[
+"intersectTriangle@three.min:500",
+1277.58
+],
+[
+"frame@render:95098",
+1138.29
+],
+[
+"getVertexPosition@three.min:500",
+812.94
+],
+[
+"Ki@three.min:500",
+771.15
+],
+[
+"handify@writer_arte:60645",
+666.27
+],
+[
+"applyMatrix4@three.min:500",
+377.82
+],
+[
+"(anon)@writer_arte:60643",
+330.08
+],
+[
+"rayTas@tasselli:74574",
+271.34
+],
+[
+"push",
+270.63
+],
+[
+"hypot",
+254.29
+],
+[
+"distanceSqToPoint@three.min:500",
+253.25
+],
+[
+"pushOutOfVehicles@game:35598",
+214.27
+],
+[
+"step@game:36582",
+168.97
+],
+[
+"geometria@personaggi:106809",
+165.67
+],
+[
+"runOver@game:36022",
+152.7
+],
+[
+"decompose@three.min:500",
+142.5
+],
+[
+"raycast@mesh_bvh:3351",
+129.6
+],
+[
+"gr@three.min:500",
+128.31
+],
+[
+"tickOne@animali:52958",
+106.88
+],
+[
+"checkIntersection@mesh_bvh:2984",
+100.68
+],
+[
+"suoloErbosoG@vegetazione:27083",
+91.78
+],
+[
+"gritMask@pennelli:62292",
+86.87
+],
+[
+"T3.Frustum.intersectsObject@peso_lontano:71372",
+84.55
+],
+[
+"intersectBox@three.min:500",
+83.39
+]
+]
+},
+"longtaskTot": {
+"n": 125,
+"ms": 18855
+}
+}
+},
+"info0": {
+"hd": "hd · scala 0.59 · righe 640/1080 (1137×640) · tela 1920×1080 · ingrandisce sì · tetto no · LOWQ no · tel sì · aa 2×",
+"prof": {
+"profilo": "leggera",
+"motivo": "?leggera",
+"scheda": ""
+}
+}
+}

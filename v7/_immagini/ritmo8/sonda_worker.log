@@ -1,0 +1,29 @@
+[0s] browser pid null
+[0s] http://127.0.0.1:45309/index.html?leggera&tassellivecchi
+[50s] caricato {"init0":4731,"init1":12033,"compilato":19176,"shader":19176,"vivo":45466,"vivoN":12,"gioco":45623}
+[52s] stato {"ok":null,"seq":0,"fly":0,"volo":0}
+[140s] {
+ "msgs": [
+  {
+   "id": -2,
+   "err": "ricevuto fonts"
+  },
+  {
+   "id": -2,
+   "err": "ricevuto id,w"
+  },
+  {
+   "id": -2,
+   "err": "font true 41 ms"
+  },
+  {
+   "id": 7,
+   "ok": true,
+   "ms": 87766.1000000001,
+   "n": 4
+  }
+ ],
+ "ms": 88045.29999999981,
+ "gf": "object",
+ "chiavi": "style,aka,crew,seed,q,fam,cons,pal,words,slogan,chr,fillk,bgk,yr,by,hand,surf,spot,place,prog,done,wk,side,u0,vb,W,H,old,id,t0"
+}
