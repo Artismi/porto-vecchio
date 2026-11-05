@@ -264,7 +264,7 @@ var Tasselli = (function () {
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
   const RG = { manca: 0, cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
-  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
+  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; }, u, mn, k }; }   // [ritmo8] u, mn, k: rayTas li legge direttamente
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
   // [ritmo8] la griglia a fette (generatore): lo stesso lavoro di griglia() con una pausa ogni 4096 triangoli, così si prepara prima che il
   // braccio di camera7 tocchi la mesh (griglieTick) invece di farla tutta nel fotogramma del primo raggio (50-70 ms su una mesh di 120.000
@@ -277,25 +277,27 @@ var Tasselli = (function () {
     const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
       const i0 = Math.max(0, Math.floor(ax / c) - x0), i1 = Math.min(nx - 1, Math.floor(bx / c) - x0), j0 = Math.max(0, Math.floor(az / c) - z0), j1 = Math.min(nz - 1, Math.floor(bz / c) - z0);
       for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * nx + i); };
-    const conta = k => { cnt[k + 1]++; };
-    for (let t = 0; t < nt; t++) { span(t, conta); if ((t & 4095) === 4095) yield; }
+    // la quota di ogni cella (il più basso e il più alto dei suoi triangoli): il raggio del braccio che passa sopra o sotto la salta (rayTas, r8y)
+    const ymn = new Float32Array(nx * nz).fill(Infinity), ymx = new Float32Array(nx * nz).fill(-Infinity); let y0 = 0, y1 = 0;
+    const conta = k => { cnt[k + 1]++; if (y0 < ymn[k]) ymn[k] = y0; if (y1 > ymx[k]) ymx[k] = y1; };
+    for (let t = 0; t < nt; t++) { y0 = Infinity; y1 = -Infinity; for (let q = 0; q < 3; q++) { const y = pget(P, v(t * 3 + q) * 3 + 1); if (y < y0) y0 = y; if (y > y1) y1 = y; } span(t, conta); if ((t & 4095) === 4095) yield; }
     for (let k = 0; k < nx * nz; k++) cnt[k + 1] += cnt[k];
     const pos = cnt.slice(0, nx * nz), L = new Uint32Array(cnt[nx * nz]); let tt = 0;
     const metti = k => { L[pos[k]++] = tt; };
     for (let t = 0; t < nt; t++) { tt = t; span(t, metti); if ((t & 4095) === 4095) yield; }
     ST.raggiV++;
-    return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
+    return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P, ymn, ymx };
   }
   const R8G = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('griglie');
   function grigliaFinita(g) { const it = g.__grigliaG; g.__grigliaG = null; let r; do r = it.next(); while (!r.done); return r.value; }
-  // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 30 m dalla loro sfera), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
+  // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 20 m dalla loro sfera: il braccio le prova da 10 m, render.js bmbCands), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
   const GQ = { lista: [], n: 0, ms: 0, fatte: 0 };
   function griglieTick(x, z) {
     if (!(++GQ.n % 20)) { const L = []; STATO.forEach(S => { if (S.st !== 5 || !S.mesh || (CFG.leggero && !S.rdati)) return;
       S.mesh.forEach(o => { const g = o.geometry; if (o.raycast !== rayTas || g.__griglia || !g.attributes.position) return; const P = g.attributes.position;
         if ((P.__q ? P.__q.u.length : (P.__pf || P.array || []).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
         const s = g.__bsW || g.boundingSphere; if (!s) return; RG.sph.copy(s).applyMatrix4(o.userData.qs ? IDM : o.matrixWorld);
-        const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 30) L.push([d, g]); }); });
+        const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 20) L.push([d, g]); }); });
       L.sort((a, b) => a[0] - b[0]); GQ.lista = L.map(q => q[1]); }
     const t0 = performance.now(), B = TEL ? 1 : 1.5;
     while (GQ.lista.length && performance.now() - t0 < B) { const g = GQ.lista[0]; if (g.__griglia) { GQ.lista.shift(); continue; }
@@ -336,15 +338,25 @@ var Tasselli = (function () {
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
     const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const QU = R8G && A.__q ? A.u : null, QM = QU && A.mn, QK = QU && A.k;   // [ritmo8] le tre tabelle dei 16 bit (quelle della griglia, come A.get)
+    const YC = R8G && rc.r8y === true && !!G.ymn, oy = ray.origin.y, dy = ray.direction.y;   // [ritmo8] la quota delle celle (solo il braccio)
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
       const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
       if (l2 > 1e-9) { const s = ((cx - ox) * dx + (cz - oz) * dz) / l2, ex = ox + dx * s - cx, ez = oz + dz * s - cz; if (ex * ex + ez * ez > c * c * .5 + 1e-6) continue; }
+      if (YC) {   // [ritmo8] solo per il braccio di camera7 (gli serve il colpo più vicino, non l'ordine): il tratto del raggio dentro la colonna della
+        // cella, e la sua quota lì; se passa tutto sopra o tutto sotto i triangoli della cella, niente da provare (un colpo sta sempre nella cella del suo punto)
+        let t0 = ta, t1 = tb; const qx0 = (G.x0 + i) * c - 1e-4, qz0 = (G.z0 + j) * c - 1e-4, qx1 = qx0 + c + 2e-4, qz1 = qz0 + c + 2e-4;
+        if (Math.abs(dx) < 1e-12) { if (ox < qx0 || ox > qx1) continue; } else { let a = (qx0 - ox) / dx, b = (qx1 - ox) / dx; if (a > b) { const w = a; a = b; b = w; } if (a > t0) t0 = a; if (b < t1) t1 = b; }
+        if (Math.abs(dz) < 1e-12) { if (oz < qz0 || oz > qz1) continue; } else { let a = (qz0 - oz) / dz, b = (qz1 - oz) / dz; if (a > b) { const w = a; a = b; b = w; } if (a > t0) t0 = a; if (b < t1) t1 = b; }
+        if (t0 > t1) continue; const ya = oy + dy * t0, yb = oy + dy * t1;
+        if (Math.max(ya, yb) < G.ymn[k] - 1e-3 || Math.min(ya, yb) > G.ymx[k] + 1e-3) continue; }
       for (let q = G.cnt[k]; q < G.cnt[k + 1]; q++) {
         const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
         const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
         let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
-        if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
+        if (A.__q && QU) { const ia = a * 3, ib = b * 3, ic = cc * 3; RG.a.set(QM[0] + QU[ia] * QK[0], QM[1] + QU[ia + 1] * QK[1], QM[2] + QU[ia + 2] * QK[2]); RG.b.set(QM[0] + QU[ib] * QK[0], QM[1] + QU[ib + 1] * QK[1], QM[2] + QU[ib + 2] * QK[2]); RG.c.set(QM[0] + QU[ic] * QK[0], QM[1] + QU[ic + 1] * QK[1], QM[2] + QU[ic + 2] * QK[2]); }   // [ritmo8] i 16 bit letti qui (lo stesso conto di posL.get, senza nove chiamate per triangolo)
+        else if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
         else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
         if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)

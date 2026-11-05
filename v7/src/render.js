@@ -19203,6 +19203,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // dentro Camera7.passo). Provato (strumenti/sonda: 320 prove in otto posti) uguale raggio per raggio. ?noritmo8raggi: com'era
   const R8RAGGI = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
   const C7M = { f: -1, n: 0, k: [], v: [] };
+  C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
   if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
   function cast7(o, dir, len, r) {
     if (R8RAGGI && !CAM7.spia) {
