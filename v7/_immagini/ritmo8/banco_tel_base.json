@@ -1,0 +1,193 @@
+{
+ "nome": "tel_base",
+ "posti": {
+  "spawn": [
+   {
+    "ms": 8459.7,
+    "msGiro": 187.99,
+    "p95": 285.9,
+    "tri": 551140,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 48.4,
+    "x": 1263.7,
+    "y": 347,
+    "cpuMs": 7145.9,
+    "cpuMsGiro": 158.8,
+    "taskMs": 8461.5,
+    "gcMs": 1412.3
+   },
+   {
+    "ms": 11277.1,
+    "msGiro": 250.6,
+    "p95": 439.4,
+    "tri": 544021,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 45.1,
+    "x": 1259.4,
+    "y": 348.8,
+    "cpuMs": 7915.2,
+    "cpuMsGiro": 175.89,
+    "taskMs": 11282.1,
+    "gcMs": 1152.7
+   },
+   {
+    "ms": 9167.8,
+    "msGiro": 203.73,
+    "p95": 365,
+    "tri": 493267,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 10.3,
+    "x": 1263.7,
+    "y": 347.1,
+    "cpuMs": 6965,
+    "cpuMsGiro": 154.78,
+    "taskMs": 9168.8,
+    "gcMs": 2290.9
+   }
+  ],
+  "vicolo": [
+   {
+    "ms": 4754,
+    "msGiro": 105.64,
+    "p95": 165.4,
+    "tri": 100064,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 41.4,
+    "x": 1342.7,
+    "y": 325.4,
+    "cpuMs": 3578.5,
+    "cpuMsGiro": 79.52,
+    "taskMs": 4755.6,
+    "gcMs": 820.2
+   },
+   {
+    "ms": 5478.2,
+    "msGiro": 121.74,
+    "p95": 219.5,
+    "tri": 108427,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 89.3,
+    "x": 1343.6,
+    "y": 320,
+    "cpuMs": 3690.7,
+    "cpuMsGiro": 82.02,
+    "taskMs": 5479.2,
+    "gcMs": 627.3
+   },
+   {
+    "ms": 6070.5,
+    "msGiro": 134.9,
+    "p95": 394.5,
+    "tri": 109320,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 47.4,
+    "x": 1342.7,
+    "y": 325.4,
+    "cpuMs": 3724.1,
+    "cpuMsGiro": 82.76,
+    "taskMs": 6071.2,
+    "gcMs": 592.8
+   }
+  ],
+  "piazza": [
+   {
+    "ms": 3614.8,
+    "msGiro": 80.33,
+    "p95": 147.4,
+    "tri": 2589,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 26.1,
+    "x": 1389.7,
+    "y": 304.9,
+    "cpuMs": 2380.5,
+    "cpuMsGiro": 52.9,
+    "taskMs": 3615.6,
+    "gcMs": 819
+   },
+   {
+    "ms": 3592.2,
+    "msGiro": 79.83,
+    "p95": 140.4,
+    "tri": 1923,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 45.3,
+    "x": 1384.4,
+    "y": 304.1,
+    "cpuMs": 2119.3,
+    "cpuMsGiro": 47.1,
+    "taskMs": 3594.5,
+    "gcMs": 502.9
+   },
+   {
+    "ms": 3849.6,
+    "msGiro": 85.55,
+    "p95": 142.5,
+    "tri": 15352,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 57.2,
+    "x": 1389.7,
+    "y": 304.8,
+    "cpuMs": 2653.1,
+    "cpuMsGiro": 58.96,
+    "taskMs": 3850.7,
+    "gcMs": 367
+   }
+  ],
+  "lungomare": [
+   {
+    "ms": 2728.2,
+    "msGiro": 60.63,
+    "p95": 164.3,
+    "tri": 4860,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 20.3,
+    "x": 1424.5,
+    "y": 401.8,
+    "cpuMs": 2055.7,
+    "cpuMsGiro": 45.68,
+    "taskMs": 2729.8,
+    "gcMs": 201.9
+   },
+   {
+    "ms": 2500.4,
+    "msGiro": 55.56,
+    "p95": 94.9,
+    "tri": 4810,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 7.4,
+    "x": 1418.9,
+    "y": 400.7,
+    "cpuMs": 1878.5,
+    "cpuMsGiro": 41.74,
+    "taskMs": 2501.6,
+    "gcMs": 175.9
+   },
+   {
+    "ms": 4536.6,
+    "msGiro": 100.81,
+    "p95": 290.7,
+    "tri": 4771,
+    "raggi": null,
+    "memo": null,
+    "heapMB": 9.3,
+    "x": 1423.6,
+    "y": 401.5,
+    "cpuMs": 2008.4,
+    "cpuMsGiro": 44.63,
+    "taskMs": 4537.4,
+    "gcMs": 98.2
+   }
+  ]
+ }
+}

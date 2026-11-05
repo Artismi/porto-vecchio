@@ -18001,8 +18001,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // tornano gli stessi (a, b, c sono gli stessi numeri di vertice)
     const bvhCopia1 = g => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
       c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; };
+    // [ritmo8] le geometrie che hanno già mandato le posizioni alla scheda video e le hanno buttate (il verde lontano del profilo leggero:
+    // LeggeraMem.verde) non possono colpire niente (i vertici letti sono NaN), ma l'indice spaziale fatto su di loro era una foglia sola con
+    // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
+    const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
     const fast = function (rc, out) {
       const g = this.geometry;
+      if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) { if (window.__rlOn) lento(!g ? 'senza' : g.__bvhNo ? 'mai' : this.isSkinnedMesh ? 'scheletro' : 'altro', g); return orig.call(this, rc, out); }
       // [leggera] è cambiata (il pulitore sposta e toglie pezzi dentro le mesh fuse, i segni): stessi triangoli in posti nuovi, l'indice si
       // riadatta (refit: i riquadri tornano a contenere i triangoli, i punti trovati sono gli stessi). Prima si tornava per sempre al
@@ -19278,10 +19283,30 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [camera7] la cosa piccola registrata (DZ.props: ombrelloni, banchi, cartelli, tende) dove il raggio ha colpito: non ferma il braccio
   function piccola7(pt) { let s = false; hashNear(pt.x, pt.z, 2.5, rec => { if (s || !rec.tag || rec.state) return; const c = rec.c, h = rec.he; if (Math.max(h.x, h.z) > 2.5 || h.y > 3.5) return;
     if (pt.x > c.x - h.x - .15 && pt.x < c.x + h.x + .15 && pt.y > c.y - h.y - .1 && pt.y < c.y + h.y + .15 && pt.z > c.z - h.z - .15 && pt.z < c.z + h.z + .15) s = true; }); return s; }
+  if (typeof window !== 'undefined') window.__piccola7 = piccola7;   // [ritmo8] per la sonda dell'uguaglianza dei raggi
   // [camera7] IL RAGGIO A SFERA: cinque raggi (il centro e quattro a K.r di lato e in alto e in basso) dal petto verso la camera, contro le mesh
   // piene vicine (bmbCands: visibili, materiale pieno) senza persone, mezzi né cose piccole; mesh_bvh li rende pochi triangoli l'uno. Rende
   // la distanza alla quale la sfera tocca, o null. Senza mesh (ancora da caricare) la mappa delle case, come prima
+  // [ritmo8] IL BRACCIO COSTAVA PIÙ DI TUTTO IL RESTO (v7/ANALISI_RITMO8.md): Camera7.passo prova il braccio fino a sei volte per fotogramma e,
+  // a braccio fermo (la strada libera, il caso di sempre), la prima prova, quella della camera di quel fotogramma (f6) e l'ultima (fa) sono
+  // LO STESSO raggio: si fa una volta sola (C7M: gli ultimi raggi di questo fotogramma, con gli stessi numeri esatti; la scena non cambia
+  // dentro Camera7.passo). Provato (strumenti/sonda: 320 prove in otto posti) uguale raggio per raggio. ?noritmo8raggi: com'era
+  const R8RAGGI = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
+  const C7M = { f: -1, n: 0, k: [], v: [], giro: 0 };
+  C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
+  if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
   function cast7(o, dir, len, r) {
+    if (R8RAGGI && !CAM7.spia) {
+      if (C7M.f !== C7M.giro) { C7M.f = C7M.giro; C7M.n = 0; }
+      C7M.chiamate = (C7M.chiamate || 0) + 1;
+      for (let i = 0; i < C7M.n; i++) { const k = C7M.k[i]; if (k[0] === o.x && k[1] === o.y && k[2] === o.z && k[3] === dir.x && k[4] === dir.y && k[5] === dir.z && k[6] === len && k[7] === r) { C7M.memo = (C7M.memo || 0) + 1; if (C7M.v[i] !== null) CAM7.colpi++; return C7M.v[i]; } }
+      const t0 = performance.now(), v = cast7v(o, dir, len, r); C7M.ms = (C7M.ms || 0) + performance.now() - t0;
+      if (C7M.n < 8) { const k = C7M.k[C7M.n] || (C7M.k[C7M.n] = [0, 0, 0, 0, 0, 0, 0, 0]); k[0] = o.x; k[1] = o.y; k[2] = o.z; k[3] = dir.x; k[4] = dir.y; k[5] = dir.z; k[6] = len; k[7] = r; C7M.v[C7M.n++] = v; }
+      return v;
+    }
+    return cast7v(o, dir, len, r);
+  }
+  function cast7v(o, dir, len, r) {
     const now = performance.now();
     if (now - C7R.t > 300 || Math.abs(o.x - C7R.cx) + Math.abs(o.z - C7R.cz) > 3) {
       C7R.t = now; C7R.cx = o.x; C7R.cz = o.z; const R0 = C7R.roots; R0.clear();
@@ -19586,6 +19611,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    C7M.giro++;   // [ritmo8] il ricordo dei raggi del braccio vale un fotogramma solo
     frzTick();   // [fluido] i rami fermi congelati (e il controllo a rotazione)
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
