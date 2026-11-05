@@ -325,6 +325,20 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   const tutto = !/[?&]hd=0\b/.test(q);
   window.PV_HD = { on: k => tutto && (!k || !new RegExp('[?&]' + k + '=0\\b').test(q)), tutto };
 })();
+/* [ritmo8] GLI INTERRUTTORI DEL RITMO (v7/ANALISI_RITMO8.md): window.PV_R8.on(nome) vero se la correzione è accesa. ?noritmo8 le spegne
+   tutte (il gioco di prima, identico); ?noritmo8<nome> una sola:
+     raggi    il braccio di camera7: i raggi uguali nello stesso fotogramma una volta sola; le mesh senza posizioni (il verde lontano) saltate;
+              nei tasselli le celle che il raggio passa sopra o sotto saltate
+     arte     il disegnatore dei graffiti a parte (worker) con le tele lette dal processore (willReadFrequently): non muore più per lentezza
+     griglie  le griglie dei raggi dei tasselli preparate a fette prima che il braccio le tocchi; i colpi fuori portata scartati senza allocare
+     pile     le tessiture a strati grandi dei tasselli mandate alla scheda video a fette (pochi strati per fotogramma)                    */
+(function () {
+  'use strict';
+  if (typeof window === 'undefined') return;
+  let q = ''; try { q = location.search || ''; } catch (e) { q = ''; }
+  const tutto = !/[?&]noritmo8(&|$)/.test(q);
+  window.PV_R8 = { on: k => tutto && (!k || !new RegExp('[?&]noritmo8' + k + '\\b').test(q)), tutto };
+})();
 (function () {
   'use strict';
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -23601,7 +23615,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'd871bcf0b55b1b2d';</script>
-<script>window.PV_IMPRONTA_TASS = '5696d62f5d443e8a';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'd163a4d2e50d100f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -63572,7 +63586,12 @@ var Writing = (function () {
     try {
       const src = typeof document !== 'undefined' && document.getElementById('pv-artworker');
       if (!src || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof Blob === 'undefined') return (ARTW.ok = false);
-      const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
+      // [ritmo8] le tele del disegnatore a parte lette dal processore (willReadFrequently): il disegno legge i pixel centinaia di volte
+      // (getImageData) e con la tela sulla scheda video ogni lettura aspettava la scheda. Misurato (SwiftShader): un pezzo 87,8 s contro 3,5 s;
+      // oltre i 60 s il gioco dava il disegnatore per morto e disegnava tutti i graffiti sul filo della pagina, uno ogni 1,2 s (uno scatto
+      // da 100 ms ogni volta). Lo stesso disegno. ?noritmo8arte: com'era
+      const R8A = typeof window !== 'undefined' && window.PV_R8 && window.PV_R8.on('arte') ? '{ const g0 = OffscreenCanvas.prototype.getContext; OffscreenCanvas.prototype.getContext = function (k, o) { return g0.call(this, k, k === \'2d\' ? Object.assign({ willReadFrequently: true }, o) : o); }; }\n' : '';
+      const code = R8A + 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
@@ -74555,9 +74574,49 @@ var Tasselli = (function () {
   // una griglia in pianta (celle di 2 m) dei suoi triangoli, e il raggio prova solo quelli delle celle che attraversa.
   const RG = { manca: 0, cella: 2, ray: new THREE.Ray(), inv: new THREE.Matrix4(), sph: new THREE.Sphere(), box: new THREE.Box3(), a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), p: new THREE.Vector3(), q: new THREE.Vector3(), n: new THREE.Vector3(), t0: new THREE.Vector3(), t1: new THREE.Vector3(), timbro: 0 };
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
-  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
+  function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; }, u, mn, k }; }   // [ritmo8] u, mn, k: rayTas li legge direttamente
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
+  // [ritmo8] la griglia a fette (generatore): lo stesso lavoro di griglia() con una pausa ogni 4096 triangoli, così si prepara prima che il
+  // braccio di camera7 tocchi la mesh (griglieTick) invece di farla tutta nel fotogramma del primo raggio (50-70 ms su una mesh di 120.000
+  // triangoli in SwiftShader, uno scatto ogni volta che un tassello nuovo entra nel braccio). Il risultato è identico; se il raggio arriva
+  // prima che sia pronta la si finisce lì, come prima
+  function* grigliaG(g) {
+    const P = posL(g.attributes.position), I = g.index ? g.index.__ix || g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
+    const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
+    const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
+      const i0 = Math.max(0, Math.floor(ax / c) - x0), i1 = Math.min(nx - 1, Math.floor(bx / c) - x0), j0 = Math.max(0, Math.floor(az / c) - z0), j1 = Math.min(nz - 1, Math.floor(bz / c) - z0);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * nx + i); };
+    // la quota di ogni cella (il più basso e il più alto dei suoi triangoli): il raggio del braccio che passa sopra o sotto la salta (rayTas, r8y)
+    const ymn = new Float32Array(nx * nz).fill(Infinity), ymx = new Float32Array(nx * nz).fill(-Infinity); let y0 = 0, y1 = 0;
+    const conta = k => { cnt[k + 1]++; if (y0 < ymn[k]) ymn[k] = y0; if (y1 > ymx[k]) ymx[k] = y1; };
+    for (let t = 0; t < nt; t++) { y0 = Infinity; y1 = -Infinity; for (let q = 0; q < 3; q++) { const y = pget(P, v(t * 3 + q) * 3 + 1); if (y < y0) y0 = y; if (y > y1) y1 = y; } span(t, conta); if ((t & 4095) === 4095) yield; }
+    for (let k = 0; k < nx * nz; k++) cnt[k + 1] += cnt[k];
+    const pos = cnt.slice(0, nx * nz), L = new Uint32Array(cnt[nx * nz]); let tt = 0;
+    const metti = k => { L[pos[k]++] = tt; };
+    for (let t = 0; t < nt; t++) { tt = t; span(t, metti); if ((t & 4095) === 4095) yield; }
+    ST.raggiV++;
+    return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P, ymn, ymx };
+  }
+  const R8G = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('griglie');
+  function grigliaFinita(g) { const it = g.__grigliaG; g.__grigliaG = null; let r; do r = it.next(); while (!r.done); return r.value; }
+  // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 20 m dalla loro sfera: il braccio le prova da 10 m, render.js bmbCands), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
+  const GQ = { lista: [], n: 0, ms: 0, fatte: 0 };
+  function griglieTick(x, z) {
+    if (!(++GQ.n % 20)) { const L = []; STATO.forEach(S => { if (S.st !== 5 || !S.mesh || (CFG.leggero && !S.rdati)) return;
+      S.mesh.forEach(o => { const g = o.geometry; if (o.raycast !== rayTas || g.__griglia || !g.attributes.position) return; const P = g.attributes.position;
+        if ((P.__q ? P.__q.u.length : (P.__pf || P.array || []).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
+        const s = g.__bsW || g.boundingSphere; if (!s) return; RG.sph.copy(s).applyMatrix4(o.userData.qs ? IDM : o.matrixWorld);
+        const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 20) L.push([d, g]); }); });
+      L.sort((a, b) => a[0] - b[0]); GQ.lista = L.map(q => q[1]); }
+    const t0 = performance.now(), B = TEL ? 1 : 1.5;
+    while (GQ.lista.length && performance.now() - t0 < B) { const g = GQ.lista[0]; if (g.__griglia) { GQ.lista.shift(); continue; }
+      if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
+      const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.lista.shift(); GQ.fatte++; } }
+    GQ.ms += performance.now() - t0; ST.r8griglie = GQ.fatte; ST.r8grigliaMs = +GQ.ms.toFixed(1);
+  }
   function griglia(g) {
+    if (R8G) { if (!g.__grigliaG) g.__grigliaG = grigliaG(g); return grigliaFinita(g); }
     const P = posL(g.attributes.position), I = g.index ? g.index.__ix || g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
     const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
     const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
@@ -74589,23 +74648,38 @@ var Tasselli = (function () {
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
     const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const QU = R8G && A.__q ? A.u : null, QM = QU && A.mn, QK = QU && A.k;   // [ritmo8] le tre tabelle dei 16 bit (quelle della griglia, come A.get)
+    const YC = R8G && rc.r8y === true && !!G.ymn, oy = ray.origin.y, dy = ray.direction.y;   // [ritmo8] la quota delle celle (solo il braccio)
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
       const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
       if (l2 > 1e-9) { const s = ((cx - ox) * dx + (cz - oz) * dz) / l2, ex = ox + dx * s - cx, ez = oz + dz * s - cz; if (ex * ex + ez * ez > c * c * .5 + 1e-6) continue; }
+      if (YC) {   // [ritmo8] solo per il braccio di camera7 (gli serve il colpo più vicino, non l'ordine): il tratto del raggio dentro la colonna della
+        // cella, e la sua quota lì; se passa tutto sopra o tutto sotto i triangoli della cella, niente da provare (un colpo sta sempre nella cella del suo punto)
+        let t0 = ta, t1 = tb; const qx0 = (G.x0 + i) * c - 1e-4, qz0 = (G.z0 + j) * c - 1e-4, qx1 = qx0 + c + 2e-4, qz1 = qz0 + c + 2e-4;
+        if (Math.abs(dx) < 1e-12) { if (ox < qx0 || ox > qx1) continue; } else { let a = (qx0 - ox) / dx, b = (qx1 - ox) / dx; if (a > b) { const w = a; a = b; b = w; } if (a > t0) t0 = a; if (b < t1) t1 = b; }
+        if (Math.abs(dz) < 1e-12) { if (oz < qz0 || oz > qz1) continue; } else { let a = (qz0 - oz) / dz, b = (qz1 - oz) / dz; if (a > b) { const w = a; a = b; b = w; } if (a > t0) t0 = a; if (b < t1) t1 = b; }
+        if (t0 > t1) continue; const ya = oy + dy * t0, yb = oy + dy * t1;
+        if (Math.max(ya, yb) < G.ymn[k] - 1e-3 || Math.min(ya, yb) > G.ymx[k] + 1e-3) continue; }
       for (let q = G.cnt[k]; q < G.cnt[k + 1]; q++) {
         const t = G.L[q]; if (G.timbri[t] === tim) continue; G.timbri[t] = tim;
         const a = v(t * 3), b = v(t * 3 + 1), cc = v(t * 3 + 2);
         let mi = 0, mat = mats; if (Array.isArray(mats)) { for (const gg of gr) if (t * 3 >= gg.start && t * 3 < gg.start + gg.count) { mi = gg.materialIndex; break; } mat = mats[mi]; if (!mat) continue; }
-        if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
+        if (A.__q && QU) { const ia = a * 3, ib = b * 3, ic = cc * 3; RG.a.set(QM[0] + QU[ia] * QK[0], QM[1] + QU[ia + 1] * QK[1], QM[2] + QU[ia + 2] * QK[2]); RG.b.set(QM[0] + QU[ib] * QK[0], QM[1] + QU[ib + 1] * QK[1], QM[2] + QU[ib + 2] * QK[2]); RG.c.set(QM[0] + QU[ic] * QK[0], QM[1] + QU[ic + 1] * QK[1], QM[2] + QU[ic + 2] * QK[2]); }   // [ritmo8] i 16 bit letti qui (lo stesso conto di posL.get, senza nove chiamate per triangolo)
+        else if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
         else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
+        if (R8G) {   // [ritmo8] la distanza prima di allocare: il colpo fuori near-far si buttava dopo averlo copiato (MB di spazzatura a fotogramma)
+          const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
+          const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
+          out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
         const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
   }
+  const R8T = { q: new THREE.Vector3() };
 
   // ---------------- i tasselli ----------------
   // Due anelli. Il tassello compresso (in gzip, ~100-300 KB) si scarica fino a «carica» dal punto guardato e resta nella pagina finché
@@ -74676,12 +74750,48 @@ var Tasselli = (function () {
     S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
     S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
   }
+  // [ritmo8] LE PILE GRANDI A FETTE (v7/ANALISI_RITMO8.md). Una tessitura a strati dei tasselli arriva fino a 32 MB (512×512×32, piena sul
+  // portatile da [hd]): mandata in un colpo (texSubImage3D) era uno scatto da 30-80 ms (oltre il secondo in SwiftShader). Qui la si alloca
+  // (texStorage3D, come three) e la si riempie a fette di strati, al più PB byte per fotogramma; le mipmap alla fine; la mesh che la usa
+  // entra in scena solo a pila piena (monta1 aspetta il fotogramma dopo), quindi non si vede mai a metà. ?noritmo8pile: com'era
+  const R8P = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('pile');
+  const PILE = new Map(), PB = (TEL ? 2 : 4) * 1048576, PF = { f: -1, b: 0, n: 0 };
+  const pilaOk = t => { const im = t.image; return t.isDataArrayTexture && im && im.data instanceof Uint8Array && im.depth > 1 && im.width * im.height * im.depth * 4 > PB && !t.flipY && !t.premultiplyAlpha && t.format === THREE.RGBAFormat && t.type === THREE.UnsignedByteType && !t.mipmaps.length; };
+  function pila(rd, t) {
+    const gl = rd.getContext(), im = t.image, strato = im.width * im.height * 4; let J = PILE.get(t);
+    if (PF.f !== PF.n) { PF.f = PF.n; PF.b = 0; }   // il conto dei byte di questo fotogramma (PF.n gira a ogni tick)
+    if (!J) {   // 1. three alloca la tessitura (i parametri, la memoria) senza i pixel né le mipmap
+      const P0 = rd.properties.get(t); if (P0.__webglInit) return { b: 0, fatta: true };
+      const s3 = gl.texSubImage3D, gm = gl.generateMipmap, own3 = Object.prototype.hasOwnProperty.call(gl, 'texSubImage3D'), ownM = Object.prototype.hasOwnProperty.call(gl, 'generateMipmap'), ou = t.onUpdate; let saltata = false;
+      gl.texSubImage3D = function (tg, lv, x, y, z, w, h, d) { if (!saltata && tg === gl.TEXTURE_2D_ARRAY && lv === 0 && w === im.width && h === im.height && d === im.depth) { saltata = true; return; } return s3.apply(this, arguments); };
+      gl.generateMipmap = function (tg) { if (saltata && tg === gl.TEXTURE_2D_ARRAY) return; return gm.apply(this, arguments); };
+      t.onUpdate = null;
+      try { rd.initTexture(t); } finally { if (own3) gl.texSubImage3D = s3; else delete gl.texSubImage3D; if (ownM) gl.generateMipmap = gm; else delete gl.generateMipmap; t.onUpdate = ou; }
+      const P = rd.properties.get(t);
+      if (!saltata || !P.__webglTexture) { if (ou) ou.call(t, t); return { b: strato * im.depth, fatta: true }; }   // three non ha fatto quello che ci aspettavamo: la via normale era già passata
+      J = { tex: P.__webglTexture, z: 0, ou, data: im.data }; PILE.set(t, J); ST.r8pile = (ST.r8pile || 0) + 1; return { b: 0, fatta: false };
+    }
+    const P = rd.properties.get(t); if (P.__webglTexture !== J.tex || !J.data) { PILE.delete(t); return { b: 0, fatta: true }; }   // liberata nel frattempo
+    // 2. qualche strato per fotogramma
+    const n = Math.max(1, Math.min(im.depth - J.z, Math.floor((PB - PF.b) / strato))); if (PF.b >= PB) return { b: 0, fatta: false };
+    rd.state.bindTexture(gl.TEXTURE_2D_ARRAY, J.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, t.unpackAlignment); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, 0);
+    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, J.z, im.width, im.height, n, gl.RGBA, gl.UNSIGNED_BYTE, J.data, J.z * strato);
+    J.z += n; PF.b += n * strato;
+    if (J.z < im.depth) { rd.state.unbindTexture(); return { b: n * strato, fatta: false }; }
+    // 3. le mipmap (come three), poi la copia in memoria se ne va (onUpdate)
+    if (t.generateMipmaps && t.minFilter !== THREE.NearestFilter && t.minFilter !== THREE.LinearFilter) gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    rd.state.unbindTexture(); PILE.delete(t); if (J.ou) J.ou.call(t, t); ST.r8pileFatte = (ST.r8pileFatte || 0) + 1;
+    return { b: n * strato, fatta: true };
+  }
   // [ottimizza-car] le tessiture di una mesh mandate alla scheda video adesso (dentro la quota), non al primo disegno: torna i byte
   function texSu(r) {
     const rd = CTX.renderer; if (!rd || !rd.initTexture || CFG.byte === Infinity) return 0; const ids = new Set(); texMesh(r, ids); let b = 0;
-    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit) return;
+    let attesa = false;
+    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit && !PILE.has(t)) return;
+      if (R8P && pilaOk(t)) { const q = pila(rd, t); b += q.b; if (!q.fatta) attesa = true; return; }   // [ritmo8] la pila grande a fette
       rd.initTexture(t); b += (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4 * (t.generateMipmaps ? 1.33 : 1); });
-    return b;
+    return attesa ? -1 - b : b;
   }
   function monta1(ti, tetto, quota, quotaB) {
     if (quotaB === undefined) quotaB = Infinity;
@@ -74711,7 +74821,7 @@ var Tasselli = (function () {
     let vf = 0, bf = 0;
     while (S.k < S.lista.length) {
       if (performance.now() > tetto || vf > quota || bf > quotaB) return false;
-      if (quotaB !== Infinity) bf += texSu(T.mesh[S.lista[S.k]]);
+      if (quotaB !== Infinity) { const b = texSu(T.mesh[S.lista[S.k]]); if (b < 0) { bf += -1 - b; return false; } bf += b; }   // [ritmo8] una pila a metà: la mesh entra quando è piena
       const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
@@ -74756,7 +74866,7 @@ var Tasselli = (function () {
   function raggiA(a, d, v, q) {
     if (d.idx) a.__ix = v; else if (q) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k }; else a.__pf = v;
   }
-  function raggiVia(S) { if (S.attrs) S.attrs.forEach(a => { a.__ix = a.__q = a.__pf = null; }); if (S.mesh) S.mesh.forEach(o => { o.geometry.__griglia = null; }); S.rdati = false; S.raggi = false; ST.raggiVia = (ST.raggiVia || 0) + 1; }
+  function raggiVia(S) { if (S.attrs) S.attrs.forEach(a => { a.__ix = a.__q = a.__pf = null; }); if (S.mesh) S.mesh.forEach(o => { o.geometry.__griglia = null; o.geometry.__grigliaG = null; }); S.rdati = false; S.raggi = false; ST.raggiVia = (ST.raggiVia || 0) + 1; }
   // [leggera] riapre un tassello in scena (il compresso si riscarica: è nella cache del navigatore) per le mesh rimandate che la camera
   // ora tocca e, se il giocatore è vicino, per i dati dei raggi
   let RIAPRI = 0;
@@ -74978,6 +75088,7 @@ var Tasselli = (function () {
     requestAnimationFrame(tick);
     if (!CTX) return;
     if (COMP) { CTX.scene.remove(COMP); COMP = null; }   // compilati (main.js, subito dopo R.init)
+    PF.n++;   // [ritmo8] il fotogramma delle pile
     try { aloniTick(); } catch (e) { }
     const t0 = performance.now(), c = CTX.cam, x = c.x, z = c.y;
     { const P = CTX.camera.position; if (Math.hypot(P.x - x, P.z - z) > 600) return; }   // la camera non è ancora andata al suo posto (il primo fotogramma)
@@ -75012,6 +75123,7 @@ var Tasselli = (function () {
       while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota, vicinoFatto ? CFG.byte : Infinity)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
+    if (R8G && vicinoFatto) try { griglieTick(x, z); } catch (e) { console.warn('[ritmo8] griglie', e); }   // [ritmo8] le griglie dei raggi, a fette
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
       let tutti = true, n = 0; IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F)) { n++; if (STATO[ti].st !== 5) tutti = false; } });
       if (tutti) { ST.vicinoT = Math.round(performance.now()); ST.vicinoN = n; (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; log('anello vicino in scena:', n, 'tasselli', (ST.byteVicino / 1048576).toFixed(2), 'MB', ST.vicinoT, 'ms'); }
@@ -75050,12 +75162,13 @@ var Tasselli = (function () {
     TIENI.clear(); IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F) || (r && dist(t, x, z) <= r)) { dentro.push(ti); if (r) TIENI.add(ti); } });
     for (;;) {
       dentro.forEach(ti => { const S = STATO[ti]; if (!S.st) scarica(ti); else if (S.st === 2) apri(ti); });
+      if (PILE.size && CTX.renderer) [...PILE.keys()].forEach(t => { PF.b = -Infinity; pila(CTX.renderer, t); });   // [ritmo8] le pile a metà, finite subito (gli strumenti)
       while (PRONTI.length) monta1(PRONTI.shift(), Infinity, Infinity);
       if (dentro.every(ti => STATO[ti].st === 5 || (STATO[ti].errori || 0) > 3)) break;
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
 </script>   <!-- [tasselli] la città cotta a tasselli (di difetto; ?tasselli=0 la costruisce nel browser): il caricatore, lo streaming -->
@@ -89523,8 +89636,13 @@ var Render = (function () {
   //   C «pittorico caldo»: la pennellata solo larga (2 × 0,6 m, nel mondo, svanisce prima di diventare grana), l'intonaco a gradiente morbido,
   //     la luce ligure calda e dorata, l'aria più forte e calda verso il mare e l'orizzonte, il filo leggero, la sera più rosa e arancio.
   // Dal vivo (le sonde): R.stile('A'|'B'|'C') o window.__STILE. Con ?stile nell'indirizzo il passo unico porta i rami (a zero in A).
-  const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([abcABC])\b/) || [])[1] || '').toUpperCase() : '';
-  const STILE = { on: PFD.on, url: PFD.on && !!STILE_Q, v: 'A', base: null, sV: [0, 0, 0, 1], sW: [0, 0, 0, 0],
+  // [fumetto] D «fumetto hip hop» (ANALISI_FUMETTO.md): l'illustrazione a fumetto del graffiti, in due dosi. ?stile=D è la dose consigliata (D2).
+  //   D1 «fumetto pulito»: l'inchiostro (la sagoma dalla profondità, le pieghe interne sottili dalla curvatura della profondità, l'inchiostro
+  //     che lontano prende il colore dell'aria), la luce a tre toni piatti col bordo antialiasato, le campiture piatte, le ombre colorate.
+  //   D2 «graffiti a fumetto»: D1 più il retino nell'ombra (nel mondo, si spegne sotto i 3 px), la luce a spray (macchie bianche a bordo netto
+  //     sulle cose curve), il colore spray più pieno, l'inchiostro più spesso vicino (2 px) e il lontano a fasce piatte.
+  const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([abcdABCD][12]?)\b/) || [])[1] || '').toUpperCase().replace(/^D$/, 'D2') : '';
+  const STILE = { on: PFD.on, url: PFD.on && !!STILE_Q, v: 'A', base: null, sV: [0, 0, 0, 1], sW: [0, 0, 0, 0], sF: [0, 0, 0, 0], sG: [40, 0, 0, 30],   /* [fumetto] sF: inchiostro, pieghe, anello vicino (2 px), valore degli accenti; sG: metri dell'inchiostro d'aria, metri dell'anello, fasce del lontano, metri delle pieghe */
     V: {
       B: { DIR: { varia: .25, pittura: .45, tremolio: 0, microNormale: 0, fuoco: .08, suoloSat: .24, muriSat: .46 }, PRO: { celle: 1 },
         PFD: { linea: 1.5, lineaSoglia: .04, lineaPersiste: 3, lineaLontano: 150, aria: .4, ariaL: 55, ariaFreddo: .8, quota: .28, spicca: 1, suoloK: .85, tettiL: .44 }, CAT: { lineaPersone: 1, bordoPersone: .28 },
@@ -89537,12 +89655,26 @@ var Render = (function () {
         mom: { mattino: { sole: '#ffd09a', soleK: 1.42, terra: '#c49c70', nebbia: '#eed6ba', luce: [1.07, 1, .88], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6650b4', proTintaK: .36, vign: .16 },
           pomeriggio: { sole: '#ffca90', soleK: 1.42, terra: '#c89a6a', nebbia: '#f0d2b2', luce: [1.07, 1, .87], ombra: [.92, .9, 1.14], sat: 1.04, contrasto: 1.06, proTinta: '#6a4eb2', proTintaK: .36, vign: .16 },
           sera: { sole: '#ff8a48', soleK: 1.12, cielo: '#8c70c4', terra: '#b8785a', nebbia: '#e8949a', bordo: '#ffa0a8', ombra: [.86, .82, 1.2], luce: [1.14, .98, .82], sat: 1.06, contrasto: 1.08, proTinta: '#7a3a9c', proTintaK: .4, vign: .2 } },
-        u10: [0, 1, 0, 0], sV: [0, 0, 0, 1], sW: [0, .06, 1, 0] } } };
+        u10: [0, 1, 0, 0], sV: [0, 0, 0, 1], sW: [0, .06, 1, 0] },
+      // [fumetto] le due dosi. Le campiture: niente velature né micro-normale, la scala del muro appena; la luce a celle piena (il bordo a fwidth nel
+      // materiale, sgP10.z); l'ombra presa dal cielo più piena e più blu-viola; il filo della profondità più deciso e più lungo
+      D1: { DIR: { varia: .18, pittura: .3, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .26, muriSat: .44, vissuto: .35 }, PRO: { celle: 1 },
+        PFD: { linea: 1.5, lineaSoglia: .035, lineaPersiste: 3, lineaLontano: 140, filoSottile: .5, aria: .45, ariaL: 50, ariaFreddo: .7, quota: .22, spicca: 1.05, suoloK: .88, tettiL: .45 }, CAT: { lineaPersone: 1, bordoPersone: .24, spessore: 1.5 },
+        mom: { mattino: { sole: '#ffd49c', soleK: 1.4, luce: [1.05, 1, .93], ombra: [.86, .9, 1.26], sat: 1.14, contrasto: 1.12, esp: 1.1, proNeri: .03, nebbia: '#dfe4ea', proTinta: '#4c54d4', proTintaK: .5, vign: .05 },
+          pomeriggio: { sole: '#ffd29a', soleK: 1.4, luce: [1.05, 1, .93], ombra: [.86, .9, 1.26], sat: 1.14, contrasto: 1.12, esp: 1.1, proNeri: .03, nebbia: '#e1e4e8', proTinta: '#5254d2', proTintaK: .5, vign: .05 },
+          sera: { sat: 1.14, contrasto: 1.12, esp: 1.06, proTintaK: .44, vign: .08 } },
+        u10: [0, 0, 1, 0], sV: [.7, 8, 6, .6], sW: [0, .22, 0, 0], sF: [1, .5, .7, 0], sG: [45, 30, 0, 30] },
+      D2: { DIR: { varia: .12, pittura: .25, tremolio: 0, microNormale: 0, fuoco: .06, suoloSat: .3, muriSat: .44, vissuto: .3 }, PRO: { celle: 1 },
+        PFD: { linea: 1.8, lineaSoglia: .032, lineaPersiste: 3, lineaLontano: 150, filoSottile: .6, aria: .5, ariaL: 45, ariaFreddo: .75, quota: .22, spicca: 1.1, suoloK: .9, tettiL: .45 }, CAT: { lineaPersone: 1, bordoPersone: .22, spessore: 1.9 },
+        mom: { mattino: { sole: '#ffd296', soleK: 1.44, luce: [1.06, 1, .91], ombra: [.84, .88, 1.3], sat: 1.2, contrasto: 1.16, esp: 1.1, proNeri: .035, nebbia: '#dde3ec', proTinta: '#4a4ed8', proTintaK: .58, vign: .05 },
+          pomeriggio: { sole: '#ffcf92', soleK: 1.44, luce: [1.06, 1, .91], ombra: [.84, .88, 1.3], sat: 1.2, contrasto: 1.16, esp: 1.1, proNeri: .035, nebbia: '#e0e3ea', proTinta: '#504ed6', proTintaK: .58, vign: .05 },
+          sera: { sat: 1.22, contrasto: 1.15, esp: 1.06, proTintaK: .5, vign: .08 } },
+        u10: [0, 0, 1, 1], sV: [.8, 7, 5, .5], sW: [0, .28, 0, 0], sF: [1, .62, 1, .3], sG: [40, 30, 3, 30] } } };
   function stile(v) {
-    v = String(v || 'A').toUpperCase(); if (!STILE.on || !/^[ABC]$/.test(v)) return STILE.v;
+    v = String(v || 'A').toUpperCase(); if (v === 'D') v = 'D2'; if (!STILE.on || !/^([ABC]|D[12])$/.test(v)) return STILE.v;   // [fumetto] D = D2
     if (!STILE.base) STILE.base = { DIR: Object.assign({}, DIR), PRO: Object.assign({}, SGU.pro), PFD: Object.assign({}, PFD), CAT: Object.assign({}, CAT), mom: JSON.parse(JSON.stringify(SGU.momenti)) };
     const B = STILE.base; Object.assign(DIR, B.DIR); Object.assign(SGU.pro, B.PRO); Object.assign(PFD, B.PFD); Object.assign(CAT, B.CAT); for (const k in B.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(B.mom[k])));
-    const S = STILE.V[v]; STILE.v = v; STILE.sV = S ? S.sV : [0, 0, 0, 1]; STILE.sW = S ? S.sW : [0, 0, 0, 0];
+    const S = STILE.V[v]; STILE.v = v; STILE.sV = S ? S.sV : [0, 0, 0, 1]; STILE.sW = S ? S.sW : [0, 0, 0, 0]; STILE.sF = S && S.sF ? S.sF : [0, 0, 0, 0]; STILE.sG = S && S.sG ? S.sG : [40, 0, 0, 30];   // [fumetto]
     const u = S ? S.u10 : [0, 0, 0, 0]; PRO.u10.x = u[0]; PRO.u10.y = u[1]; PRO.u10.z = u[2]; PRO.u10.w = u[3];
     if (S) { Object.assign(DIR, S.DIR); Object.assign(SGU.pro, S.PRO); Object.assign(PFD, S.PFD); Object.assign(CAT, S.CAT); for (const k in S.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(S.mom[k]))); }
     if (PFD.on) Object.assign(DIR, { muriK: PFD.muriK, suoloK: PFD.suoloK, tettiL: PFD.tettiL });
@@ -89791,7 +89923,9 @@ if ( sgVetroK >= 0. ) totalEmissiveRadiance *= mix( 1., sgVetroK, sgP5.x );   //
     if (C.lights_physical_pars_fragment.includes(DNL)) C.lights_physical_pars_fragment = C.lights_physical_pars_fragment.replace(DNL, DNL + `
 #ifdef STANDARD
 	{ float sgTr = ${DIR.on ? 'sgTrG' : abGL('( sgN3( vSgW * 1.1 + 11.1 ) - .5 ) * .06', 'sgTrG')};   /* [direzione] il confine delle bande netto e pulito: il tremolio (un rumore) si leggeva come sporco */   /* [ottimizza-gpu] il rumore delle celle non dipende dalla luce: una volta per pixel (sgTrG), non una per luce */   /* [ombre2] era .14 a 43 cm: il confine luce e ombra si increspava a vermi sulle superfici curve */   // [firma] il confine fra le bande trema come una campitura a pennarello (un rumore largo nel mondo, non a schermo)
-	dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
+	if ( sgP10.z > 0. ) { float sgCw = fwidth( dotNL ) * .75 + 1e-4;   /* [fumetto] D: tre toni piatti (ombra, mezzo, sole) col bordo largo un pixel (fwidth): netto e senza scaletta, fermo camminando */
+	  dotNL = .4 * smoothstep( .03 - sgCw, .03 + sgCw, dotNL ) + .6 * smoothstep( .34 + sgTr - sgCw, .34 + sgTr + sgCw, dotNL ); }
+	else dotNL = mix( dotNL, .38 * smoothstep( .0, .08, dotNL ) + .62 * smoothstep( .3 + sgTr, .4 + sgTr, dotNL ), sgP4.x ); }   // [scorcio] le celle: la luce a bande
 #endif`);
     // l'ombra del sole: più morbida al bordo, e quanta ce n'è (per riempirla col cielo dell'ora)
     if (!GPUV) C.lights_fragment_begin = (DIR.on ? `
@@ -89864,6 +89998,32 @@ ${AAA.on ? `    { float vk = sgG * sgP6.z;   // [look-aaa] i volumi di colore: l
   { float f = pow( frS, 2.5 ); vec3 cielo = hemisphereLightColor( vec3( 0., 1., 0. ) );
     reflectedLight.indirectSpecular += sgP2.y * ( cielo * ( .12 + .5 * f ) + ambientLightColor * .3 );   // il cielo che si specchia
     reflectedLight.indirectDiffuse *= 1. - .35 * sgP2.y; }   // il fondo più profondo
+#endif
+}
+#endif`;
+    // [fumetto] D2 (?stile=D2, sgP10.w): IL RETINO DEL FUMETTO E LA LUCE A SPRAY. Il retino: puntini a 45° di 20 cm sul piano della faccia (fermi
+    // sul muro, non sullo schermo), più grandi dove l'ombra è piena, nel tono dell'ombra (il cielo dell'ora più scuro); si spengono quando la
+    // cella scende sotto 3-4,5 px (mai moiré né grana) e quasi del tutto sopra 16-28 px (i tetti a 3 m dalla camera: il retino sta nel piano del gioco). La luce: una macchia bianca a bordo netto (fwidth) solo sulle cose curve (persone, auto,
+    // vasi, pali: la curvatura dalle derivate della normale), mai su un muro piatto (sarebbe una faccia intera bianca). A zero: niente
+    C.lights_fragment_end += `
+#if defined( STANDARD ) && NUM_DIR_LIGHTS > 0
+if ( sgP10.w > 0. ) { vec3 sgL0 = directionalLights[ 0 ].direction; float sgNl = dot( geometry.normal, sgL0 ), sgLit = smoothstep( .02, .09, sgNl );
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+  sgLit *= sgOmbra;
+#endif
+  float sgSun = min( dot( directionalLights[ 0 ].color, vec3( .299, .587, .114 ) ), 1.3 );
+  vec3 sgHv = normalize( sgL0 + geometry.viewDir ); float sgNh = dot( geometry.normal, sgHv ), sgHw = fwidth( sgNh ) * .75 + .002;
+  float sgCv = length( fwidth( geometry.normal ) ) / max( length( fwidth( vViewPosition ) ), 1e-4 );   /* la curvatura (1/m) */
+  float sgHk = smoothstep( .972 - sgHw, .972 + sgHw, sgNh ) * smoothstep( .6, 2.2, sgCv ) * mix( .45, 1., smoothstep( .9, .45, material.roughness ) );
+  reflectedLight.directSpecular += vec3( 1., .97, .92 ) * sgHk * sgLit * sgSun * .7 * sgP10.w;
+#ifndef USE_SKINNING
+  { vec3 sgNw = inverseTransformDirection( geometry.normal, viewMatrix ), sgAn = abs( sgNw );
+    vec2 sgHp = sgAn.y > max( sgAn.x, sgAn.z ) ? vSgW.xz : ( sgAn.x > sgAn.z ? vSgW.zy : vSgW.xy );
+    sgHp = vec2( sgHp.x + sgHp.y, sgHp.y - sgHp.x ) * ( .7071 / .2 ); vec2 sgFw = fwidth( sgHp );
+    float sgFm = max( sgFw.x, sgFw.y ), sgOn = ( 1. - smoothstep( .22, .33, sgFm ) ) * mix( .25, 1., smoothstep( .036, .0625, sgFm ) ), sgSh = 1. - sgLit, sgDt = length( fract( sgHp ) - .5 );
+    float sgR = .3 * sqrt( smoothstep( .4, 1., sgSh ) ) * ( 1. - smoothstep( .8, 2., sgCv ) ), sgAa = max( sgFw.x, sgFw.y ) * .7 + .01, sgDot = ( 1. - smoothstep( sgR - sgAa, sgR + sgAa, sgDt ) ) * step( .01, sgR );
+    vec3 sgTn = sgP3.rgb / max( max( sgP3.r, max( sgP3.g, sgP3.b ) ), 1e-3 );   /* il tono dell'ombra (il cielo dell'ora) */
+    reflectedLight.indirectDiffuse *= mix( vec3( 1. ), mix( vec3( .76 ), sgTn * .76, .45 ), sgDot * sgOn * sgP10.w * ( 1. - .5 * sgP5.y ) ); }
 #endif
 }
 #endif`;
@@ -89953,7 +90113,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         nA: { value: new THREE.Vector4() }, nB: { value: new THREE.Vector4(.5, .5, 30, 0) }, nC: { value: new THREE.Vector4() }, nD: { value: new THREE.Vector4(.1, 1, .16, .9) }, nH: { value: new THREE.Vector3(.8, .8, .8) }, nS: { value: 0 }, nY: { value: new THREE.Vector4(0, 1, 0, 0) }, nE: { value: new THREE.Vector4() }, nY2: { value: new THREE.Vector4(0, 1, 0, 0) }, nXr: { value: new THREE.Vector4(1, 0, 0, 0) }, nZr: { value: new THREE.Vector4(0, 0, 1, 0) }, nRm: { value: null }, nRs: { value: new THREE.Vector2(1, 1) }, nG: { value: new THREE.Vector4() },   // [nitida] aria, fuoco, quinta, sagome · personaggio (u, v), distanza, chiarezza · luce, ombra ai bordi, cerchio, vicino · la tinta dell'aria
         gS: { value: new THREE.Vector4() },   // [strada]
         fT: { value: null }, fQ: { value: new THREE.Vector2() }, fP: { value: new THREE.Vector4() }, fE: { value: new THREE.Vector2(1, 1) }, fN: { value: new THREE.Vector4(1, 400, 1, 1) }, fA: { value: new THREE.Vector4() }, fB: { value: new THREE.Vector4() }, fC: { value: new THREE.Vector4() }, fH: { value: new THREE.Vector3(.8, .8, .8) }, fXr: { value: new THREE.Vector4(1, 0, 0, 0) }, fYr: { value: new THREE.Vector4(0, 1, 0, 0) }, fZr: { value: new THREE.Vector4(0, 0, 1, 0) },   // [profondita2]
-        rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() } },   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
+        rv: { value: 1 }, cT: { value: 0 }, dV: { value: new THREE.Vector4(.43, .82, .2, .66) }, dW: { value: new THREE.Vector4(.74, .4, .42, .46) }, dF: { value: new THREE.Vector4() }, cK: { value: new THREE.Vector4() }, cL: { value: new THREE.Vector4(0, 0, 0, 1) }, dI: { value: new THREE.Vector4() }, aS: { value: new THREE.Vector3(1, 1, 1) }, aO: { value: new THREE.Vector3() }, aP: { value: new THREE.Vector3(1, 1, 1) }, aSh: { value: new THREE.Vector3(1, 1, 1) }, aHi: { value: new THREE.Vector3(1, 1, 1) }, aH: { value: new THREE.Vector3() }, aAo: { value: new THREE.Vector3(1, 1, 1) }, sV: { value: new THREE.Vector4() }, sW: { value: new THREE.Vector4() }, sF: { value: new THREE.Vector4() }, sG: { value: new THREE.Vector4(40, 0, 0, 30) } },   /* [fumetto] sF, sG: l'inchiostro e il lontano di D */   /* [stile] sV: il piano di fondo (forza, metri oltre il personaggio, larghezza, contrasto che resta); sW: l'inchiostro freddo, gli accenti, l'aria calda */   // [look-aaa] il grading (pendenza, spostamento, potenza, viraggio ombre e luci), la tinta della foschia e dell'ombra di contatto   // [scorcio] la proposta: profondità, vicino/lontano, spigoli/pieghe/ao/raggio, miniatura/fuoco/fascia/raggio, l'angolo di un pixel
       vertexShader: 'varying vec2 vUv0; void main(){ vUv0=uv; gl_Position=vec4(position.xy,0.,1.); }',
       fragmentShader: (PRO.look ? '#define SG_PRO\n' : '') + (AAA.on ? '#define SG_AAA\n' : '') + (PRO.prof ? '#define SG_PROD\nprecision highp float;' : 'precision mediump float;') + (PHONE ? '\n#define SG_TEL' : '') + (NIT.on && PRO.look ? '\n#define SG_NIT' : '') + (LOOK.on ? '\n#define SG_LOOK' : '') + (PELL.on ? '\n#define SG_STR' : '') + (AD.on ? '\n#define SG_AD' : '') + (CAT.on ? '\n#define SG_CAT' : '') + ((PHONE || LOWQ.on) && !msaaHD() ? '\n#define SG_FXAA' : '') + (msaaHD() ? '\n#define SG_HDAA' : '') + (DIR.on ? '\n#define SG_DIR' : '') + (PFD.on ? '\n#define SG_PFD' : '') + (STILE.url ? '\n#define SG_STILE' : '') + `
         uniform sampler2D t; uniform vec2 src; uniform vec3 sh; uniform vec3 hi; uniform vec4 gK; uniform vec4 gN; uniform vec4 fx; uniform vec2 lb; uniform float tm; varying vec2 vUv0; uniform vec4 gS; uniform vec4 cK; uniform vec4 cL; uniform vec4 dI; uniform float rv; uniform float cT; uniform vec4 dV; uniform vec4 dW; uniform vec4 dF;   // rv: [riv] lo stato della rivoluzione (1 strada, 0 regime)   // gS: [strada] rigonfiamento, pellicola; cK, cL: [cat] la gerarchia e le linee per categoria
@@ -89992,6 +90152,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
         highp vec3 fW(vec2 q, highp float d){ highp vec3 v = vec3((q * 2. - 1.) * fN.zw * d, -d); return vec3(dot(fXr.xyz, v) + fXr.w, dot(fYr.xyz, v) + fYr.w, dot(fZr.xyz, v) + fZr.w); }   /* il punto nel mondo */
 #ifdef SG_STILE
         uniform vec4 sV; uniform vec4 sW;   /* [stile] le varianti B e C (ANALISI_STILE2.md); a zero il passo di A, identico */
+        uniform vec4 sF; uniform vec4 sG;   /* [fumetto] D (ANALISI_FUMETTO.md): inchiostro, pieghe, anello vicino, valore degli accenti · metri dell'inchiostro d'aria, dell'anello, fasce del lontano, metri delle pieghe; a zero niente */
 #endif
 #define fAcc vec2(.7, .85)   /* [profondita2] sui muri gli accenti (writing, insegne, persiane piene) restano pieni da .7-.85 di saturazione (giro 3: da .62 passavano anche gli intonaci gialli più carichi): con l'alfa pulito il writing è muro, e il tetto del pastello lo spegneva */
 #else
@@ -90233,7 +90394,11 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
 #ifdef SG_STILE
                 + sW.y
 #endif
-                ) * smoothstep(.42, .65, sA) * (1. - wS)), 0.); }
+                ) * smoothstep(.42, .65, sA) * (1. - wS)), 0.);
+#ifdef SG_STILE
+                c = max(c + (lA - .42) * sF.w * smoothstep(.55, .8, sA) * (1. - wS), 0.);   /* [fumetto] D2: il writing e le insegne staccano anche di valore dal muro (il giallo più chiaro, il blu più scuro): lo spray si legge */
+#endif
+              }
               lq = dot(c, vec3(.299, .587, .114)); }
 #else
             { float cap = mix(.56, .44, smoothstep(.35, .75, lq)), k = wM * cK.x * (1. - smoothstep(.8, .9, sq)); if (sq > cap) c = mix(c, mix(vec3(lq), c, cap / sq), k); }   // muri: pastello (gli accenti saturi, scritte e saracinesche, restano)
@@ -90276,7 +90441,13 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               float upC = step(ka - kc * 6., .5) * step(1.5, kc) * step(kc, 3.5);   /* [diorama] la faccia in alto di un muro o di un tetto */
               if (upC > .5 && dI.z > 0.) c = mix(c, mix(c, vec3(1., .95, .86), .3), clamp(eV, 0., 1.) * dI.z);   /* [diorama] LO SPIGOLO DI LUCE: dalla parte in alto lo spigolo
                  prende il sole come una pennellata chiara; la riga scura resta solo dalla parte in piedi (lo smusso dipinto, non un contorno da fumetto) */
-              else c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), ln * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
+              else {
+#ifdef SG_STILE
+                c = mix(c, mix(vec3(.29, .306, .345), mix(c * c * .78 + vec3(.028, .016, .042), vec3(.04, .03, .06), sF.x), rv), ln * mix(.7, 1., rv)); }   /* [fumetto] D: la sagoma delle persone d'inchiostro nero, spessa (CAT.spessore) */
+#else
+                c = mix(c, mix(vec3(.29, .306, .345), c * c * .78 + vec3(.028, .016, .042), rv), ln * mix(.7, 1., rv)); }   // [riv] nel regime la linea tecnica grigia uniforme
+#endif
+              }
           }
 #endif
 #ifdef SG_PFD
@@ -90309,8 +90480,35 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             vec3 ink = min(bg * vec3(.52, .45, .38) + vec3(.02, .012, 0.), c);   /* [profondita3] il bruno scuro e caldo del fondo, mai il nero; mai più chiaro della cosa */
 #ifdef SG_STILE
             ink = mix(ink, min(bg * vec3(.3, .3, .4) + vec3(.025, .02, .05), c), sW.x);   /* [stile] B: l'inchiostro blu-viola scuro, più deciso (l'illustrazione) */
+            float lnP = 0.;
+            if (sF.x > 0.) {   /* [fumetto] D: L'INCHIOSTRO DEL FUMETTO. (1) la sagoma: il filo di sopra, quasi nero (un viola profondo), più lungo; (2) l'inchiostro d'aria:
+                                  lontano il nero prende il colore dell'aria dell'ora, più scuro (il fondo non diventa una pappa nera); (3) le pieghe: dove la superficie
+                                  si piega (lo spigolo di una casa, il piede del muro, il vano di una finestra) un tratto sottile, dalla curvatura della profondità
+                                  (l'inverso della distanza va dritto su un piano: la sua derivata seconda è zero sul piano e salta sulla piega), con le stesse quattro
+                                  letture del filo (zero in più), solo vicino; (4) D2: l'anello a 2 px, l'inchiostro più spesso solo vicino (quattro letture, solo lì) */
+              float ak = smoothstep(sG.x * .2, sG.x, fd0 - fA.w);
+              vec3 inkD = mix(vec3(.05, .04, .075), fH * vec3(.5, .5, .58), ak * .85);
+              ink = mix(ink, min(inkD, c), sF.x);
+              highp float i0 = 1. / fd0, pxA = 2. * fN.w / src.y;
+              float kx = (i0 - .5 * (1. / dR + 1. / dL)) / (i0 * pxA), ky = (i0 - .5 * (1. / dU + 1. / dB)) / (i0 * pxA);
+              float kv = max(abs(kx) * (1. - smoothstep(2.5, 5., abs(kx))), abs(ky) * (1. - smoothstep(2.5, 5., abs(ky))));
+              /* IL RETINO DELLE COSE CHE SI APRONO (le chiome davanti alla camera, il varco: buchi di 1-2 px) non deve diventare un groviglio nero: un pixel
+                 col fondo da due parti opposte (a destra E a sinistra, o sopra E sotto) è un buco del retino o un filo di 1 px, non una sagoma */
+              float fR = step(fB.y, dR / fd0 - 1.), fL = step(fB.y, dL / fd0 - 1.), fU = step(fB.y, dU / fd0 - 1.), fB0 = step(fB.y, dB / fd0 - 1.), dav = step(fd0, fA.w - 1.5);
+              float op1 = max(max(fR * fL, fU * fB0), dav * step(1.5, fR + fL + fU + fB0));   /* davanti al personaggio (dove la camera apre le cose a retino) basta il fondo da due parti qualsiasi */
+              lin *= 1. - op1 * sF.x;
+              lnP = sF.y * smoothstep(.3, .85, kv) * (1. - smoothstep(sG.w * .5, sG.w, fd0 - fA.w)) * (1. - fSky) * (1. - fPers) * (1. - lin) * (1. - op1);
+              if (sF.z > 0. && fd0 < fA.w + sG.y) { vec2 e2 = e * 2.;
+                highp float r1 = fD(vUv + vec2(e2.x, 0.)), r2 = fD(vUv - vec2(e2.x, 0.)), r3 = fD(vUv + vec2(0., e2.y)), r4 = fD(vUv - vec2(0., e2.y));
+                float jr = max(max(r1, r2), max(r3, r4)) / fd0 - 1.;
+                float g1 = step(fB.y, r1 / fd0 - 1.), g2 = step(fB.y, r2 / fd0 - 1.), g3 = step(fB.y, r3 / fd0 - 1.), g4 = step(fB.y, r4 / fd0 - 1.), op2 = max(max(g1 * g2, g3 * g4), dav * step(1.5, g1 + g2 + g3 + g4));   /* il fondo a 2 px da due parti: retino o cosa sottile (un palo resta col suo filo di 1 px) */
+                lin = max(lin, smoothstep(fB.y, fB.y * 2., jr) * sF.z * (1. - fSky) * fE.x * (1. - smoothstep(sG.y * .5, sG.y, fd0 - fA.w)) * (1. - max(op1, op2))); } }
 #endif
-            c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin); }   /* nel regime il grigio tecnico */
+            c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin);   /* nel regime il grigio tecnico */
+#ifdef SG_STILE
+            c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lnP * .72);   /* [fumetto] la piega: lo stesso inchiostro, più leggero (il tratto sottile) */
+#endif
+          }
           {   /* LA LUCE DEL CIELO PER QUOTA: il fondo della via (alla quota del personaggio) vede meno cielo, i piani alti di più. La scala del muro
                  (chiaro in alto, scuro al piede) estesa alla città: i livelli si staccano anche dall'alto, dove la prospettiva quasi non c'è. Le persone no */
             float hq = smoothstep(0., fQ.y, fp0.y - fC.w), qa = fQ.x * (hq - .55) * (1. - fPers) * (1. - fSky);
@@ -90318,6 +90516,10 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
           {   /* L'ARIA: oltre il personaggio il lontano va verso il colore dell'aria dell'ora, perde contrasto e colore e si raffredda; vicino niente (il
                  primo piano resta il più ricco). Fisica: 1 - e^(-metri / fA.y) */
             float hz = fA.x * (1. - exp(-max(fd0 - fA.w, 0.) / fA.y)), la = dot(c, vec3(.299, .587, .114));
+#ifdef SG_STILE
+            if (sG.z > 0.) { float hb = (1. - exp(-max(fd0 - fA.w, 0.) / fA.y)) * sG.z, hf = floor(hb), aw = fwidth(hb) * .75 + .02;   /* [fumetto] D2: il lontano a fasce piatte (il fondale del fumetto), il bordo della fascia antialiasato */
+              hz = fA.x * (hf + smoothstep(.5 - aw, .5 + aw, hb - hf)) / sG.z; }
+#endif
             vec3 air = fH * mix(vec3(1.), vec3(.93, .98, 1.08), fA.z);
 #ifdef SG_STILE
             air = mix(air, air * vec3(1.05, 1., .88) + vec3(.035, .02, 0.), sW.z);   /* [stile] C: l'aria calda della costa (la foschia dorata verso il mare) */
@@ -90363,6 +90565,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
           c += (fract(sin(dot(gl_FragCoord.xy + fract(tm) * 61., vec2(12.9898, 78.233))) * 43758.5453) - .5) / 255.;   // contro le bande degli 8 bit
           gl_FragColor = vec4(c, 1.); }`,
       depthTest: false, depthWrite: false, toneMapped: false });
+    if (STILE.url) SGP.mat.extensions.derivatives = true;   // [fumetto] le fasce del lontano (fwidth) anche in WebGL1; senza ?stile il programma resta quello di prima
     SGP.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), SGP.mat));
   }
   function sguResize(W, H) { if (!SGP.mat) sguInit(); SGP.mat.uniforms.src.value.set(W, H); }
@@ -90479,7 +90682,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     if (DIR.on) U.gN.value.z = AD.on ? 1 - (SGT.notte || 0) : 0;   // [direzione] il giorno (le manopole dell'ora lo azzeravano: la gerarchia di giorno non partiva)
     if (RIV.on) { const r = RIV.v; U.gK.value.x *= .32 + .73 * r; U.gN.value.y *= r; PRO.u5.w *= r; U.rv.value = r; }   // [riv] il regime: quasi senza colore, niente colore pieno, niente retino; la strada: tutto (dopo le manopole dell'ora, che riscrivono gN)
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
-    if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); }   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
+    if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); U.sF.value.fromArray(STILE.sF); U.sG.value.fromArray(STILE.sG); }   // [fumetto]   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
     if (PFD.on) {   // [profondita2] la profondità nel passo: la camera, il personaggio, le forze
       const F = PFD, ty = Math.tan(camera.fov * Math.PI / 360), m = camera.matrixWorld.elements, inK = p.indoor ? 0 : 1, f = ui.focus;
       const d3 = SGT.fv3 || (SGT.fv3 = new THREE.Vector3()); d3.set(f ? f.x : p.x, (f ? groundH(f.x, f.y) : playerH) + 1, f ? f.y : p.y).applyMatrix4(camera.matrixWorldInverse);
@@ -93514,8 +93717,13 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     // tornano gli stessi (a, b, c sono gli stessi numeri di vertice)
     const bvhCopia1 = g => { const c = new THREE.BufferGeometry(); for (const k in g.attributes) c.setAttribute(k, g.attributes[k]);
       c.setIndex(new THREE.BufferAttribute(g.index.array.slice(), 1)); c.groups = g.groups; c.boundingBox = g.boundingBox; c.boundingSphere = g.boundingSphere; return c; };
+    // [ritmo8] le geometrie che hanno già mandato le posizioni alla scheda video e le hanno buttate (il verde lontano del profilo leggero:
+    // LeggeraMem.verde) non possono colpire niente (i vertici letti sono NaN), ma l'indice spaziale fatto su di loro era una foglia sola con
+    // tutti i triangoli: 13.000 prove per raggio, cinque raggi per prova del braccio di camera7. Nessun colpo, come prima, senza provarli
+    const R8V = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
     const fast = function (rc, out) {
       const g = this.geometry;
+      if (R8V && g && g.attributes) { const p0 = g.attributes.position; if (p0 && p0.array && p0.array.length === 0 && !p0.__pf && !p0.__q && !p0.isInterleavedBufferAttribute) return; }
       if (!g || !g.isBufferGeometry || g.__bvhNo || this.isSkinnedMesh || !this.material) { if (window.__rlOn) lento(!g ? 'senza' : g.__bvhNo ? 'mai' : this.isSkinnedMesh ? 'scheletro' : 'altro', g); return orig.call(this, rc, out); }
       // [leggera] è cambiata (il pulitore sposta e toglie pezzi dentro le mesh fuse, i segni): stessi triangoli in posti nuovi, l'indice si
       // riadatta (refit: i riquadri tornano a contenere i triangoli, i punti trovati sono gli stessi). Prima si tornava per sempre al
@@ -94791,10 +94999,30 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // [camera7] la cosa piccola registrata (DZ.props: ombrelloni, banchi, cartelli, tende) dove il raggio ha colpito: non ferma il braccio
   function piccola7(pt) { let s = false; hashNear(pt.x, pt.z, 2.5, rec => { if (s || !rec.tag || rec.state) return; const c = rec.c, h = rec.he; if (Math.max(h.x, h.z) > 2.5 || h.y > 3.5) return;
     if (pt.x > c.x - h.x - .15 && pt.x < c.x + h.x + .15 && pt.y > c.y - h.y - .1 && pt.y < c.y + h.y + .15 && pt.z > c.z - h.z - .15 && pt.z < c.z + h.z + .15) s = true; }); return s; }
+  if (typeof window !== 'undefined') window.__piccola7 = piccola7;   // [ritmo8] per la sonda dell'uguaglianza dei raggi
   // [camera7] IL RAGGIO A SFERA: cinque raggi (il centro e quattro a K.r di lato e in alto e in basso) dal petto verso la camera, contro le mesh
   // piene vicine (bmbCands: visibili, materiale pieno) senza persone, mezzi né cose piccole; mesh_bvh li rende pochi triangoli l'uno. Rende
   // la distanza alla quale la sfera tocca, o null. Senza mesh (ancora da caricare) la mappa delle case, come prima
+  // [ritmo8] IL BRACCIO COSTAVA PIÙ DI TUTTO IL RESTO (v7/ANALISI_RITMO8.md): Camera7.passo prova il braccio fino a sei volte per fotogramma e,
+  // a braccio fermo (la strada libera, il caso di sempre), la prima prova, quella della camera di quel fotogramma (f6) e l'ultima (fa) sono
+  // LO STESSO raggio: si fa una volta sola (C7M: gli ultimi raggi di questo fotogramma, con gli stessi numeri esatti; la scena non cambia
+  // dentro Camera7.passo). Provato (strumenti/sonda: 320 prove in otto posti) uguale raggio per raggio. ?noritmo8raggi: com'era
+  const R8RAGGI = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('raggi');
+  const C7M = { f: -1, n: 0, k: [], v: [], giro: 0 };
+  C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
+  if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
   function cast7(o, dir, len, r) {
+    if (R8RAGGI && !CAM7.spia) {
+      if (C7M.f !== C7M.giro) { C7M.f = C7M.giro; C7M.n = 0; }
+      C7M.chiamate = (C7M.chiamate || 0) + 1;
+      for (let i = 0; i < C7M.n; i++) { const k = C7M.k[i]; if (k[0] === o.x && k[1] === o.y && k[2] === o.z && k[3] === dir.x && k[4] === dir.y && k[5] === dir.z && k[6] === len && k[7] === r) { C7M.memo = (C7M.memo || 0) + 1; if (C7M.v[i] !== null) CAM7.colpi++; return C7M.v[i]; } }
+      const t0 = performance.now(), v = cast7v(o, dir, len, r); C7M.ms = (C7M.ms || 0) + performance.now() - t0;
+      if (C7M.n < 8) { const k = C7M.k[C7M.n] || (C7M.k[C7M.n] = [0, 0, 0, 0, 0, 0, 0, 0]); k[0] = o.x; k[1] = o.y; k[2] = o.z; k[3] = dir.x; k[4] = dir.y; k[5] = dir.z; k[6] = len; k[7] = r; C7M.v[C7M.n++] = v; }
+      return v;
+    }
+    return cast7v(o, dir, len, r);
+  }
+  function cast7v(o, dir, len, r) {
     const now = performance.now();
     if (now - C7R.t > 300 || Math.abs(o.x - C7R.cx) + Math.abs(o.z - C7R.cz) > 3) {
       C7R.t = now; C7R.cx = o.x; C7R.cz = o.z; const R0 = C7R.roots; R0.clear();
@@ -95099,6 +95327,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   function frame(st, dt, ui) {
     if (SM2W.stack || !(frame.__sm2 > 0)) { if (!SM2W.stack) frame.__sm2 = 3; try { sliceWalk(SM2W, scene, 2000, o => { smooth2o(o); thin2(o); }); } catch (e) { SM2W.stack = null; } } else frame.__sm2 -= dt;   /* [plastica2] quello che nasce dopo (persone, mezzi, interni) */   // [fluido] a rate
     BUD.start();   // [fluido] il tempo delle costruzioni ricomincia a ogni fotogramma
+    C7M.giro++;   // [ritmo8] il ricordo dei raggi del braccio vale un fotogramma solo
     frzTick();   // [fluido] i rami fermi congelati (e il controllo a rotazione)
     SHMOV.st = st;   // [fluido] per le ombre dei faretti
     const p = st.player, night = nightLevel(st.t), dusk = Math.min(1, duskLevel(st.t));
