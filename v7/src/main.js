@@ -73,6 +73,15 @@
   const CAM7 = !/[?&]nofixcamera7\b/.test(location.search) && typeof Camera7 !== 'undefined';
   const aPiedi7 = () => CAM7 && !st.player.vehicle;
   const armato7 = () => { const p = st.player; return !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur]; };
+  // [controlli8] I COMANDI RISPETTO ALLA VISTA (src/camera7.js comandi8). A piedi i tasti, le frecce, la levetta del controller, quella a
+  // schermo e quella del Game Boy usano la camera DI ADESSO (col giro chiesto in questo fotogramma, ui.drag: prima un fotogramma dopo) e
+  // la direzione tenuta resta ferma contro il ricentro solo finché tieni la stessa (prima finché ti muovevi: dopo qualche secondo W andava
+  // di lato sullo schermo); la mira (camDavanti) è il davanti della camera vera, non della base tenuta; mirando il mirino si vede anche col
+  // controller e col Game Boy (dove va il colpo); la levetta della visuale risponde in 0,05 s (era 0,12). ?nofixcontrolli8: com'era
+  const C8 = CAM7 && !/[?&]nofixcontrolli8\b/.test(location.search) && !!Camera7.comandi8;
+  const B8 = C8 ? Camera7.comandi8.crea() : null; let B8dt = 1 / 60, B8r = null;
+  const yaw8 = () => (R.cam.yaw || 0) + (ui.drag || 0);   // la camera di adesso: render.js somma ui.drag allo yaw in questo fotogramma
+  const dir8 = (sx, sy, tasti) => { B8.usato = true; return Camera7.comandi8.dir(B8, sx, sy, yaw8(), tasti, B8dt); };   // (sx destra, sy avanti) → la direzione nel mondo
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
@@ -245,7 +254,9 @@
     while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
     if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     if (GUIDA2) fTenuto();   // [guida2]
-    const r = input0(); if (!r) return r;
+    if (C8) B8.usato = false;
+    const r = input0(); if (C8 && (!B8.usato || !r || !(r.x || r.y) || st.player.vehicle)) Camera7.comandi8.dir(B8, 0, 0);   // [controlli8] fermi, sui mezzi, col clic: la prossima direzione parte dalla camera di adesso
+    if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
       const P = Skate.PAD, hold = tp.mode === 'skate'; let aim = r.aim;
@@ -265,7 +276,7 @@
   }
   // [camera6] si mira? (L2 del controller, B tenuto con l'arma nel Game Boy, il dito che spara, il tasto destro col puntatore, la bomboletta
   // che spruzza). La direzione: col puntatore il punto sotto il puntatore, se no il davanti della camera (si mira girando la visuale)
-  const camDavanti = () => { const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };
+  const camDavanti = () => { if (C8 && !st.player.vehicle) { const y = yaw8(); return Math.atan2(-Math.cos(y), -Math.sin(y)); } const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };   // [controlli8] il davanti della camera vera
   // [camera7] l'aggancio morbido: chi sta nel cono di ~10° davanti alla camera, entro la portata dell'arma, prende la mira (il più dritto,
   // a parità il più vicino); se no il mirino a terra a 10 m davanti. ui.aimPoint lo disegna render.js (dyn.aim)
   const AGG7 = { cono: 10 * Math.PI / 180, mirino: 10 };
@@ -295,7 +306,7 @@
     // l'inclinazione è la velocità (mag: dal passo alla corsa). Si guarda dove si va: girarsi è immediato anche all'indietro
     if (PAD.on && !st.player.vehicle && PAD.m > 0) {
       ui.faceIdle = undefined; if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null;
-      const B = R.camBasis(), x = B.rx * PAD.x - B.fx * PAD.y, y = B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;
+      const B = R.camBasis(), d8 = C8 ? dir8(PAD.x, -PAD.y, false) : null, x = d8 ? d8.x : B.rx * PAD.x - B.fx * PAD.y, y = d8 ? d8.y : B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;   // [controlli8]
       const M7 = CAM7 && PAD.mira ? mira6() : null;   // [camera7] mirando: la direzione con l'aggancio
       return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: M7 ? M7.a : PAD.mira ? camDavanti() : Math.atan2(y, x), mag: PAD.m };   // [camera6] mirando si va di lato: il personaggio guarda dove guarda la camera
     }
@@ -310,7 +321,7 @@
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
-      const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
+      const B = stickB || R.camBasis(), d8 = C8 && !st.player.vehicle ? dir8(stick.x, -stick.y, false) : null; const x = d8 ? d8.x : B.rx * stick.x - B.fx * stick.y, y = d8 ? d8.y : B.rz * stick.x - B.fz * stick.y;   // [controlli8]
       const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
@@ -339,7 +350,7 @@
     if (CAM7) {   // [camera7] i tasti (e le frecce) camminano rispetto alla camera; di difetto si cammina, Maiusc corre (niente mag: la velocità la decide sprint)
       const M6 = mira6(), hip = !M6 && mouse.down && mouse.active && armato7() && document.pointerLockElement !== cv ? aimAngle() : undefined;   // sparando dal fianco col sinistro: guarda il puntatore
       if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : touchMode ? a : undefined };
-      const B = R.camBasis(), d = Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;
+      const B = R.camBasis(), d = C8 ? dir8(s, f, true) : Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;   // [controlli8]
       return { x: d.x / l, y: d.y / l, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : Math.atan2(d.y, d.x), tasti: true }; }
     if (CAM6) {   // [camera6] i tasti camminano rispetto alla camera (W in su sullo schermo), il personaggio guarda dove va; mirando, dove mira
       const M6 = mira6(); if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : touchMode ? a : undefined };
@@ -1043,10 +1054,11 @@
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
-    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
-    setHid(x, !show); setS(cv, 'cursor', show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
+    const M8 = C8 && !p.vehicle && !ui.intro && !ui.dialog && !ui.book && !ui.over ? mira6() : null, mira8 = !!(M8 && !M8.punto && ui.aimPoint);   // [controlli8] mirando sopra la spalla (controller, Game Boy, tasto destro)
+    const show = (mouse.active && !touchMode || mira8) && !ui.intro && !ui.dialog && !ui.book && !ui.over && !(window.Editor && Editor.active());   // [editor]
+    setHid(x, !show); setS(cv, 'cursor', show && mouse.active && !touchMode ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
     if (!show) return;
-    if (CAM7 && document.pointerLockElement === cv && ui.aimPoint) { const q = R.project(ui.aimPoint.x, 1.25, ui.aimPoint.y), o = cvOff(); if (!q.behind) { mouse.cx = o.x + q.x * o.w; mouse.cy = o.y + q.y * o.h; } }   // [camera7] col puntatore bloccato il mirino sta dove va il colpo
+    if (CAM7 && (document.pointerLockElement === cv || (mira8 && (!mouse.active || touchMode || PAD.mira || CON.on))) && ui.aimPoint) { const q = R.project(ui.aimPoint.x, 1.25, ui.aimPoint.y), o = cvOff(); if (!q.behind) { mouse.cx = o.x + q.x * o.w; mouse.cy = o.y + q.y * o.h; } }   // [camera7] col puntatore bloccato il mirino sta dove va il colpo
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
     const dist = ui.aimPoint ? Math.hypot(ui.aimPoint.x - p.x, ui.aimPoint.y - p.y) : 8;
@@ -1281,7 +1293,7 @@
       if (PAD.on) { x += -PAD.rot / 1.6; y += -PAD.pan; }
       if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
       const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
-    const k = 1 - Math.exp(-dt / CAMS.tau);
+    const k = 1 - Math.exp(-dt / (C8 && !st.player.vehicle ? .05 : CAMS.tau));   // [controlli8] a piedi la levetta della visuale risponde subito
     if (CAM7 && !(st.player.vehicle && jumpMode())) {   // [camera7] gira fino a 3,5 rad/s, curva 1,4 (la levetta del controller cruda, le altre come prima); in su e in giù inclina
       if (PAD.on && libero) { x += PAD.rx - (-PAD.rot / 1.6); y += PAD.ry - (-PAD.pan); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
       const cv7 = v => { const a = Math.abs(v); return a <= CAM7K.dz ? 0 : Math.sign(v) * Math.pow(Math.min(1, (a - CAM7K.dz) / (1 - CAM7K.dz)), CAM7K.esp); };
@@ -1537,8 +1549,9 @@
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)) });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)), tenuto8: C8 && B8.a !== null ? B8.t : undefined });   /* [controlli8] da quanto si tiene la via (il ricentro aspetta) */
     PERF.frame += performance.now() - tF;
+    if (C8) { B8dt = dt; const u7 = R.__cam7 && R.__cam7.attivo ? R.__cam7.ultimo : null; if (u7 && u7 !== B8r) { B8r = u7; Camera7.comandi8.dopo(B8, u7); } }   // [controlli8] il giro del ricentro non gira la direzione tenuta
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     if (OR) eTick();   // [orienta] E tenuto: l'anello del crimine

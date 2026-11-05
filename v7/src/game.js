@@ -128,6 +128,16 @@ var Game = (function () {
   // ?nofixcamera7: com'era
   const FIX_CAM7 = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search));
   const MOV7 = { cammina: 3.6, corre: 6.4, acc: 20, frena: 30, lat: 22, r: .35, salto: .5 };
+  // [controlli8] IL PASSO PRONTO (il committente: «il controllo è poco reattivo», «è difficile far scendere le scale dalla piazza»). Sopra
+  // camera7: si parte a C8.K.avvio m/s subito (la prima mossa si vede nel fotogramma del tasto), si accelera a 45 m/s² e si frena a 50
+  // (prima 20 e 30: 0,17 s al passo, 0,22 s per fermarsi di corsa), la svolta tiene 80 m/s² di lato (prima 22: di corsa una curva larga
+  // 0,9 m), il corpo si gira a C8.K.giro rad/s (meno C8.K.giroV per m/s; prima 20 e 1,6: un dietrofront in 0,28 s). Il corpo è un cerchio
+  // di 30 cm (prima 35; sui gradini resta 22) e scivola anche sugli spigoli: se un palo, la testa di una ringhiera, lo spigolo di un vicolo
+  // storto o lo stipite di un varco ti ferma e a meno di C8.K.angolo m di lato c'è il passaggio, ci si sposta di lato da soli. Lo Spazio
+  // premuto fino a C8.K.bufSalto s prima di atterrare salta all'atterraggio. I banchi del mercato non chiudono più la bocca dei vicoli
+  // (vic_lanternini restava chiuso fra due banchi, passava solo d'angolo). ?nofixcontrolli8: com'era
+  const C8 = { on: FIX_CAM7 && !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)),
+    K: { acc: 45, frena: 50, lat: 80, r: .3, avvio: 1.6, giro: 26, giroV: 1.2, giroK: 30, vista: 34, angolo: .6, bufSalto: .15 } };
   const SUPC = new Map(), SUP = [];
   const inPoliReg = (lx, lz, R, n, ry) => { if (lx * lx + lz * lz > R * R) return false; const st = 2 * Math.PI / n; let a = Math.atan2(lx, lz) - ry; a = ((a % st) + st) % st; return Math.hypot(lx, lz) * Math.cos(a - st / 2) <= R * Math.cos(st / 2); };   // il poligono regolare di CylinderGeometry (raggio ai vertici R, il primo vertice su +Z, girato di ry)
   function supAdd(p, F, ext) {   // F: le facce [lx0, lx1, lz0, lz1, f(lx, lz) → quota sopra p.q, scala?]; ext: il riquadro locale [lx0, lx1, lz0, lz1]
@@ -1815,7 +1825,7 @@ var Game = (function () {
   function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
   function jumpHold(st, on) {
     const p = st.player;
-    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
+    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) { if (C8.on && p.jz > 0) p.jbuf = st.clock; return; } p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi   // [controlli8] in aria: si salta all'atterraggio (p.jbuf)
     if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
     if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
     if (!canJump(st)) return;
@@ -1830,7 +1840,8 @@ var Game = (function () {
     if (p.jz > 0) {
       if (FIX_CAM7) { p.jz += p.jvz * dt - .5 * JUMP.g * dt * dt; p.jvz -= JUMP.g * dt; }   // [camera7] il volo esatto: la stessa altezza a ogni frequenza
       else { p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt; }
-      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); if (GUIDA2 && v && VK[v.kind].pocket) { v.jz = 0; bmxLand(st, v); } }
+      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); if (GUIDA2 && v && VK[v.kind].pocket) { v.jz = 0; bmxLand(st, v); }
+        if (C8.on && !p.vehicle && p.jbuf != null) { const b = st.clock - p.jbuf; p.jbuf = null; if (b <= C8.K.bufSalto) jumpHold(st, true); } }   // [controlli8] lo Spazio premuto poco prima
     }
     if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; if (GUIDA2 && VK[v.kind].pocket) bmxLine(st, v, dt); }
   }
@@ -1899,12 +1910,14 @@ var Game = (function () {
   }
   // [camera7] il passo a piedi fuori: la velocità con l'accelerazione e la frenata, la svolta col tetto laterale, lo scivolare lungo i muri
   function muovi7(st, p, dt, inp) {
-    const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = MOV7;
+    const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = C8.on ? Object.assign({}, MOV7, C8.K) : MOV7;   // [controlli8] i numeri del passo pronto
     let sp = 0;
     if (l > 0) { sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? K.corre : K.cammina;
       if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = 1.3 + 5.1 * Math.min(1, inp.mag);   // la levetta e il dito: dal passo alla corsa
       sp *= p.loadK || 1; }
-    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0, dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
+    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0;
+    if (C8.on && l > 0 && sp > 0 && Math.hypot(vx, vy) < K.avvio * .5) { const a0 = Math.min(sp, K.avvio); vx = ix / l * a0; vy = iy / l * a0; }   // [controlli8] la partenza: subito al passo lento, niente avvio molle
+    let dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
     if (v > .05) { const ux = vx / v, uy = vy / v, a = dx * ux + dy * uy, qx = dx - a * ux, qy = dy - a * uy, ql = Math.hypot(qx, qy), a2 = clamp(a, -K.frena * dt, K.acc * dt), qk = ql > K.lat * dt ? K.lat * dt / ql : 1;
       dx = a2 * ux + qx * qk; dy = a2 * uy + qy * qk; }
     else { const dl = Math.hypot(dx, dy), m = K.acc * dt; if (dl > m) { dx *= m / dl; dy *= m / dl; } }
@@ -1917,12 +1930,13 @@ var Game = (function () {
       if (inp.door !== undefined && inp.door !== null && !p.lv) { const D = doorFront(st, [ix, iy], inp.door, .35); if (D) enterBuilding(st, D.bi, D.shop); } }   // [porte] solo dalla porta cliccata
     const sn = Math.hypot(vx, vy), vd = Math.atan2(vy, vx);
     const ta = inp.aim !== undefined ? inp.aim : l > 0 ? Math.atan2(iy, ix) : sn > .3 ? vd : null;
-    if (ta !== null) { const d = angDiff(ta, p.face), w = Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità
+    if (ta !== null) { const d = angDiff(ta, p.face), w = C8.on ? Math.max(14, K.giro - K.giroV * sn) : Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (C8.on ? K.giroK : l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità   // [controlli8] più svelto
     p.speed = sn < .05 ? 0 : Math.abs(angDiff(vd, p.face)) > 2.2 ? -sn : sn;   // all'indietro (mirando) le gambe al contrario
   }
   // [camera7] il cerchio (raggio r) che scivola: il passo intero, poi fuori dalle caselle piene (il punto più vicino della casella) e dalle
   // barriere (il punto più vicino del segmento), fino a quattro volte. Se il punto d'arrivo non va (un ciglio, una barriera scavalcata), il passo di prima
   function scivola7(o, dx, dy, r, swim) {
+    if (C8.on && !o.vehicle) r = Math.min(r, C8.K.r);   // [controlli8] il corpo di 30 cm
     if (SCELL.size && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini l'ingombro di una persona
     const x0 = o.x, y0 = o.y, solido = (tx, ty) => !walkT(tx, ty) && !(swim && seaT(tx, ty)), RB = r + BR * .5;
     let x = x0 + dx, y = y0 + dy, hit = false;
@@ -1935,8 +1949,33 @@ var Game = (function () {
         if (d >= RB) continue; hit = mosso = true; if (d > 1e-6) { x = qx + ex / d * RB; y = qy + ey / d * RB; } else { x = x0; y = y0; } }
       if (!mosso) break; }
     const okP = swim ? (walkM(x, y) || seaM(x, y)) : walkM(x, y);
-    if (!okP || taglia(x0, y0, x, y)) return tryMove(o, dx, dy, r, swim);
+    if (!okP || taglia(x0, y0, x, y)) { if (C8.on && spigolo8(o, x0, y0, dx, dy, x0, y0, r, swim)) return true; return tryMove(o, dx, dy, r, swim); }
+    if (C8.on && hit && spigolo8(o, x0, y0, dx, dy, x, y, r, swim)) return true;
     o.x = x; o.y = y; return hit;
+  }
+  // [controlli8] il cerchio (raggio r) sta in (x, y) senza toccare caselle piene, barriere, cigli?
+  function posto8(x, y, r, swim) {
+    if (!(swim ? (walkM(x, y) || seaM(x, y)) : walkM(x, y))) return false;
+    for (let ty = Math.floor((y - r) / TS); ty <= Math.floor((y + r) / TS); ty++) for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) { if (walkT(tx, ty) || (swim && seaT(tx, ty))) continue;
+      if (Math.hypot(x - clamp(x, tx * TS, tx * TS + TS), y - clamp(y, ty * TS, ty * TS + TS)) < r - 1e-4) return false; }
+    const L = BAR.length ? BCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null, RB = r + BR * .5;
+    if (L) for (let i = 0; i < L.length; i++) if (dSeg(x, y, BAR[L[i]]) < RB - 1e-4) return false;
+    return true;
+  }
+  // [controlli8] LO SPIGOLO: il passo (dx, dy) da (x0, y0) è finito in (x, y) con meno di un terzo dell'avanzata voluta. Se a meno di
+  // C8.K.angolo m di lato (prima il lato dove già scivola) il cerchio passa dritto, ci si sposta di lato di quanto si sarebbe avanzati
+  // (la velocità resta la tua, la direzione del corpo pure). Rende true se ha spostato o
+  function spigolo8(o, x0, y0, dx, dy, x, y, r, swim) {
+    const L = Math.hypot(dx, dy); if (L < 1e-5) return false;
+    const ux = dx / L, uy = dy / L, got = ((x - x0) * ux + (y - y0) * uy) / L; if (got > .33) return false;
+    const nx = -uy, ny = ux, lat = (x - x0) * nx + (y - y0) * ny, av = Math.max(.3, L * 2), lati = Math.abs(lat) > L * .2 ? [Math.sign(lat)] : [1, -1];
+    for (let s = .06; s <= C8.K.angolo + 1e-6; s += .06) for (const sg of lati) {
+      const qx = x0 + nx * s * sg, qy = y0 + ny * s * sg;
+      if (!posto8(qx, qy, r, swim) || !posto8(qx + ux * av, qy + uy * av, r, swim) || taglia(x0, y0, qx, qy) || taglia(qx, qy, qx + ux * av, qy + uy * av)) continue;
+      const m = Math.min(s, L), px = x0 + nx * m * sg + ux * Math.max(0, got) * L, py = y0 + ny * m * sg + uy * Math.max(0, got) * L;
+      if (!posto8(px, py, r * .98, swim) || taglia(x0, y0, px, py)) continue;
+      o.x = px; o.y = py; return true; }
+    return false;
   }
   function tryMove(o, dx, dy, r, swim) {
     if (SCELL.size && !o.lv && !o.indoor && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini e al loro piede (larghi 1,8 m, di sbieco) l'ingombro è quello di una persona, non il riquadro largo
@@ -2710,7 +2749,8 @@ var Game = (function () {
     if (PLACES.piazza) {
       // [inverno] la piazza ora ha i viali che la attraversano: niente margine, e due file di banchi
       [[-10, ['frutta', 'verdura', 'pesce', 'forno']], [4, ['verdura', 'frutta', 'forno', 'pesce']]].forEach(([ox, goodsRow]) => {
-        const q = rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
+        const q = (C8.on && MAP.world && MAP.world.WALL ? rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 2, 1, [T.PIAZZA], 16, 1) : null)   // [controlli8] il banco solo (città nuova) con una casella di piazza libera attorno: non chiude un vicolo
+          || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
         if (q) goodsRow.forEach((goods, k) => { if (k && MAP.world && MAP.world.WALL) return;   /* [sporcherie] nella città nuova due banchi soli, uno per fila, contro la facciata ovest del sagrato */ const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
       });
     }
@@ -3064,6 +3104,7 @@ var Game = (function () {
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
+    C8, MOV7, posto8,   // [controlli8]
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno

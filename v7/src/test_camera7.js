@@ -56,6 +56,7 @@ const schermoY = (r, x, y, z) => { const f = [r.look.x - r.pos.x, r.look.y - r.p
   ok(c.passi > 0 && c.passi <= K.avvioPassi && c.dietro >= K.arm * Math.cos(K.pitch) && c.avanti >= 20, `nell'angolo il personaggio fa ${c.passi.toFixed(0)} m verso la via, il braccio dietro libero (${c.dietro.toFixed(1)} m), davanti ${c.avanti} m`); ok(Math.abs(C.ang(b.face - Math.PI)) > 1.2 && b.dietro >= K.arm * Math.cos(K.pitch), `all'avvio il personaggio non dà le spalle al muro alla camera (guarda ${(b.face / D).toFixed(0)}°, dietro ${b.dietro} m liberi)`); }
 // 8. il passo a piedi (game.js): cammina, corre, accelera e frena, scivola lungo il muro, niente corsa sul posto, il salto quando premi
 { global.World = require('./world.js'); global.Interior = require('./interiors.js'); const G = require('./game.js'), st = G.create(7), p = st.player, T = G.T, TS = G.TS;
+  if (G.C8) G.C8.on = false;   // [controlli8] qui i numeri del passo di camera7 (20 e 30 m/s²); quelli del passo pronto li prova test_controlli8.js
   const passo = (sec, inp, dt = 1 / 30) => { const L = []; for (let t = 0; t < sec - 1e-9; t += dt) { const x0 = p.x, y0 = p.y; G.step(st, dt, typeof inp === 'function' ? inp(t) : inp); L.push({ d: Math.hypot(p.x - x0, p.y - y0) / dt, s: Math.abs(p.speed || 0) }); } return L; };
   const calma = () => { p.stun = 0; p.hp = 100; st.police = []; st.heat = 0; p.vx = p.vy = 0; p.speed = 0; p.jz = 0; p.jvz = 0; p.kbx = p.kby = 0; };
   // un tratto di muro lungo x: caselle libere (y) con sopra caselle piene (y - 1), per 6 caselle
