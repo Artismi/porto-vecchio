@@ -60,7 +60,8 @@ var Camera7 = (function () {
   // all'indietro niente; la molla della velocità smussata K8.aheadT (prima 0,6 s: un dietrofront spostava il centro per mezzo secondo)
   // il ricentro aspetta anche K8.recentHold s di marcia nella stessa direzione (un tasto nuovo, la levetta girata di più di K8.giroLev):
   // nelle mosse svelte (scansarsi, girare un angolo) la vista sta ferma e i tasti restano di lato; tenendo la via la camera ti viene dietro
-  const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D };
+  // (se il braccio è sotto K8.coperto del pieno, un muro o una ringhiera fra te e la camera, il ricentro non aspetta: si gira dietro la marcia)
+  const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D, coperto: .6 };
   const C8 = { on: !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -105,7 +106,7 @@ var Camera7 = (function () {
     const sv = Math.hypot(S.vx.x, S.vy.x);
     // 3. il ricentro: in cammino, dopo K.recentAfter s senza toccare, verso il dietro della velocità (al più K.recentMax rad/s)
     let dyRic = 0;
-    if (!q.mira && sv > k.recentVel && S.quiet > k.recentAfter && !(C8.on && q.tenuto !== undefined && q.tenuto < K8.recentHold)) {   // [controlli8] e la stessa via da un secondo
+    if (!q.mira && sv > k.recentVel && S.quiet > k.recentAfter && !(C8.on && q.tenuto !== undefined && q.tenuto < K8.recentHold && S.arm.x > k.arm * K8.coperto)) {   // [controlli8] e la stessa via da un secondo (subito se il braccio è accorciato: dietro la marcia c'è aria)
       const d = ang(dietro(S.vx.x, S.vy.x) - S.yawT);
       if (Math.abs(d) < k.recentAng) { S.recent = Math.min(1, S.recent + dt / k.recentRamp);
         const w = Math.min(k.recentMax, k.recentK * Math.abs(d)) * S.recent, st = Math.sign(d) * Math.min(Math.abs(d), w * dt); S.yawT += st; dyRic = st; if (Math.abs(st) > 1e-4) S.mosse++; }

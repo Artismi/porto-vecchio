@@ -120,6 +120,14 @@ for (const [nome, P] of [['giù', GIU], ['su', SU]]) { const a = tratto(P, false
 // 8. IL BANCO DEL MERCATO non chiude la bocca di vic_lanternini (prima due banchi lasciavano solo un passaggio d'angolo)
 { G.C8.on = true; let libera = true; for (let y = 301.5; y <= 306.5; y += .5) { let riga = false; for (let x = 1369; x <= 1378; x += .25) if (G.posto8(x, y, .3)) { riga = true; break; } if (!riga) libera = false; }
   const banchi = G.layout().items.filter(i => i.kind === 'banco' || i.type === 'banco').length; ok(libera && banchi >= 2, `la bocca di vic_lanternini sulla piazza San Rocco è aperta (i banchi del mercato ci sono ancora: ${banchi})`); }
+// 8b. LA QUOTA LUNGO LE SCALE DEI GRADONI (dall'attacco in basso, su per i gradini, fino al varco in cima e fuori sulla piazza, ogni cm, e
+// 30 cm di qua e di là della linea): nessuna fessura senza quota fra due piani rialzati (prima fra la copertina e la scala restavano 4 cm
+// senza quota: passando il varco della Scala del Mercato il corpo cadeva per un fotogramma sul terreno, 2,2 m sotto)
+{ let fessure = 0, dove = null; for (const s of W.passaggi.filter(q => q.salita)) { const P = s.pts;
+    for (const off of [-.3, -.15, 0, .15, .3]) for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], L = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / (L || 1), ny = (bx - ax) / (L || 1); let su = false, buco = 0;
+      for (let t = 0; t <= L; t += .01) { const x = ax + (bx - ax) * t / L + nx * off, y = ay + (by - ay) * t / L + ny * off; if (!G.posto8(x, y, .22)) { su = false; buco = 0; continue; } const q = G.quotaSuolo(x, y, -50) !== null;
+        if (q) { if (su && buco > 0 && buco < 20) { fessure++; dove = [+x.toFixed(2), +y.toFixed(2), s.id]; } su = true; buco = 0; } else if (su) buco++; } } }
+  ok(fessure === 0, `le tre scale del Mercato, dal basso al varco in cima: ${fessure} fessure senza quota fra i piani rialzati${dove ? ' (' + JSON.stringify(dove) + ')' : ''}`); }
 // 9. ?nofixcontrolli8: i numeri di camera7 (20 m/s², 1,6 rad/s… il dietrofront di prima)
 { const a = AV(60, false); ok(a.prima === 3 && a.v90 === 10 && C7.C8 && G.C8, `?nofixcontrolli8 torna al passo di camera7 (prima mossa ${a.prima} fotogrammi, 90% in ${a.v90})`); G.C8.on = true; C7.C8.on = true; }
 console.log(fail ? `\n${fail} NO` : '\ntutto ok'); process.exit(fail ? 1 : 0);

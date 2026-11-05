@@ -149,10 +149,12 @@ var Game = (function () {
   if (FIX_SUOLO2) (W0.pezzi || []).forEach(p => { try {
     if (p.tipo === 'gradone') { const o = DEF2(p.opz, { L: 12, h: 2.4, P: 4, rampa: true, scala: false }), L = o.L, h = o.h, P = o.P, k = .12, F = [];
       F.push([0, L, -P, -.5, () => h + .05, false], [0, L, -.5, .1, () => h + .16, false]);   // il camminamento e la copertina
+      // [controlli8] la scala parte dal filo della copertina (lz ,1), non da za: fra le due restava una fessura di 4 cm senza quota proprio
+      // nel varco in cima (la Scala del Mercato, x 1287,90-1287,94): passandoci il corpo cadeva per un fotogramma sul terreno 2,2 m sotto
       if (o.scala || o.rampa) { const W = 1.8, za = h * k * .5, cord = !o.scala, SX = o.scala && o.scalaX ? o.scalaX : null, SC = !cord && SX;
         const a0 = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a0), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), yb = SC ? o.yb : 0, hs = SC ? o.hs : h, aa = hs / n;
         const xi = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xt = xi + n * pd, xe = SC ? SX[2] : Math.min(L, xt + 1.4);
-        F.push([xi, xe, za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
+        F.push([xi, xe, C8.on ? Math.min(za, .1) : za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
           : (lx => lx >= xt ? h : yb + aa * Math.min(n, Math.floor((lx - xi) / pd + 1e-6) + 1)), true]);   // i gradini: la pedata i alla sua alzata
         if (SC) F.push([xi - .15, xi, za - .08, za + W + .08, () => yb + .06, true]); }   // lo zoccolo al piede
       supAdd(p, F, [-.2, L + .2, -P, h * k * .5 + 2]); }
