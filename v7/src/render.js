@@ -14778,13 +14778,14 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
               float kv = max(abs(kx) * (1. - smoothstep(2.5, 5., abs(kx))), abs(ky) * (1. - smoothstep(2.5, 5., abs(ky))));
               /* IL RETINO DELLE COSE CHE SI APRONO (le chiome davanti alla camera, il varco: buchi di 1-2 px) non deve diventare un groviglio nero: un pixel
                  col fondo da due parti opposte (a destra E a sinistra, o sopra E sotto) è un buco del retino o un filo di 1 px, non una sagoma */
-              float fR = step(fB.y, dR / fd0 - 1.), fL = step(fB.y, dL / fd0 - 1.), fU = step(fB.y, dU / fd0 - 1.), fB0 = step(fB.y, dB / fd0 - 1.), op1 = max(fR * fL, fU * fB0);
+              float fR = step(fB.y, dR / fd0 - 1.), fL = step(fB.y, dL / fd0 - 1.), fU = step(fB.y, dU / fd0 - 1.), fB0 = step(fB.y, dB / fd0 - 1.), dav = step(fd0, fA.w - 1.5);
+              float op1 = max(max(fR * fL, fU * fB0), dav * step(1.5, fR + fL + fU + fB0));   /* davanti al personaggio (dove la camera apre le cose a retino) basta il fondo da due parti qualsiasi */
               lin *= 1. - op1 * sF.x;
               lnP = sF.y * smoothstep(.3, .85, kv) * (1. - smoothstep(sG.w * .5, sG.w, fd0 - fA.w)) * (1. - fSky) * (1. - fPers) * (1. - lin) * (1. - op1);
               if (sF.z > 0. && fd0 < fA.w + sG.y) { vec2 e2 = e * 2.;
                 highp float r1 = fD(vUv + vec2(e2.x, 0.)), r2 = fD(vUv - vec2(e2.x, 0.)), r3 = fD(vUv + vec2(0., e2.y)), r4 = fD(vUv - vec2(0., e2.y));
                 float jr = max(max(r1, r2), max(r3, r4)) / fd0 - 1.;
-                float op2 = max(step(fB.y, r1 / fd0 - 1.) * step(fB.y, r2 / fd0 - 1.), step(fB.y, r3 / fd0 - 1.) * step(fB.y, r4 / fd0 - 1.));   /* il fondo a 2 px da due parti: retino o cosa sottile (un palo resta col suo filo di 1 px) */
+                float g1 = step(fB.y, r1 / fd0 - 1.), g2 = step(fB.y, r2 / fd0 - 1.), g3 = step(fB.y, r3 / fd0 - 1.), g4 = step(fB.y, r4 / fd0 - 1.), op2 = max(max(g1 * g2, g3 * g4), dav * step(1.5, g1 + g2 + g3 + g4));   /* il fondo a 2 px da due parti: retino o cosa sottile (un palo resta col suo filo di 1 px) */
                 lin = max(lin, smoothstep(fB.y, fB.y * 2., jr) * sF.z * (1. - fSky) * fE.x * (1. - smoothstep(sG.y * .5, sG.y, fd0 - fA.w)) * (1. - max(op1, op2))); } }
 #endif
             c = mix(c, mix(vec3(.29, .306, .345), ink, rv), lin);   /* nel regime il grigio tecnico */
