@@ -208,7 +208,7 @@ var Tasselli = (function () {
     m.name = r.name || ''; m.userData = Object.assign({}, r.ud, { tassello: true });
     if (r.cvs !== undefined) {   // lo shader già trasformato nella build (onBeforeCompile del gioco): lo stesso testo, le stesse uniform
       const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '') + (pid ? '|pid' : '');
-      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7) CTX.R.fade7(sh); };   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
+      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7 && CTX.R.fade7(sh)) m.userData.r7 = true; };   // [controlli8] r7: il braccio della camera ci passa   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
       m.customProgramCacheKey = () => key;
     } else if (pid) { m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPid'; }
     // chi il gioco accende di notte (render.js frame): le finestre delle case fuse, i fondali

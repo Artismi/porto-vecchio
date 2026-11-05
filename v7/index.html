@@ -23613,8 +23613,8 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <script>window.PV_NUOVA = (function () { try { const q = location.search; if (/[?&]vecchia/.test(q)) return false; return true; } catch (e) { return true; } })();</script>
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
-<script>window.PV_IMPRONTA_MONDO = 'd871bcf0b55b1b2d';</script>
-<script>window.PV_IMPRONTA_TASS = 'd163a4d2e50d100f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
+<script>window.PV_IMPRONTA_TASS = 'ebee32675138273e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -33773,6 +33773,16 @@ var Game = (function () {
   // ?nofixcamera7: com'era
   const FIX_CAM7 = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search));
   const MOV7 = { cammina: 3.6, corre: 6.4, acc: 20, frena: 30, lat: 22, r: .35, salto: .5 };
+  // [controlli8] IL PASSO PRONTO (il committente: «il controllo è poco reattivo», «è difficile far scendere le scale dalla piazza»). Sopra
+  // camera7: si parte a C8.K.avvio m/s subito (la prima mossa si vede nel fotogramma del tasto), si accelera a 45 m/s² e si frena a 50
+  // (prima 20 e 30: 0,17 s al passo, 0,22 s per fermarsi di corsa), la svolta tiene 80 m/s² di lato (prima 22: di corsa una curva larga
+  // 0,9 m), il corpo si gira a C8.K.giro rad/s (meno C8.K.giroV per m/s; prima 20 e 1,6: un dietrofront in 0,28 s). Il corpo è un cerchio
+  // di 30 cm (prima 35; sui gradini resta 22) e scivola anche sugli spigoli: se un palo, la testa di una ringhiera, lo spigolo di un vicolo
+  // storto o lo stipite di un varco ti ferma e a meno di C8.K.angolo m di lato c'è il passaggio, ci si sposta di lato da soli. Lo Spazio
+  // premuto fino a C8.K.bufSalto s prima di atterrare salta all'atterraggio. I banchi del mercato non chiudono più la bocca dei vicoli
+  // (vic_lanternini restava chiuso fra due banchi, passava solo d'angolo). ?nofixcontrolli8: com'era
+  const C8 = { on: FIX_CAM7 && !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)),
+    K: { acc: 45, frena: 50, lat: 80, r: .3, avvio: 1.6, giro: 26, giroV: 1.2, giroK: 30, vista: 34, angolo: .6, bufSalto: .15 } };
   const SUPC = new Map(), SUP = [];
   const inPoliReg = (lx, lz, R, n, ry) => { if (lx * lx + lz * lz > R * R) return false; const st = 2 * Math.PI / n; let a = Math.atan2(lx, lz) - ry; a = ((a % st) + st) % st; return Math.hypot(lx, lz) * Math.cos(a - st / 2) <= R * Math.cos(st / 2); };   // il poligono regolare di CylinderGeometry (raggio ai vertici R, il primo vertice su +Z, girato di ry)
   function supAdd(p, F, ext) {   // F: le facce [lx0, lx1, lz0, lz1, f(lx, lz) → quota sopra p.q, scala?]; ext: il riquadro locale [lx0, lx1, lz0, lz1]
@@ -33784,10 +33794,12 @@ var Game = (function () {
   if (FIX_SUOLO2) (W0.pezzi || []).forEach(p => { try {
     if (p.tipo === 'gradone') { const o = DEF2(p.opz, { L: 12, h: 2.4, P: 4, rampa: true, scala: false }), L = o.L, h = o.h, P = o.P, k = .12, F = [];
       F.push([0, L, -P, -.5, () => h + .05, false], [0, L, -.5, .1, () => h + .16, false]);   // il camminamento e la copertina
+      // [controlli8] la scala parte dal filo della copertina (lz ,1), non da za: fra le due restava una fessura di 4 cm senza quota proprio
+      // nel varco in cima (la Scala del Mercato, x 1287,90-1287,94): passandoci il corpo cadeva per un fotogramma sul terreno 2,2 m sotto
       if (o.scala || o.rampa) { const W = 1.8, za = h * k * .5, cord = !o.scala, SX = o.scala && o.scalaX ? o.scalaX : null, SC = !cord && SX;
         const a0 = cord ? .14 : .17, n = SC ? o.n : Math.ceil(h / a0), pd = SC ? o.pd : Math.min(cord ? .9 : .32, (L - 1.6) / n), yb = SC ? o.yb : 0, hs = SC ? o.hs : h, aa = hs / n;
         const xi = SC ? SX[0] : Math.max(0, L - n * pd - 1.4), xt = xi + n * pd, xe = SC ? SX[2] : Math.min(L, xt + 1.4);
-        F.push([xi, xe, za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
+        F.push([xi, xe, C8.on ? Math.min(za, .1) : za, za + W, cord ? (lx => { const t = (lx - xi) / pd, i = Math.min(n - 1, Math.floor(t)); return lx >= xt ? h : aa * i + aa * .4 + aa * .6 * (t - i); })   // la cordonata: ogni rampa sale da 0,4 a 1 alzata
           : (lx => lx >= xt ? h : yb + aa * Math.min(n, Math.floor((lx - xi) / pd + 1e-6) + 1)), true]);   // i gradini: la pedata i alla sua alzata
         if (SC) F.push([xi - .15, xi, za - .08, za + W + .08, () => yb + .06, true]); }   // lo zoccolo al piede
       supAdd(p, F, [-.2, L + .2, -P, h * k * .5 + 2]); }
@@ -35460,7 +35472,7 @@ var Game = (function () {
   function canJump(st) { const p = st.player; if (st.over || p.stun > 0 || p.swim || p.jz > 0) return false; if (!p.vehicle) return true; const v = st.vehicles.find(k => k.id === p.vehicle); return !!(v && VK[v.kind].pocket); }
   function jumpHold(st, on) {
     const p = st.player;
-    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) return; p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi
+    if (on && FIX_CAM7 && !p.vehicle && !p.lv) { p.jcharge = null; if (!canJump(st)) { if (C8.on && p.jz > 0) p.jbuf = st.clock; return; } p.jvz = Math.sqrt(2 * JUMP.g * MOV7.salto); p.jz = .001; p.jumpT = st.clock; st.sfx.push({ k: 'jump', x: p.x, y: p.y }); return; }   // [camera7] a piedi si salta quando premi   // [controlli8] in aria: si salta all'atterraggio (p.jbuf)
     if (on) { if (p.jcharge == null && canJump(st)) p.jcharge = 0; return; }
     if (p.jcharge == null) return; const k = clamp(p.jcharge / JUMP.maxCharge, 0, 1); p.jcharge = null;
     if (!canJump(st)) return;
@@ -35475,7 +35487,8 @@ var Game = (function () {
     if (p.jz > 0) {
       if (FIX_CAM7) { p.jz += p.jvz * dt - .5 * JUMP.g * dt * dt; p.jvz -= JUMP.g * dt; }   // [camera7] il volo esatto: la stessa altezza a ogni frequenza
       else { p.jvz -= JUMP.g * dt; p.jz += p.jvz * dt; }
-      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); if (GUIDA2 && v && VK[v.kind].pocket) { v.jz = 0; bmxLand(st, v); } }
+      if (p.jz <= 0) { p.landV = -p.jvz; p.jz = 0; p.jvz = 0; p.landT = st.clock; st.sfx.push({ k: 'land', x: p.x, y: p.y }); if (GUIDA2 && v && VK[v.kind].pocket) { v.jz = 0; bmxLand(st, v); }
+        if (C8.on && !p.vehicle && p.jbuf != null) { const b = st.clock - p.jbuf; p.jbuf = null; if (b <= C8.K.bufSalto) jumpHold(st, true); } }   // [controlli8] lo Spazio premuto poco prima
     }
     if (v) { v.jz = p.jz || 0; v.jvz = p.jvz || 0; if (GUIDA2 && VK[v.kind].pocket) bmxLine(st, v, dt); }
   }
@@ -35544,12 +35557,14 @@ var Game = (function () {
   }
   // [camera7] il passo a piedi fuori: la velocità con l'accelerazione e la frenata, la svolta col tetto laterale, lo scivolare lungo i muri
   function muovi7(st, p, dt, inp) {
-    const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = MOV7;
+    const ix = inp.x || 0, iy = inp.y || 0, l = Math.hypot(ix, iy), K = C8.on ? Object.assign({}, MOV7, C8.K) : MOV7;   // [controlli8] i numeri del passo pronto
     let sp = 0;
     if (l > 0) { sp = p.swim ? (inp.sprint ? 2.7 : 1.8) : p.sneak ? 1.7 : inp.pace >= 3 ? 7.8 : inp.sprint ? K.corre : K.cammina;
       if (inp.mag !== undefined && !p.swim && !p.sneak && !(inp.pace >= 3)) sp = 1.3 + 5.1 * Math.min(1, inp.mag);   // la levetta e il dito: dal passo alla corsa
       sp *= p.loadK || 1; }
-    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0, dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
+    const tx = l > 0 ? ix / l * sp : 0, ty = l > 0 ? iy / l * sp : 0; let vx = p.vx || 0, vy = p.vy || 0;
+    if (C8.on && l > 0 && sp > 0 && Math.hypot(vx, vy) < K.avvio * .5) { const a0 = Math.min(sp, K.avvio); vx = ix / l * a0; vy = iy / l * a0; }   // [controlli8] la partenza: subito al passo lento, niente avvio molle
+    let dx = tx - vx, dy = ty - vy; const v = Math.hypot(vx, vy);
     if (v > .05) { const ux = vx / v, uy = vy / v, a = dx * ux + dy * uy, qx = dx - a * ux, qy = dy - a * uy, ql = Math.hypot(qx, qy), a2 = clamp(a, -K.frena * dt, K.acc * dt), qk = ql > K.lat * dt ? K.lat * dt / ql : 1;
       dx = a2 * ux + qx * qk; dy = a2 * uy + qy * qk; }
     else { const dl = Math.hypot(dx, dy), m = K.acc * dt; if (dl > m) { dx *= m / dl; dy *= m / dl; } }
@@ -35562,12 +35577,13 @@ var Game = (function () {
       if (inp.door !== undefined && inp.door !== null && !p.lv) { const D = doorFront(st, [ix, iy], inp.door, .35); if (D) enterBuilding(st, D.bi, D.shop); } }   // [porte] solo dalla porta cliccata
     const sn = Math.hypot(vx, vy), vd = Math.atan2(vy, vx);
     const ta = inp.aim !== undefined ? inp.aim : l > 0 ? Math.atan2(iy, ix) : sn > .3 ? vd : null;
-    if (ta !== null) { const d = angDiff(ta, p.face), w = Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità
+    if (ta !== null) { const d = angDiff(ta, p.face), w = C8.on ? Math.max(14, K.giro - K.giroV * sn) : Math.max(8, 20 - 1.6 * sn), st1 = d * (1 - Math.exp(-dt * (C8.on ? K.giroK : l > 0 || sn > .3 ? 22 : 14))); p.face += Math.sign(st1) * Math.min(Math.abs(st1), w * dt); }   // girarsi ha un tetto che scende con la velocità   // [controlli8] più svelto
     p.speed = sn < .05 ? 0 : Math.abs(angDiff(vd, p.face)) > 2.2 ? -sn : sn;   // all'indietro (mirando) le gambe al contrario
   }
   // [camera7] il cerchio (raggio r) che scivola: il passo intero, poi fuori dalle caselle piene (il punto più vicino della casella) e dalle
   // barriere (il punto più vicino del segmento), fino a quattro volte. Se il punto d'arrivo non va (un ciglio, una barriera scavalcata), il passo di prima
   function scivola7(o, dx, dy, r, swim) {
+    if (C8.on && !o.vehicle) r = Math.min(r, C8.K.r);   // [controlli8] il corpo di 30 cm
     if (SCELL.size && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini l'ingombro di una persona
     const x0 = o.x, y0 = o.y, solido = (tx, ty) => !walkT(tx, ty) && !(swim && seaT(tx, ty)), RB = r + BR * .5;
     let x = x0 + dx, y = y0 + dy, hit = false;
@@ -35580,8 +35596,33 @@ var Game = (function () {
         if (d >= RB) continue; hit = mosso = true; if (d > 1e-6) { x = qx + ex / d * RB; y = qy + ey / d * RB; } else { x = x0; y = y0; } }
       if (!mosso) break; }
     const okP = swim ? (walkM(x, y) || seaM(x, y)) : walkM(x, y);
-    if (!okP || taglia(x0, y0, x, y)) return tryMove(o, dx, dy, r, swim);
+    if (!okP || taglia(x0, y0, x, y)) { if (C8.on && spigolo8(o, x0, y0, dx, dy, x0, y0, r, swim)) return true; return tryMove(o, dx, dy, r, swim); }
+    if (C8.on && hit && spigolo8(o, x0, y0, dx, dy, x, y, r, swim)) return true;
     o.x = x; o.y = y; return hit;
+  }
+  // [controlli8] il cerchio (raggio r) sta in (x, y) senza toccare caselle piene, barriere, cigli?
+  function posto8(x, y, r, swim) {
+    if (!(swim ? (walkM(x, y) || seaM(x, y)) : walkM(x, y))) return false;
+    for (let ty = Math.floor((y - r) / TS); ty <= Math.floor((y + r) / TS); ty++) for (let tx = Math.floor((x - r) / TS); tx <= Math.floor((x + r) / TS); tx++) { if (walkT(tx, ty) || (swim && seaT(tx, ty))) continue;
+      if (Math.hypot(x - clamp(x, tx * TS, tx * TS + TS), y - clamp(y, ty * TS, ty * TS + TS)) < r - 1e-4) return false; }
+    const L = BAR.length ? BCELL.get(Math.floor(y / TS) * GW + Math.floor(x / TS)) : null, RB = r + BR * .5;
+    if (L) for (let i = 0; i < L.length; i++) if (dSeg(x, y, BAR[L[i]]) < RB - 1e-4) return false;
+    return true;
+  }
+  // [controlli8] LO SPIGOLO: il passo (dx, dy) da (x0, y0) è finito in (x, y) con meno di un terzo dell'avanzata voluta. Se a meno di
+  // C8.K.angolo m di lato (prima il lato dove già scivola) il cerchio passa dritto, ci si sposta di lato di quanto si sarebbe avanzati
+  // (la velocità resta la tua, la direzione del corpo pure). Rende true se ha spostato o
+  function spigolo8(o, x0, y0, dx, dy, x, y, r, swim) {
+    const L = Math.hypot(dx, dy); if (L < 1e-5) return false;
+    const ux = dx / L, uy = dy / L, got = ((x - x0) * ux + (y - y0) * uy) / L; if (got > .33) return false;
+    const nx = -uy, ny = ux, lat = (x - x0) * nx + (y - y0) * ny, av = Math.max(.3, L * 2), lati = Math.abs(lat) > L * .2 ? [Math.sign(lat)] : [1, -1];
+    for (let s = .06; s <= C8.K.angolo + 1e-6; s += .06) for (const sg of lati) {
+      const qx = x0 + nx * s * sg, qy = y0 + ny * s * sg;
+      if (!posto8(qx, qy, r, swim) || !posto8(qx + ux * av, qy + uy * av, r, swim) || taglia(x0, y0, qx, qy) || taglia(qx, qy, qx + ux * av, qy + uy * av)) continue;
+      const m = Math.min(s, L), px = x0 + nx * m * sg + ux * Math.max(0, got) * L, py = y0 + ny * m * sg + uy * Math.max(0, got) * L;
+      if (!posto8(px, py, r * .98, swim) || taglia(x0, y0, px, py)) continue;
+      o.x = px; o.y = py; return true; }
+    return false;
   }
   function tryMove(o, dx, dy, r, swim) {
     if (SCELL.size && !o.lv && !o.indoor && (suScala(o.x, o.y) || suScala(o.x + dx, o.y + dy))) r = Math.min(r, .22);   // [pedonale] sui gradini e al loro piede (larghi 1,8 m, di sbieco) l'ingombro è quello di una persona, non il riquadro largo
@@ -36355,7 +36396,8 @@ var Game = (function () {
     if (PLACES.piazza) {
       // [inverno] la piazza ora ha i viali che la attraversano: niente margine, e due file di banchi
       [[-10, ['frutta', 'verdura', 'pesce', 'forno']], [4, ['verdura', 'frutta', 'forno', 'pesce']]].forEach(([ox, goodsRow]) => {
-        const q = rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
+        const q = (C8.on && MAP.world && MAP.world.WALL ? rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 2, 1, [T.PIAZZA], 16, 1) : null)   // [controlli8] il banco solo (città nuova) con una casella di piazza libera attorno: non chiude un vicolo
+          || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y + (ox > 0 ? 3 : -2), 11, 2, [T.PIAZZA], 16, 0) || rectNear(PLACES.piazza.x + ox, PLACES.piazza.y, 11, 2, [T.PIAZZA, T.WALK, T.COB], 20, 0);
         if (q) goodsRow.forEach((goods, k) => { if (k && MAP.world && MAP.world.WALL) return;   /* [sporcherie] nella città nuova due banchi soli, uno per fila, contro la facciata ovest del sagrato */ const tx = q[0] + k * 3; take(tx, q[1], 2, 1, true); take(tx, q[1] + 1, 2, 1, false); L.items.push({ kind: 'banco', goods, x: (tx + 1) * TS, y: q[1] * TS + 1, rot: 0, tiles: [tx, q[1], 2, 1] }); });
       });
     }
@@ -36709,6 +36751,7 @@ var Game = (function () {
     attitude, enterBuilding, exitBuilding, DOOR_OF, DOORS_AT, doorFront, actionKey, SHOP_T, INT, wanted: wantedLevel, wantedLevel, priceFor, clockStr, hour, day, dayName, isNight, nameOf, byId, fresh, weight, visionRange, canSee, nearestNpc, nearestVehicle,
     verbPast, youVerb, rumorText, tono, worstAboutPlayer, hoursLeft, findPath, vehicleName,
     GUIDA2, pilota, pathR, isTheft, bmxTrick, BT, sblocca, vehicleFree,   // [guida2]
+    C8, MOV7, posto8,   // [controlli8]
     shoot, damage, kill, emit,   // [azioni]
     LANES, laneAt, lanePos, vehicleMotion, runOver, damagePlayer, arrestPlayer: arrest, parkSpot, seesPlayer,   // [ordine] volanti, posti di blocco, cariche
     railProfile, groundV,   // [campagna] la quota del ferro, la stessa per la logica e per il disegno
@@ -72860,7 +72903,16 @@ if (typeof module !== 'undefined') module.exports = Regia;
      rad/s; mai se vai verso la camera (oltre K.recentAng da dietro). Niente asse dei vicoli, niente regista, niente zoom da soli;
    - LA MIRA sopra la spalla: la camera va K.aimSide m a destra e il braccio a K.aimArm m.
    Gli angoli: yaw come cam.yaw di render.js (la camera sta in direzione (sin yaw, cos yaw) dal punto guardato, sul piano x-z);
-   il piano del gioco è (x, y) = (x, z) della scena. ?nofixcamera7: la camera di prima.  */
+   il piano del gioco è (x, y) = (x, z) della scena. ?nofixcamera7: la camera di prima.
+   [controlli8] I COMANDI DELLA TERZA PERSONA, DAVVERO RISPETTO ALLA VISTA (il committente: «la mira e la direzione del personaggio non
+   sono nella vista ma nel controllo spaziale», «è difficile controllare il personaggio», «il controllo è poco reattivo»). Prima la base
+   dei tasti e delle levette (render.js cam.lock) restava ferma contro il ricentro finché ci si muoveva: dopo 4 s con D (la camera girata
+   di ~80° dal ricentro) W andava di ~80° di lato sullo schermo, e la mira (camDavanti) guardava dove guardava la camera 4 s prima.
+   Ora (comandi8): la direzione tenuta resta ferma nel mondo solo finché tieni LA STESSA combinazione di tasti (o la levetta nello stesso
+   verso: girandola la base torna alla camera di quanto la giri), e la camera del ricentro si gira dietro di te senza farti girare in tondo;
+   cambi tasto e la base è la camera di adesso (W = via dalla camera, sempre), col giro della camera di questo fotogramma. Lo sguardo avanti
+   segue la marcia lungo la vista (K8.ahead in avanti, K8.aheadLat di lato, niente all'indietro, molla K8.aheadT): nei cambi di direzione
+   svelti il personaggio non scivola via dal centro. ?nofixcontrolli8: com'era  */
 var Camera7 = (function () {
   'use strict';
   const D = Math.PI / 180;
@@ -72895,6 +72947,15 @@ var Camera7 = (function () {
     clearUp: .45,        // m: la camera mai più bassa di tanto sopra il suolo sotto di lei
     avvioPassi: 10,      // m: all'avvio, quanto il personaggio può spostarsi per avere la via davanti e il braccio libero dietro
   };
+  // [controlli8] lo sguardo avanti lungo la vista: in avanti fino a K8.ahead m (da K.aheadV in su), di lato K8.aheadLat della marcia,
+  // all'indietro niente; la molla della velocità smussata K8.aheadT (prima 0,6 s: un dietrofront spostava il centro per mezzo secondo)
+  // il ricentro aspetta anche K8.recentHold s di marcia nella stessa direzione (un tasto nuovo, la levetta girata di più di K8.giroLev):
+  // nelle mosse svelte (scansarsi, girare un angolo) la vista sta ferma e i tasti restano di lato; tenendo la via la camera ti viene dietro
+  // (se il braccio è sotto K8.coperto del pieno, un muro o una ringhiera fra te e la camera, il ricentro non aspetta: si gira dietro la marcia)
+  // (e si gira fino a K8.recentCop rad/s, senza la partenza piano: scendendo la Scala del Mercato con la camera sopra la piazza il muro del
+  // gradone e la ringhiera stanno fra voi, e la camera restava a 1,2 m dalla schiena per quasi un secondo)
+  const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D, coperto: .6, recentCop: 150 * D };
+  const C8 = { on: !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   // la molla smorzata al punto critico: arriva al 95% in T s, niente oltre; uguale a ogni dt (a passi di al più 1/60 s)
@@ -72933,14 +72994,16 @@ var Camera7 = (function () {
     if (q.pu !== undefined) S.pu = clamp(q.pu, -k.orbit, k.orbit); else S.pu = clamp(S.pu + (q.dpitch || 0), -k.orbit, k.orbit);   // q.pu: l'inclinazione la tiene chi chiama (main.js ui.tilt)
     if (q.tocca || dy || q.dpitch) S.quiet = 0; else S.quiet += dt;
     // 2. la velocità smussata (lo sguardo avanti e il ricentro)
-    if (snap) { S.vx.x = q.vx || 0; S.vy.x = q.vy || 0; S.vx.v = S.vy.v = 0; } else { molla(S.vx, q.vx || 0, k.aheadT, dt); molla(S.vy, q.vy || 0, k.aheadT, dt); }
+    const aT = C8.on ? K8.aheadT : k.aheadT;   // [controlli8]
+    if (snap) { S.vx.x = q.vx || 0; S.vy.x = q.vy || 0; S.vx.v = S.vy.v = 0; } else { molla(S.vx, q.vx || 0, aT, dt); molla(S.vy, q.vy || 0, aT, dt); }
     const sv = Math.hypot(S.vx.x, S.vy.x);
     // 3. il ricentro: in cammino, dopo K.recentAfter s senza toccare, verso il dietro della velocità (al più K.recentMax rad/s)
     let dyRic = 0;
-    if (!q.mira && sv > k.recentVel && S.quiet > k.recentAfter) {
+    if (!q.mira && sv > k.recentVel && S.quiet > k.recentAfter && !(C8.on && q.tenuto !== undefined && q.tenuto < K8.recentHold && S.arm.x > k.arm * K8.coperto)) {   // [controlli8] e la stessa via da un secondo (subito se il braccio è accorciato: dietro la marcia c'è aria)
       const d = ang(dietro(S.vx.x, S.vy.x) - S.yawT);
-      if (Math.abs(d) < k.recentAng) { S.recent = Math.min(1, S.recent + dt / k.recentRamp);
-        const w = Math.min(k.recentMax, k.recentK * Math.abs(d)) * S.recent, st = Math.sign(d) * Math.min(Math.abs(d), w * dt); S.yawT += st; dyRic = st; if (Math.abs(st) > 1e-4) S.mosse++; }
+      const cop = C8.on && S.arm.x < k.arm * K8.coperto;   // [controlli8] la camera addosso (un muro, la ringhiera della scala fra te e lei): si gira fuori svelta
+      if (Math.abs(d) < k.recentAng) { S.recent = cop ? 1 : Math.min(1, S.recent + dt / k.recentRamp);
+        const w = Math.min(cop ? K8.recentCop : k.recentMax, k.recentK * (cop ? 2 : 1) * Math.abs(d)) * S.recent, st = Math.sign(d) * Math.min(Math.abs(d), w * dt); S.yawT += st; dyRic = st; if (Math.abs(st) > 1e-4) S.mosse++; }
       else S.recent = 0;
       if (q.pu === undefined) { S.pu += (0 - S.pu) * (1 - Math.exp(-dt * 3 / k.pitchBack)); if (Math.abs(S.pu) < 1e-4) S.pu = 0; }
     } else S.recent = 0;
@@ -72950,8 +73013,11 @@ var Camera7 = (function () {
     const ka = snap ? (S.aim.x = q.mira ? 1 : 0) : clamp(molla(S.aim, q.mira ? 1 : 0, k.aimT, dt), 0, 1);
     // 5. il punto guardato: il petto, più lo sguardo avanti, più la spalla; la quota con la molla
     const fy = snap ? (S.h.x = q.fy, S.h.v = 0, q.fy) : molla(S.h, q.fy, k.heightT, dt);
-    const av = k.ahead * Math.min(1, sv / k.aheadV) * (1 - ka) * clamp((S.arm.x - k.armMin) / (k.close[0] - k.armMin), 0, 1), ax = sv > 1e-3 ? S.vx.x / sv * av : 0, ay = sv > 1e-3 ? S.vy.x / sv * av : 0;   // col braccio corto niente sguardo avanti: il personaggio resta nel quadro
+    const fA = (1 - ka) * clamp((S.arm.x - k.armMin) / (k.close[0] - k.armMin), 0, 1);   // col braccio corto niente sguardo avanti: il personaggio resta nel quadro
+    const av = k.ahead * Math.min(1, sv / k.aheadV) * fA; let ax = sv > 1e-3 ? S.vx.x / sv * av : 0, ay = sv > 1e-3 ? S.vy.x / sv * av : 0;
     const rx = Math.cos(yaw), rz = -Math.sin(yaw), side = k.aimSide * ka;   // la destra dello schermo nel piano x-z
+    if (C8.on) { const fx = -Math.sin(yaw), fz = -Math.cos(yaw), vf = S.vx.x * fx + S.vy.x * fz, vl = S.vx.x * rx + S.vy.x * rz;   // [controlli8] lungo la vista: avanti sì, di lato poco, indietro no
+      const af = K8.ahead * clamp(vf / k.aheadV, 0, 1) * fA, al = K8.ahead * clamp(vl / k.aheadV, -1, 1) * K8.aheadLat * fA; ax = fx * af + rx * al; ay = fz * af + rz * al; }
     const look = { x: q.px + ax + rx * side, y: fy + k.chest, z: q.py + ay + rz * side };
     // 6. il braccio voluto e il raggio a sfera dal petto verso la camera voluta. Prima si prova a SALIRE (K.lifts: la camera più alta
     // passa sopra le tende, le insegne, gli archi bassi) a braccio pieno; se nessuna altezza è libera il braccio si ferma prima del colpo
@@ -72988,7 +73054,27 @@ var Camera7 = (function () {
         if (!best || v > best.v) best = { v, x: px, y: py, passi, face: f, avanti: av, dietro: di }; } }
     best.yaw = dietro(Math.cos(best.face), Math.sin(best.face)); return best;
   }
-  return { K, passo, create, vfov, pitchFor, molla, avvio, dietro, ang };
+  // [controlli8] LA BASE DEI COMANDI A PIEDI (main.js la usa per i tasti, le frecce, la levetta del controller, quella a schermo e quella del
+  // Game Boy; test_controlli8.js la prova). B = crea(); a ogni fotogramma dir(B, sx, sy, yaw, tasti): (sx destra, sy avanti) nello spazio
+  // della camera → la direzione nel piano del gioco, con yaw la camera di adesso (col giro chiesto in questo fotogramma). La base resta
+  // ferma nel mondo contro il ricentro (dopo(B, r): r.yawGiro, il giro fatto dalla molla) solo finché l'ingresso resta quello: un tasto
+  // diverso la riporta alla camera di adesso; la levetta girata di δ la riporta di δ (niente scatti). B.t: da quanti s si tiene la via
+  const comandi8 = {
+    crea: () => ({ a: null, a0: null, off: 0, tasti: false, t: 0 }),
+    dir(B, sx, sy, yaw, tasti, dt) {
+      if (!sx && !sy) { B.a = null; B.off = 0; B.t = 0; return null; }
+      const a = Math.atan2(sx, sy);
+      if (B.a === null || !!tasti !== B.tasti || (tasti && Math.abs(ang(a - B.a)) > 1e-3)) { B.off = 0; B.t = 0; B.a0 = a; }   // si parte (o si cambia tasto): la camera di adesso
+      else { if (!tasti) { const d = Math.abs(ang(a - B.a)); B.off = Math.sign(B.off) * Math.max(0, Math.abs(B.off) - d); }   // la levetta girata: la base torna alla camera di tanto
+        if (Math.abs(ang(a - B.a0)) > K8.giroLev) { B.t = 0; B.a0 = a; } else B.t += dt > 0 ? dt : 0; }   // da quanto si tiene la via (il ricentro: K8.recentHold)
+      B.a = a; B.tasti = !!tasti; B.yaw = yaw - B.off;
+      const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), rx = -fz, rz = fx;
+      return { x: rx * sx + fx * sy, y: rz * sx + fz * sy };
+    },
+    dopo(B, r) { if (B.a !== null && r && isFinite(r.yawGiro)) B.off = ang(B.off + r.yawGiro); },   // il ricentro ha girato la camera: la direzione tenuta no
+    yawUsato: B => B.a !== null ? B.yaw : null,
+  };
+  return { K, K8, C8, passo, create, vfov, pitchFor, molla, avvio, dietro, ang, comandi8 };
 })();
 if (typeof window !== 'undefined') window.__CAMERA7 = Camera7.K;
 if (typeof module !== 'undefined') module.exports = Camera7;
@@ -74517,7 +74603,7 @@ var Tasselli = (function () {
     m.name = r.name || ''; m.userData = Object.assign({}, r.ud, { tassello: true });
     if (r.cvs !== undefined) {   // lo shader già trasformato nella build (onBeforeCompile del gioco): lo stesso testo, le stesse uniform
       const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '') + (pid ? '|pid' : '');
-      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7) CTX.R.fade7(sh); };   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
+      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7 && CTX.R.fade7(sh)) m.userData.r7 = true; };   // [controlli8] r7: il braccio della camera ci passa   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
       m.customProgramCacheKey = () => key;
     } else if (pid) { m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPid'; }
     // chi il gioco accende di notte (render.js frame): le finestre delle case fuse, i fondali
@@ -75726,6 +75812,7 @@ var Render = (function () {
   const dyn = { people: {}, vespas: {}, lights: [], flicker: [], signs: [], buildings: [], water: null, rain: null, motes: null, laundry: [], markers: null, boats: [], gulls: [], beams: [], chasers: [], spin: [], sky: null };
   let PX = 3, W = 0, H = 0, VIEW = 44;
   const CAM7ON = !(typeof location !== 'undefined' && /[?&]nofixcamera7\b/.test(location.search)) && typeof Camera7 !== 'undefined';   // [camera7] il flag, per chi compila prima (le chiome)
+  const C8R = CAM7ON && !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) && !!Camera7.comandi8;   // [controlli8] la base dei comandi la tiene main.js (Camera7.comandi8): qui niente cam.lock; il corpo si gira più svelto
   if (!(typeof location !== 'undefined' && /[?&]vecchiolook\b/.test(location.search))) VIEW = 35;   // [cat] era 38: il personaggio e la strada più grandi nel quadro, meno tetti   // [look] il personaggio più grande nel quadro (era 44 m: 15-18 px di omino, non si trovava)
   const cam = { x: 0, y: 0, zoom: 1, tx: 0, ty: 0, tz: 1, shake: 0, h: 0 };
   const YAW = Math.PI / 4, PITCH = 0.78;
@@ -77299,7 +77386,7 @@ var Render = (function () {
           { float cl = lfN2(vWP2.xz * 1.3 + vWP2.y * .8) * .6 + lfN2(vWP2.xz * 4.1 - vWP2.y * 2.3) * .4;   // [verde2] grana e ciuffi dal mondo, una tinta per pianta
             diffuseColor.rgb *= (.9 + .2 * cl) * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi2); }
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.8' : '0.'});`);
-      if (CAM7ON) fade7(sh, 'vWP2');   // [camera7] anche gli alberi semplici
+      if (CAM7ON && fade7(sh, 'vWP2')) m.userData.r7 = true;   // [camera7] anche gli alberi semplici   // [controlli8] r7: col retino, il braccio ci passa
     };
     return m;
   }
@@ -77726,7 +77813,7 @@ var Render = (function () {
             lfS = mix(.66, 1.1, smoothstep(.05, .95, vLh)) * (.9 + .2 * cl);
             diffuseColor.rgb *= lfS * mix(vec3(1.03, 1.01, .95), vec3(.96, 1., 1.02), vLi); }   /* [verde3] tinte vicine: la scena si tiene insieme */` : ''}
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.86, .89, .94), clamp(vSnow, 0., 1.) * ${NEVE ? '.6' : '0.'});`);
-      if (CAM7ON) fade7(sh);   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)
+      if (CAM7ON && fade7(sh)) m.userData.r7 = true;   // [camera7] il retino fra la camera e te (le chiome e le piante intere del kit)   // [controlli8] r7: il braccio ci passa
     };
     m.customProgramCacheKey = () => 'natMat' + (leafy ? 'L' : 'B');   // [verde2] chiome e tronchi hanno lo stesso testo di shader: senza chiave three darebbe a tutti il primo programma compilato
     NAT.mats[k] = m; return m;
@@ -95010,6 +95097,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const C7M = { f: -1, n: 0, k: [], v: [], giro: 0 };
   C7R.rc.r8y = R8RAGGI;   // [ritmo8] i tasselli (rayTas) saltano le celle che il raggio passa sopra o sotto: al braccio serve solo il colpo più vicino
   if (typeof window !== 'undefined') window.__C7M = C7M;   // [ritmo8] le sonde: chiamate, quante dal ricordo, i ms
+  // [controlli8] le chiome col retino (m.userData.r7, i materiali di Vegetazione con uR7) non fermano il braccio: si diradano già. Sulla
+  // Scala del Mercato l'albero della Piazza dell'Ottagono accorciava il braccio a 1,9 m (la camera addosso alla schiena) a metà scala
   function cast7(o, dir, len, r) {
     if (R8RAGGI && !CAM7.spia) {
       if (C7M.f !== C7M.giro) { C7M.f = C7M.giro; C7M.n = 0; }
@@ -95034,7 +95123,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       rc.set(C7R.o.set(o.x + (rx * a + ux * b) * r, o.y + uy * b * r, o.z + (rz * a + uz * b) * r), D); rc.near = 0; rc.far = Math.min(best, len + r);
       for (const h of rc.intersectObjects(C7R.list, false)) { if (!h.face) continue; let m = h.object.material; if (Array.isArray(m)) m = m[h.face.materialIndex];
-        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
+        if (!m || m.visible === false || (m.transparent && (m.opacity < .3 || m.depthWrite === false)) || (C8R && (m.userData.r7 || (m.uniforms && m.uniforms.uR7))) || piccola7(h.point)) continue; const t = a || b ? h.distance : h.distance - r; if (t < best) { best = t; if (CAM7.spia) { const ob = h.object, bs = ob.geometry.boundingSphere; CAM7.spia.push({ t: +t.toFixed(2), tipo: ob.type, nome: ob.name, mt: m.type, mn: m.name, r: bs ? +bs.radius.toFixed(1) : null, ud: Object.keys(ob.userData).slice(0, 8).join(','), su: ob.parent ? (ob.parent.name || ob.parent.type) + ':' + Object.keys(ob.parent.userData).slice(0, 5).join(',') : '', p: [h.point.x, h.point.y, h.point.z].map(v => +v.toFixed(1)) }); } } break; } }   // la foschia, i vetri, gli aloni: trasparenti senza profondità, non fermano
     if (best === Infinity) return null; CAM7.colpi++; return Math.max(0, best);
   }
   // [camera7] le cose piccole registrate fra la camera e te (il petto, i piedi) o a meno di 1,5 m dalla camera si spengono (hideTag) e
@@ -95078,9 +95167,9 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
     const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
-    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH }, dt);
+    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
     CAM7.yaw0 = null; CAM7.ultimo = R7;
-    cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base
+    cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
     CAM6.inV = false; CAM6.coll.x = null; CAM6.occ.k.x = 0; CAM6.occ.on = false; BASSA.k = 0; INQ4.camT = null; RG5.p = null; RG5.mov = null;   // i vecchi strati ripartono da capo se tornano (sui mezzi)
     let kx = 0, ky = 0; if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
@@ -95455,7 +95544,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     pg.visible = !pveh || onVespa || inCar;
     if (pg.userData.ring5) pg.userData.ring5.visible = !inCar && !CA && !PL2.sit && (!PFD.on || PFD.anello);   // [animazioni2] l'anello ai piedi non entra nell'abitacolo
     if (pg.userData.shadowC) { const hid = !!(inCar || CA); if (pg.userData.__shHid !== hid) { pg.userData.__shHid = hid; pg.userData.shadowC.visible = !hid && !PFD.on; }   /* [profondita3] il personaggio ha la sua ombra di contatto (sguPersonaggio): niente secondo disco */ }
-    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [salto] p.jz: l'altezza del salto
+    pg.position.set(p.x, playerH + (onVespa ? .35 : 0) + (p.jz || 0), p.y); pg.rotation.y = pveh ? (pg.userData.__ry = Math.PI / 2 - p.face) : turnTo(pg, Math.PI / 2 - p.face, dt, C8R && G.C8 && G.C8.on ? G.C8.K.vista : 22);   // [anim] a piedi si gira in fretta ma senza scatti   // [controlli8] più svelto (34)   // [salto] p.jz: l'altezza del salto
     { const T = bmxTilt(pveh); pg.rotation.order = 'YXZ'; pg.rotation.x = -T.a; pg.rotation.z = 0;   /* [animazioni] la piega della sella (più giù, coi mezzi) non resta addosso a chi scende */ if (T.a) { const ca = Math.cos(pveh.ang), sa = Math.sin(pveh.ang); pg.position.x += ca * T.dzP; pg.position.y += T.dyP; pg.position.z += sa * T.dzP; } }   // [bmx] impennata: il ciclista ruota con la bici
     const recoil = st.kick ? Math.max(0, 1 - (st.clock - st.kick.t) * 10) * st.kick.amt * 3 : 0;
     let pgDefer = pg.userData.model && (inCar || (CA && CA.out)) ? (inCar ? pveh.id : CA.vid) : null;   // [animazioni2] al volante (o scendendo): la posa dopo, col mezzo
@@ -98817,6 +98906,17 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   const CAM7 = !/[?&]nofixcamera7\b/.test(location.search) && typeof Camera7 !== 'undefined';
   const aPiedi7 = () => CAM7 && !st.player.vehicle;
   const armato7 = () => { const p = st.player; return !p.hand && p.cur !== 'pugni' && !!G.WEAPONS[p.cur]; };
+  // [controlli8] I COMANDI RISPETTO ALLA VISTA (src/camera7.js comandi8). A piedi i tasti, le frecce, la levetta del controller, quella a
+  // schermo e quella del Game Boy usano la camera DI ADESSO (col giro chiesto in questo fotogramma, ui.drag: prima un fotogramma dopo) e
+  // la direzione tenuta resta ferma contro il ricentro solo finché tieni la stessa (prima finché ti muovevi: dopo qualche secondo W andava
+  // di lato sullo schermo); la mira (camDavanti) è il davanti della camera vera, non della base tenuta; mirando il mirino si vede anche col
+  // controller e col Game Boy (dove va il colpo); la levetta della visuale risponde in 0,05 s (era 0,12). ?nofixcontrolli8: com'era
+  const C8 = CAM7 && !/[?&]nofixcontrolli8\b/.test(location.search) && !!Camera7.comandi8;
+  const B8 = C8 ? Camera7.comandi8.crea() : null; let B8dt = 1 / 60, B8r = null;
+  const yaw8 = () => (R.cam.yaw || 0) + (ui.drag || 0);   // la camera di adesso: render.js somma ui.drag allo yaw in questo fotogramma
+  const vista7 = () => !!(R.__cam7 && R.__cam7.attivo);   // la camera7 c'è (fuori, a piedi); al chiuso e sotto terra la camera di prima e la sua base
+  const dir8 = (sx, sy, tasti) => { B8.usato = true; if (!vista7()) { Camera7.comandi8.dir(B8, 0, 0); const B = R.camBasis(); return { x: B.rx * sx + B.fx * sy, y: B.rz * sx + B.fz * sy }; }
+    return Camera7.comandi8.dir(B8, sx, sy, yaw8(), tasti, B8dt); };   // (sx destra, sy avanti) → la direzione nel mondo
   let camDrag = null; ui.drag = 0; ui.tilt = 0;   // [bassa] l'inclinazione chiesta a mano: 0 la visuale di sempre, 1 bassa dietro al personaggio (render.js BASSA)
   const tiltBy = d => { ui.tilt = Math.max(-1, Math.min(1, (ui.tilt || 0) + d)); };
   function addPan(dx, dy) { const q = ui.pan || (ui.pan = { dx: 0, dy: 0 }); q.dx += dx; q.dy += dy; }
@@ -98989,7 +99089,9 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     while (DOPO.length) DOPO.shift()();   // [audit] il lavoro rimandato dai gestori (il rilascio della bomboletta)
     if (click.q) clickRun();   // [audit] il clic registrato dal gestore si esegue qui, nel fotogramma dopo
     if (GUIDA2) fTenuto();   // [guida2]
-    const r = input0(); if (!r) return r;
+    if (C8) B8.usato = false;
+    const r = input0(); if (C8 && (!B8.usato || !r || !(r.x || r.y) || st.player.vehicle)) Camera7.comandi8.dir(B8, 0, 0);   // [controlli8] fermi, sui mezzi, col clic: la prossima direzione parte dalla camera di adesso
+    if (!r) return r;
     const p = st.player;
     if (window.Skate && Skate.on(st)) {   // [mobile] in tavola: il dito (o il sinistro) tenuto spinge verso quel punto, la levetta curva e spinge
       const P = Skate.PAD, hold = tp.mode === 'skate'; let aim = r.aim;
@@ -99009,7 +99111,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   }
   // [camera6] si mira? (L2 del controller, B tenuto con l'arma nel Game Boy, il dito che spara, il tasto destro col puntatore, la bomboletta
   // che spruzza). La direzione: col puntatore il punto sotto il puntatore, se no il davanti della camera (si mira girando la visuale)
-  const camDavanti = () => { const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };
+  const camDavanti = () => { if (C8 && !st.player.vehicle && vista7()) { const y = yaw8(); return Math.atan2(-Math.cos(y), -Math.sin(y)); } const B = R.camBasis(); return Math.atan2(B.fz, B.fx); };   // [controlli8] il davanti della camera vera
   // [camera7] l'aggancio morbido: chi sta nel cono di ~10° davanti alla camera, entro la portata dell'arma, prende la mira (il più dritto,
   // a parità il più vicino); se no il mirino a terra a 10 m davanti. ui.aimPoint lo disegna render.js (dyn.aim)
   const AGG7 = { cono: 10 * Math.PI / 180, mirino: 10 };
@@ -99039,7 +99141,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     // l'inclinazione è la velocità (mag: dal passo alla corsa). Si guarda dove si va: girarsi è immediato anche all'indietro
     if (PAD.on && !st.player.vehicle && PAD.m > 0) {
       ui.faceIdle = undefined; if (click.t) { click.t = null; ui.mark = null; } if (st.lv && st.lv.route) st.lv.route = null;
-      const B = R.camBasis(), x = B.rx * PAD.x - B.fx * PAD.y, y = B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;
+      const B = R.camBasis(), d8 = C8 ? dir8(PAD.x, -PAD.y, false) : null, x = d8 ? d8.x : B.rx * PAD.x - B.fx * PAD.y, y = d8 ? d8.y : B.rz * PAD.x - B.fz * PAD.y, l = Math.hypot(x, y) || 1;   // [controlli8]
       const M7 = CAM7 && PAD.mira ? mira6() : null;   // [camera7] mirando: la direzione con l'aggancio
       return { x: x / l, y: y / l, sprint, brake: brakeKey, aim: M7 ? M7.a : PAD.mira ? camDavanti() : Math.atan2(y, x), mag: PAD.m };   // [camera6] mirando si va di lato: il personaggio guarda dove guarda la camera
     }
@@ -99054,7 +99156,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
         return { x: 0, y: 0, aim: st.player.face, drive: { thr: -1, steer: -Math.max(-1, Math.min(1, ad(want + Math.PI - v.ang) * 1.8)), hb: brakeKey, boost: false } }; } }   // poi retromarcia verso lì
     if (st.player.vehicle && (stick.x || stick.y || (touchMode && !(click.t && (jumpMode() || GUIDA2))))) return { x: 0, y: 0, aim: st.player.face, drive: { thr: -stick.y > .25 ? 1 : -stick.y < -.35 ? -1 : 0, steer: Math.abs(stick.x) > .15 ? stick.x : 0, hb: brakeKey, boost: sprint } };
     if (Math.hypot(stick.x, stick.y) > PAD_DZ) { ui.faceIdle = undefined; // touch: la levetta segue lo schermo   // [fluido] con la stessa zona morta rotonda del controller (prima ogni millimetro spostava)
-      const B = stickB || R.camBasis(); const x = B.rx * stick.x - B.fx * stick.y, y = B.rz * stick.x - B.fz * stick.y;
+      const B = stickB || R.camBasis(), d8 = C8 && !st.player.vehicle ? dir8(stick.x, -stick.y, false) : null; const x = d8 ? d8.x : B.rx * stick.x - B.fx * stick.y, y = d8 ? d8.y : B.rz * stick.x - B.fz * stick.y;   // [controlli8]
       const M6 = mira6(); return { x, y, sprint, brake: brakeKey, aim: st.player.vehicle ? undefined : M6 ? M6.a : touchMode || (CON.on && !mouse.active) || CAM6 ? Math.atan2(y, x) : aimAngle(), mag: touchMode || CON.on ? stickResp(Math.hypot(stick.x, stick.y)) : undefined };   // [camera6] mirando guarda dove mira   // [console] la levetta del Game Boy come quella a schermo   // [levetta] mag: quanto è lontano il dito   // [telefono] con la levetta guarda dove va   // [fluido] la stessa curva del controller: si corre dall'85%, non solo a fondo corsa
     }
     let f = 0, s = 0;
@@ -99083,7 +99185,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     if (CAM7) {   // [camera7] i tasti (e le frecce) camminano rispetto alla camera; di difetto si cammina, Maiusc corre (niente mag: la velocità la decide sprint)
       const M6 = mira6(), hip = !M6 && mouse.down && mouse.active && armato7() && document.pointerLockElement !== cv ? aimAngle() : undefined;   // sparando dal fianco col sinistro: guarda il puntatore
       if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : touchMode ? a : undefined };
-      const B = R.camBasis(), d = Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;
+      const B = R.camBasis(), d = C8 ? dir8(s, f, true) : Visuale.relativa6(B, s, -f), l = Math.hypot(d.x, d.y) || 1;   // [controlli8]
       return { x: d.x / l, y: d.y / l, sprint, aim: M6 ? M6.a : hip !== undefined ? hip : Math.atan2(d.y, d.x), tasti: true }; }
     if (CAM6) {   // [camera6] i tasti camminano rispetto alla camera (W in su sullo schermo), il personaggio guarda dove va; mirando, dove mira
       const M6 = mira6(); if (!f && !s) return { x: 0, y: 0, sprint, aim: M6 ? M6.a : touchMode ? a : undefined };
@@ -99787,10 +99889,11 @@ if (typeof module !== 'undefined') module.exports = Orienta;
   }
   function crosshair() {
     const x = $('xhair'), p = st.player;
-    const show = mouse.active && !ui.intro && !ui.dialog && !ui.book && !ui.over && !touchMode && !(window.Editor && Editor.active());   // [editor]
-    setHid(x, !show); setS(cv, 'cursor', show ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
+    const M8 = C8 && !p.vehicle && !ui.intro && !ui.dialog && !ui.book && !ui.over ? mira6() : null, mira8 = !!(M8 && !M8.punto && ui.aimPoint);   // [controlli8] mirando sopra la spalla (controller, Game Boy, tasto destro)
+    const show = (mouse.active && !touchMode || mira8) && !ui.intro && !ui.dialog && !ui.book && !ui.over && !(window.Editor && Editor.active());   // [editor]
+    setHid(x, !show); setS(cv, 'cursor', show && mouse.active && !touchMode ? 'none' : window.Editor && Editor.active() ? Editor.cursor() : 'default');   // [fluido] solo se cambia
     if (!show) return;
-    if (CAM7 && document.pointerLockElement === cv && ui.aimPoint) { const q = R.project(ui.aimPoint.x, 1.25, ui.aimPoint.y), o = cvOff(); if (!q.behind) { mouse.cx = o.x + q.x * o.w; mouse.cy = o.y + q.y * o.h; } }   // [camera7] col puntatore bloccato il mirino sta dove va il colpo
+    if (CAM7 && (document.pointerLockElement === cv || (mira8 && (!mouse.active || touchMode || PAD.mira || CON.on))) && ui.aimPoint) { const q = R.project(ui.aimPoint.x, 1.25, ui.aimPoint.y), o = cvOff(); if (!q.behind) { mouse.cx = o.x + q.x * o.w; mouse.cy = o.y + q.y * o.h; } }   // [camera7] col puntatore bloccato il mirino sta dove va il colpo
     x.style.left = mouse.cx + 'px'; x.style.top = mouse.cy + 'px';
     const W = G.WEAPONS[p.cur], spread = W.melee || W.throw ? 0 : W.spread + p.bloom + (Math.abs(p.speed) > .5 ? .03 : 0);
     const dist = ui.aimPoint ? Math.hypot(ui.aimPoint.x - p.x, ui.aimPoint.y - p.y) : 8;
@@ -100025,7 +100128,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
       if (PAD.on) { x += -PAD.rot / 1.6; y += -PAD.pan; }
       if (frecceVisuale()) { x += (keys.arrowright ? 1 : 0) - (keys.arrowleft ? 1 : 0); y += (keys.arrowdown ? 1 : 0) - (keys.arrowup ? 1 : 0); }
       const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
-    const k = 1 - Math.exp(-dt / CAMS.tau);
+    const k = 1 - Math.exp(-dt / (C8 && !st.player.vehicle ? .05 : CAMS.tau));   // [controlli8] a piedi la levetta della visuale risponde subito
     if (CAM7 && !(st.player.vehicle && jumpMode())) {   // [camera7] gira fino a 3,5 rad/s, curva 1,4 (la levetta del controller cruda, le altre come prima); in su e in giù inclina
       if (PAD.on && libero) { x += PAD.rx - (-PAD.rot / 1.6); y += PAD.ry - (-PAD.pan); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } }
       const cv7 = v => { const a = Math.abs(v); return a <= CAM7K.dz ? 0 : Math.sign(v) * Math.pow(Math.min(1, (a - CAM7K.dz) / (1 - CAM7K.dz)), CAM7K.esp); };
@@ -100281,8 +100384,9 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     if (R.hits && R.hits.length) { R.hits.forEach(h => G.propHit(st, h.v, h.m)); R.hits.length = 0; }
     const tF = performance.now(); PERF.frames++; PERF.worst = Math.max(PERF.worst, raw * 1000);
     if ((touchMode || CON.on) && ui.rotUser) { ui.rotUser = false; if (!st.player.vehicle && !(stick.x || stick.y) && R.cam.yaw !== undefined) ui.faceIdle = Math.atan2(-Math.cos(R.cam.yaw), -Math.sin(R.cam.yaw)); }   // [camera4] da fermo, la visuale girata a mano gira anche il personaggio
-    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)) });
+    FRAME(st, dt, { studio: !!window.PV_STUDIO, focus: ed ? ed.focus : ui.intro ? st.player : null,   /* [diretto] mentre carica la camera sta già sul personaggio */ mark: edOn ? null : ui.mark, aimPoint: ui.aimPoint, dialogNpc: ui.dialog && ui.dialog.npc, intro: ui.intro, letterbox: ui.letterbox || !!ui.dialog, flash: ui.flash, fade: ui.fade, desat: ui.desat, time: ui.time, reale: raw,   /* [camera4] il tempo vero del fotogramma: la camera va con lui */ zoom: ui.zoom, stick: (touchMode || CON.on) && Math.hypot(stick.x, stick.y) > .15 ? stick : null, lead: leadOf(inpF), pan: (() => { const d = ui.pan; ui.pan = null; return d; })(), tilt: ui.tilt || 0, camMano: camDrag !== null || !!(tg && tg.drag) || pin.size >= 2 || PAD.rot !== 0 || PAD.pan !== 0 || !!(vstick.x || vstick.y) || !!ui.camStickOn || !!(!FRECCE_PASSI && (keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown)) || !!keys['.'] || !!keys[','] || !!mouse.aim,   /* [visuale5] il giocatore sta toccando la camera: niente ricentro */   /* [camera7] anche il destro tenuto */ rot: ed ? ed.rot : (keys['.'] ? 1 : 0) - (keys[','] ? 1 : 0) + (ui.dialog || ui.book || ui.menu ? 0 : CON.rot), drag: (() => { const d = ui.drag || 0; ui.drag = 0; return d; })(), top: !!ui.top, mira: mira6(), puntatore: !CAM6 && !!(mouse.active && !touchMode && !PAD.on && !CON.on),   /* [camera6] coi tasti relativi alla camera il puntatore non fa più girare in tondo: la visuale può ricentrarsi */   /* [camera2] si gioca col puntatore (W va verso di lui): la visuale non gira da sola */ edge: !CAM7 && mouse.active && !ui.dialog && !ui.book && !ui.intro && !edOn ? (mouse.nx < .025 ? -1 : mouse.nx > .975 ? 1 : 0) : 0,   /* [camera7] niente bordo che gira */ muove: !!(inpF && (inpF.x || inpF.y)), tenuto8: C8 && B8.a !== null ? B8.t : undefined });   /* [controlli8] da quanto si tiene la via (il ricentro aspetta) */
     PERF.frame += performance.now() - tF;
+    if (C8) { B8dt = dt; const u7 = R.__cam7 && R.__cam7.attivo ? R.__cam7.ultimo : null; if (u7 && u7 !== B8r) { B8r = u7; Camera7.comandi8.dopo(B8, u7); } }   // [controlli8] il giro del ricentro non gira la direzione tenuta
     sounds();
     drawBubbles(); crosshair(); perfTick(now); if (typeof Misura !== 'undefined') Misura.frame();
     if (OR) eTick();   // [orienta] E tenuto: l'anello del crimine
@@ -100302,7 +100406,7 @@ if (typeof module !== 'undefined') module.exports = Orienta;
     last = performance.now(); requestAnimationFrame(loop);
   })();
   window.__pv = { get st() { return st; }, ui, G, R, input: () => input(), keys, mouse, click, pickAt: (x, y) => pickAt(x, y), toast, bmx: doBmx, act: doAct, sprayColor, sprayMode, SPRAY_COLS, touchMode, book: f => toggleBook(f), restart: () => restart(), get console() { return CON.on; }, sys: k => conSys(k), get audio() { return A.on; },
-    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear() };   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
+    closeRing: () => closeRing(), talkClassic: id => { const n = G.byId(st, id); if (n) openTalk(n); }, goTo: (x, y) => { click.t = { kind: 'move', x, y, path: goalPath(x, y), run: true, best: 1e9, bestT: ui.time, fl: st.player.indoor ? st.player.indoor.b + ':' + st.player.indoor.f : '' }; ui.mark = { x, y, t: ui.time, k: 'move' }; }, ctxE: () => ctxE(), talkNear: () => talkNear(), get B8() { return B8; } };   /* [controlli8] la base dei comandi (le sonde a passi) */   // [orienta]   // [mobile] toast…touchMode: per le icone a schermo (comandi.js)   // [console] book, console: per il menu (menu_ui.js)
   }
 })();
 </script>
