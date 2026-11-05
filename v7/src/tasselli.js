@@ -266,7 +266,45 @@ var Tasselli = (function () {
   // la posizione di un vertice per i raggi: dal vettore a 32 bit, o dai 16 bit tenuti al suo posto ([leggera], il telefono)
   function posL(PA) { const Q2 = PA.__q; if (!Q2) return PA.__pf || PA.array; const u = Q2.u, mn = Q2.mn, k = Q2.k; return { __q: true, length: u.length, get: i => { const c = i % 3; return mn[c] + u[i] * k[c]; } }; }
   const pget = (P, i) => P.__q ? P.get(i) : P[i];
+  // [ritmo8] la griglia a fette (generatore): lo stesso lavoro di griglia() con una pausa ogni 4096 triangoli, così si prepara prima che il
+  // braccio di camera7 tocchi la mesh (griglieTick) invece di farla tutta nel fotogramma del primo raggio (50-70 ms su una mesh di 120.000
+  // triangoli in SwiftShader, uno scatto ogni volta che un tassello nuovo entra nel braccio). Il risultato è identico; se il raggio arriva
+  // prima che sia pronta la si finisce lì, come prima
+  function* grigliaG(g) {
+    const P = posL(g.attributes.position), I = g.index ? g.index.__ix || g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
+    const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
+    const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
+    const span = (t, f) => { let ax = Infinity, bx = -Infinity, az = Infinity, bz = -Infinity; for (let q = 0; q < 3; q++) { const i = v(t * 3 + q) * 3, x = pget(P, i), z = pget(P, i + 2); if (x < ax) ax = x; if (x > bx) bx = x; if (z < az) az = z; if (z > bz) bz = z; }
+      const i0 = Math.max(0, Math.floor(ax / c) - x0), i1 = Math.min(nx - 1, Math.floor(bx / c) - x0), j0 = Math.max(0, Math.floor(az / c) - z0), j1 = Math.min(nz - 1, Math.floor(bz / c) - z0);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) f(j * nx + i); };
+    const conta = k => { cnt[k + 1]++; };
+    for (let t = 0; t < nt; t++) { span(t, conta); if ((t & 4095) === 4095) yield; }
+    for (let k = 0; k < nx * nz; k++) cnt[k + 1] += cnt[k];
+    const pos = cnt.slice(0, nx * nz), L = new Uint32Array(cnt[nx * nz]); let tt = 0;
+    const metti = k => { L[pos[k]++] = tt; };
+    for (let t = 0; t < nt; t++) { tt = t; span(t, metti); if ((t & 4095) === 4095) yield; }
+    ST.raggiV++;
+    return { x0, z0, nx, nz, cnt, L, nt, timbri: new Uint32Array(nt), I, P };
+  }
+  const R8G = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('griglie');
+  function grigliaFinita(g) { const it = g.__grigliaG; g.__grigliaG = null; let r; do r = it.next(); while (!r.done); return r.value; }
+  // [ritmo8] le griglie delle mesh dei raggi vicine alla camera (entro 30 m dalla loro sfera), a fette: al più 1,5 ms per fotogramma (1 sul telefono)
+  const GQ = { lista: [], n: 0, ms: 0, fatte: 0 };
+  function griglieTick(x, z) {
+    if (!(++GQ.n % 20)) { const L = []; STATO.forEach(S => { if (S.st !== 5 || !S.mesh || (CFG.leggero && !S.rdati)) return;
+      S.mesh.forEach(o => { const g = o.geometry; if (o.raycast !== rayTas || g.__griglia || !g.attributes.position) return; const P = g.attributes.position;
+        if ((P.__q ? P.__q.u.length : (P.__pf || P.array || []).length) < 9 || (g.index && !g.index.__ix && !g.index.array.length)) return;
+        const s = g.__bsW || g.boundingSphere; if (!s) return; RG.sph.copy(s).applyMatrix4(o.userData.qs ? IDM : o.matrixWorld);
+        const d = Math.hypot(RG.sph.center.x - x, RG.sph.center.z - z) - RG.sph.radius; if (d < 30) L.push([d, g]); }); });
+      L.sort((a, b) => a[0] - b[0]); GQ.lista = L.map(q => q[1]); }
+    const t0 = performance.now(), B = TEL ? 1 : 1.5;
+    while (GQ.lista.length && performance.now() - t0 < B) { const g = GQ.lista[0]; if (g.__griglia) { GQ.lista.shift(); continue; }
+      if (!g.__grigliaG) g.__grigliaG = grigliaG(g);
+      const r = g.__grigliaG.next(); if (r.done) { g.__griglia = r.value; g.__grigliaG = null; GQ.lista.shift(); GQ.fatte++; } }
+    GQ.ms += performance.now() - t0; ST.r8griglie = GQ.fatte; ST.r8grigliaMs = +GQ.ms.toFixed(1);
+  }
   function griglia(g) {
+    if (R8G) { if (!g.__grigliaG) g.__grigliaG = grigliaG(g); return grigliaFinita(g); }
     const P = posL(g.attributes.position), I = g.index ? g.index.__ix || g.index.array : null, nt = (I ? I.length : P.length / 3) / 3 | 0, c = RG.cella, bb = g.__bbW || g.boundingBox || (g.computeBoundingBox(), g.boundingBox);
     const x0 = Math.floor(bb.min.x / c), z0 = Math.floor(bb.min.z / c), nx = Math.floor(bb.max.x / c) - x0 + 1, nz = Math.floor(bb.max.z / c) - z0 + 1;
     const cnt = new Uint32Array(nx * nz + 1), v = k => I ? I[k] : k;
@@ -298,6 +336,7 @@ var Tasselli = (function () {
     const xa = ox + dx * ta, xb = ox + dx * tb, za = oz + dz * ta, zb = oz + dz * tb;
     const i0 = Math.max(0, Math.floor(Math.min(xa, xb) / c) - G.x0), i1 = Math.min(G.nx - 1, Math.floor(Math.max(xa, xb) / c) - G.x0), j0 = Math.max(0, Math.floor(Math.min(za, zb) / c) - G.z0), j1 = Math.min(G.nz - 1, Math.floor(Math.max(za, zb) / c) - G.z0);
     const tim = ++RG.timbro, I = G.I, A = G.P, v = k => I ? I[k] : k, gr = g.groups;
+    const FH = R8G && rc.firstHitOnly === true; if (FH) R8T.d = Infinity;   // [ritmo8]
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
       // la cella deve stare vicino alla retta (il riquadro del tratto è largo per un raggio in diagonale)
       const k = j * G.nx + i, cx = (G.x0 + i + .5) * c, cz = (G.z0 + j + .5) * c, l2 = dx * dx + dz * dz;
@@ -309,12 +348,19 @@ var Tasselli = (function () {
         if (A.__q) { RG.a.set(A.get(a * 3), A.get(a * 3 + 1), A.get(a * 3 + 2)); RG.b.set(A.get(b * 3), A.get(b * 3 + 1), A.get(b * 3 + 2)); RG.c.set(A.get(cc * 3), A.get(cc * 3 + 1), A.get(cc * 3 + 2)); }
         else { RG.a.fromArray(A, a * 3); RG.b.fromArray(A, b * 3); RG.c.fromArray(A, cc * 3); }
         const hit = ray.intersectTriangle(RG.a, RG.b, RG.c, mat.side === THREE.FrontSide, RG.p); if (!hit) continue;
+        if (R8G) {   // [ritmo8] la distanza prima di allocare (il colpo fuori near-far si buttava dopo averlo copiato); col primo colpo solo il più vicino
+          const q = R8T.q.copy(RG.p).applyMatrix4(MW), d = rc.ray.origin.distanceTo(q); if (d < rc.near || d > rc.far) continue;
+          if (FH) { if (d < R8T.d) { R8T.d = d; R8T.p.copy(q); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, R8T.n); R8T.f = { a, b, c: cc, mi, t }; } continue; }
+          const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
+          out.push({ distance: d, point: q.clone(), object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t }); continue; }
         const pw = RG.p.clone().applyMatrix4(MW), d = rc.ray.origin.distanceTo(pw); if (d < rc.near || d > rc.far) continue;
         const n = new THREE.Vector3(); THREE.Triangle.getNormal(RG.a, RG.b, RG.c, n);
         out.push({ distance: d, point: pw, object: this, face: { a, b, c: cc, normal: n, materialIndex: mi }, faceIndex: t });
       }
     }
+    if (FH && R8T.d < Infinity) { const f = R8T.f; out.push({ distance: R8T.d, point: R8T.p.clone(), object: this, face: { a: f.a, b: f.b, c: f.c, normal: R8T.n.clone(), materialIndex: f.mi }, faceIndex: f.t }); }   // [ritmo8]
   }
+  const R8T = { q: new THREE.Vector3(), p: new THREE.Vector3(), n: new THREE.Vector3(), d: Infinity, f: null };
 
   // ---------------- i tasselli ----------------
   // Due anelli. Il tassello compresso (in gzip, ~100-300 KB) si scarica fino a «carica» dal punto guardato e resta nella pagina finché
@@ -385,12 +431,48 @@ var Tasselli = (function () {
     S.lista = L; if (solo) solo.forEach(i => { if (R.has(i)) S.rinv.add(i); }); else S.rinv = R;
     S.rinvB = [...S.rinv].map(i => [T.mesh[i], scatolaW(T.mesh[i])]);
   }
+  // [ritmo8] LE PILE GRANDI A FETTE (v7/ANALISI_RITMO8.md). Una tessitura a strati dei tasselli arriva fino a 32 MB (512×512×32, piena sul
+  // portatile da [hd]): mandata in un colpo (texSubImage3D) era uno scatto da 30-80 ms (oltre il secondo in SwiftShader). Qui la si alloca
+  // (texStorage3D, come three) e la si riempie a fette di strati, al più PB byte per fotogramma; le mipmap alla fine; la mesh che la usa
+  // entra in scena solo a pila piena (monta1 aspetta il fotogramma dopo), quindi non si vede mai a metà. ?noritmo8pile: com'era
+  const R8P = typeof window !== 'undefined' && !!window.PV_R8 && window.PV_R8.on('pile');
+  const PILE = new Map(), PB = (TEL ? 2 : 4) * 1048576, PF = { f: -1, b: 0, n: 0 };
+  const pilaOk = t => { const im = t.image; return t.isDataArrayTexture && im && im.data instanceof Uint8Array && im.depth > 1 && im.width * im.height * im.depth * 4 > PB && !t.flipY && !t.premultiplyAlpha && t.format === THREE.RGBAFormat && t.type === THREE.UnsignedByteType && !t.mipmaps.length; };
+  function pila(rd, t) {
+    const gl = rd.getContext(), im = t.image, strato = im.width * im.height * 4; let J = PILE.get(t);
+    if (PF.f !== PF.n) { PF.f = PF.n; PF.b = 0; }   // il conto dei byte di questo fotogramma (PF.n gira a ogni tick)
+    if (!J) {   // 1. three alloca la tessitura (i parametri, la memoria) senza i pixel né le mipmap
+      const P0 = rd.properties.get(t); if (P0.__webglInit) return { b: 0, fatta: true };
+      const s3 = gl.texSubImage3D, gm = gl.generateMipmap, own3 = Object.prototype.hasOwnProperty.call(gl, 'texSubImage3D'), ownM = Object.prototype.hasOwnProperty.call(gl, 'generateMipmap'), ou = t.onUpdate; let saltata = false;
+      gl.texSubImage3D = function (tg, lv, x, y, z, w, h, d) { if (!saltata && tg === gl.TEXTURE_2D_ARRAY && lv === 0 && w === im.width && h === im.height && d === im.depth) { saltata = true; return; } return s3.apply(this, arguments); };
+      gl.generateMipmap = function (tg) { if (saltata && tg === gl.TEXTURE_2D_ARRAY) return; return gm.apply(this, arguments); };
+      t.onUpdate = null;
+      try { rd.initTexture(t); } finally { if (own3) gl.texSubImage3D = s3; else delete gl.texSubImage3D; if (ownM) gl.generateMipmap = gm; else delete gl.generateMipmap; t.onUpdate = ou; }
+      const P = rd.properties.get(t);
+      if (!saltata || !P.__webglTexture) { if (ou) ou.call(t, t); return { b: strato * im.depth, fatta: true }; }   // three non ha fatto quello che ci aspettavamo: la via normale era già passata
+      J = { tex: P.__webglTexture, z: 0, ou, data: im.data }; PILE.set(t, J); ST.r8pile = (ST.r8pile || 0) + 1; return { b: 0, fatta: false };
+    }
+    const P = rd.properties.get(t); if (P.__webglTexture !== J.tex || !J.data) { PILE.delete(t); return { b: 0, fatta: true }; }   // liberata nel frattempo
+    // 2. qualche strato per fotogramma
+    const n = Math.max(1, Math.min(im.depth - J.z, Math.floor((PB - PF.b) / strato))); if (PF.b >= PB) return { b: 0, fatta: false };
+    rd.state.bindTexture(gl.TEXTURE_2D_ARRAY, J.tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, t.unpackAlignment); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, 0);
+    gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, J.z, im.width, im.height, n, gl.RGBA, gl.UNSIGNED_BYTE, J.data, J.z * strato);
+    J.z += n; PF.b += n * strato;
+    if (J.z < im.depth) { rd.state.unbindTexture(); return { b: n * strato, fatta: false }; }
+    // 3. le mipmap (come three), poi la copia in memoria se ne va (onUpdate)
+    if (t.generateMipmaps && t.minFilter !== THREE.NearestFilter && t.minFilter !== THREE.LinearFilter) gl.generateMipmap(gl.TEXTURE_2D_ARRAY);
+    rd.state.unbindTexture(); PILE.delete(t); if (J.ou) J.ou.call(t, t); ST.r8pileFatte = (ST.r8pileFatte || 0) + 1;
+    return { b: n * strato, fatta: true };
+  }
   // [ottimizza-car] le tessiture di una mesh mandate alla scheda video adesso (dentro la quota), non al primo disegno: torna i byte
   function texSu(r) {
     const rd = CTX.renderer; if (!rd || !rd.initTexture || CFG.byte === Infinity) return 0; const ids = new Set(); texMesh(r, ids); let b = 0;
-    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit) return;
+    let attesa = false;
+    ids.forEach(i => { const t = TEX.get(i), im = t && t.image; if (!im || !t.version || !(im.data || im.width > 1 && !('data' in im))) return; const P = rd.properties.get(t); if (P.__webglInit && !PILE.has(t)) return;
+      if (R8P && pilaOk(t)) { const q = pila(rd, t); b += q.b; if (!q.fatta) attesa = true; return; }   // [ritmo8] la pila grande a fette
       rd.initTexture(t); b += (im.width || 0) * (im.height || 0) * (im.depth || 1) * 4 * (t.generateMipmaps ? 1.33 : 1); });
-    return b;
+    return attesa ? -1 - b : b;
   }
   function monta1(ti, tetto, quota, quotaB) {
     if (quotaB === undefined) quotaB = Infinity;
@@ -420,7 +502,7 @@ var Tasselli = (function () {
     let vf = 0, bf = 0;
     while (S.k < S.lista.length) {
       if (performance.now() > tetto || vf > quota || bf > quotaB) return false;
-      if (quotaB !== Infinity) bf += texSu(T.mesh[S.lista[S.k]]);
+      if (quotaB !== Infinity) { const b = texSu(T.mesh[S.lista[S.k]]); if (b < 0) { bf += -1 - b; return false; } bf += b; }   // [ritmo8] una pila a metà: la mesh entra quando è piena
       const r = T.mesh[S.lista[S.k++]], g = new THREE.BufferGeometry();
       for (const k in r.g.at) g.setAttribute(k, attr(r.g.at[k]));
       if (r.g.ix !== null) g.setIndex(attr(r.g.ix));
@@ -465,7 +547,7 @@ var Tasselli = (function () {
   function raggiA(a, d, v, q) {
     if (d.idx) a.__ix = v; else if (q) a.__q = { u: q.u, mn: q.mn, k: q.s ? [q.s / 65535, q.s / 65535, q.s / 65535] : q.k }; else a.__pf = v;
   }
-  function raggiVia(S) { if (S.attrs) S.attrs.forEach(a => { a.__ix = a.__q = a.__pf = null; }); if (S.mesh) S.mesh.forEach(o => { o.geometry.__griglia = null; }); S.rdati = false; S.raggi = false; ST.raggiVia = (ST.raggiVia || 0) + 1; }
+  function raggiVia(S) { if (S.attrs) S.attrs.forEach(a => { a.__ix = a.__q = a.__pf = null; }); if (S.mesh) S.mesh.forEach(o => { o.geometry.__griglia = null; o.geometry.__grigliaG = null; }); S.rdati = false; S.raggi = false; ST.raggiVia = (ST.raggiVia || 0) + 1; }
   // [leggera] riapre un tassello in scena (il compresso si riscarica: è nella cache del navigatore) per le mesh rimandate che la camera
   // ora tocca e, se il giocatore è vicino, per i dati dei raggi
   let RIAPRI = 0;
@@ -687,6 +769,7 @@ var Tasselli = (function () {
     requestAnimationFrame(tick);
     if (!CTX) return;
     if (COMP) { CTX.scene.remove(COMP); COMP = null; }   // compilati (main.js, subito dopo R.init)
+    PF.n++;   // [ritmo8] il fotogramma delle pile
     try { aloniTick(); } catch (e) { }
     const t0 = performance.now(), c = CTX.cam, x = c.x, z = c.y;
     { const P = CTX.camera.position; if (Math.hypot(P.x - x, P.z - z) > 600) return; }   // la camera non è ancora andata al suo posto (il primo fotogramma)
@@ -721,6 +804,7 @@ var Tasselli = (function () {
       while (PRONTI.length && performance.now() < tetto) { const ti = PRONTI[0]; if (monta1(ti, tetto, quota, vicinoFatto ? CFG.byte : Infinity)) PRONTI.shift(); else break; }
     }
     try { riaperture(); } catch (e) { console.warn('[tasselli] riaperture', e); }
+    if (R8G && vicinoFatto) try { griglieTick(x, z); } catch (e) { console.warn('[ritmo8] griglie', e); }   // [ritmo8] le griglie dei raggi, a fette
     if (!vicinoFatto) {   // l'anello vicino è arrivato quando tutti i tasselli dell'impronta sono in scena
       let tutti = true, n = 0; IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F)) { n++; if (STATO[ti].st !== 5) tutti = false; } });
       if (tutti) { ST.vicinoT = Math.round(performance.now()); ST.vicinoN = n; (window.__tl = window.__tl || {}).tasselliVicino = ST.vicinoT; log('anello vicino in scena:', n, 'tasselli', (ST.byteVicino / 1048576).toFixed(2), 'MB', ST.vicinoT, 'ms'); }
@@ -759,6 +843,7 @@ var Tasselli = (function () {
     TIENI.clear(); IND.tasselli.forEach((t, ti) => { if (inImpronta(t, F) || (r && dist(t, x, z) <= r)) { dentro.push(ti); if (r) TIENI.add(ti); } });
     for (;;) {
       dentro.forEach(ti => { const S = STATO[ti]; if (!S.st) scarica(ti); else if (S.st === 2) apri(ti); });
+      if (PILE.size && CTX.renderer) [...PILE.keys()].forEach(t => { PF.b = -Infinity; pila(CTX.renderer, t); });   // [ritmo8] le pile a metà, finite subito (gli strumenti)
       while (PRONTI.length) monta1(PRONTI.shift(), Infinity, Infinity);
       if (dentro.every(ti => STATO[ti].st === 5 || (STATO[ti].errori || 0) > 3)) break;
       await new Promise(ok => setTimeout(ok, 100));

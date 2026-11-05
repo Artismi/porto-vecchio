@@ -1122,7 +1122,12 @@ var Writing = (function () {
     try {
       const src = typeof document !== 'undefined' && document.getElementById('pv-artworker');
       if (!src || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof Blob === 'undefined') return (ARTW.ok = false);
-      const code = 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
+      // [ritmo8] le tele del disegnatore a parte lette dal processore (willReadFrequently): il disegno legge i pixel centinaia di volte
+      // (getImageData) e con la tela sulla scheda video ogni lettura aspettava la scheda. Misurato (SwiftShader): un pezzo 87,8 s contro 3,5 s;
+      // oltre i 60 s il gioco dava il disegnatore per morto e disegnava tutti i graffiti sul filo della pagina, uno ogni 1,2 s (uno scatto
+      // da 100 ms ogni volta). Lo stesso disegno. ?noritmo8arte: com'era
+      const R8A = typeof window !== 'undefined' && window.PV_R8 && window.PV_R8.on('arte') ? '{ const g0 = OffscreenCanvas.prototype.getContext; OffscreenCanvas.prototype.getContext = function (k, o) { return g0.call(this, k, k === \'2d\' ? Object.assign({ willReadFrequently: true }, o) : o); }; }\n' : '';
+      const code = R8A + 'const document = { createElement: () => new OffscreenCanvas(1, 1) };\n' + src.textContent + '\n' + ARTW_MAIN;
       ARTW.w = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' })));
       ARTW.w.onmessage = e => { ARTW.vivo = performance.now(); const m = e.data, cb = ARTW.wait.get(m.id); ARTW.wait.delete(m.id); if (cb) cb(m.err ? null : m.A, m.err); };
       if (typeof GraffitiFonts !== 'undefined') ARTW.w.postMessage({ fonts: GraffitiFonts.D });   // [graffiti4] i font dei graffiti, una volta sola (non copiati nel sorgente del worker)
