@@ -45,7 +45,7 @@ var Pennelli = (function () {
   // che pennello usa ogni lavoro (e la superficie per difetto di ogni appoggio)
   const USO = { tag: 'skinny', mtag: 'marker', throw: 'fat', pezzo: 'spray', burner: 'spray', gotico: 'skinny', mostro: 'roller', wholecar: 'fat', rullo: 'roller', sticker: 'sticker',
     // [unione-graffiti] gli stili della strada di writer_arte.js: il verticale a rullo prende il rullo (vedi art), quelli a bolle e il pixo la bomboletta
-    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker' };
+    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker', buff: 'roller' };   // [stradadipinta] il muro ripulito: a rullo
   // [unione-graffiti] sul disegno di writer_arte.js (le lettere dai font, gli stili, la SUA grana della vernice: le passate, i pori, la
   // nebbia stretta, i puntini dell'overspray, le colature disegnate nella forma) i pennelli passano solo quello che lui non fa, e meno:
   // la grana del MURO dove sta il lavoro (intonaco, mattoni con le fughe, cemento, il metallo dei mezzi) e i giorni sul muro, la
@@ -53,6 +53,7 @@ var Pennelli = (function () {
   // polvere / colature / grit: quanto dei pennelli resta sopra la sua resa (1 = come sui disegni nostri, la tavoletta e l'adesivo);
   // gli schizzi (splatter) no: prendono il colore dai bianchi del bordo e delle luci e li spargono sulle lettere
   const SU_ARTE = { polvere: .45, colature: .5, grit: .6, rullata: .6 };
+  const SU_E = { polvere: .15, colature: .3, grit: .3, rullata: .35 };   // [stradadipinta] coi lavori della strada dipinta (?stile=E): la finitura netta della bibbia, poca polvere e grana
   const RULLATO = { rullo: 1, verticale: 'rullo' };   // dove passa il rullo sulle lettere (il verticale solo se è della famiglia rullo)
   const SUP_DI = { muro: 'intonaco', treno: 'metallo', vagone: 'metallo', auto: 'metallo' };
   // l'età: i giorni sul muro → quanto sbiadisce (alfa e colore) e quanto si scrosta
@@ -349,7 +350,7 @@ var Pennelli = (function () {
     if (rull) pen = 'roller'; else if (arte && w.rec && w.tool === 'pennarello') pen = 'marker';
     // su un disegno di writer_arte.js: meno polvere, colature e grana (la sua resa le ha già), e i lavori vecchi della storia hanno già
     // la loro età (pioggia, crosta): i giorni sul muro contano dopo i primi due
-    const K = arte ? SU_ARTE : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
+    const K = arte ? (w.sdPal ? SU_E : SU_ARTE) : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
     const ppm = A.ppm || (A.Wp / Math.max(.01, w.W)), n = A.stages.length, o = { pen, sup, seed: w.seed || 1, ppm, eta, grit: (w.grit != null ? w.grit : 1) * K.grit, wall: w.wallRGB, polK: K.polvere, splK: arte ? 0 : 1, rullata: rull, rullK: SU_ARTE.rullata };
     A.stages = A.stages.map((c, i) => finisci(c, Object.assign({ last: i === n - 1, dripK: (w.style === 'tag' || w.style === 'mtag' ? .5 : 1) * K.colature }, o)));
     A.ppm = ppm; A.pen = pen; return A;

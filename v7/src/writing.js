@@ -54,6 +54,7 @@ var Writing = (function () {
     adesivi: { nome: 'adesivi', rank: 0, W: .6, H: .5, dur: 2, cans: 0, fame: 1, over: true },
     murale: { nome: 'murale', rank: 3, W: 6.5, H: 4, dur: 90, cans: 5, fame: 28 },
     calli: { nome: 'calligraffiti', rank: 2, W: 4.2, H: 2.2, dur: 20, cans: 1.2, fame: 10 },
+    buff: { nome: 'muro ripulito', rank: 0, W: 2.2, H: 1.3, dur: 4, cans: 0, fame: 0, over: true },   // [stradadipinta] la toppa grigia di chi ripulisce (solo nella storia dei muri con ?stile=E)
   };
   const SMALL = /^(tag|mtag|gotico|estintore|stencil|scritta|manifesto|adesivi)$/;   // [graffiti3] i lavori che vanno sopra a tutto e non contano come crossaggio
   // [graffiti3] l'altezza da terra del centro (metri, da..a) per i lavori che stanno ad altezza d'uomo; decisa dal seme
@@ -476,6 +477,9 @@ var Writing = (function () {
     return m;
   }
   // il rango di quello che c'è sotto: si va sopra solo a chi sta più in basso
+  // [stradadipinta] lo strato di un lavoro: quanti ne ha sotto (al più 4); i lavori della strada dipinta (?stile=E) lo portano deciso
+  // (w.sdStrato: il pezzo vecchio e la toppa grigia sotto, le tag nuove sopra), così il muro a strati non dipende dall'ordine in cui si piazzano
+  function stratoDi(w) { return w.sdStrato != null ? w.sdStrato : Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length); }
   function overlapCheck(st, w) {
     const W = S(st), out = [];
     for (const o of W.works) {
@@ -812,7 +816,7 @@ var Writing = (function () {
   }
   function makeVeil(w, g) {
     const THREE = T3(), R = w.gfxRect, kq = w.surf === 'treno' ? 1 : PHONE_K(), c = poolGet(Math.max(1, Math.ceil(g.Wp * kq)), Math.max(1, Math.ceil(g.Hp * kq))), tex = canvasTexture(c);
-    const layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
+    const layer = stratoDi(w);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - layer, polygonOffsetUnits: -4 - layer * 2 });
     const dg = w.surf === 'auto' && R.obj && Math.abs(R.n.y || 0) < .5 ? decalGeo(R.obj, R) : null;   // sul tetto del mezzo resta il velo steso
     const mesh = new THREE.Mesh(dg || new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
@@ -1305,6 +1309,7 @@ var Writing = (function () {
   function* placeWallG(w) {
     if (w.surf === 'auto') return placeVeh(w);
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
+    if (w.sdAnc && typeof StradaDipinta !== 'undefined') return StradaDipinta.piazza(w, T3(), R_());   // [stradadipinta] gli adesivi sui pali e dietro i cartelli: il posto è già noto, niente raggi
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style], base = w.sticker ? { W: .34, H: .24 } : { W: w.W0 || sty.W, H: w.H0 || sty.H };   // [graffiti3] la misura può venire dal sito (i verticali alti quanto la facciata)
@@ -1321,7 +1326,7 @@ var Writing = (function () {
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
     // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
-    const under = SMALL.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));
+    const under = SMALL.test(w.style) || w.sdStrato != null ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));   // [stradadipinta] il muro a strati deciso: niente regola del rango
     if (under.length) { const R = sty.rank, d0 = mulberry((w.seed || 1) ^ 0x5eed)(), toy = (w.q != null ? w.q : .7) < .35, top = Math.max(...under.map(o => STYLES[o.style].rank));
       const ok = top < R ? d0 < .8 : top === R ? d0 < .3 : toy && d0 < .12; if (!ok) { w.gfxRect = null; return false; }
       under.forEach(o => { o.covered = true; }); w.over = under.map(o => o.id); }
@@ -2160,7 +2165,7 @@ var Writing = (function () {
       if (w.surf === 'treno') { const tgt = trainTarget(w); if (!tgt) return false; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; drawUpTo(w, GFX.works[w.id]); return true; }
       if (!w.gfxRect) return false;
       if (FIX2 && w.surf !== 'auto' && w.surf !== 'vagone') {   // [graffiti2] sui triangoli veri, subito (il disegno di Traccia è già pronto: non si rifà)
-        const THREE = T3(), A = A0 && A0.stages ? Object.assign({}, A0, { stages: A0.stages.slice() }) : art(w), layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+        const THREE = T3(), A = A0 && A0.stages ? Object.assign({}, A0, { stages: A0.stages.slice() }) : art(w), layer = stratoDi(w);
         let d = null; try { d = finisci(decalG(w.gfxRect, layer)); } catch (e) { console.warn('[Writing] decalcomania', e); }
         let geo = d && d.geo; if (!geo) { geo = new THREE.PlaneGeometry(w.gfxRect.W, w.gfxRect.H); geo.translate(0, 0, GAP + layer * .001); }
         const g = { art: A, drawn: 0 }; g.tgt = makeVeil2(w, A, geo, layer); GFX.works[w.id] = g; drawUpTo(w, g); return true;
@@ -2553,7 +2558,8 @@ var Writing = (function () {
   // Sul muro senza triangoli leggibili resta il piano (il riquadro l'hanno già verificato i raggi); per terra no: si riprova.
   function* piazzaG(w) {
     if (!w.gfxRect) { const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; }
-    const R = w.gfxRect, layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+    const R = w.gfxRect, layer = stratoDi(w);
+    if (w.sdAnc) { const THREE = T3(), geo = new THREE.PlaneGeometry(R.W, R.H); geo.translate(0, 0, GAP * .5 + layer * .001); return { geo, layer, piano: true }; }   // [stradadipinta] sul palo e dietro il cartello: il piano, niente triangoli da cercare
     let d = yield* decalG(R, layer);
     if (d && d.geo) return { geo: d.geo, layer, cop: d.cop };
     // i dati dei raggi del tassello non arrivano (il telefono li tiene solo vicino): dopo quattro tentativi il piano verificato (la cottura o i raggi)
