@@ -31,7 +31,7 @@ var Percorsi = (function () {
   const roofTop = b => (b.base || 0) + (b.lighthouse ? 12 : b.kiosk ? 2.8 : b.fl >= 1 ? 3.6 + (b.fl - 1) * 2.4 : 3);   // come Tetti.roofRule
   const road = id => W.roads.find(r => r.id === id);
   const lenP = P => { let L = 0; for (let k = 1; k < P.length; k++) L += hyp(P[k][0] - P[k - 1][0], P[k][1] - P[k - 1][1]); return L; };
-  const pz = tipo => (W.pezzi || []).filter(p => p.tipo === tipo);
+  const pz = tipo => (W.pezzi || []).filter(p => p.tipo === tipo && !p.urbanistica1);   // [urbanistica1] i passaggi pedonali delle Mura non sono «il passaggio a livello» (porta, landmark)
   const pzW = (p, lx, lz) => { const c = Math.cos(p.rot), s = Math.sin(p.rot); return [p.x + lx * c + lz * s, p.y - lx * s + lz * c]; };
   const pzL = (p, x, y) => { const c = Math.cos(p.rot), s = Math.sin(p.rot), dx = x - p.x, dy = y - p.y; return [dx * c - dy * s, dx * s + dy * c]; };
   const setOf = (k, f) => W.sets.find(q => q.k === k && (!f || f(q)));
