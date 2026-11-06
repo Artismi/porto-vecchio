@@ -13,6 +13,8 @@ tanto tempo, rendendo la mappa poco organica; pesiamo eventualmente quali spazi 
 | `02_pianta_orientamento_ritmo.png` | c. landmark nell'inquadratura camminando, zone cieche · d. tratti monotoni, viste oltre 60 m, camera stretta, corti cieche, ingombri |
 | `1x_prima_*.jpg` | le foto «prima» dal gioco vero, nei punti peggiori: a sinistra la camera di oggi (34°, braccio 10 m), a destra una camera bassa (18°, 7 m) |
 | `2x_mock_*.png` | mock-up in pianta, prima e dopo, delle proposte principali |
+| `3x_pacchetto_*.jpg` | il pacchetto sicuro fatto (sez. 10): prima (`?nourbanistica1`) e dopo, nel gioco |
+| `4x_*.png` | il masterplan (`MASTERPLAN.md`) |
 
 Ho provato anche i mock-up nel gioco, nascondendo dal vivo le case da togliere. Non funzionano: le facciate stanno nei blocchi fusi
 della città e dalla lista per casa (`R.__buildings`) si spengono solo i dettagli. I mock-up sono quindi solo in pianta.
@@ -482,8 +484,8 @@ si usano e la città si ricalcola nel browser. In Node: `PV_NOURBANISTICA1=1`.
 | 1 | **due varchi pedonali sulla ferrovia** dal Lungomare: il guardrail si apre (4,8 e 3,7 m) e sul binario c'è il passaggio pedonale (`passaggio_livello` largo 3,2 m: il riempimento fra le rotaie, le sbarre alzate, le croci, le lanterne). Il primo varco **si sposta sul Vico dell'Arco** (x 1411): sui Lanternini (x 1374) il binario corre ancora sul rilevato, 2 m sopra la strada. Il secondo è sul Vico Scuro (x 1446) | 1411 e 1446, y 255-275 | `world_cittanuova.js` (`VARCHI_LUNG`, posa dei parapetti) |
 | 1 | **il belvedere**: davanti al varco dell'Arco il parapetto esce di 4 m sul mare per 12 m, con due spallette; il ripiano è banchina a 1,4 m | 1400-1412, 244-250 | idem (`CITY.belvedere`) |
 | 2 | **le volte dei sottopassi in piano col suolo**: la volta posa sulla quota mediana del passaggio e il suolo sotto è in piano. Al Vico del Glacis l'altezza libera va da 1,9-2,8 m a **3,2 m** dappertutto; ai Lanternini e all'Arco cambia di qualche centimetro | 1484,294 · 1376,293 · 1412,300 | idem (passata finale, 7c) |
-| 3 | **niente ingombri nei passaggi larghi una casella**: bidoni (spostati lungo la loro via, entro 15 m, dove il vicolo è largo: restano tutti e 16), tavolini, fioriere, lavagne e frigo dei dehors; in `render.js` solo la posa: la roba davanti alle porte, quella alla base dei muri, e niente «roba di cortile» sulle caselle che fiancheggiano una via (il bancale col fusto e la bombola della Via di Mezzo) | tutto il borgo | `scena.js` (`piano`), `render.js` (`STRETTO35`, `oggetti35`, la vita alla base dei muri) |
-| 5 | **le firme in fondo alle viste**: dove un vicolo guarda dritto per 40 m e più e la vista finisce sul muro di una casa, un'edicola votiva col lume, solo se davanti restano 3,4 m liberi, lontana dalle porte e dalle altre edicole. Ne nascono due (in fondo al Vico dei Gatti, sui due lati) | 1374,348 · 1370,306 | `world_cittanuova.js` |
+| 3 | **niente ingombri nei passaggi larghi una casella**: bidoni (spostati lungo la loro via, entro 15 m, dove il vicolo è largo: restano tutti e 16), tavolini, fioriere, lavagne e frigo dei dehors; in `render.js` solo la posa: la roba davanti alle porte e quella alla base dei muri, più niente «roba di cortile» sulle caselle che fiancheggiano una via. **Non** tocca i vicoli larghi due caselle: il fusto e la bombola della Via di Mezzo (foto 11) restano, perché lì la via è larga 4 m e ne lasciano 3 | tutto il borgo | `scena.js` (`piano`), `render.js` (`STRETTO35`, `oggetti35`, la vita alla base dei muri) |
+| 5 | **le firme in fondo alle viste**: dove un vicolo guarda dritto per 40 m e più e la vista finisce sul muro di una casa, un'edicola votiva col lume, solo se davanti restano 3,4 m liberi, lontana dalle porte e dalle altre edicole. Ne nascono due (in fondo al Vico dei Gatti, sui due lati). **Nel gioco, da 25 m e più, un'edicola alta 3,8 m si legge appena** (di giorno conta il lume): la firma bassa vera viene col masterplan (M7), con le altane delle case-torri e le cose degli slarghi | 1374,348 · 1370,306 | `world_cittanuova.js` |
 | 11 | **i due slarghi della Via delle Mura**: la striscia di selciato sotto le mura diventa piazzetta di 12 × 6 m (alla scala di ronda la fontanella, al Vico Scuro l'edicola sul pilastro) | 1368-1380 × 275-281 · 1441-1453 × 266-272 | `world_cittanuova.js` |
 
 Il resto: `cotto.js` (con `?nourbanistica1` il mondo cotto non vale), `tasselli.js` (idem per i tasselli), `percorsi.js` (i passaggi
@@ -511,4 +513,12 @@ pedonali non sono «il passaggio a livello»: porte e landmark di `Percorsi` res
   - `test_posa`: le stesse 6. Anzi una in meno, perché ora le edicole votive ci sono tutte.
 
 **Prima e dopo nel gioco** (`3x_pacchetto_*.jpg`, a sinistra `?nourbanistica1`, a destra di serie, stessa camera e stessa ora):
-__FOTO__
+- `30`: il varco del Vico dell'Arco. Prima il guardrail e la massicciata; dopo il passaggio con le sbarre e, di là, lo slargo.
+- `31`: il belvedere sul mare.
+- `32`: il varco del Vico Scuro.
+- `33`: lo slargo delle Mura ovest con la fontanella.
+- `34`, `35`: il sottopasso del Glacis con le due camere. Prima il suolo faceva la gobba sotto la volta, dopo è in piano.
+- `39`: il Vico del Sale senza il bidone.
+
+Le foto si fanno con `?nourbanistica1` e di serie dallo stesso punto, ore 10:30. La prova di fumo (`fumo6.js`, dietro il cancello dei due
+posti del browser) dà `errori []`.
