@@ -1,21 +1,29 @@
-# Porto Vecchio — BIBBIA DELLO STILE E «fumetto graffiti» (progetto, da approvare)
+# Porto Vecchio — BIBBIA DELLO STILE E «fumetto graffiti» (progetto, seconda versione, da approvare)
 
-Per chi lo deve scrivere senza indovinare. **Il riferimento eseguibile è il prototipo** `_immagini/fumetto2/progetto/prototipo.py` (con
-`tavolozza.py`): ogni numero qui sotto è lì, nello stesso ordine. Le tavole (catture vere del gioco, il prototipo applicato fuori dal gioco):
+Per chi lo deve scrivere senza indovinare. **Il riferimento eseguibile è** `_immagini/fumetto2/progetto/prototipo2.py` (con `tavolozza.py` e i
+momenti di `prototipo.py`): ogni numero qui sotto è lì. La prima versione (`prototipo.py`) è stata respinta: «si brucia, si sgrana, si
+sgretola e perde di qualità», e sui muri vicini il retino diventava «pois grossi». Questa versione toglie le cause (§0).
 
-- `_immagini/fumetto2/progetto/tavola_posti.jpg` — 5 posti: oggi (A) | D2 | **E bersaglio**
-- `_immagini/fumetto2/progetto/tavola_ore.jpg` — 6 momenti, stesso posto (piazza): oggi | **E bersaglio**
-- `_immagini/fumetto2/progetto/ritagli_1a1.jpg` — le trame a pixel veri (×2 senza filtro); `bersagli/*.png` a piena risoluzione
-- `_immagini/fumetto2/progetto/tavolozza.jpg` — la tavolozza; `leggibilita.json` — le prove del §7
+Le tavole (catture vere del gioco, il prototipo applicato fuori dal gioco; il bersaglio è disegnato a 1080 righe):
+- `_immagini/fumetto2/progetto/tavola_posti.jpg` — 5 posti: oggi (A) | E prima (respinto) | **E nuovo**
+- `_immagini/fumetto2/progetto/tavola_ore.jpg` — 6 momenti, stesso posto (piazza): oggi | **E nuovo**
+- `_immagini/fumetto2/progetto/ritagli_1a1.png` — ritagli a 1:1 VERI a 1080 (con la prova del muro a 1,3 m dalla camera)
+- `_immagini/fumetto2/progetto/intero_1080_piazza.png`, `intero_1080_sera.png` — due fotogrammi interi a 1080
+- `bersagli2/*.png|jpg` — tutti i bersagli a 1080; `misure2.json` — alte frequenze contro A, quota della luce più alta
 
-**Il principio.** Un solo look, `?stile=E`: l'immagine come una tavola stampata a mano (serigrafia/riso) di un fumetto graffiti.
-**Una tavolozza unica** (20 inchiostri + 3 del gioco) ricca abbastanza da tenere i gradini di valore e le famiglie di tinta; **trame vere**
-(tratteggio mosso, spray a macchie, grana) solo sulle cuciture fra due inchiostri e nelle ombre, mai puntini dappertutto; **inchiostro nero**
-spesso e irregolare ma fermo; **un fondo disegnato** dietro ogni inquadratura; **sei momenti** come regia, non come fisica. Tutto in **un
-passo unico** (quello che c'è) più piccoli ritocchi nei materiali. Le misure in px sono **a 540 righe** (la tela interna del profilo
-leggero è 540–640 righe): si scalano con `altezza/540`.
+## 0. La qualità prima di tutto (le regole che vincono su tutto il resto)
 
----
+1. **Niente sotto i 3 px che sia casuale.** Fuori: la fibra della carta, l'inchiostro che non prende, il fuori registro, lo spray a puntini,
+   il retino a punti. Nessuna trama a punti tondi, a nessuna distanza.
+2. **Ogni bordo è antialiasato** e liscio: il confine fra due inchiostri (§1.1), la riga del tratteggio (§3), l'inchiostro (§4), il nero pieno.
+   Nel passo: `fwidth` della grandezza che fa il bordo, larghezza di transizione ~1 px. Niente gradini, niente bordi masticati.
+3. **Campiture grandi e calme.** L'inchiostro si sceglie sul colore della superficie **lisciato** (§1.1), mai sul pixel: niente mimetica.
+4. **Le luci respirano.** La scala sopra .70 di valore si comprime (×.70): le luci tengono 2–3 inchiostri (osso, pesca, carta); la carta solo
+   per le luci vere. Misura: la quota dell'inchiostro più chiaro ≤ 15% del quadro (sui bersagli §7: ≤ 0,6% in 9 su 11, crepuscolo 10,6%, ora d'oro 28,5%).
+5. **Le trame hanno una misura sullo schermo limitata nei due versi**: ancorate al mondo per stare ferme, ma con le ottave (si aggiungono
+   righe in mezzo quando si allargano, svaniscono quando si stringono) il passo resta fra 16 e 32 px, la riga 2–5 px, a qualunque
+   distanza, anche con un muro a 1,3 m dalla camera.
+6. **Non più rumoroso di oggi.** Le alte frequenze (varianza del laplaciano a 960×540) di E nuovo stanno nella forchetta di A (§7).
 
 ## 1. La tavolozza unica
 
@@ -54,71 +62,82 @@ stanno in tutte. Famiglie: **N** neutri, **C** caldi, **F** freddi, **V** verdi,
 | allarme | `#FF2E5E` | pericolo: ostili, armi puntate, danno, sirene |
 
 ### 1.1 La scelta dell'inchiostro (il cuore del passo)
-1. Il colore finito del pixel (dopo luce, fondo, momento: §5–6) va in **Oklab** (sRGB linearizzato → LMS → radice cubica).
-2. **Famiglia** dalla tinta h: C 15°–100°, V 100°–172°, F 172°–285°, M 285°–15°. **Soglia di colore** sul croma C: caldi .062, freddi .050,
-   gli altri .030; nel fondo (6 → 12 m oltre il personaggio) la soglia scende di .025 (il fondale tiene la sua tinta). Sotto la soglia →
-   neutri; fra soglia e soglia + .025 il pixel è «di colore» se smoothstep > .5 (il lastrico beige resta pietra, l'ardesia resta grigia).
-3. Dentro la famiglia, i **due inchiostri più vicini** A e B con **Δ = 2·ΔL² + Δa² + Δb² + bias(inchiostro, momento)** (il valore pesa il
-   doppio: i gradini di valore restano).
-4. **r = √ΔA / (√ΔA + √ΔB)** ∈ [0, .5]. Il pixel è A, salvo dove la trama dice B: **B se T < base + guadagno · .5 · smoothstep(.30, .50, r)**
-   (T = la soglia della trama del materiale, §3). Grandi campiture piene; la trama vive sulle cuciture fra due inchiostri.
-5. **La cucitura neutro/colore**: dove il croma è a metà fra le due famiglie (peso w = .5 − |s − .5| > .3), l'inchiostro dell'altra famiglia
-   passa con la stessa trama, copertura (w − .3)·2,5 · guadagno.
-6. Famiglie da 6–8 inchiostri: il passo fa **≤ 16 distanze** per pixel (i neutri + la famiglia di tinta), non 20.
+1. **La superficie calma** (nei materiali, non nel passo): niente velature (`varia` 0), niente micro-normale, la tela di facciate e lastrico
+   con `bias` +1,5 di mipmap (le macchie larghe della tela spariscono, i giunti restano), le celle a tre toni di D. Il prototipo lo imita sulla
+   cattura con una diffusione a più scale (2–32 px) che resta sulla stessa superficie (normale entro 14°, profondità continua, ΔOklab < .035).
+2. **Il colore che sceglie**, nel passo: la media del pixel e di **12 letture filtrate** a 2 e 4 px (a 540 righe), ognuna scartata se è
+   un'altra cosa (profondità oltre il 3%, un'altra categoria); dove il pixel stacca forte dalla media (|Δvalore| > .22, largo almeno 2 px: una
+   lettera, un'insegna) vale il pixel, se largo almeno 3×3 px a 540 (i rivetti di una saracinesca no: diventerebbero pois). Il valore
+   sopra .70 compresso (§0.4).
+3. **Famiglia** dalla tinta Oklab h: C 15°–100°, V 100°–172°, F 172°–285°, M 285°–15°; soglia di croma caldi .075, freddi .050, gli altri .030
+   (−.025 nel fondo). Sotto: i neutri. Il passaggio neutro/colore è un bordo antialiasato (come al punto 5), non una cucitura a trama.
+4. **I due inchiostri più vicini** A, B con **Δ = 2·ΔL² + .4·(Δa² + Δb²) + bias(inchiostro, momento)**: il valore conta 5 volte la tinta (la
+   tinta l'ha già scelta la famiglia; così una superficie di un colore solo resta di un inchiostro solo). Bias fissi in più: carta +.006 (solo
+   luci vere), rosa +.005 e vietato sotto croma .11, oltremare vietato sotto croma .07, ocra mai sotto −.0015.
+5. **Il confine A/B**: r = √ΔA/(√ΔA + √ΔB) va a .5 sul confine da tutte e due le parti; la distanza in px dal confine è (.5 − r)/fwidth(r);
+   il peso di B sale da 0 a .5 nell'ultimo 1,2 px. **Netto, liscio, mai a puntini.** Nessuna trama sulle cuciture.
+6. Con famiglie da 6–8 inchiostri: ≤ 16 distanze per pixel.
+
 
 ## 2. La gerarchia di valore (ogni inquadratura una vignetta)
 
 | piano | dove | valori | contrasto | trama | inchiostro |
 |---|---|---|---|---|---|
-| **soggetto** | il personaggio | vermiglio (cotto sotto .10); **il bollino**: 3 px di carta attorno, fuori dal contorno (l'adesivo sul muro) | il bordo carta/nero = 15:1 sempre; il vermiglio è unico nel quadro | nessuna | pieno, 2 px (§4) |
-| **obiettivo** | anello, fascio, rombo, tessera | limone pieno (+ nero) | unico nel quadro | nessuna | 1 px |
-| **pericolo** | ostili, armi | allarme + nero | unico | nessuna | 2 px |
-| **primo e medio piano** | fino a 6 m oltre il personaggio | tutta la tavolozza; **il nero solo qui** | pieno | sì (§3) | spesso (§4) |
-| **fondo** | 6 → 12 m oltre il personaggio, e oltre | verso il fondale del momento, a 3 fasce | valore al 45%, colore al 50% | nessuna (campiture piatte) | sottile, del colore del fondale ×.45 |
-| **fondale** | cielo e oltre 140 m | i colori del fondale e del cielo del momento | piatto | guadagno .4 | nessuno |
+| **soggetto** | il personaggio | vermiglio (cotto sotto .10); **il bollino**: anello di carta fino a 5 px fuori dal contorno | il bordo carta/nero = 15:1; il vermiglio è unico nel quadro | nessuna | 3,2 px (§4) |
+| **obiettivo** | anello, fascio, rombo, tessera | limone pieno (+ nero) | unico nel quadro | nessuna | 2,2 px |
+| **pericolo** | ostili, armi | allarme + nero | unico | nessuna | 3,2 px |
+| **primo e medio piano** | fino a 6 m oltre il personaggio | tutta la tavolozza; **il nero solo qui** | pieno | tratteggio solo in ombra (§3) | 1,8–5 px (§4) |
+| **fondo** | 6 → 12 m oltre il personaggio, e oltre | verso il fondale del momento, a 3 fasce | valore al 45%, colore al 50% | nessuna | sottile, del colore del fondale ×.45 |
+| **fondale** | cielo e oltre 140 m | i colori del fondale e del cielo del momento | piatto | nessuna | nessuno |
 
-- **La luce sul soggetto**: valore × (1 + .07·(1 − smoothstep(.08, .40, r))) − .12·smoothstep(.50, 1.05, r), r = distanza dal personaggio
-  in altezze di schermo: l'occhio entra dal centro, i bordi del quadro più quieti.
-- **Il personaggio**: contrasto ×1.15 attorno a .45, +.05 (prima della tavolozza), poi la giacca forzata al vermiglio.
-- **Le comparse**: tinte piatte dalla tavolozza, niente trama, contorno nero di 2 px; mai i riservati.
-- **I mezzi e l'obiettivo**: campiture piatte, contorno di 1 px dal bordo della loro maschera.
+- **I bordi del quadro più quieti**: valore × (1 − .12·smoothstep(.50, 1.05, r)), r = distanza dal personaggio in altezze di schermo. (La luce
+  aggiunta al centro della prima versione è tolta: bruciava.)
+- **Il margine nelle luci** (§0.4): sopra .70 il valore si comprime ×.70 e la tinta resta (si comprime il valore, non il colore).
+- **Il personaggio**: contrasto ×1.15 attorno a .45, poi la giacca forzata al vermiglio.
+- **Le comparse**: tinte piatte, niente trama, contorno 3,2 px; mai i riservati.
 
-## 3. Le trame (non puntini)
+## 3. Le trame (solo in ombra, solo righe)
 
-Ancorate al **mondo** sul piano della faccia (il punto `fp0` dalla profondità; la normale da `dFdx/dFdy(fp0)`; il piano: orizzontale se
-|n.y| > .7 → (x, z), altrimenti (tangente orizzontale, y)): ferme camminando, niente «vetro sporco». T è uniforme in [0, 1].
+**Una trama sola: il tratteggio**, ancorato al piano della faccia come il retino di D: l'asse dominante della normale (lisciata sulla stessa
+superficie) sceglie le coordinate (x,z), (z,y) o (x,y) del punto `fp0`, meno l'origine del blocco (niente numeri grandi). Mai una tangente
+calcolata dalla normale: col rumore della normale le righe girerebbero. Righe di **10 cm** nel mondo, mosse appena a mano (rumore di 60 cm, ±.12
+del passo), **antialiasate**: la riga è la distanza in px dal suo centro (|x − round(x)| / fwidth(x)), bordo di 1 px.
 
-| materiale | trama | misura nel mondo | sullo schermo | base | guadagno |
-|---|---|---|---|---|---|
-| **muri** | **spray**: T = .6·hash(cella) + .4·rumore di valore a macchie | puntini 3 cm (1,5 cm se il puntino supera 5 px), macchie 20 cm | 2–5 px | .03, + .04 nelle mezze luci (valore .75 → .45) | 1 |
-| **suolo** | **tratteggio** a 30°, righe mosse a mano (rumore di 45 cm, ±.28 del passo) | passo 12 cm | 7–14 px (ottave) | 0 | .5 |
-| **tetti** | **tratteggio** a −40° | passo 14 cm | 7–14 px (ottave) | .02 | 1 |
-| **persone, mezzi, obiettivo** | nessuna | — | — | 0 | 0 |
-| **il resto** e sotto la misura minima | righe a 45° sullo schermo, spostate col mondo | — | passo 6 px | 0 | 1 |
-| **cielo e fondale** | grana di 1 px | — | — | 0 | .4 |
-| **fondo** (6 → 12 m oltre il personaggio) | sparisce (base e guadagno × (1 − smoothstep(6, 12, m))) | — | — | — | — |
+| dove | angolo nel piano | da valore | larghezza della riga (px a 1080) | incrocio |
+|---|---|---|---|---|
+| suolo | 30° | < .42 (pieno da .30) | da 2 (a .42) a 2 + .13·passo (a .20) | +90°, sotto .24 (pieno da .14) |
+| muri | 68° | idem | idem | idem |
+| tetti | −40° | idem | idem | idem |
+| il resto | 45° | idem | idem | idem |
+| luci (valore > .42), persone, mezzi, obiettivo, fondo (oltre 6–12 m), il retino della camera | **nessuna** | | | |
 
-- **Le ottave del tratteggio**: se la riga supera 14 px il passo si dimezza (fino a 3 volte); le righe vecchie restano, se ne aggiungono in
-  mezzo (la riga è la distanza dall'intero più vicino: le ottave si annidano). Il tratteggio non diventa mai una zebra vicino alla camera.
-- **Lo spray** sotto 0,9 px di puntino ripiega sulle righe a 45° di schermo.
-- **La carta**: fibra ±3% su tutto (hash di 1 px, fermo col mondo); l'inchiostro che non prende: 0,4% dei pixel di inchiostro chiaro (L > .4),
-  mai sul nero né sulle persone, diventa carta.
-- **Fuori registro**: la lastra del colore (tutto tranne il nero) spostata di **1 px a 540 righe in basso a destra**, costante; il nero a
-  registro. Si vede come un orlo colorato fuori dal contorno.
-- **Lo spostamento col mondo delle trame di schermo** (righe a 45°, grana, fibra): un punto del suolo vicino al personaggio, la sua
-  posizione sullo schermo da un fotogramma all'altro sposta il retino (le fasi in [0,1) calcolate in JS: già scritto nel ramo, `stileE`).
+- **La misura sullo schermo è limitata nei due versi** (la regola contro i «pois grossi»): il passo in px si misura con `fwidth` della
+  coordinata della riga; se supera **32 px** il passo nel mondo si dimezza (fino a 4 volte, le righe vecchie restano e se ne aggiungono in
+  mezzo); se scende sotto **16 px** le righe svaniscono (pieno a 16, zero a 12): mai moiré, mai zebra, mai bolle. Prova: `muro_vicino` (camera
+  a 1,3 m da un muro in ombra, ritagli).
+- **La riga è sovrastampa**: nero al 50% sopra l'inchiostro dell'ombra (l'ombra resta blu, viola, cotto: più fonda sulla riga).
+- **Niente spray, niente grana, niente fibra, niente fuori registro** (§0.1). La «mano» del graffito la portano i graffiti veri del gioco
+  (writing, insegne), l'inchiostro e il tratteggio.
 
 ## 4. L'inchiostro
 
-| tratto | dove | spessore (px a 540 righe) | colore | note |
-|---|---|---|---|---|
-| **sagoma** | salto relativo di profondità > .032 verso un vicino | **R = 1,6 + 1,8·(1 − smoothstep(6, 30, m)) + 1,3·smoothstep(.1, .4, salto)**, al massimo 3,2 (m = metri oltre il personaggio) | nero; da 12 m verso il fondale ×.45 (pieno a 45 m) | si stende verso la cosa davanti; restano le regole di D (il fondo dura 3 px, i buchi del retino della camera) |
-| **la mano** | lungo ogni sagoma | R × (1 + .38·onda), onda = sin(3,1x + 2,3y − 2,7z)·sin(−2,2x + 3,7y + 2,9z + 1,3) sul punto nel mondo (~1–1,5 m) | — | ferma nel mondo: **niente «boil»** |
-| **la pennellata che scarica** | sagome del set fra 3 m davanti e 12 m dietro il personaggio | dove l'onda < −.82 (≈10% della lunghezza) il tratto al 20% | — | mai sulle persone |
-| **piega** | normale che gira oltre ~44° (cos < .72), superficie continua (salto < .02), non fra due facce orizzontali | 1 | nero al 70% | fino a 25 m oltre il personaggio, oltre 4 m dalla camera |
-| **persone** | il bordo della loro maschera (categoria 4) | 2 | nero pieno | |
-| **nero pieno** | valore del colore finito < **.10** | — | nero | solo primo/medio piano, mai sulle persone |
-| **tratteggio nero** | valore fra **.20 e .10** | righe di 5 cm nel piano (suolo 30° + incrocio −50°; muri 68° + incrocio 158°; il resto righe a 45° di schermo, passo 4,5 px), copertura .45·smoothstep(.20, .10, valore) | nero | l'ombra fonda disegnata |
+Un **campo di distanza** (non una maschera): per ogni pixel di bordo il suo semispessore R; un pixel è inchiostro se la sua distanza vera
+(sotto-pixel) dal centro di un pixel di bordo vicino è < R, soglia antialiasata ±.6 px. Spessore costante, contorno liscio, niente vuoti.
+Il passo gira alla risoluzione interna: la posizione del bordo a sotto-pixel la dà il peso di copertura MSAA di [hd] (come il filo di D).
+
+| tratto | dove | semispessore R (px a 1080) | colore |
+|---|---|---|---|
+| **sagoma** | salto relativo di profondità > .032 a 1 px o > .06 a 2 px (verso la cosa davanti) | **1,8 + 2,2·(1 − smoothstep(6, 30, m)) + 1,2·smoothstep(.1, .4, salto)**, × (1 + .15·onda) | nero; da 12 m verso il fondale ×.45 (pieno a 45 m) |
+| **persone** | il bordo della maschera | 3,2 | nero |
+| **mezzi, obiettivo** | il bordo della maschera | 2,2 | nero |
+| **piega** | (fuori in questa versione: sulla distanza al cm della cattura faceva trattini; da riprovare nel passo vero, 1,1 px al 70%) | — | — |
+| **nero pieno** | valore del colore lisciato < .10 (bordo antialiasato .085–.115) | — | nero |
+
+- **L'onda** (la mano): sin(1,3x + .9y − 1,1z)·sin(−.8x + 1,5y + 1,2z + 1,3) sul punto nel mondo, periodo ~3 m, ±15%: un'assottigliatura lenta,
+  **mai un vuoto**, ferma nel mondo.
+- **Mai inchiostro** sul retino della camera (un pixel col fondo da due parti opposte a 1 o 2 px; più di metà dei pixel 5×5 con un salto),
+  sui trattini corti (meno di 5 px di bordo in un 7×7), sul cielo e oltre 140 m.
+- **Il bollino** del personaggio: un anello di carta fino a 5 px fuori dalla sua sagoma, antialiasato, sotto il contorno nero.
 
 ## 5. I sei momenti (regia, non fisica)
 
@@ -143,66 +162,87 @@ Libertà: i momenti **non devono essere coerenti fra loro** né realistici; devo
 
 - **Il fondo**: oltre 4 m dietro il personaggio q = 1 − e^(−(m − 4)/10); **3 fasce piatte** (floor(3q)/3, bordo di 1 px con `fwidth`) che
   pesano **.56, .89, 1** × la forza del momento; il colore va dal fondale vicino al lontano: valore al 45%, colore al 50%. Le persone non
-  entrano. Separa i piani: primo pieno e tratteggiato, fondo piatto, chiaro e colorato. **Nessun quadro finisce in grigio.**
+  entrano. Separa i piani: primo pieno e contornato, fondo piatto, chiaro e colorato. **Nessun quadro finisce in grigio.**
 - **Il fondale disegnato** (cielo e oltre 140 m): fasce per **elevazione** del raggio (> 14° alto, 5°–14° mezzo, < 5° orizzonte), **colline**
   come sagoma piatta per **azimut**: elevazione < 1,2° + 1,6°·sin(3az + .7)·sin(5az + 2,1) + .8°·sin(11az). Il mare lontano prende la fascia
   dell'orizzonte. Con la camera7 il cielo entra raramente (sul lungomare il mare lontano fa da fondale): il lavoro vero lo fanno le fasce del fondo.
 - **Ogni inquadratura contiene**: il personaggio col bollino; il piano su cui sta; almeno un piano verticale (muro) per la scala; un fondo
-  (facciate lontane, mare) in fasce. Le grandi cose davanti alla camera (chiome, ombrelloni, tetti a 3 m) sono **quinte**: scure, tratteggiate,
-  contornate (il prototipo le lascia così; vedi §9).
+  (facciate lontane, mare) in fasce. Le grandi cose davanti alla camera (chiome, ombrelloni, tetti a 3 m) sono **quinte**: campiture scure e
+  contornate (le chiome aperte dalla camera: un velo piatto, §9).
 
-## 7. Le prove di leggibilità (ogni momento)
+## 7. Le misure e le prove (sui bersagli, `misure2.json`, `leggibilita.json` della prima versione per il personaggio)
 
-| cosa | prova | soglia | sui bersagli (`leggibilita.json`) |
-|---|---|---|---|
-| personaggio | bordo carta/nero | ≥ 4,5:1 | 15:1 in tutti e 11 |
-| personaggio | vermiglio fuori dalla sua sagoma | 0 pixel | 0 in tutti |
-| personaggio | riempimento contro la corona (mediane) | ≥ 1,5:1 o il bollino | 3,9–14,5:1; piazza 13h ravvicinata 1,1:1 (lì lo stacca solo il bollino) |
-| obiettivo | limone solo sull'obiettivo | unico | (nessun obiettivo acceso nelle catture: la prova va rifatta in gioco) |
-| mezzi | contorno continuo | ≥ 1 px | — (nessun mezzo nelle catture) |
-| fondo | niente nero né trama oltre 12 m | — | sì per costruzione |
+**Alte frequenze** (varianza del laplaciano della luminanza a 960×540: quanto «frigge» l'immagine) e **rumore** (mediana su blocchi di 16 px
+del dettaglio sotto 1,2 px):
+
+| scena | A (oggi) | E prima (respinto) | **E nuovo** | rumore A → E nuovo | luce più alta (quota) |
+|---|---:|---:|---:|---|---|
+| vicolo | 862 | 6704 | **1044** | 5.50 → 6.48 | carta 0.5% |
+| sbocco | 883 | 6054 | **797** | 2.21 → 3.80 | carta 0.6% |
+| lungomare | 3608 | 15938 | **932** | 4.00 → 2.79 | carta 0.4% |
+| piazza | 409 | 4106 | **822** | 0.86 → 0.00 | cielo 0.0% |
+| sera | 411 | 4619 | **647** | 2.27 → 3.03 | pesca 4.7% |
+| ora: mattino | 807 | — | **1074** | 4.71 → 4.91 | carta 0.0% |
+| ora: mezzogiorno | 602 | — | **902** | 3.21 → 1.88 | carta 0.4% |
+| ora: pomeriggio | 618 | — | **866** | 3.56 → 2.90 | carta 0.1% |
+| ora: oro | 542 | — | **922** | 3.03 → 3.85 | pesca 28.5% |
+| ora: crepuscolo | 452 | — | **638** | 3.02 → 2.26 | pesca 10.6% |
+| ora: notte | 575 | — | **616** | 3.65 → 3.18 | carta 0.1% |
+
+- E nuovo ha **5–17 volte meno alte frequenze di E prima** e sta **nella forchetta di A**: sotto A sul lungomare (−74%: la chioma a
+  retino diventa un velo) e nello sbocco (−10%), sopra fino a ×1,2–2 negli altri (piazza 13h ×2: sono i contorni neri spessi su un quadro
+  che in A è quasi senza bordi; bordi veri, non grana). Il «rumore» sotto 1,2 px resta quello di A (da −2,1 a +1,6 punti).
+- **La luce più alta in uso** (la quota dell'inchiostro più chiaro presente): ≤ 0,6% in 9 bersagli su 11 (la carta solo per le luci vere);
+  crepuscolo pesca 10,6%; ora d'oro pesca 28,5% (il momento è tutto arancio: pesca non è l'inchiostro più chiaro della tavolozza, la carta
+  resta libera per le luci, ma la regola del 15% lì è superata: da decidere guardando).
+- Il personaggio: bordo carta/nero 15:1, vermiglio unico (come la prima versione). Obiettivo e mezzi: nessuno nelle catture, da provare in gioco.
+- **Prova del muro vicino** (`muro_vicino`, `muro_vicino_ombra`: camera a 1,3 m da una facciata della piazza): al sole campitura piena coi
+  giunti; in ombra il tratteggio a ~16–32 px di passo e 2–4 px di riga, nessun punto né bolla.
 
 ## 8. Dove sta nel passo unico, e quanto costa (Iris Xe, 1137×640 = 0,73 Mpx)
 
 | pezzo | serve | letture in più | calcolo/pixel | stima |
 |---|---|---|---|---|
-| bilanciamento, viraggio sui grigi, luce sul soggetto | colore, `fP` | 0 | ~30 (un Oklab per il croma) | — |
-| fondo a fasce, fondale | profondità e raggio (`fp0` c'è) | 0 | ~20; ~40 solo sul fondale | — |
-| tavolozza a famiglie | colore; **40 uniform vec4** (5 famiglie × 8: Oklab + bias, dal JS a ogni cambio di momento) | 0 | ~170 (Oklab, ≤ 16 distanze, 2 minimi, ritorno in sRGB di A e B) | ~0,10–0,15 ms |
-| trame nel mondo | `fp0`, normale da `dFdx/dFdy` | 0 | ~90 (hash, rumore di valore a 4 hash, 2 tratteggi con ottave) | ~0,05 ms |
-| nero pieno e tratteggio nero | valore, piano | 0 | ~25 | — |
-| inchiostro a mano | le 4 + 4 letture di D2 (ci sono), raggio variabile | 0 | ~15 | — |
-| fuori registro | **1 lettura del colore** a 1 px (in cache) | **+1** | ~5 | ~0,03 ms |
-| bollino del personaggio, contorno persone/mezzi | le 8 letture della categoria del Sobel di `CAT` (ci sono), raggio 3 px | 0 | ~15 | — |
-| **la categoria** | **ritocco nei materiali**: l'alfa scrive 4 anche per il pupazzo senza scheletro (oggi le persone finiscono «muro»), 5·1 i mezzi, 5·2 l'obiettivo, 5·3 il personaggio (una uniform per gruppo, `sgCat`) | 0 | 0 | — |
-| **totale** | | **+1 lettura** | **~400 operazioni** | **~0,3 ms su Iris Xe**; ~1–1,5 ms su un telefono medio |
+| la superficie calma | **nei materiali**: `varia` 0, tela con bias di mipmap +1,5 (facciate, lastrico), celle di D | 0 | ≈ 0 (meno di oggi) | — |
+| bilanciamento, viraggio, margine nelle luci | colore | 0 | ~30 | — |
+| il colore che sceglie (§1.1.2) | **12 letture filtrate del colore** a 2 e 4 px; le profondità a 1 e 2 px ci sono già (le 8 di D2), quelle a 4 px **+4** | **+12 colore, +4 profondità** (in cache: vicine) | ~60 | ~0,15 ms |
+| fondo a fasce, fondale | profondità, raggio | 0 | ~20 (~40 sul fondale) | — |
+| tavolozza a famiglie + confine antialiasato | 40 uniform vec4 (5 famiglie × 8: Oklab + bias) | 0 | ~170 (Oklab, ≤ 16 distanze, 2 minimi, `fwidth(r)`) | ~0,1 ms |
+| tratteggio in ombra | `fp0`, normale da `dFdx/dFdy` (lisciata: le 4 letture a 2 px), 2 famiglie di righe con ottave | 0 | ~50 | ~0,03 ms |
+| nero pieno | valore | 0 | ~5 | — |
+| inchiostro | le 8 letture di D2; il semispessore variabile; copertura MSAA di [hd] per il sotto-pixel | 0 | ~25 | — |
+| bollino, contorno persone/mezzi/obiettivo | le 8 letture della categoria di `CAT` | 0 | ~15 | — |
+| **la categoria** | **ritocco nei materiali**: l'alfa scrive 4 per il pupazzo senza scheletro (oggi le persone finiscono «muro»), mezzi, obiettivo, personaggio | 0 | 0 | — |
+| **tolti** rispetto alla prima versione | fuori registro (1 lettura), spray, grana, fibra, inchiostro che non prende, retino | −1 | −60 | — |
+| **totale** | | **+16 letture** (12 colore + 4 profondità, tutte entro 4 px) | **~380 operazioni** | **~0,35–0,45 ms su Iris Xe** |
 
-**E-lite per i telefoni** (lo stesso `?stile=E` col profilo leggero o `PHONE`): trame solo di schermo (righe a 45° e grana, niente piano nel
-mondo), niente fuori registro, tratteggio nero a righe di schermo: ~200 operazioni, 0 letture in più. Senza `?stile` niente cambia (tutto
-dentro `#ifdef SG_STILE`; nei materiali i rami restano spenti da `sgP10` a zero, come D).
+**E-lite** (telefoni, profilo leggero): il colore che sceglie con 4 letture invece di 12 (solo a 2 px), il tratteggio solo da valore < .30:
++4 letture, ~250 operazioni. Senza `?stile` niente cambia (tutto dentro `#ifdef SG_STILE`; nei materiali i rami restano spenti da `sgP10`).
 
-**Nei materiali** (già nel ramo `fumetto2`): le celle a tre toni col bordo a `fwidth` (`sgP10.z`); la luce a spray solo sulle cose curve
-(`sgP10.w < 0`); niente retino di D nei materiali; la categoria estesa (sopra); la luce dei momenti (§5, ultima colonna).
+**Il passo gira alla risoluzione interna** (540–640 righe nel leggero, poi ingrandito): i bordi devono essere continui per non fare gradini da
+2 px sullo schermo. Il prototipo lo mostra: il colore che sceglie è filtrato (letture bilineari), il confine A/B e l'inchiostro sono soglie
+antialiasate su grandezze continue (`fwidth`), l'inchiostro usa il peso di copertura MSAA di [hd]. Niente maschere binarie.
 
 ## 9. Cosa resta aperto (da decidere guardando)
 
-- **Le catture hanno la luce di D1** (sole caldo, celle): il prototipo corregge col bilanciamento wb. Nel gioco la leva vera è la luce dei
-  momenti nei materiali (§5): va regolata insieme al passo, non solo con wb.
-- **Le quinte vicine alla camera** (la chioma sul lungomare, gli ombrelloni, i tetti del kit nel vicolo) restano masse scure tratteggiate: è
-  una scelta di inquadratura (cinema), ma la chioma «a retino» della camera7 sporca l'inchiostro come in D.
-- **La notte** è la più rischiosa: le pozze dei lampioni diventano grandi campiture ocra/pesca, il resto verde acqua e nero; leggibile, ma
-  più «rumorosa» degli altri momenti. Si può calmare con meno peso sull'acqua.
-- **Il tremolio** non è misurabile sul prototipo (un fotogramma): le trame sono nel mondo, l'inchiostro ha l'onda nel mondo, niente nel tempo;
-  va misurato in gioco con la sonda del mezzo pixel di D.
-- **La tavolozza** ha 20 inchiostri del mondo (il committente: «con 2-3 tinte si appiattisce tutto»): si può asciugare a 16 togliendo sasso,
-  bosco, lilla, salvia, a costo di più cuciture a trama sui grigi e sulle chiome.
+- **La superficie calma va nei materiali**: il prototipo la imita con una diffusione sulla cattura (non fattibile nel passo). Se i materiali
+  restano come oggi, la scelta dell'inchiostro (anche lisciata a 4 px) farà macchie dove la tela ha macchie grandi: è il primo pezzo da fare.
+- **Il retino della camera7** (le chiome che si aprono a scacchi): E lo disegna come velo piatto senza inchiostro; la cura vera è una
+  dissolvenza della camera (codice della camera).
+- **Le pieghe** (spigoli interni) sono fuori in questa versione: sulla distanza al cm della cattura facevano trattini. Da riprovare nel passo vero.
+- **Le catture hanno la luce di D1**: il bilanciamento wb corregge; nel gioco la leva è la luce dei momenti nei materiali (§5).
+- **L'ora d'oro** è quasi tutta pesca e ocra: voluta, ma è il momento meno vario.
+- **Il tremolio** va misurato in gioco (sonda del mezzo pixel di D): le righe sono nel mondo con ottave, l'inchiostro ha l'onda nel mondo.
+- **La tavolozza** resta di 20 inchiostri: con le regole nuove (campiture grandi) si può asciugare a 16 (via sasso, bosco, lilla, salvia) se
+  il committente la vuole più grafica.
 
 ## 10. Come si rifà
 
 ```
-cd v7 && python3 build.py                                   # (la sonda usa R.__rt e R.__dyn, esportati solo per le sonde)
+cd v7 && python3 build.py                                   # (le sonde usano R.__rt e R.__dyn, esportati solo per le sonde)
 cd _immagini/fumetto2/sonde && node cattura.js tutto        # ~70 min in SwiftShader: f/ (A, D2, D1 finiti), g/ (colore, distanza, categoria, maschere)
-cd ../progetto && python3 tavole.py && python3 leggibilita.py   # le tavole, i ritagli, i bersagli, le prove
-python3 prototipo.py posto_piazza 18.6 /tmp/x.png           # un posto a un'ora qualsiasi (le manopole: MOMENTI e i numeri in stile())
+node cattura_muro.js                                        # la prova del muro a 1,3 m
+cd ../progetto && python3 tavole2.py                        # le tavole, i ritagli 1:1, i due interi a 1080, misure2.json (~10 min)
+python3 prototipo2.py posto_piazza 18.6 /tmp/x.png          # un posto a un'ora qualsiasi
 ```
-Le catture (f/, g/, ~50 MB) non sono nel repo: si rifanno con `cattura.js`.
+Le catture (f/, g/, ~55 MB) non sono nel repo: si rifanno con `cattura.js` e `cattura_muro.js`.
