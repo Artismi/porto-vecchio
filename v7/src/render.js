@@ -20188,6 +20188,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
     if (!KPO) KPO = { renderer, scene, moon, spots: SPOOL, camera: () => camera, get H() { return HD.regola && HDR.k > 0 && HDV() ? H / HDR.k : H; }, phone: PHONE,   /* [hd] l'altezza di riferimento: le persone lontane e le cose piccole (peso_gente.js, peso_lontano.js) non cambiano con la scala */ frz: FRZ, get people() { return dyn.people; }, get vehicles() { return dyn.vehicles; } };
     if (window.PesoGente) PesoGente.passo(dyn.people, KPO);   /* [peso] le persone fuse (peso_gente.js) */
     if (window.PesoOmbre) PesoOmbre.prima(KPO);   /* [peso] le ombre in cache (peso_ombre.js) */ if (window.PesoLontano) PesoLontano.prima(KPO);   /* [peso] le cose piccole lontane (peso_lontano.js) */ if (window.PesoFusi) PesoFusi.prima(KPO); if (window.PesoScatole) PesoScatole.prima(KPO);   /* [ottimizza-gpu] il frustum a scatole, la ferrovia a settori */   /* [fusi] i settori e le ombre fuse (peso_fusi.js) */ if (window.PesoBagliori) PesoBagliori.prima(KPO);   /* [peso] gli aloni in un disegno (peso_bagliori.js) */
+    if (window.Lontano9) Lontano9.prima(KPO, G.MAP.world, C7 && !indoorNow && !ugNow && !!(Camera7.C9 && Camera7.C9.on));   /* [lontano9] la camera bassa: le case che nascondono, le cose piccole lontane (lontano9.js) */
     streamTick();   /* [memoria] */
     fetteChiudi();   // [momenti]
     if (AD.on) {   // [ad] il taglio del primo piano: il personaggio sullo schermo della scena (pixel del bersaglio), la sua distanza e la sua quota
