@@ -206,15 +206,19 @@ var StradaDipinta = (function () {
 
     // ---- 1. i fondali: il muro che chiude una vista lunga e dritta prende un pezzo grande, nuovo, leggibile (uno ogni 55 m al più) ----
     const cand = [];
-    fondaliStrade().forEach(s => { const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime') return; cand.push({ s, v: s.vista + 30, z }); });   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
+    // il muro in fondo alla via: se lì c'è un tratto di muro libero (un sito, niente porte né finestre) si prende quello, se no la facciata
+    // vera (il pezzo diventa un throw-up grande, che sta fra le finestre)
+    fondaliStrade().forEach(f => { let s = f; const sv = SITES.find(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && hyp(q.x - f.x, q.y - f.y) < 9 && q.out[0] * f.out[0] + q.out[1] * f.out[1] > .7 && (q.len || 0) >= 4);
+      if (sv) s = Object.assign(sv, { vista: f.vista, via: f.via }); else f.facciata = true;
+      const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime') return; cand.push({ s, v: s.vista + 30, z }); });   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
     SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare' && z !== 'fuori') return;
       const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) cand.push({ s, v, z }); });
     cand.sort((a, b) => b.v - a.v);
     const FOND = [];
     for (const c of cand) { if (FOND.some(o => { const d = hyp(o.s.x - c.s.x, o.s.y - c.s.y); return d < 18 || (d < 55 && Math.cos(o.s.face - c.s.face) > .3); })) continue;   /* due fondali vicini solo se si guardano da parti opposte (due viste diverse) */ FOND.push(c); if (FOND.length >= 16) break; }
-    FOND.forEach(c => { const s = c.s, z = c.z, len = s.len || 6, who = chi(z, false);
-      const style = len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
-      const W0 = Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : W0 * .4;
+    FOND.forEach(c => { const s = c.s, z = c.z, len = s.len || 6; let who = chi(z, false); for (let k = 0; k < 6 && (visto(who.wr.aka, 'throw', s.x, s.y, 45) || visto(who.wr.aka, 'pezzo', s.x, s.y, 45)); k++) who = chi(z, false);
+      const style = s.facciata ? 'throw' : len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
+      const W0 = style === 'throw' ? 3.2 : Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : style === 'throw' ? 1.5 : W0 * .4;
       const w = lavoro(posto(s, 0, null), who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v) }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
@@ -259,7 +263,7 @@ var StradaDipinta = (function () {
     const pal = new Set();
     if (!ctx.cotti) SITES.forEach(s => { if ((s.kind !== 'facciata' && s.kind !== 'heaven') || pal.has(s.bi)) return; const z = zonaSito(s); if (!(z in CALDE)) return; const rt = ritmo(s.x, s.y);
       if (rng() > (s.kind === 'facciata' ? .22 : .12) * rt) return; pal.add(s.bi);
-      const who = chi(z, rng() < .6);
+      let who = chi(z, rng() < .6); for (let k = 0; k < 6 && ['throw', 'pezzo', 'verticale', 'rullo', 'estintore'].some(t => visto(who.wr.aka, t, s.x, s.y, 30)); k++) who = chi(z, rng() < .6);
       if (s.kind === 'facciata') { const style = rng() < .6 ? 'verticale' : rng() < .5 ? 'estintore' : s.len >= 8 ? 'rullo' : 'verticale'; const ex = style === 'verticale' ? { H0: s.Hv || 7, W0: 1.6 + rng() * .8 } : style === 'rullo' ? { W0: Math.max(5, Math.min(9, (s.len || 9) - .5)) } : {};
         const h = style === 'estintore' ? (s.gh != null ? s.gh + 3.4 : null) : style === 'rullo' && s.top ? s.top - 1.4 : style === 'verticale' ? s.h : null;
         lavoro(posto(s, 0, h), who, style, Object.assign(ex, { sdStrato: 0 }), 'medio'); }
