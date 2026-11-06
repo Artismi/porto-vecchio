@@ -735,23 +735,27 @@ var Render = (function () {
   }
   // fonde i figli di un gruppo (in coordinate del gruppo) per materiale.
   // Restano separati: mesh con più materiali, mesh con userData.keep, sottoalberi con userData.keepTree, sprite e luci.
+  // [fumetto2] i pezzi del costruito per la rifinitura (vetrine, fascia dell'insegna, saracinesche, gronde): userData.rc = '<tipo>' sul pezzo (o sul
+  // suo materiale, se è solo suo), solo con ?stile=E. mergeGroup tiene i pezzi segnati in secchi loro (materiale + tipo): la mesh fusa porta
+  // userData.rc. Senza E i secchi sono quelli di prima (nessun costo)
+  const RCON = typeof location !== 'undefined' && /[?&]stile=e\b/i.test(location.search), rcTag = (o, k) => { if (RCON && o && k) o.userData.rc = k; return o; };
   function mergeGroup(grp) {
     grp.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), keep = [], E2 = [], V3 = [];
+    const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), byR = new Map(), keep = [], E2 = [], V3 = [];
     const sdR = SD1.on ? sdScatole(grp).filter(q => q.n !== grp) : null, sdC = sdR ? chi2(/^(mergeGroup|shadowed)$/) : '';   // [disposizione] i pezzi col tipo, nel riferimento del gruppo
     const walk = (o, e2, v3) => {
       for (const c of o.children) {
         const vv = c.userData.v3 !== undefined ? c.userData.v3 : v3;   // [visuale3] la casa a cui appartiene la parte (le antenne della rete): il taglio la ritrova nella mesh fusa
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { let b = by.get(c.material); if (!b) { b = []; by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        if (c.isMesh) { const rcK = RCON ? c.userData.rc || (c.material && c.material.userData.rc) || '' : ''; let b = rcK ? byR.get(c.material.uuid + '|' + rcK) : by.get(c.material); if (!b) { b = []; if (rcK) { b.__mat = c.material; b.__rc = rcK; byR.set(c.material.uuid + '|' + rcK, b); } else by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
         walk(c, e, vv);
       }
     };
     walk(grp, null, undefined);
     const out = new THREE.Group(); out.position.copy(grp.position); out.rotation.copy(grp.rotation); out.scale.copy(grp.scale);
     keep.forEach(o => { const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); o.parent.remove(o); m.decompose(o.position, o.quaternion, o.scale); out.add(o); });
-    by.forEach((geos, mat) => { if (E2.length || V3.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
+    [...by.entries()].map(([m, gs]) => [gs, m]).concat([...byR.values()].map(gs => [gs, gs.__mat])).forEach(([geos, mat]) => { if (E2.length || V3.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); if (geos.__rc) M.userData.rc = geos.__rc; out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa
     E2.forEach(e => { e.parts = e.mp.map(([b, i, n]) => ({ M: b.__M, s: b.__offs[i], n })); e.mp = null; });   // [pulizia2]
     V3.forEach(([bi, b, i, n]) => { const L = VIS3.parti.get(bi) || VIS3.parti.set(bi, []).get(bi); L.push({ M: b.__M, s: b.__offs[i], n }); });   // [visuale3]
     if (sdR) { const den = o => { for (let p = o; p; p = p.parent) if (p === grp) return true; return false; };   // [disposizione] quello che era già fuso dentro questo gruppo segue il gruppo nuovo
@@ -5257,9 +5261,9 @@ var Render = (function () {
       const c = Math.cos(yaw), s = Math.sin(yaw), P0 = [-half, ye - th - .03, dist], P1 = [half, ye - th - .03, dist];
       const rot = q => [q[0] * c + q[2] * s, q[1], -q[0] * s + q[2] * c];
       if (o.gutter !== false && kind !== 'eternit') {
-        tube1(grp, rot(P0), rot(P1), .085, gutM, 'down', 6);
+        rcTag(tube1(grp, rot(P0), rot(P1), .085, gutM, 'down', 6), 'gronda');
         if (k < 2 && o.base !== undefined) { const drop = o.y - o.base, wallD = (side ? W : D) / 2 + .12, uu = (side ? D : W) / 2 - .3;
-          if (drop > .5) { const a = rot([uu, ye - th - .06, dist]), b = rot([uu, -.35, wallD]), c = rot([uu, -drop + .2, wallD]), e = rot([uu, -drop + .06, wallD + .22]); tube1(grp, a, b, .05, gutM, null, 6); tube1(grp, b, c, .05, gutM, null, 6); tube1(grp, c, e, .05, gutM, null, 6);
+          if (drop > .5) { const a = rot([uu, ye - th - .06, dist]), b = rot([uu, -.35, wallD]), c = rot([uu, -drop + .2, wallD]), e = rot([uu, -drop + .06, wallD + .22]); rcTag(tube1(grp, a, b, .05, gutM, null, 6), 'pluviale'); rcTag(tube1(grp, b, c, .05, gutM, null, 6), 'pluviale'); rcTag(tube1(grp, c, e, .05, gutM, null, 6), 'pluviale');
             for (let y = -1.2; y > -drop + .6; y -= 2.2) { const q = rot([uu, y, wallD - .06]); const cl = fB(.14, .04, .14, '#4a4e52', 'galv', 0); cl.position.set(q[0], q[1], q[2]); grp.add(cl); } } }
       }
       if (o.rafters && !side) for (let u = -half + .35; u < half - .2; u += .62) { const a = rot([u, -th - .02, (side ? W : D) / 2 + .02]), b = rot([u, ye - th - .02, dist - .1]); tube1(grp, a, b, .045, undM, null, 4); }
@@ -10894,7 +10898,7 @@ var Render = (function () {
     for (let k = 0; k < sd.n; k++) { const t = sd.tile(k); if (t[0] >= Math.min(a[0], c[0]) && t[0] <= Math.max(a[0], c[0]) && t[1] >= Math.min(a[1], c[1]) && t[1] <= Math.max(a[1], c[1])) ks.push(k); if (S.door && t[0] === S.door[0] && t[1] === S.door[1]) kd = k; }
     return { ks, kd };
   }
-  function vetroBottega() { if (!BOT.vetro) { BOT.vetro = std({ color: '#c8d8e0', roughness: .08, metalness: .2, transparent: true, opacity: .16, depthWrite: false }); BOT.vetro.userData.keepTr = true; BOT.vetro.userData.vetro = 1; } return BOT.vetro; }
+  function vetroBottega() { if (!BOT.vetro) { BOT.vetro = std({ color: '#c8d8e0', roughness: .08, metalness: .2, transparent: true, opacity: .16, depthWrite: false }); BOT.vetro.userData.keepTr = true; BOT.vetro.userData.vetro = 1; rcTag(BOT.vetro, 'vetrina'); } return BOT.vetro; }
   const MERCE_DI = u => /drogh|alimentar|^wu|emporio|supermerc/.test(u) ? 'dispensa' : /latter/.test(u) ? 'latte' : /merceria|abbigl|sartor/.test(u) ? 'stoffe' : /calzol/.test(u) ? 'scarpe'
     : /orolog/.test(u) ? 'orologi' : /cartol|tabacc|tipograf/.test(u) ? 'carta' : /profum|farmac/.test(u) ? 'boccette' : /elettrod|video/.test(u) ? 'elettro' : /mobili/.test(u) ? 'mobili'
     : /frutt/.test(u) ? 'frutta' : /pesch/.test(u) ? 'pesce' : /panett|forno/.test(u) ? 'pane' : /ferram|armeria|fabbro/.test(u) ? 'attrezzi' : /bar|tratt|oster|pub|gelat|car_2|sirena|circolo/.test(u) ? 'bottiglie' : 'tendina';
@@ -10968,7 +10972,7 @@ var Render = (function () {
     const F = { S: [x0, z0 + d, 0], N: [x0 + w, z0, Math.PI], E: [x0 + w, z0 + d, Math.PI / 2], W: [x0, z0, -Math.PI / 2] }[f], L = B0.n * TS;
     if (b.__ep && b.__ep.portico === f) { F[0] -= Math.sin(F[2]) * TS; F[1] -= Math.cos(F[2]) * TS; }   // [pulizia2] sotto il portico il fronte sta sul muro arretrato, non sul filo dei pilastri
     const g = new THREE.Group(), a = new THREE.Group(); a.position.set(F[0], 0, F[1]); a.rotation.y = F[2]; g.add(a);
-    let K2 = 'portale'; const G2 = {}, at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); return mk2(o, K2, b, f, G2[K2] || (G2[K2] = ++P2.g)); };   // [pulizia2] ogni pezzo col suo nome, per il regista   [pulizia] e la sua composizione: i tasti del citofono, i faretti dell'insegna, le guide della serranda stanno insieme
+    let K2 = 'portale'; const G2 = {}, RCB = { insegna: 'insegna', serranda: 'saracinesca_cassonetto' }, at = (o, u, y, z) => { o.position.set(u, y, z); a.add(o); rcTag(o, RCB[K2]); return mk2(o, K2, b, f, G2[K2] || (G2[K2] = ++P2.g)); };   // [pulizia2] ogni pezzo col suo nome, per il regista   [pulizia] e la sua composizione: i tasti del citofono, i faretti dell'insegna, le guide della serranda stanno insieme
     const N = [Math.sin(F[2]), Math.cos(F[2])], T2 = [Math.cos(F[2]), -Math.sin(F[2])], wp = (u, z) => [F[0] + T2[0] * u + N[0] * z, F[1] + T2[1] * u + N[1] * z];
     const metal = sm('#6e7174', { roughness: .6, metalness: .4 }), stone = sm(era === 'E4' ? '#d8ccae' : '#cfc6b4', { roughness: .95 });
     b.__blade = true;   // la bandiera al neon no: l'insegna è una sola, sulla fascia
@@ -11005,7 +11009,7 @@ var Render = (function () {
     if (SEGNI.on) { const rs = rng(b.x * 7919 + b.y * 104729 + 17), chiusa = rs() < .45,   /* [ad] più saracinesche giù (erano .3 e .12) */ reg = regAt(F[0], F[1], 3);
       ents.forEach(e => { const giu = rs() < .22; if (e.role !== 'vetrina' || !(chiusa || giu)) return;
         const key = reg ? 'n4' : e.w > 2 ? pick(rs, ['w0', 'w1', 'w0', 'n4']) : pick(rs, ['n0', 'n1', 'n2', 'n3', 'n4', 'n5']);
-        at(sgaMesh(e.w + .03, 2.36, key), e.u, base + 1.2, .045); SEGNI.cnt.abbassate++; }); }
+        rcTag(at(sgaMesh(e.w + .03, 2.36, key), e.u, base + 1.2, .045), 'saracinesca'); SEGNI.cnt.abbassate++; }); }
     // ---- la tenda sulle vetrine (sotto i portici no) ----
     const vet = ents.filter(e => e.role === 'vetrina'); K2 = 'tenda';
     if (vet.length && era !== 'E4' && !b.portico && r() < .75) { const v0 = Math.min(...vet.map(e => e.u - e.w / 2)) - .1, v1 = Math.max(...vet.map(e => e.u + e.w / 2)) + .1, tw = v1 - v0, tm = tendaMat(era);
@@ -13800,7 +13804,7 @@ var Render = (function () {
   function eMaschera(W, H, depthTex) {
     let B = SGT.eMsk; const cam = camera;
     if (!B) { B = SGT.eMsk = { sc: new THREE.Scene() };
-      B.mat = new THREE.ShaderMaterial({ uniforms: { tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, rs: { value: new THREE.Vector2(1, 1) } },
+      B.mat = new THREE.ShaderMaterial({ uniforms: { tD: { value: null }, nf: { value: new THREE.Vector2(1, 400) }, rs: { value: new THREE.Vector2(1, 1) }, col: { value: new THREE.Vector4(1, 0, 0, 1) } },
         vertexShader: `#include <common>
 #include <skinning_pars_vertex>
           void main(){
@@ -13809,17 +13813,18 @@ var Render = (function () {
 #include <skinning_vertex>
 #include <project_vertex>
           }`,
-        fragmentShader: `precision highp float; uniform highp sampler2D tD; uniform vec2 nf; uniform vec2 rs;
+        fragmentShader: `precision highp float; uniform highp sampler2D tD; uniform vec2 nf; uniform vec2 rs; uniform vec4 col;
           float lin(float z){ z = z * 2. - 1.; return 2. * nf.x * nf.y / (nf.y + nf.x - z * (nf.y - nf.x)); }
-          void main(){ float ds = lin(texture2D(tD, gl_FragCoord.xy / rs).r), df = lin(gl_FragCoord.z); if (df > ds * 1.01 + .03) discard; gl_FragColor = vec4(1.); }`,
-        depthTest: false, depthWrite: false });
+          void main(){ float ds = lin(texture2D(tD, gl_FragCoord.xy / rs).r), df = lin(gl_FragCoord.z); if (df > ds * 1.01 + .03) discard; gl_FragColor = col; }`,
+        depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });   /* R: le persone, G: il personaggio (il bollino solo a lui) */
       B.sc.overrideMaterial = B.mat; }
     if (!B.rt || B.rt.width !== W || B.rt.height !== H) { if (B.rt) B.rt.dispose(); B.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false }); }
     B.mat.uniforms.tD.value = depthTex; B.mat.uniforms.nf.value.set(cam.near, cam.far); B.mat.uniforms.rs.value.set(W, H);
     const ps = []; for (const k in dyn.people) { const g = dyn.people[k]; if (g && g.visible && g.parent) ps.push([g, g.parent]); }
     const nasc = []; ps.forEach(([g]) => { B.sc.add(g); g.traverse(o => { if (o.isMesh && o.visible && (o.isInstancedMesh || [].concat(o.material).some(m => m && m.transparent))) { o.visible = false; nasc.push(o); } }); });   /* l'anello a terra, gli aloni: non sono la persona */
     const ac = renderer.autoClear, cc = renderer.getClearColor(SGT.eCc || (SGT.eCc = new THREE.Color())), ca = renderer.getClearAlpha();
-    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; renderer.render(B.sc, cam);
+    renderer.setRenderTarget(B.rt); renderer.setClearColor(0x000000, 0); renderer.clear(true, false, false); renderer.autoClear = false; B.mat.uniforms.col.value.set(1, 0, 0, 1); renderer.render(B.sc, cam);
+    const pl = dyn.people.__player; if (pl && pl.parent === B.sc) { const altri = B.sc.children.filter(o => o !== pl); altri.forEach(o => { o.visible = !o.visible; }); B.mat.uniforms.col.value.set(0, 1, 0, 1); renderer.render(B.sc, cam); altri.forEach(o => { o.visible = !o.visible; }); }
     renderer.autoClear = ac; renderer.setClearColor(cc, ca); ps.forEach(([g, par]) => par.add(g)); nasc.forEach(o => { o.visible = true; });
     return B.rt.texture; }
   function eDist(src, W, H, depthTex) {
@@ -13829,24 +13834,24 @@ var Render = (function () {
       const vs = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }', R = 10;
       B.mC = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
-          float pm(vec2 o){ return step(.5, texture2D(t, vUv + o * px).r); }   /* la maschera delle persone (eMaschera) */
-          void main(){ float m = 0., gx = 0., gy = 0.; vec4 wt = vec4(1., 3., 3., 1.) / 8., sg = vec4(-1., -1., 1., 1.);
-            for (int j = 0; j < 4; j++) for (int i = 0; i < 4; i++) { float b = pm(vec2(float(i) - 1.5, float(j) - 1.5)), ww = wt[i] * wt[j]; m += b * ww; gx += b * sg[i] * wt[j]; gy += b * sg[j] * wt[i]; }
+          vec2 pm(vec2 o){ return step(.5, texture2D(t, vUv + o * px).rg); }   /* la maschera (eMaschera): le persone, il personaggio */
+          void main(){ float m = 0., mp = 0., gx = 0., gy = 0.; vec4 wt = vec4(1., 3., 3., 1.) / 8., sg = vec4(-1., -1., 1., 1.);
+            for (int j = 0; j < 4; j++) for (int i = 0; i < 4; i++) { vec2 bb = pm(vec2(float(i) - 1.5, float(j) - 1.5)); float b = bb.x, ww = wt[i] * wt[j]; m += b * ww; mp += bb.y * ww; gx += b * sg[i] * wt[j]; gy += b * sg[j] * wt[i]; }
             vec2 g = vec2(gx, gy); float gl = length(g), sd = m > .02 && m < .98 && gl > 1e-3 ? 1. : 0.;
             vec2 o = sd > .5 ? -g / gl * 1.5 * (m - .5) : vec2(0.);   /* il bordo: dal centro verso fuori (contro il gradiente) di 1,5(m - .5) texel (la rampa della tenda: da 0 a 1 in 1,5 texel) */
-            gl_FragColor = vec4(m, clamp(o * .25 + .5, 0., 1.), sd); }` });
+            gl_FragColor = vec4(m, clamp(o * .25 + .5, 0., 1.), sd * (mp > .5 * m ? 1. : .6)); }` });   /* A: seme (> .5), del personaggio (> .8) */
       B.mH = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
           void main(){ float best = 1e4; vec2 bv = vec2(0.); float ok = 0.;
-            for (int i = -${R}; i <= ${R}; i++) { vec4 S = texture2D(t, vUv + vec2(float(i), 0.) * px); if (S.a > .5) { vec2 v = vec2(float(i), 0.) + (S.gb - .5) * 4.; float d = dot(v, v); if (d < best) { best = d; bv = v; ok = 1.; } } }
-            gl_FragColor = vec4(clamp(bv / ${2 * R + 2}. + .5, 0., 1.), ok, texture2D(t, vUv).r); }` });
+            for (int i = -${R}; i <= ${R}; i++) { vec4 S = texture2D(t, vUv + vec2(float(i), 0.) * px); if (S.a > .5) { vec2 v = vec2(float(i), 0.) + (S.gb - .5) * 4.; float d = dot(v, v); if (d < best) { best = d; bv = v; ok = S.a > .8 ? 1. : .5; } } }
+            gl_FragColor = vec4(clamp(bv / ${2 * R + 2}. + .5, 0., 1.), ok, texture2D(t, vUv).r); }` });   /* B: trovato (> .25), del personaggio (> .75) */
       B.mV = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, px: { value: new THREE.Vector2() } }, vertexShader: vs, depthTest: false, depthWrite: false,
         fragmentShader: `precision highp float; uniform sampler2D t; uniform vec2 px; varying vec2 vUv;
-          void main(){ float best = 1e4;
-            for (int j = -${R}; j <= ${R}; j++) { vec4 S = texture2D(t, vUv + vec2(0., float(j)) * px); if (S.b > .5) { vec2 v = (S.rg - .5) * ${2 * R + 2}. + vec2(0., float(j)); best = min(best, dot(v, v)); } }
+          void main(){ float best = 1e4, bp = 0.;
+            for (int j = -${R}; j <= ${R}; j++) { vec4 S = texture2D(t, vUv + vec2(0., float(j)) * px); if (S.b > .25) { vec2 v = (S.rg - .5) * ${2 * R + 2}. + vec2(0., float(j)); float d = dot(v, v); if (d < best) { best = d; bp = step(.75, S.b); } } }
             float m = texture2D(t, vUv).a, d = min(sqrt(best), 12.) * 2.;   /* in px della tela */
             d = m > .5 ? -d : d; if (best > 1e3) d = m > .5 ? -4. : 20.;
-            gl_FragColor = vec4(clamp((d + 4.) / 24., 0., 1.), 0., 0., 1.); }` });
+            gl_FragColor = vec4(clamp((d + 4.) / 24., 0., 1.), bp, 0., 1.); }` });   /* G: il bordo più vicino è del personaggio */
       B.q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), B.mC); B.q.frustumCulled = false; B.sc.add(B.q); }
     if (!B.a || B.a.width !== w || B.a.height !== h) { if (B.a) { B.a.dispose(); B.b.dispose(); }
       const o = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false }; B.a = new THREE.WebGLRenderTarget(w, h, o); B.b = new THREE.WebGLRenderTarget(w, h, o); }
@@ -14029,7 +14034,7 @@ var Render = (function () {
       // tratteggio nel mondo nei medi e nelle ombre, l'inchiostro nero di D2 sui salti di profondità, la separazione (la fascia scura dietro le
       // sagome, il filo di luce davanti, i piani per categoria), le persone col contorno vettoriale e il personaggio col bollino di carta.
       // La manopola: STILE.V.E.k (0 = A, .55 la scelta, 1 = verso la prima versione); ink/bol: spessori in px a 1080 righe
-      E: { DIR: {}, PRO: {}, PFD: { linea: 1.8, lineaSoglia: .032, lineaPersiste: 3, lineaLontano: 150, filoSottile: .6 }, CAT: { lineaPersone: 0 }, mom: {},
+      E: { DIR: { muriSat: .8 }, PRO: {}, PFD: { linea: 1.8, lineaSoglia: .032, lineaPersiste: 3, lineaLontano: 150, filoSottile: .6, muriK: .9 }, CAT: { lineaPersone: 0 }, mom: {},   /* [fumetto2] muriSat .8, muriK .9 (rifinitura costruito): con .44/.7 tutto quello che non è suolo né tetto arrivava a 44% di colore e col valore schiacciato verso .68 (ombrelloni e tende beige-oliva, i gradini di valore fra le cose stretti). muriK sta in PFD: con la profondità accesa DIR.muriK viene da lì */
         u10: [0, 0, 0, 0], sV: [0, 0, 0, 1], sW: [0, 0, 0, 0], sF: [1, 0, 0, 0], sG: [40, 30, 0, 30], k: .55, ink: 2.6, bol: 2.6, trama: 1,
         sottile: 6, corto: 8, luce: 0, fascia: 1 } } };   // [fumetto2] sF.z 0: l'anello di D2 a 2 px (letture a scatto) faceva l'inchiostro doppio e a gradini; sottile/corto: px@1080 sotto i quali niente inchiostro; luce: il filo di luce davanti (spento: faceva l'alone chiaro dentro l'inchiostro); fascia: la fascia scura dietro
   // [fumetto2] la tavolozza unica in Oklab (L, a, b) e le famiglie (somma: N 1, C 2, F 4, V 8, M 16): _immagini/fumetto2/progetto/tavolozza.py
@@ -15012,7 +15017,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
             // (5) le persone: il contorno vettoriale fuori dalla sagoma e, attorno al personaggio, il bollino di carta. Dalla distanza con segno
             // (eDist, mezza risoluzione, una lettura bilineare): spessore costante, ogni bordo pesato per copertura (rampe di 1 px), niente scaletta
             float ri = sE.y * src.y / 1080., rb = ri + sE.z * src.y / 1080.;
-            float nearP = fP.w > 0. ? 1. - smoothstep(fP.z * 1.25, fP.z * 1.6, length((vUv - fP.xy) * vec2(src.x / src.y, 1.))) : 0.;
+            float nearP = texture2D(eD, vUv).g;   /* il bollino solo attorno al personaggio (il bordo più vicino è il suo: eDist), non a chi gli sta accanto */
             float aI = clamp(eDd + .5, 0., 1.) * clamp(ri - eDd + .5, 0., 1.), aB = clamp(eDd - ri + .5, 0., 1.) * clamp(rb - eDd + .5, 0., 1.) * nearP;
             c = mix(c, vec3(.949, .906, .812), aB);   /* il bollino */
             c = mix(c, vec3(.086, .071, .106), aI);   /* il contorno */
