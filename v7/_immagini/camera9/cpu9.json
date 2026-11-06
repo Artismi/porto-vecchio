@@ -1,0 +1,381 @@
+{
+ "sbocco_oggi": {
+  "ms": {
+   "med": 221.4,
+   "max": 8773.3
+  },
+  "self": [
+   [
+    "getProgramParameter:-1",
+    7730.6
+   ],
+   [
+    "$:513",
+    7447.3
+   ],
+   [
+    "(program):-1",
+    3536.4
+   ],
+   [
+    "(anon):71688",
+    771.3
+   ],
+   [
+    "Or:513",
+    286.3
+   ],
+   [
+    "Dt:513",
+    254.5
+   ],
+   [
+    "refreshFogUniforms:513",
+    188.8
+   ],
+   [
+    "get:513",
+    170.4
+   ],
+   [
+    "umwSelf:93967",
+    150.7
+   ],
+   [
+    "Mr:513",
+    128.1
+   ],
+   [
+    "(anon):71629",
+    127.8
+   ],
+   [
+    "T3.Frustum.intersectsObject:71433",
+    113
+   ],
+   [
+    "mr:513",
+    106.7
+   ],
+   [
+    "slerpFlat:513",
+    96.1
+   ],
+   [
+    "sliceWalk:75991",
+    79.6
+   ],
+   [
+    "getVertexPosition:513",
+    78.5
+   ],
+   [
+    "(garbage collector):-1",
+    73.1
+   ],
+   [
+    "ombre:71662",
+    68
+   ]
+  ],
+  "totale": {
+   "frame": 20069.4,
+   "step": 281.5,
+   "updateChunks": 203.5,
+   "camera7Frame": 315.7,
+   "passo": 314,
+   "cast7": 309.8,
+   "cast7v": 302.4,
+   "anelliTick1": 2,
+   "sguPasso": 12,
+   "cose7": 0.6,
+   "vis3Tick": 1.2,
+   "ombre1": 0.6
+  }
+ },
+ "sbocco_c9": {
+  "ms": {
+   "med": 262.5,
+   "max": 5682.4
+  },
+  "self": [
+   [
+    "uniformMatrix4fv:-1",
+    5318.3
+   ],
+   [
+    "(program):-1",
+    2402.6
+   ],
+   [
+    "uniform3f:-1",
+    2178.3
+   ],
+   [
+    "Dt:513",
+    312.7
+   ],
+   [
+    "umwSelf:93967",
+    236.9
+   ],
+   [
+    "raycast:513",
+    230.3
+   ],
+   [
+    "(anon):95511",
+    146.3
+   ],
+   [
+    "scene.updateMatrixWorld:94011",
+    140.3
+   ],
+   [
+    "umw:93985",
+    131
+   ],
+   [
+    "ombre:71662",
+    113
+   ],
+   [
+    "multiplyMatrices:513",
+    110.5
+   ],
+   [
+    "frame:95532",
+    107.7
+   ],
+   [
+    "meteoAt:94964",
+    102.3
+   ],
+   [
+    "(anon):513",
+    94.4
+   ],
+   [
+    "(garbage collector):-1",
+    93.6
+   ],
+   [
+    "getVertexPosition:513",
+    84.7
+   ],
+   [
+    "Js.renderBufferDirect:513",
+    81.2
+   ],
+   [
+    "taglia:71542",
+    75.7
+   ]
+  ],
+  "totale": {
+   "frame": 12011.1,
+   "step": 204.9,
+   "updateChunks": 12.2,
+   "camera7Frame": 529.2,
+   "passo9": 527.4,
+   "cast7": 524,
+   "cast7v": 522.8,
+   "cose7": 1,
+   "sguPasso": 7.2,
+   "render": 1.1,
+   "anelliTick1": 2.3,
+   "vis3Tick": 3.9,
+   "passo": 3,
+   "ombre1": 6.1
+  }
+ },
+ "lungomare_oggi": {
+  "ms": {
+   "med": 114,
+   "max": 304.7
+  },
+  "self": [
+   [
+    "(program):-1",
+    1724.6
+   ],
+   [
+    "umwSelf:93967",
+    230.7
+   ],
+   [
+    "(anon):95511",
+    166.3
+   ],
+   [
+    "umw:93985",
+    115.2
+   ],
+   [
+    "Dt:513",
+    113.1
+   ],
+   [
+    "frame:95532",
+    79.2
+   ],
+   [
+    "scene.updateMatrixWorld:94011",
+    72.4
+   ],
+   [
+    "refit:4017",
+    68.6
+   ],
+   [
+    "multiplyMatrices:513",
+    62.6
+   ],
+   [
+    "tickPts:88617",
+    54.5
+   ],
+   [
+    "intersectTri:3063",
+    53.2
+   ],
+   [
+    "T3.Frustum.intersectsObject:71433",
+    52.2
+   ],
+   [
+    "frzSnap:93996",
+    46.3
+   ],
+   [
+    "Js.renderBufferDirect:513",
+    44.9
+   ],
+   [
+    "nz1:83629",
+    43.8
+   ],
+   [
+    "getVertexPosition:513",
+    43.5
+   ],
+   [
+    "fast:93925",
+    41
+   ],
+   [
+    "step:36637",
+    40.8
+   ]
+  ],
+  "totale": {
+   "frame": 2800,
+   "step": 209.1,
+   "updateChunks": 163.7,
+   "camera7Frame": 197.6,
+   "passo": 199.1,
+   "cast7": 188.4,
+   "cast7v": 187.8,
+   "posaTick1": 3.2,
+   "render": 0.9,
+   "sguPasso": 5.3,
+   "ombre1": 2.5,
+   "anelliTick1": 2.2,
+   "cose7": 16.6
+  }
+ },
+ "lungomare_c9": {
+  "ms": {
+   "med": 100.3,
+   "max": 418.8
+  },
+  "self": [
+   [
+    "(program):-1",
+    2262.1
+   ],
+   [
+    "umwSelf:93967",
+    332.9
+   ],
+   [
+    "(garbage collector):-1",
+    306.2
+   ],
+   [
+    "Dt:513",
+    174
+   ],
+   [
+    "(anon):513",
+    111.7
+   ],
+   [
+    "umw:93985",
+    106
+   ],
+   [
+    "multiplyMatrices:513",
+    105.6
+   ],
+   [
+    "T3.Frustum.intersectsObject:71433",
+    86.5
+   ],
+   [
+    "raccogli:72153",
+    69
+   ],
+   [
+    "(anon):95511",
+    55.8
+   ],
+   [
+    "frame:95532",
+    49.8
+   ],
+   [
+    "update:513",
+    48.6
+   ],
+   [
+    "frzSnap:93996",
+    47.4
+   ],
+   [
+    "getVertexPosition:513",
+    42.2
+   ],
+   [
+    "scene.updateMatrixWorld:94011",
+    41.1
+   ],
+   [
+    "raycast:513",
+    41
+   ],
+   [
+    "taglia:71542",
+    37.6
+   ],
+   [
+    "Js.renderBufferDirect:513",
+    37.5
+   ]
+  ],
+  "totale": {
+   "frame": 2655.3,
+   "step": 229.4,
+   "updateChunks": 11.3,
+   "camera7Frame": 77,
+   "passo9": 75.2,
+   "cast7": 74,
+   "cast7v": 74,
+   "passo": 1.7,
+   "sguPasso": 7.5,
+   "anelliTick1": 0.6,
+   "vis3Tick": 0.6,
+   "ombre1": 0.6
+  }
+ }
+}

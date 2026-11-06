@@ -1,0 +1,926 @@
+[
+ {
+  "nome": "vicolo stretto (Caruggio dei Pescatori)",
+  "at": [
+   1343.49,
+   320.61
+  ],
+  "verso": [
+   1342.67,
+   324.79
+  ],
+  "oggi": {
+   "x": 1343.49,
+   "y": 320.61,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 194.2,
+    "disegni": 674,
+    "triangoli": 1674572,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1343.49,
+   "y": 320.61,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.009,
+   "sfondoAlto": 0.025,
+   "coperto": false,
+   "perf": {
+    "ms": 189.3,
+    "disegni": 2242,
+    "triangoli": 3047868,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 156.1,
+   "disegni": 2270,
+   "triangoli": 3061924,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "Vico Lungo (a metà)",
+  "at": [
+   1414.06,
+   367.35
+  ],
+  "verso": [
+   1413.22,
+   372.79
+  ],
+  "oggi": {
+   "x": 1414.06,
+   "y": 367.35,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 347.8,
+    "disegni": 682,
+    "triangoli": 971661,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1414.06,
+   "y": 367.35,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.021,
+   "sfondoAlto": 0.05,
+   "coperto": false,
+   "perf": {
+    "ms": 166.8,
+    "disegni": 979,
+    "triangoli": 1320001,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 242.9,
+   "disegni": 993,
+   "triangoli": 1368367,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "piazza San Rocco",
+  "at": [
+   1375,
+   304
+  ],
+  "verso": [
+   1393,
+   302
+  ],
+  "oggi": {
+   "x": 1375,
+   "y": 304,
+   "arm": 1.2,
+   "pitch": 50,
+   "vista": 50,
+   "fov": 46,
+   "oriz": -0.904,
+   "sy": 0.918,
+   "camY": 2.07,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": true,
+   "perf": {
+    "ms": 212.8,
+    "disegni": 277,
+    "triangoli": 747386,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1375,
+   "y": 304,
+   "arm": 5.04,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.819,
+   "camY": 2.88,
+   "lift": 0,
+   "side": 0.8,
+   "terra": 0,
+   "sfondo": 0.018,
+   "sfondoAlto": 0.05,
+   "coperto": false,
+   "perf": {
+    "ms": 276.2,
+    "disegni": 1913,
+    "triangoli": 2660001,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 188.7,
+   "disegni": 1910,
+   "triangoli": 2651741,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "sbocco sulla piazza (Vicolo dei Lanternini)",
+  "at": [
+   1372.1,
+   296.5
+  ],
+  "verso": [
+   1373,
+   310.6
+  ],
+  "oggi": {
+   "x": 1372.1,
+   "y": 296.5,
+   "arm": 2.25,
+   "pitch": 50,
+   "vista": 50,
+   "fov": 46,
+   "oriz": -0.904,
+   "sy": 0.778,
+   "camY": 2.87,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 403.3,
+    "disegni": 309,
+    "triangoli": 1049373,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1372.1,
+   "y": 296.5,
+   "arm": 4.24,
+   "pitch": 21.8,
+   "vista": 17.8,
+   "fov": 51.5,
+   "oriz": 0.166,
+   "sy": 0.815,
+   "camY": 2.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.009,
+   "sfondoAlto": 0.025,
+   "coperto": false,
+   "perf": {
+    "ms": 292.3,
+    "disegni": 2691,
+    "triangoli": 3723003,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 310,
+   "disegni": 2684,
+   "triangoli": 3734477,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "lungomare",
+  "at": [
+   1415,
+   399
+  ],
+  "verso": [
+   1441,
+   399
+  ],
+  "oggi": {
+   "x": 1415,
+   "y": 399,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 98,
+    "disegni": 363,
+    "triangoli": 838274,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1415,
+   "y": 399,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.17,
+   "sfondoAlto": 0.475,
+   "coperto": false,
+   "perf": {
+    "ms": 206.6,
+    "disegni": 1134,
+    "triangoli": 1379065,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 147.7,
+   "disegni": 1184,
+   "triangoli": 1377535,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "cima della Scala del Mercato",
+  "at": [
+   1288.84,
+   342.9
+  ],
+  "verso": [
+   1288.84,
+   347.4
+  ],
+  "oggi": {
+   "x": 1288.84,
+   "y": 342.9,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 165.9,
+    "disegni": 932,
+    "triangoli": 1508565,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1288.84,
+   "y": 342.9,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.08,
+   "sfondoAlto": 0.225,
+   "coperto": false,
+   "perf": {
+    "ms": 269,
+    "disegni": 1787,
+    "triangoli": 2270742,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 335,
+   "disegni": 1712,
+   "triangoli": 2287738,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "cima della Scalinata di Vico Lungo",
+  "at": [
+   1417.73,
+   347.86
+  ],
+  "verso": [
+   1416.93,
+   351.94
+  ],
+  "oggi": {
+   "x": 1417.73,
+   "y": 347.86,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 156.4,
+    "disegni": 676,
+    "triangoli": 1771859,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1417.73,
+   "y": 347.86,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.018,
+   "sfondoAlto": 0.05,
+   "coperto": false,
+   "perf": {
+    "ms": 206.8,
+    "disegni": 1447,
+    "triangoli": 2347738,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 152,
+   "disegni": 1449,
+   "triangoli": 2375790,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "Salita dei Gatti (a metà)",
+  "at": [
+   1373.79,
+   325.03
+  ],
+  "verso": [
+   1373.12,
+   330.43
+  ],
+  "oggi": {
+   "x": 1373.79,
+   "y": 325.03,
+   "arm": 10,
+   "pitch": 34,
+   "vista": 34,
+   "fov": 46,
+   "oriz": -0.295,
+   "sy": 0.606,
+   "camY": 6.74,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 294.4,
+    "disegni": 693,
+    "triangoli": 2043198,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1373.79,
+   "y": 325.03,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0.012,
+   "sfondoAlto": 0.033,
+   "coperto": false,
+   "perf": {
+    "ms": 297.9,
+    "disegni": 2193,
+    "triangoli": 2984134,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 290.3,
+   "disegni": 2124,
+   "triangoli": 2957240,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "Vico della Corte (fessura 2,2 m)",
+  "at": [
+   1420,
+   362
+  ],
+  "verso": [
+   1432,
+   362
+  ],
+  "oggi": {
+   "x": 1420,
+   "y": 362,
+   "arm": 10,
+   "pitch": 46,
+   "vista": 46,
+   "fov": 46,
+   "oriz": -0.72,
+   "sy": 0.587,
+   "camY": 8.34,
+   "lift": 12,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 204.8,
+    "disegni": 390,
+    "triangoli": 1020374,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1420,
+   "y": 362,
+   "arm": 6.09,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.783,
+   "camY": 3.23,
+   "lift": 0,
+   "side": 0,
+   "terra": 0,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 520.3,
+    "disegni": 1304,
+    "triangoli": 1922591,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 222.3,
+   "disegni": 1332,
+   "triangoli": 1934253,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "Corte dei Pescatori (fessura 2,2 m)",
+  "at": [
+   1388,
+   360
+  ],
+  "verso": [
+   1396,
+   360
+  ],
+  "oggi": {
+   "x": 1388,
+   "y": 360,
+   "arm": 1.2,
+   "pitch": 50,
+   "vista": 50,
+   "fov": 46,
+   "oriz": -0.904,
+   "sy": 0.918,
+   "camY": 2.07,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 277.6,
+    "disegni": 283,
+    "triangoli": 1039171,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1388,
+   "y": 360,
+   "arm": 5.88,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.789,
+   "camY": 3.16,
+   "lift": 0,
+   "side": 0.8,
+   "terra": 0,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 213.4,
+    "disegni": 1998,
+    "triangoli": 2821342,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 720,
+   "disegni": 1958,
+   "triangoli": 2826684,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "Androne del Pozzo Vecchio (fessura 2,2 m)",
+  "at": [
+   1412,
+   292
+  ],
+  "verso": [
+   1422,
+   292
+  ],
+  "oggi": {
+   "x": 1412,
+   "y": 292,
+   "arm": 1.2,
+   "pitch": 50,
+   "vista": 50,
+   "fov": 46,
+   "oriz": -0.904,
+   "sy": 0.918,
+   "camY": 2.07,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 228.6,
+    "disegni": 262,
+    "triangoli": 1044964,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1412,
+   "y": 292,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": 0.8,
+   "terra": 0,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 246.3,
+    "disegni": 1457,
+    "triangoli": 2190635,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 196.4,
+   "disegni": 1456,
+   "triangoli": 2193853,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ },
+ {
+  "nome": "sottopasso del Vico del Glacis",
+  "at": [
+   1477,
+   292
+  ],
+  "verso": [
+   1490,
+   294
+  ],
+  "oggi": {
+   "x": 1476.7,
+   "y": 291.95,
+   "arm": 2.54,
+   "pitch": 50,
+   "vista": 50,
+   "fov": 46,
+   "oriz": -0.904,
+   "sy": 0.754,
+   "camY": 3.1,
+   "lift": 0,
+   "side": null,
+   "terra": null,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "coperto": false,
+   "perf": {
+    "ms": 571.1,
+    "disegni": 267,
+    "triangoli": 855671,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": false
+  },
+  "c9": {
+   "x": 1476.7,
+   "y": 291.95,
+   "arm": 7.5,
+   "pitch": 20,
+   "vista": 14.7,
+   "fov": 50,
+   "oriz": 0.219,
+   "sy": 0.75,
+   "camY": 3.72,
+   "lift": 0,
+   "side": -0.8,
+   "terra": 0,
+   "sfondo": 0.045,
+   "sfondoAlto": 0.117,
+   "coperto": false,
+   "perf": {
+    "ms": 222.7,
+    "disegni": 574,
+    "triangoli": 1195066,
+    "far": 194.02352969924453,
+    "nebbia": [
+     64,
+     189
+    ]
+   },
+   "c9": true
+  },
+  "c9SenzaTetto": {
+   "ms": 156.3,
+   "disegni": 597,
+   "triangoli": 1208378,
+   "far": 194.02352969924453,
+   "nebbia": [
+    64,
+    189
+   ]
+  }
+ }
+]

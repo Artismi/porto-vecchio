@@ -1,0 +1,434 @@
+{
+ "vicolo_oggi": {
+  "principali": 627,
+  "tutti": 1143,
+  "triangoli": 2807218,
+  "ms": 504.6,
+  "far": 300,
+  "nebbia": 1,
+  "perDistanza": {
+   "0-30": 383,
+   "30-80": 124,
+   "150+": 119,
+   "80-150": 1
+  },
+  "generi": [
+   [
+    "MeshStandardMaterial|thin2",
+    113
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    90
+   ],
+   [
+    "inst:MeshLambertMaterial",
+    65
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    35
+   ],
+   [
+    "MeshStandardMaterial|vievive",
+    30
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    26
+   ],
+   [
+    "MeshStandardMaterial",
+    25
+   ],
+   [
+    "MeshBasicMaterial",
+    24
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    21
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    20
+   ],
+   [
+    "MeshLambertMaterial",
+    18
+   ],
+   [
+    "inst:MeshStandardMaterial|noRoof",
+    14
+   ],
+   [
+    "SpriteMaterial",
+    11
+   ],
+   [
+    "inst:MeshStandardMaterial|vissuti+keep",
+    10
+   ]
+  ]
+ },
+ "vicolo_c9_senzaTetto": {
+  "principali": 2147,
+  "tutti": 2215,
+  "triangoli": 3229381,
+  "ms": 296.6,
+  "far": 300,
+  "nebbia": 1,
+  "perDistanza": {
+   "30-80": 724,
+   "80-150": 784,
+   "0-30": 405,
+   "150+": 234
+  },
+  "generi": [
+   [
+    "MeshStandardMaterial",
+    328
+   ],
+   [
+    "MeshStandardMaterial|thin2",
+    309
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    279
+   ],
+   [
+    "SpriteMaterial",
+    150
+   ],
+   [
+    "MeshBasicMaterial",
+    116
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    96
+   ],
+   [
+    "MeshLambertMaterial",
+    95
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    72
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    70
+   ],
+   [
+    "inst:MeshStandardMaterial|noRoof",
+    68
+   ],
+   [
+    "inst:MeshLambertMaterial",
+    61
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    47
+   ],
+   [
+    "MeshBasicMaterial|keep+waterMask",
+    31
+   ],
+   [
+    "MeshStandardMaterial|vievive+thin2",
+    29
+   ]
+  ]
+ },
+ "vicolo_c9": {
+  "principali": 2117,
+  "tutti": 2127,
+  "triangoli": 3277723,
+  "ms": 234.5,
+  "far": 246,
+  "nebbia": 1,
+  "perDistanza": {
+   "30-80": 714,
+   "80-150": 789,
+   "0-30": 454,
+   "150+": 160
+  },
+  "generi": [
+   [
+    "MeshStandardMaterial|thin2",
+    342
+   ],
+   [
+    "MeshStandardMaterial",
+    332
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    279
+   ],
+   [
+    "SpriteMaterial",
+    147
+   ],
+   [
+    "MeshBasicMaterial",
+    111
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    96
+   ],
+   [
+    "MeshLambertMaterial",
+    93
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    70
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    67
+   ],
+   [
+    "inst:MeshLambertMaterial",
+    61
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    47
+   ],
+   [
+    "MeshBasicMaterial|keep+waterMask",
+    31
+   ],
+   [
+    "MeshStandardMaterial|vievive+thin2",
+    29
+   ],
+   [
+    "pers:MeshStandardMaterial|personaggi|Personaggio",
+    27
+   ]
+  ]
+ },
+ "vicolo_c9_nebbia0.75": {
+  "principali": 2123,
+  "tutti": 2160,
+  "triangoli": 3374345,
+  "ms": 314.7,
+  "far": 187,
+  "nebbia": 0.75,
+  "perDistanza": {
+   "30-80": 780,
+   "80-150": 787,
+   "0-30": 421,
+   "150+": 135
+  },
+  "generi": [
+   [
+    "MeshStandardMaterial|thin2",
+    363
+   ],
+   [
+    "MeshStandardMaterial",
+    329
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    279
+   ],
+   [
+    "SpriteMaterial",
+    142
+   ],
+   [
+    "MeshBasicMaterial",
+    106
+   ],
+   [
+    "MeshLambertMaterial",
+    101
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    96
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    70
+   ],
+   [
+    "inst:MeshLambertMaterial",
+    68
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    47
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    36
+   ],
+   [
+    "MeshBasicMaterial|keep+waterMask",
+    31
+   ],
+   [
+    "MeshStandardMaterial|vievive+thin2",
+    29
+   ],
+   [
+    "pers:MeshStandardMaterial|personaggi|Personaggio",
+    29
+   ]
+  ]
+ },
+ "vicolo_c9_nebbia0.6": {
+  "principali": 2086,
+  "tutti": 2461,
+  "triangoli": 3995457,
+  "ms": 1524.9,
+  "far": 152,
+  "nebbia": 0.6,
+  "perDistanza": {
+   "30-80": 743,
+   "80-150": 789,
+   "0-30": 422,
+   "150+": 132
+  },
+  "generi": [
+   [
+    "MeshStandardMaterial|thin2",
+    344
+   ],
+   [
+    "MeshStandardMaterial",
+    327
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    279
+   ],
+   [
+    "SpriteMaterial",
+    142
+   ],
+   [
+    "MeshBasicMaterial",
+    106
+   ],
+   [
+    "MeshLambertMaterial",
+    103
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    96
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    70
+   ],
+   [
+    "inst:MeshLambertMaterial",
+    66
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    47
+   ],
+   [
+    "MeshBasicMaterial|keep+waterMask",
+    31
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    30
+   ],
+   [
+    "MeshStandardMaterial|vievive+thin2",
+    29
+   ],
+   [
+    "MeshBasicMaterial|thin2",
+    27
+   ]
+  ]
+ },
+ "sbocco_oggi": {
+  "principali": 300,
+  "tutti": 328,
+  "triangoli": 1216679,
+  "ms": 344.5,
+  "far": 300,
+  "nebbia": 1,
+  "perDistanza": {
+   "0-30": 182,
+   "80-150": 1,
+   "150+": 115,
+   "30-80": 2
+  },
+  "generi": [
+   [
+    "inst:MeshLambertMaterial",
+    63
+   ],
+   [
+    "MeshStandardMaterial|fusione1",
+    44
+   ],
+   [
+    "inst:MeshStandardMaterial|noRoof",
+    34
+   ],
+   [
+    "MeshStandardMaterial|vievive+thin2",
+    27
+   ],
+   [
+    "MeshStandardMaterial|leggero+statico1",
+    19
+   ],
+   [
+    "MeshStandardMaterial|posa1+thin2",
+    16
+   ],
+   [
+    "MeshStandardMaterial|thin2",
+    13
+   ],
+   [
+    "MeshStandardMaterial",
+    7
+   ],
+   [
+    "inst:MeshStandardMaterial",
+    7
+   ],
+   [
+    "MeshLambertMaterial|statico1",
+    7
+   ],
+   [
+    "ShaderMaterial",
+    6
+   ],
+   [
+    "MeshBasicMaterial|pesoCat|pesoPiane",
+    6
+   ],
+   [
+    "MeshStandardMaterial|scorci+stato",
+    5
+   ],
+   [
+    "inst:MeshStandardMaterial|vissuti+keep",
+    4
+   ]
+  ]
+ }
+}
