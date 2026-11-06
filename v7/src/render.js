@@ -19350,7 +19350,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // della porta di casa); sulla mappa delle case: il braccio sale a
   // K.pitch, quindi dietro conta l'altezza lungo il braccio; davanti e di lato quello che passa i 2,2 m)
   function avvio7(p) {
-    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.K, tp = Math.tan(K.pitch);
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.C9 && Camera7.C9.on ? Camera7.K9 : Camera7.K, tp = Math.tan(K.pitch);   // [camera9] l'avvio col braccio della camera accesa
     const libero = (x, y, ux, uy, max, dietro) => { for (let s = .5; s < max; s += .5) { const h = dietro ? K.chest + s * tp - K.r : 2.2; if (M.alto(x + ux * s, y + uy * s) > fy + h || (!dietro && !G.walkM(x + ux * s, y + uy * s))) return s; } return max; };
     const va = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / .4); for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; if (!G.walkM(x, y) || M.alto(x, y) > fy + 1.2) return false; } return !G.taglia(x0, y0, x1, y1) && G.walkM(x1 + .4, y1) && G.walkM(x1 - .4, y1) && G.walkM(x1, y1 + .4) && G.walkM(x1, y1 - .4); };
     const b = Camera7.avvio(p.x, p.y, libero, K, va); if (b.passi > 0) { p.x = b.x; p.y = b.y; p.path = []; } p.face = b.face;   // qualche passo fuori dall'angolo
@@ -19358,26 +19358,28 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   // [camera7] la camera di un fotogramma a piedi. Rende la pendenza e il braccio (per chi li legge dopo: la nebbia sotto terra, il muretto)
   function camera7Frame(st, p, ui, dt, dtG) {
-    const S = CAM7.S || (CAM7.S = Camera7.create()), K = Camera7.K;
-    if (!CAM7.attivo) { S.on = false; CAM7.attivo = true; CAM7.ppx = undefined; }
+    const C9 = !!(Camera7.C9 && Camera7.C9.on), S = CAM7.S || (CAM7.S = Camera7.create()), K = C9 ? Camera7.K9 : Camera7.K;   // [camera9] ?camera9: la camera bassa (camera7.js passo9)
+    if (!CAM7.attivo || CAM7.c9 !== C9) { S.on = false; CAM7.attivo = true; CAM7.ppx = undefined; CAM7.c9 = C9; }
     let vx = 0, vy = 0, salto = CAM7.ppx === undefined || AVVIO.scatta;
     if (!salto) { const ddx = p.x - CAM7.ppx, ddy = p.y - CAM7.ppy; if (Math.hypot(ddx, ddy) > 8) salto = true; else if (dtG > 0) { vx = ddx / dtG; vy = ddy / dtG; } else { vx = S.vx.x; vy = S.vy.x; } }   // in pausa (dialogo, menu): la velocità resta quella
     CAM7.ppx = p.x; CAM7.ppy = p.y;
     let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
     const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
-    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
+    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
     CAM7.yaw0 = null; CAM7.ultimo = R7;
     cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
     CAM6.inV = false; CAM6.coll.x = null; CAM6.occ.k.x = 0; CAM6.occ.on = false; BASSA.k = 0; INQ4.camT = null; RG5.p = null; RG5.mov = null;   // i vecchi strati ripartono da capo se tornano (sui mezzi)
     let kx = 0, ky = 0; if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, shT = performance.now() / 1000, shA = Math.min(.35, sh * sh * .9), sx = kx + shA * (Math.sin(shT * 81.7) * .6 + Math.sin(shT * 119.4 + 1.3) * .4), sz = ky + shA * (Math.sin(shT * 119.4) * .6 + Math.sin(shT * 81.7 + 2.1) * .4);
-    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(R7.pos.x + sx, R7.pos.y, R7.pos.z + sz); camera.up.set(0, 1, 0); camera.lookAt(R7.look.x + sx, R7.look.y, R7.look.z + sz);
+    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(R7.pos.x + sx, R7.pos.y, R7.pos.z + sz); camera.up.set(0, 1, 0); const A7 = R7.aim || R7.look; camera.lookAt(A7.x + sx, A7.y, A7.z + sz);   // [camera9] la vista guarda più su del busto (R7.aim)
     // la nebbia: quella della vista media di prima (il braccio di 33 m a zoom ,5): si vede lontano quanto prima, si carica quanto prima
     const wf = METEO.w[2], wd = VIEW * .5 / 2 / Math.tan(15 * Math.PI / 360);
     scene.fog.near = wd * 1.05 + 10 - wf * (wd * .25 + 12); scene.fog.far = wd * 1.9 + 110 - wf * (wd * .45 + 50);
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); }
+    if (C9 && K.nebbia > 0 && K.nebbia !== 1) { scene.fog.near *= K.nebbia; scene.fog.far *= K.nebbia; }   // [camera9] la manopola della nebbia (1: quella di camera7)
+    if (C9 && K.lontano > 0) camera.far = Math.min(camera.far, scene.fog.far + K.lontano);   // [camera9] la camera bassa guarda all'orizzonte: oltre la nebbia piena non si disegna (lì è già tutta nebbia)
     camera.updateProjectionMatrix();
     if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }
     REG.lp = R7.pitch; REG.ld = R7.arm;

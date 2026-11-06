@@ -23615,7 +23615,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = '13403d5b0b464bc8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '2c5b6dff70558ec3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -73531,6 +73531,36 @@ var Camera7 = (function () {
   // gradone e la ringhiera stanno fra voi, e la camera restava a 1,2 m dalla schiena per quasi un secondo)
   const K8 = { ahead: 1.5, aheadLat: .3, aheadT: .3, recentHold: 1, giroLev: 25 * D, coperto: .6, recentCop: 150 * D };
   const C8 = { on: !(typeof location !== 'undefined' && /[?&]nofixcontrolli8\b/.test(location.search)) };
+  // [camera9] LA CAMERA BASSA, DA TERZA PERSONA (il committente: «la camera rimane troppo alta e quindi la visuale chiusa»; v7/ANALISI_CAMERA9.md).
+  // Misurato nel gioco: la pendenza nominale era 34°, ma il bordo alto del quadro stava già 11° sotto l'orizzonte (mai cielo, mai sfondo),
+  // e nei vicoli il braccio corto (K.close: 50° a 3,5 m) e le salite (K.lifts, fino a +16°) la portavano a 40-50°: si guardava la strada
+  // dall'alto. Qui: il braccio più corto e più basso (K9.pitch), la vista che guarda un poco più su del braccio (il busto a K9.compY
+  // dello schermo dall'alto: l'orizzonte nel terzo alto del quadro), il campo più largo, e nei vicoli PRIMA la spalla (la camera di lato
+  // di K9.spalla m, verso dove c'è aria), POI il braccio corto (fino a K9.close[2] a K9.close[1] m, col campo che si allarga fino a
+  // K9.vfovCorto), e la salita sopra le tende e gli archi solo quando il braccio scenderebbe sotto K9.liftSotto m. Sulle scale la camera
+  // sale col suolo dietro di lei (K9.terra m sopra, con la molla), non sbatte contro i gradini. ?camera9 la accende, ?nocamera9 la spegne
+  // (vince); dal vivo Camera7.C9.on
+  const K9 = Object.assign({}, K, {
+    pitch: 20 * D,       // la pendenza del braccio a braccio pieno (la camera ~3,7 m sopra la strada)
+    orbit: 12 * D,       // il giocatore: da 8° a 32°
+    arm: 7.5,            // m: il braccio pieno
+    armMin: 1.6,         // m
+    compY: .6, compYCorto: .45,   // il busto a tanto dello schermo dall'alto (la vista guarda più su del braccio); col braccio corto più in alto (i piedi nel quadro)
+    vfov: 50, vfovCorto: 58,   // gradi: il campo, e quello col braccio corto (sotto K9.close[0] si allarga fino a K9.close[1])
+    close: [5, 2.2, 30 * D],   // sotto 5 m di braccio la pendenza sale fino a 30° a 2,2 m (era 50° a 3,5 m)
+    lifts: [6 * D, 12 * D], liftSotto: 3,   // la salita, solo se il braccio scenderebbe sotto 3 m (l'ultima risorsa), al più fino a K9.liftCap
+    liftCap: 34 * D,     // mai più ripida della camera7 a braccio pieno (la prima prova, 40°, all'angolo dello sbocco dei Lanternini dava 43° di vista)
+    armOut: .9, armTieni: .4,   // s: il braccio torna fuori più piano, e solo dopo tanto senza colpi (all'angolo usciva e rientrava: 7,3 → 2,4 m in 0,1 s)
+    spallaMin: .8,       // s: la spalla non cambia lato prima di tanto (all'angolo sfarfallava +0,8 → -0,2 → +0,8)
+    spalla: .8, spallaT: .3, spallaTorna: 1.2,   // m di lato (al più: quanto posto c'è accanto al busto); la molla; libera la via dritta da tanto, si torna in mezzo
+    cerca: .15,          // s: ogni quanto si cercano la spalla e la salita (i raggi costano)
+    terra: 1.5, terraSu: .25, terraGiu: .9,   // m sopra il suolo sotto la camera (sulle scale); le molle in salita e in discesa
+    aimArm: 4.2, aimSide: .7,
+    pitchMin: 6 * D,
+    lontano: 10,         // m: render.js disegna fino a tanto oltre la nebbia piena (non oltre i 300 m di sempre); 0: come camera7
+    nebbia: 1,           // la nebbia di camera7 per tanto (< 1: più vicina, meno città da disegnare all'orizzonte; v7/ANALISI_CAMERA9.md, il costo)
+  });
+  const C9 = { on: typeof location !== 'undefined' && /[?&]camera9\b/.test(location.search) && !/[?&]nocamera9\b/.test(location.search) };
   const ang = a => Math.atan2(Math.sin(a), Math.cos(a));
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   // la molla smorzata al punto critico: arriva al 95% in T s, niente oltre; uguale a ogni dt (a passi di al più 1/60 s)
@@ -73552,15 +73582,13 @@ var Camera7 = (function () {
     return base + (Math.max(base, c[2]) - base) * f;
   }
   function create() { return { on: false, yaw: { x: 0, v: 0 }, yawT: 0, arm: { x: K.arm, v: 0 }, aim: { x: 0, v: 0 }, vx: { x: 0, v: 0 }, vy: { x: 0, v: 0 }, h: { x: 0, v: 0 },
-    pu: 0, quiet: 99, recent: 0, mosse: 0, colpo: null, armT: K.arm, lift: { x: 0, v: 0 }, liftW: 0, liftT: 0 }; }
+    pu: 0, quiet: 99, recent: 0, mosse: 0, colpo: null, armT: K.arm, lift: { x: 0, v: 0 }, liftW: 0, liftT: 0,
+    lato: { x: 0, v: 0 }, latoW: 0, latoT: 0, latoM: 0, cercaT: 0, terra: { x: 0, v: 0 } }; }   // [camera9] la spalla, la salita col suolo
   // il ricentro: lo yaw che mette la camera dietro la velocità (vx, vy nel piano del gioco)
   const dietro = (vx, vy) => { const h = Math.atan2(vy, vx); return Math.atan2(-Math.cos(h), -Math.sin(h)); };
-  /* un passo. q: { px, py, fy (la quota dei piedi), vx, vy (la velocità vera, m/s), dyaw, dpitch (il giocatore, rad, in questo passo),
-     tocca (il giocatore sta toccando la camera), mira (bool), aspect, init: {yaw, dist} (la camera di prima, per partire da lì),
-     snap (le molle arrivano subito), cast(o, dir, len) → distanza del primo colpo della sfera o null, suolo(x, z) → quota }
-     Rende la camera: { pos, look, yaw, pitch, arm, fov, near, side, dyRic (lo yaw girato dal ricentro in questo passo) } */
-  function passo(S, q, dt, k) {
-    k = k || K; dt = Math.max(0, dt || 0);
+  // [camera9] la testa del passo, comune a camera7 e camera9 (com'era dentro passo: l'avvio, lo yaw, l'inclinazione, la velocità smussata,
+  // il ricentro, la mira): rende quello che serve dopo
+  function testa(S, q, dt, k) {
     const snap = !!q.snap || !S.on || dt > 1;
     if (!S.on) { S.on = true; const y0 = q.init && isFinite(q.init.yaw) ? q.init.yaw : 0; S.yaw.x = S.yawT = y0; S.yaw.v = 0; S.lift.x = S.lift.v = 0; S.liftW = 0; S.liftT = 0; S.pu = 0; S.quiet = 0; S.recent = 0;
       S.arm.x = q.init && q.init.dist > 0 ? clamp(q.init.dist, k.armMin, 30) : k.arm; S.arm.v = 0; S.vx.x = S.vy.x = 0; S.vx.v = S.vy.v = 0; S.h.x = q.fy; S.h.v = 0; S.aim.x = q.mira ? 1 : 0; S.aim.v = 0; }
@@ -73586,6 +73614,15 @@ var Camera7 = (function () {
     const yaw = S.yaw.x;
     // 4. la mira sopra la spalla
     const ka = snap ? (S.aim.x = q.mira ? 1 : 0) : clamp(molla(S.aim, q.mira ? 1 : 0, k.aimT, dt), 0, 1);
+    return { snap, yaw, y0, dyRic, ka };
+  }
+  /* un passo. q: { px, py, fy (la quota dei piedi), vx, vy (la velocità vera, m/s), dyaw, dpitch (il giocatore, rad, in questo passo),
+     tocca (il giocatore sta toccando la camera), mira (bool), aspect, init: {yaw, dist} (la camera di prima, per partire da lì),
+     snap (le molle arrivano subito), cast(o, dir, len) → distanza del primo colpo della sfera o null, suolo(x, z) → quota }
+     Rende la camera: { pos, look, yaw, pitch, arm, fov, near, side, dyRic (lo yaw girato dal ricentro in questo passo) } */
+  function passo(S, q, dt, k) {
+    k = k || K; dt = Math.max(0, dt || 0);
+    const { snap, yaw, y0, dyRic, ka } = testa(S, q, dt, k), sv = Math.hypot(S.vx.x, S.vy.x);
     // 5. il punto guardato: il petto, più lo sguardo avanti, più la spalla; la quota con la molla
     const fy = snap ? (S.h.x = q.fy, S.h.v = 0, q.fy) : molla(S.h, q.fy, k.heightT, dt);
     const fA = (1 - ka) * clamp((S.arm.x - k.armMin) / (k.close[0] - k.armMin), 0, 1);   // col braccio corto niente sguardo avanti: il personaggio resta nel quadro
@@ -73614,6 +73651,87 @@ var Camera7 = (function () {
     const pos = { x: look.x + Math.sin(yaw) * cp * arm, y: look.y + Math.sin(pitch) * arm, z: look.z + Math.cos(yaw) * cp * arm };
     if (q.suolo) { const g = q.suolo(pos.x, pos.z) + k.clearUp; if (isFinite(g) && pos.y < g) pos.y = g; }
     return { pos, look, yaw, pitch, arm, fov: vfov(q.aspect, k), near: k.near, side, dyRic, yawGiro: yaw - y0, ka };
+  }
+  // [camera9] IL PASSO DELLA CAMERA BASSA (q come passo; k di difetto K9). Rende quello di passo più aim (il punto da guardare: la vista
+  // guarda più su del braccio), vista (la pendenza vera della vista), side9 (la spalla dei vicoli, m: + a destra), terra (la salita col suolo)
+  const liscia = f => f * f * (3 - 2 * f);
+  function pitchFor9(arm, user, k) {
+    k = k || K9; const base = Math.max(k.pitchMin, k.pitch + clamp(user || 0, -k.orbit, k.orbit)), c = k.close, f = liscia(clamp((c[0] - arm) / (c[0] - c[1]), 0, 1));
+    return base + (Math.max(base, c[2]) - base) * f;   // la rampa liscia: niente gomito a K9.close[0]
+  }
+  function fov9(aspect, arm, k) {
+    k = k || K9; const c = k.close, f = liscia(clamp((c[0] - arm) / (c[0] - c[1]), 0, 1));
+    return vfov(aspect, { vfov: k.vfov + (k.vfovCorto - k.vfov) * f, hfovMin: k.hfovMin, vfovMax: k.vfovMax });
+  }
+  function passo9(S, q, dt, k) {
+    k = k || K9; dt = Math.max(0, dt || 0);
+    if (S.lato === undefined) Object.assign(S, { lato: { x: 0, v: 0 }, latoW: 0, latoT: 0, latoM: 0, cercaT: 0, terra: { x: 0, v: 0 } });
+    const nuovo = !S.on, { snap, yaw, y0, dyRic, ka } = testa(S, q, dt, k);
+    if (nuovo) { S.lato.x = S.lato.v = 0; S.latoW = 0; S.latoT = 0; S.latoM = 0; S.cercaT = 0; S.terra.x = S.terra.v = 0; }
+    const fy = snap ? (S.h.x = q.fy, S.h.v = 0, q.fy) : molla(S.h, q.fy, k.heightT, dt);
+    // 5. il punto guardato: il busto; lo sguardo avanti solo di lato (come camera7 coi comandi8, K8.aheadLat): in avanti no, la camera
+    // bassa ha già la via davanti nella metà alta del quadro, e il braccio che avanza col punto guardato portava la camera addosso al
+    // personaggio (lo abbassava nel quadro e chiudeva l'orizzonte). La spalla della mira e quella dei vicoli
+    const fA = (1 - ka) * clamp((S.arm.x - k.armMin) / (k.close[0] - k.armMin), 0, 1);
+    const rx = Math.cos(yaw), rz = -Math.sin(yaw), fx = -Math.sin(yaw), fz = -Math.cos(yaw), vl = S.vx.x * rx + S.vy.x * rz;
+    const al = K8.ahead * clamp(vl / k.aheadV, -1, 1) * K8.aheadLat * fA, ax = rx * al, ay = rz * al;
+    const want = k.arm + (k.aimArm - k.arm) * ka, py0 = fy + k.chest;
+    // la prova del braccio: dal busto spostato di lato di `sd` m, con la pendenza pp e il braccio d → la parte libera (1: tutto)
+    const prova = (sd, pp, d) => { const ox = q.px + rx * sd, oz = q.py + rz * sd, c = Math.cos(pp), dx = ax + Math.sin(yaw) * c * d, dyy = Math.sin(pp) * d, dz = ay + Math.cos(yaw) * c * d,
+      L = Math.hypot(dx, dyy, dz) || 1, h = q.cast ? q.cast({ x: ox, y: py0, z: oz }, { x: dx / L, y: dyy / L, z: dz / L }, L, k.r) : null;
+      return h === null || h === undefined || h >= L ? 1 : Math.max(0, h / L); };
+    // 6a. il suolo dietro (le scale in discesa, i gradoni): la pendenza che tiene la camera K9.terra m sopra il suolo sotto di lei; sale
+    // con la molla K9.terraSu, scende con K9.terraGiu (niente tuffi in cima alle scale)
+    const pB0 = pitchFor9(want, S.pu, k); let pT = pB0;
+    if (q.suolo) for (let i = 0; i < 3; i++) { const c = Math.cos(pT), g = q.suolo(q.px + ax + Math.sin(yaw) * c * want, q.py + ay + Math.cos(yaw) * c * want);
+      if (!isFinite(g)) break; const need = (g + k.terra - py0) / want; if (need <= Math.sin(pT) + 1e-4) break; pT = Math.min(k.liftCap, Math.asin(clamp(need, -1, 1))); }
+    const terraW = Math.max(0, pT - pB0), terra = snap ? (S.terra.x = terraW, S.terra.v = 0, terraW) : Math.max(0, molla(S.terra, terraW, terraW > S.terra.x ? k.terraSu : k.terraGiu, dt));
+    const pBase = a => Math.min(k.liftCap, pitchFor9(a, S.pu, k) + terra);
+    // 6b. la spalla: a braccio pieno la via dritta; se è chiusa, di lato (prima quello di adesso), dove c'è più aria. Si torna in mezzo
+    // quando la via dritta resta libera K9.spallaTorna s. Il lato si sposta quanto c'è posto accanto al busto (un raggio di lato: nel
+    // vicolo largo 1,7 m non si va nel muro), e si cerca ogni K9.cerca s (i raggi costano). Mirando la spalla è quella della mira (a destra)
+    const pW = pBase(want), sdM = k.aimSide * ka;
+    // m liberi di lato (c = ±1): accanto al busto e 1 m avanti e indietro lungo la vista (allo sbocco di un vicolo di traverso il raggio di
+    // lato dal busto è libero, ma un passo dopo l'origine spostata sta nello spigolo: Vico Lungo all'incrocio col Vico della Corte)
+    const posto1 = (c, a) => { const h = q.cast({ x: q.px + fx * a, y: py0, z: q.py + fz * a }, { x: rx * c, y: 0, z: rz * c }, k.spalla + k.r, k.r * .6); return h === null || h === undefined ? k.spalla : clamp(h - k.r * .4 - .05, 0, k.spalla); };
+    const posto = c => { if (!q.cast) return k.spalla; let m = posto1(c, 0); if (m >= .3) m = Math.min(m, posto1(c, 1), posto1(c, -1)); return m; };
+    let latoW = S.latoW; S.cercaT = (S.cercaT || 0) + dt; S.latoH = (S.latoH || 0) + dt;
+    if (q.cast && ka < .5 && (snap || S.cercaT >= k.cerca) && (snap || S.latoH >= k.spallaMin || (latoW !== 0 && posto(latoW) < .3))) { S.cercaT = 0; const f0 = prova(0, pW, want);
+      if (f0 >= .92) { if (latoW !== 0) { S.latoT += k.cerca; if (S.latoT > k.spallaTorna) { latoW = 0; S.latoT = 0; } } else S.latoT = 0; }
+      else { S.latoT = 0; let scelto = 0, sm = 0;   // solo un lato PULITO (il braccio pieno libero): mai un lato solo un poco meglio (a metà strada il raggio tocca)
+        for (const c of latoW !== 0 ? [latoW, -latoW] : [1, -1]) { const m = posto(c); if (m < .3) continue; if (prova(c * m, pW, want) >= .92) { scelto = c; sm = m; break; } }
+        latoW = scelto; S.latoM = sm; } }
+    else if (ka >= .5) latoW = 0;
+    if (latoW !== S.latoW) S.latoH = 0; S.latoW = latoW;
+    let lato = snap ? (S.lato.x = latoW * (S.latoM || 0), S.lato.v = 0, S.lato.x) : molla(S.lato, latoW * (S.latoM || 0), k.spallaT, dt);
+    if (Math.abs(lato) > .05) { const m = posto1(Math.sign(lato), 0); if (m < Math.abs(lato)) { lato = S.lato.x = Math.sign(lato) * m; S.lato.v = 0; S.latoM = Math.min(S.latoM || 0, m); } }   // il vicolo si stringe: mai nel muro
+    const sd = lato * (1 - ka) + sdM;
+    // 6c. la salita, l'ultima risorsa: solo se il braccio, così, scenderebbe sotto K9.liftSotto m (cercata ogni K9.cerca s)
+    let lw = 0; const fS = q.cast ? prova(sd, pW, want) : 1;
+    if (q.cast && fS * want < k.liftSotto) { if (snap || S.cercaT === 0) { lw = -1; for (const dp of k.lifts) { if (pW + dp > k.liftCap + 1e-6) break; if (prova(sd, pW + dp, want) * want >= k.liftSotto + .5) { lw = dp; break; } } } else lw = -1; }
+    if (lw >= 0) { if (lw >= S.liftW) { S.liftW = lw; S.liftT = 0; } else { S.liftT += dt; if (S.liftT > k.liftBack) S.liftW = lw; } }
+    const lift = snap ? (S.lift.x = S.liftW, S.lift.v = 0, S.liftW) : molla(S.lift, S.liftW, k.liftT, dt);
+    const pitchA = a => Math.min(k.liftCap, pBase(a) + Math.max(0, lift));
+    // 6d. il braccio: il raggio nella direzione dove la camera sarà davvero; si accorcia svelto, torna fuori piano (come camera7)
+    let f6 = prova(sd, pitchA(S.arm.x), want);
+    if (f6 < .5 && S.latoW !== 0 && ka < .5) { const f0 = prova(0, pitchA(S.arm.x), want); if (f0 > f6 + .1) { S.latoW = 0; S.latoM = 0; S.latoH = 0; } }   // la spalla chiusa: si torna in mezzo subito (la molla laterale)
+    S.colpo = f6; S.want9 = want;
+    const armT = clamp(want * f6, k.armMin, want); S.armT = armT;
+    if (snap) { S.arm.x = armT; S.arm.v = 0; }
+    else if (armT < S.arm.x) { const e = 1 - Math.exp(-dt * 3 / k.armIn); S.arm.x += (armT - S.arm.x) * e; S.arm.v = 0; if (S.arm.x > armT + k.armSlip) S.arm.x = armT + k.armSlip; }
+    else if ((S.colpoT || 0) >= k.armTieni) molla(S.arm, armT, k.armOut, dt); else S.arm.v = 0;   // fuori solo dopo K9.armTieni s senza colpi
+    S.colpoT = f6 < .98 ? 0 : (S.colpoT || 0) + dt;
+    let arm = clamp(S.arm.x, k.armMin, 40); const pitch = pitchA(arm);
+    if (q.cast && !snap) { const fa = prova(sd, pitch, arm); if (fa < 1) { arm = Math.max(k.armMin, arm * fa); S.arm.x = Math.min(S.arm.x, arm + k.armSlip); } }   // la camera vera, l'ultima prova: mai dentro un muro
+    const cp = Math.cos(pitch), look = { x: q.px + ax + rx * sd, y: py0, z: q.py + ay + rz * sd };
+    const pos = { x: look.x + Math.sin(yaw) * cp * arm, y: look.y + Math.sin(pitch) * arm, z: look.z + Math.cos(yaw) * cp * arm };
+    if (q.suolo) { const g = q.suolo(pos.x, pos.z) + k.clearUp; if (isFinite(g) && pos.y < g) pos.y = g; }
+    // 7. la composizione: la vista guarda più su del braccio quanto serve a mettere il busto VERO (non il punto guardato, che in cammino
+    // sta avanti) a K9.compY dello schermo dall'alto
+    const fov = fov9(q.aspect, arm, k), tv = Math.tan(fov * D / 2), dl = Math.hypot(look.x - pos.x, look.y - pos.y, look.z - pos.z) || 1;
+    const dfw = Math.max(.5, (q.px + rx * sd - pos.x) * fx + (q.py + rz * sd - pos.z) * fz), pv = Math.atan2(pos.y - py0, dfw), fc = liscia(clamp((k.close[0] - arm) / (k.close[0] - k.close[1]), 0, 1)), cy = k.compY + (k.compYCorto - k.compY) * fc, vista = pv - Math.atan((cy - .5) * 2 * tv), cv = Math.cos(vista);
+    const aim = { x: pos.x - Math.sin(yaw) * cv * dl, y: pos.y - Math.sin(vista) * dl, z: pos.z - Math.cos(yaw) * cv * dl };
+    return { pos, look, aim, yaw, pitch, vista, arm, fov, near: k.near, side: sd, side9: lato, dyRic, yawGiro: yaw - y0, ka, terra };
   }
   // L'AVVIO: fra sedici direzioni quella con più strada libera davanti al personaggio e il braccio libero dietro (il lato camera). Se dal
   // punto di partenza nessuna direzione ha l'una e l'altro (la porta di casa in un angolo), il personaggio fa qualche passo (al più
@@ -73649,7 +73767,7 @@ var Camera7 = (function () {
     dopo(B, r) { if (B.a !== null && r && isFinite(r.yawGiro)) B.off = ang(B.off + r.yawGiro); },   // il ricentro ha girato la camera: la direzione tenuta no
     yawUsato: B => B.a !== null ? B.yaw : null,
   };
-  return { K, K8, C8, passo, create, vfov, pitchFor, molla, avvio, dietro, ang, comandi8 };
+  return { K, K8, C8, K9, C9, passo, passo9, pitchFor9, fov9, create, vfov, pitchFor, molla, avvio, dietro, ang, comandi8 };   // [camera9] K9, C9, passo9
 })();
 if (typeof window !== 'undefined') window.__CAMERA7 = Camera7.K;
 if (typeof module !== 'undefined') module.exports = Camera7;
@@ -95726,7 +95844,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   // della porta di casa); sulla mappa delle case: il braccio sale a
   // K.pitch, quindi dietro conta l'altezza lungo il braccio; davanti e di lato quello che passa i 2,2 m)
   function avvio7(p) {
-    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.K, tp = Math.tan(K.pitch);
+    const M = VIS4.M || (VIS4.M = Visuale.mappa(G.MAP.world)), fy = groundH(p.x, p.y), K = Camera7.C9 && Camera7.C9.on ? Camera7.K9 : Camera7.K, tp = Math.tan(K.pitch);   // [camera9] l'avvio col braccio della camera accesa
     const libero = (x, y, ux, uy, max, dietro) => { for (let s = .5; s < max; s += .5) { const h = dietro ? K.chest + s * tp - K.r : 2.2; if (M.alto(x + ux * s, y + uy * s) > fy + h || (!dietro && !G.walkM(x + ux * s, y + uy * s))) return s; } return max; };
     const va = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / .4); for (let i = 1; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; if (!G.walkM(x, y) || M.alto(x, y) > fy + 1.2) return false; } return !G.taglia(x0, y0, x1, y1) && G.walkM(x1 + .4, y1) && G.walkM(x1 - .4, y1) && G.walkM(x1, y1 + .4) && G.walkM(x1, y1 - .4); };
     const b = Camera7.avvio(p.x, p.y, libero, K, va); if (b.passi > 0) { p.x = b.x; p.y = b.y; p.path = []; } p.face = b.face;   // qualche passo fuori dall'angolo
@@ -95734,26 +95852,28 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   }
   // [camera7] la camera di un fotogramma a piedi. Rende la pendenza e il braccio (per chi li legge dopo: la nebbia sotto terra, il muretto)
   function camera7Frame(st, p, ui, dt, dtG) {
-    const S = CAM7.S || (CAM7.S = Camera7.create()), K = Camera7.K;
-    if (!CAM7.attivo) { S.on = false; CAM7.attivo = true; CAM7.ppx = undefined; }
+    const C9 = !!(Camera7.C9 && Camera7.C9.on), S = CAM7.S || (CAM7.S = Camera7.create()), K = C9 ? Camera7.K9 : Camera7.K;   // [camera9] ?camera9: la camera bassa (camera7.js passo9)
+    if (!CAM7.attivo || CAM7.c9 !== C9) { S.on = false; CAM7.attivo = true; CAM7.ppx = undefined; CAM7.c9 = C9; }
     let vx = 0, vy = 0, salto = CAM7.ppx === undefined || AVVIO.scatta;
     if (!salto) { const ddx = p.x - CAM7.ppx, ddy = p.y - CAM7.ppy; if (Math.hypot(ddx, ddy) > 8) salto = true; else if (dtG > 0) { vx = ddx / dtG; vy = ddy / dtG; } else { vx = S.vx.x; vy = S.vy.x; } }   // in pausa (dialogo, menu): la velocità resta quella
     CAM7.ppx = p.x; CAM7.ppy = p.y;
     let px = p.x, py = p.y; if (ui.dialogNpc) { const n = G.byId(st, ui.dialogNpc); if (n) { px = (p.x + n.x) / 2; py = (p.y + n.y) / 2; } }   // nel dialogo: fra te e chi parla, la stessa vista
     const init = { yaw: CAM7.yaw0 !== null ? CAM7.yaw0 : YAW + (cam.uy || 0) };
     const dyaw = (ui.drag || 0) + (ui.rot || 0) * dt * (typeof Visuale !== 'undefined' && Visuale.MANO ? Visuale.MANO.giraK : 1.6);
-    const R7 = Camera7.passo(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
+    const R7 = (C9 ? Camera7.passo9 : Camera7.passo)(S, { px, py, fy: playerH, vx, vy, dyaw, pu: -(ui.tilt || 0) * K.orbit, tocca: !!ui.camMano, mira: !!(ui.mira && ui.mira.spalla), aspect: W / Math.max(1, H), init, snap: salto, cast: cast7, suolo: groundH, tenuto: C8R ? ui.tenuto8 : undefined }, dt);
     CAM7.yaw0 = null; CAM7.ultimo = R7;
     cam.yaw = R7.yaw; cam.uy = R7.yaw - YAW; cam.lock = C8R ? 0 : ui.lead || ui.stick || ui.muove ? (cam.lock || 0) - R7.dyRic : 0; cam.yawIn = cam.yaw + cam.lock;   // la levetta tenuta: il ricentro non ne gira la base   // [controlli8] la base tenuta sta in main.js (comandi8): camBasis è la camera vera
     cam.x = R7.look.x; cam.y = R7.look.z; cam.h = R7.look.y - K.chest; cam.anc = null; cam.drive = 0; cam.lx = cam.ly = cam.addX = cam.addY = cam.panX = cam.panY = 0; cam.inV = false; cam.mano = {}; cam.lift = 0; cam.roll = 0;
     CAM6.inV = false; CAM6.coll.x = null; CAM6.occ.k.x = 0; CAM6.occ.on = false; BASSA.k = 0; INQ4.camT = null; RG5.p = null; RG5.mov = null;   // i vecchi strati ripartono da capo se tornano (sui mezzi)
     let kx = 0, ky = 0; if (st.kick) { const k = Math.max(0, 1 - (st.clock - st.kick.t) * 9); kx = -Math.cos(st.kick.a) * st.kick.amt * k * 1.2; ky = -Math.sin(st.kick.a) * st.kick.amt * k * 1.2; }
     const sh = st.shake || 0, shT = performance.now() / 1000, shA = Math.min(.35, sh * sh * .9), sx = kx + shA * (Math.sin(shT * 81.7) * .6 + Math.sin(shT * 119.4 + 1.3) * .4), sz = ky + shA * (Math.sin(shT * 119.4) * .6 + Math.sin(shT * 81.7 + 2.1) * .4);
-    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(R7.pos.x + sx, R7.pos.y, R7.pos.z + sz); camera.up.set(0, 1, 0); camera.lookAt(R7.look.x + sx, R7.look.y, R7.look.z + sz);
+    camera.fov = R7.fov; camera.near = R7.near; camera.far = 300; camera.position.set(R7.pos.x + sx, R7.pos.y, R7.pos.z + sz); camera.up.set(0, 1, 0); const A7 = R7.aim || R7.look; camera.lookAt(A7.x + sx, A7.y, A7.z + sz);   // [camera9] la vista guarda più su del busto (R7.aim)
     // la nebbia: quella della vista media di prima (il braccio di 33 m a zoom ,5): si vede lontano quanto prima, si carica quanto prima
     const wf = METEO.w[2], wd = VIEW * .5 / 2 / Math.tan(15 * Math.PI / 360);
     scene.fog.near = wd * 1.05 + 10 - wf * (wd * .25 + 12); scene.fog.far = wd * 1.9 + 110 - wf * (wd * .45 + 50);
     if (PHONE) { scene.fog.near *= .8; scene.fog.far *= .8; camera.far = Math.max(170, Math.min(camera.far, scene.fog.far + 5)); }
+    if (C9 && K.nebbia > 0 && K.nebbia !== 1) { scene.fog.near *= K.nebbia; scene.fog.far *= K.nebbia; }   // [camera9] la manopola della nebbia (1: quella di camera7)
+    if (C9 && K.lontano > 0) camera.far = Math.min(camera.far, scene.fog.far + K.lontano);   // [camera9] la camera bassa guarda all'orizzonte: oltre la nebbia piena non si disegna (lì è già tutta nebbia)
     camera.updateProjectionMatrix();
     if (dyn.sky) { dyn.sky.position.copy(camera.position); if (BASSA2.on) dyn.sky.scale.setScalar(Math.min(1, (camera.far - 4) / 160)); }
     REG.lp = R7.pitch; REG.ld = R7.arm;
