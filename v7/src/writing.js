@@ -1306,7 +1306,20 @@ var Writing = (function () {
   const etaOf = w => w.by === 'player' && !w.old ? (w.sbiadito || 0) : clamp(Math.floor(((GFX.st ? GFX.st.t : 0) - (w.t0 || 0)) / 1440) + (w.old ? 2 + ((w.seed || 0) % 4) : 0), 0, 6);
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
   function placeWall(w) { return finisci(placeWallG(w)); }
+  // [stradadipinta] il pezzo in fondo alla vista (w.sdAlt, ?stile=E): se la facciata non ha posto per il primo (le finestre), le alternative in
+  // ordine: il verticale o il throw-up fra due colonne di finestre, il pezzo basso sulla fascia del pianterreno, il muro cieco di lato che si
+  // vede dalla via, il muro dei manifesti. La prima che entra resta (il disegno si fa dopo, con lo stile e la misura che hanno vinto)
   function* placeWallG(w) {
+    if (!w.sdAlt || !w.sdAlt.length || w.__altFatto) return yield* placeWallG0(w);
+    const R = R_(), base = { style: w.style, W0: w.W0, H0: w.H0, spot: w.spot, sdManifesti: w.sdManifesti, sdVariante: w.sdVariante };
+    for (const a of [null].concat(w.sdAlt)) {
+      if (a) { const sp = Object.assign({}, a.spot || base.spot); sp.h = a.hRel != null && R && R.groundH ? R.groundH(sp.x, sp.y) + a.hRel : a.spot ? a.spot.h : null;
+        Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
+      w.gfxRect = null; const ok = yield* placeWallG0(w); if (ok && w.gfxRect) { w.__altFatto = true; return true; }
+    }
+    Object.assign(w, base); w.__altFatto = true; return false;
+  }
+  function* placeWallG0(w) {
     if (w.surf === 'auto') return placeVeh(w);
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
     if (w.sdAnc && typeof StradaDipinta !== 'undefined') return StradaDipinta.piazza(w, T3(), R_());   // [stradadipinta] gli adesivi sui pali e dietro i cartelli: il posto è già noto, niente raggi

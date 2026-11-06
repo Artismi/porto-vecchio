@@ -23615,7 +23615,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = '0172d5ff4bc2869c';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '13403d5b0b464bc8';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -64025,7 +64025,20 @@ var Writing = (function () {
   const etaOf = w => w.by === 'player' && !w.old ? (w.sbiadito || 0) : clamp(Math.floor(((GFX.st ? GFX.st.t : 0) - (w.t0 || 0)) / 1440) + (w.old ? 2 + ((w.seed || 0) % 4) : 0), 0, 6);
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
   function placeWall(w) { return finisci(placeWallG(w)); }
+  // [stradadipinta] il pezzo in fondo alla vista (w.sdAlt, ?stile=E): se la facciata non ha posto per il primo (le finestre), le alternative in
+  // ordine: il verticale o il throw-up fra due colonne di finestre, il pezzo basso sulla fascia del pianterreno, il muro cieco di lato che si
+  // vede dalla via, il muro dei manifesti. La prima che entra resta (il disegno si fa dopo, con lo stile e la misura che hanno vinto)
   function* placeWallG(w) {
+    if (!w.sdAlt || !w.sdAlt.length || w.__altFatto) return yield* placeWallG0(w);
+    const R = R_(), base = { style: w.style, W0: w.W0, H0: w.H0, spot: w.spot, sdManifesti: w.sdManifesti, sdVariante: w.sdVariante };
+    for (const a of [null].concat(w.sdAlt)) {
+      if (a) { const sp = Object.assign({}, a.spot || base.spot); sp.h = a.hRel != null && R && R.groundH ? R.groundH(sp.x, sp.y) + a.hRel : a.spot ? a.spot.h : null;
+        Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
+      w.gfxRect = null; const ok = yield* placeWallG0(w); if (ok && w.gfxRect) { w.__altFatto = true; return true; }
+    }
+    Object.assign(w, base); w.__altFatto = true; return false;
+  }
+  function* placeWallG0(w) {
     if (w.surf === 'auto') return placeVeh(w);
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
     if (w.sdAnc && typeof StradaDipinta !== 'undefined') return StradaDipinta.piazza(w, T3(), R_());   // [stradadipinta] gli adesivi sui pali e dietro i cartelli: il posto è già noto, niente raggi
@@ -66512,12 +66525,29 @@ var StradaDipinta = (function () {
     SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare' && z !== 'fuori') return;
       const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) cand.push({ s, v, z }); });
     cand.sort((a, b) => b.v - a.v);
+    // le alternative del fondale, in ordine (writing.js placeWallG le prova finché una entra): (a) il verticale a rullo, o la calligrafia alta,
+    // fra due colonne di finestre (a passi di 1,6 m lungo la facciata); (b) il pezzo basso sulla fascia del pianterreno, sotto i davanzali del
+    // primo piano (1,35 m dal suolo, alto un metro); (c) il muro cieco di lato più vicino al fondo che si vede venendo dalla via (un sito
+    // girato verso chi arriva, entro 9 m dall'asse e 30 m dal fondo); (d) il muro dei manifesti a strati, ad altezza d'occhio
+    function altFondale(s, sp0, z, who) {
+      const A = s.along || [0, 1], u = [Math.cos(s.face), Math.sin(s.face)], at = k => ({ x: sp0.x + A[0] * k, y: sp0.y + A[1] * k, face: sp0.face, h: null, place: sp0.place, kind: 'strada', sdZona: z }), alt = [];
+      for (const k of [0, -1.6, 1.6, -3.2, 3.2]) alt.push({ k: 'a', style: 'verticale', W0: 1.3, H0: 4.4, hRel: 3.4, spot: at(k) });
+      for (const k of [0, -2.4, 2.4]) alt.push({ k: 'a', style: 'gotico', W0: 1.2, H0: 2.6, hRel: 2.9, spot: at(k) });
+      for (const k of [0, -3, 3]) alt.push({ k: 'b', style: 'pezzo', W0: 4.2, H0: 1.05, hRel: 1.35, spot: at(k) });
+      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'b', style: 'throw', W0: 2.4, H0: 1.05, hRel: 1.3, spot: at(k) });
+      SITES.filter(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && (q.len || 0) >= 3 && q.out[0] * u[0] + q.out[1] * u[1] < -.3).map(q => { const dx = q.x - s.x, dy = q.y - s.y; return { q, t: dx * u[0] + dy * u[1], l: Math.abs(-dx * u[1] + dy * u[0]) }; })
+        .filter(o => o.t > -30 && o.t < 3 && o.l < 9).sort((a, b) => Math.abs(a.t) - Math.abs(b.t)).slice(0, 2)
+        .forEach(o => { const q = o.q, big = (q.len || 0) >= 5.5; alt.push({ k: 'c', style: big ? 'pezzo' : 'throw', W0: big ? Math.min(q.len - .6, 4.8) : 2.6, H0: big ? Math.min(q.len - .6, 4.8) * .42 : 1.25, spot: Object.assign(posto(q, 0, null), { h: null }) }); });
+      for (const k of [0, -2, 2]) alt.push({ k: 'd', style: 'manifesto', W0: 1.9, H0: 1.5, spot: at(k), sdManifesti: [0, 1, 2].map(() => Object.assign({ c: Math.floor(rng() * 10) }, pick(MAN[pick(MAN_Z[z] || MAN_Z.via)]))) });
+      return alt;
+    }
     const FOND = [];
     for (const c of cand) { if (FOND.some(o => { const d = hyp(o.s.x - c.s.x, o.s.y - c.s.y); return d < 18 || (d < 55 && Math.cos(o.s.face - c.s.face) > .3); })) continue;   /* due fondali vicini solo se si guardano da parti opposte (due viste diverse) */ FOND.push(c); if (FOND.length >= 16) break; }
     FOND.forEach(c => { const s = c.s, z = c.z, len = s.len || 6; let who = chi(z, false); for (let k = 0; k < 6 && (visto(who.wr.aka, 'throw', s.x, s.y, 45) || visto(who.wr.aka, 'pezzo', s.x, s.y, 45)); k++) who = chi(z, false);
       const style = s.facciata ? 'throw' : len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
       const W0 = style === 'throw' ? 3.2 : Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : style === 'throw' ? 1.5 : W0 * .4;
-      const w = lavoro(posto(s, 0, null), who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v) }, 'fondale');
+      const sp0 = posto(s, 0, null), alt = altFondale(s, sp0, z, who);
+      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: alt }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
     // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----

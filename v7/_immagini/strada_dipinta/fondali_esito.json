@@ -1,0 +1,78 @@
+{
+ "fondali": [
+  {
+   "via": "Via della Marina",
+   "vista": 114,
+   "stile": "throw",
+   "variante": "primo",
+   "posato": false,
+   "fatto": true,
+   "disegnato": false,
+   "fail": 4,
+   "pend": 0,
+   "c": null
+  },
+  {
+   "via": "Via di Mezzo",
+   "vista": 84,
+   "stile": "throw",
+   "variante": "primo",
+   "posato": false,
+   "fatto": true,
+   "disegnato": false,
+   "fail": 4,
+   "pend": 0,
+   "c": null
+  },
+  {
+   "via": "Via della Marina",
+   "vista": 72,
+   "stile": "verticale",
+   "variante": "a",
+   "W": 1.3,
+   "H": 3.575,
+   "posato": true,
+   "fatto": true,
+   "disegnato": true,
+   "fail": 0,
+   "pend": 0,
+   "c": {
+    "x": 1381,
+    "y": 3.670008390406895,
+    "z": 381.9090735625684,
+    "nx": 1,
+    "nz": 0
+   },
+   "camere": {
+    "lontano": 69,
+    "gioco": {
+     "x": 1457.4671608408278,
+     "y": 8.710064272439709,
+     "z": 407.0621065187405,
+     "tx": 1447.787036142586,
+     "ty": 3.1181352377322398,
+     "tz": 403.8779357861359,
+     "d": 69
+    },
+    "bassa": {
+     "x": 1455.9159470745597,
+     "y": 5.281254198356871,
+     "z": 406.5518517825116,
+     "tx": 1447.787036142586,
+     "ty": 3.1181352377322398,
+     "tz": 403.8779357861359,
+     "d": 69
+    },
+    "vicino": {
+     "x": 1415.6703225108422,
+     "y": 8.215168040878982,
+     "z": 393.3134954755461,
+     "tx": 1405.9901978126004,
+     "ty": 2.623239006171513,
+     "tz": 390.1293247429415,
+     "d": 25
+    }
+   }
+  }
+ ]
+}

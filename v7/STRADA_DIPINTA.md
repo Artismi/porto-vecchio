@@ -92,9 +92,17 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
   55 m solo se si guardano da parti opposte (due viste diverse). Oggi 8: corridoio sul Muro (160 m, muro, pezzo di FUSE); Via della Marina (114 m, lungomare, throw di MURE); Raccordo del Valico (104 m, fuori, pezzo di FUMO); Via di Mezzo (84 m, porto, throw di GOZO); Strada del Bosco (83 m, fuori, throw di TEO); Via delle Mura (82 m, ferrovia, throw di RAZO); Via della Marina (72 m, porto, throw di ORZO); Rua Maestra (63 m, vicolo, throw di TEO).
   Con la camera di adesso (bordo alto 11° sotto l'orizzonte) si vedono arrivando; con la camera bassa (`?camera9`, URBANISTICA.md §5) sono
   le cose che chiudono il quadro.
-  **Aperto**: sulle facciate con le finestre il throw-up del fondale spesso non trova il rettangolo libero (`fitWall` sta fuori dalle
-  aperture) e non si piazza: nelle foto la Via di Mezzo e la Via della Marina restano senza. Da fare: scegliere il tratto fra due finestre
-  coi dati di `R.aperture` (o un verticale sopra la porta) quando il muro libero non c'è.
+  **Le alternative quando la facciata ha le finestre** (`sdAlt`, provate in `writing.js placeWallG` finché una entra, poi il disegno si fa
+  con lo stile e la misura che hanno vinto): (a) un verticale a rullo 1,3 × 4,4 m (o la calligrafia alta) fra due colonne di finestre, a
+  passi di 1,6 m lungo la facciata; (b) un pezzo basso 4,2 × 1,05 m (o un throw-up) sulla fascia del pianterreno sotto i davanzali del primo
+  piano; (c) il muro cieco di lato più vicino al fondo che si vede venendo dalla via; (d) il muro dei manifesti a strati.
+  **Misurato nel gioco** (`fondali_esito.json`, `fondale_via_della_marina_*.png`): dei tre fondali su queste vie uno entra (Via della
+  Marina, il tratto di 72 m: il verticale fra le finestre, alternativa (a), centro a 3,7 m); gli altri due (Via di Mezzo verso ovest, Via
+  della Marina verso la Via al Mare) non entrano con nessuna delle 18 alternative, nemmeno i manifesti: il posto preso dalla griglia (0,6 m
+  prima della casella della casa) non porta i raggi su una parete. **Aperto**: prendere il muro del fondale dalla geometria vera (un raggio
+  lungo la via in render.js, non dalla griglia) e rifare le foto. La camera del gioco (34°, bordo alto 11° sotto l'orizzonte) dal capo
+  lontano non vede comunque il fondo della via; la vede la camera bassa (18°, 7 m). `?camera9` non è in questo ramo: la foto «bassa» la imita.
+
 - **I grandi** per zona (tabella 2.1): pezzi e burner nei sottopassi e sul Muro, rulli e murali sul porto, quasi niente nelle vie.
   Mai due grandi a meno di 4,6 m (3,2 nei punti fitti). **I verticali e gli heaven spot** solo nelle zone calde, uno per palazzo, al
   22% / 12% per il ritmo (erano ovunque).
@@ -199,6 +207,11 @@ lista E in `tassella_pagina.js` (la stessa funzione con lo stile acceso) e prend
   fondale; prima | dopo dove ha senso.
 
 ## 9. Aperto
+
+- **Il suolo del Glacis nella tavola «dopo»** (piatto, senza le macchie d'erba e il lastricato): non è la strada dipinta né `?stile=E`.
+  render.js legge solo `?stile=A|B|C|D`, personaggi.js solo `a|b|c|k`, e la strada dipinta non tocca né il suolo né le decalcomanie.
+  Era la prima foto dopo il caricamento della pagina, e il dettaglio del suolo attorno arriva dopo. Rifatta più tardi nello stesso
+  caricamento (`E_glacis_bis.png`), il suolo è come in «prima».
 
 - **Il rilevato del Lungomare** è una scarpata 2:3 (`railFit`), non un muro: i raggi di `placeWall` non ci mettono niente (la normale non è
   orizzontale). Se il filone del costruito lo fa diventare un muro di sostegno, la regola della zona `ferrovia` lo prende da sola (i siti
