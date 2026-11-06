@@ -1,6 +1,7 @@
 sonde/f/
 sonde/g/
 sonde/cmd/
+sonde/cmdE/
 sonde/*.log
 sonde/log_*.json
 progetto/__pycache__/

@@ -75,6 +75,10 @@ async function corsa(pg, piano) {
     }
     draws(true); for (const k in pv.keys) pv.keys[k] = false;
     // [stile] alla fine, lo stesso istante in ogni variante (R.stile cambia il look dal vivo; senza: una foto sola)
+    // [fumetto2] prima delle varianti la camera si assesta in tempo VERO: le sue cache vanno a orologio (render.js: regia 500 ms, braccio camera7 300 ms,
+    // cose7/bassaCose .1-.15 s) e durante la corsa simulata (passi finti da 1/15 s fatti in pochi ms) restano vecchie; il primo fotogramma lento
+    // (2,5 s in HD) le rinfrescava tutte insieme e la camera si rimetteva fra la variante A e la E (sera: pitch 50 → 40)
+    if (P.varianti) { draws(false); for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 650)); ui.time += 1e-3; R.frame(st, 1e-3, ui); } draws(true); }
     if (P.varianti) { out.var = []; for (const v of P.varianti) { if (v && R.stile) R.stile(v); for (let i = 0; i < 2; i++) { ui.time += 1e-3; R.frame(st, 1e-3, ui); } gl.finish();
       const t0 = performance.now(); for (let i = 0; i < (P.tempi || 2); i++) { ui.time += 1e-3; R.frame(st, 1e-3, ui); } gl.finish(); const ms = (performance.now() - t0) / (P.tempi || 2);
       const s0 = stato(); s0.ms = +ms.toFixed(0); const img = rd.domElement.toDataURL('image/png'); let img2 = null;

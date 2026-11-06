@@ -17,7 +17,7 @@ const POSTI = {
   fs.mkdirSync(path.join(OUT, 'f'), { recursive: true });
   let H = await avvia({ vp: VP, query: Q }); const log = H.log; let busy = false;
   // i comandi: un file in cmd/ (<nome>.eval = JS, <nome>.corsa = JSON, <nome>.reload = query), la risposta in cmd/<nome>.out
-  const CMD = path.join(OUT, 'cmd'); fs.mkdirSync(CMD, { recursive: true }); log('pronto');
+  const CMD = path.join(OUT, process.env.CMD || 'cmd'); fs.mkdirSync(CMD, { recursive: true }); log('pronto');
   for (;;) {
     const fl = fs.readdirSync(CMD).filter(f => /\.(eval|corsa|reload|quit)$/.test(f)).sort();
     if (!fl.length) { await new Promise(r => setTimeout(r, 300)); continue; }
@@ -35,7 +35,7 @@ const POSTI = {
       }
       else if (kind === 'reload') { try { await H.close(); } catch (e) { } H = await avvia({ vp: VP, query: body.trim() || Q }); out = 'ok'; }
       else if (kind === 'quit') { fs.writeFileSync(path.join(CMD, f.replace(/\.\w+$/, '.out')), 'bye'); await H.close(); process.exit(0); }
-    } catch (e) { out = 'ERR ' + String(e.message).slice(0, 600); }
+    } catch (e) { out = 'ERR ' + String(e.message).slice(0, 600); if (/crashed|closed/i.test(e.message)) { fs.writeFileSync(path.join(CMD, f.replace(/\.\w+$/, '.out')), out + '\n'); process.exit(3); } }
     fs.writeFileSync(path.join(CMD, f.replace(/\.\w+$/, '.out')), out + '\n'); log(f, Date.now() - t0, 'ms');
   }
 })();

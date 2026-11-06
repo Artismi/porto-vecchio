@@ -19,7 +19,7 @@ function initPagina() {
 async function avvia(opts = {}) {
   const srv = await server();
   const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const ctx = await b.newContext({ viewport: opts.vp || { width: 800, height: 450 }, hasTouch: !!opts.touch, isMobile: !!opts.touch, deviceScaleFactor: 1 });
+  const ctx = await b.newContext({ viewport: opts.vp || { width: 800, height: 450 }, hasTouch: !!opts.touch, isMobile: !!opts.touch, deviceScaleFactor: +(process.env.DPR || 1) });
   const pg = await ctx.newPage(); await pg.addInitScript(initPagina);
   const T0 = Date.now(); const log = (...a) => console.log(`[${((Date.now() - T0) / 1000).toFixed(0)}s]`, ...a);
   pg.on('pageerror', e => log('[pageerror]', e.message.slice(0, 200)));

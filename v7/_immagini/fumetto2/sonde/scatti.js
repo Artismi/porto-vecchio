@@ -19,7 +19,7 @@ const VP = { width: +(process.env.W || 960), height: +(process.env.H || 540) };
         const r = await corsa(H.pg, P);
         r.var.forEach(([v, url, s, url2]) => { fs.writeFileSync(path.join(OUT, 'f', `${PRE}_${posto}_${v || 'X'}.png`), Buffer.from(url.split(',')[1], 'base64')); if (url2) fs.writeFileSync(path.join(OUT, 'f', `${PRE}_${posto}_${v || 'X'}_mezzopx.png`), Buffer.from(url2.split(',')[1], 'base64')); });
         fs.writeFileSync(path.join(OUT, `log_${PRE}_${posto}.json`), JSON.stringify({ stato: r.var.map(x => [x[0], x[2]]) }));
-        log(posto, ((Date.now() - t0) / 1000).toFixed(0) + 's', JSON.stringify(r.var[0][2])); break; }
+        log(posto, ((Date.now() - t0) / 1000).toFixed(0) + 's', JSON.stringify(r.var[0][2]), 'ms', JSON.stringify(r.var.map(x => [x[0], x[2].ms, x[2].pitch, x[2].omH]))); break; }
       catch (e) { log('crash', posto, String(e.message).slice(0, 160)); try { await H.close(); } catch (x) { } H = await avvia({ vp: VP, query: Q }); } } }
   if (process.env.PERF) try { const P = await H.pg.evaluate(() => { const R = window.__pv.R, rd = R.__models.renderer; return { prog: rd.info.programs.length, calls: rd.info.render.calls, tri: rd.info.render.triangles, tex: rd.info.memory.textures, size: [rd.domElement.width, rd.domElement.height] }; }); log('perf', JSON.stringify(P)); } catch (e) { }
   try { await H.close(); } catch (x) { }
