@@ -9034,11 +9034,17 @@ var Render = (function () {
   };
   // un oggetto del kit, scalato per altezza o per lato
   function kit35(name, size, byH) { if (!Kit.has || !Kit.has(name)) return null; const o = Kit.get(name); o.updateMatrixWorld(true); const s = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()); return kp(name, size / Math.max(byH ? s.y : Math.max(s.x, s.z), .01)); }
+  // [urbanistica1] la roba a terra non va nei passaggi larghi una casella (vicoli di 2 m fra le case: restava 1,4-1,7 m), né sulle caselle di
+  // selciato che fiancheggiano una via (fanno parte della via, non sono cortili). Solo la posa: ?nourbanistica1 com'era (v7/URBANISTICA.md, prop. 3)
+  const URB1R = !(typeof location !== 'undefined' && /[?&]nourbanistica1\b/.test(location.search || ''));
+  const STRETTO35 = (x, z) => { if (!URB1R) return false; const T = G.T, tx = Math.floor(x / TS), ty = Math.floor(z / TS), op = (a, b) => { const v = G.tileAt(a, b); return v === T.COB || v === T.VIA || v === T.WALK || v === T.PIAZZA || v === T.STAIRS; };
+    const run = (a, b) => { let n = 1; for (let k = 1; k < 3 && op(tx + a * k, ty + b * k); k++) n++; for (let k = 1; k < 3 && op(tx - a * k, ty - b * k); k++) n++; return n; };
+    return Math.min(run(1, 0), run(0, 1)) <= 1; };
   function oggetti35() {
     const T = G.T, r = rng(3535); let n = 0;
     const city = (x, z) => zoneT(Math.floor(x / TS), Math.floor(z / TS)) === ZN.CITTA;
     // mette un gruppo se il suo ingombro (hx, hz) è libero; gira il gruppo con ry
-    const put = (g, x, z, ry, hx, hz) => { const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry)), ex = hx * c + hz * s, ez = hx * s + hz * c; if (!city(x, z) || !OCC35.free(x, z, ex, ez)) return false; OCC35.mark(x, z, ex, ez); place(g, x, z, ry); n++; return true; };
+    const put = (g, x, z, ry, hx, hz) => { const c = Math.abs(Math.cos(ry)), s = Math.abs(Math.sin(ry)), ex = hx * c + hz * s, ez = hx * s + hz * c; if (!city(x, z) || !OCC35.free(x, z, ex, ez) || STRETTO35(x, z)) return false; OCC35.mark(x, z, ex, ez); place(g, x, z, ry); n++; return true; };
     // davanti alla porta: dove guarda la facciata (dalla casa verso la porta) e a che lato si sta
     (G.BUILDINGS || []).forEach((b, bi) => {
       if (!b.door || b.gov || b.shack || b.tower || zoneT(b.door[0], b.door[1]) !== ZN.CITTA) return;
@@ -9095,6 +9101,7 @@ var Render = (function () {
     // i cortili: roba vecchia buttata (poltrona, televisore, frigo, gomme, pallet), una cassetta di piante, un fusto per il fuoco
     for (let ty = 0; ty < G.GH; ty++) for (let tx = 0; tx < G.GW; tx++) {
       if (zoneT(tx, ty) !== ZN.CITTA) continue; const v = gT(tx, ty); if (v !== T.GRASS && v !== T.DIRT && v !== T.COB) continue; if (RW[ty * G.GW + tx] > 0) continue;
+      if (URB1R && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => RW[(ty + b) * G.GW + tx + a] > 0)) continue;   // [urbanistica1] accanto alla via è via: niente bancali e fusti
       const rr = rng((tx * 9337 + ty * 1291 + 35) >>> 0); if (rr() > (NIT1() ? .012 : .03)) continue;   // [nitida] la roba vecchia nei cortili, più rada
       const near = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => gT(tx + a, ty + b) === T.BLD); if (!near.length) continue;
       const [a, b] = near[0], ry = Math.atan2(-a, -b), x = tx * TS + 1 + a * .3, z = ty * TS + 1 + b * .3, g = G0(), q = rr();
@@ -16948,6 +16955,7 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
           if (b.__f2 && SEG1.ok && nRoba) break;
           const u0 = k * TS + 1; if (inMural(f, u0) || doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 1.4) || (b.__bot && b.__bot.face === f && (b.__bot.ks.includes(k) || Math.abs(b.__bot.portoneU - u0) < 2.2))) continue;   // [botteghe] davanti alle vetrine e al citofono niente roba
           if (!doorsU.some(([df, du]) => df === f && Math.abs(du - u0) < 3.3) || r() > .45) continue;   // [pulizia] la roba sta vicino alle porte, non lungo tutto il muro
+          { const tf = F.tile(k); if (STRETTO35(tf[0] * TS + 1, tf[1] * TS + 1)) continue; }   // [urbanistica1] non nei vicoli larghi una casella
           const u = u0 + (r() - .5) * .8, t = r(), z = .38; nRoba++;
           if (t < .16) { const cc = pick(r, ['#a83a32', '#3a5a8a', '#c8a03a', '#4a7a4a', '#2a2a2e']); for (let q = 0, nq = 1 + Math.floor(r() * 4); q < nq; q++) { const cr = oPCrate(r, q % 2 && r() < .5 ? null : cc); cr.rotation.y = (r() - .5) * .25; at(f, cr, u + (q > 2 ? .6 : 0) + (r() - .5) * .05, base + (q % 3) * .3, z); } }   // casse di plastica impilate
           else if (t < .34 && ARR3()) { if (r() < .55) at(f, gruppoVasi2(r, { L: 1.9, D: .62 }), u, base, .4); }   // [vasi2] i vasi raccolti in gruppo, non in fila a passo fisso; quasi un posto su due resta vuoto

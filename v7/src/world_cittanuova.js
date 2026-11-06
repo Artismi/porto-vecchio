@@ -154,6 +154,12 @@ var World = (function () {
   // A tramontana, sotto il colle, la riva entra di 10-33 m fin dove passavano la ferrovia e la Costiera Nord (correzione 1): una falesia
   // diretta sul mare; sotto la Gola del Lupo entra meno (la gola sbocca sulla falesia). Senza ?mappa=nuova niente cambia.
   const MN = (() => { try { if (typeof window !== 'undefined' && window.PV_MAPPA !== undefined) return window.PV_MAPPA === 'nuova'; if (typeof location !== 'undefined' && location.search && /[?&]mappa=nuova\b/.test(location.search)) return true; if (typeof process !== 'undefined' && process.env && process.env.PV_MAPPA === 'nuova') return true; } catch (e) { } return false; })();
+  // [urbanistica1] IL PACCHETTO SICURO DELL'URBANISTA (v7/URBANISTICA.md, sez. 8): i due varchi pedonali dal Lungomare di Tramontana sulla
+  // ferrovia e il belvedere, la volta dei sottopassi in piano col suolo, i due slarghi della Via delle Mura, le firme basse in fondo alle viste
+  // lunghe del borgo (gli ingombri fuori dai vicoli stretti stanno in scena.js e render.js). Acceso di serie; ?nourbanistica1 (in Node
+  // PV_NOURBANISTICA1=1) torna com'era.
+  const URB1 = (() => { try { if (typeof location !== 'undefined' && location.search && /[?&]nourbanistica1\b/.test(location.search)) return false; if (typeof process !== 'undefined' && process.env && process.env.PV_NOURBANISTICA1 === '1') return false; } catch (e) { } return true; })();
+  const VARCHI_LUNG = [1091, 1126];   // [urbanistica1] x (del generatore: +320 nelle finali) dei due varchi: gli assi del Vico dell'Arco e del Vico Scuro (sui Lanternini, a 1054, il binario è ancora sul rilevato, 2 m sopra la strada)
   const MNX = 702, MNW = 674, MNL = 120, MNY = 146;   // il taglio, la punta del capo, quanto è lungo il capo che si stringe, la sua mezzeria
   const MNN = [[688, 0], [698, 22], [710, 27], [720, 27], [730, 17], [740, 10], [750, 7], [760, 7], [770, 10], [780, 25], [790, 31], [800, 30], [810, 23], [820, 18], [830, 16], [840, 15], [850, 21], [860, 18], [870, 15], [880, 11], [890, 9], [902, 0]];
   const mnShift = m => { if (m <= MNN[0][0] || m >= MNN[MNN.length - 1][0]) return 0; for (let k = 0; k < MNN.length - 1; k++) { const [a, ha] = MNN[k], [b, hb] = MNN[k + 1]; if (m >= a && m < b) { const t = (m - a) / (b - a), e = t * t * (3 - 2 * t); return ha + (hb - ha) * e; } } return 0; };
@@ -1698,6 +1704,17 @@ var World = (function () {
       // le pozze rimaste fra la colmata e la riva vecchia (davanti alle baracche) si riempiono: niente mare chiuso dietro la strada
       for (let tx = T2i(x0); tx <= T2i(Math.min(x1, 1140)); tx++) { const x = tx * TS + 1, yr = yOnP0(P, x); if (yr === null) continue;
         for (let ty = T2i(yr + 5); ty <= T2i(yr + 18); ty++) { const i = ty * GW + tx, v = grid[i]; if (!(v === T.WATER || v === T.ROCK || v === T.SAND)) { if (v !== T.COB && v !== T.QUAY) break; continue; } grid[i] = T.COB; zone[i] = Z.CITTA; elev[i] = Math.max(elev[i], 1.2); if (!(x > 970 && x < 992 && ty * TS > 64)) reserved[i] = 1; } } }   // [pianta] resta il piazzale delle baracche sul lungomare (niente lamiere fra la strada e Radio Luna)
+    // [urbanistica1] il BELVEDERE del Lungomare di Tramontana: accanto al varco del Vico dell'Arco il tratto di parapetto (12 m, lo stesso passo
+    // della posa dei parapetti più sotto) esce di 4 m sul mare; il ripiano è banchina alla quota del marciapiede. CITY.belvedere lo dice ai pezzi
+    if (URB1 && CITY.lungN) { const P = CITY.lungN, S = [0]; for (let k = 1; k < P.length; k++) S.push(S[k - 1] + dist(P[k - 1][0], P[k - 1][1], P[k][0], P[k][1]));
+      const at = s0 => { let k = 1; while (k < P.length - 1 && S[k] < s0) k++; const a = P[k - 1], b = P[k], L = (S[k] - S[k - 1]) || 1, t = clamp((s0 - S[k - 1]) / L, 0, 1); return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; };
+      const Lt = S[S.length - 1]; let best = null;
+      for (let s0 = 6; s0 + 12 < Lt - 4; s0 += 12) { const A = at(s0), B2 = at(s0 + 12), mx = (A[0] + B2[0]) / 2; if (!best || Math.abs(mx - 1084) < Math.abs(best.mx - 1084)) best = { s0, A, B: B2, mx }; }
+      if (best && Math.abs(best.mx - 1084) < 8) { const { A, B: B2 } = best, L = dist(A[0], A[1], B2[0], B2[1]), ux = (B2[0] - A[0]) / L, uy = (B2[1] - A[1]) / L, nx = uy, ny = -ux;   // n: verso il mare
+        for (let ty = T2i(Math.min(A[1], B2[1]) - 12); ty <= T2i(Math.max(A[1], B2[1]) + 2); ty++) for (let tx = T2i(Math.min(A[0], B2[0]) - 2); tx <= T2i(Math.max(A[0], B2[0]) + 2); tx++) {
+          const i = ty * GW + tx, x = tx * TS + 1, y = ty * TS + 1, t = (x - A[0]) * ux + (y - A[1]) * uy, d = (x - A[0]) * nx + (y - A[1]) * ny;
+          if (t < -.4 || t > L + .4 || d <= 5.6 || d > 11.4 || roadW[i] > 0) continue; grid[i] = T.QUAY; zone[i] = Z.CITTA; elev[i] = 1.4; reserved[i] = 1; }
+        CITY.belvedere = { s0: best.s0, prof: 9.6 }; } }
     // [mappa_nuova] le strade della campagna tagliata se ne vanno; la Costiera Nord e il Raccordo del Valico pure (correzione 1); chi passa il
     // taglio (la Costiera Sud) si ferma dove finisce la terra: a fondo cieco sulla Punta del Faro. La città non si tocca (x ≥ 902)
     // Le strade del colle diventano sentieri (correzione 1: una sola strada, la Costiera Sud); la Costiera Sud, che ora girerebbe attorno al
@@ -2070,11 +2087,25 @@ var World = (function () {
         const Lt = S[S.length - 1]; CITY.parapetti = 0;
         for (let s0 = 6; s0 + 12 < Lt - 4; s0 += 12) { const A = at(s0), B = at(s0 + 12), L = dist(A[0], A[1], B[0], B[1]), ux = (B[0] - A[0]) / L, uy = (B[1] - A[1]) / L, nx = uy, ny = -ux, rot = Math.atan2(-uy, ux);   // n: verso il mare (a sinistra di chi va a levante)
           const M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-          if (mareA(M[0] + nx * 9, M[1] + ny * 9) || mareA(M[0] + nx * 8, M[1] + ny * 8)) {
+          const bel = URB1 && CITY.belvedere && CITY.belvedere.s0 === s0 ? CITY.belvedere.prof : 0;   // [urbanistica1] il belvedere: il parapetto esce sul mare, due spallette ai fianchi
+          if (bel) { PZ('parapetto', A[0] + nx * bel, A[1] + ny * bel, rot, { L: +L.toFixed(2), tipo: 'mare' }, { nome: 'Parapetto del Belvedere' }); CITY.parapetti++;
+            PZ('scogliera', A[0] + nx * (bel + 3.4), A[1] + ny * (bel + 3.4), rot, { L: +L.toFixed(2), w: 4, n: Math.max(4, Math.round(L * 1.1)), seme: 300 + Math.round(s0) }, { nome: 'Scogliera del Belvedere', acqua: true });
+            [[A, 0], [B, 1]].forEach(([Q]) => PZ('parapetto', Q[0] + nx * 5.5, Q[1] + ny * 5.5, Math.atan2(-ny, nx), { L: +(bel - 5.5).toFixed(2), tipo: 'mare' }, { nome: 'Spalletta del Belvedere' })); }
+          else if (mareA(M[0] + nx * 9, M[1] + ny * 9) || mareA(M[0] + nx * 8, M[1] + ny * 8)) {
             PZ('parapetto', A[0] + nx * 5.5, A[1] + ny * 5.5, rot, { L: +L.toFixed(2), tipo: 'mare' }, { nome: 'Parapetto del Lungomare' }); CITY.parapetti++;
             PZ('scogliera', A[0] + nx * 9, A[1] + ny * 9, rot, { L: +L.toFixed(2), w: 4, n: Math.max(4, Math.round(L * 1.1)), seme: 300 + Math.round(s0) }, { nome: 'Scogliera del Lungomare', acqua: true }); }
           const yr = A[0] > 1030 && A[0] < 1136 ? CITY.railY(M[0]) : null;
-          if (yr !== null && Math.abs(M[1] - nx * 0 + 10 - yr) < 4) PZ('parapetto', A[0] - nx * 5.4, A[1] - ny * 5.4, rot, { L: +L.toFixed(2), tipo: 'guardrail' }, { nome: 'Guardrail della ferrovia' }); } }
+          if (yr !== null && Math.abs(M[1] - nx * 0 + 10 - yr) < 4) {
+            // [urbanistica1] i due varchi pedonali sulla ferrovia (sugli assi del Vico dell'Arco e del Vico Scuro): il guardrail si apre per 4 m
+            const xc = URB1 ? VARCHI_LUNG.find(v => v > Math.min(A[0], B[0]) - 2.5 && v < Math.max(A[0], B[0]) + 2.5) : undefined;
+            if (xc === undefined) PZ('parapetto', A[0] - nx * 5.4, A[1] - ny * 5.4, rot, { L: +L.toFixed(2), tipo: 'guardrail' }, { nome: 'Guardrail della ferrovia' });
+            else { const tc = (xc - A[0]) / (ux || 1e-6), a1 = tc - 2.4, b1 = tc + 2.4;
+              if (a1 > .5) PZ('parapetto', A[0] - nx * 5.4, A[1] - ny * 5.4, rot, { L: +a1.toFixed(2), tipo: 'guardrail' }, { nome: 'Guardrail della ferrovia' });
+              if (L - b1 > .5) PZ('parapetto', A[0] + ux * b1 - nx * 5.4, A[1] + uy * b1 - ny * 5.4, rot, { L: +(L - b1).toFixed(2), tipo: 'guardrail' }, { nome: 'Guardrail della ferrovia' }); } } }
+        // [urbanistica1] sul binario, nei due varchi, il passaggio pedonale: il riempimento fra le rotaie, le sbarre alzate, le croci e le lanterne rosse
+        if (URB1 && CITY.rail) VARCHI_LUNG.forEach(xc => { const R = CITY.rail; let best = 0, bd = 1e9; R.forEach((r0, k) => { const d = Math.abs(r0[0] - xc); if (d < bd) { bd = d; best = k; } });
+          const a = R[Math.max(0, best - 2)], b = R[Math.min(R.length - 1, best + 2)], l = dist(a[0], a[1], b[0], b[1]) || 1, ux = (b[0] - a[0]) / l, uy = (b[1] - a[1]) / l, w = 3.2, y = CITY.railY(xc);
+          pzAt('passaggio_livello', xc, y, Math.atan2(-uy, ux), (w + 14) / 2, 0, { w, aperto: true, casello: false, pedonale: true }, { nome: 'Passaggio pedonale delle Mura', urbanistica1: true }); }); }
       // [pianta] la Via della Marina sul Lido: la ringhiera di pietra e ferro dove sotto c'è la spiaggia (sulla calata no: lì ci sono le bitte);
       // la Riva della Rocca: il parapetto sul canale, davanti al fronte di terra del castello
       { const MARp = CITY.marina, S = [0]; for (let k = 1; k < MARp.length; k++) S.push(S[k - 1] + dist(MARp[k - 1][0], MARp[k - 1][1], MARp[k][0], MARp[k][1]));
@@ -3404,6 +3435,31 @@ var World = (function () {
       PIAZ.forEach(([cx, cy, rr], k) => { for (const a of [0, 1.5708, 3.1416, 4.7124].map(v => v + (k % 2) * 1.5708)) { const dx = Math.cos(a), dy = Math.sin(a); let hit = null;
         for (let d = Math.max(2, rr - 2); d < rr + 7; d += .25) { const x = cx + dx * d, y = cy + dy * d, i = Math.floor(y / TS) * GW + Math.floor(x / TS); if (roadW[i] > 0 || grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(x, y)) hit = [x - dx * .5, y - dy * .5]; break; } }
         if (!hit || portaVicina(hit[0], hit[1], 2.6)) continue; PZ('edicola_votiva', hit[0], hit[1], Math.atan2(-dx, -dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola votiva' }); break; } });
+      if (URB1) {
+        // [urbanistica1] i due SLARGHI DELLA VIA DELLE MURA, dove arrivano i varchi dal Lungomare: il selciato della striscia sotto le mura diventa
+        // piazzetta (12 × 6 m); alla scala di ronda la fontanella, al Vico Scuro l'edicola su pilastro. Fuori dai lotti: la striscia è riservata
+        [[1048, 75, 1060, 81, 'fontana', 1049.6, 78], [1121, 66, 1133, 72, 'edicola', 1122.0, 69.6]].forEach(([x0, y0, x1, y1, k, px, py]) => {
+          for (let ty = T2i(y0); ty < T2i(y1); ty++) for (let tx = T2i(x0); tx < T2i(x1); tx++) { const i = ty * GW + tx; if (grid[i] === T.COB && roadW[i] === 0 && bIndex[i] < 0) { grid[i] = T.PIAZZA; reserved[i] = 1; } }
+          if (k === 'fontana') PZ('fontana', px, py, 0, { r: 1.2, h: 1.9, lati: 8, cannelle: 2 }, { nome: 'Fontanella delle Mura' });
+          else PZ('edicola_votiva', px, py, 0, { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola delle Mura' }); });
+        // [urbanistica1] LE FIRME BASSE IN FONDO ALLE VISTE: dove un vicolo del borgo (o la Rua, la Via di Mezzo) guarda dritto per 40 m e più e
+        // la vista finisce sul muro di una casa (non sul mare), su quel muro un'edicola votiva col lume, rivolta a chi arriva: con la camera bassa
+        // è quello che entra in quadro dentro il borgo. Solo dove davanti al muro restano almeno 3,6 m liberi (non mangia il vicolo), lontano dalle
+        // porte e dalle altre edicole, al più sei
+        const cand = new Map();
+        CITY.roads.filter(rd => rd.kind === 'vicolo' && rd.pts && rd.pts.length > 1).forEach(rd => { const P = rd.pts;
+          for (let k = 0; k < P.length - 1; k++) { const [ax, ay] = P[k], [bx, by] = P[k + 1], L = dist(ax, ay, bx, by); if (L < .5) continue; const ux = (bx - ax) / L, uy = (by - ay) / L;
+            for (let t = 0; t < L; t += 3) { const x = ax + ux * t, y = ay + uy * t; if (x < 992 || x > 1146 || y < 62 || y > 212) continue;
+              for (const s of [1, -1]) { const dx = ux * s, dy = uy * s; let d = 1, hit = null;
+                for (; d < 140; d += .25) { const qx = x + dx * d, qy = y + dy * d, i = Math.floor(qy / TS) * GW + Math.floor(qx / TS); if (grid[i] === T.WATER) break; if (grid[i] === T.BLD) { if (casa(qx, qy)) hit = [qx - dx * .45, qy - dy * .45]; break; } }
+                if (!hit || d < 40 || hit[0] < 930 || hit[1] < 50 || hit[1] > 215) continue; const key = Math.round(hit[0] / 3) + ',' + Math.round(hit[1] / 3), c = cand.get(key) || { x: hit[0], y: hit[1], dx, dy, w: 0 }; c.w += d; cand.set(key, c); } } } });
+        const fatte = PEZZI.filter(p => p.tipo === 'edicola_votiva'); let nF = 0;
+        [...cand.values()].sort((a, b) => b.w - a.w).forEach(c => { if (nF >= 6 || fatte.some(p => dist(p.x, p.y, c.x, c.y) < 22) || portaVicina(c.x, c.y, 2.4)) return;
+          // la via che passa davanti al muro: profonda almeno 3,6 m ai due lati dello sbocco (dal muro indietro fino alla casa di fronte)
+          const fondo = o => { const x0 = c.x - c.dy * o, y0 = c.y + c.dx * o; let f = 0; while (f < 6) { const i = Math.floor((y0 - c.dy * f) / TS) * GW + Math.floor((x0 - c.dx * f) / TS); if (grid[i] === T.BLD || grid[i] === T.WATER) break; f += .2; } return f; };
+          if (Math.min(fondo(-2.6), fondo(2.6)) < 3.4) return;
+          fatte.push(PZ('edicola_votiva', c.x, c.y, Math.atan2(-c.dx, -c.dy), { h: 2.1, lume: true, tettuccio: true }, { nome: 'Edicola in fondo alla via', fondoVista: true })); nF++; });
+      }
     }
     // [pianta] IL MARCIAPIEDE CONTINUO: lungo le vie di città la fascia del marciapiede (da 0,3 a 1,9 m oltre il ciglio) è marciapiede anche
     // dove la massicciata della ferrovia, la banchina o un ritaglio di selciato l'avevano preso (il Lungomare di Tramontana). Non sull'acqua:
@@ -3788,6 +3844,13 @@ var World = (function () {
       // ogni pedata) e sotto il ripiano d'arrivo; dove il terreno era già più basso resta com'è (la massa della scala scende fino a q)
       PEZZI.forEach(p => { if (p.tipo !== 'scalinata' || p.q === undefined) return; const o = p.opz, H = o.dislivello || 8, n = Math.max(1, Math.ceil(H / .17)), pd = o.pedata || .36, nf = Math.max(1, (o.pianerottoli || 0) + 1), Xs = n * pd + (nf - 1) * (1.6 - pd), w = o.w || 4;
         eachVL(p, -2, Xs + 3.3, -w / 2 - 2.4, w / 2 + 2.4, (i, j, lx) => { const e = p.q + (lx >= Xs ? H : Math.max(H / n, H * lx / Xs)) - .04; if (vh[j * VW + i] > e) setV(i, j, e); }); });   // oltre l'arrivo una fila di vertici in più: la via riprende a salire dopo il ripiano
+      // [urbanistica1] 7c) i sottopassi a volta: il piano dei basoli del pezzo è il piano di calpestio. Prima la volta posava sul punto più basso
+      // dell'impronta e dove il vicolo sale sotto la casa (il Vico del Glacis: 0,4-1,3 m) l'altezza libera scendeva a 1,9-2,8 m invece di 3,2.
+      // Ora: la quota mediana del suolo lungo l'asse del passaggio, e sotto la volta il suolo in piano a quella quota (fuori si raccorda da sé)
+      if (URB1) PEZZI.forEach(p => { if (p.tipo !== 'arco_sottopasso' || p.q !== undefined) return; const w = p.opz.w || 3, lc = (w + 4.4) / 2, hs = [];
+        for (let m = -6; m <= 6; m += 1) hs.push(vAt(...pzW(p, lc, m))); hs.sort((a, b) => a - b); const q = hs[hs.length >> 1];
+        const tt = new Set(); eachVL(p, lc - w / 2 - .6, lc + w / 2 + .6, -6.6, 6.6, (i, j) => { setV(i, j, q); for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) if (i + a >= 0 && j + b >= 0 && i + a < GW && j + b < GH) tt.add((j + b) * GW + i + a); });
+        tt.forEach(t => { const k = ((t / GW) | 0) * VW + t % GW; elev[t] = (vh[k] + vh[k + 1] + vh[k + VW] + vh[k + VW + 1]) / 4; }); p.q = q; });
       // 8) la quota di posa degli altri: il punto più basso dell'impronta (niente pezzi sospesi; dove il terreno sale, il pezzo ci entra)
       const QR = { campanile: [0, 4.4, -2.2, 2.2], facciata_chiesa: [0, 10, .4, 1.6], torre_littoria: [0, 7, -3.5, 3.5], tettoia_mercato: [8, 20, -6, 6], edicola_votiva: [-.4, .4, -.3, .3], pozzo: [-1, 1, -1, 1], fontana: [-2, 2, -2, 2],
         arco_sottopasso: [3, 4.4, -4.5, 4.5], arco_contrasto: [1.7, 2.7, -.4, .4], porta_terra: [5.6, 8.6, -3, 6], muro_garante: [0, 24, -.5, .5], palo_riflettori: [-.4, .4, -.4, .4], caserma: [0, 0, -3.5, 3.5], polveriera: [0, 0, -2.5, 2.5], torrione: [3, 13, -5, 5], passaggio_livello: [9, 13, -1, 1] };
