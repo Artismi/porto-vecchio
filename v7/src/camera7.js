@@ -225,8 +225,10 @@ var Camera7 = (function () {
     // quando la via dritta resta libera K9.spallaTorna s. Il lato si sposta quanto c'è posto accanto al busto (un raggio di lato: nel
     // vicolo largo 1,7 m non si va nel muro), e si cerca ogni K9.cerca s (i raggi costano). Mirando la spalla è quella della mira (a destra)
     const pW = pBase(want), sdM = k.aimSide * ka;
-    const posto = c => { if (!q.cast) return k.spalla; const h = q.cast({ x: q.px, y: py0, z: q.py }, { x: rx * c, y: 0, z: rz * c }, k.spalla + k.r, k.r * .6);   // m liberi di lato (c = ±1)
-      return h === null || h === undefined ? k.spalla : clamp(h - k.r * .4 - .05, 0, k.spalla); };
+    // m liberi di lato (c = ±1): accanto al busto e 1 m avanti e indietro lungo la vista (allo sbocco di un vicolo di traverso il raggio di
+    // lato dal busto è libero, ma un passo dopo l'origine spostata sta nello spigolo: Vico Lungo all'incrocio col Vico della Corte)
+    const posto1 = (c, a) => { const h = q.cast({ x: q.px + fx * a, y: py0, z: q.py + fz * a }, { x: rx * c, y: 0, z: rz * c }, k.spalla + k.r, k.r * .6); return h === null || h === undefined ? k.spalla : clamp(h - k.r * .4 - .05, 0, k.spalla); };
+    const posto = c => { if (!q.cast) return k.spalla; let m = posto1(c, 0); if (m >= .3) m = Math.min(m, posto1(c, 1), posto1(c, -1)); return m; };
     let latoW = S.latoW; S.cercaT = (S.cercaT || 0) + dt; S.latoH = (S.latoH || 0) + dt;
     if (q.cast && ka < .5 && (snap || S.cercaT >= k.cerca) && (snap || S.latoH >= k.spallaMin || (latoW !== 0 && posto(latoW) < .3))) { S.cercaT = 0; const f0 = prova(0, pW, want);
       if (f0 >= .92) { if (latoW !== 0) { S.latoT += k.cerca; if (S.latoT > k.spallaTorna) { latoW = 0; S.latoT = 0; } } else S.latoT = 0; }
@@ -236,7 +238,7 @@ var Camera7 = (function () {
     else if (ka >= .5) latoW = 0;
     if (latoW !== S.latoW) S.latoH = 0; S.latoW = latoW;
     let lato = snap ? (S.lato.x = latoW * (S.latoM || 0), S.lato.v = 0, S.lato.x) : molla(S.lato, latoW * (S.latoM || 0), k.spallaT, dt);
-    if (Math.abs(lato) > .05) { const m = posto(Math.sign(lato)); if (m < Math.abs(lato)) { lato = S.lato.x = Math.sign(lato) * m; S.lato.v = 0; S.latoM = Math.min(S.latoM || 0, m); } }   // il vicolo si stringe: mai nel muro
+    if (Math.abs(lato) > .05) { const m = posto1(Math.sign(lato), 0); if (m < Math.abs(lato)) { lato = S.lato.x = Math.sign(lato) * m; S.lato.v = 0; S.latoM = Math.min(S.latoM || 0, m); } }   // il vicolo si stringe: mai nel muro
     const sd = lato * (1 - ka) + sdM;
     // 6c. la salita, l'ultima risorsa: solo se il braccio, così, scenderebbe sotto K9.liftSotto m (cercata ogni K9.cerca s)
     let lw = 0; const fS = q.cast ? prova(sd, pW, want) : 1;
@@ -245,7 +247,9 @@ var Camera7 = (function () {
     const lift = snap ? (S.lift.x = S.liftW, S.lift.v = 0, S.liftW) : molla(S.lift, S.liftW, k.liftT, dt);
     const pitchA = a => Math.min(k.liftCap, pBase(a) + Math.max(0, lift));
     // 6d. il braccio: il raggio nella direzione dove la camera sarà davvero; si accorcia svelto, torna fuori piano (come camera7)
-    const f6 = prova(sd, pitchA(S.arm.x), want); S.colpo = f6; S.want9 = want;
+    let f6 = prova(sd, pitchA(S.arm.x), want);
+    if (f6 < .5 && S.latoW !== 0 && ka < .5) { const f0 = prova(0, pitchA(S.arm.x), want); if (f0 > f6 + .1) { S.latoW = 0; S.latoM = 0; S.latoH = 0; } }   // la spalla chiusa: si torna in mezzo subito (la molla laterale)
+    S.colpo = f6; S.want9 = want;
     const armT = clamp(want * f6, k.armMin, want); S.armT = armT;
     if (snap) { S.arm.x = armT; S.arm.v = 0; }
     else if (armT < S.arm.x) { const e = 1 - Math.exp(-dt * 3 / k.armIn); S.arm.x += (armT - S.arm.x) * e; S.arm.v = 0; if (S.arm.x > armT + k.armSlip) S.arm.x = armT + k.armSlip; }

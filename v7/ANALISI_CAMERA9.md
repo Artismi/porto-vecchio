@@ -26,9 +26,9 @@ fotogrammi con `K.lifts` in azione, «corto» quelli con la rampa di `K.close` (
 <!-- TABELLA_OGGI -->
 | percorso | camera | vista p50 / p90 / max | braccio m p50 / p10 / min | salita | corto | vista > 40° | orizzonte nel quadro | sfondo (terzo alto) | piedi sullo schermo (dall'alto) | salto della vista max (per fotogramma da 0,1 s) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Caruggio dei Pescatori (1,7 m) | oggi | 34° / 50° / 50° | 10.0 / 9.0 / 3.2 | 31% | 6% | 30% | 0% | 0% (0%) | 0.71 | 16.0° |
 | Vico Lungo (scalini al mare) | oggi | 34° / 44° / 50° | 10.0 / 9.3 / 1.5 | 23% | 5% | 11% | 0% | 0% (0%) | 0.71 | 13.1° |
 | Vicolo dei Lanternini → piazza | oggi | 34° / 50° / 50° | 10.0 / 2.3 / 1.6 | 29% | 26% | 42% | 0% | 0% (0%) | 0.71 | 16.0° |
+| Caruggio dei Pescatori (1,7 m) | oggi | 34° / 50° / 50° | 10.0 / 9.0 / 3.2 | 31% | 6% | 30% | 0% | 0% (0%) | 0.71 | 16.0° |
 <!-- /TABELLA_OGGI -->
 
 I colpevoli, nell'ordine:
@@ -57,10 +57,10 @@ quindi i comandi rispetto alla vista di controlli8 non cambiano).
 | pendenza della vista | 34° (la vista guarda il busto) | **~15°**: la vista guarda più su del braccio, il busto a `K9.compY` = 60% dello schermo dall'alto |
 | camera sopra la strada | 6,7 m | **3,7 m** |
 | orizzonte nel quadro (16:9) | mai (bordo alto 11° sotto) | **al 22% dall'alto**, anche camminando e correndo |
-| personaggio | busto al 50%, piedi 61% | busto 60%, piedi 75%; alto il 23% dello schermo (oggi 12%) |
+| personaggio | busto al 50%, piedi 61% | busto 60%, piedi 75%; alto il 23% dello schermo (oggi 17%) |
 | campo verticale | 46° | **50°**, fino a **58°** col braccio corto (`K9.vfovCorto`) |
 | sguardo avanti | 1,5 m avanti lungo la marcia (la camera avanzava con lui) | solo di lato (`K8.aheadLat`): in avanti la camera bassa ha già la via nella metà alta; il braccio che avanzava col punto guardato abbassava il personaggio al 72% e chiudeva l'orizzonte |
-| vicolo chiuso dietro | PRIMA sale (fino a +16°), poi accorcia | PRIMA **la spalla** (di lato fino a 0,8 m, quanto posto c'è accanto al busto), POI **il braccio corto** col campo che si allarga, la salita **solo se il braccio scenderebbe sotto 3 m** (+6° o +12°) |
+| vicolo chiuso dietro | PRIMA sale (fino a +16°), poi accorcia | PRIMA **la spalla** (di lato fino a 0,8 m, quanto posto c'è accanto al busto e un metro avanti e indietro; solo se a braccio pieno è libera), POI **il braccio corto** col campo che si allarga, la salita **solo se il braccio scenderebbe sotto 3 m** (+6° o +12°) |
 | braccio corto | sale a 50° a 3,5 m | sale a 30° a 2,2 m (rampa liscia), busto al 45% (i piedi nel quadro) |
 | la più ripida | 50° (+ la salita) | **34°** (`K9.liftCap`: mai oltre la camera7 a braccio pieno) |
 | scale in discesa | il raggio sbatte sui gradini, braccio corto, sale | la pendenza sale col suolo dietro (`K9.terra` 1,5 m sopra il suolo sotto la camera; molla 0,25 s in salita, 0,9 s in discesa: niente tuffi in cima) |
@@ -85,7 +85,15 @@ spalla «un poco meglio» della via dritta ma non libera: mentre la camera ci an
 restava a 1,6 m per un secondo (la vista a 33°, poi giù a 15°: 18° in un fotogramma). Ora la spalla si prende solo se **a braccio pieno
 è libera** (altrimenti si resta in mezzo e si accorcia il braccio), la molla laterale è più svelta (0,3 s) e la salita si cerca solo ogni
 0,15 s. La tavola della sez. 3.1 è stata fotografata con la seconda versione (la differenza conta solo nei quattro posti con la spalla:
-piazza San Rocco, Corte dei Pescatori, Androne, Glacis); i percorsi della sez. 3 sono della versione finale.
+piazza San Rocco, Corte dei Pescatori, Androne, Glacis).
+
+La terza (`misura_c9_v3.json` nello scratchpad) faceva ancora lo stesso in Vico Lungo: lì la spalla era pulita quando è stata presa, ma
+allo sbocco del Vico della Corte di traverso il raggio di lato dal busto era libero (la bocca del vicolo) e un passo dopo l'origine
+spostata stava nello spigolo. Ora il posto di lato si misura accanto al busto **e un metro avanti e indietro** (alle bocche di traverso
+non si prende la spalla), e se il braccio dalla spalla tocca a meno di metà si torna in mezzo subito (prova `3c`). I due percorsi nei
+vicoli della tabella della sez. 3 (Caruggio dei Pescatori, Vico Lungo) sono della versione finale; lo sbocco dei Lanternini, la piazza, il
+lungomare e la scala non sono stati rifatti con la versione finale (la macchina condivisa uccideva le pagine di prova: la piazza e il
+lungomare sono nella tavola e nella scansione).
 
 ## 3. Le misure: oggi e camera9
 
@@ -96,11 +104,11 @@ Gli stessi percorsi, la stessa pagina (`Camera7.C9.on` cambiato dal vivo), 10 fo
 <!-- TABELLA_TUTTO -->
 | percorso | camera | vista p50 / p90 / max | braccio m p50 / p10 / min | salita | corto | vista > 40° | orizzonte nel quadro | sfondo (terzo alto) | piedi sullo schermo (dall'alto) | salto della vista max (per fotogramma da 0,1 s) |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Caruggio dei Pescatori (1,7 m) | oggi | 34° / 50° / 50° | 10.0 / 9.0 / 3.2 | 31% | 6% | 30% | 0% | 0% (0%) | 0.71 | 16.0° |
-| Caruggio dei Pescatori (1,7 m) | camera9 | 15° / 30° / 30° | 7.5 / 2.9 / 2.9 | 0% | 24% | 0% | 87% | 2% (6%) | 0.75 | 7.9° |
 | Vico Lungo (scalini al mare) | oggi | 34° / 44° / 50° | 10.0 / 9.3 / 1.5 | 23% | 5% | 11% | 0% | 0% (0%) | 0.71 | 13.1° |
-| Vico Lungo (scalini al mare) | camera9 | 15° / 15° / 33° | 7.5 / 5.3 / 1.6 | 0% | 11% | 0% | 91% | 4% (10%) | 0.75 | 18.5° |
+| Vico Lungo (scalini al mare) | camera9 | 15° / 15° / 33° | 7.5 / 7.0 / 1.6 | 0% | 9% | 0% | 94% | 4% (12%) | 0.75 | 18.5° |
 | Vicolo dei Lanternini → piazza | oggi | 34° / 50° / 50° | 10.0 / 2.3 / 1.6 | 29% | 26% | 42% | 0% | 0% (0%) | 0.71 | 16.0° |
+| Caruggio dei Pescatori (1,7 m) | oggi | 34° / 50° / 50° | 10.0 / 9.0 / 3.2 | 31% | 6% | 30% | 0% | 0% (0%) | 0.71 | 16.0° |
+| Caruggio dei Pescatori (1,7 m) | camera9 | 15° / 33° / 33° | 7.5 / 2.4 / 2.4 | 0% | 24% | 0% | 87% | 2% (6%) | 0.75 | 8.9° |
 <!-- /TABELLA_TUTTO -->
 
 <!-- ISTOGRAMMA -->
@@ -108,9 +116,16 @@ Gli stessi percorsi, la stessa pagina (`Camera7.C9.on` cambiato dal vivo), 10 fo
 
 | | 0-10 | 10-15 | 15-20 | 20-25 | 25-30 | 30-34.5 | 34.5-40 | 40-45 | 45-50 | 50-90 | fotogrammi |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| oggi | 0 | 0 | 0 | 0 | 0 | 63 | 6 | 4 | 7 | 20 | 471 |
-| camera9 | 0 | 88 | 1 | 0 | 1 | 10 | 0 | 0 | 0 | 0 | 285 |
+| oggi | 0 | 0 | 0 | 0 | 0 | 70 | 7 | 6 | 7 | 11 | 285 |
+| camera9 | 0 | 89 | 1 | 0 | 0 | 10 | 0 | 0 | 0 | 0 | 285 |
 <!-- /ISTOGRAMMA -->
+
+Come si legge: oggi il 30% dei fotogrammi nei due vicoli sta oltre i 34° (l'11% a 50°) e l'orizzonte non c'è mai; con camera9 l'89% sta a
+~15° con l'orizzonte nel quadro (87-94% dei fotogrammi), il 10% fra 30° e 34° (i momenti col braccio corto: la bocca del Caruggio dei
+Pescatori, dove si parte, e lo sbocco del Vico della Corte su Vico Lungo, (1414,8, 362,4), dove il braccio va a 1,6 m per un secondo:
+la camera non può restare nello spigolo; il salto da 15° a 33° in un fotogramma è quello, e torna giù in 0,4 s). Il personaggio sta coi
+piedi al 75% dello schermo dall'alto (oggi 71%), ed è più grande di un terzo (23% dell'altezza dello schermo contro 17%). «Sfondo» resta basso nei vicoli (2-4% del quadro oltre 60 m):
+lì il fondale è la fine della via, a 20-50 m; nel terzo alto il 6-13% (oggi 0).
 
 ### 3.1 La tavola: gli stessi posti, lo stesso punto del personaggio
 
@@ -140,7 +155,7 @@ ogni foto in `tavola9.json`.
 Cosa si vede: in Vico Lungo il mare in fondo alla via; sul lungomare il faro, il molo e il mare; dalla cima della Scala del Mercato il
 porto e la città dietro; nelle fessure dell'urbanista la via in prospettiva centrale con la porta in fondo invece della nuca del
 personaggio; al sottopasso del Glacis la volta e la via oltre invece del muro. Il personaggio è più grande (23% dell'altezza dello
-schermo contro 12%) e sta nel terzo di mezzo-basso.
+schermo contro 17%) e sta nel terzo di mezzo-basso.
 
 ### 3.2 La striscia nel vicolo stretto
 
@@ -273,7 +288,7 @@ fra la camera e il personaggio.
 | | vista p10 / p50 / p90 | braccio p10 / p50 | braccio sotto 3 m | vista oltre 30° | salita | terzo alto senza sfondo | sfondo nel terzo alto (mediana) | busto coperto |
 |---|---|---|---|---|---|---|---|---|
 | oggi | 34° / 34° / 34° | 10 / 10 m | 0.5% | 100% | 2.1% | 68.2% | 0% | 0% |
-| camera9 | 14.7° / 14.7° / 14.7° | 7.5 / 7.5 m | 0.7% | 1.2% | 0% | 16.9% | 42% | 0.2% |
+| camera9 | 14.7° / 14.7° / 14.7° | 7.5 / 7.5 m | 0.7% | 1.2% | 0% | 16.8% | 42% | 0.2% |
 
 **Le vie peggiori per camera9** (il voto medio: 0-8, sotto 3 un quadro brutto; braccio medio):
 
@@ -328,5 +343,7 @@ fra la camera e il personaggio.
   che va e viene), la salita come ultima risorsa, la scala in discesa (niente tuffi), lo yaw uguale a camera7, la spalla che non sfarfalla,
   la mira.
 - Nel gioco vero: `index.html?camera9`; le sonde in `_immagini/camera9/sonde/` (`misura9.js` i percorsi e il registro, `analizza9.py` le
-  distribuzioni, `fogli9.js` le strisce, `tavola9.js tavola|scansione` la tavola e i posti stretti, `sonda_disegni9.js` i disegni,
-  `sonda_cpu9.js` il profilo; usano `controlli8/sonde/lib.js`; `riprova.sh` le rilancia se la pagina muore).
+  distribuzioni, `fogli9.js` le strisce, `tavola9.js tavola|stretti` la tavola e le foto dei posti stretti, `scansione9_node.js` la
+  scansione di tutti i vicoli in Node, `sonda_disegni9.js` i disegni, `sonda_cpu9.js` il profilo, `riempi9.py` le tabelle di questo
+  file; usano `controlli8/sonde/lib.js`; `riprova.sh` le rilancia dal cancello comune dei browser se la pagina muore).
+- La prova di fumo (`fumo6.js`, la camera di difetto) dà `errori []`; nelle pagine di prova con `Camera7.C9.on` nessun errore della pagina.

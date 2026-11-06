@@ -31,6 +31,10 @@ ok(C.C9 && C.C9.on === false && typeof C.passo9 === 'function', 'senza ?camera9 
 // 3b. il vicolo stretto: il muro a 0,5 m accanto al busto → la spalla si sposta solo quanto c'è posto (mai col busto nel muro)
 { const c3 = (o, d, L) => (d.y === 0 ? (d.z > 0 ? .5 : .4) : o.z > .2 ? null : 1.2), { r, S } = corri(2, { cast: c3 }, 1 / 30);
   ok(S.latoW === 1 && r.side9 > .2 && r.side9 <= .5 - .14 - .05 + 1e-6, `il muro a 0,5 m: la spalla va di ${r.side9.toFixed(2)} m (al più 0,31), il braccio ${r.arm.toFixed(1)} m`); }
+// 3c. lo sbocco di un vicolo di traverso: di lato dal busto c'è aria, ma 1 m avanti e indietro c'è lo spigolo → niente spalla (in Vico Lungo,
+// all'incrocio col Vico della Corte, la spalla presa lì metteva l'origine del raggio nello spigolo un passo dopo: braccio a 1,6 m)
+{ const c4 = (o, d, L) => (d.y === 0 ? (Math.abs(o.x) > .5 ? .3 : null) : o.z > .2 ? null : 3), { r, S } = corri(2, { cast: c4 }, 1 / 30);
+  ok(S.latoW === 0 && Math.abs(r.side9) < .05, `lo sbocco di traverso: niente spalla (lato ${r.side9.toFixed(2)} m), il braccio corto ${r.arm.toFixed(1)} m in mezzo`); }
 // 4. chiuso da tutte le parti a 2 m: il braccio corto, la pendenza al più 30° (+ la salita se serve: mai oltre 40°), il campo si allarga
 { const { r, tr } = corri(2, { cast: () => 2 }, 1 / 30); let salto = 0; for (let i = 1; i < tr.length; i++) salto = Math.max(salto, Math.abs(tr[i][1].pitch - tr[i - 1][1].pitch));
   ok(r.arm < 2.3 && r.pitch / D <= 40 + 1e-6 && r.fov > 55, `chiuso a 2 m: il braccio ${r.arm.toFixed(1)} m, la pendenza ${(r.pitch / D).toFixed(0)}° (camera7 50°), il campo ${r.fov.toFixed(0)}°`);

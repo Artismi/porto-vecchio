@@ -43,9 +43,10 @@ tot = {}
 for m in modi:
     f = os.path.join(OUT, f'misura_{m}.json')
     if not os.path.exists(f): continue
-    M = json.load(open(f)); V = [s['vista'] for d in M.values() for s in d['log'] if s.get('c7')]; P = [s['pitch'] for d in M.values() for s in d['log'] if s.get('c7')]
+    M = json.load(open(f)); com = [n for n in M if all(n in json.load(open(os.path.join(OUT, f'misura_{q}.json'))) for q in modi if os.path.exists(os.path.join(OUT, f'misura_{q}.json')))]   # solo i percorsi fatti con tutte le camere
+    V = [s['vista'] for n in com for s in M[n]['log'] if s.get('c7')]; P = [s['pitch'] for n in com for s in M[n]['log'] if s.get('c7')]
     bins = [0, 10, 15, 20, 25, 30, 34.5, 40, 45, 50, 90]
-    tot[m] = {'n': len(V), 'vista': [q(V, .1), q(V, .5), q(V, .9)], 'braccioPend': [q(P, .1), q(P, .5), q(P, .9)],
+    tot[m] = {'percorsi': com, 'n': len(V), 'vista': [q(V, .1), q(V, .5), q(V, .9)], 'braccioPend': [q(P, .1), q(P, .5), q(P, .9)],
               'istogrammaVista': {f'{bins[i]}-{bins[i+1]}': round(100 * sum(1 for v in V if bins[i] <= v < bins[i + 1]) / len(V), 1) for i in range(len(bins) - 1)}}
 json.dump(tot, open(os.path.join(OUT, 'distribuzioni_tutto.json'), 'w'), indent=1)
 print('| percorso | camera | vista p10/p50/p90/max | braccio (m) p10/p50/min | salita % | corto % | orizzonte nel quadro % | sfondo p50 (alto) | personaggio Y p50 | salto vista max °/fot |')
