@@ -42,20 +42,21 @@ def tavola(titolo, righe, out, W=800):
     S.save(out, quality=88)
 
 TAVOLE = [   # una tavola per superficie, la spiaggia per prima: (file, titolo, [(scena, etichetta)])
-    ('1_spiaggia', 'La spiaggia e la battigia: prima | dopo (?stile=E)', [('spiaggia', 'camera del gioco, ore 11'), ('spiaggia_vicino', 'da vicino'), ('spiaggia_sera', 'ora d\'oro')]),
-    ('2_mare', 'Il mare e il porto: prima | dopo', [('mare_porto', 'il porto, ore 11'), ('spiaggia', 'il mare aperto e la battigia')]),
-    ('3_lastrico', 'Il lastrico della piazza e i basoli del vicolo: prima | dopo', [('piazza', 'piazza, ore 13'), ('piazza_vicino', 'da vicino'), ('vicolo', 'vicolo, ore 11')]),
-    ('4_asfalto', 'L\'asfalto e le strisce: prima | dopo', [('asfalto', 'camera del gioco, ore 16'), ('asfalto_vicino', 'da vicino')]),
-    ('5_marciapiede', 'Il marciapiede e il cordolo: prima | dopo', [('marciapiede', 'da vicino, ore 11'), ('asfalto', 'camera del gioco')]),
-    ('6_terra_prato', 'La terra, la ghiaia e il prato: prima | dopo', [('terra', 'terra e ghiaia, ore 11'), ('prato', 'prato e campi, ore 11')]),
+    ('1_spiaggia', 'La spiaggia e la battigia: prima | dopo (?stile=E)', [('spiaggia', 'camera del gioco, ore 11'), ('spiaggia', 'ritaglio ×2 della stessa', (300, 60, 640, 251)), ('spiaggia_sera', 'ora d\'oro'), ('spiaggia_sera', 'ritaglio ×2', (240, 0, 580, 191)), ('spiaggia_vicino', 'vista alta')]),
+    ('2_mare', 'Il mare e il porto: prima | dopo', [('mare_porto', 'il porto, ore 11'), ('mare_porto', 'ritaglio ×2', (300, 100, 640, 291)), ('asfalto_vicino', 'il mare lungo la strada, vista alta')]),
+    ('3_lastrico', 'Il lastrico della piazza e i basoli del vicolo: prima | dopo', [('piazza', 'piazza, ore 13'), ('piazza', 'ritaglio ×2', (160, 150, 500, 341)), ('piazza_vicino', 'vista alta'), ('vicolo', 'vicolo, ore 11'), ('vicolo', 'ritaglio ×2', (150, 120, 490, 311))]),
+    ('4_asfalto', 'L\'asfalto e le strisce: prima | dopo', [('asfalto', 'camera del gioco, ore 16'), ('asfalto', 'ritaglio ×2', (240, 120, 580, 311)), ('asfalto_vicino', 'vista alta')]),
+    ('5_marciapiede', 'Il marciapiede e il cordolo: prima | dopo', [('marciapiede', 'vista alta, ore 11'), ('marciapiede', 'ritaglio ×2', (120, 60, 460, 251)), ('asfalto', 'camera del gioco')]),
+    ('6_terra_prato', 'La terra, la ghiaia e il prato: prima | dopo', [('terra', 'lo sterrato, ore 11'), ('terra', 'ritaglio ×2', (150, 150, 490, 341)), ('prato', 'il prato, ore 11'), ('prato', 'ritaglio ×2', (150, 150, 490, 341))]),
 ]
 def tavole(out):
     for f, tit, sc in TAVOLE:
         righe = []
-        for n, lab in sc:
+        for q in sc:
+            n, lab = q[0], q[1]; cr = (lambda im: im.crop(q[2]).resize((640, 360), Image.LANCZOS)) if len(q) > 2 else (lambda im: im)
             if not os.path.exists(os.path.join(OUT, f'{n}_E55_1.png')): continue
-            righe.append((lab, [('prima (oggi)', Image.open(os.path.join(FOTO, f'{n}_0.png')).convert('RGB')), ('dopo (?stile=E, la rifinitura)', Image.open(os.path.join(FOTO, f'{n}_1.png')).convert('RGB')),
-                                ('prima, col passo E 55 (prototipo3)', Image.open(os.path.join(OUT, f'{n}_E55_0.png'))), ('dopo, col passo E 55 (prototipo3)', Image.open(os.path.join(OUT, f'{n}_E55_1.png')))]))
+            righe.append((lab, [('prima (oggi)', cr(Image.open(os.path.join(FOTO, f'{n}_0.png')).convert('RGB'))), ('dopo (?stile=E, la rifinitura)', cr(Image.open(os.path.join(FOTO, f'{n}_1.png')).convert('RGB'))),
+                                ('prima, col passo E 55 (prototipo3)', cr(Image.open(os.path.join(OUT, f'{n}_E55_0.png')))), ('dopo, col passo E 55 (prototipo3)', cr(Image.open(os.path.join(OUT, f'{n}_E55_1.png'))))]))
         if righe: tavola(tit, righe, os.path.join(out, f + '.jpg'), W=640); print('tavola', f)
 
 if __name__ == '__main__':
@@ -65,4 +66,4 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.join(FOTO, n + '_dep.png')): continue
         for k in (0, 1): e55(n, k).save(os.path.join(OUT, f'{n}_E55_{k}.png'))
         print(n)
-    tavole(sys.argv[5] if len(sys.argv) > 5 else OUT)
+    T = sys.argv[5] if len(sys.argv) > 5 else OUT; os.makedirs(T, exist_ok=True); tavole(T)

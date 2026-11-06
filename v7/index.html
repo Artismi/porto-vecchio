@@ -23614,7 +23614,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = 'e64a7a03347d487f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '6f1407b6655bbd2e';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -70905,7 +70905,8 @@ var Riva = (function () {
       pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.8, .78, .72), sw * wet * aaM * (1. - vRS9.y) * .28);
       if (rsK > 0.) {   // [rifinitura suolo] lo stile E: la sabbia disegnata (rifinitura_suolo.js: increspature, il bordo del bagnato, la linea
         // dell'alta marea, ciottoli e conchiglie radi, le orme) al posto della grana e delle ciocche; la roccia e i ciottoli restano
-        float bE = 2.8 + (rn9(p * .09) - .5) * 1.6;   // la linea dell'alta marea: poco oltre il bagnato (le spiagge della città sono strette) vec3 sE = rsSabbia(sab, p, mpp, wet, d - bE);
+        float bE = 2.8 + (rn9(p * .09) - .5) * 1.6; /* la linea dell'alta marea: poco oltre il bagnato (le spiagge della città sono strette) */
+        vec3 sE = rsSabbia(sab, p, mpp, wet, d - bE);
         sE = sE * (1. - rsInk * .9) + rsLuce;
         float kS = rsK * (1. - clamp(vRS9.y, 0., 1.)) * (1. - clamp(vRS9.w, 0., 1.) * aaL);
         pr = mix(pr, sE, kS); }
@@ -96187,7 +96188,7 @@ var RifSuolo = (function () {
       float seg = smoothstep(.26, .4, rsN(vec2(cid * 3.7, dot(p, wp) * .6 + cid * 1.3)));
       float v1 = smoothstep(6., 10., sp), v2 = smoothstep(6., 10., sp * 2.) * (1. - v1), dry1 = (1. - wb) * seg;
       float cr = max(rsRiga(dpx, 1.3) * v1, rsRiga(dpx2, 1.3) * v2) * dry1, lee = (1. - smoothstep(1., 2.6, fr / fph)) * step(.8, fr / fph) * v1 * dry1;
-      rsInk += cr * .32; rsLuce += lee * .08;
+      rsInk += cr * .4; rsLuce += lee * .08;
       // la linea dell'alta marea: dove la sabbia smette di essere bagnata (poco oltre il bordo), la posidonia secca a trattini
       float wl = rsIso(dmar + (rsN(p * 2.1) - .5) * .12, 2.2 + 1.6 * rsN(p * 3.3 + 5.)) * smoothstep(.38, .5, rsN(p * .9 + 3.)) * smoothstep(4., 7., .3 / mpp);
       c = mix(c, vec3(.17, .13, .09), wl * .85);
@@ -96244,8 +96245,9 @@ var RifSuolo = (function () {
           if (rsK > 0.) {   // le creste disegnate: due treni dell'onda (4,3 m e 8 m), la riga sulla cresta piegata appena, a tratti, misurata in pixel
             for (int t = 0; t < 2; t++) { vec2 dd = t == 0 ? normalize(vec2(.96, -.28)) : normalize(vec2(-.35, .94)); float ff = t == 0 ? 1.45 : .77, ss = t == 0 ? 1.9 : 1.35;
               float x = (dot(dd, q) * ff + time * ss - 1.5708) / 6.2832 + (rsN(q * .12 + float(t) * 9.) - .5) * .35, fx = max(fwidth(x), 1e-5), dx = abs(fract(x + .5) - .5) / fx;
-              float ci = floor(x + .5), al = dot(q, vec2(-dd.y, dd.x)), pz = smoothstep(.55, .66, rsN(vec2(al * (t == 0 ? .55 : .35) + ci * 5.1, ci * 2.3 + time * .03)));
-              foam += rsRiga(dx, 1.6) * pz * smoothstep(8., 14., 1. / fx) * smoothstep(1.2, 3., dep) * (.5 + .5 * wind) * (t == 0 ? .75 : .55) * rsK; } }
+              float ci = floor(x + .5), al = dot(q, vec2(-dd.y, dd.x)) * (t == 0 ? 1.5 : 1.) + ci * 7.3, cel = floor(al / 1.6), fa = fract(al / 1.6), hs = rsH(vec2(cel, ci + float(t) * 31.));
+              float tr = smoothstep(.0, .25, fa) * (1. - smoothstep(.55, .8, fa)) * step(hs, .5);   /* il tratto: lungo mezzo passo, rastremato ai capi, uno su due */
+              foam += rsRiga(dx, .6 + 1.4 * tr) * tr * smoothstep(8., 14., 1. / fx) * smoothstep(1.2, 3., dep) * (.25 + .75 * wind) * (1. - mudK * .7) * (t == 0 ? .75 : .55) * rsK; } }
           `);
     // la battigia: il pizzo dell'onda come un nastro netto (bordo di un pixel) e, sulla sabbia, il filo scuro del bagnato appena lasciato
     rep('float pizzo = (1. - smoothstep(0., .035, abs(dep - lim9)))', 'float rsFd = max(fwidth(dep), 1e-4), rsPz = rsRiga(abs(dep - lim9) / rsFd, 3.2) * smoothstep(.4, .55, n2(q * 1.7 + time * .15) * .6 + n2(q * 4.3) * .4);\n            float pizzo = (1. - rsK) * (1. - smoothstep(0., .035, abs(dep - lim9)))');

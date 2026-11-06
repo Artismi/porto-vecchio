@@ -292,7 +292,8 @@ var Riva = (function () {
       pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.8, .78, .72), sw * wet * aaM * (1. - vRS9.y) * .28);
       if (rsK > 0.) {   // [rifinitura suolo] lo stile E: la sabbia disegnata (rifinitura_suolo.js: increspature, il bordo del bagnato, la linea
         // dell'alta marea, ciottoli e conchiglie radi, le orme) al posto della grana e delle ciocche; la roccia e i ciottoli restano
-        float bE = 2.8 + (rn9(p * .09) - .5) * 1.6;   // la linea dell'alta marea: poco oltre il bagnato (le spiagge della città sono strette) vec3 sE = rsSabbia(sab, p, mpp, wet, d - bE);
+        float bE = 2.8 + (rn9(p * .09) - .5) * 1.6; /* la linea dell'alta marea: poco oltre il bagnato (le spiagge della città sono strette) */
+        vec3 sE = rsSabbia(sab, p, mpp, wet, d - bE);
         sE = sE * (1. - rsInk * .9) + rsLuce;
         float kS = rsK * (1. - clamp(vRS9.y, 0., 1.)) * (1. - clamp(vRS9.w, 0., 1.) * aaL);
         pr = mix(pr, sE, kS); }

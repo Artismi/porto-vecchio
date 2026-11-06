@@ -4,7 +4,7 @@
 // La pagina parte con ?stile=E (il codice della rifinitura c'è); per ogni scena lo stesso istante con la manopola dal vivo
 // window.__RIFS.k = 0 (com'era: A, lo stesso shader di oggi) e = 1 (la rifinitura): <nome>_0.png, <nome>_1.png. Con PROF=1 anche la
 // distanza (cm in R*256+G) e la camera (<nome>_dep.png, <nome>.json) per vedere il risultato col prototipo del passo E (prototipo3.py).
-// Con TEMPI=1 misura i millisecondi a fotogramma e le chiamate di disegno con k = 0 e k = 1. Chromium senza testa con SwiftShader.
+// Con TEMPI=1 i millisecondi tra due requestAnimationFrame con k = 0 e k = 1 (in SwiftShader solo indicativi: le chiamate contate sono quelle dell'ultimo disegno). Chromium senza testa con
 const path = require('path'), http = require('http'), fs = require('fs');
 const { chromium } = require(process.env.PW || 'playwright');
 const [outDir, sceneFile, W0, H0] = process.argv.slice(2), CFG = JSON.parse(fs.readFileSync(sceneFile, 'utf8')), root = path.resolve(__dirname, '..');
@@ -25,7 +25,7 @@ const srv = http.createServer((req, res) => { let u = decodeURIComponent(req.url
   await pg.keyboard.press('Enter'); await pg.waitForTimeout(2000);
   await pg.waitForFunction(() => !window.__pv.ui.intro, null, { timeout: 120000 }).catch(() => log('ancora intro'));
   await pg.addStyleTag({ content: '#app > *:not(#cv) { visibility: hidden !important; } body > div:not(#app) { visibility: hidden !important; }' });
-  await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; if (window.PV_ATTESA) window.PV_ATTESA.on = () => true; if (pv.R.gpuTiming) pv.R.gpuTiming(true);
+  await pg.evaluate(() => { const pv = window.__pv, st = pv.st; st.deadline = 1e12; try { pv.R.__models.renderer.debug.checkShaderErrors = true; } catch (e) { }   /* gli errori di compilazione nel registro */ if (window.PV_ATTESA) window.PV_ATTESA.on = () => true; if (pv.R.gpuTiming) pv.R.gpuTiming(true);
     setInterval(() => { const u = pv.ui; u.flash = 0; u.fade = 0; u.desat = false; u.letterbox = false; u.dialog = null; st.over = null; st.player.hp = 100; }, 50); });
   log('caricato', JSON.stringify(await pg.evaluate(() => window.__RIFS ? { on: window.__RIFS.on, k: window.__RIFS.k.value } : null)));
   if (process.env.DUMP) fs.writeFileSync(path.join(outDir, 'dump.json'), JSON.stringify(await pg.evaluate(C => {   // dove stanno le superfici nella cornice (per scegliere le scene)

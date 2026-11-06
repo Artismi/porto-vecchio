@@ -1,14 +1,14 @@
-{ "query": "cittanuova&leggera&memoria&tassellivecchi&stile=E", "scene": [
+{ "query": "cittanuova&leggera&memoria&tassellivecchi&shaderdebug&stile=E", "scene": [
  {"nome": "spiaggia", "x": 1418, "y": 399, "verso": [1418, 420], "zoom": 0.5, "ora": 11},
  {"nome": "spiaggia_vicino", "x": 1418, "y": 399, "verso": [1418, 420], "zoom": 0.3, "ora": 11, "fuoco": [1418.0, 404.25]},
  {"nome": "spiaggia_sera", "x": 1418, "y": 399, "verso": [1440, 405], "zoom": 0.5, "ora": 18.6},
  {"nome": "mare_porto", "x": 1350, "y": 400, "verso": [1350, 420], "zoom": 0.5, "ora": 11},
- {"nome": "piazza", "x": 1383, "y": 303, "verso": [1393, 303], "zoom": 0.5, "ora": 13},
- {"nome": "piazza_vicino", "x": 1383, "y": 303, "verso": [1393, 303], "zoom": 0.3, "ora": 13, "fuoco": [1385.5, 303.0]},
+ {"nome": "piazza", "x": 1337, "y": 355, "verso": [1347, 355], "zoom": 0.5, "ora": 13},
+ {"nome": "piazza_vicino", "x": 1337, "y": 355, "verso": [1347, 355], "zoom": 0.3, "ora": 13, "fuoco": [1340, 355]},
+ {"nome": "vicolo", "x": 1344, "y": 315, "verso": [1342, 326], "zoom": 0.5, "ora": 11},
  {"nome": "asfalto", "x": 1403, "y": 253, "verso": [1430, 253], "zoom": 0.5, "ora": 16},
  {"nome": "asfalto_vicino", "x": 1403, "y": 253, "verso": [1430, 253], "zoom": 0.3, "ora": 16, "fuoco": [1409.75, 253.0]},
  {"nome": "marciapiede", "x": 1397, "y": 261, "verso": [1420, 261], "zoom": 0.3, "ora": 11, "fuoco": [1402.75, 261.0]},
- {"nome": "vicolo", "x": 1344, "y": 315, "verso": [1342, 326], "zoom": 0.5, "ora": 11},
- {"nome": "terra", "x": 1437, "y": 263, "verso": [1460, 263], "zoom": 0.5, "ora": 11},
- {"nome": "prato", "x": 1229, "y": 300, "verso": [1229, 280], "zoom": 0.5, "ora": 11}
+ {"nome": "terra", "x": 880, "y": 377, "verso": [860, 382], "zoom": 0.5, "ora": 11},
+ {"nome": "prato", "x": 1229, "y": 357, "verso": [1229, 343], "zoom": 0.5, "ora": 11}
 ]}
