@@ -11,6 +11,47 @@ Le tavole (catture vere del gioco, il prototipo applicato fuori dal gioco; il be
 - `_immagini/fumetto2/progetto/intero_1080_piazza.png`, `intero_1080_sera.png` — due fotogrammi interi a 1080
 - `bersagli2/*.png|jpg` — tutti i bersagli a 1080; `misure2.json` — alte frequenze contro A, quota della luce più alta
 
+## TERZA VERSIONE — «la via di mezzo» (quella da guardare ora; §0–§10 sotto sono la seconda versione, respinta: «si mischia tutto»)
+
+Il committente sulla seconda: «il nuovo è il peggiore, una via di mezzo tra questi [A e la prima], la direzione presa è pessima, si mischia
+tutto e non si distinguono bene gli elementi». Il criterio adesso è **la separazione degli elementi**. Riferimento eseguibile:
+`_immagini/fumetto2/progetto/prototipo3.py`; tavole: `tavola_via_di_mezzo.jpg` (5 posti × A | 35 | 55 | 75 | E prima),
+`tavola_ore_via_di_mezzo.jpg` (6 momenti a 55), `ritaglio_1a1_55_vicolo.png`, `ritaglio_1a1_55_piazza.png`, `separazione.json`.
+
+**La base è A** (la sua luce, le sfumature, l'ombra di contatto, la profondità): nessuna posterizzazione, nessun liscio. Sopra, **una manopola
+k** (0 = A; .35 / .55 / .75 sulle tavole; 1 = verso il carattere della prima versione):
+
+| pezzo | come (k = forza) |
+|---|---|
+| **tavolozza** | in Oklab la tinta e il croma (a, b) vanno verso l'inchiostro della famiglia più vicino, peso .85·k (solo se croma > .015–.05: i grigi veri restano); i grigi virano verso il piombo/lilla (×.7·k); croma ×(1 + .45·k) solo sulle cose già colorate (croma > .05–.09); **il valore è quello di A**, contrasto ×(1 + .22·k) attorno a .5 |
+| **tratteggio** | righe nel piano della faccia (asse dominante della normale), passo 12 cm, a schermo 6–12 px a 540 righe (ottave), antialiasate, 1,4 px; tetti e lastrico da valore < .70, il resto < .55; l'incrocio sotto .32; scurisce del 22–52% della riga × k nei medi, l'incrocio del 30% × k; mai su persone, mezzi, cielo, oltre 14 m |
+| **inchiostro** | sui salti di profondità (> 3%) e sui cambi di categoria (muro/tetto/suolo/persona) a profondità continua; semispessore (.7 + 1,6·k)·(1 + .6 vicino) px a 540, i cambi di categoria (.7 + .5·k); **le persone col filo sottile** (≤ .6 + .5·k: sono alte 30–60 px, il filo spesso le riempirebbe di nero); campo di distanza antialiasato; niente sul retino della camera |
+| **separazione** | dietro ogni sagoma, per 5 px, la cosa dietro si scurisce di (.42·k + .06) × (.45 + .55 se i due valori sono simili): l'ombra portata del disegnatore; dentro la cosa davanti, 1–2 px di bordo di luce (+18%·k verso il bianco) |
+| **piani per categoria** | tetti ×(1 − .1·k), muri ×(1 + .06·k): tre piani di valore distinti |
+| **il personaggio** | il bollino di carta fino a 2,6·k + 1,3 px fuori dal contorno, sopra l'inchiostro |
+
+**La misura della separazione** (`separazione.json`): il contrasto medio di valore attraverso i bordi delle cose (coppie a ±3 px da un salto di
+profondità o da un cambio di categoria) e dentro le cose (stesse coppie senza bordo), e il rapporto. Sui 5 posti:
+
+| | A | E prima | E seconda | via 35 | via 55 | via 75 |
+|---|---|---|---|---|---|---|
+| contrasto attraverso i bordi | .11–.16 | .24–.35 | .12–.29 | .17–.22 | .18–.22 | .17–.20 |
+| contrasto dentro le cose | .026–.064 | .05–.09 | .019–.056 | .035–.073 | .038–.077 | .042–.080 |
+| rapporto | 2,0–4,8 | 3,7–6,7 | 4,6–14 | 2,8–5,9 | 2,7–5,4 | 2,5–4,7 |
+
+- Attraverso i bordi la via di mezzo stacca le cose **+40–80% più di A** in ogni posto e in ogni momento (6 momenti a 55: .15–.24 contro
+  .11–.13 di A; rapporto 3,1–4,0 contro 2,6–3,9). Dentro le cose sale anche (è il tratteggio), quindi il rapporto sale meno: a 35 e 55
+  sopra A in tutti i posti (+5% … +40%), a 75 pari ad A (il tratteggio più forte mangia il guadagno). Per questo il consiglio è 55, non 75.
+- La seconda versione aveva il rapporto più alto ma per la ragione sbagliata: dentro le cose non c'era più niente (la forma era sparita).
+- **Lettura a colpo d'occhio** (controllata sulle tavole): tetti, muri, suolo, insegne, tende, persone, il personaggio si nominano tutti. Restano
+  deboli le comparse scure in ombra (vicolo, notte): in A sono uguali; la cura vera è nei vestiti (§11).
+
+**Costo nel passo** (Iris Xe): la tavolozza in Oklab ~70 operazioni (8 distanze per famiglia, solo a, b); il tratteggio ~50; l'inchiostro e la
+separazione riusano le 8 letture di profondità di D2 più 8 a 3–5 px (la fascia dietro la sagoma): **+8 letture di profondità**, ~60 operazioni;
+il bollino dalle letture della categoria. Totale **~200 operazioni, +8 letture, ~0,2–0,25 ms**; senza `?stile` niente.
+
+Consiglio di partenza: **55**; la manopola in gioco come `__STILE.V.E.k`.
+
 ## 0. La qualità prima di tutto (le regole che vincono su tutto il resto)
 
 1. **Niente sotto i 3 px che sia casuale.** Fuori: la fibra della carta, l'inchiostro che non prende, il fuori registro, lo spray a puntini,
@@ -246,3 +287,24 @@ cd ../progetto && python3 tavole2.py                        # le tavole, i ritag
 python3 prototipo2.py posto_piazza 18.6 /tmp/x.png          # un posto a un'ora qualsiasi
 ```
 Le catture (f/, g/, ~55 MB) non sono nel repo: si rifanno con `cattura.js` e `cattura_muro.js`.
+
+## 11. Cosa rifare nei modelli e nei materiali (in favore dello stile; da approvare, non fatto)
+
+Il committente: «se alcuni modelli vanno riassettati per lo stile, dai personaggi alle vetrine e le facciate, ai vestiti, si può fare».
+Con la via di mezzo (terza versione: la luce di A sotto, la tavolozza come spinta e non come scatto) la separazione degli elementi la fanno
+soprattutto i modelli: il passo può contornare e spingere, ma se un'insegna e il muro hanno lo stesso valore e la stessa tinta, restano una
+cosa sola. In ordine di **resa / costo** (prima le cose che rendono di più e costano meno):
+
+| # | cosa | dove (codice) | resa | costo |
+|---|---|---|---|---|
+| 1 | **Una tinta per tipo di elemento, dalla tavolozza** e con un gradino di valore fisso fra vicini: muro (pesca/osso/ocra per facciata), persiana (persiana/oltremare), saracinesca (piombo/sasso, sempre più scura del muro di ≥ .12), vetrina (notte/acqua scura + cornice osso), insegna (carta + un accento), tenda (cotto/rosa/oltremare a righe), lastrico (osso/sasso), tetto (cotto/lavagna). Una tabella colori → inchiostri nei generatori, non nuove geometrie | `pezzi_citta.js`, `kit.js` (facciate, vetrine, tende, persiane), `pavimenti.js`, `tetti.js` | altissima: ogni cosa si stacca dalla vicina già nel colore della scena | basso (tabelle colore; ricottura dei tasselli) |
+| 2 | **Trame più semplici**: la tela delle facciate e del lastrico con meno macchie (le velature e il «vissuto» a metà o via), i giunti tenuti netti; il manto dei tetti disegnato (le tegole a 3-4 toni di B) al posto della tela ingrandita del vicolo | `tetti_vissuti.js`, `pezzi_citta.js`, lo shader del manto di B (`sgP10.x`) | alta: niente pappa, il tratteggio ha un fondo pulito | basso-medio (c'è già in B) |
+| 3 | **Il personaggio e le comparse a tinte piatte**: la giacca vermiglio del personaggio (riservata), i vestiti delle comparse dalla tavolozza ma mai vermiglio/limone/allarme, due tinte per figura (sopra/sotto) con un gradino di valore; la categoria 4 nell'alfa anche per il pupazzo senza scheletro (oggi le persone finiscono «muro» e il passo non le vede) | `vestiario.js`, `models.js`, il pezzo dell'alfa in `render.js` (`sgCat`) | alta per la leggibilità (soggetto, pericolo) | basso |
+| 4 | **Giunti e spigoli come linee disegnate**: le cornici delle finestre, i marcapiani, i giunti del lastrico, i bordi delle vetrine scritti nella geometria o nella tela come righe scure di 1-2 px (non lasciate al passo, che dalla profondità non le vede) | `pezzi_citta.js`, `pavimenti.js`, `kit.js` | media-alta (il disegno del fumetto) | medio |
+| 5 | **Le vetrine e le insegne come pannelli grafici**: vetro scuro piatto con un riflesso a banda, l'insegna con la scritta a contrasto pieno (carta su colore, nero su carta), niente trasparenze che mescolano l'interno col riflesso | `kit.js`, `HANDOFF_negozi.md` (le vetrine dei negozi) | media (le strade sature di segni dell'immagine 4) | medio |
+| 6 | **Le chiome** come masse a 2-3 toni con bordo netto (non foglie a retino): e la camera7 che le apre con una dissolvenza vera, non a scacchi | gli alberi (`HANDOFF_vegetazione.md`), `camera7.js` | media (il lungomare, i giardini) | medio-alto |
+| 7 | **Il writing più grafico**: il contorno nero e la luce interna dei pezzi sempre piena, colori dalla tavolozza (rosa, viola, ocra, oltremare, acqua) | `writing.js`, `graffiti.js` | media (il genere) | basso |
+| 8 | **Proporzioni dei personaggi** più fumettistiche (testa, mani, piedi): già del blocco personaggi9 | `models.js` | media | alto (altro cantiere) |
+
+Il passo unico resta quello della via di mezzo (§7 della terza versione, `prototipo3.py`); i punti 1-3 vanno fatti prima di tararlo in gioco,
+perché cambiano il colore di partenza su cui la tavolozza spinge.
