@@ -1,38 +1,4 @@
 {
- "vicolo_pescatori": [
-  [
-   "Mesh||MeshStandardMaterial||r30|Scene:",
-   102
-  ],
-  [
-   "Mesh||MeshStandardMaterial||r30.1|Scene:",
-   17
-  ],
-  [
-   "Mesh||MeshLambertMaterial||r40.8|Scene:",
-   17
-  ],
-  [
-   "Mesh||MeshStandardMaterial||r29.7|Scene:",
-   5
-  ],
-  [
-   "Mesh||MeshStandardMaterial||r24.2|Scene:",
-   4
-  ],
-  [
-   "Mesh||MeshLambertMaterial||r54.6|Scene:",
-   4
-  ],
-  [
-   "Mesh||MeshBasicMaterial|luce|r18.9|Scene:",
-   2
-  ],
-  [
-   "Mesh||MeshStandardMaterial||r21.4|Scene:",
-   1
-  ]
- ],
  "vico_lungo": [
   [
    "Mesh||MeshStandardMaterial||r29.1|Scene:",

@@ -80,6 +80,13 @@ salita arrivava a 40°, e la spalla di 0,8 m in un vicolo da 1,7 m metteva l'ori
 `K9.liftCap` 34°, la tenuta del braccio, la spalla che non cambia lato prima di 0,8 s e che si sposta solo quanto posto c'è (un raggio di
 lato dal busto), le prove `4b` e `3b` di `test_camera9.js`.
 
+La seconda versione (`misura_c9_v2.json` nello scratchpad) in Vico Lungo, all'incrocio col Vico della Corte (1414,8, 362,4), sceglieva una
+spalla «un poco meglio» della via dritta ma non libera: mentre la camera ci andava (la molla) il raggio toccava a metà strada e il braccio
+restava a 1,6 m per un secondo (la vista a 33°, poi giù a 15°: 18° in un fotogramma). Ora la spalla si prende solo se **a braccio pieno
+è libera** (altrimenti si resta in mezzo e si accorcia il braccio), la molla laterale è più svelta (0,3 s) e la salita si cerca solo ogni
+0,15 s. La tavola della sez. 3.1 è stata fotografata con la seconda versione (la differenza conta solo nei quattro posti con la spalla:
+piazza San Rocco, Corte dei Pescatori, Androne, Glacis); i percorsi della sez. 3 sono della versione finale.
+
 ## 3. Le misure: oggi e camera9
 
 Gli stessi percorsi, la stessa pagina (`Camera7.C9.on` cambiato dal vivo), 10 fotogrammi al secondo, il profilo leggero
@@ -230,14 +237,73 @@ fa una riga all'orizzonte (sul lungomare si vede); è materia del look (non tocc
 
 ## 5. I posti dove anche camera9 non trova un buon quadro
 
-La scansione (`_immagini/camera9/sonde/tavola9.js scansione`): ogni ~6 m lungo tutti i vicoli (`vic_*`, `cavour_sotto`), nei due
-versi, camera9 da ferma; il voto mette insieme il braccio, la pendenza della vista, lo sfondo nel terzo alto e se il busto è coperto.
-I peggiori, uno per vicolo e a più di 15 m l'uno dall'altro, con le foto oggi | camera9 in `_immagini/camera9/posti_stretti.jpg`; tutti i
-punti in `scansione9.json`, i peggiori in `posti_stretti.json`. Per l'urbanista.
+La scansione (`_immagini/camera9/sonde/scansione9_node.js`, in Node: il mondo vero di world_cittanuova + game, la camera vera di
+camera7.js, il raggio del braccio contro la **mappa delle case** di `Visuale.mappa`, cioè le case al colmo, senza tende, balconi, archi e
+arredo: è il ripiego di render.js quando le mesh non ci sono, e dà un quadro **ottimista**; nel gioco vero i dettagli fusi nelle case
+accorciano il braccio più spesso, vedi sez. 3). Ogni 3 m lungo tutte le vie larghe fino a 3,6 m e tutti i `vic_*` (non i vialetti privati
+delle case), nei due versi, il personaggio fermo e rivolto lungo la via, la camera dietro. Il voto mette insieme il braccio, la pendenza
+della vista, lo sfondo nel terzo alto e se il busto è coperto. Tutti i punti in `scansione9.json`, i peggiori in `posti_stretti.json`, le
+foto oggi | camera9 dei peggiori nel gioco vero in `_immagini/camera9/posti_stretti.jpg` (`posti_stretti_gioco.json`). **Per
+l'urbanista.**
+
+Tre famiglie di posti brutti:
+
+1. **Le fessure** (Corte dei Pescatori `vic_corte`, Vico della Corte `vic_corte2`, Androne del Pozzo Vecchio `vic_androne`, e meno il Vico
+   del Lavatoio): 1,7-2 m fra case di due-tre piani, con gli sbocchi a gomito. Le stesse dell'urbanista. Dritte lungo la via camera9 ci
+   sta (nella tavola: la prospettiva centrale con la porta in fondo), ma un passo di sbieco o il gomito e il braccio va a 1,6 m.
+2. **Le bocche dei vicoli da 1,7 m su una via stretta** (Caruggio dei Pescatori a (1346, 305,9), Vico delle Monache (1420, 312), Vico dei
+   Bottai (1398, 308), Vico delle Sorelle (1434, 382), Vicolo delle Reti (1382, 369), Vico del Pozzo (1432, 313)): entrando nel vicolo la
+   camera dietro sta nella casa di fronte, sull'altro lato della via. Il ricentro la porta dentro il vicolo dopo un poco, ma il primo
+   secondo è un braccio di 1,6-3 m a 30-33°. Una bocca più larga (uno slargo, un portico, uno smusso sull'angolo) o una via di fronte più
+   larga lo risolve; la camera no.
+3. **I sentieri in discesa sul monte** (il Canalone di levante, il Bosco Antico): la camera sale col suolo dietro (`K9.terra`) e la vista
+   arriva a 36-38°; lì è giusto (il pendio dietro), ma il quadro si chiude.
+
+Nel gioco vero (`posti_stretti.jpg`, la tabella sotto) i dieci punti peggiori sono brutti con tutte e due le camere: camera9 a 29-33° col
+braccio di 1,6-3 m, oggi a 47-50° col braccio di 1,2-4 m (camera7 prima sale di 16° e poi accorcia; camera9 non sale sopra 34° e
+accorcia). Al Vico della Corte (1415, 362) camera9 resta dietro un pannello e il personaggio si vede solo in sagoma.
+
+Nel gioco vero, in più (tavola, sez. 3.1): il sottopasso del Vico del Glacis (1477, 292) dove camera9 vede la via oltre la volta ma il
+personaggio resta sul bordo destro del quadro, e la bocca dei Lanternini sulla piazza San Rocco (1375, 304) dove il banco del mercato sta
+fra la camera e il personaggio.
 
 <!-- STRETTI -->
-| # | vicolo | punto (x, y) → verso | braccio | vista | sfondo nel terzo alto | busto coperto | voto |
-|---|---|---|---|---|---|---|---|
+**Tutti i vicoli** (1738 inquadrature, ogni 3 m nei due versi; il raggio contro la mappa delle case):
+
+| | vista p10 / p50 / p90 | braccio p10 / p50 | braccio sotto 3 m | vista oltre 30° | salita | terzo alto senza sfondo | sfondo nel terzo alto (mediana) | busto coperto |
+|---|---|---|---|---|---|---|---|---|
+| oggi | 34° / 34° / 34° | 10 / 10 m | 0.5% | 100% | 2.1% | 68.2% | 0% | 0% |
+| camera9 | 14.7° / 14.7° / 14.7° | 7.5 / 7.5 m | 0.7% | 1.2% | 0% | 16.9% | 42% | 0.2% |
+
+**Le vie peggiori per camera9** (il voto medio: 0-8, sotto 3 un quadro brutto; braccio medio):
+
+| via | larga | punti | voto | braccio medio | quadri brutti |
+|---|---|---|---|---|---|
+| Corte dei Pescatori (`vic_corte`) | 2 m | 10 | 3.22 | 5.9 m | 20% |
+| Vico della Corte (`vic_corte2`) | 2 m | 16 | 3.34 | 6.4 m | 19% |
+| Androne del Pozzo Vecchio (`vic_androne`) | 1.7 m | 10 | 3.53 | 6.4 m | 10% |
+| Vico del Lavatoio (`vic_lavatoio`) | 1.7 m | 16 | 3.71 | 6.8 m | 6% |
+| Pista della Punta (`faro`) | 3 m | 12 | 3.78 | 7.5 m | 8% |
+| Vico delle Sorelle (`vic_sorelle`) | 1.7 m | 30 | 3.84 | 7.2 m | 10% |
+| Vico dei Bottai (`vic_bottai`) | 1.7 m | 24 | 3.88 | 7.2 m | 4% |
+| Vicolo delle Reti (`vic_reti`) | 1.7 m | 22 | 3.88 | 7.2 m | 5% |
+| Caruggio dei Pescatori (`vic_pescatori`) | 1.7 m | 28 | 3.93 | 7.2 m | 7% |
+| Vico del Pozzo (`vic_pozzo`) | 1.7 m | 22 | 3.93 | 7.2 m | 5% |
+
+**I punti peggiori** (uno per via, a più di 12 m l'uno dall'altro; nella scansione e, se fotografati, nel gioco vero):
+
+| # | via | punto (x, y) → verso | camera9 nella scansione: braccio, vista, sfondo alto | camera9 nel gioco vero: braccio, vista, sfondo alto, coperto | oggi nel gioco vero: braccio, vista |
+|---|---|---|---|---|---|
+| 1 | Vico della Corte (`vic_corte2`, 2 m) | (1415, 362) → (1421, 362.4) | 1.6 m, 33.2°, 0% | 1.6 m, 33.2°, 0%, sì | 1.2 m, 50° |
+| 2 | Androne del Pozzo Vecchio (`vic_androne`, 1.7 m) | (1409.4, 292) → (1415.4, 292.6) | 1.6 m, 33.2°, 0% | 1.6 m, 33.2°, 0%, no | 1.44 m, 50° |
+| 3 | Corte dei Pescatori (`vic_corte`, 2 m) | (1396.4, 360.1) → (1390.4, 360.8) | 1.6 m, 33.2°, 0% | 1.9 m, 33.2°, 0%, no | 2.81 m, 50° |
+| 4 | Vico delle Monache (`vic_monache`, 1.7 m) | (1420, 312.1) → (1420.9, 306.2) | 1.75 m, 33.2°, 0% | 2.09 m, 33.2°, 0%, no | 3.05 m, 50° |
+| 5 | Caruggio dei Pescatori (`vic_pescatori`, 1.7 m) | (1346, 305.9) → (1345, 311.8) | 1.75 m, 33.2°, 0% | 2.35 m, 33°, 0%, no | 3.33 m, 50° |
+| 6 | Vico dei Bottai (`vic_bottai`, 1.7 m) | (1398, 307.9) → (1397.2, 313.8) | 1.75 m, 33.2°, 0% | 2.35 m, 33°, 0%, no | 3.34 m, 50° |
+| 7 | Vico delle Sorelle (`vic_sorelle`, 1.7 m) | (1434.3, 381.9) → (1434.7, 375.9) | 1.95 m, 33.2°, 0% | 1.6 m, 33.2°, 0%, no | 1.28 m, 50° |
+| 8 | Vico del Lavatoio (`vic_lavatoio`, 1.7 m) | (1374.2, 325) → (1380.2, 325.4) | 2.15 m, 33.2°, 0% | 2.44 m, 32.7°, 0%, no | 3.6 m, 49.5° |
+| 9 | Vicolo delle Reti (`vic_reti`, 1.7 m) | (1382.4, 369.4) → (1383.4, 363.5) | 2.55 m, 32.3°, 0% | 2.4 m, 32.9°, 0%, no | 3.36 m, 50° |
+| 10 | Vico del Pozzo (`vic_pozzo`, 1.7 m) | (1432, 313) → (1431.5, 319) | 2.95 m, 29.7°, 0% | 3.01 m, 29.2°, 0%, no | 4.07 m, 46.9° |
 <!-- /STRETTI -->
 
 ## 6. I rischi

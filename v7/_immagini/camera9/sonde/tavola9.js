@@ -38,6 +38,16 @@ const scrivi = (url, f) => { fs.writeFileSync(f, Buffer.from(url.split(',')[1], 
       fs.writeFileSync(path.join(OUT, 'tavola9.json'), JSON.stringify(J, null, 1));
       provino(F, path.join(OUT, 'tavola_oggi_camera9.jpg'), '[camera9] gli stessi posti, lo stesso punto del personaggio: a sinistra la camera di oggi (camera7), a destra ?camera9', 2, 640, 360);
       for (let k = 0; k < F.length; k += 8) provino(F.slice(k, k + 8), path.join(OUT, `tavola_${k / 8 + 1}.jpg`), `[camera9] oggi | camera9 (${k / 8 + 1})`, 2, 800, 450);
+    } else if (MODO === 'stretti') {
+      // le foto dei posti peggiori della scansione in Node (scansione9_node.js → ../posti_stretti.json): oggi | camera9
+      const peg = JSON.parse(fs.readFileSync(path.join(OUT, 'posti_stretti.json'))).slice(0, +(process.argv[3] || 10)), F = [];
+      const CACHE = path.join(TMP, 'stretti_cache.json'); let cache = {}; try { cache = JSON.parse(fs.readFileSync(CACHE)); } catch (e) { }   // si riprende (la pagina muore per la memoria)
+      for (const s of peg) { for (const c9 of [false, true]) { const k = `${s.id}_${s.x}_${s.y}_${c9 ? 'c9' : 'oggi'}`, f = path.join(TMP, `stretto_${k}.jpg`);
+          let st = cache[k]; if (!st || !fs.existsSync(f)) { const r = await posa(pg, { at: [s.x, s.y], verso: s.verso, c9, assesta: 1.5 }); scrivi(r.url, f); st = cache[k] = r.s; fs.writeFileSync(CACHE, JSON.stringify(cache)); }
+          F.push([f, `${c9 ? 'CAMERA9' : 'OGGI'} ${s.nome || s.id} (${s.x.toFixed(0)}, ${s.y.toFixed(0)}) braccio ${st.arm} m, vista ${st.vista}°, sfondo alto ${(st.sfondoAlto * 100).toFixed(0)}%${st.coperto ? ', COPERTO' : ''}`]); s['gioco_' + (c9 ? 'c9' : 'oggi')] = st; }
+        log(s.id, JSON.stringify(s.gioco_c9)); }
+      fs.writeFileSync(path.join(OUT, 'posti_stretti_gioco.json'), JSON.stringify(peg, null, 1));
+      provino(F, path.join(OUT, 'posti_stretti.jpg'), '[camera9] i posti dove anche camera9 non trova un buon quadro (la scansione di tutti i vicoli): a sinistra oggi, a destra camera9', 2, 640, 360); log('fine stretti');
     } else {
       // la scansione: lungo ogni vicolo, ogni ~6 m, nei due versi; camera9 da ferma, senza foto
       const PARZ = path.join(OUT, 'scansione9_parziale.json'); let S = []; try { S = JSON.parse(fs.readFileSync(PARZ)); } catch (e) { }   // si riprende (la pagina muore per la memoria)

@@ -36,9 +36,18 @@ cpu = J('cpu9.json')
 if cpu:
     C += "\n**Il processore** (20 fotogrammi a passi, i disegni spenti: G.step + R.frame; ms per fotogramma mediana / massimo, e il totale dei raggi del braccio `cast7` sui 20):\n\n| posto | camera | ms mediana / max | raggi del braccio (ms su 20 fotogrammi) |\n|---|---|---|---|\n"
     for k, r in cpu.items(): C += f"| {k.split('_')[0]} | {'camera9' if k.endswith('c9') else 'oggi'} | {r['ms']['med']} / {r['ms']['max']} | {r['totale'].get('cast7', 0)} |\n"
-st = J('posti_stretti.json') or []
-S = "| # | vicolo | punto (x, y) → verso | braccio | vista | sfondo nel terzo alto | busto coperto | voto |\n|---|---|---|---|---|---|---|---|\n"
-for i, s in enumerate(st): S += f"| {i + 1} | {s['id']} {s.get('nome') or ''} (largo {s['w']} m) | ({s['at'][0]:.1f}, {s['at'][1]:.1f}) → ({s['verso'][0]:.1f}, {s['verso'][1]:.1f}) | {s['arm']} m | {s['vista']}° | {s['sfondoAlto'] * 100:.0f}% | {'sì' if s['coperto'] else 'no'} | {s['voto']} |\n"
+sc = J('scansione9.json'); st = J('posti_stretti_gioco.json') or J('posti_stretti.json') or []
+S = ''
+if sc:
+    R = sc['riassunto']; S += f"**Tutti i vicoli** ({R['c9']['punti']} inquadrature, ogni 3 m nei due versi; il raggio contro la mappa delle case):\n\n| | vista p10 / p50 / p90 | braccio p10 / p50 | braccio sotto 3 m | vista oltre 30° | salita | terzo alto senza sfondo | sfondo nel terzo alto (mediana) | busto coperto |\n|---|---|---|---|---|---|---|---|---|\n"
+    for m in ('oggi', 'c9'):
+        r = R[m]; S += f"| {'oggi' if m == 'oggi' else 'camera9'} | {r['vista'][0]}° / {r['vista'][1]}° / {r['vista'][2]}° | {r['braccio'][0]} / {r['braccio'][1]} m | {r['braccioSotto3']}% | {r['vistaOltre30']}% | {r['salita']}% | {r['sfondoAlto0']}% | {r['sfondoAltoMed'] * 100:.0f}% | {r['coperto']}% |\n"
+    S += "\n**Le vie peggiori per camera9** (il voto medio: 0-8, sotto 3 un quadro brutto; braccio medio):\n\n| via | larga | punti | voto | braccio medio | quadri brutti |\n|---|---|---|---|---|---|\n"
+    for v in sc['vie'][:10]: S += f"| {v['nome'] or v['id']} (`{v['id']}`) | {v['w']} m | {v['punti']} | {v['voto']} | {v['braccio']} m | {v['brutti']}% |\n"
+S += "\n**I punti peggiori** (uno per via, a più di 12 m l'uno dall'altro; nella scansione e, se fotografati, nel gioco vero):\n\n| # | via | punto (x, y) → verso | camera9 nella scansione: braccio, vista, sfondo alto | camera9 nel gioco vero: braccio, vista, sfondo alto, coperto | oggi nel gioco vero: braccio, vista |\n|---|---|---|---|---|---|\n"
+for i, s in enumerate(st):
+    c = s['c9']; g = s.get('gioco_c9'); o = s.get('gioco_oggi')
+    S += f"| {i + 1} | {s['nome'] or s['id']} (`{s['id']}`, {s['w']} m) | ({s['x']}, {s['y']}) → ({s['verso'][0]}, {s['verso'][1]}) | {c['arm']} m, {c['vista']}°, {c['sfondoAlto'] * 100:.0f}% | " + (f"{g['arm']} m, {g['vista']}°, {g['sfondoAlto'] * 100:.0f}%, {'sì' if g['coperto'] else 'no'}" if g else '—') + " | " + (f"{o['arm']} m, {o['vista']}°" if o else '—') + " |\n"
 doc = open(DOC).read()
 for nome, testo in [('TABELLA_OGGI', oggi), ('TABELLA_TUTTO', tab), ('ISTOGRAMMA', ist), ('TAVOLA', T), ('COSTO', C), ('STRETTI', S)]:
     blocco = f'<!-- {nome} -->\n{testo.strip()}\n<!-- /{nome} -->'
