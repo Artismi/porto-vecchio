@@ -16,6 +16,7 @@ var PezziCitta = (function () {
   'use strict';
   if (typeof THREE === 'undefined') return null;
   const PI = Math.PI, HP = PI / 2;
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
     tufo: '#b2a283', tufoScuro: '#958667', carparo: '#c2a167', carparoScuro: '#a1834f',   /* [rocca2] il carparo dorato del castello a mare */ travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
@@ -31,6 +32,7 @@ var PezziCitta = (function () {
   function mat(nome) {
     if (MC[nome]) return MC[nome];
     const o = { color: COL[nome] || nome, roughness: .85, metalness: 0 };
+    if (RC && !/vetro|acqua|lampada|faro|neon|vapore|naso|buio/.test(nome)) o.color = RC.tinta(o.color, null, .6);   // [rifcostruito] la tavolozza unica
     if (/ferro|ghisa|ruggine|alluminio|ottone|zinco|rotaia|lamiera/.test(nome)) Object.assign(o, { roughness: .5, metalness: .25 });   // (metallo pieno senza riflessi attorno viene nero)
     if (nome === 'vetro') Object.assign(o, { roughness: .2, metalness: .1, transparent: true, opacity: .7 });
     if (nome === 'acqua') Object.assign(o, { roughness: .15, metalness: .05, transparent: true, opacity: .8 });
@@ -82,7 +84,9 @@ var PezziCitta = (function () {
   // compilati nel caricamento e a scatti durante il gioco. Ora entrano come due uniform (pzA: genere, usura, corso, giunto; pzB: giunto
   // minimo, tono, mancanti, lastra) e il genere sceglie il ramo con un if su uniform (coerente: la scheda video non paga la divergenza):
   // lo stesso testo per tutti, la stessa chiave ('pz2'), un programma. La città a tasselli ne eredita il testo unico (tassella_pagina.js)
-  const vesteUni = v => [GEN[v.g], v.u || 0, v.rh || .35, v.rl || .62, v.gi || .02, v.tono || .15, v.manca || 0, v.la || .6];
+  // [rifcostruito] lo stile E (rifinitura_costruito.js): l'usura a un terzo (niente croste, colature e licheni a macchie) e il tono dei conci
+  // più calmo; i giunti restano netti. Solo uniform: lo stesso programma ('pz2'), la stessa città a tasselli
+  const vesteUni = v => [GEN[v.g], (v.u || 0) * (RC ? .3 : 1), v.rh || .35, v.rl || .62, v.gi || .02, (v.tono || .15) * (RC ? .6 : 1), v.manca || 0, v.la || .6];
   let VESTE_GLSL = null;
   function vesteGLSL() {
     if (VESTE_GLSL) return VESTE_GLSL;

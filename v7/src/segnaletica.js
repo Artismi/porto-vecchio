@@ -664,15 +664,25 @@ var Segnaletica = (function () {
       else x.fillRect(1, 1, 62, 62);
       x.fillStyle = 'rgba(40,40,40,.25)'; x.fillRect(29, 0, 6, 64); }); }
   // l'insegna di un mestiere (una per tipo, non per bottega: il nome è già sulla fascia)
+  // [rifcostruito] lo stile E (rifinitura_costruito.js, BIBBIA_STILE.md §11.5): l'insegna è un pannello grafico. Il fondo verso l'inchiostro della
+  // sua famiglia, la scritta a contrasto pieno (carta sul colore, nero sulla carta; l'accento giallo dei garage e delle birrerie resta ocra),
+  // il bordo nero; niente sporco né usura. Senza ?stile=E niente cambia
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
+  const usuraV = (...a) => usura(...a), sporcoV = (...a) => sporco(...a);
+  function rcInsegna(T0) {
+    const bg = RC.tinta(T0.bg, null, .75), Lb = RC.oklab(bg)[0], F = RC.oklab(T0.fg), cf = Math.hypot(F[1], F[2]);
+    const fg = cf > .09 && Lb < .5 ? RC.tinta(T0.fg, null, .8, [.72, .9]) : Lb > .62 ? RC.INK.nero : RC.INK.carta;
+    return [bg, fg];
+  }
   function tessInsegna(q) {
     const T0 = TIPI[q.tipo] || TIPI.ufficio, forma = T0.forma || 'piana', key = 'ins|' + q.tipo + (q.montaggio === 'lunetta' ? '|lun' : '') + (q.montaggio === 'segno' ? '|segno' : '');
     const W0 = q.montaggio === 'lunetta' ? 384 : forma === 'pannello' ? 256 : forma === 'tavola' ? 256 : forma === 'alta' ? 160 : 224, H0 = q.montaggio === 'lunetta' ? 112 : forma === 'pannello' ? 160 : forma === 'tavola' ? 112 : forma === 'croce' || forma === 'segno' ? 224 : forma === 'alta' ? 208 : 184;
-    return tessera(key, W0, H0, (x, w, h) => { x.clearRect(0, 0, w, h); const bg = T0.bg, fg = T0.fg;
+    return tessera(key, W0, H0, (x, w, h) => { x.clearRect(0, 0, w, h); const [bg, fg] = RC ? rcInsegna(T0) : [T0.bg, T0.fg], usura = RC ? () => { } : usuraV, sporco = RC ? () => { } : sporcoV;   /* [rifcostruito] in E: tavolozza, contrasto pieno, niente sporco né usura */
       if (forma === 'croce') { icona(x, 'croce', w / 2, h / 2, w * .96, bg, bg); x.save(); x.globalCompositeOperation = 'source-atop'; const g = x.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2); g.addColorStop(0, '#5aff8a'); g.addColorStop(1, bg); x.fillStyle = g; x.fillRect(0, 0, w, h); x.restore(); icona(x, 'croce', w / 2, h / 2, w * .6, '#d8ffe0', bg); return; }
       if (forma === 'segno') { x.globalAlpha = .85; icona(x, 'foglia', w / 2, h / 2, w * .8, fg, bg); x.globalAlpha = 1; usura(x, w, h, 77, 60, .8); return; }
       if (forma === 'tavola') { x.fillStyle = bg; x.fillRect(2, 6, w - 4, h - 12); x.strokeStyle = 'rgba(40,28,16,.5)'; x.lineWidth = 2; for (let y = 20; y < h; y += 26) { x.beginPath(); x.moveTo(2, y); x.lineTo(w - 2, y + 2); x.stroke(); }
-        icona(x, T0.ic, 40, h / 2, 56, '#c84a1a', bg); x.fillStyle = fg; x.textAlign = 'left'; x.textBaseline = 'middle'; fitFont(x, T0.w, w - 86, 40, 'bold', 'Impact, "Arial Black", sans-serif'); x.fillText(T0.w, 76, h / 2 + 2); usura(x, w, h, 31, 50); return; }
-      rrect(x, 2, 2, w - 4, h - 4, 10); x.fillStyle = bg; x.fill(); x.lineWidth = 4; x.strokeStyle = fg; x.globalAlpha = .8; rrect(x, 9, 9, w - 18, h - 18, 7); x.stroke(); x.globalAlpha = 1;
+        icona(x, T0.ic, 40, h / 2, 56, RC ? RC.INK.cotto : '#c84a1a', bg); x.fillStyle = fg; x.textAlign = 'left'; x.textBaseline = 'middle'; fitFont(x, T0.w, w - 86, 40, 'bold', 'Impact, "Arial Black", sans-serif'); x.fillText(T0.w, 76, h / 2 + 2); usura(x, w, h, 31, 50); return; }
+      rrect(x, 2, 2, w - 4, h - 4, 10); x.fillStyle = bg; x.fill(); if (RC) { x.lineWidth = 4; x.strokeStyle = RC.INK.nero; x.stroke(); } x.lineWidth = 4; x.strokeStyle = fg; x.globalAlpha = .8; rrect(x, 9, 9, w - 18, h - 18, 7); x.stroke(); x.globalAlpha = 1;
       if (q.montaggio === 'lunetta') { icona(x, T0.ic, 62, h / 2, 74, fg, bg); x.fillStyle = fg; x.textAlign = 'center'; x.textBaseline = 'middle'; fitFont(x, T0.w, w - 140, 54, 'bold', 'Georgia, "Times New Roman", serif'); x.fillText(T0.w, (w + 104) / 2, h / 2 + 3); sporco(x, w, h, 5, 20); return; }
       const big = T0.ic === 'T' || T0.ic === 'alt', isz = big ? h * .62 : h * .5;
       icona(x, T0.ic, w / 2, 18 + isz / 2 + (big ? 0 : 4), isz, fg, bg);
