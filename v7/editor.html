@@ -563,13 +563,15 @@ var RifCostruito = (function () {
     return rgb2hex([4.0767416621 * l - 3.3077115913 * m + .2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - .3413193965 * s, -.0041960863 * l - .7034186147 * m + 1.707614701 * s].map(gam));
   }
   const LAB = {}; for (const k in INK) LAB[k] = oklab(INK[k]);
+  // rosa e viola sono gli accenti (graffiti, la sera): li prende solo chi è già rosa o viola, non il rosso delle tele e delle vernici
+  const ACCENTI = { rosa: .35, viola: .3 };
   const COLORATI = ['pesca', 'ocra', 'cotto', 'mattone', 'cielo', 'acqua', 'oltremare', 'notte', 'salvia', 'persiana', 'bosco', 'rosa', 'viola', 'lilla'];
   // le coppie delle tele a righe (tende, ombrelloni, bancarelle): l'inchiostro pieno a mezzo valore e la carta; un gradino di valore di .3 e più
   const RIGHE = [['cotto', 'carta'], ['oltremare', 'carta'], ['persiana', 'carta'], ['ocra', 'carta'], ['rosa', 'carta'], ['acqua', 'carta']];
   function righe(hex) {   // la coppia per una tinta data (la più vicina per tinta, i grigi e i beige al cotto e all'acqua)
     const A = oklab(hex), cr = Math.hypot(A[1], A[2]); if (cr < .03) return RIGHE[A[0] > .7 ? 5 : 0];
     const h = Math.atan2(A[2], A[1]); let best = 1e9, out = RIGHE[0];
-    for (const R of RIGHE) { const B = LAB[R[0]], d = Math.abs(Math.atan2(Math.sin(Math.atan2(B[2], B[1]) - h), Math.cos(Math.atan2(B[2], B[1]) - h))); if (d < best) { best = d; out = R; } }
+    for (const R of RIGHE) { const B = LAB[R[0]], d = Math.abs(Math.atan2(Math.sin(Math.atan2(B[2], B[1]) - h), Math.cos(Math.atan2(B[2], B[1]) - h))) + (ACCENTI[R[0]] || 0); if (d < best) { best = d; out = R; } }
     return out;
   }
   // tinta(hex, inchiostro, peso, [lo, hi]): la tinta e il croma vanno verso l'inchiostro (peso), il valore resta quello del colore di partenza,
@@ -582,7 +584,7 @@ var RifCostruito = (function () {
       const cr = Math.hypot(A[1], A[2]);
       if (cr < .035) { K = LAB.piombo; w *= .55; }   // i grigi veri verso il piombo, appena (come il passo: ×.7·k)
       else { const h = Math.atan2(A[2], A[1]); let best = 1e9;   // la tinta più vicina fra gli inchiostri colorati (l'angolo, non la distanza: il valore resta)
-        for (const k of COLORATI) { const B = LAB[k], d = Math.abs(Math.atan2(Math.sin(Math.atan2(B[2], B[1]) - h), Math.cos(Math.atan2(B[2], B[1]) - h))) + .6 * Math.abs(A[0] - B[0]); if (d < best) { best = d; K = B; } }
+        for (const k of COLORATI) { const B = LAB[k], d = Math.abs(Math.atan2(Math.sin(Math.atan2(B[2], B[1]) - h), Math.cos(Math.atan2(B[2], B[1]) - h))) + .6 * Math.abs(A[0] - B[0]) + (ACCENTI[k] || 0); if (d < best) { best = d; K = B; } }
         w *= Math.min(1, cr / .06); }
     }
     let L = A[0];
@@ -631,7 +633,12 @@ float rcH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); 
   float rcDk = (1. - smoothstep(.72, .84, rcD)) * rcStr;
   vec3 rcC = rcA * (1. - .34 * rcDk);
   if (rcLam > .5) { float rcV = rcLum(rcA); vec3 rcI = rcA.g >= rcA.r * .96 ? ${v3(INK.persiana)} : rcA.b > rcA.r ? ${v3(INK.oltremare)} : ${v3(INK.mattone)};
-    rcC = rcPorta(rcC, rcI, .6) * clamp(.5 / max(rcV, .05), .8, 1.35); }
+    vec3 rcB0 = rcPorta(rcA, rcI, .6) * clamp(.5 / max(rcV, .05), .8, 1.35);
+    float rcR = (1. - rcQ.y) * ${f(P)}, rcFr = max(fwidth(rcR), 1e-4), rcSl = fract((rcR - ${P === 32 ? '2.' : '1.'}) / ${P === 32 ? '4.' : '3.'});
+    float rcSd = (abs(rcSl - ${P === 32 ? '.75' : '.1667'}) - ${P === 32 ? '.25' : '.1667'}) * ${P === 32 ? '4.' : '3.'} / rcFr;
+    float rcIn = step(${P === 32 ? '2.' : '1.'}, rcR) * step(rcR, ${P === 32 ? '30.' : '14.'}) * step(${P === 32 ? '2.' : '1.'}, rcQ.x * ${f(P)}) * step(rcQ.x * ${f(P)}, ${P === 32 ? '30.' : '15.'});
+    float rcPer = ${P === 32 ? '4.' : '3.'} / rcFr, rcLn = (1. - smoothstep(-.5, .5, rcSd)) * smoothstep(2.5, 4.5, rcPer) * rcIn;
+    rcC = mix(rcB0 * (1. - .12 * rcIn * (1. - smoothstep(2.5, 4.5, rcPer))), rcB0 * .6, rcLn); }
 ${P === 32 ? `  if (rcR0 < .45) { float rcB = rcQ.x + rcQ.y, rcBw = fwidth(rcB) + 1e-4;
     rcC = rcPorta(rcA, ${v3(INK.notte)}, .45) * .82 + ${v3(INK.cielo)} * .3 * (smoothstep(.62 - rcBw, .62 + rcBw, rcB) - smoothstep(.86 - rcBw, .86 + rcBw, rcB)); }
 ` : ''}  vec3 rcNw = normalize(vRcN); float rcPiana = 1. - smoothstep(.02, .08, length(fwidth(rcNw)));
@@ -23846,7 +23853,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = '1b2f3593e22d3a59';</script>
-<script>window.PV_IMPRONTA_TASS = 'c4e494c6b124fa4f';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '4e5630bb8c609324';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
