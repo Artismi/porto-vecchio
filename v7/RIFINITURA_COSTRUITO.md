@@ -95,7 +95,8 @@ Mai i riservati (vermiglio, limone, allarme): le coppie delle tele e le insegne 
   tela a due colori, con la balza.
 - **Prima**: due beige quasi uguali (dal lungomare non si distinguevano dalla sabbia), otto copie del materiale per ombrellone.
 - **Trattamento**: la coppia di inchiostri dalla tavolozza (`RifCostruito.righe`: l'inchiostro pieno a .56 e la carta a .90, un gradino ≥ .25),
-  scelta dalla tinta di prima (gli stessi ombrelloni restano «quelli rossi», «quelli blu»); **le otto cuciture** dalla punta all'orlo e **l'orlo**
+  scelta dalla tinta di prima (gli stessi ombrelloni restano «quelli rossi», «quelli blu»; il rosso va al cotto, il rosa resta rosa: rosa e
+  viola sono accenti della tavolozza e li prende solo chi lo è già); **le otto cuciture** dalla punta all'orlo e **l'orlo**
   della tela e della balza in filo d'inchiostro (lavagna): dall'alto l'ombrellone è un disegno a spicchi contornato. Le due tele condivise
   (non più 8 copie).
 - **Costo**: +10 mesh piccole per ombrellone (8 aste a 4 lati, 2 anelli a 8 lati, ~400 triangoli) **in un materiale condiviso**: nella fusione
@@ -130,10 +131,51 @@ Mai i riservati (vermiglio, limone, allarme): le coppie delle tele e le insegne 
   calmo; i giunti restano netti. Solo uniform: lo stesso programma (`pz2`).
 - **Costo**: zero.
 
+### 9. Le scale (scalinate, gradini del sagrato e della darsena) — `pezzi_citta.js`
+
+- **Riferimento**: le crêuze e le scalinate liguri in pietra di Finale o ardesia, il gradino col naso consumato e chiaro, l'alzata in ombra.
+- **Prima**: la scalinata aveva già il filo chiaro sul naso ([sguardo]); i gradini di `scala()` (sagrato, darsena della Rocca) nessun segno:
+  dall'alto una rampa grigia dove i gradini non si contano.
+- **Trattamento** (solo E): sotto il naso chiaro **la riga d'ombra sull'alzata** (4 cm, d'inchiostro `buio`) e **al piede di ogni alzata la
+  riga del contatto** con la pedata di sotto: il disegnatore conta i gradini, chiaro – scuro – pedata. In `scala()` anche il naso chiaro.
+  La scalinata: una mesh sola in più (i due fili di tutti i gradini estrusi insieme), in un materiale già esistente: fusa per materiale.
+- **Non toccati**: i gradini delle porte (`render.js` `gradino1`, hanno già il naso acceso e la riga del piede nella città nuova) e la
+  scaletta di cemento della strada sul mare (`render.js`, `A.scale`): servirebbe una riga di posa in render.js, lasciata al proprietario.
+- **Costo**: +2 triangoli·12 per gradino, nessun disegno in più.
+
+## Le misure
+
+- **Disegni e programmi** (sonda nel vicolo, 960 × 540, leggera, lo stesso istante): A 345 disegni, 184 programmi; E 346 disegni, 189
+  programmi (+5: il manto E per genere, l'intonaco e i due atlanti avvolti). I disegni non cambiano (±1 è il rumore delle persone).
+- **Lo shader**: il manto E costa meno del manto di prima (2 letture e ~45 operazioni contro 4 rumori e i licheni); l'intonaco ~15 operazioni
+  (prima 3 rumori a due ottave); le parti dell'atlante ~35 operazioni e 7 letture fisse per cella (in cache) solo sui loro pixel, che sono
+  pochi (telai, persiane, davanzali). Su Iris Xe la differenza è sotto il rumore di misura del banco; da riprovare con
+  `strumenti/banco_gpu_console.js` sul portatile vero (`?leggera&perf&noritmo&stile=E` contro senza).
+- **Memoria**: nessuna tessitura nuova eccetto le tele delle tende (16 × n texel per coppia e larghezza: decine di KB in tutto).
+
+## Le prove
+
+- `node src/test_rifcostruito.js` (nuova): spenta senza E, accesa con E/E1/e, l'interruttore, la tinta che tiene il valore, le coppie con il
+  gradino ≥ .25, l'aggancio che avvolge una volta sola intonaco e atlanti e non gli altri, le regole del GLSL (niente `map` fuori da
+  texture2D, niente `diffuse`, solo ASCII) per l'aggancio e per il manto E di ogni genere.
+- Passano: `test_tetti.js`, `test_tetti3.js`, `test_tetti_vissuti.js`, `test_segnaletica.js`, `test_rifcostruito.js`.
+- `test_tasselli.js`: una prova non passa **anche senza questo lavoro**: l'impronta che la prova ricalcola non conta i `.gz` degli assets,
+  build.py sì (`[compressi]`): è la prova da allineare, non la build.
+- La prova di fumo (`fumo6.js`) dà `errori []` (vedi il rapporto).
+
 ## Le tavole
 
-`_immagini/rifinitura_costruito/`: una per tipo di elemento, prima (A) | dopo (`?stile=E`, i materiali) | dopo + il passo E a 55 (l'anteprima
-di `prototipo3.py` a k = .55 sulla cattura), alla camera di gioco e in primo piano (zoom .2 o ritaglio).
+`_immagini/rifinitura_costruito/`: una per tipo di elemento, prima (A) | dopo (`?stile=E`, i materiali, col passo di oggi) | dopo + il
+passo E a 55 (l'anteprima di `prototipo3.py` a k = .55 sulla cattura, con la profondità della cattura), alla camera di gioco e in ritagli
+ingranditi (la camera7 non scende sotto la sua distanza: il primo piano è il ritaglio). Le tavole 6 e 7 sono il **banco dei modelli** (gli
+arredi e le scale da soli, stessa luce, prima | dopo): il primo piano vero dei modelli.
+1. `1_tetti.jpg` — 2. `2_facciate.jpg` — 3. `3_ombrelloni.jpg` — 4. `4_tende_dehors.jpg` — 5. `5_arredi_insegne.jpg` —
+6. `6_modelli_primo_piano.jpg` — 7. `7_scale.jpg`.
+
+Quello che si vede: i **tetti** sono il guadagno più grande (dalla tela sfocata ai coppi e alle lastre disegnati, il passo li tratteggia
+pulito); le **persiane** a lamelle nette e verdi; gli **ombrelloni** a spicchi con le cuciture e l'orlo (sul lungomare il passo di oggi
+spegne il colore delle tele: lo riporta il passo E); le **facciate** più calme (niente macchie e colature), il cambio è di misura; in **piazza
+la sera** quasi nulla cambia, perché i fronti della piazza sono di altri sistemi (gli scorci e i palazzi dipinti di render.js).
 
 ## I tasselli (la città cotta)
 
@@ -149,6 +191,11 @@ Ogni cambio a `tetti_vissuti.js` cambia anche l'impronta del mondo cotto (`mondo
 
 ## Cosa servirebbe da render.js (per chi lo tiene)
 
+- **Il più importante: il piano dei valori della direzione schiaccia i gradini di qui.** `DIR.muriSat .44`, `muriK .7` attorno a `muriL .68`
+  (render.js ~13864, uniform `dV`/`dW`) portano TUTTO ciò che non è suolo né tetto (muri, persiane, tende, ombrelloni, arredi) al 44% di
+  saturazione e comprimono il valore del 30% verso .68: è per questo che sul lungomare gli ombrelloni ciano, rosa e gialli arrivano beige
+  (tavola 3) e che i gradini di valore muro/persiana/vetro si riducono. Con lo stile E (`STILE.V.E`) servirebbe `muriSat` ~.8 e `muriK`
+  ~.9: la separazione per elemento la fanno ora i materiali, la tavolozza del passo ci spinge sopra.
 - I **vetri delle vetrine** e la **fascia col nome** delle botteghe (`fronteBottega`), le **saracinesche** (`sgaMesh`) e i **canali di gronda**
   (`sm('#7c8288')`) nascono in render.js con materiali senza segno: per la vetrina come pannello grafico (vetro notte piatto con il riflesso a
   banda, la fascia carta su colore) e la saracinesca sempre più scura del muro di ≥ .12 basta un `userData.rc = 'vetrina' | 'fascia' |

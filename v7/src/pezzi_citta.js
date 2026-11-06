@@ -254,6 +254,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     const a = (hTot / n), gg = grp(g, x, y0, z, ry);
     if (LOD) { sezione(gg, [[0, 0], [n * p, 0], [n * p, hTot], [p, a]], w, m, -w / 2, 0, 0); return gg; }
     for (let i = 0; i < n; i++) blocco(gg, w, a * (i + 1), p, m, 0, 0, p * (i + .5), .02);
+    if (RC) for (let i = 0; i < n; i++) { blocco(gg, w - .04, .03, .075, 'naso', 0, a * (i + 1) - .022, p * i + .028); blocco(gg, w - .04, .04, .01, 'buio', 0, a * (i + 1) - .064, p * i - .003); }   // [rifcostruito] in E il naso chiaro e la riga d'ombra sotto
     return gg;
   }
   // ringhiera di ferro lungo +X: montanti, corrimano, corrente basso (col lod basso solo il corrimano)
@@ -896,6 +897,12 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     if (!LOD && SGUARDO && naso.length) {   // [sguardo] la grammatica delle scale: il filo chiaro sul ciglio di ogni gradino (una mesh sola), il gradino si conta
       const sh = naso.map(([nx, ny]) => { const q = new THREE.Shape(); q.moveTo(nx - .01, ny - .035); q.lineTo(nx + .075, ny - .035); q.lineTo(nx + .075, ny + .012); q.lineTo(nx - .01, ny + .012); return q; });
       const ng = new THREE.ExtrudeGeometry(sh, { depth: W - .08, bevelEnabled: false }); ng.translate(0, 0, -(W - .08) / 2); ng.computeVertexNormals(); add(g, ng, 'naso', 0, 0, 0).castShadow = false; }
+    // [rifcostruito] lo stile E: sotto il naso chiaro la riga d'ombra sull'alzata (4 cm, d'inchiostro) e al piede di ogni alzata la riga del contatto
+    // con la pedata di sotto (il disegnatore conta i gradini: chiaro, scuro, pedata). Una mesh sola in 'buio' per scalinata, fusa per materiale
+    if (!LOD && RC && naso.length) {
+      const sh = []; naso.forEach(([nx, ny]) => { const q = new THREE.Shape(); q.moveTo(nx - .009, ny - .078); q.lineTo(nx + .001, ny - .078); q.lineTo(nx + .001, ny - .036); q.lineTo(nx - .009, ny - .036); sh.push(q);
+        const f = new THREE.Shape(); f.moveTo(nx - .04, ny - a - .002); f.lineTo(nx + .001, ny - a - .002); f.lineTo(nx + .001, ny - a + .007); f.lineTo(nx - .04, ny - a + .007); sh.push(f); });
+      const og = new THREE.ExtrudeGeometry(sh, { depth: W - .1, bevelEnabled: false }); og.translate(0, 0, -(W - .1) / 2); og.computeVertexNormals(); add(g, og, 'buio', 0, 0, 0).castShadow = false; }
     const top = [[0, 0]]; rampe.forEach((r, f) => { top.push([r[0], r[1] + a + 1]); top.push([r[2], r[3] + 1]); top.push([pian[f][1], r[3] + 1]); }); top.push([x, 0]);
     for (const s of [-1, 1]) { profilo(g, top, .45, 'tufo', 0, 0, s * (W / 2 + .225));                // muri d'ambito
     }   // (la fascia d'umido la disegna il materiale) [pezzi2]
