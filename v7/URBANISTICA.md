@@ -469,3 +469,46 @@ la **9** (pettine), in un filone a sé.
 - Gli strumenti di misura sono script usa e getta (Node per il mondo e l'arredo, Python per raster, raggi e tavole, una sonda Playwright
   per le foto). Come da consegna non sono nel commit. Il metodo è nella sez. 1 e si rifà con `strumenti/censimento_pianta.js` e
   `strumenti/copertura_visuale4.js` come base.
+
+---
+
+## 10. Il pacchetto sicuro, fatto (`[urbanistica1]`, 6 novembre)
+
+Il committente: «sì, liberare i vicoli». È nel gioco, acceso di serie. **`?nourbanistica1`** torna com'era: il mondo cotto e i tasselli non
+si usano e la città si ricalcola nel browser. In Node: `PV_NOURBANISTICA1=1`.
+
+| # | Cosa | Dove (metri finali) | File |
+|---|---|---|---|
+| 1 | **due varchi pedonali sulla ferrovia** dal Lungomare: il guardrail si apre (4,8 e 3,7 m) e sul binario c'è il passaggio pedonale (`passaggio_livello` largo 3,2 m: il riempimento fra le rotaie, le sbarre alzate, le croci, le lanterne). Il primo varco **si sposta sul Vico dell'Arco** (x 1411): sui Lanternini (x 1374) il binario corre ancora sul rilevato, 2 m sopra la strada. Il secondo è sul Vico Scuro (x 1446) | 1411 e 1446, y 255-275 | `world_cittanuova.js` (`VARCHI_LUNG`, posa dei parapetti) |
+| 1 | **il belvedere**: davanti al varco dell'Arco il parapetto esce di 4 m sul mare per 12 m, con due spallette; il ripiano è banchina a 1,4 m | 1400-1412, 244-250 | idem (`CITY.belvedere`) |
+| 2 | **le volte dei sottopassi in piano col suolo**: la volta posa sulla quota mediana del passaggio e il suolo sotto è in piano. Al Vico del Glacis l'altezza libera va da 1,9-2,8 m a **3,2 m** dappertutto; ai Lanternini e all'Arco cambia di qualche centimetro | 1484,294 · 1376,293 · 1412,300 | idem (passata finale, 7c) |
+| 3 | **niente ingombri nei passaggi larghi una casella**: bidoni (spostati lungo la loro via, entro 15 m, dove il vicolo è largo: restano tutti e 16), tavolini, fioriere, lavagne e frigo dei dehors; in `render.js` solo la posa: la roba davanti alle porte, quella alla base dei muri, e niente «roba di cortile» sulle caselle che fiancheggiano una via (il bancale col fusto e la bombola della Via di Mezzo) | tutto il borgo | `scena.js` (`piano`), `render.js` (`STRETTO35`, `oggetti35`, la vita alla base dei muri) |
+| 5 | **le firme in fondo alle viste**: dove un vicolo guarda dritto per 40 m e più e la vista finisce sul muro di una casa, un'edicola votiva col lume, solo se davanti restano 3,4 m liberi, lontana dalle porte e dalle altre edicole. Ne nascono due (in fondo al Vico dei Gatti, sui due lati) | 1374,348 · 1370,306 | `world_cittanuova.js` |
+| 11 | **i due slarghi della Via delle Mura**: la striscia di selciato sotto le mura diventa piazzetta di 12 × 6 m (alla scala di ronda la fontanella, al Vico Scuro l'edicola sul pilastro) | 1368-1380 × 275-281 · 1441-1453 × 266-272 | `world_cittanuova.js` |
+
+Il resto: `cotto.js` (con `?nourbanistica1` il mondo cotto non vale), `tasselli.js` (idem per i tasselli), `percorsi.js` (i passaggi
+pedonali non sono «il passaggio a livello»: porte e landmark di `Percorsi` restano quelli di prima).
+
+**Controlli.**
+- **Percorsi e NPC**: le caselle del varco erano già percorribili (marciapiede, massicciata, selciato) e c'era solo il guardrail. Il grafo
+  si rifà da sé. Nessuna casa si sposta.
+- **Collisioni**: le barriere nascono dai parapetti (`opere()`): i varchi sono buchi nel guardrail, il belvedere ha il suo parapetto e
+  le spallette. La fontanella ha il suo gradino (`game.js` supAdd).
+- **Graffiti**: nessun muro si sposta. Le tre edicole nuove occupano 1,1 m di muro ciascuna.
+- **Missioni**: i luoghi-missione e i loro ingressi non cambiano; le porte e i landmark di `Percorsi` sono gli stessi.
+- **Tasselli**: l'impronta cambia, quindi il workflow `tasselli.yml` deve ricuocere. Finché non lo fa, la città si costruisce nel
+  browser.
+
+**Prove** (`node src/<prova>.js`, confrontate con le stesse prove con `PV_NOURBANISTICA1=1`, cioè com'era):
+- **Passano**: `test_pedonale`, `test_mappa_compatta`, `test_chiarezza`, `test_scorci`, `test_segni` (i bidoni restano 16: si
+  spostano, non spariscono), `test_compenetrazioni`, `test_posti`, `test_segnaletica`, `test_suolo2`, `test_vievive`.
+- **Non passano già prima, e uguali**:
+  - `test_tasselli`: l'impronta della prova non conta i `.glb.gz` di `assets/`, `build.py` sì;
+  - `test_percorsi`: i giri del Mercato e del Forno;
+  - `test_strade_integre`: 4 case a fessura, fuori dal pacchetto;
+  - `test_costa2`: le passerelle sulle dune;
+  - `test_tetti4`: le stesse 9;
+  - `test_posa`: le stesse 6. Anzi una in meno, perché ora le edicole votive ci sono tutte.
+
+**Prima e dopo nel gioco** (`3x_pacchetto_*.jpg`, a sinistra `?nourbanistica1`, a destra di serie, stessa camera e stessa ora):
+__FOTO__

@@ -77,6 +77,7 @@ var Scena = (function () {
   let S = null, G = null, cieche = null, ritratto = null;
   const open = v => v === G.T.VIA || v === G.T.WALK || v === G.T.PIAZZA || v === G.T.COB || v === G.T.QUAY || v === G.T.DIRT;
   const tl = (tx, ty) => (tx < 0 || ty < 0 || tx >= G.GW || ty >= G.GH) ? -1 : G.tileAt(tx, ty);
+  const URB1s = () => { try { if (typeof location !== 'undefined' && location.search && /[?&]nourbanistica1\b/.test(location.search)) return false; if (typeof process !== 'undefined' && process.env && process.env.PV_NOURBANISTICA1 === '1') return false; } catch (e) { } return true; };   // [urbanistica1]
   // il fondale di una pagina: cosa c'è dietro il muro guardando dalla camera (verso nord-ovest): il mare, il cielo (niente), una facciata
   function fondale(x, z) { const TS = G.TS; let bld = 0; for (let d = 4; d <= 40; d += 2) { const v = tl(Math.floor((x - d * .7) / TS), Math.floor((z - d * .7) / TS)); if (v === G.T.WATER) return 'mare'; if (v === G.T.BLD) bld++; } return bld > 3 ? 'facciata' : 'cielo'; }
   // ---- costruzione delle pagine ----
@@ -235,6 +236,21 @@ var Scena = (function () {
     const perVia = {}; S.pagine.forEach(p => { if (p.tipo !== 'parete' || p.porta === null || !p.via) return; (perVia[p.via] = perVia[p.via] || []).push(p); });
     for (const v in perVia) { const L = perVia[v].sort((a, c) => (a.x + a.z) - (c.x + c.z)); let n = 1; L.forEach(p => { const sl = chiedi(p.x, p.z, 'civico', { pagina: p }); n++; if (!sl) return; const u = Math.min(p.len - .3, Math.max(.3, p.porta + (p.porta + 1 < p.len - .3 ? .85 : -.85))), q = p.at(u); if (SCR(q[0], q[1], .2)) return;
       P.civici.push({ x: q[0], z: q[1], y: 2.25, yaw: p.yaw, bi: p.bi, n: n - 1, rosso: p.era === 'E3' && p.bottega, era: p.era }); }); }
+    // [urbanistica1] NIENTE INGOMBRI NEI VICOLI SOTTO I 3 M (v7/URBANISTICA.md, proposta 3): dove il passaggio è largo una casella sola (2 m fra
+    // le case, in una delle due direzioni) bidoni, tavolini, fioriere, lavagne e frigo non si posano: lasciavano 1,4-1,7 m. ?nourbanistica1: com'era
+    if (URB1s()) { const OPEN = new Set([T.COB, T.VIA, T.WALK, T.PIAZZA, T.STAIRS]), op = (tx, ty) => OPEN.has(tl(tx, ty));
+      const run = (tx, ty, a, b) => { let n = 1; for (let k = 1; k < 3 && op(tx + a * k, ty + b * k); k++) n++; for (let k = 1; k < 3 && op(tx - a * k, ty - b * k); k++) n++; return n; };
+      const stretto = (x, z) => { const tx = Math.floor(x / TS), ty = Math.floor(z / TS); return Math.min(run(tx, ty, 1, 0), run(tx, ty, 0, 1)) <= 1; };
+      // il bidone del tratto stretto si sposta lungo la sua via (entro 15 m) dove il vicolo è largo e c'è un muro dietro; se non c'è, si toglie
+      const sposta = q => { const rd = roads.find(r => r.id === q.via); if (!rd) return null; let best = null, bd = 16;
+        for (let k = 0; k < rd.pts.length - 1; k++) { const [ax, az] = rd.pts[k], [bx, bz] = rd.pts[k + 1], L = Math.hypot(bx - ax, bz - az) || 1, ux = (bx - ax) / L, uz = (bz - az) / L;
+          for (let t = 0; t < L; t += 1) { const x = ax + ux * t, z = az + uz * t, d = Math.hypot(x - q.x, z - q.z); if (d >= bd) continue;
+            for (const s of [1, -1]) { const nx = -uz * s, nz = ux * s, o = rd.w / 2 - .45, px = x + nx * o, pz = z + nz * o;
+              if (!stretto(px, pz) && bld(x + nx * (rd.w / 2 + .6), z + nz * (rd.w / 2 + .6)) && open(at(px, pz)) && !SCR(px, pz, .6)) { bd = d; best = { x: px, z: pz, yaw: Math.atan2(nx, nz), via: q.via }; break; } } } }
+        return best; };
+      P.bidoni = P.bidoni.map(q => stretto(q.x, q.z) ? sposta(q) : q).filter(q => q && !P.bidoni.some(o => o !== q && !stretto(o.x, o.z) && Math.hypot(o.x - q.x, o.z - q.z) < 1.2));
+      P.dehors.forEach(d => { d.tavoli = d.tavoli.filter(t => !stretto(t.x, t.z)); d.fioriere = d.fioriere.filter(t => !stretto(t.x, t.z)); d.ombrelloni = d.ombrelloni.filter(t => !stretto(t.x, t.z));
+        if (d.lavagna && stretto(d.lavagna.x, d.lavagna.z)) d.lavagna = null; if (d.frigo && stretto(d.frigo.x, d.frigo.z)) d.frigo = null; }); }
     return P;
   }
   // un dehors davanti alla porta: tavolini a 1,1 m dal muro (≤ 2 m), dai due lati del portone, fioriere ai capi, la lavagna, il frigo dei gelati
