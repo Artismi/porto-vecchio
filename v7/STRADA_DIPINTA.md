@@ -92,6 +92,9 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
   55 m solo se si guardano da parti opposte (due viste diverse). Oggi 8: corridoio sul Muro (160 m, muro, pezzo di FUSE); Via della Marina (114 m, lungomare, throw di MURE); Raccordo del Valico (104 m, fuori, pezzo di FUMO); Via di Mezzo (84 m, porto, throw di GOZO); Strada del Bosco (83 m, fuori, throw di TEO); Via delle Mura (82 m, ferrovia, throw di RAZO); Via della Marina (72 m, porto, throw di ORZO); Rua Maestra (63 m, vicolo, throw di TEO).
   Con la camera di adesso (bordo alto 11° sotto l'orizzonte) si vedono arrivando; con la camera bassa (`?camera9`, URBANISTICA.md §5) sono
   le cose che chiudono il quadro.
+  **Aperto**: sulle facciate con le finestre il throw-up del fondale spesso non trova il rettangolo libero (`fitWall` sta fuori dalle
+  aperture) e non si piazza: nelle foto la Via di Mezzo e la Via della Marina restano senza. Da fare: scegliere il tratto fra due finestre
+  coi dati di `R.aperture` (o un verticale sopra la porta) quando il muro libero non c'è.
 - **I grandi** per zona (tabella 2.1): pezzi e burner nei sottopassi e sul Muro, rulli e murali sul porto, quasi niente nelle vie.
   Mai due grandi a meno di 4,6 m (3,2 nei punti fitti). **I verticali e gli heaven spot** solo nelle zone calde, uno per palazzo, al
   22% / 12% per il ritmo (erano ovunque).
@@ -177,16 +180,20 @@ lista E in `tassella_pagina.js` (la stessa funzione con lo stile acceso) e prend
   pezzo di 4,8 m ha 4 tappe di 480×205) e la tabella si fa una volta (~150 ms nel worker, la prima volta che serve). Niente sul filo della
   pagina, quindi niente compiti lunghi in più.
 - **I pali**: piazzati senza raggi (un vettore e una quota), il piano senza cercare i triangoli.
-- **Misura nel gioco** (SwiftShader, 960×540, sei posti): __GIRO__.
+- **Misura nel gioco** (SwiftShader, 960×540, sei posti): dopo i sei posti, al sottopasso del Glacis, `bancoRitmo(20)` camminando: lavori in memoria 939 (prima 1.582), nell'atlante 43 (84), veli 0 (0), una pagina d'atlante (una), memoria JS 1.221 MB (1.297), tessiture 457 (632), geometrie 3.169 (4.042); lungo i sei posti piazzati 59 lavori e 25 non entrati nel muro (prima 103 e 63). I millisecondi per fotogramma sotto SwiftShader (0,4 fotogrammi al secondo, la macchina condivisa con altri sei navigatori) non dicono niente dell'Iris Xe: il banco va rifatto lì, con `?stile=E` e senza, stesso percorso; quello che conta qui è che i disegni non crescono e i lavori, la tela e la memoria calano.
 
 ## 8. Le immagini
 
 - `densita_oggi_nuovo.png`, `zone_e_fondali.png` — sezione 3.
-- `prima_dopo_1.jpg`, `prima_dopo_2.jpg` — sei posti alla **camera del gioco** (camera7: braccio 10 m, 34°, il raggio a sfera che si ferma
-  prima dei muri), il personaggio davanti al muro più dipinto del posto, lo yaw di sbieco: vicolo, sottopasso del Glacis, il porto (Magazzino
-  Neri e cantiere), la piazzetta del Pozzo, la Via al Mare in fondo alla Via della Marina, la Via di Mezzo guardando il suo fondale; prima |
-  dopo, stessa camera, stessa ora (15:00, sereno), `?leggera` (SwiftShader). Il passo finale dello stile E di render.js non è in questo ramo
-  (lo fa l'altro filone): conta dove sta la vernice e com'è.
+- `prima_dopo_1.jpg`, `prima_dopo_2.jpg` — sei posti, prima | dopo, **stessa camera e stessa ora** (15:00, sereno), il gioco vero sotto
+  SwiftShader (`?cittanuova&leggera`, con e senza `&stile=E`): il vicolo dietro la Rua (il muro più dipinto della zona `vicolo`), la piazza del
+  Glacis davanti al sottopasso, il fianco del Magazzino Neri sul porto, Piazza San Rocco con la chiesa, la Via al Mare in fondo alla Via della
+  Marina, la Via di Mezzo guardando verso il suo fondale ovest. La camera è quella del gioco per campo e distanza ma messa a mano (2,5–5 m,
+  di sbieco sul muro): la camera7 vera, nei vicoli stretti, si chiude a 1,2 m sul personaggio (URBANISTICA.md lo misura) e la foto non mostrava
+  i muri. Resi senza il passo finale dello stile E di render.js (non è in questo ramo): conta dove sta la vernice e com'è.
+  Si vede: nel vicolo le tag sparse di prima diventano un punto fitto (tag nuove della scena di qui, adesivi accanto alla porta); sul porto
+  la vernice esce dalla tavolozza e arrivano gli adesivi; sulla piazza della chiesa via il segno grigio sulla facciata (dopo: pulita); al
+  Glacis e sulla Via al Mare poco o niente in tutti e due (tratti calmi); in fondo alla Via di Mezzo il fondale non è entrato (§2.3, aperto).
 - `dettagli.png` — da vicino, coi file del gioco: adesivi (muro, palo, retro del cartello), manifesti (a strati sul porto, la serata
   nuova sulla piazza, il foglietto con le linguette), la tag, la toppa grigia, il throw-up, il pezzo vecchio con la toppa, il pezzo del
   fondale; prima | dopo dove ha senso.
