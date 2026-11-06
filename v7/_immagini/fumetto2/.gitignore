@@ -1,0 +1,7 @@
+sonde/f/
+sonde/g/
+sonde/cmd/
+sonde/*.log
+sonde/log_*.json
+progetto/__pycache__/
+progetto/bersagli/*.png
