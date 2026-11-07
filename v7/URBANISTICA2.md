@@ -36,6 +36,14 @@ e gli slarghi nuovi; senza, la città è quella di oggi. Il confronto è immedia
   mediana di **13 m** (prima 16) e il 90° percentile a **30 m** (prima 35).
 - **La regola del committente** (sez. 1) vince sul masterplan: niente sotto 4 m fra i muri, i gomiti larghi, le bocche che si vedono.
 - **Si spegne da sé**: senza `?urbanistica2` niente cambia, neanche l'impronta dei tasselli (sez. 3).
+- **Le prove della città** danno con F1 le stesse righe che non passano di serie. Fa eccezione `test_vievive`: in 2 giri su 4 una scena delle
+  vie non parte in tempo (sez. 6).
+- **Resta aperto** (sez. 5 e 6):
+  - **la camera**: nel gioco la camera si chiude sotto il 60% in una parte dei fotogrammi dentro i passaggi nuovi. È poco nell'Androne,
+    molto sotto la volta del Sottopassino, lungo l'Orto e nella svolta del Flipper. La regola del committente chiede zero;
+  - **il peso**: chiamate di disegno e triangoli crescono più del ±3% (desktop +14% e +10%, `?leggera` +9% e +4%), con una misura che ha
+    già ±5-8% di rumore;
+  - **i tetti**: si perdono 22 tetti del borgo; i giri restano 4.
 
 ---
 
