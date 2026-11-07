@@ -16,7 +16,9 @@ var PezziCitta = (function () {
   'use strict';
   if (typeof THREE === 'undefined') return null;
   const PI = Math.PI, HP = PI / 2;
-  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
+  // [integra1] RC: la rifinitura entra (cottura dei tasselli o stile E). Le tinte E sono varianti dei materiali (StileE.colore: rcE nei userData),
+  // le righe delle scale materiali solo di E (StileE.soloE), l'usura e il tono delle vesti dietro la manopola rcK: A resta com'era
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.capace ? RifCostruito : null, SE = RC && typeof StileE !== 'undefined' ? StileE : null;
   // ---------------- tavolozza: pochi materiali condivisi per genere ----------------
   const COL = {
     tufo: '#b2a283', tufoScuro: '#958667', carparo: '#c2a167', carparoScuro: '#a1834f',   /* [rocca2] il carparo dorato del castello a mare */ travertino: '#ddd3bb', travertinoScuro: '#b4a990',   /* [pezzi2] il tufo vero, grigio-giallo spento (era #c9a86a) */ travertinoChiaro: '#ece4d0', intradosso: '#a89e88', tenda: '#d8ccb0', tendaRossa: '#a8483a', tapparella: '#cbc2aa',   // [facciate2]
@@ -32,7 +34,8 @@ var PezziCitta = (function () {
   function mat(nome) {
     if (MC[nome]) return MC[nome];
     const o = { color: COL[nome] || nome, roughness: .85, metalness: 0 };
-    if (RC && !/vetro|acqua|lampada|faro|neon|vapore|naso|buio/.test(nome)) o.color = RC.tinta(o.color, null, .6);   // [rifcostruito] la tavolozza unica
+    const solo = RC && /^(naso|buio)E$/.test(nome); if (solo) o.color = COL[nome.slice(0, -1)];   // [integra1] i pezzi solo di E (le righe delle scale)
+    const tE = RC && !solo && !/vetro|acqua|lampada|faro|neon|vapore|naso|buio/.test(nome) ? RC.tinta(o.color, null, .6) : null;   // [rifcostruito] la tavolozza unica (in E)
     if (/ferro|ghisa|ruggine|alluminio|ottone|zinco|rotaia|lamiera/.test(nome)) Object.assign(o, { roughness: .5, metalness: .25 });   // (metallo pieno senza riflessi attorno viene nero)
     if (nome === 'vetro') Object.assign(o, { roughness: .2, metalness: .1, transparent: true, opacity: .7 });
     if (nome === 'acqua') Object.assign(o, { roughness: .15, metalness: .05, transparent: true, opacity: .8 });
@@ -44,7 +47,9 @@ var PezziCitta = (function () {
     if (nome === 'neon') Object.assign(o, { color: '#5ab8ff', emissive: '#3a8aff', emissiveIntensity: .9 });
     if (nome === 'vapore') Object.assign(o, { color: '#e8e6e0', roughness: 1, transparent: true, opacity: .35, depthWrite: false });   // [mappa_compatta] il pennacchio della grata
     if (NOTTE[nome]) Object.assign(o, NOTTE[nome]);   // [pezzi2] le finestre accese, i quadranti e la cella: chi posa ne regola l'emissione con la notte
-    const m = new THREE.MeshStandardMaterial(o); m.name = nome; veste(m, nome); return (MC[nome] = m);
+    const m = new THREE.MeshStandardMaterial(o); m.name = nome; veste(m, nome);
+    if (tE && tE !== o.color && !(NOTTE[nome] && NOTTE[nome].color)) { if (SE) SE.colore(m, tE); else m.color.set(tE); } if (solo && SE) { m.name = nome.slice(0, -1); SE.soloE(m); }   // [integra1]
+    return (MC[nome] = m);
   }
   /* [pezzi2] LE VESTI DEI MATERIALI: niente tinte piatte. Ogni materiale di un genere murario porta il suo disegno in coordinate di mondo
      (calcolato nel frammento, nessuna texture e nessuna chiamata in più: le mesh si fondono per materiale come prima):
@@ -86,11 +91,12 @@ var PezziCitta = (function () {
   // lo stesso testo per tutti, la stessa chiave ('pz2'), un programma. La città a tasselli ne eredita il testo unico (tassella_pagina.js)
   // [rifcostruito] lo stile E (rifinitura_costruito.js): l'usura a un terzo (niente croste, colature e licheni a macchie) e il tono dei conci
   // più calmo; i giunti restano netti. Solo uniform: lo stesso programma ('pz2'), la stessa città a tasselli
-  const vesteUni = v => [GEN[v.g], (v.u || 0) * (RC ? .3 : 1), v.rh || .35, v.rl || .62, v.gi || .02, (v.tono || .15) * (RC ? .6 : 1), v.manca || 0, v.la || .6];
+  // [integra1] i fattori di E (usura .3, tono .6) nello shader dietro rcK: le uniform di A non cambiano, il testo cotto porta tutti e due
+  const vesteUni = v => [GEN[v.g], (v.u || 0) * (RC && !SE ? .3 : 1), v.rh || .35, v.rl || .62, v.gi || .02, (v.tono || .15) * (RC && !SE ? .6 : 1), v.manca || 0, v.la || .6];
   let VESTE_GLSL = null;
   function vesteGLSL() {
     if (VESTE_GLSL) return VESTE_GLSL;
-    const G = 'pzA.x', U = 'pzA.y', RH = 'pzA.z', RL = 'pzA.w', GI = 'pzB.x', TO = 'pzB.y', MA = 'pzB.z', LA = 'pzB.w';
+    const G = 'pzA.x', U = SE ? '(pzA.y * (1. - .7 * rcK))' : 'pzA.y', RH = 'pzA.z', RL = 'pzA.w', GI = 'pzB.x', TO = SE ? '(pzB.y * (1. - .4 * rcK))' : 'pzB.y', MA = 'pzB.z', LA = 'pzB.w';
     return VESTE_GLSL = `{ vec3 nW = normalize(vPzN), aN = abs(nW); float ver = 1. - step(.6, aN.y);
   vec2 p = ver > .5 ? vec2(aN.x > aN.z ? vPzW.z : vPzW.x, vPzW.y) : vPzW.xz;
   vec2 nh = length(nW.xz) > .05 ? normalize(nW.xz) : vec2(0., 1.); vec2 pf = vec2(dot(vPzW.xz, vec2(-nh.y, nh.x)), dot(vPzW.xz, nh));   // in falda: lungo e attraverso
@@ -171,14 +177,15 @@ var PezziCitta = (function () {
   function veste(m, nome) {
     const v = VESTI[nome]; if (!v) return; m.userData.veste = v.g;
     const frag = vesteHD(vesteGLSL()), uni = vesteUni(v);
-    m.customProgramCacheKey = () => 'pz2';   // [programmi] la stessa chiave per tutte le vesti: un programma
+    m.customProgramCacheKey = () => 'pz2' + (SE ? 'e' + SE.chiave() : '');   // [programmi] la stessa chiave per tutte le vesti: un programma   [integra1] col ramo E: un'altra
     m.onBeforeCompile = sh => {
       if (HDPZr) sh.uniforms.pzHk = window.__HDK || { value: 1 };   // [hd]
       sh.uniforms.pzA = { value: new THREE.Vector4(uni[0], uni[1], uni[2], uni[3]) }; sh.uniforms.pzB = { value: new THREE.Vector4(uni[4], uni[5], uni[6], uni[7]) };   // [programmi] la veste come uniform
+      if (SE) sh.uniforms.rcK = RC.k;   // [integra1]
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU;')
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 w4 = vec4(transformed, 1.);\n#ifdef USE_INSTANCING\n w4 = instanceMatrix * w4;\n#endif\n vPzW = (modelMatrix * w4).xyz; vPzN = normalize(mat3(modelMatrix) * objectNormal); vPzU = uv; }');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.; uniform vec4 pzA; uniform vec4 pzB;${HDPZr ? ' uniform float pzHk;' : ''}
+varying vec3 vPzW; varying vec3 vPzN; varying vec2 vPzU; float pzH = 1.; uniform vec4 pzA; uniform vec4 pzB;${HDPZr ? ' uniform float pzHk;' : ''}${SE ? SE.pre('rcK') : ''}
 float pzH1(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }   // senza seno: costa poco anche sui processori grafici deboli
 float pzN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(pzH1(i), pzH1(i + vec2(1., 0.)), f.x), mix(pzH1(i + vec2(0., 1.)), pzH1(i + vec2(1., 1.)), f.x), f.y); }
 float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
@@ -254,7 +261,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     const a = (hTot / n), gg = grp(g, x, y0, z, ry);
     if (LOD) { sezione(gg, [[0, 0], [n * p, 0], [n * p, hTot], [p, a]], w, m, -w / 2, 0, 0); return gg; }
     for (let i = 0; i < n; i++) blocco(gg, w, a * (i + 1), p, m, 0, 0, p * (i + .5), .02);
-    if (RC) for (let i = 0; i < n; i++) { blocco(gg, w - .04, .03, .075, 'naso', 0, a * (i + 1) - .022, p * i + .028); blocco(gg, w - .04, .04, .01, 'buio', 0, a * (i + 1) - .064, p * i - .003); }   // [rifcostruito] in E il naso chiaro e la riga d'ombra sotto
+    if (RC) { const nE = SE ? 'nasoE' : 'naso', bE = SE ? 'buioE' : 'buio'; for (let i = 0; i < n; i++) { blocco(gg, w - .04, .03, .075, nE, 0, a * (i + 1) - .022, p * i + .028); blocco(gg, w - .04, .04, .01, bE, 0, a * (i + 1) - .064, p * i - .003); } }   // [rifcostruito] in E il naso chiaro e la riga d'ombra sotto   [integra1] materiali solo di E
     return gg;
   }
   // ringhiera di ferro lungo +X: montanti, corrimano, corrente basso (col lod basso solo il corrimano)
@@ -902,7 +909,7 @@ float pzF(vec2 p) { return pzN(p) * .64 + pzN(p * 2.37 + 7.1) * .36; }`)
     if (!LOD && RC && naso.length) {
       const sh = []; naso.forEach(([nx, ny]) => { const q = new THREE.Shape(); q.moveTo(nx - .009, ny - .078); q.lineTo(nx + .001, ny - .078); q.lineTo(nx + .001, ny - .036); q.lineTo(nx - .009, ny - .036); sh.push(q);
         const f = new THREE.Shape(); f.moveTo(nx - .04, ny - a - .002); f.lineTo(nx + .001, ny - a - .002); f.lineTo(nx + .001, ny - a + .007); f.lineTo(nx - .04, ny - a + .007); sh.push(f); });
-      const og = new THREE.ExtrudeGeometry(sh, { depth: W - .1, bevelEnabled: false }); og.translate(0, 0, -(W - .1) / 2); og.computeVertexNormals(); add(g, og, 'buio', 0, 0, 0).castShadow = false; }
+      const og = new THREE.ExtrudeGeometry(sh, { depth: W - .1, bevelEnabled: false }); og.translate(0, 0, -(W - .1) / 2); og.computeVertexNormals(); add(g, og, SE ? 'buioE' : 'buio', 0, 0, 0).castShadow = false; }
     const top = [[0, 0]]; rampe.forEach((r, f) => { top.push([r[0], r[1] + a + 1]); top.push([r[2], r[3] + 1]); top.push([pian[f][1], r[3] + 1]); }); top.push([x, 0]);
     for (const s of [-1, 1]) { profilo(g, top, .45, 'tufo', 0, 0, s * (W / 2 + .225));                // muri d'ambito
     }   // (la fascia d'umido la disegna il materiale) [pezzi2]

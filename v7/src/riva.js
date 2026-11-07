@@ -307,12 +307,12 @@ var Riva = (function () {
       normal = normalize(abs(det) * normal - gr); }`;
   function materiale(base, prep) {   // il materiale del blocco sotto (la stessa tela, lo stesso prato, la stessa luce di notte) più il suolo della riva
     const m = base.clone(); if (prep) prep(m); const prev = m.onBeforeCompile, pk = m.customProgramCacheKey && m.customProgramCacheKey !== window.THREE.Material.prototype.customProgramCacheKey ? m.customProgramCacheKey() : '';
-    m.customProgramCacheKey = () => pk + '|riva9' + (typeof RifSuolo !== 'undefined' && RifSuolo.on ? '|rs' + RifSuolo.ver : '');
+    m.customProgramCacheKey = () => pk + '|riva9' + (typeof RifSuolo !== 'undefined' && RifSuolo.capace ? '|rs' + RifSuolo.ver + (typeof StileE !== 'undefined' ? StileE.chiave() : '') : '');   // [integra1] capace: anche nella cottura
     m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRS; attribute float aRD; attribute vec4 aRT; attribute vec2 aRU; varying vec4 vRS9; varying float vRD9; varying vec3 vRW9; varying vec4 vRT9; varying vec2 vRU9;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRS9 = aRS; vRD9 = aRD; vRT9 = aRT; vRU9 = aRU; vRW9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      const RS = typeof RifSuolo !== 'undefined' && RifSuolo.on; if (RS) sh.uniforms.rsK = RifSuolo.k;   // [rifinitura suolo] solo con lo stile E
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + (RS ? 'uniform float rsK;\n' + RifSuolo.GLSL : '#define rsK 0.\nfloat rsInk; float rsLuce; vec3 rsSabbia(vec3 c, vec2 p, float m, float w, float d){ return c; }\n') + GLSL_P)
+      const RS = typeof RifSuolo !== 'undefined' && RifSuolo.capace; if (RS) sh.uniforms.rsK = RifSuolo.k;   // [rifinitura suolo] solo con lo stile E   [integra1] o nella cottura (la manopola a 0)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + (RS ? RifSuolo.pre() + RifSuolo.GLSL : '#define rsK 0.\nfloat rsInk; float rsLuce; vec3 rsSabbia(vec3 c, vec2 p, float m, float w, float d){ return c; }\n') + GLSL_P)
         .replace('#include <color_fragment>', '#include <color_fragment>\n' + GLSL_A)
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .34, rWet9);')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + GLSL_N);

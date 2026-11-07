@@ -554,7 +554,9 @@ var TettiVissuti = (function () {
   const CELLE = { coppi: [256 / 6, 256 / 8], tegole: [256 / 4, 256 / 7], pianelle: [256 / 5, 256 / 5], cemento: [256 / 8, 256 / 8] };
   // [rifcostruito] lo stile E (?stile=E, rifinitura_costruito.js): il manto DISEGNATO a ogni distanza utile, anche l'ardesia (lastre 6 × 5 px
   // sfalsate di mezza); senza lo stile E nessuna riga cambia
-  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
+  // [integra1] RC: la rifinitura entra (la cottura dei tasselli o lo stile E: RifCostruito.capace). Il manto di A e quello di E stanno nello stesso
+  // shader, scelti dalla manopola rcK (StileE): con A la costante 0 lascia il manto di A com'era; l'ardesia (che in A non ha manto) solo con E
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.capace ? RifCostruito : null;
   if (RC) CELLE.ardesia = [256 / 6, 256 / 5];
   function manto(m, kind) {
     if (SPENTO || !CELLE[kind] || !TT.PIANO || !TT.PIANO.length) return m;
@@ -578,7 +580,11 @@ var TettiVissuti = (function () {
     const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole' || kind === 'ardesia', f = v => v.toFixed(4);
     if (RC) return applicaE(m, kind, cel, falda, f);   // [rifcostruito]
     m.customProgramCacheKey = () => 'tv1-' + kind;
-    m.onBeforeCompile = sh => {
+    m.onBeforeCompile = sh => pezziA(sh, kind, cel, falda, f);
+  }
+  // [integra1] il manto di A (testo invariato: applicaE lo riusa e ci mette davanti il ramo di E)
+  function pezziA(sh, kind, cel, falda, f) {
+    {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;')
         .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTvP = (modelMatrix * vec4(transformed, 1.0)).xyz; vTvN = normalize(mat3(modelMatrix) * objectNormal);');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -619,7 +625,7 @@ if (sgP10.x > 0.) { vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])}), fw = fwidth
   float ro = step(.992, tvH(ce + 5.)); c = mix(c, c * ${BUCO_TV > .5 ? '.62' : '.86'}, ro);`}
   diffuseColor.rgb = c; }
 #endif`);
-    };
+    }
   }
   // [rifcostruito] IL MANTO DELLO STILE E (BIBBIA_STILE.md §11.2: «il manto dei tetti disegnato al posto della tela ingrandita»).
   // Ogni fila di coppi, tegole e lastre disegnata: la campitura è la media della tela (la mipmap più alta) portata verso il cotto (l'ardesia
@@ -638,15 +644,15 @@ if (sgP10.x > 0.) { vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])}), fw = fwidth
       ardesia: `c *= 1. + .07 * smoothstep(.8, .86, q.y);`,
       pianelle: ``, cemento: ``,
     }[kind] || '';
-    m.customProgramCacheKey = () => 'tv1e-' + kind;
+    // [integra1] un solo shader: il manto di A (pezziA, dove c'è) e quello di E, scelto da rcK; l'ardesia ha solo quello di E
+    const SE = typeof StileE !== 'undefined' ? StileE : null, conA = kind !== 'ardesia';
+    m.customProgramCacheKey = () => 'tv1c-' + kind + (SE ? SE.chiave() : '');
     m.onBeforeCompile = sh => {
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;')
-        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTvP = (modelMatrix * vec4(transformed, 1.0)).xyz; vTvN = normalize(mat3(modelMatrix) * objectNormal);');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-varying vec3 vTvP; varying vec3 vTvN;
+      sh.uniforms.rcK = RC.k;
+      const TESTA = `${SE ? SE.pre('rcK') : '\nuniform float rcK;\n'}
 ${RC.GL}
-float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); return mix(mix(rcH(i), rcH(i + vec2(1., 0.)), q.x), mix(rcH(i + vec2(0., 1.)), rcH(i + vec2(1., 1.)), q.x), q.y); }`)
-        .replace('#include <map_fragment>', `#include <map_fragment>
+float tvNe(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); return mix(mix(rcH(i), rcH(i + vec2(1., 0.)), q.x), mix(rcH(i + vec2(0., 1.)), rcH(i + vec2(1., 1.)), q.x), q.y); }`;
+      const CORPO = `
 #ifdef USE_MAP
 { vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])});
   ${sfalsa ? 'g.x += mod(floor(g.y), 2.) * .5;' : ''}
@@ -665,7 +671,7 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
   c *= 1. + ${lastrico ? '0.' : '.06'} * testa * rY;
   c = mix(avg, c, rY);
   c = mix(c, c * vec3(.32, .27, .3), max(riga * rY * ${lastrico ? '.42' : '.68'}, giunto * rX * ${lastrico ? '.36' : '.38'}));
-  vec2 w = vTvP.xz; float mo = tvN(w * .55 + 3.), a = tvN(w * .23);
+  vec2 w = vTvP.xz; float mo = tvNe(w * .55 + 3.), a = tvNe(w * .23);
   ${falda ? `float nord = clamp(-vTvN.z * 1.6, 0., 1.), gronda = 1. - smoothstep(.0, 1.1, vUv.y * 16.);
   float mw = fwidth(mo) * 1.5 + .01, mu = clamp(nord * .7 + gronda * .5, 0., 1.) * smoothstep(.66 - mw, .66 + mw, mo);
   c = mix(c, vec3(.29, .33, .19) * (.8 + .4 * rcLum(c)), mu * .5);
@@ -673,7 +679,21 @@ float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); 
   c = mix(c, vec3(rcLum(c) * .82 + .05), step(.95, rcH(ce + 5.3)) * ${kind === 'pianelle' ? '.35' : '.15'});
   c *= 1. - step(.992, rcH(ce + 5.)) * .14;`}
   diffuseColor.rgb = c; }
-#endif`);
+#endif
+`;
+      if (conA) {   // il manto di A, poi il ramo: con rcK il manto di E al posto di quello di A
+        pezziA(sh, kind, cel, falda, f);
+        const i0 = sh.fragmentShader.indexOf('#include <map_fragment>\n') + '#include <map_fragment>\n'.length, i1 = sh.fragmentShader.indexOf('diffuseColor.rgb = c; }\n#endif', i0) + 'diffuseColor.rgb = c; }\n#endif'.length;
+        const A = sh.fragmentShader.slice(i0, i1);
+        sh.fragmentShader = sh.fragmentShader.slice(0, i0) + 'if (rcK > .5) {' + CORPO + '} else {\n' + A + '\n}' + sh.fragmentShader.slice(i1);
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>\n', '#include <common>\n' + TESTA + '\n');
+      } else {
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;')
+          .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTvP = (modelMatrix * vec4(transformed, 1.0)).xyz; vTvN = normalize(mat3(modelMatrix) * objectNormal);');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;\n' + TESTA)
+          .replace('#include <map_fragment>', '#include <map_fragment>\nif (rcK > .5) {' + CORPO + '}\n');
+      }
+      if (SE) { sh.fragmentShader = SE.adatta(sh.fragmentShader); }
     };
     return m;
   }

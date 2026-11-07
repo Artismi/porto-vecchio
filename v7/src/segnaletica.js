@@ -577,12 +577,13 @@ var Segnaletica = (function () {
   // L'ATLANTE: una tela 2048 × 2048, tessere impilate a scaffali. Le tessere delle strisce sono bianche (il giallo lo dà il colore del
   // vertice); quelle dei cartelli hanno la loro forma nell'alfa (ottagono, triangolo, tondo, croce): il materiale le ritaglia (alphaTest).
   const ATL = { c: null, x: null, S: 2048, uv: new Map(), riga: { x: 0, y: 0, h: 0 }, tex: null };
-  function tessera(key, w, h, draw) {
+  function tessera(key, w, h, draw, drawE) {
     if (ATL.uv.has(key)) return ATL.uv.get(key); const A = ATL, pad = 4;
     if (A.riga.x + w + pad > A.S) { A.riga = { x: 0, y: A.riga.y + A.riga.h + pad, h: 0 }; }
     const x0 = A.riga.x, y0 = A.riga.y; A.riga.x += w + pad; A.riga.h = Math.max(A.riga.h, h);
     if (y0 + h > A.S) { console.warn('[segnaletica] atlante pieno', key); return [0, 0, 0, 0]; }
     const x = A.x; x.save(); if (A.f && A.f !== 1) x.scale(A.f, A.f); x.translate(x0, y0); x.beginPath(); x.rect(0, 0, w, h); x.clip(); draw(x, w, h); x.restore();
+    if (drawE) (A.e || (A.e = [])).push([x0, y0, w, h, drawE]);   // [integra1] la cella di E: si disegna nell'atlante di E (materiali())
     const uv = [(x0 + .5) / A.S, 1 - (y0 + h - .5) / A.S, (x0 + w - .5) / A.S, 1 - (y0 + .5) / A.S]; A.uv.set(key, uv); return uv;
   }
   const r2 = (s) => { let a = (s * 2654435761) >>> 0 || 1; return () => { a ^= a << 13; a >>>= 0; a ^= a >>> 17; a ^= a << 5; a >>>= 0; return a / 4294967296; }; };
@@ -667,7 +668,9 @@ var Segnaletica = (function () {
   // [rifcostruito] lo stile E (rifinitura_costruito.js, BIBBIA_STILE.md §11.5): l'insegna è un pannello grafico. Il fondo verso l'inchiostro della
   // sua famiglia, la scritta a contrasto pieno (carta sul colore, nero sulla carta; l'accento giallo dei garage e delle birrerie resta ocra),
   // il bordo nero; niente sporco né usura. Senza ?stile=E niente cambia
-  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
+  // [integra1] con StileE (la cottura dei tasselli, o E) l'insegna di E si disegna in un secondo atlante con le stesse celle (le altre tessere
+  // copiate da quello di A): la variante della tessitura dei materiali (StileE.mappaE), la stessa cottura porta A ed E
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.capace ? RifCostruito : null, SE = RC && typeof StileE !== 'undefined' ? StileE : null;
   const usuraV = (...a) => usura(...a), sporcoV = (...a) => sporco(...a);
   function rcInsegna(T0) {
     const bg = RC.tinta(T0.bg, null, .75), Lb = RC.oklab(bg)[0], F = RC.oklab(T0.fg), cf = Math.hypot(F[1], F[2]);
@@ -677,7 +680,7 @@ var Segnaletica = (function () {
   function tessInsegna(q) {
     const T0 = TIPI[q.tipo] || TIPI.ufficio, forma = T0.forma || 'piana', key = 'ins|' + q.tipo + (q.montaggio === 'lunetta' ? '|lun' : '') + (q.montaggio === 'segno' ? '|segno' : '');
     const W0 = q.montaggio === 'lunetta' ? 384 : forma === 'pannello' ? 256 : forma === 'tavola' ? 256 : forma === 'alta' ? 160 : 224, H0 = q.montaggio === 'lunetta' ? 112 : forma === 'pannello' ? 160 : forma === 'tavola' ? 112 : forma === 'croce' || forma === 'segno' ? 224 : forma === 'alta' ? 208 : 184;
-    return tessera(key, W0, H0, (x, w, h) => { x.clearRect(0, 0, w, h); const [bg, fg] = RC ? rcInsegna(T0) : [T0.bg, T0.fg], usura = RC ? () => { } : usuraV, sporco = RC ? () => { } : sporcoV;   /* [rifcostruito] in E: tavolozza, contrasto pieno, niente sporco né usura */
+    const disegna = RC => (x, w, h) => { x.clearRect(0, 0, w, h); const [bg, fg] = RC ? rcInsegna(T0) : [T0.bg, T0.fg], usura = RC ? () => { } : usuraV, sporco = RC ? () => { } : sporcoV;   /* [rifcostruito] in E: tavolozza, contrasto pieno, niente sporco né usura */
       if (forma === 'croce') { icona(x, 'croce', w / 2, h / 2, w * .96, bg, bg); x.save(); x.globalCompositeOperation = 'source-atop'; const g = x.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2); g.addColorStop(0, '#5aff8a'); g.addColorStop(1, bg); x.fillStyle = g; x.fillRect(0, 0, w, h); x.restore(); icona(x, 'croce', w / 2, h / 2, w * .6, '#d8ffe0', bg); return; }
       if (forma === 'segno') { x.globalAlpha = .85; icona(x, 'foglia', w / 2, h / 2, w * .8, fg, bg); x.globalAlpha = 1; usura(x, w, h, 77, 60, .8); return; }
       if (forma === 'tavola') { x.fillStyle = bg; x.fillRect(2, 6, w - 4, h - 12); x.strokeStyle = 'rgba(40,28,16,.5)'; x.lineWidth = 2; for (let y = 20; y < h; y += 26) { x.beginPath(); x.moveTo(2, y); x.lineTo(w - 2, y + 2); x.stroke(); }
@@ -687,7 +690,8 @@ var Segnaletica = (function () {
       const big = T0.ic === 'T' || T0.ic === 'alt', isz = big ? h * .62 : h * .5;
       icona(x, T0.ic, w / 2, 18 + isz / 2 + (big ? 0 : 4), isz, fg, bg);
       x.fillStyle = fg; x.textAlign = 'center'; x.textBaseline = 'middle'; fitFont(x, T0.w, w - 30, big ? 26 : 34); x.fillText(T0.w, w / 2, h - 30);
-      sporco(x, w, h, T0.w.length * 11, 24); usura(x, w, h, T0.w.length * 3, 14); }); }
+      sporco(x, w, h, T0.w.length * 11, 24); usura(x, w, h, T0.w.length * 3, 14); };
+    return tessera(key, W0, H0, disegna(RC && !SE ? RC : null), SE ? disegna(RC) : null); }
   // la freccia d'indicazione: bianca coi caratteri neri (marrone coi caratteri bianchi per i luoghi da vedere), punta a destra o a sinistra
   function tessFreccia(meta, testo, colore, verso) {
     return tessera('fre|' + meta + '|' + verso, 448, 104, (x, w, h) => { x.clearRect(0, 0, w, h); const bg = colore === 'marrone' ? '#7a4a26' : '#f2f0ea', fg = colore === 'marrone' ? '#f6eee0' : '#141414', tip = 46;
@@ -724,6 +728,11 @@ var Segnaletica = (function () {
     const pali = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .55, metalness: .35, side: THREE.DoubleSide });
     const strisce = new THREE.MeshStandardMaterial({ map: t, vertexColors: true, transparent: true, depthWrite: false, roughness: .85, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -6 });
     [segni, luce, pali, strisce].forEach(m => { m.userData.segnaletica = true; });
+    if (SE && ATL.e && ATL.e.length) {   // [integra1] l'atlante di E: quello di A, con le insegne di E sopra (stesse celle, stesse coordinate)
+      const cE = document.createElement('canvas'); cE.width = ATL.c.width; cE.height = ATL.c.height; const xE = cE.getContext('2d'); xE.drawImage(ATL.c, 0, 0);
+      ATL.e.forEach(([x0, y0, w, h, d]) => { xE.save(); if (ATL.f && ATL.f !== 1) xE.scale(ATL.f, ATL.f); xE.translate(x0, y0); xE.beginPath(); xE.rect(0, 0, w, h); xE.clip(); d(xE, w, h); xE.restore(); });
+      const tE = new THREE.CanvasTexture(cE); tE.anisotropy = 4; tE.magFilter = THREE.LinearFilter; tE.minFilter = THREE.LinearMipmapLinearFilter; tE.generateMipmaps = true; if (typeof LeggeraMem !== 'undefined' && !(ATL.f < 1)) LeggeraMem.mezza(tE);
+      ATL.texE = tE; SE.mappaE(segni, tE); SE.mappaE(luce, tE); }
     if (PV()) PV().vernice(strisce);   // [strade] la vernice legge la grana e le crepe dell'asfalto (pavimenti.js)
     return (MAT = { segni, luce, pali, strisce });
   }
@@ -779,7 +788,7 @@ var Segnaletica = (function () {
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.size) {   // [pulizia] quello che la passata del rumore ha tolto (doppioni, pali addosso a un altro): solo la grafica, il piano resta
       const S = PuliziaRumore.SALTA, k = (c, q) => c + Math.round(q.x * 10) + ',' + Math.round(q.y * 10);
       P.pali = P.pali.filter(p => !S.has(k('p', p))); P.insegne = P.insegne.filter(q => q.fonte !== 'segnaletica' || !S.has(k('i', q))); }
-    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1; ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S * ATL.f; ATL.x = ATL.c.getContext('2d');   // [dieta] sul telefono a metà lato, le tessere in scala ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear();
+    ATL.f = typeof LeggeraMem !== 'undefined' ? LeggeraMem.meta2() : 1; ATL.c = document.createElement('canvas'); ATL.c.width = ATL.c.height = ATL.S * ATL.f; ATL.x = ATL.c.getContext('2d');   // [dieta] sul telefono a metà lato, le tessere in scala ATL.uv.clear(); ATL.riga = { x: 0, y: 0, h: 0 }; MU.clear(); ATL.e = []; ATL.texE = null;
     // ---- le strisce ----
     P.strisce.forEach(decal);
     if (false) P.strisce.forEach(q => { if (q.k !== 'zebra' && q.k !== 'riga') return; if (hash(q.x, q.y, 77) > .16) return;   // [strade] tolta la ripassata: la copia spostata leggeva come strisce doppie e storte   // [strade] ripassata: la vernice vecchia sotto la nuova, spostata di qualche centimetro
@@ -833,7 +842,7 @@ var Segnaletica = (function () {
       }
     });
     // ---- la fusione: un mesh per mucchio ----
-    const M0 = materiali(); ATL.tex.needsUpdate = true;
+    const M0 = materiali(); ATL.tex.needsUpdate = true; if (ATL.texE) ATL.texE.needsUpdate = true;
     MU.forEach(b => { if (!b.p.length) return; const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.u, 2)); g.setAttribute('color', new THREE.Float32BufferAttribute(b.c, 4));
       g.computeBoundingSphere(); const me = new THREE.Mesh(g, M0[b.m]); me.matrixAutoUpdate = false; me.castShadow = false; me.receiveShadow = b.m !== 'strisce'; me.userData.segnaletica = b.m; if (b.m === 'strisce') me.renderOrder = 1;
       scene.add(me); MESH.push(me); CNT.vert += b.p.length / 3; });

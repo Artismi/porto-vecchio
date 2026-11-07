@@ -50,12 +50,17 @@ prova('l\'aggancio si installa con E e avvolge intonaco e atlanti', () => {
 prova('il manto E (tetti_vissuti.js) rispetta le regole per ogni genere', () => {
   const src = require('fs').readFileSync(path.join(__dirname, 'tetti_vissuti.js'), 'utf8');
   assert.ok(/function applicaE\(/.test(src) && /if \(RC\) return applicaE/.test(src));
-  const i0 = src.indexOf('function applicaE('), i1 = src.indexOf('\n  }\n', i0) + 4, codice = src.slice(i0, i1);
+  // [integra1] applicaE riusa il manto di A (pezziA) e ci mette davanti il ramo di E dietro la manopola rcK (StileE)
+  const taglia = (nome) => { const i0 = src.indexOf('function ' + nome + '('), i1 = src.indexOf('\n  }\n', i0) + 4; return src.slice(i0, i1); };
+  const d0 = src.indexOf('const DISEGNO = {'), d1 = src.indexOf('};', d0) + 2, DIS = src.slice(d0, d1);
   const RC = R2, f = v => v.toFixed(4), BUCO_TV = .22;
-  const applicaE = new Function('RC', 'BUCO_TV', codice + '\nreturn applicaE;')(RC, BUCO_TV);
+  const mk = new Function('RC', 'BUCO_TV', 'StileE', DIS + '\n' + taglia('pezziA') + '\n' + taglia('applicaE') + '\nreturn applicaE;');
   const CELLE = { coppi: [256 / 6, 256 / 8], tegole: [256 / 4, 256 / 7], pianelle: [256 / 5, 256 / 5], cemento: [256 / 8, 256 / 8], ardesia: [256 / 6, 256 / 5] };
-  for (const k in CELLE) { const m = { userData: {} }; applicaE(m, k, CELLE[k], k === 'coppi' || k === 'tegole' || k === 'ardesia', f);
-    const s = { vertexShader: '#include <common>\n#include <worldpos_vertex>', fragmentShader: '#include <common>\nvoid main() {\n#include <map_fragment>\n}' }; m.onBeforeCompile(s);
-    regole('manto ' + k, s.fragmentShader); assert.ok(/riga/.test(s.fragmentShader)); }
+  const SEc = { pre: n => '\nuniform float ' + n + ';\n', adatta: x => x, chiave: () => '|C' }, SEa = { pre: n => '\n#define ' + n + ' 0.\n', adatta: x => x.replace(/uniform float rcK;/g, '#define rcK 0.'), chiave: () => '' };
+  for (const k in CELLE) for (const SE of [SEc, SEa]) { const applicaE = mk(Object.assign({ k: { value: 0 } }, RC), BUCO_TV, SE); const m = { userData: {} }; applicaE(m, k, CELLE[k], k === 'coppi' || k === 'tegole' || k === 'ardesia', f);
+    const s = { vertexShader: '#include <common>\n#include <worldpos_vertex>', fragmentShader: '#include <common>\nvoid main() {\n#include <map_fragment>\n}', uniforms: {} }; m.onBeforeCompile(s);
+    const fr = s.fragmentShader, iE = fr.indexOf('if (rcK > .5) {'), jE = fr.indexOf('} else {\n#ifdef USE_UV', iE);   // le regole sul ramo E (quello di A è il testo di prima, che usa diffuse)
+    regole('manto ' + k, jE > 0 ? fr.slice(iE + 15, jE) : fr); assert.ok(/riga/.test(s.fragmentShader)); assert.ok(/if \(rcK > \.5\)/.test(s.fragmentShader), k + ': il ramo E dietro rcK');
+    if (k !== 'ardesia') assert.ok(/} else \{\n#ifdef USE_UV/.test(s.fragmentShader), k + ': il manto di A nel ramo else'); }
 });
 console.log(`\ntutte le prove passate (${ok})`);

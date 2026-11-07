@@ -107,6 +107,7 @@
       ENU.forEach(k => { if (typeof m[k] === 'number') r[k] = m[k]; });
       if (m.normalScale) r.normalScale = m.normalScale.toArray();
       TK.forEach(k => { if (m[k]) r[k] = texId(m[k]); });
+      if (m.__mapE && m.__mapE.isTexture) r.mapE = texId(m.__mapE);   // [integra1] la tessitura dello stile E (StileE.mappaE): il gioco la mette al posto di map con E
       if (m.clippingPlanes && m.clippingPlanes.length) r.clip = m.clippingPlanes.length;
       const ud = {}; for (const k in m.userData) { const v = m.userData[k]; if (v === null || ['number', 'boolean', 'string'].includes(typeof v)) ud[k] = v; } if (Object.keys(ud).length) r.ud = ud;
       if (m.isShaderMaterial) {
@@ -136,7 +137,7 @@
       return { at, ix: g.index ? attrRef(t, g.index, true) : null, gr: g.groups.length ? g.groups.map(q => [q.start, q.count, q.materialIndex || 0]) : null,
         dr: g.drawRange.start || g.drawRange.count !== Infinity ? [g.drawRange.start, g.drawRange.count] : null }; };
     const base = o => ({ m: Array.isArray(o.material) ? o.material.map(matId) : matId(o.material), cs: o.castShadow, rs: o.receiveShadow, ro: o.renderOrder, ly: o.layers.mask, fc: o.frustumCulled,
-      nm: o.name || '', cdm: o.customDepthMaterial ? matId(o.customDepthMaterial) : null, cdi: o.customDistanceMaterial ? matId(o.customDistanceMaterial) : null,
+      nm: o.name || '', rc: o.userData.rc || undefined, cdm: o.customDepthMaterial ? matId(o.customDepthMaterial) : null, cdi: o.customDistanceMaterial ? matId(o.customDistanceMaterial) : null,
       mx: (() => { const e = o.matrixWorld.elements; let id = true; for (let k = 0; k < 16; k++) if (Math.abs(e[k] - (k % 5 === 0 ? 1 : 0)) > 1e-9) { id = false; break; } return id ? null : Array.from(e); })() });
     let nInst = 0;
     for (const o of città) {

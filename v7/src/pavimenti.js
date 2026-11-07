@@ -523,8 +523,10 @@ var Pavimenti = (function () {
   const CIELO = { value: new THREE.Vector3() };   // [sguardo] x, z: lo scorrimento delle nuvole (m); forza
   function dummy() { if (DUMMY.id) return DUMMY; DUMMY.id = new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType); DUMMY.id.needsUpdate = true; DUMMY.mk = new THREE.DataTexture(new Uint8Array(4), 1, 1); DUMMY.mk.needsUpdate = true; return DUMMY; }
   // [rifinitura suolo] lo stile E (rifinitura_suolo.js): con lo stile la uniform rsK e il disegno; senza, rsK è la costante 0 (lo shader di oggi)
-  const RS1 = () => typeof RifSuolo !== 'undefined' && RifSuolo.on;
-  const rsPre = () => (RS1() ? 'uniform float rsK;\n' : '#define rsK 0.\n') + (typeof RifSuolo !== 'undefined' ? RifSuolo.GLSL : RS0);
+  // [integra1] RS1: il ramo E entra nello shader (con E, o nella cottura dei tasselli: RifSuolo.capace); la manopola rsK di StileE lo accende
+  const RS1 = () => typeof RifSuolo !== 'undefined' && RifSuolo.capace;
+  const rsPre = () => (RS1() ? RifSuolo.pre() : '#define rsK 0.\n') + (typeof RifSuolo !== 'undefined' ? RifSuolo.GLSL : RS0);
+  const rsChiave = () => RS1() ? '|rs' + RifSuolo.ver + (typeof StileE !== 'undefined' ? StileE.chiave() : '') : '';
   const RS0 = 'float rsInk; float rsLuce; float rsRiga(float d, float w){ return 0.; } float rsIso(float x, float w){ return 0.; } vec3 rsSabbia(vec3 c, vec2 p, float m, float w, float d){ return c; }\n';
   function patch(mat, U, chiave) {
     const prev = mat.onBeforeCompile, pk = mat.customProgramCacheKey;
@@ -543,7 +545,7 @@ var Pavimenti = (function () {
       if (RS1()) sh.fragmentShader = sh.fragmentShader.replace('vec3 c = base * (k + (bl * .5 - gap * .38) * aa + tuft * .22 * aa2);',
         'float fc9 = max(fwidth(cl), 1e-4), ms9 = smoothstep(.52 - fc9, .52 + fc9, cl); k = mix(k, .8 + ms9 * .17 + (zo - .5) * .2, rsK); vec3 c = base * (k + (bl * .5 - gap * .38) * aa * (1. - .8 * rsK) + tuft * .22 * aa2); c *= 1. - rsIso(cl - .52, 1.1) * .22 * rsK * aa2;');
     };
-    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|' + chiave + '|' + QUAL.v + (RS1() ? '|rs' + RifSuolo.ver : '');
+    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|' + chiave + '|' + QUAL.v + rsChiave();
     mat.needsUpdate = true; MATS.add(mat); return mat;
   }
   // [pavimenti] la qualità: 'alta' (il disegno pieno) o 'leggera' (telefoni e qualità bassa: una via per texel, niente grana fine,
@@ -642,7 +644,7 @@ var Pavimenti = (function () {
             #endif
             diffuseColor.a *= mix(1., (1. - sc * mix(.75, .95, rsK) * (1. - fresca)) * (1. - rg * .9 * (1. - rsK)), lod); diffuseColor.rgb *= 1. + fresca * .06; }`);
     };
-    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|vern1|' + QUAL.v + (RS1() ? '|rs' + RifSuolo.ver : ''); mat.needsUpdate = true; MATS.add(mat); return mat;
+    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|vern1|' + QUAL.v + rsChiave(); mat.needsUpdate = true; MATS.add(mat); return mat;
   }
   // la sonda: cosa dice la mappa in (x, z)
   const STAT = { comp: 0, ok: null };

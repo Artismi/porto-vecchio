@@ -738,7 +738,8 @@ var Render = (function () {
   // [fumetto2] i pezzi del costruito per la rifinitura (vetrine, fascia dell'insegna, saracinesche, gronde): userData.rc = '<tipo>' sul pezzo (o sul
   // suo materiale, se è solo suo), solo con ?stile=E. mergeGroup tiene i pezzi segnati in secchi loro (materiale + tipo): la mesh fusa porta
   // userData.rc. Senza E i secchi sono quelli di prima (nessun costo)
-  const RCON = typeof location !== 'undefined' && /[?&]stile=e\b/i.test(location.search), rcTag = (o, k) => { if (RCON && o && k) o.userData.rc = k; return o; };
+  // [integra1] anche nella cottura dei tasselli (StileE.capace): i secchi segnati diventano mesh dei tasselli con il loro rc (tassella_pagina.js, tasselli.js)
+  const RCON = typeof StileE !== 'undefined' ? StileE.capace : typeof location !== 'undefined' && /[?&]stile=e\b/i.test(location.search), rcTag = (o, k) => { if (RCON && o && k) o.userData.rc = k; return o; };
   function mergeGroup(grp) {
     grp.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), byR = new Map(), keep = [], E2 = [], V3 = [];
@@ -14010,7 +14011,7 @@ var Render = (function () {
   //     che lontano prende il colore dell'aria), la luce a tre toni piatti col bordo antialiasato, le campiture piatte, le ombre colorate.
   //   D2 «graffiti a fumetto»: D1 più il retino nell'ombra (nel mondo, si spegne sotto i 3 px), la luce a spray (macchie bianche a bordo netto
   //     sulle cose curve), il colore spray più pieno, l'inchiostro più spesso vicino (2 px) e il lontano a fasce piatte.
-  const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([a-eA-E][12]?)\b/) || [])[1] || '').toUpperCase().replace(/^D$/, 'D2').replace(/^E\d$/, 'E') : '';   // [fumetto2] ?stile=E
+  const STILE_Q = typeof location !== 'undefined' ? ((location.search.match(/[?&]stile=([a-eA-E][12]?)\b/) || [])[1] || (typeof window !== 'undefined' && /^E/i.test(String(window.PV_STILE || '')) ? 'E' : '')).toUpperCase().replace(/^D$/, 'D2').replace(/^E\d$/, 'E') : '';   // [fumetto2] ?stile=E   [integra1] o lo stile per difetto (PV_STILE_PREDEFINITO)
   const STILE = { on: PFD.on, url: PFD.on && !!STILE_Q, v: 'A', base: null, sV: [0, 0, 0, 1], sW: [0, 0, 0, 0], sF: [0, 0, 0, 0], sG: [40, 0, 0, 30],   /* [fumetto] sF: inchiostro, pieghe, anello vicino (2 px), valore degli accenti; sG: metri dell'inchiostro d'aria, metri dell'anello, fasce del lontano, metri delle pieghe */
     V: {
       B: { DIR: { varia: .25, pittura: .45, tremolio: 0, microNormale: 0, fuoco: .08, suoloSat: .24, muriSat: .46 }, PRO: { celle: 1 },
@@ -14059,7 +14060,11 @@ var Render = (function () {
     if (!g) return; g.traverse(o => { if (!o.isMesh || o.isSkinnedMesh) return; (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
       if (!m || m.userData.sgTag === cat * 6 + fc || (soloStd && !m.isMeshStandardMaterial) || m.transparent) return;
       m.defines = Object.assign({}, m.defines, { SG_CATP: cat.toFixed(1), SG_FCP: fc.toFixed(1) }); m.userData.sgTag = cat * 6 + fc; m.needsUpdate = true; }); }); }
+  // [integra1] tornando ad A dal vivo la categoria data dal gioco si toglie (il passo di A legge l'alfa com'era)
+  function stileStacca() { SGT.eTagFatto = false; const via = g => { if (g) g.traverse(o => { if (o.isMesh) [].concat(o.material).forEach(m => { if (m && m.userData.sgTag !== undefined) { const d = Object.assign({}, m.defines); delete d.SG_CATP; delete d.SG_FCP; m.defines = d; delete m.userData.sgTag; m.needsUpdate = true; } }); }); };
+    for (const k in dyn.people) via(dyn.people[k]); for (const k in (dyn.vehicles || {})) via(dyn.vehicles[k]); if (dyn.markers) via(dyn.markers.g); }
   function stileTagga() {
+    SGT.eTagFatto = true;
     for (const k in dyn.people) stileTag(dyn.people[k], 4, 5, false);
     for (const k in (dyn.vehicles || {})) stileTag(dyn.vehicles[k], 5, 1, true);
     if (dyn.markers) stileTag(dyn.markers.g, 5, 2, false); }
@@ -14067,6 +14072,7 @@ var Render = (function () {
     v = String(v || 'A').toUpperCase(); if (v === 'D') v = 'D2'; if (!STILE.on || !/^([ABCE]|D[12])$/.test(v)) return STILE.v;   // [fumetto] D = D2   // [fumetto2] E
     if (!STILE.base) STILE.base = { DIR: Object.assign({}, DIR), PRO: Object.assign({}, SGU.pro), PFD: Object.assign({}, PFD), CAT: Object.assign({}, CAT), mom: JSON.parse(JSON.stringify(SGU.momenti)) };
     const B = STILE.base; Object.assign(DIR, B.DIR); Object.assign(SGU.pro, B.PRO); Object.assign(PFD, B.PFD); Object.assign(CAT, B.CAT); for (const k in B.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(B.mom[k])));
+    if (v !== 'A' && !STILE.url) { STILE.url = true; if (SGP.mat) { const src0 = SGP.mat.uniforms.src.value.clone(); SGP.mat.dispose(); sguInit(); SGP.mat.uniforms.src.value.copy(src0); } }   // [integra1] dal vivo: il passo unico coi rami degli stili (senza ?stile non c'erano)
     const S = STILE.V[v]; STILE.v = v; STILE.e = v === 'E';   /* [fumetto2] */ STILE.sV = S ? S.sV : [0, 0, 0, 1]; STILE.sW = S ? S.sW : [0, 0, 0, 0]; STILE.sF = S && S.sF ? S.sF : [0, 0, 0, 0]; STILE.sG = S && S.sG ? S.sG : [40, 0, 0, 30];   // [fumetto]
     const u = S ? S.u10 : [0, 0, 0, 0]; PRO.u10.x = u[0]; PRO.u10.y = u[1]; PRO.u10.z = u[2]; PRO.u10.w = u[3];
     if (S) { Object.assign(DIR, S.DIR); Object.assign(SGU.pro, S.PRO); Object.assign(PFD, S.PFD); Object.assign(CAT, S.CAT); for (const k in S.mom) Object.assign(SGU.momenti[k], JSON.parse(JSON.stringify(S.mom[k]))); }
@@ -15165,7 +15171,7 @@ ${LOOK.on ? `float m = max(x.r, max(x.g, x.b)), e = max(m - .72, 0.), mm = min(m
     if (DIR.on) U.dF.value.y = PFD.on ? PFD.tettiK : .7;
     if (STILE.url) { U.sV.value.fromArray(STILE.sV); U.sW.value.fromArray(STILE.sW); U.sF.value.fromArray(STILE.sF); U.sG.value.fromArray(STILE.sG);
       const E = STILE.V.E; U.sE.value.set(STILE.e ? E.k : 0, E.ink, E.bol, E.trama); U.eT.value.set(E.sottile, E.corto, E.luce, E.fascia); U.eS.value.x = STILE.base ? STILE.base.DIR.muriSat : DIR.muriSat; { const cp = camera.position; U.eO.value.set(Math.floor(cp.x / 64) * 64, 0, Math.floor(cp.z / 64) * 64); }
-      if (((SGT.eTag = (SGT.eTag || 0) + 1) % 30) === 1) stileTagga(); }   // [fumetto2] E: la manopola, l'origine del tratteggio; la categoria data dal gioco (ogni 30 fotogrammi i nuovi arrivati)   // [fumetto]   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
+      if (((SGT.eTag = (SGT.eTag || 0) + 1) % 30) === 1) { if (STILE.e) stileTagga(); else if (SGT.eTagFatto) stileStacca(); } }   // [fumetto2] E: la manopola, l'origine del tratteggio; la categoria data dal gioco (ogni 30 fotogrammi i nuovi arrivati)   // [fumetto]   // [stile]   // [profondita2] il contrasto dentro i tetti (.7 è il passo di prima)
     if (PFD.on) {   // [profondita2] la profondità nel passo: la camera, il personaggio, le forze
       const F = PFD, ty = Math.tan(camera.fov * Math.PI / 360), m = camera.matrixWorld.elements, inK = p.indoor ? 0 : 1, f = ui.focus;
       const d3 = SGT.fv3 || (SGT.fv3 = new THREE.Vector3()); d3.set(f ? f.x : p.x, (f ? groundH(f.x, f.y) : playerH) + 1, f ? f.y : p.y).applyMatrix4(camera.matrixWorldInverse);
@@ -20472,7 +20478,8 @@ float tH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`
   const TASSR = { uni: { 'FD1.u': FD1.u, 'PAL1.u': PAL1.u, 'PAL1.s': PAL1.s, 'VEGU.time': VEGU.time, 'NATU.pl': NATU.pl, 'NATU.cm': NATU.cm, 'VIS3.filo': VIS3.filo, 'ALONE3U': ALONE3U, 'CAVO5.muro': CAVO5.muro, 'CAVO5.filo': CAVO5.filo,
     'SAG4U.c': SAG4U.c, 'SAG4U.f': SAG4U.f, 'SAG4U.e': SAG4U.e, 'SAG4U.pg': SAG4U.pg, 'SAG4U.mezzo': SAG4U.mezzo, 'MV.t': MV.t, 'PRATO9.k': PRATO9.k, 'VENTO.t': VENTO.t, 'VENTO.g': VENTO.g, 'VIS4.filo': VIS4.filo }, LSRC, SPILLS, dyn, FD1, PAL1, sagoma: () => massaGeo1(dyn.buildings),
     ombre1: () => { moon.shadow.camera.layers.enable(1); SPOOL.forEach(l => l.shadow.camera.layers.enable(1)); },
-    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile, fade7: sh => CAM7ON && fade7(sh) };   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
+    S1, DZ, TAGS, hashPut, nightLevel, casaVisibile, fade7: sh => CAM7ON && fade7(sh) };
+  if (typeof StileE !== 'undefined') Object.assign(TASSR.uni, StileE.U);   // [integra1] le manopole dello stile E (rsK, rcK): uniform di modulo, i tasselli cotti le ritrovano per nome   // [camera7] il retino delle chiome anche nei tasselli cotti   // [tasselli] le cose vive che i tasselli rimettono (semafori, lampeggianti, oggetti che si colpiscono)   // le sagome d'ombra delle case (livello 1), come fus1Gen
   const __mondo = { M: MONDO, V: VENTO, stat: () => ({ ms: +MONDO.ms.toFixed(3), vento: +VENTO.g.value.toFixed(2), neve: MONDO.rain, fumo: MONDO.puffs ? Array.from(MONDO.puffs.life).filter(l => l > 0).length : 0, scintille: MONDO.sparks ? Array.from(MONDO.sparks.life).filter(l => l > 0).length : 0, fuochi: MONDO.fuochi.length + WX.fires.length, stormi: MONDO.birds ? MONDO.birds.F.length : 0, porte: MONDO.doors.filter(r => r.rig.visible).length, barche: dyn.boats.length, bucato: dyn.laundry.length, gabbiani: dyn.gulls.length }) };   // [animazioni-mondo] per le prove
   // [editor] quello che serve all'editor (F2): oggetti di scena fusi, interni, camera
   const __ed = { DZ, TAGS, hideTag, showTag, hashPut, INDOOR, groundH, get scene() { return scene; }, get camera() { return camera; }, rebuildIndoor() { INDOOR.key = '~'; },

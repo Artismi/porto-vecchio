@@ -38,7 +38,9 @@ async function cuoci(GREZZI, imp) {
     await pg.addInitScript(() => { window.__pulita = true; window.__nodraw = true;
       const P = WebGL2RenderingContext.prototype; for (const k of ['drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'drawRangeElements']) { const f = P[k]; P[k] = function () { if (window.__nodraw) return; return f.apply(this, arguments); }; } });
     await pg.addInitScript(seme => { let a = seme >>> 0 || 1; Math.random = function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }, +arg('seme', 12345));
-    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus&tasselli=0`, { timeout: 0 });
+    // [integra1] ?cottae: lo stile E entra nella cottura (StileE: i rami degli shader dietro le manopole, le varianti dei materiali, i pezzi
+    // segnati), coi valori di A; il gioco sceglie A o E al caricamento (src/stile_e.js, INTEGRAZIONE1.md)
+    await pg.goto(`http://localhost:${srv.address().port}/index.html?tutto&noanimus&tasselli=0&cottae`, { timeout: 0 });
     await pg.waitForFunction(() => window.__pv && window.__pv.st && window.__pv.R && window.__pv.R.__models.renderer, null, { timeout: 1800000, polling: 1000 });
     log('città costruita');
     await pg.waitForTimeout(3000);
@@ -132,7 +134,7 @@ function unisci(T, A, mats, pal) {
   // quelli col colore a 4 componenti, quelli il cui shader non legge il colore del vertice (color_vertex / color_fragment)
   const G = new Map(), PALOK = new Map();
   const palOk = (i, r) => { if (!pal) return false; let v = PALOK.get(i); if (v === undefined) { const M = mats[i], S = pal.stringhe;
-      v = !!M && ['MeshStandardMaterial', 'MeshLambertMaterial', 'MeshPhongMaterial', 'MeshBasicMaterial', 'MeshPhysicalMaterial', 'MeshToonMaterial'].includes(M.type) && !M.vivo && Array.isArray(M.color) &&
+      v = !!M && !(M.ud && M.ud.rcE) && ['MeshStandardMaterial', 'MeshLambertMaterial', 'MeshPhongMaterial', 'MeshBasicMaterial', 'MeshPhysicalMaterial', 'MeshToonMaterial'].includes(M.type) && !M.vivo && Array.isArray(M.color) &&
         (M.cvs === undefined || (S[M.cvs].indexOf('#include <color_vertex>') >= 0 && S[M.cvs].indexOf('#include <color_pars_vertex>') >= 0 && S[M.cfs].indexOf('#include <color_fragment>') >= 0 && S[M.cfs].indexOf('#include <color_pars_fragment>') >= 0));
       PALOK.set(i, v); }
     return v && (r.g.at.color === undefined || A[r.g.at.color].s === 3); };
@@ -144,7 +146,7 @@ function unisci(T, A, mats, pal) {
     if (r.mx && (M.cvs !== undefined || !(A[r.g.at.position].arr instanceof Float32Array))) return;
     const P = palOk(r.m, r) && !(M.vertexColors && r.g.at.color === undefined);
     const sig = Object.keys(r.g.at).filter(k => !P || (k !== 'color' && k !== 'pid')).sort().map(k => k + ':' + A[r.g.at[k]].arr.constructor.name + A[r.g.at[k]].s + A[r.g.at[k]].norm).join(',');
-    const key = [P ? 'P' + firmaPal(r.m) : r.m, r.cs, r.rs, r.ro, r.ly, r.fc, r.cdm, r.cdi, sig].join('|');
+    const key = [P ? 'P' + firmaPal(r.m) : r.m, r.cs, r.rs, r.ro, r.ly, r.fc, r.cdm, r.cdi, sig, r.rc || ''].join('|');   // [integra1] r.rc: i pezzi segnati restano mesh loro
     if (!G.has(key)) G.set(key, []); G.get(key).push(mi);
   });
   const via = new Set(); let prima = 0, dopo = 0;
@@ -255,7 +257,7 @@ async function comprimi(GREZZI, imp) {
   const fixU = u => u && Object.assign({}, u, { val: fixV(u.val) });
   // i materiali uguali (stessa firma, con le tessiture già unite) diventano uno
   const MS = new Map(), malias = [], mats = [];
-  tav.materiali.forEach((m, i) => { const c = Object.assign({}, m); if (c.type === 'MeshDepthMaterial' && c.depthPacking === undefined) c.depthPacking = 3201; if (!c.notte && c.key && /\|fd1\|/.test(c.key) && c.emissiveMap !== undefined) c.notte = 'fd1';   /* i grezzi di prima di depthPacking: le ombre (lampDepth1) sono RGBA */ ['map', 'emissiveMap', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap'].forEach(k => { if (k in c) c[k] = tid(c[k]); });
+  tav.materiali.forEach((m, i) => { const c = Object.assign({}, m); if (c.type === 'MeshDepthMaterial' && c.depthPacking === undefined) c.depthPacking = 3201; if (!c.notte && c.key && /\|fd1\|/.test(c.key) && c.emissiveMap !== undefined) c.notte = 'fd1';   /* i grezzi di prima di depthPacking: le ombre (lampDepth1) sono RGBA */ ['map', 'emissiveMap', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap', 'mapE'].forEach(k => { if (k in c) c[k] = tid(c[k]); });   /* [integra1] mapE: la tessitura dello stile E */
     ['uni', 'cuni'].forEach(k => { if (c[k]) { const o = {}; for (const q in c[k]) o[q] = fixU(c[k][q]); c[k] = o; } });
     const s = JSON.stringify(c); let j = MS.get(s); if (j === undefined) { j = mats.length; MS.set(s, j); mats.push(c); } malias[i] = j; });
   // i tasselli

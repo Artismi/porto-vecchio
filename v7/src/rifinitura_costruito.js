@@ -25,8 +25,12 @@ var RifCostruito = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search || '' : '';
   const W = typeof window !== 'undefined' ? window : {};
-  const STILE_E = /[?&]stile=e\d?\b/i.test(Q) || /^E/i.test(String(W.PV_STILE || ''));
-  const ON = STILE_E && !/[?&]norifcostruito\b/.test(Q);
+  // [integra1] CAP: la rifinitura entra (nella cottura dei tasselli, o con E): l'aggancio negli shader col ramo dietro la manopola rcK (StileE),
+  // le tinte calcolate per le varianti dei materiali. on: lo stile E acceso adesso (dal vivo). ?norifcostruito spegne tutto, come prima
+  const KILL = /[?&]norifcostruito\b/.test(Q), SE = typeof StileE !== 'undefined' ? StileE : null;
+  const STILE_E = SE ? SE.capace : (/[?&]stile=e\d?\b/i.test(Q) || /^E/i.test(String(W.PV_STILE || '')));
+  const ON = STILE_E && !KILL;
+  const RCK = SE ? SE.u('rcK') : { value: 1 }, preK = () => SE ? SE.pre('rcK') : '\nuniform float rcK;\n';
   // ---------------- la tavolozza (BIBBIA_STILE.md §1): hex, valore Oklab ----------------
   const INK = {
     carta: '#F2E7CF', osso: '#D2C2A6', sasso: '#A89C92', lilla: '#A68FB6', piombo: '#7C7186', lavagna: '#3D3548', nero: '#16121B',
@@ -157,6 +161,7 @@ ${P === 32 ? `  if (rcR0 < .45) { float rcB = rcQ.x + rcQ.y, rcBw = fwidth(rcB) 
   function genere(m) {
     if (!m || !m.isMeshStandardMaterial) return null;
     const u = m.userData || {};
+    if (u.tassello) return null;   // [integra1] i materiali dei tasselli hanno già l'aggancio nel testo cotto
     if (u.rcGen) return u.rcGen;
     if (u.plaster) return 'intonaco';
     const im = m.map && m.map.image;
@@ -173,10 +178,12 @@ ${P === 32 ? `  if (rcR0 < .45) { float rcB = rcQ.x + rcQ.y, rcBw = fwidth(rcB) 
       const nor = gen !== 'intonaco';
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + (nor ? 'varying vec3 vRcN;' : 'varying float vRcT;'))
         .replace('#include <begin_vertex>', '#include <begin_vertex>\n' + (nor ? 'vRcN = normalize(mat3(modelMatrix) * objectNormal);' : (/fd1/.test(String(this.customProgramCacheKey && this.customProgramCacheKey.call(this))) ? 'vRcT = fract(sin(bId1 * 7.13 + 1.7) * 43758.5453);' : 'vRcT = .5;')));
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + (nor ? 'varying vec3 vRcN;' : 'varying float vRcT;') + GL)
-        .replace('#include <color_fragment>', (gen === 'intonaco' ? GL_INTONACO : gen === 'fa' ? glAtlante(32, 64, 32) : glAtlante(16, 64, 16)) + '\n#include <color_fragment>');
+      sh.uniforms.rcK = RCK;   // [integra1] la manopola: con A (costante 0) il ramo sparisce, con E è una uniform di modulo (anche nei tasselli)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + (nor ? 'varying vec3 vRcN;' : 'varying float vRcT;') + preK() + GL)
+        .replace('#include <color_fragment>', 'if (rcK > .5) {\n' + (gen === 'intonaco' ? GL_INTONACO : gen === 'fa' ? glAtlante(32, 64, 32) : glAtlante(16, 64, 16)) + '\n}\n#include <color_fragment>');
+      if (SE) { sh.fragmentShader = SE.adatta(sh.fragmentShader); }
     };
-    fn.toString = () => 'rc|' + gen + '|' + (f ? f.toString() : '');
+    fn.toString = () => 'rc|' + gen + (SE ? SE.chiave() : '') + '|' + (f ? f.toString() : '');
     ST[gen]++; return fn;
   }
   function installa() {
@@ -189,7 +196,7 @@ ${P === 32 ? `  if (rcR0 < .45) { float rcB = rcQ.x + rcQ.y, rcBw = fwidth(rcB) 
     });
   }
   if (ON && typeof THREE !== 'undefined' && THREE.Material) installa();
-  if (typeof window !== 'undefined') window.__rifc = { on: ON, stato: ST };
-  return { on: ON, INK, LAB, FASCE, RIGHE, righe, tinta, ink, oklab, deOklab, GL, v3, stato: ST };
+  if (typeof window !== 'undefined') window.__rifc = { capace: ON, get on() { return ON && (!SE || SE.on); }, stato: ST };
+  return { get on() { return ON && (!SE || SE.on); }, capace: ON, k: RCK, INK, LAB, FASCE, RIGHE, righe, tinta, ink, oklab, deOklab, GL, v3, stato: ST };
 })();
 if (typeof module !== 'undefined') module.exports = RifCostruito;

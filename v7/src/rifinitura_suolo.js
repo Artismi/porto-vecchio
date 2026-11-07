@@ -13,12 +13,14 @@
 var RifSuolo = (function () {
   'use strict';
   const Q = typeof location !== 'undefined' ? location.search : '';
-  const KILL = /[?&]norifsuolo\b/.test(Q), URL_E = /[?&]stile=E/i.test(Q);
-  const on = () => !KILL && (URL_E || (typeof window !== 'undefined' && /^E/i.test(String(window.PV_STILE || ''))));
-  const K = { value: 1 };   // la manopola dal vivo (0 = com'era, 1 = la rifinitura)
+  const KILL = /[?&]norifsuolo\b/.test(Q), URL_E = /[?&]stile=E/i.test(Q), SE = typeof StileE !== 'undefined' ? StileE : null;
+  // [integra1] on: lo stile E acceso adesso (StileE, dal vivo); capace: il ramo entra negli shader (anche nella cottura dei tasselli, coi valori di A)
+  const on = () => !KILL && (SE ? SE.on : (URL_E || (typeof window !== 'undefined' && /^E/i.test(String(window.PV_STILE || '')))));
+  const capace = () => !KILL && (SE ? SE.capace : on());
+  const K = SE ? SE.u('rsK') : { value: 1 };   // la manopola dal vivo (0 = com'era, 1 = la rifinitura)   [integra1] una uniform di modulo di StileE (i tasselli la ritrovano per nome)
   const STAT = { acqua: false, pav: 0, riva: 0 };
   // il preambolo degli shader: con lo stile la uniform, senza la costante (il compilatore toglie tutto il resto)
-  const pre = () => on() ? 'uniform float rsK;\n' : '#define rsK 0.\n';
+  const pre = () => capace() ? (SE ? SE.pre('rsK') : 'uniform float rsK;\n') : '#define rsK 0.\n';
   // i pezzi comuni: hash e rumore propri (non dipendono da chi li include), la riga antialiasata, la sabbia disegnata
   const GLSL = `
     float rsH(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * .1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
@@ -125,11 +127,17 @@ var RifSuolo = (function () {
   if (typeof Render !== 'undefined' && Render.init && !Render.__rifSuolo) {
     const i0 = Render.init; Render.__rifSuolo = true;
     Render.init = function () { const r = i0.apply(this, arguments); try { dopoInit(); } catch (e) { console.warn('[rifinitura suolo]', e); } return r; };
-    // la manopola è una uniform di modulo anche per i tasselli cotti (il marciapiede): tasselli.js la ritrova per nome
-    try { if (Render.__tass && Render.__tass.uni) Render.__tass.uni['RIFS.k'] = K; } catch (e) { }
+    // la manopola è una uniform di modulo anche per i tasselli cotti (il marciapiede): tasselli.js la ritrova per nome   [integra1] la registra StileE ('rsK')
+    try { if (!SE && Render.__tass && Render.__tass.uni) Render.__tass.uni['RIFS.k'] = K; } catch (e) { }
   }
   // per la messa a punto dal vivo (le sonde): HOT, coppie [da, a] applicate al testo finale degli shader del suolo; ricompila() li rifà
-  const API = { get on() { return on(); }, k: K, pre, GLSL, acqua, STAT, ver: 0, HOT: [],
+  // [integra1] dal vivo (StileE.imposta): il mare acceso o rimesso com'era (il suo testo è dell'acqua del gioco, non dei tasselli)
+  function aggiorna() {
+    if (typeof Render === 'undefined' || !Render.__models || !Render.__models.scene) return; const visti = new Set();
+    Render.__models.scene.traverse(o => { const m = o.material; if (!m || visti.has(m) || !m.isShaderMaterial || !m.uniforms || !m.uniforms.RIVA9 || !m.uniforms.sea) return; visti.add(m);
+      try { if (on()) acqua(m, true); else if (m.userData.rsOrig) { m.fragmentShader = m.userData.rsOrig; m.userData.rifSuolo = false; m.needsUpdate = true; } } catch (e) { console.warn('[rifinitura suolo] acqua', e); } });
+  }
+  const API = { get on() { return on(); }, get capace() { return capace(); }, aggiorna, k: K, pre, GLSL, acqua, STAT, ver: 0, HOT: [],
     hot(src) { let f = src; API.HOT.forEach(([a, b]) => { f = f.split(a).join(b); }); return f; },
     ricompila() { API.ver++; const sc = typeof Render !== 'undefined' && Render.__models && Render.__models.scene; let n = 0;
       if (sc) sc.traverse(o => { const m = o.material; if (m && m.customProgramCacheKey && /\|rs/.test(String(m.customProgramCacheKey()))) { m.needsUpdate = true; n++; } }); return n; } };
