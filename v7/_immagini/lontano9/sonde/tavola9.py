@@ -12,10 +12,18 @@ def diff(a, b):
     return A, B, d.point(lambda v: min(255, v * 4)), st
 def etichetta(im, t):
     dr = ImageDraw.Draw(im); dr.rectangle((0, 0, 7 * len(t) + 6, 14), fill=(0, 0, 0)); dr.text((3, 1), t, fill=(255, 230, 120)); return im
+# i disegni della vista dal banco del computer (stesso posto, stessa pagina: sonda_lontano9.js), se c'è
+B = {}
+try:
+    J = json.load(open(os.path.join(OUT, 'banco_computer.json')))
+    for k, v in J.items():
+        if isinstance(v, dict) and 'nome' in v: B[v['nome']] = (v['c9']['vista'], v['c9l']['vista'])
+except Exception: pass
 righe = []; R = []
 for p in T['posti']:
-    A, B, Dd, st = diff(p['prima'], p['dopo']); p['diff'] = st; R.append(p)
-    righe.append([etichetta(A.resize((W, H)), f"PRIMA (camera9) - {p['nome']} - {p['disegni'][0]} disegni"), etichetta(B.resize((W, H)), f"DOPO (lontano9) - {p['disegni'][1]} disegni, {p['triangoli'][1] / 1e6:.2f} M tri"),
+    A, Bi, Dd, st = diff(p['prima'], p['dopo']); p['diff'] = st; R.append(p); n = B.get(p['nome'])
+    if n: p['disegni'] = list(n)
+    righe.append([etichetta(A.resize((W, H)), f"PRIMA (camera9) - {p['nome']}" + (f" - {n[0]} disegni" if n else '')), etichetta(Bi.resize((W, H)), "DOPO (lontano9)" + (f" - {n[1]} disegni" if n else '') + f" - {p['occluse']} nascoste, {p['piccole']} piccole"),
                   etichetta(Dd.resize((W, H)), f"differenza x4: media {st['media']}, {st['px>24']}% px > 24")])
 def foglio(rr, nome, titolo):
     S = Image.new('RGB', (3 * W, len(rr) * H + 24), (18, 18, 18)); dr = ImageDraw.Draw(S); dr.text((6, 6), titolo, fill=(255, 255, 255))
@@ -30,7 +38,7 @@ if S:
     w, h = 400, 225; im = Image.new('RGB', (len(S) * w, 3 * h + 24), (18, 18, 18)); dr = ImageDraw.Draw(im); dr.text((6, 6), '[lontano9] la fascia sul lungomare, ogni 2,5 m: sopra senza lontano9, in mezzo con, sotto la differenza x4 (le cose fra 60 e 75 m si stringono, nessuna salta)', fill=(255, 255, 255))
     for k, s in enumerate(S):
         A, B, Dd, st = diff(s['prima'], s['dopo']); s['diff'] = st
-        for j, x in enumerate([A, B, Dd]): im.paste(etichetta(x.resize((w, h)), [f"{s['disegni'][0]} disegni", f"{s['disegni'][1]} disegni, {s['fascia']} in fascia", f"diff media {st['media']}"][j]), (k * w, 24 + j * h))
+        for j, x in enumerate([A, B, Dd]): im.paste(etichetta(x.resize((w, h)), [f"senza, passo {k}", f"con lontano9, {s['fascia']} in fascia", f"diff media {st['media']}"][j]), (k * w, 24 + j * h))
     im.save(os.path.join(OUT, 'striscia_fascia.jpg'), quality=82)
 json.dump({ 'query': T['query'], 'posti': [{k: v for k, v in p.items() if k not in ('prima', 'dopo')} for p in R], 'striscia': [{k: v for k, v in s.items() if k not in ('prima', 'dopo')} for s in S] }, open(os.path.join(OUT, 'tavola9.json'), 'w'), indent=1, ensure_ascii=False)
 print(json.dumps([[p['nome'], p['disegni'], p['diff']] for p in R], ensure_ascii=False))

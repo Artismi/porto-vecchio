@@ -23614,7 +23614,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = 'ab06265eb027ea9d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '3ee76a6973b677b3';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -73316,7 +73316,19 @@ var Lontano9 = (function () {
   }
   // la scatola del mondo di una mesh grande (in cache finché non cambiano la matrice o la geometria)
   const BOXK = 6;   // m: oltre questo raggio si prova la scatola invece della sfera
+  function scatolaIst(o) {   // un gruppo di istanze con l'ingombro vero (render.js instCull): la scatola delle istanze (la sfera della forma attorno a ognuna)
+    const g = o.geometry, im = o.instanceMatrix; if (!g || !im || !im.array || o.count > 4096) return null; const e = o.matrixWorld.elements; let C = o.__l9b;
+    if (C && C.v === im.version && C.n === o.count) { let u = true; for (let i = 0; i < 16; i++) if (C.m[i] !== e[i]) { u = false; break; } if (u) return C.b; }
+    if (!g.boundingSphere) g.computeBoundingSphere(); const gs = g.boundingSphere; if (!gs) return null;
+    const b = C && C.b || new Float32Array(6), a = im.array, s = sc(e); b[0] = b[1] = b[2] = Infinity; b[3] = b[4] = b[5] = -Infinity; let any = false;
+    for (let i = 0; i < o.count; i++) { const q = i * 16, k = Math.sqrt(Math.max(a[q] * a[q] + a[q + 1] * a[q + 1] + a[q + 2] * a[q + 2], a[q + 4] * a[q + 4] + a[q + 5] * a[q + 5] + a[q + 6] * a[q + 6], a[q + 8] * a[q + 8] + a[q + 9] * a[q + 9] + a[q + 10] * a[q + 10]));
+      if (k < 1e-4) continue; const lx = a[q] * gs.center.x + a[q + 4] * gs.center.y + a[q + 8] * gs.center.z + a[q + 12], ly = a[q + 1] * gs.center.x + a[q + 5] * gs.center.y + a[q + 9] * gs.center.z + a[q + 13], lz = a[q + 2] * gs.center.x + a[q + 6] * gs.center.y + a[q + 10] * gs.center.z + a[q + 14];
+      const wx = e[0] * lx + e[4] * ly + e[8] * lz + e[12], wy = e[1] * lx + e[5] * ly + e[9] * lz + e[13], wz = e[2] * lx + e[6] * ly + e[10] * lz + e[14], r = gs.radius * k * s + .3; any = true;
+      if (wx - r < b[0]) b[0] = wx - r; if (wy - r < b[1]) b[1] = wy - r; if (wz - r < b[2]) b[2] = wz - r; if (wx + r > b[3]) b[3] = wx + r; if (wy + r > b[4]) b[4] = wy + r; if (wz + r > b[5]) b[5] = wz + r; }
+    if (!any) return null; o.__l9b = { v: im.version, n: o.count, m: Float64Array.from(e), b }; return b;
+  }
   function scatola(o) {
+    if (o.isInstancedMesh) return o.__icS ? scatolaIst(o) : null;
     const g = o.geometry; if (!g || o.isInstancedMesh || o.isSkinnedMesh || o.isSprite || (g.morphAttributes && g.morphAttributes.position)) return null;
     const e = o.matrixWorld.elements; let C = o.__l9b;
     if (C && C.g === g && C.bb === g.boundingBox) { let u = true; for (let i = 0; i < 16; i++) if (C.m[i] !== e[i]) { u = false; break; } if (u) return C.b; }
@@ -73372,7 +73384,7 @@ var Lontano9 = (function () {
   // del prototipo; chi ha un onBeforeRender suo non si stringe, solo si taglia) e torna com'era subito dopo (onAfterRender).
   const SAVE = new Float32Array(16);
   function stringi(o, camera) {
-    if (!inMain || inShadow || camera !== K.camera()) return;
+    if (!acceso || !inMain || inShadow || camera !== K.camera()) return;   // (spento dal vivo: niente strette rimaste dall'ultimo fotogramma acceso)
     const k = o.__l9k, q = o.__l9c, e = o.matrixWorld.elements; for (let i = 0; i < 16; i++) SAVE[i] = e[i]; o.__l9s = true;
     for (let i = 0; i < 11; i++) if (i !== 3 && i !== 7) e[i] *= k;
     e[12] = q[0] + (e[12] - q[0]) * k; e[13] = q[1] + (e[13] - q[1]) * k; e[14] = q[2] + (e[14] - q[2]) * k;

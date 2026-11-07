@@ -13,16 +13,20 @@ const scrivi = (url, f) => { fs.writeFileSync(f, Buffer.from(url.split(',')[1], 
   // lo stesso fotogramma, con e senza: il mondo non avanza (dt minuscolo, lo stesso tempo), due fotogrammi per modo (il secondo si tiene)
   const doppia = () => pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, rd = Rr.__models.renderer, gl = rd.getContext(); if (gl.__vero) for (const k in gl.__vero) gl[k] = gl.__vero[k];
     const t = pv.ui.time, ui = { zoom: .5, time: t, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: 1e-4, mira: null }, o = {};
-    for (const att of [false, true]) { Lontano9.attivo = att; Lontano9.azzera(); for (let i = 0; i < 2; i++) { ui.time = t; rd.info.reset(); Rr.frame(pv.st, 1e-4, ui); } o[att ? 'dopo' : 'prima'] = rd.domElement.toDataURL('image/png'); o['n' + (att ? 'Dopo' : 'Prima')] = rd.info.render.calls; o['t' + (att ? 'Dopo' : 'Prima')] = rd.info.render.triangles; if (att) o.l9 = Lontano9.conto(); }
+    const cam = Rr.getCamera(), rb = rd.renderBufferDirect; let n = 0; rd.renderBufferDirect = function (c) { if (c === cam) n++; return rb.apply(this, arguments); };   // i disegni della vista
+    for (const att of [false, true]) { Lontano9.attivo = att; for (let i = 0; i < 2; i++) { ui.time = t; Lontano9.azzera(); n = 0; Rr.frame(pv.st, 1e-4, ui); } o[att ? 'dopo' : 'prima'] = rd.domElement.toDataURL('image/png'); o['c' + (att ? 'Dopo' : 'Prima')] = cam.position.toArray(); o['n' + (att ? 'Dopo' : 'Prima')] = n; o['t' + (att ? 'Dopo' : 'Prima')] = 0; if (att) o.l9 = Lontano9.conto(); }
+    rd.renderBufferDirect = rb;
     if (gl.__vero) for (const k in gl.__vero) gl[k] = function () { }; return o; });
   try {
     for (let i = 0; i < POSTI.length; i++) { const [nome, at, verso] = POSTI[i];
       await posa(pg, { at, verso, c9: true, assesta: 2.5, foto: false });
-      const o = await doppia(); const fp = scrivi(o.prima, path.join(DIR, `t${i}_prima.png`)), fd = scrivi(o.dopo, path.join(DIR, `t${i}_dopo.png`));
+      // la camera deve essere la stessa nei due (le molle e le attese della camera contano il tempo vero: SwiftShader è lento): si ripete
+      let o = null; for (let t = 0; t < 5; t++) { o = await doppia(); const d = Math.hypot(...o.cPrima.map((v, k) => v - o.cDopo[k])); if (d < .01) break; log('la camera si è mossa di', d.toFixed(3), 'm: si rifà'); }
+      const fp = scrivi(o.prima, path.join(DIR, `t${i}_prima.png`)), fd = scrivi(o.dopo, path.join(DIR, `t${i}_dopo.png`));
       J.push({ i, nome, prima: fp, dopo: fd, disegni: [o.nPrima, o.nDopo], triangoli: [o.tPrima, o.tDopo], occluse: o.l9.occluse, piccole: o.l9.piccole, fascia: o.l9.fascia }); log(nome, o.nPrima, '→', o.nDopo);
     }
     // la striscia: indietro lungo il lungomare (le cose piccole passano la fascia), ogni 2 m, con e senza
-    const S = []; for (let k = 0; k < 8; k++) { const x = 1430 - k * 2.5; await posa(pg, { at: [x, 399], verso: [x - 20, 399.5], c9: true, assesta: .6, foto: false }); const o = await doppia();
+    const S = []; for (let k = 0; k < 8; k++) { const x = 1430 - k * 2.5; await posa(pg, { at: [x, 399], verso: [x - 20, 399.5], c9: true, assesta: .6, foto: false }); let o = null; for (let t = 0; t < 5; t++) { o = await doppia(); if (Math.hypot(...o.cPrima.map((v, k) => v - o.cDopo[k])) < .01) break; }
       S.push({ k, x, prima: scrivi(o.prima, path.join(DIR, `s${k}_prima.png`)), dopo: scrivi(o.dopo, path.join(DIR, `s${k}_dopo.png`)), disegni: [o.nPrima, o.nDopo], fascia: o.l9.fascia }); log('striscia', k, o.nPrima, o.nDopo, o.l9.fascia); }
     fs.writeFileSync(path.join(DIR, 'tavola.json'), JSON.stringify({ query: Q, posti: J, striscia: S }, null, 1));
   } catch (e) { log('ERRORE', e.message, e.stack); }

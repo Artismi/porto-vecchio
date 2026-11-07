@@ -7,7 +7,7 @@ const path = require('path'), fs = require('fs');
 const { avvia } = require('../../controlli8/sonde/lib.js'), { posa } = require('../../camera9/sonde/passo9.js');
 const OUT = path.resolve(__dirname, '..'), TMP = process.env.TMP9 || '/tmp/claude-0/-home-user/b7133111-ab7a-5dc5-8f88-7c780cd73e51/scratchpad/lontano9';
 const Q = process.argv[2] || 'leggera&tassellivecchi', FILE = process.argv[3] || 'banco.json', FOTO = process.argv[4] !== '0', SOLO = process.argv[5] ? process.argv[5].split(',').map(Number) : null;
-const MODI = (process.env.MODI || 'oggi,c9,c9l').split(',');
+const MODI = (process.env.MODI || 'oggi,c9').split(',');   // c9: senza e con lontano9 nello stesso stato
 // la memoria dei processi del navigatore (figli di questo node): la scheda video (SwiftShader: la memoria della scheda sta lì) e la pagina
 function rss() { const { execFileSync } = require('child_process'); const L = execFileSync('ps', ['-eo', 'pid=,ppid=,rss=,args=']).toString().trim().split('\n').map(l => { const m = l.trim().match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.*)$/); return m && { pid: +m[1], ppid: +m[2], rss: +m[3], a: m[4] }; }).filter(Boolean);
   const mine = new Set([process.pid]); let ch = true; while (ch) { ch = false; for (const q of L) if (!mine.has(q.pid) && mine.has(q.ppid)) { mine.add(q.pid); ch = true; } }
@@ -35,17 +35,7 @@ const scrivi = (url, f) => { fs.writeFileSync(f, Buffer.from(url.split(',')[1], 
       ['Androne del Pozzo Vecchio (fessura 2,2 m)', [1412, 292], [1422, 292]],
       ['sottopasso del Vico del Glacis', [1477, 292], [1490, 294]],
     ];
-    for (let ip = 0; ip < POSTI.length; ip++) { if (SOLO && !SOLO.includes(ip)) continue; const [nome, at, verso] = POSTI[ip]; const t0 = Date.now(); const riga = { i: ip, nome, at, verso };
-      for (const modo of MODI) {
-        const c9 = modo !== 'oggi'; await pg.evaluate(l => { if (window.Lontano9) Lontano9.attivo = l; }, modo === 'c9l');
-        const r = await posa(pg, { at, verso, c9, assesta: 2.5, foto: FOTO });
-        // i tasselli che la vista chiede devono arrivare (scaricati, aperti, saliti alla scheda video a fette): fotogrammi e attese finché
-        // niente è in volo e il numero delle mesh resta fermo per un secondo (al più 25 s)
-        let fermo = 0, prima = -1; for (let k = 0; k < 120 && fermo < 7; k++) { const t = await pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, DT = 1 / 30, ui = { zoom: .5, time: pv.ui.time, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: DT, mira: null };
-            for (let i = 0; i < 3; i++) { ui.time += DT; pv.ui.time = ui.time; pv.G.step(pv.st, DT, { x: 0, y: 0 }); Rr.frame(pv.st, DT, ui); } const T = window.__tasselli; return T && T.on ? { v: (T.inVolo || 0) + (T.inApertura || 0), m: T.mesh } : { v: 0, m: 0 }; });
-          if (t.v === 0 && t.m === prima) fermo++; else fermo = 0; prima = t.m; await pg.waitForTimeout(150); }
-        if (FOTO && r.url) riga['foto_' + modo] = scrivi(r.url, path.join(TMP, `p${ip}_${modo}_${Q.replace(/\W+/g, '_')}.jpg`));
-        const m = await pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, rd = Rr.__models.renderer, cam = Rr.getCamera(), gl = rd.getContext(), DT = 1 / 30;
+      const misura = () => pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, rd = Rr.__models.renderer, cam = Rr.getCamera(), gl = rd.getContext(), DT = 1 / 30;
           const on = v => { if (gl.__vero) for (const k in gl.__vero) gl[k] = v ? gl.__vero[k] : function () { }; };
           const ui = { zoom: .5, time: pv.ui.time, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: DT, mira: null };
           const fr = () => { ui.time += DT; pv.ui.time = ui.time; pv.G.step(pv.st, DT, { x: 0, y: 0 }); Rr.frame(pv.st, DT, ui); };
@@ -65,8 +55,22 @@ const scrivi = (url, f) => { fs.writeFileSync(f, Buffer.from(url.split(',')[1], 
           const mem = performance.memory ? performance.memory.usedJSHeapSize : 0, im = rd.info.memory;
           return { disegni: calls, triangoli: tri, vista: n, perDistanza: B, generi: Object.entries(G).sort((a, b) => b[1][0] - a[1][0]).slice(0, 24), msMed: +ms[8].toFixed(2), msP90: +ms[14].toFixed(2), heapMB: +(mem / 1048576).toFixed(0), geometrie: im.geometries, tessiture: im.textures, programmi: rd.info.programs ? rd.info.programs.length : 0,
             far: +cam.far.toFixed(0), l9: L9 && { prove: L9.prove, occluse: L9.occluse, piccole: L9.piccole, colonne: L9.colonne, ms: +L9.ms.toFixed(2), on: L9.on } }; });
-        Object.assign(m, rss()); riga[modo] = Object.assign({ stato: { vista: r.s.vista, arm: r.s.arm, sfondoAlto: r.s.sfondoAlto } }, m);
-        log(ip, nome, modo, JSON.stringify({ d: m.disegni, v: m.vista, tri: m.triangoli, ms: m.msMed, heap: m.heapMB, gpu: m.gpuMB, pag: m.paginaMB, geo: m.geometrie, tex: m.tessiture, prog: m.programmi, B: m.perDistanza, l9: m.l9 }));
+    for (let ip = 0; ip < POSTI.length; ip++) { if (SOLO && !SOLO.includes(ip)) continue; const [nome, at, verso] = POSTI[ip]; const t0 = Date.now(); const riga = { i: ip, nome, at, verso };
+      for (const modo of MODI) {
+        const c9 = modo !== 'oggi'; await pg.evaluate(() => { if (window.Lontano9) Lontano9.attivo = false; });
+        const r = await posa(pg, { at, verso, c9, assesta: 2.5, foto: FOTO });
+        // i tasselli che la vista chiede devono arrivare (scaricati, aperti, saliti alla scheda video a fette): fotogrammi e attese finché
+        // niente è in volo e il numero delle mesh resta fermo per un secondo (al più 25 s)
+        let fermo = 0, prima = -1; for (let k = 0; k < 120 && fermo < 7; k++) { const t = await pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, DT = 1 / 30, ui = { zoom: .5, time: pv.ui.time, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: DT, mira: null };
+            for (let i = 0; i < 3; i++) { ui.time += DT; pv.ui.time = ui.time; pv.G.step(pv.st, DT, { x: 0, y: 0 }); Rr.frame(pv.st, DT, ui); } const T = window.__tasselli; return T && T.on ? { v: (T.inVolo || 0) + (T.inApertura || 0), m: T.mesh } : { v: 0, m: 0 }; });
+          if (t.v === 0 && t.m === prima) fermo++; else fermo = 0; prima = t.m; await pg.waitForTimeout(150); }
+        if (FOTO && r.url) riga['foto_' + modo] = scrivi(r.url, path.join(TMP, `p${ip}_${modo}_${Q.replace(/\W+/g, '_')}.jpg`));
+        // camera9: prima e dopo nello stesso stato (gli stessi tasselli arrivati, lo stesso fotogramma del mondo): senza, poi con lontano9
+        for (const sub of c9 ? ['c9', 'c9l'] : ['oggi']) {
+          await pg.evaluate(l => { if (window.Lontano9) Lontano9.attivo = l; }, sub === 'c9l');
+          const m = await misura();
+          Object.assign(m, rss()); riga[sub] = Object.assign({ stato: { vista: r.s.vista, arm: r.s.arm, sfondoAlto: r.s.sfondoAlto } }, m);
+          log(ip, nome, sub, JSON.stringify({ d: m.disegni, v: m.vista, tri: m.triangoli, ms: m.msMed, heap: m.heapMB, gpu: m.gpuMB, pag: m.paginaMB, geo: m.geometrie, tex: m.tessiture, prog: m.programmi, B: m.perDistanza, l9: m.l9 })); }
       }
       prec.query = Q; prec['p' + ip] = riga; fs.writeFileSync(fileOut, JSON.stringify(prec, null, 1)); log('posto', ip, ((Date.now() - t0) / 1000).toFixed(0) + 's');
     }
