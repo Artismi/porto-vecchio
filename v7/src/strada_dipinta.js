@@ -128,7 +128,7 @@ var StradaDipinta = (function () {
         if (L >= 45) [[P[e], P[i0]], [P[i0], P[e]]].forEach(([E, A]) => { const ux = (E[0] - A[0]) / L, uy = (E[1] - A[1]) / L; let d = 0;
           for (; d < 40; d += .25) { const v = tileV(E[0] + ux * d, E[1] + uy * d); if (v === T.BLD) break; if (v === T.WATER || v === T.CLIFF || v < 0) { d = 99; break; } }
           if (d >= 40) return; const x = E[0] + ux * (d - .6), y = E[1] + uy * (d - .6); if (!walk(x, y)) return;
-          out.push({ x, y, face: Math.atan2(uy, ux), kind: 'strada', bi: -1, len: 6, out: [-ux, -uy], along: [uy, -ux], vista: Math.round(L + d), via: r.name || r.id, fondale: true }); });
+          out.push({ x, y, face: Math.atan2(uy, ux), kind: 'strada', bi: -1, len: 6, out: [-ux, -uy], along: [uy, -ux], vista: Math.round(L + d), via: r.name || r.id, fondale: true, corsa: { ex: E[0], ey: E[1], ux, uy, max: Math.min(60, d + 20) } }); });
         i0 = Math.max(e, i0 + 1);
       } });
     return out;
@@ -209,10 +209,10 @@ var StradaDipinta = (function () {
     // il muro in fondo alla via: se lì c'è un tratto di muro libero (un sito, niente porte né finestre) si prende quello, se no la facciata
     // vera (il pezzo diventa un throw-up grande, che sta fra le finestre)
     fondaliStrade().forEach(f => { let s = f; const sv = SITES.find(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && hyp(q.x - f.x, q.y - f.y) < 9 && q.out[0] * f.out[0] + q.out[1] * f.out[1] > .7 && (q.len || 0) >= 4);
-      if (sv) s = Object.assign(sv, { vista: f.vista, via: f.via }); else f.facciata = true;
+      if (sv) s = Object.assign(sv, { vista: f.vista, via: f.via, corsa: f.corsa }); else f.facciata = true;
       const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime') return; cand.push({ s, v: s.vista + 30, z }); });   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
     SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare' && z !== 'fuori') return;
-      const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) cand.push({ s, v, z }); });
+      const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) { if (!s.corsa) s.corsa = { ex: s.x + s.out[0] * 12, ey: s.y + s.out[1] * 12, ux: -s.out[0], uy: -s.out[1], max: 30 }; cand.push({ s, v, z }); } });   // anche qui il muro vero lo trova il raggio lungo il corridoio
     cand.sort((a, b) => b.v - a.v);
     // le alternative del fondale, in ordine (writing.js placeWallG le prova finché una entra): (a) il verticale a rullo, o la calligrafia alta,
     // fra due colonne di finestre (a passi di 1,6 m lungo la facciata); (b) il pezzo basso sulla fascia del pianterreno, sotto i davanzali del
@@ -220,14 +220,15 @@ var StradaDipinta = (function () {
     // girato verso chi arriva, entro 9 m dall'asse e 30 m dal fondo); (d) il muro dei manifesti a strati, ad altezza d'occhio
     function altFondale(s, sp0, z, who) {
       const A = s.along || [0, 1], u = [Math.cos(s.face), Math.sin(s.face)], at = k => ({ x: sp0.x + A[0] * k, y: sp0.y + A[1] * k, face: sp0.face, h: null, place: sp0.place, kind: 'strada', sdZona: z }), alt = [];
-      for (const k of [0, -1.6, 1.6, -3.2, 3.2]) alt.push({ k: 'a', style: 'verticale', W0: 1.3, H0: 4.4, hRel: 3.4, spot: at(k) });
-      for (const k of [0, -2.4, 2.4]) alt.push({ k: 'a', style: 'gotico', W0: 1.2, H0: 2.6, hRel: 2.9, spot: at(k) });
-      for (const k of [0, -3, 3]) alt.push({ k: 'b', style: 'pezzo', W0: 4.2, H0: 1.05, hRel: 1.35, spot: at(k) });
-      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'b', style: 'throw', W0: 2.4, H0: 1.05, hRel: 1.3, spot: at(k) });
+      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'a', style: 'throw', W0: 3.4, H0: 1.6, hRel: 1.6, spot: at(k), off: k });   // il throw-up grande, basso: si legge da lontano
+      for (const k of [0, -1.6, 1.6, -3.2, 3.2]) alt.push({ k: 'a', style: 'verticale', W0: 1.3, H0: 4.4, hRel: 3.4, spot: at(k), off: k });
+      for (const k of [0, -2.4, 2.4]) alt.push({ k: 'a', style: 'gotico', W0: 1.2, H0: 2.6, hRel: 2.9, spot: at(k), off: k });
+      for (const k of [0, -3, 3]) alt.push({ k: 'b', style: 'pezzo', W0: 4.2, H0: 1.05, hRel: 1.35, spot: at(k), off: k });
+      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'b', style: 'throw', W0: 2.4, H0: 1.05, hRel: 1.3, spot: at(k), off: k });
       SITES.filter(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && (q.len || 0) >= 3 && q.out[0] * u[0] + q.out[1] * u[1] < -.3).map(q => { const dx = q.x - s.x, dy = q.y - s.y; return { q, t: dx * u[0] + dy * u[1], l: Math.abs(-dx * u[1] + dy * u[0]) }; })
         .filter(o => o.t > -30 && o.t < 3 && o.l < 9).sort((a, b) => Math.abs(a.t) - Math.abs(b.t)).slice(0, 2)
         .forEach(o => { const q = o.q, big = (q.len || 0) >= 5.5; alt.push({ k: 'c', style: big ? 'pezzo' : 'throw', W0: big ? Math.min(q.len - .6, 4.8) : 2.6, H0: big ? Math.min(q.len - .6, 4.8) * .42 : 1.25, spot: Object.assign(posto(q, 0, null), { h: null }) }); });
-      for (const k of [0, -2, 2]) alt.push({ k: 'd', style: 'manifesto', W0: 1.9, H0: 1.5, spot: at(k), sdManifesti: [0, 1, 2].map(() => Object.assign({ c: Math.floor(rng() * 10) }, pick(MAN[pick(MAN_Z[z] || MAN_Z.via)]))) });
+      for (const k of [0, -2, 2]) alt.push({ k: 'd', style: 'manifesto', W0: 1.9, H0: 1.5, spot: at(k), off: k, sdManifesti: [0, 1, 2].map(() => Object.assign({ c: Math.floor(rng() * 10) }, pick(MAN[pick(MAN_Z[z] || MAN_Z.via)]))) });
       return alt;
     }
     const FOND = [];
@@ -236,7 +237,7 @@ var StradaDipinta = (function () {
       const style = s.facciata ? 'throw' : len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
       const W0 = style === 'throw' ? 3.2 : Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : style === 'throw' ? 1.5 : W0 * .4;
       const sp0 = posto(s, 0, null), alt = altFondale(s, sp0, z, who);
-      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: alt }, 'fondale');
+      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: alt, sdRun: s.corsa, sdMinK: .5 }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
     // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----

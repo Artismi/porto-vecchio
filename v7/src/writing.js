@@ -1310,6 +1310,9 @@ var Writing = (function () {
   // ordine: il verticale o il throw-up fra due colonne di finestre, il pezzo basso sulla fascia del pianterreno, il muro cieco di lato che si
   // vede dalla via, il muro dei manifesti. La prima che entra resta (il disegno si fa dopo, con lo stile e la misura che hanno vinto)
   function* placeWallG(w) {
+    // [stradadipinta] il muro vero in fondo alla via; se il raggio non trova niente (le case lontane non ancora in scena) si riprova al giro dopo,
+    // al più sei volte, poi le alternative dai posti della griglia
+    if (w.sdRun && !w.__corsa) { w.sdMuro = null; yield* fondaleMuroG(w); w.__corsaN = (w.__corsaN || 0) + 1; if ((w.sdMuro && w.sdMuro !== 'nessuno') || w.__corsaN >= 6) w.__corsa = true; else return false; }
     if (!w.sdAlt || !w.sdAlt.length || w.__altFatto) return yield* placeWallG0(w);
     const R = R_(), base = { style: w.style, W0: w.W0, H0: w.H0, spot: w.spot, sdManifesti: w.sdManifesti, sdVariante: w.sdVariante };
     for (const a of [null].concat(w.sdAlt)) {
@@ -1318,6 +1321,27 @@ var Writing = (function () {
       w.gfxRect = null; const ok = yield* placeWallG0(w); if (ok && w.gfxRect) { w.__altFatto = true; return true; }
     }
     Object.assign(w, base); w.__altFatto = true; return false;
+  }
+  // [stradadipinta] IL MURO IN FONDO ALLA VIA, DALLA GEOMETRIA VERA: dalla fine del tratto dritto (w.sdRun: ex, ey, la direzione ux, uy, la
+  // lunghezza da guardare) un raggio lungo la via, a 1,5 / 2,6 / 3,6 m dal suolo, contro le mesh della città (le stesse dei raggi dei graffiti:
+  // i candidati raccolti ogni 2 m lungo la via). Il primo muro quasi verticale è il fondale: il lavoro e le sue alternative si spostano lì,
+  // girati sulla sua normale (la griglia delle caselle sbagliava di uno o due metri: le case arretrate, i lotti orientati)
+  function* fondaleMuroG(w) {
+    const THREE = T3(), R = R_(), q = w.sdRun; if (!THREE || !R || !q) return;
+    const set = new Set(); for (let d = 0; d <= q.max; d += 2) { cands(q.ex + q.ux * d, q.ey + q.uy * d).forEach(o => set.add(o)); }
+    yield; const list = [...set], dir = new THREE.Vector3(q.ux, 0, q.uy).normalize(), gh = R.groundH(q.ex, q.ey); let hit = null;
+    // un muro, non un palo, un albero o un mezzo: i due raggi paralleli a ±0,9 m colpiscono lo stesso piano (entro 40 cm, normale entro 25°)
+    const largo = (o, h) => [-.9, .9].every(k => { const o2 = o.clone().add(new THREE.Vector3(-dir.z * k, 0, dir.x * k)), h2 = rayWall(o2, dir, q.max, list); return h2 && Math.abs(h2.p.distanceTo(o2) - h.p.distanceTo(o)) < .4 && h2.n.dot(h.n) > .9; });
+    for (const hh of [1.5, 2.6, 3.6]) { const o = new THREE.Vector3(q.ex, gh + hh, q.ey); let far = q.max, oo = o.clone();
+      for (let t = 0; t < 4; t++) { const h = rayWall(oo, dir, far, list); if (!h) break; const d = h.p.distanceTo(o);
+        if (Math.abs(h.n.y) < .3 && largo(oo, h)) { if (!hit || d < hit.d - 1.5) hit = { p: h.p, n: h.n, d }; break; }
+        oo = h.p.clone().addScaledVector(dir, .3); far = q.max - d - .3; if (far <= 0) break; }   // un ostacolo stretto: si guarda oltre
+      yield; }
+    if (!hit) { w.sdMuro = 'nessuno'; return; }
+    const nx = hit.n.x, nz = hit.n.z, L = Math.hypot(nx, nz) || 1, ox = nx / L, oz = nz / L, ax = -oz, az = ox, face = Math.atan2(-oz, -ox), px = hit.p.x + ox * .55, pz = hit.p.z + oz * .55;
+    const at = k => ({ x: px + ax * k, y: pz + az * k, face, h: null, place: w.spot && w.spot.place, kind: 'strada', sdZona: w.spot && w.spot.sdZona });
+    w.spot = at(0); w.sdMuro = { x: +hit.p.x.toFixed(2), z: +hit.p.z.toFixed(2), d: +hit.d.toFixed(1) };
+    (w.sdAlt || []).forEach(a => { if (a.off != null) a.spot = at(a.off); });
   }
   function* placeWallG0(w) {
     if (w.surf === 'auto') return placeVeh(w);
@@ -1334,7 +1358,7 @@ var Writing = (function () {
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), c = hit.p.clone();
     const foot = sp.h != null ? null : footAt(c, n, W0, r);
     if (foot != null && c.y - H / 2 < foot + .12) c.y = foot + .12 + H / 2;   // mai sotto terra
-    const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: small ? .5 : .55 }); if (!fit) return false;
+    const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: w.sdMinK || (small ? .5 : .55) }); if (!fit) return false;   // [stradadipinta] il fondale si stringe fino al rettangolo libero più grande (w.sdMinK)
     w.W = fit.W; w.H = fit.H; w.gfxRect = { c: fit.c, n, r: fit.r, W: fit.W, H: fit.H, foot }; w.pos = { x: fit.c.x, y: fit.c.y, z: fit.c.z };
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
