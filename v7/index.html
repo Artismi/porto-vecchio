@@ -23614,7 +23614,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = '3bc625ed4669bcb1';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '91bedce189a9c421';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -63436,12 +63436,15 @@ var Writing = (function () {
   function openingsAt(c, n) { const R = R_(); let L = []; try { L = R && R.aperture ? R.aperture(c.x, c.z, 9) : []; } catch (e) { L = []; } return L.filter(a => a.nx * n.x + a.nz * n.z > .85 && Math.abs((c.x - a.x) * a.nx + (c.z - a.z) * a.nz) < .8); }
   const inOpening = (O, x, y, z) => O.some(a => { const du = (x - a.x) * a.ux + (z - a.z) * a.uz; return Math.abs(du) < a.hw + .04 && y > a.y0 - .04 && y < a.y1 + .04; });
   // un punto del piano (c, n) è muro? il raggio dal davanti torna sul piano entro TOL, con la stessa normale
+  // [stradadipinta] DEEP: la fascia a rullo sopra porte e serrande (sdNoOpen) prende anche quello che sta fino a 25 cm dietro il piano (le
+  // serrande, i portoni incassati): la vernice ci passa sopra; quello che sporge (davanzali, insegne) resta fuori
+  const DEEP = [];
   function onPlane(q, n, list, O, foot) {
     if (foot != null && q.y < foot + .05) return false;
     if (O && O.length && inOpening(O, q.x, q.y, q.z)) return false;
     const THREE = T3(), o = (GFX._o || (GFX._o = new THREE.Vector3())).copy(q).addScaledVector(n, .5), d = (GFX._d || (GFX._d = new THREE.Vector3())).copy(n).negate();
     const hit = rayWall(o, d, .5 + .35, list); if (!hit) return false;
-    return Math.abs(hit.p.distanceTo(o) - .5) <= TOL && hit.n.x * n.x + hit.n.y * n.y + hit.n.z * n.z > .97;
+    const dd = hit.p.distanceTo(o) - .5; return dd >= -TOL && dd <= (O === DEEP ? .25 : TOL) && hit.n.x * n.x + hit.n.y * n.y + hit.n.z * n.z > .97;
   }
   // IL RIQUADRO SUL MURO: c un punto del piano (alla quota voluta), n la normale orizzontale, W × H la misura voluta.
   // Ritorna { c, r, W, H } (c il centro nuovo, sul piano) o null se non c'è un pezzo di muro almeno minK della misura
@@ -63453,7 +63456,7 @@ var Writing = (function () {
   function fitWall(c, n, W, H, list, opt) { return finisci(fitWallG(c, n, W, H, list, opt)); }
   function* fitWallG(c, n, W, H, list, opt) {
     const THREE = T3(), r = new THREE.Vector3(n.z, 0, -n.x).normalize(), o2 = opt || {}, minK = o2.minK != null ? o2.minK : .45;
-    const L = yield* nearTrisG(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? [] : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
+    const L = yield* nearTrisG(nearList(list, c, Math.hypot(W, H) / 2 + 1.2), c, Math.hypot(W, H) * .625 + .6), O = o2.noOpen ? DEEP : openingsAt(c, n), foot = o2.foot;   // [scatti] la scatola contiene ogni raggio della griglia, dei bordi e della prova finale
     const NX = clamp(Math.round(W / Math.min(.4, W / 4)) + 1, 5, 14), NY = clamp(Math.round(H / Math.min(.4, H / 4)) + 1, 5, 9), us = [], vs = [];
     for (let i = 0; i < NX; i++) us.push((i / (NX - 1) - .5) * W); for (let j = 0; j < NY; j++) vs.push((j / (NY - 1) - .5) * H);
     const P = (u, v) => new THREE.Vector3(c.x + r.x * u, c.y + v, c.z + r.z * u), ok = new Uint8Array(NX * NY);
@@ -63752,7 +63755,7 @@ var Writing = (function () {
   }
   function* decalG(R, layer) {
     const THREE = T3(), F = frameOf(R), n = F.n, up = F.up, r = F.r, C = new THREE.Vector3(R.c.x, R.c.y, R.c.z), flat = Math.abs(n.y) > .5;
-    const hw = R.W / 2, hh = R.H / 2, D0 = flat ? .3 : .10, D1 = flat ? .3 : .06, minDot = flat ? .7 : .5, gap = GAP2 + Math.min(4, layer || 0) * .0005;   // la fascia: per terra ±30 cm (la strada in salita: la cornice ha già verificato che sotto non ci sono gradini), sul muro da 10 cm dietro a 6 davanti
+    const hw = R.W / 2, hh = R.H / 2, D0 = flat ? .3 : R.deep ? .3 : .10, D1 = flat ? .3 : .06, minDot = flat ? .7 : .5, gap = GAP2 + Math.min(4, layer || 0) * .0005;   // la fascia: per terra ±30 cm (la strada in salita: la cornice ha già verificato che sotto non ci sono gradini), sul muro da 10 cm dietro a 6 davanti
     const list = cands(C.x, C.z).filter(m => !m.userData.velo && !m.userData.wr && !m.isInstancedMesh && !m.isSkinnedMesh && m.visible !== false);
     const L = nearList(list, C, Math.hypot(R.W, R.H) / 2 + .5);
     // la scatola del riquadro nel mondo (con la fascia)
@@ -64036,9 +64039,13 @@ var Writing = (function () {
     // al più sei volte, poi le alternative dai posti della griglia
     if (w.sdRun && !w.__corsa) { w.sdMuro = null; yield* fondaleMuroG(w); w.__corsaN = (w.__corsaN || 0) + 1; if ((w.sdMuro && w.sdMuro !== 'nessuno') || w.__corsaN >= 6) w.__corsa = true; else { w.__corsaAttesa = true; return false; } }
     w.__corsaAttesa = false;
+    // [stradadipinta] in campagna, se il raggio lungo la via non ha trovato il muro del fondo, solo i pezzi grandi della mappa del cieco: il
+    // throw piccolo sui posti della griglia (una casa lontana, un capanno) non è un fondale e non si legge
+    const camp = w.sdRun && w.sdMuro === 'nessuno' && w.spot && w.spot.sdZona === 'fuori';
+    if (camp && w.__altFatto) return false;
     if (!w.sdAlt || !w.sdAlt.length || w.__altFatto) return yield* placeWallG0(w);
     const R = R_(), base = { style: w.style, W0: w.W0, H0: w.H0, spot: w.spot, sdManifesti: w.sdManifesti, sdVariante: w.sdVariante, sdMinK: w.sdMinK, sdNoOpen: w.sdNoOpen };
-    for (const a of (w.sdGrandi || []).concat([null], w.sdAlt)) {
+    for (const a of camp ? (w.sdGrandi || []) : (w.sdGrandi || []).concat([null], w.sdAlt)) {
       if (a) { const sp = Object.assign({}, a.spot || base.spot); sp.h = a.hRel != null && R && R.groundH ? R.groundH(sp.x, sp.y) + a.hRel : a.spot ? a.spot.h : null;
         Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k, sdMinK: a.minK || base.sdMinK, sdNoOpen: !!a.noOpen }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
       else Object.assign(w, base);
@@ -64126,7 +64133,9 @@ var Writing = (function () {
       // si vede dalla via? il centro e i quattro angoli (a tre quarti), da 3,5 m sopra la strada
       const eye = new THREE.Vector3(vx, vgh + 3.5, vz), P = (u, v) => new THREE.Vector3(c.p.x + r.x * (b.uc + u) + c.n.x * .05, g0 + b.yc + v, c.p.z + r.z * (b.uc + u) + c.n.z * .05);
       let vis = 0; for (const [u, v] of [[0, 0], [-.37, -.37], [.37, -.37], [.37, .37], [-.37, .37]]) { const t = P(u * b.wm, v * b.hm), d = t.clone().sub(eye), D = d.length(); d.normalize(); const h = rayWall(eye, d, D + .5, list); if (!h || h.p.distanceTo(eye) > D - .4) vis++; }
-      yield; w.__cieco.push('visto ' + vis + '/5'); if (vis < 4) continue;
+      // e non sotto un tetto (il fondo di una tettoia aperta, di un portico: in ombra, dietro la trave, non si legge)
+      const tc = P(0, b.hm / 2).addScaledVector(c.n, 1.2), coperto = !!rayWall(tc, new THREE.Vector3(0, 1, 0), 6, list);
+      yield; w.__cieco.push('visto ' + vis + '/5' + (coperto ? ' coperto' : '')); if (vis < 4 || coperto) continue;
       best.push(Object.assign(b, { c, r, g0 }));
     }
     const kv = b => Math.abs(b.c.dist - 32) / 10 + b.c.deg / 10; best.sort((a, b) => Math.abs(b.sc - a.sc) > .05 ? b.sc - a.sc : kv(a) - kv(b));
@@ -64154,7 +64163,7 @@ var Writing = (function () {
     const foot = sp.h != null ? null : footAt(c, n, W0, r);
     if (foot != null && c.y - H / 2 < foot + .12) c.y = foot + .12 + H / 2;   // mai sotto terra
     const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: w.sdMinK || (small ? .5 : .55), noOpen: !!w.sdNoOpen }); if (!fit) { w.__no = 'posto'; return false; }   // [stradadipinta] il fondale si stringe fino al rettangolo libero più grande (w.sdMinK)
-    w.W = fit.W; w.H = fit.H; w.gfxRect = { c: fit.c, n, r: fit.r, W: fit.W, H: fit.H, foot }; w.pos = { x: fit.c.x, y: fit.c.y, z: fit.c.z };
+    w.W = fit.W; w.H = fit.H; w.gfxRect = { c: fit.c, n, r: fit.r, W: fit.W, H: fit.H, foot, deep: !!w.sdNoOpen || undefined }; w.pos = { x: fit.c.x, y: fit.c.y, z: fit.c.z };
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
     // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
