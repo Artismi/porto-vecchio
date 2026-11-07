@@ -740,20 +740,29 @@ var Render = (function () {
   // userData.rc. Senza E i secchi sono quelli di prima (nessun costo)
   // [integra1] anche nella cottura dei tasselli (StileE.capace): i secchi segnati diventano mesh dei tasselli con il loro rc (tassella_pagina.js, tasselli.js)
   const RCON = typeof StileE !== 'undefined' ? StileE.capace : typeof location !== 'undefined' && /[?&]stile=e\b/i.test(location.search), rcTag = (o, k) => { if (RCON && o && k) o.userData.rc = k; return o; };
+  // [integra1] il segno anche sul materiale (una copia per tipo): la fusione delle statiche (fusione1) unisce per materiale e non porta i userData
+  // delle mesh, la cottura dei tasselli porta quelli dei materiali (ud.rc). La copia disegna come l'originale (stesso shader, stessa chiave)
+  const RCM = new Map();
+  function rcMat(m, k) {
+    if (!m || m.userData.rc === k) return m; const q = m.uuid + '|' + k; let c = RCM.get(q); if (c) return c;
+    const obc = m.onBeforeCompile, key = m.customProgramCacheKey; c = m.clone(); c.__rcFatto = true;
+    if (obc !== THREE.Material.prototype.onBeforeCompile) c.onBeforeCompile = obc; if (key !== THREE.Material.prototype.customProgramCacheKey) c.customProgramCacheKey = key;
+    c.userData.rc = k; RCM.set(q, c); return c;
+  }
   function mergeGroup(grp) {
     grp.updateMatrixWorld(true);
     const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert(), by = new Map(), byR = new Map(), keep = [], E2 = [], V3 = [];
     const sdR = SD1.on ? sdScatole(grp).filter(q => q.n !== grp) : null, sdC = sdR ? chi2(/^(mergeGroup|shadowed)$/) : '';   // [disposizione] i pezzi col tipo, nel riferimento del gruppo
-    const walk = (o, e2, v3) => {
+    const walk = (o, e2, v3, rcI) => {   // [integra1] rcI: il segno del gruppo passa ai suoi pezzi (rcTag sul gruppo di un'insegna)
       for (const c of o.children) {
         const vv = c.userData.v3 !== undefined ? c.userData.v3 : v3;   // [visuale3] la casa a cui appartiene la parte (le antenne della rete): il taglio la ritrova nella mesh fusa
         const e = c.userData.p2 && P2.on && cn1() ? (() => { const q = p2New(c.userData.p2); q.yaw0 = yawM2(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); q.mp = []; E2.push(q); return q; })() : e2;   // [pulizia2] le parti segnate: dove finiscono nella mesh fusa
         if (c.userData.keepTree || c.isSprite || c.isLight || (c.isMesh && (Array.isArray(c.material) || c.userData.keep))) { keep.push(c); if (e && (c.isMesh || c.userData.keepTree)) e.objs.push(c); continue; }
-        if (c.isMesh) { const rcK = RCON ? c.userData.rc || (c.material && c.material.userData.rc) || '' : ''; let b = rcK ? byR.get(c.material.uuid + '|' + rcK) : by.get(c.material); if (!b) { b = []; if (rcK) { b.__mat = c.material; b.__rc = rcK; byR.set(c.material.uuid + '|' + rcK, b); } else by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
-        walk(c, e, vv);
+        if (c.isMesh) { const rcK = RCON ? c.userData.rc || (c.material && c.material.userData.rc) || rcI || '' : ''; let b = rcK ? byR.get(c.material.uuid + '|' + rcK) : by.get(c.material); if (!b) { b = []; if (rcK) { b.__mat = rcMat(c.material, rcK); b.__rc = rcK; byR.set(c.material.uuid + '|' + rcK, b); } else by.set(c.material, b); } const g = flatXf(c.geometry, new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld));   /* [carico] */ b.push(g); if (vv !== undefined) V3.push([vv, b, b.length - 1, g.attributes.position.count]); if (e) e.mp.push([b, b.length - 1, g.attributes.position.count]); if (window.Officina && Officina.wantParts) Officina.onGroupPart(grp, c, b.length - 1, g.attributes.position.count); }   // [studio]
+        walk(c, e, vv, RCON ? c.userData.rc || rcI : undefined);
       }
     };
-    walk(grp, null, undefined);
+    walk(grp, null, undefined, RCON ? grp.userData.rc : undefined);
     const out = new THREE.Group(); out.position.copy(grp.position); out.rotation.copy(grp.rotation); out.scale.copy(grp.scale);
     keep.forEach(o => { const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld); o.parent.remove(o); m.decompose(o.position, o.quaternion, o.scale); out.add(o); });
     [...by.entries()].map(([m, gs]) => [gs, m]).concat([...byR.values()].map(gs => [gs, gs.__mat])).forEach(([geos, mat]) => { if (E2.length || V3.length) { let o2 = 0; geos.__offs = geos.map(g => { const k = o2; o2 += g.attributes.position.count; return k; }); } const M = new THREE.Mesh(mergeGeos(geos), mat); if (geos.__rc) M.userData.rc = geos.__rc; out.add(M); geos.__M = M; if (window.Officina && Officina.wantParts) Officina.onGroupMerged(grp, mat, M); });   // [studio] dove finisce ogni pezzo della casa

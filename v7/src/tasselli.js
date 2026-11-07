@@ -540,7 +540,7 @@ var Tasselli = (function () {
       else if (pid && r.cs && !Array.isArray(mat)) o.customDepthMaterial = profonditaPid(mat);
       if (r.cdi !== null && r.cdi !== undefined) o.customDistanceMaterial = materiale(r.cdi);
       o.raycast = !r.inst && (S.tieni.has(r.g.at.position) || (CFG.leggero && S.ragg && S.ragg.has(r.g.at.position))) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) && !(!Array.isArray(mat) && mat.userData.rcSolo) ? rayTas : noRay;   // [integra1] i pezzi solo di E: niente raggi
-      o.userData.tassello = ti; o.userData.thin2 = 1; if (r.rc) o.userData.rc = r.rc;   // [integra1] il pezzo segnato per la rifinitura (render.js mergeGroup)
+      o.userData.tassello = ti; o.userData.thin2 = 1; if (r.rc) o.userData.rc = r.rc; else if (!Array.isArray(mat) && mat.userData.rc) o.userData.rc = mat.userData.rc;   // [integra1] il pezzo segnato per la rifinitura (render.js mergeGroup)
       if (!S.mats) S.mats = new Set();   // [tasselli3] i materiali del tassello, contati (matLascia in smonta)
       (Array.isArray(mat) ? mat : [mat]).forEach(q => matPrendi(S, q)); matPrendi(S, o.customDepthMaterial); matPrendi(S, o.customDistanceMaterial);
       sc.add(o); (S.mesh = S.mesh || []).push(o);
