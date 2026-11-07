@@ -1,0 +1,239 @@
+{
+ "query": "tassellivecchi",
+ "posti": [
+  {
+   "i": 0,
+   "nome": "sbocco sulla piazza (Vicolo dei Lanternini)",
+   "disegni": [
+    1070,
+    366
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 333,
+   "piccole": 382,
+   "fascia": 77,
+   "diff": {
+    "media": 0.531,
+    "px>8": 0.025,
+    "px>24": 0.013
+   }
+  },
+  {
+   "i": 1,
+   "nome": "vicolo stretto (Caruggio dei Pescatori)",
+   "disegni": [
+    1851,
+    546
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 896,
+   "piccole": 406,
+   "fascia": 82,
+   "diff": {
+    "media": 0.517,
+    "px>8": 0.008,
+    "px>24": 0.003
+   }
+  },
+  {
+   "i": 2,
+   "nome": "lungomare",
+   "disegni": [
+    500,
+    330
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 50,
+   "piccole": 127,
+   "fascia": 19,
+   "diff": {
+    "media": 0.412,
+    "px>8": 0.024,
+    "px>24": 0.017
+   }
+  },
+  {
+   "i": 3,
+   "nome": "cima della Scala del Mercato",
+   "disegni": [
+    1306,
+    639
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 538,
+   "piccole": 130,
+   "fascia": 106,
+   "diff": {
+    "media": 0.567,
+    "px>8": 0.134,
+    "px>24": 0.071
+   }
+  },
+  {
+   "i": 4,
+   "nome": "piazza San Rocco",
+   "disegni": [
+    429,
+    395
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 34,
+   "piccole": 0,
+   "fascia": 0,
+   "diff": {
+    "media": 0.645,
+    "px>8": 0.027,
+    "px>24": 0.022
+   }
+  },
+  {
+   "i": 5,
+   "nome": "Corte dei Pescatori (fessura 2,2 m)",
+   "disegni": [
+    440,
+    344
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 96,
+   "piccole": 1,
+   "fascia": 0,
+   "diff": {
+    "media": 10.156,
+    "px>8": 15.613,
+    "px>24": 10.559
+   }
+  }
+ ],
+ "striscia": [
+  {
+   "k": 0,
+   "x": 1430,
+   "disegni": [
+    2354,
+    1158
+   ],
+   "fascia": 60,
+   "diff": {
+    "media": 0.687,
+    "px>8": 0.105,
+    "px>24": 0.039
+   }
+  },
+  {
+   "k": 1,
+   "x": 1427.5,
+   "disegni": [
+    2389,
+    1239
+   ],
+   "fascia": 102,
+   "diff": {
+    "media": 0.683,
+    "px>8": 0.123,
+    "px>24": 0.051
+   }
+  },
+  {
+   "k": 2,
+   "x": 1425,
+   "disegni": [
+    2589,
+    1438
+   ],
+   "fascia": 141,
+   "diff": {
+    "media": 0.725,
+    "px>8": 0.294,
+    "px>24": 0.147
+   }
+  },
+  {
+   "k": 3,
+   "x": 1422.5,
+   "disegni": [
+    2616,
+    1465
+   ],
+   "fascia": 150,
+   "diff": {
+    "media": 0.758,
+    "px>8": 0.346,
+    "px>24": 0.171
+   }
+  },
+  {
+   "k": 4,
+   "x": 1420,
+   "disegni": [
+    2569,
+    1482
+   ],
+   "fascia": 194,
+   "diff": {
+    "media": 0.748,
+    "px>8": 0.412,
+    "px>24": 0.201
+   }
+  },
+  {
+   "k": 5,
+   "x": 1417.5,
+   "disegni": [
+    2613,
+    1486
+   ],
+   "fascia": 221,
+   "diff": {
+    "media": 0.668,
+    "px>8": 0.479,
+    "px>24": 0.251
+   }
+  },
+  {
+   "k": 6,
+   "x": 1415,
+   "disegni": [
+    2629,
+    1477
+   ],
+   "fascia": 200,
+   "diff": {
+    "media": 4.897,
+    "px>8": 22.238,
+    "px>24": 4.504
+   }
+  },
+  {
+   "k": 7,
+   "x": 1412.5,
+   "disegni": [
+    2614,
+    1485
+   ],
+   "fascia": 189,
+   "diff": {
+    "media": 0.522,
+    "px>8": 0.181,
+    "px>24": 0.097
+   }
+  }
+ ]
+}

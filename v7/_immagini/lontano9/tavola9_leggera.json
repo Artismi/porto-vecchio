@@ -1,0 +1,66 @@
+{
+ "query": "leggera&tassellivecchi",
+ "posti": [
+  {
+   "i": 0,
+   "nome": "sbocco sulla piazza (Vicolo dei Lanternini)",
+   "disegni": [
+    1083,
+    341
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 229,
+   "piccole": 534,
+   "fascia": 46,
+   "diff": {
+    "media": 0.376,
+    "px>8": 0.032,
+    "px>24": 0.015
+   }
+  },
+  {
+   "i": 1,
+   "nome": "vicolo stretto (Caruggio dei Pescatori)",
+   "disegni": [
+    1380,
+    391
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 543,
+   "piccole": 475,
+   "fascia": 117,
+   "diff": {
+    "media": 0.316,
+    "px>8": 0.011,
+    "px>24": 0.006
+   }
+  },
+  {
+   "i": 2,
+   "nome": "lungomare",
+   "disegni": [
+    463,
+    319
+   ],
+   "triangoli": [
+    0,
+    0
+   ],
+   "occluse": 20,
+   "piccole": 150,
+   "fascia": 40,
+   "diff": {
+    "media": 0.358,
+    "px>8": 0.095,
+    "px>24": 0.036
+   }
+  }
+ ],
+ "striscia": []
+}
