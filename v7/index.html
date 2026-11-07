@@ -27708,7 +27708,8 @@ var Urbanistica2 = (function () {
   // Le case si indicano col punto (metri finali) di una loro casella e col nome che devono avere (un controllo: se il mondo di serie
   // cambia e lì c'è un'altra casa, l'intervento si salta e si annota). Le misure sono quelle delle tavole 40-46 (MASTERPLAN.md),
   // corrette per la regola del committente (sopra).
-  const VIA_W = 3;   // la carreggiata disegnata dei passaggi nuovi (≤ 3 m come i vicoli: test_mappa_compatta); il libero fra le case è 4 m (due caselle)
+  const VIA_W = 2.8;   // la carreggiata disegnata dei passaggi nuovi (sotto i 3 m come i vicoli: test_mappa_compatta; e non pesa nella scelta degli incroci delle indicazioni,
+  // segnaletica.js, che prende i bracci da 3 m in su); il libero fra le case è 4 m (due caselle)
   // le zone (per provarle una alla volta: ?u2salta=flipper,lavatoio — in Node PV_U2_SALTA): torre (Orto, Vico e Slargo della Torre),
   // sottopassino, monache, calzolaio, lavatoio, flipper
   const SALTA = new Set((() => { try { if (typeof location !== 'undefined' && location.search) { const m = /[?&]u2salta=([^&]+)/.exec(location.search); return m ? decodeURIComponent(m[1]) : ''; }
