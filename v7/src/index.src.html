@@ -298,7 +298,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   <div class="layer"><div class="hud screen" id="screen"></div></div>
 </div>
 
-<script>window.PV_STILE_PREDEFINITO = 'E';   /* [integra1] LO STILE PER DIFETTO: 'A' o 'E'. L'unico posto da cambiare (INTEGRAZIONE1.md): la cottura dei tasselli porta tutti e due */
+<script>window.PV_STILE_PREDEFINITO = 'A';   /* [integra1] LO STILE PER DIFETTO: 'A' o 'E'. L'unico posto da cambiare (INTEGRAZIONE1.md): la cottura dei tasselli porta tutti e due */
 window.PV_STILE = (/[?&]stile=e\d?\b/i.test(location.search) ? 'E' : /[?&]stile=[a-d]/i.test(location.search) ? 'A' : window.PV_STILE || window.PV_STILE_PREDEFINITO);</script>   <!-- [fumetto2] lo stile per i moduli caricati prima di render.js (suolo, pavimenti, tetti, la rifinitura): render.js poi lo conferma (STILE.v) -->
 <script data-m="profilo">/*profilo.js*/</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->
 <script data-m="misura">/*misura.js*/</script>
