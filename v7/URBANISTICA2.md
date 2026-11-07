@@ -180,7 +180,37 @@ dovrebbe venire avanti.
 - È quello che fanno oggi le bocche di tutti i vicoli: il Vico dell'Arco 0,38, il Vico delle Monache 0,23, il Vico dei Bottai 0,23, il
   Vicolo delle Reti 0,17, misurati allo stesso modo.
 
-RISULTATI_GIOCO
+**Nel gioco** (la sonda di cattura, il motore vero, 15 fotogrammi al secondo, i fotogrammi dentro quello che F1 ha costruito: lontani più di
+1,5 m dalle vie di oggi). La regola chiede zero fotogrammi col braccio sotto il 60%: **non è ancora così**.
+
+| Giro | Camera di oggi: fotogrammi sotto il 60% · minimo | `?camera9` |
+|---|---|---|
+| Androne → Passo della Corte | 3% · 0,26 (i primi metri dalla Rua) | 2% · 0,45 |
+| Vico Scuro → Passo della Corte → corte → Androne | 12% · 0,14 | 44% · 0,21 (nella corte, davanti al fico) |
+| Sottopassino → Orto → Vico della Torre → Rua | 20% · 0,26 (sotto la volta) | **0%** · 0,63 |
+| Rua → Vico della Torre → Orto → Sottopassino | 20% · 0,25 (sotto la volta) | 32% · 0,23 (girando dall'Orto nel fornice) |
+| Orto → Via delle Mura | 36% · 0,12 | 25% · 0,21 (lungo l'Orto, a levante del Sottopassino) |
+| Passo del Calzolaio, nei due versi | 19-27% · 0,12 (la bocca sulla Via delle Mura) | 19-25% · 0,21 |
+| Corte del Flipper, nei due versi | 14-21% · 0,15 (il passo, la svolta nella corte) | 23-31% · 0,21 |
+
+- Nessun fotogramma col personaggio coperto da una casa non tagliata.
+- Nessun blocco del passo, tranne un giro con un punto d'arrivo sbagliato dentro una casa (della sonda, non del mondo).
+- Le cause che si vedono:
+  - **sotto la volta del Sottopassino** la camera di oggi (10 m a 34°) non può stare sopra il ponte della ferrovia, ed entra fino a 3 m:
+    è la natura di un sottopasso coperto lungo 9 m. La `?camera9` ci passa;
+  - **girando dall'Orto nel fornice**, dietro c'è la fila di case a 6 m: la camera bassa ci sbatte;
+  - **lungo l'Orto, sulla bocca del Calzolaio e nella svolta del Flipper** la camera si chiude al minimo (1,2 e 1,6 m) per tratti brevi, spesso
+    mentre gira dietro al personaggio.
+- La stessa prova sulle vie di oggi non è stata fatta nel gioco, quindi non so quanto di questo sia di F1 e quanto della camera nel borgo.
+  Sulla geometria (sopra) le bocche dei vicoli di oggi si chiudono come quelle di F1; nelle foto anche qualche posa ferma nelle vie di oggi
+  ha la camera corta.
+- **Da fare per chiudere la regola**, in ordine:
+  1. il giro della camera sulle vie di oggi, per avere il confronto;
+  2. una piazzetta di 7-8 m davanti alla bocca sud del Sottopassino (vanno via due case della fila dell'Orto);
+  3. la volta del Sottopassino più alta, o un passaggio a livello pedonale come i varchi di F0 (dove il rilevato lo permette);
+  4. lo spigolo sud-ovest della sala giochi e la bocca del Calzolaio sulla Via delle Mura un poco più larghi.
+
+  Le foto di `leggibilita.jpg` mostrano i punti.
 
 ---
 
@@ -204,7 +234,21 @@ RISULTATI_GIOCO
   accorcia invece di sparire: senza di lei il giro del Forno si spezzava.
 - **NPC, regia, missioni**: le prove dei posti, delle botteghe, della regia e delle vie vive passano come prima; i luoghi-missione e i
   loro ingressi non cambiano (nessuna casa con nome o bottega si tocca: `urbanistica2.js` lo controlla).
-- **Prestazioni**: PRESTAZIONI
+- **Prestazioni**: misurate nel gioco: le chiamate di disegno e i triangoli di un fotogramma intero (le ombre, la scena, il post), sulle stesse 10 pose (le 7
+di F1 e tre lontane: la Rua, la Vittoria, la Marina), con le due camere, oggi e con F1.
+
+| | Camera di oggi: chiamate · triangoli | `?camera9` |
+|---|---|---|
+| desktop (1600×900) | +14% · +10% | +20% · +6% |
+| `?leggera` (480×270) | +9% · +4% | +12% · +5% |
+
+- **Non è dentro il ±3% chiesto**, e la misura non basta a dire di quanto:
+  - nelle tre pose lontane, dove F1 non cambia niente, lo scarto fra due caricamenti è già del 5-8% sulle chiamate (la gente, i mezzi, i
+    blocchi che arrivano: lo dice anche `strumenti/banco_peso.js`);
+  - dove F1 apre una vista, si vede davvero più città: dal Passo del Calzolaio verso il sagrato le chiamate raddoppiano.
+- Le case tolte (19) pesano meno di quello che le viste nuove mostrano.
+- Prima di portare F1 di serie va fatto il banco vero (`strumenti/banco_peso.js` e `sonda_gpu.js`, con e senza `?urbanistica2`), e
+  probabilmente un taglio: le case della corte del Calzolaio verso il sagrato, il lontano a levante dell'Orto.
 
 ### I muri di fondo (per la strada dipinta)
 
