@@ -243,6 +243,45 @@ var Urbanistica2 = (function () {
     if (tolte.length) { const sposta = new Map(); tolte.map(b => B.indexOf(b)).sort((a, c) => c - a).forEach(j => { const ult = B.pop(); if (j < B.length) { B[j] = ult; sposta.set(B.length, j); } });
       for (let i = 0; i < BI.length; i++) { const j = BI[i]; if (j >= 0 && sposta.has(j)) BI[i] = sposta.get(j); }
       B.forEach((b, j) => { b.i = j; }); }
+    // 6) I MURI DI FONDO (per la strada dipinta: writing.js fondaleCieco / fondaleMuroG, sul ramo dei graffiti). Dove un passaggio, un gomito o
+    // uno slargo di F1 inquadra il fondo di una vista, il muro che la chiude: dov'è, verso dove guarda, quanto è largo e alto, e se è cieco
+    // (il rilevato della ferrovia, le spalle del Sottopassino: sì; la faccia di una casa: oggi ha le finestre, e la casa porta la richiesta
+    // b.muroFondale = { f, largo, alto } perché render.js la faccia cieca quando F1 entra di serie). W.urbanistica2.muriFondale, W.muriFondale
+    { const VISTE = [
+        ['Vico della Torre, dalla Rua', [1315.3, 304], [0, -1]], ['Vico della Torre, dalle Mura verso l\'Orto', [1372, 282.2], [-1, .02]], ['Orto, dall\'angolo verso le Mura', [1317, 283], [1, -.03]],
+        ['Sottopassino, dal Lungomare', [1340.4, 263], [.087, 1]], ['Androne delle Monache, dalla Rua', [1434, 311.5], [0, -1]], ['Passo della Corte, dal Vico Scuro', [1446, 291.2], [-1, 0]],
+        ['Passo del Calzolaio, dalle Mura', [1394, 280.5], [.1, 1]], ['Passo del Calzolaio, dal sagrato', [1395.8, 306], [-.08, -1]], ['Vico del Lavatoio, dal Vico dei Gatti', [1374.5, 324.6], [1, 0]],
+        ['Vico del Lavatoio, dal Vico dei Bottai', [1395, 324.8], [-1, 0]], ['Corte del Flipper, dalla Vittoria', [1370.4, 344], [-.2, 1]], ['Corte del Flipper, dalla corte verso le Reti', [1368, 362], [1, 0]],
+        ['Corte del Flipper, dal Vicolo delle Reti', [1383.5, 362], [-1, 0]]];
+      const MF = []; VISTE.forEach(([nome, P0, d0]) => { const L = Math.hypot(d0[0], d0[1]), d = [d0[0] / L, d0[1] / L]; let prev = ti(P0[0], P0[1]), hit = null;
+        for (let t = .5; t < 70 && !hit; t += .25) { const x = P0[0] + d[0] * t, y = P0[1] + d[1] * t, i = ti(x, y); if (i === prev) continue; const v = g[i];
+          if (v === T.BLD || v === T.GRAVEL) hit = { i, prev, t, x, y, v }; else if (v === T.WATER) break; else prev = i; }
+        if (!hit) { MF.push({ vista: nome, da: P0, fondo: 'aperto (il mare o la via che continua)' }); return; }
+        const tx = hit.i % GW, ty = (hit.i / GW) | 0, px = hit.prev % GW, py = (hit.prev / GW) | 0, n = [Math.sign(px - tx), Math.sign(py - ty)];   // la normale: verso chi guarda
+        const f = n[1] < 0 ? 'N' : n[1] > 0 ? 'S' : n[0] > 0 ? 'E' : 'W', dist = +hit.t.toFixed(1);
+        const AR = hit.v === T.GRAVEL ? +Math.max(0, Math.max(vAt(hit.x + d[0] * 2, hit.y + d[1] * 2), vAt(hit.x + d[0] * 3, hit.y + d[1] * 3)) - vAt(hit.x - d[0] * 1.5, hit.y - d[1] * 1.5)).toFixed(1) : 0;
+        if (hit.v === T.GRAVEL) { MF.push({ vista: nome, da: P0, dist, tipo: 'rilevato', nome: 'il muro del rilevato della ferrovia', centro: [+hit.x.toFixed(1), +hit.y.toFixed(1)], normale: n, largo: 12, alto: AR, cieco: true, adatto: AR >= 3.5 }); return; }
+        const j = BI[hit.i];
+        if (j < 0) { let pz = null, bd = 1e9; (W.pezzi || []).forEach(q => { const L2 = (q.opz && q.opz.L) || 0, dd = Math.hypot(q.x + Math.cos(q.rot || 0) * L2 / 2 - hit.x, q.y - Math.sin(q.rot || 0) * L2 / 2 - hit.y); if (dd < bd) { bd = dd; pz = q; } });
+          MF.push({ vista: nome, da: P0, dist, tipo: 'pezzo', nome: pz ? pz.nome || pz.tipo : '?', centro: [+hit.x.toFixed(1), +hit.y.toFixed(1)], normale: n, largo: (pz && pz.opz && pz.opz.L) || 6, alto: pz && pz.tipo === 'sottopasso' ? pz.opz.hRilevato : 4, cieco: !!(pz && /sottopasso|mura|binari|gradone/.test(pz.tipo)), adatto: !!(pz && /sottopasso|mura|binari|gradone/.test(pz.tipo)) }); return; }
+        const b = B[j], largo = (f === 'N' || f === 'S' ? b.w : b.h) * TS, alto = +(1 + 3.1 * Math.max(1, b.fl || 1)).toFixed(1);
+        const c = f === 'N' ? [(b.x + b.w / 2) * TS, b.y * TS] : f === 'S' ? [(b.x + b.w / 2) * TS, (b.y + b.h) * TS] : f === 'W' ? [b.x * TS, (b.y + b.h / 2) * TS] : [(b.x + b.w) * TS, (b.y + b.h / 2) * TS];
+        const suFaccia = (q, F) => q && ((F === 'N' && q[1] < b.y) || (F === 'S' && q[1] >= b.y + b.h) || (F === 'W' && q[0] < b.x) || (F === 'E' && q[0] >= b.x + b.w));
+        let porta = suFaccia(b.door, f), spostata = null;
+        // il muro di fondo si progetta: se la casa è senza nome né bottega e la porta sta proprio su quella faccia, la porta passa su un'altra
+        // faccia libera (la casella davanti a metà lato è selciato o via), e la faccia della vista resta da fare cieca
+        if (porta && largo >= 6 && alto >= 4 && !b.name && !b.shopFront && !LUOGHI.has(b.id)) {
+          const fuori = { N: [b.x + (b.w >> 1), b.y - 1], S: [b.x + (b.w >> 1), b.y + b.h], W: [b.x - 1, b.y + (b.h >> 1)], E: [b.x + b.w, b.y + (b.h >> 1)] };
+          for (const F of ['S', 'E', 'W', 'N']) { if (F === f) continue; const [qx, qy] = fuori[F], v = g[qy * GW + qx]; if (BI[qy * GW + qx] >= 0 || !(v === T.COB || v === T.VIA || v === T.WALK || v === T.PIAZZA)) continue;
+            spostata = { da: b.door.slice(), a: [qx, qy], faccia: F }; b.door = [qx, qy]; porta = false; break; } }
+        const adatto = largo >= 6 && alto >= 4 && !b.name && !b.shopFront && !porta;
+        if (adatto) b.muroFondale = { f, largo, alto, vista: nome };
+        MF.push({ vista: nome, da: P0, dist, tipo: 'casa', casa: b.id, faccia: f, centro: c, normale: n, largo, alto, cieco: false, adatto, portaSpostata: spostata,
+          perche: adatto ? 'faccia senza porta né insegna: da fare cieca (b.muroFondale)' : largo < 6 ? 'faccia stretta (' + largo + ' m)' : 'su questa faccia ci sono la porta, la bottega o l\'insegna' }); });
+      const SP = (W.pezzi || []).find(q => q.urbanistica2 && q.tipo === 'sottopasso');
+      if (SP) { const L2 = SP.opz.L, c0 = Math.cos(SP.rot), s0 = Math.sin(SP.rot), cx = SP.x + c0 * L2 / 2, cy = SP.y - s0 * L2 / 2;
+        [[-1, 'dal Lungomare'], [1, 'dall\'Orto']].forEach(([sg, v]) => MF.push({ vista: 'il Sottopassino, ' + v, tipo: 'pezzo', nome: 'le spalle del Sottopassino: due tratti ciechi di 3,8 m ai lati del fornice (per tag e pezzi piccoli, non per un pezzo grande)', centro: [+(cx + s0 * 4.5 * sg).toFixed(1), +(cy + c0 * 4.5 * sg).toFixed(1)], normale: [+(s0 * sg).toFixed(2), +(c0 * sg).toFixed(2)], largo: L2, alto: SP.opz.hRilevato, fornice: SP.opz.w, cieco: true, adatto: false })); }
+      S.muriFondale = MF; W.muriFondale = MF.filter(m => m.centro && m.adatto); }
     // 5) le opere (barriere, pedonali, scale) coi pezzi nuovi
     if (K.opere) { const O = K.opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
     if (S.avvisi.length && typeof console !== 'undefined') console.warn('[urbanistica2]', S.avvisi.join(' · '));
