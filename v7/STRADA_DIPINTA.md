@@ -150,13 +150,20 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
      del throw-up), foto da 33 m (a 35 m il braccio della camera9 si chiude a 1,6 m nel passaggio fra la casa e il rilevato). **Entrato,
      non si vede** dall'asse: lo copre lo spigolo della casa a sinistra (il muro sta oltre l'angolo; la mappa del cieco qui non trova muri,
      il raggio del fondo neanche, dopo sei giri);
-  5. Via della Marina (72 m): @@MARINA72@@
+  5. Via della Marina (72 m): burner 6,1 × 2,8 m sul muro che il raggio del fondo trova a 29 m oltre la fine del tratto; foto da 35 m:
+     **entrato, non si vede**. Da vicino (10 m) al suo posto c'è la facciata della pescheria: il muro dei raggi sta 3 m dietro, dentro
+     la casa. Da qui il controllo `nascosto` (l'ultimo); questo fondale non è stato rifotografato dopo (i due posti dei browser erano
+     occupati da altri lavori): col controllo il burner viene scartato e si prova il posto dopo;
   6. Rua Maestra (63 m, vicolo): **non entrato** (dopo 23 minuti di gioco e sei giri il raggio del fondo non trova il muro; la mappa del cieco
      nessun muro libero visto dalla via);
   7. Raccordo del Valico (tolto): nel giro misurato il pezzo 3,6 × 2,1 m sul fondo scuro di una tettoia aperta, non si legge;
   8. Strada del Bosco (tolta): in un giro il rullo «KOMA» 7,1 × 2 m sul muro del fondo, si legge; nel giro dopo un pezzo 4,6 × 2,1 m
      su un fianco di taglio.
-  @@CONTO@@
+  **Il conto: 1 su 8 si legge** (il Muro, a metà), più la Strada del Bosco in un giro su due, tolta; 4 su 6 entrano (Muro, i due della
+  Via della Marina, Via delle Mura), 2 no (Via di Mezzo, Rua Maestra). L'obiettivo (6 su 8 leggibili) non è raggiunto. Le cause misurate,
+  in ordine di peso: le vie strette coi fondi a finestre fitte non hanno un muro cieco largo che la via veda; i raggi dei graffiti non
+  provano le masse delle case, e il «muro del fondo» trovato può stare dietro la facciata vera; dall'asse della via il fondo è spesso
+  oltre un angolo o dietro una palina.
   **Aperto**: (a) le vie strette coi fondi a finestre fitte (la Via della Marina a 114 m, la Via di Mezzo, la Rua Maestra) non hanno un muro
   cieco: un fondale da lontano lì vuole un muro che non c'è (un timpano cieco, una fascia sotto la gronda: è del filone del costruito) o un
   altro genere di pezzo (le serrande del pianterreno a rullo ci sono, ma i raggi non le trovano: la mappa le vede come vuoti); (b) i raggi
