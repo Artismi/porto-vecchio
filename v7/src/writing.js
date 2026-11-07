@@ -1332,7 +1332,7 @@ var Writing = (function () {
         Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k, sdMinK: a.minK || base.sdMinK, sdNoOpen: !!a.noOpen }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
       else Object.assign(w, base);
       w.gfxRect = null; w.__no = null; const ok = yield* placeWallG0(w); (w.__prove || (w.__prove = [])).push((a ? a.k + ' ' : '') + w.style + ' ' + (ok && w.gfxRect ? w.W.toFixed(1) + '×' + w.H.toFixed(1) : w.__no || 'no'));   // [stradadipinta] le prove (le sonde le leggono)
-      if (ok && w.gfxRect) { w.__altFatto = true; return true; }
+      if (ok && w.gfxRect) { w.__altFatto = true; if (/^(pezzo|burner)$/.test(w.style) && w.bgk === undefined) w.bgk = 'rullo'; return true; }   // [stradadipinta] da 40 m si legge la nuvola chiara dietro le lettere (le scene del burner, lo skyline e le radici, sono scure: lettere scure su fondo scuro, nella foschia niente)
     }
     Object.assign(w, base); w.__altFatto = true; return false;
   }
