@@ -57,29 +57,29 @@ var Urbanistica2 = (function () {
   // Le case si indicano col punto (metri finali) di una loro casella e col nome che devono avere (un controllo: se il mondo di serie
   // cambia e lì c'è un'altra casa, l'intervento si salta e si annota). Le misure sono quelle delle tavole 40-46 (MASTERPLAN.md),
   // corrette per la regola del committente (sopra).
-  const VIA_W = 3.4;   // la carreggiata disegnata dei passaggi nuovi (il libero fra le case è 4 m: due caselle)
+  const VIA_W = 3;   // la carreggiata disegnata dei passaggi nuovi (≤ 3 m come i vicoli: test_mappa_compatta); il libero fra le case è 4 m (due caselle)
+  // le zone (per provarle una alla volta: ?u2salta=flipper,lavatoio — in Node PV_U2_SALTA): torre (Orto, Vico e Slargo della Torre),
+  // sottopassino, monache, calzolaio, lavatoio, flipper
+  const SALTA = new Set((() => { try { if (typeof location !== 'undefined' && location.search) { const m = /[?&]u2salta=([^&]+)/.exec(location.search); return m ? decodeURIComponent(m[1]) : ''; }
+    if (typeof process !== 'undefined' && process.env) return process.env.PV_U2_SALTA || ''; } catch (e) { } return ''; })().split(',').filter(Boolean));
   const PIANO = {
-    // M1 · il borgo nord-ovest: l'Orto delle Mura, il Vico della Torre, lo Slargo della Torre, il Sottopassino
-    togli: [
-      [1318.5, 284, 'casa_148'], [1320.5, 280.5, 'casa_141'], [1326.5, 278.5, 'casa_136'],   // l'angolo dell'Orto: il Vico della Torre gira dentro lo slargo
-      [1318.5, 297, 'casa_204'], [1318.5, 292, 'casa_178'],                                 // lo Slargo della Torre si allarga sulla Rua
-      // M3 · la Corte delle Monache passante
-      [1433, 308.5, 'casa_257'], [1432, 305, 'casa_240'],                                    // l'Androne delle Monache dalla Rua
-      [1440, 290, 'casa_175'],                                                              // il Passo della Corte verso il Vico Scuro
-      // il Passo del Calzolaio
-      [1392.5, 282, 'casa_143'],                                                            // la bocca sulla Via delle Mura
-      [1394.5, 293, 'casa_189'], [1394.5, 296.5, 'casa_209'], [1396.5, 297, 'casa_195'],    // dalla corte dietro la chiesa al sagrato
-      // la Piazzetta del Lavatoio
-      [1387, 322.5, 'casa_311'], [1384.5, 321, 'casa_304'], [1390.5, 326.5, 'casa_321'], [1382.5, 326.5, 'casa_320'], [1392.5, 322.5, 'casa_312'], [1387, 319, 'casa_295'],
-      // la Corte del Flipper
-      [1370.5, 349, 'casa_330'], [1379, 362, 'casa_359'],
+    togli: [   // [punto, id, zona]
+      [1318.5, 284, 'casa_148', 'torre'], [1320.5, 280.5, 'casa_141', 'torre'], [1326.5, 278.5, 'casa_136', 'torre'],   // l'angolo dell'Orto: il Vico della Torre gira dentro lo slargo
+      [1318.5, 297, 'casa_204', 'torre'], [1318.5, 292, 'casa_178', 'torre'],                                          // lo Slargo della Torre si allarga sulla Rua
+      [1433, 308.5, 'casa_257', 'monache'], [1432, 305, 'casa_240', 'monache'],                                        // l'Androne delle Monache dalla Rua
+      [1440, 290, 'casa_175', 'monache'],                                                                              // il Passo della Corte verso il Vico Scuro
+      [1392.5, 282, 'casa_143', 'calzolaio'],                                                                          // la bocca sulla Via delle Mura
+      [1394.5, 293, 'casa_189', 'calzolaio'], [1394.5, 296.5, 'casa_209', 'calzolaio'], [1396.5, 297, 'casa_195', 'calzolaio'],   // dalla corte dietro la chiesa al sagrato
+      [1387, 322.5, 'casa_311', 'lavatoio'], [1384.5, 321, 'casa_304', 'lavatoio'], [1390.5, 326.5, 'casa_321', 'lavatoio'], [1382.5, 326.5, 'casa_320', 'lavatoio'], [1392.5, 322.5, 'casa_312', 'lavatoio'], [1387, 319, 'casa_295', 'lavatoio'],
+      [1370.5, 349, 'casa_330', 'flipper'], [1379, 362, 'casa_359', 'flipper'], [1364, 350, 'casa_37', 'flipper'],    // la corte si apre sulla Vittoria (il retro della sala giochi si vede dalla via)
     ],
-    accorcia: [   // [punto, id, lato, caselle]
-      [1428, 285, 'casa_162', 'N', 1],     // il passo dalla Corte delle Monache al Vico delle Monache: da 2 a 4 m
-      [1364, 354, 'casa_37', 'S', 2],      // la Corte del Flipper: resta il fronte sulla Vittoria (3 × 4 caselle: più piccola, casette() la toglierebbe)
-      [1373, 363, 'casa_370', 'N', 1],     // la Corte del Flipper verso la Corte dei Pescatori: da 2 a 4 m
+    accorcia: [   // [punto, id, lato, caselle, zona]
+      [1428, 285, 'casa_162', 'N', 1, 'monache'],     // il passo dalla Corte delle Monache al Vico delle Monache: da 2 a 4 m
+      [1373, 363, 'casa_370', 'N', 1, 'flipper'],     // la Corte del Flipper verso la Corte dei Pescatori: da 2 a 4 m
+      [1368, 363, 'casa_369', 'N', 1, 'flipper'],     // e lo spigolo fra la corte e il passo: da 2 a 4 m (prima le due case si toccavano d'angolo con la sala giochi)
     ],
   };
+  const fa = z => !SALTA.has(z);
 
   function mondo(W, K) {
     if (!ON || !W || !W.grid) return W;
@@ -99,12 +99,12 @@ var Urbanistica2 = (function () {
 
     // 1) le case tolte (le caselle tornano selciato, alla quota del giro attorno)
     const tolte = [];
-    PIANO.togli.forEach(([x, y, id]) => { const b = casaIn(x, y); if (!sicura(b, id, 'togli ' + id)) return; if (tolte.includes(b)) return;
+    PIANO.togli.forEach(([x, y, id, z]) => { if (!fa(z)) return; const b = casaIn(x, y); if (!sicura(b, id, 'togli ' + id)) return; if (tolte.includes(b)) return;
       const q = quotaAnello(anello(b.x, b.y, b.w, b.h));
       for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx; libera(i, T.COB); if (q.h !== null) EL[i] = q.h; W.reach[i] = q.rc || W.reach[i]; }
       tolte.push(b); S.tolte.push({ id: b.id, x: b.x * TS, y: b.y * TS, w: b.w * TS, h: b.h * TS, fl: b.fl || 1 }); });
     // 2) le case accorciate (dal lato del passaggio; la porta, se stava su quel lato, arretra con la casa)
-    PIANO.accorcia.forEach(([x, y, id, f, n]) => { const b = casaIn(x, y); if (!sicura(b, id, 'accorcia ' + id)) return;
+    PIANO.accorcia.forEach(([x, y, id, f, n, z]) => { if (!fa(z)) return; const b = casaIn(x, y); if (!sicura(b, id, 'accorcia ' + id)) return;
       if ((f === 'N' || f === 'S' ? b.h : b.w) - n < 1) { S.avvisi.push('accorcia ' + id + ': non resta niente'); return; }
       const NV = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[f], d0 = b.door ? b.door.slice() : null;
       for (let s = 0; s < n; s++) { const cells = [];
@@ -123,7 +123,7 @@ var Urbanistica2 = (function () {
     // 3) le vie nuove: la polilinea (un vertice ogni metro: il binario le trova, writing.js), la carreggiata nella griglia
     const dSeg = (x, y, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L2)); return Math.hypot(x - ax - dx * t, y - ay - dy * t); };
     const fitta = P => { const out = [P[0].slice()]; for (let k = 1; k < P.length; k++) { const [ax, ay] = P[k - 1], [bx, by] = P[k], n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay))); for (let s = 1; s <= n; s++) out.push([+(ax + (bx - ax) * s / n).toFixed(2), +(ay + (by - ay) * s / n).toFixed(2)]); } return out; };
-    const via = (id, name, P0, o) => { o = o || {}; const P = fitta(o.liscia ? K.chaikin(P0, 2) : P0), w = o.w || VIA_W, fuori = o.fuori || null;
+    const via = (id, name, P0, o) => { o = o || {}; const P = fitta((o.liscia ? K.chaikin(P0, 2) : P0).concat(o.coda || [])), w = o.w || VIA_W, fuori = o.fuori || null;
       const rd = Object.assign({ id, name, w, kind: 'vicolo', pts: P, main: false, era: 'E0', urbanistica2: true }, o.ex || {}); W.roads.push(rd);
       let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; P.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); });
       let n = 0; for (let ty = Math.floor((y0 - w) / TS); ty <= Math.floor((y1 + w) / TS); ty++) for (let tx = Math.floor((x0 - w) / TS); tx <= Math.floor((x1 + w) / TS); tx++) {
@@ -152,14 +152,15 @@ var Urbanistica2 = (function () {
       if (p.q === undefined) p.q = Math.round(Math.min(...pts.map(([a, b]) => vAt(...pw(p, a, b)))) * 100) / 100;
       (W.pezzi = W.pezzi || []).push(p); S.pezzi.push({ tipo, nome: p.nome, x: +x.toFixed(2), y: +y.toFixed(2) }); return p; };
 
-    // ---- M1 · il Sottopassino: dal Lungomare di Tramontana, sotto la ferrovia, all'Orto delle Mura ----
+    // ---- M1 · il Sottopassino: dal Lungomare di Tramontana, sotto la ferrovia, all'Orto delle Mura. Dritto, a squadra col binario, corto
+    // (22 m da asse ad asse, 9 sotto la volta), largo 4,4 m e alto 3,8: dall'imbocco si vede l'uscita e l'Orto ----
     const XS = 1341, RC = W.railCity || [];
     let C = null, U = null; { let bk = -1, bd = 1e9; RC.forEach((q, k) => { const d = Math.abs(q[0] - XS); if (d < bd) { bd = d; bk = k; } });
       if (bk > 0 && bk < RC.length - 1 && bd < 4) { const a = RC[bk - 1], b = RC[bk + 1], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; U = [(b[0] - a[0]) / l, (b[1] - a[1]) / l];
         const t = (XS - a[0]) / ((b[0] - a[0]) || 1); C = [XS, a[1] + (b[1] - a[1]) * t]; } }
     const lung = W.roads.find(r => r.id === 'lung_nord'), yLung = x => { const P = lung ? lung.pts : []; for (let k = 1; k < P.length; k++) if ((P[k - 1][0] - x) * (P[k][0] - x) <= 0 && P[k][0] !== P[k - 1][0]) return P[k - 1][1] + (P[k][1] - P[k - 1][1]) * (x - P[k - 1][0]) / (P[k][0] - P[k - 1][0]); return null; };
     const YO = 281.2;   // l'asse dell'Orto (fra il piede del rilevato e le case)
-    if (C && U && lung) {
+    if (fa('sottopassino')) { if (C && U && lung) {
       const D = [-U[1], U[0]], s0 = (yLung(C[0]) - C[1]) / D[1], s1 = (YO - C[1]) / D[1];   // D: verso sud, a squadra col binario
       // la quota del passaggio: in piano sotto la volta, fra il Lungomare e l'Orto; i vertici del rilevato lungo il passaggio scendono
       const qN = vAt(C[0] + D[0] * (s0 + 4), C[1] + D[1] * (s0 + 4)), qS = vAt(C[0] + D[0] * (s1 - .5), C[1] + D[1] * (s1 - .5)), q = Math.round((qN * .4 + qS * .6) * 100) / 100;
@@ -170,56 +171,67 @@ var Urbanistica2 = (function () {
         if (h === null) continue; VH[j * VW + i] = h; for (let b = -1; b <= 0; b++) for (let a = -1; a <= 0; a++) if (i + a >= 0 && j + b >= 0) tocchi.add((j + b) * GW + i + a); }
       tocchi.forEach(i => { const v = g[i]; if (v === T.BLD || v === T.WATER) return; elevDaiVertici(i); if (v === T.GRAVEL) g[i] = T.COB; });
       const P = []; for (let s = s0; s <= s1 + .01; s += 1) P.push([C[0] + D[0] * s, C[1] + D[1] * s]);
-      via('vic_sottopassino', 'Sottopassino dell\'Orto', P, { w: VIA_W, ex: { sottopasso: true, pedonale: true, era: 'E7' } });
+      via('vic_sottopassino', 'Sottopassino dell\'Orto', P, { ex: { sottopasso: true, pedonale: true, era: 'E7' } });
       const L = 12, rot = Math.atan2(-U[1], U[0]);
       const sp = pezzo('sottopasso', C[0] - U[0] * L / 2, C[1] - U[1] * L / 2, rot, { L, w: W2, h: 3.8, binario: false, hRilevato: 5.15 }, { nome: 'Sottopassino dell\'Orto' }, [['B', -.5, L + .5, -4.6, 4.6]]);
       // il fornice resta aperto: le caselle del passaggio sotto la volta non sono muro (la volta sta sopra)
       celleDi(sp, L / 2 - W2 / 2 + .2, L / 2 + W2 / 2 - .2, -6, 6, i => { if (BI[i] < 0 && g[i] === T.BLD) { g[i] = T.COB; RW[i] = VIA_W; } });
       sp.q = q; S.sottopasso = { x: +C[0].toFixed(2), y: +C[1].toFixed(2), q, qN: +qN.toFixed(2), qS: +qS.toFixed(2), libero: W2, h: 3.8 };
-    } else S.avvisi.push('sottopassino: non trovo la ferrovia o il Lungomare');
+    } else S.avvisi.push('sottopassino: non trovo la ferrovia o il Lungomare'); }
 
-    // ---- M1 · l'Orto delle Mura e il Vico della Torre: dalla Via delle Mura, lungo il piede del rilevato, all'angolo dell'Orto, giù nello
-    // Slargo della Torre e sulla Rua. La direzione gira di 90° dentro l'angolo dell'Orto (uno slargo di 10 × 9 m), non in un vicolo ----
-    const mura = W.roads.find(r => r.id === 'vic_mura'), rua = W.roads.find(r => r.id === 'rua');
+    // ---- M1 · l'Orto delle Mura e il Vico della Torre: la Via delle Mura si prolunga a ponente lungo il piede del rilevato fino
+    // all'angolo dell'Orto, poi giù nello Slargo della Torre e sulla Rua. La direzione gira di 90° dentro l'angolo dell'Orto (uno slargo
+    // di 10 × 9 m), non in un vicolo. La Via delle Mura cominciava 7 m prima del Vicolo dei Lanternini: ora comincia lì (un nodo solo) ----
+    const mura = W.roads.find(r => r.id === 'vic_mura'), rua = W.roads.find(r => r.id === 'rua'), lant = W.roads.find(r => r.id === 'vic_lanternini');
     const yRua = x => { const P = rua.pts; for (let k = 1; k < P.length; k++) if ((P[k - 1][0] - x) * (P[k][0] - x) <= 0 && P[k][0] !== P[k - 1][0]) return P[k - 1][1] + (P[k][1] - P[k - 1][1]) * (x - P[k - 1][0]) / (P[k][0] - P[k - 1][0]); return null; };
-    if (mura && rua) { const M0 = mura.pts[0];
-      via('vic_torre', 'Vico della Torre', [[M0[0], M0[1]], [1356, 282.4], [1341.5, YO], [1328, 281.6], [1321.5, 282.6], [1317.2, 285.6], [1315.4, 290], [1315.2, 297], [1315.3, yRua(1315.3)]], { liscia: true });
-      slargo('Orto delle Mura', 'gli orti sotto il rilevato, due agrumi; la vista sul campanile', 1322, 284.5, 8.5, 5, { verde: (x, y) => y < 280.5 && x > 1323 || (x < 1314 && y < 286) });
+    if (fa('torre')) { if (mura && rua && lant) {
+      const M0 = mura.pts.slice(), LE = lant.pts[lant.pts.length - 1].slice(), coda = M0.filter(q => q[0] < LE[0] - .3);
+      mura.pts = [LE].concat(M0.filter(q => q[0] > LE[0] + .3)); S.muraDa = { prima: M0[0], ora: LE };
+      via('vic_torre', 'Vico della Torre', [[1315.3, yRua(1315.3)], [1315.2, 297], [1315.4, 290], [1317.2, 285.6], [1321.5, 282.6], [1328, 281.6], [1341.5, YO], [1356, 282.3], [1362, 282.4]], { liscia: true, coda: coda.concat([LE]) });
+      slargo('Orto delle Mura', 'gli orti sotto il rilevato, due agrumi; la vista sul campanile', 1321, 284.5, 7.5, 5);
+      // gli orti: le aiuole lungo il piede del rilevato, fra l'angolo e il Sottopassino e oltre (erba e terra, sotto 1 m: niente ostacolo)
+      { let n = 0; for (let ty = Math.floor(277.5 / TS); ty < Math.floor(280 / TS); ty++) for (let tx = Math.floor(1323 / TS); tx < Math.floor(1364 / TS); tx++) { const i = ty * GW + tx, cx = tx * TS + 1;
+          if (cx > 1336 && cx < 1346) continue; if (g[i] !== T.COB || RW[i] > 0) continue; g[i] = T.GRASS; n++; } S.orti = n; }
       slargo('Slargo della Torre', 'la fontanella; in fondo la torre dell\'acqua di Radio Luna', 1315.5, 298.5, 5.2, 4.6);
       pezzo('fontana', 1312.9, 297.4, 0, { r: 1.2, h: 1.9, lati: 8, cannelle: 2 }, { nome: 'Fontanella della Torre' }, null, [-2, 2, -2, 2]);
       S.alberi.push(['agrume', 1331, 279.2, 3.4], ['agrume', 1349.5, 279.4, 3.2]);
-    } else S.avvisi.push('vico della torre: manca la Via delle Mura o la Rua');
+    } else S.avvisi.push('vico della torre: manca la Via delle Mura, la Rua o il Vicolo dei Lanternini'); }
 
     // ---- M3 · la Corte delle Monache passante: l'Androne dalla Rua, il Passo della Corte al Vico Scuro, il passo al Vico delle Monache.
     // La corte resta selciato chiuso dalle case (tetti.js ci mette la scala ai tetti); il fico in mezzo ----
     const scuro = W.roads.find(r => r.id === 'vic_scuro'), monache = W.roads.find(r => r.id === 'vic_monache');
     const xSu = (rd, y) => { const P = rd.pts; for (let k = 1; k < P.length; k++) if ((P[k - 1][1] - y) * (P[k][1] - y) <= 0 && P[k][1] !== P[k - 1][1]) return P[k - 1][0] + (P[k][0] - P[k - 1][0]) * (y - P[k - 1][1]) / (P[k][1] - P[k - 1][1]); return null; };
     const corte = (x, y) => x > 1430 && x < 1440 && y > 280 && y < 304;
-    if (scuro && monache) {
-      via('vic_androne_monache', 'Androne delle Monache', [[1434, yRua(1434)], [1434, 303.5]], {});
-      via('passo_corte', 'Passo della Corte', [[1439.5, 291], [xSu(scuro, 291), 291]], {});
-      via('passo_monache', 'Passo delle Monache', [[xSu(monache, 284), 284], [1430.5, 284]], {});
+    if (fa('monache')) { if (scuro && monache) {
+      // le tre vie si incontrano nel mezzo della corte (un nodo della rete); dentro la corte la carreggiata non si stampa
+      const NC = [1435.5, 291.2];
+      via('vic_androne_monache', 'Androne delle Monache', [[1434, yRua(1434)], [1434, 303.5], [1435, 297], NC], { fuori: corte });
+      via('passo_corte', 'Passo della Corte', [NC, [1439.5, 291], [xSu(scuro, 291), 291]], { fuori: corte });
+      via('passo_monache', 'Passo delle Monache', [[xSu(monache, 284), 284], [1433.2, 284], [1435.5, 287], NC], { fuori: corte });
       slargo('Corte delle Monache', 'il fico, la scala di ferro ai tetti, la porta dell\'Osteria', 1435, 292, 5, 11, { corte: true });
       S.alberi.push(['fico', 1432.2, 296.5, 4.8]);
-    } else S.avvisi.push('corte delle monache: manca il Vico Scuro o il Vico delle Monache');
+    } else S.avvisi.push('corte delle monache: manca il Vico Scuro o il Vico delle Monache'); }
 
-    // ---- M3 · il Passo del Calzolaio: dalla Via delle Mura, accanto alla bottega del calzolaio, dritto nella corte dietro la chiesa e giù sul sagrato ----
-    if (mura) { const ym = (() => { const P = mura.pts; for (let k = 1; k < P.length; k++) if ((P[k - 1][0] - 1395) * (P[k][0] - 1395) <= 0) return P[k - 1][1] + (P[k][1] - P[k - 1][1]) * (1395 - P[k - 1][0]) / (P[k][0] - P[k - 1][0]); return 279.5; })();
-      via('passo_calzolaio', 'Passo del Calzolaio', [[1395, ym], [1395.4, 290], [1395.6, 300.5]], {});
+    // ---- M3 · il Passo del Calzolaio: dalla Via delle Mura, accanto alla bottega del calzolaio, dritto nella corte dietro la chiesa e giù
+    // sul sagrato fino alla Rua (sul lastricato del sagrato la carreggiata non si stampa) ----
+    if (fa('calzolaio') && mura) { const ym = (() => { const P = mura.pts; for (let k = 1; k < P.length; k++) if ((P[k - 1][0] - 1394) * (P[k][0] - 1394) <= 0) return P[k - 1][1] + (P[k][1] - P[k - 1][1]) * (1394 - P[k - 1][0]) / (P[k][0] - P[k - 1][0]); return 279.6; })();
+      via('passo_calzolaio', 'Passo del Calzolaio', [[1394, ym], [1394, 284.6], [1395.8, 290], [1395.8, 300.5], [1395.8, yRua(1395.8)]], {});
       slargo('Corte del Calzolaio', 'la corte dietro il sagrato: gli scalini, i vasi', 1399.5, 293.5, 4.6, 4.2);
     }
 
     // ---- la Piazzetta del Lavatoio, sul Vico del Lavatoio fra i Gatti e i Bottai: il lavatoio coperto contro il fondo nord ----
-    slargo('Piazzetta del Lavatoio', 'il lavatoio coperto', 1388.5, 323.5, 6, 4.6);
-    { const L = 3; pezzo('lavatoio', 1386.4, 320.6, 0, { L, tettoia: true }, { nome: 'Lavatoio coperto' }, [['B', -1, L + 2.2, -2.5, 2.5]], [-1, L + 2.2, -2.5, 2.5]); }
+    if (fa('lavatoio')) {
+      slargo('Piazzetta del Lavatoio', 'il lavatoio coperto', 1388.5, 323.5, 6, 4.6);
+      const L = 3; pezzo('lavatoio', 1386.4, 320.6, 0, { L, tettoia: true }, { nome: 'Lavatoio coperto' }, [['B', -1, L + 2.2, -2.5, 2.5]], [-1, L + 2.2, -2.5, 2.5]); }
 
-    // ---- M3 · la Corte del Flipper: dalla Vittoria nella corte del pozzo, dietro la sala giochi, alla Corte dei Pescatori ----
-    { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria');
-      if (reti && vit) { const yv = vit.pts[0][1];
-        via('passo_flipper', 'Corte del Flipper', [[1369.8, yv], [1369.7, 352], [1369.6, 358.4], [1372.5, 361.7], [1378, 362], [xSu(reti, 362), 362]], { liscia: true });
-        slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.8, 358.6, 5, 3.4);
-        pezzo('pozzo', 1365, 358.4, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
-      } else S.avvisi.push('corte del flipper: manca la Vittoria o il Vicolo delle Reti'); }
+    // ---- M3 · la Corte del Flipper: dalla Vittoria (in asse col Vico dei Gatti: un incrocio solo) nella corte del pozzo, dietro la sala
+    // giochi, alla Corte dei Pescatori ----
+    if (fa('flipper')) { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria'), gatti = W.roads.find(r => r.id === 'vic_gatti');
+      if (reti && vit && gatti) { const yv = vit.pts[0][1], xg = gatti.pts[gatti.pts.length - 1][0];
+        via('passo_flipper', 'Corte del Flipper', [[xg, yv], [1368.2, 349], [1368, 355.5], [1370.4, 360.6], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
+        slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.6, 355, 5.2, 6.6);
+        pezzo('pozzo', 1364.4, 354.6, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
+      } else S.avvisi.push('corte del flipper: manca la Vittoria, il Vico dei Gatti o il Vicolo delle Reti'); }
 
     // 4) gli indici: come casette(), al posto della casa tolta va l'ultima della lista
     if (tolte.length) { const sposta = new Map(); tolte.map(b => B.indexOf(b)).sort((a, c) => c - a).forEach(j => { const ult = B.pop(); if (j < B.length) { B[j] = ult; sposta.set(B.length, j); } });
