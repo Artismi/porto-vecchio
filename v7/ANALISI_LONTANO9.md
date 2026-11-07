@@ -15,17 +15,17 @@ Solo con camera9 accesa e fuori (non al chiuso, non sotto terra, non alla guida)
 
 | | computer (tasselli) | leggera (tasselli) | leggera, città nel browser |
 |---|---|---|---|
-| disegni della vista, somma dei 12 posti: oggi → camera9 prima → **dopo** | 5.579 → 14.462 → **6.553** (1,17× oggi) | 6.174 → 14.196 → **6.456** (1,05×) | 5.735 → 16.450 → **6.913** (1,21×) |
+| disegni della vista, somma dei 12 posti: oggi → camera9 prima → **dopo** | 5.579 → 14.462 → **6.553** (1,17× oggi) | 6.091 → 13.974 → **6.371** (1,05×) | 5.735 → 16.450 → **6.913** (1,21×) |
 | posti entro 1,3× oggi | **8/12** | **9/12** | 7/12 |
-| sotto il tetto (computer 800, leggera 400; tutti i passaggi) | **12/12** (oggi 10/12) | 2/12 (oggi 4/12) | 2/12 (oggi 6/12) |
-| triangoli per fotogramma, media: oggi → prima → dopo | 1,45 → 2,30 → 1,87 M | 1,52 → 2,11 → 1,76 M | 1,44 → 2,32 → 1,83 M |
-| processore (ms, SwiftShader, media dei posti) prima → dopo | 64 → 57 | 61 → 56 | 98 → 84 |
+| sotto il tetto (computer 800, leggera 400; tutti i passaggi) | **12/12** (oggi 10/12) | 2/12 (oggi 5/12; solo la vista: 2/12, oggi 6/12) | 2/12 (oggi 6/12) |
+| triangoli per fotogramma, media: oggi → prima → dopo | 1,45 → 2,30 → 1,87 M | 1,54 → 2,10 → 1,78 M | 1,44 → 2,32 → 1,83 M |
+| processore (ms, SwiftShader, media dei posti) prima → dopo | 64 → 57 | 74 → 69 | 98 → 84 |
 | scheda video allo sbocco, poi in piazza (leggera, nel browser) oggi / prima / dopo | | | 1.190 / 1.650 / **1.423** MB; geometrie 2.590 / 5.125 / **3.091** |
 
 Dove non basta: **lo sbocco dei Lanternini** (computer 303 → 714, 2,4×; nel browser 277 → 823, 3×: la piazza intera è davvero nel
 quadro, e i settori della piazza sono secchi grandi visibili), **il lungomare** (1,6-1,9×: le cose del lungomare fra 30 e 75 m si
 vedono davvero), **l'Androne del Pozzo Vecchio** (1,5-1,8×) e **piazza San Rocco** (1,3-1,5×). Il tetto di 400 disegni del profilo
-leggero non lo rispetta nemmeno la camera di oggi in 8 posti su 12; camera9 dopo lontano9 ci resta in 2. Il tetto di 800 sul computer
+leggero non lo rispetta nemmeno la camera di oggi in 7 posti su 12; camera9 dopo lontano9 ci resta in 2 (sez. 2.3). Il tetto di 800 sul computer
 regge ovunque.
 
 ## 1. Da dove venivano i disegni (misurato)
@@ -76,9 +76,12 @@ per 1.500 prove e 250 colonne (lo sbocco), su una macchina carica.
 
 | genere | taglio (bordo vicino della sfera) | fascia |
 |---|---|---|
-| piccole (raggio sotto 1,6 m: insegne, cartelli, vasi, sedie, cassette, biciclette, decalcomanie e vetri di una casa sola) | oltre 75 m | 60-75 m |
-| persone e animali | oltre 80 m | 65-80 m |
-| medie (raggio sotto 4 m: banchi, chioschi, alberelli, barche piccole, gruppi piccoli di istanze) | oltre 120 m | 105-120 m |
+| genere | computer: taglio, fascia | telefono e `?leggera`: taglio, fascia |
+|---|---|---|
+| piccole (raggio sotto 1,6 m: insegne, cartelli, vasi, sedie, cassette, biciclette, decalcomanie e vetri di una casa sola) | oltre 75 m, 60-75 m | oltre 55 m, 45-55 m |
+| persone e animali | oltre 80 m, 65-80 m | oltre 60 m, 50-60 m |
+| medie (raggio sotto 4 m: banchi, chioschi, alberelli, barche piccole, gruppi piccoli di istanze) | oltre 120 m, 105-120 m | oltre 90 m, 80-90 m |
+| i gruppi di istanze sui tetti (tetti4: ringhiere, corde, panni), con la camera sotto il gruppo | mai | oltre 60 m (senza stretta: da sotto la gronda non si vedono) |
 
 Mai: il cielo, il terreno, l'acqua, la sagoma della città (keep, waterMask), chi ha un `onBeforeRender` suo. **La dissolvenza**: nella
 fascia la cosa si stringe verso il centro della sua sfera (la scala da 1 a 0, liscia, lungo 15 m), quindi al taglio è già un punto e
@@ -87,7 +90,51 @@ subito dopo, in onAfterRender; le ombre e i raggi non la vedono). È una scelta:
 programma in ogni materiale (ricompilazioni, gli scatti dei programmi che nascono tardi, e gli shader del look non sono miei); la
 stretta non costa niente alla scheda video e a 60-75 m una cosa da 1,6 m è di 5-15 pixel.
 
-### 2.3 Cosa non ho fatto, e perché
+Il telefono è lo stesso profilo di anelli.js e leggera_memoria.js (`?leggera`, `?bassa`, il tocco; `?alta` lo toglie);
+`?nolontano9tel` rimette i tagli del computer. Sul computer non cambia niente.
+
+### 2.3 Il telefono: perché lo sbocco e il lungomare restano sopra 1,3×
+
+I tagli più corti del telefono hanno tolto poco: con la camera dentro una via, la maggior parte delle cose piccole oltre 55 m era già
+nascosta dalle case. La vista, sommata sui dodici posti, è passata da 6.456 a 6.371 disegni; il lungomare da 717 a 603. Allo sbocco e
+sul lungomare (profilo leggero, i tasselli arrivati, la vista) i disegni in più rispetto a oggi sono:
+
+| | oggi | camera9 dopo lontano9 | in più |
+|---|---|---|---|
+| sbocco: secchi dei tasselli (case, strade, arredo cotto) | 218 | 455 | **+237** |
+| sbocco: gruppi di istanze (tetti, verde) | 99 | 131 | +32 |
+| sbocco: persone (le figure della piazza) | 3 | 25 | +22 |
+| sbocco: tutto | 387 | 710 | +323 |
+| lungomare: secchi dei tasselli | 205 | 334 | **+129** |
+| lungomare: pezzi sciolti di una cosa sola (52 pezzi tutti a 38 m: con ogni probabilità l'auto ferma sulla strada) | 15 | 49 | +34 |
+| lungomare: tutto | 380 | 603 | +223 |
+
+**Il grosso sono i secchi dei tasselli**: un disegno per materiale per settore di 48 m, già fusi (la città cotta). Non si possono
+fondere ancora a buon mercato (sono già un secchio per materiale; fondere settori diversi vorrebbe una copia in più della città sulla
+scheda video, proprio dove la memoria manca). Allo sbocco la camera bassa guarda la piazza intera: quei settori sono **davanti**, non
+dietro le case. Ho misurato quanto toglierebbe un livello lontano per settore (la sagoma dei tasselli al posto delle case, quella
+che il telefono usa già oltre 105 m dal punto guardato), per la distanza della scatola del secchio dalla camera (`sonda_analisi9.js`):
+
+| un livello lontano oltre | 40 m | 50 m | 60 m | 80 m | 100 m |
+|---|---|---|---|---|---|
+| sbocco: disegni tolti (secchi singoli / settori interi) | 181 / 80 | 163 / 78 | 114 / 74 | 66 / 27 | 30 / 26 |
+| lungomare: disegni tolti (secchi singoli / settori interi) | 78 / 70 | 63 / 54 | 60 / 54 | 36 / 53 | 33 / 53 |
+
+Per arrivare a 1,3× allo sbocco (503 disegni) bisognerebbe togliere 207 disegni: nemmeno la sagoma oltre 40 m basta (181), e a 40 m la
+sagoma (scatole colorate, senza finestre né tetti) sostituirebbe le facciate della piazza stessa, che sono lo sfondo che camera9
+vuole mostrare. Sul lungomare a 1,3× (494) mancano 109 disegni: la sagoma oltre 40-50 m li toglierebbe, ma il lungomare guarda la
+città lungo la riva per 200 m, e oltre 50 m sarebbero scatole. Non l'ho fatto: è una scelta del look, non delle prestazioni. Se il
+telefono vero lo chiede, il pezzo c'è già (la maschera della sagoma per tassello, `sagomaK` in tasselli.js, col retino degli anelli
+per la dissolvenza): lontano9 dovrebbe solo spegnere le mesh del tassello e accendere la sua sagoma oltre una distanza.
+
+La cosa a 52 pezzi del lungomare (l'auto ferma) si potrebbe fondere per materiale finché è ferma; vale per tutte le auto della città,
+non solo per camera9 (oggi 30-45 disegni a mezzo, ANALISI_OTTIMIZZAZIONE_GPU): un lavoro a parte.
+
+**Il tetto di 400 disegni sul telefono**: la camera di oggi ci sta in 5-6 posti su 12, camera9 dopo lontano9 in 2 (di vista: la Corte dei Pescatori 391,
+il sottopasso del Glacis 361; Vico Lungo resta a 403). Gli altri posti sotto i 400 oggi (piazza, sbocco, lungomare,
+Androne) sono proprio quelli dove la camera bassa vede la piazza o la riva intera.
+
+### 2.4 Cosa non ho fatto, e perché
 
 - **Un livello lontano per le case fuse** (un'impostora o una mesh sola per settore oltre 60 m). Misurato: dopo l'occlusione i secchi
   dei settori che restano stanno quasi tutti entro 60 m (la sfera di un settore di 48 m tocca i 30 m quando il centro è a 64 m) e oltre
@@ -132,21 +179,21 @@ Entro 1,3× la vista di oggi: **8/12** posti. Sotto il tetto di 800 disegni (tut
 
 | posto | vista oggi | vista camera9 prima | vista camera9 dopo | dopo / oggi | tutti oggi / prima / dopo | triangoli M oggi / prima / dopo | ms oggi / prima / dopo | nascoste / piccole |
 |---|---|---|---|---|---|---|---|---|
-| vicolo stretto (Caruggio dei Pescatori) | 688 | 1924 (×2.8) | **607** | **0.88** | 708 / 1971 / 703 | 2.11 / 3.00 / 2.37 | 40 / 56 / 62 | 960 / 410 |
-| Vico Lungo (a metà) | 651 | 796 (×1.2) | **398** | **0.61** | 736 / 841 / 447 | 1.41 / 1.62 / 1.34 | 48 / 46 / 52 | 351 / 39 |
-| piazza San Rocco | 375 | 534 (×1.4) | **484** | **1.29** | 366 / 533 / 478 | 1.42 / 1.69 / 1.65 | 39 / 52 / 63 | 47 / 0 |
-| sbocco sulla piazza (Vicolo dei Lanternini) | 384 | 2139 (×5.6) | **715** | 1.86 | 368 / 2216 / 1011 | 1.36 / 3.39 / 2.99 | 37 / 73 / 54 | 814 / 544 |
-| lungomare | 439 | 995 (×2.3) | **717** | 1.63 | 597 / 1011 / 729 | 1.07 / 1.42 / 1.24 | 31 / 48 / 29 | 116 / 159 |
-| cima della Scala del Mercato | 782 | 1349 (×1.7) | **667** | **0.85** | 807 / 1638 / 701 | 1.46 / 1.91 / 1.65 | 41 / 44 / 51 | 532 / 148 |
-| cima della Scalinata di Vico Lungo | 669 | 1246 (×1.9) | **551** | **0.82** | 745 / 1276 / 576 | 1.89 / 2.19 / 1.87 | 46 / 61 / 44 | 461 / 209 |
-| Salita dei Gatti (a metà) | 733 | 1799 (×2.5) | **603** | **0.82** | 848 / 1829 / 627 | 1.90 / 2.60 / 2.14 | 50 / 64 / 52 | 780 / 392 |
-| Vico della Corte (fessura 2,2 m) | 451 | 1130 (×2.5) | **492** | **1.09** | 572 / 1155 / 493 | 1.56 / 1.88 / 1.54 | 63 / 86 / 70 | 465 / 161 |
-| Corte dei Pescatori (fessura 2,2 m) | 373 | 669 (×1.8) | **395** | **1.06** | 417 / 657 / 384 | 1.56 / 2.26 / 1.59 | 55 / 103 / 73 | 260 / 1 |
-| Androne del Pozzo Vecchio (fessura 2,2 m) | 331 | 1140 (×3.4) | **490** | 1.48 | 379 / 1162 / 496 | 1.47 / 2.19 / 1.79 | 41 / 47 / 41 | 461 / 142 |
-| sottopasso del Vico del Glacis | 298 | 475 (×1.6) | **337** | **1.13** | 296 / 465 / 328 | 1.04 / 1.16 / 1.00 | 26 / 50 / 82 | 95 / 47 |
-| **tutti i 12 posti** | 6174 | 14196 (×2.3) | **6456** | **1.05** | 6839 / 14754 / 6973 | | 43 / 61 / 56 (media) | |
+| vicolo stretto (Caruggio dei Pescatori) | 635 | 1949 (×3.1) | **642** | **1.01** | 693 / 2020 / 716 | 2.07 / 2.97 / 2.37 | 41 / 69 / 50 | 647 / 633 |
+| Vico Lungo (a metà) | 680 | 857 (×1.3) | **403** | **0.59** | 751 / 981 / 507 | 1.37 / 1.62 / 1.32 | 104 / 56 / 50 | 343 / 104 |
+| piazza San Rocco | 368 | 529 (×1.4) | **474** | **1.29** | 353 / 524 / 461 | 1.42 / 1.66 / 1.62 | 69 / 127 / 78 | 44 / 13 |
+| sbocco sulla piazza (Vicolo dei Lanternini) | 387 | 2046 (×5.3) | **710** | 1.83 | 381 / 2078 / 751 | 1.38 / 3.37 / 2.79 | 43 / 102 / 82 | 555 / 722 |
+| lungomare | 380 | 876 (×2.3) | **603** | 1.59 | 403 / 865 / 816 | 1.03 / 1.34 / 1.42 | 42 / 43 / 54 | 87 / 177 |
+| cima della Scala del Mercato | 746 | 1334 (×1.8) | **629** | **0.84** | 978 / 1490 / 780 | 1.50 / 1.88 / 1.70 | 41 / 63 / 58 | 409 / 296 |
+| cima della Scalinata di Vico Lungo | 685 | 1242 (×1.8) | **568** | **0.83** | 747 / 1246 / 690 | 2.00 / 2.19 / 1.96 | 40 / 62 / 59 | 396 / 257 |
+| Salita dei Gatti (a metà) | 744 | 1781 (×2.4) | **608** | **0.82** | 886 / 1849 / 801 | 2.05 / 2.59 / 2.22 | 47 / 68 / 55 | 594 / 543 |
+| Vico della Corte (fessura 2,2 m) | 466 | 1073 (×2.3) | **492** | **1.06** | 634 / 1126 / 525 | 1.62 / 1.98 / 1.56 | 68 / 107 / 154 | 345 / 212 |
+| Corte dei Pescatori (fessura 2,2 m) | 367 | 664 (×1.8) | **391** | **1.07** | 354 / 701 / 376 | 1.53 / 2.30 / 1.61 | 80 / 72 / 65 | 250 / 12 |
+| Androne del Pozzo Vecchio (fessura 2,2 m) | 329 | 1140 (×3.5) | **490** | 1.49 | 363 / 1440 / 824 | 1.45 / 2.21 / 1.82 | 58 / 66 / 78 | 393 / 215 |
+| sottopasso del Vico del Glacis | 304 | 483 (×1.6) | **361** | **1.19** | 340 / 502 / 379 | 1.04 / 1.14 / 0.98 | 39 / 52 / 47 | 57 / 73 |
+| **tutti i 12 posti** | 6091 | 13974 (×2.3) | **6371** | **1.05** | 6883 / 14822 / 7626 | | 56 / 74 / 69 (media) | |
 
-Entro 1,3× la vista di oggi: **9/12** posti. Sotto il tetto di 400 disegni (tutti i passaggi): camera9 dopo 2/12, oggi 4/12.
+Entro 1,3× la vista di oggi: **9/12** posti. Sotto il tetto di 400 disegni (tutti i passaggi): camera9 dopo 2/12, oggi 5/12.
 
 **Il profilo leggero, la città costruita nel browser (?tasselli=0: come le misure di ANALISI_CAMERA9.md)** (`?leggera&tasselli=0`). «Vista»: i disegni del passaggio principale (quello che lontano9 tocca); «tutti»: tutti i passaggi, ombre comprese, media di due fotogrammi; ms: il processore, mediana di 16 fotogrammi.
 
@@ -187,6 +234,10 @@ Lontano9 non tocca il passaggio delle ombre.
 
 Fra le foto della tavola i disegni (della vista) sono quelli di quel fotogramma; il banco (sez. 3) li misura dopo che i tasselli sono
 arrivati tutti, quindi sono più alti.
+
+**Il telefono** (`tavola_leggera.jpg`, `tavola9_leggera.json`; `?leggera` coi tagli corti, 1280×720, stesso metodo): sbocco dei
+Lanternini 1.083 → 341 disegni, differenza media 0,38 (0,015% dei pixel oltre 24); Caruggio dei Pescatori 1.380 → 391, 0,32 (0,006%);
+lungomare 463 → 319, 0,36 (0,036%: la barca piccola a destra, a 85-90 m, è nella fascia delle medie e si stringe).
 
 <!-- TAVOLA -->
 | posto | disegni senza → con lontano9 | differenza media (0-255) | pixel che cambiano più di 24 |

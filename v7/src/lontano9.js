@@ -33,7 +33,12 @@ var Lontano9 = (function () {
     rPiccolo: 1.6,            // m: «piccolo» (vasi, sedie, cartelli, insegne, cassette, biciclette, persone ferme)
     distMezzo: 120, rMezzo: 4,   // m: e le medie (banchi, chioschi, alberelli, barche piccole) oltre distMezzo
     distPers: 80,             // m: le persone e gli animali
+    distTetti: 0,             // m: i gruppi di istanze sui tetti (tetti4) oltre tanto, se la camera sta sotto i tetti (0: mai; il telefono sì)
   };
+  // [lontano9] il telefono (lo stesso profilo di anelli.js / leggera_memoria.js: ?leggera, ?bassa, il tocco; ?alta lo toglie): i tagli più
+  // corti, la fascia più corta. Sul computer niente cambia
+  const TEL = (() => { try { if (/[?&]alta\b/.test(Q)) return false; return /[?&](leggera|bassa)\b/.test(Q) || matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+  if (TEL && !/[?&]nolontano9tel\b/.test(Q)) Object.assign(P, { dist: 55, banda: 10, distPers: 60, distMezzo: 90, distTetti: 60 });
   const MIS = { on: false };   // le sonde: si prova tutto ma non si taglia niente (o.__l9w: 'occ', 'pic' o '')
   const ST = { on: false, prove: 0, occluse: 0, piccole: 0, fascia: 0, colonne: 0, ms: 0, fotogrammi: 0 };
   let colId = 0, ultima = [NaN, 0, 0, 0, 0], occF = false, camDentro = false, K = null, T3 = null, pronto = false, attivo = true, acceso = false, inMain = 0, inShadow = 0, frameId = 0;
@@ -169,6 +174,10 @@ var Lontano9 = (function () {
     if (!(sprite ? sferaSprite(o) : sferaMesh(o))) return true;
     ST.prove++;
     const c = sph.center, r = sph.radius, D = taglio(o, r);
+    // [telefono] i tetti lontani visti da sotto: le ringhiere, le corde, i panni sui tetti (un gruppo di istanze per tetti vicini) non
+    // si vedono da sotto la gronda; oltre distTetti, con la camera più bassa del gruppo, non si disegnano
+    if (P.distTetti > 0 && o.isInstancedMesh && o.userData.noRoof && PIC_ON) { const b = scatola(o);
+      if (b && cy < b[1] + .5) { const nx = cx < b[0] ? b[0] : cx > b[3] ? b[3] : cx, nz = cz < b[2] ? b[2] : cz > b[5] ? b[5] : cz; if (Math.hypot(nx - cx, nz - cz) > P.distTetti) { ST.piccole++; if (MIS.on) { o.__l9w = 'pic'; return true; } return false; } } }
     if (D > 0) { const dx = c.x - cx, dy = c.y - cy, dz = c.z - cz, d = Math.sqrt(dx * dx + dy * dy + dz * dz) - r;
       if (d > D) { ST.piccole++; if (MIS.on) { o.__l9w = 'pic'; return true; } return false; }
       if (d > D - P.banda) {   // nella fascia: si rimpicciolisce verso il centro della sfera mentre si allontana (onBeforeRender), fino a zero al taglio
@@ -234,10 +243,11 @@ var Lontano9 = (function () {
   function perche(o) { if (!pronto || !acceso) return null; const sprite = !!o.isSprite; if (!(sprite ? sferaSprite(o) : sferaMesh(o))) return 'senza sfera';
     const c = sph.center, r = sph.radius, dx = c.x - cx, dy = c.y - cy, dz = c.z - cz, d = Math.sqrt(dx * dx + dy * dy + dz * dz) - r;
     const D = taglio(o, r), pic = D > 0 && d > D, b = occF && r > BOXK && !sprite ? scatola(o) : null, occ = occF && (b ? occlusoB(b[0], b[1], b[2], b[3], b[4], b[5]) : occluso(c.x, c.y, c.z, r + pad));
-    return { x: c.x, y: c.y, z: c.z, r: +r.toFixed(2), d: +d.toFixed(1), piccola: pic, occlusa: occ, taglio: D }; }
+    let dB = null; if (b) { const nx = cx < b[0] ? b[0] : cx > b[3] ? b[3] : cx, nz = cz < b[2] ? b[2] : cz > b[5] ? b[5] : cz; dB = +Math.hypot(nx - cx, nz - cz).toFixed(1); }
+    return { x: c.x, y: c.y, z: c.z, r: +r.toFixed(2), d: +d.toFixed(1), piccola: pic, occlusa: occ, taglio: D, dScatola: dB }; }
   // per le prove in Node (test_lontano9.js): la camera in (x, y, z) che guarda verso l'azimut az con mezza apertura a (rad)
   function ventaglio(W, x, y, z, az, a) { if (!griglia(W)) return false; cx = x; cy = y; cz = z; az0 = az; A = a; NC = Math.min(NCMAX, Math.ceil(2 * A / P.dA)); frameId++; colId++; ultima[0] = NaN; occF = true; const tx = Math.floor(x / TS), ty = Math.floor(z / TS); camDentro = tx >= 0 && ty >= 0 && tx < GW && ty < GH && OCC[ty * GW + tx] > -1e8; return true; }
-  return { ON, P, MIS, prima, ventaglio, occlusoB, conto, azzera, perche, occluso, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; }, get griglia() { return OCC; } };
+  return { ON, TEL, P, MIS, prima, ventaglio, occlusoB, conto, azzera, perche, occluso, get attivo() { return attivo; }, set attivo(v) { attivo = !!v; }, get griglia() { return OCC; } };
 })();
 if (typeof window !== 'undefined') window.Lontano9 = Lontano9;
 if (typeof module !== 'undefined' && module.exports) module.exports = Lontano9;

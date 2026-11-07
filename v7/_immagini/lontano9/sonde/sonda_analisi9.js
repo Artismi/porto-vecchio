@@ -13,6 +13,10 @@ const POSTI = { 0: [[1343.49, 320.61], [1342.67, 324.79]], 1: [[1414, 367], [141
     for (const ip of SOLO) { const [at, verso] = POSTI[ip];
       await pg.evaluate(() => { Lontano9.attivo = true; Lontano9.MIS.on = true; });
       await posa(pg, { at, verso, c9: true, assesta: 2.5, foto: false });
+      // i tasselli chiesti dalla vista arrivano (come in sonda_lontano9.js)
+      let fermo = 0, prima = -1; for (let k = 0; k < 120 && fermo < 7; k++) { const t = await pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, DT = 1 / 30, ui = { zoom: .5, time: pv.ui.time, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: DT, mira: null };
+          for (let i = 0; i < 3; i++) { ui.time += DT; pv.ui.time = ui.time; pv.G.step(pv.st, DT, { x: 0, y: 0 }); Rr.frame(pv.st, DT, ui); } const T = window.__tasselli; return T && T.on ? { v: (T.inVolo || 0) + (T.inApertura || 0), m: T.mesh } : { v: 0, m: 0 }; });
+        if (t.v === 0 && t.m === prima) fermo++; else fermo = 0; prima = t.m; await pg.waitForTimeout(150); }
       R['p' + ip] = await pg.evaluate(() => { const pv = window.__pv, Rr = pv.R, rd = Rr.__models.renderer, cam = Rr.getCamera(), gl = rd.getContext(), DT = 1 / 30;
         if (gl.__vero) for (const k in gl.__vero) gl[k] = gl.__vero[k];
         const ui = { zoom: .5, time: pv.ui.time + DT, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: DT, mira: null };
@@ -22,7 +26,7 @@ const POSTI = { 0: [[1343.49, 320.61], [1342.67, 324.79]], 1: [[1414, 367], [141
             const u = object.userData || {}, k = u.fusione1 ? 'fusione1' : u.statico1 ? 'statico1' : u.tassello !== undefined ? 'tassello' : object.isInstancedMesh ? 'inst' : object.isSkinnedMesh ? 'pers' : object.isSprite ? 'sprite' : u.keep ? 'keep' : 'altro';
             const tri = geometry.index ? geometry.index.count / 3 : geometry.attributes.position ? geometry.attributes.position.count / 3 : 0;
             const pp = Lontano9.perche(object); let dd = Math.max(0, v.distanceTo(cam.position) - r); if (pp && typeof pp === 'object') { r = pp.r; dd = pp.d; }
-            L.push([k, material.type.replace(/Mesh|Material/g, ''), +r.toFixed(2), +Math.max(0, dd).toFixed(1), Math.round(tri * (object.isInstancedMesh ? object.count : 1)), object.__l9w === undefined ? '-' : object.__l9w, !!material.transparent, (object.name || (object.parent && object.parent.name ? '^' + object.parent.name : '')).slice(0, 16), Object.keys(u).slice(0, 3).join('+'), pp && typeof pp === 'object' ? pp.taglio : -1]); }
+            L.push([k, material.type.replace(/Mesh|Material/g, ''), +r.toFixed(2), +Math.max(0, dd).toFixed(1), Math.round(tri * (object.isInstancedMesh ? object.count : 1)), object.__l9w === undefined ? '-' : object.__l9w, !!material.transparent, (object.name || (object.parent && object.parent.name ? '^' + object.parent.name : '')).slice(0, 16), Object.keys(u).slice(0, 3).join('+'), pp && typeof pp === 'object' ? pp.taglio : -1, pp && typeof pp === 'object' ? pp.dScatola : null, u.tassello !== undefined ? u.tassello : null]); }
           return rb.apply(this, arguments); };
         pv.G.step(pv.st, DT, { x: 0, y: 0 }); Rr.frame(pv.st, DT, ui); rd.renderBufferDirect = rb;
         if (gl.__vero) for (const k in gl.__vero) gl[k] = function () { };

@@ -17,12 +17,12 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 708,
-   "triangoli": 2114140,
-   "vista": 688,
+   "disegni": 693,
+   "triangoli": 2071234,
+   "vista": 635,
    "perDistanza": {
-    "0-30": 393,
-    "30-80": 135,
+    "0-30": 339,
+    "30-80": 136,
     "80-150": 30,
     "150+": 130
    },
@@ -36,18 +36,10 @@
      ]
     ],
     [
-     "Standard|thin2",
-     [
-      97,
-      24,
-      0
-     ]
-    ],
-    [
      "inst:Lambert",
      [
-      61,
-      46,
+      75,
+      57,
       42
      ]
     ],
@@ -57,6 +49,14 @@
       55,
       26,
       6
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      50,
+      13,
+      0
      ]
     ],
     [
@@ -116,14 +116,6 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
-     [
-      8,
-      0,
-      0
-     ]
-    ],
-    [
      "Basic|tassello+thin2",
      [
       7,
@@ -132,27 +124,11 @@
      ]
     ],
     [
-     "Standard|keep+thin2",
+     "inst:Basic",
      [
       7,
-      0,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      7,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|keep+thin2",
-     [
       6,
-      0,
-      0
+      4
      ]
     ],
     [
@@ -172,27 +148,11 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      5,
-      0,
-      0
-     ]
-    ],
-    [
      "Basic",
      [
       5,
-      1,
+      2,
       0
-     ]
-    ],
-    [
-     "inst:Basic",
-     [
-      5,
-      5,
-      4
      ]
     ],
     [
@@ -212,20 +172,60 @@
      ]
     ],
     [
-     "Standard|vestito+thin2",
+     "Standard|keep+thin2",
      [
       4,
       0,
       0
      ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
     ]
    ],
-   "msMed": 40.1,
-   "msP90": 58.9,
-   "heapMB": 803,
-   "geometrie": 1635,
-   "tessiture": 307,
-   "programmi": 198,
+   "msMed": 40.8,
+   "msP90": 117.7,
+   "heapMB": 631,
+   "geometrie": 1618,
+   "tessiture": 323,
+   "programmi": 197,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -235,8 +235,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1170,
-   "paginaMB": 1491
+   "gpuMB": 1160,
+   "paginaMB": 1388
   },
   "c9": {
    "stato": {
@@ -244,22 +244,22 @@
     "arm": 7.5,
     "sfondoAlto": 0.025
    },
-   "disegni": 1971,
-   "triangoli": 3002182,
-   "vista": 1924,
+   "disegni": 2020,
+   "triangoli": 2972018,
+   "vista": 1949,
    "perDistanza": {
-    "30-80": 596,
-    "80-150": 774,
-    "0-30": 395,
+    "30-80": 627,
+    "80-150": 780,
+    "0-30": 383,
     "150+": 159
    },
    "generi": [
     [
      "Standard|thin2",
      [
-      457,
-      409,
-      298
+      485,
+      440,
+      303
      ]
     ],
     [
@@ -314,16 +314,8 @@
      "Basic",
      [
       43,
-      40,
-      23
-     ]
-    ],
-    [
-     "Lambert",
-     [
-      32,
-      30,
-      5
+      41,
+      24
      ]
     ],
     [
@@ -331,7 +323,7 @@
      [
       32,
       25,
-      6
+      4
      ]
     ],
     [
@@ -340,6 +332,14 @@
       31,
       31,
       28
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      31,
+      29,
+      8
      ]
     ],
     [
@@ -355,7 +355,7 @@
      [
       26,
       23,
-      9
+      10
      ]
     ],
     [
@@ -383,19 +383,19 @@
      ]
     ],
     [
-     "Standard|vestito+thin2",
+     "Standard",
      [
-      16,
-      12,
-      0
+      14,
+      9,
+      6
      ]
     ],
     [
-     "Standard",
+     "Standard|vestito+thin2",
      [
-      15,
-      10,
-      7
+      14,
+      12,
+      0
      ]
     ],
     [
@@ -407,19 +407,19 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
-     [
-      12,
-      4,
-      0
-     ]
-    ],
-    [
      "Lambert|tassello+thin2",
      [
       10,
       5,
       4
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      10,
+      6,
+      0
      ]
     ],
     [
@@ -447,12 +447,12 @@
      ]
     ]
    ],
-   "msMed": 56.1,
-   "msP90": 75.8,
-   "heapMB": 803,
-   "geometrie": 2698,
-   "tessiture": 396,
-   "programmi": 201,
+   "msMed": 68.7,
+   "msP90": 108,
+   "heapMB": 631,
+   "geometrie": 2622,
+   "tessiture": 399,
+   "programmi": 200,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -462,8 +462,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1301,
-   "paginaMB": 1538
+   "gpuMB": 1281,
+   "paginaMB": 1330
   },
   "c9l": {
    "stato": {
@@ -471,14 +471,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.025
    },
-   "disegni": 703,
-   "triangoli": 2371963,
-   "vista": 607,
+   "disegni": 716,
+   "triangoli": 2372684,
+   "vista": 642,
    "perDistanza": {
-    "0-30": 316,
+    "0-30": 322,
     "150+": 115,
-    "30-80": 138,
-    "80-150": 38
+    "30-80": 168,
+    "80-150": 37
    },
    "generi": [
     [
@@ -522,6 +522,14 @@
      ]
     ],
     [
+     "Standard|thin2",
+     [
+      37,
+      35,
+      0
+     ]
+    ],
+    [
      "Standard|vievive+thin2",
      [
       27,
@@ -546,26 +554,18 @@
      ]
     ],
     [
-     "Standard|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      10,
-      10,
+      8,
+      2,
       0
      ]
     ],
     [
      "Standard",
      [
-      8,
-      3,
-      1
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
       7,
-      0,
+      2,
       0
      ]
     ],
@@ -626,10 +626,26 @@
      ]
     ],
     [
+     "Lambert",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
      "Lambert|tassello",
      [
       3,
       0,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      3,
+      3,
       0
      ]
     ],
@@ -656,41 +672,25 @@
       3,
       3
      ]
-    ],
-    [
-     "Basic|pesoCat|pesoPiane",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "Standard|vestito+thin2",
-     [
-      2,
-      0,
-      0
-     ]
     ]
    ],
-   "msMed": 61.9,
-   "msP90": 90.6,
-   "heapMB": 803,
-   "geometrie": 2698,
-   "tessiture": 397,
-   "programmi": 201,
+   "msMed": 49.6,
+   "msP90": 134.2,
+   "heapMB": 631,
+   "geometrie": 2626,
+   "tessiture": 398,
+   "programmi": 200,
    "far": 194,
    "l9": {
-    "prove": 1893,
-    "occluse": 960,
-    "piccole": 410,
-    "colonne": 235,
-    "ms": 4.9,
+    "prove": 1838,
+    "occluse": 647,
+    "piccole": 633,
+    "colonne": 231,
+    "ms": 3.5,
     "on": true
    },
-   "gpuMB": 1341,
-   "paginaMB": 1516
+   "gpuMB": 1284,
+   "paginaMB": 1331
   }
  },
  "p1": {
@@ -710,13 +710,13 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 736,
-   "triangoli": 1407270,
-   "vista": 651,
+   "disegni": 751,
+   "triangoli": 1374975,
+   "vista": 680,
    "perDistanza": {
-    "30-80": 223,
-    "80-150": 30,
-    "0-30": 300,
+    "30-80": 259,
+    "80-150": 27,
+    "0-30": 296,
     "150+": 98
    },
    "generi": [
@@ -731,8 +731,8 @@
     [
      "Standard|thin2",
      [
-      119,
-      119,
+      144,
+      144,
       0
      ]
     ],
@@ -747,9 +747,9 @@
     [
      "inst:Lambert",
      [
-      70,
-      52,
-      46
+      69,
+      51,
+      44
      ]
     ],
     [
@@ -771,16 +771,32 @@
     [
      "Standard|thin2+tassello",
      [
-      18,
-      18,
-      3
+      17,
+      17,
+      2
      ]
     ],
     [
-     "Standard",
+     "Lambert|vestito",
      [
-      12,
-      1,
+      11,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      11,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      10,
+      10,
       0
      ]
     ],
@@ -801,25 +817,9 @@
      ]
     ],
     [
-     "Standard|vestito",
-     [
-      9,
-      7,
-      0
-     ]
-    ],
-    [
      "Standard|vestito+fuso",
      [
-      8,
-      7,
-      0
-     ]
-    ],
-    [
-     "Standard|keep+thin2",
-     [
-      7,
+      9,
       7,
       0
      ]
@@ -833,10 +833,10 @@
      ]
     ],
     [
-     "Lambert|vestito",
+     "Standard",
      [
-      7,
-      3,
+      6,
+      1,
       0
      ]
     ],
@@ -851,8 +851,16 @@
     [
      "Lambert",
      [
+      6,
+      6,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
       5,
-      2,
+      5,
       0
      ]
     ],
@@ -860,7 +868,7 @@
      "Basic",
      [
       5,
-      4,
+      5,
       0
      ]
     ],
@@ -877,14 +885,6 @@
      [
       4,
       0,
-      0
-     ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      4,
-      4,
       0
      ]
     ],
@@ -913,12 +913,12 @@
      ]
     ]
    ],
-   "msMed": 47.9,
-   "msP90": 16211.4,
-   "heapMB": 803,
-   "geometrie": 3021,
-   "tessiture": 481,
-   "programmi": 202,
+   "msMed": 103.6,
+   "msP90": 20424.6,
+   "heapMB": 631,
+   "geometrie": 2933,
+   "tessiture": 478,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -928,8 +928,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1363,
-   "paginaMB": 1608
+   "gpuMB": 1326,
+   "paginaMB": 1371
   },
   "c9": {
    "stato": {
@@ -937,13 +937,13 @@
     "arm": 7.5,
     "sfondoAlto": 0.05
    },
-   "disegni": 841,
-   "triangoli": 1623812,
-   "vista": 796,
+   "disegni": 981,
+   "triangoli": 1624689,
+   "vista": 857,
    "perDistanza": {
-    "30-80": 256,
+    "30-80": 314,
     "80-150": 117,
-    "0-30": 317,
+    "0-30": 320,
     "150+": 106
    },
    "generi": [
@@ -958,8 +958,8 @@
     [
      "Standard|thin2",
      [
-      115,
-      111,
+      166,
+      162,
       0
      ]
     ],
@@ -1004,14 +1004,6 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      15,
-      10,
-      0
-     ]
-    ],
-    [
      "Basic|qs+tassello",
      [
       13,
@@ -1020,10 +1012,34 @@
      ]
     ],
     [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      3,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      11,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      10,
+      6,
+      0
+     ]
+    ],
+    [
      "Basic",
      [
       10,
-      9,
+      10,
       0
      ]
     ],
@@ -1036,10 +1052,10 @@
      ]
     ],
     [
-     "Standard",
+     "Standard|vestito+fuso",
      [
-      8,
-      1,
+      9,
+      7,
       0
      ]
     ],
@@ -1052,25 +1068,9 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
+     "Standard|keep+thin2",
      [
-      8,
-      3,
-      0
-     ]
-    ],
-    [
-     "Standard|vestito+thin2",
-     [
-      8,
-      6,
-      0
-     ]
-    ],
-    [
-     "Standard|vestito+fuso",
-     [
-      8,
+      7,
       7,
       0
      ]
@@ -1079,6 +1079,14 @@
      "Standard|segnaletica",
      [
       7,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      6,
       1,
       0
      ]
@@ -1096,14 +1104,6 @@
      [
       6,
       0,
-      0
-     ]
-    ],
-    [
-     "Standard|keep+thin2",
-     [
-      6,
-      6,
       0
      ]
     ],
@@ -1132,20 +1132,20 @@
      ]
     ],
     [
-     "Shader",
+     "Basic|thin2",
      [
-      4,
-      2,
-      2
+      5,
+      5,
+      0
      ]
     ]
    ],
-   "msMed": 45.7,
-   "msP90": 49.6,
-   "heapMB": 803,
-   "geometrie": 2786,
-   "tessiture": 486,
-   "programmi": 202,
+   "msMed": 55.7,
+   "msP90": 99.6,
+   "heapMB": 631,
+   "geometrie": 2757,
+   "tessiture": 484,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -1155,8 +1155,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1371,
-   "paginaMB": 1705
+   "gpuMB": 1326,
+   "paginaMB": 1460
   },
   "c9l": {
    "stato": {
@@ -1164,13 +1164,13 @@
     "arm": 7.5,
     "sfondoAlto": 0.05
    },
-   "disegni": 447,
-   "triangoli": 1341778,
-   "vista": 398,
+   "disegni": 507,
+   "triangoli": 1319807,
+   "vista": 403,
    "perDistanza": {
-    "0-30": 264,
-    "80-150": 10,
-    "30-80": 30,
+    "0-30": 272,
+    "80-150": 8,
+    "30-80": 29,
     "150+": 94
    },
    "generi": [
@@ -1185,9 +1185,9 @@
     [
      "inst:Lambert",
      [
-      64,
-      49,
-      46
+      62,
+      47,
+      44
      ]
     ],
     [
@@ -1223,10 +1223,10 @@
      ]
     ],
     [
-     "Standard",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
       8,
-      1,
+      3,
       0
      ]
     ],
@@ -1239,10 +1239,10 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Standard",
      [
-      7,
-      4,
+      6,
+      1,
       0
      ]
     ],
@@ -1252,6 +1252,14 @@
       6,
       6,
       6
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      6,
+      0,
+      0
      ]
     ],
     [
@@ -1303,6 +1311,22 @@
      ]
     ],
     [
+     "Standard|vestito+thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
      "Points",
      [
       3,
@@ -1341,49 +1365,25 @@
       2,
       2
      ]
-    ],
-    [
-     "inst:Basic|noRoof",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
-     "Lambert|vestito+thin2",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "Standard|riva9",
-     [
-      2,
-      1,
-      0
-     ]
     ]
    ],
-   "msMed": 51.7,
-   "msP90": 68.4,
-   "heapMB": 803,
-   "geometrie": 2802,
-   "tessiture": 489,
-   "programmi": 202,
+   "msMed": 49.8,
+   "msP90": 96,
+   "heapMB": 631,
+   "geometrie": 2760,
+   "tessiture": 485,
+   "programmi": 201,
    "far": 194,
    "l9": {
-    "prove": 708,
-    "occluse": 351,
-    "piccole": 39,
-    "colonne": 214,
-    "ms": 0,
+    "prove": 773,
+    "occluse": 343,
+    "piccole": 104,
+    "colonne": 217,
+    "ms": 0.1,
     "on": true
    },
-   "gpuMB": 1362,
-   "paginaMB": 1713
+   "gpuMB": 1328,
+   "paginaMB": 1445
   }
  },
  "p2": {
@@ -1403,11 +1403,11 @@
     "arm": 1.36,
     "sfondoAlto": 0
    },
-   "disegni": 366,
-   "triangoli": 1424535,
-   "vista": 375,
+   "disegni": 353,
+   "triangoli": 1417225,
+   "vista": 368,
    "perDistanza": {
-    "0-30": 269,
+    "0-30": 262,
     "30-80": 5,
     "150+": 101
    },
@@ -1477,14 +1477,6 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      6,
-      0,
-      0
-     ]
-    ],
-    [
      "Standard|segnaletica",
      [
       5,
@@ -1513,14 +1505,6 @@
      [
       3,
       1,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      3,
-      0,
       0
      ]
     ],
@@ -1565,6 +1549,14 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
      "inst:Lambert|wr",
      [
       2,
@@ -1603,14 +1595,22 @@
       2,
       2
      ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
     ]
    ],
-   "msMed": 38.6,
-   "msP90": 62.1,
-   "heapMB": 803,
-   "geometrie": 2583,
-   "tessiture": 524,
-   "programmi": 202,
+   "msMed": 69.3,
+   "msP90": 134.3,
+   "heapMB": 631,
+   "geometrie": 2558,
+   "tessiture": 520,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -1620,8 +1620,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1369,
-   "paginaMB": 1321
+   "gpuMB": 1338,
+   "paginaMB": 1478
   },
   "c9": {
    "stato": {
@@ -1629,14 +1629,14 @@
     "arm": 1.6,
     "sfondoAlto": 0
    },
-   "disegni": 533,
-   "triangoli": 1692360,
-   "vista": 534,
+   "disegni": 524,
+   "triangoli": 1664039,
+   "vista": 529,
    "perDistanza": {
-    "0-30": 314,
-    "30-80": 52,
+    "0-30": 313,
+    "30-80": 49,
     "150+": 160,
-    "80-150": 8
+    "80-150": 7
    },
    "generi": [
     [
@@ -1706,14 +1706,6 @@
     [
      "Standard|thin2",
      [
-      12,
-      2,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
       10,
       0,
       0
@@ -1725,6 +1717,22 @@
       8,
       4,
       2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      8,
+      0,
+      0
      ]
     ],
     [
@@ -1761,14 +1769,6 @@
     ],
     [
      "pers:Standard|personaggi|Personaggio",
-     [
-      6,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|thin2",
      [
       6,
       0,
@@ -1832,12 +1832,12 @@
      ]
     ]
    ],
-   "msMed": 51.7,
-   "msP90": 65.3,
-   "heapMB": 803,
-   "geometrie": 2697,
-   "tessiture": 519,
-   "programmi": 202,
+   "msMed": 127.2,
+   "msP90": 200.3,
+   "heapMB": 631,
+   "geometrie": 2673,
+   "tessiture": 504,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -1847,8 +1847,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1379,
-   "paginaMB": 1446
+   "gpuMB": 1353,
+   "paginaMB": 1411
   },
   "c9l": {
    "stato": {
@@ -1856,13 +1856,13 @@
     "arm": 1.6,
     "sfondoAlto": 0
    },
-   "disegni": 478,
-   "triangoli": 1645308,
-   "vista": 484,
+   "disegni": 461,
+   "triangoli": 1624505,
+   "vista": 474,
    "perDistanza": {
-    "0-30": 312,
+    "0-30": 311,
     "30-80": 38,
-    "150+": 132,
+    "150+": 123,
     "80-150": 2
    },
    "generi": [
@@ -1883,19 +1883,19 @@
      ]
     ],
     [
-     "inst:Standard|noRoof",
-     [
-      48,
-      48,
-      48
-     ]
-    ],
-    [
      "Lambert|qs+tassello",
      [
       41,
       8,
       0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      41,
+      41,
+      41
      ]
     ],
     [
@@ -1931,7 +1931,7 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Standard|thin2",
      [
       10,
       0,
@@ -1939,9 +1939,17 @@
      ]
     ],
     [
-     "Standard|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      10,
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      8,
       0,
       0
      ]
@@ -1952,14 +1960,6 @@
       7,
       1,
       0
-     ]
-    ],
-    [
-     "inst:Basic|noRoof",
-     [
-      7,
-      7,
-      7
      ]
     ],
     [
@@ -1979,14 +1979,6 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      6,
-      0,
-      0
-     ]
-    ],
-    [
      "inst:Lambert|vievive",
      [
       5,
@@ -1996,6 +1988,14 @@
     ],
     [
      "inst:Standard|wr",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
      [
       5,
       5,
@@ -2059,23 +2059,23 @@
      ]
     ]
    ],
-   "msMed": 63.1,
-   "msP90": 127.1,
-   "heapMB": 803,
-   "geometrie": 2702,
-   "tessiture": 521,
-   "programmi": 202,
+   "msMed": 77.7,
+   "msP90": 140.2,
+   "heapMB": 631,
+   "geometrie": 2676,
+   "tessiture": 507,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 459,
-    "occluse": 47,
-    "piccole": 0,
+    "occluse": 44,
+    "piccole": 13,
     "colonne": 297,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1380,
-   "paginaMB": 1441
+   "gpuMB": 1353,
+   "paginaMB": 1364
   }
  },
  "p3": {
@@ -2095,11 +2095,11 @@
     "arm": 2.25,
     "sfondoAlto": 0
    },
-   "disegni": 368,
-   "triangoli": 1355602,
-   "vista": 384,
+   "disegni": 381,
+   "triangoli": 1380636,
+   "vista": 387,
    "perDistanza": {
-    "0-30": 251,
+    "0-30": 254,
     "30-80": 33,
     "150+": 100
    },
@@ -2185,14 +2185,6 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      4,
-      0,
-      0
-     ]
-    ],
-    [
      "inst:Basic|noRoof",
      [
       4,
@@ -2201,10 +2193,26 @@
      ]
     ],
     [
+     "Lambert|thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
      "Standard",
      [
       3,
       1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
       0
      ]
     ],
@@ -2287,22 +2295,14 @@
       0,
       0
      ]
-    ],
-    [
-     "Basic|tassello+thin2",
-     [
-      1,
-      0,
-      0
-     ]
     ]
    ],
-   "msMed": 36.8,
-   "msP90": 44.9,
-   "heapMB": 803,
-   "geometrie": 2790,
-   "tessiture": 493,
-   "programmi": 202,
+   "msMed": 43.2,
+   "msP90": 56,
+   "heapMB": 631,
+   "geometrie": 2763,
+   "tessiture": 479,
+   "programmi": 201,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -2312,8 +2312,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1371,
-   "paginaMB": 1427
+   "gpuMB": 1344,
+   "paginaMB": 1400
   },
   "c9": {
    "stato": {
@@ -2321,14 +2321,14 @@
     "arm": 4.24,
     "sfondoAlto": 0.025
    },
-   "disegni": 2216,
-   "triangoli": 3392169,
-   "vista": 2139,
+   "disegni": 2078,
+   "triangoli": 3366349,
+   "vista": 2046,
    "perDistanza": {
-    "80-150": 998,
-    "0-30": 349,
-    "150+": 240,
-    "30-80": 552
+    "80-150": 908,
+    "0-30": 350,
+    "150+": 239,
+    "30-80": 549
    },
    "generi": [
     [
@@ -2342,9 +2342,9 @@
     [
      "Standard|thin2",
      [
-      393,
-      393,
-      360
+      354,
+      354,
+      324
      ]
     ],
     [
@@ -2372,19 +2372,11 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      59,
-      59,
-      39
-     ]
-    ],
-    [
      "inst:Lambert",
      [
-      56,
-      45,
-      45
+      55,
+      44,
+      44
      ]
     ],
     [
@@ -2396,19 +2388,19 @@
      ]
     ],
     [
-     "Basic",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      42,
-      42,
-      36
+      35,
+      17,
+      1
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Basic",
      [
-      36,
-      19,
-      3
+      35,
+      34,
+      29
      ]
     ],
     [
@@ -2452,6 +2444,14 @@
      ]
     ],
     [
+     "Lambert",
+     [
+      27,
+      26,
+      5
+     ]
+    ],
+    [
      "inst:Standard",
      [
       27,
@@ -2460,18 +2460,10 @@
      ]
     ],
     [
-     "Basic|thin2",
-     [
-      21,
-      21,
-      17
-     ]
-    ],
-    [
      "Lambert|thin2",
      [
       20,
-      10,
+      19,
       1
      ]
     ],
@@ -2484,19 +2476,19 @@
      ]
     ],
     [
+     "Standard",
+     [
+      18,
+      13,
+      10
+     ]
+    ],
+    [
      "Standard|segnaletica",
      [
       18,
       14,
       7
-     ]
-    ],
-    [
-     "Standard",
-     [
-      16,
-      13,
-      10
      ]
     ],
     [
@@ -2508,28 +2500,36 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
-     [
-      12,
-      12,
-      0
-     ]
-    ],
-    [
      "Standard|noGhost+thin2",
      [
       11,
       11,
       9
      ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      10,
+      3,
+      0
+     ]
     ]
    ],
-   "msMed": 73.1,
-   "msP90": 141,
-   "heapMB": 803,
-   "geometrie": 3547,
-   "tessiture": 542,
-   "programmi": 203,
+   "msMed": 101.9,
+   "msP90": 221.4,
+   "heapMB": 631,
+   "geometrie": 3475,
+   "tessiture": 546,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -2539,8 +2539,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1422,
-   "paginaMB": 1647
+   "gpuMB": 1400,
+   "paginaMB": 1567
   },
   "c9l": {
    "stato": {
@@ -2548,22 +2548,22 @@
     "arm": 4.24,
     "sfondoAlto": 0.025
    },
-   "disegni": 1011,
-   "triangoli": 2992884,
-   "vista": 715,
+   "disegni": 751,
+   "triangoli": 2792721,
+   "vista": 710,
    "perDistanza": {
-    "0-30": 327,
-    "150+": 136,
-    "30-80": 184,
-    "80-150": 68
+    "0-30": 333,
+    "30-80": 177,
+    "80-150": 67,
+    "150+": 133
    },
    "generi": [
     [
      "Standard|qs+tassello",
      [
-      328,
-      162,
-      51
+      327,
+      161,
+      50
      ]
     ],
     [
@@ -2577,17 +2577,17 @@
     [
      "inst:Standard|noRoof",
      [
-      57,
-      57,
-      57
+      55,
+      55,
+      55
      ]
     ],
     [
      "inst:Lambert",
      [
-      52,
-      42,
-      42
+      51,
+      41,
+      41
      ]
     ],
     [
@@ -2607,17 +2607,17 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Standard|tassello+thin2",
      [
-      21,
-      5,
+      19,
+      2,
       0
      ]
     ],
     [
-     "Standard|tassello+thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      19,
+      18,
       2,
       0
      ]
@@ -2631,11 +2631,11 @@
      ]
     ],
     [
-     "Lambert|thin2",
+     "Standard",
      [
-      10,
-      0,
-      0
+      9,
+      4,
+      2
      ]
     ],
     [
@@ -2655,11 +2655,11 @@
      ]
     ],
     [
-     "Standard",
+     "pers:Standard|personaggi|Personaggio",
      [
       7,
-      4,
-      2
+      0,
+      0
      ]
     ],
     [
@@ -2671,10 +2671,10 @@
      ]
     ],
     [
-     "Standard|thin2",
+     "Lambert",
      [
       6,
-      6,
+      1,
       0
      ]
     ],
@@ -2695,6 +2695,14 @@
      ]
     ],
     [
+     "Standard|thin2",
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    [
      "inst:Lambert|vievive",
      [
       3,
@@ -2708,6 +2716,22 @@
       3,
       3,
       3
+     ]
+    ],
+    [
+     "Basic",
+     [
+      3,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
      ]
     ],
     [
@@ -2725,49 +2749,25 @@
       2,
       2
      ]
-    ],
-    [
-     "Basic|pesoCat|pesoPiane",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      3,
-      3,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi|Personaggio",
-     [
-      2,
-      0,
-      0
-     ]
     ]
    ],
-   "msMed": 54.3,
-   "msP90": 77,
-   "heapMB": 803,
-   "geometrie": 3551,
-   "tessiture": 542,
-   "programmi": 203,
+   "msMed": 82.1,
+   "msP90": 111.9,
+   "heapMB": 631,
+   "geometrie": 3476,
+   "tessiture": 546,
+   "programmi": 202,
    "far": 194,
    "l9": {
-    "prove": 1997,
-    "occluse": 814,
-    "piccole": 544,
+    "prove": 1912,
+    "occluse": 555,
+    "piccole": 722,
     "colonne": 249,
-    "ms": 0.1,
+    "ms": 0,
     "on": true
    },
-   "gpuMB": 1428,
-   "paginaMB": 1666
+   "gpuMB": 1403,
+   "paginaMB": 1576
   }
  },
  "p4": {
@@ -2787,13 +2787,13 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 597,
-   "triangoli": 1072411,
-   "vista": 439,
+   "disegni": 403,
+   "triangoli": 1029384,
+   "vista": 380,
    "perDistanza": {
-    "0-30": 253,
-    "30-80": 100,
-    "150+": 86
+    "0-30": 199,
+    "30-80": 99,
+    "150+": 82
    },
    "generi": [
     [
@@ -2807,17 +2807,9 @@
     [
      "inst:Lambert",
      [
-      57,
-      44,
-      44
-     ]
-    ],
-    [
-     "Standard|thin2",
-     [
-      52,
-      16,
-      0
+      53,
+      40,
+      40
      ]
     ],
     [
@@ -2841,6 +2833,14 @@
      [
       15,
       1,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      15,
+      15,
       0
      ]
     ],
@@ -2917,22 +2917,6 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      5,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert",
-     [
-      5,
-      0,
-      0
-     ]
-    ],
-    [
      "Shader",
      [
       4,
@@ -2941,34 +2925,10 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      4,
-      1,
-      0
-     ]
-    ],
-    [
      "Basic",
      [
-      4,
+      3,
       2,
-      0
-     ]
-    ],
-    [
-     "Standard|keep+thin2",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      3,
-      0,
       0
      ]
     ],
@@ -2987,14 +2947,54 @@
       0,
       0
      ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      2,
+      1,
+      1
+     ]
     ]
    ],
-   "msMed": 31.4,
-   "msP90": 36.6,
-   "heapMB": 803,
-   "geometrie": 3766,
-   "tessiture": 556,
-   "programmi": 203,
+   "msMed": 42.2,
+   "msP90": 107.7,
+   "heapMB": 631,
+   "geometrie": 3519,
+   "tessiture": 553,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -3004,8 +3004,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1448,
-   "paginaMB": 1741
+   "gpuMB": 1412,
+   "paginaMB": 1618
   },
   "c9": {
    "stato": {
@@ -3013,14 +3013,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.492
    },
-   "disegni": 1011,
-   "triangoli": 1421412,
-   "vista": 995,
+   "disegni": 865,
+   "triangoli": 1339055,
+   "vista": 876,
    "perDistanza": {
-    "80-150": 196,
-    "150+": 168,
-    "0-30": 281,
-    "30-80": 350
+    "80-150": 185,
+    "150+": 163,
+    "0-30": 226,
+    "30-80": 302
    },
    "generi": [
     [
@@ -3034,9 +3034,9 @@
     [
      "Standard|thin2",
      [
-      209,
-      161,
-      71
+      123,
+      123,
+      66
      ]
     ],
     [
@@ -3050,9 +3050,9 @@
     [
      "inst:Lambert",
      [
-      62,
-      49,
-      49
+      57,
+      44,
+      44
      ]
     ],
     [
@@ -3067,7 +3067,7 @@
      "Standard|tassello+thin2",
      [
       28,
-      13,
+      12,
       4
      ]
     ],
@@ -3080,11 +3080,11 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Lambert|thin2",
      [
-      19,
+      16,
       13,
-      10
+      12
      ]
     ],
     [
@@ -3099,7 +3099,7 @@
      "Basic|tassello+thin2",
      [
       14,
-      13,
+      12,
       2
      ]
     ],
@@ -3112,11 +3112,11 @@
      ]
     ],
     [
-     "Lambert|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
       13,
-      13,
-      12
+      10,
+      10
      ]
     ],
     [
@@ -3125,14 +3125,6 @@
       12,
       5,
       0
-     ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      11,
-      10,
-      3
      ]
     ],
     [
@@ -3168,34 +3160,10 @@
      ]
     ],
     [
-     "Basic|keep+thin2",
-     [
-      8,
-      4,
-      2
-     ]
-    ],
-    [
      "Lambert|vestito+thin2",
      [
       8,
       7,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      8,
-      7,
-      2
-     ]
-    ],
-    [
-     "Standard|keep+thin2",
-     [
-      7,
-      4,
       0
      ]
     ],
@@ -3214,14 +3182,46 @@
       6,
       6
      ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      6,
+      6,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
     ]
    ],
-   "msMed": 48.5,
-   "msP90": 89.7,
-   "heapMB": 803,
-   "geometrie": 4085,
-   "tessiture": 585,
-   "programmi": 203,
+   "msMed": 42.6,
+   "msP90": 78,
+   "heapMB": 631,
+   "geometrie": 3761,
+   "tessiture": 582,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -3231,8 +3231,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1461,
-   "paginaMB": 1791
+   "gpuMB": 1426,
+   "paginaMB": 1344
   },
   "c9l": {
    "stato": {
@@ -3240,14 +3240,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.492
    },
-   "disegni": 729,
-   "triangoli": 1239528,
-   "vista": 717,
+   "disegni": 816,
+   "triangoli": 1416466,
+   "vista": 603,
    "perDistanza": {
     "80-150": 49,
-    "150+": 109,
-    "0-30": 283,
-    "30-80": 276
+    "150+": 105,
+    "0-30": 226,
+    "30-80": 223
    },
    "generi": [
     [
@@ -3256,14 +3256,6 @@
       193,
       105,
       14
-     ]
-    ],
-    [
-     "Standard|thin2",
-     [
-      126,
-      78,
-      3
      ]
     ],
     [
@@ -3277,9 +3269,17 @@
     [
      "inst:Lambert",
      [
-      61,
-      48,
-      48
+      57,
+      44,
+      44
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      45,
+      45,
+      3
      ]
     ],
     [
@@ -3317,8 +3317,8 @@
     [
      "Standard|segnaletica",
      [
-      12,
-      5,
+      11,
+      4,
       0
      ]
     ],
@@ -3339,14 +3339,6 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      10,
-      8,
-      0
-     ]
-    ],
-    [
      "Standard|vievive+thin2",
      [
       9,
@@ -3359,14 +3351,6 @@
      [
       8,
       5,
-      2
-     ]
-    ],
-    [
-     "Basic|keep+thin2",
-     [
-      8,
-      4,
       2
      ]
     ],
@@ -3387,43 +3371,11 @@
      ]
     ],
     [
-     "Standard|keep+thin2",
-     [
-      7,
-      4,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      7,
-      1,
-      0
-     ]
-    ],
-    [
      "Standard|vestito+thin2",
      [
       7,
       2,
       0
-     ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      6,
-      5,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      6,
-      5,
-      1
      ]
     ],
     [
@@ -3441,25 +3393,73 @@
       4,
       4
      ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      4,
+      3,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      3,
+      3
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      3,
+      2,
+      1
+     ]
     ]
    ],
-   "msMed": 28.8,
-   "msP90": 52.6,
-   "heapMB": 803,
-   "geometrie": 4079,
-   "tessiture": 585,
-   "programmi": 203,
+   "msMed": 54,
+   "msP90": 131.2,
+   "heapMB": 631,
+   "geometrie": 3761,
+   "tessiture": 582,
+   "programmi": 202,
    "far": 194,
    "l9": {
-    "prove": 912,
-    "occluse": 116,
-    "piccole": 159,
-    "colonne": 176,
-    "ms": 0,
+    "prove": 791,
+    "occluse": 87,
+    "piccole": 177,
+    "colonne": 164,
+    "ms": 0.1,
     "on": true
    },
-   "gpuMB": 1463,
-   "paginaMB": 1801
+   "gpuMB": 1437,
+   "paginaMB": 1348
   }
  },
  "p5": {
@@ -3479,24 +3479,16 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 807,
-   "triangoli": 1460519,
-   "vista": 782,
+   "disegni": 978,
+   "triangoli": 1504319,
+   "vista": 746,
    "perDistanza": {
-    "30-80": 364,
-    "80-150": 11,
-    "0-30": 316,
-    "150+": 91
+    "30-80": 357,
+    "80-150": 12,
+    "0-30": 288,
+    "150+": 89
    },
    "generi": [
-    [
-     "Standard|thin2",
-     [
-      192,
-      165,
-      0
-     ]
-    ],
     [
      "Standard|qs+tassello",
      [
@@ -3506,11 +3498,11 @@
      ]
     ],
     [
-     "inst:Lambert",
+     "Standard|thin2",
      [
-      72,
-      36,
-      32
+      160,
+      156,
+      0
      ]
     ],
     [
@@ -3519,6 +3511,14 @@
       71,
       39,
       0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      70,
+      34,
+      30
      ]
     ],
     [
@@ -3548,25 +3548,9 @@
     [
      "Standard|thin2+tassello",
      [
-      19,
-      19,
-      8
-     ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      14,
-      13,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      14,
-      13,
-      0
+      20,
+      20,
+      9
      ]
     ],
     [
@@ -3578,18 +3562,26 @@
      ]
     ],
     [
+     "Basic",
+     [
+      12,
+      12,
+      0
+     ]
+    ],
+    [
      "Basic|keep+waterMask",
      [
-      11,
-      11,
+      10,
+      10,
       2
      ]
     ],
     [
-     "Standard|keep+thin2",
+     "Basic|thin2",
      [
       10,
-      7,
+      10,
       0
      ]
     ],
@@ -3598,6 +3590,14 @@
      [
       9,
       3,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      9,
+      7,
       0
      ]
     ],
@@ -3612,8 +3612,16 @@
     [
      "Standard",
      [
-      6,
-      3,
+      7,
+      4,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      7,
+      7,
       0
      ]
     ],
@@ -3650,7 +3658,7 @@
      ]
     ],
     [
-     "Basic|keep+thin2",
+     "Standard|vestito+fuso",
      [
       5,
       4,
@@ -3666,28 +3674,20 @@
      ]
     ],
     [
-     "Lambert",
+     "Basic|keep+thin2",
      [
       4,
       4,
       0
      ]
-    ],
-    [
-     "inst:Lambert|vievive",
-     [
-      4,
-      4,
-      4
-     ]
     ]
    ],
-   "msMed": 41.4,
-   "msP90": 77.6,
-   "heapMB": 803,
-   "geometrie": 3187,
-   "tessiture": 640,
-   "programmi": 203,
+   "msMed": 41,
+   "msP90": 1709.3,
+   "heapMB": 631,
+   "geometrie": 3285,
+   "tessiture": 638,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -3697,8 +3697,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1486,
-   "paginaMB": 1468
+   "gpuMB": 1469,
+   "paginaMB": 1566
   },
   "c9": {
    "stato": {
@@ -3706,21 +3706,21 @@
     "arm": 7.5,
     "sfondoAlto": 0.275
    },
-   "disegni": 1638,
-   "triangoli": 1913619,
-   "vista": 1349,
+   "disegni": 1490,
+   "triangoli": 1878587,
+   "vista": 1334,
    "perDistanza": {
-    "30-80": 657,
+    "30-80": 631,
     "80-150": 284,
-    "0-30": 296,
-    "150+": 112
+    "0-30": 308,
+    "150+": 111
    },
    "generi": [
     [
      "Standard|thin2",
      [
-      334,
-      334,
+      322,
+      318,
       35
      ]
     ],
@@ -3751,9 +3751,9 @@
     [
      "inst:Lambert",
      [
-      72,
-      37,
-      32
+      71,
+      36,
+      31
      ]
     ],
     [
@@ -3773,19 +3773,19 @@
      ]
     ],
     [
-     "Basic",
-     [
-      29,
-      28,
-      3
-     ]
-    ],
-    [
      "Standard|vievive+thin2",
      [
       27,
       0,
       0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      27,
+      25,
+      3
      ]
     ],
     [
@@ -3797,19 +3797,11 @@
      ]
     ],
     [
-     "Basic|thin2",
+     "Standard",
      [
-      22,
-      22,
-      0
-     ]
-    ],
-    [
-     "Lambert",
-     [
-      21,
-      21,
-      0
+      18,
+      11,
+      2
      ]
     ],
     [
@@ -3821,11 +3813,19 @@
      ]
     ],
     [
-     "Standard",
+     "Basic|thin2",
      [
-      16,
-      11,
-      2
+      17,
+      17,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      15,
+      9,
+      0
      ]
     ],
     [
@@ -3834,6 +3834,14 @@
       13,
       7,
       3
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      12,
+      10,
+      0
      ]
     ],
     [
@@ -3861,14 +3869,6 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      8,
-      2,
-      0
-     ]
-    ],
-    [
      "pers:Standard|personaggi+thin2|Personaggio",
      [
       8,
@@ -3885,19 +3885,19 @@
      ]
     ],
     [
-     "Standard|vestito+thin2",
-     [
-      7,
-      5,
-      0
-     ]
-    ],
-    [
      "Lambert|thin2+tassello",
      [
       6,
       6,
       1
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      6,
+      2,
+      0
      ]
     ],
     [
@@ -3909,12 +3909,12 @@
      ]
     ]
    ],
-   "msMed": 43.8,
-   "msP90": 56.5,
-   "heapMB": 803,
-   "geometrie": 3449,
-   "tessiture": 655,
-   "programmi": 203,
+   "msMed": 63.3,
+   "msP90": 82.8,
+   "heapMB": 631,
+   "geometrie": 3564,
+   "tessiture": 648,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -3924,8 +3924,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1492,
-   "paginaMB": 1525
+   "gpuMB": 1474,
+   "paginaMB": 1570
   },
   "c9l": {
    "stato": {
@@ -3933,38 +3933,30 @@
     "arm": 7.5,
     "sfondoAlto": 0.275
    },
-   "disegni": 701,
-   "triangoli": 1653767,
-   "vista": 667,
+   "disegni": 780,
+   "triangoli": 1703900,
+   "vista": 629,
    "perDistanza": {
-    "30-80": 188,
-    "80-150": 94,
-    "0-30": 291,
-    "150+": 94
+    "30-80": 157,
+    "80-150": 84,
+    "0-30": 297,
+    "150+": 91
    },
    "generi": [
     [
      "Standard|qs+tassello",
      [
-      197,
-      93,
-      39
+      195,
+      91,
+      37
      ]
     ],
     [
      "inst:Lambert",
      [
-      71,
-      36,
-      33
-     ]
-    ],
-    [
-     "Standard|thin2",
-     [
-      71,
-      71,
-      2
+      70,
+      35,
+      32
      ]
     ],
     [
@@ -3976,11 +3968,11 @@
      ]
     ],
     [
-     "Standard|thin2+tassello",
+     "Standard|thin2",
      [
-      44,
-      44,
-      33
+      45,
+      45,
+      2
      ]
     ],
     [
@@ -3992,11 +3984,19 @@
      ]
     ],
     [
+     "Standard|thin2+tassello",
+     [
+      35,
+      35,
+      25
+     ]
+    ],
+    [
      "inst:Standard|noRoof",
      [
-      30,
-      30,
-      30
+      29,
+      29,
+      29
      ]
     ],
     [
@@ -4024,6 +4024,14 @@
      ]
     ],
     [
+     "Lambert|thin2",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
      "Standard",
      [
       8,
@@ -4048,15 +4056,15 @@
      ]
     ],
     [
-     "Basic",
+     "Standard|segnaletica",
      [
-      8,
-      8,
-      1
+      7,
+      2,
+      0
      ]
     ],
     [
-     "Lambert|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
       7,
       1,
@@ -4064,11 +4072,11 @@
      ]
     ],
     [
-     "Standard|segnaletica",
+     "Basic",
      [
       7,
-      2,
-      0
+      7,
+      1
      ]
     ],
     [
@@ -4096,19 +4104,11 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "pers:Standard|personaggi|Personaggio",
      [
       4,
-      0,
+      1,
       0
-     ]
-    ],
-    [
-     "inst:Basic|noRoof",
-     [
-      4,
-      4,
-      4
      ]
     ],
     [
@@ -4120,39 +4120,39 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      4,
-      4,
-      0
-     ]
-    ],
-    [
      "inst:Basic",
      [
       4,
       2,
       2
      ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      3,
+      3,
+      3
+     ]
     ]
    ],
-   "msMed": 51.2,
-   "msP90": 77.2,
-   "heapMB": 803,
-   "geometrie": 3449,
-   "tessiture": 655,
-   "programmi": 203,
+   "msMed": 58,
+   "msP90": 72.1,
+   "heapMB": 631,
+   "geometrie": 3563,
+   "tessiture": 648,
+   "programmi": 202,
    "far": 194,
    "l9": {
-    "prove": 1286,
-    "occluse": 532,
-    "piccole": 148,
+    "prove": 1276,
+    "occluse": 409,
+    "piccole": 296,
     "colonne": 232,
-    "ms": 0,
+    "ms": 0.1,
     "on": true
    },
-   "gpuMB": 1493,
-   "paginaMB": 1524
+   "gpuMB": 1475,
+   "paginaMB": 1571
   }
  },
  "p6": {
@@ -4172,14 +4172,14 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 745,
-   "triangoli": 1894912,
-   "vista": 669,
+   "disegni": 747,
+   "triangoli": 1997335,
+   "vista": 685,
    "perDistanza": {
-    "30-80": 191,
-    "80-150": 20,
-    "0-30": 343,
-    "150+": 115
+    "30-80": 199,
+    "80-150": 24,
+    "0-30": 350,
+    "150+": 112
    },
    "generi": [
     [
@@ -4201,9 +4201,9 @@
     [
      "inst:Lambert",
      [
-      57,
-      49,
-      46
+      56,
+      48,
+      45
      ]
     ],
     [
@@ -4217,9 +4217,9 @@
     [
      "Standard|thin2",
      [
-      29,
-      29,
-      10
+      31,
+      31,
+      12
      ]
     ],
     [
@@ -4239,11 +4239,19 @@
      ]
     ],
     [
-     "Standard",
+     "Lambert|vestito",
+     [
+      16,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
      [
       14,
-      3,
-      1
+      10,
+      0
      ]
     ],
     [
@@ -4255,18 +4263,18 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
+     "Standard",
      [
       12,
-      4,
-      0
+      3,
+      1
      ]
     ],
     [
-     "Standard|vestito+thin2",
+     "Lambert",
      [
-      11,
-      7,
+      12,
+      3,
       0
      ]
     ],
@@ -4303,10 +4311,10 @@
      ]
     ],
     [
-     "Lambert",
+     "Standard|vestito+fuso",
      [
       6,
-      2,
+      4,
       0
      ]
     ],
@@ -4319,18 +4327,10 @@
      ]
     ],
     [
-     "Standard|vestito+fuso",
+     "pers:Standard|personaggi|Personaggio",
      [
       5,
-      3,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      5,
-      3,
+      1,
       0
      ]
     ],
@@ -4351,6 +4351,14 @@
      ]
     ],
     [
+     "Basic",
+     [
+      4,
+      3,
+      0
+     ]
+    ],
+    [
      "Basic|keep+waterMask",
      [
       3,
@@ -4365,22 +4373,14 @@
       0,
       0
      ]
-    ],
-    [
-     "pers:Standard|personaggi|Personaggio",
-     [
-      3,
-      1,
-      0
-     ]
     ]
    ],
-   "msMed": 45.6,
-   "msP90": 64.5,
-   "heapMB": 803,
-   "geometrie": 3302,
-   "tessiture": 652,
-   "programmi": 203,
+   "msMed": 40.5,
+   "msP90": 82.2,
+   "heapMB": 631,
+   "geometrie": 3238,
+   "tessiture": 635,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -4390,8 +4390,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1509,
-   "paginaMB": 1423
+   "gpuMB": 1481,
+   "paginaMB": 1586
   },
   "c9": {
    "stato": {
@@ -4399,14 +4399,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.05
    },
-   "disegni": 1276,
-   "triangoli": 2187547,
-   "vista": 1246,
+   "disegni": 1246,
+   "triangoli": 2189046,
+   "vista": 1242,
    "perDistanza": {
-    "30-80": 373,
+    "30-80": 356,
     "80-150": 371,
-    "0-30": 364,
-    "150+": 138
+    "0-30": 380,
+    "150+": 135
    },
    "generi": [
     [
@@ -4420,8 +4420,8 @@
     [
      "Standard|thin2",
      [
-      172,
-      172,
+      166,
+      166,
       137
      ]
     ],
@@ -4444,9 +4444,9 @@
     [
      "inst:Lambert",
      [
-      55,
-      47,
-      44
+      52,
+      44,
+      41
      ]
     ],
     [
@@ -4498,19 +4498,27 @@
      ]
     ],
     [
-     "Standard|vestito+thin2",
+     "Lambert|vestito+thin2",
      [
-      18,
-      14,
+      19,
+      12,
       0
      ]
     ],
     [
      "Basic",
      [
-      18,
-      18,
+      19,
+      16,
       9
+     ]
+    ],
+    [
+     "Standard",
+     [
+      18,
+      7,
+      4
      ]
     ],
     [
@@ -4522,10 +4530,10 @@
      ]
     ],
     [
-     "Lambert|vestito+thin2",
+     "Standard|vestito+thin2",
      [
       15,
-      8,
+      11,
       0
      ]
     ],
@@ -4538,27 +4546,35 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      13,
-      8,
-      0
-     ]
-    ],
-    [
-     "Standard",
-     [
-      12,
-      9,
-      4
-     ]
-    ],
-    [
      "Lambert|tassello+thin2",
      [
       12,
       8,
       2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      11,
+      1,
+      1
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      10,
+      5,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      9,
+      1,
+      0
      ]
     ],
     [
@@ -4572,42 +4588,26 @@
     [
      "pers:Standard|personaggi+thin2|Personaggio",
      [
-      8,
+      7,
       0,
       0
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      8,
-      1,
-      1
-     ]
-    ],
-    [
      "Standard|vestito+fuso",
      [
-      8,
-      6,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi|Personaggio",
-     [
       7,
-      2,
+      5,
       0
      ]
     ]
    ],
-   "msMed": 61.3,
-   "msP90": 110.5,
-   "heapMB": 803,
-   "geometrie": 3603,
-   "tessiture": 652,
-   "programmi": 203,
+   "msMed": 62.2,
+   "msP90": 79.8,
+   "heapMB": 631,
+   "geometrie": 3583,
+   "tessiture": 588,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -4617,8 +4617,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1506,
-   "paginaMB": 1441
+   "gpuMB": 1484,
+   "paginaMB": 1620
   },
   "c9l": {
    "stato": {
@@ -4626,14 +4626,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.05
    },
-   "disegni": 576,
-   "triangoli": 1867389,
-   "vista": 551,
+   "disegni": 690,
+   "triangoli": 1963863,
+   "vista": 568,
    "perDistanza": {
-    "0-30": 336,
-    "30-80": 91,
-    "80-150": 11,
-    "150+": 113
+    "0-30": 349,
+    "150+": 110,
+    "30-80": 98,
+    "80-150": 11
    },
    "generi": [
     [
@@ -4655,9 +4655,9 @@
     [
      "inst:Lambert",
      [
-      52,
-      44,
-      44
+      49,
+      41,
+      41
      ]
     ],
     [
@@ -4685,10 +4685,26 @@
      ]
     ],
     [
+     "Standard",
+     [
+      14,
+      5,
+      2
+     ]
+    ],
+    [
      "Basic|qs+tassello",
      [
       13,
       3,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      13,
+      6,
       0
      ]
     ],
@@ -4701,35 +4717,19 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      10,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|thin2",
-     [
-      10,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|vestito+thin2",
-     [
-      9,
-      2,
-      0
-     ]
-    ],
-    [
-     "Standard",
+     "pers:Standard|personaggi|Personaggio",
      [
       8,
-      5,
-      2
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      8,
+      0,
+      0
      ]
     ],
     [
@@ -4741,10 +4741,34 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
      "Standard|segnaletica",
      [
       6,
       1,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      6,
+      2,
       0
      ]
     ],
@@ -4773,14 +4797,6 @@
      ]
     ],
     [
-     "Standard|vestito+thin2",
-     [
-      4,
-      0,
-      0
-     ]
-    ],
-    [
      "Lambert|tassello+thin2",
      [
       3,
@@ -4797,10 +4813,10 @@
      ]
     ],
     [
-     "pers:Standard|personaggi|Personaggio",
+     "Standard|vestito+fuso",
      [
       3,
-      0,
+      1,
       0
      ]
     ],
@@ -4811,41 +4827,25 @@
       3,
       3
      ]
-    ],
-    [
-     "Basic|pesoCat|pesoPiane",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "inst:Basic",
-     [
-      3,
-      3,
-      3
-     ]
     ]
    ],
-   "msMed": 44.1,
-   "msP90": 64.6,
-   "heapMB": 803,
-   "geometrie": 3603,
-   "tessiture": 652,
-   "programmi": 203,
+   "msMed": 58.8,
+   "msP90": 90.8,
+   "heapMB": 631,
+   "geometrie": 3583,
+   "tessiture": 588,
+   "programmi": 202,
    "far": 194,
    "l9": {
-    "prove": 1137,
-    "occluse": 461,
-    "piccole": 209,
-    "colonne": 229,
-    "ms": 0.1,
+    "prove": 1133,
+    "occluse": 396,
+    "piccole": 257,
+    "colonne": 231,
+    "ms": 0,
     "on": true
    },
-   "gpuMB": 1516,
-   "paginaMB": 1444
+   "gpuMB": 1485,
+   "paginaMB": 1629
   }
  },
  "p7": {
@@ -4865,46 +4865,46 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 848,
-   "triangoli": 1901861,
-   "vista": 733,
+   "disegni": 886,
+   "triangoli": 2054890,
+   "vista": 744,
    "perDistanza": {
-    "0-30": 430,
-    "150+": 136,
-    "30-80": 166,
-    "80-150": 1
+    "0-30": 373,
+    "30-80": 218,
+    "80-150": 22,
+    "150+": 131
    },
    "generi": [
     [
      "Standard|qs+tassello",
      [
-      232,
-      106,
-      1
+      251,
+      125,
+      20
      ]
     ],
     [
      "Standard|thin2",
      [
-      115,
-      0,
+      96,
+      41,
       0
      ]
     ],
     [
      "Lambert|qs+tassello",
      [
-      77,
-      28,
-      0
+      81,
+      32,
+      2
      ]
     ],
     [
      "inst:Lambert",
      [
-      57,
-      45,
-      45
+      52,
+      40,
+      40
      ]
     ],
     [
@@ -4948,6 +4948,22 @@
      ]
     ],
     [
+     "Standard",
+     [
+      10,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      8,
+      4,
+      0
+     ]
+    ],
+    [
      "Standard|segnaletica",
      [
       8,
@@ -4956,10 +4972,10 @@
      ]
     ],
     [
-     "Basic|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      7,
-      0,
+      8,
+      3,
       0
      ]
     ],
@@ -4969,14 +4985,6 @@
       7,
       7,
       7
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      7,
-      1,
-      0
      ]
     ],
     [
@@ -5004,18 +5012,18 @@
      ]
     ],
     [
-     "Standard",
+     "Basic|thin2",
      [
       6,
-      1,
+      2,
       0
      ]
     ],
     [
-     "Standard|keep+thin2",
+     "Basic|keep+thin2",
      [
       6,
-      0,
+      2,
       0
      ]
     ],
@@ -5028,18 +5036,10 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      5,
-      4,
-      0
-     ]
-    ],
-    [
      "Basic",
      [
-      5,
-      0,
+      6,
+      1,
       0
      ]
     ],
@@ -5060,7 +5060,7 @@
      ]
     ],
     [
-     "Basic|keep+thin2",
+     "Lambert|thin2",
      [
       4,
       0,
@@ -5068,12 +5068,12 @@
      ]
     ]
    ],
-   "msMed": 50.2,
-   "msP90": 86.6,
-   "heapMB": 803,
-   "geometrie": 3451,
-   "tessiture": 585,
-   "programmi": 203,
+   "msMed": 46.7,
+   "msP90": 61.2,
+   "heapMB": 631,
+   "geometrie": 3632,
+   "tessiture": 595,
+   "programmi": 202,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -5083,8 +5083,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1513,
-   "paginaMB": 1398
+   "gpuMB": 1488,
+   "paginaMB": 1690
   },
   "c9": {
    "stato": {
@@ -5092,14 +5092,14 @@
     "arm": 7.5,
     "sfondoAlto": 0.033
    },
-   "disegni": 1829,
-   "triangoli": 2597400,
-   "vista": 1799,
+   "disegni": 1849,
+   "triangoli": 2589396,
+   "vista": 1781,
    "perDistanza": {
-    "30-80": 566,
-    "80-150": 731,
-    "0-30": 331,
-    "150+": 171
+    "30-80": 549,
+    "80-150": 678,
+    "0-30": 389,
+    "150+": 165
    },
    "generi": [
     [
@@ -5113,9 +5113,9 @@
     [
      "Standard|thin2",
      [
-      370,
-      352,
-      291
+      395,
+      338,
+      273
      ]
     ],
     [
@@ -5135,19 +5135,19 @@
      ]
     ],
     [
-     "inst:Lambert",
-     [
-      62,
-      50,
-      47
-     ]
-    ],
-    [
      "inst:Standard|noRoof",
      [
       59,
       59,
       59
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      56,
+      44,
+      41
      ]
     ],
     [
@@ -5161,17 +5161,9 @@
     [
      "Basic",
      [
-      39,
-      37,
-      25
-     ]
-    ],
-    [
-     "Lambert",
-     [
-      37,
       36,
-      10
+      32,
+      21
      ]
     ],
     [
@@ -5179,7 +5171,15 @@
      [
       31,
       31,
-      29
+      30
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      28,
+      27,
+      2
      ]
     ],
     [
@@ -5207,19 +5207,11 @@
      ]
     ],
     [
-     "Basic|thin2",
+     "Standard",
      [
-      20,
-      18,
-      6
-     ]
-    ],
-    [
-     "Lambert|thin2",
-     [
-      20,
-      19,
-      0
+      22,
+      13,
+      10
      ]
     ],
     [
@@ -5228,14 +5220,6 @@
       20,
       20,
       20
-     ]
-    ],
-    [
-     "Standard",
-     [
-      18,
-      13,
-      10
      ]
     ],
     [
@@ -5255,6 +5239,14 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      14,
+      7,
+      0
+     ]
+    ],
+    [
      "Lambert|tassello+thin2",
      [
       13,
@@ -5263,19 +5255,19 @@
      ]
     ],
     [
+     "Basic|thin2",
+     [
+      13,
+      11,
+      0
+     ]
+    ],
+    [
      "Standard|segnaletica",
      [
       12,
       3,
       2
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      12,
-      7,
-      0
      ]
     ],
     [
@@ -5293,14 +5285,22 @@
       9,
       9
      ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      11,
+      8,
+      0
+     ]
     ]
    ],
-   "msMed": 64.5,
-   "msP90": 101.4,
-   "heapMB": 803,
-   "geometrie": 3766,
-   "tessiture": 604,
-   "programmi": 204,
+   "msMed": 67.7,
+   "msP90": 134.2,
+   "heapMB": 631,
+   "geometrie": 3829,
+   "tessiture": 614,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -5310,8 +5310,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1520,
-   "paginaMB": 1528
+   "gpuMB": 1492,
+   "paginaMB": 1765
   },
   "c9l": {
    "stato": {
@@ -5319,22 +5319,22 @@
     "arm": 7.5,
     "sfondoAlto": 0.033
    },
-   "disegni": 627,
-   "triangoli": 2138774,
-   "vista": 603,
+   "disegni": 801,
+   "triangoli": 2224583,
+   "vista": 608,
    "perDistanza": {
-    "0-30": 307,
-    "30-80": 133,
-    "80-150": 42,
-    "150+": 121
+    "0-30": 319,
+    "30-80": 132,
+    "80-150": 41,
+    "150+": 116
    },
    "generi": [
     [
      "Standard|qs+tassello",
      [
-      256,
-      132,
-      32
+      255,
+      131,
+      31
      ]
     ],
     [
@@ -5348,17 +5348,17 @@
     [
      "inst:Lambert",
      [
-      56,
-      45,
-      45
+      52,
+      41,
+      41
      ]
     ],
     [
      "inst:Standard|noRoof",
      [
-      43,
-      43,
-      43
+      42,
+      42,
+      42
      ]
     ],
     [
@@ -5399,6 +5399,14 @@
       12,
       3,
       2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      10,
+      0,
+      0
      ]
     ],
     [
@@ -5455,6 +5463,14 @@
       4,
       4,
       4
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      4,
+      0,
+      0
      ]
     ],
     [
@@ -5504,41 +5520,25 @@
       1,
       0
      ]
-    ],
-    [
-     "Basic|thin2",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      2,
-      0,
-      0
-     ]
     ]
    ],
-   "msMed": 51.8,
-   "msP90": 88.3,
-   "heapMB": 803,
-   "geometrie": 3766,
-   "tessiture": 604,
-   "programmi": 204,
+   "msMed": 54.9,
+   "msP90": 168,
+   "heapMB": 631,
+   "geometrie": 3830,
+   "tessiture": 615,
+   "programmi": 203,
    "far": 194,
    "l9": {
-    "prove": 1701,
-    "occluse": 780,
-    "piccole": 392,
+    "prove": 1675,
+    "occluse": 594,
+    "piccole": 543,
     "colonne": 237,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1521,
-   "paginaMB": 1535
+   "gpuMB": 1485,
+   "paginaMB": 1721
   }
  },
  "p8": {
@@ -5558,13 +5558,13 @@
     "arm": 10,
     "sfondoAlto": 0
    },
-   "disegni": 572,
-   "triangoli": 1557553,
-   "vista": 451,
+   "disegni": 634,
+   "triangoli": 1618810,
+   "vista": 466,
    "perDistanza": {
-    "0-30": 283,
+    "0-30": 300,
     "30-80": 72,
-    "150+": 96
+    "150+": 94
    },
    "generi": [
     [
@@ -5586,9 +5586,9 @@
     [
      "inst:Lambert",
      [
-      55,
-      44,
-      44
+      51,
+      40,
+      40
      ]
     ],
     [
@@ -5610,7 +5610,7 @@
     [
      "Standard|tassello+thin2",
      [
-      18,
+      22,
       0,
       0
      ]
@@ -5624,6 +5624,22 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      12,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      10,
+      0,
+      0
+     ]
+    ],
+    [
      "Standard|segnaletica",
      [
       7,
@@ -5632,19 +5648,11 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      7,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|thin2",
+     "inst:Standard",
      [
       6,
-      0,
-      0
+      6,
+      6
      ]
     ],
     [
@@ -5661,14 +5669,6 @@
       4,
       2,
       2
-     ]
-    ],
-    [
-     "inst:Standard",
-     [
-      4,
-      4,
-      4
      ]
     ],
     [
@@ -5689,6 +5689,14 @@
     ],
     [
      "Standard",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
      [
       3,
       0,
@@ -5744,14 +5752,6 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
      "Lambert|vievive",
      [
       2,
@@ -5760,12 +5760,12 @@
      ]
     ]
    ],
-   "msMed": 62.6,
-   "msP90": 75.6,
-   "heapMB": 803,
-   "geometrie": 3276,
-   "tessiture": 613,
-   "programmi": 204,
+   "msMed": 68.5,
+   "msP90": 199,
+   "heapMB": 631,
+   "geometrie": 3862,
+   "tessiture": 623,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -5775,8 +5775,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1510,
-   "paginaMB": 1565
+   "gpuMB": 1483,
+   "paginaMB": 1755
   },
   "c9": {
    "stato": {
@@ -5784,14 +5784,14 @@
     "arm": 6.67,
     "sfondoAlto": 0
    },
-   "disegni": 1155,
-   "triangoli": 1882713,
-   "vista": 1130,
+   "disegni": 1126,
+   "triangoli": 1977045,
+   "vista": 1073,
    "perDistanza": {
-    "80-150": 207,
-    "150+": 174,
-    "0-30": 314,
-    "30-80": 435
+    "80-150": 211,
+    "150+": 169,
+    "0-30": 327,
+    "30-80": 366
    },
    "generi": [
     [
@@ -5805,9 +5805,9 @@
     [
      "Standard|thin2",
      [
-      148,
-      148,
-      71
+      128,
+      123,
+      73
      ]
     ],
     [
@@ -5821,9 +5821,9 @@
     [
      "inst:Lambert",
      [
-      62,
-      51,
-      51
+      57,
+      46,
+      46
      ]
     ],
     [
@@ -5851,14 +5851,6 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      38,
-      38,
-      0
-     ]
-    ],
-    [
      "Standard|vievive+thin2",
      [
       27,
@@ -5867,11 +5859,11 @@
      ]
     ],
     [
-     "Basic|thin2",
+     "pers:Standard|personaggi+thin2|Personaggio",
      [
-      23,
-      23,
-      4
+      22,
+      13,
+      8
      ]
     ],
     [
@@ -5891,19 +5883,19 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Lambert|thin2",
      [
-      17,
-      14,
-      7
+      15,
+      12,
+      12
      ]
     ],
     [
-     "Lambert|thin2",
+     "Lambert",
      [
       14,
-      12,
-      12
+      14,
+      0
      ]
     ],
     [
@@ -5915,19 +5907,19 @@
      ]
     ],
     [
+     "Basic|thin2",
+     [
+      12,
+      12,
+      4
+     ]
+    ],
+    [
      "Lambert|vestito+thin2",
      [
       12,
       12,
       0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      12,
-      12,
-      2
      ]
     ],
     [
@@ -5952,6 +5944,14 @@
       10,
       5,
       4
+     ]
+    ],
+    [
+     "Basic",
+     [
+      9,
+      8,
+      3
      ]
     ],
     [
@@ -5987,12 +5987,12 @@
      ]
     ]
    ],
-   "msMed": 85.9,
-   "msP90": 157,
-   "heapMB": 803,
-   "geometrie": 3716,
-   "tessiture": 604,
-   "programmi": 204,
+   "msMed": 106.7,
+   "msP90": 331.3,
+   "heapMB": 631,
+   "geometrie": 3715,
+   "tessiture": 654,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -6002,8 +6002,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1505,
-   "paginaMB": 1394
+   "gpuMB": 1484,
+   "paginaMB": 1447
   },
   "c9l": {
    "stato": {
@@ -6011,14 +6011,14 @@
     "arm": 6.67,
     "sfondoAlto": 0
    },
-   "disegni": 493,
-   "triangoli": 1537796,
+   "disegni": 525,
+   "triangoli": 1559028,
    "vista": 492,
    "perDistanza": {
-    "0-30": 278,
+    "0-30": 282,
     "30-80": 108,
     "80-150": 7,
-    "150+": 99
+    "150+": 95
    },
    "generi": [
     [
@@ -6040,9 +6040,9 @@
     [
      "inst:Lambert",
      [
-      59,
-      48,
-      48
+      55,
+      44,
+      44
      ]
     ],
     [
@@ -6102,6 +6102,14 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
      "inst:Lambert|vievive",
      [
       5,
@@ -6150,7 +6158,7 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
+     "Lambert|thin2",
      [
       3,
       0,
@@ -6198,14 +6206,6 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
      "Lambert|vievive",
      [
       2,
@@ -6214,23 +6214,23 @@
      ]
     ]
    ],
-   "msMed": 69.5,
-   "msP90": 137.5,
-   "heapMB": 803,
-   "geometrie": 3716,
-   "tessiture": 604,
-   "programmi": 204,
+   "msMed": 153.8,
+   "msP90": 183.6,
+   "heapMB": 631,
+   "geometrie": 3715,
+   "tessiture": 654,
+   "programmi": 203,
    "far": 194,
    "l9": {
-    "prove": 1026,
-    "occluse": 465,
-    "piccole": 161,
+    "prove": 961,
+    "occluse": 345,
+    "piccole": 212,
     "colonne": 250,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1506,
-   "paginaMB": 1387
+   "gpuMB": 1486,
+   "paginaMB": 1460
   }
  },
  "p9": {
@@ -6250,13 +6250,13 @@
     "arm": 1.2,
     "sfondoAlto": 0
    },
-   "disegni": 417,
-   "triangoli": 1563620,
-   "vista": 373,
+   "disegni": 354,
+   "triangoli": 1529054,
+   "vista": 367,
    "perDistanza": {
-    "0-30": 247,
+    "0-30": 245,
     "30-80": 31,
-    "150+": 94,
+    "150+": 90,
     "80-150": 1
    },
    "generi": [
@@ -6271,9 +6271,9 @@
     [
      "inst:Lambert",
      [
-      59,
-      47,
-      46
+      55,
+      43,
+      42
      ]
     ],
     [
@@ -6349,14 +6349,6 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
      "inst:Basic|noRoof",
      [
       3,
@@ -6378,452 +6370,6 @@
       3,
       0,
       0
-     ]
-    ],
-    [
-     "inst:Lambert|vievive",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
-     "Lambert|vievive",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "Shader|pesoCat|pesoBagliori",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
-     "inst:Lambert|velo+atlante",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
-     "Lambert|velo+atlante",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
-     "Shader|hy",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|vievive+thin2",
-     [
-      1,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|tassello+thin2",
-     [
-      1,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|tassello+thin2",
-     [
-      1,
-      0,
-      0
-     ]
-    ]
-   ],
-   "msMed": 55.2,
-   "msP90": 87,
-   "heapMB": 803,
-   "geometrie": 3726,
-   "tessiture": 614,
-   "programmi": 204,
-   "far": 194,
-   "l9": {
-    "prove": 0,
-    "occluse": 0,
-    "piccole": 0,
-    "colonne": 0,
-    "ms": 0,
-    "on": false
-   },
-   "gpuMB": 1506,
-   "paginaMB": 1394
-  },
-  "c9": {
-   "stato": {
-    "vista": 33.2,
-    "arm": 1.6,
-    "sfondoAlto": 0
-   },
-   "disegni": 657,
-   "triangoli": 2259970,
-   "vista": 669,
-   "perDistanza": {
-    "0-30": 300,
-    "150+": 157,
-    "30-80": 183,
-    "80-150": 29
-   },
-   "generi": [
-    [
-     "Standard|qs+tassello",
-     [
-      279,
-      127,
-      11
-     ]
-    ],
-    [
-     "Lambert|qs+tassello",
-     [
-      92,
-      45,
-      6
-     ]
-    ],
-    [
-     "inst:Lambert",
-     [
-      68,
-      57,
-      53
-     ]
-    ],
-    [
-     "inst:Standard|noRoof",
-     [
-      64,
-      64,
-      64
-     ]
-    ],
-    [
-     "Standard|vievive+thin2",
-     [
-      27,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|qs+tassello",
-     [
-      19,
-      10,
-      0
-     ]
-    ],
-    [
-     "Standard|tassello+thin2",
-     [
-      12,
-      1,
-      0
-     ]
-    ],
-    [
-     "inst:Standard",
-     [
-      12,
-      12,
-      12
-     ]
-    ],
-    [
-     "Standard",
-     [
-      10,
-      7,
-      4
-     ]
-    ],
-    [
-     "inst:Basic|noRoof",
-     [
-      8,
-      8,
-      8
-     ]
-    ],
-    [
-     "inst:Lambert|vievive",
-     [
-      7,
-      7,
-      7
-     ]
-    ],
-    [
-     "Standard|segnaletica",
-     [
-      7,
-      2,
-      0
-     ]
-    ],
-    [
-     "Standard|thin2",
-     [
-      6,
-      2,
-      0
-     ]
-    ],
-    [
-     "inst:Basic",
-     [
-      6,
-      6,
-      5
-     ]
-    ],
-    [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      5,
-      0,
-      0
-     ]
-    ],
-    [
-     "Shader",
-     [
-      4,
-      2,
-      2
-     ]
-    ],
-    [
-     "Lambert|thin2",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "Standard|riva9",
-     [
-      3,
-      3,
-      2
-     ]
-    ],
-    [
-     "Points",
-     [
-      3,
-      3,
-      3
-     ]
-    ],
-    [
-     "Basic|pesoCat|pesoPiane",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic",
-     [
-      3,
-      3,
-      0
-     ]
-    ],
-    [
-     "Basic|tassello+thin2",
-     [
-      2,
-      1,
-      0
-     ]
-    ],
-    [
-     "Lambert",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "Lambert|vievive",
-     [
-      2,
-      0,
-      0
-     ]
-    ]
-   ],
-   "msMed": 102.6,
-   "msP90": 187.5,
-   "heapMB": 803,
-   "geometrie": 3574,
-   "tessiture": 628,
-   "programmi": 204,
-   "far": 194,
-   "l9": {
-    "prove": 0,
-    "occluse": 0,
-    "piccole": 0,
-    "colonne": 0,
-    "ms": 0,
-    "on": false
-   },
-   "gpuMB": 1511,
-   "paginaMB": 1444
-  },
-  "c9l": {
-   "stato": {
-    "vista": 33.2,
-    "arm": 1.6,
-    "sfondoAlto": 0
-   },
-   "disegni": 384,
-   "triangoli": 1591657,
-   "vista": 395,
-   "perDistanza": {
-    "0-30": 265,
-    "30-80": 23,
-    "80-150": 4,
-    "150+": 103
-   },
-   "generi": [
-    [
-     "Standard|qs+tassello",
-     [
-      151,
-      10,
-      0
-     ]
-    ],
-    [
-     "inst:Lambert",
-     [
-      61,
-      51,
-      49
-     ]
-    ],
-    [
-     "Lambert|qs+tassello",
-     [
-      44,
-      7,
-      0
-     ]
-    ],
-    [
-     "inst:Standard|noRoof",
-     [
-      37,
-      37,
-      37
-     ]
-    ],
-    [
-     "Standard|vievive+thin2",
-     [
-      27,
-      0,
-      0
-     ]
-    ],
-    [
-     "Standard|tassello+thin2",
-     [
-      11,
-      0,
-      0
-     ]
-    ],
-    [
-     "Basic|qs+tassello",
-     [
-      9,
-      1,
-      0
-     ]
-    ],
-    [
-     "Standard",
-     [
-      6,
-      2,
-      0
-     ]
-    ],
-    [
-     "Standard|segnaletica",
-     [
-      5,
-      0,
-      0
-     ]
-    ],
-    [
-     "Shader",
-     [
-      4,
-      2,
-      2
-     ]
-    ],
-    [
-     "inst:Basic|noRoof",
-     [
-      4,
-      4,
-      4
-     ]
-    ],
-    [
-     "Points",
-     [
-      3,
-      3,
-      3
-     ]
-    ],
-    [
-     "Basic|pesoCat|pesoPiane",
-     [
-      3,
-      0,
-      0
-     ]
-    ],
-    [
-     "inst:Standard",
-     [
-      2,
-      2,
-      2
      ]
     ],
     [
@@ -6907,23 +6453,477 @@
      ]
     ]
    ],
-   "msMed": 72.9,
-   "msP90": 251.1,
-   "heapMB": 803,
-   "geometrie": 3574,
-   "tessiture": 628,
-   "programmi": 204,
+   "msMed": 79.9,
+   "msP90": 106.9,
+   "heapMB": 631,
+   "geometrie": 3729,
+   "tessiture": 666,
+   "programmi": 203,
+   "far": 194,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1486,
+   "paginaMB": 1494
+  },
+  "c9": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 701,
+   "triangoli": 2299907,
+   "vista": 664,
+   "perDistanza": {
+    "0-30": 300,
+    "30-80": 183,
+    "80-150": 29,
+    "150+": 152
+   },
+   "generi": [
+    [
+     "Standard|qs+tassello",
+     [
+      279,
+      127,
+      11
+     ]
+    ],
+    [
+     "Lambert|qs+tassello",
+     [
+      92,
+      45,
+      6
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      64,
+      64,
+      64
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      63,
+      52,
+      48
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|qs+tassello",
+     [
+      19,
+      10,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2",
+     [
+      12,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Standard",
+     [
+      11,
+      7,
+      4
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      6,
+      6,
+      5
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      5,
+      2,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      3,
+      3,
+      2
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 71.5,
+   "msP90": 116.3,
+   "heapMB": 631,
+   "geometrie": 3606,
+   "tessiture": 638,
+   "programmi": 203,
+   "far": 194,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1490,
+   "paginaMB": 1443
+  },
+  "c9l": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 376,
+   "triangoli": 1606830,
+   "vista": 391,
+   "perDistanza": {
+    "0-30": 265,
+    "30-80": 23,
+    "80-150": 4,
+    "150+": 99
+   },
+   "generi": [
+    [
+     "Standard|qs+tassello",
+     [
+      151,
+      10,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      57,
+      47,
+      45
+     ]
+    ],
+    [
+     "Lambert|qs+tassello",
+     [
+      44,
+      7,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      37,
+      37,
+      37
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2",
+     [
+      11,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|qs+tassello",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      5,
+      2,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 65.2,
+   "msP90": 127.7,
+   "heapMB": 631,
+   "geometrie": 3612,
+   "tessiture": 639,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 578,
-    "occluse": 260,
-    "piccole": 1,
+    "occluse": 250,
+    "piccole": 12,
     "colonne": 319,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1505,
-   "paginaMB": 1448
+   "gpuMB": 1497,
+   "paginaMB": 1444
   }
  },
  "p10": {
@@ -6943,13 +6943,13 @@
     "arm": 1.2,
     "sfondoAlto": 0
    },
-   "disegni": 379,
-   "triangoli": 1465009,
-   "vista": 331,
+   "disegni": 363,
+   "triangoli": 1448605,
+   "vista": 329,
    "perDistanza": {
     "0-30": 222,
-    "150+": 90,
-    "30-80": 19
+    "30-80": 19,
+    "150+": 88
    },
    "generi": [
     [
@@ -6963,9 +6963,9 @@
     [
      "inst:Lambert",
      [
-      52,
-      41,
-      41
+      51,
+      40,
+      40
      ]
     ],
     [
@@ -7097,14 +7097,6 @@
      ]
     ],
     [
-     "Lambert|velo+atlante",
-     [
-      2,
-      2,
-      2
-     ]
-    ],
-    [
      "Shader|hy",
      [
       2,
@@ -7143,14 +7135,22 @@
       0,
       0
      ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      1,
+      0,
+      0
+     ]
     ]
    ],
-   "msMed": 41.3,
-   "msP90": 87.2,
-   "heapMB": 803,
-   "geometrie": 3657,
-   "tessiture": 598,
-   "programmi": 204,
+   "msMed": 57.7,
+   "msP90": 101.4,
+   "heapMB": 631,
+   "geometrie": 3644,
+   "tessiture": 611,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -7160,8 +7160,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1506,
-   "paginaMB": 1463
+   "gpuMB": 1491,
+   "paginaMB": 1532
   },
   "c9": {
    "stato": {
@@ -7169,14 +7169,14 @@
     "arm": 7.5,
     "sfondoAlto": 0
    },
-   "disegni": 1162,
-   "triangoli": 2188385,
+   "disegni": 1440,
+   "triangoli": 2205641,
    "vista": 1140,
    "perDistanza": {
-    "0-30": 327,
-    "150+": 175,
-    "30-80": 454,
-    "80-150": 184
+    "0-30": 332,
+    "150+": 174,
+    "30-80": 430,
+    "80-150": 204
    },
    "generi": [
     [
@@ -7198,17 +7198,17 @@
     [
      "Standard|thin2",
      [
-      113,
-      113,
-      65
+      109,
+      109,
+      72
      ]
     ],
     [
      "inst:Lambert",
      [
-      62,
-      51,
-      51
+      61,
+      50,
+      50
      ]
     ],
     [
@@ -7244,14 +7244,6 @@
      ]
     ],
     [
-     "Lambert",
-     [
-      20,
-      20,
-      0
-     ]
-    ],
-    [
      "Standard",
      [
       17,
@@ -7268,10 +7260,34 @@
      ]
     ],
     [
+     "Lambert",
+     [
+      16,
+      16,
+      8
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      16,
+      6,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      14,
+      14,
+      11
+     ]
+    ],
+    [
      "pers:Standard|personaggi+thin2|Personaggio",
      [
       14,
-      8,
+      9,
       6
      ]
     ],
@@ -7300,26 +7316,10 @@
      ]
     ],
     [
-     "Lambert|thin2",
-     [
-      11,
-      11,
-      11
-     ]
-    ],
-    [
      "Standard|segnaletica",
      [
       11,
       8,
-      0
-     ]
-    ],
-    [
-     "Standard|vestito+thin2",
-     [
-      11,
-      4,
       0
      ]
     ],
@@ -7344,7 +7344,7 @@
      [
       7,
       7,
-      2
+      6
      ]
     ],
     [
@@ -7356,28 +7356,28 @@
      ]
     ],
     [
+     "Standard|vestito+fuso",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
      "Standard|riva9",
      [
       6,
       5,
       3
      ]
-    ],
-    [
-     "Basic",
-     [
-      6,
-      6,
-      3
-     ]
     ]
    ],
-   "msMed": 46.6,
-   "msP90": 107.1,
-   "heapMB": 803,
-   "geometrie": 4092,
-   "tessiture": 615,
-   "programmi": 204,
+   "msMed": 65.6,
+   "msP90": 100.4,
+   "heapMB": 631,
+   "geometrie": 4360,
+   "tessiture": 630,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -7387,8 +7387,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1524,
-   "paginaMB": 1482
+   "gpuMB": 1504,
+   "paginaMB": 1466
   },
   "c9l": {
    "stato": {
@@ -7396,13 +7396,13 @@
     "arm": 7.5,
     "sfondoAlto": 0
    },
-   "disegni": 496,
-   "triangoli": 1792471,
+   "disegni": 824,
+   "triangoli": 1815514,
    "vista": 490,
    "perDistanza": {
-    "0-30": 277,
+    "0-30": 279,
     "80-150": 19,
-    "30-80": 90,
+    "30-80": 88,
     "150+": 104
    },
    "generi": [
@@ -7487,6 +7487,14 @@
      ]
     ],
     [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      5,
+      2,
+      0
+     ]
+    ],
+    [
      "inst:Basic|noRoof",
      [
       5,
@@ -7559,22 +7567,6 @@
      ]
     ],
     [
-     "pers:Standard|personaggi+thin2|Personaggio",
-     [
-      2,
-      0,
-      0
-     ]
-    ],
-    [
-     "Standard|wr+thin2",
-     [
-      2,
-      2,
-      0
-     ]
-    ],
-    [
      "Lambert|pesoScatole|pezzo_settore",
      [
       2,
@@ -7597,25 +7589,33 @@
       1,
       1
      ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
     ]
    ],
-   "msMed": 41.3,
-   "msP90": 119.2,
-   "heapMB": 803,
-   "geometrie": 4093,
-   "tessiture": 615,
-   "programmi": 204,
+   "msMed": 78,
+   "msP90": 153.8,
+   "heapMB": 631,
+   "geometrie": 4413,
+   "tessiture": 632,
+   "programmi": 203,
    "far": 194,
    "l9": {
-    "prove": 1016,
-    "occluse": 461,
-    "piccole": 142,
+    "prove": 1020,
+    "occluse": 393,
+    "piccole": 215,
     "colonne": 237,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1516,
-   "paginaMB": 1482
+   "gpuMB": 1509,
+   "paginaMB": 1458
   }
  },
  "p11": {
@@ -7635,13 +7635,14 @@
     "arm": 2.54,
     "sfondoAlto": 0
    },
-   "disegni": 296,
-   "triangoli": 1036230,
-   "vista": 298,
+   "disegni": 340,
+   "triangoli": 1040691,
+   "vista": 304,
    "perDistanza": {
     "0-30": 213,
-    "150+": 74,
-    "30-80": 11
+    "30-80": 12,
+    "80-150": 1,
+    "150+": 78
    },
    "generi": [
     [
@@ -7655,9 +7656,9 @@
     [
      "inst:Lambert",
      [
-      53,
-      39,
-      38
+      58,
+      44,
+      42
      ]
     ],
     [
@@ -7837,12 +7838,12 @@
      ]
     ]
    ],
-   "msMed": 26.5,
-   "msP90": 49.5,
-   "heapMB": 803,
-   "geometrie": 3392,
-   "tessiture": 602,
-   "programmi": 204,
+   "msMed": 38.8,
+   "msP90": 52.3,
+   "heapMB": 631,
+   "geometrie": 3663,
+   "tessiture": 619,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -7852,8 +7853,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1510,
-   "paginaMB": 1536
+   "gpuMB": 1500,
+   "paginaMB": 1497
   },
   "c9": {
    "stato": {
@@ -7861,14 +7862,14 @@
     "arm": 1.74,
     "sfondoAlto": 0.033
    },
-   "disegni": 465,
-   "triangoli": 1164123,
-   "vista": 475,
+   "disegni": 502,
+   "triangoli": 1136672,
+   "vista": 483,
    "perDistanza": {
-    "0-30": 254,
-    "30-80": 82,
-    "80-150": 61,
-    "150+": 78
+    "0-30": 263,
+    "30-80": 79,
+    "80-150": 59,
+    "150+": 82
    },
    "generi": [
     [
@@ -7882,16 +7883,16 @@
     [
      "inst:Lambert",
      [
-      66,
-      47,
-      39
+      70,
+      51,
+      43
      ]
     ],
     [
      "Standard|thin2",
      [
-      60,
-      54,
+      59,
+      44,
       30
      ]
     ],
@@ -7930,9 +7931,9 @@
     [
      "pers:Standard|personaggi+thin2|Personaggio",
      [
-      12,
-      9,
-      5
+      10,
+      8,
+      3
      ]
     ],
     [
@@ -7949,6 +7950,14 @@
       8,
       4,
       1
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      7,
+      5,
+      0
      ]
     ],
     [
@@ -8000,14 +8009,6 @@
      ]
     ],
     [
-     "Basic|thin2",
-     [
-      3,
-      2,
-      1
-     ]
-    ],
-    [
      "Standard|segnaletica",
      [
       3,
@@ -8021,6 +8022,14 @@
       3,
       3,
       3
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      3,
+      2,
+      0
      ]
     ],
     [
@@ -8054,22 +8063,14 @@
       2,
       2
      ]
-    ],
-    [
-     "inst:Standard",
-     [
-      2,
-      2,
-      2
-     ]
     ]
    ],
-   "msMed": 50.1,
-   "msP90": 60.5,
-   "heapMB": 803,
-   "geometrie": 2970,
-   "tessiture": 629,
-   "programmi": 204,
+   "msMed": 51.7,
+   "msP90": 68,
+   "heapMB": 631,
+   "geometrie": 3152,
+   "tessiture": 643,
+   "programmi": 203,
    "far": 194,
    "l9": {
     "prove": 0,
@@ -8079,8 +8080,8 @@
     "ms": 0,
     "on": false
    },
-   "gpuMB": 1506,
-   "paginaMB": 1472
+   "gpuMB": 1500,
+   "paginaMB": 1513
   },
   "c9l": {
    "stato": {
@@ -8088,14 +8089,14 @@
     "arm": 1.74,
     "sfondoAlto": 0.033
    },
-   "disegni": 328,
-   "triangoli": 1001518,
-   "vista": 337,
+   "disegni": 379,
+   "triangoli": 981751,
+   "vista": 361,
    "perDistanza": {
-    "0-30": 234,
+    "0-30": 254,
     "30-80": 23,
     "80-150": 2,
-    "150+": 78
+    "150+": 82
    },
    "generi": [
     [
@@ -8109,9 +8110,9 @@
     [
      "inst:Lambert",
      [
-      61,
-      44,
-      39
+      65,
+      48,
+      43
      ]
     ],
     [
@@ -8136,6 +8137,14 @@
       21,
       21,
       21
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      17,
+      0,
+      0
      ]
     ],
     [
@@ -8281,33 +8290,25 @@
       2,
       2
      ]
-    ],
-    [
-     "Shader|hy",
-     [
-      2,
-      0,
-      0
-     ]
     ]
    ],
-   "msMed": 81.8,
-   "msP90": 212.2,
-   "heapMB": 803,
-   "geometrie": 2968,
-   "tessiture": 630,
-   "programmi": 204,
+   "msMed": 46.9,
+   "msP90": 59.6,
+   "heapMB": 631,
+   "geometrie": 3107,
+   "tessiture": 643,
+   "programmi": 203,
    "far": 194,
    "l9": {
-    "prove": 412,
-    "occluse": 95,
-    "piccole": 47,
-    "colonne": 250,
+    "prove": 420,
+    "occluse": 57,
+    "piccole": 73,
+    "colonne": 252,
     "ms": 0,
     "on": true
    },
-   "gpuMB": 1514,
-   "paginaMB": 1461
+   "gpuMB": 1499,
+   "paginaMB": 1525
   }
  }
 }
