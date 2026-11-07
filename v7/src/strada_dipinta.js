@@ -241,7 +241,7 @@ var StradaDipinta = (function () {
       // la città, un burner di 7 × 2,6 m; il posto lo fissa piazza() senza fitWall (il Muro non ha finestre)
       let anc = null; { const g = feat().muro.map(m => ({ m, d: dSeg(s.x, s.y, m[0], m[1], m[2], m[3]) })).sort((a, b) => a.d - b.d)[0];
         if (g && g.d < 12) { const [x0, y0, x1, y1] = g.m, L = hyp(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / L, uy = (y1 - y0) / L, t = clamp((s.x - x0) * ux + (s.y - y0) * uy, 4, L - 4), cx = x0 + ux * t, cy = y0 + uy * t;
-          let nx = -uy, ny = ux; if ((s.x - cx) * nx + (s.y - cy) * ny < 0) { nx = -nx; ny = -ny; } anc = { k: 'garante', x: cx, y: cy, nx, ny, W: Math.min(7, L - 1), H: 2.6, hc: 1.85 }; } }
+          let nx = -uy, ny = ux; const so = s.out || [s.x - cx, s.y - cy]; if (so[0] * nx + so[1] * ny < 0) { nx = -nx; ny = -ny; } /* la faccia verso chi arriva lungo il corridoio */ anc = { k: 'garante', x: cx, y: cy, nx, ny, W: Math.min(7, L - 1), H: 2.6, hc: 1.85 }; } }
       const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: anc ? undefined : alt, sdRun: anc ? undefined : s.corsa, sdMinK: .5, sdAnc: anc || undefined }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 

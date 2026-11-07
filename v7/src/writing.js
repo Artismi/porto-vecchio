@@ -1362,8 +1362,13 @@ var Writing = (function () {
       const h = rayWall(o, d0, 90, list); if (h && Math.abs(h.n.y) < .3 && h.p.distanceTo(o) > 12 && h.n.dot(d0) < -.3 && largo(o, d0, h)) add(h.p, h.n, Math.abs(deg));
       yield; }
     out.sort((a, b) => a.a - b.a);
-    const G = []; out.slice(0, 6).forEach((c, i) => { const L = Math.hypot(c.n.x, c.n.z) || 1, ox = c.n.x / L, oz = c.n.z / L, sp = { x: c.p.x + ox * .55, y: c.p.z + oz * .55, face: Math.atan2(-oz, -ox), h: null, place: w.spot && w.spot.place, kind: 'strada', sdZona: w.spot && w.spot.sdZona };
-      G.push({ k: 'G' + i + 'v', style: 'verticale', W0: 2.4, H0: 7, hRel: 4.6, minK: .72, spot: sp }, { k: 'G' + i + 'p', style: 'burner', W0: 7.5, H0: 2.8, hRel: 2.1, minK: .8, spot: sp }, { k: 'G' + i + 'r', style: 'rullo', W0: 8, H0: 2, hRel: 1.3, minK: .75, noOpen: true, spot: sp }); });
+    // l'heaven spot: la fascia cieca sotto la gronda, sopra le finestre dell'ultimo piano, larga quanto la facciata: le lettere a rullo che si
+    // leggono da tutta la via (la cima del muro: i raggi verso il muro a quote crescenti, finché lo trovano)
+    const cima = c => { const L = Math.hypot(c.n.x, c.n.z) || 1, ox = c.n.x / L, oz = c.n.z / L, g0 = R.groundH(c.p.x + ox, c.p.z + oz), dn = new THREE.Vector3(-ox, 0, -oz), lc = cands(c.p.x, c.p.z); let top = null;
+      for (let hh = 2.5; hh < 16; hh += .5) { const h = rayWall(new THREE.Vector3(c.p.x + ox * 1.2, g0 + hh, c.p.z + oz * 1.2), dn, 2.5, lc); if (h && Math.abs(h.n.y) < .3) top = hh; else if (top != null) break; } return top; };
+    const G = []; for (const [i, c] of out.slice(0, 6).entries()) { const L = Math.hypot(c.n.x, c.n.z) || 1, ox = c.n.x / L, oz = c.n.z / L, sp = { x: c.p.x + ox * .55, y: c.p.z + oz * .55, face: Math.atan2(-oz, -ox), h: null, place: w.spot && w.spot.place, kind: 'strada', sdZona: w.spot && w.spot.sdZona };
+      const top = cima(c); yield; if (top != null && top >= 5) G.push({ k: 'G' + i + 't', style: 'rullo', W0: 9, H0: 1.4, hRel: top - 1.05, minK: .66, spot: sp });
+      G.push({ k: 'G' + i + 'v', style: 'verticale', W0: 2.4, H0: 7, hRel: 4.6, minK: .72, spot: sp }, { k: 'G' + i + 'p', style: 'burner', W0: 7.5, H0: 2.8, hRel: 2.1, minK: .8, spot: sp }, { k: 'G' + i + 'r', style: 'rullo', W0: 8, H0: 2, hRel: 1.3, minK: .75, noOpen: true, spot: sp }); }
     w.sdGrandi = G; w.sdVedo = { x: vx, y: vz };
   }
   function* placeWallG0(w) {
