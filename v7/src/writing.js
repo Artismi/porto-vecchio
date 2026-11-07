@@ -1332,9 +1332,22 @@ var Writing = (function () {
         Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k, sdMinK: a.minK || base.sdMinK, sdNoOpen: !!a.noOpen }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
       else Object.assign(w, base);
       w.gfxRect = null; w.__no = null; const ok = yield* placeWallG0(w); (w.__prove || (w.__prove = [])).push((a ? a.k + ' ' : '') + w.style + ' ' + (ok && w.gfxRect ? w.W.toFixed(1) + '×' + w.H.toFixed(1) : w.__no || 'no'));   // [stradadipinta] le prove (le sonde le leggono)
+      if (ok && w.gfxRect && w.sdLiv === 'fondale' && nascosto(w.gfxRect)) { (w.__prove || []).push('  nascosto'); w.gfxRect = null; continue; }
       if (ok && w.gfxRect) { w.__altFatto = true; if (/^(pezzo|burner)$/.test(w.style) && w.bgk === undefined) w.bgk = 'rullo'; return true; }   // [stradadipinta] da 40 m si legge la nuvola chiara dietro le lettere (le scene del burner, lo skyline e le radici, sono scure: lettere scure su fondo scuro, nella foschia niente)
     }
     Object.assign(w, base); w.__altFatto = true; return false;
+  }
+  // [stradadipinta] IL PEZZO NASCOSTO. I raggi dei graffiti provano le mesh dei candidati (bmbCands); fra quello che si vede ci sono anche
+  // mesh che lì non stanno (le masse delle case, la lastra del Muro): il muro trovato può stare 3 m dietro la facciata vera (la Via della
+  // Marina a 72 m) o dentro una massa, e il pezzo, finito, non si vede da fuori. Tre raggi da 4 m davanti, contro tutta la scena: se due
+  // trovano qualcosa più di 30 cm davanti al pezzo, è nascosto (solo i fondali: pochi, e si guardano da lontano)
+  function nascosto(Rc) {
+    const THREE = T3(), sc = scene(); if (!sc) return false; const L = [];
+    sc.traverseVisible(m => { if (m.isMesh && !m.isSkinnedMesh && !(m.userData && (m.userData.velo || m.userData.atlante || m.userData.wr))) { const g = m.geometry; if (!g) return; if (!g.boundingSphere) g.computeBoundingSphere(); const c = g.boundingSphere.center.clone().applyMatrix4(m.matrixWorld); if (m.isInstancedMesh || c.distanceTo(Rc.c) < g.boundingSphere.radius + 6) L.push(m); } });
+    const rc = new THREE.Raycaster(); let n = 0;
+    for (const k of [0, -.33, .33]) { const p = new THREE.Vector3(Rc.c.x + Rc.r.x * k * Rc.W, Rc.c.y, Rc.c.z + Rc.r.z * k * Rc.W); rc.set(p.clone().addScaledVector(Rc.n, 4), Rc.n.clone().negate()); rc.far = 4.5;
+      const h = rc.intersectObjects(L, false).find(h => { if (!h.face) return false; let mt = h.object.material; if (Array.isArray(mt)) mt = mt[h.face.materialIndex]; return mt && mt.visible !== false; }); if (h && h.distance < 3.7) n++; }
+    return n >= 2;
   }
   // [stradadipinta] IL MURO IN FONDO ALLA VIA, DALLA GEOMETRIA VERA: dalla fine del tratto dritto (w.sdRun: ex, ey, la direzione ux, uy, la
   // lunghezza da guardare) un raggio lungo la via, a 1,5 / 2,6 / 3,6 m dal suolo, contro le mesh della città (le stesse dei raggi dei graffiti:
