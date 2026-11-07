@@ -23966,7 +23966,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'b0e755cd030a0cbf';</script>
-<script>window.PV_IMPRONTA_TASS = 'a8db9cc72793e28d';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = '257b778b39262389';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -58977,8 +58977,107 @@ var WriterArte = (function () {
     if (FONTS.ok) fontText(x, (w.aka || 'PV') + ' ' + (w.crew || ''), 'SedgwickAveDisplay', Wp * .92, Hp * .93, Hp * .03, lumC(bg) > .5 ? '#141418' : '#f2f2f0', { maxW: Wp * .14 });   // la firma, piccola
     snap(x.canvas); paths.push([[Wp * .92, Hp * .93]]); radii.push(Hp * .1);
   }
+  // ================= [stradadipinta] LA STRADA DIPINTA (solo coi lavori segnati da strada_dipinta.js: ?stile=E) =================
+  // Niente qui cambia un lavoro senza i suoi campi sd*: i lavori di sempre e quelli del giocatore escono come prima.
+  // - LA TAVOLOZZA (BIBBIA_STILE §1 e §11.7): w.sdPal → ogni tappa passa da una tabella 64³ (sRGB → sRGB) che in Oklab porta la tinta verso
+  //   l'inchiostro più vicino della tavolozza unica (peso .8 su a, b; il valore resta quello del disegno, appena verso l'inchiostro) e tiene
+  //   lontani i tre colori del gioco (vermiglio, limone, allarme): mai nella vernice della strada.
+  // - I MANIFESTI DEL POSTO (w.sdManifesti: fogli { t, s, d, k } dal più vecchio al più nuovo): carta piatta, una tinta, il titolo in un font
+  //   pieno; i fogli sotto strappati e sbiaditi, quello sopra nuovo; il foglietto «cercasi» con le linguette da strappare.
+  // - GLI ADESIVI DEL POSTO (w.sdAdesivi: nomi e crew): i nomi della scena di qui, i colori dalla tavolozza, stretti a grappolo.
+  // - IL MURO RIPULITO (stile 'buff'): la toppa di vernice grigia a rullo sopra una tag (che si intravede ai bordi), campiture piatte.
+  const TAVE = { carta: '#F2E7CF', osso: '#D2C2A6', sasso: '#A89C92', lilla: '#A68FB6', piombo: '#7C7186', lavagna: '#3D3548', nero: '#16121B', pesca: '#F0BE8C', ocra: '#DC9A34', cotto: '#C25B36', mattone: '#6F2B2E',
+    cielo: '#A3D4D8', acqua: '#2A8A8A', oltremare: '#2F60B5', notte: '#202D5E', salvia: '#93B27C', persiana: '#3F8A50', bosco: '#34532F', rosa: '#E04B8C', viola: '#6B3D9B' };
+  const TAVE_VIETATI = [['#F04A23', 'cotto'], ['#FFE03A', 'ocra'], ['#FF2E5E', 'rosa']];   // vermiglio (il personaggio), limone (l'obiettivo), allarme (il pericolo)
+  const srgbLin = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }, linSrgb = v => { v = v <= .0031308 ? v * 12.92 : 1.055 * Math.pow(Math.max(0, v), 1 / 2.4) - .055; return clamp(Math.round(v * 255), 0, 255); };
+  function okLab(r8, g8, b8) { const r = srgbLin(r8), g = srgbLin(g8), b = srgbLin(b8);
+    const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+    return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]; }
+  function okRgb(L, a, b) { const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+    return [linSrgb(4.0767416621 * l - 3.3077115913 * m + .2309699292 * s), linSrgb(-1.2684380046 * l + 2.6097574011 * m - .3413193965 * s), linSrgb(-.0041960863 * l - .7034186147 * m + 1.707614701 * s)]; }
+  const hexLab = h => okLab(parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16));
+  let TAVE_LAB = null, LUTE = null;
+  function tavMap(L, a, b) {   // un colore Oklab → il suo colore nella tavolozza della strada
+    if (!TAVE_LAB) TAVE_LAB = { ink: Object.keys(TAVE).map(k => [k].concat(hexLab(TAVE[k]))), vie: TAVE_VIETATI.map(([h, s]) => hexLab(h).concat([s])) };
+    const C = hyp(a, b); let best = null, bd = 1e9;
+    for (const q of TAVE_LAB.ink) { const qc = hyp(q[2], q[3]); if ((C > .045) !== (qc > .045)) continue; const d = .6 * (L - q[1]) ** 2 + (a - q[2]) ** 2 + (b - q[3]) ** 2; if (d < bd) { bd = d; best = q; } }
+    if (best) { const kc = C > .045 ? .8 : .5; a += (best[2] - a) * kc; b += (best[3] - b) * kc; L += (best[1] - L) * (C > .045 ? .3 : .15); }
+    for (const v of TAVE_LAB.vie) { const d = Math.sqrt((L - v[0]) ** 2 + (a - v[1]) ** 2 + (b - v[2]) ** 2); if (d < .085) { const s = TAVE_LAB.ink.find(q => q[0] === v[3]); const t = 1 - d / .085; L += (s[1] - L) * t; a += (s[2] - a) * t; b += (s[3] - b) * t; } }
+    return okRgb(L, a, b); }
+  function lutE() { if (LUTE) return LUTE; const N = 64, T = new Uint8Array(N * N * N * 3);
+    for (let r = 0; r < N; r++) for (let g = 0; g < N; g++) for (let b = 0; b < N; b++) { const c = okLab(r * 4 + 2, g * 4 + 2, b * 4 + 2), o = tavMap(c[0], c[1], c[2]), i = ((r * N + g) * N + b) * 3; T[i] = o[0]; T[i + 1] = o[1]; T[i + 2] = o[2]; }
+    return (LUTE = T); }
+  function tavolozzaE(cnv) { if (!cnv || !cnv.getContext) return; const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height; if (!W || !H) return; const T = lutE(), d = x.getImageData(0, 0, W, H), D = d.data;
+    for (let i = 0; i < D.length; i += 4) { if (D[i + 3] < 4) continue; const j = (((D[i] >> 2) * 64 + (D[i + 1] >> 2)) * 64 + (D[i + 2] >> 2)) * 3; D[i] = T[j]; D[i + 1] = T[j + 1]; D[i + 2] = T[j + 2]; }
+    x.putImageData(d, 0, 0); }
+  // i manifesti: la carta e l'inchiostro dalla tavolozza, a coppie che si leggono (valore lontano)
+  const CARTE_E = [['#F2E7CF', '#16121B'], ['#D2C2A6', '#16121B'], ['#DC9A34', '#16121B'], ['#E04B8C', '#F2E7CF'], ['#2F60B5', '#F2E7CF'], ['#16121B', '#F2E7CF'], ['#2A8A8A', '#F2E7CF'], ['#F0BE8C', '#3D3548'], ['#93B27C', '#16121B'], ['#6B3D9B', '#F2E7CF']];
+  function posterE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const L = w.sdManifesti, vr = mulberry((w.seed || 1) ^ 0x7a58), n = L.length, pts = [];
+    L.forEach((f, k) => {
+      const top = k === n - 1, eta = top ? (w.sdFresco ? 0 : .15) : .55 + (n - 1 - k) * .2, sm = f.k === 'cerco' ? .62 : 1;
+      const pw = Wp * (n === 1 ? .9 : .7) * sm, ph = Math.min(Hp * (n === 1 ? .92 : .78), pw * (f.k === 'cerco' ? 1.3 : 1.41)), cx0 = Wp * (.5 + (vr() - .5) * (n === 1 ? .05 : .3)), cy0 = Hp * (.5 + (vr() - .5) * (n === 1 ? .04 : .18)), rot = (vr() - .5) * (top ? .05 : .1);
+      const [paper, ink] = f.c != null ? CARTE_E[f.c % CARTE_E.length] : pickR(vr, CARTE_E), c = cv(Math.round(pw), Math.round(ph)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height;
+      cx.fillStyle = paper; cx.fillRect(0, 0, W2, H2);
+      const fam = f.f || pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers', 'Ranchers', 'Shrikhand']), fam2 = 'Bungee', ok = FONTS.ok;
+      const text = (s, cy, h, col, fm) => { if (ok) fontText(cx, s, fm || fam, W2 / 2, cy, h, col, { maxW: W2 * .84 }); else { cx.fillStyle = col; cx.textAlign = 'center'; cx.font = `bold ${Math.round(h * 1.3)}px Arial`; cx.fillText(s, W2 / 2, cy + h / 2, W2 * .84); } };
+      if (f.k === 'cerco') {   // il foglietto a mano: due righe e le linguette col numero
+        text(f.t, H2 * .2, H2 * .09, ink, 'PermanentMarker'); if (f.s) text(f.s, H2 * .38, H2 * .055, ink, 'PermanentMarker');
+        cx.fillStyle = ink; const nt = 7, tw = W2 / nt; for (let j = 0; j < nt; j++) { cx.fillRect(j * tw, H2 * .66, 1.2, H2 * .34); if (vr() < .35) { cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.fillRect(j * tw + 1.5, H2 * .68, tw - 1.5, H2 * .32); cx.restore(); } else { cx.save(); cx.translate(j * tw + tw / 2, H2 * .83); cx.rotate(-PI / 2); cx.font = `${Math.round(tw * .45)}px Arial`; cx.textAlign = 'center'; cx.fillText(f.d || '23 17', 0, tw * .15); cx.restore(); } }
+      } else {
+        // la figura piatta: un disco, l'onda, le righe o il riquadro, in una tinta sola sotto il titolo
+        const g = f.g != null ? f.g : Math.floor(vr() * 4), acc = ink; cx.fillStyle = acc; cx.globalAlpha = .9;
+        if (g === 0) { cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .3, 0, 7); cx.fill(); cx.globalAlpha = 1; cx.fillStyle = paper; cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .12, 0, 7); cx.fill(); }   // il disco
+        else if (g === 1) { cx.beginPath(); cx.moveTo(0, H2 * .55); for (let j = 0; j <= 24; j++) cx.lineTo(W2 * j / 24, H2 * (.5 + Math.sin(j / 24 * PI * 4) * .04)); cx.lineTo(W2, H2 * .6); for (let j = 24; j >= 0; j--) cx.lineTo(W2 * j / 24, H2 * (.58 + Math.sin(j / 24 * PI * 4 + .6) * .04)); cx.closePath(); cx.fill(); }   // l'onda
+        else if (g === 2) { for (let j = 0; j < 5; j++) cx.fillRect(W2 * .08, H2 * (.3 + j * .055), W2 * .84, H2 * .025); }   // le righe
+        else { cx.fillRect(W2 * .08, H2 * .08, W2 * .84, H2 * .04); cx.fillRect(W2 * .08, H2 * .88, W2 * .84, H2 * .04); }   // le fasce
+        cx.globalAlpha = 1;
+        const tl = String(f.t).split('\n'); tl.forEach((ln, i) => text(ln, H2 * (g === 0 ? .15 : .2) + i * H2 * .13, H2 * .1, ink));
+        if (f.s) text(f.s, H2 * .72, H2 * .055, ink, fam2); if (f.d) text(f.d, H2 * .82, H2 * .045, ink, fam2);
+      }
+      // l'età: sbiadito verso la carta vecchia, gli strappi (sotto: tanti, sopra: un angolo)
+      if (eta > 0) { cx.fillStyle = `rgba(232,222,200,${Math.min(.6, eta * .6)})`; cx.fillRect(0, 0, W2, H2); }
+      cx.globalCompositeOperation = 'destination-out';
+      const tear = (x0, y0, x1, y1, ex, ey, deep) => { cx.beginPath(); cx.moveTo(x0, y0); for (let j = 1; j < 6; j++) { const t = j / 6; cx.lineTo(x0 + (x1 - x0) * t + (vr() - .5) * deep, y0 + (y1 - y0) * t + (vr() - .5) * deep); } cx.lineTo(x1, y1); cx.lineTo(ex, ey); cx.closePath(); cx.fill(); };
+      if (!top) { const nt = 1 + Math.floor(eta * 3); for (let j = 0; j < nt; j++) { const sy = H2 * (.15 + vr() * .7); tear(0, sy, W2 * (.3 + vr() * .5), sy + H2 * (vr() - .5) * .4, 0, sy + H2 * .25, W2 * .05); }
+        if (vr() < .6) tear(W2 * (.4 + vr() * .4), 0, W2, H2 * (.2 + vr() * .4), W2, 0, W2 * .05); }
+      else if (vr() < .45) tear(0, H2 * (.8 + vr() * .12), W2 * (.12 + vr() * .2), H2, 0, H2, W2 * .03);
+      cx.globalCompositeOperation = 'source-over';
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    });
+    snap(x.canvas); paths.push(pts.concat(raster(Wp, Hp, 2))); radii.push(Hp * .35);
+  }
+  const ADE_COL = ['#E04B8C', '#2F60B5', '#DC9A34', '#16121B', '#2A8A8A', '#C25B36', '#6B3D9B', '#93B27C', '#F2E7CF'];
+  function stickersE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const A = w.sdAdesivi, vr = mulberry((w.seed || 1) ^ 0xad52), s0 = Math.min(Wp, Hp), n = A.n || (5 + Math.floor(vr() * 8)), pts = [], strip = Hp > Wp * 2.5;
+    for (let k = 0; k < n; k++) {
+      const kind = pickR(vr, A.tipi || ['nome', 'nome', 'tondo', 'quadro', 'logo']), sw = s0 * (strip ? .92 : .26 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'logo' ? sw * .5 : sw;
+      const cx0 = strip ? Wp / 2 : sw / 2 + vr() * (Wp - sw), cy0 = strip ? sh / 2 + (k + vr() * .4) / n * (Hp - sh) : sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * (strip ? .3 : .45);
+      const c = cv(Math.round(sw), Math.round(sh)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height, col = pickR(vr, ADE_COL), light = col === '#F2E7CF' || col === '#DC9A34' || col === '#93B27C', on = light ? '#16121B' : '#F2E7CF';
+      const nm = pickR(vr, A.nomi || ['PV']), cr = pickR(vr, A.crew || ['PVK']), ok = FONTS.ok;
+      cx.fillStyle = '#F2E7CF';
+      if (kind === 'tondo') { cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 / 2, 0, 7); cx.fill(); cx.fillStyle = col; cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 * .42, 0, 7); cx.fill(); if (ok) fontText(cx, cr, 'Bungee', W2 / 2, H2 / 2, W2 * .22, on, { maxW: W2 * .66 }); }
+      else if (kind === 'logo') { cx.fillStyle = col; cx.fillRect(0, 0, W2, H2); if (ok) fontText(cx, pickR(vr, A.loghi || [cr]), 'BlackOpsOne', W2 / 2, H2 / 2, H2 * .42, on, { maxW: W2 * .86 }); }
+      else if (kind === 'nome') { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(0, 0, W2, H2 * .32); if (ok) { fontText(cx, 'CIAO MI CHIAMO', 'Bungee', W2 / 2, H2 * .16, H2 * .09, on, { maxW: W2 * .88 }); fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker']), W2 / 2, H2 * .65, H2 * .3, '#16121B', { maxW: W2 * .82, skew: .15 }); } }
+      else { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(W2 * .07, H2 * .07, W2 * .86, H2 * .86); if (ok) fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker', 'Knewave']), W2 / 2, H2 / 2, H2 * .26, on, { maxW: W2 * .78, skew: .12 }); }
+      if (vr() < .45) { cx.fillStyle = 'rgba(242,231,207,.4)'; cx.fillRect(0, 0, W2, H2); }   // sbiadito dal sole
+      if (vr() < .3) { cx.globalCompositeOperation = 'destination-out'; cx.beginPath(); cx.moveTo(W2, H2); cx.lineTo(W2 * .68, H2); cx.lineTo(W2, H2 * .68); cx.closePath(); cx.fill(); cx.globalCompositeOperation = 'source-over'; }   // l'angolo che si stacca
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    }
+    snap(x.canvas); paths.push(pts); radii.push(s0 * .3);
+  }
+  // il muro ripulito: la tag di sotto che si intravede, poi la toppa grigia a rullo (due mani, i bordi dritti con le passate che escono)
+  function buffArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const vr = mulberry((w.seed || 1) ^ 0xb0ff), col = w.sdBuff || pickR(vr, ['#A89C92', '#B4ABA0', '#9C968E', '#C2B8A8', '#8E8A86']), sotto = w.sdSotto || pickR(vr, ['MURE', 'TREK', 'CIAPA', 'GOZO', 'ZENA', 'FUMO']);
+    if (FONTS.ok) fontText(x, sotto, 'SedgwickAveDisplay', Wp * .5, Hp * .5, Hp * .5, pickR(vr, ['#16121B', '#16121B', '#E04B8C', '#2F60B5']), { maxW: Wp * .95, skew: .15 });
+    snap(x.canvas); paths.push([[Wp * .3, Hp * .5], [Wp * .7, Hp * .5]]); radii.push(Hp * .3);
+    const m = Wp * (.15 + vr() * .07), y0 = Hp * (.1 + vr() * .08), y1 = Hp * (.9 - vr() * .08),   /* la tag sotto esce ai due lati: si capisce cosa hanno coperto */ bands = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / bands;
+    x.fillStyle = col; x.beginPath(); x.moveTo(m, y0); for (let j = 0; j <= bands; j++) { const yy = y0 + j * bh; x.lineTo(Wp - m + (vr() - .5) * Wp * .05, yy); } for (let j = bands; j >= 0; j--) { const yy = y0 + j * bh; x.lineTo(m + (vr() - .5) * Wp * .05, yy); } x.closePath(); x.fill();
+    for (let j = 0; j < bands; j++) { x.fillStyle = shade(col, (vr() - .5) * .08); x.fillRect(m + Wp * .02, y0 + j * bh + bh * .1, Wp - m * 2 - Wp * .04, bh * .8); }   // le passate del rullo: due tinte appena diverse
+    snap(x.canvas); paths.push(raster(Wp, Hp, bands)); radii.push(bh * .6);
+  }
   const TKS = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };   // la risoluzione in più per i lavori piccoli o fini
-  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6 };
+  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1, buff: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6, buff: .2 };
 
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
@@ -59007,15 +59106,21 @@ var WriterArte = (function () {
     const a = -.8, ux = Math.cos(a) * w * nib, uy = Math.sin(a) * w * nib, w2 = w * (1 - nib * .55);
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
-  function art(w) {
+  // [stradadipinta] la tavolozza della strada sopra al disegno finito (solo i lavori segnati: w.sdPal; mai il giocatore, mai la tavoletta)
+  function art(w) { const A = art0(w); if (w && w.sdPal && !w.rec && w.by !== 'player' && A && A.stages) { try { A.stages.forEach(tavolozzaE); if (w.sdToppa) A.stages.forEach(c => toppaE(c, w.sdToppa, w.seed)); } catch (e) { } } return A; }
+  // [stradadipinta] la toppa di chi ha ripulito sopra un pezzo vecchio (w.sdToppa: [x0, y0, x1, y1] in frazioni, il grigio): campitura a rullo, bordi dritti
+  function toppaE(cnv, T, seed) { const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height, vr = mulberry((seed || 1) ^ 0x70a), col = T[4] || '#A89C92', x0 = T[0] * W, x1 = T[2] * W, y0 = T[1] * H, y1 = T[3] * H, n = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / n;
+    x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
+    for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
+  function art0(w) {
     const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : INK.on ? .55 : AMP[w.style], crisp: INK.on, age: w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
     if (w.rec) { const c = cv(Wp, Hp), x = c.getContext('2d'), res = WM.drawRecorded(x, w.rec, Object.assign({}, WM.dna(w.hand || w.seed || 1)), Wp, Hp, r, w.col || '#141418', w.tool === 'pennarello' ? 'mtag' : 'tag'); snap(c); paths.push(res.path.filter((q, i) => i % 3 === 0)); radii.push(Math.max(res.W * 2.2, Hp * .08)); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [writer] il disegno fatto alla tavoletta
     if (w.style === 'mostro') { const c = cv(Wp, Hp); INK.on = true; try { characterArt(w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); } finally { INK.on = false; } return { stages, paths, radii, Wp, Hp, C }; }   // [graffiti4] il personaggio a inchiostro (prima: monsterArt)
     // [graffiti3] gli altri stili della strada
-    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: posterArt, adesivi: stickersArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
+    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: w.sdManifesti ? posterE : posterArt, adesivi: w.sdAdesivi ? stickersE : stickersArt, buff: buffArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
       if (w.style === 'verticale') { const vf = /^(rullo|bolle|pixo)$/.test(w.fam) ? w.fam : pickR(mulberry((w.seed || 1) ^ 0x11), ['rullo', 'rullo', 'bolle', 'pixo', 'pixo']); C.vfam = vf; NEW.verticale = vf === 'bolle' ? (FO ? stackedFontBubble : stackedBubbleArt) : vf === 'pixo' ? pixoArt : (...a) => rollerArt(...a, true); }
       if (NEW[w.style]) { const c = cv(Wp, Hp); NEW[w.style](w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; } }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
@@ -59200,7 +59305,7 @@ var WriterArte = (function () {
     const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
     ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
   }
-  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, choose, conceive, dnaOf, crossOut, letters, mulberry };
+  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, tavolozzaE, TAVE, tavMap, okLab, choose, conceive, dnaOf, crossOut, letters, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterArte;
 
@@ -59251,7 +59356,7 @@ var Pennelli = (function () {
   // che pennello usa ogni lavoro (e la superficie per difetto di ogni appoggio)
   const USO = { tag: 'skinny', mtag: 'marker', throw: 'fat', pezzo: 'spray', burner: 'spray', gotico: 'skinny', mostro: 'roller', wholecar: 'fat', rullo: 'roller', sticker: 'sticker',
     // [unione-graffiti] gli stili della strada di writer_arte.js: il verticale a rullo prende il rullo (vedi art), quelli a bolle e il pixo la bomboletta
-    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker' };
+    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker', buff: 'roller' };   // [stradadipinta] il muro ripulito: a rullo
   // [unione-graffiti] sul disegno di writer_arte.js (le lettere dai font, gli stili, la SUA grana della vernice: le passate, i pori, la
   // nebbia stretta, i puntini dell'overspray, le colature disegnate nella forma) i pennelli passano solo quello che lui non fa, e meno:
   // la grana del MURO dove sta il lavoro (intonaco, mattoni con le fughe, cemento, il metallo dei mezzi) e i giorni sul muro, la
@@ -59259,6 +59364,7 @@ var Pennelli = (function () {
   // polvere / colature / grit: quanto dei pennelli resta sopra la sua resa (1 = come sui disegni nostri, la tavoletta e l'adesivo);
   // gli schizzi (splatter) no: prendono il colore dai bianchi del bordo e delle luci e li spargono sulle lettere
   const SU_ARTE = { polvere: .45, colature: .5, grit: .6, rullata: .6 };
+  const SU_E = { polvere: .15, colature: .3, grit: .3, rullata: .35 };   // [stradadipinta] coi lavori della strada dipinta (?stile=E): la finitura netta della bibbia, poca polvere e grana
   const RULLATO = { rullo: 1, verticale: 'rullo' };   // dove passa il rullo sulle lettere (il verticale solo se è della famiglia rullo)
   const SUP_DI = { muro: 'intonaco', treno: 'metallo', vagone: 'metallo', auto: 'metallo' };
   // l'età: i giorni sul muro → quanto sbiadisce (alfa e colore) e quanto si scrosta
@@ -59555,7 +59661,7 @@ var Pennelli = (function () {
     if (rull) pen = 'roller'; else if (arte && w.rec && w.tool === 'pennarello') pen = 'marker';
     // su un disegno di writer_arte.js: meno polvere, colature e grana (la sua resa le ha già), e i lavori vecchi della storia hanno già
     // la loro età (pioggia, crosta): i giorni sul muro contano dopo i primi due
-    const K = arte ? SU_ARTE : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
+    const K = arte ? (w.sdPal ? SU_E : SU_ARTE) : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
     const ppm = A.ppm || (A.Wp / Math.max(.01, w.W)), n = A.stages.length, o = { pen, sup, seed: w.seed || 1, ppm, eta, grit: (w.grit != null ? w.grit : 1) * K.grit, wall: w.wallRGB, polK: K.polvere, splK: arte ? 0 : 1, rullata: rull, rullK: SU_ARTE.rullata };
     A.stages = A.stages.map((c, i) => finisci(c, Object.assign({ last: i === n - 1, dripK: (w.style === 'tag' || w.style === 'mtag' ? .5 : 1) * K.colature }, o)));
     A.ppm = ppm; A.pen = pen; return A;
@@ -62413,8 +62519,107 @@ var WriterArte = (function () {
     if (FONTS.ok) fontText(x, (w.aka || 'PV') + ' ' + (w.crew || ''), 'SedgwickAveDisplay', Wp * .92, Hp * .93, Hp * .03, lumC(bg) > .5 ? '#141418' : '#f2f2f0', { maxW: Wp * .14 });   // la firma, piccola
     snap(x.canvas); paths.push([[Wp * .92, Hp * .93]]); radii.push(Hp * .1);
   }
+  // ================= [stradadipinta] LA STRADA DIPINTA (solo coi lavori segnati da strada_dipinta.js: ?stile=E) =================
+  // Niente qui cambia un lavoro senza i suoi campi sd*: i lavori di sempre e quelli del giocatore escono come prima.
+  // - LA TAVOLOZZA (BIBBIA_STILE §1 e §11.7): w.sdPal → ogni tappa passa da una tabella 64³ (sRGB → sRGB) che in Oklab porta la tinta verso
+  //   l'inchiostro più vicino della tavolozza unica (peso .8 su a, b; il valore resta quello del disegno, appena verso l'inchiostro) e tiene
+  //   lontani i tre colori del gioco (vermiglio, limone, allarme): mai nella vernice della strada.
+  // - I MANIFESTI DEL POSTO (w.sdManifesti: fogli { t, s, d, k } dal più vecchio al più nuovo): carta piatta, una tinta, il titolo in un font
+  //   pieno; i fogli sotto strappati e sbiaditi, quello sopra nuovo; il foglietto «cercasi» con le linguette da strappare.
+  // - GLI ADESIVI DEL POSTO (w.sdAdesivi: nomi e crew): i nomi della scena di qui, i colori dalla tavolozza, stretti a grappolo.
+  // - IL MURO RIPULITO (stile 'buff'): la toppa di vernice grigia a rullo sopra una tag (che si intravede ai bordi), campiture piatte.
+  const TAVE = { carta: '#F2E7CF', osso: '#D2C2A6', sasso: '#A89C92', lilla: '#A68FB6', piombo: '#7C7186', lavagna: '#3D3548', nero: '#16121B', pesca: '#F0BE8C', ocra: '#DC9A34', cotto: '#C25B36', mattone: '#6F2B2E',
+    cielo: '#A3D4D8', acqua: '#2A8A8A', oltremare: '#2F60B5', notte: '#202D5E', salvia: '#93B27C', persiana: '#3F8A50', bosco: '#34532F', rosa: '#E04B8C', viola: '#6B3D9B' };
+  const TAVE_VIETATI = [['#F04A23', 'cotto'], ['#FFE03A', 'ocra'], ['#FF2E5E', 'rosa']];   // vermiglio (il personaggio), limone (l'obiettivo), allarme (il pericolo)
+  const srgbLin = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }, linSrgb = v => { v = v <= .0031308 ? v * 12.92 : 1.055 * Math.pow(Math.max(0, v), 1 / 2.4) - .055; return clamp(Math.round(v * 255), 0, 255); };
+  function okLab(r8, g8, b8) { const r = srgbLin(r8), g = srgbLin(g8), b = srgbLin(b8);
+    const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+    return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]; }
+  function okRgb(L, a, b) { const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+    return [linSrgb(4.0767416621 * l - 3.3077115913 * m + .2309699292 * s), linSrgb(-1.2684380046 * l + 2.6097574011 * m - .3413193965 * s), linSrgb(-.0041960863 * l - .7034186147 * m + 1.707614701 * s)]; }
+  const hexLab = h => okLab(parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16));
+  let TAVE_LAB = null, LUTE = null;
+  function tavMap(L, a, b) {   // un colore Oklab → il suo colore nella tavolozza della strada
+    if (!TAVE_LAB) TAVE_LAB = { ink: Object.keys(TAVE).map(k => [k].concat(hexLab(TAVE[k]))), vie: TAVE_VIETATI.map(([h, s]) => hexLab(h).concat([s])) };
+    const C = hyp(a, b); let best = null, bd = 1e9;
+    for (const q of TAVE_LAB.ink) { const qc = hyp(q[2], q[3]); if ((C > .045) !== (qc > .045)) continue; const d = .6 * (L - q[1]) ** 2 + (a - q[2]) ** 2 + (b - q[3]) ** 2; if (d < bd) { bd = d; best = q; } }
+    if (best) { const kc = C > .045 ? .8 : .5; a += (best[2] - a) * kc; b += (best[3] - b) * kc; L += (best[1] - L) * (C > .045 ? .3 : .15); }
+    for (const v of TAVE_LAB.vie) { const d = Math.sqrt((L - v[0]) ** 2 + (a - v[1]) ** 2 + (b - v[2]) ** 2); if (d < .085) { const s = TAVE_LAB.ink.find(q => q[0] === v[3]); const t = 1 - d / .085; L += (s[1] - L) * t; a += (s[2] - a) * t; b += (s[3] - b) * t; } }
+    return okRgb(L, a, b); }
+  function lutE() { if (LUTE) return LUTE; const N = 64, T = new Uint8Array(N * N * N * 3);
+    for (let r = 0; r < N; r++) for (let g = 0; g < N; g++) for (let b = 0; b < N; b++) { const c = okLab(r * 4 + 2, g * 4 + 2, b * 4 + 2), o = tavMap(c[0], c[1], c[2]), i = ((r * N + g) * N + b) * 3; T[i] = o[0]; T[i + 1] = o[1]; T[i + 2] = o[2]; }
+    return (LUTE = T); }
+  function tavolozzaE(cnv) { if (!cnv || !cnv.getContext) return; const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height; if (!W || !H) return; const T = lutE(), d = x.getImageData(0, 0, W, H), D = d.data;
+    for (let i = 0; i < D.length; i += 4) { if (D[i + 3] < 4) continue; const j = (((D[i] >> 2) * 64 + (D[i + 1] >> 2)) * 64 + (D[i + 2] >> 2)) * 3; D[i] = T[j]; D[i + 1] = T[j + 1]; D[i + 2] = T[j + 2]; }
+    x.putImageData(d, 0, 0); }
+  // i manifesti: la carta e l'inchiostro dalla tavolozza, a coppie che si leggono (valore lontano)
+  const CARTE_E = [['#F2E7CF', '#16121B'], ['#D2C2A6', '#16121B'], ['#DC9A34', '#16121B'], ['#E04B8C', '#F2E7CF'], ['#2F60B5', '#F2E7CF'], ['#16121B', '#F2E7CF'], ['#2A8A8A', '#F2E7CF'], ['#F0BE8C', '#3D3548'], ['#93B27C', '#16121B'], ['#6B3D9B', '#F2E7CF']];
+  function posterE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const L = w.sdManifesti, vr = mulberry((w.seed || 1) ^ 0x7a58), n = L.length, pts = [];
+    L.forEach((f, k) => {
+      const top = k === n - 1, eta = top ? (w.sdFresco ? 0 : .15) : .55 + (n - 1 - k) * .2, sm = f.k === 'cerco' ? .62 : 1;
+      const pw = Wp * (n === 1 ? .9 : .7) * sm, ph = Math.min(Hp * (n === 1 ? .92 : .78), pw * (f.k === 'cerco' ? 1.3 : 1.41)), cx0 = Wp * (.5 + (vr() - .5) * (n === 1 ? .05 : .3)), cy0 = Hp * (.5 + (vr() - .5) * (n === 1 ? .04 : .18)), rot = (vr() - .5) * (top ? .05 : .1);
+      const [paper, ink] = f.c != null ? CARTE_E[f.c % CARTE_E.length] : pickR(vr, CARTE_E), c = cv(Math.round(pw), Math.round(ph)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height;
+      cx.fillStyle = paper; cx.fillRect(0, 0, W2, H2);
+      const fam = f.f || pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers', 'Ranchers', 'Shrikhand']), fam2 = 'Bungee', ok = FONTS.ok;
+      const text = (s, cy, h, col, fm) => { if (ok) fontText(cx, s, fm || fam, W2 / 2, cy, h, col, { maxW: W2 * .84 }); else { cx.fillStyle = col; cx.textAlign = 'center'; cx.font = `bold ${Math.round(h * 1.3)}px Arial`; cx.fillText(s, W2 / 2, cy + h / 2, W2 * .84); } };
+      if (f.k === 'cerco') {   // il foglietto a mano: due righe e le linguette col numero
+        text(f.t, H2 * .2, H2 * .09, ink, 'PermanentMarker'); if (f.s) text(f.s, H2 * .38, H2 * .055, ink, 'PermanentMarker');
+        cx.fillStyle = ink; const nt = 7, tw = W2 / nt; for (let j = 0; j < nt; j++) { cx.fillRect(j * tw, H2 * .66, 1.2, H2 * .34); if (vr() < .35) { cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.fillRect(j * tw + 1.5, H2 * .68, tw - 1.5, H2 * .32); cx.restore(); } else { cx.save(); cx.translate(j * tw + tw / 2, H2 * .83); cx.rotate(-PI / 2); cx.font = `${Math.round(tw * .45)}px Arial`; cx.textAlign = 'center'; cx.fillText(f.d || '23 17', 0, tw * .15); cx.restore(); } }
+      } else {
+        // la figura piatta: un disco, l'onda, le righe o il riquadro, in una tinta sola sotto il titolo
+        const g = f.g != null ? f.g : Math.floor(vr() * 4), acc = ink; cx.fillStyle = acc; cx.globalAlpha = .9;
+        if (g === 0) { cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .3, 0, 7); cx.fill(); cx.globalAlpha = 1; cx.fillStyle = paper; cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .12, 0, 7); cx.fill(); }   // il disco
+        else if (g === 1) { cx.beginPath(); cx.moveTo(0, H2 * .55); for (let j = 0; j <= 24; j++) cx.lineTo(W2 * j / 24, H2 * (.5 + Math.sin(j / 24 * PI * 4) * .04)); cx.lineTo(W2, H2 * .6); for (let j = 24; j >= 0; j--) cx.lineTo(W2 * j / 24, H2 * (.58 + Math.sin(j / 24 * PI * 4 + .6) * .04)); cx.closePath(); cx.fill(); }   // l'onda
+        else if (g === 2) { for (let j = 0; j < 5; j++) cx.fillRect(W2 * .08, H2 * (.3 + j * .055), W2 * .84, H2 * .025); }   // le righe
+        else { cx.fillRect(W2 * .08, H2 * .08, W2 * .84, H2 * .04); cx.fillRect(W2 * .08, H2 * .88, W2 * .84, H2 * .04); }   // le fasce
+        cx.globalAlpha = 1;
+        const tl = String(f.t).split('\n'); tl.forEach((ln, i) => text(ln, H2 * (g === 0 ? .15 : .2) + i * H2 * .13, H2 * .1, ink));
+        if (f.s) text(f.s, H2 * .72, H2 * .055, ink, fam2); if (f.d) text(f.d, H2 * .82, H2 * .045, ink, fam2);
+      }
+      // l'età: sbiadito verso la carta vecchia, gli strappi (sotto: tanti, sopra: un angolo)
+      if (eta > 0) { cx.fillStyle = `rgba(232,222,200,${Math.min(.6, eta * .6)})`; cx.fillRect(0, 0, W2, H2); }
+      cx.globalCompositeOperation = 'destination-out';
+      const tear = (x0, y0, x1, y1, ex, ey, deep) => { cx.beginPath(); cx.moveTo(x0, y0); for (let j = 1; j < 6; j++) { const t = j / 6; cx.lineTo(x0 + (x1 - x0) * t + (vr() - .5) * deep, y0 + (y1 - y0) * t + (vr() - .5) * deep); } cx.lineTo(x1, y1); cx.lineTo(ex, ey); cx.closePath(); cx.fill(); };
+      if (!top) { const nt = 1 + Math.floor(eta * 3); for (let j = 0; j < nt; j++) { const sy = H2 * (.15 + vr() * .7); tear(0, sy, W2 * (.3 + vr() * .5), sy + H2 * (vr() - .5) * .4, 0, sy + H2 * .25, W2 * .05); }
+        if (vr() < .6) tear(W2 * (.4 + vr() * .4), 0, W2, H2 * (.2 + vr() * .4), W2, 0, W2 * .05); }
+      else if (vr() < .45) tear(0, H2 * (.8 + vr() * .12), W2 * (.12 + vr() * .2), H2, 0, H2, W2 * .03);
+      cx.globalCompositeOperation = 'source-over';
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    });
+    snap(x.canvas); paths.push(pts.concat(raster(Wp, Hp, 2))); radii.push(Hp * .35);
+  }
+  const ADE_COL = ['#E04B8C', '#2F60B5', '#DC9A34', '#16121B', '#2A8A8A', '#C25B36', '#6B3D9B', '#93B27C', '#F2E7CF'];
+  function stickersE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const A = w.sdAdesivi, vr = mulberry((w.seed || 1) ^ 0xad52), s0 = Math.min(Wp, Hp), n = A.n || (5 + Math.floor(vr() * 8)), pts = [], strip = Hp > Wp * 2.5;
+    for (let k = 0; k < n; k++) {
+      const kind = pickR(vr, A.tipi || ['nome', 'nome', 'tondo', 'quadro', 'logo']), sw = s0 * (strip ? .92 : .26 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'logo' ? sw * .5 : sw;
+      const cx0 = strip ? Wp / 2 : sw / 2 + vr() * (Wp - sw), cy0 = strip ? sh / 2 + (k + vr() * .4) / n * (Hp - sh) : sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * (strip ? .3 : .45);
+      const c = cv(Math.round(sw), Math.round(sh)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height, col = pickR(vr, ADE_COL), light = col === '#F2E7CF' || col === '#DC9A34' || col === '#93B27C', on = light ? '#16121B' : '#F2E7CF';
+      const nm = pickR(vr, A.nomi || ['PV']), cr = pickR(vr, A.crew || ['PVK']), ok = FONTS.ok;
+      cx.fillStyle = '#F2E7CF';
+      if (kind === 'tondo') { cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 / 2, 0, 7); cx.fill(); cx.fillStyle = col; cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 * .42, 0, 7); cx.fill(); if (ok) fontText(cx, cr, 'Bungee', W2 / 2, H2 / 2, W2 * .22, on, { maxW: W2 * .66 }); }
+      else if (kind === 'logo') { cx.fillStyle = col; cx.fillRect(0, 0, W2, H2); if (ok) fontText(cx, pickR(vr, A.loghi || [cr]), 'BlackOpsOne', W2 / 2, H2 / 2, H2 * .42, on, { maxW: W2 * .86 }); }
+      else if (kind === 'nome') { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(0, 0, W2, H2 * .32); if (ok) { fontText(cx, 'CIAO MI CHIAMO', 'Bungee', W2 / 2, H2 * .16, H2 * .09, on, { maxW: W2 * .88 }); fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker']), W2 / 2, H2 * .65, H2 * .3, '#16121B', { maxW: W2 * .82, skew: .15 }); } }
+      else { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(W2 * .07, H2 * .07, W2 * .86, H2 * .86); if (ok) fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker', 'Knewave']), W2 / 2, H2 / 2, H2 * .26, on, { maxW: W2 * .78, skew: .12 }); }
+      if (vr() < .45) { cx.fillStyle = 'rgba(242,231,207,.4)'; cx.fillRect(0, 0, W2, H2); }   // sbiadito dal sole
+      if (vr() < .3) { cx.globalCompositeOperation = 'destination-out'; cx.beginPath(); cx.moveTo(W2, H2); cx.lineTo(W2 * .68, H2); cx.lineTo(W2, H2 * .68); cx.closePath(); cx.fill(); cx.globalCompositeOperation = 'source-over'; }   // l'angolo che si stacca
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    }
+    snap(x.canvas); paths.push(pts); radii.push(s0 * .3);
+  }
+  // il muro ripulito: la tag di sotto che si intravede, poi la toppa grigia a rullo (due mani, i bordi dritti con le passate che escono)
+  function buffArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const vr = mulberry((w.seed || 1) ^ 0xb0ff), col = w.sdBuff || pickR(vr, ['#A89C92', '#B4ABA0', '#9C968E', '#C2B8A8', '#8E8A86']), sotto = w.sdSotto || pickR(vr, ['MURE', 'TREK', 'CIAPA', 'GOZO', 'ZENA', 'FUMO']);
+    if (FONTS.ok) fontText(x, sotto, 'SedgwickAveDisplay', Wp * .5, Hp * .5, Hp * .5, pickR(vr, ['#16121B', '#16121B', '#E04B8C', '#2F60B5']), { maxW: Wp * .95, skew: .15 });
+    snap(x.canvas); paths.push([[Wp * .3, Hp * .5], [Wp * .7, Hp * .5]]); radii.push(Hp * .3);
+    const m = Wp * (.15 + vr() * .07), y0 = Hp * (.1 + vr() * .08), y1 = Hp * (.9 - vr() * .08),   /* la tag sotto esce ai due lati: si capisce cosa hanno coperto */ bands = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / bands;
+    x.fillStyle = col; x.beginPath(); x.moveTo(m, y0); for (let j = 0; j <= bands; j++) { const yy = y0 + j * bh; x.lineTo(Wp - m + (vr() - .5) * Wp * .05, yy); } for (let j = bands; j >= 0; j--) { const yy = y0 + j * bh; x.lineTo(m + (vr() - .5) * Wp * .05, yy); } x.closePath(); x.fill();
+    for (let j = 0; j < bands; j++) { x.fillStyle = shade(col, (vr() - .5) * .08); x.fillRect(m + Wp * .02, y0 + j * bh + bh * .1, Wp - m * 2 - Wp * .04, bh * .8); }   // le passate del rullo: due tinte appena diverse
+    snap(x.canvas); paths.push(raster(Wp, Hp, bands)); radii.push(bh * .6);
+  }
   const TKS = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };   // la risoluzione in più per i lavori piccoli o fini
-  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6 };
+  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1, buff: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6, buff: .2 };
 
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
@@ -62443,15 +62648,21 @@ var WriterArte = (function () {
     const a = -.8, ux = Math.cos(a) * w * nib, uy = Math.sin(a) * w * nib, w2 = w * (1 - nib * .55);
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
-  function art(w) {
+  // [stradadipinta] la tavolozza della strada sopra al disegno finito (solo i lavori segnati: w.sdPal; mai il giocatore, mai la tavoletta)
+  function art(w) { const A = art0(w); if (w && w.sdPal && !w.rec && w.by !== 'player' && A && A.stages) { try { A.stages.forEach(tavolozzaE); if (w.sdToppa) A.stages.forEach(c => toppaE(c, w.sdToppa, w.seed)); } catch (e) { } } return A; }
+  // [stradadipinta] la toppa di chi ha ripulito sopra un pezzo vecchio (w.sdToppa: [x0, y0, x1, y1] in frazioni, il grigio): campitura a rullo, bordi dritti
+  function toppaE(cnv, T, seed) { const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height, vr = mulberry((seed || 1) ^ 0x70a), col = T[4] || '#A89C92', x0 = T[0] * W, x1 = T[2] * W, y0 = T[1] * H, y1 = T[3] * H, n = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / n;
+    x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
+    for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
+  function art0(w) {
     const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : INK.on ? .55 : AMP[w.style], crisp: INK.on, age: w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
     if (w.rec) { const c = cv(Wp, Hp), x = c.getContext('2d'), res = WM.drawRecorded(x, w.rec, Object.assign({}, WM.dna(w.hand || w.seed || 1)), Wp, Hp, r, w.col || '#141418', w.tool === 'pennarello' ? 'mtag' : 'tag'); snap(c); paths.push(res.path.filter((q, i) => i % 3 === 0)); radii.push(Math.max(res.W * 2.2, Hp * .08)); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [writer] il disegno fatto alla tavoletta
     if (w.style === 'mostro') { const c = cv(Wp, Hp); INK.on = true; try { characterArt(w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); } finally { INK.on = false; } return { stages, paths, radii, Wp, Hp, C }; }   // [graffiti4] il personaggio a inchiostro (prima: monsterArt)
     // [graffiti3] gli altri stili della strada
-    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: posterArt, adesivi: stickersArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
+    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: w.sdManifesti ? posterE : posterArt, adesivi: w.sdAdesivi ? stickersE : stickersArt, buff: buffArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
       if (w.style === 'verticale') { const vf = /^(rullo|bolle|pixo)$/.test(w.fam) ? w.fam : pickR(mulberry((w.seed || 1) ^ 0x11), ['rullo', 'rullo', 'bolle', 'pixo', 'pixo']); C.vfam = vf; NEW.verticale = vf === 'bolle' ? (FO ? stackedFontBubble : stackedBubbleArt) : vf === 'pixo' ? pixoArt : (...a) => rollerArt(...a, true); }
       if (NEW[w.style]) { const c = cv(Wp, Hp); NEW[w.style](w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; } }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
@@ -62636,7 +62847,7 @@ var WriterArte = (function () {
     const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
     ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
   }
-  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, choose, conceive, dnaOf, crossOut, letters, mulberry };
+  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, tavolozzaE, TAVE, tavMap, okLab, choose, conceive, dnaOf, crossOut, letters, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterArte;
 </script>
@@ -62687,7 +62898,7 @@ var Pennelli = (function () {
   // che pennello usa ogni lavoro (e la superficie per difetto di ogni appoggio)
   const USO = { tag: 'skinny', mtag: 'marker', throw: 'fat', pezzo: 'spray', burner: 'spray', gotico: 'skinny', mostro: 'roller', wholecar: 'fat', rullo: 'roller', sticker: 'sticker',
     // [unione-graffiti] gli stili della strada di writer_arte.js: il verticale a rullo prende il rullo (vedi art), quelli a bolle e il pixo la bomboletta
-    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker' };
+    verticale: 'spray', estintore: 'fat', stencil: 'spray', scritta: 'spray', calli: 'spray', murale: 'roller', manifesto: 'sticker', adesivi: 'sticker', buff: 'roller' };   // [stradadipinta] il muro ripulito: a rullo
   // [unione-graffiti] sul disegno di writer_arte.js (le lettere dai font, gli stili, la SUA grana della vernice: le passate, i pori, la
   // nebbia stretta, i puntini dell'overspray, le colature disegnate nella forma) i pennelli passano solo quello che lui non fa, e meno:
   // la grana del MURO dove sta il lavoro (intonaco, mattoni con le fughe, cemento, il metallo dei mezzi) e i giorni sul muro, la
@@ -62695,6 +62906,7 @@ var Pennelli = (function () {
   // polvere / colature / grit: quanto dei pennelli resta sopra la sua resa (1 = come sui disegni nostri, la tavoletta e l'adesivo);
   // gli schizzi (splatter) no: prendono il colore dai bianchi del bordo e delle luci e li spargono sulle lettere
   const SU_ARTE = { polvere: .45, colature: .5, grit: .6, rullata: .6 };
+  const SU_E = { polvere: .15, colature: .3, grit: .3, rullata: .35 };   // [stradadipinta] coi lavori della strada dipinta (?stile=E): la finitura netta della bibbia, poca polvere e grana
   const RULLATO = { rullo: 1, verticale: 'rullo' };   // dove passa il rullo sulle lettere (il verticale solo se è della famiglia rullo)
   const SUP_DI = { muro: 'intonaco', treno: 'metallo', vagone: 'metallo', auto: 'metallo' };
   // l'età: i giorni sul muro → quanto sbiadisce (alfa e colore) e quanto si scrosta
@@ -62991,7 +63203,7 @@ var Pennelli = (function () {
     if (rull) pen = 'roller'; else if (arte && w.rec && w.tool === 'pennarello') pen = 'marker';
     // su un disegno di writer_arte.js: meno polvere, colature e grana (la sua resa le ha già), e i lavori vecchi della storia hanno già
     // la loro età (pioggia, crosta): i giorni sul muro contano dopo i primi due
-    const K = arte ? SU_ARTE : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
+    const K = arte ? (w.sdPal ? SU_E : SU_ARTE) : { polvere: 1, colature: 1, grit: 1 }, eta = arte && w.old ? Math.max(0, (w.eta || 0) - 2) : (w.eta || 0);
     const ppm = A.ppm || (A.Wp / Math.max(.01, w.W)), n = A.stages.length, o = { pen, sup, seed: w.seed || 1, ppm, eta, grit: (w.grit != null ? w.grit : 1) * K.grit, wall: w.wallRGB, polK: K.polvere, splK: arte ? 0 : 1, rullata: rull, rullK: SU_ARTE.rullata };
     A.stages = A.stages.map((c, i) => finisci(c, Object.assign({ last: i === n - 1, dripK: (w.style === 'tag' || w.style === 'mtag' ? .5 : 1) * K.colature }, o)));
     A.ppm = ppm; A.pen = pen; return A;
@@ -63056,6 +63268,7 @@ var Writing = (function () {
     adesivi: { nome: 'adesivi', rank: 0, W: .6, H: .5, dur: 2, cans: 0, fame: 1, over: true },
     murale: { nome: 'murale', rank: 3, W: 6.5, H: 4, dur: 90, cans: 5, fame: 28 },
     calli: { nome: 'calligraffiti', rank: 2, W: 4.2, H: 2.2, dur: 20, cans: 1.2, fame: 10 },
+    buff: { nome: 'muro ripulito', rank: 0, W: 2.2, H: 1.3, dur: 4, cans: 0, fame: 0, over: true },   // [stradadipinta] la toppa grigia di chi ripulisce (solo nella storia dei muri con ?stile=E)
   };
   const SMALL = /^(tag|mtag|gotico|estintore|stencil|scritta|manifesto|adesivi)$/;   // [graffiti3] i lavori che vanno sopra a tutto e non contano come crossaggio
   // [graffiti3] l'altezza da terra del centro (metri, da..a) per i lavori che stanno ad altezza d'uomo; decisa dal seme
@@ -63478,6 +63691,9 @@ var Writing = (function () {
     return m;
   }
   // il rango di quello che c'è sotto: si va sopra solo a chi sta più in basso
+  // [stradadipinta] lo strato di un lavoro: quanti ne ha sotto (al più 4); i lavori della strada dipinta (?stile=E) lo portano deciso
+  // (w.sdStrato: il pezzo vecchio e la toppa grigia sotto, le tag nuove sopra), così il muro a strati non dipende dall'ordine in cui si piazzano
+  function stratoDi(w) { return w.sdStrato != null ? w.sdStrato : Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length); }
   function overlapCheck(st, w) {
     const W = S(st), out = [];
     for (const o of W.works) {
@@ -63814,7 +64030,7 @@ var Writing = (function () {
   }
   function makeVeil(w, g) {
     const THREE = T3(), R = w.gfxRect, kq = w.surf === 'treno' ? 1 : PHONE_K(), c = poolGet(Math.max(1, Math.ceil(g.Wp * kq)), Math.max(1, Math.ceil(g.Hp * kq))), tex = canvasTexture(c);
-    const layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
+    const layer = stratoDi(w);   // [graffiti] una volta sola (prima: la sovrapposizione rifatta per ogni lavoro della città)
     const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 - layer, polygonOffsetUnits: -4 - layer * 2 });
     const dg = w.surf === 'auto' && R.obj && Math.abs(R.n.y || 0) < .5 ? decalGeo(R.obj, R) : null;   // sul tetto del mezzo resta il velo steso
     const mesh = new THREE.Mesh(dg || new THREE.PlaneGeometry(R.W, R.H), mat); mesh.userData.velo = true; mesh.userData.wr = w.id; mesh.renderOrder = 3 + layer;
@@ -64304,9 +64520,47 @@ var Writing = (function () {
   const etaOf = w => w.by === 'player' && !w.old ? (w.sbiadito || 0) : clamp(Math.floor(((GFX.st ? GFX.st.t : 0) - (w.t0 || 0)) / 1440) + (w.old ? 2 + ((w.seed || 0) % 4) : 0), 0, 6);
   // un lavoro degli NPC (o di prima di un ricaricamento): trova il suo muro
   function placeWall(w) { return finisci(placeWallG(w)); }
+  // [stradadipinta] il pezzo in fondo alla vista (w.sdAlt, ?stile=E): se la facciata non ha posto per il primo (le finestre), le alternative in
+  // ordine: il verticale o il throw-up fra due colonne di finestre, il pezzo basso sulla fascia del pianterreno, il muro cieco di lato che si
+  // vede dalla via, il muro dei manifesti. La prima che entra resta (il disegno si fa dopo, con lo stile e la misura che hanno vinto)
   function* placeWallG(w) {
+    // [stradadipinta] il muro vero in fondo alla via; se il raggio non trova niente (le case lontane non ancora in scena) si riprova al giro dopo,
+    // al più sei volte, poi le alternative dai posti della griglia
+    if (w.sdRun && !w.__corsa) { w.sdMuro = null; yield* fondaleMuroG(w); w.__corsaN = (w.__corsaN || 0) + 1; if ((w.sdMuro && w.sdMuro !== 'nessuno') || w.__corsaN >= 6) w.__corsa = true; else return false; }
+    if (!w.sdAlt || !w.sdAlt.length || w.__altFatto) return yield* placeWallG0(w);
+    const R = R_(), base = { style: w.style, W0: w.W0, H0: w.H0, spot: w.spot, sdManifesti: w.sdManifesti, sdVariante: w.sdVariante };
+    for (const a of [null].concat(w.sdAlt)) {
+      if (a) { const sp = Object.assign({}, a.spot || base.spot); sp.h = a.hRel != null && R && R.groundH ? R.groundH(sp.x, sp.y) + a.hRel : a.spot ? a.spot.h : null;
+        Object.assign(w, { style: a.style || base.style, W0: a.W0, H0: a.H0, spot: sp, sdVariante: a.k }); if (a.sdManifesti) w.sdManifesti = a.sdManifesti; }
+      w.gfxRect = null; const ok = yield* placeWallG0(w); if (ok && w.gfxRect) { w.__altFatto = true; return true; }
+    }
+    Object.assign(w, base); w.__altFatto = true; return false;
+  }
+  // [stradadipinta] IL MURO IN FONDO ALLA VIA, DALLA GEOMETRIA VERA: dalla fine del tratto dritto (w.sdRun: ex, ey, la direzione ux, uy, la
+  // lunghezza da guardare) un raggio lungo la via, a 1,5 / 2,6 / 3,6 m dal suolo, contro le mesh della città (le stesse dei raggi dei graffiti:
+  // i candidati raccolti ogni 2 m lungo la via). Il primo muro quasi verticale è il fondale: il lavoro e le sue alternative si spostano lì,
+  // girati sulla sua normale (la griglia delle caselle sbagliava di uno o due metri: le case arretrate, i lotti orientati)
+  function* fondaleMuroG(w) {
+    const THREE = T3(), R = R_(), q = w.sdRun; if (!THREE || !R || !q) return;
+    const set = new Set(); for (let d = 0; d <= q.max; d += 2) { cands(q.ex + q.ux * d, q.ey + q.uy * d).forEach(o => set.add(o)); }
+    yield; const list = [...set], dir = new THREE.Vector3(q.ux, 0, q.uy).normalize(), gh = R.groundH(q.ex, q.ey); let hit = null;
+    // un muro, non un palo, un albero o un mezzo: i due raggi paralleli a ±0,9 m colpiscono lo stesso piano (entro 40 cm, normale entro 25°)
+    const largo = (o, h) => [-.9, .9].every(k => { const o2 = o.clone().add(new THREE.Vector3(-dir.z * k, 0, dir.x * k)), h2 = rayWall(o2, dir, q.max, list); return h2 && Math.abs(h2.p.distanceTo(o2) - h.p.distanceTo(o)) < .4 && h2.n.dot(h.n) > .9; });
+    for (const hh of [1.5, 2.6, 3.6]) { const o = new THREE.Vector3(q.ex, gh + hh, q.ey); let far = q.max, oo = o.clone();
+      for (let t = 0; t < 4; t++) { const h = rayWall(oo, dir, far, list); if (!h) break; const d = h.p.distanceTo(o);
+        if (Math.abs(h.n.y) < .3 && largo(oo, h)) { if (!hit || d < hit.d - 1.5) hit = { p: h.p, n: h.n, d }; break; }
+        oo = h.p.clone().addScaledVector(dir, .3); far = q.max - d - .3; if (far <= 0) break; }   // un ostacolo stretto: si guarda oltre
+      yield; }
+    if (!hit) { w.sdMuro = 'nessuno'; return; }
+    const nx = hit.n.x, nz = hit.n.z, L = Math.hypot(nx, nz) || 1, ox = nx / L, oz = nz / L, ax = -oz, az = ox, face = Math.atan2(-oz, -ox), px = hit.p.x + ox * .55, pz = hit.p.z + oz * .55;
+    const at = k => ({ x: px + ax * k, y: pz + az * k, face, h: null, place: w.spot && w.spot.place, kind: 'strada', sdZona: w.spot && w.spot.sdZona });
+    w.spot = at(0); w.sdMuro = { x: +hit.p.x.toFixed(2), z: +hit.p.z.toFixed(2), d: +hit.d.toFixed(1) };
+    (w.sdAlt || []).forEach(a => { if (a.off != null) a.spot = at(a.off); });
+  }
+  function* placeWallG0(w) {
     if (w.surf === 'auto') return placeVeh(w);
     if (!w.spot && w.anc && w.anc.k === 'muro') return placeAnchor(w);   // [graffiti] un lavoro salvato: torna dov'era
+    if (w.sdAnc && typeof StradaDipinta !== 'undefined') return StradaDipinta.piazza(w, T3(), R_());   // [stradadipinta] gli adesivi sui pali e dietro i cartelli: il posto è già noto, niente raggi
     const THREE = T3(), R = R_(), sp = w.spot; if (!sp) return false;
     const gh = R.groundH(sp.x, sp.y), list = cands(sp.x, sp.y); if (!list.length) return false;
     const d = new THREE.Vector3(Math.cos(sp.face), 0, Math.sin(sp.face)), sty = STYLES[w.style], base = w.sticker ? { W: .34, H: .24 } : { W: w.W0 || sty.W, H: w.H0 || sty.H };   // [graffiti3] la misura può venire dal sito (i verticali alti quanto la facciata)
@@ -64318,12 +64572,12 @@ var Writing = (function () {
     const n = new THREE.Vector3(hit.n.x, 0, hit.n.z).normalize(), r = new THREE.Vector3(n.z, 0, -n.x), c = hit.p.clone();
     const foot = sp.h != null ? null : footAt(c, n, W0, r);
     if (foot != null && c.y - H / 2 < foot + .12) c.y = foot + .12 + H / 2;   // mai sotto terra
-    const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: small ? .5 : .55 }); if (!fit) return false;
+    const fit = yield* fitWallG(c, n, W0, H, list, { foot, minK: w.sdMinK || (small ? .5 : .55) }); if (!fit) return false;   // [stradadipinta] il fondale si stringe fino al rettangolo libero più grande (w.sdMinK)
     w.W = fit.W; w.H = fit.H; w.gfxRect = { c: fit.c, n, r: fit.r, W: fit.W, H: fit.H, foot }; w.pos = { x: fit.c.x, y: fit.c.y, z: fit.c.z };
     w.sup = w.sup || surfOf(hit, fit.c.x - n.x * .3, fit.c.z - n.z * .3); w.eta = etaOf(w);
     // [writer] i muri sono a strati: le tag vanno sopra a tutto; un pezzo va sopra a uno di rango più basso (quasi sempre), sopra
     // a uno dello stesso rango a volte (è un crossaggio), sopra a uno più alto solo un toy, e di rado. Deciso dal seme: ricaricando, il muro è lo stesso
-    const under = SMALL.test(w.style) ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));
+    const under = SMALL.test(w.style) || w.sdStrato != null ? [] : overlapCheck(GFX.st, w).filter(o => !SMALL.test(o.style));   // [stradadipinta] il muro a strati deciso: niente regola del rango
     if (under.length) { const R = sty.rank, d0 = mulberry((w.seed || 1) ^ 0x5eed)(), toy = (w.q != null ? w.q : .7) < .35, top = Math.max(...under.map(o => STYLES[o.style].rank));
       const ok = top < R ? d0 < .8 : top === R ? d0 < .3 : toy && d0 < .12; if (!ok) { w.gfxRect = null; return false; }
       under.forEach(o => { o.covered = true; }); w.over = under.map(o => o.id); }
@@ -65162,7 +65416,7 @@ var Writing = (function () {
       if (w.surf === 'treno') { const tgt = trainTarget(w); if (!tgt) return false; GFX.works[w.id] = { tgt, art: art(w), drawn: 0 }; drawUpTo(w, GFX.works[w.id]); return true; }
       if (!w.gfxRect) return false;
       if (FIX2 && w.surf !== 'auto' && w.surf !== 'vagone') {   // [graffiti2] sui triangoli veri, subito (il disegno di Traccia è già pronto: non si rifà)
-        const THREE = T3(), A = A0 && A0.stages ? Object.assign({}, A0, { stages: A0.stages.slice() }) : art(w), layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+        const THREE = T3(), A = A0 && A0.stages ? Object.assign({}, A0, { stages: A0.stages.slice() }) : art(w), layer = stratoDi(w);
         let d = null; try { d = finisci(decalG(w.gfxRect, layer)); } catch (e) { console.warn('[Writing] decalcomania', e); }
         let geo = d && d.geo; if (!geo) { geo = new THREE.PlaneGeometry(w.gfxRect.W, w.gfxRect.H); geo.translate(0, 0, GAP + layer * .001); }
         const g = { art: A, drawn: 0 }; g.tgt = makeVeil2(w, A, geo, layer); GFX.works[w.id] = g; drawUpTo(w, g); return true;
@@ -65555,7 +65809,8 @@ var Writing = (function () {
   // Sul muro senza triangoli leggibili resta il piano (il riquadro l'hanno già verificato i raggi); per terra no: si riprova.
   function* piazzaG(w) {
     if (!w.gfxRect) { const ok = yield* placeWallG(w); if (!ok || !w.gfxRect) return false; }
-    const R = w.gfxRect, layer = Math.min(4, overlapCheck(GFX.st, w).filter(o => o.gfxRect).length);
+    const R = w.gfxRect, layer = stratoDi(w);
+    if (w.sdAnc) { const THREE = T3(), geo = new THREE.PlaneGeometry(R.W, R.H); geo.translate(0, 0, GAP * .5 + layer * .001); return { geo, layer, piano: true }; }   // [stradadipinta] sul palo e dietro il cartello: il piano, niente triangoli da cercare
     let d = yield* decalG(R, layer);
     if (d && d.geo) return { geo: d.geo, layer, cop: d.cop };
     // i dati dei raggi del tassello non arrivano (il telefono li tiene solo vicino): dopo quattro tentativi il piano verificato (la cottura o i raggi)
@@ -66573,6 +66828,344 @@ var TavolaUI = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = TavolaUI;
 </script>   <!-- [tavola2] il pannello della tavoletta dei graffiti: la tela grande, una barra a icone -->
+<script data-m="strada_dipinta">/* Porto Vecchio — [stradadipinta] LA STRADA DIPINTA: dove stanno i graffiti, i manifesti, gli adesivi e le tag che la città ha già
+   quando cominci (la storia dei muri), e come sono. Solo con lo stile E (?stile=E, o window.PV_STILE === 'E'); ?nostradadipinta lo spegne.
+   Senza lo stile E niente cambia: la storia dei muri resta quella di writer_vita.js (history) e dei tasselli cotti.
+
+   Il committente: «anche distribuzione graffiti, poster e sticker e tag» e «si deve vedere la cura per i singoli elementi e ambienti oltre
+   quella generale». Prima la vernice era una carta da parati: 1.856 lavori sparsi col peso dei ritrovi, 118 verticali sui fianchi dei
+   palazzi in tutta la città, tag e pezzi anche sulle piazze belle. Qui la distribuzione segue una città vera, A REGOLE (non coordinate a
+   mano: le vie cambiano, il disegno si adegua):
+   - IL CARATTERE DEL MURO (zonaSito): sottopasso, ferrovia e rilevato, il Muro, il porto e i magazzini, i vicoli e i retri, i ritrovi, le
+     vie di quartiere, il lungomare, le piazze e le facciate belle, la chiesa, il regime, la campagna. Lo decidono i pezzi della città
+     (W.pezzi: sottopassi, archi, magazzini, darsene, il muro del Garante, la chiesa...), i luoghi (G.PLACES), le vie (W.roads: i vicoli),
+     la larghezza davanti al muro (raggio sulla griglia) e la ferrovia (W.railCity).
+   - IL RITMO (ritmo): attorno a dove si sta (bar, sottopassi, scalinate, passaggi a livello, i luoghi del gioco) la vernice si addensa,
+     fra un posto e l'altro si calma: tratti tranquilli e punti fitti, mai la stessa densità per cento metri.
+   - LA GERARCHIA: pochi pezzi grandi e leggibili in fondo alle viste lunghe (FONDALI: il muro che chiude un corridoio dritto di 45 m e più,
+     misurato sulla griglia), throw-up e stencil nel mezzo, tante tag e adesivi piccoli.
+   - GLI STRATI E L'ETÀ: il pezzo vecchio sbiadito sotto le tag nuove, la toppa grigia di chi ha ripulito (sopra il pezzo o su una tag),
+     i manifesti a strati strappati sullo stesso punto, gli adesivi a grappolo sui pali dei cartelli, dietro i cartelli e accanto alle porte
+     ad altezza di mano (mai sulla porta: la porta si deve leggere).
+   - IL CONTENUTO: una scena di qui (CREW, SCRITTORI, MANIFESTI): le crew coi loro territori, pochi nomi che tornano, le serate, le band, le
+     feste e gli avvisi del porto. Niente marche vere, niente artisti veri.
+   - I COLORI: dalla tavolozza unica della bibbia (writer_arte.js tavolozzaE, w.sdPal), mai vermiglio, limone, allarme.
+   Costo: i lavori sono gli stessi oggetti di sempre (l'atlante: due disegni per tutti i lavori finiti; il disegnatore a parte); qui solo la
+   scelta, una volta all'avvio (qualche decina di ms), e gli adesivi sui pali si piazzano senza raggi (piazza). STRADA_DIPINTA.md. */
+var StradaDipinta = (function () {
+  'use strict';
+  const G = typeof Game !== 'undefined' ? Game : require('./game.js');
+  const WRf = () => (typeof Writing !== 'undefined' ? Writing : null), WAf = () => (typeof WriterArte !== 'undefined' ? WriterArte : null);
+  const TS = G.TS, GW = G.GW, GH = G.GH, T = G.T || (G.MAP.world && G.MAP.world.T), hyp = Math.hypot, clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const Q = typeof location !== 'undefined' ? location.search : '';
+  const SPENTO = /[?&]nostradadipinta\b/.test(Q);
+  function attiva() {
+    if (SPENTO) return false;
+    if (typeof window === 'undefined') return !!((typeof global !== 'undefined' && global.PV_STRADA_DIPINTA) || (typeof process !== 'undefined' && process.env && process.env.PV_STRADA_DIPINTA === '1'));
+    if (typeof StileE !== 'undefined') return StileE.on;   // [integra1] lo stile E del caricamento (anche quello per difetto): coi tasselli rimodella i lavori cotti
+    return /[?&]stile=e\b/i.test(Q) || window.PV_STILE === 'E';
+  }
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const W0 = () => G.MAP.world || {};
+  const tileV = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx < 0 || ty < 0 || tx >= GW || ty >= GH ? -1 : G.MAP.grid[ty * GW + tx]; };
+  const walk = (x, y) => { const tx = Math.floor(x / TS), ty = Math.floor(y / TS); return tx >= 0 && ty >= 0 && tx < GW && ty < GH && G.walkT(tx, ty); };
+  const citta = (x, y) => { const M = G.MAP, tx = Math.floor(x / TS), ty = Math.floor(y / TS); return !M.zone || !M.Z || (tx >= 0 && ty >= 0 && tx < GW && ty < GH && M.zone[ty * GW + tx] === M.Z.CITTA); };
+  const dSeg = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-9, t = clamp(((px - ax) * dx + (py - ay) * dy) / L2, 0, 1); return hyp(ax + dx * t - px, ay + dy * t - py); };
+  const dLine = (px, py, P) => { let b = 1e9; for (let k = 0; k + 1 < P.length; k++) b = Math.min(b, dSeg(px, py, P[k][0], P[k][1], P[k + 1][0], P[k + 1][1])); return b; };
+
+  // ================= IL CARATTERE DEI MURI =================
+  // ogni zona: dens = lavori ogni 10 m di muro libero (al ritmo 1); g / m = quota dei lavori grandi e medi (il resto: piccoli); buff = la toppa
+  // grigia; man = manifesti; ade = adesivi; eta = l'età della vernice (0 nuova, 1 sbiadita); grandi / medi = gli stili di quella zona
+  const ZONE = {
+    sottopasso: { nome: 'sottopassi e Glacis', dens: 12, g: .16, m: .34, buff: .35, man: .3, ade: .5, eta: .5, grandi: ['pezzo', 'pezzo', 'burner', 'calli'], medi: ['throw', 'throw', 'estintore', 'gotico', 'stencil', 'scritta'] },
+    ferrovia: { nome: 'ferrovia e rilevato', dens: 14, g: .24, m: .36, buff: .3, man: .15, ade: .3, eta: .55, grandi: ['pezzo', 'burner', 'pezzo', 'rullo'], medi: ['throw', 'throw', 'estintore', 'scritta'] },
+    muro: { nome: 'il Muro', dens: 14, g: .34, m: .3, buff: .45, man: .2, ade: .25, eta: .45, grandi: ['pezzo', 'burner', 'murale', 'calli', 'pezzo'], medi: ['scritta', 'throw', 'stencil', 'scritta'] },
+    porto: { nome: 'porto e magazzini', dens: 12, g: .18, m: .34, buff: .22, man: .35, ade: .35, eta: .65, grandi: ['pezzo', 'rullo', 'murale', 'pezzo'], medi: ['throw', 'stencil', 'scritta', 'throw'] },
+    vicolo: { nome: 'vicoli e retri', dens: 7, g: .05, m: .3, buff: .16, man: .3, ade: .55, eta: .5, grandi: ['pezzo'], medi: ['throw', 'stencil', 'gotico', 'throw'] },
+    ritrovo: { nome: 'bar e ritrovi', dens: 6, g: .07, m: .26, buff: .12, man: .5, ade: .6, eta: .35, grandi: ['pezzo', 'calli'], medi: ['throw', 'stencil', 'throw'] },
+    via: { nome: 'vie di quartiere', dens: 2.2, g: .04, m: .24, buff: .18, man: .35, ade: .4, eta: .5, grandi: ['pezzo'], medi: ['throw', 'stencil'] },
+    lungomare: { nome: 'lungomare', dens: 2, g: .06, m: .26, buff: .12, man: .5, ade: .45, eta: .6, grandi: ['pezzo'], medi: ['throw', 'stencil'] },
+    piazza: { nome: 'piazze e facciate belle', dens: .35, g: 0, m: 0, buff: 0, man: .7, ade: .2, eta: .1, grandi: [], medi: [] },
+    sacro: { nome: 'chiesa e santuario', dens: .25, g: 0, m: 0, buff: 0, man: 0, ade: 0, eta: .2, grandi: [], medi: [] },
+    regime: { nome: 'palazzi del regime', dens: .3, g: 0, m: 0, buff: .7, man: .1, ade: 0, eta: .2, grandi: [], medi: [] },
+    fuori: { nome: 'campagna e frazioni', dens: .9, g: .08, m: .3, buff: .05, man: .3, ade: .2, eta: .75, grandi: ['pezzo'], medi: ['throw', 'stencil'] },
+  };
+  const CALDE = { sottopasso: 1, ferrovia: 1, muro: 1, porto: 1, vicolo: 1, ritrovo: 1 };
+  const P_PORTO = ['calata', 'scalo', 'cantiere', 'magazzino', 'marina', 'molo', 'pontile', 'officina', 'molo_levante', 'deposito_n', 'deposito_s'];
+  const P_COLD = ['governo', 'ministero', 'garante', 'archivio', 'commissariato', 'rocca', 'caserma_p', 'piazza_gov', 'cultura'];
+  const P_SACRO = ['chiesa', 'santuario', 'chiesa_sg'];
+  const P_HOT = ['bar', 'osteria', 'flipper', 'disco', 'cinema', 'video', 'sirena', 'gelateria', 'chiosco', 'discarica', 'varco'];
+  const P_NOBILE = ['piazza', 'fontana', 'fiori', 'miramare', 'biblioteca', 'teatro'];
+  const USO_HOT = { bar: 1, pub: 1, circolo: 1, trattoria: 1 };
+  const LUNGO = /lung|spianata|lido|passeggiata|marina/i;
+  let F = null;
+  function feat() {
+    if (F) return F; const W = W0(), P = G.PLACES || {}, pz = W.pezzi || [], at = (ids) => ids.map(id => P[id]).filter(Boolean).map(q => [q.x, q.y]);
+    const tipi = re => pz.filter(p => re.test(p.tipo)).map(p => [p.x, p.y, p]);
+    F = {
+      sotto: tipi(/^(sottopasso|arco_sottopasso|ponte_arco|passaggio_livello)$/),
+      porto: tipi(/^(magazzini_volta|darsena|scalo_alaggio|gru_porto|molo_vecchio|bitta|opificio)$/).concat(at(P_PORTO)),
+      muro: pz.filter(p => p.tipo === 'muro_garante').map(p => { const L = (p.opz && p.opz.L) || 10, c = Math.cos(p.rot || 0), s = Math.sin(p.rot || 0); return [p.x - c * L / 2, p.y - s * L / 2, p.x + c * L / 2, p.y + s * L / 2]; }),
+      regime: tipi(/^(caserma|corpo_rocca|mastio|torre_littoria|porta_monumentale|torrione|bastione)$/).concat(at(P_COLD)),   // le torri di guardia no: stanno sul Muro, che è la hall of fame
+      sacro: tipi(/^(facciata_chiesa|campanile)$/).concat(at(P_SACRO)), edicola: tipi(/^edicola_votiva$/),
+      nobile: tipi(/^(fontana)$/).concat(at(P_NOBILE)),
+      hot: at(P_HOT).concat((G.BUILDINGS || []).filter(b => USO_HOT[b.use]).map(b => [b.cx != null ? b.cx : (b.x + b.w / 2) * TS, b.cy != null ? b.cy : (b.y + b.h / 2) * TS])),
+      sosta: tipi(/^(scalinata|gradone|sottopasso|arco_sottopasso|passaggio_livello|stazione|fontana)$/).map(q => [q[0], q[1]]).concat((W.luoghi || []).filter(l => l && l.x != null).map(l => [l.x, l.y])),
+      rail: Array.isArray(W.railCity) ? W.railCity : null,
+      vicoli: (W.roads || []).filter(r => r.kind === 'vicolo' && r.pts && r.pts.length > 1),
+      lungo: (W.roads || []).filter(r => r.pts && r.pts.length > 1 && LUNGO.test(r.name || '') && r.kind !== 'vicolo'),
+    };
+    F.hotAll = F.hot.concat(F.sotto.map(q => [q[0], q[1]]), F.sosta, tipi(/^(magazzini_volta|darsena|scalo_alaggio|gru_porto)$/).map(q => [q[0], q[1]]));   // dove si sta: anche le banchine dei magazzini
+    return F;
+  }
+  const near = (L, x, y, r) => L.some(q => hyp(q[0] - x, q[1] - y) < r);
+  // la larghezza libera davanti al muro (sulla griglia, a passi di mezzo metro) e quanto corre dritta la vista (il fondale)
+  function davanti(x, y, ox, oy, max) { let d = 0; for (; d < max; d += .5) if (!walk(x + ox * d, y + oy * d)) break; return d; }
+  function lato(x, y, ox, oy) { const ax = -oy, ay = ox; return davanti(x, y, ax, ay, 20) + davanti(x, y, -ax, -ay, 20); }
+  function vista(x, y, ox, oy) {   // un corridoio dritto davanti al muro: lungo, e stretto ai lati (una via, non una piazza)
+    const L = davanti(x, y, ox, oy, 160); if (L < 40) return 0;
+    for (const t of [.3, .55, .8]) { const px = x + ox * L * t, py = y + oy * L * t; if (lato(px, py, ox, oy) > 22) return 0; }
+    return L;
+  }
+  // la zona di un punto del muro (x, y dove sta chi dipinge, out verso la strada); kind: il tipo di sito di writer_vita.js
+  function zonaPunto(x, y, ox, oy, kind) {
+    const f = feat();
+    if (!citta(x, y)) return 'fuori';
+    if (kind === 'muro' || f.muro.some(s => dSeg(x, y, s[0], s[1], s[2], s[3]) < 6)) return 'muro';
+    if (kind === 'ponte' || near(f.sotto, x, y, 13)) return 'sottopasso';
+    if (kind === 'ferrovia' || kind === 'rilevato' || (f.rail && dLine(x, y, f.rail) < 11)) return 'ferrovia';
+    if (near(f.regime, x, y, 18)) return 'regime';
+    if (near(f.sacro, x, y, 16) || near(f.edicola, x, y, 4)) return 'sacro';
+    const v = tileV(x + ox * 1.2, y + oy * 1.2);
+    if (near(f.porto, x, y, 22) || v === T.QUAY || v === T.PIER) return 'porto';
+    if (v === T.PIAZZA || near(f.nobile, x, y, 16)) return 'piazza';
+    if (f.lungo.some(r => dLine(x, y, r.pts) < (r.w || 6) / 2 + 4)) return 'lungomare';
+    if (near(f.hot, x, y, 13)) return 'ritrovo';
+    const wd = ox || oy ? davanti(x, y, ox, oy, 12) : 12;
+    if (wd < 6.5 || f.vicoli.some(r => dLine(x, y, r.pts) < (r.w || 3) / 2 + 2.5)) return 'vicolo';
+    return 'via';
+  }
+  // i fondali delle vie: ogni via (W.roads) spezzata nei suoi tratti dritti (tutti i punti entro 1,6 m dalla corda); un tratto di 45 m e più
+  // guarda, ai due capi, oltre l'incrocio fino alla prima casa (al più 40 m): quel muro chiude la vista. Il sito del fondale sta davanti a
+  // quel muro, girato verso chi arriva; i raggi del gioco trovano poi la facciata vera e il rettangolo libero (fuori da porte e finestre)
+  function fondaliStrade() {
+    const out = [], W = W0();
+    (W.roads || []).forEach(r => { const P = r.pts; if (!P || P.length < 2 || !/^(citta|vicolo|strada)$/.test(r.kind)) return;
+      let i0 = 0;
+      while (i0 < P.length - 1) {
+        let j = i0 + 1;
+        for (; j < P.length; j++) { const ax = P[i0][0], ay = P[i0][1], bx = P[j][0], by = P[j][1]; let ok = true; for (let k = i0 + 1; k < j; k++) if (dSeg(P[k][0], P[k][1], ax, ay, bx, by) > 1.6) { ok = false; break; } if (!ok) break; }
+        const e = j - 1, L = hyp(P[e][0] - P[i0][0], P[e][1] - P[i0][1]);
+        if (L >= 45) [[P[e], P[i0]], [P[i0], P[e]]].forEach(([E, A]) => { const ux = (E[0] - A[0]) / L, uy = (E[1] - A[1]) / L; let d = 0;
+          for (; d < 40; d += .25) { const v = tileV(E[0] + ux * d, E[1] + uy * d); if (v === T.BLD) break; if (v === T.WATER || v === T.CLIFF || v < 0) { d = 99; break; } }
+          if (d >= 40) return; const x = E[0] + ux * (d - .6), y = E[1] + uy * (d - .6); if (!walk(x, y)) return;
+          out.push({ x, y, face: Math.atan2(uy, ux), kind: 'strada', bi: -1, len: 6, out: [-ux, -uy], along: [uy, -ux], vista: Math.round(L + d), via: r.name || r.id, fondale: true, corsa: { ex: E[0], ey: E[1], ux, uy, max: Math.min(60, d + 20) } }); });
+        i0 = Math.max(e, i0 + 1);
+      } });
+    return out;
+  }
+  const zonaSito = s => s.sdZona || (s.sdZona = zonaPunto(s.x, s.y, s.out ? s.out[0] : 0, s.out ? s.out[1] : 0, s.kind));
+  // il ritmo: vicino a dove si sta la vernice si addensa (fino a ×2), fra un posto e l'altro si calma (×.35); più un campo lento che
+  // rompe la regolarità (la stessa via non è uguale per cento metri)
+  function ritmo(x, y) {
+    const f = feat(); let m = 0; for (const q of f.hotAll) { const d2 = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (d2 < 900) m = Math.max(m, Math.exp(-d2 / 162)); }
+    const lento = .5 + .5 * Math.sin(x * .061 + 1.3) * Math.sin(y * .053 + .4);
+    return .3 + 1.7 * m * (.75 + .25 * lento) + .25 * lento;
+  }
+
+  // ================= LA SCENA DI QUI =================
+  // le crew coi loro territori; i nomi che tornano (i king di ogni crew li vedi in più punti della città, mai due volte nella stessa vista);
+  // le crew sciolte restano nei pezzi vecchi, sbiaditi
+  const CREW = {
+    BDS: { nome: 'Banda della Scogliera', casa: ['porto', 'lungomare'], scrittori: ['MURE', 'GOZO', 'SALE', 'BRUMA'] },
+    TNT: { nome: 'Treni Notte Tunnel', casa: ['ferrovia', 'sottopasso'], scrittori: ['TREK', 'NAPO', 'FUMO', 'RIVA'] },
+    PVK: { nome: 'Porto Vecchio Kings', casa: ['vicolo', 'ritrovo', 'via'], scrittori: ['CIAPA', 'ZENA', 'VERA', 'MOLO'] },
+    RSC: { nome: 'Risacca', casa: ['muro'], scrittori: ['SUBA', 'KILO', 'MAREA', 'ONDA'] },
+    KML: { nome: 'Camalli', casa: ['porto', 'ferrovia'], scrittori: ['ZULU', 'TOKE', 'ORZO', 'BITTA'] },
+    TOY: { nome: 'i ragazzini', casa: ['via', 'vicolo', 'lungomare'], scrittori: ['PIX', 'GEKO', 'LUPO', 'TEO'] },
+  };
+  const VECCHI = [['RENZ', 'OGS'], ['MASK', 'OGS'], ['ASMA', 'OGS'], ['NEMO', 'OGS'], ['KAOS', 'FLM'], ['DOGE', 'FLM'], ['NEVA', 'SPK'], ['RUGA', 'SPK']];   // le crew sciolte: solo pezzi vecchi
+  const RE = { porto: ['BDS', 'KML', 'BDS'], lungomare: ['BDS', 'TOY'], ferrovia: ['TNT', 'TNT', 'KML'], sottopasso: ['TNT', 'PVK', 'TNT'], muro: ['RSC', 'RSC', 'PVK'], vicolo: ['PVK', 'PVK', 'TOY'], ritrovo: ['PVK', 'BDS', 'TOY'], via: ['PVK', 'TOY', 'TNT'], piazza: ['TOY'], sacro: ['TOY'], regime: ['RSC'], fuori: ['TNT', 'TOY'] };
+  const LOGHI = ['RADIO LUNA', 'CASSA MAREA', 'JAM GLACIS', 'SCOGLIO', 'FUORI ORARIO', 'TONNARA'];
+  // i manifesti: t titolo (\n a capo), s sotto, d data; k 'cerco' è il foglietto a mano con le linguette; per zona
+  const MAN = {
+    serate: [{ t: 'DUB AL MOLO', s: 'SOUND: CASSA MAREA', d: 'SABATO DALLE 22' }, { t: 'I GABBIANI\nELETTRICI', s: 'LIVE AL BAR SIRENA', d: 'VENERDI ORE 22' }, { t: 'CANTINA\nPUNK', s: 'MUFFA - RUGGINE - CORTOCIRCUITO', d: 'GIOVEDI' },
+      { t: 'BALERA\nLUNA', s: 'LISCIO E MAZURCHE', d: 'DOMENICA ORE 21' }, { t: 'RADIO LUNA', s: 'FREQUENZA LIBERA 98.4', d: 'TUTTE LE NOTTI' }, { t: 'NOTTE\nFUNK', s: 'DISCOTECA LUNA', d: 'SABATO' }],
+    strada: [{ t: 'JAM AL\nGLACIS', s: 'BOMBOLETTE E GIRADISCHI', d: 'SABATO DALLE 15' }, { t: 'TORNEO DI\nSKATE', s: 'SPIAZZO DELLA STAZIONE', d: 'DOMENICA' }, { t: 'MERCATINO\nDEL BARATTO', s: 'VICO DEL POZZO', d: 'OGNI PRIMO SABATO' }],
+    porto: [{ t: 'AVVISO AI\nPESCATORI', s: 'DIVIETO DI ORMEGGIO CALATA EST', d: 'CAPITANERIA' }, { t: 'SAGRA\nDELL\'ACCIUGA', s: 'CALATA DEL PORTO', d: '14 - 15 AGOSTO' }, { t: 'PALIO\nDEI GOZZI', s: 'MARINA DEL PORTO VECCHIO', d: 'DOMENICA ORE 10' },
+      { t: 'CERCASI MOZZO', s: 'PESCHERECCIO SANTA RITA', d: '23 17', k: 'cerco' }, { t: 'VENDESI GOZZO', s: '5 METRI, CHIEDERE DI NINO', d: '41 08', k: 'cerco' }],
+    vicolo: [{ t: 'LEZIONI DI\nCHITARRA', s: 'VICO DEL POZZO 3', d: '12 90', k: 'cerco' }, { t: 'SMARRITO\nCANE TOBIA', s: 'MACCHIA BIANCA', d: '35 22', k: 'cerco' }, { t: 'AFFITTASI\nCANTINA', s: 'ASCIUTTA', d: '17 64', k: 'cerco' }],
+    piazza: [{ t: 'FESTA DI\nSAN ROCCO', s: 'PROCESSIONE E BANDA', d: '16 AGOSTO' }, { t: 'CINEMA\nASTOR', s: 'ULTIMA PRIMA DELLA STAGIONE', d: 'GIOVEDI ORE 21' }, { t: 'CORO\nDEL BORGO', s: 'CHIESA DI SAN ROCCO', d: 'SABATO ORE 18' }],
+  };
+  const MAN_Z = { porto: ['porto', 'serate'], lungomare: ['serate', 'porto'], ferrovia: ['strada', 'serate'], sottopasso: ['strada', 'serate'], muro: ['strada', 'serate'], vicolo: ['vicolo', 'serate'], ritrovo: ['serate', 'strada'], via: ['vicolo', 'serate'], piazza: ['piazza'], regime: ['piazza'], fuori: ['porto', 'serate'], sacro: ['piazza'] };
+
+  // ================= LA STORIA DEI MURI (stile E) =================
+  // ctx (da writer_vita.js): SITES, spotOf, ws (i writer NPC), MIND. I lavori sono quelli di sempre (writing.js addWork, writer_arte.js conceive);
+  // i campi sd* dicono al disegno la tavolozza (sdPal), l'età (sdEta), lo strato (sdStrato), i manifesti e gli adesivi del posto
+  const conta = { lavori: 0, zone: {}, livelli: {}, fondali: [], pali: 0, porte: 0 };
+  function scrittore(aka, crew, rng) { const h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1) * 31 + (aka.charCodeAt(2) || 7), WA = WAf(); const sk = crew === 'TOY' ? .15 + (h % 20) / 100 : .45 + (h % 45) / 100; return { aka, crew, skill: sk, dna: WA.dnaOf(h, sk, h % 14), hand: h * 13, h }; }
+  function storia(st, ctx) {
+    const WR = WRf(), WA = WAf(); if (!WR || !WA) return 0;
+    Object.assign(conta, { lavori: 0, zone: {}, livelli: {}, fondali: [], pali: 0, porte: 0 }); const T0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const rng = mulberry(0x5D1A7), pick = a => a[Math.floor(rng() * a.length)], now = st.t, SITES = ctx.SITES;
+    const made = [], big = [], fam = new Map();   // fam: aka:stile → posti (lo stesso pezzo non due volte nella stessa vista)
+    const ws = (ctx.ws || []).map(n => ({ n, wr: n.pop.writer }));
+    const chi = (z, vecchio) => { if (vecchio && rng() < .45) { const [a, c] = pick(VECCHI); return { wr: scrittore(a, c, rng) }; }
+      const cr = pick(RE[z] || RE.via), vivi = ws.filter(o => o.wr && o.wr.crew === cr); if (!vecchio && vivi.length && rng() < .5) { const o = pick(vivi); return { n: o.n, wr: o.wr }; }
+      return { wr: scrittore(pick(CREW[cr] ? CREW[cr].scrittori : CREW.PVK.scrittori), cr, rng) }; };
+    const visto = (aka, style, x, y, r) => (fam.get(aka + ':' + style) || []).some(q => hyp(q[0] - x, q[1] - y) < r);
+    function lavoro(sp, who, style, ex, liv) {
+      const wr = who.wr, seed = Math.floor(rng() * 1e9), z = sp.sdZona || 'via';
+      const sk = WA.conceive({ aka: wr.aka, crew: wr.crew, style, dna: wr.dna, seed, by: who.n ? who.n.id : 'old:' + wr.aka });
+      const w = Object.assign(sk, { by: who.n ? who.n.id : 'old', hand: wr.hand || seed, surf: 'muro', spot: sp, place: sp.place, prog: 1, done: true, old: true, sdPal: 1, sdZona: z, sdLiv: liv || 'piccolo' }, ex || {});
+      if (style === 'tag' || style === 'mtag') { w.tagK = .8 + rng() * .5; if (rng() < .25) w.sign = pick(WA.SIGNS); }
+      if (style === 'stencil') w.motifSeed = (wr.hand || seed) ^ 0x5a5a;
+      if (style === 'scritta') { w.kind = rng() < .5 ? 'politica' : pick(['amore', 'strada', 'ultras']); if (w.kind === 'strada') w.words = pick([wr.crew + ' IN CASA', 'ZONA ' + wr.crew, wr.crew + ' ' + wr.aka]); }
+      if ((style === 'rullo' || style === 'verticale') && rng() < .5) w.words = wr.crew;
+      if (style === 'burner' && rng() < .25) w.words = wr.crew;
+      if (w.sdEta == null) { const e = (ZONE[z] || ZONE.via).eta; w.sdEta = clamp(e * (.5 + rng() * .9), 0, .95); }
+      const dd = w.sdEta > .5 ? 60 + Math.floor(rng() * 600) : Math.floor(rng() * 60);
+      WR._.addWork(st, w); w.t0 = w.tDone = now - dd * 1440;
+      made.push(w); conta.lavori++; conta.zone[z] = (conta.zone[z] || 0) + 1; conta.livelli[w.sdLiv] = (conta.livelli[w.sdLiv] || 0) + 1;
+      const k = wr.aka + ':' + style; if (!fam.has(k)) fam.set(k, []); fam.get(k).push([sp.x, sp.y]);
+      return w;
+    }
+    const posto = (s, du, h) => Object.assign(ctx.spotOf(s, du, h), { sdZona: zonaSito(s) });
+    const largo = (x, y, r) => !big.some(q => hyp(q[0] - x, q[1] - y) < r);
+    const manifesti = (z, n, fresco) => { const L = []; for (let i = 0; i < n; i++) { const cat = pick(MAN_Z[z] || MAN_Z.via), f = Object.assign({}, pick(MAN[cat])); f.c = Math.floor(rng() * 10); L.push(f); } return { sdManifesti: L, sdFresco: !!fresco }; };
+    const adesivi = (z, n) => { const crs = (RE[z] || RE.via).concat(['PVK']); return { sdAdesivi: { n, nomi: crs.flatMap(c => (CREW[c] || CREW.PVK).scrittori.slice(0, 3)), crew: crs, loghi: LOGHI } }; };
+
+    // ---- 1. i fondali: il muro che chiude una vista lunga e dritta prende un pezzo grande, nuovo, leggibile (uno ogni 55 m al più) ----
+    const cand = [];
+    // il muro in fondo alla via: se lì c'è un tratto di muro libero (un sito, niente porte né finestre) si prende quello, se no la facciata
+    // vera (il pezzo diventa un throw-up grande, che sta fra le finestre)
+    fondaliStrade().forEach(f => { let s = f; const sv = SITES.find(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && hyp(q.x - f.x, q.y - f.y) < 9 && q.out[0] * f.out[0] + q.out[1] * f.out[1] > .7 && (q.len || 0) >= 4);
+      if (sv) s = Object.assign(sv, { vista: f.vista, via: f.via, corsa: f.corsa }); else f.facciata = true;
+      const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime') return; cand.push({ s, v: s.vista + 30, z }); });   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
+    SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare' && z !== 'fuori') return;
+      const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) { if (!s.corsa) s.corsa = { ex: s.x + s.out[0] * 12, ey: s.y + s.out[1] * 12, ux: -s.out[0], uy: -s.out[1], max: 30 }; cand.push({ s, v, z }); } });   // anche qui il muro vero lo trova il raggio lungo il corridoio
+    cand.sort((a, b) => b.v - a.v);
+    // le alternative del fondale, in ordine (writing.js placeWallG le prova finché una entra): (a) il verticale a rullo, o la calligrafia alta,
+    // fra due colonne di finestre (a passi di 1,6 m lungo la facciata); (b) il pezzo basso sulla fascia del pianterreno, sotto i davanzali del
+    // primo piano (1,35 m dal suolo, alto un metro); (c) il muro cieco di lato più vicino al fondo che si vede venendo dalla via (un sito
+    // girato verso chi arriva, entro 9 m dall'asse e 30 m dal fondo); (d) il muro dei manifesti a strati, ad altezza d'occhio
+    function altFondale(s, sp0, z, who) {
+      const A = s.along || [0, 1], u = [Math.cos(s.face), Math.sin(s.face)], at = k => ({ x: sp0.x + A[0] * k, y: sp0.y + A[1] * k, face: sp0.face, h: null, place: sp0.place, kind: 'strada', sdZona: z }), alt = [];
+      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'a', style: 'throw', W0: 3.4, H0: 1.6, hRel: 1.6, spot: at(k), off: k });   // il throw-up grande, basso: si legge da lontano
+      for (const k of [0, -1.6, 1.6, -3.2, 3.2]) alt.push({ k: 'a', style: 'verticale', W0: 1.3, H0: 4.4, hRel: 3.4, spot: at(k), off: k });
+      for (const k of [0, -2.4, 2.4]) alt.push({ k: 'a', style: 'gotico', W0: 1.2, H0: 2.6, hRel: 2.9, spot: at(k), off: k });
+      for (const k of [0, -3, 3]) alt.push({ k: 'b', style: 'pezzo', W0: 4.2, H0: 1.05, hRel: 1.35, spot: at(k), off: k });
+      for (const k of [0, -2.5, 2.5]) alt.push({ k: 'b', style: 'throw', W0: 2.4, H0: 1.05, hRel: 1.3, spot: at(k), off: k });
+      SITES.filter(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && (q.len || 0) >= 3 && q.out[0] * u[0] + q.out[1] * u[1] < -.3).map(q => { const dx = q.x - s.x, dy = q.y - s.y; return { q, t: dx * u[0] + dy * u[1], l: Math.abs(-dx * u[1] + dy * u[0]) }; })
+        .filter(o => o.t > -30 && o.t < 3 && o.l < 9).sort((a, b) => Math.abs(a.t) - Math.abs(b.t)).slice(0, 2)
+        .forEach(o => { const q = o.q, big = (q.len || 0) >= 5.5; alt.push({ k: 'c', style: big ? 'pezzo' : 'throw', W0: big ? Math.min(q.len - .6, 4.8) : 2.6, H0: big ? Math.min(q.len - .6, 4.8) * .42 : 1.25, spot: Object.assign(posto(q, 0, null), { h: null }) }); });
+      for (const k of [0, -2, 2]) alt.push({ k: 'd', style: 'manifesto', W0: 1.9, H0: 1.5, spot: at(k), off: k, sdManifesti: [0, 1, 2].map(() => Object.assign({ c: Math.floor(rng() * 10) }, pick(MAN[pick(MAN_Z[z] || MAN_Z.via)]))) });
+      return alt;
+    }
+    const FOND = [];
+    for (const c of cand) { if (FOND.some(o => { const d = hyp(o.s.x - c.s.x, o.s.y - c.s.y); return d < 18 || (d < 55 && Math.cos(o.s.face - c.s.face) > .3); })) continue;   /* due fondali vicini solo se si guardano da parti opposte (due viste diverse) */ FOND.push(c); if (FOND.length >= 16) break; }
+    FOND.forEach(c => { const s = c.s, z = c.z, len = s.len || 6; let who = chi(z, false); for (let k = 0; k < 6 && (visto(who.wr.aka, 'throw', s.x, s.y, 45) || visto(who.wr.aka, 'pezzo', s.x, s.y, 45)); k++) who = chi(z, false);
+      const style = s.facciata ? 'throw' : len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
+      const W0 = style === 'throw' ? 3.2 : Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : style === 'throw' ? 1.5 : W0 * .4;
+      const sp0 = posto(s, 0, null), alt = altFondale(s, sp0, z, who);
+      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: alt, sdRun: s.corsa, sdMinK: .5 }, 'fondale');
+      s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
+
+    // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----
+    // con la storia cotta (i tasselli: rimodella) i muri e i palazzi li hanno già i lavori cotti: qui solo fondali, porte e pali
+    if (!ctx.cotti) SITES.forEach(s => {
+      if (s.kind === 'heaven' || s.kind === 'facciata' || s.sdFondale) return;
+      const z = zonaSito(s), Z = ZONE[z] || ZONE.via, len = s.len || 4, rt = ritmo(s.x, s.y), att = Z.dens * len / 10 * rt;
+      let n = Math.floor(att + rng()); if (n <= 0) return;
+      // il muro vissuto: il pezzo vecchio sbiadito (a volte con la toppa grigia sopra), le tag nuove addosso, gli adesivi, i manifesti a strati
+      if (z in CALDE && rt > 1.1 && len >= 5 && rng() < .55 && largo(s.x, s.y, 4)) {
+        const who = chi(z, true), du = (rng() - .5) * Math.max(0, len - 5), sp = posto(s, du, null), style = pick(Z.grandi.length ? Z.grandi : ['throw']);
+        if (!visto(who.wr.aka, style, sp.x, sp.y, 45)) {
+          const ex = { sdEta: .7 + rng() * .2, sdStrato: 0 }; if (rng() < Z.buff * 1.4) { const a = rng() * .4, b = a + .3 + rng() * .3; ex.sdToppa = [a, .05 + rng() * .2, Math.min(.98, b), .75 + rng() * .2, pick(['#A89C92', '#B4ABA0', '#9C968E', '#C2B8A8'])]; }
+          lavoro(sp, who, style, ex, 'vissuto'); big.push([sp.x, sp.y]);
+          const nt = 3 + Math.floor(rng() * 4); for (let i = 0; i < nt; i++) lavoro(posto(s, du + (rng() - .5) * 4, null), chi(z, false), rng() < .6 ? 'tag' : 'mtag', { sdEta: rng() * .25, sdStrato: 1 }, 'piccolo');
+          if (rng() < Z.ade) lavoro(posto(s, du + (rng() - .5) * 3, null), chi(z, false), 'adesivi', Object.assign({ sdEta: .2, sdStrato: 1 }, adesivi(z)), 'piccolo');
+          if (rng() < Z.man) lavoro(posto(s, du + (rng() < .5 ? -1 : 1) * (1.5 + rng()), null), chi(z, false), 'manifesto', Object.assign({ sdEta: .1, sdStrato: 1 }, manifesti(z, 2 + Math.floor(rng() * 2))), 'piccolo');
+          n -= 3; } }
+      for (let i = 0; i < n; i++) {
+        const r = rng(), tier = r < Z.g ? 'grande' : r < Z.g + Z.m ? 'medio' : 'piccolo';
+        let style;
+        if (tier === 'grande') style = pick(Z.grandi); else if (tier === 'medio') style = pick(Z.medi);
+        else { const q = rng(); style = q < .42 ? 'tag' : q < .64 ? 'mtag' : q < .64 + Z.ade * .35 ? 'adesivi' : q < .64 + Z.ade * .35 + Z.man * .3 ? 'manifesto' : q < .95 ? 'tag' : 'buff'; if (style === 'buff' && rng() > Z.buff * 2) style = 'mtag'; }
+        if (!style) continue;
+        if (tier === 'grande' && (len < (style === 'murale' || style === 'rullo' ? 8 : style === 'burner' ? 7 : 5))) style = pick(Z.medi.length ? Z.medi : ['throw']);
+        if (style === 'throw' && len < 3.5) style = 'tag';
+        const isBig = /^(pezzo|burner|murale|rullo|calli)$/.test(style), isMid = /^(throw|estintore|gotico|stencil|scritta)$/.test(style);
+        const du = (rng() - .5) * Math.max(0, len - (isBig ? 4.5 : isMid ? 2.6 : 1)), sp = posto(s, du, null);
+        if (isBig && !largo(sp.x, sp.y, 4.6 * (rt > 1.2 ? .7 : 1))) continue;
+        const who = chi(z, isBig && rng() < .5);
+        if ((isBig || isMid) && visto(who.wr.aka, style, sp.x, sp.y, isBig ? 45 : 25)) continue;
+        const ex = { sdStrato: isBig || isMid ? 0 : 1 };
+        if (style === 'adesivi') Object.assign(ex, adesivi(z));
+        if (style === 'manifesto') Object.assign(ex, manifesti(z, 1 + Math.floor(rng() * 2.4), z === 'piazza'));
+        if (style === 'buff') ex.sdSotto = pick(CREW[pick(RE[z] || RE.via)].scrittori);
+        if (style === 'rullo') ex.W0 = Math.max(5, Math.min(9, len - .5));
+        lavoro(sp, who, style, ex, tier); if (isBig) big.push([sp.x, sp.y]);
+      }
+    });
+    // ---- 3. i palazzi: i verticali e gli heaven spot solo dove la città è bombardata (le zone calde), uno per palazzo, fitti nei punti caldi ----
+    const pal = new Set();
+    if (!ctx.cotti) SITES.forEach(s => { if ((s.kind !== 'facciata' && s.kind !== 'heaven') || pal.has(s.bi)) return; const z = zonaSito(s); if (!(z in CALDE)) return; const rt = ritmo(s.x, s.y);
+      if (rng() > (s.kind === 'facciata' ? .22 : .12) * rt) return; pal.add(s.bi);
+      let who = chi(z, rng() < .6); for (let k = 0; k < 6 && ['throw', 'pezzo', 'verticale', 'rullo', 'estintore'].some(t => visto(who.wr.aka, t, s.x, s.y, 30)); k++) who = chi(z, rng() < .6);
+      if (s.kind === 'facciata') { const style = rng() < .6 ? 'verticale' : rng() < .5 ? 'estintore' : s.len >= 8 ? 'rullo' : 'verticale'; const ex = style === 'verticale' ? { H0: s.Hv || 7, W0: 1.6 + rng() * .8 } : style === 'rullo' ? { W0: Math.max(5, Math.min(9, (s.len || 9) - .5)) } : {};
+        const h = style === 'estintore' ? (s.gh != null ? s.gh + 3.4 : null) : style === 'rullo' && s.top ? s.top - 1.4 : style === 'verticale' ? s.h : null;
+        lavoro(posto(s, 0, h), who, style, Object.assign(ex, { sdStrato: 0 }), 'medio'); }
+      else { const style = rng() < .5 ? 'throw' : s.len >= 7 && rng() < .4 ? 'rullo' : 'pezzo'; lavoro(posto(s, 0, style === 'rullo' ? s.h - .5 : s.h - .3), who, style, { sdStrato: 0 }, 'medio'); } });
+    // ---- 4. accanto alle porte, ad altezza di mano: un grappolo di adesivi o una tag a pennarello (mai sulla porta) ----
+    (G.BUILDINGS || []).forEach((b, bi) => { const d = b.door; if (!d) return; const x = (d[0] + .5) * TS, y = (d[1] + .5) * TS;
+      // la faccia della porta: la casella della porta sta fuori dalla casa, il muro è verso la casa
+      const cx = b.cx != null ? b.cx : (b.x + b.w / 2) * TS, cy = b.cy != null ? b.cy : (b.y + b.h / 2) * TS, dx = cx - x, dy = cy - y, ax = Math.abs(dx) > Math.abs(dy) ? Math.sign(dx) : 0, ay = ax ? 0 : Math.sign(dy);
+      if (!walk(x, y)) return; const z = zonaPunto(x, y, -ax, -ay, 'strada'), Z = ZONE[z] || ZONE.via; if (rng() > Z.ade * .5 * Math.min(1.4, ritmo(x, y))) return;
+      const sd = rng() < .5 ? -1 : 1, off = .95 + rng() * .3, sp = { x: x - ay * sd * off, y: y + ax * sd * off, face: Math.atan2(ay, ax), h: null, place: '', kind: 'porta', sdZona: z };
+      const st0 = rng() < .7 ? 'adesivi' : 'mtag'; lavoro(sp, chi(z, false), st0, Object.assign({ sdStrato: 1, W0: .42, H0: .5, sdEta: .3 * rng() }, st0 === 'adesivi' ? adesivi(z, 4 + Math.floor(rng() * 4)) : {}), 'porta'); conta.porte++; });
+    // ---- 5. i pali dei cartelli: una striscia di adesivi a mano d'uomo; dietro il cartello (se il retro è libero) un grappolo ----
+    // i pali li calcola render.js all'avvio (Segnaletica.piano, ~1 s): se non ci sono ancora non si chiamano da qui (sarebbe un compito lungo), si saltano
+    const SG = W0().segnaletica, SALTA = typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA;
+    if (SG && SG.pali) SG.pali.forEach(p => { if (p.tipo === 'pannello' || p.muro) return; if (SALTA && SALTA.has('p' + Math.round(p.x * 10) + ',' + Math.round(p.y * 10))) return;
+      const z = zonaPunto(p.x, p.y, 0, 0, 'palo'), Z = ZONE[z] || ZONE.via; if (rng() > Math.min(.95, (Z.ade + .1) * ritmo(p.x, p.y))) return;
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), sp = { x: p.x, y: p.y, face: 0, h: null, place: '', kind: 'palo', sdZona: z }, R = p.tipo === 'indicazioni' ? .045 : .03;
+      [1, -1].forEach(sg => { if (sg < 0 && rng() < .5) return; lavoro(sp, chi(z, false), 'adesivi', Object.assign({ sdStrato: 1, W0: R * 2.2, H0: .45, sdAnc: { k: 'palo', x: p.x, y: p.y, nx: fx * sg, nz: fz * sg, r: R, h: 1.15 + rng() * .35 } }, adesivi(z, 4 + Math.floor(rng() * 3))), 'palo'); conta.pali++; });
+      if (p.tipo === 'cartelli' && !p.plates.some(q => q.retro) && rng() < .6) lavoro(sp, chi(z, false), 'adesivi', Object.assign({ sdStrato: 1, W0: .42, H0: .32, sdAnc: { k: 'retro', x: p.x, y: p.y, nx: -fx, nz: -fz, r: -.026, h: 2.52 } }, adesivi(z, 5 + Math.floor(rng() * 4))), 'palo'); });
+    conta.ms = Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - T0);
+    return made.length;
+  }
+
+  // ================= CON I TASSELLI: LA STORIA COTTA, RIMODELLATA =================
+  // i lavori cotti (già sul loro muro, i raggi fatti in cottura) sono quelli che funzionavano: si tengono, ma si diradano dove la città
+  // non dipinge (piazze, chiesa, regime, i verticali fuori dalle zone calde), prendono la tavolozza e l'età del loro posto; poi si aggiungono
+  // quelli nuovi della strada dipinta che non chiedono raggi (gli adesivi sui pali) e quelli a sito (fondali, muri vissuti), piazzati quando ci passi
+  const TIENI = { muro: 1, sottopasso: 1, ferrovia: 1, porto: .85, vicolo: .7, ritrovo: .75, via: .35, lungomare: .3, piazza: .05, sacro: .02, regime: .04, fuori: .4 };
+  function rimodella(st, L) {
+    const rng = mulberry(0xC077), out = [];
+    L.forEach(o => { const R = o.r; if (!R || !R.c || !R.n) { out.push(o); return; } const x = R.c[0], y = R.c[2], nx = R.n[0], ny = R.n[2], px = x + nx * .6, py = y + ny * .6, z = zonaPunto(px, py, nx, ny, o.spot && o.spot.kind);
+      let k = TIENI[z] != null ? TIENI[z] : .4; if (o.style === 'verticale' && !(z in CALDE)) k *= .15; if (/^(tag|mtag|adesivi)$/.test(o.style)) k *= clamp(ritmo(px, py), .4, 1.3);
+      if (rng() > k) return; o.sdPal = 1; o.sdZona = z; if (o.sdEta == null) o.sdEta = clamp((ZONE[z] || ZONE.via).eta * (.6 + rng() * .8), 0, .9); out.push(o); });
+    conta.cotti = { prima: L.length, dopo: out.length }; return out;
+  }
+
+  // ================= IL POSTO DEGLI ADESIVI SUI PALI (writing.js placeWallG, w.sdAnc) =================
+  // il palo è una retta verticale: il riquadro tangente sul lato che guarda la strada, alla quota della mano; dietro il cartello sul retro della
+  // piastra. Niente raggi: il palo c'è (segnaletica.js, gli stessi dati della grafica), il suolo lo dà render.js
+  function piazza(w, THREE, R) {
+    const a = w.sdAnc; if (!a || !THREE || !R || !R.groundH) return false;
+    if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.has('p' + Math.round(a.x * 10) + ',' + Math.round(a.y * 10))) return false;   // il palo tolto dalla pulizia
+    const gh = R.groundH(a.x, a.y), L = hyp(a.nx, a.nz) || 1, nx = a.nx / L, nz = a.nz / L, H = w.H0 || .4, W = w.W0 || .08;
+    const off = a.r + .002, c = new THREE.Vector3(a.x + nx * off, gh + a.h, a.y + nz * off);   // dietro il cartello r è negativo: la piastra sta 4,5 cm davanti al palo, il suo retro guarda indietro
+    const n = new THREE.Vector3(nx, 0, nz), r = new THREE.Vector3(n.z, 0, -n.x);
+    w.W = W; w.H = H; w.gfxRect = { c, n, r, W, H, foot: null }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = 'metallo'; w.eta = 0;
+    return true;
+  }
+  function misura() { return JSON.parse(JSON.stringify(conta)); }
+  return { attiva, fondaliStrade, zonaPunto, zonaSito, ritmo, vista, storia, rimodella, piazza, misura, ZONE, CREW, MAN, LOGHI, CALDE, feat };
+})();
+if (typeof module !== 'undefined') module.exports = StradaDipinta;
+</script>   <!-- [stradadipinta] la distribuzione dei graffiti, manifesti, adesivi e tag della città con ?stile=E (?nostradadipinta: spento) -->
 <script>/* Porto Vecchio — la vita dei writer (v7, «Writer»). I ragazzi della controcultura dipingono davvero, sotto i tuoi occhi.
    - I MURI DELLA CITTÀ (SITES): ogni facciata con la strada davanti offre muri da bombare; le facciate lunghe sono le
      hall of fame (le crew ci fanno le produzioni, un pezzo accanto all'altro); in cima ai palazzi con la scala di ferro
@@ -66848,6 +67441,9 @@ var WriterVita = (function () {
     if (denseAt(s.x, s.y)) h *= 2.5;
     return Math.min(h, 6); }
   // la distanza minima fra due lavori grandi, per stile (nelle zone calde si stringe)
+  // [stradadipinta] la storia dei muri della strada dipinta (?stile=E): i siti, il posto di un lavoro, i writer di adesso
+  const SDon = () => typeof StradaDipinta !== 'undefined' && StradaDipinta.attiva();
+  const sdCtx = st => ({ SITES, spotOf, ws: WR.S(st).writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer) });
   const MIND = { pezzo: 4.2, burner: 5.5, mostro: 3.5, murale: 7, rullo: 7, calli: 4, verticale: 2.4, estintore: 3, wholecar: 9 };
   function history(st) {
     const v = V(st); if (v.hist) return;
@@ -66865,8 +67461,12 @@ var WriterVita = (function () {
       // come senza tasselli. ?nofixgraffiti2 com'era
       const F2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
       if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - (F2w && v.histT2 ? v.histT2 : v.histT) < 60000) return;
-      if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
+      if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true;
+        // [stradadipinta] con lo stile E i lavori cotti si diradano e prendono la tavolozza del loro posto, poi si aggiunge la strada dipinta
+        if (SDon()) { v.cotti = WR._.cotti(st, StradaDipinta.rimodella(st, L)); try { StradaDipinta.storia(st, Object.assign(sdCtx(st), { cotti: true })); } catch (e) { console.warn('[stradadipinta]', e); } return; }
+        v.cotti = WR._.cotti(st, L); return; } }
     v.hist = true;
+    if (SDon()) { try { StradaDipinta.storia(st, sdCtx(st)); return; } catch (e) { console.warn('[stradadipinta] la storia dei muri come prima:', e); } }   // [stradadipinta] ?stile=E: la distribuzione a regole (strada_dipinta.js)
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
     // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
     const pool = SITES.filter(s => (s.kind !== 'heaven' && s.kind !== 'facciata') || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);

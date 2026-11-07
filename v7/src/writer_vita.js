@@ -273,6 +273,9 @@ var WriterVita = (function () {
     if (denseAt(s.x, s.y)) h *= 2.5;
     return Math.min(h, 6); }
   // la distanza minima fra due lavori grandi, per stile (nelle zone calde si stringe)
+  // [stradadipinta] la storia dei muri della strada dipinta (?stile=E): i siti, il posto di un lavoro, i writer di adesso
+  const SDon = () => typeof StradaDipinta !== 'undefined' && StradaDipinta.attiva();
+  const sdCtx = st => ({ SITES, spotOf, ws: WR.S(st).writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer) });
   const MIND = { pezzo: 4.2, burner: 5.5, mostro: 3.5, murale: 7, rullo: 7, calli: 4, verticale: 2.4, estintore: 3, wholecar: 9 };
   function history(st) {
     const v = V(st); if (v.hist) return;
@@ -290,8 +293,12 @@ var WriterVita = (function () {
       // come senza tasselli. ?nofixgraffiti2 com'era
       const F2 = typeof location === 'undefined' || !/[?&]nofixgraffiti2\b/.test(location.search);
       if (L === undefined && (v.histT = v.histT || performance.now()) && performance.now() - (F2w && v.histT2 ? v.histT2 : v.histT) < 60000) return;
-      if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true; v.cotti = WR._.cotti(st, L); return; } }
+      if (Array.isArray(L) && WR._.cotti && !(F2 && !L.length)) { v.hist = true;
+        // [stradadipinta] con lo stile E i lavori cotti si diradano e prendono la tavolozza del loro posto, poi si aggiunge la strada dipinta
+        if (SDon()) { v.cotti = WR._.cotti(st, StradaDipinta.rimodella(st, L)); try { StradaDipinta.storia(st, Object.assign(sdCtx(st), { cotti: true })); } catch (e) { console.warn('[stradadipinta]', e); } return; }
+        v.cotti = WR._.cotti(st, L); return; } }
     v.hist = true;
+    if (SDon()) { try { StradaDipinta.storia(st, sdCtx(st)); return; } catch (e) { console.warn('[stradadipinta] la storia dei muri come prima:', e); } }   // [stradadipinta] ?stile=E: la distribuzione a regole (strada_dipinta.js)
     const W = WR.S(st), N = 1350, now = st.t;   // [graffiti3] era 820: più storia, soprattutto nelle zone calde
     // [ordine1] i muri pesati: dove si dipinge davvero (ritrovi, ferrovia, Muro, sottopassi) e dove no (il regime)
     const pool = SITES.filter(s => (s.kind !== 'heaven' && s.kind !== 'facciata') || rnd() < .6), wts = pool.map(heatOf), tot = wts.reduce((a, c) => a + c, 0);

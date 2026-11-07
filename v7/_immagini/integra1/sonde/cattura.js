@@ -31,7 +31,7 @@ const VP = { width: +(process.env.W || 1920), height: +(process.env.H || 1080) }
   for (const posto of Object.keys(posti)) { if (SOLO.length && !SOLO.includes(posto)) continue; const t0 = Date.now();
     for (let k = 0; k < 2; k++) { try {
         const P = JSON.parse(JSON.stringify(posti[posto])); P.varianti = VAR; P.tempi = 1;
-        await H.S(async a => { if (typeof Tasselli !== 'undefined' && Tasselli.attivo() && Tasselli.finisci) { const p = window.__pv.st.player; p.x = a[0]; p.y = a[1]; window.__pv.R.snap(window.__pv.st); await Tasselli.finisci(60); } }, P.start);
+        await H.S(async a => { if (typeof Tasselli !== 'undefined' && Tasselli.attivo() && Tasselli.finisci) { const p = window.__pv.st.player; p.x = a[0]; p.y = a[1]; window.__pv.R.snap(window.__pv.st); await Promise.race([Tasselli.finisci(60), new Promise(r => setTimeout(r, 120000))]); }   /* al più due minuti: poi i tasselli arrivano coi fotogrammi della corsa */ }, P.start);
         const r = await corsa(H.pg, P);
         r.var.forEach(([v, url]) => fs.writeFileSync(path.join(OUT, `${PRE}_${posto}_${v}.png`), Buffer.from(url.split(',')[1], 'base64')));
         esito[posto] = { stato: r.var.map(x => [x[0], x[2]]), tasselli: await H.S(() => typeof Tasselli !== 'undefined' && Tasselli.attivo() ? (({ mesh, vertici, materiali, tessiture }) => ({ mesh, vertici, materiali, tessiture }))(window.__tasselli) : null) };

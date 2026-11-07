@@ -2046,8 +2046,107 @@ var WriterArte = (function () {
     if (FONTS.ok) fontText(x, (w.aka || 'PV') + ' ' + (w.crew || ''), 'SedgwickAveDisplay', Wp * .92, Hp * .93, Hp * .03, lumC(bg) > .5 ? '#141418' : '#f2f2f0', { maxW: Wp * .14 });   // la firma, piccola
     snap(x.canvas); paths.push([[Wp * .92, Hp * .93]]); radii.push(Hp * .1);
   }
+  // ================= [stradadipinta] LA STRADA DIPINTA (solo coi lavori segnati da strada_dipinta.js: ?stile=E) =================
+  // Niente qui cambia un lavoro senza i suoi campi sd*: i lavori di sempre e quelli del giocatore escono come prima.
+  // - LA TAVOLOZZA (BIBBIA_STILE §1 e §11.7): w.sdPal → ogni tappa passa da una tabella 64³ (sRGB → sRGB) che in Oklab porta la tinta verso
+  //   l'inchiostro più vicino della tavolozza unica (peso .8 su a, b; il valore resta quello del disegno, appena verso l'inchiostro) e tiene
+  //   lontani i tre colori del gioco (vermiglio, limone, allarme): mai nella vernice della strada.
+  // - I MANIFESTI DEL POSTO (w.sdManifesti: fogli { t, s, d, k } dal più vecchio al più nuovo): carta piatta, una tinta, il titolo in un font
+  //   pieno; i fogli sotto strappati e sbiaditi, quello sopra nuovo; il foglietto «cercasi» con le linguette da strappare.
+  // - GLI ADESIVI DEL POSTO (w.sdAdesivi: nomi e crew): i nomi della scena di qui, i colori dalla tavolozza, stretti a grappolo.
+  // - IL MURO RIPULITO (stile 'buff'): la toppa di vernice grigia a rullo sopra una tag (che si intravede ai bordi), campiture piatte.
+  const TAVE = { carta: '#F2E7CF', osso: '#D2C2A6', sasso: '#A89C92', lilla: '#A68FB6', piombo: '#7C7186', lavagna: '#3D3548', nero: '#16121B', pesca: '#F0BE8C', ocra: '#DC9A34', cotto: '#C25B36', mattone: '#6F2B2E',
+    cielo: '#A3D4D8', acqua: '#2A8A8A', oltremare: '#2F60B5', notte: '#202D5E', salvia: '#93B27C', persiana: '#3F8A50', bosco: '#34532F', rosa: '#E04B8C', viola: '#6B3D9B' };
+  const TAVE_VIETATI = [['#F04A23', 'cotto'], ['#FFE03A', 'ocra'], ['#FF2E5E', 'rosa']];   // vermiglio (il personaggio), limone (l'obiettivo), allarme (il pericolo)
+  const srgbLin = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }, linSrgb = v => { v = v <= .0031308 ? v * 12.92 : 1.055 * Math.pow(Math.max(0, v), 1 / 2.4) - .055; return clamp(Math.round(v * 255), 0, 255); };
+  function okLab(r8, g8, b8) { const r = srgbLin(r8), g = srgbLin(g8), b = srgbLin(b8);
+    const l = Math.cbrt(.4122214708 * r + .5363325363 * g + .0514459929 * b), m = Math.cbrt(.2119034982 * r + .6806995451 * g + .1073969566 * b), s = Math.cbrt(.0883024619 * r + .2817188376 * g + .6299787005 * b);
+    return [.2104542553 * l + .793617785 * m - .0040720468 * s, 1.9779984951 * l - 2.428592205 * m + .4505937099 * s, .0259040371 * l + .7827717662 * m - .808675766 * s]; }
+  function okRgb(L, a, b) { const l = (L + .3963377774 * a + .2158037573 * b) ** 3, m = (L - .1055613458 * a - .0638541728 * b) ** 3, s = (L - .0894841775 * a - 1.291485548 * b) ** 3;
+    return [linSrgb(4.0767416621 * l - 3.3077115913 * m + .2309699292 * s), linSrgb(-1.2684380046 * l + 2.6097574011 * m - .3413193965 * s), linSrgb(-.0041960863 * l - .7034186147 * m + 1.707614701 * s)]; }
+  const hexLab = h => okLab(parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16));
+  let TAVE_LAB = null, LUTE = null;
+  function tavMap(L, a, b) {   // un colore Oklab → il suo colore nella tavolozza della strada
+    if (!TAVE_LAB) TAVE_LAB = { ink: Object.keys(TAVE).map(k => [k].concat(hexLab(TAVE[k]))), vie: TAVE_VIETATI.map(([h, s]) => hexLab(h).concat([s])) };
+    const C = hyp(a, b); let best = null, bd = 1e9;
+    for (const q of TAVE_LAB.ink) { const qc = hyp(q[2], q[3]); if ((C > .045) !== (qc > .045)) continue; const d = .6 * (L - q[1]) ** 2 + (a - q[2]) ** 2 + (b - q[3]) ** 2; if (d < bd) { bd = d; best = q; } }
+    if (best) { const kc = C > .045 ? .8 : .5; a += (best[2] - a) * kc; b += (best[3] - b) * kc; L += (best[1] - L) * (C > .045 ? .3 : .15); }
+    for (const v of TAVE_LAB.vie) { const d = Math.sqrt((L - v[0]) ** 2 + (a - v[1]) ** 2 + (b - v[2]) ** 2); if (d < .085) { const s = TAVE_LAB.ink.find(q => q[0] === v[3]); const t = 1 - d / .085; L += (s[1] - L) * t; a += (s[2] - a) * t; b += (s[3] - b) * t; } }
+    return okRgb(L, a, b); }
+  function lutE() { if (LUTE) return LUTE; const N = 64, T = new Uint8Array(N * N * N * 3);
+    for (let r = 0; r < N; r++) for (let g = 0; g < N; g++) for (let b = 0; b < N; b++) { const c = okLab(r * 4 + 2, g * 4 + 2, b * 4 + 2), o = tavMap(c[0], c[1], c[2]), i = ((r * N + g) * N + b) * 3; T[i] = o[0]; T[i + 1] = o[1]; T[i + 2] = o[2]; }
+    return (LUTE = T); }
+  function tavolozzaE(cnv) { if (!cnv || !cnv.getContext) return; const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height; if (!W || !H) return; const T = lutE(), d = x.getImageData(0, 0, W, H), D = d.data;
+    for (let i = 0; i < D.length; i += 4) { if (D[i + 3] < 4) continue; const j = (((D[i] >> 2) * 64 + (D[i + 1] >> 2)) * 64 + (D[i + 2] >> 2)) * 3; D[i] = T[j]; D[i + 1] = T[j + 1]; D[i + 2] = T[j + 2]; }
+    x.putImageData(d, 0, 0); }
+  // i manifesti: la carta e l'inchiostro dalla tavolozza, a coppie che si leggono (valore lontano)
+  const CARTE_E = [['#F2E7CF', '#16121B'], ['#D2C2A6', '#16121B'], ['#DC9A34', '#16121B'], ['#E04B8C', '#F2E7CF'], ['#2F60B5', '#F2E7CF'], ['#16121B', '#F2E7CF'], ['#2A8A8A', '#F2E7CF'], ['#F0BE8C', '#3D3548'], ['#93B27C', '#16121B'], ['#6B3D9B', '#F2E7CF']];
+  function posterE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const L = w.sdManifesti, vr = mulberry((w.seed || 1) ^ 0x7a58), n = L.length, pts = [];
+    L.forEach((f, k) => {
+      const top = k === n - 1, eta = top ? (w.sdFresco ? 0 : .15) : .55 + (n - 1 - k) * .2, sm = f.k === 'cerco' ? .62 : 1;
+      const pw = Wp * (n === 1 ? .9 : .7) * sm, ph = Math.min(Hp * (n === 1 ? .92 : .78), pw * (f.k === 'cerco' ? 1.3 : 1.41)), cx0 = Wp * (.5 + (vr() - .5) * (n === 1 ? .05 : .3)), cy0 = Hp * (.5 + (vr() - .5) * (n === 1 ? .04 : .18)), rot = (vr() - .5) * (top ? .05 : .1);
+      const [paper, ink] = f.c != null ? CARTE_E[f.c % CARTE_E.length] : pickR(vr, CARTE_E), c = cv(Math.round(pw), Math.round(ph)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height;
+      cx.fillStyle = paper; cx.fillRect(0, 0, W2, H2);
+      const fam = f.f || pickR(vr, ['BlackOpsOne', 'Bungee', 'Bangers', 'Ranchers', 'Shrikhand']), fam2 = 'Bungee', ok = FONTS.ok;
+      const text = (s, cy, h, col, fm) => { if (ok) fontText(cx, s, fm || fam, W2 / 2, cy, h, col, { maxW: W2 * .84 }); else { cx.fillStyle = col; cx.textAlign = 'center'; cx.font = `bold ${Math.round(h * 1.3)}px Arial`; cx.fillText(s, W2 / 2, cy + h / 2, W2 * .84); } };
+      if (f.k === 'cerco') {   // il foglietto a mano: due righe e le linguette col numero
+        text(f.t, H2 * .2, H2 * .09, ink, 'PermanentMarker'); if (f.s) text(f.s, H2 * .38, H2 * .055, ink, 'PermanentMarker');
+        cx.fillStyle = ink; const nt = 7, tw = W2 / nt; for (let j = 0; j < nt; j++) { cx.fillRect(j * tw, H2 * .66, 1.2, H2 * .34); if (vr() < .35) { cx.save(); cx.globalCompositeOperation = 'destination-out'; cx.fillRect(j * tw + 1.5, H2 * .68, tw - 1.5, H2 * .32); cx.restore(); } else { cx.save(); cx.translate(j * tw + tw / 2, H2 * .83); cx.rotate(-PI / 2); cx.font = `${Math.round(tw * .45)}px Arial`; cx.textAlign = 'center'; cx.fillText(f.d || '23 17', 0, tw * .15); cx.restore(); } }
+      } else {
+        // la figura piatta: un disco, l'onda, le righe o il riquadro, in una tinta sola sotto il titolo
+        const g = f.g != null ? f.g : Math.floor(vr() * 4), acc = ink; cx.fillStyle = acc; cx.globalAlpha = .9;
+        if (g === 0) { cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .3, 0, 7); cx.fill(); cx.globalAlpha = 1; cx.fillStyle = paper; cx.beginPath(); cx.arc(W2 * .5, H2 * .42, W2 * .12, 0, 7); cx.fill(); }   // il disco
+        else if (g === 1) { cx.beginPath(); cx.moveTo(0, H2 * .55); for (let j = 0; j <= 24; j++) cx.lineTo(W2 * j / 24, H2 * (.5 + Math.sin(j / 24 * PI * 4) * .04)); cx.lineTo(W2, H2 * .6); for (let j = 24; j >= 0; j--) cx.lineTo(W2 * j / 24, H2 * (.58 + Math.sin(j / 24 * PI * 4 + .6) * .04)); cx.closePath(); cx.fill(); }   // l'onda
+        else if (g === 2) { for (let j = 0; j < 5; j++) cx.fillRect(W2 * .08, H2 * (.3 + j * .055), W2 * .84, H2 * .025); }   // le righe
+        else { cx.fillRect(W2 * .08, H2 * .08, W2 * .84, H2 * .04); cx.fillRect(W2 * .08, H2 * .88, W2 * .84, H2 * .04); }   // le fasce
+        cx.globalAlpha = 1;
+        const tl = String(f.t).split('\n'); tl.forEach((ln, i) => text(ln, H2 * (g === 0 ? .15 : .2) + i * H2 * .13, H2 * .1, ink));
+        if (f.s) text(f.s, H2 * .72, H2 * .055, ink, fam2); if (f.d) text(f.d, H2 * .82, H2 * .045, ink, fam2);
+      }
+      // l'età: sbiadito verso la carta vecchia, gli strappi (sotto: tanti, sopra: un angolo)
+      if (eta > 0) { cx.fillStyle = `rgba(232,222,200,${Math.min(.6, eta * .6)})`; cx.fillRect(0, 0, W2, H2); }
+      cx.globalCompositeOperation = 'destination-out';
+      const tear = (x0, y0, x1, y1, ex, ey, deep) => { cx.beginPath(); cx.moveTo(x0, y0); for (let j = 1; j < 6; j++) { const t = j / 6; cx.lineTo(x0 + (x1 - x0) * t + (vr() - .5) * deep, y0 + (y1 - y0) * t + (vr() - .5) * deep); } cx.lineTo(x1, y1); cx.lineTo(ex, ey); cx.closePath(); cx.fill(); };
+      if (!top) { const nt = 1 + Math.floor(eta * 3); for (let j = 0; j < nt; j++) { const sy = H2 * (.15 + vr() * .7); tear(0, sy, W2 * (.3 + vr() * .5), sy + H2 * (vr() - .5) * .4, 0, sy + H2 * .25, W2 * .05); }
+        if (vr() < .6) tear(W2 * (.4 + vr() * .4), 0, W2, H2 * (.2 + vr() * .4), W2, 0, W2 * .05); }
+      else if (vr() < .45) tear(0, H2 * (.8 + vr() * .12), W2 * (.12 + vr() * .2), H2, 0, H2, W2 * .03);
+      cx.globalCompositeOperation = 'source-over';
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    });
+    snap(x.canvas); paths.push(pts.concat(raster(Wp, Hp, 2))); radii.push(Hp * .35);
+  }
+  const ADE_COL = ['#E04B8C', '#2F60B5', '#DC9A34', '#16121B', '#2A8A8A', '#C25B36', '#6B3D9B', '#93B27C', '#F2E7CF'];
+  function stickersE(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const A = w.sdAdesivi, vr = mulberry((w.seed || 1) ^ 0xad52), s0 = Math.min(Wp, Hp), n = A.n || (5 + Math.floor(vr() * 8)), pts = [], strip = Hp > Wp * 2.5;
+    for (let k = 0; k < n; k++) {
+      const kind = pickR(vr, A.tipi || ['nome', 'nome', 'tondo', 'quadro', 'logo']), sw = s0 * (strip ? .92 : .26 + vr() * .16), sh = kind === 'nome' ? sw * .62 : kind === 'logo' ? sw * .5 : sw;
+      const cx0 = strip ? Wp / 2 : sw / 2 + vr() * (Wp - sw), cy0 = strip ? sh / 2 + (k + vr() * .4) / n * (Hp - sh) : sh / 2 + vr() * (Hp - sh), rot = (vr() - .5) * (strip ? .3 : .45);
+      const c = cv(Math.round(sw), Math.round(sh)), cx = c.getContext('2d'), W2 = c.width, H2 = c.height, col = pickR(vr, ADE_COL), light = col === '#F2E7CF' || col === '#DC9A34' || col === '#93B27C', on = light ? '#16121B' : '#F2E7CF';
+      const nm = pickR(vr, A.nomi || ['PV']), cr = pickR(vr, A.crew || ['PVK']), ok = FONTS.ok;
+      cx.fillStyle = '#F2E7CF';
+      if (kind === 'tondo') { cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 / 2, 0, 7); cx.fill(); cx.fillStyle = col; cx.beginPath(); cx.arc(W2 / 2, H2 / 2, W2 * .42, 0, 7); cx.fill(); if (ok) fontText(cx, cr, 'Bungee', W2 / 2, H2 / 2, W2 * .22, on, { maxW: W2 * .66 }); }
+      else if (kind === 'logo') { cx.fillStyle = col; cx.fillRect(0, 0, W2, H2); if (ok) fontText(cx, pickR(vr, A.loghi || [cr]), 'BlackOpsOne', W2 / 2, H2 / 2, H2 * .42, on, { maxW: W2 * .86 }); }
+      else if (kind === 'nome') { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(0, 0, W2, H2 * .32); if (ok) { fontText(cx, 'CIAO MI CHIAMO', 'Bungee', W2 / 2, H2 * .16, H2 * .09, on, { maxW: W2 * .88 }); fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker']), W2 / 2, H2 * .65, H2 * .3, '#16121B', { maxW: W2 * .82, skew: .15 }); } }
+      else { cx.fillRect(0, 0, W2, H2); cx.fillStyle = col; cx.fillRect(W2 * .07, H2 * .07, W2 * .86, H2 * .86); if (ok) fontText(cx, nm, pickR(vr, ['SedgwickAveDisplay', 'PermanentMarker', 'Knewave']), W2 / 2, H2 / 2, H2 * .26, on, { maxW: W2 * .78, skew: .12 }); }
+      if (vr() < .45) { cx.fillStyle = 'rgba(242,231,207,.4)'; cx.fillRect(0, 0, W2, H2); }   // sbiadito dal sole
+      if (vr() < .3) { cx.globalCompositeOperation = 'destination-out'; cx.beginPath(); cx.moveTo(W2, H2); cx.lineTo(W2 * .68, H2); cx.lineTo(W2, H2 * .68); cx.closePath(); cx.fill(); cx.globalCompositeOperation = 'source-over'; }   // l'angolo che si stacca
+      x.save(); x.translate(cx0, cy0); x.rotate(rot); x.drawImage(c, -W2 / 2, -H2 / 2); x.restore(); pts.push([cx0, cy0]);
+    }
+    snap(x.canvas); paths.push(pts); radii.push(s0 * .3);
+  }
+  // il muro ripulito: la tag di sotto che si intravede, poi la toppa grigia a rullo (due mani, i bordi dritti con le passate che escono)
+  function buffArt(w, P, C, r, Wp, Hp, snap, paths, radii, x) {
+    const vr = mulberry((w.seed || 1) ^ 0xb0ff), col = w.sdBuff || pickR(vr, ['#A89C92', '#B4ABA0', '#9C968E', '#C2B8A8', '#8E8A86']), sotto = w.sdSotto || pickR(vr, ['MURE', 'TREK', 'CIAPA', 'GOZO', 'ZENA', 'FUMO']);
+    if (FONTS.ok) fontText(x, sotto, 'SedgwickAveDisplay', Wp * .5, Hp * .5, Hp * .5, pickR(vr, ['#16121B', '#16121B', '#E04B8C', '#2F60B5']), { maxW: Wp * .95, skew: .15 });
+    snap(x.canvas); paths.push([[Wp * .3, Hp * .5], [Wp * .7, Hp * .5]]); radii.push(Hp * .3);
+    const m = Wp * (.15 + vr() * .07), y0 = Hp * (.1 + vr() * .08), y1 = Hp * (.9 - vr() * .08),   /* la tag sotto esce ai due lati: si capisce cosa hanno coperto */ bands = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / bands;
+    x.fillStyle = col; x.beginPath(); x.moveTo(m, y0); for (let j = 0; j <= bands; j++) { const yy = y0 + j * bh; x.lineTo(Wp - m + (vr() - .5) * Wp * .05, yy); } for (let j = bands; j >= 0; j--) { const yy = y0 + j * bh; x.lineTo(m + (vr() - .5) * Wp * .05, yy); } x.closePath(); x.fill();
+    for (let j = 0; j < bands; j++) { x.fillStyle = shade(col, (vr() - .5) * .08); x.fillRect(m + Wp * .02, y0 + j * bh + bh * .1, Wp - m * 2 - Wp * .04, bh * .8); }   // le passate del rullo: due tinte appena diverse
+    snap(x.canvas); paths.push(raster(Wp, Hp, bands)); radii.push(bh * .6);
+  }
   const TKS = { tag: 3, mtag: 3, gotico: 3, adesivi: 4, stencil: 2.5, manifesto: 3, scritta: 1.6, calli: 1.3 };   // la risoluzione in più per i lavori piccoli o fini
-  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6 };
+  const NOSPRAY = { mtag: 1, manifesto: 1, adesivi: 1, buff: 1 }, AMP = { manifesto: .3, adesivi: .2, stencil: .4, murale: .5, rullo: .6, verticale: .6, buff: .2 };
 
   // ================= IL LAVORO =================
   const PPM = 100;   // pixel per metro (alto: i bordi netti anche da vicino)
@@ -2076,15 +2175,21 @@ var WriterArte = (function () {
     const a = -.8, ux = Math.cos(a) * w * nib, uy = Math.sin(a) * w * nib, w2 = w * (1 - nib * .55);
     for (const k of [-1, 0, 1]) pass(x, { strokes, arrows: k ? [] : arrowsL, w0: w2 }, w2, col, (dx || 0) + ux * k, (dy || 0) + uy * k, J, Cp);
   }
-  function art(w) {
+  // [stradadipinta] la tavolozza della strada sopra al disegno finito (solo i lavori segnati: w.sdPal; mai il giocatore, mai la tavoletta)
+  function art(w) { const A = art0(w); if (w && w.sdPal && !w.rec && w.by !== 'player' && A && A.stages) { try { A.stages.forEach(tavolozzaE); if (w.sdToppa) A.stages.forEach(c => toppaE(c, w.sdToppa, w.seed)); } catch (e) { } } return A; }
+  // [stradadipinta] la toppa di chi ha ripulito sopra un pezzo vecchio (w.sdToppa: [x0, y0, x1, y1] in frazioni, il grigio): campitura a rullo, bordi dritti
+  function toppaE(cnv, T, seed) { const x = cnv.getContext('2d'), W = cnv.width, H = cnv.height, vr = mulberry((seed || 1) ^ 0x70a), col = T[4] || '#A89C92', x0 = T[0] * W, x1 = T[2] * W, y0 = T[1] * H, y1 = T[3] * H, n = 3 + Math.floor(vr() * 3), bh = (y1 - y0) / n;
+    x.save(); x.fillStyle = col; x.beginPath(); x.moveTo(x0, y0); for (let j = 0; j <= n; j++) x.lineTo(x1 + (vr() - .5) * W * .03, y0 + j * bh); for (let j = n; j >= 0; j--) x.lineTo(x0 + (vr() - .5) * W * .03, y0 + j * bh); x.closePath(); x.fill();
+    for (let j = 0; j < n; j++) { x.fillStyle = shade(col, (vr() - .5) * .07); x.fillRect(x0 + W * .01, y0 + j * bh + bh * .12, x1 - x0 - W * .02, bh * .76); } x.restore(); }
+  function art0(w) {
     const P = PAL[(w.pal || 0) % PAL.length], r = mulberry(w.seed || 1), TK = (TKS[w.style] || w.rec) && w.surf !== 'treno' ? (w.rec ? Math.max(1, Math.min(3, 1600 / Math.max(1, w.W * 100))) : TKS[w.style]) : 1, Wp = Math.round(w.W * PPM * TK), Hp = Math.round(w.H * PPM * TK),   /* [writer] la tag a tre volte la risoluzione: il filo del marker e le punte si vedono */ text = w.words || w.aka || 'NINO';
     const C = choose(w), q = C.q, stages = [], paths = [], radii = [];
-    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : INK.on ? .55 : AMP[w.style], crisp: INK.on, age: w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };
+    const snap = c => { const k = cv(Wp, Hp); k.getContext('2d').drawImage(c, 0, 0); stages.push(handify(k, (w.seed || 1) * 7 + 1, q, { noSpray: !!NOSPRAY[w.style] || (w.rec && w.tool === 'pennarello'), amp: w.rec ? .25 : w.sdPal ? (INK.on ? .55 : AMP[w.style] != null ? AMP[w.style] : 1) * .6 : INK.on ? .55 : AMP[w.style], crisp: INK.on || !!w.sdPal, age: w.sdEta != null ? w.sdEta : w.old ? .15 + mulberry((w.seed || 1) ^ 0xa6e)() * .45 : 0 })); };   // [stradadipinta] l'età decisa dal posto (w.sdEta), il bordo netto
     const toy = q < .35;
     if (w.rec) { const c = cv(Wp, Hp), x = c.getContext('2d'), res = WM.drawRecorded(x, w.rec, Object.assign({}, WM.dna(w.hand || w.seed || 1)), Wp, Hp, r, w.col || '#141418', w.tool === 'pennarello' ? 'mtag' : 'tag'); snap(c); paths.push(res.path.filter((q, i) => i % 3 === 0)); radii.push(Math.max(res.W * 2.2, Hp * .08)); return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; }   // [writer] il disegno fatto alla tavoletta
     if (w.style === 'mostro') { const c = cv(Wp, Hp); INK.on = true; try { characterArt(w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); } finally { INK.on = false; } return { stages, paths, radii, Wp, Hp, C }; }   // [graffiti4] il personaggio a inchiostro (prima: monsterArt)
     // [graffiti3] gli altri stili della strada
-    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: posterArt, adesivi: stickersArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
+    { const FO = FONTS.ok, NEW = { rullo: (...a) => rollerArt(...a, false), estintore: FO ? extinguisherFont : extinguisherArt, stencil: stencilArt, scritta: FO ? scrittaFont : scrittaArt, manifesto: w.sdManifesti ? posterE : posterArt, adesivi: w.sdAdesivi ? stickersE : stickersArt, buff: buffArt, murale: FO ? muralModern : muralArt, calli: FO ? calliFont : calliArt, gotico: FO ? goticoFont : null };   // [graffiti4] coi font, dove ci sono
       if (w.style === 'verticale') { const vf = /^(rullo|bolle|pixo)$/.test(w.fam) ? w.fam : pickR(mulberry((w.seed || 1) ^ 0x11), ['rullo', 'rullo', 'bolle', 'pixo', 'pixo']); C.vfam = vf; NEW.verticale = vf === 'bolle' ? (FO ? stackedFontBubble : stackedBubbleArt) : vf === 'pixo' ? pixoArt : (...a) => rollerArt(...a, true); }
       if (NEW[w.style]) { const c = cv(Wp, Hp); NEW[w.style](w, P, C, r, Wp, Hp, snap, paths, radii, c.getContext('2d')); SQ = 0; CUT = 0; return { stages, paths, radii, Wp, Hp, C, ppm: PPM * TK }; } }
     if (w.style === 'tag' || w.style === 'mtag' || w.style === 'gotico') {   // la tag: la mano del writer (writer_mano.js), col suo segno accanto
@@ -2269,6 +2374,6 @@ var WriterArte = (function () {
     const L = fit(letters(c.aka + ' ' + c.crew, { h: 100, adv: .66, skew: .4, wob: .07, bounce: .1, rot: .2 }, r), Wp * .8, Hp * .45, 4);
     ctx.save(); ctx.translate(x + Wp * .1, y + Hp * .3); pass(ctx, L, Math.max(3, Hp * .06), '#d8201a', 0, 0); ctx.restore();
   }
-  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, choose, conceive, dnaOf, crossOut, letters, mulberry };
+  return { fontsReady, FONTS, PAL, COL2PAL, FAM, FAMS, FILLS, BGS, CHARS, WORDS, SLOGANS, SIGNS, SIGN_TXT, PPM, DEF, SCRITTE, MANIFESTI, STENCIL_TXT, STENCIL_MOTIFS, MURALI_TXT, art, tavolozzaE, TAVE, tavMap, okLab, choose, conceive, dnaOf, crossOut, letters, mulberry };
 })();
 if (typeof module !== 'undefined') module.exports = WriterArte;
