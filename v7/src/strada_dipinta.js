@@ -220,6 +220,8 @@ var StradaDipinta = (function () {
     // girato verso chi arriva, entro 9 m dall'asse e 30 m dal fondo); (d) il muro dei manifesti a strati, ad altezza d'occhio
     function altFondale(s, sp0, z, who) {
       const A = s.along || [0, 1], u = [Math.cos(s.face), Math.sin(s.face)], at = k => ({ x: sp0.x + A[0] * k, y: sp0.y + A[1] * k, face: sp0.face, h: null, place: sp0.place, kind: 'strada', sdZona: z }), alt = [];
+      // [stradadipinta] prima il grande sul posto del fondale (il muro cieco in fondo alla Via delle Mura: 10 × 6 m liberi), poi il throw-up
+      for (const k of [0, -3, 3]) alt.push({ k: 'g', style: 'murale', W0: 8, H0: 4.5, hRel: 3, minK: .75, spot: at(k), off: k }, { k: 'g', style: 'burner', W0: 7.5, H0: 2.8, hRel: 2, minK: .8, spot: at(k), off: k });
       for (const k of [0, -2.5, 2.5]) alt.push({ k: 'a', style: 'throw', W0: 3.4, H0: 1.6, hRel: 1.6, spot: at(k), off: k });   // il throw-up grande, basso: si legge da lontano
       for (const k of [0, -1.6, 1.6, -3.2, 3.2]) alt.push({ k: 'a', style: 'verticale', W0: 1.3, H0: 4.4, hRel: 3.4, spot: at(k), off: k });
       for (const k of [0, -2.4, 2.4]) alt.push({ k: 'a', style: 'gotico', W0: 1.2, H0: 2.6, hRel: 2.9, spot: at(k), off: k });
