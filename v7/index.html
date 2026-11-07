@@ -27857,13 +27857,13 @@ var Urbanistica2 = (function () {
     const xSu = (rd, y) => { const P = rd.pts; for (let k = 1; k < P.length; k++) if ((P[k - 1][1] - y) * (P[k][1] - y) <= 0 && P[k][1] !== P[k - 1][1]) return P[k - 1][0] + (P[k][0] - P[k - 1][0]) * (y - P[k - 1][1]) / (P[k][1] - P[k - 1][1]); return null; };
     const corte = (x, y) => x > 1430 && x < 1440 && y > 280 && y < 304;
     if (fa('monache')) { if (scuro && monache) {
-      // le tre vie si incontrano nel mezzo della corte (un nodo della rete); dentro la corte la carreggiata non si stampa
+      // dentro la corte la carreggiata non si stampa (resta una corte: tetti.js ci mette la scala)
       // IL COVO: il bunker delle mura (1438,280) confina col fondo nord della corte. Il fondo resta un recesso chiuso (niente passo verso il
       // Vico delle Monache, che ci sboccava accanto: il varco di 2 m che c'è resta com'era) e il fico sta in fondo all'asse dell'Androne (in asse col
       // Vico del Pozzo, di là dalla Rua): dalla strada il fondo della corte non si vede. URBANISTICA2.md, «Il Covo»
       const NC = [1434.6, 291.2];
-      via('vic_androne_monache', 'Androne delle Monache', [[1434, yRua(1434)], [1434, 303.5], [1433.5, 297.5], NC], { fuori: corte });
-      via('passo_corte', 'Passo della Corte', [NC, [1439.5, 291], [xSu(scuro, 291), 291]], { fuori: corte });
+      // l'Androne e il Passo della Corte sono una via sola (test_mappa_compatta: al più 34 vicoli): dalla Rua, dentro la corte, al Vico Scuro
+      via('vic_androne_monache', 'Androne delle Monache e Passo della Corte', [[1434, yRua(1434)], [1434, 303.5], [1433.5, 297.5], NC, [1439.5, 291], [xSu(scuro, 291), 291]], { fuori: corte });
       slargo('Corte delle Monache', 'il fico, la scala di ferro ai tetti, la porta dell\'Osteria', 1435, 292, 5, 11, { corte: true });
       S.alberi.push(['fico', 1437, 287.2, 4.8]);   // in fondo all'asse dell'Androne: si vede dalla Rua e copre il recesso del covo
     } else S.avvisi.push('corte delle monache: manca il Vico Scuro o il Vico delle Monache'); }
