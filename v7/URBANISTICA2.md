@@ -142,7 +142,7 @@ landmark), cornice x 1300-1470, y 255-412. «Oggi» è la città di serie (col p
 | **distanza dallo slargo più vicino**: mediana · 90° percentile · massimo | 16 · 35 · 73 m | **13 · 30 · 73 m** | 9 · 22 · 54 m |
 | metri di via a più di 30 m da uno slargo | 17% | **10%** | 5% |
 | vicoli sotto 3 m | 17,5% | **14,1%** (i vecchi: il pettine è F3) | 0,2% |
-| landmark o mare in quadro camminando: cornice · cuore | 55% · 35% | 55% · 34% | 64% · 46% |
+| landmark o mare in quadro camminando: cornice · cuore | 55% · 35% | 55% · 33% | 64% · 46% |
 
 Quello che resta lontano dall'obiettivo è dove F1 non arriva: la Via di Mezzo e la Vittoria (F2), il pettine e i vicoli stretti (F3), le
 altane delle case-torri che fanno i landmark (F4). Il massimo di 73 m dallo slargo è sulla Via di Mezzo.
@@ -169,7 +169,16 @@ alta del tetto della sala giochi, lo vede tutto. La foto 13 di `leggibilita.jpg`
 **Il giro della camera** (`leggibilita.jpg`; strumento: la sonda di cattura dell'urbanista, come `strumenti/sonda_occlusione.js`): il
 personaggio cammina col motore del gioco lungo ogni passaggio nuovo, nei due versi, con la camera di oggi e con `?camera9`; a ogni
 fotogramma si legge il braccio della camera (`__CAM7.S.arm`) e se una casa non tagliata copre il personaggio (il raggio dal busto e dalla
-testa alla camera entra nella sua scatola). RISULTATI_CAMERA
+testa alla camera entra nella sua scatola). Prima del gioco, la stessa prova sulla geometria: dal busto (1,15 m) il braccio va indietro lungo la direzione del cammino con la pendenza
+della camera (10 m a 34° la camera di oggi, 7,5 m a 20° `?camera9`), e dove entra per la prima volta nel volume di una casa la camera
+dovrebbe venire avanti.
+- Su 1.624 casi (406 punti, uno ogni mezzo metro, nei due versi e con le due camere), **dentro i passaggi nessuno sotto il 60%**.
+- Sotto il 60% ci sono solo i primi 2-3 m sulla via da cui si entra: fermi sulla Rua (o sul Vico Scuro, sul Vicolo delle Reti, sull'Orto)
+  e girati verso la bocca, la camera passa sopra le case dall'altra parte della via.
+- È quello che fanno oggi le bocche di tutti i vicoli: il Vico dell'Arco 0,38, il Vico delle Monache 0,23, il Vico dei Bottai 0,23, il
+  Vicolo delle Reti 0,17, misurati allo stesso modo.
+
+RISULTATI_GIOCO
 
 ---
 
@@ -197,7 +206,34 @@ testa alla camera entra nella sua scatola). RISULTATI_CAMERA
 
 ### Le prove (`node <prova>.js`, di serie e con `PV_URBANISTICA2=1 node -r ./urbanistica2.js <prova>.js`)
 
-PROVE
+Le prove della città, di serie e con F1 (le righe NO, cioè le prove che non passano):
+
+| Prova | Di serie | Con F1 | Note |
+|---|---|---|---|
+| `test_tasselli` | 1 | 1 | la stessa (l'impronta della prova non conta i `.glb.gz`); l'impronta della pagina è quella dei sorgenti |
+| `test_percorsi` | 2 | 2 | le stesse; **ogni scorciatoia resta più corta del 30%**; i giri sui tetti nel borgo restano 4 |
+| `test_strade_integre` | 1 | 1 | la stessa (4 case a fessura, fuori da F1); nessuna carreggiata sotto le case, capi staccati 2 come prima |
+| `test_tetti4` | 9 | 9 | quante prima, ma una cambia (sotto) |
+| `test_posa` | 6 | 6 | le stesse |
+| `test_costa2` | 1 | 1 | la stessa |
+| `test_imperfezioni` | 2 | 2 | le stesse |
+| `test_mappa_compatta` | 0 | 0 | i vicoli 34 (al più 34: l'Androne e il Passo della Corte sono una via sola) |
+| `test_pedonale`, `test_tetti_vissuti`, `test_scorci`, `test_posti`, `test_botteghe`, `test_regia`, `test_chiarezza`, `test_segni`, `test_segnaletica`, `test_compenetrazioni`, `test_strada_dipinta` | 0 | 0 | |
+| `test_vievive` | 0 (4 giri) | 0 in 2 giri su 4 | negli altri due una scena delle vie «non parte» in tempo, ogni volta un'altra (la fila all'edicola, l'attacchino): le scene dipendono da chi passa, e con F1 la gente cammina per vie diverse. Da riguardare prima di portare F1 di serie |
+
+**`test_tetti4`, il delta esatto.** Le 9 restano 9, con una sostituzione:
+- con F1 passa «Il giro del Forno: 1 vie su e 1 giù» (di serie non passa);
+- non passa «Il giro del Pozzo: 1 vie su e 1 giù» (il giro del Pozzo prende il posto di quello delle reti).
+
+Le altre otto sono le stesse, con numeri un poco diversi:
+- la copertura della marina 3% → 0%;
+- i tetti del borgo attraversati da un giro 15% → 14%;
+- le prove delle case girate 9 → 10 e 7 → 9 prove non passate;
+- la firma del lotto, la stessa sostanza.
+
+I tetti del borgo passano da **329 a 307 (−22**, non i 4-6 stimati dal masterplan: sono le 19 case tolte e i pezzi delle accorciate,
+molte di una o due caselle). Quelli raggiungibili dalla rete dei giri scendono dall'80 al **74%** (la soglia è il 70%); gli irraggiungibili
+salgono da 42 a 61. La F4 (le tre scale ai tetti degli slarghi, i due giri nuovi) è fatta per rimetterli in rete.
 
 ---
 
