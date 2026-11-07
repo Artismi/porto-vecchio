@@ -32,7 +32,10 @@ VER_JS = '<script>window.PV_VER = ' + json.dumps(dict(sorted(VER.items())), sepa
 h = h.replace('<script', VER_JS + '<script', 1)
 # [tasselli] l'impronta della città a tasselli: tutti i moduli del gioco (la città nasce da tutti), i modelli, il mondo cotto e
 # l'esportatore; non il caricatore dei tasselli (cambiarlo non cambia la città). tasselli/indice.json deve avere la stessa
-TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js'}
+# [urbanistica2] urbanistica2.js (la fase F1 del masterplan dietro ?urbanistica2) a interruttore spento non tocca la città: sta fuori
+# dall'impronta, così i tasselli di serie restano buoni. Quando F1 diventa di serie le sue pezze entrano in world_cittanuova.js e il
+# file esce di qui (o se ne va)
+TASS_FUORI = {'tasselli.js', 'tasselli_lavoratore.js', 'meshopt_decoder.js', 'urbanistica2.js'}
 _t = hashlib.sha1()
 for f in re.findall(r'/\*([a-z0-9_.]+\.js)\*/', h):
     if f in TASS_FUORI or f in SOLO_STUDIO or f in IN_PAUSA: continue
