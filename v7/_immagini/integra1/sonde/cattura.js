@@ -38,6 +38,12 @@ const VP = { width: +(process.env.W || 1920), height: +(process.env.H || 1080) }
         log(posto, ((Date.now() - t0) / 1000).toFixed(0) + 's', JSON.stringify(r.var.map(x => [x[0], x[2].ms]))); break; }
       catch (e) { log('crash', posto, String(e.message).slice(0, 200)); try { await H.close(); } catch (x) { } H = await avvia({ vp: VP, query: Q }); await prepara(); } } }
   try { esito.__prog = await H.S(() => { const rd = window.__pv.R.__models.renderer; return { programmi: rd.info.programs.length, stile: StileE.stato() }; }); } catch (e) { }
+  // la diagnosi: in E quanti materiali in scena hanno la variante accesa e quanti programmi portano le manopole
+  try { esito.__diag = await H.S(async () => { const R = window.__pv.R, sc = R.__models.scene, rd = R.__models.renderer; const conta = () => { const vis = new Set(), d = { tinta: 0, tessitura: 0, soloE: 0, soloEvisibili: 0, rsK: 0, rcK: 0, tasselli: 0 };
+      sc.traverse(o => { if (!o.material) return; [].concat(o.material).forEach(m => { if (!m || vis.has(m)) return; vis.add(m); const u = m.userData || {}; if (u.tassello) d.tasselli++; if (u.rcE) d.tinta++; if (m.__mapE && m.map === m.__mapE) d.tessitura++; if (u.rcSolo) { d.soloE++; if (m.visible) d.soloEvisibili++; }
+        const p = rd.properties.get(m), pr = p && p.currentProgram; if (pr && pr.getUniforms) { const U = pr.getUniforms().map; if (U.rsK) d.rsK++; if (U.rcK) d.rcK++; } }); }); return d; };
+      StileE.imposta('A'); R.frame(window.__pv.st, 1e-3, { zoom: .5, time: 1, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: 1e-3, mira: null }); const a = conta();
+      StileE.imposta('E'); R.frame(window.__pv.st, 1e-3, { zoom: .5, time: 1, stick: null, lead: null, tilt: 0, rot: 0, drag: 0, edge: 0, puntatore: false, reale: 1e-3, mira: null }); const e = conta(); return { A: a, E: e }; }); } catch (e) { esito.__diag = String(e.message).slice(0, 200); }
   fs.writeFileSync(path.join(__dirname, `esito_${PRE}.json`), JSON.stringify(esito, null, 1));
   try { await H.close(); } catch (x) { }
   log('fine');

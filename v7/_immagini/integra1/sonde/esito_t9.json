@@ -1,0 +1,262 @@
+{
+ "vicolo": {
+  "stato": [
+   [
+    "A",
+    {
+     "t": 7.42,
+     "x": 1342.69,
+     "y": 324.92,
+     "face": 1.726,
+     "yaw": 2.975,
+     "pitch": 50,
+     "fov": 46,
+     "camH": 8.81,
+     "dist": 10.12,
+     "horiz": 6.43,
+     "davanti": 10.9,
+     "omH": 0.128,
+     "omX": 0.5,
+     "omY": 0.58,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000009.71,
+     "arm": 10,
+     "ms": 37
+    }
+   ],
+   [
+    "E",
+    {
+     "t": 7.42,
+     "x": 1342.69,
+     "y": 324.92,
+     "face": 1.726,
+     "yaw": 2.975,
+     "pitch": 50,
+     "fov": 46,
+     "camH": 8.81,
+     "dist": 10.12,
+     "horiz": 6.43,
+     "davanti": 10.9,
+     "omH": 0.128,
+     "omX": 0.5,
+     "omY": 0.58,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000009.71,
+     "arm": 10,
+     "ms": 224
+    }
+   ]
+  ],
+  "tasselli": {
+   "mesh": 2433,
+   "vertici": 9845212,
+   "materiali": 872,
+   "tessiture": 540
+  }
+ },
+ "lungomare": {
+  "stato": [
+   [
+    "A",
+    {
+     "t": 13.55,
+     "x": 1431.72,
+     "y": 404.49,
+     "face": 0.26,
+     "yaw": -1.926,
+     "pitch": 34,
+     "fov": 46,
+     "camH": 6.74,
+     "dist": 10.08,
+     "horiz": 8.29,
+     "davanti": 26.4,
+     "omH": 0.166,
+     "omX": 0.5,
+     "omY": 0.606,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000008.15,
+     "arm": 10,
+     "ms": 173
+    }
+   ],
+   [
+    "E",
+    {
+     "t": 13.55,
+     "x": 1431.72,
+     "y": 404.49,
+     "face": 0.26,
+     "yaw": -1.926,
+     "pitch": 34,
+     "fov": 46,
+     "camH": 6.74,
+     "dist": 10.08,
+     "horiz": 8.29,
+     "davanti": 26.4,
+     "omH": 0.166,
+     "omX": 0.5,
+     "omY": 0.606,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000008.15,
+     "arm": 10,
+     "ms": 28
+    }
+   ]
+  ],
+  "tasselli": {
+   "mesh": 2506,
+   "vertici": 9610203,
+   "materiali": 872,
+   "tessiture": 540
+  }
+ },
+ "piazza": {
+  "stato": [
+   [
+    "A",
+    {
+     "t": 18.2,
+     "x": 1373.7,
+     "y": 303,
+     "face": 0,
+     "yaw": -1.571,
+     "pitch": 46.8,
+     "fov": 46,
+     "camH": 4.14,
+     "dist": 4.21,
+     "horiz": 2.8,
+     "davanti": 6.6,
+     "omH": 0.32,
+     "omX": 0.5,
+     "omY": 0.688,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000006.23,
+     "arm": 4.09,
+     "ms": 65
+    }
+   ],
+   [
+    "E",
+    {
+     "t": 18.2,
+     "x": 1373.7,
+     "y": 303,
+     "face": 0,
+     "yaw": -1.571,
+     "pitch": 46.8,
+     "fov": 46,
+     "camH": 4.14,
+     "dist": 4.22,
+     "horiz": 2.82,
+     "davanti": 6.6,
+     "omH": 0.319,
+     "omX": 0.5,
+     "omY": 0.688,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -1000000006.24,
+     "arm": 4.11,
+     "ms": 38
+    }
+   ]
+  ],
+  "tasselli": {
+   "mesh": 2427,
+   "vertici": 9235065,
+   "materiali": 872,
+   "tessiture": 540
+  }
+ },
+ "__prog": {
+  "programmi": 210,
+  "stile": {
+   "stile": "A",
+   "cotta": false,
+   "predefinito": "A",
+   "manopole": {
+    "rcK": 0,
+    "rsK": 0
+   }
+  }
+ },
+ "__diag": {
+  "A": {
+   "tinta": 58,
+   "tessitura": 0,
+   "soloE": 2,
+   "soloEvisibili": 0,
+   "rsK": 0,
+   "rcK": 0,
+   "tasselli": 617
+  },
+  "E": {
+   "tinta": 58,
+   "tessitura": 23,
+   "soloE": 2,
+   "soloEvisibili": 2,
+   "rsK": 4,
+   "rcK": 30,
+   "tasselli": 617
+  }
+ }
+}
