@@ -23614,7 +23614,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = '91bedce189a9c421';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'ddb78bcb809a13a2';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -64121,7 +64121,10 @@ var Writing = (function () {
     for (const c of walls.slice(0, 8)) {
       const r = new THREE.Vector3(c.n.z, 0, -c.n.x), g0 = R.groundH(c.p.x + c.n.x, c.p.z + c.n.z), mid = new THREE.Vector3(c.p.x, g0 + 5.25, c.p.z);
       const L = yield* nearTrisG(nearList(cands(c.p.x, c.p.z), mid, 12), mid, 11.5), O = openingsAt(mid, c.n), ok = new Uint8Array(NU * NV);
-      for (let j = 0; j < NV; j++) { for (let i = 0; i < NU; i++) ok[j * NU + i] = onPlane(new THREE.Vector3(c.p.x + r.x * (i * .5 - 10), g0 + .5 + j * .5, c.p.z + r.z * (i * .5 - 10)), c.n, L, O, null) ? 1 : 0; yield; }
+      // le colonne che la via vede (un raggio dall'occhio a 3 m sul muro): il resto del muro sta dietro l'angolo
+      const eye0 = new THREE.Vector3(vx, vgh + 3.5, vz), colV = new Uint8Array(NU);
+      for (let i = 0; i < NU; i++) { const t = new THREE.Vector3(c.p.x + r.x * (i * .5 - 10) + c.n.x * .05, g0 + 3, c.p.z + r.z * (i * .5 - 10) + c.n.z * .05), d = t.clone().sub(eye0), D = d.length(); d.normalize(); const h = rayWall(eye0, d, D + .5, list); colV[i] = !h || h.p.distanceTo(eye0) > D - .4 ? 1 : 0; if (i % 8 === 7) yield; }
+      for (let j = 0; j < NV; j++) { for (let i = 0; i < NU; i++) ok[j * NU + i] = colV[i] && onPlane(new THREE.Vector3(c.p.x + r.x * (i * .5 - 10), g0 + .5 + j * .5, c.p.z + r.z * (i * .5 - 10)), c.n, L, O, null) ? 1 : 0; yield; }
       // il rettangolo: per ogni coppia di righe le colonne tutte buone (a strisce); il punteggio da lontano, poi l'area
       let b = null;
       for (let j0 = 0; j0 < NV; j0++) { const col = new Uint8Array(NU).fill(1);
@@ -66752,7 +66755,7 @@ var StradaDipinta = (function () {
       const gh = R.groundH(a.x + a.nx * 2, a.y + a.ny * 2), o = new THREE.Vector3(a.x + a.nx * 4, gh + a.hc, a.y + a.ny * 4), d = new THREE.Vector3(-a.nx, 0, -a.ny), rc = new THREE.Raycaster(o, d, 0, 12);
       let off = .3; try { const sc = R.__models && R.__models.scene, L = []; if (sc) sc.traverseVisible(m => { if (m.isMesh && !(m.userData && (m.userData.velo || m.userData.atlante)) && m.geometry) { if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere(); const c = m.geometry.boundingSphere.center.clone().applyMatrix4(m.matrixWorld); if (m.isInstancedMesh || hyp(c.x - a.x, c.z - a.y) < m.geometry.boundingSphere.radius + 12) L.push(m); } });
         const h = rc.intersectObjects(L, false).find(h => h.face && Math.abs(h.face.normal.y) < .5); if (h) off = 4 - h.distance; } catch (e) { }   // la faccia può stare oltre la linea del segmento (il Muro è spesso: al varco 4,5 m)
-      const n = new THREE.Vector3(a.nx, 0, a.ny), c = new THREE.Vector3(a.x + a.nx * (off + .01), R.groundH(a.x + a.nx * (off + .3), a.y + a.ny * (off + .3)) + a.hc, a.y + a.ny * (off + .01));
+      const n = new THREE.Vector3(a.nx, 0, a.ny), c = new THREE.Vector3(a.x + a.nx * (off + .1), R.groundH(a.x + a.nx * (off + .3), a.y + a.ny * (off + .3)) + a.hc, a.y + a.ny * (off + .1));   // 10 cm davanti: il Muro ha più strati a pochi cm (il calcestruzzo, la massa)
       w.W = a.W; w.H = a.H; w.gfxRect = { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: a.W, H: a.H, foot: null }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = 'cemento'; w.eta = 0; w.sdVedo = { x: a.x + a.nx * 34, y: a.y + a.ny * 34 }; return true; }
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.has('p' + Math.round(a.x * 10) + ',' + Math.round(a.y * 10))) return false;   // il palo tolto dalla pulizia
     const gh = R.groundH(a.x, a.y), L = hyp(a.nx, a.nz) || 1, nx = a.nx / L, nz = a.nz / L, H = w.H0 || .4, W = w.W0 || .08;

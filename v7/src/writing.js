@@ -1403,7 +1403,10 @@ var Writing = (function () {
     for (const c of walls.slice(0, 8)) {
       const r = new THREE.Vector3(c.n.z, 0, -c.n.x), g0 = R.groundH(c.p.x + c.n.x, c.p.z + c.n.z), mid = new THREE.Vector3(c.p.x, g0 + 5.25, c.p.z);
       const L = yield* nearTrisG(nearList(cands(c.p.x, c.p.z), mid, 12), mid, 11.5), O = openingsAt(mid, c.n), ok = new Uint8Array(NU * NV);
-      for (let j = 0; j < NV; j++) { for (let i = 0; i < NU; i++) ok[j * NU + i] = onPlane(new THREE.Vector3(c.p.x + r.x * (i * .5 - 10), g0 + .5 + j * .5, c.p.z + r.z * (i * .5 - 10)), c.n, L, O, null) ? 1 : 0; yield; }
+      // le colonne che la via vede (un raggio dall'occhio a 3 m sul muro): il resto del muro sta dietro l'angolo
+      const eye0 = new THREE.Vector3(vx, vgh + 3.5, vz), colV = new Uint8Array(NU);
+      for (let i = 0; i < NU; i++) { const t = new THREE.Vector3(c.p.x + r.x * (i * .5 - 10) + c.n.x * .05, g0 + 3, c.p.z + r.z * (i * .5 - 10) + c.n.z * .05), d = t.clone().sub(eye0), D = d.length(); d.normalize(); const h = rayWall(eye0, d, D + .5, list); colV[i] = !h || h.p.distanceTo(eye0) > D - .4 ? 1 : 0; if (i % 8 === 7) yield; }
+      for (let j = 0; j < NV; j++) { for (let i = 0; i < NU; i++) ok[j * NU + i] = colV[i] && onPlane(new THREE.Vector3(c.p.x + r.x * (i * .5 - 10), g0 + .5 + j * .5, c.p.z + r.z * (i * .5 - 10)), c.n, L, O, null) ? 1 : 0; yield; }
       // il rettangolo: per ogni coppia di righe le colonne tutte buone (a strisce); il punteggio da lontano, poi l'area
       let b = null;
       for (let j0 = 0; j0 < NV; j0++) { const col = new Uint8Array(NU).fill(1);
