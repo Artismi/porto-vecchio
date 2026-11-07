@@ -1,0 +1,165 @@
+{
+ "posto_vicolo": {
+  "A": {
+   "laplaciano": 862.1,
+   "rumore": 5.5
+  },
+  "E_prima": {
+   "laplaciano": 6703.6,
+   "rumore": 15.97
+  },
+  "E_nuovo": {
+   "laplaciano": 1044.5,
+   "rumore": 6.48
+  },
+  "carta": 0.5,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.5
+ },
+ "posto_sbocco": {
+  "A": {
+   "laplaciano": 882.6,
+   "rumore": 2.21
+  },
+  "E_prima": {
+   "laplaciano": 6054.1,
+   "rumore": 13.15
+  },
+  "E_nuovo": {
+   "laplaciano": 797.2,
+   "rumore": 3.8
+  },
+  "carta": 0.6,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.6
+ },
+ "posto_lungomare": {
+  "A": {
+   "laplaciano": 3608.5,
+   "rumore": 4.0
+  },
+  "E_prima": {
+   "laplaciano": 15938.0,
+   "rumore": 13.61
+  },
+  "E_nuovo": {
+   "laplaciano": 932.1,
+   "rumore": 2.79
+  },
+  "carta": 0.4,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.4
+ },
+ "posto_piazza": {
+  "A": {
+   "laplaciano": 408.8,
+   "rumore": 0.86
+  },
+  "E_prima": {
+   "laplaciano": 4105.9,
+   "rumore": 10.29
+  },
+  "E_nuovo": {
+   "laplaciano": 821.7,
+   "rumore": 0.0
+  },
+  "carta": 0.0,
+  "luce_piu_alta": "cielo",
+  "quota_luce_piu_alta": 0.0
+ },
+ "posto_sera": {
+  "A": {
+   "laplaciano": 411.3,
+   "rumore": 2.27
+  },
+  "E_prima": {
+   "laplaciano": 4618.8,
+   "rumore": 13.41
+  },
+  "E_nuovo": {
+   "laplaciano": 646.8,
+   "rumore": 3.03
+  },
+  "carta": 0.0,
+  "luce_piu_alta": "pesca",
+  "quota_luce_piu_alta": 4.7
+ },
+ "ora_mattino": {
+  "A": {
+   "laplaciano": 806.7,
+   "rumore": 4.71
+  },
+  "E_nuovo": {
+   "laplaciano": 1074.1,
+   "rumore": 4.91
+  },
+  "carta": 0.0,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.0
+ },
+ "ora_mezzogiorno": {
+  "A": {
+   "laplaciano": 602.5,
+   "rumore": 3.21
+  },
+  "E_nuovo": {
+   "laplaciano": 901.7,
+   "rumore": 1.88
+  },
+  "carta": 0.4,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.4
+ },
+ "ora_pomeriggio": {
+  "A": {
+   "laplaciano": 618.4,
+   "rumore": 3.56
+  },
+  "E_nuovo": {
+   "laplaciano": 865.6,
+   "rumore": 2.9
+  },
+  "carta": 0.1,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.1
+ },
+ "ora_oro": {
+  "A": {
+   "laplaciano": 542.3,
+   "rumore": 3.03
+  },
+  "E_nuovo": {
+   "laplaciano": 921.8,
+   "rumore": 3.85
+  },
+  "carta": 0.0,
+  "luce_piu_alta": "pesca",
+  "quota_luce_piu_alta": 28.5
+ },
+ "ora_crepuscolo": {
+  "A": {
+   "laplaciano": 452.3,
+   "rumore": 3.02
+  },
+  "E_nuovo": {
+   "laplaciano": 637.6,
+   "rumore": 2.26
+  },
+  "carta": 0.0,
+  "luce_piu_alta": "pesca",
+  "quota_luce_piu_alta": 10.6
+ },
+ "ora_notte": {
+  "A": {
+   "laplaciano": 575.1,
+   "rumore": 3.65
+  },
+  "E_nuovo": {
+   "laplaciano": 616.1,
+   "rumore": 3.18
+  },
+  "carta": 0.1,
+  "luce_piu_alta": "carta",
+  "quota_luce_piu_alta": 0.1
+ }
+}
