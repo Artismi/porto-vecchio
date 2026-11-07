@@ -27723,15 +27723,19 @@ var Urbanistica2 = (function () {
       [1392.5, 282, 'casa_143', 'calzolaio'],                                                                          // la bocca sulla Via delle Mura
       [1394.5, 293, 'casa_189', 'calzolaio'], [1394.5, 296.5, 'casa_209', 'calzolaio'], [1396.5, 297, 'casa_195', 'calzolaio'],   // dalla corte dietro la chiesa al sagrato
       [1387, 322.5, 'casa_311', 'lavatoio'], [1384.5, 321, 'casa_304', 'lavatoio'], [1390.5, 326.5, 'casa_321', 'lavatoio'], [1382.5, 326.5, 'casa_320', 'lavatoio'], [1392.5, 322.5, 'casa_312', 'lavatoio'], [1387, 319, 'casa_295', 'lavatoio'],
-      [1370.5, 349, 'casa_330', 'flipper'], [1379, 362, 'casa_359', 'flipper'], [1364, 350, 'casa_37', 'flipper'],    // la corte si apre sulla Vittoria (il retro della sala giochi si vede dalla via)
+      [1379, 362, 'casa_359', 'flipper'],                                                                              // la Corte del Flipper verso la Corte dei Pescatori
     ],
     accorcia: [   // [punto, id, lato, caselle, zona]
       [1428, 285, 'casa_162', 'N', 1, 'monache'],     // il passo dalla Corte delle Monache al Vico delle Monache: da 2 a 4 m
+      [1366.5, 352, 'casa_37', 'E', 1, 'flipper'],    // la Corte del Flipper: il passo dalla Vittoria si apre a 4 m dentro la casa d'angolo (la casa accanto resta:
+      [1364, 357, 'casa_37', 'S', 2, 'flipper'],      // senza lei il giro dei tetti del Forno si spezza); e la casa resta col fronte sulla Vittoria, 2 × 4 caselle
       [1373, 363, 'casa_370', 'N', 1, 'flipper'],     // la Corte del Flipper verso la Corte dei Pescatori: da 2 a 4 m
       [1368, 363, 'casa_369', 'N', 1, 'flipper'],     // e lo spigolo fra la corte e il passo: da 2 a 4 m (prima le due case si toccavano d'angolo con la sala giochi)
     ],
   };
   const fa = z => !SALTA.has(z);
+  // per le prove: le case da lasciare dove sono (PV_U2_TIENI=casa_330,casa_359)
+  const TIENI = new Set((typeof process !== 'undefined' && process.env && typeof window === 'undefined' ? process.env.PV_U2_TIENI || '' : '').split(',').filter(Boolean));
 
   function mondo(W, K) {
     if (!ON || !W || !W.grid) return W;
@@ -27751,12 +27755,12 @@ var Urbanistica2 = (function () {
 
     // 1) le case tolte (le caselle tornano selciato, alla quota del giro attorno)
     const tolte = [];
-    PIANO.togli.forEach(([x, y, id, z]) => { if (!fa(z)) return; const b = casaIn(x, y); if (!sicura(b, id, 'togli ' + id)) return; if (tolte.includes(b)) return;
+    PIANO.togli.forEach(([x, y, id, z]) => { if (!fa(z) || TIENI.has(id)) return; const b = casaIn(x, y); if (!sicura(b, id, 'togli ' + id)) return; if (tolte.includes(b)) return;
       const q = quotaAnello(anello(b.x, b.y, b.w, b.h));
       for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) { const i = ty * GW + tx; libera(i, T.COB); if (q.h !== null) EL[i] = q.h; W.reach[i] = q.rc || W.reach[i]; }
       tolte.push(b); S.tolte.push({ id: b.id, x: b.x * TS, y: b.y * TS, w: b.w * TS, h: b.h * TS, fl: b.fl || 1 }); });
     // 2) le case accorciate (dal lato del passaggio; la porta, se stava su quel lato, arretra con la casa)
-    PIANO.accorcia.forEach(([x, y, id, f, n, z]) => { if (!fa(z)) return; const b = casaIn(x, y); if (!sicura(b, id, 'accorcia ' + id)) return;
+    PIANO.accorcia.forEach(([x, y, id, f, n, z]) => { if (!fa(z) || TIENI.has(id)) return; const b = casaIn(x, y); if (!sicura(b, id, 'accorcia ' + id)) return;
       if ((f === 'N' || f === 'S' ? b.h : b.w) - n < 1) { S.avvisi.push('accorcia ' + id + ': non resta niente'); return; }
       const NV = { S: [0, -1], N: [0, 1], E: [-1, 0], W: [1, 0] }[f], d0 = b.door ? b.door.slice() : null;
       for (let s = 0; s < n; s++) { const cells = [];
@@ -27880,9 +27884,9 @@ var Urbanistica2 = (function () {
     // giochi, alla Corte dei Pescatori ----
     if (fa('flipper')) { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria'), gatti = W.roads.find(r => r.id === 'vic_gatti');
       if (reti && vit && gatti) { const yv = vit.pts[0][1], xg = gatti.pts[gatti.pts.length - 1][0];
-        via('passo_flipper', 'Corte del Flipper', [[xg, yv], [1368.2, 349], [1368, 355.5], [1370.4, 360.6], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
-        slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.6, 355, 5.2, 6.6);
-        pezzo('pozzo', 1364.4, 354.6, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
+        via('passo_flipper', 'Corte del Flipper', [[xg, yv], [1368, 349], [1368.2, 356], [1370.4, 360.4], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
+        slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.8, 359, 5, 3.6);
+        pezzo('pozzo', 1364.2, 357.9, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
       } else S.avvisi.push('corte del flipper: manca la Vittoria, il Vico dei Gatti o il Vicolo delle Reti'); }
 
     // 4) gli indici: come casette(), al posto della casa tolta va l'ultima della lista
