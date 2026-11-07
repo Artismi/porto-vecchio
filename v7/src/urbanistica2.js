@@ -230,12 +230,12 @@ var Urbanistica2 = (function () {
       const L = 3; pezzo('lavatoio', 1386.4, 320.6, 0, { L, tettoia: true }, { nome: 'Lavatoio coperto' }, [['B', -1, L + 2.2, -2.5, 2.5]], [-1, L + 2.2, -2.5, 2.5]); }
 
     // ---- M3 · la Corte del Flipper: dalla Vittoria (in asse col Vico dei Gatti: un incrocio solo) nella corte del pozzo, dietro la sala
-    // giochi, alla Corte dei Pescatori ----
+    // giochi, alla Corte dei Pescatori. Si gira dentro la corte, non sullo spigolo della sala giochi: così dal passo si vede già il retro ----
     if (fa('flipper')) { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria'), gatti = W.roads.find(r => r.id === 'vic_gatti');
       if (reti && vit && gatti) { const G0 = gatti.pts[gatti.pts.length - 1], yv = vit.pts[0][1], xg = G0[0];   // parte dal capo del Vico dei Gatti (di là dalla Vittoria): un incrocio vero
-        via('passo_flipper', 'Corte del Flipper', [[G0[0], G0[1]], [xg, yv], [1368, 349], [1368.2, 356], [1370.4, 360.4], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
+        via('passo_flipper', 'Corte del Flipper', [[G0[0], G0[1]], [xg, yv], [1368, 349], [1367.8, 355.5], [1367.6, 359.2], [1372, 361.9], [1378, 362], [xSu(reti, 362), 362]], {});
         slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.8, 359, 5, 3.6);
-        pezzo('pozzo', 1364.2, 357.9, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
+        pezzo('pozzo', 1363.8, 357.5, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
       } else S.avvisi.push('corte del flipper: manca la Vittoria, il Vico dei Gatti o il Vicolo delle Reti'); }
 
     // 4) gli indici: come casette(), al posto della casa tolta va l'ultima della lista
