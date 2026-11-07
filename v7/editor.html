@@ -27726,7 +27726,6 @@ var Urbanistica2 = (function () {
       [1379, 362, 'casa_359', 'flipper'],                                                                              // la Corte del Flipper verso la Corte dei Pescatori
     ],
     accorcia: [   // [punto, id, lato, caselle, zona]
-      [1428, 285, 'casa_162', 'N', 1, 'monache'],     // il passo dalla Corte delle Monache al Vico delle Monache: da 2 a 4 m
       [1366.5, 352, 'casa_37', 'E', 1, 'flipper'],    // la Corte del Flipper: il passo dalla Vittoria si apre a 4 m dentro la casa d'angolo (la casa accanto resta:
       [1364, 357, 'casa_37', 'S', 2, 'flipper'],      // senza lei il giro dei tetti del Forno si spezza); e la casa resta col fronte sulla Vittoria, 2 × 4 caselle
       [1373, 363, 'casa_370', 'N', 1, 'flipper'],     // la Corte del Flipper verso la Corte dei Pescatori: da 2 a 4 m
@@ -27860,12 +27859,14 @@ var Urbanistica2 = (function () {
     const corte = (x, y) => x > 1430 && x < 1440 && y > 280 && y < 304;
     if (fa('monache')) { if (scuro && monache) {
       // le tre vie si incontrano nel mezzo della corte (un nodo della rete); dentro la corte la carreggiata non si stampa
-      const NC = [1435.5, 291.2];
-      via('vic_androne_monache', 'Androne delle Monache', [[1434, yRua(1434)], [1434, 303.5], [1435, 297], NC], { fuori: corte });
+      // IL COVO: il bunker delle mura (1438,280) confina col fondo nord della corte. Il fondo resta un recesso chiuso (niente passo verso il
+      // Vico delle Monache, che ci sboccava accanto: il varco di 2 m che c'è resta com'era) e il fico sta in fondo all'asse dell'Androne (in asse col
+      // Vico del Pozzo, di là dalla Rua): dalla strada il fondo della corte non si vede. URBANISTICA2.md, «Il Covo»
+      const NC = [1434.6, 291.2];
+      via('vic_androne_monache', 'Androne delle Monache', [[1434, yRua(1434)], [1434, 303.5], [1433.5, 297.5], NC], { fuori: corte });
       via('passo_corte', 'Passo della Corte', [NC, [1439.5, 291], [xSu(scuro, 291), 291]], { fuori: corte });
-      via('passo_monache', 'Passo delle Monache', [[xSu(monache, 284), 284], [1433.2, 284], [1435.5, 287], NC], { fuori: corte });
       slargo('Corte delle Monache', 'il fico, la scala di ferro ai tetti, la porta dell\'Osteria', 1435, 292, 5, 11, { corte: true });
-      S.alberi.push(['fico', 1432.2, 296.5, 4.8]);
+      S.alberi.push(['fico', 1437, 287.2, 4.8]);   // in fondo all'asse dell'Androne: si vede dalla Rua e copre il recesso del covo
     } else S.avvisi.push('corte delle monache: manca il Vico Scuro o il Vico delle Monache'); }
 
     // ---- M3 · il Passo del Calzolaio: dalla Via delle Mura, accanto alla bottega del calzolaio, dritto nella corte dietro la chiesa e giù
@@ -27883,8 +27884,8 @@ var Urbanistica2 = (function () {
     // ---- M3 · la Corte del Flipper: dalla Vittoria (in asse col Vico dei Gatti: un incrocio solo) nella corte del pozzo, dietro la sala
     // giochi, alla Corte dei Pescatori ----
     if (fa('flipper')) { const reti = W.roads.find(r => r.id === 'vic_reti'), vit = W.roads.find(r => r.id === 'vittoria'), gatti = W.roads.find(r => r.id === 'vic_gatti');
-      if (reti && vit && gatti) { const yv = vit.pts[0][1], xg = gatti.pts[gatti.pts.length - 1][0];
-        via('passo_flipper', 'Corte del Flipper', [[xg, yv], [1368, 349], [1368.2, 356], [1370.4, 360.4], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
+      if (reti && vit && gatti) { const G0 = gatti.pts[gatti.pts.length - 1], yv = vit.pts[0][1], xg = G0[0];   // parte dal capo del Vico dei Gatti (di là dalla Vittoria): un incrocio vero
+        via('passo_flipper', 'Corte del Flipper', [[G0[0], G0[1]], [xg, yv], [1368, 349], [1368.2, 356], [1370.4, 360.4], [1373.5, 362], [1378, 362], [xSu(reti, 362), 362]], {});
         slargo('Corte del Flipper', 'il pozzo, la porta di dietro della sala giochi', 1366.8, 359, 5, 3.6);
         pezzo('pozzo', 1364.2, 357.9, 0, { r: .8, arco: true }, { nome: 'Pozzo della Corte del Flipper' }, null, [-1, 1, -1, 1]);
       } else S.avvisi.push('corte del flipper: manca la Vittoria, il Vico dei Gatti o il Vicolo delle Reti'); }
@@ -27910,6 +27911,42 @@ var Urbanistica2 = (function () {
     return W;
   }
 
+  // ---------------- i graffiti dei muri tolti (la strada dipinta, stile E) ----------------
+  // Sui muri delle case che F1 toglie la strada dipinta di serie mette dieci lavori (misurati in Node col mondo di serie: tre muri, il più
+  // pieno è il fianco sul Vico Scuro della casa dove ora si apre il Passo della Corte). Con F1 quei muri non ci sono: dopo la storia dei
+  // muri ogni lavoro va sul muro più vicino al suo posto di prima (entro 14 m), con lo stesso stile, la stessa zona e lo stesso livello.
+  // [stile, x, y, zona, livello, la casa di prima]
+  const GRAFFITI = [
+    ['pezzo', 1444.55, 291.44, 'vicolo', 'vissuto', 'casa_175'], ['tag', 1444.55, 292.06, 'vicolo', 'piccolo', 'casa_175'], ['mtag', 1444.55, 291.34, 'vicolo', 'piccolo', 'casa_175'],
+    ['mtag', 1444.55, 292.74, 'vicolo', 'piccolo', 'casa_175'], ['tag', 1444.55, 290.78, 'vicolo', 'piccolo', 'casa_175'], ['adesivi', 1444.55, 290.2, 'vicolo', 'piccolo', 'casa_175'],
+    ['gotico', 1444.55, 290.83, 'vicolo', 'medio', 'casa_175'], ['adesivi', 1444.55, 289.65, 'vicolo', 'piccolo', 'casa_175'],
+    ['pezzo', 1377.3, 363, 'ritrovo', 'medio', 'casa_359'], ['adesivi', 1431, 304.14, 'vicolo', 'porta', 'casa_240'],
+  ];
+  function graffiti() {
+    if (!ON || typeof StradaDipinta === 'undefined' || StradaDipinta.__u2) return !!(typeof StradaDipinta !== 'undefined');
+    const SD = StradaDipinta, s0 = SD.storia; SD.__u2 = true;
+    SD.storia = function (st, ctx) { const r = s0.apply(this, arguments); try { sposta(st, ctx); } catch (e) { STATO.graffiti = 'errore: ' + e.message; } return r; };
+    return true;
+  }
+  function sposta(st, ctx) {
+    const G = typeof Game !== 'undefined' ? Game : null, WR = typeof Writing !== 'undefined' ? Writing : null, WA = typeof WriterArte !== 'undefined' ? WriterArte : null;
+    if (!G || !WR || !WA || !ctx || !ctx.SITES || !(G.MAP.world && G.MAP.world.urbanistica2)) return;
+    const tolte = new Set(G.MAP.world.urbanistica2.tolte.map(t => t.id)), works = WR.S(st).works, crew = (SD => SD && SD.CREW && SD.CREW.PVK)(StradaDipinta) || { scrittori: ['CIAPA'] }, fatti = [];
+    GRAFFITI.forEach(([style, x, y, z, liv, casa], k) => { if (!tolte.has(casa)) return;
+      let best = null; ctx.SITES.forEach(q => { if (!/^(strada|hall|ferrovia|muro)$/.test(q.kind) || (q.len || 0) < 1.2 || !q.along) return;
+        const t = Math.max(.3, Math.min(q.len - .3, (x - q.x) * q.along[0] + (y - q.y) * q.along[1])), px = q.x + q.along[0] * t, py = q.y + q.along[1] * t, d = Math.hypot(px - x, py - y);
+        if (d < 14 && (!best || d < best.d)) best = { q, t, d }; });
+      if (!best) return;
+      let du = best.t; for (let i = 0; i < 6 && works.some(w => w.spot && Math.hypot(w.spot.x - (best.q.x + best.q.along[0] * du), w.spot.y - (best.q.y + best.q.along[1] * du)) < .45); i++) du = Math.max(.3, Math.min(best.q.len - .3, best.t + (i % 2 ? -1 : 1) * .6 * (1 + (i >> 1))));
+      const aka = crew.scrittori[k % crew.scrittori.length], h = aka.charCodeAt(0) * 977 + aka.charCodeAt(1) * 31 + (aka.charCodeAt(2) || 7), sk0 = .45 + (h % 45) / 100, seed = 7919 * (k + 1) + 104729;
+      const spot = Object.assign(ctx.spotOf(best.q, du), { sdZona: z });
+      const w = Object.assign(WA.conceive({ aka, crew: 'PVK', style, dna: WA.dnaOf(h, sk0, h % 14), seed, by: 'old:' + aka }), { by: 'old', hand: h * 13, surf: 'muro', spot, place: spot.place, prog: 1, done: true, old: true, sdPal: 1, sdZona: z, sdLiv: liv, sdEta: .35, u2: casa });
+      if (style === 'tag' || style === 'mtag') w.tagK = 1;
+      if (style === 'adesivi') w.sdAdesivi = { n: 5, nomi: crew.scrittori.slice(0, 3), crew: ['PVK'], loghi: StradaDipinta.LOGHI };
+      WR._.addWork(st, w); w.t0 = w.tDone = st.t - 40 * 1440; fatti.push({ style, da: [x, y], a: [+spot.x.toFixed(2), +spot.y.toFixed(2)], d: +best.d.toFixed(1) }); });
+    STATO.graffiti = fatti;
+  }
+
   // ---------------- nel browser: si salta world_cittanuova.js e lo si riesegue toccato ----------------
   function prima() { if (!ON || typeof window === 'undefined') return; window.__U2_NUOVA = window.PV_NUOVA; window.PV_NUOVA = false; }
   function dopo() {
@@ -27918,9 +27955,10 @@ var Urbanistica2 = (function () {
     let src = el.textContent; try { src = applica(src); } catch (e) { STATO.errore = e.message; console.error(e.message); }
     const s = document.createElement('script'); s.setAttribute('data-m', 'world_cittanuova_u2'); s.textContent = src; (document.head || document.documentElement).appendChild(s);
     if (typeof console !== 'undefined') console.log('[urbanistica2] F1 acceso', STATO.errore ? '(SENZA pezze: ' + STATO.errore + ')' : '');
+    const tg = setInterval(() => { if (graffiti()) clearInterval(tg); }, 40);   // la strada dipinta nasce dopo: ci si aggancia appena c'è
   }
 
-  const API = { on: ON, PEZZE, PIANO, applica, mondo, fine, prima, dopo, stato: STATO };
+  const API = { on: ON, PEZZE, PIANO, GRAFFITI, applica, mondo, fine, prima, dopo, graffiti, stato: STATO };
   // ---------------- in Node: il require di world_cittanuova.js carica il testo toccato ----------------
   if (ON && typeof module !== 'undefined' && typeof require === 'function' && typeof window === 'undefined') { try {
     const Mod = require('module'), fs = require('fs'), path = require('path'), ld = Mod._extensions['.js'];
