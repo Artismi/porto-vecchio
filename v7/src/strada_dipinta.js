@@ -237,7 +237,12 @@ var StradaDipinta = (function () {
       const style = s.facciata ? 'throw' : len >= 8 && (z === 'porto' || z === 'muro') && rng() < .5 ? 'murale' : len >= 6.5 ? (rng() < .5 ? 'burner' : 'pezzo') : 'pezzo';
       const W0 = style === 'throw' ? 3.2 : Math.min(len - .6, style === 'murale' ? 7 : style === 'burner' ? 6.4 : 5.2), H0 = style === 'murale' ? Math.min(4, W0 * .6) : style === 'throw' ? 1.5 : W0 * .4;
       const sp0 = posto(s, 0, null), alt = altFondale(s, sp0, z, who);
-      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: alt, sdRun: s.corsa, sdMinK: .5 }, 'fondale');
+      // sul Muro del Garante il pezzo va sul muro vero (i suoi pezzi non sono fra le superfici dei raggi): il segmento più vicino, la faccia verso
+      // la città, un burner di 7 × 2,6 m; il posto lo fissa piazza() senza fitWall (il Muro non ha finestre)
+      let anc = null; { const g = feat().muro.map(m => ({ m, d: dSeg(s.x, s.y, m[0], m[1], m[2], m[3]) })).sort((a, b) => a.d - b.d)[0];
+        if (g && g.d < 12) { const [x0, y0, x1, y1] = g.m, L = hyp(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / L, uy = (y1 - y0) / L, t = clamp((s.x - x0) * ux + (s.y - y0) * uy, 4, L - 4), cx = x0 + ux * t, cy = y0 + uy * t;
+          let nx = -uy, ny = ux; if ((s.x - cx) * nx + (s.y - cy) * ny < 0) { nx = -nx; ny = -ny; } anc = { k: 'garante', x: cx, y: cy, nx, ny, W: Math.min(7, L - 1), H: 2.6, hc: 1.85 }; } }
+      const w = lavoro(sp0, who, style, { W0, H0, sdEta: .05 + rng() * .1, sdStrato: 0, sdVista: Math.round(c.v), sdAlt: anc ? undefined : alt, sdRun: anc ? undefined : s.corsa, sdMinK: .5, sdAnc: anc || undefined }, 'fondale');
       s.sdFondale = true; big.push([s.x, s.y]); conta.fondali.push({ x: Math.round(s.x), y: Math.round(s.y), vista: Math.round(s.vista || c.v), via: s.via || '', zona: z, stile: style, aka: w.aka }); });
 
     // ---- 2. i muri: per zona e per ritmo, lavori grandi / medi / piccoli; nei punti fitti il muro vissuto a strati ----
@@ -323,6 +328,12 @@ var StradaDipinta = (function () {
   // piastra. Niente raggi: il palo c'è (segnaletica.js, gli stessi dati della grafica), il suolo lo dà render.js
   function piazza(w, THREE, R) {
     const a = w.sdAnc; if (!a || !THREE || !R || !R.groundH) return false;
+    if (a.k === 'garante') {   // il Muro: la faccia vera con un raggio dalla città verso il muro (anche le mesh a istanze), se no mezzo spessore di 30 cm
+      const gh = R.groundH(a.x + a.nx * 2, a.y + a.ny * 2), o = new THREE.Vector3(a.x + a.nx * 4, gh + a.hc, a.y + a.ny * 4), d = new THREE.Vector3(-a.nx, 0, -a.ny), rc = new THREE.Raycaster(o, d, 0, 6);
+      let off = .3; try { const sc = R.__models && R.__models.scene, L = []; if (sc) sc.traverseVisible(m => { if (m.isMesh && !(m.userData && (m.userData.velo || m.userData.atlante)) && m.geometry) { if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere(); const c = m.geometry.boundingSphere.center.clone().applyMatrix4(m.matrixWorld); if (m.isInstancedMesh || hyp(c.x - a.x, c.z - a.y) < m.geometry.boundingSphere.radius + 12) L.push(m); } });
+        const h = rc.intersectObjects(L, false).find(h => h.face && Math.abs(h.face.normal.y) < .5); if (h) off = Math.max(.02, 4 - h.distance); } catch (e) { }
+      const n = new THREE.Vector3(a.nx, 0, a.ny), c = new THREE.Vector3(a.x + a.nx * (off + .01), R.groundH(a.x + a.nx * (off + .3), a.y + a.ny * (off + .3)) + a.hc, a.y + a.ny * (off + .01));
+      w.W = a.W; w.H = a.H; w.gfxRect = { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: a.W, H: a.H, foot: null }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = 'cemento'; w.eta = 0; w.sdVedo = { x: a.x + a.nx * 34, y: a.y + a.ny * 34 }; return true; }
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.has('p' + Math.round(a.x * 10) + ',' + Math.round(a.y * 10))) return false;   // il palo tolto dalla pulizia
     const gh = R.groundH(a.x, a.y), L = hyp(a.nx, a.nz) || 1, nx = a.nx / L, nz = a.nz / L, H = w.H0 || .4, W = w.W0 || .08;
     const off = a.r + .002, c = new THREE.Vector3(a.x + nx * off, gh + a.h, a.y + nz * off);   // dietro il cartello r è negativo: la piastra sta 4,5 cm davanti al palo, il suo retro guarda indietro
