@@ -96,12 +96,20 @@ più fitte porta il 37% della vernice (era 35%). Sulle piazze 7 lavori (erano 73
   con lo stile e la misura che hanno vinto): (a) un verticale a rullo 1,3 × 4,4 m (o la calligrafia alta) fra due colonne di finestre, a
   passi di 1,6 m lungo la facciata; (b) un pezzo basso 4,2 × 1,05 m (o un throw-up) sulla fascia del pianterreno sotto i davanzali del primo
   piano; (c) il muro cieco di lato più vicino al fondo che si vede venendo dalla via; (d) il muro dei manifesti a strati.
-  **Misurato nel gioco** (`fondali_esito.json`, `fondale_via_della_marina_*.png`): dei tre fondali su queste vie uno entra (Via della
-  Marina, il tratto di 72 m: il verticale fra le finestre, alternativa (a), centro a 3,7 m); gli altri due (Via di Mezzo verso ovest, Via
-  della Marina verso la Via al Mare) non entrano con nessuna delle 18 alternative, nemmeno i manifesti: il posto preso dalla griglia (0,6 m
-  prima della casella della casa) non porta i raggi su una parete. **Aperto**: prendere il muro del fondale dalla geometria vera (un raggio
-  lungo la via in render.js, non dalla griglia) e rifare le foto. La camera del gioco (34°, bordo alto 11° sotto l'orizzonte) dal capo
-  lontano non vede comunque il fondo della via; la vede la camera bassa (18°, 7 m). `?camera9` non è in questo ramo: la foto «bassa» la imita.
+  **Il muro vero** (`writing.js fondaleMuroG`, `w.sdRun`): dalla fine del tratto dritto un raggio lungo la via, a 1,5 / 2,6 / 3,6 m, contro le
+  mesh della città (i candidati dei raggi dei graffiti raccolti ogni 2 m lungo la via); vale solo un muro largo (due raggi paralleli a
+  ±0,9 m sullo stesso piano: non un palo, un albero, un mezzo; un ostacolo stretto si scavalca). Il lavoro e le alternative si spostano lì,
+  sulla sua normale. Se il raggio non trova niente (le case lontane non ancora in scena) si riprova al giro dopo, al più sei volte. Il pezzo
+  si stringe fino al rettangolo libero più grande (`sdMinK` .5).
+  **Misurato nel gioco** (`?cittanuova&leggera&stile=E&camera9`, `fondali.jpg`, `fondali9.json`): 6 fondali su 8 entrano nel muro (il
+  corridoio sul Muro, i due della Via della Marina, la Via di Mezzo, la Rua Maestra, il Raccordo del Valico), 2 no:
+  - Strada del Bosco (fuori città): il raggio lungo la via non trova un muro largo neanche dopo sei giri. Il Raccordo del Valico, anche lui
+    in campagna, entra in un giro e non in un altro: le case di campagna in fondo arrivano tardi fra le mesh dei raggi (da capire);
+  - Via delle Mura: la vista finisce sul rilevato della ferrovia (una scarpata, non un muro) e oltre; nessun muro verticale da prendere.
+  **Leggibile no.** Dalla via a 30–40 m, con la camera9, i pezzi entrati non si leggono: stretti fra le finestre diventano 2–3 m × 1–1,5 m
+  (a 35 m sono 30–60 pixel). Al Muro il raggio passa attraverso il muro del Garante (i suoi pezzi non sono fra i candidati dei raggi) e il
+  pezzo va sul corpo di guardia dietro, coperto. **Aperto**: pezzi più grandi in fondo alla via (il verticale su più piani, la fascia
+  intera del pianterreno anche sopra le porte chiuse), il muro del Garante fra le superfici dei raggi, le case di campagna.
 
 - **I grandi** per zona (tabella 2.1): pezzi e burner nei sottopassi e sul Muro, rulli e murali sul porto, quasi niente nelle vie.
   Mai due grandi a meno di 4,6 m (3,2 nei punti fitti). **I verticali e gli heaven spot** solo nelle zone calde, uno per palazzo, al

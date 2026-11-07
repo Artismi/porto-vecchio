@@ -1,0 +1,182 @@
+[
+ {
+  "n": 1,
+  "via": "corridoio sul Muro",
+  "vista": 160,
+  "da": 15,
+  "stile": "throw",
+  "variante": "a",
+  "muro": {
+   "x": 1496.75,
+   "z": 337,
+   "d": 15.3
+  },
+  "W": 2.08,
+  "H": 1.56,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1496.5,
+   "y": 7.861427640914917,
+   "z": 335.1611111111111,
+   "nx": -1,
+   "nz": 0
+  }
+ },
+ {
+  "n": 2,
+  "via": "Via della Marina",
+  "vista": 114,
+  "da": 15,
+  "stile": "throw",
+  "variante": "a",
+  "muro": {
+   "x": 1427.95,
+   "z": 389.7,
+   "d": 19.5
+  },
+  "W": 2.27,
+  "H": 1.2,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1427.9500732421875,
+   "y": 5.604209806303925,
+   "z": 386.6293350074405,
+   "nx": -1,
+   "nz": 0
+  }
+ },
+ {
+  "n": 3,
+  "via": "Raccordo del Valico",
+  "vista": 104,
+  "da": 34,
+  "stile": "pezzo",
+  "variante": "primo",
+  "muro": {
+   "x": 1000.21,
+   "z": 442.83,
+   "d": 13.4
+  },
+  "W": 3.6,
+  "H": 1.66,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1000.978862530614,
+   "y": 3.404777381896973,
+   "z": 442.6234550625761,
+   "nx": -0.2619023140946059,
+   "nz": -0.9650943880636186
+  }
+ },
+ {
+  "n": 4,
+  "via": "Via di Mezzo",
+  "vista": 84,
+  "da": 34,
+  "stile": "throw",
+  "variante": "primo",
+  "muro": {
+   "x": 1296.05,
+   "z": 370.46,
+   "d": 9
+  },
+  "W": 2.8,
+  "H": 0.94,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1296.0499267578125,
+   "y": 1.6852939794299904,
+   "z": 370.2571082751972,
+   "nx": 1,
+   "nz": 0
+  }
+ },
+ {
+  "n": 5,
+  "via": "Strada del Bosco",
+  "vista": 83,
+  "da": 34,
+  "stile": "throw",
+  "variante": "primo",
+  "muro": "nessuno",
+  "posato": false,
+  "fatto": false,
+  "disegnato": false,
+  "pend": 0,
+  "c": null
+ },
+ {
+  "n": 6,
+  "via": "Via delle Mura",
+  "vista": 82,
+  "da": 19,
+  "stile": "throw",
+  "variante": "primo",
+  "muro": "nessuno",
+  "posato": false,
+  "fatto": false,
+  "disegnato": false,
+  "pend": 0,
+  "c": null
+ },
+ {
+  "n": 7,
+  "via": "Via della Marina",
+  "vista": 72,
+  "da": 34,
+  "stile": "throw",
+  "variante": "primo",
+  "muro": {
+   "x": 1381,
+   "z": 380.22,
+   "d": 28.9
+  },
+  "W": 3.2,
+  "H": 1.5,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1381,
+   "y": 1.8300095928350877,
+   "z": 380.22473563623544,
+   "nx": 1,
+   "nz": 0
+  }
+ },
+ {
+  "n": 8,
+  "via": "Rua Maestra",
+  "vista": 63,
+  "da": 15,
+  "stile": "throw",
+  "variante": "a",
+  "muro": "nessuno",
+  "W": 2.64,
+  "H": 1.4,
+  "posato": true,
+  "fatto": true,
+  "disegnato": true,
+  "pend": 0,
+  "c": {
+   "x": 1357.9500732421875,
+   "y": 2.8363708039304316,
+   "z": 301.6310274558642,
+   "nx": -1,
+   "nz": 0
+  }
+ }
+]
