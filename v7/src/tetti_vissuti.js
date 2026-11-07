@@ -552,6 +552,10 @@ var TettiVissuti = (function () {
   // =====================================================================================================================
   // kind: coppi, tegole (falde: la gronda è la v della tela, 16 m per unità), pianelle, cemento (lastrici). Celle del manto in unità di uv.
   const CELLE = { coppi: [256 / 6, 256 / 8], tegole: [256 / 4, 256 / 7], pianelle: [256 / 5, 256 / 5], cemento: [256 / 8, 256 / 8] };
+  // [rifcostruito] lo stile E (?stile=E, rifinitura_costruito.js): il manto DISEGNATO a ogni distanza utile, anche l'ardesia (lastre 6 × 5 px
+  // sfalsate di mezza); senza lo stile E nessuna riga cambia
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.on ? RifCostruito : null;
+  if (RC) CELLE.ardesia = [256 / 6, 256 / 5];
   function manto(m, kind) {
     if (SPENTO || !CELLE[kind] || !TT.PIANO || !TT.PIANO.length) return m;
     m.userData.tv1 = kind; applica(m); return m;
@@ -571,7 +575,8 @@ var TettiVissuti = (function () {
   };
   const BUCO_TV = typeof location !== 'undefined' && /[?&]vecchiapulizia\b/.test(location.search) ? .85 : .22;
   function applica(m) {
-    const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole', f = v => v.toFixed(4);
+    const kind = m.userData.tv1, cel = CELLE[kind], falda = kind === 'coppi' || kind === 'tegole' || kind === 'ardesia', f = v => v.toFixed(4);
+    if (RC) return applicaE(m, kind, cel, falda, f);   // [rifcostruito]
     m.customProgramCacheKey = () => 'tv1-' + kind;
     m.onBeforeCompile = sh => {
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;')
@@ -615,6 +620,62 @@ if (sgP10.x > 0.) { vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])}), fw = fwidth
   diffuseColor.rgb = c; }
 #endif`);
     };
+  }
+  // [rifcostruito] IL MANTO DELLO STILE E (BIBBIA_STILE.md §11.2: «il manto dei tetti disegnato al posto della tela ingrandita»).
+  // Ogni fila di coppi, tegole e lastre disegnata: la campitura è la media della tela (la mipmap più alta) portata verso il cotto (l'ardesia
+  // verso il piombo) col valore di prima; dentro la cella del manto il profilo a tre toni netti (il coppo: dorso chiaro, fianchi, canale
+  // scuro; la marsigliese: i due canaletti; l'ardesia: piatta con lo spigolo alto chiaro); il labbro di ogni fila è una riga scura di 1 px
+  // antialiasata (fwidth), sopra la testa al sole; i giunti di colonna (tegole, ardesia, lastrici) più leggeri. Ogni tegola il suo tono
+  // (tre gradini), i rappezzi a gruppi di 4 × 3 tegole (nuove: più accese; vecchie: più scure) e qualche tegola sostituita: il vissuto
+  // disegnato, non a macchie. Dove la fila scende sotto 4-6 px le righe svaniscono e resta la campitura (niente moiré, niente grana).
+  // Il tempo calmo: il muschio a chiazze grandi col bordo netto (verso nord e sulla gronda), niente licheni né crepe, l'umido dei lastrici
+  // a chiazze piatte. Niente `diffuse`, `map` solo in texture2D (la tavolozza e la pila di [leggero] lo provano a vuoto); niente commenti nel GLSL.
+  function applicaE(m, kind, cel, falda, f) {
+    const sfalsa = kind === 'ardesia', lastrico = !falda, I = RC.v3(kind === 'ardesia' ? RC.INK.piombo : RC.INK.cotto), W0 = kind === 'ardesia' ? '.3' : '.45', N = RC.v3(RC.INK.ocra);
+    const PROF = {
+      coppi: `float x = abs(q.x - .5) * 2., ax = fw.x * 2.4; c *= 1.07 - .1 * smoothstep(.36 - ax, .36 + ax, x) - .12 * smoothstep(.74 - ax, .74 + ax, x);`,
+      tegole: `float ax = fw.x * 2.; c *= 1. + .08 * smoothstep(.25 - ax, .25 + ax, q.x) * (1. - smoothstep(.5 - ax, .5 + ax, q.x)) - .13 * smoothstep(.75 - ax, .75 + ax, q.x);`,
+      ardesia: `c *= 1. + .07 * smoothstep(.8, .86, q.y);`,
+      pianelle: ``, cemento: ``,
+    }[kind] || '';
+    m.customProgramCacheKey = () => 'tv1e-' + kind;
+    m.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vTvP; varying vec3 vTvN;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvTvP = (modelMatrix * vec4(transformed, 1.0)).xyz; vTvN = normalize(mat3(modelMatrix) * objectNormal);');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+varying vec3 vTvP; varying vec3 vTvN;
+${RC.GL}
+float tvN(vec2 p) { vec2 i = floor(p), q = fract(p); q = q * q * (3. - 2. * q); return mix(mix(rcH(i), rcH(i + vec2(1., 0.)), q.x), mix(rcH(i + vec2(0., 1.)), rcH(i + vec2(1., 1.)), q.x), q.y); }`)
+        .replace('#include <map_fragment>', `#include <map_fragment>
+#ifdef USE_MAP
+{ vec2 g = vUv * vec2(${f(cel[0])}, ${f(cel[1])});
+  ${sfalsa ? 'g.x += mod(floor(g.y), 2.) * .5;' : ''}
+  vec2 fw = max(fwidth(g), vec2(1e-5)), ce = floor(g), q = fract(g), px = 1. / fw;
+  vec3 tx = texture2D(map, vUv).rgb, K = diffuseColor.rgb / max(tx, vec3(.02));
+  vec3 avg = rcPorta(K * texture2D(map, vUv, 8.).rgb, ${I}, ${W0});
+  float h = rcH(ce + 3.7), cl = rcH(floor((ce + vec2(mod(floor(ce.y / 3.), 2.) * 2., 0.)) / vec2(4., 3.)) + floor(vTvP.xz * .02) * 7.3 + 11.3);
+  vec3 c = avg * (.955 + .045 * floor(h * 3.));
+  if (cl < .07) c = rcPorta(c * 1.1, ${kind === 'ardesia' ? I : N}, .3); else if (cl > .94) c *= .85;
+  if (rcH(ce + 17.1) < .018) c *= h < .5 ? 1.13 : .8;
+  ${PROF}
+  float dY = q.y * px.y, dX = min(q.x, 1. - q.x) * px.x;
+  float rY = smoothstep(3.5, 6., px.y), rX = smoothstep(3.5, 6., px.x);
+  float riga = 1. - smoothstep(.6, 1.5, dY), testa = (1. - smoothstep(1.4, 2.6, dY)) * (1. - riga);
+  float giunto = ${kind === 'coppi' ? '0.' : '1. - smoothstep(.4, 1.2, dX)'};
+  c *= 1. + ${lastrico ? '0.' : '.06'} * testa * rY;
+  c = mix(avg, c, rY);
+  c = mix(c, c * vec3(.32, .27, .3), max(riga * rY * ${lastrico ? '.42' : '.68'}, giunto * rX * ${lastrico ? '.36' : '.38'}));
+  vec2 w = vTvP.xz; float mo = tvN(w * .55 + 3.), a = tvN(w * .23);
+  ${falda ? `float nord = clamp(-vTvN.z * 1.6, 0., 1.), gronda = 1. - smoothstep(.0, 1.1, vUv.y * 16.);
+  float mw = fwidth(mo) * 1.5 + .01, mu = clamp(nord * .7 + gronda * .5, 0., 1.) * smoothstep(.66 - mw, .66 + mw, mo);
+  c = mix(c, vec3(.29, .33, .19) * (.8 + .4 * rcLum(c)), mu * .5);
+  c = mix(c, c * .7, step(.9955, rcH(ce + floor(w * .07) * 17.)) * ${BUCO_TV > .5 ? '.9' : '.3'});` : `float aw = fwidth(a) * 1.5 + .01; c = mix(c, c * vec3(.8, .82, .84), smoothstep(.66 - aw, .66 + aw, a) * .55);
+  c = mix(c, vec3(rcLum(c) * .82 + .05), step(.95, rcH(ce + 5.3)) * ${kind === 'pianelle' ? '.35' : '.15'});
+  c *= 1. - step(.992, rcH(ce + 5.)) * .14;`}
+  diffuseColor.rgb = c; }
+#endif`);
+    };
+    return m;
   }
   // ogni copia del materiale (ownMats, la fusione, il tetto che sbiadisce) si porta dietro il marchio nei userData: qui si rimette lo shader
   if (typeof THREE !== 'undefined' && THREE.Material && !THREE.Material.prototype.__tv1) {
