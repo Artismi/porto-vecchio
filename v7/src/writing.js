@@ -904,7 +904,10 @@ var Writing = (function () {
     if (!sl) return false;
     const THREE = T3();
     if (T.decal2 && P.MG) {   // [graffiti2] sui triangoli veri: la geometria nel mondo, le coordinate della tela nel suo scaffale
-      m.updateMatrixWorld(true); const My = P.MG[T.layer > 0 ? 1 : 0], S = P.S, ix = sl.x + ATL.PAD, iy = sl.y + ATL.PAD, iw = c.width, ih = c.height, gp = T.geo.attributes.position, gu = T.geo.attributes.uv, gn = T.geo.attributes.normal;
+      // [stradadipinta] il piano (i pezzi sui pali e sul Muro, il piano di riserva quando i triangoli veri non vengono) ha l'indice: la mesh fusa
+      // non ne ha, e coi suoi quattro vertici presi in fila restava un triangolo girato (scartato) e i lavori dopo di lui sfasati
+      const GG = T.geo.index ? T.geo.toNonIndexed() : T.geo;
+      m.updateMatrixWorld(true); const My = P.MG[T.layer > 0 ? 1 : 0], S = P.S, ix = sl.x + ATL.PAD, iy = sl.y + ATL.PAD, iw = c.width, ih = c.height, gp = GG.attributes.position, gu = GG.attributes.uv, gn = GG.attributes.normal;
       const pos = new Float32Array(gp.count * 3), uv = new Float32Array(gp.count * 2), nor = new Float32Array(gp.count * 3), v = new THREE.Vector3(), nm = new THREE.Matrix3().getNormalMatrix(m.matrixWorld);
       for (let k = 0; k < gp.count; k++) { v.fromBufferAttribute(gp, k).applyMatrix4(m.matrixWorld); pos[k * 3] = v.x; pos[k * 3 + 1] = v.y; pos[k * 3 + 2] = v.z; uv[k * 2] = (ix + gu.getX(k) * iw) / S; uv[k * 2 + 1] = (iy + gu.getY(k) * ih) / S; v.fromBufferAttribute(gn, k).applyMatrix3(nm).normalize(); nor[k * 3] = v.x; nor[k * 3 + 1] = v.y; nor[k * 3 + 2] = v.z; }
       const key = ++ATL.mk, px = new THREE.Object3D(); px.position.copy(m.position); px.quaternion.copy(m.quaternion); px.updateMatrixWorld(true);
@@ -1354,8 +1357,8 @@ var Writing = (function () {
   // il verticale su più piani (2,4 × 7 m, almeno 5 m), il burner (7,5 × 2,8 m, almeno 6 m), la fascia del pianterreno a rullo sopra porte e
   // serrande chiuse (8 × 2 m). Entrano solo dove il muro è cieco: i timpani, i fianchi, i retri. w.sdGrandi, provati prima delle alternative
   function* fondaleGrandiG(w, hit, list0, dir) {
-    // chi guarda sta a 34 m dal muro del fondo trovato (se no 32 m prima della fine del tratto dritto)
-    const THREE = T3(), R = R_(), q = w.sdRun, back = hit ? 34 - hit.d : 32, vx = q.ex - q.ux * back, vz = q.ey - q.uy * back, out = [], set = new Set(list0);
+    // chi guarda sta a 34 m dal muro del fondo trovato (se no dal posto del fondale sulla griglia, se no 32 m prima della fine del tratto dritto)
+    const THREE = T3(), R = R_(), q = w.sdRun, ds = w.spot ? (w.spot.x - q.ex) * q.ux + (w.spot.y - q.ey) * q.uy : 2, back = hit ? 34 - hit.d : 34 - clamp(ds, 2, 40), vx = q.ex - q.ux * back, vz = q.ey - q.uy * back, out = [], set = new Set(list0);
     for (let d = 0; d <= back + 75; d += 3) cands(vx + q.ux * d, vz + q.uy * d).forEach(o => set.add(o));
     const list = [...set], vgh = R.groundH(vx, vz); yield;
     const B = yield* fondaleCieco(w, list, dir, vx, vz, vgh);   // [stradadipinta] la mappa del cieco: il rettangolo libero più grande visto dalla via
@@ -1383,13 +1386,14 @@ var Writing = (function () {
   // Il pezzo si fa della forma del rettangolo (il murale, il burner, la fascia a rullo, il verticale) e centrato lì; il punto di vista
   // deve vederlo (cinque raggi dalla via). Ritorna le prove per placeWallG (prima delle misure fisse di fondaleGrandiG)
   function* fondaleCieco(w, list, dir, vx, vz, vgh) {
-    const THREE = T3(), R = R_(), walls = [];
-    for (const deg of [0, -2.5, 2.5, -5, 5, -7.5, 7.5, -10, 10, -12.5, 12.5, -15, 15, -17.5, 17.5, -20, 20]) { const ar = deg * Math.PI / 180, d0 = new THREE.Vector3(dir.x * Math.cos(ar) - dir.z * Math.sin(ar), 0, dir.x * Math.sin(ar) + dir.z * Math.cos(ar));
+    const THREE = T3(), R = R_(), walls = []; w.__cieco = [];
+    for (const deg of [0, -2.5, 2.5, -5, 5, -7.5, 7.5, -10, 10, -12.5, 12.5, -15, 15, -17.5, 17.5, -20, 20, -22.5, 22.5, -25, 25]) { const ar = deg * Math.PI / 180, d0 = new THREE.Vector3(dir.x * Math.cos(ar) - dir.z * Math.sin(ar), 0, dir.x * Math.sin(ar) + dir.z * Math.cos(ar));
       for (const hh of [2, 4.5, 7.5]) { const o = new THREE.Vector3(vx, vgh + hh, vz), h = rayWall(o, d0, 70, list); if (!h || Math.abs(h.n.y) > .3) continue; const dist = h.p.distanceTo(o); if (dist < 14 || h.n.dot(d0) > -.3) continue;
         const n = new THREE.Vector3(h.n.x, 0, h.n.z).normalize(); if (walls.some(c => c.n.dot(n) > .97 && Math.abs(c.p.clone().sub(h.p).dot(n)) < .4 && Math.hypot(c.p.x - h.p.x, c.p.z - h.p.z) < 10)) continue; walls.push({ p: h.p.clone(), n, deg: Math.abs(deg), dist }); }
       yield; }
     const NU = 41, NV = 20, best = [];
-    for (const c of walls.slice(0, 6)) {
+    walls.sort((a, b) => (Math.abs(a.dist - 32) + a.deg) - (Math.abs(b.dist - 32) + b.deg));   // prima i muri a 30-40 m vicino all'asse
+    for (const c of walls.slice(0, 8)) {
       const r = new THREE.Vector3(c.n.z, 0, -c.n.x), g0 = R.groundH(c.p.x + c.n.x, c.p.z + c.n.z), mid = new THREE.Vector3(c.p.x, g0 + 5.25, c.p.z);
       const L = yield* nearTrisG(nearList(cands(c.p.x, c.p.z), mid, 12), mid, 11.5), O = openingsAt(mid, c.n), ok = new Uint8Array(NU * NV);
       for (let j = 0; j < NV; j++) { for (let i = 0; i < NU; i++) ok[j * NU + i] = onPlane(new THREE.Vector3(c.p.x + r.x * (i * .5 - 10), g0 + .5 + j * .5, c.p.z + r.z * (i * .5 - 10)), c.n, L, O, null) ? 1 : 0; yield; }
@@ -1399,14 +1403,15 @@ var Writing = (function () {
         for (let j1 = j0; j1 < NV; j1++) { for (let i = 0; i < NU; i++) col[i] &= ok[j1 * NU + i]; const hm = (j1 - j0) * .5; let run = 0;
           for (let i = 0; i <= NU; i++) { if (i < NU && col[i]) { run++; continue; } if (run > 1) { const wm = (run - 1) * .5, sc = Math.max(Math.min(wm / 6, 1) * Math.min(hm / 1.6, 1), Math.min(hm / 5, 1) * Math.min(wm / 1.8, 1)), A = Math.min(wm, 10) * Math.min(hm, 6);
             if (!b || sc > b.sc + .01 || (sc > b.sc - .01 && A > b.A)) b = { sc, A, wm, hm, uc: (i - 1 - (run - 1) / 2) * .5 - 10, yc: .5 + (j0 + j1) / 2 * .5 }; } run = 0; } } }
-      yield; if (!b || b.wm < 2) continue;
+      yield; (w.__cieco || (w.__cieco = [])).push(c.dist.toFixed(0) + ' m ' + c.deg + '° ' + (b ? b.wm + '×' + b.hm : '-'));   // [stradadipinta] le sonde
+      if (!b || b.wm < 2) continue;
       // si vede dalla via? il centro e i quattro angoli (a tre quarti), da 3,5 m sopra la strada
       const eye = new THREE.Vector3(vx, vgh + 3.5, vz), P = (u, v) => new THREE.Vector3(c.p.x + r.x * (b.uc + u) + c.n.x * .05, g0 + b.yc + v, c.p.z + r.z * (b.uc + u) + c.n.z * .05);
       let vis = 0; for (const [u, v] of [[0, 0], [-.37, -.37], [.37, -.37], [.37, .37], [-.37, .37]]) { const t = P(u * b.wm, v * b.hm), d = t.clone().sub(eye), D = d.length(); d.normalize(); const h = rayWall(eye, d, D + .5, list); if (!h || h.p.distanceTo(eye) > D - .4) vis++; }
-      yield; if (vis < 4) continue;
+      yield; w.__cieco.push('visto ' + vis + '/5'); if (vis < 4) continue;
       best.push(Object.assign(b, { c, r, g0 }));
     }
-    best.sort((a, b) => (b.sc - a.sc) || (a.c.deg - b.c.deg));
+    const kv = b => Math.abs(b.c.dist - 32) / 10 + b.c.deg / 10; best.sort((a, b) => Math.abs(b.sc - a.sc) > .05 ? b.sc - a.sc : kv(a) - kv(b));
     const G = [];
     best.slice(0, 2).forEach((b, k) => { const c = b.c, w0 = Math.min(b.wm - .4, 10), h0 = Math.min(b.hm - .3, 7); if (w0 < 1.5 || h0 < .9) return;
       const [style, W0, H0] = w0 >= 5.5 && h0 >= 3.6 ? ['murale', Math.min(w0, 9), Math.min(h0, Math.min(w0, 9) * .6, 5)] : w0 >= 5.5 && h0 >= 2 ? ['burner', Math.min(w0, 9), Math.min(h0, Math.min(w0, 9) * .42)]
