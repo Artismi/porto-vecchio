@@ -57,6 +57,8 @@ si confonde. Vale per tutto quello che si costruisce da F1 in poi, e dove il mas
   luce, un arco, una pianta, o la cosa dello slargo che si vede attraverso (il fico in fondo all'Androne, la fontanella dalla Rua, il
   pozzo dalla Vittoria). Niente fessure buie.
 - **Sottopassi**: corti, larghi e chiari; l'uscita si vede dall'imbocco.
+- **Il fondo della vista**: dove un passaggio, un gomito o uno slargo inquadra il fondo di una vista, il muro che la chiude è cieco
+  (almeno 6 × 4 m, senza finestre, davanzali né insegne), così la strada dipinta ci può mettere il pezzo grande (sez. 6).
 - **La camera**: la camera di oggi e `?camera9` passano ogni gomito e ogni passaggio senza chiudersi, senza entrare nei muri e senza perdere
   il personaggio. Si controlla camminando (sez. 5): nessun fotogramma col braccio sotto il 60% o col personaggio coperto.
 
@@ -203,6 +205,41 @@ RISULTATI_GIOCO
 - **NPC, regia, missioni**: le prove dei posti, delle botteghe, della regia e delle vie vive passano come prima; i luoghi-missione e i
   loro ingressi non cambiano (nessuna casa con nome o bottega si tocca: `urbanistica2.js` lo controlla).
 - **Prestazioni**: PRESTAZIONI
+
+### I muri di fondo (per la strada dipinta)
+
+Chi lavora ai graffiti ha visto che le viste lunghe finiscono su facciate piene di finestre, dove un pezzo grande di fondo non ci sta. La
+regola, da F1 in poi: **dove un passaggio, un gomito o uno slargo inquadra il fondo di una vista, il muro che la chiude è cieco**:
+- un timpano, un retro o un muro di confine;
+- almeno 6 m di larghezza e 4 m di altezza, senza finestre, davanzali né insegne.
+
+**Il dato.** `mondo()` guarda lungo l'asse di ogni passaggio e di ogni slargo di F1 (13 viste) fino al primo muro e lo scrive in
+`W.urbanistica2.muriFondale`. Per ognuno:
+- la vista e il punto da cui si guarda;
+- la distanza;
+- che cos'è: `rilevato`, `pezzo` o `casa` (con `casa` e `faccia`);
+- il centro, la normale (verso chi guarda), la larghezza e l'altezza;
+- `cieco` (oggi senza finestre) e `adatto` (6 × 4 m, senza porta né insegna);
+- `perche`, quando non va.
+
+`W.muriFondale` è l'elenco dei soli adatti: è quello che `writing.js` (`fondaleCieco`, `fondaleMuroG`, sul ramo dei graffiti, non
+ancora unito: qui non si tocca) può leggere.
+
+| Vista | Il fondo | Largo × alto | Stato |
+|---|---|---|---|
+| Vico della Torre, dalla Rua | il muro del rilevato della ferrovia, sotto la torre dell'acqua | 12 × 4 m | **cieco**: il pezzo grande va lì |
+| Corte del Flipper, dalla Vittoria | il fianco nord della casa in fondo alla corte (accorciata da F1) | 6 × 7,2 m | **adatto**: la porta passa sul fronte della Via di Mezzo, la faccia resta da fare cieca (`b.muroFondale`) |
+| Corte del Flipper, dal Vicolo delle Reti | il fianco est della casa d'angolo della corte | 6 × 7,2 m | **adatto**: la porta passa sulla corte, la faccia resta da fare cieca |
+| il Sottopassino, dal Lungomare e dall'Orto | le spalle di pietra ai lati del fornice | 2 × 3,8 m (12 × 5,15 col fornice) | cieche ma strette: tag e pezzi piccoli |
+| Sottopassino, dal Lungomare (di là) · Vico del Lavatoio, dai Bottai · Flipper, verso le Reti | facce con la porta o la bottega (una ha il nome) | 6-12 m | non adatte: la porta non ha un'altra faccia libera, o la casa ha un nome |
+| Androne · Passo della Corte · Passo del Calzolaio · Vico del Lavatoio, dai Gatti | facce di 2-4 m | — | strette: la vista finisce su uno spigolo o su un vicolo che continua (dall'Androne, poi, c'è il fico) |
+| Orto verso le Mura · Calzolaio dal sagrato · Vico della Torre dalle Mura | la vista continua o finisce sul piede basso del rilevato | — | aperte |
+
+**Le finestre.** Oggi `render.js` mette le finestre su ogni faccia che dà su uno spazio aperto, e `render.js` sta nell'impronta dei
+tasselli: in F1 non si tocca. Quindi:
+- il muro del rilevato è cieco già oggi;
+- le due facce di casa adatte portano la richiesta `b.muroFondale = { f, largo, alto, vista }`;
+- quando F1 entrerà di serie, `render.js` dovrà leggerla per farle cieche, come fa già col tratto del ritratto (`b.__prop`).
 
 ### Le prove (`node <prova>.js`, di serie e con `PV_URBANISTICA2=1 node -r ./urbanistica2.js <prova>.js`)
 
