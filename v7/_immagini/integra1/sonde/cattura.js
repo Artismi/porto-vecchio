@@ -33,7 +33,7 @@ const VP = { width: +(process.env.W || 1920), height: +(process.env.H || 1080) }
         const P = JSON.parse(JSON.stringify(posti[posto])); P.varianti = VAR; P.tempi = 1;
         await H.S(async a => { if (typeof Tasselli !== 'undefined' && Tasselli.attivo() && Tasselli.finisci) { const p = window.__pv.st.player; p.x = a[0]; p.y = a[1]; window.__pv.R.snap(window.__pv.st); await Promise.race([Tasselli.finisci(60), new Promise(r => setTimeout(r, 120000))]); }   /* al più due minuti: poi i tasselli arrivano coi fotogrammi della corsa */ }, P.start);
         const r = await corsa(H.pg, P);
-        r.var.forEach(([v, url]) => fs.writeFileSync(path.join(OUT, `${PRE}_${posto}_${v}.png`), Buffer.from(url.split(',')[1], 'base64')));
+        r.var.forEach(([v, url], i) => fs.writeFileSync(path.join(OUT, `${PRE}_${posto}_${v}${r.var.slice(0, i).some(x => x[0] === v) ? i : ''}.png`), Buffer.from(url.split(',')[1], 'base64')));   // la stessa variante ripetuta (A,E,A): A2
         esito[posto] = { stato: r.var.map(x => [x[0], x[2]]), tasselli: await H.S(() => typeof Tasselli !== 'undefined' && Tasselli.attivo() ? (({ mesh, vertici, materiali, tessiture }) => ({ mesh, vertici, materiali, tessiture }))(window.__tasselli) : null) };
         log(posto, ((Date.now() - t0) / 1000).toFixed(0) + 's', JSON.stringify(r.var.map(x => [x[0], x[2].ms]))); break; }
       catch (e) { log('crash', posto, String(e.message).slice(0, 200)); try { await H.close(); } catch (x) { } H = await avvia({ vp: VP, query: Q }); await prepara(); } } }

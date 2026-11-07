@@ -1,62 +1,37 @@
 {
+ "nota": "stessa sessione, stesso istante (la corsa di fumetto2 ferma, le varianti una dopo l altra); 960x540, tasselli cotti 48196fd63f899c14. Il resto (animazioni: panni, bandiere, uccelli) e il rumore del passo unico contro le bande (±1-2, va col tempo) danno il fondo. I confronti fra sessioni diverse non valgono: il taglio delle case e le persone cambiano da una sessione all altra.",
  "vicolo": {
-  "A tasselli | A senza tasselli": null,
-  "E tasselli | E senza tasselli": null,
-  "E dal vivo | E al caricamento (tasselli)": {
-   "media": 18.773,
-   "px>0 %": 97.702,
-   "px>24 %": 32.82
+  "carico A: A | A dopo E": {
+   "media": 0.58,
+   "px>2 %": 0.938,
+   "px>8 %": 0.39
   },
-  "A dal vivo dopo E | A al caricamento (tasselli)": {
-   "media": 16.493,
-   "px>0 %": 98.184,
-   "px>24 %": 30.126
+  "carico E: E | E dopo A": {
+   "media": 0.634,
+   "px>2 %": 1.553,
+   "px>8 %": 0.592
   },
-  "A senza tasselli | A prima di integra1": null,
-  "A | E (tasselli)": {
-   "media": 10.404,
-   "px>0 %": 99.97,
-   "px>24 %": 12.881
+  "carico A: A | E (riferimento)": {
+   "media": 10.282,
+   "px>2 %": 99.226,
+   "px>8 %": 78.486
   }
  },
  "lungomare": {
-  "A tasselli | A senza tasselli": null,
-  "E tasselli | E senza tasselli": null,
-  "E dal vivo | E al caricamento (tasselli)": {
-   "media": 11.566,
-   "px>0 %": 96.537,
-   "px>24 %": 18.891
+  "carico A: A | A dopo E": {
+   "media": 0.639,
+   "px>2 %": 0.319,
+   "px>8 %": 0.125
   },
-  "A dal vivo dopo E | A al caricamento (tasselli)": {
-   "media": 10.263,
-   "px>0 %": 96.075,
-   "px>24 %": 14.99
+  "carico E: E | E dopo A": {
+   "media": 0.558,
+   "px>2 %": 1.095,
+   "px>8 %": 0.277
   },
-  "A senza tasselli | A prima di integra1": null,
-  "A | E (tasselli)": {
-   "media": 10.632,
-   "px>0 %": 99.984,
-   "px>24 %": 11.579
-  }
- },
- "piazza": {
-  "A tasselli | A senza tasselli": null,
-  "E tasselli | E senza tasselli": null,
-  "E dal vivo | E al caricamento (tasselli)": {
-   "media": 71.322,
-   "px>0 %": 99.947,
-   "px>24 %": 83.893
-  },
-  "A dal vivo dopo E | A al caricamento (tasselli)": {
-   "media": 58.377,
-   "px>0 %": 99.989,
-   "px>24 %": 84.342
-  },
-  "A senza tasselli | A prima di integra1": null,
-  "A | E (tasselli)": {
-   "media": 10.505,
-   "px>0 %": 100.0,
-   "px>24 %": 9.88
+  "carico A: A | E (riferimento)": {
+   "media": 10.645,
+   "px>2 %": 98.685,
+   "px>8 %": 80.65
   }
  }
 }

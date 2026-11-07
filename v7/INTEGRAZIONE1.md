@@ -97,4 +97,48 @@ aggiunte che arriveranno su quel ramo si uniscono come le altre (solo i generati
 
 ## 6. Prove
 
-RISULTATI
+**Le prove in Node.** Passano: `test_stile_e` (nuova: stati, `pre`/`adatta`, le varianti, la cottura e il caricamento le portano, il
+difetto in un posto solo), `test_rifcostruito` (aggiornata: il manto A ed E nello stesso shader), `test_strada_dipinta`, `test_camera9`,
+`test_lontano9`, `test_controlli8`, `test_camera7`, `test_ritmo8`, `test_hd_ritmo`, `test_graffiti`, `test_suolo`. Quelle che non
+passavano già su main restano uguali: `test_tasselli` 1, `test_percorsi` 2, `test_strade_integre` 1, `test_costa2` 1, `test_tetti4` 9,
+`test_posa` 6, `test_imperfezioni` 2.
+
+**Il fumo** (`fumo6.js`, leggera, senza tasselli): A `errori []`, `?stile=E` `errori []`.
+
+**La cottura in locale**, con lo script del workflow (`node strumenti/tassella.js --impronta=…`, Chromium senza testa, `?cottae`):
+impronta `48196fd63f899c14`, 161 tasselli, 34,6 MB, 4602 mesh, 900 materiali, 540 tessiture, 738 graffiti di partenza; ~4 minuti per la
+città, poi la compressione. Dentro: 165 shader cotti con `rcK`, 9 con `rsK` (uniform di modulo `live`), 84 materiali con la tinta E, 27
+con la tessitura E (`mapE`), 2 solo di E, i pezzi segnati sui materiali (`insegna`, `saracinesca`, `saracinesca_cassonetto`, `gronda`,
+`pluviale`, `vetrina`: 121 mesh dei tasselli).
+
+**A ed E dagli stessi tasselli** (`_immagini/integra1/sonde/cattura.js`, i 5 posti di fumetto2, senza leggera, 1920×1080):
+`tavola_hd.jpg` (A | E) e i fotogrammi interi di E `E_vicolo.jpg`, `E_lungomare_spiaggia.jpg`, `E_piazza_sera.jpg`. La diagnosi della sonda
+(`sonde/esito_t9.json`), sugli stessi materiali in scena: con A **nessun programma ha `rcK` o `rsK`** (il ramo E è sparito: la costante),
+le tessiture E spente, i pezzi solo di E invisibili; con E 30 programmi con `rcK`, 4 con `rsK`, 23 tessiture E e i pezzi di E accesi.
+
+**A resta A** (`confronti.json`, 960×540, stessa sessione e stesso istante, le varianti una dopo l'altra):
+
+| posto | caricato A: A ↔ A dopo E | caricato E: E ↔ E dopo A | riferimento: A ↔ E |
+|---|---|---|---|
+| vicolo | media 0,58, 0,39% dei pixel oltre 8 | 0,63, 0,59% | 10,3, 78% |
+| lungomare | 0,64, 0,13% | 0,56, 0,28% | 10,6, 81% |
+
+Il fondo (±1-2) è il rumore del passo unico contro le bande, che va col tempo; i pixel oltre 8 sono le cose animate (la bandiera, i panni,
+un uccello). Il cambio dal vivo torna esatto nei due versi, e E caricato è lo stesso di E acceso dopo. Non si può confrontare pixel per pixel
+fra due sessioni (o fra il ramo prima e dopo): il taglio delle case vicine alla camera e le persone cambiano da una sessione all'altra (le
+prove fra sessioni davano medie di 16-20 con la stessa camera, anche A contro A). Che A sia quella di prima lo dicono il testo degli shader
+(con A le manopole sono la costante: nessun programma le ha) e i materiali (la tinta come rapporto, le varianti spente).
+
+## 7. Cosa resta
+
+- **Ricuocere**: l'impronta è nuova (`48196fd63f899c14` a questo punto del ramo). Niente blocca la cottura del workflow: le dipendenze sono
+  quelle di prima, la cottura locale con lo stesso script è andata (rc 0).
+- **Il costo della cottura con E dentro**: più mesh (4602 contro le 4191 della cottura locale del 1° novembre, su un altro commit: i pezzi segnati restano mesh loro, le varianti non entrano nella
+  tavolozza per tassello) e qualche tessitura in più (l'atlante delle insegne di E, le tele, le targhe). Lo stesso per A ed E.
+- **Il cambio dal vivo ricompila** i programmi toccati (su SwiftShader secondi; su una scheda vera una pausa breve): è per le sonde e per un
+  eventuale interruttore nelle opzioni, il gioco normale sceglie al caricamento.
+- **Le differenze dal ramo di rifinitura** volute dalla variante: la tela a righe della tenda in E è la tela di A con la tessitura di E (non
+  più `DoubleSide` e ruvidità .95 propri); con E l'ombrellone da spiaggia tiene le sue otto copie del telo (in E il ramo le condivideva).
+- **Senza tasselli e con A**, il cambio dal vivo a E accende shader, passo e manopole, ma non le varianti dei materiali e i pezzi solo di E
+  (non sono stati creati): per vederli tutti serve caricare con E o avere i tasselli.
+- **La strada dipinta** ha tre commit nuovi sul suo ramo (non uniti qui, come chiesto).
