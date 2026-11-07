@@ -23614,7 +23614,7 @@ if (typeof module !== 'undefined') module.exports = Arredo3D;
 <!-- [cotto] il mondo cotto nella build (strumenti/cuoci.js, lo chiama build.py): la mappa e la rete dei tetti già calcolate. Se il file
      manca o ha un'altra impronta dei sorgenti, o con ?cuoci=0, il gioco calcola come prima (src/cotto.js) -->
 <script>window.PV_IMPRONTA_MONDO = 'a2044aee433be7f7';</script>
-<script>window.PV_IMPRONTA_TASS = '1b2aa55af9597acb';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
+<script>window.PV_IMPRONTA_TASS = 'e08ec6b882d8c5e6';</script>   <!-- [tasselli] l'impronta della città a tasselli (build.py): tasselli/indice.json deve avere la stessa -->
 <!-- [dieta] il file cotto letto come testo (una richiesta sincrona), non come <script>: lo script di 24 MB restava in memoria per sempre
      (il sorgente in V8 e la copia nella cache delle risorse, ~70 MB). Le due stringhe (i punti in JSON, il blocco in base64) si leggono
      e il testo si butta. Se la richiesta non va (file://) si torna al <script> di prima -->
@@ -64064,7 +64064,9 @@ var Writing = (function () {
     yield; const list = [...set], dir = new THREE.Vector3(q.ux, 0, q.uy).normalize(), gh = R.groundH(q.ex, q.ey); let hit = null;
     // un muro, non un palo, un albero o un mezzo: i due raggi paralleli a ±0,9 m colpiscono lo stesso piano (entro 40 cm, normale entro 25°)
     const largo = (o, h) => [-.9, .9].every(k => { const o2 = o.clone().add(new THREE.Vector3(-dir.z * k, 0, dir.x * k)), h2 = rayWall(o2, dir, q.max, list); return h2 && Math.abs(h2.p.distanceTo(o2) - h.p.distanceTo(o)) < .4 && h2.n.dot(h.n) > .9; });
-    for (const hh of [1.5, 2.6, 3.6]) { const o = new THREE.Vector3(q.ex, gh + hh, q.ey); let far = q.max, oo = o.clone();
+    // [stradadipinta] le quote anche dal suolo del fondo (la via sale o scende: al Borgo Alto i raggi a 1,5-3,6 m passavano sopra il muro)
+    const gs = w.spot ? R.groundH(w.spot.x, w.spot.y) : gh, Y = [gh + 1.5, gh + 2.6, gh + 3.6]; if (Math.abs(gs - gh) > 1) Y.push(gs + 1.5, gs + 3);
+    for (const yy of Y) { const o = new THREE.Vector3(q.ex, yy, q.ey); let far = q.max, oo = o.clone();
       for (let t = 0; t < 4; t++) { const h = rayWall(oo, dir, far, list); if (!h) break; const d = h.p.distanceTo(o);
         if (Math.abs(h.n.y) < .3 && largo(oo, h)) { if (!hit || d < hit.d - 1.5) hit = { p: h.p, n: h.n, d }; break; }
         oo = h.p.clone().addScaledVector(dir, .3); far = q.max - d - .3; if (far <= 0) break; }   // un ostacolo stretto: si guarda oltre
@@ -64112,8 +64114,9 @@ var Writing = (function () {
   // deve vederlo (cinque raggi dalla via). Ritorna le prove per placeWallG (prima delle misure fisse di fondaleGrandiG)
   function* fondaleCieco(w, list, dir, vx, vz, vgh) {
     const THREE = T3(), R = R_(), walls = []; w.__cieco = [];
+    const gs = w.spot ? R.groundH(w.spot.x, w.spot.y) : vgh, YF = [vgh + 2, vgh + 4.5, vgh + 7.5]; if (Math.abs(gs - vgh) > 1) YF.push(gs + 2, gs + 4.5);   // anche dal suolo del fondo
     for (const deg of [0, -2.5, 2.5, -5, 5, -7.5, 7.5, -10, 10, -12.5, 12.5, -15, 15, -17.5, 17.5, -20, 20, -22.5, 22.5, -25, 25]) { const ar = deg * Math.PI / 180, d0 = new THREE.Vector3(dir.x * Math.cos(ar) - dir.z * Math.sin(ar), 0, dir.x * Math.sin(ar) + dir.z * Math.cos(ar));
-      for (const hh of [2, 4.5, 7.5]) { const o = new THREE.Vector3(vx, vgh + hh, vz), h = rayWall(o, d0, 70, list); if (!h || Math.abs(h.n.y) > .3) continue; const dist = h.p.distanceTo(o); if (dist < 14 || h.n.dot(d0) > -.3) continue;
+      for (const yy of YF) { const o = new THREE.Vector3(vx, yy, vz), h = rayWall(o, d0, 70, list); if (!h || Math.abs(h.n.y) > .3) continue; const dist = h.p.distanceTo(o); if (dist < 14 || h.n.dot(d0) > -.3) continue;
         const n = new THREE.Vector3(h.n.x, 0, h.n.z).normalize(); if (walls.some(c => c.n.dot(n) > .97 && Math.abs(c.p.clone().sub(h.p).dot(n)) < .4 && Math.hypot(c.p.x - h.p.x, c.p.z - h.p.z) < 10)) continue; walls.push({ p: h.p.clone(), n, deg: Math.abs(deg), dist }); }
       yield; }
     const NU = 41, NV = 20, best = [];
