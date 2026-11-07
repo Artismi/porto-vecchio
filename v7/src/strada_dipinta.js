@@ -210,8 +210,8 @@ var StradaDipinta = (function () {
     // vera (il pezzo diventa un throw-up grande, che sta fra le finestre)
     fondaliStrade().forEach(f => { let s = f; const sv = SITES.find(q => /^(strada|hall|ferrovia|muro)$/.test(q.kind) && q.out && hyp(q.x - f.x, q.y - f.y) < 9 && q.out[0] * f.out[0] + q.out[1] * f.out[1] > .7 && (q.len || 0) >= 4);
       if (sv) s = Object.assign(sv, { vista: f.vista, via: f.via, corsa: f.corsa }); else f.facciata = true;
-      const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime') return; cand.push({ s, v: s.vista + 30, z }); });   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
-    SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare' && z !== 'fuori') return;
+      const z = zonaSito(s); if (z === 'piazza' || z === 'sacro' || z === 'regime' || z === 'fuori') return; cand.push({ s, v: s.vista + 30, z }); });   // [stradadipinta] in campagna no: le case in fondo arrivano tardi e a caso (misurato: un giro sì, uno no), il pezzo non si legge   // le vie dritte prima (+30: sono la regola), poi i muri liberi in fondo a un corridoio
+    SITES.forEach(s => { if (!/^(strada|hall|ferrovia|muro|rilevato)$/.test(s.kind) || (s.len || 0) < 4 || !s.out) return; const z = zonaSito(s); if (!(z in CALDE) && z !== 'via' && z !== 'lungomare') return;
       const v = vista(s.x, s.y, s.out[0], s.out[1]); if (v >= 45) { if (!s.corsa) s.corsa = { ex: s.x + s.out[0] * 12, ey: s.y + s.out[1] * 12, ux: -s.out[0], uy: -s.out[1], max: 30 }; cand.push({ s, v, z }); } });   // anche qui il muro vero lo trova il raggio lungo il corridoio
     cand.sort((a, b) => b.v - a.v);
     // le alternative del fondale, in ordine (writing.js placeWallG le prova finché una entra): (a) il verticale a rullo, o la calligrafia alta,
@@ -331,8 +331,10 @@ var StradaDipinta = (function () {
     if (a.k === 'garante') {   // il Muro: la faccia vera con un raggio dalla città verso il muro (anche le mesh a istanze, fino a 8 m oltre la linea), se no mezzo spessore di 30 cm
       const gh = R.groundH(a.x + a.nx * 2, a.y + a.ny * 2), o = new THREE.Vector3(a.x + a.nx * 4, gh + a.hc, a.y + a.ny * 4), d = new THREE.Vector3(-a.nx, 0, -a.ny), rc = new THREE.Raycaster(o, d, 0, 12);
       let off = .3; try { const sc = R.__models && R.__models.scene, L = []; if (sc) sc.traverseVisible(m => { if (m.isMesh && !(m.userData && (m.userData.velo || m.userData.atlante)) && m.geometry) { if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere(); const c = m.geometry.boundingSphere.center.clone().applyMatrix4(m.matrixWorld); if (m.isInstancedMesh || hyp(c.x - a.x, c.z - a.y) < m.geometry.boundingSphere.radius + 12) L.push(m); } });
-        const h = rc.intersectObjects(L, false).find(h => h.face && Math.abs(h.face.normal.y) < .5); if (h) off = 4 - h.distance; } catch (e) { }   // la faccia può stare oltre la linea del segmento (il Muro è spesso: al varco 4,5 m)
-      const n = new THREE.Vector3(a.nx, 0, a.ny), c = new THREE.Vector3(a.x + a.nx * (off + .1), R.groundH(a.x + a.nx * (off + .3), a.y + a.ny * (off + .3)) + a.hc, a.y + a.ny * (off + .1));   // 10 cm davanti: il Muro ha più strati a pochi cm (il calcestruzzo, la massa)
+        // nove raggi sul riquadro (il Muro è a pannelli, coi giunti): vale la faccia più avanti
+        let best = null; for (const k of [-.4, 0, .4]) for (const v of [-.3, 0, .3]) { rc.ray.origin.set(o.x - a.ny * k * a.W, o.y + v * a.H, o.z + a.nx * k * a.W); const h = rc.intersectObjects(L, false).find(h => h.face && Math.abs(h.face.normal.y) < .5); if (h && (best == null || h.distance < best)) best = h.distance; }
+        if (best != null) off = 4 - best; } catch (e) { }   // la faccia può stare oltre la linea del segmento (il Muro è spesso: al varco 4,5 m)
+      const n = new THREE.Vector3(a.nx, 0, a.ny), c = new THREE.Vector3(a.x + a.nx * (off + .05), R.groundH(a.x + a.nx * (off + .3), a.y + a.ny * (off + .3)) + a.hc, a.y + a.ny * (off + .05));   // 5 cm davanti alla faccia più avanti
       w.W = a.W; w.H = a.H; w.gfxRect = { c, n, r: new THREE.Vector3(n.z, 0, -n.x), W: a.W, H: a.H, foot: null }; w.pos = { x: c.x, y: c.y, z: c.z }; w.sup = 'cemento'; w.eta = 0; w.sdVedo = { x: a.x + a.nx * 34, y: a.y + a.ny * 34 }; return true; }
     if (typeof PuliziaRumore !== 'undefined' && PuliziaRumore.SALTA && PuliziaRumore.SALTA.has('p' + Math.round(a.x * 10) + ',' + Math.round(a.y * 10))) return false;   // il palo tolto dalla pulizia
     const gh = R.groundH(a.x, a.y), L = hyp(a.nx, a.nz) || 1, nx = a.nx / L, nz = a.nz / L, H = w.H0 || .4, W = w.W0 || .08;
