@@ -176,16 +176,28 @@ Scala del Mercato, piazza San Rocco, Corte dei Pescatori), lo stesso fotogramma 
 con lontano9, a destra la differenza ×4. `striscia_fascia.jpg`: il lungomare passo dopo passo (ogni 2,5 m), sopra senza, in mezzo con,
 sotto la differenza: le cose nella fascia si stringono, nessuna salta. I numeri in `_immagini/lontano9/tavola9.json`.
 
+Come si legge: nella differenza restano puntini sparsi (media 0,4-0,7 su 255, sotto lo 0,1% dei pixel oltre 24): il rumore delle
+cose che si muovono da sole fra un fotogramma e l'altro (le foglie, l'acqua, le persone lontane), lo stesso che c'è fra due fotogrammi
+uguali senza lontano9. Due eccezioni nella foto, e tutte e due sono **l'ombra del sole**, non lontano9: nella Corte dei Pescatori e al
+passo 6 della striscia una striscia di sole sul selciato (sul molo) è diversa fra le due foto. L'ho rifatta apposta nella Corte
+(`sonde/esegui9.js` con un pezzo che alterna cinque volte spento/acceso/spento/acceso/spento nello stesso fotogramma del mondo): fra
+spento e acceso la differenza è media 0,29-0,50 e lo 0-0,25% dei pixel, **uguale** a quella fra spento e spento (0,30-0,48, 0-0,25%).
+L'ombra del sole qui si ridisegna a fotogrammi (il gradino della grafica, PesoOmbre): la prima foto aveva l'ombra del posto prima.
+Lontano9 non tocca il passaggio delle ombre.
+
+Fra le foto della tavola i disegni (della vista) sono quelli di quel fotogramma; il banco (sez. 3) li misura dopo che i tasselli sono
+arrivati tutti, quindi sono più alti.
+
 <!-- TAVOLA -->
 | posto | disegni senza → con lontano9 | differenza media (0-255) | pixel che cambiano più di 24 |
 |---|---|---|---|
-| sbocco sulla piazza (Vicolo dei Lanternini) | 2344 → 714 | 0.535 | 0.042% |
-| vicolo stretto (Caruggio dei Pescatori) | 1974 → 661 | 6.462 | 6.637% |
-| lungomare | 910 → 623 | 0.623 | 0.036% |
-| cima della Scala del Mercato | 1426 → 709 | 0.61 | 0.018% |
-| piazza San Rocco | 507 → 452 | 44.222 | 56.317% |
-| Corte dei Pescatori (fessura 2,2 m) | 514 → 372 | 0.682 | 0.009% |
-| striscia del lungomare (8 passi) | | 0.76 (il passo peggiore) | 0.172% |
+| sbocco sulla piazza (Vicolo dei Lanternini) | 1070 → 366 | 0.531 | 0.013% |
+| vicolo stretto (Caruggio dei Pescatori) | 1851 → 546 | 0.517 | 0.003% |
+| lungomare | 500 → 330 | 0.412 | 0.017% |
+| cima della Scala del Mercato | 1306 → 639 | 0.567 | 0.071% |
+| piazza San Rocco | 429 → 395 | 0.645 | 0.022% |
+| Corte dei Pescatori (fessura 2,2 m) | 440 → 344 | 10.156 | 10.559% |
+| striscia del lungomare (8 passi) | | 4.897 (il passo peggiore) | 4.504% |
 <!-- /TAVOLA -->
 
 ## 5. La memoria allo sbocco dei Lanternini

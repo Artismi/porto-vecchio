@@ -5,120 +5,120 @@
    "i": 0,
    "nome": "sbocco sulla piazza (Vicolo dei Lanternini)",
    "disegni": [
-    2344,
-    714
+    1070,
+    366
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 762,
-   "piccole": 860,
-   "fascia": 170,
+   "occluse": 333,
+   "piccole": 382,
+   "fascia": 77,
    "diff": {
-    "media": 0.535,
-    "px>8": 0.072,
-    "px>24": 0.042
+    "media": 0.531,
+    "px>8": 0.025,
+    "px>24": 0.013
    }
   },
   {
    "i": 1,
    "nome": "vicolo stretto (Caruggio dei Pescatori)",
    "disegni": [
-    1974,
-    661
+    1851,
+    546
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 1640,
-   "piccole": 628,
-   "fascia": 158,
+   "occluse": 896,
+   "piccole": 406,
+   "fascia": 82,
    "diff": {
-    "media": 6.462,
-    "px>8": 11.129,
-    "px>24": 6.637
+    "media": 0.517,
+    "px>8": 0.008,
+    "px>24": 0.003
    }
   },
   {
    "i": 2,
    "nome": "lungomare",
    "disegni": [
-    910,
-    623
+    500,
+    330
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 94,
-   "piccole": 256,
-   "fascia": 32,
+   "occluse": 50,
+   "piccole": 127,
+   "fascia": 19,
    "diff": {
-    "media": 0.623,
-    "px>8": 0.054,
-    "px>24": 0.036
+    "media": 0.412,
+    "px>8": 0.024,
+    "px>24": 0.017
    }
   },
   {
    "i": 3,
    "nome": "cima della Scala del Mercato",
    "disegni": [
-    1426,
-    709
+    1306,
+    639
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 944,
-   "piccole": 162,
-   "fascia": 160,
+   "occluse": 538,
+   "piccole": 130,
+   "fascia": 106,
    "diff": {
-    "media": 0.61,
-    "px>8": 0.036,
-    "px>24": 0.018
+    "media": 0.567,
+    "px>8": 0.134,
+    "px>24": 0.071
    }
   },
   {
    "i": 4,
    "nome": "piazza San Rocco",
    "disegni": [
-    507,
-    452
+    429,
+    395
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 312,
-   "piccole": 492,
-   "fascia": 50,
+   "occluse": 34,
+   "piccole": 0,
+   "fascia": 0,
    "diff": {
-    "media": 44.222,
-    "px>8": 85.835,
-    "px>24": 56.317
+    "media": 0.645,
+    "px>8": 0.027,
+    "px>24": 0.022
    }
   },
   {
    "i": 5,
    "nome": "Corte dei Pescatori (fessura 2,2 m)",
    "disegni": [
-    514,
-    372
+    440,
+    344
    ],
    "triangoli": [
-    2,
-    2
+    0,
+    0
    ],
-   "occluse": 146,
-   "piccole": 2,
+   "occluse": 96,
+   "piccole": 1,
    "fascia": 0,
    "diff": {
-    "media": 0.682,
-    "px>8": 0.012,
-    "px>24": 0.009
+    "media": 10.156,
+    "px>8": 15.613,
+    "px>24": 10.559
    }
   }
  ],
@@ -127,112 +127,112 @@
    "k": 0,
    "x": 1430,
    "disegni": [
-    1,
-    1
+    2354,
+    1158
    ],
-   "fascia": 150,
+   "fascia": 60,
    "diff": {
-    "media": 0.718,
-    "px>8": 0.177,
-    "px>24": 0.083
+    "media": 0.687,
+    "px>8": 0.105,
+    "px>24": 0.039
    }
   },
   {
    "k": 1,
    "x": 1427.5,
    "disegni": [
-    1,
-    1
+    2389,
+    1239
    ],
-   "fascia": 206,
+   "fascia": 102,
    "diff": {
-    "media": 0.76,
-    "px>8": 0.325,
-    "px>24": 0.172
+    "media": 0.683,
+    "px>8": 0.123,
+    "px>24": 0.051
    }
   },
   {
    "k": 2,
    "x": 1425,
    "disegni": [
-    1,
-    1
+    2589,
+    1438
    ],
-   "fascia": 264,
+   "fascia": 141,
    "diff": {
-    "media": 0.544,
-    "px>8": 0.221,
-    "px>24": 0.119
+    "media": 0.725,
+    "px>8": 0.294,
+    "px>24": 0.147
    }
   },
   {
    "k": 3,
    "x": 1422.5,
    "disegni": [
-    1,
-    1
+    2616,
+    1465
    ],
-   "fascia": 288,
+   "fascia": 150,
    "diff": {
-    "media": 0.563,
-    "px>8": 0.247,
-    "px>24": 0.134
+    "media": 0.758,
+    "px>8": 0.346,
+    "px>24": 0.171
    }
   },
   {
    "k": 4,
    "x": 1420,
    "disegni": [
-    1,
-    1
+    2569,
+    1482
    ],
-   "fascia": 386,
+   "fascia": 194,
    "diff": {
-    "media": 0.548,
-    "px>8": 0.307,
-    "px>24": 0.156
+    "media": 0.748,
+    "px>8": 0.412,
+    "px>24": 0.201
    }
   },
   {
    "k": 5,
    "x": 1417.5,
    "disegni": [
-    1,
-    1
+    2613,
+    1486
    ],
-   "fascia": 446,
+   "fascia": 221,
    "diff": {
-    "media": 0.516,
-    "px>8": 0.2,
-    "px>24": 0.105
+    "media": 0.668,
+    "px>8": 0.479,
+    "px>24": 0.251
    }
   },
   {
    "k": 6,
    "x": 1415,
    "disegni": [
-    1,
-    1
+    2629,
+    1477
    ],
-   "fascia": 418,
+   "fascia": 200,
    "diff": {
-    "media": 0.501,
-    "px>8": 0.299,
-    "px>24": 0.162
+    "media": 4.897,
+    "px>8": 22.238,
+    "px>24": 4.504
    }
   },
   {
    "k": 7,
    "x": 1412.5,
    "disegni": [
-    1,
-    1
+    2614,
+    1485
    ],
-   "fascia": 346,
+   "fascia": 189,
    "diff": {
-    "media": 0.499,
-    "px>8": 0.072,
-    "px>24": 0.036
+    "media": 0.522,
+    "px>8": 0.181,
+    "px>24": 0.097
    }
   }
  ]
