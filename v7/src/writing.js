@@ -929,7 +929,8 @@ var Writing = (function () {
     T.P = null;
   }
   function atlEvict(P, cx, cy, need) {
-    const L = []; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.atl && g.tgt.P === P) { const q = g.tgt.mesh.position; L.push([hyp(q.x - cx, q.z - cy), id, g]); } }
+    const F = GFX.st ? new Set(S(GFX.st).works.filter(w => w.sdLiv === 'fondale').map(w => String(w.id))) : null;   // [stradadipinta] il pezzo in fondo alla vista si vede da lontano: non si libera per primo
+    const L = []; for (const id in GFX.works) { const g = GFX.works[id]; if (g.tgt && g.tgt.atl && g.tgt.P === P) { const q = g.tgt.mesh.position; L.push([F && F.has(id) ? 0 : hyp(q.x - cx, q.z - cy), id, g]); } }
     L.sort((a, b) => b[0] - a[0]); let got = 0;
     for (const [d, id, g] of L) { if (d < 45 || got >= need * 1.6) break; got += g.tgt.sl.w * g.tgt.sl.h; atlFree(g); delete GFX.works[id]; }
     return got > 0;
@@ -2558,7 +2559,7 @@ var Writing = (function () {
   if (typeof addEventListener === 'function') { try { addEventListener('pagehide', () => { if (GFX.st) salva(GFX.st); }); addEventListener('beforeunload', () => { if (GFX.st) salva(GFX.st); }); } catch (e) { } }
   // il tetto dei veli vivi: oltre VEIL_MAX si liberano i più lontani dalla camera (tornando vicino si rifanno)
   function capVeils(W, cx, cy, byId) {
-    const L = []; for (const id in GFX.works) { const g = GFX.works[id], w = g && g.tgt && g.tgt.mesh && !g.tgt.atl ? (byId ? byId.get(+id) : W.works.find(o => o.id === +id)) : null; if (w && w.surf !== 'treno' && w !== W.cur && w.pos) L.push([hyp(w.pos.x - cx, w.pos.z - cy), id]); }
+    const L = []; for (const id in GFX.works) { const g = GFX.works[id], w = g && g.tgt && g.tgt.mesh && !g.tgt.atl ? (byId ? byId.get(+id) : W.works.find(o => o.id === +id)) : null; if (w && w.surf !== 'treno' && w !== W.cur && w.pos) L.push([w.sdLiv === 'fondale' ? 0 : hyp(w.pos.x - cx, w.pos.z - cy), id]); }   // [stradadipinta] il fondale resta
     GFX.mem.vivi = L.length; const M = VEIL_MAX(); if (L.length <= M) return; L.sort((a, b) => b[0] - a[0]);
     for (let k = 0; k < L.length - M; k++) { freeVeil(GFX.works[L[k][1]]); delete GFX.works[L[k][1]]; }
   }
