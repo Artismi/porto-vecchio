@@ -40,12 +40,18 @@ var StileE = (function () {
     usa(src) { return typeof src === 'string' && RE1.test(src); },
     chiave() { return S.on ? '|E' : COTTA ? '|C' : ''; },
     // ---- i materiali ----
-    colore(m, hexE) { if (!m || !m.color || typeof hexE !== 'string') return m; const u0 = m.userData; if (!u0.rcA) u0.rcA = '#' + m.color.getHexString(); u0.rcE = hexE; return API.applica(m); },
+    colore(m, hexE) { if (!m || !m.color || typeof hexE !== 'string') return m; const u0 = m.userData; if (!u0.rcA) u0.rcA = '#' + m.color.getHexString(); u0.rcE = hexE; m.__rcE0 = null; return API.applica(m); },
     soloE(m) { if (!m) return m; m.userData.rcSolo = 'E'; return API.applica(m); },
     mappaE(m, t) { if (!m || !t) return m; m.__mapE = t; return API.applica(m); },
     applica(m) {
       if (!m || !m.userData) return m; const u0 = m.userData;
-      if (u0.rcE && m.color && m.color.isColor) m.color.set(S.on ? u0.rcE : u0.rcA);
+      if (u0.rcE && m.color && m.color.isColor) {   // la tinta E come rapporto sul colore vero di A (rcE / rcA): chi ha il colore nei vertici o nelle
+        // istanze (il materiale bianco) prende la stessa spinta; dove il colore è rcA il risultato è rcE
+        if (m.__rcA0 && !m.color.equals(m.__rcA0) && !(m.__rcE0 && m.color.equals(m.__rcE0))) { m.__rcA0 = null; m.__rcE0 = null; }   // ridipinto da altri (il bianco delle istanze): quello è il colore di A
+        if (!m.__rcA0) m.__rcA0 = m.color.clone();
+        if (!m.__rcE0) { const a = m.color.clone().set(u0.rcA), e = m.color.clone().set(u0.rcE);
+          m.__rcE0 = m.__rcA0.clone().multiply(e.setRGB(e.r / Math.max(a.r, 1e-4), e.g / Math.max(a.g, 1e-4), e.b / Math.max(a.b, 1e-4))); }
+        m.color.copy(S.on ? m.__rcE0 : m.__rcA0); }
       if (u0.rcSolo) m.visible = S.on;
       if (m.__mapE) { if (m.__mapA === undefined) { m.__mapA = m.map; if (m.emissiveMap && m.emissiveMap === m.map) m.__emA = true; }
         const t = S.on ? m.__mapE : m.__mapA; if (m.map !== t) { m.map = t; if (m.__emA) m.emissiveMap = t; } }
@@ -69,7 +75,7 @@ var StileE = (function () {
   // li passa per JSON)
   if (typeof THREE !== 'undefined' && THREE.Material && !THREE.Material.prototype.__pve) {
     const cp = THREE.Material.prototype.copy;
-    THREE.Material.prototype.copy = function (s) { const r = cp.call(this, s); if (s && s.__mapE) { this.__mapE = s.__mapE; this.__mapA = s.__mapA; this.__emA = s.__emA; } return r; };
+    THREE.Material.prototype.copy = function (s) { const r = cp.call(this, s); if (s && s.__mapE) { this.__mapE = s.__mapE; this.__mapA = s.__mapA; this.__emA = s.__emA; } if (s && s.__rcA0) { this.__rcA0 = s.__rcA0.clone(); this.__rcE0 = s.__rcE0.clone(); } return r; };
     THREE.Material.prototype.__pve = true;
   }
   W.__stileE = API;

@@ -6,7 +6,9 @@
 // 5. un solo posto per il difetto (index.src.html)
 const path = require('path'), fs = require('fs'), assert = require('assert');
 let ok = 0; const prova = (nome, f) => { f(); ok++; console.log('ok  ', nome); };
-class Col { constructor(h) { this.set(h || '#ffffff'); } set(h) { this.h = String(h).replace('#', '').toLowerCase(); return this; } getHexString() { return this.h; } get isColor() { return true; } }
+class Col { constructor(h) { this.set(h || '#ffffff'); } set(h) { const n = parseInt(String(h).replace('#', ''), 16); this.r = (n >> 16 & 255) / 255; this.g = (n >> 8 & 255) / 255; this.b = (n & 255) / 255; return this; }
+  getHexString() { return [this.r, this.g, this.b].map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join(''); } get isColor() { return true; } clone() { const c = new Col(); return c.copy(this); }
+  copy(c) { this.r = c.r; this.g = c.g; this.b = c.b; return this; } setRGB(r, g, b) { this.r = r; this.g = g; this.b = b; return this; } multiply(c) { this.r *= c.r; this.g *= c.g; this.b *= c.b; return this; } equals(c) { return this.r === c.r && this.g === c.g && this.b === c.b; } }
 function carica(q, stile) {
   delete require.cache[require.resolve('./stile_e.js')];
   global.location = { search: q }; global.window = { PV_STILE: stile || 'A' };
@@ -36,7 +38,9 @@ prova('le varianti dei materiali: tinta, pezzi solo di E, tessitura E, e dal viv
   const tA = { isTexture: true, n: 'A' }, tE = { isTexture: true, n: 'E' }, t = mat('#ffffff'); t.map = tA; t.emissiveMap = tA; S.mappaE(t, tE); assert.strictEqual(t.map, tA);
   const c = Object.create(THREE.Material.prototype); c.copy(t); assert.strictEqual(c.__mapE, tE);   // la copia se la porta dietro
   S.imposta('E'); [m, s, t].forEach(S.applica); assert.strictEqual(m.color.getHexString(), 'c25b36'); assert.strictEqual(s.visible, true); assert.strictEqual(t.map, tE); assert.strictEqual(t.emissiveMap, tE); assert.strictEqual(S.u('rsK').value, 1);
-  S.imposta('A'); [m, s, t].forEach(S.applica); assert.strictEqual(m.color.getHexString(), 'd84a4a'); assert.strictEqual(s.visible, false); assert.strictEqual(t.map, tA); assert.strictEqual(S.u('rsK').value, 0);
+  const w = mat('#ffffff', { rcA: '#c8b88a', rcE: '#d7b27d' });   // il materiale bianco col colore nelle istanze (la cottura): la spinta come rapporto
+  S.applica(w); assert.ok(Math.abs(w.color.r - 0xd7 / 0xc8) < 1e-6 && Math.abs(w.color.b - 0x7d / 0x8a) < 1e-6, 'E: bianco × rcE/rcA');
+  S.imposta('A'); [m, s, t, w].forEach(S.applica); assert.strictEqual(w.color.getHexString(), 'ffffff', 'A: il bianco resta bianco'); assert.strictEqual(m.color.getHexString(), 'd84a4a'); assert.strictEqual(s.visible, false); assert.strictEqual(t.map, tA); assert.strictEqual(S.u('rsK').value, 0);
 });
 const leggi = f => fs.readFileSync(path.join(__dirname, f), 'utf8');
 prova('la cottura porta E: ?cottae, mapE, i pezzi segnati, niente tavolozza per le tinte E', () => {
