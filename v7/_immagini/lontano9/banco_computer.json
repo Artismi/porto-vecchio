@@ -1,0 +1,8313 @@
+{
+ "query": "tassellivecchi",
+ "p0": {
+  "i": 0,
+  "nome": "vicolo stretto (Caruggio dei Pescatori)",
+  "at": [
+   1343.49,
+   320.61
+  ],
+  "verso": [
+   1342.67,
+   324.79
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 701,
+   "triangoli": 2083995,
+   "vista": 585,
+   "perDistanza": {
+    "0-30": 371,
+    "30-80": 76,
+    "150+": 138
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      188,
+      23,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      81,
+      66,
+      54
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      57,
+      22,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      52,
+      11,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      45,
+      45,
+      45
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      29,
+      2,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      20,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      13,
+      13,
+      13
+     ]
+    ],
+    [
+     "Standard",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      8,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      6,
+      5,
+      4
+     ]
+    ],
+    [
+     "Basic",
+     [
+      5,
+      2,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 39.6,
+   "msP90": 56.4,
+   "heapMB": 803,
+   "geometrie": 1270,
+   "tessiture": 208,
+   "programmi": 198,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1283,
+   "paginaMB": 1423
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.025
+   },
+   "disegni": 2013,
+   "triangoli": 3094505,
+   "vista": 1974,
+   "perDistanza": {
+    "30-80": 599,
+    "80-150": 782,
+    "0-30": 400,
+    "150+": 193
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      530,
+      354,
+      182
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      474,
+      431,
+      303
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      204,
+      163,
+      67
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      128,
+      128,
+      123
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      71,
+      57,
+      54
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      68,
+      68,
+      68
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      46,
+      29,
+      17
+     ]
+    ],
+    [
+     "Basic",
+     [
+      43,
+      40,
+      24
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      31,
+      31,
+      28
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      30,
+      20,
+      11
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      29,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      27,
+      18,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      24,
+      21,
+      10
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      17,
+      17,
+      17
+     ]
+    ],
+    [
+     "Standard",
+     [
+      16,
+      9,
+      6
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      16,
+      12,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      13,
+      6,
+      2
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      4,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      10,
+      6,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      9,
+      9,
+      4
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      8,
+      8,
+      6
+     ]
+    ],
+    [
+     "Basic|keep+thin2",
+     [
+      8,
+      6,
+      1
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ]
+   ],
+   "msMed": 115.4,
+   "msP90": 146.9,
+   "heapMB": 803,
+   "geometrie": 2509,
+   "tessiture": 441,
+   "programmi": 202,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1619,
+   "paginaMB": 1643
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.025
+   },
+   "disegni": 692,
+   "triangoli": 2418598,
+   "vista": 661,
+   "perDistanza": {
+    "0-30": 325,
+    "30-80": 141,
+    "80-150": 68,
+    "150+": 127
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      289,
+      117,
+      28
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      102,
+      88,
+      84
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      65,
+      25,
+      4
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      45,
+      45,
+      45
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      21,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      13,
+      13,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      10,
+      3,
+      1
+     ]
+    ],
+    [
+     "Standard",
+     [
+      9,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      3,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vegLontano",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 88.5,
+   "msP90": 10781.7,
+   "heapMB": 803,
+   "geometrie": 2532,
+   "tessiture": 442,
+   "programmi": 202,
+   "far": 246,
+   "l9": {
+    "prove": 1876,
+    "occluse": 941,
+    "piccole": 411,
+    "colonne": 235,
+    "ms": 7.1,
+    "on": true
+   },
+   "gpuMB": 1593,
+   "paginaMB": 1578
+  }
+ },
+ "p1": {
+  "i": 1,
+  "nome": "Vico Lungo (a metà)",
+  "at": [
+   1414.06,
+   367.35
+  ],
+  "verso": [
+   1413.22,
+   372.79
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 825,
+   "triangoli": 1366504,
+   "vista": 620,
+   "perDistanza": {
+    "30-80": 216,
+    "80-150": 3,
+    "0-30": 280,
+    "150+": 121
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      154,
+      15,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      109,
+      109,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      96,
+      74,
+      66
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      67,
+      13,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      28,
+      28,
+      28
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      16,
+      16,
+      2
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      12,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito",
+     [
+      11,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      11,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      9,
+      9,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      9,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Basic|keep+thin2",
+     [
+      4,
+      4,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      3,
+      1
+     ]
+    ],
+    [
+     "Basic",
+     [
+      4,
+      4,
+      0
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      3,
+      3,
+      1
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      2,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      3,
+      3,
+      0
+     ]
+    ]
+   ],
+   "msMed": 51.6,
+   "msP90": 1858.3,
+   "heapMB": 803,
+   "geometrie": 3017,
+   "tessiture": 479,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1767,
+   "paginaMB": 1454
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.05
+   },
+   "disegni": 960,
+   "triangoli": 1715405,
+   "vista": 816,
+   "perDistanza": {
+    "30-80": 250,
+    "80-150": 114,
+    "0-30": 304,
+    "150+": 148
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      260,
+      112,
+      80
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      110,
+      110,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      93,
+      71,
+      66
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      83,
+      30,
+      14
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      48,
+      48,
+      29
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      34,
+      34,
+      34
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      23,
+      12,
+      8
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      3,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      10,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      10,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      9,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      8,
+      1,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      8,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      6,
+      6,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      5,
+      5,
+      2
+     ]
+    ],
+    [
+     "Basic|keep+thin2",
+     [
+      5,
+      5,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      2,
+      1
+     ]
+    ]
+   ],
+   "msMed": 60.9,
+   "msP90": 131.9,
+   "heapMB": 803,
+   "geometrie": 3108,
+   "tessiture": 478,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1811,
+   "paginaMB": 1423
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.05
+   },
+   "disegni": 477,
+   "triangoli": 1278921,
+   "vista": 407,
+   "perDistanza": {
+    "0-30": 256,
+    "80-150": 8,
+    "30-80": 27,
+    "150+": 116
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      153,
+      21,
+      7
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      84,
+      69,
+      66
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      45,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      24,
+      24,
+      24
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      5,
+      1,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      4,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      3,
+      2,
+      1
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vegLontano",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 52.7,
+   "msP90": 78.8,
+   "heapMB": 803,
+   "geometrie": 3133,
+   "tessiture": 481,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 714,
+    "occluse": 364,
+    "piccole": 43,
+    "colonne": 217,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 1816,
+   "paginaMB": 1439
+  }
+ },
+ "p2": {
+  "i": 2,
+  "nome": "piazza San Rocco",
+  "at": [
+   1375,
+   304
+  ],
+  "verso": [
+   1393,
+   302
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 50,
+    "arm": 1.2,
+    "sfondoAlto": 0
+   },
+   "disegni": 332,
+   "triangoli": 1160373,
+   "vista": 313,
+   "perDistanza": {
+    "0-30": 193,
+    "80-150": 2,
+    "30-80": 3,
+    "150+": 115
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      96,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      79,
+      59,
+      56
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      31,
+      31,
+      31
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      16,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      3,
+      1,
+      1
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|wr",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|tassello+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 52.9,
+   "msP90": 124,
+   "heapMB": 803,
+   "geometrie": 3055,
+   "tessiture": 489,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1834,
+   "paginaMB": 1467
+  },
+  "c9": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 510,
+   "triangoli": 1979798,
+   "vista": 507,
+   "perDistanza": {
+    "0-30": 282,
+    "80-150": 10,
+    "30-80": 41,
+    "150+": 174
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      145,
+      11,
+      1
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      92,
+      73,
+      63
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      55,
+      55,
+      55
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      40,
+      10,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      19,
+      19,
+      19
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      10,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      9,
+      4,
+      2
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      8,
+      6,
+      5
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|pesoScatole|pezzo_settore",
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|pesoScatole+thin2|pezzo_settore",
+     [
+      2,
+      2,
+      0
+     ]
+    ]
+   ],
+   "msMed": 62.8,
+   "msP90": 125.1,
+   "heapMB": 803,
+   "geometrie": 3220,
+   "tessiture": 503,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1837,
+   "paginaMB": 1484
+  },
+  "c9l": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 440,
+   "triangoli": 1840388,
+   "vista": 452,
+   "perDistanza": {
+    "0-30": 279,
+    "30-80": 25,
+    "150+": 146,
+    "80-150": 2
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      142,
+      8,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      77,
+      59,
+      57
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      48,
+      48,
+      48
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      35,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      10,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|pesoScatole|pezzo_settore",
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|pesoScatole+thin2|pezzo_settore",
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|wr",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 68.1,
+   "msP90": 92.9,
+   "heapMB": 803,
+   "geometrie": 3223,
+   "tessiture": 506,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 414,
+    "occluse": 44,
+    "piccole": 0,
+    "colonne": 296,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 1839,
+   "paginaMB": 1481
+  }
+ },
+ "p3": {
+  "i": 3,
+  "nome": "sbocco sulla piazza (Vicolo dei Lanternini)",
+  "at": [
+   1372.1,
+   296.5
+  ],
+  "verso": [
+   1373,
+   310.6
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 50,
+    "arm": 2.25,
+    "sfondoAlto": 0
+   },
+   "disegni": 301,
+   "triangoli": 1421427,
+   "vista": 303,
+   "perDistanza": {
+    "0-30": 183,
+    "30-80": 6,
+    "150+": 114
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      96,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      73,
+      59,
+      54
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      34,
+      34,
+      34
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      11,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      2,
+      1,
+      1
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|tassello+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      1,
+      1,
+      1
+     ]
+    ]
+   ],
+   "msMed": 41.9,
+   "msP90": 63.6,
+   "heapMB": 803,
+   "geometrie": 3360,
+   "tessiture": 509,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1844,
+   "paginaMB": 1510
+  },
+  "c9": {
+   "stato": {
+    "vista": 16.1,
+    "arm": 4.5,
+    "sfondoAlto": 0.025
+   },
+   "disegni": 2328,
+   "triangoli": 3756784,
+   "vista": 2344,
+   "perDistanza": {
+    "80-150": 1043,
+    "150+": 385,
+    "0-30": 322,
+    "30-80": 594
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      745,
+      575,
+      335
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      390,
+      390,
+      349
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      337,
+      291,
+      161
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      140,
+      140,
+      140
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      97,
+      97,
+      97
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      78,
+      66,
+      59
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      76,
+      64,
+      35
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      42,
+      42,
+      17
+     ]
+    ],
+    [
+     "Basic",
+     [
+      41,
+      41,
+      34
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      35,
+      21,
+      1
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      34,
+      28,
+      1
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      32,
+      27,
+      17
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      31,
+      31,
+      31
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      27,
+      27,
+      27
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      21,
+      21,
+      15
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      18,
+      14,
+      7
+     ]
+    ],
+    [
+     "Standard",
+     [
+      15,
+      12,
+      9
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      12,
+      0
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      11,
+      11,
+      9
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      10,
+      9,
+      9
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      8,
+      8,
+      8
+     ]
+    ]
+   ],
+   "msMed": 92.8,
+   "msP90": 127.4,
+   "heapMB": 803,
+   "geometrie": 4019,
+   "tessiture": 588,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1930,
+   "paginaMB": 1460
+  },
+  "c9l": {
+   "stato": {
+    "vista": 16.1,
+    "arm": 4.5,
+    "sfondoAlto": 0.025
+   },
+   "disegni": 716,
+   "triangoli": 2973051,
+   "vista": 714,
+   "perDistanza": {
+    "0-30": 300,
+    "150+": 151,
+    "30-80": 197,
+    "80-150": 66
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      337,
+      168,
+      50
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      77,
+      40,
+      6
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      74,
+      63,
+      56
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      56,
+      56,
+      56
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      26,
+      14,
+      3
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      17,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      12,
+      8,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      12,
+      6,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      9,
+      9,
+      9
+     ]
+    ],
+    [
+     "Standard",
+     [
+      7,
+      4,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      3,
+      3
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vegLontano",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Basic",
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   ],
+   "msMed": 89.3,
+   "msP90": 113.1,
+   "heapMB": 803,
+   "geometrie": 4019,
+   "tessiture": 588,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 2191,
+    "occluse": 934,
+    "piccole": 634,
+    "colonne": 242,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 1932,
+   "paginaMB": 1480
+  }
+ },
+ "p4": {
+  "i": 4,
+  "nome": "lungomare",
+  "at": [
+   1415,
+   399
+  ],
+  "verso": [
+   1441,
+   399
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 368,
+   "triangoli": 859451,
+   "vista": 337,
+   "perDistanza": {
+    "0-30": 179,
+    "150+": 106,
+    "30-80": 52
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      90,
+      14,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      79,
+      66,
+      63
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      26,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      17,
+      17,
+      17
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      15,
+      15,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      12,
+      12,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      1,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Basic",
+     [
+      3,
+      2,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      2,
+      1,
+      1
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   ],
+   "msMed": 54.2,
+   "msP90": 211,
+   "heapMB": 803,
+   "geometrie": 4115,
+   "tessiture": 590,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1981,
+   "paginaMB": 1519
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.492
+   },
+   "disegni": 907,
+   "triangoli": 1563930,
+   "vista": 910,
+   "perDistanza": {
+    "80-150": 184,
+    "150+": 200,
+    "0-30": 221,
+    "30-80": 305
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      275,
+      174,
+      53
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      130,
+      130,
+      73
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      103,
+      67,
+      14
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      82,
+      69,
+      66
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      55,
+      55,
+      43
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      29,
+      23,
+      4
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      24,
+      24,
+      24
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      16,
+      13,
+      12
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      14,
+      10,
+      10
+     ]
+    ],
+    [
+     "Standard",
+     [
+      12,
+      9,
+      6
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      12,
+      5,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      11,
+      11,
+      11
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      11,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      8,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      6,
+      6,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      4,
+      3,
+      2
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      4,
+      3,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      3,
+      3
+     ]
+    ]
+   ],
+   "msMed": 54.8,
+   "msP90": 111.7,
+   "heapMB": 803,
+   "geometrie": 4375,
+   "tessiture": 578,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 1973,
+   "paginaMB": 1471
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.492
+   },
+   "disegni": 623,
+   "triangoli": 1327261,
+   "vista": 623,
+   "perDistanza": {
+    "80-150": 48,
+    "150+": 129,
+    "0-30": 222,
+    "30-80": 224
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      208,
+      106,
+      15
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      82,
+      69,
+      66
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      70,
+      34,
+      3
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      45,
+      45,
+      3
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      30,
+      30,
+      18
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      23,
+      23,
+      23
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      20,
+      13,
+      2
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      12,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      11,
+      5,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      8,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      7,
+      4,
+      1
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      4,
+      3,
+      3
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      3,
+      2,
+      1
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      3,
+      2,
+      1
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 52.6,
+   "msP90": 130.7,
+   "heapMB": 803,
+   "geometrie": 4375,
+   "tessiture": 578,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 803,
+    "occluse": 116,
+    "piccole": 161,
+    "colonne": 163,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 1973,
+   "paginaMB": 1475
+  }
+ },
+ "p5": {
+  "i": 5,
+  "nome": "cima della Scala del Mercato",
+  "at": [
+   1288.84,
+   342.9
+  ],
+  "verso": [
+   1288.84,
+   347.4
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 964,
+   "triangoli": 1333961,
+   "vista": 791,
+   "perDistanza": {
+    "30-80": 340,
+    "80-150": 12,
+    "0-30": 333,
+    "150+": 106
+   },
+   "generi": [
+    [
+     "Standard|thin2",
+     [
+      211,
+      163,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2",
+     [
+      155,
+      30,
+      1
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      101,
+      64,
+      47
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      60,
+      32,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      24,
+      24,
+      24
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      20,
+      20,
+      9
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      14,
+      1,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      14,
+      13,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      14,
+      12,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      13,
+      7,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      10,
+      10,
+      2
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      10,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      9,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      8,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      8,
+      6,
+      4
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      7,
+      3,
+      0
+     ]
+    ],
+    [
+     "Basic|keep+thin2",
+     [
+      6,
+      4,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      5,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      5,
+      4,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      4,
+      4,
+      4
+     ]
+    ]
+   ],
+   "msMed": 46.6,
+   "msP90": 83.2,
+   "heapMB": 803,
+   "geometrie": 4398,
+   "tessiture": 621,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2015,
+   "paginaMB": 1539
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.275
+   },
+   "disegni": 1464,
+   "triangoli": 1998147,
+   "vista": 1426,
+   "perDistanza": {
+    "30-80": 702,
+    "80-150": 285,
+    "0-30": 292,
+    "150+": 147
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      365,
+      229,
+      113
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      339,
+      339,
+      35
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      127,
+      127,
+      97
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      117,
+      85,
+      29
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      102,
+      66,
+      47
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      41,
+      41,
+      41
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      31,
+      18,
+      11
+     ]
+    ],
+    [
+     "Basic",
+     [
+      30,
+      29,
+      3
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      24,
+      24,
+      0
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      23,
+      23,
+      8
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      21,
+      21,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      16,
+      11,
+      2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      13,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      12,
+      10,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      11,
+      8,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      10,
+      10,
+      10
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      9,
+      9,
+      4
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      9,
+      4,
+      0
+     ]
+    ],
+    [
+     "Standard|keep+thin2",
+     [
+      7,
+      7,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      7,
+      5,
+      3
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      6,
+      6,
+      1
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      5,
+      4,
+      0
+     ]
+    ]
+   ],
+   "msMed": 51.5,
+   "msP90": 77.2,
+   "heapMB": 803,
+   "geometrie": 4537,
+   "tessiture": 651,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2056,
+   "paginaMB": 1501
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.275
+   },
+   "disegni": 741,
+   "triangoli": 1795059,
+   "vista": 709,
+   "perDistanza": {
+    "30-80": 210,
+    "80-150": 99,
+    "0-30": 290,
+    "150+": 110
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      233,
+      98,
+      42
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      114,
+      78,
+      49
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      68,
+      68,
+      2
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      49,
+      17,
+      7
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      45,
+      45,
+      35
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      30,
+      30,
+      30
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      17,
+      5,
+      3
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      10,
+      10,
+      3
+     ]
+    ],
+    [
+     "Standard",
+     [
+      10,
+      5,
+      2
+     ]
+    ],
+    [
+     "Basic",
+     [
+      9,
+      8,
+      1
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      6,
+      6,
+      1
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      5,
+      5,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      5,
+      3,
+      2
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ]
+   ],
+   "msMed": 44.9,
+   "msP90": 50.8,
+   "heapMB": 803,
+   "geometrie": 4538,
+   "tessiture": 652,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 1362,
+    "occluse": 593,
+    "piccole": 151,
+    "colonne": 232,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2058,
+   "paginaMB": 1503
+  }
+ },
+ "p6": {
+  "i": 6,
+  "nome": "cima della Scalinata di Vico Lungo",
+  "at": [
+   1417.73,
+   347.86
+  ],
+  "verso": [
+   1416.93,
+   351.94
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 694,
+   "triangoli": 1891712,
+   "vista": 664,
+   "perDistanza": {
+    "30-80": 203,
+    "80-150": 14,
+    "0-30": 312,
+    "150+": 135
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      229,
+      80,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      89,
+      36,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      87,
+      75,
+      63
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      40,
+      40,
+      40
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      29,
+      29,
+      10
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      18,
+      5,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito",
+     [
+      16,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      14,
+      3,
+      1
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      14,
+      10,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      8,
+      3,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      6,
+      4,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Basic",
+     [
+      5,
+      3,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      5,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      5,
+      5,
+      2
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      4,
+      4,
+      0
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      3,
+      3,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 36.7,
+   "msP90": 57.6,
+   "heapMB": 803,
+   "geometrie": 4509,
+   "tessiture": 657,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2066,
+   "paginaMB": 1525
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.05
+   },
+   "disegni": 1343,
+   "triangoli": 2313115,
+   "vista": 1321,
+   "perDistanza": {
+    "30-80": 405,
+    "80-150": 367,
+    "0-30": 354,
+    "150+": 195
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      412,
+      239,
+      108
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      171,
+      171,
+      137
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      166,
+      110,
+      23
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      101,
+      101,
+      92
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      90,
+      77,
+      62
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      47,
+      47,
+      47
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      41,
+      23,
+      13
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      20,
+      16,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      20,
+      18,
+      9
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      19,
+      15,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      19,
+      12,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      17,
+      13,
+      0
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      16,
+      16,
+      14
+     ]
+    ],
+    [
+     "Standard",
+     [
+      15,
+      10,
+      3
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      14,
+      14,
+      14
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      12,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      9,
+      4,
+      1
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      9,
+      7,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      8,
+      3,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      7,
+      7,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      7,
+      7,
+      4
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      5,
+      5,
+      5
+     ]
+    ]
+   ],
+   "msMed": 49.2,
+   "msP90": 102.8,
+   "heapMB": 803,
+   "geometrie": 4628,
+   "tessiture": 644,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2073,
+   "paginaMB": 1529
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.05
+   },
+   "disegni": 588,
+   "triangoli": 1920591,
+   "vista": 581,
+   "perDistanza": {
+    "0-30": 324,
+    "150+": 141,
+    "30-80": 108,
+    "80-150": 8
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      242,
+      74,
+      12
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      80,
+      67,
+      63
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      56,
+      16,
+      2
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      32,
+      32,
+      32
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      18,
+      3,
+      0
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      13,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      12,
+      6,
+      2
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      6,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      6,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      5,
+      3,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      5,
+      5,
+      3
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      3,
+      1,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 48.1,
+   "msP90": 66.2,
+   "heapMB": 803,
+   "geometrie": 4628,
+   "tessiture": 644,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 1191,
+    "occluse": 500,
+    "piccole": 213,
+    "colonne": 234,
+    "ms": 0.1,
+    "on": true
+   },
+   "gpuMB": 2074,
+   "paginaMB": 1542
+  }
+ },
+ "p7": {
+  "i": 7,
+  "nome": "Salita dei Gatti (a metà)",
+  "at": [
+   1373.79,
+   325.03
+  ],
+  "verso": [
+   1373.12,
+   330.43
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 558,
+   "triangoli": 1887096,
+   "vista": 558,
+   "perDistanza": {
+    "0-30": 324,
+    "30-80": 88,
+    "150+": 146
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      184,
+      50,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      71,
+      55,
+      55
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      59,
+      10,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      43,
+      43,
+      43
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      18,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      18,
+      18,
+      18
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      16,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      10,
+      1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      9,
+      2,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      7,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      7,
+      7,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      7,
+      7,
+      6
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      6,
+      4,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|vestito",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 31,
+   "msP90": 567.2,
+   "heapMB": 803,
+   "geometrie": 4623,
+   "tessiture": 647,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2081,
+   "paginaMB": 1547
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.033
+   },
+   "disegni": 1811,
+   "triangoli": 2812132,
+   "vista": 1802,
+   "perDistanza": {
+    "30-80": 529,
+    "80-150": 722,
+    "0-30": 349,
+    "150+": 202
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      496,
+      350,
+      155
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      364,
+      346,
+      300
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      212,
+      163,
+      35
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      129,
+      129,
+      129
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      75,
+      59,
+      56
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      65,
+      65,
+      65
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      46,
+      32,
+      15
+     ]
+    ],
+    [
+     "Basic",
+     [
+      37,
+      34,
+      25
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      35,
+      32,
+      10
+     ]
+    ],
+    [
+     "Basic|keep+waterMask",
+     [
+      31,
+      31,
+      30
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      26,
+      19,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      20,
+      13,
+      10
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      20,
+      20,
+      20
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      19,
+      11,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      18,
+      16,
+      8
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      14,
+      14,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      13,
+      9,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      12,
+      3,
+      2
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      11,
+      9,
+      9
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      11,
+      8,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      8,
+      8,
+      8
+     ]
+    ]
+   ],
+   "msMed": 52.8,
+   "msP90": 85.4,
+   "heapMB": 803,
+   "geometrie": 4675,
+   "tessiture": 685,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2083,
+   "paginaMB": 1520
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0.033
+   },
+   "disegni": 638,
+   "triangoli": 2338013,
+   "vista": 628,
+   "perDistanza": {
+    "0-30": 323,
+    "30-80": 130,
+    "80-150": 42,
+    "150+": 133
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      273,
+      132,
+      32
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      71,
+      56,
+      56
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      63,
+      18,
+      3
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      43,
+      43,
+      43
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      20,
+      10,
+      2
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      18,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      12,
+      3,
+      2
+     ]
+    ],
+    [
+     "Standard",
+     [
+      9,
+      4,
+      2
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      9,
+      9,
+      9
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      8,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      5,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|noGhost+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|noGhost+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 42,
+   "msP90": 56.5,
+   "heapMB": 803,
+   "geometrie": 4678,
+   "tessiture": 686,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 1694,
+    "occluse": 773,
+    "piccole": 378,
+    "colonne": 237,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2084,
+   "paginaMB": 1531
+  }
+ },
+ "p8": {
+  "i": 8,
+  "nome": "Vico della Corte (fessura 2,2 m)",
+  "at": [
+   1420,
+   362
+  ],
+  "verso": [
+   1432,
+   362
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 34,
+    "arm": 10,
+    "sfondoAlto": 0
+   },
+   "disegni": 494,
+   "triangoli": 1833054,
+   "vista": 517,
+   "perDistanza": {
+    "0-30": 284,
+    "150+": 132,
+    "30-80": 98,
+    "80-150": 3
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      181,
+      51,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      92,
+      77,
+      67
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      62,
+      22,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      37,
+      37,
+      37
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      16,
+      5,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito",
+     [
+      9,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      8,
+      2,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      7,
+      4,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vestito",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      3,
+      2,
+      1
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 58.5,
+   "msP90": 86.3,
+   "heapMB": 803,
+   "geometrie": 4576,
+   "tessiture": 685,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2086,
+   "paginaMB": 1501
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0
+   },
+   "disegni": 1199,
+   "triangoli": 2278012,
+   "vista": 1159,
+   "perDistanza": {
+    "80-150": 220,
+    "150+": 203,
+    "0-30": 321,
+    "30-80": 415
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      393,
+      234,
+      67
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      141,
+      141,
+      71
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      135,
+      83,
+      22
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      96,
+      81,
+      71
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      43,
+      43,
+      43
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      42,
+      42,
+      42
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      38,
+      24,
+      4
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      20,
+      17,
+      7
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      17,
+      13,
+      7
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      16,
+      12,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      14,
+      6,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      11,
+      5,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      10,
+      10,
+      0
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      9,
+      9,
+      4
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      7,
+      1,
+      0
+     ]
+    ],
+    [
+     "Basic",
+     [
+      7,
+      7,
+      2
+     ]
+    ],
+    [
+     "Basic|keep+thin2",
+     [
+      6,
+      6,
+      2
+     ]
+    ],
+    [
+     "Lambert|thin2+tassello",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      6,
+      3,
+      0
+     ]
+    ]
+   ],
+   "msMed": 52,
+   "msP90": 76.5,
+   "heapMB": 803,
+   "geometrie": 4936,
+   "tessiture": 644,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2061,
+   "paginaMB": 1518
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0
+   },
+   "disegni": 594,
+   "triangoli": 1761277,
+   "vista": 548,
+   "perDistanza": {
+    "0-30": 292,
+    "30-80": 119,
+    "80-150": 12,
+    "150+": 125
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      226,
+      81,
+      4
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      93,
+      78,
+      69
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      64,
+      20,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      33,
+      33,
+      33
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      16,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      9,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      7,
+      4,
+      1
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      3,
+      2,
+      1
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   ],
+   "msMed": 48.1,
+   "msP90": 56.7,
+   "heapMB": 803,
+   "geometrie": 4936,
+   "tessiture": 644,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 1012,
+    "occluse": 412,
+    "piccole": 167,
+    "colonne": 233,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2062,
+   "paginaMB": 1521
+  }
+ },
+ "p9": {
+  "i": 9,
+  "nome": "Corte dei Pescatori (fessura 2,2 m)",
+  "at": [
+   1388,
+   360
+  ],
+  "verso": [
+   1396,
+   360
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 50,
+    "arm": 2.72,
+    "sfondoAlto": 0
+   },
+   "disegni": 318,
+   "triangoli": 1424661,
+   "vista": 318,
+   "perDistanza": {
+    "0-30": 202,
+    "30-80": 6,
+    "150+": 110
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      115,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      76,
+      65,
+      59
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      26,
+      26,
+      26
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      18,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      6,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      6,
+      6,
+      6
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|tassello+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|keep+thin2|tasselli_sagoma",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 52.6,
+   "msP90": 297.6,
+   "heapMB": 803,
+   "geometrie": 4760,
+   "tessiture": 644,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2065,
+   "paginaMB": 1587
+  },
+  "c9": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 518,
+   "triangoli": 1986114,
+   "vista": 514,
+   "perDistanza": {
+    "0-30": 262,
+    "30-80": 63,
+    "80-150": 17,
+    "150+": 172
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      169,
+      26,
+      5
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      86,
+      75,
+      67
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      64,
+      64,
+      64
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      52,
+      20,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Standard",
+     [
+      10,
+      7,
+      4
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      9,
+      1,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      8,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      6,
+      6,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      3,
+      3,
+      2
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Basic",
+     [
+      2,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   ],
+   "msMed": 65.2,
+   "msP90": 401.8,
+   "heapMB": 905,
+   "geometrie": 4770,
+   "tessiture": 652,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2069,
+   "paginaMB": 1579
+  },
+  "c9l": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.6,
+    "sfondoAlto": 0
+   },
+   "disegni": 360,
+   "triangoli": 1684287,
+   "vista": 372,
+   "perDistanza": {
+    "0-30": 234,
+    "30-80": 16,
+    "80-150": 4,
+    "150+": 118
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      137,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      80,
+      70,
+      64
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      37,
+      37,
+      37
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      31,
+      5,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      7,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard",
+     [
+      4,
+      2,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|tassello+thin2",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 63.9,
+   "msP90": 85.4,
+   "heapMB": 905,
+   "geometrie": 4770,
+   "tessiture": 652,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 425,
+    "occluse": 141,
+    "piccole": 1,
+    "colonne": 319,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2070,
+   "paginaMB": 1580
+  }
+ },
+ "p10": {
+  "i": 10,
+  "nome": "Androne del Pozzo Vecchio (fessura 2,2 m)",
+  "at": [
+   1412,
+   292
+  ],
+  "verso": [
+   1422,
+   292
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 50,
+    "arm": 1.2,
+    "sfondoAlto": 0
+   },
+   "disegni": 266,
+   "triangoli": 974713,
+   "vista": 286,
+   "perDistanza": {
+    "0-30": 174,
+    "30-80": 1,
+    "150+": 111
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      86,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      76,
+      63,
+      62
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      24,
+      24,
+      24
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      19,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      8,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|keep+thin2|tasselli_sagoma",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 31.3,
+   "msP90": 39.9,
+   "heapMB": 905,
+   "geometrie": 4264,
+   "tessiture": 653,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2065,
+   "paginaMB": 1562
+  },
+  "c9": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0
+   },
+   "disegni": 1209,
+   "triangoli": 2477983,
+   "vista": 1225,
+   "perDistanza": {
+    "150+": 262,
+    "0-30": 329,
+    "30-80": 441,
+    "80-150": 193
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      435,
+      271,
+      81
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      199,
+      149,
+      33
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      111,
+      111,
+      67
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      90,
+      76,
+      72
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      52,
+      52,
+      52
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      42,
+      26,
+      6
+     ]
+    ],
+    [
+     "Standard|thin2+tassello",
+     [
+      40,
+      40,
+      40
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      18,
+      15,
+      8
+     ]
+    ],
+    [
+     "Standard|vestito+thin2",
+     [
+      16,
+      6,
+      0
+     ]
+    ],
+    [
+     "Lambert",
+     [
+      15,
+      15,
+      4
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      12,
+      8,
+      0
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      12,
+      12,
+      12
+     ]
+    ],
+    [
+     "Lambert|vestito+thin2",
+     [
+      12,
+      8,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      11,
+      8,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      10,
+      6,
+      6
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      8,
+      8,
+      8
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      7,
+      7,
+      7
+     ]
+    ],
+    [
+     "Standard|vestito+fuso",
+     [
+      7,
+      2,
+      0
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      7,
+      6,
+      4
+     ]
+    ],
+    [
+     "Basic|thin2",
+     [
+      6,
+      6,
+      4
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      6,
+      6,
+      3
+     ]
+    ],
+    [
+     "Basic",
+     [
+      6,
+      6,
+      3
+     ]
+    ]
+   ],
+   "msMed": 44.6,
+   "msP90": 64.8,
+   "heapMB": 905,
+   "geometrie": 4764,
+   "tessiture": 682,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2071,
+   "paginaMB": 1577
+  },
+  "c9l": {
+   "stato": {
+    "vista": 14.7,
+    "arm": 7.5,
+    "sfondoAlto": 0
+   },
+   "disegni": 609,
+   "triangoli": 1870629,
+   "vista": 513,
+   "perDistanza": {
+    "0-30": 275,
+    "80-150": 20,
+    "30-80": 91,
+    "150+": 127
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      225,
+      73,
+      12
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      85,
+      71,
+      67
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      51,
+      15,
+      2
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      33,
+      33,
+      33
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      18,
+      3,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      9,
+      6,
+      0
+     ]
+    ],
+    [
+     "Standard",
+     [
+      8,
+      5,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|wr",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|tassello",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|pesoScatole|pezzo_settore",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|pesoScatole+thin2|pezzo_settore",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      2,
+      1,
+      1
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ]
+   ],
+   "msMed": 39.8,
+   "msP90": 62.8,
+   "heapMB": 905,
+   "geometrie": 4764,
+   "tessiture": 682,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 1077,
+    "occluse": 498,
+    "piccole": 165,
+    "colonne": 237,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2072,
+   "paginaMB": 1590
+  }
+ },
+ "p11": {
+  "i": 11,
+  "nome": "sottopasso del Vico del Glacis",
+  "at": [
+   1477,
+   292
+  ],
+  "verso": [
+   1490,
+   294
+  ],
+  "oggi": {
+   "stato": {
+    "vista": 50,
+    "arm": 2.54,
+    "sfondoAlto": 0
+   },
+   "disegni": 416,
+   "triangoli": 1185465,
+   "vista": 287,
+   "perDistanza": {
+    "0-30": 184,
+    "150+": 98,
+    "30-80": 4,
+    "80-150": 1
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      86,
+      1,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      77,
+      63,
+      61
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      28,
+      1,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      19,
+      19,
+      19
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      4,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Lambert|keep+thin2|tasselli_sagoma",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 30.4,
+   "msP90": 56.9,
+   "heapMB": 905,
+   "geometrie": 3836,
+   "tessiture": 669,
+   "programmi": 203,
+   "far": 300,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2063,
+   "paginaMB": 1591
+  },
+  "c9": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.74,
+    "sfondoAlto": 0.033
+   },
+   "disegni": 434,
+   "triangoli": 1573882,
+   "vista": 464,
+   "perDistanza": {
+    "80-150": 64,
+    "0-30": 231,
+    "150+": 101,
+    "30-80": 68
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      143,
+      29,
+      4
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      89,
+      70,
+      62
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      45,
+      11,
+      2
+     ]
+    ],
+    [
+     "Standard|thin2",
+     [
+      44,
+      44,
+      30
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      21,
+      21,
+      21
+     ]
+    ],
+    [
+     "Standard",
+     [
+      15,
+      9,
+      6
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      10,
+      9,
+      5
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      8,
+      2,
+      1
+     ]
+    ],
+    [
+     "Lambert|thin2",
+     [
+      5,
+      5,
+      5
+     ]
+    ],
+    [
+     "Standard|riva9",
+     [
+      5,
+      4,
+      1
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      4,
+      3,
+      2
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|thin2|torture_device_001",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic",
+     [
+      3,
+      2,
+      2
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic",
+     [
+      2,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 61.2,
+   "msP90": 117,
+   "heapMB": 905,
+   "geometrie": 3837,
+   "tessiture": 661,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 0,
+    "occluse": 0,
+    "piccole": 0,
+    "colonne": 0,
+    "ms": 0,
+    "on": false
+   },
+   "gpuMB": 2063,
+   "paginaMB": 1522
+  },
+  "c9l": {
+   "stato": {
+    "vista": 33.2,
+    "arm": 1.74,
+    "sfondoAlto": 0.033
+   },
+   "disegni": 315,
+   "triangoli": 1287498,
+   "vista": 345,
+   "perDistanza": {
+    "0-30": 220,
+    "150+": 101,
+    "30-80": 22,
+    "80-150": 2
+   },
+   "generi": [
+    [
+     "Standard|tassello+thin2",
+     [
+      121,
+      10,
+      0
+     ]
+    ],
+    [
+     "inst:Lambert",
+     [
+      84,
+      67,
+      62
+     ]
+    ],
+    [
+     "Lambert|tassello+thin2",
+     [
+      35,
+      4,
+      0
+     ]
+    ],
+    [
+     "Standard|vievive+thin2",
+     [
+      27,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard|noRoof",
+     [
+      21,
+      21,
+      21
+     ]
+    ],
+    [
+     "Standard",
+     [
+      8,
+      2,
+      0
+     ]
+    ],
+    [
+     "Basic|tassello+thin2",
+     [
+      5,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader",
+     [
+      4,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Basic|noRoof",
+     [
+      4,
+      4,
+      4
+     ]
+    ],
+    [
+     "Standard|segnaletica",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "Points",
+     [
+      3,
+      3,
+      3
+     ]
+    ],
+    [
+     "Basic|pesoCat|pesoPiane",
+     [
+      3,
+      0,
+      0
+     ]
+    ],
+    [
+     "inst:Standard",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|vievive",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Standard|thin2|riva9s",
+     [
+      2,
+      1,
+      0
+     ]
+    ],
+    [
+     "Lambert|vievive",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Shader|pesoCat|pesoBagliori",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "inst:Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Lambert|velo+atlante",
+     [
+      2,
+      2,
+      2
+     ]
+    ],
+    [
+     "Shader|hy",
+     [
+      2,
+      0,
+      0
+     ]
+    ],
+    [
+     "Basic|vievive+thin2",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "Standard|tassello+thin2|zeppe9",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ],
+    [
+     "pers:Standard|personaggi+thin2|Personaggio",
+     [
+      1,
+      0,
+      0
+     ]
+    ]
+   ],
+   "msMed": 51,
+   "msP90": 76.9,
+   "heapMB": 905,
+   "geometrie": 3837,
+   "tessiture": 661,
+   "programmi": 203,
+   "far": 246,
+   "l9": {
+    "prove": 378,
+    "occluse": 76,
+    "piccole": 47,
+    "colonne": 249,
+    "ms": 0,
+    "on": true
+   },
+   "gpuMB": 2063,
+   "paginaMB": 1498
+  }
+ }
+}

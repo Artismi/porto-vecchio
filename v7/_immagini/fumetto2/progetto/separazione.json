@@ -1,0 +1,528 @@
+{
+ "posto_vicolo": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1557,
+    "dentro": 0.0638,
+    "rapporto": 2.44
+   },
+   "masse": {
+    "attraverso": 0.1219,
+    "dentro": 0.0556,
+    "rapporto": 2.19
+   }
+  },
+  "E_prima": {
+   "netto": {
+    "attraverso": 0.3523,
+    "dentro": 0.0941,
+    "rapporto": 3.74
+   },
+   "masse": {
+    "attraverso": 0.2502,
+    "dentro": 0.0716,
+    "rapporto": 3.49
+   }
+  },
+  "E_seconda": {
+   "netto": {
+    "attraverso": 0.2884,
+    "dentro": 0.0557,
+    "rapporto": 5.18
+   },
+   "masse": {
+    "attraverso": 0.2105,
+    "dentro": 0.0519,
+    "rapporto": 4.05
+   }
+  },
+  "via_35": {
+   "netto": {
+    "attraverso": 0.2181,
+    "dentro": 0.0734,
+    "rapporto": 2.97
+   },
+   "masse": {
+    "attraverso": 0.1433,
+    "dentro": 0.0606,
+    "rapporto": 2.37
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.2153,
+    "dentro": 0.0771,
+    "rapporto": 2.79
+   },
+   "masse": {
+    "attraverso": 0.1472,
+    "dentro": 0.0624,
+    "rapporto": 2.36
+   }
+  },
+  "via_75": {
+   "netto": {
+    "attraverso": 0.2029,
+    "dentro": 0.0804,
+    "rapporto": 2.52
+   },
+   "masse": {
+    "attraverso": 0.1452,
+    "dentro": 0.064,
+    "rapporto": 2.27
+   }
+  }
+ },
+ "posto_sbocco": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1122,
+    "dentro": 0.0563,
+    "rapporto": 1.99
+   },
+   "masse": {
+    "attraverso": 0.0836,
+    "dentro": 0.0462,
+    "rapporto": 1.81
+   }
+  },
+  "E_prima": {
+   "netto": {
+    "attraverso": 0.3356,
+    "dentro": 0.0704,
+    "rapporto": 4.77
+   },
+   "masse": {
+    "attraverso": 0.221,
+    "dentro": 0.0497,
+    "rapporto": 4.45
+   }
+  },
+  "E_seconda": {
+   "netto": {
+    "attraverso": 0.2376,
+    "dentro": 0.033,
+    "rapporto": 7.2
+   },
+   "masse": {
+    "attraverso": 0.1758,
+    "dentro": 0.0319,
+    "rapporto": 5.5
+   }
+  },
+  "via_35": {
+   "netto": {
+    "attraverso": 0.1903,
+    "dentro": 0.0679,
+    "rapporto": 2.8
+   },
+   "masse": {
+    "attraverso": 0.1184,
+    "dentro": 0.0538,
+    "rapporto": 2.2
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.1973,
+    "dentro": 0.072,
+    "rapporto": 2.74
+   },
+   "masse": {
+    "attraverso": 0.1263,
+    "dentro": 0.0567,
+    "rapporto": 2.23
+   }
+  },
+  "via_75": {
+   "netto": {
+    "attraverso": 0.1981,
+    "dentro": 0.0759,
+    "rapporto": 2.61
+   },
+   "masse": {
+    "attraverso": 0.1309,
+    "dentro": 0.0594,
+    "rapporto": 2.2
+   }
+  }
+ },
+ "posto_lungomare": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1245,
+    "dentro": 0.0387,
+    "rapporto": 3.22
+   },
+   "masse": {
+    "attraverso": 0.0579,
+    "dentro": 0.0257,
+    "rapporto": 2.25
+   }
+  },
+  "E_prima": {
+   "netto": {
+    "attraverso": 0.2404,
+    "dentro": 0.0585,
+    "rapporto": 4.11
+   },
+   "masse": {
+    "attraverso": 0.1011,
+    "dentro": 0.0373,
+    "rapporto": 2.71
+   }
+  },
+  "E_seconda": {
+   "netto": {
+    "attraverso": 0.1247,
+    "dentro": 0.0271,
+    "rapporto": 4.6
+   },
+   "masse": {
+    "attraverso": 0.0882,
+    "dentro": 0.025,
+    "rapporto": 3.53
+   }
+  },
+  "via_35": {
+   "netto": {
+    "attraverso": 0.1724,
+    "dentro": 0.0502,
+    "rapporto": 3.43
+   },
+   "masse": {
+    "attraverso": 0.0799,
+    "dentro": 0.034,
+    "rapporto": 2.35
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.179,
+    "dentro": 0.0538,
+    "rapporto": 3.32
+   },
+   "masse": {
+    "attraverso": 0.0843,
+    "dentro": 0.0367,
+    "rapporto": 2.3
+   }
+  },
+  "via_75": {
+   "netto": {
+    "attraverso": 0.1848,
+    "dentro": 0.0576,
+    "rapporto": 3.21
+   },
+   "masse": {
+    "attraverso": 0.0872,
+    "dentro": 0.0394,
+    "rapporto": 2.21
+   }
+  }
+ },
+ "posto_piazza": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1244,
+    "dentro": 0.0258,
+    "rapporto": 4.82
+   },
+   "masse": {
+    "attraverso": 0.094,
+    "dentro": 0.022,
+    "rapporto": 4.28
+   }
+  },
+  "E_prima": {
+   "netto": {
+    "attraverso": 0.3443,
+    "dentro": 0.0515,
+    "rapporto": 6.69
+   },
+   "masse": {
+    "attraverso": 0.2175,
+    "dentro": 0.0334,
+    "rapporto": 6.52
+   }
+  },
+  "E_seconda": {
+   "netto": {
+    "attraverso": 0.2643,
+    "dentro": 0.0189,
+    "rapporto": 14.01
+   },
+   "masse": {
+    "attraverso": 0.1749,
+    "dentro": 0.0182,
+    "rapporto": 9.63
+   }
+  },
+  "via_35": {
+   "netto": {
+    "attraverso": 0.2038,
+    "dentro": 0.0346,
+    "rapporto": 5.9
+   },
+   "masse": {
+    "attraverso": 0.1282,
+    "dentro": 0.0279,
+    "rapporto": 4.6
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.207,
+    "dentro": 0.0383,
+    "rapporto": 5.4
+   },
+   "masse": {
+    "attraverso": 0.1356,
+    "dentro": 0.0305,
+    "rapporto": 4.45
+   }
+  },
+  "via_75": {
+   "netto": {
+    "attraverso": 0.1992,
+    "dentro": 0.042,
+    "rapporto": 4.74
+   },
+   "masse": {
+    "attraverso": 0.1357,
+    "dentro": 0.0329,
+    "rapporto": 4.13
+   }
+  }
+ },
+ "posto_sera": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1097,
+    "dentro": 0.0307,
+    "rapporto": 3.57
+   },
+   "masse": {
+    "attraverso": 0.0879,
+    "dentro": 0.0241,
+    "rapporto": 3.65
+   }
+  },
+  "E_prima": {
+   "netto": {
+    "attraverso": 0.3057,
+    "dentro": 0.0595,
+    "rapporto": 5.14
+   },
+   "masse": {
+    "attraverso": 0.2023,
+    "dentro": 0.0336,
+    "rapporto": 6.01
+   }
+  },
+  "E_seconda": {
+   "netto": {
+    "attraverso": 0.2391,
+    "dentro": 0.0264,
+    "rapporto": 9.06
+   },
+   "masse": {
+    "attraverso": 0.1726,
+    "dentro": 0.0228,
+    "rapporto": 7.56
+   }
+  },
+  "via_35": {
+   "netto": {
+    "attraverso": 0.1771,
+    "dentro": 0.0414,
+    "rapporto": 4.28
+   },
+   "masse": {
+    "attraverso": 0.1141,
+    "dentro": 0.03,
+    "rapporto": 3.8
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.1764,
+    "dentro": 0.0453,
+    "rapporto": 3.9
+   },
+   "masse": {
+    "attraverso": 0.1185,
+    "dentro": 0.0322,
+    "rapporto": 3.68
+   }
+  },
+  "via_75": {
+   "netto": {
+    "attraverso": 0.1708,
+    "dentro": 0.0488,
+    "rapporto": 3.5
+   },
+   "masse": {
+    "attraverso": 0.1189,
+    "dentro": 0.0341,
+    "rapporto": 3.49
+   }
+  }
+ },
+ "ora_mattino": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1289,
+    "dentro": 0.0491,
+    "rapporto": 2.63
+   },
+   "masse": {
+    "attraverso": 0.0995,
+    "dentro": 0.039,
+    "rapporto": 2.55
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.2035,
+    "dentro": 0.0655,
+    "rapporto": 3.11
+   },
+   "masse": {
+    "attraverso": 0.1346,
+    "dentro": 0.0499,
+    "rapporto": 2.7
+   }
+  }
+ },
+ "ora_mezzogiorno": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1292,
+    "dentro": 0.0422,
+    "rapporto": 3.06
+   },
+   "masse": {
+    "attraverso": 0.1024,
+    "dentro": 0.0351,
+    "rapporto": 2.92
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.2417,
+    "dentro": 0.0656,
+    "rapporto": 3.68
+   },
+   "masse": {
+    "attraverso": 0.1582,
+    "dentro": 0.0509,
+    "rapporto": 3.11
+   }
+  }
+ },
+ "ora_pomeriggio": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1291,
+    "dentro": 0.045,
+    "rapporto": 2.86
+   },
+   "masse": {
+    "attraverso": 0.1025,
+    "dentro": 0.0374,
+    "rapporto": 2.74
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.239,
+    "dentro": 0.0676,
+    "rapporto": 3.54
+   },
+   "masse": {
+    "attraverso": 0.1582,
+    "dentro": 0.0528,
+    "rapporto": 3.0
+   }
+  }
+ },
+ "ora_oro": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1212,
+    "dentro": 0.0404,
+    "rapporto": 3.0
+   },
+   "masse": {
+    "attraverso": 0.0972,
+    "dentro": 0.033,
+    "rapporto": 2.95
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.2142,
+    "dentro": 0.0598,
+    "rapporto": 3.58
+   },
+   "masse": {
+    "attraverso": 0.1415,
+    "dentro": 0.0451,
+    "rapporto": 3.14
+   }
+  }
+ },
+ "ora_crepuscolo": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1224,
+    "dentro": 0.0315,
+    "rapporto": 3.89
+   },
+   "masse": {
+    "attraverso": 0.0982,
+    "dentro": 0.0249,
+    "rapporto": 3.94
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.1953,
+    "dentro": 0.0492,
+    "rapporto": 3.97
+   },
+   "masse": {
+    "attraverso": 0.1308,
+    "dentro": 0.0343,
+    "rapporto": 3.81
+   }
+  }
+ },
+ "ora_notte": {
+  "A": {
+   "netto": {
+    "attraverso": 0.1091,
+    "dentro": 0.0362,
+    "rapporto": 3.01
+   },
+   "masse": {
+    "attraverso": 0.086,
+    "dentro": 0.028,
+    "rapporto": 3.07
+   }
+  },
+  "via_55": {
+   "netto": {
+    "attraverso": 0.1487,
+    "dentro": 0.0458,
+    "rapporto": 3.25
+   },
+   "masse": {
+    "attraverso": 0.1025,
+    "dentro": 0.0334,
+    "rapporto": 3.07
+   }
+  }
+ }
+}

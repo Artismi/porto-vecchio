@@ -205,6 +205,7 @@ var Pavimenti = (function () {
     }
     vec3 pvDett(vec3 base, vec2 p, vec3 blur){
       pvTilt = vec2(0.); pvWet = 0.; pvPol = 0.; pvSab = 0.; float pvKerb = 0.;
+      float rsI = 0., rsSb = 0., rsLst = 0.;   // [rifinitura suolo] l'inchiostro delle righe (steso dopo le correzioni di tono), la sabbia disegnata, il lungomare di lastre
       vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4);                   // metri per pixel
       #ifdef PV_LITE
       float lod = 1. - smoothstep(.04, .12, mpp), fin = 0., aa = mpp * 1.2;   /* [fluido2] torna com'era: i pavimenti «piatti» erano i blocchi in ritardo ([arrivo]), non questa soglia; aperta costava 30-40 ms di scheda video sulle piazze dell'Iris Xe */   // leggera: niente grana fine. [diorama] la soglia era .04-.12: a mezza risoluzione (il profilo leggero) un pixel è ~10 cm e il lastricato si spegneva proprio alla camera di gioco (i «pavimenti che non si caricano»)
@@ -285,8 +286,16 @@ var Pavimenti = (function () {
         else { tone = cord ? 1.16 + h * .08 : .93 + h * .1; if (cord) col *= vec3(.97, .99, 1.03); }
         tone += (pvN(p * 7.) - .5) * .08;
         #ifndef PV_LITE
-        tone += (pvN(p * 23.) - .5) * .06 * fin;
+        tone += (pvN(p * 23.) - .5) * .06 * fin * (1. - rsK);
         #endif
+        if (rsK > 0.) {   // [rifinitura suolo] la pietra a tre toni (non una grana): da pietra a pietra un gradino; qualche pietra rifatta (cemento, più
+          // fredda e scura) e qualche pietra consumata (più chiara, lucida); i giunti come righe d'inchiostro nette; la grana fine via
+          float h3 = floor(h * 3.) * .5, hh = fract(h * 17.31), tE = (cord ? 1.2 : fam < 1.5 ? .86 : .9) + h3 * (cord ? .05 : .13);
+          if (!cord && hh > .955) { tE = .78; col = mix(col, col * vec3(.94, .97, 1.03), rsK); jt = max(jt, (1. - smoothstep(jw + .006 - aa, jw + .006 + aa, F.x)) * .8); }
+          else if (!cord && hh < .045) { tE = 1.07; pvPol = max(pvPol, .5 * rsK); }
+          tone = mix(tone, tE, rsK); rsI = max(rsI, jt * .55);
+          if (cord) rsI = max(rsI, rsRiga(abs(eU - .015) / mpp, 1.6) * .8);   // il filo del ciglio verso la strada
+        }
         mean = 1. - (jw * 2. / rw) * .5;
       } else if (fam < 3.5) {   // porfido a coda di pavone: cubetti di 11 cm su file ad arco (archi di 1,6 m), rosso-viola e grigio
         #ifdef PV_CALMO
@@ -322,13 +331,13 @@ var Pavimenti = (function () {
         float pt = pvN(p * .37) * .6 + pvN(p * 1.3) * .4,
         #endif
               mid = 1. - smoothstep(.04, .1, mpp), gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);   // gli inerti grossi (4 cm): chiari e scuri, leggibili allo zoom del gioco
-        tone = .92 + (pt - .5) * .15 + gr * .08 * mid + (pvN(p * 4.7) - .5) * .08 * mid;   // le chiazze, gli inerti grossi, la grana media: a 5 cm per pixel l'asfalto ha una pelle
+        tone = .92 + (pt - .5) * .15 + gr * .08 * mid * (1. - rsK) + (pvN(p * 4.7) - .5) * .08 * mid * (1. - .6 * rsK);   // le chiazze, gli inerti grossi, la grana media: a 5 cm per pixel l'asfalto ha una pelle
         #ifndef PV_LITE
         float g1 = pvN(p * 38.), sp = step(.94, pvH(floor(p * 85.))), ag = pvN(p * 9.) * .6 + pvN(p * 17.) * .4;
-        tone += (ag - .5) * .14 * lod + ((g1 - .5) * .12 + sp * .22) * fin;
+        tone += (ag - .5) * .14 * lod * (1. - .6 * rsK) + ((g1 - .5) * .12 + sp * .22) * fin * (1. - rsK);
         // le crepe: la curva di livello di un rumore, larga uguale ovunque (distanza in metri dalla curva), solo dove l'asfalto è vecchio
         vec2 qc = lungo ? q : p; float cn = pvN(qc * vec2(.16, 1.9) + 3.) * .85 + pvN(qc * vec2(.6, 3.)) * .15, cdist = abs(cn - .5) * mpp / max(fwidth(cn), 1e-5), cz = smoothstep(.74, .86, pvN(p * .11 + 17.)) * (lungo ? 1. : .4);
-        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .12 * lod;
+        float crack = (1. - smoothstep(.004, .004 + mpp * .8, cdist)) * cz; tone -= crack * .12 * lod; rsI = max(rsI, crack * .75 * lod);   /* [rifinitura suolo] la crepa: una riga */
         #endif
         if (via) { float lane = abs(av - hw * .5), tr = pvG((lane - .8) / .3) * jf, oil = pvG(lane / .35) * step(2.6, hw) * jf;
           tone *= 1. + tr * .07 - oil * .1; pvPol = tr * .6;
@@ -340,16 +349,16 @@ var Pavimenti = (function () {
           if (lungo && via) {
             // i giunti di ripresa: quello lungo in mezzeria (la stesa in due passate) e quelli di traverso ogni 30-50 m
             float cs = floor(s / 41.), sj = cs * 41. + pvH(vec2(cs, 5.)) * 12., gl = (1. - smoothstep(.005, .005 + aa, abs(v))) * step(2.6, hw), gt = 1. - smoothstep(.005, .005 + aa, abs(s - sj));
-            float sea = max(gl * smoothstep(.35, .55, pvN(vec2(s * .08, 3.))), gt) * jf * lod; tone *= 1. - sea * .09; jt = max(jt, sea * .22);   // sottili e a tratti: sigillati, non tagli
+            float sea = max(gl * smoothstep(.35, .55, pvN(vec2(s * .08, 3.))), gt) * jf * lod; tone *= 1. - sea * .09; jt = max(jt, sea * .22); rsI = max(rsI, sea * .3);   // sottili e a tratti: sigillati, non tagli
             // le toppe: rettangoli di asfalto più nuovo, scuro e liscio, col bordo netto e il filo di bitume che li sigilla
             float cp = floor(s / 13.), hp = pvH(vec2(cp, hw * 7. + 3.));
             if (hp < .16) {   /* [strade] le toppe rare (prima quasi una ogni 26 m: la via a riquadri) */ float L = 1.6 + pvH(vec2(cp, 9.)) * 4.4, Wd = .8 + pvH(vec2(cp, 11.)) * min(2., hw), s0 = cp * 13. + 1. + pvH(vec2(cp, 13.)) * (11. - L), v0 = (pvH(vec2(cp, 17.)) * 2. - 1.) * max(0., hw - Wd * .5 - .3);
               vec2 dq = vec2(abs(s - s0 - L * .5) - L * .5, abs(v - v0) - Wd * .5); float ed = max(dq.x, dq.y), inP = 1. - smoothstep(-aa, aa, ed), rim = 1. - smoothstep(.01, .01 + aa * 1.5, abs(ed));
-              tone = mix(tone, (hp < .07 ? .84 : 1.04) + (pvN(p * 3.) - .5) * .04, inP * jf); pvPol = mix(pvPol, .35, inP); tone *= 1. - rim * .18 * jf; jt = max(jt, rim * .3 * jf); } }   // le toppe nuove scure e quelle vecchie sbiadite, il filo di bitume
+              tone = mix(tone, (hp < .07 ? .84 : 1.04) + (pvN(p * 3.) - .5) * .04, inP * jf); pvPol = mix(pvPol, .35, inP); tone *= 1. - rim * .18 * jf; rsI = max(rsI, rim * .6 * jf); jt = max(jt, rim * .3 * jf); } }   // le toppe nuove scure e quelle vecchie sbiadite, il filo di bitume
           // le crepe a ragnatela nei punti stanchi: sulle ruote e dove l'asfalto è vecchio
           float tired = smoothstep(.6, .76, pvN(p * .23 + 41.)) * (via ? .35 + .65 * pvG((abs(av - hw * .5) - .8) / .6) : .5);
           #ifndef PV_LITE
-          if (tired > .02) { float rg = pvRagno(p, mpp) * smoothstep(.0, .25, tired - .08); tone -= rg * .16 * lod; jt = max(jt, rg * .3); }
+          if (tired > .02) { float rg = pvRagno(p, mpp) * smoothstep(.0, .25, tired - .08 - .3 * rsK); tone -= rg * .16 * lod; rsI = max(rsI, rg * .35 * lod); jt = max(jt, rg * .3); }
           #endif
           if (via) {
             float dip = smoothstep(.74, .84, pvN(p * .38 + 23.)) * pvG((abs(av - hw * .5) - .8) / .45) * jf; pvWet = max(pvWet, dip * .45); tone *= 1. - dip * .1;   // gli avvallamenti sulle ruote tengono l'acqua
@@ -362,15 +371,25 @@ var Pavimenti = (function () {
         #else
         vec4 S = pvSassi(p / .09, .9); float peb = (1. - smoothstep(.22, .36, length(S.zw))) * step(.7, S.y) * fin;
         #endif
-        tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14; tq = normalize(S.zw + 1e-5) * peb * .7;
+        tone = .9 + (pvN(p * .9) - .5) * .18 + (pvN(p * 4.) - .5) * .1 + peb * .14 * (1. - rsK); tq = normalize(S.zw + 1e-5) * peb * .7 * (1. - rsK);
         float mid = 1. - smoothstep(.05, .12, mpp), gv = pvH(floor(p * 22.) + 11.), bat = smoothstep(.55, .7, pvN(p * .5 + 4.));   // la ghiaia da 4 cm, chiara e scura; la terra battuta più liscia e chiara a chiazze
-        tone += ((step(.88, gv) * .16 - step(gv, .1) * .14) * (1. - bat * .7)) * mid + bat * .05;
+        tone += ((step(.88, gv) * .16 - step(gv, .1) * .14) * (1. - bat * .7)) * mid * (1. - rsK) + bat * .05;
+        if (rsK > 0.) {   // [rifinitura suolo] la terra: niente ghiaietta a puntini; a chiazze larghe a due toni col bordo netto, qualche sasso grande col
+          // contorno, le crepe della terra secca come righe rade
+          float ch = pvN(p * .35 + 4.) * .7 + pvN(p * 1.1) * .3, fc = max(fwidth(ch), 1e-4); tone = mix(tone, .94 + smoothstep(.55 - fc, .55 + fc, ch) * .08 - (1. - smoothstep(.36 - fc, .36 + fc, ch)) * .07, rsK);
+          vec2 gc = floor(p / 1.3), lp = p - (gc + .2 + .6 * vec2(pvH(gc + 3.1), pvH(gc + 7.7))) * 1.3; float hc = pvH(gc + 2.);
+          if (hc < .22) { float rr = .05 + .06 * pvH(gc + 5.3), e = length(lp / vec2(rr, rr * .7)), epx = (e - 1.) * rr * .7 / mpp, sz = smoothstep(1.6, 3., rr * .7 / mpp);
+            col = mix(col, base * vec3(.82, .8, .78) * (.9 + pvH(gc + 9.) * .25), (1. - smoothstep(-.5, .5, epx)) * sz * rsK); rsI = max(rsI, rsRiga(abs(epx), 1.) * sz * .6); }
+          float cq = pvN(p * .8 + 13.), sec2 = smoothstep(.62, .75, pvN(p * .12 + 5.)) * (via ? 0. : 1.);
+          rsI = max(rsI, rsIso(cq - .5, 1.1) * sec2 * smoothstep(5., 8., 1.25 / mpp) * .45); }
         #ifndef PV_LITE
         float pass = smoothstep(.62, .7, pvN(p * vec2(.25, .9) + 9.)) * smoothstep(.4, .6, pvN(p * .12));   // le tracce dei passi, più lisce e scure
         tone *= 1. - pass * .07; pvPol = max(pvPol, pass * .3);
         #endif
-        if (via) { float rut = pvG((av - .75) / .22); tone *= 1. - rut * .12; pvPol = rut * .3; }
+        if (via) { float rut = pvG((av - .75) / .22); tone *= 1. - rut * .12; pvPol = rut * .3;
+          if (rsK > 0.) { float re = abs(av - .75) - .17; tone *= 1. - (1. - smoothstep(-aa, aa, re)) * .06 * rsK; rsI = max(rsI, rsRiga(abs(re) / mpp, 1.2) * .4); } }   // [rifinitura suolo] il solco delle ruote col bordo disegnato
       } else {   // sabbia: le increspature del vento, la grana, più scura e liscia dove è bagnata
+        rsSb = 1.;   // [rifinitura suolo] la sabbia disegnata si stende in fondo (dopo le correzioni di tono)
         float ph = dot(p, vec2(.8, .6)) * 11. + pvN(p * .7) * 7.;
         tone = .96 + sin(ph) * .035 * lod + (pvH(floor(p * 120.)) - .5) * .1 * fin + (pvN(p * .3) - .5) * .08;
         tq = vec2(.8, .6) * cos(ph) * .12 * lod;
@@ -443,7 +462,7 @@ var Pavimenti = (function () {
         vec3 lst = mix(base * vec3(.8, .78, .74), vec3(pvLum(base)) * vec3(.98, .93, .86) * .78, .55) * (.84 + F.y * .24) * (cb > .5 ? 1.18 : 1.);   // pietra calda, più grigia della sabbia
         float drift = smoothstep(.55, .75, pvN(p * 1.1 + 8.)) * smoothstep(ed - 1.4, ed, dw);   // la sabbia portata dal vento sul bordo
         lst = mix(lst * (1. - lj * .4) * (1. - (1. - smoothstep(.01, .04, F.x)) * .12), base, drift * .8);
-        col = mix(col, lst, inL * lod); tw += F.zw * (1. - smoothstep(.01, .04, F.x)) * .15 * inL * (1. - drift);
+        col = mix(col, lst, inL * lod); rsLst = inL; rsI = max(rsI, lj * inL * .5); tw += F.zw * (1. - smoothstep(.01, .04, F.x)) * .15 * inL * (1. - drift);
         col *= 1. - (1. - smoothstep(0., .12, abs(dw - ed - .06))) * .3 * lod;   // la riga in ombra dove la cordonata finisce nella sabbia
         jt = max(jt, lj * inL);
       }
@@ -479,12 +498,17 @@ var Pavimenti = (function () {
       #ifdef TONE_MAPPING
       // [sguardo] il suolo calmo: la luminosità del disegno torna a metà strada verso la tinta media del posto (blur), i colori dei segni
       // restano; un valore medio (45-60) sotto i muri; il raccordo col muro più deciso (l'occlusione di contatto); l'ombra delle nuvole
-      { float lc = pvLum(col), lb = pvLum(blur); col *= mix(1., lb / max(lc, 1e-3), .5 * lod * (1. - pvKerb)); col *= mix(1., .5 / max(pvLum(col), .05), .28 * (1. - pvKerb)) * (1.04 + pvKerb * .16); tw *= .6; }   // i valori del suolo stretti attorno ai medi: né il lastrico che abbaglia né l'asfalto nero   // il cordolo no: la linea fra strada e marciapiede resta netta, un filo più chiara
+      { float lc = pvLum(col), lb = pvLum(blur); col *= mix(1., lb / max(lc, 1e-3), .5 * lod * (1. - pvKerb) * (1. - rsK * .7)); col *= mix(1., .5 / max(pvLum(col), .05), .28 * (1. - pvKerb)) * (1.04 + pvKerb * .16); tw *= .6; }   // i valori del suolo stretti attorno ai medi: né il lastrico che abbaglia né l'asfalto nero   // il cordolo no: la linea fra strada e marciapiede resta netta, un filo più chiara
       col = mix(col, col * vec3(.5, .45, .42), K.a * .75);
       { float cl = smoothstep(.42, .7, pvN((p + pvCl.xy) * .022) * .7 + pvN((p + pvCl.xy * 1.3) * .061 + 7.) * .3); col *= 1. - cl * pvCl.z; }
       #else
       col = mix(col, col * vec3(.62, .56, .5), K.a * .55);   // il raccordo muro-terreno: la riga calda e scura dove il muro tocca terra
       #endif
+      if (rsK > 0.) {   // [rifinitura suolo] la sabbia disegnata (rifinitura_suolo.js), poi l'inchiostro delle righe sopra a tutto
+        if (rsSb > .5) { float sw = rsK * (1. - rsLst) * lod; vec3 sd = rsSabbia(col, p, mpp, K.g, (1. - K.g) * 4. - 3.4); sd = mix(sd, sd * vec3(.42, .38, .36), K.b * pvForza);
+          col = mix(col, sd * (1. - rsInk * .9) + rsLuce, sw); }
+        col = mix(col, col * vec3(.3, .27, .29), clamp(rsI, 0., 1.) * .55 * rsK * lod);
+      }
       pvTilt = tw * pvForza;
       return mix(base, col, pvForza);
     }`;
@@ -498,18 +522,30 @@ var Pavimenti = (function () {
   const DUMMY = { id: null, mk: null };
   const CIELO = { value: new THREE.Vector3() };   // [sguardo] x, z: lo scorrimento delle nuvole (m); forza
   function dummy() { if (DUMMY.id) return DUMMY; DUMMY.id = new THREE.DataTexture(new Float32Array(4), 1, 1, THREE.RGBAFormat, THREE.FloatType); DUMMY.id.needsUpdate = true; DUMMY.mk = new THREE.DataTexture(new Uint8Array(4), 1, 1); DUMMY.mk.needsUpdate = true; return DUMMY; }
+  // [rifinitura suolo] lo stile E (rifinitura_suolo.js): con lo stile la uniform rsK e il disegno; senza, rsK è la costante 0 (lo shader di oggi)
+  // [integra1] RS1: il ramo E entra nello shader (con E, o nella cottura dei tasselli: RifSuolo.capace); la manopola rsK di StileE lo accende
+  const RS1 = () => typeof RifSuolo !== 'undefined' && RifSuolo.capace;
+  const rsPre = () => (RS1() ? RifSuolo.pre() : '#define rsK 0.\n') + (typeof RifSuolo !== 'undefined' ? RifSuolo.GLSL : RS0);
+  const rsChiave = () => RS1() ? '|rs' + RifSuolo.ver + (typeof StileE !== 'undefined' ? StileE.chiave() : '') : '';
+  const RS0 = 'float rsInk; float rsLuce; float rsRiga(float d, float w){ return 0.; } float rsIso(float x, float w){ return 0.; } vec3 rsSabbia(vec3 c, vec2 p, float m, float w, float d){ return c; }\n';
   function patch(mat, U, chiave) {
     const prev = mat.onBeforeCompile, pk = mat.customProgramCacheKey;
     mat.onBeforeCompile = function (sh, r) {
       if (prev) prev.call(this, sh, r); STAT.comp++; STAT.ok = sh.fragmentShader.includes('#include <map_fragment>');
       Object.assign(sh.uniforms, U); if (QUAL.v === 'leggera') sh.fragmentShader = '#define PV_LITE\n' + sh.fragmentShader;
+      if (RS1()) sh.uniforms.rsK = RifSuolo.k;   // [rifinitura suolo] la manopola dal vivo (solo con lo stile E)
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvPw = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_HD)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + rsPre() + GLSL_HD)
         .replace('#include <map_fragment>', '#include <map_fragment>\n #ifdef USE_MAP\n diffuseColor.rgb = pvDett(diffuseColor.rgb, vPw.xz, diffuse * texture2D(map, vUv, 4.).rgb);\n #else\n diffuseColor.rgb = pvDett(diffuseColor.rgb, vPw.xz, diffuseColor.rgb);\n #endif')
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .32, pvWet * pvForza); roughnessFactor = mix(roughnessFactor, roughnessFactor * .75, pvPol * pvForza);')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n #ifndef PV_LITE\n normal = normalize(normal + (viewMatrix * vec4(pvTilt.x, 0., pvTilt.y, 0.)).xyz);\n #endif');
+      // [rifinitura suolo] il prato del terreno (render.js prato9, già nel testo): con lo stile E i fili a righe fitte (che friggono) a un
+      // quinto, e il prato a cespi a due toni col bordo netto e il filo scuro sul bordo del cespo
+      if (RS1()) sh.fragmentShader = RifSuolo.hot(sh.fragmentShader);
+      if (RS1()) sh.fragmentShader = sh.fragmentShader.replace('vec3 c = base * (k + (bl * .5 - gap * .38) * aa + tuft * .22 * aa2);',
+        'float fc9 = max(fwidth(cl), 1e-4), ms9 = smoothstep(.52 - fc9, .52 + fc9, cl); k = mix(k, .8 + ms9 * .17 + (zo - .5) * .2, rsK); vec3 c = base * (k + (bl * .5 - gap * .38) * aa * (1. - .8 * rsK) + tuft * .22 * aa2); c *= 1. - rsIso(cl - .52, 1.1) * .22 * rsK * aa2;');
     };
-    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|' + chiave + '|' + QUAL.v;
+    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|' + chiave + '|' + QUAL.v + rsChiave();
     mat.needsUpdate = true; MATS.add(mat); return mat;
   }
   // [pavimenti] la qualità: 'alta' (il disegno pieno) o 'leggera' (telefoni e qualità bassa: una via per texel, niente grana fine,
@@ -593,20 +629,22 @@ var Pavimenti = (function () {
     mat.onBeforeCompile = function (sh, r) { if (prev) prev.call(this, sh, r); sh.uniforms.pvNz = { value: nz() };
       if (QUAL.v === 'leggera') sh.fragmentShader = '#define PV_LITE\n' + sh.fragmentShader;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvPw = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;\n' + GLSL_FN)
+      if (RS1()) sh.uniforms.rsK = RifSuolo.k;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vPw;\n' + rsPre() + GLSL_FN)
         .replace('#include <color_fragment>', `#include <color_fragment>
           { vec2 p = vPw.xz; vec2 fw = fwidth(p); float mpp = max(max(fw.x, fw.y), 1e-4), lod = 1. - smoothstep(.05, .16, mpp);
             float pg = pvN(p * 9.) * .6 + pvN(p * 17.) * .4, gr = step(.9, pvH(floor(p * 24.) + 7.)) - step(pvH(floor(p * 24.) + 3.), .07);
-            diffuseColor.rgb *= mix(1., .86 + pg * .2 - gr * .12, lod);   // la grana sotto la vernice
+            diffuseColor.rgb *= mix(1., .86 + pg * .2 - gr * .12, lod * (1. - rsK));   // la grana sotto la vernice   [rifinitura suolo] con lo stile E la vernice piena e pulita
             float sc = smoothstep(.58, .78, pvN(p * 1.6 + 3.) * .7 + pvN(p * 7.) * .3), fresca = step(.86, pvH(floor(p / 6.)));
+            if (rsK > 0.) { float sn = pvN(p * 1.1 + 3.) * .8 + pvN(p * 3.3) * .2, fs = max(fwidth(sn), 1e-4); sc = mix(sc, smoothstep(.7 - fs, .7 + fs, sn), rsK); }   // le scrostature: poche, larghe, col bordo netto
             #ifndef PV_LITE
             float rg = pvRagno(p, mpp) * smoothstep(.62, .8, pvN(p * .23 + 41.));
             #else
             float rg = 0.;
             #endif
-            diffuseColor.a *= mix(1., (1. - sc * .75 * (1. - fresca)) * (1. - rg * .9), lod); diffuseColor.rgb *= 1. + fresca * .06; }`);
+            diffuseColor.a *= mix(1., (1. - sc * mix(.75, .95, rsK) * (1. - fresca)) * (1. - rg * .9 * (1. - rsK)), lod); diffuseColor.rgb *= 1. + fresca * .06; }`);
     };
-    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|vern1|' + QUAL.v; mat.needsUpdate = true; MATS.add(mat); return mat;
+    mat.customProgramCacheKey = () => (pk ? pk.call(mat) : '') + '|vern1|' + QUAL.v + rsChiave(); mat.needsUpdate = true; MATS.add(mat); return mat;
   }
   // la sonda: cosa dice la mappa in (x, z)
   const STAT = { comp: 0, ok: null };

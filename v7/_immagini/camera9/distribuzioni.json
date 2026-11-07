@@ -1,0 +1,238 @@
+{
+ "vico_lungo": {
+  "oggi": {
+   "n": 158,
+   "arrivato": [
+    12.2
+   ],
+   "braccioPend": [
+    34,
+    34,
+    44,
+    50
+   ],
+   "vista": [
+    34,
+    34,
+    44,
+    50
+   ],
+   "braccio": [
+    9.32,
+    10,
+    10,
+    1.52
+   ],
+   "campo": [
+    46,
+    46
+   ],
+   "camY": 6.75,
+   "salita%": 23,
+   "corto%": 5,
+   "vistaOltre40%": 11,
+   "orizzonteNelQuadro%": 0,
+   "orizzonte": -0.295,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "cielo": 0,
+   "personaggioY": [
+    0.606,
+    0.712,
+    0.723
+   ],
+   "personaggioH": 0.174,
+   "spalla%": null,
+   "saltoVistaMax": 13.1,
+   "saltoQuotaMax": 5.97
+  },
+  "c9": {
+   "n": 158,
+   "arrivato": [
+    12.2
+   ],
+   "braccioPend": [
+    20,
+    20,
+    20,
+    30
+   ],
+   "vista": [
+    14.7,
+    14.7,
+    14.7,
+    33.2
+   ],
+   "braccio": [
+    7.05,
+    7.5,
+    7.5,
+    1.6
+   ],
+   "campo": [
+    50,
+    58
+   ],
+   "camY": 3.72,
+   "salita%": 0,
+   "corto%": 9,
+   "vistaOltre40%": 0,
+   "orizzonteNelQuadro%": 94,
+   "orizzonte": 0.219,
+   "sfondo": 0.042,
+   "sfondoAlto": 0.125,
+   "cielo": 0.028,
+   "personaggioY": [
+    0.75,
+    0.75,
+    0.763
+   ],
+   "personaggioH": 0.233,
+   "spalla%": 20,
+   "saltoVistaMax": 18.5,
+   "saltoQuotaMax": 1.76
+  }
+ },
+ "sbocco_lanternini": {
+  "oggi": {
+   "n": 186,
+   "arrivato": [
+    null
+   ],
+   "braccioPend": [
+    34,
+    34.1,
+    50,
+    50
+   ],
+   "vista": [
+    34,
+    34.1,
+    50,
+    50
+   ],
+   "braccio": [
+    2.27,
+    10,
+    10,
+    1.61
+   ],
+   "campo": [
+    46,
+    46
+   ],
+   "camY": 6.74,
+   "salita%": 29,
+   "corto%": 26,
+   "vistaOltre40%": 42,
+   "orizzonteNelQuadro%": 0,
+   "orizzonte": -0.297,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "cielo": 0,
+   "personaggioY": [
+    0.606,
+    0.711,
+    0.873
+   ],
+   "personaggioH": 0.175,
+   "spalla%": null,
+   "saltoVistaMax": 16,
+   "saltoQuotaMax": 5.19
+  }
+ },
+ "vicolo_pescatori": {
+  "oggi": {
+   "n": 127,
+   "arrivato": [
+    9.3
+   ],
+   "braccioPend": [
+    34,
+    34,
+    50,
+    50
+   ],
+   "vista": [
+    34,
+    34,
+    50,
+    50
+   ],
+   "braccio": [
+    8.97,
+    10,
+    10,
+    3.21
+   ],
+   "campo": [
+    46,
+    46
+   ],
+   "camY": 6.74,
+   "salita%": 31,
+   "corto%": 6,
+   "vistaOltre40%": 30,
+   "orizzonteNelQuadro%": 0,
+   "orizzonte": -0.295,
+   "sfondo": 0,
+   "sfondoAlto": 0,
+   "cielo": 0,
+   "personaggioY": [
+    0.606,
+    0.711,
+    0.732
+   ],
+   "personaggioH": 0.167,
+   "spalla%": null,
+   "saltoVistaMax": 16,
+   "saltoQuotaMax": 3.11
+  },
+  "c9": {
+   "n": 127,
+   "arrivato": [
+    9.3
+   ],
+   "braccioPend": [
+    20,
+    20,
+    29.9,
+    29.9
+   ],
+   "vista": [
+    14.7,
+    14.7,
+    32.9,
+    32.9
+   ],
+   "braccio": [
+    2.38,
+    7.48,
+    7.5,
+    2.38
+   ],
+   "campo": [
+    50,
+    57.9
+   ],
+   "camY": 3.7,
+   "salita%": 0,
+   "corto%": 24,
+   "vistaOltre40%": 0,
+   "orizzonteNelQuadro%": 87,
+   "orizzonte": 0.219,
+   "sfondo": 0.021,
+   "sfondoAlto": 0.063,
+   "cielo": 0.021,
+   "personaggioY": [
+    0.749,
+    0.751,
+    0.776
+   ],
+   "personaggioH": 0.234,
+   "spalla%": 20,
+   "saltoVistaMax": 8.9,
+   "saltoQuotaMax": 0.74
+  }
+ }
+}

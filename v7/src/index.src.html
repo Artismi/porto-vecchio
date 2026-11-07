@@ -298,11 +298,15 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
   <div class="layer"><div class="hud screen" id="screen"></div></div>
 </div>
 
+<script>window.PV_STILE_PREDEFINITO = 'A';   /* [integra1] LO STILE PER DIFETTO: 'A' o 'E'. L'unico posto da cambiare (INTEGRAZIONE1.md): la cottura dei tasselli porta tutti e due */
+window.PV_STILE = (/[?&]stile=e\d?\b/i.test(location.search) ? 'E' : /[?&]stile=[a-d]/i.test(location.search) ? 'A' : window.PV_STILE || window.PV_STILE_PREDEFINITO);</script>   <!-- [fumetto2] lo stile per i moduli caricati prima di render.js (suolo, pavimenti, tetti, la rifinitura): render.js poi lo conferma (STILE.v) -->
 <script data-m="profilo">/*profilo.js*/</script>   <!-- [profilo] le schede integrate passano al profilo leggero (prima di chi legge l'indirizzo) -->
 <script data-m="misura">/*misura.js*/</script>
 <script data-m="file_shim">/*file_shim.js*/</script>
 <script data-m="avvio">/*avvio.js*/</script>   <!-- [avvio] il nome della scheda video, i kit scaricati da subito, le impronte degli assets -->
 <script data-m="three.min">/*three.min.js*/</script>
+<script data-m="stile_e">/*stile_e.js*/</script>   <!-- [integra1] lo stile E come interruttore: le manopole degli shader, le varianti dei materiali, la cottura che porta A ed E -->
+<script data-m="rifinitura_costruito">/*rifinitura_costruito.js*/</script>   <!-- [rifcostruito] lo stile E nei materiali del costruito (solo con ?stile=E): prima di chi crea i materiali -->
 <script data-m="leggera_memoria">/*leggera_memoria.js*/</script>   <!-- [leggera] la memoria del telefono (prima di chi la usa) -->
 <script data-m="mesh_bvh">/*mesh_bvh.js*/</script>
 <script data-m="gltf_loader">/*gltf_loader.js*/</script>
@@ -391,6 +395,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="pennelli">/*pennelli.js*/</script>   <!-- [graffiti] i pennelli: bomboletta, fat e skinny cap, rullo, pennarello, adesivo, la grana del muro -->
 <script data-m="writing">/*writing.js*/</script>
 <script data-m="tavola_ui">/*tavola_ui.js*/</script>   <!-- [tavola2] il pannello della tavoletta dei graffiti: la tela grande, una barra a icone -->
+<script data-m="strada_dipinta">/*strada_dipinta.js*/</script>   <!-- [stradadipinta] la distribuzione dei graffiti, manifesti, adesivi e tag della città con ?stile=E (?nostradadipinta: spento) -->
 <script>/*writer_vita.js*/
 /*eventi.js*/</script>
 <script data-m="matti">/*matti.js*/</script>
@@ -417,6 +422,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script data-m="inquadratura">/*inquadratura.js*/</script>   <!-- [inquadratura] la via in strada -->
 <script data-m="regia">/*regia.js*/</script>   <!-- [regia] la camera che tende allo scorcio migliore -->
 <script data-m="camera7">/*camera7.js*/</script>   <!-- [camera7] la vista unica a mezza altezza -->
+<script data-m="lontano9">/*lontano9.js*/</script>   <!-- [lontano9] il lontano della camera bassa: occlusione delle case, cose piccole lontane -->
 <script data-m="suolo">/*suolo.js*/</script>   <!-- [suolo] la gerarchia dei suoli: chi sta sopra e chi si interrompe al confine -->
 <script data-m="pavimenti">/*pavimenti.js*/</script>   <!-- [pavimenti] le superfici a terra -->
 <script data-m="pulizia_rumore">/*pulizia_rumore.js*/</script>   <!-- [pulizia] il rumore: le regole sul registro di pulizia2 -->
@@ -428,6 +434,7 @@ body:has(#mu.on) #pvDevBtn, body:has(#book:not([hidden])) #pvDevBtn { display: n
 <script type="text/plain" id="calcolo-lavoratore">/*calcolo_lavoratore.js*/</script>   <!-- [calcolo] e lo stesso testo per il lavoratore (Web Worker) -->
 <script data-m="calcolo">/*calcolo.js*/</script>   <!-- [calcolo] i conti fuori dal filo della pagina, a passi -->
 <script data-m="render">/*render.js*/</script>
+<script data-m="rifinitura_suolo">/*rifinitura_suolo.js*/</script>   <!-- [rifinitura suolo] lo stile E sul suolo: sabbia, mare, lastrico, asfalto, marciapiede, terra (solo con ?stile=E; ?norifsuolo la spegne) -->
 <script data-m="ordine_arte">/*ordine_arte.js*/</script>
 <script data-m="scontri_arte">/*scontri_arte.js*/</script>
 <script data-m="vievive_arte">/*vievive_arte.js*/</script>

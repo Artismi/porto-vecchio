@@ -110,6 +110,7 @@ var Tasselli = (function () {
 
   // ---------------- valori, tessiture, materiali ----------------
   const TEX = new Map(), TEXP = new Map(), MAT = new Map(); let TEXI = null;
+  const SE = typeof StileE !== "undefined" ? StileE : null;   // [integra1] lo stile E come interruttore (src/stile_e.js)
   const COL = ['color', 'emissive', 'specular', 'sheenColor', 'attenuationColor'];
   const TXP = ['wrapS', 'wrapT', 'magFilter', 'minFilter', 'anisotropy', 'encoding', 'format', 'type', 'generateMipmaps', 'unpackAlignment', 'rotation', 'matrixAutoUpdate', 'internalFormat'];
   const MK = ['map', 'emissiveMap', 'bumpMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'alphaMap', 'aoMap', 'lightMap', 'envMap', 'specularMap', 'displacementMap'];
@@ -179,7 +180,7 @@ var Tasselli = (function () {
   }
   const uniform = u => { if (!u) return { value: null }; if (u.live && CTX.R.uni[u.live]) return CTX.R.uni[u.live]; return { value: valore(u.val) }; };
   function texDi(v, out) { if (!v || typeof v !== 'object') return; if ('t' in v && v.t !== null) out.add(v.t); if (v.a) v.a.forEach(x => texDi(x, out)); if (v.o) for (const k in v.o) texDi(v.o[k], out); }
-  function texDelMateriale(r) { const s = new Set(); MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) s.add(r[k]); }); ['uni', 'cuni'].forEach(q => { if (r[q]) for (const k in r[q]) { const u = r[q][k]; if (u && !u.live) texDi(u.val, s); } }); return s; }
+  function texDelMateriale(r) { const s = new Set(); MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) s.add(r[k]); }); if (r.mapE !== undefined && r.mapE !== null) s.add(r.mapE);   /* [integra1] */ ['uni', 'cuni'].forEach(q => { if (r[q]) for (const k in r[q]) { const u = r[q][k]; if (u && !u.live) texDi(u.val, s); } }); return s; }
   // [tasselli2] la maschera degli oggetti colpibili: un texel per oggetto (255 = nascosto); il vertice col numero dell'oggetto (pid) esce
   // dal campo (davanti al piano vicino) quando l'oggetto è stato colpito e vive come corpo, o è andato in pezzi
   const PIDM = { W: 256, H: 1, data: null, tex: null, u: { value: null } };
@@ -196,20 +197,22 @@ var Tasselli = (function () {
     const r = IND.materiali[i], S = IND.stringhe;
     if (r.type === 'ShaderMaterial' || r.type === 'RawShaderMaterial') {
       const uni = {}; for (const k in r.uni) uni[k] = uniform(r.uni[k]);
-      m = new THREE[r.type]({ vertexShader: S[r.vs], fragmentShader: S[r.fs], uniforms: uni, defines: r.defines || {} });
+      m = new THREE[r.type]({ vertexShader: SE ? SE.adatta(S[r.vs]) : S[r.vs], fragmentShader: SE ? SE.adatta(S[r.fs]) : S[r.fs], uniforms: uni, defines: r.defines || {} });
       if (r.extensions) Object.assign(m.extensions, r.extensions); if (r.lights !== undefined) m.lights = r.lights; if (r.fog !== undefined) m.fog = r.fog;
     } else m = new (THREE[r.type] || THREE.MeshStandardMaterial)();
     COL.forEach(k => { if (r[k] && m[k]) m[k].setRGB(r[k][0], r[k][1], r[k][2]); });
-    for (const k in r) { if (COL.includes(k) || MK.includes(k) || ['type', 'name', 'ud', 'vs', 'fs', 'uni', 'defines', 'extensions', 'lights', 'fog', 'cvs', 'cfs', 'cuni', 'cdef', 'key', 'clip', 'normalScale', 'obcErr', 'glslVersion', 'notte', 'vivo'].includes(k)) continue;
+    for (const k in r) { if (COL.includes(k) || MK.includes(k) || ['type', 'name', 'ud', 'mapE', 'vs', 'fs', 'uni', 'defines', 'extensions', 'lights', 'fog', 'cvs', 'cfs', 'cuni', 'cdef', 'key', 'clip', 'normalScale', 'obcErr', 'glslVersion', 'notte', 'vivo'].includes(k)) continue;
       if (typeof r[k] === 'number' || typeof r[k] === 'boolean') m[k] = r[k]; }
     if (r.fog !== undefined && !m.isShaderMaterial) m.fog = r.fog;
     if (r.normalScale && m.normalScale) m.normalScale.fromArray(r.normalScale);
     MK.forEach(k => { if (r[k] !== undefined && r[k] !== null) m[k] = tessitura(r[k]); });
     m.name = r.name || ''; m.userData = Object.assign({}, r.ud, { tassello: true });
+    if (SE) { if (r.mapE !== undefined && r.mapE !== null) m.__mapE = tessitura(r.mapE); SE.applica(m); }   // [integra1] le varianti dello stile E (tinta, tessitura, pezzi solo di E)
     if (r.cvs !== undefined) {   // lo shader già trasformato nella build (onBeforeCompile del gioco): lo stesso testo, le stesse uniform
-      const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '') + (pid ? '|pid' : '');
-      m.onBeforeCompile = sh => { sh.vertexShader = VS; sh.fragmentShader = FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7 && CTX.R.fade7(sh)) m.userData.r7 = true; };   // [controlli8] r7: il braccio della camera ci passa   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
-      m.customProgramCacheKey = () => key;
+      const VS = S[r.cvs], FS = S[r.cfs], CU = {}; for (const k in r.cuni) CU[k] = uniform(r.cuni[k]); const key0 = 'tas|' + r.cvs + '|' + r.cfs + '|' + (r.key || '') + (pid ? '|pid' : '');
+      const dE = !!SE && (SE.usa(VS) || SE.usa(FS)), key = key0;   // [integra1] il testo cotto col ramo E: con A le manopole diventano la costante (adatta), la chiave segue lo stile
+      m.onBeforeCompile = sh => { sh.vertexShader = dE ? SE.adatta(VS) : VS; sh.fragmentShader = dE ? SE.adatta(FS) : FS; Object.assign(sh.uniforms, CU); if (r.cdef) sh.defines = Object.assign(sh.defines || {}, r.cdef); if (pid) iniettaPid(sh); if (CTX.R.fade7 && CTX.R.fade7(sh)) m.userData.r7 = true; };   // [controlli8] r7: il braccio della camera ci passa   // [camera7] il retino delle chiome (render.js fade7: solo gli shader delle chiome)
+      m.customProgramCacheKey = dE ? () => key + SE.chiave() : () => key;
     } else if (pid) { m.onBeforeCompile = iniettaPid; m.customProgramCacheKey = () => 'tasPid'; }
     // chi il gioco accende di notte (render.js frame): le finestre delle case fuse, i fondali
     if (r.notte === 'fd1' && CTX.R.FD1) CTX.R.FD1.emis.push(m);
@@ -536,8 +539,8 @@ var Tasselli = (function () {
       if (r.cdm !== null && r.cdm !== undefined) o.customDepthMaterial = materiale(r.cdm);
       else if (pid && r.cs && !Array.isArray(mat)) o.customDepthMaterial = profonditaPid(mat);
       if (r.cdi !== null && r.cdi !== undefined) o.customDistanceMaterial = materiale(r.cdi);
-      o.raycast = !r.inst && (S.tieni.has(r.g.at.position) || (CFG.leggero && S.ragg && S.ragg.has(r.g.at.position))) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) ? rayTas : noRay;
-      o.userData.tassello = ti; o.userData.thin2 = 1;
+      o.raycast = !r.inst && (S.tieni.has(r.g.at.position) || (CFG.leggero && S.ragg && S.ragg.has(r.g.at.position))) && (Array.isArray(mat) ? mat.some(opaco) : opaco(mat)) && !(!Array.isArray(mat) && mat.userData.rcSolo) ? rayTas : noRay;   // [integra1] i pezzi solo di E: niente raggi
+      o.userData.tassello = ti; o.userData.thin2 = 1; if (r.rc) o.userData.rc = r.rc; else if (!Array.isArray(mat) && mat.userData.rc) o.userData.rc = mat.userData.rc;   // [integra1] il pezzo segnato per la rifinitura (render.js mergeGroup)
       if (!S.mats) S.mats = new Set();   // [tasselli3] i materiali del tassello, contati (matLascia in smonta)
       (Array.isArray(mat) ? mat : [mat]).forEach(q => matPrendi(S, q)); matPrendi(S, o.customDepthMaterial); matPrendi(S, o.customDistanceMaterial);
       sc.add(o); (S.mesh = S.mesh || []).push(o);
@@ -858,6 +861,6 @@ var Tasselli = (function () {
       await new Promise(ok => setTimeout(ok, 100));
     }
   }
-  return { __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
+  return { __materiali: () => [...MAT.values()],   /* [integra1] StileE.imposta: i materiali in memoria seguono lo stile */ __r8: { pila: (rd, t) => { PF.n++; return pila(rd, t); }, pilaOk },   /* [ritmo8] per la sonda delle pile (strumenti) */ anticipa, _dbg: () => ({ attese: [...ATTESE.keys()].length, stati: STATO.reduce((a, s) => { a[s.st] = (a[s.st] || 0) + 1; return a; }, {}) }), attivo: () => ON, chiesto: CHIESTO, faseViva: n => VIVE.has(n), VIVE: [...VIVE], monta, pronto, CFG, stato, finisci, PIDM, raggiMancanti: () => RG.manca, get graffiti() { return ON ? GRAF : null; }, get deciso() { return DECISO; } };
 })();
 if (typeof window !== 'undefined') window.Tasselli = Tasselli;
