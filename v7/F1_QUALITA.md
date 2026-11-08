@@ -127,8 +127,10 @@ Calzolaio nelle foto). Resta che una faccia di fondo su un passaggio prende le f
 - **La prova al pixel** (`uguale.jpg`): tre punti (la Rua, la Vittoria, l'Androne), lo stesso seme, la stessa posa e la stessa ora, la pagina di
   `origin/main` e quella di questo ramo senza `?urbanistica2`, coi tasselli del sito, gente e mezzi nascosti. Due caricamenti in SwiftShader
   non danno lo stesso fotogramma neanche della stessa pagina (la gente che non si nasconde tutta, le carte al vento, l'acqua, le luci che
-  sfarfallano vanno col tempo vero): la tavola mette accanto la differenza `main`–ramo e quella `main`–`main` (due caricamenti), che hanno la
-  stessa misura; dove cambiano sono le stesse cose (carte, persone, mezzi), mai il suolo, i muri o i graffiti.
+  sfarfallano vanno col tempo vero): la tavola mette accanto la differenza `main`–ramo e quella ramo–ramo (due caricamenti della stessa pagina). La prima è
+  **più piccola** della seconda (media 2,1-2,3 contro 2,7-3,0; pixel oltre 48: 0,65-0,86% contro 0,96-1,11%), e dove cambia sono le stesse
+  cose (carte al vento, un mezzo, le luci), mai il suolo, i muri o i graffiti. Al pixel uguali no: non lo sono neanche due caricamenti di
+  `main`.
 - **Le prove della città** (`node src/test_<x>.js`; con F1 `PV_URBANISTICA2=1 NODE_OPTIONS=--require=…/urbanistica2.js`, così anche i
   processi figli delle prove caricano F1): le righe NO.
 
