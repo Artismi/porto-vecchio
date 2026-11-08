@@ -252,7 +252,7 @@ var Urbanistica2 = (function () {
       // [f1qualita] in fondo il passo esce sul sagrato accanto alla Falegnameria Efisio (casa_228: economia.js la fa bottega a partita
       // iniziata; prima casette() la toglieva perché restava sola e la falegnameria andava altrove): la via scende sul sagrato, a ponente
       via('passo_calzolaio', 'Passo del Calzolaio', [[1394, ym], [1394, 284.6], [1395.4, 290], [1395.4, 300.5], [1394.4, 302.4], [1389.6, yRua(1389.6)]], {});   // sul sagrato (lastricato: la riga del vicolo non si disegna) fino alla Rua, lontano dal capo del Vico dei Bottai e dalla falegnameria
-      slargo('Corte del Calzolaio', 'la corte dietro il sagrato: gli scalini, i vasi', 1398, 292, 3.1, 3.1);   // 1394-1402 × 288-296
+      slargo('Corte del Calzolaio', 'la corte dietro il sagrato: gli scalini, i vasi', 1399, 290, 4.1, 5.1);   // 1394-1404 × 284-296: tutta la corte dietro la chiesa (un ritaglio di selciato a nord restava un «orto murato», tetti.js, col suo leccio sul passo)
     }
 
     // ---- la Piazzetta del Lavatoio, sul Vico del Lavatoio fra i Gatti e i Bottai: il lavatoio coperto contro il fondo nord ----
