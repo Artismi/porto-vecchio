@@ -121,8 +121,14 @@ Calzolaio nelle foto). Resta che una faccia di fondo su un passaggio prende le f
 ## 5. Le prove
 
 - **Di serie niente cambia**: `src/urbanistica2.js` sta fuori dall'impronta (`TASS_FUORI`), `IMPRONTA_TASS` resta `48196fd63f899c14`, il mondo
-  cotto `b0e755cd030a0cbf`. La prova al pixel (`uguale.jpg`): tre punti (la Rua, la Vittoria, l'Androne), lo stesso seme, la pagina di
-  `origin/main` e quella di questo ramo, senza `?urbanistica2`, coi tasselli del sito, la gente e i mezzi nascosti e il tempo fermo.
+  cotto `b0e755cd030a0cbf`. L'`index.html` costruito è **identico al byte a quello di `origin/main` fuori dal blocco del modulo**
+  (`<script data-m="urbanistica2">`), e il modulo a interruttore spento non fa niente (`mondo`, `fine`, `prima`, `dopo`, `graffiti` escono
+  subito; l'aggancio di Node solo con `PV_URBANISTICA2=1`).
+- **La prova al pixel** (`uguale.jpg`): tre punti (la Rua, la Vittoria, l'Androne), lo stesso seme, la stessa posa e la stessa ora, la pagina di
+  `origin/main` e quella di questo ramo senza `?urbanistica2`, coi tasselli del sito, gente e mezzi nascosti. Due caricamenti in SwiftShader
+  non danno lo stesso fotogramma neanche della stessa pagina (la gente che non si nasconde tutta, le carte al vento, l'acqua, le luci che
+  sfarfallano vanno col tempo vero): la tavola mette accanto la differenza `main`–ramo e quella `main`–`main` (due caricamenti), che hanno la
+  stessa misura; dove cambiano sono le stesse cose (carte, persone, mezzi), mai il suolo, i muri o i graffiti.
 - **Le prove della città** (`node src/test_<x>.js`; con F1 `PV_URBANISTICA2=1 NODE_OPTIONS=--require=…/urbanistica2.js`, così anche i
   processi figli delle prove caricano F1): le righe NO.
 
