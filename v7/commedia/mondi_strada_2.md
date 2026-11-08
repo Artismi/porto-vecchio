@@ -14,6 +14,10 @@ Deve sembrare viva e piena la città, ne voglio molta di più.» Adesso chiede t
 
 Una battuta deve capirla al volo un quindicenne, alla prima lettura.
 
+Tarato poi su `TONO.md` (i voti di Andrea): reazioni a caldo a quello che succede adesso, urlate; soprattutto gente che si
+sputtana da sola (egoismo, pigrizia, vigliaccheria, vanteria) e amici che si fregano a vicenda. Niente burocrate stanco, niente
+ironia fredda, niente logica rovesciata a due voci, niente insulti di repertorio sulle famiglie.
+
 Regole rispettate:
 - al massimo 70 caratteri a fumetto (controllato con uno script, vedi in fondo);
 - parolacce sì, bestemmie no; il sesso solo per allusione;
@@ -838,7 +842,7 @@ dietro l'angolo e passi che corrono).
 - Il Grigio nuovo corre forte. Ma si stanca subito. È grasso.
 - Io ho visto lo Squalo. Ha l'anello d'oro grosso così!
 - Facciamo che io sono il Garante e voi applaudite. …Più forte!
-- Arriva il Grigio! Correte! …Io resto, sono piccolo, a me non fa niente.
+- Il Grigio! Correte! …Io resto, sono piccolo, a me non fa niente.
 - Chi m'ha fregato le figurine?! Erano nella calza! Nella calza!
 - Il capo sono io! Chi dice di no gli tiro l'acqua! Tu? Eh? Tu?
 - Chi ha mangiato la merenda di Tonio? Hai le briciole sulla faccia!
