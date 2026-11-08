@@ -23,3 +23,28 @@ Prima ancora, ha bocciato come «gibberish nonsense»: «Il segreto è il Lei. Q
 - **Va bene, ma un po' meno**: la satira concreta sulle famiglie ipocrite (la 10), se è detta in modo diretto.
 - **Non funziona**: la battuta costruita sulla trovata (il numero della caserma, il panino), l'insulto di repertorio fine a se stesso, il burocrate stanco, la rassegnazione della vecchia, l'aforisma, il gioco di parole, il paradosso, tutto quello che va «capito».
 - **Il test**: un quindicenne la capisce e ride alla prima lettura, anche senza sapere chi sono i Grigi? Chi parla si scopre: egoista, pigro, vigliacco, sbruffone? Se serve pensarci, si butta.
+
+## Correzione 2 (Andrea, dopo il secondo assaggio): la varietà
+«Tutte e 10 le prime non erano niente male. Queste fanno ridere, sono simpatiche, ma hanno tutte la stessa struttura. Si può fare di meglio.» Esempi della struttura ripetuta: «Ho preso il ladro! …Era il collega in borghese.» · «Vai avanti tu, io ho la giacca nuova.» · «Dieci Grigi! …Va be', tre.»
+
+Quindi il metro non è più «chi si sputtana con un rovescio finale». **Tutte e dieci le prime prove valgono**, ognuna con la sua struttura. La tavolozza, e il tetto di ognuna (sul totale di un file):
+
+| struttura | esempio | tetto |
+|---|---|---|
+| il rovescio / l'autocorrezione («…va be', tre», «…cioè») | «Avevo trecento uomini! …Trenta.» | **10%** |
+| l'amico che frega l'amico | «Chi è più veloce?» «Io.» «Allora vai tu.» | 12% |
+| la priorità sbagliata sotto pressione | «Mi hai bucato la divisa nuova! La pago io!» | 10% |
+| l'insulto a caldo a quello che fai | «Chi ti ha dato la patente, tua madre?!» | 10% |
+| la vanteria dello sfigato, senza correzione | «Io ero uno importante! Avevo un motorino!» | 10% |
+| il dettaglio di vita fuori luogo (GTA) | «Non posso morire oggi, ho la lavatrice in mezzo!» | 12% |
+| la telefonata/la vita privata che entra in scena | lo Squalo e il sugo | 8% |
+| lo stanco che fa il minimo (sì, la 2 andava) | «Documenti. …Fai finta che te li ho chiesti.» | 8% |
+| la trovata concreta (sì, la 7 andava) | «M'ha dato il numero. Era della caserma.» | 8% |
+| la satira concreta della famiglia per bene | «Fuma, beve, dipinge i muri. Però ha il posto in banca.» | 8% |
+| il malinteso fra due | uno parla della moglie, l'altro della macchina | 8% |
+| lo sfogo che sale (stand-up, tre gradini) | «Calmo. CALMO. CALMO, CAZZO!» | 8% |
+| la risposta secca che chiude | «Era una merda di macchina.» «Era *nostra*, la merda.» | 8% |
+| la confessione non richiesta a uno sconosciuto | «Non lo dire a nessuno: ho paura dei piccioni.» | 8% |
+| la scena fisica (cade, scappa, si incastra) e il commento | | libero |
+
+Regole: due battute vicine (stesso personaggio, stessa scena, stessa sezione) non hanno la stessa struttura. Nessuna formula ricorre più di 3 volte in un file («…va be'», «…cioè», «vai avanti tu», «ho la giacca nuova», «ciao!» di chi scappa). Restano vietati aforismi, giochi di parole, paradossi da decifrare.
