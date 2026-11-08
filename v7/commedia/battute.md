@@ -86,17 +86,17 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Paga da bere! Ho combattuto! Ho fatto la galera! HO PERSO I DENTI!
 - Io avevo una radio! Tutta l'isola mi sentiva! ...Tre case. Ma forte!
 - Non mi toccare il bicchiere! Il bicchiere è mio! L'unica cosa che ho!
-- Te lo dico solo a te: nel '79 mi sono nascosto in un armadio. Tre giorni.
+- Te lo dico solo a te: nel '79 mi sono chiuso nell'armadio. Tre giorni.
 - Una volta ho fermato una campagnola con una patata. Non chiedere.
-- Io il Garante l'ho visto in faccia! Da vicino! Gli ho venduto un ombrello!
+- Il Garante l'ho visto da vicino! Così! Gli ho venduto un ombrello!
 - Mia moglie m'ha lasciato per un Grigio! Nel '79 a quelli gli sparavo!
 - Ma che bevi, il latte?! Il latte, alla Risacca?! Vergognati!
 - Avevo la mira migliore della Risacca! ...M'è caduto il bicchiere.
-- La molotov te la faccio io! Dammi una bottiglia! Piena! Prima la svuoto.
+- La molotov te la faccio io! Dammi una bottiglia! Piena! Poi la svuoto.
 - Non sono ubriaco! Sono un reduce! È diverso! Hic.
 - Oste! Se chiama mia moglie, sono alla manifestazione! Da quarant'anni!
 - Il fucile ce l'ho ancora! Sotto il letto! Ci tengo le cipolle.
-- Nel '79 ero il più bello della Risacca! Avevo ancora i capelli! E i denti!
+- Nel '79 ero il più bello della Risacca! Avevo i capelli! E i denti!
 - Ehi, tu! Tu hai la faccia da Grigio! Sei un Grigio? Dillo!
 - Offrimi un bicchiere e ti dico dov'è sepolto il tesoro della Risacca!
 - Io non ho paura di nessuno! Di nessuno! ...Chi ha sbattuto la porta?!
@@ -220,7 +220,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Suor Teresa ha dato un pugno a un Grigio! Un pugno! Che donna!
 - Il vino della messa è finito! Sagrestano! Ti ho visto! Sputalo!
 - Mi hai pestato il piede! Ti perdono! Ti perdono! TI PERDONO, STRONZO!
-- Offerte! Lasciatele qui, che col cestino non giro. Ho il mal di schiena.
+- Offerte! Lasciatele lì, col cestino non giro. Ho il mal di schiena.
 - Tre ore di confessione e nessuno ha peccato! Tutti santi! Bugiardi!
 - Le suore non hanno paura. Hanno un ombrello robusto e la mira buona.
 - Vai a messa, Nino! Ti vedo al bar! Ti vedo, eh! Tutti i giorni!
@@ -239,14 +239,14 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Sei un ladro? Mamma dice che quelli col giubbotto sì.
 - Mio papà è più forte del tuo! Il tuo dov'è? Non c'è! Ah ah!
 - Ho detto «stronzo» alla maestra! Castigo! Ma ne valeva la pena!
-- Mia mamma dice che sei bello! Papà dice che sei un delinquente! Litigano!
+- Mamma dice che sei bello! Papà dice che sei un delinquente! Litigano!
 - Ho mangiato un verme per mille lire! Mi dai mille lire? Ne mangio due!
 - Oi! Mi dai una sigaretta? Ho nove anni! Fumo da quando ne avevo otto!
 - Mio fratello dice che gli devi dei soldi. Non è vero. Dalli a me.
 - Un Grigio m'ha dato un ceffone! L'ho detto alla nonna! È finito, lui!
 - Ho fatto la pipì nella fontana del Garante! Non dirlo! Lo dico io!
 - Sei brutto! Brutto brutto! Hai la faccia come il culo del mio cane!
-- Ho trovato una pistola! L'ho nascosta sotto il letto della nonna! Zitto!
+- Ho trovato una pistola! L'ho messa sotto il letto della nonna! Zitto!
 - Gara di sputi col figlio del Grigio. Ho vinto. Suo papà m'ha multato.
 - Mamma ha detto a papà che è un coglione! Cos'è un coglione? Sei tu?
 - Da grande faccio lo Squalo! Così la gente mi dà i soldi e basta!
@@ -382,7 +382,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - [bambino] Perché cammini storto? Mamma! Quello cammina come papà!
 
 ### bagnato, infreddolito
-- [vecchia] Sei bagnato! Vieni che ti asciugo! Ho il phon nuovo, lo voglio provare!
+- [vecchia] Sei bagnato! Vieni che ti asciugo! Ho il phon nuovo, voglio provarlo!
 - [ragazzi] Ti sei buttato in mare vestito?! Sei un mito! Scemo, ma un mito!
 - [benpensante] Non sgocciolare sul mio marciapiede! L'ho fatto lavare! Ieri!
 - [pescatore] Caduto dalla calata? Tutti, una volta. Io sette.
@@ -395,7 +395,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 
 ### di notte, durante l'Ora Quieta
 - [grigio] Ehi! È l'Ora Quieta! A casa! Subito! O ti ci porto io, a calci!
-- [grigio] Che fai in giro a quest'ora?! Documenti! Dai, non tirarli fuori, fa freddo.
+- [grigio] Che fai in giro?! Documenti! Dai, non tirarli fuori, fa freddo.
 - [ragazzi] (piano) Zio, pure tu fuori? Shh. Adesso è tutto nostro.
 - [vecchia] (dalla finestra) Rientra, scemo! ...Ah, sei Nino. Rientra, scemo.
 - [benpensante] (dalla finestra) Chiamo la Guardia! Giuro! ...Chi ha il numero?
@@ -409,7 +409,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - [ragazzi] Che schifo di giacca, Nino! ...Me la presti stasera? Dai!
 - [ragazzi] Fa schifo, giuro. Prestamela per la Debora. Se va male, è colpa tua.
 - [vecchia] Bel vestito. Mio cugino ne aveva uno uguale. Nella bara.
-- [benpensante] Copriti! Mio figlio vuole i capelli lunghi per colpa di quelli come te!
+- [benpensante] Copriti! Mio figlio vuole i capelli lunghi per colpa tua!
 - [grigio] Fermo! Che roba è quella giacca? L'hai rubata? A un pagliaccio?
 - [famiglia] Ma come ti sei conciato? Cammina più in là! C'è mia suocera!
 - [marsigliese] Oh là là! Didier, regarde! Il s'est habillé avec les rideaux!
@@ -447,7 +447,7 @@ Le prime 4 di ogni lista sono le serie (escono più spesso se il bug resta); le 
 - Mi hai bucato il cappello! È d'ordinanza! Me lo scalano!
 - Sparo! Sparo davvero! ...Ferri, come si toglie la sicura?
 - Mi hai bucato la divisa nuova, stronzo! La pago io!
-- Rinforzi! Mandatene tanti! Così io posso andare a casa!
+- Rinforzi! E portate le sigarette! Ho finito le sigarette!
 - Esci con le mani alzate! O come ti pare, basta che esci!
 - Copri tu, Ferri! Io copro la macchina! Da dietro! Seduto!
 
@@ -494,8 +494,8 @@ Le prime 4 di ogni lista sono le serie (escono più spesso se il bug resta); le 
 - Sentinella tre, rispondi! ...Dorme! Svegliatelo, sparano!
 - Per la Tutela! E per la licenza di Pasqua!
 - Copritemi! Mi mancano sei mesi al congedo!
-- Liberate il cane! È di mia madre! Me l'ha prestato! Non sparategli!
-- Mamma, voglio tornare a casa! Il fucile lo lascio qui! Prendetelo voi!
+- Liberate il cane! ...È scappato! Liberate il caporale!
+- Mamma, sono al varco! Sparano! Sì, ho mangiato! Mamma, ti richiamo!
 - Torre due, il riflettore! Non su di me! Su di lui!
 - Mi sono pisciato addosso! Nessuno lo dica al sergente!
 - Rapporto: contatto ostile! Rapporto: ho paura! Cancella il secondo!
@@ -580,10 +580,10 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - Sai cosa ha detto la Zia? | Non voglio saperlo! | Ha parlato di te! | …Cosa ha detto?! Dimmelo! Dimmelo subito!
 - Ho mangiato il pesce dell'Impero! | E com'era? | Buono! | E perché sei verde? | …Scusa. Dov'è il cesso?! Dov'è?!
 - Ci hanno chiuso la sala da ballo! | Ancora?! | Ho appena comprato le scarpe! | Balla a casa! | A casa c'è mia suocera! Mi tocca ballare con lei!
-- Hai visto la Lucia ieri sera? | Con chi era? | Con un marinaio! | Uno? | …Uno alla volta, dai!
+- Ieri sera la Lucia l'ha fatto con tre! | Tre?! | Uno dopo l'altro! | Che vergogna! | Il flipper! Tre partite! Ma che pensi?!
 - Il vicino ha la giacca nuova! | Dove lavora? | Non lavora! | Allora ruba! | Sì! M'ha rubato la giacca! È la mia!
 - Paghiamo a metà? | Io ho preso solo un caffè! | E le tre grappe? | Quelle erano per il caffè!
-- Ho chiesto scusa a mia suocera. | E lei? | M'ha tirato una ciabatta! | E tu? | Ho chiesto scusa di nuovo. Due ciabatte.
+- Hai visto mio marito? | Quello grosso? | Sì. | Con la bionda? | …No, quello col cappello. Il grosso con la bionda chi è?
 - Mi hanno fregato il portafogli sull'autobus! | Quanto c'era? | Tutto! | Quanto è tutto? | Duemila. E la foto di mia madre. Rivoglio la foto!
 - Ho visto il Garante dal vivo! | E com'è? | Piccolo! Piccolissimo! | Ma dai! | Giuro! Me lo mangiavo! …Non dirlo in giro.
 - Mio cognato è un coglione! | Perché? | Ha comprato una Vespa senza motore! | E che ci fa? | Dice che la spinge per fare sport!
@@ -694,13 +694,13 @@ Regola: si pesca solo tra le varianti col tono giusto (`tono()` di game.js: comp
 - [neutro] Io non ti ho detto niente. Ma a casa tua stasera non ci andrei.
 - [neutro] Gira un Grigio con la tua foto! Sei venuto malissimo! Corri!
 - [paura] Va' via, ti prego. Ti cercano. Io ho i bambini.
-- [paura] Ti cercano! Io non ti conosco! Non ti ho mai visto! Ciao!
+- [paura] Ti cercano! Io non ti conosco! Non ti ho mai visto! Tu chi sei?
 
 ### favore (ti deve qualcosa)
 - [complice] {NOME}! Ti devo una! Anche due! Chiedi, che aspetti?!
 - [complice] Per quella volta: ti serve una cantina? Ce l'ho! Coi topi, ma è tua!
 - [complice] Me la ricordo, quella cosa! Mia moglie pure! Lei ti vuole sposare!
-- [neutro] Ti devo un favore. Mia moglie dice di rendertelo entro domenica. Chiedi.
+- [neutro] Ti devo un favore. Non mi piace dovere. Mi viene l'acidità. Chiedi.
 - [neutro] Quello che hai fatto. Grazie. Non ne parliamo più. Ma grazie.
 - [neutro] Se ti serve un pasto, un passaggio, un alibi. L'alibi costa.
 - [paura] Ti devo un favore, lo so. Basta che non c'entrano i Grigi.
@@ -730,8 +730,8 @@ Regola: si pesca solo tra le varianti col tono giusto (`tono()` di game.js: comp
 - [rancore] Tu. Qui non ti voglio. Sparisci, o ti faccio sparire io.
 - [rancore] So cosa hai fatto, {NOME}. Lo sa anche mia madre. È peggio.
 - [rancore] Gira al largo, stronzo! Al largo! Più largo di così!
-- [rancore] Ti ho visto, {NOME}! Ti spacco la faccia! Tutta! Pure il naso!
-- [rancore] Ti cerco da tre giorni, {NOME}! Ho saltato il pranzo! Due pranzi! Ti ammazzo!
+- [rancore] Ti spacco la faccia, {NOME}! La faccia! Il naso! LE ORECCHIE, PURE!
+- [rancore] Ti cerco da tre giorni, {NOME}! Ho saltato due pranzi! Ti ammazzo!
 - [rancore] Non parlarmi. Non guardarmi. Respira da un'altra parte.
 - [rancore] Vaffanculo, {NOME}! Tu e tutta la tua famiglia! Pure il gatto!
 - [rancore] Un'altra volta e vado dalla Zia! Le dico tutto! Pure le bugie!
@@ -763,7 +763,7 @@ Regola: si pesca solo tra le varianti col tono giusto (`tono()` di game.js: comp
 - [neutro] Ci conosciamo? {first}{job}! Quello che urla dal balcone! Sì, io!
 - [neutro] Sono {first}{job}. Tua madre mi doveva dei soldi. Acqua passata.
 - [complice] {first}{job}. Mi hanno parlato bene di te. In pochi, ma bene.
-- [complice] Piacere, {first}{job}. Il tuo amico Gino mi deve diecimila. Me li dai tu?
+- [complice] Piacere, {first}{job}. Il tuo amico mi deve diecimila. Paghi tu?
 - [paura] Sono {first}{job}. Ti dico il nome, così non lo vai a cercare.
 
 ### saluto (chi ti vuole bene; il seguito può essere una chatLine)

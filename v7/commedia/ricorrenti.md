@@ -61,7 +61,7 @@ amici che si fregano a vicenda. Niente insulti di repertorio sulle madri e sulle
   prop in mano). Sotto il braccio sempre un rotolo di manifesti del Garante (`porta`).
 
 **Primo incontro**
-- «Oi! Tu! Giovedì faccio il comico al Circolo! Vieni, che siamo in tre!»
+- «Oi! Tu! Giovedì faccio il comico al Circolo! Mia moglie non viene. Vieni tu!»
 - «La settimana scorsa la sala è morta dal ridere! Due persone, ma morte!»
 - «Ridi! Perché non ridi? Era una battuta! …Era una battuta, giuro!»
 - «Il Garante ha la parrucca! …C'è un Grigio? Capelli stupendi, eh!»
@@ -69,12 +69,12 @@ amici che si fregano a vicenda. Niente insulti di repertorio sulle madri e sulle
 **Ritorno**
 - «Oh, il pubblico! Giovedì vieni? Mi serve uno che ride! Pago la birra!»
 - «Gino non ha riso manco stavolta! Gino, sei un pezzo di legno!»
-- «Sei quello che non ride! Ti metto in prima fila e ti fisso, stronzo!»
+- «Sei quello che non ride! Ridi adesso, che c'è il padrone del Circolo!»
 - «Diecimila facce del Garante stamattina! Lo sogno pure, porca troia!»
 
 **Da solo**
 - «Buonasera Porto Vecchio! …Troppo piano. BUONASERA, STRONZI! …Troppo.»
-- «Gino, fammi una risata. Una! Ti pago! …Gino! Anche finta!»
+- «Gino, se non ridi giovedì dico a tua moglie dove vai il martedì!»
 - «Se stasera non ride nessuno mi butto dal pontile. Un'altra volta.»
 - «C'è un Orecchio in sala! C'è un Orecchio! Fate i vaghi! Ridete!»
 
@@ -105,7 +105,7 @@ amici che si fregano a vicenda. Niente insulti di repertorio sulle madri e sulle
 - complice: «Sei materiale buono! Ti metto nel pezzo! Tranquillo, ti chiamo Pino.»
 - paura: «Stasera niente pezzi! Chiamo la tombola e basta! Ambo! Vattene!»
 - rancore: «Ho un pezzo su di te. Ridono tutti. Dice che sei uno stronzo.»
-- sospetto: «Lei è dell'Ufficio? Allora viva il Garante! Viva! Me ne vado!»
+- sospetto: «Lei è dell'Ufficio? Le dico tutto: la parrucca l'ho detta io. Una volta.»
 
 ---
 
@@ -155,7 +155,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 - Sbarra: «Un giorno rubo l'Alfetta e la butto a mare! Coi Grigi dentro!»
 - Rasoio: «Tu non sai guidare manco il carrello del Wu.»
 - Rasoio: «Biscò, hai un biscotto?» Biscotto: «Finiti!» *Scuote la latta: è piena.*
-- Sbarra: «Biscò, sei il mio migliore amico?» Biscotto: «Sì!» Sbarra: «Allora la sbarra è tua.»
+- Sbarra: «Biscò, stasera lo facciamo?» Biscotto: «Cosa?!» Sbarra: «Il muro!» Biscotto: «Ah. Il muro. Certo.»
 - Sbarra: «Se arrivano i Grigi vi copro io! …Arrivano? CIAO!» *Scappa da solo.*
 - Sbarra: «Un giorno me ne vado sulla nave dell'Impero! Nella stiva! Coi polli!»
 - Rasoio: «Coi polli ci stai già, Michè.»
@@ -184,7 +184,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 - complice (Sbarra): «Questo è Nino! È dei nostri! Nino, di' una parolaccia ai Grigi!»
 - paura (Biscotto): «Ciao Nino, ciao! Noi non ti conosciamo! Corri, Michè!»
 - rancore (Rasoio): «Per colpa tua hanno preso Michele. Fatti vedere qua e ti apro.»
-- sospetto (Sbarra): «Fra, ti hanno visto coi Grigi! Sei un infame? Dimmelo in faccia!»
+- sospetto (Sbarra): «Fra, ti hanno visto coi Grigi! Coi Grigi! Ridevi! RIDEVI COI GRIGI!»
 
 ---
 
@@ -215,7 +215,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 - «Respira, ti sento! Respira pure! Ogni respiro te lo metto sul debito!»
 - «GRAZIELLA! IL SUGO! Si attacca! …Nino, se si attacca è colpa tua!»
 - «Chi ha usato il mio rasoio? Chi?! …Mamma?! Sulle gambe?! MAMMA!»
-- «Denis, non si dice "stronzo"! …A chi l'hai detto? A Nino? Bravo!»
+- «Denis, le parolacce no! Siamo gente per bene! Passami la pistola!»
 
 **Arco**
 1. *Settimana 1.* Minaccia e appuntamento vero (giorno, ora, luogo), che finisce nel Taccuino.
@@ -259,18 +259,18 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 
 **Primo incontro**
 - «Lei! Mani in vista! Quello era un bacio?! In pubblico?! Duemila lire!»
-- «Che guarda? È tabacco! TABACCO! …Ne vuole un tiro? No? Meglio.»
+- «Che guarda? Se lei vede qualcosa, io devo scrivere. Non veda niente.»
 - «Questo lo sequestro! Per la sua salute! …Ha da accendere?»
 - «Ho gli occhi rossi per il vento! Il VENTO! Non per altro!»
 
 **Ritorno**
-- «Ancora lei! Ha preso qualcosa? Ne ha? Lo chiedo per il sequestro!»
+- «Gioventù marcia! Io alla sua età ero sposato! Con tre figli! E l'amante!»
 - «Al Paradiso? Io? Mai! Il mercoledì gioco a carte! Con mia madre!»
-- «Tutto in regola? Che palle. Cioè: bene! Bene! Circolare!»
+- «Tutto in regola? Peccato. Mi tocca scrivere «niente». Lo scriva lei.»
 - «Non sono fatto! Sono in servizio da tre giorni! È stanchezza!»
 
 **Da solo**
-- «Centrale, Murgia! Appostamento! …No, non sono fatto! Chi l'ha detto?!»
+- «Centrale, Murgia! Appostamento! Se chiama mia madre, sono in chiesa!»
 - «Reperto dodici. Buono. Buonissimo. Reperto tredici, vieni da papà.»
 - «Se mi vede mia madre mi ammazza! Altro che la Pardo! Mi ammazza!»
 - «Chi ha toccato la vodka sequestrata?! È una prova! …Ah. L'ho finita io»
@@ -288,10 +288,10 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
      senza saperlo rivende alla Risacca i pezzi di radio sequestrati. **[NUOVO]**
 
 **Tono verso Nino**
-- complice: «Io e lei non ci conosciamo! Però giovedì mi porta la roba, eh!»
+- complice: «Io e lei siamo amici, eh! Allora giovedì la roba me la porta gratis!»
 - paura: «Buonasera! Non ho visto niente! Non ho fumato niente! Ciao!»
-- rancore: «Me la ricordo, la sua faccia! M'ha visto al Paradiso! …Non m'ha visto!»
-- sospetto: «Si fermi! Perquisizione! Apra le tasche! …Niente? Manco una?!»
+- rancore: «Lei m'ha visto al Paradiso. Mia madre non lo sa. Siamo d'accordo, stronzo?»
+- sospetto: «Perquisizione! Le tasche! Svelto, che alle sei stacco e ho finito la scorta!»
 
 ---
 
@@ -373,7 +373,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 **Primo incontro**
 - «Buongiorno, mi perdoni il disturbo. Sono quello della Famiglia.»
 - «Le ho portato le paste. …Come "non ho i soldi"? COME NON HAI I SOLDI?!»
-- «TI SFONDO LA VETRINA! TI MANGIO IL BANCONE! …Pardon. Una sfogliatella?»
+- «Mi perdoni, ha un bagno? Ho mangiato tre cannoli in macchina.»
 - «Mi scusi. Non so cosa mi prende. Venerdì ripasso. Coi soldi, eh!»
 
 **Ritorno**
@@ -403,7 +403,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 **Tono verso Nino**
 - complice: «Lei è uno che capisce! Un cannolo? Prenda! PRENDA, HO DETTO! Grazie.»
 - paura: «Prego, prego, passi lei! Io non urlo! Con lei non urlo mai!»
-- rancore: «Mi dicono che mi ha mancato di rispetto. …TI STACCO LA TESTA! Scusi.»
+- rancore: «Mi dicono che mi ha mancato di rispetto. Mamma dice di perdonarla. Venerdì.»
 - sospetto: «Che ci fa qui? CHE CAZZO CI FAI QUI?! …Mi perdoni. Che ci fa qui?»
 
 ---
@@ -424,15 +424,15 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
   bottiglia.
 
 **Primo incontro**
-- «Tu! Siediti! Nel '79 io ho fatto la rivoluzione! Quasi! Offri tu!»
+- «Tu! Siediti! Ti racconto il '79! Tu paghi, io racconto. Mi pare giusto.»
 - «Avevo trecento uomini, io! Trecento! …Trenta. Ma trenta cattivi!»
 - «Nel '79 ho preso a calci un Grigio! Era piccolo! Ma era un Grigio!»
-- «Non chiamarmi eroe! Chiamami Mezzolitro! E portamene un altro!»
+- «Non mi alzo per nessuno. Nel '79 mi sono alzato una volta. Basta.»
 
 **Ritorno**
 - «Ancora vivo, tu? Pure io! Che schifo! Brindiamo!»
 - «Voi giovani non sapete un cazzo! Io ho fatto quattro anni di confino!»
-- «Oggi ti racconto il '79! …Dov'ero? Cos'era il '79? Oste!»
+- «Oggi ti racconto il '79! Dopo la partita. E dopo il pisolino.»
 - «L'onda l'hai fatta storta! Storta! Ai miei tempi ti menavano per meno!»
 
 **Da solo**
@@ -460,7 +460,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 - complice: «Tu sei dei miei, ragazzo! Ti voglio bene! Paga il vino!»
 - paura: «Stammi lontano! Ne ho già sepolti troppi come te! Vai! VAI!»
 - rancore: «Hai venduto qualcuno, infame! Fuori dalla mia osteria! …FUORI!»
-- sospetto: «Sei dell'Ufficio? No? E allora bevi! Bevi tutto! Ti guardo!»
+- sospetto: «Sei dell'Ufficio? Io sì. Nel '75. Tre mesi. Non dirlo all'oste.»
 
 ---
 
@@ -481,7 +481,7 @@ gruppo con un capo: si sfottono, si interrompono, si sputtanano a vicenda. Le ba
 
 **Primo incontro**
 - «Stasera "ordine" lo dice sette volte! Tre a uno! Chi gioca? Tu! Dai!»
-- «Parrucca che si muove, paga dieci! Dai che stasera c'è vento!»
+- «Ti dico un segreto: la Zia gioca da me. Sempre il trentatré. Mai uscito.»
 - «Hai sognato un Grigio? Quarantasette! Un Grigio nudo? Novanta! Gioca!»
 - «Non hai i soldi? E che vieni a fare al bar, il soprammobile?!»
 
@@ -542,23 +542,23 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 **Primo incontro** (di giorno)
 - «P-permesso, scusi! Devo aggiustare il Garante! Ha perso il rosso!»
 - «Radio Scirocco? Mai sentita! Io alle nove dormo! Coi tappi!»
-- «La voce della radio? Non è la mia! Io ho la sinusite! Senta! …Visto?»
-- «Non tocchi l'antenna! Se la tocca prende la radio pirata! Credo! Boh!»
+- «Non mi parli di radio! Ho il tubo catodico in braccio! Se cade, scoppia!»
+- «Non tocchi l'antenna! Scotta! È del Garante! Se si spegne m'ammazzano!»
 
 **Ritorno**
 - «Ah, lei. Non mi guardi così! Non ho fatto niente! Sto aggiustando!»
 - «Ho dormito come un sasso! Tutta la notte! Dalle undici all'una no!»
-- «Massa a terra… cioè, buongiorno! Buongiorno! Non ho detto niente!»
+- «Massa a terra! Massa a terra, ho detto! Al televisore! Parlavo al televisore!»
 - «La Zia dice che sono un bravo ragazzo! La Zia! A me! Aiuto!»
 
 **Da solo**
 - «Stai fermo, Garante! Fermo! Ti prendo a cacciavitate, stronzo!»
 - «Massa a terra. Massa a terra! …Mamma mia, l'ho detto forte?»
-- «Prova microfono. Uno, due. …No! Non qui! Non qui, idiota!»
-- «Ahia! La scossa! Duecentoventi! …Mi sento vivo, porca miseria!»
+- «Prova microfono. Uno, due. Basta, funziona. Il resto lo provo stanotte.»
+- «Ahia! La scossa! Duecentoventi! Ho i capelli dritti! Non ridete!»
 
 **In onda** (dalle radio, di notte)
-- «Buonanotte, isola! Qui Dottor Vento! E il Garante porta la parrucca!»
+- «Buonanotte, isola! Qui Dottor Vento! Un saluto a mia mamma! Mamma, dormi!»
 - «Agente Murgia, lo sappiamo cosa fumi! Passacene un po', stronzo!»
 - «Ai Grigi in ascolto: vi abbiamo bucato una gomma. Buona camminata!»
 - «Un pezzo per il soldato al varco! Balla, Ennio! Lo so che balli!»
@@ -578,7 +578,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
      dell'isola. Neve, e la sua voce: «Scusate l'interruzione! Garante, sei un pagliaccio! Ciao!»
 
 **Tono verso Nino**
-- complice: «Lei mi ascolta, eh? Non lo dica! Non lo dica a nessuno! Ciao!»
+- complice: «Lei mi ascolta, eh? Le confesso una cosa: pure io. Tutte le notti.»
 - paura: «Non ho niente da riparare! Niente! Vada via! Ho la febbre!»
 - rancore: «Lei mi ha fatto saltare un fusibile! Il mio! Stronzo! Largo!»
 - sospetto: «Troppe domande! Lei è della Tutela! Io sono un tecnico! TECNICO!»
@@ -612,7 +612,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 **Ritorno**
 - «Giovedì arriva la nave! Arriva il frullatore! Lo sento! LO SENTO!»
 - «Ti manca qualcosa, eh? Si vede! Hai la faccia di uno senza tostapane!»
-- «Ho visto la tua faccia a pagina sei! …No, era un modello. Era bello.»
+- «Ti presto il catalogo! Una notte! Lasciami il giubbotto! E le scarpe!»
 - «Chi ha strappato la pagina dodici?! CHI?! Era la lavatrice!»
 
 **Da solo**
@@ -665,7 +665,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 
 **Ritorno**
 - «Toi! Ancora qui? Ma non te ne vai mai? Neanch'io! Putain!»
-- «Ho mangiato da Nina! Malissimo! Domani ci torno! Due volte!»
+- «Ho mangiato da Nina! Malissimo! Ho chiesto il bis per non offenderla! Tre!»
 - «Hai visto Nina? Ha chiesto di me? Dimmi di sì! Mentimi, ti pago!»
 - «Marcel dice che sono innamorato! Io? Di quella? …Sì. Di quella. Sì!»
 
@@ -673,7 +673,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 - «Maman, se mi vedessi! Contrabbandiere! In un posto senza burro!»
 - «Nina ha messo il finocchio nel ragù! Il finocchio! La sposo!»
 - «Tre giorni e me ne vado! Lo dico da due anni! Putain di isola!»
-- «NINA! …Niente. Non è in casa. O non mi vuole. NINA!»
+- «NINA! Nina! NINA, ESCI! Ho portato il burro! Il BURRO VERO!»
 
 **Arco**
 1. *All'inizio.* Ti chiede un favore piccolo: portare un biglietto a Nina, chiuso.
@@ -712,7 +712,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 **Primo incontro**
 - «Lasciapassare! …Ha da fumare? Allora è valido! Passi!»
 - «Alt! Chi va là! …Scusi, mi è uscito forte. Sono nervoso. Alt.»
-- «Le piace la mia voce? Dica sì! Ho il fucile! Dica sì!»
+- «Lo sa che ho paura del cane? Del mio cane. Brigadiere. Non glielo dica.»
 - «Sono il cantante più bravo della caserma! L'ha detto mia madre!»
 
 **Ritorno**
@@ -741,7 +741,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 
 **Tono verso Nino**
 - complice: «Lei passa! Io non l'ho vista! Brigadiere, manco tu! Vai, vai!»
-- paura: «Si fermi! Cioè, si fermi per favore! Io ho i nervi! Mamma!»
+- paura: «Si fermi! Per favore! Se no mi fanno rapporto! Mamma!»
 - rancore: «Per colpa sua mi hanno tolto il cane! Le sparo! Appena ho i colpi!»
 - sospetto: «Lei passa troppo spesso! O ha la fidanzata o ha la bomba! Quale?!»
 
@@ -762,20 +762,20 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 
 **Primo incontro**
 - «Non mi guardi! Sono in incognito! Il giornale coi buchi è normale!»
-- «Lei com'è vestito? È per il rapporto! Cioè, per mia madre! Le piace!»
+- «Lei com'è vestito? È per il rapporto. Mia madre lo legge prima della Zia.»
 - «Io, un Orecchio? Io? Ma si figuri! …Sì. Sono un Orecchio. Bravissimo.»
 - «La Zia mi stima! Tantissimo! Non mi risponde, ma mi stima!»
 
 **Ritorno**
 - «Ancora lei! Ho un fascicolo su di lei! Un foglio! Fronte e retro!»
-- «Ieri l'ho seguita fino a casa! Poi mi sono perso! Lei dove abita?»
+- «Ieri l'ho seguita fino a casa! Poi era tardi. Il resto lo invento.»
 - «Ha detto una cosa contro il Garante? La ripeta! Piano! Sto scrivendo!»
 - «Mi ha scoperto?! Come?! Il giornale è al contrario?! Merda!»
 
 **Da solo**
 - «Ore dieci, il soggetto compra il pane. Sospetto! Ciabatta! SOSPETTO!»
 - «Zia! Zia, ho una notizia! …Zia? Mi ha chiuso la porta. Un'altra volta.»
-- «Rapporto: tutti parlano male del Garante! Tutti! Pure io! Cancella!»
+- «Rapporto: mia madre parla male del Garante. Tutte le sere. Scritto.»
 - «Mamma, non entrare! Sto facendo il rapporto! Mamma! È segreto!»
 
 **Arco**
@@ -792,7 +792,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
    - **Promosso**: siede alla Sirena accanto alla Zia e non ti parla più. Non urla più. È il segnale che fa più paura.
 
 **Tono verso Nino**
-- complice: «Io non l'ho vista! Cioè, l'ho scritto! Ma a matita! Cancello!»
+- complice: «Io la copro, eh! Nel rapporto ho messo il suo vicino. Le somiglia.»
 - paura: «Il suo rapporto l'ho mangiato! Giuro! Senza sale! Mi lasci!»
 - rancore: «Ho riaperto il suo fascicolo! Adesso sono due fogli, stronzo!»
 - sospetto: «Lei mi segue?! Io seguo lei! Lei non può seguire me! Basta!»
@@ -812,7 +812,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 - **Gag visiva**: una forma di formaggio sotto il braccio (`porta`). Annusa i clienti prima di vendere, e glielo dice.
 
 **Primo incontro**
-- «Formaggio! L'ho fatto io! …Cioè, mia moglie. Ma io guardavo!»
+- «Formaggio! L'ho fatto io! Mia moglie mungeva, ma io guardavo!»
 - «Questo ha un anno! …Due. Va be', tre. Ma è buonissimo! Compra!»
 - «Mio cugino sta in montagna con la lupara! Compra o glielo dico!»
 - «Non toccarlo con le mani da città! Lo annuso prima io! E annuso te!»
@@ -842,7 +842,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 **Tono verso Nino**
 - complice: «A te prezzo di montagna! È uguale, ma ti abbraccio! Vieni qua!»
 - paura: «A te non vendo! Porti sfiga! Via dal banco! Via!»
-- rancore: «Su da noi chi fa un torto lo aspettiamo! Col bastone! Ciao!»
+- rancore: «Ti aspetto in montagna! Col bastone! Quando ho finito di mungere!»
 - sospetto: «Chi ti ha mandato?! Nessuno compra il formaggio così! Spia!»
 
 ---
@@ -860,7 +860,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
   capelli.
 
 **Primo incontro**
-- «Tè! Siediti! Rifiuti il mio tè?! Mi offendi! Siediti! …E paghi.»
+- «Tè! Siediti! Rifiuti il mio tè?! Mi offendi! Offendi i miei figli! Siediti!»
 - «Cinquemila?! Mi vuoi rovinare! Ho otto figli! …Tre. Mangiano per otto!»
 - «Sul Tavolato ho trenta cammelli! Trenta! E tu cos'hai? Il debito!»
 - «Questa mappa è vera! Lo giuro sui miei cammelli! Su quasi tutti!»
@@ -893,7 +893,7 @@ La voce di Radio Scirocco. Non è Vinile: lei fa la DJ alla Luna e lo ammira e l
 **Tono verso Nino**
 - complice: «Tu bevi il tè come un uomo! Sei quasi uno di noi! Quasi!»
 - paura: «Il tè è finito! Per te è finito! Gli altri bevono! Vai!»
-- rancore: «Tu il mio tè non lo bevi più! Neanche se muori di sete!»
+- rancore: «Il mio tè non lo bevi più! Neanche quello buono! Quello lo bevo io!»
 - sospetto: «Troppe domande sulle tende! Chi ti manda, eh?! Chi?!»
 
 ---

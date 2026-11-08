@@ -85,7 +85,7 @@ voci e scene, e usano quasi solo i numeri che ci sono già.
 
 **Primo incontro**
 - «Ehi. Ehi, tu. Vuoi un orologio? Ho un orologio. Ne ho sei.»
-- «È originale dell'Impero. Guarda, c'è scritto. Sì, a penna. Originale.»
+- «Originale dell'Impero. L'ho sfilato a un marinaio che dormiva.»
 - «Ti do diecimila per quella roba. Non guardarmi così, è tanto.»
 - «Rubata? Chi ha detto rubata? Io ho detto "roba". Dammi qua.»
 
@@ -96,7 +96,7 @@ voci e scene, e usano quasi solo i numeri che ci sono già.
 
 **Da solo**
 - «Orologi, accendini, una scarpa! Solo la destra! Chi la vuole?»
-- «Chi ha l'ora? …Sì, lo so che ne ho dodici addosso. Sono tutti fermi.»
+- «Sì, mamma, ho la canottiera! Vai dentro, che mi spaventi i clienti!»
 - «Mamma mia che freddo. Ho sei sciarpe qui dentro e nessuna è mia.»
 
 **Arco**
@@ -125,12 +125,12 @@ voci e scene, e usano quasi solo i numeri che ci sono già.
 
 **Ritorno**
 - «Sei tornato! Hai mangiato? Sei magro. Cos'hai portato? Fammi vedere.»
-- «La catenina che mi hai dato la cercano in tre. Stronzetto. Bravo.»
+- «La catenina che m'hai dato la cercano i Grigi! Lucidala, almeno!»
 - «Oggi niente. Ho il nipote in casa. È un Grigio, quel deficiente.»
 
 **Da sola**
 - «Diciotto grammi! Diciotto! M'ha fregato pure stavolta, quel cane!»
-- «Chi ha toccato la mia bilancina?! Vi taglio le dita a tutti!»
+- «Bilancina. Bilancina! CHI HA TOCCATO LA MIA BILANCINA?!»
 - «Chi mi ha preso gli occhiali?! …Ah. Li ho in testa. Non ridete!»
 
 **Arco**
@@ -155,13 +155,13 @@ voci e scene, e usano quasi solo i numeri che ci sono già.
 
 **Primo incontro**
 - «Fratello! Quanto vuoi? Dimmi tu. Davvero, dimmi tu il prezzo.»
-- «Ti do il doppio di Cappotto. Lui è un tirchio. Io sono tuo amico.»
+- «Ti do il doppio di Cappotto. Io ho le scarpe nuove, fratello. Guarda.»
 - «Dove l'hai presa? No, così. Per curiosità. Mi piacciono le storie.»
-- «Domani stessa ora? Porta tutto. E dimmi dove abiti, che passo io.»
+- «Scusa un attimo. …Sì, Zia, sto lavorando! …Fratello, dicevi?»
 
 **Ritorno**
 - «Il mio fratello preferito! Allora, che hai fatto stanotte? Racconta!»
-- «Oggi pago benissimo. Chiedimi perché. No, non chiedermelo.»
+- «Oggi pago benissimo. Ho fretta, alle sei ho la lezione di ballo.»
 - «Ho saputo che ti hanno perquisito. Che sfiga! Io non ho detto niente.»
 
 **Da solo**
@@ -229,11 +229,11 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
 - _`a` `tasche`, poi apre il cappotto (`porge` con un `pacchetto`). Si forma un capannello di 6 (`osserva`)._
 - **a**: «Orologi, radioline, accendini! Roba dell'Impero! Originale!»
 - **b**: «Quello è il mio orologio!» oppure «Quella è la mia radio! Ha l'adesivo!»
-- **a**: «No, signora, è uguale. Ne hanno fatti mille.»
+- **a**: «Signora, io vendo solo roba buona! Da me compra il Colonnello!»
 - **b**: «C'è inciso dietro "a Bruno". Mio marito si chiama Bruno!»
 - **a**: «Pure mio cugino si chiama Bruno. È un nome normale.»
 - **c**: «Io sono Bruno. E quella è la mia sciarpa. Ce l'hai al collo!»
-- **la folla**: «Fagli vedere le tasche!» oppure «Io cerco una scarpa sinistra.» oppure «Ce l'ha pure il mio portafoglio, guarda!»
+- **la folla**: «Fagli vedere le tasche!» oppure «Io cerco una scarpa sinistra.» oppure «Io gli ho venduto il mio, di cappotto. Ieri.»
 - _`a` `braccia`._
 - **a**: «Va bene! Ve la rivendo. Prezzo da amico. Cinquemila.»
 - **c**: «Cinquemila per la MIA sciarpa?!»
@@ -267,7 +267,7 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
   1. **Vendi tutto**
      - **a**: «Bravo. Il 25% lo tengo io. Per il debito. Contento?»
      - **NINO**: «No.»
-     - **a**: «Però l'hai detto con educazione. Prendi.»
+     - **a**: «Però l'hai detto con educazione. E un confetto: mia figlia si cresima.»
      - _[RIUSO] `sell()` al banco nero; [NUOVO] il 25% va a ridurre `st.debt`._
   2. **Tira sul prezzo**
      - **NINO**: «Venti. Sennò vado da Cric.»
@@ -275,7 +275,7 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
      - _al 40%:_ **a**: «Diciotto. E Cric non lo nomini più qua dentro.» _(+15%)_
      - _altrimenti:_ **a**: «Dodici. E la prossima volta ti ricordi chi è il banco.» _(-10%, Sandro si ricorda: «Cric»)_
   3. **Me ne vado**
-     - **a**: «Vai da Cappotto? Ti dà una sciarpa e una pacca.»
+     - **a**: «Vai pure. …Sì, amore, arrivo! …Vai, vai, che mi si fredda il sugo.»
      - _[NUOVO] Sandro si ricorda di te (-1, «è andato altrove»). Permesso passa a trovarti entro due giorni (visita `minaccia` di
        convivenza)._
 
@@ -287,7 +287,7 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
 - **b**: «Nonna! Dove vai con quella scatola?»
 - **a**: «In chiesa. Sono biscotti. Per il prete.»
 - **b**: «Fammeli vedere. Ho fame.»
-- **a**: «Sono biscotti del prete! Ti vuoi mangiare i biscotti del prete?»
+- **a**: «I biscotti del prete! DEL PRETE! Vuoi l'inferno per un biscotto?!»
 - **b**: «Nonna, la scatola fa rumore. I biscotti non fanno rumore.»
 - **a**: «Sono biscotti duri. Li ho fatti io. Lo sai che cucino male.»
 - _`a` vede NINO._
@@ -311,7 +311,7 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
      - **NINO**: «Agente! Mi hanno rubato la Vespa! Là, di corsa!»
      - **b**: «Dove? …Nonna, non ti muovere! Torno subito!»
      - _`b` corre via. `a` se ne va dall'altra parte, piano (`dietro`)._
-     - **a**: «Bravo. Sei scemo, ma bravo. Domani ti pago bene.»
+     - **a**: «Bravo. Domani ti faccio i biscotti. Quelli veri. Sono peggio.»
 
 ### R4. Saponetta alla Sirena — `saponetta_alla_sirena` (scelta)
 **Quando e dove**: 16-18, `sirena`, al dehors. Parte se hai venduto a Saponetta nelle ultime 24 ore.
@@ -325,11 +325,11 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
 - _`a` vede NINO e salta in piedi._
 - **a**: «Fratello! Che ci fai qui? Io? Niente. Mia zia. È mia zia.»
 - **b**: «Io non ho nipoti, figlio mio.»
-- **a**: «È una zia di quartiere. Ciao, Zia. Ciao a tutti.»
+- **a**: «È una zia di quartiere. Ciao a tutti.»
 - **[NUOVO] SCELTA** (10 s; se non scegli: «Fai finta di niente»)
   1. **Fai finta di niente**
      - **NINO**: «Tranquillo. Domani ti porto altra roba.»
-     - **a**: «Bravo! …Cioè, bravo. Ciao.»
+     - **a**: «Bravo! Domani stessa ora. Dopo il dentista, che ho una carie.»
      - _[NUOVO] Nino si ricorda di Saponetta: «orecchio» (si sblocca il bivio del falso posto)._
   2. **Lo dici forte**
      - **NINO**: «Ehi! Saponetta fa la spia alla Zia! L'avete sentito?»
@@ -350,7 +350,7 @@ Formato come `scene.md`: ruoli con i filtri di `eventi.js`; «la folla» è uno 
 - **b**: «Quella è la mia radio! Me l'hanno rubata martedì!»
 - **a**: «E l'abbiamo ritrovata. Visto che funzioniamo? Ottomila.»
 - **b**: «Devo PAGARE la mia radio?!»
-- **a**: «Zitto, o sequestro pure lei!»
+- **a**: «Signora, non urli. Sono le sei. Ottomila o torno a dormire.»
 - **b**: «Ma vaffanculo! Vaffanculo tu e la tua divisa!»
 - **a**: «Ottomila. Sennò la compra lui. Vero, signore?»
 - **la folla**: «Sette!» oppure «Ce l'ha pure la mia bici, lì dietro!» oppure «Io compro, tanto la rubano di nuovo.»
@@ -371,7 +371,7 @@ sequestrato, ricomprabile al 100%.
 
 - _`a` `lavora` con una `ruota`. `c` porta un sedile (`porta`, prop `sedia`)._
 - **b**: «Buongiorno. Cerco una Ritmo rossa. Me l'hanno rubata stanotte.»
-- **a**: «Rossa? Qui niente rosso. Solo ruggine.»
+- **a**: «Rossa? Capo, io sono in pausa. Ripassi alle due.»
 - **b**: «Quella portiera è rossa.»
 - **a**: «Quella? È di una Fiat. Del '72. Di mio zio.»
 - **b**: «C'è il mio adesivo. "Guardia Insulare, sezione bocce".»
@@ -393,10 +393,10 @@ sequestrato, ricomprabile al 100%.
 
 **Passando (vicino a un ricettatore)**
 1. «Psst. Orologio? Radio? Una moglie? No, scherzo. Orologio?»
-2. «Hai roba? Ti si vede in faccia che hai roba.»
+2. «Hai roba? Svelto, che alle sette mia madre mi chiama dal balcone.»
 3. «Non fermarti qui davanti, che sembra che compri.»
 4. «Pago in contanti. Contanti veri, mica buoni del Garante.»
-5. «Ho preso un televisore. Chi mi aiuta a portarlo? Pago in televisore.»
+5. «Chi mi tiene la porta? Ho un televisore in braccio! Mi scivola!»
 6. «Stasera chiudo presto, mia madre fa le lasagne.»
 7. «Vuoi una Vespa? Ha un solo difetto: il proprietario la cerca.»
 8. «Fra, vendi tu. Se arrivano i Grigi, io non ti conosco.»
@@ -410,33 +410,33 @@ sequestrato, ricomprabile al 100%.
 14. «Me l'hanno offerta a meno ieri. Da un altro. Più brutto di te.»
 15. «Va bene, va bene. Ma lo dici a qualcuno e non ti conosco più.»
 16. «Ti do quindici. Non sedici: quindici. Il sedici porta sfiga.»
-17. «Se la vuoi vendere a tutti i costi, vuol dire che è calda.»
+17. «Ti do poco perché sei disperato. Si vede. A me i disperati piacciono.»
 18. «L'orologio va avanti di un'ora. Meno cinquemila.»
 19. «Te la pago domani! Giuro su mia madre! …Su mia zia. Mia madre no.»
 20. «Ultima offerta. Ultima ultima. Questa è proprio l'ultima. Dodici.»
 
 **Reagiscono a te**
-21. «Te l'ho vista rubare, quella. Ieri. Brava mano.» (al giocatore che ha rubato da meno di un'ora)
+21. «Ti ho visto rubare. Brava mano. Io però ero più veloce. Molto.» (al giocatore che ha rubato da meno di un'ora)
 22. «Ricercato? Allora oggi pago meno. Molto meno.» (wanted ≥ 1)
 23. «Ti stanno dietro due Grigi. Non entrare qui. Vai, vai!» (inseguito)
-24. «Puzzi di benzina. Hai fregato una macchina?» (sceso da un'auto rubata)
-25. «Con quella pistola in mano mi fai il prezzo tu, eh? Quanto?» (arma in mano)
+24. «Puzzi di benzina. Stammi lontano, che sto fumando!» (sceso da un'auto rubata)
+25. «Metti giù la pistola. Mettila giù. METTILA GIÙ, che mi cago addosso!» (arma in mano)
 26. «Sei ubriaco. Torna domani, che ti frego meno.» (ubriaco)
 27. «Ma sei bagnato fradicio. Hai nuotato con la roba? Si è rovinata!» (bagnato)
-28. «Ah, sei amico di Cappotto. Allora il prezzo è quello di Cappotto.»
+28. «Ah, sei amico di Cappotto. Digli che mi ridia la teglia delle lasagne!»
 29. «Lo Squalo ha detto che passi da lui. Io non ti ho visto.»
 30. «Tu hai venduto a Saponetta? Coglione. Lo sanno tutti tranne te.»
 
 **La folla**
 31. «Quella è roba mia! La mia lampada! Era sul mio comodino!»
 32. «Mi hanno rubato la radio e me l'hanno rivenduta. A meno.»
-33. «Chiamate i Grigi! …No, aspettate, che ho le sigarette.»
+33. «Chiamate i Grigi! Ma prima nascondetemi le sigarette!»
 34. «È roba di contrabbando? Quanto costa? Lo chiedo per mia cognata.»
 35. «L'ha comprata da Cappotto. Si vede, è rotta.»
 36. «Quella è la giacca di mio marito! Toglitela! Toglitela subito!»
 37. «Ogni volta che lo vedo, mi tocco il portafoglio.»
-38. «Ladro! Quello è l'orologio di mio padre! Ridammelo, stronzo!»
-39. «Ha detto che è d'oro. Mi è diventato verde il dito.»
+38. «Mio figlio compra solo da Cappotto. Però a messa non manca mai.»
+39. «Non ditelo a mia moglie: l'anello gliel'ho preso da Cappotto. A mille.»
 40. «Sono tre giorni che cerco la bici. Ce l'ha il Grigio, ci va al lavoro.»
 
 ## 1.E Gioco: «Vendi la roba»
@@ -522,7 +522,7 @@ perquisizione mirata; il pezzo rivenduto che gira. Tutto il resto si riusa.
 **Primo incontro**
 - «Dov'è la pallina? Dove sta? Guarda bene, che io sono lento!»
 - «Il signore ha vinto! Diecimila! Bravo! …Il prossimo coglione? Scusate.»
-- «Gioca tu, gioca. Hai la faccia di uno fortunato. E un po' scemo.»
+- «Gioca, dai! Che hai, paura? Coniglio! Coniglio col giubbotto!»
 - «Cinquemila per giocare! Vinci, ti do dieci! Perdi, ti voglio bene!»
 
 **Ritorno**
@@ -532,7 +532,7 @@ perquisizione mirata; il pezzo rivenduto che gira. Tutto il resto si riusa.
 
 **Da solo**
 - «Tonino, tu sei quello che vince. Quando vinci fai la faccia contenta!»
-- «Ho perso la pallina. …Chi ha visto una pallina? Rossa, per terra.»
+- «Una pallina rossa! Chi l'ha vista? È di mio figlio, se no piange!»
 - «Grigio a destra. No, è un prete. Il prete gioca? Ciao, padre!»
 
 **Arco**
@@ -587,12 +587,12 @@ perquisizione mirata; il pezzo rivenduto che gira. Tutto il resto si riusa.
 
 **Primo incontro**
 - «Puntata minima cinquemila. Siediti o levati, che mi fai ombra.»
-- «Sette e mezzo. Il banco vince. Il banco vince sempre, amore. Sveglia.»
-- «Credito? Sì, ti faccio credito. Poi te lo viene a chiedere Rocco.»
+- «Il banco vince. Pagate. E non piangete sul tavolo, che è di noce.»
+- «Credito? Sì. Firma qui. Non leggere, che è lungo e ho sonno.»
 - «Non toccare le carte. Non toccare il tavolo. Non toccare me.»
 
 **Ritorno**
-- «Oh, quello del debito. Siediti. Te ne serve dell'altro, di debito?»
+- «Oh, quello del debito. Siediti. …Sì, Rocco, è lui. Sì, seduto.»
 - «Tu sei quello che ieri ha pianto. Davanti a tutti. Siediti, piagnone.»
 - «Ieri hai urlato quando hai vinto. Se urli ancora, fuori.»
 
@@ -619,7 +619,7 @@ perquisizione mirata; il pezzo rivenduto che gira. Tutto il resto si riusa.
 - **Gag visiva**: `appoggiato` all'Ape (veicolo che esiste), con una `chiave` inglese in mano.
 
 **Primo incontro**
-- «Vedi quest'Ape? Fa novanta. In discesa. Col vento. Ma fa novanta.»
+- «Vedi quest'Ape? L'ho preparata io. Ha il motore di due Vespe.»
 - «Sabato si corre sulla Salita! Diecimila per correre! Hai un mezzo?»
 - «Ho battuto pure una Giulia. Era parcheggiata, ma l'ho battuta.»
 - «Le scommesse le tiene mio fratello. Se perdi e non paghi, lo conosci.»
@@ -685,7 +685,7 @@ avversario (filtro `old`).
 - _`a`, `b`, `c` e `d` siedono (`siede`). Tre vecchi in piedi guardano (`osserva`)._
 - **a**: «Pino, ma che hai buttato? Il re? Il re su un tavolo vuoto?»
 - **b**: «Avevo solo quello.»
-- **a**: «E allora tienilo in mano e muori col re!»
+- **a**: «E allora tienilo! Tienilo in mano! E MUORI COL RE, PINO!»
 - **c**: «Scopa.»
 - **a**: «Scopa un corno. Ha toccato il mazzo. Tutti l'abbiamo visto.»
 - **d**: «Io no.»
@@ -697,7 +697,7 @@ avversario (filtro `old`).
 - **a**: «Il settebello è sul tavolo. Quello è un altro settebello.»
 - **d**: «Ce ne sono due?»
 - **a**: «Nel mio mazzo sì. Il mazzo è mio.»
-- **b**: «Professore, il mazzo è del Circolo. C'è il timbro.»
+- **b**: «Professore, quel settebello l'ho messo io. Per aiutarti.»
 - **a**: «Pino, da che parte stai? Ti pago io il vino! Da quarant'anni!»
 - _al 35%: [RIUSO] `brawl` fra `a` e `c`, da seduti; altrimenti `c` si alza._
 - **c**: «Domani le carte le porto io. E tu ti levi la giacca.»
@@ -718,7 +718,7 @@ secondo Grigio (filtro `cop`).
 - **la folla**: «I Grigi!» oppure «Ferri non ha detto niente!» oppure «Io sono qui per il bagno!» oppure «Mia madre mi ammazza!»
 - **c**: «Agente, stavamo giocando a tombola!»
 - **b**: «Con le carte?»
-- **c**: «Tombola con le carte. È nuova. Del continente.»
+- **c**: «Sì. Agente, mi fa finire la mano? Ho sette e mezzo!»
 - _`a` mette la mano sulla cassa._
 - **a**: «Ragazzo. Prendi la borsa. Vai dal retro. Adesso.»
 - **[NUOVO] SCELTA** (8 s; se non scegli: «Ti butti sotto il tavolo»)
@@ -776,7 +776,7 @@ entra Ferri da solo e chiede «un caffè e la busta», due battute.
 - **a**: «Non è possibile. Ancora una. Metà busta.»
 - _`b` entra di corsa._
 - **b**: «TONINO!»
-- **a**: «Amore! Che ci fai qui? È un posto di uomini!»
+- **a**: «Amore! Hai lasciato il sugo sul fuoco? Corri a casa, che brucia!»
 - **b**: «Dov'è la paga? Dove sta la paga, Tonino?»
 - **a**: «Qui. Una parte. L'altra l'ho investita.»
 - **b**: «Investita? Nelle carte?!»
@@ -785,9 +785,9 @@ entra Ferri da solo e chiede «un caffè e la busta», due battute.
 - **b**: «Dammi le carte. …Dammi le carte, ho detto.»
 - _`b` siede al posto di `a`. `a` resta in piedi (`braccia`)._
 - **c**: «Sette e mezzo reale. La signora vince il doppio.»
-- **b**: «Andiamo, Tonino. Ti compro un gelato. Tu non giochi più.»
+- **b**: «Cammina! Domenica a messa ti siedi in prima fila, così ti vedono!»
 - **a**: «Ma i soldi sono miei!»
-- **b**: «Zitto! Cammina! Davanti a tutti mi fai fare 'sta figura!»
+- **b**: «Zitto! Cammina! Zitto e cammina! E ZITTO, TONINO!»
 
 **Nota**: niente scelta. Se la moglie ha perso (60%, RIUSO punteggio di sette e mezzo), escono tutti e due a testa bassa e lui
 dice: «Te l'avevo detto che era la sera.»
@@ -823,15 +823,15 @@ dice: «Te l'avevo detto che era la sera.»
 ## 2.D Quaranta battute (barks)
 
 **Passando (vicino a un banco)**
-1. «Una partita veloce? Una sola. Poi vai a casa. Giuro.»
+1. «Una partita veloce? Una sola. Poi vai a casa. Ti accompagno io.»
 2. «Stasera ho vinto tre volte. Ho perso sei. Però tre volte ho vinto!»
 3. «Mia moglie crede che sono al lavoro. Il lavoro è qui.»
 4. «Mi presti diecimila? Te li ridò stasera. Vinco io, stasera.»
 5. «Il 47! Quattro anni che gioco il 47! Esce il 48! VAFFANCULO!»
 6. «Non guardare le mie carte! Non guardare la mia faccia!»
 7. «Ho perso la Vespa. A carte. L'ha vinta uno che non sa guidare.»
-8. «Domani smetto. Lo dico da otto anni, ma domani smetto davvero.»
-9. «La macchinetta mi ha mangiato tutto. La prendo a calci. Piano.»
+8. «Non dirlo a nessuno: ho giocato la fede. Lei crede che è dall'orefice.»
+9. «La macchinetta m'ha mangiato tutto! L'ho presa a calci! IL PIEDE!»
 10. «Chi gioca a sette e mezzo? Io porto le carte, tu i soldi.»
 
 **Al tavolo e alle campanelle**
@@ -839,33 +839,33 @@ dice: «Te l'avevo detto che era la sera.»
 12. «Sto. Sto bene così. No, aspetta, carta.»
 13. «Hai barato! Ti ho visto! Non so come, ma ti ho visto!»
 14. «Raddoppio. Raddoppio tutto. Tanto è dello Squalo.»
-15. «Il banco vince col pari? Chi l'ha deciso? Il banco?»
+15. «Il pari al banco? Il PARI al banco? Chi l'ha deciso? Io no!»
 16. «Questa mano era mia! Me l'hai rubata col tuo sette!»
-17. «Io dico sinistra. No. Destra. No, sinistra. Vai, sinistra!»
+17. «Io dico sinistra. Tu che dici? Destra? Allora punta tu, io guardo.»
 18. «Era sotto quello! L'ho vista! Alza, alza quello!»
-19. «Ancora cinquemila e ho finito. Poi altri cinque e ho finito davvero.»
+19. «Sì, Rina, arrivo! …Carta. …Arrivo, ho detto! …Carta.»
 20. «Ho vinto! HO VINTO! …Ah, è pari. Vince il banco.»
 
 **Reagiscono a te**
 21. «Il ragazzo del debito gioca! Puntate contro di lui, ragazzi!»
-22. «Hai vinto? Allora offri. Le regole del tavolo.» (dopo una vincita)
-23. «Hai perso tutto? Bravo. Benvenuto, siediti con noi.» (dopo una perdita)
+22. «Hai vinto? Offri. Io prendo un'aranciata, che ho la gastrite.» (dopo una vincita)
+23. «Hai perso tutto? Siediti. Pure io. Però mio figlio fa l'avvocato.» (dopo una perdita)
 24. «Ehi! Non correre qui dentro, sembra una retata!» (corre)
 25. «Sei ubriaco? Siediti, siediti. Con gli ubriachi gioco volentieri.»
 26. «Tu porti sfiga. Da quando sei qui ho perso tre mani. Vattene.»
-27. «Con quella pistola in tasca nessuno ti dice che bari.» (arma)
+27. «Con quella pistola vinci tu. Io ti faccio vincere. Contento? Vinci.» (arma)
 28. «Non giocare con Lina. Io ci ho perso la casa. Tu non ce l'hai.»
 29. «Sei ricercato? Allora non sederti vicino a me.» (wanted ≥ 1)
-30. «Mi dai cinquemila? Tu hai la faccia di uno che vince stasera.»
+30. «Io a sette e mezzo ho battuto un Grigio. Due volte. Mi chiamano Asso.»
 
 **La folla**
 31. «Ha vinto! Quello ha vinto! …No, è il cugino.»
 32. «Mio padre ci ha perso il negozio. Mio nonno la barca.»
 33. «Ho scommesso contro Turbo. È mio amico, per questo lo so.»
-34. «Turbo s'è ribaltato un'altra volta. Sta bene. L'Ape no.»
-35. «Stasera alla bisca c'era il Grigio. Ha giocato pure lui.»
+34. «Turbo s'è ribaltato! Correte! …Prima pagate le scommesse!»
+35. «Stasera alla bisca c'era il Grigio. La moglie lo chiamava a ogni mano.»
 36. «Il Professore ha vinto pure stasera. Con due settebelli.»
-37. «Mio marito torna a casa senza scarpe. Le ha giocate.»
+37. «Mio marito si gioca pure le scarpe. Però non salta una messa.»
 38. «La retata! Dicono che stanotte c'è la retata! Chi l'ha detto?»
 39. «Lina! Mi hai fregato! Ti ho vista, strega! Ridammi la Vespa!»
 40. «Ho vinto alla macchinetta! Mille lire! Ne ho messe trentamila.»
@@ -972,7 +972,7 @@ Cabala dà le quote sulla prossima («Retata entro giovedì: paga quattro»).
 - «Il Grigio s'è mangiato mezzo sacco e poi m'ha fatto la multa. Unto!»
 
 **Da solo**
-- «Castagne… castagne… Chi vuole castagne… Nessuno. Me le mangio io.»
+- «Castagne. Calde. Prendetele da soli, i soldi nel barattolo. Io dormo.»
 - «Ho i piedi gelati e le mani cotte. Non c'è una via di mezzo, cazzo.»
 - «Bambino, vieni. Prendine due. Non dire a tua madre che erano gratis.»
 
@@ -998,7 +998,7 @@ Cabala dà le quote sulla prossima («Retata entro giovedì: paga quattro»).
 - «Calze velate dell'Impero! Signora, così suo marito torna presto!»
 - «Le tocchi, le tocchi. Senta che roba. Lei no, signore! Giù le mani!»
 - «Tremila al paio. Due paia cinquemila. Tre paia e ti sposo.»
-- «Taglia unica. Va bene a tutte. Pure a te, se vuoi. Io non dico niente.»
+- «Taglia unica. Va bene a tutte. Pure a mia suocera, che è un armadio.»
 
 **Ritorno**
 - «Ancora tu? Per chi le compri? Per la mamma? Sì, sì. La mamma.»
@@ -1064,7 +1064,7 @@ Cabala dà le quote sulla prossima («Retata entro giovedì: paga quattro»).
 **Primo incontro**
 - «Ombrelli! Ombrelli! Piove! …Tra poco piove. Compra adesso, costa meno.»
 - «Cinquemila. Sì, cinquemila. Prima che piovesse era tremila.»
-- «Si apre così. No, così. Aspetta… Vabbè, è un ombrello da donna.»
+- «Si apre così. No, così. Aspetta… m'ha preso il dito! IL DITO!»
 - «Rotto? Non è rotto. È fatto per il vento da sinistra.»
 
 **Ritorno**
@@ -1074,7 +1074,7 @@ Cabala dà le quote sulla prossima («Retata entro giovedì: paga quattro»).
 
 **Da solo**
 - «Dai… dai… piovi… Lo sento nel ginocchio. Il ginocchio non sbaglia.»
-- «Piovi, porca miseria! Piovi! Ho ventidue ombrelli e tre figli!»
+- «Piovi. Piovi! PIOVI, PORCA MISERIA! Ho tre figli!»
 - «Ventidue ombrelli e mi bagno. Non posso aprirne uno, è merce.»
 
 **Arco**
@@ -1139,7 +1139,7 @@ vedetta (filtro `young`).
      - _[NUOVO] rep Famiglia +1. Per oggi Permesso ti tiene lontani i ladruncoli._
   2. **Non paghi**
      - **NINO**: «Non ho venduto niente ancora.»
-     - **a**: «Capisco. Le faccio credito fino alle undici. Alle undici passa lui.»
+     - **a**: «Capisco. Torno alle undici. Prima ho il parrucchiere. Poi passa lui.»
      - _`c` `indica` NINO e poi il carretto._
      - _[NUOVO] alle 11, se non hai pagato: Rocco ti rovescia il carretto (la merce è persa)._
   3. **Paghi anche per Castagna** (10)
@@ -1159,7 +1159,7 @@ vedetta (filtro `young`).
 - **a**: «E io che ne so? Se arriva, vendo meno. Speriamo di no.»
 - **e**: «L'anno scorso ha portato le arance. Le ho viste. Erano arancioni.»
 - **d**: «Io sono qui dalle tre. Mi tengo il posto con la sedia.»
-- **la folla**: «Che porta oggi?» oppure «Zucchero, dicono.» oppure «Dicono anche che arriva, e non arriva mai.»
+- **la folla**: «Che porta oggi?» oppure «Zucchero, dicono.» oppure «Mio marito è partito con quella nave. Se arriva, mi nascondo.»
 - _a caso (50%: RIUSO la nave sbarca o no):_
    - **la folla**: «La nave! Si vede!» oppure «È lei! Ha i camini!»
    - _La fila si stringe e spinge (`aspetta`, poi `go` di tutti verso `calata`)._
@@ -1180,16 +1180,16 @@ vedetta (filtro `young`).
 - **b**: «Una pentola! Due pentole! Una vita di pentole, tremila al mese!»
 - **a**: «Calze! Più belle delle pentole! E non si pagano a rate!»
 - **b**: «Signora, abbassi la voce, che qui si vende roba seria!»
-- **a**: «Roba seria? Le tue pentole si bucano al primo sugo!»
+- **a**: «Roba seria? ROBA SERIA? Le tue pentole si bucano col sugo!»
 - **b**: «Le tue calze si bucano a guardarle!»
-- **la folla**: «Vai, Graziella!» oppure «Io ho la pentola. È bucata, è vero.» oppure «Io le calze. Bucate pure quelle.»
+- **la folla**: «Vai, Graziella!» oppure «Io ho la pentola. È bucata, è vero.» oppure «Io ho comprato da tutti e due! Ridatemi i soldi, tutti e due!»
 - **a**: «Chi compra un paio di calze, ha un bacio sulla guancia!»
-- **b**: «Chi compra una pentola, ha la pentola!»
+- **b**: «Chi compra una pentola, ha la pentola! Dell'Impero! Ci cuoci un bue!»
 - **c**: «Io voglio il bacio.»
 - **a**: «Tremila.»
 - **c**: «Senza le calze?»
 - **a**: «Senza le calze, cinquemila.»
-- **la folla**: «Uuuh!» oppure «Dagliele, Tore!» oppure «Tore, tua moglie è lì dietro!»
+- **la folla**: «Uuuh!» oppure «Dagliele, Tore!» oppure «Tore! C'è tua moglie! Ha in mano la pentola!»
 - _`c` si gira, vede qualcuno e scappa (`flee`)._
 - **b**: «Visto? Le pentole non fanno scappare nessuno!»
 - **a**: «Perché non le compra nessuno!»
@@ -1237,21 +1237,21 @@ vedetta (filtro `young`).
 - **la folla**: «Uno!» oppure «Due!» oppure «Io ne voglio uno grande!»
 - **a**: «Quattromila. È aumentato. Piove di più.»
 - **d**: «Due minuti fa erano tremila!»
-- **a**: «Due minuti fa pioveva meno. Cinquemila.»
+- **a**: «Pioveva meno. Cinquemila. Guarda il cielo, io non c'entro.»
 - **b**: «Ne prendo uno. Per servizio.»
 - **a**: «Seimila.»
 - **b**: «Per servizio, ho detto.»
 - **a**: «Per servizio, gratis. Me lo firma? Mi serve per la Tutela.»
 - **b**: «Non firmo niente.»
-- **a**: «Allora è da seimila.»
+- **a**: «Allora seimila! SETTE! Per servizio, OTTO!»
 - _`b` prende l'ombrello e se ne va senza pagare._
 - **c**: «Fra, siamo in cinque. Ne compriamo uno e ci stiamo sotto tutti.»
 - _[NUOVO] cinque ragazzi camminano stretti sotto un ombrello (RIUSO `follow` a distanza 0,4)._
 - **a**: «Non vale! Uno a testa! Lo dice la legge!»
 - **c**: «Quale legge?»
-- **a**: «La mia!»
+- **a**: «La mia! Sotto questa tettoia la legge sono io!»
 - _Smette di piovere (o non smette)._
-- **la folla**: «Ha smesso!» oppure «Mi ridai i soldi?» oppure «Ecco. Ombrello per niente.»
+- **la folla**: «Ha smesso!» oppure «Mi ridai i soldi?» oppure «Io non l'ho pagato. L'ho preso e basta.»
 - **a**: «Non si rimborsa! Domani piove! Lo dice il ginocchio!»
 
 ## 3.D Quaranta battute (barks)
@@ -1261,33 +1261,33 @@ vedetta (filtro `young`).
 2. «Calze dell'Impero! Signora, guardi che velo! Guardi!»
 3. «Cassette! Musica! Roba che i Grigi non sanno!»
 4. «Accendini! Due per mille! Uno funziona!»
-5. «Sigarette! Bionde! Non chiedete come, chiedete quante!»
+5. «Sigarette! Bionde! Le migliori dell'isola! Le fumava il Colonnello!»
 6. «Pile! Lamette! Lacci! Fiammiferi! Il Garante in cartolina!»
 7. «Fazzoletti per la nebbia! Ombrelli per la pioggia! Tutto per tutto!»
-8. «Il caffè del continente! In polvere! Sa di caffè, quasi!»
+8. «Il caffè del continente! In polvere! Lo beve il Garante a colazione!»
 9. «Bambola che parla! Parla! …Parla, cazzo! Ieri parlava!»
-10. «Ultimi pezzi! Ultimissimi! Dopo questi ne ho altri, ma ultimi!»
+10. «Ultimi pezzi! ULTIMI! Comprate, che mi pignorano la casa!»
 
 **Trattativa**
 11. «Quanto? Mille. No, non ottocento. Mille. Ottocento e novanta.»
-12. «Prendine due, che ti faccio lo sconto. Il secondo costa uguale.»
+12. «Prendine due, che mia figlia si sposa sabato e serve il vestito.»
 13. «Ma lo sa quanto l'ho pagato io? No? Meglio.»
 14. «Non è rotto! Fa così da nuovo. Dagli un colpo. Ecco. Visto?»
-15. «Duemila, e ti regalo il cartoccio. Il cartoccio è nuovo.»
+15. «Duemila. Il resto prendilo da solo, nella scatola. Io non mi alzo.»
 16. «Lo sconto?! Ti faccio lo sconto sulla faccia, se tocchi ancora!»
-17. «Signora, l'ha toccato. Adesso è suo. Mille.»
+17. «Signora, l'ha toccato! L'ha TOCCATO! Ce l'ha in mano! Mille!»
 18. «Non ho il resto. Mai. Neanche ieri. Prendi un'altra cosa.»
 19. «Lo prendi o lo guardi? Se lo guardi, costa uguale.»
-20. «Ultimo prezzo. L'ho detto io, quindi è l'ultimo.»
+20. «Ultimo prezzo. Trent'anni di piazza, mai fatto uno sconto! Mai!»
 
 **Reagiscono a te (quando vendi tu)**
 21. «Ehi! Quello è il mio angolo! Trent'anni che sto qui!»
 22. «Il ragazzo del debito vende castagne! Siamo arrivati a questo!»
 23. «Vendi più di me? Non è possibile. Le hai rubate?»
 24. «Corri! Corri col carretto, che arrivano!» (Grigio vicino)
-25. «Grida più forte, che non ti sente nessuno. Così. Brutto, ma così.»
+25. «Grida tu per tutti e due, che ho mal di gola. Il guadagno a metà.»
 26. «Hai i prezzi bassi, stronzo. Mi rovini la piazza.»
-27. «Tu non sei del mestiere. Si vede. Hai le mani pulite.»
+27. «Urli troppo. Si vede che non sei del mestiere. Siediti, come me.»
 28. «Bagnato così fai pena. Vendi di più. Resta sotto l'acqua.» (bagnato)
 29. «Tienimi il carretto un attimo. …Se arrivano i Grigi, è tuo.»
 30. «Permesso ti cercava. Ha detto "Che bel carretto". Hai capito, no?»
@@ -1295,13 +1295,13 @@ vedetta (filtro `young`).
 **La folla**
 31. «Castagne a mille? Ma è un furto! …Dammene due.»
 32. «Le calze che ho preso sabato sono già bucate. Ne prendo altre.»
-33. «L'ombrello si è rotto al primo vento. Era un ombrello da sole.»
+33. «Ombrello! M'hai venduto un ombrello senza tela, stronzo!»
 34. «Mio figlio ha comprato una cassetta. È il Garante al contrario.»
 35. «Arrivano i Grigi! …No, è il postino. Riaprite.»
 36. «Ho visto Castagna correre. Correre! Col carretto! A sessant'anni!»
-37. «Dammi le calze! Sono per mia moglie! …Non dirlo a mia moglie.»
+37. «Mia moglie compra dagli abusivi. Poi va dal prete a lamentarsi.»
 38. «Il Grigio s'è preso le castagne e se n'è andato senza pagare.»
-39. «Ma chi gliel'ha data la licenza a quello? …Ah, non ce l'ha.»
+39. «Licenza? LICENZA? Io ho la licenza e non vendo niente! Niente!»
 40. «Io non compro dagli abusivi. Io compro da mio cugino. È abusivo.»
 
 ## 3.E Gioco: «Il carretto»
@@ -1362,17 +1362,17 @@ La merce si può anche comprare da soli: le calze al `pontile` di notte dai Mars
 
 ---
 
-## Extra: dieci scambi fra amici che si fregano (sulla misura della prova 9 di `TONO.md`)
+## Extra: dieci scambi fra amici (sulla misura della prova 9 di `TONO.md`)
 Due abitanti dello stesso gruppo (filtro `young` o `m`), a voce alta, vicino a un banco. Vanno nel mazzo dei frammenti.
 1. (dal ricettatore) «Vendi tu, che hai la faccia onesta.» «E i soldi?» «I soldi li tengo io.»
-2. (alle campanelle) «Gioca tu, che sei fortunato.» «E se perdo?» «Se perdi, erano i tuoi.»
+2. (alle campanelle) «Hai visto dov'è?» «Sì. Bellissima. Bionda.» «La pallina, scemo!»
 3. (alla retata) «Scappa! Ti copro io!» …«Agente! È andato di là! Quello col giubbotto!»
-4. (col carretto) «Tu spingi in salita. Io spingo in discesa.»
+4. (col carretto) «Il carretto va giù! Prendilo!» «Aspetta, mi allaccio la scarpa!»
 5. (alla bisca) «Prestami dieci. Se vinco te ne do venti.» «E se perdi?» «Non mi vedi più.»
-6. (da Castagna) «Ne assaggio una.» …«Un'altra, quella era bruciata.» …«Un'altra.» «SEIMILA!»
-7. (da Saponetta) «Non dico niente a nessuno. Giuro.» …«Agente, è stato lui. Io zitto, eh.»
-8. (prima di uno scasso) «Io faccio il palo, tu entri.» «A metà?» «Il palo rischia di più. Settanta.»
-9. (alla scopa) «Fammi vedere le carte, ti aiuto.» …«Ha il settebello! Ce l'ha in mano lui!»
+6. (da Castagna) «Me ne prendi due?» «Vai tu, io sto seduto.» «È a un metro!» «E io sono seduto.»
+7. (da Saponetta) «Io zitto, fra. Tomba.» …«Agente, è stato lui. Io zitto, eh.»
+8. (prima di uno scasso) «Faccio io il palo.» «Perché?» «Al buio ho paura. Pure in camera mia.»
+9. (alla scopa) «Passami la carta sotto il tavolo.» «Quale?» «Quella! Ahia! È il mio piede!»
 10. (sotto la pioggia) «Ci stiamo in due sotto l'ombrello?» «Sì. Io sotto, tu vicino.»
 
 ## Cosa serve al motore, in ordine (tutti e tre i mondi)
