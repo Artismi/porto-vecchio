@@ -123,18 +123,18 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 
 **Primo incontro**
 - «Oh! Qui è privato! Scatolone quattro, scala B. Chi t'ha fatto entrare?»
-- «Sono l'amministratore. Mi sono votato da solo. All'unanimità.»
+- «Sono l'amministratore! Io! Chi ha detto di no? Tu? Ripetilo!»
 - «Quota: due sigarette a settimana. Se non paghi, ti levo il cartone.»
-- «Il dodici è libero. Il signore è andato da sua figlia. Dice lui.»
+- «Il dodici è libero! Se ci pisci sopra ti butto nel canale, chiaro?!»
 
 **Ritorno**
-- «Nino! Al quattro è entrata l'acqua! Chiama qualcuno! Sei tu qualcuno!»
+- «Nino! Al quattro è entrata l'acqua! Aiutami, cazzo, non stare lì!»
 - «Riunione domenica. Primo punto: chi piscia contro il nove. Lo so, eh.»
-- «T'ho tenuto il posto. Uno ci si voleva sdraiare. L'ho mandato a cagare.»
+- «T'ho tenuto il posto! Uno ci voleva dormire! L'ho mandato a cagare!»
 
 **Da solo**
 - «Ventisei anni in calata! Ventisei! E mi levano il frigo per tre rate!»
-- «Signora del tre! Il fuoco nel barile si spegne alle dieci! È la regola!»
+- «Signora del tre! Il fuoco si spegne alle dieci! C'è il regolamento!»
 - «Morosi! Siete tutti morosi! Due sigarette! Due! Non vi chiedo la luna!»
 
 **Arco**
@@ -165,8 +165,8 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 
 **Ritorno**
 - «Ferri stamattina ha litigato con la moglie. Alla pensilina. Testuale.»
-- «Ti cercavano due della Famiglia. Ho detto che sei morto. Mi devi mille.»
-- «Alle tre di notte sei passato col sacco. Tranquillo, t'ho visto solo io.»
+- «Ti cercavano due della Famiglia! Ho detto che sei morto! Mille lire!»
+- «Stanotte alle tre, tu, col sacco! T'ho visto! Che c'era nel sacco?!»
 
 **Da sola**
 - «"Si sposti, signora!" "E dove, a casa tua?" Gliel'ho detto così!»
@@ -197,20 +197,20 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - **Gag visiva**: `porge` con la `tazza`, schiena dritta. Se non gli dai niente, si gira di scatto e se ne va impettito.
 
 **Primo incontro**
-- «Il signore gradisce un caffè? È finito. Però la tazza c'è.»
+- «Caffè, signore? …Non c'è. Mancia lo stesso! Ho servito il Colonnello!»
 - «Ventidue anni al Miramare. M'hanno cacciato per una mosca. Una!»
-- «La mancia non è obbligatoria. Però ti guardo male fino a casa.»
+- «Niente mancia?! Tirchio! Al Miramare ti sputavo nel brodo!»
 - «Ho servito i Marsigliesi. Mance grosse, bicchieri rotti, zero grazie.»
 
 **Ritorno**
-- «Il solito, signore? Niente. Arriva subito.»
+- «Mancia! Ieri non me l'hai data! T'ho visto! Giacca marrone!»
 - «La porta della cucina del Miramare si apre col coltello del burro.»
 - «Stasera il signore è elegante. Scherzo, fai schifo. Mancia?»
 
 **Da solo**
 - «Tavolo quattro! Tavolo quattro, non si dorme, ci sono i clienti!»
 - «Chi m'ha fregato il papillon? Lo so che sei tu, scatolone nove!»
-- «Una camomilla per la signora del barile! Arriva! …Non arriva.»
+- «Io ho servito il Colonnello! Tu chi hai servito, i piccioni?!»
 
 **Arco**
 1. *La mancia.* Con 1.000 di mancia ti dà un'informazione sul Miramare: chi dorme dove, a che ora cena il Colonnello.
@@ -248,8 +248,8 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 
 **Da solo**
 - «Chi ha spento il vapore?! Stanotte il vapore è freddo! Chi è stato?!»
-- «Ho trovato una scarpa sinistra, quarantatré. Cerco una destra uguale.»
-- «Mamma, se mi senti: sto bene. Mangio. Quasi tutti i giorni.»
+- «Ho una scarpa sinistra, quarantatré! Chi ha la destra? Pago!»
+- «Chi m'ha toccato il sacco?! T'ho visto! Sì, tu! Torna qua!»
 
 **Arco**
 1. *Il deposito*: 2.000 al giorno (§1.E).
@@ -272,13 +272,13 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - **Porcu**: «Ordine del giorno! Primo: chi piscia contro il nove!»
 - **inquilino**: «Non sono io!» oppure «Era buio!» oppure «Il nove è mio, ci piscio io!»
 - **Porcu**: «Secondo: il cartone del frigorifero nuovo. Chi l'ha preso?»
-- **Smoking**: «L'ho preso io. È per la stanza degli ospiti.»
-- **Radiolina**: «Quali ospiti? Vengono solo i Grigi!»
+- **Smoking**: «L'ho preso io! Ci dormo da re! Invidiosi!»
+- **Radiolina**: «Ridallo! L'avevo visto io per prima! Ladro!»
 - **Porcu**: «Terzo! Le quote! Due sigarette! Il sette mi deve tre settimane!»
-- **inquilino**: «Ho smesso di fumare!» / **Porcu**: «E allora paga in caramelle!»
-- **la folla**: «Votiamo!» oppure «Io non voto, sono in affitto!» oppure «Chiudi, che fa freddo!»
-- **Porcu**: «Chi è d'accordo alzi la mano. …Chi ha il guanto alzi il guanto.»
-- _Tutti alzano la mano. Porcu scrive._ **Porcu**: «Approvato. Non so cosa, ma approvato.»
+- **Porcu**: «Ti vedo che fumi, stronzo! Ti vedo!» / **inquilino**: «È di mio cugino! La sigaretta è di mio cugino!»
+- **la folla**: «Votiamo!» oppure «Chiudi, che si gela!» oppure «Il sette paga! Il sette paga!»
+- **Porcu**: «Chi è d'accordo alzi la mano! …Tutti?! Pure tu che pisci sul nove?!»
+- _Tutti alzano la mano. Porcu scrive._ **Porcu**: «Approvato! E adesso fuori dalle palle!»
 - Se Nino è vicino: **Porcu**: «Nino! Tu sei consigliere! Di' qualcosa da consigliere!»
   - **[NUOVO ask]**:
     - «Facciamo il tetto!»: tutti ridono, Cartone +2;
@@ -293,25 +293,25 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - _Arriva il camion della Tutela. Due Grigi con le ramazze vere: niente manganelli in mano, si vede che non gli va._
 - **Grigio 1**: «Sgombero! Ordinanza! Tutto il cartone sul camion!»
 - **Porcu**: «Agente, qui è un condominio! Ho il registro!»
-- **Grigio 1**: «Il registro va sul camion pure lui.»
-- **Grigio 2**: «Sono le cinque e mezza. Dai, ragazzi. Non facciamola lunga.»
+- **Grigio 1**: «Pure il registro! Sul camion! Muoviti, vecchio!»
+- **Grigio 2**: «Dai, dai, muovetevi! Si gela e non ho fatto colazione!»
 - **Radiolina**: «Tu sei il figlio della Nella! Ti ho cambiato il pannolino!»
 - **Grigio 2**: «…Signora, non davanti al collega.»
 - **[NUOVO ask]**, se Nino è lì:
   - **Paghi Ferri** (20.000, solo se c'è `f`).
-    - **Ferri**: «Ah, questo è un condominio. Non l'avevo visto. Andiamo.»
+    - **Ferri**: «…Andiamo. Qui non c'è niente. Andiamo, ho detto! Muoversi!»
     - Niente sgombero; Cartone +10; Ferri si ricorda (corruzione, gravità bassa).
   - **Fai casino da un'altra parte**: tiri un sasso a una telecamera lì vicino (verbo esistente).
     - **Grigio 1**: «Che è stato?! Di là!» `hunt` di 12 s **[NUOVO]**.
     - Il Condominio si porta via mezzo cartone; Cartone +8; Repressione +1 se ti vedono.
   - **Ti siedi con loro** (`siede_terra`): protesta seduta senza violenza. Tutti si siedono.
-    - **Porcu**: «Seduti! Tutti seduti! Non è una protesta, è la colazione!»
+    - **Porcu**: «Seduti! Tutti seduti! Chi si alza è moroso!»
     - I Grigi chiamano la centrale e aspettano dieci minuti, poi se ne vanno.
     - Morale +3, Repressione +1 (protesta), Cartone +12.
   - **Non fai niente**: sgombero.
     - Tutto il cartone sul camion; ogni oggetto nello scatolone 12 ha il 25% di perdersi (finisce al `magazzino` di Sandro, si ricompra).
     - Il servizio d'informazioni chiude per 2 giorni.
-- **Spugna**, in ogni caso: «Cinque e mezza di mattina. Ma non dormite mai, voi?»
+- **Spugna**, in ogni caso: «Cinque e mezza! Ma non dormite mai? Andate a rompere a casa vostra!»
 
 ### C3. Il posto in fila — `posto_in_fila` (con scelta)
 **Quando e dove**: 6-7:30, `fila` davanti al Forno di Lella.
@@ -322,11 +322,11 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - **la vecchia**: «Lorenzo, il posto?» / **Spugna**: «Cinquecento, signora. Prego.»
 - _Lui si sposta, lei entra al primo posto, paga con una `moneta`._
 - **l'uomo**: «Ehi! Lui ha venduto il posto! Si può vendere il posto?!»
-- **Spugna**: «Io sono qui dalle quattro. Tu dalle sei. Dormi di meno.»
+- **Spugna**: «Sono qui dalle quattro, coglione! Tu dormivi! In fondo!»
 - **la folla**: «Ha ragione lui!» oppure «Vergogna!» oppure «Quanto vuoi per il secondo?»
 - **[NUOVO ask]**, se Nino è in fila:
   - **Compri il secondo posto** (500): entri subito; l'uomo col cappotto te lo rinfaccia per tre giorni.
-  - **Difendi l'uomo**: Spugna: «Ah, pure tu? Va bene. Ma domani alle quattro ci sei tu.»
+  - **Difendi l'uomo**: Spugna: «Ah, pure tu?! Allora domani alle quattro ci vieni tu, eroe!»
   - **Lasci perdere**: niente.
 
 ### C4. La mensa di Suor Agata — `mensa_san_rocco`
@@ -338,7 +338,7 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - **Porcu**: «Ha la macchina e viene alla mensa? Fuori dalla fila!»
 - **Suor Agata**: «Qui non si chiede niente a nessuno. Piatto. Avanti.»
 - _Arriva il Grigio, si toglie il cappello, si mette in fila. Silenzio._
-- **Smoking**: «Il signore gradisce un tavolo? Ah, no, lei sta in piedi. Sempre.»
+- **Smoking**: «Il signore gradisce? No! Tu m'hai sgomberato! Mangia in piedi!»
 - **il Grigio**: «Ho finito il turno. Ho fame. Fatemi mangiare in pace.»
 - **Suor Agata**: «Piatto. Avanti.»
 - **la folla**: «Pure i Grigi!» oppure «Ma lo pagano o no, questo?» oppure «Oggi c'è la pasta!»
@@ -367,20 +367,20 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 **Ruoli**: `a` un senzatetto vecchio (old, m); `g` un Grigio giovane.
 
 - **il Grigio**: «Lei. Si alzi. Qui non si dorme. È una stazione.»
-- **il vecchio**: «Lo so che è una stazione. Aspetto il treno.»
-- **il Grigio**: «Quale treno?» / **il vecchio**: «Quello che mi porta a casa.»
-- **il Grigio**: «Lei non ha una casa.» / **il vecchio**: «Allora aspetto tanto.»
+- **il vecchio**: «Non dormo! Avevo gli occhi chiusi per il freddo!»
+- **il Grigio**: «Lei russava!» / **il vecchio**: «Io? Io non russo! Chiedi a tutti!»
+- **la folla**: «Russava.» oppure «Russava forte.»
 - _Il vecchio lo guarda bene._ **il vecchio**: «Ma tu sei Tonino! Il figlio della Nella! Ti portavo in spalla!»
 - **il Grigio**: «…Non ad alta voce, per favore.»
 - **il vecchio**, forte: «PIANGEVI SEMPRE! TUTTO IL GIORNO!»
 - **la folla**: risate trattenute. «Tonino!» oppure «Piangeva!» oppure «Ancora adesso, guardalo.»
-- **il Grigio**: «Va bene. Stia seduto. Ma non dorma. Cioè, dorma piano.»
+- **il Grigio**: «Va bene! Dorma! Dorma! Ma zitto, la prego, zitto!»
 - _Il Grigio se ne va svelto. Il vecchio si risistema._ **il vecchio**: «Piangeva. Ve lo giuro.»
 
 ## 1.D Quaranta battute
 
 **Quando passi (15)**
-- Mille lire. Non per il vino. Va bene, per il vino.
+- Mille lire! Dai! Ti ho visto il portafoglio, è pieno! Mille!
 - Oi, scarpe nuove? Belle. Quando ti stancano, me le dai?
 - Che guardi? Mai visto uno che dorme? Tu dormi in piedi, guarda.
 - Ho dormito sulla grata. Sono cotto da un lato solo.
@@ -389,19 +389,19 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - Ehi, capo! Una sigaretta. Ti giuro che è l'ultima. Di oggi.
 - Signora, le è caduta la borsa! …No, scherzo. Mi dà cento lire?
 - Quello è il mio barile! Il fuoco è di tutti, il barile è mio!
-- L'Ente Case m'ha sfrattato di lunedì. Di lunedì! Che fretta c'era?
+- Ehi! Quello è il mio cartone! Giù le mani o ti mordo!
 - Ho una coperta dell'esercito. Non chiedermi come. Scalda uguale.
 - Alle otto alzano il volume del Garante. Alle otto io dormo!
 - Multa per bivacco! Diecimila! Gli ho detto: pignorami il cartone!
 - Oggi due vuoti, una scarpa e mille lire. Giornata buona!
-- Ventisei anni in calata e adesso conto i piccioni. Diciassette.
+- Io ero caposquadra! Avevo dodici uomini sotto! E il fischietto!
 
 **Quando reagiscono a te (15)**
 - [corre accanto] Piano! M'hai calpestato la camera da letto!
 - [inseguito dai Grigi] Qui! Sotto il cartone! Zitto e non respirare!
 - [inseguito, al Grigio] Di là! È andato di là! …Io non ho visto niente.
 - [gli dai soldi] Grazie, capo! Stasera mangio caldo! Tiepido. Mangio.
-- [non dai niente] Niente? Tranquillo. Me lo segno. Mi segno tutti.
+- [non dai niente] Niente?! Con quelle scarpe? Tirchio di merda!
 - [ruba] Bravo, ruba! Così finisci qui sotto con noi! C'è posto!
 - [ubriaco] Oh, uno dei nostri! Siediti, che ti tengo il posto.
 - [gira armato] Metti via quel ferro, che qui ci dorme gente.
@@ -411,18 +411,18 @@ salta la chiave). Pose e oggetti in mano sono solo quelli che esistono:
 - [guida male] M'hai bagnato tutto, stronzo! Era l'unico maglione!
 - [fermo a fissare] Vuoi una foto? Mille lire. Col cartone, duemila.
 - [dipinge un muro] Scrivi, scrivi. Ma non sul mio scatolone, è nuovo.
-- [di notte] Sono le due, fratello. Che fai in giro? Non hai una casa?
+- [di notte] Oh! Sono le due! Vai a casa, che ci svegli tutti, stronzo!
 
 **La folla del barile (10, uno per riga, in capannello)**
 - Chi ha messo la scarpa nel fuoco? Puzza! …Era la mia? Era la mia!
 - Passami il fiasco. No, il fiasco. Quello è il mio piede.
 - Stanotte nevica. Dice la radio. La radio di Nives. Allora è vero.
 - Spostati, mi stai rubando il caldo! Il caldo è mio, l'ho acceso io!
-- Il Grigio di ieri m'ha dato una sigaretta. Mi sa che lo licenziano.
+- Stanotte m'hanno pisciato sul cartone! So chi è! Ha le scarpe gialle!
 - Il mio scatolone è più grande del tuo! Di due dita! Misura!
-- Mia sorella m'ha scritto. Dice che sto bene. Lei che ne sa?
-- Ho trovato mezzo panino. Chi vuole un quarto? Non tutti insieme!
-- Stasera dormo alla stazione. C'è il treno delle undici. È caldo.
+- Chi m'ha fregato le calze?! Erano appese al barile! Ho i piedi nudi!
+- Dividiamo da amici. Io la metà con la mortadella, tu l'altra.
+- Facciamo i turni di guardia. Comincio io. A dormire.
 - Zitti, sta parlando la radio! …È la pubblicità. Parlate.
 
 ## 1.E Il sistema: «Il Condominio Cartone» (informazioni, nascondigli, roba in custodia, la Ramazza)
@@ -554,7 +554,7 @@ Il giocatore se la fa amica o la perde.
 - «Fermo. Questa è la calata dei Granchi. Si paga. Mille lire.»
 - «Ho detto mille. Non cinquecento. Ti sembro uno da cinquecento?»
 - «Io sono Ciuffo. Il capo. Chiedi a chiunque. No, a lei no, è mia madre.»
-- «Se non paghi i miei ti vengono dietro fino a casa. E lo dicono a tutti!»
+- «Non paghi? I miei ti vengono dietro fino a casa! E lo urlano a tutti!»
 
 **Ritorno**
 - «Nino! Il mio cliente preferito! Oggi sconto: novecento.»
@@ -562,7 +562,7 @@ Il giocatore se la fa amica o la perde.
 - «Abbiamo fatto la guerra coi Binari. Vinto! Siamo bagnati uguale.»
 
 **Da solo**
-- «Tonio! Chi t'ha detto di andare coi Binari? Traditore! Ridammi la bici!»
+- «Tonio! Sei andato coi Binari? Traditore! Ridammi la bici!»
 - «Domani tutti in calata alle tre! Chi non viene è fuori! Tranne Tonio.»
 - «La voce mi cambia, va bene? Capita ai capi! Smettila di ridere!»
 
@@ -597,7 +597,7 @@ Il giocatore se la fa amica o la perde.
 **Ritorno**
 - «Sei in ritardo. Ti aspettavo alle cinque. Sono le cinque e quattro.»
 - «Quello che zoppica oggi non c'è. C'è uno nuovo. Corre. Attento.»
-- «Ho visto la tua Vespa alla stazione. Non era tua. Ma sopra c'eri tu.»
+- «Ho visto la tua Vespa! Cioè, non era tua! L'hai fregata! Lo so!»
 
 **Da sola**
 - «Uno, due, tre Grigi. Quattro? No, quella è una signora. Grossa.»
@@ -631,7 +631,7 @@ Il giocatore se la fa amica o la perde.
 **Ritorno**
 - «Ho le americane vere! Guarda, c'è scritto in americano!»
 - «Mi devi trecento lire da martedì. Con gli interessi, quattrocento.»
-- «Ho comprato da Wu e ho rivenduto a Wu. Ci ho guadagnato. Lui no.»
+- «Non ho rubato niente! Guarda le tasche! …Non quella! L'altra!»
 
 **Da solo**
 - «Mamma, non ho mangiato niente! …Sì, il panino. E due. Ma piccoli!»
@@ -664,7 +664,7 @@ Il giocatore se la fa amica o la perde.
 - «Duemila a consegna. Più la mancia. Tu sembri uno che non dà la mancia.»
 
 **Ritorno**
-- «Oggi cinque consegne. Mio padre zero. Lavora in Comune.»
+- «Cinque consegne oggi! Cinque! Tu quante? Zero! Sfigato!»
 - «Michele dice che sei a posto. Michele lo dice di tutti. Pure del cane.»
 - «Mi tieni il pacco cinque minuti? Devo fare pipì. Non lo aprire.»
 
@@ -723,7 +723,7 @@ Il giocatore se la fa amica o la perde.
   - **Stai coi Binari**: il contrario.
   - **Porti via il Grigio** («Agente, venga che si asciuga»): lui ti ringrazia, Grigi +, entrambe le bande −3 («Sbirro!»).
   - **Ti rubi il secchio**: tutti e due contro di te. Bagnato fradicio, bande +2 tutte e due: «Questo ha capito.»
-- **Grigio**, alla fine: «Mia moglie mi uccide. La divisa è nuova! La pago io!»
+- **Grigio**, alla fine: «La divisa! Bagnata! Domani ho l'ispezione, bastardi!»
 
 ### C3. Palle di neve — `palle_di_neve` (folla)
 **Quando e dove**: la mattina dopo una nevicata, 8-10, Piazzetta del Pozzo o Piazzetta del Forno (Briciole).
@@ -732,7 +732,7 @@ Il giocatore se la fa amica o la perde.
 
 - **Briciola**: «Quello col cappello! Ora!»
 - _Il benpensante prende una palla di neve sul cappello._ **benpensante**: «Il cappello nuovo! Delinquenti! Sapete quanto costa?!»
-- **Briciola**: «Quanto?» / **benpensante**: «Dodici rate!» / **Briciola**: «Allora un'altra!»
+- **Briciola**: «Bella mira, eh?! Un'altra! Al cappello!»
 - _Arrivano i Grigi._ **Grigio 1**: «Chi tira la neve a un cittadino?»
 - _Palla di neve sul cappello del Grigio 1. Silenzio assoluto._
 - _Il Grigio 1 si china, fa una palla e la tira: prende in faccia il Grigio 2._
@@ -811,9 +811,9 @@ dietro l'angolo e passi che corrono).
 - Ho trovato mille lire per terra. Erano tue? Adesso sono mie.
 - Gara a chi arriva prima al muro! Via! …Ho vinto! Non lo sapevi.
 - I Binari sono degli schifosi! Lo dico io, che sono dei Binari!
-- Mio nonno ha fatto la guerra. Ha detto che ha vinto. Ha perso.
+- Ho fatto gol da metà campo! Nessuno l'ha visto, ma l'ho fatto!
 - Sputo più lontano di te. Prova. No, non su di me! Sulla strada!
-- Una sigaretta? Non per me. Per mio padre. Sì, ha dieci anni.
+- Mi presti la Vespa? Giuro che te la riporto! Intera! Quasi!
 
 **Quando reagiscono a te (15)**
 - [corre accanto] Corre! Corre! Lo inseguono! Chi ti insegue? Nessuno?
@@ -834,13 +834,13 @@ dietro l'angolo e passi che corrono).
 
 **La folla delle bande (10, fra loro, in capannello)**
 - Chi ha il pallone? Tu! Te l'ho dato io! Ridammelo!
-- Mia madre ha detto che domani non esco. Domani esco.
+- Chi suona il campanello del Grigio? Tu! Hai alzato la mano! Vai!
 - Il Grigio nuovo corre forte. Ma si stanca subito. È grasso.
 - Io ho visto lo Squalo. Ha l'anello d'oro grosso così!
 - Facciamo che io sono il Garante e voi applaudite. …Più forte!
-- Stasera c'è la guerra coi Cassetta. Portate i secchi. E le calze.
-- Ho finito le figurine. Mi manca solo il Garante. Nessuno lo vuole.
-- Il capo sono io! Chi l'ha deciso? Io! Allora è deciso.
+- Arriva il Grigio! Correte! …Io resto, sono piccolo, a me non fa niente.
+- Chi m'ha fregato le figurine?! Erano nella calza! Nella calza!
+- Il capo sono io! Chi dice di no gli tiro l'acqua! Tu? Eh? Tu?
 - Chi ha mangiato la merenda di Tonio? Hai le briciole sulla faccia!
 - Zitti, c'è l'Alfetta. …È andata. Fate finta di niente. Fischiate.
 
@@ -1019,7 +1019,7 @@ dietro l'angolo e passi che corrono).
 - «Venduto! Al signore che si grattava il naso! Sì, tu! Paga!»
 
 **Ritorno**
-- «Nino, oggi triglie. Belle. Per te prezzo da amico: uguale.»
+- «Nino! Triglie! Compra o sparisci, che mi copri la merce!»
 - «Ieri col motorino m'hai fatto scappare un cliente. Oggi ne compri due.»
 - «Porti pesce tuo? Ti tengo il dieci per cento. Agli altri il quindici.»
 
@@ -1048,20 +1048,20 @@ dietro l'angolo e passi che corrono).
 - **Gag visiva**: `legge_su` col registro (`carta`), sempre a un metro e mezzo dalle casse (`osserva`), col braccio teso per pesare.
 
 **Primo incontro**
-- «Ufficio del Tributo. Quota dell'Impero. Il trenta per cento. Al grammo.»
+- «Ferma la cassa! Il trenta per cento è dell'Impero! Giù le mani!»
 - «Non me lo avvicini! Si muove! Perché si muove? Era morto!»
-- «Io dovevo stare in ufficio. Col termosifone. M'hanno mandato al pesce.»
-- «Lei è pescatore? Mi faccia vedere le mani. No, non le tocco.»
+- «Io avevo un ufficio! Col termosifone! E una pianta! E adesso guarda!»
+- «Non mi schizzi! Non mi schizzi! È il cappotto buono!»
 
 **Ritorno**
-- «Ancora lei. M'ha portato un'orata? Per la Quota. Per la mia, di quota.»
-- «Ieri ho pesato un polpo. M'ha preso la penna. L'ho messo a verbale.»
-- «Se le casse pesano giuste, io sotto non guardo. Sotto non guardo mai.»
+- «Ancora lei! L'orata ce l'ha? No? Allora le peso tutto! Pure le scarpe!»
+- «Ieri un polpo m'ha preso la penna! Ho urlato davanti a tutti!»
+- «Se pesano giuste io sotto non guardo! Mai! Non ho detto niente!»
 
 **Da solo**
 - «Tre chili e duecento! Duecento! Chi s'è mangiato duecento grammi?!»
 - «Mamma, sì, mangio. Pesce. Sempre pesce. Mamma, il pesce mi fa schifo.»
-- «'Sto gabbiano mi segue da tre settimane. Lo metto a verbale. Gabbiano.»
+- «Via, gabbiano di merda! M'ha cacato sul registro! Sul registro!»
 
 **Arco**
 1. *La pesata* (C3): pesa le tue casse.
@@ -1085,15 +1085,15 @@ dietro l'angolo e passi che corrono).
 - **Gag visiva**: la `cassa` in spalla, `fuma_su` con l'altra mano. Le sue casse gocciolano meno delle altre.
 
 **Primo incontro**
-- «Vuoi una cassa di pesce? Fresca. Non guardare sotto. Sotto è freschissima.»
+- «Vuoi una cassa? Fresca! Non guardare sotto! Ho detto non guardare!»
 - «Ci metto tanto ghiaccio. Tanto tanto. Il ghiaccio costa. Pago io.»
-- «Io pesco. Il pesce si pesca. Le sigarette in mare si trovano. Capita.»
+- «Sigarette? Quali sigarette? Ho detto pesce! Chi ha detto sigarette?!»
 - «Ti serve un lavoro? Porta la cassa dal molo al Neri. E non cadere.»
 
 **Ritorno**
 - «Nino! Oggi le casse pesano poco. Pesce leggero. Vai tranquillo.»
 - «Il Bilancino ha la febbre. Oggi pesce pesante. Cinquemila a cassa.»
-- «La cassa di ieri è arrivata bagnata. Non il pesce: il resto. Paghi tu.»
+- «La cassa di ieri l'hai fatta cadere! T'ho visto! Paghi tu, stronzo!»
 
 **Da solo**
 - «Santa Rita, fa' che non apre la quinta cassa. Le altre, va bene.»
@@ -1125,7 +1125,7 @@ dietro l'angolo e passi che corrono).
 - **Venti Chili**: «Ieri sera all'osteria ho detto venti chili, e mi hanno creduto!»
 - **x**: «Nessuno t'ha creduto. Ti hanno offerto da bere per farti stare zitto.»
 - **Venti Chili**: «Uguale! Ho bevuto!»
-- **y**: «Mia moglie dice che se torno senza pesce dormo in barca.» / **x**: «Dormi in barca da tre anni.»
+- **y**: «Mia moglie dice che se torno senza pesce dormo in barca.» / **x**: «Dormi in barca da tre anni! Lo sanno tutti al bar!»
 - **Sottoghiaccio**: «Ragazzi, chi mi presta ghiaccio? Tanto. Ve lo rendo. Fresco.»
 - **la folla**: «Il ghiaccio te lo paghi!» oppure «Ancora il ghiaccio?» oppure «Che ci fai con tutto 'sto ghiaccio?»
 - **Sottoghiaccio**: «Il pesce. Che domande.»
@@ -1146,7 +1146,7 @@ dà la voce.
 - **Peppina**: «Hai grattato, hai comprato! Paga!»
 - **la folla**: «Ha ragione lei!» oppure «Grattati di meno!» oppure «Io non mi muovo più.»
 - _Ciuffo passa dietro le casse e sparisce con un pesce._ **Peppina**: «GABRIELE! Lo dico a tuo padre!»
-  _Il padre è lì._ **il padre**: «…Quanto costa?»
+  _Il padre è lì._ **il padre**: «Gabriele! Ridalle il pesce! …Quale hai preso, la spigola?»
 - **[NUOVO ask]**, se Nino è lì:
   - **Compri** una cassetta (5.000-7.000): è pesce per la dispensa, oppure da rivendere al `bar` (Gino ne compra una a 8.000 il venerdì).
   - **Vendi** le tue casse, se sei uscito in barca: Peppina tiene il 10%.
@@ -1161,9 +1161,9 @@ dà la voce.
 - _Cinque casse in fila. L'Ispettore col registro, a un metro e mezzo._
 - **Ispettore**: «Cassa uno. Tre chili e quattro. Trenta per cento all'Impero. Prossima.»
 - **x**: «Il trenta per cento di tre chili! Che se ne fa l'Impero di un chilo?!»
-- **Ispettore**: «Non lo so. Le mette nella nave. Prossima.»
+- **Ispettore**: «Non urlare! Non urlare che mi agito! Prossima!»
 - _La cassa due si muove. L'Ispettore salta indietro._ **Ispettore**: «Si è mossa! L'ha vista? Si è mossa!»
-- **Grigio di scorta**: «È un granchio, Ispettore.» / **Ispettore**: «Lo metta a verbale!»
+- **Grigio di scorta**: «È un granchio, Ispettore.» / **Ispettore**: «Lo ammazzi! Lo ammazzi, agente! Mi guarda!»
 - _La cassa cinque è di Sottoghiaccio, pesa troppo._ **Ispettore**: «Questa pesa tanto. Che c'è sotto?»
 - **Sottoghiaccio**: «Ghiaccio, Ispettore. Ghiaccio fresco.»
 - **[NUOVO ask]**, se Nino è lì:
@@ -1191,7 +1191,7 @@ dà la voce.
 - **la folla**: «Ce l'ha fatta!» oppure «Fammi toccare!» oppure «Somiglia a mio suocero!»
 - _Arriva il Bilancino col registro._ **Ispettore**: «Questo è pesce di Quota. Lo pesiamo. Tutto.»
 - **Venti Chili**: «Il trenta per cento! Ti do la coda!»
-- **Ispettore**: «Il pesce intero è un pesce di pregio. Va all'Impero intero.»
+- **Ispettore**: «Tutto all'Impero! Tutto! Non piangere, Gavino, mi agiti!»
 - **la folla**: «Buuu!» oppure «Ladro!» oppure «Vai a pescartelo tu!»
 - **[NUOVO ask]** (arco di Venti Chili, passo 2):
   - **Testimoni per lui** («L'ha preso fuori dalla zona, l'ho visto io»): l'Ispettore non può scriverlo. Si mangia: festa sui barili,
@@ -1211,7 +1211,7 @@ dà la voce.
 - **y**: «Ripetilo! Ripetilo, se hai il coraggio!» _`discute_su`, si avvicinano._
 - **Sottoghiaccio**: «È stato il motoscafo dei francesi. Stanotte. Senza luci.»
 - **x** e **y**, insieme: «I FRANCESI!» _si girano verso il motoscafo._
-- **x**: «Quando torna gli taglio le gomme!» / **y**: «Le barche non hanno le gomme.» / **x**: «Gliele metto e poi gliele taglio!»
+- **x**: «Quando torna gli piscio nel motore! Giuro! Davanti a tutti!»
 - **la folla** (se ci sono 3-4 alla calata): «Ha ragione!» oppure «Fate pace!» oppure «Ridategli la rete!»
 - Se Nino passa: **x**: «Tu! Sai cucire? No? Allora tieni la rete. Così. Fermo per un'ora.» Lavoretto da 3.000 (`lavora`,
   10 min).
@@ -1241,30 +1241,30 @@ della motovedetta intorno all'isola.
 - Che cazzo di freddo. Alle quattro il mare è di ghiaccio, giuro.
 - Ieri un polpo m'ha preso il dito. Gliel'ho preso io a lui. Pari.
 - Mio figlio vuole fare il pescatore. L'ho mandato a scuola a calci.
-- La barca è di mio padre. Il motore è di mio zio. Io remo e basta.
-- Tre pesci ho preso. Uno al gabbiano, uno all'Ispettore, uno a me.
+- Chi m'ha fregato i guanti?! Erano sul motore! Due minuti fa!
+- Sono in piedi dalle tre! Dalle tre! Non mi parlare, che mordo!
 - Mia moglie dice che puzzo di pesce. Ma se le porto il pesce, zitta.
 - Cinque ore in mare e mi vendono la cassa a quattromila. A quattro!
-- Il Bilancino m'ha pesato pure il panino. Il trenta per cento all'Impero.
-- Peppina urla da trent'anni. Mio padre dice che urlava pure da piccola.
+- Il Bilancino m'ha pesato il panino! Il mio panino! Davanti a tutti!
+- Peppina, non urlare! Sono qui! Ti sento da casa mia, ti sento!
 - Questa rete l'ho ricucita io. Brutta, eh? Però tiene. Quasi.
-- Stamattina niente. Ieri niente. Domani vado a pescare al bar.
+- Niente! Tre ore e niente! Neanche una scarpa! Mare di merda!
 - Gavino ha detto venti chili? Io ho visto la sardina. Era così.
 - Chi ha lasciato la cassa vuota in mezzo? Ci sono cascato due volte!
 - Ho le mani che non sento. Se ti do uno schiaffo non lo sento neanche.
-- Il venerdì il pesce va a ruba. Mi faccio la barba, così vendo di più.
+- Signora! Pesce fresco! Signora, dove va?! Signora! Torni qua!
 
 **Quando reagiscono a te (15)**
 - [corre accanto] Piano sul molo, che è bagnato! Se cadi in acqua non ti tiro su!
 - [inseguito dai Grigi] Sotto le reti! Puzzano, il Grigio non si china!
 - [inseguito, al Grigio] Chi? Uno che correva? Qui corrono tutti. Fa freddo.
-- [arrestato] Ecco, uno di meno a scaricare. Domani lavoriamo il doppio.
+- [arrestato] Io non lo conosco! Mai visto! …Ciao Nino!
 - [ruba una cassa] Ehi! Quella è mia! …Era rubata pure lei. Vabbè, vai.
 - [gira armato] Mettila via! Spaventi il pesce! E me!
 - [ubriaco] Ubriaco alle sei? Dilettante. Noi alle sei abbiamo già finito.
 - [guida male sul molo] Il molo non è una strada! Finisci in mare, scemo!
 - [suona il clacson] Suona, suona! Così il pesce scappa e ti pago io!
-- [bagnato] Sei caduto in acqua? Bravo. Adesso sai com'è il nostro lavoro.
+- [bagnato] È caduto in acqua! Gavino, vieni a vedere! È caduto!
 - [vestito strano] Dove vai vestito così, a sposarti? Al molo?
 - [fermo a fissare il mare] Che guardi? È mare. Fa schifo uguale tutti i giorni.
 - [porta una cassa] Piegati con le gambe, non con la schiena! Vedi come sono io?
@@ -1274,11 +1274,11 @@ della motovedetta intorno all'isola.
 **La folla del molo (10, fra loro, in capannello)**
 - Hai visto il motoscafo dei francesi? Senza luci! Alle tre!
 - Il Bilancino oggi ha pesato pure il ghiaccio. Il ghiaccio!
-- Domani viene la nave. Domani la Quota è doppia. Domani sto male.
+- Ti aiuto con le reti! …Dopo il caffè. E la sigaretta. Domani, dai.
 - Peppina m'ha venduto le mie triglie. Le mie! Gliele avevo date io!
 - Chi ha preso il mio caffè? C'era il mio nome sopra! Col gesso!
-- Mio cognato dice che a Marsiglia il pesce si vende il doppio.
-- Ho visto Gavino ridere. Allora ha preso qualcosa. O ha bevuto.
+- Mio cognato è un ladro! M'ha fregato la rete e dice che è sua!
+- Gavino, tienimi la cassa che vado a pisciare. …All'osteria. Torno.
 - Il motore è morto. Di nuovo. L'ho preso a calci. Adesso va.
 - Ciriaco, perché la tua cassa non gocciola? Le nostre sì!
 - Zitti, arriva l'Ispettore. Fate le facce povere. Più povere.
