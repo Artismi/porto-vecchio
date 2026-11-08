@@ -63,7 +63,7 @@ verbi del §3, di progetti di Popolo (`PROJ`, `popolo.js:1311`, passi `go`/`save
 
 | Modello | Si riconosce da | Misura (dal motore) | Metodi (fasi) | Durata tipica in giorni di gioco* |
 |---|---|---|---|---|
-| **soldi** | «soldi», «la cassa», «ci servono lire», «fai cassa» | `st.ris.cassa` − base | **turni** (`lavora` col mestiere, `ripara`, `pesca`); **vendi_roba** (vende la sua roba in più al mercato, `Scambi.market`; o il mezzo, [NUOVO] `vendi_mezzo` sopra `ownVeh`, `popolo.js:1154`); **colletta** (`colletta` della Risacca o `Imprese` `colletta`, `imprese.js:65`); **mercato nero** (`mercato`, `contrabbando`); **scasso** (`Trame.proposeScasso` con lui capo, `trame.js:58`, ruoli palo/porta, `:71`; o `scasso` della Risacca); **bisca** (`bisca`, guadagno da −20 a +60 l'ora, `risacca.js:1118-1120`); **prestito** (lo Squalo: soldi subito e un debito vero in `P.debt`); **ricatto** (`fotografa` + `ricatta`) | 1-3 |
+| **soldi** | «soldi», «la cassa», «ci servono lire», «fai cassa» | `st.ris.cassa` − base | **turni** (`lavora` col mestiere, `ripara`, `pesca`); **vendi_roba** (vende la sua roba in più al mercato, `Scambi.market`; o il mezzo, [NUOVO] `vendi_mezzo` sopra `ownVeh`, `popolo.js:1154`); **colletta** (`colletta` della Risacca o `Imprese` `colletta`, `imprese.js:65`); **mercato nero** (`mercato`, `contrabbando`); **scasso** (`Trame.proposeScasso` con lui capo, `trame.js:58`, ruoli palo/porta, `:71`; o `scasso` della Risacca); **bisca** (`bisca`, guadagno da −20 a +60 l'ora, `risacca.js:1118-1120`); **rapina** (di giorno, con un'arma vera o finta: §0.10); **prestito** (lo Squalo: soldi subito e un debito vero in `P.debt`); **ricatto** (`fotografa` + `ricatta`) | 1-3 |
 | **recluta** | «reclutare», «trovami N compagni», «gente nuova» | membri nuovi entrati dopo il mandato (`join` con `how` = mandato) | **amici** (i `P.friends` con odio per la Tutela alto: `recluta`); **osteria** (sere al bar o all'osteria, chiacchiere con chi è arrabbiato: `Azioni.social` + `recluta`); **famiglie dei fermati** (chi ha un parente alla Rocca: `PROJ.notizie`, `popolo.js:867`); **piazza** (`volantina` + `diffondi_voce`, poi chi si avvicina); **lavoro** (i colleghi del suo mestiere) | 2-5 |
 | **procura** | «procura», «trovami», «ci servono» + una cosa (vernice, attrezzi, armi, radio, medicine, documenti) | scorte (`totalRes`) | **compra** (con la cassa; se la cassa non basta, diventa un mini-mandato soldi); **ruba** (`ruba`, `recupera`, `rovista`); **ricettatore** (un contatto col `P.giro` ricettatore o trafficante, `popolo.js:383`); **produci** (stamperia, officina, falsari: `produci`); **armi** solo dalla Famiglia (`game.js:1261`) o dall'armeria, mai per caso | 1-2 |
 | **orecchio** | «scopri chi è l'Orecchio / chi parla / chi ci vende» | trovato quando dice il nome di chi ha davvero `P.giro === 'orecchio'` o `CARDS[id].informer` | **guarda la Zia** (`sorveglia` del Bar Sirena e annota chi le parla); **pedina** i sospetti (§3); **trappola** (`diffondi_voce` falsa a un solo sospetto, poi si guarda se arriva una perquisizione o un controllo lì: usa il sistema delle perquisizioni, `risacca.js:1330`); **chiacchiere** (chi è chiacchierone chiede in giro: `racconta` dalla memoria degli altri) | 2-4 |
@@ -275,6 +275,138 @@ Nel tono di TONO.md. A destra, in corsivo, cosa fa il motore.
 | prudenza prima di reclutare (un giorno di `pedina` se il metodo lo prevede) | `parola.js` | [NUOVO] |
 | la trappola per l'Orecchio (voce falsa a uno, controllo delle perquisizioni) | `parola.js` + un campo `R.raid.why` in `risacca.js:1334` | [NUOVO] + [CAMBIA] di una riga |
 | scheda «Mandati» del Taccuino, barre, bottoni | `parola_ui.js` + `main.js:759` | [NUOVO] |
+
+### 0.10 La rapina (metodo del mandato «soldi», e cosa che decidono da soli)
+
+Andrea: «possono anche decidere di fare una rapina, con le possibili conseguenze». La rapina **non è lo scasso**. Lo
+scasso si fa di notte, a negozio chiuso, senza nessuno (`scasso` della Risacca, `risacca.js:533`; la trama di
+`trame.js:58`). La rapina si fa **di giorno, con la gente dentro e un'arma in mano**, vera o finta. Molto di quello che
+serve c'è già, ma oggi lo può fare **solo il giocatore**:
+- la cassa sotto minaccia, se hai un'arma in pugno (`attivita.js:94-105`, `cassa_rapina`);
+- la cassaforte che apre il commesso «sotto minaccia» (`cassaforti.js:9`, `:145`, con la notizia di Radio Porto a `:169`);
+- il portavalori di livello 2 con due guardie private, armi della Famiglia, 40% alla Famiglia entro sei ore, e chi non paga
+  se la ritrova contro (`scontri.js:15-19`, `quotaFam: .4` a `:50`, il bottino a `:545`, la richiesta d'armi a `:562`);
+- il riciclaggio della Famiglia (`fazioni.js:282-289`, `WASH`);
+- i posti di blocco (`ordine.js:9`, `:39`, `:273`).
+
+Il progetto mette tutto questo in mano agli **NPC** e alla **banda**, e lo fa passare dalla catena parola → azione.
+
+#### I livelli
+
+| Livello | Bersaglio | Bottino (dal motore) | Chi difende | Rischio | Stato |
+|---|---|---|---|---|---|
+| 1 | Tabaccheria, bottega, bar | la cassa vera (`Economia` `Sh.cash`; se manca, 60-140), come `attivita.js:88` | il commesso, a volte un cliente coraggioso | medio: i Grigi arrivano in 3-6 minuti | il gesto esiste per il giocatore; [NUOVO] per gli NPC |
+| 2 | Ufficio postale o sportello del Banco, cassa dell'Emporio Imperiale (`economia.js:42`) | lo sportello e la cassaforte (`soldi.js`, il caveau; `cassaforti.js`) | il vigilante, l'allarme, le telecamere (`CAMS`) | alto: allarme, volante, posto di blocco entro 20 minuti | cassaforte sotto minaccia esiste; [NUOVO] il resto |
+| 3 | La bisca della Famiglia (sala giochi, `flipper`) | i soldi sporchi della Famiglia (`F.dirty`, `fazioni.js:289`) | gli uomini della Famiglia, armati | **altissimo, ma non i Grigi**: la Famiglia regola i conti da sola, e non dimentica | [NUOVO] |
+| 4 | Il portavalori del Banco (MANIFESTO Parte II §7, livello 2) | il carico vero (`st.soldi.van.cargo`) | due guardie giurate private armate, poi i tiratori scelti | scontro a fuoco vero; «la fuga nei vicoli è possibile» | **esiste** (`scontri.js:473+`) per il giocatore; [NUOVO] la crew NPC |
+
+#### Chi la sceglie e chi non la sceglie mai
+
+Fra i metodi del mandato «soldi» (§0.3) la rapina ha questo peso:
+
+```
+rapina = coraggio·.35 + avidità·.25 + (giro ladro|trafficante|borsaiolo ? .25 : 0) + odio per la Tutela·.15 (solo bersagli del regime: Banco, Emporio, portavalori)
+       + disperazione·.3   (P.need.soldi > .7, debito con lo Squalo o col Banco in scadenza, sfratto: PROJ.debito/affitto, popolo.js:1320-1325)
+       − legge·.6 − paura·.4 − (ha figli piccoli ? .15 : 0) + (ha già fatto una rapina riuscita ? .1 : 0)
+```
+
+- **Mai**: chi ha `legge > .6`; chi ha `ruba` o `picchia` fra i `never` (Garza, Lupo, Suor Agata, `risacca.js:192-195`); i
+  Grigi; gli antagonisti; e chiunque se il giocatore ha messo il vincolo «pulito» o «niente armi».
+- **Da soli**, senza mandato: un abitante col giro, la disperazione e due complici che lo seguono (lo stesso calcolo dei
+  complici di `trame.js:229`) può proporre una rapina come una nuova trama (`kind: 'rapina'`, accanto a `scasso`). È
+  rara: al massimo una per settimana di gioco in tutta l'isola, e mai di livello 3 o 4 senza un capo con coraggio > .8.
+  La sente il giocatore dalle voci del Coro, dalla radio, o perché ci passa davanti.
+- **Nella banda**: un membro con quel profilo può proporla in autonomia (`candidates`, `risacca.js:1183`), ma **solo come
+  proposta in chat** («Avrei un'idea per la cassa. Non ti piacerà.»): una rapina non parte mai senza il sì del giocatore,
+  se il giocatore c'è nella banda.
+
+#### Le fasi (ognuna è un intento che passa la verifica del §2.2)
+
+| Fase | Cosa si fa | Con quali verbi e sistemi | Stato |
+|---|---|---|---|
+| 1. La crew | Il capo cerca 2-4 persone; i ruoli sono **chi entra** (con l'arma), **chi tiene la porta**, **il palo**, **l'autista** | `trame.js` (`T.members`, `T.roles`, `:229-231`) con i ruoli nuovi; nella banda, i ruoli del piano del §2.7 | ruoli [NUOVO], formazione esiste |
+| 2. Le armi | **Vere**: dalla Famiglia (`scontri.js:562`, 40% del bottino), dall'armeria di una base (`MODULES.armeria`, `risacca.js:106`), dal ricettatore (`game.js:1261`). **Finte**: una pistola giocattolo, un ferro avvolto in un giornale, o **una banana in un sacchetto**. La finta non attiva lo scontro a fuoco, ma se qualcuno se ne accorge salta tutto | `Azioni.getItem` (`azioni.js:281`), `G.WEAPONS` (`game.js:450`); oggetto nuovo `arma_finta` con `finta: true` e la probabilità di essere scoperta (più alta da vicino, col commesso coraggioso, con la banana) | armi vere esistono; [NUOVO] quelle finte |
+| 3. Il mezzo | L'auto o la Vespa **sua** (`ownVeh`, `popolo.js:1154`: ma la targa porta a lui), o **rubata** (`Azioni` `ruba` modo `auto`, `azioni.js:659-661`), o niente (a piedi, nei caruggi) | `st.vehicles`, `owner` | esiste |
+| 4. Il sopralluogo | Il giorno prima, uno va davanti al posto e guarda: quante persone, se c'è il vigilante, dove sono i Grigi, a che ora passa il portavalori | la ricognizione di `trame.js`; `sorveglia`; la tabella del portavalori di `soldi.js` | esiste (scasso); [NUOVO] per la rapina |
+| 5. Il colpo | Entrano, gridano, il cassiere svuota. È **una scena** se il giocatore è entro 40 m: grida, il cassiere che trema («Ho dei figli!» c'è già a `attivita.js:96`), **il cliente eroe** (coraggio > .8: si butta addosso, la rapina può finire lì), **l'allarme** (al livello 2 sempre, dopo 20-60 secondi). Lontano dal giocatore si decide subito, con le stesse probabilità | l'interprete delle scene di eventi.js (scena nuova `rapina` con i ruoli presi dalla crew vera); `G.emit('rapina')` (`game.js:531`, gravità .85); `G.panicAround`; i testimoni in `n.mem` | [NUOVO] la scena; l'evento esiste |
+| 6. La fuga | Inseguimento coi Grigi (l'allerta di game.js), **posti di blocco** (`ordine.js`: col colpo se ne alza uno sulle strade d'uscita del quartiere), **cambio d'auto** (una seconda macchina lasciata prima), **nascondersi** in una base (`nasconditi`), in cripta da Suor Agata (se si fida), o fra i senzatetto e i matti del porto (`matti.js`: chi sta con loro sparisce per qualche ora) | game.js inseguimenti; `ordine.js` blocchi; `RS` basi; [NUOVO] il nascondiglio coi senzatetto e il cambio d'auto | in parte |
+| 7. La spartizione | Il bottino si divide secondo i ruoli. **Si litiga**: chi è entrato vuole di più, l'autista dice che senza di lui erano tutti dentro. Chi è avido, ha poca lealtà verso il capo e ha in mano la borsa **può scappare con tutto** (diventa un nemico, `P.debiti` al contrario, e una trama `agguato` contro di lui) | nota nel diario di tutti; `trame.js` `agguato` (`:166`) | [NUOVO] |
+| 8. Ripulire | I soldi della rapina sono **segnati** per 2 giorni (una perquisizione li trova); si ripuliscono alla lavanderia o alla sala della Famiglia, perdendo il 10% (`WASH.fee`, `fazioni.js:282`), o si spendono piano. La merce si vende al ricettatore (`Azioni.sellSteps`) | fazioni.js `WASH` | esiste per la Famiglia; [NUOVO] per la crew |
+
+#### Le conseguenze, secondo come va
+
+| Come va | Cosa succede (tutto nel motore) |
+|---|---|
+| **Riuscita** | soldi nella cassa (o nelle tasche della crew, se è una trama di abitanti); **la Famiglia vuole la sua parte** se il colpo è nella sua zona o le armi sono sue (il 40% di `scontri.js`, entro sei ore; altrimenti la ritrovi contro); il giorno dopo **il titolo sul Bollettino** e, alle 20, **il Garante in televisione** (`onHour`, `risacca.js:1318-1322`: una frase sua sulla rapina); Repressione +8 ÷ +20 secondo il livello; i testimoni ricordano **facce e vestiti** (`n.mem` con `look`): chi è stato visto, per tre giorni, viene riconosciuto ai controlli |
+| **A metà** | un membro **ferito** (va da Garza in ambulatorio; se Garza non c'è, perde giorni); la **borsa caduta** per strada nella fuga (resta come oggetto da raccogliere, e qualcuno può trovarla prima: `commissioni.js:175`, il raccogli-da-terra); bottino ridotto |
+| **Fallita** | **arresti** (`jailMember`); in cella qualcuno **parla**: dice solo quello che sa, e sa solo il suo pezzo. Qui entra la **compartimentazione**: un abitante della crew che non conosce le basi non le può rivelare; un membro che le conosce sì, se la sua lealtà è bassa (il timer `risTalk`, `risacca.js:854`). **Lo scontro a fuoco** segue le regole del manifesto: se l'arma vera si vede, i Grigi salgono di livello e sparano (`scontri.js:9`: «con un'arma da fuoco in mano la regola salta»); con l'arma finta, se la scoprono, è una rissa e un arresto. **Un civile ferito** fa crollare il morale del quartiere (−10) e cambia l'opinione della gente verso la banda: la stima cala in tutto il quartiere (`Po.opinionOf` di chi abita lì), gli Orecchi hanno più gente disposta a parlare, e il Coro ne parla male per giorni |
+| **Dopo** (in tutti i casi) | **perquisizioni** nel quartiere (`R.raid` con `why: 'rapina'`); il Banco **raddoppia le guardie** sul portavalori per una settimana e il vigilante allo sportello; **un parente del cassiere** (o del cliente eroe, se è stato ferito) ti odia: un rancore vero (`n.op.grudge`) e, se ha coraggio, un'`agguato` contro chi l'ha fatto, giocatore compreso, ora che le trame possono prendere di mira il giocatore (§1, riga 32) |
+
+#### Il giocatore
+
+- **La può ordinare**: «fate una rapina all'Emporio», o come mandato «soldi» lasciando scegliere il metodo.
+- **La può vietare**: vincoli «niente rapine», «niente armi vere» (allora solo armi finte, o niente), «niente sangue»
+  (si interrompe al primo segno di scontro). I vincoli restano sul mandato e si cambiano dal Taccuino.
+- **Ci può entrare** con un ruolo: chi entra (tocca a lui il gesto di `attivita.js`), la porta, il palo, l'autista
+  (guida lui, gli altri dietro).
+- **Può solo sentirla**: gli aggiornamenti nel thread della banda (sotto), la radio («Radio Porto: rapina con la pistola
+  all'Emporio. I Grigi indagano.», come `cassaforti.js:169`), il Bollettino, il Garante alle 20.
+- Nel Taccuino la rapina è una scheda dei **Mandati** con le fasi, la crew, il bottino e le conseguenze.
+
+#### Gli aggiornamenti in chat (thread della banda, con la regola del ritmo del §2.5)
+
+sopralluogo fatto · «armi ci sono» / «armi niente» · «siamo in posizione» · «dentro» · «allarme» · «fuori» · «c'è un
+blocco sulla litoranea» · «cambiamo macchina» · «siamo al coperto» · «spartito» · e, se va male, «presi» / «X è ferito» /
+«X è sparito con la borsa».
+
+#### Due rapine, passo per passo
+
+**A. L'Emporio riesce, e la Famiglia vuole la sua parte.** Mandato «soldi» a Candela con il vincolo «fai come vuoi».
+Candela ha la Vespa venduta (§0.8, esempio 1): metodo lento. La revisione delle 22 gli fa scegliere la rapina (coraggio .7,
+odio .8, l'Emporio è «roba del regime»).
+> ↩ *mer 22:00* **Candela**: L'officina non rende. Ho un'idea per la cassa. Non ti piacerà. *(proposta: non parte senza il sì)*
+> **Nino**: Dimmi.
+> **Candela**: L'Emporio. Domani a mezzogiorno, quando c'è la fila per il pane imperiale. Divisa alla porta, Cono guida, io entro. *(piano: 3 ruoli, ognuno passa la sua verifica)*
+> **Nino**: Armi?
+> **Candela**: Il ferro me lo dà il Barone. Vuole il quaranta. Dice che l'Emporio sta nella sua zona. Pure l'Emporio, ha una zona. *(armi della Famiglia: `quotaFam`)*
+> *[Va bene] [Niente armi vere] [Lascia stare]* → **Va bene**
+> ↩ *gio 10:40* **Divisa**: Fatto il giro. Un vigilante, sessant'anni, mangia un panino. Due Grigi alla fontana, se ne vanno alle undici e mezza.
+> ↩ *gio 11:55* **Cono**: In posizione. La macchina è del cognato di Tore, ma Tore non lo sa. *(mezzo rubato)*
+> ↩ *gio 12:01* **Candela**: Dentro.
+> ↩ *gio 12:02* **Divisa**: Allarme.
+> ↩ *gio 12:03* **Candela**: Fuori. La cassiera mi ha detto «non mi faccia del male, oggi è il mio compleanno». Le ho detto auguri. Non so perché.
+> ↩ *gio 12:09* **Cono**: Blocco sulla litoranea. Taglio dal Vico.
+> ↩ *gio 12:20* **Divisa**: Al coperto. Cantina. La macchina l'abbiamo lasciata al cantiere, con le chiavi. Che se la prendano.
+> ⚙ Rapina all'Emporio Imperiale: 212.000 lire. Repressione +14. La Famiglia vuole 85.000 entro le 18.
+> ↩ *gio 15:30* **Candela**: È passato il nipote del Barone. Ha chiesto se mi piace la mia officina così com'è. Gli ho detto di sì. Paghiamo, Nino.
+> *[Paga la Famiglia] [Non paghiamo]* → **Paga**: cassa +127.000.
+> ⚙ *gio 20:00* Il Garante: «Pochi vigliacchi hanno rubato il pane ai cittadini onesti. L'ordine è una carezza, ma anche una mano.» I testimoni ricordano «uno alto con la tuta da meccanico».
+> *(due giorni dopo, a un controllo, il Grigio guarda le mani di Candela: sono nere di grasso. Fermo. Il riconoscimento dalla memoria dei testimoni c'è davvero.)*
+
+**B. La tabaccheria con la banana.** Una trama di abitanti, decisa da sola: Pino (borsaiolo, debito con lo Squalo che
+scade giovedì, coraggio .9, testa .2) e Gigetto. Niente armi: la Famiglia non presta a uno con i debiti.
+> *(per strada, il giocatore li sente passando)* **Pino**: Con la banana nel sacchetto non si vede niente. Sembra una pistola. **Gigetto**: Sembra una banana in un sacchetto. **Pino**: Da fuori. *(la trama nasce: kind `rapina`, livello 1, arma `finta`)*
+> *(se il giocatore è un loro contatto, un messaggio in chat)* **Pino**: Domani alle undici la tabaccheria del Vico. Ti serve qualcosa? Sigarette, intendo.
+> *(il giocatore può non fare niente, avvisare il tabaccaio, o chiedergli «vengo anch'io»: `partecipa`)*
+> **La scena** (il giocatore è a 25 m, la vede): **Pino**: Fermi tutti! Questa è una rapina! **Il tabaccaio**: Quella è una banana. **Pino**: È una pistola a forma di banana. **Una vecchia in fila** *(cliente eroe, coraggio .85)* gli dà l'ombrello sulla testa. **Gigetto**, alla porta: Pino, i Grigi! …No, è il postino. …No, sono i Grigi. *(arma finta scoperta: niente scontro a fuoco, rissa e fuga)*
+> *(fuga: Pino scivola sul gradino, Gigetto scappa)* ⚙ Pino Melis fermato alla tabaccheria del Vico. *(arresto)*
+> *(in cella, Pino parla: sa solo il nome di Gigetto, nient'altro. Compartimentazione: la Risacca non c'entra)*
+> *(il giorno dopo, fra i frammenti di strada)* «Hai sentito? Hanno fatto una rapina con una banana.» «E com'è andata?» «La banana sta bene.»
+> ⚙ Nel diario della vecchia: «ha fermato un rapinatore con l'ombrello». Il quartiere ha una nuova eroina, e la Repressione sale lo stesso di 3: una rapina è una rapina.
+
+#### Cosa serve al motore per la rapina
+
+| Pezzo | Dove | Misura |
+|---|---|---|
+| la trama `rapina` (livelli, ruoli, sopralluogo, colpo, fuga, spartizione) | `trame.js` (kind nuovo accanto a `scasso`, stesso schema) o `parola.js` se trame.js resta com'è | 1½ giorni |
+| il colpo fatto da un NPC (cassa, cassaforte sotto minaccia, portavalori): stessi effetti di `attivita.js:94` e `scontri.js:473+`, ma con chi agisce come argomento | `attivita.js`, `cassaforti.js`, `scontri.js` (una funzione per ognuno che accetta un `n` al posto del giocatore) | 1 giorno |
+| la scena `rapina` vicino al giocatore (grida, cassiere, cliente eroe, allarme) | interprete di `eventi.js` + una scena nuova | ½ giorno |
+| arma finta (`finta`, la probabilità di essere scoperta), banana compresa | `oggetti.js` o `azioni.js` ITEMS | ¼ |
+| fuga: posto di blocco legato al colpo, cambio d'auto, nascondersi coi senzatetto | `ordine.js` (un blocco chiamato da fuori), `parola.js` | ½ |
+| conseguenze: titolo del Bollettino e frase del Garante, riconoscimento dai testimoni ai controlli, borsa caduta, chi scappa col bottino, parente che odia, guardie raddoppiate, soldi segnati e ripuliti | `risacca.js:1318` (`onHour`), `ordine.js` (controlli), `soldi.js` (guardie), `fazioni.js` (WASH per la crew), `parola.js` | 1 giorno |
+| il metodo «rapina» nel mandato soldi, la proposta in chat, i vincoli «niente armi vere» / «niente rapine» | `parola.js` | ¼ |
+
+**Totale della rapina: circa 5 giorni.**
 
 ---
 
@@ -1017,8 +1149,9 @@ senza flag il codice fa esattamente quello che fa oggi.
 | 7 | Le parole da sole: `Parola.annuncia`, `fa:` nelle scene (un passo nuovo nell'interprete di eventi.js: `fa`), le righe della tabella del §2.6, `parola_lint.js` | `eventi.js` (interprete dei passi + 6 scene), `azioni.js:736-748`, `:953-957`, `popolo.js:1867-1891`, `protagonista.js:176-200`, `creativita.js:183`, `matti.js` (marcature), `game.js:1237`, `mente.js:158`, `strumenti/parola_lint.js` | 1 giorno |
 | 8 | Quello che si vede: scheda «Parola data» nel Taccuino, etichette ⟳/◎/✓/✗, bottoni Prometto/Paga, pallino dei messaggi; le banche di battute nel tono (circa 220 righe: 5 esiti × 14 motivi × 3 voci, più aggiornamenti); i 25 casi verdi | `parola_ui.js`; `main.js:759` (una scheda in più nel `nav`, o un gancio `PV().bookTabs` se chi tiene main.js preferisce); `risacca_ui.js:453` (etichetta) | 1½ giorni |
 | 9 | **I mandati** (§0): `MANDATI` (modelli, metodi, pesi), `capisciMandato`, il ciclo orario e la revisione serale, il progresso dallo stato, `vendi_mezzo`, la trappola per l'Orecchio, la divisione nella banda con le obiezioni e il referente, kind `mandato`, scheda «Mandati» del Taccuino, casi 26-31 | `parola.js`, `parola_ui.js`, `server.js` + `api/_mente.js`, `trame.js:58` e `imprese.js:65` (un argomento per avviarli da fuori), `risacca.js:1334` (una riga) | 3 giorni |
+| 10 | **La rapina** (§0.10): trama `rapina` a 4 livelli, colpo fatto da un NPC sopra `attivita.js`, `cassaforti.js` e `scontri.js`, scena vicino al giocatore, arma finta, fuga coi posti di blocco, spartizione, conseguenze (Famiglia, Bollettino, Garante, testimoni, parente, guardie) | `trame.js` (o `parola.js`), `attivita.js`, `cassaforti.js`, `scontri.js`, `eventi.js`, `ordine.js`, `soldi.js`, `fazioni.js`, `risacca.js:1318` | 5 giorni |
 
-**Totale: circa 13 giorni di lavoro**, di cui 2 per scrivere le battute (anche quelle dei mandati). Codice nuovo stimato: `parola.js` 900-1.100
+**Totale: circa 18 giorni di lavoro** (13 senza la rapina), di cui 2 per scrivere le battute (anche quelle dei mandati). Codice nuovo stimato: `parola.js` 900-1.100
 righe, `parola_ui.js` 350, ganci nei file che esistono circa 120 righe, prompt 90, prove 450. **L'ordine conta**: dopo i
 passi 1-3 il problema principale è già risolto per chi gioca senza chiave; dopo il 5 anche per chi gioca con la Mente.
 Dal 6 in poi è roba nuova; il 9 (i mandati) è il centro della richiesta di Andrea e si appoggia su tutti i passi prima, quindi va per ultimo ma va fatto: senza il 9 si danno ordini, non mandati.
@@ -1043,4 +1176,5 @@ Dal 6 in poi è roba nuova; il 9 (i mandati) è il centro della richiesta di And
    testa.)
 4. I verbi violenti di azioni.js (uccidi, sbarazzati) restano **fuori dalla chat**? (Proposta: sì.)
 5. I mandati agli abitanti (non membri): solo per gli obiettivi che sono anche loro interessi (§0.4), o per tutti? E la scadenza di default di 3 giorni va bene?
-6. Reclutare: la soglia del §2.2 (fiducia .3, una promessa mantenuta, due giorni) va bene, o la vuoi ancora più lenta?
+6. La rapina: le crew di abitanti la possono decidere da sole (una a settimana al massimo), e un membro della banda solo come proposta al giocatore. Va bene così? E la banana resta?
+7. Reclutare: la soglia del §2.2 (fiducia .3, una promessa mantenuta, due giorni) va bene, o la vuoi ancora più lenta?
