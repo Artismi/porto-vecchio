@@ -246,3 +246,33 @@ Pose nuove, oggetti in mano, bambini e sagome sono lavoro di chi ha i modelli: v
 7. **La tribù diventa «la Comune»**: i fuggiti del '79 all'Isola Grande del Sud, una setta armata di assemblee, capre e paranoia («Assemblea! Votiamo! …Abbiamo votato: addosso!»). Va bene?
 8. **Lo Squalo è Sandro Neri.** La Bibbia lo chiama «ex Squalo», il codice «lo Squalo»: ho seguito il codice.
 9. **Radio Scirocco**: la voce è Vinile (nella Bibbia) o il Dottor Vento (nuovo)? Il pezzo di `citta.md` usa Vinile, la scheda dei ricorrenti il Dottor Vento.
+
+---
+
+## 7. La partita vera (headless, 8 novembre) — quello che si vede
+
+Catture in `_immagini/commedia/`, registro delle frasi in `_immagini/commedia/lines_log.txt`. 396 secondi di gioco in Piazza San Rocco, senza forzare niente.
+
+**Il problema numero uno è il rumore, non le battute.**
+- **54 frasi al minuto** entro 26 m (una ogni 1,1 s); di solito 2-6 fumetti vivi insieme, fino a 11. 85 frasi su 356 restano meno del tempo per leggerle.
+- **Le voci a cascata**: dopo una scritta tutta la piazza ripete lo stesso fumetto blu. «Hai sentito? Ada ha dipinto un muro!» 27 volte, «…Elisa…» 23. Di notte circa 25 in 40 s. Bug: «Tore ha picchiato Tore!» (`R_14_mendicante_0.jpg`).
+- **Le frasi del lavoro a stampo** (`popolo.js:1885`): «Il padrone ci mette i piedi in testa.» 17 volte; «Al lavoro (commessa) oggi non finiva più.»; «Domani attacco alle 0.» detto da Suor Agata.
+- **La grammatica degli oggetti**: «Mi serve sigarette», «Ti interessa bottiglia di vino?», «Mi serve qualcosa da mangiare, sai chi ce l'ha?» (16 volte).
+- **Le scene affogano.** Le scene partono ogni ~80 s, ma a 17-38 m e quasi sempre fuori quadro; solo 7 battute di scena su 356 sono arrivate al giocatore. Gli attori interrompono la propria scena con le voci: Lina, a metà della lite di coppia: «Non chiamarmi amore!» → «Hai sentito? Ada ha dipinto un muro!» (`R_14_lite_coppia_0.jpg`). La battuta finale arriva senza la sua premessa (`R_14_scommessa_0.jpg`).
+- **I matti perdono la voce**: il Generale chiede «Hai sentito il disco nuovo al juke-box?».
+- **La notte è uguale al giorno**: alle 23 «Stamattina alla punta abboccavano».
+
+**Il giocatore nuovo**
+- All'inizio quattro avvisi insieme (`D_02_inizio.jpg`); per il primo minuto, fermo, nessun fumetto in quadro (`N_primo_minuto_fermo.jpg`).
+- L'obiettivo «Trova Lupo» cambia posto cinque volte (Biblioteca, Stazione, Condominio Aurora, Osteria…).
+- Su ogni persona il bottone rosso **«TIENI E Scippa X»** è la cosa più vistosa; in piazza tre comandi insieme («Ruba il gozzo di Mirella», `15_giro_2.jpg`).
+- La chat senza IA è onesta ma vuota («Non è il posto per certi discorsi.»), e i suggerimenti («Ti unisci alla Risacca?») presuppongono che tu sappia cos'è (`06_chat_risposta.jpg`). Il menu «Altre domande» si disegna sopra i comandi (`08_dialogo_classico.jpg`).
+- Il nome di chi parla (9 px grigio) finisce sotto le etichette «▸ Casa Porcu»; i fumetti al bordo si tagliano. Sul telefono il testo si legge, il nome no (`P_04_matto.jpg`).
+
+**Quindi, prima di aggiungere le 1.500 battute nuove** (sotto `?commedia`):
+1. **Il volume giù**: le chiacchiere di fondo diventano rare e sottovoce (fumetto piccolo e trasparente, o solo un «…»), una voce la ripete al massimo uno ogni tanto, mai uguale; la frase del lavoro a stampo sparisce.
+2. **Il palcoscenico**: chi recita una scena non dice altro; durante una scena vicina il resto tace; le scene partono **in quadro**, a 8-20 m, davanti alla camera; la premessa resta finché non arriva la battuta.
+3. **Il fumetto** (§2): durata secondo la lunghezza, massimo 3, nome leggibile sopra le etichette, mai tagliato al bordo.
+4. **Grammatica degli oggetti**: articoli giusti («delle sigarette», «una bottiglia di vino»).
+5. **La notte ha le sue frasi** e i matti tengono la loro voce.
+6. Il bottone «Scippa» meno vistoso finché non hai fatto un furto (da decidere con chi tiene l'interfaccia).
