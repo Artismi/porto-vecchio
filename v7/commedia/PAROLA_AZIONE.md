@@ -12,6 +12,270 @@ oggi è `scratchpad/parola/chat0.js` (copia del `chat.js` dell'audit, mappa nuov
 si sceglie dall'esito, mai prima. Ogni sì diventa una **promessa**: un oggetto che il giocatore vede, che il motore porta
 avanti e che, se va male, torna indietro come rapporto e come memoria.
 
+**Il centro del progetto sono i mandati** (§0). Andrea: «devo potergli dire anche cose molto generiche, tipo "serve fare
+soldi per la cassa comune e reclutare due nuovi compagni", e quel personaggio parte e a modo suo lo fa». Un verbo
+singolo («scrivi l'onda in piazza») è il caso piccolo. Il caso che conta è l'**obiettivo aperto**: il personaggio
+lo accetta o lo contratta, lo spezza da solo in un piano di più giorni fatto di azioni vere del motore, **scelte dal
+suo carattere**, e lo racconta mentre lo fa. Le sezioni 2-4 sono i mattoni (intento, verifica, promessa, rapporti); il
+§0 dice come si mettono insieme.
+
+---
+
+## 0. Il centro: i mandati (gli obiettivi aperti)
+
+### 0.1 Cos'è un mandato
+
+Un mandato è una promessa grande: «fai soldi per la cassa», «trovami due compagni», «scopri chi è l'Orecchio».
+Non dice **come**. Il come lo sceglie il personaggio, e per questo due personaggi diversi fanno due cose diverse con lo
+stesso ordine: l'onesto fa i turni in più o vende la Vespa, il lestofante mette su uno scasso con gli amici, quello che
+ha parlantina fa la colletta, il giocatore d'azzardo va alla bisca e magari perde tutto.
+
+```js
+// st.parola.mandati[]: in memoria, come le promesse (§2.4)
+{
+  id: 'm3',
+  chi: 'beppe' | 'banda',                  // un personaggio, o la banda intera (§0.6)
+  tipo: 'soldi',                           // uno dei modelli del §0.2
+  obiettivo: { misura: 'cassa', quanto: 100, base: 41 },   // cosa conta: 100.000 lire in più rispetto a 41 di partenza
+  vincoli: { pulito: false, entro: st.t + 3 * 1440, niente: ['picchia'], budget: 0 },     // dalla frase (§0.4)
+  metodo: { id: 'turni_e_vendita', etichetta: 'turni in più all\'officina e la Vespa', perche: ['onesto', 'ha un mestiere', 'ha una Vespa'] },
+  fasi: [                                   // il piano, scritto al momento dell'accettazione e rivisto ogni giorno
+    { i: 0, cosa: 'ripara', args: { ore: 4 }, quando: 'dopo il lavoro', stima: 24, stato: 'fatta', promessa: 'p40', reso: 26 },
+    { i: 1, cosa: 'vendi_mezzo', args: { mezzo: 'vespa' }, quando: 'domani mattina', stima: 60, stato: 'in_corso', promessa: 'p41' },
+    { i: 2, cosa: 'ripara', args: { ore: 4 }, quando: 'domani sera', stima: 24, stato: 'da_fare' } ],
+  progresso: { fatto: 26, su: 100 },        // calcolato dal motore (la cassa vera), non dichiarato
+  stato: 'accettato' | 'in_corso' | 'riuscito' | 'riuscito_in_parte' | 'fallito' | 'abbandonato' | 'annullato',
+  rapporti: [ { t, testo: 'Ventisei dalle Vespe di oggi. Domani vendo la mia.', k: 'parziale' } ],
+  conseguenze: [],                          // arresti, soldi persi, un Orecchio dentro… (§0.5)
+  thread: 'beppe' | 'banda', canale: 'chat' | 'banda'
+}
+```
+
+Le fasi sono **intenti** (§2.1) e ognuna, quando parte, passa dalla stessa verifica (§2.2) e diventa una promessa normale
+(§2.4) con `mandato: 'm3'`. Il mandato non esegue niente da solo: decide **cosa fare dopo** e conta il progresso
+**dallo stato vero** (la cassa, `R.members`, le scorte, la memoria), non da quello che il personaggio dichiara.
+
+### 0.2 I modelli di mandato (cosa si può chiedere)
+
+Ogni modello ha una misura che il motore sa contare e una lista di **metodi**. Ogni metodo è una sequenza di fasi fatte di
+verbi del §3, di progetti di Popolo (`PROJ`, `popolo.js:1311`, passi `go`/`save`/`meet`, partono con `startProject`,
+`:1398`), di trame (`trame.js`), di imprese (`imprese.js`) e di commissioni (`commissioni.js`).
+
+| Modello | Si riconosce da | Misura (dal motore) | Metodi (fasi) | Durata tipica in giorni di gioco* |
+|---|---|---|---|---|
+| **soldi** | «soldi», «la cassa», «ci servono lire», «fai cassa» | `st.ris.cassa` − base | **turni** (`lavora` col mestiere, `ripara`, `pesca`); **vendi_roba** (vende la sua roba in più al mercato, `Scambi.market`; o il mezzo, [NUOVO] `vendi_mezzo` sopra `ownVeh`, `popolo.js:1154`); **colletta** (`colletta` della Risacca o `Imprese` `colletta`, `imprese.js:65`); **mercato nero** (`mercato`, `contrabbando`); **scasso** (`Trame.proposeScasso` con lui capo, `trame.js:58`, ruoli palo/porta, `:71`; o `scasso` della Risacca); **bisca** (`bisca`, guadagno da −20 a +60 l'ora, `risacca.js:1118-1120`); **prestito** (lo Squalo: soldi subito e un debito vero in `P.debt`); **ricatto** (`fotografa` + `ricatta`) | 1-3 |
+| **recluta** | «reclutare», «trovami N compagni», «gente nuova» | membri nuovi entrati dopo il mandato (`join` con `how` = mandato) | **amici** (i `P.friends` con odio per la Tutela alto: `recluta`); **osteria** (sere al bar o all'osteria, chiacchiere con chi è arrabbiato: `Azioni.social` + `recluta`); **famiglie dei fermati** (chi ha un parente alla Rocca: `PROJ.notizie`, `popolo.js:867`); **piazza** (`volantina` + `diffondi_voce`, poi chi si avvicina); **lavoro** (i colleghi del suo mestiere) | 2-5 |
+| **procura** | «procura», «trovami», «ci servono» + una cosa (vernice, attrezzi, armi, radio, medicine, documenti) | scorte (`totalRes`) | **compra** (con la cassa; se la cassa non basta, diventa un mini-mandato soldi); **ruba** (`ruba`, `recupera`, `rovista`); **ricettatore** (un contatto col `P.giro` ricettatore o trafficante, `popolo.js:383`); **produci** (stamperia, officina, falsari: `produci`); **armi** solo dalla Famiglia (`game.js:1261`) o dall'armeria, mai per caso | 1-2 |
+| **orecchio** | «scopri chi è l'Orecchio / chi parla / chi ci vende» | trovato quando dice il nome di chi ha davvero `P.giro === 'orecchio'` o `CARDS[id].informer` | **guarda la Zia** (`sorveglia` del Bar Sirena e annota chi le parla); **pedina** i sospetti (§3); **trappola** (`diffondi_voce` falsa a un solo sospetto, poi si guarda se arriva una perquisizione o un controllo lì: usa il sistema delle perquisizioni, `risacca.js:1330`); **chiacchiere** (chi è chiacchierone chiede in giro: `racconta` dalla memoria degli altri) | 2-4 |
+| **proteggi** | «proteggi», «stai vicino a», «che non gli succeda niente» + persona o base | nessun danno alla persona/base fino alla scadenza | **scorta** (pedina a 3 m, `pedina{keep:3}`); **guardia** (`proteggi` della base); **avvisa** (veglia sui Grigi vicino a lei); **nascondila** (la porta in base o in cripta: `nasconditi` per lei, solo se si fida) | fino alla scadenza (1-3) |
+| **morale** | «tira su il quartiere», «la gente deve sentirci», «fatti sentire» | `st.ris.morale` − base, e `onde` | **muri** (`scrivi_onda`, `dipingi`); **carta** (`produci` + `volantina`); **radio** (`trasmetti`); **feste** (`Imprese` `cena` per il vicinato, `imprese.js:86`); **aiuto** (colletta per una famiglia nei guai, che alza la stima più del morale) | 1-3 |
+| **base** | «trovaci un posto», «ci serve una base» | una base viva in più | `rivela_spazio` (chi lo sa), `rovista` per trovarne, `scassina` + `occupa`, o un cantiere (`costruisci`) | 1-4 |
+| **libera** | «tira fuori X» | X fuori dalla cella | `procura documenti` poi `libera`; o `ricatta` un Grigio | 1-2 |
+| **sapere** | «scopri cosa fa X», «dove va la Pardo la sera» | un rapporto con fatti veri dal `P.plan` e dagli incontri di X | `pedina`, `sorveglia`, chiedere ai pettegoli | 1-2 |
+
+\* Una giornata di gioco dura circa 20 minuti veri (`MIN_PER_SEC = 1.2`, `game.js:8`). Un mandato normale dura quindi da
+mezz'ora a un'ora e mezza di gioco vero: abbastanza per vederlo succedere, non così poco da sembrare un ordine. La
+scadenza di default è 3 giorni; il giocatore la cambia con la frase («entro venerdì») o nel Taccuino.
+
+### 0.3 Come il carattere sceglie il metodo
+
+Per ogni metodo, `Parola.metodi(st, n, tipo)` dà un punteggio. I numeri sono quelli che il motore ha già:
+
+```
+punteggio(metodo) = Σ pesi del carattere              (n.tr: legge, cor, avid, loq; per i membri n.ris.ideo)
+                  + abilità                            (mestiere CARDS[id].mestiere / P.job; gusti CARDS[id].likes;
+                                                         interessi P.ints: 'carte', 'giochi' per la bisca, 'motori' per ripara)
+                  + mezzi                              (ha la Vespa? attrezzi? soldi suoi? un telefono?)
+                  + contatti                           (P.friends; chi del suo P.giro; chi gli deve un favore: P.debiti)
+                  + volontà dei verbi del metodo       (will() di ogni fase, §2.2, con la Repressione di adesso)
+                  − rischio × (1 − coraggio)
+                  − tutto quello che i vincoli vietano (§0.4: il metodo sparisce)
+                  + un po' di caso (±.1), così la stessa persona non fa sempre la stessa cosa
+```
+
+Le regole dure: un metodo con un verbo nei `never` della scheda non si sceglie mai (Garza non ruba, `risacca.js:194`;
+Lupo non fa contrabbando). Chi ha `legge > .6` non sceglie metodi illegali. Uno scasso serve che lui **abbia** due complici
+che lo seguirebbero (lo stesso calcolo di `trame.js:229`). La bisca si sceglie solo se ha il vizio (interesse `carte` o
+`giochi`, oppure `avid > .7`).
+
+| Esempio (soldi) | Carattere | Metodo che vince |
+|---|---|---|
+| Candela (Dorino, meccanico) | legge medio, mestiere officina 9 l'ora, ripara a 12, ha la Vespa | **turni** all'officina; se in 2 giorni non basta, **vende la Vespa** |
+| Betamax (Gigi) | avido, legge basso, videoteca, debiti | **mercato nero**; se c'è merce poca, **contrabbando** di notte |
+| Vinile (Rita) | parlantina alta, odio per la Tutela alto | **colletta** alla Luna e sulla passeggiata |
+| Un abitante col `giro` ladro | legge basso, coraggio alto, due amici dello stesso giro | **scasso** con la trama, lui capo |
+| Un abitante con l'interesse `carte`, avido | | **bisca**: può raddoppiare o tornare senza niente |
+| Garza (Bonaria, medico) | legge alto, never ruba | **turni** all'ambulatorio; mai altro |
+
+**Nessuno fa quello che non sa fare.** Un abitante senza mestiere e senza amici, con il mandato «soldi», ha un solo
+metodo: vendere qualcosa. Se non ha niente da vendere, risponde con l'esito `contratta{tipo:'mezzi'}` («Con cosa, con la
+faccia? Dammi qualcosa da vendere.»), oppure chiede che sia un altro a farlo.
+
+### 0.4 Dalla frase al mandato
+
+La frase di Andrea, «serve fare soldi per la cassa comune e reclutare due nuovi compagni», fa **due mandati** (soldi,
+recluta N=2) dati alla stessa persona. Il personaggio può prenderli tutti e due, uno solo («Soldi sì. Reclutare no, io
+non so parlare con la gente»), o prenderli in ordine («Prima i soldi, poi la gente»).
+
+- **Senza IA**: `Parola.capisciMandato(testo)` riconosce il modello dalle parole della tabella 0.2, il numero (cifre o
+  «due», «un paio», «qualche»: 3), la scadenza («entro venerdì», «per domani», «in settimana») e i **vincoli**: «senza
+  casini», «pulito», «niente furti» → `pulito: true` (via i metodi illegali); «niente botte» → via `picchia`; «non
+  spendere» → `budget: 0`; «fai come vuoi» → nessun vincolo.
+- **Con l'IA**: il kind `mandato` (§4.4) restituisce i mandati, i vincoli, il metodo e le fasi. **Il motore controlla
+  tutto**:
+  - il metodo deve essere uno di quelli che il carattere permette (§0.3); altrimenti vale quello del modello senza IA;
+  - ogni fase deve usare un verbo del §3 o un progetto noto, e passare la verifica a secco quando viene il suo momento;
+  - una fase impossibile (un verbo che non c'è, un luogo inventato) si toglie, e il piano si ricompone col modello;
+  - le stime (quanto rende, quanto dura) le rifà il motore: l'IA non può dire «in un'ora faccio centomila».
+- **L'esito del mandato** passa dalla stessa logica del §2.2, con una volontà di mandato: la media delle volontà delle
+  fasi del metodo scelto, più la fiducia, più la lealtà per i membri. Accetta, contratta (vuole tempo, soldi per
+  cominciare, un aiuto, meno vincoli: «Pulito? Allora ci metto una settimana.»), rifiuta (con il motivo), chiede («Quanti
+  soldi? Per comprare una Vespa o per farla saltare?»).
+- **Chi può prendere un mandato**: i membri, sempre. Gli abitanti solo per i modelli che sono anche loro interessi
+  (soldi per una colletta di quartiere, morale, proteggi un amico comune) e con fiducia > .4 o un favore da ricambiare.
+  Per gli abitanti il mandato diventa un **progetto di Popolo** (`startProject` con un `def` costruito dalle fasi), così
+  entra nella loro giornata come gli altri progetti e si interrompe, si ripete o fallisce allo stesso modo
+  (`popolo.js:1403-1423`).
+
+### 0.5 Come va avanti, e come va storto
+
+**Il ciclo**. Ogni ora di gioco, per ogni mandato `in_corso`:
+1. se il personaggio è libero (nessun compito, non al lavoro, non dorme: `P.plan`), parte la fase dopo; altrimenti si
+   aspetta;
+2. si ricalcola il progresso **dallo stato**;
+3. ogni sera alle 22 il personaggio **rivede il piano**: se il metodo rende meno della stima (meno della metà), ne prova un
+   altro dalla lista, e lo dice («Le Vespe non bastano. Domani vendo la mia.»); se ha rischiato grosso e gli è andata male,
+   cambia per prudenza o, se ha coraggio e rabbia, rilancia;
+4. il mandato finisce quando la misura arriva all'obiettivo (`riuscito`), alla scadenza (`riuscito_in_parte` se è a metà
+   o più, sennò `fallito`), o quando il personaggio non ha più metodi (`abbandonato`, con il motivo).
+
+**I rapporti** usano il ritmo del §2.5, più quattro tipi propri:
+
+| Tipo | Quando | Esempio |
+|---|---|---|
+| `piano` | all'accettazione | «Faccio così: due sere all'officina, e se non basta vendo la Vespa.» |
+| `parziale` | ogni fase finita con un risultato | «Ventisei dalle Vespe di oggi.» · «Ho trovato uno, Tonino del porto. Ci sta pensando.» |
+| `cambio` | quando cambia metodo | «L'officina non rende. Passo al piano B.» |
+| `finale` | alla fine | riepilogo con i numeri del motore: «Cassa: +104.000. Due notti all'officina, la Vespa a Nico per 70. Adesso vado a piedi, ricordatelo.» |
+
+**Le conseguenze** sono quelle vere del motore, non scritte apposta:
+
+| Cosa succede | Da dove viene | Cosa resta |
+|---|---|---|
+| lo arrestano durante una fase | `jailMember` (`risacca.js:844`), una trama scoperta | mandato sospeso; il giocatore può `libera`; la fase è `fallita{pericolo}` |
+| perde i soldi alla bisca | `WORK.bisca`, guadagno negativo | `progresso` scende sotto zero: «Ho perso diciotto. Lo so. Lo so.» |
+| vende la Vespa | [NUOVO] `vendi_mezzo` | la Vespa cambia padrone davvero; lui va a piedi; la volontà per i verbi «in Vespa» scende |
+| prende un prestito dallo Squalo | `P.debt` (`PROJ.debito`, `popolo.js:1320`) | il giovedì all'alba arriva lo Squalo anche per lui (`game.js:8`) |
+| recluta un Orecchio | `join` di chi ha `P.giro === 'orecchio'` | chi è prudente pedina un giorno prima di reclutare e se ne accorge; chi ha fretta no: Repressione +, esposizione delle basi + (la stessa regola di `DO.recruit`, `risacca.js:656`), e lo scopri dalle perquisizioni |
+| la colletta fa arrabbiare i Grigi | `riskEvent('colletta')` | Repressione +, un controllo |
+| ci riesce | | fiducia e lealtà come in §2.5, più una voce che gira nel quartiere (Coro): «Dorino s'è venduto la Vespa per la Risacca» |
+
+**I risultati parziali contano.** Un mandato chiuso a metà dà il riepilogo di quello che c'è, senza fingere: «Sessanta su
+cento. Il resto è nella Vespa che non ho più.».
+
+### 0.6 Un mandato a tutta la banda
+
+«Ragazzi, servono soldi per la cassa e due compagni nuovi. Entro venerdì.» nella chat della banda (§2.7):
+
+1. **Si divide.** Il motore calcola per ogni membro il punteggio del metodo migliore per ogni mandato, e la **parte** che
+   può fare entro la scadenza (le stime del §0.2). I soldi si spezzano in quote; il reclutamento in persone.
+2. **Si offrono.** Ognuno dice cosa prende, nell'ordine dei punteggi: prima chi è più adatto e più volenteroso. Chi è
+   stanco, in cella o ha già un mandato dice di no o non risponde (è vero).
+3. **Litigano, quando c'è da litigare.** Il motore cerca i conflitti reali:
+   - **stesso contatto**: due vogliono reclutare lo stesso amico, o vendere allo stesso ricettatore;
+   - **metodo che mette in pericolo gli altri**: uno sceglie uno scasso, e chi ha la linea Prudenza o la paura alta
+     obietta, perché lo scasso alza la Repressione anche per lui;
+   - **troppi sullo stesso mestiere**: due alla bisca, nessuno al lavoro.
+   Chi obietta lo dice una volta. Se chi ha scelto ha coraggio alto e lealtà più bassa di chi obietta, cambia metodo
+   («Va be', niente scasso. Contrabbando.»); se ha coraggio alto e lealtà più alta, insiste, e il motore lascia fare.
+4. **Il referente.** Il membro con lealtà e parlantina più alte scrive il riepilogo della divisione («Allora: Candela e
+   Betamax i soldi, Vinile e Cono la gente. Io controllo che nessuno faccia cazzate.»). Diventa lui quello che manda
+   i rapporti di tutta la banda, mentre ognuno manda i suoi parziali.
+5. **Un solo mandato, tanti pezzi.** Il mandato ha `chi: 'banda'` e un `sotto[]` per membro; il Taccuino mostra la barra
+   comune e le barre di ognuno.
+
+### 0.7 Cosa vede il giocatore: il Taccuino, scheda «Mandati»
+
+Accanto a «Parola data» (§2.8) c'è la scheda **«Mandati»**, un riquadro per ogni mandato:
+- **titolo e chi**: «Soldi per la cassa · Candela · entro giovedì sera»;
+- **a modo suo**: il metodo in una riga, con il perché («turni in più all'officina e la Vespa · è onesto, ha un
+  mestiere, ha una Vespa»);
+- **la barra**: «62 su 100.000», calcolata dalla cassa vera; per la banda, la barra comune e quelle di ognuno;
+- **la storia**: i rapporti in ordine, con l'ora («mar 21:40 · Ventisei dalle Vespe di oggi.»);
+- **le conseguenze**, in rosso quando ci sono («Vespa venduta», «Betamax in cella», «Repressione +6»);
+- tre bottoni: **Vincoli** (pulito / niente botte / non spendere), **Più tempo**, **Lascia stare** (annullato, non
+  rotto: nessuna perdita di fiducia se lo fai prima che cominci una fase).
+
+Sopra il personaggio, l'etichetta del §2.8 porta il mandato: «≋ Candela · ⟳ soldi 62/100».
+
+### 0.8 Sei mandati, passo per passo
+
+Nel tono di TONO.md. A destra, in corsivo, cosa fa il motore.
+
+**1. Soldi, l'onesto (Candela).** Martedì 18:10.
+> **Nino**: Candela, servono soldi per la cassa. Un centinaio. Entro giovedì.
+> **Candela**: Cento? Io aggiusto Vespe, non stampo lire. *(contratta? no: volontà .31, accetta)* Due sere in officina. Se non basta, vendo la mia. Tanto il freno davanti non va dal '79.
+> ↩ *mar 23:50* **Candela**: Ventisei. Il figlio del farmacista ha piegato un cerchione, Dio lo benedica. *(fase `ripara` 4 ore, +26 nella cassa)*
+> ↩ *mer 22:00* **Candela**: Le Vespe non bastano. Domani vendo la mia. *(revisione serale: 51/100, metodo B)*
+> ↩ *gio 10:30* **Candela**: Venduta a Nico. Settanta. Ha contrattato come se fosse sua madre. *(`vendi_mezzo`: la Vespa ha un padrone nuovo)*
+> ⚙ *gio 10:31* Mandato riuscito: cassa +121.000. Candela adesso va a piedi.
+
+**2. Soldi, il lestofante (un abitante col giro ladro, Totò Fadda).** Gli dai il mandato perché ti deve un favore.
+> **Nino**: Totò, mi servono soldi. Per una causa.
+> **Totò**: Per una causa no. Per me sì, e la causa è quella. Lascia fare a me e non chiedere. *(metodo **scasso**: ha due amici del giro che ci stanno)*
+> ↩ *giorno dopo, 16:00* **Totò**: Sono passato davanti alla Ferramenta. Il padrone chiude alle sette e si fida della serranda. *(la ricognizione di `trame.js`)*
+> ↩ *02:40* **Totò**: Dentro. Pino fa il palo, ma guarda più le ragazze che la strada.
+> ↩ *03:20* **Totò**: Quaranta. Il resto è roba, la vendo al Magazzino. *(bottino nascosto in casa sua, poi venduto)*
+> ↩ *due giorni dopo* **Totò**: Pino ha parlato. Io sto alla Rocca. Tu non mi conosci. *(un complice tradisce: `trame.js` «tradire»; Totò arrestato; mandato `riuscito_in_parte`, 40/100, conseguenza: Totò in cella)*
+
+**3. Soldi, il giocatore (Betamax con l'interesse per le carte).**
+> **Nino**: Betamax, la cassa piange.
+> **Betamax**: Dammi venti e stanotte te li faccio diventare cento. Ho un metodo. *(contratta{soldi:20}, metodo **bisca**)*
+> *[Paga 20.000]*
+> ↩ *00:30* **Betamax**: Siamo a sessanta. Ho la mano calda, tesoro.
+> ↩ *02:10* **Betamax**: Siamo a quaranta.
+> ↩ *03:00* **Betamax**: Siamo a zero. Il metodo va rivisto. *(`WORK.bisca` negativo: −20 nella cassa, mandato `fallito`; nel Taccuino: «Betamax ha perso 20.000 alla bisca»)*
+
+**4. Reclutare due (Vinile, parlantina alta).**
+> **Nino**: Vinile, trovami due compagni. Gente seria.
+> **Vinile**: Seri non ne conosco. Arrabbiati sì, vanno bene lo stesso? *(accetta, metodo **osteria + famiglie dei fermati**)*
+> ↩ *mer 21:15* **Vinile**: Ho trovato uno, Tonino del porto. Gli hanno preso il fratello. Ci sta pensando. *(`recluta`: `ch` sotto la soglia, `bond` +.05)*
+> ↩ *gio 20:40* **Vinile**: Tonino ci sta. Porta anche il cugino, ma il cugino parla troppo. *(Tonino entra; il cugino ha `P.giro` orecchio)*
+> **Nino**: Il cugino aspetta.
+> **Vinile**: Troppo tardi, tesoro. L'ho già abbracciato. *(il mandato era senza «prudenza» e Vinile ha fretta: il cugino entra; Repressione +15, esposizione delle basi +.3)*
+> ↩ *sab 06:00* ⚙ Gli Orecchi hanno parlato: perquisizione alla Cantina fra un'ora. *(la conseguenza arriva dal sistema di sempre)*
+
+**5. Scoprire l'Orecchio (Divisa, prudente).**
+> **Nino**: Divisa, qualcuno ci vende. Trovalo.
+> **Divisa**: Tre giorni. E nessuno sa che lo sto cercando. Nemmeno tu, da adesso. *(accetta, metodo **guarda la Zia + trappola**)*
+> ↩ *mer* **Divisa**: Alla Zia parlano in quattro. Uno ha la giacca della Videoteca.
+> ↩ *gio* **Divisa**: Ho detto a uno solo che la radio sta nel Garage. Vediamo se domani i Grigi vanno al Garage. *(`diffondi_voce` falsa a un solo sospetto)*
+> ↩ *ven 11:00* **Divisa**: Al Garage sono arrivati alle nove. È Gigi. Betamax. Lo sapevo dalle scarpe: troppo pulite per uno che lavora. *(la perquisizione è arrivata lì: il segreto di Betamax, `risacca.js:197`, è vero; mandato `riuscito`)*
+
+**6. Il mandato a tutta la banda (soldi + due compagni).**
+> **Nino** *(banda)*: Ragazzi: soldi per la cassa e due compagni nuovi. Entro venerdì.
+> **Candela**: I soldi li faccio io. Officina.
+> **Betamax**: E io la mia parte stanotte al pontile.
+> **Divisa**: Il pontile no. Se ti prendono, fanno una retata e prendono anche la merce di Candela. *(obiezione: linea Prudenza, rischio .6)*
+> **Betamax**: Va be'. Vendo cassette sottobanco, che è uguale ma ci si siede. *(cambia metodo: coraggio .4, lealtà più bassa di Divisa)*
+> **Vinile**: La gente la trovo io. Cono mi porta in giro in Vespa.
+> **Cono**: Io? E chi me lo paga il carburante? …Va bene. Ma guido io.
+> ⚙ Divisa: Allora: Candela e Betamax i soldi, Vinile e Cono la gente. Io controllo che nessuno faccia cazzate. *(il referente; il Taccuino mostra una barra comune e quattro barre)*
+
+### 0.9 Cosa serve al motore
+
+| Pezzo | Dove | Stato |
+|---|---|---|
+| `st.parola.mandati`, il ciclo orario, la revisione delle 22, il progresso dallo stato | `parola.js` | [NUOVO] |
+| i modelli del §0.2 (circa 9) con i metodi, le stime e i pesi del carattere | `parola.js`, una tabella `MANDATI` | [NUOVO], circa 300 righe di dati |
+| `vendi_mezzo` (la Vespa cambia padrone; il compratore è chi ha soldi e nessun mezzo) | `parola.js` sopra `st.vehicles` e `ownVeh` | [NUOVO] |
+| trama guidata: `Trame.proposeScasso` con capo e bersaglio dati, invece che a caso | `trame.js:58` (un argomento in più) | [CAMBIA] piccolo |
+| colletta di quartiere avviata da fuori | `imprese.js:65` (`Imprese.avvia(kind, leader, arg)`) | [CAMBIA] piccolo |
+| per gli abitanti, il mandato come progetto (`def` costruito al volo) | `popolo.js:1398` (`startProject` accetta già un `def`) | esiste |
+| prudenza prima di reclutare (un giorno di `pedina` se il metodo lo prevede) | `parola.js` | [NUOVO] |
+| la trappola per l'Orecchio (voce falsa a uno, controllo delle perquisizioni) | `parola.js` + un campo `R.raid.why` in `risacca.js:1334` | [NUOVO] + [CAMBIA] di una riga |
+| scheda «Mandati» del Taccuino, barre, bottoni | `parola_ui.js` + `main.js:759` | [NUOVO] |
+
 ---
 
 ## 1. Inventario: dove un personaggio promette, annuncia o accetta
@@ -374,7 +638,7 @@ arrivano mentre la leggi. Decisione 2 per Andrea.
 
 ### 2.8 Cosa vede il giocatore
 
-- **Il Taccuino, scheda «Parola data»** (accanto a «Chi sa cosa», «Cosa hai fatto», «Diario», `main.js:759`):
+- **Il Taccuino, schede «Mandati» (§0.7) e «Parola data»** (accanto a «Chi sa cosa», «Cosa hai fatto», «Diario», `main.js:759`):
   - *Ti hanno promesso*: una riga per promessa attiva, col passo di adesso e il tempo che manca («Cono · l'onda in Piazza
     San Rocco · in cammino · 4 min»);
   - *Hai promesso tu*: con la scadenza in rosso quando manca meno di un'ora («A Teresa: la legna · entro domani sera»);
@@ -438,7 +702,7 @@ carattere. Decisione 4 per Andrea.
 ## 4. Il server: `dialogo` cambia, nasce `banda`
 
 Le stesse modifiche vanno in `server.js` e in `api/_mente.js`, che si rigenera con `strumenti_inverno/mente_vercel.py`.
-La chiave e la quota restano quelle della chat (`CANALI`, `server.js:106`: aggiungere `banda: 'chat'`).
+La chiave e la quota restano quelle della chat (`CANALI`, `server.js:106`: aggiungere `banda: 'chat'` e `mandato: 'chat'`).
 Il vecchio `dialogo` resta quando il client non manda `versione`, così le versioni vecchie del gioco continuano a
 funzionare.
 
@@ -561,6 +825,49 @@ le risposte per esito e l'eventuale contro-offerta. `applyReply` resta per il gi
 
 ---
 
+### 4.4 `kind: 'mandato'` (nuovo, il centro del §0)
+
+Si usa quando il testo (in chat o nella banda) contiene un obiettivo aperto. Il client lo capisce con
+`capisciMandato` (§0.4) oppure, se non è sicuro, lo chiede insieme al dialogo (un campo `mandato_possibile: true`).
+
+**Richiesta**: come `dialogo` (o come `banda`), più
+
+```json
+{
+  "kind": "mandato", "versione": "parola1",
+  "modelli": [ { "tipo": "soldi", "misura": "cassa", "metodi": [ { "id": "turni", "fasi": "lavora|ripara|pesca", "illegale": false },
+                                                                  { "id": "scasso", "fasi": "trama scasso", "illegale": true } ] } ],
+  "metodi_ammessi": { "beppe": ["turni", "vendi_roba", "colletta"] },   // già filtrati dal motore col carattere e i vincoli (§0.3)
+  "mezzi": { "beppe": "Vespa, attrezzi, mestiere officina 9/ora, amici: Nico, Tore" },
+  "text": "serve fare soldi per la cassa comune e reclutare due nuovi compagni"
+}
+```
+
+**Risposta**:
+
+```json
+{
+  "mandati": [
+    { "tipo": "soldi", "quanto": 100, "entro": "giovedì sera", "vincoli": { "pulito": false, "niente": [] },
+      "chi": "beppe",
+      "metodo": "turni",
+      "fasi": [ { "verbo": "ripara", "args": { "ore": 4 }, "quando": "stasera" },
+                { "verbo": "vendi_mezzo", "args": { "mezzo": "vespa" }, "quando": "giovedì mattina", "se": "progresso < 60" } ],
+      "battute": { "accetta": "…", "contratta": "…", "rifiuta": "…", "piano": "Faccio così: …" } },
+    { "tipo": "recluta", "quanto": 2, "chi": "beppe", "metodo": null,
+      "battute": { "rifiuta": "Reclutare no, io con la gente non ci so parlare." } }
+  ],
+  "divisione": null | [ { "chi": "beppe", "mandato": 0, "parte": 60 }, { "chi": "vinile", "mandato": 1, "parte": 2 } ],
+  "obiezioni": [ { "chi": "divisa", "contro": "betamax", "testo": "…" } ],
+  "domanda": null | "…"
+}
+```
+
+Regole aggiunte al prompt: «"metodo" deve essere uno di "metodi_ammessi" per quel personaggio; "fasi" usa solo i verbi
+della lista; non scrivere quanto rende una fase, lo calcola il motore; se un mandato non si può fare con i metodi ammessi,
+scrivi solo la battuta di rifiuto, col motivo». `max_tokens` 900. Il motore poi rifà le stime, toglie le fasi che non
+passano e completa il piano con il modello del §0.2.
+
 ## 5. Dodici scambi nel tono
 
 Le strutture sono varie, come chiede TONO.md (correzione 2). Fra parentesi l'esito del motore che sceglie la battuta.
@@ -634,7 +941,7 @@ allora!»** e va davvero all'Alimentari Wu (`go: place:wu`). Se Wu è chiuso, di
 
 ---
 
-## 6. Le prove: 25 richieste, senza IA e con l'IA finta
+## 6. Le prove: 25 richieste e 6 mandati, senza IA e con l'IA finta
 
 **Dove**: `src/test_parola.js`, sullo schema di `scratchpad/chat.js` (mappa nuova: `world_cittanuova.js`; gli stessi
 `require`, poi `Parola`). Si lancia con `node test_parola.js [seme]`, nessun browser. Due modalità:
@@ -677,6 +984,17 @@ i casi: in nessuno la battuta scelta può contenere le forme dell'impegno se l'e
 | 24 | banda | «Vinile, altre due ore di radio» (stanchezza .85) | R | contratta{dopo} | nessun compito adesso; dopo `Prometto`/«va bene domani»: promessa `attesa` con `quando.at` 08:00 che parte da sola |
 | 25 | — (parole da sole) | scena `eventi.js:583` forzata; reazione `chiama` con `intend` impedito (P.emer prio 3); `social offri` con 0 lire | — | «Vado da Wu» → va all'Alimentari Wu; «chiamo la Guardia» non esce se la telefonata non parte; «Offro io» non esce se ha 0 lire | e `parola_lint.js`: 0 stringhe che promettono senza `fa:`/`annuncia`/`bugia` |
 
+**I mandati** (sei casi in più, stessa preparazione, con 3 giorni di gioco simulati; senza IA e con l'IA finta):
+
+| # | Chi | Frase | Atteso |
+|---|---|---|---|
+| 26 | Candela | «servono soldi per la cassa, un centinaio, entro giovedì» | mandato `soldi`, metodo `turni` (non scasso); dopo 3 giorni la cassa è salita davvero e la barra del Taccuino = cassa − base; almeno 2 rapporti `parziale` e uno `finale` con gli stessi numeri |
+| 27 | Garza | «fai soldi, come vuoi» | metodo mai illegale (never ruba, legge alta), nemmeno se l'IA finta propone `scasso`: il motore lo scarta (`stats.guardia` +1) |
+| 28 | un abitante col giro ladro e due amici dello stesso giro | «mi servono soldi» | metodo `scasso` via trama, con capo lui; con `pulito` nella frase invece niente scasso |
+| 29 | Betamax con l'interesse carte | «la cassa piange» + 20.000 | metodo `bisca`; si forza il seme in cui perde: progresso negativo, mandato `fallito`, conseguenza scritta nel Taccuino |
+| 30 | Vinile | «trovami due compagni» | mandato `recluta`, N=2; si mette un `orecchio` fra i candidati: senza vincolo «prudenza» può entrare e la Repressione sale; con «stai attenta» c'è prima un giorno di `pedina` e l'Orecchio non entra |
+| 31 | banda | «soldi per la cassa e due compagni nuovi, entro venerdì» | due mandati divisi fra almeno 3 membri; un'obiezione solo se un metodo scelto ha rischio ≥ .6 e la linea è Prudenza; un riepilogo del referente; somma delle parti ≥ obiettivo |
+
 **Il registro**: per ogni caso, una riga come chat.js (`> frase / dice / esito / promessa / dopo N min`) più `✔`/`✗`.
 La prova esce con 1 se un caso fallisce. Tempo atteso: come chat.js (meno di 5 minuti con le ore simulate).
 
@@ -698,11 +1016,12 @@ senza flag il codice fa esattamente quello che fa oggi.
 | 6 | La chat della banda: thread `banda`, destinatari, ordine delle risposte, obiezioni, `piano` con ruoli, passo `sync`, palo che avvisa, tempo al rallentatore | `parola.js` (logica), `parola_ui.js` (finestra: riusa `#rs-chat` e `renderChat`), `risacca.js` `runTask` (+ caso `sync` e `shadow`, ~25 righe dietro il flag), bottone nel pannello `risacca_ui.js:373` | 2 giorni |
 | 7 | Le parole da sole: `Parola.annuncia`, `fa:` nelle scene (un passo nuovo nell'interprete di eventi.js: `fa`), le righe della tabella del §2.6, `parola_lint.js` | `eventi.js` (interprete dei passi + 6 scene), `azioni.js:736-748`, `:953-957`, `popolo.js:1867-1891`, `protagonista.js:176-200`, `creativita.js:183`, `matti.js` (marcature), `game.js:1237`, `mente.js:158`, `strumenti/parola_lint.js` | 1 giorno |
 | 8 | Quello che si vede: scheda «Parola data» nel Taccuino, etichette ⟳/◎/✓/✗, bottoni Prometto/Paga, pallino dei messaggi; le banche di battute nel tono (circa 220 righe: 5 esiti × 14 motivi × 3 voci, più aggiornamenti); i 25 casi verdi | `parola_ui.js`; `main.js:759` (una scheda in più nel `nav`, o un gancio `PV().bookTabs` se chi tiene main.js preferisce); `risacca_ui.js:453` (etichetta) | 1½ giorni |
+| 9 | **I mandati** (§0): `MANDATI` (modelli, metodi, pesi), `capisciMandato`, il ciclo orario e la revisione serale, il progresso dallo stato, `vendi_mezzo`, la trappola per l'Orecchio, la divisione nella banda con le obiezioni e il referente, kind `mandato`, scheda «Mandati» del Taccuino, casi 26-31 | `parola.js`, `parola_ui.js`, `server.js` + `api/_mente.js`, `trame.js:58` e `imprese.js:65` (un argomento per avviarli da fuori), `risacca.js:1334` (una riga) | 3 giorni |
 
-**Totale: circa 10 giorni di lavoro**, di cui 1½ per scrivere le battute. Codice nuovo stimato: `parola.js` 900-1.100
+**Totale: circa 13 giorni di lavoro**, di cui 2 per scrivere le battute (anche quelle dei mandati). Codice nuovo stimato: `parola.js` 900-1.100
 righe, `parola_ui.js` 350, ganci nei file che esistono circa 120 righe, prompt 90, prove 450. **L'ordine conta**: dopo i
 passi 1-3 il problema principale è già risolto per chi gioca senza chiave; dopo il 5 anche per chi gioca con la Mente.
-Dal 6 in poi è roba nuova.
+Dal 6 in poi è roba nuova; il 9 (i mandati) è il centro della richiesta di Andrea e si appoggia su tutti i passi prima, quindi va per ultimo ma va fatto: senza il 9 si danno ordini, non mandati.
 
 **I file di altre squadre (non si toccano)**:
 - `strada_dipinta.js` (distribuzione dei segni), **il posizionamento in `writing.js`**, `urbanistica2.js` e la mappa,
@@ -723,4 +1042,5 @@ Dal 6 in poi è roba nuova.
    alle intenzioni vere, e lo scopri dai fatti. (Proposta: sì, ma solo per loro, e mai più di una volta per partita a
    testa.)
 4. I verbi violenti di azioni.js (uccidi, sbarazzati) restano **fuori dalla chat**? (Proposta: sì.)
-5. Reclutare: la soglia del §2.2 (fiducia .3, una promessa mantenuta, due giorni) va bene, o la vuoi ancora più lenta?
+5. I mandati agli abitanti (non membri): solo per gli obiettivi che sono anche loro interessi (§0.4), o per tutti? E la scadenza di default di 3 giorni va bene?
+6. Reclutare: la soglia del §2.2 (fiducia .3, una promessa mantenuta, due giorni) va bene, o la vuoi ancora più lenta?
