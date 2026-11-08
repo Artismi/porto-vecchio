@@ -110,8 +110,34 @@ Calzolaio nelle foto). Resta che una faccia di fondo su un passaggio prende le f
 - **Il Sottopassino** è più basso (2,4 m di volta, pedonale) e il binario sale di 0,7 m per una ventina di metri per parte: si vede appena.
 - **La camera** nelle pose ferme si chiude sul personaggio anche di serie (per questo le foto usano una camera fissa); il giro della camera nei
   passaggi (URBANISTICA2.md sez. 5) non è rifatto.
-- **I graffiti dei muri tolti**: dei lavori cotti che stavano sui muri che F1 toglie, alcuni trovano posto sul muro nuovo, gli altri no.
+- **I graffiti dei muri tolti**: dei lavori cotti che stavano sui muri che F1 toglie o accorcia (11 su 375), una parte trova posto sul muro
+  nuovo più vicino, gli altri no. Il murale blu sul fianco del Supermercato (accorciato di una casella) non torna.
+- **Il leccio del sagrato**: `render.js` pianta un albero nelle caselle di piazza dove c'è spazio (3 m liberi attorno); con le case del passo
+  tolte il sagrato ne ha uno in più, davanti allo sbocco del Passo del Calzolaio. È la regola della città di serie, non un pezzo di F1.
+- **Le foto di `dopo.jpg`** sono di due pagine: le righe 09 e 11 dopo l'ultimo cambio del piano (il Supermercato, la corte intera del
+  Calzolaio), le altre di poco prima (quei due cambi lì non si vedono). Tutte e due precedono l'ultima correzione dei graffiti (si toglievano
+  per sbaglio anche i lavori accanto a tre casette che `casette()` toglie di serie, fuori da F1): qualche tag in meno attorno all'Androne.
 
 ## 5. Le prove
 
-(riempita sotto)
+- **Di serie niente cambia**: `src/urbanistica2.js` sta fuori dall'impronta (`TASS_FUORI`), `IMPRONTA_TASS` resta `48196fd63f899c14`, il mondo
+  cotto `b0e755cd030a0cbf`. La prova al pixel (`uguale.jpg`): tre punti (la Rua, la Vittoria, l'Androne), lo stesso seme, la pagina di
+  `origin/main` e quella di questo ramo, senza `?urbanistica2`, coi tasselli del sito, la gente e i mezzi nascosti e il tempo fermo.
+- **Le prove della città** (`node src/test_<x>.js`; con F1 `PV_URBANISTICA2=1 NODE_OPTIONS=--require=…/urbanistica2.js`, così anche i
+  processi figli delle prove caricano F1): le righe NO.
+
+| Prova | `origin/main` | questo ramo, di serie | questo ramo, con F1 |
+|---|---|---|---|
+| `test_tasselli` | 1 | 1 | 1 |
+| `test_percorsi` | 2 | 2 | 2 (come F1 di prima: il borgo basso a 680 passi e il giro del Mercato; il giro del Forno passa) |
+| `test_strade_integre` | 1 | 1 | 1 (le stesse 4 case a fessura, fuori da F1; niente capi staccati nuovi) |
+| `test_costa2` | 1 | 1 | 1 |
+| `test_tetti4` | 9 | 9 | 9 |
+| `test_posa` | 6 | 6 | 6 |
+| `test_imperfezioni` | 2 | 2 | 2 |
+| `test_strada_dipinta` | 0 | 0 | **1**: «lo stesso writer non ripete lo stesso pezzo nella stessa vista: BITTA», due throw-up a 10 m (1299,277 e 1306,285, fuori da F1) nella storia dei muri fatta in Node (senza la lista cotta); spegnendo una qualunque delle sei zone sparisce: è il caso della distribuzione a regole che si rimescola quando cambiano i muri |
+| `test_stile_e` | 0 | 0 | 0 |
+| `test_mappa_compatta` | 0 | 0 | 0 |
+| `test_pedonale` | 0 | 0 | 0 |
+
+- **La prova di fumo** (`fumo6.js`, `?cittanuova&leggera&tassellivecchi`, e la copia con `&urbanistica2`): vedi il resoconto.
