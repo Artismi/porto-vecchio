@@ -193,3 +193,56 @@ I punti 1–5 sono il mio lavoro. Il 6 e il 7 toccano sistemi di nessun altro: l
 4. **Ordine di lavoro.** Prima testi e fumetti (si vede subito), poi chat che agisce e salvataggio. Oppure al contrario?
 5. **Battute dell'IA in strada senza filtri** (Coro e graffiti dell'IA sul muro). *Consiglio*: un filtro di parole e lunghezza prima che vadano in scena.
 6. **Personaggi nuovi ricorrenti** (Totò Microfono, i tre ragazzi della scena 4, lo Squalo al telefono). Va bene allargare il cast?
+
+---
+
+## 6. Il volume (seconda passata, dopo «poca roba, ne voglio molta di più»)
+
+Tutto in `v7/commedia/` (testi da approvare: il gioco non li carica). Ogni battuta sta sotto i 70 caratteri (controllato con uno script). Niente bestemmie, niente razza, niente battute sui rettificati.
+
+| file | cosa | quanto |
+|---|---|---|
+| `scene.md` + `scene_dati.js` | scene nuove, già nel formato di `eventi.js`; 30 su 31 provate nel motore senza errori | **31 scene**: 13 con la folla, 8 con una scelta tua, 465 varianti di battuta |
+| `ricorrenti.md` | personaggi fissi, con giro della settimana, storia in 4 passi su due settimane, reazioni al tuo tono, incontri fra loro | **15 schede (17 persone), 349 battute** |
+| `battute.md` | quando passi (11 voci), reazioni a quello che fai (14 situazioni), combattimento, telefonate, frammenti, pezzi da stand-up, visite, la folla | **702 voci** |
+| `citta.md` | Garante alle 20, radio, Radio Scirocco, altoparlanti, manifesti, biglietti, scritte, insegne, giornale, calendario della settimana, la folla senza pesare | **15 discorsi + 45 reazioni, 25 pubblicità, 10 pezzi radio, 25 annunci, 98 testi per i muri, 60 nomi, 45 titoli e annunci, 87 eventi** |
+
+### Il meglio, per assaggio
+- «Il segreto è il Lei. Quando passo al tu, sono già botte.» (Permesso, l'esattore della Famiglia)
+- «Ti spezzo… No, amore, non a te. A Nino. Nino, ti saluta mia moglie.» (lo Squalo al telefono)
+- «Il mio nome di battaglia era Fulmine. Adesso mi chiamano Sciatica.» (un reduce)
+- «Ai miei tempi si moriva per un'idea. Voi morite a rate.» (un reduce)
+- «Mio padre dice che il rap è rumore. Mio padre russa in do.» (un ragazzo)
+- «Mia moglie dice che porto il lavoro a casa. Ho le transenne in cucina.» (un Grigio)
+- «Abbiamo la lavastoviglie. Ci laviamo i piatti puliti. Non si sciupa.» (benpensante)
+- «Scatta la mora. I morti la pagano doppia: hanno tempo.» (la multa al defunto)
+- «Mi hanno chiesto i documenti. Ho fatto vedere una capra. È passata.» (Zio Tè, il beduino)
+- Manifesto della Tutela: SE VEDI QUALCOSA, DI' QUALCUNO. Sotto, a spray: SE VEDI QUALCOSA, DI' QUALCOSA.
+- Altoparlante: «Il cittadino che ha perso un guanto sinistro lo ritiri in caserma. Porti il destro, per il confronto.»
+- Pubblicità della bambola Brava Bambina: «Tirale il filo: lei ti dice chi è stato. Pile non incluse. Il ricevitore sì.»
+- Telefonata: «…Ti ricordi la cosa che abbiamo nascosto nel '79? …L'hanno trovata. …No, non il fucile. Il gatto. …Vivo. Incazzatissimo.»
+
+### I personaggi fissi
+Totò Microfono (il tipografo dei manifesti del Garante, che il giovedì li sfotte al Circolo) · Quelli della rampa (Sbarra, Biscotto, Rasoio) · lo Squalo al telefono · l'Agente Reperto (multa i baci, fuma quello che sequestra) · il Ragionier Telone (la Argenta a 60 rate che non guida mai) · Permesso (l'esattore troppo educato) · Mezzolitro (il reduce del '79) · la Cabala (il Totogarante: si scommette su quante volte dice «ordine») · il Dottor Vento (di giorno ripara le TV del Garante, di notte è Radio Scirocco) · Fratello Catalogo (predica il catalogo dell'Impero) · Lucien le Petit (il cuoco dei Marsigliesi) · il Caporale Sanremo (vuole fare il cantante, parla col cane) · Fulvio Taccuino (l'Orecchio che la Zia ignora da sette anni) · Pecorino (i messaggi di Malanotte nelle forme di formaggio) · Zio Tè (l'isola vista da fuori).
+
+### Città piena senza pesare (sintesi di `citta.md` §9)
+Le figure intere restano quelle di oggi (84 su Iris Xe, 36 sul telefono). La pienezza viene da cose che costano poco:
+- i posti nella folla vanno prima agli eventi del calendario e a quello che vede la camera;
+- capannelli fissi senza percorsi;
+- code dove solo i primi sono figure vere;
+- sagome dietro le tende accese, e alle 20 il bagliore grigio del Garante in tutte le finestre abitate;
+- una folla di sagome oltre la nebbia, in uno o due disegni;
+- il brusio della folla in proporzione alla gente vicina.
+
+Pose nuove, oggetti in mano, bambini e sagome sono lavoro di chi ha i modelli: va chiesto a loro.
+
+### Cosa serve al motore per far girare tutto questo
+- **La scelta del giocatore** (`ask`): le 8 scene con scelta senza `ask` girano, ma senza i rami. Viene prima di tutto.
+- Battute nuove per le scene: `memo` (ricordo), `rep`, `money`, `give`, `hunt`, `car` (passa l'Alfetta), `tv`, `window`. Filtri `prete`, `marsigliese`, `orecchio`. Posti `cabina`, `bar_tv`, `caserma`, `officina`.
+- **Il salvataggio**, per le storie dei personaggi fissi su due settimane.
+- L'agenda unica (§2), altrimenti questo volume si accavalla.
+
+### Decisioni nuove
+7. **La tribù diventa «la Comune»**: i fuggiti del '79 all'Isola Grande del Sud, una setta armata di assemblee, capre e paranoia («Assemblea! Votiamo! …Abbiamo votato: addosso!»). Va bene?
+8. **Lo Squalo è Sandro Neri.** La Bibbia lo chiama «ex Squalo», il codice «lo Squalo»: ho seguito il codice.
+9. **Radio Scirocco**: la voce è Vinile (nella Bibbia) o il Dottor Vento (nuovo)? Il pezzo di `citta.md` usa Vinile, la scheda dei ricorrenti il Dottor Vento.
