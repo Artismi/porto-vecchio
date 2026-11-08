@@ -28,13 +28,13 @@ media = lambda L, k: sum(p[k] for p in L) / max(1, len(L))
 fig = plt.figure(figsize=(24, 15), dpi=100, facecolor=BG)
 fig.suptitle('Perché se ne vedono pochi: i graffiti dalla camera del gioco, giro a piedi nel borgo (città di serie: stile E coi tasselli)', fontsize=22, fontweight='bold', color=INK, x=.02, ha='left', y=.985)
 # 1. il tubo: quanti lavori arrivano in città
-ax = fig.add_axes([.04, .56, .40, .36], facecolor=BG)
+ax = fig.add_axes([.20, .56, .26, .36], facecolor=BG)
 T = P['tass']; tub = [('pianificati dalla strada dipinta', P['senza']['totale']), ('piazzati dalla cottura dei tasselli', T['cottiIn']), ('tenuti dopo il secondo diradamento', T['sd']['cotti']['dopo']), ('nella città di serie (con porte, pali, fondali rifatti)', T['totale']), ('la storia di prima (senza stile E)', P['vecchia']['totale'])]
 ys = list(range(len(tub)))[::-1]
 ax.barh(ys, [v for _, v in tub], color=['#A89C92', '#A89C92', '#A89C92', C['taglio'], '#d8cfc2'], height=.62)
-for y, (k, v) in zip(ys, tub): ax.text(v + 15, y, f'{v}', va='center', fontsize=15, fontweight='bold', color=INK); ax.text(8, y, k, va='center', fontsize=13, color='white' if v > 500 else INK)
-ax.set_yticks([]); ax.set_xlim(0, 1750); ax.set_title('1. Il tubo: dove si perdono i lavori (tutta l\'isola)', loc='left', fontsize=16, color=INK, fontweight='bold')
-ax.text(0, -1.05, 'La cottura dei tasselli è già lo stile E: rimodella la dirada una seconda volta per zona (TIENI). I grandi: %d pianificati, %d in città.' % (P['senza']['grandi'], T['grandi']), fontsize=12, color=MUTE)
+for y, (k, v) in zip(ys, tub): ax.text(v + 15, y, f'{v}', va='center', fontsize=15, fontweight='bold', color=INK); fig.text(.195, .56 + .36 * (y + .5) / len(tub), k, va='center', ha='right', fontsize=13, color=INK)
+ax.set_yticks([]); ax.set_ylim(-.5, len(tub) - .5); ax.set_xlim(0, 1750); ax.set_title('1. Il tubo: dove si perdono i lavori (tutta l\'isola)', loc='left', fontsize=16, color=INK, fontweight='bold')
+fig.text(.02, .515, 'La cottura dei tasselli è già lo stile E: rimodella la dirada una seconda volta per zona (TIENI). I grandi: %d pianificati, %d in città.' % (P['senza']['grandi'], T['grandi']), fontsize=13, color=MUTE)
 # 2. per posto: cosa c'è nel quadro
 ax = fig.add_axes([.50, .56, .48, .36], facecolor=BG)
 lab = [str(p['n']) for p in posti]; x = range(len(posti))
@@ -43,7 +43,7 @@ bot = [0] * len(posti)
 for nm, fn, col in parts:
     v = [fn(p) for p in posti]; ax.bar(x, v, bottom=bot, color=col, width=.7, label=nm, edgecolor=BG, linewidth=2); bot = [a + b for a, b in zip(bot, v)]
 dir_ = [((p.get('diradati') or {}).get('leggibili') or 0) for p in posti]
-ax.plot(list(x), dir_, 'o', color=INK, markersize=9, label='tolti dal 2° diradamento che da qui si leggerebbero')
+xs_ = [i for i, v in zip(x, dir_) if v]; ax.plot(xs_, [v for v in dir_ if v], 'o', color=INK, markersize=9, label='tolti dal 2° diradamento che da qui si leggerebbero')
 ax.set_xticks(list(x)); ax.set_xticklabels(lab); ax.set_xlabel('posto del giro (elenco sotto)'); ax.set_ylabel('lavori col centro nel quadro')
 ax.legend(loc='upper right', frameon=False, fontsize=11); ax.set_title('2. Per posto: i lavori nel quadro della camera e perché non si leggono', loc='left', fontsize=16, color=INK, fontweight='bold')
 # 3. la camera
@@ -57,7 +57,7 @@ ax.axhspan(.3, 2.0, color=C['piccoli'], alpha=.18); ax.text(41, 1.0, 'fascia deg
 ax.axvline(br + 35, color=C['taglio'], lw=2, ls='--'); ax.text(br + 35.5, 6.2, 'fondale a 35 m\ndal personaggio', fontsize=11, color=C['taglio'])
 ax.set_xlim(0, 60); ax.set_ylim(0, 8); ax.set_xlabel('distanza dalla camera (m)'); ax.set_ylabel('quota sul muro (m)')
 ax.set_title('3. Cosa vede la camera7 dei muri davanti', loc='left', fontsize=16, color=INK, fontweight='bold')
-ax.text(0, -2.3, 'Camera a %.1f m dal suolo (media del giro), braccio %.1f m, bordo alto 11° sotto l\'orizzonte:\nin azzurro la parte di muro dentro il quadro. A 35 m solo la base: i fondali e i verticali stanno fuori.' % (hc, br), fontsize=11, color=MUTE)
+fig.text(.04, .015, 'Camera a %.1f m dal suolo (media del giro), braccio %.1f m, bordo alto 11° sotto l\'orizzonte:\nin azzurro la parte di muro dentro il quadro. A 35 m solo la base: i fondali e i verticali stanno fuori.' % (hc, br), fontsize=11, color=MUTE)
 # 4. i numeri del giro
 ax = fig.add_axes([.38, .08, .60, .38]); ax.axis('off')
 riga = lambda p: f"{p['n']:>2}. {p['nome'][:44]:<44}  nel quadro {p['quadro']:>3}   visibili {p['visibili']:>3}   leggibili {p['leggibili']:>2}"
@@ -72,12 +72,12 @@ fig.savefig(os.path.join(OUT, 'diagnosi.png'), facecolor=BG); plt.close(fig)
 Image.open(os.path.join(OUT, 'diagnosi.png')).convert('RGB').save(os.path.join(OUT, 'diagnosi.jpg'), quality=88); os.remove(os.path.join(OUT, 'diagnosi.png'))
 
 # ---------------- PRIMA / DOPO ----------------
-scelti = sorted(posti, key=lambda p: -(pg2.get(p['n'], {}).get('leggibili', 0) - p['leggibili']))[:8]
+scelti = sorted(posti, key=lambda p: -(10 * (pg2.get(p['n'], {}).get('leggibili', 0) - p['leggibili']) + pg2.get(p['n'], {}).get('visibili', 0) - p['visibili']))[:8]
 scelti.sort(key=lambda p: p['n'])
 TW, TH = 960, 540; pad = 18; hh = 70
 Wd = pad + 2 * (TW + pad); Hd = 150 + len(scelti) * (TH + hh + pad) + 260
 im = Image.new('RGB', (Wd, Hd), BG); dr = ImageDraw.Draw(im)
-dr.text((pad, 18), 'Prima | dopo: gli stessi posti, la stessa camera del gioco (camera7), le 15:00 serene. A sinistra la città di serie, a destra ?graffiti2', font=f(30, True), fill=INK)
+dr.text((pad, 18), 'Prima | dopo: stessi posti, stessa camera del gioco (camera7), ore 15 serene. Sinistra: di serie · destra: ?graffiti2', font=f(30, True), fill=INK)
 dr.text((pad, 62), 'Il gioco vero in Chromium senza testa (SwiftShader, 960 × 540), i graffiti piazzati e disegnati dal gioco stesso; la foto è la tela della pagina (col passo dello stile E).', font=f(20), fill=MUTE)
 dr.text((pad, 92), 'Sotto ogni foto: lavori visibili / leggibili nel quadro, i disegni del fotogramma, le pagine dell\'atlante, i lavori in memoria.', font=f(20), fill=MUTE)
 y = 150

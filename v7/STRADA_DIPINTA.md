@@ -245,6 +245,9 @@ Muro; 85% porto; 70-75% vicoli e ritrovi; 30-35% vie e lungomare; 2-5% piazze, c
 tag e gli adesivi secondo il ritmo), prendono la tavolozza e l'età del loro posto; poi si aggiungono i fondali (a sito, piazzati coi raggi
 quando ci passi), gli adesivi accanto alle porte (idem) e sui pali (senza raggi). Il passo successivo, quando servirà: cuocere anche la
 lista E in `tassella_pagina.js` (la stessa funzione con lo stile acceso) e prenderla da lì.
+**Misurato dopo (`GRAFFITI_POOL.md` §3.1)**: da quando lo stile E è di serie la cottura È già la lista E (919 pianificati, 499 piazzati), e
+`rimodella` la dirada una seconda volta (396), poi porte, pali e fondali si rifanno sopra quelli cotti: 520 lavori in città. La correzione è
+in `?graffiti2` (`src/graffiti2.js`), da approvare.
 
 ## 7. Il costo
 
