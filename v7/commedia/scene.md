@@ -18,6 +18,13 @@ calata** (`il_tuffo`); «La multa al defunto» → **La multa mangiata** (`multa
 battesimo, santo, in piedi, Ape, famiglia per bene, reduce, baffi al Garante, marsigliese); undici hanno tenuto premessa e scaletta
 con tutte le battute nuove (cravatte, piangitrice, cambiali, scippo, sposo, Vespa, banana, bacio, cabina, vodka, ultima corsa).
 
+**Passata di varietà** (TONO.md, «Correzione 2»). Le battute facevano ridere ma avevano quasi tutte la stessa struttura: vanto o pretesa,
+poi il rovescio (l'autocorrezione, la smentita, la scusa da vigliacco). Il rovescio era il 15% dei colpi, la risposta secca un altro 15%,
+l'insulto il 13%; ora nessuna struttura passa il suo tetto (rovescio 9%, le altre fra il 2% e il 9%). Una sessantina di battute sono
+passate a strutture poco usate: lo sfogo che sale, la telefonata e la vita privata che entra, la confessione non richiesta, il malinteso,
+lo stanco che fa il minimo, il dettaglio di vita fuori luogo. Due battute vicine non hanno più la stessa struttura, i finali delle 31 scene
+sono di tipo diverso (confessione, sfogo, vita privata, scena fisica, priorità sbagliata, vanto, amico che frega…), nessuna formula torna più di tre volte.
+
 ## Come leggere il copione
 - **nome**: «battuta» oppure «battuta»: le varianti, il motore ne sceglie una. «la folla» è uno a caso del capannello.
 - `{a}`, `{b}`: il nome vero di chi recita (il motore lo riempie).
@@ -95,17 +102,17 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il furbo**: «Signora, ho mia madre che sta malissimo!»
 - **la folla**: «Pure la mia!» oppure «La mia è morta e faccio la fila lo stesso!» oppure «Dietro, furbo! In fondo!»
 - **il ragazzo in fondo**: «Tua madre l'ho vista stamattina al mercato. Correva.»
-- **il furbo**: «Era un'altra! Cioè, corre perché sta male!»
+- **il furbo**: «Sta benone, d'accordo! Ma io ho il sugo sul fuoco!»
 - **la vecchia prima della fila**: «In fondo, o ti spacco la borsa in testa!»
 - _la vecchia prima della fila insegue il furbo._
    - se lo prende:
       - _La vecchia prima della fila dà uno spintone._
       - **la vecchia prima della fila**: «Tieni! Questa è per la domanda!»
-      - **il furbo**: «Ahia! Va bene! Vado in fondo! Che violenza!»
+      - **il furbo**: «Ahia! Vado in fondo! Vado! Che violenza, a quest'età!»
    - se lo perde:
       - **la vecchia prima della fila**: «Torna qua! Ho settantotto anni e ti prendo lo stesso!»
 - **il Grigio allo sportello**: «Bene. Pausa caffè. Cinque minuti.» oppure «Allora io vado al bar. Un attimo.»
-- **la folla**: «Ma come?! E noi?!» oppure «Pure tu salti la fila, stronzo!» oppure «Portane uno pure a me!»
+- **la folla**: «Portane uno pure a me! Macchiato!» oppure «Ma come?! E noi?!» oppure «E io che ho la nonna in macchina?!»
 - **il Grigio allo sportello**: «Non vi muovete, che perdete il posto!»
 - _Il Grigio allo sportello va via._
 - **il ragazzo in fondo**: «Oi. Adesso che non c'è... chi è il primo?»
@@ -128,9 +135,9 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **la folla**: «Brava {a}! Tira!» oppure «Butta pure le mutande, che ridiamo!» oppure «Lo sapevo! L'avevo detto a tutti!»
 - _Il marito gesticola._
 - **il marito**: «Che cazzo guardate? Andate a lavorare!»
-- **la folla**: «Oggi è festa. Grazie a te.» oppure «Siamo in pensione, bello.» oppure «Zitto, che adesso lancia la radio.»
+- **la folla**: «Ho lasciato il latte sul fuoco per questa!» oppure «Oggi è festa. Grazie a te.» oppure «Zitto, che adesso lancia la radio.»
 - _[NUOVO] Tiziana lancia giù: radio._
-- **il marito**: «La radio no! È a rate! Non l'ho finita di pagare!»
+- **il marito**: «La radio no! La radio no! LA RADIO È A RATE, {a}!»
 - **Tiziana**: «Falla pagare a Loredana!»
 - _[NUOVO] Loredana si affaccia al balcone._
 - **Loredana**: «Io non c'entro! Gli ho solo prestato lo zucchero!»
@@ -159,12 +166,12 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il ragazzo**: «Il 9 l'ho visto ieri. Andava dall'altra parte.»
 - _Il capopopolo allarga le braccia._
 - **il capopopolo**: «Basta! Facciamo casino! Blocchiamo la strada!»
-- **la folla**: «Sì!» oppure «Bravo!» oppure «Tu vai davanti, però.»
+- **la folla**: «Sì!» oppure «Bravo!» oppure «Io blocco, ma alle nove devo timbrare!»
 - **il capopopolo**: «Io parlo, voi gridate! Abbasso il 9!»
 - **la folla**: «Abbasso!» oppure «Abbasso!» oppure «Abbasso chi guida il 9!»
 - **il capopopolo**: «Chi è con me alzi la mano!»
 - _La folla alza le mani. Il ragazzo alza le mani. Il Grigio che passa va verso il punto della scena._
-- **il Grigio che passa**: «Che è 'sto casino? Chi è il capo, qua?»
+- **il Grigio che passa**: «Abbasso chi? Chi ha detto abbasso me?! Chi è il capo?»
 - _La folla indica._
 - **la folla**: «Lui!» oppure «È lui!» oppure «Ha detto abbasso!»
 - **il capopopolo**: «Io? Io aspettavo il 9! Manco li conosco!»
@@ -173,10 +180,10 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il ragazzo**: «Io?! Ho quindici anni! Che capo?!»
 - **il Grigio che passa**: «Circolare, tutti. Il 9 oggi non passa.»
 - **la signora con la borsa**: «E io come ci vado al lavoro?!»
-- **il Grigio che passa**: «A piedi, signora. Io ci vado a piedi.»
+- **il Grigio che passa**: «Non lo so, signora. Io fra cinque minuti stacco.»
 - _La signora con la borsa va via; il Grigio che passa va via (insieme)._
 - **il ragazzo**: «Oi, presidente! Domani rifacciamo?»
-- **il capopopolo**: «Non ti conosco! Non ci siamo mai visti!»
+- **il capopopolo**: «Zitto! Mia moglie crede che sono al lavoro!»
 
 **Nota**: Folla di 4 + 3 ruoli. Il capopopolo urla finché arriva il Grigio, poi vende il ragazzo. Nessuna conseguenza per ora.
 
@@ -238,7 +245,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **la signora con la rete**: «Se la sta mangiando! Guardatelo! Se la mangia!»
 - **il Grigio giovane**: «È per l'analisi! ...Mamma mia, che buona.»
 - **il Grigio anziano**: «Dammene una, va'.»
-- **la folla**: «Pure lui!» oppure «Analizzala anche tu, stronzo!» oppure «Fategli il verbale, a loro!»
+- **la folla**: «Pure lui!» oppure «Erano per la marmellata di mia nuora!» oppure «Fategli il verbale, a loro!»
 - _La signora con la rete: rabbia. La signora con la rete va verso il Grigio giovane. La signora con la rete dà uno spintone._
 - **il Grigio giovane**: «Signora! La divisa nuova! Me la sporca di arancia!»
 - **il Grigio anziano**: «Ritirata! Andiamo, andiamo!»
@@ -264,7 +271,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il meccanico**: «Ma che ci avete fatto? Il rally? La frizione è bruciata!»
 - **il Grigio che aspetta la macchina**: «Ho inseguito un pericoloso! A centoventi!»
 - **il meccanico**: «Questa fa sessanta in discesa. Chi inseguivi, una vecchia?»
-- **il Grigio che aspetta la macchina**: «...Una vecchia veloce. Con la bici.»
+- **il Grigio che aspetta la macchina**: «...Mia suocera. S'era presa la campagnola per il mercato.»
 - _Il meccanico martella. Il meccanico armeggia._
 - **il meccanico**: «E sotto il sedile? Sei bottiglie di vodka?»
 - **il Grigio che aspetta la macchina**: «Roba sequestrata! Sono prove!»
@@ -302,7 +309,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - _Il benpensante a rate si rialza._
 - **la folla**: «Ben ti sta!» oppure «Adesso a rate ti paghi pure il gesso!» oppure «Che figura di merda, davanti a tutti.»
 - **il benpensante a rate**: «Voi! Spingete! Vi do mille lire!»
-- **la folla**: «Mille? Spingi tu.» oppure «Per mille spingo con un dito.» oppure «Io ho la schiena. Però guardo.»
+- **la folla**: «Mille? Spingi tu.» oppure «Per mille spingo con un dito.» oppure «Io spingo, ma prima finisco il gelato.»
 - _Il benpensante a rate si siede per terra._
 - **il benpensante a rate**: «Mia moglie me l'aveva detto: compra la bici. Io no. La berlina.»
 
@@ -315,7 +322,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 **Ruoli**: `a` la vecchia con la borsa (filtro old|f); `b` lo scippatore (filtro young|m)
 
 - _La vecchia con la borsa ha in mano: borsa. Lo scippatore va verso la vecchia con la borsa. Lo scippatore raccoglie. Lo scippatore ha in mano: borsa._
-- **la vecchia con la borsa**: «Ah sì?! A me?! Brutto disgraziato!» oppure «La borsa! A me la borsa?!»
+- **la vecchia con la borsa**: «La borsa! Dentro c'è la dentiera di mio marito!» oppure «La borsa! A me?! Ci ho i denti di mio marito!»
 - _la vecchia con la borsa insegue lo scippatore._
    - se lo prende:
       - **la vecchia con la borsa**: «Preso! Ottantadue anni e ti ho preso!»
@@ -356,7 +363,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
    - **l'uomo-cartello dei materassi**: «Mi ha spinto! Avete visto? Mi ha spinto un vecchio!»
    - **la folla**: «Un vecchio con le cozze!» oppure «Che figura di merda!» oppure «Rialzati, materasso!»
    - _L'uomo-cartello dei materassi si rialza. L'uomo-cartello dei materassi se ne va._
-   - **l'uomo-cartello delle cozze**: «Cozze fresche! E pure vincenti!»
+   - **l'uomo-cartello delle cozze**: «Cozze fresche! ...Oi, chi mi raccatta il dente?»
 
 **Nota**: Folla di 4 che tifa. Due uomini-cartello per lo stesso angolo: al 50% rissa, se no il vecchio lo spinge per terra. Sostituisce «Davanti il Garante, dietro le cozze».
 
@@ -375,16 +382,16 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **l'amico**: «È mentale che te la fai addosso.»
 - **quello che si tuffa**: «Io? Io l'anno scorso mi sono tuffato dal faro!»
 - **l'amico**: «Il faro è chiuso da dieci anni.»
-- **quello che si tuffa**: «...Da fuori. Mi sono tuffato da fuori.»
+- **quello che si tuffa**: «Dieci anni fa! Mi ci ha spinto mio cugino. Ho pianto tre giorni.»
 - **la folla**: «Uno! Due...!» oppure «Tuffati o paghi da bere!» oppure «Dai che c'abbiamo fretta!»
 - **quello che si tuffa**: «Fa freddo! Mi viene il crampo! Domani!»
 - _L'amico dà uno spintone. Quello che si tuffa cade._
 - **l'amico**: «Oh, scusa. M'è scivolata la mano.»
 - _Quello che si tuffa si rialza._
-- **quello che si tuffa**: «Infame! Mi hai spinto davanti a tutti!»
+- **quello che si tuffa**: «Mi hai spinto! Adesso tutti vedono le mutande coi cuori!»
 - **l'amico**: «E manco in acqua. Neanche cadere sai.»
 - **la folla**: «Tuffo per terra! Dieci!» oppure «Il campione del faro!» oppure «Ahahah! Rifallo!»
-- **quello che si tuffa**: «Domani mi tuffo! Domani venite tutti!»
+- **quello che si tuffa**: «Domani mi tuffo! Oggi mia madre fa le polpette!»
 - _Quello che si tuffa se ne va._
 
 **Nota**: Folla di 4. Lo sbruffone non si tuffa; l'amico lo spinge, ma per terra. Sostituisce «Il censimento dei gabbiani».
@@ -399,25 +406,25 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il Grigio con il blocchetto**: «Doppia fila. Quarantamila.»
 - _Il padrone della macchina va verso il Grigio con il blocchetto._
 - **il padrone della macchina**: «Fermo! Fermo! Un secondo! Ero lì un secondo!»
-- **il Grigio con il blocchetto**: «Quaranta minuti. T'ho cronometrato.»
+- **il Grigio con il blocchetto**: «Quaranta minuti. T'ho guardato dal bar, col cappuccino.»
 - **il padrone della macchina**: «Mia moglie sta partorendo! Dentro al bar!»
 - **il Grigio con il blocchetto**: «Nel bar?»
 - **il padrone della macchina**: «...Sì. Prima il cappuccino, poi partorisce.»
 - **il padrone della macchina**: «Dai, siamo amici! Ci siamo visti alla cresima!»
-- **il Grigio con il blocchetto**: «Io alle cresime non ci vado.»
+- **il Grigio con il blocchetto**: «Alle cresime io piango. Non ci vado più.»
 - _Il Grigio con il blocchetto porge. Il padrone della macchina ha in mano: carta. Il padrone della macchina mangia._
 - **il padrone della macchina**: «Che multa? Io non vedo nessuna multa.»
 - _Il Grigio con il blocchetto: rabbia._
 - **il Grigio con il blocchetto**: «M'hai mangiato la multa! Il blocchetto lo pago io!»
-- **il padrone della macchina**: «Era buona. Sapeva di caserma.»
-- **il Grigio con il blocchetto**: «Adesso te ne faccio due! E una per la bocca!»
+- **il padrone della macchina**: «Era secca. Con un filo d'olio andava giù meglio.»
+- **il Grigio con il blocchetto**: «Due multe! Tre! TRE MULTE, E UNA PER LA BOCCA!»
 - _il Grigio con il blocchetto insegue il padrone della macchina._
    - se lo prende:
       - **il Grigio con il blocchetto**: «Sputa! Sputa la multa, che è un documento!»
       - **il padrone della macchina**: «L'ho già digerita! Avvocato!»
       - _Il padrone della macchina viene portato via (fermo)._
    - se lo perde:
-      - **il Grigio con il blocchetto**: «Ti trovo! La targa ce l'ho! ...Era scritta sulla multa.»
+      - **il Grigio con il blocchetto**: «Corri, corri! Io coi piedi piatti non ti seguo!»
 
 **Nota**: Due ruoli. Lui inventa tutto, poi si mangia la multa; il Grigio lo insegue: se lo prende, fermo. Sostituisce «La multa al defunto».
 
@@ -449,7 +456,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
                - **il Grigio al primo giorno**: «Preso! Ho preso uno! Il primo giorno! Mamma!»
                - _[NUOVO] Il Grigio al primo giorno si ricorda di te (-2, «il bugiardo»)._
             - se ti perde:
-               - **il Grigio al primo giorno**: «Centrale... no, niente. Al maresciallo non dite niente.»
+               - **il Grigio al primo giorno**: «Lascia stare. Tanto gli straordinari non me li pagano.»
       - _altrimenti:_
          - **il Grigio al primo giorno**: «Saluti al maresciallo! Gli dica che sono bravo!»
    3. **Il nome del Garante**
@@ -495,9 +502,9 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **l'uomo della Famiglia**: «Signora, da oggi è protetta. Il primo del mese passo io.»
 - **la signora derubata**: «E che vieni a fare?»
 - **l'uomo della Famiglia**: «A prendere il caffè. E il resto.»
-- **la signora derubata**: «Ma andate a cagare tutti e due!»
+- **la signora derubata**: «Il resto?! Porco! Ho settantadue anni!»
 - _L'uomo della Famiglia se ne va; il ragazzo con l'occhio nero se ne va (insieme)._
-- **la signora derubata**: «E lasciate le chiavi, stronzi!»
+- **la signora derubata**: «...Martedì mio marito gioca a carte, eh!»
 
 **Nota**: Il ragazzo ha il mood «ferito». La signora da oggi è «protetta»: [NUOVO] potrebbe entrare nella lista di chi la Famiglia protegge.
 
@@ -519,11 +526,11 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **lo sbruffone**: «Mi allacciavo la scarpa!»
 - **il secondo**: «Hai le scarpe con lo strappo, coglione.»
 - **il terzo**: «Gli ridevi in faccia, eh? Ah-ah.»
-- **lo sbruffone**: «Non era un Grigio! Era un taxi grigio!»
+- **lo sbruffone**: «Ridevo! Ridevo dentro! DENTRO SI RIDE, CAZZO!»
 - **il secondo**: «Ti sei nascosto dietro di me! Mi usavi come scudo!»
-- **lo sbruffone**: «Ti proteggevo! Facevo la scorta!»
-- **il terzo**: «Allora adesso vai davanti tu, scorta.»
-- **lo sbruffone**: «No, io faccio la retroguardia. È più pericolosa.»
+- **lo sbruffone**: «Sì. Sei più largo di me. Che ci posso fare?»
+- **il terzo**: «Io mi sono pisciato un po'. Poco, eh. Si vede?»
+- **il secondo**: «Si vede da qui, fra. Cammina dietro a noi, va'.»
 - _Lo sbruffone va via; il secondo segue lo sbruffone; il terzo segue il secondo (insieme)._
 
 **Nota**: Camminata e parlata. Lo sbruffone si accuccia quando passa la ronda [NUOVO]; senza, resta l'attesa e il resto regge.
@@ -539,10 +546,10 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **quello del pallone**: «Bravo, campione! Dentro la caserma!»
 - **quello del pallone**: «Hai tirato tu, vai tu.»
 - **quello che ha tirato**: «Il pallone è tuo. Vai tu, è roba tua.»
-- **quello del pallone**: «Io ho già un fascicolo. Tu sei pulito.»
-- **quello che ha tirato**: «Sono pulito perché nelle caserme non ci vado, coglione!»
+- **quello del pallone**: «Io là dentro ci sono già stato. Ho pianto tutta la notte.»
+- **quello che ha tirato**: «E allora vacci, che piangere lo sai già fare!»
 - _Quello che ha tirato guarda NINO (tu); quello del pallone va verso NINO (tu) (insieme)._
-- **quello del pallone**: «Oi, tu! Sì, tu, faccia da bravo ragazzo! Vai tu!»
+- **quello del pallone**: «Oi, tu! Sì, tu, faccia da bravo ragazzo! Ce lo prendi?»
 - **[NUOVO] SCELTA** (12 s; se non scegli: «Arrangiatevi») — **quello del pallone**: «Dai, è l'unico pallone del quartiere!»
    1. **Vai a chiedere**
       - _[NUOVO] Tu vai da il piantone. Il piantone guarda NINO (tu)._
@@ -555,15 +562,15 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
       - **il piantone**: «Alt! Intruso! Fermo o sparo!»
       - [NUOVO] _il piantone insegue TE._
          - se ti prende:
-            - **il piantone**: «Preso! E il pallone resta qua! Anzi, ci gioco io!»
+            - **il piantone**: «Preso. Che fatica. Adesso mi siedo un'ora.»
             - _[NUOVO] Reputazione grigi -1._
          - se ti perde:
             - **quello del pallone**: «Corre come un ladro vero! Ti voglio bene!»
-      - **quello che ha tirato**: «Grande! ...Però il pallone dov'è?»
+      - **quello che ha tirato**: «Grande! E il pallone?! Ti sei scordato il pallone?!»
       - _[NUOVO] Reputazione ragazzi +2._
    3. **Arrangiatevi**
       - **quello che ha tirato**: «Sbirro!»
-      - **quello del pallone**: «Sbirro e pure brutto!»
+      - **quello del pallone**: «Sbirro! Sbirro! SBIRRO CON LA FACCIA DA SBIRRO!»
       - **quello che ha tirato**: «Un favore ti abbiamo chiesto! Uno!»
       - _[NUOVO] Quello che ha tirato si ricorda di te (-1, «sbirro»). [NUOVO] Reputazione ragazzi -1._
 - _Quello che ha tirato se ne va; quello del pallone se ne va (insieme)._
@@ -615,9 +622,9 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **[NUOVO] SCELTA** (6 s; se non scegli: «Lascialo passare») — **lo sposo**: «Spostati! Spostati, ti prego, fratello!»
    1. **Sgambetto**
       - _Lo sposo cade. Il padre della sposa va verso lo sposo._
-      - **il padre della sposa**: «Bravo! Tu vieni al pranzo! Ti mangi pure la sua porzione!»
-      - **lo sposo**: «Infame! Pensavo fossi un uomo!»
-      - **la sposa**: «Amore, sei caduto! Hai visto? È destino!»
+      - **il padre della sposa**: «Bravo! Un ragazzo per bene! Vieni, ti presento l'altra figlia!»
+      - **lo sposo**: «Lo dico a mia madre! Lei voleva che sposavo la mora!»
+      - **la sposa**: «Amore! Ti sei inginocchiato! Me lo richiedi?»
       - _Lo sposo si rialza. Lo sposo segue il padre della sposa. [NUOVO] Il padre della sposa si ricorda di te (+2, «lo sgambetto»). [NUOVO] Lo sposo si ricorda di te (-2, «lo sgambetto»)._
    2. **Lascialo passare**
       - _il padre della sposa insegue lo sposo._
@@ -635,7 +642,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
             - **il padre della sposa**: «Tu! Il complice! Allora il pranzo lo paghi tu!»
             - _[NUOVO] Soldi -20 mila._
          - se ti perde:
-            - **il padre della sposa**: «Ti ho visto in faccia! Il quartiere è piccolo, stronzo!»
+            - **il padre della sposa**: «Torna! Ho cento bomboniere in macchina! CENTO!»
       - _[NUOVO] Il padre della sposa si ricorda di te (-2, «il complice»). [NUOVO] Lo sposo si ricorda di te (+2, «il fratello»)._
 - **la folla**: «Ma il pranzo si fa lo stesso?» oppure «Io il regalo me lo riprendo!» oppure «Il più bel matrimonio dell'anno!»
 
@@ -656,8 +663,8 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - _Il prete va via; il primo portatore segue il prete; il secondo portatore segue il primo portatore; il Grigio del cerimoniale segue il secondo portatore (insieme)._
 - **il primo portatore**: «Oi! Stai spingendo o no? Il peso lo sento tutto io!»
 - **il secondo portatore**: «Sto spingendo! Sto pregando e spingendo!»
-- **il primo portatore**: «Stai pregando e basta! Spingi, stronzo!»
-- **il secondo portatore**: «Non dire stronzo davanti al santo!»
+- **il primo portatore**: «Spingi! Spingi! SPINGI, CHE MI ESCE L'ERNIA!»
+- **il secondo portatore**: «Non urlare davanti al santo!»
 - **il primo portatore**: «Il santo lo sa che sei uno stronzo! Da trent'anni!»
 - **la folla**: «Pende! Pende a destra!» oppure «Il Garante cade! Cade!» oppure «Lasciatelo cadere, il Garante!»
 - **il Grigio del cerimoniale**: «Chi ha detto lasciatelo cadere?! Chi è stato?!»
@@ -691,7 +698,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
          - se ti prende:
             - **il padrone della Vespa**: «Adesso spingi me fino a casa, complice!»
          - se ti perde:
-            - **il padrone della Vespa**: «Ti trovo! Ho la tua faccia stampata in testa!»
+            - **il padrone della Vespa**: «Ti trovo! E se ti trova mia moglie, è peggio!»
       - _[NUOVO] Il padrone della Vespa si ricorda di te (-2, «il complice»). [NUOVO] Il ladro di Vespe si ricorda di te (+1, «la spinta»)._
    2. **Grida «al ladro!»**
       - **NINO (tu)** [NUOVO]: «Al ladro! Al ladro!»
@@ -755,10 +762,10 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il fidato**: «Lascia stare. Il barista qua dentro conta più di me.»
 - _Il nipote emozionato va verso il fidato. Il nipote emozionato porge._
 - **il nipote emozionato**: «Baciamo le mani, dottore. Pure i piedi, se vuole.»
-- **il fidato**: «Basta così, che mi consumi.»
+- **il fidato**: «Basta, che ho ottant'anni. Mi stanco pure a farmi baciare.»
 - **il barista**: «Allora? Tre caffè?»
 - **il fidato**: «Quattro. Uno al ragazzo, che trema.»
-- **il nipote emozionato**: «Non tremo! Sono emozionato! È diverso!»
+- **il nipote emozionato**: «Non tremo! È che a casa nessuno mi bacia mai!»
 - _Il fidato paga 1 mila a il barista._
 
 **Nota**: Quattro ruoli, nessuna conseguenza. Lo zio dà uno scappellotto al nipote (spinta). Il fidato paga i caffè (pay a→d 1).
@@ -775,14 +782,14 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **quello che ha ordinato**: «Oh, cazzo. Il portafoglio. L'ho lasciato in macchina.»
 - _Quello che ha ordinato si siede._
 - **l'amico che paga sempre**: «Tu non ce l'hai, la macchina.»
-- **quello che ha ordinato**: «Nella macchina di mio cugino!»
+- **quello che ha ordinato**: «Se l'è presa mia moglie! È andata da sua madre!»
 - **l'amico che paga sempre**: «Io pago sempre io! Sempre!»
 - **il terzo**: «Tu? Tu hai pagato nel '78. Una gazzosa.»
 - **l'amico che paga sempre**: «Era una gazzosa grande!»
 - **il barista**: «Diciottomila. Chi paga?»
 - **quello che ha ordinato**: «Paga lui, che ha bevuto di più!»
 - **l'amico che paga sempre**: «Io ho bevuto per farvi compagnia!»
-- **il terzo**: «Io ho preso solo un panino! ...E tre birre.»
+- **il terzo**: «Io pago solo il panino. Senza cipolla, che l'ho tolta.»
 - _Quello che ha ordinato guarda NINO (tu)._
 - **quello che ha ordinato**: «Oi! Tu! Sei amico nostro, no? Da sempre!»
 - **[NUOVO] SCELTA** (12 s; se non scegli: «Pago io») — **quello che ha ordinato**: «Dai, che ci conosciamo da... da prima.»
@@ -799,7 +806,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
       - _il barista insegue il terzo._
          - se lo prende:
             - **il barista**: «Tu! Adesso lavi i bicchieri fino a Natale!»
-            - **il terzo**: «Io ho preso solo un panino!»
+            - **il terzo**: «Io la cipolla l'avevo tolta!»
          - se lo perde:
             - **il barista**: «Vi conosco! E i panini erano di ieri!»
       - _[NUOVO] Il barista si ricorda di te (-1, «il complice»). [NUOVO] Reputazione ragazzi +1._
@@ -868,7 +875,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
       - **il vecchio che non si alza**: «Pecora! Bella pecora in piedi! Beee!»
       - _[NUOVO] La signora che lavora a maglia si ricorda di te (+1, «in piedi»)._
    2. **Resta seduto col vecchio**
-      - **il vecchio che non si alza**: «Ecco! Un uomo vero! Offro io! ...Cioè, offri tu.»
+      - **il vecchio che non si alza**: «Ecco! Un uomo vero! Offro io! Barista, segna a lui.»
       - _La signora che lavora a maglia legge/scrive._
       - **la signora che lavora a maglia**: «Me lo segno, caro. Con affetto.»
       - _[NUOVO] La signora che lavora a maglia si ricorda di te (-2, «seduto»). [NUOVO] Reputazione risacca +1. [NUOVO] Il vecchio che non si alza si ricorda di te (+2, «seduto»)._
@@ -880,7 +887,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
       - _La signora che lavora a maglia guarda NINO (tu)._
       - **la signora che lavora a maglia**: «Io ho visto tutto, caro. Ma dopo c'è il mio sceneggiato.»
       - _[NUOVO] La signora che lavora a maglia si ricorda di te (-1, «la spina»). [NUOVO] Reputazione quartiere +1._
-- **il vecchio che non si alza**: «Domani staccatela prima, che c'è il varietà!»
+- **il vecchio che non si alza**: «Visto? Io il Garante l'ho battuto. Da seduto!»
 
 **Nota**: SCELTA. Il barista ordina a tutti di alzarsi e resta seduto lui. In piedi: l'Orecchio approva. Seduto col vecchio: ti segna (-2). Stacchi la spina: tutti sollevati.
 
@@ -893,11 +900,11 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - _Un'Ape in doppia fila. L'uomo dell'Ape va verso NINO (tu). L'uomo dell'Ape guarda NINO (tu). L'uomo dell'Ape indica._
 - **l'uomo dell'Ape**: «Oi! L'hai vista la mia Ape? Settanta all'ora! In discesa! Col vento!»
 - **l'uomo dell'Ape**: «Ieri ho superato una Mercedes! ...Era parcheggiata. Ma l'ho superata.»
-- **l'uomo dell'Ape**: «Le donne si girano quando passo! ...Per il fumo nero, ma si girano.»
+- **l'uomo dell'Ape**: «Mia moglie l'ho conosciuta così. L'ho investita.»
 - _L'uomo dell'Ape allarga le braccia._
-- **l'uomo dell'Ape**: «Al mercato mi chiamano il Ferrari! ...Mi chiamo io. Ma gira.»
+- **l'uomo dell'Ape**: «Settanta! Settanta all'ora! SETTANTA, E NESSUNO MI CREDE!»
 - _L'uomo dell'Ape va verso il mezzo. L'uomo dell'Ape armeggia._
-- **l'uomo dell'Ape**: «Parti! Dai, stronza! ...Oi, tu. Mi dai una spinta? Solo all'inizio.»
+- **l'uomo dell'Ape**: «Parti, stronza! Oi, tu! Spingi, che poi ti faccio salire!»
 
 **Nota**: Pezzo (la stessa persona, la botta in fondo): si vanta dell'Ape, poi non parte e ti chiede una spinta. Nessuna conseguenza.
 
@@ -910,7 +917,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - _Il benpensante col cappotto buono va verso NINO (tu). Il benpensante col cappotto buono guarda NINO (tu)._
 - **il benpensante col cappotto buono**: «Lei è giovane. Si vede che non ha una famiglia come la mia.»
 - **il benpensante col cappotto buono**: «Mia moglie va in chiesa ogni giorno. Mio figlio studia. Ingegnere.»
-- **il benpensante col cappotto buono**: «In casa nostra parolacce mai. Siamo gente per bene.»
+- **il benpensante col cappotto buono**: «In casa parolacce mai. Le dico in macchina, da solo.»
 - _Il figlio va verso il benpensante col cappotto buono._
 - **il figlio**: «Oi, pa'! Dammi diecimila! Ho finito la vernice rossa!»
 - _Il benpensante col cappotto buono guarda via._
@@ -936,7 +943,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 - **il reduce con il bicchiere**: «Nel '79 ho fatto scappare dodici Grigi. Da solo. A mani nude.»
 - **il reduce con il bicchiere**: «Erano dodici! ...Va be', due. Uno era piccolo.»
 - _Il reduce con il bicchiere beve._
-- **il reduce con il bicchiere**: «Braccio di ferro! Dai! Ti spezzo come un grissino!»
+- **il reduce con il bicchiere**: «Braccio di ferro! Dai! Aspetta, tienimi la dentiera.»
 - **il reduce con il bicchiere**: «Aspetta... prima mi siedo bene.»
 - _Il reduce con il bicchiere cade._
 - **il reduce con il bicchiere**: «Non sono caduto! Mi sono messo comodo!»
@@ -994,24 +1001,24 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 
 **Quando e dove**: notte, al muretto o all'angolo. Ore 22–3 (dopo mezzanotte). Posto: angolo, panchina, cypher (soft).  
 **Tipo**: ragazzi, notte, momento serio  
-**Ruoli**: `a` quello che ha le idee (filtro young); `b` quello con la febbre (filtro young); `c` quello che si fa serio (filtro young); `d` quello con le scarpe nuove (filtro young|any)
+**Ruoli**: `a` quello che ha le idee (filtro young); `b` quello con la febbre (filtro young); `c` quello che si fa serio (filtro young); `d` quello col tabacco (filtro young|any)
 
-- _Quello che ha le idee prende posto; quello con la febbre prende posto; quello che si fa serio prende posto; quello con le scarpe nuove prende posto (insieme). Quello che ha le idee si siede. Quello con la febbre si appoggia. Quello che si fa serio si siede per terra. Quello con le scarpe nuove fuma. Quello con la febbre: freddo._
+- _Quello che ha le idee prende posto; quello con la febbre prende posto; quello che si fa serio prende posto; quello col tabacco prende posto (insieme). Quello che ha le idee si siede. Quello con la febbre si appoggia. Quello che si fa serio si siede per terra. Quello col tabacco fuma. Quello con la febbre: freddo._
 - **quello che ha le idee**: «Chi ha il coraggio di fare i baffi al Garante? Lì, sul muro.»
 - **quello con la febbre**: «Io! Io ce l'ho, il coraggio! ...Però ho la febbre.»
-- **quello con le scarpe nuove**: «Io lo farei, fra. Ma ho le scarpe nuove.»
-- **quello con la febbre**: «Vai tu, che l'hai detto!»
+- **quello col tabacco**: «Io ho paura pure del Garante in TV. Cambio stanza.»
+- **quello con la febbre**: «Fallo tu, che l'hai detto!»
 - **quello che ha le idee**: «Io? Io ho avuto l'idea! L'idea è la parte difficile!»
-- **quello con le scarpe nuove**: «Allora l'idea falla tu, e i baffi pure.»
+- **quello col tabacco**: «Allora l'idea falla tu, e i baffi pure.»
 - **quello che ha le idee**: «Vaffanculo. Domani.»
 - **quello che si fa serio**: «Mio padre ci ha scritto sopra, una volta. Poi non è tornato a cena.»
 - **quello con la febbre**: «Pure lo zio di Totò.»
 - **quello che ha le idee**: «Oi. Chi ha la siga?»
-- **quello con le scarpe nuove**: «Io ho il tabacco. Le cartine no.»
+- **quello col tabacco**: «Io ho il tabacco. Le cartine no.»
 - **quello con la febbre**: «E allora a che cazzo servi?»
-- **quello con le scarpe nuove**: «Servo a farti compagnia, stronzo.»
+- **quello col tabacco**: «Servo a farti compagnia. A casa non mi vuole nessuno.»
 - **quello che si fa serio**: «Vai a comprarle tu, le cartine. Sei il più veloce.»
-- **quello con le scarpe nuove**: «Io? Ho le scarpe nuove, t'ho detto!»
+- **quello col tabacco**: «Io? Il tabaccaio è mio zio. Mi chiede dei voti.»
 
 **Nota**: Quattro ragazzi. La sfida: chi va a disegnare i baffi al Garante sul muro. Nessuno. Il momento serio non si commenta: si riparte con le cazzate.
 
@@ -1023,7 +1030,7 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
 
 - _Un marsigliese con la sigaretta va verso NINO (tu). Un marsigliese con la sigaretta guarda NINO (tu). Un marsigliese con la sigaretta fuma._
 - **un marsigliese con la sigaretta**: «Toi! Vieni qua. Io ho una barca. La più grande del porto.»
-- **un marsigliese con la sigaretta**: «A Marsiglia ho tre donne. Qui neanche una. Siete brutti, tutti.»
+- **un marsigliese con la sigaretta**: «A Marsiglia ho tre donne. Però mi manca la mamma.»
 - **un marsigliese con la sigaretta**: «Il vostro caffè fa schifo. Il vostro vino fa schifo. Voi pure.»
 - **un marsigliese con la sigaretta**: «Ti porto a Marsiglia. Centomila. Solo andata, che qua non torni.»
 - _Un marsigliese con la sigaretta guarda via._
@@ -1055,22 +1062,22 @@ La 31 (`ultima_corsa_dell_autobus`) è di riserva: notte, folla, Ora Quieta.
    - **il Grigio dell'Ora Quieta**: «Tu! Senza biglietto! Vieni con me!»
    - _Il ragazzo senza biglietto alza le mani. Il ragazzo senza biglietto viene portato via (fermo)._
 - _altrimenti:_
-   - **il Grigio dell'Ora Quieta**: «Salite! Tutti! Subito! E zitti fino al capolinea!»
-- **l'autista**: «Avete sentito? Su! Su! E chi vomita, scende!»
+   - **il Grigio dell'Ora Quieta**: «Salite, salite. Contarvi mi fa venire il mal di testa.»
+- **l'autista**: «Su! E svegliatemi alle fermate, che io mi addormento!»
 - _L'autista va via; l'infermiera del turno di notte va via (insieme)._
 
 **Nota**: Folla di 5 che spinge per salire. Il ragazzo prova a passare per figlio dell'infermiera; al 25% il Grigio lo trattiene. L'autobus vero [NUOVO]; oggi l'autista basta.
 
 ---
 
-## Le dieci battute migliori
-1. «Il malinteso ha il rossetto e abita al quarto!» (la moglie, *Le cravatte dal terzo piano*)
-2. «Io? Io aspettavo il 9! Manco li conosco!» (il capopopolo, *Il comitato del 9*)
-3. «Hai tirato tu, vai tu.» «Il pallone è tuo. Vai tu, è roba tua.» (*Il pallone dei Grigi*)
-4. «Mi allacciavo la scarpa!» «Hai le scarpe con lo strappo, coglione.» (*Il più coraggioso del quartiere*)
-5. «M'hai mangiato la multa! Il blocchetto lo pago io!» (il Grigio, *La multa mangiata*)
-6. «Io! Io ce l'ho, il coraggio! ...Però ho la febbre.» (*I baffi al Garante*)
-7. «Fermo! Mani in alto! Cioè no, documenti!» (il Grigio al primo giorno, *Il primo fermo*)
-8. «Tu? Tu hai pagato nel '78. Una gazzosa.» «Era una gazzosa grande!» (*Chi paga il giro*)
-9. «Erano dodici! ...Va be', due. Uno era piccolo.» (il reduce, *Il reduce e il braccio di ferro*)
-10. «Vattene, stronzo, che mi rovini la reputazione, cazzo!» (il benpensante, *La famiglia per bene*)
+## Le dieci battute migliori (una per struttura)
+1. «Il malinteso ha il rossetto e abita al quarto!» (risposta secca; la moglie, *Le cravatte dal terzo piano*)
+2. «Io? Io aspettavo il 9! Manco li conosco!» (il vigliacco che rinnega; il capopopolo, *Il comitato del 9*)
+3. «Ti sei nascosto dietro di me!» «Sì. Sei più largo di me. Che ci posso fare?» (l'amico che frega l'amico; *Il più coraggioso*)
+4. «Mi allacciavo la scarpa!» «Hai le scarpe con lo strappo, coglione.» (la scusa smontata; *Il più coraggioso del quartiere*)
+5. «M'hai mangiato la multa! Il blocchetto lo pago io!» (priorità sbagliata; il Grigio, *La multa mangiata*)
+6. «Mia moglie l'ho conosciuta così. L'ho investita.» (confessione non richiesta; l'uomo dell'Ape, *Il pezzo dell'Ape*)
+7. «Ieri ho superato una Mercedes! ...Era parcheggiata. Ma l'ho superata.» (il rovescio; l'uomo dell'Ape)
+8. «Il resto?! Porco! Ho settantadue anni!» (il malinteso; la signora, *La macchina restituita*)
+9. «Spingi! Spingi! SPINGI, CHE MI ESCE L'ERNIA!» (lo sfogo che sale; il portatore, *Il santo e il ritratto*)
+10. «Vattene, stronzo, che mi rovini la reputazione, cazzo!» (insulto a caldo che sputtana; il benpensante, *La famiglia per bene*)
