@@ -78,7 +78,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Un'ora al freddo ad aspettarti! Un'ora! Ho il raffreddore per te!
 - Il lavoro sporco non lo faccio! Tano, fallo tu! Io guardo la macchina!
 - Ehi, Nino. Non lo dire a Tano: io non so sparare. Mai saputo.
-- Rocco, tienilo! Tienilo! ...Rocco, ma che lo abbracci?!
+- Rocco, tienilo! Rocco! T'ha morso? T'ha morso! Ma che bestia è?!
 - Cinquecentomila, Nino! Non quattrocento! Cinque! Sai contare?!
 
 ### reduci (Risacca vecchia)
@@ -145,7 +145,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Fammi passare, ho la pressione! A duecento! Muoviti!
 - Ti ho visto nascere, Nino! Eri brutto! Adesso sei grosso e brutto!
 - Non ho paura dei Grigi! Ho il bastone! E la dentiera che morde!
-- Oi, giovane! Portami la borsa! ...Non così! Ci sono le uova, cretino!
+- Portami la borsa fino a casa! Piano, c'è la dentiera di riserva!
 
 ### bottegai
 - Non toccare la frutta con quelle mani! Le hai lavate nel porto?!
@@ -182,7 +182,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - I Marsigliesi pagano doppio! Doppio! E poi ti guardano come un cane!
 - Ho le mani rotte, la schiena rotta, e mia moglie vuole la pelliccia!
 - Giovedì arriva la nave! Doppio turno! Mia moglie non mi riconosce più!
-- La barca mia è la più veloce del porto! Quando il motore parte!
+- La mia barca ha il motore americano! Fa un rumore! Si sente da casa!
 - Mi guardi le mani? Due dita in meno! Il mare! Vuoi vedere il piede?
 - Chi ha lasciato la rete qua?! Mi ci sono impigliato come un merluzzo!
 - Lo scarico non lo faccio gratis! Non sono tuo padre! Paga!
@@ -220,7 +220,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Suor Teresa ha dato un pugno a un Grigio! Un pugno! Che donna!
 - Il vino della messa è finito! Sagrestano! Ti ho visto! Sputalo!
 - Mi hai pestato il piede! Ti perdono! Ti perdono! TI PERDONO, STRONZO!
-- Offerte! Anche mille lire! Anche cento! Anche un bottone, via!
+- Offerte! Lasciatele qui, che col cestino non giro. Ho il mal di schiena.
 - Tre ore di confessione e nessuno ha peccato! Tutti santi! Bugiardi!
 - Le suore non hanno paura. Hanno un ombrello robusto e la mira buona.
 - Vai a messa, Nino! Ti vedo al bar! Ti vedo, eh! Tutti i giorni!
@@ -246,7 +246,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - Un Grigio m'ha dato un ceffone! L'ho detto alla nonna! È finito, lui!
 - Ho fatto la pipì nella fontana del Garante! Non dirlo! Lo dico io!
 - Sei brutto! Brutto brutto! Hai la faccia come il culo del mio cane!
-- Ho trovato una pistola! ...Era di plastica. Ma ho avuto paura uguale!
+- Ho trovato una pistola! L'ho nascosta sotto il letto della nonna! Zitto!
 - Gara di sputi col figlio del Grigio. Ho vinto. Suo papà m'ha multato.
 - Mamma ha detto a papà che è un coglione! Cos'è un coglione? Sei tu?
 - Da grande faccio lo Squalo! Così la gente mi dà i soldi e basta!
@@ -313,7 +313,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 - [ragazzi] Zio, quello è il muro della Zia! Sei pazzo! Scappa, scappa!
 - [benpensante] Il muro! L'ho dipinto io a maggio! Grigio! Con amore!
 - [vecchia] Scrivi «la Pina è una vipera»! Grande! Che la vede dal balcone!
-- [reduce] Ecco! Così facevamo noi! ...Non guardarmi, ho il fumo negli occhi.
+- [reduce] Ecco! Così facevamo noi! Io scrivevo «Viva». Il resto non lo sapevo.
 - [bottegaio] Sulla saracinesca no! Sulla mia no! Fallo su quella del macellaio!
 - [grigio] Fermo! Che scrivi?! «Grigio stronzo»? Chi è il Grigio stronzo?! Io?!
 - [famiglia] Non lì. Quel muro è nostro. Togli quella roba o ti tolgo la mano.
@@ -335,7 +335,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 
 ### arrestato
 - [ragazzi] Non parlare! Di' che eri al cinema! Che film? Inventa!
-- [vecchia] Lasciatelo! È un ragazzo! ...Va be', un ragazzo grosso.
+- [vecchia] Lasciatelo! Arrestate quelli della banca, piuttosto! Mio genero!
 - [reduce] Lasciatelo! Io nel '79 ho fatto molto peggio! Non lo scrivete!
 - [benpensante] Lo sapevo! Lo sapevo! Ha salutato mia figlia, una volta! Dentro!
 - [bottegaio] Mi doveva tremila lire! Prima mi paga, poi ve lo portate via!
@@ -395,7 +395,7 @@ Proposta di testo, nessun file del gioco toccato. Pronta per diventare dati.
 
 ### di notte, durante l'Ora Quieta
 - [grigio] Ehi! È l'Ora Quieta! A casa! Subito! O ti ci porto io, a calci!
-- [grigio] Che fai in giro a quest'ora?! Documenti! ...Shh! Parla piano!
+- [grigio] Che fai in giro a quest'ora?! Documenti! Dai, non tirarli fuori, fa freddo.
 - [ragazzi] (piano) Zio, pure tu fuori? Shh. Adesso è tutto nostro.
 - [vecchia] (dalla finestra) Rientra, scemo! ...Ah, sei Nino. Rientra, scemo.
 - [benpensante] (dalla finestra) Chiamo la Guardia! Giuro! ...Chi ha il numero?
@@ -447,7 +447,7 @@ Le prime 4 di ogni lista sono le serie (escono più spesso se il bug resta); le 
 - Mi hai bucato il cappello! È d'ordinanza! Me lo scalano!
 - Sparo! Sparo davvero! ...Ferri, come si toglie la sicura?
 - Mi hai bucato la divisa nuova, stronzo! La pago io!
-- Rinforzi! ...Come in ferie? Tutti?
+- Rinforzi! Mandatene tanti! Così io posso andare a casa!
 - Esci con le mani alzate! O come ti pare, basta che esci!
 - Copri tu, Ferri! Io copro la macchina! Da dietro! Seduto!
 
@@ -495,7 +495,7 @@ Le prime 4 di ogni lista sono le serie (escono più spesso se il bug resta); le 
 - Per la Tutela! E per la licenza di Pasqua!
 - Copritemi! Mi mancano sei mesi al congedo!
 - Liberate il cane! È di mia madre! Me l'ha prestato! Non sparategli!
-- Mamma, voglio tornare a casa! ...Sparate! Sparate voi!
+- Mamma, voglio tornare a casa! Il fucile lo lascio qui! Prendetelo voi!
 - Torre due, il riflettore! Non su di me! Su di lui!
 - Mi sono pisciato addosso! Nessuno lo dica al sergente!
 - Rapporto: contatto ostile! Rapporto: ho paura! Cancella il secondo!
@@ -542,7 +542,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - …Ho tamponato una Thema! Della Famiglia! | …Sì, quella Famiglia! | …Sono nella cabina! Non esco! | …Mamma, portami il passaporto!
 - …Ho visto il tuo ex alla Luna! | …Ballava! Come un pollo! | …Con la Rita! | …Sì, quella Rita! …Pronto? Piangi?
 - …Dodici ore in coda per il lasciapassare! | …E sai cosa m'hanno detto? | …«Domani»! «Domani»! | …Io domani gli brucio l'ufficio!
-- …Le ventimila gliele porto! Giuro! | …Venerdì! | …Cosa vuol dire «o le gambe»? | …Giovedì! Facciamo giovedì!
+- …Le ventimila gliele porto! Giuro! | …Venerdì! | …Cosa vuol dire «o le gambe»? | …Prenda quelle di mio fratello! Corre poco!
 - …Mi hanno portato via il frigo! Il frigo! | …Con dentro l'arrosto! | …Sì! Per tre rate! | …Almeno l'arrosto ridatemelo, bastardi!
 - …Mamma, ho perso il traghetto! | …Sì, l'ultimo! | …Perché ero al bar! Ero al bar, va bene?! | …No, non dirlo a papà!
 - …Ho fatto tredici! | …Ventimila lire! | …Mi licenzio! Domani! | …Il capo l'ho già mandato a cagare! Stamattina!
@@ -552,7 +552,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - …Voglio il direttore! | …Lei è il direttore? | …Allora lei è uno stronzo! | …Vent'anni che volevo dirlo! STRONZO!
 - …Amore, non sono uscito con nessuno. | …Il rossetto è mio. | …Sì, lo metto. Da stasera. | …Rosso fuoco. Mi sta da dio.
 - …Mi hanno preso in tv! | …Faccio il pubblico! | …Applaudo! In prima fila! | …Mamma, guardami stasera! Sono quello che applaude!
-- …No, Radio Scirocco non la ascolto. | …Non so neanche cos'è. | …Il novantotto? Non lo conosco, il novantotto. | …Va bene, il novantotto sì.
+- …Sì, è morto. | …Ieri sera. | …Sì, l'ho seppellito in giardino. | …Il canarino! Il CANARINO! Chi pensavi?!
 
 ---
 
@@ -604,7 +604,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - Mi hanno fregato le galline! | Chi? | Il vicino! | Come lo sai? | Le sento! Nel suo forno!
 - Domani c'è la parata! | Ci vai? | Devo! Mi pagano il panino! | Solo il panino? | Col prosciutto! Mica scemo!
 - Ho perso al lotto! | Quanto? | Lo stipendio. | Di chi? | …Di mia moglie. Non dirle niente.
-- Mio fratello è tornato dal continente! | E com'è? | Ha una macchina lunga così! | Davvero? | E i debiti più lunghi! Dorme da me!
+- Mio fratello è tornato dal continente! | E com'è? | Ha la macchina lunga così! | E il lavoro? | Che c'entra il lavoro? Ha la macchina!
 - Hai detto che sono grassa?! | Io? Mai! | Ho sentito! | Ho detto robusta! | Robusta?! Robusta a chi?!
 - Le hai dato il bacio? | Sulla guancia! | Quale? | Quella di suo padre! M'ha preso a calci!
 - Chi ha mangiato la mia torta?! | Il gatto! | Il gatto ha la tua faccia, allora! | …Che c'entra? | Sei pieno di crema!
@@ -630,7 +630,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - Mi hai rubato la ragazza! | Non è vero! | Vi ho visti al cinema! | Era buio! Mi sono seduto lì per sbaglio! | Per due ore?!
 - Zio, ho vomitato sul Garante! | Cosa?! | Sul manifesto! In piazza! | E? | E l'ho pulito con la manica. Avevo paura.
 - Facciamo un colpo! | Dove? | Al bar di Tonino! | Ma è tuo zio! | Appunto! Ho le chiavi!
-- Raga, che puzza! | Sei tu! | Non sono io! | Sei sempre tu! | …Va be', sono io. Ma è la pizza.
+- Raga, che puzza! | Sei tu! | Non sono io! | Sei sempre tu! | …Era la pizza di ieri. In tasca. Me la mangiavo dopo.
 - Oi, ho trovato centomila lire! | Dove?! | Nella giacca di mio padre! | E lui? | Lui non lo sa ancora. Corri!
 - Chi m'ha disegnato il cazzo sulla faccia?! | Dormivi! | Al bar! Davanti a tutti! | Era arte, zio!
 - Raga. Raga. Ho un'idea. | No. | Non l'hai sentita. | No lo stesso.
@@ -649,7 +649,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 - Chi ha detto che sono basso? | Nessuno! | Chi ha riso?! | Nessuno! | Ti ho visto, Pino! Ti ho visto dal basso!
 - Hai visto il Grigio cadere dalla tavola? | L'hanno visto tutti. | Io no. Raccontalo. | Due metri. Di culo. | Ancora. Raccontalo ancora.
 - Oi, che ore sono? | Le quattro. | Di giorno? | Zio, c'è il sole. | Non si sa mai.
-- Raga, mio padre è uscito di galera! | Che bello! | Bello?! Dorme nel mio letto!
+- Raga, mio padre è uscito di galera! | Che bello! | Bello?! Dorme nel mio letto! E russa!
 - Facciamo una band. | Chi suona? | Nessuno. | Va bene. Il nome?
 - Oi, ma tu ci credi alla Risacca? | Shh! | Dico, esiste? | Shh, cazzo! C'è il Grigio!
 - Mi presti il giubbotto? | Per? | Per sembrare te. | Perché? | Mi cerca uno.
@@ -660,7 +660,7 @@ Anche i feed di game.js:789 andrebbero cambiati: «La Comune ti ha visto: arriva
 
 ## 6. I pezzi (sfoghi rivolti a Nino, 3-5 battute, la botta in fondo)
 - [benpensante] Tu! Sì, tu! Hai visto chi m'ha rigato la berlina? | Ottantaquattro rate! Ottantaquattro! | Sono uscito dieci minuti per il pane! | E adesso c'è scritto «cornuto» sulla portiera! | ...Ma come facevano a saperlo?!
-- [ragazzi] Nino! Nino, m'hanno fermato i Grigi! | Mi hanno messo al muro, tipo film! | Io ho fatto il duro. Zitto. Sguardo così. | Poi m'hanno chiesto il nome e ho pianto. | Ma con dignità, eh!
+- [ragazzi] Nino! M'hanno fermato i Grigi! | Al muro! Le mani! Le gambe larghe! | Il nome! Il cognome! L'indirizzo! | IL NUMERO DELLA DEBORA! | E gliel'ho dato! Che coglione!
 - [vecchia] Nino, vieni qua. Lo devo dire a qualcuno. | Il marito della Pina. Nel '52. | Dietro la chiesa. Tutta l'estate. | Ecco. Adesso sto meglio. Vai.
 - [bottegaio] Lo sai chi m'ha spennato stamattina? Tutti! | La Famiglia, i Grigi, e pure il prete! | Il prete! Per la festa del santo! | Il santo non m'ha mai comprato un etto di prosciutto! Mai!
 - [portuale] Nino, il caposquadra m'ha tolto la giornata! | Per una sigaretta! Una! | Lui ne fuma quaranta! Sulle casse! | Sai che faccio? Domani gli piscio nel caffè. | ...L'ho già fatto ieri. Non se n'è accorto.
@@ -700,7 +700,7 @@ Regola: si pesca solo tra le varianti col tono giusto (`tono()` di game.js: comp
 - [complice] {NOME}! Ti devo una! Anche due! Chiedi, che aspetti?!
 - [complice] Per quella volta: ti serve una cantina? Ce l'ho! Coi topi, ma è tua!
 - [complice] Me la ricordo, quella cosa! Mia moglie pure! Lei ti vuole sposare!
-- [neutro] Ti devo un favore. Non mi piace dovere. Chiedimelo presto.
+- [neutro] Ti devo un favore. Mia moglie dice di rendertelo entro domenica. Chiedi.
 - [neutro] Quello che hai fatto. Grazie. Non ne parliamo più. Ma grazie.
 - [neutro] Se ti serve un pasto, un passaggio, un alibi. L'alibi costa.
 - [paura] Ti devo un favore, lo so. Basta che non c'entrano i Grigi.
@@ -833,7 +833,7 @@ Regola: si pesca solo tra le varianti col tono giusto (`tono()` di game.js: comp
 - La mia macchina! Mia! Era parcheggiata! Era parcheggiata, cazzo!
 - Ha preso la macchina del dottore. E adesso chi ci cura?
 - Ma dove guardavi, coglione?! Ci vedi o no?!
-- È ubriaco! Puzza da qui! ...Ce n'è ancora, in macchina?
+- È ubriaco! Puzza da qui! E ha il mio stesso cappotto! Che vergogna!
 - Nessuno tocchi le gomme! Gino, tu prendi le due davanti, io dietro.
 - Il fanale! M'è passato sulla testa!
 - Mio figlio guida meglio. Ha sette anni.
