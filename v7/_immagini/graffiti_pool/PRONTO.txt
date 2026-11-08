@@ -1,0 +1,11 @@
+CATALOGO_PRONTO
+v7/_immagini/graffiti_pool/catalogo_1.jpg  tag e tag a pennarello
+v7/_immagini/graffiti_pool/catalogo_2.jpg  throw-up
+v7/_immagini/graffiti_pool/catalogo_3.jpg  pezzi
+v7/_immagini/graffiti_pool/catalogo_4.jpg  burner e murali
+v7/_immagini/graffiti_pool/catalogo_5.jpg  rulli, verticali, estintore, gotico
+v7/_immagini/graffiti_pool/catalogo_6.jpg  stencil, scritte, calligraffiti
+v7/_immagini/graffiti_pool/catalogo_7.jpg  personaggio e whole car
+v7/_immagini/graffiti_pool/catalogo_8.jpg  manifesti
+v7/_immagini/graffiti_pool/catalogo_9.jpg  adesivi e toppa grigia
+ramo graffiti_pool; generati da v7/strumenti/graffiti_catalogo.js (writer_arte.js + pennelli.js, stile E: lutE, bordo netto)
