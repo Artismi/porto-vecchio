@@ -1,0 +1,287 @@
+{
+ "oggi": {
+  "query": "leggera&tasselli=0",
+  "passi": [
+   {
+    "nome": "partenza",
+    "heapMB": 1965,
+    "geometrie": 1305,
+    "tessiture": 218,
+    "programmi": 180,
+    "disegni": 1,
+    "gpuMB": 853,
+    "paginaMB": 2903
+   },
+   {
+    "nome": "vicolo",
+    "heapMB": 1965,
+    "geometrie": 1675,
+    "tessiture": 255,
+    "programmi": 181,
+    "disegni": 1,
+    "gpuMB": 980,
+    "paginaMB": 2214
+   },
+   {
+    "nome": "vicolo giù",
+    "heapMB": 1965,
+    "geometrie": 1877,
+    "tessiture": 272,
+    "programmi": 182,
+    "disegni": 1,
+    "gpuMB": 1086,
+    "paginaMB": 2222
+   },
+   {
+    "nome": "sbocco",
+    "heapMB": 1965,
+    "geometrie": 2088,
+    "tessiture": 281,
+    "programmi": 182,
+    "disegni": 1,
+    "gpuMB": 1126,
+    "paginaMB": 2268
+   },
+   {
+    "nome": "sbocco → est",
+    "heapMB": 1965,
+    "geometrie": 2092,
+    "tessiture": 282,
+    "programmi": 182,
+    "disegni": 1,
+    "gpuMB": 1132,
+    "paginaMB": 2289
+   },
+   {
+    "nome": "sbocco → nord",
+    "heapMB": 1965,
+    "geometrie": 2254,
+    "tessiture": 293,
+    "programmi": 183,
+    "disegni": 1,
+    "gpuMB": 1149,
+    "paginaMB": 2321
+   },
+   {
+    "nome": "sbocco → ovest",
+    "heapMB": 1965,
+    "geometrie": 2358,
+    "tessiture": 293,
+    "programmi": 183,
+    "disegni": 1,
+    "gpuMB": 1156,
+    "paginaMB": 2391
+   },
+   {
+    "nome": "piazza",
+    "heapMB": 1965,
+    "geometrie": 2458,
+    "tessiture": 302,
+    "programmi": 183,
+    "disegni": 1,
+    "gpuMB": 1164,
+    "paginaMB": 2423
+   },
+   {
+    "nome": "piazza → sud",
+    "heapMB": 1965,
+    "geometrie": 2590,
+    "tessiture": 314,
+    "programmi": 183,
+    "disegni": 1,
+    "gpuMB": 1190,
+    "paginaMB": 2459
+   }
+  ]
+ },
+ "camera9_prima": {
+  "query": "leggera&tasselli=0&camera9&nolontano9",
+  "passi": [
+   {
+    "nome": "partenza",
+    "heapMB": 1850,
+    "geometrie": 3570,
+    "tessiture": 611,
+    "programmi": 181,
+    "disegni": 1,
+    "gpuMB": 1311,
+    "paginaMB": 2812
+   },
+   {
+    "nome": "vicolo",
+    "heapMB": 1850,
+    "geometrie": 4350,
+    "tessiture": 674,
+    "programmi": 184,
+    "disegni": 1,
+    "gpuMB": 1575,
+    "paginaMB": 2124
+   },
+   {
+    "nome": "vicolo giù",
+    "heapMB": 1850,
+    "geometrie": 4556,
+    "tessiture": 689,
+    "programmi": 185,
+    "disegni": 1,
+    "gpuMB": 1587,
+    "paginaMB": 2154
+   },
+   {
+    "nome": "sbocco",
+    "heapMB": 1850,
+    "geometrie": 4890,
+    "tessiture": 735,
+    "programmi": 185,
+    "disegni": 1,
+    "gpuMB": 1623,
+    "paginaMB": 2181
+   },
+   {
+    "nome": "sbocco → est",
+    "heapMB": 1850,
+    "geometrie": 4881,
+    "tessiture": 742,
+    "programmi": 185,
+    "disegni": 1,
+    "gpuMB": 1628,
+    "paginaMB": 2185
+   },
+   {
+    "nome": "sbocco → nord",
+    "heapMB": 1850,
+    "geometrie": 4967,
+    "tessiture": 750,
+    "programmi": 186,
+    "disegni": 1,
+    "gpuMB": 1633,
+    "paginaMB": 2182
+   },
+   {
+    "nome": "sbocco → ovest",
+    "heapMB": 1850,
+    "geometrie": 5008,
+    "tessiture": 758,
+    "programmi": 186,
+    "disegni": 1,
+    "gpuMB": 1636,
+    "paginaMB": 2186
+   },
+   {
+    "nome": "piazza",
+    "heapMB": 1850,
+    "geometrie": 5029,
+    "tessiture": 765,
+    "programmi": 186,
+    "disegni": 1,
+    "gpuMB": 1644,
+    "paginaMB": 2195
+   },
+   {
+    "nome": "piazza → sud",
+    "heapMB": 1850,
+    "geometrie": 5125,
+    "tessiture": 773,
+    "programmi": 186,
+    "disegni": 1,
+    "gpuMB": 1650,
+    "paginaMB": 2224
+   }
+  ]
+ },
+ "camera9_dopo": {
+  "query": "leggera&tasselli=0&camera9",
+  "passi": [
+   {
+    "nome": "partenza",
+    "heapMB": 1850,
+    "geometrie": 1915,
+    "tessiture": 347,
+    "programmi": 179,
+    "disegni": 1,
+    "gpuMB": 1083,
+    "paginaMB": 2760
+   },
+   {
+    "nome": "vicolo",
+    "heapMB": 1850,
+    "geometrie": 2266,
+    "tessiture": 409,
+    "programmi": 181,
+    "disegni": 1,
+    "gpuMB": 1240,
+    "paginaMB": 2144
+   },
+   {
+    "nome": "vicolo giù",
+    "heapMB": 1850,
+    "geometrie": 2485,
+    "tessiture": 425,
+    "programmi": 181,
+    "disegni": 1,
+    "gpuMB": 1254,
+    "paginaMB": 2171
+   },
+   {
+    "nome": "sbocco",
+    "heapMB": 1850,
+    "geometrie": 2781,
+    "tessiture": 478,
+    "programmi": 181,
+    "disegni": 1,
+    "gpuMB": 1301,
+    "paginaMB": 2219
+   },
+   {
+    "nome": "sbocco → est",
+    "heapMB": 1850,
+    "geometrie": 2801,
+    "tessiture": 483,
+    "programmi": 182,
+    "disegni": 1,
+    "gpuMB": 1307,
+    "paginaMB": 2269
+   },
+   {
+    "nome": "sbocco → nord",
+    "heapMB": 1850,
+    "geometrie": 2966,
+    "tessiture": 489,
+    "programmi": 184,
+    "disegni": 1,
+    "gpuMB": 1317,
+    "paginaMB": 2321
+   },
+   {
+    "nome": "sbocco → ovest",
+    "heapMB": 1850,
+    "geometrie": 2982,
+    "tessiture": 492,
+    "programmi": 184,
+    "disegni": 1,
+    "gpuMB": 1320,
+    "paginaMB": 2363
+   },
+   {
+    "nome": "piazza",
+    "heapMB": 1850,
+    "geometrie": 3028,
+    "tessiture": 506,
+    "programmi": 184,
+    "disegni": 1,
+    "gpuMB": 1334,
+    "paginaMB": 2422
+   },
+   {
+    "nome": "piazza → sud",
+    "heapMB": 1850,
+    "geometrie": 3091,
+    "tessiture": 512,
+    "programmi": 185,
+    "disegni": 1,
+    "gpuMB": 1423,
+    "paginaMB": 2442
+   }
+  ]
+ }
+}

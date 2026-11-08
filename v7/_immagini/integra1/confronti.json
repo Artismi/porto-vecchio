@@ -1,0 +1,37 @@
+{
+ "nota": "stessa sessione, stesso istante (la corsa di fumetto2 ferma, le varianti una dopo l altra); 960x540, tasselli cotti 48196fd63f899c14. Il resto (animazioni: panni, bandiere, uccelli) e il rumore del passo unico contro le bande (±1-2, va col tempo) danno il fondo. I confronti fra sessioni diverse non valgono: il taglio delle case e le persone cambiano da una sessione all altra.",
+ "vicolo": {
+  "carico A: A | A dopo E": {
+   "media": 0.58,
+   "px>2 %": 0.938,
+   "px>8 %": 0.39
+  },
+  "carico E: E | E dopo A": {
+   "media": 0.634,
+   "px>2 %": 1.553,
+   "px>8 %": 0.592
+  },
+  "carico A: A | E (riferimento)": {
+   "media": 10.282,
+   "px>2 %": 99.226,
+   "px>8 %": 78.486
+  }
+ },
+ "lungomare": {
+  "carico A: A | A dopo E": {
+   "media": 0.639,
+   "px>2 %": 0.319,
+   "px>8 %": 0.125
+  },
+  "carico E: E | E dopo A": {
+   "media": 0.558,
+   "px>2 %": 1.095,
+   "px>8 %": 0.277
+  },
+  "carico A: A | E (riferimento)": {
+   "media": 10.645,
+   "px>2 %": 98.685,
+   "px>8 %": 80.65
+  }
+ }
+}

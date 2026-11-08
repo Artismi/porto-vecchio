@@ -20,12 +20,29 @@ var Arredo3D = (function () {
   const sg = n => (LV > 0 || n < 10) ? n : Math.max(6, Math.round(n * .6));   // al livello lontano meno segmenti (4 e 8 restano: sono forme)
   // ---------- materiali per genere (pochi, condivisi) ----------
   const SUP = { ghisa: 'ghisa', zinco: 'metallo', vernice: 'vernice', ottone: 'metallo', legno: 'legno', cemento: 'pietra', pietra: 'pietra', plastica: 'vernice', gomma: 'gomma', tela: 'tessuto', carta: 'carta', porcellana: 'vernice', cotto: 'pietra', smalto: 'vernice', vimini: 'legno' };   // [vasi2] cotto, smalto e vimini dei vasi
+  // [rifcostruito] lo stile E (rifinitura_costruito.js): ogni tinta degli arredi verso l'inchiostro della tavolozza della sua famiglia, col valore
+  // dentro la fascia del genere (la ghisa e le gomme fonde, i legni a mezzo valore, le tele chiare): una tavolozza sola. Senza ?stile=E: niente
+  // [integra1] RC: la rifinitura entra (cottura dei tasselli o stile E). Con StileE (SE) le tinte, le righe e le tele di E sono VARIANTI dei
+  // materiali di A (rcE nei userData, la tessitura E in __mapE) e gli orli d'inchiostro materiali solo di E: la stessa cottura porta A ed E
+  const RC = typeof RifCostruito !== 'undefined' && RifCostruito && RifCostruito.capace ? RifCostruito : null, SE = RC && typeof StileE !== 'undefined' ? StileE : null;
+  const RCF = { ghisa: [.2, .34], gomma: [.18, .3], legno: [.4, .62], tela: [.44, .93], vernice: [.26, .9], zinco: [.5, .72], cemento: [.56, .74], pietra: [.66, .86], plastica: [.3, .92], carta: [.84, .95] };
+  const rcT = (col, kind) => RC && kind !== 'luce' && kind !== 'vetro' && typeof col === 'string' && col[0] === '#' ? RC.tinta(col, null, .7, RCF[kind]) : col;
+  // [rifcostruito] la tela a righe dello stile E: la coppia di inchiostri (pieno a mezzo valore e carta) scelta dalla tinta di prima, e il
+  // filo d'inchiostro (cuciture, orli, la barra della tenda): un materiale solo, fuso con gli altri
+  function rcRighe(col, col2, mA, mB) { const R = RC.righe(col || '#c25b36'), A = RC.ink(R[0], R[0] === 'ocra' ? .64 : .56), B = RC.ink(R[1], R[1] === 'carta' ? .9 : .8), B2 = col2 && RC.oklab(col2)[0] < .5 ? RC.ink(R[0], .44) : B;
+    return SE ? [rcVar(mA, A), rcVar(mB, B2)] : [rcM(A, 'tela'), rcM(B2, 'tela')]; }
+  const rcM = (hex, kind) => { const k = 'rc|' + hex + '|' + kind; if (MC[k]) return MC[k]; const m = mat('#000000', kind).clone(); delete m.userData.rcE; delete m.userData.rcA; m.color.set(hex); m.name = kind; m.userData.sup = SUP[kind]; return (MC[k] = m); };
+  // [integra1] la variante E di un materiale di A (la sua copia: altri usano l'originale con la sua tinta E) e gli orli solo di E
+  const rcVar = (m0, hexE) => { const k = 'rcv|' + m0.uuid + '|' + hexE; if (MC[k]) return MC[k]; const m = m0.clone(); SE.colore(m, hexE); return (MC[k] = m); };
+  const rcInk = () => { if (!SE) return rcM(RC.ink('lavagna', .3), 'vernice'); const k = 'rcSolo|ink'; if (MC[k]) return MC[k]; const m = rcM(RC.ink('lavagna', .3), 'vernice').clone(); SE.soloE(m); return (MC[k] = m); };
   function mat(col, kind) {
+    const cE = SE ? rcT(col, kind) : null; if (!SE) col = rcT(col, kind);   // [integra1] con SE la tinta E è una variante (StileE.colore)
     const k = col + '|' + kind; if (MC[k]) return MC[k];
     if (kind === 'luce') return (MC[k] = Object.assign(new THREE.MeshBasicMaterial({ color: col, toneMapped: false, fog: false }), { name: 'luce' }));
     const o = { color: col, roughness: .6, metalness: 0 };
     Object.assign(o, { ghisa: { roughness: .55, metalness: .3 }, zinco: { roughness: .42, metalness: .3 }, vernice: { roughness: .5, metalness: .1 }, ottone: { roughness: .35, metalness: .3 }, legno: { roughness: .75 }, cemento: { roughness: .95 }, pietra: { roughness: .88 }, plastica: { roughness: .45 }, gomma: { roughness: .92 }, tela: { roughness: .95, side: THREE.DoubleSide }, carta: { roughness: .88 }, porcellana: { roughness: .25, metalness: .05 }, vetro: { roughness: .15, metalness: .05, transparent: true, opacity: .55, depthWrite: false }, cotto: { roughness: .9 }, smalto: { roughness: .28, metalness: .05 }, vimini: { roughness: .9 }, foglia: { roughness: .7 }, fiore: { roughness: .8 } }[kind] || {});   // [vasi2]
     const m = new THREE.MeshStandardMaterial(o); m.name = kind; if (SUP[kind]) m.userData.sup = SUP[kind];
+    if (cE && cE !== col) SE.colore(m, cE);
     return (MC[k] = m);
   }
   // la tavolozza del 1986: verde comunale, ghisa nera, zinco, cemento sporco, legno al sole, rosso PT, giallo lavori (tutti un po' passati)
@@ -80,15 +97,21 @@ var Arredo3D = (function () {
     const k = [testo, bg, fg, w, h].join('|'); if (TX[k]) return TX[k];
     if (typeof document === 'undefined') return (TX[k] = mat(bg, 'vernice'));
     const pw = 128, ph = Math.max(16, Math.round(128 * h / w)), c = document.createElement('canvas'); c.width = pw; c.height = ph; const x = c.getContext('2d');
+    const disegna = (x, bg, fg, e) => {   // [integra1] la tela di A e (con SE) quella di E, per la variante
+    if (e) { bg = rcT(bg, 'vernice'); fg = RC.oklab(bg)[0] > .62 ? RC.INK.nero : RC.INK.carta; }   // [rifcostruito] la scritta a contrasto pieno: nero su chiaro, carta su scuro
     x.fillStyle = bg; x.fillRect(0, 0, pw, ph); x.strokeStyle = fg; x.lineWidth = 3; x.strokeRect(3, 3, pw - 6, ph - 6);
     const righe = String(testo).split('\n'), fs = Math.min(ph / (righe.length + .6), pw / (Math.max(...righe.map(r => r.length), 1) * .62 + 1));
     x.fillStyle = fg; x.font = `bold ${Math.floor(fs)}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
     righe.forEach((r, i) => x.fillText(r, pw / 2, ph / 2 + (i - (righe.length - 1) / 2) * fs * 1.05));
     // l'usura: qualche puntino di ruggine e lo sporco in basso
-    for (let i = 0; i < 18; i++) { x.fillStyle = `rgba(90,52,30,${(.15 + (i * 37 % 10) / 30).toFixed(2)})`; x.fillRect((i * 53) % pw, (i * 29) % ph, 2, 1); }
-    const gr = x.createLinearGradient(0, ph * .7, 0, ph); gr.addColorStop(0, 'rgba(40,32,24,0)'); gr.addColorStop(1, 'rgba(40,32,24,.25)'); x.fillStyle = gr; x.fillRect(0, 0, pw, ph);
+    if (!e) { for (let i = 0; i < 18; i++) { x.fillStyle = `rgba(90,52,30,${(.15 + (i * 37 % 10) / 30).toFixed(2)})`; x.fillRect((i * 53) % pw, (i * 29) % ph, 2, 1); }
+      const gr = x.createLinearGradient(0, ph * .7, 0, ph); gr.addColorStop(0, 'rgba(40,32,24,0)'); gr.addColorStop(1, 'rgba(40,32,24,.25)'); x.fillStyle = gr; x.fillRect(0, 0, pw, ph); }   // [rifcostruito] in E la targa è un pannello grafico pulito: niente puntini né sporco
+    };
+    disegna(x, bg, fg, !!RC && !SE);
+    let tE = null; if (SE) { const cE = document.createElement('canvas'); cE.width = pw; cE.height = ph; disegna(cE.getContext('2d'), bg, fg, true); tE = new THREE.CanvasTexture(cE); tE.magFilter = THREE.NearestFilter; tE.minFilter = THREE.LinearMipmapLinearFilter; tE.anisotropy = 4; }
     const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 4;
-    return (TX[k] = new THREE.MeshStandardMaterial({ map: t, roughness: .5, metalness: .05 }));
+    const mT = new THREE.MeshStandardMaterial({ map: t, roughness: .5, metalness: .05 }); if (tE) SE.mappaE(mT, tE);
+    return (TX[k] = mT);
   }
   // la faccia scritta a z, con la lamiera di supporto (spessore sp) subito dietro, nel verso ry: il retro della lamiera sta a z - sp - 1,5 mm
   function targa(g, testo, w, h, x, y, z, ry, bg, fg, sp) {
@@ -347,7 +370,10 @@ var Arredo3D = (function () {
     [-.35, .35].forEach(x => asta(g, [x, .52, L / 2 - .1], [x, .62, L / 2 + .9], .022, LS)); asta(g, [-.35, .62, L / 2 + .9], [.35, .62, L / 2 + .9], .018, LS);   // le stanghe col manico
     asta(g, [.3, .47, -.55], [.3, .03, -.62], .02, GH, 4); put(g, cylG(.04, .04, .03, 6), GM, .3, .015, -.62); return g; };
   T.bancarella = (o) => {   // bancarella del mercato: piano su quattro gambe col ripiano basso, tenda a strisce sul telaio, cassette inclinate con la merce, bilancia, cartellini dei prezzi, la lampadina
-    const g = new THREE.Group(), ca = (o && o.col) || C.verde, cb = (o && o.col2) || C.bianco, mT = mat(ca, 'tela'), mT2 = mat(cb, 'tela'), W = 2.4, D = 1.3, merci = (o && o.merci) || ['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'];
+    const g = new THREE.Group(), ca = (o && o.col) || C.verde, cb = (o && o.col2) || C.bianco, W = 2.4, D = 1.3, merci = (o && o.merci) || ['#c84a2a', '#e0b030', '#4a8a3a', '#d06a2a'];
+    let mT = mat(ca, 'tela'), mT2 = mat(cb, 'tela');
+    if (RC) { [mT, mT2] = rcRighe(ca, cb, mT, mT2); const ik = rcInk(), y = 2.384, X = (W + .3) / 2, Z = (D + .3) / 2;   // [rifcostruito] le righe dalla tavolozza e l'orlo del telo disegnato
+      [[-X, -Z, X, -Z], [-X, Z, X, Z], [-X, -Z, -X, Z], [X, -Z, X, Z]].forEach(([x0, z0, x1, z1]) => asta(g, [x0, y, z0], [x1, y, z1], .012, ik, 4)); asta(g, [-X, 2.18, Z + .008], [X, 2.18, Z + .008], .01, ik, 4); }
     slab(g, W, .05, D, LGG, 0, .9, 0, .008); slab(g, W - .1, .035, D - .2, LG, 0, .3, 0, .005); [[-1.15, -.6], [1.15, -.6], [-1.15, .6], [1.15, .6]].forEach(([x, z]) => { slab(g, .07, .88, .07, LS, x, .44, z, .006); asta(g, [x, .9, z], [x * .97, 2.35, z * .9], .02, GH, 4); });
     slab(g, W, .55, .025, LG, 0, .6, D / 2 - .03, .004);   // la pannellatura davanti
     asta(g, [-1.12, 2.35, -.54], [1.12, 2.35, -.54], .02, GH, 4); asta(g, [-1.12, 2.35, .54], [1.12, 2.35, .54], .02, GH, 4); asta(g, [-1.12, 2.35, -.54], [-1.12, 2.35, .54], .02, GH, 4); asta(g, [1.12, 2.35, -.54], [1.12, 2.35, .54], .02, GH, 4);   // il telaio della tenda
@@ -371,7 +397,10 @@ var Arredo3D = (function () {
     asta(g, [-.2, .86, -.22], [.2, .86, -.22], .011, m); asta(g, [-.2, .03, .2], [.2, .03, .2], .011, m); asta(g, [-.2, .03, -.2], [.2, .03, -.2], .011, m);
     for (let k = 0; k < 4; k++) slab(g, .42, .022, .07, LGG, 0, .466, -.15 + k * .1, .004); slab(g, .42, .1, .022, LGG, 0, .78, -.2, .004, .12, 0, 0); if (F()) [-1, 1].forEach(s => bullone(g, s * .211, .45, .0, 'x', .008, ZS)); return g; };
   T.ombrellone = (o) => {   // ombrellone da bar: base di cemento tornita, palo bianco, otto stecche coi puntali, il telo a spicchi di due colori, la mantovana, il pomolo
-    const g = new THREE.Group(), mA = mat((o && o.col) || '#e0cdb0', 'tela'), mB = mat((o && o.col2) || (o && o.col) || '#e0cdb0', 'tela'), H = (o && o.h) || 2.3, R = 1.4, hc = .42;
+    const g = new THREE.Group(), H = (o && o.h) || 2.3, R = 1.4, hc = .42; let mA = mat((o && o.col) || '#e0cdb0', 'tela'), mB = mat((o && o.col2) || (o && o.col) || '#e0cdb0', 'tela');
+    if (RC) { [mA, mB] = rcRighe((o && o.col) || '#c25b36', o && o.col2, mA, mB); const ik = rcInk();   // [rifcostruito] le righe dalla tavolozza, le cuciture e l'orlo disegnati
+      for (let i = 0; i < 8; i++) { const th = i / 8 * PI * 2; asta(g, [0, H + .012, 0], [Math.sin(th) * R * 1.004, H - hc + .012, Math.cos(th) * R * 1.004], .011, ik, 4); }
+      put(g, geo('rcOrlo' + q3(R), () => new THREE.TorusGeometry(R, .018, 4, 8)), ik, 0, H - hc, 0, PI / 2, 0, 0); put(g, geo('rcOrloB' + q3(R), () => new THREE.TorusGeometry(R, .014, 4, 8)), ik, 0, H - hc - .12, 0, PI / 2, 0, 0); }
     lathe(g, [[.25, 0], [.25, .05], [.15, .1], [.06, .12], [.04, .16]], 12, CM); asta(g, [0, .1, 0], [0, H + .05, 0], .022, BC);
     for (let i = 0; i < 8; i++) { const th = i / 8 * PI * 2, sx = Math.sin(th), sz = Math.cos(th); asta(g, [0, H - .02, 0], [sx * R, H - hc, sz * R], .009, BC, 4); put(g, sphG(.018, 5), BC, sx * R, H - hc, sz * R); asta(g, [0, H - .6, 0], [sx * R * .5, H - hc * .5 - .02, sz * R * .5], .007, BC, 4);
       put(g, geo('omb' + i, () => new THREE.ConeGeometry(R, hc, 1, 1, true, th, PI / 4)), i % 2 ? mB : mA, 0, H - hc / 2, 0);
@@ -543,15 +572,18 @@ var Arredo3D = (function () {
     return g; };
   // l'ombrellone da spiaggia: palo bianco a due pezzi col giunto inclinato, otto spicchi a strisce alterne con le stecche, la mantovana, il puntale
   T.ombrellone_mare = (o) => {
-    const g = new THREE.Group(), ca = mat((o && o.col) || '#d84a4a', 'tela'), cb = mat((o && o.col2) || C.bianco, 'tela'), H = 2.3, R = 1.45, N = 8;
+    const g = new THREE.Group(), H = 2.3, R = 1.45, N = 8; let ca = mat((o && o.col) || '#d84a4a', 'tela'), cb = mat((o && o.col2) || C.bianco, 'tela');
+    if (RC) [ca, cb] = rcRighe((o && o.col) || '#d84a4a', o && o.col2, ca, cb);   // [rifcostruito]
     put(g, cylG(.03, .022, .06, 6), ZS, 0, .03, 0); asta(g, [0, .05, 0], [0, 1.3, 0], .022, BC, 8); put(g, cylG(.032, .032, .08, 8), mat('#6e7270', 'zinco'), 0, 1.32, 0);
     const top = new THREE.Group(); top.position.set(0, 1.35, 0); top.rotation.z = (o && o.incl !== undefined) ? o.incl : .12; g.add(top);
     asta(top, [0, 0, 0], [0, H - 1.35, 0], .02, BC, 8);
     const Hc = H - 1.35 - .05;
-    for (let k = 0; k < N; k++) { const a0 = k / N * PI * 2, a1 = (k + 1) / N * PI * 2; const geo = new THREE.BufferGeometry(); const P = [0, Hc + .32, 0, Math.cos(a0) * R, Hc, Math.sin(a0) * R, Math.cos(a1) * R, Hc, Math.sin(a1) * R]; geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.computeVertexNormals(); const mm = (k % 2 ? cb : ca).clone(); mm.side = THREE.DoubleSide; put(top, geo, mm);
+    for (let k = 0; k < N; k++) { const a0 = k / N * PI * 2, a1 = (k + 1) / N * PI * 2; const geo = new THREE.BufferGeometry(); const P = [0, Hc + .32, 0, Math.cos(a0) * R, Hc, Math.sin(a0) * R, Math.cos(a1) * R, Hc, Math.sin(a1) * R]; geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.computeVertexNormals(); const mm = RC && !SE ? (k % 2 ? cb : ca) : (k % 2 ? cb : ca).clone(); mm.side = THREE.DoubleSide; put(top, geo, mm);   /* [rifcostruito] in E le due tele condivise (erano 8 copie per ombrellone) */
+      if (RC) asta(top, [0, Hc + .332, 0], [Math.cos(a0) * R * 1.004, Hc + .01, Math.sin(a0) * R * 1.004], .011, rcInk(), 4);
       const fx = (Math.cos(a0) + Math.cos(a1)) / 2 * R, fz = (Math.sin(a0) + Math.sin(a1)) / 2 * R; const mt = put(top, planeG(2 * R * Math.sin(PI / N), .16), mm, fx * .99, Hc - .08, fz * .99, 0, -((a0 + a1) / 2) + PI / 2, 0);
       asta(top, [0, Hc + .3, 0], [Math.cos(a0) * R * .98, Hc + .005, Math.sin(a0) * R * .98], .006, ZS, 4); asta(top, [0, Hc - .35, 0], [Math.cos(a0) * R * .55, Hc + .1, Math.sin(a0) * R * .55], .005, ZS, 4); }
     put(top, sphG(.04, 6), BC, 0, Hc + .34, 0); put(top, cylG(.03, .03, .05, 6), ZS, 0, Hc - .35, 0);
+    if (RC) { const ik = rcInk(); put(top, geo('rcOrloM', () => new THREE.TorusGeometry(R, .018, 4, N)), ik, 0, Hc, 0, PI / 2, 0, 0); put(top, geo('rcOrloMB', () => new THREE.TorusGeometry(R * .995, .014, 4, N)), ik, 0, Hc - .16, 0, PI / 2, 0, 0); }   // l'orlo e il bordo della balza
     return g; };
   // il salvagente sul palo: anello a strisce rosse e bianche, la cima avvolta, il gancio
   T.salvagente = () => {
@@ -1030,8 +1062,25 @@ var Arredo3D = (function () {
     pts.pop(); pts.push([-w / 2, -h]);
     const ge = new THREE.ExtrudeGeometry(shape(pts), { depth: .008, bevelEnabled: false, curveSegments: 1 }), uv = ge.attributes.uv, ps = ge.attributes.position;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, (ps.getX(i) + w / 2) / w, 1 + ps.getY(i) / .2); ge.computeVertexNormals(); return ge; });
+  // [rifcostruito] la tela della tenda nello stile E: la coppia di colori letta dalla tela di chi la posa (render.js: tendaMat, stripeMat), portata
+  // alla coppia della tavolozza (l'inchiostro pieno e la carta), righe nette di ~25 cm (16 texel l'una), senza l'ombra dipinta in basso
+  const RCT = {};
+  function rcTela(mt, w, base) {
+    const im = mt && mt.map && mt.map.image; let a = '#c25b36';
+    try { if (im && im.getContext) { const d = im.getContext('2d').getImageData(0, Math.min(1, im.height - 1), im.width, 1).data, c0 = [d[0], d[1], d[2]];
+      let c1 = null; for (let i = 4; i < d.length; i += 4) if (Math.abs(d[i] - c0[0]) + Math.abs(d[i + 1] - c0[1]) + Math.abs(d[i + 2] - c0[2]) > 40) { c1 = [d[i], d[i + 1], d[i + 2]]; break; }
+      const h = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join(''), cr = c => { const L = RC.oklab(h(c)); return Math.hypot(L[1], L[2]); };
+      a = !c1 || cr(c0) >= cr(c1) ? h(c0) : h(c1); } else if (mt && mt.color) a = '#' + mt.color.getHexString(); } catch (e) { }
+    const R = RC.righe(a), n = 2 * Math.max(3, Math.round(w / .5)), k = R.join() + n + (base ? '|' + base.uuid : ''); if (RCT[k]) return RCT[k];
+    if (typeof document === 'undefined') return (RCT[k] = base ? base : rcM(RC.ink(R[0], .56), 'tela'));
+    const c = document.createElement('canvas'); c.width = n * 16; c.height = 4; const x = c.getContext('2d');
+    for (let i = 0; i < n; i++) { x.fillStyle = i % 2 ? RC.ink(R[1], .9) : RC.ink(R[0], R[0] === 'ocra' ? .64 : .56); x.fillRect(i * 16, 0, 16, 4); }
+    const t = new THREE.CanvasTexture(c); t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = 4;
+    if (base) { const m = base.clone(); SE.mappaE(m, t); if (m.color) SE.colore(m, '#ffffff'); return (RCT[k] = m); }   // [integra1] la variante della tela di A: in E la tela a righe (bianca sotto)
+    const m = new THREE.MeshStandardMaterial({ map: t, roughness: .95, side: THREE.DoubleSide }); m.name = 'tela'; m.userData.sup = 'tessuto'; return (RCT[k] = m);
+  }
   T.tenda_bottega = (o) => {
-    const g = new THREE.Group(); g.userData.aMuro = true; const w = (o && o.w) || 3, dep = (o && o.dep) || 1, mt = (o && o.mt) || mat(C.tela, 'tela'), mK = mat('#5a5e60', 'zinco');
+    const g = new THREE.Group(); g.userData.aMuro = true; const w = (o && o.w) || 3, dep = (o && o.dep) || 1, mt = RC ? rcTela(o && o.mt, w, SE ? (o && o.mt) || mat(C.tela, 'tela') : null) : (o && o.mt) || mat(C.tela, 'tela'), mK = RC ? (SE ? rcVar(mat('#5a5e60', 'zinco'), RC.ink('lavagna', .3)) : rcInk()) : mat('#5a5e60', 'zinco');   // [rifcostruito] in E il cassonetto, la barra e i bracci d'inchiostro: l'orlo della tenda disegnato
     const zf = dep * .95, yf = -dep * .34, L = Math.hypot(zf - .14, yf + .04);
     slab(g, w + .1, .14, .16, mK, 0, 0, .08, .025); [-1, 1].forEach(sx => slab(g, .03, .16, .18, mK, sx * (w / 2 + .065), 0, .08, .008));   // il cassonetto e i tappi
     const t = put(g, telaG(w, L), mt, 0, (yf - .04) / 2, (zf + .14) / 2); t.rotation.x = -PI / 2 + Math.atan2(-(yf + .04), zf - .14);

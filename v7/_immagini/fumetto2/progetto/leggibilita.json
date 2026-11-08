@@ -1,0 +1,57 @@
+{
+ "ora_crepuscolo": {
+  "personaggio_su_corona": 6.44,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "ora_mattino": {
+  "personaggio_su_corona": 10.38,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "ora_mezzogiorno": {
+  "personaggio_su_corona": 10.57,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "ora_notte": {
+  "personaggio_su_corona": 3.85,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "ora_oro": {
+  "personaggio_su_corona": 10.46,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "ora_pomeriggio": {
+  "personaggio_su_corona": 10.6,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "posto_lungomare": {
+  "personaggio_su_corona": 14.51,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "posto_piazza": {
+  "personaggio_su_corona": 1.13,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "posto_sbocco": {
+  "personaggio_su_corona": 10.95,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "posto_sera": {
+  "personaggio_su_corona": 6.1,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ },
+ "posto_vicolo": {
+  "personaggio_su_corona": 4.02,
+  "vermiglio_fuori": 0,
+  "bordo": 15.0
+ }
+}

@@ -290,6 +290,13 @@ var Riva = (function () {
         giu = smoothstep(.33, .47, cc.x); cio = mix(cio * (1.04 - cc.x * .3), vec3(.33, .3, .26), giu); }
       vec3 pr = mix(sab, roc, clamp(vRS9.y, 0., 1.)); pr = mix(pr, cio, clamp(vRS9.w, 0., 1.) * aaL);
       pr = mix(pr, pr * vec3(.52, .54, .57), wet * .9); pr = mix(pr, vec3(.8, .78, .72), sw * wet * aaM * (1. - vRS9.y) * .28);
+      if (rsK > 0.) {   // [rifinitura suolo] lo stile E: la sabbia disegnata (rifinitura_suolo.js: increspature, il bordo del bagnato, la linea
+        // dell'alta marea, ciottoli e conchiglie radi, le orme) al posto della grana e delle ciocche; la roccia e i ciottoli restano
+        float bE = 2.8 + (rn9(p * .09) - .5) * 1.6; /* la linea dell'alta marea: poco oltre il bagnato (le spiagge della città sono strette) */
+        vec3 sE = rsSabbia(sab, p, mpp, wet, d - bE);
+        sE = sE * (1. - rsInk * .9) + rsLuce;
+        float kS = rsK * (1. - clamp(vRS9.y, 0., 1.)) * (1. - clamp(vRS9.w, 0., 1.) * aaL);
+        pr = mix(pr, sE, kS); }
       diffuseColor.rgb = mix(diffuseColor.rgb, pr, rW9);
       rWet9 = wet * rW9;
       rB9 = (rip * .02 * aaL * (1. - vRS9.y) - crk * .05 * vRS9.y - pit * .02 * vRS9.y + (.04 - giu * .05) * vRS9.w * aaL) * rW9;
@@ -300,14 +307,16 @@ var Riva = (function () {
       normal = normalize(abs(det) * normal - gr); }`;
   function materiale(base, prep) {   // il materiale del blocco sotto (la stessa tela, lo stesso prato, la stessa luce di notte) più il suolo della riva
     const m = base.clone(); if (prep) prep(m); const prev = m.onBeforeCompile, pk = m.customProgramCacheKey && m.customProgramCacheKey !== window.THREE.Material.prototype.customProgramCacheKey ? m.customProgramCacheKey() : '';
-    m.customProgramCacheKey = () => pk + '|riva9';
+    m.customProgramCacheKey = () => pk + '|riva9' + (typeof RifSuolo !== 'undefined' && RifSuolo.capace ? '|rs' + RifSuolo.ver + (typeof StileE !== 'undefined' ? StileE.chiave() : '') : '');   // [integra1] capace: anche nella cottura
     m.onBeforeCompile = (sh, r) => { if (prev) prev.call(m, sh, r);
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aRS; attribute float aRD; attribute vec4 aRT; attribute vec2 aRU; varying vec4 vRS9; varying float vRD9; varying vec3 vRW9; varying vec4 vRT9; varying vec2 vRU9;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRS9 = aRS; vRD9 = aRD; vRT9 = aRT; vRU9 = aRU; vRW9 = (modelMatrix * vec4(transformed, 1.)).xyz;');
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_P)
+      const RS = typeof RifSuolo !== 'undefined' && RifSuolo.capace; if (RS) sh.uniforms.rsK = RifSuolo.k;   // [rifinitura suolo] solo con lo stile E   [integra1] o nella cottura (la manopola a 0)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + (RS ? RifSuolo.pre() + RifSuolo.GLSL : '#define rsK 0.\nfloat rsInk; float rsLuce; vec3 rsSabbia(vec3 c, vec2 p, float m, float w, float d){ return c; }\n') + GLSL_P)
         .replace('#include <color_fragment>', '#include <color_fragment>\n' + GLSL_A)
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, .34, rWet9);')
         .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n' + GLSL_N);
+      if (RS) sh.fragmentShader = RifSuolo.hot(sh.fragmentShader);
     };
     return m;
   }

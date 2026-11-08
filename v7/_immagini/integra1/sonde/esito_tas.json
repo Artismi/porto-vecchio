@@ -1,0 +1,110 @@
+{
+ "sbocco": {
+  "stato": [
+   [
+    "A",
+    {
+     "t": 10.06,
+     "x": 1373.92,
+     "y": 308.97,
+     "face": -0.582,
+     "yaw": 3.929,
+     "pitch": 50,
+     "fov": 46,
+     "camH": 8.81,
+     "dist": 10.12,
+     "horiz": 6.43,
+     "davanti": 10.9,
+     "omH": 0.128,
+     "omX": 0.5,
+     "omY": 0.58,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -2.4,
+     "arm": 10,
+     "ms": 47
+    }
+   ],
+   [
+    "E",
+    {
+     "t": 10.06,
+     "x": 1373.92,
+     "y": 308.97,
+     "face": -0.582,
+     "yaw": 3.929,
+     "pitch": 50,
+     "fov": 46,
+     "camH": 8.81,
+     "dist": 10.12,
+     "horiz": 6.43,
+     "davanti": 10.9,
+     "omH": 0.128,
+     "omX": 0.5,
+     "omY": 0.58,
+     "jz": 0,
+     "spd": 0,
+     "coll": null,
+     "near": 0.25,
+     "asse": false,
+     "urto": false,
+     "taglio": 0,
+     "cose": 0,
+     "c7": true,
+     "dsp": 0,
+     "mano": false,
+     "dentro": -2.4,
+     "arm": 10,
+     "ms": 59
+    }
+   ]
+  ],
+  "tasselli": {
+   "mesh": 2566,
+   "vertici": 10737579,
+   "materiali": 872,
+   "tessiture": 540
+  }
+ },
+ "__prog": {
+  "programmi": 201,
+  "stile": {
+   "stile": "A",
+   "cotta": false,
+   "predefinito": "A",
+   "manopole": {
+    "rcK": 0,
+    "rsK": 0
+   }
+  }
+ },
+ "__diag": {
+  "A": {
+   "tinta": 64,
+   "tessitura": 0,
+   "soloE": 2,
+   "soloEvisibili": 0,
+   "rsK": 0,
+   "rcK": 0,
+   "tasselli": 644
+  },
+  "E": {
+   "tinta": 64,
+   "tessitura": 24,
+   "soloE": 2,
+   "soloEvisibili": 2,
+   "rsK": 7,
+   "rcK": 31,
+   "tasselli": 644
+  }
+ }
+}
