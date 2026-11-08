@@ -27970,7 +27970,7 @@ var Urbanistica2 = (function () {
     // 5) le opere (barriere, pedonali, scale) coi pezzi nuovi
     if (K.opere) { const O = K.opere(W.pezzi, W.sets); W.pedonali = O.pedonali; W.barriere = O.barriere; W.passaggi = O.scale; }
     const nasc = (k, v) => Object.defineProperty(S, k, { value: v, enumerable: false, writable: true });   // fuori dal JSON di W.urbanistica2
-    nasc('__cambiate', [...CAMB]); nasc('__piene', [...PIENE]); nasc('__case0', B.slice());
+    nasc('__cambiate', [...CAMB]); nasc('__piene', [...PIENE]);
     if (S.avvisi.length && typeof console !== 'undefined') console.warn('[urbanistica2]', S.avvisi.join(' · '));
     return W;
   }
@@ -28022,10 +28022,9 @@ var Urbanistica2 = (function () {
     const ctx = { SITES: WV.SITES, spotOf, ws: W.writers.map(id => G.byId(st, id)).filter(n => n && n.pop && n.pop.writer) };
     const n0 = W.works.length, base = W.nextId;
     v.cotti = WR._.cotti(st, SD ? SD.rimodella(st, L.map(o => Object.assign({}, o))) : L.map(o => Object.assign({}, o)));
-    // i muri che F1 cambia: le caselle liberate (case tolte, accorciate, e quelle che dopo casette() ha tolto perché restavano sole), quelle
-    // che un pezzo nuovo riempie
-    const U = MW.urbanistica2, CAMB = new Set(U.__cambiate || []), PIENE = new Set(U.__piene || []), ora = new Set(G.BUILDINGS);
-    (U.__case0 || []).forEach(b => { if (ora.has(b)) return; for (let ty = b.y; ty < b.y + b.h; ty++) for (let tx = b.x; tx < b.x + b.w; tx++) CAMB.add(ty * GW + tx); });
+    // i muri che F1 cambia: le caselle liberate (case tolte e accorciate: casette() dopo toglie le stesse di serie, il piano le dice tutte),
+    // quelle che un pezzo nuovo riempie
+    const U = MW.urbanistica2, CAMB = new Set(U.__cambiate || []), PIENE = new Set(U.__piene || []);
     const ti = (x, z) => Math.floor(z / TS) * GW + Math.floor(x / TS), via = [];
     const nuovi = W.works.slice(n0).filter(w => { const R = w.gfxRect; if (!R || !R.c || !R.n) return true; const c = R.c, n = R.n;
       const dietro = ti(c.x - n.x * .4, c.z - n.z * .4), qui = ti(c.x, c.z), davanti = ti(c.x + n.x * .5, c.z + n.z * .5);
