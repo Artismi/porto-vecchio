@@ -1,8 +1,15 @@
 # Porto Vecchio — La città che parla da sola: lo strato dei media e della grana
 
-Proposta di scrittura (nessun file del repo toccato). Inverno 1986, l'isola sotto la Tutela. Tono di `REGIA_COMMEDIA.md` §2:
-sfacciati, non crudeli; stand-up che parte da una cosa piccola e vera; parolacce sì, bestemmie no, sesso solo per allusione;
-non si ride dei rettificati né della Battuta. Le battute non si spiegano.
+Proposta di scrittura (nessun file del repo toccato). Inverno 1986, l'isola sotto la Tutela. Tono: `REGIA_COMMEDIA.md` §2,
+tarato su `commedia/TONO.md` (8 novembre). Cosa vuol dire, in pratica:
+- **Si capisce al volo.** Un quindicenne la legge, la capisce e ride, senza sapere chi sono i Grigi. Se serve pensarci, si butta.
+- **Chi parla si sputtana da solo.** Egoista, pigro, vigliacco, sbruffone: la battuta lo scopre. Gli amici si fregano fra loro.
+- **A volume alto.** Reazioni a caldo a quello che succede adesso, urlate. Niente aforismi, giochi di parole, paradossi.
+- **La propaganda e le pubblicità sono assurde, ma grosse**: prodotti ridicoli, il Garante che perde la testa in diretta, la
+  pubblicità che confessa. Assurdo da radio di GTA, non satira fine.
+- Parolacce sì, bestemmie no; sesso solo per allusione; niente razza, niente disabilità, niente battute sui rettificati né sulla
+  Battuta. Niente insulti di repertorio fine a se stessi («tua madre», «tua sorella»): la parolaccia accompagna la figuraccia.
+- **Al massimo 70 caratteri** per ogni riga detta, scritta o dipinta.
 
 Cose già nel gioco a cui ci si aggancia (da `v7/src`):
 - il Garante alle 20 da tutti gli schermi («L'ordine è una carezza»), il ripetitore in vetta che lo spegne, la riga
@@ -12,300 +19,336 @@ Cose già nel gioco a cui ci si aggancia (da `v7/src`):
 - le insegne delle botteghe (world_cittanuova.js `USES`/`MINORI`: «FERRAMENTA BRUNO», «Osteria da Pinna»), le case
   `Casa <cognome>`; i posti `fila`, `cypher`, `parata`, `banco_pesce`, `carico` (posti.js).
 
-Ricorrenze interne fra le sezioni (servono a far sembrare la città una sola, che si cita da sola): la **berlina Polaris 1300**,
-il **frigorifero Iceberg**, il **volume 19** dell'Enciclopedia che non esce mai, il **Modulo 31-L**, il **94%** di felicità,
-il **censimento dei gatti**, la **luce a sere alterne**, la **signora del terzo piano di via Cavour**, la **nave che arriverà**.
-Il giocatore le sente alla TV, le rilegge sui muri, le ritrova negli annunci, e la terza volta ride da solo.
+Ricorrenze fra le sezioni (la città si cita da sola, e la terza volta il giocatore ride da solo). Sono tutte cose che si
+capiscono la prima volta: il **Garante pelato** (che dice di non esserlo), **Efisio e Tonino di via Cavour** (la moglie di Efisio
+di notte urla «Tonino»), il **ragazzo con la felpa verde** che ha fatto il dito al Garante, il **gatto che graffia il Garante**,
+la **berlina Polaris 1300** che nessuno usa, il **frigorifero Iceberg** a rate, la **nave che arriva domani**, il **94%** di felicità,
+la **luce a sere alterne**, **Gavino** che non è mai invitato.
 
 ---
 
 ## 1. Il Garante alle 20 — 15 trasmissioni
 
-Voce: calma, paterna, pause lunghe. Mai una parolaccia. Ogni trasmissione chiude con la sigla (tre note) e lo schermo fisso sullo
-stemma. Le reazioni sono di avventori diversi (A, B, C), dette **dopo** la sigla o sopra, a bassa voce; mai durante la frase chiave.
+Voce: paterna, solenne, pause lunghe. Mai una parolaccia. Però ogni sera qualcosa gli va storto in diretta, e si vede che è un
+vanitoso permaloso: si vanta, si offende, perde le staffe, si ricompone. Ogni trasmissione chiude con la sigla (tre note) e lo
+stemma; durante l'inno si sta in piedi. Le reazioni sono di avventori diversi (A, B, C, Gino il barista), urlate **dopo** la
+frase chiave, mai sopra. Al bar si insulta lo schermo, ci si frega fra amici, e chi fa lo sbruffone si scopre vigliacco.
 
 ### 1.1 Il freddo
-> Cittadini. Fa freddo.
-> Lo so. L'ho deciso io.
-> Il freddo conserva: il pesce, la carne, il carattere.
-> Un popolo al caldo marcisce. Guardate il continente: hanno i termosifoni e nessuna disciplina.
-> Da stasera il carbone è di due palate per famiglia.
-> La terza palata è egoismo.
+> Cittadini. Fa freddo. Lo so.
+> Io però sto benissimo. Ho tre stufe.
+> Una per i piedi, una per le mani, una per il cane.
+> Voi avete due palate di carbone a famiglia. Bastano.
+> Se avete freddo, saltellate. Io vi guardo.
 > L'ordine è una carezza. Buonanotte.
 
-- A: «Due palate. Io ne ho una e mezza: la mezza è mia suocera seduta sopra.»
-- B: «Il continente ha i termosifoni? Gino, ripeti, che non ho sentito.»
-- C: «Gino, spegni la stufa, non vorrei fare l'egoista. …Riaccendi, stronzo, scherzavo.»
+- A: «Tre stufe! Pure il cane! Vaffanculo, pelato!» (poi, a Gino) «Non dirlo a nessuno.»
+- B: «Gino, la stufa la metti vicino a me?» C: «Perché a te?» B: «Perché l'ho chiesto io.»
+- C (ubriaco, saltella): «Guarda, Garante! Salto! Ho caldo! …Gino, ho vomitato.»
 
 ### 1.2 La nave
-> La nave dell'Impero è in ritardo.
-> Non è in ritardo: è puntuale per un altro orario.
-> L'orario nuovo sarà comunicato quando la nave sarà arrivata.
-> Chi è andato al molo stamattina alle cinque ha dimostrato fede.
-> Chi ci tornerà domattina alle cinque la dimostrerà due volte.
-> La fede non si rateizza. Il frigorifero sì.
+> La nave dell'Impero arriverà domani.
+> L'ho detto anche ieri. Ma stavolta è vero.
+> Ve lo giuro sulla mia faccia.
+> Andate al molo alle cinque. Portatevi una sedia.
 
-- A: «Tre mattine al molo. Ho una fede che mi fa male la schiena.»
-- B: «Puntuale per un altro orario. Domani lo dico al caporeparto.»
-- C: «Io la nave l'ho vista. Era nebbia. Però stava ferma bene.»
+- A: «Tre mattine al molo, cazzo! Io domani ci mando mio figlio.»
+- B: «Io ci vado. Alle cinque. Tu mi tieni il posto dalle quattro, eh?»
+- C: «Giura sulla faccia? Allora la nave è pelata pure lei!»
 
 ### 1.3 Le scritte
-> Qualcuno scrive sui muri.
-> Scrive «NO». Due lettere. Non ha finito nemmeno la scuola.
-> Ai genitori dico: vostro figlio ha in tasca una bomboletta da quattromila lire.
-> Quattromila lire sono un mese di rata della lucidatrice.
-> Vostra moglie non ha la lucidatrice. Pensateci.
-> Domani la Guardia ripitturerà. In grigio. È il colore della pazienza.
+> Qualcuno scrive sui muri. Scrive «NO».
+> E stamattina, sotto il mio ritratto, ha scritto «PELATO».
+> Io non sono pelato. Ho i capelli corti. Davanti.
+> IO NON SONO PELATO!
+> (si ricompone) …L'ordine è una carezza.
 
-- A: «Mio figlio scrive "NO" pure sui compiti. Pensavo fosse colpa della scuola.»
-- B: «Quattromila? Al porto la bomboletta sta a seimila. Il Garante non fa la spesa.»
-- C: «Grigio pazienza. Ho la casa tutta così e non sono paziente per un cazzo.»
+- A: «È pelato! È pelato! Guarda come brilla!»
+- B (fiero): «"Pelato" l'ho scritto io.» (entra un Grigio) «…Cioè, l'ha scritto lui.»
+- C: «Eri tu? E dicevi che eri a letto con la febbre, stronzo!»
 
 ### 1.4 La statistica
-> L'Istituto di Statistica comunica: la felicità sull'isola è al novantaquattro per cento.
-> Il sei per cento rimanente è stato intervistato di lunedì.
-> Il lunedì sarà riorganizzato.
-> Ringrazio i diecimila cittadini che hanno risposto «sì».
-> Ringrazio anche quello che ha risposto «boh».
-> Lo andiamo a trovare.
+> La felicità sull'isola è al novantaquattro per cento.
+> Il sei per cento infelice lo conosciamo. Abbiamo l'elenco.
+> Il primo dell'elenco si chiama Gino.
+> Gino, sorridi. Ti stiamo guardando.
 
-- A: «A me nessuno ha chiesto niente.» B: «Appunto. Sei nel novantaquattro.»
-- C: «Il lunedì riorganizzato. Finalmente una riforma che firmo.»
-- A: «"Boh" era mio cognato. Da ieri risponde "sì" anche se gli chiedi l'ora.»
+- Gino: «Io?! Ho il tuo ritratto sopra la macchina del caffè!»
+- A: «Gino, sorridi!» Gino: «Sto sorridendo, cazzo! Questo è il sorriso!»
+- B: «Meno male. Pensavo di essere io il primo. …Oi, non guardatemi.»
 
 ### 1.5 Il Garante non dorme
-> Mi chiedono: Garante, quando dorme?
-> Non dormo. Vi guardo dormire.
-> Qualcuno russa. Qualcuno parla nel sonno.
-> Signora del terzo piano di via Cavour: il nome che ha detto stanotte non è quello di suo marito.
-> Non lo dirò a nessuno. L'ordine è discreto.
-> Buonanotte a tutti. E a lei in particolare.
+> Il Garante non dorme mai. Vi guardo dormire.
+> Signora del terzo piano di via Cavour: ho sentito tutto.
+> Suo marito si chiama Efisio.
+> Stanotte lei urlava «Tonino». Tre volte.
+> Buonanotte a tutti. E a Tonino in particolare.
 
-- A: «Via Cavour, terzo piano… Tonino, tua sorella non sta al terzo?»
-- B: «Ecco perché mia moglie dorme con la radio accesa.»
-- C: «Io parlo nel sonno da trent'anni. Spero di aver detto cose belle.»
+- Efisio (si alza, rovescia la sedia): «TONINO! DOVE CAZZO È TONINO?!»
+- Tonino (si nasconde dietro il flipper): «Non ci sono! Non mi hai visto!»
+- C: «Efisio, offri tu, stasera? Così ti consoli.» A: «Approfittatore!»
 
 ### 1.6 Le rotelle
-> Molti giovani si spostano su tavole con le rotelle.
-> La Tutela non è contraria alle rotelle. Le rotelle sono progresso.
-> Le ha anche la berlina Polaris: quattro, con un motore sopra.
-> La tavola ha quattro rotelle e nessun motore. È una berlina a metà.
-> Il cittadino a metà sarà multato a metà.
-> Il resto, in comode rate.
+> Molti giovani vanno sulle tavole con le rotelle.
+> Ieri uno è passato sotto il mio balcone.
+> Mi ha fatto il dito. Ti ho visto. Avevi la felpa verde.
+> Felpa verde, ti troveremo.
 
-- A (ragazzo): «Fra, ho una berlina a metà. Consuma zero e scappa dai Grigi.»
-- B: «Io la Polaris ce l'ho. Le rotelle girano. È il resto che sta fermo.»
-- C: «Multato a metà. Così almeno a metà sei libero, no?»
+- A (ragazzo, si toglie la felpa verde e la mette al vicino): «Tienila tu, fra.»
+- B (con la felpa addosso): «Ma è tua!» A: «Adesso è tua. Ti sta benissimo.»
+- C (vecchio): «Io il dito gliel'ho fatto nel '62! Ma lui non mi ha visto.»
 
 ### 1.7 I gatti
-> È iniziato il censimento dei gatti.
-> Il gatto non lavora, non paga, non saluta.
-> Eppure mangia. Chi gli dà da mangiare?
-> Pensateci, prima di aprire la scatoletta.
-> Ogni gatto sarà registrato con nome, colore e opinioni.
-> I gatti senza padrone riceveranno un padrone.
+> Da domani c'è il censimento dei gatti.
+> Ogni gatto avrà la tessera con la foto.
+> Questo è il mio. Si chiama Garante Secondo. È bellissimo.
+> (il gatto lo graffia in faccia, in diretta)
+> TOGLIETE LA TELECAMERA! TOGLIETELA!
 
-- A: «Il mio le opinioni ce le ha. Le fa nella cassetta.»
-- B: «Ne assegnano uno anche a me? Gratis o a rate?»
-- C: «Zitti, che il gatto della Zia sente tutto.»
+- A (in piedi, applaude): «Bravo gatto! Il gatto è un eroe!»
+- B: «Gino, rimandala indietro! Rimandala!» Gino: «È la TV, coglione, non va indietro!»
+- C: «Il mio gatto lo dichiaro morto. Così non pago la tessera.»
 
 ### 1.8 Il pane
-> Circola la voce che manchi il pane.
-> Il pane non manca. È in un altro posto.
-> Il posto sarà annunciato.
-> Ricordo che il pane è fatto per l'ottanta per cento di aria.
-> L'aria sull'isola è abbondante, gratuita e sorvegliata.
-> Respirate a pranzo.
+> Dicono che manca il pane. Non è vero.
+> Il pane c'è. L'ho mangiato io, a cena.
+> Col burro. E col prosciutto.
+> (si pulisce la bocca) Era buonissimo.
 
-- A: «Respiro da stamattina e ho ancora fame. Sarà l'aria del continente.»
-- B: «Lella il pane ce l'ha. È la fila che sta in un altro posto.»
-- C: «Ottanta per cento d'aria? Quello di Lella è serio, allora: è tutto mattone.»
+- A (tira una ciabatta allo schermo): «Mangiati questa, pelato!»
+- Gino: «Chi ha tirato la ciabatta? La TV è a rate! Chi è stato?!» A: «Lui!»
+- B: «Io il pane ce l'ho. Due pagnotte. …Ma sono per me, eh.»
 
 ### 1.9 Il Modulo 31-L
-> Da lunedì è disponibile il Modulo 31-L per esprimere una lamentela.
-> Si ritira all'Ufficio Lamentele, aperto il martedì dalle nove alle nove e un quarto.
-> La lamentela va scritta in stampatello, in tre copie, senza aggettivi.
-> Una copia la tiene il cittadino.
-> Una va all'Ufficio. Una va a chi lo ha visto compilarla.
-> Lamentarsi è un diritto. Ricordarsi chi si lamenta è un dovere.
+> Chi vuole lamentarsi compili il Modulo 31-L.
+> L'Ufficio Lamentele è aperto il martedì. Per un quarto d'ora.
+> Chi si lamenta riceverà una visita. Gentile. Col furgone.
 
-- A: «Ci sono andato alle nove e dieci. C'era ancora la fila delle nove.»
-- B: «Senza aggettivi. "Il Garante è." Punto. Firmato.»
-- C: «La mia copia l'ho incorniciata. È l'unico foglio dove ho ragione io.»
+- A: «Io mi lamento! Domani vado e glielo dico in faccia!» B: «Vai?» A: «…Vai tu.»
+- B: «Io il modulo l'ho compilato col nome di mio cognato.»
+- C: «Gino, mi lamento che la birra è calda!» Gino: «Allora ti mando il furgone.»
 
 ### 1.10 La radio che non esiste
-> Alcuni cittadini dicono di ascoltare, di notte, una radio non autorizzata.
+> Qualcuno di notte ascolta una radio non autorizzata.
 > Questa radio non esiste.
-> Chi la ascolta sente delle voci.
-> Chi sente delle voci si rivolga all'Ambulatorio.
-> L'Ambulatorio è aperto. Le voci no.
-> Non abbassate il volume quando parlo. Lo sento.
+> E se non esiste, perché la sentite? Eh? PERCHÉ?
+> Lo so che adesso qualcuno abbassa il volume. Lo sento!
+> NON ABBASSATE IL VOLUME QUANDO PARLO!
 
-- (qualcuno rialza di scatto la manopola) A: «Non sono stato io, è la manopola che è stanca.»
-- B: «Io le sento, le voci. Una è la tua, Gino, e dice "si chiude".»
-- C (piano, ai ragazzi): «Stanotte non esiste alle due. Passaparola.»
+- Gino (rialza di scatto la manopola): «Non l'ho toccato! È stato lui!»
+- A: «Io la radio non la ascolto mai.» B: «Ieri alle due cantavi la sigla!»
+- C: «Stanotte alle due, passaparola.» B: «Che c'è alle due?» C: «Niente! NIENTE!»
 
 ### 1.11 Il calcio
-> Domenica la Selezione dell'Isola ha battuto la Selezione dell'Isola per tre a zero.
-> Ha vinto la squadra di casa. Anche quella in trasferta giocava in casa.
-> Il risultato dimostra che, quando giochiamo fra di noi, vinciamo sempre.
-> Il prossimo incontro è già stato vinto.
-> Andate allo stadio lo stesso. Lo spettacolo resta.
+> Domenica la Selezione dell'Isola ha vinto dieci a zero.
+> Sei gol li ho segnati io. Di testa. A sessantadue anni.
+> L'arbitro dice che non ha mai visto niente del genere.
 
-- A: «Io tenevo per quella che ha perso. Adesso non lo dico più a nessuno.»
-- B: «Il prossimo l'hanno già vinto. E la schedina chi la gioca, mio nonno?»
-- C: «Al secondo tempo il portiere s'è seduto. Aveva capito tutto.»
+- A: «Io c'ero! Gli avversari erano i camerieri del Palazzo!»
+- B (ubriaco): «Sei gol? Io ne ho fatti sette, nel '62! Con le scarpe di mio padre!»
+- C: «Sette? Ma se nel '62 facevi il raccattapalle!» B: «Il raccattapalle più forte!»
 
 ### 1.12 La luce
-> Questa settimana l'energia elettrica sarà distribuita a sere alterne.
-> Le sere dispari, ai numeri civici dispari. Le sere pari, ai pari.
-> I civici con la barra, come il 12/B, sono pregati di decidersi.
-> La luce è un pensiero.
-> Chi ha il pensiero acceso non ha bisogno della lampadina.
+> Questa settimana la luce c'è a sere alterne.
+> Stasera tocca ai numeri dispari.
+> I pari stiano al buio e non rompano.
+> Io sto al numero uno. Acceso sempre. Buonanotte.
 
-- A: «Sto al 7/B. Sono dispari o sono B? Mi spiega qualcuno cosa sono?»
-- B: «La luce è un pensiero. Stasera mia moglie pensa a candela.»
-- C: «Però la televisione va tutte le sere. Strano, eh.»
+- (la luce del bar si spegne) A: «Gino, siamo pari?!» Gino: «Siamo il 14, genio!»
+- B (al buio): «Ho pagato il giro!» A: «Non è vero!» B: «Al buio non si vede!»
+- C: «La luce no, ma il pelato si vede benissimo! Brilla lui!»
 
 ### 1.13 Il Tributo
 > Venerdì è la Festa del Tributo.
-> Ogni famiglia offrirà all'Impero ciò che ha di più caro.
-> Non vostro figlio. Il Garante non è un mostro.
-> Il frigorifero.
-> Resterà in casa vostra, ma sarà dell'Impero.
-> Continuerete a pagarlo voi, come gesto d'affetto.
+> Ogni famiglia regala all'Impero la cosa che ha di più cara.
+> Il frigorifero. Resta a casa vostra, ma è dell'Impero.
+> E lo continuate a pagare voi. Con amore.
 
-- A: «Il frigo è dell'Impero. Allora la mortadella dentro me la mangio adesso.»
-- B: «Ho finito di pagarlo ieri. Che tempismo, cazzo.»
-- C: «La cosa più cara che ho è mio cognato. Glielo regalo e pago pure il trasporto.»
+- A: «Il frigo è suo? Allora la mortadella me la mangio adesso. Tutta.»
+- B: «L'ho finito di pagare ieri! IERI, CAZZO!»
+- C: «Io il frigo non ce l'ho. Ah ah! …Gino, mi tieni la birra nel tuo?»
 
 ### 1.14 La nebbia
-> Stasera c'è nebbia.
-> La nebbia è stata richiesta dalla Guardia per un'esercitazione.
-> Durante l'esercitazione i cittadini non vedranno la Guardia.
-> Questo non vuol dire che la Guardia non c'è.
-> Vuol dire che c'è di più.
-> Chi si perde nella nebbia resti dov'è. Lo troviamo noi.
+> Stasera c'è nebbia. L'ha ordinata la Guardia.
+> Nella nebbia voi non vedete la Guardia. Ma la Guardia vede voi.
+> (fuori campo) «Capo, io non vedo un cazzo!»
+> …Quello era un attore.
 
-- A: «La nebbia l'hanno ordinata loro. E io che davo la colpa al mare.»
-- B: «"Resta dov'è, lo troviamo noi." Ecco. Io corro.»
-- C: «Ieri nella nebbia ho salutato un lampione. M'ha chiesto i documenti.»
+- A: «Un attore! Sì, come no! Stasera esco, tanto non vedono niente!»
+- B: «Esci? Allora mi porti le sigarette.» A: «…Mi sa che resto qui.»
+- C (ubriaco): «Ieri nella nebbia ho baciato una! Speriamo fosse mia moglie!»
 
-### 1.15 La gentilezza
-> La Tutela registra un aumento della gentilezza.
-> Persone che si salutano. Che offrono il caffè. Che prestano la scala.
-> La gentilezza è bella. Ma chi ti presta una scala, dove vuole che tu salga?
-> Prima di dire grazie, chiedete: grazie di cosa.
-> L'ordine è una carezza.
-> La gentilezza è una carezza senza permesso.
+### 1.15 L'inno
+> Cittadini, in piedi. Suona l'inno.
+> Lo so chi resta seduto. Vi vedo dallo schermo.
+> Tu. Sì, tu. Al bar. Col berretto.
+> ALZATI.
 
-- A: «Gino, il caffè a quello non glielo offro più. Mi pare sospetto.»
-- B: «La scala l'ho prestata a Dorino. Dove vuole salire? Sul tetto, a ripararlo, coglione.»
-- C: «Hai sentito, Pina? Non sono io che sono freddo. È la legge.»
+- (uno col berretto scatta in piedi e rovescia la birra) «Ero già in piedi! Sono basso!»
+- Gino: «Mi hai bagnato il bancone! In piedi o seduto, la birra la paghi!»
+- B (che è rimasto seduto, sottovoce): «Ha visto lui. A me no. Ah ah.»
 
 **Note di regia.** Una trasmissione per sera, a rotazione senza ripetere per 15 giorni di gioco; la 1.10 solo se Radio Scirocco
 ha trasmesso nelle ultime 48 ore; la 1.2 solo il lunedì e il giovedì in cui la nave non è arrivata; la 1.11 il lunedì; la 1.13 il
-giovedì. Le reazioni vanno nell'agenda unica di `?commedia` (massimo un «pezzo» rivolto al giocatore), ma le reazioni da bar sono
-ambiente: non contano nel limite se il giocatore non è il destinatario.
+giovedì; la 1.15 la domenica (e a ogni prima sera in un bar nuovo, perché il giocatore impari che all'inno ci si alza). La 1.5
+apre la scena della lite di via Cavour (§8.2). Le reazioni vanno nell'agenda unica di `?commedia` (massimo un «pezzo» rivolto al
+giocatore), ma le reazioni da bar sono ambiente: non contano nel limite se il giocatore non è il destinatario.
 
 ---
 
 ## 2. Radio Ufficiale — 25 pubblicità del Banco e dell'Impero
 
-Stile radio di GTA: voce gonfia, jingle, la frase finale letta al doppio della velocità («la clausola»). Fra parentesi quadre chi
-parla. Tutto si compra a rate dal **Banco** (il Banco del Popolo, sportelli in ogni quartiere).
+Stile radio di GTA: voce gonfia che urla, jingle, effetti sonori, e alla fine la clausola letta al doppio della velocità. Le
+pubblicità promettono cose ridicole e si tradiscono da sole. Fra parentesi quadre chi parla. Tutto si compra a rate dal
+**Banco** (il Banco del Popolo, sportelli in ogni quartiere). Una riga per volta, ognuna detta tutta d'un fiato.
 
-1. **Berlina Polaris 1300.** [Voce uomo, entusiasta] Ti guardano. Ti invidiano. Al posto di blocco ti fermano più a lungo,
-   perché sembri importante. Polaris 1300: quattro porte, due si aprono. Prima rata nel 1987, ultima rata ai tuoi nipoti.
-   [Clausola] *Riscaldamento a nafta accessorio. Il freddo è di serie.*
-2. **Frigorifero Iceberg Famiglia.** [Coppia] — Caro, fuori fa meno due. — E dentro? — Meno due. — Allora a che serve? — Caro:
-   dentro è *nostro*. [Voce] Iceberg. Anche il freddo vuole un padrone. *Corrente non inclusa. Spento è un ottimo armadio.*
-3. **Televisore Occhio Serale 24 pollici.** [Voce calda] Prima il Garante lo vedevi al bar, con gli altri. Adesso lo vedi a
-   casa, da solo, come un vero amico. Occhio Serale: un canale solo, nessun dubbio. *La manopola del volume è decorativa.*
-4. **Piumino Bufera.** [Donna, sussurro] Sintetico al cento per cento. Niente oche, niente piume, niente oche che soffrono.
-   Soffri solo tu, e a rate. Disponibile in grigio, grigio scuro e Nuovo Grigio. *Tenere lontano da stufe, fiamme, sigarette e idee.*
-5. **Carne Patria in scatola.** [Uomo, burbero] Che carne è? È carne. Della Patria. Basta domande: apri la scatola.
-   *Contiene carne nella quantità prevista dalla legge.*
-6. **RataSicura.** [Voce rassicurante] E se non paghi la rata? Paga RataSicura. E se non paghi RataSicura? C'è RataSicura Più:
-   l'assicurazione sulla rata dell'assicurazione sulla rata. Dormi tranquillo: qualcuno al Banco è sveglio per te.
-   *Il Banco non risponde di rate perse in mare, in guerra o in famiglia.*
-7. **Lucidatrice Splendor.** [Jingle] Lui torna dalla miniera, trova il pavimento che brilla e capisce che lo ami. Lo capisce
-   anche il vicino di sotto, dal soffitto. Splendor: novantadue decibel d'amore. *Uso consentito dalle 8 alle 20.*
-8. **Riposo Rateale, onoranze dell'Impero.** [Voce bassa, organo] Non lasciare debiti ai tuoi cari. Lasciagli le rate.
-   Ventiquattro mesi dopo il distacco, bara in vero compensato del continente. *In caso di mancato pagamento la lapide sarà ritirata.*
-9. **Fagioli del Continente.** [Voce epica] Hanno attraversato il mare per te. Hanno passato la dogana. Sono stati perquisiti.
-   Fagioli del Continente: i fagioli più controllati del mondo. *Il barattolo può essere aperto davanti a un pubblico ufficiale.*
-10. **Margarina Gelo d'Oro.** [Bambina] Mamma, cos'è il burro? [Mamma] Roba da nonni, tesoro. E da latitanti.
-    [Voce] Gelo d'Oro: si spalma anche a meno dieci. Come la Tutela. *Colore ottenuto con coloranti autorizzati.*
-11. **Corso per corrispondenza «Diventa Ispettore».** [Uomo, complice] Ti piace sapere le cose degli altri? Hai un vicino? Hai
-    una finestra? Dodici dispense, e alla fine il tesserino. In omaggio, l'elenco completo dei tuoi parenti.
-    *L'iscrizione è anonima per te, non per noi.*
-12. **Enciclopedia del Sapere Approvato.** [Voce colta] Ventiquattro volumi: tutto quello che c'è da sapere. Il resto non
-    c'è. Rilegatura in finta pelle, che in salotto fa la sua figura. *Il volume 19 (Ra–Ri) è in ristampa.*
-13. **Lavatrice Vortice 5.** [Uomo, sottovoce] Tua moglie lava ancora a mano? Al fiume? Con le altre? A parlare? Vortice 5:
-    lava, centrifuga e fa un rumore che copre tutto quello che si dice in cucina. *Scarico dell'acqua a carico del condominio.*
-14. **Prestito «Subito Domani».** [Voce veloce] Ti servono soldi oggi? Il Banco te li dà domani. Ma te li dà! Tasso fisso al
-    trentotto per cento, fisso come il tuo destino. *Domani si intende il primo giorno lavorativo utile dopo l'approvazione.*
-15. **Sigarette Bianche di Stato.** [Uomo, roco] Bianche, regolari, senza filtro né scuse. Bianche di Stato: chi fuma non
-    parla. *Il fumo nuoce gravemente. Non fumare nuoce sospettamente.*
-16. **Materasso Riposo del Lavoratore.** [Voce] Sei ore di turno, quattro di straordinario, due di fila al forno. Il sonno
-    non torna? Dormi più in fretta, sulle centoventi molle del Riposo del Lavoratore. *Molle numerate. Una manca: è un controllo.*
-17. **Caldaia a nafta Calor Nazionale.** [Nonno, nostalgico] Il caldo di una volta, con l'odore di una volta: quello del garage.
-    *Aprire le finestre ogni ora. Chiudere le finestre ogni ora. Pagare ogni mese.*
-18. **Bambola Brava Bambina.** [Bambola, voce registrata] «Sì!» «Grazie!» «L'ho visto io!» [Voce] Brava Bambina: la prima
-    amica che ti protegge. Tirale il filo: lei ti dice chi è stato. *Pile non incluse. Il ricevitore sì.*
-19. **Vodka Impero Leggera.** [Voce maschile, fiera] La vodka di chi lavora: trasparente come i tuoi conti col Banco.
-    Leggera: la bevi al mattino e al pomeriggio lavori lo stesso. *Bere responsabilmente, e solo prodotti dell'Impero.*
-20. **Telefono di casa «Pronto Sicuro».** [Coppia felice] Finalmente il telefono in casa! Parli con tua madre, con tua zia, e
-    con un signore gentile che non saluta mai, ma è sempre in linea. Pronto Sicuro: non sei mai solo. *Il clic è normale.*
-21. **Profumo Brina.** [Donna, francese finta] Per lei che aspetta la nave. Brina: sa di neve, di pulito, di caserma alle sei
-    del mattino. *Su richiesta, in confezione regalo con il ritratto.*
-22. **Ricostituente FerroForte.** [Medico] Pallido? Stanco? Fai pensieri strani? FerroForte, il tonico della Tutela. Dopo una
-    settimana torna il colorito e i pensieri se ne vanno. *Non somministrare insieme a libri.*
-23. **Lotto del Garante.** [Banditore] Gioca al Lotto! Il montepremi va al Tesoro, il Tesoro va al Garante, e il Garante… sei
-    tu. In un certo senso hai già vinto. *Le vincite si ritirano in tabaccheria, dopo l'accertamento di come le spendi.*
-24. **«Carrello Fisso», Supermercato del Popolo.** [Mamma, sollevata] Perché scegliere? Al Supermercato del Popolo trovi ogni
-    settimana lo stesso carrello già pronto. Stesse cose, stesso prezzo, stessa felicità. Carrello Fisso: la libertà di non pensarci.
-    *Le uova sono un'immagine illustrativa.*
-25. **Sposalizio «Sì per Sempre».** [Tenore, poi voce] Il giorno più bello della tua vita, pagato negli anni più brutti.
-    Chiesa, pranzo, foto col ritratto del Garante, e una berlina per gli sposi fino all'angolo. *Se vi lasciate, le rate restano
-    sposate con voi.*
+1. **Berlina Polaris 1300.** [Uomo che urla come al mercato]
+   - «POLARIS 1300! LA MACCHINA CHE FA CREPARE D'INVIDIA IL VICINO!»
+   - «Quattro porte! Due si aprono! Le altre due sono per bellezza!»
+   - «Da zero a cento! In un pomeriggio!»
+   - *Clausola:* «I freni sono un optional. Le rate finiscono nel 2030.»
+2. **Frigorifero Iceberg.** [Coppia]
+   - «Caro, ho comprato l'Iceberg!» «Ma fuori fa meno due!»
+   - «Sì, ma dentro fa meno tre! E il freddo è NOSTRO!»
+   - «ICEBERG! IL FREDDO CHE TI PUOI PERMETTERE! A RATE!»
+   - *Clausola:* «Corrente non inclusa. Spento è un ottimo armadio.»
+3. **Televisore Occhio Serale.** [Voce calda]
+   - «Il Garante, a casa tua, tutte le sere! E tu sei in mutande!»
+   - «Occhio Serale! Un canale solo! Così non sbagli!»
+   - *Clausola:* «La manopola del volume è finta. Il Garante si sente.»
+4. **Piumino Bufera.** [Donna, entusiasta]
+   - «Piumino Bufera! Senza piume! Senza oche! Senza caldo!»
+   - «Sudi e geli nello stesso momento! Due stagioni in un piumino!»
+   - *Clausola:* «Prende fuoco. Non fumarci dentro.»
+5. **Carne Patria in scatola.** [Uomo burbero]
+   - «Che carne è?» «È carne!» «Di cosa?» «DI CARNE! MANGIA E STAI ZITTO!»
+   - «Carne Patria. Non fare domande alla scatola.»
+   - *Clausola:* «Ogni scatola contiene carne. Più o meno.»
+6. **RataSicura.** [Voce rassicurante che si agita]
+   - «Non paghi la rata? Niente paura! C'è RataSicura!»
+   - «Non paghi RataSicura? C'è RataSicura Più!»
+   - «Non paghi nemmeno quella? …Ti veniamo a prendere. Ciao!»
+7. **Lucidatrice Splendor.** [Donna, complice]
+   - «Tuo marito torna dalla miniera e non ti guarda più?»
+   - «Splendor! Il pavimento brilla, lui scivola e ti guarda per forza!»
+   - *Clausola:* «Il Banco non paga le fratture.»
+8. **Riposo Rateale, onoranze dell'Impero.** [Voce bassa, organo]
+   - «Sei morto? Tranquillo! Puoi pagare a rate anche da morto!»
+   - «Riposo Rateale! Pagano i tuoi figli! E i figli dei tuoi figli!»
+   - *Clausola:* «Se saltate una rata, il nonno torna a casa.»
+9. **Fagioli del Continente.** [Voce epica, tamburi]
+   - «Hanno attraversato il mare! Hanno passato la dogana! Per te!»
+   - «FAGIOLI DEL CONTINENTE!» (rumore di scoreggia lunghissima) «…Funzionano!»
+10. **Margarina Gelo d'Oro.** [Bambina, poi mamma]
+    - «Mamma, cos'è il burro?» «Roba da ricchi, amore. Mangia e taci.»
+    - «Gelo d'Oro! Si spalma sul pane, sulle scarpe, sulla bici!»
+    - *Clausola:* «Non mangiarla se sei incinta, malato o hai fame.»
+11. **Corso «Diventa Ispettore».** [Uomo, complice]
+    - «Ti piace farti i fatti degli altri? Fallo di mestiere!»
+    - «Diventa Ispettore in dodici dispense! In regalo, un binocolo!»
+    - «Il primo mese spii tua madre! Poi i vicini! Poi tutta la via!»
+12. **Enciclopedia del Sapere Approvato.** [Voce colta che perde la pazienza]
+    - «Ventiquattro volumi! Tutto quello che c'è da sapere!»
+    - «Il volume 19 non esce. Non chiedete perché. NON CHIEDETE!»
+    - *Clausola:* «Il volume 19 è in ristampa dal 1971.»
+13. **Lavatrice Vortice 5.** [Uomo, gridando sopra il rumore]
+    - «VORTICE 5! LAVA! CENTRIFUGA! SALTA PER LA CUCINA COME UN CANE!»
+    - «Fa così casino che i vicini non sentono più quando litigate!»
+    - *Clausola:* «Legarla al lavandino. Se esce sul balcone, chiamate il Banco.»
+14. **Prestito «Subito Domani».** [Voce velocissima]
+    - «Ti servono soldi? Il Banco te li dà! Subito! Cioè domani! Cioè boh!»
+    - «Interessi al trentotto per cento! Tanto tu non sai fare i conti!»
+15. **Sigarette Bianche di Stato.** [Uomo roco]
+    - «Bianche di Stato. Le sigarette dell'uomo vero.» (tosse lunghissima)
+    - «…dell'uomo vero… (tosse) …chiamate qualcuno. Chiamate qualcuno!»
+16. **Materasso Riposo del Lavoratore.** [Voce allegra]
+    - «Una molla ti punge sempre nella schiena! Così non dormi troppo!»
+    - «E la mattina arrivi in miniera puntuale! Riposo del Lavoratore!»
+17. **Caldaia Calor Nazionale.** [Nonno, nostalgico]
+    - «Il caldo di una volta! Con la puzza di una volta!»
+    - «Calor Nazionale! Se ti gira la testa, vuol dire che funziona!»
+    - *Clausola:* «Aprite la finestra. Davvero. Apritela adesso.»
+18. **Bambola Brava Bambina.** [Bambola, voce registrata, poi bambina]
+    - «Sì! Grazie! È stato papà!»
+    - «Brava Bambina! La bambola che fa la spia! Tirale il filo!»
+    - «Papà, perché la butti in mare? Papà!»
+19. **Vodka Impero Leggera.** [Uomo fiero, poi la stessa voce ubriaca]
+    - «Vodka Impero Leggera! La bevi a colazione e vai a lavorare!»
+    - «Io la bevo… e vado a lavorare… dove lavoro? Mamma?»
+20. **Telefono di casa «Pronto Sicuro».** [Coppia felice]
+    - «Il telefono in casa! Chiami la mamma, la zia, la fidanzata!»
+    - «E c'è sempre un signore che respira dentro! Non sei mai solo!»
+    - *Clausola:* «Il clic è normale. Non dite niente di strano.»
+21. **Profumo Brina.** [Donna, francese finta]
+    - «Brina! Il profumo che sa di neve, di sapone e di caserma!»
+    - «Lui ti annusa e si mette sull'attenti! Tutto sull'attenti!»
+22. **Ricostituente FerroForte.** [Medico]
+    - «Pallido? Stanco? Hai idee strane? FerroForte!»
+    - «Due cucchiai e le idee strane spariscono! Tutte! Pure quelle buone!»
+    - *Clausola:* «Effetti collaterali: denti verdi, pipì blu.»
+23. **Lotto del Garante.** [Banditore]
+    - «Gioca al Lotto del Garante! Si vince un milione!»
+    - «L'ultimo vincitore? Il Garante! Il penultimo? Il Garante!»
+    - «Gioca anche tu! Forse la prossima volta vince… il Garante!»
+24. **«Carrello Fisso», Supermercato del Popolo.** [Mamma, sollevata]
+    - «Ogni settimana lo stesso carrello! Patate, fagioli, patate!»
+    - «Carrello Fisso! Così non ti viene voglia di niente!»
+    - *Clausola:* «Le uova nella foto sono disegnate.»
+25. **Sposalizio «Sì per Sempre».** [Tenore, poi voce]
+    - «Sposati con Sì per Sempre! Chiesa, pranzo, foto col Garante!»
+    - «E se lei ti lascia? Le rate restano! Le rate non ti lasciano mai!»
 
 **Uso.** In onda nelle botteghe, sulle autoradio delle Polaris ferme al traffico, dagli altoparlanti del Supermercato del Popolo,
-dalle finestre di mattina. Tre pubblicità ogni dieci minuti di gioco, mai la stessa due volte in un'ora.
+dalle finestre di mattina. Tre pubblicità ogni dieci minuti di gioco, mai la stessa due volte in un'ora. Ogni tanto chi è vicino
+alla radio risponde («Ma vaffanculo, tu e la Polaris!»), con le battute di §8.
 
 ---
 
 ## 3. Radio Scirocco — 10 segmenti (la pirata)
 
 In onda di notte (di solito alle 2), voce di **Vinile** (Rita Sanna) e ospiti. Fruscio, una base rallentata del Garante sotto.
-Mai nomi veri: «quello lì», «il Signore delle Venti», «la Signora del Bar».
+Vinile parla veloce, ride, si incazza, va nel panico in diretta. Mai nomi veri: «quello lì», «il pelato».
 
-1. **L'apertura.** «Due e un quarto, Porto Vecchio. Qui Radio Scirocco, la radio che non esiste, in diretta da un posto che
-   non c'è. Se mi sentite siete matti: l'ha detto la TV. Benvenuti in manicomio. Si balla.»
-2. **I messaggi per gli amici.** «Messaggi. Il gabbiano ha tre zampe, ripeto: tre zampe. La nonna ha finito il caffè. Il pane
-   di domani è quello di ieri. Le scarpe della sposa sono strette. Chi doveva capire ha capito; chi non ha capito vada a letto,
-   che è tardi e domani gli fanno l'appello.»
-3. **Le dediche.** «Da Tonino della calata alla moglie: "Scusa per la Polaris. L'ho presa per te, ma la guida meglio tuo
-   fratello." Questa è per voi due. E per il fratello, che lo sa.» — «Da un anonimo di via Cavour, terzo piano: "Lui lo sa. Tu
-   no. Martedì, solito posto." Signora, tenga la radio bassa.»
-4. **Il meteo.** «Il meteo. Freddo. Domani, freddo. Dopodomani il Garante annuncia il caldo, e fa freddo uguale ma con la musica.
-   Nebbia sulla calata dalle quattro: buona per chi esce, pessima per chi guarda. Vento di scirocco: noi.»
-5. **Il Bollettino come si deve.** «Leggiamo il Bollettino. Piano. "La… produzione… di carbone… è aumentata." Applausi del
-   carbone. "I cittadini… sono… felici." Pausa. Ancora pausa. Va bene, basta pausa, sennò ci triangolano.»
-6. **Gli avvisi del quartiere** (le mappe del Disgelo, a voce). «Avvisi. La grata della stazione sfiata da stasera: caldo per
-   trenta, venite in venti. La rampa dello scalo è pulita, il ghiaccio l'ha tolto qualcuno che vi vuole bene. Il tombino di
-   Vico della Fame è chiuso: non provateci, Pino ci ha provato ed è ancora lì. Saluti a Pino.»
-7. **La telefonata in diretta.** — «Pronto, sei in onda.» — «Ciao Vinile, volevo dire che il Garante…» — «Niente nomi, amore.»
-   — «Volevo dire che quello lì…» — «Bravo.» — «…ha il riporto.» — «Ecco. Questo è giornalismo. Grazie, caro, ora stacca e
-   cambia cabina.»
-8. **La pubblicità al contrario.** «Sei stanco della rata? Prova NIENTE. Niente non costa niente, non si rompe, non ti chiede
-   la tessera e non te lo pignorano. Niente: in vendita da nessuna parte. *Clausola: niente clausole.*»
-9. **La canzone del vecchio.** «Questa me l'ha chiesta un signore all'osteria. Ha detto: mettila per quelli del '79. Poi ci ha
-   pensato e ha detto: no, mettila allegra, che quelli del '79 il triste l'hanno già fatto abbastanza.» (Parte un pezzo
-   ballabile. Tre secondi di silenzio prima.)
-10. **La chiusura.** «Qui Vinile, si chiude. Spegnete la radio, giratela verso il muro, rimettete il Garante e fate la faccia di
-    chi ha dormito. Alle cinque passano i Grigi a contare i sogni: sognate qualcosa di noioso. Ciao, belli.»
+1. **L'apertura.**
+   - «Le due, Porto Vecchio! Qui Radio Scirocco, la radio che non esiste!»
+   - «Se mi sentite siete matti, l'ha detto la TV. Ciao, matti!»
+   - «Alzate il volume! Ma piano! …PIANO, Tonino, ti sento dal porto!»
+2. **I messaggi per gli amici.**
+   - «Messaggi. Il gabbiano ha tre zampe. Ripeto: tre zampe.»
+   - «Chi doveva capire ha capito. Chi non ha capito è un Grigio. Ciao!»
+3. **Le dediche.**
+   - «Da Efisio, via Cavour: "Tonino, ti aspetto sotto casa. Con la mazza."»
+   - «Da Tonino: "Efisio, non ero io! Era mio cugino! Tonino pure lui!"»
+   - «Tonino, amore, non aiuti. Questa è per voi due. Correte.»
+4. **Il meteo.**
+   - «Meteo. Freddo. Domani? Freddo. Dopodomani? Freddo, cazzo, che volete?»
+   - «Nebbia sulla calata dalle quattro. I Grigi non vedono niente. Uscite!»
+5. **Il Bollettino come si deve.**
+   - «Leggiamo il Bollettino. "La felicità è al novantaquattro per cento."»
+   - (pernacchia lunghissima)
+   - «"Il pane arriva lunedì."» (pernacchia) «"La nave arriva domani."» (pernacchia)
+   - «Basta, scusate, ho finito la saliva.»
+6. **Gli avvisi del quartiere** (le mappe del Disgelo, a voce).
+   - «Avvisi! La grata della stazione sbuffa caldo da stasera. Venite!»
+   - «La rampa dello scalo è pulita. Chi l'ha pulita? Nessuno di voi, pigri.»
+   - «Il tombino di Vico della Fame è chiuso. Pino ci ha provato lo stesso.»
+   - «Pino è ancora lì dentro. Qualcuno gli porti un panino.»
+7. **La telefonata in diretta.**
+   - «Pronto, sei in onda!» «Ciao Vinile! Volevo dire che il Garante…»
+   - «NIENTE NOMI! Niente nomi, amore!» «…che quello lì è uno stronzo!»
+   - «Bravo! Questo è coraggio! Come ti chiami?» «Mauro Pala, via Roma 12!»
+   - «…NON DIRE IL NOME! Mauro, scappa dalla cabina! CORRI!»
+8. **La pubblicità al contrario.**
+   - «Stanco delle rate? Prova NIENTE! Niente non costa niente!»
+   - «Niente non si rompe! Niente non te lo pignorano! NIENTE! Compralo!»
+9. **Il vecchio dell'osteria.**
+   - «Mi chiama un signore dall'osteria. Pronto?» «METTI IL LISCIO!»
+   - «Signore, è una radio pirata.» «E IO SONO UN PIRATA! METTI IL LISCIO!»
+   - «…Va bene. Il liscio. Per il pirata ubriaco.» (parte il liscio)
+10. **La chiusura.**
+    - «Si chiude! Spegnete la radio e rimettete il Garante, svelti!»
+    - «Alle cinque passano i Grigi. Se bussano, dite che dormivate. Russate!»
+    - «Ciao, belli. Ciao, Grigio che ascolti. Lo so che ascolti. Ciao!»
 
 **Uso.** Quando la Risacca trasmette (risacca.js `trasmetti`), i segmenti escono dalle finestre di notte a volume basso e
 dalle radio dei ragazzi alla grata; il segmento 6 può aggiornarsi con i posti veri (grata, rampa, tombino aperto più vicino).
@@ -314,141 +357,143 @@ dalle radio dei ragazzi alla grata; il segmento 6 può aggiornarsi con i posti v
 
 ## 4. Altoparlanti della Tutela in piazza — 25 annunci
 
-Voce femminile registrata, cortese, con l'eco. Un annuncio ogni 6–10 minuti di gioco nelle piazze con un altoparlante (Piazza
-Grande, Piazza della Marina, piazzale della stazione, mercato), preceduto da un gong.
+Voce femminile registrata, cortese, con l'eco; ogni tanto le scappa la pazienza. Un annuncio ogni 6–10 minuti di gioco nelle
+piazze con un altoparlante (Piazza Grande, Piazza della Marina, piazzale della stazione, mercato), preceduto da un gong.
 
-1. «Il cittadino che ha perso un guanto sinistro lo ritiri in caserma. Porti il destro, per il confronto.»
-2. «Si ricorda che tre persone sono una famiglia. Quattro sono una domanda.»
-3. «È vietato fischiettare canzoni non trasmesse. Le canzoni trasmesse si fischiettano intonate.»
-4. «Il mercato chiude alle tredici. Chi compra alle tredici e uno ha rubato.»
-5. «Attenzione: è arrivato il pane. Attenzione: era una prova.»
-6. «Cittadino, se senti questo annuncio sei in piazza. Perché?»
-7. «La Guardia ringrazia chi ha segnalato il vicino. Il vicino ringrazia anche lui.»
-8. «La fontana è gelata. Non è un guasto: è un monumento.»
-9. «Chi corre ha fretta. Chi ha fretta ha un motivo. Camminate.»
-10. «L'Ora Quieta comincia a mezzanotte. Chi sogna prima, sogni piano.»
-11. «È stata trovata una bicicletta senza padrone. Il padrone si presenti. Anche i complici.»
-12. «Per la signora Porcu: suo marito non è in caserma, è all'osteria. Non è un reato. Lo stiamo valutando.»
-13. «Il sorriso è consentito fino alle diciotto.»
-14. «Chi ha scritto NO sul muro della stazione torni a scrivere SÌ. Il pennello è fornito.»
-15. «Controlli a campione. Il campione sei tu.»
-16. «La nave dell'Impero arriverà. Ripetiamo: arriverà. Non chiedete quando: è scortese.»
-17. «Il freddo di oggi è nella norma. La norma è stata aggiornata.»
-18. «La coda è ordine che aspetta. Restate in ordine. Aspettate.»
-19. «I cani della Base non mordono chi ha il lasciapassare. Il cane non sa leggere: tenetelo alto.»
-20. «Ai giovani: il corrimano è per la mano.»
-21. «Il ritratto del Garante di Via Alta è stato restaurato. Chi gli ha fatto i baffi è atteso col pennarello.»
-22. «Si avvisano i cittadini che domani è lunedì.»
-23. «Chi tossisce durante il discorso delle venti tossisce contro qualcuno.»
-24. «È vietato dare da mangiare ai gabbiani. I gabbiani hanno la loro tessera.»
-25. «Si ringrazia la cittadinanza per la partecipazione spontanea. La partecipazione è obbligatoria.»
+1. «Attenzione. È arrivato il pane. …No, scusate. Era una prova.»
+2. «È vietato correre in piazza. Chi corre sarà rincorso.»
+3. «Sorridete. La Guardia vi sta fotografando. Lei no, signore. Lei no.»
+4. «È vietato fischiettare. Sì, anche tu. Sì, ti sentiamo.»
+5. «Signor Porcu, sua moglie la cerca. Dice che sa dov'era ieri sera.»
+6. «Chi lecca la fontana gelata ci resta attaccato fino a marzo. Ragazzi.»
+7. «Ragazzo con lo skate: scendi dal monumento. SCENDI. Ti vediamo.»
+8. «Trovata una dentiera in piazza. Chi l'ha persa, sorrida a un Grigio.»
+9. «Vietato dare da mangiare ai gabbiani. Si mangiano già i vostri panini.»
+10. «Chi ha fatto i baffi al Garante in via Alta: abbiamo il pennarello.»
+11. «Chi ha scritto NO sul muro: hai sbagliato. Si scrive SÌ. Correggi.»
+12. «Il mercato chiude alle tredici. Alle tredici e uno, si scappa.»
+13. «Controlli a sorpresa. Sorpresa! Sei tu.»
+14. «La nave arriverà. Ripetiamo: arriverà. Non chiedete quando. Basta!»
+15. «Si ricorda che domani è lunedì. Ci dispiace tanto.»
+16. «Chi tossisce mentre parla il Garante lo fa apposta. Lo sappiamo.»
+17. «I cani della Guardia mordono. Anche chi ha il lasciapassare. Scusate.»
+18. «Il signore che ha lasciato la Polaris in doppia fila: adesso è nostra.»
+19. «Il freddo di oggi è normale. Smettetela di lamentarvi.»
+20. «Cerchiamo il padrone del gatto che ha morso un Grigio. Bravo gatto.»
+21. «Fate la fila in silenzio. Signora col cappello verde, parlo con lei.»
+22. «Il sorriso è consentito fino alle diciotto. Dopo, faccia normale.»
+23. «Avviso per Tonino di via Cavour: Efisio la sta cercando. Ha una mazza.»
+24. «Ci scusiamo per il disturbo.» (fischio fortissimo) «…Ci scusiamo ancora.»
+25. «Fine degli annunci. Tutti a casa. Sì, anche voi due dietro la fontana.»
 
 ---
 
 ## 5. Muri
 
 ### 5.1 Manifesti della Tutela — 30 slogan
-Carta stampata, rosso del regime su grigio latte; il ritratto o un disegno semplice; il timbro ОПЕКА 보호 in basso.
+Carta stampata, rosso del regime su grigio latte; il ritratto o un disegno semplice; il timbro ОПЕКА 보호 in basso. La
+propaganda è grossa, si vanta e si tradisce da sola. Si legge da lontano in un secondo.
 
-1. LAVORA. CONSUMA. PAGA LA RATA. DORMI.
-2. SE VEDI QUALCOSA, DI' QUALCUNO.
-3. IL TUO VICINO TI VUOLE BENE. CHIEDIGLI PERCHÉ.
-4. CHI NON HA DEBITI NON HA FUTURO.
-5. IL GARANTE TI GUARDA. SORRIDI, VIENI MEGLIO.
-6. IL FREDDO TEMPRA. IL CALDO SOSPETTA.
-7. LA NAVE ARRIVA A CHI ASPETTA IN FILA.
+1. LAVORA. PAGA LA RATA. DORMI. RIPETI.
+2. IL GARANTE TI VEDE. ANCHE IN BAGNO.
+3. CON LA POLARIS SEI QUALCUNO. SENZA, SEI A PIEDI.
+4. CHI NON PAGA LA RATA DORME IN CASERMA.
+5. IL GARANTE TI GUARDA. SORRIDI!
+6. HAI FREDDO? SALTELLA!
+7. LA NAVE ARRIVA DOMANI! (il «DOMANI» è un foglietto incollato sopra, nuovo ogni giorno)
 8. FAMIGLIA · LAVORO · BERLINA
-9. IL SILENZIO È D'ORO. L'ORO È DEL TESORO.
-10. LA CODA È UNA COMUNITÀ.
-11. UN FRIGORIFERO IN OGNI CASA. UNA CASA INTORNO A OGNI FRIGORIFERO.
-12. LA FELICITÀ È AL 94%. FAI LA TUA PARTE.
-13. RAGAZZO, LE ROTELLE VANNO SOTTO LA BERLINA.
-14. IL MARE È DELL'IMPERO. LE ONDE SONO ABUSIVE.
-15. OGNI SCRITTA SUL MURO È UNA RATA IN PIÙ PER TUO PADRE.
-16. HAI FIRMATO? FIRMA ANCORA.
-17. DORMI TRANQUILLO: QUALCUNO È SVEGLIO PER TE.
-18. IL CARBONE È LAVORO. IL LAVORO È CARBONE.
-19. IL TUO FUTURO È GIÀ STATO DECISO. RILASSATI.
+9. STAI ZITTO. È PIÙ SICURO.
+10. LA FILA È BELLA! (disegno: una fila di gente che sorride)
+11. UN FRIGORIFERO IN OGNI CASA! (A RATE)
+12. SEI FELICE? ☐ SÌ ☐ SÌ, MOLTO
+13. RAGAZZO, SCENDI DALLO SKATE E COMPRATI UNA POLARIS!
+14. IL MARE È DELL'IMPERO. NON FARCI LA PIPÌ.
+15. OGNI SCRITTA SUL MURO LA PAGA TUO PADRE.
+16. HAI FIRMATO? FIRMA ANCORA!
+17. DORMI TRANQUILLO: TI GUARDIAMO NOI.
+18. MANGIA CARNE PATRIA. NON FARE DOMANDE.
+19. IL TUO FUTURO L'HA GIÀ DECISO IL GARANTE. RILASSATI!
 20. LA DOMENICA SI PASSEGGIA. IN SENSO ORARIO.
 21. MAMMA, PAPÀ, IL GARANTE: UNA FAMIGLIA COMPLETA.
-22. IL DUBBIO È UN FREDDO CHE VIENE DA DENTRO. COPRITI.
-23. CHI SCAPPA HA PERSO IL BIGLIETTO.
-24. LA TUA RATA ALLARGA LA VITTORIA. (con il disegno del viale nuovo e una Polaris sola)
-25. VOTA SÌ. (non c'è nessuna votazione in corso)
-26. LA TESSERA ANNONARIA È LA CARTA D'IDENTITÀ DELLA PANCIA.
-27. CI PENSIAMO NOI. TU NON PENSARCI.
-28. OGGI È UN GIORNO NORMALE.
-29. UN GATTO REGISTRATO È UN GATTO FELICE.
-30. LA LUCE È UN PENSIERO. SPEGNI LA LAMPADINA.
+22. NON PENSARE. CI PENSIAMO NOI.
+23. È INUTILE SCAPPARE. LA GUARDIA HA LE SCARPE NUOVE.
+24. GRAZIE ALLE TUE RATE, IL GARANTE HA UNA VILLA NUOVA! (con la foto della villa)
+25. VOTA SÌ! (non c'è nessuna votazione in corso)
+26. HAI PERSO LA TESSERA DEL PANE? DIGIUNA!
+27. SEGNALA IL TUO VICINO! VINCI UN PROSCIUTTO!
+28. IL GARANTE HA TUTTI I CAPELLI. (foto del Garante col cappello)
+29. UN GATTO REGISTRATO È UN GATTO FELICE. (nella foto il gatto è incazzatissimo)
+30. LUCE A SERE ALTERNE: STASERA NON È LA TUA.
 
 ### 5.2 Biglietti scritti a mano — 30 (porte, portoni, pali, vetrine)
-Carta a quadretti, pennarello, nastro adesivo; alcuni con le linguette da strappare.
+Carta a quadretti, pennarello, nastro adesivo; alcuni con le linguette da strappare. Sono arrabbiati, personali, meschini:
+ognuno è una lite di condominio, e chi scrive si scopre peggio di chi accusa.
 
-1. PERSO GATTO ROSSO. RISPONDE A «MICIO» E A «GARANTE». SE LO CHIAMATE COSÌ IN PIAZZA, PIANO.
-2. CHI HA PRESO LA MIA BICI SA CHI È. ANCH'IO.
-3. AFFITTASI STANZA A STUDENTE SERIO. NO SKATE, NO RADIO, NO DOMANDE. 9.000 A SETTIMANA, LUCE A SERE ALTERNE.
-4. VENDO FRIGORIFERO ICEBERG. MANCANO 14 RATE. LE RATE VANNO COL FRIGO.
-5. SI PREGA DI NON PISCIARE NEL PORTONE. IL PORTONE HA GLI OCCHI. LA SIGNORA DEL PRIMO PURE.
-6. CHI USA IL MIO FILO DEL BUCATO SAPPIA CHE LE MUTANDE SONO MIE. LE RICONOSCO.
-7. TROVATO MAZZO DI CHIAVI. UNA APRE LA CASERMA. RITIRARE CON DISCREZIONE.
-8. LEZIONI DI FISARMONICA, ANCHE A DOMICILIO. ANCHE PER FARE DISPETTO AI VICINI.
-9. SMARRITA DENTIERA SUPERIORE IN VIA ALTA. CHI LA TROVA NON LA PROVI.
-10. CERCO COMPAGNA PER IL LISCIO DEL VENERDÌ. NO FIGLIE DI GRIGI. NO GRIGIE.
-11. LELLA HA IL PANE. LELLA NON SA FINO A QUANDO. LELLA DICE: CORRETE.
-12. CHIUSO PER LUTTO. NON È MORTO NESSUNO: HO PERSO LA SCOMMESSA. — IL BARBIERE
-13. RAGAZZI, SE SALTATE SUL MIO MURETTO ALMENO FATELO BENE. — IL SIGNORE DEL 4
-14. SI RIPARANO RADIO. SOLO ONDE AUTORIZZATE. (BUSSARE TRE VOLTE)
-15. MATRIMONIO PINNA–SERRA, SABATO ORE 11. SIETE TUTTI INVITATI TRANNE TE, GAVINO.
-16. QUESTA SCALA È STATA LAVATA. ATTENZIONE A DOVE METTETE I PIEDI E LA COSCIENZA.
-17. NON SUONARE, IL CAMPANELLO DÀ LA SCOSSA. SUL SERIO. CHIAMATE DAL CORTILE.
-18. AFFITTASI CANTINA ASCIUTTA. ASCIUTTA PER ESSERE L'ISOLA.
-19. PERSO CANE. VA DIETRO SOLO AI GRIGI. SE LO VEDETE CON UNO DI LORO, È LUI.
-20. AL SIGNORE CHE MI HA LASCIATO IL BIGLIETTO SUL PARABREZZA: ANCH'IO, MA SPOSTA LA MACCHINA.
-21. VENDO ENCICLOPEDIA DEL SAPERE APPROVATO. MANCA IL 19. COME A TUTTI.
-22. SI RINGRAZIA CHI HA RIPORTATO A CASA LA NONNA. LA PROSSIMA VOLTA ANCHE LA BORSA.
-23. SCAMBIO BOLLINI DELLA CARNE CON BOLLINI DELLO ZUCCHERO. NO PERDITEMPO, NO ORECCHIE.
-24. CHI HA MESSO IL PESCE NELLA CASSETTA DELLE LETTERE DEL SECONDO PIANO HA RAGIONE. MA ADESSO LO TOLGA.
-25. RIPETIZIONI: MATEMATICA, ITALIANO, STORIA (QUELLA COMPLETA, A VOCE).
-26. PORTONE CHIUSO DALLE 22. CHI ARRIVA DOPO DORME DA SUA MADRE, COME DOVREBBE.
-27. STANZA PER COPPIA SERIA. SERIA VUOL DIRE SILENZIOSA.
-28. SO CHI HA FATTO IL BUCO NEL MIO TETTO. SO ANCHE CHE ERA PER LA TUA ANTENNA.
-29. CERCO TESTIMONI DELL'INCIDENTE DI MARTEDÌ IN VIA CAVOUR. SE ERI UN GRIGIO, NO GRAZIE.
-30. VENDO POLARIS, MAI USATA PER NON CONSUMARLA. LE RATE SONO STATE USATE MOLTO.
+1. A CHI MI HA FREGATO LA BICI: SO CHI SEI, STRONZO. RIPORTALA.
+2. PERSO GATTO ROSSO. SI CHIAMA GARANTE. NON CHIAMATELO FORTE IN PIAZZA.
+3. CHI PISCIA NEL PORTONE: TI HO VISTO. LO DICO A TUA MOGLIE.
+4. LE MUTANDE SUL FILO SONO MIE. CHI LE HA PRESE LE RIPORTI. LAVATE.
+5. SECONDO PIANO: SE SUONI LA FISARMONICA ALLE 6 ANCORA, TE LA SFONDO.
+6. VENDO FRIGO ICEBERG. NON FUNZIONA. MANCANO 14 RATE. UN AFFARE.
+7. PERSA DENTIERA IN VIA ALTA. CHI LA TROVA NON SE LA PROVI, PORCO.
+8. MATRIMONIO PINNA-SERRA, SABATO ORE 11. TUTTI INVITATI TRANNE GAVINO.
+9. CHIUSO PER LUTTO. NON È MORTO NESSUNO: HO PERSO A CARTE. — IL BARBIERE
+10. IL MURETTO NON È UNA RAMPA, STRONZI. L'HO FATTO IO CON LE MIE MANI.
+11. LELLA HA IL PANE! CORRETE, CHE FINISCE! (sotto, altra penna: L'HO PRESO TUTTO IO)
+12. A CHI HA RIGATO LA MIA POLARIS: TI AUGURO LA DIARREA ALLA PARATA.
+13. SI RIPARANO RADIO. TUTTE. ANCHE QUELLE STRANE. BUSSARE TRE VOLTE.
+14. NON SUONATE: IL CAMPANELLO DÀ LA SCOSSA. L'HO MESSO PER TE, LUIGI.
+15. CHI FA CAGARE IL CANE QUI: DOMANI TE LA TROVI NELLA CASSETTA.
+16. LE SCALE LE HO LAVATE IO. CHI SALE CON LE SCARPE SPORCHE MUORE.
+17. AFFITTASI STANZA. NO SKATE, NO RADIO, NO FIDANZATE. SOPRATTUTTO NO.
+18. CERCO DONNA PER IL LISCIO. SO BALLARE. HO LA MACCHINA. HO I DENTI.
+19. PERSO CANE. È BRUTTO E MORDE. LO RIVOGLIO LO STESSO.
+20. A CHI RUBA IL GIORNALE DAL MIO ZERBINO: C'È SOLO IL GARANTE. TIENILO.
+21. VENDO ENCICLOPEDIA. MANCA IL 19. NON ROMPETE LE PALLE PER IL 19.
+22. GRAZIE A CHI HA RIPORTATO A CASA LA NONNA. ORA RIDAI LA BORSA, LADRO.
+23. SCAMBIO BOLLINI DELLA CARNE CON BOLLINI DELLO ZUCCHERO. NO GRIGI.
+24. TERZO PIANO: IL LETTO CIGOLA. TUTTE LE NOTTI. COMPRATENE UNO NUOVO.
+25. RIPETIZIONI DI MATEMATICA. SE TUO FIGLIO È SCEMO, COSTA DI PIÙ.
+26. PORTONE CHIUSO ALLE 22. CHI ARRIVA DOPO DORME IN STRADA. SÌ, ANTONIO.
+27. TONINO, SO CHE SEI STATO TU. — EFISIO
+28. TONINO NON ABITA PIÙ QUI. NON BUSSATE. — TONINO
+29. MAURO: HAI BUCATO IL MIO TETTO PER L'ANTENNA. TI HO VISTO. RIPARA.
+30. VENDO LAVATRICE VORTICE 5. È SCAPPATA DUE VOLTE. VA LEGATA.
 
 ### 5.3 Scritte del Disgelo — 30 (solo il testo)
-Spray, gesso, stencil; vanno vicino all'onda. Quelle segnate (→) sono «mappe operative» (MANIFESTO §2): chi le dipinge e dove lo
-decide l'altro gruppo, qui c'è solo il testo.
+Spray, gesso, stencil; vanno vicino all'onda. Corte, sgarbate, leggibili da lontano. Quelle segnate (→) sono «mappe operative»
+(MANIFESTO §2): chi le dipinge e dove lo decide l'altro gruppo, qui c'è solo il testo.
 
 1. NO
 2. DISGELO
-3. RATA = CATENA
-4. 94% DI CHE?
-5. GARANTE, DORMI
-6. LE ONDE NON HANNO LA TESSERA
-7. SE VEDI QUALCOSA, DI' QUALCOSA (sotto il manifesto 5.1.2, la parola corretta)
-8. IL FREDDO È LORO. LE GAMBE SONO NOSTRE
-9. SKATE NON È REATO
-10. LA VITTORIA SIAMO NOI
-11. GRIGIO: COLORE DI MERDA
-12. LIBERATE IL VOLUME 19
-13. NON FIRMARE
-14. SOTTO IL CEMENTO CI SONO LE RADICI
-15. PAPÀ, LA POLARIS NON TI AMA
-16. NOI NON A RATE
-17. BANCO LADRO
-18. LA NEBBIA È NOSTRA
-19. ZIA ASCOLTA (→ vicino al Bar Sirena: avviso)
-20. QUI NIENTE ORECCHIE (→ posto sicuro)
-21. CALDO → (→ la grata o la presa calda più vicina)
-22. TOMBINO ↓ (→ tombino aperto)
-23. RAMPA OK (→ rampa pulita dal ghiaccio)
-24. GRIGI ALLE 23 (→ passa la ronda)
-25. L'ORDINE È UNA CAREZZA? TOCCAMI E VEDI
-26. CHI HA PAURA DELLE ROTELLE?
-27. NAVE VUOTA, PANCIA PIENA DI BUGIE
+3. GARANTE PELATO
+4. 94% DI STOCAZZO
+5. BANCO LADRO
+6. SKATE NON È REATO
+7. GUARDONE (sotto il manifesto 5.1.2, «IL GARANTE TI VEDE. ANCHE IN BAGNO»)
+8. GRIGIO: COLORE DI MERDA
+9. LA NAVE NON ARRIVA, SVEGLIA!
+10. NON FIRMARE
+11. VAFFANCULO LA RATA
+12. TONINO SEI MORTO — EFISIO
+13. CARNE PATRIA = GATTO
+14. LA NEBBIA È NOSTRA
+15. FERRI PRENDE LE BUSTE
+16. GINO METTI LA BIRRA FREDDA
+17. QUI HA PISCIATO IL GARANTE
+18. ABBASSA IL VOLUME, PELATO
+19. MAURO SPIONE
+20. HO SCRITTO IO. — FELPA VERDE
+21. ZIA ASCOLTA (→ vicino al Bar Sirena: avviso)
+22. QUI NIENTE ORECCHIE (→ posto sicuro)
+23. CALDO → (→ la grata o la presa calda più vicina)
+24. TOMBINO ↓ (→ tombino aperto)
+25. RAMPA OK (→ rampa pulita dal ghiaccio)
+26. GRIGI ALLE 23 (→ passa la ronda)
+27. CAREZZA? TOCCAMI E VEDI
 28. CORRI ZIO
 29. FRA, RESTA
-30. IL SOLE SI È SCORDATO DI NOI. NOI NO.
+30. IL GRIGIO HA LA PANCIA. CORRI E BASTA
 
 Tag di firma delle crew (per i pezzi grandi): **SKIROKKO**, **RAMPA 7**, **I GABBIANI**, **TOPI**, **GELO86**, **VAPORE**,
 **SCARAFAGGI**, **LA CALATA**.
@@ -459,51 +504,52 @@ Tag di firma delle crew (per i pezzi grandi): **SKIROKKO**, **RAMPA 7**, **I GAB
 
 ### 6.1 Quaranta botteghe con l'insegna
 Formato: **nome** (uso in `USES`/`MINORI`) — `INSEGNA` come è dipinta — il cartello in vetrina o la cosa che si nota.
-L'insegna resta in italiano come oggi nel codice; per le botteghe con licenza della Tutela (tabacchi, farmacia, Banco) si può
-aggiungere la riga di sotto in cirillico/coreano (BIBBIA §2.4), per esempio ФАРМАЦИЯ 약국.
+Il nome sembra vero; la battuta sta nel cartello, che si legge in un secondo. L'insegna resta in italiano come oggi nel codice;
+per le botteghe con licenza della Tutela (tabacchi, farmacia, Banco) si può aggiungere la riga di sotto in cirillico/coreano
+(BIBBIA §2.4), per esempio ФАРМАЦИЯ 약국.
 
 | # | Nome (uso) | Insegna | In vetrina / il dettaglio |
 |---|---|---|---|
-| 1 | Bar Ritorno (bar) | BAR RITORNO | «Il conto si paga all'andata.» |
-| 2 | Bar dell'Ultimo (bar) | BAR DELL'ULTIMO | «Ultimo giro 23:50. Penultimo 23:49.» |
-| 3 | Bar Tranquillo (bar) | BAR TRANQUILLO | sotto, a pennarello: «ma non troppo» |
-| 4 | Caffè Nazionale (bar, portici) | CAFFÈ NAZIONALE | «Caffè del continente, acqua dell'isola.» |
-| 5 | Osteria Il Debito (trattoria) | OSTERIA IL DEBITO | «Qui si mangia. Poi si vede.» |
+| 1 | Bar Ritorno (bar) | BAR RITORNO | «Chi vomita pulisce. Chi non paga, non ritorna.» |
+| 2 | Bar dell'Ultimo (bar) | BAR DELL'ULTIMO | «Ultimo giro alle 23:50. Chi dice "l'ultimo, giuro" paga doppio.» |
+| 3 | Bar Tranquillo (bar) | BAR TRANQUILLO | sotto, a pennarello: «ultima rissa: ieri» |
+| 4 | Caffè Nazionale (bar, portici) | CAFFÈ NAZIONALE | «Vietato parlare di politica, di calcio e di mia moglie.» |
+| 5 | Osteria Il Debito (trattoria) | OSTERIA IL DEBITO | «Si paga prima. Sì, anche tu, Tonino.» |
 | 6 | Osteria da Mimmo Zitto (trattoria) | VINI E CUCINA DA MIMMO | «Mimmo non ha visto niente. Nemmeno voi.» |
-| 7 | Trattoria La Rata (trattoria) | TRATTORIA LA RATA | «Menù in tre comode portate.» |
-| 8 | Barbiere Gavino (barbiere) | BARBIERE GAVINO | «Taglio regolamentare 2.000. Come vuoi tu: 2.000 più il rischio.» |
-| 9 | Salone Nello (barbiere) | SALONE NELLO · UOMO DONNA | «Qui si parla di calcio. Solo di calcio.» |
-| 10 | Ferramenta Tutto Chiude (ferramenta) | FERRAMENTA TUTTO CHIUDE | lucchetti a grappoli; «Copie di chiavi in 5 minuti. In 2, se non chiedi di chi.» |
-| 11 | Ferramenta F.lli Usai (ferramenta) | F.LLI USAI | «Non vendiamo bombolette.» (la porta sul retro è aperta) |
-| 12 | Lavanderia Bianco di Stato (lavanderia) | LAVANDERIA BIANCO DI STATO | «Smacchiamo tutto. Tutto.» |
-| 13 | Tintoria Dolores (lavanderia) | TINTORIA DOLORES | «Si tinge in grigio. Altri colori su richiesta motivata.» |
-| 14 | Tabacchi Fumo Lento (tabacchi) | TABACCHI · ТАБАК | «Bianche di Stato, francobolli, schedine. Le americane non esistono.» |
-| 15 | Panetteria Pane Domani (panetteria) | PANETTERIA PANE DOMANI | cartello fisso: «OGGI FINITO» |
-| 16 | Farmacia della Pazienza (farmacia) | ✚ FARMACIA DELLA PAZIENZA | «Aspirina finita. Pazienza disponibile.» |
-| 17 | Drogheria Pina (drogheria) | DROGHERIA PINA | «Coloniali, spezie, notizie.» |
-| 18 | Calzolaio Totò (calzolaio) | CALZOLAIO TOTÒ | «Si risuolano anche le scuse.» |
-| 19 | Latteria La Mucca Contenta (latteria) | LATTERIA LA MUCCA CONTENTA | «Latte in polvere del continente. La mucca è contenta di non stare qui.» |
-| 20 | Merceria Il Filo (merceria) | MERCERIA IL FILO | «Bottoni, cerniere, spille. Il filo del discorso no.» |
-| 21 | Frutta e Verdura Efisio (fruttivendolo) | FRUTTA E VERDURA EFISIO | «Arance: giovedì. Forse.» (cassetta vuota con la foto di un'arancia) |
-| 22 | Pescheria Serra (pescheria) | PESCHERIA SERRA · PESCE FRESCO | in città la chiamano «Fresco di Ieri» |
-| 23 | Orologeria L'Ora Esatta (orologiaio) | OROLOGERIA L'ORA ESATTA | tutti gli orologi in vetrina segnano le 20 |
-| 24 | Cartoleria Carta Bollata (cartoleria) | CARTOLERIA CARTA BOLLATA | «Moduli 31-L disponibili. Le penne a parte.» |
-| 25 | Profumeria Brina (profumeria) | PROFUMERIA BRINA | «Profumi del continente. Il deodorante è un'opinione.» |
-| 26 | Elettrodomestici Il Futuro (elettrodomestici) | IL FUTURO · A RATE | un Iceberg in vetrina col fiocco e il cartellino «da 3.000 al mese per sempre» |
-| 27 | Mobili Casa Ferma (mobili) | MOBILI CASA FERMA | «Divani in finta pelle. La rata è vera.» |
-| 28 | Boutique Monique (abbigliamento) | BOUTIQUE MONIQUE | la tiene Maria Loi, che si fa chiamare Monique; «Moda del continente, cucita al piano di sopra» |
-| 29 | Gioielleria Oro di Famiglia (orologiaio) | GIOIELLERIA ORO DI FAMIGLIA | «Si compra oro. Si vende oro. Si dimentica.» |
-| 30 | Libreria Pagine Approvate (cartoleria) | LIBRERIA | uno scaffale solo; «Tutti i libri autorizzati.» |
+| 7 | Trattoria La Rata (trattoria) | TRATTORIA LA RATA | «Oggi: pasta. Ieri: pasta. Domani: indovina.» |
+| 8 | Barbiere Gavino (barbiere) | BARBIERE GAVINO | «Taglio 2.000. Se ti muovi, l'orecchio è gratis.» |
+| 9 | Salone Nello (barbiere) | SALONE NELLO · UOMO DONNA | «Qui si parla di calcio. E di chi va a letto con chi.» |
+| 10 | Ferramenta Tutto Chiude (ferramenta) | FERRAMENTA TUTTO CHIUDE | lucchetti a grappoli; «Copie di chiavi in 5 minuti. Non chiedo di chi sono.» |
+| 11 | Ferramenta F.lli Usai (ferramenta) | F.LLI USAI | «NON VENDIAMO BOMBOLETTE.» (dalla porta sul retro esce un ragazzo con tre bombolette) |
+| 12 | Lavanderia Bianco di Stato (lavanderia) | LAVANDERIA BIANCO DI STATO | «Togliamo tutte le macchie. Pure quelle rosse. Non chiediamo.» |
+| 13 | Tintoria Dolores (lavanderia) | TINTORIA DOLORES | «Tingiamo in grigio. Chi vuole il rosso, se ne va.» |
+| 14 | Tabacchi Fumo Lento (tabacchi) | TABACCHI · ТАБАК | «Le americane non esistono. Chiedetele a voce bassa.» |
+| 15 | Panetteria Pane Domani (panetteria) | PANETTERIA PANE DOMANI | cartello fisso, scolorito dal sole: «OGGI FINITO» |
+| 16 | Farmacia della Pazienza (farmacia) | ✚ FARMACIA DELLA PAZIENZA | «Aspirina: finita. Supposte: tantissime.» |
+| 17 | Drogheria Pina (drogheria) | DROGHERIA PINA | «Spezie, caffè, e tutti i fatti vostri.» |
+| 18 | Calzolaio Totò (calzolaio) | CALZOLAIO TOTÒ | «Si risuolano ciabatte. Anche quelle tirate alla TV.» |
+| 19 | Latteria La Mucca Contenta (latteria) | LATTERIA LA MUCCA CONTENTA | «Latte in polvere. La mucca è scappata.» |
+| 20 | Merceria Il Filo (merceria) | MERCERIA IL FILO | «Ricuciamo tutto. Anche i pantaloni della rissa di sabato.» |
+| 21 | Frutta e Verdura Peppino (fruttivendolo) | FRUTTA E VERDURA PEPPINO | «Arance: giovedì. Forse. Non rompete.» (cassetta vuota con la foto di un'arancia) |
+| 22 | Pescheria Serra (pescheria) | PESCHERIA SERRA · PESCE FRESCO | in città la chiamano «Puzza di Ieri» |
+| 23 | Orologeria L'Ora Esatta (orologiaio) | OROLOGERIA L'ORA ESATTA | ogni orologio in vetrina segna un'ora diversa; «Chiuso per pranzo. Torno alle boh.» |
+| 24 | Cartoleria Carta Bollata (cartoleria) | CARTOLERIA CARTA BOLLATA | «Moduli 31-L: finiti. Lamentatevi a casa.» |
+| 25 | Profumeria Brina (profumeria) | PROFUMERIA BRINA | «Profumi per lui. Perché lui puzza.» |
+| 26 | Elettrodomestici Il Futuro (elettrodomestici) | IL FUTURO · A RATE | un Iceberg in vetrina col fiocco e il cartellino «3.000 al mese. Per sempre.» |
+| 27 | Mobili Casa Ferma (mobili) | MOBILI CASA FERMA | «Divani in finta pelle. D'estate ti si attaccano al culo.» |
+| 28 | Boutique Monique (abbigliamento) | BOUTIQUE MONIQUE | la tiene Maria Loi, che si fa chiamare Monique; «Moda di Parigi. Cucita di sopra da mia zia.» |
+| 29 | Gioielleria Oro di Famiglia (orologiaio) | GIOIELLERIA ORO DI FAMIGLIA | «Compro oro. Non chiedo da dove viene. Giuro.» |
+| 30 | Libreria Pagine Approvate (cartoleria) | LIBRERIA | uno scaffale solo, tutti i libri con la faccia del Garante in copertina |
 | 31 | Palestra Ercole (palestra) | PALESTRA ERCOLE | «Pesi, sacco, lotta. I Grigi entrano gratis, purtroppo.» |
-| 32 | Autorimessa da Bruno (autorimessa) | AUTORIMESSA · RIPARAZIONI POLARIS | «Ripariamo tutte le Polaris. Sempre. Continuamente.» |
-| 33 | Birreria La Schiuma (pub) | BIRRERIA LA SCHIUMA | «Birra dell'Impero alla spina. La spina è nostra.» |
-| 34 | Onoranze Funebri Sereno (nuovo uso: pompe funebri) | ONORANZE FUNEBRI SERENO | «Tariffe da vivi.» |
-| 35 | Foto Lampo (nuovo uso: fotografo) | FOTO LAMPO · FOTOTESSERE | «In un minuto. Per sorridere chiedere permesso.» |
-| 36 | Macelleria Lai (nuovo uso: macelleria) | MACELLERIA LAI | «Carne con la tessera: martedì. Ossa: tutti i giorni.» |
-| 37 | Pasticceria Fontana (nuovo uso: pasticceria) | PASTICCERIA FONTANA | «Torte nuziali anche a rate: il primo piano subito, gli altri col tempo.» |
-| 38 | Parrucchiera Wanda (nuovo uso: parrucchiera) | ACCONCIATURE WANDA | «Permanente quattro ore. Chiacchiere incluse. Segreti a parte.» |
-| 39 | Sala da ballo Stella Polare (nuovo uso: sala da ballo) | SALA DA BALLO STELLA POLARE | «Liscio il venerdì. Il resto non è ballo.» |
-| 40 | Banco dei Pegni (nuovo uso: monte dei pegni) | MONTE DEI PEGNI · ЛОМБАРД | la fila del lunedì; «Si accettano fedi, orologi, frigoriferi (con le rate)» |
+| 32 | Autorimessa da Bruno (autorimessa) | AUTORIMESSA · RIPARAZIONI POLARIS | «Ripariamo Polaris. Sempre le stesse. Ogni settimana.» |
+| 33 | Birreria La Schiuma (pub) | BIRRERIA LA SCHIUMA | «Birra alla spina. Calda. Non si discute.» |
+| 34 | Onoranze Funebri Sereno (nuovo uso: pompe funebri) | ONORANZE FUNEBRI SERENO | «Ci vediamo presto!» |
+| 35 | Foto Lampo (nuovo uso: fotografo) | FOTO LAMPO · FOTOTESSERE | «Fototessere in un minuto. Se vieni brutto, è colpa tua.» |
+| 36 | Macelleria Lai (nuovo uso: macelleria) | MACELLERIA LAI | gatto grasso in vetrina col cartello «È NOSTRO. NON È IN VENDITA.» |
+| 37 | Pasticceria Fontana (nuovo uso: pasticceria) | PASTICCERIA FONTANA | «Torte per matrimoni, battesimi e divorzi.» |
+| 38 | Parrucchiera Wanda (nuovo uso: parrucchiera) | ACCONCIATURE WANDA | «Permanente in quattro ore. Vi racconto tutto di tutti.» |
+| 39 | Sala da ballo Stella Polare (nuovo uso: sala da ballo) | SALA DA BALLO STELLA POLARE | «Liscio il venerdì. Vietato strusciarsi. Ballate e basta.» |
+| 40 | Banco dei Pegni (nuovo uso: monte dei pegni) | MONTE DEI PEGNI · ЛОМБАРД | la fila del lunedì; «Prendiamo tutto: fedi, orologi, denti d'oro.» |
 
 Nota tecnica (per chi le mette): i nomi 34–40 sono usi che `USES`/`MINORI` non hanno. Quelli 1–33 si possono mettere nelle liste
 che ci sono già, al posto di «Bar Tina» e «Ferramenta Bruno». Tenere la regola del codice: insegna = nome solo se sta in 18
@@ -514,25 +560,25 @@ Stella, Tipografia Totò).
 I nomi che usa la gente (nelle battute, nei biglietti, nei pettegolezzi); il nome ufficiale resta sulla targa (Ente Case del
 Garante, lotto n.).
 
-1. **Il Frigorifero**: il palazzone bianco, freddo; tutti dentro hanno l'Iceberg a rate.
-2. **Palazzo Trent'Anni**: la stecca INA-Casa; trent'anni di mutuo, trenta famiglie, un ascensore.
-3. **Palazzo Pazienza**: l'ascensore è rotto dal '79.
-4. **Il Termosifone**: l'unico col riscaldamento centrale. Odiato da tutto il quartiere.
-5. **Palazzo Silenzio**: ci abitano i Grigi con le famiglie. Non si stende il bucato per strada.
-6. **Le Orecchie**: quello davanti al Bar Sirena; da ogni finestra si sente il bar.
-7. **La Nave**: lungo e stretto, col vento oscilla, al quinto piano viene il mal di mare.
-8. **Il Formicaio**: dodici scale, nessuno sa quante persone ci abitino, il censimento neppure.
-9. **Il Comò**: basso, largo, con tanti cassetti; ogni appartamento ha il suo segreto.
-10. **Palazzo dei Panni**: il bucato steso sempre, anche quando piove; la facciata non si è mai vista.
+1. **Il Frigorifero**: il palazzone bianco, gelato; tutti dentro hanno l'Iceberg a rate e nessuno ha la stufa.
+2. **Palazzo Trent'Anni**: la stecca INA-Casa; trent'anni di mutuo, trenta famiglie, un ascensore, trenta litigi.
+3. **Palazzo Pazienza**: l'ascensore è rotto dal '79. Al sesto piano c'è uno che non scende dal '79.
+4. **Il Termosifone**: l'unico col riscaldamento centrale. Odiato da tutto il quartiere, che va a scroccare il caffè.
+5. **Palazzo Silenzio**: ci abitano i Grigi con le famiglie. Nessuno ci passa davanti, nemmeno i gatti.
+6. **Le Orecchie**: quello davanti al Bar Sirena; da ogni finestra si sente il bar, e il bar sente ogni finestra.
+7. **La Nave**: lungo e stretto, col vento oscilla, al quinto piano si vomita.
+8. **Il Formicaio**: dodici scale, nessuno sa quanta gente ci abiti, il censimento ha rinunciato.
+9. **Il Comò**: basso, largo, tanti cassetti; ogni famiglia ci nasconde qualcosa, di solito un parente.
+10. **Palazzo dei Panni**: il bucato steso sempre, anche quando piove; la facciata non l'ha mai vista nessuno.
 11. **La Scatoletta**: case minime per gli operai della miniera, tutte uguali, come la Carne Patria.
-12. **Il Purgatorio**: a metà fra le baracche e i palazzi buoni; di là ci si guarda male tutti e due.
-13. **La Ringhiera**: a ballatoio; si sa chi esce, con chi e a che ora.
-14. **Il Transatlantico**: la torre del boom con le terrazze a nastro; ci stanno quelli che «sono arrivati».
+12. **Il Purgatorio**: a metà fra le baracche e i palazzi buoni; quelli di sopra e quelli di sotto si odiano.
+13. **La Ringhiera**: a ballatoio; si sa chi esce, con chi e a che ora, e lo si urla.
+14. **Il Transatlantico**: la torre del boom con le terrazze; ci stanno quelli che si credono arrivati.
 15. **La Cassaforte**: un palazzo normale con le inferriate a tutti i piani. Ci abitano amici della Famiglia.
-16. **Palazzo Bollettino**: gli inquilini sanno tutto prima che lo dica la TV.
-17. **Il Barattolo**: cilindrico (il serbatoio vecchio riadattato a case), si sente tutto da tutte le parti.
-18. **Le Gemelle**: due palazzine identiche; le due famiglie dell'ultimo piano non si parlano dal '72.
-19. **Il Lazzaretto**: l'umido sale fino al terzo piano. La muffa ha il suo nome sul citofono.
+16. **Palazzo Bollettino**: gli inquilini sanno tutto prima della TV, perché lo inventano loro.
+17. **Il Barattolo**: cilindrico (il serbatoio vecchio riadattato a case); se uno scoreggia, lo sentono tutti.
+18. **Le Gemelle**: due palazzine identiche; le due famiglie dell'ultimo piano non si parlano dal '72 per un parcheggio.
+19. **Il Lazzaretto**: l'umido sale fino al terzo piano. Sul citofono qualcuno ha scritto «MUFFA».
 20. **La Vedetta**: l'ultimo piano guarda il porto; chi ci abita vede arrivare la nave per primo e affitta il balcone.
 
 ### 6.3 Il nome delle case: come chiamare una casa per chi ci abita davvero
@@ -572,56 +618,56 @@ giocatore crede che siano tutte case sue.
 
 Il quotidiano del regime (accanto a ПРАВДА ОСТРОВА e IL GARANTE): due fogli, la foto del Garante sempre uguale, l'oroscopo
 uguale per tutti i segni. In mano a chi legge sulla panchina e all'edicola (posa `legge_su`), appallottolato nei barili del
-fuoco, a fare da tovaglia all'osteria.
+fuoco, a fare da tovaglia all'osteria. I titoli sono propaganda gonfia che si sputtana da sola.
 
 ### 7.1 Trenta titoli
-1. LA NAVE È PARTITA. ARRIVERÀ.
-2. FELICITÀ: NUOVO RECORD AL 94%
-3. IL GARANTE VISITA UNA FABBRICA. LA FABBRICA RINGRAZIA
-4. NEBBIA, LA GUARDIA SMENTISCE DI AVERLA CHIESTA UNA SECONDA VOLTA
-5. CALA IL PREZZO DEL PANE: SENZA PANE, NON COSTA NIENTE
-6. MULTATO GIOVANE SU ROTELLE. «NON SAPEVO DI ESSERE UNA BERLINA»
-7. INAUGURATO IL PARCHEGGIO DELLA VITTORIA. LE AUTO ARRIVANO
-8. UN CITTADINO SU TRE HA IL FRIGORIFERO. GLI ALTRI DUE LO STANNO PAGANDO
-9. PIOGGIA: I CITTADINI SI BAGNANO SPONTANEAMENTE
-10. DEMOLITO IL MOLO VECCHIO PER IL MOLO NUOVO, CHE SARÀ DEMOLITO
-11. SCOPERTA UNA RADIO CLANDESTINA: ERA UN FRIGORIFERO CHE RONZAVA
-12. GATTO REGISTRATO SALVA BAMBINO NON REGISTRATO
-13. LA SELEZIONE DELL'ISOLA BATTE LA SELEZIONE DELL'ISOLA 3-0
-14. CENSIMENTO: 4.200 GATTI. IN CALO QUELLI SENZA OPINIONE
-15. FINITE LE CODE: ORA SI CHIAMANO «ATTESE ORGANIZZATE»
-16. IL CARBONE C'È. MANCA IL FREDDO GIUSTO PER BRUCIARLO
-17. FERMATO UOMO CHE FISCHIETTAVA. I VICINI: «ERA STONATO»
-18. IL BANCO: LA RATA DIVENTA PIÙ LEGGERA. E PIÙ LUNGA
-19. BOOM DI MATRIMONI COL NUOVO «SÌ PER SEMPRE»
-20. UN ANNO SENZA RAPINE AI PORTAVALORI, A PARTE LE QUATTRO
-21. IL GARANTE: «NON HO MAI DORMITO». I MEDICI: «SI VEDE CHE È IN FORMA»
-22. RIPITTURATI 400 METRI DI MURI. LE SCRITTE: 401
-23. CONCORSO «IL BALCONE PIÙ ORDINATO»: VINCE UN BALCONE VUOTO
-24. NEVE PREVISTA. SARÀ COMUNICATO QUANDO
-25. I GIOVANI CHIEDONO SPAZI: CONCESSO IL CORRIDOIO DELLA CASERMA
-26. UOMO PAGA L'ULTIMA RATA. IL BANCO GLI REGALA UNA BERLINA NUOVA (A RATE)
-27. DISCOTECA LUNA, CONTROLLI: TROVATO UN RITMO NON AUTORIZZATO
-28. LUCE A SERE ALTERNE: I CIVICI CON LA BARRA CHIEDONO CHIAREZZA
-29. MARE GROSSO, LA MOTOVEDETTA RESTA IN PORTO PER DARE L'ESEMPIO
-30. NECROLOGI: NESSUNO. ANCHE QUESTA SETTIMANA SIAMO VIVI
+1. LA NAVE ARRIVA DOMANI! (COME IERI)
+2. FELICITÀ AL 94%! IL RESTO SONO GUFI
+3. IL GARANTE SEGNA SEI GOL DI TESTA. «UN FENOMENO», DICE IL GARANTE
+4. GATTO GRAFFIA IL GARANTE: ARRESTATO IL GATTO
+5. PANE: IL GARANTE L'HA ASSAGGIATO. «BUONISSIMO»
+6. FATTO IL DITO AL GARANTE: SI CERCA UNA FELPA VERDE
+7. NUOVO PARCHEGGIO IN CENTRO. C'È UNA MACCHINA: QUELLA DEL GARANTE
+8. UN CITTADINO SU TRE HA IL FRIGO. GLI ALTRI DUE SONO INVIDIOSI
+9. PIOVE: È COLPA DEI MARSIGLIESI
+10. CROLLA IL MOLO VECCHIO. L'ENTE: «L'AVEVAMO DETTO NOI»
+11. LA RADIO PIRATA NON ESISTE. DOMANI LA CHIUDIAMO
+12. FERMATO UOMO CHE FISCHIETTAVA. I VICINI: «ERA ANCHE STONATO»
+13. SELEZIONE DELL'ISOLA 10, CAMERIERI DEL PALAZZO 0
+14. CENSIMENTO GATTI: SONO 4.200. TRE SONO SOSPETTI
+15. CODE PIÙ CORTE! LE ABBIAMO DIVISE IN DUE
+16. IL CARBONE C'È! È TUTTO NEL MAGAZZINO DEL GARANTE
+17. IL BANCO ABBASSA LE RATE DI 10 LIRE. FESTA IN PIAZZA
+18. PAGA L'ULTIMA RATA E SVIENE DI GIOIA. IL BANCO: «SUBITO UN'ALTRA»
+19. BOOM DI MATRIMONI: TUTTI VOGLIONO IL FRIGO IN REGALO
+20. UN ANNO SENZA RAPINE! (TRANNE QUATTRO)
+21. IL GARANTE NON DORME MAI. I MEDICI: «È UN SUPEREROE»
+22. RIPITTURATI 400 METRI DI MURI. STAMATTINA C'ERA DI NUOVO «PELATO»
+23. BALCONE PIÙ ORDINATO: VINCE LA SIGNORA BUSSU. LE VICINE: «HA BARATO»
+24. NEBBIA: LA GUARDIA ARRESTA UN LAMPIONE
+25. SKATE: I RAGAZZI CHIEDONO UN POSTO. AVRANNO IL CORTILE DELLA CASERMA
+26. DISCOTECA LUNA: SEQUESTRATO UN DISCO TROPPO ALLEGRO
+27. LUCE A SERE ALTERNE: RISSA FRA PARI E DISPARI IN VIA ROMA
+28. VIA CAVOUR: TONINO SMENTISCE TUTTO E PARTE PER IL CONTINENTE
+29. MARE GROSSO: LA MOTOVEDETTA NON ESCE. IL CAPITANO HA LA NAUSEA
+30. OROSCOPO: TUTTI I SEGNI, SETTIMANA OTTIMA. ORDINE DEL GARANTE
 
 ### 7.2 Quindici piccoli annunci
-1. VENDO POLARIS 1300 COME NUOVA, MAI USATA PER NON CONSUMARLA. RATE DA SUBENTRARE. TELEFONARE DOPO LE 20 E 15.
-2. VEDOVA SERIA CERCA SIGNORE SERIO CON STUFA SERIA.
-3. CEDO POSTO IN FILA AL FORNO, ORE 5.30, POSIZIONE BUONA (QUARTA). 500 LIRE.
-4. CERCO VOLUME 19 DELL'ENCICLOPEDIA DEL SAPERE APPROVATO. ASTENERSI SPIRITOSI.
+1. VENDO POLARIS. MAI USATA. MIA MOGLIE NON LO SA. CHIAMARE DI GIORNO.
+2. VEDOVA ALLEGRA CERCA SIGNORE CON STUFA. LA STUFA È IMPORTANTE.
+3. CEDO POSTO IN FILA AL FORNO, QUARTO. 500 LIRE. NON TRATTO, PEZZENTI.
+4. CERCO VOLUME 19. PAGO BENE. NON CHIAMATE PER SCHERZO, STRONZI.
 5. SCAMBIO DENTIERA COME NUOVA CON DUE LAMPADINE DA 60.
-6. PENSIONATO SI OFFRE COME TESTIMONE: MATRIMONI, BATTESIMI, INCIDENTI.
-7. PERSA FEDE NUZIALE AL MOLO. LA FEDE, NON IL MARITO: IL MARITO È TORNATO.
-8. REGALO GATTINI GIÀ REGISTRATI, OPINIONI MODERATE.
-9. SIGNORINA DISTINTA DÀ LEZIONI DI BUONE MANIERE. ANCHE AI GRIGI. SOPRATTUTTO AI GRIGI.
-10. CERCASI FISARMONICISTA PER FUNERALE ALLEGRO. IL DEFUNTO HA INSISTITO.
-11. VENDO TELEVISORE OCCHIO SERALE. PRENDE SOLO IL GARANTE, MA LO PRENDE BENISSIMO.
-12. CERCO CAMERA PER PERSONA SOLA E TRANQUILLA. LA PERSONA SONO IO, LA TRANQUILLITÀ LA PORTO.
+6. PENSIONATO FA IL TESTIMONE: MATRIMONI, INCIDENTI, RISSE. VEDO POCO.
+7. PERSA FEDE AL MOLO. SE TROVATE ANCHE MIO MARITO, TENETEVELO.
+8. REGALO GATTINI REGISTRATI. QUELLO CHE MORDE I GRIGI COSTA DI PIÙ.
+9. SIGNORINA DÀ LEZIONI DI BUONE MANIERE. AI GRIGI GRATIS, POVERINI.
+10. CERCASI FISARMONICISTA PER FUNERALE ALLEGRO. IL MORTO HA INSISTITO.
+11. VENDO TV OCCHIO SERALE. PRENDE SOLO IL GARANTE. VI PREGO, PRENDETELA.
+12. CERCO STANZA. SONO TRANQUILLO. NON BEVO. QUASI MAI. QUASI.
 13. COMPRO BOTTONI. TANTI. NON CHIEDETE PERCHÉ.
-14. GIOVANE VOLENTEROSO SPALA, SCARICA, FA LA FILA AL POSTO VOSTRO.
-15. VENDO GESSO BIANCO, OTTIMO PER LAVAGNE E ALTRO. CHIEDERE DOPO LE 18 DI MADRE. (in codice: la Risacca)
+14. RAGAZZO FA LA FILA AL POSTO VOSTRO. 300 LIRE L'ORA. SE PIOVE, 500.
+15. VENDO GESSO E COLLA. TANTA COLLA. CHIEDERE DI MADRE DOPO LE 18. (in codice: la Risacca)
 
 ---
 
@@ -649,121 +695,121 @@ Pose usate (tutte già in `anim_vita.js`/FPOSE salvo segnate): `aspetta`, `siede
 ### 8.0 Ogni giorno (lo strato di base)
 | Fascia | Evento | Luogo | Gente | Cosa fanno (pose) | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | Asta del pesce | `molo` / Piazza della Marina (banco_pesce) | 15–25 | `merce`, `aspetta`, `indica_su`, `discute_su` | «Cinque! Chi dice cinque? Il gabbiano dice cinque.» / «È fresco?» «È di stamattina. Di quale mattina, non te lo dico.» | [ESISTE pesce] |
-| alba | La fila al Forno di Lella e da Wu | Forno, Alimentari Wu (6–9) | 8–20 | `aspetta`, `tasche_su`, `orologio_su`, `scalda` | «Chi è l'ultimo?» «Io. Ma tengo il posto a mia sorella, mio cognato e un signore.» | [POSTO fila] |
-| alba | I pescherecci escono | darsena, pontili | 6–8 a bordo | `lavora` | «Se torno con niente, il niente lo vendi tu.» | [SISTEMA] |
-| mattina | Edicola: chi legge l'Eco in piedi | edicole | 3–6 | `legge_su`, `fuma_su` | «C'è lo sport?» «C'è il Garante che guarda lo sport.» | [POSTO edicola] |
-| mezzogiorno | La sirena delle 12, la pausa ai portici | Vittoria, scalo, stazione | 10–20 | `siede_terra`, `fuma_su`, `siede` | «Il panino è di ieri. La fame è di oggi. Si fa pari.» | [NUOVO] |
-| pomeriggio | Vecchi al fuoco nel barile | lotti vuoti, calata | 3–6 | `scalda`, `appoggiato` | «Nel '62 il freddo era più freddo.» «Nel '62 tu eri più giovane, scemo.» | [POSTO fuoco] |
-| sera | Vespro a San Rocco | `chiesa` | 10–20 | `aspetta`, `dietro_su` sul sagrato | «Prego per la rata.» «Per la rata si paga, non si prega.» | [ESISTE vespro] |
+| alba | Asta del pesce | `molo` / Piazza della Marina (banco_pesce) | 15–25 | `merce`, `aspetta`, `indica_su`, `discute_su` | «È fresco?» «L'ho pescato io stamattina! Con queste mani! …Va bene, ieri.» | [ESISTE pesce] |
+| alba | La fila al Forno di Lella e da Wu | Forno, Alimentari Wu (6–9) | 8–20 | `aspetta`, `tasche_su`, `orologio_su`, `scalda` | «Chi è l'ultimo?» «Io! Ma tengo il posto a mia sorella, a mio cognato e a un signore!» | [POSTO fila] |
+| alba | I pescherecci escono | darsena, pontili | 6–8 a bordo | `lavora` | «Tira tu la rete, io comando!» «Comandi cosa? La barca è mia!» | [SISTEMA] |
+| mattina | Edicola: chi legge l'Eco in piedi | edicole | 3–6 | `legge_su`, `fuma_su` | «Me lo presti?» «Compratelo!» «Costa!» «E allora leggi da sopra la spalla, scroccone!» | [POSTO edicola] |
+| mezzogiorno | La sirena delle 12, la pausa ai portici | Vittoria, scalo, stazione | 10–20 | `siede_terra`, `fuma_su`, `siede` | «Mi dai un pezzo di panino?» «No.» «Ti ho dato una sigaretta ieri!» «Era mia!» | [NUOVO] |
+| pomeriggio | Vecchi al fuoco nel barile | lotti vuoti, calata | 3–6 | `scalda`, `appoggiato` | «Nel '62 ho steso tre Grigi da solo!» «Nel '62 scappavi più veloce di tutti!» | [POSTO fuoco] |
+| sera | Vespro a San Rocco | `chiesa` | 10–20 | `aspetta`, `dietro_su` sul sagrato | «Signore, fammi vincere al Lotto. Solo a me, eh. Agli altri no.» | [ESISTE vespro] |
 | sera | Il Garante alle 20 | ogni bar, Piazza Grande (schermo) | 6–15 per bar, 30 in piazza | `siede`, `osserva`, `braccia_su` | le reazioni di §1 | [SISTEMA] |
-| sera / notte | Il cypher alla grata del vapore | grata della stazione, baracche (20–02) | 6–14 giovani | `scalda`, `braccia_su`, `discute_su`, `balla` | «Fra, la rima col Garante è facile: tutto fa rima con lui.» | [POSTO cypher] |
-| notte | La ronda dei Grigi a coppie | vie larghe, piazze | 2 + 2 | camminata, `osserva`, `indica_su` | «Centrale, nessuno in giro.» «E tu?» «Io sono la ronda.» | [SISTEMA] |
-| notte | Il forno acceso: Lella e i garzoni | Forno (dalle 3) | 3 | `lavora`, ombre alla finestra | «Impasta piano, che di sopra dormono gli Orecchi.» | [NUOVO] |
+| sera / notte | Il cypher alla grata del vapore | grata della stazione, baracche (20–02) | 6–14 giovani | `scalda`, `braccia_su`, `discute_su`, `balla` | «Garante pelato, sei solo un…» «Fra, i Grigi!» «…un grande! Sei un grande!» | [POSTO cypher] |
+| notte | La ronda dei Grigi a coppie | vie larghe, piazze | 2 + 2 | camminata, `osserva`, `indica_su` | «Centrale, tutto tranquillo.» (uno gli passa davanti con la sua bici) «…LA MIA BICI!» | [SISTEMA] |
+| notte | Il forno acceso: Lella e i garzoni | Forno (dalle 3) | 3 | `lavora`, ombre alla finestra | «Impasti tu?» «Io ho impastato ieri.» «Ieri hai dormito sui sacchi!» | [NUOVO] |
 
 ### 8.1 Lunedì — la nave, l'affitto, il Bollettino
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | **La fila per la nave dell'Impero** | davanti al Recinto / molo dell'Impero (porto cargo) | 40–70 | `aspetta`, `scalda` ai barili, `tasche_su`, `indica_su` verso il mare | «Che porta?» «Porta. Basta che porta.» / «L'anno scorso portava le arance. Me le ricordo arancioni.» | [SISTEMA nave] → [NUOVO] come evento |
-| alba | Fila al Monte dei Pegni (prima dell'affitto) | Banco dei Pegni (6.1 n. 40) | 8–12 | `aspetta`, `porge` | «Questo era di mia madre.» «Adesso è nostro. Per un mese.» | [NUOVO] |
-| mattina | **L'affitto**: sportello dell'Ente Case | Ente Case del Garante | 15–25 | `aspetta`, `orologio_su`, `discute_su` | «Dodicimila.» «La settimana scorsa erano dodicimila.» «Appunto, non è cambiato niente: sia contento.» | [ESISTE affitto] |
-| mattina | **Lettura del Bollettino** | `piazza` (Piazza Grande) | 60–100 | `aspetta`, `braccia_su`, `legge_su` (chi segue sul foglio) | il lettore: «…e il grano arriva lunedì.» Uno dal fondo: «Oggi è lunedì.» Silenzio. | [ESISTE bollettino] |
-| mattina | Gli imbianchini della Tutela coprono le scritte | muri della stazione e della Vittoria | 3–4 + 6 che guardano | `lavora`, `osserva` | «Lo ripasso in grigio.» «Domani torna.» «E domani lo ripasso. Ho il posto fisso, io.» | [NUOVO] [OGGETTO rullo] |
-| mezzogiorno | Lo scarico della nave: la catena dei facchini | porto cargo, carri merci (posto `carico`) | 20–30 | `lavora` in fila, `porge` | «Che c'è nella cassa?» «Non lo so. Pesa come una bugia.» | [POSTO carico] |
-| pomeriggio | Calcio nel vicolo, porta disegnata col gesso | Vico della Fame, Salita dei Gatti | 8–12 ragazzi + 3 vecchi a guardare | corsa, `osserva`, `braccia_su` | «Gol!» «Era fuori.» «Il palo è il tombino, il tombino era dentro!» | [NUOVO] [POSA NUOVA calcio] [OGGETTO pallone] |
-| sera | La fila da Wu per le cose della nave | Alimentari Wu | 15–25 | `aspetta`, `discute_su` | «Lo zucchero c'è?» «C'è la scatola dello zucchero.» | [POSTO fila] |
-| sera | Lunedì al bar: chi ha pagato l'affitto non beve | Bar Da Gino, osterie | 4–6 a bar, pochi | `siede`, `fuma_su` | «Un bicchiere d'acqua.» «Di rubinetto?» «Di lunedì.» | [NUOVO] (è densità bassa voluta) |
-| notte | Le casse «perse» della nave al Pontile Est | Pontile Est, calata | 3 Marsigliesi + 4 facchini | `lavora`, `porge`, `osserva` | «Ça va, la nave? Per voi arriva il lunedì. Per noi la notte del lunedì.» | [SISTEMA Marsigliesi] |
+| alba | **La fila per la nave dell'Impero** | davanti al Recinto / molo dell'Impero (porto cargo) | 40–70 | `aspetta`, `scalda` ai barili, `tasche_su`, `indica_su` verso il mare | «Mi hai rubato il posto!» «Sono qui dalle quattro!» «Ti ho visto arrivare adesso!» | [SISTEMA nave] → [NUOVO] come evento |
+| alba | Fila al Monte dei Pegni (prima dell'affitto) | Banco dei Pegni (6.1 n. 40) | 8–12 | `aspetta`, `porge` | «Questo anello era di mia madre.» «E lei lo sa che lo porti qui?» «…No.» | [NUOVO] |
+| mattina | **L'affitto**: sportello dell'Ente Case | Ente Case del Garante | 15–25 | `aspetta`, `orologio_su`, `discute_su` | «Dodicimila?! La settimana scorsa erano diecimila!» «E la prossima quattordici. Avanti!» | [ESISTE affitto] |
+| mattina | **Lettura del Bollettino** | `piazza` (Piazza Grande) | 60–100 | `aspetta`, `braccia_su`, `legge_su` (chi segue sul foglio) | il lettore: «…e il grano arriva lunedì!» uno dal fondo: «OGGI È LUNEDÌ!» Il lettore: «…Chi l'ha detto?» Tutti: «Lui!» | [ESISTE bollettino] |
+| mattina | Gli imbianchini della Tutela coprono le scritte | muri della stazione e della Vittoria | 3–4 + 6 che guardano | `lavora`, `osserva` | «Domani lo riscrivono.» «Meglio! Mi pagano a metro!» (poi, piano) «Anzi, scrivilo più grande.» | [NUOVO] [OGGETTO rullo] |
+| mezzogiorno | Lo scarico della nave: la catena dei facchini | porto cargo, carri merci (posto `carico`) | 20–30 | `lavora` in fila, `porge` | «Questa la porti tu, è pesante.» «E tu che porti?» «Io conto le casse.» | [POSTO carico] |
+| pomeriggio | Calcio nel vicolo, porta disegnata col gesso | Vico della Fame, Salita dei Gatti | 8–12 ragazzi + 3 vecchi a guardare | corsa, `osserva`, `braccia_su` | «Gol!» «Era fuori!» «Il pallone è mio! Se dico gol, è gol!» | [NUOVO] [POSA NUOVA calcio] [OGGETTO pallone] |
+| sera | La fila da Wu per le cose della nave | Alimentari Wu | 15–25 | `aspetta`, `discute_su` | «Lo zucchero c'è?» «Ultimo pacco.» «È mio!» «L'ho toccato prima io!» | [POSTO fila] |
+| sera | Lunedì al bar: chi ha pagato l'affitto non beve | Bar Da Gino, osterie | 4–6 a bar, pochi | `siede`, `fuma_su` | «Un bicchiere d'acqua.» «Ma se ieri offrivi a tutti, sbruffone!» «Ieri era domenica!» | [NUOVO] (è densità bassa voluta) |
+| notte | Le casse «perse» della nave al Pontile Est | Pontile Est, calata | 3 Marsigliesi + 4 facchini | `lavora`, `porge`, `osserva` | «Questa cassa la prendo io. Voi quella vuota. Ça va? Ça va.» | [SISTEMA Marsigliesi] |
 
 ### 8.2 Martedì — la giornata qualunque (e la prima sera del giocatore)
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | Le mogli dei pescatori sul molo a guardare il mare | molo, scala dei pescatori | 4–6 | `appoggiato`, `braccia_su`, `osserva` | «Il mare è calmo.» «Calmo di qua. Di là che ne sai.» | [NUOVO] |
-| mattina | **L'Ufficio Lamentele, dalle 9 alle 9 e 15** | Uffici del Garante (corpo di guardia) | 30 in fila, poi tutti via di colpo alle 9:15 | `aspetta`, `orologio_su`, poi via | «Mi lamento.» «Di cosa?» «Che chiudete alle nove e un quarto.» «È una lamentela fuori orario.» | [NUOVO] (la fila che sparisce in un minuto è uno spettacolo) |
-| mattina | Il bucato del martedì | cortili, ballatoi, stenditoi | 6–10 donne e uomini | `lavora` (stenditoio), `discute_su` da balcone a balcone | «Signora, le sue lenzuola gocciolano sulle mie.» «Le sue sono pulite? Allora la ringrazio.» | [POSTO stenditoio] |
-| mezzogiorno | Carne con la tessera: la fila in macelleria | Macelleria Lai | 10–15 | `aspetta`, `discute_su` | «Due etti.» «Ha i bollini per un etto e mezzo.» «Allora l'altro mezzo lo guardo.» | [NUOVO] |
-| pomeriggio | Carte e morra fuori dall'osteria | Osteria del Porto, Il Debito (dehors) | 6–8 | `siede`, `discute_su`, `braccia_su` | «Tre!» «Cinque!» «Hai barato.» «Con le dita? Come si bara con le dita?» | [POSTO dehors] |
-| pomeriggio | Le prove della banda della Tutela | Piazza Grande | 8–12 suonatori + 10 che guardano | `lavora` (suonare) | il maestro: «Da capo. L'inno è solenne, non allegro. Chi era allegro?» | [NUOVO] [POSA NUOVA suonare] [OGGETTO strumenti] |
-| sera | **Il passeggio corto della Rua Maestra** (18–20) | Rua Maestra, Corso | 30–50 | camminata a coppie, `saluta_su`, `appoggiato` | «Quella è la figlia dei Sechi.» «Quella? È cresciuta.» «È cresciuta di Polaris: il fidanzato ce l'ha.» | [NUOVO] |
-| sera | **La lite dal balcone** | via Cavour (il terzo piano!) | 2 ai balconi + 10–15 sotto | `discute_su` (balcone), `osserva`, `indica_su` (sotto) | lei: «L'ha detto anche il Garante!» lui: «Il Garante non conosce Efisio!» uno sotto: «Lo conosco io, Efisio. Ha ragione la signora.» | [NUOVO] (scena, si aggancia a §1.5) |
+| alba | Le mogli dei pescatori sul molo a guardare il mare | molo, scala dei pescatori | 4–6 | `appoggiato`, `braccia_su`, `osserva` | «Se non torna entro le sette, la barca la vendo io!» | [NUOVO] |
+| mattina | **L'Ufficio Lamentele, dalle 9 alle 9 e 15** | Uffici del Garante (corpo di guardia) | 30 in fila, poi tutti via di colpo alle 9:15 | `aspetta`, `orologio_su`, poi via | «Mi lamento!» «Di cosa?» «Che chiudete alle nove e un quarto!» «Sono le nove e sedici. Fuori!» | [NUOVO] (la fila che sparisce in un minuto è uno spettacolo) |
+| mattina | Il bucato del martedì | cortili, ballatoi, stenditoi | 6–10 donne e uomini | `lavora` (stenditoio), `discute_su` da balcone a balcone | «Signora, le sue mutande gocciolano sulle mie!» «Le mie sono pulite! Le sue no!» | [POSTO stenditoio] |
+| mezzogiorno | Carne con la tessera: la fila in macelleria | Macelleria Lai | 10–15 | `aspetta`, `discute_su` | «Due etti.» «Hai bollini per uno.» «Allora prendo i bollini della nonna. Tanto lei non mangia.» | [NUOVO] |
+| pomeriggio | Carte e morra fuori dall'osteria | Osteria del Porto, Il Debito (dehors) | 6–8 | `siede`, `discute_su`, `braccia_su` | «Hai barato!» «Io? Mai!» (gli cade un asso dalla manica) «…Quello era già lì.» | [POSTO dehors] |
+| pomeriggio | Le prove della banda della Tutela | Piazza Grande | 8–12 suonatori + 10 che guardano | `lavora` (suonare) | il maestro: «Chi ha fatto la pernacchia con la tromba?! CHI?!» il trombettista: «Il tamburo!» | [NUOVO] [POSA NUOVA suonare] [OGGETTO strumenti] |
+| sera | **Il passeggio corto della Rua Maestra** (18–20) | Rua Maestra, Corso | 30–50 | camminata a coppie, `saluta_su`, `appoggiato` | «Ti saluto quella ragazza.» «Vai!» «…Vai tu, che io ho il raffreddore.» | [NUOVO] |
+| sera | **La lite dal balcone** | via Cavour (il terzo piano!) | 2 ai balconi + 10–15 sotto | `discute_su` (balcone), `osserva`, `indica_su` (sotto) | Efisio: «TONINO È LÌ DENTRO?!» lei: «No! È sotto il letto! …Cioè, non c'è!» uno sotto: «Efisio, se lo trovi, mi deve diecimila!» | [NUOVO] (scena, si aggancia a §1.5) |
 | sera | Il Garante alle 20, primo della partita | Bar Da Gino, Piazza Grande | 12 / 30 | `siede`, `osserva` | trasmissione 1.1 (il freddo) | [SISTEMA] |
-| notte | Gli attacchini della Risacca | portoni, pali | 2–3, di nascosto | `lavora` veloce, `osserva` | «Colla.» «Finita.» «Allora sputa.» | [SISTEMA Risacca] |
-| notte | L'ultimo bar che chiude: tre che cantano | Bar dell'Ultimo | 3 | `appoggiato`, `braccia_su` | il barista: «Fuori!» uno: «Siamo fuori.» «Più fuori!» | [NUOVO] |
+| notte | Gli attacchini della Risacca | portoni, pali | 2–3, di nascosto | `lavora` veloce, `osserva` | «Tu attacca, io faccio il palo.» «Fai il palo sempre tu!» «Perché sono bravo!» | [SISTEMA Risacca] |
+| notte | L'ultimo bar che chiude: tre che cantano | Bar dell'Ultimo | 3 | `appoggiato`, `braccia_su` | il barista: «Fuori!» uno: «Gino, offro io!» «Allora entra.» «…Non ho i soldi.» «Fuori!» | [NUOVO] |
 
 ### 8.3 Mercoledì — il mercato e il funerale
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | Il montaggio dei banchi | Mercato ottagonale, `piazza` | 10–14 | `lavora`, `raccoglie`, posto `carico` | «Il mio posto è questo da trent'anni.» «Da ieri è dell'Ente.» | [NUOVO] |
-| mattina | **Il mercato rionale** | `piazza`, Mercato ottagonale | 60–120 | `merce`, `aspetta`, `discute_su`, `porge` | «Quanto?» «Tremila.» «Ieri era duemila.» «Ieri non c'era la Tutela qui davanti.» | [ESISTE mercato] |
-| mattina | Il banditore delle pentole a rate | angolo del mercato | 1 + 15–20 in cerchio | `braccia_su`, `indica_su` / `osserva` | «Una pentola! Due pentole! Una vita di pentole, a tremila al mese!» «E se muoio?» «Le pentole restano a sua moglie, signora. Pure le rate.» | [NUOVO] |
-| mattina | Le comari del sagrato (Marta e le altre) | sagrato di San Rocco | 4–6 | `discute_su`, `dietro_su` | «Non dico niente, eh.» «Allora dillo piano.» | [POSTO sagrato] |
-| mezzogiorno | Si smonta il mercato; i ragazzi raccolgono gli scarti | `piazza` | 6–8 | `raccoglie`, `porge` | «Una mela mezza buona. Fra, è la metà migliore della settimana.» | [NUOVO] |
-| pomeriggio | **Il funerale** (a giorni: uno su due mercoledì) | da San Rocco lungo la Vittoria | 30–50 dietro la bara | `dietro_su`, `aspetta`, testa bassa; chi passa si toglie il cappello | «Era una brava persona.» «Mi doveva cinquemila.» «Appunto, era brava: non te li ha mai chiesti indietro.» / il nipote: «Il nonno voleva la fisarmonica.» | [NUOVO] [POSA NUOVA portare la bara] |
-| pomeriggio | Skate alla rampa dello scalo | rampa di carico dello scalo | 6–10 giovani | corsa, `appoggiato`, `osserva` | «Il Grigio arriva.» «Quanto lontano?» «Abbastanza per un altro giro.» | [NUOVO] (skate: del gruppo personaggi/veicoli) |
-| sera | La fila al Cinema Astor per il film approvato | Piazza Grande | 20–40 | `aspetta`, `fuma_su`, coppie | «Che danno?» «"Il Grano del Gelo". Muore il cattivo.» «E il cattivo chi è?» «Il grano.» | [NUOVO] |
+| alba | Il montaggio dei banchi | Mercato ottagonale, `piazza` | 10–14 | `lavora`, `raccoglie`, posto `carico` | «Questo è il mio posto da trent'anni!» «Da ieri è dell'Ente! Sposta il culo!» | [NUOVO] |
+| mattina | **Il mercato rionale** | `piazza`, Mercato ottagonale | 60–120 | `merce`, `aspetta`, `discute_su`, `porge` | «Ladro!» «Grazie, signora. Fanno tremila.» / «Pesi giusto?» «Giustissimo!» (ha il pollice sulla bilancia) | [ESISTE mercato] |
+| mattina | Il banditore delle pentole a rate | angolo del mercato | 1 + 15–20 in cerchio | `braccia_su`, `indica_su` / `osserva` | «UNA PENTOLA! DUE PENTOLE! UNA VITA DI PENTOLE! TREMILA AL MESE!» «E se muoio?» «Paga sua moglie!» | [NUOVO] |
+| mattina | Le comari del sagrato (Marta e le altre) | sagrato di San Rocco | 4–6 | `discute_su`, `dietro_su` | «Io non dico niente, eh.» «E allora dillo!» «La Pinna va dal macellaio tre volte al giorno!» | [POSTO sagrato] |
+| mezzogiorno | Si smonta il mercato; i ragazzi raccolgono gli scarti | `piazza` | 6–8 | `raccoglie`, `porge` | «Fra, dividiamo: io la mela buona, tu quella col verme.» | [NUOVO] |
+| pomeriggio | **Il funerale** (a giorni: uno su due mercoledì) | da San Rocco lungo la Vittoria | 30–50 dietro la bara | `dietro_su`, `aspetta`, testa bassa; chi passa si toglie il cappello | «Era una brava persona.» «Mi doveva cinquemila!» «Pure a me! …Chi glieli chiede, adesso?» / il nipote, piano: «L'orologio del nonno chi se lo prende?» | [NUOVO] [POSA NUOVA portare la bara] |
+| pomeriggio | Skate alla rampa dello scalo | rampa di carico dello scalo | 6–10 giovani | corsa, `appoggiato`, `osserva` | «Arriva il Grigio!» «Quanto lontano?» «Ha la pancia. Un altro giro ci sta!» | [NUOVO] (skate: del gruppo personaggi/veicoli) |
+| sera | La fila al Cinema Astor per il film approvato | Piazza Grande | 20–40 | `aspetta`, `fuma_su`, coppie | «"Il Grano del Gelo" di nuovo?! L'ho visto sei volte!» «E perché sei in fila?» «Al buio si bacia.» | [NUOVO] |
 | sera | Il Garante | bar | — | — | trasmissione a rotazione | [SISTEMA] |
-| notte | La ronda dei vicini contro i furti | baracche, Il Purgatorio | 4–6 con le torce | `osserva`, `indica_su` | «Chi va là?» «Tuo cugino.» «Quale?» «Quello che ti ha rubato la bici.» | [NUOVO] (c'è in BIBBIA §4.7, non nel calendario) |
+| notte | La ronda dei vicini contro i furti | baracche, Il Purgatorio | 4–6 con le torce | `osserva`, `indica_su` | «Chi va là?» «Tuo cugino!» «E che ci fai con la mia bici?!» «…La riportavo!» | [NUOVO] (c'è in BIBBIA §4.7, non nel calendario) |
 
 ### 8.4 Giovedì — la seconda nave, le madri, la tombola
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | La fila per la seconda nave | Recinto / porto cargo | 30–50 (meno del lunedì) | `aspetta`, `scalda` | «Lunedì non è arrivata.» «Allora oggi ne arrivano due.» | [SISTEMA nave] → [NUOVO] |
-| mattina | Il giovedì delle «americane» sotto i portici | portici della Vittoria | 3–4 venditori + clienti che passano | `appoggiato`, `tasche_su`, `porge` di nascosto | «Bionde?» «Non esistono.» «Due pacchetti di non esistono.» | [NUOVO] (gente di sotto che sale) |
-| mattina | Lo sportello delle rate al Banco | Banco | 15–25 | `aspetta`, `orologio_su`, `discute_su` | «Ho pagato la rata del frigo.» «Manca la RataSicura.» «E la RataSicura chi la assicura?» «Lo sportello accanto.» | [NUOVO] |
-| mezzogiorno | **Lo sciopero bianco di dieci minuti** dei portuali | calata, scalo | 20–30 seduti | `siede_terra`, `braccia_su`, poi `lavora` | «Non è uno sciopero. È la pausa, lunga.» Il caposquadra: «Quanto lunga?» «Fino a che passi tu.» | [NUOVO] (protesta che non si chiama protesta) |
+| alba | La fila per la seconda nave | Recinto / porto cargo | 30–50 (meno del lunedì) | `aspetta`, `scalda` | «Tienimi il posto, vado a pisciare.» (torna dopo un'ora col caffè) «Dov'eri?!» «A pisciare!» | [SISTEMA nave] → [NUOVO] |
+| mattina | Il giovedì delle «americane» sotto i portici | portici della Vittoria | 3–4 venditori + clienti che passano | `appoggiato`, `tasche_su`, `porge` di nascosto | «Bionde?» «Non esistono.» «Dammene due pacchetti, dai!» | [NUOVO] (gente di sotto che sale) |
+| mattina | Lo sportello delle rate al Banco | Banco | 15–25 | `aspetta`, `orologio_su`, `discute_su` | «Ho pagato la rata del frigo!» «Manca la RataSicura.» «Ma vaffanculo, tu e la RataSicura!» | [NUOVO] |
+| mezzogiorno | **Lo sciopero bianco di dieci minuti** dei portuali | calata, scalo | 20–30 seduti | `siede_terra`, `braccia_su`, poi `lavora` | «Non è uno sciopero, capo! È una pausa lunga!» «Quanto lunga?» «Finché te ne vai!» | [NUOVO] (protesta che non si chiama protesta) |
 | pomeriggio | **Le madri fuori dalla Pietra dell'Onda** | posto di blocco della Vittoria | 10–20 donne | `aspetta`, `braccia_su`, nessuno parla | (una sola) «Ha diciassette anni. Gli ho portato il maglione.» — e basta. Niente battute qui. | [NUOVO] (il momento serio, La Haine) |
-| pomeriggio | La scuola guida in Piazza Grande | Piazza Grande | 1 Polaris + istruttore + 6–8 che guardano | `osserva`, `indica_su` | «Frizione!» «Quale?» «Ce n'è una sola, signora!» «E allora perché grida?» | [NUOVO] |
-| sera | **Tombola e microfono aperto al Circolo** (dalle 21; il microfono dopo la cinquina) | `circolo` | 40–60 | `siede`, `braccia_su`, uno in piedi al microfono | il banditore: «Novanta, la paura!» Al microfono: «Mia moglie dice che faccio ridere. Mia moglie è qui. Non ride.» «Quarantotto, il morto che parla!» | [ESISTE tombola] + [NUOVO microfono] |
+| pomeriggio | La scuola guida in Piazza Grande | Piazza Grande | 1 Polaris + istruttore + 6–8 che guardano | `osserva`, `indica_su` | «Frizione!» «Quale?» «Ce n'è una sola!» «E allora perché urla?!» (prende in pieno un banco del pesce) | [NUOVO] |
+| sera | **Tombola e microfono aperto al Circolo** (dalle 21; il microfono dopo la cinquina) | `circolo` | 40–60 | `siede`, `braccia_su`, uno in piedi al microfono | il banditore: «Novanta, la paura!» Al microfono, un ubriaco: «Mia moglie m'ha lasciato per il tabaccaio! Applausi!» «Quarantotto, il morto che parla!» | [ESISTE tombola] + [NUOVO microfono] |
 | sera | Il Garante del giovedì (il Tributo, 1.13) | bar | — | — | — | [SISTEMA] |
-| notte | Quelli della tombola tornano cantando; la ronda li conta | dal Circolo alla Ringhiera | 8–10 | camminata, `braccia_su` | il Grigio: «Siete in dieci. È un corteo.» «Siamo tre famiglie e un cugino.» | [NUOVO] |
+| notte | Quelli della tombola tornano cantando; la ronda li conta | dal Circolo alla Ringhiera | 8–10 | camminata, `braccia_su` | il Grigio: «Siete in dieci! È un corteo!» «No, siamo ubriachi! È diverso!» | [NUOVO] |
 
 ### 8.5 Venerdì — la paga, il liscio, le buste
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | Gli operai al treno della miniera | stazione, pensilina | 30–50 | `aspetta`, `fuma_su`, `scalda`, `orologio_su` | «Ultimo giorno.» «Della settimana.» «Lasciami sognare.» | [NUOVO] [POSTO pensilina] |
-| mattina | Il pesce del venerdì: la fila in pescheria | Pescheria Serra / banco_pesce | 15–25 | `aspetta`, `indica_su` | «Quello lì, con l'occhio vivo.» «Signora, è l'occhio mio. Il pesce è sotto.» | [POSTO banco_pesce] |
-| mattina | Si lava il ritratto del Garante | la gru del porto / il murale grande | 2 sul cestello + 6–10 sotto | `lavora`, `osserva` | «Gli lavi pure le orecchie?» «Con quello che sentono…» | [NUOVO] |
-| mezzogiorno | **La protesta delle mogli dei portuali** (paga in ritardo) | Piazza Grande, davanti al Palazzo del Governo | 15–25 donne + 4 Grigi | `discute_su`, `braccia_su`, `indica_su` | «Paga! Paga! Paga!» il Grigio: «Signore, è un assembramento.» «No, è un mercato: vendiamo i nostri mariti.» | [NUOVO] [OGGETTO cartelli] |
-| pomeriggio | **La paga** | uffici, Banco, cassa della miniera | 20–40 in fila | `aspetta`, `legge_su` (la busta) | «Hanno tolto la decima.» «E la Rata Sicura.» «E il Tributo.» «E la busta?» «La busta è mia. Me la tengo per ricordo.» | [ESISTE paga] |
-| pomeriggio | Si riscatta al Monte dei Pegni | Banco dei Pegni | 10–15 | `aspetta`, `porge` | «Rivoglio la fede.» «Con gli interessi.» «La fede con gli interessi? Allora me la sposo io.» | [NUOVO] |
-| sera | I bar pieni del venerdì | tutti i bar, dehors | 10–20 per bar | `siede`, `fuma_su`, `braccia_su`, brindisi | «Offro io!» «Perché?» «Perché lunedì non ce l'ho più.» | [NUOVO] (densità alta) |
-| sera | Il venerdì del liscio | Sala da ballo Stella Polare | 20–30 | `balla` a coppie, `siede` ai lati | «Lei balla bene.» «Lei mi pesta i piedi.» «Allora ballo bene io per tutti e due.» | [NUOVO] [POSA NUOVA ballo in coppia] |
-| notte | **Le buste ai Grigi** (mazzette, ven-sab) | retro della Lavanderia Stella, Flipper | 2–3 della Famiglia + Ferri | `porge`, `fuma_su`, `osserva` | «È più leggera di settimana scorsa.» «La vita è cara, Ferri. Anche per te.» | [SISTEMA mazzette] |
+| alba | Gli operai al treno della miniera | stazione, pensilina | 30–50 | `aspetta`, `fuma_su`, `scalda`, `orologio_su` | «Oggi dico al capo che sono malato.» «Ieri eri malato.» «E oggi sono più malato!» | [NUOVO] [POSTO pensilina] |
+| mattina | Il pesce del venerdì: la fila in pescheria | Pescheria Serra / banco_pesce | 15–25 | `aspetta`, `indica_su` | «Quello lì, con l'occhio vivo!» «Signora, quello è l'occhio mio!» | [POSTO banco_pesce] |
+| mattina | Si lava il ritratto del Garante | la gru del porto / il murale grande | 2 sul cestello + 6–10 sotto | `lavora`, `osserva` | «Lavagli bene la testa, che brilla poco!» «Sali tu, se sei bravo!» «…Io soffro le altezze.» | [NUOVO] |
+| mezzogiorno | **La protesta delle mogli dei portuali** (paga in ritardo) | Piazza Grande, davanti al Palazzo del Governo | 15–25 donne + 4 Grigi | `discute_su`, `braccia_su`, `indica_su` | «Paga! Paga! Paga!» il Grigio: «Signore, è un assembramento!» una: «Bruno, sono tua madre! Vai a casa!» | [NUOVO] [OGGETTO cartelli] |
+| pomeriggio | **La paga** | uffici, Banco, cassa della miniera | 20–40 in fila | `aspetta`, `legge_su` (la busta) | «Hanno tolto la decima!» «E la RataSicura!» «E il Tributo!» «Mi resta la busta! Vuota!» | [ESISTE paga] |
+| pomeriggio | Si riscatta al Monte dei Pegni | Banco dei Pegni | 10–15 | `aspetta`, `porge` | «Rivoglio la fede!» «Con gli interessi.» «Tenetevela! Tanto mio marito non se n'è accorto.» | [NUOVO] |
+| sera | I bar pieni del venerdì | tutti i bar, dehors | 10–20 per bar | `siede`, `fuma_su`, `braccia_su`, brindisi | «Offro io!» (tutti esultano) «…Gino, segna. Pago lunedì.» | [NUOVO] (densità alta) |
+| sera | Il venerdì del liscio | Sala da ballo Stella Polare | 20–30 | `balla` a coppie, `siede` ai lati | «Ballo benissimo, io!» «Mi hai pestato i piedi sei volte!» «Perché sono veloce!» | [NUOVO] [POSA NUOVA ballo in coppia] |
+| notte | **Le buste ai Grigi** (mazzette, ven-sab) | retro della Lavanderia Stella, Flipper | 2–3 della Famiglia + Ferri | `porge`, `fuma_su`, `osserva` | «È più leggera della settimana scorsa!» «E tu sei più grasso, Ferri. Siamo pari.» | [SISTEMA mazzette] |
 | notte | I conti al capo alle 23 | una casa della periferia est | 1 fidato che cammina | — | (nessuna battuta: chi segue, vede) | [SISTEMA capo] |
-| notte | Due ubriachi sul molo che parlano al mare | molo, lanterna rossa | 2 | `siede_terra`, `braccia_su` | «Mare! Ti voglio bene.» «Lascialo stare, è sposato.» | [NUOVO] |
+| notte | Due ubriachi sul molo che parlano al mare | molo, lanterna rossa | 2 | `siede_terra`, `braccia_su` | «Mare! Ti voglio bene!» (arriva un'onda) «…Mi hai bagnato le scarpe, stronzo!» | [NUOVO] |
 
 ### 8.6 Sabato — il mercato, le nozze, la Luna
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | Il montaggio del mercato (come mercoledì) | `piazza` | 10–14 | `lavora` | «Sabato si vende di più.» «Sabato si guarda di più.» | [NUOVO] |
-| mattina | **Il mercato** | `piazza`, Mercato ottagonale | 80–140 | `merce`, `aspetta`, `porge` | «Mi fa lo sconto?» «Le faccio la compagnia.» | [ESISTE mercato] |
-| mattina | Il barbiere pieno | Barbiere Gavino, Salone Nello | 5–8 seduti fuori ad aspettare | `siede`, `legge_su` | «Un dito.» «Un dito di cosa?» «Un dito di meno di quello che vuoi tu.» | [NUOVO] |
-| mattina | **Il matrimonio a San Rocco** (11) | sagrato di San Rocco | 30–60 | `aspetta`, `saluta_su`, il riso, la foto davanti al ritratto | «Bella sposa.» «Bella rata. Venti anni di "Sì per Sempre".» / «Gavino non è venuto.» «C'è scritto pure sul portone.» | [NUOVO] [OGGETTO riso/fiori] |
-| mezzogiorno | Il pranzo di nozze all'osteria (porte aperte) | Osteria Il Debito, Trattoria La Rata | 30–40 dentro, 6 fuori a fumare | `siede`, `balla`, `fuma_su` | lo zio in piedi: «Due parole!» tutti: «No!» | [NUOVO] |
-| mezzogiorno | Calcio in strada, sfida fra quartieri | la via del Purgatorio contro la Ringhiera | 12–16 + 10 spettatori | corsa, `braccia_su`, `osserva` | «Fuori casa non vale!» «Siamo tutti fuori casa, coglione, è la strada.» | [NUOVO] [POSA NUOVA calcio] |
-| pomeriggio | Il lavaggio della Polaris davanti a casa | vie del boom, Transatlantico | 5–10 uomini, uno per auto | `lavora`, `appoggiato`, `discute_su` fra vicini | «La lavi?» «La lavo.» «La usi?» «No. La lavo.» | [NUOVO] [OGGETTO secchio] |
-| pomeriggio | **La sfilata in skate non autorizzata** (che diventa una fuga) | dalla rampa dello scalo giù per la Vittoria | 15–25 ragazzi, poi 4–6 Grigi | corsa, `braccia_su`; i passanti `osserva` | «Non è un corteo, è il traffico!» / il Grigio, col fiatone: «Fermi! …Fermi un momento, che respiro.» | [NUOVO] (sotto la Repressione 3) |
-| sera | La fila alla Discoteca/Radio Luna (21:30) | torre dell'acqua, Radio Luna | 30–50 giovani | `aspetta`, `fuma_su`, `balla` sul posto | il buttafuori: «Tu no.» «Perché?» «Perché hai la faccia di uno che ha capito tutto.» | [NUOVO] |
-| sera | I fidanzati sulle scale del Belvedere | scalinate, muretti della marina | 4–8 coppie | `appoggiato`, `siede` vicini | «Che guardi?» «Il mare.» «Dal mio lato non c'è il mare.» «Appunto.» | [NUOVO] |
-| notte | **Sabato sera alla Luna** (fino alle 3, col permesso) | `disco` | 60–100 dentro, 10 fuori | `balla`, `fuma_su`, `appoggiato` | «Il DJ è una sovversiva.» «Il DJ è mia cugina.» «Allora è una sovversiva in famiglia.» | [ESISTE sabato] |
-| notte | L'uscita delle 3 | davanti alla Luna, verso la stazione | 40 a gruppi | camminata, `braccia_su`, `discute_su` (una rissa che non comincia) | «Mi hai guardato.» «Ti ho visto. È diverso.» «Ah. Allora ciao.» | [NUOVO] |
+| alba | Il montaggio del mercato (come mercoledì) | `piazza` | 10–14 | `lavora` | «Monti tu il banco, io vado a prendere il caffè.» «È la terza volta!» «Il caffè è lontano!» | [NUOVO] |
+| mattina | **Il mercato** | `piazza`, Mercato ottagonale | 80–140 | `merce`, `aspetta`, `porge` | «Mi fa lo sconto?» «Le faccio un calcio nel culo, gratis!» | [ESISTE mercato] |
+| mattina | Il barbiere pieno | Barbiere Gavino, Salone Nello | 5–8 seduti fuori ad aspettare | `siede`, `legge_su` | «Tocca a me!» «No, a me!» «Tu sei arrivato adesso!» «Ma io ho fretta!» | [NUOVO] |
+| mattina | **Il matrimonio a San Rocco** (11) | sagrato di San Rocco | 30–60 | `aspetta`, `saluta_su`, il riso, la foto davanti al ritratto | «Bella sposa!» «Bella rata! Vent'anni di Sì per Sempre!» / Gavino, dal fondo: «Io sono qui per caso! Passavo!» | [NUOVO] [OGGETTO riso/fiori] |
+| mezzogiorno | Il pranzo di nozze all'osteria (porte aperte) | Osteria Il Debito, Trattoria La Rata | 30–40 dentro, 6 fuori a fumare | `siede`, `balla`, `fuma_su` | lo zio in piedi: «Due parole!» tutti: «NO!» | [NUOVO] |
+| mezzogiorno | Calcio in strada, sfida fra quartieri | la via del Purgatorio contro la Ringhiera | 12–16 + 10 spettatori | corsa, `braccia_su`, `osserva` | «Io sto in porta!» «Stai sempre in porta!» «Perché in porta non si corre!» | [NUOVO] [POSA NUOVA calcio] |
+| pomeriggio | Il lavaggio della Polaris davanti a casa | vie del boom, Transatlantico | 5–10 uomini, uno per auto | `lavora`, `appoggiato`, `discute_su` fra vicini | «Chi ha toccato la mia Polaris?! C'è un'impronta! UN'IMPRONTA!» | [NUOVO] [OGGETTO secchio] |
+| pomeriggio | **La sfilata in skate non autorizzata** (che diventa una fuga) | dalla rampa dello scalo giù per la Vittoria | 15–25 ragazzi, poi 4–6 Grigi | corsa, `braccia_su`; i passanti `osserva` | «Non è un corteo! È il traffico!» / il Grigio, col fiatone: «Fermi! …Fermi un attimo, che muoio!» | [NUOVO] (sotto la Repressione 3) |
+| sera | La fila alla Discoteca/Radio Luna (21:30) | torre dell'acqua, Radio Luna | 30–50 giovani | `aspetta`, `fuma_su`, `balla` sul posto | il buttafuori: «Tu no.» «Conosco il DJ!» «Il DJ è mia cugina, e non ti conosce.» | [NUOVO] |
+| sera | I fidanzati sulle scale del Belvedere | scalinate, muretti della marina | 4–8 coppie | `appoggiato`, `siede` vicini | «Che guardi?» «Il mare.» «Il mare è di là, porco!» | [NUOVO] |
+| notte | **Sabato sera alla Luna** (fino alle 3, col permesso) | `disco` | 60–100 dentro, 10 fuori | `balla`, `fuma_su`, `appoggiato` | «Guardate! Ballo meglio di tutti!» (scivola e cade) «…Chi ha bagnato il pavimento?!» | [ESISTE sabato] |
+| notte | L'uscita delle 3 | davanti alla Luna, verso la stazione | 40 a gruppi | camminata, `braccia_su`, `discute_su` (una rissa che non comincia) | «Tenetemi, che lo ammazzo!» (nessuno lo tiene) «…Tenetemi, ho detto!» | [NUOVO] |
 
 ### 8.7 Domenica — la messa, la parata, il passeggio
 | Fascia | Evento | Luogo | Gente | Pose | Battute | Stato |
 |---|---|---|---|---|---|---|
-| alba | I pescatori della domenica, con le canne | Molo Vecchio, lanterna | 6–10 | `siede`, `lavora` | «Abboccano?» «Io sì. Loro no.» | [NUOVO] [OGGETTO canna] |
-| alba | Asta del pesce, ridotta | `molo` | 6–10 | `merce`, `aspetta` | «Domenica si vende il pesce del sabato.» «E di sabato?» «Quello del venerdì. È un calendario.» | [ESISTE pesce] |
-| mattina | **La messa grande** | `chiesa` (San Rocco) | 60–90 dentro, 15 sul sagrato | `aspetta`, `saluta_su` all'uscita, `dietro_su` | sul sagrato: «C'era la Commissaria.» «In chiesa?» «In ultima fila. Prendeva appunti sul libretto.» | [ESISTE messa] |
-| mattina | **La parata della Tutela sulla Vittoria** (11) | Via della Vittoria (posto `parata`) | 20–30 in marcia + 80–120 ai lati | `saluta_su`, `braccia_su`, `osserva` | «Applaudi.» «Sto applaudendo.» «Più forte, che ti guardano.» «Mi guardano le mani o la faccia?» | [POSTO parata] → [NUOVO] in RECURRING |
-| mattina | La processione di San Rocco (prima domenica del mese) che incrocia la parata | dal sagrato verso la Vittoria (11:20) | 30–40 + la statua | `dietro_su`, `aspetta` | il Grigio: «Di qua non si passa, c'è la parata.» il parroco: «Anche noi siamo una parata. Più vecchia.» | [NUOVO] [OGGETTO statua: scenografia] |
-| mezzogiorno | **Il pranzo della domenica**: finestre aperte, gente ai balconi | tutti i palazzi | 1–2 per balcone, molti | `appoggiato` alla ringhiera, `fuma_su`, `discute_su` fra balconi | dalla finestra: «Gavinoooo! È pronto!» dalla strada: «Arrivo!» un altro: «Anch'io mi chiamo Gavino.» «Vieni pure tu, c'è pasta.» | [NUOVO] (vedi §9: gente alle finestre) |
-| mezzogiorno | La schedina al bar | Bar Da Gino, Tabacchi | 10–15 | `siede`, `legge_su`, `discute_su` | «Uno, ics, due.» «Gioca uno. Vince sempre la Selezione.» «E se pareggia?» «Contro chi, con se stessa?» | [NUOVO] |
-| pomeriggio | La partita alla radio: uomini in cerchio | piazzette, Piazzetta del Pozzo | 8–12 attorno a una radiolina | `aspetta`, `braccia_su` ai gol, `siede` | «Gol!» «Di chi?» «Nostro.» «Siamo tutti nostri, scemo.» | [NUOVO] [OGGETTO radio] |
-| pomeriggio | **La passeggiata della domenica** (17–20) | `lungomare`, Passeggiata a mare | 80–150 | camminata a coppie e a famiglie, `saluta_su`, `appoggiato` al parapetto | «Ci salutano i Lai.» «Sorridi.» «Sorrido. Mi devono quarantamila.» / «In senso orario, l'ha detto il manifesto.» «E se giro al contrario?» «Incontri tutti in faccia.» | [ESISTE struscio] |
-| pomeriggio | La gelateria aperta col freddo | Gelateria Polo Nord | 6–10 | `aspetta`, `appoggiato` | Cono: «Il gelato d'inverno non si scioglie. È l'unica cosa sull'isola che dura.» | [NUOVO] |
-| sera | Il Garante della domenica (più lungo) | bar, schermo della piazza | 10–15 / 40 | `siede`, `osserva` | trasmissione a rotazione, più la 1.11 il lunedì | [SISTEMA] |
-| sera | Vespro e ultimi giri | `chiesa`, `lungomare` | 15 / 20 | `aspetta`, camminata | «Domani è lunedì.» «L'ha detto anche l'altoparlante.» | [ESISTE vespro] |
-| notte | Domenica notte, la città vuota: la Risacca scrive | muri, sottopassi | 2–3 | `lavora`, `osserva` | «Che scriviamo?» «Quello che c'è scritto sotto il loro manifesto.» | [SISTEMA Risacca] |
+| alba | I pescatori della domenica, con le canne | Molo Vecchio, lanterna | 6–10 | `siede`, `lavora` | «L'ho preso! È enorme!» (è una scarpa) «…Era enorme. È scappato.» | [NUOVO] [OGGETTO canna] |
+| alba | Asta del pesce, ridotta | `molo` | 6–10 | `merce`, `aspetta` | «Questo pesce puzza!» «È domenica, signora! Puzza anche lei e non dico niente!» | [ESISTE pesce] |
+| mattina | **La messa grande** | `chiesa` (San Rocco) | 60–90 dentro, 15 sul sagrato | `aspetta`, `saluta_su` all'uscita, `dietro_su` | «Hai fatto la comunione?» «Due volte! Avevo fame!» | [ESISTE messa] |
+| mattina | **La parata della Tutela sulla Vittoria** (11) | Via della Vittoria (posto `parata`) | 20–30 in marcia + 80–120 ai lati | `saluta_su`, `braccia_su`, `osserva` | «Applaudi, che ti guardano!» «Applaudi tu per me, io ho le mani in tasca.» | [POSTO parata] → [NUOVO] in RECURRING |
+| mattina | La processione di San Rocco (prima domenica del mese) che incrocia la parata | dal sagrato verso la Vittoria (11:20) | 30–40 + la statua | `dietro_su`, `aspetta` | il Grigio: «Di qua non si passa, c'è la parata!» il parroco: «Spostati, figliolo, che la statua pesa!» | [NUOVO] [OGGETTO statua: scenografia] |
+| mezzogiorno | **Il pranzo della domenica**: finestre aperte, gente ai balconi | tutti i palazzi | 1–2 per balcone, molti | `appoggiato` alla ringhiera, `fuma_su`, `discute_su` fra balconi | dalla finestra: «Gavinoooo! È pronto!» dalla strada: «Arrivo!» un altro: «Anch'io mi chiamo Gavino!» «Vieni pure tu, c'è pasta!» | [NUOVO] (vedi §9: gente alle finestre) |
+| mezzogiorno | La schedina al bar | Bar Da Gino, Tabacchi | 10–15 | `siede`, `legge_su`, `discute_su` | «Facciamo la schedina insieme! Metà per uno!» «E se vince?» «Allora era mia.» | [NUOVO] |
+| pomeriggio | La partita alla radio: uomini in cerchio | piazzette, Piazzetta del Pozzo | 8–12 attorno a una radiolina | `aspetta`, `braccia_su` ai gol, `siede` | «GOL! GOL!» «…Annullato.» «Arbitro, vaffanculo! Lo sapevo, io!» | [NUOVO] [OGGETTO radio] |
+| pomeriggio | **La passeggiata della domenica** (17–20) | `lungomare`, Passeggiata a mare | 80–150 | camminata a coppie e a famiglie, `saluta_su`, `appoggiato` al parapetto | «Ci sono i Lai, sorridi!» «Mi devono quarantamila! Sorridi tu!» / «Sei ingrassato!» «Pure tu!» «Io ho le ossa grosse!» | [ESISTE struscio] |
+| pomeriggio | La gelateria aperta col freddo | Gelateria Polo Nord | 6–10 | `aspetta`, `appoggiato` | «Mi fai assaggiare?» «Hai già assaggiato tutti i gusti!» «Manca il limone!» | [NUOVO] |
+| sera | Il Garante della domenica (più lungo) | bar, schermo della piazza | 10–15 / 40 | `siede`, `osserva` | trasmissione 1.15 (l'inno) o a rotazione | [SISTEMA] |
+| sera | Vespro e ultimi giri | `chiesa`, `lungomare` | 15 / 20 | `aspetta`, camminata | «Domani è lunedì.» «Non dirlo! Non dirlo!» | [ESISTE vespro] |
+| notte | Domenica notte, la città vuota: la Risacca scrive | muri, sottopassi | 2–3 | `lavora`, `osserva` | «Scrivi tu "PELATO", io guardo.» «Guardi sempre tu!» «Ho l'occhio buono!» | [SISTEMA Risacca] |
 
 **Cosa aggiungere a `RECURRING`, nell'ordine** (una riga ciascuno, prima i più visibili): `nave` (lun e gio 5–8, porto cargo),
 `parata` (dom 11–12, Vittoria), `lite` e `rua` (mar 18–20), `funerale` (mer 15–17, un mercoledì su due), `lamentele`
@@ -824,20 +870,21 @@ orari. Dissolvenza incrociata sul bordo `near`/`far` per non far vedere il cambi
   vera affacciata (`appoggiato` alla ringhiera) solo entro `near` e solo nelle ore di §8 (pranzo della domenica, lite del
   martedì). **[GRUPPO PERSONAGGI]** la posa «affacciato alla ringhiera» con le braccia sul parapetto a un'altezza data
   e il «parla da balcone a balcone» sono pose nuove.
-- **Le voci dalle finestre** (il «Gavinoooo, è pronto!», la radio del mattino, la Polaris dell'ultimo piano) bastano a
-  far abitare un palazzo che nessuno vede.
+- **Le voci dalle finestre** bastano a far abitare un palazzo che nessuno vede: «Gavinoooo, è pronto!», «Chi ha preso
+  il mio shampoo?!», «Abbassa la radio!» «Abbassala tu!», la Polaris dell'ultimo piano che non parte.
 
 ### 9.5 Le file
 La fila è il modo più economico di dire «c'è tanta gente» e insieme racconta la città (la nave, il pane, il Banco, le madri).
 Le prime 3–5 persone sono figure intere (`aspetta`, `orologio_su`, `tasche_su`, una che parla col vicino); il resto è sagoma
 (9.3) in fila lungo il muro. La lunghezza la decide la simulazione: 40 alla nave che arriva, 70 alla nave che non arriva,
-la fila del forno che si accorcia alle 9. Un posto `fila` c'è già (Forno, Wu): basta allungarlo con le sagome.
+la fila del forno che si accorcia alle 9. Un posto `fila` c'è già (Forno, Wu): basta allungarlo con le sagome. Dalla fila
+esce ogni tanto la lite del posto rubato («Ero qui prima io!» «Ma se sei arrivato adesso!»).
 
 ### 9.6 Il suono come folla
 Un tappeto di brusio la cui intensità segue la **densità virtuale** della zona (gli abitanti leggeri lì + gli eventi attivi),
 non le figure visibili: la piazza del mercato «suona» piena anche se il motore ne mostra 30. Più i suoni puntuali: la TV
-del Garante che esce dalle porte dei bar alle 20, la radio delle botteghe (§2), l'altoparlante (§4), un bambino che chiama, un
-cane, una saracinesca. È la cosa che costa meno e rende di più.
+del Garante che esce dalle porte dei bar alle 20 (con gli insulti di §1 sopra), la radio delle botteghe (§2), l'altoparlante
+(§4), un bambino che chiama, un cane, una saracinesca. È la cosa che costa meno e rende di più.
 
 ### 9.7 Le tracce di gente
 Cose che dicono «qui ci sono persone» senza persone: biciclette e Vespe appoggiate ai muri, la porta della bottega
